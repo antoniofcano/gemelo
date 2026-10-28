@@ -1,6 +1,8 @@
 # Medidas del motor por teselas (Chrome headless con SwiftShader, 1000×900; los fps reales faltan: solo un iPhone los da)
 
-## Cerro Velasco, antes y después (mismas cámaras, `prueba.js`)
+> Referencia viva: se actualiza al volver a medir (protocolo: [skill `medir`](../../.claude/skills/medir/SKILL.md)). Cifras de octubre de 2026; solo SwiftShader, los fps reales faltan.
+
+## Cerro Velasco, antes y después (mismas cámaras; banco de entonces `prueba.js`, no versionado: hoy `pruebas/prueba3.js`)
 
 | Vista | Llamadas | Triángulos | Puntos | Heap JS |
 |---|---|---|---|---|

@@ -7,7 +7,7 @@ Nace como mockup de [OlivarTrack](https://github.com/antoniofcano/olivartrack) p
 Dos fincas montadas con el mismo motor: **Cerro Velasco** (5 parcelas, 7,1 ha) y **Hituelo** (4 fincas, 27 parcelas, 95 ha, ~5.900 olivos).
 
 > Estado: prototipo. Funciona en Chrome (probado con renderizado por software) y sin errores de consola, pero el rendimiento
-> en iPhone y Quest **no está medido**. Mira [doc/ESTADO.md](doc/ESTADO.md) y [doc/MEDIDAS.md](doc/MEDIDAS.md).
+> en iPhone y Quest **no está medido**. Mira [doc/ESTADO.md](doc/ESTADO.md) y [doc/sistema/MEDIDAS.md](doc/sistema/MEDIDAS.md). **Versión: v0.2.0.** Método de trabajo: [CLAUDE.md](CLAUDE.md); índice: [doc/README.md](doc/README.md).
 
 ## Qué hay aquí
 
@@ -19,7 +19,8 @@ Dos fincas montadas con el mismo motor: **Cerro Velasco** (5 parcelas, 7,1 ha) y
 | `finca_8_teselas.py`, `hituelo_conv.py` | Exportador: de los intermedios (LiDAR, ortofoto, NDVI, suelo) a teselas de 256 m |
 | `datos/` | Scripts que producen esos intermedios (LiDAR del IGN, ortofoto PNOA, Sentinel-2, SoilGrids) para Cerro Velasco y Hituelo |
 | `pruebas/` | Pruebas con Chrome headless (Playwright): carga y presupuesto de dibujo, vistas, VR con una sesión WebXR simulada |
-| `doc/DISENO.md` | El diseño de la arquitectura por teselas y los niveles de detalle (leer primero) |
+| `doc/` | Toda la documentación ([índice](doc/README.md)): estado, decisiones ([ADR](doc/adr/README.md)), arquitectura, contratos, operación. El diseño original por teselas es una foto en [doc/historico/](doc/historico/DISENO-2026-10.md) |
+| `contratos/` | Esquemas y ejemplos de los contratos de datos exportador→motor |
 
 **Los datos no están en el repositorio** (teselas, nubes de puntos, ortofoto, marcas de olivos y datos de la explotación): pesan cientos de MB,
 algunos son de uso interno y las fuentes del IGN hay que descargarlas. El motor es público; para reproducir una finca hay que generar sus datos
@@ -28,13 +29,13 @@ con `datos/` (ver abajo).
 ## Arquitectura en una frase
 
 El mundo se parte en teselas de 256 m alineadas a múltiplos de 256 en UTM30; cada tesela lleva suelo a 1 m, ortofoto, nube y árboles, y el coste
-por fotograma depende de la distancia a la cámara (terreno a 1/2/8 m, olivos en 3 niveles, nube submuestreada). Detalle completo en [doc/DISENO.md](doc/DISENO.md).
+por fotograma depende de la distancia a la cámara (terreno a 1/2/8 m, olivos en 3 niveles, nube submuestreada). Detalle en [doc/sistema/ARCHITECTURE.md](doc/sistema/ARCHITECTURE.md) y en los [ADR](doc/adr/README.md).
 
 ## Construir
 
 ```bash
 # Cerro Velasco, un solo HTML con todo embebido (≤ 16 MB)
-python montar_v2.py --finca cerro --salida gemelo_cerro.html
+python montar_v2.py --finca cerro --salida gemelo_cerro.html   # sin --salida: gemelo_cerro_v2.html
 
 # Hituelo: página ligera + ficheros de apoyo (t/<x>_<y>.json|jpg)
 python finca_8_teselas.py --finca hituelo       # necesita los intermedios de datos/hituelo

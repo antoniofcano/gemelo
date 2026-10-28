@@ -1,29 +1,54 @@
-# Estado del gemelo v2 (27-oct-2026)
+# Estado del gemelo
 
-El gemelo vivo (artefacto `14sjiQAk54mwFMkZCZE69Y`, v20) **no se ha tocado**. Todo está en esta carpeta.
+Único sitio de «dónde estamos y qué falta». Se toca solo cuando el estado cambia (no en cada commit). Lo hecho se cuenta en el [CHANGELOG](../CHANGELOG.md); el rumbo, en [PLAN](rumbo/PLAN.md).
 
-## Pasos del diseño (§7 de `lidar3_resultados/DISENO_HITUELO.md`)
+**Versión: v0.2.0** · **Al día a: 2026-10-28** · **Prototipo**: funciona en Chrome con renderizado por software y sin errores de consola; el rendimiento en iPhone y Quest **no está medido**.
 
-| # | Paso | Estado | Cómo se verificó |
-|---|---|---|---|
-| 0 | Prueba de plataforma (ficheros de apoyo) | **A medias**: publicado como https://claude.ai/artifact/MAVJgqMX5XjvjPTyoKcNrK (privado). Aprendido al publicar: **un `.bin` no se admite** (tipos servidos: html, css, js, mjs, wasm, json, txt, csv, png, jpg, webp, svg, fuentes, mp3/mp4…); `.wasm` sí se acepta con bytes arbitrarios. **Falta ver la tabla de la página** (¿`fetch` e `<img>` del mismo origen?): este agente no tiene el navegador autenticado. `window.__res` y la tabla muestran cada prueba | Hay que abrir el enlace y leer la tabla |
-| 1 | «Tesela cero» (`Mundo`) | Hecho | Capturas Cerro antes/después casi idénticas; 0 errores de consola |
-| 2 | Cerro en teselas de 256 m (12 teselas) | Hecho, modo embebido (11,6 MB) y modo ficheros (1 MB + 24 ficheros) | Chrome headless con `file://` y con servidor local |
-| 3 | Color del suelo, NDVI y `exag` al sombreador | Hecho | NDVI, fecha, hierba, exageración y Ortofoto probados con `prueba2.js`; el color se compara a ojo con la base (dif. media 2–5/255 en vista lejana) |
-| 4 | LOD de terreno (1/2/8 m) y vista de mapa | Hecho (faldones, histéresis) | 238 k triángulos en el mapa de Cerro (antes 766 k) |
-| 5 | LOD de olivos (N0 celdas de 64 m / N1 instanciado / N2 instanciado) y de la nube (`setDrawRange`, 16 bits) | Hecho | Gemelo de Cerro a distancia: 261 k tri y 83 MB de heap (antes 1,68 M tri y 185 MB) |
-| 6 | Planificador con presupuesto (`Cola`, generadores) | Hecho: terreno, nube, ruido, celdas de olivos van a rebanadas de ~4–6 ms por fotograma; botón «Gemelo» ya no bloquea | Rebanada máxima medida en el contador `?debug` (ver MEDIDAS.md) |
-| 7 | Hituelo (exportador, selector fincas→parcelas) | Hecho | 46 teselas, 5.882 olivos, 27 parcelas, 4 fincas cargan y se recorren (órbita, modos, NDVI, paseo, quad, dron) con 0 errores |
-| 8 | Minimapa global, balizas, historia | Minimapa y balizas heredan de `Mundo` (mosaico 2 m/px) y funcionan; **la historia está oculta en Hituelo** (su guion es de Cerro): falta escribir el guion corto | Falta ver el minimapa de Hituelo en un paseo largo |
-| 9 | Calidad Alta con LiDAR de 3.ª cobertura | Hecha para Hituelo (los datos ya eran LiDAR) | — |
+## Publicado
 
-## Lo que sigue a medias o sin comprobar
+- **Nada publicado de forma estable desde este repo.** Existe un artefacto desechable de la prueba de plataforma (privado; su enlace no se guarda en el repo público). Hay que borrarlo cuando proceda (**pide confirmación**).
+- Un gemelo anterior (v20) vive como artefacto de claude.ai y no se ha tocado.
 
-- Leer el resultado del paso 0 (si falla, plan B del diseño §8: una página por zona o `assets`).
-- **Ningún fps real**: SwiftShader no sirve. Falta un iPhone con `?debug`.
-- Guion de historia de Hituelo (Marín Hituelo no tiene trabajos ni fenología en OlivarTrack).
-- Pulido: color de los olivos N1/N2 (algo verde-gris y uniforme), hueco entre teselas sin datos, liberar la ortofoto decodificada por LRU (hay `liberaOrtoLejos`, sin probar en largo).
-- Cosas que dependen de datos aún no probadas contra Hituelo real: ficha de olivo, balizas con OlivarTrack, lectura en vivo por MCP.
+## Hecho
 
-## Cómo seguir
-`python montar_v2.py` (Cerro embebido) · `python montar_v2.py --modo ficheros --finca cerro|hituelo|cerro_x9` · `node prueba.js|prueba2.js|prueba3.js` (ver LEEME.md).
+- Motor por teselas de 256 m con niveles de detalle: terreno (1/2/8 m), olivos (L0/L1/L2 con silueta de olivo) y nube LiDAR ([ADR-0001](adr/0001-teselas-256m-utm30.md), [ADR-0002](adr/0002-niveles-de-detalle.md)).
+- Color del suelo y NDVI en el sombreador; suelo abierto con detalle de la ortofoto ([ADR-0007](adr/0007-suelo-abierto-de-la-ortofoto.md)).
+- Cola de trabajos a rebanadas con presupuesto por fotograma.
+- Historia parametrizada por finca (Cerro: 11 escenas; Hituelo: 10).
+- Modo VR con mock de WebXR ([ADR-0005](adr/0005-webxr-perfil-propio.md)).
+- Repositorio público con las fuentes unificadas y este sistema de trabajo (guardianes, contratos, ADR, skills).
+
+## Datos
+
+| Finca | Contenido |
+|---|---|
+| Cerro Velasco | 5 parcelas, 7,1 ha, ~1.080 olivos en 12 teselas |
+| Hituelo | 4 fincas, 27 parcelas, 95 ha, ~5.900 olivos detectados frente a 5.961 declarados, 46 teselas |
+
+Fuentes: LiDAR PNOA 3.ª cobertura (vuelo 2024), MDT 0,5 m, ortofoto PNOA 2022 (copas ~1,1–1,4 m al este), NDVI Sentinel-2 (48 fechas), SoilGrids. Detalle y licencias: [DATOS.md](operacion/DATOS.md).
+
+## Sin comprobar en hardware real
+
+- fps en iPhone y Quest; mareo y comodidad del panel VR.
+- Carga de ficheros de apoyo (`fetch`, `<img>`) en el marco de artefactos **con sesión** (prueba 0 «a medias»). Si falla, Hituelo (≈52 MB de teselas) no cabe en una página: plan B en [RUNBOOK](operacion/RUNBOOK.md).
+- Lecturas en vivo por MCP (OlivarTrack, Vigía): [contratos/mcp.md](../contratos/mcp.md).
+- Rodadas del suelo a 0,5 m/px (salen suaves). Alternativa: ortofoto a 0,25 m solo en teselas con caminos, +~2 MB.
+- Generadores y `fetch` de ficheros en Safari iOS.
+
+## Pendiente
+
+- **Licencia** (decisión de Antonio): hoy «todos los derechos reservados» por defecto.
+- Decidir si el suelo nuevo sustituye al anterior; integrar el suelo realista en la rama de producción.
+- Fundido entre niveles de olivos.
+- Frutales sin marcar en Hituelo (el LiDAR no los distingue).
+- Historia de Marín Hituelo (sin trabajos ni fenología en OlivarTrack).
+- Tres teselas del borde norte con cobertura incompleta si faltan las hojas 404-4181 y 406-4181.
+- Portabilidad de los exportadores (separadores `\` fijos) y del script de la prueba VR.
+- Borrar el artefacto desechable de la prueba de plataforma (con confirmación).
+- Más: [DECISIONS-PENDING](rumbo/DECISIONS-PENDING.md).
+
+## Riesgos
+
+- Presupuesto de dibujo en dispositivos móviles (Hituelo de cerca llega a 1,4 M triángulos en SwiftShader: [MEDIDAS](sistema/MEDIDAS.md)).
+- Cifras reales de fincas en un repo público (decisión de Antonio; ver DECISIONS-PENDING).
+- Los intermedios de Cerro (`datos_cerro_embebido.json`) no se producen con ningún script del repo: regenerar Cerro desde cero no está garantizado.
