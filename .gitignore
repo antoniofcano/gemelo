@@ -1,0 +1,24 @@
+# datos generados y fuentes (no se versionan)
+salida/
+publicar/
+hituelo_datos/
+hituelo_fuentes/
+datos_locales/
+descargas/
+*.laz
+*.las
+*.tif
+*.tiff
+*.npy
+*.npz
+*.html
+!plantilla_cabecera.html
+t/
+cap/
+*.png
+*.jpg
+*.log
+__pycache__/
+node_modules/
+serviceAccount.json
+.env

@@ -1,0 +1,342 @@
+<title>Gemelo de Cerro Velasco</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Instrument+Sans:wght@400;500;600&display=swap">
+<style>
+/* Diseño: una vista 3D grande y oscura-tierra con un panel de capas a un lado; el 3D es la protagonista.
+   Paleta: tierra (suelo), verde olivo (copas), turquesa (lo que mide el LiDAR), ámbar (lo guardado en OlivarTrack). */
+:root {
+  --bg: #f3f1ea; --panel: #fbfaf6; --fg: #23261f; --muted: #686b5e; --line: #dcd9cc;
+  --olivo: #4d6b2f; --lidar: #0e8f86; --guardado: #b87a10; --sky: #e6ebe4;
+  --arena: #d9c08a; --limo: #b9a57a; --arcilla: #9a5a3a;
+  --display: "Fraunces", Georgia, serif; --body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #161a14; --panel: #1e2319; --fg: #e9ebe0; --muted: #a2a794; --line: #323a2a;
+  --olivo: #9dc16a; --lidar: #3ccfc2; --guardado: #f0b13f; --sky: #232b20; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #161a14; --panel: #1e2319; --fg: #e9ebe0; --muted: #a2a794; --line: #323a2a;
+  --olivo: #9dc16a; --lidar: #3ccfc2; --guardado: #f0b13f; --sky: #232b20; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 14px; line-height: 1.45;
+  padding-block: 20px 32px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.pagina { max-width: 1180px; margin: 0 auto; display: grid; gap: 16px; }
+header h1 { font-family: var(--display); font-weight: 600; font-size: clamp(26px, 4vw, 38px); letter-spacing: -0.01em; margin: 0; text-wrap: balance; }
+header p { margin: 4px 0 0; color: var(--muted); max-width: 70ch; }
+.escena { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 14px; align-items: start; }
+.visor { position: relative; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--sky); height: clamp(420px, 70vh, 740px); touch-action: none; }
+.visor canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+.visor canvas:active { cursor: grabbing; }
+.norte { position: absolute; top: 12px; left: 14px; font-family: var(--display); font-size: 13px; color: var(--fg); background: color-mix(in srgb, var(--panel) 80%, transparent); padding: 4px 9px; border-radius: 99px; border: 1px solid var(--line); pointer-events: none; }
+.ayuda { position: absolute; left: 14px; bottom: 12px; font-size: 12px; color: var(--muted); background: color-mix(in srgb, var(--panel) 80%, transparent); padding: 4px 9px; border-radius: 6px; pointer-events: none; }
+.ficha { position: absolute; right: 12px; top: 12px; width: min(250px, calc(100% - 24px)); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; box-shadow: 0 6px 24px rgba(0,0,0,.18); }
+.ficha[hidden] { display: none; }
+.ficha h3 { margin: 0 0 4px; font-family: var(--display); font-size: 16px; font-weight: 600; }
+.ficha dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin: 0; font-variant-numeric: tabular-nums; }
+.ficha dt { color: var(--muted); } .ficha dd { margin: 0; text-align: right; }
+.ficha button { position: absolute; top: 6px; right: 8px; border: 0; background: none; color: var(--muted); font-size: 16px; cursor: pointer; }
+.lateral { display: grid; gap: 12px; }
+.bloque { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+.bloque h2 { margin: 0 0 8px; font-size: 11px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+.modo { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.modo.tres { grid-template-columns: 1fr 1fr 1fr; }
+.modo button { border: 1px solid var(--line); background: var(--bg); color: var(--fg); padding: 8px 6px; border-radius: 7px; font: inherit; cursor: pointer; }
+.modo button[aria-pressed="true"] { background: var(--olivo); border-color: var(--olivo); color: #fff; }
+:root[data-theme="dark"] .modo button[aria-pressed="true"] { color: #14180f; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .modo button[aria-pressed="true"] { color: #14180f; } }
+.capa { display: flex; align-items: center; gap: 9px; padding: 5px 0; cursor: pointer; }
+.capa input { accent-color: var(--olivo); width: 16px; height: 16px; margin: 0; }
+.capa .punto { width: 11px; height: 11px; border-radius: 50%; flex: none; }
+.capa small { color: var(--muted); margin-left: auto; font-variant-numeric: tabular-nums; }
+.rango { display: grid; gap: 4px; margin-top: 8px; }
+.rango input { width: 100%; accent-color: var(--olivo); }
+.cifras { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; margin: 0; }
+.cifras div dt { color: var(--muted); font-size: 12px; } .cifras div dd { margin: 0; font-family: var(--display); font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.nota { color: var(--muted); font-size: 12.5px; margin: 0; }
+.pie { color: var(--muted); font-size: 12.5px; max-width: 90ch; }
+.reiniciar { width: 100%; margin-top: 8px; border: 1px solid var(--line); background: none; color: var(--fg); padding: 7px; border-radius: 7px; font: inherit; cursor: pointer; }
+.visor.paseo canvas { cursor: default; outline: none; }
+.ayuda-paseo { background: color-mix(in srgb, var(--panel) 88%, transparent); color: var(--fg); }
+.pad { position: absolute; right: 12px; bottom: 12px; display: none; grid-template-columns: repeat(3, 44px); grid-template-rows: repeat(3, 44px); gap: 6px; }
+.visor.paseo .pad { display: grid; }
+.pad button { border: 1px solid var(--line); background: color-mix(in srgb, var(--panel) 88%, transparent); color: var(--fg); border-radius: 10px; font: inherit; font-size: 16px; cursor: pointer; touch-action: none; }
+#pad-up { grid-column: 2; grid-row: 1; } #pad-left { grid-column: 1; grid-row: 2; } #pad-down { grid-column: 2; grid-row: 3; } #pad-right { grid-column: 3; grid-row: 2; }
+.pad .pad-txt { font-size: 11px; grid-column: auto; } #padRun { grid-column: 1; grid-row: 3; } #padCam { grid-column: 3; grid-row: 3; }
+.pad button[aria-pressed="true"] { background: var(--olivo); color: #fff; }
+.paseo-btn[aria-pressed="true"] { background: var(--olivo); color: #fff; border-color: var(--olivo); }
+.chispa svg { width: 100%; height: auto; display: block; } .chispa { margin: 2px 0 4px; }
+.ndvi-leyenda { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; font-size: 11.5px; color: var(--muted); margin-top: 6px; }
+.ndvi-leyenda i { display: block; height: 9px; border-radius: 3px; background: linear-gradient(90deg, #8c4a2f, #d8c75a, #2f7d32); }
+.col { min-width: 0; display: grid; gap: 14px; align-content: start; }
+.historia h2 { margin: 0; }
+.h-ctl { display: flex; gap: 8px; flex-wrap: wrap; }
+.h-estado { margin: 0 0 8px; font-size: 12.5px; color: var(--muted); }
+.h-estado[data-t="vivo"] { color: var(--olivo); font-weight: 500; }
+.h-estado[data-t="parcial"] { color: var(--guardado); }
+.h-estado[data-t="error"] { color: #b3382c; }
+:root[data-theme="dark"] .h-estado[data-t="error"] { color: #f08a7e; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .h-estado[data-t="error"] { color: #f08a7e; } }
+.h-bola { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+.h-aviso-t { background: color-mix(in srgb, var(--guardado) 16%, transparent); padding: 8px 10px; border-radius: 8px; }
+.h-texto code { font-size: 12px; background: var(--bg); padding: 0 4px; border-radius: 4px; }
+.h-cab { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+.h-btn { border: 1px solid var(--line); background: var(--bg); color: var(--fg); padding: 7px 13px; border-radius: 8px; font: inherit; cursor: pointer; }
+.h-btn:disabled { opacity: .45; cursor: default; }
+.h-btn-prim { background: var(--olivo); border-color: var(--olivo); color: #fff; }
+:root[data-theme="dark"] .h-btn-prim { color: #14180f; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .h-btn-prim { color: #14180f; } }
+.h-puntos { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.h-punto { width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--muted); background: transparent; padding: 0; cursor: pointer; }
+.h-punto[aria-current="true"] { background: var(--olivo); border-color: var(--olivo); transform: scale(1.25); }
+#hTitulo { font-family: var(--display); font-size: 21px; font-weight: 600; margin: 4px 0 6px; text-wrap: balance; }
+.h-texto p { margin: 0 0 8px; max-width: 74ch; } .h-texto h4 { margin: 10px 0 4px; font-size: 13px; }
+.h-texto ul, .h-texto ol { margin: 0 0 8px; padding-left: 18px; }
+.h-nota { color: var(--muted); font-size: 12.5px; }
+.h-decision { background: color-mix(in srgb, var(--olivo) 12%, transparent); padding: 8px 10px; border-radius: 8px; }
+.h-fuente { font-size: 12.5px; color: var(--muted); margin: 6px 0 10px; }
+.h-pill { display: inline-block; background: color-mix(in srgb, var(--guardado) 18%, transparent); color: var(--fg); border-radius: 99px; padding: 1px 9px; font-size: 11.5px; margin-right: 4px; }
+.h-nav { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.h-nav .nota { margin-left: auto; margin-right: auto; }
+.h-tabla { width: 100%; border-collapse: collapse; margin: 6px 0 10px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.h-tabla th { text-align: left; color: var(--muted); font-weight: 500; border-bottom: 1px solid var(--line); padding: 3px 6px; }
+.h-tabla td { padding: 3px 6px; border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
+.h-tabla .n { text-align: right; } .h-tabla tr.h-aviso td { background: color-mix(in srgb, var(--guardado) 16%, transparent); }
+.h-sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 7px; }
+.h-pase { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin: 6px 0 8px; background: var(--bg); }
+.h-pase-cab { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+.h-dos { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; } @media (max-width: 640px) { .h-dos { grid-template-columns: 1fr; } }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--line); background: var(--bg); color: var(--fg); padding: 6px 10px; border-radius: 99px; font: inherit; font-size: 12.5px; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--olivo); border-color: var(--olivo); color: #fff; }
+:root[data-theme="dark"] .chip[aria-pressed="true"] { color: #14180f; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .chip[aria-pressed="true"] { color: #14180f; } }
+.sg-clase { margin: 0 0 6px; } .sg-leyenda { display: flex; gap: 10px; flex-wrap: wrap; font-size: 11.5px; color: var(--muted); margin-bottom: 6px; }
+.sg-leyenda i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 4px; }
+.sg-fila { display: grid; grid-template-columns: 52px 1fr 40px; align-items: center; gap: 6px; padding: 2px 0; font-variant-numeric: tabular-nums; }
+.sg-prof { color: var(--muted); font-size: 12px; } .sg-num { text-align: right; font-size: 12px; }
+.sg-barra { display: flex; height: 12px; border-radius: 3px; overflow: hidden; background: var(--line); } .sg-barra i { display: block; height: 100%; }
+.sg-tabla { width: 100%; border-collapse: collapse; margin: 8px 0 6px; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.sg-tabla th { text-align: left; color: var(--muted); font-weight: 500; border-bottom: 1px solid var(--line); padding: 2px 4px; } .sg-tabla td { padding: 2px 4px; }
+.t-ins { position: absolute; right: 12px; bottom: 12px; display: flex; align-items: center; gap: 7px; max-width: calc(100% - 24px); font-size: 12px; font-variant-numeric: tabular-nums; color: var(--fg); background: color-mix(in srgb, var(--panel) 82%, transparent); padding: 4px 9px; border-radius: 6px; pointer-events: none; }
+.t-flecha { display: inline-block; font-weight: 700; transition: transform .3s; color: var(--lidar); }
+.t-control { display: grid; gap: 6px; margin-bottom: 8px; }
+.t-fila { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; } .t-fila label { color: var(--muted); font-size: 12px; } .t-fila strong { font-variant-numeric: tabular-nums; text-align: right; }
+.t-botones { display: flex; gap: 6px; flex-wrap: wrap; }
+.h-btn[aria-pressed="true"] { background: var(--olivo); border-color: var(--olivo); color: #fff; }
+:root[data-theme="dark"] .h-btn[aria-pressed="true"] { color: #14180f; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .h-btn[aria-pressed="true"] { color: #14180f; } }
+.t-demo { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; } .t-demo label { color: var(--muted); font-size: 12px; }
+.t-demo select { padding: 6px 8px; border-radius: 7px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); font: inherit; }
+.t-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 8px; } @media (max-width: 760px) { .t-cards { grid-template-columns: minmax(0, 1fr); } }
+.t-card { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--bg); min-width: 0; }
+.t-card h3 { margin: 0 0 2px; font-family: var(--display); font-size: 16px; font-weight: 600; } .t-card h4 { margin: 10px 0 2px; font-size: 12px; color: var(--muted); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.t-pill { font-family: var(--body); font-size: 11px; font-weight: 500; padding: 1px 8px; border-radius: 99px; background: color-mix(in srgb, var(--olivo) 18%, transparent); vertical-align: 2px; }
+.t-pill-m { background: color-mix(in srgb, var(--guardado) 20%, transparent); }
+.t-sub { margin: 2px 0 6px; color: var(--muted); font-size: 12.5px; }
+.t-grande { display: flex; align-items: baseline; gap: 4px; } .t-grande span { font-family: var(--display); font-size: 40px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.1; } .t-grande small { color: var(--muted); font-size: 16px; }
+.t-cifras { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 10px; margin: 6px 0; } .t-cifras dt { color: var(--muted); font-size: 11.5px; } .t-cifras dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: 500; } .t-cifras small { color: var(--muted); font-weight: 400; }
+@media (max-width: 420px) { .t-cifras { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.t-aviso { margin: 6px 0; padding: 7px 9px; border-radius: 8px; font-size: 12px; color: var(--fg); background: color-mix(in srgb, var(--guardado) 14%, transparent); }
+.t-graf { width: 100%; height: auto; display: block; margin: 4px 0; }
+.t-leyenda { margin: 2px 0 8px; font-size: 11.5px; color: var(--muted); } .t-leyenda i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin: 0 4px 0 8px; vertical-align: -1px; } .t-leyenda i:first-child { margin-left: 0; }
+.t-tabla { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; } .t-tabla th { text-align: left; font-weight: 600; padding: 3px 6px 3px 0; white-space: nowrap; } .t-tabla td { padding: 3px 6px; color: var(--muted); border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent); } .t-tabla th { border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
+#padQuad { grid-column: 1; grid-row: 1; } #padDron { grid-column: 3; grid-row: 1; }
+#padSube, #padBaja { grid-column: 2; grid-row: 2; height: 21px; padding: 0; line-height: 1; font-size: 11px; } #padSube { align-self: start; } #padBaja { align-self: end; }
+.visor.paseo .t-ins { bottom: auto; top: 12px; }
+.t-dron { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); max-width: calc(100% - 150px); text-align: center; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--fg); background: color-mix(in srgb, var(--panel) 82%, transparent); padding: 4px 10px; border-radius: 99px; pointer-events: none; }
+.mapita { position: absolute; left: 14px; top: 48px; border-radius: 10px; border: 1.5px solid color-mix(in srgb, var(--panel) 75%, transparent); box-shadow: 0 4px 16px rgba(0,0,0,.28); cursor: pointer; touch-action: manipulation; max-width: calc(100% - 28px); }
+.visor .mapita[hidden] { display: none !important; }
+@media (max-width: 520px) { .mapita { width: 170px !important; height: auto !important; } }
+.t-son { position: absolute; left: 64px; top: 12px; border: 0; border-radius: 99px; padding: 3px 9px; font-size: 14px; line-height: 1.3; cursor: pointer; color: var(--fg); background: color-mix(in srgb, var(--panel) 82%, transparent); }
+.t-baliza { position: absolute; left: 14px; bottom: 44px; width: min(310px, calc(100% - 28px)); font-size: 12.5px; color: var(--fg); background: color-mix(in srgb, var(--panel) 93%, transparent); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; box-shadow: 0 6px 22px rgba(0,0,0,.25); pointer-events: none; }
+.t-baliza[hidden] { display: none; }
+.t-baliza .b-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; } .t-baliza strong { font-family: var(--display); font-size: 15px; }
+.t-baliza .b-pill { font-size: 11px; padding: 1px 8px; border-radius: 99px; background: color-mix(in srgb, var(--c) 24%, transparent); }
+.t-baliza h4 { margin: 8px 0 2px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.t-baliza ul { margin: 0; padding-left: 16px; } .t-baliza li { margin: 1px 0; } .t-baliza .b-n { color: var(--muted); font-variant-numeric: tabular-nums; margin-left: 4px; }
+.t-baliza .b-sub { margin: 2px 0; color: var(--muted); } .t-baliza .b-pie { margin: 8px 0 0; font-size: 11px; color: var(--muted); }
+.t-baliza .b-aviso { margin: 6px 0; padding: 6px 8px; border-radius: 7px; background: color-mix(in srgb, var(--guardado) 16%, transparent); }
+.t-ancho { grid-column: 1 / -1; }
+.t-pant { position: absolute; left: 112px; top: 12px; border: 0; border-radius: 99px; padding: 3px 11px; font-size: 14px; line-height: 1.3; cursor: pointer; color: var(--fg); background: color-mix(in srgb, var(--panel) 82%, transparent); z-index: 3; }
+.visor.pantalla { position: fixed !important; inset: 0; z-index: 9999; width: auto !important; height: auto !important; max-height: none !important; border-radius: 0 !important; border: 0 !important; margin: 0 !important; }
+.visor.pantalla .t-pant { top: max(12px, env(safe-area-inset-top, 0px)); }
+.visor:fullscreen { width: 100% !important; height: 100% !important; border-radius: 0; }
+html.sin-scroll, html.sin-scroll body { overflow: hidden !important; }
+.t-barra { position: absolute; left: 62px; top: 12px; display: flex; gap: 6px; z-index: 3; }
+.visor.pantalla .t-barra { top: max(12px, env(safe-area-inset-top, 0px)); left: max(62px, calc(env(safe-area-inset-left, 0px) + 62px)); }
+.t-barra button { position: static !important; border: 0; border-radius: 99px; padding: 3px 11px; font-size: 13px; line-height: 1.35; cursor: pointer; color: var(--fg); background: color-mix(in srgb, var(--panel) 82%, transparent); }
+.t-barra button[aria-pressed="true"].t-pasea, .t-barra button[aria-pressed="true"].t-pant { background: var(--olivo); color: #fff; }
+:root[data-theme="dark"] .t-barra button[aria-pressed="true"].t-pasea, :root[data-theme="dark"] .t-barra button[aria-pressed="true"].t-pant { color: #14180f; }
+:focus-visible { outline: 2px solid var(--olivo); outline-offset: 2px; }
+@media (max-width: 860px) { .escena { grid-template-columns: minmax(0, 1fr); } .visor { height: clamp(360px, 58vh, 560px); } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="pagina">
+  <header>
+    <h1>Finca Cerro Velasco, en 3D</h1>
+    <p>Gemelo de la finca, con sus cinco parcelas y 7,1 ha: la forma sale de los puntos del vuelo LiDAR de 2024 y el color, de la ortofoto del PNOA corregida por la altura de cada copa.</p>
+  </header>
+
+  <div class="escena">
+    <div class="col">
+    <div class="visor" id="visor">
+      <canvas id="lienzo" aria-label="Vista 3D de la parcela Cerro Velasco; arrastra para girar, rueda para acercar"></canvas>
+      <div class="norte">N ↑</div>
+      <div class="t-ins" id="tIns"><span class="t-flecha" id="tFlecha" aria-hidden="true">↑</span><span id="tInsT">Cielo despejado</span></div>
+<canvas id="mapita" class="mapita" role="img" aria-label="Minimapa: dónde estás en la finca" hidden></canvas>
+      
+      <div class="t-baliza" id="baliza" role="status" hidden></div>
+      
+      <div class="t-barra" role="group" aria-label="Controles del visor">
+        <button type="button" class="t-son" id="btnSonido" aria-pressed="true" aria-label="Activar o silenciar el sonido">🔊</button>
+        <button type="button" class="t-pant" id="btnPantalla" aria-pressed="false" title="Pantalla completa">⛶</button>
+        <button type="button" class="t-pasea" id="btnPaseoV" aria-pressed="false">🚶 Pasear</button>
+      </div>
+      <div class="t-dron" id="tDron" hidden>Dron</div>
+      <div class="ayuda" id="ayuda">Arrastra: girar · Rueda o pellizco: zoom · Mayús + arrastrar: mover · Toca un olivo para ver su ficha</div>
+      <div class="ayuda ayuda-paseo" id="ayudaPaseo" hidden>Flechas o WASD: andar y girar · Mayús: correr · V: primera persona · Q: quad · E: dron · M: minimapa · Esc: salir</div>
+      <div class="pad" aria-label="Controles táctiles del paseo">
+        <button type="button" id="pad-up" aria-label="Avanzar">▲</button>
+        <button type="button" id="pad-left" aria-label="Girar a la izquierda">◀</button>
+        <button type="button" id="pad-down" aria-label="Retroceder">▼</button>
+        <button type="button" id="pad-right" aria-label="Girar a la derecha">▶</button>
+        <button type="button" id="padRun" class="pad-txt" aria-pressed="false">Correr</button>
+        <button type="button" id="padCam" class="pad-txt">Cámara</button>
+        <button type="button" id="padQuad" class="pad-txt" aria-pressed="false" hidden>Quad</button>
+        <button type="button" id="padDron" class="pad-txt" aria-pressed="false" hidden>Dron</button>
+        <button type="button" id="padSube" class="pad-txt" aria-label="Subir el dron" hidden>▲</button>
+        <button type="button" id="padBaja" class="pad-txt" aria-label="Bajar el dron" hidden>▼</button>
+      </div>
+      <div class="ficha" id="ficha" hidden>
+        <button type="button" id="cerrarFicha" aria-label="Cerrar ficha">×</button>
+        <h3 id="fichaTitulo">Olivo</h3>
+        <dl id="fichaDatos"></dl>
+      </div>
+    </div>
+
+      
+      <section class="bloque tiempo" id="tiempo" aria-label="El tiempo en la finca">
+        <div class="h-cab"><h2>El tiempo en la finca</h2><div class="h-ctl"><button type="button" id="tLeer" class="h-btn" hidden>Leer de Vigía</button></div></div>
+        <p id="tEstado" class="h-estado" role="status">El mundo simula el tiempo que publica Vigía: el sol, las nubes, el viento y la lluvia.</p>
+        <div id="tControl" class="t-control" hidden>
+          <div class="t-fila"><label for="tMomento">Momento</label><strong id="tMomentoV"></strong></div>
+          <input type="range" id="tMomento" min="0" max="71" step="1" value="0" style="width:100%;accent-color:var(--olivo)">
+          <div class="t-botones">
+            <button type="button" id="tAhora" class="h-btn" aria-pressed="true">Ahora</button>
+            <button type="button" id="tMas6" class="h-btn">+6 h</button>
+            <button type="button" id="tManana" class="h-btn">Mañana a las 12:00</button>
+            <button type="button" id="tPlay" class="h-btn" aria-pressed="false">Reproducir</button>
+          </div>
+          <p id="tResumen" class="nota"></p>
+        </div>
+        <div class="t-demo"><label for="hSel">Hierba según el NDVI del</label><input type="range" id="hSel" min="0" max="41" step="1" value="41" style="flex:1;min-width:140px;accent-color:var(--olivo)"><span class="nota" id="hFecha"></span></div>
+        <div class="t-demo"><label for="tDemo">Probar un efecto</label>
+          <select id="tDemo"><option value="">El tiempo de Vigía</option><option value="lluvia">Lluvia de ejemplo</option><option value="viento">Viento fuerte de ejemplo</option><option value="niebla">Niebla de ejemplo</option><option value="helada">Helada de ejemplo</option></select>
+        </div>
+        <div class="t-cards">
+          <article class="t-card" id="tEst" aria-label="Estación"></article>
+          <article class="t-card" id="tPrev" aria-label="Previsión de 72 horas"></article>
+          <article class="t-card t-ancho" id="tEstac" aria-label="El olivo en esta fecha"></article>
+        </div>
+        <p class="nota">Lo que se dibuja es una interpretación: la estación está a varios kilómetros, la previsión es de una rejilla de ~5 km, las nubes y la deriva del viento van más deprisa que las reales para que se vean, y la lluvia, el viento y la niebla «de ejemplo» no son el tiempo real.</p>
+      </section>
+      <section class="bloque historia" id="historia" aria-label="La historia de la finca">
+        <div class="h-cab"><h2>La historia de la finca</h2><div class="h-ctl"><button type="button" id="hLeer" class="h-btn" hidden>Leer de OlivarTrack</button><button type="button" id="hIni" class="h-btn h-btn-prim">Empezar el recorrido</button></div></div>
+        <p id="hEstado" class="h-estado" role="status"></p>
+        <p class="nota" id="hIntro">Once escenas que cruzan el gemelo con lo que OlivarTrack ya sabe de estas cinco parcelas: cómo se cuentan sus olivos, qué se hizo en septiembre, dónde mirar hoy y cómo se conectará con el MCP. Avanza con los botones o con las flechas del teclado.</p>
+        <div id="hCuerpo" hidden>
+          <div class="h-puntos" id="hPuntos" role="group" aria-label="Escenas"></div>
+          <h3 id="hTitulo"></h3>
+          <div id="hTexto" class="h-texto"></div>
+          <p class="h-fuente" id="hFuente"></p>
+          <div class="h-nav"><button type="button" id="hAnt" class="h-btn">Anterior</button><span id="hCont" class="nota"></span><button type="button" id="hSig" class="h-btn h-btn-prim">Siguiente</button><button type="button" id="hFin" class="h-btn">Salir</button></div>
+        </div>
+      </section>
+    </div>
+
+    <aside class="lateral">
+      <section class="bloque">
+        <h2>Parcelas</h2>
+        <div id="chips" class="chips" role="group" aria-label="Parcela a mostrar"></div>
+      </section>
+
+      <section class="bloque">
+        <h2>Vista</h2>
+        <div class="modo tres" role="group" aria-label="Modo de vista">
+          <button type="button" id="mNube" aria-pressed="true">Nube LiDAR</button>
+          <button type="button" id="mGem" aria-pressed="false">Gemelo</button>
+          <button type="button" id="mOrto" aria-pressed="false">Ortofoto</button>
+        </div>
+        <p class="nota" id="notaModo" style="margin-top:8px"></p>
+        <div class="rango">
+          <label for="exag">Relieve exagerado: <strong id="exagV">1×</strong></label>
+          <input type="range" id="exag" min="1" max="3" step="0.25" value="1">
+        </div>
+        <div class="rango">
+          <label for="corr">Corrección de la ortofoto: <strong id="corrV">1×</strong></label>
+          <input type="range" id="corr" min="0" max="1.5" step="0.25" value="1">
+        </div>
+        <div class="rango" hidden>
+          <label for="hora">Hora del día: <strong id="horaV">12:30</strong></label>
+          <input type="range" id="hora" min="7" max="19.5" step="0.5" value="12.5">
+        </div>
+        <div class="rango">
+          <label for="calidad">Calidad del follaje</label>
+          <select id="calidad" style="width:100%;padding:6px;border-radius:7px;border:1px solid var(--line);background:var(--bg);color:var(--fg);font:inherit">
+            <option value="0">Baja (más fluida)</option><option value="1" selected>Media</option><option value="2">Alta (más pesada)</option>
+          </select>
+        </div>
+        <button type="button" class="reiniciar" id="reiniciar">Volver a la vista inicial</button>
+        <button type="button" class="reiniciar paseo-btn" id="btnPaseo" aria-pressed="false">Pasear por el olivar</button>
+        <button type="button" class="reiniciar paseo-btn" id="btnQuad" aria-pressed="false" hidden>Subir al quad</button>
+        <button type="button" class="reiniciar paseo-btn" id="btnDron" aria-pressed="false" hidden>Sacar el dron</button>
+      </section>
+
+      <section class="bloque">
+        <h2>Capas</h2>
+        <label class="capa"><input type="checkbox" id="cLinde" checked><span class="punto" style="background:#40f0ff;border:2px solid var(--lidar)"></span>Linde (barrera de luz)</label>
+        <label class="capa"><input type="checkbox" id="cCopas" checked><span class="punto" style="background:var(--lidar)"></span>Copas del LiDAR <small id="nCopas"></small></label>
+        <label class="capa"><input type="checkbox" id="cMarc" checked><span class="punto" style="background:var(--guardado)"></span>Guardados en OlivarTrack <small id="nMarc"></small></label>
+        <label class="capa"><input type="checkbox" id="cDesf"><span class="punto" style="background:linear-gradient(90deg,var(--guardado),var(--lidar))"></span>Desfase entre ambos</label>
+        <label class="capa"><input type="checkbox" id="cNdvi"><span class="punto" style="background:linear-gradient(90deg,#8c4a2f,#d8c75a,#2f7d32)"></span>NDVI Sentinel-2</label>
+        <label class="capa"><input type="checkbox" id="cTinte"><span class="punto" style="background:linear-gradient(90deg,#8c4a2f,#2f7d32)"></span>Copas coloreadas por NDVI</label>
+        <label class="capa"><input type="checkbox" id="cSolo"><span class="punto" style="background:var(--line);border:1px solid var(--muted)"></span>Ocultar los árboles</label>
+        <label class="capa"><input type="checkbox" id="cFauna" checked><span class="punto" style="background:#8b755a"></span>Pájaros, conejos y tus perros</label>
+        <label class="capa"><input type="checkbox" id="cPaisaje" checked><span class="punto" style="background:#b9a57a"></span>Naves, tendido, arroyo y otros árboles</label>
+        <label class="capa"><input type="checkbox" id="cHierba" checked><span class="punto" style="background:#7a9a3c"></span>Hierba y piedras (según el NDVI)</label>
+        <label class="capa"><input type="checkbox" id="cSonido" checked><span class="punto" style="background:var(--lidar)"></span>Sonido ambiente</label>
+      </section>
+
+      <section class="bloque" id="suelo">
+        <h2>Suelo · SoilGrids</h2>
+        <div id="sueloCuerpo"></div>
+      </section>
+
+      <section class="bloque" id="bNdvi" hidden>
+        <h2>Vegetación · NDVI</h2>
+        <p class="sg-clase"><strong id="ndviFecha">–</strong> <span class="nota" id="ndviRango"></span></p>
+        <div id="chispa" class="chispa"></div>
+        <label for="ndviSel" class="nota">Fecha de la imagen (arrastra)</label>
+        <input type="range" id="ndviSel" min="0" max="1" step="1" value="0" style="width:100%;accent-color:var(--olivo)">
+        <div class="ndvi-leyenda"><span>menos vigor</span><i></i><span>más vigor</span></div>
+        <p class="nota" style="margin-top:8px">Sentinel-2 (10 m): cada cuadro de 10 × 10 m cubre varios árboles. El color es relativo dentro de esta parcela y de cada fecha: no se compara entre fechas ni con otras parcelas, como en Vigía. Modelo sin calibrar con observación de campo.</p>
+      </section>
+
+      <section class="bloque">
+        <h2 id="tMedido">Lo medido</h2>
+        <dl class="cifras">
+          <div><dt>Copas LiDAR</dt><dd id="kCopas">–</dd></div>
+          <div><dt>Guardados</dt><dd id="kMarc">–</dd></div>
+          <div><dt>Altura mediana</dt><dd id="kAlt">–</dd></div>
+          <div><dt>Desfase medio</dt><dd id="kDes">–</dd></div>
+        </dl>
+        <p class="nota" style="margin-top:8px">Los puntos guardados caen entre 1,5 y 2 m al este de las copas del LiDAR en las cinco parcelas, porque se marcaron sobre la ortofoto, que muestra las copas desplazadas según su altura. El LiDAR está bien georreferenciado.</p>
+      </section>
+    </aside>
+  </div>
+
+  <p class="pie">Mockup con la finca Cerro Velasco (cinco parcelas, 7,1 ha). La copa de cada olivo es medida; sus troncos y ramas son una forma ilustrativa con los 2 o 3 pies habituales, no una medición: el número real de pies de cada olivo no se puede sacar de esta nube. Nube PNOA-LiDAR 2024 (3ª cobertura, 9,4 puntos por m²), MDT de 0,5 m del CNIG y ortofoto PNOA del IGN, licencia CC-BY 4.0. La corrección de la ortofoto es un ajuste medido en esta parcela (la copa se ve desplazada hacia el este unos 1,2 m a 1 m de altura y unos 2,5 m a 4 m), no una ortorrectificación. Es un modelo de trabajo, no una medición topográfica.</p>
+</div>
+
