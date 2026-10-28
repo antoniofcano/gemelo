@@ -12,7 +12,10 @@
     "guardianes": "node --test \"pruebas/guardianes/*.test.js\"",
     "puerta": "node --test --test-concurrency=1 \"pruebas/guardianes/*.test.js\"",
     "probar": "node pruebas/prueba3.js",
-    "probar:vr": "node pruebas/vr_mock.js"
+    "probar:vr": "node pruebas/vr_mock.js",
+    "dev:arriba": "node infra/dev/herramientas/levanta.mjs",
+    "dev:abajo": "node infra/dev/herramientas/para.mjs",
+    "dev:estado": "node infra/dev/herramientas/estado.mjs"
   },
   "devDependencies": {
     "@gltf-transform/core": "4.5.1",

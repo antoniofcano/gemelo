@@ -1,0 +1,96 @@
+# Caddy del entorno de DESARROLLO (infra/dev/compose.yml). No es el de producción (infra/Caddyfile, otro trabajo).
+# Diferencias a propósito: sin HSTS (en localhost estorba), CSP en modo Report-Only, certificado de una CA local
+# no instalada (tls internal), y la CA se pierde al parar (tmpfs). Ver doc/operacion/DESARROLLO-LOCAL.md.
+{
+	admin off
+	auto_https disable_redirects
+	skip_install_trust
+	http_port 8080
+	https_port 8443
+	log {
+		output stdout
+		format console
+	}
+}
+
+(cabeceras) {
+	header {
+		-Server
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-Frame-Options "DENY"
+		Cross-Origin-Opener-Policy "same-origin"
+		Cross-Origin-Resource-Policy "same-origin"
+		# WebXR, micrófono y cámara (fases 2-4) y geolocalización (corresponsal) solo para este origen
+		Permissions-Policy "xr-spatial-tracking=(self), microphone=(self), camera=(self), geolocation=(self), screen-wake-lock=(self), payment=(), usb=(), interest-cohort=()"
+		# Report-Only: el navegador avisa en la consola de lo que bloquearía, sin bloquearlo. Las fuentes de Google las pide
+		# plantilla.html; el motor pide su mismo origen; data:/blob: para el mosaico y las texturas; LiveKit por WebSocket.
+		Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' {$LIVEKIT_PUBLICO}; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+	}
+}
+
+(gemelo) {
+	encode zstd gzip
+
+	import cabeceras
+
+	# salud del propio Caddy (la usa el healthcheck)
+	handle /salud {
+		header Cache-Control "no-store"
+		respond "ok" 200
+	}
+
+	# la web aún no trae icono (apps/web no tiene favicon): sin esto el navegador anota un 404 en la consola en cada carga.
+	# Lo mismo hace el servidor de pruebas de los guardianes (_navegador.js). Se quita cuando apps/web tenga su icono.
+	handle /favicon.ico {
+		header Cache-Control "public, max-age=86400"
+		respond 204
+	}
+
+	# la api (fase 1a): descomentar junto con el servicio «api» de compose.yml
+	# handle /api/* {
+	# 	reverse_proxy api:8000
+	# }
+
+	# teselas: /teselas/<finca>/indice.json y /teselas/<finca>/t/<kx>_<ky>.json|jpg (carpeta montada de solo lectura)
+	handle_path /teselas/* {
+		root * /srv/teselas
+		header Cache-Control "public, max-age=300"
+		file_server {
+			hide .*
+		}
+	}
+
+	# la web: los ficheros de assets/ llevan hash en el nombre (Vite) → caché inmutable; la página, siempre revalidada
+	handle {
+		root * /srv/web
+		@inmutable path /assets/*
+		header @inmutable Cache-Control "public, max-age=31536000, immutable"
+		@pagina path / /index.html
+		header @pagina Cache-Control "no-cache"
+		file_server {
+			precompressed br zstd gzip
+			hide .*
+		}
+	}
+}
+
+# los errores (404…) llevan las mismas cabeceras y nunca se guardan en caché (si no, un 404 en assets/ heredaría «immutable»)
+(errores) {
+	handle_errors {
+		import cabeceras
+		header Cache-Control "no-store"
+		respond "{err.status_code} {err.status_text}" {err.status_code}
+	}
+}
+
+http://:8080 {
+	import gemelo
+	import errores
+}
+
+https://localhost:8443 {
+	tls internal
+	import gemelo
+	import errores
+}

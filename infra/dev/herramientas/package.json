@@ -1,0 +1,13 @@
+{
+  "name": "gemelo-dev-herramientas",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "Scripts del entorno de desarrollo con Docker (levanta, para, estado) y clientes para comprobar sus servicios",
+  "engines": { "node": ">=24" },
+  "dependencies": {
+    "livekit-server-sdk": "2.19.2",
+    "nodemailer": "10.2.1",
+    "pg": "8.23.1"
+  }
+}
