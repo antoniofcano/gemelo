@@ -28,7 +28,7 @@ Los datos **no se versionan** (ADR-0004): todo sucede en local con variables `GE
 - [ ] Sin datos reales en el repo: `npm run puerta` (guardián `secretos`).
 
 ## Problemas conocidos
-- Los scripts de `tuberia/datos/` y `tuberia/hituelo_conv.py` usan separadores `\` fijos: **solo Windows** (PLAN D4).
+- Las rutas de `tuberia/` se arman con `os.path.join`: nunca un separador `\` escrito a mano (lo vigila el guardián `multiplataforma`; decisión 8, D4). Fuera de Windows solo está comprobado que compilan, no se han ejecutado con datos reales.
 - Cerro necesita `datos_cerro_embebido.json`, un intermedio que ningún script del repo produce (D5).
 - Hojas 404-4181 y 406-4181 de Hituelo sin descargar → 3 teselas del borde norte incompletas.
 - Una petición WMS/WCS grande al IGN se cuelga: pedir en trozos de ≈500 m.

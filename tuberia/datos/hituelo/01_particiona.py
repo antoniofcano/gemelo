@@ -12,7 +12,7 @@ for (a, b) in obj:
         for db in (-1, 0, 1): anillo.add((a + da, b + db))
 args = [a for a in sys.argv[1:] if not a.startswith("--")]; forzar = "--forzar" in sys.argv
 if args: ficheros = [DL + "/PNOA_2024_AND_" + h + "_H30_NPC01.laz" for h in args]
-else: ficheros = [f for f in sorted(glob.glob(DL + r"\PNOA_2024_AND_40[456]-41[78]?_H30_NPC01.laz")) if "(" not in f]
+else: ficheros = [f for f in sorted(glob.glob(os.path.join(DL, "PNOA_2024_AND_40[456]-41[78]?_H30_NPC01.laz"))) if "(" not in f]
 for f in ficheros:
     hx, hy = hoja_de(f); nombre = f"{hx}-{hy}"; carp = RAW + "/" + nombre; marca = carp + "/HECHO.json"
     if os.path.exists(marca) and not forzar: print(nombre, "ya repartida"); continue

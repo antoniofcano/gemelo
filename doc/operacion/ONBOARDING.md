@@ -26,6 +26,7 @@
 | 8 | Sin secretos, ni datos de la explotación, ni ficheros pesados versionados | `secretos.test.js` |
 | 9 | VR: sin WebXR no hay botón ni errores; con el mock, la prueba completa (**opcional**, `GEMELO_VR=1`) | `vr.test.js` |
 | 10 | Cliente web: la entrada de Vite es la concatenación exacta, three 0.128.0, y la página empaquetada carga sin errores y dibuja lo mismo que la artefacto | `web.test.js` |
+| 11 | Exportadores multiplataforma: ninguna ruta con separador `\` escrito a mano en `tuberia/**/*.py` (se arman con `os.path.join`) | `multiplataforma.test.js` |
 
 En CI la misma puerta corre en GitHub Actions (`.github/workflows/puerta.yml`); no despliega nada.
 

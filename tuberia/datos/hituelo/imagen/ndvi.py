@@ -44,12 +44,12 @@ for f in feats:
     except Exception as e:
         print("fallo", dia, str(e)[:100])
         if "403" in str(e) or "expired" in str(e).lower(): tok = token()
-np.savez_compressed(BASE + r"\ndvi\ndvi_hituelo_float.npz", fechas=np.array([e["fecha"] for e in res]), ndvi=np.stack([e["ndvi"] for e in res]), bbox=np.array([x0, y0, x1, y1]))
+np.savez_compressed(os.path.join(BASE, "ndvi", "ndvi_hituelo_float.npz"), fechas=np.array([e["fecha"] for e in res]), ndvi=np.stack([e["ndvi"] for e in res]), bbox=np.array([x0, y0, x1, y1]))
 # u8: 0 = sin dato; NDVI -0,2..1,0 -> 1..254
 q = np.stack([np.where(np.isnan(e["ndvi"]), 0, np.clip(np.round((e["ndvi"] + 0.2) / 1.2 * 253 + 1), 1, 254)) for e in res]).astype("uint8")
-os.makedirs(BASE + r"\ndvi", exist_ok=True)
-open(BASE + r"\ndvi\ndvi_u8.bin", "wb").write(q.tobytes())
+os.makedirs(os.path.join(BASE, "ndvi"), exist_ok=True)
+open(os.path.join(BASE, "ndvi", "ndvi_u8.bin"), "wb").write(q.tobytes())
 json.dump({"bbox25830": [x0, y0, x1, y1], "w": W, "h": H, "paso_m": 10, "orden": "escena, fila (norte arriba), columna (oeste a este)", "codigo_u8": "0 sin dato; v=1..254 -> ndvi=(v-1)/253*1.2-0.2",
            "fechas": [e["fecha"] for e in res], "nube_escena": [e["nube"] for e in res], "malo": [e["malo"] for e in res], "media": [round(float(np.nanmean(e["ndvi"])), 3) for e in res]},
-          open(BASE + r"\ndvi\ndvi_hituelo.json", "w"))
+          open(os.path.join(BASE, "ndvi", "ndvi_hituelo.json"), "w"))
 print("guardadas", len(res), "escenas;", q.nbytes // 1024, "KB u8")

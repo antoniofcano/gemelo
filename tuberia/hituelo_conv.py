@@ -15,20 +15,20 @@ PARC = __import__("os").environ.get("GEMELO_PARCELAS", "hituelo_parcelas_utm.jso
 
 
 def hituelo():
-    L = HD + r"\lidar"; IM = HD + r"\imagen"
+    L = os.path.join(HD, "lidar"); IM = os.path.join(HD, "imagen")
     salida = os.path.join(R, "salida", "hituelo"); os.makedirs(os.path.join(salida, "t"), exist_ok=True)
-    idx = json.load(open(L + r"\indice.json", encoding="utf-8"))["teselas"]
-    claves = sorted((k for k in idx if os.path.exists(L + r"\tesela\%s.npz" % k)), key=lambda k: tuple(map(int, k.split("_"))))
+    idx = json.load(open(os.path.join(L, "indice.json"), encoding="utf-8"))["teselas"]
+    claves = sorted((k for k in idx if os.path.exists(os.path.join(L, "tesela", "%s.npz" % k))), key=lambda k: tuple(map(int, k.split("_"))))
     kxs = [int(k.split("_")[0]) for k in claves]; kys = [int(k.split("_")[1]) for k in claves]
     kx0, kx1, ky0, ky1 = min(kxs), max(kxs), min(kys), max(kys); NKX, NKY = kx1 - kx0 + 1, ky1 - ky0 + 1
-    nd = json.load(open(IM + r"\ndvi\ndvi_hituelo.json", encoding="utf-8")); bb = nd["bbox25830"]                  # [x0, y0, x1, y1] UTM
+    nd = json.load(open(os.path.join(IM, "ndvi", "ndvi_hituelo.json"), encoding="utf-8")); bb = nd["bbox25830"]                  # [x0, y0, x1, y1] UTM
     cx = int(round((bb[0] + bb[2]) / 2)); cy = int(round((bb[1] + bb[3]) / 2))
     ext = [bb[0] - cx, bb[3] - cy, bb[2] - cx, bb[1] - cy]                                                         # [xmin, ymax, xmax, ymin] relativo al centro
 
     # ---- nodos de suelo de todas las teselas en una sola rejilla (con 4 m de margen) para dar a cada tesela su celda de margen
     M = 4; Gz = np.full((NKY * TS + 1 + 2 * M, NKX * TS + 1 + 2 * M), np.nan, "f4"); zmin = 1e9; datos = {}
     for k in claves:
-        z = np.load(L + r"\tesela\%s.npz" % k); kx, ky = map(int, k.split("_")); datos[k] = z
+        z = np.load(os.path.join(L, "tesela", "%s.npz" % k)); kx, ky = map(int, k.split("_")); datos[k] = z
         j0 = (ky - ky0) * TS + M; i0 = (kx - kx0) * TS + M; Gz[j0:j0 + 257, i0:i0 + 257] = z["suelo"]; zmin = min(zmin, float(z["suelo"].min()))
     z0 = float(math.floor(zmin) - 2)
     ok = np.isfinite(Gz); ii = ndi.distance_transform_edt(~ok, return_distances=False, return_indices=True); Gz = Gz[ii[0], ii[1]]
@@ -46,14 +46,14 @@ def hituelo():
                              decl=p["olivos"] or 0, pasto="pasto" in p["nombre"].lower()))
         fincas[fi]["parcelas"].append(k); fincas[fi]["ha"] += p["ha"]; fincas[fi]["olivos"] += p["olivos"] or 0
     for f in fincas: f["ha"] = round(f["ha"], 1)
-    sg = json.load(open(IM + r"\suelo_hituelo.json", encoding="utf-8"))["parcelas"]
+    sg = json.load(open(os.path.join(IM, "suelo_hituelo.json"), encoding="utf-8"))["parcelas"]
     for k, p in enumerate(P):
         e = next((v for key, v in sg.items() if key.endswith("__" + p["id"])), None)
         if e: parcelas[k]["suelo"] = [dict(p=r["prof"], a=r["arena"], l=r["limo"], c=r["arcilla"], ph=r["ph"], mo=r["mo"], cec=r["cic"], dens=r["dens"], pedr=r["pedr"]) for r in e["perfil"]]
-    A = json.load(open(L + r"\arboles.json", encoding="utf-8"))["arboles"]
+    A = json.load(open(os.path.join(L, "arboles.json"), encoding="utf-8"))["arboles"]
     copas = [[round(a["x"] - cx, 2), round(a["y"] - cy, 2), a["h"], a["r8"], a["parcela"] + 1] for a in A if a["olivo"]]
     arbol = cKDTree(np.array([[c[0], c[1]] for c in copas]))
-    O = json.load(open(IM + r"\ot_hituelo.json", encoding="utf-8"))
+    O = json.load(open(os.path.join(IM, "ot_hituelo.json"), encoding="utf-8"))
     pid2k = {p["id"]: k for k, p in enumerate(P)}
     ot = dict(fuente="instantanea", fecha_consulta=O.get("fecha_consulta"), pases_finca=0, entregas_finca=0, analiticas_finca=0, parcelas={}); marcados = []
     for fid, f in O["fincas"].items():
@@ -78,7 +78,7 @@ def hituelo():
         chm = z["chm"].astype(np.float32)                                                                          # 513×513 a 0,5 m (cm), nodos
         c1 = np.maximum.reduce([chm[0:512:2, 0:512:2], chm[0:512:2, 1:512:2], chm[1:512:2, 0:512:2], chm[1:512:2, 1:512:2]])   # 256×256 a 1 m (máx. de los 4 nodos de la celda)
         chm_dm = np.clip(np.rint(c1 / 10.0), 0, 255).astype("u1")
-        ofile = IM + r"\ort\%s.jpg" % k
+        ofile = os.path.join(IM, "ort", "%s.jpg" % k)
         if os.path.exists(ofile): oim = np.asarray(Image.open(ofile).convert("RGB")); jpgb = open(ofile, "rb").read()
         else: oim = np.full((512, 512, 3), 128, "u1"); jpgb = jpg_bytes(oim)
         # color del suelo a 2 m: la ortofoto sin la copa (mismo método que en Cerro Velasco), con una celda de margen
@@ -104,20 +104,20 @@ def hituelo():
     grueso = dict(x0=kx0 * TS - cx, yN=(ky1 + 1) * TS - cy, res=G8, w=gw, h=gh, b64=b64(np.rint((dg - z0) * 100).astype("<i2")))
     MR = 2; mw, mh = NKX * TS // MR, NKY * TS // MR; mos = np.full((mh, mw, 3), 128, "u1")
     for k in claves:
-        kx, ky = map(int, k.split("_")); ofile = IM + r"\ort\%s.jpg" % k
+        kx, ky = map(int, k.split("_")); ofile = os.path.join(IM, "ort", "%s.jpg" % k)
         if not os.path.exists(ofile): continue
         oim = np.asarray(Image.open(ofile).convert("RGB")).reshape(128, 4, 128, 4, 3).mean(axis=(1, 3)).astype("u1"); r0 = (ky1 - ky) * 128; c0 = (kx - kx0) * 128; mos[r0:r0 + 128, c0:c0 + 128] = oim
     bbm = io.BytesIO(); Image.fromarray(mos).save(bbm, "JPEG", quality=74, optimize=True)
     mosaico = dict(jpg="data:image/jpeg;base64," + base64.b64encode(bbm.getvalue()).decode(), w=mw, h=mh, x0=kx0 * TS - cx, yN=(ky1 + 1) * TS - cy, res=float(MR))
 
     # ---- NDVI (u8 tal cual, 48 fechas) y suelo-NDVI
-    u8 = np.fromfile(IM + r"\ndvi\ndvi_u8.bin", dtype="u1")
-    sn = json.load(open(IM + r"\ndvi\suelo_ndvi_hituelo.json", encoding="utf-8"))
+    u8 = np.fromfile(os.path.join(IM, "ndvi", "ndvi_u8.bin"), dtype="u1")
+    sn = json.load(open(os.path.join(IM, "ndvi", "suelo_ndvi_hituelo.json"), encoding="utf-8"))
     ndvi = dict(w=nd["w"], h=nd["h"], fechas=nd["fechas"], media=nd["media"], u8=base64.b64encode(u8.tobytes()).decode(), codigo=nd["codigo_u8"])
     suelo_ndvi = dict(w=sn["w"], h=sn["h"], a=sn["a"], b=sn["b"], f=sn["f"], fechas=sn["fechas"])
 
     # ---- paisaje (UTM y cotas absolutas -> relativas)
-    PS = json.load(open(L + r"\paisaje.json", encoding="utf-8"))
+    PS = json.load(open(os.path.join(L, "paisaje.json"), encoding="utf-8"))
     def col_en(x, y):
         c = int((x - kx0 * TS) / MR); r = int(((ky1 + 1) * TS - y) / MR); c = max(0, min(mw - 1, c)); r = max(0, min(mh - 1, r)); return [int(v) for v in mos[r, c]]
     edif = [dict(x=round(e["x"] - cx, 2), y=round(e["y"] - cy, 2), largo=e["largo"], ancho=e["ancho"], ang=e["ang"], zBase=round(e["zBase"] - z0, 2), hAlero=e["hAlero"], hCumbrera=e["hCumbrera"], color=col_en(e["x"], e["y"])) for e in PS["edificios"]]

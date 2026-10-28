@@ -35,7 +35,7 @@ Detalle paso a paso y comprobaciones: [skill `datos-finca`](../../.claude/skills
 3. **Cerro**: `tuberia/datos/cerro/finca_1…finca_6`, `ndvi_sentinel`, `paisaje_1…6`, `suelo_1…2`. `finca_8_teselas.py --finca cerro` lee `datos_cerro_embebido.json`, **un intermedio que ningún script del repo produce** (pendiente D5).
 4. Montar: `python tuberia/salida_artefacto/montar_v2.py --finca <finca> [--modo ficheros]`.
 
-Variables de entorno: `GEMELO_DATOS`, `GEMELO_DESCARGAS`, `GEMELO_LIDAR`, `GEMELO_IMAGEN`, `GEMELO_HITUELO`, `GEMELO_PARCELAS`, `GEMELO_MDS`, `GEMELO_SUELO`. Los scripts usan hoy separadores `\` fijos: solo funcionan en Windows (pendiente D4).
+Variables de entorno: `GEMELO_DATOS`, `GEMELO_DESCARGAS`, `GEMELO_LIDAR`, `GEMELO_IMAGEN`, `GEMELO_HITUELO`, `GEMELO_PARCELAS`, `GEMELO_MDS`, `GEMELO_SUELO`. Los valores por defecto son rutas relativas a la carpeta desde la que se lanza el script. Las rutas se arman con `os.path.join`, así que los scripts valen en Windows, Linux y macOS (decisión 8, D4; lo vigila el guardián `multiplataforma`). Probado solo con `py_compile`: no se han vuelto a ejecutar con datos reales fuera de Windows.
 
 ## Medido y deducido
 Copas y relieve: medidos. Tendido, postes, cauces y clasificación de árboles no olivo: **deducidos** de la geometría. Troncos y ramas: ilustrativos. Frutales sin marcar en Hituelo: el LiDAR no los distingue.

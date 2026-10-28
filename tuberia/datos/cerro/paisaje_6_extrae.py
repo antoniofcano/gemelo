@@ -11,15 +11,15 @@ import matplotlib; matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from PIL import Image
 R = __import__("os").environ.get("GEMELO_DATOS", "datos"); DL = __import__("os").environ.get("GEMELO_DESCARGAS", "descargas")
-V = json.load(open(R + r"\finca_ventana.json", encoding="utf-8")); x0, y0, x1, y1, W, H = V["x0"], V["y0"], V["x1"], V["y1"], V["W"], V["H"]
+V = json.load(open(os.path.join(R, "finca_ventana.json"), encoding="utf-8")); x0, y0, x1, y1, W, H = V["x0"], V["y0"], V["x1"], V["y1"], V["W"], V["H"]
 cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
-DAT = json.load(open(R + r"\finca_datos.json", encoding="utf-8")); z0 = DAT["z0"]
-P = np.load(R + r"\paisaje_puntos.npy").astype(np.float64); X, Y, Z, Hh, CL = P.T
+DAT = json.load(open(os.path.join(R, "finca_datos.json"), encoding="utf-8")); z0 = DAT["z0"]
+P = np.load(os.path.join(R, "paisaje_puntos.npy")).astype(np.float64); X, Y, Z, Hh, CL = P.T
 srcs = [rasterio.open(f) for f in sorted(glob.glob(os.path.join(DL, "MDT50CM-ETRS89-H30-0946-*-COB3-V1.tif")))]
 mdt, _ = merge(srcs, bounds=(x0, y0, x1, y1), res=0.5, nodata=np.nan); mdt = mdt[0].astype(float)
 if np.isnan(mdt).any():
     idx = ndi.distance_transform_edt(np.isnan(mdt), return_distances=False, return_indices=True); mdt = mdt[tuple(idx)]
-orto = np.asarray(Image.open(R + r"\orto_finca.jpg").convert("RGB")); oh, ow = orto.shape[:2]
+orto = np.asarray(Image.open(os.path.join(R, "orto_finca.jpg")).convert("RGB")); oh, ow = orto.shape[:2]
 def suelo_en(x, y): return float(mdt[np.clip(int((y1 - y) / 0.5), 0, 2 * H - 1), np.clip(int((x - x0) / 0.5), 0, 2 * W - 1)])
 def color_orto(x, y, r=2.0):
     px, py = (x - x0) / (x1 - x0) * ow, (y1 - y) / (y1 - y0) * oh; rr = max(1, int(r / (x1 - x0) * ow))
@@ -54,7 +54,7 @@ for k in range(1, n + 1):
 salida["edificios"] = edif; print("edificios:", [(e["largo"], e["ancho"], e["hAlero"], e["hCumbrera"]) for e in edif])
 
 # ---------------- tendido eléctrico: la recta de los puntos altos y estrechos
-rc = json.load(open(R + r"\tendido_recta.json")); p0 = np.array(rc["p0"]); dv = np.array(rc["dv"]); nv = np.array([-dv[1], dv[0]])
+rc = json.load(open(os.path.join(R, "tendido_recta.json"))); p0 = np.array(rc["p0"]); dv = np.array(rc["dv"]); nv = np.array([-dv[1], dv[0]])
 pa = P[(CL != 2) & (CL != 6) & (CL != 7)]; t = (pa[:, :2] - p0) @ dv; d = (pa[:, :2] - p0) @ nv
 cable = (np.abs(d) < 2.5) & (pa[:, 3] > 8.5)
 tc, zc, dc = t[cable], pa[cable][:, 2], d[cable]
@@ -174,7 +174,7 @@ if derivados:
 print("derivación: %d postes nuevos, %d árboles quitados, %d frutal(es)" % (len(derivados), len(quitar), sum(a["tipo"] == "frutal" for a in arb)))
 from collections import Counter
 print("árboles no olivo: %d" % len(arb), dict(Counter(a["tipo"] for a in arb)), "| en el cauce:", sum(a["enCauce"] for a in arb), "| altura máx %.1f" % max(a["h"] for a in arb))
-json.dump(salida, open(R + r"\finca_paisaje.json", "w", encoding="utf-8"), ensure_ascii=False)
+json.dump(salida, open(os.path.join(R, "finca_paisaje.json"), "w", encoding="utf-8"), ensure_ascii=False)
 
 # ---------------- imagen de control
 fig, ax = plt.subplots(figsize=(16, 8.6), dpi=100); ax.imshow(orto, extent=[x0, x1, y0, y1], origin="upper")
@@ -186,4 +186,4 @@ for q in postes: ax.scatter([q["x"] + cx], [q["y"] + cy], s=60, c="#ff8800", mar
 E = np.array(eje); ax.plot(E[:, 0] + cx, E[:, 1] + cy, c="#33aaff", lw=2.2)
 col = {"conifera": "#00aa44", "frondosa": "#88dd33", "arbusto": "#ccff88", "frutal": "#ff66cc"}
 for a in arb: ax.add_patch(plt.Circle((a["x"] + cx, a["y"] + cy), a["r"], fc=col[a["tipo"]], ec="black", lw=0.4, alpha=0.7))
-ax.set_xlim(x0, x1); ax.set_ylim(y0, y1); plt.tight_layout(); plt.savefig(R + r"\paisaje_resultado.png"); print("listo")
+ax.set_xlim(x0, x1); ax.set_ylim(y0, y1); plt.tight_layout(); plt.savefig(os.path.join(R, "paisaje_resultado.png")); print("listo")

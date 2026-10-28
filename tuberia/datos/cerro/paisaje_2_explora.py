@@ -6,7 +6,7 @@ import laspy, rasterio
 from rasterio.merge import merge
 from scipy import ndimage as ndi
 R = __import__("os").environ.get("GEMELO_DATOS", "datos"); DL = __import__("os").environ.get("GEMELO_DESCARGAS", "descargas")
-V = json.load(open(R + r"\finca_ventana.json", encoding="utf-8"))
+V = json.load(open(os.path.join(R, "finca_ventana.json"), encoding="utf-8"))
 x0, y0, x1, y1, W, H = V["x0"], V["y0"], V["x1"], V["y1"], V["W"], V["H"]
 srcs = [rasterio.open(f) for f in sorted(glob.glob(os.path.join(DL, "MDT50CM-ETRS89-H30-0946-*-COB3-V1.tif")))]
 mdt, _ = merge(srcs, bounds=(x0, y0, x1, y1), res=0.5, nodata=np.nan); mdt = mdt[0].astype(float)
@@ -23,7 +23,7 @@ for f in sorted(glob.glob(os.path.join(DL, "PNOA_2024_AND_4*-4177_H30_NPC01.laz"
             h = z - mdt[np.clip(((y1 - y) / 0.5).astype(int), 0, 2 * H - 1), np.clip(((x - x0) / 0.5).astype(int), 0, 2 * W - 1)]
             P.append(np.column_stack([x, y, z, h, cl]))
 P = np.concatenate(P); print("puntos:", len(P))
-np.save(R + r"\paisaje_puntos.npy", P.astype(np.float32))
+np.save(os.path.join(R, "paisaje_puntos.npy"), P.astype(np.float32))
 x, y, z, h, cl = P.T
 
 # ---- edificios (clase 6)

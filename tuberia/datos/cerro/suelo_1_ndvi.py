@@ -4,12 +4,12 @@ import json, glob, os, base64
 import numpy as np
 from scipy import ndimage as ndi
 R = __import__("os").environ.get("GEMELO_DATOS", "datos")
-V = json.load(open(R + r"\finca_ventana.json", encoding="utf-8")); x0, y0, x1, y1, W, H = V["x0"], V["y0"], V["x1"], V["y1"], V["W"], V["H"]
-nd = json.load(open(R + r"\ndvi_finca.json", encoding="utf-8"))["escenas"] if "escenas" in json.load(open(R + r"\ndvi_finca.json", encoding="utf-8")) else None
-print("claves:", list(json.load(open(R + r"\ndvi_finca.json", encoding="utf-8")).keys())[:6])
-nd = json.load(open(R + r"\ndvi_finca.json", encoding="utf-8"))["escenas"]
+V = json.load(open(os.path.join(R, "finca_ventana.json"), encoding="utf-8")); x0, y0, x1, y1, W, H = V["x0"], V["y0"], V["x1"], V["y1"], V["W"], V["H"]
+nd = json.load(open(os.path.join(R, "ndvi_finca.json"), encoding="utf-8"))["escenas"] if "escenas" in json.load(open(os.path.join(R, "ndvi_finca.json"), encoding="utf-8")) else None
+print("claves:", list(json.load(open(os.path.join(R, "ndvi_finca.json"), encoding="utf-8")).keys())[:6])
+nd = json.load(open(os.path.join(R, "ndvi_finca.json"), encoding="utf-8"))["escenas"]
 w, h = nd[0]["w"], nd[0]["h"]; print("rejilla", w, h, "escenas", len(nd))
-P = np.load(R + r"\paisaje_puntos.npy").astype(np.float64); X, Y, Z, Hh, CL = P.T
+P = np.load(os.path.join(R, "paisaje_puntos.npy")).astype(np.float64); X, Y, Z, Hh, CL = P.T
 # fracción de copa por celda de 10 m: puntos de vegetación a más de 1,2 m sobre el suelo / puntos totales de la celda (proxy de cobertura de dosel)
 veg = (Hh > 1.2) & (CL != 6) & (CL != 7); cel = lambda x, y: (np.clip(((y1 - y) / (y1 - y0) * h).astype(int), 0, h - 1), np.clip(((x - x0) / (x1 - x0) * w).astype(int), 0, w - 1))
 tot = np.zeros((h, w)); vv = np.zeros((h, w)); np.add.at(tot, cel(X, Y), 1); np.add.at(vv, cel(X[veg], Y[veg]), 1)

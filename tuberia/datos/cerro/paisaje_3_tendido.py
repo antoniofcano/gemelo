@@ -1,8 +1,8 @@
 """El tendido eléctrico: ¿se deja ver como línea en el LiDAR? Ajusta una recta a los puntos altos y estrechos, mira su perfil (alturas a lo largo) y dónde se concentran los puntos (postes)."""
-import json
+import json, os
 import numpy as np
 R = __import__("os").environ.get("GEMELO_DATOS", "datos")
-P = np.load(R + r"\paisaje_puntos.npy").astype(np.float64); x, y, z, h, cl = P.T
+P = np.load(os.path.join(R, "paisaje_puntos.npy")).astype(np.float64); x, y, z, h, cl = P.T
 alto = (h > 11) & (cl != 6) & (cl != 7)
 a = P[alto]; print("puntos >11 m:", len(a))
 # quitar los grupos densos (árboles): celdas de 4 m con muchos puntos
@@ -34,4 +34,4 @@ hist, e = np.histogram(tt[cerca], bins=np.arange(tt[cerca].min(), tt[cerca].max(
 orden = np.argsort(-hist)[:14]
 print("picos de densidad (candidatos a poste): tramo_m, puntos")
 for i in sorted(orden): print("  %6.0f %5d" % (e[i], hist[i]))
-json.dump({"p0": p0.tolist(), "dv": dv.tolist()}, open(R + r"\tendido_recta.json", "w"))
+json.dump({"p0": p0.tolist(), "dv": dv.tolist()}, open(os.path.join(R, "tendido_recta.json"), "w"))

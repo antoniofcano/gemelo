@@ -1,6 +1,7 @@
 """Convierte la plantilla de una parcela en la plantilla de la finca (varias parcelas). Parte de gemelo_plantilla2_js.html y escribe gemelo_finca_js.html."""
+import os
 R = __import__("os").environ.get("GEMELO_DATOS", "datos")
-s = open(R + r"\gemelo_plantilla2_js.html", encoding="utf-8").read()
+s = open(os.path.join(R, "gemelo_plantilla2_js.html"), encoding="utf-8").read()
 def c(a, b):
     global s
     assert a in s, a[:80]
@@ -108,5 +109,5 @@ bloque = '''
   elegirParcela(-1);
 '''
 c("  function tamano() {", bloque + "\n  function tamano() {")
-open(R + r"\gemelo_finca_js.html", "w", encoding="utf-8").write(s)
+open(os.path.join(R, "gemelo_finca_js.html"), "w", encoding="utf-8").write(s)
 print("js finca ok")

@@ -23,10 +23,10 @@ def pide_s(x0, y0, x1, y1, w, h):
         except SystemExit:
             continue
     raise SystemExit("WMS no responde a ningún tamaño")
-os.makedirs(BASE + r"\ort", exist_ok=True)
+os.makedirs(os.path.join(BASE, "ort"), exist_ok=True)
 tot_j = tot_w = 0
 for X, Y in teselas_con_parcela():
-    f = BASE + r"\ort\%d_%d" % (X, Y)
+    f = os.path.join(BASE, "ort", "%d_%d" % (X, Y))
     if os.path.exists(f + ".jpg") and os.path.exists(f + ".webp"): tot_j += os.path.getsize(f + ".jpg"); tot_w += os.path.getsize(f + ".webp"); continue
     # el WMS responde 502 a ciertas peticiones con 0,5 m/px justos (o algo peores): se pide a ~0,49 m/px (524 px) y se reduce a 512
     im = pide_s(X * T, Y * T, (X + 1) * T, (Y + 1) * T, 512, 512)
@@ -42,6 +42,6 @@ for xi in range(0, W, C):
         # fila de imagen: el norte arriba; yi cuenta desde el sur
         im = pide_s(x0 + xi, y0 + yi, x0 + xi + w, y0 + yi + h, w, h)
         mos.paste(im, (xi, H - yi - h))
-mos.save(BASE + r"\mosaico_1m.jpg", quality=75, optimize=True)
-json.dump({"bbox": [x0, y0, x1, y1], "w": W, "h": H, "m_por_px": 1.0}, open(BASE + r"\mosaico_1m.json", "w"))
-print("mosaico", W, "x", H, os.path.getsize(BASE + r"\mosaico_1m.jpg") // 1024, "KB")
+mos.save(os.path.join(BASE, "mosaico_1m.jpg"), quality=75, optimize=True)
+json.dump({"bbox": [x0, y0, x1, y1], "w": W, "h": H, "m_por_px": 1.0}, open(os.path.join(BASE, "mosaico_1m.json"), "w"))
+print("mosaico", W, "x", H, os.path.getsize(os.path.join(BASE, "mosaico_1m.jpg")) // 1024, "KB")

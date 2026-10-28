@@ -6,8 +6,8 @@ import json, os, sys, base64
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import numpy as np, rasterio
 from img_comun import BASE
-M = json.load(open(BASE + r"\ndvi\ndvi_hituelo.json")); W, H = M["w"], M["h"]; x0, y0, x1, y1 = M["bbox25830"]
-N = np.frombuffer(open(BASE + r"\ndvi\ndvi_u8.bin", "rb").read(), dtype="uint8").reshape(len(M["fechas"]), H, W)
+M = json.load(open(os.path.join(BASE, "ndvi", "ndvi_hituelo.json"))); W, H = M["w"], M["h"]; x0, y0, x1, y1 = M["bbox25830"]
+N = np.frombuffer(open(os.path.join(BASE, "ndvi", "ndvi_u8.bin"), "rb").read(), dtype="uint8").reshape(len(M["fechas"]), H, W)
 if "--f" in sys.argv:
     f = np.load(sys.argv[sys.argv.index("--f") + 1]).astype("float64"); origen = "LiDAR 3.ª cobertura (puntos de vegetación > 1,2 m sobre el total de la celda)"
 else:
@@ -29,6 +29,6 @@ for k, fecha in enumerate(M["fechas"]):
     X = np.column_stack([np.ones(m.sum()), f[m]]); coef, *_ = np.linalg.lstsq(X, v[m], rcond=None)
     A.append(round(float(coef[0]), 3)); B.append(round(float(np.clip(coef[1], 0.0, 0.8)), 3))
 q = np.round(f * 1000).astype("<i2")
-json.dump({"w": W, "h": H, "bbox25830": [x0, y0, x1, y1], "f": base64.b64encode(q.tobytes()).decode(), "a": A, "b": B, "fechas": M["fechas"], "f_origen": origen}, open(BASE + r"\ndvi\suelo_ndvi_hituelo.json", "w"))
+json.dump({"w": W, "h": H, "bbox25830": [x0, y0, x1, y1], "f": base64.b64encode(q.tobytes()).decode(), "a": A, "b": B, "fechas": M["fechas"], "f_origen": origen}, open(os.path.join(BASE, "ndvi", "suelo_ndvi_hituelo.json"), "w"))
 i0, i1 = int(np.argmin(A)), int(np.argmax(A))
 print("%d fechas · suelo NDVI mínimo %.2f (%s) máximo %.2f (%s) · último %.2f (%s) · b mediana %.2f" % (len(A), A[i0], M["fechas"][i0], A[i1], M["fechas"][i1], A[-1], M["fechas"][-1], np.median(B)))

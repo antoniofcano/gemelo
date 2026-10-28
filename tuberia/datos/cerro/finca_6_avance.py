@@ -1,10 +1,10 @@
 """Avance árbol a árbol (prototipo): qué olivos caen dentro de la zona recorrida de cada tarea. Solo sale un estado por olivo y tarea: ni personas ni polígonos."""
-import json
+import json, os
 import numpy as np
 from rasterio.warp import transform as tr
 R = __import__("os").environ.get("GEMELO_DATOS", "datos")
-D = json.load(open(R + r"\finca_datos.json", encoding="utf-8")); V = json.load(open(R + r"\finca_ventana.json", encoding="utf-8"))
-Z = json.load(open(R + r"\ot_zonas_tareas.json", encoding="utf-8"))
+D = json.load(open(os.path.join(R, "finca_datos.json"), encoding="utf-8")); V = json.load(open(os.path.join(R, "finca_ventana.json"), encoding="utf-8"))
+Z = json.load(open(os.path.join(R, "ot_zonas_tareas.json"), encoding="utf-8"))
 cx, cy = D["centro_utm"]; ids = [p["id"] for p in D["parcelas"]]
 def utm(lista): xs, ys = tr("EPSG:4326", "EPSG:25830", [q["lng"] for q in lista], [q["lat"] for q in lista]); return np.column_stack([xs, ys])
 def dentro(poly, P):
@@ -46,5 +46,5 @@ for t in Z:
         "reproduce": bool(reproduce), "copas_sin_marca": int(len(sin_marca)), "no_andadas_con_copa": int(sum(1 for j, i in enumerate(midx) if not enZ[j] and marc[i][2] >= 0))}
     print("%-26s %-8s declarados %s/%s | marcas en zona %d de %d | %s | marcas no andadas con copa LiDAR: %d | copas sin marca: %d" % (t["parcelaId"][:26], tipo, declarados, t["objetivo"], enZ.sum(), len(M), "REPRODUCE" if reproduce else "NO reproduce", cuentas[str(k)][tipo]["no_andadas_con_copa"], len(sin_marca)))
 out = {"marcas": {k: "".join(v) for k, v in estados_marca.items()}, "copas": {k: "".join(v) for k, v in estados_copa.items()}, "cuentas": cuentas}
-json.dump(out, open(R + r"\finca_avance.json", "w", encoding="utf-8"))
+json.dump(out, open(os.path.join(R, "finca_avance.json"), "w", encoding="utf-8"))
 print("guardado: un estado por marca y por copa; sin personas ni polígonos")

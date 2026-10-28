@@ -8,8 +8,8 @@ import matplotlib; matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from PIL import Image
 R = __import__("os").environ.get("GEMELO_DATOS", "datos"); DL = __import__("os").environ.get("GEMELO_DESCARGAS", "descargas")
-V = json.load(open(R + r"\finca_ventana.json", encoding="utf-8")); x0, y0, x1, y1, W, H = V["x0"], V["y0"], V["x1"], V["y1"], V["W"], V["H"]
-P = np.load(R + r"\paisaje_puntos.npy").astype(np.float64); x, y, z, h, cl = P.T
+V = json.load(open(os.path.join(R, "finca_ventana.json"), encoding="utf-8")); x0, y0, x1, y1, W, H = V["x0"], V["y0"], V["x1"], V["y1"], V["W"], V["H"]
+P = np.load(os.path.join(R, "paisaje_puntos.npy")).astype(np.float64); x, y, z, h, cl = P.T
 srcs = [rasterio.open(f) for f in sorted(glob.glob(os.path.join(DL, "MDT50CM-ETRS89-H30-0946-*-COB3-V1.tif")))]
 mdt, _ = merge(srcs, bounds=(x0, y0, x1, y1), res=0.5, nodata=np.nan); mdt = mdt[0].astype(float)
 if np.isnan(mdt).any():
@@ -29,9 +29,9 @@ for k in orden:
             if s > pend: pend = s; mejor = rr * w2 + cc
     if mejor is not None: acc[mejor] += acc[k]
 acc = acc.reshape(h2, w2)
-np.save(R + r"\paisaje_flujo.npy", acc.astype(np.float32))
+np.save(os.path.join(R, "paisaje_flujo.npy"), acc.astype(np.float32))
 print("acumulación máxima (celdas de 4 m2):", acc.max())
-orto = np.asarray(Image.open(R + r"\orto_finca.jpg").convert("RGB"))
+orto = np.asarray(Image.open(os.path.join(R, "orto_finca.jpg")).convert("RGB"))
 fig, ax = plt.subplots(figsize=(16, 8.6), dpi=110)
 ax.imshow(orto, extent=[x0, x1, y0, y1], origin="upper")
 cau = acc > 2500; yy, xx = np.nonzero(cau)
@@ -40,4 +40,4 @@ a = P[(h > 11) & (cl != 6) & (cl != 7)]; ax.scatter(a[:, 0], a[:, 1], s=1.5, c="
 b = P[cl == 6]; ax.scatter(b[:, 0], b[:, 1], s=2, c="#ff2a2a", label="clase 6 (edificio)")
 for p in V["parcelas"]:
     l = np.array(p["linde"]); ax.plot(np.r_[l[:, 0], l[0, 0]], np.r_[l[:, 1], l[0, 1]], c="white", lw=1); ax.text(l[:, 0].mean(), l[:, 1].mean(), p["nombre"], color="white", fontsize=8, ha="center")
-ax.legend(loc="lower right"); ax.set_xlim(x0, x1); ax.set_ylim(y0, y1); plt.tight_layout(); plt.savefig(R + r"\paisaje_control.png"); print("guardada")
+ax.legend(loc="lower right"); ax.set_xlim(x0, x1); ax.set_ylim(y0, y1); plt.tight_layout(); plt.savefig(os.path.join(R, "paisaje_control.png")); print("guardada")

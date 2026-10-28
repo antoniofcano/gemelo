@@ -8,7 +8,7 @@ from scipy.spatial import cKDTree
 import laspy, rasterio
 from rasterio.merge import merge
 R = __import__("os").environ.get("GEMELO_DATOS", "datos"); DL = __import__("os").environ.get("GEMELO_DESCARGAS", "descargas")
-V = json.load(open(R + r"\finca_ventana.json", encoding="utf-8")); x0, y0, x1, y1, W, H = V["x0"], V["y0"], V["x1"], V["y1"], V["W"], V["H"]
+V = json.load(open(os.path.join(R, "finca_ventana.json"), encoding="utf-8")); x0, y0, x1, y1, W, H = V["x0"], V["y0"], V["x1"], V["y1"], V["W"], V["H"]
 cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
 P = V["parcelas"]
 
@@ -121,8 +121,8 @@ for k, p in enumerate(P):
 # ---- terreno (1 m), altura de vegetación (1 m), suelo sin vegetación (2 m) y ortofoto
 q16 = lambda a: base64.b64encode(np.round(a * 100).astype("<i2").tobytes()).decode()
 dtm1 = mdt.reshape(H, 2, W, 2).mean(axis=(1, 3)); chm1 = chm.reshape(H, 2, W, 2).max(axis=(1, 3))
-jpg = open(R + r"\orto_finca.jpg", "rb").read()
-with rasterio.open(R + r"\orto_finca.jpg") as r: ort = r.read()
+jpg = open(os.path.join(R, "orto_finca.jpg"), "rb").read()
+with rasterio.open(os.path.join(R, "orto_finca.jpg")) as r: ort = r.read()
 oh, ow = ort.shape[1:]; S = 2
 chm2 = chm1[:(H // S) * S, :(W // S) * S].reshape(H // S, S, W // S, S).max(axis=(1, 3))
 mask = ndi.binary_dilation(chm2 > 0.4, iterations=2)
@@ -136,7 +136,7 @@ soil = (soil * np.clip(0.85 * med / np.maximum(lum, 1), 1.0, 1.6)).clip(0, 255).
 lejos = dist[:(H // S) * S:S, :(W // S) * S:S] > 30
 soil[lejos] = soil_crudo[lejos].clip(0, 255).astype(np.uint8)
 
-sg = json.load(open(R + r"\soilgrids_finca.json", encoding="utf-8")) if os.path.exists(R + r"\soilgrids_finca.json") else {}
+sg = json.load(open(os.path.join(R, "soilgrids_finca.json"), encoding="utf-8")) if os.path.exists(os.path.join(R, "soilgrids_finca.json")) else {}
 parcelas = []
 for k, p in enumerate(P):
     L = np.array(p["linde"])
@@ -148,5 +148,5 @@ D = {"W": W, "H": H, "res": 1.0, "z0": z0, "zmax": zmax, "ext": [x0 - cx, y1 - c
      "suelo": {"w": soil.shape[1], "h": soil.shape[0], "res": float(S), "b64": base64.b64encode(soil.tobytes()).decode()},
      "orto": {"jpg": "data:image/jpeg;base64," + base64.b64encode(jpg).decode(), "w": ow, "h": oh},
      "puntos": {"n": len(sel), "b64": base64.b64encode(pts.tobytes()).decode()}, "parcelas": parcelas, "copas": copas, "marcados": marcados}
-json.dump(D, open(R + r"\finca_datos.json", "w"))
-print("finca_datos.json: %.1f MB" % (os.path.getsize(R + r"\finca_datos.json") / 1048576))
+json.dump(D, open(os.path.join(R, "finca_datos.json"), "w"))
+print("finca_datos.json: %.1f MB" % (os.path.getsize(os.path.join(R, "finca_datos.json")) / 1048576))

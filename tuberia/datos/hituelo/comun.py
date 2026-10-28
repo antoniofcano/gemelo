@@ -9,7 +9,7 @@ from scipy import ndimage as ndi
 
 DL = __import__("os").environ.get("GEMELO_DESCARGAS", "descargas")
 BASE = __import__("os").environ.get("GEMELO_LIDAR", "hituelo_datos/lidar")
-RAW = BASE + r"\raw"; TES = BASE + r"\tesela"
+RAW = os.path.join(BASE, "raw"); TES = os.path.join(BASE, "tesela")
 PARC = __import__("os").environ.get("GEMELO_PARCELAS", "hituelo_parcelas_utm.json")
 MDS = __import__("os").environ.get("GEMELO_MDS", "mdsn_v025_hituelo.tif")
 T = 256

@@ -5,7 +5,7 @@ from rasterio.windows import from_bounds
 from rasterio.warp import transform_bounds
 from rasterio.enums import Resampling
 R = __import__("os").environ.get("GEMELO_DATOS", "datos")
-V = json.load(open(R + r"\finca_ventana.json", encoding="utf-8"))
+V = json.load(open(os.path.join(R, "finca_ventana.json"), encoding="utf-8"))
 x0, y0, x1, y1 = V["x0"], V["y0"], V["x1"], V["y1"]
 UA = {"User-Agent": "gemelo-ndvi/1.0 (+https://github.com/antoniofcano/gemelo)", "Content-Type": "application/json"}
 def post(url, body): return json.loads(urllib.request.urlopen(urllib.request.Request(url, json.dumps(body).encode(), UA), timeout=90).read())
@@ -34,7 +34,7 @@ for f in feats:
         res.append({"fecha": dia, "h": ndvi.shape[0], "w": ndvi.shape[1], "media": round(float(np.nanmean(ndvi)), 3), "ndvi": [None if np.isnan(v) else round(float(v), 3) for v in ndvi.ravel()]})
     except Exception as e:
         print("fallo", dia, str(e)[:80])
-json.dump({"escenas": res}, open(R + r"\ndvi_finca.json", "w"))
+json.dump({"escenas": res}, open(os.path.join(R, "ndvi_finca.json"), "w"))
 print("NDVI:", len(res), "fechas,", res[0]["w"], "x", res[0]["h"], "px de 10 m")
 
 # ---- SoilGrids por parcela (centro de la linde; una consulta cada 13 s por el límite del servicio)
@@ -54,4 +54,4 @@ for p in V["parcelas"]:
     except Exception as e:
         print("suelo fallo", p["nombre"], str(e)[:80])
     time.sleep(13)
-json.dump(sg, open(R + r"\soilgrids_finca.json", "w", encoding="utf-8"), ensure_ascii=False)
+json.dump(sg, open(os.path.join(R, "soilgrids_finca.json"), "w", encoding="utf-8"), ensure_ascii=False)
