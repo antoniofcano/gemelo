@@ -1,4 +1,4 @@
-# datos generados y fuentes (no se versionan)
+# datos generados y fuentes (no se versionan: el repo es público, ver CLAUDE.md regla 4)
 salida/
 publicar/
 hituelo_datos/
@@ -22,3 +22,13 @@ __pycache__/
 node_modules/
 serviceAccount.json
 .env
+
+# salidas de las pruebas y copias de trabajo de los agentes
+pruebas/salida/
+.claude/worktrees/
+.claude/settings.local.json
+graphify-out/
+
+# el fixture sintético SÍ se versiona (pruebas/fixture/, ver doc/operacion/TESTING.md)
+!pruebas/fixture/**/t/
+!pruebas/fixture/**/*.jpg

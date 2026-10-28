@@ -1,0 +1,8 @@
+# Solo para regenerar datos (datos/, finca_8_teselas.py, hituelo_conv.py). Montar y probar con el fixture no los necesita salvo numpy/pillow.
+# Versiones sin fijar: [SUPUESTO] no se ha anotado con qué versiones se generaron los datos actuales.
+numpy
+scipy
+laspy
+rasterio
+pillow
+matplotlib

@@ -1,0 +1,18 @@
+{
+  "name": "gemelo",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Gemelo digital en 3D de fincas de olivar (three.js r128, teselas de 256 m, LiDAR, modo VR)",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "fixture": "python pruebas/genera_fixture.py",
+    "montar": "python montar_v2.py",
+    "guardianes": "node --test pruebas/guardianes/",
+    "puerta": "node --test pruebas/guardianes/",
+    "probar": "node pruebas/prueba3.js",
+    "probar:vr": "node pruebas/vr_mock.js"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.48.0"
+  }
+}
