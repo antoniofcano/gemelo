@@ -51,7 +51,8 @@ Documentación por pregunta: `doc/rumbo/` (¿hacia dónde vamos?: PLAN, DECISION
 | Quiero… | Comando |
 |---|---|
 | Pasar la puerta completa | `npm run puerta` (lista en ONBOARDING) |
-| Regenerar el fixture sintético | `npm run fixture` |
+| Regenerar el fixture sintético | `npm run fixture` (a `pruebas/salida/fixture/`) |
+| Regenerar las cabeceras «Expone / Consume» de `src/` | `node pruebas/contrato_modulos.js --escribe` (y `--comprueba`) |
 | Montar Cerro (un HTML embebido) | `python montar_v2.py --finca cerro` → `gemelo_cerro_v2.html` |
 | Exportar y montar Hituelo (ficheros) | `python finca_8_teselas.py --finca hituelo` y `python montar_v2.py --finca hituelo --modo ficheros` (necesita los intermedios, que no están en el repo: [DATOS.md](doc/operacion/DATOS.md)) |
 | Medir carga y presupuesto | `node pruebas/prueba3.js <url> <prefijo>` |

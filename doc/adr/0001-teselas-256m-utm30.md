@@ -16,7 +16,7 @@ El mundo es un conjunto de teselas de 256 m alineadas a múltiplos de 256 en UTM
 
 ## Consecuencias
 - **Positivas:** carga y descarga por demanda; las fincas comparten esquema; el 77 % sin árboles se modela barato.
-- **Negativas / coste:** costuras entre teselas y niveles (faldones de 1,5 m, margen de una celda); el mundo es un mosaico con huecos donde no hay datos (pendiente M6); más ficheros (≈245 con 5 capas, agrupados a ≈3 por tesela).
+- **Negativas / coste:** costuras entre teselas y niveles (faldones de 1,5 m, margen de una celda); el mundo es un mosaico con huecos donde no hay datos (pendiente M6); más ficheros (el diseño preveía ≈245 con 5 capas; la implementación los agrupa en 2 por tesela: 92 en Hituelo).
 - **Implicaciones futuras:** una finca nueva se añade generando sus teselas; no hay que tocar el motor.
 
 ## Comprobación

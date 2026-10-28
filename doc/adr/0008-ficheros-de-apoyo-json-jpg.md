@@ -7,7 +7,7 @@
 Hituelo (≈52 MB de teselas) no cabe en una página de 16 MB. La plataforma de artefactos admite ficheros de apoyo (`files`) pero «solo tipos web estándar». Al publicar la prueba 0 se comprobó que **un `.bin` no se admite**.
 
 ## Decisión
-Cada tesela se sirve como `t/<kx>_<ky>.json` (relieve, copa, suelo y nube en base64) y `t/<kx>_<ky>.jpg` (ortofoto 512², 0,5 m/px). Sin binario crudo. Los límites (64 MB y 255 ficheros por publicación; 511 ficheros y 256 MB por versión) obligan a publicar Hituelo en dos tandas.
+Cada tesela se sirve como `t/<kx>_<ky>.json` (relieve, copa, suelo y nube en base64) y `t/<kx>_<ky>.jpg` (ortofoto 512², 0,5 m/px). Sin binario crudo. Los límites (64 MB y 255 ficheros por publicación; 511 ficheros y 256 MB por versión) se cumplen con 2 ficheros por tesela: Hituelo son ≈52 MB de teselas + ≈4,6 MB de página = ≈57 MB en 93 ficheros, **una sola publicación con solo ≈7 MB de margen** (si crece, hay que partirla en dos tandas a la misma `url`).
 
 ## Alternativas consideradas
 - **PNG RGB con alfa 255 como contenedor** — evita el +33 % del base64 pero exige decodificación sin conversión de color; descartado de momento.

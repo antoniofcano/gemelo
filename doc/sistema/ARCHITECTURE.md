@@ -73,4 +73,4 @@ Exportador (`finca_8_teselas.py`, `hituelo_conv.py`) → `indice.json` + `t/<kx>
 
 ## 8. VR
 
-`29_vr.js`: botón «Entrar en VR» solo si `navigator.xr` soporta `immersive-vr`. Rig `Group` para desplazar al usuario. `VR_PERFILES` (4 niveles) baja si el JS pasa de 13 ms o el fotograma de 15,2 ms, y sube tras 25 s con JS <7 ms. Probado solo con `mock_xr.js` ([ADR-0005](../adr/0005-webxr-perfil-propio.md)).
+`29_vr.js`: botón «Entrar en VR» solo si `navigator.xr` soporta `immersive-vr`. Rig `Group` para desplazar al usuario. `VR_PERFILES` (4 niveles) baja si el JS pasa de 13 ms o el fotograma de 15,2 ms, y sube tras 25 s con JS <7 ms. Probado solo con un mock de WebXR (`mock_xr.js`, no versionado; [ADR-0005](../adr/0005-webxr-perfil-propio.md)).

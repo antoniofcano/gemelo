@@ -6,9 +6,15 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 
 ### Añadido
 - Sistema de trabajo: `CLAUDE.md`, índice de documentación (`doc/README.md`), `ESTADO`, `PLAN`, `DECISIONS-PENDING`, ADR 0001–0008, glosario, arquitectura, runbook, onboarding con la puerta, datos y publicación.
+- Guardianes de proceso (`pruebas/guardianes/`, `npm run puerta`): sintaxis, higiene del repo público, versión única, documentación, contratos, build de las dos fincas con los límites de la plataforma, carga en Chrome con presupuesto de dibujo y secretos/datos.
+- Contratos de datos en `contratos/` (esquemas del índice y de la tesela, interfaces del motor, límites de publicación, conectores MCP) y `doc/sistema/CONTRATOS.md`.
+- Cabecera «Expone / Consume» derivada en cada módulo de `src/` (`node pruebas/contrato_modulos.js --escribe`).
+- Fixture sintético determinista (`pruebas/genera_fixture.py`, Python puro): 2 teselas, una sin nube (calidad Base); y topes de dibujo en `pruebas/presupuesto.json`.
+- 11 skills en `.claude/skills/`: `adr`, `documentalista`, `release`, `auditoria`, `publicar-artefacto`, `medir`, `datos-finca`, `modelado-3d`, `videojuegos`, `mundos-virtuales`, `interaccion`.
 - Andamio: `VERSION`, `package.json`, `Makefile`, `.editorconfig`, `.nvmrc`, `requirements.txt`, `CONTRIBUTING.md`, plantillas de issue y PR.
 
 ### Cambiado
+- `montar_v2.py`: en modo ficheros, con `--salida` los ficheros de apoyo se copian junto a la página (antes iban siempre a `publicar/<finca>/t/`) y con `--datos` salen de la carpeta de ese índice; la salida se escribe siempre con LF (en Windows salía con CRLF).
 - `doc/DISENO.md` pasa a `doc/historico/` (foto del diseño de octubre de 2026); sus decisiones viven ahora en los ADR. `doc/MEDIDAS.md` pasa a `doc/sistema/MEDIDAS.md`.
 - `doc/ESTADO.md` reescrito como único sitio de «dónde estamos»; se retira el id y el enlace del artefacto privado (el repo es público).
 

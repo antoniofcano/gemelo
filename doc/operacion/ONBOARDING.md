@@ -7,25 +7,25 @@
 ## 2. Primer vistazo
 1. Lee [CLAUDE.md](../../CLAUDE.md) (reglas de oro) y [ESTADO.md](../ESTADO.md).
 2. `npm run fixture` genera (si falta) el fixture sintético; `npm run puerta` debe salir en verde.
-3. Mira una página montada: `python montar_v2.py --datos pruebas/fixture/cerro/embebido.json --salida pruebas/salida/cerro.html`, `python -m http.server 8000` y abre `http://localhost:8000/pruebas/salida/cerro.html?debug`.
+3. Mira una página montada: `python montar_v2.py --datos pruebas/salida/fixture/cerro/embebido.json --salida pruebas/salida/cerro.html`, `python -m http.server 8000` y abre `http://localhost:8000/pruebas/salida/cerro.html?debug`.
 
 ## 3. La puerta
 <a id="la-puerta"></a>
 
-**Esta es la única lista de la puerta.** CLAUDE.md, CONTRIBUTING y las skills remiten aquí; no la copian. Comando: `npm run puerta` (equivale a `node --test pruebas/guardianes/`).
+**Esta es la única lista de la puerta.** CLAUDE.md, CONTRIBUTING y las skills remiten aquí; no la copian. Comando: `npm run puerta` (equivale a `node --test "pruebas/guardianes/*.test.js"`).
 
 | # | Comprobación | Guardián |
 |---|---|---|
-| 1 | `node --check` de cada módulo de `src/` | `sintaxis.test.js` |
+| 1 | Sintaxis: `node --check` del script montado (todos los `src/*.js` concatenados) y de cada módulo envuelto; `py_compile` de los `.py`; orden de montaje (`01_` primero, `99_` último) | `sintaxis.test.js` |
 | 2 | Sin marcas de conflicto, sin CRLF, sin rutas locales ni correos en lo versionado | `higiene.test.js` |
 | 3 | `VERSION`, `package.json`, CHANGELOG, CLAUDE.md, README y ESTADO dicen la misma versión | `version.test.js` |
 | 4 | Documentación: enlaces relativos, índices (ADR, doc/README), techos, `historico/` con «foto» | `documentacion.test.js` |
-| 5 | Contratos coinciden con el fixture y con lo que `src/` expone | `contratos.test.js` |
-| 6 | Build de las dos fincas desde el fixture (Cerro embebido, Hituelo ficheros) | `build.test.js` |
+| 5 | Contratos: el fixture cumple los esquemas, las interfaces devuelven los miembros declarados y las cabeceras «Expone / Consume» de `src/` están al día | `contratos.test.js` |
+| 6 | Build de las dos fincas desde el fixture (Cerro embebido, Hituelo ficheros) y sus límites de publicación | `build.test.js` |
 | 7 | Carga en Chrome headless: 0 errores de consola y presupuesto de dibujo bajo `pruebas/presupuesto.json` | `carga.test.js` |
 | 8 | Sin secretos, ni datos de la explotación, ni ficheros pesados versionados | `secretos.test.js` |
 
-**Duración medida:** _pendiente de medir al cerrar el bloque de guardianes_ (se anota aquí, con fecha y máquina).
+**Duración medida (2026-10-28):** ≈ 1 min 20 s – 1 min 35 s con `npm run puerta` (85 comprobaciones; 2 fincas montadas y cargadas en Chrome 131 con SwiftShader; Windows 10, Node 24, Python 3.14). Casi todo es el arranque de Chrome y la carga del fixture; sin Chrome, esas dos comprobaciones se saltan con aviso y la puerta baja a unos segundos (pero entonces la carga **no** está comprobada).
 
 Si falla una comprobación, [TESTING.md](TESTING.md) dice qué significa cada rojo y cómo se arregla. Una prueba que no se puede ejecutar (p. ej. sin Chrome) **se salta con aviso explícito, no pasa en silencio**.
 

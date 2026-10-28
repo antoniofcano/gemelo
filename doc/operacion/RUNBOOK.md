@@ -34,7 +34,7 @@ Primero, siempre: abre la página con `?debug` y la consola del navegador. `wind
 - iPhone y Quest: **no probado**.
 
 ## VR no entra
-- El botón solo aparece si `navigator.xr` soporta `immersive-vr`. La prueba con mock: `GEMELO_URL=… node pruebas/vr_mock.js` (usa `pruebas/mock_xr.js`).
+- El botón solo aparece si `navigator.xr` soporta `immersive-vr`. La prueba con mock: `GEMELO_URL=… node pruebas/vr_mock.js` (necesita `mock_xr.js`, que **no está versionado**: recrearlo es la iniciativa P4 del PLAN).
 - Mareo/comodidad: no probado en casco; si se prueba, anotar en ESTADO.
 
 ## Lecturas en vivo (OlivarTrack, Vigía) vacías

@@ -5,7 +5,7 @@ Dos familias: **guardianes** (proceso, rápidos, en la puerta) y **pruebas de na
 ## Qué test escribo
 | Cambio | Prueba |
 |---|---|
-| Módulo nuevo en `src/` | cabecera Expone/Consume (la comprueba `contratos.test.js`); `node --check` automático |
+| Módulo nuevo en `src/` | `node pruebas/contrato_modulos.js --escribe` (cabecera Expone/Consume, la comprueba `contratos.test.js`); `sintaxis.test.js` lo comprueba solo y envuelto |
 | Campo nuevo en el exportador | contrato + esquema + fixture (`contratos.test.js`) |
 | Cambio gráfico | `medir` antes/después (`prueba3.js`) y, si procede, subir/bajar `pruebas/presupuesto.json` con razón |
 | Cambio en VR | `vr_mock.js` + nota de comodidad **no probado en casco** |
@@ -25,7 +25,9 @@ Dos familias: **guardianes** (proceso, rápidos, en la puerta) y **pruebas de na
 
 ## Entorno
 - SwiftShader (Chrome headless) vale para **recuentos de dibujo y memoria**; **no vale para fps**. Los fps reales solo los da un dispositivo con `?debug`.
-- Variables: `CHROME`, `PLAYWRIGHT_CORE`, `GEMELO_URL`, `GEMELO_RAIZ`, `VW`, `VH`, `FECHA`.
+- Variables: `CHROME`, `PLAYWRIGHT_CORE`, `GEMELO_URL`, `GEMELO_RAIZ`, `VW`, `VH`, `FECHA`, `PYTHON`; `GEMELO_MIDE=1` imprime las cifras medidas por `carga.test.js` (para ajustar `pruebas/presupuesto.json`) y `GEMELO_ESPERA` (ms) alarga la espera de carga.
+- Cada guardián trabaja en su propia carpeta temporal (`pruebas/salida/<nombre>-<pid>`, ignorada y borrada al salir), así que corren en paralelo sin pisarse.
+- Las excepciones a un guardián (`EXCEPCIONES_*`) llevan el motivo y una decisión abierta de DECISIONS-PENDING; el guardián falla si la excepción ya no hace falta.
 - Si falta Chrome o `playwright-core`, las pruebas de navegador se **saltan con aviso** (no pasan en silencio).
 
 ## Pruebas de navegador (`pruebas/`)
@@ -34,4 +36,4 @@ Dos familias: **guardianes** (proceso, rápidos, en la puerta) y **pruebas de na
 | `prueba3.js <url> <prefijo>` | carga con `?debug`, llamadas, triángulos, puntos, heap, peticiones a `/t/`, capturas |
 | `prueba_arb.js <ruta> <prefijo> [escenarios]` | tiempo hasta construir los olivos N0 (sirve `GEMELO_RAIZ` sin servidor) |
 | `vistas2.js <url> <prefijo> '<json>'` | capturas con cámara posicionada por UTM y hora fija |
-| `vr_mock.js` | VR con sesión WebXR simulada (`mock_xr.js`) |
+| `vr_mock.js` | VR con sesión WebXR simulada. **No se puede ejecutar desde el repo**: lee `mock_xr.js` del directorio actual y ese fichero no está versionado (PLAN P4) |

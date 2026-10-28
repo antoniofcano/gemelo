@@ -41,6 +41,7 @@ Mapa de iniciativas con su estado y el ADR que las sostiene. **No** es el estado
 | P1 | Sistema de trabajo: guardianes, contratos, ADR, skills | 🟨 | este andamiaje |
 | P2 | Primera auditoría completa (skill `auditoria`) | ⬜ | tras estabilizar los guardianes |
 | P3 | Licencia | ⬜ | decisión de Antonio |
+| P4 | Recrear y versionar `mock_xr.js` (mock de WebXR) | ⬜ | `pruebas/vr_mock.js` lo lee del directorio actual y el fichero no está en el repo: hoy la prueba VR no se puede ejecutar desde cero |
 
 ## Decidido no hacerlo (por ahora)
 

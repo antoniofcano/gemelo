@@ -16,12 +16,12 @@ No hay servidor ni hosting: el gemelo se publica como **artefacto de claude.ai**
 | Conectores MCP | capacidad `mcp`; los conectores se referencian por su **nombre visible** |
 
 ## Formato de los ficheros de apoyo
-`t/<kx>_<ky>.json` (relieve, copa, suelo, nube en base64) y `t/<kx>_<ky>.jpg` (ortofoto 512²). Sin binario crudo. Detalle en [CONTRATOS](../sistema/CONTRATOS.md#contrato-de-publicación).
+`t/<kx>_<ky>.json` (relieve, copa, suelo, nube en base64) y `t/<kx>_<ky>.jpg` (ortofoto 512²). Sin binario crudo. Detalle en [CONTRATOS](../sistema/CONTRATOS.md#4-contrato-de-publicación).
 
 ## Receta resumida
 1. Puerta en verde (`npm run puerta`).
 2. Montar la finca (`montar_v2.py`) a una **carpeta de trabajo fuera de `publicar/` versionado** (`publicar/` ya está ignorado por git).
-3. Hituelo: ≈52 MB de teselas + página de ≈4,6 MB → **dos publicaciones** a la misma `url` (64 MB por publicación) y ≤255 ficheros cada una.
+3. Hituelo: ≈52 MB de teselas + página de ≈4,6 MB ≈ 57 MB en 93 ficheros: **cabe en una publicación (64 MB, 255 ficheros) con ≈7 MB de margen**. Si crece, partir en tandas a la misma `url`.
 4. Lista de `files` con ruta publicada → ruta de origen; capacidades (`mcp` si la historia lee en vivo).
 5. **Pedir confirmación** a Antonio con la lista.
 6. Publicar; verificar que lo publicado es lo nuevo (leer el artefacto de vuelta, comparar tamaño/versión).
