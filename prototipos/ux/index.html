@@ -1,0 +1,1556 @@
+<!doctype html>
+<html lang="es" data-disp="escritorio" data-rol="hogar">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Maqueta interactiva de la UX de acceso y de uso de Cuarenta hazas. Datos ficticios.">
+<title>Cuarenta hazas · maqueta UX</title>
+<style>
+/* Maqueta de UX de «Cuarenta hazas». Un solo fichero, sin recursos externos.
+   Paleta heredada de apps/web/plantilla.html: tierra, verde olivo, turquesa (lo medido), ámbar (lo guardado).
+   Las fuentes de la plantilla (Fraunces, Instrument Sans) se sustituyen por las del sistema: en producción irán alojadas en propio. */
+:root {
+  --bg: #f3f1ea; --panel: #fbfaf6; --panel-2: #efece2; --fg: #23261f; --muted: #5d6054; --line: #d3d0c2;
+  --olivo: #4d6b2f; --olivo-2: #3c5524; --sobre-olivo: #ffffff; --lidar: #0e8f86; --guardado: #b87a10; --sky: #e6ebe4;
+  --error: #a8342a; --error-bg: #f7e4e0; --ok: #2f6b35; --aviso-bg: #f5ead2; --vivo: #b3261e; --sobre-vivo: #ffffff; --foco: #1a4fb5;
+  --campo: #cdbd92; --haza-a: #d9c79e; --haza-b: #cfb98a; --calle: #e9dfc4; --copa: #5f7f3a; --copa-2: #3f5a26; --linde: #0e8f86; --mia: #b87a10;
+  --display: Georgia, "Times New Roman", serif;
+  --body: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --escala: 1; --toque: 44px; --r: 10px; color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #161a14; --panel: #1e2319; --panel-2: #252b1f; --fg: #e9ebe0; --muted: #aab09c; --line: #3a4331;
+  --olivo: #9dc16a; --olivo-2: #b7d48c; --sobre-olivo: #14180f; --lidar: #3ccfc2; --guardado: #f0b13f; --sky: #232b20;
+  --error: #f29a8f; --error-bg: #3a1f1b; --ok: #9dd59f; --aviso-bg: #3a2f17; --foco: #8ab4ff;
+  --campo: #3b3424; --haza-a: #4a412d; --haza-b: #433a28; --calle: #2f2a1e; --copa: #7f9f52; --copa-2: #4d6630; --linde: #3ccfc2; --mia: #f0b13f; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #161a14; --panel: #1e2319; --panel-2: #252b1f; --fg: #e9ebe0; --muted: #aab09c; --line: #3a4331;
+  --olivo: #9dc16a; --olivo-2: #b7d48c; --sobre-olivo: #14180f; --lidar: #3ccfc2; --guardado: #f0b13f; --sky: #232b20;
+  --error: #f29a8f; --error-bg: #3a1f1b; --ok: #9dd59f; --aviso-bg: #3a2f17; --foco: #8ab4ff;
+  --campo: #3b3424; --haza-a: #4a412d; --haza-b: #433a28; --calle: #2f2a1e; --copa: #7f9f52; --copa-2: #4d6630; --linde: #3ccfc2; --mia: #f0b13f; color-scheme: dark; }
+:root[data-contraste="alto"] { --muted: var(--fg); --line: var(--fg); }
+html { font-size: calc(16px * var(--escala)); -webkit-text-size-adjust: 100%; }
+html[data-disp="quest"] { font-size: calc(19px * var(--escala)); --toque: 56px; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); line-height: 1.5; overflow-x: hidden; }
+h1, h2, h3 { font-family: var(--display); font-weight: 600; line-height: 1.2; text-wrap: balance; margin: 0 0 .5rem; }
+h1 { font-size: clamp(1.6rem, 4vw, 2.3rem); letter-spacing: -0.01em; }
+h2 { font-size: 1.3rem; } h3 { font-size: 1.08rem; }
+p { margin: 0 0 .75rem; max-width: 68ch; }
+a { color: var(--olivo-2); }
+:root:not([data-theme="dark"]) a { color: var(--olivo); }
+:focus-visible { outline: 3px solid var(--foco); outline-offset: 2px; border-radius: 4px; }
+[hidden] { display: none !important; }
+.vh { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.saltar { position: absolute; left: 8px; top: -60px; background: var(--panel); color: var(--fg); padding: 10px 14px; border-radius: 8px; z-index: 100; border: 2px solid var(--foco); }
+.saltar:focus { top: 8px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+:root[data-movimiento="reducido"] *, :root[data-movimiento="reducido"] *::before { animation: none !important; transition: none !important; }
+
+/* ---------- barra del simulador (no es parte del producto) */
+.sim { background: repeating-linear-gradient(135deg, var(--panel-2) 0 14px, var(--panel) 14px 28px); border-bottom: 2px dashed var(--line); padding: 10px max(16px, env(safe-area-inset-left)) 10px; font-size: .875rem; }
+.sim-cab { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; max-width: 1180px; margin: 0 auto; }
+.sello { background: var(--fg); color: var(--bg); font-weight: 700; letter-spacing: .08em; padding: 2px 9px; border-radius: 4px; font-size: .75rem; }
+.sim-txt { color: var(--muted); }
+.sim details { max-width: 1180px; margin: 6px auto 0; }
+.sim summary { cursor: pointer; min-height: var(--toque); display: flex; align-items: center; font-weight: 600; }
+.sim-rejilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px 14px; padding: 6px 0 4px; }
+.sim label { display: grid; gap: 2px; color: var(--muted); font-size: .8rem; }
+.sim select { min-height: 40px; }
+.sim-acciones { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.sim-acciones .btn { min-height: 38px; font-size: .8rem; padding: 6px 10px; }
+
+/* ---------- controles */
+select, input[type="text"], input[type="email"], textarea { font: inherit; color: var(--fg); background: var(--panel); border: 1.5px solid var(--muted); border-radius: 8px; padding: 8px 10px; min-height: var(--toque); width: 100%; }
+textarea { min-height: 88px; resize: vertical; }
+input[aria-invalid="true"] { border-color: var(--error); box-shadow: 0 0 0 1px var(--error); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: var(--toque); min-width: var(--toque); padding: 8px 16px; border-radius: 9px; border: 1.5px solid var(--line); background: var(--panel); color: var(--fg); font: inherit; font-weight: 500; cursor: pointer; text-decoration: none; }
+.btn:hover { border-color: var(--muted); }
+.btn-prim { background: var(--olivo); border-color: var(--olivo); color: var(--sobre-olivo); font-weight: 600; }
+.btn-prim:hover { background: var(--olivo-2); border-color: var(--olivo-2); }
+.btn-peligro { border-color: var(--error); color: var(--error); }
+.btn-txt { border-color: transparent; background: transparent; text-decoration: underline; padding-inline: 8px; }
+.btn[disabled], .btn[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
+.btn[aria-pressed="true"] { background: var(--olivo); border-color: var(--olivo); color: var(--sobre-olivo); }
+.btn-grande { min-height: calc(var(--toque) + 8px); font-size: 1.05rem; padding-inline: 22px; }
+.fila { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.pila { display: grid; gap: 14px; }
+.campo { display: grid; gap: 6px; }
+.campo label, .etq { font-weight: 600; }
+.pista { color: var(--muted); font-size: .9rem; margin: 0; }
+.err { color: var(--error); font-weight: 600; font-size: .92rem; margin: 0; }
+.chk { display: grid; grid-template-columns: 28px 1fr; gap: 6px 10px; align-items: start; padding: 8px 0; cursor: pointer; }
+.chk input { width: 24px; height: 24px; margin: 2px 0 0; accent-color: var(--olivo); }
+.aviso { border-left: 4px solid var(--guardado); background: var(--aviso-bg); padding: 10px 14px; border-radius: 0 8px 8px 0; }
+.aviso-err { border-left-color: var(--error); background: var(--error-bg); }
+.aviso-ok { border-left-color: var(--olivo); background: color-mix(in srgb, var(--olivo) 14%, var(--panel)); }
+.aviso p:last-child { margin-bottom: 0; }
+.pill { display: inline-block; font-size: .75rem; font-weight: 600; padding: 1px 9px; border-radius: 99px; background: var(--panel-2); border: 1px solid var(--line); color: var(--fg); white-space: nowrap; }
+.pill-medido { border-color: var(--lidar); }
+.pill-deducido { border-color: var(--guardado); }
+.pill-ilus { border-style: dashed; }
+.pill-ficticio { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.pill-vivo { background: var(--vivo); color: var(--sobre-vivo); border-color: var(--vivo); }
+.tarjeta { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px; }
+.rejilla-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 14px; }
+.nota { color: var(--muted); font-size: .9rem; }
+kbd { font: .85em ui-monospace, Menlo, Consolas, monospace; background: var(--panel-2); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; }
+
+/* ---------- marco por dispositivo */
+.app { padding: 18px max(16px, env(safe-area-inset-left)) 40px; }
+.marco { max-width: 1180px; margin: 0 auto; position: relative; }
+.rotulo-disp { max-width: 1180px; margin: 0 auto 8px; font-size: .8rem; color: var(--muted); }
+html[data-disp="movil"] .marco, html[data-disp="corresponsal"] .marco { max-width: 400px; border: 10px solid #20231c; border-radius: 30px; background: var(--bg); padding: 14px 12px 18px; min-height: 720px; box-shadow: 0 10px 40px rgba(0,0,0,.25); }
+html[data-disp="quest"] .marco { max-width: 1100px; border-radius: 26px; padding: 20px; background: radial-gradient(ellipse at 50% 40%, var(--panel) 0 55%, var(--panel-2) 100%); border: 3px solid var(--line); }
+@media (max-width: 460px) { html[data-disp="movil"] .marco, html[data-disp="corresponsal"] .marco { border: 0; border-radius: 0; padding: 0; box-shadow: none; min-height: 0; } }
+
+/* barra de la aplicación (tras entrar) */
+.barra-app { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: space-between; padding-bottom: 12px; margin-bottom: 16px; border-bottom: 1px solid var(--line); }
+.marca { font-family: var(--display); font-weight: 600; font-size: 1.15rem; display: flex; align-items: center; gap: 8px; }
+.marca svg { width: 26px; height: 26px; }
+.quien { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: .9rem; }
+
+.pant { animation: entra .18s ease-out; }
+@keyframes entra { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.estrecha { max-width: 560px; }
+.centrada { margin-inline: auto; }
+.pasos { display: flex; gap: 6px; list-style: none; padding: 0; margin: 0 0 14px; font-size: .82rem; color: var(--muted); flex-wrap: wrap; }
+.pasos li { padding: 2px 10px; border-radius: 99px; border: 1px solid var(--line); }
+.pasos li[aria-current="step"] { background: var(--olivo); color: var(--sobre-olivo); border-color: var(--olivo); font-weight: 600; }
+
+/* portada */
+.heroe { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 28px; align-items: center; }
+.heroe svg { width: 100%; height: auto; border-radius: 14px; border: 1px solid var(--line); background: var(--campo); }
+.lema { font-size: 1.12rem; color: var(--muted); }
+.como { counter-reset: c; list-style: none; padding: 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+.como li { counter-increment: c; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px 14px 52px; position: relative; }
+.como li::before { content: counter(c); position: absolute; left: 14px; top: 13px; width: 28px; height: 28px; border-radius: 50%; background: var(--olivo); color: var(--sobre-olivo); display: grid; place-items: center; font-weight: 700; }
+.creditos { font-size: .85rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; margin-top: 22px; }
+html[data-disp="movil"] .heroe, html[data-disp="corresponsal"] .heroe { grid-template-columns: 1fr; }
+@media (max-width: 760px) { .heroe { grid-template-columns: 1fr; } }
+
+/* correo simulado */
+.correo-sim { border: 1px dashed var(--muted); border-radius: var(--r); padding: 14px 16px; background: var(--panel); }
+.correo-sim .cab { font-size: .82rem; color: var(--muted); border-bottom: 1px solid var(--line); padding-bottom: 6px; margin-bottom: 10px; }
+.codigo { font: 700 2rem ui-monospace, Menlo, Consolas, monospace; letter-spacing: .15em; background: var(--panel-2); border-radius: 10px; padding: 10px 16px; display: inline-block; }
+
+/* avatar */
+.avatar-zona { display: grid; grid-template-columns: 180px 1fr; gap: 20px; align-items: start; }
+@media (max-width: 520px) { .avatar-zona { grid-template-columns: 1fr; } }
+html[data-disp="movil"] .avatar-zona, html[data-disp="corresponsal"] .avatar-zona { grid-template-columns: 1fr; }
+.avatar-prev { background: var(--sky); border: 1px solid var(--line); border-radius: 14px; display: grid; place-items: center; padding: 10px; }
+.avatar-prev svg { width: 150px; height: 170px; }
+fieldset { border: 0; padding: 0; margin: 0 0 14px; min-width: 0; }
+legend { font-weight: 600; margin-bottom: 6px; padding: 0; }
+.muestras { display: flex; flex-wrap: wrap; gap: 8px; }
+.muestra { position: relative; }
+.muestra input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.muestra span { display: flex; align-items: center; gap: 8px; min-height: var(--toque); padding: 6px 12px 6px 8px; border: 1.5px solid var(--line); border-radius: 99px; cursor: pointer; background: var(--panel); }
+.muestra i { width: 26px; height: 26px; border-radius: 6px; border: 1px solid rgba(0,0,0,.25); display: inline-block; }
+.muestra input:checked + span { border-color: var(--olivo); box-shadow: 0 0 0 2px var(--olivo); font-weight: 600; }
+.muestra input:focus-visible + span { outline: 3px solid var(--foco); outline-offset: 2px; }
+
+/* opciones en tarjeta (dispositivo, visitas) */
+.opciones { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); }
+.opcion { position: relative; }
+.opcion input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.opcion .cuerpo { display: grid; gap: 4px; height: 100%; padding: 14px 16px; border: 1.5px solid var(--line); border-radius: var(--r); background: var(--panel); cursor: pointer; }
+.opcion input:checked + .cuerpo { border-color: var(--olivo); box-shadow: 0 0 0 2px var(--olivo); }
+.opcion input:focus-visible + .cuerpo { outline: 3px solid var(--foco); outline-offset: 2px; }
+.opcion input:disabled + .cuerpo { opacity: .6; cursor: not-allowed; }
+.opcion strong { font-size: 1.05rem; }
+.detectado { font-size: .78rem; font-weight: 700; color: var(--olivo-2); }
+:root:not([data-theme="dark"]) .detectado { color: var(--olivo); }
+
+/* audio */
+.medidor { height: 16px; border-radius: 8px; background: var(--panel-2); border: 1px solid var(--line); overflow: hidden; }
+.medidor i { display: block; height: 100%; width: 0; background: var(--olivo); transition: width .08s linear; }
+.navegador-sim { border: 1px solid var(--muted); border-radius: 10px; background: var(--panel); box-shadow: 0 8px 28px rgba(0,0,0,.2); padding: 12px 14px; max-width: 420px; }
+.navegador-sim .cab { font-size: .78rem; color: var(--muted); margin-bottom: 6px; }
+.lista-chk { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.lista-chk li { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; padding: 10px 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+.lista-chk .estado { font-size: .85rem; color: var(--muted); grid-column: 1; }
+.lista-chk .estado.ok { color: var(--ok); font-weight: 600; }
+
+/* ajustes: pestañas */
+.pestanas { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
+.pestanas [role="tab"] { border: 0; background: none; font: inherit; color: var(--muted); padding: 10px 12px; min-height: var(--toque); cursor: pointer; border-bottom: 3px solid transparent; }
+.pestanas [role="tab"][aria-selected="true"] { color: var(--fg); font-weight: 600; border-bottom-color: var(--olivo); }
+.ajuste { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 260px); gap: 6px 18px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.ajuste:last-child { border-bottom: 0; }
+.ajuste .pista { grid-column: 1; }
+@media (max-width: 560px) { .ajuste { grid-template-columns: 1fr; } }
+html[data-disp="movil"] .ajuste, html[data-disp="corresponsal"] .ajuste { grid-template-columns: 1fr; }
+input[type="range"] { width: 100%; accent-color: var(--olivo); min-height: var(--toque); }
+.interruptor { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; min-height: var(--toque); }
+.interruptor input { width: 22px; height: 22px; accent-color: var(--olivo); }
+
+/* visitas */
+.visita { display: grid; gap: 8px; }
+.visita .meta { display: flex; flex-wrap: wrap; gap: 6px; }
+.vacio { text-align: center; padding: 26px 16px; border: 1.5px dashed var(--line); border-radius: var(--r); color: var(--muted); }
+
+/* carga */
+.progreso { height: 14px; border-radius: 7px; background: var(--panel-2); border: 1px solid var(--line); overflow: hidden; }
+.progreso i { display: block; height: 100%; width: 0; background: var(--olivo); transition: width .25s; }
+.teselas { display: grid; grid-template-columns: repeat(8, 1fr); gap: 3px; max-width: 320px; }
+.teselas span { aspect-ratio: 1; border-radius: 3px; background: var(--panel-2); border: 1px solid var(--line); }
+.teselas span.ok { background: var(--olivo); border-color: var(--olivo); }
+.teselas span.mal { background: var(--error); border-color: var(--error); }
+.consejo { min-height: 3em; }
+
+/* ---------- el mundo (maqueta) */
+.mundo { position: relative; height: min(80vh, 720px); min-height: 540px; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); background: var(--campo); isolation: isolate; }
+html[data-disp="movil"] .mundo, html[data-disp="corresponsal"] .mundo { height: 680px; min-height: 0; border-radius: 16px; }
+.mundo > svg.escena { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+.marca-agua { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); font-size: .72rem; font-weight: 700; letter-spacing: .06em; color: var(--fg); background: color-mix(in srgb, var(--panel) 80%, transparent); padding: 2px 10px; border-radius: 99px; pointer-events: none; z-index: 1; white-space: nowrap; }
+.hud { position: absolute; z-index: 2; }
+.vidrio { background: color-mix(in srgb, var(--panel) 92%, transparent); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 4px 18px rgba(0,0,0,.18); }
+.hud-sup { top: 10px; left: 10px; right: 10px; display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; pointer-events: none; }
+.hud-sup > * { pointer-events: auto; }
+.chips-lugar { display: flex; flex-wrap: wrap; gap: 6px; flex: 1 1 auto; min-width: 0; }
+.chip-hud { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 99px; font-size: .85rem; min-height: 34px; }
+.chip-hud.vivo { background: var(--vivo); color: var(--sobre-vivo); border-color: var(--vivo); font-weight: 700; }
+.botones-hud { display: flex; gap: 6px; flex-wrap: nowrap; justify-content: flex-end; flex: none; }
+.botones-hud .btn { padding-inline: 10px; white-space: nowrap; }
+@media (max-width: 1100px) { .botones-hud kbd { display: none; } }
+.botones-hud .btn { background: color-mix(in srgb, var(--panel) 92%, transparent); }
+.botones-hud .btn[aria-expanded="true"] { background: var(--olivo); color: var(--sobre-olivo); border-color: var(--olivo); }
+.minimapa { left: 10px; bottom: 34px; width: 150px; padding: 4px; }
+.minimapa svg { display: block; width: 100%; height: auto; }
+.hud-voz { left: 50%; bottom: 34px; transform: translateX(-50%); display: flex; gap: 8px; align-items: center; padding: 8px 10px; flex-wrap: wrap; justify-content: center; max-width: min(560px, calc(100% - 340px)); }
+.hud-voz .estado-voz { font-size: .88rem; padding-inline: 4px; }
+.btn-hablar[aria-pressed="true"] { background: var(--vivo); border-color: var(--vivo); color: var(--sobre-vivo); }
+.cruceta { right: 10px; bottom: 34px; display: none; grid-template-columns: repeat(3, var(--toque)); grid-template-rows: repeat(3, var(--toque)); gap: 4px; }
+.cruceta .btn { padding: 0; background: color-mix(in srgb, var(--panel) 90%, transparent); }
+.cruceta [data-mov="n"] { grid-column: 2; grid-row: 1; } .cruceta [data-mov="o"] { grid-column: 1; grid-row: 2; } .cruceta [data-mov="e"] { grid-column: 3; grid-row: 2; } .cruceta [data-mov="s"] { grid-column: 2; grid-row: 3; }
+.cajon { top: 58px; right: 10px; bottom: 34px; width: 340px; display: flex; flex-direction: column; overflow: hidden; background: var(--panel); }
+[data-foco]:focus { outline: none; }
+.cajon-cab { display: flex; align-items: center; justify-content: space-between; padding: 4px 6px 0 8px; border-bottom: 1px solid var(--line); }
+.cajon-cab .pestanas { border: 0; margin: 0; }
+.cajon-cuerpo { overflow-y: auto; padding: 12px 14px; flex: 1; }
+.datos { display: grid; grid-template-columns: minmax(6.5em, 38%) minmax(0, 1fr); gap: 6px 10px; margin: 0 0 12px; font-size: .92rem; }
+.datos dt { color: var(--muted); } .datos dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.datos dd .pill { margin-left: 4px; font-size: .68rem; }
+.mensajes { list-style: none; padding: 0; margin: 0 0 10px; display: grid; gap: 8px; }
+.mensajes li { background: var(--panel-2); border-radius: 10px; padding: 7px 10px; font-size: .92rem; }
+.mensajes .de { font-weight: 700; margin-right: 6px; }
+.mensajes .sis { background: none; color: var(--muted); font-style: italic; padding: 2px 0; }
+.mensajes .acc { float: right; }
+.gente { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.gente li { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; }
+.gente .sub { font-size: .8rem; color: var(--muted); grid-column: 1; }
+.gente .acciones { grid-column: 1 / -1; display: flex; gap: 6px; flex-wrap: wrap; }
+.gente .acciones .btn { min-height: 36px; font-size: .8rem; padding: 4px 10px; }
+.avisos-mundo { top: 58px; left: 50%; transform: translateX(-50%); display: grid; gap: 6px; width: min(440px, calc(100% - 20px)); pointer-events: none; }
+.toast { padding: 10px 14px; font-size: .92rem; pointer-events: auto; }
+.toast.err { border-left: 4px solid var(--error); }
+.nota-quest { left: 10px; top: 96px; max-width: 260px; padding: 8px 12px; font-size: .82rem; }
+/* móvil: la barra de botones baja y el cajón es una hoja inferior */
+html[data-disp="movil"] .cruceta { display: grid; bottom: 72px; }
+html[data-disp="movil"] .minimapa { width: 110px; top: 96px; bottom: auto; }
+html[data-disp="movil"] .hud-voz { left: 10px; right: 10px; transform: none; bottom: 64px; max-width: none; justify-content: flex-start; width: calc(100% - 20px - 3 * var(--toque) - 16px); }
+html[data-disp="movil"] .cajon { left: 0; right: 0; width: auto; top: auto; bottom: 56px; height: 62%; border-radius: 16px 16px 0 0; }
+html[data-disp="movil"] .marca-agua { bottom: auto; top: 104px; font-size: .65rem; }
+.barra-movil { left: 0; right: 0; bottom: 0; display: none; border-radius: 0; padding: 4px 6px; justify-content: space-around; gap: 4px; }
+html[data-disp="movil"] .barra-movil { display: flex; }
+html[data-disp="movil"] .botones-hud.escritorio { display: none; }
+.barra-movil .btn { flex: 1; min-width: 0; font-size: .8rem; padding: 4px; }
+html[data-disp="quest"] .cajon { width: 400px; }
+@media (max-width: 760px) {
+  .cajon { left: 10px; width: auto; top: auto; height: 60%; }
+  .hud-voz { max-width: calc(100% - 20px); bottom: 34px; }
+  .minimapa { display: none; }
+  .chips-lugar { max-width: 100%; }
+  .hud-sup { flex-direction: column; }
+}
+/* tutorial y diálogos */
+dialog { border: 1px solid var(--line); border-radius: 14px; background: var(--panel); color: var(--fg); padding: 20px 22px; max-width: min(560px, calc(100vw - 24px)); box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+dialog::backdrop { background: rgba(10, 12, 8, .55); }
+.menu-pausa { display: grid; gap: 8px; margin: 12px 0 0; }
+.menu-pausa .btn { justify-content: flex-start; width: 100%; }
+.teclas { display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; margin: 12px 0; align-items: baseline; }
+.teclas dt { font-weight: 700; } .teclas dd { margin: 0; }
+
+/* corresponsal (emisión) */
+.campo-mapa { position: relative; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: var(--campo); }
+.campo-mapa svg { display: block; width: 100%; height: auto; }
+.directo { display: flex; align-items: center; gap: 10px; justify-content: space-between; flex-wrap: wrap; }
+.vista-cam { aspect-ratio: 16 / 9; border-radius: 12px; background: repeating-linear-gradient(45deg, #3d4a2c 0 10px, #4a5835 10px 20px); color: #f4f2e8; display: grid; place-items: center; text-align: center; font-weight: 600; padding: 10px; position: relative; }
+.vista-cam .pill { position: absolute; top: 8px; left: 8px; }
+.estado-campo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.estado-campo div { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; font-size: .85rem; }
+.estado-campo strong { display: block; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.tabla { width: 100%; border-collapse: collapse; font-size: .92rem; }
+.tabla th, .tabla td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.tabla th { color: var(--muted); font-weight: 600; }
+</style>
+</head>
+<body>
+<a class="saltar" href="#app">Saltar al contenido</a>
+
+<!-- ======================= SIMULADOR (no es parte del producto) ======================= -->
+<header class="sim" aria-label="Simulador de la maqueta">
+  <div class="sim-cab">
+    <span class="sello">MAQUETA</span>
+    <span class="sim-txt">Cuarenta hazas · diseño de UX. Todo es simulado y los datos son <strong>ficticios</strong>: no hay servidor, ni correo, ni voz, ni vídeo reales.</span>
+  </div>
+  <details id="simDet" open>
+    <summary>Simulador: dispositivo, rol y situación</summary>
+    <div class="sim-rejilla">
+      <label>Dispositivo
+        <select id="simDisp">
+          <option value="escritorio">Escritorio</option>
+          <option value="movil">Móvil del hogar</option>
+          <option value="quest">Meta Quest (navegador)</option>
+          <option value="corresponsal">Móvil corresponsal (Android)</option>
+        </select>
+      </label>
+      <label>Rol de la cuenta
+        <select id="simRol">
+          <option value="hogar">Hogar</option>
+          <option value="guia">Guía</option>
+          <option value="corresponsal">Corresponsal</option>
+          <option value="admin">Administración</option>
+        </select>
+      </label>
+      <label>Ir a la pantalla
+        <select id="simPant"></select>
+      </label>
+      <label>Tema
+        <select id="simTema">
+          <option value="">Como el sistema</option>
+          <option value="light">Claro</option>
+          <option value="dark">Oscuro</option>
+        </select>
+      </label>
+      <label>Enlace del correo
+        <select id="simEnlace">
+          <option value="valido">Válido</option>
+          <option value="caducado">Caducado</option>
+          <option value="usado">Ya usado</option>
+        </select>
+      </label>
+      <label>Peticiones de enlace
+        <select id="simLimite">
+          <option value="no">Dentro del límite</option>
+          <option value="si">Límite superado</option>
+        </select>
+      </label>
+      <label>Cuenta
+        <select id="simNueva">
+          <option value="si">Primer acceso</option>
+          <option value="no">Ya registrada</option>
+        </select>
+      </label>
+      <label>Micrófono
+        <select id="simMicro">
+          <option value="concedido">Se concede</option>
+          <option value="denegado">Se deniega</option>
+          <option value="ninguno">No hay micrófono</option>
+        </select>
+      </label>
+      <label>WebXR (botón «Entrar en VR»)
+        <select id="simXr">
+          <option value="auto">Según dispositivo</option>
+          <option value="si">Disponible</option>
+          <option value="no">No disponible</option>
+        </select>
+      </label>
+      <label>Carga del mundo
+        <select id="simCarga">
+          <option value="normal">Normal</option>
+          <option value="error">Falla una tesela</option>
+          <option value="lenta">Red lenta</option>
+        </select>
+      </label>
+      <label>Visitas guiadas
+        <select id="simGuiadas">
+          <option value="si">Hay programadas</option>
+          <option value="no">Ninguna</option>
+        </select>
+      </label>
+    </div>
+    <div class="sim-acciones" aria-label="Sucesos dentro del mundo">
+      <button type="button" class="btn" data-sim="silenciar">El guía cierra los micros</button>
+      <button type="button" class="btn" data-sim="abrirMicros">El guía vuelve a abrirlos</button>
+      <button type="button" class="btn" data-sim="video">Empieza / para el vídeo de campo</button>
+      <button type="button" class="btn" data-sim="chat">Llega un mensaje</button>
+      <button type="button" class="btn" data-sim="red">Se corta la conexión</button>
+      <button type="button" class="btn" data-sim="reinicio">Reiniciar la maqueta</button>
+    </div>
+  </details>
+</header>
+
+<main id="app" class="app" tabindex="-1">
+<p class="rotulo-disp" id="rotuloDisp">Vista simulada: escritorio.</p>
+<div class="marco" id="marco">
+
+  <!-- barra de la aplicación tras entrar -->
+  <div class="barra-app" id="barraApp" hidden>
+    <span class="marca"><svg viewBox="0 0 32 32" aria-hidden="true"><rect x="2" y="2" width="28" height="28" rx="7" fill="var(--olivo)"/><circle cx="11" cy="12" r="4" fill="var(--sobre-olivo)"/><circle cx="21" cy="12" r="4" fill="var(--sobre-olivo)"/><circle cx="11" cy="22" r="4" fill="var(--sobre-olivo)"/><circle cx="21" cy="22" r="4" fill="var(--sobre-olivo)"/></svg>Cuarenta hazas</span>
+    <div class="quien">
+      <span>Hola, <strong id="aliasBarra">Tordo del Llano</strong> <span class="pill" id="rolBarra">Hogar</span></span>
+      <button type="button" class="btn" data-ir="ajustes">Configuración</button>
+      <button type="button" class="btn btn-txt" data-accion="cerrarSesion">Cerrar sesión</button>
+    </div>
+  </div>
+
+  <!-- 1. PORTADA PÚBLICA -->
+  <section class="pant" id="p-portada" aria-labelledby="t-portada" hidden>
+    <div class="heroe">
+      <div>
+        <p class="pill">Cano &amp; Damas Oleicultores</p>
+        <h1 id="t-portada" data-foco>Cuarenta hazas</h1>
+        <p class="lema">Un olivar de verdad, en 3D, que se visita desde casa. Cada hogar sigue su haza a lo largo del año y la recorre con los demás, a veces con un guía y con vídeo en directo desde el campo.</p>
+        <div class="fila">
+          <button type="button" class="btn btn-prim btn-grande" data-ir="entrar">Entrar</button>
+          <a class="btn" href="#comoFunciona">Cómo funciona</a>
+        </div>
+        <p class="pista" style="margin-top:10px">Para entrar necesitas una cuenta de hogar. Sin contraseña: te mandamos un enlace al correo.</p>
+      </div>
+      <svg viewBox="0 0 400 260" role="img" aria-label="Ilustración: hazas de olivar vistas desde arriba, con un avatar de bloque en una de ellas">
+        <defs><pattern id="olivosP" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="10" cy="10" r="6" fill="var(--copa)"/><circle cx="8.5" cy="8.5" r="2.5" fill="var(--copa-2)" opacity=".5"/></pattern></defs>
+        <polygon points="14,16 188,10 194,122 18,128" fill="var(--haza-a)"/><polygon points="14,16 188,10 194,122 18,128" fill="url(#olivosP)"/>
+        <polygon points="206,10 386,18 382,126 210,120" fill="var(--haza-b)"/><polygon points="206,10 386,18 382,126 210,120" fill="url(#olivosP)"/>
+        <polygon points="20,140 194,134 190,248 16,250" fill="var(--haza-b)"/><polygon points="20,140 194,134 190,248 16,250" fill="url(#olivosP)"/>
+        <polygon points="210,132 382,138 386,250 206,246" fill="var(--haza-a)"/><polygon points="210,132 382,138 386,250 206,246" fill="url(#olivosP)" />
+        <polygon points="210,132 382,138 386,250 206,246" fill="none" stroke="var(--mia)" stroke-width="4"/>
+        <g transform="translate(288 176)"><rect x="-7" y="-2" width="14" height="18" fill="#c0563a"/><rect x="-6" y="-14" width="12" height="12" fill="#d9a77c"/><rect x="-9" y="-17" width="18" height="4" fill="#e1c46a"/></g>
+      </svg>
+    </div>
+    <h2 id="comoFunciona" style="margin-top:28px">Cómo funciona</h2>
+    <ol class="como">
+      <li><strong>Entra con tu correo.</strong> Te llega un enlace que vale 15 minutos y sirve una vez.</li>
+      <li><strong>Elige alias y avatar.</strong> Es lo único tuyo que ven los demás.</li>
+      <li><strong>Visita la finca.</strong> En el ordenador, en el móvil o con unas Meta Quest. Libre, con chat; o guiada, con voz.</li>
+      <li><strong>Sigue tu haza.</strong> Qué se le hizo, cómo va de vigor y qué hay en su suelo, diciendo siempre de dónde sale cada dato.</li>
+    </ol>
+    <div class="rejilla-2" style="margin-top:8px">
+      <div class="tarjeta"><h3>Qué es medido y qué no</h3><p>La forma de las copas y el relieve salen del vuelo LiDAR; el vigor, de satélite; los troncos y ramas son ilustrativos. Cada dato lleva su etiqueta: <span class="pill pill-medido">medido</span> <span class="pill pill-deducido">deducido</span> <span class="pill pill-ilus">ilustrativo</span></p></div>
+      <div class="tarjeta"><h3>Tu privacidad</h3><p>No hay vídeo de los hogares, nunca. La voz solo se abre en visitas guiadas y con un guía que modera. La cuenta es de una persona adulta del hogar.</p></div>
+    </div>
+    <p class="creditos">Datos: LiDAR, MDT y ortofoto PNOA © Instituto Geográfico Nacional (CNIG), CC BY 4.0 · Imágenes Sentinel-2 del programa Copernicus de la UE · Suelos: SoilGrids, ISRIC – World Soil Information, CC BY 4.0. · <a href="#" data-accion="nada">Aviso legal</a> · <a href="#" data-accion="nada">Privacidad</a> · <a href="#" data-accion="nada">Accesibilidad</a></p>
+  </section>
+
+  <!-- 2. ENTRAR CON TU CORREO -->
+  <section class="pant estrecha centrada" id="p-entrar" aria-labelledby="t-entrar" hidden>
+    <button type="button" class="btn btn-txt" data-ir="portada">← Volver a la portada</button>
+    <h1 id="t-entrar" data-foco>Entrar con tu correo</h1>
+    <p>Escribe el correo de tu hogar. Te mandamos un enlace para entrar: no hay contraseña que recordar.</p>
+    <form id="fEntrar" class="pila" novalidate>
+      <div class="campo">
+        <label for="iCorreo">Correo electrónico</label>
+        <input id="iCorreo" type="email" name="correo" autocomplete="email" inputmode="email" aria-describedby="pCorreo eCorreo" placeholder="nombre@example.com">
+        <p class="pista" id="pCorreo">Para probar la maqueta, cualquier correo con formato válido sirve (p. ej. prueba@example.com).</p>
+        <p class="err" id="eCorreo" role="alert" hidden></p>
+      </div>
+      <div class="aviso aviso-err" id="avLimite" role="alert" hidden>
+        <p><strong>Has pedido varios enlaces seguidos.</strong> Por seguridad, espera unos minutos antes de pedir otro. Si ya te ha llegado uno, úsalo: sigue valiendo hasta que caduque.</p>
+      </div>
+      <div class="fila"><button type="submit" class="btn btn-prim btn-grande">Mandarme el enlace</button></div>
+    </form>
+    <div class="tarjeta" id="opcQuest" style="margin-top:18px" hidden>
+      <h2>¿Estás en las gafas?</h2>
+      <p>Escribir y abrir el correo en las Quest es incómodo. Puedes vincularlas con un móvil u ordenador donde ya hayas entrado.</p>
+      <button type="button" class="btn" data-ir="vincular">Vincular con otro dispositivo</button>
+    </div>
+    <p class="nota" style="margin-top:18px">¿No tienes cuenta? Las cuentas de hogar las da la explotación. <a href="#" data-accion="nada">Cómo conseguir una</a>.</p>
+  </section>
+
+  <!-- 3. REVISA TU CORREO -->
+  <section class="pant estrecha centrada" id="p-revisa" aria-labelledby="t-revisa" hidden>
+    <h1 id="t-revisa" data-foco>Revisa tu correo</h1>
+    <p>Si <strong id="correoEco">ese correo</strong> puede entrar en Cuarenta hazas, te acabamos de mandar un enlace. Caduca en <strong>15 minutos</strong> y sirve <strong>una sola vez</strong>.</p>
+    <p class="pista">Si no llega en un par de minutos, mira en «Correo no deseado». Ábrelo en este mismo dispositivo.</p>
+    <div class="fila" style="margin:14px 0">
+      <button type="button" class="btn" id="btnReenviar" disabled>Reenviar enlace (<span id="cuentaReenvio">30</span> s)</button>
+      <button type="button" class="btn btn-txt" data-ir="entrar">Usar otro correo</button>
+    </div>
+    <div class="correo-sim" aria-label="Correo simulado">
+      <div class="cab"><span class="pill pill-ficticio">simulado</span> De: Cuarenta hazas &lt;no-responder@ejemplo.invalid&gt; · Asunto: Tu enlace para entrar</div>
+      <p>Hola. Pulsa el botón para entrar en Cuarenta hazas. Si no lo has pedido tú, ignora este correo: nadie puede entrar sin él.</p>
+      <button type="button" class="btn btn-prim" data-accion="abrirEnlace">Entrar en Cuarenta hazas</button>
+      <p class="pista" style="margin-top:8px">Caduca en 15 minutos. No lo reenvíes.</p>
+    </div>
+  </section>
+
+  <!-- 3b. ENLACE NO VÁLIDO -->
+  <section class="pant estrecha centrada" id="p-enlace" aria-labelledby="t-enlace" hidden>
+    <h1 id="t-enlace" data-foco>Este enlace ya no sirve</h1>
+    <div class="aviso aviso-err"><p id="txtEnlace">El enlace ha caducado: vale 15 minutos desde que lo pedimos.</p></div>
+    <p style="margin-top:12px">No pasa nada: pide otro y úsalo en cuanto llegue.</p>
+    <div class="fila"><button type="button" class="btn btn-prim" data-ir="entrar">Pedir un enlace nuevo</button><button type="button" class="btn btn-txt" data-ir="portada">Ir a la portada</button></div>
+  </section>
+
+  <!-- 3c. VINCULAR LAS GAFAS -->
+  <section class="pant estrecha centrada" id="p-vincular" aria-labelledby="t-vincular" hidden>
+    <h1 id="t-vincular" data-foco>Vincular las gafas</h1>
+    <ol>
+      <li>En tu móvil u ordenador, entra en Cuarenta hazas con tu correo.</li>
+      <li>Abre <strong>Configuración → Mis dispositivos → Vincular</strong>.</li>
+      <li>Escribe este código. Caduca en 5 minutos.</li>
+    </ol>
+    <p><span class="codigo" aria-label="Código: K 7 Q, 4 M 2">K7Q-4M2</span> <span class="pill pill-ficticio">ficticio</span></p>
+    <p class="pista" role="status">Esperando a que lo apruebes en el otro dispositivo…</p>
+    <div class="fila"><button type="button" class="btn btn-prim" data-accion="vinculado">Simular: aprobado en el móvil</button><button type="button" class="btn btn-txt" data-ir="entrar">Prefiero usar el correo</button></div>
+  </section>
+
+  <!-- 4. PRIMER ACCESO: PRIVACIDAD Y NORMAS -->
+  <section class="pant estrecha" id="p-bienvenida" aria-labelledby="t-bienvenida" hidden>
+    <ol class="pasos" aria-label="Pasos del primer acceso"><li aria-current="step">1. Privacidad y normas</li><li>2. Alias</li><li>3. Avatar</li></ol>
+    <h1 id="t-bienvenida" data-foco>Antes de entrar</h1>
+    <p>Es tu primera vez. Esto es lo importante, en corto:</p>
+    <div class="tarjeta pila">
+      <div><h2>Qué guardamos</h2><p>Tu correo (para mandarte enlaces), tu alias, tu avatar, las preguntas que hagas sobre las hazas y a qué visitas te apuntas.</p></div>
+      <div><h2>Qué no guardamos</h2><p>Ni tu voz ni tu imagen: los hogares nunca emiten vídeo. La voz de las visitas guiadas no se graba <span class="pill">decisión pendiente</span>. La posición de tu avatar no se guarda al salir.</p></div>
+      <div><h2>Voz y vídeo</h2><p>Solo hay voz en visitas guiadas, con un guía que puede silenciar o expulsar. En algunas, una persona de la explotación emite vídeo desde el campo, encuadrando copa y suelo; ese directo no se graba.</p></div>
+      <div><h2>Menores</h2><p>La cuenta es de una persona adulta del hogar, que responde de su uso. Si entra un menor, lo hace con tu cuenta y contigo. Te recomendamos un alias que no sea un nombre real.</p></div>
+      <details><summary class="etq" style="cursor:pointer;min-height:var(--toque);display:flex;align-items:center">Leer las normas de la comunidad</summary>
+        <ol><li>Trata a todos con respeto; aquí hay familias y menores.</li><li>No compartas datos personales: ni tuyos ni de nadie.</li><li>No grabes ni difundas lo que veas en las visitas guiadas.</li><li>Lo que dice la explotación sobre cada haza es información, no un consejo agronómico.</li><li>El guía y la administración pueden silenciar o expulsar a quien no cumpla.</li></ol>
+      </details>
+      <p class="nota" style="margin:0"><a href="#" data-accion="nada">Política de privacidad completa</a> (responsable, finalidades, base legal, plazos, tus derechos y cómo ejercerlos).</p>
+    </div>
+    <form id="fBienvenida" class="pila" style="margin-top:14px" novalidate>
+      <div class="aviso aviso-err" id="eBienvenida" role="alert" tabindex="-1" hidden><p>Para seguir, marca las tres casillas obligatorias.</p></div>
+      <label class="chk"><input type="checkbox" id="cPriv" required><span>He leído cómo se tratan mis datos. <span class="pista">(obligatorio)</span></span></label>
+      <label class="chk"><input type="checkbox" id="cNormas" required><span>Acepto las normas de la comunidad. <span class="pista">(obligatorio)</span></span></label>
+      <label class="chk"><input type="checkbox" id="cAdulto" required><span>Soy mayor de edad y esta cuenta es de mi hogar. <span class="pista">(obligatorio)</span></span></label>
+      <label class="chk"><input type="checkbox" id="cAvisos"><span>Quiero que me aviséis por correo de las visitas guiadas. <span class="pista">(opcional; se puede quitar cuando quieras)</span></span></label>
+      <div class="fila"><button type="submit" class="btn btn-prim btn-grande">Seguir</button><button type="button" class="btn btn-txt" data-accion="cerrarSesion">Ahora no, salir</button></div>
+    </form>
+  </section>
+
+  <!-- 5. PRIMER ACCESO: ALIAS -->
+  <section class="pant estrecha" id="p-alias" aria-labelledby="t-alias" hidden>
+    <ol class="pasos" aria-label="Pasos del primer acceso"><li>1. Privacidad y normas</li><li aria-current="step">2. Alias</li><li>3. Avatar</li></ol>
+    <h1 id="t-alias" data-foco>Tu alias</h1>
+    <p>Es el nombre que verán los demás sobre tu avatar y en el chat. Mejor que no sea tu nombre real.</p>
+    <form id="fAlias" class="pila" novalidate>
+      <div class="campo">
+        <label for="iAlias">Alias público</label>
+        <input id="iAlias" type="text" maxlength="20" autocomplete="off" aria-describedby="pAlias eAlias">
+        <p class="pista" id="pAlias">De 3 a 20 caracteres: letras, números, espacios y guiones. Sin correos ni teléfonos.</p>
+        <p class="err" id="eAlias" role="alert" hidden></p>
+      </div>
+      <div><p class="etq" style="margin-bottom:6px" id="tSug">Ideas</p>
+        <div class="fila" role="group" aria-labelledby="tSug">
+          <button type="button" class="btn" data-sug>Tordo del Llano</button><button type="button" class="btn" data-sug>Abubilla</button><button type="button" class="btn" data-sug>Encina 42</button>
+        </div>
+        <p class="pista" style="margin-top:6px">«Mirlo» está ocupado en esta maqueta, para que veas el error.</p>
+      </div>
+      <div class="fila"><button type="submit" class="btn btn-prim btn-grande">Seguir</button><button type="button" class="btn btn-txt" data-volver>Atrás</button></div>
+    </form>
+  </section>
+
+  <!-- 6. PRIMER ACCESO: AVATAR -->
+  <section class="pant" id="p-avatar" aria-labelledby="t-avatar" hidden>
+    <ol class="pasos" aria-label="Pasos del primer acceso"><li>1. Privacidad y normas</li><li>2. Alias</li><li aria-current="step">3. Avatar</li></ol>
+    <h1 id="t-avatar" data-foco>Tu avatar</h1>
+    <p>Estilo bloque, como la finca. Se puede cambiar cuando quieras desde Configuración.</p>
+    <div class="avatar-zona">
+      <div class="avatar-prev"><svg id="avatarPrev" viewBox="-40 -60 80 90" role="img" aria-label="Vista previa del avatar"></svg><p class="nota" id="aliasPrev" style="margin:4px 0 0;text-align:center">—</p></div>
+      <form id="fAvatar" novalidate>
+        <fieldset><legend>Color de la camisa</legend><div class="muestras" id="mCamisa"></div></fieldset>
+        <fieldset><legend>Sombrero</legend><div class="muestras" id="mSombrero"></div></fieldset>
+        <fieldset><legend>Tono de piel</legend><div class="muestras" id="mTono"></div></fieldset>
+        <div class="fila"><button type="button" class="btn" data-accion="avatarAzar">Al azar</button><button type="submit" class="btn btn-prim btn-grande">Listo</button><button type="button" class="btn btn-txt" data-volver>Atrás</button></div>
+      </form>
+    </div>
+  </section>
+
+  <!-- 7. DISPOSITIVO Y MODO -->
+  <section class="pant" id="p-dispositivo" aria-labelledby="t-dispositivo" hidden>
+    <h1 id="t-dispositivo" data-foco>¿Cómo vas a entrar?</h1>
+    <p id="txtDetectado">Hemos detectado un ordenador. Puedes cambiarlo si no acertamos.</p>
+    <form id="fDisp">
+      <fieldset><legend class="vh">Modo de entrada</legend>
+      <div class="opciones">
+        <label class="opcion"><input type="radio" name="modo" value="escritorio"><span class="cuerpo"><span class="detectado" data-det="escritorio" hidden>Detectado</span><strong>En pantalla, con teclado y ratón</strong><span class="nota">Escena 3D completa. Ratón para mirar, teclas para andar.</span></span></label>
+        <label class="opcion"><input type="radio" name="modo" value="movil"><span class="cuerpo"><span class="detectado" data-det="movil" hidden>Detectado</span><strong>En el móvil, táctil</strong><span class="nota">3D táctil con cruceta. Calidad ajustada al teléfono.</span></span></label>
+        <label class="opcion"><input type="radio" name="modo" value="quest"><span class="cuerpo"><span class="detectado" data-det="quest" hidden>Detectado</span><strong>Inmersivo, con gafas VR</strong><span class="nota" id="notaXr">Meta Quest desde su navegador. Necesita WebXR.</span></span></label>
+        <label class="opcion"><input type="radio" name="modo" value="corresponsal" id="rCorr"><span class="cuerpo"><span class="detectado" data-det="corresponsal" hidden>Detectado</span><strong>Corresponsal de campo</strong><span class="nota" id="notaCorr">Solo personal de la explotación, con móvil Android en la finca: mapa 2D, GPS y cámara.</span></span></label>
+      </div>
+      </fieldset>
+      <div class="aviso" id="avSinXr" style="margin-top:12px" hidden><p>Este navegador no ofrece realidad virtual (WebXR). Puedes entrar en pantalla igualmente; el botón «Entrar en VR» solo aparece donde funciona.</p></div>
+      <div class="fila" style="margin-top:16px"><button type="submit" class="btn btn-prim btn-grande">Seguir</button><button type="button" class="btn" data-ir="ajustes">Ajustar antes de entrar</button></div>
+    </form>
+  </section>
+
+  <!-- 8. AUDIO Y MICRÓFONO -->
+  <section class="pant estrecha" id="p-audio" aria-labelledby="t-audio" hidden>
+    <h1 id="t-audio" data-foco>Sonido y micrófono</h1>
+    <div class="tarjeta pila">
+      <div>
+        <h2>1. ¿Se oye?</h2>
+        <p>La finca tiene sonido ambiente (pájaros, viento, pasos) y, en las guiadas, voces que suenan según dónde está cada uno.</p>
+        <div class="fila"><button type="button" class="btn" data-accion="probarSonido">Probar el sonido</button><span id="estSonido" role="status" class="pista"></span></div>
+        <div class="fila" id="preguntaOido" style="margin-top:8px" hidden><span>¿Has oído una campana?</span><button type="button" class="btn" data-accion="oidoSi">Sí</button><button type="button" class="btn" data-accion="oidoNo">No</button></div>
+        <div class="aviso" id="ayudaOido" style="margin-top:8px" hidden><p>Sube el volumen del dispositivo, quita el modo silencio y comprueba que esta pestaña no esté silenciada. En las Quest, el volumen está en el lateral derecho de las gafas.</p></div>
+      </div>
+      <div>
+        <h2>2. Micrófono <span class="pill">solo visitas guiadas</span></h2>
+        <p>Lo usarás solo cuando pulses «Hablar» en una visita guiada. Nunca se abre solo y, mientras está abierto, lo verás indicado en pantalla.</p>
+        <div class="fila" id="filaPedirMic"><button type="button" class="btn btn-prim" data-accion="pedirMic">Permitir el micrófono</button><button type="button" class="btn btn-txt" data-accion="sinMic">Ahora no</button></div>
+        <div class="navegador-sim" id="dlgNavegador" role="group" aria-labelledby="tNavSim" style="margin-top:10px" hidden>
+          <p class="cab" id="tNavSim"><span class="pill pill-ficticio">simulación del aviso del navegador</span></p>
+          <p><strong>gemelo.canoydamas.es</strong> quiere usar tu micrófono</p>
+          <div class="fila"><button type="button" class="btn" data-accion="navBloquear">Bloquear</button><button type="button" class="btn btn-prim" data-accion="navPermitir">Permitir</button></div>
+        </div>
+        <div id="micOk" hidden>
+          <div class="aviso aviso-ok" role="status"><p>Micrófono listo. Habla: la barra debería moverse. <span class="pill pill-ficticio">simulado</span></p></div>
+          <div class="medidor" style="margin-top:8px" role="meter" aria-label="Nivel del micrófono" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="medidorMic"><i id="nivelMic"></i></div>
+          <label class="campo" style="margin-top:10px"><span class="etq">Micrófono</span><select><option>Micrófono del sistema (ficticio)</option><option>Auriculares con micro (ficticio)</option></select></label>
+        </div>
+        <div class="aviso aviso-err" id="micMal" role="alert" hidden>
+          <p><strong>El micrófono está bloqueado.</strong> Podrás oír y escribir en el chat, pero no hablar.</p>
+          <p id="micMalComo">Para activarlo: pulsa el candado junto a la dirección → Permisos del sitio → Micrófono → Permitir, y recarga.</p>
+        </div>
+        <div class="aviso" id="micNo" role="alert" hidden><p><strong>No encontramos ningún micrófono.</strong> Conecta unos auriculares con micro y vuelve a probar, o sigue sin él.</p></div>
+      </div>
+    </div>
+    <div class="fila" style="margin-top:16px"><button type="button" class="btn btn-prim btn-grande" data-ir="visitas">Seguir</button><button type="button" class="btn btn-txt" data-volver>Atrás</button></div>
+  </section>
+
+  <!-- 8b. PERMISOS DE CAMPO (corresponsal) -->
+  <section class="pant estrecha" id="p-campo" aria-labelledby="t-campo" hidden>
+    <h1 id="t-campo" data-foco>Preparar la emisión de campo</h1>
+    <p>Eres corresponsal: tu posición y tu cámara llegan al mundo durante la visita. Comprueba todo antes de salir al olivar.</p>
+    <ul class="lista-chk" id="listaCampo">
+      <li><span><strong>Ubicación precisa</strong></span><button type="button" class="btn" data-permiso="gps">Permitir</button><span class="estado" data-est="gps">Sin pedir</span></li>
+      <li><span><strong>Cámara trasera</strong></span><button type="button" class="btn" data-permiso="cam">Permitir</button><span class="estado" data-est="cam">Sin pedir</span></li>
+      <li><span><strong>Micrófono</strong></span><button type="button" class="btn" data-permiso="mic">Permitir</button><span class="estado" data-est="mic">Sin pedir</span></li>
+      <li><span><strong>Pantalla siempre encendida</strong></span><button type="button" class="btn" data-permiso="wake">Activar</button><span class="estado" data-est="wake">Apagada</span></li>
+      <li><span><strong>Cobertura de subida</strong></span><button type="button" class="btn" data-permiso="red">Medir</button><span class="estado" data-est="red">Sin medir</span></li>
+      <li><span><strong>Batería</strong></span><span class="pill pill-ficticio">64 %</span><span class="estado ok">Suficiente para ~1 h de emisión (estimado, ficticio)</span></li>
+    </ul>
+    <form id="fCampo" class="pila" style="margin-top:14px" novalidate>
+      <div class="aviso aviso-err" id="eCampo" role="alert" tabindex="-1" hidden><p>Falta confirmar el aviso a la cuadrilla y el encuadre.</p></div>
+      <label class="chk"><input type="checkbox" id="cCuadrilla"><span>He avisado a la cuadrilla de que hoy hay emisión de campo.</span></label>
+      <label class="chk"><input type="checkbox" id="cEncuadre"><span>Encuadraré copa y suelo; si aparece una persona, pauso la cámara.</span></label>
+      <div class="fila"><button type="submit" class="btn btn-prim btn-grande">Seguir</button><button type="button" class="btn btn-txt" data-volver>Atrás</button></div>
+    </form>
+  </section>
+
+  <!-- 9. CONFIGURACIÓN -->
+  <section class="pant" id="p-ajustes" aria-labelledby="t-ajustes" hidden>
+    <div class="fila" style="justify-content:space-between"><h1 id="t-ajustes" data-foco>Configuración</h1><button type="button" class="btn btn-prim" id="btnVolverAjustes" data-volver>Volver</button></div>
+    <p class="pista" role="status" id="estAjustes">Los cambios se guardan al momento en este dispositivo.</p>
+    <div class="pestanas" role="tablist" aria-label="Secciones de configuración">
+      <button type="button" role="tab" id="tab-graf" aria-controls="pan-graf" aria-selected="true">Gráficos</button>
+      <button type="button" role="tab" id="tab-son" aria-controls="pan-son" aria-selected="false" tabindex="-1">Sonido</button>
+      <button type="button" role="tab" id="tab-voz" aria-controls="pan-voz" aria-selected="false" tabindex="-1">Voz</button>
+      <button type="button" role="tab" id="tab-acc" aria-controls="pan-acc" aria-selected="false" tabindex="-1">Accesibilidad</button>
+      <button type="button" role="tab" id="tab-ctl" aria-controls="pan-ctl" aria-selected="false" tabindex="-1">Controles</button>
+      <button type="button" role="tab" id="tab-vr" aria-controls="pan-vr" aria-selected="false" tabindex="-1">Comodidad VR</button>
+      <button type="button" role="tab" id="tab-cta" aria-controls="pan-cta" aria-selected="false" tabindex="-1">Cuenta</button>
+    </div>
+    <div class="tarjeta">
+      <div role="tabpanel" id="pan-graf" aria-labelledby="tab-graf" tabindex="0">
+        <div class="ajuste"><div><label class="etq" for="aCalidad">Calidad gráfica</label><p class="pista" id="perfilAuto">Automática: perfil <strong>Media</strong> detectado para este equipo (simulado). Baja sola si el dispositivo va justo.</p></div>
+          <select id="aCalidad" aria-describedby="perfilAuto"><option value="auto" selected>Automática (recomendada)</option><option>Baja: más fluida</option><option>Media</option><option>Alta: más detalle, más batería</option></select></div>
+        <div class="ajuste"><div><label class="etq" for="aDist">Distancia de detalle de los olivos</label><p class="pista">Más lejos se ve mejor, pero pesa más.</p></div><input type="range" id="aDist" min="1" max="3" value="2"></div>
+        <div class="ajuste"><div><span class="etq">Ahorro de batería</span><p class="pista">Limita a 30 fotogramas por segundo. Útil en el móvil.</p></div><label class="interruptor"><input type="checkbox" id="aBateria"> Activado</label></div>
+        <div class="ajuste"><div><span class="etq">Contador de rendimiento</span><p class="pista">Muestra fps y carga, como <code>?debug</code>. Para pruebas.</p></div><label class="interruptor"><input type="checkbox"> Mostrar</label></div>
+      </div>
+      <div role="tabpanel" id="pan-son" aria-labelledby="tab-son" tabindex="0" hidden>
+        <div class="ajuste"><label class="etq" for="sGen">Volumen general</label><input type="range" id="sGen" min="0" max="100" value="80"></div>
+        <div class="ajuste"><label class="etq" for="sAmb">Sonido ambiente (pájaros, viento)</label><input type="range" id="sAmb" min="0" max="100" value="60"></div>
+        <div class="ajuste"><label class="etq" for="sVoz">Voces</label><input type="range" id="sVoz" min="0" max="100" value="90"></div>
+        <div class="ajuste"><div><span class="etq">Voces según la distancia</span><p class="pista">Oyes más fuerte a quien tienes al lado. El guía se oye siempre.</p></div><label class="interruptor"><input type="checkbox" checked> Activado</label></div>
+      </div>
+      <div role="tabpanel" id="pan-voz" aria-labelledby="tab-voz" tabindex="0" hidden>
+        <div class="ajuste"><div><span class="etq" id="lModoMic">Cómo se abre el micrófono</span><p class="pista">Solo en visitas guiadas.</p></div>
+          <select id="aModoMic" aria-labelledby="lModoMic"><option value="conmutar">Pulsar para abrir y otra vez para cerrar</option><option value="mantener">Mantener pulsado para hablar</option></select></div>
+        <div class="ajuste"><label class="etq" for="aMicDisp">Micrófono</label><select id="aMicDisp"><option>Micrófono del sistema (ficticio)</option><option>Auriculares con micro (ficticio)</option></select></div>
+        <div class="ajuste"><div><span class="etq">Reducir ruido de fondo</span></div><label class="interruptor"><input type="checkbox" checked> Activado</label></div>
+        <div class="ajuste"><div><span class="etq">Probar el micrófono</span></div><button type="button" class="btn" data-ir="audio">Ir a la prueba</button></div>
+      </div>
+      <div role="tabpanel" id="pan-acc" aria-labelledby="tab-acc" tabindex="0" hidden>
+        <div class="ajuste"><div><label class="etq" for="aTexto">Tamaño del texto</label><p class="pista">También agranda paneles y fichas dentro del mundo y en VR.</p></div>
+          <select id="aTexto"><option value="1">100 %</option><option value="1.25">125 %</option><option value="1.5">150 %</option><option value="2">200 %</option></select></div>
+        <div class="ajuste"><div><span class="etq">Alto contraste</span><p class="pista">Bordes y textos secundarios más marcados.</p></div><label class="interruptor"><input type="checkbox" id="aContraste"> Activado</label></div>
+        <div class="ajuste"><div><label class="etq" for="aMov">Movimiento</label><p class="pista">Reduce animaciones y transiciones de cámara.</p></div><select id="aMov"><option value="">Como el sistema</option><option value="reducido">Reducido</option><option value="normal">Normal</option></select></div>
+        <div class="ajuste"><div><span class="etq">Nombres sobre los avatares</span></div><label class="interruptor"><input type="checkbox" checked> Siempre visibles</label></div>
+        <div class="ajuste"><div><span class="etq">Subtítulos de la voz del guía</span><p class="pista">Transcripción automática en directo. Propuesta sin probar; puede equivocarse.</p></div><label class="interruptor"><input type="checkbox"> Activados</label></div>
+        <div class="ajuste"><div><span class="etq">Descripción para lector de pantalla</span><p class="pista">Anuncia en qué haza estás y quién está cerca al moverte.</p></div><label class="interruptor"><input type="checkbox" checked> Activada</label></div>
+      </div>
+      <div role="tabpanel" id="pan-ctl" aria-labelledby="tab-ctl" tabindex="0" hidden>
+        <div class="ajuste"><label class="etq" for="cSens">Sensibilidad al mirar (ratón o dedo)</label><input type="range" id="cSens" min="1" max="10" value="5"></div>
+        <div class="ajuste"><div><span class="etq">Invertir el eje vertical</span></div><label class="interruptor"><input type="checkbox"> Invertido</label></div>
+        <div class="ajuste"><label class="etq" for="cVel">Velocidad al andar</label><select id="cVel"><option>Paseo (1,7 m/s)</option><option>Rápida</option></select></div>
+        <div class="ajuste"><div><span class="etq">Teclas</span><p class="pista">W A S D o flechas: andar · Ratón: mirar · H: haza · T: chat · P: gente · V: hablar · Esc: menú</p></div><button type="button" class="btn" data-accion="tutorial">Ver la ayuda de controles</button></div>
+      </div>
+      <div role="tabpanel" id="pan-vr" aria-labelledby="tab-vr" tabindex="0" hidden>
+        <p class="pista">Se aplican al entrar en VR. Si te mareas, quítate las gafas y descansa: no hay prisa.</p>
+        <div class="ajuste"><div><label class="etq" for="vGiro">Giro</label><p class="pista">Por saltos marea menos que el giro suave.</p></div><select id="vGiro"><option>Por saltos de 30°</option><option>Por saltos de 45°</option><option>Suave</option></select></div>
+        <div class="ajuste"><div><label class="etq" for="vVineta">Viñeta al moverte</label><p class="pista">Oscurece los bordes al andar. Botón X para cambiarla dentro.</p></div><select id="vVineta"><option>Suave</option><option>Fuerte</option><option>Apagada</option></select></div>
+        <div class="ajuste"><div><label class="etq" for="vMover">Desplazamiento</label></div><select id="vMover"><option>Andar con palanca y teletransporte</option><option>Solo teletransporte</option></select></div>
+        <div class="ajuste"><div><span class="etq">Vuelo y mirador</span><p class="pista">Subir a 230 m es un cambio brusco de altura. Desactivado de entrada.</p></div><label class="interruptor"><input type="checkbox"> Permitir</label></div>
+        <div class="ajuste"><div><label class="etq" for="vPostura">Postura</label></div><select id="vPostura"><option>De pie</option><option>Sentado (sube la vista 0,4 m)</option></select></div>
+        <div class="ajuste"><div><label class="etq" for="vMano">Mano principal</label></div><select id="vMano"><option>Derecha</option><option>Izquierda</option></select></div>
+      </div>
+      <div role="tabpanel" id="pan-cta" aria-labelledby="tab-cta" tabindex="0" hidden>
+        <div class="ajuste"><div><span class="etq">Alias y avatar</span><p class="pista" id="ctaAlias">—</p></div><button type="button" class="btn" data-ir="avatar">Cambiar</button></div>
+        <div class="ajuste"><div><span class="etq">Mis dispositivos</span><p class="pista">Vincula unas gafas con un código.</p></div><button type="button" class="btn" data-ir="vincular">Vincular</button></div>
+        <div class="ajuste"><div><span class="etq">Avisos de visitas por correo</span></div><label class="interruptor"><input type="checkbox"> Recibirlos</label></div>
+        <div class="ajuste"><div><span class="etq">Mis datos</span><p class="pista">Descargar lo que guardamos de ti o borrar la cuenta.</p></div><div class="fila"><button type="button" class="btn" data-accion="nada">Descargar</button><button type="button" class="btn btn-peligro" data-accion="nada">Borrar cuenta</button></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10. ELEGIR VISITA -->
+  <section class="pant" id="p-visitas" aria-labelledby="t-visitas" hidden>
+    <h1 id="t-visitas" data-foco>¿Qué visita quieres hacer?</h1>
+    <div class="aviso" id="avRolCorr" hidden><p>Como corresponsal solo ves las visitas en las que emites. La visita libre no admite emisión de campo.</p></div>
+    <div class="rejilla-2" id="zonaLibre">
+      <article class="tarjeta visita" aria-labelledby="tLibre">
+        <h2 id="tLibre">Visita libre</h2>
+        <div class="meta"><span class="pill">Ahora</span><span class="pill">Chat de texto</span><span class="pill">Sin voz</span><span class="pill pill-ficticio">3 personas dentro</span></div>
+        <p>Pasea por la finca a tu ritmo, mira tu haza y las de los demás y escribe en el chat. Puedes silenciar o bloquear a quien quieras.</p>
+        <div class="fila"><button type="button" class="btn btn-prim btn-grande" data-accion="entrarLibre">Entrar en la visita libre</button></div>
+      </article>
+      <article class="tarjeta visita" id="tarjetaAdmin" hidden>
+        <h2>Administración</h2>
+        <p>Programar visitas, asignar guía y corresponsal, revisar clips y ver el registro de moderación.</p>
+        <button type="button" class="btn" data-ir="admin">Abrir el panel</button>
+      </article>
+    </div>
+    <h2 style="margin-top:24px" id="tGuiadas">Visitas guiadas</h2>
+    <div id="listaGuiadas" class="rejilla-2"></div>
+  </section>
+
+  <!-- 11. SALA DE ESPERA -->
+  <section class="pant" id="p-espera" aria-labelledby="t-espera" hidden>
+    <div class="rejilla-2">
+      <div>
+        <p class="pill">Sala de espera</p>
+        <h1 id="t-espera" data-foco>—</h1>
+        <p id="esperaMeta" class="pista"></p>
+        <p style="font-size:1.25rem" role="timer" aria-live="off">Empieza en <strong id="cuentaAtras">02:00</strong></p>
+        <p role="status" id="esperaEstado">El guía abrirá la visita a la hora. Mientras, comprueba tu micro y lee lo que vas a encontrar.</p>
+        <div class="pila tarjeta">
+          <h2>Lo que hay en esta visita</h2>
+          <ul id="esperaAvisos"></ul>
+        </div>
+        <div class="fila" style="margin-top:14px">
+          <button type="button" class="btn btn-prim btn-grande" data-accion="abrirVisita" id="btnAbrirVisita" hidden>Abrir la visita ahora</button>
+          <button type="button" class="btn" data-ir="audio">Probar el micro</button>
+          <button type="button" class="btn" data-ir="ajustes">Configuración</button>
+          <button type="button" class="btn btn-txt" data-ir="visitas">Salir de la sala</button>
+        </div>
+        <p class="nota" style="margin-top:10px"><button type="button" class="btn btn-txt" style="padding:0;min-height:0" data-accion="abrirVisita">Simular: el guía abre la visita</button></p>
+      </div>
+      <div class="tarjeta">
+        <h2>Esperando <span id="nEspera" class="pill pill-ficticio">5</span></h2>
+        <ul class="gente" id="genteEspera"></ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 12. CARGA -->
+  <section class="pant estrecha centrada" id="p-carga" aria-labelledby="t-carga" hidden>
+    <h1 id="t-carga" data-foco>Preparando la finca</h1>
+    <p class="pista" id="cargaQue">Se descarga solo lo que tienes cerca; el resto llega mientras paseas.</p>
+    <div class="progreso" role="progressbar" aria-label="Carga del mundo" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="barraCarga"><i id="relleno"></i></div>
+    <p role="status" id="cargaEstado" style="margin-top:8px">Empezando…</p>
+    <div class="teselas" id="teselas" aria-hidden="true" style="margin:10px 0 14px"></div>
+    <div class="aviso aviso-err" id="cargaError" role="alert" hidden>
+      <p><strong>No se pudo traer una parte de la finca</strong> (tesela 7 de 24). Puede ser la conexión.</p>
+      <div class="fila"><button type="button" class="btn btn-prim" data-accion="reintentarCarga">Reintentar</button><button type="button" class="btn" data-accion="entrarCargado">Entrar con lo cargado</button><button type="button" class="btn btn-txt" data-accion="bajarCalidad">Bajar la calidad y reintentar</button></div>
+    </div>
+    <div class="tarjeta consejo"><p class="etq" style="margin-bottom:4px">Mientras carga</p><p id="consejo" aria-live="off" style="margin:0"></p></div>
+    <div class="fila" id="filaEntrar" style="margin-top:16px" hidden>
+      <button type="button" class="btn btn-prim btn-grande" data-accion="entrarMundo" id="btnEntrarPantalla">Entrar</button>
+      <button type="button" class="btn btn-prim btn-grande" data-accion="entrarVR" id="btnEntrarVR" hidden>Entrar en VR</button>
+    </div>
+    <p class="nota" id="notaVR" hidden>Las gafas piden que pulses tú el botón para pasar a inmersivo. Si prefieres, entra en pantalla y pasa a VR luego desde el menú.</p>
+    <div class="fila" style="margin-top:10px"><button type="button" class="btn btn-txt" data-accion="cancelarCarga">Cancelar</button></div>
+  </section>
+
+  <!-- 13. DENTRO DEL MUNDO -->
+  <section class="pant" id="p-mundo" aria-labelledby="t-mundo" hidden>
+    <h1 id="t-mundo" class="vh" data-foco>Dentro del mundo: finca de olivar (maqueta)</h1>
+    <div class="mundo" id="mundo">
+      <svg class="escena" id="escena" viewBox="0 0 1000 640" preserveAspectRatio="xMidYMid slice" role="img" aria-labelledby="descEscena"><title id="descEscena">Escena ilustrativa de la maqueta: doce hazas de olivar vistas desde arriba, con los avatares de las personas presentes. Usa las teclas o la cruceta para moverte y el panel de la haza para ver sus datos.</title></svg>
+      <p class="marca-agua" aria-hidden="true">MAQUETA · escena dibujada, no es el gemelo · datos ficticios</p>
+
+      <div class="hud hud-sup">
+        <div class="chips-lugar">
+          <span class="chip-hud vidrio" id="chipLugar" role="status">En: —</span>
+          <span class="chip-hud vidrio" id="chipVisita">Visita libre · sin voz</span>
+          <span class="chip-hud vidrio vivo" id="chipMicAbierto" hidden>● Tu micro está abierto</span>
+          <span class="chip-hud vidrio" id="chipVideo" hidden><span class="pill pill-vivo">EN DIRECTO</span> Vídeo de campo</span>
+          <span class="chip-hud vidrio" id="chipRed" hidden>⚠ Sin conexión · reconectando…</span>
+        </div>
+        <div class="botones-hud escritorio" role="toolbar" aria-label="Paneles">
+          <button type="button" class="btn" data-panel="haza" aria-expanded="false" aria-controls="cajon"><span aria-hidden="true">▦</span> Haza <kbd>H</kbd></button>
+          <button type="button" class="btn" data-panel="chat" aria-expanded="false" aria-controls="cajon"><span aria-hidden="true">✉</span> Chat <span class="pill" id="noLeidos" hidden>1</span> <kbd>T</kbd></button>
+          <button type="button" class="btn" data-panel="gente" aria-expanded="false" aria-controls="cajon"><span aria-hidden="true">☺</span> Gente <span id="nGente">4</span> <kbd>P</kbd></button>
+          <button type="button" class="btn" data-accion="pausa"><span aria-hidden="true">≡</span> Menú <kbd>Esc</kbd></button>
+        </div>
+      </div>
+
+      <div class="hud avisos-mundo" id="avisosMundo" role="status" aria-live="polite"></div>
+      <div class="hud vidrio nota-quest" id="notaQuest" hidden>En las gafas, estos botones están en el <strong>panel flotante</strong> (botón Y) y las fichas salen delante de ti con texto grande. Aquí se ven en plano.</div>
+
+      <div class="hud vidrio minimapa" aria-hidden="true"><svg id="minimapa" viewBox="0 0 1000 640"></svg></div>
+
+      <div class="hud vidrio hud-voz" id="hudVoz" role="group" aria-label="Voz">
+        <span class="estado-voz" id="estadoVoz">Visita libre: sin voz. Usa el chat.</span>
+        <button type="button" class="btn btn-hablar" id="btnHablar" aria-pressed="false" hidden>🎙 Hablar</button>
+        <button type="button" class="btn" id="btnMano" aria-pressed="false" hidden>✋ Pedir la palabra</button>
+        <button type="button" class="btn" id="btnMicros" hidden>Cerrar todos los micros</button>
+      </div>
+
+      <div class="hud cruceta" role="group" aria-label="Moverse">
+        <button type="button" class="btn" data-mov="n" aria-label="Avanzar">▲</button>
+        <button type="button" class="btn" data-mov="o" aria-label="Izquierda">◀</button>
+        <button type="button" class="btn" data-mov="e" aria-label="Derecha">▶</button>
+        <button type="button" class="btn" data-mov="s" aria-label="Retroceder">▼</button>
+      </div>
+
+      <div class="hud vidrio barra-movil" role="toolbar" aria-label="Paneles">
+        <button type="button" class="btn" data-panel="haza" aria-expanded="false" aria-controls="cajon">Haza</button>
+        <button type="button" class="btn" data-panel="chat" aria-expanded="false" aria-controls="cajon">Chat</button>
+        <button type="button" class="btn" data-panel="gente" aria-expanded="false" aria-controls="cajon">Gente</button>
+        <button type="button" class="btn" data-accion="pausa" aria-label="Menú">≡</button>
+      </div>
+
+      <aside class="hud vidrio cajon" id="cajon" aria-label="Panel lateral" hidden>
+        <div class="cajon-cab">
+          <div class="pestanas" role="tablist" aria-label="Contenido del panel">
+            <button type="button" role="tab" id="ct-haza" aria-controls="cp-haza" aria-selected="true">Haza</button>
+            <button type="button" role="tab" id="ct-chat" aria-controls="cp-chat" aria-selected="false" tabindex="-1">Chat</button>
+            <button type="button" role="tab" id="ct-gente" aria-controls="cp-gente" aria-selected="false" tabindex="-1">Gente</button>
+          </div>
+          <button type="button" class="btn btn-txt" data-accion="cerrarCajon" aria-label="Cerrar el panel">✕</button>
+        </div>
+        <div class="cajon-cuerpo">
+          <div role="tabpanel" id="cp-haza" aria-labelledby="ct-haza"></div>
+          <div role="tabpanel" id="cp-chat" aria-labelledby="ct-chat" hidden>
+            <p class="pista" id="chatNota">Chat de la visita. Se borra al terminar <span class="pill">plazo pendiente de decidir</span>.</p>
+            <ul class="mensajes" id="mensajes" aria-live="polite"></ul>
+            <form id="fChat" class="pila" novalidate>
+              <label for="iChat" class="vh">Escribe un mensaje</label>
+              <input id="iChat" type="text" maxlength="280" autocomplete="off" placeholder="Escribe un mensaje">
+              <div class="fila"><button type="submit" class="btn btn-prim">Enviar</button><span class="pista">No compartas datos personales.</span></div>
+            </form>
+          </div>
+          <div role="tabpanel" id="cp-gente" aria-labelledby="ct-gente" hidden>
+            <p class="pista">Silenciar y bloquear solo te afecta a ti; nadie se entera.</p>
+            <div class="fila" id="filaModGente" style="margin-bottom:10px" hidden><button type="button" class="btn" data-mod="todos" id="btnModTodos">Cerrar todos los micros</button></div>
+            <ul class="gente" id="listaGente"></ul>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- 14. CORRESPONSAL EN CAMPO -->
+  <section class="pant" id="p-emision" aria-labelledby="t-emision" hidden>
+    <div class="directo"><h1 id="t-emision" data-foco style="margin:0">Visita guiada · campo</h1><span class="pill" id="pillEmision">Sin emitir</span></div>
+    <p class="pista">Mapa 2D de tu zona con quién te sigue. El mundo 3D no se dibuja aquí para ahorrar batería.</p>
+    <div class="campo-mapa"><svg id="mapaCampo" viewBox="0 0 1000 640" role="img" aria-label="Mapa de la zona: tu posición, tu cono de visión y los avatares que te siguen (ilustrativo)"></svg></div>
+    <div class="estado-campo" style="margin:10px 0">
+      <div>GPS<strong>± 6 m</strong><span class="nota">ficticio</span></div>
+      <div>Rumbo<strong>NE 42°</strong><span class="nota">ficticio</span></div>
+      <div>Subida<strong id="subida">2,1 Mb/s</strong><span class="nota">vídeo a 360p</span></div>
+      <div>Batería<strong>64 %</strong><span class="nota">pantalla encendida</span></div>
+    </div>
+    <div class="vista-cam" id="vistaCam"><span class="pill" id="pillCam">Cámara en pausa</span><span>Vista de tu cámara trasera<br><small>(simulada)</small></span></div>
+    <p class="aviso" style="margin-top:10px">Encuadra copa y suelo. Si entra una persona en plano, pulsa <strong>Pausar cámara</strong>. El directo no se graba.</p>
+    <div class="fila" style="margin-top:10px">
+      <button type="button" class="btn btn-prim btn-grande" id="btnEmitir" aria-pressed="false">Empezar a emitir</button>
+      <button type="button" class="btn" id="btnPausaCam" aria-pressed="false" disabled>Pausar cámara</button>
+      <button type="button" class="btn" id="btnMicCorr" aria-pressed="true">🎙 Micro abierto</button>
+      <button type="button" class="btn" data-accion="clip">Grabar clip diferido</button>
+      <button type="button" class="btn btn-peligro" data-accion="salirVisita">Terminar</button>
+    </div>
+    <p role="status" class="pista" id="estCampo" style="margin-top:8px"></p>
+  </section>
+
+  <!-- 15. HAS SALIDO -->
+  <section class="pant estrecha centrada" id="p-salida" aria-labelledby="t-salida" hidden>
+    <h1 id="t-salida" data-foco>Has salido de la visita</h1>
+    <p>Tu micro está cerrado y ya no apareces en la finca. La posición de tu avatar no se guarda.</p>
+    <div class="fila"><button type="button" class="btn btn-prim" data-ir="visitas">Volver a las visitas</button><button type="button" class="btn" data-accion="cerrarSesion">Cerrar sesión</button></div>
+    <p class="nota" style="margin-top:14px">¿Ha pasado algo en la visita? <a href="#" data-accion="nada">Cuéntaselo a la administración</a>.</p>
+  </section>
+
+  <!-- 16. ADMINISTRACIÓN (esbozo) -->
+  <section class="pant" id="p-admin" aria-labelledby="t-admin" hidden>
+    <div class="fila" style="justify-content:space-between"><h1 id="t-admin" data-foco>Administración</h1><button type="button" class="btn" data-volver>Volver</button></div>
+    <p class="pista">Esbozo: la administración se hará en un panel aparte; aquí solo se ve qué tendrá. <span class="pill pill-ficticio">ficticio</span></p>
+    <div class="rejilla-2">
+      <div class="tarjeta"><h2>Próximas visitas</h2><table class="tabla"><thead><tr><th>Cuándo</th><th>Guía</th><th>Campo</th></tr></thead><tbody><tr><td>Sáb. 10:30</td><td>Alcaraván</td><td>Sí</td></tr><tr><td>Mié. 18:00</td><td>Alcaraván</td><td>No</td></tr></tbody></table><button type="button" class="btn" style="margin-top:10px" data-accion="nada">Programar visita</button></div>
+      <div class="tarjeta"><h2>Moderación</h2><table class="tabla"><thead><tr><th>Cuándo</th><th>Qué</th></tr></thead><tbody id="registroMod"><tr><td>—</td><td>Sin incidencias</td></tr></tbody></table></div>
+      <div class="tarjeta"><h2>Clips por revisar</h2><p>2 clips diferidos esperan revisión antes de publicarse en la haza.</p><button type="button" class="btn" data-accion="nada">Revisar</button></div>
+      <div class="tarjeta"><h2>Hogares</h2><p>Altas, bajas y asignación de haza. Las cuentas las crea la explotación.</p><button type="button" class="btn" data-accion="nada">Gestionar</button></div>
+    </div>
+  </section>
+
+</div>
+</main>
+
+<div id="anuncio" class="vh" aria-live="polite"></div>
+
+<dialog id="dlgPausa" aria-labelledby="tPausa">
+  <h2 id="tPausa">Menú</h2>
+  <p class="pista" id="pausaNota">La visita sigue mientras miras el menú.</p>
+  <div class="menu-pausa">
+    <button type="button" class="btn btn-prim" data-accion="reanudar">Volver a la finca</button>
+    <button type="button" class="btn" data-accion="pausaAjustes">Configuración</button>
+    <button type="button" class="btn" data-accion="tutorial">Controles y ayuda</button>
+    <button type="button" class="btn" id="btnPasarVR" data-accion="entrarVR" hidden>Pasar a VR</button>
+    <button type="button" class="btn" data-accion="creditos">Créditos y fuentes de datos</button>
+    <button type="button" class="btn" data-accion="denunciar">Informar de un problema</button>
+    <button type="button" class="btn" id="btnPanelAdmin" data-accion="pausaAdmin" hidden>Panel de administración</button>
+    <button type="button" class="btn btn-peligro" data-accion="salirVisita">Salir de la visita</button>
+  </div>
+  <div id="creditos" hidden style="margin-top:12px">
+    <h3>Créditos</h3>
+    <ul class="nota">
+      <li>LiDAR PNOA 2024, MDT y ortofoto PNOA: © Instituto Geográfico Nacional (CNIG), CC BY 4.0. <span class="pill pill-medido">medido</span></li>
+      <li>NDVI: Sentinel-2, programa Copernicus de la UE, vía Vigía. <span class="pill pill-deducido">deducido</span></li>
+      <li>Suelo: SoilGrids, ISRIC – World Soil Information, CC BY 4.0. Modelo a 250 m, no medida.</li>
+      <li>Trabajos de cada haza: OlivarTrack (Cano &amp; Damas), proyección pública sin datos de personas.</li>
+      <li>Troncos, ramas, fauna y hierba: <span class="pill pill-ilus">ilustrativo</span></li>
+    </ul>
+  </div>
+</dialog>
+
+<dialog id="dlgTutorial" aria-labelledby="tTuto">
+  <h2 id="tTuto">Bienvenida a la finca</h2>
+  <p id="tutoIntro">Así te mueves aquí:</p>
+  <dl class="teclas" id="tutoTeclas"></dl>
+  <p class="pista" id="tutoNota"></p>
+  <label class="chk"><input type="checkbox" id="cNoTuto"><span>No volver a mostrar</span></label>
+  <div class="fila"><button type="button" class="btn btn-prim" data-accion="cerrarTuto">Empezar</button></div>
+</dialog>
+
+<dialog id="dlgConfirma" aria-labelledby="tConf">
+  <h2 id="tConf">¿Seguro?</h2>
+  <p id="txtConf"></p>
+  <div class="campo" id="motivoConf" hidden><label for="iMotivo">Motivo (queda en el registro de moderación)</label><select id="iMotivo"><option>Lenguaje ofensivo</option><option>Comparte datos personales</option><option>Interrumpe la visita</option><option>Otro</option></select></div>
+  <div class="fila" style="margin-top:12px"><button type="button" class="btn btn-peligro" id="btnConfSi">Sí</button><button type="button" class="btn" data-accion="confNo">Cancelar</button></div>
+</dialog>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var qa = function (sel, raiz) { return Array.prototype.slice.call((raiz || document).querySelectorAll(sel)); };
+  var raiz = document.documentElement;
+
+  // ---------- datos inventados (todo ficticio)
+  function azar(semilla) { var s = semilla >>> 0; return function () { s = (s + 0x6D2B79F5) >>> 0; var t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+  var r = azar(40);
+  var NOMBRES = ["La Solana", "El Pozuelo", "Los Almendros", "La Vereda", "El Cerrillo", "La Umbría", "Las Tejas", "El Arroyo", "La Cañada", "El Llano", "La Loma", "Los Pinos"];
+  var TRABAJOS = ["Poda de mantenimiento", "Desvareto", "Abonado de fondo", "Desbroce de calles", "Tratamiento de cobre", "Riego de apoyo"];
+  var VIGOR = ["algo por encima del resto", "en la media de la finca", "algo por debajo del resto"];
+  var HAZAS = NOMBRES.map(function (n, i) {
+    var c = i % 4, f = Math.floor(i / 4), x = 40 + c * 235, y = 40 + f * 195, w = 220, h = 178;
+    var j = function () { return (r() - 0.5) * 14; };
+    return { n: i + 1, nombre: n, x: x, y: y, w: w, h: h,
+      pts: [[x + j(), y + j()], [x + w + j(), y + j()], [x + w + j(), y + h + j()], [x + j(), y + h + j()]],
+      ha: (2 + r() * 2.4), olivos: 170 + Math.floor(r() * 210), altura: (3 + r() * 1.7), vigor: VIGOR[Math.floor(r() * 3)],
+      trabajo: TRABAJOS[Math.floor(r() * TRABAJOS.length)], dia: 2 + Math.floor(r() * 26), mes: ["sep", "oct"][Math.floor(r() * 2)] };
+  });
+  var MIA = 6; // «Las Tejas» es la haza del hogar de prueba
+  var GENTE = [
+    { id: "g", alias: "Alcaraván", rol: "guia", disp: "Escritorio", x: 640, y: 350, camisa: "#2f5d8a", sombrero: 1, tono: 1 },
+    { id: "c", alias: "Corresponsal · Vencejo", rol: "corresponsal", disp: "Móvil de campo", x: 420, y: 540, camisa: "#d9822b", sombrero: 2, tono: 3 },
+    { id: "a", alias: "Mirlo", rol: "hogar", disp: "Meta Quest", x: 340, y: 180, camisa: "#7a3f8f", sombrero: 0, tono: 2 },
+    { id: "b", alias: "Encina 42", rol: "hogar", disp: "Móvil", x: 220, y: 470, camisa: "#3f7f5a", sombrero: 2, tono: 4 },
+    { id: "d", alias: "Abejaruco", rol: "hogar", disp: "Escritorio", x: 830, y: 140, camisa: "#b33a3a", sombrero: 1, tono: 0 }
+  ];
+  var CAMISAS = [["#c0563a", "Teja"], ["#2f5d8a", "Azul"], ["#3f7f5a", "Verde"], ["#d9822b", "Naranja"], ["#7a3f8f", "Morado"], ["#e8e2cf", "Crudo"]];
+  var SOMBREROS = [["Ninguno", null], ["Paja", "#e1c46a"], ["Gorra", "#3a3f46"]];
+  var TONOS = [["#f1d0b5", "Muy claro"], ["#e0b48f", "Claro"], ["#c48c63", "Medio"], ["#95623f", "Oscuro"], ["#5e3c27", "Muy oscuro"]];
+  var CONSEJOS = ["Las copas que ves salen del vuelo LiDAR de 2024: su forma es medida.", "Los troncos y las ramas son ilustrativos: el LiDAR no ve cuántos pies tiene cada olivo.", "El color de vigor es relativo a la finca en esa fecha, no una nota absoluta.", "En visita libre no hay voz: escribe en el chat o silencia a quien moleste.", "Pulsa H para abrir la ficha de la haza en la que estás."];
+
+  var PANT = [["portada", "Portada pública"], ["entrar", "Entrar con tu correo"], ["revisa", "Revisa tu correo"], ["enlace", "Enlace caducado o usado"], ["vincular", "Vincular las gafas"],
+    ["bienvenida", "Primer acceso: privacidad y normas"], ["alias", "Primer acceso: alias"], ["avatar", "Primer acceso: avatar"], ["dispositivo", "Dispositivo y modo"],
+    ["audio", "Sonido y micrófono"], ["campo", "Preparar emisión (corresponsal)"], ["ajustes", "Configuración"], ["visitas", "Elegir visita"], ["espera", "Sala de espera"],
+    ["carga", "Cargando el mundo"], ["mundo", "Dentro del mundo"], ["emision", "Corresponsal en campo"], ["salida", "Has salido"], ["admin", "Administración (esbozo)"]];
+  var TITULO = {}; PANT.forEach(function (p) { TITULO[p[0]] = p[1]; });
+  var SIN_BARRA = { portada: 1, entrar: 1, revisa: 1, enlace: 1, vincular: 1, mundo: 1, emision: 1, carga: 1, bienvenida: 1, alias: 1, avatar: 1 };
+
+  // ---------- estado
+  var E, S;
+  function estadoInicial() {
+    E = { disp: "escritorio", rol: "hogar", enlace: "valido", limite: "no", nueva: "si", micro: "concedido", xr: "auto", carga: "normal", guiadas: "si" };
+    S = { actual: null, pila: [], correo: "", intentos: 0, alias: "Tordo del Llano", avatar: { camisa: 0, sombrero: 1, tono: 1 }, modo: null, visita: null,
+      mic: "sin-pedir", hablando: false, microsCerrados: false, mano: false, video: false, red: true, tuto: true, pos: { x: 120 + 470, y: 40 + 390 + 90 },
+      panel: null, pestana: "haza", hazaVista: MIA, chat: [], noLeidos: 0, bloqueados: {}, silenciadosParaMi: {}, expulsados: {}, emitiendo: false, camPausa: false, permisos: {}, mod: [] };
+  }
+  estadoInicial();
+  function otros() { return GENTE.filter(function (g) { return !S.expulsados[g.id] && !(E.rol === "guia" && g.rol === "guia") && !(E.rol === "corresponsal" && g.rol === "corresponsal"); }); }
+  function hayXr() { return E.xr === "si" || (E.xr === "auto" && E.disp === "quest"); }
+  function esModerador() { return E.rol === "guia" || E.rol === "admin"; }
+
+  // ---------- utilidades
+  function anuncia(t) { var a = $("anuncio"); a.textContent = ""; setTimeout(function () { a.textContent = t; }, 30); }
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function num(x, d) { return x.toFixed(d || 0).replace(".", ","); }
+  var temporizadores = [];
+  function limpiaTemporizadores() { temporizadores.forEach(clearInterval); temporizadores = []; }
+
+  // ---------- navegación
+  function ir(id, sinPila) {
+    if (!TITULO[id]) id = "portada";
+    if (S.actual && S.actual !== id && !sinPila) S.pila.push(S.actual);
+    limpiaTemporizadores();
+    qa(".pant").forEach(function (s) { s.hidden = s.id !== "p-" + id; });
+    S.actual = id; $("simPant").value = id;
+    $("barraApp").hidden = !!SIN_BARRA[id];
+    try { history.replaceState(null, "", "#" + id); } catch (e) { /* file:// sin historia */ }
+    document.title = TITULO[id] + " · Cuarenta hazas (maqueta)";
+    if (ENTRA[id]) ENTRA[id]();
+    var h = document.querySelector("#p-" + id + " [data-foco]");
+    if (h) { h.setAttribute("tabindex", "-1"); h.focus({ preventScroll: true }); }
+    window.scrollTo(0, 0);
+    anuncia(TITULO[id]);
+  }
+  function volver() { var p = S.pila.pop(); ir(p || "portada", true); }
+
+  var ENTRA = {
+    entrar: function () { $("eCorreo").hidden = true; $("avLimite").hidden = true; $("iCorreo").removeAttribute("aria-invalid"); $("opcQuest").hidden = E.disp !== "quest"; },
+    revisa: function () {
+      $("correoEco").textContent = S.correo || "ese correo";
+      var n = 30, b = $("btnReenviar"); b.disabled = true; $("cuentaReenvio").textContent = n;
+      temporizadores.push(setInterval(function () { n--; $("cuentaReenvio").textContent = n; if (n <= 0) { b.disabled = false; b.textContent = "Reenviar enlace"; limpiaTemporizadores(); } }, 1000));
+    },
+    avatar: function () { pintaMuestras(); pintaAvatarPrev(); },
+    dispositivo: pintaDispositivo,
+    audio: function () { pintaMic(); $("micMalComo").textContent = E.disp === "quest" ? "Para activarlo: en el navegador de las gafas, abre los ajustes del sitio (icono junto a la dirección) → Micrófono → Permitir, y recarga." : (E.disp === "movil" ? "Para activarlo: toca «aA» o el candado junto a la dirección → Ajustes del sitio → Micrófono → Permitir, y recarga." : "Para activarlo: pulsa el candado junto a la dirección → Permisos del sitio → Micrófono → Permitir, y recarga."); },
+    ajustes: function () { $("btnVolverAjustes").textContent = S.pila[S.pila.length - 1] === "mundo" ? "Volver a la finca" : "Volver"; $("ctaAlias").textContent = S.alias + " · avatar de bloque"; },
+    visitas: pintaVisitas,
+    espera: entraEspera,
+    carga: entraCarga,
+    mundo: entraMundo,
+    emision: pintaEmision,
+    admin: function () { var t = $("registroMod"); if (S.mod.length) t.innerHTML = S.mod.map(function (m) { return "<tr><td>" + esc(m[0]) + "</td><td>" + esc(m[1]) + "</td></tr>"; }).join(""); }
+  };
+
+  // ---------- simulador
+  function aplicaDisp() {
+    raiz.setAttribute("data-disp", E.disp); raiz.setAttribute("data-rol", E.rol);
+    $("rotuloDisp").textContent = { escritorio: "Vista simulada: escritorio (navegador de ordenador).", movil: "Vista simulada: móvil del hogar (navegador, táctil).", quest: "Vista simulada: Meta Quest, navegador de las gafas antes de entrar en VR (texto y botones más grandes).", corresponsal: "Vista simulada: móvil Android del corresponsal de campo." }[E.disp];
+    $("rolBarra").textContent = { hogar: "Hogar", guia: "Guía", corresponsal: "Corresponsal", admin: "Administración" }[E.rol];
+    $("aliasBarra").textContent = S.alias;
+  }
+  (function () {
+    var sp = $("simPant"); PANT.forEach(function (p, i) { var o = document.createElement("option"); o.value = p[0]; o.textContent = (i + 1) + ". " + p[1]; sp.appendChild(o); });
+    sp.addEventListener("change", function () { ir(sp.value); });
+    $("simDisp").addEventListener("change", function () {
+      E.disp = this.value;
+      if (E.disp === "corresponsal") { E.rol = "corresponsal"; $("simRol").value = "corresponsal"; }
+      else if (E.rol === "corresponsal") { E.rol = "hogar"; $("simRol").value = "hogar"; }
+      aplicaDisp(); if (S.actual) ir(S.actual, true);
+    });
+    $("simRol").addEventListener("change", function () {
+      E.rol = this.value;
+      if (E.rol === "corresponsal") { E.disp = "corresponsal"; $("simDisp").value = "corresponsal"; } else if (E.disp === "corresponsal") { E.disp = "escritorio"; $("simDisp").value = "escritorio"; }
+      aplicaDisp(); if (S.actual) ir(S.actual, true);
+    });
+    $("simTema").addEventListener("change", function () { if (this.value) raiz.setAttribute("data-theme", this.value); else raiz.removeAttribute("data-theme"); });
+    [["simEnlace", "enlace"], ["simLimite", "limite"], ["simNueva", "nueva"], ["simMicro", "micro"], ["simXr", "xr"], ["simCarga", "carga"], ["simGuiadas", "guiadas"]].forEach(function (p) {
+      $(p[0]).addEventListener("change", function () { E[p[1]] = this.value; if (p[1] === "micro") { S.mic = "sin-pedir"; } if (S.actual === "visitas" || S.actual === "dispositivo" || S.actual === "audio") ir(S.actual, true); });
+    });
+    qa("[data-sim]").forEach(function (b) { b.addEventListener("click", function () { SIM[b.getAttribute("data-sim")](); }); });
+    if (window.matchMedia && window.matchMedia("(max-width: 700px)").matches) $("simDet").open = false;
+  })();
+  var SIM = {
+    silenciar: function () { S.microsCerrados = true; S.hablando = false; aviso("Alcaraván (guía) ha cerrado todos los micros. Pide la palabra si quieres hablar."); sistemaChat("El guía ha cerrado los micros."); pintaVoz(); },
+    abrirMicros: function () { S.microsCerrados = false; aviso("El guía ha vuelto a abrir los micros."); pintaVoz(); },
+    video: function () { S.video = !S.video; aviso(S.video ? "Vencejo empieza a emitir vídeo desde el campo. No se graba." : "El vídeo de campo se ha parado."); if (S.actual === "mundo") pintaEscena(); pintaChips(); },
+    chat: function () { llegaMensaje("Mirlo", "¿Alguien sabe por qué esa haza tiene la hierba más alta?"); },
+    red: function () { S.red = false; pintaChips(); aviso("Se ha cortado la conexión. Reintentando… Tu micro se ha cerrado.", true); S.hablando = false; pintaVoz(); setTimeout(function () { S.red = true; pintaChips(); aviso("Conexión recuperada."); }, 4000); },
+    reinicio: function () { var d = $("simDisp").value; estadoInicial(); qa(".sim select").forEach(function (s) { s.selectedIndex = 0; }); raiz.removeAttribute("data-theme"); aplicaDisp(); ir("portada", true); S.pila = []; }
+  };
+
+  // ---------- clics generales
+  document.addEventListener("click", function (ev) {
+    var t = ev.target.closest("[data-ir],[data-volver],[data-accion]"); if (!t) return;
+    if (t.hasAttribute("data-ir")) { ev.preventDefault(); ir(t.getAttribute("data-ir")); return; }
+    if (t.hasAttribute("data-volver")) { ev.preventDefault(); volver(); return; }
+    var a = t.getAttribute("data-accion"); if (ACC[a]) { ev.preventDefault(); ACC[a](t); }
+  });
+  var ACC = {
+    nada: function () { anuncia("Enlace de ejemplo: no lleva a ningún sitio en la maqueta."); },
+    cerrarSesion: function () { S.pila = []; ir("portada", true); anuncia("Sesión cerrada."); },
+    abrirEnlace: function () {
+      if (E.enlace === "caducado") { $("txtEnlace").textContent = "El enlace ha caducado: vale 15 minutos desde que lo pedimos."; ir("enlace"); return; }
+      if (E.enlace === "usado") { $("txtEnlace").textContent = "Este enlace ya se usó. Cada enlace sirve una sola vez; si has entrado desde otro dispositivo, sigue allí."; ir("enlace"); return; }
+      S.pila = []; ir(E.nueva === "si" ? "bienvenida" : "dispositivo");
+    },
+    vinculado: function () { S.pila = []; ir(E.nueva === "si" ? "bienvenida" : "dispositivo"); },
+    avatarAzar: function () { S.avatar = { camisa: Math.floor(Math.random() * CAMISAS.length), sombrero: Math.floor(Math.random() * 3), tono: Math.floor(Math.random() * TONOS.length) }; pintaMuestras(); pintaAvatarPrev(); anuncia("Avatar cambiado al azar."); },
+    probarSonido: function () { $("estSonido").textContent = "Sonando: «din, don» (simulado)…"; setTimeout(function () { $("estSonido").textContent = ""; $("preguntaOido").hidden = false; }, 900); },
+    oidoSi: function () { $("preguntaOido").hidden = true; $("ayudaOido").hidden = true; $("estSonido").textContent = "Sonido comprobado."; },
+    oidoNo: function () { $("ayudaOido").hidden = false; },
+    pedirMic: function () { if (E.micro === "ninguno") { S.mic = "ninguno"; pintaMic(); return; } $("dlgNavegador").hidden = false; $("dlgNavegador").querySelector(".btn-prim").focus(); },
+    navPermitir: function () { S.mic = E.micro === "denegado" ? "denegado" : "concedido"; $("dlgNavegador").hidden = true; pintaMic(); },
+    navBloquear: function () { S.mic = "denegado"; $("dlgNavegador").hidden = true; pintaMic(); },
+    sinMic: function () { S.mic = "rechazado"; pintaMic(); anuncia("Sin micrófono. Podrás activarlo luego en Configuración."); },
+    entrarLibre: function () { S.visita = { tipo: "libre" }; ir("carga"); },
+    apuntarme: function (b) { b.textContent = "Apuntada ✓"; b.setAttribute("aria-pressed", "true"); anuncia("Te has apuntado. Te avisaremos por correo si lo tienes activado."); },
+    esperar: function (b) { var v = GUIADAS[Number(b.getAttribute("data-v"))]; S.visita = { tipo: "guiada", v: v }; if (v.video && E.rol !== "corresponsal") { confirma("Esta visita lleva vídeo de campo en directo", "Verás imágenes del olivar desde el móvil de una persona de la explotación. El directo no se graba. Tu voz solo se oye cuando pulses «Hablar».", "Entendido, entrar", function () { ir("espera"); }, false); } else ir("espera"); },
+    abrirVisita: function () { if (E.rol === "corresponsal") ir("emision"); else ir("carga"); },
+    reintentarCarga: function () { E.carga = "normal"; $("simCarga").value = "normal"; ir("carga", true); },
+    bajarCalidad: function () { E.carga = "normal"; $("simCarga").value = "normal"; $("aCalidad").selectedIndex = 1; anuncia("Calidad baja. Reintentando."); ir("carga", true); },
+    entrarCargado: function () { ir("mundo"); aviso("Falta una parte de la finca: se verá en gris hasta que llegue.", true); },
+    entrarMundo: function () { S.enVR = false; ir("mundo"); },
+    entrarVR: function () { S.enVR = true; if ($("dlgPausa").open) $("dlgPausa").close(); if (S.actual !== "mundo") ir("mundo"); aviso("Simulación: aquí las gafas pasarían a inmersivo. El panel flotante se abre con Y."); },
+    cancelarCarga: function () { ir("visitas"); },
+    pausa: abrePausa,
+    reanudar: function () { $("dlgPausa").close(); },
+    pausaAjustes: function () { $("dlgPausa").close(); ir("ajustes"); },
+    pausaAdmin: function () { $("dlgPausa").close(); ir("admin"); },
+    creditos: function () { $("creditos").hidden = !$("creditos").hidden; },
+    denunciar: function () { $("dlgPausa").close(); aviso("Gracias. La administración recibirá tu aviso con la hora de la visita (simulado)."); },
+    tutorial: function () { if ($("dlgPausa").open) $("dlgPausa").close(); abreTutorial(); },
+    cerrarTuto: function () { if ($("cNoTuto").checked) S.tuto = false; $("dlgTutorial").close(); },
+    salirVisita: function () { if ($("dlgPausa").open) $("dlgPausa").close(); confirma("¿Salir de la visita?", "Se cerrará tu micro y dejarás de aparecer en la finca.", "Salir", function () { S.hablando = false; S.emitiendo = false; S.panel = null; ir("salida"); }, false); },
+    cerrarCajon: function () { cierraCajon(); },
+    confNo: function () { $("dlgConfirma").close(); },
+    clip: function () { $("estCampo").textContent = "Clip de 30 s guardado en el móvil. Se subirá cuando haya cobertura y lo revisará la oficina antes de publicarlo (simulado)."; },
+    irHaza: function (b) { var k = Number(b.getAttribute("data-k")); var h = HAZAS[k]; S.pos = { x: h.x + h.w / 2, y: h.y + h.h / 2 + 20 }; pintaEscena(); anuncia("Has saltado a la haza " + h.n + ", " + h.nombre + "."); },
+    preguntar: function () { var t = $("iPregunta"); if (!t.value.trim()) { $("ePregunta").hidden = false; t.setAttribute("aria-invalid", "true"); t.focus(); return; } $("zonaPregunta").innerHTML = '<div class="aviso aviso-ok" role="status"><p>Pregunta recibida. La contesta una persona de la oficina; te avisamos cuando esté (simulado).</p></div>'; }
+  };
+
+  // ---------- diálogo de confirmación
+  function confirma(tit, txt, si, fn, conMotivo) {
+    $("tConf").textContent = tit; $("txtConf").textContent = txt; $("btnConfSi").textContent = si; $("motivoConf").hidden = !conMotivo;
+    $("btnConfSi").onclick = function () { $("dlgConfirma").close(); fn($("iMotivo").value); };
+    $("dlgConfirma").showModal();
+  }
+
+  // ---------- formularios de acceso
+  $("fEntrar").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var v = $("iCorreo").value.trim(), e = $("eCorreo");
+    $("avLimite").hidden = true;
+    if (!v) { e.textContent = "Escribe tu correo."; e.hidden = false; $("iCorreo").setAttribute("aria-invalid", "true"); $("iCorreo").focus(); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { e.textContent = "Ese correo no parece completo. Revisa que tenga @ y un dominio, como nombre@example.com."; e.hidden = false; $("iCorreo").setAttribute("aria-invalid", "true"); $("iCorreo").focus(); return; }
+    e.hidden = true; $("iCorreo").removeAttribute("aria-invalid");
+    S.intentos++;
+    if (E.limite === "si" || S.intentos > 4) { $("avLimite").hidden = false; return; }
+    S.correo = v; ir("revisa");
+  });
+  $("btnReenviar").addEventListener("click", function () { S.intentos++; if (E.limite === "si" || S.intentos > 4) { ir("entrar"); $("avLimite").hidden = false; return; } anuncia("Enlace reenviado, si el correo puede entrar."); ir("revisa", true); });
+
+  $("fBienvenida").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var ok = $("cPriv").checked && $("cNormas").checked && $("cAdulto").checked;
+    $("eBienvenida").hidden = ok;
+    if (!ok) { $("eBienvenida").focus(); return; }
+    ir("alias");
+  });
+
+  qa("[data-sug]").forEach(function (b) { b.addEventListener("click", function () { $("iAlias").value = b.textContent; $("iAlias").focus(); }); });
+  function validaAlias(v) {
+    if (v.length < 3) return "El alias necesita al menos 3 caracteres.";
+    if (v.length > 20) return "El alias puede tener como mucho 20 caracteres.";
+    if (/@/.test(v) || /\d{6,}/.test(v.replace(/\s/g, ""))) return "No pongas correos ni teléfonos en el alias: lo ve todo el mundo.";
+    if (!/^[\p{L}\p{N} _-]+$/u.test(v)) return "Usa solo letras, números, espacios y guiones.";
+    if (/^(gu[ií]a|admin|administraci[oó]n|oficina|corresponsal|cano|damas)\b/i.test(v)) return "Ese alias está reservado para la explotación. Elige otro.";
+    if (v.toLowerCase() === "mirlo") return "«Mirlo» ya lo usa otro hogar. Prueba con «Mirlo del Llano» o elige otro.";
+    return "";
+  }
+  $("fAlias").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var v = $("iAlias").value.trim(), m = validaAlias(v), e = $("eAlias");
+    if (m) { e.textContent = m; e.hidden = false; $("iAlias").setAttribute("aria-invalid", "true"); $("iAlias").focus(); return; }
+    e.hidden = true; $("iAlias").removeAttribute("aria-invalid"); S.alias = v; aplicaDisp(); ir("avatar");
+  });
+
+  // ---------- avatar de bloque
+  function avatarSVG(a, escala) {
+    var cam = CAMISAS[a.camisa][0], ton = TONOS[a.tono][0], som = SOMBREROS[a.sombrero][1];
+    var s = '<g transform="scale(' + (escala || 1) + ')">' +
+      '<rect x="-9" y="10" width="7" height="14" fill="#4b4a44"/><rect x="2" y="10" width="7" height="14" fill="#4b4a44"/>' +
+      '<rect x="-12" y="-10" width="24" height="22" rx="2" fill="' + cam + '" stroke="rgba(0,0,0,.25)"/>' +
+      '<rect x="-18" y="-9" width="6" height="16" fill="' + cam + '" stroke="rgba(0,0,0,.2)"/><rect x="12" y="-9" width="6" height="16" fill="' + cam + '" stroke="rgba(0,0,0,.2)"/>' +
+      '<rect x="-10" y="-32" width="20" height="20" rx="2" fill="' + ton + '" stroke="rgba(0,0,0,.2)"/>' +
+      '<rect x="-6" y="-25" width="3" height="3" fill="#222"/><rect x="3" y="-25" width="3" height="3" fill="#222"/>';
+    if (a.sombrero === 1) s += '<rect x="-16" y="-35" width="32" height="5" fill="' + som + '"/><rect x="-9" y="-43" width="18" height="9" fill="' + som + '"/>';
+    if (a.sombrero === 2) s += '<rect x="-11" y="-38" width="22" height="8" fill="' + som + '"/><rect x="4" y="-33" width="12" height="3" fill="' + som + '"/>';
+    return s + "</g>";
+  }
+  function pintaAvatarPrev() { $("avatarPrev").innerHTML = avatarSVG(S.avatar, 1.25); $("aliasPrev").textContent = S.alias; }
+  function pintaMuestras() {
+    var grupo = function (cont, nombre, lista, clave, color) {
+      $(cont).innerHTML = lista.map(function (it, i) {
+        var col = color(it); return '<label class="muestra"><input type="radio" name="' + nombre + '" value="' + i + '"' + (S.avatar[clave] === i ? " checked" : "") + '><span>' + (col ? '<i style="background:' + col + '"></i>' : '<i style="background:transparent;border-style:dashed"></i>') + esc(it[1] && it[1][0] !== "#" ? it[1] : it[0]) + "</span></label>";
+      }).join("");
+      qa("input", $(cont)).forEach(function (inp) { inp.addEventListener("change", function () { S.avatar[clave] = Number(inp.value); pintaAvatarPrev(); }); });
+    };
+    grupo("mCamisa", "camisa", CAMISAS, "camisa", function (it) { return it[0]; });
+    grupo("mSombrero", "sombrero", SOMBREROS.map(function (s) { return [s[0], s[1]]; }), "sombrero", function (it) { return it[1]; });
+    grupo("mTono", "tono", TONOS, "tono", function (it) { return it[0]; });
+  }
+  // las etiquetas de sombrero: [nombre, color]; las de camisa y tono: [color, nombre]
+  $("fAvatar").addEventListener("submit", function (ev) { ev.preventDefault(); anuncia("Avatar guardado."); if (S.pila[S.pila.length - 1] === "ajustes") volver(); else ir("dispositivo"); });
+
+  // ---------- dispositivo
+  function pintaDispositivo() {
+    var det = E.disp, txt = { escritorio: "Hemos detectado un ordenador.", movil: "Hemos detectado un móvil.", quest: "Hemos detectado unas Meta Quest.", corresponsal: "Hemos detectado un móvil Android y tu cuenta es de corresponsal." }[det];
+    $("txtDetectado").textContent = txt + " Puedes cambiarlo si no acertamos.";
+    qa("[data-det]").forEach(function (s) { s.hidden = s.getAttribute("data-det") !== det; });
+    var rs = qa('#fDisp input[name="modo"]'); rs.forEach(function (x) { x.checked = x.value === (S.modo || det); });
+    var corr = $("rCorr"); corr.disabled = E.rol !== "corresponsal";
+    $("notaCorr").textContent = E.rol === "corresponsal" ? "Tu cuenta es de corresponsal: mapa 2D, GPS y cámara trasera." : "Solo personal de la explotación, con móvil Android en la finca. Tu cuenta no tiene este permiso.";
+    $("notaXr").textContent = hayXr() ? "Disponible en este navegador: verás el botón «Entrar en VR»." : "Meta Quest desde su navegador. Aquí no hay WebXR.";
+    var chk = rs.filter(function (x) { return x.checked; })[0]; $("avSinXr").hidden = !(chk && chk.value === "quest" && !hayXr());
+  }
+  $("fDisp").addEventListener("change", function () { var c = qa('#fDisp input[name="modo"]').filter(function (x) { return x.checked; })[0]; S.modo = c ? c.value : null; $("avSinXr").hidden = !(S.modo === "quest" && !hayXr()); });
+  $("fDisp").addEventListener("submit", function (ev) { ev.preventDefault(); var m = S.modo || E.disp; if (m === "corresponsal") ir("campo"); else ir("audio"); });
+
+  // ---------- micrófono
+  var medidorT = null;
+  function pintaMic() {
+    $("micOk").hidden = S.mic !== "concedido"; $("micMal").hidden = S.mic !== "denegado"; $("micNo").hidden = S.mic !== "ninguno";
+    $("filaPedirMic").hidden = S.mic === "concedido";
+    clearInterval(medidorT);
+    if (S.mic === "concedido") { var t = 0; medidorT = setInterval(function () { if (S.actual !== "audio") { clearInterval(medidorT); return; } t += 0.35; var v = Math.round(Math.max(0, Math.sin(t) * 40 + Math.sin(t * 3.1) * 25 + 30)); $("nivelMic").style.width = v + "%"; $("medidorMic").setAttribute("aria-valuenow", v); }, 120); }
+  }
+
+  // ---------- permisos de campo
+  qa("[data-permiso]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var k = b.getAttribute("data-permiso"), est = document.querySelector('[data-est="' + k + '"]');
+      var txt = { gps: "Concedido · precisión ± 6 m (ficticio)", cam: "Concedida · trasera, 720p máx.", mic: "Concedido", wake: "Activada mientras emites", red: "2,1 Mb/s de subida: vídeo a 360p (ficticio)" }[k];
+      if (k === "mic" && E.micro === "denegado") { est.textContent = "Denegado: hablarás por el chat"; est.className = "estado"; return; }
+      est.textContent = txt; est.className = "estado ok"; b.textContent = "Hecho"; b.disabled = true; S.permisos[k] = true;
+    });
+  });
+  $("fCampo").addEventListener("submit", function (ev) { ev.preventDefault(); var ok = $("cCuadrilla").checked && $("cEncuadre").checked; $("eCampo").hidden = ok; if (!ok) { $("eCampo").focus(); return; } ir("visitas"); });
+
+  // ---------- pestañas (patrón ARIA con flechas)
+  function activaPestana(tab) {
+    var lista = tab.closest('[role="tablist"]'), tabs = qa('[role="tab"]', lista);
+    tabs.forEach(function (t) { var on = t === tab; t.setAttribute("aria-selected", String(on)); t.tabIndex = on ? 0 : -1; $(t.getAttribute("aria-controls")).hidden = !on; });
+  }
+  qa('[role="tablist"]').forEach(function (lista) {
+    lista.addEventListener("click", function (ev) { var t = ev.target.closest('[role="tab"]'); if (t) { activaPestana(t); if (lista.closest("#cajon")) { S.pestana = t.id.slice(3); pintaCajon(); } } });
+    lista.addEventListener("keydown", function (ev) {
+      var tabs = qa('[role="tab"]', lista), i = tabs.indexOf(document.activeElement); if (i < 0) return;
+      var j = ev.key === "ArrowRight" ? (i + 1) % tabs.length : ev.key === "ArrowLeft" ? (i - 1 + tabs.length) % tabs.length : ev.key === "Home" ? 0 : ev.key === "End" ? tabs.length - 1 : -1;
+      if (j < 0) return; ev.preventDefault(); tabs[j].focus(); tabs[j].click();
+    });
+  });
+
+  // ---------- ajustes que se notan en la maqueta
+  $("aTexto").addEventListener("change", function () { raiz.style.setProperty("--escala", this.value); $("estAjustes").textContent = "Tamaño del texto: " + Math.round(this.value * 100) + " %."; });
+  $("aContraste").addEventListener("change", function () { if (this.checked) raiz.setAttribute("data-contraste", "alto"); else raiz.removeAttribute("data-contraste"); $("estAjustes").textContent = this.checked ? "Alto contraste activado." : "Alto contraste desactivado."; });
+  $("aMov").addEventListener("change", function () { if (this.value === "reducido") raiz.setAttribute("data-movimiento", "reducido"); else raiz.removeAttribute("data-movimiento"); $("estAjustes").textContent = "Movimiento: " + (this.options[this.selectedIndex].text) + "."; });
+  $("aCalidad").addEventListener("change", function () { $("estAjustes").textContent = "Calidad: " + this.options[this.selectedIndex].text + "."; });
+
+  // ---------- visitas
+  var GUIADAS = [
+    { titulo: "La poda, haza por haza", cuando: "Sábado a las 10:30", guia: "Alcaraván", plazas: "12 de 20 plazas libres", video: true, pronto: true, corr: true },
+    { titulo: "El suelo bajo los olivos", cuando: "Miércoles a las 18:00", guia: "Alcaraván", plazas: "18 de 20 plazas libres", video: false, pronto: false, corr: false }
+  ];
+  function pintaVisitas() {
+    var corr = E.rol === "corresponsal";
+    $("avRolCorr").hidden = !corr; $("zonaLibre").hidden = corr; $("tarjetaAdmin").hidden = E.rol !== "admin";
+    var lista = $("listaGuiadas");
+    var vs = E.guiadas === "si" ? GUIADAS.filter(function (v) { return !corr || v.corr; }) : [];
+    if (!vs.length) { lista.innerHTML = '<div class="vacio"><p><strong>No hay visitas guiadas programadas.</strong></p><p style="margin:0 auto">Cuando la explotación programe una, aparecerá aquí' + (corr ? "." : " y, si lo has pedido, te avisaremos por correo.") + "</p></div>"; return; }
+    lista.innerHTML = vs.map(function (v) {
+      var i = GUIADAS.indexOf(v), rolTxt = E.rol === "guia" ? '<span class="pill">Eres el guía</span>' : corr ? '<span class="pill">Emites tú</span>' : "";
+      var accion = v.pronto ? '<button type="button" class="btn btn-prim" data-accion="esperar" data-v="' + i + '">' + (E.rol === "guia" ? "Abrir la sala de espera" : "Ir a la sala de espera") + "</button>" : (esModerador() || corr ? '<button type="button" class="btn" disabled>Aún no se puede abrir</button>' : '<button type="button" class="btn" data-accion="apuntarme" aria-pressed="false">Apuntarme</button>');
+      return '<article class="tarjeta visita"><h3>' + esc(v.titulo) + "</h3>" +
+        '<div class="meta"><span class="pill">' + esc(v.cuando) + '</span><span class="pill">Guía: ' + esc(v.guia) + '</span><span class="pill pill-ficticio">' + esc(v.plazas) + "</span>" + rolTxt + "</div>" +
+        '<ul style="margin:4px 0 6px;padding-left:20px"><li>Voz abierta con guía: podrás hablar cuando pulses «Hablar».</li>' + (v.video ? "<li>Vídeo de campo en directo desde el móvil de una persona de la explotación.</li>" : "") + "<li>No se graba <span class=\"pill\">decisión pendiente</span>.</li></ul>" +
+        '<div class="fila">' + accion + (v.pronto ? '<span class="pista">Empieza en menos de 15 min</span>' : "") + "</div></article>";
+    }).join("");
+  }
+
+  // ---------- sala de espera
+  function entraEspera() {
+    var v = (S.visita && S.visita.v) || GUIADAS[0];
+    $("t-espera").textContent = v.titulo; $("esperaMeta").textContent = v.cuando + " · guía: " + v.guia;
+    $("esperaAvisos").innerHTML = "<li>Voz abierta con guía. Tu micro empieza cerrado" + (S.mic === "concedido" ? "." : (S.mic === "denegado" ? ": está bloqueado en este navegador, podrás escribir en el chat." : ": aún no lo has probado.")) + "</li>" +
+      (v.video ? "<li>Vídeo de campo en directo desde el olivar, encuadrado a copa y suelo. No se graba.</li>" : "") +
+      "<li>El guía puede cerrar micros y expulsar a quien no respete las normas.</li><li>Puedes silenciar a cualquiera solo para ti desde «Gente».</li>";
+    $("btnAbrirVisita").hidden = !esModerador() && E.rol !== "corresponsal";
+    $("btnAbrirVisita").textContent = E.rol === "corresponsal" ? "Salir al campo" : "Abrir la visita ahora";
+    $("genteEspera").innerHTML = otros().map(function (g) { return "<li><span><strong>" + esc(g.alias) + '</strong></span><span class="pill">' + esc(g.disp) + "</span></li>"; }).join("") + "<li><span><strong>" + esc(S.alias) + ' (tú)</strong></span><span class="pill">' + esc({ escritorio: "Escritorio", movil: "Móvil", quest: "Meta Quest", corresponsal: "Móvil de campo" }[E.disp]) + "</span></li>";
+    $("nEspera").textContent = otros().length + 1;
+    var n = 120;
+    temporizadores.push(setInterval(function () { n = Math.max(0, n - 1); $("cuentaAtras").textContent = "0" + Math.floor(n / 60) + ":" + ("0" + (n % 60)).slice(-2); if (n === 0) { $("esperaEstado").textContent = "Es la hora. El guía abrirá la visita enseguida."; } }, 1000));
+  }
+
+  // ---------- carga
+  function entraCarga() {
+    var total = 24, hechas = 0, tes = $("teselas"), paso = E.carga === "lenta" ? 900 : 120, ci = 0;
+    tes.innerHTML = new Array(total + 1).join("<span></span>");
+    $("cargaError").hidden = true; $("filaEntrar").hidden = true; $("notaVR").hidden = true;
+    $("cargaEstado").textContent = "Empezando…"; $("relleno").style.width = "0%"; $("barraCarga").setAttribute("aria-valuenow", "0");
+    $("consejo").textContent = CONSEJOS[0];
+    var fases = function (p) { return p < 40 ? "Terreno y ortofoto" : p < 75 ? "Olivos cercanos" : p < 92 ? "Lindes de las hazas" : "Conectando con la visita"; };
+    temporizadores.push(setInterval(function () { ci = (ci + 1) % CONSEJOS.length; $("consejo").textContent = CONSEJOS[ci]; }, 3500));
+    temporizadores.push(setInterval(function () {
+      if (E.carga === "error" && hechas === 6) { tes.children[6].className = "mal"; $("cargaError").hidden = false; $("cargaEstado").textContent = "Parado en la tesela 7 de 24."; limpiaTemporizadores(); return; }
+      tes.children[hechas].className = "ok"; hechas++;
+      var p = Math.round(hechas / total * 100);
+      $("relleno").style.width = p + "%"; $("barraCarga").setAttribute("aria-valuenow", String(p));
+      $("cargaEstado").textContent = fases(p) + " · " + hechas + " de " + total + " teselas" + (E.carga === "lenta" ? " · la conexión va lenta" : "");
+      if (hechas >= total) {
+        limpiaTemporizadores(); $("cargaEstado").textContent = "Listo. " + total + " teselas cargadas.";
+        $("filaEntrar").hidden = false; var vr = hayXr() && (S.modo === "quest" || (!S.modo && E.disp === "quest"));
+        $("btnEntrarVR").hidden = !vr; $("notaVR").hidden = !vr; $("btnEntrarPantalla").textContent = vr ? "Entrar en pantalla" : "Entrar";
+        $("btnEntrarPantalla").classList.toggle("btn-prim", !vr);
+        (vr ? $("btnEntrarVR") : $("btnEntrarPantalla")).focus();
+        anuncia("Finca cargada. Puedes entrar.");
+      }
+    }, paso));
+  }
+
+  // ---------- el mundo
+  var SVGNS = "http://www.w3.org/2000/svg";
+  function puntos(p) { return p.map(function (q) { return q[0].toFixed(1) + "," + q[1].toFixed(1); }).join(" "); }
+  function fondoSVG(conOlivos) {
+    var s = '<rect x="0" y="0" width="1000" height="640" fill="var(--campo)"/>' +
+      '<path d="M0 222 C 240 236, 520 214, 1000 230" stroke="var(--calle)" stroke-width="16" fill="none"/>' +
+      '<path d="M0 418 C 300 430, 640 408, 1000 424" stroke="var(--calle)" stroke-width="16" fill="none"/>' +
+      '<path d="M 512 0 C 500 200, 530 420, 516 640" stroke="#6e9fb8" stroke-width="5" fill="none" opacity=".7"/>';
+    HAZAS.forEach(function (h, i) {
+      s += '<polygon class="haza" data-k="' + i + '" points="' + puntos(h.pts) + '" fill="' + (i % 2 ? "var(--haza-b)" : "var(--haza-a)") + '" stroke="' + (i === MIA ? "var(--mia)" : "var(--linde)") + '" stroke-width="' + (i === MIA ? 5 : 1.6) + '" stroke-opacity="' + (i === MIA ? 1 : 0.7) + '"/>';
+      if (conOlivos) {
+        for (var yy = h.y + 18; yy < h.y + h.h - 10; yy += 25) for (var xx = h.x + 16; xx < h.x + h.w - 10; xx += 25) {
+          var dx = ((xx * 7 + yy * 3) % 5) - 2, rr = 7 + ((xx + yy) % 3);
+          s += '<circle cx="' + (xx + dx) + '" cy="' + (yy + 2) + '" r="' + rr + '" fill="rgba(0,0,0,.18)"/><circle cx="' + (xx + dx - 1.5) + '" cy="' + yy + '" r="' + rr + '" fill="var(--copa)"/><circle cx="' + (xx + dx - 3.5) + '" cy="' + (yy - 2.5) + '" r="' + (rr * 0.45) + '" fill="var(--copa-2)" opacity=".55"/>';
+        }
+      }
+      s += '<g pointer-events="none"><rect x="' + (h.x + h.w / 2 - 70) + '" y="' + (h.y + 6) + '" width="140" height="22" rx="11" fill="var(--panel)" opacity=".9"/><text x="' + (h.x + h.w / 2) + '" y="' + (h.y + 21.5) + '" text-anchor="middle" font-size="13" font-family="system-ui, sans-serif" font-weight="' + (i === MIA ? 700 : 500) + '" fill="var(--fg)">' + h.n + " · " + esc(h.nombre) + (i === MIA ? " (tuya)" : "") + "</text></g>";
+    });
+    s += '<rect x="470" y="300" width="70" height="44" fill="#d8d0bf" stroke="#8b7f66"/><polygon points="466,300 505,280 544,300" fill="#a5523a"/><text x="505" y="362" text-anchor="middle" font-size="12" font-family="system-ui" fill="var(--fg)">cortijo</text>';
+    return s;
+  }
+  function etiqueta(x, y, txt, fuerte) {
+    var w = Math.max(48, txt.length * 7.2 + 16);
+    return '<rect x="' + (x - w / 2) + '" y="' + (y - 70) + '" width="' + w + '" height="20" rx="10" fill="var(--panel)" opacity=".95" stroke="' + (fuerte ? "var(--olivo)" : "var(--line)") + '"/><text x="' + x + '" y="' + (y - 56) + '" text-anchor="middle" font-size="12" font-weight="' + (fuerte ? 700 : 500) + '" font-family="system-ui, sans-serif" fill="var(--fg)">' + esc(txt) + "</text>";
+  }
+  function pintaEscena() {
+    var svg = $("escena"), t = svg.querySelector("title").outerHTML, s = fondoSVG(true);
+    otros().forEach(function (g) {
+      var av = { camisa: CAMISAS.map(function (c) { return c[0]; }).indexOf(g.camisa), sombrero: g.sombrero, tono: g.tono }; if (av.camisa < 0) av.camisa = 0;
+      if (g.rol === "corresponsal") {
+        s += '<path d="M' + g.x + " " + g.y + " L" + (g.x + 90) + " " + (g.y - 60) + " L" + (g.x + 110) + " " + (g.y - 10) + ' Z" fill="var(--lidar)" opacity=".22"/>';
+        if (S.video) s += '<g><rect x="' + (g.x - 80) + '" y="' + (g.y - 175) + '" width="160" height="92" rx="6" fill="#3d4a2c" stroke="var(--vivo)" stroke-width="3"/><text x="' + g.x + '" y="' + (g.y - 132) + '" text-anchor="middle" font-size="12" fill="#f4f2e8" font-family="system-ui">Vídeo de campo</text><text x="' + g.x + '" y="' + (g.y - 116) + '" text-anchor="middle" font-size="11" fill="#f4f2e8" font-family="system-ui">(simulado)</text><rect x="' + (g.x - 74) + '" y="' + (g.y - 170) + '" width="70" height="16" rx="3" fill="var(--vivo)"/><text x="' + (g.x - 39) + '" y="' + (g.y - 158) + '" text-anchor="middle" font-size="10" font-weight="700" fill="#fff" font-family="system-ui">EN DIRECTO</text></g>';
+      }
+      s += '<g transform="translate(' + g.x + " " + g.y + ')">' + avatarSVG(av, 0.9) + "</g>" + etiqueta(g.x, g.y, (g.rol === "guia" ? "Guía · " : "") + g.alias + (S.silenciadosParaMi[g.id] ? " 🔇" : ""));
+    });
+    s += '<g transform="translate(' + S.pos.x + " " + S.pos.y + ')"><ellipse cx="0" cy="26" rx="20" ry="6" fill="rgba(0,0,0,.25)"/>' + avatarSVG(S.avatar, 1) + "</g>" + etiqueta(S.pos.x, S.pos.y, (E.rol === "guia" ? "Guía · " : "") + S.alias + " (tú)", true);
+    svg.innerHTML = t + s;
+    // en pantallas estrechas la vista sigue al avatar (como haría la cámara)
+    var caja = $("mundo").getBoundingClientRect(), wv = caja.height ? Math.min(1000, 640 * caja.width / caja.height) : 1000;
+    var x0 = Math.max(0, Math.min(1000 - wv, S.pos.x - wv / 2));
+    svg.setAttribute("viewBox", x0.toFixed(0) + " 0 " + wv.toFixed(0) + " 640"); svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+    $("minimapa").innerHTML = fondoSVG(false) + '<circle cx="' + S.pos.x + '" cy="' + S.pos.y + '" r="22" fill="#ff7a1a" stroke="#fff" stroke-width="6"/>';
+    var k = hazaEn(S.pos.x, S.pos.y);
+    $("chipLugar").textContent = k >= 0 ? "En: haza " + HAZAS[k].n + " · " + HAZAS[k].nombre + (k === MIA ? " (tuya)" : "") : "En: camino";
+    if (k >= 0 && k !== S.ultimaHaza) { S.ultimaHaza = k; if (S.panel === "haza" && S.seguir !== false) { S.hazaVista = k; pintaCajon(); } }
+  }
+  function hazaEn(x, y) { for (var i = 0; i < HAZAS.length; i++) { var h = HAZAS[i]; if (x >= h.x && x <= h.x + h.w && y >= h.y && y <= h.y + h.h) return i; } return -1; }
+  function mueve(dx, dy) { S.pos.x = Math.max(20, Math.min(980, S.pos.x + dx)); S.pos.y = Math.max(60, Math.min(620, S.pos.y + dy)); pintaEscena(); }
+  function pintaChips() {
+    var v = S.visita || { tipo: "libre" };
+    $("chipVisita").textContent = v.tipo === "libre" ? "Visita libre · sin voz · no se graba" : "Visita guiada · voz abierta · no se graba";
+    $("chipMicAbierto").hidden = !S.hablando; $("chipVideo").hidden = !S.video; $("chipRed").hidden = S.red;
+  }
+  function pintaVoz() {
+    var guiada = S.visita && S.visita.tipo === "guiada", b = $("btnHablar");
+    b.hidden = !guiada; $("btnMano").hidden = !guiada || esModerador(); $("btnMicros").hidden = !guiada || !esModerador();
+    $("btnMicros").textContent = S.microsCerrados ? "Abrir los micros" : "Cerrar todos los micros";
+    var e = $("estadoVoz");
+    if (!guiada) e.textContent = "Visita libre: sin voz. Usa el chat.";
+    else if (!S.red) e.textContent = "Sin conexión: voz en pausa.";
+    else if (S.mic === "denegado" || S.mic === "ninguno") { e.textContent = "Tu micro no está disponible: escribe en el chat."; b.hidden = true; }
+    else if (S.microsCerrados && !esModerador()) e.textContent = "El guía ha cerrado los micros.";
+    else e.textContent = S.hablando ? "Te están oyendo." : "Micro cerrado.";
+    b.disabled = (S.microsCerrados && !esModerador()) || !S.red;
+    b.setAttribute("aria-pressed", String(S.hablando));
+    b.textContent = S.hablando ? "🎙 Cerrar micro" : ($("aModoMic").value === "mantener" ? "🎙 Mantén para hablar" : "🎙 Hablar");
+    $("btnMano").setAttribute("aria-pressed", String(S.mano)); $("btnMano").textContent = S.mano ? "✋ Palabra pedida" : "✋ Pedir la palabra";
+    pintaChips();
+  }
+  function ponHablando(v) { if (v && ((S.microsCerrados && !esModerador()) || !S.red)) return; S.hablando = v; pintaVoz(); }
+  $("btnHablar").addEventListener("click", function () { if ($("aModoMic").value === "conmutar") ponHablando(!S.hablando); });
+  $("btnHablar").addEventListener("pointerdown", function () { if ($("aModoMic").value === "mantener") ponHablando(true); });
+  ["pointerup", "pointerleave", "pointercancel"].forEach(function (n) { $("btnHablar").addEventListener(n, function () { if ($("aModoMic").value === "mantener" && S.hablando) ponHablando(false); }); });
+  $("btnMano").addEventListener("click", function () { S.mano = !S.mano; pintaVoz(); anuncia(S.mano ? "Has pedido la palabra. El guía lo verá." : "Ya no pides la palabra."); });
+  $("btnMicros").addEventListener("click", function () { S.microsCerrados = !S.microsCerrados; S.mod.push([hora(), (S.microsCerrados ? "Micros cerrados" : "Micros abiertos") + " por " + S.alias]); aviso(S.microsCerrados ? "Has cerrado los micros de todos. Siguen pudiendo escribir." : "Has abierto los micros."); pintaVoz(); });
+  function hora() { var d = new Date(); return ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2); }
+
+  function aviso(txt, err) {
+    var c = $("avisosMundo"); var d = document.createElement("div"); d.className = "toast vidrio" + (err ? " err" : ""); d.textContent = txt; c.appendChild(d);
+    while (c.children.length > 3) c.removeChild(c.firstChild);
+    setTimeout(function () { if (d.parentNode) d.parentNode.removeChild(d); }, 6000);
+    if (S.actual !== "mundo") anuncia(txt);
+  }
+
+  // cajón: haza, chat, gente
+  function abreCajon(p) {
+    if (S.panel === p) { cierraCajon(); return; }
+    S.panel = p; S.pestana = p; $("cajon").hidden = false; activaPestana($("ct-" + p));
+    if (p === "haza") { var k = hazaEn(S.pos.x, S.pos.y); S.hazaVista = k >= 0 ? k : MIA; }
+    if (p === "chat") { S.noLeidos = 0; }
+    pintaCajon(); qa("[data-panel]").forEach(function (b) { b.setAttribute("aria-expanded", String(b.getAttribute("data-panel") === p)); });
+    var foco = p === "chat" ? $("iChat") : $("ct-" + p); setTimeout(function () { foco.focus(); }, 0);
+  }
+  function cierraCajon() { S.panel = null; $("cajon").hidden = true; qa("[data-panel]").forEach(function (b) { b.setAttribute("aria-expanded", "false"); }); var b = document.querySelector(".botones-hud [data-panel]"); if (b && raiz.getAttribute("data-disp") !== "movil") b.focus(); }
+  qa("[data-panel]").forEach(function (b) { b.addEventListener("click", function () { abreCajon(b.getAttribute("data-panel")); }); });
+  function pintaBadge() { $("noLeidos").hidden = !S.noLeidos; $("noLeidos").textContent = S.noLeidos; }
+  function pintaCajon() {
+    pintaBadge();
+    if ($("cajon").hidden) return;
+    S.panel = S.pestana; if (S.pestana === "chat") { S.noLeidos = 0; pintaBadge(); }
+    qa("[data-panel]").forEach(function (b) { b.setAttribute("aria-expanded", String(b.getAttribute("data-panel") === S.pestana)); });
+    if (S.pestana === "haza") pintaHaza(); if (S.pestana === "chat") pintaChat(); if (S.pestana === "gente") pintaGente();
+  }
+  function pintaHaza() {
+    var h = HAZAS[S.hazaVista], mia = S.hazaVista === MIA;
+    $("cp-haza").innerHTML =
+      '<p style="margin:0 0 4px"><span class="pill pill-ficticio">datos inventados para la maqueta</span></p>' +
+      "<h2 style=\"margin-bottom:2px\">Haza " + h.n + " · " + esc(h.nombre) + "</h2>" +
+      '<p class="pista">' + (mia ? "Tu haza." : "Haza de otro hogar. Ves sus datos públicos; no quién es su titular <span class=\"pill\">pendiente de decidir</span>.") + "</p>" +
+      '<dl class="datos">' +
+      "<dt>Superficie</dt><dd>" + num(h.ha, 1) + ' ha<span class="pill pill-medido">medido</span></dd>' +
+      "<dt>Olivos contados</dt><dd>" + h.olivos + '<span class="pill pill-medido">medido</span></dd>' +
+      "<dt>Altura mediana de copa</dt><dd>" + num(h.altura, 1) + ' m<span class="pill pill-medido">LiDAR</span></dd>' +
+      "<dt>Vigor hoy</dt><dd>" + esc(h.vigor) + '<span class="pill pill-deducido">deducido</span></dd>' +
+      "<dt>Último trabajo</dt><dd>" + esc(h.trabajo) + " · " + h.dia + " " + h.mes + '<span class="pill">OlivarTrack</span></dd>' +
+      "<dt>Suelo</dt><dd>franco arcilloso<span class=\"pill\">modelo 250 m</span></dd>" +
+      "<dt>Troncos y ramas</dt><dd>forma de ejemplo<span class=\"pill pill-ilus\">ilustrativo</span></dd>" +
+      "</dl>" +
+      '<p class="nota">El vigor sale de Sentinel-2 (10 m) y es relativo al resto de la finca en esa fecha: sirve para decidir dónde mirar, no dice que algo esté enfermo. El suelo es un modelo global, no una analítica.</p>' +
+      '<div class="campo"><label for="sHaza">Ver otra haza</label><select id="sHaza">' + HAZAS.map(function (x, i) { return '<option value="' + i + '"' + (i === S.hazaVista ? " selected" : "") + ">" + x.n + " · " + esc(x.nombre) + (i === MIA ? " (tuya)" : "") + "</option>"; }).join("") + "</select></div>" +
+      '<div class="fila" style="margin:10px 0"><button type="button" class="btn" data-accion="irHaza" data-k="' + S.hazaVista + '">Llévame allí</button></div>' +
+      '<div id="zonaPregunta" class="campo"><label for="iPregunta">Pregunta a la oficina sobre esta haza</label><textarea id="iPregunta" maxlength="500" aria-describedby="pPregunta ePregunta"></textarea><p class="pista" id="pPregunta">La contesta una persona de la explotación; no es al momento. No incluyas datos personales.</p><p class="err" id="ePregunta" hidden>Escribe la pregunta antes de mandarla.</p><div><button type="button" class="btn btn-prim" data-accion="preguntar">Mandar pregunta</button></div></div>';
+    $("sHaza").addEventListener("change", function () { S.hazaVista = Number(this.value); S.seguir = false; pintaHaza(); $("sHaza").focus(); });
+  }
+  function pintaChat() {
+    var ul = $("mensajes");
+    ul.innerHTML = S.chat.filter(function (m) { return !S.bloqueados[m.id]; }).map(function (m) {
+      if (m.sis) return '<li class="sis">' + esc(m.txt) + "</li>";
+      var acc = m.id && m.id !== "yo" ? '<button type="button" class="btn btn-txt acc" style="min-height:32px;padding:0 6px" data-bloquear="' + m.id + '" aria-label="Bloquear a ' + esc(m.de) + '">Bloquear</button>' : "";
+      return "<li>" + acc + '<span class="de">' + esc(m.de) + "</span>" + esc(m.txt) + "</li>";
+    }).join("") || '<li class="sis">Aún no hay mensajes.</li>';
+    qa("[data-bloquear]", ul).forEach(function (b) { b.addEventListener("click", function () { var id = b.getAttribute("data-bloquear"); S.bloqueados[id] = true; anuncia("Bloqueado. No verás sus mensajes ni oirás su voz."); pintaChat(); }); });
+    $("chatNota").innerHTML = (S.visita && S.visita.tipo === "guiada" ? "Chat de la visita guiada." : "Chat de la visita libre: aquí no hay voz.") + ' Se borra al terminar <span class="pill">plazo pendiente de decidir</span>.';
+  }
+  $("fChat").addEventListener("submit", function (ev) { ev.preventDefault(); var v = $("iChat").value.trim(); if (!v) return; S.chat.push({ de: S.alias, txt: v, id: "yo" }); $("iChat").value = ""; pintaChat(); $("iChat").focus(); });
+  function llegaMensaje(de, txt) { var g = GENTE.filter(function (x) { return x.alias === de; })[0]; S.chat.push({ de: de, txt: txt, id: g ? g.id : "x" }); if (S.panel !== "chat") { S.noLeidos++; aviso(de + ": " + txt); } pintaCajon(); }
+  function sistemaChat(t) { S.chat.push({ sis: true, txt: t }); if (S.panel === "chat") pintaChat(); }
+  function pintaGente() {
+    var mod = esModerador(), vivos = otros();
+    $("nGente").textContent = vivos.length + 1;
+    var guiada = S.visita && S.visita.tipo === "guiada";
+    $("filaModGente").hidden = !(mod && guiada); $("btnModTodos").textContent = S.microsCerrados ? "Abrir los micros" : "Cerrar todos los micros";
+    var h = "<li><span><strong>" + esc(S.alias) + ' (tú)</strong></span><span class="pill">' + (E.rol === "guia" ? "Guía · " : "") + (S.hablando ? "🎙 hablando" : "micro cerrado") + "</span></li>";
+    vivos.forEach(function (g) {
+      var rol = { guia: "Guía", corresponsal: "Corresponsal", hogar: "Hogar" }[g.rol];
+      var acc = '<button type="button" class="btn" data-g="' + g.id + '" data-op="silenciar" aria-pressed="' + !!S.silenciadosParaMi[g.id] + '">' + (S.silenciadosParaMi[g.id] ? "Silenciado para ti" : "Silenciar para mí") + "</button>" +
+        '<button type="button" class="btn" data-g="' + g.id + '" data-op="bloquear">' + (S.bloqueados[g.id] ? "Bloqueado" : "Bloquear") + "</button>";
+      if (mod && g.rol === "hogar") acc += '<button type="button" class="btn" data-g="' + g.id + '" data-op="palabra">Dar la palabra</button><button type="button" class="btn" data-g="' + g.id + '" data-op="cerrar">Cerrar su micro</button><button type="button" class="btn btn-peligro" data-g="' + g.id + '" data-op="expulsar">Expulsar</button>';
+      h += "<li><span><strong>" + esc(g.alias) + '</strong></span><span class="pill">' + rol + '</span><span class="sub">' + esc(g.disp) + (g.rol === "guia" ? " · modera la visita" : "") + '</span><span class="acciones">' + acc + "</span></li>";
+    });
+    $("listaGente").innerHTML = h;
+  }
+  $("cp-gente").addEventListener("click", function (ev) {
+    var b = ev.target.closest("[data-op],[data-mod]"); if (!b) return;
+    if (b.hasAttribute("data-mod")) { $("btnMicros").click(); pintaGente(); return; }
+    var g = GENTE.filter(function (x) { return x.id === b.getAttribute("data-g"); })[0], op = b.getAttribute("data-op");
+    if (op === "silenciar") { S.silenciadosParaMi[g.id] = !S.silenciadosParaMi[g.id]; anuncia((S.silenciadosParaMi[g.id] ? "Has silenciado a " : "Vuelves a oír a ") + g.alias + ". Solo para ti."); pintaGente(); pintaEscena(); }
+    if (op === "bloquear") { S.bloqueados[g.id] = !S.bloqueados[g.id]; anuncia(S.bloqueados[g.id] ? g.alias + " bloqueado: no verás sus mensajes ni oirás su voz." : "Desbloqueado."); pintaGente(); }
+    if (op === "palabra") { aviso("Has dado la palabra a " + g.alias + ": su micro se abre."); S.mod.push([hora(), "Palabra a " + g.alias]); }
+    if (op === "cerrar") { aviso("Has cerrado el micro de " + g.alias + "."); S.mod.push([hora(), "Micro cerrado a " + g.alias]); }
+    if (op === "expulsar") confirma("¿Expulsar a " + g.alias + "?", "Saldrá de esta visita y no podrá volver a entrar en ella. Queda en el registro de moderación.", "Expulsar", function (motivo) { S.expulsados[g.id] = true; S.mod.push([hora(), "Expulsado " + g.alias + " · " + motivo]); aviso(g.alias + " ha salido de la visita (expulsión)."); sistemaChat(g.alias + " ha salido de la visita."); pintaGente(); pintaEscena(); }, true);
+  });
+
+  // pausa y tutorial
+  function abrePausa() {
+    $("btnPanelAdmin").hidden = E.rol !== "admin"; $("btnPasarVR").hidden = !hayXr() || S.enVR; $("creditos").hidden = true;
+    $("pausaNota").textContent = S.visita && S.visita.tipo === "guiada" ? "La visita sigue mientras miras el menú; tu micro se cierra." : "La visita sigue mientras miras el menú.";
+    if (S.hablando) { S.hablando = false; pintaVoz(); }
+    $("dlgPausa").showModal();
+  }
+  var TUTO = {
+    escritorio: [["W A S D o flechas", "Andar"], ["Arrastrar con el ratón", "Mirar alrededor"], ["Clic en una haza o H", "Ver sus datos"], ["T", "Chat"], ["V o el botón Hablar", "Hablar (solo en guiadas)"], ["Esc", "Menú, configuración y salir"]],
+    movil: [["Cruceta", "Andar"], ["Arrastrar con un dedo", "Mirar alrededor"], ["Pellizcar", "Acercar o alejar"], ["Tocar una haza", "Ver sus datos"], ["Barra de abajo", "Haza, chat y gente"], ["≡", "Menú y salir"]],
+    quest: [["Palanca izquierda", "Andar (grip izquierdo: correr)"], ["Palanca derecha ← →", "Girar a saltos de 30°"], ["Palanca derecha ↑ y soltar", "Teletransporte"], ["Gatillo derecho", "Elegir en el panel o en una haza"], ["Botón Y", "Abrir o cerrar el panel"], ["Botón X", "Viñeta de confort"], ["Grip derecho (mantener)", "Hablar en guiadas · propuesta"]],
+    corresponsal: [["Empezar a emitir", "Publica tu cámara y tu posición"], ["Pausar cámara", "Si entra una persona en plano"], ["Clip diferido", "Si no hay cobertura"]]
+  };
+  function abreTutorial() {
+    var d = E.disp; $("tutoTeclas").innerHTML = TUTO[d].map(function (t) { return "<dt>" + esc(t[0]) + "</dt><dd>" + esc(t[1]) + "</dd>"; }).join("");
+    $("tutoIntro").textContent = d === "quest" ? "Con los mandos Touch:" : d === "movil" ? "Con el dedo:" : "Con teclado y ratón:";
+    $("tutoNota").textContent = d === "quest" ? "Si te mareas, activa la viñeta (X) o usa solo el teletransporte. Sin probar aún en unas gafas reales." : "Puedes volver a ver esto en Menú → Controles y ayuda.";
+    $("dlgTutorial").showModal();
+  }
+  function entraMundo() {
+    aplicaDisp(); pintaEscena(); pintaVoz(); pintaChips(); cierraCajonSilencioso();
+    $("notaQuest").hidden = E.disp !== "quest";
+    if (!S.chat.length) { S.chat.push({ sis: true, txt: "Has entrado en la " + (S.visita && S.visita.tipo === "guiada" ? "visita guiada" : "visita libre") + "." }); S.chat.push({ de: "Abejaruco", txt: "¡Buenas! La haza 3 tiene la hierba muy verde hoy.", id: "d" }); }
+    if (S.tuto && !S.tutoVisto) { S.tutoVisto = true; setTimeout(abreTutorial, 50); }
+  }
+  function cierraCajonSilencioso() { S.panel = null; $("cajon").hidden = true; qa("[data-panel]").forEach(function (b) { b.setAttribute("aria-expanded", "false"); }); }
+
+  // clic en la escena: hazas
+  $("escena").addEventListener("click", function (ev) { var p = ev.target.closest(".haza"); if (!p) return; S.hazaVista = Number(p.getAttribute("data-k")); S.seguir = false; if (S.panel !== "haza") abreCajon("haza"); S.hazaVista = Number(p.getAttribute("data-k")); pintaHaza(); });
+  qa("[data-mov]").forEach(function (b) { b.addEventListener("click", function () { var m = b.getAttribute("data-mov"); S.seguir = true; mueve(m === "e" ? 25 : m === "o" ? -25 : 0, m === "s" ? 25 : m === "n" ? -25 : 0); }); });
+
+  // teclado en el mundo
+  document.addEventListener("keydown", function (ev) {
+    if (S.actual !== "mundo" || document.querySelector("dialog[open]")) return;
+    var tag = (ev.target.tagName || "").toLowerCase(); if (tag === "input" || tag === "textarea" || tag === "select") { if (ev.key === "Escape") { ev.target.blur(); cierraCajon(); } return; }
+    var k = ev.key.toLowerCase(), paso = ev.shiftKey ? 45 : 20;
+    if (k === "arrowup" || k === "w") { S.seguir = true; mueve(0, -paso); ev.preventDefault(); }
+    else if (k === "arrowdown" || k === "s") { S.seguir = true; mueve(0, paso); ev.preventDefault(); }
+    else if (k === "arrowleft" || k === "a") { S.seguir = true; mueve(-paso, 0); ev.preventDefault(); }
+    else if (k === "arrowright" || k === "d") { S.seguir = true; mueve(paso, 0); ev.preventDefault(); }
+    else if (k === "h") { abreCajon("haza"); ev.preventDefault(); }
+    else if (k === "t") { abreCajon("chat"); ev.preventDefault(); }
+    else if (k === "p") { abreCajon("gente"); ev.preventDefault(); }
+    else if (k === "escape") { if (S.panel) cierraCajon(); else abrePausa(); ev.preventDefault(); }
+    else if (k === "v" && !ev.repeat && S.visita && S.visita.tipo === "guiada") { if ($("aModoMic").value === "mantener") ponHablando(true); else ponHablando(!S.hablando); }
+  });
+  document.addEventListener("keyup", function (ev) { if (S.actual === "mundo" && ev.key.toLowerCase() === "v" && $("aModoMic").value === "mantener" && S.hablando) ponHablando(false); });
+
+  // ---------- corresponsal
+  function pintaEmision() {
+    var g = { x: 700, y: 430 };
+    var s = fondoSVG(false) + '<path d="M' + g.x + " " + g.y + " L" + (g.x + 120) + " " + (g.y - 90) + " L" + (g.x + 150) + " " + (g.y - 20) + ' Z" fill="var(--lidar)" opacity=".3"/>' +
+      '<circle cx="' + g.x + '" cy="' + g.y + '" r="40" fill="var(--lidar)" opacity=".18"/><circle cx="' + g.x + '" cy="' + g.y + '" r="11" fill="#ff7a1a" stroke="#fff" stroke-width="4"/>' + etiqueta(g.x, g.y + 40, "Tú (± 6 m)", true);
+    GENTE.filter(function (x) { return x.rol !== "corresponsal"; }).forEach(function (x, i) { var px = g.x - 160 + i * 70, py = g.y - 120 + (i % 2) * 50; s += '<circle cx="' + px + '" cy="' + py + '" r="9" fill="' + x.camisa + '" stroke="#fff" stroke-width="2"/>' + etiqueta(px, py + 44, x.alias); });
+    $("mapaCampo").innerHTML = s; $("mapaCampo").setAttribute("viewBox", "440 230 520 360");
+    pintaBotonesCampo();
+  }
+  function pintaBotonesCampo() {
+    var b = $("btnEmitir"); b.setAttribute("aria-pressed", String(S.emitiendo)); b.textContent = S.emitiendo ? "Parar la emisión" : "Empezar a emitir";
+    b.classList.toggle("btn-peligro", S.emitiendo); b.classList.toggle("btn-prim", !S.emitiendo);
+    $("btnPausaCam").disabled = !S.emitiendo; $("btnPausaCam").setAttribute("aria-pressed", String(S.camPausa)); $("btnPausaCam").textContent = S.camPausa ? "Reanudar cámara" : "Pausar cámara";
+    var vivo = S.emitiendo && !S.camPausa;
+    $("pillEmision").textContent = vivo ? "EN DIRECTO" : S.emitiendo ? "Cámara en pausa" : "Sin emitir"; $("pillEmision").className = "pill" + (vivo ? " pill-vivo" : "");
+    $("pillCam").textContent = vivo ? "EN DIRECTO" : "Cámara en pausa"; $("pillCam").className = "pill" + (vivo ? " pill-vivo" : "");
+  }
+  $("btnEmitir").addEventListener("click", function () { S.emitiendo = !S.emitiendo; S.camPausa = false; S.video = S.emitiendo; pintaBotonesCampo(); $("estCampo").textContent = S.emitiendo ? "Emitiendo. Seis personas te siguen (ficticio)." : "Emisión parada."; });
+  $("btnPausaCam").addEventListener("click", function () { S.camPausa = !S.camPausa; pintaBotonesCampo(); $("estCampo").textContent = S.camPausa ? "Cámara en pausa: quien te sigue ve «cámara en pausa». Tu voz sigue." : "Cámara reanudada."; });
+  $("btnMicCorr").addEventListener("click", function () { var on = this.getAttribute("aria-pressed") !== "true"; this.setAttribute("aria-pressed", String(on)); this.textContent = on ? "🎙 Micro abierto" : "🎙 Micro cerrado"; });
+
+  window.addEventListener("resize", function () { if (S.actual === "mundo") pintaEscena(); });
+
+  // ---------- arranque
+  aplicaDisp();
+  var h0 = (location.hash || "").slice(1);
+  ir(TITULO[h0] ? h0 : "portada", true);
+  window.__maqueta = { ir: ir, E: function () { return E; }, S: function () { return S; }, SIM: SIM, ACC: ACC, PANT: PANT.map(function (p) { return p[0]; }) };
+})();
+</script>
+</body>
+</html>

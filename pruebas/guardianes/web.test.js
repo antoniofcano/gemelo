@@ -36,19 +36,25 @@ test("la página empaquetada carga sin errores y dibuja exactamente lo mismo que
   if (SALTO) return t.skip(SALTO);
   const s1 = await sirve(dist), s2 = await sirve(artefacto), nav = await lanza();
   try {
-    const w = await mide(nav, "http://127.0.0.1:" + s1.address().port + "/index.html");
-    const a = await mide(nav, "http://127.0.0.1:" + s2.address().port + "/index.html");
-    assert.deepStrictEqual(w.errores, [], "errores en la página de Vite");
-    assert.deepStrictEqual(w.fallos, [], "peticiones fallidas en la página de Vite");
     // Iguales salvo la variación propia del motor entre dos cargas (vida, nubes y la Cola dependen del tiempo). Medido el 2026-10-28:
-    // en solitario, ±1 llamada; con la puerta entera en paralelo, las LLAMADAS del escenario «nube» llegan a variar un tercio (95 frente a 127)
+    // en solitario, ±1 llamada; con la máquina cargada, las LLAMADAS del escenario «nube» llegan a variar un tercio (95 frente a 127)
     // porque dependen de cuánto ha avanzado la carga. Por eso esas se registran pero no se comparan; el resto, con 2 unidades o el 2 %.
-    const dif = [];
-    for (const e of Object.keys(a.medidas)) for (const k of ["llamadas", "triangulos", "puntos"]) {
-      const v = w.medidas[e][k], r = a.medidas[e][k];
-      if (e === "nube" && k === "llamadas") { if (v !== r) t.diagnostic("nube/llamadas (no se compara): Vite " + v + ", artefacto " + r); continue; }
-      if (Math.abs(v - r) > Math.max(2, 0.02 * r)) dif.push(e + "/" + k + ": Vite " + v + " frente a artefacto " + r);
+    // Una diferencia aislada puede ser de tiempo y no del build: se repite la pareja de medidas hasta 3 veces; falla si nunca coinciden.
+    let dif = [];
+    for (let intento = 1; intento <= 3; intento++) {
+      const w = await mide(nav, "http://127.0.0.1:" + s1.address().port + "/index.html");
+      const a = await mide(nav, "http://127.0.0.1:" + s2.address().port + "/index.html");
+      assert.deepStrictEqual(w.errores, [], "errores en la página de Vite");
+      assert.deepStrictEqual(w.fallos, [], "peticiones fallidas en la página de Vite");
+      dif = [];
+      for (const e of Object.keys(a.medidas)) for (const k of ["llamadas", "triangulos", "puntos"]) {
+        const v = w.medidas[e][k], r = a.medidas[e][k];
+        if (e === "nube" && k === "llamadas") { if (v !== r) t.diagnostic("nube/llamadas (no se compara): Vite " + v + ", artefacto " + r); continue; }
+        if (Math.abs(v - r) > Math.max(2, 0.02 * r)) dif.push(e + "/" + k + ": Vite " + v + " frente a artefacto " + r);
+      }
+      if (!dif.length) break;
+      t.diagnostic("intento " + intento + " con diferencias: " + dif.join("; "));
     }
-    assert.deepStrictEqual(dif, [], "la página de Vite no dibuja lo mismo que la artefacto");
+    assert.deepStrictEqual(dif, [], "la página de Vite no dibuja lo mismo que la artefacto (3 intentos)");
   } finally { await nav.close(); s1.close(); s2.close(); }
 });

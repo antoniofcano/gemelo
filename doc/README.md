@@ -24,6 +24,7 @@
 - [sistema/GLOSARIO.md](sistema/GLOSARIO.md) — tesela, nivel, copa, r8, foco, MDS/MDT/CHM…
 - [sistema/MEDIDAS.md](sistema/MEDIDAS.md) — cifras medidas de dibujo y memoria.
 - [sistema/VR.md](sistema/VR.md) — modo VR (Meta Quest): controles, perfiles, qué se probó y qué no.
+- [sistema/UX.md](sistema/UX.md) — propuesta de UX: acceso, configuración e interacción (pendiente de revisión); maqueta en [../prototipos/ux/](../prototipos/ux/).
 - [sistema/ARQUITECTURA-MULTIUSUARIO.md](sistema/ARQUITECTURA-MULTIUSUARIO.md) — «Cuarenta hazas»: la visión multiusuario que da sentido al proyecto (propuesta, pendiente de estudio).
 
 ## Cómo se opera — `operacion/`

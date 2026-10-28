@@ -44,19 +44,22 @@ Mapa de iniciativas con su estado y el ADR que las sostiene. **No** es el estado
 | P4 | Estabilizar la prueba VR con el mock | 🟨 | `mock_xr.js` y `prueba_vr.js` recuperados e incluidos; la prueba completa se cae con SwiftShader tras ~25 pasos (opcional con `GEMELO_VR=1`) |
 | P5 | Arquitectura multiusuario «Cuarenta hazas» | 🟨 | estudiada; plan por fases aprobado (abajo); ADR-0009 (Propuesto) |
 
-## Multiusuario: fases (plan aprobado el 2026-10-28)
+## Multiusuario: fases (plan aprobado el 2026-10-28; decisiones de Antonio en DECISIONS-PENDING)
 
 | Fase | Qué | Estado | Listo cuando |
 |---|---|---|---|
-| F0 | Monorepo + build Vite (three 0.128.0), CI de la puerta | ✅ en local (commit f32fae8); CI escrito, sin ejecutar hasta el primer push | puerta verde en local y CI; la web dibuja lo mismo que la artefacto |
-| F1a | Una persona en el VPS: api, Postgres+PostGIS, enlace mágico, proyección por haza, CSP, copias | ⬜ bloqueada por decisiones (DECISIONS-PENDING 12–17) | hogar de prueba entra y ve las hazas con la lista blanca; Quest p95 ≤ 13,9 ms |
-| F1b | Hueco del constructor de olivos-tipo: `Catalogo`, id estable y tipo por árbol | ⬜ | con `tipo=-1`, capturas idénticas; glb de fixture dentro de presupuesto |
-| F1c | three moderno (r18x) | ⬜ | puerta sin subir topes; capturas aprobadas |
-| F2 | Presencia compartida (LiveKit) | ⬜ | escritorio y Quest se ven y escriben; pose p95 < 250 ms |
-| F3 | Voz y visita guiada | ⬜ | 10 personas limpias; el guía modera |
-| F4 | Corresponsal de campo | ⬜ | visita con corresponsal; error de posición medido |
-| F5 | Aula, puzles, dron, museo | ⬜ | según sus ADR |
-| UX | Diseño de acceso, configuración e interacción + maqueta | 🟨 en marcha | UX.md y la maqueta de `prototipos/ux/` revisados por Antonio |
+| F0 | Monorepo + build Vite (three 0.128.0), CI de la puerta | ✅ en local (commit f32fae8); CI sin ejecutar hasta el primer push | la web dibuja lo mismo que la artefacto |
+| F1a | Una persona en el VPS (solo Hituelo): api, Postgres+PostGIS, hazas propias, enlace mágico por SMTP de OVH, portada pública y resto tras sesión, ficha de haza (sin titular, sin kilos), CSP, copias | ⬜ desbloqueada | hogar de prueba entra y ve las hazas; restauración ensayada |
+| F1b | Hueco del constructor de olivos-tipo: `Catalogo`, id estable y tipo por árbol, contrato `olivos-tipo` | ⬜ | con `tipo=-1` se ve igual; glb de fixture dentro de presupuesto |
+| F1c | three moderno (≥ 0.167, módulos ES), aceptando el aspecto nuevo | ⬜ | puerta verde; capturas nuevas aprobadas por Antonio |
+| F1d | Escena en 3D Tiles 1.1 + 3DTilesRendererJS (decisión 11): tubería glb + `tileset.json`, terreno, olivos, construcciones; supera ADR-0001/0002 | ⬜ tras F1c | Hituelo en escritorio y Quest con el presupuesto medido de nuevo; Quest p95 ≤ 13,9 ms |
+| F2 | Presencia compartida (LiveKit); token propio de OlivarTrack; se retira la salida artefacto | ⬜ | escritorio y Quest se ven y escriben; pose p95 < 250 ms |
+| F3 | Voz y visita guiada; no se graba el directo | ⬜ | 10 personas limpias; el guía modera |
+| F4 | Corresponsal de campo como PWA | ⬜ | visita con corresponsal; error de posición medido |
+| F5 | Aula, puzles, dron, museo; constructor de olivos real | ⬜ | según sus ADR |
+| UX | Propuesta de acceso, configuración e interacción + maqueta (`prototipos/ux/`) | 🟨 entregada, pendiente de revisión | Antonio la revisa |
+
+Tareas sueltas decididas: anonimizar `doc/historico/DISENO-2026-10.md` (decisión 2) · exportadores multiplataforma (decisión 8, D4).
 
 ## Decidido no hacerlo (por ahora)
 

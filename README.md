@@ -82,4 +82,4 @@ motor lo corrige. Las lecturas en vivo de OlivarTrack y Vigía por MCP no se han
 
 ## Licencia
 
-Sin licencia declarada todavía: por defecto, todos los derechos reservados. Pendiente de decidir.
+Todos los derechos reservados (decisión de Antonio, 2026-10-28): el repositorio es público para leerlo, pero el código no tiene licencia libre.
