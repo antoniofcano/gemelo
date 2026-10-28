@@ -45,7 +45,6 @@ Fuentes: LiDAR PNOA 3.ª cobertura (vuelo 2024), MDT 0,5 m, ortofoto PNOA 2022 (
 - Frutales sin marcar en Hituelo (el LiDAR no los distingue).
 - Historia de Marín Hituelo (sin trabajos ni fenología en OlivarTrack).
 - Tres teselas del borde norte con cobertura incompleta si faltan las hojas 404-4181 y 406-4181.
-- Portabilidad de los exportadores (separadores `\` fijos).
 - Estabilizar la prueba VR completa con el mock: con SwiftShader la página se cae («Target crashed») tras ~25 pasos; es opcional en la puerta (PLAN P4).
 - **Arquitectura multiusuario «Cuarenta hazas»** ([propuesta](sistema/ARQUITECTURA-MULTIUSUARIO.md), [ADR-0009](adr/0009-plataforma-multiusuario-cuarenta-hazas.md), Propuesto): estudio pendiente del agente `arquitecto-multiusuario`. Decididos: Postgres propio en Docker, VPS en OVH, `gemelo.canoydamas.es`, hazas ajenas visibles; por decidir: grabar visitas.
 - Borrar el artefacto desechable de la prueba de plataforma (con confirmación).

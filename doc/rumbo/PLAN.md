@@ -31,7 +31,7 @@ Mapa de iniciativas con su estado y el ADR que las sostiene. **No** es el estado
 | D1 | Frutales sin marcar en Hituelo | ⏸️ | el LiDAR no los distingue |
 | D2 | Historia de Marín Hituelo | ⏸️ | sin trabajos ni fenología en OlivarTrack |
 | D3 | Hojas 404-4181 y 406-4181 (borde norte) | ⬜ | 3 teselas con cobertura incompleta |
-| D4 | Portabilidad de los exportadores (rutas con `\`) | ⬜ | solo funcionan en Windows |
+| D4 | Portabilidad de los exportadores | ✅ | `os.path.join` en `tuberia/`; guardián multiplataforma; sin ejecutar con datos reales fuera de Windows |
 | D5 | Producir `datos_cerro_embebido.json` con un script del repo | ⬜ | hoy es un intermedio sin origen versionado |
 
 ## Proceso y calidad
@@ -59,7 +59,7 @@ Mapa de iniciativas con su estado y el ADR que las sostiene. **No** es el estado
 | F5 | Aula, puzles, dron, museo; constructor de olivos real | ⬜ | según sus ADR |
 | UX | Propuesta de acceso, configuración e interacción + maqueta (`prototipos/ux/`) | 🟨 entregada, pendiente de revisión | Antonio la revisa |
 
-Tareas sueltas decididas: anonimizar `doc/historico/DISENO-2026-10.md` (decisión 2) · exportadores multiplataforma (decisión 8, D4).
+Tareas sueltas decididas: ✅ anonimizar `doc/historico/DISENO-2026-10.md` (decisión 2) · ✅ exportadores multiplataforma (decisión 8, D4).
 
 ## Decidido no hacerlo (por ahora)
 

@@ -13,13 +13,13 @@ Decisiones que **no puede tomar un agente**: las cierra Antonio. Las técnicas s
 | # | Decisión | Respuesta | Dónde queda |
 |---|---|---|---|
 | 1 | Licencia | **Todos los derechos reservados** (repo público, sin licencia libre) | README; no se crea `LICENSE` |
-| 2 | Cifras reales e id interno en `doc/historico/DISENO-2026-10.md` | **Anonimizar** (quitar el id interno y nombres que no hagan falta; dejar cifras agregadas) | tarea en PLAN |
+| 2 | Cifras reales e id interno en `doc/historico/DISENO-2026-10.md` | **Anonimizar** (quitar el id interno y nombres que no hagan falta; dejar cifras agregadas) | ✅ hecho (bb52d50) |
 | 3 | Suelo nuevo frente al anterior | **El nuevo** | ADR-0007 |
 | 4 | Qué se publica antes del servidor | **Nada hasta F1a** | PUBLICACION |
 | 5 | Ramas | **`main`** | CLAUDE.md §6 |
 | 6 | Versión inicial | **0.2.0**; la 1.0.0 cuando F1a esté desplegada y usada | VERSION |
 | 7 | Artefacto desechable de la prueba 0 | **Conservarlo** hasta retirar la salida artefacto (F2) | ESTADO |
-| 8 | Exportadores multiplataforma | **Sí, ahora** | tarea en PLAN |
+| 8 | Exportadores multiplataforma | **Sí, ahora** | ✅ hecho (2302e88) |
 | 9 | Historia de Hituelo | **Se muestra** | `tuberia/hituelo_conv.py` |
 | 10 | Grabar visitas guiadas | **No se graba el directo**; como mucho clips cortos revisados por la oficina antes de publicar | ADR-0009, fase 3 |
 | 11 | Arquitectura multiusuario (ADR-0009) | **Aceptada, con 3D Tiles 1.1 + 3DTilesRendererJS para la escena** (en contra de la recomendación del estudio, que proponía conservar las teselas propias) | ADR-0009, PLAN |
