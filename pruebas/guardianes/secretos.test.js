@@ -45,16 +45,10 @@ test("sin enlaces ni ids de artefactos privados en lo versionado (sólo se permi
   assert.deepStrictEqual(mal, [], "enlace o id de artefacto en: " + mal.join(", ") + " (el enlace va en privado, no en un repo público)");
 });
 
-// Excepciones con motivo: decisiones de Antonio aún abiertas (doc/rumbo/DECISIONS-PENDING.md). Cuando se cierren, se quitan de aquí;
-// el test de abajo falla si una excepción ya no hace falta, para que no se queden olvidadas.
-const EXCEPCIONES_ID_INTERNO = { "doc/historico/DISENO-2026-10.md": "DECISIONS-PENDING nº 2: cifras reales e id interno en una foto del diseño" };
-const ID_INTERNO = /\(id interno\)|id\s+interno\s*[:=]\s*[A-Za-z0-9]{15,}/i;
+// Sin excepciones: la última (doc/historico/DISENO-2026-10.md) se quitó al anonimizarlo (DECISIONS-PENDING nº 2, 2026-10-28).
+const ID_INTERNO = /\(id interno\)|id\s+interno\s*[:=]\s*[A-Za-z0-9]{15,}/i;
 
-test("sin ids internos de OlivarTrack en lo versionado (salvo las excepciones con motivo)", () => {
-  const mal = TEXTOS.filter(f => !f.startsWith("pruebas/guardianes/") && !(f in EXCEPCIONES_ID_INTERNO) && ID_INTERNO.test(lee(f)));
+test("sin ids internos de OlivarTrack en lo versionado", () => {
+  const mal = TEXTOS.filter(f => !f.startsWith("pruebas/guardianes/") && ID_INTERNO.test(lee(f)));
   assert.deepStrictEqual(mal, [], "restos de ids internos en: " + mal.join(", "));
-});
-
-test("las excepciones de ids internos siguen haciendo falta", () => {
-  for (const f of Object.keys(EXCEPCIONES_ID_INTERNO)) assert.ok(ID_INTERNO.test(lee(f)), f + " ya no tiene el patrón: quita la excepción");
 });
