@@ -96,7 +96,7 @@ def indice(finca, copas, tes):
              ndvi=ndvi, suelo_ndvi=suelo_ndvi, ot=ot, avance={}, paisaje=paisaje, teselas=tes, grueso=grueso, mosaico=mosaico)
     if finca == "hituelo":
         I["fincas"] = [dict(nombre="Finca sintética", parcelas=[0, 1], ha=round(sum(p["ha"] for p in pars), 1), olivos=len(copas))]
-        I["textos"] = dict(sin_historia=True, finca="Finca sintética", fincas=1, parcelas=2, ha=round(sum(p["ha"] for p in pars), 1), olivos=len(copas))
+        I["textos"] = dict(sin_historia=False, finca="Finca sintética", fincas=1, parcelas=2, ha=round(sum(p["ha"] for p in pars), 1), olivos=len(copas))
     else:
         for p in pars: del p["finca"]
     return I

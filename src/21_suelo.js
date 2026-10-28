@@ -8,7 +8,7 @@
   // El NDVI de 10 m mezcla copa y suelo. Con la fracción de copa de cada celda (LiDAR) se resta la copa: g = NDVI − b·f. De g sale la cubierta (0 = desnudo, 1 = hierba tupida) y su vigor.
   // g se calcula en la rejilla del NDVI (10 m) y la tarjeta gráfica lo interpola por píxel; la CPU lo interpola igual para colocar matas, huellas y polvo.
   var SN = D.suelo_ndvi, SNf = SN ? i16(SN.f) : null, S0 = 0.17, V0 = 0.62, Gw = NDV ? NDV.w : 1, Gh = NDV ? NDV.h : 1, Gcampo = new Float32Array(Gw * Gh), Gpix = new Uint8Array(Gw * Gh * 4), Gtex = null;
-  var hierbaOn = true, ultOnSuelo = true, ultCentro = [1e9, 1e9], ultFechaSuelo = -1, ultExag = -1;
+  var hierbaOn = true, ultOnSuelo = true, ultCentro = [1e9, 1e9], ultFechaSuelo = -1, ultExag = -1, ultVR = -1;
   function vn2(x, y) { var ix = Math.floor(x), iy = Math.floor(y), fx = x - ix, fy = y - iy; fx = fx * fx * (3 - 2 * fx); fy = fy * fy * (3 - 2 * fy); var a = hash(ix * 127.1 + iy * 311.7), b = hash((ix + 1) * 127.1 + iy * 311.7), c = hash(ix * 127.1 + (iy + 1) * 311.7), d = hash((ix + 1) * 127.1 + (iy + 1) * 311.7); return (a * (1 - fx) + b * fx) * (1 - fy) + (c * (1 - fx) + d * fx) * fy; }
   function calculaCampoSuelo() {   // el NDVI del suelo de cada fecha
     var n = Gw * Gh, i, j, k;
@@ -154,14 +154,14 @@
     if (iMata.instanceColor) iMata.instanceColor.needsUpdate = true; if (iPiedra.instanceColor) iPiedra.instanceColor.needsUpdate = true;
     ultCentro = [cx, cy]; ultExag = exag;
   }
-  var tSuelo = 0, ultVR = -1;
+  var tSuelo = 0;
   function actualizaSuelo(dt) {
     hierbaOn = $("cHierba").checked;
     if (ultFechaSuelo !== ndviIdx || ultOnSuelo !== hierbaOn) { ultOnSuelo = hierbaOn; recoloreaSuelo(); }
     tSuelo += dt; if (tSuelo < 0.25) return; tSuelo = 0;
     var cerca = paseando || orb.dist < 230, cx = paseando ? (enDron ? dr.x : pp.x) : objetivo.x, cy = paseando ? (enDron ? dr.y : pp.y) : -objetivo.z;
-    var hv = hierbaOn && cerca && (!VRP.on || VRP.hierba > 0); iMata.visible = iPiedra.visible = iCont.visible = hv;
-    if (!hv) return;
+    iMata.visible = iPiedra.visible = iCont.visible = hierbaOn && cerca && (!VRP.on || VRP.hierba > 0);
+    if (!(hierbaOn && cerca)) return;
     if (Math.hypot(cx - ultCentro[0], cy - ultCentro[1]) > 12 || ultExag !== exag || ultVR !== VRP.hierba) { ultVR = VRP.hierba; repartePlantas(cx, cy); }
   }
   (function () {

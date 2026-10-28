@@ -132,7 +132,7 @@ def hituelo():
 
     I = dict(v=2, ts=TS, res=RES, srs=RS, orto_px=512, finca_id="hituelo", centro_utm=[cx, cy], z0=z0, zmax=0, ext=ext, cobertura_nube=1.0, parcelas=parcelas, fincas=fincas, copas=copas, marcados=marcados,
              ndvi=ndvi, suelo_ndvi=suelo_ndvi, ot=ot, avance={}, paisaje=paisaje, teselas=teselas, grueso=grueso, mosaico=mosaico,
-             textos=dict(sin_historia=True, finca="Hituelo", fincas=len(fincas), parcelas=len(parcelas), ha=round(sum(p["ha"] for p in P), 1), olivos=len(copas)))
+             textos=dict(sin_historia=False, finca="Hituelo", fincas=len(fincas), parcelas=len(parcelas), ha=round(sum(p["ha"] for p in P), 1), olivos=len(copas)))
     json.dump(I, open(os.path.join(salida, "indice.json"), "w"))
     print("Hituelo: %d teselas (%d×%d), %d olivos, %d parcelas, %d fincas, %d marcas, centro %s, z0 %.0f, ext %s" % (len(teselas), NKX, NKY, len(copas), len(parcelas), len(fincas), len(marcados), (cx, cy), z0, ext))
     print("indice %.0f KB · teselas %.1f MB" % (os.path.getsize(os.path.join(salida, "indice.json")) / 1024, sum(os.path.getsize(os.path.join(salida, "t", f)) for f in os.listdir(os.path.join(salida, "t"))) / 1048576))
