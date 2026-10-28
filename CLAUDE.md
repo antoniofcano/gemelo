@@ -23,6 +23,7 @@ Gemelo digital en 3D de fincas de olivar (three.js r128, teselas de 256 m, LiDAR
 9. **Confirmar antes de publicar, etiquetar o subir.** `git push`, tags, publicar un artefacto, borrar uno: lo decide la persona. Un agente propone y espera el OK.
 10. **Idioma del producto, del código, de la documentación y de los commits: español.**
 11. **Todo cambio de interacción (UI, mandos, panel VR) lleva su nota de comodidad:** qué se probó, dónde y qué **no** se ha probado (iPhone, Quest). Ver [skill `interaccion`](.claude/skills/interaccion/SKILL.md).
+12. **No reinventar ruedas.** Se usan librerías y herramientas existentes y mantenidas (npm, pip, imágenes oficiales de Docker) en lugar de código propio; hay permiso para instalarlas. Cada dependencia se declara con versión fijada en su `package.json`/`requirements.txt`, y el código casero que una librería resuelve se sustituye.
 
 ---
 

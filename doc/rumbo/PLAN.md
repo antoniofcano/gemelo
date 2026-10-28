@@ -42,6 +42,7 @@ Mapa de iniciativas con su estado y el ADR que las sostiene. **No** es el estado
 | P2 | Primera auditoría completa (skill `auditoria`) | ⬜ | tras estabilizar los guardianes |
 | P3 | Licencia | ⬜ | decisión de Antonio |
 | P4 | Estabilizar la prueba VR con el mock | 🟨 | `mock_xr.js` y `prueba_vr.js` recuperados e incluidos; la prueba completa se cae con SwiftShader tras ~25 pasos (opcional con `GEMELO_VR=1`) |
+| P6 | Sustituir código casero por librerías (regla 12): validador de esquemas propio → `ajv` con JSON Schema estándar (`prefixItems`, `propertyNames`, `$defs`); servidor estático de las pruebas → librería; revisar el resto | ⬜ | tras integrar F1b, que también toca los esquemas |
 | P5 | Arquitectura multiusuario «Cuarenta hazas» | 🟨 | estudiada; plan por fases aprobado (abajo); ADR-0009 (Propuesto) |
 
 ## Multiusuario: fases (plan aprobado el 2026-10-28; decisiones de Antonio en DECISIONS-PENDING)
