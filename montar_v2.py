@@ -32,7 +32,7 @@ def monta(D, salida, src="src"):
     if "<meta charset" not in cab[:400]: cab = '<meta charset="utf-8">\n' + cab
     html = cab + '<script type="application/json" id="datos">' + json.dumps(D) + '</script>\n<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>\n<script>' + js + '</script>\n'
     os.makedirs(os.path.dirname(os.path.join(R, salida)) or R, exist_ok=True)
-    open(os.path.join(R, salida), "w", encoding="utf-8").write(html)
+    open(os.path.join(R, salida), "w", encoding="utf-8", newline="\n").write(html)   # LF en todos los sistemas: la salida es la misma en Windows y en Linux
     return html
 
 if __name__ == "__main__":
@@ -44,9 +44,11 @@ if __name__ == "__main__":
         h = monta(D, a.salida or ("gemelo_%s_v2.html" % a.finca), a.src)
     else:
         D = json.load(open(os.path.join(R, a.datos or os.path.join(carpeta, "indice.json")), encoding="utf-8"))
-        dest = os.path.join("publicar", a.finca)
-        h = monta(D, a.salida or os.path.join(dest, "index.html"), a.src)
+        salida = a.salida or os.path.join("publicar", a.finca, "index.html")
+        dest = os.path.dirname(salida) or "."                                                  # los ficheros de apoyo van junto a la página: <dest>/t/
+        origen = os.path.dirname(os.path.join(R, a.datos)) if a.datos else os.path.join(R, carpeta)   # y salen de <carpeta del índice>/t/
+        h = monta(D, salida, a.src)
         os.makedirs(os.path.join(R, dest, "t"), exist_ok=True)
-        for f in glob.glob(os.path.join(R, carpeta, "t", "*")): shutil.copy(f, os.path.join(R, dest, "t", os.path.basename(f)))
+        for f in glob.glob(os.path.join(origen, "t", "*")): shutil.copy(f, os.path.join(R, dest, "t", os.path.basename(f)))
         print("ficheros de apoyo:", len(glob.glob(os.path.join(R, dest, "t", "*"))), "en", dest)
     print("HTML: %.2f MB" % (len(h.encode()) / 1048576))

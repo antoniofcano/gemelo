@@ -1,0 +1,9 @@
+{
+  "$comment": "Topes de dibujo que comprueba pruebas/guardianes/carga.test.js. 'diseno' es el presupuesto por fotograma de ADR-0002 (techo absoluto). 'fixture' son topes de REGRESIÓN sobre el fixture sintético (2 teselas, 140 olivos), fijados el 2026-10-28 con ≈25 % de margen sobre lo medido (GEMELO_MIDE=1; medido: lejos 168 llamadas / 82 k tri / 620 pts; cerca 56 / 431 k / 2,8 k; nube 109 / 175 k / 3 k; heap 23-34 MB). NO son rendimiento real: SwiftShader, sin fps. Subirlos exige explicarlo en el commit.",
+  "diseno": { "triangulos": 1700000, "puntos": 1400000, "llamadas": 250, "heapMB": 350 },
+  "fixture": {
+    "lejos": { "llamadas": 220, "triangulos": 105000, "puntos": 800, "heapMB": 60 },
+    "cerca": { "llamadas": 75, "triangulos": 540000, "puntos": 3600, "heapMB": 60 },
+    "nube": { "llamadas": 140, "triangulos": 220000, "puntos": 3800, "heapMB": 60 }
+  }
+}

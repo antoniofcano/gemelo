@@ -7,8 +7,8 @@
   "scripts": {
     "fixture": "python pruebas/genera_fixture.py",
     "montar": "python montar_v2.py",
-    "guardianes": "node --test pruebas/guardianes/",
-    "puerta": "node --test pruebas/guardianes/",
+    "guardianes": "node --test \"pruebas/guardianes/*.test.js\"",
+    "puerta": "node --test \"pruebas/guardianes/*.test.js\"",
     "probar": "node pruebas/prueba3.js",
     "probar:vr": "node pruebas/vr_mock.js"
   },
