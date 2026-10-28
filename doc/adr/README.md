@@ -19,5 +19,6 @@ Cada decisión con alternativas reales se escribe una vez, con su porqué y su c
 | [0004](0004-datos-fuera-del-repo.md) | Los datos no se versionan | Aceptado |
 | [0005](0005-webxr-perfil-propio.md) | WebXR con perfil de rendimiento propio | Aceptado |
 | [0006](0006-ortofoto-correccion-de-copas.md) | Ortofoto con corrección del desplazamiento de copas | Aceptado |
-| [0007](0007-suelo-abierto-de-la-ortofoto.md) | Suelo abierto heredado de la ortofoto | Propuesto |
+| [0007](0007-suelo-abierto-de-la-ortofoto.md) | Suelo abierto heredado de la ortofoto | Aceptado |
 | [0008](0008-ficheros-de-apoyo-json-jpg.md) | Ficheros de apoyo en json y jpg, sin binario crudo | Aceptado |
+| [0009](0009-plataforma-multiusuario-cuarenta-hazas.md) | Plataforma multiusuario «Cuarenta hazas» | Propuesto |

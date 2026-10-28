@@ -24,8 +24,9 @@
 | 6 | Build de las dos fincas desde el fixture (Cerro embebido, Hituelo ficheros) y sus límites de publicación | `build.test.js` |
 | 7 | Carga en Chrome headless: 0 errores de consola y presupuesto de dibujo bajo `pruebas/presupuesto.json` | `carga.test.js` |
 | 8 | Sin secretos, ni datos de la explotación, ni ficheros pesados versionados | `secretos.test.js` |
+| 9 | VR: sin WebXR no hay botón ni errores; con el mock, la prueba completa (**opcional**, `GEMELO_VR=1`) | `vr.test.js` |
 
-**Duración medida (2026-10-28):** ≈ 1 min 20 s – 1 min 35 s con `npm run puerta` (85 comprobaciones; 2 fincas montadas y cargadas en Chrome 131 con SwiftShader; Windows 10, Node 24, Python 3.14). Casi todo es el arranque de Chrome y la carga del fixture; sin Chrome, esas dos comprobaciones se saltan con aviso y la puerta baja a unos segundos (pero entonces la carga **no** está comprobada).
+**Duración medida (2026-10-28):** ≈ 1 min 20 s – 2 min 50 s con `npm run puerta` (87 comprobaciones, 1 opcional saltada; con la prueba «sin WebXR» añadida; 2 fincas montadas y cargadas en Chrome 131 con SwiftShader; Windows 10, Node 24, Python 3.14). Casi todo es el arranque de Chrome y la carga del fixture; sin Chrome, esas dos comprobaciones se saltan con aviso y la puerta baja a unos segundos (pero entonces la carga **no** está comprobada).
 
 Si falla una comprobación, [TESTING.md](TESTING.md) dice qué significa cada rojo y cómo se arregla. Una prueba que no se puede ejecutar (p. ej. sin Chrome) **se salta con aviso explícito, no pasa en silencio**.
 

@@ -11,9 +11,13 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 - Cabecera «Expone / Consume» derivada en cada módulo de `src/` (`node pruebas/contrato_modulos.js --escribe`).
 - Fixture sintético determinista (`pruebas/genera_fixture.py`, Python puro): 2 teselas, una sin nube (calidad Base); y topes de dibujo en `pruebas/presupuesto.json`.
 - 11 skills en `.claude/skills/`: `adr`, `documentalista`, `release`, `auditoria`, `publicar-artefacto`, `medir`, `datos-finca`, `modelado-3d`, `videojuegos`, `mundos-virtuales`, `interaccion`.
+- Trabajo de WebXR recuperado de la carpeta de trabajo original: `pruebas/mock_xr.js` (WebXR simulado), `pruebas/prueba_vr.js` (prueba completa) y `doc/sistema/VR.md`; guardián `vr.test.js` (la prueba completa es opcional con `GEMELO_VR=1`).
+- Arquitectura multiusuario «Cuarenta hazas» (`doc/sistema/ARQUITECTURA-MULTIUSUARIO.md`, ADR-0009 Propuesto) y agente `arquitecto-multiusuario` (`.claude/agents/`) para estudiarla.
 - Andamio: `VERSION`, `package.json`, `Makefile`, `.editorconfig`, `.nvmrc`, `requirements.txt`, `CONTRIBUTING.md`, plantillas de issue y PR.
 
 ### Cambiado
+- Suelo: el suelo nuevo, más realista, sustituye al anterior (`04_terreno.js`, `21_suelo.js`); ADR-0007 pasa a Aceptado. Conserva el radio de hierba del perfil VR.
+- Historia de Hituelo visible: `hituelo_conv.py` emite `sin_historia = false`.
 - `montar_v2.py`: en modo ficheros, con `--salida` los ficheros de apoyo se copian junto a la página (antes iban siempre a `publicar/<finca>/t/`) y con `--datos` salen de la carpeta de ese índice; la salida se escribe siempre con LF (en Windows salía con CRLF).
 - `doc/DISENO.md` pasa a `doc/historico/` (foto del diseño de octubre de 2026); sus decisiones viven ahora en los ADR. `doc/MEDIDAS.md` pasa a `doc/sistema/MEDIDAS.md`.
 - `doc/ESTADO.md` reescrito como único sitio de «dónde estamos»; se retira el id y el enlace del artefacto privado (el repo es público).

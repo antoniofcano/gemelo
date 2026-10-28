@@ -2,7 +2,7 @@
 
 Gemelo digital en 3D de fincas de olivar (three.js r128, teselas de 256 m, LiDAR/ortofoto/NDVI, modo VR) para Cano & Damas Oleicultores. Es la primera lectura de quien llega, persona o agente. Pacto: *si algo deja de ser cierto, se corrige en el mismo commit que lo cambia.*
 
-**Versión: v0.2.0** — prototipo. Dónde estamos y qué falta: [doc/ESTADO.md](doc/ESTADO.md). Qué se hizo: [CHANGELOG.md](CHANGELOG.md). Índice de toda la documentación: [doc/README.md](doc/README.md).
+**Versión: v0.2.0** — prototipo (la fase 1 de una visión multiusuario: [doc/sistema/ARQUITECTURA-MULTIUSUARIO.md](doc/sistema/ARQUITECTURA-MULTIUSUARIO.md)). Dónde estamos y qué falta: [doc/ESTADO.md](doc/ESTADO.md). Qué se hizo: [CHANGELOG.md](CHANGELOG.md). Índice de toda la documentación: [doc/README.md](doc/README.md).
 
 ---
 
@@ -40,6 +40,7 @@ contratos/               esquemas y ejemplos de los contratos de datos
 pruebas/                 pruebas con Chrome headless + guardianes (pruebas/guardianes/) + fixture sintético
 doc/                     toda la documentación (índice en doc/README.md)
 .claude/skills/          skills reutilizables (ver §6)
+.claude/agents/          agentes (arquitecto-multiusuario)
 ```
 
 Documentación por pregunta: `doc/rumbo/` (¿hacia dónde vamos?: PLAN, DECISIONS-PENDING) · `doc/adr/` (decisiones) · `doc/sistema/` (¿cómo es?: ARCHITECTURE, CONTRATOS, GLOSARIO, MEDIDAS) · `doc/operacion/` (¿cómo se opera?: ONBOARDING, RUNBOOK, PUBLICACION, DATOS, TESTING) · `doc/historico/` (fotos).
@@ -87,6 +88,8 @@ Ejecuta la [skill `release`](.claude/skills/release/SKILL.md); no la redefine. R
 
 - **El estado vive en el repo, no en la conversación.** `doc/ESTADO.md` es la memoria viva; `doc/historico/` archiva lo cerrado. Nada importante vive solo en un chat.
 - Trabajo incremental, en rama, con su comprobación, y commits en español con `Co-Authored-By`.
+- **Rama de trabajo: `main`** (decisión de Antonio, 2026-10-28); sin ramas por ahora. Commits pequeños y puerta antes de cada uno.
+- **Agente `arquitecto-multiusuario`** (`.claude/agents/`): estudia la visión multiusuario ([ARQUITECTURA-MULTIUSUARIO](doc/sistema/ARQUITECTURA-MULTIUSUARIO.md), [ADR-0009](doc/adr/0009-plataforma-multiusuario-cuarenta-hazas.md)) frente al repo. Solo lectura; ejecutarlo antes de cualquier código de la fase 2 en adelante.
 - Decisiones técnicas: el agente decide y lo cuenta. Decisiones de Antonio (licencia, qué se publica, ramas, datos de la explotación): se preguntan o van a [DECISIONS-PENDING](doc/rumbo/DECISIONS-PENDING.md).
 - Lo que no está en el repo ni en `doc/` se marca **[SUPUESTO]** o se pregunta; nunca se inventa.
 - Agentes largos: cerrarlos en primer plano y verificar su resultado; lo publicado hay que comprobar que es lo nuevo.

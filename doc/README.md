@@ -23,6 +23,8 @@
 - [sistema/CONTRATOS.md](sistema/CONTRATOS.md) — datos exportador→motor, interfaces del motor, MCP, publicación (esquemas en [../contratos/](../contratos/)).
 - [sistema/GLOSARIO.md](sistema/GLOSARIO.md) — tesela, nivel, copa, r8, foco, MDS/MDT/CHM…
 - [sistema/MEDIDAS.md](sistema/MEDIDAS.md) — cifras medidas de dibujo y memoria.
+- [sistema/VR.md](sistema/VR.md) — modo VR (Meta Quest): controles, perfiles, qué se probó y qué no.
+- [sistema/ARQUITECTURA-MULTIUSUARIO.md](sistema/ARQUITECTURA-MULTIUSUARIO.md) — «Cuarenta hazas»: la visión multiusuario que da sentido al proyecto (propuesta, pendiente de estudio).
 
 ## Cómo se opera — `operacion/`
 - [operacion/ONBOARDING.md](operacion/ONBOARDING.md) — alta y la puerta.
@@ -32,7 +34,7 @@
 - [operacion/TESTING.md](operacion/TESTING.md) — qué prueba cada cosa y qué significa cada rojo.
 
 ## Skills — `.claude/skills/`
-`adr`, `documentalista`, `release`, `auditoria`, `publicar-artefacto`, `medir`, `datos-finca`, `modelado-3d`, `videojuegos`, `mundos-virtuales`, `interaccion` (tabla de cuándo usar cada una en [CLAUDE.md §6](../CLAUDE.md)).
+`adr`, `documentalista`, `release`, `auditoria`, `publicar-artefacto`, `medir`, `datos-finca`, `modelado-3d`, `videojuegos`, `mundos-virtuales`, `interaccion` (tabla de cuándo usar cada una en [CLAUDE.md §6](../CLAUDE.md)). Agente: [`arquitecto-multiusuario`](../.claude/agents/arquitecto-multiusuario.md) (estudia la arquitectura multiusuario, solo lectura).
 
 ## Histórico — `historico/` (foto, no se mantiene)
 - [historico/DISENO-2026-10.md](historico/DISENO-2026-10.md) — diseño de la refactorización por teselas (27-oct-2026). Lo vigente: ADR 0001–0008 y ARCHITECTURE.

@@ -17,8 +17,8 @@ Mapa de iniciativas con su estado y el ADR que las sostiene. **No** es el estado
 
 | # | Iniciativa | Estado | Detalle |
 |---|---|---|---|
-| M1 | Suelo abierto con detalle de ortofoto | 🟨 | ADR-0007 (Propuesto): decidir si sustituye al anterior |
-| M2 | Suelo realista en la rama de producción | ⬜ | depende de M1 |
+| M1 | Suelo abierto con detalle de ortofoto | ✅ | ADR-0007 (Aceptado): el suelo nuevo sustituye al anterior |
+| M2 | Suelo realista en la rama de producción | ✅ | integrado en `src/` el 2026-10-28 (04_terreno, 21_suelo); falta medir presupuesto con datos reales |
 | M3 | Fundido entre niveles de olivos (dither/histéresis) | ⬜ | hoy hay «salto» al cambiar de nivel |
 | M4 | LRU fina de ortofotos decodificadas | ⬜ | hoy solo se sueltan a 900 m |
 | M5 | Rodadas del suelo a 0,25 m/px solo en teselas con caminos | ⏸️ | +~2 MB; esperar a ver si hace falta |
@@ -41,7 +41,8 @@ Mapa de iniciativas con su estado y el ADR que las sostiene. **No** es el estado
 | P1 | Sistema de trabajo: guardianes, contratos, ADR, skills | 🟨 | este andamiaje |
 | P2 | Primera auditoría completa (skill `auditoria`) | ⬜ | tras estabilizar los guardianes |
 | P3 | Licencia | ⬜ | decisión de Antonio |
-| P4 | Recrear y versionar `mock_xr.js` (mock de WebXR) | ⬜ | `pruebas/vr_mock.js` lo lee del directorio actual y el fichero no está en el repo: hoy la prueba VR no se puede ejecutar desde cero |
+| P4 | Estabilizar la prueba VR con el mock | 🟨 | `mock_xr.js` y `prueba_vr.js` recuperados e incluidos; la prueba completa se cae con SwiftShader tras ~25 pasos (opcional con `GEMELO_VR=1`) |
+| P5 | Arquitectura multiusuario «Cuarenta hazas» | 🟨 | propuesta estudiada, ADR-0009 (Propuesto); ver `doc/sistema/ARQUITECTURA-MULTIUSUARIO.md` |
 
 ## Decidido no hacerlo (por ahora)
 

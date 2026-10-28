@@ -49,7 +49,7 @@ Los scripts de `datos/` leen sus rutas de variables de entorno (`GEMELO_DATOS`, 
 ## Probar
 
 ```bash
-npm i && npm run puerta                    # la puerta: guardianes con un fixture sintético (≈1,5 min con Chrome)
+npm i && npm run puerta                    # la puerta: guardianes con un fixture sintético (≈2-3 min con Chrome)
 npm i playwright-core                      # y Chrome instalado (variable CHROME si no está en la ruta por defecto)
 python -m http.server 8000
 node pruebas/prueba3.js http://localhost:8000/hituelo/index.html salida/h     # carga, presupuesto, capturas

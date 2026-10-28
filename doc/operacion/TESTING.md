@@ -36,4 +36,5 @@ Dos familias: **guardianes** (proceso, rápidos, en la puerta) y **pruebas de na
 | `prueba3.js <url> <prefijo>` | carga con `?debug`, llamadas, triángulos, puntos, heap, peticiones a `/t/`, capturas |
 | `prueba_arb.js <ruta> <prefijo> [escenarios]` | tiempo hasta construir los olivos N0 (sirve `GEMELO_RAIZ` sin servidor) |
 | `vistas2.js <url> <prefijo> '<json>'` | capturas con cámara posicionada por UTM y hora fija |
-| `vr_mock.js` | VR con sesión WebXR simulada. **No se puede ejecutar desde el repo**: lee `mock_xr.js` del directorio actual y ese fichero no está versionado (PLAN P4) |
+| `prueba_vr.js <url> <prefijo> [sinxr]` | VR completo con el WebXR simulado de `mock_xr.js` (entrar, andar, girar, teletransporte, panel, ficha, vuelo, mirador, correr, salir). Con `sinxr`, comprueba que sin WebXR no hay botón ni errores. Completa: opcional en la puerta (`GEMELO_VR=1`, inestable con SwiftShader) |
+| `vr_mock.js` | variante corta: andar frente a correr con el mock |
