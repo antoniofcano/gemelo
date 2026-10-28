@@ -1,0 +1,43 @@
+{
+  "name": "gemelo-api",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Servidor del gemelo (fase F1a): enlace mágico, hazas y lectura de OlivarTrack por MCP",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "tipos": "tsc --noEmit -p tsconfig.json",
+    "build": "tsc -p tsconfig.build.json",
+    "arranca": "node dist/src/principal.js",
+    "dev": "node src/principal.ts",
+    "sincroniza": "node src/ot/sincroniza-cli.ts",
+    "migra": "node src/bd/migra-cli.ts",
+    "test": "node --test --test-concurrency=1 \"pruebas/**/*.test.ts\"",
+    "test:unidad": "node --test \"pruebas/unidad/*.test.ts\"",
+    "test:integracion": "node --test --test-concurrency=1 \"pruebas/integracion/*.test.ts\""
+  },
+  "dependencies": {
+    "@fastify/cookie": "11.1.3",
+    "@fastify/formbody": "9.0.1",
+    "@fastify/rate-limit": "11.2.1",
+    "@fastify/session": "11.1.4",
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "fastify": "5.12.7",
+    "node-pg-migrate": "9.0.0",
+    "nodemailer": "10.2.1",
+    "pg": "8.23.1"
+  },
+  "devDependencies": {
+    "@testcontainers/postgresql": "12.2.1",
+    "@types/node": "24.19.2",
+    "@types/nodemailer": "8.0.2",
+    "@types/pg": "8.23.1",
+    "testcontainers": "12.2.1",
+    "typescript": "5.9.3",
+    "yaml": "2.9.1"
+  }
+}

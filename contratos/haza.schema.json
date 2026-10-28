@@ -1,0 +1,140 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://gemelo.canoydamas.es/contratos/haza.schema.json",
+  "title": "Ficha pública de una haza (GET /api/hazas/{id})",
+  "$comment": "Proyección pública por haza (ADR-0013, decisiones 13 y 14). LISTA BLANCA: additionalProperties false en todos los niveles. Nunca titular (solo alias si el hogar lo hace visible), ni kilos, ni personas, ni GPS, ni texto libre. La api serializa con este esquema (apps/api/src/hazas/rutas.ts) y sus pruebas lo validan con ajv. Cambiar un campo = cambiar este fichero, la api, contratos/api.openapi.yaml y doc/sistema/CONTRATOS.md en el mismo commit.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "codigo", "nombre", "finca", "es_mia", "alias", "superficie_ha", "olivos", "tratamientos", "analiticas", "fenologia", "avance", "ndvi_relativo", "datos_de", "completo", "avisos"],
+  "properties": {
+    "id": { "type": "integer", "minimum": 1 },
+    "codigo": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,32}$" },
+    "nombre": { "type": "string", "minLength": 1, "maxLength": 60 },
+    "finca": { "type": "string", "pattern": "^[a-z0-9_-]{1,32}$" },
+    "es_mia": { "type": "boolean", "description": "true si la haza está asignada al hogar de la sesión" },
+    "alias": { "type": ["string", "null"], "maxLength": 20, "description": "alias del hogar titular SOLO si ese hogar lo hizo visible; si no, null" },
+    "superficie_ha": { "type": "number", "minimum": 0 },
+    "olivos": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lidar", "declarado"],
+      "properties": {
+        "lidar": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["n", "fuente", "naturaleza"],
+          "properties": {
+            "n": { "type": "integer", "minimum": 0 },
+            "fuente": { "type": "string", "maxLength": 80 },
+            "naturaleza": { "type": "string", "enum": ["medido"] }
+          }
+        },
+        "declarado": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["n", "fuente", "naturaleza"],
+          "properties": {
+            "n": { "type": ["integer", "null"], "minimum": 0 },
+            "fuente": { "type": ["string", "null"], "maxLength": 80 },
+            "naturaleza": { "type": "string", "enum": ["declarado"] }
+          }
+        }
+      }
+    },
+    "tratamientos": {
+      "type": "array",
+      "maxItems": 50,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["fecha", "componentes", "plazo_seguridad_dias"],
+        "properties": {
+          "fecha": { "type": "string", "format": "date" },
+          "componentes": {
+            "type": "array",
+            "maxItems": 12,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["tipo", "producto", "n_registro", "dosis", "unidad"],
+              "properties": {
+                "tipo": { "type": "string", "enum": ["fitosanitario", "nutricion", "corrector", "otro"] },
+                "producto": { "type": "string", "pattern": "^[\\p{L}\\p{N} .,%()/+-]{1,80}$" },
+                "n_registro": { "type": ["string", "null"], "pattern": "^[A-Za-z0-9./-]{1,20}$" },
+                "dosis": { "type": ["number", "null"], "minimum": 0 },
+                "unidad": { "type": ["string", "null"], "enum": ["l/ha", "kg/ha", "%", "cc/hl", "g/hl", null] }
+              }
+            }
+          },
+          "plazo_seguridad_dias": { "type": ["integer", "null"], "minimum": 0 }
+        }
+      }
+    },
+    "analiticas": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["fecha", "tipo", "resultados"],
+        "properties": {
+          "fecha": { "type": "string", "format": "date" },
+          "tipo": { "type": "string", "enum": ["suelo", "foliar", "agua", "otra"] },
+          "resultados": {
+            "type": "object",
+            "additionalProperties": false,
+            "patternProperties": { "^[A-Za-z0-9_]{1,24}$": { "type": "number" } }
+          }
+        }
+      }
+    },
+    "fenologia": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["fecha", "bbch"],
+        "properties": {
+          "fecha": { "type": "string", "format": "date" },
+          "bbch": { "type": "integer", "minimum": 0, "maximum": 99 }
+        }
+      }
+    },
+    "avance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pct", "parcelas_con_dato", "parcelas", "fecha"],
+      "description": "porcentaje recogido (solo el %, nunca kilos); null si ninguna parcela tiene aforo con el que comparar",
+      "properties": {
+        "pct": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+        "parcelas_con_dato": { "type": "integer", "minimum": 0 },
+        "parcelas": { "type": "integer", "minimum": 0 },
+        "fecha": { "type": ["string", "null"], "format": "date" }
+      }
+    },
+    "ndvi_relativo": {
+      "anyOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["valor", "fecha", "fuente", "naturaleza"],
+          "properties": {
+            "valor": { "type": "number", "minimum": -1, "maximum": 1, "description": "desviación del NDVI de la haza respecto al resto de la finca en la misma fecha" },
+            "fecha": { "type": "string", "format": "date" },
+            "fuente": { "type": "string", "maxLength": 80 },
+            "naturaleza": { "type": "string", "enum": ["relativo"] }
+          }
+        }
+      ]
+    },
+    "datos_de": { "type": ["string", "null"], "format": "date-time", "description": "la lectura de OlivarTrack más antigua de las que componen la ficha (consultadoEn)" },
+    "completo": { "type": "boolean", "description": "false si alguna lectura llegó truncada, parcial, con error o no se ha hecho: no se sacan totales" },
+    "avisos": {
+      "type": "array",
+      "maxItems": 4,
+      "items": { "type": "string", "enum": ["ot_sin_sincronia", "ot_truncado", "ot_parcial", "ot_error"] }
+    }
+  }
+}

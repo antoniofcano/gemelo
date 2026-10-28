@@ -1,0 +1,21 @@
+// Lectura de OlivarTrack detrás de una interfaz (contratos/olivartrack-sync.md): el cliente MCP de verdad (lector-mcp.ts)
+// o una grabación sintética para las pruebas (lector-grabado.ts). SOLO lectura: la lista de herramientas es cerrada, y
+// el lector MCP además se niega a trabajar si el token deja ver herramientas de escritura.
+
+export const HERRAMIENTAS_LECTURA = ["pases_del_periodo", "novedades", "aforo_y_avance_de_recoleccion"] as const;
+export type HerramientaLectura = (typeof HERRAMIENTAS_LECTURA)[number];
+
+/** Prefijos de las herramientas de escritura conocidas del MCP de OlivarTrack (contratos/mcp.md). */
+export const PREFIJOS_ESCRITURA = ["registrar_", "proponer_", "anotar_", "reportar_", "anadir_"];
+
+export interface LectorOlivarTrack {
+  /** Llama a una herramienta de lectura y devuelve su salida estructurada (objeto JSON), sin interpretar. */
+  llama(herramienta: HerramientaLectura, entrada: Record<string, string | number>): Promise<unknown>;
+  cierra(): Promise<void>;
+}
+
+export class ErrorDeLectura extends Error {}
+
+export function esHerramientaDeLectura(h: string): h is HerramientaLectura {
+  return (HERRAMIENTAS_LECTURA as readonly string[]).includes(h);
+}
