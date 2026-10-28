@@ -13,7 +13,7 @@ const MODS = path.join(T3D, "node_modules"), DEPS = ["@gltf-transform/core", "@g
 const falta = DEPS.filter(d => !fs.existsSync(path.join(MODS, d, "package.json")));
 const SALTO = falta.length ? "faltan dependencias de tuberia/tiles3d (" + falta.join(", ") + "; cd tuberia/tiles3d && npm i): 3D Tiles NO se ha comprobado"
   : !python() ? "falta Python 3 para generar el fixture: 3D Tiles NO se ha comprobado" : null;
-const VALIDADOR = path.join(MODS, "3d-tiles-validator");
+const VALIDADOR = path.join(T3D, "validador", "node_modules", "3d-tiles-validator");
 const VITE = path.join(VISOR, "node_modules", "vite", "bin", "vite.js");
 const SALTO_VISOR = SALTO || (!fs.existsSync(VITE) || !fs.existsSync(path.join(VISOR, "node_modules", "3d-tiles-renderer")) ? "visor sin instalar (cd tuberia/tiles3d/visor && npm i): el visor 3D Tiles NO se ha comprobado" : motivoSalto("el visor 3D Tiles"));
 const TOPES = JSON.parse(fs.readFileSync(path.join(T3D, "presupuesto.json"), "utf8"));
@@ -83,8 +83,8 @@ test("cada contenido existe y es un glb válido: cabecera, chunks JSON y BIN, ac
 
 test("validador oficial de CesiumGS (3d-tiles-validator, que valida también los glb): 0 errores y 0 avisos", { timeout: 120000 }, async t => {
   if (SALTO) return t.skip(SALTO);
-  if (!fs.existsSync(path.join(VALIDADOR, "package.json"))) return t.skip("3d-tiles-validator no instalado (devDependency de tuberia/tiles3d): validación oficial NO hecha");
-  // en su propio proceso: trae sharp 0.32 y la tubería sharp 0.35; dos libvips en un proceso dan avisos de GLib
+  if (!fs.existsSync(path.join(VALIDADOR, "package.json"))) return t.skip("3d-tiles-validator no instalado (cd tuberia/tiles3d/validador && npm i): validación oficial NO hecha");
+  // en su propio proceso (y su propia carpeta): trae sharp 0.32 y la tubería sharp 0.35; dos libvips en un proceso dan avisos de GLib
   const prog = "require(process.argv[1]).Validators.validateTilesetFile(process.argv[2]).then(r => process.stdout.write(JSON.stringify(r.toJson())))";
   const v = ejecuta(process.execPath, ["-e", prog, VALIDADOR, path.join(SAL, "tileset.json")]);
   assert.strictEqual(v.status, 0, "3d-tiles-validator falló:\n" + v.stderr);

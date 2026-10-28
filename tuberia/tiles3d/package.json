@@ -5,8 +5,7 @@
   "type": "module",
   "description": "Prototipo F1d: del contrato de datos v2 (fixture sintético) a 3D Tiles 1.1 (tileset.json + glb por tesela). Ver doc/sistema/TILES3D.md",
   "scripts": {
-    "genera": "node genera.mjs",
-    "valida": "3d-tiles-validator --tilesetFile"
+    "genera": "node genera.mjs"
   },
   "dependencies": {
     "@gltf-transform/core": "4.5.1",
@@ -16,8 +15,5 @@
     "proj4": "2.22.0",
     "sharp": "0.35.5",
     "three": "0.186.1"
-  },
-  "devDependencies": {
-    "3d-tiles-validator": "0.6.1"
   }
 }

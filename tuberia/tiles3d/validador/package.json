@@ -1,0 +1,12 @@
+{
+  "name": "gemelo-tiles3d-validador",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Validador oficial de CesiumGS para el tileset del prototipo F1d (solo herramienta de desarrollo). Va aparte de la tubería porque trae sharp 0.32 y glob 7; su package-lock lleva un correo en un aviso de obsolescencia que el guardián de higiene rechaza, así que ese lock no se versiona.",
+  "scripts": {
+    "valida": "3d-tiles-validator --tilesetFile"
+  },
+  "devDependencies": {
+    "3d-tiles-validator": "0.6.1"
+  }
+}

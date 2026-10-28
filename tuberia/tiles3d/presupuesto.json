@@ -1,5 +1,5 @@
 {
-  "$comment": "Topes del prototipo 3D Tiles (F1d) que comprueba pruebas/guardianes/tiles3d.test.js. 'tesela' son techos de diseño por glb (valen para cualquier finca). 'fixture' son topes de REGRESIÓN sobre el fixture sintético (2 teselas, 140 olivos), fijados el 2026-10-28 con ≈25 % de margen sobre lo medido (GEMELO_MIDE=1). 'visor' son los del visor de prueba con Chrome headless + SwiftShader: llamadas, triángulos y memoria, NUNCA fps. Subirlos exige explicarlo en el commit.",
+  "$comment": "Topes del prototipo 3D Tiles (F1d) que comprueba pruebas/guardianes/tiles3d.test.js. 'tesela' son techos de diseño por glb (valen para cualquier finca). 'fixture' son topes de REGRESIÓN sobre el fixture sintético (2 teselas, 140 olivos), fijados el 2026-10-28 con ≈25 % de margen sobre lo medido (GEMELO_MIDE=1). 'visor' (medido: lejos 2 llamadas / 4.380 tri / 6 MB; cerca 10 / 19.916 / 8 MB) son los del visor de prueba con Chrome headless + SwiftShader: llamadas, triángulos y memoria, NUNCA fps. Subirlos exige explicarlo en el commit.",
   "tesela": { "triangulos": 60000, "tri_terreno": 34000, "bytes": 1500000, "prototipos": { "olivo-detalle": 170, "olivo-lejano": 30 } },
   "fixture": {
     "niveles": [
@@ -9,7 +9,7 @@
     ]
   },
   "visor": {
-    "lejos": { "llamadas": 20, "triangulos": 12000, "heapMB": 60 },
-    "cerca": { "llamadas": 40, "triangulos": 40000, "heapMB": 60 }
+    "lejos": { "llamadas": 4, "triangulos": 5500, "heapMB": 20 },
+    "cerca": { "llamadas": 13, "triangulos": 25000, "heapMB": 20 }
   }
 }
