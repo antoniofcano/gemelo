@@ -1,0 +1,4 @@
+# el visor de prueba sí se versiona (la raíz ignora *.html); su build y el tileset que se le pone al lado, no
+!visor/index.html
+visor/dist/
+visor/public/
