@@ -48,7 +48,7 @@ Mapa de iniciativas con su estado y el ADR que las sostiene. **No** es el estado
 
 | Fase | Qué | Estado | Listo cuando |
 |---|---|---|---|
-| F0 | Monorepo + build Vite (three 0.128.0), CI de la puerta | 🟨 hecho en local; CI escrito, sin ejecutar (sin push) | puerta verde en local y CI; la web dibuja lo mismo que la artefacto |
+| F0 | Monorepo + build Vite (three 0.128.0), CI de la puerta | ✅ en local (commit f32fae8); CI escrito, sin ejecutar hasta el primer push | puerta verde en local y CI; la web dibuja lo mismo que la artefacto |
 | F1a | Una persona en el VPS: api, Postgres+PostGIS, enlace mágico, proyección por haza, CSP, copias | ⬜ bloqueada por decisiones (DECISIONS-PENDING 12–17) | hogar de prueba entra y ve las hazas con la lista blanca; Quest p95 ≤ 13,9 ms |
 | F1b | Hueco del constructor de olivos-tipo: `Catalogo`, id estable y tipo por árbol | ⬜ | con `tipo=-1`, capturas idénticas; glb de fixture dentro de presupuesto |
 | F1c | three moderno (r18x) | ⬜ | puerta sin subir topes; capturas aprobadas |
