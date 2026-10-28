@@ -2,7 +2,7 @@
 // Expone: Arboles
 // Consume: 02_mundo (Mundo, suelo, copaAlta, kcor, tinte, aviva, copas), 02b_cola (Cola), 03_escena (camera, exag, modo, calidad),
 //   04_terreno (hash), 05_nube (ALTO_MAX, nube), 06_arboles (gArboles, tronco, arbolesG), 07_follaje (follajeG, construyeSombras),
-//   08_marcadores (tmp), 09_camara (objetivo, orb), 10_ndvi (ndviIdx), 12_paseo (paseando), 15_tiempo (parcheTiempo, nivel, esc), 16_vida (mira)
+//   07a_catalogo (Catalogo), 09_camara (objetivo, orb), 10_ndvi (ndviIdx), 12_paseo (paseando), 15_tiempo (nivel, esc), 16_vida (mira)
 // ===============================================================================
   // ---------- los olivos del modo Gemelo con tres niveles de detalle: el coste de dibujo no crece con la superficie de la finca
   // Nivel 0: celdas de 64 m con el modelo completo (copa medida, troncos, hojas, flores y aceitunas) alrededor de lo que se mira (o de quien pasea), hasta MAX0 olivos.
@@ -12,7 +12,7 @@
   // Para que los árboles buenos aparezcan pronto: se mide el tiempo por fotograma (el tope de olivos y el radio de nivel 0 crecen si el aparato va sobrado y bajan si va justo),
   // las celdas se construyen por delante de quien se mueve y, en modo Nube, se «precargan» las de alrededor para que pulsar «Gemelo» no espere.
   var Arboles = (function () {
-    var version = 0, CEL = 64, MAX0 = 450, MAX1 = 3000, MAX2 = 16000, U1 = 460, U2 = 1600, TOPE_TRI = 550000, TRI0 = 800, TRI1 = 170, TRI2 = 30, NP1 = 4, NP2 = 2;
+    var version = 0, CEL = 64, MAX0 = 450, MAX1 = 3000, MAX2 = 16000, U1 = 460, U2 = 1600, TOPE_TRI = 550000, TRI0 = 800, TRI1 = 170, TRI2 = 30, NP1 = Catalogo.variantes(Catalogo.SIN, 1), NP2 = Catalogo.variantes(Catalogo.SIN, 2);
     var olivos = copas.filter(function (c) { return c.oliv; }), celdas = {}, ultima = { x: 1e9, y: 1e9, z: 1e9, fx: 0, fz: 0, tms: 0, exag: -1, k: "" }, t = 0, sucio = true, nL0 = 0, n1 = 0, n2 = 0, faltan = 0, nPre = 0, triEst = 0;
     var cx = Mundo.cx, cy = Mundo.cy, m4 = new THREE.Matrix4(), c3 = [0, 0, 0], vel = { x: 0, z: 0 };
     var vrP = null, TOPE_TRI0 = TOPE_TRI;   // perfil de las gafas VR (29_vr.js): menos olivos de nivel 0, radio más corto y menos triángulos
@@ -20,59 +20,31 @@
     var fijaSc = /[?&]arbsc=([0-9.]+)/.exec(location.search), esc = fijaSc ? Number(fijaSc[1]) : 1, emaDt = 0.017, claveDib = "";
     function claveActual() { return exag + "|" + calidad + "|" + kcor + "|" + tinte + "|" + ndviIdx; }   // lo que está pegado a la geometría de una celda de nivel 0: si cambia, la celda se rehace
 
-    // ----- las formas: una copa en vaso (abierta por abajo, cerrada con un casquete oscuro), 4 variantes de lóbulos, y un tronco de 2 o 3 pies
-    function copaGeo(seed, anillos, lados, lobulos) {
-      var pos = [], col = [], idx = [], th0 = 0.62, y0 = (1 - Math.cos(th0)) / 2, i, j;
-      for (i = 0; i <= anillos; i++) {
-        var th = th0 + (Math.PI - th0) * i / anillos, s = Math.sin(th), yy = ((1 - Math.cos(th)) / 2 - y0) / (1 - y0);
-        for (j = 0; j < lados; j++) {
-          var ph = j / lados * 6.2832, m = 1 + lobulos * 0.20 * Math.sin(3 * ph + seed * 6.1) * s + lobulos * 0.12 * Math.sin(5 * ph + seed * 2.3 + th * 2) + lobulos * 0.10 * (hash(seed * 31 + i * 13 + j) - 0.5);
-          var yj = yy + 0.07 * lobulos * Math.sin(2 * ph + seed * 3.7) * s;
-          pos.push(Math.cos(ph) * s * m, yj, Math.sin(ph) * s * m);
-          var sh = (0.5 + 0.55 * yy) * (1 + (hash(seed * 7 + i * 5 + j) - 0.5) * 0.14); col.push(sh, sh, sh);
-        }
-      }
-      var cen = pos.length / 3; pos.push(0, 0.02, 0); col.push(0.28, 0.28, 0.28);   // el casquete de debajo: oscuro, para que desde abajo (paseo) no se vea hueco
-      for (i = 0; i < anillos; i++) for (j = 0; j < lados; j++) {
-        var a = i * lados + j, b = i * lados + (j + 1) % lados, c = a + lados, d = b + lados; idx.push(a, c, b, b, c, d);
-      }
-      for (j = 0; j < lados; j++) idx.push(cen, j, (j + 1) % lados);
-      var g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3)); g.setIndex(idx); g.computeVertexNormals();
-      // que las caras miren hacia fuera (comprobado con una normal de la franja media)
-      var nr = g.attributes.normal, ps = g.attributes.position, k = Math.floor(anillos / 2) * lados; if (nr.getX(k) * ps.getX(k) + nr.getZ(k) * ps.getZ(k) < 0) { for (var q = 0; q < idx.length; q += 3) { var tmp = idx[q + 1]; idx[q + 1] = idx[q + 2]; idx[q + 2] = tmp; } g.setIndex(idx); g.computeVertexNormals(); }
-      return g;
-    }
-    function troncoGeo(pies, seed) {   // pies que salen casi juntos de la base y se abren hacia la copa; unidad de altura, ramas de 5 caras
-      var pos = [], col = [], idx = [], base = 0, st, j, RS = 5;
-      for (st = 0; st < pies; st++) {
-        var an = seed * 2.1 + st / pies * 6.2832 + (hash(seed + st * 3) - 0.5) * 0.6, dx = Math.cos(an) * (0.30 + 0.12 * hash(seed * 5 + st)), dz = Math.sin(an) * (0.30 + 0.12 * hash(seed * 5 + st));
-        for (var e = 0; e < 2; e++) {
-          var r = e ? 0.095 : 0.20, px = e ? dx : dx * 0.18, py = e ? 1.0 : 0.0, pz = e ? dz : dz * 0.18;
-          for (j = 0; j < RS; j++) { var a2 = j / RS * 6.2832 + st; pos.push(px + Math.cos(a2) * r, py, pz + Math.sin(a2) * r); var m = (e ? 0.9 : 0.62) * (0.9 + 0.2 * hash(st * 7 + j + seed)); col.push(0.38 * m, 0.31 * m, 0.24 * m); }
-        }
-        for (j = 0; j < RS; j++) { var a = base + j, b = base + (j + 1) % RS, c = a + RS, d = b + RS; idx.push(a, b, c, b, d, c); }
-        base += 2 * RS;
-      }
-      var g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3)); g.setIndex(idx); g.computeVertexNormals();
-      var nr = g.attributes.normal, ps = g.attributes.position; if (nr.getX(0) * ps.getX(0) + nr.getZ(0) * ps.getZ(0) < 0) { for (var q = 0; q < idx.length; q += 3) { var tp = idx[q + 1]; idx[q + 1] = idx[q + 2]; idx[q + 2] = tp; } g.setIndex(idx); g.computeVertexNormals(); }
-      return g;
-    }
-    // el sombreador de las copas instanciadas: sombra de nubes y helada (como el resto), silueta rota por ruido hacia el borde, motas de hoja y el envés plateado en el borde
-    function parcheInst(sh) { parcheTiempo(sh, false); sh.vertexShader = sh.vertexShader.replace("vSomb = ot_sombra(position.xz);", "vSomb = ot_sombra((instanceMatrix * vec4(transformed, 1.0)).xz);"); }
-    function parcheCopa(sh) {
-      parcheInst(sh);
-      sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nvarying vec3 vLoc; varying float vSeed; varying float vRim;")
-        .replace("#include <begin_vertex>", "#include <begin_vertex>\n vLoc = position; vSeed = fract(sin(dot(vec2(instanceMatrix[3][0], instanceMatrix[3][2]), vec2(12.9898, 78.233))) * 43758.5453);")
-        .replace("#include <project_vertex>", "#include <project_vertex>\n vRim = 1.0 - clamp(abs(dot(normalize(transformedNormal), normalize(-mvPosition.xyz))), 0.0, 1.0);");
-      sh.fragmentShader = sh.fragmentShader.replace("void main() {", "varying vec3 vLoc; varying float vSeed; varying float vRim;\nfloat ot_h3(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }\nvoid main() {")
-        .replace("#include <color_fragment>", "#include <color_fragment>\n float nz = ot_h3(floor(vLoc * 7.0 + vSeed * 31.0)); float nz2 = ot_h3(floor(vLoc * 15.0 + vSeed * 17.0));\n if (nz < (vRim - 0.72) * 2.8) discard;\n diffuseColor.rgb *= 0.74 + 0.50 * nz2;\n diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.64, 0.70, 0.56), smoothstep(0.45, 1.0, vRim) * 0.40 * (0.45 + nz));");
-    }
-    var matCopaI = new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: true }), matTroncoI = new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: true });
-    matCopaI.onBeforeCompile = parcheCopa; matTroncoI.onBeforeCompile = parcheInst; matCopaI.needsUpdate = true; matTroncoI.needsUpdate = true;
+    // ----- las formas de los niveles 1 y 2 las da el catálogo (07a_catalogo.js): el tipo −1 son las de siempre, 4 variantes en L1 (copa + tronco) y 2 en L2
     function instancias(geo, mat, cap, color) { var m = new THREE.InstancedMesh(geo, mat, cap); if (color) m.setColorAt(0, new THREE.Color(1, 1, 1)); m.frustumCulled = false; m.count = 0; gArboles.add(m); return m; }
-    var iCopa1 = [], iTron1 = [], iCopa2 = [], p;
-    for (p = 0; p < NP1; p++) { iCopa1.push(instancias(copaGeo(p + 1, 6, 10, 1), matCopaI, MAX1, true)); iTron1.push(instancias(troncoGeo(p % 2 ? 3 : 2, p + 3), matTroncoI, MAX1, false)); }
-    for (p = 0; p < NP2; p++) iCopa2.push(instancias(copaGeo(p + 11, 2, 7, 1), matCopaI, MAX2, true));
+    var iCopa1 = [], iTron1 = [], iCopa2 = [], p, pz;
+    for (p = 0; p < NP1; p++) { pz = Catalogo.geometria(Catalogo.SIN, 1, p); iCopa1.push(instancias(pz[0].geo, pz[0].mat, MAX1, true)); iTron1.push(instancias(pz[1].geo, pz[1].mat, MAX1, false)); }
+    for (p = 0; p < NP2; p++) { pz = Catalogo.geometria(Catalogo.SIN, 2, p); iCopa2.push(instancias(pz[0].geo, pz[0].mat, MAX2, true)); }
+    // los olivos-tipo de un catálogo cargado (ADR-0014): un juego de mallas instanciadas por tipo (una por pieza y nivel); vacío mientras no haya catálogo,
+    // y entonces cada olivo, con o sin tipo en el registro, se dibuja como el tipo −1 (lo de siempre). El nivel 0 sigue siendo la copa medida de cada árbol.
+    var extra = {};
+    function montaTipos() {
+      Object.keys(extra).forEach(function (t) { extra[t].m1.concat(extra[t].m2).forEach(function (m) { gArboles.remove(m); if (m.dispose) m.dispose(); }); });
+      extra = {};
+      Catalogo.tipos().forEach(function (t) {
+        if (t === Catalogo.SIN) return;
+        var mk = function (nivel, cap) { return Catalogo.geometria(t, nivel, 0).map(function (q) { return instancias(q.geo, q.mat, cap, q.pieza === "copa"); }); };
+        extra[t] = { m1: mk(1, MAX1), m2: mk(2, MAX2), caja: Catalogo.info(t).caja, n1: 0, n2: 0 };
+      });
+      sucio = true;
+    }
+    Catalogo.alCambiar(montaTipos);
+    function colocaModelo(X, c, l1, gz, tc) {   // un modelo del catálogo: pivote en la base del tronco y en metros; se estira a la altura y a los ejes de la copa medida
+      var B = X.caja, sx = c.rx / B.rx, sz = c.rz / B.rz, sy = Math.max(c.h, 1) / B.alto * exag, cs = Math.cos(c.ang), sn = Math.sin(c.ang), e = m4.elements;
+      e[0] = cs * sx; e[1] = 0; e[2] = -sn * sx; e[3] = 0; e[4] = 0; e[5] = sy; e[6] = 0; e[7] = 0; e[8] = sn * sz; e[9] = 0; e[10] = cs * sz; e[11] = 0; e[12] = c.x; e[13] = gz; e[14] = -c.y; e[15] = 1;
+      var ms = l1 ? X.m1 : X.m2, n = l1 ? X.n1++ : X.n2++;
+      ms.forEach(function (m) { m.setMatrixAt(n, m4); if (m.instanceColor) m.setColorAt(n, tc); });
+    }
 
     // registro: celda, altura del suelo, forma y color de cada olivo (del mosaico: sirve de lejos)
     function clave(i, j) { return i * 100000 + j; }
@@ -168,12 +140,15 @@
       var tope1 = Math.max(500, Math.min(MAX1, Math.floor((TOPE_TRI - tri0 - TRI2 * Math.min(MAX2, rest.length)) / TRI1)));
       var cnt1 = [], cnt2 = [], a1 = 0, a2 = 0, tc = new THREE.Color(), mm = m4, e = mm.elements, i, k;
       for (k = 0; k < NP1; k++) cnt1.push(0); for (k = 0; k < NP2; k++) cnt2.push(0);
+      for (k in extra) extra[k].n1 = extra[k].n2 = 0;
       for (i = 0; i < rest.length; i++) {
         var c = rest[i], ht = Math.min(1.5, Math.max(0.9, c.h * 0.3)), cb = ht + 0.1, top = Math.max(c.h, cb + 1.4), gz = c.gz * exag, H = (top - cb) * 0.82 * exag, cs = Math.cos(c.ang), sn = Math.sin(c.ang);
         var l1 = a1 < tope1 && c.d < U1;
         if (!l1 && a2 >= MAX2) continue;
         c3[0] = c.cr; c3[1] = c.cg; c3[2] = c.cb; aviva(c3, c.x, c.y);   // el tinte NDVI, si está activo, también llega de lejos
         tc.setRGB(c3[0] * 0.74 * c.vf, c3[1] * 0.88 * c.vf, c3[2] * 0.64 * c.vf);   // un verde plateado algo distinto en cada olivo
+        var X = c.tipo !== -1 ? extra[c.tipo] : null;   // olivo con un tipo del catálogo cargado (y piezas en este nivel); si no, el de siempre
+        if (X && (l1 ? X.m1 : X.m2).length) { colocaModelo(X, c, l1, gz, tc); if (l1) a1++; else a2++; continue; }
         var sx = c.rx, sz = c.rz;
         e[0] = cs * sx; e[1] = 0; e[2] = -sn * sx; e[3] = 0; e[4] = 0; e[5] = H; e[6] = 0; e[7] = 0; e[8] = sn * sz; e[9] = 0; e[10] = cs * sz; e[11] = 0; e[12] = c.x; e[13] = gz + cb * exag; e[14] = -c.y; e[15] = 1;
         if (l1) {
@@ -183,6 +158,7 @@
       }
       for (k = 0; k < NP1; k++) { iCopa1[k].count = iTron1[k].count = cnt1[k]; iCopa1[k].instanceMatrix.needsUpdate = iTron1[k].instanceMatrix.needsUpdate = true; if (iCopa1[k].instanceColor) iCopa1[k].instanceColor.needsUpdate = true; }
       for (k = 0; k < NP2; k++) { iCopa2[k].count = cnt2[k]; iCopa2[k].instanceMatrix.needsUpdate = true; if (iCopa2[k].instanceColor) iCopa2[k].instanceColor.needsUpdate = true; }
+      for (k in extra) [[extra[k].m1, extra[k].n1], [extra[k].m2, extra[k].n2]].forEach(function (mn) { mn[0].forEach(function (m) { m.count = mn[1]; m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; }); });
       n1 = a1; n2 = a2; triEst = tri0 + a1 * TRI1 + a2 * TRI2;
       ultima.x = cam.x; ultima.y = cam.y; ultima.z = cam.z; ultima.exag = exag; ultima.k = tinte + "|" + ndviIdx + "|" + kcor; sucio = false;
     }

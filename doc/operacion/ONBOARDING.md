@@ -27,6 +27,7 @@
 | 9 | VR: sin WebXR no hay botón ni errores; con el mock, la prueba completa (**opcional**, `GEMELO_VR=1`) | `vr.test.js` |
 | 10 | Cliente web: la entrada de Vite es la concatenación exacta, three 0.128.0, y la página empaquetada carga sin errores y dibuja lo mismo que la artefacto | `web.test.js` |
 | 11 | Exportadores multiplataforma: ninguna ruta con separador `\` escrito a mano en `tuberia/**/*.py` (se arman con `os.path.join`) | `multiplataforma.test.js` |
+| 12 | Catálogo de olivos-tipo: el catálogo sintético cumple su esquema (ajv), cada glb pasa `gltf-validator` y su presupuesto de triángulos por nivel, el generador es determinista; en Chrome, instalar y retirar el catálogo funciona sin cambiar lo de siempre | `olivos.test.js` |
 
 En CI la misma puerta corre en GitHub Actions (`.github/workflows/puerta.yml`); no despliega nada.
 

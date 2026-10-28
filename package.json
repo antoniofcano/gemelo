@@ -3,7 +3,9 @@
   "version": "0.2.0",
   "private": true,
   "description": "Gemelo digital en 3D de fincas de olivar (three.js r128, teselas de 256 m, LiDAR, modo VR)",
-  "engines": { "node": ">=24" },
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "fixture": "python pruebas/genera_fixture.py",
     "montar": "python tuberia/salida_artefacto/montar_v2.py",
@@ -13,6 +15,9 @@
     "probar:vr": "node pruebas/vr_mock.js"
   },
   "devDependencies": {
+    "@gltf-transform/core": "4.5.1",
+    "ajv": "8.20.0",
+    "gltf-validator": "2.0.0-dev.3.10",
     "playwright-core": "^1.48.0"
   }
 }

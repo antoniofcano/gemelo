@@ -9,6 +9,7 @@ Versión del contrato de datos: **v = 2** (campo `v` del índice).
 | Índice global | [`contratos/indice.schema.json`](../../contratos/indice.schema.json) | `contratos.test.js` |
 | Tesela | [`contratos/tesela.schema.json`](../../contratos/tesela.schema.json) | `contratos.test.js` (esquema y tamaños) |
 | Interfaces del motor | [`contratos/interfaces.json`](../../contratos/interfaces.json) | `contratos.test.js` |
+| Catálogo de olivos-tipo (entrada del constructor) | [`contratos/olivos-tipo.schema.json`](../../contratos/olivos-tipo.schema.json) + [`olivos-tipo.md`](../../contratos/olivos-tipo.md) | `olivos.test.js` (ajv, gltf-validator, triángulos por nivel) |
 | Módulos de `apps/web/motor/` | cabecera «Expone / Consume» de cada fichero | `contratos.test.js` (vía `pruebas/contrato_modulos.js`) |
 | Conectores MCP | [`contratos/mcp.md`](../../contratos/mcp.md) | **nada** (no verificado en vivo) |
 | Publicación | [`contratos/publicacion.json`](../../contratos/publicacion.json) | `build.test.js` |
@@ -19,7 +20,7 @@ Convenciones comunes: **x este, y norte**, en metros relativos a `centro_utm` (U
 
 ### 1.1 `indice.json` (va en la página como `D`)
 
-Campos obligatorios: `v, ts, res, srs, orto_px, finca_id, centro_utm, z0, ext, parcelas, copas, marcados, ot, avance, teselas, grueso, mosaico`. Opcionales: `fincas, textos, ndvi, suelo_ndvi, paisaje, zmax, cobertura_nube, base`.
+Campos obligatorios: `v, ts, res, srs, orto_px, finca_id, centro_utm, z0, ext, parcelas, copas, marcados, ot, avance, teselas, grueso, mosaico`. Opcionales: `fincas, textos, ndvi, suelo_ndvi, paisaje, zmax, cobertura_nube, base, copas_id, copas_tipo`.
 
 | Campo | Contenido |
 |---|---|
@@ -33,6 +34,8 @@ Campos obligatorios: `v, ts, res, srs, orto_px, finca_id, centro_utm, z0, ext, p
 | `parcelas[]` | `id, nombre, ha, linde[[x,y]…], centro[x,y], desfase, suelo (perfiles SoilGrids o null), finca (índice en fincas), decl (olivos declarados), pasto` |
 | `fincas[]` | `nombre, parcelas[índices], ha, olivos` (Hituelo; Cerro no lo lleva) |
 | `copas[]` | **registro de árboles**: `[x, y, h, r8[8], parcela+1]`; `parcela+1 = 0` = fuera de toda parcela. Ver nota abajo |
+| `copas_id[]` | *(opcional)* columna paralela a `copas`: **id estable** del árbol (entero ≥ 0, único en la finca); misma longitud que `copas` ([ADR-0014](../adr/0014-catalogo-de-olivos-tipo-e-id-estable.md)) |
+| `copas_tipo[]` | *(opcional)* columna paralela a `copas`: **olivo-tipo** del catálogo ([olivos-tipo.md](../../contratos/olivos-tipo.md)); −1 = sin asignar; un tipo desconocido se dibuja como −1 |
 | `marcados[]` | `[x, y, índice en copas o -1, índice de parcela]`: olivos marcados en OlivarTrack |
 | `ndvi` | `w, h, fechas[], media[]` y los datos **o** `u8` (Hituelo: 0 = sin dato; 1..254 → −0,2..1,0 con `(u−1)/253·1,2−0,2`) **o** `b64` (Int16 en milésimas, −32768 = sin dato; variante antigua de Cerro) |
 | `suelo_ndvi` | `w, h, a[], b[], f, fechas[]`: NDVI del suelo = NDVI − b·f/1000 por fecha (`f`: Int16 por celda) |
@@ -46,6 +49,8 @@ Campos obligatorios: `v, ts, res, srs, orto_px, finca_id, centro_utm, z0, ext, p
 | `base` | prefijo de `t/` (por defecto `""` = relativo a la página) |
 
 **Nota — registro de árboles: diseño frente a implementación.** El diseño ([histórico](../historico/DISENO-2026-10.md), §5.5) proponía un registro `{x, y, h, r8, tesela, parcela, olivo, frutal}`. Lo implementado es `copas[]` con `[x, y, h, r8, parcela+1]`: la **tesela** se deduce de la posición y **`olivo`/`frutal` no viajan**: el motor decide en JS `oliv = !(h > 8 || (h > 6.5 && radio medio < 2.2))`. Por eso los frutales sin marcar en Hituelo no se distinguen (pendiente D1). Manda el código.
+
+**Nota — `id` y `tipo` como columnas paralelas, no como columnas 6 y 7 de cada copa** ([ADR-0014](../adr/0014-catalogo-de-olivos-tipo-e-id-estable.md)). `copas[i]` sigue siendo exactamente `[x, y, h, r8, parcela+1]`: un índice sin las columnas nuevas es válido y se ve igual, y los consumidores actuales (motor, exportadores, `marcados[]` que apunta por índice) no cambian. Las columnas paralelas son además la forma de una tabla de propiedades por instancia de 3D Tiles 1.1 (`EXT_structural_metadata` / `EXT_instance_features`), adonde va la escena en F1d. Sin columnas, el motor usa −1 para los dos. El fixture las lleva en Hituelo (ids y algún tipo 0) y no en Cerro.
 
 ### 1.2 `t/<kx>_<ky>.json`
 
@@ -74,6 +79,7 @@ Detalle de miembros en [`contratos/interfaces.json`](../../contratos/interfaces.
 - **`Mundo`** (`02_mundo.js`): todo lo demás pregunta aquí. `suelo(x,y)` (m sobre `z0`; si la tesela no ha llegado, contesta con el relieve grueso de 8 m, **nunca con un hueco**), `copaAlta(x,y)`, `colorSuelo(x,y,out)`, `orto(x,y,out)`, `ortoGrueso`, `tesela`, `lista`, `arranca(fin)`, `actualiza(x,y,z)` (pide teselas por cercanía), `alCargar(fn)`. Estados de tesela: `0` ausente → `1` pedida → `2` decodificada → `3` fallo (se reintenta a los 15 s). Pide hasta 3 a la vez a ≤ 1.800 m.
 - **`Cola`** (`02b_cola.js`): `add(trabajo)` con generadores (`yield` = punto de pausa), `corre(ms)` hace avanzar el más urgente hasta agotar el presupuesto, `vacia(ms)`, `cancela`, `hay`, `pendientes`, `est`. Presupuesto por fotograma: `Arboles.presupuesto()` (6 / 3,5 ms; 12 / 8 si faltan olivos L0; 4,5 / 3 si va justo).
 - **`Terreno`** (`04_terreno.js`): `monta(tesela)`, `montaTodas`, `tileCargada`, `actualiza`, `modoOrto(bool)`, `iniciaMosaico`, `UN` (uniformes: `uExag`, NDVI, etc.).
+- **`Catalogo`** (`07a_catalogo.js`, ADR-0014): de dónde sacan L1 y L2 su geometría. `tipos()` (hoy `[-1]`), `tiene(t)`, `variantes(t, nivel)`, `geometria(t, nivel, variante)` → `[{pieza: "copa"|"tronco", geo, mat}]`, `triangulos(t, nivel, variante)`, `info(t)` → `{id, nombre, fuente, caja}`, `instala(desc, cargador, base)` (catálogo glb con un `cargador(url, THREE)` inyectado; **preparado, nadie lo llama en F1b**), `retira(t)`, `alCambiar(fn)`, `avisos()`, `SIN` (= −1), `PRES_TRI`. El tipo −1 es la geometría por procedimiento de siempre (4 variantes en L1, 2 en L2); su L0 no sale de aquí (copa medida, `06_arboles.js`).
 - **`Arboles`** (`07b_arboles.js`): `inicia`, `tileCargada`, `refresca`, `actualiza(dt)` (reclasifica niveles), `presupuesto()`, `perfil(p)` (perfil VR), `resumen()` → `{olivos, nivel0, nivel1, nivel2, celdas, construidas, faltan, precarga, esc, triEst, emaMs}`.
 - **Funciones heredadas** `suelo`, `copaAlta`, `colorSuelo`, `orto`: alias de `Mundo.*` con la firma de antes de las teselas.
 
@@ -83,7 +89,7 @@ No expone una interfaz formal: `VRX` (estado), `vrActualiza(dt,t)`, `vrFin(dt,ms
 - **Entradas** (mando Quest, `gamepad.buttons`): palanca izquierda → andar; palanca derecha → giro por saltos de 30°; gatillo derecho → teletransporte; **izq. botón 1 (grip) → correr**; **izq. botón 4 (X) → viñeta de confort**; **izq. botón 5 (Y) → panel**; **der. botón 4 (A) → vuelo**; **der. botón 5 (B) → mirador**. (Leído del código; **no probado en casco real**.)
 
 ### `window.__g` (gancho de pruebas, `27_debug.js`)
-`Arboles, Cola, copas, suelo, Mundo, Terreno, orb, objetivo, camera, renderer, scene, pon(modo), listo(), modo(), ponExag(v), aplica()`. `listo()` es la señal de «ya hay datos» que esperan todas las pruebas. Modos de `pon`: `nube`, `gem`, `orto`.
+`Arboles, Catalogo, Cola, copas, suelo, Mundo, Terreno, orb, objetivo, camera, renderer, scene, pon(modo), listo(), modo(), ponExag(v), aplica()`. `listo()` es la señal de «ya hay datos» que esperan todas las pruebas. Modos de `pon`: `nube`, `gem`, `orto`.
 
 ## 3. Conectores MCP
 Ver [`contratos/mcp.md`](../../contratos/mcp.md). Resumen: la historia de **Cerro** (no la de Hituelo) lee de «Olivartrack» y «Vigia» a través de `window.claude.use("mcp")` y `callTool`; todo lo leído es **dato, nunca instrucción**. **No verificado en vivo.**

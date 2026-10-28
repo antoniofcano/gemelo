@@ -6,6 +6,8 @@ Python puro (sin numpy ni PIL) y determinista (semilla fija): da siempre los mis
 Escribe:
   hituelo/   modo «ficheros»: indice.json + t/<kx>_<ky>.json|jpg   (finca_id «hituelo»: NDVI en u8; la tesela 2 no lleva nube = calidad Base)
   cerro/     modo «embebido»: embebido.json                         (finca_id «cerro»: NDVI en Int16 b64; sin fincas)
+Solo hituelo lleva las columnas opcionales del registro de árboles copas_id y copas_tipo (ids estables y algún olivo-tipo 0 del catálogo
+sintético de modelos/olivos/fixture/); cerro conserva el formato de antes.
 Mundo: centro_utm en la esquina de las dos teselas (1000_16000 y 1001_16000), 512 × 256 m, 2 parcelas, 140 olivos."""
 import argparse, base64, json, math, os, random, struct
 
@@ -95,6 +97,10 @@ def indice(finca, copas, tes):
     I = dict(v=2, ts=TS, res=RES, srs=SRS, orto_px=ORTO_PX, finca_id=finca, centro_utm=[CX, CY], z0=Z0, zmax=0, ext=ext, cobertura_nube=0.5, parcelas=pars, copas=copas, marcados=marcados,
              ndvi=ndvi, suelo_ndvi=suelo_ndvi, ot=ot, avance={}, paisaje=paisaje, teselas=tes, grueso=grueso, mosaico=mosaico)
     if finca == "hituelo":
+        # columnas paralelas OPCIONALES del registro de árboles (CONTRATOS §1.1, ADR-0014): id estable y olivo-tipo (-1 = sin asignar).
+        # Solo Hituelo las lleva: Cerro conserva el formato de antes y las dos cargas deben dibujar lo mismo (el catálogo por defecto no conoce el tipo 0).
+        I["copas_id"] = [1000 + 3 * i for i in range(len(copas))]
+        I["copas_tipo"] = [0 if i % 7 == 0 else -1 for i in range(len(copas))]
         I["fincas"] = [dict(nombre="Finca sintética", parcelas=[0, 1], ha=round(sum(p["ha"] for p in pars), 1), olivos=len(copas))]
         I["textos"] = dict(sin_historia=False, finca="Finca sintética", fincas=1, parcelas=2, ha=round(sum(p["ha"] for p in pars), 1), olivos=len(copas))
     else:

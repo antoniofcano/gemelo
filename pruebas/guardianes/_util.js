@@ -13,7 +13,7 @@ function ficheros() {
   if (r.status !== 0) throw new Error("git ls-files falló: " + r.stderr);
   return r.stdout.split("\n").filter(Boolean).filter(f => fs.existsSync(path.join(RAIZ, f)));
 }
-const BINARIOS = /\.(jpg|jpeg|png|gif|webp|ico|woff2?|mp3|mp4|zip)$/i;
+const BINARIOS = /\.(jpg|jpeg|png|gif|webp|ico|woff2?|mp3|mp4|zip|glb)$/i;
 const esTexto = f => !BINARIOS.test(f);
 const lee = f => fs.readFileSync(path.join(RAIZ, f), "utf8");
 

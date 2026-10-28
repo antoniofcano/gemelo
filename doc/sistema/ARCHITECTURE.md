@@ -22,7 +22,8 @@ Dos modos: **embebido** (`D` incluye `t{}`; ≤16 MB, Cerro) y **ficheros** (`D.
 | `04_terreno.js` | `Terreno` | 3 niveles por tesela, sombreador (NDVI, escarcha, nubes, suelo abierto) |
 | `05_nube.js` | `actualizaNubeTeselas` | un `Points` por tesela |
 | `06_arboles.js`, `07_follaje.js` | copa, tronco, hojas | piezas del nivel 0 |
-| `07b_arboles.js` | `Arboles` (`inicia`, `tileCargada`, `actualiza`, `presupuesto`, `perfil`, `resumen`) | LOD 0/1/2, celdas de 64 m |
+| `07a_catalogo.js` | `Catalogo` (`tipos`, `geometria`, `instala`, `retira`…) | formas de L1/L2 por olivo-tipo; tipo −1 = las de siempre (ADR-0014) |
+| `07b_arboles.js` | `Arboles` (`inicia`, `tileCargada`, `actualiza`, `presupuesto`, `perfil`, `resumen`) | LOD 0/1/2, celdas de 64 m; pide L1/L2 al `Catalogo` |
 | `08_marcadores.js` | `gLinde`, `gCopas`, `gMarc`, `gDesf` | instanciados |
 | `09_camara.js` | `orb`, `objetivo`, `camara()`; deslizador `#corr` (`kcor`) | órbita |
 | `10_ndvi.js` | `NDV` | u8 → Int16, escala relativa |
@@ -61,7 +62,7 @@ Dos modos: **embebido** (`D` incluye `t{}`; ≤16 MB, Cerro) y **ficheros** (`D.
 
 - **`Cola`**: trabajos pesados (malla de terreno de una tesela, nube, celda de olivos, texturas de ruido) como generadores. `Cola.corre(ms)` hace avanzar el más urgente (menor `prio` = más cerca) hasta agotar el presupuesto, que da `Arboles.presupuesto()` y es dinámico: 6 ms en órbita y 3,5 en paseo; sube a 12 / 8 ms si faltan olivos de nivel 0 en lo que se ve y el aparato va holgado; baja a 4,5 / 3 ms si el fotograma va justo (EMA > 34 ms).
 - **Presupuesto de dibujo** (diseño): ≤1,7 M triángulos, ≤1,4 M puntos, ≈250 llamadas, ≈350 MB. Topes comprobados en `pruebas/presupuesto.json`.
-- **Olivos**: `MAX0=450` (L0), `MAX1=3000` (L1), `MAX2=16000` (L2); `TOPE_TRI=550000`. Distancias de cambio de nivel `U1=460`, `U2=1600` m. Triángulos: L0≈800, L1≈170, L2≈30.
+- **Olivos**: `MAX0=450` (L0), `MAX1=3000` (L1), `MAX2=16000` (L2); `TOPE_TRI=550000`. Las formas de L1/L2 las da `Catalogo` (`07a_catalogo.js`); con un catálogo glb instalado, cada tipo con olivos a la vista suma sus piezas en llamadas (≤ 2 en L1, ≤ 1 en L2; [olivos-tipo](../../contratos/olivos-tipo.md)). Distancias de cambio de nivel `U1=460`, `U2=1600` m. Triángulos: L0≈800, L1≈170, L2≈30.
 - **Teselas**: se piden a ≤1.800 m de la cámara, de tres en tres.
 
 ## 6. Memoria

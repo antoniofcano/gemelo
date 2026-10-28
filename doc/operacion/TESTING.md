@@ -25,6 +25,7 @@ Dos familias: **guardianes** (proceso, rápidos, en la puerta) y **pruebas de na
 | `vr` | sin WebXR no hay botón ni errores; prueba completa con el mock (opcional) | regresiones del modo VR | ver `pruebas/prueba_vr.js` y `doc/sistema/VR.md` |
 | `multiplataforma` | rutas con separador `\` escrito a mano en `tuberia/**/*.py`; `os.path.join` sin `import os` | los exportadores deben funcionar en Windows, Linux y macOS (decisión 8) | armar la ruta con `os.path.join` (o `pathlib`) e importar `os` |
 | `web` | la web de Vite = el motor tal cual, y dibuja lo mismo que la artefacto | el build no debe cambiar el comportamiento | mirar la diferencia por escenario; si es intencionada, va con su ADR |
+| `olivos` | catálogo de olivos-tipo: esquema (ajv), glb válido (`gltf-validator`), reglas del contrato y triángulos por nivel; activación del `Catalogo` en Chrome | el constructor de olivos-tipo y el motor se desacoplan | ver `contratos/olivos-tipo.md`; si cambia la forma sintética, `node modelos/olivos/fixture/genera.js` |
 
 ## Entorno
 - SwiftShader (Chrome headless) vale para **recuentos de dibujo y memoria**; **no vale para fps**. Los fps reales solo los da un dispositivo con `?debug`.

@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gemelo.invalid/contratos/olivos-tipo.schema.json",
+  "$comment": "Contrato de ENTRADA del constructor de olivos-tipo (contratos/olivos-tipo.md, ADR-0014): el catálogo que produce. JSON Schema 2020-12 estándar; lo valida ajv en pruebas/guardianes/olivos.test.js. Las reglas de los glb (metros, +Y, pivote, sin luces ni cámaras, un material por pieza, triángulos) no caben en un esquema: las comprueba el mismo guardián con gltf-validator (Khronos) y @gltf-transform/core. 'presupuesto_tri' (palabra de anotación) es la única fuente de los topes por modelo (todas sus piezas): tope = objetivo × (1 + tolerancia); el motor (07a_catalogo.js, PRES_TRI y TOLERANCIA) debe decir lo mismo.",
+  "title": "olivos-tipo",
+  "presupuesto_tri": { "objetivo": { "L0": 800, "L1": 170, "L2": 30 }, "tolerancia": 0.2, "piezas_max": { "L0": 3, "L1": 2, "L2": 1 } },
+  "type": "object",
+  "required": ["v", "id", "nombre", "fuente", "unidades", "arriba", "licencia", "tipos"],
+  "additionalProperties": false,
+  "properties": {
+    "v": { "const": 1, "$comment": "versión del contrato del catálogo" },
+    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$", "$comment": "nombre del catálogo (p. ej. picual-jaen-2027)" },
+    "nombre": { "type": "string", "minLength": 1 },
+    "fuente": { "const": "ilustrativo", "$comment": "regla 5 de CLAUDE.md: un olivo-tipo es ILUSTRATIVO (forma típica); lo medido de cada árbol (posición, altura, 8 radios) viaja en el registro" },
+    "unidades": { "const": "m" },
+    "arriba": { "const": "+Y", "$comment": "convención de glTF; el motor pasa a su sistema (x este, -z norte)" },
+    "licencia": { "$ref": "#/$defs/licencia" },
+    "generador": { "type": "string", "$comment": "opcional: qué herramienta y versión produjo el catálogo" },
+    "tipos": { "type": "array", "minItems": 1, "maxItems": 16, "items": { "$ref": "#/$defs/tipo" }, "$comment": "el objetivo son 6-8 tipos; cada tipo cargado cuesta llamadas de dibujo (ADR-0014)" }
+  },
+  "$defs": {
+    "licencia": {
+      "type": "object",
+      "required": ["spdx", "autor", "atribucion"],
+      "additionalProperties": false,
+      "properties": {
+        "spdx": { "type": "string", "pattern": "^[A-Za-z0-9.+-]+$", "$comment": "identificador SPDX (CC0-1.0, CC-BY-4.0…) o LicenseRef-… si es propia" },
+        "autor": { "type": "string", "minLength": 1 },
+        "atribucion": { "type": "string" }
+      }
+    },
+    "tipo": {
+      "type": "object",
+      "required": ["id", "nombre", "fuente", "altura_m", "radio_m", "niveles"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "integer", "minimum": 0, "maximum": 255, "$comment": "lo que lleva copas_tipo en el registro; estable: no se reutiliza para otra forma" },
+        "nombre": { "type": "string", "minLength": 1 },
+        "descripcion": { "type": "string" },
+        "fuente": { "const": "ilustrativo" },
+        "altura_m": { "type": "number", "minimum": 0.5, "maximum": 15, "$comment": "altura nominal del modelo (la del glb); el motor lo estira a la h medida de cada árbol" },
+        "radio_m": { "type": "number", "minimum": 0.3, "maximum": 8, "$comment": "radio nominal de la copa; el motor lo estira a los ejes de los 8 radios medidos" },
+        "licencia": { "$ref": "#/$defs/licencia", "$comment": "opcional: si un tipo tiene otra licencia que el catálogo" },
+        "niveles": {
+          "type": "object",
+          "required": ["L1", "L2"],
+          "additionalProperties": false,
+          "properties": { "L0": { "$ref": "#/$defs/nivel" }, "L1": { "$ref": "#/$defs/nivel" }, "L2": { "$ref": "#/$defs/nivel" } },
+          "$comment": "L0 es opcional: hoy el nivel 0 es la copa MEDIDA de cada árbol (ADR-0014, decisión pendiente)"
+        }
+      }
+    },
+    "nivel": {
+      "type": "object",
+      "required": ["glb", "triangulos", "piezas"],
+      "additionalProperties": false,
+      "properties": {
+        "glb": { "type": "string", "pattern": "^[A-Za-z0-9_./-]+\\.glb$", "$comment": "ruta relativa al catálogo" },
+        "triangulos": { "type": "integer", "minimum": 1, "$comment": "suma de todas las piezas; debe coincidir con el glb" },
+        "piezas": { "type": "array", "minItems": 1, "maxItems": 3, "items": { "enum": ["copa", "tronco"] }, "$comment": "nombres de los nodos/mallas del glb, en orden; cada pieza = una malla, una primitiva y un material" }
+      }
+    }
+  }
+}

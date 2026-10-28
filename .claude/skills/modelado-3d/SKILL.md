@@ -5,12 +5,12 @@ description: Experta en modelado 3D para el motor del gemelo (three.js r128): pr
 
 # Modelado 3D en el gemelo
 
-El motor **genera toda la geometría por procedimiento** (no hay `GLTFLoader` ni ficheros de modelo). Todo lo que sigue sale de [ARCHITECTURE.md](../../../doc/sistema/ARCHITECTURE.md), [ADR-0002](../../../doc/adr/0002-niveles-de-detalle.md) y de `apps/web/motor/`. Antes de cambiar nada: [skill `medir`](../medir/SKILL.md). Cifras del código, no del diseño: manda el código.
+El motor **genera toda la geometría por procedimiento** (no hay `GLTFLoader` en el motor). Hueco para modelos: el `Catalogo` de olivos-tipo (`07a_catalogo.js`, [ADR-0014](../../../doc/adr/0014-catalogo-de-olivos-tipo-e-id-estable.md), contrato en `contratos/olivos-tipo.md`) da las formas de L1/L2; el tipo −1 son las de siempre y `Catalogo.instala` (catálogo glb con un cargador inyectado) aún no se llama. Todo lo que sigue sale de [ARCHITECTURE.md](../../../doc/sistema/ARCHITECTURE.md), [ADR-0002](../../../doc/adr/0002-niveles-de-detalle.md) y de `apps/web/motor/`. Antes de cambiar nada: [skill `medir`](../medir/SKILL.md). Cifras del código, no del diseño: manda el código.
 
 ## Presupuestos (por fotograma, de diseño)
 ≤ 1,7 M triángulos · ≤ 1,4 M puntos · ≈ 250 llamadas · ≈ 350 MB. Un cambio que sube cualquiera se mide antes y después y se explica.
 
-## El olivo en tres niveles (`07b_arboles.js`, `06_arboles.js`, `07_follaje.js`)
+## El olivo en tres niveles (`07b_arboles.js`, `07a_catalogo.js`, `06_arboles.js`, `07_follaje.js`)
 | Nivel | Qué es | Coste | Tope |
 |---|---|---|---|
 | L0 | modelo completo en **celdas de 64 m** alrededor del foco: copa de **8 radios medidos** (`r8`), troncos y ramas (tubos, forma **ilustrativa** de 2–3 pies), hojas-sprite del LiDAR, corteza, frutos/flores | ≈ 800 tri | `MAX0 = 450` |

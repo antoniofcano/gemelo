@@ -1,0 +1,47 @@
+{
+  "v": 1,
+  "id": "fixture-sintetico",
+  "nombre": "Catálogo sintético de prueba (no es un olivo real)",
+  "fuente": "ilustrativo",
+  "unidades": "m",
+  "arriba": "+Y",
+  "licencia": {
+    "spdx": "CC0-1.0",
+    "autor": "generado por modelos/olivos/fixture/genera.js",
+    "atribucion": "sintético, sin atribución"
+  },
+  "tipos": [
+    {
+      "id": 0,
+      "nombre": "Olivo sintético en vaso",
+      "fuente": "ilustrativo",
+      "altura_m": 4,
+      "radio_m": 2,
+      "niveles": {
+        "L0": {
+          "glb": "olivo_0_L0.glb",
+          "triangulos": 648,
+          "piezas": [
+            "copa",
+            "tronco"
+          ]
+        },
+        "L1": {
+          "glb": "olivo_0_L1.glb",
+          "triangulos": 150,
+          "piezas": [
+            "copa",
+            "tronco"
+          ]
+        },
+        "L2": {
+          "glb": "olivo_0_L2.glb",
+          "triangulos": 28,
+          "piezas": [
+            "copa"
+          ]
+        }
+      }
+    }
+  ]
+}
