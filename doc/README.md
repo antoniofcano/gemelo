@@ -32,6 +32,7 @@
 - [operacion/RUNBOOK.md](operacion/RUNBOOK.md) — qué hacer si falla una carga, una tesela, el WMS del IGN o el marco de artefactos.
 - [operacion/PUBLICACION.md](operacion/PUBLICACION.md) — receta de publicar y límites de la plataforma.
 - [operacion/DATOS.md](operacion/DATOS.md) — fuentes, hojas LiDAR/MDT por finca, cómo regenerar, licencias.
+- [operacion/DESARROLLO-LOCAL.md](operacion/DESARROLLO-LOCAL.md) — el mundo y los servicios base (Caddy, PostGIS, LiveKit, buzón) en local con Docker: `npm run dev:arriba`.
 - [operacion/TESTING.md](operacion/TESTING.md) — qué prueba cada cosa y qué significa cada rojo.
 
 ## Skills — `.claude/skills/`

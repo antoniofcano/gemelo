@@ -50,7 +50,7 @@ Mapa de iniciativas con su estado y el ADR que las sostiene. **No** es el estado
 | Fase | Qué | Estado | Listo cuando |
 |---|---|---|---|
 | F0 | Monorepo + build Vite (three 0.128.0), CI de la puerta | ✅ en local (commit f32fae8); CI sin ejecutar hasta el primer push | la web dibuja lo mismo que la artefacto |
-| F1a | Una persona en el VPS (solo Hituelo): api, Postgres+PostGIS, hazas propias, enlace mágico por SMTP de OVH, portada pública y resto tras sesión, ficha de haza (sin titular, sin kilos), CSP, copias | ⬜ desbloqueada | hogar de prueba entra y ve las hazas; restauración ensayada |
+| F1a | Una persona en el VPS (solo Hituelo): api, Postgres+PostGIS, hazas propias, enlace mágico por SMTP de OVH, portada pública y resto tras sesión, ficha de haza (sin titular, sin kilos), CSP, copias | ⬜ desbloqueada; servicios base en local listos (`infra/dev/`) | hogar de prueba entra y ve las hazas; restauración ensayada |
 | F1b | Hueco del constructor de olivos-tipo: `Catalogo`, id y tipo por árbol, contrato `olivos-tipo` | ✅ en local · ADR-0012 | con `tipo=-1` se ve igual (medido); glb de fixture dentro de presupuesto |
 | F1c | three moderno (≥ 0.167, módulos ES), aceptando el aspecto nuevo | ⬜ | puerta verde; capturas nuevas aprobadas por Antonio |
 | F1d | Escena en 3D Tiles 1.1 + 3DTilesRendererJS (decisión 11): tubería glb + `tileset.json`, terreno, olivos, construcciones; supera ADR-0001/0002 | ⬜ tras F1c | Hituelo en escritorio y Quest con el presupuesto medido de nuevo; Quest p95 ≤ 13,9 ms |
