@@ -1,7 +1,7 @@
 const fs=require("fs");const { chromium } = require(process.env.PLAYWRIGHT_CORE || "playwright-core");
 const dormir=ms=>new Promise(r=>setTimeout(r,ms));
 (async()=>{const b=await chromium.launch({executablePath:process.env.CHROME || "C:/Program Files/Google/Chrome/Application/chrome.exe",args:["--use-gl=swiftshader","--enable-unsafe-swiftshader","--no-sandbox"]});
-const p=await b.newPage({viewport:{width:640,height:400}});await p.addInitScript({content:fs.readFileSync("mock_xr.js","utf8")});
+const p=await b.newPage({viewport:{width:640,height:400}});await p.addInitScript({content:fs.readFileSync(require("path").join(__dirname,"mock_xr.js"),"utf8")});
 await p.goto("" + (process.env.GEMELO_URL || "http://localhost:8000/gemelo_cerro.html") + "?debug");await p.waitForFunction(()=>window.__vrDebug,null,{timeout:120000});await dormir(8000);
 await p.click("#btnVR");await dormir(4000);
 async function fot(n){const f0=await p.evaluate(()=>window.__mockXR.fotogramas);for(let i=0;i<400;i++){await dormir(60);if((await p.evaluate(()=>window.__mockXR.fotogramas))>=f0+n)return;}}

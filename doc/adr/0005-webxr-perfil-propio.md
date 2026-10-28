@@ -19,4 +19,4 @@ El gemelo debe verse en Meta Quest, donde el presupuesto es mucho menor y el fot
 - **Pendiente:** fps, mareo y comodidad del panel; el mock no sustituye al casco.
 
 ## Comprobación
-`vr_mock.js` con sesión simulada (`window.__vrDebug`). **fps, mareo y comodidad: no probados.**
+`pruebas/prueba_vr.js` con el WebXR simulado de `pruebas/mock_xr.js` (`window.__vrDebug`); detalle en [VR.md](../sistema/VR.md). **fps, mareo y comodidad: no probados.**

@@ -7,7 +7,7 @@ const MD = TODOS.filter(f => f.endsWith(".md"));
 const existe = f => fs.existsSync(path.join(RAIZ, f));
 
 /** ancla como la calcula GitHub: minúsculas, sin signos (conserva letras con tilde), espacios → guiones */
-const slug = t => t.trim().toLowerCase().replace(/`/g, "").replace(/[^\p{L}\p{N}\s-]/gu, "").replace(/\s/g, "-");
+const slug = t => t.trim().toLowerCase().replace(/`/g, "").replace(/[^\p{L}\p{N}\s_-]/gu, "").replace(/\s/g, "-");
 function anclas(f) {
   const s = lee(f), a = new Set();
   for (const m of s.matchAll(/^#{1,6}\s+(.+)$/gm)) a.add(slug(m[1]));
