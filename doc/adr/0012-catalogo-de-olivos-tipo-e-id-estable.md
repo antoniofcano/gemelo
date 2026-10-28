@@ -1,4 +1,4 @@
-# ADR-0014 — Catálogo de olivos-tipo e id estable por árbol
+# ADR-0012 — Catálogo de olivos-tipo e id estable por árbol
 
 - **Estado:** Aceptado
 - **Fecha:** 2026-10-28 (fase F1b del plan multiusuario)

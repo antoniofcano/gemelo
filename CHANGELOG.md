@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Hueco para el constructor de olivos-tipo (F1b): interfaz `Catalogo` (`07a_catalogo.js`), columnas opcionales `copas_id`/`copas_tipo` en el índice, contrato `contratos/olivos-tipo` (esquema + reglas de glb) con un catálogo sintético y su guardián `olivos.test.js`; sin cambio visible (mismos recuentos de dibujo). Librerías: `@gltf-transform/core`, `ajv`, `gltf-validator`. ADR-0012.
 - Sistema de trabajo: `CLAUDE.md`, índice de documentación (`doc/README.md`), `ESTADO`, `PLAN`, `DECISIONS-PENDING`, ADR 0001–0008, glosario, arquitectura, runbook, onboarding con la puerta, datos y publicación.
 - Guardianes de proceso (`pruebas/guardianes/`, `npm run puerta`): sintaxis, higiene del repo público, versión única, documentación, contratos, build de las dos fincas con los límites de la plataforma, carga en Chrome con presupuesto de dibujo y secretos/datos.
 - Contratos de datos en `contratos/` (esquemas del índice y de la tesela, interfaces del motor, límites de publicación, conectores MCP) y `doc/sistema/CONTRATOS.md`.

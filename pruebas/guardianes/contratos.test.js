@@ -27,7 +27,7 @@ for (const finca of ["hituelo", "cerro"]) {
   test("[" + finca + "] coherencia interna del índice (referencias, tamaños de las rejillas)", () => {
     const I = cargaIndice();
     I.copas.forEach(c => assert.ok(c[4] <= I.parcelas.length, "copa con parcela fuera de rango"));
-    // columnas paralelas opcionales del registro de árboles (ADR-0014): misma longitud que copas; ids únicos
+    // columnas paralelas opcionales del registro de árboles (ADR-0012): misma longitud que copas; ids únicos
     if (I.copas_id) { assert.strictEqual(I.copas_id.length, I.copas.length, "copas_id debe tener una entrada por copa"); assert.strictEqual(new Set(I.copas_id).size, I.copas_id.length, "copas_id repetido"); }
     if (I.copas_tipo) assert.strictEqual(I.copas_tipo.length, I.copas.length, "copas_tipo debe tener una entrada por copa");
     I.marcados.forEach(m => { assert.ok(m[2] < I.copas.length, "marcado que apunta a una copa inexistente"); assert.ok(m[3] < I.parcelas.length); });

@@ -25,7 +25,7 @@
     var iCopa1 = [], iTron1 = [], iCopa2 = [], p, pz;
     for (p = 0; p < NP1; p++) { pz = Catalogo.geometria(Catalogo.SIN, 1, p); iCopa1.push(instancias(pz[0].geo, pz[0].mat, MAX1, true)); iTron1.push(instancias(pz[1].geo, pz[1].mat, MAX1, false)); }
     for (p = 0; p < NP2; p++) { pz = Catalogo.geometria(Catalogo.SIN, 2, p); iCopa2.push(instancias(pz[0].geo, pz[0].mat, MAX2, true)); }
-    // los olivos-tipo de un catálogo cargado (ADR-0014): un juego de mallas instanciadas por tipo (una por pieza y nivel); vacío mientras no haya catálogo,
+    // los olivos-tipo de un catálogo cargado (ADR-0012): un juego de mallas instanciadas por tipo (una por pieza y nivel); vacío mientras no haya catálogo,
     // y entonces cada olivo, con o sin tipo en el registro, se dibuja como el tipo −1 (lo de siempre). El nivel 0 sigue siendo la copa medida de cada árbol.
     var extra = {};
     function montaTipos() {

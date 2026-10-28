@@ -146,7 +146,7 @@
 
   // ---- datos
   // el registro de árboles: copas[i] = [x, y, h, r8, parcela+1] y, en columnas paralelas opcionales (CONTRATOS §1.1), copas_id[i] (id estable) y copas_tipo[i]
-  // (olivo-tipo del catálogo, ADR-0014); sin ellas, −1: sin id y sin tipo (se dibuja como siempre)
+  // (olivo-tipo del catálogo, ADR-0012); sin ellas, −1: sin id y sin tipo (se dibuja como siempre)
   var copas = D.copas.map(function (c, i) { var rm = c[3].reduce(function (a, b) { return a + b; }, 0) / 8; return { i: i, id: D.copas_id ? D.copas_id[i] : -1, tipo: D.copas_tipo ? D.copas_tipo[i] : -1, x: c[0], y: c[1], h: c[2], perfil: c[3], dentro: c[4] > 0, parc: c[4] - 1, oliv: !(c[2] > 8 || (c[2] > 6.5 && rm < 2.2)) }; });
   var cIn = copas.filter(function (c) { return c.dentro && c.oliv; });
   var marc = D.marcados.map(function (m, i) { return { i: i, x: m[0], y: m[1], par: m[2], parc: m[3] }; });

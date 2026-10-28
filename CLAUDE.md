@@ -36,6 +36,7 @@ apps/web/                cliente web (ADR-0010): motor/NN_*.js (el motor, en mó
 tuberia/                 de los datos a las teselas: finca_8_teselas.py (exportador), hituelo_conv.py, datos/{cerro,hituelo}/
                          y salida_artefacto/montar_v2.py (página autónoma para claude.ai, sin servidor)
 prototipos/              maquetas de UX (sin datos reales)
+modelos/                 catálogos de olivos-tipo (hoy solo el fixture sintético; los reales, del constructor, fuera)
 contratos/               esquemas y ejemplos de los contratos de datos
 pruebas/                 pruebas con Chrome headless + guardianes (pruebas/guardianes/) + fixture sintético
 doc/                     toda la documentación (índice en doc/README.md)

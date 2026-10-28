@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://gemelo.invalid/contratos/olivos-tipo.schema.json",
-  "$comment": "Contrato de ENTRADA del constructor de olivos-tipo (contratos/olivos-tipo.md, ADR-0014): el catálogo que produce. JSON Schema 2020-12 estándar; lo valida ajv en pruebas/guardianes/olivos.test.js. Las reglas de los glb (metros, +Y, pivote, sin luces ni cámaras, un material por pieza, triángulos) no caben en un esquema: las comprueba el mismo guardián con gltf-validator (Khronos) y @gltf-transform/core. 'presupuesto_tri' (palabra de anotación) es la única fuente de los topes por modelo (todas sus piezas): tope = objetivo × (1 + tolerancia); el motor (07a_catalogo.js, PRES_TRI y TOLERANCIA) debe decir lo mismo.",
+  "$comment": "Contrato de ENTRADA del constructor de olivos-tipo (contratos/olivos-tipo.md, ADR-0012): el catálogo que produce. JSON Schema 2020-12 estándar; lo valida ajv en pruebas/guardianes/olivos.test.js. Las reglas de los glb (metros, +Y, pivote, sin luces ni cámaras, un material por pieza, triángulos) no caben en un esquema: las comprueba el mismo guardián con gltf-validator (Khronos) y @gltf-transform/core. 'presupuesto_tri' (palabra de anotación) es la única fuente de los topes por modelo (todas sus piezas): tope = objetivo × (1 + tolerancia); el motor (07a_catalogo.js, PRES_TRI y TOLERANCIA) debe decir lo mismo.",
   "title": "olivos-tipo",
   "presupuesto_tri": { "objetivo": { "L0": 800, "L1": 170, "L2": 30 }, "tolerancia": 0.2, "piezas_max": { "L0": 3, "L1": 2, "L2": 1 } },
   "type": "object",
@@ -16,7 +16,7 @@
     "arriba": { "const": "+Y", "$comment": "convención de glTF; el motor pasa a su sistema (x este, -z norte)" },
     "licencia": { "$ref": "#/$defs/licencia" },
     "generador": { "type": "string", "$comment": "opcional: qué herramienta y versión produjo el catálogo" },
-    "tipos": { "type": "array", "minItems": 1, "maxItems": 16, "items": { "$ref": "#/$defs/tipo" }, "$comment": "el objetivo son 6-8 tipos; cada tipo cargado cuesta llamadas de dibujo (ADR-0014)" }
+    "tipos": { "type": "array", "minItems": 1, "maxItems": 16, "items": { "$ref": "#/$defs/tipo" }, "$comment": "el objetivo son 6-8 tipos; cada tipo cargado cuesta llamadas de dibujo (ADR-0012)" }
   },
   "$defs": {
     "licencia": {
@@ -46,7 +46,7 @@
           "required": ["L1", "L2"],
           "additionalProperties": false,
           "properties": { "L0": { "$ref": "#/$defs/nivel" }, "L1": { "$ref": "#/$defs/nivel" }, "L2": { "$ref": "#/$defs/nivel" } },
-          "$comment": "L0 es opcional: hoy el nivel 0 es la copa MEDIDA de cada árbol (ADR-0014, decisión pendiente)"
+          "$comment": "L0 es opcional: hoy el nivel 0 es la copa MEDIDA de cada árbol (ADR-0012, decisión pendiente)"
         }
       }
     },

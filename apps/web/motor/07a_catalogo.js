@@ -2,7 +2,7 @@
 // Expone: Catalogo
 // Consume: 04_terreno (hash), 06_arboles (tronco), 08_marcadores (tmp), 15_tiempo (parcheTiempo, nivel)
 // ===============================================================================
-  // ---------- el catálogo de olivos-tipo (ADR-0014; contrato de entrada en contratos/olivos-tipo.md): de dónde sacan los niveles 1 y 2 su geometría
+  // ---------- el catálogo de olivos-tipo (ADR-0012; contrato de entrada en contratos/olivos-tipo.md): de dónde sacan los niveles 1 y 2 su geometría
   // Hoy solo hay el tipo −1 («sin asignar»): las formas por procedimiento de siempre (4 variantes de copa en vaso con su tronco en L1 y 2 masas en L2), las
   // mismas que antes vivían dentro de 07b_arboles.js, creadas en el mismo orden y con los mismos materiales. El nivel 0 no sale de aquí: se construye árbol
   // a árbol con la copa medida (06_arboles.js). Los modelos de un catálogo glb se registran con instala(desc, cargador, base), que nadie llama todavía.

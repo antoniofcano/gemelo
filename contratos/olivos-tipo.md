@@ -1,6 +1,6 @@
 # Contrato `olivos-tipo` (v = 1)
 
-Qué tiene que entregar el **constructor de olivos-tipo** (herramienta aparte, aún sin definir) para que el gemelo pueda dibujar sus modelos, y qué parámetros de cada árbol viajan en el registro. Decisión y lo que queda abierto: [ADR-0014](../doc/adr/0014-catalogo-de-olivos-tipo-e-id-estable.md). Esquema: [`olivos-tipo.schema.json`](olivos-tipo.schema.json) (JSON Schema 2020-12). Ejemplo que lo cumple: `modelos/olivos/fixture/` (sintético, lo genera `modelos/olivos/fixture/genera.js`). Lo vigila `pruebas/guardianes/olivos.test.js`.
+Qué tiene que entregar el **constructor de olivos-tipo** (herramienta aparte, aún sin definir) para que el gemelo pueda dibujar sus modelos, y qué parámetros de cada árbol viajan en el registro. Decisión y lo que queda abierto: [ADR-0012](../doc/adr/0012-catalogo-de-olivos-tipo-e-id-estable.md). Esquema: [`olivos-tipo.schema.json`](olivos-tipo.schema.json) (JSON Schema 2020-12). Ejemplo que lo cumple: `modelos/olivos/fixture/` (sintético, lo genera `modelos/olivos/fixture/genera.js`). Lo vigila `pruebas/guardianes/olivos.test.js`.
 
 La idea en una frase: **los parámetros de cada árbol viajan en el registro; las formas, en un catálogo.** Así el olivo no queda atado al formato de las teselas: hoy son teselas de 256 m en JSON; en la fase F1d serán 3D Tiles 1.1, donde el registro pasa a ser una tabla de propiedades por instancia y el catálogo sigue siendo el mismo.
 
@@ -20,7 +20,7 @@ La idea en una frase: **los parámetros de cada árbol viajan en el registro; la
 ### Reglas de cada glb (glTF 2.0 binario)
 - **Metros, +Y arriba, pivote en la base del tronco** (el punto `(0, 0, 0)` es donde el tronco toca el suelo); el modelo centrado en el pivote en planta. Del tamaño que declaran `altura_m` y `radio_m`.
 - **Una pieza = un nodo con una malla de una sola primitiva de triángulos con índices y un material.** Nodos sin transformación (la escala y el pivote van en la geometría) y sin hijos. El nombre del nodo dice la pieza: `copa` o `tronco`.
-- **Sin luces, sin cámaras, sin animaciones, esqueletos ni morph; sin texturas ni extensiones en v1** (la compresión Draco/meshopt exigiría un decodificador; las texturas con alpha-test están por decidir, ADR-0014).
+- **Sin luces, sin cámaras, sin animaciones, esqueletos ni morph; sin texturas ni extensiones en v1** (la compresión Draco/meshopt exigiría un decodificador; las texturas con alpha-test están por decidir, ADR-0012).
 - `NORMAL` y `COLOR_0` opcionales (si faltan, el motor calcula las normales y pone el color blanco; el color final lo da la ortofoto en cada olivo).
 - Pasa el validador oficial de Khronos (`gltf-validator`) **sin errores ni avisos**.
 
@@ -31,7 +31,7 @@ La idea en una frase: **los parámetros de cada árbol viajan en el registro; la
 | L1 | ≈ 170 tri | 204 | 2 | 150 / 160 (4 variantes, copa + tronco) |
 | L2 | ≈ 30 tri | 36 | 1 | 35 (2 variantes, solo copa) |
 
-La fuente de verdad es `presupuesto_tri` del esquema; el motor (`Catalogo.PRES_TRI` en `07a_catalogo.js`) dice lo mismo y lo comprueba el guardián. Un tipo que se pasa no se registra (queda en `Catalogo.avisos()`) y sus olivos se dibujan como tipo −1. **Cada tipo cargado cuesta sus piezas en llamadas de dibujo** cuando tiene olivos a la vista: hasta 2 en L1 y 1 en L2 (ADR-0014).
+La fuente de verdad es `presupuesto_tri` del esquema; el motor (`Catalogo.PRES_TRI` en `07a_catalogo.js`) dice lo mismo y lo comprueba el guardián. Un tipo que se pasa no se registra (queda en `Catalogo.avisos()`) y sus olivos se dibujan como tipo −1. **Cada tipo cargado cuesta sus piezas en llamadas de dibujo** cuando tiene olivos a la vista: hasta 2 en L1 y 1 en L2 (ADR-0012).
 
 ## 2. Parámetros por árbol (en el registro, no en el modelo)
 

@@ -1,5 +1,5 @@
 "use strict";
-// Catálogo de olivos-tipo (ADR-0014, contratos/olivos-tipo.md): el catálogo sintético de modelos/olivos/fixture/ cumple el esquema (ajv), cada glb pasa el
+// Catálogo de olivos-tipo (ADR-0012, contratos/olivos-tipo.md): el catálogo sintético de modelos/olivos/fixture/ cumple el esquema (ajv), cada glb pasa el
 // validador oficial de Khronos (gltf-validator) y las reglas del contrato (metros, +Y, pivote en la base del tronco, sin luces ni cámaras, un material por
 // pieza; leído con @gltf-transform/core) y su presupuesto de triángulos por nivel, y el generador da los mismos bytes. En Chrome (si lo hay): con el
 // catálogo vacío no cambia nada; al instalarlo con un cargador inyectado (el GLTFLoader de three r128) los olivos de tipo 0 se dibujan con su modelo;

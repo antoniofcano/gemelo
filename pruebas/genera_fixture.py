@@ -97,7 +97,7 @@ def indice(finca, copas, tes):
     I = dict(v=2, ts=TS, res=RES, srs=SRS, orto_px=ORTO_PX, finca_id=finca, centro_utm=[CX, CY], z0=Z0, zmax=0, ext=ext, cobertura_nube=0.5, parcelas=pars, copas=copas, marcados=marcados,
              ndvi=ndvi, suelo_ndvi=suelo_ndvi, ot=ot, avance={}, paisaje=paisaje, teselas=tes, grueso=grueso, mosaico=mosaico)
     if finca == "hituelo":
-        # columnas paralelas OPCIONALES del registro de árboles (CONTRATOS §1.1, ADR-0014): id estable y olivo-tipo (-1 = sin asignar).
+        # columnas paralelas OPCIONALES del registro de árboles (CONTRATOS §1.1, ADR-0012): id estable y olivo-tipo (-1 = sin asignar).
         # Solo Hituelo las lleva: Cerro conserva el formato de antes y las dos cargas deben dibujar lo mismo (el catálogo por defecto no conoce el tipo 0).
         I["copas_id"] = [1000 + 3 * i for i in range(len(copas))]
         I["copas_tipo"] = [0 if i % 7 == 0 else -1 for i in range(len(copas))]

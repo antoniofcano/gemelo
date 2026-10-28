@@ -24,3 +24,4 @@ Cada decisión con alternativas reales se escribe una vez, con su porqué y su c
 | [0009](0009-plataforma-multiusuario-cuarenta-hazas.md) | Plataforma multiusuario «Cuarenta hazas» | Aceptado |
 | [0010](0010-monorepo-y-build-con-vite.md) | Monorepo y paso de build con Vite | Aceptado |
 | [0011](0011-alojamiento-en-el-vps-de-ovh.md) | Alojamiento en el VPS de OVH como inquilino del borde | Aceptado |
+| [0012](0012-catalogo-de-olivos-tipo-e-id-estable.md) | Catálogo de olivos-tipo e id estable por árbol | Aceptado |
