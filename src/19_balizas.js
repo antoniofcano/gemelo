@@ -1,3 +1,8 @@
+// ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
+// Expone: colocaBalizas, dibujaBalizasMini, tBal, actualizaBalizas
+// Consume: 01_datos (D, $), 02_mundo (suelo), 03_escena (scene, exag), 12_paseo (paseando), 13_parcelas (parcelas),
+//   14_historia (VIVO, marca, aviso), 15_tiempo (num1, esc, hace), 16_vida (tVida, enDron), 20_sonido (sonidoBaliza), 29_vr (ficha)
+// ===============================================================================
   // ---------- las balizas: una por parcela, con lo que OlivarTrack sabe de ella; en el paseo, al acercarte, sale su ficha
   // Los datos son los de la historia (instantánea embebida, o la lectura en vivo por el MCP si se ha pulsado «Leer de OlivarTrack»).
   var gBal = new THREE.Group(); scene.add(gBal);

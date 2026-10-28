@@ -1,3 +1,8 @@
+// ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
+// Expone: parcelas, fincas, fincaSel, parcelaSel, claseUsda, elegirParcela, elegirFinca
+// Consume: 01_datos (D, $, fmt, DIST_INI), 02_mundo (suelo, copas, cIn, marc, med), 03_escena (exag, modo, calidad), 08_marcadores (aplicaLuego),
+//   09_camara (objetivo, orb), 14_historia (tabla, nMarc)
+// ===============================================================================
   // ---------- parcelas: selector, cifras y suelo de cada una
   var parcelas = D.parcelas, fincas = D.fincas || [], fincaSel = -1, parcelaSel = -1, vistaIni = { x: 0, y: 12, z: 0, dist: DIST_INI };
   function claseUsda(a, l, c) {

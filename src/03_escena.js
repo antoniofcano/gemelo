@@ -1,3 +1,7 @@
+// ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
+// Expone: lienzo, visor, renderer, scene, camera, hemi, sol, colorCss, exag, modo, calidad
+// Consume: 01_datos ($, EXT, FOG0, FOG1), 05_nube (nube), 15_tiempo (pintaFondoTiempo)
+// ===============================================================================
   // ---- escena
   var lienzo = $("lienzo"), visor = $("visor");
   var renderer = new THREE.WebGLRenderer({ canvas: lienzo, antialias: true });

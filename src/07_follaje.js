@@ -1,3 +1,8 @@
+// ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
+// Expone: matHojaG, matHojaP, matCorteza, matSombra, geoSombra, follajeG, construyeSombras
+// Consume: 02_mundo (suelo, copaAlta, aviva, colorEn, copas), 03_escena (exag, calidad), 04_terreno (hash), 06_arboles (gSombras, radioEn),
+//   14_historia (lista), 18_paisaje (instSombra, sombrasSol), 23_estacion (construyeFrutosLista)
+// ===============================================================================
 
   // follaje: cada punto LiDAR de copa es un montoncito de hojas plateadas (sprites con textura propia)
   function texturaHojas() {

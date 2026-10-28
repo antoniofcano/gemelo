@@ -1,3 +1,8 @@
+// ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
+// Expone: Mundo, suelo, copaAlta, orto, kcor, desp, tinte, ndLo, ndHi, aviva, colorEn, copas, cIn, marc, med
+// Consume: 01_datos (D, b64, i16, RES), 03_escena (modo), 04_terreno (terreno), 05_nube (nube), 09_camara (suelta), 10_ndvi (rampa, ndviRel),
+//   14_historia (lista, carga), 16_vida (mira)
+// ===============================================================================
   // ---------- el mundo: teselas de 256 m con relieve, copa, color del suelo, nube y ortofoto. Todo lo demás pregunta aquí (suelo, copaAlta, colorSuelo, orto).
   // Una tesela (kx, ky) cubre en UTM [kx·256, kx·256+256) × [ky·256, ky·256+256). Las filas de cada rejilla van de sur a norte; el relieve y el color del suelo llevan una celda de margen
   // (la de la tesela vecina) para que la interpolación no tenga costura. Lo que aún no ha llegado se contesta con el relieve grueso de 8 m (o la ortofoto gruesa), nunca con un hueco.

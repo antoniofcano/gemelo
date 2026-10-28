@@ -1,3 +1,9 @@
+// ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
+// Expone: hash, matSuelo, matOrto, UN, Terreno, actualizaTerreno, terreno
+// Consume: 01_datos (D, RES, ANCHO, ALTO, ESTAD), 02_mundo (Mundo, suelo, tinte, copas), 02b_cola (Cola), 03_escena (scene, camera, modo),
+//   08_marcadores (aplica), 09_camara (suelta), 12_paseo (primera), 13_parcelas (parcelas), 14_historia (hist),
+//   15_tiempo (lluvia, parcheTiempo, nivel, hace), 21_suelo (vn2, cubierta), 24_pantalla (suave)
+// ===============================================================================
   // ---------- el terreno: una malla por tesela (rejilla de 1 m) y el color puesto en la tarjeta gráfica
   // Las alturas se muestrean del Mundo en una retícula de metros enteros, así que las mallas de teselas vecinas comparten los vértices del borde sin costura.
   // La exageración vertical es un uniforme (ya no se recalculan vértices al moverla) y el color del suelo —tierra de SoilGrids, hierba según el NDVI de la fecha, escarcha,

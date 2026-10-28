@@ -1,0 +1,37 @@
+{
+  "$comment": "Contrato del índice global (indice.json en modo ficheros; la parte global de embebido.json). Subconjunto de JSON Schema que valida pruebas/guardianes/_validador.js: type, required, properties, items, tuple, enum, minimum, maximum, minItems, maxItems, pattern, anyOf, additionalProperties (esquema), claves (patrón de las claves). Versión del contrato = campo v.",
+  "title": "indice",
+  "type": "object",
+  "required": ["v", "ts", "res", "srs", "orto_px", "finca_id", "centro_utm", "z0", "ext", "parcelas", "copas", "marcados", "ot", "avance", "teselas", "grueso", "mosaico"],
+  "properties": {
+    "v": { "enum": [2], "$comment": "versión del contrato de datos" },
+    "ts": { "enum": [256], "$comment": "lado de la tesela, m" },
+    "res": { "enum": [1], "$comment": "paso del relieve y de la copa, m" },
+    "srs": { "enum": [2], "$comment": "paso del color del suelo, m" },
+    "orto_px": { "type": "integer", "minimum": 16, "$comment": "píxeles por lado de la ortofoto de una tesela (Cerro 768, Hituelo 512)" },
+    "finca_id": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+    "centro_utm": { "type": "array", "tuple": [{ "type": "integer" }, { "type": "integer" }], "$comment": "[E, N] UTM 30N (ETRS89 / EPSG:25830); origen de todas las coordenadas relativas" },
+    "z0": { "type": "number", "$comment": "cota de referencia, m; dtm va en cm sobre z0" },
+    "zmax": { "type": "number" },
+    "cobertura_nube": { "type": "number", "minimum": 0, "maximum": 1 },
+    "ext": { "type": "array", "tuple": [{ "type": "number" }, { "type": "number" }, { "type": "number" }, { "type": "number" }], "$comment": "[xmin, ymax, xmax, ymin] relativo a centro_utm" },
+    "base": { "type": "string", "$comment": "prefijo de las rutas de t/ (por defecto vacío = relativo a la página)" },
+    "parcelas": { "type": "array", "items": { "$ref": "#parcela" } },
+    "fincas": { "type": "array", "items": { "type": "object", "required": ["nombre", "parcelas", "ha", "olivos"], "properties": { "nombre": { "type": "string" }, "parcelas": { "type": "array", "items": { "type": "integer", "minimum": 0 } }, "ha": { "type": "number" }, "olivos": { "type": "integer" } } } },
+    "copas": { "type": "array", "items": { "type": "array", "tuple": [{ "type": "number" }, { "type": "number" }, { "type": "number", "minimum": 0 }, { "type": "array", "minItems": 8, "maxItems": 8, "items": { "type": "number", "minimum": 0 } }, { "type": "integer", "minimum": 0 }], "$comment": "[x, y, h, r8[8], parcela+1] (0 = fuera de toda parcela); x, y en m relativos al centro; h y r8 en m" } },
+    "marcados": { "type": "array", "items": { "type": "array", "tuple": [{ "type": "number" }, { "type": "number" }, { "type": "integer", "minimum": -1 }, { "type": "integer", "minimum": 0 }], "$comment": "[x, y, índice en copas o -1, índice de parcela]" } },
+    "ndvi": { "type": "object", "required": ["w", "h", "fechas", "media"], "anyOf": [{ "required": ["u8"] }, { "required": ["b64"] }], "properties": { "w": { "type": "integer", "minimum": 1 }, "h": { "type": "integer", "minimum": 1 }, "fechas": { "type": "array", "items": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" } }, "media": { "type": "array", "items": { "type": "number" } }, "u8": { "type": "string", "pattern": "^[A-Za-z0-9+/=]*$", "$comment": "fechas × h × w en u8; 0 = sin dato; 1..254 = -0,2..1,0 ((u-1)/253·1,2-0,2)" }, "b64": { "type": "string", "pattern": "^[A-Za-z0-9+/=]*$", "$comment": "variante antigua: Int16 LE en milésimas; -32768 = sin dato" }, "codigo": { "type": "string" } } },
+    "suelo_ndvi": { "type": "object", "required": ["w", "h", "a", "b", "f", "fechas"], "properties": { "w": { "type": "integer" }, "h": { "type": "integer" }, "a": { "type": "array", "items": { "type": "number" } }, "b": { "type": "array", "items": { "type": "number" } }, "f": { "type": "string", "pattern": "^[A-Za-z0-9+/=]*$", "$comment": "Int16 LE por celda (h × w); NDVI del suelo = NDVI − b·f/1000" }, "fechas": { "type": "array", "items": { "type": "string" } } } },
+    "ot": { "type": "object", "required": ["fuente", "fecha_consulta", "parcelas"], "properties": { "fuente": { "enum": ["instantanea", "vivo"] }, "fecha_consulta": { "type": ["string", "null"] }, "pases_finca": { "type": "integer" }, "entregas_finca": { "type": "integer" }, "analiticas_finca": { "type": "integer" }, "parcelas": { "type": "object", "additionalProperties": { "type": "object", "required": ["tareas", "fenologia"], "properties": { "tareas": { "type": "array" }, "fenologia": { "type": "array" } } } } } },
+    "avance": { "type": "object" },
+    "paisaje": { "type": "object", "required": ["edificios", "tendido", "arroyo", "arboles"], "properties": { "edificios": { "type": "array" }, "tendido": { "type": "object", "required": ["linea", "postes"] }, "arroyo": { "type": "object", "required": ["ejes"] }, "arboles": { "type": "array" } } },
+    "teselas": { "type": "object", "claves": "^-?\\d+_-?\\d+$", "additionalProperties": { "type": "object", "required": ["kx", "ky", "v", "np"], "properties": { "kx": { "type": "integer" }, "ky": { "type": "integer" }, "v": { "type": "array", "tuple": [{ "type": "number" }, { "type": "number" }, { "type": "number" }, { "type": "number" }], "$comment": "rectángulo con dato [x0, y0, x1, y1] relativo al centro" }, "np": { "type": "integer", "minimum": 0 } } } },
+    "grueso": { "type": "object", "required": ["x0", "yN", "res", "w", "h", "b64"], "properties": { "x0": { "type": "number" }, "yN": { "type": "number" }, "res": { "type": "number" }, "w": { "type": "integer" }, "h": { "type": "integer" }, "b64": { "type": "string", "pattern": "^[A-Za-z0-9+/=]*$", "$comment": "relieve de 8 m: Int16 LE en cm sobre z0, fila 0 = norte" } } },
+    "mosaico": { "type": "object", "required": ["jpg", "w", "h", "x0", "yN", "res"], "properties": { "jpg": { "type": "string", "pattern": "^data:image/jpeg;base64,", "$comment": "ortofoto global (Cerro 1 m/px, Hituelo 2 m/px); fila 0 = norte" }, "w": { "type": "integer" }, "h": { "type": "integer" }, "x0": { "type": "number" }, "yN": { "type": "number" }, "res": { "type": "number" } } },
+    "textos": { "type": "object", "required": ["finca"], "properties": { "sin_historia": { "type": "boolean" }, "finca": { "type": "string" }, "fincas": { "type": "integer" }, "parcelas": { "type": "integer" }, "ha": { "type": "number" }, "olivos": { "type": "integer" }, "desfase_txt": { "type": "string" }, "intro_historia": { "type": "string" } } },
+    "t": { "type": "object", "claves": "^-?\\d+_-?\\d+$", "$comment": "solo en embebido.json: las teselas dentro de la página; cada una cumple tesela.schema.json con orto = data URI", "additionalProperties": { "type": "object" } }
+  },
+  "definiciones": {
+    "parcela": { "type": "object", "required": ["id", "nombre", "ha", "linde", "centro"], "properties": { "id": { "type": "string" }, "nombre": { "type": "string" }, "ha": { "type": "number", "minimum": 0 }, "linde": { "type": "array", "minItems": 3, "items": { "type": "array", "tuple": [{ "type": "number" }, { "type": "number" }] } }, "centro": { "type": "array", "tuple": [{ "type": "number" }, { "type": "number" }] }, "desfase": { "type": "array" }, "suelo": { "type": ["array", "null"], "items": { "type": "object", "required": ["p", "a", "l", "c", "ph", "mo", "cec", "dens", "pedr"] } }, "finca": { "type": "integer", "minimum": 0 }, "decl": { "type": "integer", "minimum": 0 }, "pasto": { "type": "boolean" } } }
+  }
+}

@@ -1,3 +1,13 @@
+// ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
+// Expone: tamano, cuadro, bucle
+// Consume: 01_datos (DEPURA), 02_mundo (Mundo), 02b_cola (Cola), 03_escena (visor, renderer, scene, camera), 04_terreno (Terreno, actualizaTerreno),
+//   05_nube (actualizaNubeTeselas, actualizaNube), 07b_arboles (Arboles), 08_marcadores (listo, aplica), 09_camara (objetivo, camara),
+//   12_paseo (paseando, actualizaPaseo), 15_tiempo (actualizaTiempo, hace), 16_vida (actualizaVida), 17_minimapa (actualizaMinimapa),
+//   18_paisaje (actualizaPaisaje), 19_balizas (actualizaBalizas), 20_sonido (actualizaSonido), 21_suelo (recoloreaSuelo, actualizaSuelo),
+//   22_huellas (actualizaHuellas), 23_estacion (actualizaOlivo), 24_pantalla (transEntrada, transSalida), 25_perros (actualizaPerros),
+//   28_depura (depuraCuadro), 29_vr (VRX, vrActualiza, vrFin)
+// Nota: Arranque y bucle: Mundo.arranca, cuadro() y requestAnimationFrame. Define el orden de las actualizaciones por fotograma.
+// ===============================================================================
 
   function tamano() { if (renderer.xr.isPresenting) return; var w = visor.clientWidth, h = visor.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / Math.max(h, 1); camera.updateProjectionMatrix(); }
   window.addEventListener("resize", tamano); tamano();

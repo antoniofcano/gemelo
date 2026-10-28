@@ -1,3 +1,9 @@
+// ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
+// Expone: Arboles
+// Consume: 02_mundo (Mundo, suelo, copaAlta, kcor, tinte, aviva, copas), 02b_cola (Cola), 03_escena (camera, exag, modo, calidad),
+//   04_terreno (hash), 05_nube (ALTO_MAX, nube), 06_arboles (gArboles, tronco, arbolesG), 07_follaje (follajeG, construyeSombras),
+//   08_marcadores (tmp), 09_camara (objetivo, orb), 10_ndvi (ndviIdx), 12_paseo (paseando), 15_tiempo (parcheTiempo, nivel, esc), 16_vida (mira)
+// ===============================================================================
   // ---------- los olivos del modo Gemelo con tres niveles de detalle: el coste de dibujo no crece con la superficie de la finca
   // Nivel 0: celdas de 64 m con el modelo completo (copa medida, troncos, hojas, flores y aceitunas) alrededor de lo que se mira (o de quien pasea), hasta MAX0 olivos.
   // Nivel 1: olivos instanciados de ~170 triángulos con silueta de olivo: copa en vaso, lobulada y más ancha que alta (radios medidos, orientada según su eje largo), abierta por debajo, y tronco de 2 o 3 pies.

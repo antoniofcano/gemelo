@@ -1,3 +1,8 @@
+// ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
+// Expone: (nada al resto de módulos)
+// Consume: 01_datos ($), 03_escena (hemi, sol)
+// Nota: Define sol2() (sol según hora y fecha); se engancha al control de hora dentro del propio módulo.
+// ===============================================================================
   // ---------- el sol según la hora (25-oct, Jaén, hora oficial peninsular)
   function sol2() {
     var hora = Number($("hora").value), fi = 37.73 * Math.PI / 180, de = -12.1 * Math.PI / 180, Hh = (hora - 13.27) * 15 * Math.PI / 180;

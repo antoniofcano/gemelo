@@ -1,3 +1,8 @@
+// ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
+// Expone: NDV, ndviIdx, rampa, pintaNdvi, ndviRel
+// Consume: 01_datos (D, $, fmt, b64, i16, ANCHO, ALTO), 02_mundo (tinte, ndLo, ndHi), 03_escena (modo), 04_terreno (terreno), 05_nube (nube),
+//   06_arboles (gArboles, gFollaje, gSombras), 08_marcadores (aplicaLuego), 14_historia (rango), 15_tiempo (hace)
+// ===============================================================================
   // ---------- NDVI de Sentinel-2 (10 m) sobre el terreno, con escala relativa a la parcela (como hace Vigía)
   function u8aI16(s) {   // el NDVI de 8 bits (0 = sin dato; 1..254 → de −0,2 a 1,0) se pasa a milésimas en Int16, que es lo que usa el resto
     var u = b64(s), d = new Int16Array(u.length); for (var i = 0; i < u.length; i++) d[i] = u[i] === 0 ? -32768 : Math.round(((u[i] - 1) / 253 * 1.2 - 0.2) * 1000); return d;

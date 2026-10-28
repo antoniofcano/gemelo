@@ -1,0 +1,14 @@
+{
+  "$comment": "Límites de la plataforma de artefactos de claude.ai según las instrucciones de la herramienta y el contrato 0.2.90 (octubre de 2026). Los comprueba pruebas/guardianes/build.test.js contra lo montado. Si la plataforma cambia, se cambia aquí y en doc/operacion/PUBLICACION.md.",
+  "version": 1,
+  "pagina_max_bytes": 16777216,
+  "fichero_texto_max_bytes": 16777216,
+  "fichero_binario_max_bytes": 15728640,
+  "publicacion_max_bytes": 67108864,
+  "publicacion_max_ficheros": 255,
+  "version_max_bytes": 268435456,
+  "version_max_ficheros": 511,
+  "tipos_admitidos": ["html", "css", "js", "mjs", "wasm", "json", "txt", "csv", "png", "jpg", "webp", "svg", "woff", "woff2", "mp3", "mp4"],
+  "tipos_rechazados_comprobados": ["bin"],
+  "fetch_mismo_origen_comprobado_con_sesion": false
+}

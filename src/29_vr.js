@@ -1,3 +1,12 @@
+// ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
+// Expone: VRX, vrDebugExtra, panel, ficha, vrActualiza, vrFin
+// Consume: 01_datos (D, $, fmt, VRP), 02_mundo (suelo, orto, copas), 03_escena (renderer, scene, camera, exag, modo, calidad), 05_nube (nube),
+//   07b_arboles (Arboles), 09_camara (eligeCopa, pon), 10_ndvi (NDV, ndviIdx),
+//   12_paseo (paseando, persona, teclas, primera, entraPaseo, salePaseo, actualizaPaseo), 13_parcelas (parcelas, fincas),
+//   15_tiempo (calma, nivel, hace), 16_vida (mira), 19_balizas (tBal), 20_sonido (snd, iniciaSonido), 22_huellas (pendFactor),
+//   25_perros (perrosLlegan), 90_final (tamano, cuadro, bucle)
+// Nota: Publica además window.__vrDebug, __vrOlivo, __vrBotones y VR_ESTADO (depuración y pruebas VR).
+// ===============================================================================
   // ---------- modo VR inmersivo (WebXR, Meta Quest Browser): el paseo en primera persona con mandos, un panel flotante y un perfil de rendimiento propio
   // Fuera de una sesión XR este bloque no hace nada salvo comprobar (una vez) si el navegador ofrece WebXR y, si lo ofrece, mostrar el botón «Entrar en VR».
   // La cámara cuelga de un «rig» (Group) que es el origen del espacio de seguimiento: mover o girar el rig mueve o gira al usuario por el mundo (three r128 no puede desplazar el espacio de referencia).

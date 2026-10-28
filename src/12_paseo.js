@@ -1,3 +1,10 @@
+// ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
+// Expone: paseando, persona, teclas, primera, pp, camPos, entraPaseo, salePaseo, actualizaPaseo
+// Consume: 01_datos (D, $), 02_mundo (suelo, copas), 03_escena (lienzo, visor, scene, camera, exag), 06_arboles (tronco),
+//   13_parcelas (fincas, fincaSel, parcelaSel),
+//   16_vida (enQuad, velPaseo, giroPaseo, ponQuad, vidaPaseo, enDron, ponDron, cicloVista, dronMando, camaraDron, vidaEntra, vidaSale),
+//   24_pantalla (pant, iniciaTransicion, iniciaSalida), 29_vr (ficha)
+// ===============================================================================
   // ---------- paseo: una persona que camina por el olivar (flechas o WASD; Mayús corre; V cambia de cámara)
   var paseando = false, persona = null, teclas = {}, primera = false, pp = { x: 0, y: 0, ang: 0, paso: 0 }, camPos = new THREE.Vector3();
   function creaPersona() {

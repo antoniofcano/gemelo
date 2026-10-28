@@ -1,0 +1,14 @@
+{
+  "$comment": "Contrato de t/<kx>_<ky>.json. Los tamaños exactos de cada campo (decodificado) los comprueba pruebas/guardianes/contratos.test.js: dtm 258×258 Int16 LE (cm sobre z0, filas sur→norte, celdas -1..256), chm 256×256 u8 (dm), suelo 130×130×3 u8 (RGB a 2 m, celdas -1..128), pts 3×Int16 LE por punto (x, y en cm sobre la esquina SO de la tesela; z en cm sobre z0; orden barajado con semilla fija).",
+  "title": "tesela",
+  "type": "object",
+  "required": ["dtm", "chm", "suelo", "np"],
+  "properties": {
+    "dtm": { "type": "string", "pattern": "^[A-Za-z0-9+/=]+$" },
+    "chm": { "type": "string", "pattern": "^[A-Za-z0-9+/=]+$" },
+    "suelo": { "type": "string", "pattern": "^[A-Za-z0-9+/=]+$" },
+    "pts": { "type": "string", "pattern": "^[A-Za-z0-9+/=]*$", "$comment": "opcional: sin él la tesela es de calidad Base (copas generadas, sin nube)" },
+    "np": { "type": "integer", "minimum": 0, "$comment": "número de puntos de pts" },
+    "orto": { "type": "string", "pattern": "^data:image/jpeg;base64,", "$comment": "solo en embebido.json; en modo ficheros la ortofoto es t/<clave>.jpg" }
+  }
+}

@@ -1,3 +1,9 @@
+// ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
+// Expone: objetivo, orb, camara, suelta, eligeCopa, pon
+// Consume: 01_datos (D, $, fmt, DIST_MAX, DIST_INI), 02_mundo (suelo, orto, kcor, copas, marc), 03_escena (lienzo, camera, exag, modo),
+//   05_nube (nube), 08_marcadores (aplica, capas, aplicaLuego), 12_paseo (paseando), 13_parcelas (parcelas, parcelaSel, elegirParcela),
+//   29_vr (ficha)
+// ===============================================================================
 
   // cámara orbital
   var objetivo = new THREE.Vector3(0, 12, 0), orb = { az: -0.55, el: 0.62, dist: DIST_INI }, orbIni = JSON.parse(JSON.stringify(orb));

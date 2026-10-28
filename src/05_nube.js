@@ -1,3 +1,8 @@
+// ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
+// Expone: ALTO_MAX, nube, pintaNube, actualizaNubeTeselas, actualizaNube
+// Consume: 02_mundo (Mundo, suelo, copaAlta, kcor, tinte, aviva, colorEn), 02b_cola (Cola), 03_escena (scene, camera, exag), 04_terreno (hash),
+//   06_arboles (tronco), 08_marcadores (aplica), 10_ndvi (ndviIdx), 12_paseo (primera), 15_tiempo (parcheTiempo, nivel, hace)
+// ===============================================================================
   // ---------- nube de puntos LiDAR: una malla por tesela, con las posiciones cuantizadas a 16 bits y el color a 8, y nivel de detalle por distancia
   // El orden de los puntos de cada tesela está barajado, así que dibujar solo la primera fracción (setDrawRange) es una muestra uniforme: lejos se pintan menos puntos.
   // La malla lleva su posición y escala (centro y semirrango de la tesela): la exageración vertical es solo la escala en y, sin tocar ningún vértice.

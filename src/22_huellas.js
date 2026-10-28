@@ -1,3 +1,8 @@
+// ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
+// Expone: pendienteRumbo, pendFactor, quadInc, inclinaQuad, hSig, emitePolvo, sueloSeco, actualizaHuellas
+// Consume: 02_mundo (suelo), 03_escena (scene, exag), 04_terreno (terreno), 08_marcadores (pendiente), 12_paseo (paseando, teclas),
+//   15_tiempo (cur, nivel, rumbo), 16_vida (tVida, enQuad, altSuelo, quad, enDron), 18_paisaje (aguaNivel), 21_suelo (cubierta)
+// ===============================================================================
   // ---------- huellas, polvo y pendiente: el suelo se deja marcar y el quad y el paso se adaptan al terreno
   function pendienteRumbo(x, y, ang) {   // pendiente del terreno a lo largo del rumbo y de lado (positiva = sube), con la exageración vertical
     var ds = 0.9, fx = Math.sin(ang), fy = Math.cos(ang), rx = Math.cos(ang), ry = -Math.sin(ang);

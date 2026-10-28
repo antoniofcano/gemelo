@@ -1,3 +1,8 @@
+// ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
+// Expone: snd, iniciaSonido, sPaso, sonidoBaliza, ejeArroyo, distArroyo, actualizaSonido
+// Consume: 01_datos ($), 12_paseo (paseando, teclas), 15_tiempo (cur, nivel), 16_vida (tVida, enQuad, quad, enDron, dron),
+//   18_paisaje (EJES, aguaNivel)
+// ===============================================================================
   // ---------- el sonido del olivar: todo sintetizado en el navegador (no hay ficheros de audio) y atado al tiempo del mundo
   var snd = { ctx: null, master: null, t: 0, ave: 1.5, grillo: 0.5, pasoAnt: 0 };
   function sRuido(ctx, marron) {

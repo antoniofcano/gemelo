@@ -1,3 +1,8 @@
+// ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
+// Expone: depuraCuadro
+// Consume: 01_datos (DEPURA), 02_mundo (Mundo), 02b_cola (Cola), 03_escena (visor, renderer), 07b_arboles (Arboles), 15_tiempo (nivel),
+//   29_vr (vrDebugExtra)
+// ===============================================================================
 
   // ---------- ?debug: un contador en la esquina del visor para medir en el móvil (ms de JS por fotograma, llamadas, triángulos, teselas y olivos por nivel)
   var dep = { n: 0, t0: performance.now(), js: 0, mx: 0, el: null };

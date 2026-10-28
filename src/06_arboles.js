@@ -1,3 +1,8 @@
+// ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
+// Expone: gArboles, gFollaje, gSombras, tronco, matTronco, radioEn, arbolesG
+// Consume: 02_mundo (suelo, aviva, colorEn, copas), 03_escena (scene, exag, modo), 04_terreno (hash), 07b_arboles (Arboles), 14_historia (lista),
+//   15_tiempo (nivel)
+// ===============================================================================
   // ---------- los olivos del modo Gemelo: copa con la forma real medida (8 radios) y tronco debajo (nivel 0, por celdas de 64 m; ver Arboles)
   var gArboles = new THREE.Group(), gFollaje = gArboles, gSombras = new THREE.Group(); scene.add(gArboles); scene.add(gSombras);   // gFollaje es el mismo grupo: las celdas de nivel 0 llevan copa, tronco, hojas y frutos
   var matCopa = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }), matTronco = new THREE.MeshLambertMaterial({ vertexColors: true });

@@ -1,3 +1,11 @@
+// ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
+// Expone: tVida, enQuad, vq, gFauna, esfera, altSuelo, mira, conejos, quad, temaEstela, velPaseo, giroPaseo, ponQuad, vidaPaseo, enDron, dr, dron,
+//   ponDron, cicloVista, dronMando, camaraDron, vidaEntra, vidaSale, actualizaVida
+// Consume: 01_datos (D, $), 02_mundo (suelo, copaAlta, copas, cIn), 03_escena (scene, camera, exag, modo), 04_terreno (terreno),
+//   07_follaje (matSombra, geoSombra), 12_paseo (paseando, persona, teclas, primera, camPos),
+//   15_tiempo (calma, texBrillo, cur, meta, ins, nivel, temaBarrera, num1, rumbo), 22_huellas (pendFactor, quadInc, inclinaQuad),
+//   25_perros (amenazaConejo)
+// ===============================================================================
   // ---------- la vida del olivar: pájaros, conejos y un quad con estela de luz (Tron) para el paseo
   var tVida = 0, enQuad = false, vq = 0, gFauna = new THREE.Group(); scene.add(gFauna);
   var matAveC = new THREE.MeshLambertMaterial({ color: 0x4a3f33 }), matAveV = new THREE.MeshLambertMaterial({ color: 0xd9cdb4 }), matAla = new THREE.MeshLambertMaterial({ color: 0x302b2a, side: THREE.DoubleSide }), matPico = new THREE.MeshLambertMaterial({ color: 0xd49a30 });

@@ -1,3 +1,11 @@
+// ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
+// Expone: TM, calma, texBrillo, lluvia, uViento, uSombra, GLSL_SOMBRA, parcheTiempo, cur, meta, tMundo, ins, nivel, actualizaTiempo, temaBarrera,
+//   colocaBarrera, pintaFondoTiempo, cargaT, fmtHora, fmtClaveDia, num1, rumbo, esc, hace, objetivoMundoBase, aplicaMundo, lindes
+// Consume: 01_datos (D, $, FOG0, FOG1), 02_mundo (suelo, copas), 03_escena (visor, scene, camera, hemi, sol, colorCss, exag, modo),
+//   04_terreno (hash, matSuelo, matOrto, terreno), 05_nube (nube), 07_follaje (matHojaG, matHojaP, matCorteza), 08_marcadores (gLinde),
+//   09_camara (objetivo, orb), 12_paseo (primera), 14_historia (mcp, marca, tabla, aviso), 16_vida (mira, temaEstela), 23_estacion (objetivoMundo),
+//   24_pantalla (suave)
+// ===============================================================================
   // ---------- el tiempo: el mundo del gemelo simula el que publica Vigía
   // Qué entra y de dónde: la estación (medido) pone la temperatura y la humedad de «ahora»; la previsión (modelado, rejilla de ~5 km)
   // pone las nubes, el viento y la lluvia, porque el anemómetro de la estación está descartado por Vigía. El sol sale de la fecha y la hora.

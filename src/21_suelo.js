@@ -1,3 +1,9 @@
+// ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
+// Expone: SN, S0, V0, vn2, cubierta, recoloreaSuelo, actualizaSuelo
+// Consume: 01_datos (D, $, i16, ANCHO, ALTO, VRP), 02_mundo (suelo), 03_escena (scene, exag), 04_terreno (hash), 05_nube (nube),
+//   09_camara (objetivo, orb), 10_ndvi (NDV, ndviIdx, pintaNdvi), 12_paseo (paseando), 15_tiempo (uViento, uSombra, GLSL_SOMBRA, nivel, num1),
+//   16_vida (esfera, enDron), 20_sonido (ejeArroyo, distArroyo)
+// ===============================================================================
   // ---------- el suelo según el NDVI: dónde hay tierra desnuda y dónde hierba, y cómo de vigorosa
   // El NDVI de 10 m mezcla copa y suelo. Con la fracción de copa de cada celda (LiDAR) se resta la copa: g = NDVI − b·f. De g sale la cubierta (0 = desnudo, 1 = hierba tupida) y su vigor.
   // g se calcula en la rejilla del NDVI (10 m) y la tarjeta gráfica lo interpola por píxel; la CPU lo interpola igual para colocar matas, huellas y polvo.

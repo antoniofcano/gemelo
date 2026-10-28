@@ -1,3 +1,8 @@
+// ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
+// Expone: D, $, fmt, b64, i16, RES, x0, yN, ANCHO, ALTO, EXT, FOG0, FOG1, DIST_MAX, DIST_INI, ESTAD, DEPURA, VRP
+// Consume: 02_mundo (Mundo, suelo), 04_terreno (terreno), 05_nube (nube)
+// Nota: Abre la IIFE que cierra 99_cierre.js y activa "use strict". Primer módulo: define D (los datos de la finca) y las utilidades.
+// ===============================================================================
 
 (function () {
   "use strict";

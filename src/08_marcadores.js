@@ -1,3 +1,9 @@
+// ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
+// Expone: gLinde, tmp, listo, aplica, capas, pendiente, aplicaLuego
+// Consume: 01_datos (D, $), 02_mundo (suelo, orto, copas, cIn, marc), 03_escena (scene, colorCss, exag, modo), 04_terreno (Terreno, terreno),
+//   05_nube (nube, pintaNube), 06_arboles (gArboles, gFollaje, gSombras, tronco), 07b_arboles (Arboles), 14_historia (avTipo, pintaAvance),
+//   15_tiempo (colocaBarrera, lindes), 18_paisaje (colocaPaisaje), 19_balizas (colocaBalizas), 21_suelo (recoloreaSuelo)
+// ===============================================================================
 
   // linde y marcadores
   var gLinde = new THREE.Group(), gCopas = new THREE.Group(), gMarc = new THREE.Group(), gDesf = new THREE.Group();

@@ -1,3 +1,8 @@
+// ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
+// Expone: pant, TR, suave, iniciaTransicion, transEntrada, aterriza, iniciaSalida, transSalida
+// Consume: 01_datos ($), 03_escena (visor, camera), 12_paseo (paseando, persona), 15_tiempo (hace), 16_vida (altSuelo), 20_sonido (snd, sPaso),
+//   22_huellas (emitePolvo, sueloSeco), 25_perros (perrosLlegan), 29_vr (panel), 90_final (tamano)
+// ===============================================================================
   // ---------- pantalla completa del visor (con botón para volver a la página) y la transición de la cámara entre el mapa y el paseo
   var pant = { on: false };
   function pantallaCompleta(v) {
