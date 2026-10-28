@@ -1,0 +1,159 @@
+# Entorno de DESARROLLO local del gemelo (no es producción: ver doc/operacion/DESARROLLO-LOCAL.md).
+#   npm run dev:arriba   (genera el fixture si falta, construye la web, crea infra/dev/.env con claves aleatorias y levanta esto)
+#   npm run dev:estado · npm run dev:abajo
+# Reglas: imágenes estables con versión fija Y digest (imagen:versión@sha256:…; cómo se actualizan, en DESARROLLO-LOCAL.md); ningún puerto fuera de 127.0.0.1; ningún secreto escrito aquí (salen de infra/dev/.env,
+# que genera levanta.mjs con claves aleatorias y que git ignora); red interna; límites de memoria; usuarios no root donde se puede.
+name: gemelo-dev
+
+x-comun: &comun
+  restart: unless-stopped
+  networks: [interna]
+  security_opt: ["no-new-privileges:true"]
+  logging:
+    driver: local
+    options: { max-size: "10m", max-file: "3" }
+
+services:
+  # Caddy: la web (build de Vite) y las teselas en /teselas/<finca>/… ; HTTP en 8780 y HTTPS con certificado local en 8743
+  web:
+    <<: *comun
+    image: caddy:2.11.7-alpine@sha256:eb4d35b7452d1ab6171fbdbe8d9275b2301dad6dad92115d91e19fb9b24d510f
+    user: "1000:1000"
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]        # el binario de la imagen lleva esa capacidad de fichero; sin ella no arranca (escucha en 8080/8443)
+    ports:
+      - "127.0.0.1:${GEMELO_DEV_PUERTO_WEB:-8780}:8080"
+      - "127.0.0.1:${GEMELO_DEV_PUERTO_HTTPS:-8743}:8443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../../apps/web/dist:/srv/web:ro
+      - ${GEMELO_DEV_TESELAS:-../../pruebas/salida/fixture}:/srv/teselas:ro
+    tmpfs:                             # la CA local y su estado no se guardan: es desarrollo (se regeneran en cada arranque)
+      - /data:uid=1000,gid=1000,mode=0700
+      - /config:uid=1000,gid=1000,mode=0700
+    environment:
+      LIVEKIT_PUBLICO: "ws://localhost:${GEMELO_DEV_PUERTO_LIVEKIT:-7880}"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/salud"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    deploy:
+      resources:
+        limits: { memory: 128m }
+
+  # PostgreSQL 18 + PostGIS 3.6 (la imagen crea la extensión postgis en la base «gemelo» al iniciar el volumen).
+  # Desde PostgreSQL 18 el volumen se monta en /var/lib/postgresql (los datos van dentro, en 18/docker).
+  db:
+    <<: *comun
+    image: postgis/postgis:18-3.6-alpine@sha256:c53a483fc274072dfa02cd491efa79f3c8ae0a10774a0ece6c9c53b6a632cdef
+    shm_size: 256m
+    environment:
+      POSTGRES_USER: gemelo
+      POSTGRES_DB: gemelo
+      POSTGRES_PASSWORD: ${GEMELO_DEV_PG_CLAVE:?falta infra/dev/.env (lo crea npm run dev:arriba)}
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    ports:
+      - "127.0.0.1:${GEMELO_DEV_PUERTO_DB:-55432}:5432"
+    volumes:
+      - pg_datos:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gemelo -d gemelo -h 127.0.0.1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
+    deploy:
+      resources:
+        limits: { memory: 512m }
+
+  # LiveKit en modo desarrollo (fase 2): señalización 7880, ICE por TCP 7881 y UDP 7882 (un solo puerto multiplexado), todo en 127.0.0.1
+  livekit:
+    <<: *comun
+    image: livekit/livekit-server:v1.13.11@sha256:25cd902de7cacbd5f1f779f6a6ac1eae20ba8f56b0935934ce6b0ab80d1e3d20
+    user: "1000:1000"
+    read_only: true
+    cap_drop: [ALL]
+    # `--dev` (registro de depuración) solo en local; GEMELO_DEV_LIVEKIT_ARGS="--config /etc/livekit.yaml" lo quita.
+    # Las claves NO dependen de --dev: siempre son las aleatorias de .env (el par conocido devkey/secret se rechaza).
+    command: ${GEMELO_DEV_LIVEKIT_ARGS:---config /etc/livekit.yaml --dev}
+    environment:
+      LIVEKIT_KEYS: "${GEMELO_DEV_LIVEKIT_CLAVE:?falta infra/dev/.env (lo crea npm run dev:arriba)}: ${GEMELO_DEV_LIVEKIT_SECRETO:?falta infra/dev/.env}"
+    ports:
+      - "127.0.0.1:${GEMELO_DEV_PUERTO_LIVEKIT:-7880}:7880"
+      - "127.0.0.1:7881:7881"
+      - "127.0.0.1:7882:7882/udp"
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:7880/"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    deploy:
+      resources:
+        limits: { memory: 256m }
+
+  # Buzón de pruebas: recibe el correo del enlace mágico (SMTP 1025) y lo enseña en http://127.0.0.1:8025 ; no envía nada fuera
+  correo:
+    <<: *comun
+    image: axllent/mailpit:v1.32.0@sha256:0790692be935ea4420d085694f7985b1f692ca6a8771ab0e0bd8ba75ac180498
+    user: "1000:1000"
+    read_only: true
+    cap_drop: [ALL]
+    environment:
+      MP_MAX_MESSAGES: "500"
+      MP_SMTP_AUTH_ACCEPT_ANY: "1"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "1"
+    ports:
+      - "127.0.0.1:${GEMELO_DEV_PUERTO_CORREO_WEB:-8025}:8025"
+      - "127.0.0.1:${GEMELO_DEV_PUERTO_SMTP:-1025}:1025"
+    tmpfs: [/tmp]
+    # el healthcheck lo trae la imagen (/mailpit readyz)
+    deploy:
+      resources:
+        limits: { memory: 128m }
+
+  # La api (fase 1a) la escribe otro trabajo en apps/api/. Cuando exista con su Dockerfile, se descomenta este bloque
+  # y el `handle /api/*` del Caddyfile. Contrato de enchufe (doc/operacion/DESARROLLO-LOCAL.md § La api):
+  #   escucha en 8000 dentro de la red «interna», responde GET /api/salud con 200, y lee todo de variables de entorno.
+  # api:
+  #   <<: *comun
+  #   build: { context: ../../apps/api }
+  #   user: "1000:1000"
+  #   read_only: true
+  #   cap_drop: [ALL]
+  #   depends_on:
+  #     db: { condition: service_healthy }
+  #     correo: { condition: service_healthy }
+  #   environment:
+  #     GEMELO_API_PUERTO: "8000"
+  #     GEMELO_DB_URL: "postgresql://gemelo@db:5432/gemelo"        # usuario y host; la clave va aparte:
+  #     GEMELO_DB_CLAVE: ${GEMELO_DEV_PG_CLAVE}
+  #     GEMELO_SMTP_HOST: correo
+  #     GEMELO_SMTP_PUERTO: "1025"
+  #     GEMELO_CORREO_REMITENTE: "gemelo@canoydamas.invalid"
+  #     GEMELO_URL_PUBLICA: "http://localhost:${GEMELO_DEV_PUERTO_WEB:-8780}"
+  #     GEMELO_LIVEKIT_URL: "ws://livekit:7880"
+  #     GEMELO_LIVEKIT_CLAVE: ${GEMELO_DEV_LIVEKIT_CLAVE}
+  #     GEMELO_LIVEKIT_SECRETO: ${GEMELO_DEV_LIVEKIT_SECRETO}
+  #     GEMELO_TESELAS: /srv/teselas
+  #   volumes:
+  #     - ${GEMELO_DEV_TESELAS:-../../pruebas/salida/fixture}:/srv/teselas:ro
+  #   healthcheck:
+  #     test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8000/api/salud"]
+  #     interval: 10s
+  #     timeout: 3s
+  #     retries: 5
+  #   deploy:
+  #     resources:
+  #       limits: { memory: 256m }
+
+networks:
+  interna: {}
+
+volumes:
+  pg_datos: {}

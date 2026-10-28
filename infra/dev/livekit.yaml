@@ -1,0 +1,14 @@
+# LiveKit del entorno de DESARROLLO (fase 2). Las claves NO van aquí: llegan por LIVEKIT_KEYS desde infra/dev/.env
+# (aleatorias, las genera levanta.mjs). Todo escucha en 127.0.0.1 del anfitrión; para las Quest, `adb reverse` (DESARROLLO-LOCAL.md).
+port: 7880
+rtc:
+  tcp_port: 7881
+  udp_port: 7882          # un solo puerto UDP multiplexado (en vez del rango 50000-60000 de producción)
+  use_external_ip: false
+  node_ip: 127.0.0.1      # el candidato ICE que se anuncia: el anfitrión, al que Docker reenvía los puertos
+room:
+  empty_timeout: 300
+  max_participants: 50
+logging:
+  level: info
+  json: false
