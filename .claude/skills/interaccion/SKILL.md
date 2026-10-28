@@ -22,7 +22,7 @@ Hay: giro por saltos, **viñeta** de confort (conmutable con X), teletransporte,
 2. Todo gesto tiene **retroalimentación** inmediata (resaltado `hover`, pulso háptico, texto de estado `VR_ESTADO`).
 3. Toda función táctil tiene su equivalente de **teclado** y viceversa; los botones llevan nombre accesible (`aria-label`, `aria-pressed`).
 4. **Zonas táctiles ≥ 44 × 44 px**, contraste suficiente (AA) del HUD sobre la imagen, texto ≥ 16 px en pantalla y legible a la distancia del panel en VR.
-5. **`prefers-reduced-motion`** respetado (ya hay regla en `plantilla_cabecera.html` y en `15_tiempo.js`): no animar por animar.
+5. **`prefers-reduced-motion`** respetado (ya hay regla en `apps/web/plantilla.html` y en `15_tiempo.js`): no animar por animar.
 6. Los permisos del navegador (audio, pantalla completa, WebXR) **solo con gesto del usuario**.
 7. El HUD es el mismo con `?debug` o sin él salvo el contador: no esconder información en el modo de prueba.
 8. Los textos son **español**, directos, y distinguen medido / deducido / ilustrativo.

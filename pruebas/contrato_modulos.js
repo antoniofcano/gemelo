@@ -5,7 +5,7 @@
 // Consume = nombres expuestos por otros módulos que este usa. Es una derivación textual: un nombre local que coincida puede colarse; la cabecera lo dice.
 "use strict";
 const fs = require("fs"), path = require("path");
-const SRC = path.join(__dirname, "..", "src");
+const SRC = path.join(__dirname, "..", "apps", "web", "motor");
 const MARCA_I = "// ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====";
 const MARCA_F = "// ===============================================================================";
 const NOTAS = {

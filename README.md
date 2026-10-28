@@ -13,18 +13,18 @@ Dos fincas montadas con el mismo motor: **Cerro Velasco** (5 parcelas, 7,1 ha) y
 
 | Carpeta / fichero | Qué es |
 |---|---|
-| `src/*.js` | El motor, en módulos que se concatenan **por orden alfabético** dentro de un solo `<script>`: mundo y teselas (`02`), cola de trabajos (`02b`), terreno con 3 niveles (`04`), nube LiDAR (`05`), olivos con 3 niveles (`06`, `07`, `07b`), cámara, sol, paseo, historia, tiempo, vida, minimapa, paisaje, balizas, sonido, suelo, huellas, estación, perros, depuración (`?debug`) y **VR** (`29_vr.js`) |
-| `plantilla_cabecera.html` | HTML y CSS de la página |
-| `montar_v2.py` | Monta la página: cabecera + datos + three.js + `src/` |
-| `finca_8_teselas.py`, `hituelo_conv.py` | Exportador: de los intermedios (LiDAR, ortofoto, NDVI, suelo) a teselas de 256 m |
-| `datos/` | Scripts que producen esos intermedios (LiDAR del IGN, ortofoto PNOA, Sentinel-2, SoilGrids) para Cerro Velasco y Hituelo |
+| `apps/web/motor/*.js` | El motor, en módulos que se concatenan **por orden alfabético** dentro de un solo `<script>`: mundo y teselas (`02`), cola de trabajos (`02b`), terreno con 3 niveles (`04`), nube LiDAR (`05`), olivos con 3 niveles (`06`, `07`, `07b`), cámara, sol, paseo, historia, tiempo, vida, minimapa, paisaje, balizas, sonido, suelo, huellas, estación, perros, depuración (`?debug`) y **VR** (`29_vr.js`) |
+| `apps/web/plantilla.html` | HTML y CSS de la página |
+| `tuberia/salida_artefacto/montar_v2.py` | Monta la página: cabecera + datos + three.js + `apps/web/motor/` |
+| `tuberia/finca_8_teselas.py`, `tuberia/hituelo_conv.py` | Exportador: de los intermedios (LiDAR, ortofoto, NDVI, suelo) a teselas de 256 m |
+| `tuberia/datos/` | Scripts que producen esos intermedios (LiDAR del IGN, ortofoto PNOA, Sentinel-2, SoilGrids) para Cerro Velasco y Hituelo |
 | `pruebas/` | Pruebas con Chrome headless (Playwright): carga y presupuesto de dibujo, vistas, VR con una sesión WebXR simulada |
 | `doc/` | Toda la documentación ([índice](doc/README.md)): estado, decisiones ([ADR](doc/adr/README.md)), arquitectura, contratos, operación. El diseño original por teselas es una foto en [doc/historico/](doc/historico/DISENO-2026-10.md) |
 | `contratos/` | Esquemas y ejemplos de los contratos de datos exportador→motor |
 
 **Los datos no están en el repositorio** (teselas, nubes de puntos, ortofoto, marcas de olivos y datos de la explotación): pesan cientos de MB,
 algunos son de uso interno y las fuentes del IGN hay que descargarlas. El motor es público; para reproducir una finca hay que generar sus datos
-con `datos/` (ver abajo).
+con `tuberia/datos/` (ver abajo).
 
 ## Arquitectura en una frase
 
@@ -34,15 +34,19 @@ por fotograma depende de la distancia a la cámara (terreno a 1/2/8 m, olivos en
 ## Construir
 
 ```bash
+# Cliente web (Vite; el producto): página empaquetada en apps/web/dist/
+cd apps/web && npm i && GEMELO_DATOS=<ruta a indice.json o embebido.json> npm run build && cd ../..
+
+# Salida artefacto (sin servidor):
 # Cerro Velasco, un solo HTML con todo embebido (≤ 16 MB)
-python montar_v2.py --finca cerro --salida gemelo_cerro.html   # sin --salida: gemelo_cerro_v2.html
+python tuberia/salida_artefacto/montar_v2.py --finca cerro --salida gemelo_cerro.html   # sin --salida: gemelo_cerro_v2.html
 
 # Hituelo: página ligera + ficheros de apoyo (t/<x>_<y>.json|jpg)
-python finca_8_teselas.py --finca hituelo       # necesita los intermedios de datos/hituelo
-python montar_v2.py --finca hituelo --modo ficheros
+python tuberia/finca_8_teselas.py --finca hituelo       # necesita los intermedios de datos/hituelo
+python tuberia/salida_artefacto/montar_v2.py --finca hituelo --modo ficheros
 ```
 
-Los scripts de `datos/` leen sus rutas de variables de entorno (`GEMELO_DATOS`, `GEMELO_DESCARGAS`, `GEMELO_LIDAR`, `GEMELO_IMAGEN`,
+Los scripts de `tuberia/datos/` leen sus rutas de variables de entorno (`GEMELO_DATOS`, `GEMELO_DESCARGAS`, `GEMELO_LIDAR`, `GEMELO_IMAGEN`,
 `GEMELO_HITUELO`, `GEMELO_PARCELAS`, `GEMELO_MDS`, `GEMELO_SUELO`); los valores por defecto son carpetas relativas. Requieren Python con
 `numpy`, `scipy`, `laspy`, `rasterio`, `pillow` y `matplotlib`.
 

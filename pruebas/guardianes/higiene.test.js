@@ -8,6 +8,8 @@ const RUTA_LOCAL = new RegExp("[A-Za-z]:[\\\\/]+" + "Users[\\\\/]", "i");
 const RUTA_UNIX = new RegExp("/(?:home|Users)/" + "[A-Za-z0-9._-]+/");
 const CORREO = /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+\.[A-Za-z]{2,}/g;
 const CORREOS_PERMITIDOS = new Set(["noreply@anthropic.com"]);
+// dominios reservados para ejemplos (RFC 2606 / 6761): los usan las maquetas y la documentación; nunca son de una persona
+const DOMINIO_DE_EJEMPLO = /@(?:[a-z0-9-]+\.)*(?:example\.(?:com|org|net)|test|invalid|example)$/i;
 
 test("hay ficheros de texto que revisar", () => assert.ok(TEXTOS.length > 50, "sólo " + TEXTOS.length));
 
@@ -28,7 +30,7 @@ test("sin rutas locales de usuario (el repo es público)", () => {
 
 test("sin correos electrónicos (salvo los permitidos)", () => {
   const mal = [];
-  for (const f of TEXTOS) for (const m of lee(f).match(CORREO) || []) if (!CORREOS_PERMITIDOS.has(m.toLowerCase())) mal.push(f + " → " + m);
+  for (const f of TEXTOS) for (const m of lee(f).match(CORREO) || []) if (!CORREOS_PERMITIDOS.has(m.toLowerCase()) && !DOMINIO_DE_EJEMPLO.test(m)) mal.push(f + " → " + m);
   assert.deepStrictEqual(mal, [], "correos en lo versionado");
 });
 

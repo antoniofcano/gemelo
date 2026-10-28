@@ -10,8 +10,8 @@ Fuente de verdad de los límites: [PUBLICACION.md](../../../doc/operacion/PUBLIC
 ## Pasos
 1. **Puerta en verde** (`npm run puerta`) y release hecha si es una versión.
 2. **Montar a una carpeta de trabajo** (en el *scratchpad* o `pruebas/salida/`, nunca en el repo versionado):
-   - Cerro (embebido): `python montar_v2.py --finca cerro --salida <trabajo>/cerro/index.html` → una sola página, **≤ 16 MB**.
-   - Hituelo (ficheros): `python finca_8_teselas.py --finca hituelo` y `python montar_v2.py --finca hituelo --modo ficheros --salida <trabajo>/hituelo/index.html` → página + `t/` al lado.
+   - Cerro (embebido): `python tuberia/salida_artefacto/montar_v2.py --finca cerro --salida <trabajo>/cerro/index.html` → una sola página, **≤ 16 MB**.
+   - Hituelo (ficheros): `python tuberia/finca_8_teselas.py --finca hituelo` y `python tuberia/salida_artefacto/montar_v2.py --finca hituelo --modo ficheros --salida <trabajo>/hituelo/index.html` → página + `t/` al lado.
 3. **Comprobar límites** (el guardián `build` lo hace con el fixture; con datos reales, a mano): página ≤ 16 MB; cada binario ≤ 15 MB; **≤ 64 MB y ≤ 255 ficheros por publicación**; ≤ 511 ficheros y 256 MB por versión; solo tipos web (json, jpg…; **nunca `.bin`**). Hituelo ≈ 57 MB y 93 ficheros: cabe en una publicación con ≈7 MB de margen.
 4. **Lista de `files`**: `{"t/<kx>_<ky>.json": "<origen>", "t/<kx>_<ky>.jpg": "<origen>"}`; la ruta publicada es relativa y sin barra inicial; la página referencia `t/…` (D.base vacío).
 5. **Capacidades:** `mcp` solo si la historia lee en vivo (Cerro); los conectores por su nombre visible (`Olivartrack`, `Vigia`). Cargar las skills `artifact-design` y `artifact-capabilities` antes de escribir la página.

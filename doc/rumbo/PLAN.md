@@ -18,7 +18,7 @@ Mapa de iniciativas con su estado y el ADR que las sostiene. **No** es el estado
 | # | Iniciativa | Estado | Detalle |
 |---|---|---|---|
 | M1 | Suelo abierto con detalle de ortofoto | ✅ | ADR-0007 (Aceptado): el suelo nuevo sustituye al anterior |
-| M2 | Suelo realista en la rama de producción | ✅ | integrado en `src/` el 2026-10-28 (04_terreno, 21_suelo); falta medir presupuesto con datos reales |
+| M2 | Suelo realista en la rama de producción | ✅ | integrado en `apps/web/motor/` el 2026-10-28 (04_terreno, 21_suelo); falta medir presupuesto con datos reales |
 | M3 | Fundido entre niveles de olivos (dither/histéresis) | ⬜ | hoy hay «salto» al cambiar de nivel |
 | M4 | LRU fina de ortofotos decodificadas | ⬜ | hoy solo se sueltan a 900 m |
 | M5 | Rodadas del suelo a 0,25 m/px solo en teselas con caminos | ⏸️ | +~2 MB; esperar a ver si hace falta |
@@ -42,10 +42,23 @@ Mapa de iniciativas con su estado y el ADR que las sostiene. **No** es el estado
 | P2 | Primera auditoría completa (skill `auditoria`) | ⬜ | tras estabilizar los guardianes |
 | P3 | Licencia | ⬜ | decisión de Antonio |
 | P4 | Estabilizar la prueba VR con el mock | 🟨 | `mock_xr.js` y `prueba_vr.js` recuperados e incluidos; la prueba completa se cae con SwiftShader tras ~25 pasos (opcional con `GEMELO_VR=1`) |
-| P5 | Arquitectura multiusuario «Cuarenta hazas» | 🟨 | propuesta estudiada, ADR-0009 (Propuesto); ver `doc/sistema/ARQUITECTURA-MULTIUSUARIO.md` |
+| P5 | Arquitectura multiusuario «Cuarenta hazas» | 🟨 | estudiada; plan por fases aprobado (abajo); ADR-0009 (Propuesto) |
+
+## Multiusuario: fases (plan aprobado el 2026-10-28)
+
+| Fase | Qué | Estado | Listo cuando |
+|---|---|---|---|
+| F0 | Monorepo + build Vite (three 0.128.0), CI de la puerta | 🟨 hecho en local; CI escrito, sin ejecutar (sin push) | puerta verde en local y CI; la web dibuja lo mismo que la artefacto |
+| F1a | Una persona en el VPS: api, Postgres+PostGIS, enlace mágico, proyección por haza, CSP, copias | ⬜ bloqueada por decisiones (DECISIONS-PENDING 12–17) | hogar de prueba entra y ve las hazas con la lista blanca; Quest p95 ≤ 13,9 ms |
+| F1b | Hueco del constructor de olivos-tipo: `Catalogo`, id estable y tipo por árbol | ⬜ | con `tipo=-1`, capturas idénticas; glb de fixture dentro de presupuesto |
+| F1c | three moderno (r18x) | ⬜ | puerta sin subir topes; capturas aprobadas |
+| F2 | Presencia compartida (LiveKit) | ⬜ | escritorio y Quest se ven y escriben; pose p95 < 250 ms |
+| F3 | Voz y visita guiada | ⬜ | 10 personas limpias; el guía modera |
+| F4 | Corresponsal de campo | ⬜ | visita con corresponsal; error de posición medido |
+| F5 | Aula, puzles, dron, museo | ⬜ | según sus ADR |
+| UX | Diseño de acceso, configuración e interacción + maqueta | 🟨 en marcha | UX.md y la maqueta de `prototipos/ux/` revisados por Antonio |
 
 ## Decidido no hacerlo (por ahora)
 
 - 🚫 `logarithmicDepthBuffer`: se usa `near` dinámico y `far` mayor (coste en iOS sin medir **[SUPUESTO]**).
 - 🚫 Binario crudo en los ficheros de apoyo: la plataforma no lo admite (ADR-0008).
-- 🚫 CI en GitHub Actions: no hay servidor ni despliegue; la puerta es local.

@@ -14,9 +14,10 @@
 - Motor por teselas de 256 m con niveles de detalle: terreno (1/2/8 m), olivos (L0/L1/L2 con silueta de olivo) y nube LiDAR ([ADR-0001](adr/0001-teselas-256m-utm30.md), [ADR-0002](adr/0002-niveles-de-detalle.md)).
 - Color del suelo y NDVI en el sombreador; suelo abierto con detalle de la ortofoto ([ADR-0007](adr/0007-suelo-abierto-de-la-ortofoto.md)).
 - Cola de trabajos a rebanadas con presupuesto por fotograma.
-- Historia parametrizada por finca: 11 escenas para Cerro y 10 para Hituelo (`14_historia.js`); desde 2026-10-28 la historia de Hituelo **se muestra** (`hituelo_conv.py` emite `sin_historia = false`; hay que regenerar `indice.json` para que llegue a una página ya exportada). Sin lectura en vivo en Hituelo.
-- Suelo nuevo, más realista, integrado en `src/` (ADR-0007 Aceptado): relieve por bump, caminos y rodadas, hierba de cartulinas con atlas de briznas, flores y espigas.
+- Historia parametrizada por finca: 11 escenas para Cerro y 10 para Hituelo (`14_historia.js`); desde 2026-10-28 la historia de Hituelo **se muestra** (`tuberia/hituelo_conv.py` emite `sin_historia = false`; hay que regenerar `indice.json` para que llegue a una página ya exportada). Sin lectura en vivo en Hituelo.
+- Suelo nuevo, más realista, integrado en `apps/web/motor/` (ADR-0007 Aceptado): relieve por bump, caminos y rodadas, hierba de cartulinas con atlas de briznas, flores y espigas.
 - Modo VR ([VR.md](sistema/VR.md)), con su mock de WebXR y la prueba completa ya en el repo; probado solo con el mock ([ADR-0005](adr/0005-webxr-perfil-propio.md)).
+- **Fase 0 del plan multiusuario** (2026-10-28): monorepo (`apps/web/motor/`, `tuberia/`), build con Vite y three 0.128.0, y la web empaquetada dibuja lo mismo que la salida artefacto (guardián `web.test.js`). CI escrito (`.github/workflows/puerta.yml`), **sin ejecutar** porque no se ha hecho `push`.
 - Repositorio público con las fuentes unificadas y este sistema de trabajo: puerta con 85 comprobaciones (`npm run puerta`, ≈2-3 min), fixture sintético, contratos, 8 ADR y 11 skills.
 
 ## Datos

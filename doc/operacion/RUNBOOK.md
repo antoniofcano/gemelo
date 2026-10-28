@@ -14,10 +14,10 @@ Primero, siempre: abre la página con `?debug` y la consola del navegador. `wind
 - Una tesela sin datos (fuera de parcelas + 60 m) es **un hueco por diseño** (pendiente M6).
 - Mientras llega una tesela fina, el motor contesta con el relieve grueso de 8 m: no debe haber huecos, solo suavidad. Un hueco real es un bug.
 - Tres teselas del borde norte de Hituelo tienen cobertura incompleta si faltan las hojas LiDAR 404-4181 y 406-4181 (conocido).
-- Regenerar: `python finca_8_teselas.py --finca <finca>` (necesita los intermedios).
+- Regenerar: `python tuberia/finca_8_teselas.py --finca <finca>` (necesita los intermedios).
 
 ## El WMS del IGN no responde (al regenerar la ortofoto)
-- Los scripts de `datos/` piden en trozos pequeños. Una petición grande se cuelga (comprobado con el WCS del MDT 5 m: 500×500 m responde en 0,2 s, la caja entera no responde en 60 s).
+- Los scripts de `tuberia/datos/` piden en trozos pequeños. Una petición grande se cuelga (comprobado con el WCS del MDT 5 m: 500×500 m responde en 0,2 s, la caja entera no responde en 60 s).
 - Reintenta con trozos más pequeños; la ortofoto PNOA es la de 2022. El IGN cae a ratos: espera y repite, no cambies de fuente sin decidirlo.
 - La página publicada **no** depende del IGN: la CSP impide pedirlo desde ella.
 

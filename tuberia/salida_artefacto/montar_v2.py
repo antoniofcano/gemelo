@@ -1,12 +1,14 @@
-"""Monta el gemelo v2: cabecera (plantilla) + datos + three.js + los módulos de src/ en orden.
+"""Salida «artefacto» (HTML autónomo, sin servidor): plantilla + datos + three.js r128 de cdnjs + los módulos de apps/web/motor/ en orden.
+La salida principal del producto es la web de apps/web (Vite); esta se conserva como demostración sin servidor (ADR-0010).
+Las rutas relativas se resuelven desde la raíz del repo.
 
-  python montar_v2.py                                   # Cerro Velasco «un solo HTML» (todo embebido): gemelo_cerro_v2.html
-  python montar_v2.py --modo ficheros --finca cerro     # página ligera + ficheros de apoyo: publicar/cerro/index.html y publicar/cerro/t/<kx>_<ky>.json|jpg
-  python montar_v2.py --finca hituelo --modo ficheros   # lo mismo con Hituelo (salida de finca_8_teselas.py --finca hituelo)
+  python tuberia/salida_artefacto/montar_v2.py                                   # Cerro «un solo HTML» (todo embebido): gemelo_cerro_v2.html
+  python tuberia/salida_artefacto/montar_v2.py --modo ficheros --finca cerro     # página ligera + ficheros de apoyo: publicar/cerro/index.html y publicar/cerro/t/
+  python tuberia/salida_artefacto/montar_v2.py --finca hituelo --modo ficheros   # lo mismo con Hituelo (salida de tuberia/finca_8_teselas.py --finca hituelo)
 
 La página lee D.base (por defecto «», es decir, rutas relativas a la propia página) para pedir t/<clave>.json y t/<clave>.jpg."""
 import json, glob, os, sys, shutil, argparse
-R = os.path.dirname(os.path.abspath(__file__))
+R = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))   # raíz del repo: las rutas relativas (--datos, --salida, salida/, publicar/) se resuelven desde ahí
 def lee(p): return open(os.path.join(R, p), encoding="utf-8").read()
 
 import re
@@ -25,8 +27,8 @@ def textos_finca(cab, T):
     if T.get("sin_historia"): cab = cab.replace("</style>", "#historia { display: none !important; }\n</style>", 1)
     return cab
 
-def monta(D, salida, src="src"):
-    cab = lee("plantilla_cabecera.html")
+def monta(D, salida, src=os.path.join("apps", "web", "motor")):
+    cab = lee(os.path.join("apps", "web", "plantilla.html"))
     if D.get("textos"): cab = textos_finca(cab, D["textos"])
     js = "".join(lee(f) for f in sorted(glob.glob(os.path.join(R, src, "*.js"))))
     if "<meta charset" not in cab[:400]: cab = '<meta charset="utf-8">\n' + cab
@@ -36,7 +38,7 @@ def monta(D, salida, src="src"):
     return html
 
 if __name__ == "__main__":
-    ap = argparse.ArgumentParser(); ap.add_argument("--src", default="src"); ap.add_argument("--datos", default=None); ap.add_argument("--salida", default=None)
+    ap = argparse.ArgumentParser(); ap.add_argument("--src", default=os.path.join("apps", "web", "motor")); ap.add_argument("--datos", default=None); ap.add_argument("--salida", default=None)
     ap.add_argument("--finca", default="cerro"); ap.add_argument("--modo", choices=["embebido", "ficheros"], default="embebido"); a = ap.parse_args()
     carpeta = os.path.join("salida", a.finca)
     if a.modo == "embebido":

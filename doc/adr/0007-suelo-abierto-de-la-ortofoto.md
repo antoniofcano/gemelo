@@ -18,7 +18,7 @@ El sombreador del terreno compara la ortofoto nítida con dos referencias (ella 
 - **Negativas / coste:** más trabajo de sombreador; riesgo de pintar sombras como suelo.
 
 ## Enmienda 2026-10-28
-Antonio decide quedarse con el suelo nuevo, más realista, que **sustituye** al anterior. Se integra en `src/` (`04_terreno.js` con relieve por bump, camino y rodada reforzados; `21_suelo.js` con hierba de cartulinas cruzadas y atlas de briznas/flores/espigas), conservando el radio de hierba del perfil VR.
+Antonio decide quedarse con el suelo nuevo, más realista, que **sustituye** al anterior. Se integra en `apps/web/motor/` (`04_terreno.js` con relieve por bump, camino y rodada reforzados; `21_suelo.js` con hierba de cartulinas cruzadas y atlas de briznas/flores/espigas), conservando el radio de hierba del perfil VR.
 
 ## Comprobación
 Comparación visual a ojo. **No hay medida objetiva ni prueba en dispositivo.**

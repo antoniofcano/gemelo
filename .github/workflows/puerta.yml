@@ -1,0 +1,31 @@
+# La puerta en CI: repite lo que se pasa en local (doc/operacion/ONBOARDING.md). No despliega nada.
+name: puerta
+on:
+  push:
+    branches: [main]
+  pull_request:
+concurrency:
+  group: puerta-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  puerta:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: npm ci
+      - run: npm ci
+        working-directory: apps/web
+      - name: Puerta
+        env:
+          CHROME: /usr/bin/google-chrome
+        run: npm run puerta

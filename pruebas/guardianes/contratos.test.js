@@ -89,7 +89,7 @@ test("las cabeceras son coherentes: lo que un módulo consume lo expone el módu
   const d = contratoModulos.deriva(), exp = {};
   for (const f in d.expone) exp[f.slice(0, -3)] = new Set(d.expone[f]);
   for (const f in d.txt) {
-    const h = contratoModulos.leeCabecera(fs.readFileSync(path.join(RAIZ, "src", f), "utf8"));
+    const h = contratoModulos.leeCabecera(fs.readFileSync(path.join(RAIZ, "apps", "web", "motor", f), "utf8"));
     assert.ok(h, f + ": sin cabecera");
     for (const [m, ns] of Object.entries(h.consume)) {
       assert.ok(exp[m], f + " consume de un módulo que no existe: " + m);
@@ -126,25 +126,25 @@ function retornoDe(fuente, nombre) {
 
 for (const [nombre, def] of Object.entries(IFACES.interfaces)) {
   test("interfaz " + nombre + " (" + def.modulo + "): devuelve exactamente los miembros de contratos/interfaces.json", () => {
-    const real = retornoDe(lee("src/" + def.modulo), nombre).sort();
+    const real = retornoDe(lee("apps/web/motor/" + def.modulo), nombre).sort();
     assert.deepStrictEqual(real, def.miembros.slice().sort(), "cambia contratos/interfaces.json y doc/sistema/CONTRATOS.md en el mismo commit");
   });
 }
 
 test("window.__g (gancho de las pruebas) publica los miembros del contrato", () => {
-  const f = lee("src/27_debug.js"), real = claves(f, f.indexOf("window.__g = ")).sort();
+  const f = lee("apps/web/motor/27_debug.js"), real = claves(f, f.indexOf("window.__g = ")).sort();
   assert.deepStrictEqual(real, IFACES.ganchos_window.__g.miembros.slice().sort());
 });
 
 test("los ganchos window.__* de depuración existen donde dice el contrato", () => {
   for (const [n, def] of Object.entries(IFACES.ganchos_window)) {
     if (def.tipo !== "function") continue;
-    assert.match(lee("src/" + def.modulo), new RegExp("window\\." + n + " = function"), n + " no está en " + def.modulo);
+    assert.match(lee("apps/web/motor/" + def.modulo), new RegExp("window\\." + n + " = function"), n + " no está en " + def.modulo);
   }
 });
 
 test("los alias heredados suelo, copaAlta, colorSuelo y orto siguen apuntando a Mundo", () => {
-  assert.match(lee("src/02_mundo.js"), /var suelo = Mundo\.suelo, copaAlta = Mundo\.copaAlta, colorSuelo = Mundo\.colorSuelo, orto = Mundo\.orto;/);
+  assert.match(lee("apps/web/motor/02_mundo.js"), /var suelo = Mundo\.suelo, copaAlta = Mundo\.copaAlta, colorSuelo = Mundo\.colorSuelo, orto = Mundo\.orto;/);
 });
 
 test("la documentación nombra cada interfaz del contrato", () => {

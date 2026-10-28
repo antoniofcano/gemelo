@@ -9,7 +9,7 @@ Versión del contrato de datos: **v = 2** (campo `v` del índice).
 | Índice global | [`contratos/indice.schema.json`](../../contratos/indice.schema.json) | `contratos.test.js` |
 | Tesela | [`contratos/tesela.schema.json`](../../contratos/tesela.schema.json) | `contratos.test.js` (esquema y tamaños) |
 | Interfaces del motor | [`contratos/interfaces.json`](../../contratos/interfaces.json) | `contratos.test.js` |
-| Módulos de `src/` | cabecera «Expone / Consume» de cada fichero | `contratos.test.js` (vía `pruebas/contrato_modulos.js`) |
+| Módulos de `apps/web/motor/` | cabecera «Expone / Consume» de cada fichero | `contratos.test.js` (vía `pruebas/contrato_modulos.js`) |
 | Conectores MCP | [`contratos/mcp.md`](../../contratos/mcp.md) | **nada** (no verificado en vivo) |
 | Publicación | [`contratos/publicacion.json`](../../contratos/publicacion.json) | `build.test.js` |
 
@@ -42,7 +42,7 @@ Campos obligatorios: `v, ts, res, srs, orto_px, finca_id, centro_utm, z0, ext, p
 | `teselas{}` | `"kx_ky": {kx, ky, v[x0,y0,x1,y1], np}`; `v` = rectángulo con dato; `np` = puntos de nube |
 | `grueso` | relieve de 8 m: `x0, yN, res, w, h, b64` (Int16, cm sobre `z0`) |
 | `mosaico` | ortofoto global: `jpg` (data URI), `w, h, x0, yN, res` (Cerro 1 m/px, Hituelo 2 m/px) |
-| `textos` | `sin_historia, finca, fincas, parcelas, ha, olivos, desfase_txt, intro_historia`: lo que `montar_v2.py` cambia en la cabecera |
+| `textos` | `sin_historia, finca, fincas, parcelas, ha, olivos, desfase_txt, intro_historia`: lo que `tuberia/salida_artefacto/montar_v2.py` cambia en la cabecera |
 | `base` | prefijo de `t/` (por defecto `""` = relativo a la página) |
 
 **Nota — registro de árboles: diseño frente a implementación.** El diseño ([histórico](../historico/DISENO-2026-10.md), §5.5) proponía un registro `{x, y, h, r8, tesela, parcela, olivo, frutal}`. Lo implementado es `copas[]` con `[x, y, h, r8, parcela+1]`: la **tesela** se deduce de la posición y **`olivo`/`frutal` no viajan**: el motor decide en JS `oliv = !(h > 8 || (h > 6.5 && radio medio < 2.2))`. Por eso los frutales sin marcar en Hituelo no se distinguen (pendiente D1). Manda el código.

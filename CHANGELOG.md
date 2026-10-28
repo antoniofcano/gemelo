@@ -13,6 +13,8 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 - 11 skills en `.claude/skills/`: `adr`, `documentalista`, `release`, `auditoria`, `publicar-artefacto`, `medir`, `datos-finca`, `modelado-3d`, `videojuegos`, `mundos-virtuales`, `interaccion`.
 - Trabajo de WebXR recuperado de la carpeta de trabajo original: `pruebas/mock_xr.js` (WebXR simulado), `pruebas/prueba_vr.js` (prueba completa) y `doc/sistema/VR.md`; guardián `vr.test.js` (la prueba completa es opcional con `GEMELO_VR=1`).
 - Arquitectura multiusuario «Cuarenta hazas» (`doc/sistema/ARQUITECTURA-MULTIUSUARIO.md`, ADR-0009 Propuesto) y agente `arquitecto-multiusuario` (`.claude/agents/`) para estudiarla.
+- Monorepo y build con Vite (ADR-0010): `src/` pasa a `apps/web/motor/`, la plantilla a `apps/web/plantilla.html`, los exportadores y `datos/` a `tuberia/` y `montar_v2.py` a `tuberia/salida_artefacto/`; `apps/web/herramientas/genera_motor.mjs` y `vite.config.js` (three 0.128.0 desde npm); guardián `web.test.js`; CI de la puerta (`.github/workflows/puerta.yml`).
+- ADR-0010 (monorepo y Vite) y ADR-0011 (alojamiento en el VPS de OVH como inquilino del borde); ADR-0008 enmendado (solo salida artefacto).
 - Andamio: `VERSION`, `package.json`, `Makefile`, `.editorconfig`, `.nvmrc`, `requirements.txt`, `CONTRIBUTING.md`, plantillas de issue y PR.
 
 ### Cambiado

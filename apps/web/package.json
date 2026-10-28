@@ -1,0 +1,18 @@
+{
+  "name": "gemelo-web",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "Cliente web del gemelo (escritorio, móvil y Meta Quest): motor de apps/web/motor/ empaquetado con Vite",
+  "scripts": {
+    "motor": "node herramientas/genera_motor.mjs",
+    "build": "node herramientas/genera_motor.mjs && vite build",
+    "dev": "node herramientas/genera_motor.mjs && vite"
+  },
+  "dependencies": {
+    "three": "^0.128.0"
+  },
+  "devDependencies": {
+    "vite": "^6.4.5"
+  }
+}

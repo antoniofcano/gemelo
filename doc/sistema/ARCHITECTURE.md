@@ -4,11 +4,14 @@ Mapa vivo. Si el código cambia de forma, esto cambia en el mismo commit. Decisi
 
 ## 1. Cómo se monta
 
-`montar_v2.py` concatena `plantilla_cabecera.html` + `<script type="application/json" id="datos">` (el `D` de la finca) + three.js r128 (cdnjs) + **todos los `src/*.js` en orden alfabético** dentro de un solo `<script>`. `01_datos.js` abre una IIFE con `"use strict"` y `99_cierre.js` la cierra: todo el motor comparte ámbito, sin módulos ES. El orden de los prefijos (`02_` < `02b_` < `03_`) es el orden de montaje y, por tanto, de dependencias.
+Hay dos salidas con el mismo motor (`apps/web/motor/`, ADR-0010):
+
+- **Web (Vite), la del producto:** `apps/web/herramientas/genera_motor.mjs` escribe `entrada/motor.generado.js` = `import * as THREE from "three"` + la concatenación de `motor/*.js` en orden, y un `index.html` con la plantilla y el `#datos`; `vite build` lo empaqueta en `apps/web/dist/` con three 0.128.0. El guardián `web.test.js` comprueba que dibuja lo mismo que la salida artefacto.
+- **Artefacto (sin servidor), la secundaria:** `tuberia/salida_artefacto/montar_v2.py` concatena `apps/web/plantilla.html` + `<script type="application/json" id="datos">` (el `D` de la finca) + three.js r128 (cdnjs) + **todos los `apps/web/motor/*.js` en orden alfabético** dentro de un solo `<script>`. `01_datos.js` abre una IIFE con `"use strict"` y `99_cierre.js` la cierra: todo el motor comparte ámbito, sin módulos ES. El orden de los prefijos (`02_` < `02b_` < `03_`) es el orden de montaje y, por tanto, de dependencias.
 
 Dos modos: **embebido** (`D` incluye `t{}`; ≤16 MB, Cerro) y **ficheros** (`D.teselas` es el índice y la página pide `t/<clave>.json|jpg`; `D.base` da el prefijo, por defecto relativo; Hituelo).
 
-## 2. Módulos (`src/`)
+## 2. Módulos (`apps/web/motor/`)
 
 | Fichero | Expone | Notas |
 |---|---|---|
@@ -69,7 +72,7 @@ Dos modos: **embebido** (`D` incluye `t{}`; ≤16 MB, Cerro) y **ficheros** (`D.
 
 ## 7. Datos hacia el motor
 
-Exportador (`finca_8_teselas.py`, `hituelo_conv.py`) → `indice.json` + `t/<kx>_<ky>.json|jpg` → `montar_v2.py` → página. Formato exacto: [CONTRATOS](CONTRATOS.md).
+Exportador (`tuberia/finca_8_teselas.py`, `tuberia/hituelo_conv.py`) → `indice.json` + `t/<kx>_<ky>.json|jpg` → `tuberia/salida_artefacto/montar_v2.py` → página. Formato exacto: [CONTRATOS](CONTRATOS.md).
 
 ## 8. VR
 

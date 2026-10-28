@@ -17,7 +17,7 @@ import numpy as np
 from PIL import Image
 from scipy.ndimage import map_coordinates
 
-R = os.path.dirname(os.path.abspath(__file__))
+R = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # raíz del repo: salida/ y los intermedios se leen y escriben desde ahí
 TS = 256          # lado de la tesela (m)
 RES = 1           # paso del relieve y de la copa (m)
 N = TS // RES     # celdas por lado
@@ -180,7 +180,7 @@ if __name__ == "__main__":
     elif a.finca == "cerro":
         construye(cerro(), os.path.join(R, "salida", "cerro"))
     elif a.finca == "hituelo":
-        sys.path.insert(0, R); from hituelo_conv import hituelo
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__))); from hituelo_conv import hituelo
         hituelo()
     else:
         sys.exit("falta --finca cerro|hituelo (o --replica 3x3)")

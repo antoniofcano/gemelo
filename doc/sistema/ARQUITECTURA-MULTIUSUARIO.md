@@ -1,6 +1,6 @@
 # Cuarenta hazas · Arquitectura multiusuario
 
-> **Estado: propuesta (28-oct-2026), aún sin implementar y sin contrastar con el motor actual.** Texto recibido de Antonio tal cual (con los formatos de tabla adaptados) y sus respuestas a las decisiones abiertas al final. Es el documento que da sentido al proyecto: lo que hoy hay en `src/` es la **fase 1** de esta visión. El contraste con el repo lo hace el agente [`arquitecto-multiusuario`](../../.claude/agents/arquitecto-multiusuario.md); la decisión queda en [ADR-0009](../adr/0009-plataforma-multiusuario-cuarenta-hazas.md). Las cifras y los datos externos (LiveKit, 3D Tiles, WebXR en móviles, normativa) son afirmaciones del documento **sin verificar** por este repo.
+> **Estado: propuesta (28-oct-2026), aún sin implementar y sin contrastar con el motor actual.** Texto recibido de Antonio tal cual (con los formatos de tabla adaptados) y sus respuestas a las decisiones abiertas al final. Es el documento que da sentido al proyecto: lo que hoy hay en `apps/web/motor/` es la **fase 1** de esta visión. El contraste con el repo lo hace el agente [`arquitecto-multiusuario`](../../.claude/agents/arquitecto-multiusuario.md); la decisión queda en [ADR-0009](../adr/0009-plataforma-multiusuario-cuarenta-hazas.md). Las cifras y los datos externos (LiveKit, 3D Tiles, WebXR en móviles, normativa) son afirmaciones del documento **sin verificar** por este repo.
 
 ## Resumen
 

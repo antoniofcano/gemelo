@@ -5,7 +5,7 @@ description: Experta en modelado 3D para el motor del gemelo (three.js r128): pr
 
 # Modelado 3D en el gemelo
 
-El motor **genera toda la geometría por procedimiento** (no hay `GLTFLoader` ni ficheros de modelo). Todo lo que sigue sale de [ARCHITECTURE.md](../../../doc/sistema/ARCHITECTURE.md), [ADR-0002](../../../doc/adr/0002-niveles-de-detalle.md) y de `src/`. Antes de cambiar nada: [skill `medir`](../medir/SKILL.md). Cifras del código, no del diseño: manda el código.
+El motor **genera toda la geometría por procedimiento** (no hay `GLTFLoader` ni ficheros de modelo). Todo lo que sigue sale de [ARCHITECTURE.md](../../../doc/sistema/ARCHITECTURE.md), [ADR-0002](../../../doc/adr/0002-niveles-de-detalle.md) y de `apps/web/motor/`. Antes de cambiar nada: [skill `medir`](../medir/SKILL.md). Cifras del código, no del diseño: manda el código.
 
 ## Presupuestos (por fotograma, de diseño)
 ≤ 1,7 M triángulos · ≤ 1,4 M puntos · ≈ 250 llamadas · ≈ 350 MB. Un cambio que sube cualquiera se mide antes y después y se explica.

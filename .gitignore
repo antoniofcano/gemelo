@@ -12,7 +12,7 @@ descargas/
 *.npy
 *.npz
 *.html
-!plantilla_cabecera.html
+!apps/web/plantilla.html
 t/
 cap/
 *.png
@@ -32,3 +32,10 @@ graphify-out/
 # el fixture sintético SÍ se versiona (pruebas/fixture/, ver doc/operacion/TESTING.md)
 !pruebas/fixture/**/t/
 !pruebas/fixture/**/*.jpg
+
+# cliente web (Vite): entrada generada y build
+apps/web/.generado/
+apps/web/dist/
+
+# los prototipos de UX sí se versionan (son HTML de maqueta, sin datos reales)
+!prototipos/**/*.html

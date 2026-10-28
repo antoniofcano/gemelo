@@ -2,7 +2,7 @@
 const test = require("node:test"), assert = require("node:assert");
 const { RAIZ, ficheros, ejecuta, python, os, fs, path } = require("./_util");
 
-const SRC = ficheros().filter(f => /^src\/[^/]+\.js$/.test(f)).sort();
+const SRC = ficheros().filter(f => /^apps\/web\/motor\/[^/]+\.js$/.test(f)).sort();
 
 test("el motor tiene módulos y el orden alfabético es el de montaje (01_ primero, 99_ último)", () => {
   assert.ok(SRC.length >= 30, "pocos módulos en src/: " + SRC.length);

@@ -21,3 +21,6 @@ Cada tesela se sirve como `t/<kx>_<ky>.json` (relieve, copa, suelo y nube en bas
 
 ## Comprobación
 Con servidor local, 0 errores de consola. **En el marco de artefactos: no comprobado.** Ver [RUNBOOK](../operacion/RUNBOOK.md) para el plan B.
+
+## Enmienda 2026-10-28
+Con el alojamiento propio ([ADR-0011](0011-alojamiento-en-el-vps-de-ovh.md)) este ADR queda limitado a la **salida artefacto** (`tuberia/salida_artefacto/montar_v2.py`). El servidor no tiene el límite de tipos de la plataforma: usará un formato v3 binario con compresión, que se decidirá en su propio ADR (fase 1a).

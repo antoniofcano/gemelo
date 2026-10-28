@@ -22,3 +22,5 @@ Cada decisión con alternativas reales se escribe una vez, con su porqué y su c
 | [0007](0007-suelo-abierto-de-la-ortofoto.md) | Suelo abierto heredado de la ortofoto | Aceptado |
 | [0008](0008-ficheros-de-apoyo-json-jpg.md) | Ficheros de apoyo en json y jpg, sin binario crudo | Aceptado |
 | [0009](0009-plataforma-multiusuario-cuarenta-hazas.md) | Plataforma multiusuario «Cuarenta hazas» | Propuesto |
+| [0010](0010-monorepo-y-build-con-vite.md) | Monorepo y paso de build con Vite | Aceptado |
+| [0011](0011-alojamiento-en-el-vps-de-ovh.md) | Alojamiento en el VPS de OVH como inquilino del borde | Aceptado |

@@ -20,7 +20,7 @@ No hay servidor ni hosting: el gemelo se publica como **artefacto de claude.ai**
 
 ## Receta resumida
 1. Puerta en verde (`npm run puerta`).
-2. Montar la finca (`montar_v2.py`) a una **carpeta de trabajo fuera de `publicar/` versionado** (`publicar/` ya está ignorado por git).
+2. Montar la finca (`tuberia/salida_artefacto/montar_v2.py`) a una **carpeta de trabajo fuera de `publicar/` versionado** (`publicar/` ya está ignorado por git).
 3. Hituelo: ≈52 MB de teselas + página de ≈4,6 MB ≈ 57 MB en 93 ficheros: **cabe en una publicación (64 MB, 255 ficheros) con ≈7 MB de margen**. Si crece, partir en tandas a la misma `url`.
 4. Lista de `files` con ruta publicada → ruta de origen; capacidades (`mcp` si la historia lee en vivo).
 5. **Pedir confirmación** a Antonio con la lista.

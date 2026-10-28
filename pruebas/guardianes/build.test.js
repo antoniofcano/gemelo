@@ -5,11 +5,11 @@ const { RAIZ, python, fixture, propia, ejecuta, ficheros, fs, path } = require("
 
 const LIM = JSON.parse(fs.readFileSync(path.join(RAIZ, "contratos", "publicacion.json"), "utf8"));
 const py = python();
-const SRC = ficheros().filter(f => /^src\/[^/]+\.js$/.test(f)).sort();
+const SRC = ficheros().filter(f => /^apps\/web\/motor\/[^/]+\.js$/.test(f)).sort();
 let FIX, SALIDA_WEB; test.before(() => { if (!py) return; FIX = path.relative(RAIZ, fixture()); SALIDA_WEB = propia("web-build"); });
 
 function monta(args) {
-  const r = ejecuta(py, ["-I", "montar_v2.py"].concat(args));
+  const r = ejecuta(py, ["-I", "tuberia/salida_artefacto/montar_v2.py"].concat(args));
   assert.strictEqual(r.status, 0, "montar_v2.py falló:\n" + r.stdout + r.stderr);
   return r.stdout;
 }
@@ -59,6 +59,6 @@ test("el montador con --salida deja los ficheros de apoyo junto a la página (no
 });
 
 test("los .html generados no se versionan (el repo es público, ADR-0004)", () => {
-  const ver = ficheros().filter(f => f.endsWith(".html"));
-  assert.deepStrictEqual(ver, ["plantilla_cabecera.html"], "HTML versionados inesperados");
+  const ver = ficheros().filter(f => f.endsWith(".html") && !f.startsWith("prototipos/"));   // las maquetas de UX sí se versionan (sin datos reales)
+  assert.deepStrictEqual(ver, ["apps/web/plantilla.html"], "HTML versionados inesperados");
 });

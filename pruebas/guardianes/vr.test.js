@@ -14,7 +14,7 @@ test.before(() => {
   if (motivoSalto) return;
   const FIX = path.relative(RAIZ, fixture()), dir = propia("web-vr"); caps = propia("vr-cap");
   pagina = path.join(dir, "cerro", "index.html");
-  const r = ejecuta(python(), ["-I", "montar_v2.py", "--datos", FIX + "/cerro/embebido.json", "--salida", path.relative(RAIZ, pagina)]);
+  const r = ejecuta(python(), ["-I", "tuberia/salida_artefacto/montar_v2.py", "--datos", FIX + "/cerro/embebido.json", "--salida", path.relative(RAIZ, pagina)]);
   assert.strictEqual(r.status, 0, r.stdout + r.stderr);
 });
 

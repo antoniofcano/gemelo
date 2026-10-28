@@ -66,12 +66,12 @@ El **panel flotante** (1 × 0,75 m, a ~1 m delante, te sigue con calma si te ale
 - Si el casco no ofrece `local-floor`, se usa `local` con 1,6 m de altura de ojos.
 
 ## Dónde está en el código
-Todo vive ya en `src/` (integrado en el repo): `29_vr.js` (el modo VR completo), `90_final.js` (bucle `cuadro()` compartido), `07b_arboles.js` (`Arboles.perfil`), `21_suelo.js` (radio de la hierba en VR), `09_camara.js` (`eligeCopa`), `28_depura.js` (línea `WebXR: …`), `01_datos.js` (`VRP`). Contrato: [CONTRATOS.md](CONTRATOS.md#vr-29_vrjs); decisión: [ADR-0005](../adr/0005-webxr-perfil-propio.md).
+Todo vive ya en `apps/web/motor/` (integrado en el repo): `29_vr.js` (el modo VR completo), `90_final.js` (bucle `cuadro()` compartido), `07b_arboles.js` (`Arboles.perfil`), `21_suelo.js` (radio de la hierba en VR), `09_camara.js` (`eligeCopa`), `28_depura.js` (línea `WebXR: …`), `01_datos.js` (`VRP`). Contrato: [CONTRATOS.md](CONTRATOS.md#vr-29_vrjs); decisión: [ADR-0005](../adr/0005-webxr-perfil-propio.md).
 
 ## Probar
 ```
 # con el WebXR simulado (mock_xr.js vive en pruebas/): montar una página y abrirla por file:// o por servidor
-python montar_v2.py --finca cerro --salida pruebas/salida/vr/cerro.html
+python tuberia/salida_artefacto/montar_v2.py --finca cerro --salida pruebas/salida/vr/cerro.html
 node pruebas/prueba_vr.js "file:///<ruta absoluta>/pruebas/salida/vr/cerro.html" pruebas/salida/vr/cap
 node pruebas/prueba_vr.js <url> pruebas/salida/vr/cap sinxr       # sin WebXR: no hay botón, 0 errores (esta sí está en la puerta)
 GEMELO_VR=1 npm run puerta                                         # incluye la prueba VR completa con el mock

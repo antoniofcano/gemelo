@@ -15,7 +15,7 @@
 | Parcelas, marcas de olivos, datos de la explotación | OlivarTrack | **privado**, no se versiona |
 
 ## Nomenclatura de hojas
-- **LiDAR**: `PNOA_2024_AND_<E>-<N>_H30_NPC01.laz`, hojas de 1×1 km. **En el nombre, la segunda cifra (`N`, «Y») es el borde NORTE de la hoja**, no el sur (`hoja_de()` en `datos/hituelo/comun.py`).
+- **LiDAR**: `PNOA_2024_AND_<E>-<N>_H30_NPC01.laz`, hojas de 1×1 km. **En el nombre, la segunda cifra (`N`, «Y») es el borde NORTE de la hoja**, no el sur (`hoja_de()` en `tuberia/datos/hituelo/comun.py`).
 - **MDT 0,5 m**: `MDT50CM-ETRS89-H30-<hoja MTN50>-COB3-V1.tif`. Cerro usa la hoja `0946`. La hoja de Hituelo **[SUPUESTO]** no está anotada en el repo; consultarla en el CNIG.
 - Teselas del motor: `kx = floor(E/256)`, `ky = floor(N/256)`, origen suroeste de la tesela = `(kx·256, ky·256)`. Rejillas por nodos, fila 0 = borde sur.
 
@@ -31,9 +31,9 @@
 Detalle paso a paso y comprobaciones: [skill `datos-finca`](../../.claude/skills/datos-finca/SKILL.md). Resumen:
 
 1. Descargar las hojas y el MDT (`GEMELO_DESCARGAS`) y tener las parcelas en UTM (`GEMELO_PARCELAS`).
-2. **Hituelo**: `datos/hituelo/01_particiona.py` → `02_tesela.py` → `03_arboles.py` → `04a_candidatos` → `04b_tendido` → `04c_paisaje` → `05_validacion`; imagen en `datos/hituelo/imagen/` (`orto`, `ndvi`, `suelo_ndvi`, `suelo_parcelas`). Luego `python finca_8_teselas.py --finca hituelo` (delega en `hituelo_conv.py`).
-3. **Cerro**: `datos/cerro/finca_1…finca_6`, `ndvi_sentinel`, `paisaje_1…6`, `suelo_1…2`. `finca_8_teselas.py --finca cerro` lee `datos_cerro_embebido.json`, **un intermedio que ningún script del repo produce** (pendiente D5).
-4. Montar: `python montar_v2.py --finca <finca> [--modo ficheros]`.
+2. **Hituelo**: `tuberia/datos/hituelo/01_particiona.py` → `02_tesela.py` → `03_arboles.py` → `04a_candidatos` → `04b_tendido` → `04c_paisaje` → `05_validacion`; imagen en `tuberia/datos/hituelo/imagen/` (`orto`, `ndvi`, `suelo_ndvi`, `suelo_parcelas`). Luego `python tuberia/finca_8_teselas.py --finca hituelo` (delega en `tuberia/hituelo_conv.py`).
+3. **Cerro**: `tuberia/datos/cerro/finca_1…finca_6`, `ndvi_sentinel`, `paisaje_1…6`, `suelo_1…2`. `finca_8_teselas.py --finca cerro` lee `datos_cerro_embebido.json`, **un intermedio que ningún script del repo produce** (pendiente D5).
+4. Montar: `python tuberia/salida_artefacto/montar_v2.py --finca <finca> [--modo ficheros]`.
 
 Variables de entorno: `GEMELO_DATOS`, `GEMELO_DESCARGAS`, `GEMELO_LIDAR`, `GEMELO_IMAGEN`, `GEMELO_HITUELO`, `GEMELO_PARCELAS`, `GEMELO_MDS`, `GEMELO_SUELO`. Los scripts usan hoy separadores `\` fijos: solo funcionan en Windows (pendiente D4).
 
