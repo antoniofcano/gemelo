@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://gemelo.local/contratos/tileset.schema.json",
   "title": "Tileset 3D Tiles 1.1 del gemelo: lo propio (extras.gemelo) entre tuberia/tiles3d y el motor",
-  "$comment": "Contrato tileset v1 (extras.gemelo.contrato_tileset). Solo fija lo que el gemelo añade a 3D Tiles 1.1; lo estándar lo valida 3d-tiles-validator. Detalle y regla de la lista de copas: doc/sistema/TILES3D.md. Lo vigila pruebas/guardianes/tiles3d.test.js.",
+  "$comment": "Contrato tileset v2 (extras.gemelo.contrato_tileset; v1 = generador 0.2.0: raíz con contenido y nombres de tipo provisionales). Solo fija lo que el gemelo añade a 3D Tiles 1.1; lo estándar lo valida 3d-tiles-validator. Detalle y regla de la lista de copas: doc/sistema/TILES3D.md. Lo vigila pruebas/guardianes/tiles3d.test.js.",
   "type": "object",
   "required": ["asset", "geometricError", "root", "extras"],
   "properties": {
@@ -18,9 +18,9 @@
       "properties": {
         "gemelo": {
           "type": "object",
-          "required": ["contrato_tileset", "contrato_origen", "finca_id", "srs", "centro_utm", "z0", "id_fuente", "huella_registro", "tipos", "tipos_provisionales", "tipo_generico"],
+          "required": ["contrato_tileset", "contrato_origen", "finca_id", "srs", "centro_utm", "z0", "id_fuente", "huella_registro", "catalogo_tipos", "tipos", "tipo_generico"],
           "properties": {
-            "contrato_tileset": { "const": 1, "$comment": "versión de este contrato" },
+            "contrato_tileset": { "const": 2, "$comment": "versión de este contrato" },
             "contrato_origen": { "const": 2, "$comment": "versión del contrato de datos (indice.json) del que sale" },
             "finca_id": { "type": "string", "minLength": 1 },
             "srs": { "const": "EPSG:25830" },
@@ -28,29 +28,43 @@
             "z0": { "type": "number" },
             "id_fuente": { "enum": ["copas_id", "indice"], "$comment": "de dónde sale el id de cada copa en las huellas: copas_id del índice (ADR-0012) o, si no lo trae, su índice en copas[]" },
             "huella_registro": { "$ref": "#/$defs/huella", "$comment": "huella de los ids de TODAS las copas, en el orden de copas[]: el motor la compara con la de su json antes de resolver nada" },
+            "catalogo_tipos": { "type": "string", "pattern": "^[a-z0-9-]+$", "$comment": "catálogo del que salen los nombres de tipos: «olivos» (el del constructor, contratos/olivo-generado.md §1.1; copas_tipo = ID_TIPO) o, solo en el fixture, el id del catalogo.json sintético («fixture-sintetico»)" },
             "tipos": {
               "type": "object",
-              "$comment": "número local de _TIPO → nombre del tipo de catálogo (sin versión dentro); '-1' → null = sin asignar. Números locales 0..m−1 consecutivos",
+              "$comment": "número local de _TIPO → nombre del tipo de catálogo (sin versión dentro: «olivos:planton» … «olivos:centenario-3p», de tablaLocal() en apps/web/olivo/catalogo.js); '-1' → null = sin asignar (y todo id que el catálogo no conoce). Números locales 0..m−1 consecutivos, por id de catálogo creciente",
               "required": ["-1"],
               "propertyNames": { "pattern": "^(-1|0|[1-9][0-9]{0,4})$" },
               "properties": { "-1": { "type": "null" } },
               "additionalProperties": { "type": "string", "pattern": "^[a-z0-9-]+:[a-z0-9-]+$" }
             },
-            "tipos_provisionales": { "type": "boolean", "$comment": "true mientras los nombres sean «olivos-tipo:<id>» a falta del contrato del constructor" },
             "tipo_generico": { "const": -1 }
           }
         }
       }
     },
-    "root": { "$ref": "#/$defs/tesela" }
+    "root": { "$ref": "#/$defs/raiz" }
   },
   "$defs": {
+    "raiz": {
+      "type": "object",
+      "$comment": "sin contenido (no hay glb de la raíz): sus hijos son los cuadrados del nivel útil que tocan los datos. geometricError = max(lado mayor de su caja, 2 × el mayor de sus hijos): el error de no dibujar nada, para que un visor siempre baje a los hijos",
+      "required": ["boundingVolume", "geometricError", "refine", "transform", "children"],
+      "not": { "required": ["content"] },
+      "properties": {
+        "boundingVolume": { "$ref": "#/$defs/caja" },
+        "geometricError": { "type": "number", "exclusiveMinimum": 0 },
+        "refine": { "const": "REPLACE" },
+        "transform": { "type": "array", "items": { "type": "number" }, "minItems": 16, "maxItems": 16 },
+        "children": { "type": "array", "items": { "$ref": "#/$defs/tesela" }, "minItems": 1 }
+      }
+    },
+    "caja": { "type": "object", "required": ["box"], "properties": { "box": { "type": "array", "items": { "type": "number" }, "minItems": 12, "maxItems": 12 } } },
     "huella": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
     "tesela": {
       "type": "object",
       "required": ["boundingVolume", "geometricError", "content"],
       "properties": {
-        "boundingVolume": { "type": "object", "required": ["box"], "properties": { "box": { "type": "array", "items": { "type": "number" }, "minItems": 12, "maxItems": 12 } } },
+        "boundingVolume": { "$ref": "#/$defs/caja" },
         "geometricError": { "type": "number", "minimum": 0 },
         "content": { "type": "object", "required": ["uri"], "properties": { "uri": { "type": "string", "pattern": "^[0-9]+/-?[0-9]+_-?[0-9]+\\.glb$" } } },
         "extras": {

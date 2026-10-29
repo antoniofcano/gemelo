@@ -75,6 +75,21 @@ Cerro embebido, escenarios `lejos` y `cerca` de `pruebas/guardianes/_navegador.j
 
 Para recortar la doble descarga (decisión 38), lo que el glb repite es `dtm` (como malla) y la ortofoto `t/*.jpg` (como textura); `pts` (la nube, que sigue en el motor por la decisión 37), `chm` y `suelo` (color del suelo del sombreador) no están en el glb. **fps, llamadas y memoria con este tileset: no medidos** (falta el paso 3 del plan, el motor).
 
+### Raíz sin contenido (generador 0.3.0, 2026-10-29)
+
+Fixture sintético de Hituelo (`--catalogo modelos/olivos/fixture/catalogo.json`; `GEMELO_MIDE=1 node --test pruebas/guardianes/tiles3d.test.js`, una corrida):
+
+| Nivel | Nodos (glb) | Triángulos (terreno + olivos) | Bytes |
+|---|---|---|---|
+| raíz (sin contenido, `geometricError` 512) | 1 (0) | — | — |
+| 512 m (nivel útil) | 1 | 4.380 (1.020 + 3.360) | 41.968 |
+| 256 m | 2 | 6.726 (3.366 + 3.360) | 108.032 |
+| 128 m | 8 | 33.112 (12.952 + 20.160) | 421.196 |
+
+11 glb, 0,57 MB (571.196 B) + `tileset.json` 8.892 B; validador de CesiumGS 0.6.1: 0 errores, 0 avisos, 11 informativos. Los recuentos de triángulos y nodos con glb son los del 0.2.0 (en el fixture el nivel útil era ya la raíz); los bytes salen algo menores (< 5 %) que los de la medida del 2026-10-28, sin investigar.
+
+**Hituelo real: solo el árbol**, calculado con `planArbol()` sobre el `indice.json` actual (46 teselas), **sin escribir glb ni regenerar**: 1 raíz sin contenido + 18 (512 m) + 46 (256 m) + 184 (128 m) = **248 glb** (antes 269: desaparecen los 21 nodos de 1.024 a 32.768 m, 0,9 MB con el 0.2.0, así que el total sería ≈ 40,0 MB **[DEDUCIDO]**, no medido). Caja de los datos 2.048 × 2.816 m; la raíz, 2.560 × 3.072 m.
+
 ## Tirones (rebanada máxima de la cola, ms, escritorio)
 R (ruido) 13 · N (nube, incluye decodificar una ortofoto) 12–40 antes de separar la decodificación · T (terreno) 6 · C (olivos N0) 10–20 · B 3. Con el presupuesto de 6 ms/fotograma (3,5 en paseo) el peor fotograma añade ≈ una rebanada. En un iPhone espera 2–3 veces más.
 
