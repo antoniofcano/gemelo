@@ -39,8 +39,8 @@ Mapa de iniciativas con su estado y el ADR que las sostiene. **No** es el estado
 | # | Iniciativa | Estado | Detalle |
 |---|---|---|---|
 | P1 | Sistema de trabajo: guardianes, contratos, ADR, skills | 🟨 | este andamiaje |
-| P2 | Primera auditoría completa (skill `auditoria`) | ⬜ | tras estabilizar los guardianes |
-| P3 | Licencia | ⬜ | decisión de Antonio |
+| P2 | Primera auditoría completa (skill `auditoria`) | 🟡 en curso | tras estabilizar los guardianes |
+| P3 | Licencia | 🟡 en curso | decisión de Antonio |
 | P4 | Estabilizar la prueba VR con el mock | 🟨 | `mock_xr.js` y `prueba_vr.js` recuperados e incluidos; la prueba completa se cae con SwiftShader tras ~25 pasos (opcional con `GEMELO_VR=1`) |
 | P6 | Sustituir código casero por librerías (regla 12): ✅ validador de esquemas → `ajv`; pendiente: servidor estático de las pruebas → librería y revisar el resto | 🟨 | |
 | P5 | Arquitectura multiusuario «Cuarenta hazas» | 🟨 | estudiada; plan por fases aprobado (abajo); ADR-0009 (Propuesto) |
@@ -76,7 +76,7 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | D1 | Hituelo v3: `copas_id`, `copas_tipo`, `copas_semilla`, `copas_param` (fuera del repo) | — | ligera | ✅ (salida de referencia de Hituelo) |
 | A1 | Código corto para vincular las gafas: api, contrato y pruebas unitarias | — | ligera | ✅ (e2e con Docker en verde) |
 | A2 | Portada y pantalla de entrada (UX) en `apps/web` | — | ligera | ✅ (e2e con Docker en verde) |
-| A3 | Entorno local sirve Hituelo v3 con los olivos generados (cliente web con `gemelo-olivo`) | D1 | ligera | ⬜ |
+| A3 | Entorno local sirve Hituelo v3 con los olivos generados (cliente web con `gemelo-olivo`) | D1 | ligera | 🟡 en curso |
 | A4 | Lindes de las hazas en el motor (el «3c») | — | ligera; 🔶 al medir | 🟡 código y pruebas de Node en main; medida encargada |
 | A5 | e2e de entrada completa: portada → enlace → mundo con lindes; gafas → código → sesión | A1, A2, A4 | 🔶 Docker | ⬜ |
 | A6 | **Prueba en aparatos** (navegador, móvil, Quest; decisión 57) | A1, A2, A3 | 👤 | ⬜ |
@@ -88,7 +88,7 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | T6 | F1d 6-7: presupuesto y VR con el simulador | T3, T4, T5 | 🔶 | ⬜ |
 | T7 | F1d 8: Quest real (p95 ≤ 13,9 ms) | T6 | 👤 | ⬜ |
 | T8 | F1d 9: la escena nueva por defecto; se retira la vieja | T6 (T7 o «no probado», decisión 35) | ligera | ⬜ |
-| P1 | F2: la api firma tokens de LiveKit (`POST /api/presencia/token`, `livekit-server-sdk`, roles del contrato) | — | ligera | ⬜ |
+| P1 | F2: la api firma tokens de LiveKit (`POST /api/presencia/token`, `livekit-server-sdk`, roles del contrato) | — | ligera | 🟡 en curso |
 | P2 | F2: el motor publica y recibe la pose con `livekit-client` (sustituye a la red simulada) | P1 | ligera | ⬜ |
 | P3 | F2: chat por el canal de datos y moderación mínima (expulsar con auditoría, decisión 42) | P1 | ligera | ⬜ |
 | P4 | F2: dos Chrome en la misma sala (p95 < 250 ms) y 40 clientes ligeros | P2, P3 | 🔶 Docker + Chrome | ⬜ |
