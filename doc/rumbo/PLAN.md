@@ -89,6 +89,7 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | T5 | F1d 5: sombreado (nubes, escarcha, NDVI, suelo) sobre el tileset | T1 | ligera; capturas 🔶 → 👤 | ✅ aprobado por Antonio (decisión 67) |
 | T6 | F1d 6-7: presupuesto y VR con el simulador | T3, T4, T5 | 🔶 | 🟡 VR simulada con tiles ✅ y escena3d 13/13 en navegador; ADR-0015: 1 ✅, 2 fixture ✅ / Hituelo casi (258 llamadas lejos > 250), 3 sin cubrir, 4 parcial |
 | T7a | Medidor para T7: `&mide=60` registra 60 s de fotogramas y enseña mediana, p95 y peor (y el nivel del perfil) en el panel de VR y en `?debug`; se guarda para leerlo luego | — | ligera · **sonnet** | ✅ `30_mide.js` + protocolo en VR.md; falta usarlo en el Quest (T7) |
+| T6b | F1d: criterios 2, 3 y 4 del ADR-0015 en local | T6 | ligera · **opus** | ✅ nubes en una llamada (lejos Hituelo 98 llamadas), vuelo sin huecos (0 de 5.638 rayos), relieve dentro del error declarado |
 | T7 | F1d 8: Quest real (p95 ≤ 13,9 ms) | T6 | 👤 | ⬜ |
 | T8 | F1d 9: la escena nueva por defecto; se retira la vieja | T6 (T7 o «no probado», decisión 35) | ligera | ⬜ |
 | P1 | F2: la api firma tokens de LiveKit (`POST /api/presencia/token`, `livekit-server-sdk`, roles del contrato) | — | ligera | ✅ |

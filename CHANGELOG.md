@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Pruebas de la escena 3D Tiles: vuelo de punta a punta sin huecos (0 rayos sin relieve) y relieve dibujado frente a `Mundo.suelo` (marco < 1 cm; geometría dentro del error declarado por nivel); `pruebas/escena3d_recorrido.js` para fincas reales; `--desglose` en el banco (T6b).
 - Escalera de olivos detrás de `?olivos=escalera` (ADR-0019, fase A, O8c): todos los olivos con el constructor (E0/E1/E2 en 3D por el presupuesto del aparato, con histéresis y fundido complementario) y lejanos hasta 1.600 m en una sola llamada (impostores de O8b si el manifiesto los trae; si no, un sustituto de dos planos cruzados); con la bandera, fuera el nivel 0, los niveles 1-2 y los olivos del tileset; línea de reparto en `?debug`; Caddy sirve los atlas `.webp`. Sin la bandera, todo igual. No hay pasada de sombras (medido): con la escalera ya no se cobra doble.
 - Portada: elegir avatar del catálogo VRM con vista previa 3D (girable, con el paso en bucle), lista accesible con nombre y descripción, «Mi avatar» fuera del primer acceso y créditos de los avatares; la api guarda `vrm` (migración 0003, `GET/PUT /api/yo/avatar`) y lo pone en los metadatos de presencia (P7d, ADR-0020).
 - Medidor de fotogramas para la prueba en el aparato: con `&mide=N` (o el botón «Medir 60 s» en el panel de VR y en `?debug`) mide el intervalo entre fotogramas y el JS durante N s tras 3 s de calentamiento y da mediana, p95, p99, peor y % por encima de 13,9 ms, con tarjeta en VR, botón «Copiar» y las últimas 10 medidas en localStorage (`window.__mide()`). Sin `&mide` no hace nada. No probado en Quest real (T7a).
@@ -79,6 +80,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 - Andamio: `VERSION`, `package.json`, `Makefile`, `.editorconfig`, `.nvmrc`, `requirements.txt`, `CONTRIBUTING.md`, plantillas de issue y PR.
 
 ### Cambiado
+- Las nubes del cielo (230 manchas) se dibujan en una sola llamada en vez de una por mancha: en Hituelo, la vista de lejos pasa de 164 a 98 llamadas con `?escena=tiles` y de 176 a 108 sin ella (SwiftShader). Aspecto pendiente de aprobar.
 - Olivos detallados más lejos en aparatos holgados (petición de Antonio tras verlo en el móvil): la escala adaptativa del nivel 0 sube hasta ×2,5 (antes ×1,6) cuando el fotograma va por debajo de 16 ms (radio en órbita hasta ~330 m, hasta ~1.100 olivos), y los generados aparecen desde más lejos en la misma proporción (hasta ~240 m). Un aparato justo se queda como estaba; en las gafas sigue mandando el perfil VR. Medido solo en Node.
 - `migra` corre con un tope de 10 min por sentencia (la 0001 crea PostGIS; en disco lento pasaba de los 15 s de la api). Afecta también a producción.
 - El Caddy de producción usa `Referrer-Policy: strict-origin-when-cross-origin` (antes `no-referrer`, que rompía los formularios POST en Chrome; decisión 53).
