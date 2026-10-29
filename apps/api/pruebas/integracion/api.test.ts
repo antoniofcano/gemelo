@@ -330,7 +330,7 @@ test("avatar: el hogar elige uno del catálogo, lo lee de vuelta, viaja en los m
   const c = await new TokenVerifier(LIVEKIT.GEMELO_LIVEKIT_CLAVE, LIVEKIT.GEMELO_LIVEKIT_SECRETO).verify(tk.json().token);
   assert.deepEqual(JSON.parse(c.metadata!).avatar, { camisa: 1, sombrero: "paja", piel: 3, vrm: "robert" });
   // un id que no cumple el patrón no entra (nada de rutas ni mayúsculas)
-  for (const malo of ["../x", "Robert", "", "a".repeat(33), 5]) assert.equal((await con("PUT", "/api/yo/avatar", ana2, { camisa: 1, sombrero: "paja", piel: 3, vrm: malo })).statusCode, 400, JSON.stringify(malo));
+  for (const malo of ["../x", "Robert", "", "a".repeat(33), "a_b"]) assert.equal((await con("PUT", "/api/yo/avatar", ana2, { camisa: 1, sombrero: "paja", piel: 3, vrm: malo })).statusCode, 400, JSON.stringify(malo));
   assert.deepEqual((await con("GET", "/api/yo/avatar", ana2)).json().vrm, "robert", "el rechazo no toca lo guardado");
   // sin vrm (o null) vuelve el muñeco, y los metadatos no llevan el campo
   assert.equal((await con("PUT", "/api/yo/avatar", ana2, { camisa: 1, sombrero: "paja", piel: 3 })).statusCode, 204);
