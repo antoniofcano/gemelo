@@ -1,6 +1,6 @@
 # ADR-0019 — Escalera de olivos: niveles del constructor e impostores
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado (Antonio, 2026-10-29; decisiones 69-72)
 - **Fecha:** 2026-10-29
 
 ## Contexto
