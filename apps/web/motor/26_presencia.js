@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: Presencia
+// Expone: Encuentro, sitioJunto, Presencia
 // Consume: 01_datos (D, $), 02_mundo (suelo, copas), 03_escena (visor, renderer, scene, camera, texColor, exag, modo), 06_arboles (tronco),
-//   09_camara (objetivo), 12_paseo (paseando, persona), 12b_llegada (Llegada), 15_tiempo (rumbo, hace),
+//   09_camara (objetivo), 12_paseo (paseando, persona), 12b_llegada (Llegada), 13b_hazas (HazasPuro), 15_tiempo (rumbo, hace),
 //   16_vida (enQuad, mira, quad, vidaPaseo, enDron, dron), 29_vr (VRX, vrFundido, panel)
 // Nota: Publica además window.__presencia (pruebas). Sin ?presencia=sim o ?presencia=red no crea nada (con red, import("livekit-client") y el panel Gente); el trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/presencia.test.js.
 // ===============================================================================
@@ -260,7 +260,7 @@
   // obst = [{x, y, r}] (r = radio de la copa; 0 si no se sabe); ext = D.ext [oeste, norte, este, sur]; opc = {rTronco (0,55 a pie, 1,05 en quad), suelo(x, y)}.
   // Devuelve {x, y, ang (rumbo del paseo: 0 norte, π/2 este), z (suelo, si se da la función), libre: "copa" | "tronco" | "empujado", d}.
   var Encuentro = (function () {
-    var DISTS = [2.5, 3, 2, 3.5, 4], PASO = Math.PI / 6, MARGEN = 3, HOLGURA = 0.2;
+    var DISTS = [2.5, 3, 2, 3.5, 4], BALIZA = [4.5, 4, 5, 3.5, 5.5], PASO = Math.PI / 6, MARGEN = 3, HOLGURA = 0.2;
     function dentro(x, y, ext) { return !ext || (x >= ext[0] + MARGEN && x <= ext[2] - MARGEN && y >= ext[3] + MARGEN && y <= ext[1] - MARGEN); }
     function mide(x, y, obst, rT) {   // 2 = libre de copas y troncos, 1 = solo de troncos, 0 = toca un tronco
       var r = 2;
@@ -273,21 +273,21 @@
     }
     function punto(t, desde, obst, ext, opc) {
       opc = opc || {}; obst = obst || [];
-      var rT = opc.rTronco > 0 ? opc.rTronco : 0.55, dx = desde ? desde.x - t.x : 0, dy = desde ? desde.y - t.y : -1;
+      var DS = opc.dists && opc.dists.length ? opc.dists : DISTS, rT = opc.rTronco > 0 ? opc.rTronco : 0.55, dx = desde ? desde.x - t.x : 0, dy = desde ? desde.y - t.y : -1;
       var base = Math.hypot(dx, dy) > 0.5 ? Math.atan2(dy, dx) : -Math.PI / 2;   // ángulo matemático (desde el este, antihorario); sin dirección clara, por el sur
       var mejor = null, nivelMejor = -1, primero = null;
-      for (var i = 0; i < DISTS.length && nivelMejor < 2; i++) {
+      for (var i = 0; i < DS.length && nivelMejor < 2; i++) {
         for (var k = 0; k < 12; k++) {
-          var a = base + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * PASO, x = t.x + Math.cos(a) * DISTS[i], y = t.y + Math.sin(a) * DISTS[i];
+          var a = base + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * PASO, x = t.x + Math.cos(a) * DS[i], y = t.y + Math.sin(a) * DS[i];
           if (!dentro(x, y, ext)) continue;
           if (!primero) primero = { x: x, y: y };
           var n = mide(x, y, obst, rT);
-          if (n > nivelMejor) { nivelMejor = n; mejor = { x: x, y: y, d: DISTS[i] }; if (n === 2) break; }
+          if (n > nivelMejor) { nivelMejor = n; mejor = { x: x, y: y, d: DS[i] }; if (n === 2) break; }
         }
       }
       var libre = nivelMejor === 2 ? "copa" : "tronco";
       if (nivelMejor < 1) {   // todo cerca toca algún tronco: el primero, empujado fuera de cada tronco (como el paseo)
-        mejor = primero || { x: t.x + Math.cos(base) * DISTS[0], y: t.y + Math.sin(base) * DISTS[0] }; libre = "empujado";
+        mejor = primero || { x: t.x + Math.cos(base) * DS[0], y: t.y + Math.sin(base) * DS[0] }; libre = "empujado";
         for (var j = 0; j < obst.length; j++) {
           var o = obst[j], ex = mejor.x - o.x, ey = mejor.y - o.y, dd = Math.hypot(ex, ey), R = rT + HOLGURA;
           if (dd < R) { dd = dd || 0.001; mejor.x = o.x + ex / dd * R; mejor.y = o.y + ey / dd * R; }
@@ -299,9 +299,27 @@
       if (typeof opc.suelo === "function") mejor.z = opc.suelo(mejor.x, mejor.y);
       return mejor;
     }
-    return { DISTS: DISTS, punto: punto };
+    // I4: quién está en una parcela (las balizas como punto de encuentro): de los puntos que se dibujan (Presencia.puntos: ya sin vista aérea ni
+    // bloqueados), los que caen dentro de su linde; dentro(x, y, [anillo]) es HazasPuro.dentroPoligono (13b_hazas.js). Alias en orden alfabético
+    function enParcela(puntos, linde, dentro) {
+      var l = []; if (!puntos || !linde || typeof dentro !== "function") return l;
+      for (var i = 0; i < puntos.length; i++) if (dentro(puntos[i].x, puntos[i].y, [linde])) l.push(puntos[i].alias);
+      return l.sort(function (a, b) { return a < b ? -1 : a > b ? 1 : 0; });
+    }
+    return { DISTS: DISTS, BALIZA: BALIZA, punto: punto, enParcela: enParcela };
   })();
   // [puro:fin]
+
+  // el sitio libre junto a t = {x este, y norte} (Encuentro.punto) con los árboles de alrededor (copas: radio medio del perfil LiDAR); dists, las distancias
+  // a probar (por defecto 2,5-4 m: ir con alguien; Encuentro.BALIZA, 4-5,5 m: ir a una baliza); desde, de dónde llegas
+  function sitioJunto(t, desde, dists, rTronco) {
+    var obst = [], R2 = 196;   // 14 m alrededor
+    for (var i = 0; i < copas.length; i++) {
+      var o = copas[i], dx = o.x - t.x, dy = o.y - t.y;
+      if (dx * dx + dy * dy < R2) obst.push({ x: o.x, y: o.y, r: o.perfil.reduce(function (s, v) { return s + v; }, 0) / 8 });
+    }
+    return Encuentro.punto(t, desde, obst, D.ext, { dists: dists, rTronco: rTronco, suelo: suelo });
+  }
 
   var Presencia = (function () {
     var variante = (/[?&]presencia=(sim|red)\b/.exec(location.search) || [])[1] || "", activo = !!variante, N = 0;
@@ -731,7 +749,7 @@
     // ---- «Ir con alguien» (I1, UX §5): quién se ve (para el minimapa y el panel Gente) y a dónde ir para estar a su lado. Solo a quien se dibuja: de
     // esta sala, con pose (no «en vista aérea») y sin bloquear por ti. No manda nada por la red: usa la pose que ya llega. Este módulo solo calcula el
     // punto (Encuentro, en el trozo puro); el salto, con su fundido en pantalla y en VR (nunca un vuelo de cámara), es el de 12b_llegada.js (Llegada.funde y Llegada.aparece)
-    var puntosL = [], R_OBST = 14;
+    var puntosL = [];
     function seVe(a, ahoraMs) { return !!a && a.visto && (variante !== "red" || SalaPose.seVe(SP, a.id, ahoraMs, bloqueados)); }
     function idDe(a) { return variante === "red" ? a.id : "sim" + a.k; }
     function busca(id) { if (variante === "red") return porId[id] || null; var m = /^sim(\d+)$/.exec(String(id)); return m ? V[Number(m[1])] || null : null; }
@@ -741,14 +759,7 @@
       for (var i = 0; i < l.length; i++) { var a = l[i]; if (!seVe(a, ahoraMs)) continue; var c = a.out.cab.p; puntosL.push({ id: idDe(a), alias: a.alias, x: c[0], y: -c[2], modo: a.out.modo | 0 }); }
       return puntosL;
     }
-    function destino(a) {   // el sitio libre a 2-4 m de esa persona (Encuentro), con los árboles de alrededor (copas, radio medio del perfil LiDAR)
-      var c = a.out.cab.p, t = { x: c[0], y: -c[2] }, obst = [], R2 = R_OBST * R_OBST;
-      for (var i = 0; i < copas.length; i++) {
-        var o = copas[i], dx = o.x - t.x, dy = o.y - t.y;
-        if (dx * dx + dy * dy < R2) obst.push({ x: o.x, y: o.y, r: o.perfil.reduce(function (s, v) { return s + v; }, 0) / 8 });
-      }
-      return Encuentro.punto(t, oyente(), obst, D.ext, { rTronco: enQuad && !VRX.on ? 1.05 : 0.55, suelo: suelo });
-    }
+    function destino(a) { var c = a.out.cab.p; return sitioJunto({ x: c[0], y: -c[2] }, oyente(), null, enQuad && !VRX.on ? 1.05 : 0.55); }
     function irCon(id) {
       if (!activo) return false;
       var a = busca(id); if (!seVe(a, performance.now())) return false;   // bloqueado, en vista aérea o ya no está: no se va

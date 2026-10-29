@@ -1,8 +1,9 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: colocaBalizas, eligeBaliza, sueltaBaliza, dibujaBalizasMini, tBal, actualizaBalizas
-// Consume: 01_datos (D, $), 02_mundo (suelo), 03_escena (lienzo, scene, camera, exag), 09_camara (suelta), 12_paseo (paseando),
-//   13_parcelas (parcelas), 14_historia (VIVO, marca, aviso), 15_tiempo (num1, esc, hace), 16_vida (tVida, enDron), 20_sonido (sonidoBaliza),
-//   29_vr (ficha)
+// Expone: colocaBalizas, eligeBaliza, sueltaBaliza, avisoBaliza, dibujaBalizasMini, tBal, actualizaBalizas
+// Consume: 01_datos (D, $), 02_mundo (suelo, copas), 03_escena (lienzo, visor, scene, camera, exag), 09_camara (objetivo, suelta),
+//   12_paseo (paseando, teclas), 12b_llegada (Llegada), 13_parcelas (parcelas), 13b_hazas (HazasPuro), 14_historia (VIVO, marca, aviso),
+//   15_tiempo (num1, esc, hace), 16_vida (tVida, enQuad, enDron), 20_sonido (sonidoBaliza), 26_presencia (Encuentro, sitioJunto, Presencia),
+//   29_vr (VRX, ficha)
 // ===============================================================================
   // ---------- las balizas: una por parcela, con lo que OlivarTrack sabe de ella; en el paseo, al acercarte, sale su ficha
   // Los datos son los de la historia (instantánea embebida, o la lectura en vivo por el MCP si se ha pulsado «Leer de OlivarTrack»).
@@ -53,11 +54,16 @@
     if (d.hechas.length) h += "<h4>Hecho hace poco</h4><ul>" + d.hechas.slice(0, 2).map(function (t) { return "<li>" + esc(t.titulo) + ' <span class="b-n">' + esc(String(t.fecha).slice(8, 10) + "/" + String(t.fecha).slice(5, 7)) + (t.andados != null && t.objetivo ? " · " + t.andados + " de " + t.objetivo + " olivos" : "") + "</span></li>"; }).join("") + "</ul>";
     if (d.fen) h += '<h4>Fenología</h4><p class="b-sub">BBCH ' + d.fen.bbch + " · " + (BBCH_TXT[Math.floor(d.fen.bbch / 10)] || "") + " · " + esc(String(d.fen.fecha).slice(8, 10) + "/" + String(d.fen.fecha).slice(5, 7)) + "</p>";
     var fch = OT && OT.fecha_consulta ? String(OT.fecha_consulta).slice(8, 10) + "/" + String(OT.fecha_consulta).slice(5, 7) : "?", fuente = OT && OT.fuente === "vivo" ? "OlivarTrack, leído en vivo el " + fch : "OlivarTrack, instantánea del " + fch;
+    var gente = genteEnBaliza(k);   // I4: con la presencia compartida, quién está ahora en esta parcela; y el botón para ir
+    if (gente) h += '<p class="b-sub">' + (gente.length ? "Aquí están: " + gente.map(esc).join(", ") : "No hay nadie en esta parcela") + "</p>";
+    h += '<button type="button" class="ir-baliza" data-k="' + k + '">Ir a esta baliza</button>';
     h += '<p class="b-pie">' + fuente + " · balizas visitadas " + balVisitas + " de " + BAL.length + (balVisitas === BAL.length ? " · inspección completa" : "") + "</p>";
     return h;
   }
   // la × de la ficha y tocar una baliza: cerrarla la esconde hasta alejarse; tocar la columna de luz la vuelve a abrir (en el paseo y en la órbita)
   $("baliza").addEventListener("click", function (e) {
+    var ib = e.target.closest && e.target.closest(".ir-baliza");
+    if (ib) { irABaliza(Number(ib.getAttribute("data-k"))); return; }
     if (!e.target.closest || !e.target.closest(".cerrar-baliza")) return;
     balCerrada = balForzada >= 0 ? balForzada : balCerca; balForzada = -1; $("baliza").hidden = true;
   });
@@ -73,10 +79,54 @@
     if (mejor < 0) return false;
     balCerrada = -1; balForzada = mejor; ultFicha = -2; return true;
   }
-  function sueltaBaliza() { balForzada = -1; }   // al tocar otra cosa (olivo, suelo), la ficha forzada se suelta y vuelve la de cercanía
-  function dibujaBalizasMini(c, X, Y) {
+  function sueltaBaliza() { balForzada = -1; }
+  // ---- I4: las balizas como punto de encuentro. Quién está en la parcela (con ?presencia: los que se dibujan, dentro de su linde; null sin presencia),
+  // el aviso del minimapa («¿Ir a esta baliza?», con Ir y Cancelar) e ir: a 4-5,5 m de la columna, fuera de copas y troncos, mirándola (Llegada.ve)
+  function genteEnBaliza(k) {
+    if (typeof Presencia === "undefined" || !Presencia.activo()) return null;
+    return Encuentro.enParcela(Presencia.puntos(), parcelas[k].linde, HazasPuro.dentroPoligono);
+  }
+  function irABaliza(k) {
+    var pr = parcelas[k]; if (!pr) return false;
+    var desde = paseando || VRX.on ? { x: pp.x, y: pp.y } : { x: objetivo.x, y: -objetivo.z };
+    var L = sitioJunto({ x: pr.centro[0], y: pr.centro[1] }, desde, Encuentro.BALIZA, enQuad && !VRX.on ? 1.05 : 0.55);
+    cierraAvisoBaliza(); balForzada = -1; balCerrada = -1;
+    return Llegada.ve(L.x, L.y, L.ang);
+  }
+  var avisoB = null;
+  function textoAvisoBaliza(k) {
+    var g = genteEnBaliza(k), pr = parcelas[k];
+    return "Parcela " + pr.nombre + " · " + (g === null ? "¿Ir a esta baliza?" : g.length ? "aquí están: " + g.join(", ") + ". ¿Ir a esta baliza?" : "No hay nadie en esta parcela. ¿Ir?");
+  }
+  function avisoBaliza(k) {   // el aviso pequeño del minimapa; el texto va con textContent (los alias son de otras personas: nunca HTML)
+    if (!avisoB) {
+      var raiz = document.createElement("div"), txt = document.createElement("p"), ir = document.createElement("button"), no = document.createElement("button");
+      raiz.setAttribute("role", "dialog"); raiz.setAttribute("aria-label", "Ir a la baliza"); raiz.hidden = true;
+      raiz.style.cssText = "position:absolute;left:12px;top:12px;z-index:31;max-width:min(300px,calc(100% - 24px));padding:10px;border-radius:12px;background:rgba(16,20,24,0.92);color:#fff;font:13px/1.35 system-ui,sans-serif;box-sizing:border-box";
+      txt.style.margin = "0 0 8px"; txt.id = "avisoBalTxt"; raiz.setAttribute("aria-describedby", "avisoBalTxt");
+      var bs = "font:inherit;color:inherit;border-radius:8px;padding:6px 14px;min-height:44px;min-width:44px;cursor:pointer;margin-right:8px;";
+      ir.type = "button"; ir.textContent = "Ir"; ir.style.cssText = bs + "background:rgba(64,240,255,0.22);border:1px solid rgba(64,240,255,0.7)";
+      no.type = "button"; no.textContent = "Cancelar"; no.style.cssText = bs + "background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.35)";
+      ir.addEventListener("click", function () { if (avisoB.k >= 0) irABaliza(avisoB.k); });
+      no.addEventListener("click", cierraAvisoBaliza);
+      raiz.addEventListener("keydown", function (e) { e.stopPropagation(); if (e.key === "Escape") { cierraAvisoBaliza(); e.preventDefault(); } });   // las teclas no mueven al paseante
+      raiz.appendChild(txt); raiz.appendChild(ir); raiz.appendChild(no); (visor || document.body).appendChild(raiz);
+      avisoB = { raiz: raiz, txt: txt, ir: ir, k: -1, foco: null };
+    }
+    avisoB.k = k; avisoB.txt.textContent = textoAvisoBaliza(k); avisoB.foco = document.activeElement; avisoB.raiz.hidden = false;
+    try { avisoB.ir.focus({ preventScroll: true }); } catch (e) {}
+    return true;
+  }
+  function cierraAvisoBaliza() {
+    if (!avisoB || avisoB.raiz.hidden) return;
+    avisoB.raiz.hidden = true; avisoB.k = -1;
+    try { if (avisoB.foco && avisoB.foco.focus) avisoB.foco.focus({ preventScroll: true }); } catch (e) {}
+  }   // al tocar otra cosa (olivo, suelo), la ficha forzada se suelta y vuelve la de cercanía
+  function dibujaBalizasMini(c, X, Y, pts) {   // pts (opcional): ahí se apunta dónde cae cada rombo, para tocarlo (17_minimapa.js)
+    if (pts) pts.length = 0;
     BAL.forEach(function (g) {
       var pr = parcelas[g.userData.k], x = X(pr.centro[0]), y = Y(pr.centro[1]);
+      if (pts) pts.push({ k: g.userData.k, px: x, py: y });
       c.fillStyle = "#" + ("000000" + COLB[g.userData.estado].toString(16)).slice(-6); c.strokeStyle = "#101418"; c.lineWidth = 1.2; c.beginPath(); c.moveTo(x, y - 6); c.lineTo(x + 4.5, y); c.lineTo(x, y + 6); c.lineTo(x - 4.5, y); c.closePath(); c.fill(); c.stroke();
       if (g.userData.visita) { c.strokeStyle = "#ffffff"; c.lineWidth = 1.6; c.beginPath(); c.moveTo(x - 2, y); c.lineTo(x - 0.5, y + 2); c.lineTo(x + 2.5, y - 2); c.stroke(); }
     });

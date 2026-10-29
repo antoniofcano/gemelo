@@ -287,6 +287,33 @@ test("ir con alguien y minimapa: en la página, solo con la bandera; con ella, s
   assert.match(F, /function irCon\(id\) \{\s*if \(!activo\) return false;\s*var a = busca\(id\); if \(!seVe\(a, performance\.now\(\)\)\) return false;/, "irCon solo va con quien se ve");
   assert.match(F, /if \(x\.enMundo && !bl\) \{/, "el botón «Ir con» solo para quien está en el olivar y no está bloqueado");
 });
+// ---------- I4: las balizas como punto de encuentro
+const HAZAS = lee("apps/web/motor/13b_hazas.js");
+const { HazasPuro } = new Function("\"use strict\";\n" + HAZAS.slice(HAZAS.indexOf("// [puro:inicio]"), HAZAS.indexOf("// [puro:fin]")) + "\nreturn { HazasPuro: HazasPuro };")();
+test("balizas (I4): quién está en una parcela, por su linde (HazasPuro.dentroPoligono), en orden alfabético", () => {
+  const linde = [[0, 0], [50, 0], [50, 30], [20, 30], [20, 60], [0, 60]];   // en L
+  const pts = [{ alias: "Mirlo", x: 10, y: 10 }, { alias: "Abubilla", x: 10, y: 55 }, { alias: "Perdiz", x: 40, y: 45 }, { alias: "Jara", x: 49.9, y: 1 }, { alias: "Fuera", x: -1, y: 5 }];
+  assert.deepStrictEqual(Encuentro.enParcela(pts, linde, HazasPuro.dentroPoligono), ["Abubilla", "Jara", "Mirlo"], "Perdiz cae en el hueco de la L; Fuera, fuera");
+  assert.deepStrictEqual(Encuentro.enParcela([], linde, HazasPuro.dentroPoligono), []);
+  assert.deepStrictEqual(Encuentro.enParcela(null, linde, HazasPuro.dentroPoligono), []);
+  // los de vista aérea y los bloqueados no llegan aquí: enParcela recibe Presencia.puntos(), que ya los quita (seVe; prueba de SalaPose.seVe en presencia_red.test.js)
+  const B = lee("apps/web/motor/19_balizas.js");
+  assert.match(B, /return Encuentro\.enParcela\(Presencia\.puntos\(\), parcelas\[k\]\.linde, HazasPuro\.dentroPoligono\);/, "la lista sale de Presencia.puntos()");
+  assert.match(B, /if \(typeof Presencia === "undefined" \|\| !Presencia\.activo\(\)\) return null;/, "sin presencia, no hay lista (el aviso solo pregunta)");
+  assert.match(B, /avisoB\.txt\.textContent = textoAvisoBaliza\(k\)/, "el aviso pone los alias como texto, nunca como HTML");
+  assert.match(B, /gente\.map\(esc\)/, "en la ficha (HTML), los alias escapados");
+});
+test("balizas (I4): ir a una baliza te deja a 4-5,5 m de la columna, fuera de copas y troncos, en el suelo y mirándola", () => {
+  const obst = rejilla(7, 2, 2, 2, 28);
+  for (const [bx, by] of [[100, 100], [58.5, 72.5], [9, 9]]) {
+    const t = { x: bx, y: by }, L = Encuentro.punto(t, { x: 20, y: 180 }, obst, EXT, { dists: Encuentro.BALIZA, suelo: () => 412 });
+    assert.ok(L.d >= 3.5 - 1e-9 && L.d <= 5.5 + 1e-9, "a 3,5-5,5 m: " + L.d);
+    for (const o of obst) assert.ok(Math.hypot(L.x - o.x, L.y - o.y) >= 0.75 - 1e-9, "dentro de un tronco");
+    assert.strictEqual(L.libre, "copa"); assert.strictEqual(L.z, 412);
+    const fx = Math.sin(L.ang), fy = Math.cos(L.ang); assert.ok(fx * (bx - L.x) / L.d + fy * (by - L.y) / L.d > 0.9999, "mirándola");
+  }
+  assert.strictEqual(Encuentro.punto({ x: 100, y: 100 }, { x: 100, y: 0 }, [], EXT, { dists: Encuentro.BALIZA }).d, 4.5, "en abierto, a 4,5 m");
+});
 test("contratos/livekit-roles.json: en F2 ningún rol publica audio ni vídeo, todos publican datos, nadie lleva roomAdmin y la identidad es opaca", () => {
   const R = JSON.parse(lee("contratos/livekit-roles.json"));
   assert.strictEqual(R.contrato, "livekit-roles"); assert.strictEqual(R.version, 2); assert.strictEqual(R.fase, "F2");

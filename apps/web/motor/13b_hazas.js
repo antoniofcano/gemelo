@@ -1,5 +1,5 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: Hazas
+// Expone: HazasPuro, Hazas
 // Consume: 01_datos (D, $), 02_mundo (Mundo, suelo), 03_escena (lienzo, camera, SRGB, exag), 08_marcadores (gLinde), 09_camara (objetivo),
 //   12_paseo (paseando), 13_parcelas (parcelas), 29_vr (ficha)
 // Nota: Sin D.base /teselas/… ni ?api= no pide nada ni crea nada; el trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/hazas.test.js.

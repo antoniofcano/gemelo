@@ -1,11 +1,11 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: actualizaMinimapa
-// Consume: 01_datos (D, $, ANCHO, ALTO), 02_mundo (Mundo, cIn), 12_paseo (paseando, persona), 13_parcelas (parcelas), 15_tiempo (esc),
-//   16_vida (enQuad, mira, conejos, quad, enDron, dron), 19_balizas (dibujaBalizasMini), 25_perros (dibujaPerrosMini), 26_presencia (Presencia),
-//   90_final (cuadro)
+// Consume: 01_datos (D, $, ANCHO, ALTO), 02_mundo (Mundo, cIn), 12_paseo (paseando, persona), 13_parcelas (parcelas), 14_historia (aviso),
+//   15_tiempo (esc), 16_vida (enQuad, mira, conejos, quad, enDron, dron), 19_balizas (avisoBaliza, dibujaBalizasMini), 25_perros (dibujaPerrosMini),
+//   26_presencia (Presencia), 90_final (cuadro)
 // ===============================================================================
   // ---------- el minimapa del paseo: la ortofoto vista desde arriba con tú, tu rastro, el dron y los conejos (M o un toque cambia el zoom)
-  var mini = { cv: $("mapita"), cerca: false, oculto: false, rastro: [], t: 0, pts: [], sel: null }, MW = 240, MH = Math.round(MW * ALTO / ANCHO);
+  var mini = { cv: $("mapita"), cerca: false, oculto: false, rastro: [], t: 0, pts: [], bal: [], sel: null }, MW = 240, MH = Math.round(MW * ALTO / ANCHO);
   // I1: con la presencia compartida, los demás que se ven (Presencia.puntos: de tu sala, con pose y sin bloquear) salen como puntos violeta (en quad, un
   // cuadrado; con el dron, un rombo). Un toque en un punto muestra su alias («toca otra vez para ir»); otro toque en 4 s te lleva con esa persona
   var SEL_T = 4, TOQUE = 14;
@@ -15,7 +15,11 @@
     mini.cv.addEventListener("click", function (e) {
       var r = mini.cv.getBoundingClientRect(), x = (e.clientX - r.left) * MW / (r.width || MW), y = (e.clientY - r.top) * MH / (r.height || MH), mejor = null, dm = TOQUE * TOQUE;
       mini.pts.forEach(function (p) { var d = (p.px - x) * (p.px - x) + (p.py - y) * (p.py - y); if (d < dm) { dm = d; mejor = p; } });
-      if (!mejor) { mini.sel = null; cambia(); return; }   // fuera de los puntos: cambia el zoom, como siempre
+      if (!mejor) {   // I4: el rombo de una baliza abre su aviso («¿Ir a esta baliza?»); fuera de puntos y rombos, cambia el zoom, como siempre
+        var bal = null, db = TOQUE * TOQUE;
+        mini.bal.forEach(function (p) { var d = (p.px - x) * (p.px - x) + (p.py - y) * (p.py - y); if (d < db) { db = d; bal = p; } });
+        mini.sel = null; if (bal) avisoBaliza(bal.k); else cambia(); return;
+      }
       if (mini.sel && mini.sel.id === mejor.id && mini.sel.t > 0) { mini.sel = null; Presencia.irCon(mejor.id); }   // segundo toque: vamos
       else mini.sel = { id: mejor.id, t: SEL_T };
       mini.t = 1;
@@ -52,7 +56,7 @@
     c.lineWidth = 2; c.strokeStyle = "rgba(255,154,46,0.9)"; c.beginPath(); mini.rastro.forEach(function (q, i) { if (i) c.lineTo(X(q[0]), Y(q[1])); else c.moveTo(X(q[0]), Y(q[1])); }); c.stroke();
     // conejos
     c.fillStyle = "#f2dcb8"; conejos.forEach(function (co) { if (!co.visible) return; c.beginPath(); c.arc(X(co.userData.x), Y(co.userData.y), 2.2, 0, 6.283); c.fill(); });
-    dibujaBalizasMini(c, X, Y); dibujaPerrosMini(c, X, Y);
+    dibujaBalizasMini(c, X, Y, mini.bal); dibujaPerrosMini(c, X, Y);
     // los demás (solo con la presencia compartida): violeta con borde blanco, distinto de tu flecha naranja; en vista cercana, con su alias al lado
     mini.pts.length = 0;
     if (Presencia.activo()) {
