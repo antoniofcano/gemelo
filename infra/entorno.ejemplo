@@ -19,6 +19,13 @@ GEMELO_SESION_INACTIVIDAD_DIAS=7
 GEMELO_ENLACE_POR_IP=10
 GEMELO_ENLACE_POR_CORREO=3
 GEMELO_ENLACE_VENTANA_MIN=15
+# código corto de las gafas (contratos/sesion.md § Código corto): códigos por IP, intentos de aprobar por hogar y por IP
+# (en la ventana), y sondeos por minuto y por IP
+GEMELO_VINCULO_POR_IP=10
+GEMELO_VINCULO_INTENTOS_POR_HOGAR=5
+GEMELO_VINCULO_INTENTOS_POR_IP=10
+GEMELO_VINCULO_SONDEOS_POR_MIN=60
+GEMELO_VINCULO_VENTANA_MIN=15
 
 # --- correo del enlace mágico: SMTP de OVH (decisión 15) [NO VERIFICADO contra el buzón real]
 GEMELO_CORREO=smtp

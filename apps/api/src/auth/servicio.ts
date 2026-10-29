@@ -6,6 +6,11 @@ import { hashToken, nuevoToken } from "../seguridad/cripto.ts";
 export type Rol = "hogar" | "guia" | "corresponsal" | "admin";
 export const ROLES: readonly Rol[] = ["hogar", "guia", "corresponsal", "admin"];
 
+/** Versión vigente de las normas y la privacidad del primer acceso (UX.md §4.5). Si cambian, se sube y se vuelven a pedir. */
+export const NORMAS_VERSION = 1;
+/** ¿Le toca al hogar el primer acceso (normas sin aceptar o de una versión vieja)? */
+export const primerAcceso = (normasVersion: number | null | undefined): boolean => !(typeof normasVersion === "number" && normasVersion >= NORMAS_VERSION);
+
 const RE_CORREO = /^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$/;
 
 /** Correo normalizado (sin espacios, en minúsculas) o null. Sin comentarios, comillas ni grupos: lo más estricto posible. */
@@ -50,15 +55,15 @@ export async function estadoEnlace(bd: Bd, token: string): Promise<"valido" | Mo
 }
 
 /** Gasta el enlace de forma atómica: con dos peticiones a la vez y el mismo token, solo una entra. */
-export async function consumeEnlace(bd: Bd, token: string): Promise<{ ok: true; hogarId: number } | { ok: false; motivo: MotivoEnlace }> {
-  const r = await bd.query<{ hogar_id: number }>(
+export async function consumeEnlace(bd: Bd, token: string): Promise<{ ok: true; hogarId: number; primerAcceso: boolean } | { ok: false; motivo: MotivoEnlace }> {
+  const r = await bd.query<{ hogar_id: number; normas_version: number | null }>(
     `UPDATE tokens_acceso t SET usado_en = now() FROM hogares h
       WHERE t.hash = $1 AND t.usado_en IS NULL AND t.expira_en > now() AND h.id = t.hogar_id AND h.activo
-      RETURNING t.hogar_id`, [hashToken(token)]);
+      RETURNING t.hogar_id, h.normas_version`, [hashToken(token)]);
   const f = r.rows[0];
   if (f) {
     await audita(bd, f.hogar_id, "enlace.usado");
-    return { ok: true, hogarId: f.hogar_id };
+    return { ok: true, hogarId: f.hogar_id, primerAcceso: primerAcceso(f.normas_version) };
   }
   const e = await estadoEnlace(bd, token);
   return { ok: false, motivo: e === "valido" ? "usado" : e };
@@ -73,5 +78,6 @@ export async function revocaTodas(bd: Bd, hogarId: number): Promise<number> {
 /** Limpieza periódica: enlaces y sesiones muertos hace más de un día. */
 export async function purga(bd: Bd): Promise<void> {
   await bd.query("DELETE FROM tokens_acceso WHERE expira_en < now() - interval '1 day'");
+  await bd.query("DELETE FROM codigos_vinculo WHERE expira_en < now() - interval '1 day'");
   await bd.query("DELETE FROM sesiones WHERE expira_en < now() - interval '1 day' OR revocada_en < now() - interval '1 day'");
 }
