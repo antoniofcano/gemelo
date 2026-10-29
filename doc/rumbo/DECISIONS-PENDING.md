@@ -32,3 +32,4 @@ Decisiones que **no puede tomar un agente**: las cierra Antonio. Las técnicas s
 | 18 | Cambio visual al subir three | **Aceptar el aspecto nuevo** (color y luz modernos, recalibrado a ojo) | fase 1c |
 | 19 | Corresponsal de campo | **La misma web como PWA** (Wake Lock) | fase 4 |
 | 20 | Salida artefacto | **Se mantiene hasta la fase 2** y luego se retira | ADR-0010 |
+| 21 | **Cuándo desplegar en el VPS** | ahora / cuando haya algo funcional y probado en local | despliegue de F1a en OVH | ✅ 2026-10-29: **nada en el VPS hasta tener algo funcional y probado en local** (entorno `infra/dev` con la api enchufada, el mundo cargando y el recorrido de entrada completo) |
