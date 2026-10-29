@@ -19,7 +19,7 @@ async function hazEncargo(nav, f) {
   try {
     for (const v of e.variantes) {
       const url = "http://127.0.0.1:" + srv.address().port + "/" + e.pagina + (v.consulta ? (v.consulta.startsWith("?") ? v.consulta : "?" + v.consulta) : "");
-      try { res.variantes[v.nombre] = await mide(nav, url, { escenarios, tope: e.tope_s * 1000, capturas: e.capturas ? path.join(dir, v.nombre) : null }); }
+      try { res.variantes[v.nombre] = await mide(nav, url, { escenarios, tope: e.tope_s * 1000, capturas: e.capturas ? path.join(dir, v.nombre) : null, desglose: !!e.desglose }); }
       catch (err) { res.variantes[v.nombre] = { error: String(err.message || err).slice(0, 500) }; }
     }
   } finally { srv.close(); }
