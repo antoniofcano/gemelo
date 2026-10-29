@@ -67,6 +67,39 @@ Mapa de iniciativas con su estado y el ADR que las sostiene. **No** es el estado
 
 Tareas sueltas decididas: ✅ anonimizar `doc/historico/DISENO-2026-10.md` (decisión 2) · ✅ exportadores multiplataforma (decisión 8, D4).
 
+## Tablero de tareas (desde el 2026-10-29)
+
+Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** primero las ligeras que desbloquean a otras, en paralelo; lo que pasa por Chrome o Docker (🔶), al final y por el [banco de pruebas](../operacion/TESTING.md#banco-de-pruebas-un-solo-chrome-o-docker-a-la-vez-política-desde-el-2026-10-29); 👤 = lo hace Antonio. Estado: ✅ hecho · 🟡 en curso · ⬜ por hacer.
+
+| Id | Tarea | Depende de | Tipo | Estado |
+|---|---|---|---|---|
+| D1 | Hituelo v3: `copas_id`, `copas_tipo`, `copas_semilla`, `copas_param` (fuera del repo) | — | ligera | 🟡 terminando |
+| A1 | Código corto para vincular las gafas: api, contrato y pruebas unitarias | — | ligera | 🟡 |
+| A2 | Portada y pantalla de entrada (UX) en `apps/web` | — | ligera | 🟡 |
+| A3 | Entorno local sirve Hituelo v3 con los olivos generados (cliente web con `gemelo-olivo`) | D1 | ligera | ⬜ |
+| A4 | Lindes de las hazas en el motor (el «3c») | — | ligera; 🔶 al medir | ⬜ |
+| A5 | e2e de entrada completa: portada → enlace → mundo con lindes; gafas → código → sesión | A1, A2, A4 | 🔶 Docker | ⬜ |
+| A6 | **Prueba en aparatos** (navegador, móvil, Quest; decisión 57) | A1, A2, A3 | 👤 | ⬜ |
+| T1 | F1d 3b: terreno 3D Tiles en el motor (`04b_escena3d.js`, `?escena=tiles`), código | — | ligera | 🟡 |
+| T2 | Tileset de Hituelo regenerado con el generador 0.3.0 desde D1 | D1 | pesada de CPU (≈30 min), sin Chrome | ⬜ |
+| T3 | F1d 3b: medir con el fixture y con Hituelo; raíz vacía visible de lejos | T1, T2 | 🔶 | ⬜ |
+| T4 | F1d 4: olivos del tileset con máscara (de cerca, los del motor y los generados) | T1 | ligera; 🔶 al medir | ⬜ |
+| T5 | F1d 5: sombreado (nubes, escarcha, NDVI, suelo) sobre el tileset | T1 | ligera; capturas 🔶 → 👤 | ⬜ |
+| T6 | F1d 6-7: presupuesto y VR con el simulador | T3, T4, T5 | 🔶 | ⬜ |
+| T7 | F1d 8: Quest real (p95 ≤ 13,9 ms) | T6 | 👤 | ⬜ |
+| T8 | F1d 9: la escena nueva por defecto; se retira la vieja | T6 (T7 o «no probado», decisión 35) | ligera | ⬜ |
+| P1 | F2: la api firma tokens de LiveKit (`POST /api/presencia/token`, `livekit-server-sdk`, roles del contrato) | — | ligera | ⬜ |
+| P2 | F2: el motor publica y recibe la pose con `livekit-client` (sustituye a la red simulada) | P1 | ligera | ⬜ |
+| P3 | F2: chat por el canal de datos y moderación mínima (expulsar con auditoría, decisión 42) | P1 | ligera | ⬜ |
+| P4 | F2: dos Chrome en la misma sala (p95 < 250 ms) y 40 clientes ligeros | P2, P3 | 🔶 Docker + Chrome | ⬜ |
+| O1 | Olivos generados: transición suave al acercarse (forma y luz; materiales con nubes y escarcha del motor) | — | ligera; 🔶 al medir | ⬜ |
+| O2 | Olivos generados: desglose del coste de `factorR8 = 1` por objeto | — | 🔶 | ⬜ |
+| O3 | `semillas_copas.py` dentro de los exportadores | — | ligera | ⬜ |
+| O4 | Medir 10 olivos en campo con cinta (decisiones 48-49) | — | 👤 | ⬜ |
+| V1 | VPS: preparar el despliegue (RUNBOOK-VPS al día, SMTP de OVH, token de OlivarTrack, comprobaciones previas) | — | ligera (documentos y guiones) | ⬜ |
+| V2 | VPS: desplegar F1a | A5, A6, V1 (decisión 21) | 👤 confirma cada paso | ⬜ |
+| G1 | Arreglar la facturación de GitHub para que corra el CI | — | 👤 | ⬜ |
+
 ## Decidido no hacerlo (por ahora)
 
 - 🚫 `logarithmicDepthBuffer`: se usa `near` dinámico y `far` mayor (coste en iOS sin medir **[SUPUESTO]**).
