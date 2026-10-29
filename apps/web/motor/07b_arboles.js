@@ -2,8 +2,8 @@
 // Expone: Arboles
 // Consume: 01_datos (FACTOR_R8), 02_mundo (Mundo, suelo, copaAlta, kcor, tinte, aviva, copas), 02b_cola (Cola),
 //   03_escena (renderer, camera, exag, modo, calidad), 04_terreno (hash), 04c_olivos_tiles (OlivosTiles), 05_nube (ALTO_MAX, nube),
-//   06_arboles (gArboles, tronco, arbolesG), 07_follaje (follajeG, construyeSombras), 07a_catalogo (Catalogo), 07ab_generados (Generados),
-//   09_camara (objetivo, orb), 10_ndvi (ndviIdx), 12_paseo (paseando), 15_tiempo (nivel, esc, hace), 16_vida (mira)
+//   06_arboles (gArboles, tronco, arbolesG), 07_follaje (follajeG, construyeSombras), 07a_catalogo (Catalogo), 07ab_generados (Escalera, Generados),
+//   07ac_lejanos (Lejanos), 09_camara (objetivo, orb), 10_ndvi (ndviIdx), 12_paseo (paseando), 15_tiempo (nivel, esc, hace), 16_vida (mira)
 // ===============================================================================
   // ---------- los olivos del modo Gemelo con tres niveles de detalle: el coste de dibujo no crece con la superficie de la finca
   // Nivel 0: celdas de 64 m con el modelo completo (copa medida, troncos, hojas, flores y aceitunas) alrededor de lo que se mira (o de quien pasea), hasta MAX0 olivos.
@@ -62,6 +62,7 @@
         var P = c.perfil, L = [0, 1, 2, 3].map(function (q) { return (P[q] + P[q + 4]) / 2; }), im = 0; for (var q2 = 1; q2 < 4; q2++) if (L[q2] > L[im]) im = q2;
         c.ang = im * Math.PI / 4; c.rx = Math.max(0.6, L[im] * FACTOR_R8); c.rz = Math.max(0.6, L[(im + 2) % 4] * FACTOR_R8); c.pr = Math.min(NP1 - 1, Math.floor(hash(c.i * 7.7 + 1) * NP1)); c.vf = 0.88 + 0.26 * hash(c.i * 3.7);
       });
+      Lejanos.inicia(olivos);   // ?olivos=escalera (07ac); sin la bandera no hace nada
     }
     function libera(g) { g.traverse(function (o) { if (o.geometry) o.geometry.dispose(); }); }
     // los puntos LiDAR de una celda: se reparten una vez por tesela en un mapa de celda → índices (a rebanadas)
@@ -107,6 +108,7 @@
     function radioPre() { return paseando ? 175 : orb.dist < 1100 ? 190 : 0; }
 
     function reclasifica() {
+      if (escalera()) return reclasificaEscalera();
       var cam = camera.position, vis = gArboles.visible, ahora = performance.now(), R0 = vis ? radioNivel0() : 0, RP = radioPre(), todas = Object.keys(celdas).map(function (k) { return celdas[k]; });
       var fx = paseando ? cam.x : objetivo.x, fz = paseando ? cam.z : objetivo.z, dts = (ahora - ultima.tms) / 1000;
       if (ultima.tms && dts > 0.05 && dts < 3) { vel.x = 0.55 * vel.x + 0.45 * (fx - ultima.fx) / dts; vel.z = 0.55 * vel.z + 0.45 * (fz - ultima.fz) / dts; } else if (!ultima.tms || dts >= 3) { vel.x = vel.z = 0; }
@@ -116,14 +118,7 @@
       // el foco de los generados, paseando, es quien pasea (pp), no la cámara: la cámara va detrás y, al girar en el sitio, describe un círculo
       // que cambiaba el plan y rehacía el lote (Antonio, en el móvil: «si giras sin moverte llega a desaparecer»)
       var GEN = Generados.actualiza(paseando ? pp.x : fx, paseando ? -pp.y : fz, Math.max(0, TOPE_TRI - triTil), olivos, esc);   // ?olivos=gen (07ab): dentro de su radio, el nivel 0 de siempre se apaga; sin la bandera, radio 0
-      // el aparato manda: sube o baja la escala según el tiempo por fotograma medido
-      if (!fijaSc) {
-        // por encima de 1,6 solo si además el fotograma va por debajo de 1,4 M triángulos; si pasa del techo de diseño (1,7 M, ADR-0002), baja
-        var triFot = renderer.info.render.triangles, techo = emaDt < 0.016 && triFot < 1400000 ? 2.5 : 1.6;
-        if (triFot > 1700000 && esc > 1.6) esc = Math.max(1.6, esc - 0.10);
-        else if (emaDt < 0.020) esc = Math.min(Math.max(techo, esc > 1.6 ? esc : 0), esc + 0.05);
-        else if (emaDt > 0.030) esc = Math.max(0.7, esc - 0.10);
-      }
+      ajustaEscala();
       var tope0 = MAX0 * esc * (vrP ? vrP.n : 1);
       // 1) celdas de nivel 0 (las que se ven) y de precarga (las de alrededor y las de delante, que se construyen sin enseñarse)
       var bajo = !paseando && cam.y - suelo(cam.x, -cam.z) * exag < 45, RC = 95 * Math.sqrt(esc);   // con la cámara a ras de suelo se ve hasta lejos: también cuentan las celdas de su alrededor
@@ -178,6 +173,42 @@
       n1 = a1; n2 = a2; triEst = tri0 + a1 * TRI1 + a2 * TRI2 + triTil;
       ultima.x = cam.x; ultima.y = cam.y; ultima.z = cam.z; ultima.exag = exag; ultima.k = tinte + "|" + ndviIdx + "|" + kcor; sucio = false;
     }
+    // el aparato manda: sube o baja la escala según el tiempo por fotograma medido
+    function ajustaEscala() {
+      if (fijaSc) return;
+      // por encima de 1,6 solo si además el fotograma va por debajo de 1,4 M triángulos; si pasa del techo de diseño (1,7 M, ADR-0002), baja
+      var triFot = renderer.info.render.triangles, techo = emaDt < 0.016 && triFot < 1400000 ? 2.5 : 1.6;
+      if (triFot > 1700000 && esc > 1.6) esc = Math.max(1.6, esc - 0.10);
+      else if (emaDt < 0.020) esc = Math.min(Math.max(techo, esc > 1.6 ? esc : 0), esc + 0.05);
+      else if (emaDt > 0.030) esc = Math.max(0.7, esc - 0.10);
+    }
+
+    // ----- ?olivos=escalera (ADR-0019, fase A): todos los olivos por la escalera del constructor (07ab en 3D, 07ac de lejos), repartidos por el
+    // presupuesto del aparato (Escalera.tope: escritorio TOPE_TRI × esc, móvil 270 k sin medir con esc ≤ 1, gafas el tri del perfil); fuera el nivel 0
+    // de siempre, los niveles 1 y 2 y (con ?escena=tiles) los olivos del tileset, apartados todos con la máscara de 04c. Si el constructor no arranca
+    // (Generados «sin»), vuelve lo de siempre.
+    var MOVIL = (function () { var nv = typeof navigator !== "undefined" ? navigator : {}; return /Mobi|Android|iPhone|iPad/i.test(nv.userAgent || "") || !!(nv.deviceMemory && nv.deviceMemory <= 4); })();
+    var tilApartados = false, presEsc = 0;
+    function escalera() { return Generados.escalera() && Generados.estado() !== "sin"; }
+    function apagaSiempre() {
+      Object.keys(celdas).forEach(function (k) { var c = celdas[k]; Cola.cancela("C" + k); if (c.g) quitaCelda(c); c.en = c.pre = false; });
+      var k;
+      for (k = 0; k < NP1; k++) iCopa1[k].count = iTron1[k].count = 0;
+      for (k = 0; k < NP2; k++) iCopa2[k].count = 0;
+      for (k in extra) extra[k].m1.concat(extra[k].m2).forEach(function (m) { m.count = 0; });
+      if (!tilApartados) { tilApartados = true; OlivosTiles.cerca(olivos.map(function (c) { return c.i; })); }   // la máscara de 04c, con todos: el tileset no dibuja ninguno
+    }
+    function reclasificaEscalera() {
+      var cam = camera.position, vis = gArboles.visible, fx = paseando ? cam.x : objetivo.x, fz = paseando ? cam.z : objetivo.z;
+      apagaSiempre();
+      ajustaEscala();
+      presEsc = Escalera.tope({ base: TOPE_TRI, vr: vrP, movil: MOVIL, escala: esc, triLejanos: Lejanos.triangulos() });
+      // el foco, paseando, es quien pasea (pp); retener: sin lejanos todavía, lo que sale del 3D se queda en él
+      var GEN = Generados.actualiza(paseando ? pp.x : fx, paseando ? -pp.y : fz, presEsc, olivos, esc, !Lejanos.hayCapa());
+      if (vis) Lejanos.reparte(cam, GEN);
+      nL0 = n1 = n2 = 0; faltan = 0; nPre = 0; triEst = GEN.tri + Lejanos.triangulos();
+      ultima.x = cam.x; ultima.y = cam.y; ultima.z = cam.z; ultima.exag = exag; ultima.k = tinte + "|" + ndviIdx + "|" + kcor; sucio = false;
+    }
     function tileCargada(ts) {   // llegaron los datos de una tesela: la altura de sus olivos pasa del relieve grueso al fino
       Object.keys(celdas).forEach(function (k) { var c = celdas[k]; if (c.ts !== ts) return; c.arr.forEach(function (o) { o.gz = suelo(o.x, o.y); }); c.sucia = true; }); sucio = true;
     }
@@ -190,6 +221,7 @@
       // ?olivos=gen: los generados avanzan su cola propia (con una parte del presupuesto de la Cola: la mitad, el 30 % si faltan celdas de nivel 0, y todo
       // si la Cola no tiene nada) y su fundido; al colocar un lote o acabar el fundido, se reparte de nuevo. Sin la bandera, no hace nada y no gasta
       if (Generados.paso(dt, presupuestoBase() * (!Cola.pendientes() ? 1 : faltan > 0 ? 0.3 : 0.5))) sucio = true;
+      if (Lejanos.paso(dt)) sucio = true;   // ?olivos=escalera: la capa de lejanos preparada (o fallida); sin la bandera, nada
       emaDt += (Math.min(dt, 0.1) - emaDt) * 0.04;
       var vis = gArboles.visible; if (!vis && modo !== "nube") return;   // en modo Ortofoto no hay árboles; en modo Nube se precargan los de alrededor
       t += dt;
@@ -201,6 +233,20 @@
       var justo = emaDt > 0.034; if (faltan > 0 && !justo) return paseando ? 8 : 12; return justo ? (paseando ? 3 : 4.5) : (paseando ? 3.5 : 6);
     }
     function perfil(p) { vrP = p || null; TOPE_TRI = p ? p.tri : TOPE_TRI0; sucio = true; }
-    function resumen() { return { olivos: olivos.length, nivel0: nL0, nivel1: n1, nivel2: n2, celdas: Object.keys(celdas).length, construidas: Object.keys(celdas).filter(function (k) { return celdas[k].g; }).length, faltan: faltan, precarga: nPre, esc: +esc.toFixed(2), triEst: triEst, tiles: OlivosTiles.dibuja(), emaMs: +(emaDt * 1000).toFixed(1) }; }
+    function resumen() {
+      var r = { olivos: olivos.length, nivel0: nL0, nivel1: n1, nivel2: n2, celdas: Object.keys(celdas).length, construidas: Object.keys(celdas).filter(function (k) { return celdas[k].g; }).length, faltan: faltan, precarga: nPre, esc: +esc.toFixed(2), triEst: triEst, tiles: OlivosTiles.dibuja(), emaMs: +(emaDt * 1000).toFixed(1) };
+      if (Generados.escalera()) r.escalera = resumenEscalera();   // solo con la bandera: sin ella, el resumen es el de siempre
+      return r;
+    }
+    /** ?olivos=escalera: el reparto (E0/E1/E2/lejanos), triángulos y llamadas de olivos, para ?debug y el banco */
+    function resumenEscalera() {
+      var g = window.__olivosGen ? window.__olivosGen() : null, inf = g && g.info || {}, nv = inf.niveles || {}, L = Lejanos.resumen() || {};
+      var inst1 = 0; for (var k = 0; k < NP1; k++) inst1 += iCopa1[k].count + iTron1[k].count; for (k = 0; k < NP2; k++) inst1 += iCopa2[k].count;
+      var t = OlivosTiles.resumen();
+      return { activa: escalera(), estado: g ? g.estado : "", E0: nv.E0 || 0, E1: nv.E1 || 0, E2: (nv.E2 || 0) + (nv.E2VR || 0), vr: !!vrP, lejanos: L.dibujados || 0, lejanosModo: L.fuente, lejanosMiB: L.texturaMiB || 0,
+        triOlivos: (inf.triangulos || 0) + (L.triangulos || 0), llamadasOlivos: (inf.llamadas || 0) + (L.llamadas || 0), triSaliendo: inf.triSaliendo || 0, presupuesto: Math.round(presEsc), movil: MOVIL,
+        reparto: g && g.escalera ? g.escalera.reparto : null, sombras: g && g.escalera ? g.escalera.sombras : null, sombraMap: !!(renderer.shadowMap && renderer.shadowMap.enabled),
+        nivel0Mallas: Object.keys(celdas).filter(function (k) { return celdas[k].g && celdas[k].g.visible; }).length, instanciasN12: inst1, tilesetDibujados: t.estado === "activo" ? t.dibujadas : 0, lejanosDetalle: L };
+    }
     return { perfil: perfil, inicia: inicia, tileCargada: tileCargada, refresca: refresca, actualiza: actualiza, presupuesto: presupuesto, resumen: resumen, celdas: celdas };
   })();

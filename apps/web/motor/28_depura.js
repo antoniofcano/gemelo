@@ -16,6 +16,13 @@
       (g.cache ? " · caché: memoria " + g.cache.memoria + " (" + g.cache.memoriaMB + " MB) · disco " + (g.cache.enDisco ? (g.cache.disco === null ? "…" : g.cache.disco) + " (" + g.cache.discoMB + " MB)" : "no") + (g.cache.aviso ? " · " + g.cache.aviso.slice(0, 50) : "") : "") +
       (h ? " · horneadas " + h.horneadas + " · calculadas " + h.calculadas + " · fallos " + h.fallos + (h.estado !== "activo" ? " (manifiesto: " + h.estado + (h.motivo ? ", " + h.motivo.slice(0, 40) : "") + ")" : "") : "") + "\n";
   }
+  // con ?olivos=escalera (ADR-0019), una línea con el reparto: cuántos olivos en E0, E1, E2 (E2-VR en gafas) y lejanos (impostor o sustituto), y los
+  // triángulos y llamadas de olivos frente al presupuesto del aparato
+  function escDebug(a) {
+    var e = a.escalera; if (!e) return "";
+    return "escalera " + (e.activa ? "" : "(apagada: " + e.estado + ") ") + "E0 " + e.E0 + " · E1 " + e.E1 + " · E2" + (e.vr ? "-VR " : " ") + e.E2 + " · lejanos " + e.lejanos + " (" + (e.lejanosModo || "—") + ")" +
+      " · olivos " + (e.triOlivos / 1000).toFixed(0) + " k tri / " + (e.presupuesto / 1000).toFixed(0) + " k · " + e.llamadasOlivos + " llamadas" + (e.movil ? " · móvil" : "") + "\n";
+  }
   function depuraCuadro(tIni) {
     if (!DEPURA) return;
     var js = performance.now() - tIni; dep.n++; dep.js += js; if (js > dep.mx) dep.mx = js;
@@ -25,6 +32,6 @@
     dep.el.textContent = (dep.n * 1000 / (ahora - dep.t0)).toFixed(0) + " fps · JS " + (dep.js / dep.n).toFixed(1) + " ms (pico " + dep.mx.toFixed(0) + ")\n" +
       i.render.calls + " llamadas · " + (i.render.triangles / 1000).toFixed(0) + " k tri · " + (i.render.points / 1000).toFixed(0) + " k pts\n" +
       "cola " + Cola.pendientes() + " pendientes · rebanada máx (ms): " + Object.keys(Cola.est).map(function (k) { return k + " " + Cola.est[k].max.toFixed(0); }).join(" · ") + "\n" +
-      (window.VR_ESTADO ? window.VR_ESTADO + vrDebugExtra() + "\n" : "") + (Presencia.activo() ? Presencia.texto() + "\n" : "") + genDebug() + "teselas " + cargadas + "/" + Mundo.lista.length + " · olivos N0 " + a.nivel0 + " N1 " + a.nivel1 + " N2 " + a.nivel2 + " · heap " + mem;
+      (window.VR_ESTADO ? window.VR_ESTADO + vrDebugExtra() + "\n" : "") + (Presencia.activo() ? Presencia.texto() + "\n" : "") + genDebug() + escDebug(a) + "teselas " + cargadas + "/" + Mundo.lista.length + " · olivos N0 " + a.nivel0 + " N1 " + a.nivel1 + " N2 " + a.nivel2 + " · heap " + mem;
     dep.n = 0; dep.js = 0; dep.mx = 0; dep.t0 = ahora;
   }

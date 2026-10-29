@@ -42,7 +42,7 @@
   }
   function rotuloGenerado(i) {   // decisión 34: si el olivo se dibuja generado (?olivos=gen), se dice que su forma es ilustrativa y si su id es provisional
     var r = Generados.rotulo(i); if (!r) return "";
-    return "<dt>Forma</dt><dd>ilustrativa con medidas del LiDAR" + (r.variante ? " (variante)" : "") + "</dd>" + (r.provisional ? "<dt>Id</dt><dd>provisional (aún no viene del censo)</dd>" : "");
+    return "<dt>Forma</dt><dd>ilustrativa con medidas del LiDAR" + (r.lejano ? " (lejano)" : r.variante ? " (variante)" : r.niv && Generados.escalera() ? " (propio)" : "") + "</dd>" + (r.provisional ? "<dt>Id</dt><dd>provisional (aún no viene del censo)</dd>" : "");
   }
   function eligeCopa(best) {
     var f = $("ficha");
