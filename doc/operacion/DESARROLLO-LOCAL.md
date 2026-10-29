@@ -5,7 +5,7 @@ El mundo, la api y los servicios base de la fase 1a y la fase 2 corriendo en tu 
 ## Requisitos
 
 - Docker con Compose v2 (probado con Docker 29.6 y Compose v5 en Windows 10 con Docker Desktop). Unas imágenes de ≈ 1 GB la primera vez (PostGIS 733 MB, LiveKit 132 MB, Caddy 93 MB, Mailpit 51 MB).
-- Lo de la puerta ([ONBOARDING](ONBOARDING.md)): Node ≥ 24, Python 3 (para generar el fixture) y `cd apps/web && npm i` (si falta, `levanta.mjs` hace `npm ci`).
+- Lo de la puerta ([ONBOARDING](ONBOARDING.md)): Node ≥ 24, Python 3 (para generar el fixture) y `cd apps/web && npm i`. `levanta.mjs` hace `npm ci` en `apps/web`, `apps/web/olivo` y `infra/dev/herramientas` si falta `node_modules` **o si su `package-lock.json` ya no corresponde a lo instalado** (p. ej. tras añadir una dependencia; compara con el lock oculto de npm y deja el sello `node_modules/.gemelo-lock-sello`).
 - Para la siembra de hazas: `jsonschema` de Python (`pip install -r tuberia/hazas/requirements.txt`). La imagen de la api se construye sola (no hace falta `npm ci` en `apps/api` para levantar; sí para sus pruebas).
 - Las dependencias de los scripts (`infra/dev/herramientas/package.json`, versiones exactas: `livekit-server-sdk`, `pg`, `nodemailer`) las instala `levanta.mjs` con `npm ci` la primera vez.
 
@@ -108,6 +108,8 @@ Para la prueba de Antonio (decisión 57: navegador, móvil y Quest, cada uno por
 |---|---|
 | `GEMELO_DEV_FINCA_CARPETA` | la carpeta de **una** finca con `indice.json` y `t/` directamente dentro (la salida de referencia `hituelo-v3`); se monta de solo lectura y se sirve en `/teselas/<GEMELO_DEV_FINCA>/` |
 | `GEMELO_DEV_TILESET` | la carpeta del tileset (con `tileset.json` directamente dentro); se sirve en `/teselas/<GEMELO_DEV_FINCA>/tileset/` |
+| `GEMELO_DEV_OLIVOS` | la carpeta `olivos/` que escribe el hornero (`<salida>/<finca>/olivos/`, con `manifiesto.json`, `t/` y los `<huella>.br` directamente dentro); se sirve en `/teselas/<GEMELO_DEV_FINCA>/olivos/` (objetos `.br` con `Content-Encoding: br` e `immutable`; manifiestos con `no-cache`). Sin ella, esa ruta da 404 |
+| `GEMELO_DEV_PUERTO_LIVEKIT_TCP` / `_UDP` | 7881 / 7882; solo para levantar un **segundo** entorno a la vez (con otro `COMPOSE_PROJECT_NAME` y los demás `GEMELO_DEV_PUERTO_*`): el audio de ese segundo no vale |
 | `GEMELO_DEV_FINCA` | `hituelo` (el valor por defecto) |
 | `GEMELO_DEV_IP` | solo si la IP detectada no es la de la WiFi (con `--red-local`) |
 
