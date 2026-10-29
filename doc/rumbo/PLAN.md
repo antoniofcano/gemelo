@@ -60,6 +60,8 @@ Mapa de iniciativas con su estado y el ADR que las sostiene. **No** es el estado
 | F5 | Aula, puzles, dron, museo; constructor de olivos real | ⬜ | según sus ADR |
 | UX | Propuesta de acceso, configuración e interacción + maqueta (`prototipos/ux/`) | 🟨 entregada, pendiente de revisión | Antonio la revisa |
 
+**Un solo mundo (decisión 22):** el mundo multiusuario es Hituelo (un origen de coordenadas, una sala de LiveKit por visita); Cerro Velasco queda como finca de pruebas y maquetas.
+
 **Despliegue (decisión 21):** no se despliega en el VPS hasta que haya algo funcional y probado en local: `npm run dev:arriba` con la api enchufada, el mundo cargando servido desde `/teselas`, y el recorrido completo de entrada (correo → enlace mágico en el buzón de pruebas → sesión → ficha de haza) probado de punta a punta.
 
 Tareas sueltas decididas: ✅ anonimizar `doc/historico/DISENO-2026-10.md` (decisión 2) · ✅ exportadores multiplataforma (decisión 8, D4).
