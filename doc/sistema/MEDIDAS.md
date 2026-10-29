@@ -75,6 +75,24 @@ Cerro embebido, escenarios `lejos` y `cerca` de `pruebas/guardianes/_navegador.j
 
 Para recortar la doble descarga (decisión 38), lo que el glb repite es `dtm` (como malla) y la ortofoto `t/*.jpg` (como textura); `pts` (la nube, que sigue en el motor por la decisión 37), `chm` y `suelo` (color del suelo del sombreador) no están en el glb. **fps, llamadas y memoria con este tileset: no medidos** (falta el paso 3 del plan, el motor).
 
+### Con `copas_id` (2026-10-29, salida nueva de Hituelo: [DATOS](../operacion/DATOS.md#hituelo-completo-para-olivosgen-y-f1d-copas_id-copas_tipo-copas_param-y-copas_semilla-2026-10-29))
+`node tuberia/tiles3d/genera.mjs --entrada <salida nueva> --salida pruebas/salida/tiles3d-hituelo-v3`, mismas opciones. Mismos nodos (269), triángulos por nivel y 40 MB en disco que la tabla de arriba (las teselas y `copas` son las mismas). **387 s (6,5 min)** en una corrida, máquina cargada (otros agentes con Docker y Chrome); no es cifra de referencia. `comprueba.mjs`: **0 errores**, `id_fuente = "copas_id"`, 17.577 instancias, 5.859 olivos en las hojas, 0 repetidos; el tileset anterior (`id_fuente = "indice"`) contra este índice da error en `huella_registro`, `id_fuente` y en la huella de cada glb con olivos: los ids se casan por `copas_id`, no por índice.
+
+## Hituelo real con `?olivos=gen` (2026-10-29, salida nueva con `copas_id`, `copas_param` y `copas_semilla`)
+Salida artefacto en modo ficheros (`montar_v2.py --finca hituelo --modo ficheros --datos <salida nueva>/indice.json --olivos <olivo.iife.js>`; HTML 5,8 MB + 92 ficheros), Chrome headless con SwiftShader (recuentos y memoria, **no fps**), 900×650, `?debug&arbsc=1`, máquina cargada. Escenarios propios de Hituelo (el «cerca» de `_navegador.js` cae en Hituelo sin olivos a 60 m): lejos 600 m sobre (−147, 547); cerca 45 m sobre (128,9, 328,7), una zona de densidad mediana (28 copas a 40 m); nube 350 m. Una corrida por caso; la cola no se vacía en SwiftShader (170-215 trabajos pendientes durante 15 min), así que las cifras son de un instante, no de un estado estable.
+
+| Escenario | Sin la bandera (llamadas / tri / heap) | Con `?olivos=gen` |
+|---|---|---|
+| «Listo» | 12,7 s | 7,8-11,3 s |
+| Lejos | 151 / 930 k / 128 MB | 151 / 899-930 k / 121-131 MB; no se genera nada |
+| Cerca | 127 / 1.970 k / 169 MB (N0 254) | antes del lote: 106-114 / 1.194-1.306 k / 137 MB; con el lote: **104 / 1.909 k / 160 MB** (N0 114) |
+| Nube | 130 / 1.230 k / 178 MB | 124 / 1.073 k / 151-156 MB; sin lote |
+
+- **Olivos generados: 2** (los 2 propios, ninguna variante), en una zona de 28 copas a 40 m: lote de **6 llamadas y 109 k tri** (coste 179 k con la pasada de sombras), radio 20 m. **Tardaron ≈ 7 min** (437 s) desde que la cámara llega: por rebanadas en la Cola, compartida con 200 trabajos de teselas y olivos de siempre; la tercera receta pedida no llegó en 15 min. En el cliente web va al trabajador: no medido.
+- **Ids**: los 5.882 son provisionales (≥ 2^31), así que todo olivo generado lleva «id provisional» en la ficha (`Generados.rotulo`, deducido del código y del índice; la ficha no se abrió con el clic simulado: **no visto en pantalla**).
+- **0 errores** de consola y 0 respuestas ≥ 400 en las dos páginas.
+- Observado en las capturas, sin medir la causa: con la bandera, los olivos de siempre cercanos salen como bolas lisas (menos N0: 114 frente a 254) mientras el lote no está; el olivo generado se ve de cerca con su tronco y su copa, más claro que la ortofoto.
+
 ## Tirones (rebanada máxima de la cola, ms, escritorio)
 R (ruido) 13 · N (nube, incluye decodificar una ortofoto) 12–40 antes de separar la decodificación · T (terreno) 6 · C (olivos N0) 10–20 · B 3. Con el presupuesto de 6 ms/fotograma (3,5 en paseo) el peor fotograma añade ≈ una rebanada. En un iPhone espera 2–3 veces más.
 
