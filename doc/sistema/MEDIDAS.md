@@ -153,6 +153,7 @@ Llamadas / triángulos / heap por escenario (`lejos` · `cerca` · `nube`), cada
 | O1 fundido | fixture con `--olivos` | 168/82k · 56/431k · 89/173k | `?olivos=gen`: **igual que sin bandera: ningún generado a la vista** (antes de O1, 47/546k): en estudio |
 
 - De lejos, en Hituelo real, el tileset dibuja la finca entera con ortofoto y olivos mientras la escena de siempre aún tiene teselas en cola (capturas de la ronda).
+- **O1c (ronda posterior):** con `?olivos=gen`, «cerca» del fixture: **40 llamadas / 545 k tri** (base 56 / 431 k), plan de 2 olivos, lote de 6 llamadas / 135 k tri (222 k con sombras), 0 errores; la espera a los generados terminó en 123 s (SwiftShader). En la captura, alrededor del generado los olivos del radio pasan al nivel 1 (bolas; N0 17, N1 121; decisión 26).
 - La escena de siempre no llega a vaciar su cola en el tiempo de espera con Hituelo real: las cifras de `base` son de una carga a medias.
 
 ### Topes de regresión con `?escena=tiles` y VR simulada (T6, 2026-10-29)
