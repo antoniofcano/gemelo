@@ -2,7 +2,7 @@
 
 Único sitio de «dónde estamos y qué falta». Se toca solo cuando el estado cambia (no en cada commit). Lo hecho se cuenta en el [CHANGELOG](../CHANGELOG.md); el rumbo, en [PLAN](rumbo/PLAN.md).
 
-**Versión: v0.2.0** · **Al día a: 2026-10-28** · **Prototipo**: funciona en Chrome con renderizado por software y sin errores de consola; el rendimiento en iPhone y Quest **no está medido**.
+**Versión: v0.2.0** · **Al día a: 2026-10-29** · **Prototipo**: funciona en Chrome con renderizado por software y sin errores de consola; el rendimiento en iPhone y Quest **no está medido**.
 
 ## Publicado
 
@@ -25,7 +25,7 @@
 - **F1d** (2026-10-29): tubería 3D Tiles con identidad por instancia (contrato tileset v1) y **Hituelo real generado y validado** (0 errores, 0 avisos; 269 glb, 40,9 MB; criterio 1 de ADR-0015 hecho). Sin medir aún en dibujo (motor, paso 3); Quest no probado. Antes: **F1d** (prototipo, 2026-10-29): tubería 3D Tiles 1.1 hecha y medida solo con el fixture (validador de CesiumGS sin errores; visor: lejos 2 llamadas/4,4 k tri, cerca 10/19,9 k, SwiftShader). Falta Hituelo real, integrarla en el motor (tras F1c) y Quest. ADR-0015 Propuesto.
 - **Ids estables por árbol** (2026-10-29): los exportadores emiten `copas_id`/`copas_tipo`; hoy **todos los ids son provisionales** (por posición) porque las marcas de OlivarTrack no traen el id del olivo. Falta ese campo en la exportación de OlivarTrack (CONTRATOS §1.1).
 - **F1c** (2026-10-29): three 0.186.1 (ADR-0016): motor en color y luz modernos; la artefacto carga three de jsDelivr con importmap. Aspecto nuevo aprobado por Antonio; en VR el relieve fino del suelo se apaga si el fotograma va justo. No probado en iPhone, Quest ni en un artefacto publicado.
-- Repositorio público con las fuentes unificadas y este sistema de trabajo: puerta con 85 comprobaciones (`npm run puerta`, ≈2-3 min), fixture sintético, contratos, 8 ADR y 11 skills.
+- Repositorio público con las fuentes unificadas y este sistema de trabajo: puerta con ~140 comprobaciones (`npm run puerta`; 138 en la última vuelta en main, unos 11 min con la máquina cargada), fixture sintético, contratos, 8 ADR y 11 skills.
 
 ## Datos
 
@@ -46,19 +46,21 @@ Fuentes: LiDAR PNOA 3.ª cobertura (vuelo 2024), MDT 0,5 m, ortofoto PNOA 2022 (
 
 ## Pendiente
 
-- **Licencia** (decisión de Antonio): hoy «todos los derechos reservados» por defecto.
-- Decidir si el suelo nuevo sustituye al anterior; integrar el suelo realista en la rama de producción.
+- **Prueba en aparatos** (decisión 57): navegador, móvil y Quest, cada uno por su cuenta en Hituelo real con los olivos generados. Falta P7 del constructor, `copas_param` de Hituelo (desde las LAZ) y el código corto para entrar en las Quest (decisión 61).
+- **Medir 10 olivos en campo con cinta** (plantilla de `tuberia/factores_campo.py`, rama del constructor): cierra el paso a `factorR8 = 1` (decisión 48) y los factores reales del LiDAR (49).
+- Portada y pantalla de entrada de la UX en `apps/web` (decisión 56) y lindes de las hazas en el mundo.
+- F1d paso 3: la escena 3D Tiles en el motor (`?escena=tiles`), con raíz sin contenido y Hituelo reexportado con `copas_id`. Hituelo en 3D Tiles son 269 glb: no cabe en una publicación de artefacto (≤ 255 ficheros), solo en el VPS.
+- `olivos.test.js` «Catalogo en la página» falla a ratos con la máquina cargada (pasa sola); sin diagnosticar.
 - Fundido entre niveles de olivos.
 - Frutales sin marcar en Hituelo (el LiDAR no los distingue).
 - Historia de Marín Hituelo (sin trabajos ni fenología en OlivarTrack).
 - Tres teselas del borde norte con cobertura incompleta si faltan las hojas 404-4181 y 406-4181.
 - Estabilizar la prueba VR completa con el mock: con SwiftShader la página se cae («Target crashed») tras ~25 pasos; es opcional en la puerta (PLAN P4).
-- **Arquitectura multiusuario «Cuarenta hazas»** ([propuesta](sistema/ARQUITECTURA-MULTIUSUARIO.md), [ADR-0009](adr/0009-plataforma-multiusuario-cuarenta-hazas.md), Propuesto): estudio pendiente del agente `arquitecto-multiusuario`. Decididos: Postgres propio en Docker, VPS en OVH, `gemelo.canoydamas.es`, hazas ajenas visibles; por decidir: grabar visitas.
+- **Arquitectura multiusuario «Cuarenta hazas»** ([ARQUITECTURA-MULTIUSUARIO](sistema/ARQUITECTURA-MULTIUSUARIO.md), [ADR-0009](adr/0009-plataforma-multiusuario-cuarenta-hazas.md), Aceptado): fases y estado en [PLAN](rumbo/PLAN.md). Nada se despliega en el VPS hasta que funcione y esté probado en local (decisión 21).
 - Borrar el artefacto desechable de la prueba de plataforma (con confirmación).
 - Más: [DECISIONS-PENDING](rumbo/DECISIONS-PENDING.md).
 
 ## Riesgos
 
 - Presupuesto de dibujo en dispositivos móviles (Hituelo de cerca llega a 1,4 M triángulos en SwiftShader: [MEDIDAS](sistema/MEDIDAS.md)).
-- Cifras reales de fincas en un repo público (decisión de Antonio; ver DECISIONS-PENDING).
 - Los intermedios de Cerro (`datos_cerro_embebido.json`) no se producen con ningún script del repo: regenerar Cerro desde cero no está garantizado.
