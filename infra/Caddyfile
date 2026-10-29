@@ -99,7 +99,8 @@
 		header @inmutable Cache-Control "public, max-age=31536000, immutable"
 		# las recetas horneadas (O7d, contratos/olivo-horneado.md; en /srv/teselas/<finca>/olivos/): el objeto lleva su huella (32 hex)
 		# en el nombre y ya viene en brotli → inmutable; el manifiesto de la finca cambia al rehornear → se revalida. SOLO se sirven
-		# esos dos: lo demás de la carpeta (estado.json, manifiesto.anterior.json… del hornero) da 404. Los matchers son excluyentes:
+		# esos dos y los atlas .webp de abajo: lo demás de la carpeta (estado.json, manifiesto.anterior.json… del hornero) da 404.
+		# Los matchers son excluyentes:
 		# el resultado no depende del orden de los `header`.
 		@olivos_objeto path_regexp ^/teselas/[^/]+/olivos/[0-9a-f]{32}\.br$
 		header @olivos_objeto {
@@ -107,11 +108,17 @@
 			Content-Encoding "br"
 			Cache-Control "private, max-age=31536000, immutable"
 		}
+		# los atlas de los impostores (O8b, contratos/olivo-impostor.md): <huella>.webp, image/webp sin Content-Encoding (ya comprimidos), inmutables
+		@olivos_atlas path_regexp ^/teselas/[^/]+/olivos/[0-9a-f]{32}\.webp$
+		header @olivos_atlas {
+			Content-Type "image/webp"
+			Cache-Control "private, max-age=31536000, immutable"
+		}
 		@olivos_manifiesto path_regexp ^/teselas/[^/]+/olivos/manifiesto\.json$
 		header @olivos_manifiesto Cache-Control "private, no-cache"
 		@olivos_otros {
 			path_regexp ^/teselas/[^/]+/olivos(/|$)
-			not path_regexp ^/teselas/[^/]+/olivos/(manifiesto\.json|[0-9a-f]{32}\.br)$
+			not path_regexp ^/teselas/[^/]+/olivos/(manifiesto\.json|[0-9a-f]{32}\.br|[0-9a-f]{32}\.webp)$
 		}
 		header @olivos_otros Cache-Control "no-store"
 		respond @olivos_otros "404 Not Found" 404

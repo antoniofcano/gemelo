@@ -323,15 +323,23 @@ test("recetas horneadas (O7d): /teselas/<finca>/olivos/<huella>.br sale en brotl
   assert.match(d, /root \* \/srv\/olivos/, "dev: las recetas salen de /srv/olivos");
   assert.match(d, new RegExp("@objeto_horneado path_regexp \\^/\\{\\$FINCA_SERVIDA:hituelo\\}/olivos/\\[0-9a-f\\]\\{32\\}\\\\\\.br\\$\\s*header @objeto_horneado \\{\\s*" + objeto), "dev: el objeto (32 hex), octet-stream + br + immutable");
   assert.match(d, /@manifiesto path \/\{\$FINCA_SERVIDA:hituelo\}\/olivos\/manifiesto\.json\s*header @manifiesto Cache-Control "private, no-cache"/, "dev: el manifiesto se revalida (con la ruta entera: el header se evalúa antes que el uri strip_prefix)");
-  assert.match(d, /@permitido path_regexp \^\/\{\$FINCA_SERVIDA:hituelo\}\/olivos\/\(manifiesto\\\.json\|\[0-9a-f\]\{32\}\\\.br\)\$\s*handle @permitido \{/, "dev: SOLO manifiesto.json y <huella>.br");
+  assert.match(d, /@permitido path_regexp \^\/\{\$FINCA_SERVIDA:hituelo\}\/olivos\/\(manifiesto\\\.json\|\[0-9a-f\]\{32\}\\\.br\|\[0-9a-f\]\{32\}\\\.webp\)\$\s*handle @permitido \{/, "dev: SOLO manifiesto.json y <huella>.br");
   assert.match(d, /handle @permitido \{[\s\S]*?\}\s*handle \{\s*header Cache-Control "no-store"\s*respond "404 Not Found" 404\s*\}/, "dev: lo demás de olivos/ (estado.json, manifiesto.anterior.json, t/…) da 404");
   assert.match(composeSinComentarios(), /\$\{GEMELO_DEV_OLIVOS:-.+\}:\/srv\/olivos:ro/, "dev: la carpeta del hornero, de solo lectura");
   // producción: el mismo contrato; el resto de /teselas/ conserva su caché (el matcher excluye lo horneado: no depende del orden)
   const p = sinC("infra/Caddyfile");
   assert.ok(p.indexOf("@olivos_objeto") > p.indexOf("handle @con_sesion"), "producción: tras sesión");
   assert.match(p, new RegExp("@olivos_objeto path_regexp \\^/teselas/\\[\\^/\\]\\+/olivos/\\[0-9a-f\\]\\{32\\}\\\\\\.br\\$\\s*header @olivos_objeto \\{\\s*" + objeto), "producción: el objeto (32 hex)");
+  // O8c: los atlas de los impostores (contratos/olivo-impostor.md §4), en los dos: image/webp, inmutables y SIN Content-Encoding (el WebP ya va comprimido)
+  const bloque = (txt, m) => { const i = txt.indexOf(m + " path_regexp "); const j = txt.indexOf("header " + m + " {", i); return i < 0 || j < 0 ? "" : txt.slice(i, txt.indexOf("}", j) + 1); };
+  for (const [nombre, txt, m, ruta] of [["dev", d, "@atlas_impostor", "^/{$FINCA_SERVIDA:hituelo}/olivos/[0-9a-f]{32}\\.webp$"], ["producción", p, "@olivos_atlas", "^/teselas/[^/]+/olivos/[0-9a-f]{32}\\.webp$"]]) {
+    const b = bloque(txt, m);
+    assert.ok(b.startsWith(m + " path_regexp " + ruta), nombre + ": el atlas (32 hex .webp): " + b.slice(0, 120));
+    assert.ok(b.includes("Content-Type \"image/webp\"") && b.includes("Cache-Control \"private, max-age=31536000, immutable\"") && !b.includes("Content-Encoding"), nombre + ": el atlas, image/webp + immutable y sin Content-Encoding");
+  }
+  assert.ok(p.indexOf("@olivos_atlas") > p.indexOf("handle @con_sesion"), "producción: el atlas, tras sesión");
   assert.match(p, /@olivos_manifiesto path_regexp \^\/teselas\/\[\^\/\]\+\/olivos\/manifiesto\\\.json\$\s*header @olivos_manifiesto Cache-Control "private, no-cache"/, "producción: el manifiesto");
-  assert.match(p, /@olivos_otros \{\s*path_regexp \^\/teselas\/\[\^\/\]\+\/olivos\(\/\|\$\)\s*not path_regexp \^\/teselas\/\[\^\/\]\+\/olivos\/\(manifiesto\\\.json\|\[0-9a-f\]\{32\}\\\.br\)\$\s*\}\s*header @olivos_otros Cache-Control "no-store"\s*respond @olivos_otros "404 Not Found" 404/, "producción: lo demás de olivos/ (estado.json, manifiesto.anterior.json, t/…) da 404");
+  assert.match(p, /@olivos_otros \{\s*path_regexp \^\/teselas\/\[\^\/\]\+\/olivos\(\/\|\$\)\s*not path_regexp \^\/teselas\/\[\^\/\]\+\/olivos\/\(manifiesto\\\.json\|\[0-9a-f\]\{32\}\\\.br\|\[0-9a-f\]\{32\}\\\.webp\)\$\s*\}\s*header @olivos_otros Cache-Control "no-store"\s*respond @olivos_otros "404 Not Found" 404/, "producción: lo demás de olivos/ (estado.json, manifiesto.anterior.json, t/…) da 404");
   assert.match(p, /@teselas \{\s*path \/teselas\/\*\s*not path_regexp \^\/teselas\/\[\^\/\]\+\/olivos\(\/\|\$\)\s*\}\s*header @teselas Cache-Control "private, max-age=3600"/, "producción: el resto de /teselas/ no cambia y no pisa lo horneado");
   // el contrato lo dice igual
   assert.match(lee("contratos/olivo-horneado.md"), /Content-Encoding: br/);
@@ -473,6 +481,7 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
     const man = JSON.parse(fs.readFileSync(mp, "utf8")), h = man.variantes[0].huella;
     for (const n of ["estado.json", "manifiesto.anterior.json"]) fs.writeFileSync(path.join(dir, n), "{}");
     fs.mkdirSync(path.join(dir, "t"), { recursive: true }); fs.writeFileSync(path.join(dir, "t", "0_0.olivos"), Buffer.from("OLVT"));
+    fs.writeFileSync(path.join(dir, "0123456789abcdef0123456789abcdef.webp"), Buffer.from("RIFF0000WEBP"));   // O8c: un atlas de impostor (el hornero alpine no los hace)
     olivosHorneados = { huella: h, bytesBr: fs.statSync(path.join(dir, h + ".br")).size, bytesManifiesto: fs.statSync(mp).size, variantes: man.variantes.length };
     // el estado del hornero vive en su volumen (fuera de la carpeta servida): de ahí sale cuánto tardó la primera vuelta
     let e, st;
@@ -700,7 +709,14 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
           assert.strictEqual(x.status, 404, base_ + u + " con sesión debe dar 404: " + x.status);
           assert.ok(!(x.cabeceras["cache-control"] || "").includes("immutable"), "un 404 no puede quedar inmutable en la caché");
         }
-        for (const u of [obj, mf, base_ + "estado.json"]) assert.strictEqual((await pide(u)).status, 401, u + " sin sesión");
+        // O8c: el atlas de un impostor, image/webp e inmutable, sin Content-Encoding; un nombre que no es una huella, 404
+        const at = base_ + "0123456789abcdef0123456789abcdef.webp", a = await pide(at, { cookie });
+        assert.strictEqual(a.status, 200, at + " con sesión: " + a.status);
+        assert.strictEqual(a.cabeceras["content-type"], "image/webp", "el atlas: Content-Type");
+        assert.ok(!a.cabeceras["content-encoding"], "el atlas no lleva Content-Encoding");
+        assert.strictEqual(a.cabeceras["cache-control"], "private, max-age=31536000, immutable", "el atlas: Cache-Control");
+        assert.strictEqual((await pide(base_ + "0123456789abcdef0123456789abcdef0.webp", { cookie })).status, 404, "un .webp que no es una huella da 404");
+        for (const u of [obj, mf, at, base_ + "estado.json"]) assert.strictEqual((await pide(u)).status, 401, u + " sin sesión");
         assert.notStrictEqual((await pide("/teselas/" + finca + "/indice.json", { cookie })).cabeceras["cache-control"], o.cabeceras["cache-control"], "el resto de /teselas/ conserva su caché");
         t.diagnostic("recetas horneadas por Caddy: objeto con br+immutable, manifiesto con no-cache, estado.json y demás 404, 401 sin sesión");
         t.diagnostic("hornero (primera vuelta desde cero, fixture, brotli 9): " + primeraVuelta.ms + " ms, " + primeraVuelta.horneadas + "/" + primeraVuelta.total + " recetas horneadas, " + (primeraVuelta.bytesBr / 1048576).toFixed(2) + " MB br; el objeto y el manifiesto salen por Caddy tras sesión y estado.json no");

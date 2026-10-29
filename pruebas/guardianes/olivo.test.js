@@ -7,6 +7,7 @@
 //   - niveles de detalle: centenario 3 pies, envero, semilla 7 → E0 102 978, E1 48 378, E2 19 366, E2-VR 14 618 triángulos; aclareo al 50 %;
 //   - semillas, épocas y parámetros desde el registro; calibración de tuberia/parametros_copas.py con olivos generados (sintéticos);
 //   - el módulo del motor 07ab_generados.js en Node (pruebas/olivo/generados_motor.mjs): materiales con el parche del motor y el fundido;
+//   - la escalera (?olivos=escalera, 07ab + 07ac) en Node (pruebas/olivo/escalera_motor.mjs): reparto, histéresis y nunca un olivo sin dibujar;
 //   - en Chrome (si lo hay): el trabajador da la misma huella que el hilo principal, las rebanadas no pasan de 3 ms y el IIFE carga con r128.
 // Sin `cd apps/web/olivo && npm i` (three-gen 0.128.0, three-r186 0.186.1, vite) se SALTA con aviso.
 const test = require("node:test"), assert = require("node:assert");
@@ -81,6 +82,44 @@ test("motor (07ab, ?olivos=gen) en Node: sin la bandera nada; materiales con nub
   assert.ok(!r.error, r.error);
   assert.deepStrictEqual(r.mal, []);
   t.diagnostic("lote 1: " + JSON.stringify(r.diag.primero.info) + " · " + r.diag.ms + " ms");
+});
+
+test("escalera (ADR-0019, ?olivos=escalera) en Node: reparto por presupuesto (escritorio, móvil, gafas), histéresis y nunca un olivo sin dibujar", { timeout: 600000 }, async t => {
+  if (SALTO) return t.skip(SALTO);
+  const r = json(await nodo([path.join("pruebas", "olivo", "escalera_motor.mjs")]));
+  assert.ok(!r.error, r.error);
+  assert.deepStrictEqual(r.mal, []);
+  t.diagnostic("reparto: " + Object.entries(r.diag.reparto).map(([k, v]) => k + " " + v.E0 + "/" + v.E1 + "/" + (v.E2 + v.E2VR)).join(" · ") + " · fixture: " + JSON.stringify(r.diag.fixture && { pasos: r.diag.fixture.pasos, huecos: r.diag.fixture.huecos, llamadas: r.diag.fixture.maxLlamadas, ms: r.diag.fixture.ms }));
+});
+
+test("motor con ?olivos=escalera (O8c, ADR-0019): sin nivel 0 ni niveles 1-2, ≤ 8 llamadas de olivos, triángulos dentro del presupuesto y topes de fixture_olivos_escalera", { timeout: 1500000 }, async t => {
+  if (SALTO) return t.skip(SALTO);
+  const { motivoSalto, sirve, lanza, mide, ESCENARIOS } = require("./_navegador");
+  const m = motivoSalto("la escalera de olivos en el motor"); if (m) return t.skip(m);
+  const { propia, fixture, python } = require("./_util");
+  const iife = propia("olivo-iife-escalera"), pag = path.join(propia("olivo-escalera"), "index.html"), fx = fixture();
+  const b = ejecuta(process.execPath, [path.join("herramientas", "iife.mjs"), "--salida", iife], { cwd: OLIVO });
+  assert.strictEqual(b.status, 0, "IIFE: " + b.stdout + b.stderr);
+  const mo = ejecuta(python(), ["-I", path.join("tuberia", "salida_artefacto", "montar_v2.py"), "--datos", path.relative(RAIZ, path.join(fx, "hituelo", "indice.json")), "--modo", "ficheros",
+    "--salida", path.relative(RAIZ, pag), "--olivos", path.join(iife, "olivo.iife.js")]);
+  assert.strictEqual(mo.status, 0, mo.stdout + mo.stderr);
+  const T = JSON.parse(fs.readFileSync(path.join(RAIZ, "pruebas", "presupuesto.json"), "utf8")).fixture_olivos_escalera;
+  const s = await sirve(path.dirname(pag)), nav = await lanza();
+  try {
+    const r = await mide(nav, "http://127.0.0.1:" + s.address().port + "/index.html?olivos=escalera", { escenarios: ESCENARIOS });
+    assert.deepStrictEqual(r.errores, [], "errores en la página con ?olivos=escalera");
+    for (const [n, x] of Object.entries(r.medidas)) {
+      const e = x.olivos.escalera;
+      t.diagnostic(n + ": " + x.llamadas + " llamadas, " + x.triangulos + " tri, heap " + x.heapMB + " MB · escalera E0 " + e.E0 + " E1 " + e.E1 + " E2 " + e.E2 + " lejanos " + e.lejanos + " (" + e.lejanosModo + ") · olivos " + e.triOlivos + " tri / " + e.llamadasOlivos + " llamadas");
+      assert.ok(e.activa, n + ": la escalera no está activa (" + e.estado + ")");
+      assert.strictEqual(e.nivel0Mallas, 0, n + ": hay celdas de nivel 0 dibujadas");
+      assert.strictEqual(e.instanciasN12, 0, n + ": hay instancias de los niveles 1-2");
+      assert.ok(e.llamadasOlivos <= T.llamadas_olivos, n + ": " + e.llamadasOlivos + " llamadas de olivos (tope " + T.llamadas_olivos + ")");
+      assert.ok(e.triOlivos - e.triSaliendo <= e.presupuesto + 30000, n + ": " + e.triOlivos + " tri de olivos sobre el presupuesto " + e.presupuesto);
+      assert.strictEqual(e.sombraMap, false, n + ": el motor no activa renderer.shadowMap (si se activa, el coste de la escalera vuelve a doblarse: revisar costo())");
+      const tp = T[n]; if (tp) for (const k of ["llamadas", "triangulos", "heapMB"]) assert.ok(x[k] <= tp[k], n + ": " + k + " " + x[k] + " > tope " + tp[k]);
+    }
+  } finally { await nav.close(); s.close(); }
 });
 
 test("caché de recetas (O5): clave estable y distinta por época, semilla y versión; LRU en memoria y en disco; sin IndexedDB, igual", { timeout: 120000 }, async t => {

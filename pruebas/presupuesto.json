@@ -15,5 +15,11 @@
     "lejos": { "llamadas": 210, "triangulos": 20000, "heapMB": 45 },
     "cerca": { "llamadas": 70, "triangulos": 210000, "heapMB": 45 },
     "nube": { "llamadas": 157, "triangulos": 13000, "heapMB": 45 }
+  },
+  "fixture_olivos_escalera": {
+    "$comment": "Con ?olivos=escalera (ADR-0019 fase A, O8c), fixture de Hituelo montado con --olivos. Medido el 2026-10-29 en dos rondas del banco (SwiftShader, máquina al 100 % de CPU, esc 0,7 → presupuesto de olivos 385 k): cerca 27 llamadas / 426 k tri / 38-46 MB; lejos 76-77 / 125 k / 42-45 MB; SIN terminar: a los 5-12 min solo había 2-3 variantes E2, ni capa de lejanos ni propios (página sin trabajador). Por eso los topes no son el 25 % sobre lo medido sino el estado final calculado: cerca = 372 k del resto de la escena + el presupuesto de olivos (550 k × 0,7 + 10 % del fundido) ≈ 800 k → 1 M; lejos = 125 k + lejanos (140 × 4) → 160 k; llamadas, las medidas + 2 (lejanos y puntos) y ≈ 25 %. llamadas_olivos: el del ADR §5. La nube no se midió con la bandera: valen los de «fixture». Lo comprueba pruebas/guardianes/olivo.test.js; O8d los fija con medidas completas.",
+    "cerca": { "llamadas": 40, "triangulos": 1000000, "heapMB": 95 },
+    "lejos": { "llamadas": 100, "triangulos": 160000, "heapMB": 95 },
+    "llamadas_olivos": 8
   }
 }

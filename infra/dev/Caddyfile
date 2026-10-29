@@ -125,11 +125,13 @@
 			}
 			# las recetas horneadas (O7d, contratos/olivo-horneado.md): /teselas/<finca>/olivos/ sale de /srv/olivos (la carpeta que
 			# escribe el hornero; GEMELO_DEV_OLIVOS). El objeto se direcciona por su huella: octet-stream ya en brotli e inmutable.
-			# El manifiesto de la finca cambia al rehornear: se revalida. SOLO se sirven manifiesto.json y <huella de 32 hex>.br; lo
+			# El manifiesto de la finca cambia al rehornear: se revalida. Los atlas de los impostores (O8b, contratos/olivo-impostor.md) son
+			# <huella>.webp: image/webp, sin Content-Encoding (ya van comprimidos) e inmutables. SOLO se sirven manifiesto.json,
+			# <huella de 32 hex>.br y <huella de 32 hex>.webp; lo
 			# demás de esa carpeta (estado.json, manifiesto.anterior.json… que escribe el hornero) da 404.
 			@olivos path /{$FINCA_SERVIDA:hituelo}/olivos/*
 			handle @olivos {
-				@permitido path_regexp ^/{$FINCA_SERVIDA:hituelo}/olivos/(manifiesto\.json|[0-9a-f]{32}\.br)$
+				@permitido path_regexp ^/{$FINCA_SERVIDA:hituelo}/olivos/(manifiesto\.json|[0-9a-f]{32}\.br|[0-9a-f]{32}\.webp)$
 				handle @permitido {
 					uri strip_prefix /{$FINCA_SERVIDA:hituelo}/olivos
 					root * /srv/olivos
@@ -138,6 +140,11 @@
 					header @objeto_horneado {
 						Content-Type "application/octet-stream"
 						Content-Encoding "br"
+						Cache-Control "private, max-age=31536000, immutable"
+					}
+					@atlas_impostor path_regexp ^/{$FINCA_SERVIDA:hituelo}/olivos/[0-9a-f]{32}\.webp$
+					header @atlas_impostor {
+						Content-Type "image/webp"
 						Cache-Control "private, max-age=31536000, immutable"
 					}
 					@manifiesto path /{$FINCA_SERVIDA:hituelo}/olivos/manifiesto.json

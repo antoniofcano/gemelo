@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: Generados
-// Consume: 01_datos (D, VRP, FACTOR_R8), 02_mundo (suelo, copas), 03_escena (camera, colorVertSRGB, exag), 06_arboles (gArboles),
+// Expone: Escalera, Generados
+// Consume: 01_datos (D, VRP, FACTOR_R8), 02_mundo (suelo, copas), 03_escena (renderer, camera, colorVertSRGB, exag), 06_arboles (gArboles),
 //   12_paseo (paseando, primera), 14_historia (hist, lista), 15_tiempo (parcheTiempo, nivel), 16_vida (esfera)
 // ===============================================================================
   // ---------- olivos GENERADOS cerca (ADR-0017, decisiones 26-28, 34 y 52), solo con ?olivos=gen: sin la bandera no no actúa y el motor dibuja lo de siempre.
@@ -27,9 +27,74 @@
   // (salida artefacto, fixture): se calcula, como siempre (plan B). Los propios (E0/E1) se calculan siempre (decisión 63). ?olivosHorneado=0 (para
   // comparar a ojo): se lee el manifiesto (mismas variantes y época) pero no se descarga nada; todas se calculan. Para pruebas y comparaciones sin
   // servidor: ?olivosDir=<carpeta relativa del mismo origen, acabada en «/»> en vez de <D.base>olivos/, y ?olivosPropios=N (0-6) cuántos propios.
+  // ESCALERA (ADR-0019, fase A, O8c), solo con ?olivos=escalera: los mismos generados para TODOS los olivos, con el reparto del ADR (Escalera, abajo):
+  // presupuesto entero del aparato (no el 45 %) menos los lejanos (07ac), E0 el más cercano, propios E1 hasta el 60 %, variantes E2 (E2-VR en gafas)
+  // con el resto; histéresis por distancia (MARGEN m o × 1,15) y por tiempo (1 s); un olivo cambia de escalón solo cuando el pedido está preparado (hasta
+  // entonces se queda en el que tenía) y, mientras no haya lejanos, lo que sale del 3D se queda en el lote (nunca sin dibujar). El coste ya no dobla
+  // por la pasada de sombras si renderer.shadowMap no está activo (el motor no lo activa: ver costo()). ?olivos=gen no cambia.
+
+  // [puro:inicio] — el reparto de la escalera por presupuesto, sin THREE ni DOM (lo evalúa pruebas/olivo/escalera_motor.mjs)
+  var Escalera = (function () {
+    var MAX_PROPIOS = 6, MAX_VAR = 48, MARGEN = 12, FAC_SALIDA = 1.15, T_MIN = 1, FR_PROPIOS = 0.6, FR_E0_VR = 0.4, TRI_MOVIL = 270000;
+    /** el presupuesto de triángulos de la escalera (ADR-0019 §1): {base: TOPE_TRI de escritorio, vr: perfil VR o null, movil, escala, triLejanos}.
+     *  Gafas: el tri del perfil, escala 1. Móvil: 270 k (valor de partida SIN medir), escala ≤ 1. Escritorio: base × escala. Menos lo que cuestan los lejanos. */
+    function tope(o) {
+      var t = o.vr ? o.vr.tri : o.movil ? TRI_MOVIL : o.base, k = o.vr ? 1 : o.movil ? Math.min(1, o.escala) : o.escala;
+      return Math.max(0, t * k - (o.triLejanos || 0));
+    }
+    /** El plan de la escalera. cand: [{c: {i,…}, d}] (distancia al foco); est: estado por olivo {i: {clave, niv, propio, en, t}} que se actualiza aquí;
+     *  o: {pres, vr, ahora (s), costo(clave, niv), clavePropia(c, niv), claveVar(c), maxPropios?, maxVar?}.
+     *  Devuelve {plan: [{c, d, clave, niv, propio}] de cerca a lejos, usado, propios, variantes}. */
+    function planifica(cand, est, o) {
+      var pres = o.pres, maxP = o.maxPropios === undefined ? MAX_PROPIOS : o.maxPropios, maxV = o.maxVar === undefined ? MAX_VAR : o.maxVar, ahora = o.ahora;
+      // histéresis por distancia: lo que ya estaba en 3D se ordena como si estuviera MARGEN m (o un 15 %) más cerca, y MARGEN m más por cada escalón
+      // por encima de variante (propio E1, E0): así moverse 1 m no cambia ni quién está en 3D ni quién es propio ni quién es el E0
+      var L = cand.map(function (x) {
+        var e = est[x.c.i], en = e && e.en, k = x.d;
+        if (en) k = Math.min(x.d - MARGEN, x.d / FAC_SALIDA) - MARGEN * (e.niv === "E0" ? 2 : e.propio ? 1 : 0);
+        return { c: x.c, d: x.d, e: en ? e : null, k: k, fuera: !!(e && !e.en && ahora - e.t < T_MIN) };
+      });
+      L.sort(function (a, b) { return a.k - b.k || a.d - b.d; });
+      var plan = [], usado = 0, usadoP = 0, nP = 0, nV = 0, propios = true, puesto = {};
+      function asigna(x, clave, niv, propio, t) { plan.push({ c: x.c, d: x.d, clave: clave, niv: niv, propio: propio }); usado += t; if (propio) { usadoP += t; nP++; } else nV++; puesto[x.c.i] = true; }
+      // histéresis por tiempo: lo que cambió en los últimos T_MIN s se queda como está (si cabe en el total)
+      L.forEach(function (x) {
+        if (!x.e || ahora - x.e.t >= T_MIN) return;
+        var t = o.costo(x.e.clave, x.e.niv); if (usado + t > pres) return;
+        asigna(x, x.e.clave, x.e.niv, x.e.propio, t);
+      });
+      for (var j = 0; j < L.length; j++) {
+        var x = L[j]; if (puesto[x.c.i] || x.fuera) continue;   // lo que salió en los últimos T_MIN s no vuelve todavía
+        if (propios && nP < maxP) {
+          var nivs = nP === 0 ? ["E0", "E1"] : ["E1"], hecho = false;
+          for (var q = 0; q < nivs.length && !hecho; q++) {
+            var cl = o.clavePropia(x.c, nivs[q]), t = o.costo(cl, nivs[q]);
+            if (nivs[q] === "E0" && o.vr && t > FR_E0_VR * pres) continue;   // en gafas, el E0 solo si no pasa del 40 % del perfil
+            if (usado + t <= pres && usadoP + t <= (nP === 0 ? pres : FR_PROPIOS * pres)) { asigna(x, cl, nivs[q], true, t); hecho = true; }   // el primero, si cabe en el total
+          }
+          if (hecho) continue;
+          propios = false;
+        }
+        if (nV >= maxV) break;
+        var cv = o.claveVar(x.c), tv = o.costo(cv, o.vr ? "E2VR" : "E2");
+        if (usado + tv > pres) break;
+        asigna(x, cv, o.vr ? "E2VR" : "E2", false, tv);
+      }
+      plan.sort(function (a, b) { return a.d - b.d; });
+      // el estado: cada cambio (entrar, salir o cambiar de escalón) apunta su instante
+      var ya = {};
+      plan.forEach(function (p) { var e = est[p.c.i]; ya[p.c.i] = true; if (!e || !e.en || e.clave !== p.clave) est[p.c.i] = { clave: p.clave, niv: p.niv, propio: p.propio, en: true, t: ahora }; });
+      Object.keys(est).forEach(function (i) { var e = est[i]; if (e.en && !ya[i]) { e.en = false; e.t = ahora; } else if (!e.en && ahora - e.t > 5) delete est[i]; });
+      return { plan: plan, usado: usado, propios: nP, variantes: nV };
+    }
+    return { tope: tope, planifica: planifica, MAX_PROPIOS: MAX_PROPIOS, MAX_VAR: MAX_VAR, MARGEN: MARGEN, T_MIN: T_MIN, TRI_MOVIL: TRI_MOVIL };
+  })();
+  // [puro:fin]
+
   var Generados = (function () {
-    var pedido = /[?&]olivos=gen\b/.test(location.search), estado = pedido ? "cargando" : "apagado", motivo = "", M = null, mats = null, fabrica = null;
-    var fr = /[?&]olivosTri=([0-9.]+)/.exec(location.search), FRACCION = fr ? Math.min(0.9, Number(fr[1])) : 0.45;
+    var ESCALERA = /[?&]olivos=escalera\b/.test(location.search);
+    var pedido = ESCALERA || /[?&]olivos=gen\b/.test(location.search), estado = pedido ? "cargando" : "apagado", motivo = "", M = null, mats = null, fabrica = null;
+    var fr = /[?&]olivosTri=([0-9.]+)/.exec(location.search), FRACCION = fr && !ESCALERA ? Math.min(0.9, Number(fr[1])) : ESCALERA ? 1 : 0.45;
     var mpr = /[?&]olivosPropios=([0-6])\b/.exec(location.search);
     var ESTIM = { E0: 160000, E1: 80000, E2: 38000, E2VR: 28000 }, SEM_VAR = [11, 23, 37, 51], MAX_PROPIOS = mpr ? Number(mpr[1]) : 6, MAX_VAR = 48, RADIO_CAND = 160, MARGEN = 12;
     var recetas = {}, pidiendo = {}, nPidiendo = 0, plan = [], listos = {}, lote = null, claveLote = "", nuevo = null, R = 0, triGen = 0, costoGen = 0, info = { llamadas: 0, triangulos: 0 };
@@ -185,17 +250,24 @@
       return new THREE.Matrix4().makeScale(sx, sy * exag, sz).setPosition(c.x, gz, -c.y);
     }
     function tri(r) { return r ? M.triangulosNivel(r) : 0; }
-    // lo que cuesta de verdad por fotograma: sus triángulos más los de la pasada de sombras (todo proyecta sombra salvo las olivas y los puntos)
+    // lo que cuesta de verdad por fotograma: sus triángulos más los de la pasada de sombras (todo proyecta sombra salvo las olivas y los puntos).
+    // Con ?olivos=escalera, la pasada solo se cobra si existe: el motor no activa renderer.shadowMap (O8c lo comprobó con renderer.info: ver
+    // doc/sistema/MEDIDAS.md) y entonces cuesta sus triángulos. ?olivos=gen sigue cobrándola (no cambia lo que dibuja).
+    function sombras() { return !ESCALERA || (typeof renderer !== "undefined" && !!renderer && !!renderer.shadowMap && !!renderer.shadowMap.enabled); }
     function costo(r) {
       if (!r) return 0;
       var t = tri(r), ol = 0;
+      if (!sombras()) return t;
       r.piezas.forEach(function (z) { if (z.rol === "olivas" && z.clase === "instancias") ol += z.n * (z.geo === "octa" ? 8 : 20); });
       return 2 * t - ol;
     }
+    var ESTIM_ESC = { E0: 105000, E1: 50000, E2: 20000, E2VR: 15000 };   // escalera, sin receta aún: los triángulos medidos (ADR-0017 §4) redondeados hacia arriba
+    function estim(niv) { return ESCALERA ? ESTIM_ESC[niv] * (sombras() ? 2 : 1) : ESTIM[niv]; }
 
     // ---- reparte el presupuesto: lo llama el reparto de 07b_arboles.reclasifica con el foco (fx, fz) y el tope de triángulos del aparato
-    function actualiza(fx, fz, tope, olivos, escala) {
+    function actualiza(fx, fz, tope, olivos, escala, retener) {
       if (estado !== "activo") return NADA;
+      if (ESCALERA) return actualizaEscalera(fx, fz, tope, olivos, escala, retener);
       // lo que se observa (el foco: el punto de la órbita, o quien pasea), y solo si la cámara está cerca de él: desde lejos no se genera nada
       var cam = camera.position, amplia = Math.max(1, Math.sqrt(escala || 1)), lejos = Math.hypot(cam.x - fx, cam.z - fz, Math.max(0, cam.y - suelo(fx, -fz) * exag)) > 150 * amplia;   // con el aparato holgado (escala de 07b > 1) se genera desde más lejos: hasta ~240 m
       var pres = tope * FRACCION, vr = VRP.on, nivV = vr ? "E2VR" : "E2";
@@ -254,8 +326,62 @@
       }
       return { radio: fundido ? Math.min(R, fundido.Rviejo) : R, tri: triGen, tiene: tiene };
     }
+    // ---- la escalera (?olivos=escalera): todo el presupuesto que da 07b (ya sin los lejanos), el reparto de Escalera.planifica y, si retener (aún
+    // no hay lejanos), lo que sale del 3D se queda en el lote
+    var estEsc = {}, reparto = { propios: 0, variantes: 0, usado: 0, pres: 0 };
+    function nVar() { return (varSem || SEM_VAR).length; }
+    function pideVariante(j, niv, prio) {
+      var sv = varSem ? varSem[j] : { tipo: "centenario3", semilla: SEM_VAR[j] };
+      pide("v" + j + ":" + niv, { tipo: sv.tipo, epoca: epoca(), semilla: sv.semilla }, niv, prio, true);
+    }
+    function actualizaEscalera(fx, fz, tope, olivos, escala, retener) {
+      var cam = camera.position, amplia = Math.max(1, Math.sqrt(escala || 1)), lejos = Math.hypot(cam.x - fx, cam.z - fz, Math.max(0, cam.y - suelo(fx, -fz) * exag)) > 150 * amplia;
+      var vr = VRP.on, nivV = vr ? "E2VR" : "E2", nv = nVar(), cand = [];
+      if (!lejos) for (var i = 0; i < olivos.length; i++) { var c = olivos[i], d = Math.hypot(c.x - fx, -c.y - fz); if (d < RADIO_CAND * amplia) cand.push({ c: c, d: d }); }
+      cand.sort(function (a, b) { return a.d - b.d; }); if (cand.length > 120) cand.length = 120;
+      var r = Escalera.planifica(cand, estEsc, { pres: tope, vr: vr, ahora: performance.now() / 1000, maxPropios: MAX_PROPIOS, maxVar: MAX_VAR,
+        costo: function (cl, niv) { return recetas[cl] ? costo(recetas[cl]) : estim(niv); },
+        clavePropia: function (c, niv) { return "p" + c.i + ":" + niv; }, claveVar: function (c) { return "v" + (c.i % nv) + ":" + nivV; } });
+      plan = r.plan; reparto = { propios: r.propios, variantes: r.variantes, usado: Math.round(r.usado), pres: Math.round(tope) };
+      // lo que falta se pide por prioridad (como mucho 2 a la vez): los propios por su distancia; las variantes E2 de los lejanos (07ac), siempre
+      // aunque no haya nada en 3D, justo después de los propios de menos de 50 m (sin ellas, de lejos no hay olivos: en SwiftShader, sin trabajador
+      // y detrás de los propios, no llegaron en 12 min en el banco de O8c); las variantes del plan, detrás
+      var pedir = [];
+      plan.forEach(function (p) {
+        if (recetas[p.clave]) return;
+        if (p.propio) pedir.push({ prio: p.d, f: function () { var e2 = entrada(p.c); p.provisional = e2.provisional; pide(p.clave, e2, p.niv, p.d); } });
+        else pedir.push({ prio: p.d + 200, f: function () { pideVariante(Number(p.clave.slice(1, p.clave.indexOf(":"))), p.niv, p.d + 200); } });
+      });
+      for (var j = 0; j < nv; j++) (function (j) { if (!recetas["v" + j + ":E2"]) pedir.push({ prio: 50 + j, f: function () { pideVariante(j, "E2", 50 + j); } }); })(j);
+      pedir.sort(function (a, b) { return a.prio - b.prio; }).forEach(function (x) { x.f(); });
+      // lo que ya se puede dibujar: el escalón pedido si su receta está; si no, el otro nivel propio de ese olivo; si no, el que tenía en el lote
+      var antes = {}, enPlan = {}, listosAhora = [];
+      selLote.forEach(function (p) { antes[p.c.i] = p; });
+      plan.forEach(function (p) {
+        enPlan[p.c.i] = true;
+        if (recetas[p.clave]) { listosAhora.push(p); return; }
+        var otra = p.propio ? "p" + p.c.i + ":" + (p.niv === "E0" ? "E1" : "E0") : null;
+        if (otra && recetas[otra]) { listosAhora.push({ c: p.c, d: p.d, clave: otra, niv: p.niv === "E0" ? "E1" : "E0", propio: true, provisional: p.provisional }); return; }
+        var a = antes[p.c.i]; if (a && recetas[a.clave]) listosAhora.push({ c: a.c, d: p.d, clave: a.clave, niv: a.niv, propio: a.propio, provisional: a.provisional });
+      });
+      if (retener) selLote.forEach(function (p) { if (!enPlan[p.c.i] && recetas[p.clave]) listosAhora.push(p); });   // sin lejanos todavía: nada se queda sin dibujar
+      listosAhora.sort(function (a, b) { return a.d - b.d; });
+      var cl = exag + "|" + listosAhora.map(function (p) { return p.c.i + "=" + p.clave; }).join(",");
+      if (cl !== claveLote && !hay("Glote") && !fundido) {
+        var fija = listosAhora.slice(), items = elementos(fija);
+        encola("Glote", -1, seguro(construyeG(items)), function (g) { if (g) colocaLote(g, fija, items, cl); });
+      }
+      return { radio: fundido ? Math.min(R, fundido.Rviejo) : R, tri: triGen, tiene: tiene, fase: fase };
+    }
     // durante un fundido, el dibujo de siempre de lo que entra sigue dibujándose (y el de lo que sale ya vuelve): tiene() solo si ya estaba antes
     function tiene(i) { return !!listos[i] && (!fundido || !!fundido.viejos[i]); }
+    /** escalera: cómo está el olivo i en el lote, para el tramado complementario de los lejanos (07ac): 0 no está en 3D, 1 está (y no entra), 2 entra
+     *  con fundido (el lejano sale con el tramado complementario), 3 sale con fundido (el lejano entra) */
+    function fase(i) {
+      var en = !!listos[i]; if (!fundido) return en ? 1 : 0;
+      var v = !!fundido.viejos[i]; return en ? (v ? 1 : 2) : v && saliendo[i] ? 3 : 0;
+    }
+    var saliendo = {};
     // lo que va en el lote nuevo: lo de ahora (0 si ya estaba igual, 1 si entra) y, al final, lo del lote anterior que se va o cambia de detalle (2)
     function elementos(fija) {
       var antes = {}, ahora = {}, out = [];
@@ -303,7 +429,7 @@
       Object.keys(S.B).forEach(function (b) { S.B[b].ids.forEach(function (id) { S.B[b].m.setVisibleAt(id, false); }); });
       Object.keys(S.I).forEach(function (k) { S.I[k].m.count = S.I[k].n; });
       if (S.P) S.P.m.geometry.setDrawRange(0, S.P.n);
-      lote.userData.salen = null; info.saliendo = 0; info.triSaliendo = 0;
+      lote.userData.salen = null; info.saliendo = 0; info.triSaliendo = 0; saliendo = {};
     }
     function* seguro(gen) {   // si algo falla al montar el lote, Generados se apaga (y lo dice) sin parar el fotograma del motor
       try { return yield* gen; } catch (e) { estado = "sin"; motivo = String(e && e.message || e); console.warn("olivos generados: " + motivo); return null; }
@@ -314,8 +440,10 @@
       selLote.forEach(function (p) { viejos[p.c.i] = true; });
       lote = g; grupo.add(g); claveLote = cl; listos = {}; R = 0; triGen = 0; costoGen = 0;
       sel.forEach(function (p) { listos[p.c.i] = p; R = Math.max(R, p.d + 8); triGen += tri(recetas[p.clave]); costoGen += costo(recetas[p.clave]); });
-      items.forEach(function (x) { if (x.cod === 1) entran++; else if (x.cod === 2) { salen++; triSalen += tri(recetas[x.p.clave]); } });
+      saliendo = {};
+      items.forEach(function (x) { if (x.cod === 1) entran++; else if (x.cod === 2) { salen++; triSalen += tri(recetas[x.p.clave]); saliendo[x.p.c.i] = true; } });
       info = { llamadas: g.children.length, triangulos: triGen, costo: costoGen, arboles: sel.length, propios: sel.filter(function (p) { return p.propio; }).length, entran: entran, saliendo: salen, triSaliendo: triSalen };
+      if (ESCALERA) { info.niveles = { E0: 0, E1: 0, E2: 0, E2VR: 0 }; sel.forEach(function (p) { info.niveles[p.niv]++; }); }
       selLote = sel; avisa = true;
       if (entran + salen > 0) { fundido = { t: 0, viejos: viejos, Rviejo: Rviejo }; uFun.value = 0; } else { fundido = null; uFun.value = 1; }
       // las recetas que ya no se usan se sueltan (las variantes se quedan; las del lote colocado, hasta el siguiente: son lo que saldrá con fundido)
@@ -418,18 +546,39 @@
     }
     /** El rótulo de un olivo (decisión 34) si se dibuja generado: «forma ilustrativa con medidas del LiDAR» y, si su id no es del censo, «id provisional» */
     function rotulo(i) {
-      var p = listos[i]; if (!p) return null;
+      var p = listos[i]; if (!p && !(ESCALERA && estado === "activo")) return null;   // con la escalera, todo olivo es del constructor: el que no está en 3D es «lejano»
       var id = D.copas_id ? D.copas_id[i] : -1, prov = !(id >= 0 && id < 2147483648);
-      return { forma: "ilustrativa con medidas del LiDAR", provisional: prov, niv: p.niv, variante: !p.propio };
+      return p ? { forma: "ilustrativa con medidas del LiDAR", provisional: prov, niv: p.niv, variante: !p.propio } : { forma: "ilustrativa con medidas del LiDAR", provisional: prov, niv: "lejano", variante: true, lejano: true };
     }
     window.__olivosGen = function () {
       var k0 = Object.keys(listos)[0], p0 = k0 !== undefined ? listos[k0].c : null;   // un olivo generado ya dibujado
       return { primero: p0 ? { x: p0.x, y: p0.y, h: p0.h } : null, estado: estado, motivo: motivo, via: fabrica ? "trabajador" : "rebanadas", plan: plan.length, recetas: Object.keys(recetas).length, pidiendo: nPidiendo, trabajos: trabajos.length, radio: R, info: info,
         cache: cache ? cache.estado() : null,
+        escalera: ESCALERA ? { reparto: reparto, sombras: sombras(), variantes: nVar() } : undefined,
         horneado: { estado: horn.estado, motivo: horn.motivo, epoca: M && mats ? epoca() : null, variantes: (varSem || SEM_VAR).length, horneadas: horn.horneadas, calculadas: horn.calculadas,
           fallos: horn.fallos, cache: horn.cache, propiosCalculados: horn.propios, ultimoFallo: horn.ultimoFallo }, fundido: { activo: !!fundido, avance: +uFun.value.toFixed(3), duracion: FUNDIDO } };
     };
     // _prueba: para pruebas/olivo/generados_motor.mjs (Node), no para el motor
-    return { activo: function () { return estado === "activo"; }, actualiza: actualiza, paso: paso, gastado: function () { return gastado; }, pendientes: pendientes, rotulo: rotulo, estado: function () { return estado; },
-      _prueba: { fecha: function (f) { fechaPrueba = f; }, mats: function () { return mats; }, prof: function () { return prof; }, uFun: uFun, lote: function () { return lote; }, tiene: tiene } };
+    // para los lejanos de la escalera (07ac): la variante j en E2 (null si aún no está), su matriz en un olivo (la misma que en 3D), montarla para
+    // hornear su silueta, y los parches de luz y de fundido (el mismo uFun: el tramado de los lejanos es el complementario del de los 3D)
+    var paraLejanos = { uFun: uFun, nVariantes: nVar, variante: function (j) { return recetas["v" + j + ":E2"] || null; },
+      matriz: function (c, r) { return matrizDe(c, r, true); }, monta: function (r) { return M.montaOlivo(THREE, r, mats); }, libera: function (g) { M.liberaOlivo(g); },
+      parcheLuz: parcheLuz, parcheFundido: parcheFundido, constructor: function () { return M; }, dir: function () { return DIR; },
+      impostor: filaImpostor };
+    /** la fila de impostores (contratos/olivo-impostor.md, formato 1) de la época que se dibuja, solo si casa con las variantes que dibuja el motor:
+     *  mismas variantes en el mismo orden (tipo, semilla) y cada `fuente` es la huella de su E2 en el manifiesto; si no, {motivo} */
+    function filaImpostor() {
+      if (!manif || !Array.isArray(manif.impostores) || !varSem || !M || !M.IMPOSTOR) return null;
+      var ep = epoca(), f = manif.impostores.filter(function (x) { return x && x.epoca === ep; })[0];
+      if (!f) return null;
+      var no = M.validaFilaImpostor(f);
+      if (!no.length && f.variantes.length !== varSem.length) no.push(f.variantes.length + " variantes en el impostor y " + varSem.length + " en el motor");
+      if (!no.length) f.variantes.forEach(function (v, k) {
+        var e2 = filaDe({ tipo: varSem[k].tipo, semilla: varSem[k].semilla, epoca: ep }, "E2");
+        if (v.tipo !== varSem[k].tipo || v.semilla !== varSem[k].semilla || !e2 || e2.huella !== v.fuente) no.push("la variante " + k + " del impostor no es la E2 del motor");
+      });
+      return no.length ? { motivo: no.join("; ").slice(0, 120) } : f;
+    }
+    return { escalera: function () { return ESCALERA; }, lejanos: paraLejanos, activo: function () { return estado === "activo"; }, actualiza: actualiza, paso: paso, gastado: function () { return gastado; }, pendientes: pendientes, rotulo: rotulo, estado: function () { return estado; },
+      _prueba: { fecha: function (f) { fechaPrueba = f; }, mats: function () { return mats; }, prof: function () { return prof; }, uFun: uFun, lote: function () { return lote; }, tiene: tiene, fase: fase, listos: function () { return listos; }, saliendo: function () { return saliendo; }, recetas: function () { return recetas; } } };
   })();
