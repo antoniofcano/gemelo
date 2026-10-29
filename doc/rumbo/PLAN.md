@@ -80,7 +80,7 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | A4 | Lindes de las hazas en el motor (el «3c») | — | ligera; 🔶 al medir | ⬜ |
 | A5 | e2e de entrada completa: portada → enlace → mundo con lindes; gafas → código → sesión | A1, A2, A4 | 🔶 Docker | ⬜ |
 | A6 | **Prueba en aparatos** (navegador, móvil, Quest; decisión 57) | A1, A2, A3 | 👤 | ⬜ |
-| T1 | F1d 3b: terreno 3D Tiles en el motor (`04b_escena3d.js`, `?escena=tiles`), código | — | ligera | 🟡 |
+| T1 | F1d 3b: terreno 3D Tiles en el motor (`04b_escena3d.js`, `?escena=tiles`), código | — | ligera | ✅ en main (sin medir: T3) |
 | T2 | Tileset de Hituelo regenerado con el generador 0.3.0 desde D1 | D1 | pesada de CPU (≈30 min), sin Chrome | ⬜ |
 | T3 | F1d 3b: medir con el fixture y con Hituelo; raíz vacía visible de lejos | T1, T2 | 🔶 | ⬜ |
 | T4 | F1d 4: olivos del tileset con máscara (de cerca, los del motor y los generados) | T1 | ligera; 🔶 al medir | ⬜ |
