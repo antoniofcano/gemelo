@@ -13,9 +13,9 @@ const FUENTE = lee("apps/web/motor/26_presencia.js");
 function puro() {
   const i = FUENTE.indexOf("// [puro:inicio]"), f = FUENTE.indexOf("// [puro:fin]");
   assert.ok(i >= 0 && f > i, "26_presencia.js debe marcar su trozo puro con // [puro:inicio] y // [puro:fin]");
-  return new Function("\"use strict\";\n" + FUENTE.slice(i, f) + "\nreturn { PoseCodec: PoseCodec, BufferPose: BufferPose };")();
+  return new Function("\"use strict\";\n" + FUENTE.slice(i, f) + "\nreturn { PoseCodec: PoseCodec, BufferPose: BufferPose, Muneco: Muneco };")();
 }
-const { PoseCodec, BufferPose } = puro();
+const { PoseCodec, BufferPose, Muneco } = puro();
 
 // azar con semilla (mulberry32): las pruebas dan siempre lo mismo
 function azarCon(s) { return () => { s = (s + 0x6d2b79f5) | 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
@@ -128,6 +128,69 @@ test("búfer: una mano que deja de llegar deja de dibujarse; la cabeza sigue", (
   BufferPose.muestra(b, 1000, 0, out); assert.strictEqual(out.hayIzq, false);
 });
 
+// ---------- el muñeco de los demás (P5): el mismo paseante que el local, animado con la velocidad que sale de la interpolación
+const PASEO = lee("apps/web/motor/12_paseo.js");
+/** anda en línea recta a `vel` m/s hacia `rumbo` (0 = −z) durante `seg` a 60 fps; devuelve la última salida y el balanceo máximo */
+function anda(st, vel, seg, { x = 0, z = 0, rumbo = 0, suelo = 100, exag = 1, hCab = NaN, manos = false, yawCab = 0 } = {}) {
+  const dt = 1 / 60, o = {}, max = { pierna: 0, brazo: 0 };
+  for (let i = 0; i < Math.round(seg * 60); i++) {
+    x += -Math.sin(rumbo) * vel * dt; z += -Math.cos(rumbo) * vel * dt;
+    Muneco.avanza(st, x, z, yawCab, dt, suelo, exag, hCab, manos, o);
+    max.pierna = Math.max(max.pierna, Math.abs(o.piernaI)); max.brazo = Math.max(max.brazo, Math.abs(o.brazoI));
+  }
+  return { o, max, x, z };
+}
+test("muñeco: las piezas y la animación son las del paseante local (12_paseo.js)", () => {
+  for (const [w, h, d, x, y] of Muneco.PIEZAS.slice(1)) assert.ok(PASEO.includes("miembro(" + w + ", " + h + ", " + d + ", ") && PASEO.includes(", " + x + ", " + y + ", 0)"), "pieza " + [w, h, d, x, y] + " distinta de creaPersona");
+  assert.ok(PASEO.includes("caja(0.46, 0.62, 0.25, camisa, 0, 1.17, 0)"), "el tronco de creaPersona (centro 1,17 → arriba 1,48)");
+  assert.ok(Math.abs(Muneco.PIEZAS[0][4] - (1.17 + 0.62 / 2)) < 1e-9);
+  for (const t of ["pp.paso += Math.abs(vel) * dt * 3.4", "Math.min(1, Math.abs(vel) / 1.7)", "Math.sin(pp.paso) * 0.75 * mov", "-sw * 0.8", "Math.abs(Math.sin(pp.paso)) * 0.03 * mov"]) assert.ok(PASEO.includes(t), "12_paseo.js ya no anima así: " + t + " (cambia también Muneco)");
+});
+test("muñeco: andando balancea brazos y piernas en proporción a la velocidad; quieto, en reposo", () => {
+  const lento = anda(Muneco.crea(), 0.6, 4).max, normal = anda(Muneco.crea(), 1.4, 4).max, corre = anda(Muneco.crea(), 4, 4).max;
+  assert.ok(lento.pierna > 0.15 && lento.pierna < normal.pierna, "más despacio, menos balanceo: " + lento.pierna + " / " + normal.pierna);
+  assert.ok(normal.pierna > 0.5 && normal.pierna <= 0.75 + 1e-9, "a 1,4 m/s, casi el balanceo pleno: " + normal.pierna);
+  assert.ok(Math.abs(corre.pierna - 0.75) < 0.01, "corriendo, el tope del paseante (0,75 rad): " + corre.pierna);
+  assert.ok(Math.abs(normal.brazo - normal.pierna * 0.8) < 0.02, "los brazos, al 80 % y en contra de las piernas");
+  const st = Muneco.crea(), fin = anda(st, 1.4, 3);
+  const quieto = anda(st, 0, 2, { x: fin.x, z: fin.z });
+  assert.ok(quieto.o.vel < 0.01, "se para: " + quieto.o.vel);
+  assert.ok(Math.abs(quieto.o.piernaI) < 0.01 && Math.abs(quieto.o.brazoD) < 0.01, "quieto, piernas y brazos en reposo");
+  const q0 = anda(Muneco.crea(), 0, 3).o;
+  assert.deepStrictEqual([q0.piernaI, q0.piernaD, q0.brazoI, q0.brazoD].map(v => Math.abs(v)), [0, 0, 0, 0], "sin moverse nunca, reposo exacto");
+  // un salto de posición (vuelve tras un hueco) no es andar
+  const sj = Muneco.crea(), o = {}; Muneco.avanza(sj, 0, 0, 0, 1 / 60, 0, 1, NaN, false, o); Muneco.avanza(sj, 40, 0, 0, 1 / 60, 0, 1, NaN, false, o);
+  assert.strictEqual(o.vel, 0);
+});
+test("muñeco: gira suave hacia donde anda; quieto, hacia donde mira; los pies, en el suelo de ESTE mundo", () => {
+  const st = Muneco.crea(), o = {};
+  Muneco.avanza(st, 0, 0, 0, 1 / 60, 50, 1, NaN, false, o);
+  const r = anda(st, 1.4, 0.15, { rumbo: Math.PI / 2 }).o;   // gira 90° a la izquierda: tras 150 ms aún no ha llegado
+  assert.ok(r.yaw > 0.05 && r.yaw < Math.PI / 2 - 0.1, "gira poco a poco: " + r.yaw);
+  const r2 = anda(st, 1.4, 2, { rumbo: Math.PI / 2 }).o;
+  assert.ok(Math.abs(r2.yaw - Math.PI / 2) < 0.02, "acaba mirando hacia donde anda: " + r2.yaw);
+  const r3 = anda(st, 0, 3, { yawCab: -1 }).o;
+  assert.ok(Math.abs(r3.yaw + 1) < 0.02, "quieto, se vuelve hacia donde mira su cabeza: " + r3.yaw);
+  // pies: suelo local × exageración (más el bote del paso); NO la cota que trae la pose
+  const p = anda(Muneco.crea(), 1.4, 2, { suelo: 230, exag: 1.5 }).o;
+  assert.ok(p.yPies >= 345 && p.yPies <= 345 + 0.03 + 1e-9, "pies en suelo·exag: " + p.yPies);
+  assert.ok(Math.abs(p.yCab - p.yPies - 1.6) < 1e-9, "de pie, cabeza a 1,6 m de sus pies");
+  assert.strictEqual(anda(Muneco.crea(), 0, 1, { suelo: 230, exag: 1.5 }).o.yPies, 345, "quieto, sin bote");
+});
+test("muñeco con gafas: la altura de su cabeza sobre el suelo lo agacha; con manos, los brazos no se animan", () => {
+  const dePie = anda(Muneco.crea(), 0, 1, { hCab: 1.62 }).o, agachado = anda(Muneco.crea(), 0, 1, { hCab: 1.0, suelo: 10 }).o, tumbado = anda(Muneco.crea(), 0, 1, { hCab: 0.2 }).o;
+  assert.strictEqual(dePie.agacho, 0);
+  assert.ok(Math.abs(agachado.agacho - 0.6) < 1e-9 && Math.abs(agachado.yCab - 11.0) < 1e-9, "agachado: la cabeza a 1,0 m de su suelo");
+  assert.strictEqual(tumbado.agacho, 0.9, "como mucho 0,9 m");
+  const conManos = anda(Muneco.crea(), 1.4, 3, { manos: true }).max;
+  assert.strictEqual(conManos.brazo, 0, "con manos de la pose, brazos quietos"); assert.ok(conManos.pierna > 0.5, "las piernas sí andan");
+});
+test("muñeco: la pose del contrato v1 no cambia (24 B escritorio, 56 B Quest; versión 1)", () => {
+  const b = PoseCodec.codifica({ tipo: 1, seq: 1, t: 2, cab: { p: [1, 2, 3], q: [0, 0, 0, 1] }, izq: null, der: null });
+  assert.strictEqual(b.byteLength, 24); assert.strictEqual(b[0], 1);
+  assert.strictEqual(PoseCodec.codifica({ tipo: 2, seq: 1, t: 2, cab: { p: [1, 2, 3], q: [0, 0, 0, 1] }, izq: { p: [0, 1, 0], q: [0, 0, 0, 1] }, der: null }).byteLength, 56);
+});
+
 test("contratos/livekit-roles.json: en F2 ningún rol publica audio ni vídeo, todos publican datos, nadie lleva roomAdmin y la identidad es opaca", () => {
   const R = JSON.parse(lee("contratos/livekit-roles.json"));
   assert.strictEqual(R.contrato, "livekit-roles"); assert.strictEqual(R.version, 2); assert.strictEqual(R.fase, "F2");
@@ -204,5 +267,6 @@ test("en Chrome: sin ?presencia no se añade nada; con ?presencia=sim, 10 y 40 v
   const d10 = res[10].llamadas - res[0].llamadas, d40 = res[40].llamadas - res[0].llamadas;
   assert.ok(d10 >= 4 && d10 <= 5, "10 visitantes: " + d10 + " llamadas más (esperadas 4-5: cuerpo, cabeza, sombrero, nombres y manos si hay Quest)");
   assert.strictEqual(d40, 5, "40 visitantes: " + d40 + " llamadas más (esperadas 5)");
-  assert.ok(res[40].triangulos - res[0].triangulos <= 40 * 60, "40 visitantes: más de 60 triángulos por avatar");
+  // P5: el muñeco del paseante: 5 cajas (60) + cabeza (icosaedro, 20) + sombrero (12) + nombre (2) = 94; con gafas, +24 de las manos
+  assert.ok(res[40].triangulos - res[0].triangulos <= 40 * 120, "40 visitantes: más de 120 triángulos por avatar");
 });
