@@ -19,7 +19,8 @@ const SOLO_DATOS: Permisos = { roomJoin: true, canSubscribe: true, canPublish: f
  * Permisos por rol en F2: copia de contratos/livekit-roles.json («roles»), que es quien manda; la prueba de unidad
  * compara las dos. En F2 los cuatro son iguales (solo datos; sin audio, sin vídeo, sin roomAdmin).
  * canPublishSources va vacío y canPublish a false: según el SDK, «cuando se pone, sustituye a canPublish»; vacío no
- * permite ninguna fuente [NO VERIFICADO contra el servidor: lo comprobará la prueba con dos Chrome, P4].
+ * permite ninguna fuente. Comprobado contra LiveKit 1.13.11 (P4, presencia_dev.test.js): una pista de micrófono no se
+ * publica y los datos sí.
  */
 export const PERMISOS: Record<Rol, Permisos> = { hogar: SOLO_DATOS, guia: SOLO_DATOS, corresponsal: SOLO_DATOS, admin: SOLO_DATOS };
 
@@ -76,7 +77,7 @@ export class ModeradorLiveKit implements ModeradorSala {
     catch (e) { if (esNoEncontrado(e)) return 0; throw e; } // la sala no existe (nadie dentro): nada que sacar
     let n = 0;
     for (const identidad of presentes) {
-      // si se ha ido entre la lista y la expulsión, RoomService responde not_found (404): no cuenta
+      // si se ha ido entre la lista y la expulsión, RoomService responde 404 not_found (comprobado en P4): no cuenta
       try { await this.rs.removeParticipant(sala, identidad); n++; } catch (e) { if (!esNoEncontrado(e)) throw e; }
     }
     return n;
