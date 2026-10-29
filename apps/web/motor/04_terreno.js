@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: hash, matSuelo, matOrto, UN, Terreno, actualizaTerreno, terreno
-// Consume: 01_datos (D, RES, ANCHO, ALTO, ESTAD), 02_mundo (Mundo, suelo, tinte, copas), 02b_cola (Cola), 03_escena (scene, camera, modo),
+// Consume: 01_datos (D, RES, ANCHO, ALTO, ESTAD, ESC3D), 02_mundo (Mundo, suelo, tinte, copas), 02b_cola (Cola), 03_escena (scene, camera, modo),
 //   08_marcadores (aplica), 09_camara (suelta), 12_paseo (primera), 13_parcelas (parcelas), 14_historia (hist),
 //   15_tiempo (lluvia, parcheTiempo, nivel, hace), 21_suelo (vn2, cubierta), 24_pantalla (suave)
 // ===============================================================================
@@ -217,7 +217,7 @@
 
     function geometria(t, paso) { var g = geometriaG(t, paso), r; while (!(r = g.next()).done); return r.value; }   // síncrona: solo para el nivel grueso (1.000 vértices)
     function monta(t) {   // textura, material y el nivel más grueso (barato); los más finos llegan con actualiza()
-      if (t.mat) return;
+      if (t.mat || ESC3D.activa) return;   // con la escena 3D Tiles (?escena=tiles) el terreno de siempre no construye nada
       texturas(t); t.mat = material(t); t.mallas = [null, null, null]; t.usado = [0, 0, 0]; t.nivel = -1; t.hc = suelo((t.v[0] + t.v[2]) / 2, (t.v[1] + t.v[3]) / 2);
       ponNivel(t, 2);
     }
@@ -229,10 +229,11 @@
     function ponNivel(t, n) {
       var m = mallaDe(t, n); if (!m) return null; for (var k = 0; k < 3; k++) if (t.mallas[k]) t.mallas[k].visible = k === n; t.nivel = n; t.usado[n] = performance.now(); return m;
     }
-    function montaTodas() { Mundo.lista.forEach(monta); actualiza(camera.position.x, camera.position.y, camera.position.z); Cola.vacia(8000); }
+    function montaTodas() { if (ESC3D.activa) return; Mundo.lista.forEach(monta); actualiza(camera.position.x, camera.position.y, camera.position.z); Cola.vacia(8000); }
     // nivel de cada tesela según la distancia de la cámara a su rectángulo (con histéresis del 10 %); máx. `cupo` mallas nuevas por llamada para no bloquear
     var U0 = 220, U1 = 800;
     function actualiza(cx, cy, cz) {
+      if (ESC3D.activa) return;
       var ahora = performance.now();
       Mundo.lista.forEach(function (t) {
         if (!t.mat) return;
@@ -248,12 +249,12 @@
       });
     }
     function tileCargada(t) {   // llegaron los datos de una tesela: color real, ruido real y las mallas rehechas con el relieve fino
-      if (!t.mat) return; t.detPedido = false; t.detListo = false; if (t.uni) t.uni.uDet.value = 0; Cola.cancela("T" + t.key + "0"); Cola.cancela("T" + t.key + "1"); texturasReales(t); t.hc = suelo((t.v[0] + t.v[2]) / 2, (t.v[1] + t.v[3]) / 2);
+      if (!t.mat || ESC3D.activa) return; t.detPedido = false; t.detListo = false; if (t.uni) t.uni.uDet.value = 0; Cola.cancela("T" + t.key + "0"); Cola.cancela("T" + t.key + "1"); texturasReales(t); t.hc = suelo((t.v[0] + t.v[2]) / 2, (t.v[1] + t.v[3]) / 2);
       for (var k = 0; k < 3; k++) if (t.mallas[k]) { t.mallas[k].geometry.dispose(); grupo.remove(t.mallas[k]); t.mallas[k] = null; }
       ponNivel(t, 2);
     }
-    function iniciaMosaico() { var im = Mundo.mosaico.img; if (im) { var tx = new THREE.Texture(im); tx.anisotropy = 4; tx.needsUpdate = true; UN.uMos.value = tx; } }
-    function modoOrto(v) { UN.uModoOrto.value = v ? 1 : 0; if (v) Mundo.lista.forEach(texturaOrto); else Mundo.lista.forEach(function (t) { if (t.texOrt && !(t.uni && t.uni.uDet.value)) { t.texOrt.dispose(); t.texOrt = null; if (t.uni) t.uni.uOrt.value = null; } }); }
+    function iniciaMosaico() { if (ESC3D.activa) return; var im = Mundo.mosaico.img; if (im) { var tx = new THREE.Texture(im); tx.anisotropy = 4; tx.needsUpdate = true; UN.uMos.value = tx; } }
+    function modoOrto(v) { UN.uModoOrto.value = v ? 1 : 0; if (ESC3D.activa) return; if (v) Mundo.lista.forEach(texturaOrto); else Mundo.lista.forEach(function (t) { if (t.texOrt && !(t.uni && t.uni.uDet.value)) { t.texOrt.dispose(); t.texOrt = null; if (t.uni) t.uni.uOrt.value = null; } }); }
     return { grupo: grupo, monta: monta, montaTodas: montaTodas, actualiza: actualiza, modoOrto: modoOrto, tileCargada: tileCargada, iniciaMosaico: iniciaMosaico, UN: UN };
   })();
   var tTer = 0;
