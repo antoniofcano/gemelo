@@ -279,6 +279,15 @@ Dos épocas: el doble (si no se comparte nada). Con 4 procesos, unas 4 veces men
 - **Con `--finca` el hornero no lee el índice** (las variantes no dependen de los olivos): leer el `indice.json` de Hituelo costaba ≈ 13 s de los de arriba en la máquina cargada.
 - **No medido:** el hornero en el VPS, descargar/descomprimir/decuantizar/verificar en un aparato, E2 de otros tipos del catálogo, varias fincas a la vez, los propios horneados (`--propios` no está implementado).
 
+## Variantes horneadas frente a calculadas en el navegador (O7e, 2026-10-29, ronda del banco, fixture de Hituelo, «cerca», SwiftShader)
+
+| Variante | Llamadas / tri | Generados dibujados | Variantes horneadas / calculadas | Espera |
+|---|---|---|---|---|
+| calculadas (`?olivosHorneado=0`) | 40 / 425 k | **1 de 6** | 0 / 2 | 183 s, **sin terminar** |
+| horneadas | 37 / 505 k | **6 de 6** | **4 / 0**, 0 fallos | **53 s**, terminada |
+
+A ojo (capturas de la ronda), las horneadas y las calculadas tienen el mismo aspecto; en las dos, los generados salen de un tono claro (crema) frente al verde oscuro de las copas medidas de alrededor (para revisar con Antonio).
+
 ## Límites conocidos
 - Las ortofotos decodificadas (2,4 MB por tesela de 768 px; 1 MB a 512 px) se sueltan solo a 900 m; sin LRU fino.
 - Dentro de una tesela todo el relieve y la copa (258² + 256²) están siempre en memoria: 49 teselas ≈ 20 MB; la nube de las lejanas se libera a > 1,2× 2.300 m.
