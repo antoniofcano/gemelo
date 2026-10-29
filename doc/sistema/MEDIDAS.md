@@ -189,6 +189,79 @@ Llamadas / triángulos / heap por escenario (`lejos` · `cerca` · `nube`), cada
 - **Topes** (`pruebas/presupuesto.json`, `fixture_escena_tiles`; los comprueba `escena3d.test.js`): fijados con ≈ 25 % de margen sobre el máximo de las tres medidas de la ronda con el fixture (T1, T5, T4) y sin medida nueva: lejos ≤ 210 llamadas / 20 k tri; cerca ≤ 70 / 210 k; nube ≤ 157 / 13 k; heap ≤ 45 MB (medido 26-27 MB; más holgado por lo variable). Los **puntos** no se midieron con la bandera: se comprueban contra los de siempre (la nube sigue en el motor). Con `&olivos=gen` la ronda dio lo mismo. Sin la bandera los topes de `fixture` no cambian. La prueba de navegador mide además `nube` (antes solo lejos y cerca) y pide el turno sola; **aún no ejecutada con estos topes**: su primera corrida en turno puede obligar a ajustarlos (si algo cuesta más de lo medido en la ronda, se corrige aquí y no se oculta).
 - **VR simulada con `?escena=tiles`**: escrita (mismo fichero, opcional con `GEMELO_VR=1`), **sin ejecutar todavía**: la VR completa con SwiftShader es inestable y la corrida va por el turno. Cifras: ninguna.
 
+## Horneado de recetas de olivos generados por tesela (O6, 2026-10-29, foto: no se mantiene)
+
+Medida de decisión para el ADR de las recetas horneadas en el servidor. Script: `pruebas/olivo/hornea_tesela.mjs` (solo mide: no escribe ningún formato; el «cuantizado» es una serialización de prueba con cabeceras reales). Datos: Hituelo v3 (`GEMELO_DATOS`, fuera del repo), 46 teselas de 256 m (36 con olivos), 5.882 olivos, generador `olivo-2`, época `envero` (la del motor), `factorR8` 0,5, tipo `centenario3`, parámetros de `copas_param`. Equipo: Intel i5-1035G1 (4 núcleos, 8 hilos), Windows 10, Node 24; **máquina cargada y con carga variable**: generar un olivo E0 llevó 55 ms en la corrida más tranquila, 154-162 ms con tres procesos míos a la vez y 348 ms en la última. Los tiempos valen por proporciones, no como referencia. 1 MB = 1.048.576 B. Una sola corrida de cada cosa; brotli = `zlib` de Node con ventana de 16 MB.
+
+**Qué se midió.** Tesela mediana de las que tienen olivos, `1587_16327`: **136 olivos, completa**. Tesela más poblada, `1582_16326` (496 olivos): **no terminó**; se paró a mano tras 57 min y 3.450 s de CPU (brotli 11 de cada olivo en cuatro niveles), sin cifras. Para extrapolar, **120 olivos al azar de toda la finca** (semilla fija; ± = error típico de la media).
+
+**Cuantización de prueba** (pérdida máxima medida contra el original en 120 olivos y 4 niveles): `position` Int16 en la caja de la pieza, ≤ **0,11 mm**; `normal` Int8, ≤ **0,39°**; `uv` Uint16, ≤ 2·10⁻⁵; `aHueco`/`aMuerta` Uint8, ≤ 0,002; colores Uint8, ≤ 0,0011 (de 0 a 1); matrices de instancias: traslación Int16 en la caja, ≤ **0,11 mm**, parte lineal 3×3 Int16, ≤ **0,06 mm** sobre la geometría de la instancia, sin la última fila; índices Uint16 si la pieza tiene ≤ 65.535 vértices (la madera fina «ramas» tiene más: Uint32); `nodo`/`padre` Uint16 si caben. **Sin comparar a ojo** (ninguna captura): las pérdidas son numéricas.
+
+### Por olivo (media de 120 al azar de Hituelo)
+| Nivel | Crudo (arrays tipados) | Cuantizado | Brotli 11 | Brotli 9 | CPU de brotli por olivo, 11 / 9 (24 olivos, mismas condiciones) |
+|---|---|---|---|---|---|
+| E0 | 2,10 MB | 899 KB | **491 KB** | 553 KB | 5,2 s / 0,14 s |
+| E1 | 1,05 MB | 433 KB | **254 KB** | 272 KB | 1,8 s / 0,06 s |
+| E2 | 0,84 MB | 341 KB | **225 KB** | 242 KB | 1,6 s / 0,06 s |
+| E2-VR | 0,72 MB | 296 KB | **183 KB** | 199 KB | 1,5 s / 0,05 s |
+
+Brotli 9 pesa un **7-13 % más** que el 11 (E0 +13 %, E1 +7 %, E2 +8 %, E2-VR +9 %) y tarda unas **30 veces menos** (307 ms frente a 10.010 ms por olivo en los cuatro niveles). Brotli 6: +26 % en E0 y 4 veces menos CPU que el 9. Cuantizado, por categoría (E0): índices 27 %, posiciones 25 %, uv 17 %, matrices 13 %, normales 13 %; (E2-VR): posiciones 25 %, matrices 17 %, uv 17 %, índices 15 %, normales 13 %. `nodo`/`padre` (solo sirven para podar) ≈ 2 %.
+
+### Tesela mediana `1587_16327` (136 olivos, entera, brotli 11)
+| Nivel | Crudo | Cuantizado | Un fichero por olivo | Una corriente por tesela | Diferencia |
+|---|---|---|---|---|---|
+| E0 | 274 MB | 114 MB | 62,5 MB | 54,3 MB | −13 % |
+| E1 | 143 MB | 58 MB | 33,9 MB | 31,5 MB | −7 % |
+| E2 | 115 MB | 46 MB | 30,1 MB | 28,4 MB | −6 % |
+| E2-VR | 99 MB | 40 MB | 24,5 MB | 22,9 MB | −7 % |
+
+La tesela entera en un solo nivel pesa 23-63 MB comprimida, frente a su json de **1,18 MB** y su glb de **0,74 MB** (medianas, arriba). Acceso aleatorio por olivo (un objeto por olivo) cuesta un 6-13 % más que una corriente por tesela. La más poblada (496 olivos), **extrapolada** de la media y no medida: E0 ≈ 238 MB, E1 ≈ 123 MB, E2 ≈ 109 MB, E2-VR ≈ 89 MB.
+
+### Toda la finca (5.882 olivos, media de los 120 × 5.882; una época, un nivel por fila)
+| Nivel | Crudo | Cuantizado | Brotli 11 | Brotli 9 |
+|---|---|---|---|---|
+| E0 | 12,1 GB ± 0,15 | 5,0 GB ± 0,06 | **2,8 GB ± 0,03** | 3,1 GB |
+| E1 | 6,0 GB ± 0,05 | 2,4 GB ± 0,02 | **1,4 GB ± 0,01** | 1,5 GB |
+| E2 | 4,8 GB ± 0,04 | 1,9 GB ± 0,02 | **1,3 GB ± 0,01** | 1,4 GB |
+| E2-VR | 4,1 GB ± 0,03 | 1,7 GB ± 0,01 | **1,0 GB ± 0,01** | 1,1 GB |
+| Los cuatro | 27 GB | 11 GB | **6,5 GB** | 7,1 GB |
+
+Dos épocas distintas, hasta el doble salvo lo que se comparta (siguiente apartado). Frente a lo que se descarga hoy de Hituelo entero: 98 MB (json + jpg + glb).
+
+### Épocas: qué cambia entre una receta y la de otra (un olivo, `--epocas`)
+`envero` frente a `madura`: **solo cambia la pieza de las olivas** (1.668 → 1.892 olivas en ese olivo; matrices y colores); el resto de bytes es idéntico. `reposo`, `boton`, `flor` y `cuajado` cambian además las matrices de la madera fina, las ramitas y el relleno (no se investigó por qué). Guardar la pieza de las olivas aparte de la «base» haría que pasar de `envero` a `madura` costara solo esa pieza: **estimación**, no medida, ≈ 8 % de un E0 cuantizado (2.662 olivas × ≈ 29 B en un olivo de prueba).
+
+### Manifiesto por tesela (copas_id → huella por nivel; cálculo, no fichero real)
+Binario: `copas_id` u32 + 4 huellas de 16 B (sha-256 truncado a 128 bits) = **68 B por olivo**: 9 KB (136 olivos), 34 KB (496), 400 KB (los 5.882). Con huellas de 32 B: 132 B por olivo (18 / 65 / 776 KB). En JSON con hex de 32 caracteres: ≈ 21 / 76 / 906 KB. Las huellas no comprimen. Despreciable frente a las recetas.
+
+### Lo que bajaría un visitante en un paseo recto de 500 m (`--visita 150,250`)
+Olivos a menos de R m del paseo, sobre 6.468 salidas (cada 50 m, 4 rumbos): a 250 m, mediana **606**, p90 1.704, máx. **2.345**; a 150 m, mediana 369, p90 941, máx. 1.309. Bandas **[SUPUESTO]** (el motor reparte los niveles por presupuesto, no por distancias fijas; `RADIO_CAND` = 160 m): < 30 m E0, 30-80 m E1, el resto E2. Tamaños con la media por olivo de arriba.
+
+| Paseo | Olivos | E0 / E1 / E2 | Brotli 11, nivel exacto | Brotli 11, si el árbol pasa por todos los niveles | Cuantizado sin brotli, nivel exacto |
+|---|---|---|---|---|---|
+| mediano, 150 m | 307 | 36 / 54 / 217 | 78 MB | 107 MB | 127 MB |
+| mediano, 250 m | 606 | 36 / 54 / 516 | 144 MB | 173 MB | 226 MB |
+| el más denso, 150 m | 1.140 | 119 / 320 / 701 | 290 MB | 416 MB | 473 MB |
+| el más denso, 250 m | 2.345 | 119 / 320 / 1.906 | 555 MB | 681 MB | 874 MB |
+
+Todo en E2, a 150 m: 67 MB (mediano) y 250 MB (denso). En VR (E2-VR para todos): 55 y 204 MB. Para comparar, generar un olivo E0 llevó 55 ms en la corrida tranquila: 307 olivos son unos 17 s de un hilo y 1.140 unos 63 s **en este PC (móvil y Quest: no probado)**.
+
+### Tiempo del horneado de Hituelo entero (5.882 olivos, una época, un hilo)
+| Parte | Por olivo | Los 5.882 |
+|---|---|---|
+| Generar E0 | 55 ms (tranquila); 154-162 ms (tres procesos) | ≈ 5,4 min (tranquila) |
+| `aNivel` E1, E2 y E2-VR | ≈ 1-2 ms cada uno (tranquila) | < 1 min |
+| Cuantizar los 4 niveles | ≈ 25 ms (tranquila) | ≈ 2,5 min |
+| **Todo salvo brotli** | ≈ 83 ms | **≈ 9 min** (medido con 300 olivos: 536 s en total) |
+| Brotli 9, 4 niveles | 307 ms (con tres procesos) | brotli ≈ 60 % del tiempo; en total **≈ 19 min** (estimado, máquina tranquila) a **≈ 51 min** (medido-extrapolado, con tres procesos) |
+| Brotli 11, 4 niveles | 10 s (con tres procesos) | brotli ≈ 95 % del tiempo; **≈ 5,5 h** (estimado, tranquila) a **≈ 17 h** (con tres procesos) |
+
+Dos épocas: el doble (si no se comparte nada). Con 4 procesos, unas 4 veces menos **[no medido]**. La estimación «tranquila» escala el brotli por el cociente de tiempos de generación (55/162); es una proporción, no una corrida.
+
+### Contra los límites
+- **Artefacto** (`contratos/publicacion.json`): no admite `.bin`; ≤ 15 MB por fichero binario, 64 MB por publicación, 256 MB por versión, 255 ficheros. Una tesela mediana en un solo nivel (23-63 MB) no cabe en un fichero; Hituelo en E2-VR (1,0 GB), ni de lejos. **En la salida artefacto, las recetas se calculan en el navegador** (plan B).
+- **VPS** (ADR-0011): disco, memoria y núcleos **[NO VERIFICADO]**. Una época, cuatro niveles: ≈ 6,5 GB con brotli 11, ≈ 7,1 GB con brotli 9; dos épocas, hasta el doble. Cabe en cualquier VPS de decenas de GB; el límite real es el **ancho de banda de la visita** (arriba), no el disco.
+
 ## Límites conocidos
 - Las ortofotos decodificadas (2,4 MB por tesela de 768 px; 1 MB a 512 px) se sueltan solo a 900 m; sin LRU fino.
 - Dentro de una tesela todo el relieve y la copa (258² + 256²) están siempre en memoria: 49 teselas ≈ 20 MB; la nube de las lejanas se libera a > 1,2× 2.300 m.
