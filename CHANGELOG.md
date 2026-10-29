@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Entorno local con la api enchufada: migraciones, siembra sintética (4 hazas, 3 hogares @example.com), portada provisional, mundo en `/finca/` tras sesión y todo por https (`https://localhost:8743`); e2e del recorrido de entrada con Mailpit y Chrome (`GEMELO_DOCKER=1`).
 - Los exportadores (Cerro, réplica y Hituelo) emiten `copas_id` —el id del censo de OlivarTrack si la copa está emparejada con una marca que lo trae, o uno provisional (≥ 2^31) por la posición UTM— y `copas_tipo` = −1 (ADR-0012); el emparejamiento marca↔copa corrige el desfase de la ortofoto y es uno a uno; guardián `exportadores.test.js` con datos sintéticos; numpy, scipy y pillow fijadas en `requirements.txt`.
 - Contratos: el índice y la tesela se validan con `ajv` (JSON Schema 2020-12 estándar: `prefixItems`, `propertyNames`, `$defs`) en lugar del validador casero, que se retira; prueba de que los esquemas rechazan datos rotos.
 - Prototipo F1d de la escena en 3D Tiles 1.1 (`tuberia/tiles3d/`): `tileset.json` + glb por tesela desde el contrato v2, terreno simplificado con meshoptimizer, ortofoto como textura, olivos como instancias GPU desde el registro, marco local georreferenciado; visor de prueba con 3DTilesRendererJS 0.5.3 + three 0.186.1 y guardián `tiles3d.test.js` (ADR-0015, Propuesto).
@@ -34,6 +35,9 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 - `montar_v2.py`: en modo ficheros, con `--salida` los ficheros de apoyo se copian junto a la página (antes iban siempre a `publicar/<finca>/t/`) y con `--datos` salen de la carpeta de ese índice; la salida se escribe siempre con LF (en Windows salía con CRLF).
 - `doc/DISENO.md` pasa a `doc/historico/` (foto del diseño de octubre de 2026); sus decisiones viven ahora en los ADR. `doc/MEDIDAS.md` pasa a `doc/sistema/MEDIDAS.md`.
 - `doc/ESTADO.md` reescrito como único sitio de «dónde estamos»; se retira el id y el enlace del artefacto privado (el repo es público).
+
+### Arreglado
+- El botón «Entrar» del enlace mágico daba 403 en Chrome (`no-referrer` hacía que mandara `Origin: null`); ahora usa `strict-origin`.
 
 ## [0.2.0] — 2026-10-27
 Punto de partida de la serie v2 (motor por teselas): el commit `ffd9719`. **[SUPUESTO]** la numeración 0.2.0 la asigna este sistema de trabajo; no hay etiqueta git (ver DECISIONS-PENDING).
