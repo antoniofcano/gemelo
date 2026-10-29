@@ -178,9 +178,9 @@
     }
     function actualiza(dt, forzar) {
       if (!listo0) return;
-      // ?olivos=gen: los generados avanzan su cola propia (con una parte del presupuesto de la Cola: el 40 %, el 25 % si faltan celdas de nivel 0, y todo
+      // ?olivos=gen: los generados avanzan su cola propia (con una parte del presupuesto de la Cola: la mitad, el 30 % si faltan celdas de nivel 0, y todo
       // si la Cola no tiene nada) y su fundido; al colocar un lote o acabar el fundido, se reparte de nuevo. Sin la bandera, no hace nada y no gasta
-      if (Generados.paso(dt, presupuestoBase() * (!Cola.pendientes() ? 1 : faltan > 0 ? 0.25 : 0.4))) sucio = true;
+      if (Generados.paso(dt, presupuestoBase() * (!Cola.pendientes() ? 1 : faltan > 0 ? 0.3 : 0.5))) sucio = true;
       emaDt += (Math.min(dt, 0.1) - emaDt) * 0.04;
       var vis = gArboles.visible; if (!vis && modo !== "nube") return;   // en modo Ortofoto no hay árboles; en modo Nube se precargan los de alrededor
       t += dt;
