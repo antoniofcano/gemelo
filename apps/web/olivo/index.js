@@ -5,6 +5,7 @@
 //   recetaG(entrada) → generador · receta(entrada) → receta · aNivel(receta, "E0"|"E1"|"E2"|"E2VR") → receta
 //   montaOlivo(THREE, receta, materiales) → THREE.Group · huella(receta) → Promise<sha256> · huellaNiveles(receta)
 //   semillaDeCopa(copa, copas_id[i], centro_utm, copas_semilla[i]) → {semilla, provisional, guardada?} · NOMBRE_TIPO («olivos:centenario-3p») · parametrosDeCopa(copa, copas_param[i], tipo) → {tipo, parametros, origen}
+//   creaCache({memMB, discoMB}) · claveReceta(entrada, nivel) (caché de recetas en memoria e IndexedDB, §5 del contrato)
 //   semillaDeId(id) · GEN_VERSION · TIPOS · ESTADOS · ID_TIPO · tipoDeId · bbchAEpoca · creaMateriales · cargaFotos · creaFabrica · hornear · glb
 //
 // El árbol se calcula SIEMPRE con three 0.128.0 («three-gen», fijado) y se monta con el three del anfitrión (0.128 o 0.186): así no cambia
@@ -24,6 +25,7 @@ export { huella, huellaNiveles, huellaEstructura, diferenciaMax } from "./huella
 export { creaMateriales, MATERIALES, encadena } from "./materiales.js";
 export { cargaFotos, FOTOS } from "./texturas.js";
 export { hornear, glb } from "./hornear.js";
+export { creaCache, claveReceta, bytesReceta, CACHE_VERSION } from "./cache.js";
 export { revision, uvDelMapa, texturaDeColor, colorLineal } from "./compat.js";
 export { aNivel, aNivelG, NIVELES, triangulosNivel, llamadasNivel, creaFabrica, aRebanadas, triangulosDe, liberaOlivo, resuelve, triangulos };
 

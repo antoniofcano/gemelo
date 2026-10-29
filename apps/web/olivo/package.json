@@ -11,9 +11,11 @@
     "herramienta:build": "vite build herramienta"
   },
   "dependencies": {
+    "idb-keyval": "6.3.0",
     "three-gen": "npm:three@0.128.0"
   },
   "devDependencies": {
+    "fake-indexeddb": "6.2.5",
     "pngjs": "7.0.0",
     "three-r186": "npm:three@0.186.1",
     "vite": "6.4.5"

@@ -83,6 +83,14 @@ test("motor (07ab, ?olivos=gen) en Node: sin la bandera nada; materiales con nub
   t.diagnostic("lote 1: " + JSON.stringify(r.diag.primero.info) + " · " + r.diag.ms + " ms");
 });
 
+test("caché de recetas (O5): clave estable y distinta por época, semilla y versión; LRU en memoria y en disco; sin IndexedDB, igual", { timeout: 120000 }, async t => {
+  if (SALTO) return t.skip(SALTO);
+  const r = json(await nodo([path.join("pruebas", "olivo", "cache.mjs")]));
+  assert.ok(!r.error, r.error);
+  assert.deepStrictEqual(r.mal, []);
+  t.diagnostic("clave: " + r.diag.clave);
+});
+
 test("semilla guardada (copas_semilla) y nombres de catálogo de los tipos", t => {
   if (SALTO) return t.skip(SALTO);
   const { python } = require("./_util");

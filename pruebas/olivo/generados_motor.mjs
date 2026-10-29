@@ -194,6 +194,8 @@ function vuelta(fx, fz, tope, listo) {
 let g = vuelta(0, 0, TOPE, e => e.fundido.activo && e.info.propios >= 1), s = gen();
 diag.primero = { info: s.info, fundido: s.fundido, ms: Math.round(performance.now() - t0) };
 exige(s.info.arboles >= 1 && s.info.entran === s.info.arboles, "primer lote: todo entra (" + JSON.stringify(s.info) + ")");
+exige(s.cache && s.cache.memoria >= 1 && !s.cache.enDisco, "las recetas calculadas deben quedar en la caché de memoria (sin IndexedDB en Node): " + JSON.stringify(s.cache));
+diag.cache = s.cache;
 exige(s.fundido.activo && s.fundido.avance < 0.05, "primer lote: el fundido no empieza");
 exige(c.__G.pendientes() > 0, "con el fundido en curso, pendientes() debe ser > 0 (lo espera mide())");
 const i0 = Number(Object.keys(olivos).find(i => c.__G.rotulo(+i)));

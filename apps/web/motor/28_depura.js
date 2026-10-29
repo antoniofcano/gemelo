@@ -10,7 +10,8 @@
   function genDebug() {
     var g = window.__olivosGen ? window.__olivosGen() : null;
     if (!g || g.estado === "apagado") return "";
-    return "generados " + g.estado + " · plan " + g.plan + " · dibujados " + (g.info && g.info.arboles || 0) + " · recetas " + g.recetas + " · " + g.via + (g.motivo ? " · " + String(g.motivo).slice(0, 60) : "") + "\n";
+    return "generados " + g.estado + " · plan " + g.plan + " · dibujados " + (g.info && g.info.arboles || 0) + " · recetas " + g.recetas + " · " + g.via + (g.motivo ? " · " + String(g.motivo).slice(0, 60) : "") +
+      (g.cache ? " · caché: memoria " + g.cache.memoria + " (" + g.cache.memoriaMB + " MB) · disco " + (g.cache.enDisco ? (g.cache.disco === null ? "…" : g.cache.disco) + " (" + g.cache.discoMB + " MB)" : "no") + (g.cache.aviso ? " · " + g.cache.aviso.slice(0, 50) : "") : "") + "\n";
   }
   function depuraCuadro(tIni) {
     if (!DEPURA) return;
