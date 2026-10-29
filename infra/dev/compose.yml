@@ -1,5 +1,6 @@
 # Entorno de DESARROLLO local del gemelo (no es producción: ver doc/operacion/DESARROLLO-LOCAL.md).
-#   npm run dev:arriba   (genera el fixture si falta, construye la web, crea infra/dev/.env con claves aleatorias y levanta esto)
+#   npm run dev:arriba   (genera el fixture si falta, construye la web, crea infra/dev/.env con claves aleatorias, levanta esto
+#                         —la api con sus migraciones— y siembra las hazas y los hogares SINTÉTICOS de prueba)
 #   npm run dev:estado · npm run dev:abajo
 # Reglas: imágenes estables con versión fija Y digest (imagen:versión@sha256:…; cómo se actualizan, en DESARROLLO-LOCAL.md); ningún puerto fuera de 127.0.0.1; ningún secreto escrito aquí (salen de infra/dev/.env,
 # que genera levanta.mjs con claves aleatorias y que git ignora); red interna; límites de memoria; usuarios no root donde se puede.
@@ -14,7 +15,9 @@ x-comun: &comun
     options: { max-size: "10m", max-file: "3" }
 
 services:
-  # Caddy: la web (build de Vite) y las teselas en /teselas/<finca>/… ; HTTP en 8780 y HTTPS con certificado local en 8743
+  # Caddy, con la misma forma que producción (infra/Caddyfile): portada pública en /, el mundo (build de Vite) en /finca/ y
+  # las teselas en /teselas/<finca>/… solo con sesión (forward_auth a la api), y la api en /api/. HTTP en 8780 y HTTPS con
+  # certificado local en 8743
   web:
     <<: *comun
     image: caddy:2.11.7-alpine@sha256:eb4d35b7452d1ab6171fbdbe8d9275b2301dad6dad92115d91e19fb9b24d510f
@@ -27,6 +30,7 @@ services:
       - "127.0.0.1:${GEMELO_DEV_PUERTO_HTTPS:-8743}:8443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./portada:/srv/portada:ro
       - ../../apps/web/dist:/srv/web:ro
       - ${GEMELO_DEV_TESELAS:-../../pruebas/salida/fixture}:/srv/teselas:ro
     tmpfs:                             # la CA local y su estado no se guardan: es desarrollo (se regeneran en cada arranque)
@@ -34,6 +38,7 @@ services:
       - /config:uid=1000,gid=1000,mode=0700
     environment:
       LIVEKIT_PUBLICO: "ws://localhost:${GEMELO_DEV_PUERTO_LIVEKIT:-7880}"
+      PUERTO_HTTPS_PUBLICO: "${GEMELO_DEV_PUERTO_HTTPS:-8743}"   # http redirige a https://localhost:<este>
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/salud"]
       interval: 10s
@@ -117,40 +122,65 @@ services:
       resources:
         limits: { memory: 128m }
 
-  # La api (fase 1a) la escribe otro trabajo en apps/api/. Cuando exista con su Dockerfile, se descomenta este bloque
-  # y el `handle /api/*` del Caddyfile. Contrato de enchufe (doc/operacion/DESARROLLO-LOCAL.md § La api):
-  #   escucha en 8000 dentro de la red «interna», responde GET /api/salud con 200, y lee todo de variables de entorno.
-  # api:
-  #   <<: *comun
-  #   build: { context: ../../apps/api }
-  #   user: "1000:1000"
-  #   read_only: true
-  #   cap_drop: [ALL]
-  #   depends_on:
-  #     db: { condition: service_healthy }
-  #     correo: { condition: service_healthy }
-  #   environment:
-  #     GEMELO_API_PUERTO: "8000"
-  #     GEMELO_DB_URL: "postgresql://gemelo@db:5432/gemelo"        # usuario y host; la clave va aparte:
-  #     GEMELO_DB_CLAVE: ${GEMELO_DEV_PG_CLAVE}
-  #     GEMELO_SMTP_HOST: correo
-  #     GEMELO_SMTP_PUERTO: "1025"
-  #     GEMELO_CORREO_REMITENTE: "gemelo@canoydamas.invalid"
-  #     GEMELO_URL_PUBLICA: "http://localhost:${GEMELO_DEV_PUERTO_WEB:-8780}"
-  #     GEMELO_LIVEKIT_URL: "ws://livekit:7880"
-  #     GEMELO_LIVEKIT_CLAVE: ${GEMELO_DEV_LIVEKIT_CLAVE}
-  #     GEMELO_LIVEKIT_SECRETO: ${GEMELO_DEV_LIVEKIT_SECRETO}
-  #     GEMELO_TESELAS: /srv/teselas
-  #   volumes:
-  #     - ${GEMELO_DEV_TESELAS:-../../pruebas/salida/fixture}:/srv/teselas:ro
-  #   healthcheck:
-  #     test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8000/api/salud"]
-  #     interval: 10s
-  #     timeout: 3s
-  #     retries: 5
-  #   deploy:
-  #     resources:
-  #       limits: { memory: 256m }
+  # La api (apps/api, fase 1a), construida con su Dockerfile (contexto: la raíz del repo; node fijado por versión y digest,
+  # usuario node = uid 1000). Escucha en 8000 solo en la red interna: se entra por Caddy en /api/. Contrato de enchufe y
+  # diferencias con producción en doc/operacion/DESARROLLO-LOCAL.md § La api.
+  # `migra` aplica las migraciones (apps/api/migraciones) y termina; la api espera a que acabe bien.
+  migra:
+    <<: *comun
+    image: gemelo-api:local
+    build: { context: ../.., dockerfile: apps/api/Dockerfile }
+    command: ["node", "dist/src/bd/migra-cli.js"]
+    restart: "no"
+    user: "1000:1000"
+    read_only: true
+    cap_drop: [ALL]
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      NODE_ENV: development
+      GEMELO_DB_URL: "postgresql://gemelo@db:5432/gemelo"
+      GEMELO_DB_CLAVE: ${GEMELO_DEV_PG_CLAVE:?falta infra/dev/.env (lo crea npm run dev:arriba)}
+    deploy:
+      resources:
+        limits: { memory: 192m }
+
+  api:
+    <<: *comun
+    image: gemelo-api:local
+    build: { context: ../.., dockerfile: apps/api/Dockerfile }
+    user: "1000:1000"
+    read_only: true
+    cap_drop: [ALL]
+    tmpfs: ["/tmp:size=16m"]
+    depends_on:
+      db: { condition: service_healthy }
+      correo: { condition: service_healthy }
+      migra: { condition: service_completed_successfully }
+    environment:
+      NODE_ENV: development            # fuera de producción: secretos en variable, SMTP sin TLS hacia Mailpit (config.ts)
+      GEMELO_API_PUERTO: "8000"
+      GEMELO_API_PROXIES: "1"          # delante solo está el Caddy de dev (en producción, borde + Caddy interno = 2)
+      GEMELO_DB_URL: "postgresql://gemelo@db:5432/gemelo"
+      GEMELO_DB_CLAVE: ${GEMELO_DEV_PG_CLAVE:?falta infra/dev/.env (lo crea npm run dev:arriba)}
+      GEMELO_SESION_SECRETO: ${GEMELO_DEV_SESION_SECRETO:?falta GEMELO_DEV_SESION_SECRETO en infra/dev/.env (npm run dev:arriba lo añade)}
+      GEMELO_URL_PUBLICA: "https://localhost:${GEMELO_DEV_PUERTO_HTTPS:-8743}"   # https: la cookie de sesión es Secure
+      GEMELO_API_ORIGENES: "https://localhost:${GEMELO_DEV_PUERTO_HTTPS:-8743}"
+      GEMELO_CORREO: smtp
+      GEMELO_SMTP_HOST: correo
+      GEMELO_SMTP_PUERTO: "1025"
+      GEMELO_SMTP_TLS: "no"
+      GEMELO_CORREO_REMITENTE: "gemelo@canoydamas.invalid"
+      GEMELO_OT: "no"                  # sin OlivarTrack en local: la ficha sale con el aviso ot_sin_sincronia
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8000/api/salud').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits: { memory: 256m }
 
 networks:
   interna: {}

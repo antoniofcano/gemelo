@@ -13,6 +13,7 @@ descargas/
 *.npz
 *.html
 !apps/web/plantilla.html
+!infra/dev/portada/index.html
 t/
 cap/
 *.png

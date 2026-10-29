@@ -1,4 +1,5 @@
 # Caddy del entorno de DESARROLLO (infra/dev/compose.yml). No es el de producción (infra/Caddyfile, otro trabajo).
+# Misma forma que producción: portada en /, mundo en /finca/ y teselas tras sesión (forward_auth), api en /api/.
 # Diferencias a propósito: sin HSTS (en localhost estorba), CSP en modo Report-Only, certificado de una CA local
 # no instalada (tls internal), y la CA se pierde al parar (tmpfs). Ver doc/operacion/DESARROLLO-LOCAL.md.
 {
@@ -47,29 +48,56 @@
 		respond 204
 	}
 
-	# la api (fase 1a): descomentar junto con el servicio «api» de compose.yml
-	# handle /api/* {
-	# 	reverse_proxy api:8000
-	# }
+	# la ruta de autorización es solo para este Caddy (forward_auth), nunca desde fuera
+	handle /api/interno/* {
+		respond 404
+	}
 
-	# teselas: /teselas/<finca>/indice.json y /teselas/<finca>/t/<kx>_<ky>.json|jpg (carpeta montada de solo lectura)
-	handle_path /teselas/* {
-		root * /srv/teselas
-		header Cache-Control "public, max-age=300"
-		file_server {
-			hide .*
+	# la api (apps/api): ella decide su propia autorización
+	handle /api/* {
+		request_body {
+			max_size 1MB
+		}
+		reverse_proxy api:8000
+	}
+
+	# decisión 16: sin sesión, solo la portada. El mundo (/finca/) y las teselas preguntan a la api si hay sesión; sin ella,
+	# una navegación va a la portada (303) y una carga recibe 401. Igual que infra/Caddyfile (producción).
+	@con_sesion path /finca /finca/* /teselas/*
+	handle @con_sesion {
+		forward_auth api:8000 {
+			uri /api/interno/autoriza
+		}
+		redir /finca /finca/ 308
+
+		# teselas: /teselas/<finca>/indice.json y /teselas/<finca>/t/<kx>_<ky>.json|jpg (carpeta montada de solo lectura)
+		handle_path /teselas/* {
+			root * /srv/teselas
+			header Cache-Control "private, max-age=300"
+			file_server {
+				hide .*
+			}
+		}
+
+		# el mundo: los ficheros de assets/ llevan hash en el nombre (Vite) → caché inmutable; la página, siempre revalidada
+		handle_path /finca/* {
+			root * /srv/web
+			@inmutable path /assets/*
+			header @inmutable Cache-Control "public, max-age=31536000, immutable"
+			@pagina path / /index.html
+			header @pagina Cache-Control "no-cache"
+			file_server {
+				precompressed br zstd gzip
+				hide .*
+			}
 		}
 	}
 
-	# la web: los ficheros de assets/ llevan hash en el nombre (Vite) → caché inmutable; la página, siempre revalidada
+	# la portada pública (provisional de desarrollo: infra/dev/portada/; la de verdad va con la UX, doc/sistema/UX.md §4.1)
 	handle {
-		root * /srv/web
-		@inmutable path /assets/*
-		header @inmutable Cache-Control "public, max-age=31536000, immutable"
-		@pagina path / /index.html
-		header @pagina Cache-Control "no-cache"
+		root * /srv/portada
+		header Cache-Control "no-cache"
 		file_server {
-			precompressed br zstd gzip
 			hide .*
 		}
 	}
@@ -84,9 +112,18 @@
 	}
 }
 
+# Por http solo la salud: lo demás va a https. La cookie de sesión es `Secure` (y `__Host-`): la api no la emite si la
+# petición no llega por https y Chrome no la guarda desde http://localhost (comprobado el 2026-10-29 con Chrome 131
+# headless). Sin https no hay sesión y, sin sesión, solo la portada (decisión 16).
 http://:8080 {
-	import gemelo
-	import errores
+	import cabeceras
+	handle /salud {
+		header Cache-Control "no-store"
+		respond "ok" 200
+	}
+	handle {
+		redir https://localhost:{$PUERTO_HTTPS_PUBLICO}{uri} 308
+	}
 }
 
 https://localhost:8443 {
