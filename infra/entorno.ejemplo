@@ -1,0 +1,48 @@
+# Plantilla de /etc/gemelo/entorno en el VPS (la lee infra/compose.yml con env_file). SIN SECRETOS: los secretos van
+# en ficheros de /etc/gemelo/secretos/ (permisos 0400, dueño root), y el compose los monta como secretos de Docker:
+#   pg_dueno        contraseña del dueño de la base (migraciones)
+#   pg_api          contraseña del rol gemelo_api (la api)
+#   sesion_secreto  ≥ 32 caracteres aleatorios para firmar la cookie (openssl rand -base64 48)
+#   smtp_clave      contraseña del buzón SMTP de OVH
+#   ot_token        token PROPIO de solo lectura de OlivarTrack (decisión 17)
+# Nada de este fichero se versiona con valores reales. Copia: sudo install -m 0640 infra/entorno.ejemplo /etc/gemelo/entorno
+
+# --- web
+GEMELO_URL_PUBLICA=https://gemelo.canoydamas.es
+# borde de Oficultor + Caddy interno
+GEMELO_API_PROXIES=2
+GEMELO_API_REGISTRO=info
+
+# --- sesión (ADR-0013)
+GEMELO_SESION_DIAS=30
+GEMELO_SESION_INACTIVIDAD_DIAS=7
+GEMELO_ENLACE_POR_IP=10
+GEMELO_ENLACE_POR_CORREO=3
+GEMELO_ENLACE_VENTANA_MIN=15
+
+# --- correo del enlace mágico: SMTP de OVH (decisión 15) [NO VERIFICADO contra el buzón real]
+GEMELO_CORREO=smtp
+GEMELO_SMTP_HOST=ssl0.ovh.net
+GEMELO_SMTP_PUERTO=465
+GEMELO_SMTP_TLS=si
+GEMELO_SMTP_USUARIO=buzon-del-gemelo@ejemplo.invalid
+GEMELO_CORREO_REMITENTE=Gemelo del olivar <buzon-del-gemelo@ejemplo.invalid>
+
+# --- OlivarTrack por MCP, solo lectura (contratos/olivartrack-sync.md). «no» hasta que exista el token propio.
+GEMELO_OT=no
+# GEMELO_OT=mcp
+# GEMELO_OT_MCP_URL=https://olivartrack.ejemplo.invalid/mcp
+GEMELO_OT_CADA_MIN=60
+
+# --- reservadas para la fase 2 (las lee infra/dev; la api de F1a aún no las usa)
+# GEMELO_LIVEKIT_URL=
+# GEMELO_LIVEKIT_CLAVE=
+# GEMELO_TESELAS=/srv/teselas
+
+# --- copias (infra/respaldo.sh; no las lee la api)
+# destino de rclone FUERA del VPS (p. ej. Object Storage de OVH en otra región): «remoto:cubo/ruta»
+GEMELO_RESPALDO_REMOTO=respaldo-ovh:gemelo-respaldos/bd
+# clave PÚBLICA de age: en el VPS solo está la pública; la privada la guarda Antonio fuera
+GEMELO_RESPALDO_DESTINATARIO_FICHERO=/etc/gemelo/respaldo.age.pub
+GEMELO_RESPALDO_LOCAL=/var/backups/gemelo
+GEMELO_RESPALDO_DIAS_LOCALES=7

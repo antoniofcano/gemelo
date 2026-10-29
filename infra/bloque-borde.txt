@@ -1,0 +1,11 @@
+# Bloque para el Caddyfile de BORDE (el de Oficultor, dueño de 80/443: ADR-0011). Se pega tal cual: SIN variables
+# de entorno ni marcadores. El borde termina TLS (certificado automático) y pasa todo al Caddy interno del gemelo
+# (servicio `web`, alias gemelo-web en la red externa `borde`), que pone las cabeceras de seguridad, la CSP, la caché
+# y la autorización (infra/Caddyfile). Caddy no se fía del X-Forwarded-For que mande un cliente: pone el suyo.
+# Lo NO probado contra el borde real: doc/operacion/RUNBOOK-VPS.md.
+gemelo.canoydamas.es {
+	request_body {
+		max_size 2MB
+	}
+	reverse_proxy gemelo-web:8080
+}
