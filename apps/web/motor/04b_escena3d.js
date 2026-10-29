@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Escena3D
-// Consume: 01_datos (D, ESC3D), 03_escena (renderer, scene, camera, exag), 04_terreno (Terreno), 04d_sombreado_tiles (SombreadoTiles),
-//   08_marcadores (listo, aplica), 16_vida (mira)
+// Consume: 01_datos (D, ESC3D), 02_mundo (Mundo, suelo), 03_escena (renderer, scene, camera, exag), 04_terreno (Terreno),
+//   04d_sombreado_tiles (SombreadoTiles), 08_marcadores (listo, aplica), 09_camara (objetivo), 16_vida (mira)
 // ===============================================================================
   // ---------- la escena en 3D Tiles 1.1 (F1d paso 3b, ADR-0015 Propuesto; formato en doc/sistema/TILES3D.md), solo con ?escena=tiles.
   // Sin la bandera no crea nada y el motor dibuja lo de siempre. Con ella, el relieve con su ortofoto lo dibuja 3DTilesRendererJS (versión
@@ -60,7 +60,7 @@
           raizT = new THREE.Matrix4().fromArray(r.transform); colocaGrupo(); estado = "activo";
           if (ganchos.alRaiz) ganchos.alRaiz(e.tileset);
         });
-        tiles.addEventListener("load-model", function (e) { if (!(ganchos.alModelo && ganchos.alModelo(e.scene, e.tile))) quitaOlivos(e.scene); e.scene.userData.tesela = { uri: e.tile.content && e.tile.content.uri }; });
+        tiles.addEventListener("load-model", function (e) { if (!(ganchos.alModelo && ganchos.alModelo(e.scene, e.tile))) quitaOlivos(e.scene); e.scene.userData.tesela = { uri: e.tile.content && e.tile.content.uri, lado: e.tile.boundingVolume && e.tile.boundingVolume.box ? 2 * e.tile.boundingVolume.box[3] : null, error: e.tile.geometricError }; });
         tiles.addEventListener("load-model", function (e) { SombreadoTiles.modelo(e.scene, e.tile); });   // el relieve, con el sombreado del Terreno (04d)
         tiles.addEventListener("dispose-model", function (e) { SombreadoTiles.suelta(e.scene); });
         tiles.addEventListener("dispose-model", function (e) { if (ganchos.alSoltar) ganchos.alSoltar(e.scene); });   // los olivos (04c)
@@ -98,14 +98,55 @@
       var vis = 0; if (tiles) tiles.visibleTiles.forEach(function (t) { if (t.content && t.content.uri) vis++; });
       return { estado: estado, motivo: motivo, errores: errores, visibles: vis, errorTarget: tiles ? tiles.errorTarget : null, stats: tiles ? JSON.parse(JSON.stringify(tiles.stats)) : null };
     }
-    // altura del relieve DIBUJADO en (x, y) del marco local (rayo vertical contra las teselas cargadas), sin exageración; null si no hay tesela.
+    // altura del relieve DIBUJADO en (x, y) del marco local (rayo vertical contra las teselas visibles: la librería saca de tiles.group las que no
+    // se dibujan), sin exageración; null si no hay tesela. relieveEn dice además qué glb lo dibuja (uri, lado y geometricError de su tesela).
     // Solo para pruebas y depuración: la física usa la altura de la CPU (decisión 38)
     var rayo = new THREE.Raycaster(), abajo = new THREE.Vector3(0, -1, 0);
-    function alturaEn(x, y) {
+    function teselaDe(o) { for (var p = o; p; p = p.parent) if (p.userData && p.userData.tesela) return p.userData.tesela; return null; }
+    function relieveEn(x, y) {
       if (!tiles || !raizT) return null;
       rayo.set(new THREE.Vector3(x, 1e4, -y), abajo);
       var r = rayo.intersectObject(tiles.group, true).filter(function (x) { return !x.object.isInstancedMesh; })[0];   // el relieve, no los olivos
-      return r ? r.point.y / exag : null;
+      if (!r) return null;
+      var t = teselaDe(r.object) || {};
+      return { h: r.point.y / exag, uri: t.uri || null, lado: t.lado || null, error: t.error === undefined ? null : t.error };
+    }
+    function alturaEn(x, y) { var r = relieveEn(x, y); return r ? r.h : null; }
+    // Sonda de huecos (criterio 3 del ADR-0015; solo pruebas): nx × ny rayos desde la cámara por la pantalla, más uno vertical bajo la cámara y otro
+    // bajo el objetivo. Para cada rayo se busca en la CPU dónde corta el relieve (Mundo.suelo, marcha de 1 m y bisección; con la exageración puesta)
+    // y, si ese punto cae dentro de los datos (tesela del contrato con un margen de 2 m), el rayo debe dar con el relieve dibujado: las teselas
+    // visibles del tileset o, si la escena 3D Tiles no está, el Terreno de siempre. Devuelve cuántos rayos caen en los datos y cuántos no
+    // encuentran relieve (con las primeras muestras de los que fallan).
+    var ndc = new THREE.Vector2();
+    function cortaCPU(o, d) {   // primer t > 0 con o + t·d bajo el relieve de la CPU, o −1 (hasta 6 km)
+      var f = function (t) { var x = o.x + d.x * t, z = o.z + d.z * t; return o.y + d.y * t - suelo(x, -z) * exag; };
+      var a = 0, fa = f(0); if (fa <= 0) return -1;
+      for (var t = 1; t < 6000; t += Math.max(1, Math.min(20, fa * 0.5))) { var ft = f(t); if (ft <= 0) { for (var k = 0; k < 30; k++) { var m = (a + t) / 2; if (f(m) > 0) a = m; else t = m; } return t; } a = t; fa = ft; }
+      return -1;
+    }
+    function enDatos(x, y) { var M = 2; return !!(Mundo.tesela(x - M, y - M) && Mundo.tesela(x + M, y - M) && Mundo.tesela(x - M, y + M) && Mundo.tesela(x + M, y + M)); }
+    function sondea(nx, ny) {
+      nx = nx || 7; ny = ny || 5;
+      var objs = []; if (tiles && estado === "activo") objs.push(tiles.group); if (Terreno.grupo.visible) objs.push(Terreno.grupo);
+      camera.updateMatrixWorld();
+      var rayos = [], cam = camera.getWorldPosition(new THREE.Vector3());
+      for (var j = 0; j < ny; j++) for (var i = 0; i < nx; i++) { ndc.set(-0.9 + 1.8 * i / (nx - 1), -0.9 + 1.8 * j / (ny - 1)); rayo.setFromCamera(ndc, camera); rayos.push({ o: rayo.ray.origin.clone(), d: rayo.ray.direction.clone(), que: "pantalla " + i + "," + j }); }
+      rayos.push({ o: cam.clone(), d: abajo.clone(), que: "bajo la cámara" });
+      if (typeof objetivo !== "undefined") rayos.push({ o: new THREE.Vector3(objetivo.x, cam.y + 50, objetivo.z), d: abajo.clone(), que: "bajo el objetivo" });
+      var n = 0, sin = 0, aristas = 0, muestras = [], o2 = new THREE.Vector3();
+      var da = function (o) { rayo.set(o, r0.d); rayo.far = Infinity; return objs.length && rayo.intersectObjects(objs, true).some(function (h) { return !h.object.isInstancedMesh; }); }, r0 = null;
+      rayos.forEach(function (r) {
+        var t = cortaCPU(r.o, r.d); if (t < 0) return;
+        var x = r.o.x + r.d.x * t, y = -(r.o.z + r.d.z * t); if (!enDatos(x, y)) return;
+        n++; r0 = r;
+        if (da(r.o)) return;
+        // un rayo que pasa justo por una arista (entre dos triángulos o entre dos glb vecinos, que comparten vértices) puede no dar con ninguno en el
+        // Raycaster de three; no es un hueco en pantalla. Si a 1 cm, en cualquiera de las cuatro direcciones, sí hay relieve, cuenta como arista
+        var cerca = [[0.01, 0], [-0.01, 0], [0, 0.01], [0, -0.01]].some(function (e) { return da(o2.set(r.o.x + e[0], r.o.y, r.o.z + e[1])); });
+        if (cerca) aristas++; else sin++;
+        if (muestras.length < 5) muestras.push({ que: r.que, x: +x.toFixed(2), y: +y.toFixed(2), arista: cerca });
+      });
+      return { rayos: rayos.length, enDatos: n, sinRelieve: sin, aristas: aristas, muestras: muestras, visibles: tiles ? resumen().visibles : 0 };
     }
     function cargada() {   // no se llama listo(): taparía el listo del motor (08_marcadores.js) que mira falla()
       if (estado === "apagado" || estado === "sin") return true;
@@ -115,5 +156,5 @@
     function libera() { if (!tiles) return; SombreadoTiles.libera(); if (ganchos.alApagar) ganchos.alApagar("liberada"); if (Sched) Sched.setXRSession(null); scene.remove(tiles.group); tiles.dispose(); tiles = null; estado = "apagado"; }
     function engancha(g) { for (var k in g) ganchos[k] = g[k]; if (estado === "sin" && ganchos.alApagar) ganchos.alApagar(motivo); }
     if (ESC3D.pedida) { Terreno.grupo.visible = false; arranca(); }
-    return { actualiza: actualiza, perfil: perfil, resumen: resumen, libera: libera, listo: cargada, alturaEn: alturaEn, engancha: engancha, grupo: function () { return tiles && tiles.group; } };
+    return { actualiza: actualiza, perfil: perfil, resumen: resumen, libera: libera, listo: cargada, alturaEn: alturaEn, relieveEn: relieveEn, sondea: sondea, engancha: engancha, grupo: function () { return tiles && tiles.group; } };
   })();

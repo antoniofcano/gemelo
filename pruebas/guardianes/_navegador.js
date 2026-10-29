@@ -57,6 +57,29 @@ async function lanza() {
   } catch (e) { await suelta(); throw e; }
 }
 
+/** Desglose de las llamadas de dibujo de UN fotograma, por objeto (en la página: p.evaluate(desgloseLlamadas)). Envuelve
+ *  renderer.renderBufferDirect (por donde pasan la pasada principal y la de sombras de three 0.186.1; en la de sombras scene === null) durante
+ *  un fotograma y agrupa por «pasada · #i hijo de la escena [pista] › objeto · material». La pista dice si el hijo es el grupo de la escena
+ *  3D Tiles, el del Terreno o el de los árboles; el resto, por su posición en scene.children (el orden de montaje de apps/web/motor/).
+ *  Devuelve { total, info, filas: [[clave, llamadas]] } (info = renderer.info.render.calls del mismo fotograma, para contrastar). */
+function desgloseLlamadas() {
+  const g = window.__g, R = g.renderer, S = g.scene, orig = R.renderBufferDirect, cuenta = {};
+  const tiles = g.Escena3D && g.Escena3D.grupo ? g.Escena3D.grupo() : null, pista = t => t === tiles ? " [3dtiles]" : t === g.Terreno.grupo ? " [terreno]" : g.Arboles && g.Arboles.grupo === t ? " [arboles]" : "";
+  const arriba = o => { let p = o; while (p.parent && p.parent !== S) p = p.parent; return p; };
+  const nombre = o => (o.name ? o.name + ":" : "") + o.type;
+  const espia = function (cam, sc, geo, mat, obj) {
+    const t = arriba(obj), k = (sc === null ? "sombra" : "principal") + " · #" + S.children.indexOf(t) + " " + nombre(t) + pista(t) + (t === obj ? "" : " › " + nombre(obj)) + " · " + (mat && mat.type);
+    cuenta[k] = (cuenta[k] || 0) + 1;
+    return orig.apply(this, arguments);
+  };
+  // se pone en un requestAnimationFrame (detrás del del motor, que ya ha dibujado ese fotograma) y se quita en el siguiente: un fotograma justo
+  return new Promise(ok => requestAnimationFrame(() => { R.renderBufferDirect = espia; requestAnimationFrame(() => {
+    R.renderBufferDirect = orig;
+    const filas = Object.entries(cuenta).sort((a, b) => b[1] - a[1]);
+    ok({ total: filas.reduce((s, f) => s + f[1], 0), info: R.info.render.calls, filas });
+  }); }));
+}
+
 /** Paseo: entra en el punto, deja asentar la transición y, si se pide, anda `anda` s en línea recta o gira 360° (teclas simuladas por __g.paseoTecla) */
 async function entraYMueve(p, c, queda) {
   await p.evaluate(c => window.__g.paseoEn(c.x, c.y, c.ang), c);
@@ -71,8 +94,9 @@ async function entraYMueve(p, c, queda) {
 }
 
 /** Abre una URL, espera a __g.listo() y mide cada escenario. Devuelve { errores, fallos, medidas, parcial }.
- *  Con un tope (GEMELO_TOPE_MEDIDA, ms): si se pasa, devuelve lo medido hasta entonces con parcial = true (y no deja la página colgada). */
-async function mide(navegador, url, { escenarios = ESCENARIOS, tope = TOPE_MEDIDA_MS, capturas = null } = {}) {   // capturas: carpeta para un PNG por escenario
+ *  Con un tope (GEMELO_TOPE_MEDIDA, ms): si se pasa, devuelve lo medido hasta entonces con parcial = true (y no deja la página colgada).
+ *  Con desglose: además, las llamadas de un fotograma por objeto (desgloseLlamadas) en cada escenario. */
+async function mide(navegador, url, { escenarios = ESCENARIOS, tope = TOPE_MEDIDA_MS, capturas = null, desglose = false } = {}) {   // capturas: carpeta para un PNG por escenario
   const p = await navegador.newPage({ viewport: { width: 900, height: 650 } }), errores = [], fallos = [], t0 = Date.now(), queda = () => Math.max(1000, tope - (Date.now() - t0));
   p.on("pageerror", e => errores.push("PAGEERROR " + String(e.stack || e).slice(0, 400)));
   p.on("console", m => { if (m.type() === "error") errores.push("CONSOLE " + m.text().slice(0, 300)); });
@@ -93,6 +117,8 @@ async function mide(navegador, url, { escenarios = ESCENARIOS, tope = TOPE_MEDID
     await p.waitForTimeout(1500);
     medidas[nombre] = await p.evaluate(() => { const g = window.__g, r = g.renderer.info; return { llamadas: r.render.calls, triangulos: r.render.triangles, puntos: r.render.points, geometrias: r.memory.geometries, texturas: r.memory.textures, heapMB: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : -1, olivos: g.Arboles.resumen(), generados: window.__olivosGen ? window.__olivosGen() : undefined, paseo: g.paseoEstado && g.paseoEstado().paseando ? g.paseoEstado() : undefined }; });
     medidas[nombre].espera = { ms: Date.now() - t1, termino: acabo, pendientes: await p.evaluate(() => window.__g.pendientes ? window.__g.pendientes() : window.__g.Cola.pendientes()) };
+    if (desglose) medidas[nombre].desglose = await p.evaluate(desgloseLlamadas);
+    if (desglose) medidas[nombre].escena3d = await p.evaluate(() => window.__g.Escena3D ? window.__g.Escena3D.resumen() : null);
     if (capturas) { fs.mkdirSync(capturas, { recursive: true }); await p.screenshot({ path: path.join(capturas, nombre + ".png") }); }
   }
   } catch (e) { if (Date.now() - t0 < tope) throw e; parcial = true; errores.push("TOPE " + Math.round(tope / 1000) + " s: " + String(e.message).slice(0, 200)); }
@@ -100,4 +126,4 @@ async function mide(navegador, url, { escenarios = ESCENARIOS, tope = TOPE_MEDID
   return { errores, fallos, medidas, parcial };
 }
 
-module.exports = { ESCENARIOS, ESCENARIOS_PASEO, TODOS_ESCENARIOS, ARGS_CHROME, sirve, motivoSalto, lanza, mide };
+module.exports = { ESCENARIOS, ESCENARIOS_PASEO, TODOS_ESCENARIOS, ARGS_CHROME, sirve, motivoSalto, lanza, mide, desgloseLlamadas };

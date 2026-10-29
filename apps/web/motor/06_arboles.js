@@ -4,7 +4,7 @@
 //   07b_arboles (Arboles), 14_historia (lista), 15_tiempo (nivel)
 // ===============================================================================
   // ---------- los olivos del modo Gemelo: copa con la forma real medida (8 radios) y tronco debajo (nivel 0, por celdas de 64 m; ver Arboles)
-  var gArboles = new THREE.Group(), gFollaje = gArboles, gSombras = new THREE.Group(); scene.add(gArboles); scene.add(gSombras);   // gFollaje es el mismo grupo: las celdas de nivel 0 llevan copa, tronco, hojas y frutos
+  var gArboles = new THREE.Group(), gFollaje = gArboles, gSombras = new THREE.Group(); gArboles.name = "arboles"; gSombras.name = "sombras-olivos"; scene.add(gArboles); scene.add(gSombras);   // gFollaje es el mismo grupo: las celdas de nivel 0 llevan copa, tronco, hojas y frutos
   var matCopa = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }), matTronco = new THREE.MeshLambertMaterial({ vertexColors: true });
   matCopa.onBeforeCompile = matTronco.onBeforeCompile = colorVertSRGB;   // el color por vértice está escrito en sRGB (03_escena)
   var KSEG = 20, RING = 9;

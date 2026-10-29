@@ -7,7 +7,7 @@
 //   25_perros (amenazaConejo)
 // ===============================================================================
   // ---------- la vida del olivar: pájaros, conejos y un quad con estela de luz (Tron) para el paseo
-  var tVida = 0, enQuad = false, vq = 0, gFauna = new THREE.Group(); scene.add(gFauna);
+  var tVida = 0, enQuad = false, vq = 0, gFauna = new THREE.Group(); gFauna.name = "fauna"; scene.add(gFauna);
   var matAveC = new THREE.MeshLambertMaterial({ color: 0x4a3f33 }), matAveV = new THREE.MeshLambertMaterial({ color: 0xd9cdb4 }), matAla = new THREE.MeshLambertMaterial({ color: 0x302b2a, side: THREE.DoubleSide }), matPico = new THREE.MeshLambertMaterial({ color: 0xd49a30 });
   var matConejo = new THREE.MeshLambertMaterial({ color: 0x8b755a }), matConejoB = new THREE.MeshLambertMaterial({ color: 0xece4d4 }), matOreja = new THREE.MeshLambertMaterial({ color: 0xa88f78 });
   function esfera(r, m, sx, sy, sz, x, y, z, padre) { var me = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 8), m); me.scale.set(sx, sy, sz); me.position.set(x, y, z); padre.add(me); return me; }

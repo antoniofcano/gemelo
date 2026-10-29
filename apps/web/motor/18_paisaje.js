@@ -7,7 +7,7 @@
   // ---------- el paisaje que sale del LiDAR: edificios (clase 6), el tendido y sus postes, el arroyo y los árboles que no son olivos
   // Lo que el LiDAR clasifica de verdad son los edificios. El tendido, los postes, el cauce y las copas se deducen de la geometría (alturas, alineación, relieve) y se rotulan así.
   var PA = D.paisaje || { edificios: [], tendido: { linea: [], postes: [] }, arroyo: { eje: [] }, arboles: [] };
-  var gPaisaje = new THREE.Group(); scene.add(gPaisaje);
+  var gPaisaje = new THREE.Group(); gPaisaje.name = "paisaje"; scene.add(gPaisaje);
   var matMuro = new THREE.MeshLambertMaterial({ color: 0xe6dfcf }), matPoste = new THREE.MeshLambertMaterial({ color: 0x6b5a46 }), matCable = new THREE.LineBasicMaterial({ color: 0x2a2d31 });
   var matTronco = new THREE.MeshLambertMaterial({ color: 0x5a4636 }), matCopaArb = new THREE.MeshLambertMaterial({ color: 0xffffff });
   var edifs = [], postes = [];

@@ -9,6 +9,7 @@ const test = require("node:test"), assert = require("node:assert");
 const http = require("http");
 const { RAIZ, propia, python, fixture, ejecuta, fs, path } = require("./_util");
 const { ESCENARIOS, motivoSalto, lanza } = require("./_navegador");
+const { vuela, cajaDatos, comparaRelieve } = require("./_recorrido");
 
 const WEB = path.join(RAIZ, "apps", "web"), MOTOR = path.join(WEB, "motor"), T3D = path.join(RAIZ, "tuberia", "tiles3d");
 const lee = f => fs.readFileSync(f, "utf8"), json = f => JSON.parse(lee(f));
@@ -252,9 +253,14 @@ async function preparaYa() {
   const m = ejecuta(py, ["-I", "tuberia/salida_artefacto/montar_v2.py", "--finca", "hituelo", "--modo", "ficheros", "--datos", path.relative(RAIZ, path.join(FIX, "hituelo", "indice.json")), "--salida", path.relative(RAIZ, path.join(W, "hituelo", "index.html"))]);
   assert.strictEqual(m.status, 0, m.stdout + m.stderr);
   srv = await sirveConCsp(W, peticiones); base = "http://127.0.0.1:" + srv.address().port + "/hituelo/index.html";
-  nav = await lanza();
+  const n = await lanza();
+  if (cerrado) { await n.close(); throw new Error("las pruebas acabaron (por tiempo) mientras se esperaba el turno del banco"); }
+  nav = n;
 }
-test.after(async () => { if (nav) await nav.close(); if (srv) srv.close(); });
+// Si las pruebas acaban por tiempo mientras prepara() aún espera el turno del banco, el Chrome que llega después no debe quedarse abierto con el
+// turno cogido (pasó el 2026-10-29: el proceso se quedó una hora parado con el turno y bloqueó el banco). `cerrado` hace que se cierre al llegar.
+let cerrado = false;
+test.after(async () => { cerrado = true; if (nav) await nav.close(); if (srv) srv.close(); });
 
 async function abre(q, mockXR) {
   const p = await nav.newPage({ viewport: { width: 900, height: 650 } }), errores = [], avisos = [];
@@ -273,6 +279,33 @@ async function escena(p, nombre) {
   await p.waitForFunction(() => window.__g.Cola.pendientes() === 0 && window.__g.Escena3D.listo(), null, { timeout: 90000, polling: 500 });
   await p.waitForTimeout(800);
   return p.evaluate(() => { const g = window.__g, r = g.renderer.info; return { llamadas: r.render.calls, triangulos: r.render.triangles, puntos: r.render.points, geometrias: r.memory.geometries, texturas: r.memory.textures, heapMB: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : -1, escena3d: g.Escena3D.resumen(), mallasTerreno: g.Terreno.grupo.children.length }; });
+}
+
+// Criterio 4 del ADR-0015: el relieve dibujado frente a Mundo.suelo. De dónde sale la diferencia (medido con este fixture y con Hituelo real,
+// doc/sistema/MEDIDAS.md): NO del marco (transform de la raíz, giro de ejes, exageración, z0), que en los vértices de borde de cada glb (no se
+// simplifican y son la misma interpolación que Mundo.suelo) da < 1 cm en todos los niveles; sino de la geometría de cada nivel: paso de la
+// rejilla (1 m en hojas, 2 m, 4 m) y simplificación de meshoptimizer (0,05 m en hojas, el doble por nivel), que el generador mide y declara
+// en el geometricError de la tesela. Así que: vértice de borde < 1 cm siempre; un punto cualquiera, ≤ el geometricError de la tesela que lo
+// dibuja (+ 1 cm de redondeo); y en las hojas eso es ≤ 0,05 m (el error de simplificación de las hojas, --error-hoja).
+const TOL_MARCO = 0.01, ERROR_HOJA = 0.05;
+function rejilla(cx, cy, r, paso) { const P = []; for (let y = cy - r; y <= cy + r + 1e-9; y += paso) for (let x = cx - r; x <= cx + r + 1e-9; x += paso) P.push([+x.toFixed(3), +y.toFixed(3)]); return P; }
+function casaRelieve(t, cmp) {
+  const porLado = {};
+  for (const [n, filas] of Object.entries(cmp)) {
+    const con = filas.filter(f => f[2]);
+    assert.ok(con.length >= 4, n + ": el rayo no encuentra el relieve dibujado en casi ningún punto: " + JSON.stringify(filas.slice(0, 6)));
+    for (const [x, y, uri, L, err, dI, dV] of con) {
+      const q = porLado[L] || (porLado[L] = { puntos: 0, vertices: 0, maxInterior: 0, maxVertice: 0, maxError: 0 });
+      q.puntos++; q.maxInterior = Math.max(q.maxInterior, dI); q.maxError = Math.max(q.maxError, err);
+      assert.ok(dI <= err + TOL_MARCO, n + ": relieve dibujado en " + x + "," + y + " (" + uri + ") a " + dI.toFixed(3) + " m de la CPU, más que el geometricError de su tesela (" + err + " m)");
+      if (dV !== null) { q.vertices++; q.maxVertice = Math.max(q.maxVertice, dV); assert.ok(dV < TOL_MARCO, n + ": en el vértice de borde junto a " + x + "," + y + " (" + uri + ") el relieve dibujado está a " + dV.toFixed(4) + " m de la CPU (≥ 1 cm: el marco no casa)"); }
+    }
+  }
+  if (MIDE) t.diagnostic("relieve dibujado frente a Mundo.suelo, por lado de tesela (m): " + JSON.stringify(porLado));
+  const hojas = Object.keys(porLado).map(Number).sort((a, b) => a - b)[0];
+  assert.strictEqual(hojas, 128, "de cerca, el relieve debería dibujarlo una hoja de 128 m: " + JSON.stringify(porLado));
+  assert.ok(porLado[128].maxInterior <= ERROR_HOJA + TOL_MARCO, "en las hojas, el relieve dibujado se separa " + porLado[128].maxInterior + " m de la CPU (> error de hoja " + ERROR_HOJA + " m)");
+  assert.ok(Object.values(porLado).reduce((s, q) => s + q.vertices, 0) >= 4, "casi ningún vértice de borde comprobado: " + JSON.stringify(porLado));
 }
 
 test("sin ?escena=tiles: la escena 3D Tiles no arranca, no se pide el tileset y el Terreno de siempre construye sus mallas", { timeout: 240000 }, async t => {
@@ -314,10 +347,7 @@ test("con ?escena=tiles: carga el tileset sin errores ni CSP, desde lejos baja d
     }
     assert.ok(peticiones.some(u => u.endsWith("/tileset/tileset.json")) && peticiones.some(u => u.endsWith(".glb")), "no se pidió el tileset");
     assert.ok(peticiones.some(u => /\/t\/[^/]+\.json$/.test(u)), "el json de las teselas se sigue pidiendo (decisión 38)");
-    const r = await p.evaluate(() => { const g = window.__g, E = g.Escena3D, out = []; let inst = 0;
-      E.grupo().traverse(o => { if (o.isInstancedMesh) inst++; });
-      for (const [x, y] of [[-130, -125], [-60, -100], [100, -180], [0, -130]]) out.push([x, y, E.alturaEn(x, y), g.suelo(x, y)]);
-      return { inst, out }; });
+    const r = await p.evaluate(() => { let inst = 0; window.__g.Escena3D.grupo().traverse(o => { if (o.isInstancedMesh) inst++; }); return { inst }; });
     // F1d paso 4 (04c_olivos_tiles.js): de media y larga distancia, los olivos del glb; de cerca, los del motor y, en el tileset, apartados
     assert.ok(r.inst > 0, "los olivos del glb deberían quedarse en la escena");
     await escena(p, "cerca");   // la última medida es la de Nube (sin árboles): se vuelve a la de cerca, en modo Gemelo
@@ -332,10 +362,33 @@ test("con ?escena=tiles: carga el tileset sin errores ni CSP, desde lejos baja d
     assert.ok(ot.deCerca > 0, "de cerca, el motor debería dibujar su nivel 0");
     assert.deepStrictEqual(ot.dobles, [], "olivos dibujados dos veces (motor de cerca y tileset)");
     assert.ok(ot.resumen.apartadas > 0, "de cerca, alguna instancia del tileset debería estar apartada");
-    const conDato = r.out.filter(([, , h]) => h !== null);
-    assert.ok(conDato.length >= 2, "el rayo no encuentra el relieve dibujado: " + JSON.stringify(r.out));
-    // el terreno de la tesela visible frente al de la CPU: dentro del error de rejilla + simplificación de los niveles gruesos del fixture (≤ 1,3 m)
-    for (const [x, y, h, s] of conDato) assert.ok(Math.abs(h - s) <= 1.5, "relieve dibujado en " + x + "," + y + ": " + h + " m; CPU " + s + " m");
+    // criterio 4 del ADR-0015 (el relieve casa con Mundo.suelo), de cerca (hojas de 128 m) y desde lejos (niveles gruesos): ver casaRelieve
+    const cmp = { cerca: await comparaRelieve(p, rejilla(-130, -125, 30, 6)) };
+    await escena(p, "lejos"); cmp.lejos = await comparaRelieve(p, rejilla(0, -128, 250, 37));
+    casaRelieve(t, cmp);
+  } finally { await p.close(); }
+});
+
+// Criterio 3 del ADR-0015: ningún fotograma sin relieve en los datos mientras llegan las teselas. Como empieza quien abre la página: vista de
+// lejos hasta que carga; luego un vuelo bajo (órbita a 45 m) de punta a punta de la finca y otro más alto en diagonal, SIN esperar a que carguen
+// las teselas (2 fotogramas por salto). En cada salto, Escena3D.sondea(): 7 × 5 rayos desde la cámara y dos verticales (bajo la cámara y bajo
+// el objetivo); cada rayo que en la CPU corta el relieve dentro de los datos debe dar con el relieve dibujado. Objetivo: 0 sin relieve.
+test("con ?escena=tiles: en un vuelo de punta a punta sin esperar a la carga, ningún rayo desde la cámara se queda sin relieve dentro de los datos (criterio 3)", { timeout: 300000 }, async t => {
+  if (SALTO) return t.skip(SALTO);
+  await prepara();
+  const { p, errores } = await abre("&escena=tiles");
+  try {
+    await escena(p, "lejos");
+    // el vuelo bajo va por y = −128, el borde entre hojas del fixture: sus rayos verticales pasan por la arista común de dos glb (ver sondea)
+    const [x0, y0, x1, y1] = await cajaDatos(p), m = 16;
+    const bajo = await vuela(p, { A: [x0 + m, (y0 + y1) / 2], B: [x1 - m, (y0 + y1) / 2], pasos: 40, dist: 45, el: 0.5 });
+    const alto = await vuela(p, { A: [x1 - m, y0 + m], B: [x0 + m, y1 - m], pasos: 30, dist: 160, el: 0.7, az: 0.6 });
+    if (MIDE) t.diagnostic("vuelo con ?escena=tiles: " + JSON.stringify({ bajo, alto }));
+    assert.deepStrictEqual(errores, [], "errores de consola, de página o de CSP");
+    for (const [n, v] of Object.entries({ bajo, alto })) {
+      assert.ok(v.enDatos >= v.pasos * 5, n + ": muy pocos rayos caen en los datos (" + v.enDatos + "): el vuelo no pasa por la finca");
+      assert.strictEqual(v.sinRelieve, 0, n + ": " + v.sinRelieve + " rayos sin relieve dibujado dentro de los datos en " + v.pasosConHueco + " de " + v.pasos + " saltos: " + JSON.stringify(v.fallos));
+    }
   } finally { await p.close(); }
 });
 

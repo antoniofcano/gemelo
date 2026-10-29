@@ -46,20 +46,54 @@
     g.addColorStop(0, "rgba(255,255,235,1)"); g.addColorStop(0.12, "rgba(255,244,200,0.95)"); g.addColorStop(0.3, "rgba(255,220,150,0.35)"); g.addColorStop(1, "rgba(255,200,120,0)");
     x.fillStyle = g; x.fillRect(0, 0, 128, 128); return texColor(new THREE.CanvasTexture(cv));
   }
-  var gCielo = new THREE.Group(); scene.add(gCielo);
-  var NUBES = [], texN = texNube();
+  // Las nubes (46 grupos de 5 manchas, 230 en total) van en UNA malla y UNA llamada de dibujo (T6b, criterio 2 del ADR-0015): antes eran 230
+  // sprites, uno por llamada, y con el cielo cubierto se llevaban casi todo el presupuesto de llamadas. Cada mancha es un cuadrado de cara a la
+  // cámara (como un Sprite de three: centro, tamaño, sin giro) y su sombreado es el de SpriteMaterial (textura × color × opacidad, tono y
+  // espacio de color de salida); las de opacidad 0 no se mandan. Como los sprites, se ordenan de lejos a cerca cada fotograma (son transparentes).
+  var gCielo = new THREE.Group(); gCielo.name = "cielo"; scene.add(gCielo);
+  var NUBES = [], texN = texNube(), NSP = 46 * 5;
   (function () {
     for (var i = 0; i < 46; i++) {
-      var gr = new THREE.Group(), r1 = hash(i * 3.1), r2 = hash(i * 5.7), r3 = hash(i * 9.3), tam = 150 + 190 * r3;
+      var r1 = hash(i * 3.1), r2 = hash(i * 5.7), r3 = hash(i * 9.3), tam = 150 + 190 * r3, gr = { position: new THREE.Vector3((r1 - 0.5) * 2400, 230 + 130 * r2, (r2 - 0.5) * 2000), umbral: (i + 0.5) / 46, o: 0, sp: [] };
       for (var j = 0; j < 5; j++) {
-        var sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: texN, transparent: true, depthWrite: false, fog: false, opacity: 0 }));
-        var s = tam * (0.55 + 0.6 * hash(i * 11 + j)); sp.scale.set(s, s * 0.5, 1); sp.position.set((hash(i * 7 + j) - 0.5) * tam * 0.9, (hash(i * 13 + j) - 0.5) * 12, (hash(i * 17 + j) - 0.5) * tam * 0.35);
-        gr.add(sp);
+        var s = tam * (0.55 + 0.6 * hash(i * 11 + j));
+        gr.sp.push({ sx: s, sy: s * 0.5, p: new THREE.Vector3((hash(i * 7 + j) - 0.5) * tam * 0.9, (hash(i * 13 + j) - 0.5) * 12, (hash(i * 17 + j) - 0.5) * tam * 0.35) });
       }
-      gr.position.set((r1 - 0.5) * 2400, 230 + 130 * r2, (r2 - 0.5) * 2000); gr.userData.umbral = (i + 0.5) / 46;
-      gCielo.add(gr); NUBES.push(gr);
+      NUBES.push(gr);
     }
   })();
+  var nubesMalla = (function () {
+    var g = new THREE.BufferGeometry(), E = [-0.5, -0.5, 0.5, -0.5, 0.5, 0.5, -0.5, 0.5], UV = [0, 0, 1, 0, 1, 1, 0, 1];
+    var esq = new Float32Array(NSP * 8), uv = new Float32Array(NSP * 8), idx = new Uint16Array(NSP * 6);
+    for (var k = 0; k < NSP; k++) { esq.set(E, k * 8); uv.set(UV, k * 8); idx.set([k * 4, k * 4 + 1, k * 4 + 2, k * 4, k * 4 + 2, k * 4 + 3], k * 6); }
+    g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(NSP * 12), 3).setUsage(THREE.DynamicDrawUsage));   // el centro de la mancha, en sus 4 vértices
+    g.setAttribute("esquina", new THREE.BufferAttribute(esq, 2)); g.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+    g.setAttribute("tam", new THREE.BufferAttribute(new Float32Array(NSP * 8), 2).setUsage(THREE.DynamicDrawUsage));
+    g.setAttribute("alfa", new THREE.BufferAttribute(new Float32Array(NSP * 4), 1).setUsage(THREE.DynamicDrawUsage));
+    g.setIndex(new THREE.BufferAttribute(idx, 1)); g.setDrawRange(0, 0);
+    var m = new THREE.ShaderMaterial({
+      uniforms: { map: { value: texN }, diffuse: { value: new THREE.Color(1, 1, 1) } }, transparent: true, depthWrite: false, fog: false,
+      vertexShader: "attribute vec2 esquina; attribute vec2 tam; attribute float alfa; varying vec2 vUv; varying float vA;\n" +
+        "void main() { vec4 mv = modelViewMatrix * vec4(position, 1.0); mv.xy += esquina * tam; gl_Position = projectionMatrix * mv; vUv = uv; vA = alfa; }",
+      fragmentShader: "uniform sampler2D map; uniform vec3 diffuse; varying vec2 vUv; varying float vA;\n" +
+        "void main() { vec4 c = vec4(diffuse, vA) * texture2D(map, vUv); gl_FragColor = c;\n#include <tonemapping_fragment>\n#include <colorspace_fragment>\n}"
+    });
+    var me = new THREE.Mesh(g, m); me.name = "nubes"; me.frustumCulled = false; me.renderOrder = -1; gCielo.add(me);
+    return me;
+  })();
+  var nubesOrden = [], vTmp = new THREE.Vector3();
+  function pintaNubes() {   // las manchas con opacidad, de la más lejana a la más cercana a la cámara, en los buffers de la malla
+    var G = nubesMalla.geometry, P = G.attributes.position.array, T = G.attributes.tam.array, A = G.attributes.alfa.array, n = 0;
+    nubesOrden.length = 0;
+    NUBES.forEach(function (gr) { if (gr.o > 0) gr.sp.forEach(function (s) { vTmp.copy(gr.position).add(s.p); nubesOrden.push({ s: s, gr: gr, x: vTmp.x, y: vTmp.y, z: vTmp.z, d: vTmp.distanceToSquared(camera.position) }); }); });
+    nubesOrden.sort(function (a, b) { return b.d - a.d; });
+    nubesOrden.forEach(function (q) {
+      for (var v = 0; v < 4; v++) { var k = n * 4 + v; P[k * 3] = q.x; P[k * 3 + 1] = q.y; P[k * 3 + 2] = q.z; T[k * 2] = q.s.sx; T[k * 2 + 1] = q.s.sy; A[k] = q.gr.o; }
+      n++;
+    });
+    G.attributes.position.needsUpdate = G.attributes.tam.needsUpdate = G.attributes.alfa.needsUpdate = true;
+    G.setDrawRange(0, n * 6); nubesMalla.visible = n > 0;
+  }
   var sprSol = new THREE.Sprite(new THREE.SpriteMaterial({ map: texBrillo(), transparent: true, depthWrite: false, fog: false, blending: THREE.AdditiveBlending }));
   sprSol.scale.set(520, 520, 1); sprSol.renderOrder = -1; scene.add(sprSol);
   var estrellas = (function () {
@@ -160,9 +194,9 @@
       g.position.x += vx * vel * dt; g.position.z += vz * vel * dt;
       if (g.position.x > 1300) g.position.x -= 2600; else if (g.position.x < -1300) g.position.x += 2600;
       if (g.position.z > 1100) g.position.z -= 2200; else if (g.position.z < -1100) g.position.z += 2200;
-      var o = nub > g.userData.umbral ? Math.min(1, (nub - g.userData.umbral) * 14) * (0.35 + 0.55 * nub) : 0;
-      g.children.forEach(function (s) { s.material.opacity = o; s.material.color.copy(tinta).multiply(luz); });
+      g.o = nub > g.umbral ? Math.min(1, (nub - g.umbral) * 14) * (0.35 + 0.55 * nub) : 0;
     });
+    nubesMalla.material.uniforms.diffuse.value.copy(tinta).multiply(luz); pintaNubes();
     // viento sobre el follaje
     var amp = calma ? 0 : Math.min(0.5, 0.03 + 0.1 * cur.viento);
     uViento.uT.value = tMundo; uViento.uAmp.value = amp; uViento.uDir.value.set(vx, vz);
