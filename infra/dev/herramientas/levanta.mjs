@@ -4,7 +4,7 @@
 // (compose.red-local.yml). Sin él, todo como siempre.
 //  1. crea infra/dev/.env con claves aleatorias si falta;
 //  2. genera el fixture sintético si falta (o usa datos reales FUERA del repo: GEMELO_DEV_TESELAS, o GEMELO_DEV_FINCA_CARPETA
-//     para la salida de UNA finca como hituelo-v3, y GEMELO_DEV_TILESET para el tileset 3D Tiles de /teselas/<finca>/tileset/);
+//     para la salida de UNA finca como hituelo-v3, y GEMELO_DEV_TILESET para el tileset 3D Tiles de /teselas/<finca>/tileset/, y GEMELO_DEV_OLIVOS para las recetas horneadas de /teselas/<finca>/olivos/);
 //  3. construye la web con Vite contra el índice de la finca (GEMELO_DEV_FINCA, por defecto hituelo), con base /teselas/<finca>/,
 //     CON el constructor de olivos (apps/web/olivo, ?olivos=gen) y 3DTilesRendererJS (?escena=tiles), instalándolos si faltan,
 //     y la portada (apps/web/portada → dist-portada, build:portada), y deja junto a cada fichero su .br/.gz para que Caddy
@@ -20,7 +20,7 @@ import path from "node:path";
 import zlib from "node:zlib";
 import { fileURLToPath } from "node:url";
 import { siembra, HOGARES } from "./siembra.mjs";
-import { aseguraEnv, cargaEnv, carpetaFinca, carpetaTeselas, carpetaTileset, esFixture, fincaServida, indiceServido, compose, ipRedLocal, motivoSinDocker, npm, aseguraDependencias, puertos, util, RAIZ, ENV, FIXTURE, PG_API, PG_DUENO, SALIDA_DEV, WEB } from "./_comun.mjs";
+import { aseguraEnv, cargaEnv, carpetaFinca, carpetaTeselas, carpetaTileset, carpetaOlivos, aseguraNpmCi, esFixture, fincaServida, indiceServido, compose, ipRedLocal, motivoSinDocker, npm, aseguraDependencias, puertos, util, RAIZ, ENV, FIXTURE, PG_API, PG_DUENO, SALIDA_DEV, WEB } from "./_comun.mjs";
 
 const SIN_BUILD = process.argv.includes("--sin-build");
 const RED_LOCAL = process.argv.includes("--red-local");
@@ -68,13 +68,11 @@ function precomprime(dir) {
  * versiones del package-lock) si faltan, y se dice con cuál se construye.
  */
 function aseguraDependenciasWeb() {
-  if (!fs.existsSync(path.join(WEB, "node_modules", "vite")) || !fs.existsSync(path.join(WEB, "node_modules", "3d-tiles-renderer", "package.json"))) {
-    console.log("  instalando apps/web (npm ci)…"); npm(["ci", "--no-audit", "--no-fund"], WEB);
-  }
+  // también cuando el package-lock cambió con node_modules ya puesto (una dependencia nueva, p. ej. livekit-client): si no,
+  // Vite falla con «Could not load …». Ver lockAlDia en _comun.mjs.
+  aseguraNpmCi(WEB, { clave: ["vite", "3d-tiles-renderer"], aviso: "instalando apps/web" });
   const olivo = path.join(WEB, "olivo");
-  if (!fs.existsSync(path.join(olivo, "node_modules", "three-gen", "package.json"))) {
-    console.log("  instalando el constructor de olivos (apps/web/olivo, npm ci --omit=dev)…"); npm(["ci", "--omit=dev", "--no-audit", "--no-fund"], olivo);
-  }
+  aseguraNpmCi(olivo, { sinDev: true, clave: ["three-gen"], aviso: "instalando el constructor de olivos (apps/web/olivo, --omit=dev)" });
   for (const [nombre, ruta] of [["constructor de olivos (?olivos=gen)", path.join(olivo, "node_modules", "three-gen", "package.json")],
     ["3DTilesRendererJS (?escena=tiles)", path.join(WEB, "node_modules", "3d-tiles-renderer", "package.json")]]) {
     if (!fs.existsSync(ruta)) throw new Error("falta " + nombre + " tras instalar (" + rel(ruta) + ")");
@@ -129,10 +127,10 @@ export async function levanta({ sinBuild = false, redLocal = false } = {}) {
   console.log(env === "creado" ? "  creado " + rel(ENV) + " con claves aleatorias"
     : env ? "  " + rel(ENV) + " ya existía: añadidas las claves nuevas " + env.join(", ") : "  " + rel(ENV) + " ya existe (no se toca)");
   cargaEnv();
-  const teselas = carpetaTeselas(), finca = fincaServida(), carpeta = carpetaFinca(), tileset = carpetaTileset();
+  const teselas = carpetaTeselas(), finca = fincaServida(), carpeta = carpetaFinca(), tileset = carpetaTileset(), olivos = carpetaOlivos();
   if (tileset && !fs.existsSync(path.join(tileset, "tileset.json"))) throw new Error("no existe " + path.join(tileset, "tileset.json") + " (GEMELO_DEV_TILESET: la carpeta del tileset; ver DESARROLLO-LOCAL.md, «Prueba en aparatos con Hituelo v3»)");
   // lo que Compose monta: rutas absolutas ya resueltas ("" = no se da, y manda el valor por defecto del compose)
-  const datosCompose = { GEMELO_DEV_TESELAS: teselas, GEMELO_DEV_FINCA_CARPETA: carpeta || "", GEMELO_DEV_TILESET: tileset || "", GEMELO_DEV_FINCA: finca };
+  const datosCompose = { GEMELO_DEV_TESELAS: teselas, GEMELO_DEV_FINCA_CARPETA: carpeta || "", GEMELO_DEV_TILESET: tileset || "", GEMELO_DEV_OLIVOS: olivos || "", GEMELO_DEV_FINCA: finca };
   let red = null;
   if (redLocal) {
     red = ipRedLocal();
@@ -142,7 +140,7 @@ export async function levanta({ sinBuild = false, redLocal = false } = {}) {
       (red.otras.length ? "\n  otras IP posibles: " + red.otras.map(o => o.ip + " (" + o.nombre + ")").join(", ") + " — elige con GEMELO_DEV_IP" : ""));
   }
   paso("datos: " + (esFixture() ? "fixture sintético" : "carpeta local " + (carpeta ? "(GEMELO_DEV_FINCA_CARPETA)" : "(GEMELO_DEV_TESELAS)")) + ", finca " + finca +
-    (tileset ? ", con tileset 3D Tiles (GEMELO_DEV_TILESET)" : ""));
+    (tileset ? ", con tileset 3D Tiles (GEMELO_DEV_TILESET)" : "") + (olivos ? ", con recetas horneadas (GEMELO_DEV_OLIVOS)" : ""));
   preparaFixture();                      // los guardianes y la siembra de la finca sintética parten siempre del fixture
   const datos = datosDeLaWeb(indiceServido(), finca);
   if (!sinBuild) { paso("build de la web (Vite)"); construyeWeb(datos); }
@@ -167,6 +165,7 @@ export async function levanta({ sinBuild = false, redLocal = false } = {}) {
     "\n  api       " + w + "/api/salud" +
     "\n  teselas   " + w + "/teselas/" + finca + "/indice.json   (solo con sesión)" +
     (tileset ? "\n  tileset   " + w + "/teselas/" + finca + "/tileset/tileset.json   (solo con sesión; en el mundo: /finca/?olivos=gen&escena=tiles)" : "") +
+    (olivos ? "\n  olivos    " + w + "/teselas/" + finca + "/olivos/manifiesto.json   (solo con sesión; los objetos, /olivos/<huella>.br)" : "") +
     "\n  correo    http://localhost:" + p.correoWeb + "/   (SMTP en 127.0.0.1:" + p.smtp + ")" +
     "\n  db        127.0.0.1:" + p.db + "  base gemelo; " + PG_DUENO + " (dueño) y " + PG_API + " (la api), claves en infra/dev/.env" +
     "\n  livekit   " + w + "/rtc para el navegador (por Caddy); ws://localhost:" + p.livekit + " para las herramientas (claves en infra/dev/.env)" +

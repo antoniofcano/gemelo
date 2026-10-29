@@ -95,6 +95,34 @@
 					hide .*
 				}
 			}
+			# las recetas horneadas (O7d, contratos/olivo-horneado.md): /teselas/<finca>/olivos/ sale de /srv/olivos (la carpeta que
+			# escribe el hornero; GEMELO_DEV_OLIVOS). El objeto se direcciona por su huella: octet-stream ya en brotli e inmutable.
+			# El manifiesto de la finca cambia al rehornear: se revalida. SOLO se sirven manifiesto.json y <huella de 32 hex>.br; lo
+			# demás de esa carpeta (estado.json, manifiesto.anterior.json… que escribe el hornero) da 404.
+			@olivos path /{$FINCA_SERVIDA:hituelo}/olivos/*
+			handle @olivos {
+				@permitido path_regexp ^/{$FINCA_SERVIDA:hituelo}/olivos/(manifiesto\.json|[0-9a-f]{32}\.br)$
+				handle @permitido {
+					uri strip_prefix /{$FINCA_SERVIDA:hituelo}/olivos
+					root * /srv/olivos
+					# los matchers de `header` se evalúan ANTES que el `uri strip_prefix` (orden de directivas de Caddy): llevan la ruta entera
+					@objeto_horneado path_regexp ^/{$FINCA_SERVIDA:hituelo}/olivos/[0-9a-f]{32}\.br$
+					header @objeto_horneado {
+						Content-Type "application/octet-stream"
+						Content-Encoding "br"
+						Cache-Control "private, max-age=31536000, immutable"
+					}
+					@manifiesto path /{$FINCA_SERVIDA:hituelo}/olivos/manifiesto.json
+					header @manifiesto Cache-Control "private, no-cache"
+					file_server {
+						hide .*
+					}
+				}
+				handle {
+					header Cache-Control "no-store"
+					respond "404 Not Found" 404
+				}
+			}
 			@finca path /{$FINCA_SERVIDA:hituelo}/*
 			handle @finca {
 				uri strip_prefix /{$FINCA_SERVIDA:hituelo}

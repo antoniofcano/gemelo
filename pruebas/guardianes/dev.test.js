@@ -8,6 +8,8 @@
 //    pide el enlace mágico para el hogar de prueba, lo lee en la API de Mailpit y lo abre en Chrome (cookie HttpOnly); el
 //    mundo carga en /finca/ con 0 errores; /api/hazas, la ficha propia y dos ajenas cumplen la lista blanca; salir cierra
 //    la sesión; las lindes de las hazas dibujadas (LineSegments en __g.scene); las gafas (UA de Quest) vinculadas por código;
+//    las recetas horneadas por Caddy (O7d: objeto .br con Content-Encoding br e immutable y manifiesto con no-cache, con sesión; 401 sin
+//    ella; se escriben aquí con el hornero de referencia o son las de GEMELO_DEV_OLIVOS),
 //    el tileset por Caddy (200 con sesión, 401 sin ella; con el fixture se genera aquí) y /finca/?escena=tiles y ?olivos=gen sin
 //    errores ni avisos de CSP. Mide tiempos y lo baja (si ya estaba levantado antes, lo deja como estaba).
 const test = require("node:test"), assert = require("node:assert");
@@ -249,6 +251,62 @@ test("Hituelo v3 en local: finca y tileset fuera del repo se montan de solo lect
   assert.match(l, /three-gen/); assert.match(l, /3d-tiles-renderer/);
 });
 
+test("recetas horneadas (O7d): /teselas/<finca>/olivos/<huella>.br sale en brotli e inmutable y los manifiestos se revalidan, en dev y en producción, tras sesión", async () => {
+  const sinC = f => lee(f).split("\n").filter(l => !/^\s*#/.test(l)).join("\n");
+  const objeto = "Content-Type \"application/octet-stream\"\\s*Content-Encoding \"br\"\\s*Cache-Control \"private, max-age=31536000, immutable\"";
+  // desarrollo: dentro del bloque con sesión, antes que el resto de la finca (si no, /srv/finca lo taparía), desde /srv/olivos
+  const d = sinC("infra/dev/Caddyfile");
+  assert.match(d, /@olivos path \/\{\$FINCA_SERVIDA:hituelo\}\/olivos\/\*/, "Caddy de dev: la ruta de las recetas de la finca servida");
+  assert.ok(d.indexOf("@olivos path") > d.indexOf("handle @con_sesion") && d.indexOf("@olivos path") < d.indexOf("@finca path"), "tras sesión y antes que @finca");
+  assert.match(d, /root \* \/srv\/olivos/, "dev: las recetas salen de /srv/olivos");
+  assert.match(d, new RegExp("@objeto_horneado path_regexp \\^/\\{\\$FINCA_SERVIDA:hituelo\\}/olivos/\\[0-9a-f\\]\\{32\\}\\\\\\.br\\$\\s*header @objeto_horneado \\{\\s*" + objeto), "dev: el objeto (32 hex), octet-stream + br + immutable");
+  assert.match(d, /@manifiesto path \/\{\$FINCA_SERVIDA:hituelo\}\/olivos\/manifiesto\.json\s*header @manifiesto Cache-Control "private, no-cache"/, "dev: el manifiesto se revalida (con la ruta entera: el header se evalúa antes que el uri strip_prefix)");
+  assert.match(d, /@permitido path_regexp \^\/\{\$FINCA_SERVIDA:hituelo\}\/olivos\/\(manifiesto\\\.json\|\[0-9a-f\]\{32\}\\\.br\)\$\s*handle @permitido \{/, "dev: SOLO manifiesto.json y <huella>.br");
+  assert.match(d, /handle @permitido \{[\s\S]*?\}\s*handle \{\s*header Cache-Control "no-store"\s*respond "404 Not Found" 404\s*\}/, "dev: lo demás de olivos/ (estado.json, manifiesto.anterior.json, t/…) da 404");
+  assert.match(composeSinComentarios(), /\$\{GEMELO_DEV_OLIVOS:-[^}]+\}:\/srv\/olivos:ro/, "dev: la carpeta del hornero, de solo lectura");
+  // producción: el mismo contrato; el resto de /teselas/ conserva su caché (el matcher excluye lo horneado: no depende del orden)
+  const p = sinC("infra/Caddyfile");
+  assert.ok(p.indexOf("@olivos_objeto") > p.indexOf("handle @con_sesion"), "producción: tras sesión");
+  assert.match(p, new RegExp("@olivos_objeto path_regexp \\^/teselas/\\[\\^/\\]\\+/olivos/\\[0-9a-f\\]\\{32\\}\\\\\\.br\\$\\s*header @olivos_objeto \\{\\s*" + objeto), "producción: el objeto (32 hex)");
+  assert.match(p, /@olivos_manifiesto path_regexp \^\/teselas\/\[\^\/\]\+\/olivos\/manifiesto\\\.json\$\s*header @olivos_manifiesto Cache-Control "private, no-cache"/, "producción: el manifiesto");
+  assert.match(p, /@olivos_otros \{\s*path_regexp \^\/teselas\/\[\^\/\]\+\/olivos\(\/\|\$\)\s*not path_regexp \^\/teselas\/\[\^\/\]\+\/olivos\/\(manifiesto\\\.json\|\[0-9a-f\]\{32\}\\\.br\)\$\s*\}\s*header @olivos_otros Cache-Control "no-store"\s*respond @olivos_otros "404 Not Found" 404/, "producción: lo demás de olivos/ (estado.json, manifiesto.anterior.json, t/…) da 404");
+  assert.match(p, /@teselas \{\s*path \/teselas\/\*\s*not path_regexp \^\/teselas\/\[\^\/\]\+\/olivos\(\/\|\$\)\s*\}\s*header @teselas Cache-Control "private, max-age=3600"/, "producción: el resto de /teselas/ no cambia y no pisa lo horneado");
+  // el contrato lo dice igual
+  assert.match(lee("contratos/olivo-horneado.md"), /Content-Encoding: br/);
+  // la variable apunta a una carpeta fuera del repo (o pruebas/salida/)
+  const cm = await import(pathToFileURL(path.join(HERR, "_comun.mjs")).href), antes = process.env.GEMELO_DEV_OLIVOS;
+  try {
+    delete process.env.GEMELO_DEV_OLIVOS; assert.strictEqual(cm.carpetaOlivos(), null);
+    process.env.GEMELO_DEV_OLIVOS = path.join(RAIZ, "apps"); assert.throws(cm.carpetaOlivos, /dentro del repo/);
+    process.env.GEMELO_DEV_OLIVOS = path.join(RAIZ, "pruebas", "salida", "olivos-x"); assert.ok(cm.carpetaOlivos().endsWith("olivos-x"));
+  } finally { if (antes === undefined) delete process.env.GEMELO_DEV_OLIVOS; else process.env.GEMELO_DEV_OLIVOS = antes; }
+});
+
+test("levanta.mjs reinstala con `npm ci` cuando el package-lock ya no corresponde a node_modules (una dependencia nueva), no solo cuando falta", async () => {
+  const cm = await import(pathToFileURL(path.join(HERR, "_comun.mjs")).href);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "gemelo-lock-"));
+  try {
+    const lock = pk => JSON.stringify({ lockfileVersion: 3, packages: Object.assign({ "": {} }, pk) });
+    const escribe = (f, c) => { fs.mkdirSync(path.dirname(path.join(dir, f)), { recursive: true }); fs.writeFileSync(path.join(dir, f), c); };
+    escribe("package-lock.json", lock({ "node_modules/a": { version: "1.0.0" }, "node_modules/d": { version: "2.0.0", dev: true } }));
+    assert.strictEqual(cm.lockAlDia(dir), false, "sin node_modules");
+    escribe("node_modules/.package-lock.json", lock({ "node_modules/a": { version: "1.0.0" } }));
+    assert.strictEqual(cm.lockAlDia(dir), false, "falta un paquete de desarrollo instalado");
+    assert.strictEqual(cm.lockAlDia(dir, { sinDev: true }), true, "con --omit=dev los de desarrollo no cuentan (y deja el sello)");
+    assert.strictEqual(cm.lockAlDia(dir, { sinDev: true }), true, "con sello, igual");
+    // el lock gana una dependencia (livekit-client): el sello ya no coincide
+    escribe("package-lock.json", lock({ "node_modules/a": { version: "1.0.0" }, "node_modules/livekit-client": { version: "2.0.0" } }));
+    assert.strictEqual(cm.lockAlDia(dir, { sinDev: true }), false, "dependencia nueva en el lock");
+    // sin sello y con otra versión instalada
+    fs.rmSync(path.join(dir, "node_modules", ".gemelo-lock-sello"));
+    escribe("package-lock.json", lock({ "node_modules/a": { version: "1.1.0" } }));
+    assert.strictEqual(cm.lockAlDia(dir), false, "otra versión de la misma dependencia");
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+  const l = lee("infra/dev/herramientas/levanta.mjs");
+  assert.match(l, /aseguraNpmCi\(WEB,/); assert.match(l, /aseguraNpmCi\(olivo, \{ sinDev: true/);
+  assert.match(lee("infra/dev/herramientas/_comun.mjs"), /aseguraNpmCi\(HERRAMIENTAS,/);
+});
+
 test("siembra de prueba: de_prueba.py coloca 4 hazas inventadas DENTRO de las copas de cualquier finca, sin olivos y marcadas como de prueba", t => {
   const py = python();
   if (!py) return t.skip("sin Python 3: la siembra de prueba NO se ha comprobado");
@@ -326,6 +384,30 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
       if (g.status !== 0) tilesetMotivo = "genera.mjs falló: " + String(g.stderr).slice(-200);
       else process.env.GEMELO_DEV_TILESET = salida;
     }
+  }
+  // las recetas horneadas que sirve Caddy (O7d): las de GEMELO_DEV_OLIVOS (las del hornero) o, si no, un manifiesto y un objeto del
+  // fixture (pruebas/olivo/horneado/, recetas SINTÉTICAS) escritos en pruebas/salida/olivos-e2e/ como los escribe el hornero
+  let olivosHorneados = null;
+  {
+    const dir = process.env.GEMELO_DEV_OLIVOS || path.join(RAIZ, "pruebas", "salida", "olivos-e2e");
+    if (!process.env.GEMELO_DEV_OLIVOS) {
+      const hn = await import(pathToFileURL(path.join(RAIZ, "apps", "web", "olivo", "horneado_node.js")).href);
+      const sint = await import(pathToFileURL(path.join(RAIZ, "pruebas", "olivo", "horneado", "sintetica.mjs")).href);
+      const man = JSON.parse(lee("pruebas/olivo/horneado/manifiesto-ejemplo.json")), v = man.variantes[0];
+      const claveS = (e, nivel) => "olivo|" + sint.GEN_VERSION_SINTETICA + "|c" + sint.CACHE_VERSION_SINTETICA + "|" + nivel + "|" + e.tipo + "|" + e.epoca + "|" + e.semilla + "|{}";
+      const r = sint.recetaSintetica({ semilla: v.semilla, nivel: v.nivel, epoca: v.epoca });
+      const o = await hn.horneaObjeto(r, { nivel: v.nivel, clave: claveS(r.entrada, v.nivel), gen_version: sint.GEN_VERSION_SINTETICA, cache_version: sint.CACHE_VERSION_SINTETICA }, 9);
+      assert.strictEqual(o.huella, v.huella, "el objeto sintético debe dar la huella del manifiesto de ejemplo");
+      fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(path.join(dir, "t"), { recursive: true });
+      fs.writeFileSync(path.join(dir, "manifiesto.json"), JSON.stringify(man));
+      fs.writeFileSync(path.join(dir, v.huella + ".br"), o.br);
+      // lo que el hornero deja junto a los objetos y NO debe salir (O7c): su estado y el manifiesto anterior; y un manifiesto de tesela, que tampoco
+      for (const n of ["estado.json", "manifiesto.anterior.json"]) fs.writeFileSync(path.join(dir, n), "{}");
+      fs.writeFileSync(path.join(dir, "t", "0_0.olivos"), Buffer.from("OLVT"));
+      process.env.GEMELO_DEV_OLIVOS = dir;
+    }
+    const man = JSON.parse(fs.readFileSync(path.join(dir, "manifiesto.json"), "utf8")), h = man.variantes[0].huella;
+    olivosHorneados = { huella: h, bytesBr: fs.statSync(path.join(dir, h + ".br")).size, bytesManifiesto: fs.statSync(path.join(dir, "manifiesto.json")).size };
   }
   const tiempos = {}, reloj = () => { const t0 = Date.now(); return () => ((Date.now() - t0) / 1000); };
   let r0 = reloj();
@@ -525,6 +607,27 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
         assert.deepStrictEqual([rs.estado, rs.errores], ["activo", 0], "escena 3D Tiles: " + JSON.stringify(rs));
         assert.deepStrictEqual(errs, [], "errores en /finca/?escena=tiles"); assert.deepStrictEqual(csp, [], "CSP en /finca/?escena=tiles");
         t.diagnostic("tileset por Caddy 200/401 y ?escena=tiles activa con " + rs.visibles + " tesela(s) con contenido, sin errores ni CSP, en " + r0().toFixed(1) + " s");
+      }
+      {   // O7d: las recetas horneadas, tras sesión: el objeto en brotli e inmutable, el manifiesto revalidado, sin sesión 401
+        const base_ = "/teselas/" + finca + "/olivos/", obj = base_ + olivosHorneados.huella + ".br", mf = base_ + "manifiesto.json";
+        const o = await pide(obj, { cookie }), m = await pide(mf, { cookie });
+        assert.strictEqual(o.status, 200, obj + " con sesión: " + o.status);
+        assert.strictEqual(o.cabeceras["content-type"], "application/octet-stream", "el objeto horneado: Content-Type");
+        assert.strictEqual(o.cabeceras["content-encoding"], "br", "el objeto horneado: Content-Encoding");
+        assert.strictEqual(o.cabeceras["cache-control"], "private, max-age=31536000, immutable", "el objeto horneado: Cache-Control");
+        assert.strictEqual(m.status, 200, mf + " con sesión: " + m.status);
+        assert.strictEqual(m.cabeceras["cache-control"], "private, no-cache", "el manifiesto se revalida");
+        assert.match(m.cabeceras["content-type"] || "", /json/);
+        assert.strictEqual(JSON.parse(m.texto).variantes[0].huella, olivosHorneados.huella);
+        // solo manifiesto.json y <huella de 32 hex>.br: estado.json, manifiesto.anterior.json, t/… y una huella que no existe dan 404 (con sesión)
+        for (const u of ["estado.json", "manifiesto.anterior.json", "t/0_0.olivos", "no-existe.br", olivosHorneados.huella + "0.br", ""]) {
+          const x = await pide(base_ + u, { cookie });
+          assert.strictEqual(x.status, 404, base_ + u + " con sesión debe dar 404: " + x.status);
+          assert.ok(!(x.cabeceras["cache-control"] || "").includes("immutable"), "un 404 no puede quedar inmutable en la caché");
+        }
+        for (const u of [obj, mf, base_ + "estado.json"]) assert.strictEqual((await pide(u)).status, 401, u + " sin sesión");
+        assert.notStrictEqual((await pide("/teselas/" + finca + "/indice.json", { cookie })).cabeceras["cache-control"], o.cabeceras["cache-control"], "el resto de /teselas/ conserva su caché");
+        t.diagnostic("recetas horneadas por Caddy: objeto con br+immutable, manifiesto con no-cache, estado.json y demás 404, 401 sin sesión");
       }
       {   // ?olivos=gen: sin errores de consola (no se espera a los generados)
         r0 = reloj();

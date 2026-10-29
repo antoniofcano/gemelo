@@ -38,6 +38,9 @@ services:
       - ${GEMELO_DEV_FINCA_CARPETA:-${GEMELO_DEV_TESELAS:-../../pruebas/salida/fixture}/${GEMELO_DEV_FINCA:-hituelo}}:/srv/finca:ro
       # el tileset 3D Tiles (/teselas/<finca>/tileset/…); sin GEMELO_DEV_TILESET se monta el fixture, que no trae tileset.json (404)
       - ${GEMELO_DEV_TILESET:-../../pruebas/salida/fixture}:/srv/tileset:ro
+      # las recetas horneadas (/teselas/<finca>/olivos/…): la carpeta que escribe el hornero (<salida>/<finca>/olivos/, con
+      # manifiesto.json y los <huella>.br dentro); sin GEMELO_DEV_OLIVOS se monta el fixture, que no trae nada de eso (404)
+      - ${GEMELO_DEV_OLIVOS:-../../pruebas/salida/fixture}:/srv/olivos:ro
     tmpfs:                             # la CA local y su estado no se guardan: es desarrollo (se regeneran en cada arranque)
       - /data:uid=1000,gid=1000,mode=0700
       - /config:uid=1000,gid=1000,mode=0700
@@ -104,8 +107,8 @@ services:
       NODE_IP: "127.0.0.1"             # el candidato ICE que anuncia (compose.red-local.yml pone la IP de la WiFi)
     ports:
       - "127.0.0.1:${GEMELO_DEV_PUERTO_LIVEKIT:-7880}:7880"
-      - "127.0.0.1:7881:7881"
-      - "127.0.0.1:7882:7882/udp"
+      - "127.0.0.1:${GEMELO_DEV_PUERTO_LIVEKIT_TCP:-7881}:7881"
+      - "127.0.0.1:${GEMELO_DEV_PUERTO_LIVEKIT_UDP:-7882}:7882/udp"
     volumes:
       - ./livekit.yaml:/etc/livekit.yaml:ro
     healthcheck:

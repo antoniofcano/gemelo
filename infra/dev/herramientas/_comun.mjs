@@ -216,8 +216,64 @@ export function pideHttps(puerto, ruta, { method = "GET", headers = {}, body, ca
   });
 }
 
-/** Instala las dependencias de infra/dev/herramientas (versiones fijas del package-lock) si faltan */
+const SELLO = ".gemelo-lock-sello";
+
+/**
+ * ¿Lo instalado en <dir>/node_modules corresponde al package-lock.json de <dir>? Si no, `npm ci` es obligado (típico: alguien
+ * añadió una dependencia y el build falla con «Could not load …»). Dos pruebas:
+ *  1. el sello que deja `aseguraNpmCi` tras cada `npm ci` (sha256 del lock): si coincide, está al día;
+ *  2. sin sello (instalado a mano o antes de este control): el lock oculto de npm (node_modules/.package-lock.json) debe traer
+ *     la MISMA versión de cada paquete del lock (sin los de desarrollo con `sinDev`, ni los opcionales, que dependen de la
+ *     plataforma). Si cuadra, se pone el sello y no se reinstala.
+ */
+export function lockAlDia(dir, { sinDev = false } = {}) {
+  const lockF = path.join(dir, "package-lock.json"), nm = path.join(dir, "node_modules");
+  if (!fs.existsSync(lockF)) return true;                       // sin lock no hay nada que comparar
+  if (!fs.existsSync(nm)) return false;
+  const crudo = fs.readFileSync(lockF), hash = crypto.createHash("sha256").update(crudo).digest("hex");
+  const selloF = path.join(nm, SELLO);
+  const sellado = fs.existsSync(selloF) ? fs.readFileSync(selloF, "utf8").trim() : "";
+  if (sellado === hash) return true;
+  if (sellado) return false;                                    // sellado con otro lock: el lock cambió desde el último ci
+  const ocultoF = path.join(nm, ".package-lock.json");
+  if (!fs.existsSync(ocultoF)) return false;
+  let lock, oculto;
+  try { lock = JSON.parse(crudo.toString("utf8")).packages || {}; oculto = JSON.parse(fs.readFileSync(ocultoF, "utf8")).packages || {}; }
+  catch { return false; }
+  for (const [k, v] of Object.entries(lock)) {
+    if (!k.startsWith("node_modules/") || v.optional || v.devOptional || (sinDev && v.dev) || v.link) continue;
+    if (!oculto[k] || oculto[k].version !== v.version) return false;
+  }
+  try { fs.writeFileSync(selloF, hash + "\n"); } catch { /* solo lectura: se comprobará otra vez */ }
+  return true;
+}
+
+/**
+ * `npm ci` en <dir> si falta node_modules, si falta alguno de los paquetes de `clave` o si el package-lock.json ya no
+ * corresponde a lo instalado (lockAlDia); deja el sello. Devuelve true si instaló.
+ */
+export function aseguraNpmCi(dir, { sinDev = false, clave = [], aviso } = {}) {
+  const faltaClave = clave.some(d => !fs.existsSync(path.join(dir, "node_modules", d, "package.json")));
+  const alDia = !faltaClave && lockAlDia(dir, { sinDev });
+  if (alDia) return false;
+  const motivo = !fs.existsSync(path.join(dir, "node_modules")) || faltaClave ? "faltan dependencias" : "el package-lock.json cambió desde la última instalación";
+  console.log("  " + (aviso || "instalando " + path.relative(RAIZ, dir)) + " (npm ci: " + motivo + ")…");
+  npm(["ci"].concat(sinDev ? ["--omit=dev"] : [], ["--no-audit", "--no-fund"]), dir);
+  const lockF = path.join(dir, "package-lock.json");
+  if (fs.existsSync(lockF)) fs.writeFileSync(path.join(dir, "node_modules", SELLO), crypto.createHash("sha256").update(fs.readFileSync(lockF)).digest("hex") + "\n");
+  return true;
+}
+
+/** Instala las dependencias de infra/dev/herramientas (versiones fijas del package-lock) si faltan o el lock cambió */
 export function aseguraDependencias() {
-  const faltan = ["livekit-server-sdk", "@livekit/rtc-node", "pg"].some(d => !fs.existsSync(path.join(HERRAMIENTAS, "node_modules", d)));
-  if (faltan) npm(["ci", "--no-audit", "--no-fund"], HERRAMIENTAS);
+  aseguraNpmCi(HERRAMIENTAS, { clave: ["livekit-server-sdk", "@livekit/rtc-node", "pg"], aviso: "instalando infra/dev/herramientas" });
+}
+
+/**
+ * GEMELO_DEV_OLIVOS: la carpeta que escribe el hornero (<salida>/<finca>/olivos/, con manifiesto.json y los <huella>.br dentro),
+ * que se sirve en /teselas/<finca>/olivos/. Null si no se da (entonces Caddy da 404 en esa ruta).
+ */
+export function carpetaOlivos() {
+  const v = process.env.GEMELO_DEV_OLIVOS;
+  return v ? fueraDelRepo(v, "GEMELO_DEV_OLIVOS") : null;
 }
