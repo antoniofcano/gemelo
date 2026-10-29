@@ -69,6 +69,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 - `doc/ESTADO.md` reescrito como único sitio de «dónde estamos»; se retira el id y el enlace del artefacto privado (el repo es público).
 
 ### Arreglado
+- Paseo en tercera persona: la cámara ya no se mete dentro de los olivos; recorre el tramo cabeza → cámara con la altura de copa medida (LiDAR) y se acerca al paseante (mínimo 1,2 m) si choca con una copa.
 - Móvil: los botones del paseo ya no se quedan pillados (mantener pulsado seleccionaba texto y se perdía el soltar el dedo): sin selección ni menú de pulsación larga en el visor y los controles, y el botón se suelta también al cancelar el gesto, perder el dedo o perder el foco la página.
 - Olivos generados (`?olivos=gen`) al pasear: el foco es quien pasea (no la cámara), el plan tiene histéresis y el lote entra receta a receta; antes, en el móvil, no llegaba a dibujarse ninguno y al girar desaparecían (O1d).
 - La CSP (Report-Only) de producción y de dev admite `blob:` en `connect-src`: la escena 3D Tiles (`?escena=tiles`) lo usa y avisaba. La e2e de entrada de `dev.test.js` comprueba además las lindes dibujadas, el tileset por Caddy (200 con sesión, 401 sin ella) y que `?escena=tiles` y `?olivos=gen` cargan sin errores ni avisos de CSP (A5).

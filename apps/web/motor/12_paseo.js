@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: paseando, persona, teclas, primera, pp, camPos, entraPaseo, salePaseo, actualizaPaseo
-// Consume: 01_datos (D, $), 02_mundo (suelo, copas), 03_escena (lienzo, visor, scene, camera, exag), 06_arboles (tronco),
+// Consume: 01_datos (D, $), 02_mundo (suelo, copaAlta, copas), 03_escena (lienzo, visor, scene, camera, exag), 06_arboles (tronco),
 //   13_parcelas (fincas, fincaSel, parcelaSel),
 //   16_vida (enQuad, velPaseo, giroPaseo, ponQuad, vidaPaseo, enDron, ponDron, cicloVista, dronMando, camaraDron, vidaEntra, vidaSale),
 //   24_pantalla (pant, iniciaTransicion, iniciaSalida), 29_vr (ficha)
@@ -81,7 +81,15 @@
     if (camaraDron(dt, gy)) { }
     else if (primera) { camera.position.set(pp.x, gy + 1.62, -pp.y); camera.lookAt(pp.x + fx * 10, gy + 1.45, -pp.y + fz * 10); }
     else {
-      var DC = enQuad ? 7.2 : 4.4, objx = pp.x - fx * DC, objz = -pp.y - fz * DC, objy = Math.max(gy + 2.3, suelo(objx, -objz) * exag + 1.2);
+      var DC = enQuad ? 7.2 : 4.4;
+      // la cámara no se mete en las copas: se recorre el tramo cabeza → cámara cada 25 cm y, si entra en una copa (altura medida del LiDAR,
+      // copaAlta), se acerca hasta justo antes (mínimo 1,2 m); así no se ve el olivo «por dentro» con aceitunas y hojas gigantes
+      var cabY = gy + 1.5, finY = gy + 2.3, DMIN = 1.2;
+      for (var s = 0.6; s <= DC; s += 0.25) {
+        var sx = pp.x - Math.sin(pp.ang) * s, sy = pp.y - Math.cos(pp.ang) * s, hc = copaAlta(sx, sy);
+        if (hc > 0.8 && cabY + (finY - cabY) * s / DC < suelo(sx, sy) * exag + hc + 0.3) { DC = Math.max(DMIN, s - 0.35); break; }
+      }
+      var objx = pp.x - fx * DC, objz = -pp.y - fz * DC, objy = Math.max(gy + 2.3, suelo(objx, -objz) * exag + 1.2);
       camPos.x += (objx - camPos.x) * Math.min(1, dt * 5); camPos.z += (objz - camPos.z) * Math.min(1, dt * 5); camPos.y += (objy - camPos.y) * Math.min(1, dt * 5);
       camera.position.copy(camPos); camera.lookAt(pp.x + fx * 1.5, gy + 1.3, -pp.y + fz * 1.5);
     }
