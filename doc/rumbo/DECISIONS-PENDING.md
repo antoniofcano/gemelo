@@ -46,3 +46,11 @@ Decisiones que **no puede tomar un agente**: las cierra Antonio. Las técnicas s
 | 32 | **Constructor · dónde se calculan los parámetros** | tubería Python / motor | P6 | ✅ 2026-10-29: **en la tubería Python** (columna `copas_param`) |
 | 33 | **Constructor · orden respecto a F1c** | antes / después | P7 | ✅ 2026-10-29: **F1c ya está en main**: el enganche va sobre three 0.186.1 |
 | 34 | **Constructor · rótulo del olivo generado** | ilustrativo + provisional / solo ilustrativo / sin rótulo | P7 | ✅ 2026-10-29: **«forma ilustrativa con medidas del LiDAR»** y, mientras el id no venga del censo, **«id provisional»** |
+| 35 | **F1d · cuándo se acepta ADR-0015** | criterios locales / esperar al Quest | cierre de F1d | ✅ 2026-10-29: **con los criterios 1–4 en local**; Quest (5–6) queda **no probado** hasta medirlo |
+| 36 | **F1d · construcciones en el tileset** | ya / más adelante | F1d | ✅ 2026-10-29: **más adelante**; F1d solo mueve terreno y olivos, `18_paisaje.js` sigue igual |
+| 37 | **F1d · nube LiDAR** | sigue en el motor / al tileset | F1d | ✅ 2026-10-29: **sigue en el motor** (`05_nube.js`) |
+| 38 | **F1d · doble descarga glb + json** | aceptar / leer el glb en CPU | F1d | ✅ 2026-10-29: **se acepta por ahora**; se mide (sin cifra aún) y se recorta el json cuando la escena nueva sea la de por defecto |
+| 39 | **F2 · sala de la visita libre** | sala fija / sala por día | F2 | ✅ 2026-10-29: **una sala fija de Hituelo**; las guiadas, sala por visita |
+| 40 | **F2 · conservación del chat** | no se guarda / 30 días / indefinido | F2 | ✅ 2026-10-29: **no se guarda**; solo las preguntas sobre una haza, en su tabla |
+| 41 | **F2 · EIPD ampliada** | antes de F2 con gente real / con F3 | F2–F3 | ✅ 2026-10-29: **una sola EIPD con F3 (voz)**; hasta entonces F2 solo con cuentas de prueba |
+| 42 | **F2 · moderación** | mínima en F2 / toda en F3 / completa en F2 | F2 | ✅ 2026-10-29: **mínima en F2** (expulsar desde el servidor, con auditoría); rol de guía completo en F3 |
