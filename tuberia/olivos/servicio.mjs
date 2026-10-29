@@ -11,6 +11,7 @@
 //   GEMELO_HORNERO_SALIDA   se escribe en <salida>/<finca>/olivos/ (por defecto /salida)
 //   GEMELO_HORNERO_ESTADO   <estado>/<finca>.json (estado del hornero), <finca>.lock y servicio.json (el latido); por defecto /estado
 //   GEMELO_HORNERO_CALENDARIO  otro epocas-calendario.json; GEMELO_HORNERO_RELEASE=1 brotli 11
+//   GEMELO_HORNERO_IMPOSTORES=1  además hornea los impostores (O8b: Chrome; la imagen Dockerfile.impostores lo trae y lo pone)
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
@@ -80,7 +81,7 @@ export function configDe(env = process.env) {
   const n = (k, d) => Number(env[k] || d);
   return { fincas, datos: env.GEMELO_HORNERO_DATOS || "/datos", salida: env.GEMELO_HORNERO_SALIDA || "/salida", estado: env.GEMELO_HORNERO_ESTADO || "/estado",
     hora: env.GEMELO_HORNERO_HORA || "03:00", compruebaMs: n("GEMELO_HORNERO_COMPRUEBA_S", 600) * 1000, reintentoMs: n("GEMELO_HORNERO_REINTENTO_S", 300) * 1000,
-    calendario: env.GEMELO_HORNERO_CALENDARIO || path.join(RAIZ, "contratos", "epocas-calendario.json"), release: env.GEMELO_HORNERO_RELEASE === "1", limpia: env.GEMELO_HORNERO_LIMPIA !== "0" };
+    calendario: env.GEMELO_HORNERO_CALENDARIO || path.join(RAIZ, "contratos", "epocas-calendario.json"), release: env.GEMELO_HORNERO_RELEASE === "1", limpia: env.GEMELO_HORNERO_LIMPIA !== "0", impostores: env.GEMELO_HORNERO_IMPOSTORES === "1" };
 }
 
 /**
@@ -110,7 +111,7 @@ export async function servicio(cfg, o = {}) {
     if (!libera) { log("[hornero " + finca + "] otro hornero trabaja en esta finca: no lanzo " + motivo); s.fallo = null; s.primera = false; resultado.fincas[finca] = { motivo, ocupada: true }; return; }
     s.durmiendo_hasta = null; s.ultimo_motivo = motivo; latido(); log("[hornero " + finca + "] vuelta: " + motivo);
     try {
-      const resumen = await hornea({ finca, salida: cfg.salida, fecha: fecha.toISOString(), release: cfg.release, limpia: cfg.limpia, estado: path.join(cfg.estado, finca + ".json"),
+      const resumen = await hornea({ finca, salida: cfg.salida, fecha: fecha.toISOString(), release: cfg.release, limpia: cfg.limpia, impostores: !!cfg.impostores, estado: path.join(cfg.estado, finca + ".json"),
         calendario: cal, generador: G, log });
       s.fallo = null; s.primera = false; s.previos = sellos; s.ultima_vuelta_en = ahoraISO();
       const prox = proximoCambioDeEpoca(tabla, fecha, E.epocaDeFecha);

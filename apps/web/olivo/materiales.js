@@ -10,6 +10,17 @@ import { dibujaCorteza, dibujaRamita, dibujaRelleno } from "./texturas.js";
 export const MATERIALES = ["corteza", "pies", "musgo", "muerta", "raiz", "corte", "tutor", "oliva", "relleno", "relleno_sombra",
   "ramita0", "ramita1", "ramita0_sombra", "ramita1_sombra", "puntos"];
 
+/**
+ * Calibración del color para un anfitrión con LUZ LINEAL (opción `srgb`: el motor del gemelo con three ≥ 0.152), decisión 70. Los colores de la
+ * referencia «Olivos tipo» se ajustaron a ojo con la luz de r128 (sin gestión de color: la luz se suma en sRGB) y con sombras del sol. Con la luz
+ * lineal del motor (sol 1,5π y cielo 1,1π, calibrados para el terreno: 03_escena.js) el mismo albedo sale ~2 veces más claro y, sin sombras,
+ * plano: «crema». Es un factor LINEAL sobre el color del material, después del parche del anfitrión (que lo pasa de sRGB a lineal); no toca la
+ * receta (huella olivo-2 y GEN_VERSION intactas). Con 0,3 / 0,5 el E2 de centenario3 con la luz del motor da el mismo color medio que la
+ * referencia con la misma sombra (medido: contratos/olivo-impostor.md §5). `calibracion: false` lo quita; `calibracion: {follaje, corteza}` lo cambia.
+ */
+export const CALIBRACION_LINEAL = Object.freeze({ follaje: 0.3, corteza: 0.5 });
+const FOLLAJE = ["relleno", "ramita0", "ramita1"], CORTEZA = ["corteza", "pies", "musgo", "muerta", "raiz"];
+
 /** Encadena un onBeforeCompile al que ya tenga el material, y da a la combinación su propia clave de programa */
 export function encadena(mat, fn, clave) {
   const previo = mat.onBeforeCompile, clavePrevia = mat.customProgramCacheKey ? mat.customProgramCacheKey.bind(mat) : () => "";
@@ -35,7 +46,8 @@ function conMarcas(THREE, mat, texMuerta) {
  * @param THREE     el three del anfitrión
  * @param fotos     lo que da cargaFotos() ({corteza, musgo, muerta: ImageBitmap|null}) o null (sin fotos: corteza dibujada y colores lisos)
  * @param opciones  { epoca (las ramitas y el relleno llevan flor según la época; por defecto "envero"), parche(material, nombre), srgb (marca
- *                  las texturas como sRGB, para un anfitrión con gestión de color; por defecto no, como r128) }
+ *                  las texturas como sRGB, para un anfitrión con gestión de color, y calibra el color para su luz lineal: CALIBRACION_LINEAL; por defecto
+ *                  no, como r128), calibracion (false o {follaje, corteza}: solo con srgb) }
  * @returns { nombre → material } y además .avisos (lo que falta) y .libera()
  */
 export function creaMateriales(THREE, fotos, opciones) {
@@ -74,6 +86,12 @@ export function creaMateriales(THREE, fotos, opciones) {
   });
   M.puntos = new THREE.PointsMaterial({ size: 0.045, vertexColors: true });
   if (o.parche) for (const n of MATERIALES) o.parche(M[n], n);
+  // luz lineal (srgb: el motor del gemelo): el color se calibra DESPUÉS del parche del anfitrión, que ya lo pasó a lineal (decisión 70, CALIBRACION_LINEAL)
+  if (o.srgb && o.calibracion !== false) {
+    const c = Object.assign({}, CALIBRACION_LINEAL, o.calibracion || {});
+    for (const n of FOLLAJE) M[n].color.multiplyScalar(c.follaje);
+    for (const n of CORTEZA) M[n].color.multiplyScalar(c.corteza);
+  }
   Object.defineProperty(M, "avisos", { value: avisos });
   Object.defineProperty(M, "libera", { value: () => { texturas.forEach(t => t.dispose()); MATERIALES.forEach(n => M[n].dispose()); } });
   return M;
