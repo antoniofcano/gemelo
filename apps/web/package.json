@@ -10,6 +10,7 @@
     "dev": "node herramientas/genera_motor.mjs && vite"
   },
   "dependencies": {
+    "3d-tiles-renderer": "0.5.3",
     "three": "0.186.1"
   },
   "devDependencies": {

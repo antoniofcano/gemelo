@@ -1,5 +1,5 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: D, $, fmt, b64, i16, RES, x0, yN, ANCHO, ALTO, EXT, FOG0, FOG1, DIST_MAX, DIST_INI, ESTAD, DEPURA, VRP, FACTOR_R8, ESC_R8
+// Expone: D, $, fmt, b64, i16, RES, x0, yN, ANCHO, ALTO, EXT, FOG0, FOG1, DIST_MAX, DIST_INI, ESTAD, DEPURA, VRP, FACTOR_R8, ESC_R8, ESC3D
 // Consume: 02_mundo (Mundo, suelo), 04_terreno (terreno), 05_nube (nube)
 // Nota: Abre la IIFE que cierra 99_cierre.js y activa "use strict". Primer módulo: define D (los datos de la finca) y las utilidades.
 // ===============================================================================
@@ -26,4 +26,7 @@
   })();
   // ESC_R8 = FACTOR_R8 / 0,5 escala lo que hoy se dibuja con r8 tal cual (relleno, sombras, ramas): con 0,5 vale 1 y no cambia nada
   var ESC_R8 = FACTOR_R8 / 0.5;
+  // ?escena=tiles (F1d, ADR-0015): el terreno lo dibuja la escena 3D Tiles (04b_escena3d.js) y no el de siempre (04_terreno.js). activa vuelve a
+  // false si la escena nueva falla, y entonces el terreno de siempre se monta como sin la bandera
+  var ESC3D = (function () { var p = /[?&]escena=tiles\b/.test(location.search); return { pedida: p, activa: p }; })();
 

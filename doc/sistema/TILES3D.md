@@ -1,6 +1,6 @@
 # Escena en 3D Tiles 1.1 (prototipo F1d)
 
-Cómo se generan, qué llevan y cómo se regeneran las teselas 3D Tiles 1.1 de la escena. **Prototipo**: ejercitado con el fixture sintético y, una vez, con Hituelo real (cifras en [MEDIDAS](MEDIDAS.md)); el motor (`apps/web/motor/`, three 0.128.0) **no** lo usa todavía. Decisión: [ADR-0015](../adr/0015-escena-en-3d-tiles.md) (Propuesto). Lo vigila [`tiles3d.test.js`](../../pruebas/guardianes/tiles3d.test.js).
+Cómo se generan, qué llevan y cómo se regeneran las teselas 3D Tiles 1.1 de la escena. **Prototipo**: ejercitado con el fixture sintético y, una vez, con Hituelo real (cifras en [MEDIDAS](MEDIDAS.md)); el motor (`apps/web/motor/`) lo usa solo con `?escena=tiles` y solo para el relieve (paso 3b, en curso: [abajo](#en-el-motor-escenatiles-paso-3b-en-curso)). Decisión: [ADR-0015](../adr/0015-escena-en-3d-tiles.md) (Propuesto). Lo vigila [`tiles3d.test.js`](../../pruebas/guardianes/tiles3d.test.js).
 
 | Pieza | Dónde |
 |---|---|
@@ -74,6 +74,17 @@ Esquema: [`contratos/tileset.schema.json`](../../contratos/tileset.schema.json).
 - **Catálogo de olivos-tipo (F1b)**: `_TIPO` (con su tabla) y `_INDICE_COPA` ya viajan. Con catálogo, el generador agrupará las instancias por tipo: un nodo instanciado por **(tipo, nivel)** con la malla del tipo (glb del catálogo, contrato `olivos-tipo`) en lugar del prototipo genérico. Coste: una llamada de dibujo más por tipo presente en la tesela (con 6–8 tipos, hasta 8 por tesela) y los bytes de cada malla repetidos en cada glb; compartirlos con un `buffer` externo común es posible en glTF, pero **[NO VERIFICADO]** que 3DTilesRendererJS lo cachee entre teselas. Con `_TIPO = −1` se ve igual que hoy.
 - **Identidad del árbol**: three deja `_INDICE_COPA` y `_TIPO` como `InstancedBufferAttribute` en la geometría; con el `instanceId` de un rayo y la tesela del modelo (`load-model` da `tile.extras.gemelo`) se llega al registro por la lista y la huella (lo usa el gancho `instancias()` del visor). La vía estándar de 3D Tiles sería `EXT_instance_features` + `EXT_structural_metadata`: **[NO VERIFICADO]** su soporte en 3DTilesRendererJS 0.5.3.
 - **Sin hacer**: construcciones (`paisaje.edificios`), nube LiDAR (`pts`), tendido y cauces, NDVI y exageración vertical, compresión (meshopt/KTX2), teselado implícito, la tesela Base (sin `pts`) no cambia nada aquí.
+
+## En el motor: `?escena=tiles` (paso 3b, en curso)
+
+`apps/web/motor/04b_escena3d.js` (`Escena3D`, contrato en [CONTRATOS §2](CONTRATOS.md)). **Sin la bandera no crea nada.** Con ella:
+- el relieve con su ortofoto lo dibuja 3DTilesRendererJS (la misma versión fijada que el visor, en `apps/web/package.json`; en el cliente web la importa Vite con `import()`, y en la salida artefacto va por el importmap de jsDelivr junto a three, porque su build solo importa `three` y `three/addons/`). `Terreno` (`04_terreno.js`) no construye nada (`ESC3D.activa`); si la librería o el tileset fallan, vuelve `Terreno`;
+- la física y las consultas en CPU (`Mundo`: suelo, copas, color del suelo; paseo, VR, balizas, huellas) siguen con el json de siempre (decisión 38); la nube (37) y las construcciones (36) no cambian. Los olivos del glb se **quitan** al cargar cada modelo: siguen los de `Arboles`;
+- marco: `grupo.matrix = escala(1, exag, 1) · Rx(−π/2) · transform⁻¹`, como el visor, y con la exageración vertical;
+- tileset: `?tileset=<ruta relativa>` o `<D.base>tileset/tileset.json`; una URL con esquema o `//host` se rechaza (solo el mismo origen);
+- `errorTarget`: 16 px en escritorio (`?tilesError=`); en VR, el campo `e` de cada perfil de `VR_PERFILES` (16/24/32/48, valores de partida **sin medir** en las gafas). En una sesión XR, la cámara de la sesión con la resolución de un ojo y el `Scheduler` de la librería atado a la sesión (lo que hace su ejemplo de XR; la API está leída en el código de 0.5.3, el ejemplo en sí no se ha contrastado).
+
+Lo vigila [`escena3d.test.js`](../../pruebas/guardianes/escena3d.test.js): sin navegador, versión única, importaciones del build, importmap y enganches; con navegador, el fixture con y sin la bandera (CSP aproximada, raíz vacía, relieve dibujado frente al de la CPU, tileset de otro host). **Lo de navegador, sin ejecutar todavía.**
 
 ## Marco de coordenadas
 

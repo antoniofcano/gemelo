@@ -43,6 +43,20 @@ La columna opcional `copas_param` del índice ([contrato](../../contratos/olivo-
 
 Lo comprueba con un `.laz` sintético `pruebas/guardianes/exportadores.test.js` (`pruebas/nube_sintetica.py`).
 
+### Hituelo completo para `?olivos=gen` y F1d: `copas_id`, `copas_tipo`, `copas_param` y `copas_semilla` (2026-10-29)
+Una salida nueva, en una carpeta nueva (`<salida nueva>`), sin tocar las anteriores. Cuatro pasos; el más lento, el segundo (≈ 30 s con las diez hojas):
+
+1. **Exportar** con el exportador actual (emite `copas_id` y `copas_tipo`, ADR-0012):
+   `GEMELO_HITUELO=<intermedios> GEMELO_PARCELAS=<parcelas en UTM> python tuberia/finca_8_teselas.py --finca hituelo --salida <salida nueva>`.
+   Los intermedios son los de `hituelo_conv.py`: `lidar/{indice.json, tesela/*.npz, arboles.json, paisaje.json}` e `imagen/{ndvi/ndvi_hituelo.json, ndvi/ndvi_u8.bin, ndvi/suelo_ndvi_hituelo.json, suelo_hituelo.json, ot_hituelo.json, ort/*.jpg}`.
+2. **Puntos**: `python tuberia/puntos_copas.py --indice <salida nueva>/indice.json --laz <hojas .laz> --salida <salida nueva>/puntos.npz`.
+3. **Parámetros**: `python tuberia/parametros_copas.py --indice <salida nueva>/indice.json --puntos <salida nueva>/puntos.npz --salida <salida nueva>/indice.json --desfase=-1.08,-0.15` (el desfase que imprime el paso 1; factores a 1,0).
+4. **Semillas**: `python tuberia/semillas_copas.py --indice <salida nueva>/indice.json` (sin `--anterior`: semilla = `copas_id`, decisión 50). Desde que los exportadores ponen `copas_semilla` (siguiente apartado), el paso 1 ya la escribe y este paso sobra; con una salida nueva y sin anterior da lo mismo.
+
+Qué cambia respecto a la salida anterior (medido, comparando ficheros): `copas` (5.882) y las 46 teselas `t/*.json|jpg` son **idénticas byte a byte**, y los puntos del paso 2 también; cambian `textos.sin_historia` (ahora `false`) y `marcados`, porque el emparejamiento marca ↔ copa es el de `ids_copas.empareja` (uno a uno, voraz, 4 m): 5.572 de 5.961 marcas emparejadas, antes 5.534; 152 marcas apuntan a otra copa o a ninguna. Por eso `copas_param` se recalcula: cambia en 85 copas y solo en `desplaz_m`, `rumbo_gr` y `tronco` (el tronco sale de otra marca o de ninguna); altura, copa, densidad, base y rugosidad, iguales. Los 5.882 ids son provisionales (las marcas de OlivarTrack aún no traen id).
+
+Comprobación: `contratos/indice.schema.json` y `tesela.schema.json` con ajv (como `pruebas/guardianes/contratos.test.js`), y el tileset generado desde esta salida con `node tuberia/tiles3d/comprueba.mjs --entrada <salida nueva> --tileset <tileset>`.
+
 ### Semilla de cada olivo (`copas_semilla`, ADR-0017)
 La columna `copas_semilla` ([contrato](../../contratos/olivo-generado.md#12-la-semilla-se-guarda)) la ponen **los propios exportadores** (`finca_8_teselas.py --finca cerro|hituelo`, `hituelo_conv.py`, y la réplica), después de `copas_id`, con `asigna()` de `tuberia/semillas_copas.py` (decisión 50). Para heredar las semillas, el exportador busca el **índice anterior** por este orden:
 
