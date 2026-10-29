@@ -6,7 +6,7 @@
 const fs = require("fs"), path = require("path");
 const { pide } = require("./turno");
 const { ENCARGOS, RESULTADOS } = require("./encarga");
-const { sirve, lanza, mide, ESCENARIOS } = require("../guardianes/_navegador");
+const { sirve, lanza, mide, ESCENARIOS, TODOS_ESCENARIOS } = require("../guardianes/_navegador");
 
 const pendientes = () => fs.existsSync(ENCARGOS) ? fs.readdirSync(ENCARGOS).filter(f => f.endsWith(".json")).sort() : [];
 
@@ -14,7 +14,7 @@ async function hazEncargo(nav, f) {
   const e = JSON.parse(fs.readFileSync(path.join(ENCARGOS, f), "utf8")), dir = path.join(RESULTADOS, e.id), t0 = Date.now();
   fs.mkdirSync(dir, { recursive: true });
   const res = { id: e.id, de: e.de, raiz: e.raiz, empezado: new Date().toISOString(), variantes: {} };
-  const escenarios = e.escenarios ? Object.fromEntries(e.escenarios.map(n => [n, ESCENARIOS[n]]).filter(([, v]) => v)) : ESCENARIOS;
+  const escenarios = e.escenarios ? Object.fromEntries(e.escenarios.map(n => [n, TODOS_ESCENARIOS[n]]).filter(([, v]) => v)) : ESCENARIOS;
   const srv = await sirve(e.raiz);
   try {
     for (const v of e.variantes) {
