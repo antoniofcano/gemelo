@@ -73,7 +73,7 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 
 | Id | Tarea | Depende de | Tipo | Estado |
 |---|---|---|---|---|
-| D1 | Hituelo v3: `copas_id`, `copas_tipo`, `copas_semilla`, `copas_param` (fuera del repo) | — | ligera | 🟡 terminando |
+| D1 | Hituelo v3: `copas_id`, `copas_tipo`, `copas_semilla`, `copas_param` (fuera del repo) | — | ligera | ✅ (salida de referencia de Hituelo) |
 | A1 | Código corto para vincular las gafas: api, contrato y pruebas unitarias | — | ligera | 🟡 |
 | A2 | Portada y pantalla de entrada (UX) en `apps/web` | — | ligera | 🟡 |
 | A3 | Entorno local sirve Hituelo v3 con los olivos generados (cliente web con `gemelo-olivo`) | D1 | ligera | ⬜ |
