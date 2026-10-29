@@ -5,6 +5,8 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Olivos generados (`?olivos=gen`): fundido por tramado de 0,6 s al entrar y salir (también en la sombra; `?olivosFundido=0` lo quita), la misma luz que el resto (nubes, escarcha, colores en sRGB), el nivel 0 de siempre no se apaga antes de que exista el generado, y cola propia para que el más cercano no espere detrás de los trabajos de teselas (O1). Forma intacta (huella olivo-2).
+- Exportadores: `copas_semilla` dentro de `finca_8_teselas.py` y `hituelo_conv.py`, heredada de `--anterior`, `GEMELO_INDICE_ANTERIOR` o el `indice.json` de la salida; si no, = `copas_id`. El «mismo id» solo cuenta para ids del censo (O3, decisión 50).
 - Hituelo v3 en 3D Tiles regenerado con el generador 0.3.0 (raíz sin contenido): 248 glb, 38,2 MiB, validador de CesiumGS con 0 errores y 0 avisos, `comprueba.mjs` con 0 errores por `copas_id`; 72 s.
 - Código corto para vincular las gafas (Quest): `K7Q-4M2`, 5 min, un solo uso; se aprueba en «Mis dispositivos» y las gafas reciben su propia sesión (decisiones 46 y 61; migración 0002).
 - Portada y pantallas de entrada en `apps/web` (UX.md §4): portada, entrar con tu correo, revisa tu correo, primer acceso (normas, alias, avatar), vincular las gafas y Mis dispositivos; sustituye la portada provisional de `infra/dev` (decisión 56).
