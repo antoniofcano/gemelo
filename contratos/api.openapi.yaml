@@ -18,6 +18,15 @@ components:
       name: __Host-gemelo
       description: "HttpOnly; Secure; SameSite=Lax; Path=/. Ver contratos/sesion.md."
   schemas:
+    Avatar:
+      type: object
+      additionalProperties: false
+      required: [camisa, sombrero, piel, vrm]
+      properties:
+        camisa: { type: integer, minimum: 0, maximum: 5 }
+        sombrero: { enum: [ninguno, paja, gorra] }
+        piel: { type: integer, minimum: 0, maximum: 4 }
+        vrm: { type: [string, "null"], description: "id del catálogo de avatares VRM; null = el muñeco de bloque" }
     Error:
       type: object
       additionalProperties: false
@@ -279,8 +288,24 @@ paths:
         "429": { $ref: "#/components/responses/Limite" }
 
   /api/yo/avatar:
+    get:
+      summary: Lo que el hogar tiene elegido (la portada lo lee de vuelta)
+      security: [{ sesion: [] }]
+      responses:
+        "200":
+          description: ok (sin caché)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Avatar" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "404": { description: "todavía no ha elegido (la portada parte de los valores por defecto)" }
     put:
-      summary: Avatar de estilo bloque
+      summary: Avatar del hogar, el muñeco de bloque y, si quiere, un avatar VRM del catálogo
+      description: |
+        `camisa`, `sombrero` y `piel` se guardan siempre: son el muñeco lejano y la caída cuando el VRM no carga (ADR-0020 §5-6).
+        `vrm` es el `id` de `/avatares/catalogo.json` ([avatares.md](avatares.md)); ausente o `null`, el muñeco. La api no conoce el
+        catálogo (lo sirve Caddy): un id que ya no esté en él lo trata el cliente como ausente. Viaja en los metadatos de presencia
+        (`avatar.vrm`) solo si hay uno.
       security: [{ sesion: [] }]
       requestBody:
         required: true
@@ -294,8 +319,11 @@ paths:
                 camisa: { type: integer, minimum: 0, maximum: 5 }
                 sombrero: { enum: [ninguno, paja, gorra] }
                 piel: { type: integer, minimum: 0, maximum: 4 }
+                vrm: { type: [string, "null"], pattern: "^[a-z0-9-]{1,32}$" }
       responses:
         "204": { description: guardado }
+        "400": { description: "la petición no tiene la forma esperada" }
+        "401": { $ref: "#/components/responses/SinSesion" }
 
   /api/yo/datos:
     get:

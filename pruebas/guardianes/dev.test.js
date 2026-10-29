@@ -230,7 +230,7 @@ test("portada y entrada (apps/web/portada): sin nada en línea (CSP estricta), s
   assert.ok(!/@(?!example\.com)[a-z0-9.-]+\.[a-z]{2,}/i.test(html + js), "la portada no nombra correos reales");
   // cada pantalla con su h1 enfocable; cada campo con su etiqueta
   const pantallas = [...html.matchAll(/<section class="pant[^"]*" id="p-([a-z]+)"/g)].map(m => m[1]);
-  assert.deepStrictEqual(pantallas, ["portada", "entrar", "revisa", "vincular", "bienvenida", "alias", "avatar", "dispositivos"]);
+  assert.deepStrictEqual(pantallas, ["portada", "entrar", "revisa", "vincular", "bienvenida", "alias", "avatar", "creditos", "dispositivos"]);
   assert.strictEqual((html.match(/<h1 id="t-[a-z]+" tabindex="-1">/g) || []).length, pantallas.length, "un h1 enfocable por pantalla");
   for (const m of html.matchAll(/<input id="([A-Za-z]+)" type="(?:text|email)"/g)) assert.match(html, new RegExp('<label for="' + m[1] + '">'), "el campo " + m[1] + " sin etiqueta");
   assert.match(css, /--toque: 44px/); assert.match(css, /html\[data-disp="quest"\][^}]*--toque: 56px/);

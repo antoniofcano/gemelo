@@ -24,6 +24,7 @@
   </a>
   <div class="quien" id="quien" hidden>
     <span>Hola, <strong id="aliasBarra">—</strong></span>
+    <a class="btn" href="#avatar">Mi avatar</a>
     <a class="btn" href="#dispositivos">Mis dispositivos</a>
     <button type="button" class="btn btn-txt" data-accion="salir">Cerrar sesión</button>
   </div>
@@ -71,6 +72,7 @@
     </div>
     <footer class="creditos">
       <p>Datos: LiDAR, MDT y ortofoto PNOA © Instituto Geográfico Nacional (CNIG), CC BY 4.0 · Imágenes Sentinel-2 del programa Copernicus de la UE · Suelos: SoilGrids, ISRIC – World Soil Information, CC BY 4.0.</p>
+      <p id="enlCreditos" hidden><a href="#creditos">Créditos de los avatares</a></p>
       <p>«Cuarenta hazas» es un nombre provisional. Aviso legal, política de privacidad y declaración de accesibilidad: pendientes de redactar.</p>
     </footer>
   </section>
@@ -174,21 +176,50 @@
     </form>
   </section>
 
-  <!-- 4.7 PRIMER ACCESO: AVATAR -->
+  <!-- 4.7 AVATAR (primer acceso y Configuración): galería del catálogo VRM con vista previa 3D (vista3d.js, solo aquí) y el muñeco de bloque -->
   <section class="pant" id="p-avatar" aria-labelledby="t-avatar" hidden>
-    <ol class="pasos" aria-label="Pasos del primer acceso"><li>1. Privacidad y normas</li><li>2. Alias</li><li aria-current="step">3. Avatar</li></ol>
+    <ol class="pasos" id="pasosAvatar" aria-label="Pasos del primer acceso"><li>1. Privacidad y normas</li><li>2. Alias</li><li aria-current="step">3. Avatar</li></ol>
+    <a class="btn btn-txt" href="#portada" id="volverAvatar" hidden>← Volver</a>
     <h1 id="t-avatar" tabindex="-1">Tu avatar</h1>
-    <p>Estilo bloque, como la finca. Sin rasgos de edad ni de género.</p>
+    <p id="introAvatar">Elige cómo te verán los demás en la finca. Sin rasgos de edad ni de género.</p>
     <div class="avatar-zona">
-      <div class="avatar-prev"><svg id="avatarPrev" viewBox="-40 -60 80 90" role="img" aria-label="Vista previa del avatar"></svg><p class="nota centro" id="aliasPrev">—</p></div>
+      <div class="avatar-prev">
+        <svg id="avatarPrev" viewBox="-40 -60 80 90" role="img" aria-label="Vista previa del avatar"></svg>
+        <canvas id="avatar3d" class="av3d" role="img" aria-label="Vista previa en 3D del avatar elegido" hidden></canvas>
+        <p class="nota centro" id="estado3d" role="status"></p>
+        <div class="fila giro" id="giro" hidden role="group" aria-label="Girar la vista previa">
+          <button type="button" class="btn" id="giroIzq" aria-label="Girar a la izquierda">◀</button>
+          <button type="button" class="btn" id="giroPausa" aria-pressed="false">Parar el giro</button>
+          <button type="button" class="btn" id="giroDer" aria-label="Girar a la derecha">▶</button>
+        </div>
+        <p class="nota centro" id="aliasPrev">—</p>
+      </div>
       <form id="fAvatar" novalidate>
-        <fieldset><legend>Color de la camisa</legend><div class="muestras" id="mCamisa"></div></fieldset>
-        <fieldset><legend>Sombrero</legend><div class="muestras" id="mSombrero"></div></fieldset>
-        <fieldset><legend>Tono de piel</legend><div class="muestras" id="mPiel"></div></fieldset>
+        <fieldset id="fsGaleria">
+          <legend>Elige tu avatar</legend>
+          <div class="galeria" id="galeria"></div>
+          <p class="pista" id="pistaGaleria"></p>
+        </fieldset>
+        <div id="bloqueMuneco">
+          <fieldset><legend>Color de la camisa</legend><div class="muestras" id="mCamisa"></div></fieldset>
+          <fieldset><legend>Sombrero</legend><div class="muestras" id="mSombrero"></div></fieldset>
+          <fieldset><legend>Tono de piel</legend><div class="muestras" id="mPiel"></div></fieldset>
+        </div>
         <div class="aviso aviso-err" id="eAvatar" role="alert" hidden><p id="eAvatarTxt"></p></div>
-        <div class="fila"><button type="button" class="btn" id="btnAzar">Al azar</button><button type="submit" class="btn btn-prim btn-grande">Listo</button><a class="btn btn-txt" href="#alias">Atrás</a></div>
+        <div class="fila"><button type="button" class="btn" id="btnAzar">Al azar</button><button type="submit" class="btn btn-prim btn-grande">Listo</button><a class="btn btn-txt" href="#alias" id="atrasAvatar">Atrás</a></div>
+        <p class="nota"><a href="#creditos">Créditos de los avatares</a></p>
       </form>
     </div>
+  </section>
+
+  <!-- CRÉDITOS DE LOS AVATARES (con sesión: el catálogo va tras ella) -->
+  <section class="pant estrecha" id="p-creditos" aria-labelledby="t-creditos" hidden>
+    <a class="btn btn-txt" href="#avatar">← Volver al avatar</a>
+    <h1 id="t-creditos" tabindex="-1">Créditos de los avatares</h1>
+    <p>Los avatares son de sus autores y se usan con la licencia que cada uno indica. Los que la piden, llevan aquí su crédito.</p>
+    <div class="aviso" id="avCreditos" role="status" hidden><p id="avCreditosTxt"></p></div>
+    <div id="creditosObligatorios" hidden><h2>Con crédito obligatorio</h2><ul class="lista-cred" id="listaCredObl"></ul></div>
+    <div id="creditosLibres" hidden><h2>Sin crédito obligatorio</h2><ul class="lista-cred" id="listaCredLib"></ul></div>
   </section>
 
   <!-- CONFIGURACIÓN → MIS DISPOSITIVOS (con sesión) -->
