@@ -7,7 +7,9 @@
 //  - Opcional (GEMELO_DOCKER=1): el recorrido de entrada de punta a punta. Levanta el entorno; sin sesión solo la portada;
 //    pide el enlace mágico para el hogar de prueba, lo lee en la API de Mailpit y lo abre en Chrome (cookie HttpOnly); el
 //    mundo carga en /finca/ con 0 errores; /api/hazas, la ficha propia y dos ajenas cumplen la lista blanca; salir cierra
-//    la sesión. Mide tiempos y lo baja (si ya estaba levantado antes, lo deja como estaba).
+//    la sesión; las lindes de las hazas dibujadas (LineSegments en __g.scene); las gafas (UA de Quest) vinculadas por código;
+//    el tileset por Caddy (200 con sesión, 401 sin ella; con el fixture se genera aquí) y /finca/?escena=tiles y ?olivos=gen sin
+//    errores ni avisos de CSP. Mide tiempos y lo baja (si ya estaba levantado antes, lo deja como estaba).
 const test = require("node:test"), assert = require("node:assert");
 const { spawnSync } = require("child_process");
 const { pathToFileURL } = require("url");
@@ -306,6 +308,21 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
   const comun = await imp("_comun.mjs"), { HOGARES, HAZAS_SIN_ASIGNAR } = await imp("siembra.mjs");
   const Ajv = require("ajv");
   const antes = comun.compose(["ps", "-q"], { captura: true }).stdout.trim() !== "";
+  // el tileset 3D Tiles que sirve Caddy: el de GEMELO_DEV_TILESET (datos reales, fuera del repo) o, con el fixture, uno generado aquí
+  // con tuberia/tiles3d/genera.mjs (1,5 s); sin su npm ci, esa parte se salta y el informe lo dice
+  let tilesetMotivo = "";
+  if (!process.env.GEMELO_DEV_TILESET && !DE_PRUEBA) {
+    const salida = path.join(RAIZ, "pruebas", "salida", "tiles3d-fixture"), py = python();
+    if (!py) tilesetMotivo = "sin Python 3 para generar el fixture";
+    else if (!fs.existsSync(path.join(RAIZ, "tuberia", "tiles3d", "node_modules"))) tilesetMotivo = "sin tuberia/tiles3d/node_modules (cd tuberia/tiles3d && npm ci)";
+    else {
+      const fx = path.join(RAIZ, "pruebas", "salida", "fixture");
+      if (!fs.existsSync(path.join(fx, "hituelo", "indice.json"))) ejecuta(py, ["-I", path.join("pruebas", "genera_fixture.py"), "--salida", fx]);
+      const g = ejecuta(process.execPath, [path.join("tuberia", "tiles3d", "genera.mjs"), "--entrada", path.join(fx, "hituelo", "indice.json"), "--salida", salida, "--catalogo", path.join("modelos", "olivos", "fixture", "catalogo.json")]);
+      if (g.status !== 0) tilesetMotivo = "genera.mjs falló: " + String(g.stderr).slice(-200);
+      else process.env.GEMELO_DEV_TILESET = salida;
+    }
+  }
   const tiempos = {}, reloj = () => { const t0 = Date.now(); return () => ((Date.now() - t0) / 1000); };
   let r0 = reloj();
   const { sembrado } = await levanta();
@@ -455,6 +472,61 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
       assert.ok(control.some(v => /^script-src/.test(v)), "la CSP Report-Only no denuncia un script en línea: ¿no llega la cabecera? " + JSON.stringify(control));
       assert.ok(pedidas.some(x => /^200 \/teselas\/hituelo\/t\/\d+_\d+\.json$/.test(x)), "el motor no pidió teselas a /teselas/hituelo/t/: " + pedidas.join(", "));
       assert.deepStrictEqual(vistos, [], "la CSP (Report-Only) avisa de violaciones");
+
+      // 4a. A4: las lindes de las hazas dibujadas (LineSegments «linde de las hazas»), la propia con otro color que las ajenas;
+      //     A3: el tileset por Caddy (200 con sesión, 401 sin ella) y las escenas ?escena=tiles y ?olivos=gen sin errores ni avisos de CSP
+      const finca = process.env.GEMELO_DEV_FINCA || "hituelo";
+      const abre = async (ruta, esperaFn) => {
+        const q = await ctx.newPage(), errs = [], csp = [];
+        q.on("pageerror", e => errs.push("PAGEERROR " + String(e.stack || e).slice(0, 300)));
+        q.on("console", x => { if (x.type() === "error" || /Content Security Policy|Report Only/i.test(x.text())) errs.push("CONSOLE " + x.text().slice(0, 300)); });
+        q.on("response", x => { if (x.status() >= 400) errs.push(x.status() + " " + x.url()); });
+        await q.addInitScript(() => { window.__csp = []; document.addEventListener("securitypolicyviolation", e => window.__csp.push(e.violatedDirective + " " + e.blockedURI)); });
+        await q.goto(base + ruta);
+        await q.waitForFunction(() => window.__g && window.__g.listo(), null, { timeout: 90000 });
+        if (esperaFn) await q.waitForFunction(esperaFn, null, { timeout: 90000, polling: 500 });
+        await q.waitForTimeout(1500);
+        csp.push(...await q.evaluate(() => window.__csp));
+        return { q, errs, csp };
+      };
+      r0 = reloj();
+      {
+        const { q, errs, csp } = await abre("/finca/", () => { let n = 0; window.__g.scene.traverse(o => { if (o.name === "linde de las hazas") n++; }); return n > 0; });
+        const l = await q.evaluate(() => {
+          let o = null; window.__g.scene.traverse(x => { if (x.name === "linde de las hazas") o = x; });
+          const col = o.geometry.getAttribute("color").array, ds = new Set();
+          for (let i = 0; i < col.length; i += 3) ds.add(col[i].toFixed(2) + "," + col[i + 1].toFixed(2) + "," + col[i + 2].toFixed(2));
+          return { tipo: o.type, vertices: o.geometry.getAttribute("position").count, colores: ds.size, visible: o.visible };
+        });
+        await q.close();
+        assert.strictEqual(l.tipo, "LineSegments"); assert.ok(l.vertices >= 8 && l.vertices % 2 === 0, "vértices de las lindes: " + l.vertices);
+        assert.ok(l.colores >= 2, "la linde propia debe verse distinta de las ajenas: " + l.colores + " color(es)"); assert.ok(l.visible);
+        assert.deepStrictEqual(errs, [], "errores en /finca/ con las lindes"); assert.deepStrictEqual(csp, [], "CSP en /finca/");
+        t.diagnostic("lindes de las hazas: LineSegments con " + l.vertices + " vértices y " + l.colores + " colores, en " + r0().toFixed(1) + " s");
+      }
+      const turl = "/teselas/" + finca + "/tileset/tileset.json";
+      if (tilesetMotivo) t.diagnostic("TILESET NO COMPROBADO: " + tilesetMotivo);
+      else {
+        const ts = await pide(turl, { cookie }), sin = await pide(turl);
+        assert.strictEqual(ts.status, 200, turl + " con sesión: " + ts.status);
+        assert.strictEqual(JSON.parse(ts.texto).asset.version, "1.1", "tileset 3D Tiles 1.1");
+        assert.match(ts.cabeceras["cache-control"] || "", /private/, "el tileset, tras sesión, con caché privada");
+        assert.strictEqual(sin.status, 401, turl + " sin sesión");
+        r0 = reloj();
+        const { q, errs, csp } = await abre("/finca/?escena=tiles", () => { const r = window.__g.Escena3D.resumen(); return r.estado === "activo" && r.visibles > 0; });
+        const rs = await q.evaluate(() => { const r = window.__g.Escena3D.resumen(); return { estado: r.estado, motivo: r.motivo, errores: r.errores, visibles: r.visibles }; });
+        await q.close();
+        assert.deepStrictEqual([rs.estado, rs.errores], ["activo", 0], "escena 3D Tiles: " + JSON.stringify(rs));
+        assert.deepStrictEqual(errs, [], "errores en /finca/?escena=tiles"); assert.deepStrictEqual(csp, [], "CSP en /finca/?escena=tiles");
+        t.diagnostic("tileset por Caddy 200/401 y ?escena=tiles activa con " + rs.visibles + " tesela(s) con contenido, sin errores ni CSP, en " + r0().toFixed(1) + " s");
+      }
+      {   // ?olivos=gen: sin errores de consola (no se espera a los generados)
+        r0 = reloj();
+        const { q, errs, csp } = await abre("/finca/?olivos=gen");
+        await q.close();
+        assert.deepStrictEqual(errs, [], "errores en /finca/?olivos=gen"); assert.deepStrictEqual(csp, [], "CSP en /finca/?olivos=gen");
+        t.diagnostic("?olivos=gen sin errores ni CSP en " + r0().toFixed(1) + " s (sin esperar a los generados)");
+      }
 
       // 4b. gafas (navegador de Quest simulado, SIN sesión y con su propio tarro de cookies) → código corto → aprobado desde
       //     «Mis dispositivos» del aparato con sesión → las gafas reciben SU sesión y entran en /finca/
