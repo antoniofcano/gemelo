@@ -18,6 +18,8 @@ const DEV = path.join(RAIZ, "infra", "dev");
 const COMPOSE = path.join(DEV, "compose.yml");
 const EJEMPLO = path.join(DEV, "ejemplo.env");
 const HERR = path.join(DEV, "herramientas");
+// con GEMELO_DEV_TESELAS o GEMELO_DEV_FINCA_CARPETA (datos reales en local) la siembra es la de prueba, no la del fixture
+const DE_PRUEBA = !!(process.env.GEMELO_DEV_TESELAS || process.env.GEMELO_DEV_FINCA_CARPETA);
 const SERVICIOS = ["web", "db", "livekit", "correo", "migra", "api"];
 const DE_UNA_VEZ = ["migra"];                   // termina al aplicar las migraciones
 const CONSTRUIDOS = ["migra", "api"];           // imagen propia, construida de apps/api/Dockerfile
@@ -550,7 +552,7 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
       assert.deepStrictEqual(Object.keys(f.properties).sort(), ["codigo", "es_mia", "finca", "nombre"], "propiedades del GeoJSON");
       assert.strictEqual(f.properties.finca, "hituelo");
       assert.strictEqual(f.properties.es_mia, f.properties.codigo === yo.haza, f.properties.codigo + ": es_mia");
-      for (const [x, y] of f.geometry.coordinates.flat(2)) assert.ok(Math.abs(x - cx) <= I.ts && y <= cy && cy - y <= I.ts, f.properties.codigo + ": la linde cae fuera del mundo");
+      for (const [x, y] of f.geometry.coordinates.flat(2)) assert.ok(x >= cx + I.ext[0] && x <= cx + I.ext[2] && y >= cy + I.ext[3] && y <= cy + I.ext[1], f.properties.codigo + ": la linde cae fuera del mundo");
     }
     revisaListaBlanca(g.cuerpo, "hazas", correos);
     const id = codigo => g.cuerpo.features.find(f => f.properties.codigo === codigo).id;
@@ -564,8 +566,13 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
       assert.ok(valida(f.cuerpo), codigo + ": la ficha no cumple contratos/haza.schema.json: " + JSON.stringify(valida.errors));
       assert.deepStrictEqual({ es_mia: f.cuerpo.es_mia, alias: f.cuerpo.alias }, esp, codigo + ": titularidad y alias");
       revisaListaBlanca(f.cuerpo, "ficha " + codigo, correos);
-      assert.ok(f.cuerpo.olivos.lidar.n > 0, codigo + ": sin olivos dentro");
-      assert.strictEqual(f.cuerpo.olivos.declarado.n, 35, codigo + ": olivos declarados (sintéticos)");
+      if (DE_PRUEBA) {   // finca que no es el fixture: hazas inventadas sin olivos ni recuentos (tuberia/hazas/de_prueba.py)
+        assert.strictEqual(f.cuerpo.olivos.lidar.n, 0, codigo + ": las hazas de prueba no llevan olivos en la base");
+        assert.strictEqual(f.cuerpo.olivos.declarado.n, null, codigo + ": sin recuento declarado");
+      } else {
+        assert.ok(f.cuerpo.olivos.lidar.n > 0, codigo + ": sin olivos dentro");
+        assert.strictEqual(f.cuerpo.olivos.declarado.n, 35, codigo + ": olivos declarados (sintéticos)");
+      }
       assert.deepStrictEqual(f.cuerpo.avisos, ["ot_sin_sincronia"], codigo + ": sin OlivarTrack en local, la ficha lo dice");
       assert.strictEqual(f.cuerpo.completo, false);
     }
