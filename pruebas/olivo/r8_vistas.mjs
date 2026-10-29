@@ -20,9 +20,10 @@ const s = await sirve(DIR), nav = await lanza(), url = "http://127.0.0.1:" + s.a
 const res = {};
 try {
   for (const f of ["0.01", "0.5", "1"]) {
+    if (f === "0.01" && Object.keys(VISTAS).every(n => fs.existsSync(path.join(CAP, "r8-" + n + "-factor0.01.png")))) { for (const n of Object.keys(VISTAS)) res[n + "@0.01"] = { fichero: path.join(CAP, "r8-" + n + "-factor0.01.png") }; continue; }   // ya hecha
     const p = await nav.newPage({ viewport: { width: 900, height: 650 } }), errores = [];
     p.on("pageerror", e => errores.push(String(e).slice(0, 200)));
-    await p.goto(url + "?factorR8=" + f);
+    await p.goto(url + "?arbsc=1&factorR8=" + f);   // arbsc=1 fija la escala adaptativa del nivel 0: si no, el tope de olivos depende de la carga de la máquina
     await p.waitForFunction(() => window.__g && window.__g.listo(), null, { timeout: 180000 });
     for (const [nombre, v] of Object.entries(VISTAS)) {
       await p.evaluate(v => { const g = window.__g, c = g.copas.filter(t => t.oliv).sort((a, b) => Math.hypot(a.x, a.y) - Math.hypot(b.x, b.y))[0];   // el olivo más cercano al centro
@@ -31,7 +32,7 @@ try {
       await p.waitForTimeout(2000);
       const info = await p.evaluate(() => { const r = window.__g.renderer.info; return { llamadas: r.render.calls, triangulos: r.render.triangles }; });
       const fich = path.join(CAP, "r8-" + nombre + "-factor" + f + ".png");
-      const bb = await p.locator("#lienzo").boundingBox(); await p.screenshot({ path: fich, clip: bb });
+      const bb = await p.locator("#lienzo").boundingBox(); await p.screenshot({ path: fich, clip: bb, timeout: 180000 });
       res[nombre + "@" + f] = Object.assign(info, { fichero: fich });
     }
     if (errores.length) res["errores@" + f] = errores;
