@@ -29,7 +29,8 @@ const acota = (k, v) => Math.min(RANGOS[k][1], Math.max(RANGOS[k][0], v));
 /**
  * Parámetros del generador para un árbol. `param` es su fila de copas_param (o null) y `tipo` su tipo (copas_tipo → TIPO_DE_ID) o el que se
  * elija; sin tipo, "centenario3" (como la maqueta). Sin fila de parámetros, solo altura y copa salen del registro (h y r8).
- * `opciones.r8` = "radio" (por defecto: es lo que miden los exportadores, ver ADR-0017) o "diametro" (lo que asume hoy el motor).
+ * `opciones.factorR8`: radio dibujado = r8 × factorR8, como el FACTOR_R8 del motor (apps/web/motor/01_datos.js). r8 es el RADIO medido; por defecto
+ * 0,5 (como dibuja hoy el motor: copa = media de r8); 1 = la copa a su radio medido (copa = 2 × media de r8). Decisión abierta nº 48.
  * @returns {{tipo, parametros, origen: {campo: "medido"|"deducido"|"tipo"}}}
  */
 export function parametrosDeCopa(copa, param, tipo, opciones) {
@@ -47,7 +48,7 @@ export function parametrosDeCopa(copa, param, tipo, opciones) {
     if (rug != null) { P.relieve = Math.min(1, Math.max(0, rug * 1.8)); origen.relieve = "deducido"; }
   } else {
     if (copa[2] > 0) { P.altura = acota("altura", copa[2]); origen.altura = "medido"; }
-    if (media) { P.copa = acota("copa", media * (o.r8 === "diametro" ? 1 : 2)); origen.copa = "medido"; }
+    if (media) { P.copa = acota("copa", 2 * media * (o.factorR8 > 0 ? o.factorR8 : 0.5)); origen.copa = "medido"; }
   }
   return { tipo: t, parametros: P, origen };
 }

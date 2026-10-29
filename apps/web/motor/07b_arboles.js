@@ -1,8 +1,9 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Arboles
-// Consume: 02_mundo (Mundo, suelo, copaAlta, kcor, tinte, aviva, copas), 02b_cola (Cola), 03_escena (camera, exag, modo, calidad),
-//   04_terreno (hash), 05_nube (ALTO_MAX, nube), 06_arboles (gArboles, tronco, arbolesG), 07_follaje (follajeG, construyeSombras),
-//   07a_catalogo (Catalogo), 09_camara (objetivo, orb), 10_ndvi (ndviIdx), 12_paseo (paseando), 15_tiempo (nivel, esc), 16_vida (mira)
+// Consume: 01_datos (FACTOR_R8), 02_mundo (Mundo, suelo, copaAlta, kcor, tinte, aviva, copas), 02b_cola (Cola),
+//   03_escena (camera, exag, modo, calidad), 04_terreno (hash), 05_nube (ALTO_MAX, nube), 06_arboles (gArboles, tronco, arbolesG),
+//   07_follaje (follajeG, construyeSombras), 07a_catalogo (Catalogo), 09_camara (objetivo, orb), 10_ndvi (ndviIdx), 12_paseo (paseando),
+//   15_tiempo (nivel, esc), 16_vida (mira)
 // ===============================================================================
   // ---------- los olivos del modo Gemelo con tres niveles de detalle: el coste de dibujo no crece con la superficie de la finca
   // Nivel 0: celdas de 64 m con el modelo completo (copa medida, troncos, hojas, flores y aceitunas) alrededor de lo que se mira (o de quien pasea), hasta MAX0 olivos.
@@ -56,9 +57,9 @@
         c.cel = celdas[k] || (celdas[k] = { k: k, i: ci, j: cj, x0: ci * CEL - cx, y0: cj * CEL - cy, arr: [], g: null, sucia: true, visto: 0, en: false, pre: false, enAntes: false, prio: 0, ts: Mundo.tesela(ci * CEL - cx + CEL / 2, cj * CEL - cy + CEL / 2) });
         c.cel.arr.push(c);
         Mundo.ortoGrueso(c.x, c.y, c3); c.cr = c3[0]; c.cg = c3[1]; c.cb = c3[2];
-        // la silueta: el eje largo de la copa medida (pares de radios opuestos) y su perpendicular; el radio de los datos es un diámetro (la copa completa usa perfil/2)
+        // la silueta: el eje largo de la copa medida (pares de radios opuestos) y su perpendicular; semiejes = r8 × FACTOR_R8 (01_datos.js; hoy 0,5)
         var P = c.perfil, L = [0, 1, 2, 3].map(function (q) { return (P[q] + P[q + 4]) / 2; }), im = 0; for (var q2 = 1; q2 < 4; q2++) if (L[q2] > L[im]) im = q2;
-        c.ang = im * Math.PI / 4; c.rx = Math.max(0.6, L[im] * 0.5); c.rz = Math.max(0.6, L[(im + 2) % 4] * 0.5); c.pr = Math.min(NP1 - 1, Math.floor(hash(c.i * 7.7 + 1) * NP1)); c.vf = 0.88 + 0.26 * hash(c.i * 3.7);
+        c.ang = im * Math.PI / 4; c.rx = Math.max(0.6, L[im] * FACTOR_R8); c.rz = Math.max(0.6, L[(im + 2) % 4] * FACTOR_R8); c.pr = Math.min(NP1 - 1, Math.floor(hash(c.i * 7.7 + 1) * NP1)); c.vf = 0.88 + 0.26 * hash(c.i * 3.7);
       });
     }
     function libera(g) { g.traverse(function (o) { if (o.geometry) o.geometry.dispose(); }); }

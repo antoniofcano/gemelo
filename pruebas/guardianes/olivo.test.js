@@ -86,6 +86,7 @@ test("semillas, épocas y parámetros desde el registro", t => {
       sinNada: O.semillaDeCopa([0, 0, 4, [2,2,2,2,2,2,2,2], 1], -1),
       bbch: [0, 50, 57, 65, 71, 75, 81, 89, 99].map(O.bbchAEpoca),
       sinParam: O.parametrosDeCopa([0, 0, 4.4, [2,2,2,2,3,3,3,3], 1], null, null),
+      sinParam1: O.parametrosDeCopa([0, 0, 4.4, [2,2,2,2,3,3,3,3], 1], null, null, { factorR8: 1 }),
       conParam: O.parametrosDeCopa([0, 0, 4.4, [2,2,2,2,3,3,3,3], 1], [4.6, 8.2, 0.9, 92, 0.8, 1.2, 0.3, 0], "centenario2"),
       tipos: Object.keys(O.TIPOS).map(k => [k, O.ID_TIPO[k], O.tipoDeId(O.ID_TIPO[k])]),
     };
@@ -101,7 +102,8 @@ test("semillas, épocas y parámetros desde el registro", t => {
   assert.deepStrictEqual(o.provId, { semilla: 2 ** 31 + 77, provisional: true }, "un copas_id provisional (≥ 2^31) es la semilla y se marca");
   assert.strictEqual(o.sinNada, null, "sin id ni centro_utm no hay semilla estable");
   assert.deepStrictEqual(o.bbch, ["reposo", "reposo", "boton", "flor", "cuajado", "verde", "envero", "madura", "madura"]);
-  assert.deepStrictEqual(o.sinParam.parametros, { altura: 4.4, copa: 5 }, "sin copas_param: altura = h y copa = 2 × radio medio de r8");
+  assert.deepStrictEqual(o.sinParam.parametros, { altura: 4.4, copa: 2.5 }, "sin copas_param: altura = h y copa = 2 × r8 medio × factorR8 (0,5 por defecto, como el motor)");
+  assert.deepStrictEqual(o.sinParam1.parametros, { altura: 4.4, copa: 5 }, "con factorR8 = 1, la copa a su radio medido");
   assert.strictEqual(o.conParam.tipo, "centenario2");
   assert.deepStrictEqual(Object.keys(o.conParam.parametros).sort(), ["altura", "asim", "copa", "densidad", "falda", "relieve", "rumbo"]);
   assert.strictEqual(o.conParam.parametros.rumbo, 90);

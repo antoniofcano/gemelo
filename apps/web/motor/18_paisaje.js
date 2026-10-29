@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: PA, matTronco, postes, cable, EJES, colocaPaisaje, instSombra, sombrasSol, aguaNivel, actualizaPaisaje
-// Consume: 01_datos (D, $), 02_mundo (suelo, desp, copas), 03_escena (scene, SRGB, sol, exag), 04_terreno (hash, terreno),
+// Consume: 01_datos (D, $, ESC_R8), 02_mundo (suelo, desp, copas), 03_escena (scene, SRGB, sol, exag), 04_terreno (hash, terreno),
 //   06_arboles (gSombras, tronco), 07_follaje (matSombra, geoSombra), 09_camara (pon), 15_tiempo (lluvia, cur, tMundo, nivel), 16_vida (esfera),
 //   23_estacion (EST)
 // ===============================================================================
@@ -127,7 +127,7 @@
       var largo = Math.min(26, r * 2 + Math.max(0, h - 1.2) / ta), desp = Math.max(0, h - 1.2) / ta / 2;
       tmpS.position.set(x + dx * desp, (suelo(x, y) + 0.06) * exag, -y + dz * desp); tmpS.rotation.set(0, th, 0); tmpS.scale.set(r * 2.3, 1, largo); tmpS.updateMatrix(); inst.setMatrixAt(i, tmpS.matrix);
     }
-    if (instSombra) { olivasS.forEach(function (t, i) { if (i >= instSombra.count) return; var rm = t.perfil.reduce(function (a, b) { return a + b; }, 0) / 8; pon(instSombra, i, t.x, t.y, rm, t.h); }); instSombra.instanceMatrix.needsUpdate = true; }
+    if (instSombra) { olivasS.forEach(function (t, i) { if (i >= instSombra.count) return; var rm = t.perfil.reduce(function (a, b) { return a + b; }, 0) / 8 * ESC_R8; pon(instSombra, i, t.x, t.y, rm, t.h); }); instSombra.instanceMatrix.needsUpdate = true; }
     if (!instSombraPA) { instSombraPA = new THREE.InstancedMesh(geoSombra, matSombra, nA + edifs.length + 1); instSombraPA.frustumCulled = false; gSombras.add(instSombraPA); }
     var n = 0; arb.forEach(function (a) { pon(instSombraPA, n++, a.x, a.y, a.r, a.h); }); edifs.forEach(function (g) { var e = g.userData.e; pon(instSombraPA, n++, e.x, e.y, Math.max(e.largo, e.ancho) * 0.55, e.hCumbrera); });
     instSombraPA.count = n; instSombraPA.instanceMatrix.needsUpdate = true;
