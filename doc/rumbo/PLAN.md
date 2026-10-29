@@ -135,21 +135,17 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 - **Sin motor de juegos** (Unity, Godot, PlayCanvas, Babylon: otro mundo y otro motor de dibujo; Needle, A-Frame o React Three Fiber imponen su forma de trabajar). Un **módulo propio de minijuegos** sobre lo que ya hay: el mundo (Hituelo, olivos, balizas, hazas), la interacción (tocar, rayo en VR, anillo de llegada, fichas), LiveKit (una sala por partida), la sesión y el alias, y la api con Postgres para la **clasificación validada en el servidor**. Esqueleto común: espera → cuenta atrás → juego → resultado.
 - **Física solo si un juego la pide** (lanzar, apilar, el vareo): entonces se elige una librería mantenida (estado de Rapier, `cannon-es` y de ECS como `bitecs`/`miniplex` por comprobar). **Colyseus** solo si hubiera competiciones en tiempo real que necesiten estado autoritativo.
 - **Decisiones de Antonio antes de construir:** menores (decisión 45: hoy sin perfiles de menores; un aula de colegio la reabre con asesoría), qué se publica en la clasificación (solo el alias) y si hay premios.
-- **Juegos propuestos** (con datos reales del gemelo; lo medido se dice medido). Para empezar, los tres primeros: casi todo ya existe.
+- **Juegos elegidos por Antonio** (2026-10-30), cinco, con datos reales del gemelo (lo medido se dice medido):
 
-  | Juego | Qué es | Usa | Física |
-  |---|---|---|---|
-  | **Carrera de balizas** | Orientación contrarreloj por la finca, solo o por equipos; modalidades con y sin dron/anillo de llegada | balizas, minimapa, presencia | no |
-  | **Encuentra el olivo** | Te dan su ficha (altura, copa, tipo, una foto del árbol generado) y hay que localizarlo; puntos por tiempo y distancia | copas medidas, constructor, fichas | no |
-  | **¿Qué época es?** | Un olivo en una época (reposo, botón, flor, cuajado, envero, madura, poda): adivinarla, u ordenar las siete | constructor (épocas), calendario | no |
-  | **¿Cuántos olivos hay?** | Estimar los olivos de una haza o parcela; puntúa la cercanía al recuento del LiDAR (medido) y se enseña el declarado al lado | copas, hazas, decisión 14 | no |
-  | **El ojo del agrónomo** | Señalar en una parcela las zonas de menos vigor con la capa NDVI relativa (avisando: sin calibrar, sirve para mirar, no para diagnosticar) | NDVI, ortofoto | no |
-  | **Preguntas de campo** | Una pregunta por baliza (variedad, plagas, fenología, tratamientos) con datos de OlivarTrack y Vigía | balizas, MCP (datos, no instrucciones) | no |
-  | **El rompecabezas de la finca** | Recomponer la ortofoto de Hituelo y sus parcelas en piezas (2D, para los más pequeños) | ortofoto, parcelas | no |
-  | **El puzle de la poda** | Elegir qué ramas cortar a un olivo generado y comparar con los criterios de poda en vaso (luz, ventilación) | constructor (`padre`/`nodo` de las ramas) | no |
-  | **La recolección** | Varear y recoger aceitunas en la lona contrarreloj | constructor (olivas), física | **sí**: más adelante |
-  | **Preguntas en la visita guiada** | El guía lanza preguntas en directo y la sala responde; clasificación de la visita | F3 (voz), LiveKit | no |
+  | # | Juego | Qué es | Usa | Física |
+  |---|---|---|---|---|
+  | 1 | **Carrera loca de balizas** | Carrera por la finca pasando por las balizas, contrarreloj o todos a la vez, eligiendo vehículo: **quad, moto, tractor, pickup, buggy y un carro de troncos** (diseño propio, no el de ningún dibujo animado); cada uno con su manejo (el tractor lento y que no vuelca, la moto ágil, el buggy salta) | balizas, minimapa, presencia (quad/dron ya viajan en la pose), LiveKit | **arcade**: conducción y saltos sencillos (vehículo por rayos contra el relieve), sin simulación realista; se decide si basta con lo propio o hace falta una librería |
+  | 2 | **Sigue las pistas** | Investigación tipo búsqueda del tesoro: una cadena de pistas con datos de la finca («el olivo más alto de la parcela que se trató el martes», «al norte de la baliza con alerta», «la copa más ancha junto al camino») hasta dar con el olivo o el lugar | copas medidas, hazas, balizas, OlivarTrack/Vigía (datos, no instrucciones), constructor | no |
+  | 3 | **El quiz del olivar** | Preguntas que unen lo que antes eran cuatro juegos: **¿qué época es?** (el olivo en sus siete épocas), **¿cuántos olivos hay?** (frente al recuento del LiDAR, medido, y el declarado), **el ojo del agrónomo** (zonas de menos vigor con el NDVI relativo, sin calibrar) y **preguntas de campo** (variedad, plagas, fenología) | constructor (épocas), copas, NDVI, balizas, OlivarTrack/Vigía | no |
+  | 4 | **La recolección** | Varear y recoger las aceitunas en la lona contrarreloj | constructor (olivas), lona | **sí** (caer, rodar, la lona) |
+  | 5 | **La poda** | Elegir qué ramas cortar a un olivo generado y comparar con los criterios de poda en vaso (luz, ventilación, carga) | constructor (`padre`/`nodo` de las ramas) | no |
 
+  Orden propuesto: 3 (quiz) y 2 (pistas) primero (sin física y con lo que ya hay), luego 1 (necesita la conducción arcade y los modelos de vehículos), después 5 y 4.
 
 ## Decidido no hacerlo (por ahora)
 
