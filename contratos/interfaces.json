@@ -9,9 +9,9 @@
     "SombreadoTiles": { "modulo": "04d_sombreado_tiles.js", "miembros": ["modelo", "suelta", "actualiza", "libera", "resumen", "OP"] },
     "Catalogo": { "modulo": "07a_catalogo.js", "miembros": ["SIN", "PRES_TRI", "tipos", "tiene", "variantes", "geometria", "triangulos", "info", "instala", "retira", "alCambiar", "avisos"] },
     "Arboles": { "modulo": "07b_arboles.js", "miembros": ["perfil", "inicia", "tileCargada", "refresca", "actualiza", "presupuesto", "resumen", "celdas"] },
-    "PoseCodec": { "modulo": "26_presencia.js", "miembros": ["VERSION", "ESCRITORIO", "QUEST", "BYTES", "codifica", "decodifica", "empaquetaQ", "desempaquetaQ"] },
+    "PoseCodec": { "modulo": "26_presencia.js", "miembros": ["VERSION", "ESCRITORIO", "QUEST", "BYTES", "PIE", "QUAD", "DRON", "codifica", "decodifica", "empaquetaQ", "desempaquetaQ"] },
     "BufferPose": { "modulo": "26_presencia.js", "miembros": ["MAX", "EXTRA", "crea", "recibe", "muestra", "salida"] },
-    "Presencia": { "modulo": "26_presencia.js", "miembros": ["activo", "actualiza", "estado", "libera", "texto", "llegadas"] },
+    "Presencia": { "modulo": "26_presencia.js", "miembros": ["activo", "actualiza", "estado", "libera", "texto", "llegadas", "puntos", "irCon"] },
     "HazasPuro": { "modulo": "13b_hazas.js", "miembros": ["validaColeccion", "aLocal", "anillosLocales", "enElMundo", "dentroPoligono", "hazaEn", "cuentaVertices", "segmentos", "rayoSuelo", "fecha", "fichaFilas", "prefijoApi"] },
     "Hazas": { "modulo": "13b_hazas.js", "miembros": ["actualiza", "estado", "libera"] }
   },
