@@ -1,7 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: PA, matTronco, postes, cable, EJES, colocaPaisaje, instSombra, sombrasSol, aguaNivel, actualizaPaisaje
-// Consume: 01_datos (D, $), 02_mundo (suelo, desp, copas), 03_escena (scene, sol, exag), 04_terreno (hash, terreno), 06_arboles (gSombras, tronco),
-//   07_follaje (matSombra, geoSombra), 09_camara (pon), 15_tiempo (lluvia, cur, tMundo, nivel), 23_estacion (EST)
+// Consume: 01_datos (D, $), 02_mundo (suelo, desp, copas), 03_escena (scene, SRGB, sol, exag), 04_terreno (hash, terreno),
+//   06_arboles (gSombras, tronco), 07_follaje (matSombra, geoSombra), 09_camara (pon), 15_tiempo (lluvia, cur, tMundo, nivel), 16_vida (esfera),
+//   23_estacion (EST)
 // ===============================================================================
   // ---------- el paisaje que sale del LiDAR: edificios (clase 6), el tendido y sus postes, el arroyo y los árboles que no son olivos
   // Lo que el LiDAR clasifica de verdad son los edificios. El tendido, los postes, el cauce y las copas se deducen de la geometría (alturas, alineación, relieve) y se rotulan así.
@@ -21,7 +22,7 @@
   PA.edificios.forEach(function (e) {
     var g = new THREE.Group(), L = e.largo, A = e.ancho, hA = Math.max(2.6, e.hAlero), hC = Math.max(hA + 0.4, e.hCumbrera), prof = 2.2;
     var muro = new THREE.Mesh(new THREE.BoxGeometry(L, hA + prof, A), matMuro); muro.position.y = (hA - prof) / 2; g.add(muro);
-    var tj = new THREE.MeshLambertMaterial({ color: new THREE.Color(e.color[0] / 255 * 0.9, e.color[1] / 255 * 0.85, e.color[2] / 255 * 0.8) });
+    var tj = new THREE.MeshLambertMaterial({ color: new THREE.Color().setRGB(e.color[0] / 255 * 0.9, e.color[1] / 255 * 0.85, e.color[2] / 255 * 0.8, SRGB) });   // el color medido en la ortofoto está en sRGB
     g.add(creaTejado(L + 0.5, A + 0.5, hA, hC, tj));
     g.userData = { e: e }; gPaisaje.add(g); edifs.push(g);
   });
@@ -50,7 +51,7 @@
   var arb = PA.arboles, nA = arb.length;
   var iTronco = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.16, 0.26, 1, 7), matTronco, Math.max(1, nA));
   var geoBlob = new THREE.IcosahedronGeometry(1, 1), iBlob = [0, 1, 2].map(function () { return new THREE.InstancedMesh(geoBlob, matCopaArb, Math.max(1, nA)); });
-  gPaisaje.add(iTronco); iBlob.forEach(function (m) { gPaisaje.add(m); });
+  [iTronco].concat(iBlob).forEach(function (m) { m.frustumCulled = false; gPaisaje.add(m); });   // r151: la esfera de una InstancedMesh se calcula una vez; estas se recolocan con la exageración
   var tmpA = new THREE.Object3D(), colA = new THREE.Color();
   arb.forEach(function (a, i) {
     var t = hash(i * 7.3), c = a.tipo === "frutal" ? colA.setHSL(0.22 + 0.02 * t, 0.5, 0.36 + 0.06 * hash(i * 3.1)) : a.tipo === "arbusto" ? colA.setHSL(0.24 + 0.05 * t, 0.42, 0.34 + 0.1 * hash(i * 3.1)) : colA.setHSL(0.27 + 0.05 * t, 0.38, 0.2 + 0.09 * hash(i * 3.1));
@@ -67,8 +68,8 @@
       "float hh(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }\n" +
       "void main(){ float borde = smoothstep(1.0, 0.62, abs(vV)); vec3 lecho = uArena * mix(0.72, 1.12, hh(floor(vec2(vU * 1.4, vV * 7.0))));\n" +
       "float anchoA = uAgua * 0.78; float agua = smoothstep(anchoA + 0.12, anchoA - 0.12, abs(vV)) * step(0.01, uAgua);\n" +
-      "float flujo = sin(vU * 2.2 - uT * 3.4 + vV * 5.0) * 0.5 + 0.5; vec3 colA = mix(vec3(0.16, 0.36, 0.5), vec3(0.6, 0.8, 0.9), flujo * flujo * 0.55);\n" +
-      "vec3 col = mix(lecho, colA, agua) * uLuz; gl_FragColor = vec4(col, borde * mix(0.72, 0.88, agua)); }"
+      "float flujo = sin(vU * 2.2 - uT * 3.4 + vV * 5.0) * 0.5 + 0.5; vec3 colA = sRGBTransferEOTF(vec4(mix(vec3(0.16, 0.36, 0.5), vec3(0.6, 0.8, 0.9), flujo * flujo * 0.55), 1.0)).rgb;\n" +
+      "vec3 col = mix(lecho, colA, agua) * uLuz; gl_FragColor = vec4(col, borde * mix(0.72, 0.88, agua));\n#include <colorspace_fragment>\n}"
   });
   var EJES = PA.arroyo.ejes || (PA.arroyo.eje && PA.arroyo.eje.length ? [PA.arroyo.eje] : []), arroyos = [];   // uno o varios cauces (Hituelo tiene siete)
   EJES.forEach(function (E) {
@@ -127,7 +128,7 @@
       tmpS.position.set(x + dx * desp, (suelo(x, y) + 0.06) * exag, -y + dz * desp); tmpS.rotation.set(0, th, 0); tmpS.scale.set(r * 2.3, 1, largo); tmpS.updateMatrix(); inst.setMatrixAt(i, tmpS.matrix);
     }
     if (instSombra) { olivasS.forEach(function (t, i) { if (i >= instSombra.count) return; var rm = t.perfil.reduce(function (a, b) { return a + b; }, 0) / 8; pon(instSombra, i, t.x, t.y, rm, t.h); }); instSombra.instanceMatrix.needsUpdate = true; }
-    if (!instSombraPA) { instSombraPA = new THREE.InstancedMesh(geoSombra, matSombra, nA + edifs.length + 1); gSombras.add(instSombraPA); }
+    if (!instSombraPA) { instSombraPA = new THREE.InstancedMesh(geoSombra, matSombra, nA + edifs.length + 1); instSombraPA.frustumCulled = false; gSombras.add(instSombraPA); }
     var n = 0; arb.forEach(function (a) { pon(instSombraPA, n++, a.x, a.y, a.r, a.h); }); edifs.forEach(function (g) { var e = g.userData.e; pon(instSombraPA, n++, e.x, e.y, Math.max(e.largo, e.ancho) * 0.55, e.hCumbrera); });
     instSombraPA.count = n; instSombraPA.instanceMatrix.needsUpdate = true;
   }

@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: VRX, vrDebugExtra, panel, ficha, vrActualiza, vrFin
-// Consume: 01_datos (D, $, fmt, VRP), 02_mundo (suelo, orto, copas), 03_escena (renderer, scene, camera, exag, modo, calidad), 05_nube (nube),
-//   07b_arboles (Arboles), 09_camara (eligeCopa, pon), 10_ndvi (NDV, ndviIdx),
+// Consume: 01_datos (D, $, fmt, VRP), 02_mundo (suelo, orto, copas), 03_escena (renderer, scene, camera, texColor, exag, modo, calidad),
+//   05_nube (nube), 07b_arboles (Arboles), 09_camara (eligeCopa, pon), 10_ndvi (NDV, ndviIdx),
 //   12_paseo (paseando, persona, teclas, primera, entraPaseo, salePaseo, actualizaPaseo), 13_parcelas (parcelas, fincas),
 //   15_tiempo (calma, nivel, hace), 16_vida (mira), 19_balizas (tBal), 20_sonido (snd, iniciaSonido), 22_huellas (pendFactor),
 //   25_perros (perrosLlegan), 90_final (tamano, cuadro, bucle)
@@ -76,7 +76,7 @@
   // ----- 3) láminas flotantes (el panel y la ficha): un canvas en un plano que sigue a la cabeza con calma
   function creaLamina(W, H, pw, ph) {
     var cv = document.createElement("canvas"); cv.width = W; cv.height = H;
-    var tex = new THREE.CanvasTexture(cv); tex.minFilter = THREE.LinearFilter; tex.generateMipmaps = false;
+    var tex = texColor(new THREE.CanvasTexture(cv)); tex.minFilter = THREE.LinearFilter; tex.generateMipmaps = false;
     var m = new THREE.Mesh(new THREE.PlaneGeometry(pw, ph), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthTest: false, fog: false }));
     m.renderOrder = 998; m.visible = false; m.frustumCulled = false;
     return { cv: cv, cx: cv.getContext("2d"), tex: tex, m: m, W: W, H: H, ini: false };

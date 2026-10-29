@@ -1,7 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: TM, calma, texBrillo, lluvia, uViento, uSombra, GLSL_SOMBRA, parcheTiempo, cur, meta, tMundo, ins, nivel, actualizaTiempo, temaBarrera,
 //   colocaBarrera, pintaFondoTiempo, cargaT, fmtHora, fmtClaveDia, num1, rumbo, esc, hace, objetivoMundoBase, aplicaMundo, lindes
-// Consume: 01_datos (D, $, FOG0, FOG1), 02_mundo (suelo, copas), 03_escena (visor, scene, camera, hemi, sol, colorCss, exag, modo),
+// Consume: 01_datos (D, $, FOG0, FOG1), 02_mundo (suelo, copas),
+//   03_escena (visor, scene, camera, SRGB, LUZ_SOL, LUZ_CIELO, hemi, sol, texColor, colorVertSRGB, colorCss, exag, modo),
 //   04_terreno (hash, matSuelo, matOrto, terreno), 05_nube (nube), 07_follaje (matHojaG, matHojaP, matCorteza), 08_marcadores (gLinde),
 //   09_camara (objetivo, orb), 12_paseo (primera), 14_historia (mcp, marca, tabla, aviso), 16_vida (mira, temaEstela), 23_estacion (objetivoMundo),
 //   24_pantalla (suave)
@@ -38,12 +39,12 @@
     [[64, 70, 46], [38, 74, 32], [90, 76, 34], [58, 52, 30], [78, 56, 28]].forEach(function (c) {
       var g = x.createRadialGradient(c[0], c[1], 2, c[0], c[1], c[2]); g.addColorStop(0, "rgba(255,255,255,0.55)"); g.addColorStop(1, "rgba(255,255,255,0)"); x.fillStyle = g; x.fillRect(0, 0, 128, 128);
     });
-    return new THREE.CanvasTexture(cv);
+    return texColor(new THREE.CanvasTexture(cv));
   }
   function texBrillo() {
     var cv = document.createElement("canvas"); cv.width = cv.height = 128; var x = cv.getContext("2d"), g = x.createRadialGradient(64, 64, 2, 64, 64, 64);
     g.addColorStop(0, "rgba(255,255,235,1)"); g.addColorStop(0.12, "rgba(255,244,200,0.95)"); g.addColorStop(0.3, "rgba(255,220,150,0.35)"); g.addColorStop(1, "rgba(255,200,120,0)");
-    x.fillStyle = g; x.fillRect(0, 0, 128, 128); return new THREE.CanvasTexture(cv);
+    x.fillStyle = g; x.fillRect(0, 0, 128, 128); return texColor(new THREE.CanvasTexture(cv));
   }
   var gCielo = new THREE.Group(); scene.add(gCielo);
   var NUBES = [], texN = texNube();
@@ -79,7 +80,7 @@
       vertexShader: "attribute float aEnd; uniform float uT; uniform vec2 uViento; varying float vA;\n" +
         "void main(){ float H = 170.0; float y = mod(position.y - uT * 26.0, H); vec3 p = position; p.y = y + aEnd * 3.4;\n" +
         "p.xz += uViento * (H - y) * 0.035 - uViento * aEnd * 0.5; vA = 1.0 - aEnd * 0.6; gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0); }",
-      fragmentShader: "uniform float uInt; uniform vec3 uColor; varying float vA; void main(){ gl_FragColor = vec4(uColor, 0.75 * uInt * vA); }"
+      fragmentShader: "uniform float uInt; uniform vec3 uColor; varying float vA; void main(){ gl_FragColor = vec4(uColor, 0.75 * uInt * vA);\n#include <colorspace_fragment>\n}"
     });
     var l = new THREE.LineSegments(g, m); l.frustumCulled = false; l.visible = false; scene.add(l); return l;
   })();
@@ -97,6 +98,7 @@
     m.needsUpdate = true;
   }
   function parcheTiempo(sh, viento) {
+    colorVertSRGB(sh);   // el color por vértice o por instancia de lo que lleva el tiempo está escrito en sRGB (03_escena)
     {
       sh.uniforms.uDrift = uSombra.uDrift; sh.uniforms.uCov = uSombra.uCov; sh.uniforms.uSomb = uSombra.uSomb; sh.uniforms.uHielo = uSombra.uHielo;
       if (viento) { sh.uniforms.uT = uViento.uT; sh.uniforms.uAmp = uViento.uAmp; sh.uniforms.uDir = uViento.uDir; }
@@ -126,9 +128,9 @@
     var dirS = new THREE.Vector3(Math.sin(lv.s.az) * Math.cos(alt), Math.sin(alt), -Math.cos(lv.s.az) * Math.cos(alt));
     sol.position.copy(dirS).multiplyScalar(300); if (alt < 0.02) sol.position.y = 6;
     var bajo = Math.max(0, Math.min(1, 1 - Math.sin(alt) / 0.35)), noc = 1 - d;   // bajo: 1 = sol rasante · noc: 1 = noche cerrada
-    sol.color.setRGB(1, 0.94 - 0.38 * bajo, 0.82 - 0.58 * bajo);
-    sol.intensity = 0.08 + 0.85 * d * (1 - 0.8 * nub);
-    hemi.intensity = 0.2 + 0.7 * d * (0.55 + 0.45 * oc);
+    sol.color.setRGB(1, 0.94 - 0.38 * bajo, 0.82 - 0.58 * bajo, SRGB);
+    sol.intensity = (0.08 + 0.85 * d * (1 - 0.8 * nub)) * LUZ_SOL;
+    hemi.intensity = (0.2 + 0.7 * d * (0.55 + 0.45 * oc)) * LUZ_CIELO;
     // cielo y niebla
     var dia = cieloBase.clone(), noche = new THREE.Color(0x070b18), ocaso = new THREE.Color(0xc77b4e), gris = new THREE.Color(0x8a8f94);
     var c = noche.clone().lerp(dia, d); if (bajo > 0 && d > 0.02) c.lerp(ocaso, 0.8 * bajo * Math.min(1, d * 2.5) * (1 - 0.7 * nub)); c.lerp(gris.multiplyScalar(0.25 + 0.75 * d), 0.55 * nub);
@@ -138,8 +140,8 @@
     }
     // luz de lo que no se ilumina (follaje en puntos, nube de puntos, ortofoto): el mismo ciclo de día y noche
     var f = 0.2 + 0.8 * d * (0.7 + 0.3 * oc), r = Math.min(1, f * (1 + 0.1 * bajo - 0.22 * noc)), gc = f * (1 - 0.1 * bajo - 0.1 * noc), bc = Math.min(1, f * (1 - 0.3 * bajo + 0.28 * noc));
-    [matHojaG, matHojaP, matCorteza, nube.material, matOrto].forEach(function (m) { m.color.setRGB(r, gc, bc); });
-    matSuelo.color.setRGB(1 - 0.18 * Math.min(1, cur.lluvia / 2), 1 - 0.14 * Math.min(1, cur.lluvia / 2), 1 - 0.1 * Math.min(1, cur.lluvia / 2));
+    [matHojaG, matHojaP, matCorteza, nube.material, matOrto].forEach(function (m) { m.color.setRGB(r, gc, bc, SRGB); });
+    matSuelo.color.setRGB(1 - 0.18 * Math.min(1, cur.lluvia / 2), 1 - 0.14 * Math.min(1, cur.lluvia / 2), 1 - 0.1 * Math.min(1, cur.lluvia / 2), SRGB);
     // sombras de las nubes: avanzan con el viento y se ven desde arriba, que es desde donde se mira el gemelo
     var rad0 = Math.PI / 180, vxS = -Math.sin(cur.dir * rad0), vzS = Math.cos(cur.dir * rad0), velS = calma ? 0 : 3 + cur.viento * 5;
     uSombra.uCov.value = nub; uSombra.uSomb.value = 0.5 * d * (1 - 0.55 * nub);
@@ -148,12 +150,12 @@
     uSombra.uDrift.value.x += vxS * velS * dt * 0.0042; uSombra.uDrift.value.y += vzS * velS * dt * 0.0042;
     // objetos del cielo siguen a la cámara
     sprSol.position.copy(camera.position).addScaledVector(dirS, 3500); sprSol.visible = alt > -0.05; sprSol.material.opacity = Math.max(0, Math.min(1, (Math.sin(alt) + 0.05) * 6)) * (1 - 0.85 * nub);
-    sprSol.material.color.setRGB(1, 0.85 - 0.25 * bajo, 0.65 - 0.3 * bajo);
+    sprSol.material.color.setRGB(1, 0.85 - 0.25 * bajo, 0.65 - 0.3 * bajo, SRGB);
     estrellas.position.copy(camera.position); estrellas.material.opacity = Math.max(0, Math.min(1, (-Math.sin(alt) - 0.02) * 8)) * (1 - nub);
     // nubes: tantas como diga la nubosidad; derivan hacia donde sopla el viento (más deprisa de lo real, para que se vea)
     var rad = Math.PI / 180, vx = -Math.sin(cur.dir * rad), vz = Math.cos(cur.dir * rad), vel = calma ? 0 : 3 + cur.viento * 5;
     var tinta = new THREE.Color(1, 1, 1).lerp(new THREE.Color(0x6e747b), Math.min(1, cur.lluvia / 2.5) * 0.9 + 0.1 * nub);
-    var luz = new THREE.Color(r, gc, bc).multiplyScalar(0.55 + 0.6 * d);
+    var luz = new THREE.Color().setRGB(r * (0.55 + 0.6 * d), gc * (0.55 + 0.6 * d), bc * (0.55 + 0.6 * d), SRGB);
     NUBES.forEach(function (g) {
       g.position.x += vx * vel * dt; g.position.z += vz * vel * dt;
       if (g.position.x > 1300) g.position.x -= 2600; else if (g.position.x < -1300) g.position.x += 2600;
@@ -167,7 +169,7 @@
     // lluvia
     lluviaVis += ((cur.lluvia > 0.05 ? 1 : 0) - lluviaVis) * k; var inten = Math.min(1, cur.lluvia / 3) * 0.8 + (cur.lluvia > 0.05 ? 0.15 : 0);
     lluvia.visible = lluviaVis > 0.02 && inten > 0.02; lluvia.position.set(objetivo.x, objetivo.y - 20, objetivo.z);
-    uLluvia.uT.value = tMundo; uLluvia.uInt.value = inten * lluviaVis; uLluvia.uViento.value.set(vx * Math.min(1, cur.viento / 6), vz * Math.min(1, cur.viento / 6)); uLluvia.uColor.value.setRGB(0.4 + 0.5 * d, 0.5 + 0.45 * d, 0.6 + 0.35 * d);
+    uLluvia.uT.value = tMundo; uLluvia.uInt.value = inten * lluviaVis; uLluvia.uViento.value.set(vx * Math.min(1, cur.viento / 6), vz * Math.min(1, cur.viento / 6)); uLluvia.uColor.value.setRGB(0.4 + 0.5 * d, 0.5 + 0.45 * d, 0.6 + 0.35 * d, SRGB);
     // la chapita del visor: hora, temperatura, nubes y viento, con la flecha de hacia dónde sopla respecto a cómo miras
     ins.t += dt; if (ins.t > 0.25) {
       ins.t = 0; var fw = [-Math.sin(orb.az), -Math.cos(orb.az)], rg = [-fw[1], fw[0]], ang = Math.atan2(vxS * rg[0] + vzS * rg[1], vxS * fw[0] + vzS * fw[1]) * 180 / Math.PI;
@@ -190,11 +192,11 @@
       "float x = fract(vD / 5.0); float rej = smoothstep(0.04, 0.0, min(x, 1.0 - x)) * 0.3 * caida;\n" +
       "float p = fract(vD / 110.0 - uT * 0.05); float pulso = smoothstep(0.0, 0.025, p) * smoothstep(0.14, 0.025, p);\n" +
       "float a = uAlpha * (0.1 + 0.5 * caida) + pie * 0.95 + filo + rej + pulso * 0.55 * (0.4 + caida);\n" +
-      "gl_FragColor = vec4(uColor * (1.0 + 0.7 * pie + 0.9 * pulso), clamp(a, 0.0, 1.0)); }"
+      "gl_FragColor = vec4(uColor * (1.0 + 0.7 * pie + 0.9 * pulso), clamp(a, 0.0, 1.0));\n#include <colorspace_fragment>\n}"
   });
   function temaBarrera() {
     if (!matBarrera || !uBarrera) return;
-    var s = cieloBase, oscuro = (0.2126 * s.r + 0.7152 * s.g + 0.0722 * s.b) < 0.4;
+    var s = cieloBase.clone().convertLinearToSRGB(), oscuro =(0.2126 * s.r + 0.7152 * s.g + 0.0722 * s.b) < 0.4;
     // sobre fondo claro la luz aditiva se lava: se usa mezcla normal y un turquesa profundo
     matBarrera.blending = oscuro ? THREE.AdditiveBlending : THREE.NormalBlending;
     uBarrera.uColor.value.set(oscuro ? 0x40f0ff : 0x007f99); uBarrera.uAlpha.value = oscuro ? 1 : 1.25; matBarrera.needsUpdate = true;

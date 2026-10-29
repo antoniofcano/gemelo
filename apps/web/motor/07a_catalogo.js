@@ -55,7 +55,7 @@
         .replace("#include <begin_vertex>", "#include <begin_vertex>\n vLoc = position; vSeed = fract(sin(dot(vec2(instanceMatrix[3][0], instanceMatrix[3][2]), vec2(12.9898, 78.233))) * 43758.5453);")
         .replace("#include <project_vertex>", "#include <project_vertex>\n vRim = 1.0 - clamp(abs(dot(normalize(transformedNormal), normalize(-mvPosition.xyz))), 0.0, 1.0);");
       sh.fragmentShader = sh.fragmentShader.replace("void main() {", "varying vec3 vLoc; varying float vSeed; varying float vRim;\nfloat ot_h3(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }\nvoid main() {")
-        .replace("#include <color_fragment>", "#include <color_fragment>\n float nz = ot_h3(floor(vLoc * 7.0 + vSeed * 31.0)); float nz2 = ot_h3(floor(vLoc * 15.0 + vSeed * 17.0));\n if (nz < (vRim - 0.72) * 2.8) discard;\n diffuseColor.rgb *= 0.74 + 0.50 * nz2;\n diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.64, 0.70, 0.56), smoothstep(0.45, 1.0, vRim) * 0.40 * (0.45 + nz));");
+        .replace("#include <color_fragment>", "#include <color_fragment>\n float nz = ot_h3(floor(vLoc * 7.0 + vSeed * 31.0)); float nz2 = ot_h3(floor(vLoc * 15.0 + vSeed * 17.0));\n if (nz < (vRim - 0.72) * 2.8) discard;\n diffuseColor.rgb *= 0.74 + 0.50 * nz2;\n diffuseColor.rgb = mix(diffuseColor.rgb, sRGBTransferEOTF(vec4(0.64, 0.70, 0.56, 1.0)).rgb,smoothstep(0.45, 1.0, vRim) * 0.40 * (0.45 + nz));");
     }
     var matCopaI = new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: true }), matTroncoI = new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: true });
     matCopaI.onBeforeCompile = parcheCopa; matTroncoI.onBeforeCompile = parcheInst; matCopaI.needsUpdate = true; matTroncoI.needsUpdate = true;
@@ -86,6 +86,11 @@
       var g = p.geometria, n = g.attributes.position.count;
       if (!g.attributes.normal) g.computeVertexNormals();
       if (!g.attributes.color) { var c = new Float32Array(n * 3); c.fill(1); g.setAttribute("color", new THREE.BufferAttribute(c, 3)); }   // los materiales del motor llevan color por vértice
+      else {   // el COLOR_0 de glTF es lineal y el motor escribe el color por vértice en sRGB (03_escena): se pasa a sRGB una vez, al registrar
+        var ca = g.attributes.color, cl = new THREE.Color();
+        for (var q = 0; q < ca.count; q++) { cl.setRGB(ca.getX(q), ca.getY(q), ca.getZ(q)).convertLinearToSRGB(); ca.setXYZ(q, cl.r, cl.g, cl.b); }
+        ca.needsUpdate = true;
+      }
       g.computeBoundingBox();
       var tr = /tronco/i.test(p.nombre || ""); return { pieza: tr ? "tronco" : "copa", geo: g, mat: tr ? matTroncoI : matCopaI };
     }

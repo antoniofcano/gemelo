@@ -28,7 +28,7 @@
       "void main(){ vec2 p = vUv - 0.5; float a;\n" +
       "if (vTipo < 0.5) { float borde = smoothstep(0.5, 0.34, abs(p.x)); float tacos = 0.62 + 0.38 * step(0.5, fract(vUv.y * 5.0 + abs(p.x) * 2.5)); a = borde * tacos * 0.6; }\n" +
       "else { float planta = smoothstep(1.0, 0.7, length(vec2(p.x / 0.3, (p.y + 0.14) / 0.32))); float punta = smoothstep(1.0, 0.7, length(vec2(p.x / 0.36, (p.y - 0.30) / 0.16))); a = max(planta, punta * 0.9) * 0.55; }\n" +
-      "a *= 1.0 - smoothstep(0.55, 1.0, vAge); gl_FragColor = vec4(uColor, a); }"
+      "a *= 1.0 - smoothstep(0.55, 1.0, vAge); gl_FragColor = vec4(uColor, a);\n#include <colorspace_fragment>\n}"
   });
   var iHuella = new THREE.InstancedMesh(geoH, matHuella, NH); iHuella.frustumCulled = false; iHuella.count = 0; iHuella.renderOrder = 2; scene.add(iHuella);
   var tmpH = new THREE.Object3D();
@@ -46,7 +46,7 @@
     uniforms: uPolvo, transparent: true, depthWrite: false,
     vertexShader: "attribute float aBorn; attribute float aVida; attribute float aTam; uniform float uNow; varying float vA;\n" +
       "void main(){ float e = clamp((uNow - aBorn) / aVida, 0.0, 1.0); vA = (1.0 - e) * (1.0 - e); vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = aTam * (1.0 + 2.4 * e) * (520.0 / max(1.0, -mv.z)); gl_Position = projectionMatrix * mv; }",
-    fragmentShader: "uniform vec3 uColor; uniform float uLuz; varying float vA; void main(){ float d = length(gl_PointCoord - 0.5) * 2.0; gl_FragColor = vec4(uColor * uLuz, smoothstep(1.0, 0.1, d) * vA * 0.62); }"
+    fragmentShader: "uniform vec3 uColor; uniform float uLuz; varying float vA; void main(){ float d = length(gl_PointCoord - 0.5) * 2.0; gl_FragColor = vec4(uColor * uLuz, smoothstep(1.0, 0.1, d) * vA * 0.62);\n#include <colorspace_fragment>\n}"
   });
   var puntosPolvo = new THREE.Points(geoPv, matPolvo); puntosPolvo.frustumCulled = false; puntosPolvo.renderOrder = 7; scene.add(puntosPolvo);
   function emitePolvo(x, y, h, vx, vy, vz, tam, vida) {

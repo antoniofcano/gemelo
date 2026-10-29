@@ -2,7 +2,7 @@
 // Catálogo de olivos-tipo (ADR-0012, contratos/olivos-tipo.md): el catálogo sintético de modelos/olivos/fixture/ cumple el esquema (ajv), cada glb pasa el
 // validador oficial de Khronos (gltf-validator) y las reglas del contrato (metros, +Y, pivote en la base del tronco, sin luces ni cámaras, un material por
 // pieza; leído con @gltf-transform/core) y su presupuesto de triángulos por nivel, y el generador da los mismos bytes. En Chrome (si lo hay): con el
-// catálogo vacío no cambia nada; al instalarlo con un cargador inyectado (el GLTFLoader de three r128) los olivos de tipo 0 se dibujan con su modelo;
+// catálogo vacío no cambia nada; al instalarlo con un cargador inyectado (el GLTFLoader de la misma three, como módulo) los olivos de tipo 0 se dibujan con su modelo;
 // al retirarlo, se vuelve a lo de antes.
 const test = require("node:test"), assert = require("node:assert");
 const { RAIZ, propia, python, fixture, ejecuta, lee, fs, path } = require("./_util");
@@ -80,7 +80,8 @@ test("los tipos del registro del fixture (copas_tipo) son −1 o tipos del catá
 });
 
 // ---------- en el navegador: el hueco funciona sin cambiar lo que se ve ----------
-const GLTF = path.join(RAIZ, "apps", "web", "node_modules", "three", "examples", "js", "loaders", "GLTFLoader.js");   // three 0.128.0 (= r128 de la página)
+const JSM = path.join(RAIZ, "apps", "web", "node_modules", "three", "examples", "jsm"), GLTF = path.join(JSM, "loaders", "GLTFLoader.js");   // el de la misma three que la página (ADR-0016)
+const PIEZAS_GLTF = ["loaders/GLTFLoader.js", "utils/BufferGeometryUtils.js", "utils/SkeletonUtils.js"];   // GLTFLoader y lo que importa por ruta relativa; «three» lo resuelve el importmap de la página
 const SALTO = motivoSalto("el catálogo de olivos-tipo en el navegador") || (fs.existsSync(GLTF) ? null : "falta three en apps/web (cd apps/web && npm i): el catálogo en el navegador NO se ha comprobado");
 
 async function ponEscena(p, e) {
@@ -102,6 +103,7 @@ test("[hituelo] Catalogo en la página: vacío no cambia nada; instalado con un 
   assert.strictEqual(m.status, 0, m.stdout + m.stderr);
   fs.mkdirSync(path.join(WEB, "hituelo", "olivos"), { recursive: true });
   for (const f of fs.readdirSync(DIR)) if (/\.(glb|json)$/.test(f)) fs.copyFileSync(path.join(DIR, f), path.join(WEB, "hituelo", "olivos", f));
+  for (const f of PIEZAS_GLTF) { const d = path.join(WEB, "hituelo", "jsm", f); fs.mkdirSync(path.dirname(d), { recursive: true }); fs.copyFileSync(path.join(JSM, f), d); }
   const srv = await sirve(WEB), nav = await lanza(), p = await nav.newPage({ viewport: { width: 900, height: 650 } }), errores = [];
   p.on("pageerror", e => errores.push("PAGEERROR " + String(e.stack || e).slice(0, 400)));
   p.on("console", m => { if (m.type() === "error") errores.push("CONSOLE " + m.text().slice(0, 300)); });
@@ -117,10 +119,11 @@ test("[hituelo] Catalogo en la página: vacío no cambia nada; instalado con un 
 
     const ESC = { lejos: ESCENARIOS.lejos, cerca: ESCENARIOS.cerca }, antes = {}, con = {}, despues = {};
     for (const [n, e] of Object.entries(ESC)) antes[n] = await ponEscena(p, e);
-    await p.addScriptTag({ path: GLTF });   // el cargador lo inyecta quien llama (aquí, la prueba): el motor no añade dependencias
+    // el cargador lo inyecta quien llama (aquí, la prueba): el motor no añade dependencias. GLTFLoader es un módulo que importa «three»: el importmap de la página lo resuelve a la misma three del motor
     const inst = await p.evaluate(async () => {
+      const { GLTFLoader } = await import(new URL("jsm/loaders/GLTFLoader.js", location.href).href);
       const desc = await (await fetch("olivos/catalogo.json")).json();
-      const cargador = async (url, THREE) => { const g = await new THREE.GLTFLoader().loadAsync(url), out = []; g.scene.traverse(o => { if (o.isMesh) out.push({ nombre: o.name, geometria: o.geometry }); }); return out; };
+      const cargador = async (url, THREE) => { const g = await new GLTFLoader().loadAsync(url), out = []; g.scene.traverse(o => { if (o.isMesh) out.push({ nombre: o.name, geometria: o.geometry }); }); return out; };
       const tipos = await window.__g.Catalogo.instala(desc, cargador, "olivos/");
       return { tipos, avisos: window.__g.Catalogo.avisos(), info: window.__g.Catalogo.info(0) };
     });
