@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Hituelo v3 en 3D Tiles regenerado con el generador 0.3.0 (raíz sin contenido): 248 glb, 38,2 MiB, validador de CesiumGS con 0 errores y 0 avisos, `comprueba.mjs` con 0 errores por `copas_id`; 72 s.
 - Código corto para vincular las gafas (Quest): `K7Q-4M2`, 5 min, un solo uso; se aprueba en «Mis dispositivos» y las gafas reciben su propia sesión (decisiones 46 y 61; migración 0002).
 - Portada y pantallas de entrada en `apps/web` (UX.md §4): portada, entrar con tu correo, revisa tu correo, primer acceso (normas, alias, avatar), vincular las gafas y Mis dispositivos; sustituye la portada provisional de `infra/dev` (decisión 56).
 - Las hazas en el mundo (A4, `13b_hazas.js`): con la web servida por el servidor, el motor pide `/api/hazas` y dibuja la linde de cada haza (la tuya en ámbar, las ajenas en blanco roto, casilla «Linde»; 1 llamada); al tocar una o con H abre su ficha con solo la lista blanca, procedencia y fecha, sin titular. Sin sesión o en la salida artefacto no pide ni dibuja nada. En navegador y en aparatos, no probado.

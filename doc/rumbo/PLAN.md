@@ -81,8 +81,8 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | A5 | e2e de entrada completa: portada → enlace → mundo con lindes; gafas → código → sesión | A1, A2, A4 | 🔶 Docker | ⬜ |
 | A6 | **Prueba en aparatos** (navegador, móvil, Quest; decisión 57) | A1, A2, A3 | 👤 | ⬜ |
 | T1 | F1d 3b: terreno 3D Tiles en el motor (`04b_escena3d.js`, `?escena=tiles`), código | — | ligera | ✅ en main (sin medir: T3) |
-| T2 | Tileset de Hituelo regenerado con el generador 0.3.0 desde D1 | D1 | pesada de CPU (≈30 min), sin Chrome | ⬜ |
-| T3 | F1d 3b: medir con el fixture y con Hituelo; raíz vacía visible de lejos | T1, T2 | 🔶 | ⬜ |
+| T2 | Tileset de Hituelo regenerado con el generador 0.3.0 desde D1 | D1 | pesada de CPU, sin Chrome (72 s) | ✅ 248 glb, 0 errores |
+| T3 | F1d 3b: medir con el fixture y con Hituelo; raíz vacía visible de lejos | T1, T2 | 🔶 | 🟡 raíz vacía y relieve comprobados con el fixture (`escena3d.test.js`); Hituelo encargado al banco |
 | T4 | F1d 4: olivos del tileset con máscara (de cerca, los del motor y los generados) | T1 | ligera; 🔶 al medir | ⬜ |
 | T5 | F1d 5: sombreado (nubes, escarcha, NDVI, suelo) sobre el tileset | T1 | ligera; capturas 🔶 → 👤 | 🟡 código en main; capturas encargadas (NDVI y Ortofoto, a mano) |
 | T6 | F1d 6-7: presupuesto y VR con el simulador | T3, T4, T5 | 🔶 | ⬜ |
