@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Escena3D
 // Consume: 01_datos (D, ESC3D), 03_escena (renderer, scene, camera, exag), 04_terreno (Terreno), 04d_sombreado_tiles (SombreadoTiles),
-//   08_marcadores (listo, aplica)
+//   08_marcadores (listo, aplica), 16_vida (mira)
 // ===============================================================================
   // ---------- la escena en 3D Tiles 1.1 (F1d paso 3b, ADR-0015 Propuesto; formato en doc/sistema/TILES3D.md), solo con ?escena=tiles.
   // Sin la bandera no crea nada y el motor dibuja lo de siempre. Con ella, el relieve con su ortofoto lo dibuja 3DTilesRendererJS (versión
@@ -27,7 +27,9 @@
       if (estado === "sin") return;
       estado = "sin"; motivo = String(e && e.message || e); console.warn("escena 3D Tiles: " + motivo + " (vuelve el relieve de siempre)");
       if (tiles) { try { scene.remove(tiles.group); tiles.dispose(); } catch (e2) {} tiles = null; }
-      SombreadoTiles.libera();
+      // falla() puede llegar mientras se monta el motor (un ?tileset= de otro host falla dentro de arranca(), al definir este módulo): 04d y 04c
+      // vienen después y aún no existen; a 04c se le avisa al engancharse (engancha)
+      if (SombreadoTiles) SombreadoTiles.libera();
       ESC3D.activa = false; Terreno.grupo.visible = true; if (ganchos.alApagar) ganchos.alApagar(motivo);
       if (listo) { Terreno.iniciaMosaico(); Terreno.montaTodas(); aplica(); }   // si ya arrancó; si no, lo montará el arranque (90_final.js)
     }
@@ -105,13 +107,13 @@
       var r = rayo.intersectObject(tiles.group, true).filter(function (x) { return !x.object.isInstancedMesh; })[0];   // el relieve, no los olivos
       return r ? r.point.y / exag : null;
     }
-    function listo() {
+    function cargada() {   // no se llama listo(): taparía el listo del motor (08_marcadores.js) que mira falla()
       if (estado === "apagado" || estado === "sin") return true;
       var s = tiles && tiles.stats;
       return estado === "activo" && tiles.loadProgress === 1 && s.queued + s.downloading + s.parsing === 0;
     }
     function libera() { if (!tiles) return; SombreadoTiles.libera(); if (ganchos.alApagar) ganchos.alApagar("liberada"); if (Sched) Sched.setXRSession(null); scene.remove(tiles.group); tiles.dispose(); tiles = null; estado = "apagado"; }
-    function engancha(g) { for (var k in g) ganchos[k] = g[k]; }
+    function engancha(g) { for (var k in g) ganchos[k] = g[k]; if (estado === "sin" && ganchos.alApagar) ganchos.alApagar(motivo); }
     if (ESC3D.pedida) { Terreno.grupo.visible = false; arranca(); }
-    return { actualiza: actualiza, perfil: perfil, resumen: resumen, libera: libera, listo: listo, alturaEn: alturaEn, engancha: engancha, grupo: function () { return tiles && tiles.group; } };
+    return { actualiza: actualiza, perfil: perfil, resumen: resumen, libera: libera, listo: cargada, alturaEn: alturaEn, engancha: engancha, grupo: function () { return tiles && tiles.group; } };
   })();

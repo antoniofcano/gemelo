@@ -201,6 +201,21 @@ test("04c_olivos_tiles: un json que no es el del tileset no resuelve nada (vuelv
   assert.strictEqual(sin.OlivosTiles.resumen().porHuella, false); assert.ok(sin.avisos.some(a => /crypto\.subtle/.test(a)));
 });
 
+test("04b: un ?tileset= de otro host falla al montar el motor (antes de 04c y 04d) sin romperlo, y 04c se entera al engancharse", () => {
+  // 04b se evalúa solo, con dobles; SombreadoTiles (04d) y listo (08) aún no existen, como en el motor concatenado en ese momento
+  const fuente = lee(path.join(MOTOR, "04b_escena3d.js")), avisos = [];
+  class V { set() { return this; } } class Mx { makeScale() { return this; } makeRotationX() { return this; } multiply() { return this; } fromArray() { return this; } clone() { return this; } invert() { return this; } }
+  const THREE = { Vector2: V, Vector3: V, Matrix4: Mx, Raycaster: class { set() {} intersectObject() { return []; } } };
+  const f = new Function("THREE", "location", "ESC3D", "D", "Terreno", "SombreadoTiles", "listo", "scene", "camera", "renderer", "exag", "aplica", "console", "\"use strict\";\n" + fuente + "\nreturn Escena3D;");
+  const esc = { pedida: true, activa: true }, ter = { grupo: { visible: true } };
+  let E;
+  assert.doesNotThrow(() => { E = f(THREE, { search: "?escena=tiles&tileset=" + encodeURIComponent("https://ejemplo.invalid/t.json") }, esc, {}, ter, undefined, undefined, {}, {}, {}, 1, () => {}, { warn: s => avisos.push(s), error: () => {} }); });
+  assert.strictEqual(E.resumen().estado, "sin"); assert.match(E.resumen().motivo, /mismo origen/);
+  assert.strictEqual(esc.activa, false); assert.strictEqual(ter.grupo.visible, true, "vuelve el Terreno de siempre");
+  let apagado = null; E.engancha({ alApagar: m => { apagado = m; } });
+  assert.match(apagado || "", /mismo origen/, "04c, que se engancha después, debe enterarse de que la escena 3D Tiles está apagada");
+});
+
 test("los enganches de 04c: 04b solo retira los olivos si 04c no se queda con ellos, 07b no dibuja sus niveles 1 y 2 con el tileset y le pasa los de cerca", () => {
   const b = lee(path.join(MOTOR, "04b_escena3d.js")), a = lee(path.join(MOTOR, "07b_arboles.js"));
   assert.match(b, /if \(!\(ganchos\.alModelo && ganchos\.alModelo\(e\.scene, e\.tile\)\)\) quitaOlivos\(e\.scene\)/);
@@ -305,6 +320,7 @@ test("con ?escena=tiles: carga el tileset sin errores ni CSP, desde lejos baja d
       return { inst, out }; });
     // F1d paso 4 (04c_olivos_tiles.js): de media y larga distancia, los olivos del glb; de cerca, los del motor y, en el tileset, apartados
     assert.ok(r.inst > 0, "los olivos del glb deberían quedarse en la escena");
+    await escena(p, "cerca");   // la última medida es la de Nube (sin árboles): se vuelve a la de cerca, en modo Gemelo
     await p.waitForTimeout(1600);   // una vuelta de reclasifica (07b) tras la última cámara
     const ot = await p.evaluate(() => { const g = window.__g, dobles = []; let deCerca = 0;
       Object.keys(g.Arboles.celdas).forEach(k => { const c = g.Arboles.celdas[k]; if (c.g && c.g.visible) c.arr.forEach(o => { deCerca++; g.OlivosTiles.instanciasDe(o.i).forEach(x => { if (!x.apartado) dobles.push(o.i + "@" + x.uri); }); }); });
