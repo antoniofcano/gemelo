@@ -137,9 +137,9 @@ La primera vez, `levanta.mjs` hace `npm ci` en `apps/web` (incluye 3DTilesRender
 
 | Para ver… | URL |
 |---|---|
-| el mundo de siempre | `/finca/` |
+| el mundo (con `GEMELO_DEV_TILESET`, la escena 3D Tiles por defecto; sin él, la de siempre) | `/finca/` |
 | con los olivos generados | `/finca/?olivos=gen` |
-| con la escena 3D Tiles | `/finca/?olivos=gen&escena=tiles` |
+| la escena de siempre aunque haya tileset (durante una versión, T8 fase 1) | `/finca/?escena=clasica` |
 | con fps, ms de JS, llamadas y triángulos | añadir `&debug` |
 
 **Entrar desde el móvil**: pide el enlace en la portada del ordenador, ábrelo en el ordenador desde Mailpit (`http://localhost:8025`; abrirlo no lo gasta), «Crear código QR» en Chrome, escanéalo con el móvil y pulsa «Entrar» **en el móvil** (detalle en [El interruptor de red local](#el-interruptor-de-red-local)). **Desde las Quest**: abre `https://<IP>:8743/`, acepta el aviso del certificado, **Entrar → Vincular unas gafas con un código**; en el ordenador o el móvil con sesión, **Mis dispositivos** → teclea el código → **Aprobar** (las gafas entran solas en unos 3 s). Luego `/finca/?olivos=gen&escena=tiles` y el botón de VR.
