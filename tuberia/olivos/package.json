@@ -2,9 +2,12 @@
   "name": "gemelo-hornero",
   "version": "0.1.0",
   "private": true,
-  "description": "Dependencias de ejecución del servicio hornero (imagen Docker tuberia/olivos/Dockerfile): ajv valida el manifiesto; proper-lockfile da el candado por finca. El constructor de olivos trae las suyas (apps/web/olivo).",
+  "description": "Dependencias de ejecución del servicio hornero (imágenes Docker tuberia/olivos/Dockerfile y Dockerfile.impostores): ajv valida el manifiesto; proper-lockfile da el candado por finca; para los impostores (impostores.mjs), playwright-core abre Chrome, three 0.186.1 es el del motor para la página de horneado y sharp codifica los WebP. El constructor de olivos trae las suyas (apps/web/olivo).",
   "dependencies": {
     "ajv": "8.20.0",
-    "proper-lockfile": "4.1.2"
+    "playwright-core": "1.64.1",
+    "proper-lockfile": "4.1.2",
+    "sharp": "0.35.5",
+    "three": "0.186.1"
   }
 }

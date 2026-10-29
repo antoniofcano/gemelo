@@ -88,6 +88,7 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | T4 | F1d 4: olivos del tileset con máscara (de cerca, los del motor y los generados) | T1 | ligera; 🔶 al medir | ✅ en navegador: 189 de 350 apartadas de cerca, ninguno doble |
 | T5 | F1d 5: sombreado (nubes, escarcha, NDVI, suelo) sobre el tileset | T1 | ligera; capturas 🔶 → 👤 | ✅ aprobado por Antonio (decisión 67) |
 | T6 | F1d 6-7: presupuesto y VR con el simulador | T3, T4, T5 | 🔶 | 🟡 VR simulada con tiles ✅ y escena3d 13/13 en navegador; ADR-0015: 1 ✅, 2 fixture ✅ / Hituelo casi (258 llamadas lejos > 250), 3 sin cubrir, 4 parcial |
+| T7a | Medidor para T7: `&mide=60` registra 60 s de fotogramas y enseña mediana, p95 y peor (y el nivel del perfil) en el panel de VR y en `?debug`; se guarda para leerlo luego | — | ligera · **sonnet** | 🟡 en curso |
 | T7 | F1d 8: Quest real (p95 ≤ 13,9 ms) | T6 | 👤 | ⬜ |
 | T8 | F1d 9: la escena nueva por defecto; se retira la vieja | T6 (T7 o «no probado», decisión 35) | ligera | ⬜ |
 | P1 | F2: la api firma tokens de LiveKit (`POST /api/presencia/token`, `livekit-server-sdk`, roles del contrato) | — | ligera | ✅ |
@@ -96,13 +97,14 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | P4 | F2: dos Chrome en la misma sala (p95 < 250 ms) y 40 clientes ligeros | P2, P3 | 🔶 Docker + Chrome | ✅ en local (transporte p95 7 ms; 40 clientes saturan el i5: medir LiveKit con carga desde otra máquina) ; **probado por Antonio entre dos aparatos reales por la WiFi (2026-10-29): se ven, se escriben y la posición llega a tiempo**; el avatar remoto flotaba y no andaba (P5) |
 | P5 | F2: avatares remotos que andan (piernas y brazos según la velocidad) y con los pies en el suelo de este mundo | P4 | ligera · **opus**; 👤 a ojo | ✅ código, Node y Chrome headless (+5 llamadas con 10 o 40); falta verlo en aparatos |
 | P6 | F2: los demás ven si vas en quad o dron (modo en la pose, quad/dron bajo el avatar remoto, icono en el minimapa) | P5 | ligera · **opus** (con I1) | ✅ pose v1 con el modo; quad y dron remotos |
-| P7a | Avatares VRM: ADR (catálogo cerrado, presupuesto, nivel de detalle VRM cerca / muñeco lejos, animación por huesos sin ficheros, avatar en los metadatos de LiveKit, VR, licencias) | P5 | ligera · **opus** | 🟡 en curso |
-| P7b | Avatares VRM: tubería del catálogo (optimizar con gltf-transform, topes de triángulos y peso, servir por Caddy tras sesión) | P7a | ligera · **sonnet** | ⬜ |
-| P7c | Avatares VRM: motor (`@pixiv/three-vrm`, animación por huesos con la fórmula de P5, quad/dron, nivel de detalle con el muñeco, fundido) | P7a | ligera; 🔶 al medir · **opus** | ⬜ |
-| P7d | Avatares VRM: elegir avatar en la portada con vista previa | P7b | ligera · **sonnet** | ⬜ |
+| P7a | Avatares VRM: ADR (catálogo cerrado, presupuesto, nivel de detalle VRM cerca / muñeco lejos, animación por huesos sin ficheros, avatar en los metadatos de LiveKit, VR, licencias) | P5 | ligera · **opus** | ✅ [ADR-0020](../adr/0020-avatares-vrm.md) (**Aceptado**: decisiones 73-76) |
+| P7b | Avatares VRM: tubería del catálogo (optimizar con gltf-transform, topes de triángulos y peso, servir por Caddy tras sesión) | P7a | ligera · **sonnet** | ✅ tubería, esquema, 4 CC0 provisionales (fuera del repo), Caddy; sin ver en navegador |
+| P7c | Avatares VRM: motor (`@pixiv/three-vrm`, animación por huesos con la fórmula de P5, quad/dron, nivel de detalle con el muñeco, fundido) | P7a | ligera; 🔶 al medir · **opus** | 🟡 en curso |
+| P7d | Avatares VRM: elegir avatar en la portada con vista previa | P7b | ligera · **sonnet** | 🟡 en curso |
 | P7e | Avatares VRM: medir con 10 y 40 personas en el banco; móvil y Quest | P7c, P7d | 🔶 · **sonnet**; 👤 | ⬜ |
 | I1 | Presencia en el minimapa (quién está conectado y dónde) e **ir con alguien** (desde Gente o tocando su punto del minimapa; en VR con fundido) | P5 | ligera · **opus**; 👤 a ojo | ✅ Node; falta verlo en aparatos (en VR aún no hay botón) |
 | I4 | Balizas como puntos de encuentro: en el minimapa y en la ficha de la baliza, «aquí están: … ¿Ir a esta baliza?» y llegada junto a ella | I1, I3 | ligera · **opus** (con I1) | ✅ Node; falta verlo en aparatos |
+| I5 | VR: «Ir con» (panel Gente) e «Ir a esta baliza» (su ficha) pulsables con el rayo | I1, I3, I4 | ligera · **opus**; 👤 Quest | ✅ WebXR simulado; falta el Quest |
 | I2 | La brújula oculta o muestra el minimapa | — | ligera | ✅ |
 | I3 | Teletransporte desde el aire: en VR desde el vuelo y en ordenador y móvil con el **dron** (toque corto en el suelo pone el anillo, «Aterrizar aquí» te deja de pie allí); una sola pieza para los tres aparatos | — | ligera · **opus**; 👤 Quest | ✅ con WebXR simulado y Chrome sin pantalla; falta Quest, iPhone y Android |
 | O1 | Olivos generados: transición suave al acercarse (forma y luz; materiales con nubes y escarcha del motor) | — | ligera; 🔶 al medir | ✅ medido: 2 generados de cerca, 40 llamadas / 545 k (aspecto, 👤) |
@@ -119,7 +121,7 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | O7g | e2e: el servicio hornea el fixture, Caddy lo sirve y el motor lo dibuja con 0 variantes calculadas en el aparato (los propios, calculados; ADR-0018) | O7d, O7e, O7f | 🔶 Docker + Chrome · **sonnet** | ✅ 4 horneadas, 0 calculadas, 0 fallos (fixture) |
 | O7h | Hituelo real horneado (2 épocas): tamaños, tiempo, descarga de un paseo; prueba en el móvil | O7g | 🔶 · **sonnet**; 👤 móvil | 🟡 primera vez en un aparato real (Antonio, 2026-10-29): «generados activo · plan 3 · dibujados 3 · recetas 4»; faltan cifras de horneadas/calculadas, tiempos y aspecto |
 | O8a | ADR-0019 «escalera de olivos»: E0/E1/E2 del constructor para todos + impostores lejanos; distancias y presupuesto por aparato; fundido entre niveles; qué se retira (nivel 0 del mockup, pelotillas); medido/ilustrativo; plan B en la salida artefacto | decisión 66 | ligera · **opus** | ✅ ADR-0019 **Aceptado** (decisión 72): escalones por presupuesto, impostor hemi-octaédrico 8×8 × 128 px (≈ 26,7 MiB), horneado con Chrome sin pantalla, fases A/B/C |
-| O8b | Impostores: cómo se hornean (vistas del árbol generado → atlas), formato y contrato; el hornero los hornea con las variantes | O8a | ligera; 🔶 si hornea con Chrome · **opus** | 🟡 en curso |
+| O8b | Impostores: cómo se hornean (vistas del árbol generado → atlas), formato y contrato; el hornero los hornea con las variantes | O8a | ligera; 🔶 si hornea con Chrome · **opus** | ✅ contrato olivo-impostor v1, horneado en Chrome, color calibrado; falta servir .webp en Caddy (O8c) y construir Dockerfile.impostores |
 | O8c | Motor: la escalera en 07b/07ab (variantes E2 e impostores instanciados en lugar de L1/L2), fundido entre niveles, presupuesto por aparato; sin `?olivos=gen` hoy igual, hasta que la escalera pase a ser la de por defecto | O8a (O8b para los impostores) | ligera; 🔶 al medir · **opus** | 🟡 en curso |
 | O8d | Medir en el banco y en aparatos (👤): saltos entre niveles, llamadas y triángulos, fps en el móvil | O8b, O8c | 🔶 · **sonnet**; 👤 | ⬜ |
 | O4 | Medir 10 olivos en campo con cinta (decisiones 48-49) | — | 👤 | ⬜ |

@@ -1,0 +1,34 @@
+{
+  "$comment": "Avatares CC0 PROVISIONALES (decisión 74 de DECISIONS-PENDING, ADR-0020). Salen de la colección 100Avatars R1 de Polygonal Mind, listada como CC0 en el registro Open Source Avatars (https://github.com/ToxSam/open-source-avatars, data/avatars/100avatars-r1.json). Cada fichero es de Arweave (direccionado por contenido); el sha256 fija el contenido y descarga.mjs se niega si cambia. El meta de cada VRM (0.x) se leyó el 2026-10-29: licenseName CC0, allowedUserName Everyone, commercialUssageName Allow, autor «Polygonal Mind». Los VRM NO se versionan (regla 4). Los propios de Cano & Damas los sustituyen cambiando el catálogo (decisión 73). Los colores son los del muñeco lejano (ADR-0020 §5), elegidos a ojo por quien da de alta el avatar: [SUPUESTO] hasta verlos en pantalla.",
+  "version": 1,
+  "avatares": [
+    {
+      "id": "robert", "nombre": "Robert", "descripcion": "Personaje de pocos polígonos (100Avatars n.º 070)",
+      "url": "https://arweave.net/gwG7w4bY-A5c3R6A6GOz3xBCgbPvkFQmqPIDtvnNsYI", "sha256": "5e3edaf330577ee4c3f6440b8989af3722e7c800bb90eb037f1c05cdfe61fd7c", "bytes": 1656464,
+      "licencia": { "spdx": "CC0-1.0", "nombre_meta": "CC0", "url": "https://creativecommons.org/publicdomain/zero/1.0/" },
+      "autor": "Polygonal Mind", "fuente": { "nombre": "100Avatars R1 (Polygonal Mind), registro Open Source Avatars", "url": "https://github.com/ToxSam/open-source-avatars" },
+      "colores_muneco": { "camisa": "#3f7cc2", "piel": "#d9a47c", "sombrero": "ninguno" }
+    },
+    {
+      "id": "mikel", "nombre": "Mikel", "descripcion": "Personaje de pocos polígonos (100Avatars n.º 072)",
+      "url": "https://arweave.net/-eJyDjujQRvakRImdvulg-1dKQkPwMeQv-55IbKqLh4", "sha256": "d53177897756be00446e5bcd0a5ab605b2d29e614f7c491a2d9a7c67dde0be0e", "bytes": 2026832,
+      "licencia": { "spdx": "CC0-1.0", "nombre_meta": "CC0", "url": "https://creativecommons.org/publicdomain/zero/1.0/" },
+      "autor": "Polygonal Mind", "fuente": { "nombre": "100Avatars R1 (Polygonal Mind), registro Open Source Avatars", "url": "https://github.com/ToxSam/open-source-avatars" },
+      "colores_muneco": { "camisa": "#5d9b4a", "piel": "#f1c9a5", "sombrero": "gorra" }
+    },
+    {
+      "id": "rose", "nombre": "Rose", "descripcion": "Personaje de pocos polígonos (100Avatars n.º 057)",
+      "url": "https://arweave.net/Ea1KXujzJatQgCFSMzGOzp_UtHqB1pyia--U3AtkMAY", "sha256": "8e44e5638ffdf935e5d6fa990aa6cba428269f342f2db024c2961ee286a41e5f", "bytes": 2400964,
+      "licencia": { "spdx": "CC0-1.0", "nombre_meta": "CC0", "url": "https://creativecommons.org/publicdomain/zero/1.0/" },
+      "autor": "Polygonal Mind", "fuente": { "nombre": "100Avatars R1 (Polygonal Mind), registro Open Source Avatars", "url": "https://github.com/ToxSam/open-source-avatars" },
+      "colores_muneco": { "camisa": "#c0533a", "piel": "#b57d55", "sombrero": "ninguno" }
+    },
+    {
+      "id": "polydancer", "nombre": "Polydancer", "descripcion": "Personaje de pocos polígonos (100Avatars n.º 021)",
+      "url": "https://arweave.net/jPOg-G0MPH55ZQmamFhT9f8cHn-hjeAQ0mRO5gWeKMQ", "sha256": "9bc28f2f2ab9d20aaa0da6c7b272a3f2363058414362bbfc176713c4585e4244", "bytes": 1242088,
+      "licencia": { "spdx": "CC0-1.0", "nombre_meta": "CC0", "url": "https://creativecommons.org/publicdomain/zero/1.0/" },
+      "autor": "Polygonal Mind", "fuente": { "nombre": "100Avatars R1 (Polygonal Mind), registro Open Source Avatars", "url": "https://github.com/ToxSam/open-source-avatars" },
+      "colores_muneco": { "camisa": "#8a5bb0", "piel": "#8a5a3a", "sombrero": "paja" }
+    }
+  ]
+}

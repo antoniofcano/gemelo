@@ -86,3 +86,7 @@ Decisiones que **no puede tomar un agente**: las cierra Antonio. Las técnicas s
 | 70 | **ADR-0019 · color de E2 e impostores** | tintado por la ortofoto / color del constructor corregido / mezcla | O8b, O8c | ✅ 2026-10-29: **color del constructor, corregido**: averiguar por qué sale crema (luz o gestión de color) y que sea el verde oliva de «Olivos tipo» |
 | 71 | **ADR-0019 · resolución de los impostores** | 128 px y decidir a ojo / 256 px / 128 y 256 por aparato | O8b, O8d | ✅ 2026-10-29: **128 px por vista y se decide a ojo** con O8d y el móvil |
 | 72 | **ADR-0019** | aceptar / propuesto hasta O8d | O8 | ✅ 2026-10-29: **aceptado** |
+| 73 | **ADR-0020 · estilo de los avatares** | sobrios propios / CC0 de pocos polígonos / anime de VRoid | P7 | ✅ 2026-10-29: **sobrios, hechos para Cano & Damas** (personajes de campo, licencia propia) |
+| 74 | **ADR-0020 · mientras tanto** | provisionales CC0 / esperar a los propios | P7b-P7e | ✅ 2026-10-29: **3-4 avatares CC0 provisionales**, comprobados uno a uno; los propios los sustituyen solo cambiando el catálogo |
+| 75 | **ADR-0020 · subir el avatar propio** | no, solo catálogo / sí, moderado | P7 | ✅ 2026-10-29: **no, solo el catálogo** (se puede reabrir) |
+| 76 | **ADR-0020 · el paseante propio y aceptación** | paseante = avatar y aceptar / aceptar tras P7e / paseante igual | P7 | ✅ 2026-10-29: **el paseante pasa a ser tu avatar** (tercera persona; en primera persona y VR, solo las manos) y **ADR-0020 aceptado** |

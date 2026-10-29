@@ -1,0 +1,19 @@
+{
+  "name": "gemelo-avatares",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Tubería del catálogo de avatares VRM (ADR-0020, P7b): lee el meta (licencia), optimiza con @gltf-transform y escribe <id>.vrm + catalogo.json. Ver contratos/avatares.md",
+  "scripts": {
+    "construye": "node construye.mjs",
+    "descarga": "node descarga.mjs"
+  },
+  "dependencies": {
+    "@gltf-transform/core": "4.5.1",
+    "@gltf-transform/extensions": "4.5.1",
+    "@gltf-transform/functions": "4.5.1",
+    "ajv": "8.20.0",
+    "meshoptimizer": "1.3.0",
+    "sharp": "0.35.5"
+  }
+}

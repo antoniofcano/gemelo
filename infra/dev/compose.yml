@@ -42,6 +42,9 @@ services:
       # manifiesto.json y los <huella>.br dentro); la escribe el servicio `hornero` (mismo origen abajo); sin GEMELO_DEV_OLIVOS, la
       # de pruebas/salida/olivos-dev/<finca>/
       - ${GEMELO_DEV_OLIVOS:-../../pruebas/salida/olivos-dev/${GEMELO_DEV_FINCA:-hituelo}}:/srv/olivos:ro
+      # el catálogo de avatares VRM (/avatares/…, contratos/avatares.md): la salida de tuberia/avatares/construye.mjs. GEMELO_AVATARES, una carpeta
+      # FUERA del repo; por defecto pruebas/salida/avatares (ignorada por git). Sin ficheros ahí, /avatares/catalogo.json da 404
+      - ${GEMELO_AVATARES:-../../pruebas/salida/avatares}:/srv/avatares:ro
     tmpfs:                             # la CA local y su estado no se guardan: es desarrollo (se regeneran en cada arranque)
       - /data:uid=1000,gid=1000,mode=0700
       - /config:uid=1000,gid=1000,mode=0700

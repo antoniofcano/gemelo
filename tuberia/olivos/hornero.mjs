@@ -10,6 +10,8 @@
 //     --limpia           borra los objetos que ni el manifiesto nuevo ni el anterior (manifiesto.anterior.json) referencian
 //     --estado <ruta>    dónde escribir estado.json (por defecto <salida>/<finca>/olivos/estado.json)
 //     --calendario <ruta> otro epocas-calendario.json (por defecto contratos/epocas-calendario.json)
+//     --impostores       además hornea los impostores de cada época (O8b, tuberia/olivos/impostores.mjs: Chrome sin pantalla, dentro del turno del banco);
+//                        también con GEMELO_HORNERO_IMPOSTORES=1. Sin él, se conservan los impostores del manifiesto anterior que sigan valiendo
 //     --propios          NO implementado (propios E0/E1 por tesela con su manifiesto binario): sale con error
 //   Avance por stderr y en estado.json ({fase, hechas, total, error...}); stdout, una línea JSON con el resumen.
 //
@@ -59,7 +61,29 @@ export function validaManifiesto(m, carpeta) {
       if (!fs.existsSync(r)) err.push("falta el objeto " + f.huella + ".br"); else if (fs.statSync(r).size !== f.bytes_br) err.push(f.huella + ".br no pesa bytes_br");
     }
   }
+  // los impostores (O8b, contratos/olivo-impostor.md): una fila por época, sus fuentes son variantes E2 de esa época y sus atlas existen
+  const epImp = new Set();
+  for (const f of m.impostores || []) {
+    if (epImp.has(f.epoca)) err.push("impostor repetido: " + f.epoca); epImp.add(f.epoca);
+    if (!m.epocas.some(e => e.epoca === f.epoca)) err.push("el impostor de " + f.epoca + " es de una época que no está en `epocas`");
+    if (f.color.lado !== 2048 || f.normales.lado !== 1024) err.push("impostor de " + f.epoca + ": lados de los atlas");
+    f.variantes.forEach((v, k) => {
+      if (v.celda !== k) err.push("impostor de " + f.epoca + ": la variante " + k + " está en la celda " + v.celda);
+      if (!m.variantes.some(x => x.huella === v.fuente && x.epoca === f.epoca && x.nivel === f.nivel && x.tipo === v.tipo && x.semilla === v.semilla)) err.push("impostor de " + f.epoca + ": la fuente " + v.fuente + " no es una variante " + f.nivel + " de esa época");
+    });
+    if (carpeta) for (const k of ["color", "normales"]) {
+      const r = path.join(carpeta, f[k].huella + ".webp");
+      if (!fs.existsSync(r)) err.push("falta el atlas " + f[k].huella + ".webp"); else if (fs.statSync(r).size !== f[k].bytes) err.push(f[k].huella + ".webp no pesa bytes");
+    }
+  }
   return err;
+}
+
+/** Las filas de impostores del manifiesto anterior que siguen valiendo sin hornear (mismas fuentes, atlas en disco): para un hornero que no hornea impostores */
+export function impostoresVigentes(ant, variantes, carpeta) {
+  if (!ant || !Array.isArray(ant.impostores)) return [];
+  return ant.impostores.filter(f => f.variantes.every(v => variantes.some(x => x.huella === v.fuente && x.epoca === f.epoca && x.nivel === f.nivel)) &&
+    ["color", "normales"].every(k => { const r = path.join(carpeta, f[k].huella + ".webp"); return fs.existsSync(r) && fs.statSync(r).size === f[k].bytes; }));
 }
 
 /**
@@ -121,6 +145,17 @@ export async function hornea(o) {
     publica("escribiendo el manifiesto");
     const nuevo = { v: 1, finca: o.finca, formato: F.FORMATO, gen_version: G.GEN_VERSION, cache_version: G.CACHE_VERSION, horneado_en: o.ahora ? o.ahora() : ahoraISO(), brotli: calidad, actual,
       epocas: epocas.map(e => ({ epoca: e, desde: tabla[e].desde, hasta: tabla[e].hasta })), variantes, propios: { activos: false } };
+    // los impostores (O8b): con `impostores`, se hornean en Chrome los que falten (incremental por su clave); sin él, se conservan los que sigan valiendo
+    let impostores = null;
+    if (o.impostores) {
+      publica("horneando impostores");
+      const IM = await import("./impostores.mjs");
+      impostores = await IM.horneaImpostores({ carpeta, manifiesto: nuevo, anterior: ant && ant.finca === o.finca ? ant : null, navegador: o.navegador, log });
+      if (impostores.filas.length) nuevo.impostores = impostores.filas;
+    } else {
+      const vig = impostoresVigentes(ant && ant.finca === o.finca ? ant : null, variantes, carpeta);
+      if (vig.length) nuevo.impostores = vig;
+    }
     const err = validaManifiesto(nuevo, carpeta);
     if (err.length) throw new Error("el manifiesto no valida: " + err.join("; "));
     const sinFecha = m => JSON.stringify(Object.assign({}, m, { horneado_en: "" }));
@@ -133,15 +168,19 @@ export async function hornea(o) {
     let borrados = 0;
     if (o.limpia) {
       publica("limpiando");
-      const vivos = new Set(); for (const m of [leeJson(rutaMan), leeJson(rutaAnt)]) if (m) for (const f of m.variantes) vivos.add(f.huella + ".br");
-      for (const n of fs.readdirSync(carpeta)) if (/^[0-9a-f]{32}\.br$/.test(n) && !vivos.has(n)) { fs.unlinkSync(path.join(carpeta, n)); borrados++; }
+      const vivos = new Set(); for (const m of [leeJson(rutaMan), leeJson(rutaAnt)]) if (m) {
+        for (const f of m.variantes) vivos.add(f.huella + ".br");
+        for (const f of m.impostores || []) { vivos.add(f.color.huella + ".webp"); vivos.add(f.normales.huella + ".webp"); }
+      }
+      for (const n of fs.readdirSync(carpeta)) if (/^[0-9a-f]{32}\.(br|webp)$/.test(n) && !vivos.has(n)) { fs.unlinkSync(path.join(carpeta, n)); borrados++; }
       st.borrados = borrados;
     }
     const bytes_por_nivel = {};
     for (const f of variantes) { const b = bytes_por_nivel[f.nivel] || (bytes_por_nivel[f.nivel] = { objetos: 0, bytes: 0, bytes_br: 0 }); b.objetos++; b.bytes += f.bytes; b.bytes_br += f.bytes_br; }
     st.terminado_en = ahoraISO(); publica("listo");
     return { finca: o.finca, carpeta, actual, siguiente, brotli: calidad, total: quiero.length, horneadas: st.horneadas, reutilizadas: st.reutilizadas, ya_existian: st.ya_existian, borrados,
-      escribio_manifiesto: escribio, ms: Date.now() - t0, bytes_por_nivel, bytes_total: variantes.reduce((s, f) => s + f.bytes, 0), bytes_br_total: variantes.reduce((s, f) => s + f.bytes_br, 0) };
+      escribio_manifiesto: escribio, ms: Date.now() - t0, bytes_por_nivel,
+      impostores: impostores ? { horneados: impostores.horneados, reutilizados: impostores.reutilizados, ms: impostores.ms, chrome: impostores.chrome } : { conservados: (nuevo.impostores || []).length }, bytes_total: variantes.reduce((s, f) => s + f.bytes, 0), bytes_br_total: variantes.reduce((s, f) => s + f.bytes_br, 0) };
   } catch (e) {
     st.error = String(e && e.message || e); st.terminado_en = ahoraISO(); publica("error");
     throw e;
@@ -153,7 +192,7 @@ function lee(argv) {
   const a = { _: [] };
   for (let i = 0; i < argv.length; i++) {
     const x = argv[i];
-    if (["--release", "--limpia", "--propios"].includes(x)) a[x.slice(2)] = true;
+    if (["--release", "--limpia", "--propios", "--impostores"].includes(x)) a[x.slice(2)] = true;
     else if (["--finca", "--indice", "--salida", "--fecha", "--estado", "--calendario"].includes(x)) a[x.slice(2)] = argv[++i];
     else throw new Error("opción desconocida: " + x);
   }
@@ -169,7 +208,7 @@ export async function principal(argv) {
   if (a.finca && fincaIndice && a.finca !== fincaIndice) throw new Error("--finca " + a.finca + " no es la del índice (" + fincaIndice + ")");
   const finca = a.finca || fincaIndice; if (!finca) throw new Error("falta --finca o un índice (--indice / GEMELO_DATOS)");
   if (!a.salida) throw new Error("falta --salida");
-  return hornea({ finca, salida: a.salida, fecha: a.fecha, release: a.release, limpia: a.limpia, estado: a.estado, propios: a.propios,
+  return hornea({ finca, salida: a.salida, fecha: a.fecha, release: a.release, limpia: a.limpia, estado: a.estado, propios: a.propios, impostores: a.impostores || process.env.GEMELO_HORNERO_IMPOSTORES === "1",
     calendario: a.calendario ? JSON.parse(fs.readFileSync(a.calendario, "utf8")) : undefined, log: m => process.stderr.write(m + "\n") });
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

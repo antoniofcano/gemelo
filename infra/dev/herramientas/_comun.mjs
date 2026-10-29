@@ -285,3 +285,13 @@ export function carpetaOlivos() {
   const v = process.env.GEMELO_DEV_OLIVOS;
   return v ? fueraDelRepo(v, "GEMELO_DEV_OLIVOS") : null;
 }
+
+/**
+ * GEMELO_AVATARES: la carpeta con la salida de tuberia/avatares/construye.mjs (<id>.vrm, sus precomprimidos y catalogo.json), que se sirve tras
+ * sesión en /avatares/. Siempre absoluta: la dada (fuera del repo) o pruebas/salida/avatares (ignorada por git; el mismo valor por defecto que
+ * infra/dev/compose.yml). Si no hay catálogo en ella, /avatares/catalogo.json da 404 y el motor se queda con los muñecos.
+ */
+export function carpetaAvatares() {
+  const v = process.env.GEMELO_AVATARES;
+  return v ? fueraDelRepo(v, "GEMELO_AVATARES") : path.join(RAIZ, "pruebas", "salida", "avatares");
+}
