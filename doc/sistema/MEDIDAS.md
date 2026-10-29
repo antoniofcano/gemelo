@@ -139,6 +139,22 @@ Chrome headless con SwiftShader (recuentos y memoria, no fps), máquina cargada;
 - **Presupuesto**: el 45 % del tope del aparato (550 k en escritorio; el del perfil VR en gafas), contando la pasada de sombras. Con olivos centenarios de 100 k tri (E0) y 50 k (E1), caben el más cercano en E0 y otro en E1; las variantes E2 quedan fuera en el fixture.
 - **Generación**: sin trabajador (salida artefacto, IIFE) va a rebanadas por la Cola (`G…` en `?debug`); con la máquina cargada, la rebanada más larga llegó a 15 ms. En el cliente web (Vite) va al trabajador. **No medido** con datos reales de Hituelo ni en aparatos.
 
+## Primera ronda del banco (2026-10-29, 6 encargos, un Chrome, ≈ 12,5 min; SwiftShader: recuentos, no fps)
+
+Llamadas / triángulos / heap por escenario (`lejos` · `cerca` · `nube`), cada variante tras su carga; sin errores de consola ni peticiones fallidas en ninguna.
+
+| Encargo | Página | Sin bandera | Con bandera |
+|---|---|---|---|
+| F1d 3b (T1) | fixture Hituelo + tileset | 168/82k/27 MB · 56/431k/37 · 94/174k/36 | `?escena=tiles`: 167/16k/27 · 55/165k/26 · 125/10k/27 |
+| T5 sombreado | fixture | 168/82k · 56/431k · 89/173k | `?escena=tiles`: 167/16k · 56/168k · 88/7k (capturas para aprobar) |
+| T4 olivos del tileset | fixture | 168/82k · 56/431k · 89/173k | `?escena=tiles`: 166/14k · **48**/155k · 87/7k; con `&olivos=gen`, igual |
+| A4 lindes | build de Vite del fixture | 168/82k · 56/431k · 90/173k | `?api=` (4 hazas): **+1 llamada**, mismos triángulos |
+| T3 Hituelo real v3 | Hituelo v3 + tileset 0.3.0 | 273/756k/92 MB · 87/1.294k/120 · 128/741k/119 | `?escena=tiles`: 258/763k/118 · 70/**927k**/128 · 104/556k/143 (heap +8 a +26 MB: la doble descarga de la decisión 38) |
+| O1 fundido | fixture con `--olivos` | 168/82k · 56/431k · 89/173k | `?olivos=gen`: **igual que sin bandera: ningún generado a la vista** (antes de O1, 47/546k): en estudio |
+
+- De lejos, en Hituelo real, el tileset dibuja la finca entera con ortofoto y olivos mientras la escena de siempre aún tiene teselas en cola (capturas de la ronda).
+- La escena de siempre no llega a vaciar su cola en el tiempo de espera con Hituelo real: las cifras de `base` son de una carga a medias.
+
 ## Límites conocidos
 - Las ortofotos decodificadas (2,4 MB por tesela de 768 px; 1 MB a 512 px) se sueltan solo a 900 m; sin LRU fino.
 - Dentro de una tesela todo el relieve y la copa (258² + 256²) están siempre en memoria: 49 teselas ≈ 20 MB; la nube de las lejanas se libera a > 1,2× 2.300 m.
