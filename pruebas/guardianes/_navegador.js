@@ -8,6 +8,7 @@ const { chrome, playwright, python, fs, path } = require("./_util");
 
 const TIPOS = { ".html": "text/html; charset=utf-8", ".json": "application/json", ".jpg": "image/jpeg", ".js": "text/javascript", ".css": "text/css" };
 const ESPERA_MS = Number(process.env.GEMELO_ESPERA || 45000);
+const ESPERA_GEN_MS = Number(process.env.GEMELO_ESPERA_GEN || 180000);   // con ?olivos=gen, lo que se espera a los generados en un escenario (en SwiftShader, una receta E0 tarda decenas de s)
 const TOPE_MEDIDA_MS = Number(process.env.GEMELO_TOPE_MEDIDA || 240000);   // una medida entera (carga + escenarios); si se pasa, sale «parcial»
 const ARGS_CHROME = ["--use-gl=swiftshader", "--enable-unsafe-swiftshader", "--no-sandbox", "--enable-precise-memory-info"];
 const ESCENARIOS = {
@@ -64,9 +65,12 @@ async function mide(navegador, url, { escenarios = ESCENARIOS, tope = TOPE_MEDID
   for (const [nombre, e] of Object.entries(escenarios)) {
     if (Date.now() - t0 > tope) { parcial = true; break; }
     await p.evaluate(e => { const g = window.__g; g.orb.az = e.az; g.orb.el = e.el; g.orb.dist = e.dist; g.objetivo.x = e.ox; g.objetivo.z = -e.oy; g.objetivo.y = g.suelo(e.ox, e.oy) + 4; g.pon(e.modo); }, e);
-    await p.waitForFunction(() => (window.__g.pendientes ? window.__g.pendientes() : window.__g.Cola.pendientes()) === 0, null, { timeout: Math.min(ESPERA_MS, queda()), polling: 500 }).catch(() => {});
+    // la Cola y, con ?olivos=gen, la cola propia de los generados (que en SwiftShader tarda más: ESPERA_GEN_MS); si no termina, se mide igual y se dice
+    const t1 = Date.now(), conGen = await p.evaluate(() => !!(window.__g.Generados && window.__g.Generados.activo()));
+    const acabo = await p.waitForFunction(() => (window.__g.pendientes ? window.__g.pendientes() : window.__g.Cola.pendientes()) === 0, null, { timeout: Math.min(conGen ? ESPERA_GEN_MS : ESPERA_MS, queda()), polling: 500 }).then(() => true, () => false);
     await p.waitForTimeout(1500);
-    medidas[nombre] = await p.evaluate(() => { const g = window.__g, r = g.renderer.info; return { llamadas: r.render.calls, triangulos: r.render.triangles, puntos: r.render.points, geometrias: r.memory.geometries, texturas: r.memory.textures, heapMB: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : -1, olivos: g.Arboles.resumen(), generados: window.__olivosGen ? window.__olivosGen().info : undefined }; });
+    medidas[nombre] = await p.evaluate(() => { const g = window.__g, r = g.renderer.info; return { llamadas: r.render.calls, triangulos: r.render.triangles, puntos: r.render.points, geometrias: r.memory.geometries, texturas: r.memory.textures, heapMB: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : -1, olivos: g.Arboles.resumen(), generados: window.__olivosGen ? window.__olivosGen() : undefined }; });
+    medidas[nombre].espera = { ms: Date.now() - t1, termino: acabo, pendientes: await p.evaluate(() => window.__g.pendientes ? window.__g.pendientes() : window.__g.Cola.pendientes()) };
     if (capturas) { fs.mkdirSync(capturas, { recursive: true }); await p.screenshot({ path: path.join(capturas, nombre + ".png") }); }
   }
   } catch (e) { if (Date.now() - t0 < tope) throw e; parcial = true; errores.push("TOPE " + Math.round(tope / 1000) + " s: " + String(e.message).slice(0, 200)); }

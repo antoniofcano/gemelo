@@ -100,6 +100,26 @@ for (const m of SOMBRA.map(n => mats[n]).concat([prof.corteza, prof.muerta])) {
 }
 exige(/#include <common>\n#include <common>/.test(compila(mats.pies).vertexShader) === false, "parche duplicado");
 
+// ---- 2b) con la bandera y el fixture de Hituelo, con la cámara del escenario «cerca» de pruebas/guardianes/_navegador.js: el plan no queda vacío
+{
+  const FX = path.join(RAIZ, "pruebas", "salida", "fixture", "hituelo", "indice.json");
+  if (!fs.existsSync(FX)) mal.push("sin el fixture (npm run fixture): el plan de «cerca» NO se ha comprobado");
+  else {
+    const I = JSON.parse(fs.readFileSync(FX, "utf8")), cf = contexto("?olivos=gen");
+    for (let k = 0; k < 20 && cf.__G.estado() === "cargando"; k++) await espera();
+    cf.D.copas = I.copas; cf.D.copas_id = I.copas_id; cf.D.copas_param = I.copas_param; cf.D.copas_semilla = I.copas_semilla; cf.D.centro_utm = I.centro_utm;
+    const ol = I.copas.map((q, i) => ({ i, x: q[0], y: q[1], h: q[2], perfil: q[3] })).filter(c => !(c.h > 8));
+    const NAV = fs.readFileSync(path.join(RAIZ, "pruebas", "guardianes", "_navegador.js"), "utf8");
+    const e = Function("return (" + /cerca: (\{[^}]*\})/.exec(NAV)[1] + ")")(), fx = e.ox, fz = -e.oy, ce = Math.cos(e.el);
+    cf.camera.position.set(fx + e.dist * ce * Math.sin(e.az), 4 + e.dist * Math.sin(e.el), fz + e.dist * ce * Math.cos(e.az));   // como camara() de 09_camara
+    cf.__G.actualiza(fx, fz, 550000, ol);
+    const st = cf.window.__olivosGen();
+    diag.cerca_fixture = { plan: st.plan, pendientes: cf.__G.pendientes() };
+    exige(st.plan >= 1, "con la cámara de «cerca» y el fixture, el plan de generados queda vacío");
+    exige(cf.__G.pendientes() > 0, "con el plan sin dibujar, pendientes() debe ser > 0");
+  }
+}
+
 // ---- 3) con la bandera: el lote y el fundido (tres olivos de prueba; el foco en el primero)
 const perfil = [2, 2, 2, 2, 2, 2, 2, 2];
 c.D.copas = [[0, 0, 4.5, perfil, 1], [9, 0, 4, perfil, 1], [0, 30, 4, perfil, 1]];
