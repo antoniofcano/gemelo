@@ -9,6 +9,9 @@ Cómo se pone en marcha y se opera el servidor del gemelo en el VPS de OVH, como
 | Servicio | Imagen (versión + digest en el contrato) | Qué hace |
 |---|---|---|
 | `db` | `postgis/postgis:18-3.6-alpine` (PostgreSQL 18.6, PostGIS 3.6.4) | base; solo en la red `bd` (sin salida); volumen en `/var/lib/postgresql` |
+
+> **PostGIS lo crea la migración `0001`, no la imagen:** al montar `infra/bd-inicial/` en `/docker-entrypoint-initdb.d`, la imagen ya no ejecuta su propio script de PostGIS. En disco lento, `CREATE EXTENSION postgis` tarda; por eso `migra` corre con un tope de 10 min por sentencia (la api, 15 s). No probado aún en el VPS.
+
 | `migra` | `gemelo-api` (Node 24.22.1 LTS) | aplica migraciones con el usuario dueño y termina |
 | `api` | `gemelo-api` | Fastify en el puerto 8000; usuario `gemelo_api` sin permisos de esquema |
 | `web` | `caddy:2.11.7-alpine` | Caddy interno en 8080: estáticos, cabeceras, CSP Report-Only, `forward_auth`; en la red `borde` como `gemelo-web` |
