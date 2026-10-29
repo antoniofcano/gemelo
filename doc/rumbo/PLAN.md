@@ -98,7 +98,7 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | P6 | F2: los demás ven si vas en quad o dron (modo en la pose, quad/dron bajo el avatar remoto, icono en el minimapa) | P5 | ligera · **opus** (con I1) | 🟡 en curso |
 | I1 | Presencia en el minimapa (quién está conectado y dónde) e **ir con alguien** (desde Gente o tocando su punto del minimapa; en VR con fundido) | P5 | ligera · **opus**; 👤 a ojo | 🟡 en curso |
 | I2 | La brújula oculta o muestra el minimapa | — | ligera | ✅ |
-| I3 | VR: desde el vuelo, apuntar al suelo y al bajar aparecer donde apuntaba (teletransporte desde el aire) | — | ligera · **opus**; 👤 Quest | 🟡 en curso |
+| I3 | Teletransporte desde el aire: en VR desde el vuelo y en ordenador y móvil con el **dron** (toque corto en el suelo pone el anillo, «Aterrizar aquí» te deja de pie allí); una sola pieza para los tres aparatos | — | ligera · **opus**; 👤 Quest | 🟡 en curso |
 | O1 | Olivos generados: transición suave al acercarse (forma y luz; materiales con nubes y escarcha del motor) | — | ligera; 🔶 al medir | ✅ medido: 2 generados de cerca, 40 llamadas / 545 k (aspecto, 👤) |
 | O2 | Olivos generados: desglose del coste de `factorR8 = 1` por objeto | — | 🔶 | ⬜ |
 | O3 | `semillas_copas.py` dentro de los exportadores | — | ligera | ✅ |
