@@ -30,7 +30,7 @@ services:
       - "127.0.0.1:${GEMELO_DEV_PUERTO_HTTPS:-8743}:8443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./portada:/srv/portada:ro
+      - ../../apps/web/dist-portada:/srv/portada:ro   # la portada y la entrada (apps/web/portada, build:portada)
       - ../../apps/web/dist:/srv/web:ro
       - ${GEMELO_DEV_TESELAS:-../../pruebas/salida/fixture}:/srv/teselas:ro
     tmpfs:                             # la CA local y su estado no se guardan: es desarrollo (se regeneran en cada arranque)

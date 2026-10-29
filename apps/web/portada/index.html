@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="es" data-disp="escritorio">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="description" content="Un olivar de verdad, en 3D, que se visita desde casa.">
+<meta name="color-scheme" content="light dark">
+<title>Cuarenta hazas</title>
+<!-- Portada y pantallas de entrada (doc/sistema/UX.md §4.1–4.7; decisión 56: vive en apps/web). Sin JS de terceros ni nada
+     en línea: pasa la CSP estricta de producción (script-src 'self'; style-src 'self'). «Cuarenta hazas» es un nombre
+     PROVISIONAL (decisión 44: la marca se aplaza). Sin JS se lee la portada y el formulario manda el enlace igual. -->
+<link rel="stylesheet" href="./portada.css">
+<script type="module" src="./portada.js"></script>
+</head>
+<body>
+<a class="saltar" href="#app">Saltar al contenido</a>
+<p class="vh" id="anuncio" role="status" aria-live="polite"></p>
+
+<header class="barra" id="barra">
+  <a class="marca" href="#portada" aria-label="Cuarenta hazas, portada">
+    <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><rect class="m-fondo" x="2" y="2" width="28" height="28" rx="7"/><circle class="m-punto" cx="11" cy="12" r="4"/><circle class="m-punto" cx="21" cy="12" r="4"/><circle class="m-punto" cx="11" cy="22" r="4"/><circle class="m-punto" cx="21" cy="22" r="4"/></svg>
+    <span>Cuarenta hazas</span>
+  </a>
+  <div class="quien" id="quien" hidden>
+    <span>Hola, <strong id="aliasBarra">—</strong></span>
+    <a class="btn" href="#dispositivos">Mis dispositivos</a>
+    <button type="button" class="btn btn-txt" data-accion="salir">Cerrar sesión</button>
+  </div>
+</header>
+
+<main id="app" class="app" tabindex="-1">
+
+  <!-- 4.1 PORTADA PÚBLICA -->
+  <section class="pant" id="p-portada" aria-labelledby="t-portada">
+    <div class="heroe">
+      <div>
+        <p class="pill">Cano &amp; Damas Oleicultores</p>
+        <h1 id="t-portada" tabindex="-1">Cuarenta hazas</h1>
+        <p class="lema">Un olivar de verdad, en 3D, que se visita desde casa. Cada hogar sigue su haza a lo largo del año y la recorre con los demás.</p>
+        <div class="fila" id="accionesSin">
+          <a class="btn btn-prim btn-grande" href="#entrar" id="btnEntrar">Entrar</a>
+          <a class="btn" href="#comoFunciona">Cómo funciona</a>
+        </div>
+        <div class="fila" id="accionesCon" hidden>
+          <a class="btn btn-prim btn-grande" href="/finca/" id="btnSeguir">Seguir a la finca</a>
+          <a class="btn" href="#dispositivos">Vincular unas gafas</a>
+        </div>
+        <p class="pista" id="pistaPortada">Para entrar necesitas una cuenta de hogar. Sin contraseña: te mandamos un enlace al correo.</p>
+      </div>
+      <svg class="ilus" viewBox="0 0 400 260" role="img" aria-label="Ilustración: hazas de olivar vistas desde arriba, con un avatar de bloque en una de ellas">
+        <defs><pattern id="olivosP" width="20" height="20" patternUnits="userSpaceOnUse"><circle class="i-copa" cx="10" cy="10" r="6"/><circle class="i-copa2" cx="8.5" cy="8.5" r="2.5"/></pattern></defs>
+        <polygon class="i-haza-a" points="14,16 188,10 194,122 18,128"/><polygon class="i-olivos" points="14,16 188,10 194,122 18,128"/>
+        <polygon class="i-haza-b" points="206,10 386,18 382,126 210,120"/><polygon class="i-olivos" points="206,10 386,18 382,126 210,120"/>
+        <polygon class="i-haza-b" points="20,140 194,134 190,248 16,250"/><polygon class="i-olivos" points="20,140 194,134 190,248 16,250"/>
+        <polygon class="i-haza-a" points="210,132 382,138 386,250 206,246"/><polygon class="i-olivos" points="210,132 382,138 386,250 206,246"/>
+        <polygon class="i-mia" points="210,132 382,138 386,250 206,246"/>
+        <g transform="translate(288 176)"><rect class="i-pantalon" x="-7" y="-2" width="14" height="18"/><rect class="i-cara" x="-6" y="-14" width="12" height="12"/><rect class="i-paja" x="-9" y="-17" width="18" height="4"/></g>
+      </svg>
+    </div>
+    <h2 id="comoFunciona">Cómo funciona</h2>
+    <ol class="como">
+      <li><strong>Entra con tu correo.</strong> Te llega un enlace que vale 15 minutos y sirve una vez. En unas gafas Meta Quest, con un código corto.</li>
+      <li><strong>Elige alias y avatar.</strong> Es lo único tuyo que ven los demás.</li>
+      <li><strong>Visita la finca.</strong> En el ordenador, en el móvil o con unas Meta Quest.</li>
+      <li><strong>Sigue tu haza.</strong> Qué se le hizo, cómo va de vigor y qué hay en su suelo, diciendo siempre de dónde sale cada dato.</li>
+    </ol>
+    <div class="rejilla-2">
+      <div class="tarjeta"><h3>Qué es medido y qué no</h3><p>La forma de las copas y el relieve salen del vuelo LiDAR; el vigor, de satélite; los troncos y las ramas son ilustrativos. Cada dato lleva su etiqueta: <span class="pill pill-medido">medido</span> <span class="pill pill-deducido">deducido</span> <span class="pill pill-ilus">ilustrativo</span></p></div>
+      <div class="tarjeta"><h3>Tu privacidad</h3><p>No hay vídeo de los hogares, nunca. La voz solo se abre en visitas guiadas y con un guía que modera. La cuenta es de una persona adulta del hogar.</p></div>
+    </div>
+    <footer class="creditos">
+      <p>Datos: LiDAR, MDT y ortofoto PNOA © Instituto Geográfico Nacional (CNIG), CC BY 4.0 · Imágenes Sentinel-2 del programa Copernicus de la UE · Suelos: SoilGrids, ISRIC – World Soil Information, CC BY 4.0.</p>
+      <p>«Cuarenta hazas» es un nombre provisional. Aviso legal, política de privacidad y declaración de accesibilidad: pendientes de redactar.</p>
+    </footer>
+  </section>
+
+  <!-- 4.2 ENTRAR CON TU CORREO -->
+  <section class="pant estrecha centrada" id="p-entrar" aria-labelledby="t-entrar" hidden>
+    <a class="btn btn-txt" href="#portada">← Volver a la portada</a>
+    <h1 id="t-entrar" tabindex="-1">Entrar con tu correo</h1>
+    <p>Escribe el correo de tu hogar. Te mandamos un enlace para entrar: no hay contraseña que recordar.</p>
+    <form id="fEntrar" class="pila" method="post" action="/api/auth/enlace" novalidate>
+      <div class="campo">
+        <label for="correo">Correo electrónico</label>
+        <input id="correo" type="email" name="correo" autocomplete="email" inputmode="email" required maxlength="254" aria-describedby="pCorreo eCorreo">
+        <p class="pista" id="pCorreo">El que dio tu hogar a la explotación.</p>
+        <p class="err" id="eCorreo" hidden></p>
+      </div>
+      <div class="aviso aviso-err" id="avEntrar" role="alert" hidden><p id="avEntrarTxt"></p></div>
+      <div class="fila"><button type="submit" class="btn btn-prim btn-grande" id="btnMandar">Mandarme el enlace</button></div>
+    </form>
+    <div class="tarjeta separada" id="opcGafas">
+      <h2>¿Estás en las gafas?</h2>
+      <p>Escribir y abrir el correo en las Quest es incómodo. Puedes vincularlas con un móvil u ordenador donde ya hayas entrado.</p>
+      <a class="btn" href="#vincular">Vincular unas gafas con un código</a>
+    </div>
+    <p class="nota separada">¿No tienes cuenta? Las cuentas de hogar las da la explotación.</p>
+  </section>
+
+  <!-- 4.3 REVISA TU CORREO -->
+  <section class="pant estrecha centrada" id="p-revisa" aria-labelledby="t-revisa" hidden>
+    <h1 id="t-revisa" tabindex="-1">Revisa tu correo</h1>
+    <p>Si <strong id="correoEco">ese correo</strong> puede entrar, te acabamos de mandar un enlace. Caduca en <strong>15 minutos</strong> y sirve <strong>una sola vez</strong>.</p>
+    <p class="pista">Si no llega en un par de minutos, mira en «Correo no deseado». Ábrelo en este mismo dispositivo.</p>
+    <div class="aviso aviso-err" id="avRevisa" role="alert" hidden><p id="avRevisaTxt"></p></div>
+    <div class="fila separada">
+      <button type="button" class="btn" id="btnReenviar" disabled>Reenviar el enlace</button>
+      <a class="btn btn-txt" href="#entrar">Usar otro correo</a>
+    </div>
+    <p class="pista" id="cuentaReenvio" aria-live="off"></p>
+  </section>
+
+  <!-- 4.4 VINCULAR LAS GAFAS (en las gafas, sin sesión) -->
+  <section class="pant estrecha centrada" id="p-vincular" aria-labelledby="t-vincular" hidden>
+    <h1 id="t-vincular" tabindex="-1">Vincular las gafas</h1>
+    <ol>
+      <li>En tu móvil u ordenador, entra con tu correo.</li>
+      <li>Abre <strong>Mis dispositivos → Vincular unas gafas</strong>.</li>
+      <li>Escribe este código. Caduca en 5 minutos y sirve una vez.</li>
+    </ol>
+    <p class="codigo-caja"><span class="codigo" id="codigo" aria-describedby="codigoPista">· · · - · · ·</span></p>
+    <p class="pista" id="codigoPista"></p>
+    <div class="aviso" id="avVincular" role="status"><p id="avVincularTxt">Pidiendo un código…</p></div>
+    <div class="fila separada">
+      <button type="button" class="btn" id="btnOtroCodigo" hidden>Dame otro código</button>
+      <a class="btn btn-prim btn-grande" href="/finca/" id="btnGafasFinca" hidden>Seguir a la finca</a>
+      <a class="btn btn-txt" href="#entrar" id="btnPrefieroCorreo">Prefiero usar el correo</a>
+    </div>
+  </section>
+
+  <!-- 4.5 PRIMER ACCESO: PRIVACIDAD Y NORMAS -->
+  <section class="pant estrecha" id="p-bienvenida" aria-labelledby="t-bienvenida" hidden>
+    <ol class="pasos" aria-label="Pasos del primer acceso"><li aria-current="step">1. Privacidad y normas</li><li>2. Alias</li><li>3. Avatar</li></ol>
+    <h1 id="t-bienvenida" tabindex="-1">Antes de entrar</h1>
+    <p>Es tu primera vez. Esto es lo importante, en corto:</p>
+    <div class="tarjeta pila">
+      <div><h2>Qué guardamos</h2><p>Tu correo (para mandarte enlaces), tu alias, tu avatar, las preguntas que hagas sobre las hazas, a qué visitas te apuntas y desde qué aparatos has entrado.</p></div>
+      <div><h2>Qué no guardamos</h2><p>Ni tu voz ni tu imagen: los hogares nunca emiten vídeo. El directo de las visitas guiadas no se graba. La posición de tu avatar no se guarda al salir.</p></div>
+      <div><h2>Voz y vídeo</h2><p>Solo hay voz en visitas guiadas, con un guía que puede silenciar o expulsar. En algunas, una persona de la explotación emite vídeo desde el campo, encuadrando copa y suelo.</p></div>
+      <div><h2>Menores</h2><p>La cuenta es de una persona adulta del hogar, que responde de su uso. Si entra un menor, lo hace con tu cuenta y contigo. Te recomendamos un alias que no sea un nombre real.</p></div>
+      <details><summary>Leer las normas de la comunidad</summary>
+        <ol><li>Trata a todos con respeto; aquí hay familias y menores.</li><li>No compartas datos personales: ni tuyos ni de nadie.</li><li>No grabes ni difundas lo que veas en las visitas guiadas.</li><li>Lo que dice la explotación sobre cada haza es información, no un consejo agronómico.</li><li>El guía y la administración pueden silenciar o expulsar a quien no cumpla.</li></ol>
+      </details>
+      <p class="nota">La política de privacidad completa (responsable, finalidades, base legal, plazos y tus derechos) está pendiente de redactar con la asesoría.</p>
+    </div>
+    <form id="fBienvenida" class="pila separada" novalidate>
+      <div class="aviso aviso-err" id="eBienvenida" role="alert" tabindex="-1" hidden><p id="eBienvenidaTxt">Para seguir, marca las tres casillas obligatorias.</p></div>
+      <label class="chk"><input type="checkbox" id="cPriv" required><span>He leído cómo se tratan mis datos. <span class="pista">(obligatorio)</span></span></label>
+      <label class="chk"><input type="checkbox" id="cNormas" required><span>Acepto las normas de la comunidad. <span class="pista">(obligatorio)</span></span></label>
+      <label class="chk"><input type="checkbox" id="cAdulto" required><span>Soy mayor de edad y esta cuenta es de mi hogar. <span class="pista">(obligatorio)</span></span></label>
+      <label class="chk"><input type="checkbox" id="cAvisos"><span>Quiero que me aviséis por correo de las visitas guiadas. <span class="pista">(opcional; se puede quitar cuando quieras)</span></span></label>
+      <div class="fila"><button type="submit" class="btn btn-prim btn-grande">Seguir</button><button type="button" class="btn btn-txt" data-accion="salir">Ahora no, salir</button></div>
+    </form>
+  </section>
+
+  <!-- 4.6 PRIMER ACCESO: ALIAS -->
+  <section class="pant estrecha" id="p-alias" aria-labelledby="t-alias" hidden>
+    <ol class="pasos" aria-label="Pasos del primer acceso"><li>1. Privacidad y normas</li><li aria-current="step">2. Alias</li><li>3. Avatar</li></ol>
+    <h1 id="t-alias" tabindex="-1">Tu alias</h1>
+    <p>Es el nombre que verán los demás sobre tu avatar. Mejor que no sea tu nombre real.</p>
+    <form id="fAlias" class="pila" novalidate>
+      <div class="campo">
+        <label for="alias">Alias público</label>
+        <input id="alias" type="text" maxlength="20" autocomplete="off" required aria-describedby="pAlias eAlias">
+        <p class="pista" id="pAlias">De 3 a 20 caracteres: letras, números, espacios y guiones. Sin correos ni teléfonos.</p>
+        <p class="err" id="eAlias" hidden></p>
+      </div>
+      <div><p class="etq" id="tSug">Ideas</p>
+        <div class="fila" role="group" aria-labelledby="tSug" id="sugerencias"></div>
+      </div>
+      <label class="chk"><input type="checkbox" id="cVisible"><span>Mostrar mi alias en la ficha de mi haza. <span class="pista">(si no, los demás ven tu haza sin saber de quién es)</span></span></label>
+      <div class="fila"><button type="submit" class="btn btn-prim btn-grande">Seguir</button><a class="btn btn-txt" href="#bienvenida">Atrás</a></div>
+    </form>
+  </section>
+
+  <!-- 4.7 PRIMER ACCESO: AVATAR -->
+  <section class="pant" id="p-avatar" aria-labelledby="t-avatar" hidden>
+    <ol class="pasos" aria-label="Pasos del primer acceso"><li>1. Privacidad y normas</li><li>2. Alias</li><li aria-current="step">3. Avatar</li></ol>
+    <h1 id="t-avatar" tabindex="-1">Tu avatar</h1>
+    <p>Estilo bloque, como la finca. Sin rasgos de edad ni de género.</p>
+    <div class="avatar-zona">
+      <div class="avatar-prev"><svg id="avatarPrev" viewBox="-40 -60 80 90" role="img" aria-label="Vista previa del avatar"></svg><p class="nota centro" id="aliasPrev">—</p></div>
+      <form id="fAvatar" novalidate>
+        <fieldset><legend>Color de la camisa</legend><div class="muestras" id="mCamisa"></div></fieldset>
+        <fieldset><legend>Sombrero</legend><div class="muestras" id="mSombrero"></div></fieldset>
+        <fieldset><legend>Tono de piel</legend><div class="muestras" id="mPiel"></div></fieldset>
+        <div class="aviso aviso-err" id="eAvatar" role="alert" hidden><p id="eAvatarTxt"></p></div>
+        <div class="fila"><button type="button" class="btn" id="btnAzar">Al azar</button><button type="submit" class="btn btn-prim btn-grande">Listo</button><a class="btn btn-txt" href="#alias">Atrás</a></div>
+      </form>
+    </div>
+  </section>
+
+  <!-- CONFIGURACIÓN → MIS DISPOSITIVOS (con sesión) -->
+  <section class="pant estrecha" id="p-dispositivos" aria-labelledby="t-dispositivos" hidden>
+    <a class="btn btn-txt" href="#portada">← Volver</a>
+    <h1 id="t-dispositivos" tabindex="-1">Mis dispositivos</h1>
+    <div class="tarjeta pila">
+      <h2 id="tVincular">Vincular unas gafas</h2>
+      <p>En las gafas, abre esta web y elige «Vincular unas gafas con un código». Te enseñarán un código como <span class="codigo-mini">K7Q-4M2</span>.</p>
+      <div class="aviso"><p><strong>Escribe solo el código que ves ahora en tus propias gafas.</strong> Nunca uno que te haya pasado otra persona: quien tenga ese código entraría con tu cuenta.</p></div>
+      <form id="fVincular" class="pila" novalidate aria-labelledby="tVincular">
+        <div class="campo">
+          <label for="codigoTecleado">Código de las gafas</label>
+          <input id="codigoTecleado" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12" required aria-describedby="pCodigo eCodigo">
+          <p class="pista" id="pCodigo">6 letras y números, con o sin guion. Da igual mayúsculas o minúsculas.</p>
+          <p class="err" id="eCodigo" hidden></p>
+        </div>
+        <div class="aviso aviso-ok" id="okVincular" role="status" hidden><p id="okVincularTxt"></p></div>
+        <div class="fila"><button type="submit" class="btn btn-prim btn-grande" id="btnAprobar">Aprobar</button><button type="button" class="btn btn-peligro" id="btnRechazar">No son mis gafas: rechazar</button></div>
+      </form>
+    </div>
+    <div class="tarjeta pila separada">
+      <h2>¿Has perdido un aparato?</h2>
+      <p>Cierra la sesión en todos los aparatos donde hayas entrado, también en este. Para volver, pide otro enlace.</p>
+      <div class="fila"><button type="button" class="btn btn-peligro" data-accion="salirTodas">Cerrar sesión en todos mis aparatos</button></div>
+    </div>
+  </section>
+
+</main>
+</body>
+</html>

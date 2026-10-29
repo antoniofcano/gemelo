@@ -17,7 +17,7 @@ Versión del contrato de datos: **v = 2** (campo `v` del índice).
 | Api HTTP (F1a) | [`contratos/api.openapi.yaml`](../../contratos/api.openapi.yaml) | `apps/api/pruebas/unidad/app.test.ts` (cada ruta en el contrato y al revés) |
 | Ficha pública de haza | [`contratos/haza.schema.json`](../../contratos/haza.schema.json) (lista blanca, ADR-0014) | pruebas de `apps/api` (ajv); en el motor, `hazas.test.js` (la ficha solo enseña la lista blanca) |
 | Lindes de las hazas en el motor (`GET /api/hazas`, esquema `Hazas`) | [`contratos/api.openapi.yaml`](../../contratos/api.openapi.yaml) | `hazas.test.js` (ajv contra el esquema del contrato y el validador del motor, de acuerdo; UTM → local; sin api no se crea nada) |
-| Enlace mágico y sesión | [`contratos/sesion.md`](../../contratos/sesion.md) (ADR-0013) | integración de `apps/api` (`GEMELO_DOCKER=1`) |
+| Enlace mágico, código corto de las gafas, primer acceso y sesión | [`contratos/sesion.md`](../../contratos/sesion.md) (ADR-0013; decisiones 46 y 61) | integración de `apps/api` (`GEMELO_DOCKER=1`) |
 | Lectura de OlivarTrack | [`contratos/olivartrack-sync.md`](../../contratos/olivartrack-sync.md) (formas **no verificadas**) | `apps/api/pruebas/unidad/ot.test.ts` con grabaciones sintéticas |
 | Publicación en el VPS | [`contratos/publicacion-vps.json`](../../contratos/publicacion-vps.json) | `api.test.js` |
 | Presencia compartida (F2): pose binaria, tasas, interpolación | [`contratos/presencia.md`](../../contratos/presencia.md) (tabla de bytes, versión 1) | `presencia.test.js` (ida y vuelta, tamaños, errores máximos; en Chrome, llamadas con 10 y 40 simulados) |
