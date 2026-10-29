@@ -51,21 +51,27 @@ services:
 
   # PostgreSQL 18 + PostGIS 3.6 (la imagen crea la extensión postgis en la base «gemelo» al iniciar el volumen).
   # Desde PostgreSQL 18 el volumen se monta en /var/lib/postgresql (los datos van dentro, en 18/docker).
+  # Roles COMO EN PRODUCCIÓN (decisión 55): el dueño `gemelo_dueno` (migraciones, siembra) y `gemelo_api` (solo filas),
+  # que crea el MISMO infra/bd-inicial/01-roles.sh la primera vez que arranca el volumen. Las claves llegan como secretos
+  # (ficheros en /run/secrets, como en producción) tomados de las variables aleatorias de infra/dev/.env.
   db:
     <<: *comun
     image: postgis/postgis:18-3.6-alpine@sha256:c53a483fc274072dfa02cd491efa79f3c8ae0a10774a0ece6c9c53b6a632cdef
     shm_size: 256m
     environment:
-      POSTGRES_USER: gemelo
+      POSTGRES_USER: gemelo_dueno
       POSTGRES_DB: gemelo
-      POSTGRES_PASSWORD: ${GEMELO_DEV_PG_CLAVE:?falta infra/dev/.env (lo crea npm run dev:arriba)}
+      POSTGRES_PASSWORD_FILE: /run/secrets/pg_dueno
       POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+      GEMELO_PG_API_CLAVE_FICHERO: /run/secrets/pg_api
+    secrets: [pg_dueno, pg_api]
     ports:
       - "127.0.0.1:${GEMELO_DEV_PUERTO_DB:-55432}:5432"
     volumes:
       - pg_datos:/var/lib/postgresql
+      - ../bd-inicial:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U gemelo -d gemelo -h 127.0.0.1"]
+      test: ["CMD-SHELL", "pg_isready -U gemelo_dueno -d gemelo -h 127.0.0.1"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -125,7 +131,8 @@ services:
   # La api (apps/api, fase 1a), construida con su Dockerfile (contexto: la raíz del repo; node fijado por versión y digest,
   # usuario node = uid 1000). Escucha en 8000 solo en la red interna: se entra por Caddy en /api/. Contrato de enchufe y
   # diferencias con producción en doc/operacion/DESARROLLO-LOCAL.md § La api.
-  # `migra` aplica las migraciones (apps/api/migraciones) y termina; la api espera a que acabe bien.
+  # `migra` aplica las migraciones (apps/api/migraciones) con el DUEÑO y termina; la api espera a que acabe bien y entra
+  # con `gemelo_api` (solo filas, sin DDL), como en producción (decisión 55).
   migra:
     <<: *comun
     image: gemelo-api:local
@@ -139,7 +146,7 @@ services:
       db: { condition: service_healthy }
     environment:
       NODE_ENV: development
-      GEMELO_DB_URL: "postgresql://gemelo@db:5432/gemelo"
+      GEMELO_DB_URL: "postgresql://gemelo_dueno@db:5432/gemelo"
       GEMELO_DB_CLAVE: ${GEMELO_DEV_PG_CLAVE:?falta infra/dev/.env (lo crea npm run dev:arriba)}
     deploy:
       resources:
@@ -161,8 +168,8 @@ services:
       NODE_ENV: development            # fuera de producción: secretos en variable, SMTP sin TLS hacia Mailpit (config.ts)
       GEMELO_API_PUERTO: "8000"
       GEMELO_API_PROXIES: "1"          # delante solo está el Caddy de dev (en producción, borde + Caddy interno = 2)
-      GEMELO_DB_URL: "postgresql://gemelo@db:5432/gemelo"
-      GEMELO_DB_CLAVE: ${GEMELO_DEV_PG_CLAVE:?falta infra/dev/.env (lo crea npm run dev:arriba)}
+      GEMELO_DB_URL: "postgresql://gemelo_api@db:5432/gemelo"
+      GEMELO_DB_CLAVE: ${GEMELO_DEV_PG_API_CLAVE:?falta GEMELO_DEV_PG_API_CLAVE en infra/dev/.env (npm run dev:arriba lo añade)}
       GEMELO_SESION_SECRETO: ${GEMELO_DEV_SESION_SECRETO:?falta GEMELO_DEV_SESION_SECRETO en infra/dev/.env (npm run dev:arriba lo añade)}
       GEMELO_URL_PUBLICA: "https://localhost:${GEMELO_DEV_PUERTO_HTTPS:-8743}"   # https: la cookie de sesión es Secure
       GEMELO_API_ORIGENES: "https://localhost:${GEMELO_DEV_PUERTO_HTTPS:-8743}"
@@ -187,3 +194,9 @@ networks:
 
 volumes:
   pg_datos: {}
+
+# Las claves de la base, como secretos de Docker (ficheros en /run/secrets, igual que en producción), pero tomadas de las
+# variables de infra/dev/.env en vez de ficheros de /etc/gemelo/secretos/
+secrets:
+  pg_dueno: { environment: GEMELO_DEV_PG_CLAVE }
+  pg_api: { environment: GEMELO_DEV_PG_API_CLAVE }

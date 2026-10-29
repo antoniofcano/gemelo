@@ -26,6 +26,7 @@ function clavesNuevas() {
   const aleatorio = n => crypto.randomBytes(n).toString("base64url");
   return {
     GEMELO_DEV_PG_CLAVE: aleatorio(24),
+    GEMELO_DEV_PG_API_CLAVE: aleatorio(24),
     GEMELO_DEV_LIVEKIT_CLAVE: "dev" + crypto.randomBytes(6).toString("hex"),
     GEMELO_DEV_LIVEKIT_SECRETO: aleatorio(32),
     GEMELO_DEV_SESION_SECRETO: aleatorio(32),
@@ -52,6 +53,10 @@ export function aseguraEnv() {
     faltan.map(k => k + "=" + valores[k] + "\n").join(""));
   return faltan;
 }
+
+/** Roles de Postgres, los mismos que en producción (decisión 55): el dueño migra y siembra; la api solo toca filas */
+export const PG_DUENO = "gemelo_dueno";
+export const PG_API = "gemelo_api";
 
 /** Carga infra/dev/.env en process.env (sin pisar lo que ya venga del entorno) */
 export function cargaEnv() {

@@ -1,5 +1,7 @@
 // Siembra del entorno local: hazas y olivos SINTÉTICOS del mundo Hituelo del fixture y tres hogares de prueba
 // (@example.com), cada uno con su haza. Idempotente: se puede repetir cuantas veces se quiera y deja siempre lo mismo.
+// Entra con el DUEÑO (gemelo_dueno), como la carga de hazas y la primera cuenta en producción (RUNBOOK-VPS, pasos 8 y 9):
+// es trabajo de administración, no de la api; lo que la api escribe lo prueba la e2e con gemelo_api.
 // La lanza `npm run dev:arriba` después de `up --wait` (las migraciones ya las aplicó el servicio `migra`);
 // a mano: node infra/dev/herramientas/siembra.mjs (con el entorno levantado).
 //
@@ -8,7 +10,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { cargaEnv, puertos, util, FIXTURE, RAIZ, SALIDA_DEV } from "./_comun.mjs";
+import { cargaEnv, puertos, util, FIXTURE, PG_DUENO, RAIZ, SALIDA_DEV } from "./_comun.mjs";
 
 /** Hogares de prueba. alias_visible decide si su alias sale en la ficha de su haza para los demás (lista blanca). */
 export const HOGARES = [
@@ -40,7 +42,7 @@ export async function siembra() {
   const { sql, resumen } = sqlDeHazas();
   const { default: pg } = await import("pg");
   const p = puertos();
-  const c = new pg.Client({ host: "127.0.0.1", port: p.db, user: "gemelo", database: "gemelo", password: process.env.GEMELO_DEV_PG_CLAVE, connectionTimeoutMillis: 10000 });
+  const c = new pg.Client({ host: "127.0.0.1", port: p.db, user: PG_DUENO, database: "gemelo", password: process.env.GEMELO_DEV_PG_CLAVE, connectionTimeoutMillis: 10000 });
   try { await c.connect(); }
   catch (e) {
     // la clave de Postgres se fija al CREAR el volumen: un volumen de otro .env (otra copia del repo) no la acepta

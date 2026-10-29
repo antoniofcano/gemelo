@@ -3,15 +3,17 @@
 //  2. genera el fixture sintético si falta (o usa GEMELO_DEV_TESELAS, una carpeta de datos reales FUERA del repo);
 //  3. construye la web con Vite contra el índice de la finca (GEMELO_DEV_FINCA, por defecto hituelo), con base /teselas/<finca>/,
 //     y deja junto a cada fichero su versión .br/.gz para que Caddy los sirva ya comprimidos;
-//  4. docker compose up -d --build --wait: construye la imagen de la api (apps/api/Dockerfile; con la caché de Docker es
+//  4. arranca la base y comprueba que tiene los roles de producción (gemelo_dueno y gemelo_api; decisión 55): un volumen
+//     de antes no los tiene y se dice cómo arreglarlo;
+//  5. docker compose up -d --build --wait: construye la imagen de la api (apps/api/Dockerfile; con la caché de Docker es
 //     rápido si no cambió nada), aplica las migraciones (servicio `migra`) y espera a los healthchecks;
-//  5. siembra las hazas, los olivos y los hogares de prueba SINTÉTICOS (siembra.mjs, idempotente).
+//  6. siembra las hazas, los olivos y los hogares de prueba SINTÉTICOS (siembra.mjs, idempotente).
 import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
 import { fileURLToPath } from "node:url";
 import { siembra, HOGARES } from "./siembra.mjs";
-import { aseguraEnv, cargaEnv, carpetaTeselas, compose, motivoSinDocker, npm, aseguraDependencias, puertos, util, RAIZ, ENV, FIXTURE, SALIDA_DEV, WEB } from "./_comun.mjs";
+import { aseguraEnv, cargaEnv, carpetaTeselas, compose, motivoSinDocker, npm, aseguraDependencias, puertos, util, RAIZ, ENV, FIXTURE, PG_API, PG_DUENO, SALIDA_DEV, WEB } from "./_comun.mjs";
 
 const SIN_BUILD = process.argv.includes("--sin-build");
 const rel = p => path.relative(RAIZ, p) || ".";
@@ -60,6 +62,35 @@ function construyeWeb(datos) {
   console.log("  " + precomprime(dist) + " ficheros precomprimidos (br, gz) en " + rel(dist));
 }
 
+const volumen = () => (process.env.COMPOSE_PROJECT_NAME || "gemelo-dev") + "_pg_datos";
+const ARREGLO = "es de desarrollo: npm run dev:abajo -- --borra-datos y vuelve a levantar (o usa otro COMPOSE_PROJECT_NAME)";
+
+/**
+ * Los roles solo se crean al iniciar el volumen (infra/bd-inicial/01-roles.sh, el de producción). Un volumen de antes de la
+ * decisión 55 tiene el dueño «gemelo» y ni gemelo_dueno ni gemelo_api: se detecta aquí, con la base sola, y se dice qué hacer
+ * en vez de dejar que `migra` falle con un error de autenticación. (psql por el socket del contenedor: no pide clave.)
+ */
+function compruebaRoles(env) {
+  const u = compose(["up", "-d", "--wait", "--wait-timeout", "240", "db"], { env });
+  if (u.status !== 0) throw new Error("la base no arranca (mira `docker compose -f infra/dev/compose.yml logs db`)");
+  const r = compose(["exec", "-T", "db", "psql", "-U", PG_DUENO, "-d", "gemelo", "-tAc",
+    "select count(*) from pg_roles where rolname = '" + PG_API + "'"], { captura: true, env });
+  if (r.status !== 0 || r.stdout.trim() !== "1") {
+    throw new Error("el volumen de la base (" + volumen() + ") es de antes de que el entorno local usara los roles de producción (" +
+      PG_DUENO + " para migrar y " + PG_API + " para la api; decisión 55) y no los tiene" +
+      (r.status !== 0 ? " (" + (r.stderr || r.stdout).trim().split("\n").pop() + ")" : "") + ". " + ARREGLO.replace(/^e/, "E"));
+  }
+}
+
+/** Tras un `up` fallido: si `migra` o la api no entran por la clave, el volumen se creó con otro infra/dev/.env */
+function motivoUp() {
+  const l = compose(["logs", "--no-color", "migra", "api"], { captura: true });
+  if (/password authentication failed/.test(l.stdout + l.stderr)) {
+    return "la base no acepta las claves de infra/dev/.env: el volumen (" + volumen() + ") se creó con otras. " + ARREGLO.replace(/^e/, "E");
+  }
+  return "docker compose up falló (mira `npm run dev:estado` y `docker compose -f infra/dev/compose.yml logs`)";
+}
+
 export async function levanta({ sinBuild = false } = {}) {
   const sin = motivoSinDocker();
   if (sin) throw new Error(sin);
@@ -76,9 +107,11 @@ export async function levanta({ sinBuild = false } = {}) {
   else if (!fs.existsSync(path.join(WEB, "dist", "index.html"))) throw new Error("--sin-build pero no hay apps/web/dist: quítalo la primera vez");
   paso("dependencias de las herramientas");
   aseguraDependencias();
+  paso("base de datos y sus roles (" + PG_DUENO + ", " + PG_API + ")");
+  compruebaRoles({ GEMELO_DEV_TESELAS: teselas });
   paso("docker compose up -d --build --wait (api con sus migraciones y servicios)");
   const r = compose(["up", "-d", "--build", "--wait", "--wait-timeout", "240"], { env: { GEMELO_DEV_TESELAS: teselas } });
-  if (r.status !== 0) throw new Error("docker compose up falló (mira `npm run dev:estado` y `docker compose -f infra/dev/compose.yml logs`)");
+  if (r.status !== 0) throw new Error(motivoUp());
   paso("siembra sintética (hazas, olivos y hogares de prueba)");
   const sembrado = await siembra();
   console.log("  " + sembrado.hazas + " hazas, " + sembrado.olivos + " olivos y " + sembrado.hogares + " hogares de prueba (" + HOGARES[0].correo + "…)");
@@ -90,7 +123,7 @@ export async function levanta({ sinBuild = false } = {}) {
     "\n  api       " + w + "/api/salud" +
     "\n  teselas   " + w + "/teselas/" + finca + "/indice.json   (solo con sesión)" +
     "\n  correo    http://localhost:" + p.correoWeb + "/   (SMTP en 127.0.0.1:" + p.smtp + ")" +
-    "\n  db        127.0.0.1:" + p.db + "  usuario gemelo, base gemelo, clave en infra/dev/.env" +
+    "\n  db        127.0.0.1:" + p.db + "  base gemelo; " + PG_DUENO + " (dueño) y " + PG_API + " (la api), claves en infra/dev/.env" +
     "\n  livekit   ws://localhost:" + p.livekit + "  (claves en infra/dev/.env)");
   return { sembrado };
 }

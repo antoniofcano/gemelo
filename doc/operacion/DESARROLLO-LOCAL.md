@@ -18,11 +18,11 @@ El mundo, la api y los servicios base de la fase 1a y la fase 2 corriendo en tu 
 | Pararlo (los datos de la db se conservan) | `npm run dev:abajo` |
 | Pararlo y borrar la db | `npm run dev:abajo -- --borra-datos` |
 | Ver los registros | `docker compose -f infra/dev/compose.yml logs -f api` (o `web`, `db`, `livekit`, `correo`, `migra`) |
-| Una consola SQL | `docker compose -f infra/dev/compose.yml exec db psql -U gemelo` |
+| Una consola SQL (como dueño) | `docker compose -f infra/dev/compose.yml exec db psql -U gemelo_dueno -d gemelo` |
 | Volver a sembrar los datos de prueba | `node infra/dev/herramientas/siembra.mjs` (idempotente; con el entorno levantado) |
 | La prueba completa (levanta, hace el recorrido de entrada y baja) | `GEMELO_DOCKER=1 node --test pruebas/guardianes/dev.test.js` |
 
-`dev:arriba` hace, en orden: crea `infra/dev/.env` con **claves aleatorias** si no existe (git lo ignora; nunca se sobrescribe); genera el fixture sintético si falta (`pruebas/salida/fixture/`); copia el `indice.json` de la finca con `base: "/teselas/<finca>/"` (campo del contrato) y construye la web con Vite contra él (`npm run build` de `apps/web` con `GEMELO_DATOS`); deja junto a cada fichero de `apps/web/dist/` su `.br` y su `.gz`; hace `docker compose up -d --build --wait`, que construye la imagen de la api (`apps/api/Dockerfile`; con la caché de Docker, rápido si no cambió nada), aplica las migraciones (servicio `migra`) y espera a los healthchecks; y **siembra** las hazas, los olivos y los hogares de prueba sintéticos ([La siembra](#la-siembra-datos-sintéticos)). Si `.env` es de antes y le falta una clave nueva de la plantilla (como `GEMELO_DEV_SESION_SECRETO`), la **añade** sin tocar las demás. Tiempos medidos: ver [El recorrido de entrada](#el-recorrido-de-entrada).
+`dev:arriba` hace, en orden: crea `infra/dev/.env` con **claves aleatorias** si no existe (git lo ignora; nunca se sobrescribe); genera el fixture sintético si falta (`pruebas/salida/fixture/`); copia el `indice.json` de la finca con `base: "/teselas/<finca>/"` (campo del contrato) y construye la web con Vite contra él (`npm run build` de `apps/web` con `GEMELO_DATOS`); deja junto a cada fichero de `apps/web/dist/` su `.br` y su `.gz`; arranca la base y comprueba que tiene los [roles de producción](#los-roles-de-la-base); hace `docker compose up -d --build --wait`, que construye la imagen de la api (`apps/api/Dockerfile`; con la caché de Docker, rápido si no cambió nada), aplica las migraciones (servicio `migra`) y espera a los healthchecks; y **siembra** las hazas, los olivos y los hogares de prueba sintéticos ([La siembra](#la-siembra-datos-sintéticos)). Si `.env` es de antes y le falta una clave nueva de la plantilla (como `GEMELO_DEV_SESION_SECRETO`), la **añade** sin tocar las demás. Tiempos medidos: ver [El recorrido de entrada](#el-recorrido-de-entrada).
 
 ## Servicios y puertos
 
@@ -33,7 +33,7 @@ Las imágenes van fijadas por **versión estable y digest** (`imagen:versión@sh
 | Servicio | Imagen (versión fija + digest) | Puerto del anfitrión | Para qué |
 |---|---|---|---|
 | `web` | `caddy:2.11.7-alpine@sha256:eb4d35b7…` (oficial; 2.11.7 es la última release estable de Caddy, 2026-10-03) | `https://localhost:8743` (y `http://localhost:8780`, que solo da `/salud` y redirige lo demás a https) | portada, mundo (`apps/web/dist` en `/finca/`), teselas en `/teselas/<finca>/…` y la api en `/api/` |
-| `db` | `postgis/postgis:18-3.6-alpine@sha256:c53a483f…` (la del proyecto PostGIS; PostgreSQL 18 es la estable vigente, la 19 va por rc1; PostGIS 3.6, la 3.7 va por rc3) | `127.0.0.1:55432` | PostgreSQL 18 + PostGIS 3.6; usuario y base `gemelo`, clave en `.env`; volumen `gemelo-dev_pg_datos` |
+| `db` | `postgis/postgis:18-3.6-alpine@sha256:c53a483f…` (la del proyecto PostGIS; PostgreSQL 18 es la estable vigente, la 19 va por rc1; PostGIS 3.6, la 3.7 va por rc3) | `127.0.0.1:55432` | PostgreSQL 18 + PostGIS 3.6; base `gemelo` con los roles de producción (`gemelo_dueno` y `gemelo_api`, [abajo](#los-roles-de-la-base)), claves en `.env`; volumen `gemelo-dev_pg_datos` |
 | `livekit` | `livekit/livekit-server:v1.13.11@sha256:25cd902d…` (oficial; última release estable, 2026-10-25) | `ws://localhost:7880`, TCP 7881, UDP 7882 | tiempo real (fase 2), claves de `.env`; `--dev` solo en local |
 | `correo` | `axllent/mailpit:v1.32.0@sha256:0790692b…` (oficial, basada en Alpine; última release estable, 2026-10-22) | `http://localhost:8025` (buzón), SMTP `127.0.0.1:1025` | recibe el correo del enlace mágico; no envía nada fuera |
 | `migra` | `gemelo-api:local`, construida aquí de `apps/api/Dockerfile` (base `node:24.22.1-alpine3.24@sha256:06d7adf3…`, la del contrato `contratos/publicacion-vps.json`) | ninguno | aplica `apps/api/migraciones/` y termina (salida 0); la api espera a que acabe |
@@ -71,13 +71,24 @@ Su configuración (todo por variables de entorno; la lista completa, en `apps/ap
 |---|---|---|
 | `NODE_ENV` | `development` | fuera de producción `config.ts` deja los secretos en variable y el SMTP sin TLS ni usuario |
 | `GEMELO_API_PUERTO` | `8000` | el del contrato |
-| `GEMELO_DB_URL` + `GEMELO_DB_CLAVE` | `postgresql://gemelo@db:5432/gemelo` + la clave de `.env` | la URL nunca lleva la clave |
+| `GEMELO_DB_URL` + `GEMELO_DB_CLAVE` | `postgresql://gemelo_api@db:5432/gemelo` + `GEMELO_DEV_PG_API_CLAVE` de `.env` | el rol de permisos mínimos de producción (decisión 55); la URL nunca lleva la clave |
 | `GEMELO_SESION_SECRETO` | `GEMELO_DEV_SESION_SECRETO` de `.env` (aleatorio) | firma de la cookie; con él las sesiones sobreviven a reiniciar la api |
 | `GEMELO_URL_PUBLICA` | `https://localhost:8743` | con ella se arma el enlace del correo; https porque la cookie es `Secure` |
 | `GEMELO_API_ORIGENES` | `https://localhost:8743` | el único `Origin` admitido en los POST (CSRF): con `127.0.0.1` en la barra el POST se rechaza; usa `localhost` |
 | `GEMELO_API_PROXIES` | `1` | delante solo está el Caddy de dev (en producción, borde + Caddy interno = 2) |
 | `GEMELO_CORREO`, `GEMELO_SMTP_HOST`, `_PUERTO`, `_TLS` | `smtp`, `correo`, `1025`, `no` (sin usuario) | hacia Mailpit |
 | `GEMELO_OT` | `no` | sin OlivarTrack en local: las fichas salen con el aviso `ot_sin_sincronia` |
+
+### Los roles de la base
+
+Los mismos que en producción (decisión 55), para que un fallo de permisos salga aquí y no en el VPS:
+
+| Rol | Lo usa | Permisos | Clave en `.env` |
+|---|---|---|---|
+| `gemelo_dueno` | `migra` (migraciones), la siembra y la consola SQL | dueño del esquema (es el `POSTGRES_USER` de la imagen: superusuario, como en producción) | `GEMELO_DEV_PG_CLAVE` |
+| `gemelo_api` | la api | solo filas de sus tablas; la auditoría, solo leer y añadir; sin DDL | `GEMELO_DEV_PG_API_CLAVE` |
+
+No hay SQL propio de desarrollo: el rol lo crea **el mismo** [`infra/bd-inicial/01-roles.sh`](../../infra/bd-inicial/01-roles.sh) de producción (montado en `/docker-entrypoint-initdb.d`, corre solo al crear el volumen) y los permisos los da la migración `0001_inicial`. Las claves llegan a la base como secretos de Docker (`/run/secrets/pg_dueno` y `pg_api`, como en producción) tomados de las variables de `.env`. La siembra entra con el dueño porque en producción la carga de hazas y la primera cuenta también van con él ([RUNBOOK-VPS](RUNBOOK-VPS.md), pasos 8 y 9); lo que escribe la api (enlaces, sesiones, auditoría) lo prueba la e2e con `gemelo_api`. La e2e comprueba además que las conexiones de la api son de `gemelo_api` y que a ese rol se le niegan (`42501`) crear tablas o esquemas, cambiar, borrar o vaciar tablas, cambiar o borrar la auditoría y escribir en el registro de migraciones; `dev:estado` mira que no sea superusuario ni dueño de nada.
 
 LiveKit aún no lo usa la api (fase 2): sus claves no se le pasan. Si cambias el código de `apps/api`, `npm run dev:arriba -- --sin-build` reconstruye la imagen (y no la web).
 
@@ -143,7 +154,9 @@ La parte de servidor del recorrido está entera; lo que falta es de la UX ([UX.m
 
 ## Problemas conocidos
 
-- **Un volumen de base de otra copia del repo no acepta tu clave.** Postgres fija la clave al crear el volumen (`gemelo-dev_pg_datos`); si lo creó otra copia del repo (otra carpeta con su propio `infra/dev/.env`), la siembra falla con «la base no acepta la clave». Es de desarrollo: `npm run dev:abajo -- --borra-datos` y vuelve a levantar, o usa un proyecto aparte con `COMPOSE_PROJECT_NAME=<otro>` (cambia el nombre de los contenedores y del volumen; los puertos siguen siendo los mismos, así que no a la vez).
+- **Un volumen de base de otra copia del repo no acepta tu clave.** Postgres fija la clave al crear el volumen (`gemelo-dev_pg_datos`); si lo creó otra copia del repo (otra carpeta con su propio `infra/dev/.env`), `dev:arriba` falla con «la base no acepta las claves de infra/dev/.env». Es de desarrollo: `npm run dev:abajo -- --borra-datos` y vuelve a levantar, o usa un proyecto aparte con `COMPOSE_PROJECT_NAME=<otro>` (cambia el nombre de los contenedores y del volumen; los puertos siguen siendo los mismos, así que no a la vez).
+- **Un volumen de antes de la decisión 55 no tiene los roles de producción** (tenía el dueño `gemelo`, sin `gemelo_dueno` ni `gemelo_api`; `01-roles.sh` solo corre al crear el volumen). `dev:arriba` lo detecta antes de migrar y lo dice: `npm run dev:abajo -- --borra-datos` y vuelve a levantar. Un `.env` de antes sirve: se le **añade** `GEMELO_DEV_PG_API_CLAVE` y `GEMELO_DEV_PG_CLAVE` pasa a ser la del dueño.
+- **PostGIS lo crea la migración, no la imagen** (igual que en producción): `infra/bd-inicial/` ocupa `/docker-entrypoint-initdb.d` y tapa el `10_postgis.sh` de la imagen, así que es la `0001` (`CREATE EXTENSION postgis`) la que lo instala. Con el disco lento eso pasó de los 15 s de tope por sentencia de la api (2026-10-29, en esta máquina); por eso `migra` corre con un tope de 10 min (`apps/api/src/bd/migra-cli.ts`). Lo destapó este cambio: antes, en local, PostGIS ya venía de la imagen y la migración no lo creaba.
 - **`Referrer-Policy: no-referrer` rompe los formularios POST**: con ella Chrome manda `Origin: null` en el POST de un formulario (no en un `fetch` del mismo origen; comprobado el 2026-10-29 con Chrome headless) y la api lo rechaza con 403. Lo destapó esta e2e en el botón «Entrar» de la página del enlace: la api ahora usa `strict-origin` (manda el origen, nunca la ruta ni el `?t=`). Desde la decisión 53, el Caddy de **producción** (`infra/Caddyfile`) usa también `strict-origin-when-cross-origin`.
 - **Por http no hay sesión.** La cookie es `Secure` y `__Host-`: la api no la emite si la petición no llega por https (`@fastify/session` mira `X-Forwarded-Proto`) y, aunque la emita, Chrome no la guarda desde `http://localhost` (comprobado el 2026-10-29 con Chrome 131 headless: el botón «Entrar» llevaba a `/finca/` sin cookie y de vuelta a la portada). Por eso el http de dev solo da `/salud` y redirige lo demás a `https://localhost:8743`.
 - **`fetch` de Node no deja poner `Sec-Fetch-Mode`**: para comprobar la redirección de una navegación sin sesión, `estado.mjs` y la e2e usan `node:http` (`getHttp` de `_comun.mjs`).
@@ -181,7 +194,7 @@ La producción es la de [ADR-0011](../adr/0011-alojamiento-en-el-vps-de-ovh.md) 
 | LiveKit | `--dev` (se quita con `GEMELO_DEV_LIVEKIT_ARGS`), un solo UDP en 127.0.0.1, sin TURN | puertos UDP/TCP abiertos con `ufw`, TURN, IP pública |
 | Correo | Mailpit (no sale nada), SMTP sin TLS ni usuario | SMTP de OVH (decisión 15), TLS y usuario obligatorios |
 | Api | `NODE_ENV=development`, secretos en variables de entorno, un solo proxy delante (`GEMELO_API_PROXIES=1`), sin OlivarTrack | `production`: secretos solo por fichero (`/run/secrets`), borde + Caddy interno (2), MCP de OlivarTrack |
-| Usuario de la base | `gemelo` (dueño del esquema) para las migraciones **y** para la api | `gemelo_dueno` para `migra` y `gemelo_api` (solo filas; la auditoría, solo añadir) para la api |
+| Usuario de la base | **igual**: `gemelo_dueno` para `migra` y `gemelo_api` (solo filas; la auditoría, solo añadir) para la api, creados por el mismo `infra/bd-inicial/` (decisión 55) | `gemelo_dueno` para `migra` y `gemelo_api` para la api |
 | Portada | provisional (`infra/dev/portada/`), con un formulario sin estilos | la de la UX (pendiente) |
 | Datos | fixture sintético o una carpeta local | teselas del servidor (formato v3, ADR propio de la fase 1a) |
 | Copias y registros | ninguna; registros locales con rotación | copias nocturnas y restauración ensayada |

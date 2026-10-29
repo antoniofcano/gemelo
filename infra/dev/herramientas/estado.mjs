@@ -3,7 +3,7 @@
 // (HTTP a Caddy, consulta SQL a PostGIS con su clave, listado de salas de LiveKit firmado con sus claves, API de Mailpit).
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { caLocal, cargaEnv, compose, motivoSinDocker, pideHttps, puertos } from "./_comun.mjs";
+import { caLocal, cargaEnv, compose, motivoSinDocker, pideHttps, puertos, PG_API, PG_DUENO } from "./_comun.mjs";
 
 const SERVICIOS = ["web", "db", "livekit", "correo", "api"];
 /** Servicios de una sola vez: deben haber terminado con 0 (las migraciones) */
@@ -59,10 +59,20 @@ export async function pruebasExternas() {
   });
   await prueba("db", async () => {
     const { default: pg } = await import("pg");
-    const c = new pg.Client({ host: "127.0.0.1", port: p.db, user: "gemelo", database: "gemelo", password: e.GEMELO_DEV_PG_CLAVE, connectionTimeoutMillis: 5000 });
+    const cliente = (user, password) => new pg.Client({ host: "127.0.0.1", port: p.db, user, database: "gemelo", password, connectionTimeoutMillis: 5000 });
+    const c = cliente(PG_DUENO, e.GEMELO_DEV_PG_CLAVE);
     await c.connect();
-    try { const r = await c.query("select current_setting('server_version') as pg, postgis_lib_version() as postgis"); return "PostgreSQL " + r.rows[0].pg + ", PostGIS " + r.rows[0].postgis; }
+    let v;
+    try { v = (await c.query("select current_setting('server_version') as pg, postgis_lib_version() as postgis")).rows[0]; }
     finally { await c.end(); }
+    // el rol de la api entra con su clave y NO es superusuario ni dueño de nada (si no, los fallos de permisos no saldrían aquí)
+    const a = cliente(PG_API, e.GEMELO_DEV_PG_API_CLAVE);
+    await a.connect();
+    try {
+      const r = (await a.query("select rolsuper, rolcreaterole, rolcreatedb, (select count(*) from pg_class where relowner = pg_roles.oid)::int as suyas from pg_roles where rolname = current_user")).rows[0];
+      if (r.rolsuper || r.rolcreaterole || r.rolcreatedb || r.suyas) throw new Error(PG_API + " tiene más permisos de los mínimos: " + JSON.stringify(r));
+    } finally { await a.end(); }
+    return "PostgreSQL " + v.pg + ", PostGIS " + v.postgis + "; " + PG_DUENO + " y " + PG_API + " (sin superusuario ni objetos propios) entran";
   });
   await prueba("livekit", async () => {
     const s = await http("http://127.0.0.1:" + p.livekit + "/"); if (s.status !== 200) throw new Error("/ → " + s.status);
