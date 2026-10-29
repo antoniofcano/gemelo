@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- e2e del hornero de punta a punta con el fixture (O7g): el servicio hornea, Caddy sirve y `/finca/?olivos=gen&olivosPropios=0` dibuja generados con 0 variantes calculadas en el aparato (4 horneadas, 0 fallos, huellas por Web Crypto en https); con `&olivosHorneado=0` las calcula (contraprueba).
 - Presencia: los demás salen en el minimapa (punto violeta; cuadrado en quad, rombo con dron) con su alias; un toque muestra el alias y otro te lleva con esa persona; «Ir con <alias>» en Gente (a 2-4 m, en el suelo, fuera de copas y troncos, mirándola; con fundido). Solo tu sala, con pose y sin bloquear; no manda nada nuevo por la red (I1).
 - Presencia: la pose lleva si vas a pie, en quad o con el dron (bits 4-5 del byte 1, sigue siendo v1); los demás te ven sentado en el quad o con el dron (ilustrativo), con 1 llamada más por vehículo (P6).
 - Balizas como punto de encuentro: su ficha y su rombo del minimapa dicen quién está en la parcela y ofrecen «Ir a esta baliza» (a unos 4,5 m, mirándola) (I4).
