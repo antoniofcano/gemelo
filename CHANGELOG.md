@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- O7b: contrato `olivo-horneado` (receta horneada v1, cuantización de O6, huella SHA-256/128, `.br`, manifiestos por finca y por tesela), esquemas del manifiesto y del calendario de épocas, `epocas-calendario.json` (valores de partida, a ajustar por Antonio), `horneado.js`/`epocas.js` en `apps/web/olivo` y guardián `horneado.test.js` (ida y vuelta dentro de los topes de O6).
 - ADR-0018 (Propuesto): hornero de olivos; el servidor hornea las variantes compartidas E2 y E2-VR (época actual y siguiente, ≈ 1 MB por aparato y época, estimado con O6) y el aparato sigue calculando los propios cercanos; formato cuantizado con brotli 9, objetos por huella y manifiesto por finca (O7a).
 - Medida del horneado de recetas de olivos por tesela (O6): script `pruebas/olivo/hornea_tesela.mjs` y sección en `doc/sistema/MEDIDAS.md`. Hituelo entero, una época y 4 niveles: 6,5 GB con brotli 11 (7,1 con brotli 9); por olivo, de 183 KB (E2-VR) a 491 KB (E0); brotli 9 pesa 7-13 % más que el 11 y tarda ~30 veces menos; la tesela más poblada no terminó.
 - Olivos generados: caché de recetas en memoria (LRU, 60/150 MB) e IndexedDB (`idb-keyval`, 300 MB, LRU), con la clave `GEN_VERSION` + época + semilla + parámetros; sin IndexedDB, solo memoria; `?debug` dice «caché: memoria N · disco M» (O5).
