@@ -156,6 +156,14 @@
       trabajos.push({ clave: clave, prio: prio, gen: gen, fin: fin });
     }
     function hay(clave) { return trabajos.some(function (t) { return t.clave === clave; }); }
+    // lo que falta para que el lote sea el del plan: trabajos de la cola propia, recetas en el trabajador, árboles del plan sin receta o fuera del lote y
+    // el fundido en curso (lo esperan las pruebas: __g.pendientes() de 27_debug)
+    function pendientes() {
+      if (estado !== "activo") return 0;
+      var n = trabajos.length + nPidiendo + (fundido ? 1 : 0);
+      plan.forEach(function (p) { if (!recetas[p.clave] || !listos[p.c.i] || listos[p.c.i].clave !== p.clave) n++; });
+      return n;
+    }
     function corre(ms) {
       var t0 = performance.now();
       while (trabajos.length && performance.now() - t0 < ms) {
@@ -304,6 +312,6 @@
         fundido: { activo: !!fundido, avance: +uFun.value.toFixed(3), duracion: FUNDIDO } };
     };
     // _prueba: para pruebas/olivo/generados_motor.mjs (Node), no para el motor
-    return { activo: function () { return estado === "activo"; }, actualiza: actualiza, paso: paso, gastado: function () { return gastado; }, rotulo: rotulo, estado: function () { return estado; },
+    return { activo: function () { return estado === "activo"; }, actualiza: actualiza, paso: paso, gastado: function () { return gastado; }, pendientes: pendientes, rotulo: rotulo, estado: function () { return estado; },
       _prueba: { mats: function () { return mats; }, prof: function () { return prof; }, uFun: uFun, lote: function () { return lote; }, tiene: tiene } };
   })();
