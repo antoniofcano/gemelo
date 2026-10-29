@@ -190,6 +190,44 @@ Llamadas / triángulos / heap por escenario (`lejos` · `cerca` · `nube`), cada
 - **Topes** (`pruebas/presupuesto.json`, `fixture_escena_tiles`; los comprueba `escena3d.test.js`): fijados con ≈ 25 % de margen sobre el máximo de las tres medidas de la ronda con el fixture (T1, T5, T4) y sin medida nueva: lejos ≤ 210 llamadas / 20 k tri; cerca ≤ 70 / 210 k; nube ≤ 157 / 13 k; heap ≤ 45 MB (medido 26-27 MB; más holgado por lo variable). Los **puntos** no se midieron con la bandera: se comprueban contra los de siempre (la nube sigue en el motor). Con `&olivos=gen` la ronda dio lo mismo. Sin la bandera los topes de `fixture` no cambian. La prueba de navegador mide además `nube` (antes solo lejos y cerca) y pide el turno sola; **aún no ejecutada con estos topes**: su primera corrida en turno puede obligar a ajustarlos (si algo cuesta más de lo medido en la ronda, se corrige aquí y no se oculta).
 - **VR simulada con `?escena=tiles`**: escrita (mismo fichero, opcional con `GEMELO_VR=1`), **sin ejecutar todavía**: la VR completa con SwiftShader es inestable y la corrida va por el turno. Cifras: ninguna.
 
+## Criterios 2, 3 y 4 del ADR-0015 en local (T6b, 2026-10-29)
+Chrome headless + SwiftShader, 900 × 650 (recuentos, rayos y alturas; **no fps**). Hituelo v3 (salida con `copas_id`) en modo ficheros con el tileset del generador 0.3.0 al lado; fixture de la puerta. Nada probado en Quest ni iPhone.
+
+**Criterio 2 — de dónde salían las llamadas** (banco con `--desglose`: un fotograma por objeto; escenarios de `_navegador.js`; dos encargos seguidos, antes y después del cambio; la cola del motor no se vacía con Hituelo, cifras de un instante):
+
+| Hituelo v3, llamadas / tri / heap | Antes (sin bandera · `?escena=tiles`) | Después |
+|---|---|---|
+| lejos | 176 / 738 k / 78 MB · 164 / 650 k / 114 MB | 108 / 738 k / 89 MB · **98** / 650 k / 127 MB |
+| cerca | 86 / 1.251 k · 61 / 724 k | 80 / 1.283 k · 55 / 724 k / 128 MB |
+| nube | 112 / 740 k · 103 / 556 k | 80 / 740 k · 70 / 556 k / 137 MB |
+
+- Desglose de «lejos» con la bandera, antes: **66 sprites de nubes** (15_tiempo: 46 nubes × 5 manchas = 230 sprites, una llamada cada uno y también con opacidad 0), paisaje 37, lindes 27, tileset 17 (10 glb de terreno + 7 de olivos), balizas 12, árboles 10, resto 6. Después: las nubes, en **una** malla y una llamada (0 si no hay ninguna con opacidad), y lo demás igual. Sin sombras en ninguna pasada.
+- Las 258 llamadas de T3 (primera ronda) eran del mismo origen: el número de nubes con opacidad depende de la nubosidad del momento. Con el tiempo de ejemplo «lluvia» (nubosidad 96 %), fixture, vista baja de lejos: **127 → 28** llamadas («niebla» 130 → 27; «ahora» 124 → 26). Capturas antes/después parecidas a ojo (las nubes derivan con el reloj y no caen en el mismo sitio); **el aspecto lo tiene que aprobar Antonio**.
+- Fixture con la guardia (`GEMELO_MIDE=1`): con la bandera lejos **25** / 7,7 k, cerca 53 / 163 k, nube 24 / 4,3 k, heap 28-30 MB; sin ella, lejos 27 / 76 k (antes 167-168). Topes de `fixture_escena_tiles` bajados (lejos 35, nube 35; cerca 70 sin cambio). Los de `fixture` (sin bandera) no se han re-medido con `carga.test.js`: siguen los de antes.
+
+**Criterio 3 — huecos en vuelo** (`Escena3D.sondea()`: 7 × 5 rayos desde la cámara y dos verticales por salto; cuenta los que en la CPU cortan el relieve dentro de los datos, con 2 m de margen, y no dan con el relieve dibujado ni a 1 cm; 2 fotogramas por salto, sin esperar a la carga):
+
+| Vuelo | Saltos | Rayos en los datos | Sin relieve | Aristas (a 1 cm sí) | glb visibles |
+|---|---|---|---|---|---|
+| Fixture, bajo (órbita a 45 m) tras la vista de lejos | 41 | 1.468 | **0** | 23 (vuela por y = −128, borde entre hojas) | 1-5 |
+| Fixture, alto en diagonal (160 m) | 31 | 875 | **0** | 0 | 1 |
+| Hituelo, bajo E-O | 61 | 1.395 | **0** | 2 | 0-7 |
+| Hituelo, bajo N-S | 61 | 1.826 | **0** | 23 | 1-7 |
+| Hituelo, alto en diagonal | 61 | 1.022 | **0** | 0 | 0-6 |
+| Hituelo, en frío (de cerca en una punta, sin vista de lejos) | 61 | 1.395 | **0** | 8 | 0-7 |
+
+Servido en 127.0.0.1 (sin latencia de red): un hueco por red lenta no se ha probado. `pruebas/escena3d_recorrido.js <carpeta>` lo repite con cualquier finca.
+
+**Criterio 4 — relieve dibujado frente a `Mundo.suelo`** (máximo de |dibujado − CPU| en m; «vértice» = vértice de borde del glb, que no se simplifica):
+
+| Lado de la tesela que dibuja | Fixture: punto / vértice / geometricError | Hituelo v3: punto / vértice / geometricError |
+|---|---|---|
+| 128 m (hoja, paso 1 m) | 0,038 / 0,00005 / 0,050 | 0,071 / 0,0004 / 0,049 (1-2 de ~240 puntos por encima del error, en dos corridas) |
+| 256 m (paso 2 m) | — | 0,116 / 0,0002 / 0,839 |
+| 512 m (paso 4 m) | 0,265 / 0,0003 / 1,286 | 0,432 / 0,0002 / 2,026 |
+
+El marco casa (< 0,5 mm en todos los niveles); el resto es geometría del nivel. En las hojas de Hituelo, la interpolación por triángulos de la malla frente a la bilineal de `Mundo.suelo` no la mide el generador (con paso = resolución del dato no calcula error de rejilla): de ahí el punto que pasa de 4,9 a 7,1 cm.
+
 ## Horneado de recetas de olivos generados por tesela (O6, 2026-10-29, foto: no se mantiene)
 
 Medida de decisión para el ADR de las recetas horneadas en el servidor. Script: `pruebas/olivo/hornea_tesela.mjs` (solo mide: no escribe ningún formato; el «cuantizado» es una serialización de prueba con cabeceras reales). Datos: Hituelo v3 (`GEMELO_DATOS`, fuera del repo), 46 teselas de 256 m (36 con olivos), 5.882 olivos, generador `olivo-2`, época `envero` (la del motor), `factorR8` 0,5, tipo `centenario3`, parámetros de `copas_param`. Equipo: Intel i5-1035G1 (4 núcleos, 8 hilos), Windows 10, Node 24; **máquina cargada y con carga variable**: generar un olivo E0 llevó 55 ms en la corrida más tranquila, 154-162 ms con tres procesos míos a la vez y 348 ms en la última. Los tiempos valen por proporciones, no como referencia. 1 MB = 1.048.576 B. Una sola corrida de cada cosa; brotli = `zlib` de Node con ventana de 16 MB.

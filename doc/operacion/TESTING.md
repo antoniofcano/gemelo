@@ -56,3 +56,4 @@ El equipo de trabajo es un i5 de 4 núcleos con 7,7 GB: dos Chrome sin pantalla 
 | `vistas2.js <url> <prefijo> '<json>'` | capturas con cámara posicionada por UTM y hora fija |
 | `prueba_vr.js <url> <prefijo> [sinxr]` | VR completo con el WebXR simulado de `mock_xr.js` (entrar, andar, girar, teletransporte, panel, ficha, vuelo, mirador, correr, salir). Con `sinxr`, comprueba que sin WebXR no hay botón ni errores. Completa: opcional en la puerta (`GEMELO_VR=1`, inestable con SwiftShader) |
 | `vr_mock.js` | variante corta: andar frente a correr con el mock |
+| `escena3d_recorrido.js <carpeta servida> [--pasos 60] [--salida <json>]` | criterios 3 y 4 del ADR-0015 con cualquier finca y su `tileset/` al lado (p. ej. Hituelo real): vuelos de punta a punta sin esperar a la carga contando rayos sin relieve (`Escena3D.sondea()`) y relieve dibujado frente a `Mundo.suelo` por lado de tesela. Pide el turno del banco |
