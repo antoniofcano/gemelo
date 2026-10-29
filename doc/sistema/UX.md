@@ -313,6 +313,6 @@ Objetivo **WCAG 2.2 AA** en todo lo 2D (acceso, configuración, HUD, paneles). E
 - **Accesibilidad:** comprobación automática mínima (nombres accesibles, tamaño de objetivos en Configuración) y contraste calculado sobre los tokens; **no** se ha pasado un auditor (axe/Lighthouse) ni un lector de pantalla real (NVDA, VoiceOver, TalkBack).
 - **WebXR, permisos y Wake Lock** son simulados: la maqueta no llama a `navigator.xr`, `getUserMedia`, `geolocation` ni `wakeLock`.
 - **Comodidad VR** (giro, viñeta, panel flotante, texto a distancia, grip para hablar): sin sesión en casco.
-- **Flujo de vincular gafas** y **límite de enlaces**: no hay api; las cifras (15 min, 5 min, 30 s) son propuestas.
+- **Flujo de vincular gafas** y **límite de enlaces**: en la maqueta, simulados. Implementados desde el 29-oct-2026 en `apps/web/portada/` y la api ([contratos/sesion.md](../../contratos/sesion.md)); probados solo con Chrome headless (y el agente de usuario del navegador de Meta), **no** en unas Quest ni en un iPhone.
 - **Voz espacial, moderación y vídeo**: no hay LiveKit en la maqueta.
 - **La escena** de la maqueta es un dibujo SVG, no el gemelo: no dice nada de rendimiento.

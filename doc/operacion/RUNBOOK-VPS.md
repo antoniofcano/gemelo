@@ -32,7 +32,7 @@ Ningún puerto publicado: se entra solo por el Caddy de borde de Oficultor ([inf
 7. **Borde:** pegar `infra/bloque-borde.txt` en el Caddyfile de Oficultor y recargarlo (**lo hace o autoriza quien lleva Oficultor**). Comprobar desde fuera: `curl -sI https://gemelo.canoydamas.es/` (200 y las cabeceras de seguridad) y `curl -s https://gemelo.canoydamas.es/api/salud`.
 8. **Hazas:** `python tuberia/hazas/carga_hazas.py --hazas <hazas.geojson> --olivos <olivos.geojson> --salida /tmp/hazas.sql` en el equipo de trabajo (los datos reales **fuera del repo**), copiar y `docker compose exec -T db psql -v ON_ERROR_STOP=1 -U gemelo_dueno -d gemelo < /tmp/hazas.sql`. Asignar las hazas a hogares desde el panel (`PUT /api/admin/hazas/{id}/hogar`).
 9. **Primera cuenta de la oficina:** `docker compose exec db psql -U gemelo_dueno -d gemelo -c "INSERT INTO hogares (correo, rol) VALUES ('<correo>', 'admin')"`; el resto se da de alta desde el panel.
-10. **Estáticos:** la portada en `/srv/gemelo/publicado/portada`, la web construida (`apps/web/dist`) en `/srv/gemelo/publicado/finca`, las teselas en `/srv/gemelo/publicado/teselas`.
+10. **Estáticos:** la portada y la entrada (`apps/web/dist-portada`, de `cd apps/web && npm run build:portada`) en `/srv/gemelo/publicado/portada`, la web construida (`apps/web/dist`) en `/srv/gemelo/publicado/finca`, las teselas en `/srv/gemelo/publicado/teselas`.
 
 ## Operación
 

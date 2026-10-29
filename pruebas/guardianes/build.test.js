@@ -61,5 +61,5 @@ test("el montador con --salida deja los ficheros de apoyo junto a la página (no
 
 test("los .html generados no se versionan (el repo es público, ADR-0004)", () => {
   const ver = ficheros().filter(f => f.endsWith(".html") && !f.startsWith("prototipos/"));   // las maquetas de UX sí se versionan (sin datos reales)
-  assert.deepStrictEqual(ver, ["apps/web/plantilla.html", "infra/dev/portada/index.html"], "HTML versionados inesperados");   // la portada provisional del entorno local (sin datos)
+  assert.deepStrictEqual(ver, ["apps/web/plantilla.html", "apps/web/portada/index.html"], "HTML versionados inesperados");   // la portada y la entrada (sin datos)
 });

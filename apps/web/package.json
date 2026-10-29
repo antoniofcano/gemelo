@@ -7,7 +7,8 @@
   "scripts": {
     "motor": "node herramientas/genera_motor.mjs",
     "build": "node herramientas/genera_motor.mjs && vite build",
-    "dev": "node herramientas/genera_motor.mjs && vite"
+    "dev": "node herramientas/genera_motor.mjs && vite",
+    "build:portada": "vite build --config vite.portada.config.js"
   },
   "dependencies": {
     "three": "0.186.1"

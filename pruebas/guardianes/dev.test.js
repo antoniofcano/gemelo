@@ -166,10 +166,27 @@ test("Caddyfile de dev con la forma de producción: portada pública, /finca/ y 
   assert.ok(c.indexOf("handle_path /teselas/*") > c.indexOf("handle @con_sesion"), "las teselas, dentro del bloque con sesión");
   assert.ok(c.indexOf("handle_path /finca/*") > c.indexOf("handle @con_sesion"), "el mundo, dentro del bloque con sesión");
   assert.match(c, /root \* \/srv\/portada/, "la portada pública");
-  const portada = lee("infra/dev/portada/index.html");
-  assert.ok(!/<script|style=|<style/i.test(portada), "la portada provisional no lleva JS ni estilos en línea (CSP)");
-  assert.match(portada, /<form method="post" action="\/api\/auth\/enlace">/);
-  assert.ok(!/@(?!example\.com)[a-z0-9.-]+\.[a-z]+/i.test(portada.replace(/gemelo@canoydamas\.invalid/g, "")), "la portada solo nombra correos @example.com");
+  assert.match(lee("infra/dev/compose.yml"), /\.\.\/\.\.\/apps\/web\/dist-portada:\/srv\/portada:ro/, "la portada es el build de apps/web/portada");
+});
+
+test("portada y entrada (apps/web/portada): sin nada en línea (CSP estricta), solo su mismo origen, accesible y con la versión de normas de la api", () => {
+  const html = lee("apps/web/portada/index.html"), js = lee("apps/web/portada/portada.js"), css = lee("apps/web/portada/portada.css");
+  assert.ok(!/<style|\sstyle=|\son[a-z]+=/i.test(html), "nada de estilos ni manejadores en línea (style-src 'self', script-src 'self')");
+  for (const m of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)) assert.strictEqual(m[1].trim(), "", "un <script> con código en línea");
+  assert.ok(!/\.style\b|setAttribute\(\s*["']style|innerHTML|insertAdjacentHTML|eval\(|new Function/.test(js), "el JS no escribe estilos en línea ni HTML a mano");
+  assert.ok(!/https?:\/\//.test(js.replace(/http:\/\/www\.w3\.org\/2000\/svg/g, "")), "el JS solo pide a su mismo origen");
+  assert.ok(!/@import|url\(\s*["']?https?:/i.test(css), "el CSS no trae nada de fuera");
+  assert.match(html, /<form id="fEntrar"[^>]*method="post" action="\/api\/auth\/enlace"/, "sin JS, el formulario manda el enlace igual");
+  assert.match(html, /<html lang="es"/);
+  assert.ok(!/@(?!example\.com)[a-z0-9.-]+\.[a-z]{2,}/i.test(html + js), "la portada no nombra correos reales");
+  // cada pantalla con su h1 enfocable; cada campo con su etiqueta
+  const pantallas = [...html.matchAll(/<section class="pant[^"]*" id="p-([a-z]+)"/g)].map(m => m[1]);
+  assert.deepStrictEqual(pantallas, ["portada", "entrar", "revisa", "vincular", "bienvenida", "alias", "avatar", "dispositivos"]);
+  assert.strictEqual((html.match(/<h1 id="t-[a-z]+" tabindex="-1">/g) || []).length, pantallas.length, "un h1 enfocable por pantalla");
+  for (const m of html.matchAll(/<input id="([A-Za-z]+)" type="(?:text|email)"/g)) assert.match(html, new RegExp('<label for="' + m[1] + '">'), "el campo " + m[1] + " sin etiqueta");
+  assert.match(css, /--toque: 44px/); assert.match(css, /html\[data-disp="quest"\][^}]*--toque: 56px/);
+  const api = /export const NORMAS_VERSION = (\d+);/.exec(lee("apps/api/src/auth/servicio.ts")), web = /export const NORMAS_VERSION = (\d+);/.exec(js);
+  assert.ok(api && web && api[1] === web[1], "NORMAS_VERSION distinta en la api y en la portada");
 });
 
 test("siembra sintética: desde_fixture.py da 4 hazas y los olivos del fixture, y se niega con un índice no sintético", t => {
@@ -271,18 +288,42 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
     const sinOrigen = await pide("/api/auth/enlace", { method: "POST", body: JSON.stringify({ correo: yo.correo }), headers: { "content-type": "application/json" } });
     assert.strictEqual(sinOrigen.status, 403, "un POST sin Origin se rechaza (CSRF)");
     const antesBuzon = (await (await fetch(buzon + "/api/v1/search?query=" + encodeURIComponent("to:" + yo.correo))).json()).messages_count;
+    {   // el volumen de la base se conserva entre pasadas: el hogar de prueba vuelve a estar en su primer acceso
+      const Pg0 = require(path.join(HERR, "node_modules", "pg"));
+      const k = new Pg0.Client({ host: "127.0.0.1", port: p.db, database: "gemelo", user: comun.PG_DUENO, password: process.env.GEMELO_DEV_PG_CLAVE });
+      await k.connect();
+      try { await k.query("UPDATE hogares SET normas_version = NULL, normas_aceptadas_en = NULL WHERE correo = $1", [yo.correo]); } finally { await k.end(); }
+    }
     const nav = await lanza();
     let cookie, msg = null, enlace;
     try {
       // la CA local no está instalada en el sistema: Chrome la acepta solo en esta prueba (ignoreHTTPSErrors)
       const ctx = await nav.newContext({ viewport: { width: 900, height: 650 }, ignoreHTTPSErrors: true });
+      await ctx.addInitScript(() => { window.__csp = []; document.addEventListener("securitypolicyviolation", e => window.__csp.push(e.violatedDirective + " " + e.blockedURI)); });
+      const cspPortada = [];
+      // lo que pide la CSP de PRODUCCIÓN (style-src 'self'; script-src 'self'), que la de dev (Report-Only) deja pasar
+      const enLinea = pg => pg.evaluate(() => ({ estilos: document.querySelectorAll("[style]").length, scripts: [...document.scripts].filter(s => !s.src && s.textContent.trim()).length, csp: window.__csp.slice() }));
       const pp = await ctx.newPage();
       await pp.goto(base + "/");
+      await pp.waitForSelector("html[data-listo]");
+      assert.ok(await pp.isVisible("#t-portada"), "la portada pública");
+      assert.ok(await pp.isVisible("#btnEntrar") && !(await pp.isVisible("#btnSeguir")), "sin sesión: «Entrar», no «Seguir a la finca»");
+      await pp.click("#btnEntrar");
+      await pp.waitForSelector("#t-entrar", { state: "visible" });
+      assert.strictEqual(await pp.evaluate(() => document.activeElement && document.activeElement.id), "t-entrar", "el foco va al h1 de la pantalla");
+      await pp.fill("#correo", "mal-formado");
+      await pp.click("#btnMandar");
+      assert.ok(await pp.isVisible("#eCorreo") && (await pp.getAttribute("#correo", "aria-invalid")) === "true", "correo mal formado: error junto al campo");
       await pp.fill("#correo", yo.correo);
       r0 = reloj();
-      const [resp] = await Promise.all([pp.waitForResponse(x => new URL(x.url()).pathname === "/api/auth/enlace" && x.request().method() === "POST"), pp.click("button[type=submit]")]);
+      const [resp] = await Promise.all([pp.waitForResponse(x => new URL(x.url()).pathname === "/api/auth/enlace" && x.request().method() === "POST"), pp.click("#btnMandar")]);
       assert.strictEqual(resp.status(), 202, "el formulario de la portada: " + resp.status() + " " + (await resp.text()).slice(0, 200));
       const aceptado = await resp.json();
+      await pp.waitForSelector("#t-revisa", { state: "visible" });
+      assert.strictEqual(await pp.textContent("#correoEco"), yo.correo, "«Revisa tu correo» repite el correo");
+      assert.ok(await pp.isDisabled("#btnReenviar"), "reenviar espera 30 s");
+      const l1 = await enLinea(pp); cspPortada.push(...l1.csp);
+      assert.deepStrictEqual([l1.estilos, l1.scripts], [0, 0], "la portada no lleva estilos ni scripts en línea");
       await pp.close();
       const nadie = await pide("/api/auth/enlace", cuerpo("nadie.prueba@example.com"));
       assert.strictEqual(nadie.status, 202);
@@ -304,13 +345,30 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
       assert.ok(enlace && enlace.startsWith(base + "/"), "el correo no trae el enlace a " + base + ": " + completo.Text.slice(0, 300));
       t.diagnostic("enlace en el buzón en " + tiempos.correo.toFixed(2) + " s");
 
-      // 4. abrir el enlace en Chrome: página intermedia (el GET no gasta) → botón → /finca/ con la cookie de sesión HttpOnly
+      // 4. abrir el enlace en Chrome: página intermedia (el GET no gasta) → botón → primer acceso (normas, alias, avatar) en la
+      //    portada → «Seguir a la finca» → /finca/, con la cookie de sesión HttpOnly
       const pg = await ctx.newPage();
       r0 = reloj();
       await pg.goto(enlace);
       assert.strictEqual(await pg.title(), "Entrar");
-      await Promise.all([pg.waitForURL(base + "/finca/"), pg.click("button[type=submit]")]);
+      await Promise.all([pg.waitForURL(base + "/#bienvenida"), pg.click("button[type=submit]")]);
       tiempos.entrar = r0();
+      await pg.waitForSelector("#t-bienvenida", { state: "visible" });
+      await pg.click("#fBienvenida button[type=submit]");
+      assert.ok(await pg.isVisible("#eBienvenida"), "sin las casillas obligatorias, el aviso");
+      for (const id of ["#cPriv", "#cNormas", "#cAdulto"]) await pg.check(id);
+      await pg.click("#fBienvenida button[type=submit]");
+      await pg.waitForSelector("#t-alias", { state: "visible" });
+      assert.strictEqual(await pg.inputValue("#alias"), yo.alias, "el alias que ya tenía, puesto");
+      await pg.click("#fAlias button[type=submit]");
+      await pg.waitForSelector("#t-avatar", { state: "visible" });
+      await pg.click("#mCamisa label:nth-child(3)");
+      await pg.click("#fAvatar button[type=submit]");
+      await pg.waitForSelector("#btnSeguir", { state: "visible" });
+      const l2 = await enLinea(pg); cspPortada.push(...l2.csp);
+      assert.deepStrictEqual([l2.estilos, l2.scripts], [0, 0], "el primer acceso no lleva estilos ni scripts en línea");
+      await Promise.all([pg.waitForURL(base + "/finca/"), pg.click("#btnSeguir")]);
+      tiempos.primerAcceso = r0() - tiempos.entrar;
       const c = (await ctx.cookies(base)).find(x => x.name === COOKIE);
       assert.ok(c, "no hay cookie " + COOKIE + " en el navegador");
       assert.deepStrictEqual({ httpOnly: c.httpOnly, secure: c.secure, sameSite: c.sameSite, path: c.path }, { httpOnly: true, secure: true, sameSite: "Lax", path: "/" }, "atributos de la cookie");
@@ -340,6 +398,69 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
       assert.ok(control.some(v => /^script-src/.test(v)), "la CSP Report-Only no denuncia un script en línea: ¿no llega la cabecera? " + JSON.stringify(control));
       assert.ok(pedidas.some(x => /^200 \/teselas\/hituelo\/t\/\d+_\d+\.json$/.test(x)), "el motor no pidió teselas a /teselas/hituelo/t/: " + pedidas.join(", "));
       assert.deepStrictEqual(vistos, [], "la CSP (Report-Only) avisa de violaciones");
+
+      // 4b. gafas (navegador de Quest simulado, SIN sesión y con su propio tarro de cookies) → código corto → aprobado desde
+      //     «Mis dispositivos» del aparato con sesión → las gafas reciben SU sesión y entran en /finca/
+      const UA_QUEST = "Mozilla/5.0 (X11; Linux x86_64; Quest 3) AppleWebKit/537.36 (KHTML, like Gecko) OculusBrowser/35.2.0.0 SamsungBrowser/4.0 Chrome/126.0.0.0 VR Safari/537.36";
+      const ctxG = await nav.newContext({ viewport: { width: 1280, height: 720 }, ignoreHTTPSErrors: true, userAgent: UA_QUEST });
+      try {
+        await ctxG.addInitScript(() => { window.__csp = []; document.addEventListener("securitypolicyviolation", e => window.__csp.push(e.violatedDirective + " " + e.blockedURI)); });
+        const gq = await ctxG.newPage();
+        r0 = reloj();
+        await gq.goto(base + "/");
+        await gq.waitForSelector("html[data-listo]");
+        assert.strictEqual(await gq.getAttribute("html", "data-disp"), "quest", "las Quest se detectan");
+        assert.strictEqual(await gq.evaluate(() => getComputedStyle(document.documentElement).fontSize), "19px", "en las Quest, texto de 19 px");
+        await gq.click("#btnEntrar");
+        await gq.click("#opcGafas a");
+        await gq.waitForFunction(() => /^[2-9A-HJKMNP-Z]{3}-[2-9A-HJKMNP-Z]{3}$/.test(document.getElementById("codigo").textContent), null, { timeout: 15000 });
+        const codigo = await gq.textContent("#codigo");
+        tiempos.codigo = r0();
+        const altoBtn = await gq.evaluate(() => document.getElementById("btnPrefieroCorreo").getBoundingClientRect().height);
+        assert.ok(altoBtn >= 56, "en las Quest, botones de ≥ 56 px: " + altoBtn);
+        assert.match(await gq.textContent("#avVincularTxt"), /Esperando/);
+        assert.strictEqual((await ctxG.cookies(base)).filter(x => x.name === COOKIE).length, 0, "las gafas aún no tienen sesión");
+        // en el aparato con sesión: Mis dispositivos → Vincular
+        const pd = await ctx.newPage();
+        await pd.goto(base + "/#dispositivos");
+        await pd.waitForSelector("#t-dispositivos", { state: "visible" });
+        await pd.fill("#codigoTecleado", "K0Q-4M2");
+        await pd.click("#btnAprobar");
+        assert.match(await pd.textContent("#eCodigo"), /0, O, 1, I ni L/, "un ambiguo se explica sin preguntar a la api");
+        await pd.fill("#codigoTecleado", codigo.toLowerCase());
+        r0 = reloj();
+        const [ap] = await Promise.all([pd.waitForResponse(x => new URL(x.url()).pathname === "/api/yo/dispositivos/vincular"), pd.click("#btnAprobar")]);
+        assert.strictEqual(ap.status(), 204, "aprobar el código");
+        await pd.waitForSelector("#okVincular", { state: "visible" });
+        const l3 = await enLinea(pd); cspPortada.push(...l3.csp);
+        await pd.close();
+        await gq.waitForSelector("#btnGafasFinca", { state: "visible", timeout: 15000 });
+        tiempos.aprobado = r0();
+        const cg = (await ctxG.cookies(base)).find(x => x.name === COOKIE);
+        assert.ok(cg && cg.httpOnly && cg.secure && cg.sameSite === "Lax", "las gafas reciben su cookie de sesión");
+        assert.notStrictEqual(cg.value, (await ctx.cookies(base)).find(x => x.name === COOKIE).value, "y es SU sesión, no la del otro aparato");
+        const l4 = await enLinea(gq); cspPortada.push(...l4.csp);
+        assert.deepStrictEqual([l4.estilos, l4.scripts], [0, 0], "la pantalla de las gafas no lleva estilos ni scripts en línea");
+        await Promise.all([gq.waitForURL(base + "/finca/"), gq.click("#btnGafasFinca")]);
+        const sg = JSON.parse((await pide("/api/sesion", { cookie: cg.value })).texto);
+        assert.deepStrictEqual({ rol: sg.rol, alias: sg.alias, primer_acceso: sg.primer_acceso }, { rol: "hogar", alias: yo.alias, primer_acceso: false }, "la sesión de las gafas es la del hogar que aprobó");
+        t.diagnostic("gafas: código en pantalla en " + tiempos.codigo.toFixed(2) + " s; de «Aprobar» a la sesión en las gafas " + tiempos.aprobado.toFixed(2) + " s (sondeo cada 3 s)");
+        // un solo uso: el mismo código ya no se aprueba otra vez
+        const otraVez = await pide("/api/yo/dispositivos/vincular", { method: "POST", cookie: (await ctx.cookies(base)).find(x => x.name === COOKIE).value, body: JSON.stringify({ codigo, aprobar: true }), headers: { "content-type": "application/json", origin: base } });
+        assert.strictEqual(otraVez.status, 404, "un código ya usado no sirve otra vez");
+        t.diagnostic("paso: código usado rechazado");
+        // a 390 px (móvil): sin desplazamiento horizontal en las pantallas de entrada
+        const pm = await ctxG.newPage({ viewport: { width: 390, height: 844 } });
+        await pm.setViewportSize({ width: 390, height: 844 });
+        for (const h of ["#portada", "#dispositivos"]) {
+          await pm.goto(base + "/" + h); await pm.waitForSelector("html[data-listo]");
+          const anchos = await pm.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
+          assert.ok(anchos[0] <= anchos[1], h + " a 390 px desborda: " + anchos.join(" > "));
+        }
+        await pm.close();
+        t.diagnostic("paso: 390 px sin desbordar");
+      } finally { await ctxG.close(); }
+      assert.deepStrictEqual(cspPortada, [], "la CSP (Report-Only) avisa de violaciones en la portada y la entrada");
       await ctx.close();
     } finally { await nav.close(); }
 
@@ -348,6 +469,7 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
     assert.strictEqual(otra.status, 400, "un enlace usado no vuelve a abrir");
     assert.match(otra.texto, /ya se usó/);
 
+    t.diagnostic("paso: enlace usado rechazado");
     // 5. con sesión: la web precomprimida y con caché, las teselas, la sesión y las hazas
     r0 = reloj();
     const w = await pide("/finca/", { cookie, headers: { "accept-encoding": "br" } });
