@@ -116,6 +116,33 @@ test("finca_8_teselas.py construye() (Cerro) sobre 1 tesela sintética: columnas
   assert.ok(fs.existsSync(path.join(BASE, "cerro", "embebido.json")), "falta embebido.json");
 });
 
+// copas_semilla dentro de los exportadores (ADR-0017, decisión 50, tuberia/semillas_copas.py): sin índice anterior, semilla = copas_id; con él (por
+// --anterior, por GEMELO_INDICE_ANTERIOR o el indice.json que ya había en la salida), la heredada por id o por posición, aunque cambie el orden, el
+// centro_utm o el id (provisional → censo).
+test("exportadores: copas_semilla = copas_id sin índice anterior; heredada del anterior por argumento, variable o salida existente", t => {
+  if (SIN_DEPS) return t.skip(SIN_DEPS + ": copas_semilla en los exportadores NO se ha comprobado");
+  assert.ifError(FALLO);
+  for (const d of ["hituelo_a", "hituelo_c", "cerro", "cerro_prov"]) {
+    const I = indice(d);
+    assert.deepStrictEqual(I.copas_semilla, I.copas_id, d + ": sin índice anterior, la semilla es el copas_id");
+  }
+  const A = JSON.parse(fs.readFileSync(path.join(BASE, "anterior.json"), "utf8"));
+  const semPos = I => new Map(I.copas.map((c, i) => [c[0] + "," + c[1], I.copas_semilla[i]]));
+  for (const d of ["hituelo_e", "hituelo_f", "hituelo_g"]) {
+    const I = indice(d); compruebaColumnas(I, d);
+    assert.deepStrictEqual(I.copas_semilla, A.copas_semilla, d + ": no heredó las semillas del índice anterior");
+  }
+  const D = indice("hituelo_d"); compruebaColumnas(D, "hituelo_d");
+  assert.deepStrictEqual(semPos(D), semPos(A), "con otro orden de árboles, un mismo árbol cambió de semilla");
+  const P = indice("cerro_prov"), C = indice("cerro_censo"), pos = Object.keys(esperado().cerro)[0];
+  compruebaColumnas(C, "cerro_censo");
+  const iC = C.copas.findIndex(c => c[0] + "," + c[1] === pos), iP = P.copas.findIndex(c => c[0] + "," + c[1] === pos);
+  assert.strictEqual(C.copas_id[iC], 7000, "la copa del censo lleva su id");
+  assert.ok(P.copas_id[iP] >= PROV, "antes del censo su id era provisional");
+  assert.strictEqual(C.copas_semilla[iC], P.copas_id[iP], "al llegar el censo, el olivo conserva la semilla de su id provisional");
+  assert.deepStrictEqual(semPos(C), semPos(P), "las demás copas conservan su semilla");
+});
+
 // tuberia/puntos_copas.py (de las hojas .laz a los puntos normalizados) y tuberia/parametros_copas.py, de punta a punta, sobre un .laz SINTÉTICO
 // escrito en la propia prueba (pruebas/nube_sintetica.py): conserva solo la vegetación cerca de las copas, resta el suelo del dtm de la tesela
 // (en pendiente), ignora la hoja lejana y el duplicado «(1)», lee por trozos, y copas_param cumple el contrato con las medidas esperadas.

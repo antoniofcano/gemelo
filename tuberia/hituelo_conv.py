@@ -9,12 +9,13 @@ from PIL import Image
 from scipy import ndimage as ndi
 from finca_8_teselas import R, TS, RES, RS, b64, jpg_bytes
 from ids_copas import columnas, empareja, id_de_marca   # copas_id (censo de OlivarTrack o provisional por posición) y copas_tipo: ADR-0012
+from semillas_copas import asigna as asigna_semillas   # copas_semilla (ADR-0017, decisión 50): heredada del índice anterior o = copas_id
 
 HD = __import__("os").environ.get("GEMELO_HITUELO", "hituelo_datos")
 PARC = __import__("os").environ.get("GEMELO_PARCELAS", "hituelo_parcelas_utm.json")
 
 
-def hituelo(salida=None):
+def hituelo(salida=None, anterior=None):
     L = os.path.join(HD, "lidar"); IM = os.path.join(HD, "imagen")
     salida = salida or os.path.join(R, "salida", "hituelo"); os.makedirs(os.path.join(salida, "t"), exist_ok=True)
     idx = json.load(open(os.path.join(L, "indice.json"), encoding="utf-8"))["teselas"]
@@ -138,6 +139,7 @@ def hituelo(salida=None):
              textos=dict(sin_historia=False, finca="Hituelo", fincas=len(fincas), parcelas=len(parcelas), ha=round(sum(p["ha"] for p in P), 1), olivos=len(copas)))
     col, avisos = columnas(copas, (cx, cy), censo); I.update(col)          # columnas paralelas de copas (CONTRATOS §1.1)
     for a in avisos: print("aviso:", a)
+    asigna_semillas(I, salida, anterior)   # antes de escribir: el indice.json que haya en salida es la exportación anterior
     print("ids: %d del censo, %d provisionales (sin marca con id); desfase marcas->copas (%.2f, %.2f) m, %d de %d marcas emparejadas"
           % (len(copas) - sum(1 for v in col["copas_id"] if v >= 2 ** 31), sum(1 for v in col["copas_id"] if v >= 2 ** 31), desfase[0], desfase[1], sum(1 for v in par if v >= 0), len(marcas)))
     json.dump(I, open(os.path.join(salida, "indice.json"), "w"))

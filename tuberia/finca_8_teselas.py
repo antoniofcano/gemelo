@@ -17,6 +17,7 @@ import numpy as np
 from PIL import Image
 from scipy.ndimage import map_coordinates
 from ids_copas import columnas, PROV   # copas_id (censo de OlivarTrack o provisional por posición) y copas_tipo: ADR-0012
+from semillas_copas import asigna as asigna_semillas   # copas_semilla (ADR-0017, decisión 50): heredada del índice anterior o = copas_id
 
 R = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # raíz del repo: salida/ y los intermedios se leen y escriben desde ahí
 TS = 256          # lado de la tesela (m)
@@ -48,7 +49,7 @@ def cerro():
     pts = deb64(D["puntos"]["b64"], "<i2").reshape(-1, 3)
     return dict(D=D, cx=cx, cy=cy, ux0=ux0, uyN=uyN, W=W, H=H, dtm=dtm, chm=chm, suelo=suelo, srs=D["suelo"]["res"], orto=ortoimg, pts=pts)
 
-def construye(F, salida):
+def construye(F, salida, anterior=None):
     D = F["D"]; cx, cy, ux0, uyN, W, H = F["cx"], F["cy"], F["ux0"], F["uyN"], F["W"], F["H"]
     os.makedirs(os.path.join(salida, "t"), exist_ok=True)
     # teselas que tocan la ventana
@@ -120,6 +121,7 @@ def construye(F, salida):
     censo = {m[2]: mid[i] for i, m in enumerate(D["marcados"]) if i < len(mid) and mid[i] is not None and m[2] >= 0}
     col, avisos = columnas(I["copas"], (cx, cy), censo); I.update(col); I.pop("marcados_id", None)
     for a_ in avisos: print("aviso:", a_)
+    asigna_semillas(I, salida, anterior)   # antes de escribir: el indice.json que haya en salida es la exportación anterior
     json.dump(I, open(os.path.join(salida, "indice.json"), "w"))
     E = dict(I); E["t"] = carga
     json.dump(E, open(os.path.join(salida, "embebido.json"), "w"))
@@ -159,6 +161,7 @@ def replica(nx, ny, origen="cerro"):
     tipos = I.get("copas_tipo"); ids0 = I.get("copas_id") or []
     censo = {i: k for i, k in enumerate(ids0) if k < PROV} if len(ids0) == ncop else {}
     col, _ = columnas(O["copas"], (cx0, cy0), censo, tipos * (nx * ny) if tipos is not None and len(tipos) == ncop else None); O.update(col)
+    asigna_semillas(O, dst)
     # caja, relieve grueso y mosaico: las réplicas se pegan en su sitio (8 m y 1 m caben exactos en un desplazamiento de teselas enteras)
     O["ext"] = [ext[0], ext[1] + (ny - 1) * DY, ext[2] + (nx - 1) * DX, ext[3]]
     g = I["grueso"]; gw, gh = g["w"], g["h"]; GW, GH = int(math.ceil((O["ext"][2] - O["ext"][0]) / g["res"])), int(math.ceil((O["ext"][1] - O["ext"][3]) / g["res"]))
@@ -187,13 +190,15 @@ def replica(nx, ny, origen="cerro"):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(); ap.add_argument("--finca", choices=["cerro", "hituelo"]); ap.add_argument("--replica", help="NxM: Cerro Velasco replicado en el espacio (banco de pruebas de presupuesto)")
-    ap.add_argument("--salida", help="carpeta de salida (por defecto salida/<finca> en la raíz del repo)"); a = ap.parse_args()
+    ap.add_argument("--salida", help="carpeta de salida (por defecto salida/<finca> en la raíz del repo)")
+    ap.add_argument("--anterior", help="indice.json de la exportación anterior, del que se heredan las semillas (copas_semilla); por defecto $GEMELO_INDICE_ANTERIOR o el indice.json que ya haya en la salida")
+    a = ap.parse_args()
     if a.replica:
         n, m = a.replica.split("x"); replica(int(n), int(m))
     elif a.finca == "cerro":
-        construye(cerro(), a.salida or os.path.join(R, "salida", "cerro"))
+        construye(cerro(), a.salida or os.path.join(R, "salida", "cerro"), a.anterior)
     elif a.finca == "hituelo":
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__))); from hituelo_conv import hituelo
-        hituelo(a.salida)
+        hituelo(a.salida, a.anterior)
     else:
         sys.exit("falta --finca cerro|hituelo (o --replica 3x3)")
