@@ -409,6 +409,38 @@ paths:
                   caduca_en: { type: string, format: date-time }
         "400": { $ref: "#/components/responses/EntradaNoValida" }
         "401": { $ref: "#/components/responses/SinSesion" }
-        "403": { $ref: "#/components/responses/OrigenNoAdmitido" }
+        "403": { description: "sin Origin del sitio (origen_no_admitido) o expulsado hace menos de 15 min (expulsado)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
         "429": { $ref: "#/components/responses/Limite" }
         "503": { description: la presencia está apagada en este servidor (falta GEMELO_LIVEKIT_URL) }
+
+  /api/admin/presencia/expulsar:
+    post:
+      summary: Saca a un hogar de la sala libre (moderación mínima de F2, decisión 42; solo la oficina)
+      description: >
+        La api lo saca con RoomService.RemoveParticipant (ningún token de cliente lleva roomAdmin), no le da token nuevo
+        durante 15 minutos (en memoria: no sobrevive a un reinicio de la api) y lo apunta en la auditoría
+        (admin.presencia_expulsado: hogar, sala, si estaba y el motivo). No es un bloqueo de la cuenta: para eso, revocar
+        sus sesiones o desactivar el hogar.
+      security: [{ sesion: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [hogar_id]
+              properties:
+                hogar_id: { type: integer, minimum: 1 }
+                motivo: { type: string, minLength: 1, maxLength: 200 }
+      responses:
+        "200":
+          description: hecho (estaba o no en la sala)
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: false, required: [estaba_en_sala], properties: { estaba_en_sala: { type: boolean } } }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: el hogar no existe }
+        "503": { description: la presencia está apagada en este servidor }

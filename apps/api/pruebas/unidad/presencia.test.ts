@@ -11,7 +11,8 @@ import { TokenVerifier } from "livekit-server-sdk";
 import pg from "pg";
 import { construyeApp } from "../../src/app.ts";
 import { cargaConfig, type ConfigLiveKit, ErrorDeConfig } from "../../src/config.ts";
-import { identidadOpaca, firmaToken, PERMISOS, SALA_LIBRE, TTL_S } from "../../src/presencia/livekit.ts";
+import { Expulsados, identidadOpaca, firmaToken, type ModeradorSala, PERMISOS, SALA_LIBRE, TTL_S } from "../../src/presencia/livekit.ts";
+import { expulsa } from "../../src/presencia/rutas.ts";
 import { configDePrueba, contexto, deLaWeb } from "../apoyo/contexto.ts";
 import { CONTRATOS } from "../apoyo/esquemas.ts";
 
@@ -121,4 +122,71 @@ test("configuración en producción: wss:// y el secreto solo desde fichero", ()
   assert.equal(c.livekit?.urlPublica, "wss://gemelo.example.com/rtc");
   assert.throws(() => cargaConfig({ ...prod, GEMELO_LIVEKIT_SECRETO: "w".repeat(40) }), /fichero/);
   assert.throws(() => cargaConfig({ ...prod, GEMELO_LIVEKIT_URL_PUBLICA: "ws://gemelo.example.com/rtc", GEMELO_LIVEKIT_SECRETO_FICHERO: f("lk2", "w".repeat(40)) }), /wss/);
+});
+
+// ---------------------------------------------------------------- moderación (P3, decisión 42)
+class ModeradorDePrueba implements ModeradorSala {
+  llamadas: [string, string][] = [];
+  private readonly presentes: Set<string>;
+  constructor(presentes: Set<string>) { this.presentes = presentes; }
+  async expulsa(sala: string, identidad: string) { this.llamadas.push([sala, identidad]); return this.presentes.delete(identidad); }
+}
+function bdDePrueba(hogares: number[]) {
+  const consultas: { sql: string; params: unknown[] }[] = [];
+  const bd = {
+    query: async (sql: string, params: unknown[] = []) => {
+      consultas.push({ sql, params });
+      if (/FROM hogares/.test(sql)) return { rowCount: hogares.includes(params[0] as number) ? 1 : 0, rows: [] };
+      return { rowCount: 1, rows: [] };
+    },
+  };
+  return { bd: bd as unknown as Pick<pg.Pool, "query">, consultas };
+}
+
+test("expulsar: saca de hituelo-libre a la identidad opaca del hogar, lo apunta en la auditoría y no le da token en 15 min", async () => {
+  const id = identidadOpaca(LK, 9), mod = new ModeradorDePrueba(new Set([id])), { bd, consultas } = bdDePrueba([9]), expulsados = new Expulsados();
+  const r = await expulsa({ bd, lk: LK, moderador: mod, expulsados }, 1, 9, "insultos en el chat");
+  assert.deepEqual(r, { ok: true, estaba_en_sala: true });
+  assert.deepEqual(mod.llamadas, [["hituelo-libre", id]]);
+  const aud = consultas.find(c => /INSERT INTO auditoria/.test(c.sql));
+  assert.ok(aud, "queda en la auditoría");
+  assert.deepEqual(aud!.params.slice(0, 2), [1, "admin.presencia_expulsado"]);
+  assert.deepEqual(JSON.parse(aud!.params[2] as string), { hogar: 9, sala: "hituelo-libre", estaba: true, motivo: "insultos en el chat" });
+  const ahora = Date.now();
+  assert.equal(expulsados.esta(9, ahora), true);
+  assert.equal(expulsados.esta(9, ahora + TTL_S * 1000 + 1000), false, "a los 15 min puede volver");
+  assert.equal(expulsados.esta(10, ahora), false);
+});
+
+test("expulsar a quien no está en la sala también se apunta (estaba: false); a un hogar que no existe, 404 y nada más", async () => {
+  const mod = new ModeradorDePrueba(new Set()), a = bdDePrueba([4]), e = new Expulsados();
+  assert.deepEqual(await expulsa({ bd: a.bd, lk: LK, moderador: mod, expulsados: e }, 1, 4, null), { ok: true, estaba_en_sala: false });
+  assert.deepEqual(JSON.parse(a.consultas.find(c => /auditoria/.test(c.sql))!.params[2] as string), { hogar: 4, sala: "hituelo-libre", estaba: false });
+  const b = bdDePrueba([]), mod2 = new ModeradorDePrueba(new Set());
+  assert.deepEqual(await expulsa({ bd: b.bd, lk: LK, moderador: mod2, expulsados: e }, 1, 77, null), { ok: false, motivo: "no_existe" });
+  assert.equal(mod2.llamadas.length, 0);
+  assert.ok(!b.consultas.some(c => /auditoria/.test(c.sql)));
+  assert.equal(e.esta(77), false);
+});
+
+test("si LiveKit falla, el error sube (la oficina lo ve), el hogar queda sin token igualmente y no se apunta lo que no se hizo", async () => {
+  const roto: ModeradorSala = { expulsa: async () => { throw new Error("LiveKit no responde"); } }, e = new Expulsados(), { bd, consultas } = bdDePrueba([5]);
+  await assert.rejects(expulsa({ bd, lk: LK, moderador: roto, expulsados: e }, 1, 5, null), /LiveKit/);
+  assert.equal(e.esta(5), true);
+  assert.ok(!consultas.some(c => /auditoria/.test(c.sql)));
+});
+
+test("POST /api/admin/presencia/expulsar: sin Origin 403, cuerpo raro 400, sin sesión 401 (y sin tocar LiveKit)", async () => {
+  const pool = new pg.Pool({ host: "127.0.0.1", port: 1, user: "nadie", database: "nada", connectionTimeoutMillis: 300 });
+  const mod = new ModeradorDePrueba(new Set());
+  const app = await construyeApp({ ...contexto(pool, configDePrueba({ ...lkDevSinBase })), moderador: mod });
+  try {
+    const url = "/api/admin/presencia/expulsar";
+    assert.equal((await app.inject({ method: "POST", url, headers: { "x-forwarded-proto": "https" }, payload: { hogar_id: 1 } })).statusCode, 403);
+    assert.equal((await app.inject({ method: "POST", url, headers: deLaWeb(), payload: { hogar_id: 0 } })).statusCode, 400);
+    assert.equal((await app.inject({ method: "POST", url, headers: deLaWeb(), payload: { hogar_id: 1, motivo: "x".repeat(201) } })).statusCode, 400);
+    assert.equal((await app.inject({ method: "POST", url, headers: deLaWeb(), payload: { hogar_id: 1, sala: "otra" } })).statusCode, 400);
+    assert.equal((await app.inject({ method: "POST", url, headers: deLaWeb(), payload: { hogar_id: 1 } })).statusCode, 401);
+    assert.equal(mod.llamadas.length, 0);
+  } finally { await app.close(); await pool.end(); }
 });
