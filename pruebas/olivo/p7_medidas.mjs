@@ -30,7 +30,7 @@ try {
       const t0 = Date.now();
       for (;;) {
         await p.waitForTimeout(1500);
-        const st = await p.evaluate(() => ({ cola: window.__g.Cola.pendientes(), gen: window.__olivosGen ? window.__olivosGen() : null }));
+        const st = await p.evaluate(() => ({ cola: window.__g.pendientes ? window.__g.pendientes() : window.__g.Cola.pendientes(), gen: window.__olivosGen ? window.__olivosGen() : null }));
         const listo = st.cola === 0 && (!st.gen || st.gen.estado !== "activo" || nombre !== "cerca" || st.gen.info.arboles > 0);
         if (listo || Date.now() - t0 > ESPERA) break;
       }

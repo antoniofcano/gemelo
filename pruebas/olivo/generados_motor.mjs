@@ -64,6 +64,7 @@ const espera = () => new Promise(r => setTimeout(r, 0));
   exige(c.__G.estado() === "apagado", "sin la bandera, el estado es " + c.__G.estado());
   exige(c.gArboles.children.length === 0, "sin la bandera, Generados añade algo a la escena");
   exige(c.__G.paso(0.016, 4) === false && c.__G.gastado() === 0, "sin la bandera, paso() hace algo o gasta tiempo");
+  exige(c.__G.pendientes() === 0, "sin la bandera, hay trabajo pendiente");
   const g = c.__G.actualiza(0, 0, 550000, []); exige(g.radio === 0 && !g.tiene(0), "sin la bandera, actualiza() reparte");
 }
 
@@ -103,6 +104,8 @@ exige(/#include <common>\n#include <common>/.test(compila(mats.pies).vertexShade
 const perfil = [2, 2, 2, 2, 2, 2, 2, 2];
 c.D.copas = [[0, 0, 4.5, perfil, 1], [9, 0, 4, perfil, 1], [0, 30, 4, perfil, 1]];
 const olivos = c.D.copas.map((q, i) => ({ i, x: q[0], y: q[1], h: q[2], perfil: q[3] }));
+c.__G.actualiza(0, 0, 160000 / 0.45 * 1.05, olivos);
+exige(c.__G.pendientes() > 0, "con olivos cerca y sin lote, pendientes() debe ser > 0: si no, mide() mide antes de generar");
 let t0 = performance.now(), vueltas = 0;
 const TOPE = 160000 / 0.45 * 1.05;   // cabe un E0 y poco más: el foco cambia quién es E0
 const gen = () => c.window.__olivosGen();
@@ -122,6 +125,7 @@ let g = vuelta(0, 0, TOPE, e => e.fundido.activo && e.info.propios >= 1), s = ge
 diag.primero = { info: s.info, fundido: s.fundido, ms: Math.round(performance.now() - t0) };
 exige(s.info.arboles >= 1 && s.info.entran === s.info.arboles, "primer lote: todo entra (" + JSON.stringify(s.info) + ")");
 exige(s.fundido.activo && s.fundido.avance < 0.05, "primer lote: el fundido no empieza");
+exige(c.__G.pendientes() > 0, "con el fundido en curso, pendientes() debe ser > 0 (lo espera mide())");
 const i0 = Number(Object.keys(olivos).find(i => c.__G.rotulo(+i)));
 exige(c.__G.rotulo(i0) && !g.tiene(i0) && g.radio === 0, "durante el fundido de entrada, el nivel de siempre debe seguir (tiene=false, radio 0)");
 const lote1 = c.__G._prueba.lote(), bm = lote1.children.find(o => o.isBatchedMesh), v4 = new THREE.Vector4();
@@ -131,6 +135,7 @@ exige(im && im.geometry.attributes.aFun && im.geometry.attributes.aFun.array.eve
 acabaFundido(); s = gen(); g = c.__G.actualiza(0, 0, TOPE, olivos);
 exige(!s.fundido.activo && s.fundido.avance === 1, "el fundido no acaba en su duración");
 exige(g.tiene(i0) && g.radio > 0, "acabado el fundido, el generado sustituye al nivel de siempre");
+exige(c.__G.pendientes() === 0, "con el plan dibujado y sin fundido, pendientes() debe ser 0 (es " + c.__G.pendientes() + ")");
 // el foco pasa al tercero: el primero sale (o baja de detalle) y el tercero entra
 g = vuelta(0, -30, TOPE, e => e.fundido.activo && e.info.saliendo >= 1); s = gen();
 diag.segundo = { info: s.info, fundido: s.fundido };

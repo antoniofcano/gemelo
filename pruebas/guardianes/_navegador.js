@@ -64,9 +64,9 @@ async function mide(navegador, url, { escenarios = ESCENARIOS, tope = TOPE_MEDID
   for (const [nombre, e] of Object.entries(escenarios)) {
     if (Date.now() - t0 > tope) { parcial = true; break; }
     await p.evaluate(e => { const g = window.__g; g.orb.az = e.az; g.orb.el = e.el; g.orb.dist = e.dist; g.objetivo.x = e.ox; g.objetivo.z = -e.oy; g.objetivo.y = g.suelo(e.ox, e.oy) + 4; g.pon(e.modo); }, e);
-    await p.waitForFunction(() => window.__g.Cola.pendientes() === 0, null, { timeout: Math.min(ESPERA_MS, queda()), polling: 500 }).catch(() => {});
+    await p.waitForFunction(() => (window.__g.pendientes ? window.__g.pendientes() : window.__g.Cola.pendientes()) === 0, null, { timeout: Math.min(ESPERA_MS, queda()), polling: 500 }).catch(() => {});
     await p.waitForTimeout(1500);
-    medidas[nombre] = await p.evaluate(() => { const g = window.__g, r = g.renderer.info; return { llamadas: r.render.calls, triangulos: r.render.triangles, puntos: r.render.points, geometrias: r.memory.geometries, texturas: r.memory.textures, heapMB: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : -1, olivos: g.Arboles.resumen() }; });
+    medidas[nombre] = await p.evaluate(() => { const g = window.__g, r = g.renderer.info; return { llamadas: r.render.calls, triangulos: r.render.triangles, puntos: r.render.points, geometrias: r.memory.geometries, texturas: r.memory.textures, heapMB: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : -1, olivos: g.Arboles.resumen(), generados: window.__olivosGen ? window.__olivosGen().info : undefined }; });
     if (capturas) { fs.mkdirSync(capturas, { recursive: true }); await p.screenshot({ path: path.join(capturas, nombre + ".png") }); }
   }
   } catch (e) { if (Date.now() - t0 < tope) throw e; parcial = true; errores.push("TOPE " + Math.round(tope / 1000) + " s: " + String(e.message).slice(0, 200)); }

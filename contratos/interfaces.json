@@ -16,7 +16,7 @@
     "Hazas": { "modulo": "13b_hazas.js", "miembros": ["actualiza", "estado", "libera"] }
   },
   "ganchos_window": {
-    "__g": { "modulo": "27_debug.js", "miembros": ["Arboles", "Catalogo", "Escena3D", "OlivosTiles", "Cola", "copas", "suelo", "Mundo", "Terreno", "orb", "objetivo", "camera", "renderer", "scene", "pon", "listo", "modo", "ponExag", "aplica"] },
+    "__g": { "modulo": "27_debug.js", "miembros": ["Arboles", "Catalogo", "Escena3D", "OlivosTiles", "Cola", "copas", "suelo", "Mundo", "Terreno", "orb", "objetivo", "camera", "renderer", "scene", "pon", "listo", "modo", "Generados", "pendientes", "ponExag", "aplica"] },
     "__vrDebug": { "modulo": "29_vr.js", "tipo": "function" },
     "__vrOlivo": { "modulo": "29_vr.js", "tipo": "function" },
     "__vrBotones": { "modulo": "29_vr.js", "tipo": "function" },
