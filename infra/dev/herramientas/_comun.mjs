@@ -74,17 +74,51 @@ export function puertos() {
   };
 }
 
-/** Carpeta de teselas que se monta en /teselas (absoluta). Los datos reales nunca dentro del repo salvo en pruebas/salida/ (ignorada). */
-export function carpetaTeselas() {
-  const v = process.env.GEMELO_DEV_TESELAS;
-  if (!v) return FIXTURE;
-  const abs = path.resolve(DEV, v);                                // igual que la resuelve Compose (relativa a infra/dev/)
+/** Una carpeta de datos reales (absoluta): nunca dentro del repo salvo en pruebas/salida/ (ignorada). Relativa = a infra/dev/, como la resuelve Compose. */
+function fueraDelRepo(v, variable) {
+  const abs = path.resolve(DEV, v);
   const rel = path.relative(RAIZ, abs);
   const dentro = !rel.startsWith("..") && !path.isAbsolute(rel);
   if (dentro && !rel.split(path.sep).join("/").startsWith("pruebas/salida/")) {
-    throw new Error("GEMELO_DEV_TESELAS apunta dentro del repo (" + rel + "): los datos reales van FUERA del repo (es público)");
+    throw new Error(variable + " apunta dentro del repo (" + rel + "): los datos reales van FUERA del repo (es público)");
   }
   return abs;
+}
+
+/** Carpeta de teselas que se monta en /teselas (absoluta). Los datos reales nunca dentro del repo salvo en pruebas/salida/ (ignorada). */
+export function carpetaTeselas() {
+  const v = process.env.GEMELO_DEV_TESELAS;
+  return v ? fueraDelRepo(v, "GEMELO_DEV_TESELAS") : FIXTURE;
+}
+
+/** La finca que se sirve y con la que se construye la web (GEMELO_DEV_FINCA, por defecto hituelo) */
+export const fincaServida = () => process.env.GEMELO_DEV_FINCA || "hituelo";
+
+/**
+ * GEMELO_DEV_FINCA_CARPETA: la carpeta de UNA finca con su indice.json y t/ directamente dentro (como las salidas de
+ * referencia, p. ej. hituelo-v3), que se sirve en /teselas/<GEMELO_DEV_FINCA>/ tapando a la de GEMELO_DEV_TESELAS. Null si no se da.
+ */
+export function carpetaFinca() {
+  const v = process.env.GEMELO_DEV_FINCA_CARPETA;
+  return v ? fueraDelRepo(v, "GEMELO_DEV_FINCA_CARPETA") : null;
+}
+
+/** GEMELO_DEV_TILESET: la carpeta del tileset 3D Tiles (con tileset.json), que se sirve en /teselas/<finca>/tileset/. Null si no se da. */
+export function carpetaTileset() {
+  const v = process.env.GEMELO_DEV_TILESET;
+  return v ? fueraDelRepo(v, "GEMELO_DEV_TILESET") : null;
+}
+
+/** El indice.json de la finca que se sirve (el de GEMELO_DEV_FINCA_CARPETA, o el de GEMELO_DEV_TESELAS/<finca>/) */
+export function indiceServido() {
+  const f = carpetaFinca();
+  return f ? path.join(f, "indice.json") : path.join(carpetaTeselas(), fincaServida(), "indice.json");
+}
+
+/** ¿Es el fixture sintético lo que se sirve? (entonces la siembra usa sus hazas y olivos; si no, hazas de prueba inventadas) */
+export function esFixture() {
+  const rel = path.relative(FIXTURE, indiceServido());
+  return !rel.startsWith("..") && !path.isAbsolute(rel);
 }
 
 /** ¿Es una IPv4 de red privada (RFC 1918)? Solo esas se aceptan para abrir el entorno a la red local. */

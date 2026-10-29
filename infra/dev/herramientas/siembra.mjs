@@ -10,7 +10,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { cargaEnv, puertos, util, FIXTURE, PG_DUENO, RAIZ, SALIDA_DEV } from "./_comun.mjs";
+import { cargaEnv, esFixture, indiceServido, puertos, util, FIXTURE, PG_DUENO, RAIZ, SALIDA_DEV } from "./_comun.mjs";
 
 /** Hogares de prueba. alias_visible decide si su alias sale en la ficha de su haza para los demás (lista blanca). */
 export const HOGARES = [
@@ -21,25 +21,30 @@ export const HOGARES = [
 /** La haza H-D04 queda sin asignar (como las que la oficina aún no ha dado a nadie). */
 export const HAZAS_SIN_ASIGNAR = ["H-D04"];
 
-/** SQL de hazas y olivos con el cargador de tuberia/hazas (necesita Python 3 con jsonschema: tuberia/hazas/requirements.txt) */
+/**
+ * SQL de hazas con el cargador de tuberia/hazas (necesita Python 3 con jsonschema: tuberia/hazas/requirements.txt).
+ * Con el fixture: sus hazas y olivos (desde_fixture.py). Con otra finca servida (Hituelo real en local): unas pocas hazas
+ * INVENTADAS dentro de su caja (de_prueba.py), sin olivos ni datos agronómicos, para ver lindes en la prueba en aparatos.
+ */
 function sqlDeHazas() {
   const py = util.python();
   if (!py) throw new Error("falta Python 3 para generar las hazas sintéticas");
-  const indice = path.join(FIXTURE, "hituelo", "indice.json");
-  if (!fs.existsSync(indice)) throw new Error("falta el fixture (" + path.relative(RAIZ, indice) + "): npm run fixture");
-  const salida = path.join(SALIDA_DEV, "hazas");
+  const modo = esFixture() ? "fixture" : "prueba";
+  const indice = modo === "fixture" ? path.join(FIXTURE, "hituelo", "indice.json") : indiceServido();
+  if (!fs.existsSync(indice)) throw new Error("falta el índice (" + (modo === "fixture" ? path.relative(RAIZ, indice) + "): npm run fixture" : indice + ")"));
+  const salida = path.join(SALIDA_DEV, modo === "fixture" ? "hazas" : "hazas-prueba");
   // sin -I: jsonschema puede estar instalado en el sitio del usuario (pip install --user)
-  const r = util.ejecuta(py, [path.join("tuberia", "hazas", "desde_fixture.py"), "--indice", indice, "--salida", salida]);
+  const r = util.ejecuta(py, [path.join("tuberia", "hazas", modo === "fixture" ? "desde_fixture.py" : "de_prueba.py"), "--indice", indice, "--salida", salida]);
   if (r.status !== 0) {
     const sinDep = /No module named 'jsonschema'/.test(r.stderr);
-    throw new Error(sinDep ? "falta jsonschema: pip install -r tuberia/hazas/requirements.txt" : "desde_fixture.py falló:\n" + r.stdout + r.stderr);
+    throw new Error(sinDep ? "falta jsonschema: pip install -r tuberia/hazas/requirements.txt" : "la generación de hazas (" + modo + ") falló:\n" + r.stdout + r.stderr);
   }
-  return { sql: fs.readFileSync(path.join(salida, "hazas.sql"), "utf8"), resumen: JSON.parse(r.stdout.trim().split("\n").pop()) };
+  return { modo, sql: fs.readFileSync(path.join(salida, "hazas.sql"), "utf8"), resumen: JSON.parse(r.stdout.trim().split("\n").pop()) };
 }
 
 export async function siembra() {
   cargaEnv();
-  const { sql, resumen } = sqlDeHazas();
+  const { sql, resumen, modo } = sqlDeHazas();
   const { default: pg } = await import("pg");
   const p = puertos();
   const c = new pg.Client({ host: "127.0.0.1", port: p.db, user: PG_DUENO, database: "gemelo", password: process.env.GEMELO_DEV_PG_CLAVE, connectionTimeoutMillis: 10000 });
@@ -53,6 +58,8 @@ export async function siembra() {
     throw e;
   }
   try {
+    // las hazas H-D01… cambian de sitio al cambiar de finca; los olivos del fixture no pintan nada sobre otra finca
+    if (modo === "prueba") await c.query("DELETE FROM olivos");
     await c.query(sql);                                   // trae su BEGIN/COMMIT; idempotente (ON CONFLICT)
     await c.query("BEGIN");
     try {
@@ -70,7 +77,7 @@ export async function siembra() {
     const n = (await c.query(
       `SELECT (SELECT count(*) FROM hazas WHERE codigo LIKE 'H-D%')::int AS hazas, (SELECT count(*) FROM olivos)::int AS olivos,
               (SELECT count(*) FROM hogares WHERE correo LIKE '%.prueba@example.com')::int AS hogares`)).rows[0];
-    return { ...n, generadas: resumen };
+    return { ...n, modo, generadas: resumen };
   } finally { await c.end(); }
 }
 

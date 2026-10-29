@@ -33,6 +33,11 @@ services:
       - ../../apps/web/dist-portada:/srv/portada:ro   # la portada y la entrada (apps/web/portada, build:portada)
       - ../../apps/web/dist:/srv/web:ro
       - ${GEMELO_DEV_TESELAS:-../../pruebas/salida/fixture}:/srv/teselas:ro
+      # la finca servida (/teselas/<GEMELO_DEV_FINCA>/…): por defecto la misma de arriba; GEMELO_DEV_FINCA_CARPETA es una carpeta
+      # con indice.json y t/ directamente dentro (p. ej. la salida de referencia hituelo-v3, fuera del repo)
+      - ${GEMELO_DEV_FINCA_CARPETA:-${GEMELO_DEV_TESELAS:-../../pruebas/salida/fixture}/${GEMELO_DEV_FINCA:-hituelo}}:/srv/finca:ro
+      # el tileset 3D Tiles (/teselas/<finca>/tileset/…); sin GEMELO_DEV_TILESET se monta el fixture, que no trae tileset.json (404)
+      - ${GEMELO_DEV_TILESET:-../../pruebas/salida/fixture}:/srv/tileset:ro
     tmpfs:                             # la CA local y su estado no se guardan: es desarrollo (se regeneran en cada arranque)
       - /data:uid=1000,gid=1000,mode=0700
       - /config:uid=1000,gid=1000,mode=0700
@@ -40,6 +45,7 @@ services:
       LIVEKIT_PUBLICO: "ws://localhost:${GEMELO_DEV_PUERTO_LIVEKIT:-7880}"
       PUERTO_HTTPS_PUBLICO: "${GEMELO_DEV_PUERTO_HTTPS:-8743}"   # http redirige a https://localhost:<este>
       SITIOS: "https://localhost:8443"   # el sitio https de Caddy; compose.red-local.yml le suma la IP de la red local
+      FINCA_SERVIDA: "${GEMELO_DEV_FINCA:-hituelo}"   # la finca cuyo /teselas/<finca>/ sale de /srv/finca y /srv/tileset
       SNI_POR_DEFECTO: localhost         # el certificado para quien no manda SNI (a una IP no se manda)
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/salud"]

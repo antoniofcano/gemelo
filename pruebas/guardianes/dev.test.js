@@ -18,6 +18,8 @@ const DEV = path.join(RAIZ, "infra", "dev");
 const COMPOSE = path.join(DEV, "compose.yml");
 const EJEMPLO = path.join(DEV, "ejemplo.env");
 const HERR = path.join(DEV, "herramientas");
+// con GEMELO_DEV_TESELAS o GEMELO_DEV_FINCA_CARPETA (datos reales en local) la siembra es la de prueba, no la del fixture
+const DE_PRUEBA = !!(process.env.GEMELO_DEV_TESELAS || process.env.GEMELO_DEV_FINCA_CARPETA);
 const SERVICIOS = ["web", "db", "livekit", "correo", "migra", "api"];
 const DE_UNA_VEZ = ["migra"];                   // termina al aplicar las migraciones
 const CONSTRUIDOS = ["migra", "api"];           // imagen propia, construida de apps/api/Dockerfile
@@ -31,7 +33,7 @@ function hayDocker() {
 const SIN_DOCKER = hayDocker();
 /** El compose tal como lo ve Docker, con la plantilla de variables (sin el .env de este equipo ni COMPOSE_PROJECT_NAME, para que valga en cualquier máquina) */
 function config() {
-  const env = Object.assign({}, process.env, { GEMELO_DEV_TESELAS: "" });
+  const env = Object.assign({}, process.env, { GEMELO_DEV_TESELAS: "", GEMELO_DEV_FINCA_CARPETA: "", GEMELO_DEV_TILESET: "" });
   delete env.COMPOSE_PROJECT_NAME;
   const r = spawnSync("docker", ["compose", "-f", COMPOSE, "--env-file", EJEMPLO, "config", "--format", "json"], { cwd: DEV, encoding: "utf8", env });
   assert.strictEqual(r.status, 0, "docker compose config falló:\n" + r.stderr);
@@ -119,7 +121,7 @@ test("red local: sin el interruptor todo en 127.0.0.1; con él solo el https de 
   assert.match(lee("infra/dev/compose.yml"), /SITIOS: "https:\/\/localhost:8443"/, "sin el interruptor, Caddy solo sirve https://localhost");
   assert.match(lee("infra/dev/Caddyfile"), /^\{\$SITIOS\} \{\n\ttls internal/m, "el sitio https sale de SITIOS, con la CA local");
   if (SIN_DOCKER) return t.skip(SIN_DOCKER + ": la validación con `docker compose config` NO se ha comprobado (las de texto sí)");
-  const env = Object.assign({}, process.env, { GEMELO_DEV_TESELAS: "", GEMELO_DEV_IP: IP_EJEMPLO });
+  const env = Object.assign({}, process.env, { GEMELO_DEV_TESELAS: "", GEMELO_DEV_FINCA_CARPETA: "", GEMELO_DEV_TILESET: "", GEMELO_DEV_IP: IP_EJEMPLO });
   delete env.COMPOSE_PROJECT_NAME;
   const conf = archivos => {
     const r = spawnSync("docker", ["compose"].concat(...archivos.map(f => ["-f", path.join(DEV, f)]), ["--env-file", EJEMPLO, "config", "--format", "json"]), { cwd: DEV, encoding: "utf8", env });
@@ -210,6 +212,59 @@ test("siembra sintética: desde_fixture.py da 4 hazas y los olivos del fixture, 
   assert.notStrictEqual(no.status, 0, "debía negarse con un índice no sintético");
   const s = lee("infra/dev/herramientas/siembra.mjs");
   for (const m of s.matchAll(/correo:\s*"([^"]+)"/g)) assert.match(m[1], /@example\.com$/, "hogar de prueba fuera de example.com: " + m[1]);
+});
+
+test("Hituelo v3 en local: finca y tileset fuera del repo se montan de solo lectura y Caddy los sirve en /teselas/<finca>/ y /teselas/<finca>/tileset/", async () => {
+  const comp = composeSinComentarios();
+  assert.match(comp, /GEMELO_DEV_FINCA_CARPETA:-.*:\/srv\/finca:ro/, "la carpeta de la finca, de solo lectura");
+  assert.match(comp, /\$\{GEMELO_DEV_TILESET:-[^}]+\}:\/srv\/tileset:ro/, "el tileset, de solo lectura");
+  assert.match(comp, /FINCA_SERVIDA: "\$\{GEMELO_DEV_FINCA:-hituelo\}"/);
+  const c = lee("infra/dev/Caddyfile").split("\n").filter(l => !/^\s*#/.test(l)).join("\n");
+  assert.match(c, /@tileset path \/\{\$FINCA_SERVIDA:hituelo\}\/tileset\/\*/, "Caddy sirve el tileset de la finca servida");
+  assert.match(c, /root \* \/srv\/tileset/); assert.match(c, /root \* \/srv\/finca/); assert.match(c, /root \* \/srv\/teselas/);
+  assert.ok(c.indexOf("@tileset") < c.indexOf("@finca"), "el tileset antes que el resto de la finca (si no, /srv/finca lo taparía)");
+  // las rutas de datos reales no pueden caer dentro del repo (salvo pruebas/salida/, ignorada)
+  const cm = await import(pathToFileURL(path.join(HERR, "_comun.mjs")).href);
+  const antes = { f: process.env.GEMELO_DEV_FINCA_CARPETA, t: process.env.GEMELO_DEV_TILESET };
+  try {
+    for (const [v, f] of [["GEMELO_DEV_FINCA_CARPETA", cm.carpetaFinca], ["GEMELO_DEV_TILESET", cm.carpetaTileset]]) {
+      process.env[v] = path.join(RAIZ, "apps");
+      assert.throws(f, /dentro del repo/, v + " dentro del repo");
+      process.env[v] = path.join(RAIZ, "pruebas", "salida", "x");
+      assert.ok(f().endsWith("x"), v + " en pruebas/salida/ sí vale");
+      process.env[v] = path.join(os.tmpdir(), "fuera");
+      assert.strictEqual(f(), path.join(os.tmpdir(), "fuera"));
+    }
+  } finally {
+    for (const [v, a] of [["GEMELO_DEV_FINCA_CARPETA", antes.f], ["GEMELO_DEV_TILESET", antes.t]]) { if (a === undefined) delete process.env[v]; else process.env[v] = a; }
+  }
+  // el build del entorno local pide el constructor de olivos y 3DTilesRendererJS, no sus sustitutos vacíos
+  const l = lee("infra/dev/herramientas/levanta.mjs");
+  assert.match(l, /three-gen/); assert.match(l, /3d-tiles-renderer/);
+});
+
+test("siembra de prueba: de_prueba.py coloca 4 hazas inventadas DENTRO de las copas de cualquier finca, sin olivos y marcadas como de prueba", t => {
+  const py = python();
+  if (!py) return t.skip("sin Python 3: la siembra de prueba NO se ha comprobado");
+  if (spawnSync(py, ["-c", "import jsonschema"], { encoding: "utf8" }).status !== 0) return t.skip("sin jsonschema: la siembra de prueba NO se ha comprobado");
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "gemelo-prueba-"));
+  // un índice con copas repartidas por una caja grande, como el de una finca real (inventado aquí)
+  const copas = []; for (let i = 0; i < 40; i++) for (let j = 0; j < 40; j++) copas.push([-400 + i * 20, -300 + j * 15, 4]);
+  const ind = path.join(tmp, "indice.json");
+  fs.writeFileSync(ind, JSON.stringify({ finca_id: "hituelo", centro_utm: [405775, 4178870], copas }));
+  const r = ejecuta(py, ["tuberia/hazas/de_prueba.py", "--indice", ind, "--salida", path.join(tmp, "s")]);
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.deepStrictEqual(JSON.parse(r.stdout), { hazas: 4, olivos: 0, salida: "hazas.sql" });
+  const hz = JSON.parse(fs.readFileSync(path.join(tmp, "s", "hazas.prueba.geojson"), "utf8"));
+  assert.strictEqual(hz.sintetico, true);
+  assert.deepStrictEqual(hz.features.map(f => f.properties.codigo), ["H-D01", "H-D02", "H-D03", "H-D04"], "los códigos de los hogares de prueba");
+  for (const f of hz.features) {
+    assert.match(f.properties.nombre, /de prueba, inventada/);
+    assert.strictEqual(f.properties.olivos_declarados, null); assert.deepStrictEqual(f.properties.parcelas_ot, []);
+    for (const [x, y] of f.geometry.coordinates[0]) assert.ok(x > 405775 - 450 && x < 405775 + 450 && y > 4178870 - 350 && y < 4178870 + 350, "dentro de la caja de copas");
+  }
+  const s = lee("infra/dev/herramientas/siembra.mjs");
+  assert.match(s, /de_prueba\.py/); assert.match(s, /DELETE FROM olivos/);
 });
 
 test("scripts dev:arriba, dev:abajo y dev:estado en el package.json raíz, y dependencias de las herramientas con versión exacta", () => {
@@ -497,7 +552,7 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
       assert.deepStrictEqual(Object.keys(f.properties).sort(), ["codigo", "es_mia", "finca", "nombre"], "propiedades del GeoJSON");
       assert.strictEqual(f.properties.finca, "hituelo");
       assert.strictEqual(f.properties.es_mia, f.properties.codigo === yo.haza, f.properties.codigo + ": es_mia");
-      for (const [x, y] of f.geometry.coordinates.flat(2)) assert.ok(Math.abs(x - cx) <= I.ts && y <= cy && cy - y <= I.ts, f.properties.codigo + ": la linde cae fuera del mundo");
+      for (const [x, y] of f.geometry.coordinates.flat(2)) assert.ok(x >= cx + I.ext[0] && x <= cx + I.ext[2] && y >= cy + I.ext[3] && y <= cy + I.ext[1], f.properties.codigo + ": la linde cae fuera del mundo");
     }
     revisaListaBlanca(g.cuerpo, "hazas", correos);
     const id = codigo => g.cuerpo.features.find(f => f.properties.codigo === codigo).id;
@@ -511,8 +566,13 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
       assert.ok(valida(f.cuerpo), codigo + ": la ficha no cumple contratos/haza.schema.json: " + JSON.stringify(valida.errors));
       assert.deepStrictEqual({ es_mia: f.cuerpo.es_mia, alias: f.cuerpo.alias }, esp, codigo + ": titularidad y alias");
       revisaListaBlanca(f.cuerpo, "ficha " + codigo, correos);
-      assert.ok(f.cuerpo.olivos.lidar.n > 0, codigo + ": sin olivos dentro");
-      assert.strictEqual(f.cuerpo.olivos.declarado.n, 35, codigo + ": olivos declarados (sintéticos)");
+      if (DE_PRUEBA) {   // finca que no es el fixture: hazas inventadas sin olivos ni recuentos (tuberia/hazas/de_prueba.py)
+        assert.strictEqual(f.cuerpo.olivos.lidar.n, 0, codigo + ": las hazas de prueba no llevan olivos en la base");
+        assert.strictEqual(f.cuerpo.olivos.declarado.n, null, codigo + ": sin recuento declarado");
+      } else {
+        assert.ok(f.cuerpo.olivos.lidar.n > 0, codigo + ": sin olivos dentro");
+        assert.strictEqual(f.cuerpo.olivos.declarado.n, 35, codigo + ": olivos declarados (sintéticos)");
+      }
       assert.deepStrictEqual(f.cuerpo.avisos, ["ot_sin_sincronia"], codigo + ": sin OlivarTrack en local, la ficha lo dice");
       assert.strictEqual(f.cuerpo.completo, false);
     }

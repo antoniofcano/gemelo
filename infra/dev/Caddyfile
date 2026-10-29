@@ -74,11 +74,31 @@
 		redir /finca /finca/ 308
 
 		# teselas: /teselas/<finca>/indice.json y /teselas/<finca>/t/<kx>_<ky>.json|jpg (carpeta montada de solo lectura)
+		# /teselas/<finca servida>/tileset/… sale de /srv/tileset (3D Tiles) y el resto de esa finca, de /srv/finca (por defecto,
+		# lo mismo que /srv/teselas/<finca>; con GEMELO_DEV_FINCA_CARPETA, una salida de referencia); las demás fincas, de /srv/teselas
 		handle_path /teselas/* {
-			root * /srv/teselas
 			header Cache-Control "private, max-age=300"
-			file_server {
-				hide .*
+			@tileset path /{$FINCA_SERVIDA:hituelo}/tileset/*
+			handle @tileset {
+				uri strip_prefix /{$FINCA_SERVIDA:hituelo}/tileset
+				root * /srv/tileset
+				file_server {
+					hide .*
+				}
+			}
+			@finca path /{$FINCA_SERVIDA:hituelo}/*
+			handle @finca {
+				uri strip_prefix /{$FINCA_SERVIDA:hituelo}
+				root * /srv/finca
+				file_server {
+					hide .*
+				}
+			}
+			handle {
+				root * /srv/teselas
+				file_server {
+					hide .*
+				}
 			}
 		}
 

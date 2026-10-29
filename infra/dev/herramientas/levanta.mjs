@@ -2,21 +2,24 @@
 // --red-local: además de 127.0.0.1, el https de Caddy (y SOLO él) escucha en la IP de la red local (GEMELO_DEV_IP o la que
 // se detecta), para probar desde el móvil o las Quest de la misma WiFi (compose.red-local.yml). Sin él, todo como siempre.
 //  1. crea infra/dev/.env con claves aleatorias si falta;
-//  2. genera el fixture sintético si falta (o usa GEMELO_DEV_TESELAS, una carpeta de datos reales FUERA del repo);
+//  2. genera el fixture sintético si falta (o usa datos reales FUERA del repo: GEMELO_DEV_TESELAS, o GEMELO_DEV_FINCA_CARPETA
+//     para la salida de UNA finca como hituelo-v3, y GEMELO_DEV_TILESET para el tileset 3D Tiles de /teselas/<finca>/tileset/);
 //  3. construye la web con Vite contra el índice de la finca (GEMELO_DEV_FINCA, por defecto hituelo), con base /teselas/<finca>/,
+//     CON el constructor de olivos (apps/web/olivo, ?olivos=gen) y 3DTilesRendererJS (?escena=tiles), instalándolos si faltan,
 //     y la portada (apps/web/portada → dist-portada, build:portada), y deja junto a cada fichero su .br/.gz para que Caddy
 //     los sirva ya comprimidos;
 //  4. arranca la base y comprueba que tiene los roles de producción (gemelo_dueno y gemelo_api; decisión 55): un volumen
 //     de antes no los tiene y se dice cómo arreglarlo;
 //  5. docker compose up -d --build --wait: construye la imagen de la api (apps/api/Dockerfile; con la caché de Docker es
 //     rápido si no cambió nada), aplica las migraciones (servicio `migra`) y espera a los healthchecks;
-//  6. siembra las hazas, los olivos y los hogares de prueba SINTÉTICOS (siembra.mjs, idempotente).
+//  6. siembra las hazas, los olivos y los hogares de prueba SINTÉTICOS (siembra.mjs, idempotente). Con datos que no son el
+//     fixture, las hazas son unas pocas INVENTADAS dentro de la caja de la finca (tuberia/hazas/de_prueba.py), sin olivos.
 import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
 import { fileURLToPath } from "node:url";
 import { siembra, HOGARES } from "./siembra.mjs";
-import { aseguraEnv, cargaEnv, carpetaTeselas, compose, ipRedLocal, motivoSinDocker, npm, aseguraDependencias, puertos, util, RAIZ, ENV, FIXTURE, PG_API, PG_DUENO, SALIDA_DEV, WEB } from "./_comun.mjs";
+import { aseguraEnv, cargaEnv, carpetaFinca, carpetaTeselas, carpetaTileset, esFixture, fincaServida, indiceServido, compose, ipRedLocal, motivoSinDocker, npm, aseguraDependencias, puertos, util, RAIZ, ENV, FIXTURE, PG_API, PG_DUENO, SALIDA_DEV, WEB } from "./_comun.mjs";
 
 const SIN_BUILD = process.argv.includes("--sin-build");
 const RED_LOCAL = process.argv.includes("--red-local");
@@ -34,9 +37,8 @@ function preparaFixture() {
 }
 
 /** Copia el índice de la finca con `base` = /teselas/<finca>/ (campo del contrato indice.schema.json) para que el motor pida allí t/ */
-function datosDeLaWeb(teselas, finca) {
-  const indice = path.join(teselas, finca, "indice.json");
-  if (!fs.existsSync(indice)) throw new Error("no existe " + indice + " (¿GEMELO_DEV_FINCA o GEMELO_DEV_TESELAS mal puestos?)");
+function datosDeLaWeb(indice, finca) {
+  if (!fs.existsSync(indice)) throw new Error("no existe " + indice + " (¿GEMELO_DEV_FINCA, GEMELO_DEV_TESELAS o GEMELO_DEV_FINCA_CARPETA mal puestos?)");
   const D = JSON.parse(fs.readFileSync(indice, "utf8"));
   D.base = "/teselas/" + finca + "/";
   fs.mkdirSync(SALIDA_DEV, { recursive: true });
@@ -59,8 +61,28 @@ function precomprime(dir) {
   return n;
 }
 
+/**
+ * Las dependencias del cliente web que cambian lo que se ve: sin el constructor de olivos (apps/web/olivo → three-gen) Vite pone
+ * un sustituto vacío y ?olivos=gen no hace nada; sin 3d-tiles-renderer, ?escena=tiles vuelve al relieve. Se instalan (npm ci,
+ * versiones del package-lock) si faltan, y se dice con cuál se construye.
+ */
+function aseguraDependenciasWeb() {
+  if (!fs.existsSync(path.join(WEB, "node_modules", "vite")) || !fs.existsSync(path.join(WEB, "node_modules", "3d-tiles-renderer", "package.json"))) {
+    console.log("  instalando apps/web (npm ci)…"); npm(["ci", "--no-audit", "--no-fund"], WEB);
+  }
+  const olivo = path.join(WEB, "olivo");
+  if (!fs.existsSync(path.join(olivo, "node_modules", "three-gen", "package.json"))) {
+    console.log("  instalando el constructor de olivos (apps/web/olivo, npm ci --omit=dev)…"); npm(["ci", "--omit=dev", "--no-audit", "--no-fund"], olivo);
+  }
+  for (const [nombre, ruta] of [["constructor de olivos (?olivos=gen)", path.join(olivo, "node_modules", "three-gen", "package.json")],
+    ["3DTilesRendererJS (?escena=tiles)", path.join(WEB, "node_modules", "3d-tiles-renderer", "package.json")]]) {
+    if (!fs.existsSync(ruta)) throw new Error("falta " + nombre + " tras instalar (" + rel(ruta) + ")");
+    console.log("  con " + nombre);
+  }
+}
+
 function construyeWeb(datos) {
-  if (!fs.existsSync(path.join(WEB, "node_modules", "vite"))) { console.log("  instalando apps/web (npm ci)…"); npm(["ci", "--no-audit", "--no-fund"], WEB); }
+  aseguraDependenciasWeb();
   npm(["run", "build"], WEB, { GEMELO_DATOS: datos });
   npm(["run", "build:portada"], WEB);          // la portada y la entrada (apps/web/portada → dist-portada), servida en /
   for (const d of ["dist", "dist-portada"]) {
@@ -106,7 +128,10 @@ export async function levanta({ sinBuild = false, redLocal = false } = {}) {
   console.log(env === "creado" ? "  creado " + rel(ENV) + " con claves aleatorias"
     : env ? "  " + rel(ENV) + " ya existía: añadidas las claves nuevas " + env.join(", ") : "  " + rel(ENV) + " ya existe (no se toca)");
   cargaEnv();
-  const teselas = carpetaTeselas(), finca = process.env.GEMELO_DEV_FINCA || "hituelo";
+  const teselas = carpetaTeselas(), finca = fincaServida(), carpeta = carpetaFinca(), tileset = carpetaTileset();
+  if (tileset && !fs.existsSync(path.join(tileset, "tileset.json"))) throw new Error("no existe " + path.join(tileset, "tileset.json") + " (GEMELO_DEV_TILESET: la carpeta del tileset; ver DESARROLLO-LOCAL.md, «Prueba en aparatos con Hituelo v3»)");
+  // lo que Compose monta: rutas absolutas ya resueltas ("" = no se da, y manda el valor por defecto del compose)
+  const datosCompose = { GEMELO_DEV_TESELAS: teselas, GEMELO_DEV_FINCA_CARPETA: carpeta || "", GEMELO_DEV_TILESET: tileset || "", GEMELO_DEV_FINCA: finca };
   let red = null;
   if (redLocal) {
     red = ipRedLocal();
@@ -115,22 +140,24 @@ export async function levanta({ sinBuild = false, redLocal = false } = {}) {
       "; base, correo, LiveKit y api siguen solo en 127.0.0.1 o sin puerto" +
       (red.otras.length ? "\n  otras IP posibles: " + red.otras.map(o => o.ip + " (" + o.nombre + ")").join(", ") + " — elige con GEMELO_DEV_IP" : ""));
   }
-  paso("datos: " + (teselas === FIXTURE ? "fixture sintético" : "carpeta local (GEMELO_DEV_TESELAS)") + ", finca " + finca);
-  preparaFixture();                      // la siembra de hazas sale siempre del fixture, aunque las teselas sean otras
-  const datos = datosDeLaWeb(teselas, finca);
+  paso("datos: " + (esFixture() ? "fixture sintético" : "carpeta local " + (carpeta ? "(GEMELO_DEV_FINCA_CARPETA)" : "(GEMELO_DEV_TESELAS)")) + ", finca " + finca +
+    (tileset ? ", con tileset 3D Tiles (GEMELO_DEV_TILESET)" : ""));
+  preparaFixture();                      // los guardianes y la siembra de la finca sintética parten siempre del fixture
+  const datos = datosDeLaWeb(indiceServido(), finca);
   if (!sinBuild) { paso("build de la web (Vite)"); construyeWeb(datos); }
   else if (!fs.existsSync(path.join(WEB, "dist", "index.html")) || !fs.existsSync(path.join(WEB, "dist-portada", "index.html"))) throw new Error("--sin-build pero no hay apps/web/dist o dist-portada: quítalo la primera vez");
   paso("dependencias de las herramientas");
   aseguraDependencias();
   paso("base de datos y sus roles (" + PG_DUENO + ", " + PG_API + ")");
-  compruebaRoles({ GEMELO_DEV_TESELAS: teselas });
+  compruebaRoles(datosCompose);
   paso("docker compose up -d --build --wait (api con sus migraciones y servicios)");
   // sin --red-local, `up` recrea web y api sin el puerto ni la IP de la red: cerrar es volver a levantar sin el interruptor
-  const r = compose(["up", "-d", "--build", "--wait", "--wait-timeout", "240"], { env: { GEMELO_DEV_TESELAS: teselas }, redLocal });
+  const r = compose(["up", "-d", "--build", "--wait", "--wait-timeout", "240"], { env: datosCompose, redLocal });
   if (r.status !== 0) throw new Error(motivoUp());
-  paso("siembra sintética (hazas, olivos y hogares de prueba)");
+  paso(esFixture() ? "siembra sintética (hazas, olivos y hogares de prueba)" : "siembra de prueba sobre la finca servida (hazas INVENTADAS dentro de su caja, sin olivos, y hogares de prueba)");
   const sembrado = await siembra();
-  console.log("  " + sembrado.hazas + " hazas, " + sembrado.olivos + " olivos y " + sembrado.hogares + " hogares de prueba (" + HOGARES[0].correo + "…)");
+  console.log("  " + sembrado.hazas + " hazas, " + sembrado.olivos + " olivos y " + sembrado.hogares + " hogares de prueba (" + HOGARES[0].correo + "…)" +
+    (sembrado.modo === "prueba" ? "\n  OJO: las hazas son rectángulos inventados de 90 x 60 m (no son las de la oficina) y no hay olivos en la base: la ficha de una haza sale sin recuentos" : ""));
   const p = puertos();
   const w = "https://localhost:" + p.https;
   console.log("\nListo (por https: la CA local de Caddy no está instalada, el navegador avisará; http://localhost:" + p.web + " redirige aquí):" +
@@ -138,6 +165,7 @@ export async function levanta({ sinBuild = false, redLocal = false } = {}) {
     "\n  mundo     " + w + "/finca/   (solo con sesión: pide el enlace en la portada y ábrelo desde el buzón)" +
     "\n  api       " + w + "/api/salud" +
     "\n  teselas   " + w + "/teselas/" + finca + "/indice.json   (solo con sesión)" +
+    (tileset ? "\n  tileset   " + w + "/teselas/" + finca + "/tileset/tileset.json   (solo con sesión; en el mundo: /finca/?olivos=gen&escena=tiles)" : "") +
     "\n  correo    http://localhost:" + p.correoWeb + "/   (SMTP en 127.0.0.1:" + p.smtp + ")" +
     "\n  db        127.0.0.1:" + p.db + "  base gemelo; " + PG_DUENO + " (dueño) y " + PG_API + " (la api), claves en infra/dev/.env" +
     "\n  livekit   ws://localhost:" + p.livekit + "  (claves en infra/dev/.env)" +
