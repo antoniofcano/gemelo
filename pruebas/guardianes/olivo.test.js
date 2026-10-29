@@ -6,6 +6,7 @@
 //   - montar la misma receta con three 0.128.0 y 0.186.1 da el mismo grupo (triángulos y huella de lo montado), en cada nivel;
 //   - niveles de detalle: centenario 3 pies, envero, semilla 7 → E0 102 978, E1 48 378, E2 19 366, E2-VR 14 618 triángulos; aclareo al 50 %;
 //   - semillas, épocas y parámetros desde el registro; calibración de tuberia/parametros_copas.py con olivos generados (sintéticos);
+//   - el módulo del motor 07ab_generados.js en Node (pruebas/olivo/generados_motor.mjs): materiales con el parche del motor y el fundido;
 //   - en Chrome (si lo hay): el trabajador da la misma huella que el hilo principal, las rebanadas no pasan de 3 ms y el IIFE carga con r128.
 // Sin `cd apps/web/olivo && npm i` (three-gen 0.128.0, three-r186 0.186.1, vite) se SALTA con aviso.
 const test = require("node:test"), assert = require("node:assert");
@@ -72,6 +73,14 @@ test("niveles de detalle: los recuentos de la maqueta y el aclareo al 50 %", { t
   assert.ok(!r.error, r.error);
   assert.deepStrictEqual(r.mal, []);
   assert.deepStrictEqual(Object.fromEntries(Object.entries(r.niveles).map(([k, v]) => [k, v.triangulos])), { E0: 102978, E1: 48378, E2: 19366, E2VR: 14618 });
+});
+
+test("motor (07ab, ?olivos=gen) en Node: sin la bandera nada; materiales con nubes, escarcha y fundido; lote con fundido; huella intacta", { timeout: 300000 }, async t => {
+  if (SALTO) return t.skip(SALTO);
+  const r = json(await nodo([path.join("pruebas", "olivo", "generados_motor.mjs")]));
+  assert.ok(!r.error, r.error);
+  assert.deepStrictEqual(r.mal, []);
+  t.diagnostic("lote 1: " + JSON.stringify(r.diag.primero.info) + " · " + r.diag.ms + " ms");
 });
 
 test("semilla guardada (copas_semilla) y nombres de catálogo de los tipos", t => {

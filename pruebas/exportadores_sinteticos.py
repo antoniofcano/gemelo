@@ -6,7 +6,10 @@ pruebas/guardianes/exportadores.test.js. Deterministas (semilla fija).
         datos/                 entradas de Hituelo inventadas: 1 tesela (1000_16000), 1 parcela, 13 copas (dos en la misma celda de 1 m) y 11 marcas de OlivarTrack (9 con id del censo, desplazadas ~1,5 m)
         hituelo_a/, hituelo_b/ dos exportaciones de los mismos datos
         hituelo_c/             los mismos árboles en otro orden en arboles.json
-        cerro/                 construye() de finca_8_teselas.py (Cerro) con unas rejillas inventadas de 1 tesela"""
+        cerro/                 construye() de finca_8_teselas.py (Cerro) con unas rejillas inventadas de 1 tesela
+        semillas: anterior.json (hituelo_a con semillas inventadas) y anterior_desplazado.json (lo mismo con otro centro_utm); hituelo_d/ (otro orden,
+        --anterior), hituelo_e/ (GEMELO_INDICE_ANTERIOR), hituelo_f/ (el indice.json que ya había en la salida), hituelo_g/ (anterior con otro centro);
+        cerro_prov/ (sin ids del censo) y cerro_censo/ (con el id 7000 del censo y cerro_prov como anterior: hereda la semilla provisional)"""
 import json, os, random, sys
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
@@ -98,21 +101,22 @@ def datos_hituelo(D, orden_arboles=None):
                                                              utm=[[E0 + 50, N0 + 70], [E0 + 90, N0 + 70], [E0 + 90, N0 + 100], [E0 + 50, N0 + 100]])]))
 
 
-def cerro(salida):
+def cerro(salida, censo=True, anterior=None):
     import numpy as np
     import finca_8_teselas as F8
     cx, cy = E0 + 128, N0 + 128; W = H = TS
     copas = [[round(a["x"] - cx, 2), round(a["y"] - cy, 2), a["h"], a["r8"], 1] for a in arboles() if a["olivo"]]
     D = dict(centro_utm=[cx, cy], ext=[-128, 128, 128, -128], W=W, H=H, z0=600.0, parcelas=[dict(id="sintetica-1", nombre="Parcela sintética", ha=0.5, linde=[[-78, -58], [-38, -58], [-38, -28], [-78, -28]], centro=[-58, -43], desfase=[0, 0], suelo=None)],
-             copas=copas, marcados=[[copas[0][0], copas[0][1], 0, 0], [copas[1][0], copas[1][1], 1, 0]], marcados_id=[7000, None], ot=dict(fuente="instantanea", fecha_consulta="2026-01-01", parcelas={"sintetica-1": dict(tareas=[], fenologia=[])}), avance={})
+             copas=copas, marcados=[[copas[0][0], copas[0][1], 0, 0], [copas[1][0], copas[1][1], 1, 0]], marcados_id=[7000, None] if censo else None, ot=dict(fuente="instantanea", fecha_consulta="2026-01-01", parcelas={"sintetica-1": dict(tareas=[], fenologia=[])}), avance={})
     yy, xx = np.mgrid[0:H, 0:W]
     Fd = dict(D=D, cx=cx, cy=cy, ux0=E0, uyN=N0 + H, W=W, H=H, dtm=(100 + xx + yy).astype("<i2"), chm=np.zeros((H, W), "<i2"), suelo=np.full((H // 2, W // 2, 3), 120, "u1"), srs=2,
               orto=np.full((H, W, 3), 110, "u1"), pts=np.zeros((10, 3), "<i2"))
-    F8.construye(Fd, salida)
+    F8.construye(Fd, salida, anterior)
 
 
 def exporta(base):
     for m in ("numpy", "scipy", "PIL"): __import__(m)
+    os.environ.pop("GEMELO_INDICE_ANTERIOR", None)                            # la prueba no hereda la de quien la lanza
     d1 = os.path.join(base, "datos"); datos_hituelo(d1)
     os.environ["GEMELO_HITUELO"] = d1; os.environ["GEMELO_PARCELAS"] = os.path.join(d1, "parcelas.json")
     import hituelo_conv
@@ -123,6 +127,21 @@ def exporta(base):
     hituelo_conv.HD = d2; hituelo_conv.PARC = os.path.join(d2, "parcelas.json")
     hituelo_conv.hituelo(os.path.join(base, "hituelo_c"))
     cerro(os.path.join(base, "cerro"))
+    # copas_semilla (decisión 50): un índice anterior con semillas inventadas, y las tres formas de pasarlo
+    I = json.load(open(os.path.join(base, "hituelo_a", "indice.json"), encoding="utf-8"))
+    I["copas_semilla"] = [900000 + i for i in range(len(I["copas"]))]; escribe(os.path.join(base, "anterior.json"), I)
+    J = dict(I); J["centro_utm"] = [I["centro_utm"][0] + 10, I["centro_utm"][1] - 4]; J["copas"] = [[c[0] - 10, c[1] + 4] + c[2:] for c in I["copas"]]
+    escribe(os.path.join(base, "anterior_desplazado.json"), J)
+    hituelo_conv.hituelo(os.path.join(base, "hituelo_d"), os.path.join(base, "anterior.json"))   # otro orden (datos_c)
+    hituelo_conv.HD = d1; hituelo_conv.PARC = os.path.join(d1, "parcelas.json")
+    os.environ["GEMELO_INDICE_ANTERIOR"] = os.path.join(base, "anterior.json")
+    hituelo_conv.hituelo(os.path.join(base, "hituelo_e"))
+    del os.environ["GEMELO_INDICE_ANTERIOR"]
+    os.makedirs(os.path.join(base, "hituelo_f"), exist_ok=True); escribe(os.path.join(base, "hituelo_f", "indice.json"), I)
+    hituelo_conv.hituelo(os.path.join(base, "hituelo_f"))
+    hituelo_conv.hituelo(os.path.join(base, "hituelo_g"), os.path.join(base, "anterior_desplazado.json"))
+    cerro(os.path.join(base, "cerro_prov"), censo=False)
+    cerro(os.path.join(base, "cerro_censo"), anterior=os.path.join(base, "cerro_prov", "indice.json"))
     cx, cy = E0 + 128, N0 + 128; A = arboles(); _, esp = marcas_censo()
     escribe(os.path.join(base, "esperado.json"), dict(hituelo={"%s,%s" % (round(A[n]["x"] - cx, 2), round(A[n]["y"] - cy, 2)): k for n, k in esp.items()},
                                                     cerro={"%s,%s" % (round(A[0]["x"] - cx, 2), round(A[0]["y"] - cy, 2)): 7000}))
