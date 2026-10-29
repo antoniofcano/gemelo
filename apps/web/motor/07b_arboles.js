@@ -2,8 +2,8 @@
 // Expone: Arboles
 // Consume: 01_datos (FACTOR_R8), 02_mundo (Mundo, suelo, copaAlta, kcor, tinte, aviva, copas), 02b_cola (Cola),
 //   03_escena (camera, exag, modo, calidad), 04_terreno (hash), 05_nube (ALTO_MAX, nube), 06_arboles (gArboles, tronco, arbolesG),
-//   07_follaje (follajeG, construyeSombras), 07a_catalogo (Catalogo), 09_camara (objetivo, orb), 10_ndvi (ndviIdx), 12_paseo (paseando),
-//   15_tiempo (nivel, esc), 16_vida (mira)
+//   07_follaje (follajeG, construyeSombras), 07a_catalogo (Catalogo), 07ab_generados (Generados), 09_camara (objetivo, orb), 10_ndvi (ndviIdx),
+//   12_paseo (paseando), 15_tiempo (nivel, esc), 16_vida (mira)
 // ===============================================================================
   // ---------- los olivos del modo Gemelo con tres niveles de detalle: el coste de dibujo no crece con la superficie de la finca
   // Nivel 0: celdas de 64 m con el modelo completo (copa medida, troncos, hojas, flores y aceitunas) alrededor de lo que se mira (o de quien pasea), hasta MAX0 olivos.
@@ -110,6 +110,7 @@
       var fx = paseando ? cam.x : objetivo.x, fz = paseando ? cam.z : objetivo.z, dts = (ahora - ultima.tms) / 1000;
       if (ultima.tms && dts > 0.05 && dts < 3) { vel.x = 0.55 * vel.x + 0.45 * (fx - ultima.fx) / dts; vel.z = 0.55 * vel.z + 0.45 * (fz - ultima.fz) / dts; } else if (!ultima.tms || dts >= 3) { vel.x = vel.z = 0; }
       ultima.fx = fx; ultima.fz = fz; ultima.tms = ahora;
+      var GEN = Generados.actualiza(fx, fz, TOPE_TRI, olivos);   // ?olivos=gen (07ab): dentro de su radio, el nivel 0 de siempre se apaga; sin la bandera, radio 0
       // el aparato manda: sube o baja la escala según el tiempo por fotograma medido
       if (!fijaSc) { if (emaDt < 0.020) esc = Math.min(1.6, esc + 0.05); else if (emaDt > 0.030) esc = Math.max(0.7, esc - 0.10); }
       var tope0 = MAX0 * esc * (vrP ? vrP.n : 1);
@@ -119,7 +120,7 @@
       var ok = todas.filter(function (c) { return c.ts && c.ts.estado === 2; }).sort(function (a, b) { return a.d - b.d; }), tot = 0, totP = 0;
       ok.forEach(function (c) {
         var lim = c.enAntes ? R0 * 1.15 : R0;
-        if (vis && c.d < lim && (tot + c.arr.length <= tope0 || tot === 0)) { c.en = true; tot += c.arr.length; }
+        if (vis && c.d < lim && !(c.d < GEN.radio) && (tot + c.arr.length <= tope0 || tot === 0)) { c.en = true; tot += c.arr.length; }
         else if (c.d < RP && totP + tot + c.arr.length <= tope0 * 1.6) { c.pre = true; totP += c.arr.length; }
       });
       faltan = 0; nPre = 0;
@@ -135,9 +136,10 @@
       var rest = [], tri0 = 0; nL0 = 0;
       if (vis) olivos.forEach(function (c) {
         if (c.cel.en && c.cel.g && c.cel.g.visible) { nL0++; return; }
+        if (GEN.tiene(c.i)) return;   // lo dibuja Generados
         var dx = c.x - cam.x, dz = -c.y - cam.z, dy = Math.max(0, cam.y - c.gz * exag); c.d = Math.sqrt(dx * dx + dz * dz + dy * dy); if (c.d < U2) rest.push(c);
       });
-      tri0 = nL0 * TRI0; rest.sort(function (a, b) { return a.d - b.d; });
+      tri0 = nL0 * TRI0 + GEN.tri; rest.sort(function (a, b) { return a.d - b.d; });
       var tope1 = Math.max(500, Math.min(MAX1, Math.floor((TOPE_TRI - tri0 - TRI2 * Math.min(MAX2, rest.length)) / TRI1)));
       var cnt1 = [], cnt2 = [], a1 = 0, a2 = 0, tc = new THREE.Color(), mm = m4, e = mm.elements, i, k;
       for (k = 0; k < NP1; k++) cnt1.push(0); for (k = 0; k < NP2; k++) cnt2.push(0);

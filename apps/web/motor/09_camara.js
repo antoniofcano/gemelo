@@ -1,8 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: objetivo, orb, camara, suelta, eligeCopa, pon
 // Consume: 01_datos (D, $, fmt, DIST_MAX, DIST_INI), 02_mundo (suelo, orto, kcor, copas, marc), 03_escena (lienzo, camera, exag, modo),
-//   05_nube (nube), 08_marcadores (aplica, capas, aplicaLuego), 12_paseo (paseando), 13_parcelas (parcelas, parcelaSel, elegirParcela),
-//   29_vr (ficha)
+//   05_nube (nube), 07ab_generados (Generados), 08_marcadores (aplica, capas, aplicaLuego), 12_paseo (paseando),
+//   13_parcelas (parcelas, parcelaSel, elegirParcela), 29_vr (ficha)
 // ===============================================================================
 
   // cámara orbital
@@ -34,13 +34,17 @@
     if (!best) { $("ficha").hidden = true; return; }
     eligeCopa(best);
   }
+  function rotuloGenerado(i) {   // decisión 34: si el olivo se dibuja generado (?olivos=gen), se dice que su forma es ilustrativa y si su id es provisional
+    var r = Generados.rotulo(i); if (!r) return "";
+    return "<dt>Forma</dt><dd>ilustrativa con medidas del LiDAR" + (r.variante ? " (variante)" : "") + "</dd>" + (r.provisional ? "<dt>Id</dt><dd>provisional (aún no viene del censo)</dd>" : "");
+  }
   function eligeCopa(best) {
     var f = $("ficha");
     var m = marc.filter(function (q) { return q.par === best.i; })[0], rm = best.perfil.reduce(function (a, b) { return a + b; }, 0) / 8;
     $("fichaTitulo").textContent = "Olivo " + (best.i + 1);
     $("fichaDatos").innerHTML = "<dt>Parcela</dt><dd>" + (best.dentro ? parcelas[best.parc].nombre : "fuera de las parcelas") + "</dd><dt>Altura</dt><dd>" + fmt(best.h, 1) + " m</dd><dt>Radio de copa</dt><dd>" + fmt(rm, 1) + " m</dd>" +
       "<dt>Guardado en OlivarTrack</dt><dd>" + (best.dentro ? (m ? "sí" : "no") : "fuera de esta parcela") + "</dd>" + (m ? "<dt>Desfase</dt><dd>" + fmt(Math.hypot(m.x - best.x, m.y - best.y), 1) + " m</dd>" : "") +
-      "<dt>Pies del olivo</dt><dd>2–3, lo habitual (no medido)</dd><dt>UTM 30 (ETRS89)</dt><dd>" + fmt(D.centro_utm[0] + best.x) + ", " + fmt(D.centro_utm[1] + best.y) + "</dd>";
+      "<dt>Pies del olivo</dt><dd>2–3, lo habitual (no medido)</dd>" + rotuloGenerado(best.i) + "<dt>UTM 30 (ETRS89)</dt><dd>" + fmt(D.centro_utm[0] + best.x) + ", " + fmt(D.centro_utm[1] + best.y) + "</dd>";
     f.hidden = false;
   }
   $("cerrarFicha").addEventListener("click", function () { $("ficha").hidden = true; });

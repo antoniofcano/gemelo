@@ -194,3 +194,25 @@ test("en Chrome: herramienta con three 0.128 y 0.186, trabajador = hilo principa
     " ms · heap " + r.heapMB.join("→") + " MB · huellas exactas como Node: " + r.exactasComoNode);
   assert.deepStrictEqual(r.mal, [], "tiempos fuera de tope en 3 intentos (¿máquina cargada?)");
 });
+
+test("motor con ?olivos=gen (P7, decisión 52): el fixture de Hituelo dibuja olivos generados en un lote de ≤ 7 llamadas y dentro de sus topes", { timeout: 1200000 }, async t => {
+  if (SALTO) return t.skip(SALTO);
+  const { motivoSalto } = require("./_navegador");
+  const m = motivoSalto("los olivos generados en el motor"); if (m) return t.skip(m);
+  const { propia, fixture, python } = require("./_util");
+  const iife = propia("olivo-iife-motor"), pag = path.join(propia("olivo-motor"), "index.html"), fx = fixture();
+  const b = ejecuta(process.execPath, [path.join("herramientas", "iife.mjs"), "--salida", iife], { cwd: OLIVO });
+  assert.strictEqual(b.status, 0, "IIFE: " + b.stdout + b.stderr);
+  const mo = ejecuta(python(), ["-I", path.join("tuberia", "salida_artefacto", "montar_v2.py"), "--datos", path.relative(RAIZ, path.join(fx, "hituelo", "indice.json")), "--modo", "ficheros",
+    "--salida", path.relative(RAIZ, pag), "--olivos", path.join(iife, "olivo.iife.js")]);
+  assert.strictEqual(mo.status, 0, mo.stdout + mo.stderr);
+  const r = json(await nodo([path.join("pruebas", "olivo", "p7_medidas.mjs"), pag, "--rapido"]));
+  assert.ok(!r.error, r.error);
+  assert.deepStrictEqual(r.errores.con, [], "errores en la página con ?olivos=gen");
+  const c = r.con.cerca, T = JSON.parse(fs.readFileSync(path.join(RAIZ, "pruebas", "presupuesto.json"), "utf8")).fixture_olivos_gen.cerca;
+  t.diagnostic("cerca con ?olivos=gen: " + c.llamadas + " llamadas, " + c.triangulos + " tri, heap " + c.heapMB + " MB · lote: " + JSON.stringify(c.gen.info) + " · vía " + c.gen.via);
+  assert.strictEqual(c.gen.estado, "activo", "Generados no arrancó: " + c.gen.motivo);
+  assert.ok(c.gen.info.arboles > 0, "no se dibuja ningún olivo generado");
+  assert.ok(c.gen.info.llamadas <= T.llamadas_lote, "el lote tiene " + c.gen.info.llamadas + " mallas (tope " + T.llamadas_lote + ")");
+  for (const k of ["llamadas", "triangulos", "puntos", "heapMB"]) assert.ok(c[k] <= T[k], k + " " + c[k] + " > tope " + T[k]);
+});

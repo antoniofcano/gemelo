@@ -38,30 +38,32 @@ def importmap(v):
     base = "https://cdn.jsdelivr.net/npm/three@%s/" % v
     return '<script type="importmap">' + json.dumps({"imports": {"three": base + "build/three.module.js", "three/addons/": base + "examples/jsm/"}}) + '</script>\n'
 
-def monta(D, salida, src=os.path.join("apps", "web", "motor")):
+def monta(D, salida, src=os.path.join("apps", "web", "motor"), olivos=None):
     cab = lee(os.path.join("apps", "web", "plantilla.html"))
     if D.get("textos"): cab = textos_finca(cab, D["textos"])
     js = "".join(lee(f) for f in sorted(glob.glob(os.path.join(R, src, "*.js"))))
     if "<meta charset" not in cab[:400]: cab = '<meta charset="utf-8">\n' + cab
     # el motor va en un módulo que importa three, igual que la entrada de Vite (apps/web/herramientas/genera_motor.mjs)
-    html = cab + '<script type="application/json" id="datos">' + json.dumps(D) + '</script>\n' + importmap(version_three()) + '<script type="module">import * as THREE from "three";\n' + js + '</script>\n'
+    # --olivos <olivo.iife.js>: el constructor de olivos (ADR-0017, con su three 0.128 dentro) para ?olivos=gen; sin él la página es la de siempre
+    gen = ('<script>' + open(olivos, encoding="utf-8").read() + '</script>\n') if olivos else ""
+    html = cab + '<script type="application/json" id="datos">' + json.dumps(D) + '</script>\n' + gen + importmap(version_three()) + '<script type="module">import * as THREE from "three";\n' + js + '</script>\n'
     os.makedirs(os.path.dirname(os.path.join(R, salida)) or R, exist_ok=True)
     open(os.path.join(R, salida), "w", encoding="utf-8", newline="\n").write(html)   # LF en todos los sistemas: la salida es la misma en Windows y en Linux
     return html
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(); ap.add_argument("--src", default=os.path.join("apps", "web", "motor")); ap.add_argument("--datos", default=None); ap.add_argument("--salida", default=None)
-    ap.add_argument("--finca", default="cerro"); ap.add_argument("--modo", choices=["embebido", "ficheros"], default="embebido"); a = ap.parse_args()
+    ap.add_argument("--finca", default="cerro"); ap.add_argument("--modo", choices=["embebido", "ficheros"], default="embebido"); ap.add_argument("--olivos", default=None, help="olivo.iife.js para ?olivos=gen (ADR-0017)"); a = ap.parse_args()
     carpeta = os.path.join("salida", a.finca)
     if a.modo == "embebido":
         D = json.load(open(os.path.join(R, a.datos or os.path.join(carpeta, "embebido.json")), encoding="utf-8"))
-        h = monta(D, a.salida or ("gemelo_%s_v2.html" % a.finca), a.src)
+        h = monta(D, a.salida or ("gemelo_%s_v2.html" % a.finca), a.src, a.olivos)
     else:
         D = json.load(open(os.path.join(R, a.datos or os.path.join(carpeta, "indice.json")), encoding="utf-8"))
         salida = a.salida or os.path.join("publicar", a.finca, "index.html")
         dest = os.path.dirname(salida) or "."                                                  # los ficheros de apoyo van junto a la página: <dest>/t/
         origen = os.path.dirname(os.path.join(R, a.datos)) if a.datos else os.path.join(R, carpeta)   # y salen de <carpeta del índice>/t/
-        h = monta(D, salida, a.src)
+        h = monta(D, salida, a.src, a.olivos)
         os.makedirs(os.path.join(R, dest, "t"), exist_ok=True)
         for f in glob.glob(os.path.join(origen, "t", "*")): shutil.copy(f, os.path.join(R, dest, "t", os.path.basename(f)))
         print("ficheros de apoyo:", len(glob.glob(os.path.join(R, dest, "t", "*"))), "en", dest)
