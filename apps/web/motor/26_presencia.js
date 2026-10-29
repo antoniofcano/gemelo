@@ -1,8 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Presencia
 // Consume: 01_datos (D, $), 02_mundo (suelo, copas), 03_escena (visor, renderer, scene, camera, texColor, exag, modo), 06_arboles (tronco),
-//   09_camara (objetivo), 12_paseo (paseando, persona, camPos, entraPaseo), 15_tiempo (rumbo, hace),
-//   16_vida (enQuad, mira, quad, vidaPaseo, enDron, dron, ponDron), 29_vr (VRX, panel)
+//   09_camara (objetivo), 12_paseo (paseando, persona), 12b_llegada (Llegada), 15_tiempo (rumbo, hace),
+//   16_vida (enQuad, mira, quad, vidaPaseo, enDron, dron), 29_vr (VRX, vrFundido, panel)
 // Nota: Publica además window.__presencia (pruebas). Sin ?presencia=sim o ?presencia=red no crea nada (con red, import("livekit-client") y el panel Gente); el trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/presencia.test.js.
 // ===============================================================================
   // ---------- presencia compartida (F2, contratos/presencia.md): la pose de cada visitante en binario, su interpolación y los avatares de bloque instanciados.
@@ -730,7 +730,7 @@
 
     // ---- «Ir con alguien» (I1, UX §5): quién se ve (para el minimapa y el panel Gente) y a dónde ir para estar a su lado. Solo a quien se dibuja: de
     // esta sala, con pose (no «en vista aérea») y sin bloquear por ti. No manda nada por la red: usa la pose que ya llega. Este módulo solo calcula el
-    // punto (Encuentro, en el trozo puro); el salto, con su fundido en pantalla y en VR (nunca un vuelo de cámara), es el de 12b_llegada.js (Llegada.ve, de I3)
+    // punto (Encuentro, en el trozo puro); el salto, con su fundido en pantalla y en VR (nunca un vuelo de cámara), es el de 12b_llegada.js (Llegada.funde y Llegada.aparece)
     var puntosL = [], R_OBST = 14;
     function seVe(a, ahoraMs) { return !!a && a.visto && (variante !== "red" || SalaPose.seVe(SP, a.id, ahoraMs, bloqueados)); }
     function idDe(a) { return variante === "red" ? a.id : "sim" + a.k; }
@@ -752,17 +752,14 @@
     function irCon(id) {
       if (!activo) return false;
       var a = busca(id); if (!seVe(a, performance.now())) return false;   // bloqueado, en vista aérea o ya no está: no se va
-      var L = destino(a);
-      if (typeof Llegada !== "undefined" && Llegada && Llegada.ve) Llegada.ve(L.x, L.y, L.ang);   // 12b_llegada.js (I3): fundido, paseo y cámara detrás
-      else {   // [salvaguarda hasta que 12b_llegada.js esté en main] salto directo en pantalla, sin fundido; con gafas no se va
-        if (VRX.on) return false;
-        if (!paseando) entraPaseo();
-        TR.act = false; if (enDron) ponDron(false);
-        pp.x = L.x; pp.y = L.y; pp.ang = L.ang;
-        camPos.set(L.x - Math.sin(L.ang) * 4.4, suelo(L.x, L.y) * exag + 2.3, -L.y + Math.cos(L.ang) * 4.4);
-      }
-      est.idas = (est.idas || 0) + 1; est.ultimaIda = { x: Math.round(L.x * 100) / 100, y: Math.round(L.y * 100) / 100, d: Math.round(L.d * 100) / 100, libre: L.libre };
-      return true;
+      // a oscuras (Llegada.funde, 12b_llegada.js: velo en pantalla, vrFundido con gafas) se recalcula el sitio (se ha podido mover) y se aparece allí
+      return Llegada.funde(function () {
+        if (!seVe(a, performance.now())) return;   // se fue (o la bloqueaste) mientras se fundía: te quedas donde estabas
+        var L = destino(a), orbita = !paseando && !VRX.on;
+        Llegada.aparece(L.x, L.y, L.ang);
+        if (orbita) TR.act = false;   // sin la bajada volando de entrar al paseo (24_pantalla.js): ir con alguien nunca es un vuelo de cámara
+        est.idas = (est.idas || 0) + 1; est.ultimaIda = { x: Math.round(L.x * 100) / 100, y: Math.round(L.y * 100) / 100, d: Math.round(L.d * 100) / 100, libre: L.libre };
+      });
     }
 
     function actualiza(dt) {
