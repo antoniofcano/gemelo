@@ -50,4 +50,10 @@ La escena se sirve como **tileset 3D Tiles 1.1** generado por `tuberia/tiles3d/g
   4. Mismas coordenadas que el motor: olivos y relieve a < 1 cm de la escena actual en los mismos escenarios.
   5. Quest real: p95 del fotograma ≤ 13,9 ms en Hituelo (criterio de F1d en el PLAN). **No probado.**
   6. Escritorio real con `?debug`: sin regresión de fps frente a la escena actual. **No probado.**
+- **Criterios 1-4 en local (2026-10-29, T6; SwiftShader, sin Quest, ver [MEDIDAS](../sistema/MEDIDAS.md)):**
+  1. **Cumplido** (ver arriba).
+  2. **Cumplido en el fixture, no del todo en Hituelo real**: fixture con `?escena=tiles` lejos 167 llamadas / 16 k tri, cerca 55-56 / 165-168 k, nube 88-125 / 7-10 k, 0 errores de consola (primera ronda del banco; topes de regresión en `presupuesto.json`). Hituelo real v3 (T3): triángulos (≤ 927 k) y heap (≤ 143 MB) dentro del diseño, pero **lejos dibuja 258 llamadas, por encima de las 250** (la escena de siempre dibujaba 273 en una carga a medias). El escenario **paseo no se ha medido** con la bandera.
+  3. **No cubierto**: no hay vuelo de prueba de punta a punta que cuente rayos verticales sin respuesta. Solo se comprueba que el relieve dibujado casa con el de la CPU en cuatro puntos del fixture.
+  4. **Parcial**: el marco del tileset contra el registro está a ≤ 1,0 cm en planta y los olivos a < 1 mm (`tiles3d.test.js`); pero en el motor el relieve dibujado se compara con una tolerancia de **1,5 m** (simplificación de los niveles gruesos), no de 1 cm.
+  Criterios 5 y 6 (Quest y escritorio reales): **no probados** (decisión 35).
 - **No probado:** nada en iPhone ni Quest; nada con datos reales; fps (SwiftShader no los da); que el padre tape siempre el hueco mientras llegan los hijos; `EXT_instance_features`; compartir mallas de catálogo entre teselas.
