@@ -20,6 +20,7 @@
 - **Fase 0 del plan multiusuario** (2026-10-28): monorepo (`apps/web/motor/`, `tuberia/`), build con Vite y three 0.128.0, y la web empaquetada dibuja lo mismo que la salida artefacto (guardián `web.test.js`). CI escrito (`.github/workflows/puerta.yml`), **sin ejecutar** porque no se ha hecho `push`.
 - **F1b** (2026-10-29): hueco del constructor de olivos-tipo (`Catalogo`, ids y tipos por árbol, contrato `olivos-tipo`); con tipo −1 los recuentos de dibujo no cambian (medido). Probado solo con el catálogo sintético en SwiftShader; los exportadores aún no emiten `copas_id`/`copas_tipo`.
 - **Entorno local con Docker** (2026-10-29): web + teselas por Caddy, PostGIS, LiveKit (`--dev`) y buzón; e2e real en verde (el mundo carga con 0 errores servido desde `/teselas`). La api aún no está enchufada.
+- **F1a en local** (2026-10-29): `apps/api` + `infra/` de producción + `tuberia/hazas`; 51 pruebas de la api (21 contra PostGIS en contenedor), `infra/probar-caddy.sh` y ensayo de copia/restauración con datos sintéticos en verde. **Sin desplegar**; no probados el VPS, el borde real, el SMTP de OVH, el MCP real de OlivarTrack (formas de respuesta supuestas) ni `age`/`rclone` reales ([RUNBOOK-VPS](operacion/RUNBOOK-VPS.md)).
 - Repositorio público con las fuentes unificadas y este sistema de trabajo: puerta con 85 comprobaciones (`npm run puerta`, ≈2-3 min), fixture sintético, contratos, 8 ADR y 11 skills.
 
 ## Datos

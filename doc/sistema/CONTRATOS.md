@@ -13,6 +13,11 @@ Versión del contrato de datos: **v = 2** (campo `v` del índice).
 | Módulos de `apps/web/motor/` | cabecera «Expone / Consume» de cada fichero | `contratos.test.js` (vía `pruebas/contrato_modulos.js`) |
 | Conectores MCP | [`contratos/mcp.md`](../../contratos/mcp.md) | **nada** (no verificado en vivo) |
 | Publicación | [`contratos/publicacion.json`](../../contratos/publicacion.json) | `build.test.js` |
+| Api HTTP (F1a) | [`contratos/api.openapi.yaml`](../../contratos/api.openapi.yaml) | `apps/api/pruebas/unidad/app.test.ts` (cada ruta en el contrato y al revés) |
+| Ficha pública de haza | [`contratos/haza.schema.json`](../../contratos/haza.schema.json) (lista blanca, ADR-0014) | pruebas de `apps/api` (ajv) |
+| Enlace mágico y sesión | [`contratos/sesion.md`](../../contratos/sesion.md) (ADR-0013) | integración de `apps/api` (`GEMELO_DOCKER=1`) |
+| Lectura de OlivarTrack | [`contratos/olivartrack-sync.md`](../../contratos/olivartrack-sync.md) (formas **no verificadas**) | `apps/api/pruebas/unidad/ot.test.ts` con grabaciones sintéticas |
+| Publicación en el VPS | [`contratos/publicacion-vps.json`](../../contratos/publicacion-vps.json) | `api.test.js` |
 
 ## 1. Datos: exportador → motor
 
