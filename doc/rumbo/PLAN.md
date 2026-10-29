@@ -69,7 +69,7 @@ Tareas sueltas decididas: ✅ anonimizar `doc/historico/DISENO-2026-10.md` (deci
 
 ## Tablero de tareas (desde el 2026-10-29)
 
-Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** primero las ligeras que desbloquean a otras, en paralelo; lo que pasa por Chrome o Docker (🔶), al final y por el [banco de pruebas](../operacion/TESTING.md#banco-de-pruebas-un-solo-chrome-o-docker-a-la-vez-política-desde-el-2026-10-29); 👤 = lo hace Antonio. Estado: ✅ hecho · 🟡 en curso · ⬜ por hacer.
+Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** primero las ligeras que desbloquean a otras, en paralelo; lo que pasa por Chrome o Docker (🔶), al final y por el [banco de pruebas](../operacion/TESTING.md#banco-de-pruebas-un-solo-chrome-o-docker-a-la-vez-política-desde-el-2026-10-29); 👤 = lo hace Antonio. Estado: ✅ hecho · 🟡 en curso · ⬜ por hacer. **Enrutador de modelo** (en «Tipo»): **opus** para motor, sombreadores, seguridad o una decisión con alternativas (ADR); **sonnet** para tareas acotadas y bien especificadas (contratos, tuberías, servicios, pruebas, medidas, documentación); **haiku** para búsquedas, recuentos y comprobaciones mecánicas. Un agente que sigue una tarea por mensaje conserva su modelo.
 
 | Id | Tarea | Depende de | Tipo | Estado |
 |---|---|---|---|---|
@@ -97,7 +97,14 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | O3 | `semillas_copas.py` dentro de los exportadores | — | ligera | ✅ |
 | O5 | Olivos generados: caché de recetas (memoria con límite y LRU; IndexedDB con clave semilla+tipo+época+`GEN_VERSION`, `idb-keyval`); horneado en servidor, más adelante y tras medir tamaños | o1d (montaje y recorte arreglados) | ligera | 🟡 caché hecha (sin medir en navegador); horneado en servidor pendiente |
 | O6 | Medir el horneado por tesela (tamaños por nivel, cuantizado y brotli, manifiesto, descarga de una visita, tiempo) | — | ligera (Node) | 🟡 en curso |
-| O7 | Hornero en el servidor (decisión 62): servicio que hornea y mantiene las recetas por tesela (época actual y siguiente), manifiesto por tesela, el motor las descarga; ADR-0018 | O6 | ligera; 🔶 al medir | ⬜ |
+| O7a | ADR-0018 «hornero»: formato de la receta horneada (cuantización, compresión, ¿E0 también?), manifiesto por tesela, direccionado por huella, ciclo de vida (época actual + siguiente, vuelo nuevo, censo, `GEN_VERSION`), plan B en la salida artefacto | O6 | ligera · **opus** | ⬜ |
+| O7b | Contrato y esquema del manifiesto por tesela y de la receta horneada, con su fixture y guardián | O7a | ligera · **sonnet** | ⬜ |
+| O7c | Hornero en Node (CLI): hornea una finca o una tesela a ficheros por huella + manifiesto; incremental (solo lo que cambia); época actual y siguiente | O7b | ligera (pesada de CPU, sin Chrome) · **sonnet** | ⬜ |
+| O7d | Servir las recetas: Caddy en `/teselas/<finca>/olivos/<huella>` con caché inmutable y el manifiesto con la tesela, tras sesión; dev y producción | O7b | ligera · **sonnet** | ⬜ |
+| O7e | Motor: carga el manifiesto con la tesela y **descarga** las recetas en vez de calcularlas (con la caché de O5); si falta una, la calcula (plan B) | O7b | ligera · **opus** | ⬜ |
+| O7f | Servicio «hornero» en Docker (`infra/dev`, luego producción): se dispara por cambio de época (calendario), índice nuevo o `GEN_VERSION`; registro y salud | O7c | ligera · **sonnet** | ⬜ |
+| O7g | e2e: el servicio hornea el fixture, Caddy lo sirve y el motor lo dibuja sin calcular nada (0 recetas calculadas en el aparato) | O7d, O7e, O7f | 🔶 Docker + Chrome · **sonnet** | ⬜ |
+| O7h | Hituelo real horneado (2 épocas): tamaños, tiempo, descarga de un paseo; prueba en el móvil | O7g | 🔶 · **sonnet**; 👤 móvil | ⬜ |
 | O4 | Medir 10 olivos en campo con cinta (decisiones 48-49) | — | 👤 | ⬜ |
 | V1 | VPS: preparar el despliegue (RUNBOOK-VPS al día, SMTP de OVH, token de OlivarTrack, comprobaciones previas) | — | ligera (documentos y guiones) | ✅ (8 preguntas a Antonio en DECISIONS-PENDING) |
 | V2 | VPS: desplegar F1a | A5, A6, V1 (decisión 21) | 👤 confirma cada paso | ⬜ |
