@@ -7,6 +7,7 @@
 
   // linde y marcadores
   var gLinde = new THREE.Group(), gCopas = new THREE.Group(), gMarc = new THREE.Group(), gDesf = new THREE.Group();
+  gLinde.name = "lindes"; gCopas.name = "copas"; gMarc.name = "marcas"; gDesf.name = "desfase";   // los nombres los usa el desglose de llamadas de las pruebas
   [gLinde, gCopas, gMarc, gDesf].forEach(function (g) { scene.add(g); });
   // (las lindes son ahora una barrera de luz: ver el bloque del tiempo)
   var mCopas = new THREE.InstancedMesh(new THREE.OctahedronGeometry(0.38), new THREE.MeshBasicMaterial({ color: colorCss("--lidar") }), cIn.length); mCopas.frustumCulled = false; gCopas.add(mCopas);   // r151: la esfera de una InstancedMesh se calcula una vez con sus instancias; estas se recolocan con la exageración

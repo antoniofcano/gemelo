@@ -11,9 +11,9 @@
     "cerca": { "llamadas": 60, "triangulos": 680000, "puntos": 3600, "heapMB": 95, "llamadas_lote": 7 }
   },
   "fixture_escena_tiles": {
-    "$comment": "Con ?escena=tiles (ADR-0015, F1d), fixture de Hituelo con su tileset. Topes de REGRESIÓN fijados el 2026-10-29 con ≈25 % de margen sobre el máximo de las tres medidas de la primera ronda del banco (T1, T5, T4; SwiftShader, recuentos, NO fps; ver doc/sistema/MEDIDAS.md): lejos 167 llamadas / 16 k tri; cerca 56 / 168 k; nube 125 / 10 k; heap 26-27 MB (tope más holgado por lo variable que es). Los PUNTOS no se midieron con la bandera (la nube de puntos sigue en el motor, decisión 37): se comprueban contra los topes de «fixture». Con &olivos=gen dio lo mismo. Sin la bandera no cambia nada de «fixture». Lo comprueba pruebas/guardianes/escena3d.test.js.",
-    "lejos": { "llamadas": 210, "triangulos": 20000, "heapMB": 45 },
+    "$comment": "Con ?escena=tiles (ADR-0015, F1d), fixture de Hituelo con su tileset. Topes de REGRESIÓN fijados el 2026-10-29 con ≈25 % de margen sobre el máximo de las tres medidas de la primera ronda del banco (T1, T5, T4; SwiftShader, recuentos, NO fps; ver doc/sistema/MEDIDAS.md): lejos 167 llamadas / 16 k tri; cerca 56 / 168 k; nube 125 / 10 k; heap 26-27 MB (tope más holgado por lo variable que es). Los PUNTOS no se midieron con la bandera (la nube de puntos sigue en el motor, decisión 37): se comprueban contra los topes de «fixture». Con &olivos=gen dio lo mismo. Sin la bandera no cambia nada de «fixture». Lo comprueba pruebas/guardianes/escena3d.test.js. BAJADOS el 2026-10-29 (T6b): las 230 manchas de nubes (15_tiempo.js) eran un sprite y una llamada cada una, también con opacidad 0, y ahora van en una malla y una llamada; medido después (GEMELO_MIDE=1, SwiftShader): lejos 25 llamadas / 7,7 k tri, cerca 53 / 163 k, nube 24 / 4,3 k, heap 28-30 MB; topes de llamadas con ≈ 25-40 % de margen.",
+    "lejos": { "llamadas": 35, "triangulos": 20000, "heapMB": 45 },
     "cerca": { "llamadas": 70, "triangulos": 210000, "heapMB": 45 },
-    "nube": { "llamadas": 157, "triangulos": 13000, "heapMB": 45 }
+    "nube": { "llamadas": 35, "triangulos": 13000, "heapMB": 45 }
   }
 }
