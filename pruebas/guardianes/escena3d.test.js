@@ -253,9 +253,14 @@ async function preparaYa() {
   const m = ejecuta(py, ["-I", "tuberia/salida_artefacto/montar_v2.py", "--finca", "hituelo", "--modo", "ficheros", "--datos", path.relative(RAIZ, path.join(FIX, "hituelo", "indice.json")), "--salida", path.relative(RAIZ, path.join(W, "hituelo", "index.html"))]);
   assert.strictEqual(m.status, 0, m.stdout + m.stderr);
   srv = await sirveConCsp(W, peticiones); base = "http://127.0.0.1:" + srv.address().port + "/hituelo/index.html";
-  nav = await lanza();
+  const n = await lanza();
+  if (cerrado) { await n.close(); throw new Error("las pruebas acabaron (por tiempo) mientras se esperaba el turno del banco"); }
+  nav = n;
 }
-test.after(async () => { if (nav) await nav.close(); if (srv) srv.close(); });
+// Si las pruebas acaban por tiempo mientras prepara() aún espera el turno del banco, el Chrome que llega después no debe quedarse abierto con el
+// turno cogido (pasó el 2026-10-29: el proceso se quedó una hora parado con el turno y bloqueó el banco). `cerrado` hace que se cierre al llegar.
+let cerrado = false;
+test.after(async () => { cerrado = true; if (nav) await nav.close(); if (srv) srv.close(); });
 
 async function abre(q, mockXR) {
   const p = await nav.newPage({ viewport: { width: 900, height: 650 } }), errores = [], avisos = [];
