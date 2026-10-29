@@ -1,6 +1,6 @@
 # ADR-0020 — Avatares VRM
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado (Antonio, 2026-10-29; decisiones 73-76)
 - **Fecha:** 2026-10-29
 
 ## Contexto

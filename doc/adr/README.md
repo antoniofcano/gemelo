@@ -32,4 +32,4 @@ Cada decisión con alternativas reales se escribe una vez, con su porqué y su c
 | [0017](0017-constructor-de-olivos-generados.md) | Constructor de olivos generados: un árbol por olivo, con semilla, desde lo medido | Propuesto |
 | [0018](0018-hornero-de-olivos.md) | Hornero de olivos: variantes horneadas en el servidor, propios cercanos en el aparato | Aceptado |
 | [0019](0019-escalera-de-olivos.md) | Escalera de olivos: niveles del constructor e impostores | Aceptado |
-| [0020](0020-avatares-vrm.md) | Avatares VRM | Propuesto |
+| [0020](0020-avatares-vrm.md) | Avatares VRM | Aceptado |
