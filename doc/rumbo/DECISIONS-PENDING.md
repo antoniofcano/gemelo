@@ -90,3 +90,5 @@ Decisiones que **no puede tomar un agente**: las cierra Antonio. Las técnicas s
 | 74 | **ADR-0020 · mientras tanto** | provisionales CC0 / esperar a los propios | P7b-P7e | ✅ 2026-10-29: **3-4 avatares CC0 provisionales**, comprobados uno a uno; los propios los sustituyen solo cambiando el catálogo |
 | 75 | **ADR-0020 · subir el avatar propio** | no, solo catálogo / sí, moderado | P7 | ✅ 2026-10-29: **no, solo el catálogo** (se puede reabrir) |
 | 76 | **ADR-0020 · el paseante propio y aceptación** | paseante = avatar y aceptar / aceptar tras P7e / paseante igual | P7 | ✅ 2026-10-29: **el paseante pasa a ser tu avatar** (tercera persona; en primera persona y VR, solo las manos) y **ADR-0020 aceptado** |
+| 77 | **ADR-0015 (escena en 3D Tiles)** | aceptar con Quest «no probado» / esperar a T7 | T8 | ✅ 2026-10-30: **aceptado**; criterios 1-4 cumplidos en local (SwiftShader), 5 (Quest) y 6 (escritorio con GPU) «no probado» hasta T7 (decisión 35) |
+| 78 | **Nubes en una sola llamada** | aprobar con capturas / mirarlas en el Chrome | aspecto | 🟡 2026-10-30: **Antonio las mira** cuando se levante el entorno |

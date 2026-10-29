@@ -1,6 +1,6 @@
 # ADR-0015 — Escena en 3D Tiles 1.1 con 3DTilesRendererJS
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado (Antonio, 2026-10-30; decisión 77: criterios 1-4 en local, Quest y escritorio con GPU «no probado» hasta T7)
 - **Fecha:** 2026-10-28
 
 ## Contexto

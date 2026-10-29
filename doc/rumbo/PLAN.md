@@ -91,7 +91,7 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | T7a | Medidor para T7: `&mide=60` registra 60 s de fotogramas y enseña mediana, p95 y peor (y el nivel del perfil) en el panel de VR y en `?debug`; se guarda para leerlo luego | — | ligera · **sonnet** | ✅ `30_mide.js` + protocolo en VR.md; falta usarlo en el Quest (T7) |
 | T6b | F1d: criterios 2, 3 y 4 del ADR-0015 en local | T6 | ligera · **opus** | ✅ nubes en una llamada (lejos Hituelo 98 llamadas), vuelo sin huecos (0 de 5.638 rayos), relieve dentro del error declarado |
 | T7 | F1d 8: Quest real (p95 ≤ 13,9 ms) | T6 | 👤 | ⬜ |
-| T8 | F1d 9: la escena nueva por defecto; se retira la vieja | T6 (T7 o «no probado», decisión 35) | ligera | ⬜ |
+| T8 | F1d 9: la escena nueva por defecto; se retira la vieja | T6 (T7 o «no probado», decisión 35) | ligera | 🟡 en curso (fase 1: escena nueva por defecto, la vieja con `?escena=clasica`) |
 | P1 | F2: la api firma tokens de LiveKit (`POST /api/presencia/token`, `livekit-server-sdk`, roles del contrato) | — | ligera | ✅ |
 | P2 | F2: el motor publica y recibe la pose con `livekit-client` (sustituye a la red simulada) | P1 | ligera | ✅ `?presencia=red`; probado con dos Chrome en P4 |
 | P3 | F2: chat por el canal de datos y moderación mínima (expulsar con auditoría, decisión 42) | P1 | ligera | ✅ chat y expulsión; probados contra LiveKit real en P4 |
