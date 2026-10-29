@@ -23,7 +23,7 @@
 | Finca | Hojas LiDAR |
 |---|---|
 | Cerro Velasco | 410-4177 y 411-4177 (las dos hojas `PNOA_2024_AND_4*-4177`) |
-| Hituelo | 9 hojas: 405-4179 y 406-4179 (≈92 % de las hectáreas), 405-4177, 405-4178, 404-4178, 405-4180, 404-4179, 406-4178, 406-4180. **Faltan 404-4181 y 406-4181** → tres teselas del borde norte con cobertura incompleta |
+| Hituelo | Las que tocan el cuadro de las copas (± 10 m), medido con `tuberia/puntos_copas.py` sobre las cabeceras de las hojas: 405-4180 y 406-4180 (con N = borde norte, el 92 % de las 5.882 copas: 4.189 y 1.213), 404-4178, 404-4179, 404-4180, 405-4178, 405-4179, 405-4181, 406-4178 y 406-4179. **Faltan 404-4181 y 406-4181** → tres teselas del borde norte con cobertura incompleta. La lista anterior de este fichero («405-4179 y 406-4179, ≈92 %», con 405-4177 y sin 404-4180 ni 405-4181) parece contada con N como borde sur: 405-4177 no toca el cuadro |
 
 (Cifras de superficie por hoja: [histórico](../historico/DISENO-2026-10.md), §9.)
 
