@@ -25,3 +25,5 @@ Cada decisión con alternativas reales se escribe una vez, con su porqué y su c
 | [0010](0010-monorepo-y-build-con-vite.md) | Monorepo y paso de build con Vite | Aceptado |
 | [0011](0011-alojamiento-en-el-vps-de-ovh.md) | Alojamiento en el VPS de OVH como inquilino del borde | Aceptado |
 | [0012](0012-catalogo-de-olivos-tipo-e-id-estable.md) | Catálogo de olivos-tipo e id estable por árbol | Aceptado |
+| [0013](0013-enlace-magico-y-sesiones.md) | Enlace mágico por correo y sesión en cookie guardada en Postgres | Aceptado |
+| [0014](0014-proyeccion-publica-por-haza.md) | Proyección pública por haza con lista blanca | Aceptado |
