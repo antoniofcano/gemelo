@@ -1,0 +1,118 @@
+# Producción del gemelo en el VPS de OVH, como INQUILINO de la red `borde` (ADR-0011). Runbook: doc/operacion/RUNBOOK-VPS.md.
+# - NINGÚN puerto publicado: el Caddy de Oficultor llega al Caddy interno (`web`) por la red externa `borde`
+#   (bloque en infra/bloque-borde.txt). Docker se salta ufw con los puertos publicados: por eso no hay ninguno.
+# - La base solo está en la red `bd` (internal: sin salida); la api sale a Internet (SMTP de OVH, MCP de OlivarTrack)
+#   por la red `interna`.
+# - Secretos en ficheros fuera del repo (/etc/gemelo/secretos/, ver infra/entorno.ejemplo); nada en variables.
+# - Imágenes fijadas por versión exacta Y digest; las mismas que infra/dev (comprobadas el 2026-10-29, ver RUNBOOK-VPS).
+#   Al cambiar una, cámbiala también en infra/dev/compose.yml y en contratos/publicacion-vps.json.
+name: gemelo
+
+services:
+  db:
+    image: postgis/postgis:18-3.6-alpine@sha256:c53a483fc274072dfa02cd491efa79f3c8ae0a10774a0ece6c9c53b6a632cdef
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: gemelo
+      POSTGRES_USER: gemelo_dueno
+      POSTGRES_PASSWORD_FILE: /run/secrets/pg_dueno
+      POSTGRES_INITDB_ARGS: "--data-checksums --auth-host=scram-sha-256"
+      GEMELO_PG_API_CLAVE_FICHERO: /run/secrets/pg_api
+    secrets: [pg_dueno, pg_api]
+    volumes:
+      # PostgreSQL 18: el volumen va en /var/lib/postgresql (PGDATA = /var/lib/postgresql/18/docker)
+      - pg_datos:/var/lib/postgresql
+      - ./bd-inicial:/docker-entrypoint-initdb.d:ro
+    networks: [bd]
+    shm_size: 256mb
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gemelo_dueno -d gemelo"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # Aplica las migraciones pendientes con el usuario DUEÑO y termina; la api arranca después (y no puede cambiar el esquema).
+  migra:
+    image: gemelo-api:0.2.0
+    build: { context: .., dockerfile: apps/api/Dockerfile }
+    command: ["node", "dist/src/bd/migra-cli.js"]
+    restart: "no"
+    environment:
+      NODE_ENV: production
+      GEMELO_DB_URL: "postgresql://gemelo_dueno@db:5432/gemelo"
+      GEMELO_DB_CLAVE_FICHERO: /run/secrets/pg_dueno
+    secrets: [pg_dueno]
+    networks: [bd]
+    depends_on:
+      db: { condition: service_healthy }
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+
+  api:
+    image: gemelo-api:0.2.0
+    build: { context: .., dockerfile: apps/api/Dockerfile }
+    restart: unless-stopped
+    env_file: [/etc/gemelo/entorno]
+    environment:
+      NODE_ENV: production
+      GEMELO_API_PUERTO: "8000"
+      GEMELO_DB_URL: "postgresql://gemelo_api@db:5432/gemelo"
+      GEMELO_DB_CLAVE_FICHERO: /run/secrets/pg_api
+      GEMELO_SESION_SECRETO_FICHERO: /run/secrets/sesion_secreto
+      GEMELO_SMTP_CLAVE_FICHERO: /run/secrets/smtp_clave
+      GEMELO_OT_TOKEN_FICHERO: /run/secrets/ot_token
+    secrets: [pg_api, sesion_secreto, smtp_clave, ot_token]
+    networks: [bd, interna]
+    depends_on:
+      migra: { condition: service_completed_successfully }
+    read_only: true
+    tmpfs: ["/tmp:size=16m"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8000/api/salud').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # Caddy INTERNO: estáticos (portada pública; finca y teselas tras sesión), cabeceras de seguridad y proxy a la api.
+  web:
+    image: caddy:2.11.7-alpine@sha256:eb4d35b7452d1ab6171fbdbe8d9275b2301dad6dad92115d91e19fb9b24d510f
+    restart: unless-stopped
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - /srv/gemelo/publicado:/srv:ro
+      - caddy_datos:/data
+      - caddy_config:/config
+    networks:
+      interna: {}
+      borde:
+        aliases: [gemelo-web]
+    depends_on:
+      api: { condition: service_healthy }
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 256m
+
+networks:
+  bd:
+    internal: true
+  interna: {}
+  borde:
+    external: true
+
+volumes:
+  pg_datos: {}
+  caddy_datos: {}
+  caddy_config: {}
+
+secrets:
+  pg_dueno: { file: /etc/gemelo/secretos/pg_dueno }
+  pg_api: { file: /etc/gemelo/secretos/pg_api }
+  sesion_secreto: { file: /etc/gemelo/secretos/sesion_secreto }
+  smtp_clave: { file: /etc/gemelo/secretos/smtp_clave }
+  ot_token: { file: /etc/gemelo/secretos/ot_token }

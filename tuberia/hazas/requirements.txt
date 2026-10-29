@@ -1,0 +1,2 @@
+# tuberia/hazas/carga_hazas.py (validación de la entrada). Versión estable fijada (PyPI, comprobada el 2026-10-28).
+jsonschema==4.26.0

@@ -2,7 +2,9 @@
 -- Geometría en ETRS89 / UTM 30N (EPSG:25830), la misma que el motor (contratos/indice.schema.json).
 -- Borrar un hogar (derecho de supresión, RGPD) arrastra en cascada todo lo suyo: sesiones, enlaces,
 -- avatar, preguntas y asistencias; sus hazas quedan sin asignar y la auditoría pierde la referencia.
--- La aplica src/bd/migra.ts dentro de una transacción; no se edita una vez publicada: se añade 0002_….
+-- La aplica node-pg-migrate (src/bd/migra.ts) en una transacción; no se edita una vez publicada: se añade 0002_….
+
+-- Up Migration
 
 CREATE EXTENSION IF NOT EXISTS postgis;
 CREATE EXTENSION IF NOT EXISTS citext;
@@ -185,6 +187,9 @@ BEGIN
       eventos_haza, sincronias_ot, preguntas, visitas, visitas_asistentes TO gemelo_api;
     GRANT SELECT, INSERT ON auditoria TO gemelo_api;
     GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO gemelo_api;
+    -- las tablas de migraciones futuras nacen con los mismos permisos de fila (revisar en cada una si alguna es solo-añadir)
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO gemelo_api;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO gemelo_api;
   END IF;
 END
 $$;

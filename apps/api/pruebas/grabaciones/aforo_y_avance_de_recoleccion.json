@@ -1,0 +1,11 @@
+{
+  "$comentario": "SINTÉTICO. Forma esperada de aforo_y_avance_de_recoleccion [NO VERIFICADA]: el campo del porcentaje se supone «pctRecogido». Lleva kilos a propósito: no deben salir nunca.",
+  "consultadoEn": "2026-10-28T09:00:10Z",
+  "kgEntregados": 99999,
+  "rdtoMedio": 0.21,
+  "parcelas": [
+    { "id": "sint:1", "pctRecogido": 40, "kgRecogido": 1234, "kgAforo": 3000, "origen": "medido" },
+    { "id": "sint:2", "pctRecogido": null, "kgRecogido": 10 },
+    { "id": "sint:3", "pctRecogido": 80, "kgRecogido": 777, "kgAforo": 970, "origen": "modelo", "base": "interpolada" }
+  ]
+}

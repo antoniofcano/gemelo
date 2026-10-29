@@ -8,6 +8,7 @@ import { requiereSesion } from "./roles.ts";
 import { audita, consumeEnlace, creaEnlace, estadoEnlace, normalizaCorreo, revocaTodas } from "./servicio.ts";
 
 export const NOMBRE_COOKIE = "__Host-gemelo";
+export const OPCIONES_COOKIE = { path: "/", secure: true, httpOnly: true, sameSite: "lax" } as const;
 export const TEXTO_ACEPTADO = "Si ese correo puede entrar, te acabamos de mandar un enlace. Caduca en 15 minutos y sirve una sola vez.";
 export const TEXTO_LIMITE = "Has pedido varios enlaces seguidos. Por seguridad, espera unos minutos antes de pedir otro. Si ya te ha llegado uno, úsalo.";
 
@@ -34,7 +35,8 @@ export async function rutasAuth(app: FastifyInstance, ctx: Contexto): Promise<vo
     const correo = normalizaCorreo(req.body.correo);
     if (!correo) return rep.code(400).send({ error: "correo_no_valido", mensaje: "Ese correo no parece completo. Revisa que tenga @ y un dominio." });
     const lim = await porCorreo(req);
-    if (!lim.isAllowed) return rep.code(429).send(limite);
+    // isAllowed = está en la lista de permitidos (no hay ninguna); isExceeded = se pasó del límite
+    if (!lim.isAllowed && lim.isExceeded) return rep.code(429).send(limite);
     const enlace = await creaEnlace(bd, correo, config.enlace.minutos);
     if (enlace) {
       const url = config.urlPublica + "/api/auth/entrar?t=" + enlace.token;
@@ -85,7 +87,7 @@ export async function rutasAuth(app: FastifyInstance, ctx: Contexto): Promise<vo
     const id = req.session?.hogarId ?? null;
     if (req.session?.sessionId) await req.session.destroy();
     if (id !== null) await audita(bd, id, "sesion.cerrada");
-    return rep.clearCookie(NOMBRE_COOKIE, { path: "/", secure: true, httpOnly: true, sameSite: "lax" }).code(204).send();
+    return rep.clearCookie(NOMBRE_COOKIE, OPCIONES_COOKIE).code(204).send();
   });
 
   app.post("/api/sesion/salir-todas", { preHandler: requiereSesion }, async (req, rep) => {
@@ -93,13 +95,15 @@ export async function rutasAuth(app: FastifyInstance, ctx: Contexto): Promise<vo
     const n = await revocaTodas(bd, id);
     await audita(bd, id, "sesion.todas_cerradas", { sesiones: n });
     req.session = null as never;
-    return rep.clearCookie(NOMBRE_COOKIE, { path: "/", secure: true, httpOnly: true, sameSite: "lax" }).code(204).send();
+    return rep.clearCookie(NOMBRE_COOKIE, OPCIONES_COOKIE).code(204).send();
   });
 
   // Para el forward_auth del Caddy interno: sin sesión, nada fuera de la portada (decisión 16). Caddy no lo expone fuera.
   app.get("/api/interno/autoriza", async (req, rep) => {
     rep.header("cache-control", NO_GUARDAR);
-    return typeof req.session?.hogarId === "number" ? rep.code(204).send() : rep.code(401).send();
+    if (typeof req.session?.hogarId === "number") return rep.code(204).send();
+    // una navegación (abrir /finca/ sin sesión) va a la portada; una carga (teselas, fetch) recibe 401
+    return req.headers["sec-fetch-mode"] === "navigate" ? rep.code(303).header("location", "/").send() : rep.code(401).send();
   });
 }
 

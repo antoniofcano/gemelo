@@ -1,4 +1,4 @@
-// Ficha de una haza con LISTA BLANCA (ADR-0013, contratos/haza.schema.json): cada campo de salida se copia uno a uno
+// Ficha de una haza con LISTA BLANCA (ADR-0014, contratos/haza.schema.json): cada campo de salida se copia uno a uno
 // desde datos ya tipados. Nunca sale el titular (solo su alias, si el hogar quiere), ni kilos, ni personas, ni GPS, ni
 // texto libre. Además, Fastify serializa la respuesta con el esquema del contrato (additionalProperties: false), que
 // descarta cualquier campo que se colara: dos barreras.

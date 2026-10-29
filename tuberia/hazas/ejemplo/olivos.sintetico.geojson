@@ -1,0 +1,599 @@
+{
+ "type": "FeatureCollection",
+ "srs": "EPSG:25830",
+ "sintetico": true,
+ "features": [
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     500010,
+     4100010
+    ]
+   },
+   "properties": {
+    "id_estable": "sint-001",
+    "fuente": "lidar",
+    "tipo": -1,
+    "altura_m": 4.5
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     500010,
+     4100035
+    ]
+   },
+   "properties": {
+    "id_estable": "sint-002",
+    "fuente": "lidar",
+    "tipo": -1,
+    "altura_m": 4.5
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     500010,
+     4100060
+    ]
+   },
+   "properties": {
+    "id_estable": "sint-003",
+    "fuente": "lidar",
+    "tipo": -1,
+    "altura_m": 4.5
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     500030,
+     4100010
+    ]
+   },
+   "properties": {
+    "id_estable": "sint-004",
+    "fuente": "lidar",
+    "tipo": -1,
+    "altura_m": 4.5
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     500030,
+     4100035
+    ]
+   },
+   "properties": {
+    "id_estable": "sint-005",
+    "fuente": "lidar",
+    "tipo": -1,
+    "altura_m": 4.5
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     500030,
+     4100060
+    ]
+   },
+   "properties": {
+    "id_estable": "sint-006",
+    "fuente": "lidar",
+    "tipo": -1,
+    "altura_m": 4.5
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     500050,
+     4100010
+    ]
+   },
+   "properties": {
+    "id_estable": "sint-007",
+    "fuente": "lidar",
+    "tipo": -1,
+    "altura_m": 4.5
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     500050,
+     4100035
+    ]
+   },
+   "properties": {
+    "id_estable": "sint-008",
+    "fuente": "lidar",
+    "tipo": -1,
+    "altura_m": 4.5
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     500050,
+     4100060
+    ]
+   },
+   "properties": {
+    "id_estable": "sint-009",
+    "fuente": "lidar",
+    "tipo": -1,
+    "altura_m": 4.5
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     500070,
+     4100010
+    ]
+   },
+   "properties": {
+    "id_estable": "sint-010",
+    "fuente": "lidar",
+    "tipo": -1,
+    "altura_m": 4.5
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     500070,
+     4100035
+    ]
+   },
+   "properties": {
+    "id_estable": "sint-011",
+    "fuente": "lidar",
+    "tipo": -1,
+    "altura_m": 4.5
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     500070,
+     4100060
+    ]
+   },
+   "properties": {
+    "id_estable": "sint-012",
+    "fuente": "lidar",
+    "tipo": -1,
+    "altura_m": 4.5
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     500110,
+     4100010
+    ]
+   },
+   "properties": {
+    "id_estable": "sint-013",
+    "fuente": "lidar",
+    "tipo": -1,
+    "altura_m": 4.5
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     500110,
+     4100035
+    ]
+   },
+   "properties": {
+    "id_estable": "sint-014",
+    "fuente": "lidar",
+    "tipo": -1,
+    "altura_m": 4.5
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     500110,
+     4100060
+    ]
+   },
+   "properties": {
+    "id_estable": "sint-015",
+    "fuente": "lidar",
+    "tipo": -1,
+    "altura_m": 4.5
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     500110,
+     4100085
+    ]
+   },
+   "properties": {
+    "id_estable": "sint-016",
+    "fuente": "lidar",
+    "tipo": -1,
+    "altura_m": 4.5
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     500130,
+     4100010
+    ]
+   },
+   "properties": {
+    "id_estable": "sint-017",
+    "fuente": "lidar",
+    "tipo": -1,
+    "altura_m": 4.5
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     500130,
+     4100035
+    ]
+   },
+   "properties": {
+    "id_estable": "sint-018",
+    "fuente": "lidar",
+    "tipo": -1,
+    "altura_m": 4.5
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     500130,
+     4100060
+    ]
+   },
+   "properties": {
+    "id_estable": "sint-019",
+    "fuente": "lidar",
+    "tipo": -1,
+    "altura_m": 4.5
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     500130,
+     4100085
+    ]
+   },
+   "properties": {
+    "id_estable": "sint-020",
+    "fuente": "lidar",
+    "tipo": -1,
+    "altura_m": 4.5
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     500150,
+     4100010
+    ]
+   },
+   "properties": {
+    "id_estable": "sint-021",
+    "fuente": "lidar",
+    "tipo": -1,
+    "altura_m": 4.5
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     500150,
+     4100035
+    ]
+   },
+   "properties": {
+    "id_estable": "sint-022",
+    "fuente": "lidar",
+    "tipo": -1,
+    "altura_m": 4.5
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     500150,
+     4100060
+    ]
+   },
+   "properties": {
+    "id_estable": "sint-023",
+    "fuente": "lidar",
+    "tipo": -1,
+    "altura_m": 4.5
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     500150,
+     4100085
+    ]
+   },
+   "properties": {
+    "id_estable": "sint-024",
+    "fuente": "lidar",
+    "tipo": -1,
+    "altura_m": 4.5
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     500170,
+     4100010
+    ]
+   },
+   "properties": {
+    "id_estable": "sint-025",
+    "fuente": "lidar",
+    "tipo": -1,
+    "altura_m": 4.5
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     500170,
+     4100035
+    ]
+   },
+   "properties": {
+    "id_estable": "sint-026",
+    "fuente": "lidar",
+    "tipo": -1,
+    "altura_m": 4.5
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     500170,
+     4100060
+    ]
+   },
+   "properties": {
+    "id_estable": "sint-027",
+    "fuente": "lidar",
+    "tipo": -1,
+    "altura_m": 4.5
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     500170,
+     4100085
+    ]
+   },
+   "properties": {
+    "id_estable": "sint-028",
+    "fuente": "lidar",
+    "tipo": -1,
+    "altura_m": 4.5
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     500190,
+     4100010
+    ]
+   },
+   "properties": {
+    "id_estable": "sint-029",
+    "fuente": "lidar",
+    "tipo": -1,
+    "altura_m": 4.5
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     500190,
+     4100035
+    ]
+   },
+   "properties": {
+    "id_estable": "sint-030",
+    "fuente": "lidar",
+    "tipo": -1,
+    "altura_m": 4.5
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     500190,
+     4100060
+    ]
+   },
+   "properties": {
+    "id_estable": "sint-031",
+    "fuente": "lidar",
+    "tipo": -1,
+    "altura_m": 4.5
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     500190,
+     4100085
+    ]
+   },
+   "properties": {
+    "id_estable": "sint-032",
+    "fuente": "lidar",
+    "tipo": -1,
+    "altura_m": 4.5
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     500010,
+     4100130
+    ]
+   },
+   "properties": {
+    "id_estable": "sint-033",
+    "fuente": "lidar",
+    "tipo": -1,
+    "altura_m": 4.5
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     500010,
+     4100155
+    ]
+   },
+   "properties": {
+    "id_estable": "sint-034",
+    "fuente": "lidar",
+    "tipo": -1,
+    "altura_m": 4.5
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     500030,
+     4100130
+    ]
+   },
+   "properties": {
+    "id_estable": "sint-035",
+    "fuente": "lidar",
+    "tipo": -1,
+    "altura_m": 4.5
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     500030,
+     4100155
+    ]
+   },
+   "properties": {
+    "id_estable": "sint-036",
+    "fuente": "lidar",
+    "tipo": -1,
+    "altura_m": 4.5
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     500300,
+     4100300
+    ]
+   },
+   "properties": {
+    "id_estable": "sint-fuera",
+    "fuente": "lidar",
+    "tipo": -1,
+    "altura_m": 5.0
+   }
+  }
+ ]
+}

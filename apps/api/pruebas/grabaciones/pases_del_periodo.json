@@ -1,0 +1,34 @@
+{
+  "$comentario": "SINTÉTICO: no es una respuesta real de OlivarTrack. Forma esperada de pases_del_periodo [NO VERIFICADA]. Lleva campos que la lista blanca debe tirar (aplicador con nombre, gps, kilos).",
+  "consultadoEn": "2026-10-28T09:00:00Z",
+  "truncado": false,
+  "pases": [
+    {
+      "id": "p-sint-1",
+      "fecha": "2026-05-12",
+      "parcelas": [{ "id": "sint:1", "nombre": "Parcela sintética 1" }, { "id": "sint:2" }],
+      "componentes": [
+        { "tipo": "fitosanitario", "producto": "Oxicloruro de cobre 50%", "registro": "ES-00001", "dosis": 2.5, "unidad": "kg/ha", "cantidad": 7.5 },
+        { "tipo": "corrector", "producto": "Producto <script>", "registro": "x", "dosis": 1, "unidad": "kg/ha" }
+      ],
+      "plazoSeguridadDias": 15,
+      "aplicador": { "ropo": true, "nombre": "PERSONA SINTETICA APLICADORA" },
+      "gps": [[-3.1, 37.9], [-3.2, 37.8]],
+      "observaciones": "TEXTO LIBRE DE CAMPO QUE NO DEBE SALIR"
+    },
+    {
+      "id": "p-sint-2",
+      "fecha": "2026-06-01",
+      "parcelas": ["sint:3"],
+      "componentes": [{ "tipo": "nutrición", "producto": "Abono foliar NPK 20-20-20", "registro": "", "dosis": 3, "unidad": "L/ha" }],
+      "plazoSeguridadDias": null
+    },
+    { "id": "p-sint-3", "parcelas": ["sint:1"], "componentes": [] },
+    {
+      "id": "p-sint-4",
+      "fecha": "2026-07-01",
+      "parcelas": ["sint:99"],
+      "componentes": [{ "tipo": "fitosanitario", "producto": "Producto de otra finca", "dosis": 1, "unidad": "l/ha" }]
+    }
+  ]
+}

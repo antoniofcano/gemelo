@@ -1,0 +1,300 @@
+# Contrato HTTP de la api del gemelo (fase F1a). Lo vigila apps/api/pruebas/unidad/app.test.ts: cada ruta registrada
+# está aquí y cada operación de aquí existe. La ficha de haza remite a haza.schema.json (lista blanca, ADR-0014);
+# la sesión, a sesion.md (ADR-0013). Todo POST/PUT/DELETE exige Origin del sitio (salvo /api/csp-informe).
+openapi: 3.1.0
+info:
+  title: Gemelo · api
+  version: 0.2.0
+  description: >
+    Servidor de una persona (F1a): enlace mágico, sesión en cookie, hazas (GeoJSON y ficha pública sin titular ni
+    kilos), lectura de OlivarTrack por MCP. Sin sesión solo responde lo de acceso y la salud (decisión 16).
+servers:
+  - url: https://gemelo.canoydamas.es
+components:
+  securitySchemes:
+    sesion:
+      type: apiKey
+      in: cookie
+      name: __Host-gemelo
+      description: "HttpOnly; Secure; SameSite=Lax; Path=/. Ver contratos/sesion.md."
+  schemas:
+    Error:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error: { type: string }
+        mensaje: { type: string }
+    Hazas:
+      type: object
+      additionalProperties: false
+      required: [type, srs, features]
+      properties:
+        type: { const: FeatureCollection }
+        srs: { enum: ["EPSG:25830", "EPSG:4326"], description: "miembro ajeno a RFC 7946: el motor trabaja en UTM 30N" }
+        features:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [type, id, geometry, properties]
+            properties:
+              type: { const: Feature }
+              id: { type: integer }
+              geometry:
+                type: object
+                properties:
+                  type: { const: MultiPolygon }
+                  coordinates: { type: array }
+              properties:
+                type: object
+                additionalProperties: false
+                required: [codigo, nombre, finca, es_mia]
+                properties:
+                  codigo: { type: string }
+                  nombre: { type: string }
+                  finca: { type: string }
+                  es_mia: { type: boolean }
+  responses:
+    SinSesion:
+      description: Sin sesión (o caducada o revocada)
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    SinPermiso:
+      description: Con sesión pero sin el rol
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    OrigenNoAdmitido:
+      description: POST/PUT/DELETE sin Origin del sitio
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    EntradaNoValida:
+      description: El cuerpo, la consulta o la ruta no cumplen el esquema (los campos de más se rechazan)
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Limite:
+      description: Demasiadas peticiones; mismo texto para cualquier correo
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+
+paths:
+  /api/salud:
+    get:
+      summary: La api está viva y la base responde
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { type: object, properties: { estado: { const: ok }, bd: { const: ok } } } } } }
+        "503": { description: la base no responde }
+
+  /api/csp-informe:
+    post:
+      summary: Informe de la CSP (Report-Only); exento de Origin, 8 KB como mucho
+      requestBody:
+        content:
+          application/csp-report: { schema: { type: object } }
+          application/reports+json: { schema: { type: array } }
+      responses:
+        "204": { description: recibido }
+
+  /api/auth/enlace:
+    post:
+      summary: Pide un enlace mágico; respuesta IDÉNTICA exista o no la cuenta
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [correo], properties: { correo: { type: string, maxLength: 254 } } }
+      responses:
+        "202": { description: aceptado (se haya mandado o no), content: { application/json: { schema: { type: object, properties: { mensaje: { type: string } } } } } }
+        "400": { description: correo mal formado }
+        "403": { $ref: "#/components/responses/OrigenNoAdmitido" }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/auth/entrar:
+    get:
+      summary: Página intermedia del enlace (no lo gasta; un escáner de correo no puede consumirlo)
+      parameters:
+        - { name: t, in: query, required: true, schema: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" } }
+      responses:
+        "200": { description: página con el botón «Entrar» (formulario POST), content: { text/html: {} } }
+        "400": { description: enlace caducado, usado o no válido, content: { text/html: {} } }
+    post:
+      summary: Gasta el enlace (un solo uso) y abre una sesión NUEVA (rotación)
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema: { type: object, additionalProperties: false, required: [t], properties: { t: { type: string } } }
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [t], properties: { t: { type: string } } }
+      responses:
+        "303": { description: "formulario: sesión abierta, a /finca/ (Set-Cookie __Host-gemelo)" }
+        "200": { description: "JSON: sesión abierta" }
+        "400": { description: "enlace caducado, usado o no válido" }
+        "403": { $ref: "#/components/responses/OrigenNoAdmitido" }
+
+  /api/sesion:
+    get:
+      summary: Quién soy (rol y alias)
+      security: [{ sesion: [] }]
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { type: object, properties: { rol: { enum: [hogar, guia, corresponsal, admin] }, alias: { type: [string, "null"] }, alias_visible: { type: boolean } } } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+
+  /api/sesion/salir:
+    post:
+      summary: Cierra esta sesión (se revoca en la base y se borra la cookie)
+      responses:
+        "204": { description: cerrada }
+        "403": { $ref: "#/components/responses/OrigenNoAdmitido" }
+
+  /api/sesion/salir-todas:
+    post:
+      summary: Cierra todas las sesiones del hogar
+      security: [{ sesion: [] }]
+      responses:
+        "204": { description: cerradas }
+        "401": { $ref: "#/components/responses/SinSesion" }
+
+  /api/interno/autoriza:
+    get:
+      summary: Para el forward_auth del Caddy interno (Caddy la cierra desde fuera con 404)
+      responses:
+        "204": { description: hay sesión }
+        "303": { description: "sin sesión y es una navegación: a la portada" }
+        "401": { description: "sin sesión" }
+
+  /api/hazas:
+    get:
+      summary: Lindes de las hazas en GeoJSON (sin titular)
+      security: [{ sesion: [] }]
+      parameters:
+        - { name: srs, in: query, schema: { enum: ["25830", "4326"], default: "25830" } }
+        - { name: finca, in: query, schema: { type: string, pattern: "^[a-z0-9_-]{1,32}$" } }
+      responses:
+        "200": { description: ok, content: { application/geo+json: { schema: { $ref: "#/components/schemas/Hazas" } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+
+  /api/hazas/{id}:
+    get:
+      summary: Ficha pública de una haza (lista blanca)
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "haza.schema.json" } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "404": { description: no existe }
+
+  /api/yo/alias:
+    put:
+      summary: Alias del hogar (3–20 caracteres) y si se muestra en sus hazas
+      security: [{ sesion: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [alias, visible], properties: { alias: { type: string }, visible: { type: boolean } } }
+      responses:
+        "204": { description: guardado }
+        "400": { description: alias no válido o reservado }
+        "409": { description: alias ocupado }
+
+  /api/yo/avatar:
+    put:
+      summary: Avatar de estilo bloque
+      security: [{ sesion: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [camisa, sombrero, piel]
+              properties:
+                camisa: { type: integer, minimum: 0, maximum: 5 }
+                sombrero: { enum: [ninguno, paja, gorra] }
+                piel: { type: integer, minimum: 0, maximum: 4 }
+      responses:
+        "204": { description: guardado }
+
+  /api/yo/datos:
+    get:
+      summary: Todo lo que se guarda del hogar (derecho de acceso y portabilidad, RGPD)
+      security: [{ sesion: [] }]
+      responses:
+        "200": { description: JSON para descargar }
+        "401": { $ref: "#/components/responses/SinSesion" }
+
+  /api/yo:
+    delete:
+      summary: Borra la cuenta y, en cascada, todo lo suyo (derecho de supresión, RGPD)
+      security: [{ sesion: [] }]
+      responses:
+        "204": { description: borrada }
+        "401": { $ref: "#/components/responses/SinSesion" }
+
+  /api/admin/hogares:
+    get:
+      summary: Lista de hogares (oficina)
+      security: [{ sesion: [] }]
+      responses:
+        "200": { description: ok }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+    post:
+      summary: Da de alta un hogar (las cuentas las da la explotación)
+      security: [{ sesion: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [correo, rol], properties: { correo: { type: string }, rol: { enum: [hogar, guia, corresponsal, admin] } } }
+      responses:
+        "201": { description: creado }
+        "409": { description: ya existe }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+
+  /api/admin/hogares/{id}:
+    delete:
+      summary: Borra un hogar en cascada (RGPD)
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "204": { description: borrado }
+        "404": { description: no existe }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+
+  /api/admin/hogares/{id}/revocar:
+    post:
+      summary: Cierra todas las sesiones de un hogar
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "204": { description: cerradas }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+
+  /api/admin/hazas/{id}/hogar:
+    put:
+      summary: Asigna (o quita) la haza a un hogar (decisión 12)
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [hogar_id], properties: { hogar_id: { type: [integer, "null"] } } }
+      responses:
+        "204": { description: asignada }
+        "400": { description: el hogar no existe }
+        "404": { description: la haza no existe }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+
+  /api/admin/sincronia:
+    post:
+      summary: Lanza una sincronía con OlivarTrack (contratos/olivartrack-sync.md)
+      security: [{ sesion: [] }]
+      responses:
+        "200": { description: resumen por herramienta (estado ok/truncado/parcial/error) }
+        "503": { description: la lectura de OlivarTrack está apagada }
+        "403": { $ref: "#/components/responses/SinPermiso" }

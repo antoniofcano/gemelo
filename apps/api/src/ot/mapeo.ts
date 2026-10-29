@@ -89,7 +89,7 @@ export function mapea(herramienta: HerramientaLectura, respuesta: unknown): Lect
   const vacia = { eventos: [] as Evento[], recibidos: 0, descartados: 0, hayMas: false, siguienteDesde: null as string | null };
   if (herramienta === "pases_del_periodo") {
     if (!vPases(respuesta)) throw new RespuestaNoValida("pases_del_periodo: forma inesperada");
-    const r = respuesta as Record<string, unknown>, pases = r["pases"] as unknown[];
+    const r = respuesta as unknown as Record<string, unknown>, pases = r["pases"] as unknown[];
     const out = { ...vacia, ...cabeceraDe(r), recibidos: pases.length };
     for (const p of pases) {
       if (!vPase(p)) { out.descartados++; continue; }
@@ -109,7 +109,7 @@ export function mapea(herramienta: HerramientaLectura, respuesta: unknown): Lect
   }
   if (herramienta === "novedades") {
     if (!vNovedades(respuesta)) throw new RespuestaNoValida("novedades: forma inesperada");
-    const r = respuesta as Record<string, unknown>, lista = r["novedades"] as unknown[];
+    const r = respuesta as unknown as Record<string, unknown>, lista = r["novedades"] as unknown[];
     const out = {
       ...vacia, ...cabeceraDe(r), recibidos: lista.length,
       hayMas: r["hayMas"] === true, siguienteDesde: typeof r["siguienteDesde"] === "string" ? r["siguienteDesde"] : null,
@@ -135,7 +135,7 @@ export function mapea(herramienta: HerramientaLectura, respuesta: unknown): Lect
   }
   // aforo_y_avance_de_recoleccion: SOLO el porcentaje recogido; los kilos no salen de aquí (decisión 13)
   if (!vAforo(respuesta)) throw new RespuestaNoValida("aforo_y_avance_de_recoleccion: forma inesperada");
-  const r = respuesta as Record<string, unknown>, parcelas = r["parcelas"] as unknown[];
+  const r = respuesta as unknown as Record<string, unknown>, parcelas = r["parcelas"] as unknown[];
   const cab = cabeceraDe(r);
   const fecha = (cab.consultadoEn ?? new Date().toISOString()).slice(0, 10);
   const out = { ...vacia, ...cab, recibidos: parcelas.length };

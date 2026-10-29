@@ -1,6 +1,6 @@
 // El envío de correo detrás de una interfaz: SMTP (el de OVH en producción, decisión 15) o un buzón en memoria para las
 // pruebas. El correo es solo texto: sin imágenes remotas ni seguimiento (doc/sistema/UX.md §4.3).
-import nodemailer from "nodemailer";
+import nodemailer, { type Transporter } from "nodemailer";
 
 export interface Mensaje { para: string; asunto: string; texto: string }
 
@@ -23,20 +23,24 @@ export class BuzonDePruebas implements Cartero {
   async cierra(): Promise<void> { /* nada */ }
 }
 
-export interface OpcionesSmtp { host: string; puerto: number; usuario: string; clave: string; remitente: string }
+export interface OpcionesSmtp { host: string; puerto: number; tls: boolean; usuario: string | undefined; clave: string | undefined; remitente: string }
 
-/** SMTP con TLS obligatorio. Para OVH: host ssl0.ovh.net, puerto 465 (TLS directo) o 587 (STARTTLS). [NO VERIFICADO contra el buzón real] */
+/**
+ * SMTP. En producción, TLS obligatorio y con usuario (config.ts lo exige). Para OVH: ssl0.ovh.net, puerto 465 (TLS directo)
+ * o 587 (STARTTLS) [NO VERIFICADO contra el buzón real]. Sin TLS ni usuario solo en local (Mailpit de infra/dev).
+ */
 export class CarteroSmtp implements Cartero {
-  private readonly t: nodemailer.Transporter;
+  private readonly t: Transporter;
   private readonly remitente: string;
   constructor(o: OpcionesSmtp) {
     this.remitente = o.remitente;
     this.t = nodemailer.createTransport({
       host: o.host,
       port: o.puerto,
-      secure: o.puerto === 465,
-      requireTLS: o.puerto !== 465,
-      auth: { user: o.usuario, pass: o.clave },
+      secure: o.tls && o.puerto === 465,
+      requireTLS: o.tls && o.puerto !== 465,
+      ignoreTLS: !o.tls,
+      ...(o.usuario ? { auth: { user: o.usuario, pass: o.clave ?? "" } } : {}),
       tls: { minVersion: "TLSv1.2", rejectUnauthorized: true },
       connectionTimeout: 10_000,
       greetingTimeout: 10_000,

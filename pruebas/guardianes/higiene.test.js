@@ -10,6 +10,14 @@ const CORREO = /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+\.[A-Za-z]{2,}/g;
 const CORREOS_PERMITIDOS = new Set(["noreply@anthropic.com"]);
 // dominios reservados para ejemplos (RFC 2606 / 6761): los usan las maquetas y la documentación; nunca son de una persona
 const DOMINIO_DE_EJEMPLO = /@(?:[a-z0-9-]+\.)*(?:example\.(?:com|org|net)|test|invalid|example)$/i;
+// Excepción acotada: npm copia en los package-lock.json los avisos «deprecated» de los paquetes, y alguno lleva el
+// correo público de su mantenedor (p. ej. glob 10, dependencia transitiva de testcontainers en apps/api). Solo vale en
+// un package-lock.json y solo si TODAS las líneas donde aparece ese correo son un campo "deprecated".
+function enAvisoDeNpm(f, s, correo) {
+  if (!/(^|\/)package-lock\.json$/.test(f)) return false;
+  const lineas = s.split("\n").filter(l => l.includes(correo));
+  return lineas.length > 0 && lineas.every(l => /^\s*"deprecated": "/.test(l));
+}
 
 test("hay ficheros de texto que revisar", () => assert.ok(TEXTOS.length > 50, "sólo " + TEXTOS.length));
 
@@ -30,7 +38,7 @@ test("sin rutas locales de usuario (el repo es público)", () => {
 
 test("sin correos electrónicos (salvo los permitidos)", () => {
   const mal = [];
-  for (const f of TEXTOS) for (const m of lee(f).match(CORREO) || []) if (!CORREOS_PERMITIDOS.has(m.toLowerCase()) && !DOMINIO_DE_EJEMPLO.test(m)) mal.push(f + " → " + m);
+  for (const f of TEXTOS) for (const m of lee(f).match(CORREO) || []) if (!CORREOS_PERMITIDOS.has(m.toLowerCase()) && !DOMINIO_DE_EJEMPLO.test(m) && !enAvisoDeNpm(f, lee(f), m)) mal.push(f + " → " + m);
   assert.deepStrictEqual(mal, [], "correos en lo versionado");
 });
 

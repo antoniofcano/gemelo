@@ -1,0 +1,175 @@
+{
+ "type": "FeatureCollection",
+ "srs": "EPSG:25830",
+ "sintetico": true,
+ "features": [
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       500000,
+       4100000
+      ],
+      [
+       500100,
+       4100000
+      ],
+      [
+       500100,
+       4100100
+      ],
+      [
+       500000,
+       4100100
+      ],
+      [
+       500000,
+       4100000
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "codigo": "H-S01",
+    "nombre": "Haza de las Abubillas",
+    "finca": "hituelo",
+    "parcelas_ot": [
+     {
+      "id": "sint:1",
+      "ha": 1.0
+     }
+    ],
+    "olivos_declarados": 12,
+    "olivos_declarados_fuente": "Declaración sintética de ejemplo",
+    "ndvi_relativo": 0.04,
+    "ndvi_fecha": "2026-10-01",
+    "ndvi_fuente": "Sentinel-2 (Copernicus), sintético"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       500100,
+       4100000
+      ],
+      [
+       500250,
+       4100000
+      ],
+      [
+       500250,
+       4100100
+      ],
+      [
+       500100,
+       4100100
+      ],
+      [
+       500100,
+       4100000
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "codigo": "H-S02",
+    "nombre": "Haza del Pozo",
+    "finca": "hituelo",
+    "parcelas_ot": [
+     {
+      "id": "sint:2",
+      "ha": 1.0
+     },
+     {
+      "id": "sint:3",
+      "ha": 0.5
+     }
+    ],
+    "olivos_declarados": 20,
+    "olivos_declarados_fuente": "Declaración sintética de ejemplo",
+    "ndvi_relativo": -0.07,
+    "ndvi_fecha": "2026-10-01",
+    "ndvi_fuente": "Sentinel-2 (Copernicus), sintético"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "MultiPolygon",
+    "coordinates": [
+     [
+      [
+       [
+        500000,
+        4100120
+       ],
+       [
+        500060,
+        4100120
+       ],
+       [
+        500060,
+        4100180
+       ],
+       [
+        500000,
+        4100180
+       ],
+       [
+        500000,
+        4100120
+       ]
+      ]
+     ],
+     [
+      [
+       [
+        500080,
+        4100120
+       ],
+       [
+        500120,
+        4100120
+       ],
+       [
+        500120,
+        4100180
+       ],
+       [
+        500080,
+        4100180
+       ],
+       [
+        500080,
+        4100120
+       ]
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "codigo": "H-S03",
+    "nombre": "Haza de la Encina",
+    "finca": "hituelo",
+    "parcelas_ot": [
+     {
+      "id": "sint:3",
+      "ha": 0.6
+     }
+    ],
+    "olivos_declarados": null,
+    "olivos_declarados_fuente": null,
+    "ndvi_relativo": null,
+    "ndvi_fecha": null,
+    "ndvi_fuente": null
+   }
+  }
+ ]
+}

@@ -1,4 +1,4 @@
-// Enlace mágico (ADR-0012, contratos/sesion.md). El token se guarda como SHA-256; en claro solo existe en el correo.
+// Enlace mágico (ADR-0013, contratos/sesion.md). El token se guarda como SHA-256; en claro solo existe en el correo.
 // Las sesiones las lleva @fastify/session con el almacén de almacen.ts.
 import type { Bd, Cliente } from "../bd/pool.ts";
 import { hashToken, nuevoToken } from "../seguridad/cripto.ts";

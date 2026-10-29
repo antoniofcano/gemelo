@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://gemelo.canoydamas.es/contratos/haza.schema.json",
   "title": "Ficha pública de una haza (GET /api/hazas/{id})",
-  "$comment": "Proyección pública por haza (ADR-0013, decisiones 13 y 14). LISTA BLANCA: additionalProperties false en todos los niveles. Nunca titular (solo alias si el hogar lo hace visible), ni kilos, ni personas, ni GPS, ni texto libre. La api serializa con este esquema (apps/api/src/hazas/rutas.ts) y sus pruebas lo validan con ajv. Cambiar un campo = cambiar este fichero, la api, contratos/api.openapi.yaml y doc/sistema/CONTRATOS.md en el mismo commit.",
+  "$comment": "Proyección pública por haza (ADR-0014, decisiones 13 y 14). LISTA BLANCA: additionalProperties false en todos los niveles. Nunca titular (solo alias si el hogar lo hace visible), ni kilos, ni personas, ni GPS, ni texto libre. La api serializa con este esquema (apps/api/src/hazas/rutas.ts) y sus pruebas lo validan con ajv. Cambiar un campo = cambiar este fichero, la api, contratos/api.openapi.yaml y doc/sistema/CONTRATOS.md en el mismo commit.",
   "type": "object",
   "additionalProperties": false,
   "required": ["id", "codigo", "nombre", "finca", "es_mia", "alias", "superficie_ha", "olivos", "tratamientos", "analiticas", "fenologia", "avance", "ndvi_relativo", "datos_de", "completo", "avisos"],

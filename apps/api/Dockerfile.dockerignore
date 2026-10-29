@@ -1,0 +1,9 @@
+# El contexto es la raíz del repo: solo entra lo que la imagen necesita.
+*
+!apps/api/package.json
+!apps/api/package-lock.json
+!apps/api/tsconfig.json
+!apps/api/tsconfig.build.json
+!apps/api/src/**
+!apps/api/migraciones/**
+!contratos/haza.schema.json
