@@ -1,8 +1,9 @@
 "use strict";
 // Prototipo F1d (ADR-0015, Propuesto): la tubería tuberia/tiles3d/ genera del fixture sintético un tileset 3D Tiles 1.1 válido, con
 // geometricError decreciente, glb válidos (cabecera, chunks, accessors), olivos como instancias GPU que salen del registro, el marco
-// local de siempre, la identidad por instancia (_INDICE_COPA + huella de la lista de copas; _TIPO + tabla de tipos: contratos/tileset.schema.json)
-// y un presupuesto de triángulos por nivel. Si está el visor (tuberia/tiles3d/visor), lo carga en Chrome headless
+// local de siempre, la identidad por instancia (_INDICE_COPA + huella de la lista de copas; _TIPO + tabla de tipos con los nombres del
+// catálogo «olivos»: contratos/tileset.schema.json), la raíz sin contenido sobre los cuadrados del nivel útil y un presupuesto de
+// triángulos por nivel. Si está el visor (tuberia/tiles3d/visor), lo carga en Chrome headless
 // + SwiftShader y mide llamadas, triángulos y memoria (NUNCA fps). Sin dependencias instaladas se SALTA con aviso.
 const test = require("node:test"), assert = require("node:assert");
 const { pathToFileURL } = require("url");
@@ -10,6 +11,7 @@ const { RAIZ, propia, python, fixture, ejecuta, fs, path } = require("./_util");
 const { sirve, motivoSalto, lanza } = require("./_navegador");
 
 const T3D = path.join(RAIZ, "tuberia", "tiles3d"), VISOR = path.join(T3D, "visor");
+const CAT_FIXTURE = path.join(RAIZ, "modelos", "olivos", "fixture", "catalogo.json");   // el tipo 0 sintético: solo en el fixture
 const MODS = path.join(T3D, "node_modules"), DEPS = ["@gltf-transform/core", "@gltf-transform/extensions", "@gltf-transform/functions", "meshoptimizer", "proj4", "sharp", "three"];
 const falta = DEPS.filter(d => !fs.existsSync(path.join(MODS, d, "package.json")));
 const SALTO = falta.length ? "faltan dependencias de tuberia/tiles3d (" + falta.join(", ") + "; cd tuberia/tiles3d && npm i): 3D Tiles NO se ha comprobado"
@@ -27,7 +29,7 @@ const imp = f => import(pathToFileURL(f).href);
 test.before(async () => {
   if (SALTO) return;
   FIX = fixture(); SAL = propia("tiles3d");
-  const g = ejecuta(process.execPath, [path.join(T3D, "genera.mjs"), "--entrada", path.join(FIX, "hituelo"), "--salida", SAL]);
+  const g = ejecuta(process.execPath, [path.join(T3D, "genera.mjs"), "--entrada", path.join(FIX, "hituelo"), "--salida", SAL, "--catalogo", CAT_FIXTURE]);
   assert.strictEqual(g.status, 0, "genera.mjs falló:\n" + g.stdout + g.stderr);
   TS = JSON.parse(fs.readFileSync(path.join(SAL, "tileset.json"), "utf8"));
   RES = JSON.parse(fs.readFileSync(path.join(SAL, "resumen.json"), "utf8"));
@@ -38,19 +40,26 @@ test.before(async () => {
   gltf = { core: req("@gltf-transform/core"), ext: req("@gltf-transform/extensions") };
 });
 
-test("tileset.json: 3D Tiles 1.1, raíz con refine y transform, geometricError estrictamente decreciente y hojas casi a 0", t => {
+test("tileset.json: 3D Tiles 1.1, raíz sin contenido con refine y transform, geometricError estrictamente decreciente y hojas casi a 0", t => {
   if (SALTO) return t.skip(SALTO);
   assert.strictEqual(TS.asset.version, "1.1");
   assert.ok(["REPLACE", "ADD"].includes(TS.root.refine), "la raíz necesita refine");
   assert.strictEqual(TS.root.transform.length, 16);
   assert.ok(TS.geometricError > TS.root.geometricError, "el geometricError del tileset debe superar al de la raíz");
+  // raíz sin glb: sus hijos son los cuadrados del nivel útil (el más alto con olivos) y su error, el de no dibujar nada (≥ lado de su caja)
+  const rb = TS.root.boundingVolume.box;
+  assert.ok(!TS.root.content, "la raíz no lleva contenido");
+  assert.ok(TS.root.geometricError >= 2 * Math.max(rb[3], rb[7]) - 1e-6, "geometricError de la raíz menor que el lado de su caja");
+  assert.strictEqual(RES.raiz.nivel_util_m, RES.niveles[0].lado_m);
+  assert.deepStrictEqual(TS.root.children.map(h => h.content.uri).sort(), RES.teselas.filter(f => f.nivel === 0).map(f => f.uri).sort(), "hijos de la raíz = nivel útil");
   let hojas = 0;
   recorre(TS.root, (n, p) => {
     assert.strictEqual(n.boundingVolume.box.length, 12, "caja de 12 números");
     if (p) {
+      assert.ok(n.content, "solo la raíz va sin contenido");
       assert.ok(n.geometricError < p.geometricError, n.content.uri + ": geometricError " + n.geometricError + " no menor que el del padre " + p.geometricError);
-      const [cx, cy, , hx] = n.boundingVolume.box, [px, py, , phx] = p.boundingVolume.box;
-      assert.ok(Math.abs(cx - px) + hx <= phx + 1e-6 && Math.abs(cy - py) + hx <= phx + 1e-6, n.content.uri + ": su caja se sale de la del padre");
+      const b = n.boundingVolume.box, q = p.boundingVolume.box;
+      assert.ok(Math.abs(b[0] - q[0]) + b[3] <= q[3] + 1e-6 && Math.abs(b[1] - q[1]) + b[7] <= q[7] + 1e-6 && Math.abs(b[2] - q[2]) + b[11] <= q[11] + 1e-6, n.content.uri + ": su caja se sale de la del padre");
     }
     if (!n.children) { hojas++; assert.ok(n.geometricError <= 0.1, n.content.uri + ": una hoja con geometricError " + n.geometricError); }
   });
@@ -59,7 +68,7 @@ test("tileset.json: 3D Tiles 1.1, raíz con refine y transform, geometricError e
 
 test("cada contenido existe y es un glb válido: cabecera, chunks JSON y BIN, accessors dentro de su buffer e índices en rango", async t => {
   if (SALTO) return t.skip(SALTO);
-  const uris = []; recorre(TS.root, n => uris.push(n.content.uri));
+  const uris = []; recorre(TS.root, n => { if (n.content) uris.push(n.content.uri); });
   assert.strictEqual(uris.length, RES.teselas.length);
   const io = new gltf.core.NodeIO().registerExtensions([gltf.ext.EXTMeshGPUInstancing]);
   for (const u of uris) {
@@ -102,8 +111,10 @@ test("el tileset cumple contratos/tileset.schema.json (extras.gemelo del tileset
   assert.deepStrictEqual(v(TS) ? [] : v.errors.slice(0, 10).map(e => (e.instancePath || "/") + ": " + e.message), []);
   const G = TS.extras.gemelo;
   assert.strictEqual(G.id_fuente, "copas_id", "el fixture de Hituelo trae copas_id");
-  // tabla de tipos: −1 sin asignar y el tipo 0 del catálogo de pruebas (solo existe en el fixture), con números locales consecutivos
-  assert.deepStrictEqual(G.tipos, { "-1": null, "0": "olivos-tipo:0" });
+  // tabla de tipos: −1 sin asignar y el tipo 0 del catálogo de pruebas (solo existe en el fixture, con --catalogo), números locales consecutivos
+  assert.strictEqual(G.catalogo_tipos, "fixture-sintetico");
+  assert.deepStrictEqual(G.tipos, { "-1": null, "0": "fixture-sintetico:0" });
+  assert.ok(!("tipos_provisionales" in G), "tipos_provisionales era del contrato tileset v1");
   let conOlivos = 0; recorre(TS.root, n => { if (n.extras) conOlivos++; });
   assert.strictEqual(conOlivos, RES.teselas.filter(f => f.olivos).length, "extras.gemelo en cada tesela con olivos y solo en ellas");
 });
@@ -111,7 +122,7 @@ test("el tileset cumple contratos/tileset.schema.json (extras.gemelo del tileset
 test("identidad por instancia: _INDICE_COPA es la posición en la lista de copas de la tesela; la huella deja resolver copas_id en CPU; _TIPO casa con copas_tipo por la tabla", async t => {
   if (SALTO) return t.skip(SALTO);
   const io = new gltf.core.NodeIO().registerExtensions([gltf.ext.EXTMeshGPUInstancing]), vistos = new Map(), porUri = new Map();
-  recorre(TS.root, n => porUri.set(n.content.uri, n));
+  recorre(TS.root, n => { if (n.content) porUri.set(n.content.uri, n); });
   const ids = gen.idsDe(I), nombre = new Map(Object.entries(TS.extras.gemelo.tipos).map(([k, v]) => [Number(k), v]));
   assert.strictEqual(TS.extras.gemelo.huella_registro, gen.huella(ids), "huella_registro");
   for (const f of RES.teselas.filter(f => f.olivos)) {
@@ -136,7 +147,7 @@ test("identidad por instancia: _INDICE_COPA es la posición en la lista de copas
       assert.ok(Math.abs(p[1] - R.H(c[0], c[1])) < 1e-3, f.uri + ": olivo " + ids[g] + " no está sobre el relieve");
       assert.ok(Math.abs(s[1] - c[2]) < 1e-4, f.uri + ": la altura de la instancia no es la del registro");
       const tc = I.copas_tipo[g], tl = A("_TIPO").getScalar(i);
-      assert.strictEqual(nombre.get(tl), tc < 0 ? null : "olivos-tipo:" + tc, f.uri + ": olivo " + ids[g] + " con _TIPO " + tl);
+      assert.strictEqual(nombre.get(tl), tc < 0 ? null : "fixture-sintetico:" + tc, f.uri + ": olivo " + ids[g] + " con _TIPO " + tl);
       if (f.nivel === RES.niveles.length - 1) vistos.set(ids[g], (vistos.get(ids[g]) || 0) + 1);
     }
   }
@@ -144,8 +155,32 @@ test("identidad por instancia: _INDICE_COPA es la posición en la lista de copas
   assert.ok([...vistos.values()].every(v => v === 1), "un olivo repetido en las hojas");
   assert.ok(I.copas_tipo.some(t => t === 0) && I.copas_tipo.some(t => t === -1), "el fixture ejercita tipo asignado y sin asignar");
   // y la herramienta para datos reales (tuberia/tiles3d/comprueba.mjs) dice lo mismo
-  const r = await (await imp(path.join(T3D, "comprueba.mjs"))).comprueba(path.join(FIX, "hituelo"), SAL);
+  const r = await (await imp(path.join(T3D, "comprueba.mjs"))).comprueba(path.join(FIX, "hituelo"), SAL, CAT_FIXTURE);
   assert.deepStrictEqual(r.errores, []); assert.strictEqual(r.en_hojas, RES.olivos);
+});
+
+test("_TIPO sin --catalogo: los nombres del catálogo «olivos» (tablaLocal de apps/web/olivo/catalogo.js), números locales por id creciente; un id desconocido va a −1", async t => {
+  if (SALTO) return t.skip(SALTO);
+  const { NOMBRE_TIPO } = await imp(path.join(RAIZ, "apps", "web", "olivo", "catalogo.js"));
+  const tt = gen.tablaTipos({ copas_tipo: [6, -1, 0, 6, 99, 3] });
+  assert.strictEqual(tt.catalogo, "olivos");
+  assert.deepStrictEqual(tt.tabla, { "-1": null, "0": NOMBRE_TIPO.planton, "1": NOMBRE_TIPO.adulto3, "2": NOMBRE_TIPO.centenario3 });
+  assert.deepStrictEqual(tt.tabla, { "-1": null, "0": "olivos:planton", "1": "olivos:adulto-3p", "2": "olivos:centenario-3p" });
+  assert.deepStrictEqual([6, -1, 0, 99, 3].map(v => tt.local.get(v)), [2, -1, 0, -1, 1]);
+  assert.deepStrictEqual(tt.desconocidos, [99]);
+  assert.deepStrictEqual(gen.tablaTipos({}).tabla, { "-1": null }, "sin copas_tipo, solo −1");
+});
+
+test("planArbol: unos datos que cruzan una línea gruesa de la rejilla UTM no suben la raíz (antes, 32.768 m en Hituelo)", t => {
+  if (SALTO) return t.skip(SALTO);
+  // dos teselas de 256 m a los dos lados de N = 16.384 (múltiplo de 16.384): la regla vieja daba una raíz de 32.768 m
+  const teselas = new Map([["10_63", { kx: 10, ky: 63 }], ["10_64", { kx: 10, ky: 64 }]]);
+  const p = gen.planArbol(teselas, 256, [2600, 16400], 128, 512), cuenta = {};
+  (function c(ns) { for (const n of ns) { cuenta[n.L] = (cuenta[n.L] || 0) + 1; c(n.hijos); } })(p.cuadros);
+  assert.strictEqual(p.S, 512); assert.strictEqual(p.profMax, 2);
+  assert.deepStrictEqual(p.cuadros.map(c => [c.i, c.j]), [[5, 31], [5, 32]]);
+  assert.deepStrictEqual(cuenta, { 512: 2, 256: 2, 128: 8 });
+  assert.throws(() => gen.planArbol(teselas, 256, [0, 0], 128, 384), /hoja·2\^k/);
 });
 
 test("marco: la raíz georreferencia el marco local (UTM 30N − centro_utm) en ECEF con error < 2 cm en planta a 1,3 km; el GPS cae en el mismo marco", t => {
@@ -221,7 +256,7 @@ test("visor (3DTilesRendererJS + three moderno, SwiftShader): carga sin errores,
       // el marco: cada olivo dibujado está en (x, H(x, y), −y) del registro, como en la escena del motor de hoy; el olivo se resuelve
       // como lo hará el motor: tesela (uri) → cuadro → lista de copas desde el json → lista[k], comprobando la huella
       assert.ok(ins.length > 0, escena + ": sin olivos dibujados");
-      const porUri = new Map(); recorre(TS.root, n => porUri.set(n.content.uri, n));
+      const porUri = new Map(); recorre(TS.root, n => { if (n.content) porUri.set(n.content.uri, n); });
       for (const o of ins) {
         const e = porUri.get(o.uri).extras.gemelo, lista = gen.listaCopas(I, ...e.cuadro);
         assert.strictEqual(o.huella, e.huella, escena + ": el modelo cargado no trae la huella de su tesela");

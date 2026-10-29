@@ -16,7 +16,7 @@ Comprobado en fuente primaria el 2026-10-28:
 La escena se sirve como **tileset 3D Tiles 1.1** generado por `tuberia/tiles3d/genera.mjs` a partir del **mismo contrato de datos v2** que hoy lee el motor, y se dibuja con 3DTilesRendererJS:
 - árbol de cuadrantes explícito alineado a UTM (hojas de 128 m con paso de 1 m; 128 × 128 celdas en todos los niveles), `REPLACE`, `geometricError` medido;
 - terreno simplificado con meshoptimizer (error absoluto, bordes bloqueados) y faldones; ortofoto como textura por tesela;
-- olivos como **instancias GPU** (`EXT_mesh_gpu_instancing`) cuyos parámetros salen del registro `copas[]`, con `_INDICE_COPA` (posición en la lista de copas de la tesela; el id se resuelve en CPU con una huella) y `_TIPO` (número local + tabla de nombres) por instancia para no cerrar el hueco del catálogo de olivos-tipo (contrato tileset v1, `contratos/tileset.schema.json`);
+- olivos como **instancias GPU** (`EXT_mesh_gpu_instancing`) cuyos parámetros salen del registro `copas[]`, con `_INDICE_COPA` (posición en la lista de copas de la tesela; el id se resuelve en CPU con una huella) y `_TIPO` (número local + tabla de nombres) por instancia para no cerrar el hueco del catálogo de olivos-tipo (contrato tileset, hoy v2: `contratos/tileset.schema.json`);
 - el contenido va en el **marco local de hoy** (UTM 30N − `centro_utm`, z − `z0`); la raíz lo georreferencia en ECEF y el cliente deshace ese transform, así que la escena, las hazas de PostGIS y el GPS del corresponsal comparten coordenadas sin cambiar nada.
 
 ## Alternativas consideradas
