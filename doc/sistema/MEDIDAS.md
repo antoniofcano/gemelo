@@ -289,6 +289,21 @@ Dos épocas: el doble (si no se comparte nada). Con 4 procesos, unas 4 veces men
 
 A ojo (capturas de la ronda), las horneadas y las calculadas tienen el mismo aspecto; en las dos, los generados salen de un tono claro (crema) frente al verde oscuro de las copas medidas de alrededor (para revisar con Antonio).
 
+## Escalera de olivos, fase A (O8c, 2026-10-29, `?olivos=escalera`, ronda del banco, fixture de Hituelo, SwiftShader: recuentos, no fps)
+
+**¿Hay pasada de sombras?** No. `renderer.shadowMap.enabled` es `false` en todas las medidas (three 0.186.1 lo trae apagado y ningún módulo del motor lo enciende; `WebGLShadowMap.render` sale sin dibujar nada). Con `renderer.info`: en `paseoAnda` con la escalera, 389 k triángulos en el fotograma de los que 281 k son olivos 3D; con una pasada de sombras serían al menos 562 k. Así que el «× 2 por la sombra» de `costo()` sobraba: con la escalera ya no se cobra (con `?olivos=gen` sigue cobrándose, para no cambiar lo que dibuja). Que los generados salgan «crema» tiene que ver con esto (contrato `olivo-impostor` §5: sin sombras, el interior de la copa no se oscurece).
+
+Primera ronda (encargo de 5 escenarios, página montada con `--olivos`, máquina al 100 % de CPU, una corrida; `esc` bajó a 0,7, así que el presupuesto era 385 k):
+
+| Escenario | Sin la bandera: llamadas / tri / heap | `?olivos=escalera`: llamadas / tri / heap | Escalera (E0/E1/E2 · lejanos) |
+|---|---|---|---|
+| cerca | 55 / 430 k / 35 MB | 27 / 426 k / 46 MB | 0/0/3 · capa aún sin variantes |
+| lejos | 67 / 76 k / 38 MB | 77 / 125 k / 42 MB | 0/0/3 · ídem |
+| paseo | 136 / 164 k / 39 MB | 90 / 382 k / 52 MB | 1/0/8 · ídem |
+| paseoAnda | 101 / 240 k / 35 MB | 55 / 389 k / 64 MB | 1/1/8 · ídem |
+
+Con la bandera: 0 mallas de nivel 0, 0 instancias de los niveles 1-2, 6-7 llamadas de olivos. **Las 4 variantes E2 no llegaron en 12 min** (página sin trabajador, a rebanadas por la cola propia): sin ellas no hay capa de lejanos y de lejos solo se ve la ortofoto (la excepción de la primera carga del ADR §3). Por eso las variantes de los lejanos pasan a pedirse justo después de los propios de menos de 50 m. Segunda ronda con ese cambio (tope 300 s, `cerca` y `lejos` antes de cortarse): las mismas cifras (27 / 426 k / 38 MB; 76 / 125 k / 45 MB) y 2 variantes E2 a los 5 min: en SwiftShader y sin trabajador no se llega al estado final; los topes de `fixture_olivos_escalera` salen del estado final calculado (ver su `$comment`). El estado final sí se comprueba en Node (`pruebas/olivo/escalera_motor.mjs`: 0 huecos y 0 dobles en 607 pasos de paseo y órbita, ≤ 8 llamadas, triángulos ≤ presupuesto). En Hituelo real (encargo cortado a petición: máquina sin memoria) pasó lo mismo, y en el paseo del banco no había olivos en 160 m: ningún olivo dibujado.
+
 ## Límites conocidos
 - Las ortofotos decodificadas (2,4 MB por tesela de 768 px; 1 MB a 512 px) se sueltan solo a 900 m; sin LRU fino.
 - Dentro de una tesela todo el relieve y la copa (258² + 256²) están siempre en memoria: 49 teselas ≈ 20 MB; la nube de las lejanas se libera a > 1,2× 2.300 m.
