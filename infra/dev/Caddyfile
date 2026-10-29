@@ -96,11 +96,15 @@
 		}
 	}
 
-	# la portada pública (provisional de desarrollo: infra/dev/portada/; la de verdad va con la UX, doc/sistema/UX.md §4.1)
+	# la portada pública y las pantallas de entrada (apps/web/portada, construida en apps/web/dist-portada; UX.md §4).
+	# Como el mundo: assets/ con hash en el nombre → inmutable; la página, siempre revalidada. Igual que infra/Caddyfile.
 	handle {
 		root * /srv/portada
-		header Cache-Control "no-cache"
+		@inmutable path /assets/*
+		header @inmutable Cache-Control "public, max-age=31536000, immutable"
+		header ?Cache-Control "no-cache"
 		file_server {
+			precompressed br zstd gzip
 			hide .*
 		}
 	}

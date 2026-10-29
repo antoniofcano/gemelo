@@ -16,6 +16,8 @@ declare module "fastify" {
     rol?: Rol;
     alias?: string | null;
     aliasVisible?: boolean;
+    /** versión de las normas que aceptó el hogar (null: aún no; primer acceso, contratos/sesion.md) */
+    normasVersion?: number | null;
   }
 }
 
@@ -41,8 +43,8 @@ export class AlmacenPg implements SessionStore {
   }
 
   private async lee(id: string): Promise<Session | null> {
-    const r = await this.bd.query<{ sid: number; hogar_id: number; rol: Rol; alias: string | null; alias_visible: boolean; expira_en: Date; refrescar: boolean }>(
-      `SELECT s.id AS sid, h.id AS hogar_id, h.rol, h.alias, h.alias_visible, s.expira_en,
+    const r = await this.bd.query<{ sid: number; hogar_id: number; rol: Rol; alias: string | null; alias_visible: boolean; normas_version: number | null; expira_en: Date; refrescar: boolean }>(
+      `SELECT s.id AS sid, h.id AS hogar_id, h.rol, h.alias, h.alias_visible, h.normas_version, s.expira_en,
               s.ultima_actividad_en < now() - interval '5 minutes' AS refrescar
          FROM sesiones s JOIN hogares h ON h.id = s.hogar_id
         WHERE s.hash = $1 AND s.revocada_en IS NULL AND s.expira_en > now() AND h.activo
@@ -51,7 +53,7 @@ export class AlmacenPg implements SessionStore {
     if (!f) return null;
     if (f.refrescar) await this.bd.query("UPDATE sesiones SET ultima_actividad_en = now() WHERE id = $1", [f.sid]);
     // la cookie se reconstruye con la caducidad absoluta guardada (no se alarga al usarla)
-    return { hogarId: f.hogar_id, rol: f.rol, alias: f.alias, aliasVisible: f.alias_visible, cookie: { expires: f.expira_en } } as unknown as Session;
+    return { hogarId: f.hogar_id, rol: f.rol, alias: f.alias, aliasVisible: f.alias_visible, normasVersion: f.normas_version, cookie: { expires: f.expira_en } } as unknown as Session;
   }
 
   private async guarda(id: string, s: Session): Promise<void> {

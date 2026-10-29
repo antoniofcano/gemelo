@@ -8,6 +8,8 @@ import { construyeApp } from "../../src/app.ts";
 import { TEXTO_ACEPTADO, TEXTO_LIMITE } from "../../src/auth/rutas.ts";
 import { migra } from "../../src/bd/migra.ts";
 import { hashToken } from "../../src/seguridad/cripto.ts";
+import { hashCodigo, normalizaCodigo } from "../../src/auth/vinculo.ts";
+import { TEXTO_LIMITE_VINCULO } from "../../src/auth/rutas.ts";
 import { type BdDePrueba, hayDocker, levantaBd, sqlDeEjemplo } from "../apoyo/bd.ts";
 import { configDePrueba, contexto, deLaWeb, Registro } from "../apoyo/contexto.ts";
 import { validadorFicha } from "../apoyo/esquemas.ts";
@@ -31,7 +33,7 @@ before(async () => {
   }
   for (const r of (await bd.dueno.query<{ id: number; codigo: string }>("SELECT id, codigo FROM hazas")).rows) ids[r.codigo] = r.id;
   await bd.dueno.query("UPDATE hazas SET hogar_id = $1 WHERE codigo = 'H-S01'", [ids[ANA]]);
-  ctx = contexto(bd.app, configDePrueba({ GEMELO_ENLACE_POR_CORREO: "100", GEMELO_ENLACE_POR_IP: "1000", GEMELO_API_REGISTRO: "info" }));
+  ctx = contexto(bd.app, configDePrueba({ GEMELO_ENLACE_POR_CORREO: "100", GEMELO_ENLACE_POR_IP: "1000", GEMELO_VINCULO_INTENTOS_POR_HOGAR: "100", GEMELO_API_REGISTRO: "info" }));
   app = await construyeApp(ctx, { destinoRegistro: registro });
   await app.ready();
 }, { timeout: 240_000 });
@@ -60,7 +62,7 @@ async function entra(correo: string, cookiePrevia?: string): Promise<string> {
   await new Promise(r => setImmediate(r));    // el envío va sin esperar a la respuesta
   const t = tokenDelCorreo(correo);
   const r = await app.inject({ method: "POST", url: "/api/auth/entrar",
-    headers: deLaWeb({ "content-type": "application/x-www-form-urlencoded", ...(cookiePrevia ? { cookie: "__Host-gemelo=" + cookiePrevia } : {}) }),
+    headers: deLaWeb({ "content-type": "application/x-www-form-urlencoded", "x-forwarded-for": ip(), ...(cookiePrevia ? { cookie: "__Host-gemelo=" + cookiePrevia } : {}) }),
     payload: "t=" + t });
   assert.equal(r.statusCode, 303, r.body);
   const c = cookieDe(r);
@@ -127,7 +129,7 @@ test("entrar: página intermedia (GET no gasta), POST abre sesión con cookie __
   assert.equal((await get("/api/auth/entrar?t=" + tok)).statusCode, 200, "el GET no lo gasta");
   const r = await app.inject({ method: "POST", url: "/api/auth/entrar", headers: deLaWeb({ "content-type": "application/x-www-form-urlencoded" }), payload: "t=" + tok });
   assert.equal(r.statusCode, 303);
-  assert.equal(r.headers["location"], "/finca/");
+  assert.equal(r.headers["location"], "/#bienvenida", "la primera vez (normas sin aceptar), al primer acceso de la portada");
   const sc = ([] as string[]).concat(r.headers["set-cookie"] ?? []).join("\n");
   assert.match(sc, /__Host-gemelo=/); assert.match(sc, /HttpOnly/); assert.match(sc, /Secure/); assert.match(sc, /SameSite=Lax/); assert.match(sc, /Path=\//);
   assert.ok(!/Domain=/i.test(sc), "__Host- no lleva Domain");
@@ -320,6 +322,127 @@ test("roles: un hogar no entra al panel; la oficina da de alta, asigna hazas y r
   assert.equal((await get("/api/sesion", luis)).statusCode, 401);
 });
 
+// ---------------------------------------------------------------- primer acceso y código corto de las gafas
+test("primer acceso: /api/sesion lo dice hasta aceptar las normas; luego el enlace lleva al mundo", async t => {
+  if (salta(t)) return;
+  const c = await entra(LUIS);
+  assert.equal((await get("/api/sesion", c)).json().primer_acceso, true);
+  assert.equal((await con("PUT", "/api/yo/normas", c, { version: 99, avisos_correo: false })).statusCode, 409, "otra versión: las normas cambiaron");
+  assert.equal((await con("PUT", "/api/yo/normas", c, { version: 1, avisos_correo: true })).statusCode, 204);
+  assert.equal((await get("/api/sesion", c)).json().primer_acceso, false);
+  const h = (await bd.dueno.query("SELECT normas_version, normas_aceptadas_en IS NOT NULL AS fecha, avisos_correo FROM hogares WHERE id = $1", [ids[LUIS]])).rows[0];
+  assert.deepEqual(h, { normas_version: 1, fecha: true, avisos_correo: true });
+  await pideEnlace(app, LUIS); await new Promise(r => setImmediate(r));
+  const r = await app.inject({ method: "POST", url: "/api/auth/entrar", headers: deLaWeb({ "content-type": "application/x-www-form-urlencoded" }), payload: "t=" + tokenDelCorreo(LUIS) });
+  assert.equal(r.headers["location"], "/finca/");
+  cookieDe(r);
+});
+
+const pideCodigo = (cab = deLaWeb({ "x-forwarded-for": ip() })) => app.inject({ method: "POST", url: "/api/auth/vincula", headers: cab, payload: {} });
+const sondeo = (s: string, cab = deLaWeb({ "x-forwarded-for": ip() })) => app.inject({ method: "POST", url: "/api/auth/vincula/sondeo", headers: cab, payload: { sondeo: s } });
+const decide = (cookie: string, codigo: string, aprobar = true) => app.inject({ method: "POST", url: "/api/yo/dispositivos/vincular",
+  headers: deLaWeb({ cookie: "__Host-gemelo=" + cookie, "x-forwarded-for": ip() }), payload: { codigo, aprobar } });
+
+test("código corto: gafas piden → esperando → el hogar lo aprueba tecleándolo → las gafas reciben SU sesión; un solo uso", async t => {
+  if (salta(t)) return;
+  const ana = await entra(ANA);
+  const p = await pideCodigo();
+  assert.equal(p.statusCode, 201);
+  const { codigo, sondeo: s, expira_en, cada_s } = p.json();
+  tokensVistos.push(s);
+  assert.match(codigo, /^[2-9A-HJKMNP-Z]{3}-[2-9A-HJKMNP-Z]{3}$/);
+  assert.equal(cada_s, 3);
+  assert.ok(Math.abs(Date.parse(expira_en) - Date.now() - 5 * 60_000) < 30_000, "caduca en 5 minutos");
+  assert.equal(p.headers["cache-control"], "no-store");
+  assert.ok(!p.headers["set-cookie"], "pedir un código no abre sesión");
+  // en la base, ni el código ni el sondeo en claro
+  const fila = (await bd.dueno.query("SELECT * FROM codigos_vinculo WHERE codigo_hash = $1", [hashCodigo(normalizaCodigo(codigo)!, ctx.config.sesion.secreto)])).rows;
+  assert.equal(fila.length, 1, "el código se guarda como HMAC");
+  assert.deepEqual(fila[0].sondeo_hash, hashToken(s));
+  const todo = JSON.stringify((await bd.dueno.query("SELECT * FROM codigos_vinculo")).rows);
+  assert.ok(!todo.includes(s) && !todo.includes(normalizaCodigo(codigo)!), "nada en claro");
+
+  assert.deepEqual((await sondeo(s)).json(), { estado: "esperando" });
+  assert.equal((await decide(ana, codigo.toLowerCase().replace("-", " "))).statusCode, 204, "se acepta en minúsculas y con espacio");
+  assert.equal((await decide(ana, codigo)).statusCode, 404, "ya decidido: el mismo «no sirve»");
+  // dos sondeos a la vez tras aprobar: entra uno
+  const [a, b] = await Promise.all([sondeo(s), sondeo(s)]);
+  const buena = [a, b].find(x => x.json().estado === "aprobado")!, mala = [a, b].find(x => x !== buena)!;
+  assert.ok(buena, "uno de los dos sondeos entra");
+  assert.deepEqual(buena.json(), { estado: "aprobado", primer_acceso: true });
+  assert.deepEqual(mala.json(), { estado: "caducado" }, "el otro ya no recibe nada");
+  const sc = ([] as string[]).concat(buena.headers["set-cookie"] ?? []).join("\n");
+  assert.match(sc, /HttpOnly/); assert.match(sc, /Secure/); assert.match(sc, /SameSite=Lax/);
+  const gafas = cookieDe(buena)!;
+  assert.notEqual(gafas, ana, "las gafas tienen su propia sesión");
+  const yo = await get("/api/sesion", gafas);
+  assert.equal(yo.statusCode, 200);
+  assert.equal(yo.json().rol, "hogar");
+  const hz = (await get("/api/hazas", gafas)).json() as { features: { properties: { codigo: string; es_mia: boolean } }[] };
+  assert.equal(hz.features.find(f => f.properties.codigo === "H-S01")!.properties.es_mia, true, "es la sesión del hogar que aprobó");
+  assert.equal((await get("/api/sesion", ana)).statusCode, 200, "la sesión que aprobó sigue viva");
+  assert.deepEqual((await sondeo(s)).json(), { estado: "caducado" }, "un solo uso");
+  const acc = (await bd.dueno.query("SELECT accion FROM auditoria WHERE accion LIKE 'vinculo.%' ORDER BY id")).rows.map(x => x.accion);
+  for (const x of ["vinculo.pedido", "vinculo.aprobado", "vinculo.fallido", "vinculo.usado"]) assert.ok(acc.includes(x), "auditoría: " + x);
+  const det = JSON.stringify((await bd.dueno.query("SELECT detalle FROM auditoria WHERE accion LIKE 'vinculo.%'")).rows);
+  assert.ok(!det.includes(normalizaCodigo(codigo)!), "la auditoría no guarda el código");
+  // salir en las gafas no cierra la del móvil
+  assert.equal((await con("POST", "/api/sesion/salir", gafas)).statusCode, 204);
+  assert.equal((await get("/api/sesion", ana)).statusCode, 200);
+});
+
+test("código corto: rechazado, caducado, inventado (misma respuesta) y hogar desactivado", async t => {
+  if (salta(t)) return;
+  const luis = await entra(LUIS);
+  const r1 = (await pideCodigo()).json();
+  tokensVistos.push(r1.sondeo);
+  assert.equal((await decide(luis, r1.codigo, false)).statusCode, 204);
+  assert.deepEqual((await sondeo(r1.sondeo)).json(), { estado: "rechazado" });
+  assert.equal((await decide(luis, r1.codigo, true)).statusCode, 404, "un código rechazado no se puede aprobar después");
+
+  const r2 = (await pideCodigo()).json();
+  tokensVistos.push(r2.sondeo);
+  await bd.dueno.query("UPDATE codigos_vinculo SET creado_en = now() - interval '6 minutes', expira_en = now() - interval '1 minute' WHERE sondeo_hash = $1", [hashToken(r2.sondeo)]);
+  const cad = await decide(luis, r2.codigo);
+  const inv = await decide(luis, "ZZZ-ZZZ");
+  assert.equal(cad.statusCode, 404); assert.equal(inv.statusCode, 404);
+  assert.equal(cad.body, inv.body, "caducado e inventado responden igual (no enumerable)");
+  assert.deepEqual((await sondeo(r2.sondeo)).json(), { estado: "caducado" });
+  assert.deepEqual((await sondeo("C".repeat(43))).json(), { estado: "caducado" }, "un sondeo inventado no dice nada");
+  assert.equal((await decide(luis, "K0Q-4M2")).statusCode, 404, "con un ambiguo: tampoco, y sin pista");
+
+  const r3 = (await pideCodigo()).json();
+  tokensVistos.push(r3.sondeo);
+  assert.equal((await decide(luis, r3.codigo)).statusCode, 204);
+  await bd.dueno.query("UPDATE hogares SET activo = false WHERE id = $1", [ids[LUIS]]);
+  const s3 = await sondeo(r3.sondeo);
+  await bd.dueno.query("UPDATE hogares SET activo = true WHERE id = $1", [ids[LUIS]]);
+  assert.notEqual(s3.json().estado, "aprobado", "un hogar desactivado no abre sesión en las gafas");
+  assert.ok(!s3.headers["set-cookie"]);
+});
+
+test("código corto: límites de códigos por IP, de intentos por hogar (mismo texto) y Origin", async t => {
+  if (salta(t)) return;
+  const otra = await construyeApp(contexto(bd.app, configDePrueba({ GEMELO_VINCULO_POR_IP: "3", GEMELO_VINCULO_INTENTOS_POR_HOGAR: "4", GEMELO_SESION_SECRETO: ctx.config.sesion.secreto })));
+  try {
+    const misma = deLaWeb({ "x-forwarded-for": "192.0.2.77" }), rs = [];
+    for (let i = 0; i < 4; i++) rs.push(await otra.inject({ method: "POST", url: "/api/auth/vincula", headers: misma, payload: {} }));
+    assert.deepEqual(rs.map(r => r.statusCode), [201, 201, 201, 429]);
+    assert.deepEqual(rs[3]!.json(), { error: "demasiadas_peticiones", mensaje: TEXTO_LIMITE_VINCULO });
+    for (const r of rs.slice(0, 3)) tokensVistos.push(r.json().sondeo);
+    const sinOrigen = await otra.inject({ method: "POST", url: "/api/auth/vincula", headers: { "x-forwarded-proto": "https" }, payload: {} });
+    assert.equal(sinOrigen.statusCode, 403);
+    // intentos de aprobar por hogar, aunque cambie la IP: 4 fallos y el quinto (aun siendo bueno) espera (mismo secreto: la cookie vale en las dos)
+    const c = await entra(ANA);
+    const bueno = rs[0]!.json().codigo;
+    const intentos = [];
+    for (let i = 0; i < 5; i++) intentos.push(await otra.inject({ method: "POST", url: "/api/yo/dispositivos/vincular",
+      headers: deLaWeb({ cookie: "__Host-gemelo=" + c, "x-forwarded-for": "203.0.113." + (10 + i) }), payload: { codigo: i < 4 ? "ZZZ-ZZ" + "23456"[i] : bueno, aprobar: true } }));
+    assert.deepEqual(intentos.map(r => r.statusCode), [404, 404, 404, 404, 429]);
+    assert.equal(intentos[4]!.json().mensaje, TEXTO_LIMITE_VINCULO);
+  } finally { await otra.close(); }
+});
+
 test("RGPD: descargar mis datos y borrar la cuenta arrastra en cascada todo lo del hogar", async t => {
   if (salta(t)) return;
   const ana = await entra(ANA);
@@ -331,7 +454,7 @@ test("RGPD: descargar mis datos y borrar la cuenta arrastra en cascada todo lo d
   assert.deepEqual(datos.json().hazas.map((h: { codigo: string }) => h.codigo), ["H-S01"]);
   assert.equal((await con("DELETE", "/api/yo", ana)).statusCode, 204);
   const id = ids[ANA];
-  for (const [tabla, col] of [["hogares", "id"], ["sesiones", "hogar_id"], ["tokens_acceso", "hogar_id"], ["avatares", "hogar_id"], ["preguntas", "hogar_id"], ["auditoria", "hogar_id"]]) {
+  for (const [tabla, col] of [["hogares", "id"], ["sesiones", "hogar_id"], ["tokens_acceso", "hogar_id"], ["avatares", "hogar_id"], ["preguntas", "hogar_id"], ["auditoria", "hogar_id"], ["codigos_vinculo", "hogar_id"]]) {
     assert.equal((await bd.dueno.query("SELECT count(*)::int AS n FROM " + tabla + " WHERE " + col + " = $1", [id])).rows[0].n, 0, tabla);
   }
   assert.equal((await bd.dueno.query("SELECT hogar_id FROM hazas WHERE codigo = 'H-S01'")).rows[0].hogar_id, null, "la haza queda sin asignar");
