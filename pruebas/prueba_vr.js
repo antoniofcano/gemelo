@@ -57,8 +57,8 @@ async function mantenEjes(mano, x, y, n) { await pg.evaluate(a => window.__mockX
   // coordenadas físicas = mundo − rig, deshaciendo el giro del rig
   async function fisica(w) { const dd = await p.evaluate(() => window.__vrDebug()); const r = dd.rig, c = Math.cos(-r.yaw), s = Math.sin(-r.yaw), x = w[0] - r.x, y = w[1] - r.y, z = w[2] - r.z; return [x * c + z * s, y, -x * s + z * c]; }
   async function aPanel(id) {
-    const bots = await p.evaluate(() => window.__vrBotones()), q = bots.find(k => k.id === id);
-    const cx = q.x + q.w / 2, cy = q.y + q.h / 2, l = [(cx / 1024 - 0.5) * 1.0, (0.5 - cy / 768) * 0.75, 0];   // en el plano del panel
+    const bots = await p.evaluate(() => window.__vrBotones()), q = bots.find(k => k.id === id), T = (await p.evaluate(() => window.__vrDebug())).panelTam;   // [px de ancho, px de alto, m, m]
+    const cx = q.x + q.w / 2, cy = q.y + q.h / 2, l = [(cx / T[0] - 0.5) * T[2], (0.5 - cy / T[1]) * T[3], 0];   // en el plano del panel
     for (let i = 0; i < 10; i++) {
       const dd = await p.evaluate(() => window.__vrDebug());   // el panel se recoloca (sigue a la cabeza): se vuelve a leer su posición en cada intento
       const pp = dd.panelPos, hc = dd.cabeza, ang = Math.atan2(hc[0] - pp[0], hc[2] - pp[2]), wx = pp[0] + l[0] * Math.cos(ang), wz = pp[2] - l[0] * Math.sin(ang), wy = pp[1] + l[1];

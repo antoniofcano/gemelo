@@ -17,7 +17,7 @@ const NOTAS = {
   "25_perros.js": "Publica además window.__perrosDebug (depuración).",
   "26_presencia.js": "Publica además window.__presencia (pruebas). Sin ?presencia=sim o ?presencia=red no crea nada (con red, import(\"livekit-client\") y el panel Gente); el trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/presencia.test.js.",
   "27_debug.js": "Publica window.__g, el gancho de las pruebas (contrato en doc/sistema/CONTRATOS.md).",
-  "29_vr.js": "Publica además window.__vrDebug, __vrOlivo, __vrBotones, __vrVuelo y VR_ESTADO (depuración y pruebas VR).",
+  "29_vr.js": "Publica además window.__vrDebug, __vrOlivo, __vrBotones, __vrVuelo, __vrBalizas y VR_ESTADO (depuración y pruebas VR).",
   "90_final.js": "Arranque y bucle: Mundo.arranca, cuadro() y requestAnimationFrame. Define el orden de las actualizaciones por fotograma.",
   "99_cierre.js": "Cierra la IIFE abierta en 01_datos.js.",
 };
