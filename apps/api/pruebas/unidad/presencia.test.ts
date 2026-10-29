@@ -121,6 +121,9 @@ test("configuración: sin GEMELO_LIVEKIT_URL la presencia está apagada; con ell
   assert.throws(() => cargaConfig({ ...base, ...lkDev, GEMELO_LIVEKIT_SECRETO: "corto" }), /32/);
   assert.throws(() => cargaConfig({ ...base, ...lkDev, GEMELO_LIVEKIT_CLAVE: "devkey", GEMELO_LIVEKIT_SECRETO: "y".repeat(32) }), /devkey/);
   assert.throws(() => cargaConfig({ ...base, ...lkDev, GEMELO_LIVEKIT_URL_PUBLICA: "https://livekit.example.com" }), /wss/);
+  // una ruta del mismo origen (el Caddy la pasa a LiveKit): vale en local con https://localhost y con la IP de la red
+  assert.equal(cargaConfig({ ...base, ...lkDev, GEMELO_LIVEKIT_URL_PUBLICA: "/rtc" }).livekit?.urlPublica, "/rtc");
+  for (const mala of ["//otro.example.com/rtc", "rtc", "/rtc?x=1", "/rtc/../a b"]) assert.throws(() => cargaConfig({ ...base, ...lkDev, GEMELO_LIVEKIT_URL_PUBLICA: mala }), ErrorDeConfig, mala);
 });
 
 test("configuración en producción: wss:// y el secreto solo desde fichero", () => {
@@ -133,6 +136,7 @@ test("configuración en producción: wss:// y el secreto solo desde fichero", ()
   const c = cargaConfig({ ...prod, GEMELO_LIVEKIT_SECRETO_FICHERO: f("lk", "w".repeat(40)) });
   assert.equal(c.livekit?.secreto, "w".repeat(40));
   assert.equal(c.livekit?.urlPublica, "wss://gemelo.example.com/rtc");
+  assert.equal(cargaConfig({ ...prod, GEMELO_LIVEKIT_URL_PUBLICA: "/rtc", GEMELO_LIVEKIT_SECRETO_FICHERO: f("lk3", "w".repeat(40)) }).livekit?.urlPublica, "/rtc", "la ruta del mismo origen también en producción (la página es https)");
   assert.throws(() => cargaConfig({ ...prod, GEMELO_LIVEKIT_SECRETO: "w".repeat(40) }), /fichero/);
   assert.throws(() => cargaConfig({ ...prod, GEMELO_LIVEKIT_URL_PUBLICA: "ws://gemelo.example.com/rtc", GEMELO_LIVEKIT_SECRETO_FICHERO: f("lk2", "w".repeat(40)) }), /wss/);
 });

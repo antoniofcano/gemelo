@@ -101,14 +101,16 @@ export async function estado() {
 }
 
 /**
- * ¿Está abierto a la red? Todo lo publicado fuera de 127.0.0.1. Lo único admitido es el https de la web (8443 dentro),
- * que abre el interruptor --red-local; cualquier otro puerto fuera de 127.0.0.1 es un fallo (indebidos).
+ * ¿Está abierto a la red? Todo lo publicado fuera de 127.0.0.1. Lo único admitido es lo que abre el interruptor --red-local:
+ * el https de la web (8443 dentro) y los medios de LiveKit (7881/tcp y 7882/udp); cualquier otro puerto fuera de 127.0.0.1
+ * es un fallo (indebidos). La señalización de LiveKit (7880) nunca: va por Caddy.
  */
+const ADMITIDOS = { web: [8443], livekit: [7881, 7882] };
 export function redLocal(docker) {
   const abiertos = [], indebidos = [];
   for (const [servicio, d] of Object.entries(docker)) for (const x of d.puertos || []) {
     if (x.ip === "127.0.0.1") continue;
-    (servicio === "web" && x.interno === 8443 ? abiertos : indebidos).push({ servicio, ...x });
+    ((ADMITIDOS[servicio] || []).includes(x.interno) ? abiertos : indebidos).push({ servicio, ...x });
   }
   return { abiertos, indebidos };
 }
@@ -121,7 +123,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   for (const s of DE_UNA_VEZ) { const d = r.docker[s]; console.log("  " + (d && d.estado === "exited" && d.salida === 0 ? "✓" : "✗") + " " + s.padEnd(8) + (d ? d.estado + ", salida " + d.salida : "no existe")); }
   const red = r.red;
   console.log(red.indebidos.length ? "✗ ABIERTO A LA RED lo que no debe: " + red.indebidos.map(x => x.servicio + " en " + x.ip + ":" + x.publicado).join(", ")
-    : red.abiertos.length ? "! ABIERTO A LA RED LOCAL (--red-local): solo el https de la web, en " + red.abiertos.map(x => "https://" + x.ip + ":" + x.publicado + "/").join(", ") +
+    : red.abiertos.length ? "! ABIERTO A LA RED LOCAL (--red-local): el https de la web y los medios de LiveKit: " + red.abiertos.map(x => x.servicio === "web" ? "https://" + x.ip + ":" + x.publicado + "/" : "livekit " + x.ip + ":" + x.publicado).join(", ") +
       "; se cierra con `npm run dev:abajo` o levantando sin --red-local"
     : "✓ red: todo en 127.0.0.1 (nada abierto a la red local)");
   console.log("Desde fuera:");

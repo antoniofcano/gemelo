@@ -403,7 +403,7 @@ paths:
                 additionalProperties: false
                 required: [url, sala, identidad, token, caduca_en]
                 properties:
-                  url: { type: string, description: "wss:// de LiveKit al que se conecta el navegador (ws:// solo fuera de producción)" }
+                  url: { type: string, description: "a dónde se conecta el navegador: wss:// de LiveKit (ws:// solo fuera de producción) o una ruta del mismo origen (/rtc) que el cliente resuelve contra su página (https → wss)" }
                   sala: { const: hituelo-libre }
                   identidad: { type: string, pattern: "^h_[A-Za-z0-9_-]{22}_[A-Za-z0-9_-]{8}$" }
                   token: { type: string, description: JWT de LiveKit }

@@ -28,8 +28,8 @@
 		# WebXR, micrófono y cámara (fases 2-4) y geolocalización (corresponsal) solo para este origen
 		Permissions-Policy "xr-spatial-tracking=(self), microphone=(self), camera=(self), geolocation=(self), screen-wake-lock=(self), payment=(), usb=(), interest-cohort=()"
 		# Report-Only: el navegador avisa en la consola de lo que bloquearía, sin bloquearlo. Las fuentes de Google las pide
-		# plantilla.html; el motor pide su mismo origen; data:/blob: para el mosaico y las texturas; LiveKit por WebSocket.
-		Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' {$LIVEKIT_PUBLICO}; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+		# plantilla.html; el motor pide su mismo origen (también LiveKit: wss://<sitio>/rtc); data:/blob: para el mosaico y las texturas.
+		Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
 	}
 }
 
@@ -54,6 +54,15 @@
 	# la ruta de autorización es solo para este Caddy (forward_auth), nunca desde fuera
 	handle /api/interno/* {
 		respond 404
+	}
+
+	# LiveKit (F2): la señalización por el MISMO origen, como en producción (wss://<sitio>/rtc). Así vale igual desde
+	# https://localhost y desde la IP de la red local (--red-local), sin abrir 7880 ni mezclar ws:// en una página https.
+	# livekit-client añade /rtc/… a la URL que le da la api («/rtc»): Caddy quita el primer /rtc y LiveKit recibe /rtc/….
+	# Sin sesión del gemelo: LiveKit exige su propio token (lo firma la api con la sesión). Los datos (WebRTC) van aparte, por
+	# ICE: UDP 7882 o TCP 7881 directos a LiveKit (DESARROLLO-LOCAL.md § Presencia).
+	handle_path /rtc/* {
+		reverse_proxy livekit:7880
 	}
 
 	# la api (apps/api): ella decide su propia autorización
