@@ -77,7 +77,7 @@ Estilo bloque (UX §4.7): cuerpo (caja con piernas más oscuras, color de camisa
 ## Cuando llegue la red (lo que falta, sin hacer)
 
 - Cliente: **`livekit-client`** (npm, versión exacta fijada en `apps/web/package.json` al integrarlo; regla 12). Publicar con `localParticipant.publishData(bytes, { reliable: false, topic: "pose", destinationIdentities })` y leer con el evento `DataReceived`. **[NO VERIFICADO]** contra la versión que se fije.
-- Servidor: tokens con **`livekit-server-sdk`** en `apps/api` (permisos de [livekit-roles.json](livekit-roles.json)), y la expulsión con su `RoomServiceClient`.
+- Servidor: **hecho** (P1). `POST /api/presencia/token` ([api.openapi.yaml](api.openapi.yaml)) firma con `livekit-server-sdk` 2.19.2 el token de la sala `hituelo-libre`: identidad `h_` + 22 caracteres (HMAC del id del hogar con el secreto de LiveKit: estable por hogar, no deducible sin el secreto), permisos de [livekit-roles.json](livekit-roles.json), metadatos `{alias, avatar, rol, dispositivo}` desde la base y caducidad de 15 min (solo sirve para entrar). Variables `GEMELO_LIVEKIT_URL`, `GEMELO_LIVEKIT_URL_PUBLICA`, `GEMELO_LIVEKIT_CLAVE`, `GEMELO_LIVEKIT_SECRETO(_FICHERO)`; sin la primera, 503. Una identidad por hogar: si el mismo hogar entra desde dos aparatos, LiveKit desconecta el primero **[NO VERIFICADO]**.
 - La pose local (cabeza en VR = `VRX.cab` + giro de la cámara; manos = los mandos; en escritorio, el paseante) aún no se codifica: falta decidir qué publica quien está en órbita (pregunta abierta).
 
 ## Versionado

@@ -298,3 +298,38 @@ paths:
         "200": { description: resumen por herramienta (estado ok/truncado/parcial/error) }
         "503": { description: la lectura de OlivarTrack está apagada }
         "403": { $ref: "#/components/responses/SinPermiso" }
+
+  /api/presencia/token:
+    post:
+      summary: Token para entrar a la sala libre de LiveKit (F2, presencia compartida; contratos/livekit-roles.json y presencia.md)
+      description: >
+        Sala fija «hituelo-libre» (decisiones 39 y 60). La identidad es un id opaco y estable por hogar (ni correo ni id
+        de la base). Permisos del rol según livekit-roles.json: en F2 solo datos (pose y chat), sin audio ni vídeo, sin
+        roomAdmin. Los metadatos (alias, avatar, rol, dispositivo) los pone la api y el cliente no puede cambiarlos.
+        El token caduca a los 15 minutos (solo sirve para entrar). Nada de la sala se guarda.
+      security: [{ sesion: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [dispositivo], properties: { dispositivo: { enum: [escritorio, movil, quest] } } }
+      responses:
+        "200":
+          description: token firmado
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [url, sala, identidad, token, caduca_en]
+                properties:
+                  url: { type: string, description: "wss:// de LiveKit al que se conecta el navegador (ws:// solo fuera de producción)" }
+                  sala: { const: hituelo-libre }
+                  identidad: { type: string, pattern: "^h_[A-Za-z0-9_-]{22}$" }
+                  token: { type: string, description: JWT de LiveKit }
+                  caduca_en: { type: string, format: date-time }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/OrigenNoAdmitido" }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: la presencia está apagada en este servidor (falta GEMELO_LIVEKIT_URL) }

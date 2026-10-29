@@ -30,6 +30,15 @@ export interface Config {
     | { modo: "no" }
     | { modo: "grabado"; carpeta: string; cadaMin: number }
     | { modo: "mcp"; url: string; token: string; cadaMin: number };
+  /** null si la presencia compartida (F2, LiveKit) está apagada: falta GEMELO_LIVEKIT_URL */
+  livekit: ConfigLiveKit | null;
+}
+
+export interface ConfigLiveKit {
+  url: string;          // donde la api habla con LiveKit (RoomService), p. ej. http://livekit:7880 en la red interna
+  urlPublica: string;   // a donde se conecta el navegador (wss:// en producción), p. ej. wss://gemelo.canoydamas.es/rtc
+  clave: string;        // API key de LiveKit (un nombre, no un secreto)
+  secreto: string;      // API secret (≥ 32 caracteres): firma los tokens
 }
 
 export class ErrorDeConfig extends Error {}
@@ -126,6 +135,21 @@ function cargaCorreo(e: Entorno, produccion: boolean): Config["correo"] {
   };
 }
 
+/** LiveKit (F2): apagado si no hay GEMELO_LIVEKIT_URL; si la hay, todo lo demás es obligatorio. */
+function cargaLiveKit(e: Entorno, produccion: boolean): ConfigLiveKit | null {
+  if (!e["GEMELO_LIVEKIT_URL"]?.trim()) return null;
+  const u = url("GEMELO_LIVEKIT_URL", texto(e, "GEMELO_LIVEKIT_URL"), false);
+  if (u.protocol !== "http:" && u.protocol !== "https:") throw new ErrorDeConfig("GEMELO_LIVEKIT_URL debe ser http(s):// (la api habla con RoomService)");
+  const p = url("GEMELO_LIVEKIT_URL_PUBLICA", texto(e, "GEMELO_LIVEKIT_URL_PUBLICA"), false);
+  if (p.protocol !== "wss:" && (produccion || p.protocol !== "ws:")) throw new ErrorDeConfig("GEMELO_LIVEKIT_URL_PUBLICA debe ser wss://" + (produccion ? " en producción" : " (o ws:// fuera de producción)"));
+  const clave = texto(e, "GEMELO_LIVEKIT_CLAVE");
+  if (!/^[A-Za-z0-9_-]{3,64}$/.test(clave)) throw new ErrorDeConfig("GEMELO_LIVEKIT_CLAVE: de 3 a 64 letras, números, _ o -");
+  const s = secreto(e, "GEMELO_LIVEKIT_SECRETO", true)!;
+  if (s.length < 32) throw new ErrorDeConfig("GEMELO_LIVEKIT_SECRETO debe tener al menos 32 caracteres");
+  if (clave === "devkey" || s === "secret") throw new ErrorDeConfig("el par de claves conocido de LiveKit --dev (devkey/secret) no se acepta");
+  return { url: u.origin, urlPublica: p.href.replace(/\/$/, ""), clave, secreto: s };
+}
+
 export function cargaConfig(e: Entorno = process.env): Config {
   const produccion = esProduccion(e);
   const urlPublica = url("GEMELO_URL_PUBLICA", texto(e, "GEMELO_URL_PUBLICA"), produccion).origin;
@@ -162,5 +186,6 @@ export function cargaConfig(e: Entorno = process.env): Config {
     },
     correo: cargaCorreo(e, produccion),
     ot,
+    livekit: cargaLiveKit(e, produccion),
   };
 }

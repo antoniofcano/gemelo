@@ -1,10 +1,10 @@
 {
-  "$comment": "Qué puede hacer cada rol en una sala de LiveKit en F2 (presencia compartida): SOLO datos (pose y chat), sin audio ni vídeo. La api firma el token con estos permisos; el cliente no los elige. Descripción y tabla de bytes de la pose: contratos/presencia.md. Lo comprueba pruebas/guardianes/presencia.test.js. Los nombres de los permisos son los del VideoGrant de LiveKit (sin verificar contra la versión que se fije al integrar livekit-server-sdk). Cambiar un permiso es cambiar este fichero, su versión y presencia.md en el mismo commit.",
+  "$comment": "Qué puede hacer cada rol en una sala de LiveKit en F2 (presencia compartida): SOLO datos (pose y chat), sin audio ni vídeo. La api firma el token con estos permisos; el cliente no los elige. Descripción y tabla de bytes de la pose: contratos/presencia.md. Lo comprueba pruebas/guardianes/presencia.test.js. Los nombres de los permisos son los del VideoGrant de livekit-server-sdk 2.19.2 (comprobado contra sus tipos; apps/api/src/presencia/livekit.ts los copia y apps/api/pruebas/unidad/presencia.test.ts compara las dos cosas y decodifica el token). Cómo los aplica el servidor (p. ej. canPublishSources vacío con canPublish false) NO se ha comprobado contra LiveKit real. Cambiar un permiso es cambiar este fichero, su versión y presencia.md en el mismo commit.",
   "contrato": "livekit-roles",
   "version": 1,
   "fase": "F2",
   "salas": {
-    "visita_libre": { "nombre": "hituelo-libre", "fija": true, "nota": "decisión 39: una sala fija de Hituelo para la visita libre; el nombre es un [SUPUESTO] de este contrato" },
+    "visita_libre": { "nombre": "hituelo-libre", "fija": true, "nota": "decisiones 39 y 60: una sala fija de Hituelo para la visita libre, con este nombre" },
     "guiada": { "nombre": "guiada-<id de la visita>", "fija": false, "nota": "una sala por visita guiada; llega con F3 (voz)" }
   },
   "identidad": {
