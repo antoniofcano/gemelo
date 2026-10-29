@@ -2,7 +2,7 @@
 // Expone: OlivosTiles
 // Consume: 01_datos (D, ESC3D), 02_mundo (copas), 04b_escena3d (Escena3D), 06_arboles (gArboles)
 // ===============================================================================
-  // ---------- los olivos del tileset (F1d paso 4, ADR-0015 Propuesto; contrato tileset v2 en contratos/tileset.schema.json), solo con ?escena=tiles.
+  // ---------- los olivos del tileset (F1d paso 4, ADR-0015; contrato tileset v2 en contratos/tileset.schema.json), solo con la escena 3D Tiles (ESC3D.pedida).
   // Sin la bandera no actúa. Con ella, los olivos de media y larga distancia los dibuja el tileset (las instancias EXT_mesh_gpu_instancing de cada
   // glb, que 04b_escena3d.js ya no retira) y los de cerca siguen siendo del motor: el detalle de cerca de siempre (07b_arboles.js) y, con ?olivos=gen,
   // los generados (07ab_generados.js). Para que ningún olivo se dibuje dos veces, una MÁSCARA: 07b dice qué olivos dibuja de cerca (índices de copas[])

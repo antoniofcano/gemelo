@@ -1,9 +1,10 @@
 "use strict";
-// F1d paso 3b (ADR-0015, Propuesto): la escena 3D Tiles DENTRO del motor, solo con ?escena=tiles (apps/web/motor/04b_escena3d.js).
+// F1d paso 3b (ADR-0015): la escena 3D Tiles DENTRO del motor (apps/web/motor/04b_escena3d.js). Desde T8 fase 1 es la de por defecto cuando el
+// índice trae `tileset` (D.tileset); ?escena=clasica pide la de siempre y ?escena=tiles la fuerza aunque el índice no lo diga.
 // Sin navegador: versión fijada y única de 3DTilesRendererJS (apps/web y el visor de tuberia/tiles3d), importmap de la salida artefacto, que
 // su build solo importe three (así usa la misma), los perfiles VR con su errorTarget y los enganches del motor.
 // Con navegador (Chrome headless + SwiftShader: llamadas, triángulos y memoria, NUNCA fps): el fixture de Hituelo montado con su tileset al
-// lado, con y sin la bandera, servido con una CSP parecida a la de la plataforma [SUPUESTO: aproximación, no la CSP real de claude.ai].
+// lado, dos veces: index.html con D.tileset (montar_v2.py --tileset: la escena nueva por defecto) y sin.html sin él (como la salida artefacto), servido con una CSP parecida a la de la plataforma [SUPUESTO: aproximación, no la CSP real de claude.ai].
 // Sin Chrome, playwright-core, Python o las dependencias de tuberia/tiles3d, lo de navegador se SALTA con aviso.
 const test = require("node:test"), assert = require("node:assert");
 const http = require("http");
@@ -50,9 +51,16 @@ test("la salida artefacto pide 3DTilesRendererJS a jsDelivr con la versión de p
   assert.ok(im["three/addons/"], "falta three/addons/ (lo importa el build de 3DTilesRendererJS)");
 });
 
-test("el motor: 04b_escena3d.js solo actúa con ?escena=tiles, el Terreno de siempre se apaga con ESC3D.activa y cada perfil VR trae su errorTarget", () => {
+test("el motor: 04b_escena3d.js solo actúa con la escena 3D Tiles pedida (D.tileset, ?tileset= o ?escena=tiles; no con ?escena=clasica), el Terreno de siempre se apaga con ESC3D.activa y cada perfil VR trae su errorTarget", () => {
   const m = lee(path.join(MOTOR, "04b_escena3d.js")), datos = lee(path.join(MOTOR, "01_datos.js")), ter = lee(path.join(MOTOR, "04_terreno.js")), vr = lee(path.join(MOTOR, "29_vr.js")), fin = lee(path.join(MOTOR, "90_final.js"));
   assert.match(datos, /escena=tiles/); assert.match(m, /if \(ESC3D\.pedida\)/, "sin la bandera no debe arrancar nada");
+  // ESC3D (01_datos.js), evaluado con dobles de location y D: cuándo es la escena por defecto (T8 fase 1)
+  const bloque = /var ESC3D = \(function \(\) \{[\s\S]*?\n  \}\)\(\);/.exec(datos); assert.ok(bloque, "no encuentro ESC3D en 01_datos.js");
+  const esc = (search, D) => Function("location", "D", "\"use strict\";\n" + bloque[0] + "\nreturn ESC3D;")({ search }, D);
+  const casos = [["", {}, false], ["", { tileset: "tileset/tileset.json" }, true], ["?debug", { tileset: "" }, false], ["?escena=tiles", {}, true],
+    ["?escena=clasica", { tileset: "tileset/tileset.json" }, false], ["?tileset=x%2Ftileset.json", {}, true], ["?escena=clasica&tileset=x", {}, false], ["?escena=tilesx", {}, false]];
+  for (const [q, D, pedida] of casos) { const e = esc(q, D); assert.strictEqual(e.pedida, pedida, "ESC3D.pedida con «" + q + "» y " + JSON.stringify(D)); assert.strictEqual(e.activa, pedida); }
+  assert.strictEqual(esc("", { tileset: "t.json" }).porDefecto, true); assert.strictEqual(esc("?escena=tiles", { tileset: "t.json" }).porDefecto, false);
   assert.ok(!/fetch\(/.test(m), "la escena 3D Tiles no hace fetch propio (lo hace la librería, al mismo origen)");
   assert.match(m, /import\("3d-tiles-renderer"\)/, "la librería se pide con import() solo con la bandera");
   for (const f of ["monta", "montaTodas", "actualiza", "tileCargada", "iniciaMosaico"]) assert.match(ter, new RegExp("function " + f + "\\([^)]*\\) \\{[^\\n]*\\n?[^\\n]*ESC3D\\.activa"), "04_terreno.js: " + f + " no mira ESC3D.activa");
@@ -250,9 +258,10 @@ async function preparaYa() {
   const FIX = fixture(), W = propia("escena3d"), py = python();
   const g = ejecuta(process.execPath, [path.join(T3D, "genera.mjs"), "--entrada", path.join(FIX, "hituelo"), "--salida", path.join(W, "hituelo", "tileset"), "--catalogo", path.join(RAIZ, "modelos", "olivos", "fixture", "catalogo.json")]);
   assert.strictEqual(g.status, 0, "genera.mjs falló:\n" + g.stdout + g.stderr);
-  const m = ejecuta(py, ["-I", "tuberia/salida_artefacto/montar_v2.py", "--finca", "hituelo", "--modo", "ficheros", "--datos", path.relative(RAIZ, path.join(FIX, "hituelo", "indice.json")), "--salida", path.relative(RAIZ, path.join(W, "hituelo", "index.html"))]);
-  assert.strictEqual(m.status, 0, m.stdout + m.stderr);
-  srv = await sirveConCsp(W, peticiones); base = "http://127.0.0.1:" + srv.address().port + "/hituelo/index.html";
+  const monta = (pagina, extra) => { const m = ejecuta(py, ["-I", "tuberia/salida_artefacto/montar_v2.py", "--finca", "hituelo", "--modo", "ficheros", "--datos", path.relative(RAIZ, path.join(FIX, "hituelo", "indice.json")), "--salida", path.relative(RAIZ, path.join(W, "hituelo", pagina))].concat(extra)); assert.strictEqual(m.status, 0, m.stdout + m.stderr); };
+  monta("index.html", ["--tileset", "tileset/tileset.json"]);   // la escena 3D Tiles por defecto (T8 fase 1)
+  monta("sin.html", []);                                          // sin D.tileset, como la salida artefacto: la de siempre
+  srv = await sirveConCsp(W, peticiones); base = "http://127.0.0.1:" + srv.address().port + "/hituelo/";
   const n = await lanza();
   if (cerrado) { await n.close(); throw new Error("las pruebas acabaron (por tiempo) mientras se esperaba el turno del banco"); }
   nav = n;
@@ -262,13 +271,13 @@ async function preparaYa() {
 let cerrado = false;
 test.after(async () => { cerrado = true; if (nav) await nav.close(); if (srv) srv.close(); });
 
-async function abre(q, mockXR) {
+async function abre(q, mockXR, pagina) {
   const p = await nav.newPage({ viewport: { width: 900, height: 650 } }), errores = [], avisos = [];
   if (mockXR) await p.addInitScript({ content: lee(path.join(RAIZ, "pruebas", "mock_xr.js")) });
   p.on("pageerror", e => errores.push("PAGEERROR " + String(e.stack || e).slice(0, 300)));
   p.on("console", x => { const s = x.text(); if (/Content Security Policy|Refused to/i.test(s)) errores.push("CSP " + s.slice(0, 300)); else if (x.type() === "error") errores.push("CONSOLE " + s.slice(0, 300)); else if (x.type() === "warning" && !CONOCIDOS.some(re => re.test(s))) avisos.push(s.slice(0, 300)); });
   p.on("response", r => { if (r.status() >= 400) errores.push(r.status() + " " + r.url()); });
-  await p.goto(base + "?debug" + q);
+  await p.goto(base + (pagina || "index.html") + "?debug" + q);
   await p.waitForFunction(() => window.__g && window.__g.listo() && window.__g.Escena3D.listo(), null, { timeout: 90000, polling: 500 });
   return { p, errores, avisos };
 }
@@ -308,29 +317,33 @@ function casaRelieve(t, cmp) {
   assert.ok(Object.values(porLado).reduce((s, q) => s + q.vertices, 0) >= 4, "casi ningún vértice de borde comprobado: " + JSON.stringify(porLado));
 }
 
-test("sin ?escena=tiles: la escena 3D Tiles no arranca, no se pide el tileset y el Terreno de siempre construye sus mallas", { timeout: 240000 }, async t => {
-  if (SALTO) return t.skip(SALTO);
-  await prepara();
-  peticiones.length = 0;
-  const { p, errores } = await abre("");
-  try {
-    const m = await escena(p, "lejos");
-    if (MIDE) t.diagnostic("sin bandera, lejos: " + JSON.stringify(m));
-    assert.deepStrictEqual(errores, []);
-    assert.strictEqual(m.escena3d.estado, "apagado"); assert.ok(m.mallasTerreno > 0, "sin mallas de terreno");
-    assert.ok(!peticiones.some(u => /tileset|\.glb$/.test(u)), "sin la bandera no se pide nada del tileset");
-  } finally { await p.close(); }
-});
+// Sin `tileset` en el índice (la salida artefacto, el fixture) no se pide nada aunque haya un tileset/ al lado; con ?escena=clasica, tampoco aunque
+// el índice lo traiga (la escena de siempre durante una versión, T8 fase 1)
+for (const [nombre, pagina, q] of [["sin tileset en el índice", "sin.html", ""], ["con ?escena=clasica", "index.html", "&escena=clasica"]]) {
+  test(nombre + ": la escena 3D Tiles no arranca, no se pide el tileset y el Terreno de siempre construye sus mallas", { timeout: 240000 }, async t => {
+    if (SALTO) return t.skip(SALTO);
+    await prepara();
+    peticiones.length = 0;
+    const { p, errores } = await abre(q, false, pagina);
+    try {
+      const m = await escena(p, "lejos");
+      if (MIDE) t.diagnostic(nombre + ", lejos: " + JSON.stringify(m));
+      assert.deepStrictEqual(errores, []);
+      assert.strictEqual(m.escena3d.estado, "apagado"); assert.ok(m.mallasTerreno > 0, "sin mallas de terreno");
+      assert.ok(!peticiones.some(u => /tileset|\.glb$/.test(u)), nombre + ": no se pide nada del tileset");
+    } finally { await p.close(); }
+  });
+}
 
-test("con ?escena=tiles: carga el tileset sin errores ni CSP, desde lejos baja de la raíz vacía, el Terreno de siempre no construye nada y el relieve dibujado casa con el de la CPU", { timeout: 300000 }, async t => {
+test("por defecto (D.tileset en el índice, sin bandera): carga el tileset sin errores ni CSP, desde lejos baja de la raíz vacía, el Terreno de siempre no construye nada y el relieve dibujado casa con el de la CPU", { timeout: 300000 }, async t => {
   if (SALTO) return t.skip(SALTO);
   await prepara();
   peticiones.length = 0;
-  const { p, errores, avisos } = await abre("&escena=tiles");
+  const { p, errores, avisos } = await abre("");
   try {
     const med = {};
     for (const n of ["lejos", "cerca", "nube"]) med[n] = await escena(p, n);
-    if (MIDE) t.diagnostic("con bandera: " + JSON.stringify(med));
+    if (MIDE) t.diagnostic("por defecto (escena 3D Tiles): " + JSON.stringify(med));
     assert.deepStrictEqual(errores, [], "errores de consola, de página o de CSP");
     assert.deepStrictEqual(avisos, [], "avisos no conocidos");
     for (const [n, m] of Object.entries(med)) {
@@ -338,7 +351,7 @@ test("con ?escena=tiles: carga el tileset sin errores ni CSP, desde lejos baja d
       assert.ok(m.escena3d.visibles > 0, n + ": ninguna tesela visible (¿se queda en la raíz sin contenido?)");
       assert.strictEqual(m.mallasTerreno, 0, n + ": el Terreno de siempre ha construido mallas");
     }
-    // presupuesto de dibujo con la bandera (pruebas/presupuesto.json, «fixture_escena_tiles»); los puntos, contra los de siempre (la nube sigue en el motor)
+    // presupuesto de dibujo de la escena 3D Tiles (pruebas/presupuesto.json, «fixture_escena_tiles»); los puntos, contra los de siempre (la nube sigue en el motor)
     for (const [n, m] of Object.entries(med)) {
       const tope = PRES.fixture_escena_tiles[n], pts = PRES.fixture[n].puntos;
       for (const k of ["llamadas", "triangulos"]) assert.ok(m[k] <= tope[k], "?escena=tiles " + n + ": " + k + " " + m[k] + " > tope " + tope[k] + " (si sube a propósito, explícalo y sube pruebas/presupuesto.json)");
@@ -404,16 +417,16 @@ test("con ?escena=tiles y un tileset de otro host: se rechaza sin pedirlo y vuel
   } finally { await p.close(); }
 });
 
-// VR con el WebXR simulado (pruebas/mock_xr.js) y ?escena=tiles (F1d paso 7). Comprueba la LÓGICA (cada perfil de 29_vr.js aplica su errorTarget a la escena 3D Tiles,
+// VR con el WebXR simulado (pruebas/mock_xr.js) y la escena por defecto, que con D.tileset es la 3D Tiles (F1d paso 7; T8 fase 1). Comprueba la LÓGICA (cada perfil de 29_vr.js aplica su errorTarget a la escena 3D Tiles,
 // el relieve fino se apaga con el perfil bajo, se anda y se sale restaurando); no dice nada de fps ni de comodidad en un casco. OPCIONAL (GEMELO_VR=1): con
 // SwiftShader la VR completa es inestable ("Target crashed", ver vr.test.js), por eso no bloquea la puerta; pide el turno del banco como cualquier prueba de navegador.
-test("VR simulada con ?escena=tiles: entra, anda, cada perfil aplica su errorTarget y apaga el relieve fino, y sale restaurando", { timeout: 300000 }, async t => {
+test("VR simulada con la escena por defecto (3D Tiles): entra, anda, cada perfil aplica su errorTarget y apaga el relieve fino, y sale restaurando", { timeout: 300000 }, async t => {
   if (SALTO) return t.skip(SALTO);
   if (!process.env.GEMELO_VR) return t.skip("opcional: define GEMELO_VR=1 para la VR simulada con ?escena=tiles (inestable con SwiftShader)");
   await prepara();
   const perfiles = [...lee(path.join(MOTOR, "29_vr.js")).match(/var VR_PERFILES = \[(.*?)\];/)[1].matchAll(/[ {,]e: (\d+)/g)].map(x => +x[1]);
   assert.ok(perfiles.length >= 2, "no se leyeron los errorTarget de VR_PERFILES");
-  const { p, errores } = await abre("&escena=tiles", true);
+  const { p, errores } = await abre("", true);
   const dbg = () => p.evaluate(() => window.__vrDebug()), et = () => p.evaluate(() => window.__g.Escena3D.resumen().errorTarget);
   const fot = async n => { const f0 = await p.evaluate(() => window.__mockXR.fotogramas); await p.waitForFunction(f => window.__mockXR.fotogramas >= f, f0 + n, { timeout: 60000, polling: 100 }); };
   try {

@@ -3,13 +3,14 @@
 // Consume: 01_datos (D, ESC3D), 02_mundo (Mundo, suelo), 03_escena (renderer, scene, camera, exag), 04_terreno (Terreno),
 //   04d_sombreado_tiles (SombreadoTiles), 08_marcadores (listo, aplica), 09_camara (objetivo), 16_vida (mira)
 // ===============================================================================
-  // ---------- la escena en 3D Tiles 1.1 (F1d paso 3b, ADR-0015 Propuesto; formato en doc/sistema/TILES3D.md), solo con ?escena=tiles.
-  // Sin la bandera no crea nada y el motor dibuja lo de siempre. Con ella, el relieve con su ortofoto lo dibuja 3DTilesRendererJS (versión
+  // ---------- la escena en 3D Tiles 1.1 (ADR-0015, aceptado; formato en doc/sistema/TILES3D.md): la de por defecto cuando hay tileset (T8 fase 1,
+  // ESC3D en 01_datos.js: D.tileset del índice, ?tileset= o ?escena=tiles); con ?escena=clasica, o sin tileset, no crea nada y el motor dibuja lo de
+  // siempre. Cuando actúa, el relieve con su ortofoto lo dibuja 3DTilesRendererJS (versión
   // fijada en apps/web/package.json) desde un tileset.json de tuberia/tiles3d/, y 04_terreno.js no construye nada (ESC3D.activa).
   // La física y las consultas en CPU (alturas, copa y color de la tierra para el paseo, la VR, las balizas y las huellas) siguen con el json de
   // siempre (decisión 38: doble descarga aceptada); los puntos LiDAR (decisión 37) y las construcciones (decisión 36) no cambian. Los olivos
   // del glb los gestiona 04c_olivos_tiles.js por los ganchos de engancha() (alRaiz, alModelo, alSoltar, alApagar, fotograma); sin él, o si los rechaza, se quitan.
-  // Tileset: ?tileset=<ruta relativa> o, por defecto, <D.base>tileset/tileset.json; nunca otro host (§5 de CLAUDE.md: solo el mismo origen).
+  // Tileset: ?tileset=<ruta relativa>, si no D.tileset (el índice) y si no <D.base>tileset/tileset.json; nunca otro host (§5 de CLAUDE.md: solo el mismo origen).
   // Marco: la raíz lleva LOCAL → ECEF; el grupo lo deshace y pasa de z arriba a y arriba, como la página de prueba de tuberia/tiles3d/, y
   // aplica la exageración vertical en la misma matriz. Si la librería o el tileset fallan, vuelve el relieve de 04_terreno.js (y se avisa una vez).
   var Escena3D = (function () {
@@ -19,7 +20,7 @@
     var tam = new THREE.Vector2();
     var ganchos = {};   // los pone 04c_olivos_tiles.js con engancha(): alRaiz(tileset), alModelo(scene, tile) → true si se queda con sus olivos, alSoltar(scene), alApagar(motivo), fotograma()
     function url() {
-      var m = /[?&]tileset=([^&#]+)/.exec(location.search), u = m ? decodeURIComponent(m[1]) : (D.base || "") + "tileset/tileset.json";
+      var m = /[?&]tileset=([^&#]+)/.exec(location.search), u = m ? decodeURIComponent(m[1]) : (typeof D.tileset === "string" && D.tileset) || (D.base || "") + "tileset/tileset.json";
       if (/^[a-z][a-z0-9+.-]*:|^\/\//i.test(u)) throw new Error("tileset fuera del mismo origen: " + u);   // ni http(s):, ni data:, ni //host
       return u;
     }

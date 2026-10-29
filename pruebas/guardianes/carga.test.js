@@ -1,6 +1,9 @@
 "use strict";
 // Carga real en Chrome headless (SwiftShader) del fixture montado con la salida artefacto: 0 errores de consola y recuentos de dibujo bajo los topes
-// de pruebas/presupuesto.json. Sin Chrome, playwright-core o Python el test se SALTA con aviso.
+// de pruebas/presupuesto.json («fixture»). Mide la escena de SIEMPRE (Terreno, 04_terreno.js): la salida artefacto no lleva tileset y ya la dibuja
+// por defecto, pero se fija ?escena=clasica para que los topes sigan midiendo lo mismo aunque un día el índice traiga `tileset` (ADR-0015, T8
+// fase 1). La escena 3D Tiles, la de por defecto con tileset, tiene sus topes («fixture_escena_tiles») en escena3d.test.js.
+// Sin Chrome, playwright-core o Python el test se SALTA con aviso.
 const test = require("node:test"), assert = require("node:assert");
 const { RAIZ, propia, python, fixture, ejecuta, fs, path } = require("./_util");
 const { sirve, motivoSalto, lanza, mide } = require("./_navegador");
@@ -24,7 +27,7 @@ test.after(async () => { if (navegador) await navegador.close(); if (srv) srv.cl
 for (const finca of ["cerro", "hituelo"]) {
   test("[" + finca + "] carga sin errores y cada escenario cabe en el presupuesto de dibujo", { timeout: 240000 }, async t => {
     if (SALTO) return t.skip(SALTO);
-    const { errores, fallos, medidas } = await mide(navegador, base + "/" + finca + "/index.html");
+    const { errores, fallos, medidas } = await mide(navegador, base + "/" + finca + "/index.html?escena=clasica");
     if (MIDE) console.log("MEDIDO " + finca + " " + JSON.stringify(medidas));
     assert.deepStrictEqual(errores, [], "errores de consola o de página");
     assert.deepStrictEqual(fallos, [], "peticiones fallidas");

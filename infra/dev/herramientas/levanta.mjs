@@ -40,11 +40,14 @@ function preparaFixture() {
   console.log("  " + r.stdout.trim());
 }
 
-/** Copia el índice de la finca con `base` = /teselas/<finca>/ (campo del contrato indice.schema.json) para que el motor pida allí t/ */
-function datosDeLaWeb(indice, finca) {
+/** Copia el índice de la finca con `base` = /teselas/<finca>/ (campo del contrato indice.schema.json) para que el motor pida allí t/; con tileset
+ *  (GEMELO_DEV_TILESET), también `tileset` = /teselas/<finca>/tileset/tileset.json: la escena 3D Tiles es entonces la de por defecto (ADR-0015, T8
+ *  fase 1; la de siempre, con ?escena=clasica). Sin tileset no se escribe y el motor no pide nada (el fixture no lo trae: daría 404) */
+function datosDeLaWeb(indice, finca, conTileset) {
   if (!fs.existsSync(indice)) throw new Error("no existe " + indice + " (¿GEMELO_DEV_FINCA, GEMELO_DEV_TESELAS o GEMELO_DEV_FINCA_CARPETA mal puestos?)");
   const D = JSON.parse(fs.readFileSync(indice, "utf8"));
   D.base = "/teselas/" + finca + "/";
+  if (conTileset) D.tileset = D.base + "tileset/tileset.json"; else delete D.tileset;
   fs.mkdirSync(SALIDA_DEV, { recursive: true });
   const salida = path.join(SALIDA_DEV, "datos-" + finca + ".json");
   fs.writeFileSync(salida, JSON.stringify(D));
@@ -151,7 +154,7 @@ export async function levanta({ sinBuild = false, redLocal = false } = {}) {
   paso("datos: " + (esFixture() ? "fixture sintético" : "carpeta local " + (carpeta ? "(GEMELO_DEV_FINCA_CARPETA)" : "(GEMELO_DEV_TESELAS)")) + ", finca " + finca +
     (tileset ? ", con tileset 3D Tiles (GEMELO_DEV_TILESET)" : "") + ", olivos horneados por el servicio hornero en " + (olivos ? "GEMELO_DEV_OLIVOS" : rel(carpetaHornero)));
   preparaFixture();                      // los guardianes y la siembra de la finca sintética parten siempre del fixture
-  const datos = datosDeLaWeb(indiceServido(), finca);
+  const datos = datosDeLaWeb(indiceServido(), finca, !!tileset);
   if (!sinBuild) { paso("build de la web (Vite)"); construyeWeb(datos); }
   else if (!fs.existsSync(path.join(WEB, "dist", "index.html")) || !fs.existsSync(path.join(WEB, "dist-portada", "index.html"))) throw new Error("--sin-build pero no hay apps/web/dist o dist-portada: quítalo la primera vez");
   paso("dependencias de las herramientas");
@@ -173,7 +176,7 @@ export async function levanta({ sinBuild = false, redLocal = false } = {}) {
     "\n  mundo     " + w + "/finca/   (solo con sesión: pide el enlace en la portada y ábrelo desde el buzón)" +
     "\n  api       " + w + "/api/salud" +
     "\n  teselas   " + w + "/teselas/" + finca + "/indice.json   (solo con sesión)" +
-    (tileset ? "\n  tileset   " + w + "/teselas/" + finca + "/tileset/tileset.json   (solo con sesión; en el mundo: /finca/?olivos=gen&escena=tiles)" : "") +
+    (tileset ? "\n  tileset   " + w + "/teselas/" + finca + "/tileset/tileset.json   (solo con sesión; es la escena por defecto en /finca/; la de siempre, /finca/?escena=clasica)" : "") +
     "\n  olivos    " + w + "/teselas/" + finca + "/olivos/manifiesto.json   (solo con sesión; lo hornea el servicio hornero, `npm run dev:estado` dice si está listo; los objetos, /olivos/<huella>.br)" +
     "\n  correo    http://localhost:" + p.correoWeb + "/   (SMTP en 127.0.0.1:" + p.smtp + ")" +
     "\n  db        127.0.0.1:" + p.db + "  base gemelo; " + PG_DUENO + " (dueño) y " + PG_API + " (la api), claves en infra/dev/.env" +

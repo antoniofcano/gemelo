@@ -26,7 +26,14 @@
   })();
   // ESC_R8 = FACTOR_R8 / 0,5 escala lo que hoy se dibuja con r8 tal cual (relleno, sombras, ramas): con 0,5 vale 1 y no cambia nada
   var ESC_R8 = FACTOR_R8 / 0.5;
-  // ?escena=tiles (F1d, ADR-0015): el terreno lo dibuja la escena 3D Tiles (04b_escena3d.js) y no el de siempre (04_terreno.js). activa vuelve a
-  // false si la escena nueva falla, y entonces el terreno de siempre se monta como sin la bandera
-  var ESC3D = (function () { var p = /[?&]escena=tiles\b/.test(location.search); return { pedida: p, activa: p }; })();
+  // La escena (ADR-0015, T8 fase 1): la 3D Tiles (04b_escena3d.js) es la de por defecto cuando hay tileset, es decir, cuando el índice lo dice
+  // (D.tileset, campo opcional de indice.schema.json) o la URL trae ?tileset=; ?escena=tiles la pide aunque el índice no lo diga (tileset en
+  // <D.base>tileset/tileset.json) y ?escena=clasica pide el relieve de siempre (04_terreno.js) durante una versión (fase 2: se retira). Sin
+  // tileset (la salida artefacto, el fixture sin tileset) no se pide nada: el relieve de siempre, sin peticiones de más. activa vuelve a false si la
+  // escena nueva falla, y entonces el relieve de siempre se monta como sin tileset (y se avisa en la consola)
+  var ESC3D = (function () {
+    var q = location.search, cl = /[?&]escena=clasica\b/.test(q), ti = /[?&]escena=tiles\b/.test(q);
+    var p = !cl && (ti || /[?&]tileset=[^&#]/.test(q) || (typeof D.tileset === "string" && D.tileset.length > 0));
+    return { pedida: p, activa: p, porDefecto: p && !ti, clasica: cl };
+  })();
 

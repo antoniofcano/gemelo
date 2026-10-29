@@ -6,7 +6,12 @@ Las rutas relativas se resuelven desde la raíz del repo.
   python tuberia/salida_artefacto/montar_v2.py --modo ficheros --finca cerro     # página ligera + ficheros de apoyo: publicar/cerro/index.html y publicar/cerro/t/
   python tuberia/salida_artefacto/montar_v2.py --finca hituelo --modo ficheros   # lo mismo con Hituelo (salida de tuberia/finca_8_teselas.py --finca hituelo)
 
-La página lee D.base (por defecto «», es decir, rutas relativas a la propia página) para pedir t/<clave>.json y t/<clave>.jpg."""
+La página lee D.base (por defecto «», es decir, rutas relativas a la propia página) para pedir t/<clave>.json y t/<clave>.jpg.
+
+La escena (ADR-0015, T8 fase 1): sin --tileset la página NO lleva D.tileset y dibuja el relieve de siempre (la escena clásica); así se publica
+como artefacto, porque Hituelo con su tileset no cabe en una publicación (doc/sistema/TILES3D.md, «La escena por defecto»). Con
+--tileset <ruta relativa> (p. ej. tileset/tileset.json) escribe D.tileset y la escena 3D Tiles pasa a ser la de por defecto: para servirla en
+estático con el tileset al lado (las pruebas lo hacen); no copia el tileset, que se genera aparte con tuberia/tiles3d/genera.mjs."""
 import json, glob, os, sys, shutil, argparse
 R = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))   # raíz del repo: las rutas relativas (--datos, --salida, salida/, publicar/) se resuelven desde ahí
 def lee(p): return open(os.path.join(R, p), encoding="utf-8").read()
@@ -38,7 +43,7 @@ def version_three(): return version_web("three")
 def importmap(v, v_tiles=None):
     """three como módulo ES desde jsDelivr, con un importmap (la forma que recomienda la guía de instalación de three): «three» y «three/addons/».
     Y 3DTilesRendererJS (escena 3D Tiles, ?escena=tiles, F1d): su build ES tal cual, que solo importa «three» y «three/addons/…» y así usa ESTA three;
-    el motor lo pide con import() solo con la bandera."""
+    el motor lo pide con import() solo con la escena 3D Tiles (D.tileset, ?tileset= o ?escena=tiles)."""
     base = "https://cdn.jsdelivr.net/npm/three@%s/" % v
     imp = {"three": base + "build/three.module.js", "three/addons/": base + "examples/jsm/"}
     if v_tiles: imp["3d-tiles-renderer"] = "https://cdn.jsdelivr.net/npm/3d-tiles-renderer@%s/build/index.js" % v_tiles
@@ -59,13 +64,18 @@ def monta(D, salida, src=os.path.join("apps", "web", "motor"), olivos=None):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(); ap.add_argument("--src", default=os.path.join("apps", "web", "motor")); ap.add_argument("--datos", default=None); ap.add_argument("--salida", default=None)
-    ap.add_argument("--finca", default="cerro"); ap.add_argument("--modo", choices=["embebido", "ficheros"], default="embebido"); ap.add_argument("--olivos", default=None, help="olivo.iife.js para ?olivos=gen (ADR-0017)"); a = ap.parse_args()
+    ap.add_argument("--finca", default="cerro"); ap.add_argument("--modo", choices=["embebido", "ficheros"], default="embebido"); ap.add_argument("--olivos", default=None, help="olivo.iife.js para ?olivos=gen (ADR-0017)")
+    ap.add_argument("--tileset", default=None, help="ruta relativa del tileset.json (D.tileset): la escena 3D Tiles pasa a ser la de por defecto (ADR-0015)"); a = ap.parse_args()
+    if a.tileset is not None and (not a.tileset or re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*:|^//", a.tileset)): raise SystemExit("--tileset debe ser una ruta del mismo origen (relativa o /…), no «%s»" % a.tileset)
+    def con_tileset(D):
+        if a.tileset: D["tileset"] = a.tileset
+        return D
     carpeta = os.path.join("salida", a.finca)
     if a.modo == "embebido":
-        D = json.load(open(os.path.join(R, a.datos or os.path.join(carpeta, "embebido.json")), encoding="utf-8"))
+        D = con_tileset(json.load(open(os.path.join(R, a.datos or os.path.join(carpeta, "embebido.json")), encoding="utf-8")))
         h = monta(D, a.salida or ("gemelo_%s_v2.html" % a.finca), a.src, a.olivos)
     else:
-        D = json.load(open(os.path.join(R, a.datos or os.path.join(carpeta, "indice.json")), encoding="utf-8"))
+        D = con_tileset(json.load(open(os.path.join(R, a.datos or os.path.join(carpeta, "indice.json")), encoding="utf-8")))
         salida = a.salida or os.path.join("publicar", a.finca, "index.html")
         dest = os.path.dirname(salida) or "."                                                  # los ficheros de apoyo van junto a la página: <dest>/t/
         origen = os.path.dirname(os.path.join(R, a.datos)) if a.datos else os.path.join(R, carpeta)   # y salen de <carpeta del índice>/t/

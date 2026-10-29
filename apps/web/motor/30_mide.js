@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: MideEst, Mide
-// Consume: 01_datos ($, DEPURA), 03_escena (visor, renderer, modo, calidad), 07b_arboles (Arboles), 08_marcadores (listo),
+// Consume: 01_datos ($, DEPURA, ESC3D), 03_escena (visor, renderer, modo, calidad), 07b_arboles (Arboles), 08_marcadores (listo),
 //   14_historia (lista, rango), 15_tiempo (nivel, esc, hace), 16_vida (mira), 29_vr (VRX, vrMideEmpieza, vrMideFin, VR_PERFILES),
 //   90_final (cuadro, bucle)
 // ===============================================================================
@@ -105,7 +105,7 @@
       var esc = /[?&]escena=([\w-]+)/.exec(location.search);
       res = {
         version: 1, fecha: new Date().toISOString().slice(0, 19) + "Z", aparato: { modo: modoIni, ua: MideEst.resumeUA(navigator.userAgent) },
-        escena: esc ? esc[1] : "sin ?escena", banderas: banderas(), duracion: N, calentamiento: MideEst.CALENTAMIENTO, est: e,
+        escena: esc ? esc[1] : (ESC3D.activa ? "tiles" : "clasica") + " (por defecto)", banderas: banderas(), duracion: N, calentamiento: MideEst.CALENTAMIENTO, est: e,
         nivel: modoIni === "VR" ? { ini: nivIni === null ? -1 : nivIni, fin: nv === null ? -1 : nv, cambios: cambios } : null, olivos: [a.nivel0, a.nivel1, a.nivel2], avisos: avisos
       };
       estado = "listo"; api.on = false; prev = -1;
