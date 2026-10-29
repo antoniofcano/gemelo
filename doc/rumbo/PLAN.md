@@ -39,8 +39,8 @@ Mapa de iniciativas con su estado y el ADR que las sostiene. **No** es el estado
 | # | Iniciativa | Estado | Detalle |
 |---|---|---|---|
 | P1 | Sistema de trabajo: guardianes, contratos, ADR, skills | 🟨 | este andamiaje |
-| P2 | Primera auditoría completa (skill `auditoria`) | 🟡 en curso | tras estabilizar los guardianes |
-| P3 | Licencia | 🟡 en curso | decisión de Antonio |
+| P2 | Primera auditoría completa (skill `auditoria`) | ✅ código y pruebas de Node; dos navegadores, en P4 | tras estabilizar los guardianes |
+| P3 | Licencia | ✅ chat en el motor, expulsión en la api; integración sin ejecutar | decisión de Antonio |
 | P4 | Estabilizar la prueba VR con el mock | 🟨 | `mock_xr.js` y `prueba_vr.js` recuperados e incluidos; la prueba completa se cae con SwiftShader tras ~25 pasos (opcional con `GEMELO_VR=1`) |
 | P6 | Sustituir código casero por librerías (regla 12): ✅ validador de esquemas → `ajv`; pendiente: servidor estático de las pruebas → librería y revisar el resto | 🟨 | |
 | P5 | Arquitectura multiusuario «Cuarenta hazas» | 🟨 | estudiada; plan por fases aprobado (abajo); ADR-0009 (Propuesto) |
@@ -88,10 +88,10 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | T6 | F1d 6-7: presupuesto y VR con el simulador | T3, T4, T5 | 🔶 | ⬜ |
 | T7 | F1d 8: Quest real (p95 ≤ 13,9 ms) | T6 | 👤 | ⬜ |
 | T8 | F1d 9: la escena nueva por defecto; se retira la vieja | T6 (T7 o «no probado», decisión 35) | ligera | ⬜ |
-| P1 | F2: la api firma tokens de LiveKit (`POST /api/presencia/token`, `livekit-server-sdk`, roles del contrato) | — | ligera | 🟡 en curso |
+| P1 | F2: la api firma tokens de LiveKit (`POST /api/presencia/token`, `livekit-server-sdk`, roles del contrato) | — | ligera | ✅ |
 | P2 | F2: el motor publica y recibe la pose con `livekit-client` (sustituye a la red simulada) | P1 | ligera | ⬜ |
 | P3 | F2: chat por el canal de datos y moderación mínima (expulsar con auditoría, decisión 42) | P1 | ligera | ⬜ |
-| P4 | F2: dos Chrome en la misma sala (p95 < 250 ms) y 40 clientes ligeros | P2, P3 | 🔶 Docker + Chrome | ⬜ |
+| P4 | F2: dos Chrome en la misma sala (p95 < 250 ms) y 40 clientes ligeros | P2, P3 | 🔶 Docker + Chrome | 🟡 en curso |
 | O1 | Olivos generados: transición suave al acercarse (forma y luz; materiales con nubes y escarcha del motor) | — | ligera; 🔶 al medir | 🟡 código en main; medida encargada |
 | O2 | Olivos generados: desglose del coste de `factorR8 = 1` por objeto | — | 🔶 | ⬜ |
 | O3 | `semillas_copas.py` dentro de los exportadores | — | ligera | ✅ |

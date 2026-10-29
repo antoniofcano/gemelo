@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Presencia (F2): la api firma tokens de LiveKit (`POST /api/presencia/token`; sala `hituelo-libre`, identidad opaca, solo datos, 15 min) y la oficina puede expulsar de la sala con auditoría (`POST /api/admin/presencia/expulsar`). El motor entra en la sala con `?presencia=red`: pose a 10/2 Hz, vista aérea sin avatar, panel Gente con bloquear y chat sin guardar. Sin probar con dos navegadores reales ni en iPhone/Quest.
 - Escena 3D Tiles (F1d paso 4, detrás de `?escena=tiles`): los olivos de media y larga distancia los dibuja el tileset y los de cerca, el motor (nivel 0 y generados); una máscara por huella (`_INDICE_COPA` + `crypto.subtle`) aparta en el tileset los que dibuja el motor, sin rehacer el glb; `_TIPO` y su tabla se guardan para el catálogo; sus triángulos cuentan en el tope. Sin medir en navegador.
 - Olivos generados (`?olivos=gen`): fundido por tramado de 0,6 s al entrar y salir (también en la sombra; `?olivosFundido=0` lo quita), la misma luz que el resto (nubes, escarcha, colores en sRGB), el nivel 0 de siempre no se apaga antes de que exista el generado, y cola propia para que el más cercano no espere detrás de los trabajos de teselas (O1). Forma intacta (huella olivo-2).
 - Exportadores: `copas_semilla` dentro de `finca_8_teselas.py` y `hituelo_conv.py`, heredada de `--anterior`, `GEMELO_INDICE_ANTERIOR` o el `indice.json` de la salida; si no, = `copas_id`. El «mismo id» solo cuenta para ids del censo (O3, decisión 50).
