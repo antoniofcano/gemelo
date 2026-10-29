@@ -113,7 +113,9 @@
       ultima.fx = fx; ultima.fz = fz; ultima.tms = ahora;
       // ?escena=tiles (04c_olivos_tiles.js): los olivos de media y larga distancia los dibuja el tileset y sus triángulos cuentan en el tope
       var TIL = OlivosTiles.dibuja(), triTil = TIL ? OlivosTiles.triangulos() : 0;
-      var GEN = Generados.actualiza(fx, fz, Math.max(0, TOPE_TRI - triTil), olivos, esc);   // ?olivos=gen (07ab): dentro de su radio, el nivel 0 de siempre se apaga; sin la bandera, radio 0
+      // el foco de los generados, paseando, es quien pasea (pp), no la cámara: la cámara va detrás y, al girar en el sitio, describe un círculo
+      // que cambiaba el plan y rehacía el lote (Antonio, en el móvil: «si giras sin moverte llega a desaparecer»)
+      var GEN = Generados.actualiza(paseando ? pp.x : fx, paseando ? -pp.y : fz, Math.max(0, TOPE_TRI - triTil), olivos, esc);   // ?olivos=gen (07ab): dentro de su radio, el nivel 0 de siempre se apaga; sin la bandera, radio 0
       // el aparato manda: sube o baja la escala según el tiempo por fotograma medido
       if (!fijaSc) { if (emaDt < 0.020) esc = Math.min(emaDt < 0.016 ? 2.5 : 1.6, esc + 0.05); else if (emaDt > 0.030) esc = Math.max(0.7, esc - 0.10); }
       var tope0 = MAX0 * esc * (vrP ? vrP.n : 1);

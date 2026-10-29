@@ -42,10 +42,10 @@ const piezas = [extrae(T03, "var GLSL_LIN"), extrae(T03, "function colorVertSRGB
   extrae(T15, "var GLSL_SOMBRA"), extrae(T15, "function parcheTiempo")].join("\n");
 const G07 = lee("07ab_generados.js");
 
-function contexto(busqueda) {
+function contexto(busqueda, reloj) {
   const cola = [];
   const ctx = {
-    THREE, console, performance, Promise, Math, Object, Number, String, Error, Float32Array,
+    THREE, console, performance: reloj || performance, Promise, Math, Object, Number, String, Error, Float32Array,
     location: { search: busqueda }, window: { OlivoGen: O },
     gArboles: new THREE.Group(), D: { copas: [], centro_utm: [0, 0] }, VRP: { on: false }, FACTOR_R8: 0.5, exag: 1,
     suelo: () => 0, camera: { position: new THREE.Vector3(0, 10, 0) },
@@ -117,6 +117,56 @@ exige(/#include <common>\n#include <common>/.test(compila(mats.pies).vertexShade
     diag.cerca_fixture = { plan: st.plan, pendientes: cf.__G.pendientes() };
     exige(st.plan >= 1, "con la cámara de «cerca» y el fixture, el plan de generados queda vacío");
     exige(cf.__G.pendientes() > 0, "con el plan sin dibujar, pendientes() debe ser > 0");
+    // hasta que el lote esté dibujado y quieto
+    for (let r = 0; r < 40 && (cf.__G.pendientes() > 0); r++) { cf.__G.actualiza(fx, fz, 550000, ol); for (let f = 0; f < 200; f++) cf.__G.paso(0.1, 50); }
+    const lote = cf.__G._prueba.lote(), st2 = cf.window.__olivosGen();
+    exige(st2.info.arboles >= 1, "con la cámara de «cerca», no llega a dibujarse ningún generado (" + JSON.stringify(st2.info) + ")");
+    // girar en el sitio: la cámara da la vuelta alrededor del foco (como en el paseo, detrás de quien pasea) y el foco no se mueve
+    let cambia = 0;
+    for (let a = 0; a < 16; a++) {
+      const th = a / 16 * 2 * Math.PI; cf.camera.position.set(fx + 5 * Math.sin(th), 3, fz + 5 * Math.cos(th));
+      cf.__G.actualiza(fx, fz, 550000, ol); for (let f = 0; f < 10; f++) cf.__G.paso(0.05, 50);
+      if (cf.__G._prueba.lote() !== lote || cf.window.__olivosGen().fundido.activo) cambia++;
+    }
+    exige(cambia === 0, "girando en el sitio, el lote se rehace o entra en fundido " + cambia + " veces de 16");
+    // recorte por frustum: desde 16 direcciones a 9 m de cada generado y mirándolo, ninguna malla del lote queda fuera de la vista
+    const cam = new THREE.PerspectiveCamera(42, 900 / 650, 0.5, 5000), fr = new THREE.Frustum(), m = new THREE.Matrix4();
+    lote.updateMatrixWorld(true); let fuera = [];
+    const arb = ol.filter(o => cf.__G.rotulo(o.i));
+    for (const o of arb) for (let a = 0; a < 16; a++) {
+      const th = a / 16 * 2 * Math.PI; cam.position.set(o.x + 9 * Math.sin(th), 2, -o.y + 9 * Math.cos(th)); cam.lookAt(o.x, 2, -o.y); cam.updateMatrixWorld(true);
+      fr.setFromProjectionMatrix(m.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse));
+      for (const ch of lote.children) if (ch.frustumCulled && !fr.intersectsObject(ch)) fuera.push(ch.name + "@" + a);
+    }
+    diag.giro = { arboles: arb.length, fuera: fuera.slice(0, 6) };
+    exige(arb.length >= 1 && fuera.length === 0, "mirando a un generado, el recorte por frustum deja fuera: " + fuera.slice(0, 6).join(", "));
+  }
+}
+
+// ---- 2c) paseo: el foco (la cámara, a 1,7 m) avanza 1 m por paso a través del fixture, con el tiempo de unos 36 fotogramas por metro (1,4 m/s a 51 fps)
+// y ~1,75 ms de cola propia por fotograma (la mitad de los 3,5 ms del paseo). Aparato lento simulado: el reloj de la cola propia avanza PASO_MS por
+// consulta (unas pocas rebanadas por fotograma, como un móvil con la Cola ocupada). Falla si con recetas listas no llega a dibujarse ningún árbol.
+const PASO_MS = Number(process.env.GEMELO_PASEO_PASO || 0.6);
+{
+  const FX = path.join(RAIZ, "pruebas", "salida", "fixture", "hituelo", "indice.json");
+  if (fs.existsSync(FX)) {
+    const I = JSON.parse(fs.readFileSync(FX, "utf8")), reloj = { t: 0, now() { return (this.t += PASO_MS); } }, cp = contexto("?olivos=gen", reloj);
+    for (let k = 0; k < 20 && cp.__G.estado() === "cargando"; k++) await espera();
+    cp.D.copas = I.copas; cp.D.copas_id = I.copas_id; cp.D.copas_param = I.copas_param; cp.D.copas_semilla = I.copas_semilla; cp.D.centro_utm = I.centro_utm;
+    const ol = I.copas.map((q, i) => ({ i, x: q[0], y: q[1], h: q[2], perfil: q[3] })).filter(c => !(c.h > 8));
+    const x0 = Math.min(...ol.map(c => c.x)), y0 = ol.reduce((s, c) => s + c.y, 0) / ol.length, PASOS = 160, MS = 1.75;
+    let maxDib = 0, pasoPrimero = -1, recetasMax = 0, rehechos = 0, clAnt = "";
+    for (let n = 0; n < PASOS; n++) {
+      const fx = x0 + n, fz = -y0; cp.camera.position.set(fx, 1.7, fz);
+      cp.__G.actualiza(fx, fz, 550000, ol);
+      for (let f = 0; f < 36; f++) cp.__G.paso(1 / 51, MS);
+      const st = cp.window.__olivosGen(), dib = st.info && st.info.arboles || 0;
+      recetasMax = Math.max(recetasMax, st.recetas); if (dib > maxDib) maxDib = dib; if (dib > 0 && pasoPrimero < 0) pasoPrimero = n;
+      const cl = JSON.stringify(st.info && st.info.claves || ""); if (cl !== clAnt) { rehechos++; clAnt = cl; }
+    }
+    diag.paseo = { pasos: PASOS, maxDibujados: maxDib, primeroEnPaso: pasoPrimero, recetasMax, lotes: rehechos };
+    exige(!(recetasMax > 0 && maxDib === 0), "paseando " + PASOS + " m con recetas listas (" + recetasMax + "), no se dibuja ningún olivo generado");
+    exige(pasoPrimero >= 0 && pasoPrimero < 60, "paseando, el primer olivo generado tarda " + pasoPrimero + " pasos (tope 60)");
   }
 }
 
@@ -173,5 +223,8 @@ const H = JSON.parse(fs.readFileSync(path.join(RAIZ, "pruebas", "olivo", "huella
 const caso = H.casos.find(x => x.tipo === "centenario3" && x.epoca === "envero" && x.semilla === 7);
 if (caso) exige(await O.huella(O.receta({ tipo: "centenario3", epoca: "envero", semilla: 7 })) === caso.sha256, "la huella olivo-2 de centenario3/envero/7 cambió");
 else mal.push("sin el caso centenario3/envero/7 en las huellas");
+
+// ---- 5) paseando, 07b pasa a Generados la posición de quien pasea (pp), no la de la cámara (que gira alrededor en tercera persona)
+exige(/Generados\.actualiza\(paseando \? pp\.x : fx, paseando \? -pp\.y : fz,/.test(lee("07b_arboles.js")), "07b_arboles: paseando, el foco de los generados debe ser pp, no la cámara");
 
 console.log(JSON.stringify({ mal, diag }));
