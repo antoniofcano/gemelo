@@ -10,6 +10,7 @@ Versión del contrato de datos: **v = 2** (campo `v` del índice).
 | Tesela | [`contratos/tesela.schema.json`](../../contratos/tesela.schema.json) | `contratos.test.js` (ajv y tamaños) |
 | Interfaces del motor | [`contratos/interfaces.json`](../../contratos/interfaces.json) | `contratos.test.js` |
 | Catálogo de olivos-tipo (entrada del constructor) | [`contratos/olivos-tipo.schema.json`](../../contratos/olivos-tipo.schema.json) + [`olivos-tipo.md`](../../contratos/olivos-tipo.md) | `olivos.test.js` (ajv, gltf-validator, triángulos por nivel) |
+| Olivo generado (constructor «olivo-2»: entrada, nombres de tipo, semilla guardada, receta, huellas, `copas_param`) | [`contratos/olivo-generado.md`](../../contratos/olivo-generado.md) + [`olivo-generado.schema.json`](../../contratos/olivo-generado.schema.json) | `olivo.test.js` (huellas del oráculo, niveles, Chrome), `contratos.test.js` |
 | Módulos de `apps/web/motor/` | cabecera «Expone / Consume» de cada fichero | `contratos.test.js` (vía `pruebas/contrato_modulos.js`) |
 | Conectores MCP | [`contratos/mcp.md`](../../contratos/mcp.md) | **nada** (no verificado en vivo) |
 | Publicación | [`contratos/publicacion.json`](../../contratos/publicacion.json) | `build.test.js` |

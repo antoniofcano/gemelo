@@ -59,7 +59,7 @@ Mapa de iniciativas con su estado y el ADR que las sostiene. **No** es el estado
 | F4 | Corresponsal de campo como PWA | ⬜ | visita con corresponsal; error de posición medido |
 | F5 | Aula, puzles, dron, museo; constructor de olivos real | ⬜ | según sus ADR |
 | UX | Propuesta de acceso, configuración e interacción + maqueta (`prototipos/ux/`) | ✅ aprobada como base (decisiones 43–47); marca aplazada | se construye en F1a (portada, entrada, código corto de las Quest) y F2 |
-| Olivos generados | Constructor «olivo-2» como módulo (`apps/web/olivo/`, ADR-0017 Propuesto): un árbol por olivo con semilla guardada y medidas del LiDAR (`copas_param`) | 🟡 rama `olivos-constructor`: P2–P6 y respuestas 48–52 hechas; P7 (motor, `?olivos=gen`, BatchedMesh) en curso; `copas_param` de Hituelo desde las LAZ en curso | olivos generados en Hituelo real dentro del presupuesto de cada aparato; `factorR8 = 1` tras la cinta de campo (decisión 48) |
+| Olivos generados | Constructor «olivo-2» como módulo (`apps/web/olivo/`, ADR-0017 Propuesto): un árbol por olivo con semilla guardada y medidas del LiDAR (`copas_param`) | 🟡 en main: P2–P7 (`?olivos=gen`, lote de 6-7 llamadas) y `copas_param` de Hituelo desde las LAZ; falta reexportar Hituelo con `copas_id`, cargarlo con `copas_param` y probar en aparatos; desglosar el coste de `factorR8 = 1` | olivos generados en Hituelo real dentro del presupuesto de cada aparato; `factorR8 = 1` tras la cinta de campo (decisión 48) |
 
 **Un solo mundo (decisión 22):** el mundo multiusuario es Hituelo (un origen de coordenadas, una sala de LiveKit por visita); Cerro Velasco queda como finca de pruebas y maquetas.
 
