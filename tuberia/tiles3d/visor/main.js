@@ -37,6 +37,8 @@ tiles.addEventListener("load-root-tileset", e => {
   tiles.group.matrix.copy(new THREE.Matrix4().makeRotationX(-Math.PI / 2).multiply(T.invert()));
   tiles.group.updateMatrixWorld(true);
 });
+// cada modelo cargado sabe de qué tesela es (uri y extras.gemelo: cuadro, olivos, huella): así una instancia k se resuelve en CPU
+tiles.addEventListener("load-model", e => { e.scene.userData.tesela = { uri: e.tile.content && e.tile.content.uri, gemelo: (e.tile.extras || {}).gemelo || null }; });
 let errores = 0;
 tiles.addEventListener("load-error", e => { errores++; console.error("tesela con fallo:", e.url, e.error && e.error.message); });
 
@@ -83,14 +85,19 @@ window.__t3d = {
       cacheMB: +(tiles.lruCache.cachedBytes / 1048576).toFixed(2), visibles: vis, cargadas: s().inCache, fallos: s().failed + errores,
     };
   },
-  /** las primeras n instancias de olivo visibles: id del registro y posición en la escena */
+  /** las primeras n instancias de olivo visibles: tesela (uri), k (_INDICE_COPA: posición en la lista de copas de la tesela), número local
+   *  de tipo (_TIPO) y posición en la escena. El id del registro lo resuelve quien llama: lista de copas de la tesela + huella (TILES3D.md) */
   instancias: n => {
     const out = [];
     tiles.group.traverse(o => {
       if (!o.isInstancedMesh || !o.visible || out.length >= n) return;
-      const id = o.geometry.attributes._ID_ARBOL, m = new THREE.Matrix4(), p = new THREE.Vector3();
+      const ix = o.geometry.attributes._INDICE_COPA, ti = o.geometry.attributes._TIPO, m = new THREE.Matrix4(), p = new THREE.Vector3();
+      let g = o; while (g && !g.userData.tesela) g = g.parent;
       o.updateWorldMatrix(true, false);
-      for (let i = 0; i < o.count && out.length < n; i++) { o.getMatrixAt(i, m); p.setFromMatrixPosition(m.premultiply(o.matrixWorld)); out.push({ id: id ? id.getX(i) : -1, pos: p.toArray() }); }
+      for (let i = 0; i < o.count && out.length < n; i++) {
+        o.getMatrixAt(i, m); p.setFromMatrixPosition(m.premultiply(o.matrixWorld));
+        out.push({ uri: g ? g.userData.tesela.uri : null, huella: g && g.userData.tesela.gemelo ? g.userData.tesela.gemelo.huella : null, k: ix ? ix.getX(i) : -1, tipo: ti ? ti.getX(i) : null, pos: p.toArray() });
+      }
     });
     return out;
   },

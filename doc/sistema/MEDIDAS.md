@@ -54,6 +54,27 @@ Cerro embebido, escenarios `lejos` y `cerca` de `pruebas/guardianes/_navegador.j
 - **VR con el WebXR simulado** (`pruebas/mock_xr.js`): con 10 y 40 visitantes entra en VR, los avatares siguen en la escena y llegan todos (`vistos = n`), sin errores. Las llamadas en VR no se comparan (varían de una pasada a otra con la carga).
 - **Red y retardo:** los de la simulación en el navegador no valen (la simulación va al ritmo de los fotogramas y SwiftShader da 1–3). Los de referencia son los de Node en `presencia.test.js` (códec: ≤ 5 mm y 0,241°; interpolación: ≤ 0,8 cm a 10 Hz y ≤ 6 cm a 2 Hz) y la carga útil calculada del contrato (24 B × 10 Hz = 240 B/s por cercano en escritorio; 560 B/s en Quest). Sin LiveKit no hay cifra de retardo real.
 
+## Hituelo en 3D Tiles: tileset y doble descarga glb + json (2026-10-29, F1d, [ADR-0015](../adr/0015-escena-en-3d-tiles.md))
+
+`GEMELO_DATOS=<indice.json de Hituelo> node tuberia/tiles3d/genera.mjs --salida pruebas/salida/tiles3d-hituelo` (generador 0.2.0, opciones por defecto: hojas de 128 m, 128 celdas, textura ≤ 256 px, 3 niveles con olivos). Bytes en disco, sin comprimir; una sola corrida. Datos: la salida de Hituelo que hay hoy (46 teselas de 256 m, 5.882 copas, 5.859 olivos; **sin** `copas_id` ni `copas_tipo`: exportada antes de ADR-0012).
+
+| Medida | Valor |
+|---|---|
+| Nodos (glb) | **269**: 1 + 2 + 2 + 3 + 5 + 8 (32.768 → 1.024 m, sin olivos) + 18 (512 m) + **46 (256 m)** + 184 (128 m). Más que el límite de 255 ficheros por publicación de un artefacto |
+| Raíz | 32.768 m de lado: los datos cruzan la línea N = 4.177.920 (múltiplo de 16.384) y la regla «menor cuadrado alineado que lo contiene» sube hasta ahí. Los 21 nodos de 1.024 m o más pesan 0,9 MB en total |
+| glb, total | **40,9 MB** (mediana 142 KB, máx. 388 KB por glb) + `tileset.json` 0,23 MB |
+| glb por nivel | 128 m: 27,1 MB · 256 m: 9,7 MB · 512 m: 3,2 MB · ≥ 1.024 m: 0,9 MB |
+| Triángulos por nivel (terreno + olivos) | 128 m: 971 k + 844 k · 256 m: 360 k + 141 k · 512 m: 109 k + 141 k; máx. por glb 40.534 (tope 60.000) |
+| Olivos | 154 glb con instancias, hasta 1.225 por glb (`_INDICE_COPA` en `UNSIGNED_SHORT`) |
+| json del contrato v2 (lo que hoy baja el motor) | `indice.json` 4,5 MB + `t/*.json` **49,8 MB** (mediana 1,18 MB por tesela; de ellos `pts` 34,5 MB, `dtm` 8,2, `chm` 4,0, `suelo` 3,1) + `t/*.jpg` 2,9 MB |
+| Por tesela de 256 m: glb frente a json | glb de la tesela (su nodo de 256 m + sus 4 hojas) mediana **0,74 MB** (0,52–1,35) frente a json mediana **1,18 MB** (0,43–1,37) + jpg 64 KB |
+| Doble descarga, todo Hituelo | json + jpg 57,2 MB (con `indice.json`) **más** glb 41,1 MB = **98,3 MB** si se bajara todo; con 3D Tiles el glb se baja por error en pantalla, no entero (no medido aún en el motor) |
+| Tiempo de generación | **1.764 s (29 min)** en una corrida, con la máquina **cargada** (CPU al 100 % según Windows justo antes de empezar, 24 % al acabar; 8 hilos lógicos; corrían a la vez otros procesos del usuario). No es una cifra de referencia: repetir en una máquina libre |
+| Validador de CesiumGS 0.6.1 | **0 errores, 0 avisos**, 154 informativos (uno por glb con olivos: no sabe validar `EXT_mesh_gpu_instancing`) |
+| Identidad (`tuberia/tiles3d/comprueba.mjs`) | 0 errores: 17.577 instancias resueltas por lista + huella; 5.859 olivos en las hojas, 0 repetidos, 0 que falten; `id_fuente = "indice"` (sin `copas_id`), tabla de tipos `{"-1": null}` |
+
+Para recortar la doble descarga (decisión 38), lo que el glb repite es `dtm` (como malla) y la ortofoto `t/*.jpg` (como textura); `pts` (la nube, que sigue en el motor por la decisión 37), `chm` y `suelo` (color del suelo del sombreador) no están en el glb. **fps, llamadas y memoria con este tileset: no medidos** (falta el paso 3 del plan, el motor).
+
 ## Tirones (rebanada máxima de la cola, ms, escritorio)
 R (ruido) 13 · N (nube, incluye decodificar una ortofoto) 12–40 antes de separar la decodificación · T (terreno) 6 · C (olivos N0) 10–20 · B 3. Con el presupuesto de 6 ms/fotograma (3,5 en paseo) el peor fotograma añade ≈ una rebanada. En un iPhone espera 2–3 veces más.
 
