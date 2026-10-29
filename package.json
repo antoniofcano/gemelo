@@ -10,7 +10,10 @@
     "fixture": "python pruebas/genera_fixture.py",
     "montar": "python tuberia/salida_artefacto/montar_v2.py",
     "guardianes": "node --test \"pruebas/guardianes/*.test.js\"",
-    "puerta": "node --test --test-concurrency=1 \"pruebas/guardianes/*.test.js\"",
+    "puerta": "node pruebas/banco/puerta.js",
+    "banco:ronda": "node pruebas/banco/ronda.js",
+    "banco:encarga": "node pruebas/banco/encarga.js",
+    "banco:quien": "node -e \"console.log(require('./pruebas/banco/turno').quien() || 'turno libre')\"",
     "probar": "node pruebas/prueba3.js",
     "probar:vr": "node pruebas/vr_mock.js",
     "dev:arriba": "node infra/dev/herramientas/levanta.mjs",
@@ -21,6 +24,7 @@
     "@gltf-transform/core": "4.5.1",
     "ajv": "8.20.0",
     "gltf-validator": "2.0.0-dev.3.10",
-    "playwright-core": "1.64.1"
+    "playwright-core": "1.64.1",
+    "proper-lockfile": "4.1.2"
   }
 }

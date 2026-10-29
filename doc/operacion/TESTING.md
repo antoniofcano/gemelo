@@ -34,6 +34,20 @@ Dos familias: **guardianes** (proceso, rápidos, en la puerta) y **pruebas de na
 - Las excepciones a un guardián (`EXCEPCIONES_*`) llevan el motivo y una decisión abierta de DECISIONS-PENDING; el guardián falla si la excepción ya no hace falta.
 - Si falta Chrome o `playwright-core`, las pruebas de navegador se **saltan con aviso** (no pasan en silencio).
 
+## Banco de pruebas: un solo Chrome o Docker a la vez (política desde el 2026-10-29)
+
+El equipo de trabajo es un i5 de 4 núcleos con 7,7 GB: dos Chrome sin pantalla (SwiftShader dibuja con la CPU) o un Chrome y un Docker a la vez lo dejan al 100 % y todo va más lento que en fila. Por eso **lo pesado va por turno** y **lo ligero va primero**:
+
+- **Turno** (`pruebas/banco/turno.js`, con `proper-lockfile`): en todo el equipo, sea desde la puerta, un guardián suelto o el worktree de un agente, solo hay **un** Chrome de pruebas o **un** entorno Docker de pruebas. El candado vive en la carpeta temporal del sistema (común a todos los worktrees) y caduca solo si el proceso que lo tiene muere. `npm run banco:quien` dice quién lo tiene.
+- **`npm run puerta`** (`pruebas/banco/puerta.js`) coge el turno, arranca **un** Chrome con `launchServer` de Playwright y todas las pruebas se conectan a él (`GEMELO_CHROME_WS`); las e2e de Docker (`GEMELO_DOCKER=1`) caen dentro del mismo turno.
+- **`lanza()`** (`_navegador.js`) usa ese Chrome compartido si lo hay; si no, pide el turno y lo suelta al cerrar. **`mide()`** tiene tope (`GEMELO_TOPE_MEDIDA`, 240 s por defecto): si se pasa, devuelve lo medido con `parcial: true` en vez de quedarse colgada; y guarda capturas si se le pide.
+- **Agentes: encargan, no lanzan.** Para medir su build en navegador, un agente **no** abre un Chrome propio: deja un encargo y sigue trabajando en lo ligero.
+  - `npm run banco:encarga -- --raiz <carpeta servida> --variante base= --variante gen=?olivos=gen --capturas --de <agente>` (añade `--espera` para quedarse esperando el resultado).
+  - `npm run banco:ronda` (o `-- --vigila`) abre **un** Chrome dentro del turno y hace todos los encargos seguidos. Cada uno deja `resultado.json` (y capturas) en `<banco>/resultados/<id>/`. Un encargo que falla no para la ronda.
+  - Las e2e de Docker no se encargan: se piden con `GEMELO_DOCKER=1` y esperan su turno solas.
+- **Orden de trabajo:** primero lo que no necesita navegador ni Docker (código, contratos, pruebas de Node); lo que pasa por Chrome o Docker, al final y por el banco. Lo visual lo mira Antonio en su Chrome (con GPU), no se espera a SwiftShader para eso.
+- Los scripts sueltos de medida (`pruebas/olivo/*.mjs`, `prueba3.js`, `vistas2.js`…) deben pedir el turno (`require("./banco/turno").conTurno(...)`) o pasar por un encargo; los nuevos, siempre.
+
 ## Pruebas de navegador (`pruebas/`)
 | Script | Para qué |
 |---|---|
