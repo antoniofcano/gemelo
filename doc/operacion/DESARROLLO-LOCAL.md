@@ -182,7 +182,7 @@ La parte de servidor del recorrido está entera; lo que falta es de la UX ([UX.m
 - **«Seguir a la finca»** en la portada con sesión viva (§4.1, estados), que pediría `GET /api/sesion` desde la portada.
 - **Vincular las Quest** con otro dispositivo (§4.2): no hay ruta en la api.
 - ✅ **La política de referente de producción** (decisión 53, 2026-10-29): `infra/Caddyfile` pasa a `strict-origin-when-cross-origin`, como el de dev; un formulario POST de la portada manda su origen. Las páginas del enlace llevan además su propia `<meta name="referrer" content="strict-origin">`.
-- El mundo **no sabe todavía** que hay sesión ni hazas: no pinta las lindes de `/api/hazas` ni abre la ficha (es trabajo de `apps/web`, fuera de este cambio).
+- ✅ **Las hazas en el mundo** (tarea A4): con la web servida aquí (`D.base` = `/teselas/<finca>/`), el motor pide `/api/hazas` con la cookie y pinta la linde de cada haza (la tuya en ámbar, las ajenas en blanco roto; casilla «Linde»); al tocar una, o con H, abre su ficha de `/api/hazas/{id}` ([`13b_hazas.js`](../../apps/web/motor/13b_hazas.js)). Lo comprueba en Node `pruebas/guardianes/hazas.test.js`; la e2e con sesión real es la tarea A5 (**no probado** aún contra la api).
 
 ## Problemas conocidos
 
