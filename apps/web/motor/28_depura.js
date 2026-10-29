@@ -6,12 +6,15 @@
 
   // ---------- ?debug: un contador en la esquina del visor para medir en el móvil (ms de JS por fotograma, llamadas, triángulos, teselas y olivos por nivel)
   var dep = { n: 0, t0: performance.now(), js: 0, mx: 0, el: null };
-  // con ?olivos=gen, una línea con su estado (en el móvil no hay consola): cargando / activo / sin (y por qué), plan, dibujados y la vía
+  // con ?olivos=gen, una línea con su estado (en el móvil no hay consola): cargando / activo / sin (y por qué), plan, dibujados y la vía; y las
+  // variantes: horneadas (descargadas), calculadas y fallos de descarga (ADR-0018), con el estado del manifiesto si no se usa
   function genDebug() {
     var g = window.__olivosGen ? window.__olivosGen() : null;
     if (!g || g.estado === "apagado") return "";
+    var h = g.horneado;
     return "generados " + g.estado + " · plan " + g.plan + " · dibujados " + (g.info && g.info.arboles || 0) + " · recetas " + g.recetas + " · " + g.via + (g.motivo ? " · " + String(g.motivo).slice(0, 60) : "") +
-      (g.cache ? " · caché: memoria " + g.cache.memoria + " (" + g.cache.memoriaMB + " MB) · disco " + (g.cache.enDisco ? (g.cache.disco === null ? "…" : g.cache.disco) + " (" + g.cache.discoMB + " MB)" : "no") + (g.cache.aviso ? " · " + g.cache.aviso.slice(0, 50) : "") : "") + "\n";
+      (g.cache ? " · caché: memoria " + g.cache.memoria + " (" + g.cache.memoriaMB + " MB) · disco " + (g.cache.enDisco ? (g.cache.disco === null ? "…" : g.cache.disco) + " (" + g.cache.discoMB + " MB)" : "no") + (g.cache.aviso ? " · " + g.cache.aviso.slice(0, 50) : "") : "") +
+      (h ? " · horneadas " + h.horneadas + " · calculadas " + h.calculadas + " · fallos " + h.fallos + (h.estado !== "activo" ? " (manifiesto: " + h.estado + (h.motivo ? ", " + h.motivo.slice(0, 40) : "") + ")" : "") : "") + "\n";
   }
   function depuraCuadro(tIni) {
     if (!DEPURA) return;
