@@ -196,6 +196,42 @@
     }
     return { MAX: MAX, limpia: limpia, codifica: codifica, decodifica: decodifica };
   })();
+  // El muñeco de los demás (P5): el mismo del paseante local (12_paseo.js: cuerpo, cabeza, dos piernas y dos brazos) con su misma
+  // animación de paso, calculada en el RECEPTOR con la velocidad horizontal que sale de la interpolación (la pose no trae nada de
+  // esto: el contrato v1 no cambia). Los pies van al suelo de ESTE mundo (suelo local × exageración); de la pose solo se usan la
+  // posición horizontal, la orientación de la cabeza y, con gafas, la altura de la cabeza sobre el suelo (para agacharse).
+  var Muneco = (function () {
+    var ALTURA = 1.6, PASO = 3.4, VREF = 1.7, AMP = 0.75, BRAZO = 0.8, BOTE = 0.03;   // los de su paseo (12_paseo.js)
+    var SUAVE_V = 8, GIRO = 6, V_ANDA = 0.25, V_MAX = 8, SALTO = 5, AGACHO_MAX = 0.9;
+    function crea() { return { x: null, z: null, vel: 0, paso: 0, yaw: 0 }; }
+    function ang(d) { return Math.atan2(Math.sin(d), Math.cos(d)); }
+    // st: estado del avatar; x, z: posición interpolada (ejes de three); yawCab: hacia dónde apunta su cabeza (giro en y; 0 = −z);
+    // dt en s; sueloLocal: suelo(x, −z) de este mundo (sin exagerar); hCab: altura de su cabeza sobre el suelo según la pose;
+    // conManos: trae manos (Quest) → los brazos no se animan. Devuelve en `o` lo que se necesita para colocar las piezas.
+    function avanza(st, x, z, yawCab, dt, sueloLocal, exag, hCab, conManos, o) {
+      o = o || {};
+      if (st.x === null) { st.x = x; st.z = z; st.yaw = yawCab; }
+      var dx = x - st.x, dz = z - st.z, d = Math.sqrt(dx * dx + dz * dz), v = dt > 0 && d < SALTO ? d / dt : 0;   // un salto (vuelve tras un hueco) no es andar
+      var k = Math.min(1, dt * SUAVE_V);
+      st.vel += (Math.min(v, V_MAX) - st.vel) * k;
+      // gira hacia donde anda; quieto, hacia donde apunta. Suave: como mucho GIRO rad/s… en proporción a lo que falta
+      var obj = st.vel > V_ANDA && d > 1e-6 ? Math.atan2(-dx, -dz) : yawCab;
+      st.yaw = ang(st.yaw + ang(obj - st.yaw) * Math.min(1, dt * GIRO));
+      st.paso += st.vel * dt * PASO; st.x = x; st.z = z;
+      var mov = Math.min(1, st.vel / VREF), sw = Math.sin(st.paso) * AMP * mov;
+      o.yPies = sueloLocal * exag + Math.abs(Math.sin(st.paso)) * BOTE * mov;
+      o.yaw = st.yaw; o.vel = st.vel; o.mov = mov;
+      o.piernaI = sw; o.piernaD = -sw;
+      o.brazoI = conManos ? 0 : -sw * BRAZO; o.brazoD = conManos ? 0 : sw * BRAZO;
+      o.agacho = Math.max(0, Math.min(AGACHO_MAX, ALTURA - (isFinite(hCab) ? hCab : ALTURA)));
+      o.yCab = o.yPies + ALTURA - o.agacho;
+      return o;
+    }
+    // piezas del muñeco (las mismas medidas que el paseante de 12_paseo.js), con el pivote ARRIBA (hombro, cadera, cuello):
+    // [ancho, largo, fondo, x, y del pivote, ¿pierna?, ¿brazo?]. y del pivote sin agacharse; agachado, baja el cuerpo y encogen las piernas
+    var PIEZAS = [[0.46, 0.62, 0.25, 0, 1.48, 0, 0], [0.17, 0.86, 0.2, -0.12, 0.86, 1, 0], [0.17, 0.86, 0.2, 0.12, 0.86, 1, 0], [0.11, 0.58, 0.12, -0.3, 1.46, 0, 1], [0.11, 0.58, 0.12, 0.3, 1.46, 0, 1]];
+    return { ALTURA: ALTURA, crea: crea, avanza: avanza, PIEZAS: PIEZAS };
+  })();
   // [puro:fin]
 
   var Presencia = (function () {
@@ -210,20 +246,21 @@
     var ALIAS = ["Mirlo", "Abubilla", "Jilguero", "Carbonero", "Alcaraván", "Verdecillo", "Golondrina", "Perdiz", "Abejaruco", "Cogujada", "Encina", "Lentisco", "Retama", "Acebuche", "Coscoja", "Romero", "Tomillo", "Jara", "Algarrobo", "Almendro"];
     var CAMISAS = [0xc0533a, 0x3f7cc2, 0xe0b23a, 0x5d9b4a, 0x8a5bb0, 0xe8e2d4], PIELES = [0xf1c9a5, 0xd9a47c, 0xb57d55, 0x8a5a3a, 0x5e3b24], SOMBREROS = [null, { c: 0xd9bf6a, w: 0.46, h: 0.07, d: 0.46, z: 0 }, { c: 0x2e5d34, w: 0.3, h: 0.09, d: 0.36, z: -0.04 }];
     var m4 = null, m4b = null, q1 = null, v1 = null, v2 = null, vS = null, ejeY = null, cNom = 4, fNom = 1, matSombreroLocal = [];
+    var NP = Muneco.PIEZAS.length, PANTALON = 0x37455c, mBase = null, mPieza = null, ejeX = null, outMu = {};   // pantalón: el del paseante
 
     // ---- los avatares (los mismos en las dos variantes): cuerpo, cabeza, sombrero, manos y nombre, instanciados (5 llamadas de dibujo tengas los que tengas)
     function montaGrafica(nCuerpos, nSom, nManos) {
+      mBase = new THREE.Matrix4(); mPieza = new THREE.Matrix4(); ejeX = new THREE.Vector3(1, 0, 0);
       m4 = new THREE.Matrix4(); m4b = new THREE.Matrix4(); q1 = new THREE.Quaternion(); v1 = new THREE.Vector3(); v2 = new THREE.Vector3(); vS = new THREE.Vector3(1, 1, 1); ejeY = new THREE.Vector3(0, 1, 0);
       grupo = new THREE.Group(); grupo.name = "presencia"; scene.add(grupo);
-      // cuerpo: una caja con las piernas más oscuras (color por vértice × color de camisa por instancia); del suelo a 1,45 m
-      var gC = new THREE.BoxGeometry(0.46, 1.45, 0.26, 1, 2, 1).toNonIndexed(); gC.translate(0, 0.725, 0);
-      var pos = gC.attributes.position, col = new Float32Array(pos.count * 3);
-      for (var i = 0; i < pos.count; i += 3) { var cy = (pos.getY(i) + pos.getY(i + 1) + pos.getY(i + 2)) / 3, g = cy < 0.725 ? 0.32 : 1; for (var j = 0; j < 9; j++) col[i * 3 + j] = g; }
-      gC.setAttribute("color", new THREE.BufferAttribute(col, 3));
-      var gCab = new THREE.BoxGeometry(0.28, 0.28, 0.28), gSom = new THREE.BoxGeometry(1, 1, 1), gMano = new THREE.BoxGeometry(0.08, 0.08, 0.13), gNom = new THREE.PlaneGeometry(1.6, 0.3);
-      var matC = new THREE.MeshLambertMaterial({ vertexColors: true }), matL = new THREE.MeshLambertMaterial();
+      // el muñeco del paseante (12_paseo.js): cuerpo, dos piernas y dos brazos son la MISMA caja unidad con el pivote arriba,
+      // escalada y girada por instancia (Muneco.PIEZAS): 5 instancias por avatar en una sola llamada; color por instancia
+      // (camisa en cuerpo y brazos, pantalón en las piernas). La cabeza, una bola baja (icosaedro: 20 triángulos)
+      var gC = new THREE.BoxGeometry(1, 1, 1); gC.translate(0, -0.5, 0);
+      var gCab = new THREE.IcosahedronGeometry(0.135, 0), gSom = new THREE.BoxGeometry(1, 1, 1), gMano = new THREE.BoxGeometry(0.08, 0.08, 0.13), gNom = new THREE.PlaneGeometry(1.6, 0.3);
+      var matC = new THREE.MeshLambertMaterial({ flatShading: true }), matL = new THREE.MeshLambertMaterial({ flatShading: true });
       geos = [gC, gCab, gSom, gMano, gNom]; mats = [matC, matL];
-      mCuerpo = new THREE.InstancedMesh(gC, matC, nCuerpos); mCabeza = new THREE.InstancedMesh(gCab, matL, nCuerpos); mSombrero = new THREE.InstancedMesh(gSom, matL, nSom); mManos = new THREE.InstancedMesh(gMano, matL, nManos);
+      mCuerpo = new THREE.InstancedMesh(gC, matC, nCuerpos * NP); mCabeza = new THREE.InstancedMesh(gCab, matL, nCuerpos); mSombrero = new THREE.InstancedMesh(gSom, matL, nSom); mManos = new THREE.InstancedMesh(gMano, matL, nManos);
       SOMBREROS.forEach(function (s, i) { matSombreroLocal[i] = s ? new THREE.Matrix4().compose(new THREE.Vector3(0, 0.14 + s.h / 2, s.z), new THREE.Quaternion(), new THREE.Vector3(s.w, s.h, s.d)) : null; });
       // nombres: un atlas con todos los alias y un plano instanciado vuelto hacia la cámara en el sombreador (una llamada para todos)
       fNom = Math.ceil(nCuerpos / cNom);
@@ -255,14 +292,17 @@
     }
     function colorea(a) {
       var c = new THREE.Color();
-      mCuerpo.setColorAt(a.k, c.setHex(a.camisa)); mCabeza.setColorAt(a.k, c.setHex(a.piel));
+      for (var j = 0; j < NP; j++) mCuerpo.setColorAt(a.k * NP + j, c.setHex(Muneco.PIEZAS[j][5] ? PANTALON : a.camisa));
+      mCabeza.setColorAt(a.k, c.setHex(a.piel));
       if (a.iSom >= 0) mSombrero.setColorAt(a.iSom, c.setHex(SOMBREROS[a.sombrero].c));
       if (a.iMano >= 0) { mManos.setColorAt(a.iMano, c.setHex(a.piel)); mManos.setColorAt(a.iMano + 1, c.setHex(a.piel)); }
       [mCuerpo, mCabeza, mSombrero, mManos].forEach(function (m) { if (m.instanceColor) m.instanceColor.needsUpdate = true; });
     }
     function oculta(a) {   // nada de ese avatar se ve (escala 0) hasta que llegue su pose
       m4.makeScale(0, 0, 0);
-      mCuerpo.setMatrixAt(a.k, m4); mCabeza.setMatrixAt(a.k, m4); mNombres.setMatrixAt(a.k, m4);
+      for (var j = 0; j < NP; j++) mCuerpo.setMatrixAt(a.k * NP + j, m4);
+      mCabeza.setMatrixAt(a.k, m4); mNombres.setMatrixAt(a.k, m4);
+      a.mu = null;   // al volver, empieza quieto donde aparezca (no se desliza desde donde se fue)
       if (a.iSomHueco >= 0) mSombrero.setMatrixAt(a.iSomHueco, m4); else if (a.iSom >= 0) mSombrero.setMatrixAt(a.iSom, m4);
       if (a.iMano >= 0) { mManos.setMatrixAt(a.iMano, m4); mManos.setMatrixAt(a.iMano + 1, m4); }
       a.visto = false;
@@ -343,12 +383,24 @@
       var o = a.out;
       if (!BufferPose.muestra(a.buf, ahoraMs, a.ret, o)) return;
       a.visto = true;
-      var c = o.cab.p, s = suelo(c[0], -c[2]), yv = s * exag + (c[1] - s);   // la cota viaja sin exagerar: el avatar conserva su altura sobre el suelo con la exageración de quien observa
+      // los pies, en el suelo de ESTE mundo (suelo local × exageración), no en la cota de la pose; de la pose, la posición horizontal,
+      // hacia dónde apunta y, solo con gafas, cuánto se agacha: altura de su cabeza sobre el suelo (la cota viaja sin exagerar). En
+      // escritorio/móvil la cota no se usa: el muñeco va de pie (su suelo y el nuestro pueden diferir unos cm mientras llegan teselas)
+      var c = o.cab.p, s = suelo(c[0], -c[2]), conManos = !!(o.hayIzq || o.hayDer);
+      q1.set(o.cab.q[0], o.cab.q[1], o.cab.q[2], o.cab.q[3]);
+      v2.set(0, 0, -1).applyQuaternion(q1); var yawCab = Math.atan2(-v2.x, -v2.z);
+      var mu = Muneco.avanza(a.mu || (a.mu = Muneco.crea()), c[0], c[2], yawCab, dt, s, exag, o.tipo === PoseCodec.QUEST ? c[1] - s : NaN, conManos, outMu), yv = mu.yCab;
+      mBase.compose(v1.set(c[0], mu.yPies, c[2]), q1.setFromAxisAngle(ejeY, mu.yaw), vS);
+      var giros = [0, mu.piernaI, mu.piernaD, mu.brazoI, mu.brazoD];
+      for (var j = 0; j < NP; j++) {
+        var P = Muneco.PIEZAS[j], largo = P[5] ? Math.max(0.2, P[1] - mu.agacho) : P[1];   // agachado: baja el cuerpo y encogen las piernas
+        mPieza.compose(v1.set(P[3], P[4] - mu.agacho, 0), q1.setFromAxisAngle(ejeX, giros[j]), v2.set(P[0], largo, P[2]));
+        mCuerpo.setMatrixAt(a.k * NP + j, m4.multiplyMatrices(mBase, mPieza));
+      }
+      // la cabeza encima del muñeco, girada como la de verdad (apunta donde apunta)
       q1.set(o.cab.q[0], o.cab.q[1], o.cab.q[2], o.cab.q[3]);
       m4.compose(v1.set(c[0], yv, c[2]), q1, vS); mCabeza.setMatrixAt(a.k, m4);
       if (a.iSom >= 0) { m4b.multiplyMatrices(m4, matSombreroLocal[a.sombrero]); mSombrero.setMatrixAt(a.iSom, m4b); }
-      v2.set(0, 0, -1).applyQuaternion(q1); var yaw = Math.atan2(-v2.x, -v2.z);
-      m4.compose(v1.set(c[0], s * exag, c[2]), q1.setFromAxisAngle(ejeY, yaw), vS); mCuerpo.setMatrixAt(a.k, m4);
       if (a.iMano >= 0) {
         [o.izq, o.der].forEach(function (h, i) {
           var hay = i === 0 ? o.hayIzq : o.hayDer;
