@@ -35,6 +35,14 @@ Detalle paso a paso y comprobaciones: [skill `datos-finca`](../../.claude/skills
 3. **Cerro**: `tuberia/datos/cerro/finca_1…finca_6`, `ndvi_sentinel`, `paisaje_1…6`, `suelo_1…2`. `finca_8_teselas.py --finca cerro` lee `datos_cerro_embebido.json`, **un intermedio que ningún script del repo produce** (pendiente D5).
 4. Montar: `python tuberia/salida_artefacto/montar_v2.py --finca <finca> [--modo ficheros]`.
 
+### Parámetros de cada olivo (`copas_param`, ADR-0017)
+La columna opcional `copas_param` del índice ([contrato](../../contratos/olivo-generado.md#3-copas_param-columna-paralela-opcional-del-índice)) sale de las hojas LiDAR en dos pasos, después de exportar la finca (hace falta su `indice.json` y sus `t/*.json`). Necesita `laspy` y `lazrs` (`requirements.txt`).
+
+1. **Puntos normalizados:** `python tuberia/puntos_copas.py --indice <indice.json> --laz <carpeta de las hojas .laz> --salida <carpeta nueva>/puntos.npz` (o `GEMELO_DATOS` y `GEMELO_LIDAR` = la carpeta de las hojas). Elige sola las hojas que tocan el cuadro de las copas e ignora los duplicados «(1)». Se queda con las clases 3-5 (vegetación) de 0,3 a 30 m sobre el suelo y a ≤ 6,5 m de una copa. **Suelo: el `dtm` de las teselas** (MDT 0,5 m del CNIG con la clase 2 del LiDAR para los huecos: medido), el mismo que da la `h` de `copas` y el que dibuja el motor. Una hoja cada vez y por trozos (`--trozo`, 500.000 puntos por defecto); junto al `.npz` deja un `.json` con lo leído y conservado por hoja, el tiempo y la memoria máxima.
+2. **Parámetros:** `python tuberia/parametros_copas.py --indice <indice.json> --puntos <carpeta nueva>/puntos.npz --salida <carpeta nueva>/indice.json --desfase=<dx>,<dy>`. El desfase es el de las marcas de OlivarTrack respecto a las copas (mediana de `copas[m[2]] − m[0:2]` de `marcados`; en Hituelo, −1,08, −0,15 m). **No sobrescribir el índice original**: la salida va a otra carpeta; las teselas no cambian. Factores de corrección a 1,0 (decisión 49).
+
+Lo comprueba con un `.laz` sintético `pruebas/guardianes/exportadores.test.js` (`pruebas/nube_sintetica.py`).
+
 Variables de entorno: `GEMELO_DATOS`, `GEMELO_DESCARGAS`, `GEMELO_LIDAR`, `GEMELO_IMAGEN`, `GEMELO_HITUELO`, `GEMELO_PARCELAS`, `GEMELO_MDS`, `GEMELO_SUELO`. Los valores por defecto son rutas relativas a la carpeta desde la que se lanza el script. Las rutas se arman con `os.path.join`, así que los scripts valen en Windows, Linux y macOS (decisión 8, D4; lo vigila el guardián `multiplataforma`). Probado solo con `py_compile`: no se han vuelto a ejecutar con datos reales fuera de Windows.
 
 ## Medido y deducido
