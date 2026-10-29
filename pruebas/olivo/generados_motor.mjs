@@ -133,17 +133,39 @@ exige(/#include <common>\n#include <common>/.test(compila(mats.pies).vertexShade
       if (cf.__G._prueba.lote() !== lote || cf.window.__olivosGen().fundido.activo) cambia++;
     }
     exige(cambia === 0, "girando en el sitio, el lote se rehace o entra en fundido " + cambia + " veces de 16");
-    // recorte por frustum: desde 16 direcciones a 9 m de cada generado y mirándolo, ninguna malla del lote queda fuera de la vista
+    // recorte por frustum. (a) La esfera y la caja de cada malla del lote contienen TODO lo que dibuja (cada instancia, cada punto, en el mundo): si se
+    // calcularan antes de escribir las matrices, o con un count viejo, aquí saldría. (b) Desde 16 direcciones a 9 m de cada generado y mirándolo, ninguna
+    // malla que lleve piezas de ESE árbol queda fuera de la vista. Una malla sin piezas suyas (p. ej. gen-olivas cuando ese árbol lleva sus olivas en
+    // gen-puntos, o al revés) puede quedar fuera con razón: el recorte es correcto y no se exige.
     const cam = new THREE.PerspectiveCamera(42, 900 / 650, 0.5, 5000), fr = new THREE.Frustum(), m = new THREE.Matrix4();
-    lote.updateMatrixWorld(true); let fuera = [];
-    const arb = ol.filter(o => cf.__G.rotulo(o.i));
-    for (const o of arb) for (let a = 0; a < 16; a++) {
-      const th = a / 16 * 2 * Math.PI; cam.position.set(o.x + 9 * Math.sin(th), 2, -o.y + 9 * Math.cos(th)); cam.lookAt(o.x, 2, -o.y); cam.updateMatrixWorld(true);
-      fr.setFromProjectionMatrix(m.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse));
-      for (const ch of lote.children) if (ch.frustumCulled && !fr.intersectsObject(ch)) fuera.push(ch.name + "@" + a);
+    lote.updateMatrixWorld(true); let fuera = [], sinCubrir = [];
+    // Cada pieza dibujada es una esfera en el mundo: la de su geometría por la matriz de su instancia (mallas por lotes e instanciadas) o un punto (radio 0).
+    const pos = new Map(), mi = new THREE.Matrix4(), v = new THREE.Vector3(), esf = new THREE.Sphere(), caja = new THREE.Box3();
+    for (const ch of lote.children) {
+      const P = [];
+      if (ch.isBatchedMesh) for (let i = 0; i < ch.instanceCount; i++) { if (ch.getVisibleAt(i)) { ch.getMatrixAt(i, mi); P.push(ch.getBoundingSphereAt(ch.getGeometryIdAt(i), new THREE.Sphere()).applyMatrix4(mi.premultiply(ch.matrixWorld))); } }
+      else if (ch.isInstancedMesh) { if (!ch.geometry.boundingSphere) ch.geometry.computeBoundingSphere(); for (let i = 0; i < ch.count; i++) { ch.getMatrixAt(i, mi); P.push(ch.geometry.boundingSphere.clone().applyMatrix4(mi.premultiply(ch.matrixWorld))); } }
+      else { const a = ch.geometry.attributes.position, n = Math.min(a.count, ch.geometry.drawRange.count); for (let i = 0; i < n; i++) P.push(new THREE.Sphere(v.fromBufferAttribute(a, i).applyMatrix4(ch.matrixWorld).clone(), 0)); }
+      pos.set(ch, P);
+      if (!ch.frustumCulled) continue;
+      const inst = ch.isBatchedMesh || ch.isInstancedMesh;
+      esf.copy(inst ? ch.boundingSphere : ch.geometry.boundingSphere).applyMatrix4(ch.matrixWorld);
+      if (inst) caja.copy(ch.boundingBox).applyMatrix4(ch.matrixWorld).expandByScalar(1e-3);
+      const mal1 = P.filter(s => s.center.distanceTo(esf.center) + s.radius > esf.radius * (1 + 1e-6) + 1e-3 || (inst && !caja.containsPoint(s.center))).length;
+      if (mal1) sinCubrir.push(ch.name + ":" + mal1 + "/" + P.length);
     }
-    diag.giro = { arboles: arb.length, fuera: fuera.slice(0, 6) };
-    exige(arb.length >= 1 && fuera.length === 0, "mirando a un generado, el recorte por frustum deja fuera: " + fuera.slice(0, 6).join(", "));
+    exige(sinCubrir.length === 0, "la esfera o la caja de recorte no cubre todo lo que dibuja la malla: " + sinCubrir.join(", "));
+    const arb = ol.filter(o => cf.__G.rotulo(o.i));
+    for (const o of arb) {
+      const suyas = lote.children.filter(ch => ch.frustumCulled && pos.get(ch).some(s => Math.hypot(s.center.x - o.x, s.center.z + o.y) < 6));   // mallas con piezas de este árbol
+      for (let a = 0; a < 16; a++) {
+        const th = a / 16 * 2 * Math.PI; cam.position.set(o.x + 9 * Math.sin(th), 2, -o.y + 9 * Math.cos(th)); cam.lookAt(o.x, 2, -o.y); cam.updateMatrixWorld(true);
+        fr.setFromProjectionMatrix(m.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse));
+        for (const ch of suyas) if (!fr.intersectsObject(ch)) fuera.push(ch.name + "@" + o.i + "/" + a);
+      }
+    }
+    diag.giro = { arboles: arb.length, fuera: fuera.slice(0, 6), sinCubrir, sinRecorte: lote.children.filter(ch => !ch.frustumCulled).map(ch => ch.name) };
+    exige(arb.length >= 1 && fuera.length === 0, "mirando a un generado, el recorte por frustum deja fuera piezas suyas: " + fuera.slice(0, 6).join(", "));
   }
 }
 

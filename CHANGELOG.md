@@ -85,6 +85,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 - `doc/ESTADO.md` reescrito como único sitio de «dónde estamos»; se retira el id y el enlace del artefacto privado (el repo es público).
 
 ### Arreglado
+- Olivos generados: las olivas en puntos vuelven a recortarse por frustum (su esfera ya cubría todo); la prueba de Node del giro exigía ver mallas que no llevan piezas del árbol mirado y ahora comprueba que la esfera y la caja de cada malla del lote cubren todo lo que dibuja. El recorte no explica que desaparezcan al girar: sigue sin probar en aparato.
 - Presencia: los demás son el mismo muñeco que el paseante y andan con piernas y brazos según su velocidad; los pies van al suelo de tu mundo (antes flotaban). Siguen siendo 5 llamadas de dibujo; la pose no cambia (v1).
 - `levanta.mjs` reinstala con `npm ci` cuando el `package-lock` cambió con `node_modules` ya presente (antes solo si faltaba); puertos de medios de LiveKit configurables para levantar un segundo entorno.
 - Paseo en tercera persona: la cámara ya no se mete dentro de los olivos; recorre el tramo cabeza → cámara con la altura de copa medida (LiDAR) y se acerca al paseante (mínimo 1,2 m) si choca con una copa.
