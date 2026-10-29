@@ -62,6 +62,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 - `doc/ESTADO.md` reescrito como único sitio de «dónde estamos»; se retira el id y el enlace del artefacto privado (el repo es público).
 
 ### Arreglado
+- Pruebas: `mide()` y `p7_medidas` esperan también a los olivos generados (`__g.pendientes()`); los generados usan todo el presupuesto de la Cola cuando está libre (O1b).
 - DATOS.md: hojas LiDAR de Hituelo corregidas (la N es el borde norte; el 92 % de las copas está en 405-4180 y 406-4180).
 - El botón «Entrar» del enlace mágico daba 403 en Chrome (`no-referrer` hacía que mandara `Origin: null`); ahora usa `strict-origin`.
 
