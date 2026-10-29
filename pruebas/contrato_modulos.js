@@ -13,6 +13,7 @@ const NOTAS = {
   "11_sol.js": "Define sol2() (sol según hora y fecha); se engancha al control de hora dentro del propio módulo.",
   "23_estacion.js": "Publica además window.__otDebug (depuración del olivo estacional).",
   "25_perros.js": "Publica además window.__perrosDebug (depuración).",
+  "26_presencia.js": "Publica además window.__presencia (pruebas). Sin ?presencia=sim no crea nada; el trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/presencia.test.js.",
   "27_debug.js": "Publica window.__g, el gancho de las pruebas (contrato en doc/sistema/CONTRATOS.md).",
   "29_vr.js": "Publica además window.__vrDebug, __vrOlivo, __vrBotones y VR_ESTADO (depuración y pruebas VR).",
   "90_final.js": "Arranque y bucle: Mundo.arranca, cuadro() y requestAnimationFrame. Define el orden de las actualizaciones por fotograma.",
