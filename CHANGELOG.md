@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Caddy (dev y producción) sirve las recetas horneadas: `/teselas/<finca>/olivos/<huella>.br` tras sesión con `Content-Encoding: br` e `immutable`, `manifiesto.json` con `no-cache` y 404 para el resto de `olivos/` (`estado.json`…); `GEMELO_DEV_OLIVOS` monta la carpeta del hornero (O7d).
 - Olivos generados: con la página del servidor, el motor descarga las variantes horneadas (manifiesto por finca, huella, cabecera y caché de O5) en vez de calcularlas; si falta o falla algo, las calcula. `?debug` cuenta horneadas, calculadas y fallos; banderas `?olivosHorneado=0`, `?olivosDir=` y `?olivosPropios=N` (O7e, ADR-0018).
 - Hornero de olivos en Node (O7c, ADR-0018): `tuberia/olivos/hornero.mjs` hornea las 16 variantes (centenario3 × 4 semillas × E2/E2-VR × época actual y siguiente) a `<finca>/olivos/<huella>.br` y escribe el manifiesto el último; incremental, con `--limpia`, `--release` y `estado.json`; guardián `hornero.test.js`. Medida con Hituelo v3: 16 objetos, 4,44 MB (brotli 9), 9,3 s desde cero y 0,9 s la segunda vez. Los propios (`--propios`) no están implementados.
 - O7b: contrato `olivo-horneado` (receta horneada v1, cuantización de O6, huella SHA-256/128, `.br`, manifiestos por finca y por tesela), esquemas del manifiesto y del calendario de épocas, `epocas-calendario.json` (valores de partida, a ajustar por Antonio), `horneado.js`/`epocas.js` en `apps/web/olivo` y guardián `horneado.test.js` (ida y vuelta dentro de los topes de O6).
@@ -74,6 +75,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 - `doc/ESTADO.md` reescrito como único sitio de «dónde estamos»; se retira el id y el enlace del artefacto privado (el repo es público).
 
 ### Arreglado
+- `levanta.mjs` reinstala con `npm ci` cuando el `package-lock` cambió con `node_modules` ya presente (antes solo si faltaba); puertos de medios de LiveKit configurables para levantar un segundo entorno.
 - Paseo en tercera persona: la cámara ya no se mete dentro de los olivos; recorre el tramo cabeza → cámara con la altura de copa medida (LiDAR) y se acerca al paseante (mínimo 1,2 m) si choca con una copa.
 - Móvil: los botones del paseo ya no se quedan pillados (mantener pulsado seleccionaba texto y se perdía el soltar el dedo): sin selección ni menú de pulsación larga en el visor y los controles, y el botón se suelta también al cancelar el gesto, perder el dedo o perder el foco la página.
 - Olivos generados (`?olivos=gen`) al pasear: el foco es quien pasea (no la cámara), el plan tiene histéresis y el lote entra receta a receta; antes, en el móvil, no llegaba a dibujarse ninguno y al girar desaparecían (O1d).
