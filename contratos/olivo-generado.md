@@ -1,6 +1,6 @@
 # Contrato `olivo-generado` (generador `olivo-2`)
 
-Cómo se genera un olivo **por procedimiento y con semilla** a partir de lo medido de cada árbol, y qué viaja entre el generador, el trabajador y quien lo dibuja. Decisión y lo que queda abierto: [ADR-0017](../doc/adr/0017-constructor-de-olivos-generados.md). Esquema: [`olivo-generado.schema.json`](olivo-generado.schema.json). Código: `apps/web/olivo/` (módulo ES sin DOM). Lo vigila `pruebas/guardianes/olivo.test.js`.
+Cómo se genera un olivo **por procedimiento y con semilla** a partir de lo medido de cada árbol, y qué viaja entre el generador, el trabajador y quien lo dibuja. Decisión y lo que queda abierto: [ADR-0017](../doc/adr/0017-constructor-de-olivos-generados.md); recetas horneadas en el servidor (variantes) y cálculo en el aparato (propios): [ADR-0018](../doc/adr/0018-hornero-de-olivos.md). Esquema: [`olivo-generado.schema.json`](olivo-generado.schema.json). Código: `apps/web/olivo/` (módulo ES sin DOM). Lo vigila `pruebas/guardianes/olivo.test.js`.
 
 Es la otra vía frente al catálogo de modelos fijos ([`olivos-tipo.md`](olivos-tipo.md), ADR-0012): en vez de 6-8 glb, **un árbol distinto por olivo**, siempre el mismo para la misma entrada. La forma es **ilustrativa** (regla 5 de CLAUDE.md); la altura, el diámetro de copa y hacia dónde carga salen de lo **medido**.
 

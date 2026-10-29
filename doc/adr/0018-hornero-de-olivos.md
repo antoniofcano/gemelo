@@ -1,0 +1,75 @@
+# ADR-0018 — Hornero de olivos: variantes horneadas en el servidor, propios cercanos en el aparato
+
+- **Estado:** Propuesto
+- **Fecha:** 2026-10-29
+
+## Contexto
+Con `?olivos=gen` ([ADR-0017](0017-constructor-de-olivos-generados.md), decisiones 26-28 y 52) cada aparato **calcula** sus olivos generados: hasta `MAX_PROPIOS = 6` olivos **propios** cercanos (el más cercano en E0, el resto en E1, según presupuesto) y, detrás, **variantes compartidas** en E2 (E2-VR en gafas), estiradas a la copa y la altura medidas de cada olivo, hasta `MAX_VAR = 48` árboles. Las variantes son de un solo tipo (`centenario3`), sin parámetros y con 4 semillas (`SEM_VAR = [11, 23, 37, 51]`, `apps/web/motor/07ab_generados.js`): **4 recetas distintas por nivel y época**. Lo calculado se guarda en la caché de O5 (`apps/web/olivo/cache.js`: memoria LRU de 60/150 MB e IndexedDB LRU de 300 MB, clave `claveReceta` = entrada + nivel + `GEN_VERSION` + `CACHE_VERSION`).
+
+La decisión 62 pedía hornearlo **todo** en el servidor. La medida O6 ([MEDIDAS](../sistema/MEDIDAS.md#horneado-de-recetas-de-olivos-generados-por-tesela-o6-2026-10-29-foto-no-se-mantiene), Hituelo v3, 5.882 olivos, `olivo-2`, `envero`, una sola corrida en un i5-1035G1 cargado) la corrigió (decisión 63):
+
+- **Por olivo** (media de 120 al azar), brotli 11 / brotli 9: E0 491 / 553 KB, E1 254 / 272 KB, E2 225 / 242 KB, E2-VR 183 / 199 KB. Brotli 9 pesa un 7-13 % más que el 11 y tarda unas 30 veces menos (307 ms frente a 10 s por olivo en los cuatro niveles).
+- **Cuantización de prueba**: posiciones y traslaciones Int16 en la caja de la pieza ≤ 0,11 mm, normales Int8 ≤ 0,39°, colores Uint8 ≤ 0,0011, parte lineal de las matrices Int16 ≤ 0,06 mm. Pérdidas **numéricas: sin comparar a ojo**.
+- **Toda la finca**, una época y los cuatro niveles: 6,5 GB (brotli 11) / 7,1 GB (brotli 9), frente a los 98 MB que baja hoy Hituelo entero.
+- **Un paseo recto de 500 m** con receta propia para cada olivo cercano (bandas de distancia **[SUPUESTO]**): **78-555 MB** de descarga. Este es el motivo de la decisión 63.
+- **Manifiesto**: 68 B por olivo (`copas_id` u32 + 4 huellas de 16 B): 9 KB la tesela mediana, 34 KB la más poblada, 400 KB la finca (cálculo, no fichero real).
+- **Épocas**: de `envero` a `madura` **solo cambia la pieza de las olivas**; `reposo`, `boton`, `flor` y `cuajado` cambian además las matrices de la madera fina, las ramitas y el relleno (no se investigó por qué). Una pieza de olivas aparte costaría ≈ 8 % de un E0 cuantizado (**estimación**, no medida).
+- **Tiempo** de hornear Hituelo entero (una época, un hilo, cuatro niveles, brotli 9): ≈ 19 min (estimado, máquina tranquila) a ≈ 51 min (medido-extrapolado, cargada); con brotli 11, 5,5-17 h. Generar un E0: 55 ms (tranquila) a 348 ms (cargada).
+- **Límites del artefacto**: no admite `.bin`; ≤ 15 MB por fichero binario y 64 MB por publicación.
+
+**Lo que O6 no midió:** los tamaños de las variantes en sí (sin parámetros; se estiman con la media por olivo), la tesela más poblada entera (se paró a los 57 min), el tiempo de descomprimir, decuantizar y verificar en un navegador, móvil o gafas, ningún paseo real (las bandas son un supuesto, no las del motor), cuatro procesos en paralelo, el disco, la memoria y los núcleos del VPS (**[NO VERIFICADO]**) y el aspecto de la receta cuantizada frente a la calculada.
+
+## Decisión
+El **hornero** (un servicio del servidor) hornea las **variantes compartidas E2 y E2-VR** de cada finca, para la época actual y la siguiente, en objetos inmutables direccionados por su huella y listados en un **manifiesto por finca**; el aparato las **descarga** y **sigue calculando** los propios cercanos (E0/E1) con la caché de O5. Hornear propios es opcional y queda detrás de una bandera por finca. Si falta una receta horneada, el aparato la calcula; en la salida artefacto, todo se calcula en el navegador.
+
+### 1. Qué se hornea
+- **Variantes:** por cada tipo de variante de la finca, sus semillas en E2 y E2-VR, con la **época actual y la siguiente** (decisión 62). Hoy: 1 tipo × 4 semillas × 2 niveles × 2 épocas = **16 recetas**. Peso con la media por olivo de O6 (brotli 9; las variantes no se midieron): 4 × (242 + 199) KB ≈ **1,7 MB por época** y ≈ **3,4 MB las dos**. Un aparato solo baja un nivel de una época: ≈ **0,95 MB** en escritorio (E2) y ≈ **0,78 MB** en gafas (E2-VR). Si las variantes pasan a los 7 tipos del catálogo, unas 7 veces más (≈ 12 MB por época, estimado).
+- **Las semillas y los tipos de las variantes salen del manifiesto**, no del código del motor: el hornero las elige (hoy, las de `SEM_VAR`) y el motor usa las del manifiesto si lo hay y `SEM_VAR` si no. Así el hornero y el motor no pueden discrepar.
+- **Propios horneados (opcional, bandera `propios` por finca, apagada por defecto):** E0 y E1 de cada olivo con su `copas_param`, en las mismas dos épocas. Coste (O6, brotli 9): (3,1 + 1,5) GB ≈ 4,6 GB por época y hasta 9,2 GB las dos. **Quién los baja lo decide el cliente**: solo si la conexión se declara rápida y sin ahorro de datos (`navigator.connection`, que **no existe en Safari ni en iOS**: allí, cálculo) o si calcular el primer propio tarda más de un umbral **por fijar con medida en el aparato** (O7h). Sin uno de esos dos motivos, se calculan. Lo que pesa un paseo con propios horneados en el plan real (6 propios, histéresis de `MARGEN` 12 m) está **sin medir**.
+- **E2 de cada olivo, no:** es lo que daba los 78-555 MB por paseo.
+
+### 2. Formato de una receta horneada (el contrato lo escribe O7b)
+- **Un objeto por receta** (y por nivel y época), con cabecera: **versión de formato** (1), `GEN_VERSION`, `CACHE_VERSION`, nivel, la entrada canónica (la de `claveReceta`), la cabecera de la receta (`v`, `escala`, `corte`, `cuenta`, `medidas`) y, por pieza, sus campos, su caja y la lista de arrays con tipo y longitud.
+- **Cuantización** (la de O6): posiciones y traslaciones **Int16** sobre la caja de la pieza; parte lineal 3×3 de las matrices en Int16, **12 valores por instancia** (sin la última fila); normales **Int8**; uv Uint16; `aHueco`/`aMuerta` y colores **Uint8**; índices **Uint16** si la pieza tiene ≤ 65.535 vértices y **Uint32** si no; `nodo`/`padre` Uint16 si caben. Los metadatos de niveles (`rol`, `rejilla`, `brote`) van tal cual.
+- **Compresión: brotli 9** en el día a día. **Brotli 11 solo en horneados de release** y si compensa: ahorra un 7-9 % en E2/E2-VR a cambio de ~30 veces más CPU; con 16 recetas de variantes, unos segundos (estimado), así que se puede usar. El objeto se guarda comprimido junto al servidor (`<huella>.br`) y viaja con `Content-Encoding: br` (Caddy ya usa `precompressed br` en `/finca/` y la portada; en `/teselas/` hay que añadirlo, O7d); el navegador lo descomprime solo.
+- **Huella** = SHA-256 truncado a **128 bits** de los **bytes guardados sin comprimir** (la cabecera y los arrays cuantizados). Así la dirección no cambia al recomprimir con 9 u 11, y el cliente la comprueba sobre lo que le da `fetch`. Objetos **inmutables**: misma huella, mismos bytes, `Cache-Control: immutable`.
+- **Épocas que solo cambian las olivas: sin pieza aparte en la versión 1.** En las variantes el ahorro sería de decenas de KB (≈ 8 % de un E0 cuantizado, y menos en E2) y obliga a componer dos objetos por receta. Se reabre si se activan los propios horneados (ahí son GB). **No investigado:** por qué las épocas tempranas cambian las matrices de la madera fina, las ramitas y el relleno; si la pieza de olivas de E2 (puntos) se separa igual que la de E0.
+
+### 3. Manifiestos
+- **Por finca** (las variantes son de toda la finca), `/teselas/<finca>/olivos/manifiesto.json`: versión de formato, `GEN_VERSION`, `CACHE_VERSION`, cuándo se horneó, las épocas con su intervalo de fechas, y una fila por variante `{tipo, semilla, nivel, epoca, huella, bytes}`. Con 16 filas, unos pocos KB (**sin medir**). Si hay propios horneados, dice además que existen y dónde está el manifiesto de cada tesela.
+- **Por tesela** (solo con propios horneados): binario, `copas_id` u32 + una huella de 16 B por (nivel, época). Con E0 y E1 en dos épocas son 4 huellas: **68 B por olivo**, lo que calculó O6 (9 KB la tesela mediana, 34 KB la más poblada, 400 KB la finca). Va con la tesela y tras sesión, como el resto de `/teselas/`.
+- **El manifiesto se escribe el último**, cuando todos sus objetos existen: quien lo lee nunca apunta a un objeto que falte.
+
+### 4. Ciclo de vida del hornero
+- **Qué lo dispara:** (a) la **época por calendario**: cada finca tiene su tabla de fechas por época (**[SUPUESTO]**: la fija Antonio o sale de la fenología de OlivarTrack, `bbchAEpoca`; decisión de Antonio) y el hornero tiene siempre la actual y la siguiente; cuando la siguiente pasa a ser la actual, hornea la que viene, con una antelación **por fijar**; (b) un `indice.json` nuevo (vuelo nuevo, `copas_param`, `copas_tipo`, censo): a las variantes solo les afecta si cambian los tipos de la finca; a los propios, los olivos cuya entrada cambió; (c) un `GEN_VERSION` o `CACHE_VERSION` nuevo, o una versión de formato nueva: todo.
+- **Incremental:** el hornero calcula las claves (`claveReceta`) que pide el manifiesto nuevo, mira su propio índice clave → huella y **solo hornea las que faltan**. Los objetos que ningún manifiesto vigente ni el anterior usa se borran (el anterior se conserva para quien lo tenga cargado).
+- **Avance visible:** escribe su estado (recetas hechas / total, fase, error) en el registro y en un fichero de salud que el servicio expone (O7f).
+- **Cuánto tarda:** las variantes de una época, del orden de **un segundo** (estimado con las cifras por olivo de O6: 4 E0 generados, sus niveles, cuantizar y brotli 9; **sin medir**). Propios E0/E1 de Hituelo, una época: por debajo de los 19-51 min de los cuatro niveles (O6), **sin medir**.
+- **Dónde corre:** un servicio Docker en `infra/dev` primero y en el VPS de OVH ([ADR-0011](0011-alojamiento-en-el-vps-de-ovh.md)) después, cuando lo local funcione y esté probado (decisión 21). Escribe en la carpeta de teselas de la finca, que Caddy sirve de solo lectura.
+
+### 5. Cliente
+- **Encaja con la caché de O5 sin cambiar su clave:** el motor busca primero en la caché (`claveReceta`); si no está y el manifiesto la tiene, la **descarga**, comprueba su huella, la **decuantiza** a la receta de siempre y la guarda con la misma clave. La receta horneada y la calculada se tratan como la misma (difieren ≤ 0,11 mm y ≤ 0,39°); si el formato cambia lo que da una receta, se sube `CACHE_VERSION`. La LRU no cambia.
+- **Plan B:** si no hay manifiesto, falta una receta, la descarga falla o la huella no cuadra, **se calcula** como hoy (trabajador o rebanadas) y queda dicho en `?debug` (horneadas / calculadas / fallos).
+- **Salida artefacto:** todo en el navegador, como hoy: no admite `.bin` ni los tamaños de los propios, y sin servidor no hay hornero.
+
+## Alternativas consideradas
+- **Todo horneado** (decisión 62: cada olivo en todos sus niveles) — 6,5-7,1 GB por época en disco, que cabrían, pero **78-555 MB por paseo de 500 m** (O6), que no caben en la conexión de un visitante en el campo ni en el móvil. Además, 19-51 min por época de hornear y sin poder bajar solo lo que cambia entre épocas.
+- **Todo en el aparato** (lo de hoy) — cero servidor, pero cada aparato recalcula las mismas 4 variantes en cada época y en cada carga en frío (sin caché, modo privado, IndexedDB lleno), y paga su CPU y batería, que es lo que más escasea en el móvil y en las gafas (**no probado**). Las variantes son idénticas para todos: calcularlas en cada aparato no tiene ventaja.
+- **Mixto con E2 propio por olivo** (las variantes sustituidas por un E2 horneado de cada olivo) — más fiel en media distancia, pero vuelve a los 67-250 MB por paseo (O6, todo en E2 a 150 m).
+
+## Consecuencias
+- **Positivas:** la descarga de un paseo apenas crece (≈ 1 MB de variantes por época y nivel, una vez, y queda en la caché); los aparatos dejan de calcular las variantes; el hornero de variantes es barato (segundos) y se puede rehacer con cada `GEN_VERSION`; los objetos inmutables se sirven con caché larga y se verifican por su huella; el camino de los propios horneados queda abierto sin rehacer el formato.
+- **Negativas / coste:** un servicio más que mantener (Docker, registro, salud); un segundo camino de código en el motor (descargar y decuantizar) además del cálculo, que hay que probar los dos; la receta horneada no es bit a bit la calculada (no pasa la huella olivo-2: se comprueba con la huella del objeto); los propios cercanos se siguen calculando en el aparato, así que **el primer generado no aparece antes** que hoy; la tabla de épocas por fecha es un dato nuevo que alguien mantiene.
+- **Implicaciones futuras:** si se activan los propios horneados, reabrir la pieza de olivas aparte y el brotli 11; si las variantes pasan a varios tipos, crece el manifiesto y el hornero, no el formato; el formato y el manifiesto (O7b) son contratos versionados (regla 3).
+
+## Comprobación
+Lo cierran las tareas O7b-O7h del [PLAN](../rumbo/PLAN.md#tablero-de-tareas-desde-el-2026-10-29):
+- **O7b:** contrato y esquema de la receta horneada y de los manifiestos, con fixture y guardián: ida y vuelta cuantizar → decuantizar con las pérdidas de O6 como tope (≤ 0,11 mm, ≤ 0,39°), huella estable y recuentos iguales a la receta calculada.
+- **O7c:** el hornero en Node hornea el fixture; una segunda corrida sin cambios no hornea nada; un cambio de época solo hornea esa época.
+- **O7d:** Caddy sirve `/teselas/<finca>/olivos/<huella>` con `Content-Encoding: br`, `immutable` (hoy `/teselas/` lleva `private, max-age=300`) y tras sesión; el manifiesto, revalidado.
+- **O7e:** con manifiesto, el motor descarga las variantes y **no calcula ninguna** (0 variantes calculadas, la caché las da al recargar); sin manifiesto o con un objeto roto, las calcula; captura de una variante horneada junto a la calculada (la comparación a ojo que O6 no hizo).
+- **O7f:** el servicio arranca, hornea por época, índice o `GEN_VERSION` y muestra su avance y su salud.
+- **O7g:** e2e con el fixture: el servicio hornea, Caddy sirve y el motor dibuja con **0 variantes calculadas**; los propios, calculados (o descargados si la finca tiene `propios` y el cliente lo decide).
+- **O7h:** Hituelo real, 2 épocas: tamaño y tiempo del horneado; **descarga de un paseo de 500 m** (se espera ≈ 1 MB de variantes más los manifiestos, frente a los 78-555 MB de O6); **tiempo hasta ver el primer generado** (se espera igual que hoy, porque el más cercano es propio) y hasta ver las variantes; prueba en el móvil.
+
+**No probado:** nada de esto existe aún; el tamaño de las variantes y del manifiesto, el tiempo de descomprimir, decuantizar y verificar en un navegador, el paseo real, el VPS, iPhone, Quest, Safari ni Firefox.
