@@ -1,0 +1,85 @@
+# Contrato: presencia compartida (F2) — pose binaria, tasas e interpolación
+
+**Versión 1** (byte 0 de cada mensaje). Plan y decisiones: [PLAN F2](../doc/rumbo/PLAN.md), [DECISIONS-PENDING 39–42](../doc/rumbo/DECISIONS-PENDING.md), [UX §5.4 Gente](../doc/sistema/UX.md#54-gente). Permisos por rol en la sala: [livekit-roles.json](livekit-roles.json). Código: `apps/web/motor/26_presencia.js` (`PoseCodec`, `BufferPose`, `Presencia`). Lo comprueba `pruebas/guardianes/presencia.test.js`.
+
+**Estado: el códec, la interpolación y los avatares existen y están probados en Node y en Chrome headless con visitantes simulados (`?presencia=sim`); la red (LiveKit) NO está hecha.** Nada de esto se ha probado con dos personas reales, ni en iPhone ni en Quest.
+
+## Qué viaja y qué no
+
+| Viaja en cada mensaje de pose | Viaja una vez, al entrar (metadatos del token, los pone la api) | No viaja nunca |
+|---|---|---|
+| posición y giro de la cabeza; en Quest, también de las dos manos; secuencia y reloj del emisor | alias, avatar (camisa, sombrero, tono de piel), rol, dispositivo | correo, nombre real, haza del hogar, IP, nada que identifique fuera de la sala |
+
+La identidad en la sala (`identity` de LiveKit) es un **id opaco** que da la api; el cliente nunca la elige ni la deriva del correo. La pose **no se guarda** en ningún sitio (UX §5.7: «la posición de tu avatar no se guarda»).
+
+## Sistema de coordenadas
+
+- **Origen:** `centro_utm` de la finca (el mismo de las teselas, [CONTRATOS](../doc/sistema/CONTRATOS.md)); en F2, Hituelo (decisión 22: un solo mundo).
+- **Ejes = los de three en el motor:** `x` = este (m), `y` = cota (m sobre el `z0` de la finca, **sin exagerar**), `z` = −norte (m). El giro es un cuaternión en esos mismos ejes (`−Z` = norte, `+Y` arriba).
+- **La exageración vertical no viaja.** Cada receptor coloca el avatar a su altura **sobre el suelo**: `y_dibujo = suelo·exag + (y − suelo)`, con su propio `suelo(x, −z)`. Mientras una tesela no ha llegado, `suelo` es el relieve grueso de 8 m: el avatar puede flotar o hundirse unos decímetros hasta que llega (sin medir en Hituelo real).
+- **Unidades en el cable:** centímetros enteros (`int32`, ±21.474 km).
+
+## Tabla de bytes (little-endian)
+
+Escritorio (tipo 1) = **24 B**. Quest (tipo 2) = **56 B**. Ninguna otra longitud es válida.
+
+| Byte | Tamaño | Tipo | Campo | Notas |
+|---|---|---|---|---|
+| 0 | 1 | u8 | versión | `1`. Otra versión → el receptor descarta el mensaje (no adivina) |
+| 1 | 1 | u8 | tipo y banderas | bits 0–1: tipo (`1` escritorio/móvil: cabeza; `2` Quest: cabeza + manos; `0` y `3` reservados → se descarta). Bit 2: hay mano izquierda. Bit 3: hay mano derecha. Bits 4–7: `0` (reservados; el receptor los ignora) |
+| 2 | 2 | u16 | secuencia | +1 por mensaje, da la vuelta en 65535 → 0. El receptor descarta la repetida y la más vieja que la última (diferencia módulo 2¹⁶ ≥ 32768) |
+| 4 | 4 | u32 | reloj del emisor | ms de su `performance.now()` (módulo 2³²). Solo sirve para ordenar e interpolar; no es una hora |
+| 8 | 4 | i32 | cabeza x | cm |
+| 12 | 4 | i32 | cabeza y | cm (cota sin exagerar) |
+| 16 | 4 | i32 | cabeza z | cm (−norte) |
+| 20 | 4 | u32 | cabeza giro | cuaternión *smallest-three* (abajo) |
+| 24 | 12 | 3 × i32 | mano izquierda x, y, z | solo tipo 2; ceros si el bit 2 está apagado |
+| 36 | 4 | u32 | mano izquierda giro | ídem |
+| 40 | 12 | 3 × i32 | mano derecha x, y, z | solo tipo 2; ceros si el bit 3 está apagado |
+| 52 | 4 | u32 | mano derecha giro | ídem |
+
+**Cuaternión *smallest-three* en 32 bits:** se normaliza; la componente de mayor valor absoluto se hace positiva (q y −q son el mismo giro) y no viaja: su índice (0 = x, 1 = y, 2 = z, 3 = w) va en los bits 30–31. Las otras tres, en su orden x‑y‑z‑w saltando la mayor, en los bits 20–29, 10–19 y 0–9, cuantizadas a 10 bits en [−1/√2, 1/√2]: `q = round((v + 1/√2) / √2 · 1023)`. Al leer, `v = q / 1023 · √2 − 1/√2` y la mayor `= √(1 − Σv²)`.
+
+El códec usa `DataView` (estándar del navegador y de Node); no hace falta librería: son 16 campos fijos. Si un día se quieren mensajes con esquema evolutivo (chat con adjuntos, estado de puzles), entonces sí convendría una librería de serialización mantenida (p. ej. FlatBuffers o protobuf); para la pose no compensa.
+
+## Errores medidos (ida y vuelta)
+
+`GEMELO_MIDE=1 node --test pruebas/guardianes/presencia.test.js`, 200.000 poses al azar con semilla fija (2026-10-29, Node 24):
+
+| Qué | Medido | Tope que comprueba la prueba |
+|---|---|---|
+| Posición, por eje | 5,000 mm (el redondeo a cm) | ≤ 5 mm |
+| Giro de la cabeza | 0,241° | ≤ 0,25° |
+| Giro de las manos | 0,240° | ≤ 0,25° |
+
+## Tasas: 10 Hz a los cercanos, 2 Hz a los demás
+
+- Cada cliente hace un **tic cada 100 ms**. En cada tic manda su pose a los **cercanos** (`destinationIdentities` de LiveKit); en uno de cada cinco tics (2 Hz) la manda a **toda la sala** (que incluye a los cercanos, que así reciben exactamente 10 Hz).
+- **Cercano:** a menos de 55 m en horizontal (entra) y deja de serlo a más de 65 m (sale): histéresis para que no oscile en el borde. La distancia la calcula el emisor con las poses que recibe de los demás.
+- Canal de datos **no fiable** (*lossy*) y tema `pose`: una pose perdida no se reenvía, la siguiente la sustituye. El chat va por el tema `chat`, **fiable** y sin guardar (decisión 40).
+- Carga por emisor (solo la carga útil, sin las cabeceras de LiveKit/WebRTC, que no se han medido): escritorio 240 B/s a cada cercano y 48 B/s a cada lejano; Quest 560 y 112 B/s.
+
+## Interpolación (receptor)
+
+- Un búfer por visitante con sus últimas 12 poses en orden de secuencia (`BufferPose`). El desfase de relojes se estima como el mínimo de `llegada − reloj del emisor`.
+- Se dibuja la pose de hace **150 ms** si te llega a 10 Hz y de hace **650 ms** si te llega a 2 Hz: posición lineal, giro *nlerp*. Al cambiar de tasa el retardo cambia a 0,5 s por segundo, para que el avatar no salte. Si falta la pose siguiente, se extrapola **como mucho 120 ms** y luego se queda quieto.
+- Medido en Node con la red simulada del motor (retardo 30–90 ms, 60 fps, trayectoria a 1,4 m/s): error de la pose dibujada frente a la verdad del instante que dice mostrar **≤ 0,8 cm a 10 Hz y ≤ 6 cm a 2 Hz** (topes de la prueba: 3 y 15 cm). El retardo total que ve quien mira es red + 150 ms; el objetivo del plan (pose p95 < 250 ms) solo se podrá medir con LiveKit de verdad.
+- El receptor deduce si le llega a 10 o a 2 Hz por la distancia que él mismo ve **[SUPUESTO]**; con LiveKit se podrá leer del ritmo de llegada.
+
+## Avatares
+
+Estilo bloque (UX §4.7): cuerpo (caja con piernas más oscuras, color de camisa por instancia), cabeza (tono de piel), sombrero (paja, gorra o ninguno), manos solo para Quest, y el **nombre** encima (atlas de texto en un plano instanciado que mira a la cámara; crece con la distancia y se apaga a más de 160 m). Todo **instanciado**: 5 llamadas de dibujo tengas 10 o 40 visitantes (medido; [MEDIDAS](../doc/sistema/MEDIDAS.md)). Se ven también en VR (están en la misma escena).
+
+## Simulación (`?presencia=sim`)
+
+`?presencia=sim` simula 10 visitantes (`&n=1..64`), la mitad cerca del punto de partida de la cámara y el resto repartidos por la finca; un 30 % son de Quest. Andan, mandan su pose por el códec con las tasas de arriba por una red de mentira (30–90 ms, 1 % de pérdida, relojes con desfases distintos y algunos a punto de dar la vuelta) y se dibujan con el búfer. Sin la bandera, `26_presencia.js` no crea nada. Gancho de pruebas: `window.__presencia()` (estado) y `window.__presencia("libera")` (lo suelta todo). La simulación va al ritmo de los fotogramas: en Chrome headless con SwiftShader (pocos fps) las cifras de retardo que da no representan nada; las de referencia son las de Node.
+
+## Cuando llegue la red (lo que falta, sin hacer)
+
+- Cliente: **`livekit-client`** (npm, versión exacta fijada en `apps/web/package.json` al integrarlo; regla 12). Publicar con `localParticipant.publishData(bytes, { reliable: false, topic: "pose", destinationIdentities })` y leer con el evento `DataReceived`. **[NO VERIFICADO]** contra la versión que se fije.
+- Servidor: tokens con **`livekit-server-sdk`** en `apps/api` (permisos de [livekit-roles.json](livekit-roles.json)), y la expulsión con su `RoomServiceClient`.
+- La pose local (cabeza en VR = `VRX.cab` + giro de la cámara; manos = los mandos; en escritorio, el paseante) aún no se codifica: falta decidir qué publica quien está en órbita (pregunta abierta).
+
+## Versionado
+
+Cambiar un campo, su tamaño o su significado es **subir la versión** (byte 0), cambiar esta tabla, el códec y su prueba en el mismo commit. El receptor descarta las versiones que no conoce: durante un despliegue con versiones mezcladas, cada cliente ve solo a los de su versión (aceptable con cuentas de prueba; a revisar antes de abrir a gente real).

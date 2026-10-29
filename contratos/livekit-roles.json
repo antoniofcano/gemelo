@@ -1,0 +1,29 @@
+{
+  "$comment": "Qué puede hacer cada rol en una sala de LiveKit en F2 (presencia compartida): SOLO datos (pose y chat), sin audio ni vídeo. La api firma el token con estos permisos; el cliente no los elige. Descripción y tabla de bytes de la pose: contratos/presencia.md. Lo comprueba pruebas/guardianes/presencia.test.js. Los nombres de los permisos son los del VideoGrant de LiveKit (sin verificar contra la versión que se fije al integrar livekit-server-sdk). Cambiar un permiso es cambiar este fichero, su versión y presencia.md en el mismo commit.",
+  "contrato": "livekit-roles",
+  "version": 1,
+  "fase": "F2",
+  "salas": {
+    "visita_libre": { "nombre": "hituelo-libre", "fija": true, "nota": "decisión 39: una sala fija de Hituelo para la visita libre; el nombre es un [SUPUESTO] de este contrato" },
+    "guiada": { "nombre": "guiada-<id de la visita>", "fija": false, "nota": "una sala por visita guiada; llega con F3 (voz)" }
+  },
+  "identidad": {
+    "identity": "id opaco de la persona, emitido por la api (ni correo, ni alias, ni nada derivable de ellos)",
+    "metadata": { "lo_pone": "la api, dentro del token", "campos": ["alias", "avatar", "rol", "dispositivo"], "el_cliente_puede_cambiarlo": false }
+  },
+  "temas_de_datos": {
+    "pose": { "fiable": false, "formato": "binario, contratos/presencia.md", "tasa": "10 Hz a los cercanos (destinationIdentities) y 2 Hz a toda la sala", "se_guarda": false },
+    "chat": { "fiable": true, "formato": "texto UTF-8, como mucho 280 caracteres", "se_guarda": false, "nota": "decisión 40: el chat no se guarda; las preguntas sobre una haza van por la api, no por este canal" }
+  },
+  "roles": {
+    "hogar": { "roomJoin": true, "canSubscribe": true, "canPublish": false, "canPublishData": true, "canPublishSources": [], "canUpdateOwnMetadata": false, "hidden": false, "roomAdmin": false },
+    "guia": { "roomJoin": true, "canSubscribe": true, "canPublish": false, "canPublishData": true, "canPublishSources": [], "canUpdateOwnMetadata": false, "hidden": false, "roomAdmin": false },
+    "corresponsal": { "roomJoin": true, "canSubscribe": true, "canPublish": false, "canPublishData": true, "canPublishSources": [], "canUpdateOwnMetadata": false, "hidden": false, "roomAdmin": false },
+    "admin": { "roomJoin": true, "canSubscribe": true, "canPublish": false, "canPublishData": true, "canPublishSources": [], "canUpdateOwnMetadata": false, "hidden": false, "roomAdmin": false }
+  },
+  "moderacion": {
+    "expulsar": "solo la api, con su clave de servidor (RoomService.RemoveParticipant), y queda en la auditoría; ningún token de cliente lleva roomAdmin (decisión 42: moderación mínima en F2)",
+    "silenciar_y_bloquear": "cada cliente para sí (deja de dibujar y de mostrar el chat de esa identidad); no toca la sala"
+  },
+  "cuentas": "F2 solo con cuentas de prueba hasta la EIPD de F3 (decisión 41)"
+}

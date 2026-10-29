@@ -40,6 +40,7 @@ Dos modos: **embebido** (`D` incluye `t{}`; ≤16 MB, Cerro) y **ficheros** (`D.
 | `21_suelo.js`, `22_huellas.js` | cubierta por NDVI, hierba, huellas | radio alrededor del foco |
 | `23_estacion.js` | olivo estacional (BBCH) | |
 | `24_pantalla.js` | pantalla completa, transición de cámara | |
+| `26_presencia.js` | `PoseCodec`, `BufferPose`, `Presencia`, `window.__presencia` | F2 sin red: códec de pose (24/56 B), interpolación y avatares de bloque instanciados (5 llamadas); solo con `?presencia=sim` (visitantes simulados), sin la bandera no crea nada ([presencia](../../contratos/presencia.md)) |
 | `27_debug.js` | `window.__g` | gancho de pruebas |
 | `28_depura.js` | contador `?debug` | |
 | `29_vr.js` | `VRX`, `vrActualiza`, `VR_PERFILES`, `window.__vrDebug` | todo el WebXR |
@@ -56,7 +57,7 @@ Dos modos: **embebido** (`D` incluye `t{}`; ≤16 MB, Cerro) y **ficheros** (`D.
 
 ## 4. Bucle por fotograma (`cuadro(t)` en `90_final.js`)
 
-`dt` acotado a 0,1 s → cámara (VR, paseo u órbita) → tiempo, olivo estacional, vida, minimapa, paisaje, balizas, sonido, suelo, terreno, nube → `Arboles.actualiza` (reclasifica niveles) → `actualizaCarga` cada 0,2 s (`Mundo.actualiza` pide teselas; cada 3 s suelta ortofotos lejanas) → huellas, perros → `Cola.corre(Arboles.presupuesto())` → `render` → contador `?debug` → `vrFin` en VR. En VR el bucle lo lleva la sesión XR en vez de `requestAnimationFrame`.
+`dt` acotado a 0,1 s → cámara (VR, paseo u órbita) → tiempo, olivo estacional, vida, minimapa, paisaje, balizas, sonido, suelo, terreno, nube → `Arboles.actualiza` (reclasifica niveles) → `actualizaCarga` cada 0,2 s (`Mundo.actualiza` pide teselas; cada 3 s suelta ortofotos lejanas) → huellas, perros → presencia (`Presencia.actualiza`; nada sin `?presencia=sim`) → `Cola.corre(Arboles.presupuesto())` → `render` → contador `?debug` → `vrFin` en VR. En VR el bucle lo lleva la sesión XR en vez de `requestAnimationFrame`.
 
 ## 5. Colas y presupuestos
 

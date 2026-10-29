@@ -77,7 +77,7 @@ Ejecuta la [skill `release`](.claude/skills/release/SKILL.md); no la redefine. R
 
 - **Variables de entorno `GEMELO_*`** para toda ruta de datos (`GEMELO_DATOS`, `GEMELO_DESCARGAS`, `GEMELO_LIDAR`, `GEMELO_IMAGEN`, `GEMELO_HITUELO`, `GEMELO_PARCELAS`, `GEMELO_MDS`, `GEMELO_SUELO`) y de pruebas (`GEMELO_URL`, `GEMELO_RAIZ`, `CHROME`, `PLAYWRIGHT_CORE`). Nunca rutas absolutas en el código.
 - **Estilo del motor:** `var`, `"use strict"`, sin módulos por dentro (generadores y `async` sí). Los módulos de `apps/web/motor/` se concatenan en orden y Vite los empaqueta como un único módulo con `import * as THREE from "three"` (ADR-0010); la salida artefacto los mete en un `<script>`. Un módulo no declara globales fuera de la IIFE que abre `01_datos.js` y cierra `99_cierre.js`.
-- **Orden de `apps/web/motor/`:** el prefijo numérico decide el montaje (`02_` < `02b_` < `03_`). Un módulo nuevo se coloca por lo que consume; el hueco `26_` está libre.
+- **Orden de `apps/web/motor/`:** el prefijo numérico decide el montaje (`02_` < `02b_` < `03_`). Un módulo nuevo se coloca por lo que consume; hay huecos libres entre `29_` y `90_` (el `26_` lo ocupa la presencia).
 - **Fin de línea LF** en todo (`.gitattributes`). Sin CRLF.
 - **Datos por tesela:** coordenadas relativas a `centro_utm`; filas de sur a norte; relieve con una celda de margen; nube con orden barajado de semilla fija ([CONTRATOS.md](doc/sistema/CONTRATOS.md)).
 - **Todo recurso de GPU se libera** (`dispose()`); la prueba de memoria vigila `renderer.info.memory`.
