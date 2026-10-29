@@ -37,3 +37,12 @@ Decisiones que **no puede tomar un agente**: las cierra Antonio. Las técnicas s
 | 23 | **Aspecto nuevo de three 0.186.1** (F1c) | aceptar / ajustar | cierre de F1c | ✅ 2026-10-29: **aceptado**; la luz de la tarde, más clara, **se deja así** (se recalibrará con datos reales de Hituelo) |
 | 24 | **Relieve fino del suelo** (ahora sí se aplica) | mantener / apagar / solo escritorio | coste en Quest | ✅ 2026-10-29: **se mantiene y en VR se apaga** en cuanto el perfil baja por fotograma justo (`VR_PERFILES[].b`) |
 | 25 | **CDN de three en la salida artefacto** | jsDelivr / cdnjs / incrustado | salida artefacto | ✅ 2026-10-29: **jsDelivr** (módulo, misma versión exacta que la web) |
+| 26 | **Constructor · nivel 0 actual dentro del radio del generador/variantes** | apagar / rehacer celdas / interruptor | P7 del constructor | ✅ 2026-10-29: **se apaga ahí**; fuera, todo como hoy |
+| 27 | **Constructor · presupuesto cercano** | K por presupuesto / K fijo / subir TOPE_TRI | P7 | ✅ 2026-10-29: **K según presupuesto** (E0 solo el más cercano, el resto E1), siempre dentro de los topes |
+| 28 | **Constructor · media distancia** | variantes hasta donde quepan / E3 nuevo / impostores | P7 | ✅ 2026-10-29: **variantes E2 (E2-VR en gafas) mientras quepan**; después el nivel 1 actual |
+| 29 | **Constructor · madera fina** | metadato con olivo-2 intacto / dos mallas y olivo-3 | P3 | ✅ 2026-10-29: **metadato aparte, olivo-2 intacto** (huellas sin cambios) |
+| 30 | **Constructor · texturas (3 fotos de campo)** | en el repo con licencia / fuera como datos / solo dibujadas | P3 | ✅ 2026-10-29: **en el repo, con licencia de Antonio** (todos los derechos reservados, como el código) |
+| 31 | **Constructor · posición del tronco** | puntos bajos→marca corregida→asim 0 / siempre la marca / sin asimetría | P6 | ✅ 2026-10-29: **puntos LiDAR bajos (0,3–1,2 m); si no, la marca de OlivarTrack corregida del desfase; si no, asimetría 0** |
+| 32 | **Constructor · dónde se calculan los parámetros** | tubería Python / motor | P6 | ✅ 2026-10-29: **en la tubería Python** (columna `copas_param`) |
+| 33 | **Constructor · orden respecto a F1c** | antes / después | P7 | ✅ 2026-10-29: **F1c ya está en main**: el enganche va sobre three 0.186.1 |
+| 34 | **Constructor · rótulo del olivo generado** | ilustrativo + provisional / solo ilustrativo / sin rótulo | P7 | ✅ 2026-10-29: **«forma ilustrativa con medidas del LiDAR»** y, mientras el id no venga del censo, **«id provisional»** |
