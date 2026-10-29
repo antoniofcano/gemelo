@@ -1,16 +1,53 @@
 // Lo del propio hogar: alias (y si se muestra en sus hazas), avatar, descargar sus datos y borrar la cuenta (RGPD).
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import { requiereSesion } from "../auth/roles.ts";
-import { NOMBRE_COOKIE, OPCIONES_COOKIE } from "../auth/rutas.ts";
-import { audita } from "../auth/servicio.ts";
+import { NOMBRE_COOKIE, OPCIONES_COOKIE, TEXTO_LIMITE_VINCULO } from "../auth/rutas.ts";
+import { audita, NORMAS_VERSION } from "../auth/servicio.ts";
+import { decideCodigo, PATRON_ENTRADA } from "../auth/vinculo.ts";
 import type { Contexto } from "../contexto.ts";
 
 // 3–20 letras, números, espacios y guiones (doc/sistema/UX.md §4.6)
 const PATRON_ALIAS = "^[\\p{L}\\p{N}][\\p{L}\\p{N} -]{1,18}[\\p{L}\\p{N}]$";
 const RESERVADOS = /^(guia|guía|admin|administracion|administración|oficina|corresponsal|olivartrack)$/i;
 
+export const TEXTO_CODIGO_MALO = "Ese código no sirve: puede que haya caducado o que tenga un error. Escribe el que enseñan ahora las gafas.";
+
 export async function rutasYo(app: FastifyInstance, ctx: Contexto): Promise<void> {
-  const { bd } = ctx;
+  const { bd, config } = ctx;
+  const ventanaVinculo = config.vinculo.ventanaMin * 60_000;
+  // intentos de aprobar por hogar (además del límite por IP de la ruta): con 31^6 códigos posibles, adivinar uno vivo es inviable
+  const porHogar = app.createRateLimit({
+    max: config.vinculo.intentosPorHogar, timeWindow: ventanaVinculo,
+    keyGenerator: (req: FastifyRequest) => "vinculo:" + String(req.session?.hogarId ?? "?"),
+  });
+
+  // Primer acceso (UX.md §4.5): el hogar acepta la versión vigente de las normas y dice si quiere avisos por correo.
+  app.put<{ Body: { version: number; avisos_correo: boolean } }>("/api/yo/normas", {
+    preHandler: requiereSesion,
+    schema: { body: { type: "object", additionalProperties: false, required: ["version", "avisos_correo"], properties: { version: { type: "integer", minimum: 1, maximum: 32767 }, avisos_correo: { type: "boolean" } } } },
+  }, async (req, rep) => {
+    if (req.body.version !== NORMAS_VERSION) {
+      return rep.code(409).send({ error: "normas_cambiaron", mensaje: "Las normas han cambiado mientras las leías. Vuelve a cargar la página para ver las nuevas." });
+    }
+    await bd.query("UPDATE hogares SET normas_version = $1, normas_aceptadas_en = now(), avisos_correo = $2 WHERE id = $3",
+      [NORMAS_VERSION, req.body.avisos_correo, req.session.hogarId]);
+    await audita(bd, req.session.hogarId!, "yo.normas", { version: NORMAS_VERSION, avisos_correo: req.body.avisos_correo });
+    return rep.code(204).send();
+  });
+
+  // Configuración → Mis dispositivos → Vincular (contratos/sesion.md § Código corto): aprobar o rechazar el código de unas gafas.
+  app.post<{ Body: { codigo: string; aprobar: boolean } }>("/api/yo/dispositivos/vincular", {
+    preHandler: requiereSesion,
+    config: { rateLimit: { max: config.vinculo.intentosPorIp, timeWindow: ventanaVinculo } },
+    schema: { body: { type: "object", additionalProperties: false, required: ["codigo", "aprobar"], properties: { codigo: { type: "string", pattern: PATRON_ENTRADA }, aprobar: { type: "boolean" } } } },
+  }, async (req, rep) => {
+    const lim = await porHogar(req);
+    if (!lim.isAllowed && lim.isExceeded) return rep.code(429).send({ error: "demasiadas_peticiones", mensaje: TEXTO_LIMITE_VINCULO });
+    const ok = await decideCodigo(bd, config.sesion.secreto, req.session.hogarId!, req.body.codigo, req.body.aprobar);
+    // la misma respuesta si no existe, si caducó o si ya se decidió: no se puede averiguar qué códigos hay
+    if (!ok) return rep.code(404).send({ error: "codigo_no_valido", mensaje: TEXTO_CODIGO_MALO });
+    return rep.code(204).send();
+  });
 
   app.put<{ Body: { alias: string; visible: boolean } }>("/api/yo/alias", {
     preHandler: requiereSesion,
@@ -50,17 +87,18 @@ export async function rutasYo(app: FastifyInstance, ctx: Contexto): Promise<void
   // Derecho de acceso y portabilidad: todo lo que se guarda del hogar, en JSON.
   app.get("/api/yo/datos", { preHandler: requiereSesion }, async (req, rep) => {
     const id = req.session.hogarId!;
-    const [h, av, hz, pr, vi, se] = await Promise.all([
-      bd.query("SELECT correo, rol, alias, alias_visible, creado_en FROM hogares WHERE id = $1", [id]),
+    const [h, av, hz, pr, vi, se, cv] = await Promise.all([
+      bd.query("SELECT correo, rol, alias, alias_visible, normas_version, normas_aceptadas_en, avisos_correo, creado_en FROM hogares WHERE id = $1", [id]),
       bd.query("SELECT camisa, sombrero, piel, actualizado_en FROM avatares WHERE hogar_id = $1", [id]),
       bd.query("SELECT codigo, nombre FROM hazas WHERE hogar_id = $1 ORDER BY codigo", [id]),
       bd.query("SELECT texto, creada_en, respuesta, respondida_en FROM preguntas WHERE hogar_id = $1 ORDER BY creada_en", [id]),
       bd.query("SELECT v.titulo, v.empieza_en FROM visitas_asistentes a JOIN visitas v ON v.id = a.visita_id WHERE a.hogar_id = $1 ORDER BY v.empieza_en", [id]),
       bd.query("SELECT creada_en, ultima_actividad_en, expira_en, revocada_en FROM sesiones WHERE hogar_id = $1 ORDER BY creada_en", [id]),
+      bd.query("SELECT creado_en, aprobado_en, usado_en FROM codigos_vinculo WHERE hogar_id = $1 ORDER BY creado_en", [id]),
     ]);
     await audita(bd, id, "yo.datos_descargados");
     rep.header("cache-control", "no-store").header("content-disposition", "attachment; filename=\"mis-datos-gemelo.json\"");
-    return { hogar: h.rows[0], avatar: av.rows[0] ?? null, hazas: hz.rows, preguntas: pr.rows, visitas: vi.rows, sesiones: se.rows };
+    return { hogar: h.rows[0], avatar: av.rows[0] ?? null, hazas: hz.rows, preguntas: pr.rows, visitas: vi.rows, sesiones: se.rows, aparatos_vinculados: cv.rows };
   });
 
   // Derecho de supresión: se borra el hogar y, en cascada, todo lo suyo (migraciones/0001_inicial.sql).

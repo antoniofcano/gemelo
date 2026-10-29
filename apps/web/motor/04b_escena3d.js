@@ -1,6 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Escena3D
-// Consume: 01_datos (D, ESC3D), 03_escena (renderer, scene, camera, exag), 04_terreno (Terreno), 08_marcadores (listo, aplica)
+// Consume: 01_datos (D, ESC3D), 03_escena (renderer, scene, camera, exag), 04_terreno (Terreno), 04d_sombreado_tiles (SombreadoTiles),
+//   08_marcadores (listo, aplica)
 // ===============================================================================
   // ---------- la escena en 3D Tiles 1.1 (F1d paso 3b, ADR-0015 Propuesto; formato en doc/sistema/TILES3D.md), solo con ?escena=tiles.
   // Sin la bandera no crea nada y el motor dibuja lo de siempre. Con ella, el relieve con su ortofoto lo dibuja 3DTilesRendererJS (versión
@@ -25,6 +26,7 @@
       if (estado === "sin") return;
       estado = "sin"; motivo = String(e && e.message || e); console.warn("escena 3D Tiles: " + motivo + " (vuelve el relieve de siempre)");
       if (tiles) { try { scene.remove(tiles.group); tiles.dispose(); } catch (e2) {} tiles = null; }
+      SombreadoTiles.libera();
       ESC3D.activa = false; Terreno.grupo.visible = true;
       if (listo) { Terreno.iniciaMosaico(); Terreno.montaTodas(); aplica(); }   // si ya arrancó; si no, lo montará el arranque (90_final.js)
     }
@@ -55,6 +57,8 @@
           raizT = new THREE.Matrix4().fromArray(r.transform); colocaGrupo(); estado = "activo";
         });
         tiles.addEventListener("load-model", function (e) { quitaOlivos(e.scene); e.scene.userData.tesela = { uri: e.tile.content && e.tile.content.uri }; });
+        tiles.addEventListener("load-model", function (e) { SombreadoTiles.modelo(e.scene, e.tile); });   // el relieve, con el sombreado del Terreno (04d)
+        tiles.addEventListener("dispose-model", function (e) { SombreadoTiles.suelta(e.scene); });
         tiles.addEventListener("load-error", function (e) {
           errores++; console.error("escena 3D Tiles: tesela con fallo " + (e.url || "") + " " + (e.error && e.error.message || ""));
           if (!raizT) falla(new Error("no se pudo leer " + u));
@@ -82,6 +86,7 @@
       if (exag !== exagPuesta) colocaGrupo();
       camera.updateMatrixWorld();
       tiles.update();
+      SombreadoTiles.actualiza();
     }
     function resumen() {
       var vis = 0; if (tiles) tiles.visibleTiles.forEach(function (t) { if (t.content && t.content.uri) vis++; });
@@ -101,7 +106,7 @@
       var s = tiles && tiles.stats;
       return estado === "activo" && tiles.loadProgress === 1 && s.queued + s.downloading + s.parsing === 0;
     }
-    function libera() { if (!tiles) return; if (Sched) Sched.setXRSession(null); scene.remove(tiles.group); tiles.dispose(); tiles = null; estado = "apagado"; }
+    function libera() { if (!tiles) return; SombreadoTiles.libera(); if (Sched) Sched.setXRSession(null); scene.remove(tiles.group); tiles.dispose(); tiles = null; estado = "apagado"; }
     if (ESC3D.pedida) { Terreno.grupo.visible = false; arranca(); }
     return { actualiza: actualiza, perfil: perfil, resumen: resumen, libera: libera, listo: listo, alturaEn: alturaEn, grupo: function () { return tiles && tiles.group; } };
   })();

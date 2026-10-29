@@ -6,7 +6,7 @@ info:
   title: Gemelo · api
   version: 0.2.0
   description: >
-    Servidor de una persona (F1a): enlace mágico, sesión en cookie, hazas (GeoJSON y ficha pública sin titular ni
+    Servidor de una persona (F1a): enlace mágico, código corto para las gafas, sesión en cookie, hazas (GeoJSON y ficha pública sin titular ni
     kilos), lectura de OlivarTrack por MCP. Sin sesión solo responde lo de acceso y la salud (decisión 16).
 servers:
   - url: https://gemelo.canoydamas.es
@@ -128,17 +128,66 @@ paths:
           application/json:
             schema: { type: object, additionalProperties: false, required: [t], properties: { t: { type: string } } }
       responses:
-        "303": { description: "formulario: sesión abierta, a /finca/ (Set-Cookie __Host-gemelo)" }
-        "200": { description: "JSON: sesión abierta" }
+        "303": { description: "formulario: sesión abierta (Set-Cookie __Host-gemelo); a /#bienvenida si le toca el primer acceso (normas sin aceptar), si no a /finca/" }
+        "200": { description: "JSON: sesión abierta", content: { application/json: { schema: { type: object, additionalProperties: false, required: [ok, primer_acceso], properties: { ok: { const: true }, primer_acceso: { type: boolean } } } } } }
         "400": { description: "enlace caducado, usado o no válido" }
         "403": { $ref: "#/components/responses/OrigenNoAdmitido" }
 
+  /api/auth/vincula:
+    post:
+      summary: "Unas gafas sin sesión piden un código corto (contratos/sesion.md § Código corto): 6 símbolos sin ambiguos, 5 min, un solo uso"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, properties: {} }
+      responses:
+        "201":
+          description: "el código para enseñarlo, el secreto de sondeo (solo para estas gafas) y cada cuánto sondear"
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [codigo, sondeo, expira_en, cada_s]
+                properties:
+                  codigo: { type: string, pattern: "^[2-9A-HJKMNP-Z]{3}-[2-9A-HJKMNP-Z]{3}$" }
+                  sondeo: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
+                  expira_en: { type: string, format: date-time }
+                  cada_s: { type: integer, minimum: 1 }
+        "403": { $ref: "#/components/responses/OrigenNoAdmitido" }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/auth/vincula/sondeo:
+    post:
+      summary: "Las gafas preguntan si ya se aprobó su código; al verlo aprobado se gasta (atómico) y reciben su propia sesión"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [sondeo], properties: { sondeo: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" } } }
+      responses:
+        "200":
+          description: "esperando, rechazado o caducado (también si el secreto no existe); aprobado lleva Set-Cookie __Host-gemelo (sesión nueva, rotación)"
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [estado]
+                properties:
+                  estado: { enum: [esperando, aprobado, rechazado, caducado] }
+                  primer_acceso: { type: boolean, description: "solo con estado aprobado" }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "403": { $ref: "#/components/responses/OrigenNoAdmitido" }
+        "429": { $ref: "#/components/responses/Limite" }
+
   /api/sesion:
     get:
-      summary: Quién soy (rol y alias)
+      summary: Quién soy (rol, alias y si me toca el primer acceso)
       security: [{ sesion: [] }]
       responses:
-        "200": { description: ok, content: { application/json: { schema: { type: object, properties: { rol: { enum: [hogar, guia, corresponsal, admin] }, alias: { type: [string, "null"] }, alias_visible: { type: boolean } } } } } }
+        "200": { description: ok, content: { application/json: { schema: { type: object, additionalProperties: false, required: [rol, alias, alias_visible, primer_acceso], properties: { rol: { enum: [hogar, guia, corresponsal, admin] }, alias: { type: [string, "null"] }, alias_visible: { type: boolean }, primer_acceso: { type: boolean, description: "true si no ha aceptado la versión vigente de las normas (PUT /api/yo/normas)" } } } } } }
         "401": { $ref: "#/components/responses/SinSesion" }
 
   /api/sesion/salir:
@@ -198,6 +247,36 @@ paths:
         "204": { description: guardado }
         "400": { description: alias no válido o reservado }
         "409": { description: alias ocupado }
+
+  /api/yo/normas:
+    put:
+      summary: "Primer acceso: acepta la versión vigente de las normas y la privacidad (UX.md §4.5) y si quiere avisos por correo"
+      security: [{ sesion: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [version, avisos_correo], properties: { version: { type: integer, minimum: 1 }, avisos_correo: { type: boolean } } }
+      responses:
+        "204": { description: aceptadas }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "409": { description: "la versión no es la vigente (las normas cambiaron mientras se leían)" }
+
+  /api/yo/dispositivos/vincular:
+    post:
+      summary: "Configuración → Mis dispositivos → Vincular: aprueba (o rechaza) el código que enseñan unas gafas"
+      security: [{ sesion: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [codigo, aprobar], properties: { codigo: { type: string, pattern: "^[ A-Za-z0-9-]{6,12}$", description: "con o sin guion; se normaliza a mayúsculas" }, aprobar: { type: boolean } } }
+      responses:
+        "204": { description: "aprobado (las gafas entran en su próximo sondeo) o rechazado" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/OrigenNoAdmitido" }
+        "404": { description: "el código no sirve: la MISMA respuesta si no existe, caducó o ya se decidió (no enumerable)" }
+        "429": { $ref: "#/components/responses/Limite" }
 
   /api/yo/avatar:
     put:

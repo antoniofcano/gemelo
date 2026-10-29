@@ -4,7 +4,8 @@
 //  1. crea infra/dev/.env con claves aleatorias si falta;
 //  2. genera el fixture sintético si falta (o usa GEMELO_DEV_TESELAS, una carpeta de datos reales FUERA del repo);
 //  3. construye la web con Vite contra el índice de la finca (GEMELO_DEV_FINCA, por defecto hituelo), con base /teselas/<finca>/,
-//     y deja junto a cada fichero su versión .br/.gz para que Caddy los sirva ya comprimidos;
+//     y la portada (apps/web/portada → dist-portada, build:portada), y deja junto a cada fichero su .br/.gz para que Caddy
+//     los sirva ya comprimidos;
 //  4. arranca la base y comprueba que tiene los roles de producción (gemelo_dueno y gemelo_api; decisión 55): un volumen
 //     de antes no los tiene y se dice cómo arreglarlo;
 //  5. docker compose up -d --build --wait: construye la imagen de la api (apps/api/Dockerfile; con la caché de Docker es
@@ -61,8 +62,11 @@ function precomprime(dir) {
 function construyeWeb(datos) {
   if (!fs.existsSync(path.join(WEB, "node_modules", "vite"))) { console.log("  instalando apps/web (npm ci)…"); npm(["ci", "--no-audit", "--no-fund"], WEB); }
   npm(["run", "build"], WEB, { GEMELO_DATOS: datos });
-  const dist = path.join(WEB, "dist");
-  console.log("  " + precomprime(dist) + " ficheros precomprimidos (br, gz) en " + rel(dist));
+  npm(["run", "build:portada"], WEB);          // la portada y la entrada (apps/web/portada → dist-portada), servida en /
+  for (const d of ["dist", "dist-portada"]) {
+    const dist = path.join(WEB, d);
+    console.log("  " + precomprime(dist) + " ficheros precomprimidos (br, gz) en " + rel(dist));
+  }
 }
 
 const volumen = () => (process.env.COMPOSE_PROJECT_NAME || "gemelo-dev") + "_pg_datos";
@@ -115,7 +119,7 @@ export async function levanta({ sinBuild = false, redLocal = false } = {}) {
   preparaFixture();                      // la siembra de hazas sale siempre del fixture, aunque las teselas sean otras
   const datos = datosDeLaWeb(teselas, finca);
   if (!sinBuild) { paso("build de la web (Vite)"); construyeWeb(datos); }
-  else if (!fs.existsSync(path.join(WEB, "dist", "index.html"))) throw new Error("--sin-build pero no hay apps/web/dist: quítalo la primera vez");
+  else if (!fs.existsSync(path.join(WEB, "dist", "index.html")) || !fs.existsSync(path.join(WEB, "dist-portada", "index.html"))) throw new Error("--sin-build pero no hay apps/web/dist o dist-portada: quítalo la primera vez");
   paso("dependencias de las herramientas");
   aseguraDependencias();
   paso("base de datos y sus roles (" + PG_DUENO + ", " + PG_API + ")");

@@ -93,6 +93,20 @@ Fixture sintético de Hituelo (`--catalogo modelos/olivos/fixture/catalogo.json`
 ### Con `copas_id` (2026-10-29, salida nueva de Hituelo: [DATOS](../operacion/DATOS.md#hituelo-completo-para-olivosgen-y-f1d-copas_id-copas_tipo-copas_param-y-copas_semilla-2026-10-29))
 `node tuberia/tiles3d/genera.mjs --entrada <salida nueva> --salida pruebas/salida/tiles3d-hituelo-v3`, mismas opciones. Mismos nodos (269), triángulos por nivel y 40 MB en disco que la tabla de arriba (las teselas y `copas` son las mismas). **387 s (6,5 min)** en una corrida, máquina cargada (otros agentes con Docker y Chrome); no es cifra de referencia. `comprueba.mjs`: **0 errores**, `id_fuente = "copas_id"`, 17.577 instancias, 5.859 olivos en las hojas, 0 repetidos; el tileset anterior (`id_fuente = "indice"`) contra este índice da error en `huella_registro`, `id_fuente` y en la huella de cada glb con olivos: los ids se casan por `copas_id`, no por índice.
 
+### Hituelo real con el generador 0.3.0 (2026-10-29, raíz sin contenido)
+`GEMELO_DATOS=<indice.json de hituelo-v3> node tuberia/tiles3d/genera.mjs --salida pruebas/salida/tiles3d-hituelo-v3-030`, opciones por defecto, una corrida. **72 s** (1 min 12 s; la máquina no estaba cargada por otros agentes, pero no es cifra de referencia). Confirma el árbol calculado arriba:
+
+| Medida | Valor |
+|---|---|
+| Nodos | 249 (raíz sin contenido + 18 + 46 + 184) = **248 glb** + `tileset.json` (141.060 B) |
+| glb, total | **40.011.160 B = 38,2 MiB** (el 0.2.0: 40,9 MB con 269 glb) |
+| glb por nivel | 512 m: 3,04 MiB (18) · 256 m: 9,30 MiB (46) · 128 m: 25,82 MiB (184) |
+| Triángulos por nivel (terreno + olivos) | 512 m: 109.402 + 140.616 · 256 m: 359.866 + 140.616 · 128 m: 971.120 + 843.696; olivos 5.859 en cada nivel |
+| Validador de CesiumGS 0.6.1 | **0 errores, 0 avisos**; 1.386 mensajes informativos (extensión `EXT_mesh_gpu_instancing` no validable y objetos «posiblemente sin usar») |
+| Identidad (`comprueba.mjs`, contra la salida `hituelo-v3`) | **0 errores**; `id_fuente = "copas_id"`, 5.882 copas, 5.859 olivos, 5.859 en las hojas, 0 repetidos, 17.577 instancias, 248 glb |
+
+Sigue sin medirse el dibujo con este tileset en el motor (el encargo al banco del T3 lo hará).
+
 ## Hituelo real con `?olivos=gen` (2026-10-29, salida nueva con `copas_id`, `copas_param` y `copas_semilla`)
 Salida artefacto en modo ficheros (`montar_v2.py --finca hituelo --modo ficheros --datos <salida nueva>/indice.json --olivos <olivo.iife.js>`; HTML 5,8 MB + 92 ficheros), Chrome headless con SwiftShader (recuentos y memoria, **no fps**), 900×650, `?debug&arbsc=1`, máquina cargada. Escenarios propios de Hituelo (el «cerca» de `_navegador.js` cae en Hituelo sin olivos a 60 m): lejos 600 m sobre (−147, 547); cerca 45 m sobre (128,9, 328,7), una zona de densidad mediana (28 copas a 40 m); nube 350 m. Una corrida por caso; la cola no se vacía en SwiftShader (170-215 trabajos pendientes durante 15 min), así que las cifras son de un instante, no de un estado estable.
 
