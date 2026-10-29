@@ -86,7 +86,60 @@ Qué hace ([`infra/dev/compose.red-local.yml`](../../infra/dev/compose.red-local
 
 ### Hituelo real en local
 
-Ya existe: `GEMELO_DEV_TESELAS` (la carpeta de datos, **fuera del repo**, con `hituelo/indice.json` y `hituelo/t/`) y `GEMELO_DEV_FINCA=hituelo`, en el entorno o en `infra/dev/.env` (ignorado); ver [Datos reales sin versionarlos](#datos-reales-sin-versionarlos). Sin `--sin-build`, porque la web lleva el índice dentro. Se puede juntar con el interruptor. Las **hazas siguen siendo las sintéticas del fixture**: caen en las coordenadas del fixture y no encima del Hituelo real (hoy el mundo aún no pinta lindes, así que no se ve). Comprobado montando una copia del fixture desde una carpeta fuera del repo; **no probado con los datos reales**, que no están en esta máquina.
+`GEMELO_DEV_TESELAS` (la carpeta de datos, **fuera del repo**, con `hituelo/indice.json` y `hituelo/t/`) y `GEMELO_DEV_FINCA=hituelo`, en el entorno o en `infra/dev/.env` (ignorado); ver [Datos reales sin versionarlos](#datos-reales-sin-versionarlos). Sin `--sin-build`, porque la web lleva el índice dentro. Se puede juntar con el interruptor. Las salidas de referencia de una sola finca (`hituelo-v3`) se sirven mejor con las variables de la sección siguiente. Con cualquier finca que no sea el fixture, las hazas pasan a ser las **de prueba** ([abajo](#hazas-de-prueba-sobre-la-finca-real)).
+
+### Prueba en aparatos con Hituelo v3
+
+Para la prueba de Antonio (decisión 57: navegador, móvil y Quest, cada uno por su cuenta): Hituelo v3 en `/teselas/hituelo/`, su tileset 3D Tiles 0.3.0 en `/teselas/hituelo/tileset/`, la web construida **con el constructor de olivos** (`?olivos=gen`) y con 3DTilesRendererJS (`?escena=tiles`), y unas hazas de prueba para ver lindes.
+
+**Variables** (en el entorno o en `infra/dev/.env`; nunca rutas en el repo; las dos carpetas van **fuera** del repo o en `pruebas/salida/`, y `levanta.mjs` se niega si no):
+
+| Variable | Qué es |
+|---|---|
+| `GEMELO_DEV_FINCA_CARPETA` | la carpeta de **una** finca con `indice.json` y `t/` directamente dentro (la salida de referencia `hituelo-v3`); se monta de solo lectura y se sirve en `/teselas/<GEMELO_DEV_FINCA>/` |
+| `GEMELO_DEV_TILESET` | la carpeta del tileset (con `tileset.json` directamente dentro); se sirve en `/teselas/<GEMELO_DEV_FINCA>/tileset/` |
+| `GEMELO_DEV_FINCA` | `hituelo` (el valor por defecto) |
+| `GEMELO_DEV_IP` | solo si la IP detectada no es la de la WiFi (con `--red-local`) |
+
+**El tileset** (no está en el repo; sale de la salida de referencia con el generador 0.3.0, [TILES3D](../sistema/TILES3D.md#cómo-regenerar)):
+
+```
+cd tuberia/tiles3d && npm i                                        # una vez
+GEMELO_DATOS=<carpeta hituelo-v3>/indice.json node tuberia/tiles3d/genera.mjs --salida pruebas/salida/tiles3d-hituelo-v3-030
+```
+
+(`GEMELO_DATOS` es la variable del generador; `pruebas/salida/` está ignorada por git. Una pasada dio 5859 olivos y 39 MB; el tiempo de generación no está medido aquí.)
+
+**La orden** (PowerShell; en Git Bash, `export VAR=…` antes):
+
+```
+$env:GEMELO_DEV_FINCA_CARPETA = "<ruta a hituelo-v3>"
+$env:GEMELO_DEV_TILESET       = "<ruta a tiles3d-hituelo-v3-030>"
+npm run dev:arriba -- --red-local
+```
+
+La primera vez, `levanta.mjs` hace `npm ci` en `apps/web` (incluye 3DTilesRendererJS) y en `apps/web/olivo` (`--omit=dev`: solo `three-gen`, el `three` 0.128 del constructor) si faltan, y lo dice en el paso «build de la web» (`con constructor de olivos`, `con 3DTilesRendererJS`). Sin ellos Vite pondría sustitutos vacíos y `?olivos=gen` / `?escena=tiles` no harían nada. Al acabar: `npm run dev:abajo`.
+
+**URL** (`https://localhost:8743` en el ordenador, `https://<IP>:8743` en los aparatos; hace falta sesión):
+
+| Para ver… | URL |
+|---|---|
+| el mundo de siempre | `/finca/` |
+| con los olivos generados | `/finca/?olivos=gen` |
+| con la escena 3D Tiles | `/finca/?olivos=gen&escena=tiles` |
+| con fps, ms de JS, llamadas y triángulos | añadir `&debug` |
+
+**Entrar desde el móvil**: pide el enlace en la portada del ordenador, ábrelo en el ordenador desde Mailpit (`http://localhost:8025`; abrirlo no lo gasta), «Crear código QR» en Chrome, escanéalo con el móvil y pulsa «Entrar» **en el móvil** (detalle en [El interruptor de red local](#el-interruptor-de-red-local)). **Desde las Quest**: abre `https://<IP>:8743/`, acepta el aviso del certificado, **Entrar → Vincular unas gafas con un código**; en el ordenador o el móvil con sesión, **Mis dispositivos** → teclea el código → **Aprobar** (las gafas entran solas en unos 3 s). Luego `/finca/?olivos=gen&escena=tiles` y el botón de VR.
+
+#### Hazas de prueba sobre la finca real
+
+La siembra normal pone hazas sobre el Hituelo sintético del fixture, que no caen sobre el real. Si la finca servida **no** es el fixture, `siembra.mjs` usa [`tuberia/hazas/de_prueba.py`](../../tuberia/hazas/de_prueba.py): 4 rectángulos de 90 × 60 m **inventados**, centrados en copas del índice servido (puntos fijos del reparto de las copas, siempre los mismos), con los códigos `H-D01`…`H-D04` para que casen con los hogares de prueba. Nombres «(de prueba, inventada)», `"sintetico": true`, sin recuentos declarados, sin NDVI y **sin olivos** (la siembra borra los de la base: los del fixture no pintan nada sobre otra finca). No son las hazas de la oficina (decisión 12) ni nada de la explotación; del índice solo se usa dónde hay copas. Quitar las variables y volver a `npm run dev:arriba` devuelve las del fixture.
+
+#### Lo no probado con Hituelo v3
+
+- **Los aparatos reales**, como abajo: ni el móvil ni las Quest han abierto esta combinación. `?olivos=gen` y `?escena=tiles` sobre Hituelo v3 en un navegador de verdad (fps, memoria, calidad del olivo) están **sin medir**; lo que hay son recuentos en Chrome headless con SwiftShader, que no da fps.
+- El tiempo de carga del tileset (39 MB) por la WiFi hacia un móvil o las Quest, y el peso del ordenador con Docker y la generación de olivos a la vez.
+- Que las hazas de prueba caigan sobre olivar y no sobre un claro: se centran en una copa medida, pero no se han mirado a ojo en el mundo.
 
 ### Lo no probado
 
