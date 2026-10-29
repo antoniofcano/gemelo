@@ -1,4 +1,6 @@
-// Levanta el entorno de desarrollo con Docker: `npm run dev:arriba` (o node infra/dev/herramientas/levanta.mjs [--sin-build]).
+// Levanta el entorno de desarrollo con Docker: `npm run dev:arriba` (o node infra/dev/herramientas/levanta.mjs [--sin-build] [--red-local]).
+// --red-local: además de 127.0.0.1, el https de Caddy (y SOLO él) escucha en la IP de la red local (GEMELO_DEV_IP o la que
+// se detecta), para probar desde el móvil o las Quest de la misma WiFi (compose.red-local.yml). Sin él, todo como siempre.
 //  1. crea infra/dev/.env con claves aleatorias si falta;
 //  2. genera el fixture sintético si falta (o usa GEMELO_DEV_TESELAS, una carpeta de datos reales FUERA del repo);
 //  3. construye la web con Vite contra el índice de la finca (GEMELO_DEV_FINCA, por defecto hituelo), con base /teselas/<finca>/,
@@ -13,9 +15,10 @@ import path from "node:path";
 import zlib from "node:zlib";
 import { fileURLToPath } from "node:url";
 import { siembra, HOGARES } from "./siembra.mjs";
-import { aseguraEnv, cargaEnv, carpetaTeselas, compose, motivoSinDocker, npm, aseguraDependencias, puertos, util, RAIZ, ENV, FIXTURE, PG_API, PG_DUENO, SALIDA_DEV, WEB } from "./_comun.mjs";
+import { aseguraEnv, cargaEnv, carpetaTeselas, compose, ipRedLocal, motivoSinDocker, npm, aseguraDependencias, puertos, util, RAIZ, ENV, FIXTURE, PG_API, PG_DUENO, SALIDA_DEV, WEB } from "./_comun.mjs";
 
 const SIN_BUILD = process.argv.includes("--sin-build");
+const RED_LOCAL = process.argv.includes("--red-local");
 const rel = p => path.relative(RAIZ, p) || ".";
 
 function paso(t) { console.log("\n▸ " + t); }
@@ -91,7 +94,7 @@ function motivoUp() {
   return "docker compose up falló (mira `npm run dev:estado` y `docker compose -f infra/dev/compose.yml logs`)";
 }
 
-export async function levanta({ sinBuild = false } = {}) {
+export async function levanta({ sinBuild = false, redLocal = false } = {}) {
   const sin = motivoSinDocker();
   if (sin) throw new Error(sin);
   paso("claves de desarrollo");
@@ -100,6 +103,14 @@ export async function levanta({ sinBuild = false } = {}) {
     : env ? "  " + rel(ENV) + " ya existía: añadidas las claves nuevas " + env.join(", ") : "  " + rel(ENV) + " ya existe (no se toca)");
   cargaEnv();
   const teselas = carpetaTeselas(), finca = process.env.GEMELO_DEV_FINCA || "hituelo";
+  let red = null;
+  if (redLocal) {
+    red = ipRedLocal();
+    process.env.GEMELO_DEV_IP = red.ip;                 // lo interpola compose.red-local.yml
+    paso("RED LOCAL: el https de la web se abre también en " + red.ip + (red.nombre ? " (" + red.nombre + ")" : " (GEMELO_DEV_IP)") +
+      "; base, correo, LiveKit y api siguen solo en 127.0.0.1 o sin puerto" +
+      (red.otras.length ? "\n  otras IP posibles: " + red.otras.map(o => o.ip + " (" + o.nombre + ")").join(", ") + " — elige con GEMELO_DEV_IP" : ""));
+  }
   paso("datos: " + (teselas === FIXTURE ? "fixture sintético" : "carpeta local (GEMELO_DEV_TESELAS)") + ", finca " + finca);
   preparaFixture();                      // la siembra de hazas sale siempre del fixture, aunque las teselas sean otras
   const datos = datosDeLaWeb(teselas, finca);
@@ -110,7 +121,8 @@ export async function levanta({ sinBuild = false } = {}) {
   paso("base de datos y sus roles (" + PG_DUENO + ", " + PG_API + ")");
   compruebaRoles({ GEMELO_DEV_TESELAS: teselas });
   paso("docker compose up -d --build --wait (api con sus migraciones y servicios)");
-  const r = compose(["up", "-d", "--build", "--wait", "--wait-timeout", "240"], { env: { GEMELO_DEV_TESELAS: teselas } });
+  // sin --red-local, `up` recrea web y api sin el puerto ni la IP de la red: cerrar es volver a levantar sin el interruptor
+  const r = compose(["up", "-d", "--build", "--wait", "--wait-timeout", "240"], { env: { GEMELO_DEV_TESELAS: teselas }, redLocal });
   if (r.status !== 0) throw new Error(motivoUp());
   paso("siembra sintética (hazas, olivos y hogares de prueba)");
   const sembrado = await siembra();
@@ -124,11 +136,15 @@ export async function levanta({ sinBuild = false } = {}) {
     "\n  teselas   " + w + "/teselas/" + finca + "/indice.json   (solo con sesión)" +
     "\n  correo    http://localhost:" + p.correoWeb + "/   (SMTP en 127.0.0.1:" + p.smtp + ")" +
     "\n  db        127.0.0.1:" + p.db + "  base gemelo; " + PG_DUENO + " (dueño) y " + PG_API + " (la api), claves en infra/dev/.env" +
-    "\n  livekit   ws://localhost:" + p.livekit + "  (claves en infra/dev/.env)");
-  return { sembrado };
+    "\n  livekit   ws://localhost:" + p.livekit + "  (claves en infra/dev/.env)" +
+    (red ? "\n\nABIERTO A LA RED LOCAL (solo mientras dure la prueba; se cierra con `npm run dev:abajo` o levantando sin --red-local):" +
+      "\n  aparatos  https://" + red.ip + ":" + p.https + "/   (solo el https de la web; aceptar el aviso del certificado de la CA local)" +
+      "\n  enlace    el correo trae https://" + red.ip + ":" + p.https + "/api/auth/entrar?t=…: ábrelo en el ordenador desde el buzón" +
+      "\n            (abrirlo no lo gasta), pásalo al aparato con «Crear código QR» de Chrome y pulsa «Entrar» EN EL APARATO" : ""));
+  return { sembrado, red };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  try { await levanta({ sinBuild: SIN_BUILD }); }
+  try { await levanta({ sinBuild: SIN_BUILD, redLocal: RED_LOCAL }); }
   catch (e) { console.error("\n✗ " + e.message); process.exit(1); }
 }

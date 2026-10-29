@@ -39,6 +39,8 @@ services:
     environment:
       LIVEKIT_PUBLICO: "ws://localhost:${GEMELO_DEV_PUERTO_LIVEKIT:-7880}"
       PUERTO_HTTPS_PUBLICO: "${GEMELO_DEV_PUERTO_HTTPS:-8743}"   # http redirige a https://localhost:<este>
+      SITIOS: "https://localhost:8443"   # el sitio https de Caddy; compose.red-local.yml le suma la IP de la red local
+      SNI_POR_DEFECTO: localhost         # el certificado para quien no manda SNI (a una IP no se manda)
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/salud"]
       interval: 10s

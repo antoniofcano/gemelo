@@ -3,6 +3,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import os from "node:os";
 import https from "node:https";
 import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
@@ -12,6 +13,8 @@ export const HERRAMIENTAS = path.dirname(fileURLToPath(import.meta.url));
 export const DEV = path.dirname(HERRAMIENTAS);
 export const RAIZ = path.resolve(DEV, "..", "..");
 export const COMPOSE = path.join(DEV, "compose.yml");
+/** Interruptor de red local (--red-local): abre SOLO el https de Caddy en la IP de la red local */
+export const COMPOSE_RED_LOCAL = path.join(DEV, "compose.red-local.yml");
 export const ENV = path.join(DEV, ".env");
 export const EJEMPLO_ENV = path.join(DEV, "ejemplo.env");
 export const FIXTURE = path.join(RAIZ, "pruebas", "salida", "fixture");
@@ -84,10 +87,46 @@ export function carpetaTeselas() {
   return abs;
 }
 
-/** docker compose -f infra/dev/compose.yml <args>. `captura` devuelve la salida en vez de mostrarla. */
-export function compose(args, { captura = false, env } = {}) {
+/** ¿Es una IPv4 de red privada (RFC 1918)? Solo esas se aceptan para abrir el entorno a la red local. */
+export function esIpPrivada(ip) {
+  const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(String(ip || ""));
+  if (!m || m.slice(1).some(x => Number(x) > 255)) return false;
+  const [a, b] = [Number(m[1]), Number(m[2])];
+  return a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
+}
+
+/**
+ * La IP de este equipo en la red local (la WiFi de la prueba): GEMELO_DEV_IP si viene, o la primera IPv4 privada de una
+ * interfaz física (se saltan las virtuales de Docker, WSL, Hyper-V, VirtualBox, VMware y VPN). Devuelve { ip, otras }.
+ */
+export function ipRedLocal() {
+  const dada = process.env.GEMELO_DEV_IP;
+  if (dada) {
+    if (!esIpPrivada(dada)) throw new Error("GEMELO_DEV_IP=" + dada + " no es una IPv4 de red privada (10.x, 172.16-31.x, 192.168.x)");
+    return { ip: dada, otras: [] };
+  }
+  const VIRTUAL = /vEthernet|WSL|Docker|Hyper-V|VirtualBox|VMware|vbox|veth|br-|virbr|Tailscale|ZeroTier|tun|tap|utun|Loopback/i;
+  const cand = [];
+  for (const [nombre, dirs] of Object.entries(os.networkInterfaces())) {
+    if (VIRTUAL.test(nombre)) continue;
+    for (const d of dirs || []) if (d.family === "IPv4" && !d.internal && esIpPrivada(d.address)) cand.push({ nombre, ip: d.address });
+  }
+  // primero la WiFi (la prueba es por WiFi); al final 192.168.56.x, la red «solo anfitrión» que VirtualBox crea por defecto
+  // con un nombre que no la delata (visto en esta máquina: «Ethernet» con 192.168.56.1)
+  const orden = c => (/wi-?fi|wlan|wireless|^wl|^en0$/i.test(c.nombre) ? 0 : 10) + (c.ip.startsWith("192.168.56.") ? 20 : 0) +
+    (c.ip.startsWith("192.168.") ? 0 : c.ip.startsWith("10.") ? 1 : 2);
+  cand.sort((x, y) => orden(x) - orden(y));
+  if (!cand.length) throw new Error("no encuentro la IP de la red local (¿sin WiFi?): ponla a mano con GEMELO_DEV_IP=<ip>");
+  return { ip: cand[0].ip, nombre: cand[0].nombre, otras: cand.slice(1) };
+}
+
+/**
+ * docker compose -f infra/dev/compose.yml [-f compose.red-local.yml] <args>. `captura` devuelve la salida en vez de
+ * mostrarla; `redLocal` suma el interruptor de red local (necesita GEMELO_DEV_IP en el entorno).
+ */
+export function compose(args, { captura = false, env, redLocal = false } = {}) {
   // sin .env (aún no se ha levantado nunca) Compose no podría interpolar las claves: para `config`, `ps` o `down` basta la plantilla
-  const base = ["compose", "-f", COMPOSE].concat(fs.existsSync(ENV) ? [] : ["--env-file", EJEMPLO_ENV]);
+  const base = ["compose", "-f", COMPOSE].concat(redLocal ? ["-f", COMPOSE_RED_LOCAL] : [], fs.existsSync(ENV) ? [] : ["--env-file", EJEMPLO_ENV]);
   const r = spawnSync("docker", base.concat(args), {
     cwd: DEV, encoding: "utf8", stdio: captura ? "pipe" : "inherit", env: Object.assign({}, process.env, env || {}), maxBuffer: 64 * 1024 * 1024,
   });

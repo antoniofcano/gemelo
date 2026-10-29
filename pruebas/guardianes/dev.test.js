@@ -109,6 +109,42 @@ test("ningún puerto publicado fuera de 127.0.0.1 (ni 0.0.0.0, ni sin IP)", () =
   assert.ok(!/network_mode:\s*host/.test(txt), "network_mode: host salta el aislamiento");
 });
 
+// Interruptor de red local (--red-local, compose.red-local.yml): sin él, nada fuera de 127.0.0.1; con él, SOLO el https de la web
+const IP_EJEMPLO = "192.0.2.10";                // TEST-NET-1 (RFC 5737): no es de nadie; solo para interpolar
+test("red local: sin el interruptor todo en 127.0.0.1; con él solo el https de la web en GEMELO_DEV_IP (y la api admite ese origen)", t => {
+  const extra = lee("infra/dev/compose.red-local.yml").split("\n").filter(l => !/^\s*#/.test(l)).join("\n");
+  assert.ok(!/0\.0\.0\.0|::\]?:/.test(extra), "el interruptor no abre a todas las interfaces");
+  const puertosExtra = [...extra.matchAll(/^\s+- "(.*)"$/gm)].map(m => m[1]);
+  assert.deepStrictEqual(puertosExtra, ["${GEMELO_DEV_IP:?falta GEMELO_DEV_IP (la pone levanta.mjs --red-local)}:${GEMELO_DEV_PUERTO_HTTPS:-8743}:8443"], "el interruptor abre un solo puerto: el https de Caddy");
+  assert.match(lee("infra/dev/compose.yml"), /SITIOS: "https:\/\/localhost:8443"/, "sin el interruptor, Caddy solo sirve https://localhost");
+  assert.match(lee("infra/dev/Caddyfile"), /^\{\$SITIOS\} \{\n\ttls internal/m, "el sitio https sale de SITIOS, con la CA local");
+  if (SIN_DOCKER) return t.skip(SIN_DOCKER + ": la validación con `docker compose config` NO se ha comprobado (las de texto sí)");
+  const env = Object.assign({}, process.env, { GEMELO_DEV_TESELAS: "", GEMELO_DEV_IP: IP_EJEMPLO });
+  delete env.COMPOSE_PROJECT_NAME;
+  const conf = archivos => {
+    const r = spawnSync("docker", ["compose"].concat(...archivos.map(f => ["-f", path.join(DEV, f)]), ["--env-file", EJEMPLO, "config", "--format", "json"]), { cwd: DEV, encoding: "utf8", env });
+    assert.strictEqual(r.status, 0, "docker compose config falló:\n" + r.stderr);
+    return JSON.parse(r.stdout);
+  };
+  const fuera = c => Object.entries(c.services).flatMap(([n, s]) => (s.ports || []).filter(p => p.host_ip !== "127.0.0.1").map(p => n + " " + p.host_ip + ":" + p.published + "->" + p.target));
+  const sin = conf(["compose.yml"]);
+  assert.deepStrictEqual(fuera(sin), [], "sin el interruptor (aunque GEMELO_DEV_IP esté puesta) nada escucha fuera de 127.0.0.1");
+  const con = conf(["compose.yml", "compose.red-local.yml"]);
+  assert.deepStrictEqual(fuera(con), ["web " + IP_EJEMPLO + ":8743->8443"], "con el interruptor, solo el https de la web en la IP de la red");
+  assert.ok(con.services.web.ports.some(p => p.host_ip === "127.0.0.1" && p.target === 8443), "y sigue en 127.0.0.1");
+  assert.strictEqual(con.services.web.environment.SITIOS, "https://localhost:8443, https://" + IP_EJEMPLO + ":8443");
+  const a = con.services.api.environment;
+  assert.strictEqual(a.GEMELO_URL_PUBLICA, "https://" + IP_EJEMPLO + ":8743", "el enlace del correo apunta a la IP");
+  assert.deepStrictEqual(a.GEMELO_API_ORIGENES.split(","), ["https://localhost:8743", "https://" + IP_EJEMPLO + ":8743"], "la api admite los dos orígenes");
+  assert.ok(!con.services.api.ports || !con.services.api.ports.length, "la api sigue sin puerto");
+});
+
+test("red local: solo se acepta una IPv4 privada (RFC 1918) como GEMELO_DEV_IP", async () => {
+  const { esIpPrivada } = await import(pathToFileURL(path.join(HERR, "_comun.mjs")).href);
+  for (const ip of ["192.168.1.20", "10.0.0.5", "172.16.0.1", "172.31.255.254"]) assert.ok(esIpPrivada(ip), ip);
+  for (const ip of ["0.0.0.0", "127.0.0.1", "8.8.8.8", "172.32.0.1", "192.169.0.1", "256.1.1.1", "", "localhost", "::1", "192.168.1"]) assert.ok(!esIpPrivada(ip), ip);
+});
+
 test("ningún secreto escrito: las claves salen de infra/dev/.env (ignorado), la plantilla no trae valores y LiveKit no lleva keys", () => {
   const txt = composeSinComentarios();
   for (const m of txt.matchAll(/^\s*([A-Z_]*(?:PASSWORD|CLAVE|SECRETO|SECRET|KEYS?|TOKEN)[A-Z_]*):\s*(.+)$/gm)) assert.match(m[2], /^("?\$\{|\/run\/secrets\/[a-z_]+$)/, m[1] + " debe venir de una variable o de un secreto, no escrito: " + m[2]);
@@ -207,6 +243,7 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
     assert.deepStrictEqual({ hazas: sembrado.hazas, hogares: sembrado.hogares }, { hazas: 4, hogares: 3 }, "siembra");
     const e = await estado();
     assert.ok(e.ok, "estado no sano:\n" + JSON.stringify(e, null, 1));
+    assert.deepStrictEqual(e.red, { abiertos: [], indebidos: [] }, "sin --red-local, Docker no publica nada fuera de 127.0.0.1");
     t.diagnostic("arriba (build de la web y de la api, migraciones y siembra) en " + tiempos.arriba.toFixed(1) + " s; " + e.externas.map(x => x.servicio + ": " + x.detalle).join(" | "));
 
     // node:https y no fetch: fetch no deja poner Sec-Fetch-Mode (para simular una navegación) ni pasar la CA

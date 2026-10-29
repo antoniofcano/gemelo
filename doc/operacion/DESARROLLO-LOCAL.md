@@ -14,6 +14,7 @@ El mundo, la api y los servicios base de la fase 1a y la fase 2 corriendo en tu 
 | Quiero… | Comando |
 |---|---|
 | Levantarlo todo | `npm run dev:arriba` (`-- --sin-build` para no reconstruir la web) |
+| Abrir el https a la WiFi para probar en aparatos | `npm run dev:arriba -- --red-local` ([Prueba en aparatos](#prueba-en-aparatos)) |
 | Ver la salud de cada servicio | `npm run dev:estado` (sale con 1 si algo falla) |
 | Pararlo (los datos de la db se conservan) | `npm run dev:abajo` |
 | Pararlo y borrar la db | `npm run dev:abajo -- --borra-datos` |
@@ -26,7 +27,7 @@ El mundo, la api y los servicios base de la fase 1a y la fase 2 corriendo en tu 
 
 ## Servicios y puertos
 
-Todos los puertos se publican **solo en 127.0.0.1** (el guardián lo vigila). Se cambian en `infra/dev/.env`.
+Todos los puertos se publican **solo en 127.0.0.1** (el guardián lo vigila). Se cambian en `infra/dev/.env`. La única excepción es el interruptor `--red-local`, que abre solo el https de la web en la IP de la red local ([Prueba en aparatos](#prueba-en-aparatos)).
 
 Las imágenes van fijadas por **versión estable y digest** (`imagen:versión@sha256:…`); el digest completo está en el compose. Versiones comprobadas el 2026-10-28 en Docker Hub y en las releases oficiales: cada una es la última estable publicada, sin rc, beta ni dev.
 
@@ -57,9 +58,40 @@ GEMELO_DEV_FINCA=hituelo
 
 y `npm run dev:arriba`. `levanta.mjs` **se niega** si la carpeta cae dentro del repo (salvo en `pruebas/salida/`, que está ignorada). La carpeta se monta de solo lectura. La web construida lleva el índice dentro (como hoy en la salida artefacto), así que `apps/web/dist/` con datos reales tampoco se publica: está ignorado por git.
 
-## Las Quest y el móvil
+## Prueba en aparatos
 
-Todo escucha en 127.0.0.1, así que otro dispositivo de la red no llega. Para las Quest por USB: `adb reverse tcp:8743 tcp:8743` (y `tcp:7880`, `tcp:7881` para LiveKit; `tcp:8025` para ver Mailpit) y abrir `https://localhost:8743` en el navegador del casco, aceptando el aviso del certificado local. El mundo pide sesión y la cookie es de cada navegador: el enlace hay que abrirlo **en el casco**. Antes bastaba `http://localhost:8780` (contexto seguro sin certificado); con la sesión ya no, porque por http no hay cookie. **No probado** en un casco real con este entorno. Para el iPhone no hay atajo equivalente sin abrir puertos a la red; queda fuera de este entorno.
+Decisión de Antonio (2026-10-29): la primera prueba en aparatos (otro navegador, el móvil, las Quest) es **cada uno por su cuenta, sin presencia**, y el acceso es **por la WiFi de casa y solo mientras dura la prueba**. Por defecto todo escucha en 127.0.0.1 y ningún otro aparato llega.
+
+### El interruptor de red local
+
+```
+npm run dev:arriba -- --red-local          # o con la IP a mano: GEMELO_DEV_IP=<ip> npm run dev:arriba -- --red-local
+npm run dev:estado                         # dice «ABIERTO A LA RED LOCAL … solo el https de la web» o «todo en 127.0.0.1»
+npm run dev:abajo                          # al acabar (o volver a levantar sin --red-local: cierra el puerto)
+```
+
+Qué hace ([`infra/dev/compose.red-local.yml`](../../infra/dev/compose.red-local.yml), que solo se suma con el interruptor):
+
+- **Solo el https de Caddy** (`https://<IP>:8743`) escucha además en la IP de la red local del equipo. El http (8780), la base, Mailpit, LiveKit y la api siguen en 127.0.0.1 o sin puerto (comprobado por TCP desde la IP de la red: 8780, 55432, 7880, 7881, 8025 y 1025, cerrados; el UDP 7882 sigue publicado solo en 127.0.0.1 en el compose).
+- La IP sale de `GEMELO_DEV_IP` o se detecta: la primera IPv4 privada (RFC 1918) de una interfaz física, primero la WiFi; se saltan las virtuales (Docker, WSL, Hyper-V, VirtualBox, VMware, VPN) y la red 192.168.56.x que VirtualBox crea por defecto con un nombre que no la delata. Si hay varias, `dev:arriba` las enseña; una IP que no sea privada se rechaza.
+- Caddy emite con su CA local un certificado **también para la IP** (y `default_sni` la elige, porque a una IP el navegador no le manda SNI). El aparato avisa del certificado y se acepta (decisión 54).
+- La api arma el enlace del correo con `https://<IP>:8743` y admite los POST de los dos orígenes (`localhost` y la IP).
+- `dev:estado` falla si algo **que no sea** el https de la web está publicado fuera de 127.0.0.1. La e2e comprueba que, sin el interruptor, Docker no publica nada fuera de 127.0.0.1; y el guardián, con `docker compose config`, que sin el interruptor nada sale de 127.0.0.1 (aunque `GEMELO_DEV_IP` esté puesta) y con él solo el https de la web.
+
+**El enlace mágico en el aparato.** Mailpit sigue solo en el ordenador. El camino más sencillo, sin código nuevo: pide el enlace desde el aparato (o desde el ordenador) en la portada; en el ordenador, abre el correo en `http://localhost:8025` y pulsa el enlace (lleva la IP de la red; **abrirlo no lo gasta**: es la página intermedia con el botón «Entrar»); en esa página, «Crear código QR» de Chrome (menú de compartir) y léelo con el móvil; pulsa «Entrar» **en el aparato** (la cookie es de cada navegador). En las Quest no hay lector de QR en el navegador: o se teclea el enlace, o se usa el camino por USB de abajo. Propuesta, **sin hacer**: un código corto de un solo uso (6 cifras, 10 min) que la api acepte junto al enlace, para teclearlo en las gafas; o `dev:enlace <correo>`, que pida el enlace y lo pinte como QR en la terminal. Lo decide Antonio.
+
+**Por USB (Quest, sin abrir nada a la red):** `adb reverse tcp:8743 tcp:8743` (y `tcp:8025` para ver Mailpit en el casco) y abrir `https://localhost:8743` en el navegador del casco, aceptando el aviso del certificado. Por http no hay sesión (la cookie es `Secure`).
+
+### Hituelo real en local
+
+Ya existe: `GEMELO_DEV_TESELAS` (la carpeta de datos, **fuera del repo**, con `hituelo/indice.json` y `hituelo/t/`) y `GEMELO_DEV_FINCA=hituelo`, en el entorno o en `infra/dev/.env` (ignorado); ver [Datos reales sin versionarlos](#datos-reales-sin-versionarlos). Sin `--sin-build`, porque la web lleva el índice dentro. Se puede juntar con el interruptor. Las **hazas siguen siendo las sintéticas del fixture**: caen en las coordenadas del fixture y no encima del Hituelo real (hoy el mundo aún no pinta lindes, así que no se ve). Comprobado montando una copia del fixture desde una carpeta fuera del repo; **no probado con los datos reales**, que no están en esta máquina.
+
+### Lo no probado
+
+- **Ningún aparato real**: ni otro equipo, ni un Android, ni el iPhone, ni las Quest han abierto `https://<IP>:8743`. Lo probado (2026-10-29, Windows 10 con Docker Desktop) es desde el propio equipo contra su IP de la WiFi: certificado verificado con la CA local (SAN = la IP), pedir el enlace con `Origin` de la IP (202), el enlace del correo con la IP, la página intermedia (200), «Entrar» (303 a `/finca/` con la cookie) y `/finca/` con esa sesión (200).
+- El cortafuegos de Windows (o el del router) puede bloquear la entrada desde otro aparato: no comprobado. Si pasa, Windows suele preguntar al abrir el puerto la primera vez.
+- WebXR en las Quest con un certificado aceptado a mano (no instalado): no comprobado.
+- El QR de Chrome y el camino por USB con este entorno: no probados.
 
 ## La api
 

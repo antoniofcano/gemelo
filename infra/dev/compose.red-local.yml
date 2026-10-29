@@ -1,0 +1,18 @@
+# Interruptor de RED LOCAL del entorno de desarrollo: `npm run dev:arriba -- --red-local` (doc/operacion/DESARROLLO-LOCAL.md
+# § Prueba en aparatos). Se suma a compose.yml SOLO con el interruptor; sin él, todo escucha en 127.0.0.1 como siempre.
+# Abre UNA cosa más: el https de Caddy (web) en la IP de la red local del equipo (GEMELO_DEV_IP, la detecta levanta.mjs),
+# para probar desde el móvil o las Quest de la misma WiFi, y solo mientras dura la prueba. Nada más se abre: ni el http,
+# ni la base, ni Mailpit, ni LiveKit; la api sigue sin puerto (se entra por Caddy).
+services:
+  web:
+    ports:
+      - "${GEMELO_DEV_IP:?falta GEMELO_DEV_IP (la pone levanta.mjs --red-local)}:${GEMELO_DEV_PUERTO_HTTPS:-8743}:8443"
+    environment:
+      # Caddy emite con su CA local (tls internal) un certificado también para la IP: el aparato avisa y se acepta (decisión 54)
+      SITIOS: "https://localhost:8443, https://${GEMELO_DEV_IP}:8443"
+      SNI_POR_DEFECTO: "${GEMELO_DEV_IP}"   # a una IP el navegador no manda SNI
+  api:
+    environment:
+      # el enlace del correo apunta a la IP (vale en el ordenador y en el aparato); se admiten los POST de los dos orígenes
+      GEMELO_URL_PUBLICA: "https://${GEMELO_DEV_IP}:${GEMELO_DEV_PUERTO_HTTPS:-8743}"
+      GEMELO_API_ORIGENES: "https://localhost:${GEMELO_DEV_PUERTO_HTTPS:-8743},https://${GEMELO_DEV_IP}:${GEMELO_DEV_PUERTO_HTTPS:-8743}"

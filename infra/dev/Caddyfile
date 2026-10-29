@@ -8,6 +8,9 @@
 	skip_install_trust
 	http_port 8080
 	https_port 8443
+	# a una IP los navegadores no le mandan SNI: sin esto Caddy no sabe qué certificado dar y corta el TLS (alerta 80).
+	# «localhost» sin el interruptor; con --red-local, la IP de la red (compose.red-local.yml)
+	default_sni {$SNI_POR_DEFECTO}
 	log {
 		output stdout
 		format console
@@ -126,7 +129,9 @@ http://:8080 {
 	}
 }
 
-https://localhost:8443 {
+# SITIOS: «https://localhost:8443» (compose.yml); con --red-local, también «https://<IP de la red local>:8443»
+# (compose.red-local.yml): tls internal emite entonces un certificado de la CA local para esa IP.
+{$SITIOS} {
 	tls internal
 	import gemelo
 	import errores
