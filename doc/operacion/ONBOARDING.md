@@ -29,6 +29,7 @@
 | 11 | Exportadores multiplataforma: ninguna ruta con separador `\` escrito a mano en `tuberia/**/*.py` (se arman con `os.path.join`) | `multiplataforma.test.js` |
 | 12 | Catálogo de olivos-tipo: el catálogo sintético cumple su esquema (ajv), cada glb pasa `gltf-validator` y su presupuesto de triángulos por nivel, el generador es determinista; en Chrome, instalar y retirar el catálogo funciona sin cambiar lo de siempre | `olivos.test.js` |
 | 13 | Entorno de desarrollo: compose válido, imágenes con versión fija + digest sin preliminares, puertos solo en 127.0.0.1, sin secretos; e2e opcional con Docker (`GEMELO_DOCKER=1`) | `dev.test.js` |
+| 14 | Exportadores: `copas_id` (censo de OlivarTrack o provisional por posición) y `copas_tipo` (−1) con la longitud de `copas`, ids únicos y estables; si hay numpy, scipy y pillow (`requirements.txt`), Hituelo y Cerro exportados de verdad sobre 1 tesela sintética y su índice válido (si faltan, se salta con aviso) | `exportadores.test.js` |
 
 En CI la misma puerta corre en GitHub Actions (`.github/workflows/puerta.yml`); no despliega nada.
 

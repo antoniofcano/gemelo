@@ -7,16 +7,16 @@ import base64, io, json, math, os
 import numpy as np
 from PIL import Image
 from scipy import ndimage as ndi
-from scipy.spatial import cKDTree
 from finca_8_teselas import R, TS, RES, RS, b64, jpg_bytes
+from ids_copas import columnas, empareja, id_de_marca   # copas_id (censo de OlivarTrack o provisional por posición) y copas_tipo: ADR-0012
 
 HD = __import__("os").environ.get("GEMELO_HITUELO", "hituelo_datos")
 PARC = __import__("os").environ.get("GEMELO_PARCELAS", "hituelo_parcelas_utm.json")
 
 
-def hituelo():
+def hituelo(salida=None):
     L = os.path.join(HD, "lidar"); IM = os.path.join(HD, "imagen")
-    salida = os.path.join(R, "salida", "hituelo"); os.makedirs(os.path.join(salida, "t"), exist_ok=True)
+    salida = salida or os.path.join(R, "salida", "hituelo"); os.makedirs(os.path.join(salida, "t"), exist_ok=True)
     idx = json.load(open(os.path.join(L, "indice.json"), encoding="utf-8"))["teselas"]
     claves = sorted((k for k in idx if os.path.exists(os.path.join(L, "tesela", "%s.npz" % k))), key=lambda k: tuple(map(int, k.split("_"))))
     kxs = [int(k.split("_")[0]) for k in claves]; kys = [int(k.split("_")[1]) for k in claves]
@@ -52,22 +52,25 @@ def hituelo():
         if e: parcelas[k]["suelo"] = [dict(p=r["prof"], a=r["arena"], l=r["limo"], c=r["arcilla"], ph=r["ph"], mo=r["mo"], cec=r["cic"], dens=r["dens"], pedr=r["pedr"]) for r in e["perfil"]]
     A = json.load(open(os.path.join(L, "arboles.json"), encoding="utf-8"))["arboles"]
     copas = [[round(a["x"] - cx, 2), round(a["y"] - cy, 2), a["h"], a["r8"], a["parcela"] + 1] for a in A if a["olivo"]]
-    arbol = cKDTree(np.array([[c[0], c[1]] for c in copas]))
     O = json.load(open(os.path.join(IM, "ot_hituelo.json"), encoding="utf-8"))
     pid2k = {p["id"]: k for k, p in enumerate(P)}
-    ot = dict(fuente="instantanea", fecha_consulta=O.get("fecha_consulta"), pases_finca=0, entregas_finca=0, analiticas_finca=0, parcelas={}); marcados = []
+    ot = dict(fuente="instantanea", fecha_consulta=O.get("fecha_consulta"), pases_finca=0, entregas_finca=0, analiticas_finca=0, parcelas={}); marcas = []
     for fid, f in O["fincas"].items():
         for pid, pp in f["parcelas"].items():
             k = pid2k.get(pp["id"]); ot["parcelas"][pp["id"]] = dict(tareas=[], fenologia=[])
             if k is None: continue
-            for x, y in pp.get("olivos") or []:
-                d, j = arbol.query([x - cx, y - cy], distance_upper_bound=4.0)
-                marcados.append([round(x - cx, 2), round(y - cy, 2), int(j) if np.isfinite(d) else -1, k])
+            for o in pp.get("olivos") or []:
+                x, y, cid = id_de_marca(o); marcas.append((x - cx, y - cy, cid, k))
         for t in f["trabajos"]:
             if t["parcelaId"] in ot["parcelas"]:
                 ot["parcelas"][t["parcelaId"]]["tareas"].append(dict(tipo=t["tipo"], titulo=t["titulo"], fecha=t["fecha"], estado=t["estado"], avance=t["avance"], fuente=t.get("avanceFuente"), andados=t.get("olivosAndados"), objetivo=t.get("objetivoOlivos")))
         for fe in f["fenologia"]:
             if fe["parcelaId"] in ot["parcelas"]: ot["parcelas"][fe["parcelaId"]]["fenologia"].append(dict(fecha=fe["fecha"], bbch=fe["bbch"]))
+    # marca de OlivarTrack ↔ copa LiDAR: corrige el desfase de la ortofoto (~1,5 m) y empareja uno a uno hasta 4 m (ids_copas.empareja).
+    # La copa emparejada con una marca que trae id del censo toma ese id; las demás, uno provisional por posición (>= 2^31).
+    par, desfase = empareja([(m[0], m[1]) for m in marcas], copas)
+    marcados = [[round(m[0], 2), round(m[1], 2), par[i], m[3]] for i, m in enumerate(marcas)]
+    censo = {par[i]: m[2] for i, m in enumerate(marcas) if par[i] >= 0 and m[2] is not None}
 
     # ---- teselas
     teselas, carga = {}, {}
@@ -133,6 +136,10 @@ def hituelo():
     I = dict(v=2, ts=TS, res=RES, srs=RS, orto_px=512, finca_id="hituelo", centro_utm=[cx, cy], z0=z0, zmax=0, ext=ext, cobertura_nube=1.0, parcelas=parcelas, fincas=fincas, copas=copas, marcados=marcados,
              ndvi=ndvi, suelo_ndvi=suelo_ndvi, ot=ot, avance={}, paisaje=paisaje, teselas=teselas, grueso=grueso, mosaico=mosaico,
              textos=dict(sin_historia=False, finca="Hituelo", fincas=len(fincas), parcelas=len(parcelas), ha=round(sum(p["ha"] for p in P), 1), olivos=len(copas)))
+    col, avisos = columnas(copas, (cx, cy), censo); I.update(col)          # columnas paralelas de copas (CONTRATOS §1.1)
+    for a in avisos: print("aviso:", a)
+    print("ids: %d del censo, %d provisionales (sin marca con id); desfase marcas->copas (%.2f, %.2f) m, %d de %d marcas emparejadas"
+          % (len(copas) - sum(1 for v in col["copas_id"] if v >= 2 ** 31), sum(1 for v in col["copas_id"] if v >= 2 ** 31), desfase[0], desfase[1], sum(1 for v in par if v >= 0), len(marcas)))
     json.dump(I, open(os.path.join(salida, "indice.json"), "w"))
     print("Hituelo: %d teselas (%d×%d), %d olivos, %d parcelas, %d fincas, %d marcas, centro %s, z0 %.0f, ext %s" % (len(teselas), NKX, NKY, len(copas), len(parcelas), len(fincas), len(marcados), (cx, cy), z0, ext))
     print("indice %.0f KB · teselas %.1f MB" % (os.path.getsize(os.path.join(salida, "indice.json")) / 1024, sum(os.path.getsize(os.path.join(salida, "t", f)) for f in os.listdir(os.path.join(salida, "t"))) / 1048576))
