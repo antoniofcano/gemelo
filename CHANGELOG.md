@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Banco: escenarios `paseo`, `paseoAnda` y `paseoGira` para medir y capturar el paseo (minimapa incluido) con encarga/ronda; `__g` gana `paseoEn`/`paseoSale`/`paseoTecla`/`paseoEstado` (B1).
 - ADR-0019 (Propuesto): escalera de olivos del constructor para todos (E0 → E1 → E2/E2-VR → impostor hemi-octaédrico de las variantes), repartida por el presupuesto de cada aparato, con fundido e histéresis; el nivel 0 de siempre, las pelotillas y los olivos del tileset se retiran por fases tras `?olivos=escalera` (decisión 66, O8a).
 - ADR-0019 (Propuesto): escalera de olivos del constructor para todos (E0 → E1 → E2/E2-VR → impostor hemi-octaédrico de las variantes), repartida por el presupuesto de cada aparato, con fundido e histéresis; el nivel 0 de siempre, las pelotillas y los olivos del tileset se retiran por fases tras `?olivos=escalera` (decisión 66, O8a).
 - e2e del hornero de punta a punta con el fixture (O7g): el servicio hornea, Caddy sirve y `/finca/?olivos=gen&olivosPropios=0` dibuja generados con 0 variantes calculadas en el aparato (4 horneadas, 0 fallos, huellas por Web Crypto en https); con `&olivosHorneado=0` las calcula (contraprueba).
