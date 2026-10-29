@@ -73,7 +73,15 @@ test("compose de desarrollo: `docker compose config` lo acepta y tiene sus servi
   assert.ok(!e.GEMELO_SMTP_USUARIO, "api: Mailpit sin usuario");
   assert.match(e.GEMELO_URL_PUBLICA, /^https:\/\/localhost:\d+$/, "api: GEMELO_URL_PUBLICA por https (la cookie de sesión es Secure)");
   assert.strictEqual(e.GEMELO_API_ORIGENES, e.GEMELO_URL_PUBLICA, "api: el único origen admitido es el https de localhost");
-  assert.match(e.GEMELO_DB_URL, /^postgresql:\/\/gemelo@db:5432\/gemelo$/, "api: GEMELO_DB_URL sin clave");
+  // decisión 55: los mismos roles que producción (infra/compose.yml): la api con gemelo_api, las migraciones con el dueño
+  assert.strictEqual(e.GEMELO_DB_URL, "postgresql://gemelo_api@db:5432/gemelo", "api: entra con el rol de permisos mínimos, sin clave en la URL");
+  assert.strictEqual(c.services.migra.environment.GEMELO_DB_URL, "postgresql://gemelo_dueno@db:5432/gemelo", "migra: con el dueño del esquema");
+  assert.match(composeSinComentarios(), /^\s+GEMELO_DB_CLAVE: \$\{GEMELO_DEV_PG_API_CLAVE:/m, "api: con la clave de su rol, no con la del dueño");
+  const db = c.services.db, dbe = db.environment;
+  assert.strictEqual(dbe.POSTGRES_USER, "gemelo_dueno", "db: el dueño se llama como en producción");
+  assert.deepStrictEqual([dbe.POSTGRES_PASSWORD_FILE, dbe.GEMELO_PG_API_CLAVE_FICHERO], ["/run/secrets/pg_dueno", "/run/secrets/pg_api"], "db: claves por fichero, como en producción");
+  const init = (db.volumes || []).find(v => v.target === "/docker-entrypoint-initdb.d");
+  assert.ok(init && path.resolve(init.source) === path.join(RAIZ, "infra", "bd-inicial") && init.read_only, "db: los roles los crea el MISMO infra/bd-inicial de producción (solo lectura)");
   assert.notStrictEqual(e.NODE_ENV, "production", "api: en local no es producción (config.ts exigiría TLS y secretos en fichero)");
   assert.deepStrictEqual(c.services.migra.command, ["node", "dist/src/bd/migra-cli.js"], "migra: aplica las migraciones");
 });
@@ -101,11 +109,49 @@ test("ningún puerto publicado fuera de 127.0.0.1 (ni 0.0.0.0, ni sin IP)", () =
   assert.ok(!/network_mode:\s*host/.test(txt), "network_mode: host salta el aislamiento");
 });
 
+// Interruptor de red local (--red-local, compose.red-local.yml): sin él, nada fuera de 127.0.0.1; con él, SOLO el https de la web
+const IP_EJEMPLO = "192.0.2.10";                // TEST-NET-1 (RFC 5737): no es de nadie; solo para interpolar
+test("red local: sin el interruptor todo en 127.0.0.1; con él solo el https de la web en GEMELO_DEV_IP (y la api admite ese origen)", t => {
+  const extra = lee("infra/dev/compose.red-local.yml").split("\n").filter(l => !/^\s*#/.test(l)).join("\n");
+  assert.ok(!/0\.0\.0\.0|::\]?:/.test(extra), "el interruptor no abre a todas las interfaces");
+  const puertosExtra = [...extra.matchAll(/^\s+- "(.*)"$/gm)].map(m => m[1]);
+  assert.deepStrictEqual(puertosExtra, ["${GEMELO_DEV_IP:?falta GEMELO_DEV_IP (la pone levanta.mjs --red-local)}:${GEMELO_DEV_PUERTO_HTTPS:-8743}:8443"], "el interruptor abre un solo puerto: el https de Caddy");
+  assert.match(lee("infra/dev/compose.yml"), /SITIOS: "https:\/\/localhost:8443"/, "sin el interruptor, Caddy solo sirve https://localhost");
+  assert.match(lee("infra/dev/Caddyfile"), /^\{\$SITIOS\} \{\n\ttls internal/m, "el sitio https sale de SITIOS, con la CA local");
+  if (SIN_DOCKER) return t.skip(SIN_DOCKER + ": la validación con `docker compose config` NO se ha comprobado (las de texto sí)");
+  const env = Object.assign({}, process.env, { GEMELO_DEV_TESELAS: "", GEMELO_DEV_IP: IP_EJEMPLO });
+  delete env.COMPOSE_PROJECT_NAME;
+  const conf = archivos => {
+    const r = spawnSync("docker", ["compose"].concat(...archivos.map(f => ["-f", path.join(DEV, f)]), ["--env-file", EJEMPLO, "config", "--format", "json"]), { cwd: DEV, encoding: "utf8", env });
+    assert.strictEqual(r.status, 0, "docker compose config falló:\n" + r.stderr);
+    return JSON.parse(r.stdout);
+  };
+  const fuera = c => Object.entries(c.services).flatMap(([n, s]) => (s.ports || []).filter(p => p.host_ip !== "127.0.0.1").map(p => n + " " + p.host_ip + ":" + p.published + "->" + p.target));
+  const sin = conf(["compose.yml"]);
+  assert.deepStrictEqual(fuera(sin), [], "sin el interruptor (aunque GEMELO_DEV_IP esté puesta) nada escucha fuera de 127.0.0.1");
+  const con = conf(["compose.yml", "compose.red-local.yml"]);
+  assert.deepStrictEqual(fuera(con), ["web " + IP_EJEMPLO + ":8743->8443"], "con el interruptor, solo el https de la web en la IP de la red");
+  assert.ok(con.services.web.ports.some(p => p.host_ip === "127.0.0.1" && p.target === 8443), "y sigue en 127.0.0.1");
+  assert.strictEqual(con.services.web.environment.SITIOS, "https://localhost:8443, https://" + IP_EJEMPLO + ":8443");
+  const a = con.services.api.environment;
+  assert.strictEqual(a.GEMELO_URL_PUBLICA, "https://" + IP_EJEMPLO + ":8743", "el enlace del correo apunta a la IP");
+  assert.deepStrictEqual(a.GEMELO_API_ORIGENES.split(","), ["https://localhost:8743", "https://" + IP_EJEMPLO + ":8743"], "la api admite los dos orígenes");
+  assert.ok(!con.services.api.ports || !con.services.api.ports.length, "la api sigue sin puerto");
+});
+
+test("red local: solo se acepta una IPv4 privada (RFC 1918) como GEMELO_DEV_IP", async () => {
+  const { esIpPrivada } = await import(pathToFileURL(path.join(HERR, "_comun.mjs")).href);
+  for (const ip of ["192.168.1.20", "10.0.0.5", "172.16.0.1", "172.31.255.254"]) assert.ok(esIpPrivada(ip), ip);
+  for (const ip of ["0.0.0.0", "127.0.0.1", "8.8.8.8", "172.32.0.1", "192.169.0.1", "256.1.1.1", "", "localhost", "::1", "192.168.1"]) assert.ok(!esIpPrivada(ip), ip);
+});
+
 test("ningún secreto escrito: las claves salen de infra/dev/.env (ignorado), la plantilla no trae valores y LiveKit no lleva keys", () => {
   const txt = composeSinComentarios();
-  for (const m of txt.matchAll(/^\s*([A-Z_]*(?:PASSWORD|CLAVE|SECRETO|SECRET|KEYS?|TOKEN)[A-Z_]*):\s*(.+)$/gm)) assert.match(m[2], /^"?\$\{/, m[1] + " debe venir de una variable, no escrito: " + m[2]);
+  for (const m of txt.matchAll(/^\s*([A-Z_]*(?:PASSWORD|CLAVE|SECRETO|SECRET|KEYS?|TOKEN)[A-Z_]*):\s*(.+)$/gm)) assert.match(m[2], /^("?\$\{|\/run\/secrets\/[a-z_]+$)/, m[1] + " debe venir de una variable o de un secreto, no escrito: " + m[2]);
   for (const m of lee("infra/dev/ejemplo.env").matchAll(/^(GEMELO_DEV_[A-Z_]*(?:CLAVE|SECRETO))=(.*)$/gm)) assert.strictEqual(m[2], "la-genera-levanta", m[1] + ": la plantilla no lleva valores");
   assert.ok(/^GEMELO_DEV_SESION_SECRETO=la-genera-levanta$/m.test(lee("infra/dev/ejemplo.env")), "la plantilla declara el secreto de la sesión");
+  assert.ok(/^GEMELO_DEV_PG_API_CLAVE=la-genera-levanta$/m.test(lee("infra/dev/ejemplo.env")), "la plantilla declara la clave del rol de la api");
+  for (const m of txt.matchAll(/^\s+(pg_[a-z]+):\s*\{\s*environment:\s*(\w+)\s*\}/gm)) assert.match(m[2], /^GEMELO_DEV_[A-Z_]*CLAVE$/, "secreto " + m[1] + ": de una clave de .env");
   assert.ok(!/^\s*keys\s*:/m.test(lee("infra/dev/livekit.yaml")), "livekit.yaml no debe llevar claves");
   const ign = spawnSync("git", ["check-ignore", "-q", "infra/dev/.env"], { cwd: RAIZ });
   assert.strictEqual(ign.status, 0, "infra/dev/.env debe estar ignorado por git");
@@ -197,6 +243,7 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
     assert.deepStrictEqual({ hazas: sembrado.hazas, hogares: sembrado.hogares }, { hazas: 4, hogares: 3 }, "siembra");
     const e = await estado();
     assert.ok(e.ok, "estado no sano:\n" + JSON.stringify(e, null, 1));
+    assert.deepStrictEqual(e.red, { abiertos: [], indebidos: [] }, "sin --red-local, Docker no publica nada fuera de 127.0.0.1");
     t.diagnostic("arriba (build de la web y de la api, migraciones y siembra) en " + tiempos.arriba.toFixed(1) + " s; " + e.externas.map(x => x.servicio + ": " + x.detalle).join(" | "));
 
     // node:https y no fetch: fetch no deja poner Sec-Fetch-Mode (para simular una navegación) ni pasar la CA
@@ -348,6 +395,34 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
     assert.strictEqual((await pide("/api/hazas/999999", { cookie })).status, 404);
     tiempos.api = r0();
     t.diagnostic("con sesión: web, teselas, /api/sesion, /api/hazas y 4 fichas en " + tiempos.api.toFixed(2) + " s");
+
+    // 5b. decisión 55: la api corre con el rol de permisos mínimos de producción, y ese rol NO puede cambiar el esquema
+    //     ni tocar lo que no le toca (así un fallo de permisos sale aquí y no en el VPS)
+    const Pg = require(path.join(HERR, "node_modules", "pg"));
+    const conecta = async (user, password) => { const k = new Pg.Client({ host: "127.0.0.1", port: p.db, database: "gemelo", user, password, connectionTimeoutMillis: 5000 }); await k.connect(); return k; };
+    const dueno = await conecta(comun.PG_DUENO, process.env.GEMELO_DEV_PG_CLAVE);
+    try {
+      const usos = (await dueno.query("SELECT DISTINCT usename FROM pg_stat_activity WHERE application_name = 'gemelo-api'")).rows.map(x => x.usename);
+      assert.deepStrictEqual(usos, [comun.PG_API], "las conexiones de la api a la base son de " + comun.PG_API);
+    } finally { await dueno.end(); }
+    const api = await conecta(comun.PG_API, process.env.GEMELO_DEV_PG_API_CLAVE);
+    try {
+      assert.strictEqual((await api.query("SELECT count(*)::int AS n FROM hazas WHERE codigo LIKE 'H-D%'")).rows[0].n, 4, "el rol de la api lee las hazas");
+      const prohibidas = {
+        "crear una tabla": "CREATE TABLE intrusa (x int)",
+        "crear un esquema": "CREATE SCHEMA intruso",
+        "cambiar una tabla": "ALTER TABLE hazas ADD COLUMN intrusa int",
+        "borrar una tabla": "DROP TABLE olivos",
+        "vaciar una tabla": "TRUNCATE sesiones",
+        "cambiar la auditoría": "UPDATE auditoria SET accion = 'x'",
+        "borrar la auditoría": "DELETE FROM auditoria",
+        "escribir en el registro de migraciones": "INSERT INTO esquema_migraciones (name, run_on) VALUES ('9999_intrusa', now())",
+      };
+      for (const [que, sql] of Object.entries(prohibidas)) {
+        await assert.rejects(api.query(sql), x => x.code === "42501", comun.PG_API + " no debe poder " + que + " (" + sql + ")");
+      }
+      t.diagnostic(comun.PG_API + ": lee filas y se le niegan (42501) " + Object.keys(prohibidas).length + " operaciones de esquema o fuera de sus permisos");
+    } finally { await api.end(); }
 
     // 6. salir: la cookie deja de servir; y al correo sin cuenta no le llegó nada
     const sal = await pide("/api/sesion/salir", { method: "POST", cookie, headers: { origin: base } });

@@ -3,7 +3,7 @@
 // (HTTP a Caddy, consulta SQL a PostGIS con su clave, listado de salas de LiveKit firmado con sus claves, API de Mailpit).
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { caLocal, cargaEnv, compose, motivoSinDocker, pideHttps, puertos } from "./_comun.mjs";
+import { caLocal, cargaEnv, compose, motivoSinDocker, pideHttps, puertos, PG_API, PG_DUENO } from "./_comun.mjs";
 
 const SERVICIOS = ["web", "db", "livekit", "correo", "api"];
 /** Servicios de una sola vez: deben haber terminado con 0 (las migraciones) */
@@ -15,7 +15,8 @@ export function estadoDocker() {
   if (r.status !== 0) throw new Error("docker compose ps falló: " + r.stderr);
   const txt = r.stdout.trim(), filas = !txt ? [] : txt.startsWith("[") ? JSON.parse(txt) : txt.split("\n").map(l => JSON.parse(l));
   const out = {};
-  for (const f of filas) out[f.Service] = { estado: f.State, salud: f.Health || "(sin healthcheck)", salida: f.ExitCode };
+  for (const f of filas) out[f.Service] = { estado: f.State, salud: f.Health || "(sin healthcheck)", salida: f.ExitCode,
+    puertos: (f.Publishers || []).filter(x => x.PublishedPort).map(x => ({ ip: x.URL, publicado: x.PublishedPort, interno: x.TargetPort })) };
   return out;
 }
 
@@ -59,10 +60,20 @@ export async function pruebasExternas() {
   });
   await prueba("db", async () => {
     const { default: pg } = await import("pg");
-    const c = new pg.Client({ host: "127.0.0.1", port: p.db, user: "gemelo", database: "gemelo", password: e.GEMELO_DEV_PG_CLAVE, connectionTimeoutMillis: 5000 });
+    const cliente = (user, password) => new pg.Client({ host: "127.0.0.1", port: p.db, user, database: "gemelo", password, connectionTimeoutMillis: 5000 });
+    const c = cliente(PG_DUENO, e.GEMELO_DEV_PG_CLAVE);
     await c.connect();
-    try { const r = await c.query("select current_setting('server_version') as pg, postgis_lib_version() as postgis"); return "PostgreSQL " + r.rows[0].pg + ", PostGIS " + r.rows[0].postgis; }
+    let v;
+    try { v = (await c.query("select current_setting('server_version') as pg, postgis_lib_version() as postgis")).rows[0]; }
     finally { await c.end(); }
+    // el rol de la api entra con su clave y NO es superusuario ni dueño de nada (si no, los fallos de permisos no saldrían aquí)
+    const a = cliente(PG_API, e.GEMELO_DEV_PG_API_CLAVE);
+    await a.connect();
+    try {
+      const r = (await a.query("select rolsuper, rolcreaterole, rolcreatedb, (select count(*) from pg_class where relowner = pg_roles.oid)::int as suyas from pg_roles where rolname = current_user")).rows[0];
+      if (r.rolsuper || r.rolcreaterole || r.rolcreatedb || r.suyas) throw new Error(PG_API + " tiene más permisos de los mínimos: " + JSON.stringify(r));
+    } finally { await a.end(); }
+    return "PostgreSQL " + v.pg + ", PostGIS " + v.postgis + "; " + PG_DUENO + " y " + PG_API + " (sin superusuario ni objetos propios) entran";
   });
   await prueba("livekit", async () => {
     const s = await http("http://127.0.0.1:" + p.livekit + "/"); if (s.status !== 200) throw new Error("/ → " + s.status);
@@ -85,7 +96,21 @@ export async function estado() {
   const docker = estadoDocker(), externas = await pruebasExternas();
   const okDocker = SERVICIOS.every(s => docker[s] && docker[s].estado === "running" && ["healthy", "(sin healthcheck)"].includes(docker[s].salud))
     && DE_UNA_VEZ.every(s => docker[s] && docker[s].estado === "exited" && docker[s].salida === 0);
-  return { ok: okDocker && externas.every(x => x.ok), docker, externas };
+  const red = redLocal(docker);
+  return { ok: okDocker && externas.every(x => x.ok) && !red.indebidos.length, docker, externas, red };
+}
+
+/**
+ * ¿Está abierto a la red? Todo lo publicado fuera de 127.0.0.1. Lo único admitido es el https de la web (8443 dentro),
+ * que abre el interruptor --red-local; cualquier otro puerto fuera de 127.0.0.1 es un fallo (indebidos).
+ */
+export function redLocal(docker) {
+  const abiertos = [], indebidos = [];
+  for (const [servicio, d] of Object.entries(docker)) for (const x of d.puertos || []) {
+    if (x.ip === "127.0.0.1") continue;
+    (servicio === "web" && x.interno === 8443 ? abiertos : indebidos).push({ servicio, ...x });
+  }
+  return { abiertos, indebidos };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
@@ -94,6 +119,11 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   console.log("Docker (proyecto gemelo-dev):");
   for (const s of SERVICIOS) { const d = r.docker[s]; console.log("  " + (d && d.salud === "healthy" ? "✓" : "✗") + " " + s.padEnd(8) + (d ? d.estado + ", " + d.salud : "no existe")); }
   for (const s of DE_UNA_VEZ) { const d = r.docker[s]; console.log("  " + (d && d.estado === "exited" && d.salida === 0 ? "✓" : "✗") + " " + s.padEnd(8) + (d ? d.estado + ", salida " + d.salida : "no existe")); }
+  const red = r.red;
+  console.log(red.indebidos.length ? "✗ ABIERTO A LA RED lo que no debe: " + red.indebidos.map(x => x.servicio + " en " + x.ip + ":" + x.publicado).join(", ")
+    : red.abiertos.length ? "! ABIERTO A LA RED LOCAL (--red-local): solo el https de la web, en " + red.abiertos.map(x => "https://" + x.ip + ":" + x.publicado + "/").join(", ") +
+      "; se cierra con `npm run dev:abajo` o levantando sin --red-local"
+    : "✓ red: todo en 127.0.0.1 (nada abierto a la red local)");
   console.log("Desde fuera:");
   for (const x of r.externas) console.log("  " + (x.ok ? "✓" : "✗") + " " + x.servicio.padEnd(12) + x.detalle);
   process.exit(r.ok ? 0 : 1);
