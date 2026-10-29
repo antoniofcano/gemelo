@@ -60,6 +60,7 @@ header p { margin: 4px 0 0; color: var(--muted); max-width: 70ch; }
 .ayuda-paseo { background: color-mix(in srgb, var(--panel) 88%, transparent); color: var(--fg); }
 .pad { position: absolute; right: 12px; bottom: 12px; display: none; grid-template-columns: repeat(3, 44px); grid-template-rows: repeat(3, 44px); gap: 6px; }
 .visor.paseo .pad { display: grid; }
+.pad, .pad button, .visor canvas { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }   /* mantener pulsado no selecciona texto ni abre el menú */
 .pad button { border: 1px solid var(--line); background: color-mix(in srgb, var(--panel) 88%, transparent); color: var(--fg); border-radius: 10px; font: inherit; font-size: 16px; cursor: pointer; touch-action: none; }
 #pad-up { grid-column: 2; grid-row: 1; } #pad-left { grid-column: 1; grid-row: 2; } #pad-down { grid-column: 2; grid-row: 3; } #pad-right { grid-column: 3; grid-row: 2; }
 .pad .pad-txt { font-size: 11px; grid-column: auto; } #padRun { grid-column: 1; grid-row: 3; } #padCam { grid-column: 3; grid-row: 3; }

@@ -46,8 +46,16 @@
   ["up", "down", "left", "right"].forEach(function (d) {
     var b = $("pad-" + d); if (!b) return;
     b.addEventListener("pointerdown", function (e) { e.preventDefault(); teclas[d] = true; b.setPointerCapture(e.pointerId); });
-    b.addEventListener("pointerup", function () { teclas[d] = false; }); b.addEventListener("pointercancel", function () { teclas[d] = false; });
+    // soltar en todos los casos: al levantar el dedo, si el navegador cancela el gesto o pierde el dedo (en móvil, una selección de texto
+    // o el menú de pulsación larga se comían el pointerup y el paseante seguía andando solo)
+    ["pointerup", "pointercancel", "lostpointercapture"].forEach(function (ev) { b.addEventListener(ev, function () { teclas[d] = false; }); });
+    b.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+    b.addEventListener("selectstart", function (e) { e.preventDefault(); });
   });
+  // si la página pierde el foco (otra app, otra pestaña, una llamada) se sueltan todas las teclas y botones
+  function sueltaTodo() { ["up", "down", "left", "right"].forEach(function (d) { teclas[d] = false; }); }
+  window.addEventListener("blur", sueltaTodo);
+  document.addEventListener("visibilitychange", function () { if (document.hidden) sueltaTodo(); });
   $("padRun").addEventListener("click", function () { teclas.run = !teclas.run; $("padRun").setAttribute("aria-pressed", String(!!teclas.run)); });
   $("padCam").addEventListener("click", function () { cicloVista(); });
   function actualizaPaseo(dt) {
