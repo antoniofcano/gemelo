@@ -16,6 +16,7 @@ import argparse, base64, io, json, math, os, sys
 import numpy as np
 from PIL import Image
 from scipy.ndimage import map_coordinates
+from ids_copas import columnas, PROV   # copas_id (censo de OlivarTrack o provisional por posición) y copas_tipo: ADR-0012
 
 R = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # raíz del repo: salida/ y los intermedios se leen y escriben desde ahí
 TS = 256          # lado de la tesela (m)
@@ -98,7 +99,7 @@ def construye(F, salida):
             rng.shuffle(pt)
             carga[key] = dict(dtm=b64(dtm), chm=b64(chm), suelo=b64(suelo), pts=b64(pt), np=int(len(pt)))
             jpg = jpg_bytes(oimg)
-            teselas[key] = dict(kx=kx, ky=ky, v=[round(vx0, 2), round(vy0, 2), round(vx1, 2), round(vy1, 2)], np=int(len(pt)))
+            teselas[key] = dict(kx=kx, ky=ky, v=[round(float(vx0), 2), round(float(vy0), 2), round(float(vx1), 2), round(float(vy1), 2)], np=int(len(pt)))
             json.dump(carga[key], open(os.path.join(salida, "t", key + ".json"), "w"))
             open(os.path.join(salida, "t", key + ".jpg"), "wb").write(jpg)
             carga[key]["orto"] = "data:image/jpeg;base64," + base64.b64encode(jpg).decode()
@@ -113,6 +114,12 @@ def construye(F, salida):
     # lo global: todo menos las rejillas y la nube, que ahora van en las teselas
     I = {k: v for k, v in D.items() if k not in ("dtm", "chm", "suelo", "orto", "puntos")}
     I.update(v=2, ts=TS, res=RES, srs=RS, orto_px=ORTO_PX, teselas=teselas, grueso=grueso, mosaico=mosaico, finca_id="cerro")
+    # columnas paralelas de copas (CONTRATOS §1.1). Las marcas de Cerro (finca_cerro_velasco.json → marcados) no traen id del censo:
+    # si el intermedio trae `marcados_id` (paralelo a marcados; None = sin id), la copa emparejada toma ese id; si no, todas provisionales.
+    mid = D.get("marcados_id") or []
+    censo = {m[2]: mid[i] for i, m in enumerate(D["marcados"]) if i < len(mid) and mid[i] is not None and m[2] >= 0}
+    col, avisos = columnas(I["copas"], (cx, cy), censo); I.update(col); I.pop("marcados_id", None)
+    for a_ in avisos: print("aviso:", a_)
     json.dump(I, open(os.path.join(salida, "indice.json"), "w"))
     E = dict(I); E["t"] = carga
     json.dump(E, open(os.path.join(salida, "embebido.json"), "w"))
@@ -147,6 +154,11 @@ def replica(nx, ny, origen="cerro"):
             for m in I["marcados"]:
                 O["marcados"].append([m[0] + a * DX, m[1] + b * DY, (m[2] + k * ncop) if m[2] >= 0 else -1, m[3] + k * npar])
             k += 1
+    # id estable de cada copia (su posición UTM es otra, así que su id también) y el mismo olivo-tipo que el árbol de origen
+    # la copia (0, 0) conserva los ids del censo del origen; las demás copias son otros árboles: provisionales por su posición
+    tipos = I.get("copas_tipo"); ids0 = I.get("copas_id") or []
+    censo = {i: k for i, k in enumerate(ids0) if k < PROV} if len(ids0) == ncop else {}
+    col, _ = columnas(O["copas"], (cx0, cy0), censo, tipos * (nx * ny) if tipos is not None and len(tipos) == ncop else None); O.update(col)
     # caja, relieve grueso y mosaico: las réplicas se pegan en su sitio (8 m y 1 m caben exactos en un desplazamiento de teselas enteras)
     O["ext"] = [ext[0], ext[1] + (ny - 1) * DY, ext[2] + (nx - 1) * DX, ext[3]]
     g = I["grueso"]; gw, gh = g["w"], g["h"]; GW, GH = int(math.ceil((O["ext"][2] - O["ext"][0]) / g["res"])), int(math.ceil((O["ext"][1] - O["ext"][3]) / g["res"]))
@@ -174,13 +186,14 @@ def replica(nx, ny, origen="cerro"):
     print("réplica %dx%d: %d teselas, %d olivos (copas), caja %s m, ext ndvi %dx%d" % (nx, ny, len(O["teselas"]), len(O["copas"]), O["ext"], W2, H2))
 
 if __name__ == "__main__":
-    ap = argparse.ArgumentParser(); ap.add_argument("--finca", choices=["cerro", "hituelo"]); ap.add_argument("--replica", help="NxM: Cerro Velasco replicado en el espacio (banco de pruebas de presupuesto)"); a = ap.parse_args()
+    ap = argparse.ArgumentParser(); ap.add_argument("--finca", choices=["cerro", "hituelo"]); ap.add_argument("--replica", help="NxM: Cerro Velasco replicado en el espacio (banco de pruebas de presupuesto)")
+    ap.add_argument("--salida", help="carpeta de salida (por defecto salida/<finca> en la raíz del repo)"); a = ap.parse_args()
     if a.replica:
         n, m = a.replica.split("x"); replica(int(n), int(m))
     elif a.finca == "cerro":
-        construye(cerro(), os.path.join(R, "salida", "cerro"))
+        construye(cerro(), a.salida or os.path.join(R, "salida", "cerro"))
     elif a.finca == "hituelo":
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__))); from hituelo_conv import hituelo
-        hituelo()
+        hituelo(a.salida)
     else:
         sys.exit("falta --finca cerro|hituelo (o --replica 3x3)")

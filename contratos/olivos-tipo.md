@@ -40,7 +40,7 @@ Van en el índice de la finca ([CONTRATOS §1.1](../doc/sistema/CONTRATOS.md#11-
 | Campo | Contenido |
 |---|---|
 | `copas[i]` | `[x, y, h, r8[8], parcela+1]` — **medido** (LiDAR): posición, altura y los 8 radios de la copa |
-| `copas_id[i]` | *(opcional)* entero ≥ 0, **id estable** del árbol, único en la finca (identidad global = `finca_id` + id); sobrevive a una reexportación aunque cambie su índice en `copas` |
+| `copas_id[i]` | *(opcional)* entero ≥ 0, **id estable** del árbol, único en la finca (identidad global = `finca_id` + id); sobrevive a una reexportación aunque cambie su índice en `copas`. `< 2^31`: id del **censo de OlivarTrack** (marca emparejada); `≥ 2^31`: **provisional**, por posición UTM ([CONTRATOS §1.1](../doc/sistema/CONTRATOS.md#11-indicejson-va-en-la-página-como-d)). Es la semilla del generador de olivos |
 | `copas_tipo[i]` | *(opcional)* `id` del olivo-tipo del catálogo; **−1 = sin asignar**. Un tipo que el catálogo cargado no conoce se dibuja como −1 |
 
 Lo demás no viaja: el motor estira el modelo a cada árbol con lo medido. Escala vertical = `h / altura del modelo`; en planta, los semiejes del modelo pasan a los ejes de la copa medida (el par de radios opuestos más largo y su perpendicular, como hoy en L1) y el modelo se gira según ese eje largo; color por árbol desde la ortofoto. Así un olivo-tipo nunca contradice la copa medida en tamaño ni en orientación.

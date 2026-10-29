@@ -33,3 +33,6 @@ Antonio desarrolla aparte un **constructor de olivos-tipo** que producirá 6-8 m
 
 ## Comprobación
 `pruebas/guardianes/olivos.test.js` (esquema, glb, triángulos por nivel, determinismo del generador, mismo presupuesto en motor y esquema, tipos del fixture; y en Chrome, instalar y retirar el catálogo), `contratos.test.js` (columnas opcionales con la longitud de `copas` e ids únicos; el fixture las lleva en Hituelo y no en Cerro; interfaz `Catalogo`), y `carga.test.js` / `web.test.js` con los mismos recuentos que antes. **No probado:** con datos reales de Cerro o Hituelo, en iPhone ni en Quest, ni con modelos de verdad del constructor (no existen aún).
+
+## Enmienda 2026-10-29
+Los exportadores ya emiten `copas_id` y `copas_tipo`. Por decisión de Antonio, el id estable sale del **censo de OlivarTrack** (no de la posición): `copas_id` es el id del olivo marcado si la copa está emparejada con su marca (corrigiendo el desfase de ~1,5 m de la ortofoto), y si no, uno provisional por posición en el rango [2^31, 2^32). Hoy todos son provisionales porque las marcas exportadas no traen el id; el detalle está en `doc/sistema/CONTRATOS.md` §1.1 y `tuberia/ids_copas.py`.
