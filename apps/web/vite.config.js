@@ -26,6 +26,8 @@ export default defineConfig({
       { find: /^three\/addons\//, replacement: path.join(WEB, "node_modules", "three", "examples", "jsm") + "/" },
       { find: /^gemelo-olivo$/, replacement: OLIVO },
       { find: /^3d-tiles-renderer$/, replacement: TILES },
+      // livekit-client (F2, ?presencia=red): el motor lo pide con import() solo con esa bandera; sin ella no se descarga
+      { find: /^livekit-client$/, replacement: path.join(WEB, "node_modules", "livekit-client", "dist", "livekit-client.esm.mjs") },
     ],
   },
   worker: { format: "es" },

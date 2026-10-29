@@ -51,9 +51,12 @@ GEMELO_OT=no
 # GEMELO_OT_MCP_URL=https://olivartrack.ejemplo.invalid/mcp
 GEMELO_OT_CADA_MIN=60
 
-# --- reservadas para la fase 2 (las lee infra/dev; la api de F1a aún no las usa)
-# GEMELO_LIVEKIT_URL=
+# --- presencia compartida (F2, LiveKit). Sin GEMELO_LIVEKIT_URL la api la deja apagada (POST /api/presencia/token → 503).
+# El secreto (API secret, ≥ 32 caracteres) va en un fichero: GEMELO_LIVEKIT_SECRETO_FICHERO (aún no está en infra/compose.yml).
+# GEMELO_LIVEKIT_URL=http://livekit:7880
+# GEMELO_LIVEKIT_URL_PUBLICA=wss://gemelo.canoydamas.es/rtc
 # GEMELO_LIVEKIT_CLAVE=
+# --- reservada para la fase 2
 # GEMELO_TESELAS=/srv/teselas
 
 # --- copias (infra/respaldo.sh; no las lee la api)

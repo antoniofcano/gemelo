@@ -9,6 +9,7 @@ import { AlmacenPg } from "./auth/almacen.ts";
 import { NOMBRE_COOKIE, rutasAuth, TEXTO_LIMITE, TEXTO_LIMITE_VINCULO } from "./auth/rutas.ts";
 import type { Contexto } from "./contexto.ts";
 import { rutasHazas } from "./hazas/rutas.ts";
+import { rutasPresencia } from "./presencia/rutas.ts";
 import { opcionesRegistro } from "./registro.ts";
 import { rutasSalud } from "./salud/rutas.ts";
 import { nuevoToken } from "./seguridad/cripto.ts";
@@ -86,5 +87,6 @@ export async function construyeApp(ctx: Contexto, o: OpcionesApp = {}): Promise<
   await rutasHazas(app, ctx);
   await rutasYo(app, ctx);
   await rutasAdmin(app, ctx);
+  await rutasPresencia(app, ctx);
   return app;
 }

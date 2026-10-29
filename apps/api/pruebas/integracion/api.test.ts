@@ -4,6 +4,7 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 import type { FastifyInstance, LightMyRequestResponse } from "fastify";
+import { TokenVerifier } from "livekit-server-sdk";
 import { construyeApp } from "../../src/app.ts";
 import { TEXTO_ACEPTADO, TEXTO_LIMITE } from "../../src/auth/rutas.ts";
 import { migra } from "../../src/bd/migra.ts";
@@ -22,6 +23,11 @@ const tokensVistos: string[] = [], cookiesVistas: string[] = [];
 const ids: Record<string, number> = {};
 let ipN = 0;
 
+// LiveKit sintético: la api solo firma con él (ninguna prueba de aquí se conecta a un LiveKit)
+const LIVEKIT = { GEMELO_LIVEKIT_URL: "http://127.0.0.1:1", GEMELO_LIVEKIT_URL_PUBLICA: "ws://localhost:7880", GEMELO_LIVEKIT_CLAVE: "devintegracion", GEMELO_LIVEKIT_SECRETO: "k".repeat(40) };
+// la sala, de mentira: apunta a quién se saca (la expulsión de verdad contra LiveKit es de P4)
+const moderadorDePrueba = { presentes: new Set<string>(), llamadas: [] as [string, string][],
+  async expulsa(sala: string, identidad: string) { this.llamadas.push([sala, identidad]); return this.presentes.delete(identidad); } };
 const ADMIN = "oficina@example.com", ANA = "ana@example.com", LUIS = "luis@example.com";
 
 before(async () => {
@@ -33,7 +39,8 @@ before(async () => {
   }
   for (const r of (await bd.dueno.query<{ id: number; codigo: string }>("SELECT id, codigo FROM hazas")).rows) ids[r.codigo] = r.id;
   await bd.dueno.query("UPDATE hazas SET hogar_id = $1 WHERE codigo = 'H-S01'", [ids[ANA]]);
-  ctx = contexto(bd.app, configDePrueba({ GEMELO_ENLACE_POR_CORREO: "100", GEMELO_ENLACE_POR_IP: "1000", GEMELO_VINCULO_INTENTOS_POR_HOGAR: "100", GEMELO_API_REGISTRO: "info" }));
+  ctx = contexto(bd.app, configDePrueba({ GEMELO_ENLACE_POR_CORREO: "100", GEMELO_ENLACE_POR_IP: "1000", GEMELO_VINCULO_INTENTOS_POR_HOGAR: "100", GEMELO_API_REGISTRO: "info", ...LIVEKIT }));
+  ctx.moderador = moderadorDePrueba;
   app = await construyeApp(ctx, { destinoRegistro: registro });
   await app.ready();
 }, { timeout: 240_000 });
@@ -301,6 +308,50 @@ test("un fallo de OlivarTrack queda como «error» con un mensaje propio y la fi
   assert.deepEqual((await get("/api/hazas/" + ids["H-S02"], luis)).json().avisos, ["ot_error"]);
   ctx.lector.sustituye.delete("aforo_y_avance_de_recoleccion");
   await con("POST", "/api/admin/sincronia", admin);
+});
+
+// ---------------------------------------------------------------- presencia (F2)
+test("presencia: con sesión, token de la sala libre con identidad opaca, metadatos de la base y solo datos", async t => {
+  if (salta(t)) return;
+  const luis = await entra(LUIS);
+  assert.equal((await con("PUT", "/api/yo/avatar", luis, { camisa: 4, sombrero: "gorra", piel: 2 })).statusCode, 204);
+  const r = await con("POST", "/api/presencia/token", luis, { dispositivo: "movil" });
+  assert.equal(r.statusCode, 200, r.body);
+  const b = r.json() as { url: string; sala: string; identidad: string; token: string; caduca_en: string };
+  assert.deepEqual(Object.keys(b).sort(), ["caduca_en", "identidad", "sala", "token", "url"]);
+  assert.equal(b.sala, "hituelo-libre");
+  assert.match(b.identidad, /^h_[A-Za-z0-9_-]{22}$/);
+  const c = await new TokenVerifier(LIVEKIT.GEMELO_LIVEKIT_CLAVE, LIVEKIT.GEMELO_LIVEKIT_SECRETO).verify(b.token);
+  assert.equal(c.sub, b.identidad);
+  const m = JSON.parse(c.metadata!);
+  assert.deepEqual(m.avatar, { camisa: 4, sombrero: "gorra", piel: 2 });
+  assert.equal(m.rol, "hogar"); assert.equal(m.dispositivo, "movil");
+  assert.ok(!JSON.stringify(c).includes("@"), "nada del correo en el token");
+  assert.equal(c.video?.canPublish, false);
+  // la misma identidad en otra sesión del mismo hogar; distinta para otro hogar
+  const otra = (await con("POST", "/api/presencia/token", await entra(LUIS), { dispositivo: "quest" })).json().identidad;
+  assert.equal(otra, b.identidad);
+  const admin = await entra(ADMIN);
+  assert.notEqual((await con("POST", "/api/presencia/token", admin, { dispositivo: "escritorio" })).json().identidad, b.identidad);
+});
+
+test("presencia: solo la oficina expulsa; queda en la auditoría y el expulsado no recibe token nuevo", async t => {
+  if (salta(t)) return;
+  const admin = await entra(ADMIN), luis = await entra(LUIS);
+  const identidad = (await con("POST", "/api/presencia/token", luis, { dispositivo: "escritorio" })).json().identidad as string;
+  assert.equal((await con("POST", "/api/admin/presencia/expulsar", luis, { hogar_id: ids[ADMIN]! })).statusCode, 403, "un hogar no expulsa");
+  assert.equal((await con("POST", "/api/admin/presencia/expulsar", admin, { hogar_id: 999999 })).statusCode, 404);
+  moderadorDePrueba.presentes.add(identidad);
+  const r = await con("POST", "/api/admin/presencia/expulsar", admin, { hogar_id: ids[LUIS]!, motivo: "prueba de moderación" });
+  assert.equal(r.statusCode, 200, r.body);
+  assert.deepEqual(r.json(), { estaba_en_sala: true });
+  assert.deepEqual(moderadorDePrueba.llamadas.at(-1), ["hituelo-libre", identidad]);
+  const aud = await bd.dueno.query("SELECT hogar_id, detalle FROM auditoria WHERE accion = 'admin.presencia_expulsado' ORDER BY id DESC LIMIT 1");
+  assert.equal(Number(aud.rows[0].hogar_id), ids[ADMIN]);
+  assert.deepEqual(aud.rows[0].detalle, { hogar: ids[LUIS], sala: "hituelo-libre", estaba: true, motivo: "prueba de moderación" });
+  const otra = await con("POST", "/api/presencia/token", luis, { dispositivo: "escritorio" });
+  assert.equal(otra.statusCode, 403);
+  assert.equal(otra.json().error, "expulsado");
 });
 
 // ---------------------------------------------------------------- roles y RGPD

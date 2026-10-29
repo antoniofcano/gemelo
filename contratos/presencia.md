@@ -2,7 +2,7 @@
 
 **Versión 1** (byte 0 de cada mensaje). Plan y decisiones: [PLAN F2](../doc/rumbo/PLAN.md), [DECISIONS-PENDING 39–42](../doc/rumbo/DECISIONS-PENDING.md), [UX §5.4 Gente](../doc/sistema/UX.md#54-gente). Permisos por rol en la sala: [livekit-roles.json](livekit-roles.json). Código: `apps/web/motor/26_presencia.js` (`PoseCodec`, `BufferPose`, `Presencia`). Lo comprueba `pruebas/guardianes/presencia.test.js`.
 
-**Estado: el códec, la interpolación y los avatares existen y están probados en Node y en Chrome headless con visitantes simulados (`?presencia=sim`); la red (LiveKit) NO está hecha.** Nada de esto se ha probado con dos personas reales, ni en iPhone ni en Quest.
+**Estado: el códec, la interpolación y los avatares existen y están probados en Node y en Chrome headless con visitantes simulados (`?presencia=sim`); con `?presencia=red` el motor entra en la sala de LiveKit de verdad (P2; lógica probada en Node, `pruebas/guardianes/presencia_red.test.js`).** Nada de esto se ha probado con dos personas ni dos navegadores reales (P4), ni en iPhone ni en Quest.
 
 ## Qué viaja y qué no
 
@@ -64,7 +64,7 @@ El códec usa `DataView` (estándar del navegador y de Node); no hace falta libr
 - Un búfer por visitante con sus últimas 12 poses en orden de secuencia (`BufferPose`). El desfase de relojes se estima como el mínimo de `llegada − reloj del emisor`.
 - Se dibuja la pose de hace **150 ms** si te llega a 10 Hz y de hace **650 ms** si te llega a 2 Hz: posición lineal, giro *nlerp*. Al cambiar de tasa el retardo cambia a 0,5 s por segundo, para que el avatar no salte. Si falta la pose siguiente, se extrapola **como mucho 120 ms** y luego se queda quieto.
 - Medido en Node con la red simulada del motor (retardo 30–90 ms, 60 fps, trayectoria a 1,4 m/s): error de la pose dibujada frente a la verdad del instante que dice mostrar **≤ 0,8 cm a 10 Hz y ≤ 6 cm a 2 Hz** (topes de la prueba: 3 y 15 cm). El retardo total que ve quien mira es red + 150 ms; el objetivo del plan (pose p95 < 250 ms) solo se podrá medir con LiveKit de verdad.
-- El receptor deduce si le llega a 10 o a 2 Hz por la distancia que él mismo ve **[SUPUESTO]**; con LiveKit se podrá leer del ritmo de llegada.
+- El receptor deduce si le llega a 10 o a 2 Hz: en la simulación, por la distancia que él mismo ve **[SUPUESTO]**; con `?presencia=red`, por el ritmo de llegada (media móvil del intervalo; < 300 ms → 150 ms de retardo, si no 650 ms).
 
 ## Avatares
 
@@ -74,11 +74,18 @@ Estilo bloque (UX §4.7): cuerpo (caja con piernas más oscuras, color de camisa
 
 `?presencia=sim` simula 10 visitantes (`&n=1..64`), la mitad cerca del punto de partida de la cámara y el resto repartidos por la finca; un 30 % son de Quest. Andan, mandan su pose por el códec con las tasas de arriba por una red de mentira (30–90 ms, 1 % de pérdida, relojes con desfases distintos y algunos a punto de dar la vuelta) y se dibujan con el búfer. Sin la bandera, `26_presencia.js` no crea nada. Gancho de pruebas: `window.__presencia()` (estado) y `window.__presencia("libera")` (lo suelta todo). La simulación va al ritmo de los fotogramas: en Chrome headless con SwiftShader (pocos fps) las cifras de retardo que da no representan nada; las de referencia son las de Node.
 
-## Cuando llegue la red (lo que falta, sin hacer)
+## La red (`?presencia=red`, P2)
 
-- Cliente: **`livekit-client`** (npm, versión exacta fijada en `apps/web/package.json` al integrarlo; regla 12). Publicar con `localParticipant.publishData(bytes, { reliable: false, topic: "pose", destinationIdentities })` y leer con el evento `DataReceived`. **[NO VERIFICADO]** contra la versión que se fije.
-- Servidor: tokens con **`livekit-server-sdk`** en `apps/api` (permisos de [livekit-roles.json](livekit-roles.json)), y la expulsión con su `RoomServiceClient`.
-- La pose local (cabeza en VR = `VRX.cab` + giro de la cámara; manos = los mandos; en escritorio, el paseante) aún no se codifica: falta decidir qué publica quien está en órbita (pregunta abierta).
+- Cliente: **`livekit-client` 2.22.4** (versión exacta en `apps/web/package.json`), pedido con `import()` solo con la bandera (Vite lo deja en un trozo aparte; sin la bandera no se descarga). Pide el token a la api (`POST /api/presencia/token`, mismo origen, con la sesión) y se conecta a la `url` que esta devuelve (`autoSubscribe: false`: no hay pistas).
+- Publica con `localParticipant.publishData(bytes, { reliable: false, topic: "pose", destinationIdentities })` y lee con `RoomEvent.DataReceived`. La lógica (tics, cercanía, quién está en vista aérea, ritmo) es `SalaPose`, en el trozo puro; el motor solo le pasa lo que llega y publica lo que devuelve. Nombres comprobados contra los tipos de la 2.22.4; contra un LiveKit real, **[NO VERIFICADO]** (P4).
+- **La pose propia:** con gafas, la cabeza es `VRX.cab` (rig + pose local) con el giro del rig por el de la cámara, y las manos, las empuñaduras de los mandos (`getControllerGrip`, el lado lo da WebXR al conectarse); paseando en pantalla, el paseante (`pp`) a 1,6 m del suelo, mirando a su rumbo (tipo 1). La cota se pasa al contrato quitando la exageración: `y = y_dibujo − suelo·exag + suelo`.
+- **Vista aérea (decisión 60):** en órbita, y con gafas en vuelo o en el mirador, no se publica pose. Los demás no te dibujan y el panel Gente te lista «en vista aérea»: cualquiera conectado sin pose en los últimos 2 s sale así, y su avatar se quita. No hace falta ningún mensaje más (el contrato de bytes no cambia).
+- **Panel Gente** (DOM, solo con la bandera, en el visor): tú y los demás con alias, rol, dispositivo y estado; **Bloquear** (solo para ti: deja de dibujar su avatar y de mostrar su chat). **Chat:** tema `chat`, fiable, texto UTF-8 de como mucho 280 caracteres sin caracteres de control ni de dirección; se guarda solo en memoria de la página (los últimos 40) y nunca en el servidor (decisión 40). Lo que llega se pone como texto, nunca como HTML. Como mucho un mensaje cada 0,7 s.
+- 49 plazas de avatar (la sala admite 50, `infra/dev/livekit.yaml`); más allá no se dibujan (`window.__presencia().sinPlaza`).
+- Al salir: si la oficina te saca (`PARTICIPANT_REMOVED`) o entras desde otro aparato (`DUPLICATE_IDENTITY`), lo dice; si no, «te has desconectado» con un botón para volver a entrar. No reintenta solo (más allá de la reconexión propia de LiveKit).
+- Servidor: **hecho** (P1). `POST /api/presencia/token` ([api.openapi.yaml](api.openapi.yaml)) firma con `livekit-server-sdk` 2.19.2 el token de la sala `hituelo-libre`: identidad `h_` + 22 caracteres (HMAC del id del hogar con el secreto de LiveKit: estable por hogar, no deducible sin el secreto), permisos de [livekit-roles.json](livekit-roles.json), metadatos `{alias, avatar, rol, dispositivo}` desde la base y caducidad de 15 min (solo sirve para entrar). Variables `GEMELO_LIVEKIT_URL`, `GEMELO_LIVEKIT_URL_PUBLICA`, `GEMELO_LIVEKIT_CLAVE`, `GEMELO_LIVEKIT_SECRETO(_FICHERO)`; sin la primera, 503. Una identidad por hogar: si el mismo hogar entra desde dos aparatos, LiveKit desconecta el primero **[NO VERIFICADO]**.
+- **Moderación mínima (P3, decisión 42):** `POST /api/admin/presencia/expulsar {hogar_id, motivo?}`, solo rol `admin`. La api saca a la identidad opaca de ese hogar con `RoomService.RemoveParticipant` (su clave de servidor; ningún token de cliente lleva `roomAdmin`), no le da token nuevo durante 15 min (en memoria: no sobrevive a un reinicio de la api; para más, revocar sus sesiones) y lo apunta en `auditoria` como `admin.presencia_expulsado` (hogar, sala, si estaba y el motivo). Si LiveKit falla, responde 500 y no se apunta. Que RoomService responda «not_found» con 404 cuando no está **[NO VERIFICADO]**. El rol de guía completo, con F3.
+- En local (`infra/dev`), el navegador se conecta a `ws://localhost:7880` (otro puerto: lo admite el `connect-src` de la CSP de desarrollo). Desde otro aparato de la red local (`--red-local`) eso no llega: queda para P4/A6. Que Chrome deje abrir `ws://localhost` desde una página `https://localhost` **[NO VERIFICADO]**.
 
 ## Versionado
 

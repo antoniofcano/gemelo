@@ -181,6 +181,12 @@ services:
       GEMELO_SMTP_TLS: "no"
       GEMELO_CORREO_REMITENTE: "gemelo@canoydamas.invalid"
       GEMELO_OT: "no"                  # sin OlivarTrack en local: la ficha sale con el aviso ot_sin_sincronia
+      # presencia (F2): la api firma los tokens con las claves aleatorias de LiveKit de .env y le habla por la red interna;
+      # el navegador se conecta a LiveKit en el anfitrión (ws://localhost, solo este equipo; para la red local, P4)
+      GEMELO_LIVEKIT_URL: "http://livekit:7880"
+      GEMELO_LIVEKIT_URL_PUBLICA: "ws://localhost:${GEMELO_DEV_PUERTO_LIVEKIT:-7880}"
+      GEMELO_LIVEKIT_CLAVE: ${GEMELO_DEV_LIVEKIT_CLAVE:?falta infra/dev/.env (lo crea npm run dev:arriba)}
+      GEMELO_LIVEKIT_SECRETO: ${GEMELO_DEV_LIVEKIT_SECRETO:?falta infra/dev/.env (lo crea npm run dev:arriba)}
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8000/api/salud').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
       interval: 10s
