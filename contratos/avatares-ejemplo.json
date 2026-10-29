@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "compresion": "cuantizacion",
+  "topes": { "triangulos_objetivo": 15000, "triangulos_max": 20000, "bytes_max": 2097152, "textura_px_max": 1024, "texturas_max": 3, "materiales_max": 4 },
+  "avatares": [
+    {
+      "id": "ejemplo-cc0", "nombre": "Ejemplo CC0", "descripcion": "Personaje inventado para este ejemplo: no existe ese fichero",
+      "fichero": "ejemplo-cc0.vrm", "sha256": "0000000000000000000000000000000000000000000000000000000000000000", "bytes": 700000, "vrm_version": "0.x",
+      "triangulos": 4700, "primitivas": 1, "materiales": 1, "texturas": 1, "contornos_quitados": 0, "autor": "Autor de ejemplo",
+      "licencia": { "spdx": "CC0-1.0", "url": "https://creativecommons.org/publicdomain/zero/1.0/", "credito_obligatorio": false, "texto_credito": "Ejemplo CC0 — Autor de ejemplo — CC0-1.0" },
+      "fuente": { "nombre": "Ejemplo inventado", "url": "https://ejemplo.invalid/avatares" },
+      "colores_muneco": { "camisa": "#3f7cc2", "piel": "#d9a47c", "sombrero": "ninguno" }
+    },
+    {
+      "id": "ejemplo-cc-by", "nombre": "Ejemplo CC BY", "fichero": "ejemplo-cc-by.vrm", "sha256": "1111111111111111111111111111111111111111111111111111111111111111", "bytes": 900000, "vrm_version": "1.0",
+      "triangulos": 12000, "primitivas": 4, "materiales": 4, "texturas": 3, "autor": "Otra autora de ejemplo",
+      "licencia": { "spdx": "CC-BY-4.0", "url": "https://creativecommons.org/licenses/by/4.0/", "credito_obligatorio": true, "texto_credito": "Ejemplo CC BY — Otra autora de ejemplo — CC-BY-4.0" },
+      "fuente": { "nombre": "Ejemplo inventado" },
+      "colores_muneco": { "camisa": "#e0b23a", "piel": "#b57d55", "sombrero": "paja" }
+    }
+  ]
+}

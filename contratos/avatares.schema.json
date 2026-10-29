@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gemelo.invalid/contratos/avatares.schema.json",
+  "$comment": "Catálogo de avatares VRM (/avatares/catalogo.json; contratos/avatares.md, ADR-0020 §2). Lo escribe tuberia/avatares/construye.mjs y lo valida ajv ahí mismo y en pruebas/guardianes/avatares.test.js. Lo que un esquema no dice (que fichero = id + .vrm, que el sha256 sea el del fichero, los topes de triángulos y bytes, ids únicos) lo comprueba el guardián en código.",
+  "title": "avatares",
+  "type": "object",
+  "required": ["v", "compresion", "topes", "avatares"],
+  "additionalProperties": false,
+  "properties": {
+    "v": { "const": 1, "$comment": "versión del contrato del catálogo" },
+    "compresion": { "enum": ["cuantizacion", "meshopt", "ninguna"], "$comment": "cómo van las mallas: cuantizacion = KHR_mesh_quantization (sin WebAssembly); meshopt exigiría 'wasm-unsafe-eval' en la CSP" },
+    "topes": {
+      "type": "object",
+      "required": ["triangulos_objetivo", "triangulos_max", "bytes_max", "textura_px_max", "texturas_max", "materiales_max"],
+      "additionalProperties": false,
+      "properties": {
+        "triangulos_objetivo": { "type": "integer", "minimum": 1 }, "triangulos_max": { "type": "integer", "minimum": 1 }, "bytes_max": { "type": "integer", "minimum": 1 },
+        "textura_px_max": { "type": "integer", "minimum": 1 }, "texturas_max": { "type": "integer", "minimum": 1 }, "materiales_max": { "type": "integer", "minimum": 1 }
+      },
+      "$comment": "los topes con los que se construyó: el cliente puede mostrarlos o ignorarlos; el guardián comprueba que cada avatar los cumple"
+    },
+    "avatares": { "type": "array", "minItems": 1, "maxItems": 12, "items": { "$ref": "#/$defs/avatar" }, "$comment": "catálogo cerrado de 6-12 (ADR-0020 §2); hasta que los propios lleguen, los 3-4 CC0 provisionales" }
+  },
+  "$defs": {
+    "avatar": {
+      "type": "object",
+      "required": ["id", "nombre", "fichero", "sha256", "bytes", "vrm_version", "triangulos", "primitivas", "materiales", "texturas", "autor", "licencia", "fuente", "colores_muneco"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9-]{1,32}$", "$comment": "es el que viaja en los metadatos de presencia (avatar.vrm) y en la tabla avatares" },
+        "nombre": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "descripcion": { "type": "string", "maxLength": 200, "$comment": "texto alternativo de la portada (accesibilidad, P7d)" },
+        "fichero": { "type": "string", "pattern": "^[a-z0-9-]{1,32}\\.vrm$", "$comment": "siempre <id>.vrm, relativo a /avatares/" },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$", "$comment": "huella del fichero tal como se sirve; el cliente lo comprueba y lo añade a la URL (?v=) para que la caché inmutable sea correcta" },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "vrm_version": { "enum": ["1.0", "0.x"] },
+        "triangulos": { "type": "integer", "minimum": 1 }, "primitivas": { "type": "integer", "minimum": 1, "$comment": "≈ llamadas de dibujo por avatar" },
+        "materiales": { "type": "integer", "minimum": 1 }, "texturas": { "type": "integer", "minimum": 0 },
+        "contornos_quitados": { "type": "integer", "minimum": 0, "$comment": "materiales MToon a los que se les apagó el contorno (segunda pasada de dibujo)" },
+        "autor": { "type": "string", "minLength": 1 },
+        "licencia": {
+          "type": "object",
+          "required": ["spdx", "url", "credito_obligatorio", "texto_credito"],
+          "additionalProperties": false,
+          "properties": {
+            "spdx": { "type": "string", "pattern": "^[A-Za-z0-9.+-]+$", "$comment": "CC0-1.0, CC-BY-4.0… (LicenseRef-… si es propia); lo declara quien da de alta el avatar y la tubería lo contrasta con el meta del VRM" },
+            "url": { "type": "string", "pattern": "^https?://" },
+            "credito_obligatorio": { "type": "boolean", "$comment": "true → la portada lo muestra en «Créditos»" },
+            "texto_credito": { "type": "string", "minLength": 1 }
+          }
+        },
+        "fuente": { "type": "object", "required": ["nombre"], "additionalProperties": false, "properties": { "nombre": { "type": "string", "minLength": 1 }, "url": { "type": "string", "pattern": "^https?://" } } },
+        "colores_muneco": {
+          "type": "object",
+          "required": ["camisa", "piel", "sombrero"],
+          "additionalProperties": false,
+          "properties": { "camisa": { "type": "string", "pattern": "^#[0-9a-f]{6}$" }, "piel": { "type": "string", "pattern": "^#[0-9a-f]{6}$" }, "sombrero": { "enum": ["ninguno", "paja", "gorra"] } },
+          "$comment": "cómo se pinta el muñeco de lejos (ADR-0020 §5); sombrero, el mismo enum de PUT /api/yo/avatar"
+        }
+      }
+    }
+  }
+}
