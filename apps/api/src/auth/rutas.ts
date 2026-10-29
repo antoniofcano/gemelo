@@ -5,12 +5,17 @@ import { huella, PATRON_TOKEN } from "../seguridad/cripto.ts";
 import { mensajeDeEnlace } from "./correo.ts";
 import { paginaEnlaceMalo, paginaEntrar, POLITICA_REFERENTE } from "./paginas.ts";
 import { requiereSesion } from "./roles.ts";
-import { audita, consumeEnlace, creaEnlace, estadoEnlace, normalizaCorreo, revocaTodas } from "./servicio.ts";
+import { audita, consumeEnlace, creaEnlace, estadoEnlace, normalizaCorreo, primerAcceso, revocaTodas } from "./servicio.ts";
+import { creaCodigo, SONDEO_S, sondea } from "./vinculo.ts";
 
 export const NOMBRE_COOKIE = "__Host-gemelo";
 export const OPCIONES_COOKIE = { path: "/", secure: true, httpOnly: true, sameSite: "lax" } as const;
 export const TEXTO_ACEPTADO = "Si ese correo puede entrar, te acabamos de mandar un enlace. Caduca en 15 minutos y sirve una sola vez.";
 export const TEXTO_LIMITE = "Has pedido varios enlaces seguidos. Por seguridad, espera unos minutos antes de pedir otro. Si ya te ha llegado uno, úsalo.";
+export const TEXTO_LIMITE_VINCULO = "Demasiados intentos seguidos. Por seguridad, espera unos minutos y vuelve a probar.";
+/** Adónde va quien acaba de entrar: la primera vez (o si cambiaron las normas), al primer acceso de la portada; si no, al mundo. */
+export const DESTINO_PRIMER_ACCESO = "/#bienvenida";
+export const DESTINO_MUNDO = "/finca/";
 
 const NO_GUARDAR = "no-store";
 
@@ -75,12 +80,36 @@ export async function rutasAuth(app: FastifyInstance, ctx: Contexto): Promise<vo
     // rotación: la sesión que trajera el navegador se destruye y nace otra con id nuevo (contra la fijación de sesión)
     await req.session.regenerate();
     req.session.hogarId = r.hogarId;
-    return html ? rep.code(303).header("location", "/finca/").send() : rep.send({ ok: true });
+    return html ? rep.code(303).header("location", r.primerAcceso ? DESTINO_PRIMER_ACCESO : DESTINO_MUNDO).send()
+      : rep.send({ ok: true, primer_acceso: r.primerAcceso });
+  });
+
+  // ---- código corto para las gafas (contratos/sesion.md § Código corto). Sin sesión: lo piden unas gafas que aún no la tienen.
+  app.post<{ Body: Record<string, never> }>("/api/auth/vincula", {
+    config: { rateLimit: { max: config.vinculo.porIp, timeWindow: config.vinculo.ventanaMin * 60_000 } },
+    schema: { body: { type: "object", additionalProperties: false, properties: {} } },
+  }, async (_req, rep) => {
+    rep.header("cache-control", NO_GUARDAR);
+    const c = await creaCodigo(bd, config.sesion.secreto);
+    return rep.code(201).send({ codigo: c.codigo, sondeo: c.sondeo, expira_en: c.expiraEn.toISOString(), cada_s: SONDEO_S });
+  });
+
+  app.post<{ Body: { sondeo: string } }>("/api/auth/vincula/sondeo", {
+    config: { rateLimit: { max: config.vinculo.sondeosPorMin, timeWindow: 60_000 } },
+    schema: { body: { type: "object", additionalProperties: false, required: ["sondeo"], properties: { sondeo: esquemaToken } } },
+  }, async (req, rep) => {
+    rep.header("cache-control", NO_GUARDAR);
+    const e = await sondea(bd, req.body.sondeo);
+    if (e.estado !== "aprobado") return { estado: e.estado };
+    // como al entrar con el enlace: la sesión que trajera el navegador se destruye y nace otra (rotación)
+    await req.session.regenerate();
+    req.session.hogarId = e.hogarId;
+    return { estado: "aprobado", primer_acceso: primerAcceso(e.normasVersion) };
   });
 
   app.get("/api/sesion", { preHandler: requiereSesion }, async (req, rep) => {
     rep.header("cache-control", NO_GUARDAR);
-    return { rol: req.session.rol, alias: req.session.alias ?? null, alias_visible: req.session.aliasVisible ?? false };
+    return { rol: req.session.rol, alias: req.session.alias ?? null, alias_visible: req.session.aliasVisible ?? false, primer_acceso: primerAcceso(req.session.normasVersion) };
   });
 
   app.post("/api/sesion/salir", async (req, rep) => {

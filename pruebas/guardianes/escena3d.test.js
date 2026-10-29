@@ -210,7 +210,9 @@ test("los enganches de 04c: 04b solo retira los olivos si 04c no se queda con el
 });
 
 // ---------------------------------------------------------------- en el navegador
-const CSP = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' data: blob:; worker-src 'self' blob:";
+// Aproximación a la CSP de la plataforma de artefactos: scripts de jsDelivr y hojas de estilo y fuentes solo de Google Fonts (lo que admite la
+// plataforma y usa apps/web/plantilla.html); el resto, del mismo origen.
+const CSP = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' data: blob:; worker-src 'self' blob:";
 const TIPOS = { ".html": "text/html; charset=utf-8", ".json": "application/json", ".jpg": "image/jpeg", ".glb": "model/gltf-binary" };
 function sirveConCsp(raiz, peticiones) {
   return new Promise(ok => {

@@ -6,6 +6,7 @@ Decisiones que **no puede tomar un agente**: las cierra Antonio. Las técnicas s
 
 | Abierta | Bloquea | Quién la cierra |
 |---|---|---|
+| VPS (V1): producto de correo de OVH y buzón del gemelo; DKIM/DMARC/SPF compartido; token de OlivarTrack (alcance, caducidad, IP, URL del MCP); desplegar primero con `GEMELO_OT=no`; Caddy de borde de Oficultor (quién, recarga, ventana, webs vecinas); DNS de `gemelo.canoydamas.es`; ruta en el VPS y dónde se construye la imagen; destino de las copias y custodia de la clave `age` (detalle en RUNBOOK-VPS) | V2 (desplegar) | Antonio |
 | Marca: si «Cuarenta hazas» es el nombre que ve la gente (aplazada, decisión 44) | portada, correos y pestaña antes de abrir a gente real | Antonio |
 | Medir 10 olivos en campo con cinta (plantilla de `tuberia/factores_campo.py`) | paso a `factorR8 = 1` (decisión 48) y factores reales de la tubería (49) | Antonio, en campo |
 

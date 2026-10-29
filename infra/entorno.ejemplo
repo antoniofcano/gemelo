@@ -1,5 +1,6 @@
 # Plantilla de /etc/gemelo/entorno en el VPS (la lee infra/compose.yml con env_file). SIN SECRETOS: los secretos van
-# en ficheros de /etc/gemelo/secretos/ (permisos 0400, dueño root), y el compose los monta como secretos de Docker:
+# en ficheros de /etc/gemelo/secretos/ (0440, legibles solo por el uid del contenedor que los usa: RUNBOOK-VPS,
+# «Secretos»), y el compose los monta como secretos de Docker:
 #   pg_dueno        contraseña del dueño de la base (migraciones)
 #   pg_api          contraseña del rol gemelo_api (la api)
 #   sesion_secreto  ≥ 32 caracteres aleatorios para firmar la cookie (openssl rand -base64 48)
@@ -19,18 +20,34 @@ GEMELO_SESION_INACTIVIDAD_DIAS=7
 GEMELO_ENLACE_POR_IP=10
 GEMELO_ENLACE_POR_CORREO=3
 GEMELO_ENLACE_VENTANA_MIN=15
+# código corto de las gafas (contratos/sesion.md § Código corto): códigos por IP, intentos de aprobar por hogar y por IP
+# (en la ventana), y sondeos por minuto y por IP
+GEMELO_VINCULO_POR_IP=10
+GEMELO_VINCULO_INTENTOS_POR_HOGAR=5
+GEMELO_VINCULO_INTENTOS_POR_IP=10
+GEMELO_VINCULO_SONDEOS_POR_MIN=60
+GEMELO_VINCULO_VENTANA_MIN=15
 
 # --- correo del enlace mágico: SMTP de OVH (decisión 15) [NO VERIFICADO contra el buzón real]
+# Pasos y comprobaciones del dominio (MX, SPF, DKIM, DMARC): doc/operacion/RUNBOOK-VPS.md, «SMTP de OVH».
+# En producción la api exige smtp, TLS y usuario. La clave del buzón NO va aquí: /etc/gemelo/secretos/smtp_clave.
 GEMELO_CORREO=smtp
+# servidor según el producto de correo de OVH que aloje el buzón [SUPUESTO: ssl0.ovh.net es el de MX Plan]
 GEMELO_SMTP_HOST=ssl0.ovh.net
+# 465 = TLS directo; 587 = STARTTLS (la api lo exige)
 GEMELO_SMTP_PUERTO=465
 GEMELO_SMTP_TLS=si
+# la dirección completa de un buzón PROPIO del gemelo en el dominio canoydamas.es (no la de una persona)
 GEMELO_SMTP_USUARIO=buzon-del-gemelo@ejemplo.invalid
+# la MISMA dirección que el usuario [SUPUESTO: OVH rechaza o marca un remitente distinto del buzón autenticado]
 GEMELO_CORREO_REMITENTE=Gemelo del olivar <buzon-del-gemelo@ejemplo.invalid>
 
-# --- OlivarTrack por MCP, solo lectura (contratos/olivartrack-sync.md). «no» hasta que exista el token propio.
+# --- OlivarTrack por MCP, solo lectura (contratos/olivartrack-sync.md). «no» hasta que exista el token propio
+# (decisión 17) y se hayan ajustado las formas de respuesta reales. El token NO va aquí: /etc/gemelo/secretos/ot_token.
+# Qué pedir en OlivarTrack, cómo se pasa y cómo se revoca: doc/operacion/RUNBOOK-VPS.md, «Token propio de OlivarTrack».
 GEMELO_OT=no
 # GEMELO_OT=mcp
+# la URL del MCP de OlivarTrack (https obligatorio en producción)
 # GEMELO_OT_MCP_URL=https://olivartrack.ejemplo.invalid/mcp
 GEMELO_OT_CADA_MIN=60
 
