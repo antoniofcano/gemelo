@@ -23,8 +23,9 @@ Dos modos: **embebido** (`D` incluye `t{}`; ≤16 MB, Cerro) y **ficheros** (`D.
 | `05_nube.js` | `actualizaNubeTeselas` | un `Points` por tesela |
 | `06_arboles.js`, `07_follaje.js` | copa, tronco, hojas | piezas del nivel 0 |
 | `07a_catalogo.js` | `Catalogo` (`tipos`, `geometria`, `instala`, `retira`…) | formas de L1/L2 por olivo-tipo; tipo −1 = las de siempre (ADR-0012) |
-| `07ab_generados.js` | `Generados` (`activo`, `actualiza`, `rotulo`, `estado`) | solo con `?olivos=gen` (ADR-0017): olivos generados cercanos (E0/E1 propios, variantes E2/E2-VR) por presupuesto, dibujados en un lote de ~6-7 mallas; apaga el L0 de siempre en su radio |
-| `07b_arboles.js` | `Arboles` (`inicia`, `tileCargada`, `actualiza`, `presupuesto`, `perfil`, `resumen`) | LOD 0/1/2, celdas de 64 m; pide L1/L2 al `Catalogo` |
+| `07ab_generados.js` | `Generados` (`activo`, `actualiza`, `rotulo`, `estado`, `escalera`, `lejanos`), `Escalera` (`tope`, `planifica`: trozo puro) | con `?olivos=gen` (ADR-0017): olivos generados cercanos (E0/E1 propios, variantes E2/E2-VR) por presupuesto, dibujados en un lote de ~6-7 mallas; apaga el L0 de siempre en su radio. Con `?olivos=escalera` (ADR-0019, fase A): el reparto de toda la escalera por el presupuesto del aparato, con histéresis |
+| `07ac_lejanos.js` | `Lejanos` (`inicia`, `paso`, `reparte`, `hayCapa`, `triangulos`, `resumen`) | solo con `?olivos=escalera`: los olivos que no están en 3D hasta 1.600 m, en una malla instanciada (1 llamada); impostores de O8b si el constructor trae `creaImpostores`, si no, sustituto de dos planos cruzados con la silueta de cada variante E2 horneada en el navegador |
+| `07b_arboles.js` | `Arboles` (`inicia`, `tileCargada`, `actualiza`, `presupuesto`, `perfil`, `resumen`) | LOD 0/1/2, celdas de 64 m; pide L1/L2 al `Catalogo`. Con `?olivos=escalera` no dibuja ni L0 ni L1/L2 ni los olivos del tileset: reparte entre `Generados` y `Lejanos` |
 | `08_marcadores.js` | `gLinde`, `gCopas`, `gMarc`, `gDesf` | instanciados |
 | `09_camara.js` | `orb`, `objetivo`, `camara()`; deslizador `#corr` (`kcor`) | órbita |
 | `10_ndvi.js` | `NDV` | u8 → Int16, escala relativa |
