@@ -1,0 +1,20 @@
+{
+  "name": "gemelo-olivo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Constructor de olivos generados (ADR-0017): el build() del constructor de olivos-tipo como módulo sin DOM, con three fijado a 0.128.0 para que el árbol no cambie con la versión de three del gemelo",
+  "main": "index.js",
+  "scripts": {
+    "texturas": "node herramientas/extrae_texturas.mjs",
+    "herramienta": "vite herramienta",
+    "herramienta:build": "vite build herramienta"
+  },
+  "dependencies": {
+    "three-gen": "npm:three@0.128.0"
+  },
+  "devDependencies": {
+    "three-r186": "npm:three@0.186.1",
+    "vite": "6.4.5"
+  }
+}
