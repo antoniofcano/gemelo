@@ -16,6 +16,7 @@ const NOTAS = {
   "23_estacion.js": "Publica además window.__otDebug (depuración del olivo estacional).",
   "25_perros.js": "Publica además window.__perrosDebug (depuración).",
   "26_presencia.js": "Publica además window.__presencia (pruebas). Sin ?presencia=sim o ?presencia=red no crea nada (con red, import(\"livekit-client\") y el panel Gente); el trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/presencia.test.js.",
+  "26b_avatares.js": "Sin presencia no crea nada; con ella, pide /avatares/catalogo.json solo si alguien lleva avatar (o con &vrm=1 en la simulación) e import(\"@pixiv/three-vrm\") solo entonces. El trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/avatares.test.js.",
   "27_debug.js": "Publica window.__g, el gancho de las pruebas (contrato en doc/sistema/CONTRATOS.md).",
   "29_vr.js": "Publica además window.__vrDebug, __vrOlivo, __vrBotones, __vrVuelo, __vrBalizas y VR_ESTADO (depuración y pruebas VR).",
   "90_final.js": "Arranque y bucle: Mundo.arranca, cuadro() y requestAnimationFrame. Define el orden de las actualizaciones por fotograma.",

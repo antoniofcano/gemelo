@@ -35,13 +35,15 @@ def version_web(paquete):
 
 def version_three(): return version_web("three")
 
-def importmap(v, v_tiles=None):
+def importmap(v, v_tiles=None, v_vrm=None):
     """three como módulo ES desde jsDelivr, con un importmap (la forma que recomienda la guía de instalación de three): «three» y «three/addons/».
     Y 3DTilesRendererJS (escena 3D Tiles, ?escena=tiles, F1d): su build ES tal cual, que solo importa «three» y «three/addons/…» y así usa ESTA three;
-    el motor lo pide con import() solo con la bandera."""
+    el motor lo pide con import() solo con la bandera. Y @pixiv/three-vrm (avatares VRM), igual."""
     base = "https://cdn.jsdelivr.net/npm/three@%s/" % v
     imp = {"three": base + "build/three.module.js", "three/addons/": base + "examples/jsm/"}
     if v_tiles: imp["3d-tiles-renderer"] = "https://cdn.jsdelivr.net/npm/3d-tiles-renderer@%s/build/index.js" % v_tiles
+    # @pixiv/three-vrm (avatares VRM, P7c): su build ES solo importa «three». En esta salida no hay /avatares (sin servidor): el motor no llega a pedirla
+    if v_vrm: imp["@pixiv/three-vrm"] = "https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@%s/lib/three-vrm.module.js" % v_vrm
     return '<script type="importmap">' + json.dumps({"imports": imp}) + '</script>\n'
 
 def monta(D, salida, src=os.path.join("apps", "web", "motor"), olivos=None):
@@ -52,7 +54,7 @@ def monta(D, salida, src=os.path.join("apps", "web", "motor"), olivos=None):
     # el motor va en un módulo que importa three, igual que la entrada de Vite (apps/web/herramientas/genera_motor.mjs)
     # --olivos <olivo.iife.js>: el constructor de olivos (ADR-0017, con su three 0.128 dentro) para ?olivos=gen; sin él la página es la de siempre
     gen = ('<script>' + open(olivos, encoding="utf-8").read() + '</script>\n') if olivos else ""
-    html = cab + '<script type="application/json" id="datos">' + json.dumps(D) + '</script>\n' + gen + importmap(version_three(), version_web("3d-tiles-renderer")) + '<script type="module">import * as THREE from "three";\n' + js + '</script>\n'
+    html = cab + '<script type="application/json" id="datos">' + json.dumps(D) + '</script>\n' + gen + importmap(version_three(), version_web("3d-tiles-renderer"), version_web("@pixiv/three-vrm")) + '<script type="module">import * as THREE from "three";\n' + js + '</script>\n'
     os.makedirs(os.path.dirname(os.path.join(R, salida)) or R, exist_ok=True)
     open(os.path.join(R, salida), "w", encoding="utf-8", newline="\n").write(html)   # LF en todos los sistemas: la salida es la misma en Windows y en Linux
     return html

@@ -28,6 +28,8 @@ export default defineConfig({
       { find: /^3d-tiles-renderer$/, replacement: TILES },
       // livekit-client (F2, ?presencia=red): el motor lo pide con import() solo con esa bandera; sin ella no se descarga
       { find: /^livekit-client$/, replacement: path.join(WEB, "node_modules", "livekit-client", "dist", "livekit-client.esm.mjs") },
+      // @pixiv/three-vrm (P7c, avatares VRM): import() solo con presencia y alguien con avatar del catálogo; su build ES solo importa «three»
+      { find: /^@pixiv\/three-vrm$/, replacement: path.join(WEB, "node_modules", "@pixiv", "three-vrm", "lib", "three-vrm.module.js") },
     ],
   },
   worker: { format: "es" },
