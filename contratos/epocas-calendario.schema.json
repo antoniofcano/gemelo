@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gemelo.invalid/contratos/epocas-calendario.schema.json",
+  "$comment": "Calendario de épocas del olivo por fecha (decisión 64, ADR-0018, contratos/olivo-horneado.md §4). La cobertura de los 366 días sin huecos ni solapes no la dice el esquema: la comprueba pruebas/guardianes/horneado.test.js con validaTabla().",
+  "title": "epocas-calendario",
+  "type": "object",
+  "required": ["v", "estado", "origen", "comun", "fincas"],
+  "additionalProperties": false,
+  "properties": {
+    "v": { "const": 1 },
+    "estado": { "type": "string", "minLength": 1, "$comment": "«de partida, a ajustar por Antonio» mientras Antonio no los dé por buenos" },
+    "origen": { "type": "string", "minLength": 1, "$comment": "de dónde salen los valores; si no hay fuente, se dice" },
+    "formato_fechas": { "type": "string" },
+    "comun": { "$ref": "#/$defs/tabla", "$comment": "la tabla de toda finca que no tenga la suya" },
+    "fincas": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z0-9_]+$" },
+      "additionalProperties": { "$ref": "#/$defs/tabla", "$comment": "la tabla de una finca (su finca_id) REEMPLAZA a la común entera" }
+    }
+  },
+  "$defs": {
+    "fecha": { "type": "string", "pattern": "^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$" },
+    "ventana": {
+      "type": "object",
+      "required": ["desde", "hasta"],
+      "additionalProperties": false,
+      "properties": { "desde": { "$ref": "#/$defs/fecha" }, "hasta": { "$ref": "#/$defs/fecha" } }
+    },
+    "tabla": {
+      "type": "object",
+      "required": ["reposo", "boton", "flor", "cuajado", "verde", "envero", "madura"],
+      "additionalProperties": false,
+      "properties": {
+        "reposo": { "$ref": "#/$defs/ventana" }, "boton": { "$ref": "#/$defs/ventana" }, "flor": { "$ref": "#/$defs/ventana" }, "cuajado": { "$ref": "#/$defs/ventana" },
+        "verde": { "$ref": "#/$defs/ventana" }, "envero": { "$ref": "#/$defs/ventana" }, "madura": { "$ref": "#/$defs/ventana" }
+      }
+    }
+  }
+}
