@@ -99,6 +99,29 @@ test("semilla guardada (copas_semilla) y nombres de catálogo de los tipos", t =
   assert.deepStrictEqual(JSON.parse(pr.stdout), [2 ** 31 + 1, 777, 2 ** 31 + 9, 2 ** 31 + 3]);
 });
 
+test("tuberia/factores_campo.py: plantilla de 10 olivos y factores de campo sobre el fixture (datos sintéticos)", t => {
+  const { python, fixture, propia } = require("./_util");
+  const py = python(); if (!py) return t.skip("sin Python: factores_campo.py NO se ha comprobado");
+  const fx = fixture(), dir = propia("olivo-campo"), ind = path.join(fx, "hituelo", "indice.json"), I = JSON.parse(fs.readFileSync(ind, "utf8"));
+  const pl = path.join(dir, "plantilla.csv");
+  const r1 = ejecuta(py, ["-I", path.join("tuberia", "factores_campo.py"), "--plantilla", pl, "--indice", ind]);
+  assert.strictEqual(r1.status, 0, r1.stderr);
+  const lineas = fs.readFileSync(pl, "utf8").trim().split(/\r?\n/);
+  assert.strictEqual(lineas[0], "id_provisional,utm_e,utm_n,altura_m,copa_ns_m,copa_eo_m,fecha,notas");
+  assert.strictEqual(lineas.length, 11, "10 olivos");
+  // campo sintético: altura = 1,1 × la del LiDAR; copa = 0,9 × la del LiDAR (que en el fixture es 2 × r8 medio)
+  const sel = I.copas.map((c, i) => i).filter(i => I.copas_param[i]).slice(0, 10);
+  const csv = ["id_provisional,utm_e,utm_n,altura_m,copa_ns_m,copa_eo_m,fecha,notas"].concat(sel.map(i => { const c = I.copas[i], p = I.copas_param[i];
+    return [I.copas_id[i], (c[0] + I.centro_utm[0]).toFixed(2), (c[1] + I.centro_utm[1]).toFixed(2), (p[0] * 1.1).toFixed(3), (p[1] * 0.9).toFixed(3), (p[1] * 0.9).toFixed(3), "2026-10-29", "sintético"].join(","); }));
+  const med = path.join(dir, "campo.csv"); fs.writeFileSync(med, csv.join("\n") + "\n");
+  const r2 = ejecuta(py, ["-I", path.join("tuberia", "factores_campo.py"), "--medidas", med, "--indice", ind]);
+  assert.strictEqual(r2.status, 0, r2.stderr);
+  const F = JSON.parse(r2.stdout.trim().split("\n").pop());
+  assert.strictEqual(F.olivos, 10);
+  assert.ok(Math.abs(F.factor_altura - 1.1) < 0.01 && Math.abs(F.factor_copa - 0.9) < 0.01, JSON.stringify(F));
+  assert.strictEqual(F.r8_es, "radio", "copa de campo ≈ 2 × r8 medio → r8 es radio");
+});
+
 test("semillas, épocas y parámetros desde el registro", t => {
   if (SALTO) return t.skip(SALTO);
   const prog = `

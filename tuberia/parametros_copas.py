@@ -32,6 +32,10 @@ from scipy.spatial import cKDTree
 
 CAMPOS = ["altura_m", "copa_m", "desplaz_m", "rumbo_gr", "densidad", "base_m", "rugosidad", "tronco"]
 CELDA = 0.5
+# Corrección del sesgo de la medida (respuesta 2 de Antonio): factores de configuración, 1,0 mientras no se midan en campo con
+# tuberia/factores_campo.py (los ≈ 1,16 y 1,20 de la calibración sintética NO se aplican a datos reales).
+FACTOR_ALTURA = 1.0
+FACTOR_COPA = 1.0
 
 
 def radio_de_busqueda(xy, tope=6.0):
@@ -98,8 +102,9 @@ def mide(px, py, ph, cx, cy, radio, marca=None, umbral_rel=0.35):
     return [round(altura, 2), round(copa_m, 2), round(desplaz, 2), round(rumbo, 1), round(densidad, 3), round(base, 2), round(rugosidad, 3), origen]
 
 
-def parametros(copas, x, y, h, marcas=None, desfase=(0.0, 0.0)):
-    """copas_param de todas las copas. `marcas` = {índice de copa: (x, y)} de OlivarTrack, a las que se suma `desfase` (≈ 1,5 m medido)."""
+def parametros(copas, x, y, h, marcas=None, desfase=(0.0, 0.0), factor_altura=FACTOR_ALTURA, factor_copa=FACTOR_COPA):
+    """copas_param de todas las copas. `marcas` = {índice de copa: (x, y)} de OlivarTrack, a las que se suma `desfase` (≈ 1,5 m medido).
+    `factor_altura` y `factor_copa` corrigen la altura (p95) y la copa (diámetro del contorno); 1,0 = sin corregir."""
     xy = np.array([[c[0], c[1]] for c in copas], float)
     rb = radio_de_busqueda(xy)
     arbol = cKDTree(np.column_stack([x, y]))
@@ -109,7 +114,10 @@ def parametros(copas, x, y, h, marcas=None, desfase=(0.0, 0.0)):
         m = None
         if marcas and i in marcas:
             m = (marcas[i][0] + desfase[0], marcas[i][1] + desfase[1])
-        out.append(mide(x[idx], y[idx], h[idx], c[0], c[1], rb[i], m) if len(idx) else None)
+        f = mide(x[idx], y[idx], h[idx], c[0], c[1], rb[i], m) if len(idx) else None
+        if f and (factor_altura != 1.0 or factor_copa != 1.0):
+            f[0] = round(f[0] * factor_altura, 2); f[1] = round(f[1] * factor_copa, 2)
+        out.append(f)
     return out
 
 
@@ -119,6 +127,8 @@ def principal():
     ap.add_argument("--puntos", default=os.environ.get("GEMELO_LIDAR"))
     ap.add_argument("--salida")
     ap.add_argument("--desfase", default="0,0", help="desfase de las marcas de OlivarTrack (dx,dy en m)")
+    ap.add_argument("--factor-altura", type=float, default=FACTOR_ALTURA, help="corrección de la altura (de tuberia/factores_campo.py; 1,0 = sin corregir)")
+    ap.add_argument("--factor-copa", type=float, default=FACTOR_COPA, help="corrección de la copa (de tuberia/factores_campo.py; 1,0 = sin corregir)")
     ap.add_argument("--calibracion", help="JSON de pruebas/olivo/calibracion.mjs: mide sus árboles y escribe el resultado junto a él")
     a = ap.parse_args()
     if a.calibracion:
@@ -134,7 +144,7 @@ def principal():
     P = np.load(a.puntos)
     marcas = {m[2]: (m[0], m[1]) for m in I.get("marcados", []) if m[2] >= 0}
     dx, dy = (float(v) for v in a.desfase.split(","))
-    I["copas_param"] = parametros(I["copas"], P["x"], P["y"], P["h"], marcas, (dx, dy))
+    I["copas_param"] = parametros(I["copas"], P["x"], P["y"], P["h"], marcas, (dx, dy), a.factor_altura, a.factor_copa)
     json.dump(I, open(a.salida or a.indice, "w", encoding="utf-8"), separators=(",", ":"), ensure_ascii=False)
     n = sum(1 for f in I["copas_param"] if f)
     print("copas_param: %d de %d copas medidas" % (n, len(I["copas"])))
