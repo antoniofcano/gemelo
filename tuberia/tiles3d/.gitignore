@@ -1,0 +1,6 @@
+# el index.html del visor lo escribe vite.config.js (la raíz ignora *.html y build.test.js no admite más HTML versionados)
+visor/index.html
+visor/dist/
+visor/public/
+# el lock del validador lleva un correo en un aviso de obsolescencia de glob 7 (ver validador/package.json)
+validador/package-lock.json

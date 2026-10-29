@@ -1,0 +1,19 @@
+{
+  "name": "gemelo-tiles3d",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Prototipo F1d: del contrato de datos v2 (fixture sintético) a 3D Tiles 1.1 (tileset.json + glb por tesela). Ver doc/sistema/TILES3D.md",
+  "scripts": {
+    "genera": "node genera.mjs"
+  },
+  "dependencies": {
+    "@gltf-transform/core": "4.5.1",
+    "@gltf-transform/extensions": "4.5.1",
+    "@gltf-transform/functions": "4.5.1",
+    "meshoptimizer": "1.3.0",
+    "proj4": "2.22.0",
+    "sharp": "0.35.5",
+    "three": "0.186.1"
+  }
+}
