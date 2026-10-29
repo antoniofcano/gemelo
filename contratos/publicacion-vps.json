@@ -1,0 +1,37 @@
+{
+  "$comment": "Contrato de la publicación en el VPS de OVH (ADR-0011, fase F1a). Lo comprueba pruebas/guardianes/api.test.js contra infra/compose.yml, infra/dev/compose.yml, apps/api/Dockerfile y apps/api/package.json. Imágenes: versión exacta Y digest, la misma en dev y en producción; comprobadas como estables el 2026-10-29 (Docker Hub, nodejs.org, curl.se). Cambiar una imagen = cambiarla aquí, en los dos compose y en doc/operacion/RUNBOOK-VPS.md en el mismo commit.",
+  "version": 1,
+  "dominio": "gemelo.canoydamas.es",
+  "red_borde": "borde",
+  "alias_en_borde": "gemelo-web",
+  "puerto_web_interno": 8080,
+  "puerto_api": 8000,
+  "salud": "/api/salud",
+  "puertos_publicados": [],
+  "imagenes": {
+    "db": "postgis/postgis:18-3.6-alpine@sha256:c53a483fc274072dfa02cd491efa79f3c8ae0a10774a0ece6c9c53b6a632cdef",
+    "web": "caddy:2.11.7-alpine@sha256:eb4d35b7452d1ab6171fbdbe8d9275b2301dad6dad92115d91e19fb9b24d510f",
+    "node": "node:24.22.1-alpine3.24@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53"
+  },
+  "imagenes_fase_2": {
+    "livekit": "livekit/livekit-server:v1.13.11@sha256:25cd902de7cacbd5f1f779f6a6ac1eae20ba8f56b0935934ce6b0ab80d1e3d20"
+  },
+  "volumen_bd": "/var/lib/postgresql",
+  "secretos": ["pg_dueno", "pg_api", "sesion_secreto", "smtp_clave", "ot_token"],
+  "variables_api": [
+    "NODE_ENV", "GEMELO_API_PUERTO", "GEMELO_API_ESCUCHA", "GEMELO_URL_PUBLICA", "GEMELO_API_ORIGENES", "GEMELO_API_PROXIES",
+    "GEMELO_API_REGISTRO", "GEMELO_DB_URL", "GEMELO_DB_CLAVE_FICHERO", "GEMELO_DB_CONEXIONES",
+    "GEMELO_SESION_SECRETO_FICHERO", "GEMELO_SESION_DIAS", "GEMELO_SESION_INACTIVIDAD_DIAS",
+    "GEMELO_ENLACE_POR_IP", "GEMELO_ENLACE_POR_CORREO", "GEMELO_ENLACE_VENTANA_MIN",
+    "GEMELO_CORREO", "GEMELO_SMTP_HOST", "GEMELO_SMTP_PUERTO", "GEMELO_SMTP_TLS", "GEMELO_SMTP_USUARIO",
+    "GEMELO_SMTP_CLAVE_FICHERO", "GEMELO_CORREO_REMITENTE",
+    "GEMELO_OT", "GEMELO_OT_MCP_URL", "GEMELO_OT_TOKEN_FICHERO", "GEMELO_OT_CADA_MIN", "GEMELO_OT_GRABACIONES"
+  ],
+  "cabeceras_web": {
+    "csp": "report-only",
+    "permissions_policy_incluye": "xr-spatial-tracking=(self)",
+    "hsts_max_age": 31536000
+  },
+  "copias": { "cifrado": "age", "transporte": "rclone", "fuera_del_vps": true, "ensayo_restauracion": "infra/ensayar-restauracion.sh" },
+  "no_verificado": ["borde real de Oficultor", "SMTP de OVH", "MCP real de OlivarTrack", "age y rclone reales", "despliegue en el VPS"]
+}
