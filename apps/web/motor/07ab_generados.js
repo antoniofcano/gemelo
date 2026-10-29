@@ -410,7 +410,7 @@
       Object.keys(B).forEach(function (b) { B[b].computeBoundingBox(); B[b].computeBoundingSphere(); });
       if (pts && pts.n) {
         var gp = new THREE.BufferGeometry(); gp.setAttribute("position", new THREE.BufferAttribute(pts.p, 3)); gp.setAttribute("color", new THREE.BufferAttribute(pts.c, 3)); gp.setAttribute("aFun", new THREE.BufferAttribute(pts.f, 1)); gp.computeBoundingSphere();
-        var pm = new THREE.Points(gp, mats.puntos); pm.name = "gen-puntos"; out.add(pm);
+        var pm = new THREE.Points(gp, mats.puntos); pm.name = "gen-puntos"; pm.frustumCulled = false; out.add(pm);   // las olivas en puntos (E2): pocas y baratas; su esfera de recorte salía corta y desaparecían al girar (generados_motor.mjs)
         if (salen.marcado) salen.P = { m: pm, n: salen.n0 === undefined ? pts.n : salen.n0 };
       }
       out.userData.salen = hay2 ? salen : null;
