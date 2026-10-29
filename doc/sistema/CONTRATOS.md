@@ -6,8 +6,8 @@ Versión del contrato de datos: **v = 2** (campo `v` del índice).
 
 | Contrato | Esquema / fuente de verdad | Lo vigila |
 |---|---|---|
-| Índice global | [`contratos/indice.schema.json`](../../contratos/indice.schema.json) | `contratos.test.js` |
-| Tesela | [`contratos/tesela.schema.json`](../../contratos/tesela.schema.json) | `contratos.test.js` (esquema y tamaños) |
+| Índice global | [`contratos/indice.schema.json`](../../contratos/indice.schema.json) | `contratos.test.js` (ajv; coherencia interna y tamaños de las rejillas) |
+| Tesela | [`contratos/tesela.schema.json`](../../contratos/tesela.schema.json) | `contratos.test.js` (ajv y tamaños) |
 | Interfaces del motor | [`contratos/interfaces.json`](../../contratos/interfaces.json) | `contratos.test.js` |
 | Catálogo de olivos-tipo (entrada del constructor) | [`contratos/olivos-tipo.schema.json`](../../contratos/olivos-tipo.schema.json) + [`olivos-tipo.md`](../../contratos/olivos-tipo.md) | `olivos.test.js` (ajv, gltf-validator, triángulos por nivel) |
 | Módulos de `apps/web/motor/` | cabecera «Expone / Consume» de cada fichero | `contratos.test.js` (vía `pruebas/contrato_modulos.js`) |
@@ -18,6 +18,8 @@ Versión del contrato de datos: **v = 2** (campo `v` del índice).
 | Enlace mágico y sesión | [`contratos/sesion.md`](../../contratos/sesion.md) (ADR-0013) | integración de `apps/api` (`GEMELO_DOCKER=1`) |
 | Lectura de OlivarTrack | [`contratos/olivartrack-sync.md`](../../contratos/olivartrack-sync.md) (formas **no verificadas**) | `apps/api/pruebas/unidad/ot.test.ts` con grabaciones sintéticas |
 | Publicación en el VPS | [`contratos/publicacion-vps.json`](../../contratos/publicacion-vps.json) | `api.test.js` |
+
+Los esquemas son **JSON Schema 2020-12 estándar**, sin palabras propias (salvo la anotación declarada `presupuesto_tri` del catálogo de olivos-tipo), y los valida **ajv** (`ajv/dist/2020`, versión fijada en `package.json`) en modo estricto y con todos los errores. Un array posicional se escribe `prefixItems` + `items: false` + `minItems` (longitud exacta); el patrón de las claves de un objeto, `propertyNames: { pattern }`; las definiciones reutilizables, `$defs` con `$ref: "#/$defs/…"`. Lo que un esquema no puede decir (tamaños de las rejillas decodificadas, referencias entre campos, columnas paralelas de igual longitud) lo comprueba el guardián en código.
 
 ## 1. Datos: exportador → motor
 

@@ -20,7 +20,7 @@
 | 2 | Sin marcas de conflicto, sin CRLF, sin rutas locales ni correos en lo versionado | `higiene.test.js` |
 | 3 | `VERSION`, `package.json`, CHANGELOG, CLAUDE.md, README y ESTADO dicen la misma versión | `version.test.js` |
 | 4 | Documentación: enlaces relativos, índices (ADR, doc/README), techos, `historico/` con «foto» | `documentacion.test.js` |
-| 5 | Contratos: el fixture cumple los esquemas, las interfaces devuelven los miembros declarados y las cabeceras «Expone / Consume» de `apps/web/motor/` están al día | `contratos.test.js` |
+| 5 | Contratos: el fixture cumple los esquemas (ajv), las interfaces devuelven los miembros declarados y las cabeceras «Expone / Consume» de `apps/web/motor/` están al día | `contratos.test.js` |
 | 6 | Build de las dos fincas desde el fixture (Cerro embebido, Hituelo ficheros) y sus límites de publicación | `build.test.js` |
 | 7 | Carga en Chrome headless: 0 errores de consola y presupuesto de dibujo bajo `pruebas/presupuesto.json` | `carga.test.js` |
 | 8 | Sin secretos, ni datos de la explotación, ni ficheros pesados versionados | `secretos.test.js` |

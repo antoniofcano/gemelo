@@ -1,5 +1,7 @@
 {
-  "$comment": "Contrato de t/<kx>_<ky>.json. Los tamaños exactos de cada campo (decodificado) los comprueba pruebas/guardianes/contratos.test.js: dtm 258×258 Int16 LE (cm sobre z0, filas sur→norte, celdas -1..256), chm 256×256 u8 (dm), suelo 130×130×3 u8 (RGB a 2 m, celdas -1..128), pts 3×Int16 LE por punto (x, y en cm sobre la esquina SO de la tesela; z en cm sobre z0; orden barajado con semilla fija).",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gemelo.invalid/contratos/tesela.schema.json",
+  "$comment": "Contrato de t/<kx>_<ky>.json. JSON Schema 2020-12 estándar, sin palabras propias; lo valida ajv en pruebas/guardianes/contratos.test.js. Los tamaños exactos de cada campo (decodificado) no caben en un esquema y los comprueba el mismo guardián: dtm 258×258 Int16 LE (cm sobre z0, filas sur→norte, celdas -1..256), chm 256×256 u8 (dm), suelo 130×130×3 u8 (RGB a 2 m, celdas -1..128), pts 3×Int16 LE por punto (x, y en cm sobre la esquina SO de la tesela; z en cm sobre z0; orden barajado con semilla fija).",
   "title": "tesela",
   "type": "object",
   "required": ["dtm", "chm", "suelo", "np"],
