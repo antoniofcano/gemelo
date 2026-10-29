@@ -96,6 +96,11 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | P4 | F2: dos Chrome en la misma sala (p95 < 250 ms) y 40 clientes ligeros | P2, P3 | 🔶 Docker + Chrome | ✅ en local (transporte p95 7 ms; 40 clientes saturan el i5: medir LiveKit con carga desde otra máquina) ; **probado por Antonio entre dos aparatos reales por la WiFi (2026-10-29): se ven, se escriben y la posición llega a tiempo**; el avatar remoto flotaba y no andaba (P5) |
 | P5 | F2: avatares remotos que andan (piernas y brazos según la velocidad) y con los pies en el suelo de este mundo | P4 | ligera · **opus**; 👤 a ojo | ✅ código, Node y Chrome headless (+5 llamadas con 10 o 40); falta verlo en aparatos |
 | P6 | F2: los demás ven si vas en quad o dron (modo en la pose, quad/dron bajo el avatar remoto, icono en el minimapa) | P5 | ligera · **opus** (con I1) | ✅ pose v1 con el modo; quad y dron remotos |
+| P7a | Avatares VRM: ADR (catálogo cerrado, presupuesto, nivel de detalle VRM cerca / muñeco lejos, animación por huesos sin ficheros, avatar en los metadatos de LiveKit, VR, licencias) | P5 | ligera · **opus** | 🟡 en curso |
+| P7b | Avatares VRM: tubería del catálogo (optimizar con gltf-transform, topes de triángulos y peso, servir por Caddy tras sesión) | P7a | ligera · **sonnet** | ⬜ |
+| P7c | Avatares VRM: motor (`@pixiv/three-vrm`, animación por huesos con la fórmula de P5, quad/dron, nivel de detalle con el muñeco, fundido) | P7a | ligera; 🔶 al medir · **opus** | ⬜ |
+| P7d | Avatares VRM: elegir avatar en la portada con vista previa | P7b | ligera · **sonnet** | ⬜ |
+| P7e | Avatares VRM: medir con 10 y 40 personas en el banco; móvil y Quest | P7c, P7d | 🔶 · **sonnet**; 👤 | ⬜ |
 | I1 | Presencia en el minimapa (quién está conectado y dónde) e **ir con alguien** (desde Gente o tocando su punto del minimapa; en VR con fundido) | P5 | ligera · **opus**; 👤 a ojo | ✅ Node; falta verlo en aparatos (en VR aún no hay botón) |
 | I4 | Balizas como puntos de encuentro: en el minimapa y en la ficha de la baliza, «aquí están: … ¿Ir a esta baliza?» y llegada junto a ella | I1, I3 | ligera · **opus** (con I1) | ✅ Node; falta verlo en aparatos |
 | I2 | La brújula oculta o muestra el minimapa | — | ligera | ✅ |
