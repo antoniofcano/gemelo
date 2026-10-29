@@ -1,11 +1,17 @@
 "use strict";
 const test = require("node:test"), assert = require("node:assert");
 const { RAIZ, fixture, lee, fs, path } = require("./_util");
-const { valida } = require("./_validador");
+const Ajv2020 = require("ajv/dist/2020").default;
 const contratoModulos = require(path.join(RAIZ, "pruebas", "contrato_modulos.js"));
 
 const json = f => JSON.parse(fs.readFileSync(path.join(RAIZ, f), "utf8"));
 const ESQ_INDICE = json("contratos/indice.schema.json"), ESQ_TESELA = json("contratos/tesela.schema.json"), IFACES = json("contratos/interfaces.json");
+// JSON Schema 2020-12 estándar con ajv: estricto (una palabra desconocida, un tipo sin declarar o un array posicional sin cerrar no compilan) salvo
+// strictRequired (aquí «required» sin «properties» es a propósito: se exige la presencia del campo y su forma no se fija); todos los errores
+const ajv = new Ajv2020({ strict: true, strictRequired: false, allowUnionTypes: true, allErrors: true });
+const V_INDICE = ajv.compile(ESQ_INDICE), V_TESELA = ajv.compile(ESQ_TESELA);
+/** [] si cumple; si no, los errores legibles: «/ruta: mensaje {parámetros}» */
+const valida = (v, dato) => v(dato) ? [] : v.errors.map(e => (e.instancePath || "/") + ": " + e.message + " " + JSON.stringify(e.params));
 const bytes = s => Buffer.from(s, "base64");
 const esJpeg = b => b[0] === 0xff && b[1] === 0xd8 && b[b.length - 2] === 0xff && b[b.length - 1] === 0xd9;
 const dataJpg = s => bytes(s.slice(s.indexOf(",") + 1));
@@ -20,7 +26,7 @@ for (const finca of ["hituelo", "cerro"]) {
 
   test("[" + finca + "] el índice cumple contratos/indice.schema.json", () => {
     assert.ok(DIR);
-    const errores = valida(ESQ_INDICE, cargaIndice());
+    const errores = valida(V_INDICE, cargaIndice());
     assert.deepStrictEqual(errores.slice(0, 15), []);
   });
 
@@ -53,7 +59,7 @@ for (const finca of ["hituelo", "cerro"]) {
     const tesela = k => finca === "cerro" ? I.t[k] : jsonFx("hituelo", "t", k + ".json");
     for (const k of Object.keys(I.teselas)) {
       const t = tesela(k);
-      assert.deepStrictEqual(valida(ESQ_TESELA, t).slice(0, 10), [], "tesela " + k);
+      assert.deepStrictEqual(valida(V_TESELA, t).slice(0, 10), [], "tesela " + k);
       assert.strictEqual(bytes(t.dtm).length, N2 * N2 * 2, k + ": dtm = 258² Int16");
       assert.strictEqual(bytes(t.chm).length, N * N, k + ": chm = 256² u8");
       assert.strictEqual(bytes(t.suelo).length, NS2 * NS2 * 3, k + ": suelo = 130² × 3 u8");
@@ -69,6 +75,34 @@ for (const finca of ["hituelo", "cerro"]) {
     }
   });
 }
+
+test("los esquemas rechazan lo que deben (arrays posicionales de otra longitud, claves de tesela mal formadas, parcela incompleta, tipos y rangos)", () => {
+  const base = jsonFx("hituelo", "indice.json"), k0 = Object.keys(base.teselas)[0];
+  const roto = cambia => { const I = JSON.parse(JSON.stringify(base)); cambia(I); return valida(V_INDICE, I); };
+  const casos = {
+    "centro_utm con 3 elementos": I => I.centro_utm.push(0),
+    "centro_utm con 1 elemento": I => I.centro_utm.pop(),
+    "centro_utm no entero": I => { I.centro_utm[0] += 0.5; },
+    "ext con 3 elementos": I => I.ext.pop(),
+    "copa con 6 elementos": I => I.copas[0].push(0),
+    "copa con r8 de 7 radios": I => I.copas[0][3].pop(),
+    "copa con parcela −1": I => { I.copas[0][4] = -1; },
+    "marcado con 3 elementos": I => I.marcados.length ? I.marcados[0].pop() : I.marcados.push([0, 0, 0]),
+    "clave de tesela mal formada": I => { I.teselas["a_b"] = I.teselas[k0]; },
+    "tesela sin np": I => { delete I.teselas[k0].np; },
+    "v de tesela con 5 elementos": I => I.teselas[k0].v.push(0),
+    "parcela sin linde": I => { delete I.parcelas[0].linde; },
+    "linde con un vértice de 3 coordenadas": I => I.parcelas[0].linde[0].push(0),
+    "versión de contrato distinta": I => { I.v = 3; },
+    "copas_tipo menor que −1": I => { I.copas_tipo[0] = -2; },
+    "ndvi sin u8 ni b64": I => { delete I.ndvi.u8; delete I.ndvi.b64; },
+    "finca_id con mayúsculas": I => { I.finca_id = "Hituelo"; },
+  };
+  for (const [n, f] of Object.entries(casos)) assert.notDeepStrictEqual(roto(f), [], "el esquema del índice debería rechazar: " + n);
+  const t = jsonFx("hituelo", "t", k0 + ".json");
+  assert.notDeepStrictEqual(valida(V_TESELA, Object.assign({}, t, { dtm: "no*base64" })), [], "tesela con dtm que no es base64");
+  assert.notDeepStrictEqual(valida(V_TESELA, Object.assign({}, t, { np: -1 })), [], "tesela con np negativo");
+});
 
 test("el fixture ejercita la calidad Base: hay una tesela sin nube (ADR-0003)", () => {
   const I = jsonFx("hituelo", "indice.json");

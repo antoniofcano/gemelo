@@ -18,7 +18,7 @@ Dos familias: **guardianes** (proceso, rápidos, en la puerta) y **pruebas de na
 | `higiene` | marcas de conflicto, CRLF, `C:\Users`, correos | el repo es público | quitar la ruta/correo; convertir a LF |
 | `version` | versión única en `VERSION`, `package.json`, CHANGELOG, CLAUDE, README, ESTADO | las versiones divergen en silencio | subir todas juntas (skill `release`) |
 | `documentacion` | enlaces relativos, índices, techos, «foto» en histórico | la doc se pudre | añadir la fila, arreglar el enlace, archivar |
-| `contratos` | fixture y `apps/web/motor/` contra los esquemas | el exportador y el motor se desacoplan | cambiar contrato, esquema y fixture a la vez |
+| `contratos` | fixture y `apps/web/motor/` contra los esquemas (JSON Schema 2020-12 con ajv, estricto; también que los esquemas rechazan datos rotos) | el exportador y el motor se desacoplan | cambiar contrato, esquema y fixture a la vez |
 | `build` | `tuberia/salida_artefacto/montar_v2.py` con el fixture, las dos fincas | un cambio rompe el montaje | ver el error de Python |
 | `carga` | 0 errores de consola y topes de dibujo | regresiones de render | mirar consola; si el tope sube a propósito, explicarlo en el commit |
 | `secretos` | claves, datos de explotación, ficheros pesados | datos privados en repo público | sacarlo del historial si ya se subió (consultar antes) |
