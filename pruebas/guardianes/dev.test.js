@@ -429,6 +429,9 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
   if (!process.env.GEMELO_DEV_OLIVOS) {
     const dir = path.join(RAIZ, "pruebas", "salida", "olivos-e2e");
     fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
+    // el estado del hornero (su índice clave → huella) vive en un volumen que `down` conserva: con la carpeta vacía y el volumen de una pasada anterior
+    // creería que todo está horneado y no escribiría nada (sin manifiesto). Con el entorno parado, el volumen no lo usa nadie: se borra (solo el de este proyecto)
+    if (!antes) spawnSync("docker", ["volume", "rm", "-f", (process.env.COMPOSE_PROJECT_NAME || "gemelo-dev") + "_hornero_estado"], { encoding: "utf8" });
     process.env.GEMELO_DEV_OLIVOS = dir;
   }
   const tiempos = {}, reloj = () => { const t0 = Date.now(); return () => ((Date.now() - t0) / 1000); };
@@ -441,15 +444,22 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
   {
     const dir = process.env.GEMELO_DEV_OLIVOS;
     const mp = path.join(dir, "manifiesto.json");
+    // `up --wait` da por sano al hornero mientras hornea (la salud admite una vuelta en curso): se espera al manifiesto, que se escribe el último
+    for (let i = 0; i < 240 && !fs.existsSync(mp); i++) await new Promise(ok => setTimeout(ok, 500));
     assert.ok(fs.existsSync(mp), "el hornero debió dejar " + mp + " antes de que `up --wait` diera el entorno por sano");
     const man = JSON.parse(fs.readFileSync(mp, "utf8")), h = man.variantes[0].huella;
     for (const n of ["estado.json", "manifiesto.anterior.json"]) fs.writeFileSync(path.join(dir, n), "{}");
     fs.mkdirSync(path.join(dir, "t"), { recursive: true }); fs.writeFileSync(path.join(dir, "t", "0_0.olivos"), Buffer.from("OLVT"));
     olivosHorneados = { huella: h, bytesBr: fs.statSync(path.join(dir, h + ".br")).size, bytesManifiesto: fs.statSync(mp).size, variantes: man.variantes.length };
     // el estado del hornero vive en su volumen (fuera de la carpeta servida): de ahí sale cuánto tardó la primera vuelta
-    const e = comun.compose(["exec", "-T", "hornero", "cat", "/estado/" + comun.fincaServida() + ".json"], { captura: true });
-    assert.strictEqual(e.status, 0, "estado del hornero: " + e.stderr);
-    const st = JSON.parse(e.stdout);
+    let e, st;
+    for (let i = 0; i < 60; i++) {   // tras el manifiesto aún limpia y escribe «listo»
+      e = comun.compose(["exec", "-T", "hornero", "cat", "/estado/" + comun.fincaServida() + ".json"], { captura: true });
+      assert.strictEqual(e.status, 0, "estado del hornero: " + e.stderr);
+      st = JSON.parse(e.stdout);
+      if (st.fase === "listo") break;
+      await new Promise(ok => setTimeout(ok, 500));
+    }
     assert.strictEqual(st.fase, "listo"); assert.strictEqual(st.error, null);
     assert.strictEqual(st.hechas, st.total, "el hornero horneó todo lo que quería");
     primeraVuelta = { ms: Date.parse(st.terminado_en) - Date.parse(st.empezado_en), total: st.total, horneadas: st.horneadas, bytesBr: man.variantes.reduce((s, f) => s + f.bytes_br, 0) };
@@ -604,8 +614,8 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
       // 4a. A4: las lindes de las hazas dibujadas (LineSegments «linde de las hazas»), la propia con otro color que las ajenas;
       //     A3: el tileset por Caddy (200 con sesión, 401 sin ella) y las escenas ?escena=tiles y ?olivos=gen sin errores ni avisos de CSP
       const finca = process.env.GEMELO_DEV_FINCA || "hituelo";
-      const abre = async (ruta, esperaFn) => {
-        const q = await ctx.newPage(), errs = [], csp = [];
+      const abre = async (ruta, esperaFn, c = ctx) => {
+        const q = await c.newPage(), errs = [], csp = [];
         q.on("pageerror", e => errs.push("PAGEERROR " + String(e.stack || e).slice(0, 300)));
         // el 404 del manifiesto de olivos horneados (ADR-0018) es lo esperado mientras el hornero no haya horneado la finca: el motor calcula (plan B)
         const sinManifiesto = u => /\/teselas\/[a-z0-9_]+\/olivos\/manifiesto\.json$/.test(String(u || "").split("?")[0]);
@@ -678,6 +688,72 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
         await q.close();
         assert.deepStrictEqual(errs, [], "errores en /finca/?olivos=gen"); assert.deepStrictEqual(csp, [], "CSP en /finca/?olivos=gen");
         t.diagnostic("?olivos=gen sin errores ni CSP en " + r0().toFixed(1) + " s (sin esperar a los generados)");
+      }
+
+      {   // O7g (ADR-0018): de punta a punta. El hornero horneó (arriba), Caddy sirve tras sesión y el motor, con los propios apagados (todo lo cercano
+          // son variantes), dibuja los generados con las variantes DESCARGADAS: 0 calculadas en el aparato, huellas comprobadas con Web Crypto por https.
+          // Contraprueba: con ?olivosHorneado=0 las calcula. Cada pasada va en un contexto limpio (con la cookie de sesión) para que la caché de O5
+          // (IndexedDB) no dé las variantes hechas: se mide la descarga, no la caché.
+        const TOPE = Number(process.env.GEMELO_TOPE_MEDIDA || 240) * 1000;
+        const nuevoCtx = async () => {
+          const c2 = await nav.newContext({ viewport: { width: 900, height: 650 }, ignoreHTTPSErrors: true });
+          await c2.addCookies(await ctx.cookies(base));
+          // marcas de la página (ms desde que empezó a cargar): cuándo hubo el primer generado dibujado, la primera variante horneada y la primera calculada
+          await c2.addInitScript(() => {
+            window.__marcas = {}; const reloj = () => Math.round(performance.now());
+            setInterval(() => {
+              // la cámara del escenario «cerca» de mide() (_navegador.js), en cuanto el mundo está listo: los generados solo entran cerca del suelo
+              if (window.__g && window.__g.listo && window.__g.listo() && window.__marcas.camara === undefined) {
+                const g = window.__g; g.orb.az = -0.4; g.orb.el = 0.5; g.orb.dist = 45; g.objetivo.x = -130; g.objetivo.z = 125; g.objetivo.y = g.suelo(-130, -125) + 4; g.pon("gem");
+                window.__marcas.camara = reloj();
+              }
+              if (!window.__olivosGen) return;
+              const g = window.__olivosGen(), h = g.horneado || {};
+              if (g.primero && window.__marcas.primero === undefined) window.__marcas.primero = reloj();
+              if (h.horneadas > 0 && window.__marcas.horneada === undefined) window.__marcas.horneada = reloj();
+              if (h.calculadas > 0 && window.__marcas.calculada === undefined) window.__marcas.calculada = reloj();
+            }, 50);
+          });
+          return c2;
+        };
+        const pasada = async ruta => {
+          const c2 = await nuevoCtx(), r0g = reloj();
+          try {
+            const { q, errs, csp } = await abre(ruta, null, c2);
+            const tListo = r0g();
+            const fin = Date.now() + TOPE;
+            let g = null;
+            for (;;) {
+              g = await q.evaluate(() => ({ g: window.__olivosGen(), marcas: window.__marcas, seguro: window.isSecureContext && !!(window.crypto && window.crypto.subtle) }));
+              const h = g.g.horneado;
+              if (g.g.primero && (h.horneadas > 0 || h.calculadas > 0) && g.g.pidiendo === 0) break;
+              if (Date.now() > fin) break;
+              await q.waitForTimeout(500);
+            }
+            const csp2 = csp.concat(await q.evaluate(() => window.__csp));
+            await q.close();
+            return { g: g.g, marcas: g.marcas, seguro: g.seguro, errs, csp: csp2, tListo, tTotal: r0g() };
+          } finally { await c2.close(); }
+        };
+        const hor = await pasada("/finca/?olivos=gen&olivosPropios=0");
+        const H = hor.g.horneado;
+        assert.strictEqual(hor.seguro, true, "https debe ser contexto seguro con Web Crypto (la huella de las recetas se comprueba con crypto.subtle)");
+        assert.deepStrictEqual(hor.errs, [], "errores en /finca/?olivos=gen&olivosPropios=0"); assert.deepStrictEqual(hor.csp, [], "CSP en /finca/?olivos=gen&olivosPropios=0");
+        assert.ok(hor.g.primero, "no se dibujó ningún olivo generado (estado: " + JSON.stringify(hor.g) + ")");
+        assert.strictEqual(H.estado, "activo", "el motor leyó el manifiesto del hornero: " + JSON.stringify(H));
+        assert.ok(H.horneadas > 0, "ninguna variante horneada descargada: " + JSON.stringify(H));
+        assert.strictEqual(H.calculadas, 0, "con el hornero, el aparato no debe calcular variantes: " + JSON.stringify(H));
+        assert.strictEqual(H.fallos, 0, "fallos al descargar o verificar variantes horneadas: " + JSON.stringify(H));
+        assert.strictEqual(H.propiosCalculados, 0, "con ?olivosPropios=0 no hay propios");
+        const cont = await pasada("/finca/?olivos=gen&olivosPropios=0&olivosHorneado=0");
+        const C = cont.g.horneado;
+        assert.deepStrictEqual(cont.errs, [], "errores en la contraprueba"); assert.deepStrictEqual(cont.csp, [], "CSP en la contraprueba");
+        assert.ok(cont.g.primero, "contraprueba: no se dibujó ningún generado (estado: " + JSON.stringify(cont.g) + ")");
+        assert.strictEqual(C.horneadas, 0, "con ?olivosHorneado=0 no se descarga nada: " + JSON.stringify(C));
+        assert.ok(C.calculadas > 0, "con ?olivosHorneado=0 el aparato las calcula: " + JSON.stringify(C));
+        const ms = x => x === undefined ? "n/d" : x + " ms";
+        t.diagnostic("O7g e2e del hornero (fixture, propios apagados, SwiftShader, contexto limpio): CON hornero " + H.horneadas + " horneadas, 0 calculadas, 0 fallos; cámara «cerca» puesta a los " + ms(hor.marcas.camara) + ", primer generado dibujado a los " + ms(hor.marcas.primero) + " y primera variante horneada a los " + ms(hor.marcas.horneada)
+          + " (hornero desde cero: " + primeraVuelta.ms + " ms) | SIN hornero (?olivosHorneado=0) " + C.calculadas + " calculadas, 0 horneadas; primer generado a los " + ms(cont.marcas.primero) + " y primera calculada a los " + ms(cont.marcas.calculada) + "; Web Crypto en https: sí");
       }
 
       // 4b. gafas (navegador de Quest simulado, SIN sesión y con su propio tarro de cookies) → código corto → aprobado desde
