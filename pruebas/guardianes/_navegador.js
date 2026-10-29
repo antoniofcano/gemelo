@@ -59,16 +59,17 @@ function desgloseLlamadas() {
   const tiles = g.Escena3D && g.Escena3D.grupo ? g.Escena3D.grupo() : null, pista = t => t === tiles ? " [3dtiles]" : t === g.Terreno.grupo ? " [terreno]" : g.Arboles && g.Arboles.grupo === t ? " [arboles]" : "";
   const arriba = o => { let p = o; while (p.parent && p.parent !== S) p = p.parent; return p; };
   const nombre = o => (o.name ? o.name + ":" : "") + o.type;
-  R.renderBufferDirect = function (cam, sc, geo, mat, obj) {
+  const espia = function (cam, sc, geo, mat, obj) {
     const t = arriba(obj), k = (sc === null ? "sombra" : "principal") + " · #" + S.children.indexOf(t) + " " + nombre(t) + pista(t) + (t === obj ? "" : " › " + nombre(obj)) + " · " + (mat && mat.type);
     cuenta[k] = (cuenta[k] || 0) + 1;
     return orig.apply(this, arguments);
   };
-  return new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(() => {
+  // se pone en un requestAnimationFrame (detrás del del motor, que ya ha dibujado ese fotograma) y se quita en el siguiente: un fotograma justo
+  return new Promise(ok => requestAnimationFrame(() => { R.renderBufferDirect = espia; requestAnimationFrame(() => {
     R.renderBufferDirect = orig;
     const filas = Object.entries(cuenta).sort((a, b) => b[1] - a[1]);
     ok({ total: filas.reduce((s, f) => s + f[1], 0), info: R.info.render.calls, filas });
-  })));
+  }); }));
 }
 
 /** Abre una URL, espera a __g.listo() y mide cada escenario. Devuelve { errores, fallos, medidas, parcial }.
