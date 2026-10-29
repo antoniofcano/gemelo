@@ -34,3 +34,6 @@ Decisiones que **no puede tomar un agente**: las cierra Antonio. Las técnicas s
 | 20 | Salida artefacto | **Se mantiene hasta la fase 2** y luego se retira | ADR-0010 |
 | 21 | **Cuándo desplegar en el VPS** | ahora / cuando haya algo funcional y probado en local | despliegue de F1a en OVH | ✅ 2026-10-29: **nada en el VPS hasta tener algo funcional y probado en local** (entorno `infra/dev` con la api enchufada, el mundo cargando y el recorrido de entrada completo) |
 | 22 | **Uno o varios mundos** | sala por finca / mundo común de la explotación / un solo mundo | F2 (salas y origen de coordenadas) | ✅ 2026-10-29: **un único mundo: Hituelo.** Cerro Velasco, por pequeño, queda para pruebas iniciales y maquetas manejables |
+| 23 | **Aspecto nuevo de three 0.186.1** (F1c) | aceptar / ajustar | cierre de F1c | ✅ 2026-10-29: **aceptado**; la luz de la tarde, más clara, **se deja así** (se recalibrará con datos reales de Hituelo) |
+| 24 | **Relieve fino del suelo** (ahora sí se aplica) | mantener / apagar / solo escritorio | coste en Quest | ✅ 2026-10-29: **se mantiene y en VR se apaga** en cuanto el perfil baja por fotograma justo (`VR_PERFILES[].b`) |
+| 25 | **CDN de three en la salida artefacto** | jsDelivr / cdnjs / incrustado | salida artefacto | ✅ 2026-10-29: **jsDelivr** (módulo, misma versión exacta que la web) |

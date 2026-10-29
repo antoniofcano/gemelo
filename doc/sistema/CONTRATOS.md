@@ -107,7 +107,7 @@ Detalle de miembros en [`contratos/interfaces.json`](../../contratos/interfaces.
 
 ### VR (`29_vr.js`)
 No expone una interfaz formal: `VRX` (estado), `vrActualiza(dt,t)`, `vrFin(dt,ms)`, `panel`, `ficha`. Ganchos para pruebas: `window.__vrDebug()` (estado, nivel, rig, cabeza, panel, viñeta…), `__vrOlivo()`, `__vrBotones()`, `window.VR_ESTADO`.
-- **Perfiles** `VR_PERFILES` = `[{n:0.8,r:0.75,tri:380000,h:32}, {0.55,0.6,270000,20}, {0.35,0.45,190000,0}, {0.2,0.3,130000,0}]` (fracción de árboles, radio, tope de triángulos, hierba). Baja si el EMA del JS > 13 ms o del fotograma > 15,2 ms; sube tras 25 s con JS < 7 ms.
+- **Perfiles** `VR_PERFILES` = `[{n:0.8,r:0.75,tri:380000,h:32,b:1}, {0.55,0.6,270000,20,0}, {0.35,0.45,190000,0,0}, {0.2,0.3,130000,0,0}]` (fracción de árboles, radio, tope de triángulos, hierba, relieve fino del suelo `b` → `uBumpK`). Baja si el EMA del JS > 13 ms o del fotograma > 15,2 ms; sube tras 25 s con JS < 7 ms.
 - **Entradas** (mando Quest, `gamepad.buttons`): palanca izquierda → andar; palanca derecha → giro por saltos de 30°; gatillo derecho → teletransporte; **izq. botón 1 (grip) → correr**; **izq. botón 4 (X) → viñeta de confort**; **izq. botón 5 (Y) → panel**; **der. botón 4 (A) → vuelo**; **der. botón 5 (B) → mirador**. (Leído del código; **no probado en casco real**.)
 
 ### `window.__g` (gancho de pruebas, `27_debug.js`)
