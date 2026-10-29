@@ -6,7 +6,7 @@ Decisiones que **no puede tomar un agente**: las cierra Antonio. Las técnicas s
 
 | Abierta | Bloquea | Quién la cierra |
 |---|---|---|
-| Preguntas de la maqueta de UX (marca, conservación del chat, perfiles de menores, vincular las gafas con código, grip derecho para hablar) | revisión de `doc/sistema/UX.md` | Antonio, cuando revise la propuesta de UX |
+| Marca: si «Cuarenta hazas» es el nombre que ve la gente (aplazada, decisión 44) | portada, correos y pestaña antes de abrir a gente real | Antonio |
 
 ## Cerradas el 2026-10-28 (Antonio, de una en una)
 
@@ -54,3 +54,8 @@ Decisiones que **no puede tomar un agente**: las cierra Antonio. Las técnicas s
 | 40 | **F2 · conservación del chat** | no se guarda / 30 días / indefinido | F2 | ✅ 2026-10-29: **no se guarda**; solo las preguntas sobre una haza, en su tabla |
 | 41 | **F2 · EIPD ampliada** | antes de F2 con gente real / con F3 | F2–F3 | ✅ 2026-10-29: **una sola EIPD con F3 (voz)**; hasta entonces F2 solo con cuentas de prueba |
 | 42 | **F2 · moderación** | mínima en F2 / toda en F3 / completa en F2 | F2 | ✅ 2026-10-29: **mínima en F2** (expulsar desde el servidor, con auditoría); rol de guía completo en F3 |
+| 43 | **Maqueta de UX** (`prototipos/ux/`, `doc/sistema/UX.md`) | aprobada / con cambios / rehacer | F1a y F2 | ✅ 2026-10-29: **aprobada como base**; UX.md es la guía de diseño |
+| 44 | **Marca** («Cuarenta hazas» producto o interno) | producto / interno / aplazar | portada y correos | 🟡 2026-10-29: **aplazada**; nombre provisional hasta antes de abrir a gente real |
+| 45 | **Perfiles de menores** | no / sin chat ni voz / con voz en guiadas | primer acceso, voz | ✅ 2026-10-29: **no por ahora**; solo cuentas adultas; se reabre con asesoría junto a la EIPD de F3 |
+| 46 | **Vincular las gafas** | código corto / enlace mágico / las dos | acceso en Quest | ✅ 2026-10-29: **código corto** (5 min) aprobado desde un dispositivo con sesión |
+| 47 | **Hablar en Quest** | grip derecho provisional / definitivo / botón del panel | F3 | ✅ 2026-10-29: **grip derecho provisional**; se decide al probarlo en casco (no probado) |

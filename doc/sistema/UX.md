@@ -1,6 +1,6 @@
 # Cuarenta hazas · Diseño de UX e interacción
 
-> **Estado: propuesta (28-oct-2026), sin implementar y sin probar con personas ni en dispositivos reales.** Define cómo se entra en el mundo y cómo se usa la web multiusuario de [ARQUITECTURA-MULTIUSUARIO](ARQUITECTURA-MULTIUSUARIO.md), con el plan por fases como referencia. La maqueta interactiva está en [`prototipos/ux/index.html`](../../prototipos/ux/index.html) (cómo abrirla: [`prototipos/ux/README.md`](../../prototipos/ux/README.md)). Las decisiones que son de Antonio van marcadas **[DECIDE ANTONIO]**. Lo que no se ha probado se dice en la [última sección](#lo-que-no-está-probado).
+> **Estado: aprobada como base por Antonio (29-oct-2026; decisiones 43–47 de [DECISIONS-PENDING](../rumbo/DECISIONS-PENDING.md)); sin implementar y sin probar con personas ni en dispositivos reales.** Define cómo se entra en el mundo y cómo se usa la web multiusuario de [ARQUITECTURA-MULTIUSUARIO](ARQUITECTURA-MULTIUSUARIO.md), con el plan por fases como referencia. La maqueta interactiva está en [`prototipos/ux/index.html`](../../prototipos/ux/index.html) (cómo abrirla: [`prototipos/ux/README.md`](../../prototipos/ux/README.md)). Las decisiones que son de Antonio van marcadas **[DECIDE ANTONIO]**. Lo que no se ha probado se dice en la [última sección](#lo-que-no-está-probado).
 
 ## Índice
 1. [Principios](#1-principios)
@@ -293,16 +293,17 @@ Objetivo **WCAG 2.2 AA** en todo lo 2D (acceso, configuración, HUD, paneles). E
 
 | Decisión | Por qué importa | Quién |
 |---|---|---|
-| **Marca**: logotipo, si «Cuarenta hazas» es el nombre del producto o solo del proyecto, relación visual con Cano & Damas | Portada, correo, pestaña del navegador | **[DECIDE ANTONIO]** |
-| **Grabar las visitas guiadas** (DECISIONS-PENDING #10) | Textos «no se graba», aviso de grabación, consentimiento | **[DECIDE ANTONIO]** |
-| **Proveedor de correo** del enlace mágico | Entregabilidad (que no caiga en spam), remitente, coste | **[DECIDE ANTONIO]** |
-| **Mundo tras sesión o con vista previa abierta** (plan, decisión 5) | Botón extra en portada | **[DECIDE ANTONIO]** |
-| **Qué campos de una haza ajena** y si se muestra el alias del hogar titular | Panel de haza (ADR-0014) | **[DECIDE ANTONIO]** |
-| **Qué es una «haza»** (40 / 32 / 37) | Nombres y número de hazas en el panel y el minimapa | **[DECIDE ANTONIO]** |
-| **Plazo de conservación del chat** | Texto del chat y de privacidad | **[DECIDE ANTONIO]** |
-| **Perfiles de menores** bajo la cuenta adulta | Primer acceso, voz | **[DECIDE ANTONIO]** (con asesoría) |
+| **Marca**: logotipo, si «Cuarenta hazas» es el nombre del producto o solo del proyecto, relación visual con Cano & Damas | Portada, correo, pestaña del navegador | **[DECIDE ANTONIO]** · aplazada (decisión 44): nombre provisional hasta antes de abrir a gente real |
+| **Grabar las visitas guiadas** (DECISIONS-PENDING #10) | Textos «no se graba», aviso de grabación, consentimiento | ✅ decisión 10: no se graba el directo |
+| **Proveedor de correo** del enlace mágico | Entregabilidad (que no caiga en spam), remitente, coste | ✅ decisión 15: SMTP de OVH |
+| **Mundo tras sesión o con vista previa abierta** (plan, decisión 5) | Botón extra en portada | ✅ decisión 16: sin sesión, solo la portada |
+| **Qué campos de una haza ajena** y si se muestra el alias del hogar titular | Panel de haza (ADR-0014) | ✅ decisión 13 |
+| **Qué es una «haza»** (40 / 32 / 37) | Nombres y número de hazas en el panel y el minimapa | ✅ decisión 12: tabla propia, la asigna la oficina |
+| **Plazo de conservación del chat** | Texto del chat y de privacidad | ✅ decisión 40: no se guarda |
+| **Perfiles de menores** bajo la cuenta adulta | Primer acceso, voz | ✅ decisión 45: no por ahora; se reabre con asesoría junto a la EIPD de F3 |
 | Textos legales finales (responsable, base legal, EIPD ampliada) | Política y casillas | Antonio + asesoría |
-| Mapeo de «hablar» en Quest | Tutorial y panel VR | Técnica, tras probar en casco |
+| Mapeo de «hablar» en Quest | Tutorial y panel VR | decisión 47: grip derecho **provisional**; se decide al probarlo en casco |
+| Vincular las gafas | Acceso en Quest | ✅ decisión 46: código corto aprobado desde el móvil u ordenador con sesión |
 | Subtítulos de voz | Accesibilidad | Técnica, tras ver coste |
 
 ## Lo que no está probado
