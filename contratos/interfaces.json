@@ -11,7 +11,7 @@
     "Arboles": { "modulo": "07b_arboles.js", "miembros": ["perfil", "inicia", "tileCargada", "refresca", "actualiza", "presupuesto", "resumen", "celdas"] },
     "PoseCodec": { "modulo": "26_presencia.js", "miembros": ["VERSION", "ESCRITORIO", "QUEST", "BYTES", "PIE", "QUAD", "DRON", "codifica", "decodifica", "empaquetaQ", "desempaquetaQ"] },
     "BufferPose": { "modulo": "26_presencia.js", "miembros": ["MAX", "EXTRA", "crea", "recibe", "muestra", "salida"] },
-    "Presencia": { "modulo": "26_presencia.js", "miembros": ["activo", "actualiza", "estado", "libera", "texto", "llegadas", "puntos", "irCon"] },
+    "Presencia": { "modulo": "26_presencia.js", "miembros": ["activo", "actualiza", "estado", "libera", "texto", "llegadas", "puntos", "irCon", "vrmPersonas", "miVrm", "recolorea", "cambiaron"] },
     "HazasPuro": { "modulo": "13b_hazas.js", "miembros": ["validaColeccion", "aLocal", "anillosLocales", "enElMundo", "dentroPoligono", "hazaEn", "cuentaVertices", "segmentos", "rayoSuelo", "fecha", "fichaFilas", "prefijoApi"] },
     "Hazas": { "modulo": "13b_hazas.js", "miembros": ["actualiza", "estado", "libera"] }
   },

@@ -1,5 +1,5 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: Encuentro, sitioJunto, Presencia
+// Expone: Muneco, Encuentro, sitioJunto, avatarVRM, Presencia
 // Consume: 01_datos (D, $), 02_mundo (suelo, copas), 03_escena (visor, renderer, scene, camera, texColor, exag, modo), 06_arboles (tronco),
 //   09_camara (objetivo), 12_paseo (paseando, persona), 12b_llegada (Llegada), 13b_hazas (HazasPuro), 15_tiempo (rumbo, hace),
 //   16_vida (enQuad, mira, quad, vidaPaseo, enDron, dron), 29_vr (VRX, vrFundido, panel)
@@ -175,7 +175,8 @@
         alias: alias ? Array.from(alias).slice(0, 24).join("") : "Visitante",
         rol: ROLES.indexOf(m.rol) >= 0 ? m.rol : "hogar",
         dispositivo: DISPOSITIVOS.indexOf(m.dispositivo) >= 0 ? m.dispositivo : "escritorio",
-        camisa: entero(av.camisa, 0, 5, 0), piel: entero(av.piel, 0, 4, 1), sombrero: SOMBREROS.indexOf(av.sombrero) >= 0 ? SOMBREROS.indexOf(av.sombrero) : 1
+        camisa: entero(av.camisa, 0, 5, 0), piel: entero(av.piel, 0, 4, 1), sombrero: SOMBREROS.indexOf(av.sombrero) >= 0 ? SOMBREROS.indexOf(av.sombrero) : 1,
+        vrm: typeof av.vrm === "string" && /^[a-z0-9-]{1,32}$/.test(av.vrm) ? av.vrm : null   // P7c (ADR-0020 §6): id del catálogo de avatares; si no cuadra, el muñeco
       };
     }
     return { TICK: TICK, SIN_POSE: SIN_POSE, crea: crea, entra: entra, sale: sale, recibe: recibe, tic: tic, retardo: retardo, gente: gente, conPose: conPose, seVe: seVe, leeInfo: leeInfo };
@@ -321,6 +322,8 @@
     return Encuentro.punto(t, desde, obst, D.ext, { dists: dists, rTronco: rTronco, suelo: suelo });
   }
 
+  // los avatares VRM (26b_avatares.js) se enganchan aquí cuando hay presencia y catálogo: coloca(a, …) devuelve true si su VRM tapa ya al muñeco
+  var avatarVRM = null;
   var Presencia = (function () {
     var variante = (/[?&]presencia=(sim|red)\b/.exec(location.search) || [])[1] || "", activo = !!variante, N = 0;
     var CERCA_ENTRA = 55, CERCA_SALE = 65, TICK = 0.1, CADA_LEJOS = 5, RET_CERCA = 150, RET_LEJOS = 650, ALTO_OJOS = 1.6;   // contratos/presencia.md
@@ -429,6 +432,7 @@
       if (a.iSomHueco >= 0) mSombrero.setMatrixAt(a.iSomHueco, m4); else if (a.iSom >= 0) mSombrero.setMatrixAt(a.iSom, m4);
       if (a.iMano >= 0) { mManos.setMatrixAt(a.iMano, m4); mManos.setMatrixAt(a.iMano + 1, m4); }
       if (mQuad) mQuad.setMatrixAt(a.k, m4); if (mDron) mDron.setMatrixAt(a.k, m4);
+      if (avatarVRM) avatarVRM.oculta(a);
       a.visto = false;
     }
 
@@ -447,7 +451,7 @@
           // emisor simulado: dónde está de verdad, adónde va, su reloj (u32, algunos a punto de dar la vuelta) y su secuencia
           home: home, x: home.x + (azar() - 0.5) * 20, y: home.y + (azar() - 0.5) * 20, dest: null, vel: 1.1 + azar() * 0.5, rum: 0, fase: azar() * 6.28,
           reloj: k % 4 === 0 ? 4294967296 - 3000 - k * 1000 - Math.round(performance.now()) : Math.floor(azar() * 1e9), seq: Math.floor(azar() * 65536), tTick: azar() * TICK, nTick: 0, cerca: false,
-          buf: BufferPose.crea(), out: BufferPose.salida(), visto: false, modo: veh === "quad" ? 1 : veh === "dron" ? 2 : veh === "mixto" ? k % 3 : 0
+          buf: BufferPose.crea(), out: BufferPose.salida(), visto: false, vrm: null, modo: veh === "quad" ? 1 : veh === "dron" ? 2 : veh === "mixto" ? k % 3 : 0
         });
         var nuevo = V[V.length - 1]; if (nuevo.modo === 1) nuevo.vel = 5.5; else if (nuevo.modo === 2) nuevo.vel = 0;   // en quad, deprisa; con el dron, quieto
       }
@@ -536,6 +540,13 @@
           var sh = suelo(h.p[0], -h.p[2]); q1.set(h.q[0], h.q[1], h.q[2], h.q[3]);
           mManos.setMatrixAt(a.iMano + i, m4.compose(v1.set(h.p[0], sh * exag + (h.p[1] - sh), h.p[2]), q1, vS));
         });
+      }
+      // P7c: si lleva su VRM y ya se ve entero, el muñeco no se dibuja (escala 0); el nombre y el vehículo, sí
+      if (avatarVRM && avatarVRM.coloca(a, mu, o, yawCab, cx, cz, dt)) {
+        m4.makeScale(0, 0, 0);
+        for (var jt = 0; jt < NP; jt++) mCuerpo.setMatrixAt(a.k * NP + jt, m4);
+        mCabeza.setMatrixAt(a.k, m4); if (a.iSom >= 0) mSombrero.setMatrixAt(a.iSom, m4);
+        if (a.iMano >= 0) { mManos.setMatrixAt(a.iMano, m4); mManos.setMatrixAt(a.iMano + 1, m4); }
       }
       // el nombre, encima de la cabeza; crece con la distancia para leerse y se apaga lejos (UX §5.4: nombres sobre los avatares)
       var dc = camera.position.distanceTo(v1.set(c[0], yv, c[2])), e = Math.max(1, Math.min(4, dc / 20));
@@ -626,13 +637,14 @@
       var id = p.identity; if (!id || porId[id]) return porId[id] || null;
       if (!huecos.length) { est.sinPlaza = (est.sinPlaza || 0) + 1; return null; }
       var h = huecos.pop(), mt = SalaPose.leeInfo(p.metadata);
-      var a = { k: h, id: id, info: mt, alias: mt.alias, camisa: CAMISAS[mt.camisa], piel: PIELES[mt.piel], sombrero: mt.sombrero, iSom: mt.sombrero ? h : -1, iSomHueco: h, iMano: h * 2, out: BufferPose.salida(), ret: null, visto: false, cerca: false };
+      var a = { k: h, id: id, info: mt, alias: mt.alias, vrm: mt.vrm, camisa: CAMISAS[mt.camisa], piel: PIELES[mt.piel], sombrero: mt.sombrero, iSom: mt.sombrero ? h : -1, iSomHueco: h, iMano: h * 2, out: BufferPose.salida(), ret: null, visto: false, cerca: false };
       a.o = SalaPose.entra(SP, id, mt); a.buf = a.o.buf;
       colorea(a); pintaNombre(h, mt.alias); oculta(a);
-      porId[id] = a; claveGente = ""; return a;
+      porId[id] = a; claveGente = ""; cambio = true; return a;
     }
     function saleOtro(id) {
       var a = porId[id]; if (!a) return;
+      if (avatarVRM) avatarVRM.sale(a);
       oculta(a); pintaNombre(a.k, ""); huecos.push(a.k); delete porId[id]; SalaPose.sale(SP, id); claveGente = "";
     }
     function recibeDatos(datos, p, tema) {
@@ -785,6 +797,7 @@
         for (i = 0; i < V.length; i++) { coloca(V[i], ahoraMs, dt, V[i].cerca ? RET_CERCA : RET_LEJOS); if (V[i].cerca) nc++; }   // [SUPUESTO] el receptor sabe si le llega a 10 o a 2 Hz por la distancia que él mismo ve
         est.cerca = nc;
       }
+      if (avatarVRM) avatarVRM.actualiza(dt);
       [mCuerpo, mCabeza, mSombrero, mManos, mNombres].forEach(function (m) { m.instanceMatrix.needsUpdate = true; });
       if (mQuad) { mQuad.visible = nVehQ > 0; mQuad.instanceMatrix.needsUpdate = true; } if (mDron) { mDron.visible = nVehD > 0; mDron.instanceMatrix.needsUpdate = true; }
       est.quad = nVehQ; est.dron = nVehD;
@@ -798,13 +811,14 @@
     function estado() {
       var e = { activo: activo, variante: variante, n: est.n, quest: est.quest, cerca: est.cerca, enviados: est.enviados, recibidos: est.recibidos, perdidos: est.perdidos, viejos: est.viejos, bytes: est.bytes,
         bytesPorSegundo: est.bps, ms: Math.round(est.ms * 1000) / 1000, msMax: Math.round(est.msMax * 1000) / 1000, retardoP95ms: est.retP95, errorP95m: est.errP95, vistos: V.filter(function (a) { return a.visto; }).length,
-        enQuad: est.quad || 0, conDron: est.dron || 0, vehiculos: !!(mQuad && mDron), idas: est.idas || 0, ultimaIda: est.ultimaIda || null };
+        enQuad: est.quad || 0, conDron: est.dron || 0, vehiculos: !!(mQuad && mDron), idas: est.idas || 0, ultimaIda: est.ultimaIda || null, vrm: avatarVRM ? avatarVRM.estado() : null };
       if (variante === "red") { e.conectado = !!sala; e.identidad = yo ? yo.identidad : null; e.vistos = Object.keys(porId).filter(function (k) { return porId[k].visto; }).length; e.sinPlaza = est.sinPlaza || 0; e.enVistaAerea = !(sala && poseLocal(Math.round(performance.now()))); }
       return e;
     }
     function libera() {   // libera todo lo de la GPU (y, en red, sale de la sala y retira el apartado) y deja el módulo como sin la bandera
       if (!grupo) return;
       activo = false;
+      if (avatarVRM) avatarVRM.libera();
       if (sala) { var s = sala; sala = null; s.disconnect(); }
       if (ui) { ui.raiz.remove(); ui = null; }
       scene.remove(grupo); [mCuerpo, mCabeza, mSombrero, mManos, mNombres, mQuad, mDron].forEach(function (m) { if (m) m.dispose(); }); mQuad = null; mDron = null;
@@ -814,7 +828,15 @@
     function texto() { return activo ? "presencia (" + variante + ") " + est.n + " · cerca " + est.cerca + " · " + est.bps + " B/s · JS " + est.ms.toFixed(2) + " ms" + (variante === "sim" ? " · retardo p95 " + est.retP95 + " ms" : sala ? "" : " · sin conexión") : ""; }
     if (variante === "sim") inicia(); else if (variante === "red") iniciaRed();
     function llegadas() { return { origen: performance.timeOrigin, l: medLlegadas ? medLlegadas.splice(0) : null }; }
-    return { activo: function () { return activo; }, actualiza: actualiza, estado: estado, libera: libera, texto: texto, llegadas: llegadas, puntos: puntos, irCon: irCon };
+    // para los avatares VRM (26b_avatares.js): las personas (todas, o solo las que se dibujan), tu id de avatar (de tus metadatos), recolorear el muñeco
+    // lejano con los colores de su avatar y si ha entrado alguien desde la última vez que se preguntó
+    var cambio = false;
+    function vrmPersonas(todas) { var ahoraMs = performance.now(), l = variante === "red" ? Object.keys(porId).map(function (k) { return porId[k]; }) : V; return todas ? l : l.filter(function (a) { return seVe(a, ahoraMs); }); }
+    function miVrm() { return yo && yo.info ? yo.info.vrm : null; }
+    function recolorea(a, camisa, piel) { if (!mCuerpo) return; if (camisa != null) a.camisa = camisa; if (piel != null) a.piel = piel; colorea(a); }
+    function cambiaron() { var c = cambio; cambio = false; return c; }
+    return { activo: function () { return activo; }, actualiza: actualiza, estado: estado, libera: libera, texto: texto, llegadas: llegadas, puntos: puntos, irCon: irCon,
+      vrmPersonas: vrmPersonas, miVrm: miVrm, recolorea: recolorea, cambiaron: cambiaron };
   })();
   // gancho de pruebas: estado; con "libera", soltar todo; con "llegadas", las poses apuntadas (P4); con "puntos", quién sale en el minimapa; con "ir" e id, ir con esa persona (I1)
   window.__presencia = function (accion, arg) {

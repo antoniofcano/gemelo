@@ -44,6 +44,7 @@ Dos modos: **embebido** (`D` incluye `t{}`; ≤16 MB, Cerro) y **ficheros** (`D.
 | `23_estacion.js` | olivo estacional (BBCH) | |
 | `24_pantalla.js` | pantalla completa, transición de cámara | |
 | `26_presencia.js` | `PoseCodec`, `BufferPose`, `Presencia`, `window.__presencia` | F2 sin red: códec de pose (24/56 B), interpolación y avatares de bloque instanciados (5 llamadas); solo con `?presencia=sim` (visitantes simulados), sin la bandera no crea nada ([presencia](../../contratos/presencia.md)) |
+| `26b_avatares.js` | `AvataresPuro` (y el gancho `avatarVRM` de 26) | P7c: avatares VRM (`@pixiv/three-vrm` 3.5.5 con `import()`) para los N más cercanos por aparato, con histéresis y fundido; el resto, el muñeco; tu paseante en tercera persona es tu avatar (decisión 76). Sin presencia no crea nada ([presencia](../../contratos/presencia.md), [avatares](../../contratos/avatares.md)) |
 | `27_debug.js` | `window.__g` | gancho de pruebas |
 | `28_depura.js` | contador `?debug` | |
 | `29_vr.js` | `VRX`, `vrActualiza`, `VR_PERFILES`, `window.__vrDebug` | todo el WebXR |
