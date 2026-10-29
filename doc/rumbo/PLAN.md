@@ -96,6 +96,8 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | O2 | Olivos generados: desglose del coste de `factorR8 = 1` por objeto | — | 🔶 | ⬜ |
 | O3 | `semillas_copas.py` dentro de los exportadores | — | ligera | ✅ |
 | O5 | Olivos generados: caché de recetas (memoria con límite y LRU; IndexedDB con clave semilla+tipo+época+`GEN_VERSION`, `idb-keyval`); horneado en servidor, más adelante y tras medir tamaños | o1d (montaje y recorte arreglados) | ligera | 🟡 caché hecha (sin medir en navegador); horneado en servidor pendiente |
+| O6 | Medir el horneado por tesela (tamaños por nivel, cuantizado y brotli, manifiesto, descarga de una visita, tiempo) | — | ligera (Node) | 🟡 en curso |
+| O7 | Hornero en el servidor (decisión 62): servicio que hornea y mantiene las recetas por tesela (época actual y siguiente), manifiesto por tesela, el motor las descarga; ADR-0018 | O6 | ligera; 🔶 al medir | ⬜ |
 | O4 | Medir 10 olivos en campo con cinta (decisiones 48-49) | — | 👤 | ⬜ |
 | V1 | VPS: preparar el despliegue (RUNBOOK-VPS al día, SMTP de OVH, token de OlivarTrack, comprobaciones previas) | — | ligera (documentos y guiones) | ✅ (8 preguntas a Antonio en DECISIONS-PENDING) |
 | V2 | VPS: desplegar F1a | A5, A6, V1 (decisión 21) | 👤 confirma cada paso | ⬜ |
