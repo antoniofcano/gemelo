@@ -69,7 +69,9 @@ Tareas sueltas decididas: ✅ anonimizar `doc/historico/DISENO-2026-10.md` (deci
 
 ## Tablero de tareas (desde el 2026-10-29)
 
-Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** primero las ligeras que desbloquean a otras, en paralelo; lo que pasa por Chrome o Docker (🔶), al final y por el [banco de pruebas](../operacion/TESTING.md#banco-de-pruebas-un-solo-chrome-o-docker-a-la-vez-política-desde-el-2026-10-29); 👤 = lo hace Antonio. Estado: ✅ hecho · 🟡 en curso · ⬜ por hacer. **Enrutador de modelo** (en «Tipo»): **opus** para motor, sombreadores, seguridad o una decisión con alternativas (ADR); **sonnet** para tareas acotadas y bien especificadas (contratos, tuberías, servicios, pruebas, medidas, documentación); **haiku** para búsquedas, recuentos y comprobaciones mecánicas. Un agente que sigue una tarea por mensaje conserva su modelo.
+Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** primero las ligeras que desbloquean a otras, en paralelo; lo que pasa por Chrome o Docker (🔶), al final y por el [banco de pruebas](../operacion/TESTING.md#banco-de-pruebas-un-solo-chrome-o-docker-a-la-vez-política-desde-el-2026-10-29); 👤 = lo hace Antonio. Estado: ✅ hecho · 🟡 en curso · ⬜ por hacer.
+
+**Enrutador de modelo** (en «Tipo»): **opus** para motor, sombreadores, seguridad o una decisión con alternativas (ADR); **sonnet** para tareas acotadas y bien especificadas (contratos, tuberías, servicios, pruebas, medidas, documentación); **haiku** para búsquedas, recuentos y comprobaciones mecánicas. Un agente que sigue una tarea por mensaje conserva su modelo.
 
 | Id | Tarea | Depende de | Tipo | Estado |
 |---|---|---|---|---|
