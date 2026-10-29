@@ -34,8 +34,8 @@ export function copiaInstancias(p, geo, filtro, escala) {
   const n = idx.length, matrices = new Float32Array(n * 16), colores = p.colores ? new Float32Array(n * 3) : null, nodo = p.nodo ? new Int32Array(n) : null;
   const se = escala ? [escala, 0, 0, 0, 0, escala, 0, 0, 0, 0, escala, 0, 0, 0, 0, 1] : null, mt = new Array(16), o = new Array(16);
   idx.forEach((i, k) => {
-    for (let e = 0; e < 16; e++) mt[e] = p.matrices[i * 16 + e];
-    matrices.set(se ? multiplica(mt, se, o) : mt, k * 16);
+    if (!se) matrices.set(p.matrices.subarray(i * 16, i * 16 + 16), k * 16);
+    else { for (let e = 0; e < 16; e++) mt[e] = p.matrices[i * 16 + e]; matrices.set(multiplica(mt, se, o), k * 16); }
     if (colores) colores.set(p.colores.subarray(i * 3, i * 3 + 3), k * 3);
     if (nodo) nodo[k] = p.nodo[i];
   });
@@ -94,18 +94,25 @@ function comoPuntos(p) {
  * @param {"E0"|"E1"|"E2"|"E2VR"} k
  */
 export function aNivel(r, k) {
+  const g = aNivelG(r, k);
+  for (;;) { const x = g.next(); if (x.done) return x.value; }
+}
+
+/** aNivel como generador: cede el turno (yield) tras cada pieza, para la Cola del motor o el trabajador */
+export function* aNivelG(r, k) {
   if (!NIVELES.includes(k)) throw new Error("nivel desconocido: " + k);
   if (k === "E0") return r;
   const H = r.medidas.altura_m || 5, Rc = (r.medidas.copa_m || 8) / 2, piezas = [];
   for (const p of r.piezas) {
     if (p.rol === "brotes") continue;
-    if (p.rol === "ramas" && p.brote) { piezas.push(sinBrotes(p)); continue; }   // la maqueta quita la malla «brotes»
-    if (p.rol === "olivas") { piezas.push(k === "E1" ? copiaInstancias(p, "octa") : comoPuntos(p)); continue; }
-    if (k === "E2VR" && p.rol === "relleno") { piezas.push(copiaInstancias(p, null, null, ESCALA_RELLENO_VR)); continue; }
-    if (k === "E2VR" && p.rol === "ramitas") { piezas.push(aclareo(p, H, Rc)); continue; }
-    if (p.clase === "instancias") { piezas.push(copiaInstancias(p)); continue; }
-    if (k !== "E1" && p.clase === "malla" && p.rejilla) { piezas.push(rejillaReducida(p)); continue; }
+    if (p.rol === "ramas" && p.brote) { piezas.push(sinBrotes(p)); yield; continue; }   // la maqueta quita la malla «brotes»
+    if (p.rol === "olivas") { piezas.push(k === "E1" ? copiaInstancias(p, "octa") : comoPuntos(p)); yield; continue; }
+    if (k === "E2VR" && p.rol === "relleno") { piezas.push(copiaInstancias(p, null, null, ESCALA_RELLENO_VR)); yield; continue; }
+    if (k === "E2VR" && p.rol === "ramitas") { piezas.push(aclareo(p, H, Rc)); yield; continue; }
+    if (p.clase === "instancias") { piezas.push(copiaInstancias(p)); yield; continue; }
+    if (k !== "E1" && p.clase === "malla" && p.rejilla) { piezas.push(rejillaReducida(p)); yield; continue; }
     piezas.push(p);
+    yield;
   }
   return Object.assign({}, r, { nivel: k, piezas });
 }

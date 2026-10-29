@@ -2,7 +2,7 @@
 //   - la herramienta (apps/web/olivo/dist/herramienta, vite build) con three 0.128 y 0.186: misma huella que en Node;
 //   - el trabajador da la misma huella que el hilo principal y el hilo principal no se bloquea (hueco máximo entre latidos) con 5 árboles;
 //   - a rebanadas, ninguna pasa de 3 ms;
-//   - el IIFE (olivo.iife.js, global OlivoGen) con el three r128 global da la misma huella;
+//   - el IIFE (olivo.iife.js, global OlivoGen, con su three 0.128 dentro: no usa el THREE global) da la misma estructura que Node;
 //   - con --capturas <carpeta>: capturas E2 frente a E2-VR y del módulo (los recuentos los da la herramienta).
 //   node pruebas/olivo/navegador.mjs <dist/herramienta> <dist/iife> [--capturas <carpeta>]
 // Imprime JSON. Lo usa pruebas/guardianes/olivo.test.js.
@@ -30,8 +30,8 @@ const s1 = await sirve(DIST), url = "http://127.0.0.1:" + s1.address().port + "/
 // página del IIFE: el three r128 global (el mismo que da cdnjs, aquí desde node_modules) + olivo.iife.js
 const dirIife = fs.mkdtempSync(path.join(RAIZ, "pruebas", "salida", "olivo-iife-"));
 fs.copyFileSync(path.join(IIFE, "olivo.iife.js"), path.join(dirIife, "olivo.iife.js"));
-fs.copyFileSync(path.join(RAIZ, "apps", "web", "olivo", "node_modules", "three-gen", "build", "three.min.js"), path.join(dirIife, "three.min.js"));
-fs.writeFileSync(path.join(dirIife, "index.html"), '<!doctype html><meta charset="utf-8"><script src="three.min.js"></script><script src="olivo.iife.js"></script>\n');
+// sin three global: el IIFE lleva su three 0.128.0 dentro; un THREE de mentira en la página comprueba que no lo usa
+fs.writeFileSync(path.join(dirIife, "index.html"), '<!doctype html><meta charset="utf-8"><script>window.THREE = { REVISION: "no-usar" };</script><script src="olivo.iife.js"></script>\n');
 const s2 = await sirve(dirIife);
 const nav = await lanza();
 try {
@@ -94,9 +94,9 @@ try {
   p.on("pageerror", e => errores.push(String(e).slice(0, 300)));
   await p.goto("http://127.0.0.1:" + s2.address().port + "/index.html");
   const r = await p.evaluate(async () => { const t0 = performance.now(), rc = OlivoGen.receta({ tipo: "centenario3", epoca: "envero", semilla: 7 }), ms = performance.now() - t0;
-    const g = OlivoGen.montaOlivo(THREE, rc, Object.fromEntries(OlivoGen.MATERIALES.map(n => [n, n === "puntos" ? new THREE.PointsMaterial() : new THREE.MeshStandardMaterial()])));
+
     const f = OlivoGen.creaFabrica(); const r2 = await f.receta({ tipo: "adulto1", epoca: "reposo", semilla: 1003 });
-    return { revision: THREE.REVISION, version: OlivoGen.GEN_VERSION, huella: await OlivoGen.huellaEstructura(rc), huella2: await OlivoGen.huellaEstructura(r2), modo: f.modo, ms, tri: OlivoGen.triangulosDe(g), rebanadaMax: Math.max(...f.rebanadas) }; });
+    return { threeGlobal: THREE.REVISION, version: OlivoGen.GEN_VERSION, huella: await OlivoGen.huellaEstructura(rc), huella2: await OlivoGen.huellaEstructura(r2), modo: f.modo, ms, tri: OlivoGen.triangulosNivel(rc), rebanadaMax: Math.max(...f.rebanadas) }; });
   salida.iife = r;
   if (r.huella !== await estructuraNode({ tipo: "centenario3", epoca: "envero", semilla: 7 }) || r.huella2 !== await estructuraNode({ tipo: "adulto1", epoca: "reposo", semilla: 1003 })) salida.mal.push("IIFE: estructura distinta de la de Node");
   if (r.modo !== "rebanadas") salida.mal.push("IIFE: debía ir a rebanadas (sin trabajador)");

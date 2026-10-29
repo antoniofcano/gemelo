@@ -12,7 +12,7 @@
 import * as G from "three-gen";
 import { recetaG as recetaGN, receta as recetaN, geosCompartidas, resuelve, triangulos } from "./nucleo.js";
 import { montaOlivo as montaN, triangulosDe, liberaOlivo } from "./montaje.js";
-import { aNivel, NIVELES, triangulosNivel, llamadasNivel } from "./niveles.js";
+import { aNivel, aNivelG, NIVELES, triangulosNivel, llamadasNivel } from "./niveles.js";
 import { creaFabrica, aRebanadas } from "./fabrica.js";
 
 export { GEN_VERSION } from "./version.js";
@@ -25,7 +25,7 @@ export { creaMateriales, MATERIALES, encadena } from "./materiales.js";
 export { cargaFotos, FOTOS } from "./texturas.js";
 export { hornear, glb } from "./hornear.js";
 export { revision, uvDelMapa, texturaDeColor, colorLineal } from "./compat.js";
-export { aNivel, NIVELES, triangulosNivel, llamadasNivel, creaFabrica, aRebanadas, triangulosDe, liberaOlivo, resuelve, triangulos };
+export { aNivel, aNivelG, NIVELES, triangulosNivel, llamadasNivel, creaFabrica, aRebanadas, triangulosDe, liberaOlivo, resuelve, triangulos };
 
 /** Las geometrías compartidas (calculadas con three 0.128.0 una vez) */
 export const geos = () => geosCompartidas(G);

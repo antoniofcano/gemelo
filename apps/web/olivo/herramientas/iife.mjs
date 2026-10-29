@@ -1,4 +1,4 @@
-// Construye olivo.iife.js (global OlivoGen; three-gen → el THREE global r128) con la API de Vite y dice cuánto pesa.
+// Construye olivo.iife.js (global OlivoGen, con su three 0.128.0 dentro) con la API de Vite y dice cuánto pesa.
 //   node herramientas/iife.mjs [--salida <carpeta>]      (o GEMELO_OLIVO_SALIDA)
 import fs from "node:fs";
 import path from "node:path";
