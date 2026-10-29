@@ -1,0 +1,99 @@
+{
+  "v": 1,
+  "finca": "fixture",
+  "formato": 1,
+  "gen_version": "sintetico",
+  "cache_version": 1,
+  "horneado_en": "2026-10-29T12:00:00Z",
+  "brotli": 9,
+  "actual": "envero",
+  "epocas": [
+    {
+      "epoca": "envero",
+      "desde": "09-10",
+      "hasta": "10-31"
+    },
+    {
+      "epoca": "madura",
+      "desde": "11-01",
+      "hasta": "01-15"
+    }
+  ],
+  "variantes": [
+    {
+      "tipo": "centenario3",
+      "semilla": 11,
+      "nivel": "E2",
+      "epoca": "envero",
+      "huella": "70e99c1deff8173147dd5338c16cb742",
+      "bytes": 11756,
+      "bytes_br": 7984
+    },
+    {
+      "tipo": "centenario3",
+      "semilla": 23,
+      "nivel": "E2",
+      "epoca": "envero",
+      "huella": "3838044df4cb96a37c31c6b0af75f259",
+      "bytes": 11756,
+      "bytes_br": 8004
+    },
+    {
+      "tipo": "centenario3",
+      "semilla": 11,
+      "nivel": "E2VR",
+      "epoca": "envero",
+      "huella": "889e32f32f275fad4d53e8796e3d59a6",
+      "bytes": 8100,
+      "bytes_br": 4788
+    },
+    {
+      "tipo": "centenario3",
+      "semilla": 23,
+      "nivel": "E2VR",
+      "epoca": "envero",
+      "huella": "9b455598d1f1c3f020cc31f98b865835",
+      "bytes": 8096,
+      "bytes_br": 4779
+    },
+    {
+      "tipo": "centenario3",
+      "semilla": 11,
+      "nivel": "E2",
+      "epoca": "madura",
+      "huella": "bda249382a2b074916ea484b4b519e7b",
+      "bytes": 11756,
+      "bytes_br": 7987
+    },
+    {
+      "tipo": "centenario3",
+      "semilla": 23,
+      "nivel": "E2",
+      "epoca": "madura",
+      "huella": "45ad85ebdd67412723a892097990588f",
+      "bytes": 11756,
+      "bytes_br": 8018
+    },
+    {
+      "tipo": "centenario3",
+      "semilla": 11,
+      "nivel": "E2VR",
+      "epoca": "madura",
+      "huella": "533d4e331a5d822af3a4fb9014750909",
+      "bytes": 8100,
+      "bytes_br": 4792
+    },
+    {
+      "tipo": "centenario3",
+      "semilla": 23,
+      "nivel": "E2VR",
+      "epoca": "madura",
+      "huella": "e1711fab28ce6ba2eeeb05d14ca12934",
+      "bytes": 8096,
+      "bytes_br": 4790
+    }
+  ],
+  "propios": {
+    "activos": false
+  }
+}

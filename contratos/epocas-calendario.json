@@ -1,0 +1,16 @@
+{
+  "v": 1,
+  "estado": "de partida, a ajustar por Antonio",
+  "origen": "Valores de partida para el olivar de Jaén escritos a mano para tener un calendario con el que arrancar el hornero (decisión 64). NO salen de ninguna fuente del repo ni de una medida: ninguna observación de campo ni la fenología de OlivarTrack los respalda. Antonio los ajusta (por finca si hace falta); más adelante podrán alimentarse de la fenología de OlivarTrack (bbchAEpoca).",
+  "formato_fechas": "MM-DD, sin año, ambas incluidas; si desde es posterior a hasta, la ventana cruza el fin de año. Las siete ventanas deben cubrir los 366 días de un año bisiesto con una sola época cada día (pruebas/guardianes/horneado.test.js). No pongas un límite en febrero: el 29 de febrero quedaría sin época en un año normal.",
+  "comun": {
+    "reposo": { "desde": "01-16", "hasta": "03-31" },
+    "boton": { "desde": "04-01", "hasta": "05-09" },
+    "flor": { "desde": "05-10", "hasta": "06-09" },
+    "cuajado": { "desde": "06-10", "hasta": "07-09" },
+    "verde": { "desde": "07-10", "hasta": "09-09" },
+    "envero": { "desde": "09-10", "hasta": "10-31" },
+    "madura": { "desde": "11-01", "hasta": "01-15" }
+  },
+  "fincas": {}
+}

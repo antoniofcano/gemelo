@@ -38,6 +38,7 @@
 | 20 | Tubería 3D Tiles: tileset válido (CesiumGS), identidad por instancia (`_INDICE_COPA` + huella) y `_TIPO` con nombres del catálogo, raíz sin contenido | `tiles3d.test.js` |
 | 21 | Escena 3D Tiles en el motor (`?escena=tiles`): sin la bandera todo igual; con ella, tileset sin errores ni CSP, raíz vacía visible de lejos, relieve a ≤ 1,5 m del de la CPU; tileset de otro host rechazado | `escena3d.test.js` |
 | 22 | Sombreado del tileset: el mismo parche GLSL que el Terreno (carácter a carácter) y los mismos uniformes | `sombreado_tiles.test.js` |
+| 23 | Receta de olivo horneada v1 y manifiestos del hornero (ADR-0018, O7b): esquemas del manifiesto y del calendario de épocas con ajv (el ejemplo los cumple y rechazan lo que deben; 366 días con una sola época), ida y vuelta cuantizar → decuantizar de una receta sintética en los cuatro niveles dentro de las pérdidas de O6 (≤ 0,11 mm, ≤ 0,39°), huella fijada, brotli 9/11, objetos estropeados rechazados, manifiesto de tesela de 68 B por olivo; con `npm i` en `apps/web/olivo`, además recetas reales de `olivo-2` con los mismos triángulos | `horneado.test.js` |
 
 En CI la misma puerta corre en GitHub Actions (`.github/workflows/puerta.yml`); no despliega nada.
 
