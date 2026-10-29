@@ -2,7 +2,7 @@
 // objetos inmutables `<huella>.br` y escribe el manifiesto de la finca el ÚLTIMO (contratos/olivo-horneado.md, contratos/hornero-manifiesto.schema.json).
 //
 //   GEMELO_DATOS=<indice.json o su carpeta> node tuberia/olivos/hornero.mjs --salida <carpeta> [opciones]
-//     --finca <id>       id de la finca (por defecto, el finca_id del índice; si se dan los dos deben coincidir)
+//     --finca <id>       id de la finca (por defecto, el finca_id del índice; con --indice explícito además se comprueba que coincida)
 //     --indice <ruta>    índice.json o su carpeta (por defecto GEMELO_DATOS; sin índice basta --finca: las variantes no dependen de los olivos)
 //     --salida <carpeta> raíz de lo servido: se escribe en <salida>/<finca>/olivos/ (la que Caddy sirve como /teselas/<finca>/olivos/)
 //     --fecha AAAA-MM-DD fecha para la época actual (por defecto hoy, en UTC); la siguiente sale del ciclo (epocas.js)
@@ -160,7 +160,7 @@ function lee(argv) {
   return a;
 }
 export async function principal(argv) {
-  const a = lee(argv), idx = a.indice || process.env.GEMELO_DATOS;
+  const a = lee(argv), idx = a.finca ? a.indice : (a.indice || process.env.GEMELO_DATOS);   // con --finca no hace falta leer el índice (pesado): las variantes no dependen de los olivos
   let fincaIndice = null;
   if (idx) {
     const ruta = fs.statSync(idx).isDirectory() ? path.join(idx, "indice.json") : idx, D = JSON.parse(fs.readFileSync(ruta, "utf8"));
