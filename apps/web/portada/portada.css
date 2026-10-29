@@ -126,3 +126,17 @@ legend { font-weight: 600; margin-bottom: 6px; padding: 0; }
 .muestra svg { width: 26px; height: 26px; }
 .muestra input:checked + span { border-color: var(--olivo); box-shadow: 0 0 0 2px var(--olivo); font-weight: 600; }
 .muestra input:focus-visible + span { outline: 3px solid var(--foco); outline-offset: 2px; }
+
+/* avatar VRM: galería (radios con nombre y descripción: la alternativa accesible y el selector), vista previa 3D y créditos */
+.av3d { width: 160px; height: 200px; display: block; touch-action: pan-y; }
+.giro { justify-content: center; margin: 6px 0; }
+.galeria { display: grid; gap: 8px; margin-bottom: 8px; }
+.tarjeta-av { position: relative; display: block; }
+.tarjeta-av input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.tarjeta-av > span { display: grid; gap: 2px; min-height: var(--toque); padding: 8px 12px; border: 1.5px solid var(--line); border-radius: var(--r); cursor: pointer; background: var(--panel); }
+.tarjeta-av .desc { color: var(--muted); font-size: .92rem; }
+.tarjeta-av input:checked + span { border-color: var(--olivo); box-shadow: 0 0 0 2px var(--olivo); }
+.tarjeta-av input:focus-visible + span { outline: 3px solid var(--foco); outline-offset: 2px; }
+.lista-cred { list-style: none; padding: 0; display: grid; gap: 10px; }
+.lista-cred li { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; }
+.lista-cred p { margin: 0 0 4px; }

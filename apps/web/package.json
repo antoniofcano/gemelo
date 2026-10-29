@@ -11,6 +11,7 @@
     "build:portada": "vite build --config vite.portada.config.js"
   },
   "dependencies": {
+    "@pixiv/three-vrm": "3.5.5",
     "3d-tiles-renderer": "0.5.3",
     "livekit-client": "2.22.4",
     "three": "0.186.1"

@@ -81,7 +81,11 @@ Los del ADR-0020 §2, que son **valores de partida sin medir en aparatos** (P7e 
 
 ## 7. Qué NO está probado
 
-- El motor (P7c) y la portada (P7d) todavía no leen este contrato.
+- El motor (P7c) todavía no lee este contrato; la portada (P7d) sí (§8).
 - Que Caddy sirva los precomprimidos y las cabeceras de verdad (probado el **texto** de los Caddyfile; no se levantó Docker). `infra/probar-caddy.sh` no cubre `/avatares`.
 - Ningún avatar en un navegador, un iPhone o unas Quest. La optimización conserva las extensiones de VRM (comprobado por JSON y por geometría), pero que three-vrm los anime igual que el original **no se ha visto**.
 - Los colores del muñeco de los provisionales son **supuestos** a ojo.
+
+## 8. La portada (P7d)
+
+La pantalla del avatar ([UX §4.7](../doc/sistema/UX.md)) lee `/avatares/catalogo.json` (tras sesión; sin él, 404 o vacío, solo ofrece el muñeco), enseña `nombre` y `descripcion` como lista de radios y, con WebGL, una vista previa 3D (`apps/web/portada/vista3d.js`, cargada con `import()` solo en esa pantalla; `@pixiv/three-vrm` 3.5.5 y `three` 0.186.1 como el motor). Pide `/avatares/<fichero>?v=<sha256>`, comprueba la huella del `ArrayBuffer` y, si no coincide o falla, se queda sin vista 3D (el avatar se elige igual). Guarda la elección con `PUT /api/yo/avatar` (`vrm` = el `id`; `null` o ausente = el muñeco) y la lee con `GET /api/yo/avatar` ([api.openapi.yaml](api.openapi.yaml)); la api la guarda en `avatares.vrm` (migración `0003_avatar_vrm.sql`, `CHECK` con el mismo patrón de `id`) y la pone en los metadatos de presencia como `avatar.vrm` **solo si hay uno**. La api **no conoce el catálogo**: un `id` que ya no esté lo trata el cliente como ausente (muñeco). Los créditos: la pantalla «Créditos de los avatares» lista `autor`, `licencia` (`spdx` con su `url`, solo si es https), `texto_credito` y `fuente`; los de `credito_obligatorio` aparte.

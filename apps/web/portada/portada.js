@@ -1,5 +1,5 @@
-// Portada y pantallas de entrada (doc/sistema/UX.md §4.1–4.7). Sin dependencias ni nada de terceros; solo pide a su
-// mismo origen (/api/…, contratos/api.openapi.yaml). Cada pantalla es una <section> y la dirige el ancla (#entrar,
+// Portada y pantallas de entrada (doc/sistema/UX.md §4.1–4.7). Nada de terceros; solo pide a su mismo origen (/api/…,
+// contratos/api.openapi.yaml, /avatares/…); la vista previa 3D del avatar (vista3d.js) se carga con import() solo en esa pantalla. Cada pantalla es una <section> y la dirige el ancla (#entrar,
 // #vincular…): atrás y adelante del navegador funcionan, y al cambiar de pantalla el foco va a su h1 y se anuncia.
 // Nada de estilos en línea (la CSP de producción es style-src 'self'): todo con clases y [hidden].
 "use strict";
@@ -10,12 +10,12 @@ const CAMISAS = [["#c0563a", "Teja"], ["#2f5d8a", "Azul"], ["#3f7f5a", "Verde"],
 const SOMBREROS = [["ninguno", "Ninguno", null], ["paja", "Paja", "#e1c46a"], ["gorra", "Gorra", "#3a3f46"]];
 const PIELES = [["#f1d0b5", "Muy claro"], ["#e0b48f", "Claro"], ["#c48c63", "Medio"], ["#95623f", "Oscuro"], ["#5e3c27", "Muy oscuro"]];
 const SUGERENCIAS = ["Tordo del Llano", "Abubilla", "Encina 42", "Alcaraván", "Acebuche"];
-const CON_SESION = new Set(["bienvenida", "alias", "avatar", "dispositivos"]);
+const CON_SESION = new Set(["bienvenida", "alias", "avatar", "creditos", "dispositivos"]);
 const SIN_SESION = new Set(["entrar", "revisa", "vincular"]);
 const TEXTO_RED = "No hemos podido conectar. Comprueba la conexión y vuelve a probar.";
 
 const $ = id => document.getElementById(id);
-const S = { sesion: null, pantalla: null, correo: "", avatar: { camisa: 0, sombrero: 1, piel: 1 }, vinculo: null };
+const S = { sesion: null, pantalla: null, correo: "", avatar: { camisa: 0, sombrero: 1, piel: 1 }, vrm: null, catalogo: null, vista: null, pausada: false, tok: 0, vinculo: null };
 
 // ---------- red
 async function pide(metodo, ruta, cuerpo) {
@@ -44,6 +44,7 @@ function destino(nombre) {
 function ir(nombre, { foco = true } = {}) {
   const d = destino(nombre);
   if (S.pantalla === "vincular" && d !== "vincular") paraVinculo();
+  if (S.pantalla === "avatar" && d !== "avatar") paraVista();
   for (const s of document.querySelectorAll(".pant")) s.hidden = s.id !== "p-" + d;
   const cambia = S.pantalla !== d;
   S.pantalla = d;
@@ -55,7 +56,8 @@ function ir(nombre, { foco = true } = {}) {
 const al = {
   vincular: () => { if (!S.vinculo) empiezaVinculo(); },
   alias: () => { const i = $("alias"); if (!i.value && S.sesion?.alias) i.value = S.sesion.alias; $("cVisible").checked = !!S.sesion?.alias_visible; },
-  avatar: () => pintaAvatar(),
+  avatar: () => entraAvatar(),
+  creditos: () => pintaCreditos(),
   dispositivos: () => { $("okVincular").hidden = true; },
 };
 window.addEventListener("hashchange", () => ir(location.hash.slice(1) || "portada"));
@@ -63,6 +65,7 @@ window.addEventListener("hashchange", () => ir(location.hash.slice(1) || "portad
 function pintaSesion() {
   const s = S.sesion, con = !!s;
   $("quien").hidden = !con || s.primer_acceso;
+  $("enlCreditos").hidden = !con || s.primer_acceso;
   $("aliasBarra").textContent = s?.alias || "hogar";
   $("accionesSin").hidden = con && !s.primer_acceso;
   $("accionesCon").hidden = !con || s.primer_acceso;
@@ -254,18 +257,159 @@ function pintaAvatar() {
   dibujaAvatar($("avatarPrev"), S.avatar);
   $("aliasPrev").textContent = S.sesion?.alias || "—";
 }
+
+// ---- catálogo de avatares VRM (/avatares/catalogo.json, tras sesión; contratos/avatares.md). Sin él, solo el muñeco de bloque.
+async function leeCatalogo() {
+  if (S.catalogo !== null) return S.catalogo || null;
+  try {
+    const r = await pide("GET", "/avatares/catalogo.json");
+    const c = r.status === 200 ? r.json : null;
+    S.catalogo = c && c.v === 1 && Array.isArray(c.avatares) && c.avatares.length ? c : false;
+  } catch { S.catalogo = false; }
+  return S.catalogo || null;
+}
+const catalogados = () => S.catalogo?.avatares || [];
+const delCatalogo = id => (id ? catalogados().find(a => a.id === id) : null) || null;
+const rgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+/** Índice del color de la paleta más cercano a `hexa` (el catálogo da colores libres; la api guarda índices). */
+function cercano(lista, hexa) {
+  const c = rgb(hexa); let mejor = 0, d0 = Infinity;
+  lista.forEach((it, i) => { const q = rgb(it[0]), d = (q[0] - c[0]) ** 2 + (q[1] - c[1]) ** 2 + (q[2] - c[2]) ** 2; if (d < d0) { d0 = d; mejor = i; } });
+  return mejor;
+}
+function muestra(el, si) { if (si) el.removeAttribute("hidden"); else el.setAttribute("hidden", ""); }
+
+/** Al elegir un VRM, el muñeco lejano (y la caída) lleva los colores que declara el catálogo, a la paleta más cercana. */
+function muniecoDe(a) {
+  const c = a.colores_muneco; if (!c) return;
+  S.avatar.camisa = cercano(CAMISAS, c.camisa); S.avatar.piel = cercano(PIELES, c.piel);
+  S.avatar.sombrero = Math.max(0, SOMBREROS.findIndex(x => x[0] === c.sombrero));
+}
+
+function pintaGaleria() {
+  const g = $("galeria"); g.replaceChildren();
+  const opciones = [{ id: "", nombre: "Muñeco de bloque", descripcion: "Estilo bloque, como la finca. Eliges camisa, sombrero y tono de piel." }].concat(catalogados());
+  for (const o of opciones) {
+    const l = document.createElement("label"), inp = document.createElement("input"), sp = document.createElement("span"), n = document.createElement("strong");
+    l.className = "tarjeta-av"; inp.type = "radio"; inp.name = "avatar"; inp.value = o.id; inp.checked = (S.vrm || "") === o.id;
+    inp.addEventListener("change", () => eligeVrm(o.id || null));
+    n.textContent = o.nombre; sp.appendChild(n);
+    if (o.descripcion) { const d = document.createElement("span"); d.className = "desc"; d.textContent = o.descripcion; sp.appendChild(d); }
+    l.append(inp, sp); g.appendChild(l);
+  }
+}
+
+// ---- vista previa 3D: three y three-vrm solo se piden (import) al abrir esta pantalla; sin WebGL o si falla, queda la lista y el muñeco
+const PASO_GIRO = Math.PI / 8;
+function hayWebGL() {
+  try { return !!document.createElement("canvas").getContext("webgl2"); } catch { return false; }
+}
+const quietoPorPreferencia = () => globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
+function paraVista() { S.tok++; if (S.vista) { S.vista.destruye(); S.vista = null; } }
+function estado3d(t) { $("estado3d").textContent = t || ""; }
+function soloMuneco(texto) { muestra($("avatar3d"), false); muestra($("giro"), false); muestra($("avatarPrev"), true); estado3d(texto); }
+async function vistaPrevia() {
+  const tok = ++S.tok, a = delCatalogo(S.vrm);
+  dibujaAvatar($("avatarPrev"), S.avatar);   // el muñeco (con los colores del catálogo): mientras carga y si no carga
+  if (!a) { S.vista?.quita(); soloMuneco(""); return; }
+  if (!hayWebGL()) { soloMuneco("Este aparato no enseña la vista previa en 3D. Puedes elegir «" + a.nombre + "» igualmente."); return; }
+  estado3d("Cargando la vista previa de «" + a.nombre + "»…");
+  try {
+    if (!S.vista) {
+      const m = await import("./vista3d.js");
+      if (tok !== S.tok) return;
+      muestra($("avatar3d"), true);   // con tamaño antes de crear la vista: el lienzo mide lo que dice el CSS
+      S.vista = m.creaVista($("avatar3d"), { quieto: S.pausada, alPerder: () => soloMuneco("Se ha perdido la vista previa en 3D. Tu elección sigue siendo «" + a.nombre + "».") });
+      pintaPausa();
+    }
+    await S.vista.carga("/avatares/" + encodeURIComponent(a.fichero) + "?v=" + a.sha256, a.sha256);
+    if (tok !== S.tok) return;
+    muestra($("avatarPrev"), false); muestra($("avatar3d"), true); muestra($("giro"), true); estado3d("");
+    anuncia("Vista previa de " + a.nombre + ".");
+  } catch {
+    if (tok !== S.tok) return;
+    paraVista(); soloMuneco("No hemos podido enseñar la vista previa de «" + a.nombre + "». Puedes elegirlo igualmente.");
+  }
+}
+function pintaPausa() {
+  const b = $("giroPausa");
+  b.setAttribute("aria-pressed", S.pausada ? "true" : "false"); b.textContent = S.pausada ? "Seguir el giro" : "Parar el giro";
+}
+$("giroIzq").addEventListener("click", () => S.vista?.gira(-PASO_GIRO));
+$("giroDer").addEventListener("click", () => S.vista?.gira(PASO_GIRO));
+$("giroPausa").addEventListener("click", () => { S.pausada = !S.pausada; S.vista?.pausa(S.pausada); pintaPausa(); });
+
+function eligeVrm(id) {
+  S.vrm = delCatalogo(id) ? id : null;
+  const a = delCatalogo(S.vrm);
+  if (a) muniecoDe(a);
+  muestra($("bloqueMuneco"), !a);
+  pintaAvatar(); vistaPrevia();
+}
+async function entraAvatar() {
+  const primero = !!S.sesion?.primer_acceso;
+  muestra($("pasosAvatar"), primero); muestra($("atrasAvatar"), primero); muestra($("volverAvatar"), !primero);
+  S.pausada = quietoPorPreferencia();
+  pintaAvatar(); soloMuneco("");
+  // lo que ya tiene elegido el hogar (si lo hay) y el catálogo, a la vez
+  const [guardado] = await Promise.all([pide("GET", "/api/yo/avatar").catch(() => null), leeCatalogo()]);
+  if (S.pantalla !== "avatar") return;
+  if (guardado?.status === 401) { await leeSesion(); ir("portada"); return; }
+  if (guardado?.status === 200 && guardado.json) {
+    const j = guardado.json;
+    S.avatar = { camisa: j.camisa, sombrero: Math.max(0, SOMBREROS.findIndex(x => x[0] === j.sombrero)), piel: j.piel };
+    S.vrm = delCatalogo(j.vrm) ? j.vrm : null;
+  }
+  const hay = catalogados().length > 0;
+  muestra($("fsGaleria"), hay);
+  if (hay) pintaGaleria();
+  muestra($("bloqueMuneco"), !delCatalogo(S.vrm));
+  pintaAvatar();
+  if (delCatalogo(S.vrm)) vistaPrevia();
+}
 $("btnAzar").addEventListener("click", () => {
-  const az = n => Math.floor(Math.random() * n);
+  const az = n => Math.floor(Math.random() * n), ids = [null].concat(catalogados().map(a => a.id)), id = ids[az(ids.length)];
   S.avatar = { camisa: az(CAMISAS.length), sombrero: az(SOMBREROS.length), piel: az(PIELES.length) };
-  pintaAvatar(); anuncia("Avatar cambiado al azar.");
+  S.vrm = id; if (id) muniecoDe(delCatalogo(id));
+  if (catalogados().length) pintaGaleria();
+  muestra($("bloqueMuneco"), !id);
+  pintaAvatar(); vistaPrevia();
+  anuncia("Avatar cambiado al azar" + (id ? ": " + delCatalogo(id).nombre : "") + ".");
 });
 $("fAvatar").addEventListener("submit", async e => {
   e.preventDefault();
   const a = S.avatar;
-  let r; try { r = await pide("PUT", "/api/yo/avatar", { camisa: a.camisa, sombrero: SOMBREROS[a.sombrero][0], piel: a.piel }); } catch { r = { status: 0 }; }
+  let r; try { r = await pide("PUT", "/api/yo/avatar", { camisa: a.camisa, sombrero: SOMBREROS[a.sombrero][0], piel: a.piel, vrm: S.vrm }); } catch { r = { status: 0 }; }
   if (r.status === 204) { aviso($("eAvatar"), $("eAvatarTxt"), null); await leeSesion(); ir("portada"); anuncia("Ya está. Puedes seguir a la finca."); $("btnSeguir").focus(); return; }
+  if (r.status === 401) { await leeSesion(); ir("portada"); return; }
   aviso($("eAvatar"), $("eAvatarTxt"), r.json?.mensaje || TEXTO_RED);
 });
+
+// ---- créditos de los avatares del catálogo (los de licencia que los pide, aparte)
+const esHttps = u => typeof u === "string" && /^https:\/\//.test(u);
+function enlace(texto, url) {
+  if (!esHttps(url)) return document.createTextNode(texto);
+  const a = document.createElement("a"); a.href = url; a.textContent = texto; a.rel = "noopener noreferrer"; a.target = "_blank";
+  return a;
+}
+async function pintaCreditos() {
+  const cat = await leeCatalogo(), obl = $("listaCredObl"), lib = $("listaCredLib");
+  obl.replaceChildren(); lib.replaceChildren();
+  muestra($("creditosObligatorios"), false); muestra($("creditosLibres"), false);
+  muestra($("avCreditos"), !cat);
+  $("avCreditosTxt").textContent = "No hay catálogo de avatares disponible ahora mismo.";
+  if (!cat) return;
+  for (const a of cat.avatares) {
+    const li = document.createElement("li"), p1 = document.createElement("p"), p2 = document.createElement("p"), p3 = document.createElement("p"), n = document.createElement("strong");
+    n.textContent = a.nombre; p1.append(n, " — de " + a.autor);
+    p2.append("Licencia: ", enlace(a.licencia.spdx, a.licencia.url));
+    if (a.licencia.texto_credito) p2.append(". " + a.licencia.texto_credito);
+    p3.className = "pista"; p3.append("Fuente: ", enlace(a.fuente.nombre, a.fuente.url));
+    li.append(p1, p2, p3);
+    (a.licencia.credito_obligatorio ? obl : lib).appendChild(li);
+  }
+  muestra($("creditosObligatorios"), obl.children.length > 0); muestra($("creditosLibres"), lib.children.length > 0);
+}
 
 // ---------- configuración → mis dispositivos → vincular (en el aparato con sesión)
 async function decide(aprobar) {
