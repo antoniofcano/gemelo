@@ -95,6 +95,25 @@
 					hide .*
 				}
 			}
+			# las recetas horneadas (O7d, contratos/olivo-horneado.md): /teselas/<finca>/olivos/ sale de /srv/olivos (la carpeta que
+			# escribe el hornero; GEMELO_DEV_OLIVOS). El objeto se direcciona por su huella: octet-stream ya en brotli e inmutable.
+			# El manifiesto de la finca y los de tesela (t/…) cambian al rehornear: se revalidan. Lo demás, 404.
+			@olivos path /{$FINCA_SERVIDA:hituelo}/olivos/*
+			handle @olivos {
+				uri strip_prefix /{$FINCA_SERVIDA:hituelo}/olivos
+				root * /srv/olivos
+				@objeto_horneado path_regexp ^/[0-9a-f]+\.br$
+				header @objeto_horneado {
+					Content-Type "application/octet-stream"
+					Content-Encoding "br"
+					Cache-Control "private, max-age=31536000, immutable"
+				}
+				@manifiestos path /manifiesto.json /t/*
+				header @manifiestos Cache-Control "private, no-cache"
+				file_server {
+					hide .*
+				}
+			}
 			@finca path /{$FINCA_SERVIDA:hituelo}/*
 			handle @finca {
 				uri strip_prefix /{$FINCA_SERVIDA:hituelo}
