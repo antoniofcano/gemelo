@@ -170,6 +170,20 @@ La siembra normal pone hazas sobre el Hituelo sintético del fixture, que no cae
 
 **Salud:** el healthcheck de Docker ejecuta `tuberia/olivos/salud.mjs`: sano si la última vuelta terminó en `listo` (el estado dice «durmiendo hasta <fecha>») o hay una en curso que se movió hace menos de 15 min; enfermo si acabó en `error`, está atascada o el servicio dejó de latir. `npm run dev:estado` lo enseña (fase, hechas/total, época). **Seguridad:** sin puertos, usuario 1000, sistema de ficheros de solo lectura salvo su salida y su estado, sin capacidades, 512 MB. Medido en esta máquina: la primera vuelta con el fixture y los tiempos de la e2e, en la sección de la e2e.
 
+## Los avatares VRM (P7b)
+
+Caddy sirve el catálogo de avatares tras sesión en `/avatares/catalogo.json` y `/avatares/<id>.vrm` ([contratos/avatares.md](../../contratos/avatares.md), ADR-0020) desde la carpeta `GEMELO_AVATARES` (fuera del repo; por defecto `pruebas/salida/avatares/`, que `levanta.mjs` crea vacía: sin catálogo, `/avatares/catalogo.json` da 404). Los `.vrm` no se versionan. Para tener los 4 CC0 provisionales (decisión 74) en local:
+
+```
+export GEMELO_AVATARES_ORIGEN=<carpeta fuera del repo>     # los VRM tal como se bajan
+export GEMELO_AVATARES=<otra carpeta fuera del repo>       # la salida, la que sirve Caddy
+node tuberia/avatares/descarga.mjs                         # de fuentes.json; se niega si el sha256 o el meta no son los verificados
+node tuberia/avatares/construye.mjs                        # lee el meta (rechaza lo que no vale), optimiza y escribe <id>.vrm + catalogo.json
+npm run dev:arriba                                         # (o ya levantado: se ven al momento, la carpeta se monta de solo lectura)
+```
+
+La primera vez, `cd tuberia/avatares && npm ci` (`@gltf-transform` 4.5.1, `meshoptimizer`, `sharp`). Con sesión, `https://localhost:8743/avatares/catalogo.json` devuelve el catálogo (`no-cache`); sin ella, 401. Cada `.vrm` se pide con `?v=<sha256>` y sale `immutable`. Si cambias la carpeta de `GEMELO_AVATARES` con el entorno levantado, vuelve a hacer `npm run dev:arriba` (Compose la monta al crear el contenedor). La salida de la tubería incluye, junto a cada `.vrm`, sus `.br`, `.zst` y `.gz`, que Caddy usa para comprimir. **No probado** en este entorno: levantar Docker con los avatares y ver las cabeceras reales (solo el texto de los Caddyfile, `dev.test.js`).
+
 ## La api
 
 Servicio `api` de [`infra/dev/compose.yml`](../../infra/dev/compose.yml), construido de [`apps/api/Dockerfile`](../../apps/api/Dockerfile) (contexto: la raíz del repo, porque la imagen lleva `contratos/haza.schema.json`). Corre como `node` (uid 1000), con el sistema de ficheros de solo lectura, sin capacidades, `/tmp` en memoria, 256 MB y sin puertos publicados. El healthcheck pide `GET /api/salud` con el `fetch` de Node (como producción). Arranca cuando `db` y `correo` están sanos y `migra` ha terminado bien.

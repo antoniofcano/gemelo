@@ -73,14 +73,42 @@
 		reverse_proxy api:8000
 	}
 
-	# decisión 16: sin sesión, solo la portada. El mundo (/finca/) y las teselas preguntan a la api si hay sesión; sin ella,
+	# decisión 16: sin sesión, solo la portada. El mundo (/finca/), las teselas y los avatares preguntan a la api si hay sesión; sin ella,
 	# una navegación va a la portada (303) y una carga recibe 401. Igual que infra/Caddyfile (producción).
-	@con_sesion path /finca /finca/* /teselas/*
+	@con_sesion path /finca /finca/* /teselas/* /avatares /avatares/*
 	handle @con_sesion {
 		forward_auth api:8000 {
 			uri /api/interno/autoriza
 		}
 		redir /finca /finca/ 308
+
+		# los avatares VRM (ADR-0020, contratos/avatares.md): SOLO <id>.vrm y catalogo.json, desde /srv/avatares. Cada .vrm se pide con ?v=<sha256> (el
+		# cliente lo añade): la URL cambia con el contenido, así que «immutable» es correcto; el catálogo se revalida. Se sirven los precomprimidos
+		# (<id>.vrm.br|zst|gz que escribe tuberia/avatares/construye.mjs) con el tipo del original. Lo demás de esa carpeta da 404.
+		@avatares path /avatares /avatares/*
+		handle @avatares {
+			@avatar_permitido path_regexp ^/avatares/([a-z0-9-]{1,32}\.vrm|catalogo\.json)$
+			handle @avatar_permitido {
+				@avatar_vrm path_regexp ^/avatares/[a-z0-9-]{1,32}\.vrm$
+				header @avatar_vrm {
+					Content-Type "model/gltf-binary"
+					Cache-Control "private, max-age=31536000, immutable"
+				}
+				@avatar_catalogo path /avatares/catalogo.json
+				header @avatar_catalogo Cache-Control "private, no-cache"
+				uri strip_prefix /avatares
+				root * /srv/avatares
+				file_server {
+					precompressed br zstd gzip
+					hide .*
+				}
+			}
+			handle {
+				header Cache-Control "no-store"
+				respond "404 Not Found" 404
+			}
+		}
+
 
 		# teselas: /teselas/<finca>/indice.json y /teselas/<finca>/t/<kx>_<ky>.json|jpg (carpeta montada de solo lectura)
 		# /teselas/<finca servida>/tileset/… sale de /srv/tileset (3D Tiles) y el resto de esa finca, de /srv/finca (por defecto,

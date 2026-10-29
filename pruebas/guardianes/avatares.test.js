@@ -83,7 +83,10 @@ test("tubería: el sintético (≈ 42 k triángulos, texturas de 1280) sale con 
   assert.ok(a.bytes <= cat.topes.bytes_max, a.bytes + " bytes");
   assert.strictEqual(a.vrm_version, "1.0"); assert.strictEqual(a.contornos_quitados, 1);
   assert.strictEqual(a.licencia.spdx, "CC0-1.0"); assert.strictEqual(a.licencia.credito_obligatorio, false);
-  assert.deepStrictEqual(fs.readdirSync(salida).sort(), ["catalogo.json", "sintetico.vrm"]);
+  assert.deepStrictEqual(fs.readdirSync(salida).sort(), ["catalogo.json", "sintetico.vrm", "sintetico.vrm.br", "sintetico.vrm.gz", "sintetico.vrm.zst"]);
+  // los precomprimidos (los que sirve Caddy con `precompressed br zstd gzip`) descomprimen al mismo fichero
+  const zlib = require("node:zlib"), d = e => fs.readFileSync(path.join(salida, "sintetico.vrm." + e));
+  assert.ok(zlib.brotliDecompressSync(d("br")).equals(b) && zlib.gunzipSync(d("gz")).equals(b) && zlib.zstdDecompressSync(d("zst")).equals(b), "un precomprimido no es el fichero");
   // determinista: el mismo origen da los mismos bytes
   const { construye } = await imp("construye.mjs"), otra = propia("avatares-salida2"); await construye({ origen: (await construido()).origen, salida: otra });
   assert.strictEqual(sha(fs.readFileSync(path.join(otra, "sintetico.vrm"))), a.sha256, "la tubería no es determinista");

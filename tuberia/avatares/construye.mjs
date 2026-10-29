@@ -11,6 +11,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import zlib from "node:zlib";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import { leeGlb, leeMeta, evaluaLicencia, spdxDeMeta } from "./vrm.mjs";
@@ -35,6 +36,11 @@ export function validaCatalogo(cat) {
 }
 
 const slug = s => String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 32);
+const PRECOMPRIMIDOS = [
+  ["br", b => zlib.brotliCompressSync(b, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 11, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: b.length } })],
+  ["zst", b => zlib.zstdCompressSync(b, { params: { [zlib.constants.ZSTD_c_compressionLevel]: 19 } })],
+  ["gz", b => zlib.gzipSync(b, { level: 9 })]
+];
 const COLOR_DEFECTO = { camisa: "#8a8a8a", piel: "#d9a47c", sombrero: "ninguno" };
 
 /**
@@ -79,6 +85,8 @@ export async function construye({ origen, salida, compresion = "cuantizacion", t
       if (r.informe.contornos_quitados) entrada.contornos_quitados = r.informe.contornos_quitados;
       ids.add(id);
       fs.writeFileSync(path.join(s, id + ".vrm"), r.bytes); escritos.push(id + ".vrm");
+      // precomprimidos junto al fichero (Caddy: file_server { precompressed br zstd gzip }): no depende de qué tipos comprime `encode` por defecto
+      for (const [ext, comprime] of PRECOMPRIMIDOS) { fs.writeFileSync(path.join(s, id + ".vrm." + ext), comprime(r.bytes)); escritos.push(id + ".vrm." + ext); }
       avatares.push(entrada);
       log("ok " + f + " → " + id + ".vrm  " + entrada.triangulos + " tri, " + (r.bytes.length / 1024).toFixed(0) + " kB (" + (r.informe.transporte.gzip / 1024).toFixed(0) + " kB gzip), " + entrada.materiales + " mat, " + entrada.texturas + " tex");
     } catch (e) {

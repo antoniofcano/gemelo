@@ -1,7 +1,7 @@
 # Caddy INTERNO del gemelo (detrás del Caddy de borde de Oficultor, que termina TLS: ADR-0011).
 # Lo comprueba infra/probar-caddy.sh (cabeceras, caché, sesión y redacción de los registros).
 #   /                      portada pública (sin sesión: decisión 16)
-#   /finca/…, /teselas/…   solo con sesión (forward_auth a la api)
+#   /finca/…, /teselas/…, /avatares/…   solo con sesión (forward_auth a la api)
 #   /api/…                 api (la api decide su propia autorización)
 {
 	admin off
@@ -62,11 +62,39 @@
 		reverse_proxy api:8000
 	}
 
-	@con_sesion path /finca /finca/* /teselas/*
+	@con_sesion path /finca /finca/* /teselas/* /avatares /avatares/*
 	handle @con_sesion {
 		forward_auth api:8000 {
 			uri /api/interno/autoriza
 		}
+
+		# los avatares VRM (ADR-0020, contratos/avatares.md): SOLO <id>.vrm y catalogo.json, desde /srv/avatares. Cada .vrm se pide con ?v=<sha256> (el
+		# cliente lo añade): la URL cambia con el contenido, así que «immutable» es correcto; el catálogo se revalida. Se sirven los precomprimidos
+		# (<id>.vrm.br|zst|gz que escribe tuberia/avatares/construye.mjs) con el tipo del original. Lo demás de esa carpeta da 404.
+		@avatares path /avatares /avatares/*
+		handle @avatares {
+			@avatar_permitido path_regexp ^/avatares/([a-z0-9-]{1,32}\.vrm|catalogo\.json)$
+			handle @avatar_permitido {
+				@avatar_vrm path_regexp ^/avatares/[a-z0-9-]{1,32}\.vrm$
+				header @avatar_vrm {
+					Content-Type "model/gltf-binary"
+					Cache-Control "private, max-age=31536000, immutable"
+				}
+				@avatar_catalogo path /avatares/catalogo.json
+				header @avatar_catalogo Cache-Control "private, no-cache"
+				uri strip_prefix /avatares
+				root * /srv/avatares
+				file_server {
+					precompressed br zstd gzip
+					hide .*
+				}
+			}
+			handle {
+				header Cache-Control "no-store"
+				respond "404 Not Found" 404
+			}
+		}
+
 		@inmutable path /finca/assets/*
 		header @inmutable Cache-Control "public, max-age=31536000, immutable"
 		# las recetas horneadas (O7d, contratos/olivo-horneado.md; en /srv/teselas/<finca>/olivos/): el objeto lleva su huella (32 hex)
