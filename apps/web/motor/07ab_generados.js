@@ -20,17 +20,27 @@
   // (descarte por ruido de gradiente entrelazado, sin transparencia ni ordenación, también en la pasada de sombras) deja aparecer lo que entra y
   // desaparecer lo que sale en FUNDIDO s; lo que sale va en el mismo lote (al final) y se oculta al acabar. Mientras dura, el dibujo de siempre de lo que
   // entra sigue dibujándose debajo y el de lo que sale vuelve a dibujarse desde el principio. ?olivosFundido=0 lo suprime (salto, como antes).
+  // Variantes HORNEADAS (ADR-0018, contratos/olivo-horneado.md, O7e): con la página servida por el servidor (D.base /teselas/…) se pide
+  // <D.base>olivos/manifiesto.json (mismo origen, con la cookie); si su formato, GEN_VERSION y CACHE_VERSION son las del motor, los tipos y semillas de
+  // las variantes y la época (por fecha con su calendario, salvo ?epoca=) salen de él, y cada variante se busca en la caché de O5 y, si no está, se
+  // descarga (<huella>.br, Content-Encoding: br), se comprueba (tamaño, huella, cabecera, clave) y se decodifica. Cualquier fallo, o sin manifiesto
+  // (salida artefacto, fixture): se calcula, como siempre (plan B). Los propios (E0/E1) se calculan siempre (decisión 63). ?olivosHorneado=0 (para
+  // comparar a ojo): se lee el manifiesto (mismas variantes y época) pero no se descarga nada; todas se calculan. Para pruebas y comparaciones sin
+  // servidor: ?olivosDir=<carpeta relativa del mismo origen, acabada en «/»> en vez de <D.base>olivos/, y ?olivosPropios=N (0-6) cuántos propios.
   var Generados = (function () {
     var pedido = /[?&]olivos=gen\b/.test(location.search), estado = pedido ? "cargando" : "apagado", motivo = "", M = null, mats = null, fabrica = null;
     var fr = /[?&]olivosTri=([0-9.]+)/.exec(location.search), FRACCION = fr ? Math.min(0.9, Number(fr[1])) : 0.45;
-    var ESTIM = { E0: 160000, E1: 80000, E2: 38000, E2VR: 28000 }, SEM_VAR = [11, 23, 37, 51], MAX_PROPIOS = 6, MAX_VAR = 48, RADIO_CAND = 160, MARGEN = 12;
+    var mpr = /[?&]olivosPropios=([0-6])\b/.exec(location.search);
+    var ESTIM = { E0: 160000, E1: 80000, E2: 38000, E2VR: 28000 }, SEM_VAR = [11, 23, 37, 51], MAX_PROPIOS = mpr ? Number(mpr[1]) : 6, MAX_VAR = 48, RADIO_CAND = 160, MARGEN = 12;
     var recetas = {}, pidiendo = {}, nPidiendo = 0, plan = [], listos = {}, lote = null, claveLote = "", nuevo = null, R = 0, triGen = 0, costoGen = 0, info = { llamadas: 0, triangulos: 0 };
     var ff = /[?&]olivosFundido=([0-9.]+)/.exec(location.search), FUNDIDO = ff ? Math.min(3, Number(ff[1])) : 0.6;
+    var HORNEADO = !/[?&]olivosHorneado=0\b/.test(location.search), manif = null, varSem = null, epocaManif = null, fechaPrueba = null;
+    var horn = { estado: "no", motivo: "", horneadas: 0, calculadas: 0, fallos: 0, cache: 0, propios: 0, ultimoFallo: "" };
     var cache = null, uFun = { value: 1 }, fundido = null, selLote = [], avisa = false, prof = null, trabajos = [], gastado = 0;   // fundido: {t, viejos: {i: true}, Rviejo} mientras dura
     var NADA = { radio: 0, tri: 0, tiene: function () { return false; } };
     var grupo = new THREE.Group(); grupo.name = "olivosGenerados";
     if (pedido) { gArboles.add(grupo); arrancaGen(); }
-    function epoca() { var m = /[?&]epoca=([a-z]+)/.exec(location.search); return m ? m[1] : "envero"; }
+    function epoca() { var m = /[?&]epoca=([a-z]+)/.exec(location.search); return m ? m[1] : epocaManif || "envero"; }
     function arrancaGen() {
       var p = typeof window !== "undefined" && window.OlivoGen ? Promise.resolve(window.OlivoGen) : import("gemelo-olivo");
       p.then(function (m) {
@@ -38,11 +48,77 @@
         if (!THREE.BatchedMesh) throw new Error("este three no tiene BatchedMesh");
         // caché de recetas (O5): memoria con LRU (60 MB en móvil, gafas o con ≤ 4 GB; 150 MB si no) e IndexedDB (300 MB, LRU); ?olivosCache=0 la apaga
         cache = m.creaCache && !/[?&]olivosCache=0\b/.test(location.search) ? m.creaCache({ memMB: topeCacheMem(), discoMB: 300 }) : null;
-        M = m; mats = M.creaMateriales(THREE, null, { epoca: epoca(), srgb: true, parche: parcheGen });   // sin fotos de campo aquí: corteza dibujada (texturas.js)
+        M = m; return cargaManifiesto();   // antes de los materiales: la época puede salir del manifiesto
+      }).then(function () {
+        mats = M.creaMateriales(THREE, null, { epoca: epoca(), srgb: true, parche: parcheGen });   // sin fotos de campo aquí: corteza dibujada (texturas.js)
         prof = { corteza: profundidad(), muerta: profundidad() };   // la sombra de las mallas por lotes, con el mismo fundido
         var f = M.creaFabrica({ trabajador: true }); if (f.modo === "trabajador") fabrica = f; else f.cierra();
         estado = "activo";
       }).catch(function (e) { estado = "sin"; motivo = String(e && e.message || e); console.warn("olivos generados: " + motivo); });
+    }
+    // ---- el manifiesto de las variantes horneadas: solo con la página del servidor; si no vale, se ignora entero y todo se calcula (sin avisar en consola)
+    // la carpeta de lo horneado: ?olivosDir= (solo una ruta relativa del mismo origen acabada en «/», como ?api= de 13b) o, con la página del servidor
+    // (D.base /teselas/<finca>/), <D.base>olivos/; si no, ninguna
+    var DIR = (function () {
+      var m = /[?&]olivosDir=([^&#]*)/.exec(location.search);
+      if (m) { var p = decodeURIComponent(m[1]); return p.length > 1 && p.charAt(p.length - 1) === "/" && !/[^A-Za-z0-9_\-./]/.test(p) && p.indexOf("//") < 0 && p.indexOf("..") < 0 ? p : null; }
+      return /^\/teselas\//.test(D.base || "") ? D.base + "olivos/" : null;
+    })();
+    function cargaManifiesto() {
+      if (!M.decodifica || !DIR || typeof fetch !== "function") { horn.estado = "sin servidor"; return Promise.resolve(); }
+      horn.estado = "pidiendo";
+      return fetch(DIR + "manifiesto.json", { credentials: "same-origin", cache: "no-cache" })
+        .then(function (r) { if (!r.ok) throw new Error("sin manifiesto (http " + r.status + ")"); return r.json(); })
+        .then(function (m) {
+          var no = manifiestoNoVale(m); if (no) throw new Error(no);
+          manif = m;
+          if (!/[?&]epoca=/.test(location.search)) {   // la época por fecha con el calendario del manifiesto (sus ventanas); si hoy no cae en ninguna, la actual
+            var ventanas = {}; m.epocas.forEach(function (e) { ventanas[e.epoca] = { desde: e.desde, hasta: e.hasta }; });
+            epocaManif = M.epocaDeFecha(M.tablaDe({ comun: ventanas }, m.finca), fechaPrueba || new Date()) || m.actual;
+          }
+          var ep = epoca(), vistos = {}; varSem = [];
+          m.variantes.forEach(function (v) { var k = v.tipo + "|" + v.semilla; if (v.epoca === ep && !vistos[k]) { vistos[k] = true; varSem.push({ tipo: v.tipo, semilla: v.semilla }); } });
+          if (!varSem.length) { varSem = null; horn.estado = "sin la época " + ep; } else horn.estado = HORNEADO ? "activo" : "apagado";
+        })
+        .catch(function (e) { manif = null; varSem = null; epocaManif = null; horn.estado = "ignorado"; horn.motivo = String(e && e.message || e).slice(0, 80); });
+    }
+    var ORDEN = ["reposo", "boton", "flor", "cuajado", "verde", "envero", "madura"];
+    function manifiestoNoVale(m) {
+      if (!m || typeof m !== "object") return "manifiesto ilegible";
+      if (m.v !== 1) return "manifiesto v" + m.v;
+      if (m.formato !== M.FORMATO_HORNEADO) return "formato " + m.formato + " (el motor lee el " + M.FORMATO_HORNEADO + ")";
+      if (m.gen_version !== M.GEN_VERSION) return "gen_version " + m.gen_version + " (la del motor es " + M.GEN_VERSION + ")";
+      if (m.cache_version !== M.CACHE_VERSION) return "cache_version " + m.cache_version + " (la del motor es " + M.CACHE_VERSION + ")";
+      if (!Array.isArray(m.variantes) || !Array.isArray(m.epocas) || !m.epocas.length || ORDEN.indexOf(m.actual) < 0) return "manifiesto sin variantes, épocas o época actual";
+      for (var i = 0; i < m.variantes.length; i++) {   // la huella va en la URL: solo 32 hexadecimales
+        var v = m.variantes[i];
+        if (!v || !esCadena(v.huella, 32, /[^0-9a-f]/) || !M.TIPOS[v.tipo] || ORDEN.indexOf(v.epoca) < 0 || !(v.semilla >= 0 && v.semilla <= 4294967295 && v.semilla % 1 === 0) || !(v.bytes > 0)) return "fila de variante " + i + " mal formada";
+      }
+      for (var j = 0; j < m.epocas.length; j++) { var w = m.epocas[j]; if (!w || ORDEN.indexOf(w.epoca) < 0 || !esCadena(w.desde, 5, /[^0-9-]/) || !esCadena(w.hasta, 5, /[^0-9-]/)) return "época " + j + " mal formada"; }
+      return "";
+    }
+    function esCadena(x, n, prohibido) { return typeof x === "string" && x.length === n && !prohibido.test(x); }   // longitud exacta y sin caracteres de fuera
+    function filaDe(e, niv) {
+      if (!manif) return null;
+      for (var i = 0; i < manif.variantes.length; i++) { var v = manif.variantes[i]; if (v.tipo === e.tipo && v.semilla === e.semilla && v.nivel === niv && v.epoca === e.epoca) return v; }
+      return null;
+    }
+    // una variante horneada: descarga (el navegador ya deshizo el brotli), tamaño, huella, cabecera (formato, versiones, nivel y la MISMA clave de la caché) y decodifica
+    function descarga(fila, ck, niv) {
+      return fetch(DIR + fila.huella + ".br", { credentials: "same-origin" })
+        .then(function (r) { if (!r.ok) throw new Error("http " + r.status); return r.arrayBuffer(); })
+        .then(function (ab) {
+          var b = new Uint8Array(ab);
+          if (b.length !== fila.bytes) throw new Error("tamaño " + b.length + " ≠ " + fila.bytes);
+          return M.huellaBytes(b).then(function (h) {
+            if (h !== fila.huella) throw new Error("huella distinta");
+            var cab = M.leeCabecera(b);
+            if (cab.formato !== M.FORMATO_HORNEADO || cab.gen_version !== M.GEN_VERSION || cab.cache_version !== M.CACHE_VERSION || cab.nivel !== niv || cab.clave !== ck) throw new Error("cabecera que no es la pedida");
+            var r = M.decodifica(b).receta;   // las normales, tal cual (sin renormalizar: el sombreador normaliza)
+            if (!r || !Array.isArray(r.piezas) || !r.escala || !r.medidas) throw new Error("receta incompleta");
+            return r;
+          });
+        });
     }
     // ---- los materiales: el parche del motor (luz, nubes, escarcha) y el fundido por tramado
     // GLSL: vFun = código del árbol (0 se queda, 1 entra, 2 sale): en las mallas por lotes va en el alfa de su color por instancia (1, 0,5, 0); en las
@@ -80,18 +156,24 @@
       return VRP.on || movil || (nv.deviceMemory && nv.deviceMemory <= 4) ? 60 : 150;
     }
     // una receta: de la caché si está (memoria al instante; disco, sin bloquear) y, si no, se calcula (trabajador o cola propia) y se guarda en ella
-    function pide(clave, e, niv, prio) {
+    // (una variante que está en el manifiesto, antes de calcularse, se descarga horneada; si la descarga falla en algo, se calcula y se cuenta el fallo)
+    function pide(clave, e, niv, prio, variante) {
       if (recetas[clave] || pidiendo[clave] || nPidiendo >= 2) return;
-      var e2 = { tipo: e.tipo, parametros: e.parametros, epoca: e.epoca, semilla: e.semilla }, ck = cache ? M.claveReceta(e2, niv) : null, r0 = ck ? cache.mem(ck) : null;
-      if (r0) { recetas[clave] = r0; return; }
+      var e2 = { tipo: e.tipo, parametros: e.parametros, epoca: e.epoca, semilla: e.semilla }, ck = M.claveReceta(e2, niv), r0 = cache ? cache.mem(ck) : null;
+      if (r0) { recetas[clave] = r0; if (variante) horn.cache++; return; }
       pidiendo[clave] = true; nPidiendo++;
       var llega = function (r) { delete pidiendo[clave]; nPidiendo--; recetas[clave] = r; };
       var hecha = function (r) { llega(r); if (cache) cache.pon(ck, r); };
+      var calculada = function (r) { if (variante) horn.calculadas++; else horn.propios++; hecha(r); };
       var calcula = function () {
-        if (fabrica) { fabrica.receta(e2, niv).then(hecha, function (err) { delete pidiendo[clave]; nPidiendo--; motivo = String(err); }); return; }
-        encola("G" + clave, prio, seguro((function* () { var r = yield* M.recetaG(e2); if (niv !== "E0") r = yield* M.aNivelG(r, niv); return r; })()), function (r) { if (r) hecha(r); else { delete pidiendo[clave]; nPidiendo--; } });
+        if (fabrica) { fabrica.receta(e2, niv).then(calculada, function (err) { delete pidiendo[clave]; nPidiendo--; motivo = String(err); }); return; }
+        encola("G" + clave, prio, seguro((function* () { var r = yield* M.recetaG(e2); if (niv !== "E0") r = yield* M.aNivelG(r, niv); return r; })()), function (r) { if (r) calculada(r); else { delete pidiendo[clave]; nPidiendo--; } });
       };
-      if (cache && cache.estado().enDisco) cache.lee(ck).then(function (r) { if (r) llega(r); else calcula(); }, calcula); else calcula();
+      var fila = variante && HORNEADO ? filaDe(e2, niv) : null;
+      var trae = !fila ? calcula : function () {
+        descarga(fila, ck, niv).then(function (r) { horn.horneadas++; hecha(r); }, function (err) { horn.fallos++; horn.ultimoFallo = String(err && err.message || err).slice(0, 60); calcula(); });
+      };
+      if (cache && cache.estado().enDisco) cache.lee(ck).then(function (r) { if (r) { if (variante) horn.cache++; llega(r); } else trae(); }, trae); else trae();
     }
     // la transformación de cada árbol: su sitio, la exageración vertical y, en las variantes, el estirado a la copa y la altura medidas
     function matrizDe(c, r, variante) {
@@ -142,7 +224,7 @@
           propios = false;
         }
         if (nVar >= MAX_VAR) break;
-        var cv = "v" + (x.c.i % SEM_VAR.length) + ":" + nivV, tv = recetas[cv] ? costo(recetas[cv]) : ESTIM[nivV];
+        var cv = "v" + (x.c.i % (varSem || SEM_VAR).length) + ":" + nivV, tv = recetas[cv] ? costo(recetas[cv]) : ESTIM[nivV];
         if (usado + tv > pres) break;
         nuevoPlan.push({ c: x.c, d: x.d, clave: cv, niv: nivV, propio: false }); usado += tv; nVar++;
       }
@@ -152,7 +234,10 @@
       plan.forEach(function (p) {
         if (recetas[p.clave]) return;
         if (p.propio) { var e2 = entrada(p.c); p.provisional = e2.provisional; pide(p.clave, e2, p.niv, p.d); }
-        else pide(p.clave, { tipo: "centenario3", epoca: epoca(), semilla: SEM_VAR[Number(p.clave.slice(1, p.clave.indexOf(":")))] }, p.niv, p.d + 200);
+        else {   // los tipos y semillas de las variantes: los del manifiesto si lo hay; si no, centenario3 con SEM_VAR
+          var jv = Number(p.clave.slice(1, p.clave.indexOf(":"))), sv = varSem ? varSem[jv] : { tipo: "centenario3", semilla: SEM_VAR[jv] };
+          pide(p.clave, { tipo: sv.tipo, epoca: epoca(), semilla: sv.semilla }, p.niv, p.d + 200, true);
+        }
       });
       // lo que ya se puede dibujar; si cambia, se rehace el lote (a rebanadas, por la cola propia)
       // cada receta lista entra ya (lote incremental); si la de su nivel aún no está pero sí la del otro nivel de ese olivo, se dibuja esa mientras
@@ -340,9 +425,11 @@
     window.__olivosGen = function () {
       var k0 = Object.keys(listos)[0], p0 = k0 !== undefined ? listos[k0].c : null;   // un olivo generado ya dibujado
       return { primero: p0 ? { x: p0.x, y: p0.y, h: p0.h } : null, estado: estado, motivo: motivo, via: fabrica ? "trabajador" : "rebanadas", plan: plan.length, recetas: Object.keys(recetas).length, pidiendo: nPidiendo, trabajos: trabajos.length, radio: R, info: info,
-        cache: cache ? cache.estado() : null, fundido: { activo: !!fundido, avance: +uFun.value.toFixed(3), duracion: FUNDIDO } };
+        cache: cache ? cache.estado() : null,
+        horneado: { estado: horn.estado, motivo: horn.motivo, epoca: M && mats ? epoca() : null, variantes: (varSem || SEM_VAR).length, horneadas: horn.horneadas, calculadas: horn.calculadas,
+          fallos: horn.fallos, cache: horn.cache, propiosCalculados: horn.propios, ultimoFallo: horn.ultimoFallo }, fundido: { activo: !!fundido, avance: +uFun.value.toFixed(3), duracion: FUNDIDO } };
     };
     // _prueba: para pruebas/olivo/generados_motor.mjs (Node), no para el motor
     return { activo: function () { return estado === "activo"; }, actualiza: actualiza, paso: paso, gastado: function () { return gastado; }, pendientes: pendientes, rotulo: rotulo, estado: function () { return estado; },
-      _prueba: { mats: function () { return mats; }, prof: function () { return prof; }, uFun: uFun, lote: function () { return lote; }, tiene: tiene } };
+      _prueba: { fecha: function (f) { fechaPrueba = f; }, mats: function () { return mats; }, prof: function () { return prof; }, uFun: uFun, lote: function () { return lote; }, tiene: tiene } };
   })();

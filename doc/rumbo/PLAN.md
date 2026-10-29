@@ -91,19 +91,19 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | T7 | F1d 8: Quest real (p95 ≤ 13,9 ms) | T6 | 👤 | ⬜ |
 | T8 | F1d 9: la escena nueva por defecto; se retira la vieja | T6 (T7 o «no probado», decisión 35) | ligera | ⬜ |
 | P1 | F2: la api firma tokens de LiveKit (`POST /api/presencia/token`, `livekit-server-sdk`, roles del contrato) | — | ligera | ✅ |
-| P2 | F2: el motor publica y recibe la pose con `livekit-client` (sustituye a la red simulada) | P1 | ligera | ⬜ |
-| P3 | F2: chat por el canal de datos y moderación mínima (expulsar con auditoría, decisión 42) | P1 | ligera | ⬜ |
+| P2 | F2: el motor publica y recibe la pose con `livekit-client` (sustituye a la red simulada) | P1 | ligera | ✅ `?presencia=red`; probado con dos Chrome en P4 |
+| P3 | F2: chat por el canal de datos y moderación mínima (expulsar con auditoría, decisión 42) | P1 | ligera | ✅ chat y expulsión; probados contra LiveKit real en P4 |
 | P4 | F2: dos Chrome en la misma sala (p95 < 250 ms) y 40 clientes ligeros | P2, P3 | 🔶 Docker + Chrome | ✅ en local (transporte p95 7 ms; 40 clientes saturan el i5: medir LiveKit con carga desde otra máquina) |
 | O1 | Olivos generados: transición suave al acercarse (forma y luz; materiales con nubes y escarcha del motor) | — | ligera; 🔶 al medir | ✅ medido: 2 generados de cerca, 40 llamadas / 545 k (aspecto, 👤) |
 | O2 | Olivos generados: desglose del coste de `factorR8 = 1` por objeto | — | 🔶 | ⬜ |
 | O3 | `semillas_copas.py` dentro de los exportadores | — | ligera | ✅ |
 | O5 | Olivos generados: caché de recetas (memoria con límite y LRU; IndexedDB con clave semilla+tipo+época+`GEN_VERSION`, `idb-keyval`); horneado en servidor, más adelante y tras medir tamaños | o1d (montaje y recorte arreglados) | ligera | 🟡 caché hecha (sin medir en navegador); horneado en servidor pendiente |
 | O6 | Medir el horneado por tesela (tamaños por nivel, cuantizado y brotli, manifiesto, descarga de una visita, tiempo) | — | ligera (Node) | ✅ (MEDIDAS: 6,5–7,1 GB por época; un paseo podría bajar 78–555 MB si cada olivo cercano tuviera receta propia) |
-| O7a | ADR-0018 «hornero»: formato de la receta horneada (cuantización, compresión, ¿E0 también?), manifiesto por tesela, direccionado por huella, ciclo de vida (época actual + siguiente, vuelo nuevo, censo, `GEN_VERSION`), plan B en la salida artefacto | O6 | ligera · **opus** | ✅ ADR-0018 Propuesto: variantes E2/E2-VR horneadas, propios en el aparato; manifiesto por finca |
+| O7a | ADR-0018 «hornero»: formato de la receta horneada (cuantización, compresión, ¿E0 también?), manifiesto por tesela, direccionado por huella, ciclo de vida (época actual + siguiente, vuelo nuevo, censo, `GEN_VERSION`), plan B en la salida artefacto | O6 | ligera · **opus** | ✅ ADR-0018 **Aceptado** (decisión 65): variantes E2/E2-VR horneadas, propios en el aparato; manifiesto por finca |
 | O7b | Contrato y esquema del manifiesto por tesela y de la receta horneada, con su fixture y guardián | O7a | ligera · **sonnet** | ✅ contrato + 2 esquemas + horneado.js; calendario de partida (Antonio lo ajusta) |
-| O7c | Hornero en Node (CLI): hornea una finca o una tesela a ficheros por huella + manifiesto; incremental (solo lo que cambia); época actual y siguiente | O7b | ligera (pesada de CPU, sin Chrome) · **sonnet** | 🟡 en curso |
+| O7c | Hornero en Node (CLI): hornea una finca o una tesela a ficheros por huella + manifiesto; incremental (solo lo que cambia); época actual y siguiente | O7b | ligera (pesada de CPU, sin Chrome) · **sonnet** | ✅ 16 objetos, 4,44 MB, 9,3 s desde cero y 0,9 s sin cambios |
 | O7d | Servir las recetas: Caddy en `/teselas/<finca>/olivos/<huella>` con caché inmutable y el manifiesto con la tesela, tras sesión; dev y producción | O7b | ligera · **sonnet** | 🟡 en curso |
-| O7e | Motor: carga el manifiesto con la tesela y **descarga** las recetas en vez de calcularlas (con la caché de O5); si falta una, la calcula (plan B) | O7b | ligera · **opus** | 🟡 en curso |
+| O7e | Motor: carga el manifiesto con la tesela y **descarga** las recetas en vez de calcularlas (con la caché de O5); si falta una, la calcula (plan B) | O7b | ligera · **opus** | 🟡 código y Node ✅ (0 variantes calculadas con manifiesto; plan B); falta la comparación a ojo (banco) y un aparato |
 | O7f | Servicio «hornero» en Docker (`infra/dev`, luego producción): se dispara por cambio de época (calendario), índice nuevo o `GEN_VERSION`; registro y salud | O7c | ligera · **sonnet** | ⬜ |
 | O7g | e2e: el servicio hornea el fixture, Caddy lo sirve y el motor lo dibuja con 0 variantes calculadas en el aparato (los propios, calculados; ADR-0018) | O7d, O7e, O7f | 🔶 Docker + Chrome · **sonnet** | ⬜ |
 | O7h | Hituelo real horneado (2 épocas): tamaños, tiempo, descarga de un paseo; prueba en el móvil | O7g | 🔶 · **sonnet**; 👤 móvil | ⬜ |

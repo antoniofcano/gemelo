@@ -262,6 +262,23 @@ Dos épocas: el doble (si no se comparte nada). Con 4 procesos, unas 4 veces men
 - **Artefacto** (`contratos/publicacion.json`): no admite `.bin`; ≤ 15 MB por fichero binario, 64 MB por publicación, 256 MB por versión, 255 ficheros. Una tesela mediana en un solo nivel (23-63 MB) no cabe en un fichero; Hituelo en E2-VR (1,0 GB), ni de lejos. **En la salida artefacto, las recetas se calculan en el navegador** (plan B).
 - **VPS** (ADR-0011): disco, memoria y núcleos **[NO VERIFICADO]**. Una época, cuatro niveles: ≈ 6,5 GB con brotli 11, ≈ 7,1 GB con brotli 9; dos épocas, hasta el doble. Cabe en cualquier VPS de decenas de GB; el límite real es el **ancho de banda de la visita** (arriba), no el disco.
 
+## Hornero de variantes con Hituelo v3 (O7c, 2026-10-29, foto, no se mantiene)
+
+`tuberia/olivos/hornero.mjs --finca hituelo --salida <carpeta> --fecha <día>`; `GEMELO_DATOS` apuntando a la salida de referencia `hituelo-v3` (fuera del repo). Generador `olivo-2`, `CACHE_VERSION` 1, tipo `centenario3`, semillas 11/23/37/51 (`SEM_VAR`), niveles E2 y E2-VR, épocas `envero` (actual, fecha 2026-10-29) y `madura` (siguiente), brotli 9. Mismo equipo cargado que O6 (i5-1035G1, 8 hilos, Node 24, otros agentes en marcha); **una sola corrida de cada cosa**: los tiempos valen por proporciones. 1 MB = 1.048.576 B.
+
+| Nivel | Objetos | Sin comprimir | Brotli 9 | Media por objeto (br) | Estimación del ADR-0018 |
+|---|---|---|---|---|---|
+| E2, 2 épocas | 8 | 3.582.968 B | 2.464.882 B (2,35 MB) | **308 KB** | 242 KB |
+| E2-VR, 2 épocas | 8 | 3.077.420 B | 1.979.652 B (1,89 MB) | **247 KB** | 199 KB |
+| **Total** | **16** | 6.660.388 B | **4.444.534 B (4,24 MB)** | 271 KB | 3,4 MB |
+
+- **Lo que baja un aparato** (un nivel de una época): E2 `envero` 1.227.791 B (1,17 MB), E2 `madura` 1.237.091 B (1,18 MB); E2-VR `envero` 985.217 B (0,94 MB), E2-VR `madura` 994.435 B (0,95 MB). La estimación del ADR (0,95 MB y 0,78 MB) se quedaba corta un **27-29 %**: como vio O7b con un E2 de `centenario3` de 308 KB; por qué las variantes pesan más que la media por olivo de O6 no se ha investigado. Las dos épocas pesan casi igual (`madura` +0,8 %).
+- **Manifiesto**: 3.790 B (16 filas, con sangría de 2 espacios).
+- **Tiempo**: primera corrida, 16 objetos desde cero (8 E0 generadas, 16 niveles, cuantizar, brotli 9): **9,3 s** (8,9 s dentro del proceso); la estimación del ADR era «del orden de un segundo» (sin medir): era unas diez veces corta (≈ 0,6 s por objeto, generando cada E0 una vez para sus dos niveles). Segunda corrida seguida: **0,9 s**, 0 horneadas, 16 reutilizadas, manifiesto intacto. Cambio a otra época (`madura` + `reposo`): **3,3 s**, 8 horneadas y 8 reutilizadas.
+- **Brotli 11 (`--release`)**, madura + reposo, todo rehecho: **3.972.494 B** frente a 4.276.136 B con brotli 9 (**−7,1 %**); unos 73-86 s en total (la corrida incluyó entonces la lectura del índice de Hituelo, ≈ 13 s), es decir ≈ 4-5 s por objeto en vez de ≈ 0,2 s. `--limpia` posterior: 8 objetos borrados (los de `envero`), 16 en disco.
+- **Con `--finca` el hornero no lee el índice** (las variantes no dependen de los olivos): leer el `indice.json` de Hituelo costaba ≈ 13 s de los de arriba en la máquina cargada.
+- **No medido:** el hornero en el VPS, descargar/descomprimir/decuantizar/verificar en un aparato, E2 de otros tipos del catálogo, varias fincas a la vez, los propios horneados (`--propios` no está implementado).
+
 ## Límites conocidos
 - Las ortofotos decodificadas (2,4 MB por tesela de 768 px; 1 MB a 512 px) se sueltan solo a 900 m; sin LRU fino.
 - Dentro de una tesela todo el relieve y la copa (258² + 256²) están siempre en memoria: 49 teselas ≈ 20 MB; la nube de las lejanas se libera a > 1,2× 2.300 m.

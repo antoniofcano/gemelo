@@ -565,8 +565,10 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
       const abre = async (ruta, esperaFn) => {
         const q = await ctx.newPage(), errs = [], csp = [];
         q.on("pageerror", e => errs.push("PAGEERROR " + String(e.stack || e).slice(0, 300)));
-        q.on("console", x => { if (x.type() === "error" || /Content Security Policy|Report Only/i.test(x.text())) errs.push("CONSOLE " + x.text().slice(0, 300)); });
-        q.on("response", x => { if (x.status() >= 400) errs.push(x.status() + " " + x.url()); });
+        // el 404 del manifiesto de olivos horneados (ADR-0018) es lo esperado mientras el hornero no haya horneado la finca: el motor calcula (plan B)
+        const sinManifiesto = u => /\/teselas\/[a-z0-9_]+\/olivos\/manifiesto\.json$/.test(String(u || "").split("?")[0]);
+        q.on("console", x => { if (x.type() === "error" && /status of 404/.test(x.text()) && sinManifiesto(x.location().url)) return; if (x.type() === "error" || /Content Security Policy|Report Only/i.test(x.text())) errs.push("CONSOLE " + x.text().slice(0, 300)); });
+        q.on("response", x => { if (x.status() === 404 && sinManifiesto(x.url())) return; if (x.status() >= 400) errs.push(x.status() + " " + x.url()); });
         await q.addInitScript(() => { window.__csp = []; document.addEventListener("securitypolicyviolation", e => window.__csp.push(e.violatedDirective + " " + e.blockedURI)); });
         await q.goto(base + ruta);
         await q.waitForFunction(() => window.__g && window.__g.listo(), null, { timeout: 90000 });

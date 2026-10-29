@@ -6,7 +6,10 @@
 //     el color por instancia de las mallas por lotes en sRGB, el color del material pasado de sRGB a lineal y las texturas marcadas sRGB;
 //   - fundido: todos los materiales (también los de sombra) llevan uFun y el descarte por tramado; el lote lleva el código de cada árbol (alfa del
 //     color por lotes, atributo aFun en las instanciadas); lo que entra no apaga el nivel de siempre hasta acabar el fundido; lo que sale se oculta al acabar;
-//   - la huella olivo-2 de la receta no cambia (la del oráculo para centenario3/envero/7).
+//   - la huella olivo-2 de la receta no cambia (la del oráculo para centenario3/envero/7);
+//   - variantes horneadas (O7e, ADR-0018): con un manifiesto y sus objetos servidos por un fetch falso, las variantes se dibujan SIN calcularse
+//     (semillas y época del manifiesto) y el lote es el mismo que con ?olivosHorneado=0; con una huella alterada o un objeto que falta, esa cae al
+//     cálculo; sin manifiesto, o con el del fixture (gen_version sintética), todo como siempre; nada en consola.
 // Escribe una línea JSON {mal: [...], ...} (la lee pruebas/guardianes/olivo.test.js).
 import fs from "node:fs";
 import path from "node:path";
@@ -42,15 +45,16 @@ const piezas = [extrae(T03, "var GLSL_LIN"), extrae(T03, "function colorVertSRGB
   extrae(T15, "var GLSL_SOMBRA"), extrae(T15, "function parcheTiempo")].join("\n");
 const G07 = lee("07ab_generados.js");
 
-function contexto(busqueda, reloj) {
+// extra: lo que se añade o sustituye en el contexto (D.base, fetch, console, window.OlivoGen) para las variantes horneadas (sección 6)
+function contexto(busqueda, reloj, extra) {
   const cola = [];
-  const ctx = {
-    THREE, console, performance: reloj || performance, Promise, Math, Object, Number, String, Error, Float32Array,
+  const ctx = Object.assign({
+    THREE, console, performance: reloj || performance, Promise, Math, Object, Number, String, Error, Float32Array, Uint8Array,   // los del módulo del olivo (instanceof entre contextos vm)
     location: { search: busqueda }, window: { OlivoGen: O },
     gArboles: new THREE.Group(), D: { copas: [], centro_utm: [0, 0] }, VRP: { on: false }, FACTOR_R8: 0.5, exag: 1,
     suelo: () => 0, camera: { position: new THREE.Vector3(0, 10, 0) },
     Cola: { add: () => { throw new Error("los generados no deben usar la Cola compartida"); }, hay: () => false }, cola
-  };
+  }, extra || {});
   vm.createContext(ctx);
   vm.runInContext(piezas + "\n" + G07 + "\n;this.__G = Generados; this.__uSombra = uSombra;", ctx, { filename: "07ab_generados.js" });
   return ctx;
@@ -228,5 +232,112 @@ else mal.push("sin el caso centenario3/envero/7 en las huellas");
 
 // ---- 5) paseando, 07b pasa a Generados la posición de quien pasea (pp), no la de la cámara (que gira alrededor en tercera persona)
 exige(/Generados\.actualiza\(paseando \? pp\.x : fx, paseando \? -pp\.y : fz,/.test(lee("07b_arboles.js")), "07b_arboles: paseando, el foco de los generados debe ser pp, no la cámara");
+
+// ---- 6) variantes horneadas (O7e): manifiesto + objetos servidos por un fetch falso desde /teselas/fixture/
+{
+  const H = await import(pathToFileURL(path.join(OLIVO, "horneado_node.js")).href);   // solo la prueba hornea (con brotli de Node); el motor, no
+  const EJEMPLO = JSON.parse(fs.readFileSync(path.join(RAIZ, "pruebas", "olivo", "horneado", "manifiesto-ejemplo.json"), "utf8"));
+  const CAL = JSON.parse(fs.readFileSync(path.join(RAIZ, "contratos", "epocas-calendario.json"), "utf8")).comun;
+  // semillas que NO son las de SEM_VAR y una fecha de «madura» (no la «envero» por defecto): así se ve que salen del manifiesto
+  const SEMS = [99, 123], EPOCA = "madura", HOY = new Date("2026-11-15T12:00:00Z"), BASE = "/teselas/fixture/";
+  const objetos = {}, filas = [], calculadas = {};
+  for (const semilla of SEMS) {
+    const e = { tipo: "centenario3", epoca: EPOCA, semilla }, r = O.aNivel(O.receta(e), "E2");
+    const o = await H.horneaObjeto(r, { nivel: "E2", clave: O.claveReceta(e, "E2"), gen_version: O.GEN_VERSION, cache_version: O.CACHE_VERSION }, 9);
+    objetos[o.huella] = H.descomprimeBr(o.br);   // lo que da fetch: el navegador ya deshizo el Content-Encoding: br
+    filas.push({ tipo: "centenario3", semilla, nivel: "E2", epoca: EPOCA, huella: o.huella, bytes: o.bytes, bytes_br: o.bytes_br });
+    calculadas[semilla] = r;
+  }
+  const manifiesto = { v: 1, finca: "fixture", formato: O.FORMATO_HORNEADO, gen_version: O.GEN_VERSION, cache_version: O.CACHE_VERSION, horneado_en: "2026-11-01T00:00:00Z", brotli: 9,
+    actual: "envero", epocas: ["envero", "madura"].map(x => ({ epoca: x, desde: CAL[x].desde, hasta: CAL[x].hasta })), variantes: filas, propios: { activos: false } };
+  // los propios (E0/E1) se comparten entre escenarios por una caché común que NO guarda variantes (claves de parámetros vacíos): cada escenario
+  // cuenta sus variantes desde cero y no recalcula los mismos propios
+  const comun = O.creaCache({ memMB: 400, disco: false }), esVar = k => k.endsWith("|{}");
+  const cacheComun = { mem: k => (esVar(k) ? undefined : comun.mem(k)), lee: k => Promise.resolve(esVar(k) ? undefined : comun.mem(k)),
+    pon: (k, r) => (esVar(k) ? Promise.resolve(false) : comun.pon(k, r)), estado: () => comun.estado(), vacia: () => comun.vacia(), espera: () => comun.espera() };
+  const OC = Object.assign({}, O, { creaCache: () => cacheComun });
+  const perfil6 = [2, 2, 2, 2, 2, 2, 2, 2], copas6 = Array.from({ length: 14 }, (_, i) => [i * 6, 0, 4.5, perfil6, 1]);
+  const ol6 = copas6.map((q, i) => ({ i, x: q[0], y: q[1], h: q[2], perfil: q[3] })), TOPE6 = 4e6;
+  async function escenario(nombre, busqueda, servir, olivoGen) {
+    const pedidas = [], consola = [];
+    const respuesta = (status, cuerpo) => ({ ok: status === 200, status,
+      json: () => Promise.resolve(JSON.parse(JSON.stringify(cuerpo))), arrayBuffer: () => Promise.resolve(cuerpo.slice().buffer) });
+    const fetch = (url, op) => {
+      pedidas.push(url);
+      if (!op || op.credentials !== "same-origin") consola.push("fetch sin credentials same-origin: " + url);
+      const x = servir(url);
+      return Promise.resolve(x ? respuesta(200, x) : respuesta(404, null));
+    };
+    const con = { log: (...a) => consola.push("log " + a.join(" ")), warn: (...a) => consola.push("warn " + a.join(" ")), error: (...a) => consola.push("error " + a.join(" ")) };
+    const cx = contexto(busqueda, null, { fetch, console: con, window: { OlivoGen: olivoGen || OC }, D: { copas: copas6, centro_utm: [0, 0], base: BASE } });
+    cx.__G._prueba.fecha(HOY);
+    for (let k = 0; k < 50 && cx.__G.estado() === "cargando"; k++) await espera();
+    let t0 = performance.now();
+    for (let r = 0; r < 80; r++) {
+      cx.__G.actualiza(0, 0, TOPE6, ol6);
+      for (let f = 0; f < 300 && cx.__G.pendientes() > 0; f++) cx.__G.paso(0.1, 50);
+      await espera(); await espera();
+      if (cx.__G.pendientes() === 0) { cx.__G.actualiza(0, 0, TOPE6, ol6); if (cx.__G.pendientes() === 0) break; }
+    }
+    const st = cx.window.__olivosGen(), lote = cx.__G._prueba.lote();
+    const estructura = lote ? lote.children.map(ch => ch.name + ":" + (ch.isInstancedMesh ? ch.count : ch.isBatchedMesh ? ch.instanceCount + "/" + ch._maxVertexCount + "/" + ch._maxIndexCount : ch.geometry.attributes.position.count)) : [];
+    const nVar = ol6.filter(o => { const ro = cx.__G.rotulo(o.i); return ro && ro.variante; }).length;
+    const d = { estado: st.estado, horneado: st.horneado, arboles: st.info.arboles, propios: st.info.propios, variantes: nVar, triangulos: st.info.triangulos, llamadas: st.info.llamadas,
+      estructura, pedidas, consola, ms: Math.round(performance.now() - t0) };
+    diag["horneado_" + nombre] = Object.assign({}, d, { estructura: estructura.length, pedidas: pedidas.length });
+    return d;
+  }
+  const urlObj = u => { const m = /^\/teselas\/fixture\/olivos\/([0-9a-f]{32})\.br$/.exec(u); return m ? m[1] : null; };
+  const sirve = (man, obj) => u => (u === BASE + "olivos/manifiesto.json" ? man : urlObj(u) ? (obj || objetos)[urlObj(u)] : null);
+
+  // A) con el manifiesto: 0 variantes calculadas, las dos horneadas, en «madura» y con las semillas del manifiesto
+  const A = await escenario("con_manifiesto", "?olivos=gen", sirve(manifiesto));
+  exige(A.estado === "activo" && A.horneado.estado === "activo", "con manifiesto, el horneado no se activa: " + JSON.stringify(A.horneado));
+  exige(A.horneado.epoca === EPOCA && A.horneado.variantes === SEMS.length, "con manifiesto, la época o las variantes no son las suyas: " + JSON.stringify(A.horneado));
+  exige(A.variantes >= 2, "con manifiesto, no se dibujan variantes (" + A.variantes + ")");
+  exige(A.horneado.calculadas === 0 && A.horneado.horneadas === SEMS.length && A.horneado.fallos === 0, "con manifiesto, se calculan variantes o fallan descargas: " + JSON.stringify(A.horneado));
+  exige(A.pedidas.every(u => u.startsWith(BASE + "olivos/")) && A.pedidas.filter(urlObj).length === SEMS.length, "con manifiesto, peticiones de más o de otro sitio: " + A.pedidas.join(", "));
+  exige(A.consola.length === 0, "con manifiesto, algo en consola: " + A.consola.join(" | "));
+  // la receta decodificada: misma estructura y triángulos que la calculada
+  for (const f of filas) {
+    const dec = O.decodifica(objetos[f.huella]).receta, cal = calculadas[f.semilla], dif = O.igualEstructura(cal, dec);
+    exige(dif.length === 0, "la variante horneada " + f.semilla + " no tiene la estructura de la calculada: " + dif.slice(0, 3).join("; "));
+    exige(O.triangulosNivel(dec) === O.triangulosNivel(cal), "la variante horneada " + f.semilla + " no tiene los triángulos de la calculada");
+  }
+  // C) lo mismo con ?olivosHorneado=0: lee el manifiesto (mismas semillas y época) pero no descarga nada y calcula las variantes; el lote
+  // (mallas, instancias, vértices e índices, triángulos, llamadas) es el mismo que con las horneadas
+  const C = await escenario("apagado", "?olivos=gen&olivosHorneado=0", sirve(manifiesto));
+  exige(C.pedidas.length === 1 && C.horneado.estado === "apagado" && C.horneado.epoca === EPOCA, "con ?olivosHorneado=0, se pide algo más que el manifiesto: " + C.pedidas.join(", ") + " " + JSON.stringify(C.horneado));
+  exige(C.horneado.calculadas === SEMS.length && C.horneado.horneadas === 0 && C.horneado.fallos === 0, "con ?olivosHorneado=0, las variantes no se calculan: " + JSON.stringify(C.horneado));
+  exige(A.triangulos === C.triangulos && A.llamadas === C.llamadas && A.arboles === C.arboles && JSON.stringify(A.estructura) === JSON.stringify(C.estructura),
+    "el lote con variantes horneadas no es el de las calculadas: " + JSON.stringify([A.triangulos, A.llamadas, A.arboles, A.estructura]) + " frente a " + JSON.stringify([C.triangulos, C.llamadas, C.arboles, C.estructura]));
+  // A2) «recargar» con la caché de antes (aquí en memoria: Node no tiene IndexedDB): las variantes salen de la caché, sin descargar ni calcular
+  const todo = O.creaCache({ memMB: 400, disco: false }), OT = Object.assign({}, O, { creaCache: () => todo });
+  const A1 = await escenario("carga1", "?olivos=gen", sirve(manifiesto), OT), A2 = await escenario("recarga", "?olivos=gen", sirve(manifiesto), OT);
+  exige(A1.horneado.horneadas === SEMS.length && A2.horneado.horneadas === 0 && A2.horneado.calculadas === 0 && A2.horneado.cache >= SEMS.length && A2.pedidas.length === 1,
+    "al recargar, las variantes no salen de la caché: " + JSON.stringify([A1.horneado, A2.horneado, A2.pedidas]));
+  exige(A2.triangulos === A.triangulos, "al recargar, el lote cambia");
+  // B) una huella alterada (el objeto no es el que dice el manifiesto) y otro que falta (404): las dos caen al cálculo y se cuentan
+  const roto = Object.assign({}, objetos), h0 = filas[0].huella, b0 = objetos[h0].slice(); b0[b0.length - 1] ^= 1; roto[h0] = b0; delete roto[filas[1].huella];
+  const B = await escenario("roto", "?olivos=gen", sirve(manifiesto, roto));
+  exige(B.horneado.estado === "activo" && B.horneado.fallos === 2 && B.horneado.calculadas === 2 && B.horneado.horneadas === 0, "con una huella alterada y un objeto que falta, no caen al cálculo: " + JSON.stringify(B.horneado));
+  exige(B.variantes >= 2 && B.triangulos === A.triangulos, "con objetos rotos, el lote no es el mismo: " + B.triangulos + " frente a " + A.triangulos);
+  exige(B.consola.length === 0, "con objetos rotos, algo en consola: " + B.consola.join(" | "));
+  // F) ?olivosDir= (carpeta relativa, para el banco) con ?olivosPropios=0: todo lo cercano son variantes horneadas; G) un ?olivosDir= de otro host: no pide nada
+  const sirveRel = u => (u === "olivos/manifiesto.json" ? manifiesto : /^olivos\/[0-9a-f]{32}\.br$/.test(u) ? objetos[u.slice(7, 39)] : null);
+  const F = await escenario("dir_sin_propios", "?olivos=gen&olivosDir=olivos/&olivosPropios=0", sirveRel);
+  exige(F.horneado.estado === "activo" && F.horneado.horneadas === SEMS.length && F.horneado.calculadas === 0 && F.propios === 0 && F.variantes >= 2,
+    "con ?olivosDir=olivos/&olivosPropios=0, no son todo variantes horneadas: " + JSON.stringify([F.horneado, F.propios, F.variantes, F.pedidas]));
+  const G2 = await escenario("dir_ajeno", "?olivos=gen&olivosDir=" + encodeURIComponent("//otro.invalid/"), sirve(manifiesto));
+  exige(G2.pedidas.length === 0 && G2.horneado.estado === "sin servidor", "con un ?olivosDir= de otro host, se pide algo: " + G2.pedidas.join(", "));
+  // D) sin manifiesto (404) y E) con el del fixture (gen_version sintética): se ignora, época por defecto, SEM_VAR, todo calculado, sin consola
+  const Dd = await escenario("sin_manifiesto", "?olivos=gen", () => null);
+  exige(Dd.horneado.estado === "ignorado" && Dd.horneado.epoca === "envero" && Dd.horneado.variantes === 4, "sin manifiesto, no queda como siempre: " + JSON.stringify(Dd.horneado));
+  exige(Dd.horneado.calculadas >= 1 && Dd.horneado.horneadas === 0 && Dd.horneado.fallos === 0 && Dd.variantes >= 2, "sin manifiesto, las variantes no se calculan: " + JSON.stringify(Dd.horneado));
+  exige(Dd.pedidas.length === 1 && Dd.consola.length === 0, "sin manifiesto, peticiones de más o algo en consola: " + Dd.pedidas.concat(Dd.consola).join(" | "));
+  const E = await escenario("fixture_sintetico", "?olivos=gen&epoca=madura", sirve(EJEMPLO));
+  exige(E.horneado.estado === "ignorado" && /gen_version/.test(E.horneado.motivo) && E.pedidas.length === 1 && E.horneado.horneadas === 0, "con el manifiesto sintético del fixture, no se ignora: " + JSON.stringify(E.horneado));
+  exige(E.horneado.epoca === "madura", "con ?epoca=madura, la época no es la pedida: " + E.horneado.epoca);
+}
 
 console.log(JSON.stringify({ mal, diag }));
