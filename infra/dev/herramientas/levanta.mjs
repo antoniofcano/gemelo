@@ -23,7 +23,7 @@ import path from "node:path";
 import zlib from "node:zlib";
 import { fileURLToPath } from "node:url";
 import { siembra, HOGARES } from "./siembra.mjs";
-import { aseguraEnv, cargaEnv, carpetaFinca, carpetaTeselas, carpetaTileset, carpetaOlivos, olivosDestino, aseguraNpmCi, esFixture, fincaServida, indiceServido, compose, ipRedLocal, motivoSinDocker, npm, aseguraDependencias, puertos, util, RAIZ, ENV, FIXTURE, PG_API, PG_DUENO, SALIDA_DEV, WEB } from "./_comun.mjs";
+import { aseguraEnv, cargaEnv, carpetaFinca, carpetaTeselas, carpetaTileset, carpetaOlivos, carpetaAvatares, olivosDestino, aseguraNpmCi, esFixture, fincaServida, indiceServido, compose, ipRedLocal, motivoSinDocker, npm, aseguraDependencias, puertos, util, RAIZ, ENV, FIXTURE, PG_API, PG_DUENO, SALIDA_DEV, WEB } from "./_comun.mjs";
 
 const SIN_BUILD = process.argv.includes("--sin-build");
 const RED_LOCAL = process.argv.includes("--red-local");
@@ -137,8 +137,9 @@ export async function levanta({ sinBuild = false, redLocal = false } = {}) {
   const carpetaHornero = olivosDestino();
   fs.mkdirSync(carpetaHornero, { recursive: true });
   if (process.platform !== "win32") { try { fs.chmodSync(carpetaHornero, 0o777); } catch (e) { /* si no es nuestra, que lo diga el hornero */ } }
+  fs.mkdirSync(carpetaAvatares(), { recursive: true });   // /avatares/: vacía hasta que se construya el catálogo (npm: node tuberia/avatares/construye.mjs)
   // lo que Compose monta: rutas absolutas ya resueltas ("" = no se da, y manda el valor por defecto del compose)
-  const datosCompose = { GEMELO_DEV_TESELAS: teselas, GEMELO_DEV_FINCA_CARPETA: carpeta || "", GEMELO_DEV_TILESET: tileset || "", GEMELO_DEV_OLIVOS: olivosDestino(), GEMELO_DEV_FINCA: finca };
+  const datosCompose = { GEMELO_DEV_TESELAS: teselas, GEMELO_DEV_FINCA_CARPETA: carpeta || "", GEMELO_DEV_TILESET: tileset || "", GEMELO_DEV_OLIVOS: olivosDestino(), GEMELO_AVATARES: carpetaAvatares(), GEMELO_DEV_FINCA: finca };
   let red = null;
   if (redLocal) {
     red = ipRedLocal();

@@ -290,6 +290,29 @@ test("Hituelo v3 en local: finca y tileset fuera del repo se montan de solo lect
   assert.match(l, /three-gen/); assert.match(l, /3d-tiles-renderer/);
 });
 
+test("avatares VRM (P7b): /avatares/<id>.vrm y catalogo.json solo con sesión, el .vrm inmutable (se pide con ?v=<sha256>), el catálogo revalidado, lo demás 404, en dev y en producción", async () => {
+  const sinC = f => lee(f).split("\n").filter(l => !/^\s*#/.test(l)).join("\n");
+  for (const [nombre, f] of [["dev", "infra/dev/Caddyfile"], ["producción", "infra/Caddyfile"]]) {
+    const c = sinC(f);
+    assert.match(c, /@con_sesion path [^\n]*\/avatares \/avatares\/\*/, nombre + ": /avatares va en el bloque con sesión (forward_auth)");
+    assert.ok(c.indexOf("@avatares path") > c.indexOf("handle @con_sesion"), nombre + ": dentro del bloque con sesión");
+    assert.match(c, /@avatar_permitido path_regexp \^\/avatares\/\(\[a-z0-9-\]\{1,32\}\\\.vrm\|catalogo\\\.json\)\$/, nombre + ": SOLO <id>.vrm y catalogo.json");
+    assert.match(c, /header @avatar_vrm \{\s*Content-Type "model\/gltf-binary"\s*Cache-Control "private, max-age=31536000, immutable"\s*\}/, nombre + ": el .vrm, inmutable y con su tipo");
+    assert.match(c, /@avatar_catalogo path \/avatares\/catalogo\.json\s*header @avatar_catalogo Cache-Control "private, no-cache"/, nombre + ": el catálogo se revalida");
+    assert.match(c, /root \* \/srv\/avatares\s*file_server \{\s*precompressed br zstd gzip\s*hide \.\*\s*\}/, nombre + ": desde /srv/avatares, con los precomprimidos");
+    assert.match(c, /handle @avatar_permitido \{[\s\S]*?\}\s*handle \{\s*header Cache-Control "no-store"\s*respond "404 Not Found" 404\s*\}\s*\}/, nombre + ": lo demás de avatares/ (los .br, .zst, .gz pedidos directamente, ficheros ocultos…) da 404");
+  }
+  assert.match(composeSinComentarios(), /\$\{GEMELO_AVATARES:-\.\.\/\.\.\/pruebas\/salida\/avatares\}:\/srv\/avatares:ro/, "dev: la carpeta del catálogo, de solo lectura, por defecto en pruebas/salida");
+  assert.match(lee("infra/compose.yml"), /\/srv\/gemelo\/publicado:\/srv:ro/, "producción: /srv/avatares sale de /srv/gemelo/publicado/avatares");
+  assert.match(lee("infra/dev/herramientas/levanta.mjs"), /GEMELO_AVATARES: carpetaAvatares\(\)/, "levanta pasa la carpeta al compose");
+  assert.match(lee("infra/dev/ejemplo.env"), /GEMELO_AVATARES=/, "documentada en ejemplo.env");
+  const cm = await import(pathToFileURL(path.join(HERR, "_comun.mjs")).href), antes = process.env.GEMELO_AVATARES;
+  try {
+    delete process.env.GEMELO_AVATARES; assert.ok(cm.carpetaAvatares().endsWith(path.join("pruebas", "salida", "avatares")));
+    process.env.GEMELO_AVATARES = path.join(RAIZ, "apps"); assert.throws(cm.carpetaAvatares, /dentro del repo/);
+  } finally { if (antes === undefined) delete process.env.GEMELO_AVATARES; else process.env.GEMELO_AVATARES = antes; }
+});
+
 test("recetas horneadas (O7d): /teselas/<finca>/olivos/<huella>.br sale en brotli e inmutable y los manifiestos se revalidan, en dev y en producción, tras sesión", async () => {
   const sinC = f => lee(f).split("\n").filter(l => !/^\s*#/.test(l)).join("\n");
   const objeto = "Content-Type \"application/octet-stream\"\\s*Content-Encoding \"br\"\\s*Cache-Control \"private, max-age=31536000, immutable\"";
