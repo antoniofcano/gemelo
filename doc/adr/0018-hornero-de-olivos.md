@@ -1,6 +1,6 @@
 # ADR-0018 — Hornero de olivos: variantes horneadas en el servidor, propios cercanos en el aparato
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado (Antonio, 2026-10-29; decisiones 63 y 64)
 - **Fecha:** 2026-10-29
 
 ## Contexto
@@ -41,7 +41,7 @@ El **hornero** (un servicio del servidor) hornea las **variantes compartidas E2 
 - **El manifiesto se escribe el último**, cuando todos sus objetos existen: quien lo lee nunca apunta a un objeto que falte.
 
 ### 4. Ciclo de vida del hornero
-- **Qué lo dispara:** (a) la **época por calendario**: cada finca tiene su tabla de fechas por época (**[SUPUESTO]**: la fija Antonio o sale de la fenología de OlivarTrack, `bbchAEpoca`; decisión de Antonio) y el hornero tiene siempre la actual y la siguiente; cuando la siguiente pasa a ser la actual, hornea la que viene, con una antelación **por fijar**; (b) un `indice.json` nuevo (vuelo nuevo, `copas_param`, `copas_tipo`, censo): a las variantes solo les afecta si cambian los tipos de la finca; a los propios, los olivos cuya entrada cambió; (c) un `GEN_VERSION` o `CACHE_VERSION` nuevo, o una versión de formato nueva: todo.
+- **Qué lo dispara:** (a) la **época por calendario**: cada finca tiene su tabla de fechas por época (**decisión 64: calendario fijo en el repo, que ajusta Antonio**; más adelante puede alimentarse de la fenología de OlivarTrack, `bbchAEpoca`) y el hornero tiene siempre la actual y la siguiente; cuando la siguiente pasa a ser la actual, hornea la que viene, con una antelación **por fijar**; (b) un `indice.json` nuevo (vuelo nuevo, `copas_param`, `copas_tipo`, censo): a las variantes solo les afecta si cambian los tipos de la finca; a los propios, los olivos cuya entrada cambió; (c) un `GEN_VERSION` o `CACHE_VERSION` nuevo, o una versión de formato nueva: todo.
 - **Incremental:** el hornero calcula las claves (`claveReceta`) que pide el manifiesto nuevo, mira su propio índice clave → huella y **solo hornea las que faltan**. Los objetos que ningún manifiesto vigente ni el anterior usa se borran (el anterior se conserva para quien lo tenga cargado).
 - **Avance visible:** escribe su estado (recetas hechas / total, fase, error) en el registro y en un fichero de salud que el servicio expone (O7f).
 - **Cuánto tarda:** las variantes de una época, del orden de **un segundo** (estimado con las cifras por olivo de O6: 4 E0 generados, sus niveles, cuantizar y brotli 9; **sin medir**). Propios E0/E1 de Hituelo, una época: por debajo de los 19-51 min de los cuatro niveles (O6), **sin medir**.
