@@ -80,6 +80,38 @@ services:
       timeout: 5s
       retries: 3
 
+  # El hornero de olivos (ADR-0018, O7f; tuberia/olivos/servicio.mjs). SIN DESPLEGAR todavía: no se levanta hasta que lo decida Antonio
+  # (RUNBOOK-VPS § El hornero). Hornea las variantes E2/E2-VR de la finca en /srv/gemelo/publicado/teselas/<finca>/olivos/ (lo que Caddy sirve
+  # en /teselas/<finca>/olivos/), lee el índice de la finca de solo lectura y deja su estado en un volumen propio. Ni puertos ni salida a
+  # Internet (red `bd`, internal). Una vuelta al arrancar y otra solo si cambia el índice, el calendario, GEN_VERSION/CACHE_VERSION o llega
+  # el cambio de época (a las 03:00 UTC, GEMELO_HORNERO_HORA); entre medias mira sellos baratos cada 10 min. Para otra finca, repetir
+  # las dos líneas de teselas y GEMELO_HORNERO_FINCAS. La carpeta olivos/ debe existir y ser del uid 1000 (RUNBOOK-VPS).
+  hornero:
+    image: gemelo-hornero:0.2.0
+    build: { context: .., dockerfile: tuberia/olivos/Dockerfile }
+    profiles: [hornero]      # no arranca con un `up -d` normal: `docker compose -f infra/compose.yml --profile hornero up -d hornero`
+    restart: unless-stopped
+    environment:
+      GEMELO_HORNERO_FINCAS: hituelo
+      GEMELO_HORNERO_HORA: "03:00"
+    volumes:
+      - /srv/gemelo/publicado/teselas/hituelo:/datos/hituelo:ro
+      - /srv/gemelo/publicado/teselas/hituelo/olivos:/salida/hituelo/olivos
+      - hornero_estado:/estado
+    networks: [bd]
+    user: "1000:1000"
+    read_only: true
+    init: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "node", "tuberia/olivos/salud.mjs"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
   # Caddy INTERNO: estáticos (portada pública; finca y teselas tras sesión), cabeceras de seguridad y proxy a la api.
   web:
     image: caddy:2.11.7-alpine@sha256:eb4d35b7452d1ab6171fbdbe8d9275b2301dad6dad92115d91e19fb9b24d510f
@@ -111,6 +143,7 @@ volumes:
   pg_datos: {}
   caddy_datos: {}
   caddy_config: {}
+  hornero_estado: {}
 
 secrets:
   pg_dueno: { file: /etc/gemelo/secretos/pg_dueno }

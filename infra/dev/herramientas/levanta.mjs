@@ -11,6 +11,9 @@
 //     los sirva ya comprimidos;
 //  4. arranca la base y comprueba que tiene los roles de producción (gemelo_dueno y gemelo_api; decisión 55): un volumen
 //     de antes no los tiene y se dice cómo arreglarlo;
+//     El servicio `hornero` (tuberia/olivos/servicio.mjs, O7f) hornea las variantes de olivos de la finca servida en la carpeta que
+//     Caddy sirve como /teselas/<finca>/olivos/ (GEMELO_DEV_OLIVOS o pruebas/salida/olivos-dev/<finca>, que se crea aquí); con
+//     GEMELO_DEV_FINCA_CARPETA hornea esa finca (el índice se monta de solo lectura);
 //  5. docker compose up -d --build --wait: construye la imagen de la api (apps/api/Dockerfile; con la caché de Docker es
 //     rápido si no cambió nada), aplica las migraciones (servicio `migra`) y espera a los healthchecks;
 //  6. siembra las hazas, los olivos y los hogares de prueba SINTÉTICOS (siembra.mjs, idempotente). Con datos que no son el
@@ -20,7 +23,7 @@ import path from "node:path";
 import zlib from "node:zlib";
 import { fileURLToPath } from "node:url";
 import { siembra, HOGARES } from "./siembra.mjs";
-import { aseguraEnv, cargaEnv, carpetaFinca, carpetaTeselas, carpetaTileset, carpetaOlivos, aseguraNpmCi, esFixture, fincaServida, indiceServido, compose, ipRedLocal, motivoSinDocker, npm, aseguraDependencias, puertos, util, RAIZ, ENV, FIXTURE, PG_API, PG_DUENO, SALIDA_DEV, WEB } from "./_comun.mjs";
+import { aseguraEnv, cargaEnv, carpetaFinca, carpetaTeselas, carpetaTileset, carpetaOlivos, olivosDestino, aseguraNpmCi, esFixture, fincaServida, indiceServido, compose, ipRedLocal, motivoSinDocker, npm, aseguraDependencias, puertos, util, RAIZ, ENV, FIXTURE, PG_API, PG_DUENO, SALIDA_DEV, WEB } from "./_comun.mjs";
 
 const SIN_BUILD = process.argv.includes("--sin-build");
 const RED_LOCAL = process.argv.includes("--red-local");
@@ -129,8 +132,13 @@ export async function levanta({ sinBuild = false, redLocal = false } = {}) {
   cargaEnv();
   const teselas = carpetaTeselas(), finca = fincaServida(), carpeta = carpetaFinca(), tileset = carpetaTileset(), olivos = carpetaOlivos();
   if (tileset && !fs.existsSync(path.join(tileset, "tileset.json"))) throw new Error("no existe " + path.join(tileset, "tileset.json") + " (GEMELO_DEV_TILESET: la carpeta del tileset; ver DESARROLLO-LOCAL.md, «Prueba en aparatos con Hituelo v3»)");
+  // la carpeta del hornero (la que Caddy sirve en /teselas/<finca>/olivos/): la crea quien levanta, con permiso de escritura para el uid 1000
+  // del contenedor (en Linux el dueño puede no serlo; en Docker Desktop da igual)
+  const carpetaHornero = olivosDestino();
+  fs.mkdirSync(carpetaHornero, { recursive: true });
+  if (process.platform !== "win32") { try { fs.chmodSync(carpetaHornero, 0o777); } catch (e) { /* si no es nuestra, que lo diga el hornero */ } }
   // lo que Compose monta: rutas absolutas ya resueltas ("" = no se da, y manda el valor por defecto del compose)
-  const datosCompose = { GEMELO_DEV_TESELAS: teselas, GEMELO_DEV_FINCA_CARPETA: carpeta || "", GEMELO_DEV_TILESET: tileset || "", GEMELO_DEV_OLIVOS: olivos || "", GEMELO_DEV_FINCA: finca };
+  const datosCompose = { GEMELO_DEV_TESELAS: teselas, GEMELO_DEV_FINCA_CARPETA: carpeta || "", GEMELO_DEV_TILESET: tileset || "", GEMELO_DEV_OLIVOS: olivosDestino(), GEMELO_DEV_FINCA: finca };
   let red = null;
   if (redLocal) {
     red = ipRedLocal();
@@ -140,7 +148,7 @@ export async function levanta({ sinBuild = false, redLocal = false } = {}) {
       (red.otras.length ? "\n  otras IP posibles: " + red.otras.map(o => o.ip + " (" + o.nombre + ")").join(", ") + " — elige con GEMELO_DEV_IP" : ""));
   }
   paso("datos: " + (esFixture() ? "fixture sintético" : "carpeta local " + (carpeta ? "(GEMELO_DEV_FINCA_CARPETA)" : "(GEMELO_DEV_TESELAS)")) + ", finca " + finca +
-    (tileset ? ", con tileset 3D Tiles (GEMELO_DEV_TILESET)" : "") + (olivos ? ", con recetas horneadas (GEMELO_DEV_OLIVOS)" : ""));
+    (tileset ? ", con tileset 3D Tiles (GEMELO_DEV_TILESET)" : "") + ", olivos horneados por el servicio hornero en " + (olivos ? "GEMELO_DEV_OLIVOS" : rel(carpetaHornero)));
   preparaFixture();                      // los guardianes y la siembra de la finca sintética parten siempre del fixture
   const datos = datosDeLaWeb(indiceServido(), finca);
   if (!sinBuild) { paso("build de la web (Vite)"); construyeWeb(datos); }
@@ -165,7 +173,7 @@ export async function levanta({ sinBuild = false, redLocal = false } = {}) {
     "\n  api       " + w + "/api/salud" +
     "\n  teselas   " + w + "/teselas/" + finca + "/indice.json   (solo con sesión)" +
     (tileset ? "\n  tileset   " + w + "/teselas/" + finca + "/tileset/tileset.json   (solo con sesión; en el mundo: /finca/?olivos=gen&escena=tiles)" : "") +
-    (olivos ? "\n  olivos    " + w + "/teselas/" + finca + "/olivos/manifiesto.json   (solo con sesión; los objetos, /olivos/<huella>.br)" : "") +
+    "\n  olivos    " + w + "/teselas/" + finca + "/olivos/manifiesto.json   (solo con sesión; lo hornea el servicio hornero, `npm run dev:estado` dice si está listo; los objetos, /olivos/<huella>.br)" +
     "\n  correo    http://localhost:" + p.correoWeb + "/   (SMTP en 127.0.0.1:" + p.smtp + ")" +
     "\n  db        127.0.0.1:" + p.db + "  base gemelo; " + PG_DUENO + " (dueño) y " + PG_API + " (la api), claves en infra/dev/.env" +
     "\n  livekit   " + w + "/rtc para el navegador (por Caddy); ws://localhost:" + p.livekit + " para las herramientas (claves en infra/dev/.env)" +
