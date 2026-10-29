@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Olivos generados: caché de recetas en memoria (LRU, 60/150 MB) e IndexedDB (`idb-keyval`, 300 MB, LRU), con la clave `GEN_VERSION` + época + semilla + parámetros; sin IndexedDB, solo memoria; `?debug` dice «caché: memoria N · disco M» (O5).
 - Presencia: una identidad de LiveKit por sesión (aparato): el mismo hogar puede estar a la vez en el ordenador, el móvil y las gafas, y la oficina expulsa todas sus conexiones (la respuesta dice cuántas).
 - Presencia en local: el navegador llega a LiveKit por el mismo origen (`wss://<sitio>/rtc`, por Caddy); `--red-local` abre además los medios de LiveKit (7882/udp, 7881/tcp) en la IP de la WiFi. Producción: el secreto de LiveKit en `/etc/gemelo/secretos/livekit_secreto` (RUNBOOK-VPS).
 - P4: e2e de presencia contra LiveKit real (`presencia_dev.test.js`): pose p95 de 7 ms en el transporte (mismo equipo); 40 clientes de carga en Node saturan este equipo (MEDIDAS).

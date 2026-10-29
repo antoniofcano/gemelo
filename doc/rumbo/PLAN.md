@@ -95,7 +95,7 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | O1 | Olivos generados: transición suave al acercarse (forma y luz; materiales con nubes y escarcha del motor) | — | ligera; 🔶 al medir | ✅ medido: 2 generados de cerca, 40 llamadas / 545 k (aspecto, 👤) |
 | O2 | Olivos generados: desglose del coste de `factorR8 = 1` por objeto | — | 🔶 | ⬜ |
 | O3 | `semillas_copas.py` dentro de los exportadores | — | ligera | ✅ |
-| O5 | Olivos generados: caché de recetas (memoria con límite y LRU; IndexedDB con clave semilla+tipo+época+`GEN_VERSION`, `idb-keyval`); horneado en servidor, más adelante y tras medir tamaños | o1d (montaje y recorte arreglados) | ligera | ⬜ |
+| O5 | Olivos generados: caché de recetas (memoria con límite y LRU; IndexedDB con clave semilla+tipo+época+`GEN_VERSION`, `idb-keyval`); horneado en servidor, más adelante y tras medir tamaños | o1d (montaje y recorte arreglados) | ligera | 🟡 caché hecha (sin medir en navegador); horneado en servidor pendiente |
 | O4 | Medir 10 olivos en campo con cinta (decisiones 48-49) | — | 👤 | ⬜ |
 | V1 | VPS: preparar el despliegue (RUNBOOK-VPS al día, SMTP de OVH, token de OlivarTrack, comprobaciones previas) | — | ligera (documentos y guiones) | ✅ (8 preguntas a Antonio en DECISIONS-PENDING) |
 | V2 | VPS: desplegar F1a | A5, A6, V1 (decisión 21) | 👤 confirma cada paso | ⬜ |
