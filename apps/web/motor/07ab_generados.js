@@ -26,7 +26,7 @@
     var ESTIM = { E0: 160000, E1: 80000, E2: 38000, E2VR: 28000 }, SEM_VAR = [11, 23, 37, 51], MAX_PROPIOS = 6, MAX_VAR = 48, RADIO_CAND = 160, MARGEN = 12;
     var recetas = {}, pidiendo = {}, nPidiendo = 0, plan = [], listos = {}, lote = null, claveLote = "", nuevo = null, R = 0, triGen = 0, costoGen = 0, info = { llamadas: 0, triangulos: 0 };
     var ff = /[?&]olivosFundido=([0-9.]+)/.exec(location.search), FUNDIDO = ff ? Math.min(3, Number(ff[1])) : 0.6;
-    var uFun = { value: 1 }, fundido = null, selLote = [], avisa = false, prof = null, trabajos = [], gastado = 0;   // fundido: {t, viejos: {i: true}, Rviejo} mientras dura
+    var cache = null, uFun = { value: 1 }, fundido = null, selLote = [], avisa = false, prof = null, trabajos = [], gastado = 0;   // fundido: {t, viejos: {i: true}, Rviejo} mientras dura
     var NADA = { radio: 0, tri: 0, tiene: function () { return false; } };
     var grupo = new THREE.Group(); grupo.name = "olivosGenerados";
     if (pedido) { gArboles.add(grupo); arrancaGen(); }
@@ -36,6 +36,8 @@
       p.then(function (m) {
         if (!m || !m.recetaG) throw new Error("sin el constructor de olivos (OlivoGen)");
         if (!THREE.BatchedMesh) throw new Error("este three no tiene BatchedMesh");
+        // caché de recetas (O5): memoria con LRU (60 MB en móvil, gafas o con ≤ 4 GB; 150 MB si no) e IndexedDB (300 MB, LRU); ?olivosCache=0 la apaga
+        cache = m.creaCache && !/[?&]olivosCache=0\b/.test(location.search) ? m.creaCache({ memMB: topeCacheMem(), discoMB: 300 }) : null;
         M = m; mats = M.creaMateriales(THREE, null, { epoca: epoca(), srgb: true, parche: parcheGen });   // sin fotos de campo aquí: corteza dibujada (texturas.js)
         prof = { corteza: profundidad(), muerta: profundidad() };   // la sombra de las mallas por lotes, con el mismo fundido
         var f = M.creaFabrica({ trabajador: true }); if (f.modo === "trabajador") fabrica = f; else f.cierra();
@@ -73,13 +75,23 @@
       var p = M.parametrosDeCopa(raw, D.copas_param ? D.copas_param[c.i] : null, "centenario3", { factorR8: FACTOR_R8 });
       return { tipo: p.tipo, parametros: p.parametros, epoca: epoca(), semilla: s.semilla, provisional: s.provisional };
     }
+    function topeCacheMem() {
+      var nv = typeof navigator !== "undefined" ? navigator : {}, movil = /Mobi|Android|iPhone|iPad|OculusBrowser|Quest/i.test(nv.userAgent || "");
+      return VRP.on || movil || (nv.deviceMemory && nv.deviceMemory <= 4) ? 60 : 150;
+    }
+    // una receta: de la caché si está (memoria al instante; disco, sin bloquear) y, si no, se calcula (trabajador o cola propia) y se guarda en ella
     function pide(clave, e, niv, prio) {
       if (recetas[clave] || pidiendo[clave] || nPidiendo >= 2) return;
+      var e2 = { tipo: e.tipo, parametros: e.parametros, epoca: e.epoca, semilla: e.semilla }, ck = cache ? M.claveReceta(e2, niv) : null, r0 = ck ? cache.mem(ck) : null;
+      if (r0) { recetas[clave] = r0; return; }
       pidiendo[clave] = true; nPidiendo++;
-      var hecha = function (r) { delete pidiendo[clave]; nPidiendo--; recetas[clave] = r; };
-      var e2 = { tipo: e.tipo, parametros: e.parametros, epoca: e.epoca, semilla: e.semilla };
-      if (fabrica) { fabrica.receta(e2, niv).then(hecha, function (err) { delete pidiendo[clave]; nPidiendo--; motivo = String(err); }); return; }
-      encola("G" + clave, prio, seguro((function* () { var r = yield* M.recetaG(e2); if (niv !== "E0") r = yield* M.aNivelG(r, niv); return r; })()), function (r) { if (r) hecha(r); });
+      var llega = function (r) { delete pidiendo[clave]; nPidiendo--; recetas[clave] = r; };
+      var hecha = function (r) { llega(r); if (cache) cache.pon(ck, r); };
+      var calcula = function () {
+        if (fabrica) { fabrica.receta(e2, niv).then(hecha, function (err) { delete pidiendo[clave]; nPidiendo--; motivo = String(err); }); return; }
+        encola("G" + clave, prio, seguro((function* () { var r = yield* M.recetaG(e2); if (niv !== "E0") r = yield* M.aNivelG(r, niv); return r; })()), function (r) { if (r) hecha(r); else { delete pidiendo[clave]; nPidiendo--; } });
+      };
+      if (cache && cache.estado().enDisco) cache.lee(ck).then(function (r) { if (r) llega(r); else calcula(); }, calcula); else calcula();
     }
     // la transformación de cada árbol: su sitio, la exageración vertical y, en las variantes, el estirado a la copa y la altura medidas
     function matrizDe(c, r, variante) {
@@ -328,7 +340,7 @@
     window.__olivosGen = function () {
       var k0 = Object.keys(listos)[0], p0 = k0 !== undefined ? listos[k0].c : null;   // un olivo generado ya dibujado
       return { primero: p0 ? { x: p0.x, y: p0.y, h: p0.h } : null, estado: estado, motivo: motivo, via: fabrica ? "trabajador" : "rebanadas", plan: plan.length, recetas: Object.keys(recetas).length, pidiendo: nPidiendo, trabajos: trabajos.length, radio: R, info: info,
-        fundido: { activo: !!fundido, avance: +uFun.value.toFixed(3), duracion: FUNDIDO } };
+        cache: cache ? cache.estado() : null, fundido: { activo: !!fundido, avance: +uFun.value.toFixed(3), duracion: FUNDIDO } };
     };
     // _prueba: para pruebas/olivo/generados_motor.mjs (Node), no para el motor
     return { activo: function () { return estado === "activo"; }, actualiza: actualiza, paso: paso, gastado: function () { return gastado; }, pendientes: pendientes, rotulo: rotulo, estado: function () { return estado; },
