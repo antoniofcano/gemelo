@@ -76,9 +76,16 @@ export function relieve(I, teselas) {
   return { H, conDato };
 }
 
-// ---------------------------------------------------------------- ortofoto: un lienzo global (mosaico debajo, teselas encima) con sharp
-async function ortofoto(I, teselas, caja) {
+// ---------------------------------------------------------------- ortofoto: un lienzo (mosaico debajo, teselas encima) con sharp
+/** El lienzo cubre solo los datos (teselas y mosaico, ajustado a la rejilla de teselas), no la raíz del árbol: la raíz alineada puede
+ *  ser mucho mayor (en Hituelo, 32.768 m de lado) y un lienzo de su tamaño no cabe en memoria. Fuera del lienzo, gris. */
+async function ortofoto(I, teselas) {
   const TS = I.ts, [CX, CY] = I.centro_utm, res = TS / I.orto_px;          // m/px de la ortofoto de tesela
+  const xs = [], ys = [];
+  for (const t of teselas.values()) { xs.push(t.kx * TS - CX, t.kx * TS + TS - CX); ys.push(t.ky * TS - CY, t.ky * TS + TS - CY); }
+  if (I.mosaico) { const m = I.mosaico; xs.push(m.x0, m.x0 + m.w * m.res); ys.push(m.yN - m.h * m.res, m.yN); }
+  const rej = (v, C, f) => f((v + C) / TS) * TS - C;                     // a la rejilla de teselas (UTM múltiplo de ts)
+  const caja = { x0: rej(Math.min(...xs), CX, Math.floor), x1: rej(Math.max(...xs), CX, Math.ceil), y0: rej(Math.min(...ys), CY, Math.floor), y1: rej(Math.max(...ys), CY, Math.ceil) };
   const W = Math.round((caja.x1 - caja.x0) / res), H = Math.round((caja.y1 - caja.y0) / res);
   const capas = [];
   if (I.mosaico) {                                                         // el mosaico global, llevado a la escala del lienzo
@@ -89,14 +96,25 @@ async function ortofoto(I, teselas, caja) {
     const ox = t.kx * TS - CX, oyN = t.ky * TS + TS - CY;
     capas.push({ input: await sharp(t.jpg).resize(I.orto_px, I.orto_px).toBuffer(), left: Math.round((ox - caja.x0) / res), top: Math.round((caja.y1 - oyN) / res) });
   }
-  const lienzo = sharp({ create: { width: W, height: H, channels: 3, background: { r: 128, g: 128, b: 128 } } }).composite(capas.filter(c => c.left > -1e6));
-  const raw = await sharp(await lienzo.png().toBuffer()).removeAlpha().raw().toBuffer();
+  const sinLimite = { limitInputPixels: false };
+  const lienzo = sharp({ create: { width: W, height: H, channels: 3, background: { r: 128, g: 128, b: 128 } }, ...sinLimite }).composite(capas);
+  const raw = await sharp(await lienzo.png().toBuffer(), sinLimite).removeAlpha().raw().toBuffer();
+  const fuente = () => sharp(raw, { raw: { width: W, height: H, channels: 3 }, ...sinLimite });
+  const gris = px => sharp({ create: { width: px, height: px, channels: 3, background: { r: 128, g: 128, b: 128 } } });
+  const jpeg = s => s.jpeg({ quality: 85, mozjpeg: true }).toBuffer();
   return {
-    res, W, H,
-    /** JPEG del cuadrado [x0, x0+S) × [y0, y0+S) a px × px */
+    res, W, H, caja,
+    /** JPEG del cuadrado [x0, x0+S) × [y0, y0+S) a px × px (la parte fuera del lienzo, gris) */
     async recorte(x0, y0, S, px) {
       const left = Math.round((x0 - caja.x0) / res), top = Math.round((caja.y1 - (y0 + S)) / res), lado = Math.round(S / res);
-      return sharp(raw, { raw: { width: W, height: H, channels: 3 } }).extract({ left, top, width: lado, height: lado }).resize(px, px, { kernel: "lanczos3" }).jpeg({ quality: 85, mozjpeg: true }).toBuffer();
+      if (left >= 0 && top >= 0 && left + lado <= W && top + lado <= H)
+        return jpeg(fuente().extract({ left, top, width: lado, height: lado }).resize(px, px, { kernel: "lanczos3" }));
+      const i0 = Math.max(0, left), j0 = Math.max(0, top), i1 = Math.min(W, left + lado), j1 = Math.min(H, top + lado), sc = px / lado;
+      if (i1 <= i0 || j1 <= j0) return jpeg(gris(px));
+      const l = Math.min(px - 1, Math.round((i0 - left) * sc)), tp = Math.min(px - 1, Math.round((j0 - top) * sc));
+      const w = Math.max(1, Math.min(px - l, Math.round((i1 - i0) * sc))), h = Math.max(1, Math.min(px - tp, Math.round((j1 - j0) * sc)));
+      const trozo = await fuente().extract({ left: i0, top: j0, width: i1 - i0, height: j1 - j0 }).resize(w, h, { kernel: "lanczos3" }).png().toBuffer();
+      return jpeg(sharp(await gris(px).composite([{ input: trozo, left: l, top: tp }]).png().toBuffer()));
     },
     /** color sRGB 0..1 en (x, y) */
     color(x, y) {
@@ -264,7 +282,7 @@ export async function genera(op) {
   let S = op.hoja; while (Math.floor(E0 / S) !== Math.floor((E1 - 1) / S) || Math.floor(N0 / S) !== Math.floor((N1 - 1) / S)) S *= 2;
   const profMax = Math.round(Math.log2(S / op.hoja)), raiz = { S, i: Math.floor(E0 / S), j: Math.floor(N0 / S) };
   const caja = { x0: raiz.i * S - CX, y0: raiz.j * S - CY, x1: raiz.i * S - CX + S, y1: raiz.j * S - CY + S };
-  const orto = await ortofoto(I, teselas, caja), protos = prototipos(), tipos = tablaTipos(I), ids = idsDe(I);
+  const orto = await ortofoto(I, teselas), protos = prototipos(), tipos = tablaTipos(I), ids = idsDe(I);
   const olivos = I.copas.map((c, id) => ({ c, id })).filter(o => esOlivo(o.c)).map(({ c, id }) => {
     const s = silueta(c), col = orto.color(c[0], c[1]), vf = 0.88 + 0.26 * hash(id * 3.7);
     const lin = v => Math.pow(v, 2.2);                                          // glTF guarda color lineal
