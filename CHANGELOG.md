@@ -5,6 +5,10 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Tileset 3D Tiles (F1d): la identidad de cada olivo ya no viaja como float (`_ID_ARBOL`): `_INDICE_COPA` (posición en la lista de copas de la tesela) más la huella SHA-256 de esa lista en `extras.gemelo`, para resolver `copas_id` en CPU; `_TIPO` es un número local con su tabla de nombres (provisionales `olivos-tipo:<id>`). Contrato nuevo `contratos/tileset.schema.json`; herramienta `tuberia/tiles3d/comprueba.mjs`.
+- Hituelo real generado en 3D Tiles: 269 glb, 40,9 MB, validador de CesiumGS con 0 errores y 0 avisos, cada olivo en las hojas una vez; tamaños glb frente a json en MEDIDAS.
+- El entorno local usa los mismos roles de Postgres que producción (decisión 55): `migra` y la siembra con `gemelo_dueno`, la api con `gemelo_api` (creado por el mismo `infra/bd-inicial/`); la e2e comprueba que a la api se le niegan DDL y cambiar la auditoría. Un volumen de antes da un error claro (`npm run dev:abajo -- --borra-datos`).
+- `npm run dev:arriba -- --red-local`: abre solo el https de la web en la IP de la WiFi para probar en el móvil o las Quest (certificado de la CA local para la IP); `dev:estado` dice si está abierto. Sin el interruptor, todo sigue en 127.0.0.1.
 - Presencia compartida, parte sin servidor (F2): contrato de pose binaria v1 (24 B escritorio, 56 B Quest; `contratos/presencia.md`) y permisos de LiveKit de F2 solo datos (`contratos/livekit-roles.json`); módulo `26_presencia.js` con códec, interpolación y avatares de bloque instanciados con nombre, visibles con `?presencia=sim&n=…` (visitantes simulados; 5 llamadas tengas 10 o 40); guardián `presencia.test.js`. Sin la bandera se dibuja lo mismo. Sin red real; no probado en iPhone ni Quest.
 - Entorno local con la api enchufada: migraciones, siembra sintética (4 hazas, 3 hogares @example.com), portada provisional, mundo en `/finca/` tras sesión y todo por https (`https://localhost:8743`); e2e del recorrido de entrada con Mailpit y Chrome (`GEMELO_DOCKER=1`).
 - Los exportadores (Cerro, réplica y Hituelo) emiten `copas_id` —el id del censo de OlivarTrack si la copa está emparejada con una marca que lo trae, o uno provisional (≥ 2^31) por la posición UTM— y `copas_tipo` = −1 (ADR-0012); el emparejamiento marca↔copa corrige el desfase de la ortofoto y es uno a uno; guardián `exportadores.test.js` con datos sintéticos; numpy, scipy y pillow fijadas en `requirements.txt`.
@@ -27,6 +31,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 - Andamio: `VERSION`, `package.json`, `Makefile`, `.editorconfig`, `.nvmrc`, `requirements.txt`, `CONTRIBUTING.md`, plantillas de issue y PR.
 
 ### Cambiado
+- `migra` corre con un tope de 10 min por sentencia (la 0001 crea PostGIS; en disco lento pasaba de los 15 s de la api). Afecta también a producción.
 - El Caddy de producción usa `Referrer-Policy: strict-origin-when-cross-origin` (antes `no-referrer`, que rompía los formularios POST en Chrome; decisión 53).
 - VR: el relieve fino del suelo se apaga en cuanto el perfil de las gafas baja por fotograma justo y se restaura al salir (decisión 24).
 - three 0.186.1 en la web y en la salida artefacto (importmap desde jsDelivr, misma versión): color y luz modernos recalibrados a ojo; presupuesto de dibujo sin cambios (ADR-0016).
