@@ -2,9 +2,9 @@
 // (ramita con hojas opuestas, relleno de hoja menuda y la corteza dibujada de reserva). Sin DOM: las fotos como ImageBitmap y los dibujos en
 // OffscreenCanvas (o en un <canvas> si no hay OffscreenCanvas).
 //
-// Las fotos NO están en el repo (repo público; decisión de Antonio pendiente, ADR-0017): se sacan de la referencia con
-// `npm run texturas` (apps/web/olivo/herramientas/extrae_texturas.mjs) a apps/web/olivo/texturas/, que git ignora, y el anfitrión las sirve
-// desde su MISMO origen. Si faltan, se usa la corteza dibujada y un color liso, y se dice en `avisos`.
+// Las fotos están en apps/web/olivo/texturas/ (versionadas por decisión de Antonio nº 30, con su LICENCIA.txt; se regeneran desde la
+// referencia con `npm run texturas`) y el anfitrión las sirve desde su MISMO origen. Si faltan, se usa la corteza dibujada y un color liso,
+// y se dice en `avisos`.
 import { rngFrom } from "./azar.js";
 
 export const FOTOS = ["corteza", "musgo", "muerta"];

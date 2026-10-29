@@ -1,4 +1,4 @@
-// Lo que cambia entre three r128 (el gemelo hoy) y las versiones nuevas (0.186, la subida de la fase F1c): el resto del módulo pasa por aquí
+// Lo que cambia entre three r128 (el gemelo hasta la F1c, ADR-0016; y el three-gen del generador) y 0.186 (el gemelo desde la F1c): el resto del módulo pasa por aquí
 // y no pregunta por la versión. Probado con 0.128.0 y 0.186.1 (pruebas/guardianes/olivo.test.js).
 
 /** Número de revisión del three del anfitrión (128, 186…) */

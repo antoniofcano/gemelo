@@ -13,7 +13,7 @@ Es la otra vía frente al catálogo de modelos fijos ([`olivos-tipo.md`](olivos-
 | `tipo` | uno de los 7 de `TIPOS` (`planton`, `adulto1`, `adulto2`, `adulto3`, `centenario`, `centenario2`, `centenario3`); id estable en `ID_TIPO` (0-6). Da los parámetros por defecto |
 | `parametros` | *(opcional)* los que se sobrescriben (`altura`, `copa`, `asim`, `rumbo`, `densidad`, `falda`, `relieve`, `pies`…; rangos en `RANGOS`). Desde el registro: `parametrosDeCopa(copa, copas_param[i], tipo)` (§3) |
 | `epoca` | `reposo`, `boton`, `flor`, `cuajado`, `verde`, `envero`, `madura`. Desde un BBCH: `bbchAEpoca(bbch)` (0-50 reposo, 51-59 botón, 60-69 flor, 70-74 cuajado, 75-80 verde, 81-88 envero, 89-99 madura) |
-| `semilla` | entero 0 … 2^32 − 1. Desde el registro: `semillaDeCopa(copa, copas_id[i], centro_utm)` → `{semilla, provisional}`: con id estable (0 … 2^31 − 1) la semilla **es** el id; sin id, una **provisional** en 2^31 … 2^32 − 1 hecha de la posición UTM redondeada a 10 cm (cambia si el árbol se vuelve a detectar en otro sitio) |
+| `semilla` | entero 0 … 2^32 − 1. Desde el registro: `semillaDeCopa(copa, copas_id[i], centro_utm)` → `{semilla, provisional}`: la semilla **es** el `copas_id` (del censo de OlivarTrack, 0 … 2^31 − 1, o provisional del exportador, 2^31 … 2^32 − 1, que se marca `provisional`: `tuberia/ids_copas.py`); sin `copas_id`, el mismo id provisional que daría el exportador desde la posición UTM (sin resolver colisiones) |
 
 ## 2. La receta (lo que da el generador)
 
@@ -43,7 +43,7 @@ Junto a `copas[]`, `copas_id[]` y `copas_tipo[]` ([CONTRATOS §1.1](../doc/siste
 | 4 | `densidad` | fracción de celdas de 0,5 m del contorno con puntos de copa |
 | 5 | `base_m` | percentil 5 de la altura de los puntos de copa (la falda) |
 | 6 | `rugosidad` | desviación típica de la superficie de arriba / altura |
-| 7 | `tronco` | 0 = LiDAR (retornos de 0,3-1,2 m bajo la copa), 1 = marca de OlivarTrack corregida de su desfase, 2 = centro de copa. Manda el LiDAR |
+| 7 | `tronco` | 0 = LiDAR (retornos de 0,3-1,2 m bajo la copa), 1 = marca de OlivarTrack corregida de su desfase, 2 = ni lo uno ni lo otro: centro de copa y **asimetría 0** (decisión de Antonio nº 31). Manda el LiDAR |
 
 `parametrosDeCopa` lo convierte (fórmulas del bloque 4 de la maqueta): `altura`, `copa`, `densidad` y `rumbo` (redondeado a 5°) tal cual — **medidos** —; `asim = min(0,6, desplaz / (copa/2) · 1,8)`, `falda = 1 − base/altura`, `relieve = min(1, 1,8 · rugosidad)` — **deducidos** —; devuelve además `origen` por campo. Sin fila, solo `altura = h` y `copa = 2 × media(r8)` (r8 como radio; ver ADR-0017 sobre radio o diámetro).
 

@@ -82,6 +82,8 @@ test("semillas, épocas y parámetros desde el registro", t => {
       id: O.semillaDeCopa([1, 2, 4, [2,2,2,2,2,2,2,2], 1], 1234),
       prov: O.semillaDeCopa([10.04, -3.0, 4, [2,2,2,2,2,2,2,2], 1], -1, [400000, 4200000]),
       prov2: O.semillaDeCopa([10.04, -3.0, 4, [2,2,2,2,2,2,2,2], 1], undefined, [400000, 4200000]),
+      provId: O.semillaDeCopa([0, 0, 4, [2,2,2,2,2,2,2,2], 1], 2 ** 31 + 77),
+      sinNada: O.semillaDeCopa([0, 0, 4, [2,2,2,2,2,2,2,2], 1], -1),
       bbch: [0, 50, 57, 65, 71, 75, 81, 89, 99].map(O.bbchAEpoca),
       sinParam: O.parametrosDeCopa([0, 0, 4.4, [2,2,2,2,3,3,3,3], 1], null, null),
       conParam: O.parametrosDeCopa([0, 0, 4.4, [2,2,2,2,3,3,3,3], 1], [4.6, 8.2, 0.9, 92, 0.8, 1.2, 0.3, 0], "centenario2"),
@@ -94,6 +96,10 @@ test("semillas, épocas y parámetros desde el registro", t => {
   assert.deepStrictEqual(o.id, { semilla: 1234, provisional: false });
   assert.ok(o.prov.provisional && o.prov.semilla >= 2 ** 31 && o.prov.semilla < 2 ** 32, "semilla provisional en 2^31 … 2^32 − 1");
   assert.deepStrictEqual(o.prov, o.prov2, "la semilla provisional depende solo de la posición");
+  // el mismo id provisional que tuberia/ids_copas.py: 2^31 + (E_m mod 32768)·65536 + (N_m mod 65536); E 400010,04 → 400010, N 4199997,00 → 4199997
+  assert.strictEqual(o.prov.semilla, 2 ** 31 + (400010 % 32768) * 65536 + (4199997 % 65536));
+  assert.deepStrictEqual(o.provId, { semilla: 2 ** 31 + 77, provisional: true }, "un copas_id provisional (≥ 2^31) es la semilla y se marca");
+  assert.strictEqual(o.sinNada, null, "sin id ni centro_utm no hay semilla estable");
   assert.deepStrictEqual(o.bbch, ["reposo", "reposo", "boton", "flor", "cuajado", "verde", "envero", "madura", "madura"]);
   assert.deepStrictEqual(o.sinParam.parametros, { altura: 4.4, copa: 5 }, "sin copas_param: altura = h y copa = 2 × radio medio de r8");
   assert.strictEqual(o.conParam.tipo, "centenario2");

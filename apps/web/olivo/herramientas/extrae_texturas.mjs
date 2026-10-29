@@ -1,5 +1,5 @@
-// Saca las tres fotos de campo (corteza, musgo, madera vieja) de la referencia a apps/web/olivo/texturas/, que git IGNORA: el repo es público y
-// publicar estas fotos lo decide Antonio (ADR-0017). Sin ellas el módulo usa la corteza dibujada y colores lisos, y lo dice.
+// Saca las tres fotos de campo (corteza, musgo, madera vieja) de la referencia a apps/web/olivo/texturas/ (versionadas, decisión de
+// Antonio nº 30; licencia en texturas/LICENCIA.txt). Sirve para regenerarlas si cambian en el constructor.
 //   node herramientas/extrae_texturas.mjs [referencia.html]      (por defecto GEMELO_REFERENCIA_OLIVOS o referencia/olivos-tipo.html en la raíz)
 import fs from "node:fs";
 import path from "node:path";
@@ -20,5 +20,5 @@ for (const id of ["corteza", "musgo", "muerta"]) {
   fs.writeFileSync(path.join(dest, id + ".jpg"), b); n++;
   console.log(id + ".jpg: " + Math.round(b.length / 1024) + " KB");
 }
-console.log(n + " fotos en " + path.relative(RAIZ, dest) + " (ignoradas por git)");
+console.log(n + " fotos en " + path.relative(RAIZ, dest));
 process.exit(n === 3 ? 0 : 1);

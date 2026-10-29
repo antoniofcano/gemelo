@@ -1,6 +1,6 @@
 // Dos builds del constructor de olivos (vite 6.4.5, devDependency de apps/web/olivo):
 //   vite build                  → la herramienta (herramienta/index.html) en GEMELO_OLIVO_SALIDA o apps/web/olivo/dist/herramienta, con las fotos
-//                                 de texturas/ servidas en su raíz (si se han extraído; git no las ve)
+//                                 de texturas/ servidas en su raíz
 //   GEMELO_OLIVO_IIFE=1 vite build → olivo.iife.js (global OlivoGen) en GEMELO_OLIVO_SALIDA o apps/web/olivo/dist/iife, para la salida artefacto
 //                                 (un <script> clásico): «three-gen» NO se empaqueta, se toma del THREE global (el r128 de cdnjs del gemelo)
 import { defineConfig } from "vite";

@@ -34,6 +34,8 @@ graphify-out/
 # el fixture sintético SÍ se versiona (pruebas/fixture/, ver doc/operacion/TESTING.md)
 !pruebas/fixture/**/t/
 !pruebas/fixture/**/*.jpg
+# las tres fotos de campo del constructor de olivos SÍ se versionan (decisión de Antonio nº 30, ADR-0017; licencia en su carpeta)
+!apps/web/olivo/texturas/*.jpg
 
 # cliente web (Vite): entrada generada y build
 apps/web/.generado/
