@@ -69,3 +69,5 @@ Decisiones que **no puede tomar un agente**: las cierra Antonio. Las técnicas s
 | 54 | **F1a · certificado en local** | aviso de la CA de Caddy / mkcert | entorno local | ✅ 2026-10-29: **se acepta el aviso**, sin instalar nada (en el Quest saldría igual) |
 | 55 | **F1a · usuario de la base en local** | dueño / mínimos como producción | entorno local | ✅ 2026-10-29: **el mismo usuario de permisos mínimos que en producción** (`gemelo_api`) |
 | 56 | **F1a · dónde vive la portada** | `apps/web` / app aparte | portada y entrada | ✅ 2026-10-29: **`apps/web`**: portada y mundo, la misma web |
+| 57 | **Primera prueba en aparatos** (navegador, móvil, Quest) | cada uno por su cuenta / viéndose entre sí | prueba en hardware real | ✅ 2026-10-29: **cada aparato por su cuenta** en Hituelo real con los olivos generados; verse entre sí (F2 con LiveKit), en una segunda prueba |
+| 58 | **Acceso de móvil y gafas al entorno local** | WiFi solo durante la prueba / túnel / adb | prueba en aparatos | ✅ 2026-10-29: **por la WiFi, solo durante la prueba** (interruptor `--red-local`, solo la web por https); sin él, todo en 127.0.0.1 |
