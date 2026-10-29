@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "olivo-generado.schema.json",
+  "title": "Entrada del generador de olivos y fila de copas_param (contratos/olivo-generado.md, ADR-0017)",
+  "$comment": "La receta (§2) lleva arrays tipados y no es JSON: su forma la fija el contrato y la vigila pruebas/guardianes/olivo.test.js por huella.",
+  "$defs": {
+    "entrada": {
+      "type": "object",
+      "required": ["epoca", "semilla"],
+      "properties": {
+        "tipo": { "enum": ["planton", "adulto1", "adulto2", "adulto3", "centenario", "centenario2", "centenario3", null] },
+        "parametros": { "type": "object" },
+        "epoca": { "enum": ["reposo", "boton", "flor", "cuajado", "verde", "envero", "madura"] },
+        "semilla": { "type": "integer", "minimum": 0, "maximum": 4294967295 }
+      },
+      "additionalProperties": false
+    },
+    "copas_param_fila": {
+      "anyOf": [
+        { "type": "null" },
+        { "type": "array", "minItems": 8, "items": false, "prefixItems": [
+          { "type": "number", "minimum": 0, "$comment": "altura_m: p95 de los puntos de copa" },
+          { "type": "number", "minimum": 0, "$comment": "copa_m: diámetro del contorno" },
+          { "type": "number", "minimum": 0, "$comment": "desplaz_m: tronco → centro de copa" },
+          { "type": "number", "minimum": 0, "maximum": 360, "$comment": "rumbo_gr: 0 = norte, 90 = este" },
+          { "type": "number", "minimum": 0, "maximum": 1, "$comment": "densidad" },
+          { "type": "number", "minimum": 0, "$comment": "base_m: p5 de los puntos de copa" },
+          { "type": "number", "minimum": 0, "$comment": "rugosidad" },
+          { "type": "integer", "minimum": 0, "maximum": 2, "$comment": "tronco: 0 LiDAR, 1 marca, 2 centro" }
+        ] }
+      ]
+    }
+  },
+  "type": "object",
+  "properties": {
+    "entrada": { "$ref": "#/$defs/entrada" },
+    "copas_param": { "type": "array", "items": { "$ref": "#/$defs/copas_param_fila" } }
+  }
+}
