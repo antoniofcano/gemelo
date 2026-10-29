@@ -1,0 +1,4 @@
+# Fotos de campo del constructor de olivos: NO se versionan hasta que Antonio decida si pueden ir al repo público (ADR-0017).
+# Se sacan de la referencia con `npm run texturas` (apps/web/olivo/herramientas/extrae_texturas.mjs).
+*
+!.gitignore

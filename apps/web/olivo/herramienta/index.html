@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Olivo generado</title>
+<style>
+  :root { --suelo: #eeeae0; --panel: #f8f6f0; --linea: #d9d3c4; --tinta: #2c2a24; --tinta-2: #6b665a; --cielo: #dfe4dc; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --suelo: #1c1d19; --panel: #24251f; --linea: #3a3b33; --tinta: #ebe7dc; --tinta-2: #a7a292; } }
+  html, body { height: 100%; margin: 0; }
+  body { background: var(--suelo); color: var(--tinta); font: 14px system-ui, sans-serif; display: grid; grid-template-columns: 280px 1fr; }
+  aside { background: var(--panel); border-right: 1px solid var(--linea); padding: 16px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
+  label { display: grid; gap: 4px; font-size: 13px; }
+  select, input { font: inherit; padding: 4px; }
+  #visor { position: relative; min-width: 0; background: var(--cielo); }
+  #visor canvas { display: block; width: 100%; height: 100%; }
+  .nota { font-size: 12px; color: var(--tinta-2); line-height: 1.45; margin: 0; }
+  @media (max-width: 760px) { body { grid-template-columns: 1fr; grid-template-rows: auto 60vh; } }
+</style>
+</head>
+<body>
+<aside>
+  <h1 style="font-size:20px;margin:0">Olivo generado</h1>
+  <p class="nota">Herramienta del módulo <code>apps/web/olivo/</code>: el mismo árbol que el constructor «Olivos tipo», calculado con three 0.128 y montado con el three que elijas. Forma ilustrativa.</p>
+  <label>Tipo <select id="tipo"></select></label>
+  <label>Época <select id="epoca"></select></label>
+  <label>Semilla <input id="semilla" type="number" value="7" min="0" max="4294967295"></label>
+  <label>Nivel <select id="nivel"><option>E0</option><option>E1</option><option>E2</option><option>E2VR</option></select></label>
+  <label>three del anfitrión <select id="three"><option value="128">0.128.0</option><option value="186">0.186.1</option></select></label>
+  <p class="nota" id="ficha" aria-live="polite"></p>
+  <p class="nota" id="avisos"></p>
+</aside>
+<main id="visor"></main>
+<script type="module" src="./main.js"></script>
+</body>
+</html>
