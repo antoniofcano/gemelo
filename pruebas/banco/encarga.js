@@ -1,12 +1,13 @@
 "use strict";
 // Encargar una medida al banco en vez de lanzar un Chrome propio (TESTING.md §«Banco de pruebas»). El encargo queda en la cola común
 // (<banco>/encargos/<id>.json) y lo hace la siguiente ronda (`node pruebas/banco/ronda.js`), que abre UN Chrome para todos los encargos.
-//   node pruebas/banco/encarga.js --raiz <carpeta servida> [--pagina index.html] [--variante nombre=?consulta]… [--escenarios lejos,cerca]
+//   node pruebas/banco/encarga.js --raiz <carpeta servida> [--pagina index.html] [--variante nombre=?consulta]… [--escenarios lejos,cerca,paseo,paseoAnda,paseoGira]
 //                                 [--capturas] [--desglose] [--de <quién>] [--tope 240] [--espera]
 // --desglose: además, las llamadas de dibujo de un fotograma por objeto en cada escenario (desgloseLlamadas de _navegador.js).
 // Sin --variante se mide la página tal cual («base»). Con --espera no termina hasta que la ronda deja el resultado, y lo imprime.
 const fs = require("fs"), path = require("path"), crypto = require("crypto");
 const { BANCO } = require("./turno");
+const { TODOS_ESCENARIOS } = require("../guardianes/_navegador");
 
 const ENCARGOS = path.join(BANCO, "encargos"), RESULTADOS = path.join(BANCO, "resultados");
 
@@ -17,7 +18,7 @@ function lee(argv) {
     if (a === "--raiz") e.raiz = path.resolve(v());
     else if (a === "--pagina") e.pagina = v();
     else if (a === "--variante") { const [n, ...q] = v().split("="); e.variantes.push({ nombre: n, consulta: q.join("=") }); }
-    else if (a === "--escenarios") e.escenarios = v().split(",");
+    else if (a === "--escenarios") { e.escenarios = v().split(","); const mal = e.escenarios.filter(n => !TODOS_ESCENARIOS[n]); if (mal.length) throw new Error("escenario desconocido: " + mal.join(",") + " (hay: " + Object.keys(TODOS_ESCENARIOS).join(", ") + ")"); }
     else if (a === "--capturas") e.capturas = true;
     else if (a === "--desglose") e.desglose = true;
     else if (a === "--de") e.de = v();

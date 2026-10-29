@@ -153,7 +153,8 @@ header p { margin: 4px 0 0; color: var(--muted); max-width: 70ch; }
 .visor .mapita[hidden] { display: none !important; }
 @media (max-width: 520px) { .mapita { width: 170px !important; height: auto !important; } }
 .t-son { position: absolute; left: 64px; top: 12px; border: 0; border-radius: 99px; padding: 3px 9px; font-size: 14px; line-height: 1.3; cursor: pointer; color: var(--fg); background: color-mix(in srgb, var(--panel) 82%, transparent); }
-.t-baliza { position: absolute; left: 14px; bottom: 44px; width: min(310px, calc(100% - 28px)); font-size: 12.5px; color: var(--fg); background: color-mix(in srgb, var(--panel) 93%, transparent); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; box-shadow: 0 6px 22px rgba(0,0,0,.25); pointer-events: auto; }
+.t-baliza { position: absolute; left: 14px; bottom: 44px; width: min(310px, calc(100% - 28px)); font-size: 12.5px; color: var(--fg); background: color-mix(in srgb, var(--panel) 93%, transparent); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; box-shadow: 0 6px 22px rgba(0,0,0,.25); pointer-events: none; }
+.t-baliza button, .t-baliza a { pointer-events: auto; }   /* la tarjeta no se come los toques del mundo: solo sus botones (la × e «Ir a esta baliza») */
 .t-baliza .cerrar-baliza { position: absolute; top: 2px; right: 2px; min-width: 44px; min-height: 44px; border: 0; background: none; color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; }
 .t-baliza .b-cab { padding-right: 36px; }
 .t-baliza[hidden] { display: none; }

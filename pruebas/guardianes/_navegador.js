@@ -16,6 +16,14 @@ const ESCENARIOS = {
   cerca: { az: -0.4, el: 0.5, dist: 45, ox: -130, oy: -125, modo: "gem" },
   nube: { az: -0.55, el: 0.62, dist: 350, ox: 0, oy: -130, modo: "nube" },
 };
+// Escenarios del PASEO (opcionales: no están en ESCENARIOS, así que las rondas de siempre no cambian). Se piden por nombre (--escenarios paseo,paseoAnda).
+// paseo: entra en (x, y) del fixture (cerca de los olivos del escenario «cerca»), mirando a ang; anda: s segundos con la tecla de avance; gira: vuelta completa en el sitio.
+const ESCENARIOS_PASEO = {
+  paseo: { paseo: { x: -130, y: -125, ang: 0 } },
+  paseoAnda: { paseo: { x: -130, y: -125, ang: 0, anda: 6 } },
+  paseoGira: { paseo: { x: -130, y: -125, ang: 0, gira: true } },
+};
+const TODOS_ESCENARIOS = Object.assign({}, ESCENARIOS, ESCENARIOS_PASEO);
 
 function sirve(raiz) {
   return new Promise(ok => {
@@ -72,6 +80,19 @@ function desgloseLlamadas() {
   }); }));
 }
 
+/** Paseo: entra en el punto, deja asentar la transición y, si se pide, anda `anda` s en línea recta o gira 360° (teclas simuladas por __g.paseoTecla) */
+async function entraYMueve(p, c, queda) {
+  await p.evaluate(c => window.__g.paseoEn(c.x, c.y, c.ang), c);
+  await p.waitForTimeout(1500);
+  if (c.anda) { await p.evaluate(() => window.__g.paseoTecla("up", true)); await p.waitForTimeout(c.anda * 1000); await p.evaluate(() => window.__g.paseoTecla("up", false)); }
+  if (c.gira) {
+    const a0 = await p.evaluate(() => window.__g.paseoEstado().ang);
+    await p.evaluate(() => window.__g.paseoTecla("right", true));
+    await p.waitForFunction(a => Math.abs(window.__g.paseoEstado().ang - a) >= 2 * Math.PI, a0, { timeout: Math.min(60000, queda()), polling: 250 }).catch(() => {});
+    await p.evaluate(() => window.__g.paseoTecla("right", false));
+  }
+}
+
 /** Abre una URL, espera a __g.listo() y mide cada escenario. Devuelve { errores, fallos, medidas, parcial }.
  *  Con un tope (GEMELO_TOPE_MEDIDA, ms): si se pasa, devuelve lo medido hasta entonces con parcial = true (y no deja la página colgada).
  *  Con desglose: además, las llamadas de un fotograma por objeto (desgloseLlamadas) en cada escenario. */
@@ -88,12 +109,13 @@ async function mide(navegador, url, { escenarios = ESCENARIOS, tope = TOPE_MEDID
   await p.waitForFunction(() => window.__g && window.__g.listo(), null, { timeout: Math.min(ESPERA_MS, queda()) });
   for (const [nombre, e] of Object.entries(escenarios)) {
     if (Date.now() - t0 > tope) { parcial = true; break; }
-    await p.evaluate(e => { const g = window.__g; g.orb.az = e.az; g.orb.el = e.el; g.orb.dist = e.dist; g.objetivo.x = e.ox; g.objetivo.z = -e.oy; g.objetivo.y = g.suelo(e.ox, e.oy) + 4; g.pon(e.modo); }, e);
+    if (e.paseo) await entraYMueve(p, e.paseo, queda); else await p.evaluate(() => window.__g.paseoSale && window.__g.paseoSale());
+    if (!e.paseo) await p.evaluate(e => { const g = window.__g; g.orb.az = e.az; g.orb.el = e.el; g.orb.dist = e.dist; g.objetivo.x = e.ox; g.objetivo.z = -e.oy; g.objetivo.y = g.suelo(e.ox, e.oy) + 4; g.pon(e.modo); }, e);
     // la Cola y, con ?olivos=gen, la cola propia de los generados (que en SwiftShader tarda más: ESPERA_GEN_MS); si no termina, se mide igual y se dice
     const t1 = Date.now(), conGen = await p.evaluate(() => !!(window.__g.Generados && window.__g.Generados.activo()));
     const acabo = await p.waitForFunction(() => (window.__g.pendientes ? window.__g.pendientes() : window.__g.Cola.pendientes()) === 0, null, { timeout: Math.min(conGen ? ESPERA_GEN_MS : ESPERA_MS, queda()), polling: 500 }).then(() => true, () => false);
     await p.waitForTimeout(1500);
-    medidas[nombre] = await p.evaluate(() => { const g = window.__g, r = g.renderer.info; return { llamadas: r.render.calls, triangulos: r.render.triangles, puntos: r.render.points, geometrias: r.memory.geometries, texturas: r.memory.textures, heapMB: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : -1, olivos: g.Arboles.resumen(), generados: window.__olivosGen ? window.__olivosGen() : undefined }; });
+    medidas[nombre] = await p.evaluate(() => { const g = window.__g, r = g.renderer.info; return { llamadas: r.render.calls, triangulos: r.render.triangles, puntos: r.render.points, geometrias: r.memory.geometries, texturas: r.memory.textures, heapMB: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : -1, olivos: g.Arboles.resumen(), generados: window.__olivosGen ? window.__olivosGen() : undefined, paseo: g.paseoEstado && g.paseoEstado().paseando ? g.paseoEstado() : undefined }; });
     medidas[nombre].espera = { ms: Date.now() - t1, termino: acabo, pendientes: await p.evaluate(() => window.__g.pendientes ? window.__g.pendientes() : window.__g.Cola.pendientes()) };
     if (desglose) medidas[nombre].desglose = await p.evaluate(desgloseLlamadas);
     if (desglose) medidas[nombre].escena3d = await p.evaluate(() => window.__g.Escena3D ? window.__g.Escena3D.resumen() : null);
@@ -104,4 +126,4 @@ async function mide(navegador, url, { escenarios = ESCENARIOS, tope = TOPE_MEDID
   return { errores, fallos, medidas, parcial };
 }
 
-module.exports = { ESCENARIOS, ARGS_CHROME, sirve, motivoSalto, lanza, mide, desgloseLlamadas };
+module.exports = { ESCENARIOS, ESCENARIOS_PASEO, TODOS_ESCENARIOS, ARGS_CHROME, sirve, motivoSalto, lanza, mide, desgloseLlamadas };

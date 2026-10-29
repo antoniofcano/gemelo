@@ -5,6 +5,11 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- ADR-0020 «Avatares VRM» (Propuesto): catálogo cerrado de 6-12 VRM servidos tras sesión, `@pixiv/three-vrm` 3.5.5, animación por huesos con la fórmula de paso de P5 sin clips, VRM para los más cercanos y muñeco instanciado para el resto, pose v1 sin cambios; plan de P7b-P7e (P7a).
+- VR: el panel flotante (Y) tiene una sección **Gente** (alias, a pie/en quad/con el dron, distancia) con «Ir con» pulsable con el rayo y el gatillo (fundido y de pie a 2,5-4 m; sin presencia, «Solo tú»), y la ficha de una baliza en VR dice quién está y trae «Ir a esta baliza» y «Cerrar» pulsables (se abre también apuntando a su columna de luz). Probado con el WebXR simulado; **no probado en unas Quest** (I5).
+- Banco: escenarios `paseo`, `paseoAnda` y `paseoGira` para medir y capturar el paseo (minimapa incluido) con encarga/ronda; `__g` gana `paseoEn`/`paseoSale`/`paseoTecla`/`paseoEstado` (B1).
+- ADR-0019 (Propuesto): escalera de olivos del constructor para todos (E0 → E1 → E2/E2-VR → impostor hemi-octaédrico de las variantes), repartida por el presupuesto de cada aparato, con fundido e histéresis; el nivel 0 de siempre, las pelotillas y los olivos del tileset se retiran por fases tras `?olivos=escalera` (decisión 66, O8a).
+- ADR-0019 (Propuesto): escalera de olivos del constructor para todos (E0 → E1 → E2/E2-VR → impostor hemi-octaédrico de las variantes), repartida por el presupuesto de cada aparato, con fundido e histéresis; el nivel 0 de siempre, las pelotillas y los olivos del tileset se retiran por fases tras `?olivos=escalera` (decisión 66, O8a).
 - e2e del hornero de punta a punta con el fixture (O7g): el servicio hornea, Caddy sirve y `/finca/?olivos=gen&olivosPropios=0` dibuja generados con 0 variantes calculadas en el aparato (4 horneadas, 0 fallos, huellas por Web Crypto en https); con `&olivosHorneado=0` las calcula (contraprueba).
 - Presencia: los demás salen en el minimapa (punto violeta; cuadrado en quad, rombo con dron) con su alias; un toque muestra el alias y otro te lleva con esa persona; «Ir con <alias>» en Gente (a 2-4 m, en el suelo, fuera de copas y troncos, mirándola; con fundido). Solo tu sala, con pose y sin bloquear; no manda nada nuevo por la red (I1).
 - Presencia: la pose lleva si vas a pie, en quad o con el dron (bits 4-5 del byte 1, sigue siendo v1); los demás te ven sentado en el quad o con el dron (ilustrativo), con 1 llamada más por vehículo (P6).
@@ -83,6 +88,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 - `doc/ESTADO.md` reescrito como único sitio de «dónde estamos»; se retira el id y el enlace del artefacto privado (el repo es público).
 
 ### Arreglado
+- Olivos generados: las olivas en puntos vuelven a recortarse por frustum (su esfera ya cubría todo); la prueba de Node del giro exigía ver mallas que no llevan piezas del árbol mirado y ahora comprueba que la esfera y la caja de cada malla del lote cubren todo lo que dibuja. El recorte no explica que desaparezcan al girar: sigue sin probar en aparato.
 - Presencia: los demás son el mismo muñeco que el paseante y andan con piernas y brazos según su velocidad; los pies van al suelo de tu mundo (antes flotaban). Siguen siendo 5 llamadas de dibujo; la pose no cambia (v1).
 - `levanta.mjs` reinstala con `npm ci` cuando el `package-lock` cambió con `node_modules` ya presente (antes solo si faltaba); puertos de medios de LiveKit configurables para levantar un segundo entorno.
 - Paseo en tercera persona: la cámara ya no se mete dentro de los olivos; recorre el tramo cabeza → cámara con la altura de copa medida (LiDAR) y se acerca al paseante (mínimo 1,2 m) si choca con una copa.

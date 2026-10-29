@@ -42,3 +42,34 @@ test("la puerta, el Chrome de las pruebas y la e2e de Docker pasan por el turno"
   assert.match(lee("pruebas/guardianes/dev.test.js"), /banco\/turno"\)\.pide\("docker/, "la e2e de Docker debe pedir el turno");
   assert.ok(JSON.parse(lee("package.json")).devDependencies["proper-lockfile"].match(/^\d+\.\d+\.\d+$/), "proper-lockfile con versión exacta");
 });
+
+test("[hituelo] el banco mide y captura el PASEO: ronda pequeña con paseo y paseoAnda sobre el fixture (pide el turno solo)", { timeout: 420000 }, async t => {
+  const { motivoSalto, sirve, lanza, mide, TODOS_ESCENARIOS } = require("./_navegador");
+  const { python, fixture, ejecuta } = require("./_util");
+  const salto = motivoSalto("el paseo en el banco"); if (salto) return t.skip(salto);
+  const FX = fixture(), WEB = propia("banco-paseo"), html = path.join(WEB, "hituelo", "index.html");
+  const m = ejecuta(python(), ["-I", "tuberia/salida_artefacto/montar_v2.py", "--finca", "hituelo", "--modo", "ficheros", "--datos", path.relative(RAIZ, path.join(FX, "hituelo", "indice.json")), "--salida", path.relative(RAIZ, html)]);
+  assert.strictEqual(m.status, 0, m.stdout + m.stderr);
+  // el encargo acepta los escenarios del paseo y rechaza los que no existen
+  process.env.GEMELO_BANCO = BANCO;
+  delete require.cache[require.resolve("../banco/turno")]; delete require.cache[require.resolve("../banco/encarga")];
+  const { lee: leeEncargo } = require("../banco/encarga");
+  assert.deepStrictEqual(leeEncargo(["--raiz", path.join(WEB, "hituelo"), "--escenarios", "paseo,paseoAnda"]).escenarios, ["paseo", "paseoAnda"]);
+  assert.throws(() => leeEncargo(["--raiz", path.join(WEB, "hituelo"), "--escenarios", "volando"]), /escenario desconocido/);
+  delete process.env.GEMELO_BANCO;
+  const srv = await sirve(WEB), nav = await lanza(), caps = path.join(WEB, "capturas"), P0 = TODOS_ESCENARIOS.paseo.paseo;
+  try {
+    const esc = { paseo: TODOS_ESCENARIOS.paseo, paseoAnda: { paseo: Object.assign({}, TODOS_ESCENARIOS.paseoAnda.paseo, { anda: 3 }) } };
+    const r = await mide(nav, "http://127.0.0.1:" + srv.address().port + "/hituelo/index.html", { escenarios: esc, capturas: caps });
+    assert.deepStrictEqual(r.errores, [], r.errores.join("\n"));
+    for (const n of ["paseo", "paseoAnda"]) {
+      const x = r.medidas[n]; assert.ok(x, "falta la medida " + n);
+      assert.ok(x.paseo && x.paseo.paseando, n + ": debe estar paseando al medir");
+      assert.ok(x.llamadas > 0 && x.triangulos > 0, n + ": sin dibujo");
+      assert.ok(fs.statSync(path.join(caps, n + ".png")).size > 5000, n + ": captura vacía");
+    }
+    const b = r.medidas.paseoAnda.paseo, d = Math.hypot(b.x - P0.x, b.y - P0.y);
+    t.diagnostic("paseoAnda: ha andado " + Math.round(d * 10) / 10 + " m en 3 s (SwiftShader: poca cadencia)");
+    assert.ok(d > 0.3, "paseoAnda no se ha movido");
+  } finally { await nav.close(); srv.close(); }
+});
