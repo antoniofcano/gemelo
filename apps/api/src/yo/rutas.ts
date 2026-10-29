@@ -68,19 +68,31 @@ export async function rutasYo(app: FastifyInstance, ctx: Contexto): Promise<void
     return rep.code(204).send();
   });
 
-  app.put<{ Body: { camisa: number; sombrero: string; piel: number } }>("/api/yo/avatar", {
+  // Lo que el hogar tiene elegido (la portada lo lee de vuelta); sin fila, 404 y la portada parte de los valores por defecto.
+  app.get("/api/yo/avatar", { preHandler: requiereSesion }, async (req, rep) => {
+    const r = await bd.query("SELECT camisa, sombrero, piel, vrm FROM avatares WHERE hogar_id = $1", [req.session.hogarId]);
+    if (!r.rows[0]) return rep.code(404).send({ error: "sin_avatar", mensaje: "Todavía no has elegido avatar." });
+    return rep.header("cache-control", "no-store").send(r.rows[0]);
+  });
+
+  // `vrm` (opcional): id del catálogo de avatares; ausente o null = el muñeco de bloque. camisa/sombrero/piel se guardan
+  // siempre: son el muñeco lejano y la caída cuando el VRM no carga.
+  app.put<{ Body: { camisa: number; sombrero: string; piel: number; vrm?: string | null } }>("/api/yo/avatar", {
     preHandler: requiereSesion,
     schema: {
       body: {
         type: "object", additionalProperties: false, required: ["camisa", "sombrero", "piel"],
-        properties: { camisa: { type: "integer", minimum: 0, maximum: 5 }, sombrero: { type: "string", enum: ["ninguno", "paja", "gorra"] }, piel: { type: "integer", minimum: 0, maximum: 4 } },
+        properties: {
+          camisa: { type: "integer", minimum: 0, maximum: 5 }, sombrero: { type: "string", enum: ["ninguno", "paja", "gorra"] }, piel: { type: "integer", minimum: 0, maximum: 4 },
+          vrm: { type: ["string", "null"], pattern: "^[a-z0-9-]{1,32}$" },
+        },
       },
     },
   }, async (req, rep) => {
     await bd.query(
-      `INSERT INTO avatares (hogar_id, camisa, sombrero, piel) VALUES ($1, $2, $3, $4)
-       ON CONFLICT (hogar_id) DO UPDATE SET camisa = $2, sombrero = $3, piel = $4, actualizado_en = now()`,
-      [req.session.hogarId, req.body.camisa, req.body.sombrero, req.body.piel]);
+      `INSERT INTO avatares (hogar_id, camisa, sombrero, piel, vrm) VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (hogar_id) DO UPDATE SET camisa = $2, sombrero = $3, piel = $4, vrm = $5, actualizado_en = now()`,
+      [req.session.hogarId, req.body.camisa, req.body.sombrero, req.body.piel, req.body.vrm ?? null]);
     return rep.code(204).send();
   });
 
@@ -89,7 +101,7 @@ export async function rutasYo(app: FastifyInstance, ctx: Contexto): Promise<void
     const id = req.session.hogarId!;
     const [h, av, hz, pr, vi, se, cv] = await Promise.all([
       bd.query("SELECT correo, rol, alias, alias_visible, normas_version, normas_aceptadas_en, avisos_correo, creado_en FROM hogares WHERE id = $1", [id]),
-      bd.query("SELECT camisa, sombrero, piel, actualizado_en FROM avatares WHERE hogar_id = $1", [id]),
+      bd.query("SELECT camisa, sombrero, piel, vrm, actualizado_en FROM avatares WHERE hogar_id = $1", [id]),
       bd.query("SELECT codigo, nombre FROM hazas WHERE hogar_id = $1 ORDER BY codigo", [id]),
       bd.query("SELECT texto, creada_en, respuesta, respondida_en FROM preguntas WHERE hogar_id = $1 ORDER BY creada_en", [id]),
       bd.query("SELECT v.titulo, v.empieza_en FROM visitas_asistentes a JOIN visitas v ON v.id = a.visita_id WHERE a.hogar_id = $1 ORDER BY v.empieza_en", [id]),

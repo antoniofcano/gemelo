@@ -83,7 +83,7 @@ async function entra(correo: string, cookiePrevia?: string): Promise<string> {
   return c;
 }
 const get = (url: string, cookie?: string) => app.inject({ method: "GET", url, headers: deLaWeb(cookie ? { cookie: "__Host-gemelo=" + cookie } : {}) });
-const con = (method: "POST" | "PUT" | "DELETE", url: string, cookie: string, payload?: object) =>
+const con = (method: "GET" | "POST" | "PUT" | "DELETE", url: string, cookie: string, payload?: object) =>
   app.inject({ method, url, headers: deLaWeb({ cookie: "__Host-gemelo=" + cookie }), ...(payload ? { payload } : {}) });
 const salta = (t: { skip: (m: string) => void }) => { if (SALTO) { t.skip(SALTO); return true; } return false; };
 
@@ -314,6 +314,31 @@ test("un fallo de OlivarTrack queda como «error» con un mensaje propio y la fi
   assert.deepEqual((await get("/api/hazas/" + ids["H-S02"], luis)).json().avisos, ["ot_error"]);
   ctx.lector.sustituye.delete("aforo_y_avance_de_recoleccion");
   await con("POST", "/api/admin/sincronia", admin);
+});
+
+// ---------------------------------------------------------------- avatar VRM (P7d)
+test("avatar: el hogar elige uno del catálogo, lo lee de vuelta, viaja en los metadatos y quitarlo devuelve el muñeco", async t => {
+  if (salta(t)) return;
+  const ana2 = await entra(ANA);
+  assert.equal((await con("GET", "/api/yo/avatar", ana2)).statusCode, 404, "sin elegir todavía");
+  assert.equal((await con("PUT", "/api/yo/avatar", ana2, { camisa: 1, sombrero: "paja", piel: 3, vrm: "robert" })).statusCode, 204);
+  const g = await con("GET", "/api/yo/avatar", ana2);
+  assert.equal(g.statusCode, 200);
+  assert.deepEqual(g.json(), { camisa: 1, sombrero: "paja", piel: 3, vrm: "robert" });
+  assert.equal(g.headers["cache-control"], "no-store");
+  const tk = await con("POST", "/api/presencia/token", ana2, { dispositivo: "escritorio" });
+  const c = await new TokenVerifier(LIVEKIT.GEMELO_LIVEKIT_CLAVE, LIVEKIT.GEMELO_LIVEKIT_SECRETO).verify(tk.json().token);
+  assert.deepEqual(JSON.parse(c.metadata!).avatar, { camisa: 1, sombrero: "paja", piel: 3, vrm: "robert" });
+  // un id que no cumple el patrón no entra (nada de rutas ni mayúsculas)
+  for (const malo of ["../x", "Robert", "", "a".repeat(33), 5]) assert.equal((await con("PUT", "/api/yo/avatar", ana2, { camisa: 1, sombrero: "paja", piel: 3, vrm: malo })).statusCode, 400, JSON.stringify(malo));
+  assert.deepEqual((await con("GET", "/api/yo/avatar", ana2)).json().vrm, "robert", "el rechazo no toca lo guardado");
+  // sin vrm (o null) vuelve el muñeco, y los metadatos no llevan el campo
+  assert.equal((await con("PUT", "/api/yo/avatar", ana2, { camisa: 1, sombrero: "paja", piel: 3 })).statusCode, 204);
+  assert.deepEqual((await con("GET", "/api/yo/avatar", ana2)).json(), { camisa: 1, sombrero: "paja", piel: 3, vrm: null });
+  const tk2 = await con("POST", "/api/presencia/token", ana2, { dispositivo: "escritorio" });
+  assert.deepEqual(JSON.parse((await new TokenVerifier(LIVEKIT.GEMELO_LIVEKIT_CLAVE, LIVEKIT.GEMELO_LIVEKIT_SECRETO).verify(tk2.json().token)).metadata!).avatar, { camisa: 1, sombrero: "paja", piel: 3 });
+  assert.equal((await app.inject({ method: "GET", url: "/api/yo/avatar", headers: deLaWeb({}) })).statusCode, 401);
+  assert.equal((await app.inject({ method: "PUT", url: "/api/yo/avatar", headers: deLaWeb({}), payload: { camisa: 1, sombrero: "paja", piel: 3 } })).statusCode, 401);
 });
 
 // ---------------------------------------------------------------- presencia (F2)

@@ -8,7 +8,7 @@
 
 | Viaja en cada mensaje de pose | Viaja una vez, al entrar (metadatos del token, los pone la api) | No viaja nunca |
 |---|---|---|
-| posición y giro de la cabeza; en Quest, también de las dos manos; secuencia y reloj del emisor | alias, avatar (camisa, sombrero, tono de piel), rol, dispositivo | correo, nombre real, haza del hogar, IP, nada que identifique fuera de la sala |
+| posición y giro de la cabeza; en Quest, también de las dos manos; secuencia y reloj del emisor | alias, avatar (camisa, sombrero, tono de piel y, si lo eligió, `vrm`: el id del catálogo de [avatares](avatares.md)), rol, dispositivo | correo, nombre real, haza del hogar, IP, nada que identifique fuera de la sala |
 
 La identidad en la sala (`identity` de LiveKit) es un **id opaco** que da la api, **uno por sesión (aparato)**: `h_<22>_<8>` (el prefijo `h_<22>` es del hogar; los 8 últimos, de la sesión); el cliente nunca la elige ni la deriva del correo. El mismo hogar puede estar a la vez en el ordenador, el móvil y las gafas ([livekit-roles.json](livekit-roles.json), versión 2). La pose **no se guarda** en ningún sitio (UX §5.7: «la posición de tu avatar no se guarda»).
 

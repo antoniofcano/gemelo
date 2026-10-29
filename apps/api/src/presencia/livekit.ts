@@ -44,7 +44,8 @@ export function esDelHogar(identidad: string, prefijo: string): boolean {
   return identidad.length === prefijo.length + 9 && identidad.startsWith(prefijo + "_");
 }
 
-export interface Avatar { camisa: number; sombrero: "ninguno" | "paja" | "gorra"; piel: number }
+/** `vrm` (id del catálogo, contratos/avatares.md) solo viaja si el hogar eligió uno; sin él, el muñeco de bloque. */
+export interface Avatar { camisa: number; sombrero: "ninguno" | "paja" | "gorra"; piel: number; vrm?: string }
 export const AVATAR_POR_DEFECTO: Avatar = { camisa: 0, sombrero: "paja", piel: 1 };
 export interface Metadatos { alias: string; avatar: Avatar; rol: Rol; dispositivo: Dispositivo }
 
