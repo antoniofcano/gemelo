@@ -23,7 +23,7 @@
 		Cross-Origin-Resource-Policy "same-origin"
 		Permissions-Policy "xr-spatial-tracking=(self), camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), hid=(), midi=()"
 		# CSP estricta en modo SOLO INFORME (fase F1a): se mira lo que rompería antes de imponerla
-		Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; worker-src 'self' blob:; media-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; report-uri /api/csp-informe"
+		Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' blob:; worker-src 'self' blob:; media-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; report-uri /api/csp-informe"
 		-Server
 		-Via
 	}
