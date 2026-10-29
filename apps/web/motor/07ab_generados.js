@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Generados
 // Consume: 01_datos (D, VRP, FACTOR_R8), 02_mundo (suelo, copas), 03_escena (camera, colorVertSRGB, exag), 06_arboles (gArboles),
-//   15_tiempo (parcheTiempo)
+//   12_paseo (paseando, primera), 14_historia (hist, lista), 15_tiempo (parcheTiempo, nivel), 16_vida (esfera)
 // ===============================================================================
   // ---------- olivos GENERADOS cerca (ADR-0017, decisiones 26-28, 34 y 52), solo con ?olivos=gen: sin la bandera no no actúa y el motor dibuja lo de siempre.
   // El árbol lo da el constructor de olivos (apps/web/olivo/, three 0.128 dentro): window.OlivoGen (el IIFE de la salida artefacto) o, en el cliente
@@ -23,7 +23,7 @@
   var Generados = (function () {
     var pedido = /[?&]olivos=gen\b/.test(location.search), estado = pedido ? "cargando" : "apagado", motivo = "", M = null, mats = null, fabrica = null;
     var fr = /[?&]olivosTri=([0-9.]+)/.exec(location.search), FRACCION = fr ? Math.min(0.9, Number(fr[1])) : 0.45;
-    var ESTIM = { E0: 160000, E1: 80000, E2: 38000, E2VR: 28000 }, SEM_VAR = [11, 23, 37, 51], MAX_PROPIOS = 6, MAX_VAR = 48, RADIO_CAND = 160;
+    var ESTIM = { E0: 160000, E1: 80000, E2: 38000, E2VR: 28000 }, SEM_VAR = [11, 23, 37, 51], MAX_PROPIOS = 6, MAX_VAR = 48, RADIO_CAND = 160, MARGEN = 12;
     var recetas = {}, pidiendo = {}, nPidiendo = 0, plan = [], listos = {}, lote = null, claveLote = "", nuevo = null, R = 0, triGen = 0, costoGen = 0, info = { llamadas: 0, triangulos: 0 };
     var ff = /[?&]olivosFundido=([0-9.]+)/.exec(location.search), FUNDIDO = ff ? Math.min(3, Number(ff[1])) : 0.6;
     var uFun = { value: 1 }, fundido = null, selLote = [], avisa = false, prof = null, trabajos = [], gastado = 0;   // fundido: {t, viejos: {i: true}, Rviejo} mientras dura
@@ -108,14 +108,23 @@
       var cand = [];
       if (!lejos) for (var i = 0; i < olivos.length; i++) { var c = olivos[i], d = Math.hypot(c.x - fx, -c.y - fz); if (d < RADIO_CAND * amplia) cand.push({ c: c, d: d }); }
       cand.sort(function (a, b) { return a.d - b.d; }); if (cand.length > 80) cand.length = 80;
-      var nuevoPlan = [], usado = 0, propios = true, nVar = 0;
+      // histéresis (paseando, el foco se mueve a cada paso): un olivo propio del plan anterior se queda, con su MISMO nivel, mientras siga a menos de la
+      // distancia del más lejano de aquel plan más MARGEN m; así su receta llega a usarse en vez de pedirse otra a cada metro. Los nuevos entran detrás
+      var antes = {}, dAntes = 0, nuevoPlan = [], usado = 0, propios = true, nVar = 0, hayE0 = false, nProp = 0;
+      plan.forEach(function (p) { if (p.propio) { antes[p.c.i] = p; dAntes = Math.max(dAntes, p.d); } });
+      cand.forEach(function (x) {
+        var a = antes[x.c.i]; if (!a || x.d > dAntes + MARGEN || nProp >= MAX_PROPIOS) return;
+        var t = recetas[a.clave] ? costo(recetas[a.clave]) : ESTIM[a.niv]; if (usado + t > pres) return;
+        nuevoPlan.push({ c: x.c, d: x.d, clave: a.clave, niv: a.niv, propio: true }); usado += t; nProp++; x.puesto = true; if (a.niv === "E0") hayE0 = true;
+      });
       for (var k = 0; k < cand.length; k++) {
         var x = cand[k], e = null;
-        if (propios && nuevoPlan.length < MAX_PROPIOS) {
-          var niveles = nuevoPlan.length === 0 ? ["E0", "E1"] : ["E1"], hecho = false;
+        if (x.puesto) continue;
+        if (propios && nProp < MAX_PROPIOS) {
+          var niveles = !hayE0 ? ["E0", "E1"] : ["E1"], hecho = false;
           for (var q = 0; q < niveles.length && !hecho; q++) {
             var clave = "p" + x.c.i + ":" + niveles[q], t = recetas[clave] ? costo(recetas[clave]) : ESTIM[niveles[q]];
-            if (usado + t <= pres) { nuevoPlan.push({ c: x.c, d: x.d, clave: clave, niv: niveles[q], propio: true }); usado += t; hecho = true; }
+            if (usado + t <= pres) { nuevoPlan.push({ c: x.c, d: x.d, clave: clave, niv: niveles[q], propio: true }); usado += t; hecho = true; nProp++; if (niveles[q] === "E0") hayE0 = true; }
           }
           if (hecho) continue;
           propios = false;
@@ -125,6 +134,7 @@
         if (usado + tv > pres) break;
         nuevoPlan.push({ c: x.c, d: x.d, clave: cv, niv: nivV, propio: false }); usado += tv; nVar++;
       }
+      nuevoPlan.sort(function (a, b) { return a.d - b.d; });
       plan = nuevoPlan;
       // pedir lo que falta (lo más cercano primero; las variantes, una vez cada una)
       plan.forEach(function (p) {
@@ -133,7 +143,14 @@
         else pide(p.clave, { tipo: "centenario3", epoca: epoca(), semilla: SEM_VAR[Number(p.clave.slice(1, p.clave.indexOf(":")))] }, p.niv, p.d + 200);
       });
       // lo que ya se puede dibujar; si cambia, se rehace el lote (a rebanadas, por la cola propia)
-      var listosAhora = plan.filter(function (p) { return recetas[p.clave]; }), cl = exag + "|" + listosAhora.map(function (p) { return p.c.i + "=" + p.clave; }).join(",");
+      // cada receta lista entra ya (lote incremental); si la de su nivel aún no está pero sí la del otro nivel de ese olivo, se dibuja esa mientras
+      var listosAhora = [];
+      plan.forEach(function (p) {
+        if (recetas[p.clave]) { listosAhora.push(p); return; }
+        var otra = p.propio ? "p" + p.c.i + ":" + (p.niv === "E0" ? "E1" : "E0") : null;
+        if (otra && recetas[otra]) listosAhora.push({ c: p.c, d: p.d, clave: otra, niv: p.niv === "E0" ? "E1" : "E0", propio: true, provisional: p.provisional });
+      });
+      var cl = exag + "|" + listosAhora.map(function (p) { return p.c.i + "=" + p.clave; }).join(",");
       if (cl !== claveLote && !hay("Glote") && !fundido) {
         var fija = listosAhora.slice(), items = elementos(fija);
         encola("Glote", -1, seguro(construyeG(items)), function (g) { if (g) colocaLote(g, fija, items, cl); });
@@ -205,7 +222,7 @@
       selLote = sel; avisa = true;
       if (entran + salen > 0) { fundido = { t: 0, viejos: viejos, Rviejo: Rviejo }; uFun.value = 0; } else { fundido = null; uFun.value = 1; }
       // las recetas que ya no se usan se sueltan (las variantes se quedan; las del lote colocado, hasta el siguiente: son lo que saldrá con fundido)
-      var usadas = {}; plan.forEach(function (p) { usadas[p.clave] = true; }); sel.forEach(function (p) { usadas[p.clave] = true; });
+      var usadas = {}; plan.forEach(function (p) { usadas[p.clave] = true; if (p.propio) { usadas["p" + p.c.i + ":E0"] = true; usadas["p" + p.c.i + ":E1"] = true; } }); sel.forEach(function (p) { usadas[p.clave] = true; });
       Object.keys(recetas).forEach(function (k) { if (k.charAt(0) === "p" && !usadas[k]) delete recetas[k]; });
     }
     function libera(g) {
@@ -291,7 +308,9 @@
         }
         yield;
       }
-      Object.keys(I).forEach(function (k) { I[k].instanceMatrix.needsUpdate = true; I[k].instanceColor.needsUpdate = true; I[k].geometry.attributes.aFun.needsUpdate = true; I[k].computeBoundingSphere(); });
+      Object.keys(I).forEach(function (k) { I[k].instanceMatrix.needsUpdate = true; I[k].instanceColor.needsUpdate = true; I[k].geometry.attributes.aFun.needsUpdate = true; I[k].computeBoundingSphere(); I[k].computeBoundingBox(); });
+      // el recorte por frustum de las mallas por lotes: su esfera y su caja con TODAS las instancias ya puestas (no la de la primera geometría)
+      Object.keys(B).forEach(function (b) { B[b].computeBoundingBox(); B[b].computeBoundingSphere(); });
       if (pts && pts.n) {
         var gp = new THREE.BufferGeometry(); gp.setAttribute("position", new THREE.BufferAttribute(pts.p, 3)); gp.setAttribute("color", new THREE.BufferAttribute(pts.c, 3)); gp.setAttribute("aFun", new THREE.BufferAttribute(pts.f, 1)); gp.computeBoundingSphere();
         var pm = new THREE.Points(gp, mats.puntos); pm.name = "gen-puntos"; out.add(pm);
