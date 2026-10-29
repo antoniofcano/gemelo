@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: perrosLlegan, amenazaConejo, actualizaPerros, dibujaPerrosMini
-// Consume: 01_datos (D), 02_mundo (copas), 03_escena (camera), 04_terreno (hash, terreno), 07_follaje (matSombra, geoSombra), 12_paseo (paseando),
-//   15_tiempo (esc), 16_vida (tVida, enQuad, gFauna, altSuelo, mira, conejos, quad, enDron, dron), 20_sonido (snd),
+// Consume: 01_datos (D), 02_mundo (copas), 03_escena (camera, texColor), 04_terreno (hash, terreno), 07_follaje (matSombra, geoSombra),
+//   12_paseo (paseando), 15_tiempo (esc), 16_vida (tVida, enQuad, gFauna, altSuelo, mira, conejos, quad, enDron, dron), 20_sonido (snd),
 //   22_huellas (pendienteRumbo, emitePolvo, sueloSeco), 24_pantalla (aterriza)
 // Nota: Publica además window.__perrosDebug (depuración).
 // ===============================================================================
@@ -10,7 +10,7 @@
   function texDalmata() {
     var cv = document.createElement("canvas"); cv.width = 256; cv.height = 128; var x = cv.getContext("2d"); x.fillStyle = "#f4f1ea"; x.fillRect(0, 0, 256, 128);
     for (var i = 0; i < 95; i++) { var r = 2.5 + 7 * hash(i * 3.7), px = 256 * hash(i * 5.1 + 2), py = 128 * hash(i * 9.3 + 7); x.fillStyle = hash(i * 1.9) < 0.12 ? "#5a3b2a" : "#1d1b1c"; x.beginPath(); x.ellipse(px, py, r, r * (0.7 + 0.5 * hash(i * 2.2)), hash(i) * 3, 0, 6.283); x.fill(); }
-    var t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
+    var t = texColor(new THREE.CanvasTexture(cv)); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
   }
   var texD = texDalmata(), matNegroP = new THREE.MeshLambertMaterial({ color: 0x17151a });
   function creaPerro(tipo) {
@@ -37,7 +37,7 @@
   function etiquetaNombre(txt) {   // el nombre flota sobre la cabeza y se lee a cierta distancia
     var cv = document.createElement("canvas"); cv.width = 256; cv.height = 72; var x = cv.getContext("2d"); x.font = "600 40px system-ui, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle";
     x.lineWidth = 8; x.lineJoin = "round"; x.strokeStyle = "rgba(20,24,16,0.85)"; x.strokeText(txt, 128, 38); x.fillStyle = "#ffffff"; x.fillText(txt, 128, 38);
-    var sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, depthTest: false, depthWrite: false, fog: false })); sp.renderOrder = 9; sp.visible = false; gPerros.add(sp); return sp;
+    var sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: texColor(new THREE.CanvasTexture(cv)), transparent: true, depthTest: false, depthWrite: false, fog: false })); sp.renderOrder = 9; sp.visible = false; gPerros.add(sp); return sp;
   }
   PERROS.forEach(function (d) { d.tag = etiquetaNombre(d.nombre); d.alto = d.nombre === "Olivia" ? 1.3 : 1.55; });
   PERROS.forEach(function (d, i) { d.x = 0; d.y = 0; d.ang = 0; d.v = 0; d.est = "fuera"; d.t = 0; d.fase = Math.random() * 6; d.obj = null; d.pit = 0; d.rol = 0; d.sentado = 0; d.ult = 0; d.idx = i; d.parado = 0; d.excit = 0; });

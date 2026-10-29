@@ -1,6 +1,7 @@
 "use strict";
 // Cliente web con Vite (ADR-0010, fase 0): la entrada generada es exactamente el motor concatenado, el build funciona y la página empaquetada
-// dibuja LO MISMO que la salida artefacto (mismas llamadas, triángulos y puntos en los mismos escenarios). Sin Vite instalado (cd apps/web && npm i) se SALTA con aviso.
+// dibuja LO MISMO que la salida artefacto (mismas llamadas, triángulos y puntos en los mismos escenarios), con la misma versión de three en las dos.
+// Sin Vite instalado (cd apps/web && npm i) se SALTA con aviso. La salida artefacto toma three de jsDelivr: sin red, su carga falla.
 const test = require("node:test"), assert = require("node:assert");
 const { RAIZ, propia, python, fixture, ejecuta, fs, path } = require("./_util");
 const { sirve, motivoSalto, lanza, mide } = require("./_navegador");
@@ -27,9 +28,37 @@ test("la entrada de Vite es `import THREE` + los módulos del motor concatenados
   assert.strictEqual(fs.readFileSync(path.join(raiz, "entrada", "motor.generado.js"), "utf8"), esperado);
 });
 
-test("three del cliente web es la 0.128.0 (la misma r128 que la salida artefacto)", t => {
+// La versión de three es UNA (ADR-0016): la exacta de apps/web/package.json, la instalada y la que la salida artefacto pide a jsDelivr en su importmap.
+const VERSION_THREE = JSON.parse(fs.readFileSync(path.join(WEB, "package.json"), "utf8")).dependencies.three;
+
+test("three va con versión exacta, ≥ 0.167 (ADR-0009, 3D Tiles), y es la instalada en apps/web", t => {
+  assert.match(VERSION_THREE, /^\d+\.\d+\.\d+$/, "three debe ir con versión exacta en apps/web/package.json");
+  assert.ok(Number(VERSION_THREE.split(".")[1]) >= 167, "three " + VERSION_THREE + " < 0.167");
   if (SALTO) return t.skip(SALTO);
-  assert.strictEqual(JSON.parse(fs.readFileSync(path.join(WEB, "node_modules", "three", "package.json"), "utf8")).version, "0.128.0");
+  assert.strictEqual(JSON.parse(fs.readFileSync(path.join(WEB, "node_modules", "three", "package.json"), "utf8")).version, VERSION_THREE, "la three instalada no es la de package.json (cd apps/web && npm ci)");
+});
+
+test("la salida artefacto carga la MISMA three que el cliente web (importmap a jsDelivr con la versión de package.json)", t => {
+  if (SALTO) return t.skip(SALTO);
+  const html = fs.readFileSync(path.join(artefacto, "index.html"), "utf8"), m = html.match(/<script type="importmap">(.*?)<\/script>/s);
+  assert.ok(m, "la salida artefacto no lleva importmap");
+  const im = JSON.parse(m[1]).imports;
+  assert.strictEqual(im.three, "https://cdn.jsdelivr.net/npm/three@" + VERSION_THREE + "/build/three.module.js");
+  assert.ok(!/three\.min\.js|cdnjs\.cloudflare\.com\/ajax\/libs\/three/.test(html), "queda una carga de three r128 (three.min.js)");
+});
+
+// Los parches de sombreador (onBeforeCompile) sustituyen trozos de los sombreadores de three por su nombre: si un trozo cambia de nombre entre versiones
+// (r154: encodings_fragment → colorspace_fragment, output_fragment → opaque_fragment), el reemplazo falla EN SILENCIO. Aquí se comprueba que existen todos.
+test("cada `#include <trozo>` que el motor parchea o usa existe en los sombreadores de la three instalada", t => {
+  const dir = path.join(WEB, "node_modules", "three", "src", "renderers", "shaders", "ShaderChunk");
+  if (!fs.existsSync(dir)) return t.skip("three no instalado (cd apps/web && npm ci): los parches de sombreador NO se han comprobado");
+  const hay = new Set(fs.readdirSync(dir).map(f => f.replace(/\.glsl\.js$/, ""))), motor = path.join(WEB, "motor"), usados = new Map();
+  for (const f of fs.readdirSync(motor).filter(f => f.endsWith(".js"))) for (const m of fs.readFileSync(path.join(motor, f), "utf8").matchAll(/#include <(\w+)>/g)) usados.set(m[1], f);
+  assert.ok(usados.size >= 10, "se esperaban más trozos parcheados: " + usados.size);
+  const faltan = [...usados].filter(([k]) => !hay.has(k)).map(([k, f]) => k + " (" + f + ")");
+  assert.deepStrictEqual(faltan, [], "trozos que ya no existen en three " + VERSION_THREE);
+  const cs = fs.readFileSync(path.join(dir, "colorspace_pars_fragment.glsl.js"), "utf8");
+  for (const fn of ["sRGBTransferEOTF", "sRGBTransferOETF"]) assert.ok(cs.includes(fn), fn + " ya no existe en colorspace_pars_fragment");
 });
 
 test("la página empaquetada carga sin errores y dibuja exactamente lo mismo que la salida artefacto", { timeout: 300000 }, async t => {

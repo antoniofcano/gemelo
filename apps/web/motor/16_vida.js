@@ -81,9 +81,9 @@
         "void main(){ float edad = clamp((uNow - vB) / uVida, 0.0, 1.0); float v = (1.0 - edad); v *= v; " +
         "float caida = pow(1.0 - vV, 1.3); float pie = smoothstep(0.14, 0.0, vV); float filo = smoothstep(0.88, 1.0, vV) * 0.7; " +
         "float a = (0.14 + 0.6 * caida + pie * 0.9 + filo) * v * uAlpha; " +
-        "gl_FragColor = vec4(uColor * (1.0 + 0.9 * pie * (1.0 - edad)), clamp(a, 0.0, 1.0)); }"
+        "gl_FragColor = vec4(uColor * (1.0 + 0.9 * pie * (1.0 - edad)), clamp(a, 0.0, 1.0));\n#include <colorspace_fragment>\n}"
     });
-    e.malla = new THREE.Mesh(g, e.mat); e.malla.frustumCulled = false; e.malla.renderOrder = 6; scene.add(e.malla);
+    e.malla = new THREE.Mesh(g, e.mat); e.malla.frustumCulled = false; e.malla.renderOrder = 6; e.malla.visible = false; scene.add(e.malla);   // vacía no se dibuja (three moderno cuenta la llamada aunque no haya vértices)
     e.tema = function (oscuro) { e.mat.blending = oscuro ? THREE.AdditiveBlending : THREE.NormalBlending; e.u.uColor.value.set(oscuro ? colOsc : colCla); e.u.uAlpha.value = oscuro ? 1 : 1.3; e.mat.needsUpdate = true; };
     e.reinicia = function () { e.ult = null; };
     e.emite = function (x, y, y0, sep) {
@@ -93,7 +93,7 @@
       var i = e.n++;
       pos[i * 6] = x; pos[i * 6 + 1] = y0; pos[i * 6 + 2] = -y; pos[i * 6 + 3] = x; pos[i * 6 + 4] = y0 + e.alto; pos[i * 6 + 5] = -y;
       ab[i * 2] = ab[i * 2 + 1] = tVida;
-      g.attributes.position.needsUpdate = true; g.attributes.aB.needsUpdate = true; g.setDrawRange(0, Math.max(0, (e.n - 1) * 6));
+      g.attributes.position.needsUpdate = true; g.attributes.aB.needsUpdate = true; g.setDrawRange(0, Math.max(0, (e.n - 1) * 6)); e.malla.visible = e.n > 1;
     };
     ESTELAS.push(e); return e;
   }
@@ -137,7 +137,7 @@
       caja(0.045, 0.035, largo, mt(0x2b2f36), mx / 2, 0.03, mz / 2, Math.atan2(mx, mz));
       var motor = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.07, 10), mt(0x15171a)); motor.position.set(mx, 0.05, mz); g.add(motor);
       var h = new THREE.Group(); h.position.set(mx, 0.1, mz);
-      var disco = new THREE.Mesh(new THREE.CircleGeometry(0.2, 20), new THREE.MeshBasicMaterial({ color: 0xd8dde3, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false })); disco.rotation.x = -Math.PI / 2; h.add(disco);
+      var disco = new THREE.Mesh(new THREE.CircleGeometry(0.2, 20), new THREE.MeshBasicMaterial({ color: 0xd8dde3, transparent: true, forceSinglePass: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false })); disco.rotation.x = -Math.PI / 2; h.add(disco);
       var pala = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.008, 0.03), mt(0x20232a)); h.add(pala); g.add(h); props.push({ g: h, s: k % 2 ? 1 : -1 });
       var l = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 5), led(p[1] < 0 ? 0xff3b30 : 0x34e07a)); l.position.set(mx, 0.0, mz + p[1] * 0.04); g.add(l); leds.push(l);
     });
@@ -146,7 +146,7 @@
   })();
   var anilloDron = (function () {
     var g = new THREE.RingGeometry(0.86, 1, 56); g.rotateX(-Math.PI / 2);
-    var m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: 0x40f0ff, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false }));
+    var m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: 0x40f0ff, transparent: true, forceSinglePass: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false }));
     m.visible = false; m.renderOrder = 4; scene.add(m); return m;
   })();
   function angDifRad(a, b) { var d = (a - b) % (2 * Math.PI); if (d > Math.PI) d -= 2 * Math.PI; if (d < -Math.PI) d += 2 * Math.PI; return d; }

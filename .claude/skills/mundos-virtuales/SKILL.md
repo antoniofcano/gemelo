@@ -13,7 +13,7 @@ El gemelo es un mundo virtual **anclado a la realidad**: cada metro tiene una co
 | **UTM 30N** (ETRS89, EPSG:25830) | metros absolutos; E ≈ 405.000 y N ≈ 4.178.000 en Hituelo | exportadores, nombre de las teselas (`kx = floor(E/256)`) |
 | **Relativo a `centro_utm`** | `x` este, `y` norte, en metros; alturas relativas a `z0` | todos los datos y el motor |
 | **Escena three.js** | `x` = x, `y` = altura × `exag`, `z` = **−y** | `camera`, mallas (ver `gz`, `-c.y` en el código) |
-| **Rig VR** | `Group` que contiene la cámara; mover el rig mueve al usuario | `29_vr.js` (r128 no desplaza el espacio de referencia) |
+| **Rig VR** | `Group` que contiene la cámara; mover el rig mueve al usuario | `29_vr.js` (se mueve el rig, no el espacio de referencia) |
 Convenciones de rejillas: relieve, copa y suelo de teselas **de sur a norte** (fila 0 = sur); NDVI, mosaico y relieve grueso **de norte a sur** (fila 0 = norte). Un error de fila es el fallo más fácil de cometer: el fixture tiene relieve asimétrico para delatarlo.
 
 ## Escala y precisión

@@ -1,4 +1,4 @@
-"""Salida «artefacto» (HTML autónomo, sin servidor): plantilla + datos + three.js r128 de cdnjs + los módulos de apps/web/motor/ en orden.
+"""Salida «artefacto» (HTML autónomo, sin servidor): plantilla + datos + three de jsDelivr (importmap, la misma versión que apps/web) + los módulos de apps/web/motor/ en orden.
 La salida principal del producto es la web de apps/web (Vite); esta se conserva como demostración sin servidor (ADR-0010).
 Las rutas relativas se resuelven desde la raíz del repo.
 
@@ -27,12 +27,24 @@ def textos_finca(cab, T):
     if T.get("sin_historia"): cab = cab.replace("</style>", "#historia { display: none !important; }\n</style>", 1)
     return cab
 
+def version_three():
+    """La versión exacta de three del cliente web (apps/web/package.json): las dos salidas usan la misma (ADR-0016)."""
+    v = json.loads(lee(os.path.join("apps", "web", "package.json")))["dependencies"]["three"]
+    if not re.fullmatch(r"\d+\.\d+\.\d+", v): raise SystemExit("three debe ir con versión exacta en apps/web/package.json, no «%s»" % v)
+    return v
+
+def importmap(v):
+    """three como módulo ES desde jsDelivr, con un importmap (la forma que recomienda la guía de instalación de three): «three» y «three/addons/»."""
+    base = "https://cdn.jsdelivr.net/npm/three@%s/" % v
+    return '<script type="importmap">' + json.dumps({"imports": {"three": base + "build/three.module.js", "three/addons/": base + "examples/jsm/"}}) + '</script>\n'
+
 def monta(D, salida, src=os.path.join("apps", "web", "motor")):
     cab = lee(os.path.join("apps", "web", "plantilla.html"))
     if D.get("textos"): cab = textos_finca(cab, D["textos"])
     js = "".join(lee(f) for f in sorted(glob.glob(os.path.join(R, src, "*.js"))))
     if "<meta charset" not in cab[:400]: cab = '<meta charset="utf-8">\n' + cab
-    html = cab + '<script type="application/json" id="datos">' + json.dumps(D) + '</script>\n<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>\n<script>' + js + '</script>\n'
+    # el motor va en un módulo que importa three, igual que la entrada de Vite (apps/web/herramientas/genera_motor.mjs)
+    html = cab + '<script type="application/json" id="datos">' + json.dumps(D) + '</script>\n' + importmap(version_three()) + '<script type="module">import * as THREE from "three";\n' + js + '</script>\n'
     os.makedirs(os.path.dirname(os.path.join(R, salida)) or R, exist_ok=True)
     open(os.path.join(R, salida), "w", encoding="utf-8", newline="\n").write(html)   # LF en todos los sistemas: la salida es la misma en Windows y en Linux
     return html

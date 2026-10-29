@@ -15,9 +15,10 @@ function monta(args) {
 }
 function revisaPagina(html) {
   assert.match(html, /<script type="application\/json" id="datos">/, "falta el JSON de datos");
-  assert.match(html, /three\.js\/r128\/three\.min\.js/, "three.js r128 debe cargarse de cdnjs");
+  const v = JSON.parse(fs.readFileSync(path.join(RAIZ, "apps", "web", "package.json"), "utf8")).dependencies.three;   // la misma three que el cliente web (ADR-0016)
+  assert.ok(html.includes('"three": "https://cdn.jsdelivr.net/npm/three@' + v + '/build/three.module.js"'), "three " + v + " debe cargarse de jsDelivr con un importmap");
   const js = SRC.map(f => fs.readFileSync(path.join(RAIZ, f), "utf8")).join("");   // exactamente lo que concatena montar_v2.py: orden alfabético, sin huecos
-  assert.ok(html.includes(js), "los módulos de src/ no están en la página tal cual y en orden alfabético");
+  assert.ok(html.includes('<script type="module">import * as THREE from "three";\n' + js + "</script>"), "los módulos de src/ no están en la página tal cual, en orden alfabético y en un módulo que importa three");
 }
 
 test("Cerro (embebido): una sola página que cabe en el límite de 16 MB", t => {

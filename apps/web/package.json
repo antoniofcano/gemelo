@@ -10,7 +10,7 @@
     "dev": "node herramientas/genera_motor.mjs && vite"
   },
   "dependencies": {
-    "three": "0.128.0"
+    "three": "0.186.1"
   },
   "devDependencies": {
     "vite": "6.4.5"

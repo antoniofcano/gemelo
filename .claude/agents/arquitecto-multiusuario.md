@@ -13,7 +13,7 @@ La propuesta completa está en `doc/sistema/ARQUITECTURA-MULTIUSUARIO.md`, con l
 ## Qué contrastas (léelo antes de opinar)
 - `CLAUDE.md` (reglas de oro: datos fuera del repo, medido/deducido/ilustrativo, presupuesto de dibujo, español, confirmar antes de publicar), `doc/ESTADO.md`, `doc/rumbo/PLAN.md` y `DECISIONS-PENDING.md`.
 - Los ADR 0001–0008 (`doc/adr/`), en especial: teselas propias de 256 m en UTM30 (0001), niveles de detalle (0002), calidad Base/Alta (0003), datos fuera del repo (0004), WebXR con perfil propio (0005), ficheros de apoyo json/jpg por límites de la plataforma de artefactos (0008).
-- El motor: `doc/sistema/ARCHITECTURE.md`, `doc/sistema/CONTRATOS.md`, `doc/sistema/VR.md`, `contratos/`, `apps/web/motor/` (un solo `<script>` ES5 con three.js **r128**, sin módulos ni build), `tuberia/salida_artefacto/montar_v2.py`, los exportadores `tuberia/finca_8_teselas.py` y `tuberia/hituelo_conv.py`.
+- El motor: `doc/sistema/ARCHITECTURE.md`, `doc/sistema/CONTRATOS.md`, `doc/sistema/VR.md`, `contratos/`, `apps/web/motor/` (módulos concatenados en una IIFE, sin módulos por dentro; three **0.186.1** empaquetado por Vite o, en la salida artefacto, con importmap desde jsDelivr: ADR-0010 y ADR-0016), `tuberia/salida_artefacto/montar_v2.py`, los exportadores `tuberia/finca_8_teselas.py` y `tuberia/hituelo_conv.py`.
 - Las mediciones: `doc/sistema/MEDIDAS.md` y `pruebas/presupuesto.json`.
 
 ## Qué debes entregar

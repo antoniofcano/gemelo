@@ -2,7 +2,7 @@
   "name": "gemelo",
   "version": "0.2.0",
   "private": true,
-  "description": "Gemelo digital en 3D de fincas de olivar (three.js r128, teselas de 256 m, LiDAR, modo VR)",
+  "description": "Gemelo digital en 3D de fincas de olivar (three.js 0.186.1, teselas de 256 m, LiDAR, modo VR)",
   "engines": {
     "node": ">=24"
   },

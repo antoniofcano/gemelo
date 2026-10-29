@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: matHojaG, matHojaP, matCorteza, matSombra, geoSombra, follajeG, construyeSombras
-// Consume: 02_mundo (suelo, copaAlta, aviva, colorEn, copas), 03_escena (exag, calidad), 04_terreno (hash), 06_arboles (gSombras, radioEn),
-//   14_historia (lista), 18_paisaje (instSombra, sombrasSol), 23_estacion (construyeFrutosLista)
+// Consume: 02_mundo (suelo, copaAlta, aviva, colorEn, copas), 03_escena (texColor, exag, calidad), 04_terreno (hash),
+//   06_arboles (gSombras, radioEn), 14_historia (lista), 16_vida (esfera), 18_paisaje (instSombra, sombrasSol), 23_estacion (construyeFrutosLista)
 // ===============================================================================
 
   // follaje: cada punto LiDAR de copa es un montoncito de hojas plateadas (sprites con textura propia)
@@ -23,7 +23,7 @@
         }
       }
     }
-    var tex = new THREE.CanvasTexture(cv); tex.generateMipmaps = true; return tex;
+    var tex = texColor(new THREE.CanvasTexture(cv)); tex.generateMipmaps = true; return tex;
   }
   var texHojas = texturaHojas();
   var matHojaG = new THREE.PointsMaterial({ size: 3.1, map: texHojas, alphaTest: 0.4, vertexColors: true, sizeAttenuation: true, transparent: false });
@@ -31,7 +31,7 @@
   var matCorteza = new THREE.PointsMaterial({ size: 0.5, vertexColors: true, sizeAttenuation: true });
   function texturaSombra() {
     var cv = document.createElement("canvas"); cv.width = cv.height = 64; var x = cv.getContext("2d"), g = x.createRadialGradient(32, 32, 4, 32, 32, 32);
-    g.addColorStop(0, "rgba(20,18,10,0.55)"); g.addColorStop(0.65, "rgba(20,18,10,0.32)"); g.addColorStop(1, "rgba(20,18,10,0)"); x.fillStyle = g; x.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(cv);
+    g.addColorStop(0, "rgba(20,18,10,0.55)"); g.addColorStop(0.65, "rgba(20,18,10,0.32)"); g.addColorStop(1, "rgba(20,18,10,0)"); x.fillStyle = g; x.fillRect(0, 0, 64, 64); return texColor(new THREE.CanvasTexture(cv));
   }
   var matSombra = new THREE.MeshBasicMaterial({ map: texturaSombra(), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
   var geoSombra = new THREE.PlaneGeometry(1, 1); geoSombra.rotateX(-Math.PI / 2);
@@ -73,7 +73,7 @@
   }
   function construyeSombras() {   // sombras suaves bajo cada copa (una malla instanciada para todos los olivos)
     while (gSombras.children.length) { gSombras.children.pop(); }
-    var inst = new THREE.InstancedMesh(geoSombra, matSombra, copas.length + 1), tm = new THREE.Object3D(), n2 = 0;
+    var inst = new THREE.InstancedMesh(geoSombra, matSombra, copas.length + 1), tm = new THREE.Object3D(), n2 = 0; inst.frustumCulled = false;   // r151: la esfera de una InstancedMesh abarca sus instancias y se calcula una vez; estas se recolocan
     copas.forEach(function (t) { if (!t.oliv) return; var rm = t.perfil.reduce(function (a, b) { return a + b; }, 0) / 8; tm.position.set(t.x + 0.4, (suelo(t.x, t.y) + 0.06) * exag, -t.y - 0.1); tm.scale.set(rm * 2.5, 1, rm * 2.5); tm.updateMatrix(); inst.setMatrixAt(n2++, tm.matrix); });
     inst.count = n2; inst.instanceMatrix.needsUpdate = true; gSombras.add(inst); instSombra = inst; sombrasSol(true);
   }

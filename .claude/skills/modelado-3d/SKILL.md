@@ -1,6 +1,6 @@
 ---
 name: modelado-3d
-description: Experta en modelado 3D para el motor del gemelo (three.js r128): presupuestos de triángulos por nivel, silueta del olivo (L0/L1/L2), instanciado, mallas de terreno y faldones de costura, materiales y sombreadores con onBeforeCompile, normales, sombras y límites de r128. Úsala al tocar geometría, materiales, niveles de detalle o el aspecto de olivos, terreno, nube o paisaje.
+description: Experta en modelado 3D para el motor del gemelo (three.js 0.186.1): presupuestos de triángulos por nivel, silueta del olivo (L0/L1/L2), instanciado, mallas de terreno y faldones de costura, materiales y sombreadores con onBeforeCompile, gestión de color, normales, sombras y límites de three. Úsala al tocar geometría, materiales, niveles de detalle o el aspecto de olivos, terreno, nube o paisaje.
 ---
 
 # Modelado 3D en el gemelo
@@ -28,8 +28,10 @@ Una malla por tesela, **topología compartida** por nivel: L0 1 m (66.049 vérti
 - Suelo abierto con detalle de ortofoto ([ADR-0007](../../../doc/adr/0007-suelo-abierto-de-la-ortofoto.md)): lo oscuro (copas/sombras) se deja igual; no pintar sombras como suelo.
 - Nube: un `THREE.Points` por tesela, orden barajado → `setDrawRange(0, f·n)` es el LOD; al bajar `f`, subir el tamaño del punto (`size *= 1/√f`).
 
-## Límites de three r128
-No hay `logarithmicDepthBuffer` aquí (se usa `near` dinámico, `far = max(5000, 4·EXT)`); `InstancedMesh` sí; sin `WebGPU`; en VR no se puede desplazar el espacio de referencia (se mueve el rig). Cada geometría/textura/material nueva **lleva su `dispose()`**.
+- **Color (three 0.186.1, [ADR-0016](../../../doc/adr/0016-actualizacion-de-three.md)):** la luz se calcula en lineal y la salida es sRGB. Lo escrito a mano (colores por vértice o instancia, literales GLSL, multiplicadores) va en sRGB y se pasa a lineal al entrar en la luz: `setRGB(r, g, b, SRGB)`, `texColor()` para lienzos que son color, `colorVertSRGB(sh)` en el `onBeforeCompile`, `sRGBTransferEOTF()` para literales. Lo que se toca después de `colorspace_fragment` (al final, junto a `dithering_fragment`) ya está en sRGB. Un `ShaderMaterial` propio termina en `#include <colorspace_fragment>`. Las texturas de datos (ruido, NDVI) van sin espacio de color.
+
+## Límites de three (0.186.1, WebGL2)
+No hay `logarithmicDepthBuffer` aquí (se usa `near` dinámico, `far = max(5000, 4·EXT)`); `InstancedMesh` calcula su esfera con las instancias **una vez** (las que se recolocan llevan `frustumCulled = false`); lo transparente de dos caras se dibuja en dos pasadas salvo `forceSinglePass`; Lambert es por fragmento; sin `WebGPU` (el motor usa `WebGLRenderer`); en VR se mueve el rig. Un `#include <trozo>` que se parchee debe existir en la three instalada (lo vigila `web.test.js`). Cada geometría/textura/material nueva **lleva su `dispose()`**.
 
 ## Lista antes de dar por buena una geometría
 - [ ] Triángulos por nivel dentro de su cifra; instancias con `count` ajustado, no con el máximo.

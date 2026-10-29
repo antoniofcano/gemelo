@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: EST, construyeFrutosLista, objetivoMundo, actualizaOlivo
-// Consume: 01_datos ($), 02_mundo (suelo, copas), 03_escena (renderer, sol, modo), 04_terreno (hash), 06_arboles (gFollaje),
+// Consume: 01_datos ($), 02_mundo (suelo, copas), 03_escena (renderer, SRGB, sol, modo), 04_terreno (hash), 06_arboles (gFollaje),
 //   07_follaje (matHojaG, matHojaP), 10_ndvi (NDV, ndviIdx), 13_parcelas (parcelas), 14_historia (aviso),
 //   15_tiempo (lluvia, cargaT, fmtHora, fmtClaveDia, num1, esc, objetivoMundoBase, aplicaMundo)
 // Nota: Publica además window.__otDebug (depuración del olivo estacional).
@@ -44,7 +44,7 @@
       "else if (b >= 70.5 && b < 91.0) { if (aS < 0.55) { tam = mix(0.25, 0.7, clamp((b - 71.0) / 8.0, 0.0, 1.0)); vec3 verde = vec3(0.5, 0.64, 0.2); vec3 violeta = vec3(0.5, 0.2, 0.38); vec3 negro = vec3(0.17, 0.1, 0.19); col = mix(verde, violeta, smoothstep(80.0, 85.0, b)); col = mix(col, negro, smoothstep(85.0, 90.0, b)); } }\n" +
       "vCol = col; vec4 mv = modelViewMatrix * vec4(position, 1.0); mv.z += 1.0;\n" +
       "if (tam <= 0.0) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); gl_PointSize = 0.0; } else { gl_Position = projectionMatrix * mv; gl_PointSize = tam * uEsc / max(0.5, -mv.z); } }",
-    fragmentShader: "uniform vec3 uLuz; varying vec3 vCol; void main(){ vec2 d = gl_PointCoord - 0.5; float r2 = dot(d, d); if (r2 > 0.25) discard; float brillo = smoothstep(0.07, 0.0, length(d - vec2(-0.12, 0.12))); gl_FragColor = vec4(vCol * uLuz * (0.82 + 0.4 * (0.25 - r2)) + brillo * 0.3 * uLuz, 1.0); }"
+    fragmentShader: "uniform vec3 uLuz; varying vec3 vCol; void main(){ vec2 d = gl_PointCoord - 0.5; float r2 = dot(d, d); if (r2 > 0.25) discard; float brillo = smoothstep(0.07, 0.0, length(d - vec2(-0.12, 0.12))); gl_FragColor = vec4(sRGBTransferEOTF(vec4(vCol, 1.0)).rgb * uLuz * (0.82 + 0.4 * (0.25 - r2)) + brillo * 0.3 * uLuz, 1.0);\n#include <colorspace_fragment>\n}"
   });
   function construyeFrutosLista(grupo) {   // las flores y aceitunas de un grupo de olivos (una de cada cuatro hojas)
     var pos = [], aR = [], aS = [], k = 0;
@@ -99,7 +99,7 @@
     if (!NDV) return;
     var iso = fechaEstacion(), bb = bbchEn(iso), v = vigorCopa(ndviIdx), brote = Math.max(0, 1 - Math.abs(bb - 15) / 7) * (bb >= 9 && bb < 30 ? 1 : 0), reposo = bb < 9 || (bb >= 89 && diaDelAnio(iso) < 35) ? 0.04 : 0;
     var vig = 0.9 + 0.2 * v;   // copa apagada: más pardo y más oscura; vigorosa: más verde
-    tonoO.setRGB((1.06 - 0.1 * v) * (1 + 0.04 * brote) * (1 - reposo), vig * (1 + 0.12 * brote) * (1 - reposo), (0.96 + 0.06 * v) * (1 - 0.12 * brote) * (1 - reposo));
+    tonoO.setRGB((1.06 - 0.1 * v) * (1 + 0.04 * brote) * (1 - reposo), vig * (1 + 0.12 * brote) * (1 - reposo), (0.96 + 0.06 * v) * (1 - 0.12 * brote) * (1 - reposo), SRGB);
     matHojaG.color.multiply(tonoO); matHojaP.color.multiply(tonoO);
     uFruto.uBBCH.value = bb; uFruto.uEsc.value = renderer.domElement.height * 0.5; uFruto.uLuz.value.copy(matHojaG.color);
   }

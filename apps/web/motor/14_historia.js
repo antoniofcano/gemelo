@@ -3,7 +3,7 @@
 // Consume: 01_datos (D, $, fmt), 02_mundo (suelo, orto, copas, cIn, marc, med), 03_escena (visor, scene, exag), 04_terreno (terreno),
 //   05_nube (nube), 08_marcadores (aplica, pendiente), 09_camara (objetivo, orb, pon), 10_ndvi (NDV, ndviIdx, pintaNdvi),
 //   12_paseo (paseando, persona, primera, salePaseo), 13_parcelas (parcelas, fincas, claseUsda, elegirParcela, elegirFinca), 15_tiempo (ins),
-//   16_vida (mira), 18_paisaje (postes, cable), 21_suelo (cubierta), 22_huellas (hSig), 29_vr (panel), 90_final (cuadro)
+//   16_vida (esfera, mira), 18_paisaje (postes, cable), 21_suelo (cubierta), 22_huellas (hSig), 29_vr (panel), 90_final (cuadro)
 // ===============================================================================
   // ---------- la historia: un recorrido guiado que cruza el gemelo con lo que sabe OlivarTrack
   // Los datos de OlivarTrack llegan de dos sitios: una instantánea embebida (D.ot) y, si el visor lo permite,
@@ -69,7 +69,7 @@
   var mAvAnillo = new THREE.InstancedMesh(anilloAv, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }), marc.length + 1);
   var mAvBaliza = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.13, 0.13, 8, 6), new THREE.MeshBasicMaterial({ color: 0xd23a2a }), marc.length + 1);
   var mAvSin = new THREE.InstancedMesh(new THREE.OctahedronGeometry(0.55), new THREE.MeshBasicMaterial({ color: 0x8e5bc4 }), copas.length + 1);
-  gAvance.add(mAvAnillo); gAvance.add(mAvBaliza); gAvance.add(mAvSin);
+  [mAvAnillo, mAvBaliza, mAvSin].forEach(function (m) { m.frustumCulled = false; gAvance.add(m); });   // r151: la esfera de una InstancedMesh se calcula una vez; estas se rehacen al cambiar de tarea
   function pintaAvance(tipo) {
     avTipo = tipo; if (!tipo || !AV) { gAvance.visible = false; return; }
     var ms = AV.marcas[tipo], cs = AV.copas[tipo], na = 0, nb = 0, ns = 0, o = new THREE.Object3D();

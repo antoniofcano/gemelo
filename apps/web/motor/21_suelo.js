@@ -1,8 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: SN, S0, V0, vn2, cubierta, recoloreaSuelo, actualizaSuelo
-// Consume: 01_datos (D, $, i16, ANCHO, ALTO, VRP), 02_mundo (suelo), 03_escena (scene, exag), 04_terreno (hash), 05_nube (nube),
-//   09_camara (objetivo, orb), 10_ndvi (NDV, ndviIdx, pintaNdvi), 12_paseo (paseando), 15_tiempo (uViento, uSombra, GLSL_SOMBRA, nivel, num1),
-//   16_vida (esfera, enDron), 20_sonido (ejeArroyo, distArroyo)
+// Consume: 01_datos (D, $, i16, ANCHO, ALTO, VRP), 02_mundo (suelo), 03_escena (scene, texColor, colorVertSRGB, exag), 04_terreno (hash),
+//   05_nube (nube), 09_camara (objetivo, orb), 10_ndvi (NDV, ndviIdx, pintaNdvi), 12_paseo (paseando),
+//   15_tiempo (uViento, uSombra, GLSL_SOMBRA, nivel, num1), 16_vida (esfera, enDron), 20_sonido (ejeArroyo, distArroyo)
 // ===============================================================================
   // ---------- el suelo según el NDVI: dónde hay tierra desnuda y dónde hierba, y cómo de vigorosa
   // El NDVI de 10 m mezcla copa y suelo. Con la fracción de copa de cada celda (LiDAR) se resta la copa: g = NDVI − b·f. De g sale la cubierta (0 = desnudo, 1 = hierba tupida) y su vigor.
@@ -78,7 +78,7 @@
       g.fillStyle = "rgb(236,226,190)"; for (var e = 0; e < 7; e++) { g.beginPath(); g.ellipse(tx + (e % 2 ? 2.5 : -2.5) + sl * 0.02 * e, ty + e * 5.5, 2.6, 5.2, (e % 2 ? 0.35 : -0.35), 0, 6.2832); g.fill(); }
     }
     g.restore();
-    var tx2 = new THREE.CanvasTexture(c); tx2.anisotropy = 4; tx2.minFilter = THREE.LinearMipmapLinearFilter; tx2.magFilter = THREE.LinearFilter; return tx2;
+    var tx2 = texColor(new THREE.CanvasTexture(c)); tx2.anisotropy = 4; tx2.minFilter = THREE.LinearMipmapLinearFilter; tx2.magFilter = THREE.LinearFilter; return tx2;
   }
   function geoPiedra() {   // canto rodado: icosaedro subdividido, deformado con ruido y con las normales de la esfera (sin facetas)
     var g = new THREE.IcosahedronGeometry(1, 1), p = g.attributes.position, n = new Float32Array(p.count * 3), i, v = new THREE.Vector3(), d;
@@ -90,7 +90,7 @@
   }
   function texContacto() {   // sombra de contacto: mancha oscura que se difumina hacia fuera
     var c = document.createElement("canvas"); c.width = c.height = 64; var g = c.getContext("2d"), gr = g.createRadialGradient(32, 32, 4, 32, 32, 31);
-    gr.addColorStop(0, "rgba(0,0,0,0.62)"); gr.addColorStop(0.55, "rgba(0,0,0,0.28)"); gr.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c);
+    gr.addColorStop(0, "rgba(0,0,0,0.62)"); gr.addColorStop(0.55, "rgba(0,0,0,0.28)"); gr.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return texColor(new THREE.CanvasTexture(c));
   }
   var NTUFT = 16000, NSTONE = 2600, texHierba = atlasHierba(), matMata = new THREE.MeshLambertMaterial({ map: texHierba, alphaTest: 0.42, side: THREE.DoubleSide }), matPiedra = new THREE.MeshLambertMaterial({ color: 0xffffff });
   var iMata = new THREE.InstancedMesh(geoMata(), matMata, NTUFT), iPiedra = new THREE.InstancedMesh(geoPiedra(), matPiedra, NSTONE), tileMata = new THREE.InstancedBufferAttribute(new Float32Array(NTUFT), 1);
@@ -101,22 +101,24 @@
   iMata.frustumCulled = false; iPiedra.frustumCulled = false; iCont.frustumCulled = false; iMata.count = 0; iPiedra.count = 0; iCont.count = 0; iCont.renderOrder = 2; scene.add(iMata); scene.add(iPiedra); scene.add(iCont);
   (function () {   // el viento mueve las matas (más arriba, más), y comparten sombra de nubes y escarcha con el resto
     matMata.onBeforeCompile = function (sh) {
+      colorVertSRGB(sh);   // el color por instancia está escrito en sRGB (03_escena)
       sh.uniforms.uDrift = uSombra.uDrift; sh.uniforms.uCov = uSombra.uCov; sh.uniforms.uSomb = uSombra.uSomb; sh.uniforms.uHielo = uSombra.uHielo; sh.uniforms.uT = uViento.uT; sh.uniforms.uAmp = uViento.uAmp; sh.uniforms.uDir = uViento.uDir;
       sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nuniform float uT; uniform float uAmp; uniform vec2 uDir; attribute float aTile; varying vec3 vVPz;\n" + GLSL_SOMBRA)
-        .replace("#include <uv_vertex>", "#include <uv_vertex>\n vUv = vec2((vUv.x + aTile) * 0.25, vUv.y);")
+        .replace("#include <uv_vertex>", "#include <uv_vertex>\n vMapUv = vec2((vMapUv.x + aTile) * 0.25, vMapUv.y);")   // r151: el mapa lleva su propia coordenada (vMapUv), ya no vUv
         .replace("#include <begin_vertex>", "#include <begin_vertex>\n vec3 wp = (instanceMatrix * vec4(transformed, 1.0)).xyz; vSomb = ot_sombra(wp.xz); float s = position.y;\n transformed.xz += (uDir * uAmp * 1.5 + 0.06 * vec2(sin(uT * 3.0 + wp.x * 1.7), cos(uT * 2.6 + wp.z * 1.9))) * s * s;");
       sh.vertexShader = sh.vertexShader.replace("#include <project_vertex>", "#include <project_vertex>\n vVPz = -mvPosition.xyz;");
       // fundido por trama (dither) con la distancia, para que la mata se disuelva en el suelo y no «salte»; el pie más oscuro que la punta
       sh.fragmentShader = sh.fragmentShader.replace("void main() {", "varying float vSomb; uniform float uHielo; varying vec3 vVPz;\n#define vViewPosition vVPz\nvoid main() {")
-        .replace("#include <map_fragment>", "#include <map_fragment>\n float dd = length(vViewPosition), ign = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));\n if (smoothstep(34.0, 58.0, dd) > ign || smoothstep(0.9, 0.2, dd) > ign) discard;\n diffuseColor.rgb *= 0.5 + 0.5 * smoothstep(0.0, 0.55, vUv.y);")
+        .replace("#include <map_fragment>", "#include <map_fragment>\n float dd = length(vViewPosition), ign = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));\n if (smoothstep(34.0, 58.0, dd) > ign || smoothstep(0.9, 0.2, dd) > ign) discard;\n diffuseColor.rgb *= 0.5 + 0.5 * smoothstep(0.0, 0.55, vMapUv.y);")
         .replace("#include <dithering_fragment>", "gl_FragColor.rgb *= vSomb; gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.88, 0.94, 1.0), uHielo * 0.6);\n#include <dithering_fragment>");
     };
     matMata.needsUpdate = true;
     matPiedra.onBeforeCompile = function (sh) {   // canto con granos, vetas y manchas de liquen (ruido por la posición local, sin textura)
+      colorVertSRGB(sh);
       sh.uniforms.uDrift = uSombra.uDrift; sh.uniforms.uCov = uSombra.uCov; sh.uniforms.uSomb = uSombra.uSomb;
       sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nvarying vec3 vP; varying float vSeed;\n" + GLSL_SOMBRA).replace("#include <begin_vertex>", "#include <begin_vertex>\n vP = position; vSeed = fract(instanceMatrix[3].x * 0.137 + instanceMatrix[3].z * 0.311); vSomb = ot_sombra((instanceMatrix * vec4(transformed, 1.0)).xz);");
       sh.fragmentShader = sh.fragmentShader.replace("void main() {", "varying float vSomb; varying vec3 vP; varying float vSeed;\nfloat sh3(vec3 p){ return fract(sin(dot(floor(p), vec3(12.9898, 78.233, 37.719))) * 43758.5453); }\nvoid main() {")
-        .replace("#include <color_fragment>", "#include <color_fragment>\n float n1 = sh3(vP * 5.0 + vSeed * 40.0), n2 = sh3(vP * 13.0 + vSeed * 17.0), veta = 0.5 + 0.5 * sin((vP.x * 2.1 + vP.y * 3.4 + vSeed * 9.0) * 3.0 + n1 * 1.5);\n diffuseColor.rgb *= 0.74 + 0.16 * n1 + 0.1 * n2 + 0.12 * veta;\n diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.46, 0.5, 0.3) * 0.8, step(0.86, n1) * 0.4 * smoothstep(-0.2, 0.9, vP.y));")
+        .replace("#include <color_fragment>", "#include <color_fragment>\n float n1 = sh3(vP * 5.0 + vSeed * 40.0), n2 = sh3(vP * 13.0 + vSeed * 17.0), veta = 0.5 + 0.5 * sin((vP.x * 2.1 + vP.y * 3.4 + vSeed * 9.0) * 3.0 + n1 * 1.5);\n diffuseColor.rgb *= 0.74 + 0.16 * n1 + 0.1 * n2 + 0.12 * veta;\n diffuseColor.rgb = mix(diffuseColor.rgb, sRGBTransferEOTF(vec4(vec3(0.46, 0.5, 0.3) * 0.8, 1.0)).rgb,step(0.86, n1) * 0.4 * smoothstep(-0.2, 0.9, vP.y));")
         .replace("#include <dithering_fragment>", "gl_FragColor.rgb *= vSomb;\n#include <dithering_fragment>");
     };
     matPiedra.needsUpdate = true;

@@ -2,16 +2,16 @@
 // Expone: gLinde, tmp, listo, aplica, capas, pendiente, aplicaLuego
 // Consume: 01_datos (D, $), 02_mundo (suelo, orto, copas, cIn, marc), 03_escena (scene, colorCss, exag, modo), 04_terreno (Terreno, terreno),
 //   05_nube (nube, pintaNube), 06_arboles (gArboles, gFollaje, gSombras, tronco), 07b_arboles (Arboles), 14_historia (avTipo, pintaAvance),
-//   15_tiempo (colocaBarrera, lindes), 18_paisaje (colocaPaisaje), 19_balizas (colocaBalizas), 21_suelo (recoloreaSuelo)
+//   15_tiempo (colocaBarrera, lindes), 16_vida (esfera), 18_paisaje (colocaPaisaje), 19_balizas (colocaBalizas), 21_suelo (recoloreaSuelo)
 // ===============================================================================
 
   // linde y marcadores
   var gLinde = new THREE.Group(), gCopas = new THREE.Group(), gMarc = new THREE.Group(), gDesf = new THREE.Group();
   [gLinde, gCopas, gMarc, gDesf].forEach(function (g) { scene.add(g); });
   // (las lindes son ahora una barrera de luz: ver el bloque del tiempo)
-  var mCopas = new THREE.InstancedMesh(new THREE.OctahedronGeometry(0.38), new THREE.MeshBasicMaterial({ color: colorCss("--lidar") }), cIn.length); gCopas.add(mCopas);
+  var mCopas = new THREE.InstancedMesh(new THREE.OctahedronGeometry(0.38), new THREE.MeshBasicMaterial({ color: colorCss("--lidar") }), cIn.length); mCopas.frustumCulled = false; gCopas.add(mCopas);   // r151: la esfera de una InstancedMesh se calcula una vez con sus instancias; estas se recolocan con la exageración
   var ani = new THREE.RingGeometry(0.55, 0.95, 20); ani.rotateX(-Math.PI / 2);
-  var mMarc = new THREE.InstancedMesh(ani, new THREE.MeshBasicMaterial({ color: colorCss("--guardado"), side: THREE.DoubleSide }), marc.length); gMarc.add(mMarc);
+  var mMarc = new THREE.InstancedMesh(ani, new THREE.MeshBasicMaterial({ color: colorCss("--guardado"), side: THREE.DoubleSide }), marc.length); mMarc.frustumCulled = false; gMarc.add(mMarc);
   var desfGeo = new THREE.BufferGeometry(); gDesf.add(new THREE.LineSegments(desfGeo, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 })));
   var tmp = new THREE.Object3D();
   function marcadores() {

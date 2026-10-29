@@ -27,8 +27,10 @@
       if (t.suel) texturasReales(t);
     }
     function texturasReales(t) {   // el color del suelo de la tesela es inmediato; el ruido estático (66.000 evaluaciones) se calcula a rebanadas en la cola
-      var u = t.uni, ts = new THREE.DataTexture(t.suel, NS2, NS2, THREE.RGBFormat, THREE.UnsignedByteType);
-      ts.unpackAlignment = 1; ts.magFilter = ts.minFilter = THREE.LinearFilter; ts.generateMipmaps = false; ts.needsUpdate = true; u.uSue.value = ts; t.texSue = ts; u.uTiene.value = 1;
+      var u = t.uni, sr = t.suel, n4 = NS2 * NS2, s4 = new Uint8Array(n4 * 4);   // RGBFormat ya no existe (r137): el color del suelo (RGB) se sube como RGBA
+      for (var q = 0; q < n4; q++) { s4[q * 4] = sr[q * 3]; s4[q * 4 + 1] = sr[q * 3 + 1]; s4[q * 4 + 2] = sr[q * 3 + 2]; s4[q * 4 + 3] = 255; }
+      var ts = new THREE.DataTexture(s4, NS2, NS2, THREE.RGBAFormat, THREE.UnsignedByteType);
+      ts.magFilter = ts.minFilter = THREE.LinearFilter; ts.generateMipmaps = false; ts.needsUpdate = true; u.uSue.value = ts; t.texSue = ts; u.uTiene.value = 1;
       Cola.add("R" + t.key, Mundo.dist(t, camera.position.x, camera.position.y, camera.position.z), ruidoG(t), function (tr) { u.uRui.value = tr; t.rui = tr; });
     }
     // ---- el DETALLE DE LA ORTOFOTO en el suelo abierto (rodadas, caminos, calveros). El color del suelo que viaja con la tesela está a 2 m y suavizado (ver el exportador), así que las rodadas de 0,3-0,5 m
@@ -158,7 +160,7 @@
         "float lit = (1.0 - abierto) * uDetK * step(0.5, uDet);\n" +
         "suelo = mix(suelo, vec3(0.30, 0.25, 0.18) * (0.72 + 0.55 * dn(vWP.xz * 5.0)) * (0.82 + 0.36 * nm), lit * 0.5 * (0.5 + 0.5 * cerca));\n" +
         "hSuelo = -0.055 * ruts + 0.014 * (nf - 0.5) * cerca + 0.007 * (nu - 0.5) * cercaM + 0.004 * grano * cercaM + 0.03 * (rodada - 1.0) * camino * cercaR;\n" +
-        "diffuseColor.rgb *= suelo;\n";
+        "diffuseColor.rgb *= sRGBTransferEOTF(vec4(max(suelo, vec3(0.0)), 1.0)).rgb;\n";   // todo lo de arriba son colores «como se ven» (las texturas van sin convertir): a lineal al entrar en la luz
       var fin =
         "vec2 un = vec2((vWP.x - uGBox.x) / uGBox.z, 1.0 - (uGBox.y + vWP.z) / uGBox.w);\n" +
         "vec4 nd = texture2D(uNdviMap, un); float dentro = step(0.0, un.x) * step(un.x, 1.0) * step(0.0, un.y) * step(un.y, 1.0);\n" +
@@ -166,7 +168,7 @@
         "if (uDetDbg > 0.5) gl_FragColor.rgb = uDetDbg < 1.5 ? vec3(abierto) : uDetDbg < 2.5 ? vec3(clamp(tono - 0.5, 0.0, 1.0)) : uDetDbg < 3.5 ? vec3(clamp(rodada - 0.5, 0.0, 1.0)) : vec3(ruts, camino, coh);\n";
       sh.fragmentShader = sh.fragmentShader.replace("void main() {", "varying vec3 vVPz;\n#define vViewPosition vVPz\n" + cab + "void main() {")
         .replace("#include <color_fragment>", "#include <color_fragment>\n" + color)
-        .replace("gl_FragColor.rgb *= vSomb;", "if (uModoOrto > 0.5) gl_FragColor.rgb = texture2D(uOrt, lc / " + TS.toFixed(1) + ").rgb * uOrtoTint;\n float dd = dn(vWP.xz * 0.9) * 0.45 + dn(vWP.xz * 3.3) * 0.3 + dn(vWP.xz * 12.0) * 0.25;\n gl_FragColor.rgb *= (1.0 - (1.0 - (0.82 + 0.36 * dd)) * (1.0 - 0.6 * abierto)) * vSomb;")
+        .replace("gl_FragColor.rgb *= vSomb;", "if (uModoOrto > 0.5) gl_FragColor.rgb = texture2D(uOrt, lc / " + TS.toFixed(1) + ").rgb * sRGBTransferOETF(vec4(uOrtoTint, 1.0)).rgb;\n float dd = dn(vWP.xz * 0.9) * 0.45 + dn(vWP.xz * 3.3) * 0.3 + dn(vWP.xz * 12.0) * 0.25;\n gl_FragColor.rgb *= (1.0 - (1.0 - (0.82 + 0.36 * dd)) * (1.0 - 0.6 * abierto)) * vSomb;")
         .replace("#include <normal_fragment_maps>", "#include <normal_fragment_maps>\n normal = pBump(-vViewPosition, normal, vec2(dFdx(hSuelo), dFdy(hSuelo)) * uBumpK * (1.0 - smoothstep(25.0, 90.0, length(vViewPosition))));")
         .replace("#include <dithering_fragment>", fin + "#include <dithering_fragment>");
     }
