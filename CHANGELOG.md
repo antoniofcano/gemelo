@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- La brújula (N ↑) oculta o muestra el minimapa del paseo, y se recuerda en el navegador; con el minimapa oculto se sigue guardando el rastro.
 - Caddy (dev y producción) sirve las recetas horneadas: `/teselas/<finca>/olivos/<huella>.br` tras sesión con `Content-Encoding: br` e `immutable`, `manifiesto.json` con `no-cache` y 404 para el resto de `olivos/` (`estado.json`…); `GEMELO_DEV_OLIVOS` monta la carpeta del hornero (O7d).
 - Olivos generados: con la página del servidor, el motor descarga las variantes horneadas (manifiesto por finca, huella, cabecera y caché de O5) en vez de calcularlas; si falta o falla algo, las calcula. `?debug` cuenta horneadas, calculadas y fallos; banderas `?olivosHorneado=0`, `?olivosDir=` y `?olivosPropios=N` (O7e, ADR-0018).
 - Hornero de olivos en Node (O7c, ADR-0018): `tuberia/olivos/hornero.mjs` hornea las 16 variantes (centenario3 × 4 semillas × E2/E2-VR × época actual y siguiente) a `<finca>/olivos/<huella>.br` y escribe el manifiesto el último; incremental, con `--limpia`, `--release` y `estado.json`; guardián `hornero.test.js`. Medida con Hituelo v3: 16 objetos, 4,44 MB (brotli 9), 9,3 s desde cero y 0,9 s la segunda vez. Los propios (`--propios`) no están implementados.

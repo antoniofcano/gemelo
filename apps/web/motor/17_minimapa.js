@@ -4,19 +4,25 @@
 //   16_vida (enQuad, mira, conejos, quad, enDron, dron), 19_balizas (dibujaBalizasMini), 25_perros (dibujaPerrosMini), 90_final (cuadro)
 // ===============================================================================
   // ---------- el minimapa del paseo: la ortofoto vista desde arriba con tú, tu rastro, el dron y los conejos (M o un toque cambia el zoom)
-  var mini = { cv: $("mapita"), cerca: false, rastro: [], t: 0 }, MW = 240, MH = Math.round(MW * ALTO / ANCHO);
+  var mini = { cv: $("mapita"), cerca: false, oculto: false, rastro: [], t: 0 }, MW = 240, MH = Math.round(MW * ALTO / ANCHO);
   (function () {
     var dpr = Math.min(window.devicePixelRatio || 1, 2); mini.cv.width = MW * dpr; mini.cv.height = MH * dpr; mini.cv.style.width = MW + "px"; mini.cv.style.height = MH + "px"; mini.dpr = dpr; mini.ctx = mini.cv.getContext("2d");
     function cambia() { mini.cerca = !mini.cerca; mini.t = 1; mini.cv.title = mini.cerca ? "Vista cercana: toca para ver toda la finca" : "Toda la finca: toca para acercar"; }
     mini.cv.addEventListener("click", cambia); mini.cv.title = "Toda la finca: toca para acercar";
+    // la brújula (N ↑) oculta o muestra el minimapa; se recuerda en este navegador (si el almacenamiento falla, solo dura la visita)
+    try { mini.oculto = localStorage.getItem("gemelo.minimapa") === "oculto"; } catch (e) {}
+    var bru = $("norte");
+    function pintaBru() { if (!bru) return; bru.setAttribute("aria-pressed", String(!mini.oculto)); bru.title = mini.oculto ? "Brújula: toca para mostrar el minimapa" : "Brújula: toca para ocultar el minimapa"; }
+    if (bru) bru.addEventListener("click", function () { mini.oculto = !mini.oculto; pintaBru(); try { localStorage.setItem("gemelo.minimapa", mini.oculto ? "oculto" : "visible"); } catch (e) {} });
+    pintaBru();
     window.addEventListener("keydown", function (e) { if (!paseando || e.code !== "KeyM") return; var t = e.target && e.target.tagName; if (t === "INPUT" || t === "SELECT" || t === "TEXTAREA") return; cambia(); e.preventDefault(); });
   })();
   function actualizaMinimapa(dt) {
-    mini.cv.hidden = !paseando;
+    mini.cv.hidden = !paseando || mini.oculto;
     if (!paseando) { mini.rastro.length = 0; return; }
     var u = mini.rastro[mini.rastro.length - 1];
     if (!u || Math.hypot(u[0] - pp.x, u[1] - pp.y) > 2.5) { mini.rastro.push([pp.x, pp.y]); if (mini.rastro.length > 240) mini.rastro.shift(); }
-    mini.t += dt; if (mini.t < 0.08) return; mini.t = 0;
+    mini.t += dt; if (mini.oculto || mini.t < 0.08) return; mini.t = 0;   // oculto: sigue el rastro, pero no se pinta
     var c = mini.ctx, k = mini.dpr, ancho = mini.cerca ? 150 : ANCHO, alto = ancho * ALTO / ANCHO, cx0 = mini.cerca ? pp.x : x0 + ANCHO / 2, cy0 = mini.cerca ? pp.y : yN - ALTO / 2;
     var vx0 = cx0 - ancho / 2, vy1 = cy0 + alto / 2, esc = MW / ancho;     // ventana del mapa: x este, y norte
     var X = function (x) { return (x - vx0) * esc; }, Y = function (y) { return (vy1 - y) * esc; };

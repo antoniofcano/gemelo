@@ -28,7 +28,8 @@ header p { margin: 4px 0 0; color: var(--muted); max-width: 70ch; }
 .visor { position: relative; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--sky); height: clamp(420px, 70vh, 740px); touch-action: none; }
 .visor canvas { display: block; width: 100%; height: 100%; cursor: grab; }
 .visor canvas:active { cursor: grabbing; }
-.norte { position: absolute; top: 12px; left: 14px; font-family: var(--display); font-size: 13px; color: var(--fg); background: color-mix(in srgb, var(--panel) 80%, transparent); padding: 4px 9px; border-radius: 99px; border: 1px solid var(--line); pointer-events: none; }
+.norte { position: absolute; top: 12px; left: 14px; font-family: var(--display); font-size: 13px; color: var(--fg); background: color-mix(in srgb, var(--panel) 80%, transparent); padding: 4px 9px; border-radius: 99px; border: 1px solid var(--line); cursor: pointer; min-height: 32px; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.norte[aria-pressed="false"] { opacity: 0.7; }
 .ayuda { position: absolute; left: 14px; bottom: 12px; font-size: 12px; color: var(--muted); background: color-mix(in srgb, var(--panel) 80%, transparent); padding: 4px 9px; border-radius: 6px; pointer-events: none; }
 .ficha { position: absolute; right: 12px; top: 12px; width: min(250px, calc(100% - 24px)); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; box-shadow: 0 6px 24px rgba(0,0,0,.18); }
 .ficha[hidden] { display: none; }
@@ -184,7 +185,7 @@ html.sin-scroll, html.sin-scroll body { overflow: hidden !important; }
     <div class="col">
     <div class="visor" id="visor">
       <canvas id="lienzo" aria-label="Vista 3D de la parcela Cerro Velasco; arrastra para girar, rueda para acercar"></canvas>
-      <div class="norte">N ↑</div>
+      <button type="button" class="norte" id="norte" aria-pressed="true" title="Brújula: toca para ocultar o mostrar el minimapa">N ↑</button>
       <div class="t-ins" id="tIns"><span class="t-flecha" id="tFlecha" aria-hidden="true">↑</span><span id="tInsT">Cielo despejado</span></div>
 <canvas id="mapita" class="mapita" role="img" aria-label="Minimapa: dónde estás en la finca" hidden></canvas>
       
