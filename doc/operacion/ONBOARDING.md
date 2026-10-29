@@ -2,7 +2,7 @@
 
 ## 1. Requisitos
 - Node ≥ 24 (`.nvmrc`), Python ≥ 3.10 (probado con 3.14), Chrome (ruta por defecto `C:/Program Files/Google/Chrome/Application/chrome.exe`; otra con la variable `CHROME`).
-- `npm i` (solo `playwright-core`) y `cd apps/web && npm i` (Vite y three 0.128.0). Para **regenerar datos reales** además `pip install -r requirements.txt` y las fuentes descargadas ([DATOS.md](DATOS.md)); para la puerta no hace falta.
+- `npm i` (solo `playwright-core`) y `cd apps/web && npm i` (Vite y three 0.186.1). Para **regenerar datos reales** además `pip install -r requirements.txt` y las fuentes descargadas ([DATOS.md](DATOS.md)); para la puerta no hace falta.
 
 ## 2. Primer vistazo
 1. Lee [CLAUDE.md](../../CLAUDE.md) (reglas de oro) y [ESTADO.md](../ESTADO.md).
@@ -25,7 +25,7 @@
 | 7 | Carga en Chrome headless: 0 errores de consola y presupuesto de dibujo bajo `pruebas/presupuesto.json` | `carga.test.js` |
 | 8 | Sin secretos, ni datos de la explotación, ni ficheros pesados versionados | `secretos.test.js` |
 | 9 | VR: sin WebXR no hay botón ni errores; con el mock, la prueba completa (**opcional**, `GEMELO_VR=1`) | `vr.test.js` |
-| 10 | Cliente web: la entrada de Vite es la concatenación exacta, three 0.128.0, y la página empaquetada carga sin errores y dibuja lo mismo que la artefacto | `web.test.js` |
+| 10 | Cliente web: la entrada de Vite es la concatenación exacta, three con versión exacta ≥ 0.167 y la misma en el importmap de la artefacto, los trozos de sombreador que parchea el motor existen, y la página empaquetada carga sin errores y dibuja lo mismo que la artefacto | `web.test.js` |
 | 11 | Exportadores multiplataforma: ninguna ruta con separador `\` escrito a mano en `tuberia/**/*.py` (se arman con `os.path.join`) | `multiplataforma.test.js` |
 | 12 | Catálogo de olivos-tipo: el catálogo sintético cumple su esquema (ajv), cada glb pasa `gltf-validator` y su presupuesto de triángulos por nivel, el generador es determinista; en Chrome, instalar y retirar el catálogo funciona sin cambiar lo de siempre | `olivos.test.js` |
 | 13 | Entorno de desarrollo: compose válido, imágenes con versión fija + digest sin preliminares, puertos solo en 127.0.0.1, sin secretos; e2e opcional con Docker (`GEMELO_DOCKER=1`) | `dev.test.js` |

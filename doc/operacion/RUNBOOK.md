@@ -5,7 +5,7 @@ Primero, siempre: abre la página con `?debug` y la consola del navegador. `wind
 ## No carga / se queda en «cargando»
 1. Consola: ¿`PAGEERROR`? Casi siempre es un módulo con un error de sintaxis o un orden roto: `npm run puerta` (sintaxis) lo localiza.
 2. `file://` sin servidor: el modo ficheros necesita `fetch` y no funciona; sirve con `python -m http.server 8000`.
-3. three.js viene de cdnjs: sin red no hay motor.
+3. three viene de jsDelivr (importmap de la salida artefacto): sin red no hay motor. La web de Vite lo lleva empaquetado.
 4. Cerro embebido: ¿pesa más de 16 MB? La plataforma lo rechaza.
 
 ## Una tesela falla o falta

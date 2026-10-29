@@ -11,7 +11,7 @@
 | Ortofoto PNOA 2022 | IGN (WMS) | © IGN, CC BY 4.0 |
 | NDVI | Sentinel-2 (48 fechas), Planetary Computer | Copernicus |
 | Suelo | SoilGrids | ISRIC, CC BY 4.0 |
-| three.js r128 | cdnjs | MIT |
+| three.js 0.186.1 | npm (web) y jsDelivr (salida artefacto, importmap) | MIT |
 | Parcelas, marcas de olivos, datos de la explotación | OlivarTrack | **privado**, no se versiona |
 
 ## Nomenclatura de hojas

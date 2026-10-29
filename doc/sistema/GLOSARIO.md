@@ -23,7 +23,7 @@ Términos del proyecto, en el sentido en que los usa el código y la documentaci
 | **Fichero de apoyo** | Fichero publicado junto a la página (`t/<kx>_<ky>.json\|jpg`). Límites en PUBLICACION. ADR-0008. |
 | **Embebido / ficheros** | Los dos modos de montaje: todo en un HTML (Cerro) o página ligera + `t/` (Hituelo). |
 | **Perfil VR** | Nivel de rendimiento del modo VR (`VR_PERFILES`: fracción de árboles, radio, tope de triángulos, hierba); baja si el JS pasa de 13 ms. ADR-0005. |
-| **Rig** | `Group` que contiene la cámara en VR; three r128 no permite desplazar el espacio de referencia, así que se mueve el rig. |
+| **Rig** | `Group` que contiene la cámara en VR; se mueve el rig en vez de desplazar el espacio de referencia (lo decidió r128, que no podía; con three 0.186.1 se conserva, ADR-0016). |
 | **SwiftShader** | Renderizado por software de Chrome headless: vale para contar llamadas, triángulos y memoria, **no** para fps. |
 | **`?debug`** | Parámetro de URL que muestra fps, ms de JS, llamadas, triángulos, teselas y olivos por nivel. |
 | **Puerta** | La lista de comprobaciones que debe pasar todo commit (ONBOARDING). |

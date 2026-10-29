@@ -1,6 +1,6 @@
 # Gemelo
 
-Gemelo digital en 3D de fincas de olivar, para el navegador (three.js r128): terreno, copas y troncos de cada olivo medidos con LiDAR,
+Gemelo digital en 3D de fincas de olivar, para el navegador (three.js 0.186.1): terreno, copas y troncos de cada olivo medidos con LiDAR,
 suelo con ortofoto y NDVI, tiempo, vida, sonido, paseo en primera persona, vuelo, minimapa y modo VR (WebXR, Meta Quest).
 Nace como mockup de [OlivarTrack](https://github.com/antoniofcano/olivartrack) para Cano & Damas Oleicultores.
 

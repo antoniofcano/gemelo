@@ -59,7 +59,7 @@ El **panel flotante** (1 × 0,75 m, a ~1 m delante, te sigue con calma si te ale
 - La lectura en vivo por MCP (Olivartrack/Vigía) **dentro de VR**: no se probó.
 
 ## Límites conocidos / decisiones
-- three.js r128 **no puede desplazar el espacio de referencia** (no tiene `setReferenceSpace`): por eso la cámara cuelga de un grupo («rig»). Mientras dura la sesión `camera.position` es la pose local de la cabeza; la cabeza en el mundo es `VRX.cab`. El resto del programa sigue leyendo `camera.position` porque `actualizaPaseo()` lo deja en el mundo justo antes de usarlo.
+- La cámara cuelga de un grupo («rig»): r128 no podía desplazar el espacio de referencia y, con three 0.186.1, el rig se conserva tal cual (ADR-0016). Mientras dura la sesión `camera.position` es la pose local de la cabeza; la cabeza en el mundo es `VRX.cab`. El resto del programa sigue leyendo `camera.position` porque `actualizaPaseo()` lo deja en el mundo justo antes de usarlo.
 - No hay colisión con troncos a la altura de la cabeza al caminar en el cuarto (solo con el desplazamiento por palanca/teletransporte); salir de los límites de la finca está acotado.
 - El mirador y el vuelo suben fuera del radio de los olivos de nivel 0; el perfil sigue aplicándose.
 - Sin `bounded-floor` ni guardián propio: el guardián del Quest manda.

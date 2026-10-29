@@ -6,8 +6,8 @@ Mapa vivo. Si el código cambia de forma, esto cambia en el mismo commit. Decisi
 
 Hay dos salidas con el mismo motor (`apps/web/motor/`, ADR-0010):
 
-- **Web (Vite), la del producto:** `apps/web/herramientas/genera_motor.mjs` escribe `entrada/motor.generado.js` = `import * as THREE from "three"` + la concatenación de `motor/*.js` en orden, y un `index.html` con la plantilla y el `#datos`; `vite build` lo empaqueta en `apps/web/dist/` con three 0.128.0. El guardián `web.test.js` comprueba que dibuja lo mismo que la salida artefacto.
-- **Artefacto (sin servidor), la secundaria:** `tuberia/salida_artefacto/montar_v2.py` concatena `apps/web/plantilla.html` + `<script type="application/json" id="datos">` (el `D` de la finca) + three.js r128 (cdnjs) + **todos los `apps/web/motor/*.js` en orden alfabético** dentro de un solo `<script>`. `01_datos.js` abre una IIFE con `"use strict"` y `99_cierre.js` la cierra: todo el motor comparte ámbito, sin módulos ES. El orden de los prefijos (`02_` < `02b_` < `03_`) es el orden de montaje y, por tanto, de dependencias.
+- **Web (Vite), la del producto:** `apps/web/herramientas/genera_motor.mjs` escribe `entrada/motor.generado.js` = `import * as THREE from "three"` + la concatenación de `motor/*.js` en orden, y un `index.html` con la plantilla y el `#datos`; `vite build` lo empaqueta en `apps/web/dist/` con three 0.186.1 (versión exacta de `apps/web/package.json`, [ADR-0016](../adr/0016-actualizacion-de-three.md)). El guardián `web.test.js` comprueba que dibuja lo mismo que la salida artefacto y con la misma three.
+- **Artefacto (sin servidor), la secundaria:** `tuberia/salida_artefacto/montar_v2.py` concatena `apps/web/plantilla.html` + `<script type="application/json" id="datos">` (el `D` de la finca) + un `<script type="importmap">` que lleva `three` y `three/addons/` a jsDelivr con la misma versión + **todos los `apps/web/motor/*.js` en orden alfabético** dentro de un solo `<script type="module">` que empieza por `import * as THREE from "three"`. `01_datos.js` abre una IIFE con `"use strict"` y `99_cierre.js` la cierra: todo el motor comparte ámbito, sin módulos ES. El orden de los prefijos (`02_` < `02b_` < `03_`) es el orden de montaje y, por tanto, de dependencias.
 
 Dos modos: **embebido** (`D` incluye `t{}`; ≤16 MB, Cerro) y **ficheros** (`D.teselas` es el índice y la página pide `t/<clave>.json|jpg`; `D.base` da el prefijo, por defecto relativo; Hituelo).
 
@@ -18,7 +18,7 @@ Dos modos: **embebido** (`D` incluye `t{}`; ≤16 MB, Cerro) y **ficheros** (`D.
 | `01_datos.js` | `D`, `$`, `fmt`, `b64`, `i16` | abre la IIFE |
 | `02_mundo.js` | `Mundo` (`suelo`, `copaAlta`, `orto`, `colorSuelo`, `alCargar`, `arranca`, `actualiza`, `liberaOrtoLejos`…) | teselas, carga, `desp`/`colorEn` |
 | `02b_cola.js` | `Cola` (`add`, `corre(ms)`, `vacia`) | trabajos como generadores |
-| `03_escena.js` | `renderer`, `scene`, `camera`, luces | `far = max(5000, 4·EXT)`, `near` inicial 0,5 |
+| `03_escena.js` | `renderer`, `scene`, `camera`, luces (`LUZ_SOL`, `LUZ_CIELO`), `SRGB`, `texColor`, `colorVertSRGB` | `far = max(5000, 4·EXT)`, `near` inicial 0,5; salida sRGB y convenio de color: lo escrito a mano va en sRGB y se pasa a lineal al entrar en la luz (ADR-0016) |
 | `04_terreno.js` | `Terreno` | 3 niveles por tesela, sombreador (NDVI, escarcha, nubes, suelo abierto) |
 | `05_nube.js` | `actualizaNubeTeselas` | un `Points` por tesela |
 | `06_arboles.js`, `07_follaje.js` | copa, tronco, hojas | piezas del nivel 0 |
