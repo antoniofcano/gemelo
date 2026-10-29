@@ -370,7 +370,11 @@
     var LK = null, sala = null, SP = null, porId = Object.create(null), huecos = [], bloqueados = Object.create(null), yo = null, manoDe = ["", ""];
     var ui = null, mensajes = [], tChat = 0, tGente = 0, claveGente = "", conectando = false, poseL = { tipo: 1, seq: 0, t: 0, cab: { p: [0, 0, 0], q: [0, 0, 0, 1] }, izq: null, der: null };
     var mDesc = null, vDesc = null, qDesc = null, sDesc = null;
+    // medida de las pruebas (P4): con window.__presenciaMide puesto ANTES de cargar, se apunta cada pose que llega
+    // [identidad, reloj del emisor (bytes 4-7), llegada en performance.now()]; se lee y vacía con __presencia("llegadas")
+    var medLlegadas = null;
     function iniciaRed() {
+      if (window.__presenciaMide) medLlegadas = [];
       montaGrafica(MAXV, MAXV, MAXV * 2);
       for (var k = MAXV - 1; k >= 0; k--) huecos.push(k);
       [mCuerpo, mCabeza, mSombrero, mManos, mNombres].forEach(function (m) { for (var i = 0; i < m.count; i++) m.setMatrixAt(i, m4.makeScale(0, 0, 0)); });
@@ -407,7 +411,9 @@
         s.on(LK.RoomEvent.Reconnecting, function () { ponEstado("Reconectando…", false); });
         s.on(LK.RoomEvent.Reconnected, function () { ponEstado("", false); });
         s.on(LK.RoomEvent.Disconnected, function (motivo) { alSalir(s, motivo); });
-        await s.connect(t.url, t.token, { autoSubscribe: false });
+        // la api da wss://… o una ruta del mismo origen (/rtc, que el Caddy pasa a LiveKit): se resuelve contra la página
+        // (https → wss), así la misma configuración vale desde https://localhost y desde la IP de la red local
+        await s.connect(new URL(t.url, location.href).href.replace(/^http/, "ws"), t.token, { autoSubscribe: false });
         if (!activo) { s.disconnect(); return; }
         sala = s;
         yo = { identidad: s.localParticipant.identity, info: SalaPose.leeInfo(s.localParticipant.metadata) };
@@ -424,7 +430,7 @@
       Object.keys(porId).forEach(saleOtro);
       if (!activo) return;
       var R = LK && LK.DisconnectReason ? LK.DisconnectReason : {};
-      ponEstado(motivo === R.PARTICIPANT_REMOVED ? "La oficina te ha sacado de la visita compartida." : motivo === R.DUPLICATE_IDENTITY ? "Has entrado desde otro aparato: aquí se ha cerrado la visita compartida." : "Te has desconectado de la visita compartida.", true);
+      ponEstado(motivo === R.PARTICIPANT_REMOVED ? "La oficina te ha sacado de la visita compartida." : motivo === R.DUPLICATE_IDENTITY ? "Has abierto la visita compartida en otra pestaña: aquí se ha cerrado." : "Te has desconectado de la visita compartida.", true);
     }
     function entraOtro(p) {
       var id = p.identity; if (!id || porId[id]) return porId[id] || null;
@@ -443,7 +449,9 @@
       if (!p || !p.identity || (yo && p.identity === yo.identidad)) return;
       if (tema === "pose") {
         var a = porId[p.identity] || entraOtro(p); if (!a) return;
-        if (SalaPose.recibe(SP, p.identity, datos, performance.now())) est.recibidos++; else est.viejos++;
+        var llega = performance.now();
+        if (SalaPose.recibe(SP, p.identity, datos, llega)) est.recibidos++; else est.viejos++;
+        if (medLlegadas && datos.byteLength >= 8) { medLlegadas.push([p.identity, new DataView(datos.buffer, datos.byteOffset, datos.byteLength).getUint32(4, true), llega]); if (medLlegadas.length > 20000) medLlegadas.shift(); }
       } else if (tema === "chat") {
         var txt = Chat.decodifica(datos); if (txt === null || bloqueados[p.identity]) return;
         var b = porId[p.identity]; anadeMensaje(b ? b.alias : SalaPose.leeInfo(p.metadata).alias, txt, false);
@@ -578,6 +586,7 @@
     }
     function texto() { return activo ? "presencia (" + variante + ") " + est.n + " · cerca " + est.cerca + " · " + est.bps + " B/s · JS " + est.ms.toFixed(2) + " ms" + (variante === "sim" ? " · retardo p95 " + est.retP95 + " ms" : sala ? "" : " · sin conexión") : ""; }
     if (variante === "sim") inicia(); else if (variante === "red") iniciaRed();
-    return { activo: function () { return activo; }, actualiza: actualiza, estado: estado, libera: libera, texto: texto };
+    function llegadas() { return { origen: performance.timeOrigin, l: medLlegadas ? medLlegadas.splice(0) : null }; }
+    return { activo: function () { return activo; }, actualiza: actualiza, estado: estado, libera: libera, texto: texto, llegadas: llegadas };
   })();
-  window.__presencia = function (accion) { if (accion === "libera") Presencia.libera(); return Presencia.estado(); };   // gancho de pruebas: estado y, con "libera", soltar todo
+  window.__presencia = function (accion) { if (accion === "libera") Presencia.libera(); if (accion === "llegadas") return Presencia.llegadas(); return Presencia.estado(); };   // gancho de pruebas: estado; con "libera", soltar todo; con "llegadas", las poses apuntadas (P4)

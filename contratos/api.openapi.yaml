@@ -382,8 +382,9 @@ paths:
     post:
       summary: Token para entrar a la sala libre de LiveKit (F2, presencia compartida; contratos/livekit-roles.json y presencia.md)
       description: >
-        Sala fija «hituelo-libre» (decisiones 39 y 60). La identidad es un id opaco y estable por hogar (ni correo ni id
-        de la base). Permisos del rol según livekit-roles.json: en F2 solo datos (pose y chat), sin audio ni vídeo, sin
+        Sala fija «hituelo-libre» (decisiones 39 y 60). La identidad es un id opaco, uno por sesión (aparato), con el
+        hogar como prefijo: h_<22>_<8> (ni correo, ni id de la base, ni id de la sesión). El mismo hogar puede estar a la
+        vez en varios aparatos; dos pestañas de la misma sesión comparten identidad. Permisos del rol según livekit-roles.json: en F2 solo datos (pose y chat), sin audio ni vídeo, sin
         roomAdmin. Los metadatos (alias, avatar, rol, dispositivo) los pone la api y el cliente no puede cambiarlos.
         El token caduca a los 15 minutos (solo sirve para entrar). Nada de la sala se guarda.
       security: [{ sesion: [] }]
@@ -402,9 +403,9 @@ paths:
                 additionalProperties: false
                 required: [url, sala, identidad, token, caduca_en]
                 properties:
-                  url: { type: string, description: "wss:// de LiveKit al que se conecta el navegador (ws:// solo fuera de producción)" }
+                  url: { type: string, description: "a dónde se conecta el navegador: wss:// de LiveKit (ws:// solo fuera de producción) o una ruta del mismo origen (/rtc) que el cliente resuelve contra su página (https → wss)" }
                   sala: { const: hituelo-libre }
-                  identidad: { type: string, pattern: "^h_[A-Za-z0-9_-]{22}$" }
+                  identidad: { type: string, pattern: "^h_[A-Za-z0-9_-]{22}_[A-Za-z0-9_-]{8}$" }
                   token: { type: string, description: JWT de LiveKit }
                   caduca_en: { type: string, format: date-time }
         "400": { $ref: "#/components/responses/EntradaNoValida" }
@@ -417,9 +418,10 @@ paths:
     post:
       summary: Saca a un hogar de la sala libre (moderación mínima de F2, decisión 42; solo la oficina)
       description: >
-        La api lo saca con RoomService.RemoveParticipant (ningún token de cliente lleva roomAdmin), no le da token nuevo
-        durante 15 minutos (en memoria: no sobrevive a un reinicio de la api) y lo apunta en la auditoría
-        (admin.presencia_expulsado: hogar, sala, si estaba y el motivo). No es un bloqueo de la cuenta: para eso, revocar
+        La api saca TODAS las conexiones del hogar (una por aparato: lista la sala con RoomService.ListParticipants y
+        quita con RemoveParticipant las que llevan su prefijo; ningún token de cliente lleva roomAdmin), no le da token
+        nuevo durante 15 minutos (en memoria: no sobrevive a un reinicio de la api) y lo apunta en la auditoría
+        (admin.presencia_expulsado: hogar, sala, si estaba, cuántas conexiones y el motivo). No es un bloqueo de la cuenta: para eso, revocar
         sus sesiones o desactivar el hogar.
       security: [{ sesion: [] }]
       requestBody:
@@ -435,10 +437,10 @@ paths:
                 motivo: { type: string, minLength: 1, maxLength: 200 }
       responses:
         "200":
-          description: hecho (estaba o no en la sala)
+          description: hecho (estaba o no en la sala; conexiones = cuántas se sacaron)
           content:
             application/json:
-              schema: { type: object, additionalProperties: false, required: [estaba_en_sala], properties: { estaba_en_sala: { type: boolean } } }
+              schema: { type: object, additionalProperties: false, required: [estaba_en_sala, conexiones], properties: { estaba_en_sala: { type: boolean }, conexiones: { type: integer, minimum: 0 } } }
         "400": { $ref: "#/components/responses/EntradaNoValida" }
         "401": { $ref: "#/components/responses/SinSesion" }
         "403": { $ref: "#/components/responses/SinPermiso" }

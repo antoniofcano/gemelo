@@ -1,14 +1,16 @@
 {
   "$comment": "Qué puede hacer cada rol en una sala de LiveKit en F2 (presencia compartida): SOLO datos (pose y chat), sin audio ni vídeo. La api firma el token con estos permisos; el cliente no los elige. Descripción y tabla de bytes de la pose: contratos/presencia.md. Lo comprueba pruebas/guardianes/presencia.test.js. Los nombres de los permisos son los del VideoGrant de livekit-server-sdk 2.19.2 (comprobado contra sus tipos; apps/api/src/presencia/livekit.ts los copia y apps/api/pruebas/unidad/presencia.test.ts compara las dos cosas y decodifica el token). Cómo los aplica el servidor (p. ej. canPublishSources vacío con canPublish false) NO se ha comprobado contra LiveKit real. Cambiar un permiso es cambiar este fichero, su versión y presencia.md en el mismo commit.",
   "contrato": "livekit-roles",
-  "version": 1,
+  "version": 2,
   "fase": "F2",
   "salas": {
     "visita_libre": { "nombre": "hituelo-libre", "fija": true, "nota": "decisiones 39 y 60: una sala fija de Hituelo para la visita libre, con este nombre" },
     "guiada": { "nombre": "guiada-<id de la visita>", "fija": false, "nota": "una sala por visita guiada; llega con F3 (voz)" }
   },
   "identidad": {
-    "identity": "id opaco de la persona, emitido por la api (ni correo, ni alias, ni nada derivable de ellos)",
+    "identity": "id opaco, emitido por la api (ni correo, ni alias, ni id de la base, ni nada derivable de ellos), uno por sesión (aparato): h_<22: HMAC del hogar>_<8: HMAC de la sesión>",
+    "formato": "^h_[A-Za-z0-9_-]{22}_[A-Za-z0-9_-]{8}$",
+    "nota": "versión 2 (2026-10-29): antes era una por hogar y un segundo aparato del mismo hogar echaba al primero. El prefijo h_<22> es el del hogar: la api lo recalcula para expulsar a todas sus conexiones. Dos pestañas de la misma sesión comparten identidad (la segunda sustituye a la primera)",
     "metadata": { "lo_pone": "la api, dentro del token", "campos": ["alias", "avatar", "rol", "dispositivo"], "el_cliente_puede_cambiarlo": false }
   },
   "temas_de_datos": {

@@ -8,6 +8,7 @@ import { TokenVerifier } from "livekit-server-sdk";
 import { construyeApp } from "../../src/app.ts";
 import { TEXTO_ACEPTADO, TEXTO_LIMITE } from "../../src/auth/rutas.ts";
 import { migra } from "../../src/bd/migra.ts";
+import { esDelHogar } from "../../src/presencia/livekit.ts";
 import { hashToken } from "../../src/seguridad/cripto.ts";
 import { hashCodigo, normalizaCodigo } from "../../src/auth/vinculo.ts";
 import { TEXTO_LIMITE_VINCULO } from "../../src/auth/rutas.ts";
@@ -27,7 +28,12 @@ let ipN = 0;
 const LIVEKIT = { GEMELO_LIVEKIT_URL: "http://127.0.0.1:1", GEMELO_LIVEKIT_URL_PUBLICA: "ws://localhost:7880", GEMELO_LIVEKIT_CLAVE: "devintegracion", GEMELO_LIVEKIT_SECRETO: "k".repeat(40) };
 // la sala, de mentira: apunta a quién se saca (la expulsión de verdad contra LiveKit es de P4)
 const moderadorDePrueba = { presentes: new Set<string>(), llamadas: [] as [string, string][],
-  async expulsa(sala: string, identidad: string) { this.llamadas.push([sala, identidad]); return this.presentes.delete(identidad); } };
+  async expulsaHogar(sala: string, prefijo: string) {
+    this.llamadas.push([sala, prefijo]);
+    let n = 0;
+    for (const i of [...this.presentes]) if (esDelHogar(i, prefijo)) { this.presentes.delete(i); n++; }
+    return n;
+  } };
 const ADMIN = "oficina@example.com", ANA = "ana@example.com", LUIS = "luis@example.com";
 
 before(async () => {
@@ -320,7 +326,7 @@ test("presencia: con sesión, token de la sala libre con identidad opaca, metada
   const b = r.json() as { url: string; sala: string; identidad: string; token: string; caduca_en: string };
   assert.deepEqual(Object.keys(b).sort(), ["caduca_en", "identidad", "sala", "token", "url"]);
   assert.equal(b.sala, "hituelo-libre");
-  assert.match(b.identidad, /^h_[A-Za-z0-9_-]{22}$/);
+  assert.match(b.identidad, /^h_[A-Za-z0-9_-]{22}_[A-Za-z0-9_-]{8}$/);
   const c = await new TokenVerifier(LIVEKIT.GEMELO_LIVEKIT_CLAVE, LIVEKIT.GEMELO_LIVEKIT_SECRETO).verify(b.token);
   assert.equal(c.sub, b.identidad);
   const m = JSON.parse(c.metadata!);
@@ -328,30 +334,35 @@ test("presencia: con sesión, token de la sala libre con identidad opaca, metada
   assert.equal(m.rol, "hogar"); assert.equal(m.dispositivo, "movil");
   assert.ok(!JSON.stringify(c).includes("@"), "nada del correo en el token");
   assert.equal(c.video?.canPublish, false);
-  // la misma identidad en otra sesión del mismo hogar; distinta para otro hogar
-  const otra = (await con("POST", "/api/presencia/token", await entra(LUIS), { dispositivo: "quest" })).json().identidad;
-  assert.equal(otra, b.identidad);
+  // la misma sesión repite identidad; otra sesión (otro aparato) del mismo hogar lleva otra con el mismo prefijo de hogar
+  assert.equal((await con("POST", "/api/presencia/token", luis, { dispositivo: "movil" })).json().identidad, b.identidad);
+  const otra = (await con("POST", "/api/presencia/token", await entra(LUIS), { dispositivo: "quest" })).json().identidad as string;
+  assert.notEqual(otra, b.identidad);
+  assert.equal(otra.slice(0, 25), b.identidad.slice(0, 25), "el prefijo del hogar");
   const admin = await entra(ADMIN);
-  assert.notEqual((await con("POST", "/api/presencia/token", admin, { dispositivo: "escritorio" })).json().identidad, b.identidad);
+  assert.notEqual((await con("POST", "/api/presencia/token", admin, { dispositivo: "escritorio" })).json().identidad.slice(0, 25), b.identidad.slice(0, 25));
 });
 
 test("presencia: solo la oficina expulsa; queda en la auditoría y el expulsado no recibe token nuevo", async t => {
   if (salta(t)) return;
-  const admin = await entra(ADMIN), luis = await entra(LUIS);
+  const admin = await entra(ADMIN), luis = await entra(LUIS), luisQuest = await entra(LUIS);
   const identidad = (await con("POST", "/api/presencia/token", luis, { dispositivo: "escritorio" })).json().identidad as string;
+  const identidadQuest = (await con("POST", "/api/presencia/token", luisQuest, { dispositivo: "quest" })).json().identidad as string;
   assert.equal((await con("POST", "/api/admin/presencia/expulsar", luis, { hogar_id: ids[ADMIN]! })).statusCode, 403, "un hogar no expulsa");
   assert.equal((await con("POST", "/api/admin/presencia/expulsar", admin, { hogar_id: 999999 })).statusCode, 404);
-  moderadorDePrueba.presentes.add(identidad);
+  moderadorDePrueba.presentes.add(identidad); moderadorDePrueba.presentes.add(identidadQuest);
   const r = await con("POST", "/api/admin/presencia/expulsar", admin, { hogar_id: ids[LUIS]!, motivo: "prueba de moderación" });
   assert.equal(r.statusCode, 200, r.body);
-  assert.deepEqual(r.json(), { estaba_en_sala: true });
-  assert.deepEqual(moderadorDePrueba.llamadas.at(-1), ["hituelo-libre", identidad]);
+  assert.deepEqual(r.json(), { estaba_en_sala: true, conexiones: 2 }, "sus dos aparatos");
+  assert.deepEqual(moderadorDePrueba.llamadas.at(-1), ["hituelo-libre", identidad.slice(0, 24)]);
   const aud = await bd.dueno.query("SELECT hogar_id, detalle FROM auditoria WHERE accion = 'admin.presencia_expulsado' ORDER BY id DESC LIMIT 1");
   assert.equal(Number(aud.rows[0].hogar_id), ids[ADMIN]);
-  assert.deepEqual(aud.rows[0].detalle, { hogar: ids[LUIS], sala: "hituelo-libre", estaba: true, motivo: "prueba de moderación" });
-  const otra = await con("POST", "/api/presencia/token", luis, { dispositivo: "escritorio" });
-  assert.equal(otra.statusCode, 403);
-  assert.equal(otra.json().error, "expulsado");
+  assert.deepEqual(aud.rows[0].detalle, { hogar: ids[LUIS], sala: "hituelo-libre", estaba: true, conexiones: 2, motivo: "prueba de moderación" });
+  for (const s of [luis, luisQuest, await entra(LUIS)]) {
+    const otra = await con("POST", "/api/presencia/token", s, { dispositivo: "escritorio" });
+    assert.equal(otra.statusCode, 403);
+    assert.equal(otra.json().error, "expulsado");
+  }
 });
 
 // ---------------------------------------------------------------- roles y RGPD

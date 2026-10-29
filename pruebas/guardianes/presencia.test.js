@@ -130,7 +130,7 @@ test("búfer: una mano que deja de llegar deja de dibujarse; la cabeza sigue", (
 
 test("contratos/livekit-roles.json: en F2 ningún rol publica audio ni vídeo, todos publican datos, nadie lleva roomAdmin y la identidad es opaca", () => {
   const R = JSON.parse(lee("contratos/livekit-roles.json"));
-  assert.strictEqual(R.contrato, "livekit-roles"); assert.strictEqual(R.version, 1); assert.strictEqual(R.fase, "F2");
+  assert.strictEqual(R.contrato, "livekit-roles"); assert.strictEqual(R.version, 2); assert.strictEqual(R.fase, "F2");
   assert.deepStrictEqual(Object.keys(R.roles).sort(), ["admin", "corresponsal", "guia", "hogar"], "los roles de contratos/sesion.md");
   for (const [rol, p] of Object.entries(R.roles)) {
     assert.strictEqual(p.canPublish, false, rol + ": canPublish (pistas de audio o vídeo) debe ser false en F2");
@@ -139,7 +139,8 @@ test("contratos/livekit-roles.json: en F2 ningún rol publica audio ni vídeo, t
     assert.strictEqual(p.roomAdmin, false, rol + ": la moderación la hace la api, no un cliente");
     assert.strictEqual(p.canUpdateOwnMetadata, false, rol + ": el alias y el avatar los pone la api");
   }
-  assert.match(R.identidad.identity, /opaco/); assert.doesNotMatch(JSON.stringify(R.identidad.metadata.campos), /correo|email/);
+  assert.match(R.identidad.identity, /opaco/); assert.match(R.identidad.identity, /sesión/, "una identidad por sesión (aparato), no por hogar");
+  assert.ok(new RegExp(R.identidad.formato).test("h_" + "a".repeat(22) + "_" + "b-_c".repeat(2))); assert.doesNotMatch(JSON.stringify(R.identidad.metadata.campos), /correo|email/);
   assert.strictEqual(R.temas_de_datos.pose.fiable, false); assert.strictEqual(R.temas_de_datos.chat.se_guarda, false, "decisión 40");
   const md = lee("contratos/presencia.md");
   for (const s of ["24 B", "56 B", "smallest-three", "livekit-roles.json", "versión"]) assert.ok(md.includes(s), "presencia.md no menciona «" + s + "»");

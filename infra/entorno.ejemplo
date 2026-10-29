@@ -6,6 +6,7 @@
 #   sesion_secreto  ≥ 32 caracteres aleatorios para firmar la cookie (openssl rand -base64 48)
 #   smtp_clave      contraseña del buzón SMTP de OVH
 #   ot_token        token PROPIO de solo lectura de OlivarTrack (decisión 17)
+#   livekit_secreto API secret de LiveKit, ≥ 32 caracteres aleatorios (openssl rand -base64 48); F2
 # Nada de este fichero se versiona con valores reales. Copia: sudo install -m 0640 infra/entorno.ejemplo /etc/gemelo/entorno
 
 # --- web
@@ -52,7 +53,8 @@ GEMELO_OT=no
 GEMELO_OT_CADA_MIN=60
 
 # --- presencia compartida (F2, LiveKit). Sin GEMELO_LIVEKIT_URL la api la deja apagada (POST /api/presencia/token → 503).
-# El secreto (API secret, ≥ 32 caracteres) va en un fichero: GEMELO_LIVEKIT_SECRETO_FICHERO (aún no está en infra/compose.yml).
+# El secreto (API secret, ≥ 32 caracteres) NO va aquí: /etc/gemelo/secretos/livekit_secreto (el compose lo monta y pone
+# GEMELO_LIVEKIT_SECRETO_FICHERO). La URL pública puede ser wss://… o la ruta del mismo origen /rtc (el borde la pasa a LiveKit).
 # GEMELO_LIVEKIT_URL=http://livekit:7880
 # GEMELO_LIVEKIT_URL_PUBLICA=wss://gemelo.canoydamas.es/rtc
 # GEMELO_LIVEKIT_CLAVE=

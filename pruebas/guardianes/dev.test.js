@@ -115,11 +115,12 @@ test("ningún puerto publicado fuera de 127.0.0.1 (ni 0.0.0.0, ni sin IP)", () =
 
 // Interruptor de red local (--red-local, compose.red-local.yml): sin él, nada fuera de 127.0.0.1; con él, SOLO el https de la web
 const IP_EJEMPLO = "192.0.2.10";                // TEST-NET-1 (RFC 5737): no es de nadie; solo para interpolar
-test("red local: sin el interruptor todo en 127.0.0.1; con él solo el https de la web en GEMELO_DEV_IP (y la api admite ese origen)", t => {
+test("red local: sin el interruptor todo en 127.0.0.1; con él solo el https de la web y los medios de LiveKit (7881/tcp, 7882/udp) en GEMELO_DEV_IP", t => {
   const extra = lee("infra/dev/compose.red-local.yml").split("\n").filter(l => !/^\s*#/.test(l)).join("\n");
   assert.ok(!/0\.0\.0\.0|::\]?:/.test(extra), "el interruptor no abre a todas las interfaces");
   const puertosExtra = [...extra.matchAll(/^\s+- "(.*)"$/gm)].map(m => m[1]);
-  assert.deepStrictEqual(puertosExtra, ["${GEMELO_DEV_IP:?falta GEMELO_DEV_IP (la pone levanta.mjs --red-local)}:${GEMELO_DEV_PUERTO_HTTPS:-8743}:8443"], "el interruptor abre un solo puerto: el https de Caddy");
+  assert.deepStrictEqual(puertosExtra, ["${GEMELO_DEV_IP:?falta GEMELO_DEV_IP (la pone levanta.mjs --red-local)}:${GEMELO_DEV_PUERTO_HTTPS:-8743}:8443",
+    "${GEMELO_DEV_IP}:7881:7881", "${GEMELO_DEV_IP}:7882:7882/udp"], "el interruptor abre el https de Caddy y los medios de LiveKit, nada más (ni 7880)");
   assert.match(lee("infra/dev/compose.yml"), /SITIOS: "https:\/\/localhost:8443"/, "sin el interruptor, Caddy solo sirve https://localhost");
   assert.match(lee("infra/dev/Caddyfile"), /^\{\$SITIOS\} \{\n\ttls internal/m, "el sitio https sale de SITIOS, con la CA local");
   if (SIN_DOCKER) return t.skip(SIN_DOCKER + ": la validación con `docker compose config` NO se ha comprobado (las de texto sí)");
@@ -134,7 +135,10 @@ test("red local: sin el interruptor todo en 127.0.0.1; con él solo el https de 
   const sin = conf(["compose.yml"]);
   assert.deepStrictEqual(fuera(sin), [], "sin el interruptor (aunque GEMELO_DEV_IP esté puesta) nada escucha fuera de 127.0.0.1");
   const con = conf(["compose.yml", "compose.red-local.yml"]);
-  assert.deepStrictEqual(fuera(con), ["web " + IP_EJEMPLO + ":8743->8443"], "con el interruptor, solo el https de la web en la IP de la red");
+  assert.deepStrictEqual(fuera(con).sort(), ["livekit " + IP_EJEMPLO + ":7881->7881", "livekit " + IP_EJEMPLO + ":7882->7882", "web " + IP_EJEMPLO + ":8743->8443"], "con el interruptor, solo el https de la web y los medios de LiveKit en la IP de la red");
+  assert.strictEqual(con.services.livekit.environment.NODE_IP, IP_EJEMPLO, "LiveKit anuncia la IP de la red como candidato ICE");
+  assert.strictEqual(sin.services.livekit.environment.NODE_IP, "127.0.0.1", "sin el interruptor, el anfitrión");
+  assert.ok(!/^\s*node_ip\s*:/m.test(lee("infra/dev/livekit.yaml")), "livekit.yaml no lleva node_ip: mandaría sobre NODE_IP y --red-local no serviría");
   assert.ok(con.services.web.ports.some(p => p.host_ip === "127.0.0.1" && p.target === 8443), "y sigue en 127.0.0.1");
   assert.strictEqual(con.services.web.environment.SITIOS, "https://localhost:8443, https://" + IP_EJEMPLO + ":8443");
   const a = con.services.api.environment;

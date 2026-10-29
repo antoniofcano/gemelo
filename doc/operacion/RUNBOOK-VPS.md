@@ -49,7 +49,7 @@ Cada paso: qué se hace, cómo se ve que fue bien y cómo se deshace. Las órden
 |---|---|---|---|
 | 0 | **Copia de lo del vecino que se va a tocar:** el Caddyfile de borde a `…/Caddyfile.antes-gemelo-<fecha>` (con quien lleva Oficultor) y la línea base de `docker ps` de la lista previa | la copia existe y es idéntica (`cmp`) | nada que deshacer |
 | 1 | **Carpetas:** `install -d -m 0750 /etc/gemelo`, `install -d -m 0700 /etc/gemelo/secretos /var/backups/gemelo`, `install -d -m 0755 /srv/gemelo/publicado/{portada,finca,teselas}` | `ls -ld` de cada una | `rm -r /etc/gemelo /srv/gemelo /var/backups/gemelo` |
-| 2 | **Secretos**, cada uno en su fichero, nunca en variables ni en el repo (ver abajo) | `ls -l /etc/gemelo/secretos` (cinco ficheros, ninguno vacío, ninguno legible por «otros») | `shred -u /etc/gemelo/secretos/*` |
+| 2 | **Secretos**, cada uno en su fichero, nunca en variables ni en el repo (ver abajo) | `ls -l /etc/gemelo/secretos` (seis ficheros, ninguno vacío, ninguno legible por «otros») | `shred -u /etc/gemelo/secretos/*` |
 | 3 | **Entorno:** `install -m 0640 infra/entorno.ejemplo /etc/gemelo/entorno` y rellenar el buzón, el remitente y, si toca, OlivarTrack ([SMTP](#smtp-de-ovh-para-el-enlace-mágico)) | `grep -c ejemplo.invalid /etc/gemelo/entorno` da 0 | `rm /etc/gemelo/entorno` |
 | 4 | **Construir** en la ventana (gasta CPU): `docker compose -f infra/compose.yml build` | `docker image ls gemelo-api` | `docker image rm gemelo-api:0.2.0`. **Nunca** `docker system prune` ni `docker builder prune` sin filtro: borra también lo del vecino |
 | 5 | **Estáticos:** la portada y la entrada (`apps/web/dist-portada`, de `cd apps/web && npm run build:portada`) en `/srv/gemelo/publicado/portada`, la web construida (`apps/web/dist`) en `…/finca` y las teselas en `…/teselas`, legibles por todos (`0644`/`0755`): el Caddy interno corre sin capacidades y no se salta permisos | `find /srv/gemelo/publicado ! -perm -o+r` vacío | vaciar las carpetas |
@@ -70,7 +70,10 @@ Se escriben desde una sesión `ssh` en el VPS, sin pasar por el repo, un chat, u
 ```sh
 cd /etc/gemelo/secretos && umask 077
 openssl rand -base64 32 > pg_dueno; openssl rand -base64 32 > pg_api; openssl rand -base64 48 > sesion_secreto
+openssl rand -base64 48 > livekit_secreto   # F2: API secret de LiveKit; el compose exige el fichero aunque la presencia esté apagada
 ```
+
+`livekit_secreto` es el *API secret* de LiveKit: la api firma con él los tokens de la sala y el servidor de LiveKit, cuando entre en el compose de producción (F2), tendrá que conocer el mismo par (`GEMELO_LIVEKIT_CLAVE` y este secreto), también desde fichero y nunca escrito en el compose (cómo exactamente, al añadirlo: **[SUPUESTO]** su opción `key_file`). Mientras `/etc/gemelo/entorno` no traiga `GEMELO_LIVEKIT_URL`, la api no lo lee. Rotarlo es reescribir el fichero y recrear la api (y LiveKit): los tokens viejos dejan de valer al momento, y quien esté dentro sigue hasta que se reconecte **[NO PROBADO]**.
 
 Los que vienen de fuera (clave del buzón, token de OlivarTrack), pegados sin eco: `sudo bash -c 'umask 077; read -rs v; printf %s "$v" > /etc/gemelo/secretos/smtp_clave'` (igual `ot_token`; hasta tener el token, `echo no > ot_token` y `GEMELO_OT=no`: el compose exige que el fichero exista).
 
@@ -78,7 +81,7 @@ Los que vienen de fuera (clave del buzón, token de OlivarTrack), pegados sin ec
 
 ```sh
 chown 1000:70 pg_dueno pg_api && chmod 0440 pg_dueno pg_api        # db (uid 70) y migra/api (uid 1000)
-chown root:1000 sesion_secreto smtp_clave ot_token && chmod 0440 sesion_secreto smtp_clave ot_token
+chown root:1000 sesion_secreto smtp_clave ot_token livekit_secreto && chmod 0440 sesion_secreto smtp_clave ot_token livekit_secreto
 ```
 
 Al **cambiar** un secreto, el contenedor sigue viendo el fichero viejo si se sustituye (otro inodo) y la api solo lo lee al arrancar: siempre `docker compose -f infra/compose.yml up -d --no-deps --force-recreate api`. Las contraseñas de la base solo cuentan al crear el volumen; cambiarlas después es `ALTER ROLE … PASSWORD` con el dueño, y luego el fichero.

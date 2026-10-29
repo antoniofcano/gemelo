@@ -42,7 +42,6 @@ services:
       - /data:uid=1000,gid=1000,mode=0700
       - /config:uid=1000,gid=1000,mode=0700
     environment:
-      LIVEKIT_PUBLICO: "ws://localhost:${GEMELO_DEV_PUERTO_LIVEKIT:-7880}"
       PUERTO_HTTPS_PUBLICO: "${GEMELO_DEV_PUERTO_HTTPS:-8743}"   # http redirige a https://localhost:<este>
       SITIOS: "https://localhost:8443"   # el sitio https de Caddy; compose.red-local.yml le suma la IP de la red local
       FINCA_SERVIDA: "${GEMELO_DEV_FINCA:-hituelo}"   # la finca cuyo /teselas/<finca>/ sale de /srv/finca y /srv/tileset
@@ -88,7 +87,9 @@ services:
       resources:
         limits: { memory: 512m }
 
-  # LiveKit en modo desarrollo (fase 2): señalización 7880, ICE por TCP 7881 y UDP 7882 (un solo puerto multiplexado), todo en 127.0.0.1
+  # LiveKit en modo desarrollo (fase 2): ICE por TCP 7881 y UDP 7882 (un solo puerto multiplexado), todo en 127.0.0.1. La
+  # señalización del navegador entra por Caddy (wss://localhost:8743/rtc); 7880 queda en 127.0.0.1 para las herramientas
+  # (la prueba de carga en Node). Con --red-local, compose.red-local.yml abre 7881 y 7882 en la IP de la red (P4).
   livekit:
     <<: *comun
     image: livekit/livekit-server:v1.13.11@sha256:25cd902de7cacbd5f1f779f6a6ac1eae20ba8f56b0935934ce6b0ab80d1e3d20
@@ -100,6 +101,7 @@ services:
     command: ${GEMELO_DEV_LIVEKIT_ARGS:---config /etc/livekit.yaml --dev}
     environment:
       LIVEKIT_KEYS: "${GEMELO_DEV_LIVEKIT_CLAVE:?falta infra/dev/.env (lo crea npm run dev:arriba)}: ${GEMELO_DEV_LIVEKIT_SECRETO:?falta infra/dev/.env}"
+      NODE_IP: "127.0.0.1"             # el candidato ICE que anuncia (compose.red-local.yml pone la IP de la WiFi)
     ports:
       - "127.0.0.1:${GEMELO_DEV_PUERTO_LIVEKIT:-7880}:7880"
       - "127.0.0.1:7881:7881"
@@ -188,9 +190,9 @@ services:
       GEMELO_CORREO_REMITENTE: "gemelo@canoydamas.invalid"
       GEMELO_OT: "no"                  # sin OlivarTrack en local: la ficha sale con el aviso ot_sin_sincronia
       # presencia (F2): la api firma los tokens con las claves aleatorias de LiveKit de .env y le habla por la red interna;
-      # el navegador se conecta a LiveKit en el anfitrión (ws://localhost, solo este equipo; para la red local, P4)
+      # el navegador entra por el mismo origen («/rtc», que Caddy pasa a LiveKit): vale en localhost y con --red-local
       GEMELO_LIVEKIT_URL: "http://livekit:7880"
-      GEMELO_LIVEKIT_URL_PUBLICA: "ws://localhost:${GEMELO_DEV_PUERTO_LIVEKIT:-7880}"
+      GEMELO_LIVEKIT_URL_PUBLICA: "/rtc"
       GEMELO_LIVEKIT_CLAVE: ${GEMELO_DEV_LIVEKIT_CLAVE:?falta infra/dev/.env (lo crea npm run dev:arriba)}
       GEMELO_LIVEKIT_SECRETO: ${GEMELO_DEV_LIVEKIT_SECRETO:?falta infra/dev/.env (lo crea npm run dev:arriba)}
     healthcheck:

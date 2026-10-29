@@ -54,6 +54,35 @@ Cerro embebido, escenarios `lejos` y `cerca` de `pruebas/guardianes/_navegador.j
 - **VR con el WebXR simulado** (`pruebas/mock_xr.js`): con 10 y 40 visitantes entra en VR, los avatares siguen en la escena y llegan todos (`vistos = n`), sin errores. Las llamadas en VR no se comparan (varían de una pasada a otra con la carga).
 - **Red y retardo:** los de la simulación en el navegador no valen (la simulación va al ritmo de los fotogramas y SwiftShader da 1–3). Los de referencia son los de Node en `presencia.test.js` (códec: ≤ 5 mm y 0,241°; interpolación: ≤ 0,8 cm a 10 Hz y ≤ 6 cm a 2 Hz) y la carga útil calculada del contrato (24 B × 10 Hz = 240 B/s por cercano en escritorio; 560 B/s en Quest). Sin LiveKit no hay cifra de retardo real.
 
+## Presencia con LiveKit real (P4, 2026-10-29)
+
+Contrato: [presencia](../../contratos/presencia.md).
+
+`GEMELO_DOCKER=1 node --test pruebas/guardianes/presencia_dev.test.js`, entorno de `infra/dev` (LiveKit 1.13.11 `--dev` en Docker Desktop, límite de 256 MB; señalización por Caddy en `wss://localhost:8743/rtc`), Chrome headless con SwiftShader, todo en el **mismo equipo** (i5 de 4 núcleos, 7,7 GB, Windows 10). El retardo es el de extremo a extremo con el **reloj del emisor que va en la cabecera de la pose** (bytes 4–7) frente a la llegada: en el navegador, `performance.timeOrigin` de cada página más su `performance.now()`; en Node, el reloj de pared del equipo. Como emisor y receptor son el mismo equipo, el reloj es el mismo y no hay desfase que estimar; **por la WiFi o entre dos equipos no se ha medido.**
+
+| Qué | Muestras | p50 | p95 | p99 | Máx. | Pérdidas |
+|---|---|---|---|---|---|---|
+| Transporte: dos páginas ligeras (portada, sin WebGL) con el `livekit-client` 2.22.4 del motor, pose del contrato a 10 Hz, 20 s | 398 | 5,3 ms | **7,2 ms** | 8,1 ms | 12,6 ms | 0 % |
+| Motor: dos `/finca/?presencia=red` paseando, 20 s (dos mundos con SwiftShader: 1,9 fps; la pose sale y se atiende al ritmo de los fotogramas) | 74 | 302 ms | 702 ms | 777 ms | 777 ms | 0 % |
+
+- **El objetivo del plan (p95 < 250 ms) se cumple en el transporte** (LiveKit + navegador) con mucho margen. La cifra del motor en SwiftShader **no es de red**: con 1,9 fps cada pose espera al siguiente fotograma para salir y para atenderse (y sale a 1,9 Hz, no a 10). En un aparato con GPU a 60–72 fps eso son 14–17 ms más por lado **[SUPUESTO]**, sin medir: lo mide A6.
+- El retardo que ve quien mira es el de la tabla **más los 150 ms** del búfer de interpolación (contrato).
+- Cuatro pasadas del transporte: p50 4,3–5,8 ms, p95 7,1–7,7 ms, p99 7,9–19,7 ms, máximo 10,5–53,8 ms, pérdidas 0–2 %. Del motor, tres pasadas: p95 361–1.158 ms con 1,6–1,9 fps.
+
+**Carga: clientes ligeros en Node** (`@livekit/rtc-node` 1.1.0, el SDK oficial para Node; `pruebas/guardianes/_carga_presencia.mjs` en 4 procesos). Todos en la misma sala, cada uno publica su pose (24 B, no fiable, tema `pose`) cada 100 ms **a toda la sala** (el peor caso: todos cercanos), 60 s. CPU y memoria del contenedor de LiveKit con `docker stats` cada ~2 s (100 % = un núcleo).
+
+| Clientes (pasadas) | Tasa real por cliente | Mensajes recibidos / esperados | Pérdidas | Retardo p50 / p95 / p99 | CPU de LiveKit (media; máx.) | Memoria máx. de LiveKit | CPU de los clientes |
+|---|---|---|---|---|---|---|---|
+| 10 (1) | 9,9 Hz | 53.316 / 53.316 | 0 % | 6,4 / 15,7 / 29,7 ms | 47 %; 55 % | 82 MiB | ≈ 0,5 núcleos por proceso |
+| 20 (1) | 8,9 Hz | 202.692 / 202.692 | 0 % | 57 / 156 / 233 ms | 132 %; 167 % | 103 MiB | ≈ 1 núcleo por proceso (saturados) |
+| 40 (2) | 4,6–5,4 Hz | 412.104 / 433.602 y 453.944 / 501.189 | 5–9 % | 2,7–5,4 / 6,0–10,6 / 6,9–12,0 **s** | 179–239 %; 282–325 % | 156–182 MiB | ≈ 1,1 núcleos por proceso (saturados) |
+
+- **Con 40 la máquina no da:** los cuatro procesos de clientes llenan los cuatro núcleos (a 10 Hz serían 40 × 39 × 10 = 15.600 mensajes por segundo que recibir entre todos; llegaron ~6.900) y LiveKit compite con ellos; los clientes solo llegan a mandar a 4,6 Hz y su bucle de eventos se retrasa segundos. Ese retardo es sobre todo de los **clientes** saturados en el mismo equipo, no una cifra de LiveKit. Con 20 los clientes ya están al límite (8,9 Hz) y el p95 sube a 156 ms; con 10 todo va a su tasa y el p95 es de 16 ms.
+- **Lo que sí dice de LiveKit:** reenvía ~3.400 mensajes por segundo (20 clientes) con ~1,3 núcleos y ~100 MiB, y ~6.900–7.600 por segundo (40) con ~1,8–2,4, y con 40 conectados no pasa de 182 MiB (tope del compose: 256 MiB). Para saber cuánta CPU pide en el VPS con 40 personas hace falta generar la carga **desde otra máquina** **[NO MEDIDO]**. En producción, además, la tasa a 10 Hz es solo para los cercanos (< 55 m) y 2 Hz para el resto, así que el caso de la tabla (todos cerca de todos) es el peor.
+- Conectar 40 clientes: 10 s (de uno en uno en cada proceso). Con 40 conexiones en **un solo** proceso, `rtc-node` 1.1.0 se volvió lento (~5 s por conexión) y perdió un handle («handle not found») en la 38.ª: por eso se reparte en procesos.
+
+**Lo que se comprobó contra LiveKit real** (las mismas pasadas): los permisos del token se aplican tal cual (`canPublish: false`, `canPublishSources: []`, `canPublishData: true`; una pista de micrófono no se publica: el servidor no responde y el cliente la da por fallida); `RemoveParticipant` de quien no está → 404 `not_found`; `ListParticipants` de una sala que no existe → lista vacía; Chrome abre `ws://localhost:7880` desde `https://localhost:8743` y también `wss://localhost:8743/rtc` por Caddy; dos sesiones del mismo hogar están a la vez; la expulsión saca las dos (`conexiones: 2`) y el vecino sigue.
+
 ## Hituelo en 3D Tiles: tileset y doble descarga glb + json (2026-10-29, F1d, [ADR-0015](../adr/0015-escena-en-3d-tiles.md))
 
 `GEMELO_DATOS=<indice.json de Hituelo> node tuberia/tiles3d/genera.mjs --salida pruebas/salida/tiles3d-hituelo` (generador 0.2.0, opciones por defecto: hojas de 128 m, 128 celdas, textura ≤ 256 px, 3 niveles con olivos). Bytes en disco, sin comprimir; una sola corrida. Datos: la salida de Hituelo que hay hoy (46 teselas de 256 m, 5.882 copas, 5.859 olivos; **sin** `copas_id` ni `copas_tipo`: exportada antes de ADR-0012).

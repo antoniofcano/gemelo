@@ -218,5 +218,6 @@ export function pideHttps(puerto, ruta, { method = "GET", headers = {}, body, ca
 
 /** Instala las dependencias de infra/dev/herramientas (versiones fijas del package-lock) si faltan */
 export function aseguraDependencias() {
-  if (!fs.existsSync(path.join(HERRAMIENTAS, "node_modules", "livekit-server-sdk"))) npm(["ci", "--no-audit", "--no-fund"], HERRAMIENTAS);
+  const faltan = ["livekit-server-sdk", "@livekit/rtc-node", "pg"].some(d => !fs.existsSync(path.join(HERRAMIENTAS, "node_modules", d)));
+  if (faltan) npm(["ci", "--no-audit", "--no-fund"], HERRAMIENTAS);
 }

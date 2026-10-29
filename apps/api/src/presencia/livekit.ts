@@ -19,17 +19,29 @@ const SOLO_DATOS: Permisos = { roomJoin: true, canSubscribe: true, canPublish: f
  * Permisos por rol en F2: copia de contratos/livekit-roles.json («roles»), que es quien manda; la prueba de unidad
  * compara las dos. En F2 los cuatro son iguales (solo datos; sin audio, sin vídeo, sin roomAdmin).
  * canPublishSources va vacío y canPublish a false: según el SDK, «cuando se pone, sustituye a canPublish»; vacío no
- * permite ninguna fuente [NO VERIFICADO contra el servidor: lo comprobará la prueba con dos Chrome, P4].
+ * permite ninguna fuente. Comprobado contra LiveKit 1.13.11 (P4, presencia_dev.test.js): una pista de micrófono no se
+ * publica y los datos sí.
  */
 export const PERMISOS: Record<Rol, Permisos> = { hogar: SOLO_DATOS, guia: SOLO_DATOS, corresponsal: SOLO_DATOS, admin: SOLO_DATOS };
 
 /**
- * Identidad en la sala: opaca y estable por hogar (HMAC del id con el secreto de LiveKit). No es el id de la base, ni
- * el correo, ni se puede deducir de ellos sin el secreto; la api la recalcula para expulsar. Al ser una por hogar, si
- * el mismo hogar entra desde otro aparato, LiveKit desconecta la conexión anterior (identidad repetida) [NO VERIFICADO].
+ * Identidad en la sala: opaca, UNA POR SESIÓN (aparato) y con el hogar como prefijo:
+ *   h_<22: HMAC del id del hogar>_<8: HMAC del id de la sesión>
+ * Así el mismo hogar puede estar a la vez en el ordenador, el móvil y las gafas (cada uno entra con su sesión) sin que
+ * LiveKit eche al anterior por identidad repetida, y la api, que recalcula el prefijo, puede sacar a TODAS las
+ * conexiones de un hogar (lista los participantes de la sala y quita los que empiezan por él). Dos pestañas de la MISMA
+ * sesión comparten identidad: la segunda sustituye a la primera. Ninguna parte es el id de la base, ni el correo, ni el
+ * id de la sesión: sin el secreto de LiveKit no se pueden deducir.
  */
-export function identidadOpaca(lk: Pick<ConfigLiveKit, "secreto">, hogarId: number): string {
+export function prefijoHogar(lk: Pick<ConfigLiveKit, "secreto">, hogarId: number): string {
   return "h_" + createHmac("sha256", lk.secreto).update("gemelo-presencia:v1:" + hogarId).digest("base64url").slice(0, 22);
+}
+export function identidadOpaca(lk: Pick<ConfigLiveKit, "secreto">, hogarId: number, sesionId: string): string {
+  return prefijoHogar(lk, hogarId) + "_" + createHmac("sha256", lk.secreto).update("gemelo-presencia:sesion:v1:" + sesionId).digest("base64url").slice(0, 8);
+}
+/** ¿Esa identidad es de una conexión de ese hogar? (el prefijo tiene longitud fija: no hay ambigüedad con los «_» del base64url) */
+export function esDelHogar(identidad: string, prefijo: string): boolean {
+  return identidad.length === prefijo.length + 9 && identidad.startsWith(prefijo + "_");
 }
 
 export interface Avatar { camisa: number; sombrero: "ninguno" | "paja" | "gorra"; piel: number }
@@ -39,8 +51,8 @@ export interface Metadatos { alias: string; avatar: Avatar; rol: Rol; dispositiv
 export interface TokenPresencia { url: string; sala: string; identidad: string; token: string; caduca_en: string }
 
 /** Firma el token de entrada a la sala libre. Los metadatos los pone la api; el cliente no puede cambiarlos (canUpdateOwnMetadata: false). */
-export async function firmaToken(lk: ConfigLiveKit, hogarId: number, m: Metadatos, ahora = Date.now()): Promise<TokenPresencia> {
-  const identidad = identidadOpaca(lk, hogarId);
+export async function firmaToken(lk: ConfigLiveKit, hogarId: number, sesionId: string, m: Metadatos, ahora = Date.now()): Promise<TokenPresencia> {
+  const identidad = identidadOpaca(lk, hogarId, sesionId);
   const at = new AccessToken(lk.clave, lk.secreto, { identity: identidad, name: m.alias, metadata: JSON.stringify(m), ttl: TTL_S });
   at.addGrant({ room: SALA_LIBRE, ...PERMISOS[m.rol] });
   const token = await at.toJwt();
@@ -50,21 +62,25 @@ export async function firmaToken(lk: ConfigLiveKit, hogarId: number, m: Metadato
 
 /** Lo que la api necesita de la sala para moderar. Se inyecta (las pruebas ponen uno de mentira). */
 export interface ModeradorSala {
-  /** saca a esa identidad de la sala; false si no estaba */
-  expulsa(sala: string, identidad: string): Promise<boolean>;
+  /** saca de la sala a todas las conexiones cuya identidad es de ese hogar (esDelHogar); devuelve cuántas había */
+  expulsaHogar(sala: string, prefijo: string): Promise<number>;
 }
+
+const esNoEncontrado = (e: unknown) => { const err = e as { status?: number; code?: string }; return err.status === 404 || err.code === "not_found"; };
 
 export class ModeradorLiveKit implements ModeradorSala {
   private readonly rs: RoomServiceClient;
   constructor(lk: ConfigLiveKit) { this.rs = new RoomServiceClient(lk.url, lk.clave, lk.secreto); }
-  async expulsa(sala: string, identidad: string): Promise<boolean> {
-    try { await this.rs.removeParticipant(sala, identidad); return true; }
-    catch (e) {
-      // RoomService responde «not_found» (404) si la sala o la persona no están [NO VERIFICADO contra el servidor]
-      const err = e as { status?: number; code?: string };
-      if (err.status === 404 || err.code === "not_found") return false;
-      throw e;
+  async expulsaHogar(sala: string, prefijo: string): Promise<number> {
+    let presentes: string[];
+    try { presentes = (await this.rs.listParticipants(sala)).map(p => p.identity).filter(i => esDelHogar(i, prefijo)); }
+    catch (e) { if (esNoEncontrado(e)) return 0; throw e; } // la sala no existe (nadie dentro): nada que sacar
+    let n = 0;
+    for (const identidad of presentes) {
+      // si se ha ido entre la lista y la expulsión, RoomService responde 404 not_found (comprobado en P4): no cuenta
+      try { await this.rs.removeParticipant(sala, identidad); n++; } catch (e) { if (!esNoEncontrado(e)) throw e; }
     }
+    return n;
   }
 }
 

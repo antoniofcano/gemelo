@@ -1,8 +1,12 @@
 # Interruptor de RED LOCAL del entorno de desarrollo: `npm run dev:arriba -- --red-local` (doc/operacion/DESARROLLO-LOCAL.md
 # § Prueba en aparatos). Se suma a compose.yml SOLO con el interruptor; sin él, todo escucha en 127.0.0.1 como siempre.
-# Abre UNA cosa más: el https de Caddy (web) en la IP de la red local del equipo (GEMELO_DEV_IP, la detecta levanta.mjs),
-# para probar desde el móvil o las Quest de la misma WiFi, y solo mientras dura la prueba. Nada más se abre: ni el http,
-# ni la base, ni Mailpit, ni LiveKit; la api sigue sin puerto (se entra por Caddy).
+# Abre, en la IP de la red local del equipo (GEMELO_DEV_IP, la detecta levanta.mjs) y solo mientras dura la prueba:
+#  - el https de Caddy (web), para probar desde el móvil o las Quest de la misma WiFi (la señalización de LiveKit va por él,
+#    wss://<IP>:8743/rtc);
+#  - los dos puertos de MEDIOS de LiveKit (P4): 7882/udp (WebRTC, un solo puerto multiplexado) y 7881/tcp (ICE por TCP, si
+#    la WiFi corta el UDP). Sin ellos el aparato entra en la sala pero no le llegan ni salen los datos (la pose y el chat
+#    viajan por WebRTC, no por la señalización). LiveKit anuncia esa IP como candidato (NODE_IP).
+# Nada más se abre: ni el http, ni la base, ni Mailpit, ni la señalización directa de LiveKit (7880); la api sigue sin puerto.
 services:
   web:
     ports:
@@ -16,3 +20,11 @@ services:
       # el enlace del correo apunta a la IP (vale en el ordenador y en el aparato); se admiten los POST de los dos orígenes
       GEMELO_URL_PUBLICA: "https://${GEMELO_DEV_IP}:${GEMELO_DEV_PUERTO_HTTPS:-8743}"
       GEMELO_API_ORIGENES: "https://localhost:${GEMELO_DEV_PUERTO_HTTPS:-8743},https://${GEMELO_DEV_IP}:${GEMELO_DEV_PUERTO_HTTPS:-8743}"
+  livekit:
+    ports:
+      - "${GEMELO_DEV_IP}:7881:7881"
+      - "${GEMELO_DEV_IP}:7882:7882/udp"
+    environment:
+      # el candidato ICE que anuncia: la IP de la red (los aparatos llegan a ella; este equipo también, es suya). Manda
+      # porque livekit.yaml no lleva node_ip (comprobado: con node_ip en el fichero, NODE_IP no cuenta)
+      NODE_IP: "${GEMELO_DEV_IP}"

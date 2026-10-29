@@ -63,7 +63,9 @@ services:
       GEMELO_SESION_SECRETO_FICHERO: /run/secrets/sesion_secreto
       GEMELO_SMTP_CLAVE_FICHERO: /run/secrets/smtp_clave
       GEMELO_OT_TOKEN_FICHERO: /run/secrets/ot_token
-    secrets: [pg_api, sesion_secreto, smtp_clave, ot_token]
+      # F2: el API secret de LiveKit (firma los tokens de la sala). Solo se lee si /etc/gemelo/entorno trae GEMELO_LIVEKIT_URL
+      GEMELO_LIVEKIT_SECRETO_FICHERO: /run/secrets/livekit_secreto
+    secrets: [pg_api, sesion_secreto, smtp_clave, ot_token, livekit_secreto]
     networks: [bd, interna]
     depends_on:
       migra: { condition: service_completed_successfully }
@@ -116,3 +118,4 @@ secrets:
   sesion_secreto: { file: /etc/gemelo/secretos/sesion_secreto }
   smtp_clave: { file: /etc/gemelo/secretos/smtp_clave }
   ot_token: { file: /etc/gemelo/secretos/ot_token }
+  livekit_secreto: { file: /etc/gemelo/secretos/livekit_secreto }

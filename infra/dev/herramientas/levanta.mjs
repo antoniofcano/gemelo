@@ -1,6 +1,7 @@
 // Levanta el entorno de desarrollo con Docker: `npm run dev:arriba` (o node infra/dev/herramientas/levanta.mjs [--sin-build] [--red-local]).
-// --red-local: además de 127.0.0.1, el https de Caddy (y SOLO él) escucha en la IP de la red local (GEMELO_DEV_IP o la que
-// se detecta), para probar desde el móvil o las Quest de la misma WiFi (compose.red-local.yml). Sin él, todo como siempre.
+// --red-local: además de 127.0.0.1, el https de Caddy y los medios de LiveKit (7881/tcp, 7882/udp; y SOLO eso) escuchan en
+// la IP de la red local (GEMELO_DEV_IP o la que se detecta), para probar desde el móvil o las Quest de la misma WiFi
+// (compose.red-local.yml). Sin él, todo como siempre.
 //  1. crea infra/dev/.env con claves aleatorias si falta;
 //  2. genera el fixture sintético si falta (o usa datos reales FUERA del repo: GEMELO_DEV_TESELAS, o GEMELO_DEV_FINCA_CARPETA
 //     para la salida de UNA finca como hituelo-v3, y GEMELO_DEV_TILESET para el tileset 3D Tiles de /teselas/<finca>/tileset/);
@@ -136,8 +137,8 @@ export async function levanta({ sinBuild = false, redLocal = false } = {}) {
   if (redLocal) {
     red = ipRedLocal();
     process.env.GEMELO_DEV_IP = red.ip;                 // lo interpola compose.red-local.yml
-    paso("RED LOCAL: el https de la web se abre también en " + red.ip + (red.nombre ? " (" + red.nombre + ")" : " (GEMELO_DEV_IP)") +
-      "; base, correo, LiveKit y api siguen solo en 127.0.0.1 o sin puerto" +
+    paso("RED LOCAL: el https de la web y los medios de LiveKit (7881/tcp, 7882/udp) se abren también en " + red.ip + (red.nombre ? " (" + red.nombre + ")" : " (GEMELO_DEV_IP)") +
+      "; base, correo, la señalización de LiveKit (va por Caddy) y la api siguen en 127.0.0.1 o sin puerto" +
       (red.otras.length ? "\n  otras IP posibles: " + red.otras.map(o => o.ip + " (" + o.nombre + ")").join(", ") + " — elige con GEMELO_DEV_IP" : ""));
   }
   paso("datos: " + (esFixture() ? "fixture sintético" : "carpeta local " + (carpeta ? "(GEMELO_DEV_FINCA_CARPETA)" : "(GEMELO_DEV_TESELAS)")) + ", finca " + finca +
@@ -168,9 +169,10 @@ export async function levanta({ sinBuild = false, redLocal = false } = {}) {
     (tileset ? "\n  tileset   " + w + "/teselas/" + finca + "/tileset/tileset.json   (solo con sesión; en el mundo: /finca/?olivos=gen&escena=tiles)" : "") +
     "\n  correo    http://localhost:" + p.correoWeb + "/   (SMTP en 127.0.0.1:" + p.smtp + ")" +
     "\n  db        127.0.0.1:" + p.db + "  base gemelo; " + PG_DUENO + " (dueño) y " + PG_API + " (la api), claves en infra/dev/.env" +
-    "\n  livekit   ws://localhost:" + p.livekit + "  (claves en infra/dev/.env)" +
+    "\n  livekit   " + w + "/rtc para el navegador (por Caddy); ws://localhost:" + p.livekit + " para las herramientas (claves en infra/dev/.env)" +
     (red ? "\n\nABIERTO A LA RED LOCAL (solo mientras dure la prueba; se cierra con `npm run dev:abajo` o levantando sin --red-local):" +
-      "\n  aparatos  https://" + red.ip + ":" + p.https + "/   (solo el https de la web; aceptar el aviso del certificado de la CA local)" +
+      "\n  aparatos  https://" + red.ip + ":" + p.https + "/   (aceptar el aviso del certificado de la CA local)" +
+      "\n  presencia https://" + red.ip + ":" + p.https + "/finca/?presencia=red   (medios de LiveKit por " + red.ip + ":7882/udp o 7881/tcp)" +
       "\n  enlace    el correo trae https://" + red.ip + ":" + p.https + "/api/auth/entrar?t=…: ábrelo en el ordenador desde el buzón" +
       "\n            (abrirlo no lo gasta), pásalo al aparato con «Crear código QR» de Chrome y pulsa «Entrar» EN EL APARATO" : ""));
   return { sembrado, red };

@@ -11,7 +11,7 @@ import { TokenVerifier } from "livekit-server-sdk";
 import pg from "pg";
 import { construyeApp } from "../../src/app.ts";
 import { cargaConfig, type ConfigLiveKit, ErrorDeConfig } from "../../src/config.ts";
-import { Expulsados, identidadOpaca, firmaToken, type ModeradorSala, PERMISOS, SALA_LIBRE, TTL_S } from "../../src/presencia/livekit.ts";
+import { esDelHogar, Expulsados, firmaToken, identidadOpaca, type ModeradorSala, PERMISOS, prefijoHogar, SALA_LIBRE, TTL_S } from "../../src/presencia/livekit.ts";
 import { expulsa } from "../../src/presencia/rutas.ts";
 import { configDePrueba, contexto, deLaWeb } from "../apoyo/contexto.ts";
 import { CONTRATOS } from "../apoyo/esquemas.ts";
@@ -19,7 +19,10 @@ import { CONTRATOS } from "../apoyo/esquemas.ts";
 const lkDevSinBase = { GEMELO_LIVEKIT_URL: "http://127.0.0.1:1", GEMELO_LIVEKIT_URL_PUBLICA: "ws://localhost:7880", GEMELO_LIVEKIT_CLAVE: "devprueba02", GEMELO_LIVEKIT_SECRETO: "q".repeat(32) };
 
 const LK: ConfigLiveKit = { url: "http://livekit:7880", urlPublica: "ws://localhost:7880", clave: "devprueba01", secreto: "s".repeat(16) + "-sintetico-de-prueba-123" };
+const ROLES_IDENT = (JSON.parse(readFileSync(CONTRATOS + "livekit-roles.json", "utf8")) as { identidad: { formato: string } }).identidad;
 const ROLES = JSON.parse(readFileSync(CONTRATOS + "livekit-roles.json", "utf8")) as { salas: { visita_libre: { nombre: string } }; roles: Record<string, Record<string, unknown>> };
+const SES = "sesion-sintetica-A", SES2 = "sesion-sintetica-B";
+const ID_RE = /^h_[A-Za-z0-9_-]{22}_[A-Za-z0-9_-]{8}$/;
 const META = { alias: "Mirlo", avatar: { camisa: 2, sombrero: "gorra" as const, piel: 3 }, rol: "hogar" as const, dispositivo: "quest" as const };
 
 test("los permisos del código son los de contratos/livekit-roles.json, rol a rol, y la sala libre es la del contrato", () => {
@@ -31,10 +34,11 @@ test("los permisos del código son los de contratos/livekit-roles.json, rol a ro
 
 test("token decodificado: sala hituelo-libre, identidad opaca, solo datos, metadatos de la api y caducidad de 15 min", async () => {
   const ahora = Date.now();
-  const t = await firmaToken(LK, 42, META, ahora);
+  const t = await firmaToken(LK, 42, SES, META, ahora);
   assert.equal(t.sala, "hituelo-libre");
   assert.equal(t.url, "ws://localhost:7880");
-  assert.match(t.identidad, /^h_[A-Za-z0-9_-]{22}$/);
+  assert.match(t.identidad, ID_RE);
+  assert.ok(new RegExp(ROLES_IDENT.formato).test(t.identidad), "el formato del contrato");
   const c = await new TokenVerifier(LK.clave, LK.secreto).verify(t.token);
   assert.equal(c.sub, t.identidad, "identity = sub del JWT");
   assert.equal(c.iss, LK.clave);
@@ -53,24 +57,33 @@ test("token decodificado: sala hituelo-libre, identidad opaca, solo datos, metad
   const cuerpo = Buffer.from(t.token.split(".")[1]!, "base64url").toString("utf8");
   assert.ok(!/@/.test(cuerpo));
   assert.ok(!/"sub":"42"/.test(cuerpo));
+  assert.ok(!cuerpo.includes(SES), "ni el id de la sesión");
 });
 
 test("un token firmado con otro secreto no se acepta", async () => {
-  const t = await firmaToken(LK, 1, META);
+  const t = await firmaToken(LK, 1, SES, META);
   await assert.rejects(new TokenVerifier(LK.clave, "otro-secreto-sintetico-de-32-caracteres!").verify(t.token));
 });
 
-test("identidad opaca: estable por hogar, distinta entre hogares y dependiente del secreto", () => {
-  const a = identidadOpaca(LK, 7), b = identidadOpaca(LK, 7), c = identidadOpaca(LK, 8), d = identidadOpaca({ secreto: LK.secreto + "x" }, 7);
-  assert.equal(a, b);
+test("identidad opaca: una por sesión (aparato) con el prefijo del hogar; estable, distinta entre hogares y dependiente del secreto", () => {
+  const a = identidadOpaca(LK, 7, SES), b = identidadOpaca(LK, 7, SES), otraSesion = identidadOpaca(LK, 7, SES2), c = identidadOpaca(LK, 8, SES), d = identidadOpaca({ secreto: LK.secreto + "x" }, 7, SES);
+  assert.equal(a, b, "la misma sesión, la misma identidad (dos pestañas: la segunda sustituye a la primera)");
+  assert.notEqual(a, otraSesion, "otro aparato del mismo hogar NO repite identidad (LiveKit no echa al primero)");
   assert.notEqual(a, c);
   assert.notEqual(a, d);
-  assert.ok(!a.includes("7".repeat(2)) && a.length === 24);
+  for (const i of [a, otraSesion, c, d]) assert.match(i, ID_RE);
+  assert.equal(a.length, 33);
+  const p7 = prefijoHogar(LK, 7);
+  assert.ok(a.startsWith(p7 + "_") && otraSesion.startsWith(p7 + "_"), "las dos conexiones del hogar llevan su prefijo");
+  assert.ok(esDelHogar(a, p7) && esDelHogar(otraSesion, p7));
+  assert.ok(!esDelHogar(c, p7), "otro hogar no casa");
+  assert.ok(!esDelHogar(p7, p7) && !esDelHogar(p7 + "_corto", p7) && !esDelHogar(p7 + "_12345678x", p7), "solo el formato exacto");
+  assert.ok(!a.includes("7".repeat(2)) && !a.includes(SES));
 });
 
 test("todos los roles llevan los mismos permisos de solo datos en F2 (también admin: la expulsión va por la api)", async () => {
   for (const rol of ["hogar", "guia", "corresponsal", "admin"] as const) {
-    const c = await new TokenVerifier(LK.clave, LK.secreto).verify((await firmaToken(LK, 3, { ...META, rol })).token);
+    const c = await new TokenVerifier(LK.clave, LK.secreto).verify((await firmaToken(LK, 3, SES, { ...META, rol })).token);
     assert.equal(c.video!.canPublish, false, rol);
     assert.equal(c.video!.roomAdmin, false, rol);
     assert.equal(JSON.parse(c.metadata!).rol, rol);
@@ -108,6 +121,9 @@ test("configuración: sin GEMELO_LIVEKIT_URL la presencia está apagada; con ell
   assert.throws(() => cargaConfig({ ...base, ...lkDev, GEMELO_LIVEKIT_SECRETO: "corto" }), /32/);
   assert.throws(() => cargaConfig({ ...base, ...lkDev, GEMELO_LIVEKIT_CLAVE: "devkey", GEMELO_LIVEKIT_SECRETO: "y".repeat(32) }), /devkey/);
   assert.throws(() => cargaConfig({ ...base, ...lkDev, GEMELO_LIVEKIT_URL_PUBLICA: "https://livekit.example.com" }), /wss/);
+  // una ruta del mismo origen (el Caddy la pasa a LiveKit): vale en local con https://localhost y con la IP de la red
+  assert.equal(cargaConfig({ ...base, ...lkDev, GEMELO_LIVEKIT_URL_PUBLICA: "/rtc" }).livekit?.urlPublica, "/rtc");
+  for (const mala of ["//otro.example.com/rtc", "rtc", "/rtc?x=1", "/rtc/../a b"]) assert.throws(() => cargaConfig({ ...base, ...lkDev, GEMELO_LIVEKIT_URL_PUBLICA: mala }), ErrorDeConfig, mala);
 });
 
 test("configuración en producción: wss:// y el secreto solo desde fichero", () => {
@@ -120,6 +136,7 @@ test("configuración en producción: wss:// y el secreto solo desde fichero", ()
   const c = cargaConfig({ ...prod, GEMELO_LIVEKIT_SECRETO_FICHERO: f("lk", "w".repeat(40)) });
   assert.equal(c.livekit?.secreto, "w".repeat(40));
   assert.equal(c.livekit?.urlPublica, "wss://gemelo.example.com/rtc");
+  assert.equal(cargaConfig({ ...prod, GEMELO_LIVEKIT_URL_PUBLICA: "/rtc", GEMELO_LIVEKIT_SECRETO_FICHERO: f("lk3", "w".repeat(40)) }).livekit?.urlPublica, "/rtc", "la ruta del mismo origen también en producción (la página es https)");
   assert.throws(() => cargaConfig({ ...prod, GEMELO_LIVEKIT_SECRETO: "w".repeat(40) }), /fichero/);
   assert.throws(() => cargaConfig({ ...prod, GEMELO_LIVEKIT_URL_PUBLICA: "ws://gemelo.example.com/rtc", GEMELO_LIVEKIT_SECRETO_FICHERO: f("lk2", "w".repeat(40)) }), /wss/);
 });
@@ -129,7 +146,12 @@ class ModeradorDePrueba implements ModeradorSala {
   llamadas: [string, string][] = [];
   private readonly presentes: Set<string>;
   constructor(presentes: Set<string>) { this.presentes = presentes; }
-  async expulsa(sala: string, identidad: string) { this.llamadas.push([sala, identidad]); return this.presentes.delete(identidad); }
+  async expulsaHogar(sala: string, prefijo: string) {
+    this.llamadas.push([sala, prefijo]);
+    let n = 0;
+    for (const i of [...this.presentes]) if (esDelHogar(i, prefijo)) { this.presentes.delete(i); n++; }
+    return n;
+  }
 }
 function bdDePrueba(hogares: number[]) {
   const consultas: { sql: string; params: unknown[] }[] = [];
@@ -143,15 +165,18 @@ function bdDePrueba(hogares: number[]) {
   return { bd: bd as unknown as Pick<pg.Pool, "query">, consultas };
 }
 
-test("expulsar: saca de hituelo-libre a la identidad opaca del hogar, lo apunta en la auditoría y no le da token en 15 min", async () => {
-  const id = identidadOpaca(LK, 9), mod = new ModeradorDePrueba(new Set([id])), { bd, consultas } = bdDePrueba([9]), expulsados = new Expulsados();
+test("expulsar: saca de hituelo-libre TODAS las conexiones del hogar (una por aparato), lo apunta en la auditoría y no le da token en 15 min", async () => {
+  const pc = identidadOpaca(LK, 9, "ordenador"), movil = identidadOpaca(LK, 9, "movil"), quest = identidadOpaca(LK, 9, "quest"), otro = identidadOpaca(LK, 10, "ordenador");
+  const sala = new Set([pc, movil, quest, otro]);
+  const mod = new ModeradorDePrueba(sala), { bd, consultas } = bdDePrueba([9]), expulsados = new Expulsados();
   const r = await expulsa({ bd, lk: LK, moderador: mod, expulsados }, 1, 9, "insultos en el chat");
-  assert.deepEqual(r, { ok: true, estaba_en_sala: true });
-  assert.deepEqual(mod.llamadas, [["hituelo-libre", id]]);
+  assert.deepEqual(r, { ok: true, estaba_en_sala: true, conexiones: 3 });
+  assert.deepEqual(mod.llamadas, [["hituelo-libre", prefijoHogar(LK, 9)]]);
+  assert.deepEqual([...sala], [otro], "el otro hogar sigue dentro");
   const aud = consultas.find(c => /INSERT INTO auditoria/.test(c.sql));
   assert.ok(aud, "queda en la auditoría");
   assert.deepEqual(aud!.params.slice(0, 2), [1, "admin.presencia_expulsado"]);
-  assert.deepEqual(JSON.parse(aud!.params[2] as string), { hogar: 9, sala: "hituelo-libre", estaba: true, motivo: "insultos en el chat" });
+  assert.deepEqual(JSON.parse(aud!.params[2] as string), { hogar: 9, sala: "hituelo-libre", estaba: true, conexiones: 3, motivo: "insultos en el chat" });
   const ahora = Date.now();
   assert.equal(expulsados.esta(9, ahora), true);
   assert.equal(expulsados.esta(9, ahora + TTL_S * 1000 + 1000), false, "a los 15 min puede volver");
@@ -160,8 +185,8 @@ test("expulsar: saca de hituelo-libre a la identidad opaca del hogar, lo apunta 
 
 test("expulsar a quien no está en la sala también se apunta (estaba: false); a un hogar que no existe, 404 y nada más", async () => {
   const mod = new ModeradorDePrueba(new Set()), a = bdDePrueba([4]), e = new Expulsados();
-  assert.deepEqual(await expulsa({ bd: a.bd, lk: LK, moderador: mod, expulsados: e }, 1, 4, null), { ok: true, estaba_en_sala: false });
-  assert.deepEqual(JSON.parse(a.consultas.find(c => /auditoria/.test(c.sql))!.params[2] as string), { hogar: 4, sala: "hituelo-libre", estaba: false });
+  assert.deepEqual(await expulsa({ bd: a.bd, lk: LK, moderador: mod, expulsados: e }, 1, 4, null), { ok: true, estaba_en_sala: false, conexiones: 0 });
+  assert.deepEqual(JSON.parse(a.consultas.find(c => /auditoria/.test(c.sql))!.params[2] as string), { hogar: 4, sala: "hituelo-libre", estaba: false, conexiones: 0 });
   const b = bdDePrueba([]), mod2 = new ModeradorDePrueba(new Set());
   assert.deepEqual(await expulsa({ bd: b.bd, lk: LK, moderador: mod2, expulsados: e }, 1, 77, null), { ok: false, motivo: "no_existe" });
   assert.equal(mod2.llamadas.length, 0);
@@ -170,7 +195,7 @@ test("expulsar a quien no está en la sala también se apunta (estaba: false); a
 });
 
 test("si LiveKit falla, el error sube (la oficina lo ve), el hogar queda sin token igualmente y no se apunta lo que no se hizo", async () => {
-  const roto: ModeradorSala = { expulsa: async () => { throw new Error("LiveKit no responde"); } }, e = new Expulsados(), { bd, consultas } = bdDePrueba([5]);
+  const roto: ModeradorSala = { expulsaHogar: async () => { throw new Error("LiveKit no responde"); } }, e = new Expulsados(), { bd, consultas } = bdDePrueba([5]);
   await assert.rejects(expulsa({ bd, lk: LK, moderador: roto, expulsados: e }, 1, 5, null), /LiveKit/);
   assert.equal(e.esta(5), true);
   assert.ok(!consultas.some(c => /auditoria/.test(c.sql)));
