@@ -24,9 +24,9 @@ const EJEMPLO = path.join(DEV, "ejemplo.env");
 const HERR = path.join(DEV, "herramientas");
 // con GEMELO_DEV_TESELAS o GEMELO_DEV_FINCA_CARPETA (datos reales en local) la siembra es la de prueba, no la del fixture
 const DE_PRUEBA = !!(process.env.GEMELO_DEV_TESELAS || process.env.GEMELO_DEV_FINCA_CARPETA);
-const SERVICIOS = ["web", "db", "livekit", "correo", "migra", "api"];
+const SERVICIOS = ["web", "db", "livekit", "correo", "migra", "api", "hornero"];
 const DE_UNA_VEZ = ["migra"];                   // termina al aplicar las migraciones
-const CONSTRUIDOS = ["migra", "api"];           // imagen propia, construida de apps/api/Dockerfile
+const CONSTRUIDOS = ["migra", "api"];           // imagen propia, construida de apps/api/Dockerfile (el hornero, de tuberia/olivos/Dockerfile: ver su test)
 
 function hayDocker() {
   const v = spawnSync("docker", ["compose", "version", "--short"], { encoding: "utf8" });
@@ -96,7 +96,7 @@ test("imágenes estables con versión fija Y digest (imagen:versión@sha256:…)
   const todas = [...composeSinComentarios().matchAll(/^\s*image:\s*(\S+)\s*$/gm)].map(m => m[1]);
   const imgs = todas.filter(i => !i.startsWith("gemelo-"));          // las propias (gemelo-api) se construyen aquí: su base va fijada en el Dockerfile
   assert.strictEqual(imgs.length, 4, "se esperaban 4 imágenes de fuera: " + imgs.join(", "));
-  assert.deepStrictEqual([...new Set(todas.filter(i => i.startsWith("gemelo-")))], ["gemelo-api:local"], "la imagen propia de la api");
+  assert.deepStrictEqual([...new Set(todas.filter(i => i.startsWith("gemelo-")))].sort(), ["gemelo-api:local", "gemelo-hornero:local"], "las imágenes propias: la api y el hornero");
   for (const i of imgs) {
     const m = /^([a-z0-9._/-]+):([A-Za-z0-9._-]+)@sha256:([a-f0-9]{64})$/.exec(i);
     assert.ok(m, i + ": debe ser imagen:versión@sha256:<64 hex>");
@@ -104,6 +104,45 @@ test("imágenes estables con versión fija Y digest (imagen:versión@sha256:…)
     assert.ok(!PRELIMINAR.test(m[2]), i + ": etiqueta preliminar o móvil");
   }
   assert.match(lee("apps/api/Dockerfile"), /^FROM node:24\.\d+\.\d+-alpine[\d.]*@sha256:[a-f0-9]{64}/m, "la base de la api: node 24 con versión y digest");
+  assert.match(lee("tuberia/olivos/Dockerfile"), /^FROM node:24\.\d+\.\d+-alpine[\d.]*@sha256:[a-f0-9]{64}/m, "la base del hornero: node 24 con versión y digest");
+  const baseDe = f => /^FROM (node:\S+)/m.exec(lee(f))[1];
+  assert.strictEqual(baseDe("tuberia/olivos/Dockerfile"), baseDe("apps/api/Dockerfile"), "el hornero y la api, sobre la misma imagen de node");
+});
+
+test("hornero (O7f), en dev y en producción: sin puertos, usuario no root, solo lectura salvo su salida y su estado, sin capacidades, índice de solo lectura, healthcheck, candado", () => {
+  const trozo = (txt, nombre) => { const m = new RegExp("^  " + nombre + ":\\n((?:    .*\\n|\\s*\\n)+)", "m").exec(txt); assert.ok(m, "no encuentro el servicio " + nombre); return m[1].split("\n").filter(l => !/^\s*#/.test(l)).join("\n"); };
+  const sinCom = f => lee(f).split("\n").filter(l => !/^\s*#/.test(l)).join("\n") + "\n";
+  for (const [f, tag] of [["infra/dev/compose.yml", "gemelo-hornero:local"], ["infra/compose.yml", "gemelo-hornero:0.2.0"]]) {
+    const h = trozo(sinCom(f), "hornero");
+    assert.ok(!/^\s+ports:/m.test(h), f + ": el hornero no publica puertos");
+    assert.match(h, /^\s+user: "1000:1000"/m, f + ": usuario no root");
+    assert.match(h, /^\s+read_only: true/m, f + ": sistema de ficheros de solo lectura");
+    assert.match(h, /^\s+cap_drop: \[ALL\]/m, f + ": sin capacidades");
+    assert.ok(/no-new-privileges:true/.test(h) || /<<: \*comun/.test(h), f + ": sin nuevos privilegios (propio o por el ancla comun)");
+    assert.match(h, new RegExp("image: " + tag.replace(/[.]/g, "\\.")), f + ": imagen propia " + tag);
+    assert.match(h, /tuberia\/olivos\/Dockerfile/, f + ": se construye de tuberia/olivos/Dockerfile");
+    assert.match(h, /^\s+- .*:\/datos\/\S+:ro$/m, f + ": el índice de la finca, de solo lectura");
+    assert.match(h, /^\s+- .*:\/salida\/\S+\/olivos$/m, f + ": SU salida es la carpeta olivos/ de la finca (rw), nada más");
+    assert.match(h, /^\s+- \S+:\/estado(\s+#.*)?$/m, f + ": su estado, en un volumen propio, fuera de la carpeta servida");
+    assert.ok(!/:\/salida\/\S+:ro\s*$/m.test(h), f + ": la salida no puede ir en solo lectura");
+    assert.match(h, /healthcheck:\s*\n\s+test: \["CMD", "node", "tuberia\/olivos\/salud\.mjs"\]/, f + ": healthcheck que lee estado.json (salud.mjs)");
+    assert.match(h, /GEMELO_HORNERO_FINCAS:/, f + ": la finca que hornea");
+    assert.ok(!/\/estado\/?:ro|\/estado.*olivos/.test(h), f + ": estado.json fuera de lo servido");
+  }
+  // el estado NO va a la carpeta servida: el servicio escribe en GEMELO_HORNERO_ESTADO y nunca en <salida>/<finca>/olivos/estado.json
+  const sv = lee("tuberia/olivos/servicio.mjs");
+  assert.match(sv, /estado: path\.join\(cfg\.estado, finca \+ "\.json"\)/, "servicio: pasa --estado fuera de la carpeta servida");
+  // candado por finca con una librería mantenida (regla 12), liberado siempre, y sin vuelta diaria
+  assert.match(sv, /import lockfile from "proper-lockfile"/); assert.match(sv, /ELOCKED/); assert.match(sv, /finally \{ await libera\(\)/, "el candado se libera siempre");
+  assert.ok(!/diari/i.test(sv.split("\n").filter(l => !/^\s*\/\//.test(l)).join("\n")), "sin vuelta diaria (decisión de Antonio): despierta con el cambio de época o con un sello distinto");
+  assert.match(lee("tuberia/olivos/package.json"), /"proper-lockfile": "4\.1\.2"/); assert.match(lee("tuberia/olivos/package.json"), /"ajv": "8\.20\.0"/);
+  const df = lee("tuberia/olivos/Dockerfile");
+  assert.match(df, /^USER node$/m, "Dockerfile: usuario node"); assert.match(df, /npm ci --omit=dev/, "Dockerfile: dependencias del lock, sin desarrollo");
+  assert.match(df, /^CMD \["node", "tuberia\/olivos\/servicio\.mjs"\]/m);
+  // levanta.mjs y estado.mjs lo conocen
+  assert.match(lee("infra/dev/herramientas/estado.mjs"), /const SERVICIOS = \[[^\]]*"hornero"\]/, "dev:estado enseña el hornero");
+  assert.match(lee("infra/dev/herramientas/estado.mjs"), /salud\.mjs", "--json"/, "dev:estado lee la salud del hornero");
+  assert.match(lee("infra/dev/herramientas/levanta.mjs"), /GEMELO_DEV_OLIVOS: olivosDestino\(\)/, "levanta: la carpeta del hornero la sirve Caddy");
 });
 
 test("ningún puerto publicado fuera de 127.0.0.1 (ni 0.0.0.0, ni sin IP)", () => {
@@ -263,7 +302,7 @@ test("recetas horneadas (O7d): /teselas/<finca>/olivos/<huella>.br sale en brotl
   assert.match(d, /@manifiesto path \/\{\$FINCA_SERVIDA:hituelo\}\/olivos\/manifiesto\.json\s*header @manifiesto Cache-Control "private, no-cache"/, "dev: el manifiesto se revalida (con la ruta entera: el header se evalúa antes que el uri strip_prefix)");
   assert.match(d, /@permitido path_regexp \^\/\{\$FINCA_SERVIDA:hituelo\}\/olivos\/\(manifiesto\\\.json\|\[0-9a-f\]\{32\}\\\.br\)\$\s*handle @permitido \{/, "dev: SOLO manifiesto.json y <huella>.br");
   assert.match(d, /handle @permitido \{[\s\S]*?\}\s*handle \{\s*header Cache-Control "no-store"\s*respond "404 Not Found" 404\s*\}/, "dev: lo demás de olivos/ (estado.json, manifiesto.anterior.json, t/…) da 404");
-  assert.match(composeSinComentarios(), /\$\{GEMELO_DEV_OLIVOS:-[^}]+\}:\/srv\/olivos:ro/, "dev: la carpeta del hornero, de solo lectura");
+  assert.match(composeSinComentarios(), /\$\{GEMELO_DEV_OLIVOS:-.+\}:\/srv\/olivos:ro/, "dev: la carpeta del hornero, de solo lectura");
   // producción: el mismo contrato; el resto de /teselas/ conserva su caché (el matcher excluye lo horneado: no depende del orden)
   const p = sinC("infra/Caddyfile");
   assert.ok(p.indexOf("@olivos_objeto") > p.indexOf("handle @con_sesion"), "producción: tras sesión");
@@ -385,34 +424,37 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
       else process.env.GEMELO_DEV_TILESET = salida;
     }
   }
-  // las recetas horneadas que sirve Caddy (O7d): las de GEMELO_DEV_OLIVOS (las del hornero) o, si no, un manifiesto y un objeto del
-  // fixture (pruebas/olivo/horneado/, recetas SINTÉTICAS) escritos en pruebas/salida/olivos-e2e/ como los escribe el hornero
-  let olivosHorneados = null;
-  {
-    const dir = process.env.GEMELO_DEV_OLIVOS || path.join(RAIZ, "pruebas", "salida", "olivos-e2e");
-    if (!process.env.GEMELO_DEV_OLIVOS) {
-      const hn = await import(pathToFileURL(path.join(RAIZ, "apps", "web", "olivo", "horneado_node.js")).href);
-      const sint = await import(pathToFileURL(path.join(RAIZ, "pruebas", "olivo", "horneado", "sintetica.mjs")).href);
-      const man = JSON.parse(lee("pruebas/olivo/horneado/manifiesto-ejemplo.json")), v = man.variantes[0];
-      const claveS = (e, nivel) => "olivo|" + sint.GEN_VERSION_SINTETICA + "|c" + sint.CACHE_VERSION_SINTETICA + "|" + nivel + "|" + e.tipo + "|" + e.epoca + "|" + e.semilla + "|{}";
-      const r = sint.recetaSintetica({ semilla: v.semilla, nivel: v.nivel, epoca: v.epoca });
-      const o = await hn.horneaObjeto(r, { nivel: v.nivel, clave: claveS(r.entrada, v.nivel), gen_version: sint.GEN_VERSION_SINTETICA, cache_version: sint.CACHE_VERSION_SINTETICA }, 9);
-      assert.strictEqual(o.huella, v.huella, "el objeto sintético debe dar la huella del manifiesto de ejemplo");
-      fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(path.join(dir, "t"), { recursive: true });
-      fs.writeFileSync(path.join(dir, "manifiesto.json"), JSON.stringify(man));
-      fs.writeFileSync(path.join(dir, v.huella + ".br"), o.br);
-      // lo que el hornero deja junto a los objetos y NO debe salir (O7c): su estado y el manifiesto anterior; y un manifiesto de tesela, que tampoco
-      for (const n of ["estado.json", "manifiesto.anterior.json"]) fs.writeFileSync(path.join(dir, n), "{}");
-      fs.writeFileSync(path.join(dir, "t", "0_0.olivos"), Buffer.from("OLVT"));
-      process.env.GEMELO_DEV_OLIVOS = dir;
-    }
-    const man = JSON.parse(fs.readFileSync(path.join(dir, "manifiesto.json"), "utf8")), h = man.variantes[0].huella;
-    olivosHorneados = { huella: h, bytesBr: fs.statSync(path.join(dir, h + ".br")).size, bytesManifiesto: fs.statSync(path.join(dir, "manifiesto.json")).size };
+  // la carpeta del hornero de este e2e: vacía al empezar (así se mide la primera vuelta desde cero) y distinta de la del entorno de uso
+  // (pruebas/salida/olivos-dev/<finca>); con GEMELO_DEV_OLIVOS dada, es la de la persona y no se toca
+  if (!process.env.GEMELO_DEV_OLIVOS) {
+    const dir = path.join(RAIZ, "pruebas", "salida", "olivos-e2e");
+    fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
+    process.env.GEMELO_DEV_OLIVOS = dir;
   }
   const tiempos = {}, reloj = () => { const t0 = Date.now(); return () => ((Date.now() - t0) / 1000); };
   let r0 = reloj();
   const { sembrado } = await levanta();
   tiempos.arriba = r0();
+  // las recetas horneadas (O7f): `levanta` esperó a que el servicio hornero estuviera sano; su manifiesto es el real (fixture, brotli 9) y el
+  // objeto es uno de los suyos. Lo que NO debe salir (estado, manifiesto anterior, un manifiesto de tesela) se planta aquí al lado, como decoy.
+  let olivosHorneados = null, primeraVuelta = null;
+  {
+    const dir = process.env.GEMELO_DEV_OLIVOS;
+    const mp = path.join(dir, "manifiesto.json");
+    assert.ok(fs.existsSync(mp), "el hornero debió dejar " + mp + " antes de que `up --wait` diera el entorno por sano");
+    const man = JSON.parse(fs.readFileSync(mp, "utf8")), h = man.variantes[0].huella;
+    for (const n of ["estado.json", "manifiesto.anterior.json"]) fs.writeFileSync(path.join(dir, n), "{}");
+    fs.mkdirSync(path.join(dir, "t"), { recursive: true }); fs.writeFileSync(path.join(dir, "t", "0_0.olivos"), Buffer.from("OLVT"));
+    olivosHorneados = { huella: h, bytesBr: fs.statSync(path.join(dir, h + ".br")).size, bytesManifiesto: fs.statSync(mp).size, variantes: man.variantes.length };
+    // el estado del hornero vive en su volumen (fuera de la carpeta servida): de ahí sale cuánto tardó la primera vuelta
+    const e = comun.compose(["exec", "-T", "hornero", "cat", "/estado/" + comun.fincaServida() + ".json"], { captura: true });
+    assert.strictEqual(e.status, 0, "estado del hornero: " + e.stderr);
+    const st = JSON.parse(e.stdout);
+    assert.strictEqual(st.fase, "listo"); assert.strictEqual(st.error, null);
+    assert.strictEqual(st.hechas, st.total, "el hornero horneó todo lo que quería");
+    primeraVuelta = { ms: Date.parse(st.terminado_en) - Date.parse(st.empezado_en), total: st.total, horneadas: st.horneadas, bytesBr: man.variantes.reduce((s, f) => s + f.bytes_br, 0) };
+    assert.ok(!fs.existsSync(path.join(dir, "estado.json")) || fs.readFileSync(path.join(dir, "estado.json"), "utf8") === "{}", "el hornero no escribe su estado en la carpeta servida");
+  }
   try {
     // todo por https://localhost (la cookie de sesión es Secure: por http no hay sesión), verificando con la CA local de Caddy
     const p = comun.puertos(), base = "https://localhost:" + p.https, buzon = "http://127.0.0.1:" + p.correoWeb, ca = comun.caLocal();
@@ -628,6 +670,7 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
         for (const u of [obj, mf, base_ + "estado.json"]) assert.strictEqual((await pide(u)).status, 401, u + " sin sesión");
         assert.notStrictEqual((await pide("/teselas/" + finca + "/indice.json", { cookie })).cabeceras["cache-control"], o.cabeceras["cache-control"], "el resto de /teselas/ conserva su caché");
         t.diagnostic("recetas horneadas por Caddy: objeto con br+immutable, manifiesto con no-cache, estado.json y demás 404, 401 sin sesión");
+        t.diagnostic("hornero (primera vuelta desde cero, fixture, brotli 9): " + primeraVuelta.ms + " ms, " + primeraVuelta.horneadas + "/" + primeraVuelta.total + " recetas horneadas, " + (primeraVuelta.bytesBr / 1048576).toFixed(2) + " MB br; el objeto y el manifiesto salen por Caddy tras sesión y estado.json no");
       }
       {   // ?olivos=gen: sin errores de consola (no se espera a los generados)
         r0 = reloj();

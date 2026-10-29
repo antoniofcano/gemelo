@@ -1,0 +1,10 @@
+{
+  "name": "gemelo-hornero",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Dependencias de ejecución del servicio hornero (imagen Docker tuberia/olivos/Dockerfile): ajv valida el manifiesto; proper-lockfile da el candado por finca. El constructor de olivos trae las suyas (apps/web/olivo).",
+  "dependencies": {
+    "ajv": "8.20.0",
+    "proper-lockfile": "4.1.2"
+  }
+}

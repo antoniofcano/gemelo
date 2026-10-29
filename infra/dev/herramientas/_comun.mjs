@@ -109,6 +109,14 @@ export function carpetaTileset() {
   return v ? fueraDelRepo(v, "GEMELO_DEV_TILESET") : null;
 }
 
+/**
+ * La carpeta de olivos horneados que escribe el hornero y sirve Caddy en /teselas/<finca>/olivos/: GEMELO_DEV_OLIVOS o, si no se
+ * da, pruebas/salida/olivos-dev/<finca> (ignorada por git). Siempre absoluta; el mismo valor por defecto que infra/dev/compose.yml.
+ */
+export function olivosDestino() {
+  return carpetaOlivos() || path.join(RAIZ, "pruebas", "salida", "olivos-dev", fincaServida());
+}
+
 /** El indice.json de la finca que se sirve (el de GEMELO_DEV_FINCA_CARPETA, o el de GEMELO_DEV_TESELAS/<finca>/) */
 export function indiceServido() {
   const f = carpetaFinca();

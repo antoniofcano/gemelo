@@ -39,6 +39,7 @@ Las imágenes van fijadas por **versión estable y digest** (`imagen:versión@sh
 | `correo` | `axllent/mailpit:v1.32.0@sha256:0790692b…` (oficial, basada en Alpine; última release estable, 2026-10-22) | `http://localhost:8025` (buzón), SMTP `127.0.0.1:1025` | recibe el correo del enlace mágico; no envía nada fuera |
 | `migra` | `gemelo-api:local`, construida aquí de `apps/api/Dockerfile` (base `node:24.22.1-alpine3.24@sha256:06d7adf3…`, la del contrato `contratos/publicacion-vps.json`) | ninguno | aplica `apps/api/migraciones/` y termina (salida 0); la api espera a que acabe |
 | `api` | la misma `gemelo-api:local` | ninguno: se entra por Caddy en `/api/` | el servidor de la fase 1a (enlace mágico, sesión, hazas); escucha en 8000 dentro de la red `interna` |
+| `hornero` | `gemelo-hornero:local`, construida aquí de `tuberia/olivos/Dockerfile` (la misma base `node:24.22.1-alpine3.24@sha256:06d7adf3…` que la api) | ninguno | hornea las variantes de olivos de la finca servida (ADR-0018; [§ El hornero](#el-hornero-o7f)) |
 
 Lo que lleva cada uno:
 
@@ -160,6 +161,14 @@ La siembra normal pone hazas sobre el Hituelo sintético del fixture, que no cae
 - WebXR en las Quest con un certificado aceptado a mano (no instalado): no comprobado.
 - El código corto en unas Quest reales (leerlo en el casco, el teclado del navegador de Meta, el sondeo con la pantalla en reposo): no probado; solo con Chrome headless y el agente de usuario del navegador de Meta, y por la IP de la WiFi desde el propio equipo.
 - El QR de Chrome y el camino por USB con este entorno: no probados.
+
+## El hornero (O7f)
+
+`npm run dev:arriba` lo levanta con el resto. Hornea las variantes E2/E2-VR de la finca servida (`GEMELO_DEV_FINCA`; con `GEMELO_DEV_FINCA_CARPETA` hornea esa finca: su `indice.json` se monta de solo lectura en `/datos/<finca>`) en la carpeta que Caddy sirve como `/teselas/<finca>/olivos/`: `GEMELO_DEV_OLIVOS` o, si no se da, `pruebas/salida/olivos-dev/<finca>/` (la crea `levanta.mjs`; en Linux, con permiso de escritura para el uid 1000). Así `/finca/?olivos=gen` encuentra el manifiesto en `<D.base>olivos/manifiesto.json` sin hacer nada más. Su `estado.json`, su candado y su latido viven en un volumen propio (`hornero_estado`), **fuera** de la carpeta servida: Caddy no puede servirlos.
+
+**Política (no hay vuelta diaria):** una vuelta al arrancar —idempotente: con todo al día tarda ~1 s y no escribe nada— y después duerme hasta el **próximo cambio del par época actual/siguiente** (calendario `contratos/epocas-calendario.json`), ese día a las 03:00 UTC (`GEMELO_DEV_HORNERO_HORA`). Mientras duerme, cada 10 min (`GEMELO_DEV_HORNERO_COMPRUEBA_S`) mira sellos baratos —fecha y tamaño del índice de la finca, huella del calendario, `GEN_VERSION`/`CACHE_VERSION`/formato frente al manifiesto— y solo si alguno cambió lanza una vuelta. Un candado por finca (`proper-lockfile`, en el volumen de estado) impide dos hornos a la vez; un fallo se reintenta a los 5 min. Para forzar una vuelta: `docker compose -f infra/dev/compose.yml restart hornero`.
+
+**Salud:** el healthcheck de Docker ejecuta `tuberia/olivos/salud.mjs`: sano si la última vuelta terminó en `listo` (el estado dice «durmiendo hasta <fecha>») o hay una en curso que se movió hace menos de 15 min; enfermo si acabó en `error`, está atascada o el servicio dejó de latir. `npm run dev:estado` lo enseña (fase, hechas/total, época). **Seguridad:** sin puertos, usuario 1000, sistema de ficheros de solo lectura salvo su salida y su estado, sin capacidades, 512 MB. Medido en esta máquina: la primera vuelta con el fixture y los tiempos de la e2e, en la sección de la e2e.
 
 ## La api
 

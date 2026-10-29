@@ -5,7 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { caLocal, cargaEnv, compose, motivoSinDocker, pideHttps, puertos, PG_API, PG_DUENO } from "./_comun.mjs";
 
-const SERVICIOS = ["web", "db", "livekit", "correo", "api"];
+const SERVICIOS = ["web", "db", "livekit", "correo", "api", "hornero"];
 /** Servicios de una sola vez: deben haber terminado con 0 (las migraciones) */
 const DE_UNA_VEZ = ["migra"];
 
@@ -85,6 +85,12 @@ export async function pruebasExternas() {
     const s = await http("http://127.0.0.1:" + p.correoWeb + "/readyz"); if (s.status !== 200) throw new Error("/readyz → " + s.status);
     const i = JSON.parse((await http("http://127.0.0.1:" + p.correoWeb + "/api/v1/info")).texto);
     return "Mailpit " + i.Version + ", " + i.Messages + " mensajes";
+  });
+  await prueba("hornero", async () => {   // lo que dice el propio servicio (tuberia/olivos/salud.mjs): fase, hechas/total y si duerme hasta una fecha
+    const r = compose(["exec", "-T", "hornero", "node", "tuberia/olivos/salud.mjs", "--json"], { captura: true });
+    let s; try { s = JSON.parse(r.stdout); } catch (err) { throw new Error("no puedo leer la salud del hornero: " + (r.stderr || r.stdout).trim().split("\n").pop()); }
+    if (!s.sano) throw new Error(s.texto);
+    return s.texto;
   });
   return res;
 }
