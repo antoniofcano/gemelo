@@ -206,6 +206,7 @@ Con menos detalle que el acceso: es la pantalla que más cambiará al probarla.
 - **Cualquiera:** Silenciar para mí · Bloquear («solo te afecta a ti; nadie se entera»).
 - **Guía/administración:** Cerrar todos los micros / Abrir los micros · Dar la palabra · Cerrar su micro · **Expulsar** (confirmación con motivo; queda en el registro de moderación y en `auditoria`). Lo hace el servidor (`RoomService`), no el cliente.
 - Las peticiones de palabra («✋») aparecen arriba en la lista del guía **[pendiente de diseñar en detalle]**.
+- **Quest (hecho, I5; no probado en unas Quest):** en el panel flotante (Y), sección **Gente**: una fila por persona que se ve (alias, a pie / en quad / con el dron, distancia; las cuatro más cercanas) con **«Ir con»** pulsable con el rayo y el gatillo (pulso háptico, fundido y de pie a 2,5-4 m de ella, mirándola; el panel se cierra al llegar). Sin presencia, «Solo tú». La ficha de una baliza en VR dice quién está y tiene **«Ir a esta baliza»** y «Cerrar» pulsables; se abre al acercarse o apuntando a su columna de luz. Detalle en [VR.md](VR.md).
 
 ### 5.5 Voz en guiadas
 - Barra de voz: estado («Micro cerrado» / «Te están oyendo» / «El guía ha cerrado los micros» / «Tu micro no está disponible: escribe en el chat») + **Hablar** (alterna por defecto; «mantén V» o mantener pulsado si se elige) + **Pedir la palabra**. Guía: «Cerrar todos los micros».

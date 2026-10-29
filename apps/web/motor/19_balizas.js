@@ -1,5 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: colocaBalizas, eligeBaliza, sueltaBaliza, avisoBaliza, dibujaBalizasMini, tBal, actualizaBalizas
+// Expone: BAL, colocaBalizas, cierraBaliza, balizaAbierta, abreBaliza, balizaVR, eligeBaliza, sueltaBaliza, irABaliza, avisoBaliza,
+//   dibujaBalizasMini, tBal, actualizaBalizas
 // Consume: 01_datos (D, $), 02_mundo (suelo, copas), 03_escena (lienzo, visor, scene, camera, exag), 09_camara (objetivo, suelta),
 //   12_paseo (paseando, teclas), 12b_llegada (Llegada), 13_parcelas (parcelas), 13b_hazas (HazasPuro), 14_historia (VIVO, marca, aviso),
 //   15_tiempo (num1, esc, hace), 16_vida (tVida, enQuad, enDron), 20_sonido (sonidoBaliza), 26_presencia (Encuentro, sitioJunto, Presencia),
@@ -43,17 +44,19 @@
     });
   }
   function colocaBalizas() { BAL.forEach(function (g) { var pr = parcelas[g.userData.k]; g.position.set(pr.centro[0], suelo(pr.centro[0], pr.centro[1]) * exag, -pr.centro[1]); }); refrescaBalizas(); }
+  var PILL_TXT = { alerta: "Vigía pide una mirada", abierta: "Hay tareas abiertas", hecha: "Sin tareas abiertas", nada: "Sin datos de tareas" };
+  function fuenteBal() { var fch = OT && OT.fecha_consulta ? String(OT.fecha_consulta).slice(8, 10) + "/" + String(OT.fecha_consulta).slice(5, 7) : "?"; return OT && OT.fuente === "vivo" ? "OlivarTrack, leído en vivo el " + fch : "OlivarTrack, instantánea del " + fch; }
   var BBCH_TXT = { 7: "desarrollo del fruto", 8: "maduración del fruto", 6: "floración", 5: "aparición de la inflorescencia", 1: "desarrollo de las hojas", 0: "reposo y brotación", 9: "senescencia y reposo" };
   function fichaBal(k) {
     var d = datosBal(k), pr = d.pr, h = '<button type="button" class="cerrar-baliza" aria-label="Cerrar la ficha de la parcela">×</button>';
-    var pill = { alerta: ["Vigía pide una mirada", "var(--guardado)"], abierta: ["Hay tareas abiertas", "var(--guardado)"], hecha: ["Sin tareas abiertas", "var(--olivo)"], nada: ["Sin datos de tareas", "var(--muted)"] }[d.estado];
+    var pill = [PILL_TXT[d.estado], { alerta: "var(--guardado)", abierta: "var(--guardado)", hecha: "var(--olivo)", nada: "var(--muted)" }[d.estado]];
     h += '<div class="b-cab"><strong>' + esc(pr.nombre) + '</strong><span class="b-pill" style="--c:' + pill[1] + '">' + pill[0] + "</span></div>";
     h += '<p class="b-sub">' + num1(pr.ha, 1) + " ha</p>";
     if (d.vg) h += '<p class="b-aviso">Vigía marca esta parcela hoy (' + esc(d.vg.gravedad || "pide una mirada") + "). Es relativo y sin calibrar: sirve para decidir dónde mirar, no para decir que algo está enfermo.</p>";
     if (d.abiertas.length) h += "<h4>Abiertas</h4><ul>" + d.abiertas.slice(0, 3).map(function (t) { return "<li>" + esc(t.titulo) + ' <span class="b-n">' + (t.avance != null ? num1(t.avance, 0) + " %" : t.estado) + "</span></li>"; }).join("") + "</ul>";
     if (d.hechas.length) h += "<h4>Hecho hace poco</h4><ul>" + d.hechas.slice(0, 2).map(function (t) { return "<li>" + esc(t.titulo) + ' <span class="b-n">' + esc(String(t.fecha).slice(8, 10) + "/" + String(t.fecha).slice(5, 7)) + (t.andados != null && t.objetivo ? " · " + t.andados + " de " + t.objetivo + " olivos" : "") + "</span></li>"; }).join("") + "</ul>";
     if (d.fen) h += '<h4>Fenología</h4><p class="b-sub">BBCH ' + d.fen.bbch + " · " + (BBCH_TXT[Math.floor(d.fen.bbch / 10)] || "") + " · " + esc(String(d.fen.fecha).slice(8, 10) + "/" + String(d.fen.fecha).slice(5, 7)) + "</p>";
-    var fch = OT && OT.fecha_consulta ? String(OT.fecha_consulta).slice(8, 10) + "/" + String(OT.fecha_consulta).slice(5, 7) : "?", fuente = OT && OT.fuente === "vivo" ? "OlivarTrack, leído en vivo el " + fch : "OlivarTrack, instantánea del " + fch;
+    var fuente = fuenteBal();
     var gente = genteEnBaliza(k);   // I4: con la presencia compartida, quién está ahora en esta parcela; y el botón para ir
     if (gente) h += '<p class="b-sub">' + (gente.length ? "Aquí están: " + gente.map(esc).join(", ") : "No hay nadie en esta parcela") + "</p>";
     h += '<button type="button" class="ir-baliza" data-k="' + k + '">Ir a esta baliza</button>';
@@ -65,8 +68,21 @@
     var ib = e.target.closest && e.target.closest(".ir-baliza");
     if (ib) { irABaliza(Number(ib.getAttribute("data-k"))); return; }
     if (!e.target.closest || !e.target.closest(".cerrar-baliza")) return;
-    balCerrada = balForzada >= 0 ? balForzada : balCerca; balForzada = -1; $("baliza").hidden = true;
+    cierraBaliza();
   });
+  function cierraBaliza() { balCerrada = balForzada >= 0 ? balForzada : balCerca; balForzada = -1; $("baliza").hidden = true; }
+  // I5, la ficha de baliza en VR (29_vr.js la pinta en su lámina y allí «Ir a esta baliza» se pulsa con el rayo): qué baliza tiene la ficha abierta
+  // (-1 si ninguna), abrir la de la baliza i (el rayo sobre su columna de luz, como tocarla en pantalla) y su contenido en texto llano.
+  function balizaAbierta() { var b = $("baliza"), ib = b && !b.hidden && b.querySelector(".ir-baliza"); return ib ? Number(ib.getAttribute("data-k")) : -1; }
+  function abreBaliza(i) { if (!BAL[i]) return false; balCerrada = -1; balForzada = i; ultFicha = -2; return true; }
+  function balizaVR(k) {   // { k, titulo, estado, lineas, gente (como genteEnBaliza: null sin presencia), pie }; los alias van como texto (se pintan en un canvas, nunca HTML)
+    var d = datosBal(k), pr = d.pr, l = [PILL_TXT[d.estado] + " · " + num1(pr.ha, 1) + " ha"], dm = function (f) { return String(f).slice(8, 10) + "/" + String(f).slice(5, 7); };
+    if (d.vg) l.push("Vigía la marca hoy (" + (d.vg.gravedad || "pide una mirada") + "): relativo y sin calibrar, sirve para decidir dónde mirar.");
+    if (d.abiertas.length) l.push("Abiertas: " + d.abiertas.slice(0, 3).map(function (t) { return t.titulo + (t.avance != null ? " (" + num1(t.avance, 0) + " %)" : ""); }).join("; "));
+    else if (d.hechas.length) l.push("Hecho hace poco: " + d.hechas[0].titulo + " (" + dm(d.hechas[0].fecha) + ")");
+    if (d.fen) l.push("Fenología: BBCH " + d.fen.bbch + " · " + (BBCH_TXT[Math.floor(d.fen.bbch / 10)] || "") + " · " + dm(d.fen.fecha));
+    return { k: k, titulo: pr.nombre, estado: d.estado, color: COLB[d.estado], lineas: l, gente: genteEnBaliza(k), pie: fuenteBal() + " · visitadas " + balVisitas + " de " + BAL.length };
+  }
   function eligeBaliza(cx, cy) {   // toque en pantalla (cx, cy): ¿está sobre la columna de luz de alguna baliza? (de su pie a 27 m de alto)
     var r = lienzo.getBoundingClientRect(), a = new THREE.Vector3(), b = new THREE.Vector3(), mejor = -1, md = 22;
     BAL.forEach(function (g, i) {
