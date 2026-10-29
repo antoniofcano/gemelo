@@ -13,9 +13,9 @@ const FUENTE = lee("apps/web/motor/26_presencia.js");
 function puro() {
   const i = FUENTE.indexOf("// [puro:inicio]"), f = FUENTE.indexOf("// [puro:fin]");
   assert.ok(i >= 0 && f > i, "26_presencia.js debe marcar su trozo puro con // [puro:inicio] y // [puro:fin]");
-  return new Function("\"use strict\";\n" + FUENTE.slice(i, f) + "\nreturn { PoseCodec: PoseCodec, BufferPose: BufferPose, Muneco: Muneco };")();
+  return new Function("\"use strict\";\n" + FUENTE.slice(i, f) + "\nreturn { PoseCodec: PoseCodec, BufferPose: BufferPose, Muneco: Muneco, Encuentro: Encuentro };")();
 }
-const { PoseCodec, BufferPose, Muneco } = puro();
+const { PoseCodec, BufferPose, Muneco, Encuentro } = puro();
 
 // azar con semilla (mulberry32): las pruebas dan siempre lo mismo
 function azarCon(s) { return () => { s = (s + 0x6d2b79f5) | 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
@@ -191,6 +191,102 @@ test("muñeco: la pose del contrato v1 no cambia (24 B escritorio, 56 B Quest; v
   assert.strictEqual(PoseCodec.codifica({ tipo: 2, seq: 1, t: 2, cab: { p: [1, 2, 3], q: [0, 0, 0, 1] }, izq: { p: [0, 1, 0], q: [0, 0, 0, 1] }, der: null }).byteLength, 56);
 });
 
+// ---------- P6: el modo de quien publica (a pie, quad, dron) en los bits 4-5 del byte 1, sin cambiar la v1
+test("modo (P6): ida y vuelta a pie, en quad y con el dron, en los dos tipos; en los bits 4-5 del byte 1; sin él, a pie", () => {
+  const cab = { p: [1, 2, 3], q: [0, 0, 0, 1] }, mano = { p: [0, 1, 0], q: [0, 0, 0, 1] };
+  for (const tipo of [1, 2]) for (const modo of [0, 1, 2]) {
+    const b = PoseCodec.codifica({ tipo, seq: 7, t: 9, cab, izq: tipo === 2 ? mano : null, der: null, modo });
+    assert.strictEqual(b.byteLength, PoseCodec.BYTES[tipo], "el tamaño no cambia"); assert.strictEqual(b[0], 1, "sigue siendo la versión 1");
+    assert.strictEqual((b[1] >> 4) & 3, modo, "bits 4-5"); assert.strictEqual(b[1] & 3, tipo, "bits 0-1, el tipo, intactos");
+    const d = PoseCodec.decodifica(b); assert.strictEqual(d.modo, modo); assert.strictEqual(d.tipo, tipo);
+    if (tipo === 2) assert.ok(d.izq && !d.der, "las banderas de las manos, intactas");
+  }
+  assert.strictEqual(PoseCodec.decodifica(PoseCodec.codifica({ tipo: 1, seq: 0, t: 0, cab })).modo, 0, "sin modo, a pie");
+  assert.strictEqual(PoseCodec.codifica({ tipo: 1, seq: 0, t: 0, cab, modo: 7 })[1], 1, "un modo que no existe viaja como a pie");
+  assert.deepStrictEqual([PoseCodec.PIE, PoseCodec.QUAD, PoseCodec.DRON], [0, 1, 2]);
+});
+test("modo (P6): un receptor de antes lo ignora (solo mira los bits 0-3); el valor 3 y los bits 6-7, reservados, no descartan la pose", () => {
+  const b = PoseCodec.codifica({ tipo: 2, seq: 1, t: 2, cab: { p: [1, 2, 3], q: [0, 0, 0, 1] }, izq: null, der: { p: [0, 1, 0], q: [0, 0, 0, 1] }, modo: 1 });
+  const viejo = band => ({ tipo: band & 3, izq: !!(band & 4), der: !!(band & 8) });   // lo que leía el códec v1 de antes de P6
+  assert.deepStrictEqual(viejo(b[1]), { tipo: 2, izq: false, der: true });
+  const c = b.slice(); c[1] = (c[1] & 0x0f) | (3 << 4) | 0xc0;
+  const d = PoseCodec.decodifica(c); assert.ok(d, "no se descarta"); assert.strictEqual(d.modo, 0, "3 = reservado: a pie"); assert.ok(d.der);
+});
+test("modo (P6): el búfer lo lleva hasta la pose que se dibuja", () => {
+  const b = BufferPose.crea(), out = BufferPose.salida(), pz = { p: [0, 0, 0], q: [0, 0, 0, 1] };
+  assert.strictEqual(out.modo, 0);
+  BufferPose.recibe(b, PoseCodec.decodifica(PoseCodec.codifica({ tipo: 1, seq: 1, t: 0, cab: pz, modo: 0 })), 0);
+  BufferPose.recibe(b, PoseCodec.decodifica(PoseCodec.codifica({ tipo: 1, seq: 2, t: 100, cab: pz, modo: 1 })), 100);
+  BufferPose.muestra(b, 1000, 0, out); assert.strictEqual(out.modo, 1, "el de la pose más reciente de las dos que se interpolan");
+});
+test("muñeco (P6): en quad, sentado (piernas 1,15 y brazos 1,05 rad, los de 16_vida.js), sin balanceo ni bote, 0,2 m detrás del quad; con el dron, de pie y brazos al mando", () => {
+  const VIDA = lee("apps/web/motor/16_vida.js");
+  assert.ok(VIDA.includes("u.pi.rotation.x = u.pd.rotation.x = 1.15; u.bi.rotation.x = u.bd.rotation.x = 1.05"), "16_vida.js ya no sienta así al paseante (cambia también Muneco)");
+  assert.ok(VIDA.includes("ud.bi.rotation.x = ud.bd.rotation.x = 1.0"), "16_vida.js ya no pone así los brazos con el dron");
+  assert.ok(VIDA.includes("persona.position.set(pp.x - fx * 0.2, gy - 0.02, -pp.y - fz * 0.2)"), "16_vida.js ya no coloca así al paseante en el quad");
+  const avanzaCon = (modo, vel, seg, yawCab = 0.7) => { const st = Muneco.crea(), o = {}, dt = 1 / 60; let x = 0, z = 0, maxP = -9, minP = 9, maxBote = -1;
+    for (let i = 0; i < seg * 60; i++) { z -= vel * dt; Muneco.avanza(st, x, z, yawCab, dt, 100, 1, NaN, false, o, modo); maxP = Math.max(maxP, o.piernaI); minP = Math.min(minP, o.piernaI); maxBote = Math.max(maxBote, o.yPies); }
+    return { o, maxP, minP, maxBote }; };
+  const q = avanzaCon(1, 8, 3);
+  assert.strictEqual(q.o.vehiculo, 1); assert.strictEqual(q.maxP, 1.15); assert.strictEqual(q.minP, 1.15, "sin balanceo aunque vaya a 8 m/s");
+  assert.strictEqual(q.o.brazoI, 1.05); assert.strictEqual(q.o.brazoD, 1.05);
+  assert.ok(Math.abs(q.maxBote - 99.98) < 1e-9, "pies a suelo − 0,02, sin bote: " + q.maxBote); assert.ok(Math.abs(q.o.yVeh - 100.02) < 1e-9, "el quad a suelo + 0,02");
+  assert.strictEqual(q.o.atras, 0.2); assert.ok(Math.abs(q.o.yaw - 0.7) < 0.02, "en quad, el cuerpo con el rumbo publicado (el del quad), no con el de la marcha");
+  assert.ok(q.o.vel > 7, "la velocidad del quad no se recorta a la de andar: " + q.o.vel);
+  const d = avanzaCon(2, 0, 1);
+  assert.strictEqual(d.o.vehiculo, 2); assert.strictEqual(d.o.piernaI, 0); assert.strictEqual(d.o.brazoI, 1.0); assert.strictEqual(d.o.atras, 0);
+  assert.ok(Math.abs(d.o.yCab - d.o.yPies - 1.6) < 1e-9);
+  const p = avanzaCon(0, 1.4, 3);
+  assert.strictEqual(p.o.vehiculo, 0); assert.ok(p.maxP > 0.5 && p.minP < -0.5, "a pie, como siempre");
+  const mm = {}; Muneco.avanza(Muneco.crea(), 0, 0, 0, 1 / 60, 0, 1, NaN, true, mm, 1); assert.strictEqual(mm.brazoI, 0, "con manos de la pose, los brazos no se tocan");
+});
+
+// ---------- I1: «Ir con alguien»: dónde te deja (Encuentro.punto)
+const EXT = [0, 200, 200, 0];   // oeste, norte, este, sur
+function rejilla(paso, r, x0 = 0, y0 = 0, n = 40) { const o = []; for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) o.push({ x: x0 + i * paso, y: y0 + j * paso, r }); return o; }
+function compruebaLlegada(L, t, obst, rT, msg) {
+  assert.ok(L.d >= 2 - 1e-9 && L.d <= 4 + 1e-9, msg + ": a 2-4 m (" + L.d + ")");
+  assert.ok(Math.abs(Math.hypot(L.x - t.x, L.y - t.y) - L.d) < 1e-6, msg + ": d es la distancia de verdad");
+  for (const o of obst) assert.ok(Math.hypot(L.x - o.x, L.y - o.y) >= rT + 0.2 - 1e-9, msg + ": dentro de un tronco en " + o.x + "," + o.y);
+  assert.ok(L.x >= EXT[0] + 3 && L.x <= EXT[2] - 3 && L.y >= EXT[3] + 3 && L.y <= EXT[1] - 3, msg + ": dentro de la finca");
+  const fx = Math.sin(L.ang), fy = Math.cos(L.ang), dx = (t.x - L.x) / L.d, dy = (t.y - L.y) / L.d;
+  assert.ok(fx * dx + fy * dy > 0.9999, msg + ": mirando hacia ella");
+}
+test("ir con alguien: en campo abierto, a 2,5 m por el lado desde el que llegas, mirándola y en el suelo", () => {
+  const t = { x: 100, y: 100 }, L = Encuentro.punto(t, { x: 100, y: 50 }, [], EXT, { suelo: (x, y) => 300 + x * 0.01 + y * 0.02 });
+  compruebaLlegada(L, t, [], 0.55, "abierto");
+  assert.strictEqual(L.d, 2.5); assert.ok(Math.abs(L.x - 100) < 1e-9 && Math.abs(L.y - 97.5) < 1e-9, "por el sur, de donde vienes: " + L.x + "," + L.y);
+  assert.ok(Math.abs(L.ang) < 1e-9, "mirando al norte"); assert.strictEqual(L.libre, "copa");
+  assert.ok(Math.abs(L.z - (300 + L.x * 0.01 + L.y * 0.02)) < 1e-9, "z = suelo(x, y)");
+});
+test("ir con alguien: en un olivar en marco de 7 m (copas de 2 m), nunca dentro de una copa ni de un tronco", () => {
+  const obst = rejilla(7, 2, 2, 2, 28);
+  for (const [tx, ty, dx, dy] of [[100, 100, 0, -1], [100, 100, 1, 0], [102.1, 103.4, -1, 1], [16, 16, 0, 1], [9, 9, -1, -1], [5.5, 5.5, 1, 1]]) {
+    const t = { x: tx, y: ty }, L = Encuentro.punto(t, { x: tx + dx * 40, y: ty + dy * 40 }, obst, EXT);
+    compruebaLlegada(L, t, obst, 0.55, "olivar " + tx + "," + ty);
+    assert.strictEqual(L.libre, "copa", "hay sitio fuera de las copas"); for (const o of obst) assert.ok(Math.hypot(L.x - o.x, L.y - o.y) >= o.r, "dentro de una copa");
+  }
+});
+test("ir con alguien: en quad, el radio del tronco es el del quad (1,05 m); si todo cae bajo copa, al menos fuera de los troncos; si ni eso, empujado como el paseo", () => {
+  const t = { x: 50, y: 50 }, denso = rejilla(3, 2.5, 30, 30, 15);   // copas que se tocan: no hay suelo despejado
+  const L = Encuentro.punto(t, { x: 0, y: 50 }, denso, EXT, { rTronco: 1.05 });
+  compruebaLlegada(L, t, denso, 1.05, "denso en quad"); assert.strictEqual(L.libre, "tronco");
+  const apretado = rejilla(1, 0, 40, 40, 21);   // un tronco cada metro: no cabe nadie
+  const E = Encuentro.punto(t, { x: 0, y: 50 }, apretado, EXT);
+  assert.strictEqual(E.libre, "empujado"); assert.ok(Number.isFinite(E.x) && Number.isFinite(E.y) && Number.isFinite(E.ang));
+});
+test("ir con alguien: junto a la linde de la finca, dentro (3 m de margen); y sin dirección de llegada, por el sur", () => {
+  const t = { x: 4, y: 196 }, L = Encuentro.punto(t, { x: -50, y: 250 }, [], EXT);
+  compruebaLlegada(L, t, [], 0.55, "esquina");
+  const S = Encuentro.punto({ x: 100, y: 100 }, { x: 100, y: 100 }, [], EXT); assert.ok(Math.abs(S.x - 100) < 1e-9 && S.y < 100, "encima de ella: por el sur");
+});
+test("ir con alguien y minimapa: en la página, solo con la bandera; con ella, solo a quien se dibuja (de la sala, con pose, sin bloquear)", () => {
+  const M = lee("apps/web/motor/17_minimapa.js"), F = FUENTE;
+  assert.match(M, /if \(Presencia\.activo\(\)\) \{/, "el minimapa solo pinta a los demás con la presencia activa");
+  assert.match(F, /function seVe\(a, ahoraMs\) \{ return !!a && a\.visto && \(variante !== "red" \|\| SalaPose\.seVe\(SP, a\.id, ahoraMs, bloqueados\)\); \}/);
+  assert.match(F, /function irCon\(id\) \{\s*if \(!activo\) return false;\s*var a = busca\(id\); if \(!seVe\(a, performance\.now\(\)\)\) return false;/, "irCon solo va con quien se ve");
+  assert.match(F, /if \(x\.enMundo && !bl\) \{/, "el botón «Ir con» solo para quien está en el olivar y no está bloqueado");
+});
 test("contratos/livekit-roles.json: en F2 ningún rol publica audio ni vídeo, todos publican datos, nadie lleva roomAdmin y la identidad es opaca", () => {
   const R = JSON.parse(lee("contratos/livekit-roles.json"));
   assert.strictEqual(R.contrato, "livekit-roles"); assert.strictEqual(R.version, 2); assert.strictEqual(R.fase, "F2");

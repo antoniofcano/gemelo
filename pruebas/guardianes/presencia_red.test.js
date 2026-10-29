@@ -115,3 +115,18 @@ test("el motor solo pide livekit-client con ?presencia=red y la versión está f
   assert.match(p.dependencies["livekit-client"], /^\d+\.\d+\.\d+$/, "versión exacta (regla 12)");
   assert.ok(!/innerHTML/.test(FUENTE), "lo que llega de la sala nunca se pone como HTML");
 });
+
+test("I1: a quién se dibuja, sale en el minimapa y se puede ir: con pose reciente y sin bloquear; «en vista aérea» y bloqueados, no", () => {
+  const s = SalaPose.crea(0), ahora = 10000;
+  SalaPose.entra(s, "h_pasea", null); SalaPose.entra(s, "h_aerea", null); SalaPose.entra(s, "h_bloq", null);
+  SalaPose.recibe(s, "h_pasea", bytes(1, 1, 1, ahora), ahora); SalaPose.recibe(s, "h_bloq", bytes(2, 2, 1, ahora), ahora);
+  const bl = { h_bloq: true };
+  assert.deepStrictEqual(["h_pasea", "h_aerea", "h_bloq", "h_nadie"].filter(id => SalaPose.seVe(s, id, ahora + 100, bl)), ["h_pasea"]);
+  assert.strictEqual(SalaPose.seVe(s, "h_pasea", ahora + SalaPose.SIN_POSE + 1, bl), false, "sin pose en 2 s pasa a vista aérea: deja de verse");
+  assert.strictEqual(SalaPose.seVe(s, "h_bloq", ahora + 100, {}), true, "desbloqueado, vuelve");
+});
+test("P6: el panel Gente dice «en quad» o «con el dron» con el modo de la pose", () => {
+  const s = SalaPose.crea(0), ahora = 5000;
+  [["h_a", 0], ["h_b", 1], ["h_c", 2]].forEach(([id, modo]) => { SalaPose.entra(s, id, null); SalaPose.recibe(s, id, PoseCodec.codifica({ ...pose(0, 0, 1, ahora), modo }), ahora); });
+  assert.deepStrictEqual(SalaPose.gente(s, ahora + 10).map(g => g.estado).sort(), ["con el dron", "en quad", "paseando"]);
+});
