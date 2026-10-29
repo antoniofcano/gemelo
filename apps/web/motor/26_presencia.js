@@ -424,7 +424,7 @@
       Object.keys(porId).forEach(saleOtro);
       if (!activo) return;
       var R = LK && LK.DisconnectReason ? LK.DisconnectReason : {};
-      ponEstado(motivo === R.PARTICIPANT_REMOVED ? "La oficina te ha sacado de la visita compartida." : motivo === R.DUPLICATE_IDENTITY ? "Has entrado desde otro aparato: aquí se ha cerrado la visita compartida." : "Te has desconectado de la visita compartida.", true);
+      ponEstado(motivo === R.PARTICIPANT_REMOVED ? "La oficina te ha sacado de la visita compartida." : motivo === R.DUPLICATE_IDENTITY ? "Has abierto la visita compartida en otra pestaña: aquí se ha cerrado." : "Te has desconectado de la visita compartida.", true);
     }
     function entraOtro(p) {
       var id = p.identity; if (!id || porId[id]) return porId[id] || null;
