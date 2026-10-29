@@ -10,6 +10,7 @@ const os = require("os");
 const { RAIZ, fs, path } = require("./_util");
 const imp = (...p) => import(pathToFileURL(path.join(RAIZ, ...p)).href);
 const dormir = ms => new Promise(r => setTimeout(r, ms));
+const hasta = async (cond, ms = 20000) => { const t0 = Date.now(); while (!cond() && Date.now() - t0 < ms) await dormir(25); };
 
 let SV, SA, HN, E, S;
 test.before(async () => {
@@ -65,7 +66,7 @@ test("servicio: hornea al arrancar, no hace nada mientras duerme y vuelve a horn
   fs.mkdirSync(path.join(cfg.datos, "fixture"), { recursive: true }); const indice = path.join(cfg.datos, "fixture", "indice.json"); fs.writeFileSync(indice, "{}");
   const vueltas = [], hornea = async o => { vueltas.push(o); return HN.hornea(o); }, parar = { parado: false };
   const p = SV.servicio(cfg, { hornea, generador: generador(), parar, log: () => {} });
-  await dormir(1500);
+  await hasta(() => vueltas.length >= 1 && fs.existsSync(path.join(cfg.estado, "servicio.json")) && (JSON.parse(fs.readFileSync(path.join(cfg.estado, "servicio.json"), "utf8")).fincas.fixture.durmiendo_hasta)); await dormir(500);
   assert.strictEqual(vueltas.length, 1, "una vuelta al arrancar y ninguna más mientras nada cambia (muchas comprobaciones de sellos): " + vueltas.length);
   const st = JSON.parse(fs.readFileSync(path.join(cfg.estado, "fixture.json"), "utf8"));
   assert.deepStrictEqual([st.fase, st.error, st.hechas, st.total], ["listo", null, 16, 16], "el estado del hornero está en su carpeta de estado");
@@ -75,7 +76,7 @@ test("servicio: hornea al arrancar, no hace nada mientras duerme y vuelve a horn
   const sano = SA.evaluaSalud({ fixture: st }, lat, { ahora: Date.now(), latidoMaxS: 60 });
   assert.ok(sano.sano && /durmiendo hasta/.test(sano.texto), sano.texto);
   // cambia el índice: una vuelta (idempotente: todo reutilizado)
-  fs.writeFileSync(indice, '{"cambio":1234567}'); await dormir(800);
+  fs.writeFileSync(indice, JSON.stringify({ cambio: 1234567 })); await hasta(() => vueltas.length >= 2); await dormir(300);
   assert.strictEqual(vueltas.length, 2, "el sello del índice cambió: una vuelta más");
   assert.match(JSON.parse(fs.readFileSync(path.join(cfg.estado, "servicio.json"), "utf8")).fincas.fixture.ultimo_motivo, /índice/);
   // con el candado de otro, la vuelta se aplaza (no se lanzan dos hornos sobre la misma finca)
