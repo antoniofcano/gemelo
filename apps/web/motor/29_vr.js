@@ -1,11 +1,11 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: VRX, vrDebugExtra, vrFundido, vrAparece, panel, ficha, vrActualiza, vrFin
+// Expone: VRX, vrDebugExtra, vrFundido, vrAparece, panel, ficha, vrMideEmpieza, vrMideFin, vrActualiza, VR_PERFILES, vrFin
 // Consume: 01_datos (D, $, fmt, VRP), 02_mundo (suelo, orto, copas), 03_escena (renderer, scene, camera, texColor, exag, modo, calidad),
 //   04b_escena3d (Escena3D), 05_nube (nube), 07b_arboles (Arboles), 09_camara (eligeCopa, pon), 10_ndvi (NDV, ndviIdx),
 //   12_paseo (paseando, persona, teclas, primera, entraPaseo, salePaseo, actualizaPaseo), 12b_llegada (Llegada), 13_parcelas (parcelas, fincas),
 //   15_tiempo (calma, nivel, hace), 16_vida (mira, quad, dron),
 //   19_balizas (BAL, cierraBaliza, balizaAbierta, abreBaliza, balizaVR, irABaliza, tBal), 20_sonido (snd, iniciaSonido), 22_huellas (pendFactor),
-//   25_perros (perrosLlegan), 26_presencia (Presencia), 90_final (tamano, cuadro, bucle)
+//   25_perros (perrosLlegan), 26_presencia (Presencia), 30_mide (MideEst, Mide), 90_final (tamano, cuadro, bucle)
 // Nota: Publica además window.__vrDebug, __vrOlivo, __vrBotones, __vrVuelo, __vrBalizas y VR_ESTADO (depuración y pruebas VR).
 // ===============================================================================
   // ---------- modo VR inmersivo (WebXR, Meta Quest Browser): el paseo en primera persona con mandos, un panel flotante y un perfil de rendimiento propio
@@ -159,14 +159,16 @@
   function vrBotones() {
     var B = [];
     function b(id, x, y, w, h, txt, fn, on) { B.push({ id: id, x: x, y: y, w: w, h: h, txt: txt, fn: fn, on: !!on }); }
+    if (VRX.mideTarjeta) { b("mideX", 372, 668, 280, 76, "Cerrar", function () { VRX.mideTarjeta = false; }); return B; }   // T7a: con la tarjeta de la medida abierta, solo «Cerrar»
     ["nube", "gem", "orto"].forEach(function (m, i) { b("m_" + m, 40 + i * 316, 112, 300, 64, ["Nube LiDAR", "Gemelo", "Ortofoto"][i], function () { pon(m); VRX.sucio = true; }, modo === m); });
     b("h-", 420, 200, 90, 64, "−", function () { vrSlider("hora", -1); }); b("h+", 800, 200, 90, 64, "+", function () { vrSlider("hora", 1); });
     b("f-", 420, 276, 90, 64, "−", function () { vrSlider("hSel", -1); }); b("f+", 800, 276, 90, 64, "+", function () { vrSlider("hSel", 1); });
     b("e-", 420, 352, 90, 64, "−", function () { vrSlider("exag", -1); }); b("e+", 800, 352, 90, 64, "+", function () { vrSlider("exag", 1); });
     b("p-", 420, 428, 90, 64, "◀", function () { vrParcela(-1); }); b("p+", 800, 428, 90, 64, "▶", function () { vrParcela(1); });
-    b("snd", 40, 520, 300, 64, "Sonido: " + ($("cSonido").checked ? "sí" : "no"), function () { var c = $("cSonido"); c.checked = !c.checked; c.dispatchEvent(new Event("change", { bubbles: true })); if (c.checked) iniciaSonido(); VRX.sucio = true; }, $("cSonido").checked);
-    b("vig", 356, 520, 300, 64, "Viñeta: " + (VRX.vineta ? "sí" : "no"), function () { VRX.vineta = !VRX.vineta; VRX.sucio = true; }, VRX.vineta);
-    b("sal", 672, 520, 312, 64, "Salir de VR", function () { if (VRX.sesion) VRX.sesion.end(); }, false);
+    b("snd", 40, 520, 222, 64, "Sonido: " + ($("cSonido").checked ? "sí" : "no"), function () { var c = $("cSonido"); c.checked = !c.checked; c.dispatchEvent(new Event("change", { bubbles: true })); if (c.checked) iniciaSonido(); VRX.sucio = true; }, $("cSonido").checked);
+    b("vig", 278, 520, 222, 64, "Viñeta: " + (VRX.vineta ? "sí" : "no"), function () { VRX.vineta = !VRX.vineta; VRX.sucio = true; }, VRX.vineta);
+    b("mide", 516, 520, 222, 64, "Medir " + Mide.segundos() + " s", function () { Mide.inicia(); }, Mide.estado() === "midiendo");
+    b("sal", 754, 520, 230, 64, "Salir de VR", function () { if (VRX.sesion) VRX.sesion.end(); }, false);
     vrGenteBotones(b);
     return B;
   }
@@ -176,6 +178,7 @@
   }
   function vrPintaPanel() {
     var cx = panel.cx, W = panel.W, H = panel.H, B = vrBotones(), v = vrValores();
+    if (VRX.mideTarjeta) { vrPintaMide(B); return; }
     cx.clearRect(0, 0, W, H); cx.fillStyle = "rgba(14,18,22,0.93)"; vrRect(cx, 0, 0, W, H, 30); cx.fill();
     cx.fillStyle = "#e9eef2"; cx.font = "bold 40px system-ui, sans-serif"; cx.textBaseline = "middle"; cx.fillText(D.titulo_vr || (document.title || "Gemelo"), 40, 54);
     cx.font = "26px system-ui, sans-serif"; cx.fillStyle = "#9fb1bd"; cx.textAlign = "right"; cx.fillText("Y: ocultar · gatillo: pulsar", W - 36, 54); cx.textAlign = "left";
@@ -300,6 +303,17 @@
     return mejor;
   }
   function vrParcela(d) { VRX.parcSel = (VRX.parcSel + d + parcelas.length) % parcelas.length; var p = parcelas[VRX.parcSel]; vrIrA(p.centro[0], p.centro[1] - 6); VRX.sucio = true; }
+  // T7a: la tarjeta de la medida (30_mide.js) sobre el panel: texto a 29 px en un panel de 1 m (letra de ≈ 2,8 cm, legible a 1 m) y «Cerrar» pulsable con el gatillo
+  function vrPintaMide(B) {
+    var cx = panel.cx, W = panel.W, H = panel.H, r = Mide.resultado();
+    cx.clearRect(0, 0, W, H); cx.fillStyle = "rgba(14,18,22,0.96)"; vrRect(cx, 0, 0, W, H, 30); cx.fill(); cx.textBaseline = "middle"; cx.textAlign = "left";
+    if (r) MideEst.lineas(r, true).forEach(function (l, i) { cx.fillStyle = i === 0 ? "#7fe3ff" : i === 4 ? "#ffffff" : "#dbe6ec"; cx.font = (i === 4 ? "bold " : "") + "29px system-ui, sans-serif"; cx.fillText(l, 36, 44 + i * 46, W - 72); });
+    else { cx.fillStyle = "#dbe6ec"; cx.font = "30px system-ui, sans-serif"; cx.fillText("Sin medida todavía", 36, 60); }
+    B.forEach(function (q) { cx.fillStyle = VRX.hover === q.id ? "#4a5866" : "#2e7d3a"; vrRect(cx, q.x, q.y, q.w, q.h, 14); cx.fill(); cx.fillStyle = "#ffffff"; cx.font = "bold 32px system-ui, sans-serif"; cx.textAlign = "center"; cx.fillText(q.txt, q.x + q.w / 2, q.y + q.h / 2 + 1); });
+    cx.textAlign = "left"; panel.tex.needsUpdate = true; VRX.sucio = false; VRX.botones = B;
+  }
+  function vrMideEmpieza() { VRX.mideTarjeta = false; panel.m.visible = false; VRX.sucio = true; }   // a andar: el panel no tapa la vista durante la medida
+  function vrMideFin() { VRX.mideTarjeta = true; panel.m.visible = true; panel.ini = false; VRX.sucio = true; }
 
   // ----- 4) la persona en la escena: posición del rig (el espacio de referencia desplazado) y locomoción
   function vrAplicaRig() {

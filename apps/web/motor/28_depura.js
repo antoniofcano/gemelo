@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: depuraCuadro
 // Consume: 01_datos (DEPURA), 02_mundo (Mundo), 02b_cola (Cola), 03_escena (visor, renderer), 07b_arboles (Arboles), 15_tiempo (nivel),
-//   26_presencia (Presencia), 29_vr (vrDebugExtra)
+//   26_presencia (Presencia), 29_vr (vrDebugExtra), 30_mide (Mide)
 // ===============================================================================
 
   // ---------- ?debug: un contador en la esquina del visor para medir en el móvil (ms de JS por fotograma, llamadas, triángulos, teselas y olivos por nivel)
@@ -25,6 +25,6 @@
     dep.el.textContent = (dep.n * 1000 / (ahora - dep.t0)).toFixed(0) + " fps · JS " + (dep.js / dep.n).toFixed(1) + " ms (pico " + dep.mx.toFixed(0) + ")\n" +
       i.render.calls + " llamadas · " + (i.render.triangles / 1000).toFixed(0) + " k tri · " + (i.render.points / 1000).toFixed(0) + " k pts\n" +
       "cola " + Cola.pendientes() + " pendientes · rebanada máx (ms): " + Object.keys(Cola.est).map(function (k) { return k + " " + Cola.est[k].max.toFixed(0); }).join(" · ") + "\n" +
-      (window.VR_ESTADO ? window.VR_ESTADO + vrDebugExtra() + "\n" : "") + (Presencia.activo() ? Presencia.texto() + "\n" : "") + genDebug() + "teselas " + cargadas + "/" + Mundo.lista.length + " · olivos N0 " + a.nivel0 + " N1 " + a.nivel1 + " N2 " + a.nivel2 + " · heap " + mem;
+      (window.VR_ESTADO ? window.VR_ESTADO + vrDebugExtra() + "\n" : "") + (Presencia.activo() ? Presencia.texto() + "\n" : "") + genDebug() + Mide.linea() + "teselas " + cargadas + "/" + Mundo.lista.length + " · olivos N0 " + a.nivel0 + " N1 " + a.nivel1 + " N2 " + a.nivel2 + " · heap " + mem;
     dep.n = 0; dep.js = 0; dep.mx = 0; dep.t0 = ahora;
   }
