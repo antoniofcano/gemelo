@@ -1,7 +1,8 @@
 "use strict";
 // Prototipo F1d (ADR-0015, Propuesto): la tubería tuberia/tiles3d/ genera del fixture sintético un tileset 3D Tiles 1.1 válido, con
 // geometricError decreciente, glb válidos (cabecera, chunks, accessors), olivos como instancias GPU que salen del registro, el marco
-// local de siempre y un presupuesto de triángulos por nivel. Si está el visor (tuberia/tiles3d/visor), lo carga en Chrome headless
+// local de siempre, la identidad por instancia (_INDICE_COPA + huella de la lista de copas; _TIPO + tabla de tipos: contratos/tileset.schema.json)
+// y un presupuesto de triángulos por nivel. Si está el visor (tuberia/tiles3d/visor), lo carga en Chrome headless
 // + SwiftShader y mide llamadas, triángulos y memoria (NUNCA fps). Sin dependencias instaladas se SALTA con aviso.
 const test = require("node:test"), assert = require("node:assert");
 const { pathToFileURL } = require("url");
@@ -19,7 +20,7 @@ const SALTO_VISOR = SALTO || (!fs.existsSync(VITE) || !fs.existsSync(path.join(V
 const TOPES = JSON.parse(fs.readFileSync(path.join(T3D, "presupuesto.json"), "utf8"));
 const MIDE = !!process.env.GEMELO_MIDE;
 
-let FIX, SAL, TS, RES, I, R, marco, gltf;
+let FIX, SAL, TS, RES, I, R, marco, gltf, gen;
 const recorre = (t, f, padre = null, prof = 0) => { f(t, padre, prof); (t.children || []).forEach(h => recorre(h, f, t, prof + 1)); };
 const imp = f => import(pathToFileURL(f).href);
 
@@ -30,7 +31,7 @@ test.before(async () => {
   assert.strictEqual(g.status, 0, "genera.mjs falló:\n" + g.stdout + g.stderr);
   TS = JSON.parse(fs.readFileSync(path.join(SAL, "tileset.json"), "utf8"));
   RES = JSON.parse(fs.readFileSync(path.join(SAL, "resumen.json"), "utf8"));
-  const gen = await imp(path.join(T3D, "genera.mjs")), c = gen.leeContrato(path.join(FIX, "hituelo"));
+  gen = await imp(path.join(T3D, "genera.mjs")); const c = gen.leeContrato(path.join(FIX, "hituelo"));
   I = c.I; R = gen.relieve(c.I, c.teselas);
   marco = await imp(path.join(T3D, "marco.mjs"));
   const req = m => require(require.resolve(m, { paths: [T3D] }));
@@ -69,7 +70,7 @@ test("cada contenido existe y es un glb válido: cabecera, chunks JSON y BIN, ac
     const j = JSON.parse(b.subarray(20, 20 + lj).toString("utf8")), ob = 20 + lj, lb = b.readUInt32LE(ob);
     assert.strictEqual(b.readUInt32LE(ob + 4), 0x004e4942, u + ": segundo chunk BIN"); assert.ok(lj % 4 === 0 && lb % 4 === 0, u + ": chunks alineados a 4");
     for (const [k, a] of j.accessors.entries()) {
-      const v = j.bufferViews[a.bufferView], tam = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4 }[a.type] * { 5121: 1, 5123: 2, 5125: 4, 5126: 4 }[a.componentType];
+      const v = j.bufferViews[a.bufferView], tam = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4 }[a.type] * { 5120: 1, 5121: 1, 5122: 2, 5123: 2, 5125: 4, 5126: 4 }[a.componentType];
       assert.ok((v.byteOffset || 0) + (a.byteOffset || 0) + a.count * (v.byteStride || tam) <= lb && (v.byteOffset || 0) + v.byteLength <= lb, u + ": accessor " + k + " se sale del BIN");
     }
     const doc = await io.readBinary(new Uint8Array(b));
@@ -94,27 +95,57 @@ test("validador oficial de CesiumGS (3d-tiles-validator, que valida también los
   assert.deepStrictEqual(malos.map(i => i.path + ": " + i.message), []);
 });
 
-test("los olivos son instancias GPU que salen del registro: id, posición sobre el relieve, giro y escala de la copa medida", async t => {
+test("el tileset cumple contratos/tileset.schema.json (extras.gemelo del tileset y de cada tesela con olivos)", t => {
   if (SALTO) return t.skip(SALTO);
-  const io = new gltf.core.NodeIO().registerExtensions([gltf.ext.EXTMeshGPUInstancing]), vistos = new Set();
+  const Ajv2020 = require("ajv/dist/2020").default, ajv = new Ajv2020({ strict: true, strictRequired: false, allErrors: true });
+  const v = ajv.compile(JSON.parse(fs.readFileSync(path.join(RAIZ, "contratos", "tileset.schema.json"), "utf8")));
+  assert.deepStrictEqual(v(TS) ? [] : v.errors.slice(0, 10).map(e => (e.instancePath || "/") + ": " + e.message), []);
+  const G = TS.extras.gemelo;
+  assert.strictEqual(G.id_fuente, "copas_id", "el fixture de Hituelo trae copas_id");
+  // tabla de tipos: −1 sin asignar y el tipo 0 del catálogo de pruebas (solo existe en el fixture), con números locales consecutivos
+  assert.deepStrictEqual(G.tipos, { "-1": null, "0": "olivos-tipo:0" });
+  let conOlivos = 0; recorre(TS.root, n => { if (n.extras) conOlivos++; });
+  assert.strictEqual(conOlivos, RES.teselas.filter(f => f.olivos).length, "extras.gemelo en cada tesela con olivos y solo en ellas");
+});
+
+test("identidad por instancia: _INDICE_COPA es la posición en la lista de copas de la tesela; la huella deja resolver copas_id en CPU; _TIPO casa con copas_tipo por la tabla", async t => {
+  if (SALTO) return t.skip(SALTO);
+  const io = new gltf.core.NodeIO().registerExtensions([gltf.ext.EXTMeshGPUInstancing]), vistos = new Map(), porUri = new Map();
+  recorre(TS.root, n => porUri.set(n.content.uri, n));
+  const ids = gen.idsDe(I), nombre = new Map(Object.entries(TS.extras.gemelo.tipos).map(([k, v]) => [Number(k), v]));
+  assert.strictEqual(TS.extras.gemelo.huella_registro, gen.huella(ids), "huella_registro");
   for (const f of RES.teselas.filter(f => f.olivos)) {
     const doc = await io.readBinary(new Uint8Array(fs.readFileSync(path.join(SAL, f.uri))));
     const nodos = doc.getRoot().listNodes().filter(n => n.getExtension("EXT_mesh_gpu_instancing"));
-    assert.strictEqual(nodos.length, 1, f.uri + ": un nodo instanciado (tipo genérico −1)");
-    const ex = nodos[0].getExtension("EXT_mesh_gpu_instancing"), A = k => ex.getAttribute(k);
-    const n = A("TRANSLATION").getCount();
+    assert.strictEqual(nodos.length, 1, f.uri + ": un nodo instanciado (prototipo genérico)");
+    const ex = nodos[0].getExtension("EXT_mesh_gpu_instancing"), A = k => ex.getAttribute(k), n = A("TRANSLATION").getCount();
     assert.strictEqual(n, f.olivos);
-    for (const k of ["ROTATION", "SCALE", "_COLOR_0", "_ID_ARBOL", "_TIPO"]) assert.strictEqual(A(k).getCount(), n, f.uri + ": " + k + " con otro número de instancias");
+    for (const k of ["ROTATION", "SCALE", "_COLOR_0", "_INDICE_COPA", "_TIPO"]) assert.strictEqual(A(k).getCount(), n, f.uri + ": " + k + " con otro número de instancias");
+    assert.ok(!A("_ID_ARBOL"), f.uri + ": _ID_ARBOL (float con el id) ya no viaja");
+    // enteros: u8/u16 (FLOAT solo si una tesela pasara de 65.536 olivos) y _TIPO con signo; nunca normalizados
+    assert.ok(/^Uint(8|16)Array$/.test(A("_INDICE_COPA").getArray().constructor.name), f.uri + ": _INDICE_COPA " + A("_INDICE_COPA").getArray().constructor.name);
+    assert.strictEqual(A("_TIPO").getArray().constructor.name, "Int16Array");
+    assert.ok(!A("_INDICE_COPA").getNormalized() && !A("_TIPO").getNormalized());
+    const e = porUri.get(f.uri).extras.gemelo, lista = gen.listaCopas(I, ...e.cuadro);   // lo que hará el motor con su json
+    assert.strictEqual(e.olivos, n); assert.strictEqual(lista.length, n, f.uri + ": la lista rehecha desde el json no tiene el número de instancias");
+    assert.strictEqual(gen.huella(lista.map(g => ids[g])), e.huella, f.uri + ": huella");
     for (let i = 0; i < n; i++) {
-      const id = A("_ID_ARBOL").getScalar(i), c = I.copas[id], p = A("TRANSLATION").getElement(i, []), s = A("SCALE").getElement(i, []);
-      assert.ok(Math.abs(p[0] - c[0]) < 1e-3 && Math.abs(p[2] + c[1]) < 1e-3, f.uri + ": olivo " + id + " fuera de su sitio");
-      assert.ok(Math.abs(p[1] - R.H(c[0], c[1])) < 1e-3, f.uri + ": olivo " + id + " no está sobre el relieve");
+      const k = A("_INDICE_COPA").getScalar(i), g = lista[k], c = I.copas[g], p = A("TRANSLATION").getElement(i, []), s = A("SCALE").getElement(i, []);
+      assert.strictEqual(k, i, f.uri + ": las instancias van en el orden de la lista");
+      assert.ok(Math.abs(p[0] - c[0]) < 1e-3 && Math.abs(p[2] + c[1]) < 1e-3, f.uri + ": olivo " + ids[g] + " fuera de su sitio");
+      assert.ok(Math.abs(p[1] - R.H(c[0], c[1])) < 1e-3, f.uri + ": olivo " + ids[g] + " no está sobre el relieve");
       assert.ok(Math.abs(s[1] - c[2]) < 1e-4, f.uri + ": la altura de la instancia no es la del registro");
-      assert.strictEqual(A("_TIPO").getScalar(i), -1);
-      if (f.nivel === RES.niveles.length - 1) vistos.add(id);
+      const tc = I.copas_tipo[g], tl = A("_TIPO").getScalar(i);
+      assert.strictEqual(nombre.get(tl), tc < 0 ? null : "olivos-tipo:" + tc, f.uri + ": olivo " + ids[g] + " con _TIPO " + tl);
+      if (f.nivel === RES.niveles.length - 1) vistos.set(ids[g], (vistos.get(ids[g]) || 0) + 1);
     }
   }
-  assert.strictEqual(vistos.size, RES.olivos, "en las hojas debe estar cada olivo una vez");
+  assert.strictEqual(vistos.size, RES.olivos, "en las hojas debe estar cada olivo");
+  assert.ok([...vistos.values()].every(v => v === 1), "un olivo repetido en las hojas");
+  assert.ok(I.copas_tipo.some(t => t === 0) && I.copas_tipo.some(t => t === -1), "el fixture ejercita tipo asignado y sin asignar");
+  // y la herramienta para datos reales (tuberia/tiles3d/comprueba.mjs) dice lo mismo
+  const r = await (await imp(path.join(T3D, "comprueba.mjs"))).comprueba(path.join(FIX, "hituelo"), SAL);
+  assert.deepStrictEqual(r.errores, []); assert.strictEqual(r.en_hojas, RES.olivos);
 });
 
 test("marco: la raíz georreferencia el marco local (UTM 30N − centro_utm) en ECEF con error < 2 cm en planta a 1,3 km; el GPS cae en el mismo marco", t => {
@@ -187,9 +218,15 @@ test("visor (3DTilesRendererJS + three moderno, SwiftShader): carga sin errores,
       assert.strictEqual(m.fallos, 0); assert.ok(m.visibles.length > 0, escena + ": ninguna tesela visible");
       const tope = TOPES.visor[escena];
       assert.ok(m.llamadas <= tope.llamadas && m.triangulos <= tope.triangulos && m.heapMB <= tope.heapMB, escena + ": " + JSON.stringify(m) + " supera " + JSON.stringify(tope));
-      // el marco: cada olivo dibujado está en (x, H(x, y), −y) del registro, como en la escena del motor de hoy
+      // el marco: cada olivo dibujado está en (x, H(x, y), −y) del registro, como en la escena del motor de hoy; el olivo se resuelve
+      // como lo hará el motor: tesela (uri) → cuadro → lista de copas desde el json → lista[k], comprobando la huella
       assert.ok(ins.length > 0, escena + ": sin olivos dibujados");
-      for (const o of ins) { const c = I.copas[o.id]; assert.ok(Math.hypot(o.pos[0] - c[0], o.pos[2] + c[1]) < 0.01 && Math.abs(o.pos[1] - R.H(c[0], c[1])) < 0.01, escena + ": olivo " + o.id + " en " + o.pos + ", esperado " + [c[0], R.H(c[0], c[1]), -c[1]]); }
+      const porUri = new Map(); recorre(TS.root, n => porUri.set(n.content.uri, n));
+      for (const o of ins) {
+        const e = porUri.get(o.uri).extras.gemelo, lista = gen.listaCopas(I, ...e.cuadro);
+        assert.strictEqual(o.huella, e.huella, escena + ": el modelo cargado no trae la huella de su tesela");
+        assert.strictEqual(gen.huella(lista.map(g => gen.idsDe(I)[g])), o.huella);
+        const c = I.copas[lista[o.k]]; assert.ok(Math.hypot(o.pos[0] - c[0], o.pos[2] + c[1]) < 0.01 && Math.abs(o.pos[1] - R.H(c[0], c[1])) < 0.01, escena + ": olivo " + o.k + " de " + o.uri + " en " + o.pos + ", esperado " + [c[0], R.H(c[0], c[1]), -c[1]]); }
       // y el terreno visible pasa por el relieve con el error que declara su tesela
       const geMax = Math.max(...RES.teselas.filter(f => m.visibles.includes(f.uri)).map(f => f.error_rejilla + f.error_simplificacion));
       for (const [x, y] of [[-130, -125], [-60, -100], [100, -180]]) {

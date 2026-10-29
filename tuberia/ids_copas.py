@@ -13,7 +13,7 @@ De dónde sale el id (decisión de Antonio, 2026-10-29)
    en el rango [2^31, 2^32) para que nunca choque con uno del censo (id >= 2^31 ⇔ provisional):
 
        E_m, N_m = metro UTM entero que contiene la copa (floor, tras redondear la coordenada al centímetro)
-       id       = 2^31 + (E_m mod 32768) · 65536 + (N_m mod 65536)        → cabe en el UINT32 de _FEATURE_ID_0 (3D Tiles 1.1)
+       id       = 2^31 + (E_m mod 32768) · 65536 + (N_m mod 65536)        → cabe en un Uint32 (en 3D Tiles se resuelve en CPU: TILES3D.md)
 
    No depende del orden de `copas` ni de `centro_utm` (en Hituelo se deduce de la caja del NDVI). Único mientras la finca quepa en
    32,7 km (E) × 65,5 km (N); si no, el exportador se para. Resolución de 1 m.

@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gemelo.local/contratos/tileset.schema.json",
+  "title": "Tileset 3D Tiles 1.1 del gemelo: lo propio (extras.gemelo) entre tuberia/tiles3d y el motor",
+  "$comment": "Contrato tileset v1 (extras.gemelo.contrato_tileset). Solo fija lo que el gemelo añade a 3D Tiles 1.1; lo estándar lo valida 3d-tiles-validator. Detalle y regla de la lista de copas: doc/sistema/TILES3D.md. Lo vigila pruebas/guardianes/tiles3d.test.js.",
+  "type": "object",
+  "required": ["asset", "geometricError", "root", "extras"],
+  "properties": {
+    "asset": {
+      "type": "object",
+      "required": ["version"],
+      "properties": { "version": { "const": "1.1" } }
+    },
+    "geometricError": { "type": "number", "minimum": 0 },
+    "extras": {
+      "type": "object",
+      "required": ["gemelo"],
+      "properties": {
+        "gemelo": {
+          "type": "object",
+          "required": ["contrato_tileset", "contrato_origen", "finca_id", "srs", "centro_utm", "z0", "id_fuente", "huella_registro", "tipos", "tipos_provisionales", "tipo_generico"],
+          "properties": {
+            "contrato_tileset": { "const": 1, "$comment": "versión de este contrato" },
+            "contrato_origen": { "const": 2, "$comment": "versión del contrato de datos (indice.json) del que sale" },
+            "finca_id": { "type": "string", "minLength": 1 },
+            "srs": { "const": "EPSG:25830" },
+            "centro_utm": { "type": "array", "prefixItems": [{ "type": "number" }, { "type": "number" }], "items": false, "minItems": 2 },
+            "z0": { "type": "number" },
+            "id_fuente": { "enum": ["copas_id", "indice"], "$comment": "de dónde sale el id de cada copa en las huellas: copas_id del índice (ADR-0012) o, si no lo trae, su índice en copas[]" },
+            "huella_registro": { "$ref": "#/$defs/huella", "$comment": "huella de los ids de TODAS las copas, en el orden de copas[]: el motor la compara con la de su json antes de resolver nada" },
+            "tipos": {
+              "type": "object",
+              "$comment": "número local de _TIPO → nombre del tipo de catálogo (sin versión dentro); '-1' → null = sin asignar. Números locales 0..m−1 consecutivos",
+              "required": ["-1"],
+              "propertyNames": { "pattern": "^(-1|0|[1-9][0-9]{0,4})$" },
+              "properties": { "-1": { "type": "null" } },
+              "additionalProperties": { "type": "string", "pattern": "^[a-z0-9-]+:[a-z0-9-]+$" }
+            },
+            "tipos_provisionales": { "type": "boolean", "$comment": "true mientras los nombres sean «olivos-tipo:<id>» a falta del contrato del constructor" },
+            "tipo_generico": { "const": -1 }
+          }
+        }
+      }
+    },
+    "root": { "$ref": "#/$defs/tesela" }
+  },
+  "$defs": {
+    "huella": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "tesela": {
+      "type": "object",
+      "required": ["boundingVolume", "geometricError", "content"],
+      "properties": {
+        "boundingVolume": { "type": "object", "required": ["box"], "properties": { "box": { "type": "array", "items": { "type": "number" }, "minItems": 12, "maxItems": 12 } } },
+        "geometricError": { "type": "number", "minimum": 0 },
+        "content": { "type": "object", "required": ["uri"], "properties": { "uri": { "type": "string", "pattern": "^[0-9]+/-?[0-9]+_-?[0-9]+\\.glb$" } } },
+        "extras": {
+          "type": "object",
+          "$comment": "solo en las teselas con olivos",
+          "required": ["gemelo"],
+          "properties": {
+            "gemelo": {
+              "type": "object",
+              "required": ["cuadro", "olivos", "huella"],
+              "additionalProperties": false,
+              "properties": {
+                "cuadro": { "type": "array", "prefixItems": [{ "type": "number" }, { "type": "number" }, { "type": "number", "exclusiveMinimum": 0 }], "items": false, "minItems": 3, "$comment": "[x0, y0, lado] en el marco local: la lista de copas es la de los olivos con x0 ≤ x < x0+lado e y0 ≤ y < y0+lado, en el orden de copas[]" },
+                "olivos": { "type": "integer", "minimum": 1, "$comment": "longitud de la lista = número de instancias; _INDICE_COPA va de 0 a olivos−1" },
+                "huella": { "$ref": "#/$defs/huella", "$comment": "huella de los ids de la lista, en orden" }
+              }
+            }
+          }
+        },
+        "children": { "type": "array", "items": { "$ref": "#/$defs/tesela" }, "minItems": 1 }
+      }
+    }
+  }
+}
