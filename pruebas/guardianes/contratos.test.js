@@ -36,6 +36,7 @@ for (const finca of ["hituelo", "cerro"]) {
     // columnas paralelas opcionales del registro de árboles (ADR-0012): misma longitud que copas; ids únicos
     if (I.copas_id) { assert.strictEqual(I.copas_id.length, I.copas.length, "copas_id debe tener una entrada por copa"); assert.strictEqual(new Set(I.copas_id).size, I.copas_id.length, "copas_id repetido"); }
     if (I.copas_tipo) assert.strictEqual(I.copas_tipo.length, I.copas.length, "copas_tipo debe tener una entrada por copa");
+    if (I.copas_semilla) assert.strictEqual(I.copas_semilla.length, I.copas.length, "copas_semilla debe tener una entrada por copa (ADR-0017)");
     if (I.copas_param) assert.strictEqual(I.copas_param.length, I.copas.length, "copas_param debe tener una entrada (fila o null) por copa (ADR-0017)");
     I.marcados.forEach(m => { assert.ok(m[2] < I.copas.length, "marcado que apunta a una copa inexistente"); assert.ok(m[3] < I.parcelas.length); });
     assert.deepStrictEqual(Object.keys(I.ot.parcelas).sort(), I.parcelas.map(p => p.id).sort(), "ot.parcelas debe tener las mismas parcelas");

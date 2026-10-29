@@ -74,6 +74,31 @@ test("niveles de detalle: los recuentos de la maqueta y el aclareo al 50 %", { t
   assert.deepStrictEqual(Object.fromEntries(Object.entries(r.niveles).map(([k, v]) => [k, v.triangulos])), { E0: 102978, E1: 48378, E2: 19366, E2VR: 14618 });
 });
 
+test("semilla guardada (copas_semilla) y nombres de catálogo de los tipos", t => {
+  if (SALTO) return t.skip(SALTO);
+  const { python } = require("./_util");
+  const prog = `
+    const O = await import(${JSON.stringify("file:///" + path.join(OLIVO, "index.js").split(path.sep).join("/"))});
+    console.log(JSON.stringify({ g: O.semillaDeCopa([0, 0, 4, [2,2,2,2,2,2,2,2], 1], 1234, null, 99), gp: O.semillaDeCopa([0, 0, 4, [2,2,2,2,2,2,2,2], 1], 2 ** 31 + 5, null, 99),
+      nombres: O.NOMBRE_TIPO, ida: O.tipoDeNombre("olivos:centenario-3p"), tabla: O.tablaLocal() }));`;
+  const r = ejecuta(process.execPath, ["--input-type=module", "-e", prog]);
+  assert.strictEqual(r.status, 0, r.stderr);
+  const o = JSON.parse(r.stdout);
+  assert.deepStrictEqual(o.g, { semilla: 99, provisional: false, guardada: true }, "la semilla guardada manda sobre el id");
+  assert.deepStrictEqual(o.gp, { semilla: 99, provisional: true, guardada: true });
+  assert.strictEqual(o.ida, "centenario3");
+  for (const n of Object.values(o.nombres)) assert.match(n, /^olivos:[a-z]+(-[0-9]p)?$/, "nombre de catálogo sin versión dentro: " + n);
+  assert.strictEqual(o.tabla.length, 7);
+  // tuberia/semillas_copas.py: mismo id → su semilla; id nuevo del censo en la misma posición → hereda; árbol nuevo → su id
+  const py = python(); if (!py) return t.skip("sin Python: semillas_copas.py NO se ha comprobado");
+  const pr = ejecuta(py, ["-I", "-c", [
+    "import sys, json; sys.path.insert(0, 'tuberia'); from semillas_copas import semillas",
+    "ant = {'copas': [[0,0],[10,0],[20,0]], 'copas_id': [2**31+1, 5, 2**31+3], 'copas_semilla': [2**31+1, 777, 2**31+3]}",
+    "print(json.dumps(semillas([[0.4,0.3],[10,0],[40,0],[20.2,0]], [123, 5, 2**31+9, 2**31+3], ant)))"].join("\n")]);
+  assert.strictEqual(pr.status, 0, pr.stderr);
+  assert.deepStrictEqual(JSON.parse(pr.stdout), [2 ** 31 + 1, 777, 2 ** 31 + 9, 2 ** 31 + 3]);
+});
+
 test("semillas, épocas y parámetros desde el registro", t => {
   if (SALTO) return t.skip(SALTO);
   const prog = `

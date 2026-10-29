@@ -13,7 +13,22 @@ Es la otra vía frente al catálogo de modelos fijos ([`olivos-tipo.md`](olivos-
 | `tipo` | uno de los 7 de `TIPOS` (`planton`, `adulto1`, `adulto2`, `adulto3`, `centenario`, `centenario2`, `centenario3`); id estable en `ID_TIPO` (0-6). Da los parámetros por defecto |
 | `parametros` | *(opcional)* los que se sobrescriben (`altura`, `copa`, `asim`, `rumbo`, `densidad`, `falda`, `relieve`, `pies`…; rangos en `RANGOS`). Desde el registro: `parametrosDeCopa(copa, copas_param[i], tipo)` (§3) |
 | `epoca` | `reposo`, `boton`, `flor`, `cuajado`, `verde`, `envero`, `madura`. Desde un BBCH: `bbchAEpoca(bbch)` (0-50 reposo, 51-59 botón, 60-69 flor, 70-74 cuajado, 75-80 verde, 81-88 envero, 89-99 madura) |
-| `semilla` | entero 0 … 2^32 − 1. Desde el registro: `semillaDeCopa(copa, copas_id[i], centro_utm)` → `{semilla, provisional}`: la semilla **es** el `copas_id` (del censo de OlivarTrack, 0 … 2^31 − 1, o provisional del exportador, 2^31 … 2^32 − 1, que se marca `provisional`: `tuberia/ids_copas.py`); sin `copas_id`, el mismo id provisional que daría el exportador desde la posición UTM (sin resolver colisiones) |
+| `semilla` | entero 0 … 2^32 − 1: la **guardada** del árbol (§1.2). Desde el registro: `semillaDeCopa(copa, copas_id[i], centro_utm, copas_semilla[i])` → `{semilla, provisional, guardada}`; sin semilla guardada, se deriva del `copas_id` (del censo de OlivarTrack, 0 … 2^31 − 1, o provisional del exportador, 2^31 … 2^32 − 1: `tuberia/ids_copas.py`) o, sin id, del mismo id provisional por posición |
+
+### 1.1 Nombres de los tipos
+Cada tipo tiene un **nombre de catálogo** estable, sin versión dentro (`NOMBRE_TIPO`, `apps/web/olivo/catalogo.js`); la versión del generador es `GEN_VERSION`, aparte:
+
+| Clave | Nombre | | Clave | Nombre |
+|---|---|---|---|---|
+| `planton` | `olivos:planton` | | `centenario` | `olivos:centenario-1p` |
+| `adulto1` | `olivos:adulto-1p` | | `centenario2` | `olivos:centenario-2p` |
+| `adulto2` | `olivos:adulto-2p` | | `centenario3` | `olivos:centenario-3p` |
+| `adulto3` | `olivos:adulto-3p` | | | |
+
+Los **números** de tipo son locales a cada fichero: `ID_TIPO` (0-6) en el módulo; en un tileset, `_TIPO` es un número local con su tabla número → nombre en `extras.gemelo` (`tablaLocal()` la da). El tipo 0 del catálogo sintético de pruebas (`modelos/olivos/fixture/`, ADR-0012) no es ninguno de estos y se queda solo en el fixture.
+
+### 1.2 La semilla se guarda
+La semilla se asigna **una vez** y viaja en el registro del árbol, en la columna paralela opcional `copas_semilla` del índice (uint32). La escribe `tuberia/semillas_copas.py` al exportar: (1) si la exportación anterior tenía una copa con el mismo id, su semilla; (2) si no, la de la copa anterior más cercana a ≤ 1,5 m que nadie reclame (emparejamiento uno a uno por distancia: así, **cuando llega el censo, cada id provisional pasa su semilla al olivo del censo** que ocupa su sitio); (3) si no, una nueva, igual a su `copas_id`. El generador usa la guardada si existe; si no, la deriva. **Solo un cambio de `GEN_VERSION` cambia la forma de un olivo**: ni un id nuevo, ni una reexportación, ni otro orden en `copas`.
 
 ## 2. La receta (lo que da el generador)
 

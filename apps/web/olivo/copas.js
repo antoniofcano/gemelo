@@ -6,13 +6,16 @@ import { RANGOS } from "./tipos.js";
 const DOS31 = 2147483648;
 
 /**
- * Semilla de un árbol = su id (copas_id, ADR-0012; tuberia/ids_copas.py): {semilla: id, provisional: id ≥ 2^31}. Los ids del censo de
+ * Semilla de un árbol: la guardada en copas_semilla[i] si la hay (`guardada`); si no, se deriva de su id (copas_id, ADR-0012; tuberia/ids_copas.py): {semilla: id, provisional: id ≥ 2^31}. Los ids del censo de
  * OlivarTrack van en 0 … 2^31 − 1; los provisionales que pone el exportador, en 2^31 … 2^32 − 1, sacados de la posición UTM.
  * Sin copas_id (índices viejos), el mismo id provisional que daría el exportador: 2^31 + (E_m mod 32768) · 65536 + (N_m mod 65536), con
  * E_m, N_m el metro UTM que contiene la copa (tras redondear al centímetro). Sin `centroUtm` no se puede: null. Las colisiones (dos copas
  * en el mismo metro) las resuelve el exportador mirando toda la finca; aquí no: por eso un índice debe traer copas_id.
  */
-export function semillaDeCopa(copa, id, centroUtm) {
+export function semillaDeCopa(copa, id, centroUtm, guardada) {
+  // la semilla GUARDADA en el registro (copas_semilla, tuberia/semillas_copas.py) manda: se asigna una vez y no cambia con el id
+  if (Number.isInteger(guardada) && guardada >= 0 && guardada < 2 * DOS31)
+    return { semilla: guardada, provisional: !(Number.isInteger(id) && id >= 0 && id < DOS31), guardada: true };
   if (Number.isInteger(id) && id >= 0 && id < 2 * DOS31) return { semilla: id, provisional: id >= DOS31 };
   if (!centroUtm) return null;
   const em = Math.floor(Math.round((copa[0] + centroUtm[0]) * 100) / 100), nm = Math.floor(Math.round((copa[1] + centroUtm[1]) * 100) / 100);
