@@ -51,9 +51,55 @@
       },
       "if": { "properties": { "activos": { "const": true } } },
       "then": { "required": ["combinaciones", "manifiesto_tesela"] }
+    },
+    "impostores": {
+      "type": "array", "maxItems": 7,
+      "$comment": "OPCIONAL (O8b, contratos/olivo-impostor.md): un impostor por época, con las variantes E2 de esa época. Un motor que no lo conoce lo ignora; por eso `v` sigue en 1",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["formato", "epoca", "nivel", "rejilla", "vista", "vista_normal", "clave", "color", "normales", "variantes", "horneado"],
+        "properties": {
+          "formato": { "const": 1, "$comment": "versión del formato de impostor; otra → el motor no dibuja impostores" },
+          "epoca": { "$ref": "#/$defs/epoca" },
+          "nivel": { "const": "E2", "$comment": "de qué receta salen las vistas" },
+          "rejilla": { "const": 8 }, "vista": { "const": 128, "$comment": "píxeles por vista en el atlas de color" }, "vista_normal": { "const": 64 },
+          "clave": { "$ref": "#/$defs/huella", "$comment": "SHA-256/128 de claveImpostor() (apps/web/olivo/impostor.js): lo que decide el atlas sin abrir Chrome, para el horneado incremental" },
+          "color": { "$ref": "#/$defs/imagen", "$comment": "2.048²: RGBA8 sRGB, alfa = cobertura, recto (sin premultiplicar)" },
+          "normales": { "$ref": "#/$defs/imagen", "$comment": "1.024²: RGB = (n + 1) / 2 en el marco del árbol, A = oclusión de copa" },
+          "variantes": {
+            "type": "array", "minItems": 1, "maxItems": 4,
+            "items": {
+              "type": "object", "additionalProperties": false, "required": ["celda", "tipo", "semilla", "fuente", "caja", "centro", "semilado", "copa", "medidas"],
+              "properties": {
+                "celda": { "type": "integer", "minimum": 0, "maximum": 3, "$comment": "columna celda % 2, fila floor(celda / 2) contando desde ABAJO (v de la textura)" },
+                "tipo": { "enum": ["planton", "adulto1", "adulto2", "adulto3", "centenario", "centenario2", "centenario3"] },
+                "semilla": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+                "fuente": { "$ref": "#/$defs/huella", "$comment": "huella de la receta E2 (fila de `variantes`) que se fotografió" },
+                "caja": { "type": "array", "prefixItems": [{ "$ref": "#/$defs/vec3" }, { "$ref": "#/$defs/vec3" }], "items": false, "minItems": 2, "$comment": "[[mín], [máx]] del árbol montado en su marco (m, +Y arriba, pivote en la base del tronco)" },
+                "centro": { "$ref": "#/$defs/vec3", "$comment": "centro de la caja: el punto al que miran todas las vistas" },
+                "semilado": { "type": "number", "exclusiveMinimum": 0, "$comment": "semilado de la cámara ortográfica (m): la celda cubre [−semilado, semilado]² alrededor de `centro`" },
+                "copa": { "type": "object", "required": ["centro", "semiejes"], "additionalProperties": false, "properties": { "centro": { "$ref": "#/$defs/vec3" }, "semiejes": { "$ref": "#/$defs/vec3" } }, "$comment": "elipsoide del follaje de la oclusión de copa" },
+                "medidas": { "type": "object", "required": ["altura_m", "copa_m"], "properties": { "altura_m": { "type": "number" }, "copa_m": { "type": "number" } }, "$comment": "las de la receta: para estirar a la copa y la altura medidas, como la variante E2" }
+              }
+            }
+          },
+          "horneado": { "type": "object", "required": ["three", "chrome", "ms"], "additionalProperties": false, "properties": { "three": { "type": "string" }, "chrome": { "type": "string" }, "ms": { "type": "integer", "minimum": 0 } }, "$comment": "con qué se horneó (informativo)" }
+        }
+      }
     }
   },
   "$defs": {
+    "vec3": { "type": "array", "prefixItems": [{ "type": "number" }, { "type": "number" }, { "type": "number" }], "items": false, "minItems": 3 },
+    "imagen": {
+      "type": "object", "required": ["huella", "bytes", "lado", "imagen", "sin_perdida"], "additionalProperties": false,
+      "properties": {
+        "huella": { "$ref": "#/$defs/huella", "$comment": "SHA-256/128 del fichero <huella>.webp tal cual (se sirve sin Content-Encoding)" },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "lado": { "enum": [1024, 2048] },
+        "imagen": { "const": "webp" },
+        "sin_perdida": { "type": "boolean" }
+      }
+    },
     "epoca": { "enum": ["reposo", "boton", "flor", "cuajado", "verde", "envero", "madura"] },
     "fecha": { "type": "string", "pattern": "^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$" },
     "huella": { "type": "string", "pattern": "^[0-9a-f]{32}$", "$comment": "SHA-256 truncado a 128 bits de los bytes sin comprimir, en hexadecimal; el objeto se llama <huella>.br" }
