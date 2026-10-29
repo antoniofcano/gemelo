@@ -64,6 +64,8 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 - `doc/ESTADO.md` reescrito como único sitio de «dónde estamos»; se retira el id y el enlace del artefacto privado (el repo es público).
 
 ### Arreglado
+- La CSP (Report-Only) de producción y de dev admite `blob:` en `connect-src`: la escena 3D Tiles (`?escena=tiles`) lo usa y avisaba. La e2e de entrada de `dev.test.js` comprueba además las lindes dibujadas, el tileset por Caddy (200 con sesión, 401 sin ella) y que `?escena=tiles` y `?olivos=gen` cargan sin errores ni avisos de CSP (A5).
+- Banco de pruebas: el candado del turno caduca a los 5 min (antes 1 min), porque con la máquina al 100 % otro proceso lo daba por caducado a mitad de una e2e.
 - Escena 3D Tiles: un `?tileset=` de otro host ya no rompe el arranque del motor (vuelve el relieve de siempre); probado en navegador con el fixture.
 - Pruebas: con `?olivos=gen`, `mide()` espera a los olivos generados hasta 180 s (`GEMELO_ESPERA_GEN`) y guarda su estado y si la espera terminó; los generados usan la mitad del presupuesto de la Cola (O1c).
 - Pruebas: `mide()` y `p7_medidas` esperan también a los olivos generados (`__g.pendientes()`); los generados usan todo el presupuesto de la Cola cuando está libre (O1b).

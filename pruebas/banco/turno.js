@@ -11,13 +11,16 @@ const cerrojo = require("proper-lockfile");
 const BANCO = process.env.GEMELO_BANCO || path.join(os.tmpdir(), "gemelo-banco");
 const FICHERO = path.join(BANCO, "turno");
 const QUIEN = path.join(BANCO, "turno.quien.json");
+// Caducidad del candado: con la CPU al 100 % (SwiftShader, Docker) el proceso que tiene el turno puede tardar en renovarlo; con 60 s
+// otro lo daba por caducado y se lo quitaba a mitad de una e2e (visto el 2026-10-29). 5 min deja margen; un proceso muerto lo suelta igual.
+const CADUCA = 5 * 60000;
 
 function prepara() { fs.mkdirSync(BANCO, { recursive: true }); if (!fs.existsSync(FICHERO)) fs.writeFileSync(FICHERO, ""); }
 
 /** Quién tiene el turno ahora (o null): { que, pid, desde, cwd } */
 function quien() {
   prepara();
-  if (!cerrojo.checkSync(FICHERO, { stale: 60000 })) return null;
+  if (!cerrojo.checkSync(FICHERO, { stale: CADUCA })) return null;
   try { return JSON.parse(fs.readFileSync(QUIEN, "utf8")); } catch (e) { return { que: "?" }; }
 }
 
@@ -29,7 +32,7 @@ async function pide(que, { esperaMs = 3 * 3600000, aviso = m => process.stderr.w
   let avisado = 0;
   for (;;) {
     try {
-      const suelta = await cerrojo.lock(FICHERO, { stale: 60000, update: 15000, realpath: false, onCompromised: e => aviso("turno: el candado se ha perdido (" + e.message + ")") });
+      const suelta = await cerrojo.lock(FICHERO, { stale: CADUCA, update: 20000, realpath: false, onCompromised: e => aviso("turno: el candado se ha perdido (" + e.message + ")") });
       fs.writeFileSync(QUIEN, JSON.stringify({ que, pid: process.pid, desde: new Date().toISOString(), cwd: process.cwd() }));
       process.env.GEMELO_TURNO = "dentro";   // lo que este proceso (y sus hijos) pida dentro del turno no lo vuelve a pedir: el candado no es reentrante
       return async () => { delete process.env.GEMELO_TURNO; try { fs.rmSync(QUIEN, { force: true }); await suelta(); } catch (e) { /* ya caducado */ } };
