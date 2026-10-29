@@ -54,7 +54,7 @@ Mapa de iniciativas con su estado y el ADR que las sostiene. **No** es el estado
 | F1b | Hueco del constructor de olivos-tipo: `Catalogo`, id y tipo por árbol, contrato `olivos-tipo` | ✅ en local · ADR-0012 | con `tipo=-1` se ve igual (medido); glb de fixture dentro de presupuesto |
 | F1c | three moderno (0.186.1, módulos ES), aceptando el aspecto nuevo | ✅ en local · ADR-0016 · aspecto aprobado (decisiones 23-25) | puerta verde; capturas nuevas aprobadas por Antonio |
 | F1d | Escena en 3D Tiles 1.1 + 3DTilesRendererJS (decisión 11): tubería glb + `tileset.json`, terreno, olivos, construcciones; supera ADR-0001/0002 | 🟨 prototipo de tubería con el fixture (`tuberia/tiles3d/`, ADR-0015 Propuesto); motor sin tocar, tras F1c; plan del motor hecho (bandera `?escena=tiles`, decisiones 35–38) | Hituelo en escritorio y Quest con el presupuesto medido de nuevo; Quest p95 ≤ 13,9 ms |
-| F2 | Presencia compartida (LiveKit); token propio de OlivarTrack; se retira la salida artefacto | ⬜ plan hecho (decisiones 39–42; solo cuentas de prueba hasta la EIPD de F3) | escritorio y Quest se ven y escriben; pose p95 < 250 ms |
+| F2 | Presencia compartida (LiveKit); token propio de OlivarTrack; se retira la salida artefacto | 🟡 en curso: contrato de pose y roles, códec, interpolación y avatares simulados hechos (sin red; decisiones 39–42, solo cuentas de prueba hasta la EIPD de F3); falta LiveKit (cliente y tokens), pose local y chat | escritorio y Quest se ven y escriben; pose p95 < 250 ms |
 | F3 | Voz y visita guiada; no se graba el directo | ⬜ | 10 personas limpias; el guía modera |
 | F4 | Corresponsal de campo como PWA | ⬜ | visita con corresponsal; error de posición medido |
 | F5 | Aula, puzles, dron, museo; constructor de olivos real | ⬜ | según sus ADR |

@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Presencia compartida, parte sin servidor (F2): contrato de pose binaria v1 (24 B escritorio, 56 B Quest; `contratos/presencia.md`) y permisos de LiveKit de F2 solo datos (`contratos/livekit-roles.json`); módulo `26_presencia.js` con códec, interpolación y avatares de bloque instanciados con nombre, visibles con `?presencia=sim&n=…` (visitantes simulados; 5 llamadas tengas 10 o 40); guardián `presencia.test.js`. Sin la bandera se dibuja lo mismo. Sin red real; no probado en iPhone ni Quest.
 - Entorno local con la api enchufada: migraciones, siembra sintética (4 hazas, 3 hogares @example.com), portada provisional, mundo en `/finca/` tras sesión y todo por https (`https://localhost:8743`); e2e del recorrido de entrada con Mailpit y Chrome (`GEMELO_DOCKER=1`).
 - Los exportadores (Cerro, réplica y Hituelo) emiten `copas_id` —el id del censo de OlivarTrack si la copa está emparejada con una marca que lo trae, o uno provisional (≥ 2^31) por la posición UTM— y `copas_tipo` = −1 (ADR-0012); el emparejamiento marca↔copa corrige el desfase de la ortofoto y es uno a uno; guardián `exportadores.test.js` con datos sintéticos; numpy, scipy y pillow fijadas en `requirements.txt`.
 - Contratos: el índice y la tesela se validan con `ajv` (JSON Schema 2020-12 estándar: `prefixItems`, `propertyNames`, `$defs`) en lugar del validador casero, que se retira; prueba de que los esquemas rechazan datos rotos.
