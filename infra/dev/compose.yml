@@ -39,8 +39,9 @@ services:
       # el tileset 3D Tiles (/teselas/<finca>/tileset/…); sin GEMELO_DEV_TILESET se monta el fixture, que no trae tileset.json (404)
       - ${GEMELO_DEV_TILESET:-../../pruebas/salida/fixture}:/srv/tileset:ro
       # las recetas horneadas (/teselas/<finca>/olivos/…): la carpeta que escribe el hornero (<salida>/<finca>/olivos/, con
-      # manifiesto.json y los <huella>.br dentro); sin GEMELO_DEV_OLIVOS se monta el fixture, que no trae nada de eso (404)
-      - ${GEMELO_DEV_OLIVOS:-../../pruebas/salida/fixture}:/srv/olivos:ro
+      # manifiesto.json y los <huella>.br dentro); la escribe el servicio `hornero` (mismo origen abajo); sin GEMELO_DEV_OLIVOS, la
+      # de pruebas/salida/olivos-dev/<finca>/
+      - ${GEMELO_DEV_OLIVOS:-../../pruebas/salida/olivos-dev/${GEMELO_DEV_FINCA:-hituelo}}:/srv/olivos:ro
     tmpfs:                             # la CA local y su estado no se guardan: es desarrollo (se regeneran en cada arranque)
       - /data:uid=1000,gid=1000,mode=0700
       - /config:uid=1000,gid=1000,mode=0700
@@ -208,11 +209,44 @@ services:
       resources:
         limits: { memory: 256m }
 
+  # El hornero de olivos (ADR-0018, O7f; tuberia/olivos/servicio.mjs): hornea las variantes compartidas E2/E2-VR de la finca servida en
+  # <carpeta de olivos>/ (la misma que Caddy sirve en /teselas/<finca>/olivos/, GEMELO_DEV_OLIVOS) y deja su estado FUERA de ella, en un volumen
+  # propio. Sin puertos. No hay vuelta diaria: una al arrancar (idempotente) y otra cuando cambia el índice, el calendario, GEN_VERSION/
+  # CACHE_VERSION o llega el cambio de época; entre medias solo mira sellos baratos cada 10 min. Política en DESARROLLO-LOCAL.md § El hornero.
+  hornero:
+    <<: *comun
+    image: gemelo-hornero:local
+    build: { context: ../.., dockerfile: tuberia/olivos/Dockerfile }
+    user: "1000:1000"
+    read_only: true
+    cap_drop: [ALL]
+    init: true
+    environment:
+      GEMELO_HORNERO_FINCAS: "${GEMELO_DEV_FINCA:-hituelo}"
+      GEMELO_HORNERO_HORA: "${GEMELO_DEV_HORNERO_HORA:-03:00}"             # UTC; la hora del día del cambio de época
+      GEMELO_HORNERO_COMPRUEBA_S: "${GEMELO_DEV_HORNERO_COMPRUEBA_S:-600}"  # cada cuánto mira los sellos mientras duerme
+    volumes:
+      # el índice de la finca (la misma carpeta que /srv/finca de Caddy), de solo lectura
+      - ${GEMELO_DEV_FINCA_CARPETA:-${GEMELO_DEV_TESELAS:-../../pruebas/salida/fixture}/${GEMELO_DEV_FINCA:-hituelo}}:/datos/${GEMELO_DEV_FINCA:-hituelo}:ro
+      # lo único que escribe: la carpeta que Caddy sirve como /teselas/<finca>/olivos/ (levanta.mjs la crea)
+      - ${GEMELO_DEV_OLIVOS:-../../pruebas/salida/olivos-dev/${GEMELO_DEV_FINCA:-hituelo}}:/salida/${GEMELO_DEV_FINCA:-hituelo}/olivos
+      - hornero_estado:/estado        # estado.json por finca, candado y latido: nada de esto se sirve
+    healthcheck:
+      test: ["CMD", "node", "tuberia/olivos/salud.mjs"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits: { memory: 512m }
+
 networks:
   interna: {}
 
 volumes:
   pg_datos: {}
+  hornero_estado: {}
 
 # Las claves de la base, como secretos de Docker (ficheros en /run/secrets, igual que en producción), pero tomadas de las
 # variables de infra/dev/.env en vez de ficheros de /etc/gemelo/secretos/

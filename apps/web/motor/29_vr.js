@@ -1,11 +1,11 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: VRX, vrDebugExtra, panel, ficha, vrActualiza, vrFin
+// Expone: VRX, vrDebugExtra, vrFundido, vrAparece, panel, ficha, vrActualiza, vrFin
 // Consume: 01_datos (D, $, fmt, VRP), 02_mundo (suelo, orto, copas), 03_escena (renderer, scene, camera, texColor, exag, modo, calidad),
 //   04b_escena3d (Escena3D), 05_nube (nube), 07b_arboles (Arboles), 09_camara (eligeCopa, pon), 10_ndvi (NDV, ndviIdx),
-//   12_paseo (paseando, persona, teclas, primera, entraPaseo, salePaseo, actualizaPaseo), 13_parcelas (parcelas, fincas),
+//   12_paseo (paseando, persona, teclas, primera, entraPaseo, salePaseo, actualizaPaseo), 12b_llegada (Llegada), 13_parcelas (parcelas, fincas),
 //   15_tiempo (calma, nivel, hace), 16_vida (mira), 19_balizas (tBal), 20_sonido (snd, iniciaSonido), 22_huellas (pendFactor),
 //   25_perros (perrosLlegan), 90_final (tamano, cuadro, bucle)
-// Nota: Publica además window.__vrDebug, __vrOlivo, __vrBotones y VR_ESTADO (depuración y pruebas VR).
+// Nota: Publica además window.__vrDebug, __vrOlivo, __vrBotones, __vrVuelo y VR_ESTADO (depuración y pruebas VR).
 // ===============================================================================
   // ---------- modo VR inmersivo (WebXR, Meta Quest Browser): el paseo en primera persona con mandos, un panel flotante y un perfil de rendimiento propio
   // Fuera de una sesión XR este bloque no hace nada salvo comprobar (una vez) si el navegador ofrece WebXR y, si lo ofrece, mostrar el botón «Entrar en VR».
@@ -73,6 +73,51 @@
     return hit;
   }
 
+  // ----- 2b) teletransporte desde el aire (en vuelo o en el mirador): palanca derecha ↑ mantenida = un rayo recto del mando al suelo y el anillo de llegada
+  // (12b_llegada.js: el mismo cálculo y el mismo anillo que el Dron en pantalla; crece con la distancia, para verse desde arriba). Al soltar con anillo: fundido
+  // a negro (~0,3 s), de pie en ese punto andando, y fundido de vuelta. Sin anillo (no toca suelo dentro de la finca o cae por detrás de la mirada) soltar no hace nada.
+  var VT = { act: false };
+  var vtLinGeo = new THREE.BufferGeometry(), vtLinPos = new Float32Array(6); vtLinGeo.setAttribute("position", new THREE.BufferAttribute(vtLinPos, 3));
+  var vtLin = new THREE.Line(vtLinGeo, new THREE.LineBasicMaterial({ color: 0xffc94a, fog: false, transparent: true, opacity: 0.45 })); vtLin.frustumCulled = false; vtLin.visible = false;
+  // el fundido a negro: un velo pegado a la cabeza. vrFundido(fn) oscurece, llama a fn a oscuras y aclara (0,15 s + 0,15 s); devuelve false si ya hay uno en curso
+  var FUNDIDO_S = 0.15, vrFun = { fase: 0, t: 0, fn: null };
+  var vrNegro = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.4), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0, depthTest: false, depthWrite: false, fog: false }));
+  vrNegro.position.set(0, 0, -0.3); vrNegro.renderOrder = 1000; vrNegro.frustumCulled = false; vrNegro.visible = false;
+  function vrFundido(fn) { if (vrFun.fase) return false; vrFun.fase = 1; vrFun.t = 0; vrFun.fn = fn || null; vrNegro.material.opacity = 0; vrNegro.visible = true; return true; }
+  function vrFundidoPaso(dt) {   // al principio de vrActualiza: lo que fn mueva ya cuenta para el resto del fotograma
+    if (!vrFun.fase) return;
+    vrFun.t += dt; var k = Math.min(1, vrFun.t / FUNDIDO_S);
+    if (vrFun.fase === 1) { vrNegro.material.opacity = k; if (k >= 1) { var f = vrFun.fn; vrFun.fn = null; vrFun.fase = 2; vrFun.t = 0; if (f) f(); } }
+    else { vrNegro.material.opacity = 1 - k; if (k >= 1) { vrFun.fase = 0; vrNegro.visible = false; } }
+  }
+  function vrVueloOculta() { VT.act = false; vtLin.visible = false; Llegada.borra(); }
+  function vrVueloTp(R, apunta) {   // cada fotograma mientras se vuela (o mientras quede un apuntado abierto)
+    arco.visible = false; arcoMarca.visible = false; VRX.tpAct = false; VRX.tp = null;
+    if (apunta && !vrFun.fase) {
+      var rr = vrRayoDe(R), o = rr.ray.origin, d = rr.ray.direction, p = Llegada.apunta(o, d, VRX.cab, camera.getWorldDirection(vrV3));
+      VT.act = true;
+      var fin = p || { x: o.x + d.x * 40, y: o.y + d.y * 40, z: o.z + d.z * 40 };   // sin suelo, un rayo corto (40 m) que solo dice adónde apuntas
+      vtLinPos[0] = o.x; vtLinPos[1] = o.y; vtLinPos[2] = o.z; vtLinPos[3] = fin.x; vtLinPos[4] = fin.y; vtLinPos[5] = fin.z; vtLinGeo.attributes.position.needsUpdate = true;
+      vtLin.visible = true; vtLin.material.opacity = p ? 0.45 : 0.2;
+      return;
+    }
+    if (VT.act && Llegada.punto() && !vrFun.fase) { Llegada.alAnillo(); vrPulso(R, 0.35, 30); }
+    vrVueloOculta();
+  }
+  // aparecer de pie en (px, py) del mundo (py = norte), andando (deja el vuelo y el mirador); con ang (ángulo del paseo: 0 = norte), gira el rig en torno a la cabeza para mirar
+  // hacia allí. Lo llama Llegada.aparece (12b_llegada.js), que ya ha apartado el punto de los troncos.
+  function vrAparece(px, py, ang) {
+    VRX.vuelo = false; VRX.mirador = false; vrIrA(px, py);
+    if (ang !== undefined && ang !== null) {
+      var h = vrCabeza(), g = camera.getWorldDirection(vrV3), d = Math.atan2(g.x, -g.z) - ang, r = VRX.rig;
+      vrV2.set(r.x - h.x, 0, r.z - h.z).applyAxisAngle(vrEjeY, d); r.x = h.x + vrV2.x; r.z = h.z + vrV2.z; r.yaw += d;
+    }
+    vrAplicaRig(); VRX.hMov = 0.35; VRX.sucio = true;
+  }
+  function vrVueloEntra() { camera.add(vrNegro); scene.add(vtLin); vrVueloOculta(); vrFun.fase = 0; vrFun.fn = null; vrNegro.visible = false; }
+  function vrVueloSale() { camera.remove(vrNegro); scene.remove(vtLin); vrVueloOculta(); vrFun.fase = 0; vrFun.fn = null; vrNegro.visible = false; }
+  window.__vrVuelo = function () { return { apuntando: VT.act, linea: vtLin.visible, fundido: vrFun.fase, negro: vrNegro.material.opacity }; };
+
   // ----- 3) láminas flotantes (el panel y la ficha): un canvas en un plano que sigue a la cabeza con calma
   function creaLamina(W, H, pw, ph) {
     var cv = document.createElement("canvas"); cv.width = W; cv.height = H;
@@ -135,7 +180,7 @@
     });
     cx.textAlign = "left"; cx.font = "24px system-ui, sans-serif"; cx.fillStyle = "#9fb1bd"; cx.fillText("Mandos: izq. palanca = andar · grip = correr · X = viñeta · Y = panel", 40, 622);
     cx.fillText("der. palanca ←→ = girar 30° · ↑ = teletransporte · A = volar · B = mirador", 40, 656);
-    cx.fillStyle = "#7fe3ff"; cx.fillText(VRX.vuelo ? "Volando: la palanca izquierda avanza hacia donde miras" : "Caminando por el olivar", 40, 700);
+    cx.fillStyle = "#7fe3ff"; cx.fillText(VRX.vuelo ? "Volando: izq. avanza · der. ↑ apunta al suelo; al soltar, bajas allí" : "Caminando por el olivar", 40, 700);
     cx.fillStyle = "#6f808c"; cx.font = "20px system-ui, sans-serif"; cx.fillText("LiDAR PNOA 2024 · © Instituto Geográfico Nacional (CC BY 4.0)", 40, 744);
     panel.tex.needsUpdate = true; VRX.sucio = false; VRX.botones = B;
   }
@@ -165,6 +210,7 @@
   function vrPulso(o, fuerza, ms) { try { var g = o && o.src && o.src.gamepad, h = g && g.hapticActuators && g.hapticActuators[0]; if (h && h.pulse) h.pulse(fuerza, ms); } catch (e) {} }
   var vrDz = function (v) { return Math.abs(v) < 0.18 ? 0 : v; };
   function vrActualiza(dt, tms) {
+    vrFundidoPaso(dt);
     var r = VRX.rig, h = vrCabeza(), L = vrMano("left"), R = vrMano("right"), iz = vrEjes(L.src), de = vrEjes(R.src);
     // botones: Y panel, X viñeta, A vuelo, B mirador
     if (vrFlanco("Y", vrBoton(L.src, 5))) { panel.m.visible = !panel.m.visible; if (panel.m.visible) { panel.ini = false; VRX.sucio = true; } vrPulso(L, 0.2, 20); }
@@ -177,7 +223,8 @@
     if (Math.abs(gx) > 0.7 && Math.abs(gx) > Math.abs(gy)) {
       if (VRX.giroOk) { VRX.giroOk = false; var d = -Math.sign(gx) * Math.PI / 6; vrV2.set(r.x - h.x, 0, r.z - h.z).applyAxisAngle(vrEjeY, d); r.x = h.x + vrV2.x; r.z = h.z + vrV2.z; r.yaw += d; VRX.hMov = 0.25; vrPulso(R, 0.1, 10); }
     } else if (Math.abs(gx) < 0.35) VRX.giroOk = true;
-    if (gy < -0.6 && Math.abs(gx) < 0.5) { VRX.tp = vrArco(R); arco.visible = true; arcoMarca.visible = !!VRX.tp; if (VRX.tp) arcoMarca.position.set(VRX.tp.x, suelo(VRX.tp.x, -VRX.tp.z) * exag + 0.08, VRX.tp.z); VRX.tpAct = true; }
+    if (VRX.vuelo || VT.act) vrVueloTp(R, gy < -0.6 && Math.abs(gx) < 0.5);   // desde el aire: rayo recto y anillo (2b)
+    else if (gy < -0.6 && Math.abs(gx) < 0.5) { VRX.tp = vrArco(R); arco.visible = true; arcoMarca.visible = !!VRX.tp; if (VRX.tp) arcoMarca.position.set(VRX.tp.x, suelo(VRX.tp.x, -VRX.tp.z) * exag + 0.08, VRX.tp.z); VRX.tpAct = true; }
     else { if (VRX.tpAct && VRX.tp) { vrIrA(VRX.tp.x, -VRX.tp.z); VRX.hMov = 0.35; vrPulso(R, 0.35, 30); } VRX.tpAct = false; VRX.tp = null; arco.visible = false; arcoMarca.visible = false; }
     // andar (palanca izquierda): relativo a la mirada
     var av = -vrDz(iz.y), la = vrDz(iz.x), g = camera.getWorldDirection(vrV3);
@@ -278,7 +325,7 @@
     ses.addEventListener("end", vrSale);
     VRX.modoPrev = modo; VRX.calPrev = calidad; VRX.nearPrev = camera.near; VRX.farPrev = camera.far;
     if (modo !== "gem") pon("gem"); calidad = 0; camera.near = 0.3; camera.far = 6000;
-    scene.add(vrRig); vrRig.add(camera); camera.add(vrVineta); camera.position.set(0, VRX.ojo ? 0 : 1.6, 0); camera.quaternion.identity(); VRC.forEach(function (o) { vrRig.add(o.c); vrRig.add(o.g); }); scene.add(arco); scene.add(arcoMarca); scene.add(panel.m); scene.add(ficha.m);
+    scene.add(vrRig); vrRig.add(camera); camera.add(vrVineta); camera.position.set(0, VRX.ojo ? 0 : 1.6, 0); camera.quaternion.identity(); VRC.forEach(function (o) { vrRig.add(o.c); vrRig.add(o.g); }); scene.add(arco); scene.add(arcoMarca); scene.add(panel.m); scene.add(ficha.m); vrVueloEntra();
     VRP.on = true; vrPerfil(0); VRX.emaDt = 13.9; VRX.emaJs = 6; VRX.tNivel = 0;
     if (!paseando) entraPaseo(); primera = true; TR.act = false; persona.visible = false; try { perrosLlegan(); } catch (e) {}
     var r = VRX.rig; r.x = pp.x; r.z = -pp.y; r.yaw = 0; r.y = suelo(pp.x, pp.y) * exag + VRX.ojo; VRX.vuelo = false; VRX.mirador = false; VRX.prev = {}; VRX.giroOk = true; VRX.sucio = true; panel.m.visible = true; panel.ini = false; ficha.m.visible = false;
@@ -288,7 +335,7 @@
   function vrSale() {
     if (!VRX.on && !VRX.sesion) return;
     VRX.on = false; VRP.on = false; VRX.sesion = null; renderer.setAnimationLoop(null); renderer.xr.enabled = false;
-    vrRig.remove(camera); camera.remove(vrVineta); scene.remove(vrRig); VRC.forEach(function (o) { vrRig.remove(o.c); vrRig.remove(o.g); }); scene.remove(arco); scene.remove(arcoMarca); scene.remove(panel.m); scene.remove(ficha.m);
+    vrRig.remove(camera); camera.remove(vrVineta); scene.remove(vrRig); VRC.forEach(function (o) { vrRig.remove(o.c); vrRig.remove(o.g); }); scene.remove(arco); scene.remove(arcoMarca); scene.remove(panel.m); scene.remove(ficha.m); vrVueloSale();
     Arboles.perfil(null); Escena3D.perfil(null); UN.uBumpK.value = 1; calidad = VRX.calPrev; camera.near = VRX.nearPrev; camera.far = VRX.farPrev; camera.updateProjectionMatrix(); if (modo !== VRX.modoPrev) pon(VRX.modoPrev);
     camera.position.set(0, 0, 0); camera.quaternion.identity(); camera.scale.set(1, 1, 1);
     if (paseando) salePaseo();

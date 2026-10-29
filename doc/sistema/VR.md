@@ -16,10 +16,10 @@ Al entrar:
 | Palanca izquierda | Andar y desplazarse de lado, **relativo a hacia dónde miras** |
 | Grip izquierdo (mantener) | Correr (4,3 m/s en vez de 1,7) |
 | Palanca derecha ← → | **Girar a saltos de 30°** (en torno a tu cabeza; anti-mareo) |
-| Palanca derecha ↑ (mantener) y soltar | **Teletransporte**: sale un arco azul, al soltar saltas al punto de caída |
+| Palanca derecha ↑ (mantener) y soltar | **Teletransporte**: andando, sale un arco azul y al soltar saltas al punto de caída. **Volando o en el mirador**, sale un rayo recto hasta el suelo con un **anillo ámbar** en el punto de llegada (crece con la distancia para verse desde arriba; sin anillo si el rayo no toca suelo dentro de la finca o cae por detrás de tu mirada); al soltar con anillo: **fundido a negro (~0,3 s)** y apareces **de pie en el anillo, andando** (fuera de troncos). Sin anillo, soltar no hace nada |
 | Gatillo derecho | Pulsa un botón del panel; sobre un olivo, abre su **ficha** |
 | Botón A (derecho) | Activa/desactiva el **vuelo** (la palanca izquierda avanza hacia donde miras, 10 m/s; con grip, 30 m/s) |
-| Botón B (derecho) | **Mirador**: te sube a ~230 m sobre el suelo y vuela; otra vez B te baja |
+| Botón B (derecho) | **Mirador**: te sube a ~230 m sobre el suelo y vuela; otra vez B te baja (donde estás); para bajar en otro punto, apunta con la palanca derecha ↑ y suelta |
 | Botón Y (izquierdo) | Muestra/oculta el **panel** |
 | Botón X (izquierdo) | Activa/desactiva la **viñeta** de confort |
 
@@ -48,12 +48,12 @@ El **panel flotante** (1 × 0,75 m, a ~1 m delante, te sigue con calma si te ale
 - Objetivo de diseño: ≈ 0,5–0,7 M triángulos **por ojo**, ≈ 150 llamadas. **No está medido** (en Chrome sin GPU no hay forma de medirlo).
 
 ## Lo que se probó y cómo
-`mock_xr.js` simula `navigator.xr`: sesión, espacio de referencia, vista estéreo (dos vistas), dos mandos con palancas, botones y gatillo. `prueba_vr.js` entra, anda, gira, teletransporta, usa el panel (apuntando el mando a cada botón), abre la ficha de un olivo, vuela, va al mirador, corre, sale, vuelve a entrar y sale con el fin de sesión del sistema. Con `?escena=tiles` hay una variante en `escena3d.test.js` (necesita el tileset del fixture; `__vrPerfil(n)` fuerza un perfil sin esperar al adaptador). Resultado y cifras de no regresión: ver los registros de la propia prueba (`pruebas/salida/vr/`).
+`mock_xr.js` simula `navigator.xr`: sesión, espacio de referencia, vista estéreo (dos vistas), dos mandos con palancas, botones y gatillo. `pruebas/guardianes/llegada.test.js` (opcional con `GEMELO_VR=1`) sube al mirador, apunta delante y detrás, comprueba el anillo y que al soltar se acaba de pie en el punto, andando; el cálculo rayo → suelo, el tamaño del anillo y el apartado de troncos se prueban en Node sin navegador (la misma pieza, `12b_llegada.js`, la usa el Dron en pantalla). `prueba_vr.js` entra, anda, gira, teletransporta, usa el panel (apuntando el mando a cada botón), abre la ficha de un olivo, vuela, va al mirador, corre, sale, vuelve a entrar y sale con el fin de sesión del sistema. Con `?escena=tiles` hay una variante en `escena3d.test.js` (necesita el tileset del fixture; `__vrPerfil(n)` fuerza un perfil sin esperar al adaptador). Resultado y cifras de no regresión: ver los registros de la propia prueba (`pruebas/salida/vr/`).
 
 ## Lo que NO está probado (hardware real)
 - **Todo en el casco**: que el botón aparezca dentro del marco del artefacto, que la sesión arranque, la pose real de cabeza y mandos, el mapeo de botones/palancas del Quest (se asumió `xr-standard`: palanca = ejes 2–3, gatillo 0, grip 1, A/X 4, B/Y 5).
 - **Rendimiento real** (fps, foveación, resolución 0,9, MSAA del contexto que ya viene activado), y si el adaptador reacciona bien.
-- **Confort**: la viñeta, el giro de 30° y el mirador a 230 m pueden marear; el mirador en concreto es un cambio brusco de altura.
+- **Confort**: la viñeta, el giro de 30° y el mirador a 230 m pueden marear; el mirador en concreto es un cambio brusco de altura. El **teletransporte desde el aire** (fundido de 0,15 + 0,15 s, de 230 m al suelo) no se ha probado en el casco: falta ver si el fundido es lo bastante largo, si el rayo recto y el anillo se ven bien a 1–2 km y si la puntería desde tan alto es cómoda.
 - **Legibilidad y ergonomía** del panel y de las fichas, el rayo y su puntería, los hápticos (`pulse`).
 - Que el **audio** arranque al entrar (se activa con el gesto del botón; algunos navegadores lo exigen otra vez).
 - **Seguimiento de manos** (sin mandos): no hay soporte.

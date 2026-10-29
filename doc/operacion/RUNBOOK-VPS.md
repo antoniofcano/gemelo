@@ -158,6 +158,16 @@ Lo que pedirá la fase 2, para que no sorprenda; **en F1a no se abre nada y `ufw
 
 **[SUPUESTO] a comprobar en F2:** como Docker se salta `ufw` con los puertos publicados, LiveKit iría con `network_mode: host` para que manden las reglas de `ufw`; y el cortafuegos de red de OVH, si está activo, también necesitaría esas reglas. **Vuelta atrás:** `ufw delete allow 7881/tcp` y `ufw delete allow 50000:60000/udp`.
 
+## El hornero de olivos (O7f) **[NO DESPLEGADO, NO PROBADO en el VPS]**
+
+El servicio `hornero` de `infra/compose.yml` (ADR-0018 § 4) hornea las variantes de olivos de la finca en `/srv/gemelo/publicado/teselas/<finca>/olivos/`, que Caddy ya sirve (O7d). Está en el perfil `hornero`: **un `up -d` normal no lo arranca**; hasta que Antonio lo decida no se despliega.
+
+- **Antes de arrancarlo:** crear la carpeta de salida con dueño uid 1000 (`sudo install -d -o 1000 -g 1000 /srv/gemelo/publicado/teselas/hituelo/olivos`), con el índice de Hituelo ya publicado en `…/teselas/hituelo/`. El índice se monta de solo lectura; el contenedor solo escribe en `olivos/` y en su volumen `hornero_estado` (`estado.json`, candado y latido, que no se sirven).
+- **Arrancar:** `docker compose -f infra/compose.yml --profile hornero up -d --build hornero`; ver: `docker compose -f infra/compose.yml logs -f hornero` y `… exec hornero node tuberia/olivos/salud.mjs`.
+- **Política (decisión de Antonio): no hay vuelta diaria.** Una vuelta al arrancar (idempotente: con todo al día no escribe nada) y después **duerme hasta el próximo cambio del par época actual/siguiente** del calendario (`contratos/epocas-calendario.json`), ese día a las 03:00 UTC (`GEMELO_HORNERO_HORA`). Mientras duerme, cada 10 min (`GEMELO_HORNERO_COMPRUEBA_S`) mira sellos baratos —fecha y tamaño del `indice.json`, huella del calendario, `GEN_VERSION`/`CACHE_VERSION`/formato frente al manifiesto— y solo si alguno cambió vuelve a hornear. Un candado por finca (en el volumen de estado) impide dos hornos a la vez; un fallo se reintenta a los 5 min (`GEMELO_HORNERO_REINTENTO_S`).
+- **Salud:** el healthcheck lee el estado: sano si la última vuelta terminó en `listo` (con «durmiendo hasta <fecha>»), o está en curso y se movió hace menos de 15 min; enfermo si acabó en `error`, está atascada o el servicio dejó de latir.
+- **Sin puertos y sin salida a Internet** (red `bd`, interna), usuario 1000, sistema de ficheros de solo lectura, sin capacidades, 512 MB. Memoria y tiempo con Hituelo real en el VPS: **sin medir**.
+
 ## Operación
 
 | Quiero… | Cómo |

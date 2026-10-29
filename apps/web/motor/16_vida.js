@@ -2,7 +2,7 @@
 // Expone: tVida, enQuad, vq, gFauna, esfera, altSuelo, mira, conejos, quad, temaEstela, velPaseo, giroPaseo, ponQuad, vidaPaseo, enDron, dr, dron,
 //   ponDron, cicloVista, dronMando, camaraDron, vidaEntra, vidaSale, actualizaVida
 // Consume: 01_datos (D, $), 02_mundo (suelo, copaAlta, copas, cIn), 03_escena (scene, camera, exag, modo), 04_terreno (terreno),
-//   07_follaje (matSombra, geoSombra), 12_paseo (paseando, persona, teclas, primera, camPos),
+//   07_follaje (matSombra, geoSombra), 12_paseo (paseando, persona, teclas, primera, camPos), 12b_llegada (Llegada),
 //   15_tiempo (calma, texBrillo, cur, meta, ins, nivel, temaBarrera, num1, rumbo), 22_huellas (pendFactor, quadInc, inclinaQuad),
 //   25_perros (amenazaConejo)
 // ===============================================================================
@@ -151,7 +151,7 @@
   })();
   function angDifRad(a, b) { var d = (a - b) % (2 * Math.PI); if (d > Math.PI) d -= 2 * Math.PI; if (d < -Math.PI) d += 2 * Math.PI; return d; }
   function textoAyudaPaseo() {
-    return enDron ? "Dron: W/S avanzar · A/D girar · Espacio/C subir y bajar · Mayús rápido · V cambia la cámara · E guardar el dron · Esc: salir"
+    return enDron ? "Dron: W/S avanzar · A/D girar · Espacio/C subir y bajar · Mayús rápido · V cámara · clic en el suelo: marcar llegada · Intro o L: aterrizar · E guardar · Esc: salir"
       : "Flechas o WASD: andar y girar · Mayús: correr · V: primera persona · Q: quad · E: dron · M: minimapa · Esc: salir";
   }
   function ponDron(v) {
@@ -163,6 +163,7 @@
     } else { var u = persona.userData; u.pi.rotation.x = u.pd.rotation.x = u.bi.rotation.x = u.bd.rotation.x = 0; }
     $("btnDron").setAttribute("aria-pressed", String(enDron)); $("btnDron").textContent = enDron ? "Guardar el dron" : "Sacar el dron"; $("padDron").setAttribute("aria-pressed", String(enDron));
     $("padSube").hidden = !enDron; $("padBaja").hidden = !enDron; $("tDron").hidden = !enDron; $("ayudaPaseo").textContent = textoAyudaPaseo();
+    Llegada.conDron(enDron);   // el anillo de llegada y «Aterrizar aquí» (12b_llegada.js)
   }
   function cicloVista() {
     if (enDron) { vistaD = (vistaD + 1) % 3; primera = vistaD === 1; } else primera = !primera;
@@ -199,6 +200,7 @@
     u.props.forEach(function (p) { p.g.rotation.y += p.s * dt * 70; });
     var parp = Math.floor(tVida * 2.2) % 2 === 0; u.leds.forEach(function (l, i) { l.visible = i < 2 ? parp : true; });
     u.glow.material.opacity = 0.15 + 0.5 * (1 - nivel(cur.ms).d);
+    Llegada.porFotograma();
     var alt = dr.h - suel; anilloDron.visible = true; anilloDron.position.set(dr.x, suel + 0.15, -dr.y); anilloDron.scale.setScalar(1.6 + alt * 0.28);
     anilloDron.material.opacity = Math.max(0.15, 0.7 - alt * 0.008) * (0.8 + 0.2 * Math.sin(tVida * 4));
     if (Math.abs(dr.vf) > 0.6 || Math.abs(dr.vh) > 0.6) estelaDron.emite(dr.x - Math.sin(dr.yaw) * 0.5, dr.y - Math.cos(dr.yaw) * 0.5, dr.h - 0.3, 0.5);

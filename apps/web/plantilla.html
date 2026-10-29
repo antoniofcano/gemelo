@@ -36,7 +36,8 @@ header p { margin: 4px 0 0; color: var(--muted); max-width: 70ch; }
 .ficha h3 { margin: 0 0 4px; font-family: var(--display); font-size: 16px; font-weight: 600; }
 .ficha dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin: 0; font-variant-numeric: tabular-nums; }
 .ficha dt { color: var(--muted); } .ficha dd { margin: 0; text-align: right; }
-.ficha button { position: absolute; top: 6px; right: 8px; border: 0; background: none; color: var(--muted); font-size: 16px; cursor: pointer; }
+.ficha button { position: absolute; top: 2px; right: 2px; min-width: 44px; min-height: 44px; border: 0; background: none; color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; }   /* la × con sitio para el dedo */
+.ficha h3 { padding-right: 36px; }
 .lateral { display: grid; gap: 12px; }
 .bloque { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
 .bloque h2 { margin: 0 0 8px; font-size: 11px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
@@ -144,6 +145,7 @@ header p { margin: 4px 0 0; color: var(--muted); max-width: 70ch; }
 .t-leyenda { margin: 2px 0 8px; font-size: 11.5px; color: var(--muted); } .t-leyenda i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin: 0 4px 0 8px; vertical-align: -1px; } .t-leyenda i:first-child { margin-left: 0; }
 .t-tabla { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; } .t-tabla th { text-align: left; font-weight: 600; padding: 3px 6px 3px 0; white-space: nowrap; } .t-tabla td { padding: 3px 6px; color: var(--muted); border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent); } .t-tabla th { border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
 #padQuad { grid-column: 1; grid-row: 1; } #padDron { grid-column: 3; grid-row: 1; }
+#padAterriza { grid-column: 1 / 4; grid-row: 4; min-height: 44px; font-size: 13px; }
 #padSube, #padBaja { grid-column: 2; grid-row: 2; height: 21px; padding: 0; line-height: 1; font-size: 11px; } #padSube { align-self: start; } #padBaja { align-self: end; }
 .visor.paseo .t-ins { bottom: auto; top: 12px; }
 .t-dron { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); max-width: calc(100% - 150px); text-align: center; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--fg); background: color-mix(in srgb, var(--panel) 82%, transparent); padding: 4px 10px; border-radius: 99px; pointer-events: none; }
@@ -151,7 +153,9 @@ header p { margin: 4px 0 0; color: var(--muted); max-width: 70ch; }
 .visor .mapita[hidden] { display: none !important; }
 @media (max-width: 520px) { .mapita { width: 170px !important; height: auto !important; } }
 .t-son { position: absolute; left: 64px; top: 12px; border: 0; border-radius: 99px; padding: 3px 9px; font-size: 14px; line-height: 1.3; cursor: pointer; color: var(--fg); background: color-mix(in srgb, var(--panel) 82%, transparent); }
-.t-baliza { position: absolute; left: 14px; bottom: 44px; width: min(310px, calc(100% - 28px)); font-size: 12.5px; color: var(--fg); background: color-mix(in srgb, var(--panel) 93%, transparent); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; box-shadow: 0 6px 22px rgba(0,0,0,.25); pointer-events: none; }
+.t-baliza { position: absolute; left: 14px; bottom: 44px; width: min(310px, calc(100% - 28px)); font-size: 12.5px; color: var(--fg); background: color-mix(in srgb, var(--panel) 93%, transparent); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; box-shadow: 0 6px 22px rgba(0,0,0,.25); pointer-events: auto; }
+.t-baliza .cerrar-baliza { position: absolute; top: 2px; right: 2px; min-width: 44px; min-height: 44px; border: 0; background: none; color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; }
+.t-baliza .b-cab { padding-right: 36px; }
 .t-baliza[hidden] { display: none; }
 .t-baliza .b-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; } .t-baliza strong { font-family: var(--display); font-size: 15px; }
 .t-baliza .b-pill { font-size: 11px; padding: 1px 8px; border-radius: 99px; background: color-mix(in srgb, var(--c) 24%, transparent); }
@@ -208,6 +212,7 @@ html.sin-scroll, html.sin-scroll body { overflow: hidden !important; }
         <button type="button" id="padCam" class="pad-txt">Cámara</button>
         <button type="button" id="padQuad" class="pad-txt" aria-pressed="false" hidden>Quad</button>
         <button type="button" id="padDron" class="pad-txt" aria-pressed="false" hidden>Dron</button>
+        <button type="button" id="padAterriza" class="pad-txt" aria-label="Aterrizar: guardar el dron donde estás" hidden>Aterrizar</button>
         <button type="button" id="padSube" class="pad-txt" aria-label="Subir el dron" hidden>▲</button>
         <button type="button" id="padBaja" class="pad-txt" aria-label="Bajar el dron" hidden>▼</button>
       </div>

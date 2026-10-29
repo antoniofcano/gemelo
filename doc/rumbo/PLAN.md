@@ -95,9 +95,10 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | P3 | F2: chat por el canal de datos y moderación mínima (expulsar con auditoría, decisión 42) | P1 | ligera | ✅ chat y expulsión; probados contra LiveKit real en P4 |
 | P4 | F2: dos Chrome en la misma sala (p95 < 250 ms) y 40 clientes ligeros | P2, P3 | 🔶 Docker + Chrome | ✅ en local (transporte p95 7 ms; 40 clientes saturan el i5: medir LiveKit con carga desde otra máquina) ; **probado por Antonio entre dos aparatos reales por la WiFi (2026-10-29): se ven, se escriben y la posición llega a tiempo**; el avatar remoto flotaba y no andaba (P5) |
 | P5 | F2: avatares remotos que andan (piernas y brazos según la velocidad) y con los pies en el suelo de este mundo | P4 | ligera · **opus**; 👤 a ojo | ✅ código, Node y Chrome headless (+5 llamadas con 10 o 40); falta verlo en aparatos |
+| P6 | F2: los demás ven si vas en quad o dron (modo en la pose, quad/dron bajo el avatar remoto, icono en el minimapa) | P5 | ligera · **opus** (con I1) | 🟡 en curso |
 | I1 | Presencia en el minimapa (quién está conectado y dónde) e **ir con alguien** (desde Gente o tocando su punto del minimapa; en VR con fundido) | P5 | ligera · **opus**; 👤 a ojo | 🟡 en curso |
 | I2 | La brújula oculta o muestra el minimapa | — | ligera | ✅ |
-| I3 | VR: desde el vuelo, apuntar al suelo y al bajar aparecer donde apuntaba (teletransporte desde el aire) | — | ligera · **opus**; 👤 Quest | 🟡 en curso |
+| I3 | Teletransporte desde el aire: en VR desde el vuelo y en ordenador y móvil con el **dron** (toque corto en el suelo pone el anillo, «Aterrizar aquí» te deja de pie allí); una sola pieza para los tres aparatos | — | ligera · **opus**; 👤 Quest | ✅ con WebXR simulado y Chrome sin pantalla; falta Quest, iPhone y Android |
 | O1 | Olivos generados: transición suave al acercarse (forma y luz; materiales con nubes y escarcha del motor) | — | ligera; 🔶 al medir | ✅ medido: 2 generados de cerca, 40 llamadas / 545 k (aspecto, 👤) |
 | O2 | Olivos generados: desglose del coste de `factorR8 = 1` por objeto | — | 🔶 | ⬜ |
 | O3 | `semillas_copas.py` dentro de los exportadores | — | ligera | ✅ |
@@ -108,8 +109,8 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | O7c | Hornero en Node (CLI): hornea una finca o una tesela a ficheros por huella + manifiesto; incremental (solo lo que cambia); época actual y siguiente | O7b | ligera (pesada de CPU, sin Chrome) · **sonnet** | ✅ 16 objetos, 4,44 MB, 9,3 s desde cero y 0,9 s sin cambios |
 | O7d | Servir las recetas: Caddy en `/teselas/<finca>/olivos/<huella>` con caché inmutable y el manifiesto con la tesela, tras sesión; dev y producción | O7b | ligera · **sonnet** | ✅ e2e con Docker; producción probada con Caddy suelto, no en el VPS |
 | O7e | Motor: carga el manifiesto con la tesela y **descarga** las recetas en vez de calcularlas (con la caché de O5); si falta una, la calcula (plan B) | O7b | ligera · **opus** | ✅ en el banco: 6 de 6 en 53 s horneadas frente a 1 de 6 en 183 s calculadas; mismo aspecto |
-| O7f | Servicio «hornero» en Docker (`infra/dev`, luego producción): se dispara por cambio de época (calendario), índice nuevo o `GEN_VERSION`; registro y salud | O7c | ligera · **sonnet** | 🟡 en curso |
-| O7g | e2e: el servicio hornea el fixture, Caddy lo sirve y el motor lo dibuja con 0 variantes calculadas en el aparato (los propios, calculados; ADR-0018) | O7d, O7e, O7f | 🔶 Docker + Chrome · **sonnet** | ⬜ |
+| O7f | Servicio «hornero» en Docker (`infra/dev`, luego producción): se dispara por cambio de época (calendario), índice nuevo o `GEN_VERSION`; registro y salud | O7c | ligera · **sonnet** | ✅ servicio en dev (e2e del hornero en verde); producción en el perfil `hornero`, sin desplegar |
+| O7g | e2e: el servicio hornea el fixture, Caddy lo sirve y el motor lo dibuja con 0 variantes calculadas en el aparato (los propios, calculados; ADR-0018) | O7d, O7e, O7f | 🔶 Docker + Chrome · **sonnet** | 🟡 en curso |
 | O7h | Hituelo real horneado (2 épocas): tamaños, tiempo, descarga de un paseo; prueba en el móvil | O7g | 🔶 · **sonnet**; 👤 móvil | ⬜ |
 | O4 | Medir 10 olivos en campo con cinta (decisiones 48-49) | — | 👤 | ⬜ |
 | V1 | VPS: preparar el despliegue (RUNBOOK-VPS al día, SMTP de OVH, token de OlivarTrack, comprobaciones previas) | — | ligera (documentos y guiones) | ✅ (8 preguntas a Antonio en DECISIONS-PENDING) |
