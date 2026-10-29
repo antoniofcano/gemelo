@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: hash, matSuelo, matOrto, UN, Terreno, actualizaTerreno, terreno
-// Consume: 01_datos (D, RES, ANCHO, ALTO, ESTAD), 02_mundo (Mundo, suelo, tinte, copas), 02b_cola (Cola), 03_escena (scene, camera, modo),
+// Consume: 01_datos (D, RES, ANCHO, ALTO, ESTAD, ESC3D), 02_mundo (Mundo, suelo, tinte, copas), 02b_cola (Cola), 03_escena (scene, camera, modo),
 //   08_marcadores (aplica), 09_camara (suelta), 12_paseo (primera), 13_parcelas (parcelas), 14_historia (hist),
 //   15_tiempo (lluvia, parcheTiempo, nivel, hace), 21_suelo (vn2, cubierta), 24_pantalla (suave)
 // ===============================================================================
@@ -114,15 +114,21 @@
       var tx = new THREE.Texture(t.ortImg); tx.anisotropy = 4; tx.needsUpdate = true; t.texOrt = tx; t.uni.uOrt.value = tx;
     }
 
-    // ---- el parche del sombreador (Lambert) con todo lo anterior
-    function parche(sh, t) {
+    // ---- el parche del sombreador (Lambert) con todo lo anterior. Es UNO para las dos escenas: el Terreno de siempre lo llama con (sh, t.uni) y la escena
+    // 3D Tiles (04d_sombreado_tiles.js) con su `op`, que solo cambia de dónde salen la posición en el mundo y las coordenadas de la ortofoto (el resto del GLSL es el mismo texto).
+    // op (opcional): { vertice: true = la malla va en el marco del motor y la exageración se aplica aquí; false = la trae modelMatrix (y la sombra de nubes
+    //   se calcula en el mundo); cab: GLSL extra de cabecera; uvO: coordenadas de la ortofoto; dg: 3 m en esas coordenadas; dy: el paso hacia el norte en ellas }
+    var OP_TERRENO = { vertice: true, cab: "", uvO: "lc / " + TS.toFixed(1), dg: "3.0 / " + TS.toFixed(1), dy: "vec2(0.0, dg)" };
+    function parche(sh, uni, op) {
+      op = op || OP_TERRENO;
       parcheTiempo(sh, false);   // sombra de nubes y escarcha (bloque del tiempo)
-      var u = sh.uniforms; Object.keys(UN).forEach(function (k) { u[k] = UN[k]; }); Object.keys(t.uni).forEach(function (k) { u[k] = t.uni[k]; });
-      sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nuniform float uExag; varying vec3 vWP; varying vec3 vVPz;")
-        .replace("#include <beginnormal_vertex>", "#include <beginnormal_vertex>\n objectNormal = normalize(vec3(objectNormal.x, objectNormal.y / uExag, objectNormal.z));")
-        .replace("#include <begin_vertex>", "#include <begin_vertex>\n vWP = position; transformed.y *= uExag;")
-        .replace("#include <project_vertex>", "#include <project_vertex>\n vVPz = -mvPosition.xyz;");
-      var cab = "uniform vec2 uTile; uniform sampler2D uSue; uniform sampler2D uRui; uniform sampler2D uOrt; uniform sampler2D uGnd; uniform float uDet; uniform float uDetK; uniform float uBumpK; uniform float uDetDbg; uniform float uBias2; uniform float uTiene; uniform sampler2D uMos; uniform vec4 uMosBox; uniform float uModoOrto; uniform float uHierba; uniform sampler2D uG; uniform vec4 uGBox; uniform sampler2D uNdviMap; uniform float uNdviOn; uniform vec3 uOrtoTint; varying vec3 vWP;\n" +
+      var u = sh.uniforms; Object.keys(UN).forEach(function (k) { u[k] = UN[k]; }); Object.keys(uni).forEach(function (k) { u[k] = uni[k]; });
+      var vs = sh.vertexShader.replace("#include <common>", "#include <common>\nuniform float uExag; varying vec3 vWP; varying vec3 vVPz;");
+      if (op.vertice) vs = vs.replace("#include <beginnormal_vertex>", "#include <beginnormal_vertex>\n objectNormal = normalize(vec3(objectNormal.x, objectNormal.y / uExag, objectNormal.z));")
+        .replace("#include <begin_vertex>", "#include <begin_vertex>\n vWP = position; transformed.y *= uExag;");
+      else vs = vs.replace("#include <begin_vertex>", "#include <begin_vertex>\n vWP = (modelMatrix * vec4(transformed, 1.0)).xyz; vWP.y /= uExag;").replace("ot_sombra(position.xz)", "ot_sombra(vWP.xz)");
+      sh.vertexShader = vs.replace("#include <project_vertex>", "#include <project_vertex>\n vVPz = -mvPosition.xyz;");
+      var cab = op.cab + "uniform vec2 uTile; uniform sampler2D uSue; uniform sampler2D uRui; uniform sampler2D uOrt; uniform sampler2D uGnd; uniform float uDet; uniform float uDetK; uniform float uBumpK; uniform float uDetDbg; uniform float uBias2; uniform float uTiene; uniform sampler2D uMos; uniform vec4 uMosBox; uniform float uModoOrto; uniform float uHierba; uniform sampler2D uG; uniform vec4 uGBox; uniform sampler2D uNdviMap; uniform float uNdviOn; uniform vec3 uOrtoTint; varying vec3 vWP;\n" +
         "float dh(vec2 p){ return fract(sin(dot(p, vec2(41.3, 289.1))) * 17391.7); }\nfloat dn(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(dh(i), dh(i + vec2(1.0, 0.0)), f.x), mix(dh(i + vec2(0.0, 1.0)), dh(i + vec2(1.0, 1.0)), f.x), f.y); }\n" +
         "float hSuelo = 0.0;\n" +
         "vec3 pBump(vec3 vp, vec3 n, vec2 dH){ vec3 s1 = dFdx(vp), s2 = dFdy(vp), r1 = cross(s2, n), r2 = cross(n, s1); float d = dot(s1, r1); vec3 g = sign(d) * (dH.x * r1 + dH.y * r2); return normalize(abs(d) * n - g); }\n";
@@ -133,12 +139,12 @@
         // detalle de la ortofoto: cociente de claridad entre la ortofoto «nítida» y dos referencias (ella misma a ~2 m y el color ancho del suelo abierto, sin copas), solo donde el suelo está abierto
         "float abierto = 0.0, rodada = 1.0, tono = 1.0, desnudo = 0.0, camino = 0.0, coh = 0.0; vec2 dirT = vec2(1.0, 0.0);\n" +
         "float dc = length(vViewPosition), cerca = 1.0 - smoothstep(12.0, 60.0, dc), cercaM = 1.0 - smoothstep(3.0, 18.0, dc), cercaR = 1.0 - smoothstep(30.0, 110.0, dc);\n" +
-        "if (uDet > 0.5) { vec2 uvO = lc / " + TS.toFixed(1) + "; vec3 o0 = texture2D(uOrt, uvO).rgb, o2 = texture2D(uOrt, uvO, uBias2).rgb, o4 = texture2D(uOrt, uvO, uBias2 + 1.0).rgb, gw = texture2D(uGnd, uvO).rgb; vec3 LM = vec3(0.299, 0.587, 0.114); sc = mix(sc, gw, 0.85);\n" +
+        "if (uDet > 0.5) { vec2 uvO = " + op.uvO + "; vec3 o0 = texture2D(uOrt, uvO).rgb, o2 = texture2D(uOrt, uvO, uBias2).rgb, o4 = texture2D(uOrt, uvO, uBias2 + 1.0).rgb, gw = texture2D(uGnd, uvO).rgb; vec3 LM = vec3(0.299, 0.587, 0.114); sc = mix(sc, gw, 0.85);\n" +
         "  float l0 = dot(o0, LM) + 0.03, l2 = dot(o2, LM) + 0.03, l4 = dot(o4, LM) + 0.03, lw = dot(gw, LM) + 0.03; abierto = min(min(smoothstep(0.72, 0.86, l0 / lw), smoothstep(0.80, 0.93, l2 / lw)), smoothstep(0.86, 0.97, l4 / lw)) * uDetK;\n" +
         "  rodada = clamp(l0 / l2, 0.7, 1.5); tono = clamp(l2 / lw, 0.8, 1.8); desnudo = smoothstep(1.05, 1.3, tono) * abierto;\n" +
         // camino: suelo desnudo claro; su dirección sale del gradiente de claridad a ~4 m (4 muestras), solo donde hace falta
         "  camino = smoothstep(1.04, 1.22, tono) * abierto;\n" +
-        "  if (camino > 0.02 && cercaR > 0.01) { float dg = 3.0 / " + TS.toFixed(1) + "; float lx1 = dot(texture2D(uOrt, uvO + vec2(dg, 0.0), uBias2 + 1.0).rgb, LM), lx0 = dot(texture2D(uOrt, uvO - vec2(dg, 0.0), uBias2 + 1.0).rgb, LM), ly1 = dot(texture2D(uOrt, uvO + vec2(0.0, dg), uBias2 + 1.0).rgb, LM), ly0 = dot(texture2D(uOrt, uvO - vec2(0.0, dg), uBias2 + 1.0).rgb, LM); vec2 gg = vec2(lx1 - lx0, ly1 - ly0); float gl = length(gg); coh = smoothstep(0.004, 0.03, gl); dirT = gl > 1e-4 ? vec2(-gg.y, gg.x) / gl : vec2(1.0, 0.0); } }\n" +
+        "  if (camino > 0.02 && cercaR > 0.01) { float dg = " + op.dg + "; float lx1 = dot(texture2D(uOrt, uvO + vec2(dg, 0.0), uBias2 + 1.0).rgb, LM), lx0 = dot(texture2D(uOrt, uvO - vec2(dg, 0.0), uBias2 + 1.0).rgb, LM), ly1 = dot(texture2D(uOrt, uvO + " + op.dy + ", uBias2 + 1.0).rgb, LM), ly0 = dot(texture2D(uOrt, uvO - " + op.dy + ", uBias2 + 1.0).rgb, LM); vec2 gg = vec2(lx1 - lx0, ly1 - ly0); float gl = length(gg); coh = smoothstep(0.004, 0.03, gl); dirT = gl > 1e-4 ? vec2(-gg.y, gg.x) / gl : vec2(1.0, 0.0); } }\n" +
         "float g = texture2D(uG, vec2((vWP.x - uGBox.x) / uGBox.z, (uGBox.y + vWP.z) / uGBox.w)).r * 1.3 - 0.3;\n" +
         "float cov = clamp(clamp((g - " + S0 + ") / " + (V0 - S0).toFixed(2) + ", 0.0, 1.0) * ru.r * 1.6, 0.0, 1.0), vig = clamp((g - 0.30) / 0.30, 0.0, 1.0), nn = 0.8 + ru.g * 0.4, m = cov * 0.78 * uHierba * (1.0 - 0.9 * desnudo);\n" +
         "vec3 gr = vec3(0.66 - 0.36 * vig, 0.58 - 0.10 * vig, 0.34 - 0.17 * vig) * nn * (0.82 + 0.36 * dn(vec2(vWP.x * 14.0, vWP.z * 3.0) + vec2(dn(vWP.xz * 0.5) * 3.0, 0.0)) * (0.5 + 0.5 * cerca)) * (1.0 + 0.22 * (dn(vWP.xz * 0.6 + 4.0) - 0.5) * (1.0 - vig));\n" +
@@ -168,13 +174,13 @@
         "if (uDetDbg > 0.5) gl_FragColor.rgb = uDetDbg < 1.5 ? vec3(abierto) : uDetDbg < 2.5 ? vec3(clamp(tono - 0.5, 0.0, 1.0)) : uDetDbg < 3.5 ? vec3(clamp(rodada - 0.5, 0.0, 1.0)) : vec3(ruts, camino, coh);\n";
       sh.fragmentShader = sh.fragmentShader.replace("void main() {", "varying vec3 vVPz;\n#define vViewPosition vVPz\n" + cab + "void main() {")
         .replace("#include <color_fragment>", "#include <color_fragment>\n" + color)
-        .replace("gl_FragColor.rgb *= vSomb;", "if (uModoOrto > 0.5) gl_FragColor.rgb = texture2D(uOrt, lc / " + TS.toFixed(1) + ").rgb * sRGBTransferOETF(vec4(uOrtoTint, 1.0)).rgb;\n float dd = dn(vWP.xz * 0.9) * 0.45 + dn(vWP.xz * 3.3) * 0.3 + dn(vWP.xz * 12.0) * 0.25;\n gl_FragColor.rgb *= (1.0 - (1.0 - (0.82 + 0.36 * dd)) * (1.0 - 0.6 * abierto)) * vSomb;")
+        .replace("gl_FragColor.rgb *= vSomb;", "if (uModoOrto > 0.5) gl_FragColor.rgb = texture2D(uOrt, " + op.uvO + ").rgb * sRGBTransferOETF(vec4(uOrtoTint, 1.0)).rgb;\n float dd = dn(vWP.xz * 0.9) * 0.45 + dn(vWP.xz * 3.3) * 0.3 + dn(vWP.xz * 12.0) * 0.25;\n gl_FragColor.rgb *= (1.0 - (1.0 - (0.82 + 0.36 * dd)) * (1.0 - 0.6 * abierto)) * vSomb;")
         .replace("#include <normal_fragment_maps>", "#include <normal_fragment_maps>\n normal = pBump(-vViewPosition, normal, vec2(dFdx(hSuelo), dFdy(hSuelo)) * uBumpK * (1.0 - smoothstep(25.0, 90.0, length(vViewPosition))));")
         .replace("#include <dithering_fragment>", fin + "#include <dithering_fragment>");
     }
     function material(t) {
       var m = new THREE.MeshLambertMaterial({}); m.color = matSuelo.color;   // el color (lluvia, luz) es uno solo para todas
-      m.onBeforeCompile = function (sh) { parche(sh, t); }; return m;
+      m.onBeforeCompile = function (sh) { parche(sh, t.uni); }; return m;
     }
 
     // ---- geometría de una tesela a un paso dado: retícula alineada al origen de la tesela (los bordes del rectángulo válido siempre son vértices) y un faldón vertical en el perímetro
@@ -217,7 +223,7 @@
 
     function geometria(t, paso) { var g = geometriaG(t, paso), r; while (!(r = g.next()).done); return r.value; }   // síncrona: solo para el nivel grueso (1.000 vértices)
     function monta(t) {   // textura, material y el nivel más grueso (barato); los más finos llegan con actualiza()
-      if (t.mat) return;
+      if (t.mat || ESC3D.activa) return;   // con la escena 3D Tiles (?escena=tiles) el terreno de siempre no construye nada
       texturas(t); t.mat = material(t); t.mallas = [null, null, null]; t.usado = [0, 0, 0]; t.nivel = -1; t.hc = suelo((t.v[0] + t.v[2]) / 2, (t.v[1] + t.v[3]) / 2);
       ponNivel(t, 2);
     }
@@ -229,10 +235,11 @@
     function ponNivel(t, n) {
       var m = mallaDe(t, n); if (!m) return null; for (var k = 0; k < 3; k++) if (t.mallas[k]) t.mallas[k].visible = k === n; t.nivel = n; t.usado[n] = performance.now(); return m;
     }
-    function montaTodas() { Mundo.lista.forEach(monta); actualiza(camera.position.x, camera.position.y, camera.position.z); Cola.vacia(8000); }
+    function montaTodas() { if (ESC3D.activa) return; Mundo.lista.forEach(monta); actualiza(camera.position.x, camera.position.y, camera.position.z); Cola.vacia(8000); }
     // nivel de cada tesela según la distancia de la cámara a su rectángulo (con histéresis del 10 %); máx. `cupo` mallas nuevas por llamada para no bloquear
     var U0 = 220, U1 = 800;
     function actualiza(cx, cy, cz) {
+      if (ESC3D.activa) return;
       var ahora = performance.now();
       Mundo.lista.forEach(function (t) {
         if (!t.mat) return;
@@ -248,13 +255,16 @@
       });
     }
     function tileCargada(t) {   // llegaron los datos de una tesela: color real, ruido real y las mallas rehechas con el relieve fino
-      if (!t.mat) return; t.detPedido = false; t.detListo = false; if (t.uni) t.uni.uDet.value = 0; Cola.cancela("T" + t.key + "0"); Cola.cancela("T" + t.key + "1"); texturasReales(t); t.hc = suelo((t.v[0] + t.v[2]) / 2, (t.v[1] + t.v[3]) / 2);
+      if (!t.mat || ESC3D.activa) return; t.detPedido = false; t.detListo = false; if (t.uni) t.uni.uDet.value = 0; Cola.cancela("T" + t.key + "0"); Cola.cancela("T" + t.key + "1"); texturasReales(t); t.hc = suelo((t.v[0] + t.v[2]) / 2, (t.v[1] + t.v[3]) / 2);
       for (var k = 0; k < 3; k++) if (t.mallas[k]) { t.mallas[k].geometry.dispose(); grupo.remove(t.mallas[k]); t.mallas[k] = null; }
       ponNivel(t, 2);
     }
-    function iniciaMosaico() { var im = Mundo.mosaico.img; if (im) { var tx = new THREE.Texture(im); tx.anisotropy = 4; tx.needsUpdate = true; UN.uMos.value = tx; } }
-    function modoOrto(v) { UN.uModoOrto.value = v ? 1 : 0; if (v) Mundo.lista.forEach(texturaOrto); else Mundo.lista.forEach(function (t) { if (t.texOrt && !(t.uni && t.uni.uDet.value)) { t.texOrt.dispose(); t.texOrt = null; if (t.uni) t.uni.uOrt.value = null; } }); }
-    return { grupo: grupo, monta: monta, montaTodas: montaTodas, actualiza: actualiza, modoOrto: modoOrto, tileCargada: tileCargada, iniciaMosaico: iniciaMosaico, UN: UN };
+    function iniciaMosaico() { if (ESC3D.activa) return; var im = Mundo.mosaico.img; if (im) { var tx = new THREE.Texture(im); tx.anisotropy = 4; tx.needsUpdate = true; UN.uMos.value = tx; } }
+    function modoOrto(v) { UN.uModoOrto.value = v ? 1 : 0; if (ESC3D.activa) return; if (v) Mundo.lista.forEach(texturaOrto); else Mundo.lista.forEach(function (t) { if (t.texOrt && !(t.uni && t.uni.uDet.value)) { t.texOrt.dispose(); t.texOrt = null; if (t.uni) t.uni.uOrt.value = null; } }); }
+    // para la escena 3D Tiles (04d_sombreado_tiles.js): las texturas de una tesela del Mundo sin construir sus mallas (su detalle se pide con pideDetalle)
+    function prepara(t) { if (!t.uni) texturas(t); else if (t.suel && !t.texSue) texturasReales(t); if (t.hc === undefined) t.hc = suelo((t.v[0] + t.v[2]) / 2, (t.v[1] + t.v[3]) / 2); return t.uni; }
+    return { grupo: grupo, monta: monta, montaTodas: montaTodas, actualiza: actualiza, modoOrto: modoOrto, tileCargada: tileCargada, iniciaMosaico: iniciaMosaico, UN: UN,
+      parche: parche, prepara: prepara, pideDetalle: pideDetalle, U1: U1 };
   })();
   var tTer = 0;
   function actualizaTerreno(dt) { tTer += dt; if (tTer < 0.2) return; tTer = 0; Terreno.actualiza(camera.position.x, camera.position.y, camera.position.z, 1); }

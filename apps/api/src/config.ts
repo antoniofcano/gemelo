@@ -25,6 +25,8 @@ export interface Config {
   bd: { host: string; puerto: number; base: string; usuario: string; clave: string | undefined; max: number };
   sesion: { diasAbsolutos: number; diasInactividad: number; secreto: string };
   enlace: { minutos: number; porIp: number; porCorreo: number; ventanaMin: number };
+  /** código corto de las gafas (contratos/sesion.md § Código corto): códigos pedidos por IP, intentos de aprobar por hogar y por IP */
+  vinculo: { porIp: number; intentosPorHogar: number; intentosPorIp: number; sondeosPorMin: number; ventanaMin: number };
   correo: { modo: "buzon" } | ConfigSmtp;
   ot:
     | { modo: "no" }
@@ -183,6 +185,13 @@ export function cargaConfig(e: Entorno = process.env): Config {
       porIp: entero(e, "GEMELO_ENLACE_POR_IP", 10, 1, 1000),
       porCorreo: entero(e, "GEMELO_ENLACE_POR_CORREO", 3, 1, 100),
       ventanaMin: entero(e, "GEMELO_ENLACE_VENTANA_MIN", 15, 1, 1440),
+    },
+    vinculo: {
+      porIp: entero(e, "GEMELO_VINCULO_POR_IP", 10, 1, 1000),
+      intentosPorHogar: entero(e, "GEMELO_VINCULO_INTENTOS_POR_HOGAR", 5, 1, 100),
+      intentosPorIp: entero(e, "GEMELO_VINCULO_INTENTOS_POR_IP", 10, 1, 1000),
+      sondeosPorMin: entero(e, "GEMELO_VINCULO_SONDEOS_POR_MIN", 60, 10, 6000),
+      ventanaMin: entero(e, "GEMELO_VINCULO_VENTANA_MIN", 15, 1, 1440),
     },
     correo: cargaCorreo(e, produccion),
     ot,

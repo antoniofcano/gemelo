@@ -6,7 +6,7 @@ import fastifySession from "@fastify/session";
 import Fastify, { type FastifyInstance } from "fastify";
 import { rutasAdmin } from "./admin/rutas.ts";
 import { AlmacenPg } from "./auth/almacen.ts";
-import { NOMBRE_COOKIE, rutasAuth, TEXTO_LIMITE } from "./auth/rutas.ts";
+import { NOMBRE_COOKIE, rutasAuth, TEXTO_LIMITE, TEXTO_LIMITE_VINCULO } from "./auth/rutas.ts";
 import type { Contexto } from "./contexto.ts";
 import { rutasHazas } from "./hazas/rutas.ts";
 import { rutasPresencia } from "./presencia/rutas.ts";
@@ -15,6 +15,9 @@ import { rutasSalud } from "./salud/rutas.ts";
 import { nuevoToken } from "./seguridad/cripto.ts";
 import { compruebaOrigen } from "./seguridad/origen.ts";
 import { rutasYo } from "./yo/rutas.ts";
+
+/** El código corto de las gafas tiene su propio texto de límite (el del enlace habla de enlaces). */
+const esVinculo = (url: string) => url.startsWith("/api/auth/vincula") || url.startsWith("/api/yo/dispositivos/");
 
 export interface OpcionesApp {
   destinoRegistro?: NodeJS.WritableStream;
@@ -49,7 +52,7 @@ export async function construyeApp(ctx: Contexto, o: OpcionesApp = {}): Promise<
 
   await app.register(fastifyRateLimit, {
     global: false,
-    errorResponseBuilder: (_req, ctxLimite) => ({ statusCode: ctxLimite.statusCode, error: "demasiadas_peticiones", mensaje: TEXTO_LIMITE }),
+    errorResponseBuilder: (req, ctxLimite) => ({ statusCode: ctxLimite.statusCode, error: "demasiadas_peticiones", mensaje: esVinculo(req.url) ? TEXTO_LIMITE_VINCULO : TEXTO_LIMITE }),
   });
 
   await app.register(fastifyCookie);
@@ -72,7 +75,7 @@ export async function construyeApp(ctx: Contexto, o: OpcionesApp = {}): Promise<
   app.setErrorHandler((err: { validation?: unknown; statusCode?: number; message: string }, req, rep) => {
     if (err.validation) return rep.code(400).send({ error: "entrada_no_valida", mensaje: "La petición no tiene la forma esperada." });
     // el límite de @fastify/rate-limit llega como error: mismo texto para todos (sin delatar a nadie)
-    if (err.statusCode === 429) return rep.code(429).send({ error: "demasiadas_peticiones", mensaje: TEXTO_LIMITE });
+    if (err.statusCode === 429) return rep.code(429).send({ error: "demasiadas_peticiones", mensaje: esVinculo(req.url) ? TEXTO_LIMITE_VINCULO : TEXTO_LIMITE });
     const codigo = err.statusCode && err.statusCode >= 400 && err.statusCode < 500 ? err.statusCode : 500;
     if (codigo >= 500) req.log.error({ evento: "error_interno", error: err.message }, "error interno");
     return rep.code(codigo).send({ error: codigo >= 500 ? "interno" : "peticion_no_valida" });

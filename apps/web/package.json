@@ -7,9 +7,11 @@
   "scripts": {
     "motor": "node herramientas/genera_motor.mjs",
     "build": "node herramientas/genera_motor.mjs && vite build",
-    "dev": "node herramientas/genera_motor.mjs && vite"
+    "dev": "node herramientas/genera_motor.mjs && vite",
+    "build:portada": "vite build --config vite.portada.config.js"
   },
   "dependencies": {
+    "3d-tiles-renderer": "0.5.3",
     "livekit-client": "2.22.4",
     "three": "0.186.1"
   },

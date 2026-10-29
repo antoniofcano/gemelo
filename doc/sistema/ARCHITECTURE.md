@@ -31,6 +31,7 @@ Dos modos: **embebido** (`D` incluye `t{}`; ≤16 MB, Cerro) y **ficheros** (`D.
 | `11_sol.js` | `sol2()` | hora y fecha (Jaén) |
 | `12_paseo.js` | `paseando`, `actualizaPaseo` | primera persona |
 | `13_parcelas.js` | selector fincas→parcelas | suelo por parcela (USDA) |
+| `13b_hazas.js` | `HazasPuro`, `Hazas` | F1: la linde de cada haza de `/api/hazas` pegada al suelo (una `LineSegments` en `gLinde`: 1 llamada, la propia en ámbar y las ajenas en blanco roto) y, al tocarla o con H, su ficha de `/api/hazas/{id}` (solo la lista blanca, con procedencia y fecha). Solo con la página servida por el servidor (`D.base` = `/teselas/…`) o `?api=`; sin eso, o sin sesión o con error, no crea nada ([haza.schema.json](../../contratos/haza.schema.json), ADR-0014) |
 | `14_historia.js` | `ESCENAS` (Cerro/Hituelo) | cruza OlivarTrack (`D.ot`, MCP) |
 | `15_tiempo.js` | `actualizaTiempo` | estación, previsión, demos (Vigía) |
 | `16_vida.js`, `25_perros.js` | fauna | pájaros, conejos, quad, perros |

@@ -121,3 +121,60 @@ test("infra/Caddyfile: cabeceras, sesión y registros (opcional, GEMELO_DOCKER=1
   const r = spawnSync("bash", ["infra/probar-caddy.sh"], { cwd: RAIZ, encoding: "utf8" });
   assert.strictEqual(r.status, 0, r.stdout.split("\n").filter(l => /MAL|fallos/.test(l)).join("\n") + r.stderr);
 });
+
+// infra/comprobar-despliegue.sh: la comprobación posterior al despliegue SOLO LEE (RUNBOOK-VPS). Se mira que no tenga
+// órdenes que cambien nada y se ejecuta contra un servidor falso en 127.0.0.1 que imita al Caddy interno (sin Docker).
+const COMPRUEBA = "infra/comprobar-despliegue.sh";
+const ESCRIBE = new RegExp([
+  /docker\s+compose[^\n]*\s(up|down|rm|restart|stop|start|kill|build|pull|create|run)\b/,
+  /docker\s+(rm|rmi|stop|kill|restart|run|network\s+(create|rm|connect|disconnect)|volume\s+rm|system\s+prune|builder\s+prune)\b/,
+  /curl\b[^|\n]*\s-(X|d|F|T)\s|--data/, /\bufw\s+(allow|deny|delete|enable|disable|reset)\b/,
+  /\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE|GRANT|REVOKE)\s/, /caddy\s+reload/,
+  /systemctl\s+(start|stop|restart|enable|disable)/, /\brm\s+-/, /\bmv\s/, />\s*\/(etc|srv|var)\//,
+].map(r => r.source).join("|"));
+
+test("infra/comprobar-despliegue.sh solo lee: sin órdenes que cambien nada", () => {
+  const mal = sinComentarios(COMPRUEBA).split("\n").filter(l => ESCRIBE.test(l));
+  assert.deepStrictEqual(mal, [], "el guion de comprobación posterior no puede cambiar nada");
+});
+
+test("infra/comprobar-despliegue.sh contra un servidor falso que imita al Caddy interno (sin Docker)", { timeout: 240_000 }, async t => {
+  const hay = h => spawnSync("bash", ["-c", "command -v " + h], { encoding: "utf8" }).status === 0;
+  if (!hay("bash") || !hay("curl")) return t.skip("sin bash o curl: el guion de comprobación NO se ha ejecutado");
+  assert.strictEqual(spawnSync("bash", ["-n", COMPRUEBA], { cwd: RAIZ, encoding: "utf8" }).status, 0, "bash -n " + COMPRUEBA);
+  const http = require("http"), { spawn } = require("child_process");
+  const SEG = {
+    "Strict-Transport-Security": "max-age=31536000", "X-Content-Type-Options": "nosniff", "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin", "Cross-Origin-Opener-Policy": "same-origin",
+    "Permissions-Policy": "xr-spatial-tracking=(self), camera=()",
+    "Content-Security-Policy-Report-Only": "default-src 'self'; script-src 'self'; object-src 'none'",
+  };
+  const arranca = roto => new Promise(res => {
+    const srv = http.createServer((req, rep) => {
+      const h = Object.assign({}, SEG), u = req.url.split("?")[0];
+      if (roto) delete h["Referrer-Policy"];
+      if (u === "/") { h["Cache-Control"] = "no-cache"; rep.writeHead(200, h); return rep.end("<!doctype html>"); }
+      if (u === "/api/salud") { h["Cache-Control"] = "no-store"; rep.writeHead(200, h); return rep.end(roto ? '{"estado":"mal","bd":"mal"}' : '{"estado":"ok","bd":"ok"}'); }
+      if (u.startsWith("/api/interno/")) { rep.writeHead(roto ? 204 : 404, h); return rep.end(); }
+      if (u.startsWith("/finca") && req.headers["sec-fetch-mode"] === "navigate") { h.Location = "/"; rep.writeHead(303, h); return rep.end(); }
+      rep.writeHead(401, h); rep.end();
+    });
+    srv.listen(0, "127.0.0.1", () => res(srv));
+  });
+  const corre = srv => new Promise(res => {
+    const p = spawn("bash", [COMPRUEBA, "http://127.0.0.1:" + srv.address().port], { cwd: RAIZ, env: Object.assign({}, ENTORNO_HIJO, { NO_PROXY: "127.0.0.1" }) });
+    let out = ""; p.stdout.on("data", d => out += d); p.stderr.on("data", d => out += d);
+    p.on("close", code => res({ code, out }));
+  });
+  const bueno = await arranca(false);
+  try {
+    const r = await corre(bueno);
+    assert.strictEqual(r.code, 0, "contra el servidor falso bien configurado:\n" + r.out.split("\n").filter(l => /MAL|fallos/.test(l)).join("\n"));
+  } finally { bueno.close(); }
+  const malo = await arranca(true);
+  try {
+    const r = await corre(malo);
+    assert.strictEqual(r.code, 1, "contra un servidor mal configurado debe fallar:\n" + r.out);
+    for (const s of ["falta Referrer-Policy", "/api/salud responde", "/api/interno accesible desde fuera"]) assert.ok(r.out.includes(s), "no detecta: " + s + "\n" + r.out);
+  } finally { malo.close(); }
+});

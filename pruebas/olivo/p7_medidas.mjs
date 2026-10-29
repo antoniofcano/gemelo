@@ -31,7 +31,7 @@ try {
       for (;;) {
         await p.waitForTimeout(1500);
         const st = await p.evaluate(() => ({ cola: window.__g.Cola.pendientes(), gen: window.__olivosGen ? window.__olivosGen() : null }));
-        const listo = st.cola === 0 && (!st.gen || st.gen.estado !== "listo" || nombre !== "cerca" || st.gen.info.arboles > 0);
+        const listo = st.cola === 0 && (!st.gen || st.gen.estado !== "activo" || nombre !== "cerca" || st.gen.info.arboles > 0);
         if (listo || Date.now() - t0 > ESPERA) break;
       }
       await p.waitForTimeout(1500);
