@@ -64,6 +64,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 - `doc/ESTADO.md` reescrito como único sitio de «dónde estamos»; se retira el id y el enlace del artefacto privado (el repo es público).
 
 ### Arreglado
+- Escena 3D Tiles: un `?tileset=` de otro host ya no rompe el arranque del motor (vuelve el relieve de siempre); probado en navegador con el fixture.
 - Pruebas: con `?olivos=gen`, `mide()` espera a los olivos generados hasta 180 s (`GEMELO_ESPERA_GEN`) y guarda su estado y si la espera terminó; los generados usan la mitad del presupuesto de la Cola (O1c).
 - Pruebas: `mide()` y `p7_medidas` esperan también a los olivos generados (`__g.pendientes()`); los generados usan todo el presupuesto de la Cola cuando está libre (O1b).
 - DATOS.md: hojas LiDAR de Hituelo corregidas (la N es el borde norte; el 92 % de las copas está en 405-4180 y 406-4180).
