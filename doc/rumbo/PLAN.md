@@ -86,7 +86,7 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | T2 | Tileset de Hituelo regenerado con el generador 0.3.0 desde D1 | D1 | pesada de CPU, sin Chrome (72 s) | ✅ 248 glb, 0 errores |
 | T3 | F1d 3b: medir con el fixture y con Hituelo; raíz vacía visible de lejos | T1, T2 | 🔶 | 🟡 raíz vacía y relieve comprobados con el fixture (`escena3d.test.js`); Hituelo encargado al banco |
 | T4 | F1d 4: olivos del tileset con máscara (de cerca, los del motor y los generados) | T1 | ligera; 🔶 al medir | ✅ en navegador: 189 de 350 apartadas de cerca, ninguno doble |
-| T5 | F1d 5: sombreado (nubes, escarcha, NDVI, suelo) sobre el tileset | T1 | ligera; capturas 🔶 → 👤 | 🟡 código en main; capturas encargadas (NDVI y Ortofoto, a mano) |
+| T5 | F1d 5: sombreado (nubes, escarcha, NDVI, suelo) sobre el tileset | T1 | ligera; capturas 🔶 → 👤 | ✅ aprobado por Antonio (decisión 67) |
 | T6 | F1d 6-7: presupuesto y VR con el simulador | T3, T4, T5 | 🔶 | 🟡 VR simulada con tiles ✅ y escena3d 13/13 en navegador; ADR-0015: 1 ✅, 2 fixture ✅ / Hituelo casi (258 llamadas lejos > 250), 3 sin cubrir, 4 parcial |
 | T7 | F1d 8: Quest real (p95 ≤ 13,9 ms) | T6 | 👤 | ⬜ |
 | T8 | F1d 9: la escena nueva por defecto; se retira la vieja | T6 (T7 o «no probado», decisión 35) | ligera | ⬜ |
