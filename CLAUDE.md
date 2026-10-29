@@ -1,6 +1,6 @@
 # Gemelo — manual de operación
 
-Gemelo digital en 3D de fincas de olivar (three.js r128, teselas de 256 m, LiDAR/ortofoto/NDVI, modo VR) para Cano & Damas Oleicultores. Es la primera lectura de quien llega, persona o agente. Pacto: *si algo deja de ser cierto, se corrige en el mismo commit que lo cambia.*
+Gemelo digital en 3D de fincas de olivar (three.js 0.186.1, teselas de 256 m, LiDAR/ortofoto/NDVI, modo VR) para Cano & Damas Oleicultores. Es la primera lectura de quien llega, persona o agente. Pacto: *si algo deja de ser cierto, se corrige en el mismo commit que lo cambia.*
 
 **Versión: v0.2.0** — prototipo (la fase 1 de una visión multiusuario: [doc/sistema/ARQUITECTURA-MULTIUSUARIO.md](doc/sistema/ARQUITECTURA-MULTIUSUARIO.md)). Dónde estamos y qué falta: [doc/ESTADO.md](doc/ESTADO.md). Qué se hizo: [CHANGELOG.md](CHANGELOG.md). Índice de toda la documentación: [doc/README.md](doc/README.md).
 
@@ -32,7 +32,7 @@ Gemelo digital en 3D de fincas de olivar (three.js r128, teselas de 256 m, LiDAR
 ```
 CLAUDE.md  CHANGELOG.md  VERSION  package.json  Makefile
 apps/web/                cliente web (ADR-0010): motor/NN_*.js (el motor, en módulos; ver ARCHITECTURE), plantilla.html,
-                         herramientas/genera_motor.mjs y vite.config.js (build con Vite, three 0.128.0)
+                         herramientas/genera_motor.mjs y vite.config.js (build con Vite, three 0.186.1)
 tuberia/                 de los datos a las teselas: finca_8_teselas.py (exportador), hituelo_conv.py, datos/{cerro,hituelo}/
                          y salida_artefacto/montar_v2.py (página autónoma para claude.ai, sin servidor)
 prototipos/              maquetas de UX (sin datos reales)

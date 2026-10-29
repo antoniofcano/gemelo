@@ -25,6 +25,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 - Andamio: `VERSION`, `package.json`, `Makefile`, `.editorconfig`, `.nvmrc`, `requirements.txt`, `CONTRIBUTING.md`, plantillas de issue y PR.
 
 ### Cambiado
+- three 0.186.1 en la web y en la salida artefacto (importmap desde jsDelivr, misma versión): color y luz modernos recalibrados a ojo; presupuesto de dibujo sin cambios (ADR-0016).
 - Exportadores multiplataforma: las rutas de `tuberia/` se arman con `os.path.join` en vez de separadores «\» fijos; guardián `multiplataforma.test.js` (decisión 8). Sin ejecutar con datos reales fuera de Windows.
 - `doc/historico/DISENO-2026-10.md` anonimizado: sin id interno, identificadores de base de datos, nombres de subfincas ni coordenadas exactas; el guardián de secretos ya no tiene excepciones (decisión 2).
 - Suelo: el suelo nuevo, más realista, sustituye al anterior (`04_terreno.js`, `21_suelo.js`); ADR-0007 pasa a Aceptado. Conserva el radio de hierba del perfil VR.
