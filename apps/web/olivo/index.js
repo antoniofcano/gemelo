@@ -25,7 +25,7 @@ export { rngFrom, semillaDeId } from "./azar.js";
 export { semillaDeCopa, parametrosDeCopa, CAMPOS_PARAM, ORIGEN_TRONCO } from "./copas.js";
 export { CATALOGO, NOMBRE_TIPO, tipoDeNombre, tablaLocal } from "./catalogo.js";
 export { huella, huellaNiveles, huellaEstructura, diferenciaMax } from "./huella.js";
-export { creaMateriales, MATERIALES, encadena } from "./materiales.js";
+export { creaMateriales, MATERIALES, encadena, CALIBRACION_LINEAL } from "./materiales.js";
 export { cargaFotos, FOTOS } from "./texturas.js";
 export { hornear, glb } from "./hornear.js";
 export { creaCache, claveReceta, bytesReceta, CACHE_VERSION } from "./cache.js";

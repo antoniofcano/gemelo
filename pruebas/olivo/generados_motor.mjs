@@ -96,7 +96,8 @@ for (const n of COLOR) {
   exige(m.customProgramCacheKey().includes("gen-luz-fundido"), n + ": clave de programa sin el parche");
   if (m.map) exige(m.map.colorSpace === THREE.SRGBColorSpace, n + ": textura sin marcar como sRGB");
 }
-exige(Math.abs(mats.pies.color.r - lin(0xbd / 255)) < 1e-6, "el color de la corteza no pasó de sRGB a lineal: " + mats.pies.color.r);
+exige(Math.abs(mats.pies.color.r - lin(0xbd / 255) * O.CALIBRACION_LINEAL.corteza) < 1e-6, "el color de la corteza no pasó de sRGB a lineal (con la calibración de la luz lineal, decisión 70): " + mats.pies.color.r);
+exige(Math.abs(mats.relleno.color.r - O.CALIBRACION_LINEAL.follaje) < 1e-6, "el follaje sin la calibración de la luz lineal (decisión 70): " + mats.relleno.color.r);
 for (const m of SOMBRA.map(n => mats[n]).concat([prof.corteza, prof.muerta])) {
   const sh = compila(m);
   exige(sh.uniforms.uFun === c.__G._prueba.uFun && /discard;/.test(sh.fragmentShader), m.type + ": la sombra no lleva el fundido");
