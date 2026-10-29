@@ -16,7 +16,8 @@ export default defineConfig({
   base: "./",
   logLevel: "warn",
   // la raíz puede estar fuera de apps/web (las pruebas la generan en pruebas/salida/): «three» se resuelve siempre al de apps/web/node_modules
-  resolve: { alias: { three: path.join(WEB, "node_modules", "three", "build", "three.module.js"), "gemelo-olivo": OLIVO } },
+  // livekit-client (F2, ?presencia=red): el motor lo pide con import() solo con esa bandera; sin ella no se descarga
+  resolve: { alias: { three: path.join(WEB, "node_modules", "three", "build", "three.module.js"), "gemelo-olivo": OLIVO, "livekit-client": path.join(WEB, "node_modules", "livekit-client", "dist", "livekit-client.esm.mjs") } },
   worker: { format: "es" },
   build: {
     outDir: process.env.GEMELO_WEB_SALIDA || path.join(WEB, "dist"),

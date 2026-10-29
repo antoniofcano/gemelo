@@ -10,6 +10,7 @@
     "dev": "node herramientas/genera_motor.mjs && vite"
   },
   "dependencies": {
+    "livekit-client": "2.22.4",
     "three": "0.186.1"
   },
   "devDependencies": {
