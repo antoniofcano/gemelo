@@ -100,13 +100,13 @@
     }
 
     // ---- reparte el presupuesto: lo llama el reparto de 07b_arboles.reclasifica con el foco (fx, fz) y el tope de triángulos del aparato
-    function actualiza(fx, fz, tope, olivos) {
+    function actualiza(fx, fz, tope, olivos, escala) {
       if (estado !== "activo") return NADA;
       // lo que se observa (el foco: el punto de la órbita, o quien pasea), y solo si la cámara está cerca de él: desde lejos no se genera nada
-      var cam = camera.position, lejos = Math.hypot(cam.x - fx, cam.z - fz, Math.max(0, cam.y - suelo(fx, -fz) * exag)) > 150;
+      var cam = camera.position, amplia = Math.max(1, Math.sqrt(escala || 1)), lejos = Math.hypot(cam.x - fx, cam.z - fz, Math.max(0, cam.y - suelo(fx, -fz) * exag)) > 150 * amplia;   // con el aparato holgado (escala de 07b > 1) se genera desde más lejos: hasta ~240 m
       var pres = tope * FRACCION, vr = VRP.on, nivV = vr ? "E2VR" : "E2";
       var cand = [];
-      if (!lejos) for (var i = 0; i < olivos.length; i++) { var c = olivos[i], d = Math.hypot(c.x - fx, -c.y - fz); if (d < RADIO_CAND) cand.push({ c: c, d: d }); }
+      if (!lejos) for (var i = 0; i < olivos.length; i++) { var c = olivos[i], d = Math.hypot(c.x - fx, -c.y - fz); if (d < RADIO_CAND * amplia) cand.push({ c: c, d: d }); }
       cand.sort(function (a, b) { return a.d - b.d; }); if (cand.length > 80) cand.length = 80;
       var nuevoPlan = [], usado = 0, propios = true, nVar = 0;
       for (var k = 0; k < cand.length; k++) {

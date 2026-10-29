@@ -17,7 +17,8 @@
     var olivos = copas.filter(function (c) { return c.oliv; }), celdas = {}, ultima = { x: 1e9, y: 1e9, z: 1e9, fx: 0, fz: 0, tms: 0, exag: -1, k: "" }, t = 0, sucio = true, nL0 = 0, n1 = 0, n2 = 0, faltan = 0, nPre = 0, triEst = 0;
     var cx = Mundo.cx, cy = Mundo.cy, m4 = new THREE.Matrix4(), c3 = [0, 0, 0], vel = { x: 0, z: 0 };
     var vrP = null, TOPE_TRI0 = TOPE_TRI;   // perfil de las gafas VR (29_vr.js): menos olivos de nivel 0, radio más corto y menos triángulos
-    // el aparato: escala (0,7–1,6) de cuántos olivos de nivel 0 se pagan; sube si los fotogramas van holgados y baja si van justos (?arbsc=1 la fija)
+    // el aparato: escala (0,7–2,5) de cuántos olivos de nivel 0 se pagan; sube si los fotogramas van holgados y baja si van justos (?arbsc=1 la fija).
+    // Por encima de 1,6 solo con fotogramas muy holgados (< 16 ms): un aparato sobrado ve olivos detallados más lejos (radio hasta ~330 m en órbita).
     var fijaSc = /[?&]arbsc=([0-9.]+)/.exec(location.search), esc = fijaSc ? Number(fijaSc[1]) : 1, emaDt = 0.017, claveDib = "";
     function claveActual() { return exag + "|" + calidad + "|" + kcor + "|" + tinte + "|" + ndviIdx; }   // lo que está pegado a la geometría de una celda de nivel 0: si cambia, la celda se rehace
 
@@ -112,9 +113,9 @@
       ultima.fx = fx; ultima.fz = fz; ultima.tms = ahora;
       // ?escena=tiles (04c_olivos_tiles.js): los olivos de media y larga distancia los dibuja el tileset y sus triángulos cuentan en el tope
       var TIL = OlivosTiles.dibuja(), triTil = TIL ? OlivosTiles.triangulos() : 0;
-      var GEN = Generados.actualiza(fx, fz, Math.max(0, TOPE_TRI - triTil), olivos);   // ?olivos=gen (07ab): dentro de su radio, el nivel 0 de siempre se apaga; sin la bandera, radio 0
+      var GEN = Generados.actualiza(fx, fz, Math.max(0, TOPE_TRI - triTil), olivos, esc);   // ?olivos=gen (07ab): dentro de su radio, el nivel 0 de siempre se apaga; sin la bandera, radio 0
       // el aparato manda: sube o baja la escala según el tiempo por fotograma medido
-      if (!fijaSc) { if (emaDt < 0.020) esc = Math.min(1.6, esc + 0.05); else if (emaDt > 0.030) esc = Math.max(0.7, esc - 0.10); }
+      if (!fijaSc) { if (emaDt < 0.020) esc = Math.min(emaDt < 0.016 ? 2.5 : 1.6, esc + 0.05); else if (emaDt > 0.030) esc = Math.max(0.7, esc - 0.10); }
       var tope0 = MAX0 * esc * (vrP ? vrP.n : 1);
       // 1) celdas de nivel 0 (las que se ven) y de precarga (las de alrededor y las de delante, que se construyen sin enseñarse)
       var bajo = !paseando && cam.y - suelo(cam.x, -cam.z) * exag < 45, RC = 95 * Math.sqrt(esc);   // con la cámara a ras de suelo se ve hasta lejos: también cuentan las celdas de su alrededor

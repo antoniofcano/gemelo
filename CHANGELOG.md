@@ -51,6 +51,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 - Andamio: `VERSION`, `package.json`, `Makefile`, `.editorconfig`, `.nvmrc`, `requirements.txt`, `CONTRIBUTING.md`, plantillas de issue y PR.
 
 ### Cambiado
+- Olivos detallados más lejos en aparatos holgados (petición de Antonio tras verlo en el móvil): la escala adaptativa del nivel 0 sube hasta ×2,5 (antes ×1,6) cuando el fotograma va por debajo de 16 ms (radio en órbita hasta ~330 m, hasta ~1.100 olivos), y los generados aparecen desde más lejos en la misma proporción (hasta ~240 m). Un aparato justo se queda como estaba; en las gafas sigue mandando el perfil VR. Medido solo en Node.
 - `migra` corre con un tope de 10 min por sentencia (la 0001 crea PostGIS; en disco lento pasaba de los 15 s de la api). Afecta también a producción.
 - El Caddy de producción usa `Referrer-Policy: strict-origin-when-cross-origin` (antes `no-referrer`, que rompía los formularios POST en Chrome; decisión 53).
 - VR: el relieve fino del suelo se apaga en cuanto el perfil de las gafas baja por fotograma justo y se restaura al salir (decisión 24).
