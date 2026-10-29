@@ -2,7 +2,7 @@
 
 ## 1. Requisitos
 - Node ≥ 24 (`.nvmrc`), Python ≥ 3.10 (probado con 3.14), Chrome (ruta por defecto `C:/Program Files/Google/Chrome/Application/chrome.exe`; otra con la variable `CHROME`).
-- `npm i` (solo `playwright-core`) y `cd apps/web && npm i` (Vite y three 0.186.1). Para **regenerar datos reales** además `pip install -r requirements.txt` y las fuentes descargadas ([DATOS.md](DATOS.md)); para la puerta no hace falta.
+- `npm i` (solo `playwright-core`) y `cd apps/web && npm i` (Vite y three 0.186.1). Para el constructor de olivos, `cd apps/web/olivo && npm i` (three 0.128.0 fijado como `three-gen`, three 0.186.1 para la prueba de compatibilidad y Vite). Para **regenerar datos reales** además `pip install -r requirements.txt` y las fuentes descargadas ([DATOS.md](DATOS.md)); para la puerta no hace falta.
 
 ## 2. Primer vistazo
 1. Lee [CLAUDE.md](../../CLAUDE.md) (reglas de oro) y [ESTADO.md](../ESTADO.md).
@@ -32,6 +32,7 @@
 | 14 | Servidor F1a: imágenes de producción = contrato = dev (versión + digest), sin puertos publicados ni secretos escritos, Node del contrato, dependencias fijadas, cargador de hazas con el ejemplo sintético, tipos y unitarias de `apps/api` (se saltan con aviso sin `npm ci` en `apps/api`); integración contra PostGIS y `infra/probar-caddy.sh` opcionales (`GEMELO_DOCKER=1`) | `api.test.js` |
 | 15 | Exportadores: `copas_id` (censo de OlivarTrack o provisional por posición) y `copas_tipo` (−1) con la longitud de `copas`, ids únicos y estables; si hay numpy, scipy y pillow (`requirements.txt`), Hituelo y Cerro exportados de verdad sobre 1 tesela sintética y su índice válido (si faltan, se salta con aviso) | `exportadores.test.js` |
 | 16 | Presencia (F2, sin red): el códec de pose da 24 B (escritorio) y 56 B (Quest) con la tabla de bytes del contrato, la ida y vuelta queda en ≤ 5 mm y ≤ 0,25°, rechaza versiones, tipos y longitudes ajenos, el búfer de interpolación aguanta la vuelta de la secuencia y del reloj, y los permisos de LiveKit de F2 son solo datos; en Chrome, sin `?presencia` no se añade nada y con `?presencia=sim` 10 y 40 visitantes cuestan las mismas 5 llamadas y `libera()` suelta la GPU | `presencia.test.js` |
+| 17 | Constructor de olivos generados (ADR-0017): las huellas del módulo `apps/web/olivo/` = las del oráculo (273 casos), «sube GEN_VERSION» si cambia el núcleo, mismo grupo montado con three 0.128.0 y 0.186.1, recuentos de los niveles E0-E2VR, semillas y parámetros del registro; en Chrome, trabajador = hilo principal, rebanadas ≤ 3 ms e IIFE con r128 (se salta con aviso sin `npm i` en `apps/web/olivo`) | `olivo.test.js` |
 
 En CI la misma puerta corre en GitHub Actions (`.github/workflows/puerta.yml`); no despliega nada.
 

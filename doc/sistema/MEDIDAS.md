@@ -78,6 +78,20 @@ Para recortar la doble descarga (decisión 38), lo que el glb repite es `dtm` (c
 ## Tirones (rebanada máxima de la cola, ms, escritorio)
 R (ruido) 13 · N (nube, incluye decodificar una ortofoto) 12–40 antes de separar la decodificación · T (terreno) 6 · C (olivos N0) 10–20 · B 3. Con el presupuesto de 6 ms/fotograma (3,5 en paseo) el peor fotograma añade ≈ una rebanada. En un iPhone espera 2–3 veces más.
 
+## Olivos generados con `?olivos=gen` (2026-10-29, fixture sintético de Hituelo, [ADR-0017](../adr/0017-constructor-de-olivos-generados.md))
+Chrome headless con SwiftShader (recuentos y memoria, no fps), máquina cargada; `?arbsc=1`; `pruebas/olivo/p7_medidas.mjs`. Escenarios de `carga.test.js`.
+
+| Escenario | Sin la bandera (llamadas / tri / heap) | Con `?olivos=gen` | Lote de generados |
+|---|---|---|---|
+| Lejos (600 m) | 168 / 82 k / 30 MB | igual (desde lejos no se genera nada) | — |
+| Cerca (45 m) | 56 / 431 k / 38 MB | 47 / 546 k / 44 MB | 6 mallas · 2 olivos (E0 + E1) · 135 k tri (222 k con la pasada de sombras) |
+| Nube | 88 / 173 k / 38 MB | sin lote (los árboles no se ven en modo Nube) | — |
+
+- **Sin la bandera** el motor dibuja lo mismo que antes (mismos recuentos en las tres vistas que la medida previa y que `carga.test.js`).
+- **Lote**: corteza, madera muerta y olivas en una `BatchedMesh` cada una; ramitas A, B y relleno, instanciadas; olivas de E2 como puntos. Para 2-7 olivos, 6-7 llamadas EN TOTAL. Antes de fijar el coste de las sombras (sin contarlas), se dibujaban 7 olivos (6 propios + 1 variante, 288-308 k tri) y la escena llegaba a 655 k tri: por eso el presupuesto cuenta la pasada de sombras.
+- **Presupuesto**: el 45 % del tope del aparato (550 k en escritorio; el del perfil VR en gafas), contando la pasada de sombras. Con olivos centenarios de 100 k tri (E0) y 50 k (E1), caben el más cercano en E0 y otro en E1; las variantes E2 quedan fuera en el fixture.
+- **Generación**: sin trabajador (salida artefacto, IIFE) va a rebanadas por la Cola (`G…` en `?debug`); con la máquina cargada, la rebanada más larga llegó a 15 ms. En el cliente web (Vite) va al trabajador. **No medido** con datos reales de Hituelo ni en aparatos.
+
 ## Límites conocidos
 - Las ortofotos decodificadas (2,4 MB por tesela de 768 px; 1 MB a 512 px) se sueltan solo a 900 m; sin LRU fino.
 - Dentro de una tesela todo el relieve y la copa (258² + 256²) están siempre en memoria: 49 teselas ≈ 20 MB; la nube de las lejanas se libera a > 1,2× 2.300 m.

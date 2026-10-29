@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: gArboles, gFollaje, gSombras, tronco, matTronco, radioEn, arbolesG
-// Consume: 02_mundo (suelo, aviva, colorEn, copas), 03_escena (scene, colorVertSRGB, exag, modo), 04_terreno (hash), 07b_arboles (Arboles),
-//   14_historia (lista), 15_tiempo (nivel)
+// Consume: 01_datos (FACTOR_R8, ESC_R8), 02_mundo (suelo, aviva, colorEn, copas), 03_escena (scene, colorVertSRGB, exag, modo), 04_terreno (hash),
+//   07b_arboles (Arboles), 14_historia (lista), 15_tiempo (nivel)
 // ===============================================================================
   // ---------- los olivos del modo Gemelo: copa con la forma real medida (8 radios) y tronco debajo (nivel 0, por celdas de 64 m; ver Arboles)
   var gArboles = new THREE.Group(), gFollaje = gArboles, gSombras = new THREE.Group(); scene.add(gArboles); scene.add(gSombras);   // gFollaje es el mismo grupo: las celdas de nivel 0 llevan copa, tronco, hojas y frutos
@@ -19,7 +19,7 @@
       var gz = suelo(t.x, t.y), ht = Math.min(1.5, Math.max(0.9, t.h * 0.3)), cb = ht + 0.1, top = Math.max(t.h, cb + 1.4);
       var lean = (hash(n + 11) - 0.5) * 0.25, az = hash(n + 5) * 6.28;
       // tronco y ramas gruesas hacia la copa (olivo en vaso): tubos cónicos con vaivén
-      var topeC = gz + cb + (top - cb) * 0.30, rmed = t.perfil.reduce(function (p, q) { return p + q; }, 0) / 8;
+      var topeC = gz + cb + (top - cb) * 0.30, rmed = t.perfil.reduce(function (p, q) { return p + q; }, 0) / 8 * ESC_R8;
       function tubo(pts, r0, r1, sem) {
         var NS = pts.length - 1, RS = 6;
         for (var i = 0; i <= NS; i++) {
@@ -64,7 +64,7 @@
         for (var sg = 0; sg < KSEG; sg++) {
           var th = sg / KSEG * 6.283, rr = radioEn(t.perfil, th);
           var bump = 1 + 0.16 * Math.sin(th * 3 + n) * Math.sin(ph * 2 + n * 0.7) + 0.08 * (hash(n * 13 + sg + rg * 31) - 0.5);
-          var rho = rr * Math.pow(sn, 0.72) * bump * 0.5;
+          var rho = rr * Math.pow(sn, 0.72) * bump * FACTOR_R8;   // el radio dibujado de la copa (01_datos.js)
           var wx = t.x + Math.cos(th) * rho, wy = t.y + Math.sin(th) * rho;
           var hy = cb + (top - cb) * Math.pow(tt, 0.85) * 0.80 + 0.18 * Math.sin(th * 5 + rg + n) * sn;
           cp.push(wx, (gz + hy) * exag, -wy);

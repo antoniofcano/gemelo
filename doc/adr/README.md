@@ -29,3 +29,4 @@ Cada decisión con alternativas reales se escribe una vez, con su porqué y su c
 | [0014](0014-proyeccion-publica-por-haza.md) | Proyección pública por haza con lista blanca | Aceptado |
 | [0015](0015-escena-en-3d-tiles.md) | Escena en 3D Tiles 1.1 con 3DTilesRendererJS | Propuesto |
 | [0016](0016-actualizacion-de-three.md) | Actualización de three de r128 a 0.186.1 | Aceptado |
+| [0017](0017-constructor-de-olivos-generados.md) | Constructor de olivos generados: un árbol por olivo, con semilla, desde lo medido | Propuesto |

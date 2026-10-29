@@ -34,10 +34,16 @@ test("sin ficheros de datos, credenciales ni binarios pesados", () => {
   assert.deepStrictEqual(grandes, [], "ficheros de más de 400 KB (¿datos?): " + grandes.join(", "));
 });
 
-test("sólo hay imágenes del fixture sintético (ninguna ortofoto real)", () => {
+// Excepción acotada (decisión de Antonio nº 30, ADR-0017): las tres fotos de campo del constructor de olivos (corteza, musgo, madera vieja),
+// con su licencia al lado; ni ortofotos ni datos de la explotación. Solo esos tres nombres y hasta 160 KB cada una.
+const TEXTURAS_OLIVO = ["apps/web/olivo/texturas/corteza.jpg", "apps/web/olivo/texturas/musgo.jpg", "apps/web/olivo/texturas/muerta.jpg"];
+
+test("sólo hay imágenes del fixture sintético (ninguna ortofoto real) y las texturas de campo del olivo", () => {
   const img = TODOS.filter(f => /\.(jpe?g|png|webp|gif)$/i.test(f));
-  assert.deepStrictEqual(img.filter(f => !f.startsWith("pruebas/fixture/")), [], "imágenes fuera de pruebas/fixture/: ¿ortofotos reales?");
-  img.forEach(f => assert.ok(fs.statSync(path.join(RAIZ, f)).size < 20 * 1024, f + ": una imagen del fixture no debe pasar de 20 KB"));
+  assert.deepStrictEqual(img.filter(f => !f.startsWith("pruebas/fixture/") && !TEXTURAS_OLIVO.includes(f)), [], "imágenes fuera de pruebas/fixture/: ¿ortofotos reales?");
+  img.filter(f => TEXTURAS_OLIVO.includes(f)).forEach(f => assert.ok(fs.statSync(path.join(RAIZ, f)).size <= 160 * 1024, f + ": una textura del olivo no debe pasar de 160 KB"));
+  if (img.some(f => TEXTURAS_OLIVO.includes(f))) assert.ok(fs.existsSync(path.join(RAIZ, "apps", "web", "olivo", "texturas", "LICENCIA.txt")), "las texturas del olivo van con su LICENCIA.txt");
+  img.filter(f => f.startsWith("pruebas/fixture/")).forEach(f => assert.ok(fs.statSync(path.join(RAIZ, f)).size < 20 * 1024, f + ": una imagen del fixture no debe pasar de 20 KB"));
 });
 
 test("sin enlaces ni ids de artefactos privados en lo versionado (sólo se permiten en la propia explicación del guardián)", () => {

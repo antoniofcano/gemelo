@@ -5,5 +5,9 @@
     "lejos": { "llamadas": 220, "triangulos": 105000, "puntos": 800, "heapMB": 60 },
     "cerca": { "llamadas": 75, "triangulos": 540000, "puntos": 3600, "heapMB": 60 },
     "nube": { "llamadas": 140, "triangulos": 220000, "puntos": 3800, "heapMB": 60 }
+  },
+  "fixture_olivos_gen": {
+    "$comment": "Con ?olivos=gen (ADR-0017, decisión 52), escenario «cerca» del fixture de Hituelo montado con --olivos. Medido el 2026-10-29 (SwiftShader, máquina cargada): 47 llamadas / 546 k tri / 2,8 k pts / heap 44 MB, con un lote de 6 mallas para 2 olivos generados (E0 + E1: 135 k tri; 222 k contando la pasada de sombras). Topes con ≈25 % de margen; lo comprueba pruebas/guardianes/olivo.test.js.",
+    "cerca": { "llamadas": 60, "triangulos": 680000, "puntos": 3600, "heapMB": 95, "llamadas_lote": 7 }
   }
 }

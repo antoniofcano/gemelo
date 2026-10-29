@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: matHojaG, matHojaP, matCorteza, matSombra, geoSombra, follajeG, construyeSombras
-// Consume: 02_mundo (suelo, copaAlta, aviva, colorEn, copas), 03_escena (texColor, exag, calidad), 04_terreno (hash),
+// Consume: 01_datos (ESC_R8), 02_mundo (suelo, copaAlta, aviva, colorEn, copas), 03_escena (texColor, exag, calidad), 04_terreno (hash),
 //   06_arboles (gSombras, radioEn), 14_historia (lista), 16_vida (esfera), 18_paisaje (instSombra, sombrasSol), 23_estacion (construyeFrutosLista)
 // ===============================================================================
 
@@ -59,7 +59,7 @@
       var ht = Math.min(1.5, Math.max(0.9, t.h * 0.3)), cb = ht + 0.1, top = Math.max(t.h, cb + 1.4), gz = suelo(t.x, t.y);
       var relleno = calidad === 2 ? 48 : calidad === 1 ? 22 : 0;
       for (var k = 0; k < relleno; k++) {
-        var th = (hash(n * 97 + k) * 6.283), rr = radioEn(t.perfil, th), u = Math.sqrt(hash(n * 131 + k * 3 + 1)) * 0.88, rad = u * rr;
+        var th = (hash(n * 97 + k) * 6.283), rr = radioEn(t.perfil, th) * ESC_R8, u = Math.sqrt(hash(n * 131 + k * 3 + 1)) * 0.88, rad = u * rr;
         var domo = Math.sqrt(Math.max(0, 1 - u * u)), yy = cb + (top - cb) * (0.18 + 0.78 * domo) - hash(n * 53 + k * 7) * 0.9;
         var xx = t.x + Math.cos(th) * rad, zz = t.y + Math.sin(th) * rad, hh = Math.max(0.8, yy);
         colorEn(xx, zz, hh, c3); aviva(c3, xx, zz);
@@ -74,6 +74,6 @@
   function construyeSombras() {   // sombras suaves bajo cada copa (una malla instanciada para todos los olivos)
     while (gSombras.children.length) { gSombras.children.pop(); }
     var inst = new THREE.InstancedMesh(geoSombra, matSombra, copas.length + 1), tm = new THREE.Object3D(), n2 = 0; inst.frustumCulled = false;   // r151: la esfera de una InstancedMesh abarca sus instancias y se calcula una vez; estas se recolocan
-    copas.forEach(function (t) { if (!t.oliv) return; var rm = t.perfil.reduce(function (a, b) { return a + b; }, 0) / 8; tm.position.set(t.x + 0.4, (suelo(t.x, t.y) + 0.06) * exag, -t.y - 0.1); tm.scale.set(rm * 2.5, 1, rm * 2.5); tm.updateMatrix(); inst.setMatrixAt(n2++, tm.matrix); });
+    copas.forEach(function (t) { if (!t.oliv) return; var rm = t.perfil.reduce(function (a, b) { return a + b; }, 0) / 8; tm.position.set(t.x + 0.4, (suelo(t.x, t.y) + 0.06) * exag, -t.y - 0.1); tm.scale.set(rm * 2.5 * ESC_R8, 1, rm * 2.5 * ESC_R8); tm.updateMatrix(); inst.setMatrixAt(n2++, tm.matrix); });
     inst.count = n2; inst.instanceMatrix.needsUpdate = true; gSombras.add(inst); instSombra = inst; sombrasSol(true);
   }
