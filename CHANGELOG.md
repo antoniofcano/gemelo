@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Avatares VRM (P7b): tubería del catálogo (`tuberia/avatares/`, @gltf-transform 4.5.1: lee el meta VRM y rechaza lo que no deje servirlo a una empresa, texturas a 1024, simplificación, sin contorno MToon, cuantización —meshopt ahorra 9-13 % pero pediría `'wasm-unsafe-eval'`—), esquema `contratos/avatares.schema.json`, 4 CC0 provisionales con sha256 fijado (se bajan fuera del repo) y `/avatares` tras sesión en Caddy de dev y producción (`GEMELO_AVATARES`). El motor aún no los usa (P7c).
 - ADR-0020 «Avatares VRM» (Propuesto): catálogo cerrado de 6-12 VRM servidos tras sesión, `@pixiv/three-vrm` 3.5.5, animación por huesos con la fórmula de paso de P5 sin clips, VRM para los más cercanos y muñeco instanciado para el resto, pose v1 sin cambios; plan de P7b-P7e (P7a).
 - VR: el panel flotante (Y) tiene una sección **Gente** (alias, a pie/en quad/con el dron, distancia) con «Ir con» pulsable con el rayo y el gatillo (fundido y de pie a 2,5-4 m; sin presencia, «Solo tú»), y la ficha de una baliza en VR dice quién está y trae «Ir a esta baliza» y «Cerrar» pulsables (se abre también apuntando a su columna de luz). Probado con el WebXR simulado; **no probado en unas Quest** (I5).
 - Banco: escenarios `paseo`, `paseoAnda` y `paseoGira` para medir y capturar el paseo (minimapa incluido) con encarga/ronda; `__g` gana `paseoEn`/`paseoSale`/`paseoTecla`/`paseoEstado` (B1).
