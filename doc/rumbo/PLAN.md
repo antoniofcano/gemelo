@@ -79,7 +79,7 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | A3 | Entorno local sirve Hituelo v3 con los olivos generados (cliente web con `gemelo-olivo`) | D1 | ligera | ✅ e2e 13/13 con Hituelo v3; tileset por Caddy y aparatos reales, sin probar |
 | A4 | Lindes de las hazas en el motor (el «3c») | — | ligera; 🔶 al medir | 🟡 código y pruebas de Node en main; medida encargada |
 | A5 | e2e de entrada completa: portada → enlace → mundo con lindes; gafas → código → sesión | A1, A2, A4 | 🔶 Docker | ✅ fixture (Hituelo v3 sin pasar por la e2e) |
-| A6 | **Prueba en aparatos** (navegador, móvil, Quest; decisión 57) | A1, A2, A3 | 👤 | 👤 lista para Antonio (DESARROLLO-LOCAL, «Prueba en aparatos con Hituelo v3») |
+| A6 | **Prueba en aparatos** (navegador, móvil, Quest; decisión 57) | A1, A2, A3 | 👤 | 👤 lista para Antonio; y con `--red-local` y `?presencia=red`, ordenador + móvil + Quest a la vez (DESARROLLO-LOCAL, «Prueba en aparatos con Hituelo v3») |
 | T1 | F1d 3b: terreno 3D Tiles en el motor (`04b_escena3d.js`, `?escena=tiles`), código | — | ligera | ✅ en main (sin medir: T3) |
 | T2 | Tileset de Hituelo regenerado con el generador 0.3.0 desde D1 | D1 | pesada de CPU, sin Chrome (72 s) | ✅ 248 glb, 0 errores |
 | T3 | F1d 3b: medir con el fixture y con Hituelo; raíz vacía visible de lejos | T1, T2 | 🔶 | 🟡 raíz vacía y relieve comprobados con el fixture (`escena3d.test.js`); Hituelo encargado al banco |
@@ -91,7 +91,7 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | P1 | F2: la api firma tokens de LiveKit (`POST /api/presencia/token`, `livekit-server-sdk`, roles del contrato) | — | ligera | ✅ |
 | P2 | F2: el motor publica y recibe la pose con `livekit-client` (sustituye a la red simulada) | P1 | ligera | ⬜ |
 | P3 | F2: chat por el canal de datos y moderación mínima (expulsar con auditoría, decisión 42) | P1 | ligera | ⬜ |
-| P4 | F2: dos Chrome en la misma sala (p95 < 250 ms) y 40 clientes ligeros | P2, P3 | 🔶 Docker + Chrome | 🟡 en curso |
+| P4 | F2: dos Chrome en la misma sala (p95 < 250 ms) y 40 clientes ligeros | P2, P3 | 🔶 Docker + Chrome | ✅ en local (transporte p95 7 ms; 40 clientes saturan el i5: medir LiveKit con carga desde otra máquina) |
 | O1 | Olivos generados: transición suave al acercarse (forma y luz; materiales con nubes y escarcha del motor) | — | ligera; 🔶 al medir | ✅ medido: 2 generados de cerca, 40 llamadas / 545 k (aspecto, 👤) |
 | O2 | Olivos generados: desglose del coste de `factorR8 = 1` por objeto | — | 🔶 | ⬜ |
 | O3 | `semillas_copas.py` dentro de los exportadores | — | ligera | ✅ |

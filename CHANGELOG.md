@@ -5,6 +5,9 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Presencia: una identidad de LiveKit por sesión (aparato): el mismo hogar puede estar a la vez en el ordenador, el móvil y las gafas, y la oficina expulsa todas sus conexiones (la respuesta dice cuántas).
+- Presencia en local: el navegador llega a LiveKit por el mismo origen (`wss://<sitio>/rtc`, por Caddy); `--red-local` abre además los medios de LiveKit (7882/udp, 7881/tcp) en la IP de la WiFi. Producción: el secreto de LiveKit en `/etc/gemelo/secretos/livekit_secreto` (RUNBOOK-VPS).
+- P4: e2e de presencia contra LiveKit real (`presencia_dev.test.js`): pose p95 de 7 ms en el transporte (mismo equipo); 40 clientes de carga en Node saturan este equipo (MEDIDAS).
 - Pruebas: topes de dibujo con `?escena=tiles` en `presupuesto.json` (`fixture_escena_tiles`, ≈25 % sobre la primera ronda del banco) y prueba opcional de VR simulada con `?escena=tiles` (cada perfil aplica su errorTarget y apaga el relieve fino; `GEMELO_VR=1`); `__vrPerfil` y bump/perfiles en `__vrDebug`. Sin efecto visible.
 - Entorno local: sirve Hituelo v3 (`GEMELO_DEV_FINCA_CARPETA`) y su tileset 3D Tiles (`GEMELO_DEV_TILESET`) en `/teselas/<finca>/`; la web se construye con el constructor de olivos y 3DTilesRendererJS (`npm ci` automático); con una finca que no es el fixture, la siembra pone 4 hazas inventadas de prueba dentro de su caja (`tuberia/hazas/de_prueba.py`), sin olivos.
 - Presencia (F2): la api firma tokens de LiveKit (`POST /api/presencia/token`; sala `hituelo-libre`, identidad opaca, solo datos, 15 min) y la oficina puede expulsar de la sala con auditoría (`POST /api/admin/presencia/expulsar`). El motor entra en la sala con `?presencia=red`: pose a 10/2 Hz, vista aérea sin avatar, panel Gente con bloquear y chat sin guardar. Sin probar con dos navegadores reales ni en iPhone/Quest.
