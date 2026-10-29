@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- VR: el panel flotante (Y) tiene una sección **Gente** (alias, a pie/en quad/con el dron, distancia) con «Ir con» pulsable con el rayo y el gatillo (fundido y de pie a 2,5-4 m; sin presencia, «Solo tú»), y la ficha de una baliza en VR dice quién está y trae «Ir a esta baliza» y «Cerrar» pulsables (se abre también apuntando a su columna de luz). Probado con el WebXR simulado; **no probado en unas Quest** (I5).
 - Banco: escenarios `paseo`, `paseoAnda` y `paseoGira` para medir y capturar el paseo (minimapa incluido) con encarga/ronda; `__g` gana `paseoEn`/`paseoSale`/`paseoTecla`/`paseoEstado` (B1).
 - ADR-0019 (Propuesto): escalera de olivos del constructor para todos (E0 → E1 → E2/E2-VR → impostor hemi-octaédrico de las variantes), repartida por el presupuesto de cada aparato, con fundido e histéresis; el nivel 0 de siempre, las pelotillas y los olivos del tileset se retiran por fases tras `?olivos=escalera` (decisión 66, O8a).
 - ADR-0019 (Propuesto): escalera de olivos del constructor para todos (E0 → E1 → E2/E2-VR → impostor hemi-octaédrico de las variantes), repartida por el presupuesto de cada aparato, con fundido e histéresis; el nivel 0 de siempre, las pelotillas y los olivos del tileset se retiran por fases tras `?olivos=escalera` (decisión 66, O8a).
