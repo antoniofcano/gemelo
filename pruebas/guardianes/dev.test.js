@@ -1,20 +1,26 @@
 "use strict";
 // Entorno de desarrollo con Docker (infra/dev/, doc/operacion/DESARROLLO-LOCAL.md).
 //  - Siempre: el compose es válido (`docker compose config`; sin Docker esa parte se SALTA con aviso), imágenes con versión fija,
-//    ningún puerto fuera de 127.0.0.1, ningún secreto escrito, límites de memoria, restart y la red propia.
-//  - Opcional (GEMELO_DOCKER=1): lo levanta de verdad, comprueba la web, el mundo en Chrome headless con 0 errores, la db,
-//    LiveKit y el buzón (con un correo de prueba), y lo baja (si ya estaba levantado antes, lo deja como estaba).
+//    ningún puerto fuera de 127.0.0.1, ningún secreto escrito, límites de memoria, restart y la red propia; la api enchufada
+//    (construida de apps/api, sin puertos, con healthcheck y sus migraciones); el Caddyfile con la forma de producción
+//    (portada pública, /finca/ y /teselas/ tras sesión); la siembra sintética.
+//  - Opcional (GEMELO_DOCKER=1): el recorrido de entrada de punta a punta. Levanta el entorno; sin sesión solo la portada;
+//    pide el enlace mágico para el hogar de prueba, lo lee en la API de Mailpit y lo abre en Chrome (cookie HttpOnly); el
+//    mundo carga en /finca/ con 0 errores; /api/hazas, la ficha propia y dos ajenas cumplen la lista blanca; salir cierra
+//    la sesión. Mide tiempos y lo baja (si ya estaba levantado antes, lo deja como estaba).
 const test = require("node:test"), assert = require("node:assert");
 const { spawnSync } = require("child_process");
 const { pathToFileURL } = require("url");
-const { RAIZ, lee, fs, path } = require("./_util");
+const { RAIZ, lee, python, ejecuta, fs, path, os } = require("./_util");
 const { motivoSalto, lanza, mide } = require("./_navegador");
 
 const DEV = path.join(RAIZ, "infra", "dev");
 const COMPOSE = path.join(DEV, "compose.yml");
 const EJEMPLO = path.join(DEV, "ejemplo.env");
 const HERR = path.join(DEV, "herramientas");
-const SERVICIOS = ["web", "db", "livekit", "correo"];
+const SERVICIOS = ["web", "db", "livekit", "correo", "migra", "api"];
+const DE_UNA_VEZ = ["migra"];                   // termina al aplicar las migraciones
+const CONSTRUIDOS = ["migra", "api"];           // imagen propia, construida de apps/api/Dockerfile
 
 function hayDocker() {
   const v = spawnSync("docker", ["compose", "version", "--short"], { encoding: "utf8" });
@@ -23,43 +29,67 @@ function hayDocker() {
   return s.status === 0 ? null : "el demonio de Docker no responde";
 }
 const SIN_DOCKER = hayDocker();
-/** El compose tal como lo ve Docker, con la plantilla de variables (sin el .env de este equipo, para que valga en cualquier máquina) */
+/** El compose tal como lo ve Docker, con la plantilla de variables (sin el .env de este equipo ni COMPOSE_PROJECT_NAME, para que valga en cualquier máquina) */
 function config() {
-  const r = spawnSync("docker", ["compose", "-f", COMPOSE, "--env-file", EJEMPLO, "config", "--format", "json"], { cwd: DEV, encoding: "utf8", env: Object.assign({}, process.env, { GEMELO_DEV_TESELAS: "" }) });
+  const env = Object.assign({}, process.env, { GEMELO_DEV_TESELAS: "" });
+  delete env.COMPOSE_PROJECT_NAME;
+  const r = spawnSync("docker", ["compose", "-f", COMPOSE, "--env-file", EJEMPLO, "config", "--format", "json"], { cwd: DEV, encoding: "utf8", env });
   assert.strictEqual(r.status, 0, "docker compose config falló:\n" + r.stderr);
   return JSON.parse(r.stdout);
 }
-/** Compose sin comentarios (el bloque de la api está comentado a propósito) */
 const composeSinComentarios = () => lee("infra/dev/compose.yml").split("\n").filter(l => !/^\s*#/.test(l)).join("\n");
 
 // versión fija: 2.11.7-alpine, v1.13.11, 18-3.6-alpine (PostgreSQL-PostGIS)… nunca latest/edge/master ni solo la mayor (2, v1)
 const TAG_FIJO = /^(v?\d+\.\d+(\.\d+)?|\d+-\d+\.\d+)(-[a-z0-9.]+)?$/;
 
-test("compose de desarrollo: `docker compose config` lo acepta y tiene los cuatro servicios", t => {
+// etiquetas preliminares o móviles: nunca (Antonio, 2026-10-28: versiones estables, pensando en producción)
+const PRELIMINAR = /(^|[-.\d])(latest|edge|master|main|dev|devel|nightly|snapshot|rc\d*|beta\d*|alpha\d*|preview|canary|testing|unstable)([-.\d]|$)/i;
+
+test("compose de desarrollo: `docker compose config` lo acepta y tiene sus servicios (con la api enchufada)", t => {
   if (SIN_DOCKER) return t.skip(SIN_DOCKER + ": la validación del compose con Docker NO se ha comprobado (las de texto sí)");
   const c = config();
   assert.strictEqual(c.name, "gemelo-dev");
   assert.deepStrictEqual(Object.keys(c.services).sort(), SERVICIOS.slice().sort());
   for (const [n, s] of Object.entries(c.services)) {
-    assert.strictEqual(s.restart, "unless-stopped", n + ": restart");
+    assert.strictEqual(s.restart, DE_UNA_VEZ.includes(n) ? "no" : "unless-stopped", n + ": restart");
     assert.ok(s.deploy && s.deploy.resources && s.deploy.resources.limits && s.deploy.resources.limits.memory, n + ": sin límite de memoria");
     assert.deepStrictEqual(Object.keys(s.networks || {}), ["interna"], n + ": debe estar solo en la red interna del proyecto");
     for (const p of s.ports || []) assert.strictEqual(p.host_ip, "127.0.0.1", n + ": puerto " + p.published + " publicado fuera de 127.0.0.1");
   }
+  for (const n of CONSTRUIDOS) {
+    const s = c.services[n];
+    assert.ok(s.build && /apps[\\/]api[\\/]Dockerfile$/.test(path.join(s.build.context, s.build.dockerfile)), n + ": se construye de apps/api/Dockerfile");
+    assert.ok(!s.ports || !s.ports.length, n + ": no publica puertos (se entra por Caddy en /api/)");
+    assert.strictEqual(s.user, "1000:1000", n + ": sin root");
+    assert.strictEqual(s.read_only, true, n + ": sistema de ficheros de solo lectura");
+    assert.deepStrictEqual(s.cap_drop, ["ALL"], n + ": sin capacidades");
+  }
+  const api = c.services.api, e = api.environment;
+  assert.ok(api.healthcheck && api.healthcheck.test.join(" ").includes("/api/salud"), "api: healthcheck contra /api/salud");
+  assert.strictEqual(api.depends_on.migra.condition, "service_completed_successfully", "api: espera a las migraciones");
+  for (const [k, v] of Object.entries({ GEMELO_API_PUERTO: "8000", GEMELO_CORREO: "smtp", GEMELO_SMTP_HOST: "correo", GEMELO_SMTP_PUERTO: "1025", GEMELO_SMTP_TLS: "no", GEMELO_OT: "no" })) {
+    assert.strictEqual(e[k], v, "api: " + k);
+  }
+  assert.ok(!e.GEMELO_SMTP_USUARIO, "api: Mailpit sin usuario");
+  assert.match(e.GEMELO_URL_PUBLICA, /^https:\/\/localhost:\d+$/, "api: GEMELO_URL_PUBLICA por https (la cookie de sesión es Secure)");
+  assert.strictEqual(e.GEMELO_API_ORIGENES, e.GEMELO_URL_PUBLICA, "api: el único origen admitido es el https de localhost");
+  assert.match(e.GEMELO_DB_URL, /^postgresql:\/\/gemelo@db:5432\/gemelo$/, "api: GEMELO_DB_URL sin clave");
+  assert.notStrictEqual(e.NODE_ENV, "production", "api: en local no es producción (config.ts exigiría TLS y secretos en fichero)");
+  assert.deepStrictEqual(c.services.migra.command, ["node", "dist/src/bd/migra-cli.js"], "migra: aplica las migraciones");
 });
 
-// etiquetas preliminares o móviles: nunca (Antonio, 2026-10-28: versiones estables, pensando en producción)
-const PRELIMINAR = /(^|[-.\d])(latest|edge|master|main|dev|devel|nightly|snapshot|rc\d*|beta\d*|alpha\d*|preview|canary|testing|unstable)([-.\d]|$)/i;
-
-test("imágenes estables con versión fija Y digest (imagen:versión@sha256:…), sin etiquetas preliminares", () => {
-  const imgs = [...composeSinComentarios().matchAll(/^\s*image:\s*(\S+)\s*$/gm)].map(m => m[1]);
-  assert.strictEqual(imgs.length, SERVICIOS.length, "se esperaban " + SERVICIOS.length + " imágenes: " + imgs.join(", "));
+test("imágenes estables con versión fija Y digest (imagen:versión@sha256:…), sin etiquetas preliminares; la api, construida", () => {
+  const todas = [...composeSinComentarios().matchAll(/^\s*image:\s*(\S+)\s*$/gm)].map(m => m[1]);
+  const imgs = todas.filter(i => !i.startsWith("gemelo-"));          // las propias (gemelo-api) se construyen aquí: su base va fijada en el Dockerfile
+  assert.strictEqual(imgs.length, 4, "se esperaban 4 imágenes de fuera: " + imgs.join(", "));
+  assert.deepStrictEqual([...new Set(todas.filter(i => i.startsWith("gemelo-")))], ["gemelo-api:local"], "la imagen propia de la api");
   for (const i of imgs) {
     const m = /^([a-z0-9._/-]+):([A-Za-z0-9._-]+)@sha256:([a-f0-9]{64})$/.exec(i);
     assert.ok(m, i + ": debe ser imagen:versión@sha256:<64 hex>");
     assert.match(m[2], TAG_FIJO, i + ": la etiqueta debe ser una versión fija (no solo la mayor)");
     assert.ok(!PRELIMINAR.test(m[2]), i + ": etiqueta preliminar o móvil");
   }
+  assert.match(lee("apps/api/Dockerfile"), /^FROM node:24\.\d+\.\d+-alpine[\d.]*@sha256:[a-f0-9]{64}/m, "la base de la api: node 24 con versión y digest");
 });
 
 test("ningún puerto publicado fuera de 127.0.0.1 (ni 0.0.0.0, ni sin IP)", () => {
@@ -75,9 +105,48 @@ test("ningún secreto escrito: las claves salen de infra/dev/.env (ignorado), la
   const txt = composeSinComentarios();
   for (const m of txt.matchAll(/^\s*([A-Z_]*(?:PASSWORD|CLAVE|SECRETO|SECRET|KEYS?|TOKEN)[A-Z_]*):\s*(.+)$/gm)) assert.match(m[2], /^"?\$\{/, m[1] + " debe venir de una variable, no escrito: " + m[2]);
   for (const m of lee("infra/dev/ejemplo.env").matchAll(/^(GEMELO_DEV_[A-Z_]*(?:CLAVE|SECRETO))=(.*)$/gm)) assert.strictEqual(m[2], "la-genera-levanta", m[1] + ": la plantilla no lleva valores");
+  assert.ok(/^GEMELO_DEV_SESION_SECRETO=la-genera-levanta$/m.test(lee("infra/dev/ejemplo.env")), "la plantilla declara el secreto de la sesión");
   assert.ok(!/^\s*keys\s*:/m.test(lee("infra/dev/livekit.yaml")), "livekit.yaml no debe llevar claves");
   const ign = spawnSync("git", ["check-ignore", "-q", "infra/dev/.env"], { cwd: RAIZ });
   assert.strictEqual(ign.status, 0, "infra/dev/.env debe estar ignorado por git");
+});
+
+test("Caddyfile de dev con la forma de producción: portada pública, /finca/ y /teselas/ tras sesión, /api/interno cerrada", () => {
+  const c = lee("infra/dev/Caddyfile").split("\n").filter(l => !/^\s*#/.test(l)).join("\n");
+  assert.match(c, /handle \/api\/interno\/\* \{\s*respond 404\s*\}/, "/api/interno/* debe dar 404 desde fuera");
+  assert.match(c, /handle \/api\/\* \{[^}]*\{[^}]*\}\s*reverse_proxy api:8000/, "/api/* va a la api");
+  assert.match(c, /@con_sesion path \/finca \/finca\/\* \/teselas\/\*/, "/finca y /teselas en el matcher de sesión");
+  assert.match(c, /handle @con_sesion \{\s*forward_auth api:8000 \{\s*uri \/api\/interno\/autoriza\s*\}/, "forward_auth a /api/interno/autoriza");
+  assert.ok(c.indexOf("handle_path /teselas/*") > c.indexOf("handle @con_sesion"), "las teselas, dentro del bloque con sesión");
+  assert.ok(c.indexOf("handle_path /finca/*") > c.indexOf("handle @con_sesion"), "el mundo, dentro del bloque con sesión");
+  assert.match(c, /root \* \/srv\/portada/, "la portada pública");
+  const portada = lee("infra/dev/portada/index.html");
+  assert.ok(!/<script|style=|<style/i.test(portada), "la portada provisional no lleva JS ni estilos en línea (CSP)");
+  assert.match(portada, /<form method="post" action="\/api\/auth\/enlace">/);
+  assert.ok(!/@(?!example\.com)[a-z0-9.-]+\.[a-z]+/i.test(portada.replace(/gemelo@canoydamas\.invalid/g, "")), "la portada solo nombra correos @example.com");
+});
+
+test("siembra sintética: desde_fixture.py da 4 hazas y los olivos del fixture, y se niega con un índice no sintético", t => {
+  const py = python();
+  if (!py) return t.skip("sin Python 3: la siembra NO se ha comprobado");
+  if (spawnSync(py, ["-c", "import jsonschema"], { encoding: "utf8" }).status !== 0) return t.skip("sin jsonschema (pip install -r tuberia/hazas/requirements.txt): la siembra NO se ha comprobado");
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "gemelo-siembra-"));
+  const fx = ejecuta(py, ["-I", "pruebas/genera_fixture.py", "--salida", path.join(tmp, "fx")]);
+  assert.strictEqual(fx.status, 0, fx.stderr);
+  const indice = path.join(tmp, "fx", "hituelo", "indice.json");
+  const r = ejecuta(py, ["tuberia/hazas/desde_fixture.py", "--indice", indice, "--salida", path.join(tmp, "s")]);
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.deepStrictEqual(JSON.parse(r.stdout), { hazas: 4, olivos: 140, salida: "hazas.sql" });
+  const hz = JSON.parse(fs.readFileSync(path.join(tmp, "s", "hazas.sintetico.geojson"), "utf8"));
+  assert.strictEqual(hz.sintetico, true);
+  assert.deepStrictEqual(hz.features.map(f => f.properties.codigo), ["H-D01", "H-D02", "H-D03", "H-D04"]);
+  // un índice que no diga que es sintético no se convierte (las hazas reales las dibuja la oficina)
+  const I = JSON.parse(fs.readFileSync(indice, "utf8")); I.paisaje.fuente = "IGN";
+  fs.writeFileSync(path.join(tmp, "real.json"), JSON.stringify(I));
+  const no = ejecuta(py, ["tuberia/hazas/desde_fixture.py", "--indice", path.join(tmp, "real.json"), "--salida", path.join(tmp, "n")]);
+  assert.notStrictEqual(no.status, 0, "debía negarse con un índice no sintético");
+  const s = lee("infra/dev/herramientas/siembra.mjs");
+  for (const m of s.matchAll(/correo:\s*"([^"]+)"/g)) assert.match(m[1], /@example\.com$/, "hogar de prueba fuera de example.com: " + m[1]);
 });
 
 test("scripts dev:arriba, dev:abajo y dev:estado en el package.json raíz, y dependencias de las herramientas con versión exacta", () => {
@@ -92,71 +161,203 @@ test("scripts dev:arriba, dev:abajo y dev:estado en el package.json raíz, y dep
 });
 
 // ——— e2e opcional ———
-const SALTO_E2E = process.env.GEMELO_DOCKER !== "1" ? "e2e de Docker opcional (GEMELO_DOCKER=1): el entorno levantado NO se ha comprobado"
-  : SIN_DOCKER ? SIN_DOCKER + ": el entorno levantado NO se ha comprobado" : motivoSalto("el mundo servido por Caddy");
+const SALTO_E2E = process.env.GEMELO_DOCKER !== "1" ? "e2e de Docker opcional (GEMELO_DOCKER=1): el entorno levantado y el recorrido de entrada NO se han comprobado"
+  : SIN_DOCKER ? SIN_DOCKER + ": el entorno levantado NO se ha comprobado" : motivoSalto("el recorrido de entrada");
 
-test("e2e: levanta el entorno, la web sirve el mundo (0 errores en Chrome), db, LiveKit y buzón sanos; y lo baja", { timeout: 900000 }, async t => {
+const COOKIE = "__Host-gemelo";
+/** Claves que nunca pueden salir en una ficha ni en el GeoJSON (titular, kilos, personas, GPS) */
+const PROHIBIDAS = /titular|hogar|correo|e?mail|kilo|persona|usuario|tel[eé]fono|gps|(^|_)(kg|lat|lon|lng|ip)(_|$)/i;
+function revisaListaBlanca(o, ruta, correos) {
+  if (Array.isArray(o)) return o.forEach((v, i) => revisaListaBlanca(v, ruta + "[" + i + "]", correos));
+  if (o && typeof o === "object") {
+    for (const [k, v] of Object.entries(o)) { assert.ok(!PROHIBIDAS.test(k), "campo prohibido " + ruta + "." + k); revisaListaBlanca(v, ruta + "." + k, correos); }
+    return;
+  }
+  if (typeof o === "string") {
+    assert.ok(!o.includes("@"), "un correo en " + ruta + ": " + o);
+    for (const c of correos) assert.ok(!o.includes(c.split("@")[0]), "el correo de un hogar en " + ruta);
+  }
+}
+
+test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, hazas con lista blanca, el mundo en /finca/) y lo baja", { timeout: 900000 }, async t => {
   if (SALTO_E2E) return t.skip(SALTO_E2E);
   const imp = f => import(pathToFileURL(path.join(HERR, f)).href);
-  const { levanta } = await imp("levanta.mjs"), { para } = await imp("para.mjs"), { estado } = await imp("estado.mjs"), comun = await imp("_comun.mjs");
+  const { levanta } = await imp("levanta.mjs"), { para } = await imp("para.mjs"), { estado } = await imp("estado.mjs");
+  const comun = await imp("_comun.mjs"), { HOGARES, HAZAS_SIN_ASIGNAR } = await imp("siembra.mjs");
+  const Ajv = require("ajv");
   const antes = comun.compose(["ps", "-q"], { captura: true }).stdout.trim() !== "";
-  const t0 = Date.now();
-  levanta();
-  const tArriba = (Date.now() - t0) / 1000;
+  const tiempos = {}, reloj = () => { const t0 = Date.now(); return () => ((Date.now() - t0) / 1000); };
+  let r0 = reloj();
+  const { sembrado } = await levanta();
+  tiempos.arriba = r0();
   try {
-    const p = comun.puertos(), url = "http://localhost:" + p.web + "/";
+    // todo por https://localhost (la cookie de sesión es Secure: por http no hay sesión), verificando con la CA local de Caddy
+    const p = comun.puertos(), base = "https://localhost:" + p.https, buzon = "http://127.0.0.1:" + p.correoWeb, ca = comun.caLocal();
+    const yo = HOGARES[0], vecino = HOGARES[1], mirlo = HOGARES[2], correos = HOGARES.map(h => h.correo);
+    assert.deepStrictEqual({ hazas: sembrado.hazas, hogares: sembrado.hogares }, { hazas: 4, hogares: 3 }, "siembra");
     const e = await estado();
     assert.ok(e.ok, "estado no sano:\n" + JSON.stringify(e, null, 1));
-    t.diagnostic("arriba en " + tArriba.toFixed(1) + " s; " + e.externas.map(x => x.servicio + ": " + x.detalle).join(" | "));
+    t.diagnostic("arriba (build de la web y de la api, migraciones y siembra) en " + tiempos.arriba.toFixed(1) + " s; " + e.externas.map(x => x.servicio + ": " + x.detalle).join(" | "));
 
-    // cabeceras de la web
-    const r = await fetch(url, { headers: { "accept-encoding": "br" } });
-    assert.strictEqual(r.status, 200);
-    assert.strictEqual(r.headers.get("content-encoding"), "br", "la página debe servirse precomprimida en brotli");
-    for (const h of ["content-security-policy-report-only", "x-content-type-options", "referrer-policy", "permissions-policy", "cross-origin-opener-policy"]) assert.ok(r.headers.get(h), "falta la cabecera " + h);
-    assert.ok(!r.headers.get("server"), "Caddy no debe anunciarse (Server)");
-    const js = /assets\/[^"]+\.js/.exec(await r.text())[0];
-    const a = await fetch(url + js);
-    assert.match(a.headers.get("cache-control") || "", /immutable/, "assets/ debe llevar caché inmutable");
-    const ti = await fetch(url + "teselas/hituelo/indice.json");
-    assert.strictEqual(ti.status, 200, "/teselas/hituelo/indice.json");
+    // node:https y no fetch: fetch no deja poner Sec-Fetch-Mode (para simular una navegación) ni pasar la CA
+    const pide = (ruta, o = {}) => comun.pideHttps(p.https, ruta, { method: o.method, body: o.body, ca,
+      headers: Object.assign({}, o.headers, o.cookie ? { cookie: COOKIE + "=" + o.cookie } : {}) });
+    const json = async (ruta, cookie) => { const r = await pide(ruta, { cookie }); return { status: r.status, cuerpo: r.status === 200 ? JSON.parse(r.texto) : r.texto, r }; };
 
-    // el mundo en Chrome headless: 0 errores (ni avisos de la CSP Report-Only) y las teselas pedidas a /teselas/
+    // 0. por http solo la salud; lo demás va a https
+    const h = await fetch("http://localhost:" + p.web + "/finca/", { redirect: "manual" });
+    assert.deepStrictEqual([h.status, h.headers.get("location")], [308, base + "/finca/"], "http redirige a https");
+
+    // 1. sin sesión, solo la portada (decisión 16)
+    const portada = await pide("/");
+    assert.strictEqual(portada.status, 200);
+    for (const h of ["content-security-policy-report-only", "x-content-type-options", "referrer-policy", "permissions-policy", "cross-origin-opener-policy"]) assert.ok(portada.cabeceras[h], "falta la cabecera " + h);
+    assert.ok(!portada.cabeceras.server, "Caddy no debe anunciarse (Server)");
+    assert.match(portada.texto, /action="\/api\/auth\/enlace"/);
+    const nav303 = await pide("/finca/", { headers: { "sec-fetch-mode": "navigate" } });
+    assert.deepStrictEqual([nav303.status, nav303.cabeceras.location], [303, "/"], "abrir /finca/ sin sesión lleva a la portada");
+    for (const ruta of ["/finca/", "/teselas/hituelo/indice.json", "/api/hazas", "/api/hazas/1", "/api/sesion"]) assert.strictEqual((await pide(ruta)).status, 401, ruta + " sin sesión");
+    assert.strictEqual((await pide("/api/interno/autoriza")).status, 404, "/api/interno cerrada desde fuera");
+
+    // 2. pedir el enlace desde la portada, en Chrome, con su formulario (sin JS); sin Origin, 403; mismo 202 exista o no la cuenta
+    const cuerpo = c => ({ method: "POST", body: JSON.stringify({ correo: c }), headers: { "content-type": "application/json", origin: base } });
+    const sinOrigen = await pide("/api/auth/enlace", { method: "POST", body: JSON.stringify({ correo: yo.correo }), headers: { "content-type": "application/json" } });
+    assert.strictEqual(sinOrigen.status, 403, "un POST sin Origin se rechaza (CSRF)");
+    const antesBuzon = (await (await fetch(buzon + "/api/v1/search?query=" + encodeURIComponent("to:" + yo.correo))).json()).messages_count;
     const nav = await lanza();
+    let cookie, msg = null, enlace;
     try {
-      const t1 = Date.now(), m = await mide(nav, url);
-      t.diagnostic("mundo listo y medido en " + ((Date.now() - t1) / 1000).toFixed(1) + " s; lejos: " + JSON.stringify(m.medidas.lejos));
+      // la CA local no está instalada en el sistema: Chrome la acepta solo en esta prueba (ignoreHTTPSErrors)
+      const ctx = await nav.newContext({ viewport: { width: 900, height: 650 }, ignoreHTTPSErrors: true });
+      const pp = await ctx.newPage();
+      await pp.goto(base + "/");
+      await pp.fill("#correo", yo.correo);
+      r0 = reloj();
+      const [resp] = await Promise.all([pp.waitForResponse(x => new URL(x.url()).pathname === "/api/auth/enlace" && x.request().method() === "POST"), pp.click("button[type=submit]")]);
+      assert.strictEqual(resp.status(), 202, "el formulario de la portada: " + resp.status() + " " + (await resp.text()).slice(0, 200));
+      const aceptado = await resp.json();
+      await pp.close();
+      const nadie = await pide("/api/auth/enlace", cuerpo("nadie.prueba@example.com"));
+      assert.strictEqual(nadie.status, 202);
+      assert.deepStrictEqual(JSON.parse(nadie.texto), aceptado, "la misma respuesta para un correo sin cuenta");
+
+      // 3. leer el correo en la API de Mailpit
+      // (msg y enlace se usan tras cerrar el navegador)
+      for (let i = 0; i < 100 && !msg; i++) {
+        const b = await (await fetch(buzon + "/api/v1/search?query=" + encodeURIComponent("to:" + yo.correo))).json();
+        if (b.messages_count > antesBuzon) msg = b.messages[0];
+        else await new Promise(ok => setTimeout(ok, 200));
+      }
+      assert.ok(msg, "el enlace no llegó al buzón en 20 s");
+      tiempos.correo = r0();
+      const completo = await (await fetch(buzon + "/api/v1/message/" + msg.ID)).json();
+      assert.strictEqual(completo.Subject, "Tu enlace para entrar");
+      assert.ok(!completo.HTML, "el correo es solo texto");
+      enlace = (/(https:\/\/localhost:\d+\/api\/auth\/entrar\?t=[A-Za-z0-9_-]{43})/.exec(completo.Text) || [])[1];
+      assert.ok(enlace && enlace.startsWith(base + "/"), "el correo no trae el enlace a " + base + ": " + completo.Text.slice(0, 300));
+      t.diagnostic("enlace en el buzón en " + tiempos.correo.toFixed(2) + " s");
+
+      // 4. abrir el enlace en Chrome: página intermedia (el GET no gasta) → botón → /finca/ con la cookie de sesión HttpOnly
+      const pg = await ctx.newPage();
+      r0 = reloj();
+      await pg.goto(enlace);
+      assert.strictEqual(await pg.title(), "Entrar");
+      await Promise.all([pg.waitForURL(base + "/finca/"), pg.click("button[type=submit]")]);
+      tiempos.entrar = r0();
+      const c = (await ctx.cookies(base)).find(x => x.name === COOKIE);
+      assert.ok(c, "no hay cookie " + COOKIE + " en el navegador");
+      assert.deepStrictEqual({ httpOnly: c.httpOnly, secure: c.secure, sameSite: c.sameSite, path: c.path }, { httpOnly: true, secure: true, sameSite: "Lax", path: "/" }, "atributos de la cookie");
+      assert.strictEqual(await pg.evaluate(() => document.cookie), "", "la cookie no se ve desde JS (HttpOnly)");
+      await pg.close();
+      cookie = c.value;
+
+      // el mundo, con la sesión del navegador: 0 errores, teselas pedidas a /teselas/ y CSP Report-Only sin avisos
+      r0 = reloj();
+      const m = await mide(ctx, base + "/finca/");
+      tiempos.mundo = r0();
+      t.diagnostic("entrar (botón → /finca/) en " + tiempos.entrar.toFixed(2) + " s; mundo listo y medido en " + tiempos.mundo.toFixed(1) + " s; lejos: " + JSON.stringify(m.medidas.lejos));
       assert.deepStrictEqual(m.errores, [], "errores en la consola");
       assert.deepStrictEqual(m.fallos, [], "peticiones fallidas");
       assert.ok(m.medidas.lejos.triangulos > 0, "no se dibuja nada");
-      const pg = await nav.newPage(), pedidas = [], avisos = [];
-      pg.on("response", x => { if (x.url().includes("/teselas/")) pedidas.push(x.status() + " " + new URL(x.url()).pathname); });
-      pg.on("console", x => { if (/Content Security Policy|Report Only/i.test(x.text())) avisos.push(x.text().slice(0, 200)); });
-      // el evento del navegador (también salta en Report-Only), no solo el texto de la consola
-      await pg.addInitScript(() => { window.__csp = []; document.addEventListener("securitypolicyviolation", e => window.__csp.push(e.violatedDirective + " " + e.blockedURI)); });
-      await pg.goto(url);
-      await pg.waitForFunction(() => window.__g && window.__g.listo(), null, { timeout: 60000 });
-      await pg.waitForTimeout(1500);
-      avisos.push(...await pg.evaluate(() => window.__csp));
-      const vistos = avisos.slice();   // la foto ANTES del control, que sí provoca un aviso a propósito
-      // control: un script en línea SÍ debe denunciarse (prueba que la CSP llega y que el detector funciona)
-      const control = await pg.evaluate(() => new Promise(ok => { const n = window.__csp.length, s = document.createElement("script"); s.textContent = "void 0"; document.head.appendChild(s); setTimeout(() => ok(window.__csp.slice(n)), 500); }));
-      await pg.close();
+      const pw = await ctx.newPage(), pedidas = [], avisos = [];
+      pw.on("response", x => { if (x.url().includes("/teselas/")) pedidas.push(x.status() + " " + new URL(x.url()).pathname); });
+      pw.on("console", x => { if (/Content Security Policy|Report Only/i.test(x.text())) avisos.push(x.text().slice(0, 200)); });
+      await pw.addInitScript(() => { window.__csp = []; document.addEventListener("securitypolicyviolation", e => window.__csp.push(e.violatedDirective + " " + e.blockedURI)); });
+      await pw.goto(base + "/finca/");
+      await pw.waitForFunction(() => window.__g && window.__g.listo(), null, { timeout: 60000 });
+      await pw.waitForTimeout(1500);
+      avisos.push(...await pw.evaluate(() => window.__csp));
+      const vistos = avisos.slice();
+      const control = await pw.evaluate(() => new Promise(ok => { const n = window.__csp.length, s = document.createElement("script"); s.textContent = "void 0"; document.head.appendChild(s); setTimeout(() => ok(window.__csp.slice(n)), 500); }));
+      await pw.close();
       assert.ok(control.some(v => /^script-src/.test(v)), "la CSP Report-Only no denuncia un script en línea: ¿no llega la cabecera? " + JSON.stringify(control));
       assert.ok(pedidas.some(x => /^200 \/teselas\/hituelo\/t\/\d+_\d+\.json$/.test(x)), "el motor no pidió teselas a /teselas/hituelo/t/: " + pedidas.join(", "));
       assert.deepStrictEqual(vistos, [], "la CSP (Report-Only) avisa de violaciones");
-      t.diagnostic("teselas pedidas: " + pedidas.length + " (" + pedidas.join(", ") + ")");
+      await ctx.close();
     } finally { await nav.close(); }
 
-    // el buzón recibe un correo como el del enlace mágico
-    const nodemailer = require(require.resolve("nodemailer", { paths: [HERR] }));   // dependencia de infra/dev/herramientas (versión fija)
-    const asunto = "Prueba e2e " + Date.now();
-    await nodemailer.createTransport({ host: "127.0.0.1", port: p.smtp, secure: false }).sendMail({ from: "gemelo@canoydamas.invalid", to: "hogar@example.com", subject: asunto, text: "Enlace: " + url + "entrar?t=prueba" });
-    const busca = await (await fetch("http://127.0.0.1:" + p.correoWeb + "/api/v1/search?query=" + encodeURIComponent('subject:"' + asunto + '"'))).json();
-    assert.strictEqual(busca.messages_count, 1, "el correo de prueba no llegó al buzón");
-    await fetch("http://127.0.0.1:" + p.correoWeb + "/api/v1/messages", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ IDs: [busca.messages[0].ID] }) });
+    // el enlace ya no sirve otra vez
+    const otra = await pide(enlace.slice(base.length));
+    assert.strictEqual(otra.status, 400, "un enlace usado no vuelve a abrir");
+    assert.match(otra.texto, /ya se usó/);
+
+    // 5. con sesión: la web precomprimida y con caché, las teselas, la sesión y las hazas
+    r0 = reloj();
+    const w = await pide("/finca/", { cookie, headers: { "accept-encoding": "br" } });
+    assert.strictEqual(w.status, 200);
+    assert.strictEqual(w.cabeceras["content-encoding"], "br", "la página debe servirse precomprimida en brotli");
+    const js = /assets\/[^"]+\.js/.exec((await pide("/finca/", { cookie })).texto)[0];
+    assert.match((await pide("/finca/" + js, { cookie })).cabeceras["cache-control"] || "", /immutable/, "assets/ debe llevar caché inmutable");
+    const ti = await pide("/teselas/hituelo/indice.json", { cookie });
+    assert.strictEqual(ti.status, 200, "/teselas/hituelo/indice.json con sesión");
+    assert.match(ti.cabeceras["cache-control"] || "", /private/, "las teselas, tras sesión, con caché privada");
+    const I = JSON.parse(ti.texto), [cx, cy] = I.centro_utm;
+
+    const s = await json("/api/sesion", cookie);
+    assert.deepStrictEqual(s.cuerpo, { rol: "hogar", alias: yo.alias, alias_visible: true });
+
+    const g = await json("/api/hazas", cookie);
+    assert.strictEqual(g.status, 200);
+    assert.strictEqual(g.cuerpo.type, "FeatureCollection");
+    assert.strictEqual(g.cuerpo.srs, "EPSG:25830");
+    assert.deepStrictEqual(g.cuerpo.features.map(f => f.properties.codigo), ["H-D01", "H-D02", "H-D03", "H-D04"]);
+    for (const f of g.cuerpo.features) {
+      assert.deepStrictEqual(Object.keys(f).sort(), ["geometry", "id", "properties", "type"]);
+      assert.deepStrictEqual(Object.keys(f.properties).sort(), ["codigo", "es_mia", "finca", "nombre"], "propiedades del GeoJSON");
+      assert.strictEqual(f.properties.finca, "hituelo");
+      assert.strictEqual(f.properties.es_mia, f.properties.codigo === yo.haza, f.properties.codigo + ": es_mia");
+      for (const [x, y] of f.geometry.coordinates.flat(2)) assert.ok(Math.abs(x - cx) <= I.ts && y <= cy && cy - y <= I.ts, f.properties.codigo + ": la linde cae fuera del mundo");
+    }
+    revisaListaBlanca(g.cuerpo, "hazas", correos);
+    const id = codigo => g.cuerpo.features.find(f => f.properties.codigo === codigo).id;
+
+    // fichas: la propia, una ajena con alias oculto, una con alias visible y una sin asignar; todas validan contra el contrato
+    const valida = new Ajv({ strict: false, validateFormats: false, allErrors: true }).compile(JSON.parse(lee("contratos/haza.schema.json")));
+    const esperado = { [yo.haza]: { es_mia: true, alias: yo.alias }, [vecino.haza]: { es_mia: false, alias: null }, [mirlo.haza]: { es_mia: false, alias: mirlo.alias }, [HAZAS_SIN_ASIGNAR[0]]: { es_mia: false, alias: null } };
+    for (const [codigo, esp] of Object.entries(esperado)) {
+      const f = await json("/api/hazas/" + id(codigo), cookie);
+      assert.strictEqual(f.status, 200, codigo);
+      assert.ok(valida(f.cuerpo), codigo + ": la ficha no cumple contratos/haza.schema.json: " + JSON.stringify(valida.errors));
+      assert.deepStrictEqual({ es_mia: f.cuerpo.es_mia, alias: f.cuerpo.alias }, esp, codigo + ": titularidad y alias");
+      revisaListaBlanca(f.cuerpo, "ficha " + codigo, correos);
+      assert.ok(f.cuerpo.olivos.lidar.n > 0, codigo + ": sin olivos dentro");
+      assert.strictEqual(f.cuerpo.olivos.declarado.n, 35, codigo + ": olivos declarados (sintéticos)");
+      assert.deepStrictEqual(f.cuerpo.avisos, ["ot_sin_sincronia"], codigo + ": sin OlivarTrack en local, la ficha lo dice");
+      assert.strictEqual(f.cuerpo.completo, false);
+    }
+    assert.strictEqual((await pide("/api/hazas/999999", { cookie })).status, 404);
+    tiempos.api = r0();
+    t.diagnostic("con sesión: web, teselas, /api/sesion, /api/hazas y 4 fichas en " + tiempos.api.toFixed(2) + " s");
+
+    // 6. salir: la cookie deja de servir; y al correo sin cuenta no le llegó nada
+    const sal = await pide("/api/sesion/salir", { method: "POST", cookie, headers: { origin: base } });
+    assert.strictEqual(sal.status, 204);
+    assert.strictEqual((await pide("/api/hazas", { cookie })).status, 401, "tras salir, la cookie no sirve");
+    const aNadie = await (await fetch(buzon + "/api/v1/search?query=" + encodeURIComponent("to:nadie.prueba@example.com"))).json();
+    assert.strictEqual(aNadie.messages_count, 0, "se mandó un correo a una cuenta que no existe");
+    await fetch(buzon + "/api/v1/messages", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ IDs: [msg.ID] }) });
   } finally {
-    if (!antes) { const t2 = Date.now(); para(); t.diagnostic("bajado en " + ((Date.now() - t2) / 1000).toFixed(1) + " s (el volumen de la db se conserva)"); }
+    if (!antes) { r0 = reloj(); para(); t.diagnostic("bajado en " + r0().toFixed(1) + " s (el volumen de la db se conserva)"); }
     else t.diagnostic("ya estaba levantado antes de la prueba: se deja levantado");
   }
 });

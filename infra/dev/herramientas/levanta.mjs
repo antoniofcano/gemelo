@@ -3,11 +3,14 @@
 //  2. genera el fixture sintético si falta (o usa GEMELO_DEV_TESELAS, una carpeta de datos reales FUERA del repo);
 //  3. construye la web con Vite contra el índice de la finca (GEMELO_DEV_FINCA, por defecto hituelo), con base /teselas/<finca>/,
 //     y deja junto a cada fichero su versión .br/.gz para que Caddy los sirva ya comprimidos;
-//  4. docker compose up -d --wait (espera a los healthchecks).
+//  4. docker compose up -d --build --wait: construye la imagen de la api (apps/api/Dockerfile; con la caché de Docker es
+//     rápido si no cambió nada), aplica las migraciones (servicio `migra`) y espera a los healthchecks;
+//  5. siembra las hazas, los olivos y los hogares de prueba SINTÉTICOS (siembra.mjs, idempotente).
 import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
 import { fileURLToPath } from "node:url";
+import { siembra, HOGARES } from "./siembra.mjs";
 import { aseguraEnv, cargaEnv, carpetaTeselas, compose, motivoSinDocker, npm, aseguraDependencias, puertos, util, RAIZ, ENV, FIXTURE, SALIDA_DEV, WEB } from "./_comun.mjs";
 
 const SIN_BUILD = process.argv.includes("--sin-build");
@@ -57,32 +60,42 @@ function construyeWeb(datos) {
   console.log("  " + precomprime(dist) + " ficheros precomprimidos (br, gz) en " + rel(dist));
 }
 
-export function levanta({ sinBuild = false } = {}) {
+export async function levanta({ sinBuild = false } = {}) {
   const sin = motivoSinDocker();
   if (sin) throw new Error(sin);
   paso("claves de desarrollo");
-  console.log(aseguraEnv() ? "  creado " + rel(ENV) + " con claves aleatorias" : "  " + rel(ENV) + " ya existe (no se toca)");
+  const env = aseguraEnv();
+  console.log(env === "creado" ? "  creado " + rel(ENV) + " con claves aleatorias"
+    : env ? "  " + rel(ENV) + " ya existía: añadidas las claves nuevas " + env.join(", ") : "  " + rel(ENV) + " ya existe (no se toca)");
   cargaEnv();
   const teselas = carpetaTeselas(), finca = process.env.GEMELO_DEV_FINCA || "hituelo";
   paso("datos: " + (teselas === FIXTURE ? "fixture sintético" : "carpeta local (GEMELO_DEV_TESELAS)") + ", finca " + finca);
-  if (teselas === FIXTURE) preparaFixture();
+  preparaFixture();                      // la siembra de hazas sale siempre del fixture, aunque las teselas sean otras
   const datos = datosDeLaWeb(teselas, finca);
   if (!sinBuild) { paso("build de la web (Vite)"); construyeWeb(datos); }
   else if (!fs.existsSync(path.join(WEB, "dist", "index.html"))) throw new Error("--sin-build pero no hay apps/web/dist: quítalo la primera vez");
   paso("dependencias de las herramientas");
   aseguraDependencias();
-  paso("docker compose up -d --wait");
-  const r = compose(["up", "-d", "--wait", "--wait-timeout", "180"], { env: { GEMELO_DEV_TESELAS: teselas } });
+  paso("docker compose up -d --build --wait (api con sus migraciones y servicios)");
+  const r = compose(["up", "-d", "--build", "--wait", "--wait-timeout", "240"], { env: { GEMELO_DEV_TESELAS: teselas } });
   if (r.status !== 0) throw new Error("docker compose up falló (mira `npm run dev:estado` y `docker compose -f infra/dev/compose.yml logs`)");
+  paso("siembra sintética (hazas, olivos y hogares de prueba)");
+  const sembrado = await siembra();
+  console.log("  " + sembrado.hazas + " hazas, " + sembrado.olivos + " olivos y " + sembrado.hogares + " hogares de prueba (" + HOGARES[0].correo + "…)");
   const p = puertos();
-  console.log("\nListo:\n  web       http://localhost:" + p.web + "/   (y https://localhost:" + p.https + "/ con certificado local no instalado)" +
-    "\n  teselas   http://localhost:" + p.web + "/teselas/" + finca + "/indice.json" +
+  const w = "https://localhost:" + p.https;
+  console.log("\nListo (por https: la CA local de Caddy no está instalada, el navegador avisará; http://localhost:" + p.web + " redirige aquí):" +
+    "\n  portada   " + w + "/" +
+    "\n  mundo     " + w + "/finca/   (solo con sesión: pide el enlace en la portada y ábrelo desde el buzón)" +
+    "\n  api       " + w + "/api/salud" +
+    "\n  teselas   " + w + "/teselas/" + finca + "/indice.json   (solo con sesión)" +
     "\n  correo    http://localhost:" + p.correoWeb + "/   (SMTP en 127.0.0.1:" + p.smtp + ")" +
     "\n  db        127.0.0.1:" + p.db + "  usuario gemelo, base gemelo, clave en infra/dev/.env" +
     "\n  livekit   ws://localhost:" + p.livekit + "  (claves en infra/dev/.env)");
+  return { sembrado };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  try { levanta({ sinBuild: SIN_BUILD }); }
+  try { await levanta({ sinBuild: SIN_BUILD }); }
   catch (e) { console.error("\n✗ " + e.message); process.exit(1); }
 }
