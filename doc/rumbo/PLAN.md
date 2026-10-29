@@ -129,6 +129,28 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | V2 | VPS: desplegar F1a | A5, A6, V1 (decisión 21) | 👤 confirma cada paso | ⬜ |
 | G1 | Arreglar la facturación de GitHub para que corra el CI | — | 👤 | ⬜ |
 
+## Ideas de mejora (sin fecha; se convierten en tarea cuando Antonio lo diga)
+
+**Minijuegos y puzles para el aula y las visitas (F5)** — anotado el 2026-10-30.
+- **Sin motor de juegos** (Unity, Godot, PlayCanvas, Babylon: otro mundo y otro motor de dibujo; Needle, A-Frame o React Three Fiber imponen su forma de trabajar). Un **módulo propio de minijuegos** sobre lo que ya hay: el mundo (Hituelo, olivos, balizas, hazas), la interacción (tocar, rayo en VR, anillo de llegada, fichas), LiveKit (una sala por partida), la sesión y el alias, y la api con Postgres para la **clasificación validada en el servidor**. Esqueleto común: espera → cuenta atrás → juego → resultado.
+- **Física solo si un juego la pide** (lanzar, apilar, el vareo): entonces se elige una librería mantenida (estado de Rapier, `cannon-es` y de ECS como `bitecs`/`miniplex` por comprobar). **Colyseus** solo si hubiera competiciones en tiempo real que necesiten estado autoritativo.
+- **Decisiones de Antonio antes de construir:** menores (decisión 45: hoy sin perfiles de menores; un aula de colegio la reabre con asesoría), qué se publica en la clasificación (solo el alias) y si hay premios.
+- **Juegos propuestos** (con datos reales del gemelo; lo medido se dice medido). Para empezar, los tres primeros: casi todo ya existe.
+
+  | Juego | Qué es | Usa | Física |
+  |---|---|---|---|
+  | **Carrera de balizas** | Orientación contrarreloj por la finca, solo o por equipos; modalidades con y sin dron/anillo de llegada | balizas, minimapa, presencia | no |
+  | **Encuentra el olivo** | Te dan su ficha (altura, copa, tipo, una foto del árbol generado) y hay que localizarlo; puntos por tiempo y distancia | copas medidas, constructor, fichas | no |
+  | **¿Qué época es?** | Un olivo en una época (reposo, botón, flor, cuajado, envero, madura, poda): adivinarla, u ordenar las siete | constructor (épocas), calendario | no |
+  | **¿Cuántos olivos hay?** | Estimar los olivos de una haza o parcela; puntúa la cercanía al recuento del LiDAR (medido) y se enseña el declarado al lado | copas, hazas, decisión 14 | no |
+  | **El ojo del agrónomo** | Señalar en una parcela las zonas de menos vigor con la capa NDVI relativa (avisando: sin calibrar, sirve para mirar, no para diagnosticar) | NDVI, ortofoto | no |
+  | **Preguntas de campo** | Una pregunta por baliza (variedad, plagas, fenología, tratamientos) con datos de OlivarTrack y Vigía | balizas, MCP (datos, no instrucciones) | no |
+  | **El rompecabezas de la finca** | Recomponer la ortofoto de Hituelo y sus parcelas en piezas (2D, para los más pequeños) | ortofoto, parcelas | no |
+  | **El puzle de la poda** | Elegir qué ramas cortar a un olivo generado y comparar con los criterios de poda en vaso (luz, ventilación) | constructor (`padre`/`nodo` de las ramas) | no |
+  | **La recolección** | Varear y recoger aceitunas en la lona contrarreloj | constructor (olivas), física | **sí**: más adelante |
+  | **Preguntas en la visita guiada** | El guía lanza preguntas en directo y la sala responde; clasificación de la visita | F3 (voz), LiveKit | no |
+
+
 ## Decidido no hacerlo (por ahora)
 
 - 🚫 `logarithmicDepthBuffer`: se usa `near` dinámico y `far` mayor (coste en iOS sin medir **[SUPUESTO]**).
