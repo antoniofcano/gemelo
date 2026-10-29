@@ -104,6 +104,30 @@ exige(E.tope({ base: 550000, movil: false, escala: 2, triLejanos: 1000 }) === 10
   diag.histeresis.paseo150 = { olivosQueCambian: Object.keys(cambios).length, maxCambios: Math.max(0, ...Object.values(cambios)) };
 }
 
+// ---- 2b) el sombreador del impostor (07ac) usa la disposición del formato 1 de apps/web/olivo/impostor.js: el texto GLSL lleva las fórmulas que
+// aquí se reproducen en JS, y estas dan la misma vista, la misma base y la misma celda que impostor.js para 2.000 direcciones al azar y las 64 vistas
+{
+  const glsl = L07;
+  for (const f of ["return vec2(d.x / s + d.z / s, d.x / s - d.z / s)", "float a = -1.0 + 2.0 * ij.x / 7.0, b = -1.0 + 2.0 * ij.y / 7.0", "float x = (a + b) * 0.5, z = (a - b) * 0.5",
+    "r = cross(vec3(0.0, 1.0, 0.0), d)", "u = cross(d, r)", "floor(clamp((ot_oct(ot_d) + 1.0) * 3.5, 0.0, 7.0) + 0.5)",
+    "(vec2(mod(float(ot_k), 2.0) * 8.0 + ot_ij.x, floor(float(ot_k) / 2.0) * 8.0 + ot_ij.y) + vOtQ * 0.5 + 0.5) / 16.0", "imageOrientation: \"flipY\""])
+    exige(glsl.includes(f), "07ac: el sombreador del impostor ya no lleva «" + f + "»");
+  const oct = d => { const y = Math.max(0, d[1]), s = Math.abs(d[0]) + y + Math.abs(d[2]) || 1; return [d[0] / s + d[2] / s, d[0] / s - d[2] / s]; };
+  const ijDe = d => oct(d).map(v => Math.floor(Math.min(7, Math.max(0, (v + 1) * 3.5)) + 0.5));
+  let malas = 0, r = 12345; const az = () => (r = (r * 16807) % 2147483647) / 2147483647;
+  for (let k = 0; k < 2000; k++) {
+    const t = az() * 2 * Math.PI, e = Math.asin(az() * 1.2 - 0.2), d = [Math.cos(e) * Math.cos(t), Math.sin(e), Math.cos(e) * Math.sin(t)];
+    const a = ijDe(d), b = O.vistaContinua(d).map(Math.round);
+    if (a[0] !== b[0] || a[1] !== b[1]) malas++;
+  }
+  for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) {
+    const d = O.direccionDeVista(i, j), a = ijDe(d); if (a[0] !== i || a[1] !== j) malas++;
+    for (let k = 0; k < 4; k++) { const cu = O.celdaUV(k, i, j), u0 = ((k % 2) * 8 + i) / 16, v0 = (Math.floor(k / 2) * 8 + j) / 16; if (Math.abs(cu[0] - u0) > 1e-9 || Math.abs(cu[1] - v0) > 1e-9) malas++; }
+  }
+  diag.impostorGLSL = { malas };
+  exige(malas === 0, "07ac: la vista o la celda del sombreador del impostor no son las de impostor.js en " + malas + " casos");
+}
+
 // ---- 3) sin la bandera (y con ?olivos=gen) la escalera no actúa: sin capa de lejanos, sin trabajo
 for (const q of ["?debug", "?olivos=gen"]) {
   const c = contexto(q);

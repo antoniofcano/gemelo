@@ -6,24 +6,21 @@
   // Todo olivo a menos de U2 m de la cámara que no está en 3D (07ab) se dibuja aquí, en UNA malla instanciada para toda la finca (1 llamada), con la
   // MISMA matriz que su variante E2 (copa y altura medidas) y la MISMA variante (índice de copa mod nº de variantes): el paso de E2 a lejano es el mismo
   // árbol visto de otra forma. Dos fuentes, por orden:
-  //   1. IMPOSTORES (O8b, contratos/olivo-impostor.md cuando exista): si el constructor (gemelo-olivo) trae creaImpostores(), se le pide la malla de
-  //      un olivo y su material (ver ENCHUFE abajo). Hoy no existe: se usa 2.
-  //   2. SUSTITUTO (salvaguarda): dos planos cruzados (4 triángulos por olivo) con la silueta de cada variante E2 horneada AQUÍ, en el navegador, a
-  //      una textura de 2 vistas × nº de variantes × 128 px, en albedo plano (luz ambiente de intensidad π: el color sin sombrear), e iluminada en
-  //      vivo por el motor como la tierra (normal hacia arriba, Lambert, sombra de nubes y escarcha). Desde arriba y en diagonal se ven los dos planos:
-  //      es lo que el ADR descarta como solución final; aquí es solo el respaldo hasta los impostores.
-  // Mientras no hay ninguna de las dos (al empezar: hasta que se calculan las 4 variantes E2), de lejos solo se ve la ortofoto (la excepción del
-  // ADR §3) y 07ab retiene en 3D lo que sale; cuando están, la capa entra con un tramado de 1 s (uCapa). Sin WebGL para hornear, o si falla: «sin»
-  // y solo ortofoto lejos (se dice en ?debug).
+  //   1. IMPOSTORES (O8b, contratos/olivo-impostor.md, formato 1): si el manifiesto de la finca trae la fila `impostores[]` de la época y casa con
+  //      las variantes que dibuja el motor (Generados.lejanos.impostor()), se bajan sus dos atlas <huella>.webp (mismo origen, con la cookie), se
+  //      comprueban (tamaño y huella) y se suben a la GPU (initTexture) ANTES de usarlos. Un cuadrado de 2 triángulos por olivo, girado a la cámara
+  //      en el marco del árbol (deshaciendo su estirado), que lee la vista MÁS CERCANA de la rejilla 8 × 8 (la mezcla de 3 vistas o el tramado entre
+  //      vistas: O8d, con medida) reproyectando cada punto a la base de esa vista; el motor lo ilumina con la normal del atlas (Lambert, su luz
+  //      solar y del cielo, la sombra de nubes y la escarcha). La oclusión de copa del canal A no se usa (la E2 en 3D no la lleva: casarían peor).
+  //   2. SUSTITUTO (salvaguarda: sin manifiesto, como en la salida artefacto y el fixture, o si los atlas fallan): dos planos cruzados (4 triángulos
+  //      por olivo) con la silueta de cada variante E2 horneada AQUÍ, en el navegador, a una textura de 2 vistas × nº de variantes × 128 px, en
+  //      albedo plano (luz ambiente de intensidad π: el color sin sombrear), iluminada en vivo como la tierra (normal hacia arriba). Desde arriba
+  //      y en diagonal se ven los dos planos: es lo que el ADR descarta como solución final; aquí es solo el respaldo.
+  // Mientras no hay ninguna de las dos (al empezar: hasta que están las variantes E2), de lejos solo se ve la ortofoto (la excepción del ADR §3) y
+  // 07ab retiene en 3D lo que sale; cuando están, la capa entra con un tramado de 1 s (uCapa). Sin WebGL para hornear, o si falla: «sin» y solo
+  // ortofoto lejos (se dice en ?debug).
   // Fundido: el lejano de un olivo que ENTRA en 3D sale con el tramado complementario del de su 3D (mismo ruido, mismo uFun: código 2) y el de uno
   // que SALE del 3D entra (código 1); así no hay huecos ni dobles durante los 0,6 s.
-  //
-  // ENCHUFE de los impostores (lo que este módulo espera de O8b; [SUPUESTO] hasta su contrato):
-  //   M.creaImpostores({ THREE, renderer, variantes: [receta E2 por variante], uFun, uCapa, parcheLuz, parcheFundido }) → Promise<{
-  //     geometria: BufferGeometry del olivo en el marco de la variante (pivote en la base del pie, como la receta),
-  //     material: el suyo, que respeta los atributos por instancia aFun (código de fundido 0/1/2) y aVar (variante) y los uniformes uFun y uCapa,
-  //     triPorOlivo: triángulos por instancia, texturaMiB: lo que ocupan sus atlas }>
-  //   La matriz por instancia es la de 07ab (matrizDe de la variante); el giro a la cámara es cosa de su sombreador. Si la promesa falla, sustituto.
   var Lejanos = (function () {
     var activo = Generados.escalera(), via = activo ? "esperando" : "apagado", motivo = "", U2 = 1600, CEL = 128, CAPA_S = 1;
     var olivos = null, malla = null, matrices = null, posDe = {}, exagM = -1, nv = 0, triPor = 0, texMiB = 0, rt = null, uCapa = { value: 0 }, tCapa = 0, avisoImp = false;
@@ -44,15 +41,75 @@
       return false;
     }
     function monta(rs) {
-      var M = Generados.lejanos.constructor();
-      if (M && typeof M.creaImpostores === "function") {
-        via = "cargando impostores";
-        Promise.resolve().then(function () { return M.creaImpostores({ THREE: THREE, renderer: renderer, variantes: rs, uFun: Generados.lejanos.uFun, uCapa: uCapa, parcheLuz: Generados.lejanos.parcheLuz, parcheFundido: Generados.lejanos.parcheFundido }); })
-          .then(function (f) { ponMalla(f.geometria, f.material, rs, null); triPor = f.triPorOlivo; texMiB = f.texturaMiB || 0; via = "impostor"; tCapa = 0; uCapa.value = 0; },
-            function (e) { avisoImp = "impostores: " + String(e && e.message || e).slice(0, 60); sustituto(rs); });
-        return;
-      }
+      var f = Generados.lejanos.impostor();
+      if (f && !f.motivo) { via = "cargando impostores"; impostores(f, rs).catch(function (e) { avisoImp = "impostores: " + String(e && e.message || e).slice(0, 80); sustituto(rs); }); return; }
+      if (f && f.motivo) avisoImp = "impostores ignorados: " + f.motivo;
       sustituto(rs);
+    }
+    // ---- los impostores de O8b: los dos atlas, comprobados, y su material
+    function atlas(a, srgb) {
+      var M = Generados.lejanos.constructor();
+      return fetch(Generados.lejanos.dir() + a.huella + ".webp", { credentials: "same-origin" })
+        .then(function (r) { if (!r.ok) throw new Error("http " + r.status); return r.arrayBuffer(); })
+        .then(function (ab) {
+          var b = new Uint8Array(ab); if (b.length !== a.bytes) throw new Error("tamaño " + b.length + " ≠ " + a.bytes);
+          return M.huellaBytes(b).then(function (h) {
+            if (h !== a.huella) throw new Error("huella distinta");
+            // fila 0 del fichero arriba y v hacia arriba (contrato §2): el mapa de bits se voltea al decodificarlo (three no voltea un ImageBitmap)
+            return createImageBitmap(new Blob([b], { type: "image/webp" }), { imageOrientation: "flipY", premultiplyAlpha: "none", colorSpaceConversion: "none" });
+          });
+        })
+        .then(function (bm) {
+          if (bm.width !== a.lado || bm.height !== a.lado) throw new Error("lado " + bm.width + " ≠ " + a.lado);
+          var t = new THREE.Texture(bm); t.flipY = false; t.premultiplyAlpha = false; t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter;
+          t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace; t.needsUpdate = true;
+          if (renderer.initTexture) renderer.initTexture(t);   // subida a la GPU ahora, no en el primer fotograma que la use
+          return t;
+        });
+    }
+    function impostores(f, rs) {
+      return Promise.all([atlas(f.color, true), atlas(f.normales, false)]).then(function (tx) {
+        if (!activo || via !== "cargando impostores") { tx.forEach(function (t) { t.dispose(); }); return; }
+        ponMalla(geoCuadro(), matImpostor(tx[0], tx[1], f), rs, null); malla.userData.sinEscala = true;
+        triPor = 2; texMiB = (f.color.lado * f.color.lado + f.normales.lado * f.normales.lado) * 4 * 4 / 3 / 1048576; via = "impostor"; tCapa = 0; uCapa.value = 0;
+      });
+    }
+    function geoCuadro() {
+      var g = new THREE.BufferGeometry();
+      g.setAttribute("position", new THREE.Float32BufferAttribute([-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0], 3));
+      g.setAttribute("normal", new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1], 3));
+      g.setAttribute("uv", new THREE.Float32BufferAttribute([0, 0, 1, 0, 1, 1, 0, 1], 2)); g.setIndex([0, 1, 2, 0, 2, 3]);
+      return g;
+    }
+    // GLSL de la disposición del formato 1, la misma que apps/web/olivo/impostor.js (octaDeDireccion, direccionDeVista, baseDeVista, celdaUV);
+    // pruebas/olivo/escalera_motor.mjs comprueba que estas fórmulas dan lo mismo que las de JS
+    var GLSL_IMP = [
+      "vec2 ot_oct(vec3 d) { float y = max(0.0, d.y); float s = abs(d.x) + y + abs(d.z); s = s > 0.0 ? s : 1.0; return vec2(d.x / s + d.z / s, d.x / s - d.z / s); }",
+      "vec3 ot_dirV(vec2 ij) { float a = -1.0 + 2.0 * ij.x / 7.0, b = -1.0 + 2.0 * ij.y / 7.0; float x = (a + b) * 0.5, z = (a - b) * 0.5; return normalize(vec3(x, max(0.0, 1.0 - abs(x) - abs(z)), z)); }",
+      "void ot_base(vec3 d, out vec3 r, out vec3 u) { r = cross(vec3(0.0, 1.0, 0.0), d); r = length(r) < 1e-6 ? vec3(1.0, 0.0, 0.0) : normalize(r); u = cross(d, r); }"].join("\n");
+    // el trozo del sombreador de vértices: el cuadrado girado a la cámara en el marco del árbol y la celda de la vista más cercana
+    var GLSL_IMP_V = " int ot_k = int(aVar + 0.5); vec3 ot_C = uCentro[ot_k]; float ot_S = uSemi[ot_k]; mat4 ot_IM = modelMatrix * instanceMatrix;\n" +
+      " vec3 ot_d = normalize((inverse(ot_IM) * vec4(cameraPosition, 1.0)).xyz - ot_C);\n" +
+      " vec2 ot_ij = floor(clamp((ot_oct(ot_d) + 1.0) * 3.5, 0.0, 7.0) + 0.5); vec3 ot_r, ot_u, ot_rv, ot_uv; ot_base(ot_d, ot_r, ot_u); ot_base(ot_dirV(ot_ij), ot_rv, ot_uv);\n" +
+      " vec3 ot_off = position.x * ot_r + position.y * ot_u; transformed = ot_C + ot_off * ot_S;\n" +
+      " vOtQ = vec2(dot(ot_off, ot_rv), dot(ot_off, ot_uv));\n" +
+      " vOtUV = (vec2(mod(float(ot_k), 2.0) * 8.0 + ot_ij.x, floor(float(ot_k) / 2.0) * 8.0 + ot_ij.y) + vOtQ * 0.5 + 0.5) / 16.0;\n" +
+      " mat3 ot_nm = transpose(inverse(mat3(ot_IM))); vOtN0 = ot_nm[0]; vOtN1 = ot_nm[1]; vOtN2 = ot_nm[2];";
+    function matImpostor(tCol, tNor, f) {
+      var C = [], S = [];
+      for (var k = 0; k < 4; k++) { var v = f.variantes[Math.min(k, f.variantes.length - 1)]; C.push(new THREE.Vector3().fromArray(v.centro)); S.push(v.semilado); }
+      var m = new THREE.MeshLambertMaterial({ map: tCol, alphaTest: 0.5 }), U = { uCentro: { value: C }, uSemi: { value: S }, tNorm: { value: tNor } };
+      m.onBeforeCompile = function (sh) {
+        sh.uniforms.uCentro = U.uCentro; sh.uniforms.uSemi = U.uSemi; sh.uniforms.tNorm = U.tNorm; sh.uniforms.uCapa = uCapa;
+        Generados.lejanos.parcheLuz(sh); Generados.lejanos.parcheFundido(sh);
+        // después de los parches: así el cuadrado ya está colocado cuando la sombra de nubes lee «transformed»
+        sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nattribute float aVar; uniform vec3 uCentro[4]; uniform float uSemi[4]; varying vec2 vOtQ; varying vec2 vOtUV; varying vec3 vOtN0, vOtN1, vOtN2;\n" + GLSL_IMP)
+          .replace("#include <begin_vertex>", "#include <begin_vertex>\n" + GLSL_IMP_V + "\n#ifdef USE_MAP\n vMapUv = vOtUV;\n#endif\n");   // uv_vertex va antes que begin_vertex: el mapa se reescribe aquí
+        sh.fragmentShader = sh.fragmentShader.replace("void main() {", "uniform float uCapa; uniform sampler2D tNorm; varying vec2 vOtQ; varying vec2 vOtUV; varying vec3 vOtN0, vOtN1, vOtN2;\nvoid main() {\n if (abs(vOtQ.x) > 1.0 || abs(vOtQ.y) > 1.0 || ot_ign(gl_FragCoord.xy + vec2(17.0, 31.0)) >= uCapa) discard;")
+          .replace("#include <normal_fragment_maps>", "#include <normal_fragment_maps>\n normal = normalize((viewMatrix * vec4(normalize(mat3(vOtN0, vOtN1, vOtN2) * (texture2D(tNorm, vOtUV).xyz * 2.0 - 1.0)), 0.0)).xyz);");
+      };
+      m.customProgramCacheKey = function () { return "lejanos-impostor-1"; };
+      return m;
     }
     // ---- el sustituto: la silueta de cada variante, horneada a una textura (2 vistas por variante) y dos planos cruzados por olivo
     function sustituto(rs) {
@@ -128,6 +185,7 @@
       matrices = new Float32Array(olivos.length * 16);
       olivos.forEach(function (c, k) {
         var j = c.i % nv; m.copy(Generados.lejanos.matriz(c, rs[j]));
+        if (malla.userData.sinEscala) m.multiply(mc.makeScale(1 / rs[j].escala[0], 1 / rs[j].escala[1], 1 / rs[j].escala[2]));   // el marco del impostor ya lleva receta.escala (contrato §1)
         if (cj) { var b = cj[j]; b.getSize(s); mc.makeScale(Math.max(s.x, 1e-3), Math.max(s.y, 1e-3), Math.max(s.z, 1e-3)).setPosition((b.min.x + b.max.x) / 2, b.min.y, (b.min.z + b.max.z) / 2); m.multiply(mc); }
         m.toArray(matrices, k * 16);
       });

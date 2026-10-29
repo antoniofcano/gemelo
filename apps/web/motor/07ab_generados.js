@@ -343,12 +343,17 @@
         costo: function (cl, niv) { return recetas[cl] ? costo(recetas[cl]) : estim(niv); },
         clavePropia: function (c, niv) { return "p" + c.i + ":" + niv; }, claveVar: function (c) { return "v" + (c.i % nv) + ":" + nivV; } });
       plan = r.plan; reparto = { propios: r.propios, variantes: r.variantes, usado: Math.round(r.usado), pres: Math.round(tope) };
+      // lo que falta se pide por prioridad (como mucho 2 a la vez): los propios por su distancia; las variantes E2 de los lejanos (07ac), siempre
+      // aunque no haya nada en 3D, justo después de los propios de menos de 50 m (sin ellas, de lejos no hay olivos: en SwiftShader, sin trabajador
+      // y detrás de los propios, no llegaron en 12 min en el banco de O8c); las variantes del plan, detrás
+      var pedir = [];
       plan.forEach(function (p) {
         if (recetas[p.clave]) return;
-        if (p.propio) { var e2 = entrada(p.c); p.provisional = e2.provisional; pide(p.clave, e2, p.niv, p.d); }
-        else pideVariante(Number(p.clave.slice(1, p.clave.indexOf(":"))), p.niv, p.d + 200);
+        if (p.propio) pedir.push({ prio: p.d, f: function () { var e2 = entrada(p.c); p.provisional = e2.provisional; pide(p.clave, e2, p.niv, p.d); } });
+        else pedir.push({ prio: p.d + 200, f: function () { pideVariante(Number(p.clave.slice(1, p.clave.indexOf(":"))), p.niv, p.d + 200); } });
       });
-      for (var j = 0; j < nv; j++) pideVariante(j, "E2", 400 + j);   // las variantes E2 siempre: de ellas salen los lejanos (07ac), aunque no haya nada en 3D
+      for (var j = 0; j < nv; j++) (function (j) { if (!recetas["v" + j + ":E2"]) pedir.push({ prio: 50 + j, f: function () { pideVariante(j, "E2", 50 + j); } }); })(j);
+      pedir.sort(function (a, b) { return a.prio - b.prio; }).forEach(function (x) { x.f(); });
       // lo que ya se puede dibujar: el escalón pedido si su receta está; si no, el otro nivel propio de ese olivo; si no, el que tenía en el lote
       var antes = {}, enPlan = {}, listosAhora = [];
       selLote.forEach(function (p) { antes[p.c.i] = p; });
@@ -558,7 +563,22 @@
     // hornear su silueta, y los parches de luz y de fundido (el mismo uFun: el tramado de los lejanos es el complementario del de los 3D)
     var paraLejanos = { uFun: uFun, nVariantes: nVar, variante: function (j) { return recetas["v" + j + ":E2"] || null; },
       matriz: function (c, r) { return matrizDe(c, r, true); }, monta: function (r) { return M.montaOlivo(THREE, r, mats); }, libera: function (g) { M.liberaOlivo(g); },
-      parcheLuz: parcheLuz, parcheFundido: parcheFundido, constructor: function () { return M; } };
+      parcheLuz: parcheLuz, parcheFundido: parcheFundido, constructor: function () { return M; }, dir: function () { return DIR; },
+      impostor: filaImpostor };
+    /** la fila de impostores (contratos/olivo-impostor.md, formato 1) de la época que se dibuja, solo si casa con las variantes que dibuja el motor:
+     *  mismas variantes en el mismo orden (tipo, semilla) y cada `fuente` es la huella de su E2 en el manifiesto; si no, {motivo} */
+    function filaImpostor() {
+      if (!manif || !Array.isArray(manif.impostores) || !varSem || !M || !M.IMPOSTOR) return null;
+      var ep = epoca(), f = manif.impostores.filter(function (x) { return x && x.epoca === ep; })[0];
+      if (!f) return null;
+      var no = M.validaFilaImpostor(f);
+      if (!no.length && f.variantes.length !== varSem.length) no.push(f.variantes.length + " variantes en el impostor y " + varSem.length + " en el motor");
+      if (!no.length) f.variantes.forEach(function (v, k) {
+        var e2 = filaDe({ tipo: varSem[k].tipo, semilla: varSem[k].semilla, epoca: ep }, "E2");
+        if (v.tipo !== varSem[k].tipo || v.semilla !== varSem[k].semilla || !e2 || e2.huella !== v.fuente) no.push("la variante " + k + " del impostor no es la E2 del motor");
+      });
+      return no.length ? { motivo: no.join("; ").slice(0, 120) } : f;
+    }
     return { escalera: function () { return ESCALERA; }, lejanos: paraLejanos, activo: function () { return estado === "activo"; }, actualiza: actualiza, paso: paso, gastado: function () { return gastado; }, pendientes: pendientes, rotulo: rotulo, estado: function () { return estado; },
       _prueba: { fecha: function (f) { fechaPrueba = f; }, mats: function () { return mats; }, prof: function () { return prof; }, uFun: uFun, lote: function () { return lote; }, tiene: tiene, fase: fase, listos: function () { return listos; }, saliendo: function () { return saliendo; }, recetas: function () { return recetas; } } };
   })();
