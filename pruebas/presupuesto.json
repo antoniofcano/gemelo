@@ -9,5 +9,11 @@
   "fixture_olivos_gen": {
     "$comment": "Con ?olivos=gen (ADR-0017, decisión 52), escenario «cerca» del fixture de Hituelo montado con --olivos. Medido el 2026-10-29 (SwiftShader, máquina cargada): 47 llamadas / 546 k tri / 2,8 k pts / heap 44 MB, con un lote de 6 mallas para 2 olivos generados (E0 + E1: 135 k tri; 222 k contando la pasada de sombras). Topes con ≈25 % de margen; lo comprueba pruebas/guardianes/olivo.test.js.",
     "cerca": { "llamadas": 60, "triangulos": 680000, "puntos": 3600, "heapMB": 95, "llamadas_lote": 7 }
+  },
+  "fixture_escena_tiles": {
+    "$comment": "Con ?escena=tiles (ADR-0015, F1d), fixture de Hituelo con su tileset. Topes de REGRESIÓN fijados el 2026-10-29 con ≈25 % de margen sobre el máximo de las tres medidas de la primera ronda del banco (T1, T5, T4; SwiftShader, recuentos, NO fps; ver doc/sistema/MEDIDAS.md): lejos 167 llamadas / 16 k tri; cerca 56 / 168 k; nube 125 / 10 k; heap 26-27 MB (tope más holgado por lo variable que es). Los PUNTOS no se midieron con la bandera (la nube de puntos sigue en el motor, decisión 37): se comprueban contra los topes de «fixture». Con &olivos=gen dio lo mismo. Sin la bandera no cambia nada de «fixture». Lo comprueba pruebas/guardianes/escena3d.test.js.",
+    "lejos": { "llamadas": 210, "triangulos": 20000, "heapMB": 45 },
+    "cerca": { "llamadas": 70, "triangulos": 210000, "heapMB": 45 },
+    "nube": { "llamadas": 157, "triangulos": 13000, "heapMB": 45 }
   }
 }

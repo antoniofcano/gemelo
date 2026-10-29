@@ -14,6 +14,7 @@ const WEB = path.join(RAIZ, "apps", "web"), MOTOR = path.join(WEB, "motor"), T3D
 const lee = f => fs.readFileSync(f, "utf8"), json = f => JSON.parse(lee(f));
 const V = json(path.join(WEB, "package.json")).dependencies["3d-tiles-renderer"];
 const MIDE = !!process.env.GEMELO_MIDE;
+const PRES = json(path.join(RAIZ, "pruebas", "presupuesto.json"));
 const DEPS_T3D = ["@gltf-transform/core", "meshoptimizer", "sharp", "three", "proj4"].filter(d => !fs.existsSync(path.join(T3D, "node_modules", d, "package.json")));
 const SALTO = motivoSalto("la escena 3D Tiles en el motor") || (DEPS_T3D.length ? "faltan dependencias de tuberia/tiles3d (" + DEPS_T3D.join(", ") + "): la escena 3D Tiles en el motor NO se ha comprobado" : null);
 // los avisos que da cualquier tileset 1.1 con 3DTilesRendererJS 0.5.3 y los del driver de SwiftShader (como tiles3d.test.js)
@@ -279,7 +280,7 @@ test("con ?escena=tiles: carga el tileset sin errores ni CSP, desde lejos baja d
   const { p, errores, avisos } = await abre("&escena=tiles");
   try {
     const med = {};
-    for (const n of ["lejos", "cerca"]) med[n] = await escena(p, n);
+    for (const n of ["lejos", "cerca", "nube"]) med[n] = await escena(p, n);
     if (MIDE) t.diagnostic("con bandera: " + JSON.stringify(med));
     assert.deepStrictEqual(errores, [], "errores de consola, de página o de CSP");
     assert.deepStrictEqual(avisos, [], "avisos no conocidos");
@@ -287,6 +288,13 @@ test("con ?escena=tiles: carga el tileset sin errores ni CSP, desde lejos baja d
       assert.strictEqual(m.escena3d.estado, "activo", n + ": " + m.escena3d.motivo);
       assert.ok(m.escena3d.visibles > 0, n + ": ninguna tesela visible (¿se queda en la raíz sin contenido?)");
       assert.strictEqual(m.mallasTerreno, 0, n + ": el Terreno de siempre ha construido mallas");
+    }
+    // presupuesto de dibujo con la bandera (pruebas/presupuesto.json, «fixture_escena_tiles»); los puntos, contra los de siempre (la nube sigue en el motor)
+    for (const [n, m] of Object.entries(med)) {
+      const tope = PRES.fixture_escena_tiles[n], pts = PRES.fixture[n].puntos;
+      for (const k of ["llamadas", "triangulos"]) assert.ok(m[k] <= tope[k], "?escena=tiles " + n + ": " + k + " " + m[k] + " > tope " + tope[k] + " (si sube a propósito, explícalo y sube pruebas/presupuesto.json)");
+      assert.ok(m.puntos <= pts, "?escena=tiles " + n + ": puntos " + m.puntos + " > tope " + pts);
+      if (m.heapMB >= 0) assert.ok(m.heapMB <= tope.heapMB, "?escena=tiles " + n + ": heap " + m.heapMB + " MB > tope " + tope.heapMB);
     }
     assert.ok(peticiones.some(u => u.endsWith("/tileset/tileset.json")) && peticiones.some(u => u.endsWith(".glb")), "no se pidió el tileset");
     assert.ok(peticiones.some(u => /\/t\/[^/]+\.json$/.test(u)), "el json de las teselas se sigue pidiendo (decisión 38)");
