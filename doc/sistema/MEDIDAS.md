@@ -155,6 +155,10 @@ Llamadas / triángulos / heap por escenario (`lejos` · `cerca` · `nube`), cada
 - De lejos, en Hituelo real, el tileset dibuja la finca entera con ortofoto y olivos mientras la escena de siempre aún tiene teselas en cola (capturas de la ronda).
 - La escena de siempre no llega a vaciar su cola en el tiempo de espera con Hituelo real: las cifras de `base` son de una carga a medias.
 
+### Topes de regresión con `?escena=tiles` y VR simulada (T6, 2026-10-29)
+- **Topes** (`pruebas/presupuesto.json`, `fixture_escena_tiles`; los comprueba `escena3d.test.js`): fijados con ≈ 25 % de margen sobre el máximo de las tres medidas de la ronda con el fixture (T1, T5, T4) y sin medida nueva: lejos ≤ 210 llamadas / 20 k tri; cerca ≤ 70 / 210 k; nube ≤ 157 / 13 k; heap ≤ 45 MB (medido 26-27 MB; más holgado por lo variable). Los **puntos** no se midieron con la bandera: se comprueban contra los de siempre (la nube sigue en el motor). Con `&olivos=gen` la ronda dio lo mismo. Sin la bandera los topes de `fixture` no cambian. La prueba de navegador mide además `nube` (antes solo lejos y cerca) y pide el turno sola; **aún no ejecutada con estos topes**: su primera corrida en turno puede obligar a ajustarlos (si algo cuesta más de lo medido en la ronda, se corrige aquí y no se oculta).
+- **VR simulada con `?escena=tiles`**: escrita (mismo fichero, opcional con `GEMELO_VR=1`), **sin ejecutar todavía**: la VR completa con SwiftShader es inestable y la corrida va por el turno. Cifras: ninguna.
+
 ## Límites conocidos
 - Las ortofotos decodificadas (2,4 MB por tesela de 768 px; 1 MB a 512 px) se sueltan solo a 900 m; sin LRU fino.
 - Dentro de una tesela todo el relieve y la copa (258² + 256²) están siempre en memoria: 49 teselas ≈ 20 MB; la nube de las lejanas se libera a > 1,2× 2.300 m.

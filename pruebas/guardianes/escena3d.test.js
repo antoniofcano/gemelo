@@ -14,6 +14,7 @@ const WEB = path.join(RAIZ, "apps", "web"), MOTOR = path.join(WEB, "motor"), T3D
 const lee = f => fs.readFileSync(f, "utf8"), json = f => JSON.parse(lee(f));
 const V = json(path.join(WEB, "package.json")).dependencies["3d-tiles-renderer"];
 const MIDE = !!process.env.GEMELO_MIDE;
+const PRES = json(path.join(RAIZ, "pruebas", "presupuesto.json"));
 const DEPS_T3D = ["@gltf-transform/core", "meshoptimizer", "sharp", "three", "proj4"].filter(d => !fs.existsSync(path.join(T3D, "node_modules", d, "package.json")));
 const SALTO = motivoSalto("la escena 3D Tiles en el motor") || (DEPS_T3D.length ? "faltan dependencias de tuberia/tiles3d (" + DEPS_T3D.join(", ") + "): la escena 3D Tiles en el motor NO se ha comprobado" : null);
 // los avisos que da cualquier tileset 1.1 con 3DTilesRendererJS 0.5.3 y los del driver de SwiftShader (como tiles3d.test.js)
@@ -240,8 +241,9 @@ async function preparaYa() {
 }
 test.after(async () => { if (nav) await nav.close(); if (srv) srv.close(); });
 
-async function abre(q) {
+async function abre(q, mockXR) {
   const p = await nav.newPage({ viewport: { width: 900, height: 650 } }), errores = [], avisos = [];
+  if (mockXR) await p.addInitScript({ content: lee(path.join(RAIZ, "pruebas", "mock_xr.js")) });
   p.on("pageerror", e => errores.push("PAGEERROR " + String(e.stack || e).slice(0, 300)));
   p.on("console", x => { const s = x.text(); if (/Content Security Policy|Refused to/i.test(s)) errores.push("CSP " + s.slice(0, 300)); else if (x.type() === "error") errores.push("CONSOLE " + s.slice(0, 300)); else if (x.type() === "warning" && !CONOCIDOS.some(re => re.test(s))) avisos.push(s.slice(0, 300)); });
   p.on("response", r => { if (r.status() >= 400) errores.push(r.status() + " " + r.url()); });
@@ -279,7 +281,7 @@ test("con ?escena=tiles: carga el tileset sin errores ni CSP, desde lejos baja d
   const { p, errores, avisos } = await abre("&escena=tiles");
   try {
     const med = {};
-    for (const n of ["lejos", "cerca"]) med[n] = await escena(p, n);
+    for (const n of ["lejos", "cerca", "nube"]) med[n] = await escena(p, n);
     if (MIDE) t.diagnostic("con bandera: " + JSON.stringify(med));
     assert.deepStrictEqual(errores, [], "errores de consola, de página o de CSP");
     assert.deepStrictEqual(avisos, [], "avisos no conocidos");
@@ -287,6 +289,13 @@ test("con ?escena=tiles: carga el tileset sin errores ni CSP, desde lejos baja d
       assert.strictEqual(m.escena3d.estado, "activo", n + ": " + m.escena3d.motivo);
       assert.ok(m.escena3d.visibles > 0, n + ": ninguna tesela visible (¿se queda en la raíz sin contenido?)");
       assert.strictEqual(m.mallasTerreno, 0, n + ": el Terreno de siempre ha construido mallas");
+    }
+    // presupuesto de dibujo con la bandera (pruebas/presupuesto.json, «fixture_escena_tiles»); los puntos, contra los de siempre (la nube sigue en el motor)
+    for (const [n, m] of Object.entries(med)) {
+      const tope = PRES.fixture_escena_tiles[n], pts = PRES.fixture[n].puntos;
+      for (const k of ["llamadas", "triangulos"]) assert.ok(m[k] <= tope[k], "?escena=tiles " + n + ": " + k + " " + m[k] + " > tope " + tope[k] + " (si sube a propósito, explícalo y sube pruebas/presupuesto.json)");
+      assert.ok(m.puntos <= pts, "?escena=tiles " + n + ": puntos " + m.puntos + " > tope " + pts);
+      if (m.heapMB >= 0) assert.ok(m.heapMB <= tope.heapMB, "?escena=tiles " + n + ": heap " + m.heapMB + " MB > tope " + tope.heapMB);
     }
     assert.ok(peticiones.some(u => u.endsWith("/tileset/tileset.json")) && peticiones.some(u => u.endsWith(".glb")), "no se pidió el tileset");
     assert.ok(peticiones.some(u => /\/t\/[^/]+\.json$/.test(u)), "el json de las teselas se sigue pidiendo (decisión 38)");
@@ -323,5 +332,44 @@ test("con ?escena=tiles y un tileset de otro host: se rechaza sin pedirlo y vuel
     assert.deepStrictEqual(errores, []);
     assert.strictEqual(m.escena3d.estado, "sin"); assert.match(m.escena3d.motivo, /mismo origen/);
     assert.ok(m.mallasTerreno > 0, "no volvió el Terreno de siempre");
+  } finally { await p.close(); }
+});
+
+// VR con el WebXR simulado (pruebas/mock_xr.js) y ?escena=tiles (F1d paso 7). Comprueba la LÓGICA (cada perfil de 29_vr.js aplica su errorTarget a la escena 3D Tiles,
+// el relieve fino se apaga con el perfil bajo, se anda y se sale restaurando); no dice nada de fps ni de comodidad en un casco. OPCIONAL (GEMELO_VR=1): con
+// SwiftShader la VR completa es inestable ("Target crashed", ver vr.test.js), por eso no bloquea la puerta; pide el turno del banco como cualquier prueba de navegador.
+test("VR simulada con ?escena=tiles: entra, anda, cada perfil aplica su errorTarget y apaga el relieve fino, y sale restaurando", { timeout: 300000 }, async t => {
+  if (SALTO) return t.skip(SALTO);
+  if (!process.env.GEMELO_VR) return t.skip("opcional: define GEMELO_VR=1 para la VR simulada con ?escena=tiles (inestable con SwiftShader)");
+  await prepara();
+  const perfiles = [...lee(path.join(MOTOR, "29_vr.js")).match(/var VR_PERFILES = \[(.*?)\];/)[1].matchAll(/[ {,]e: (\d+)/g)].map(x => +x[1]);
+  assert.ok(perfiles.length >= 2, "no se leyeron los errorTarget de VR_PERFILES");
+  const { p, errores } = await abre("&escena=tiles", true);
+  const dbg = () => p.evaluate(() => window.__vrDebug()), et = () => p.evaluate(() => window.__g.Escena3D.resumen().errorTarget);
+  const fot = async n => { const f0 = await p.evaluate(() => window.__mockXR.fotogramas); await p.waitForFunction(f => window.__mockXR.fotogramas >= f, f0 + n, { timeout: 60000, polling: 100 }); };
+  try {
+    const fuera = await et();
+    assert.strictEqual(await p.evaluate(() => window.__g.Escena3D.resumen().estado), "activo");
+    await p.waitForSelector("#btnVR", { timeout: 30000 }); await p.click("#btnVR");
+    await p.waitForFunction(() => window.__vrDebug && window.__vrDebug().on, null, { timeout: 60000, polling: 200 });
+    let d = await dbg();
+    assert.strictEqual(d.nivel, 0); assert.strictEqual(d.perfiles, perfiles.length); assert.strictEqual(d.bump, 1, "perfil 0: relieve fino encendido");
+    assert.strictEqual(await et(), perfiles[0], "perfil 0: errorTarget");
+    await p.evaluate(() => window.__mockXR.ejes("left", 0, -1)); await fot(10); await p.evaluate(() => window.__mockXR.ejes("left", 0, 0)); await fot(2);
+    const d1 = await dbg(); assert.ok(Math.hypot(d1.cabeza[0] - d.cabeza[0], d1.cabeza[2] - d.cabeza[2]) > 0.3, "no se movió al andar");
+    for (let n = 1; n < perfiles.length; n++) {
+      await p.evaluate(k => window.__vrPerfil(k), n); await fot(2);
+      d = await dbg(); assert.strictEqual(d.nivel, n);
+      assert.strictEqual(await et(), perfiles[n], "perfil " + n + ": errorTarget");
+      assert.strictEqual(d.bump, 0, "perfil " + n + ": el relieve fino debe estar apagado");
+    }
+    await p.evaluate(() => window.__vrPerfil(0)); await fot(2);
+    assert.strictEqual(await et(), perfiles[0], "al volver al perfil 0"); assert.strictEqual((await dbg()).bump, 1);
+    await p.evaluate(k => window.__vrPerfil(k), perfiles.length - 1); await fot(2);
+    await p.waitForFunction(() => window.__g.Escena3D.resumen().visibles > 0, null, { timeout: 60000, polling: 500 });
+    await p.evaluate(() => window.__mockXR.sesion.end()); await p.waitForFunction(() => !window.__vrDebug().on, null, { timeout: 30000, polling: 200 });
+    d = await dbg(); assert.strictEqual(d.bump, 1, "al salir, relieve fino restaurado");
+    assert.strictEqual(await et(), fuera, "al salir, el errorTarget de escritorio");
+    assert.deepStrictEqual(errores, [], "errores de consola, de página o de CSP");
   } finally { await p.close(); }
 });
