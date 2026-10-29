@@ -69,20 +69,27 @@
 		}
 		@inmutable path /finca/assets/*
 		header @inmutable Cache-Control "public, max-age=31536000, immutable"
-		# las recetas horneadas (O7d, contratos/olivo-horneado.md; en /srv/teselas/<finca>/olivos/): el objeto lleva su huella en el
-		# nombre y ya viene en brotli → inmutable; el manifiesto de la finca y los de tesela (t/…) cambian al rehornear → se
-		# revalidan. Los matchers son excluyentes: el resultado no depende del orden de los `header`.
-		@olivos_objeto path_regexp ^/teselas/[^/]+/olivos/[0-9a-f]+\.br$
+		# las recetas horneadas (O7d, contratos/olivo-horneado.md; en /srv/teselas/<finca>/olivos/): el objeto lleva su huella (32 hex)
+		# en el nombre y ya viene en brotli → inmutable; el manifiesto de la finca cambia al rehornear → se revalida. SOLO se sirven
+		# esos dos: lo demás de la carpeta (estado.json, manifiesto.anterior.json… del hornero) da 404. Los matchers son excluyentes:
+		# el resultado no depende del orden de los `header`.
+		@olivos_objeto path_regexp ^/teselas/[^/]+/olivos/[0-9a-f]{32}\.br$
 		header @olivos_objeto {
 			Content-Type "application/octet-stream"
 			Content-Encoding "br"
 			Cache-Control "private, max-age=31536000, immutable"
 		}
-		@olivos_manifiestos path_regexp ^/teselas/[^/]+/olivos/(manifiesto\.json|t/.+)$
-		header @olivos_manifiestos Cache-Control "private, no-cache"
+		@olivos_manifiesto path_regexp ^/teselas/[^/]+/olivos/manifiesto\.json$
+		header @olivos_manifiesto Cache-Control "private, no-cache"
+		@olivos_otros {
+			path_regexp ^/teselas/[^/]+/olivos(/|$)
+			not path_regexp ^/teselas/[^/]+/olivos/(manifiesto\.json|[0-9a-f]{32}\.br)$
+		}
+		header @olivos_otros Cache-Control "no-store"
+		respond @olivos_otros "404 Not Found" 404
 		@teselas {
 			path /teselas/*
-			not path_regexp ^/teselas/[^/]+/olivos/(manifiesto\.json|t/.+|[0-9a-f]+\.br)$
+			not path_regexp ^/teselas/[^/]+/olivos(/|$)
 		}
 		header @teselas Cache-Control "private, max-age=3600"
 		@html path /finca /finca/ /finca/*.html

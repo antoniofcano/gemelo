@@ -108,7 +108,7 @@ Para la prueba de Antonio (decisión 57: navegador, móvil y Quest, cada uno por
 |---|---|
 | `GEMELO_DEV_FINCA_CARPETA` | la carpeta de **una** finca con `indice.json` y `t/` directamente dentro (la salida de referencia `hituelo-v3`); se monta de solo lectura y se sirve en `/teselas/<GEMELO_DEV_FINCA>/` |
 | `GEMELO_DEV_TILESET` | la carpeta del tileset (con `tileset.json` directamente dentro); se sirve en `/teselas/<GEMELO_DEV_FINCA>/tileset/` |
-| `GEMELO_DEV_OLIVOS` | la carpeta `olivos/` que escribe el hornero (`<salida>/<finca>/olivos/`, con `manifiesto.json`, `t/` y los `<huella>.br` directamente dentro); se sirve en `/teselas/<GEMELO_DEV_FINCA>/olivos/` (objetos `.br` con `Content-Encoding: br` e `immutable`; manifiestos con `no-cache`). Sin ella, esa ruta da 404 |
+| `GEMELO_DEV_OLIVOS` | la carpeta `olivos/` que escribe el hornero (`<salida>/<finca>/olivos/`, con `manifiesto.json`, `t/` y los `<huella>.br` directamente dentro); se sirve en `/teselas/<GEMELO_DEV_FINCA>/olivos/` (objetos `<huella de 32 hex>.br` con `Content-Encoding: br` e `immutable`; `manifiesto.json` con `no-cache`; el resto de la carpeta, p. ej. `estado.json`, 404). Sin ella, esa ruta da 404 |
 | `GEMELO_DEV_PUERTO_LIVEKIT_TCP` / `_UDP` | 7881 / 7882; solo para levantar un **segundo** entorno a la vez (con otro `COMPOSE_PROJECT_NAME` y los demás `GEMELO_DEV_PUERTO_*`): el audio de ese segundo no vale |
 | `GEMELO_DEV_FINCA` | `hituelo` (el valor por defecto) |
 | `GEMELO_DEV_IP` | solo si la IP detectada no es la de la WiFi (con `--red-local`) |
