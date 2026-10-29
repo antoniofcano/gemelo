@@ -4,7 +4,8 @@
     "Mundo": { "modulo": "02_mundo.js", "miembros": ["TS", "N", "N2", "NS", "NS2", "SRS", "cx", "cy", "lista", "tesela", "suelo", "copaAlta", "colorSuelo", "orto", "ortoGrueso", "pintaOrto", "arranca", "actualiza", "alCargar", "dist", "liberaOrtoPix", "cargaTesela", "aseguraOrto", "liberaOrtoLejos", "decodificaOrto", "mosaico"] },
     "Cola": { "modulo": "02b_cola.js", "miembros": ["est", "add", "cancela", "hay", "corre", "vacia", "pendientes"] },
     "Terreno": { "modulo": "04_terreno.js", "miembros": ["grupo", "monta", "montaTodas", "actualiza", "modoOrto", "tileCargada", "iniciaMosaico", "UN", "parche", "prepara", "pideDetalle", "U1"] },
-    "Escena3D": { "modulo": "04b_escena3d.js", "miembros": ["actualiza", "perfil", "resumen", "libera", "listo", "alturaEn", "grupo"] },
+    "Escena3D": { "modulo": "04b_escena3d.js", "miembros": ["actualiza", "perfil", "resumen", "libera", "listo", "alturaEn", "engancha", "grupo"] },
+    "OlivosTiles": { "modulo": "04c_olivos_tiles.js", "miembros": ["dibuja", "cerca", "triangulos", "resumen", "tipo", "tipos", "instanciasDe"] },
     "SombreadoTiles": { "modulo": "04d_sombreado_tiles.js", "miembros": ["modelo", "suelta", "actualiza", "libera", "resumen", "OP"] },
     "Catalogo": { "modulo": "07a_catalogo.js", "miembros": ["SIN", "PRES_TRI", "tipos", "tiene", "variantes", "geometria", "triangulos", "info", "instala", "retira", "alCambiar", "avisos"] },
     "Arboles": { "modulo": "07b_arboles.js", "miembros": ["perfil", "inicia", "tileCargada", "refresca", "actualiza", "presupuesto", "resumen", "celdas"] },
@@ -15,7 +16,7 @@
     "Hazas": { "modulo": "13b_hazas.js", "miembros": ["actualiza", "estado", "libera"] }
   },
   "ganchos_window": {
-    "__g": { "modulo": "27_debug.js", "miembros": ["Arboles", "Catalogo", "Escena3D", "Cola", "copas", "suelo", "Mundo", "Terreno", "orb", "objetivo", "camera", "renderer", "scene", "pon", "listo", "modo", "ponExag", "aplica"] },
+    "__g": { "modulo": "27_debug.js", "miembros": ["Arboles", "Catalogo", "Escena3D", "OlivosTiles", "Cola", "copas", "suelo", "Mundo", "Terreno", "orb", "objetivo", "camera", "renderer", "scene", "pon", "listo", "modo", "ponExag", "aplica"] },
     "__vrDebug": { "modulo": "29_vr.js", "tipo": "function" },
     "__vrOlivo": { "modulo": "29_vr.js", "tipo": "function" },
     "__vrBotones": { "modulo": "29_vr.js", "tipo": "function" },

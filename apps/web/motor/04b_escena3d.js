@@ -8,7 +8,7 @@
   // fijada en apps/web/package.json) desde un tileset.json de tuberia/tiles3d/, y 04_terreno.js no construye nada (ESC3D.activa).
   // La física y las consultas en CPU (alturas, copa y color de la tierra para el paseo, la VR, las balizas y las huellas) siguen con el json de
   // siempre (decisión 38: doble descarga aceptada); los puntos LiDAR (decisión 37) y las construcciones (decisión 36) no cambian. Los olivos
-  // del glb no se dibujan todavía (siguen los de 07b_arboles.js): se quitan al cargar cada modelo.
+  // del glb los gestiona 04c_olivos_tiles.js por los ganchos de engancha() (alRaiz, alModelo, alSoltar, alApagar, fotograma); sin él, o si los rechaza, se quitan.
   // Tileset: ?tileset=<ruta relativa> o, por defecto, <D.base>tileset/tileset.json; nunca otro host (§5 de CLAUDE.md: solo el mismo origen).
   // Marco: la raíz lleva LOCAL → ECEF; el grupo lo deshace y pasa de z arriba a y arriba, como la página de prueba de tuberia/tiles3d/, y
   // aplica la exageración vertical en la misma matriz. Si la librería o el tileset fallan, vuelve el relieve de 04_terreno.js (y se avisa una vez).
@@ -17,6 +17,7 @@
     var ERROR_ESCRITORIO = (function () { var m = /[?&]tilesError=([0-9.]+)/.exec(location.search), v = m ? Number(m[1]) : 16; return v > 0 && v <= 256 ? v : 16; })();
     var errorPerfil = null;   // el del perfil VR (29_vr.js, campo e de cada perfil); null = el de escritorio
     var tam = new THREE.Vector2();
+    var ganchos = {};   // los pone 04c_olivos_tiles.js con engancha(): alRaiz(tileset), alModelo(scene, tile) → true si se queda con sus olivos, alSoltar(scene), alApagar(motivo), fotograma()
     function url() {
       var m = /[?&]tileset=([^&#]+)/.exec(location.search), u = m ? decodeURIComponent(m[1]) : (D.base || "") + "tileset/tileset.json";
       if (/^[a-z][a-z0-9+.-]*:|^\/\//i.test(u)) throw new Error("tileset fuera del mismo origen: " + u);   // ni http(s):, ni data:, ni //host
@@ -27,7 +28,7 @@
       estado = "sin"; motivo = String(e && e.message || e); console.warn("escena 3D Tiles: " + motivo + " (vuelve el relieve de siempre)");
       if (tiles) { try { scene.remove(tiles.group); tiles.dispose(); } catch (e2) {} tiles = null; }
       SombreadoTiles.libera();
-      ESC3D.activa = false; Terreno.grupo.visible = true;
+      ESC3D.activa = false; Terreno.grupo.visible = true; if (ganchos.alApagar) ganchos.alApagar(motivo);
       if (listo) { Terreno.iniciaMosaico(); Terreno.montaTodas(); aplica(); }   // si ya arrancó; si no, lo montará el arranque (90_final.js)
     }
     function colocaGrupo() {   // tiles.group.matrix = escala vertical (exag) · Rx(−π/2) · transform⁻¹ de la raíz
@@ -55,10 +56,12 @@
           if (!r || !r.transform) { falla(new Error("la raíz del tileset no trae transform")); return; }
           if (G && G.finca_id && D.finca_id && G.finca_id !== D.finca_id) { falla(new Error("tileset de " + G.finca_id + " con datos de " + D.finca_id)); return; }
           raizT = new THREE.Matrix4().fromArray(r.transform); colocaGrupo(); estado = "activo";
+          if (ganchos.alRaiz) ganchos.alRaiz(e.tileset);
         });
-        tiles.addEventListener("load-model", function (e) { quitaOlivos(e.scene); e.scene.userData.tesela = { uri: e.tile.content && e.tile.content.uri }; });
+        tiles.addEventListener("load-model", function (e) { if (!(ganchos.alModelo && ganchos.alModelo(e.scene, e.tile))) quitaOlivos(e.scene); e.scene.userData.tesela = { uri: e.tile.content && e.tile.content.uri }; });
         tiles.addEventListener("load-model", function (e) { SombreadoTiles.modelo(e.scene, e.tile); });   // el relieve, con el sombreado del Terreno (04d)
         tiles.addEventListener("dispose-model", function (e) { SombreadoTiles.suelta(e.scene); });
+        tiles.addEventListener("dispose-model", function (e) { if (ganchos.alSoltar) ganchos.alSoltar(e.scene); });   // los olivos (04c)
         tiles.addEventListener("load-error", function (e) {
           errores++; console.error("escena 3D Tiles: tesela con fallo " + (e.url || "") + " " + (e.error && e.error.message || ""));
           if (!raizT) falla(new Error("no se pudo leer " + u));
@@ -87,6 +90,7 @@
       camera.updateMatrixWorld();
       tiles.update();
       SombreadoTiles.actualiza();
+      if (ganchos.fotograma) ganchos.fotograma();
     }
     function resumen() {
       var vis = 0; if (tiles) tiles.visibleTiles.forEach(function (t) { if (t.content && t.content.uri) vis++; });
@@ -98,7 +102,7 @@
     function alturaEn(x, y) {
       if (!tiles || !raizT) return null;
       rayo.set(new THREE.Vector3(x, 1e4, -y), abajo);
-      var r = rayo.intersectObject(tiles.group, true)[0];
+      var r = rayo.intersectObject(tiles.group, true).filter(function (x) { return !x.object.isInstancedMesh; })[0];   // el relieve, no los olivos
       return r ? r.point.y / exag : null;
     }
     function listo() {
@@ -106,7 +110,8 @@
       var s = tiles && tiles.stats;
       return estado === "activo" && tiles.loadProgress === 1 && s.queued + s.downloading + s.parsing === 0;
     }
-    function libera() { if (!tiles) return; SombreadoTiles.libera(); if (Sched) Sched.setXRSession(null); scene.remove(tiles.group); tiles.dispose(); tiles = null; estado = "apagado"; }
+    function libera() { if (!tiles) return; SombreadoTiles.libera(); if (ganchos.alApagar) ganchos.alApagar("liberada"); if (Sched) Sched.setXRSession(null); scene.remove(tiles.group); tiles.dispose(); tiles = null; estado = "apagado"; }
+    function engancha(g) { for (var k in g) ganchos[k] = g[k]; }
     if (ESC3D.pedida) { Terreno.grupo.visible = false; arranca(); }
-    return { actualiza: actualiza, perfil: perfil, resumen: resumen, libera: libera, listo: listo, alturaEn: alturaEn, grupo: function () { return tiles && tiles.group; } };
+    return { actualiza: actualiza, perfil: perfil, resumen: resumen, libera: libera, listo: listo, alturaEn: alturaEn, engancha: engancha, grupo: function () { return tiles && tiles.group; } };
   })();

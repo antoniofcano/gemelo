@@ -1,9 +1,9 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Arboles
 // Consume: 01_datos (FACTOR_R8), 02_mundo (Mundo, suelo, copaAlta, kcor, tinte, aviva, copas), 02b_cola (Cola),
-//   03_escena (camera, exag, modo, calidad), 04_terreno (hash), 05_nube (ALTO_MAX, nube), 06_arboles (gArboles, tronco, arbolesG),
-//   07_follaje (follajeG, construyeSombras), 07a_catalogo (Catalogo), 07ab_generados (Generados), 09_camara (objetivo, orb), 10_ndvi (ndviIdx),
-//   12_paseo (paseando), 15_tiempo (nivel, esc, hace), 16_vida (mira)
+//   03_escena (camera, exag, modo, calidad), 04_terreno (hash), 04c_olivos_tiles (OlivosTiles), 05_nube (ALTO_MAX, nube),
+//   06_arboles (gArboles, tronco, arbolesG), 07_follaje (follajeG, construyeSombras), 07a_catalogo (Catalogo), 07ab_generados (Generados),
+//   09_camara (objetivo, orb), 10_ndvi (ndviIdx), 12_paseo (paseando), 15_tiempo (nivel, esc, hace), 16_vida (mira)
 // ===============================================================================
   // ---------- los olivos del modo Gemelo con tres niveles de detalle: el coste de dibujo no crece con la superficie de la finca
   // Nivel 0: celdas de 64 m con el modelo completo (copa medida, troncos, hojas, flores y aceitunas) alrededor de lo que se mira (o de quien pasea), hasta MAX0 olivos.
@@ -110,7 +110,9 @@
       var fx = paseando ? cam.x : objetivo.x, fz = paseando ? cam.z : objetivo.z, dts = (ahora - ultima.tms) / 1000;
       if (ultima.tms && dts > 0.05 && dts < 3) { vel.x = 0.55 * vel.x + 0.45 * (fx - ultima.fx) / dts; vel.z = 0.55 * vel.z + 0.45 * (fz - ultima.fz) / dts; } else if (!ultima.tms || dts >= 3) { vel.x = vel.z = 0; }
       ultima.fx = fx; ultima.fz = fz; ultima.tms = ahora;
-      var GEN = Generados.actualiza(fx, fz, TOPE_TRI, olivos);   // ?olivos=gen (07ab): dentro de su radio, el nivel 0 de siempre se apaga; sin la bandera, radio 0
+      // ?escena=tiles (04c_olivos_tiles.js): los olivos de media y larga distancia los dibuja el tileset y sus triángulos cuentan en el tope
+      var TIL = OlivosTiles.dibuja(), triTil = TIL ? OlivosTiles.triangulos() : 0;
+      var GEN = Generados.actualiza(fx, fz, Math.max(0, TOPE_TRI - triTil), olivos);   // ?olivos=gen (07ab): dentro de su radio, el nivel 0 de siempre se apaga; sin la bandera, radio 0
       // el aparato manda: sube o baja la escala según el tiempo por fotograma medido
       if (!fijaSc) { if (emaDt < 0.020) esc = Math.min(1.6, esc + 0.05); else if (emaDt > 0.030) esc = Math.max(0.7, esc - 0.10); }
       var tope0 = MAX0 * esc * (vrP ? vrP.n : 1);
@@ -133,12 +135,14 @@
         if (c.g) c.g.visible = c.en && !c.sucia;   // mientras se rehace, los olivos de esa celda se ven en los niveles 1 y 2
       });
       // 2) el resto, por distancia: nivel 1 (los más cercanos) y nivel 2; los de una celda de nivel 0 ya construida y visible no se repiten
-      var rest = [], tri0 = 0; nL0 = 0;
+      var rest = [], tri0 = 0, cerca = []; nL0 = 0;
       if (vis) olivos.forEach(function (c) {
-        if (c.cel.en && c.cel.g && c.cel.g.visible) { nL0++; return; }
-        if (GEN.tiene(c.i)) return;   // lo dibuja Generados
+        if (c.cel.en && c.cel.g && c.cel.g.visible) { nL0++; cerca.push(c.i); return; }
+        if (GEN.tiene(c.i)) { cerca.push(c.i); return; }   // lo dibuja Generados
+        if (TIL) return;   // lo dibuja el tileset
         var dx = c.x - cam.x, dz = -c.y - cam.z, dy = Math.max(0, cam.y - c.gz * exag); c.d = Math.sqrt(dx * dx + dz * dz + dy * dy); if (c.d < U2) rest.push(c);
       });
+      if (TIL) { OlivosTiles.cerca(cerca); triTil = OlivosTiles.triangulos(); }   // la máscara: los de cerca no se dibujan también en el tileset
       tri0 = nL0 * TRI0 + GEN.tri; rest.sort(function (a, b) { return a.d - b.d; });
       var tope1 = Math.max(500, Math.min(MAX1, Math.floor((TOPE_TRI - tri0 - TRI2 * Math.min(MAX2, rest.length)) / TRI1)));
       var cnt1 = [], cnt2 = [], a1 = 0, a2 = 0, tc = new THREE.Color(), mm = m4, e = mm.elements, i, k;
@@ -162,7 +166,7 @@
       for (k = 0; k < NP1; k++) { iCopa1[k].count = iTron1[k].count = cnt1[k]; iCopa1[k].instanceMatrix.needsUpdate = iTron1[k].instanceMatrix.needsUpdate = true; if (iCopa1[k].instanceColor) iCopa1[k].instanceColor.needsUpdate = true; }
       for (k = 0; k < NP2; k++) { iCopa2[k].count = cnt2[k]; iCopa2[k].instanceMatrix.needsUpdate = true; if (iCopa2[k].instanceColor) iCopa2[k].instanceColor.needsUpdate = true; }
       for (k in extra) [[extra[k].m1, extra[k].n1], [extra[k].m2, extra[k].n2]].forEach(function (mn) { mn[0].forEach(function (m) { m.count = mn[1]; m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; }); });
-      n1 = a1; n2 = a2; triEst = tri0 + a1 * TRI1 + a2 * TRI2;
+      n1 = a1; n2 = a2; triEst = tri0 + a1 * TRI1 + a2 * TRI2 + triTil;
       ultima.x = cam.x; ultima.y = cam.y; ultima.z = cam.z; ultima.exag = exag; ultima.k = tinte + "|" + ndviIdx + "|" + kcor; sucio = false;
     }
     function tileCargada(ts) {   // llegaron los datos de una tesela: la altura de sus olivos pasa del relieve grueso al fino
@@ -188,6 +192,6 @@
       var justo = emaDt > 0.034; if (faltan > 0 && !justo) return paseando ? 8 : 12; return justo ? (paseando ? 3 : 4.5) : (paseando ? 3.5 : 6);
     }
     function perfil(p) { vrP = p || null; TOPE_TRI = p ? p.tri : TOPE_TRI0; sucio = true; }
-    function resumen() { return { olivos: olivos.length, nivel0: nL0, nivel1: n1, nivel2: n2, celdas: Object.keys(celdas).length, construidas: Object.keys(celdas).filter(function (k) { return celdas[k].g; }).length, faltan: faltan, precarga: nPre, esc: +esc.toFixed(2), triEst: triEst, emaMs: +(emaDt * 1000).toFixed(1) }; }
+    function resumen() { return { olivos: olivos.length, nivel0: nL0, nivel1: n1, nivel2: n2, celdas: Object.keys(celdas).length, construidas: Object.keys(celdas).filter(function (k) { return celdas[k].g; }).length, faltan: faltan, precarga: nPre, esc: +esc.toFixed(2), triEst: triEst, tiles: OlivosTiles.dibuja(), emaMs: +(emaDt * 1000).toFixed(1) }; }
     return { perfil: perfil, inicia: inicia, tileCargada: tileCargada, refresca: refresca, actualiza: actualiza, presupuesto: presupuesto, resumen: resumen, celdas: celdas };
   })();
