@@ -200,7 +200,9 @@ Chrome headless + SwiftShader, 900 × 650 (recuentos, rayos y alturas; **no fps*
 | lejos | 176 / 738 k / 78 MB · 164 / 650 k / 114 MB | 108 / 738 k / 89 MB · **98** / 650 k / 127 MB |
 | cerca | 86 / 1.251 k · 61 / 724 k | 80 / 1.283 k · 55 / 724 k / 128 MB |
 | nube | 112 / 740 k · 103 / 556 k | 80 / 740 k · 70 / 556 k / 137 MB |
+| paseo (quieto · anda 6 s · gira 360°) | sin medir | sin bandera 139 · 156 · 134 / 1.195 k / 126-133 MB; `?escena=tiles` **128 · 147 · 138** / 661-669 k / 136-157 MB (escenarios de paseo del banco, en (−130, −125)) |
 
+- En el paseo, lo que más llama con la bandera: lindes 27, balizas 24-28, fauna 19-37 (al andar), paisaje; el tileset 11-12 glb visibles.
 - Desglose de «lejos» con la bandera, antes: **66 sprites de nubes** (15_tiempo: 46 nubes × 5 manchas = 230 sprites, una llamada cada uno y también con opacidad 0), paisaje 37, lindes 27, tileset 17 (10 glb de terreno + 7 de olivos), balizas 12, árboles 10, resto 6. Después: las nubes, en **una** malla y una llamada (0 si no hay ninguna con opacidad), y lo demás igual. Sin sombras en ninguna pasada.
 - Las 258 llamadas de T3 (primera ronda) eran del mismo origen: el número de nubes con opacidad depende de la nubosidad del momento. Con el tiempo de ejemplo «lluvia» (nubosidad 96 %), fixture, vista baja de lejos: **127 → 28** llamadas («niebla» 130 → 27; «ahora» 124 → 26). Capturas antes/después parecidas a ojo (las nubes derivan con el reloj y no caen en el mismo sitio); **el aspecto lo tiene que aprobar Antonio**.
 - Fixture con la guardia (`GEMELO_MIDE=1`): con la bandera lejos **25** / 7,7 k, cerca 53 / 163 k, nube 24 / 4,3 k, heap 28-30 MB; sin ella, lejos 27 / 76 k (antes 167-168). Topes de `fixture_escena_tiles` bajados (lejos 35, nube 35; cerca 70 sin cambio). Los de `fixture` (sin bandera) no se han re-medido con `carga.test.js`: siguen los de antes.
