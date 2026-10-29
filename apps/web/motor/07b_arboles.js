@@ -3,7 +3,7 @@
 // Consume: 01_datos (FACTOR_R8), 02_mundo (Mundo, suelo, copaAlta, kcor, tinte, aviva, copas), 02b_cola (Cola),
 //   03_escena (camera, exag, modo, calidad), 04_terreno (hash), 05_nube (ALTO_MAX, nube), 06_arboles (gArboles, tronco, arbolesG),
 //   07_follaje (follajeG, construyeSombras), 07a_catalogo (Catalogo), 07ab_generados (Generados), 09_camara (objetivo, orb), 10_ndvi (ndviIdx),
-//   12_paseo (paseando), 15_tiempo (nivel, esc), 16_vida (mira)
+//   12_paseo (paseando), 15_tiempo (nivel, esc, hace), 16_vida (mira)
 // ===============================================================================
   // ---------- los olivos del modo Gemelo con tres niveles de detalle: el coste de dibujo no crece con la superficie de la finca
   // Nivel 0: celdas de 64 m con el modelo completo (copa medida, troncos, hojas, flores y aceitunas) alrededor de lo que se mira (o de quien pasea), hasta MAX0 olivos.
@@ -174,13 +174,17 @@
     }
     function actualiza(dt, forzar) {
       if (!listo0) return;
+      // ?olivos=gen: los generados avanzan su cola propia (con una parte del presupuesto de la Cola: el 40 %, el 25 % si faltan celdas de nivel 0) y su fundido;
+      // al colocar un lote o acabar el fundido, se reparte de nuevo. Sin la bandera, no hace nada y no gasta
+      if (Generados.paso(dt, presupuestoBase() * (faltan > 0 ? 0.25 : 0.4))) sucio = true;
       emaDt += (Math.min(dt, 0.1) - emaDt) * 0.04;
       var vis = gArboles.visible; if (!vis && modo !== "nube") return;   // en modo Ortofoto no hay árboles; en modo Nube se precargan los de alrededor
       t += dt;
       var cam = camera.position, umbral = paseando ? 2.5 : 6, mueve = Math.hypot(cam.x - ultima.x, cam.y - ultima.y, cam.z - ultima.z) > umbral, k = tinte + "|" + ndviIdx + "|" + kcor;
       if (forzar || sucio || ultima.exag !== exag || ultima.k !== k || (mueve && t > 0.25) || t > (paseando ? 0.7 : 1.5)) { t = 0; reclasifica(); }
     }
-    function presupuesto() {   // ms por fotograma para la cola: más si faltan olivos de nivel 0 en lo que se ve y el aparato va holgado
+    function presupuesto() { return Math.max(0.5, presupuestoBase() - Generados.gastado()); }   // lo que ya gastaron los generados este fotograma, se descuenta
+    function presupuestoBase() {   // ms por fotograma para la cola: más si faltan olivos de nivel 0 en lo que se ve y el aparato va holgado
       var justo = emaDt > 0.034; if (faltan > 0 && !justo) return paseando ? 8 : 12; return justo ? (paseando ? 3 : 4.5) : (paseando ? 3.5 : 6);
     }
     function perfil(p) { vrP = p || null; TOPE_TRI = p ? p.tri : TOPE_TRI0; sucio = true; }
