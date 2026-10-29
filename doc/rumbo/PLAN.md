@@ -98,7 +98,7 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | O2 | Olivos generados: desglose del coste de `factorR8 = 1` por objeto | — | 🔶 | ⬜ |
 | O3 | `semillas_copas.py` dentro de los exportadores | — | ligera | ✅ |
 | O5 | Olivos generados: caché de recetas (memoria con límite y LRU; IndexedDB con clave semilla+tipo+época+`GEN_VERSION`, `idb-keyval`); horneado en servidor, más adelante y tras medir tamaños | o1d (montaje y recorte arreglados) | ligera | 🟡 caché hecha (sin medir en navegador); horneado en servidor pendiente |
-| O6 | Medir el horneado por tesela (tamaños por nivel, cuantizado y brotli, manifiesto, descarga de una visita, tiempo) | — | ligera (Node) | 🟡 en curso |
+| O6 | Medir el horneado por tesela (tamaños por nivel, cuantizado y brotli, manifiesto, descarga de una visita, tiempo) | — | ligera (Node) | ✅ (MEDIDAS: 6,5–7,1 GB por época; un paseo podría bajar 78–555 MB si cada olivo cercano tuviera receta propia) |
 | O7a | ADR-0018 «hornero»: formato de la receta horneada (cuantización, compresión, ¿E0 también?), manifiesto por tesela, direccionado por huella, ciclo de vida (época actual + siguiente, vuelo nuevo, censo, `GEN_VERSION`), plan B en la salida artefacto | O6 | ligera · **opus** | ⬜ |
 | O7b | Contrato y esquema del manifiesto por tesela y de la receta horneada, con su fixture y guardián | O7a | ligera · **sonnet** | ⬜ |
 | O7c | Hornero en Node (CLI): hornea una finca o una tesela a ficheros por huella + manifiesto; incremental (solo lo que cambia); época actual y siguiente | O7b | ligera (pesada de CPU, sin Chrome) · **sonnet** | ⬜ |

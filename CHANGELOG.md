@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Medida del horneado de recetas de olivos por tesela (O6): script `pruebas/olivo/hornea_tesela.mjs` y sección en `doc/sistema/MEDIDAS.md`. Hituelo entero, una época y 4 niveles: 6,5 GB con brotli 11 (7,1 con brotli 9); por olivo, de 183 KB (E2-VR) a 491 KB (E0); brotli 9 pesa 7-13 % más que el 11 y tarda ~30 veces menos; la tesela más poblada no terminó.
 - Olivos generados: caché de recetas en memoria (LRU, 60/150 MB) e IndexedDB (`idb-keyval`, 300 MB, LRU), con la clave `GEN_VERSION` + época + semilla + parámetros; sin IndexedDB, solo memoria; `?debug` dice «caché: memoria N · disco M» (O5).
 - Presencia: una identidad de LiveKit por sesión (aparato): el mismo hogar puede estar a la vez en el ordenador, el móvil y las gafas, y la oficina expulsa todas sus conexiones (la respuesta dice cuántas).
 - Presencia en local: el navegador llega a LiveKit por el mismo origen (`wss://<sitio>/rtc`, por Caddy); `--red-local` abre además los medios de LiveKit (7882/udp, 7881/tcp) en la IP de la WiFi. Producción: el secreto de LiveKit en `/etc/gemelo/secretos/livekit_secreto` (RUNBOOK-VPS).
