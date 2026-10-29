@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Fichas en el paseo: un toque corto en un olivo abre su ficha también paseando; tocar una baliza (columna de luz de cada parcela) abre la ficha de su parcela, en el paseo y en la órbita; las dos fichas se cierran con una × de 44 px; cerrada la de una baliza, no vuelve sola hasta que te alejes.
 - O7f: el hornero de olivos como servicio (`tuberia/olivos/servicio.mjs`): se levanta con `dev:arriba` y hornea la finca servida en la carpeta que Caddy sirve en `/teselas/<finca>/olivos/`; sin vuelta diaria (arranque, cambio de época a las 03:00 UTC, o sellos distintos del índice, el calendario o `GEN_VERSION`/`CACHE_VERSION`); candado por finca, healthcheck y estado fuera de lo servido; `dev:estado` lo enseña. Servicio equivalente en `infra/compose.yml` (perfil `hornero`, sin desplegar). Primera vuelta con el fixture: 11 s, 4,24 MB (una medida).
 - La brújula (N ↑) oculta o muestra el minimapa del paseo, y se recuerda en el navegador; con el minimapa oculto se sigue guardando el rastro.
 - Caddy (dev y producción) sirve las recetas horneadas: `/teselas/<finca>/olivos/<huella>.br` tras sesión con `Content-Encoding: br` e `immutable`, `manifiesto.json` con `no-cache` y 404 para el resto de `olivos/` (`estado.json`…); `GEMELO_DEV_OLIVOS` monta la carpeta del hornero (O7d).

@@ -2,15 +2,17 @@
 // Expone: objetivo, orb, camara, suelta, eligeCopa, pon
 // Consume: 01_datos (D, $, fmt, DIST_MAX, DIST_INI), 02_mundo (suelo, orto, kcor, copas, marc), 03_escena (lienzo, camera, exag, modo),
 //   05_nube (nube), 07ab_generados (Generados), 08_marcadores (aplica, capas, aplicaLuego), 12_paseo (paseando),
-//   13_parcelas (parcelas, parcelaSel, elegirParcela), 29_vr (ficha)
+//   13_parcelas (parcelas, parcelaSel, elegirParcela), 19_balizas (eligeBaliza, sueltaBaliza), 29_vr (ficha)
 // ===============================================================================
 
   // cámara orbital
   var objetivo = new THREE.Vector3(0, 12, 0), orb = { az: -0.55, el: 0.62, dist: DIST_INI }, orbIni = JSON.parse(JSON.stringify(orb));
   function camara() { var ce = Math.cos(orb.el), se = Math.sin(orb.el); camera.position.set(objetivo.x + orb.dist * ce * Math.sin(orb.az), objetivo.y + orb.dist * se, objetivo.z + orb.dist * ce * Math.cos(orb.az)); camera.lookAt(objetivo); }
   var punteros = {}, movido = 0;
+  var toquePaseo = null;   // en el paseo no se gira la vista con el dedo, pero un toque corto elige olivo o baliza
   lienzo.addEventListener("pointerdown", function (e) {
-    if (paseando) return; lienzo.setPointerCapture(e.pointerId); punteros[e.pointerId] = { x: e.clientX, y: e.clientY }; movido = 0; });
+    if (paseando) { toquePaseo = { x: e.clientX, y: e.clientY, t: performance.now() }; return; }
+    lienzo.setPointerCapture(e.pointerId); punteros[e.pointerId] = { x: e.clientX, y: e.clientY }; movido = 0; });
   lienzo.addEventListener("pointermove", function (e) {
     if (paseando) return;
     var p = punteros[e.pointerId]; if (!p) return;
@@ -19,12 +21,16 @@
     else if (ids.length === 2) { var o = punteros[ids.filter(function (i) { return i != e.pointerId; })[0]]; var antes = Math.hypot(p.x - o.x, p.y - o.y), ahora = Math.hypot(e.clientX - o.x, e.clientY - o.y); orb.dist = Math.max(30, Math.min(DIST_MAX, orb.dist * (antes / Math.max(ahora, 1)))); pan(dx / 2, dy / 2); }
     p.x = e.clientX; p.y = e.clientY;
   });
-  function suelta(e) { if (paseando) return; var tocar = Object.keys(punteros).length === 1 && movido < 6; delete punteros[e.pointerId]; if (tocar && e.type === "pointerup") elige(e.clientX, e.clientY); }
+  function suelta(e) {
+    if (paseando) { var q = toquePaseo; toquePaseo = null; if (q && e.type === "pointerup" && Math.hypot(e.clientX - q.x, e.clientY - q.y) < 10 && performance.now() - q.t < 600) elige(e.clientX, e.clientY); return; }
+    var tocar = Object.keys(punteros).length === 1 && movido < 6; delete punteros[e.pointerId]; if (tocar && e.type === "pointerup") elige(e.clientX, e.clientY); }
   lienzo.addEventListener("pointerup", suelta); lienzo.addEventListener("pointercancel", suelta); lienzo.addEventListener("contextmenu", function (e) { e.preventDefault(); });
   lienzo.addEventListener("wheel", function (e) { e.preventDefault(); if (paseando) return; orb.dist = Math.max(30, Math.min(DIST_MAX, orb.dist * (1 + Math.sign(e.deltaY) * 0.1))); }, { passive: false });
   function pan(dx, dy) { var f = orb.dist * 0.0016, rx = Math.cos(orb.az), rz = -Math.sin(orb.az); objetivo.x -= dx * f * rx; objetivo.z -= dx * f * rz; objetivo.x += dy * f * Math.sin(orb.az); objetivo.z += dy * f * Math.cos(orb.az); }
 
   function elige(cx, cy) {
+    if (eligeBaliza(cx, cy)) return;   // una baliza (columna de luz) tocada abre la ficha de su parcela
+    sueltaBaliza();
     var r = lienzo.getBoundingClientRect(), best = null, bd = 26, v = new THREE.Vector3();
     copas.forEach(function (c) {
       if (!c.oliv) return;

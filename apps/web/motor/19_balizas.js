@@ -1,7 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: colocaBalizas, dibujaBalizasMini, tBal, actualizaBalizas
-// Consume: 01_datos (D, $), 02_mundo (suelo), 03_escena (scene, exag), 12_paseo (paseando), 13_parcelas (parcelas),
-//   14_historia (VIVO, marca, aviso), 15_tiempo (num1, esc, hace), 16_vida (tVida, enDron), 20_sonido (sonidoBaliza), 29_vr (ficha)
+// Expone: colocaBalizas, eligeBaliza, sueltaBaliza, dibujaBalizasMini, tBal, actualizaBalizas
+// Consume: 01_datos (D, $), 02_mundo (suelo), 03_escena (lienzo, scene, camera, exag), 09_camara (suelta), 12_paseo (paseando),
+//   13_parcelas (parcelas), 14_historia (VIVO, marca, aviso), 15_tiempo (num1, esc, hace), 16_vida (tVida, enDron), 20_sonido (sonidoBaliza),
+//   29_vr (ficha)
 // ===============================================================================
   // ---------- las balizas: una por parcela, con lo que OlivarTrack sabe de ella; en el paseo, al acercarte, sale su ficha
   // Los datos son los de la historia (instantánea embebida, o la lectura en vivo por el MCP si se ha pulsado «Leer de OlivarTrack»).
@@ -22,7 +23,7 @@
     g.userData = { k: k, mat: mat, col: col, rombo: rombo, anillo: anillo, estado: "nada", visita: false };
     gBal.add(g); return g;
   });
-  var balCerca = -1, balVisitas = 0, balSig = "";
+  var balCerca = -1, balVisitas = 0, balSig = "", balCerrada = -1, balForzada = -1;   // cerrada: la × la quitó hasta alejarse; forzada: abierta al tocarla
   function nombreParcelaIA(x) { return String(x || "").toLowerCase(); }
   function vigiaMarca(pr) {
     var v = VIVO && VIVO.vigia; if (!v) return null; var m = nombreParcelaIA(pr.nombre);
@@ -43,7 +44,7 @@
   function colocaBalizas() { BAL.forEach(function (g) { var pr = parcelas[g.userData.k]; g.position.set(pr.centro[0], suelo(pr.centro[0], pr.centro[1]) * exag, -pr.centro[1]); }); refrescaBalizas(); }
   var BBCH_TXT = { 7: "desarrollo del fruto", 8: "maduración del fruto", 6: "floración", 5: "aparición de la inflorescencia", 1: "desarrollo de las hojas", 0: "reposo y brotación", 9: "senescencia y reposo" };
   function fichaBal(k) {
-    var d = datosBal(k), pr = d.pr, h = "";
+    var d = datosBal(k), pr = d.pr, h = '<button type="button" class="cerrar-baliza" aria-label="Cerrar la ficha de la parcela">×</button>';
     var pill = { alerta: ["Vigía pide una mirada", "var(--guardado)"], abierta: ["Hay tareas abiertas", "var(--guardado)"], hecha: ["Sin tareas abiertas", "var(--olivo)"], nada: ["Sin datos de tareas", "var(--muted)"] }[d.estado];
     h += '<div class="b-cab"><strong>' + esc(pr.nombre) + '</strong><span class="b-pill" style="--c:' + pill[1] + '">' + pill[0] + "</span></div>";
     h += '<p class="b-sub">' + num1(pr.ha, 1) + " ha</p>";
@@ -55,6 +56,24 @@
     h += '<p class="b-pie">' + fuente + " · balizas visitadas " + balVisitas + " de " + BAL.length + (balVisitas === BAL.length ? " · inspección completa" : "") + "</p>";
     return h;
   }
+  // la × de la ficha y tocar una baliza: cerrarla la esconde hasta alejarse; tocar la columna de luz la vuelve a abrir (en el paseo y en la órbita)
+  $("baliza").addEventListener("click", function (e) {
+    if (!e.target.closest || !e.target.closest(".cerrar-baliza")) return;
+    balCerrada = balForzada >= 0 ? balForzada : balCerca; balForzada = -1; $("baliza").hidden = true;
+  });
+  function eligeBaliza(cx, cy) {   // toque en pantalla (cx, cy): ¿está sobre la columna de luz de alguna baliza? (de su pie a 27 m de alto)
+    var r = lienzo.getBoundingClientRect(), a = new THREE.Vector3(), b = new THREE.Vector3(), mejor = -1, md = 22;
+    BAL.forEach(function (g, i) {
+      var pr = parcelas[g.userData.k], y0 = suelo(pr.centro[0], pr.centro[1]) * exag;
+      a.set(pr.centro[0], y0, -pr.centro[1]).project(camera); b.set(pr.centro[0], y0 + 27, -pr.centro[1]).project(camera); if (a.z > 1 && b.z > 1) return;
+      var ax = (a.x * 0.5 + 0.5) * r.width + r.left, ay = (-a.y * 0.5 + 0.5) * r.height + r.top, bx = (b.x * 0.5 + 0.5) * r.width + r.left, by = (-b.y * 0.5 + 0.5) * r.height + r.top;
+      var vx = bx - ax, vy = by - ay, L = vx * vx + vy * vy || 1, t = Math.max(0, Math.min(1, ((cx - ax) * vx + (cy - ay) * vy) / L)), d = Math.hypot(cx - (ax + t * vx), cy - (ay + t * vy));
+      if (d < md) { md = d; mejor = i; }
+    });
+    if (mejor < 0) return false;
+    balCerrada = -1; balForzada = mejor; ultFicha = -2; return true;
+  }
+  function sueltaBaliza() { balForzada = -1; }   // al tocar otra cosa (olivo, suelo), la ficha forzada se suelta y vuelve la de cercanía
   function dibujaBalizasMini(c, X, Y) {
     BAL.forEach(function (g) {
       var pr = parcelas[g.userData.k], x = X(pr.centro[0]), y = Y(pr.centro[1]);
@@ -71,6 +90,7 @@
       var u = g.userData; u.rombo.rotation.y += dt * 1.4; u.rombo.position.y = 27.5 + Math.sin(tVida * 1.8 + i) * 0.5;
       u.anillo.scale.setScalar(1 + 0.12 * Math.sin(tVida * 3 + i * 2)); g.visible = true;
     });
+    if (balForzada >= 0) { if (ultFicha !== balForzada || tBal > 2) { tBal = 0; ultFicha = balForzada; $("baliza").innerHTML = fichaBal(BAL[balForzada].userData.k); } $("baliza").hidden = false; return; }   // abierta al tocar su baliza
     if (!paseando) { $("baliza").hidden = true; balCerca = -1; return; }
     if (TR.act && TR.t < TR.tCae + 0.4) { $("baliza").hidden = true; return; }   // la ficha espera a que el muñequito aterrice
     var mejor = -1, md = 1e9; BAL.forEach(function (g, i) { var pr = parcelas[g.userData.k], d = Math.hypot(pr.centro[0] - (enDron ? dr.x : pp.x), pr.centro[1] - (enDron ? dr.y : pp.y)); if (d < md) { md = d; mejor = i; } });
@@ -78,8 +98,8 @@
     if (dentro) {
       if (!BAL[mejor].userData.visita) { BAL[mejor].userData.visita = true; balVisitas = BAL.filter(function (g) { return g.userData.visita; }).length; if (typeof sonidoBaliza === "function") sonidoBaliza(balVisitas === BAL.length); ultFicha = -2; }
       if (mejor !== ultFicha || tBal > 2) { tBal = 0; ultFicha = mejor; $("baliza").innerHTML = fichaBal(BAL[mejor].userData.k); }
-      $("baliza").hidden = false; balCerca = mejor;
-    } else { $("baliza").hidden = true; balCerca = -1; ultFicha = -2; }
+      $("baliza").hidden = mejor === balCerrada; balCerca = mejor;   // cerrada con la ×: no vuelve sola hasta que te alejes
+    } else { $("baliza").hidden = true; balCerca = -1; ultFicha = -2; balCerrada = -1; }
   }
 
 
