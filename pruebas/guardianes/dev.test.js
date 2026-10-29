@@ -485,7 +485,7 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
     const I = JSON.parse(ti.texto), [cx, cy] = I.centro_utm;
 
     const s = await json("/api/sesion", cookie);
-    assert.deepStrictEqual(s.cuerpo, { rol: "hogar", alias: yo.alias, alias_visible: true });
+    assert.deepStrictEqual(s.cuerpo, { rol: "hogar", alias: yo.alias, alias_visible: true, primer_acceso: false }, "con el primer acceso hecho");
 
     const g = await json("/api/hazas", cookie);
     assert.strictEqual(g.status, 200);
