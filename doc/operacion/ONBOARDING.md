@@ -29,6 +29,7 @@
 | 11 | Exportadores multiplataforma: ninguna ruta con separador `\` escrito a mano en `tuberia/**/*.py` (se arman con `os.path.join`) | `multiplataforma.test.js` |
 | 12 | Catálogo de olivos-tipo: el catálogo sintético cumple su esquema (ajv), cada glb pasa `gltf-validator` y su presupuesto de triángulos por nivel, el generador es determinista; en Chrome, instalar y retirar el catálogo funciona sin cambiar lo de siempre | `olivos.test.js` |
 | 13 | Entorno de desarrollo: compose válido, imágenes con versión fija + digest sin preliminares, puertos solo en 127.0.0.1, sin secretos; e2e opcional con Docker (`GEMELO_DOCKER=1`) | `dev.test.js` |
+| 14 | Servidor F1a: imágenes de producción = contrato = dev (versión + digest), sin puertos publicados ni secretos escritos, Node del contrato, dependencias fijadas, cargador de hazas con el ejemplo sintético, tipos y unitarias de `apps/api` (se saltan con aviso sin `npm ci` en `apps/api`); integración contra PostGIS y `infra/probar-caddy.sh` opcionales (`GEMELO_DOCKER=1`) | `api.test.js` |
 
 En CI la misma puerta corre en GitHub Actions (`.github/workflows/puerta.yml`); no despliega nada.
 
