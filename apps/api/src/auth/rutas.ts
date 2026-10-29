@@ -3,7 +3,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Contexto } from "../contexto.ts";
 import { huella, PATRON_TOKEN } from "../seguridad/cripto.ts";
 import { mensajeDeEnlace } from "./correo.ts";
-import { paginaEnlaceMalo, paginaEntrar } from "./paginas.ts";
+import { paginaEnlaceMalo, paginaEntrar, POLITICA_REFERENTE } from "./paginas.ts";
 import { requiereSesion } from "./roles.ts";
 import { audita, consumeEnlace, creaEnlace, estadoEnlace, normalizaCorreo, revocaTodas } from "./servicio.ts";
 
@@ -55,7 +55,7 @@ export async function rutasAuth(app: FastifyInstance, ctx: Contexto): Promise<vo
     schema: { querystring: { type: "object", additionalProperties: false, required: ["t"], properties: { t: esquemaToken } } },
     attachValidation: true,
   }, async (req, rep) => {
-    rep.header("cache-control", NO_GUARDAR).header("referrer-policy", "no-referrer").type("text/html; charset=utf-8");
+    rep.header("cache-control", NO_GUARDAR).header("referrer-policy", POLITICA_REFERENTE).type("text/html; charset=utf-8");
     if (req.validationError) return rep.code(400).send(paginaEnlaceMalo("no_valido"));
     const e = await estadoEnlace(bd, req.query.t);
     if (e !== "valido") return rep.code(400).send(paginaEnlaceMalo(e));
@@ -67,7 +67,7 @@ export async function rutasAuth(app: FastifyInstance, ctx: Contexto): Promise<vo
     schema: { body: { type: "object", additionalProperties: false, required: ["t"], properties: { t: esquemaToken } } },
     attachValidation: true,
   }, async (req, rep) => {
-    rep.header("cache-control", NO_GUARDAR).header("referrer-policy", "no-referrer");
+    rep.header("cache-control", NO_GUARDAR).header("referrer-policy", POLITICA_REFERENTE);
     const html = !req.headers["content-type"]?.startsWith("application/json");
     if (req.validationError) return malo(rep, html, "no_valido");
     const r = await consumeEnlace(bd, req.body.t);

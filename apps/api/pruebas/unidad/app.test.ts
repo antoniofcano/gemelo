@@ -73,7 +73,7 @@ test("enlace con token mal formado: página de «no sirve», sin consultar la ba
   assert.equal(r.statusCode, 400);
   assert.match(r.headers["content-type"] as string, /text\/html/);
   assert.equal(r.headers["cache-control"], "no-store");
-  assert.equal(r.headers["referrer-policy"], "no-referrer");
+  assert.equal(r.headers["referrer-policy"], "strict-origin");   // no-referrer haría que Chrome mande Origin: null en el POST del botón
 });
 
 test("respuestas de la api: no-store por defecto y nosniff", async () => {

@@ -1,11 +1,17 @@
 // Páginas HTML mínimas del enlace mágico: sin JavaScript, sin estilos externos ni en línea (pasan la CSP estricta).
 // La página intermedia existe para que el enlace se gaste con un POST del navegador y no con el GET de un escáner
 // de correo que abra los enlaces para revisarlos.
+//
+// Política de referente: `strict-origin`, NO `no-referrer`. Con `no-referrer`, Chrome manda `Origin: null` en el POST de
+// un formulario (comprobado el 2026-10-29 con Chrome headless en la e2e de infra/dev) y la comprobación de Origin
+// (seguridad/origen.ts) rechaza el botón «Entrar» con 403. `strict-origin` manda solo el origen, nunca la ruta ni la
+// consulta: el token de la URL (?t=…) no sale en el Referer. La meta manda sobre la cabecera que ponga un proxy.
+export const POLITICA_REFERENTE = "strict-origin";
 const esc = (s: string) => s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" })[c]!);
 
 function pagina(titulo: string, cuerpo: string): string {
   return "<!doctype html>\n<html lang=\"es\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">" +
-    "<meta name=\"referrer\" content=\"no-referrer\"><title>" + esc(titulo) + "</title></head><body><main>" + cuerpo + "</main></body></html>\n";
+    "<meta name=\"referrer\" content=\"" + POLITICA_REFERENTE + "\"><title>" + esc(titulo) + "</title></head><body><main>" + cuerpo + "</main></body></html>\n";
 }
 
 export function paginaEntrar(token: string): string {
