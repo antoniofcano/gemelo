@@ -6,6 +6,12 @@
 
   // ---------- ?debug: un contador en la esquina del visor para medir en el móvil (ms de JS por fotograma, llamadas, triángulos, teselas y olivos por nivel)
   var dep = { n: 0, t0: performance.now(), js: 0, mx: 0, el: null };
+  // con ?olivos=gen, una línea con su estado (en el móvil no hay consola): cargando / activo / sin (y por qué), plan, dibujados y la vía
+  function genDebug() {
+    var g = window.__olivosGen ? window.__olivosGen() : null;
+    if (!g || g.estado === "apagado") return "";
+    return "generados " + g.estado + " · plan " + g.plan + " · dibujados " + (g.info && g.info.arboles || 0) + " · recetas " + g.recetas + " · " + g.via + (g.motivo ? " · " + String(g.motivo).slice(0, 60) : "") + "\n";
+  }
   function depuraCuadro(tIni) {
     if (!DEPURA) return;
     var js = performance.now() - tIni; dep.n++; dep.js += js; if (js > dep.mx) dep.mx = js;
@@ -15,6 +21,6 @@
     dep.el.textContent = (dep.n * 1000 / (ahora - dep.t0)).toFixed(0) + " fps · JS " + (dep.js / dep.n).toFixed(1) + " ms (pico " + dep.mx.toFixed(0) + ")\n" +
       i.render.calls + " llamadas · " + (i.render.triangles / 1000).toFixed(0) + " k tri · " + (i.render.points / 1000).toFixed(0) + " k pts\n" +
       "cola " + Cola.pendientes() + " pendientes · rebanada máx (ms): " + Object.keys(Cola.est).map(function (k) { return k + " " + Cola.est[k].max.toFixed(0); }).join(" · ") + "\n" +
-      (window.VR_ESTADO ? window.VR_ESTADO + vrDebugExtra() + "\n" : "") + (Presencia.activo() ? Presencia.texto() + "\n" : "") + "teselas " + cargadas + "/" + Mundo.lista.length + " · olivos N0 " + a.nivel0 + " N1 " + a.nivel1 + " N2 " + a.nivel2 + " · heap " + mem;
+      (window.VR_ESTADO ? window.VR_ESTADO + vrDebugExtra() + "\n" : "") + (Presencia.activo() ? Presencia.texto() + "\n" : "") + genDebug() + "teselas " + cargadas + "/" + Mundo.lista.length + " · olivos N0 " + a.nivel0 + " N1 " + a.nivel1 + " N2 " + a.nivel2 + " · heap " + mem;
     dep.n = 0; dep.js = 0; dep.mx = 0; dep.t0 = ahora;
   }
