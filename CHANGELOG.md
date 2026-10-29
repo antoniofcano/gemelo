@@ -5,6 +5,12 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- **Banco de pruebas** (2026-10-29): un solo Chrome o Docker de pruebas a la vez en el equipo (turno con `proper-lockfile`); `npm run puerta` usa un Chrome compartido para todas las pruebas; los agentes encargan sus medidas (`npm run banco:encarga`) y una ronda (`npm run banco:ronda`) las hace con un solo Chrome; `mide()` con tope de tiempo (resultado «parcial») y capturas. Política en TESTING.md.
+- Tubería 3D Tiles (generador 0.3.0, contrato tileset v2): la raíz ya no lleva glb y sus hijos son los cuadrados de 512 m que tocan los datos (Hituelo: 248 glb calculados en vez de 269, sin los 6 niveles sin olivos de hasta 32.768 m); `_TIPO` usa los nombres del catálogo «olivos» (`olivos:planton` … `olivos:centenario-3p`, de `apps/web/olivo/catalogo.js`). Probado con el fixture (validador de CesiumGS: 0 errores, 0 avisos); Hituelo sin regenerar y visor sin probar con la raíz vacía.
+- Constructor de olivos generados (`apps/web/olivo/`, ADR-0017): el árbol de «Olivos tipo» (olivo-2) como módulo sin DOM que calcula con su propia three 0.128 (decisión 59) y se monta con la del gemelo, idéntico byte a byte al original en 273 casos; niveles E0-E2-VR (102 978 / 48 378 / 19 366 / 14 618 tri), trabajador o rebanadas, IIFE con su three dentro; texturas de campo con licencia; semilla guardada en el registro (`copas_semilla`), tipos con nombre de catálogo (`olivos:centenario-3p`…); plantilla de campo y factores de corrección del LiDAR (`tuberia/factores_campo.py`, a 1,0).
+- Olivos generados cercanos con `?olivos=gen` (decisión 52): el más cercano en E0, el resto en E1 y variantes E2/E2-VR por presupuesto (45 % del tope del aparato, con sombras), en un lote de 6-7 llamadas; dentro de su radio se apaga el nivel 0 de siempre; ficha con «forma ilustrativa con medidas del LiDAR» e «id provisional». Sin la bandera, todo igual.
+- `factorR8` (`?factorR8=`, por defecto 0,5 = como siempre): el radio dibujado de las copas es r8 × factor (decisión 48: r8 es radio; se pasa a 1 tras la cinta de campo).
+- Parámetros de cada olivo desde el LiDAR: `tuberia/parametros_copas.py` (columna opcional `copas_param`) y `tuberia/puntos_copas.py` (de las hojas .laz a puntos de copa normalizados, suelo del `dtm`); Hituelo medido para 5.874 de 5.882 copas (fuera del repo).
 - Tileset 3D Tiles (F1d): la identidad de cada olivo ya no viaja como float (`_ID_ARBOL`): `_INDICE_COPA` (posición en la lista de copas de la tesela) más la huella SHA-256 de esa lista en `extras.gemelo`, para resolver `copas_id` en CPU; `_TIPO` es un número local con su tabla de nombres (provisionales `olivos-tipo:<id>`). Contrato nuevo `contratos/tileset.schema.json`; herramienta `tuberia/tiles3d/comprueba.mjs`.
 - Hituelo real generado en 3D Tiles: 269 glb, 40,9 MB, validador de CesiumGS con 0 errores y 0 avisos, cada olivo en las hojas una vez; tamaños glb frente a json en MEDIDAS.
 - El entorno local usa los mismos roles de Postgres que producción (decisión 55): `migra` y la siembra con `gemelo_dueno`, la api con `gemelo_api` (creado por el mismo `infra/bd-inicial/`); la e2e comprueba que a la api se le niegan DDL y cambiar la auditoría. Un volumen de antes da un error claro (`npm run dev:abajo -- --borra-datos`).
@@ -44,6 +50,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 - `doc/ESTADO.md` reescrito como único sitio de «dónde estamos»; se retira el id y el enlace del artefacto privado (el repo es público).
 
 ### Arreglado
+- DATOS.md: hojas LiDAR de Hituelo corregidas (la N es el borde norte; el 92 % de las copas está en 405-4180 y 406-4180).
 - El botón «Entrar» del enlace mágico daba 403 en Chrome (`no-referrer` hacía que mandara `Origin: null`); ahora usa `strict-origin`.
 
 ## [0.2.0] — 2026-10-27

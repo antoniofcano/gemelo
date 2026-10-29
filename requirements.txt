@@ -1,10 +1,14 @@
 # Solo para regenerar datos (datos/, finca_8_teselas.py, hituelo_conv.py). Montar y probar con el fixture no los necesita salvo numpy/pillow.
 # numpy, scipy y pillow, fijadas: son las del guardián pruebas/guardianes/exportadores.test.js (ejecuta los exportadores sobre datos sintéticos;
-# se salta con aviso si faltan). Probadas con Python 3.14.
+# se salta con aviso si faltan) y de tuberia/parametros_copas.py (ADR-0017). Probadas con Python 3.14.
+# laspy con lazrs (lectura y escritura de .laz), fijadas: tuberia/puntos_copas.py y su prueba sintética (pruebas/nube_sintetica.py, en el mismo
+# guardián). psutil: opcional, solo para que puntos_copas.py informe de la memoria máxima.
 # El resto, sin fijar: [SUPUESTO] no se ha anotado con qué versiones se generaron los datos actuales.
 numpy==2.5.3
 scipy==1.18.1
 pillow==13.0.0
-laspy
+laspy==2.7.0
+lazrs==0.8.2
+psutil==7.2.2
 rasterio
 matplotlib

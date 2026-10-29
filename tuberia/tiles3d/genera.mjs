@@ -3,11 +3,14 @@
 //
 //   node tuberia/tiles3d/genera.mjs --entrada <carpeta con indice.json | indice.json | embebido.json> --salida <carpeta>
 //   (sin --entrada se lee GEMELO_DATOS, que apunta al indice.json: los datos reales viven fuera del repo, regla 4 de CLAUDE.md)
-//        [--hoja 128] [--celdas 128] [--textura 256] [--ondulacion 0] [--error-hoja 0.05]
+//        [--hoja 128] [--celdas 128] [--textura 256] [--ondulacion 0] [--error-hoja 0.05] [--niveles-olivo 3]
+//        [--nivel-util <m>]   (lado de los hijos de la raíz; por defecto hoja·2^(niveles-olivo − 1), el nivel más alto con olivos)
+//        [--catalogo <catalogo.json del contrato olivos-tipo>]   (solo para el fixture: sin él, copas_tipo son ids del catálogo «olivos»)
 //
 // Librerías (package.json): @gltf-transform (escribir glb y EXT_mesh_gpu_instancing), meshoptimizer (simplificar el terreno con
 // error absoluto y bordes bloqueados), sharp (mosaico de ortofoto, recortes y remuestreo Lanczos, JPEG), three (geometrías de los
 // prototipos de olivo: LatheGeometry, CylinderGeometry, mergeGeometries) y proj4 (UTM 30N ↔ geodésicas ↔ ECEF, en marco.mjs).
+// Los nombres de los tipos de olivo salen de apps/web/olivo/catalogo.js (tablaLocal) y tipos.js (ID_TIPO): una sola fuente.
 // Lo propio es solo lo que no da ninguna librería: leer el contrato v2, muestrear el relieve global (para que los bordes de teselas
 // vecinas coincidan y las normales no tengan costura), el árbol de cuadrantes y los geometricError medidos.
 import crypto from "node:crypto";
@@ -21,16 +24,19 @@ import sharp from "sharp";
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { transformRaiz } from "./marco.mjs";
+import { CATALOGO, tablaLocal } from "../../apps/web/olivo/catalogo.js";
+import { tipoDeId } from "../../apps/web/olivo/tipos.js";
 
-export const VERSION_GENERADOR = "0.2.0";
+export const VERSION_GENERADOR = "0.3.0";
 
 // ---------------------------------------------------------------- argumentos
 function argumentos(argv) {
-  const a = { hoja: 128, celdas: 128, textura: 256, ondulacion: 0, errorHoja: 0.05, nivelesOlivo: 3 };
+  const a = { hoja: 128, celdas: 128, textura: 256, ondulacion: 0, errorHoja: 0.05, nivelesOlivo: 3, nivelUtil: 0 };
   for (let i = 0; i < argv.length; i += 2) {
     const k = argv[i].replace(/^--/, "").replace(/-(\w)/g, (_, c) => c.toUpperCase()), v = argv[i + 1];
-    if (!(k in a) && k !== "entrada" && k !== "salida") throw new Error("argumento desconocido: " + argv[i]);
-    a[k] = k === "entrada" || k === "salida" ? v : Number(v);
+    const texto = k === "entrada" || k === "salida" || k === "catalogo";
+    if (!(k in a) && !texto) throw new Error("argumento desconocido: " + argv[i]);
+    a[k] = texto ? v : Number(v);
   }
   a.entrada = a.entrada || process.env.GEMELO_DATOS;
   if (!a.entrada || !a.salida) throw new Error("uso: node genera.mjs --entrada <carpeta|indice.json|embebido.json> --salida <carpeta> (o GEMELO_DATOS=<indice.json>)");
@@ -77,8 +83,8 @@ export function relieve(I, teselas) {
 }
 
 // ---------------------------------------------------------------- ortofoto: un lienzo (mosaico debajo, teselas encima) con sharp
-/** El lienzo cubre solo los datos (teselas y mosaico, ajustado a la rejilla de teselas), no la raíz del árbol: la raíz alineada puede
- *  ser mucho mayor (en Hituelo, 32.768 m de lado) y un lienzo de su tamaño no cabe en memoria. Fuera del lienzo, gris. */
+/** El lienzo cubre solo los datos (teselas y mosaico, ajustado a la rejilla de teselas), no los cuadrados del nivel útil, que pueden
+ *  salirse de los datos hasta casi su lado (un lienzo a su medida gastaría memoria en gris). Fuera del lienzo, gris. */
 async function ortofoto(I, teselas) {
   const TS = I.ts, [CX, CY] = I.centro_utm, res = TS / I.orto_px;          // m/px de la ortofoto de tesela
   const xs = [], ys = [];
@@ -142,14 +148,25 @@ export function huella(ids) {
   ids.forEach((v, k) => { if (!Number.isInteger(v) || v < 0 || v >= 2 ** 32) throw new Error("id fuera de [0, 2^32): " + v); b.writeUInt32LE(v, k * 4); });
   return "sha256:" + crypto.createHash("sha256").update(b).digest("hex");
 }
+/** Nombre de catálogo de un id de copas_tipo, o null si el catálogo no lo conoce. Por defecto, el catálogo «olivos» del constructor
+ *  (contratos/olivo-generado.md §1.1): id = ID_TIPO de apps/web/olivo/tipos.js, nombre = tablaLocal() de apps/web/olivo/catalogo.js.
+ *  Con la ruta de un catalogo.json del contrato olivos-tipo (solo el sintético de pruebas, modelos/olivos/fixture/), «<id del
+ *  catálogo>:<id del tipo>»: así el tipo 0 del fixture se llama «fixture-sintetico:0» y no se confunde con olivos:planton. */
+export function catalogoTipos(ruta) {
+  if (!ruta) return { id: CATALOGO, nombre: t => { const k = tipoDeId(t); return k ? tablaLocal([k])[0] : null; } };
+  const C = JSON.parse(fs.readFileSync(ruta, "utf8")), ids = new Set(C.tipos.map(t => t.id));
+  return { id: C.id, nombre: t => ids.has(t) ? C.id + ":" + t : null };
+}
 /** Tabla de tipos del tileset: número local → nombre del tipo de catálogo. −1 = sin asignar (null). Los números locales 0..m−1 se
- *  dan a los ids de catálogo de copas_tipo presentes, de menor a mayor. Nombre PROVISIONAL «olivos-tipo:<id>» hasta que el contrato
- *  del constructor (contratos/olivo-generado.md) fije los nombres de verdad (p. ej. «olivos:centenario-3p»). */
-export function tablaTipos(I) {
-  const presentes = [...new Set((I.copas_tipo || []).filter(t => t >= 0))].sort((a, b) => a - b);
+ *  dan a los ids de copas_tipo presentes que el catálogo conoce, de menor a mayor; un id que no conoce va a −1 (como en el motor) y
+ *  se cuenta en «desconocidos». */
+export function tablaTipos(I, cat = catalogoTipos()) {
+  const vistos = [...new Set((I.copas_tipo || []).filter(t => t >= 0))].sort((a, b) => a - b);
+  const presentes = vistos.filter(t => cat.nombre(t) !== null), desconocidos = vistos.filter(t => cat.nombre(t) === null);
   const tabla = { "-1": null }, local = new Map([[-1, -1]]);
-  presentes.forEach((t, n) => { tabla[String(n)] = "olivos-tipo:" + t; local.set(t, n); });
-  return { tabla, local };
+  presentes.forEach((t, n) => { tabla[String(n)] = cat.nombre(t); local.set(t, n); });
+  desconocidos.forEach(t => local.set(t, -1));
+  return { tabla, local, desconocidos, catalogo: cat.id };
 }
 /** Array tipado entero para un atributo por instancia: glTF no admite UNSIGNED_INT fuera de los índices, así que u8/u16 si cabe y
  *  si no FLOAT (exacto hasta 2^24, que se comprueba) */
@@ -273,16 +290,34 @@ async function glbNodo(t, olivos, proto, jpg) {
 }
 
 // ---------------------------------------------------------------- el árbol de cuadrantes
+/** Plan del árbol, sin geometría. La raíz NO tiene contenido; sus hijos son los cuadrados del NIVEL ÚTIL (lado S, alineados a
+ *  múltiplos de S en UTM) que tocan alguna tesela del contrato; debajo, cuadrantes hasta las hojas (lado = hoja); lo que no toca datos
+ *  no se genera. S por defecto = el nivel más alto con olivos, hoja·2^(niveles-olivo − 1) (512 m): por encima solo había terreno y una
+ *  ortofoto más tosca que la que pide la pantalla al ver la finca entera, saltos de LOD que no aportan. Antes (generador ≤ 0.2.0) la
+ *  raíz era el menor cuadrado alineado que CONTIENE los datos, y unos datos que cruzan una línea de rejilla gruesa la subían mucho
+ *  (Hituelo: 32.768 m, 6 niveles sin olivos). Nodo: {prof, i, j, L, x0, y0, hijos}; prof 0 = nivel útil. */
+export function planArbol(teselas, TS, centro, hoja, S) {
+  if (!(S >= hoja) || !Number.isInteger(Math.log2(S / hoja))) throw new Error("nivel útil " + S + " m: debe ser hoja·2^k (hoja " + hoja + " m)");
+  const [CX, CY] = centro, kxs = [...teselas.values()].map(t => t.kx), kys = [...teselas.values()].map(t => t.ky);
+  const E0 = Math.min(...kxs) * TS, E1 = (Math.max(...kxs) + 1) * TS, N0 = Math.min(...kys) * TS, N1 = (Math.max(...kys) + 1) * TS;
+  const profMax = Math.round(Math.log2(S / hoja));
+  const solapa = (x0, y0, L) => [...teselas.values()].some(t => { const ox = t.kx * TS - CX, oy = t.ky * TS - CY; return ox < x0 + L && ox + TS > x0 && oy < y0 + L && oy + TS > y0; });
+  const nodo = (prof, i, j, L) => {
+    const x0 = i * L - CX, y0 = j * L - CY;
+    if (!solapa(x0, y0, L)) return null;
+    const hijos = prof < profMax ? [[0, 0], [1, 0], [0, 1], [1, 1]].map(([di, dj]) => nodo(prof + 1, 2 * i + di, 2 * j + dj, L / 2)).filter(Boolean) : [];
+    return { prof, i, j, L, x0, y0, hijos };
+  };
+  const cuadros = [];
+  for (let j = Math.floor(N0 / S); j <= Math.floor((N1 - 1) / S); j++) for (let i = Math.floor(E0 / S); i <= Math.floor((E1 - 1) / S); i++) { const n = nodo(0, i, j, S); if (n) cuadros.push(n); }
+  return { S, profMax, caja_utm: [E0, N0, E1, N1], cuadros };
+}
+
 export async function genera(op) {
   await MeshoptSimplifier.ready;
   const { I, teselas } = leeContrato(op.entrada), R = relieve(I, teselas), TS = I.ts, [CX, CY] = I.centro_utm;
-  // caja de los datos en UTM y raíz: el menor cuadrado de lado hoja·2^k alineado a múltiplos de su lado que la contiene (como ADR-0001)
-  const kxs = [...teselas.values()].map(t => t.kx), kys = [...teselas.values()].map(t => t.ky);
-  const E0 = Math.min(...kxs) * TS, E1 = (Math.max(...kxs) + 1) * TS, N0 = Math.min(...kys) * TS, N1 = (Math.max(...kys) + 1) * TS;
-  let S = op.hoja; while (Math.floor(E0 / S) !== Math.floor((E1 - 1) / S) || Math.floor(N0 / S) !== Math.floor((N1 - 1) / S)) S *= 2;
-  const profMax = Math.round(Math.log2(S / op.hoja)), raiz = { S, i: Math.floor(E0 / S), j: Math.floor(N0 / S) };
-  const caja = { x0: raiz.i * S - CX, y0: raiz.j * S - CY, x1: raiz.i * S - CX + S, y1: raiz.j * S - CY + S };
-  const orto = await ortofoto(I, teselas), protos = prototipos(), tipos = tablaTipos(I), ids = idsDe(I);
+  const plan = planArbol(teselas, TS, I.centro_utm, op.hoja, op.nivelUtil || op.hoja * 2 ** (op.nivelesOlivo - 1)), { S, profMax } = plan;
+  const orto = await ortofoto(I, teselas), protos = prototipos(), tipos = tablaTipos(I, catalogoTipos(op.catalogo)), ids = idsDe(I);
   const olivos = I.copas.map((c, id) => ({ c, id })).filter(o => esOlivo(o.c)).map(({ c, id }) => {
     const s = silueta(c), col = orto.color(c[0], c[1]), vf = 0.88 + 0.26 * hash(id * 3.7);
     const lin = v => Math.pow(v, 2.2);                                          // glTF guarda color lineal
@@ -291,13 +326,11 @@ export async function genera(op) {
   const hMax = olivos.reduce((m, o) => Math.max(m, o.h), 0);
   fs.mkdirSync(op.salida, { recursive: true });
   const filas = [];
-  const solapa = (x0, y0, L) => [...teselas.values()].some(t => { const ox = t.kx * TS - CX, oy = t.ky * TS - CY; return ox < x0 + L && ox + TS > x0 && oy < y0 + L && oy + TS > y0; });
+  const zDe = h => { const b = h.boundingVolume.box; return [b[2] - b[11], b[2] + b[11]]; };
 
-  async function nodo(prof, i, j, L) {
-    const x0 = i * L - CX, y0 = j * L - CY;
-    if (!solapa(x0, y0, L)) return null;
+  async function nodo({ prof, i, j, L, x0, y0, hijos: plan }) {
     const hijos = [];
-    if (prof < profMax) for (const [di, dj] of [[0, 0], [1, 0], [0, 1], [1, 1]]) { const h = await nodo(prof + 1, 2 * i + di, 2 * j + dj, L / 2); if (h) hijos.push(h); }
+    for (const p of plan) hijos.push(await nodo(p));
     const paso = L / op.celdas, errObj = op.errorHoja * Math.pow(2, profMax - prof);
     const t = terreno(R, x0, y0, L, op.celdas, errObj, I.res);
     const deOlivo = profMax - prof < op.nivelesOlivo, proto = prof === profMax ? protos.detalle : deOlivo ? protos.lejano : null;
@@ -313,7 +346,7 @@ export async function genera(op) {
     fs.writeFileSync(path.join(op.salida, uri), glb);
     let zmin = t ? t.zmin : 0, zmax = t ? t.zmax : 0;
     for (const o of aqui) zmax = Math.max(zmax, o.z + o.h);
-    for (const h of hijos) { const b = h.boundingVolume.box; zmin = Math.min(zmin, b[2] - b[11]); zmax = Math.max(zmax, b[2] + b[11]); }
+    for (const h of hijos) { const [a, b] = zDe(h); zmin = Math.min(zmin, a); zmax = Math.max(zmax, b); }
     const triO = aqui.length * (proto ? triangulos(proto) : 0);
     filas.push({ uri, nivel: prof, lado_m: L, paso_m: paso, textura_px: px, bytes: glb.length, tri_terreno: t ? t.idx.length / 3 : 0, tri_superficie: t ? t.triSuperficie : 0, tri_faldon: t ? t.triFaldon : 0,
       olivos: aqui.length, prototipo: proto ? proto.nombre : null, tri_olivos: triO, error_rejilla: t ? +t.errRejilla.toFixed(4) : 0, error_simplificacion: t ? +t.errSimpl.toFixed(4) : 0, error_olivos: +errOlivo.toFixed(4), geometricError: +ge.toFixed(4) });
@@ -324,9 +357,20 @@ export async function genera(op) {
       ...(hijos.length ? { children: hijos } : {}),
     };
   }
-  const root = await nodo(0, raiz.i, raiz.j, S);
+  // raíz sin contenido: caja = la de sus hijos (los cuadrados del nivel útil); geometricError = el error de no dibujar nada, que se
+  // acota por el lado mayor de esa caja (falta todo lo que hay dentro), y nunca menos que 2 × el mayor de sus hijos. Con un error
+  // pequeño, un visor que mira de lejos se quedaría en la raíz y no dibujaría nada (3DTilesRendererJS y Cesium no refinan una tesela
+  // vacía cuyo error ya cumple el objetivo).
+  const hijos = [];
+  for (const p of plan.cuadros) hijos.push(await nodo(p));
+  const xs = plan.cuadros.flatMap(c => [c.x0, c.x0 + S]), ys = plan.cuadros.flatMap(c => [c.y0, c.y0 + S]), zs = hijos.flatMap(zDe);
+  const rx0 = Math.min(...xs), rx1 = Math.max(...xs), ry0 = Math.min(...ys), ry1 = Math.max(...ys), rz0 = Math.min(...zs), rz1 = Math.max(...zs);
+  const geRaiz = Math.max(rx1 - rx0, ry1 - ry0, 2 * Math.max(...hijos.map(h => h.geometricError)));
   const m = transformRaiz(I.centro_utm, I.z0 + op.ondulacion);
-  root.transform = m.transform;
+  const root = {
+    boundingVolume: { box: [(rx0 + rx1) / 2, (ry0 + ry1) / 2, (rz0 + rz1) / 2, (rx1 - rx0) / 2, 0, 0, 0, (ry1 - ry0) / 2, 0, 0, 0, Math.max(0.5, (rz1 - rz0) / 2)] },
+    geometricError: +geRaiz.toFixed(4), refine: "REPLACE", children: hijos, transform: m.transform,
+  };
   const tileset = {
     asset: { version: "1.1", generator: "gemelo tuberia/tiles3d " + VERSION_GENERADOR, tilesetVersion: "contrato-v2/" + I.finca_id },
     geometricError: +(2 * root.geometricError).toFixed(4),
@@ -335,7 +379,7 @@ export async function genera(op) {
       marco_local: "x = E − centro_utm[0], y = N − centro_utm[1] (metros de cuadrícula UTM 30N), z = cota − z0; contenido glTF en (x, z, −y)",
       origen_geodesico: m.origen, convergencia_grados: +m.convergenciaGrados.toFixed(6), factor_escala_utm: +m.factorEscala.toFixed(8),
       hoja_m: op.hoja, celdas: op.celdas, prototipos: { "olivo-detalle": triangulos(protos.detalle), "olivo-lejano": triangulos(protos.lejano) }, tipo_generico: -1,
-      contrato_tileset: 1, id_fuente: I.copas_id ? "copas_id" : "indice", huella_registro: huella(ids), tipos: tipos.tabla, tipos_provisionales: true,
+      contrato_tileset: 2, id_fuente: I.copas_id ? "copas_id" : "indice", huella_registro: huella(ids), catalogo_tipos: tipos.catalogo, tipos: tipos.tabla,
     } },
     root,
   };
@@ -347,7 +391,8 @@ export async function genera(op) {
     n.teselas++; n.tri_terreno += f.tri_terreno; n.tri_olivos += f.tri_olivos; n.olivos += f.olivos; n.bytes += f.bytes;
     n.max_tri_tesela = Math.max(n.max_tri_tesela, f.tri_terreno + f.tri_olivos); n.geometricError_max = Math.max(n.geometricError_max, f.geometricError);
   }
-  const resumen = { generador: VERSION_GENERADOR, finca_id: I.finca_id, olivos: olivos.length, raiz: { lado_m: S, i: raiz.i, j: raiz.j }, niveles, teselas: filas };
+  const resumen = { generador: VERSION_GENERADOR, finca_id: I.finca_id, olivos: olivos.length, raiz: { sin_contenido: true, geometricError: root.geometricError, nivel_util_m: S, cuadros: plan.cuadros.map(c => [c.i, c.j]), caja_utm: plan.caja_utm },
+    tipos_desconocidos: tipos.desconocidos, niveles, teselas: filas };
   fs.writeFileSync(path.join(op.salida, "resumen.json"), JSON.stringify(resumen, null, 1) + "\n");
   return resumen;
 }

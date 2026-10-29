@@ -75,8 +75,37 @@ Cerro embebido, escenarios `lejos` y `cerca` de `pruebas/guardianes/_navegador.j
 
 Para recortar la doble descarga (decisión 38), lo que el glb repite es `dtm` (como malla) y la ortofoto `t/*.jpg` (como textura); `pts` (la nube, que sigue en el motor por la decisión 37), `chm` y `suelo` (color del suelo del sombreador) no están en el glb. **fps, llamadas y memoria con este tileset: no medidos** (falta el paso 3 del plan, el motor).
 
+### Raíz sin contenido (generador 0.3.0, 2026-10-29)
+
+Fixture sintético de Hituelo (`--catalogo modelos/olivos/fixture/catalogo.json`; `GEMELO_MIDE=1 node --test pruebas/guardianes/tiles3d.test.js`, una corrida):
+
+| Nivel | Nodos (glb) | Triángulos (terreno + olivos) | Bytes |
+|---|---|---|---|
+| raíz (sin contenido, `geometricError` 512) | 1 (0) | — | — |
+| 512 m (nivel útil) | 1 | 4.380 (1.020 + 3.360) | 41.968 |
+| 256 m | 2 | 6.726 (3.366 + 3.360) | 108.032 |
+| 128 m | 8 | 33.112 (12.952 + 20.160) | 421.196 |
+
+11 glb, 0,57 MB (571.196 B) + `tileset.json` 8.892 B; validador de CesiumGS 0.6.1: 0 errores, 0 avisos, 11 informativos. Los recuentos de triángulos y nodos con glb son los del 0.2.0 (en el fixture el nivel útil era ya la raíz); los bytes salen algo menores (< 5 %) que los de la medida del 2026-10-28, sin investigar.
+
+**Hituelo real: solo el árbol**, calculado con `planArbol()` sobre el `indice.json` actual (46 teselas), **sin escribir glb ni regenerar**: 1 raíz sin contenido + 18 (512 m) + 46 (256 m) + 184 (128 m) = **248 glb** (antes 269: desaparecen los 21 nodos de 1.024 a 32.768 m, 0,9 MB con el 0.2.0, así que el total sería ≈ 40,0 MB **[DEDUCIDO]**, no medido). Caja de los datos 2.048 × 2.816 m; la raíz, 2.560 × 3.072 m.
+
 ## Tirones (rebanada máxima de la cola, ms, escritorio)
 R (ruido) 13 · N (nube, incluye decodificar una ortofoto) 12–40 antes de separar la decodificación · T (terreno) 6 · C (olivos N0) 10–20 · B 3. Con el presupuesto de 6 ms/fotograma (3,5 en paseo) el peor fotograma añade ≈ una rebanada. En un iPhone espera 2–3 veces más.
+
+## Olivos generados con `?olivos=gen` (2026-10-29, fixture sintético de Hituelo, [ADR-0017](../adr/0017-constructor-de-olivos-generados.md))
+Chrome headless con SwiftShader (recuentos y memoria, no fps), máquina cargada; `?arbsc=1`; `pruebas/olivo/p7_medidas.mjs`. Escenarios de `carga.test.js`.
+
+| Escenario | Sin la bandera (llamadas / tri / heap) | Con `?olivos=gen` | Lote de generados |
+|---|---|---|---|
+| Lejos (600 m) | 168 / 82 k / 30 MB | igual (desde lejos no se genera nada) | — |
+| Cerca (45 m) | 56 / 431 k / 38 MB | 47 / 546 k / 44 MB | 6 mallas · 2 olivos (E0 + E1) · 135 k tri (222 k con la pasada de sombras) |
+| Nube | 88 / 173 k / 38 MB | sin lote (los árboles no se ven en modo Nube) | — |
+
+- **Sin la bandera** el motor dibuja lo mismo que antes (mismos recuentos en las tres vistas que la medida previa y que `carga.test.js`).
+- **Lote**: corteza, madera muerta y olivas en una `BatchedMesh` cada una; ramitas A, B y relleno, instanciadas; olivas de E2 como puntos. Para 2-7 olivos, 6-7 llamadas EN TOTAL. Antes de fijar el coste de las sombras (sin contarlas), se dibujaban 7 olivos (6 propios + 1 variante, 288-308 k tri) y la escena llegaba a 655 k tri: por eso el presupuesto cuenta la pasada de sombras.
+- **Presupuesto**: el 45 % del tope del aparato (550 k en escritorio; el del perfil VR en gafas), contando la pasada de sombras. Con olivos centenarios de 100 k tri (E0) y 50 k (E1), caben el más cercano en E0 y otro en E1; las variantes E2 quedan fuera en el fixture.
+- **Generación**: sin trabajador (salida artefacto, IIFE) va a rebanadas por la Cola (`G…` en `?debug`); con la máquina cargada, la rebanada más larga llegó a 15 ms. En el cliente web (Vite) va al trabajador. **No medido** con datos reales de Hituelo ni en aparatos.
 
 ## Límites conocidos
 - Las ortofotos decodificadas (2,4 MB por tesela de 768 px; 1 MB a 512 px) se sueltan solo a 900 m; sin LRU fino.

@@ -244,6 +244,8 @@ function revisaListaBlanca(o, ruta, correos) {
 
 test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, hazas con lista blanca, el mundo en /finca/) y lo baja", { timeout: 900000 }, async t => {
   if (SALTO_E2E) return t.skip(SALTO_E2E);
+  const sueltaTurno = await require("../banco/turno").pide("docker: e2e de entrada");   // un solo Docker o Chrome de pruebas a la vez (TESTING.md)
+  try {
   const imp = f => import(pathToFileURL(path.join(HERR, f)).href);
   const { levanta } = await imp("levanta.mjs"), { para } = await imp("para.mjs"), { estado } = await imp("estado.mjs");
   const comun = await imp("_comun.mjs"), { HOGARES, HAZAS_SIN_ASIGNAR } = await imp("siembra.mjs");
@@ -557,4 +559,5 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
     if (!antes) { r0 = reloj(); para(); t.diagnostic("bajado en " + r0().toFixed(1) + " s (el volumen de la db se conserva)"); }
     else t.diagnostic("ya estaba levantado antes de la prueba: se deja levantado");
   }
+  } finally { await sueltaTurno(); }
 });

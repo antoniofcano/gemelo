@@ -1,0 +1,12 @@
+Texturas del constructor de olivos (apps/web/olivo/texturas/)
+
+corteza.jpg   corteza de olivo
+musgo.jpg     corteza de olivo con musgo
+muerta.jpg    madera vieja sin corteza
+
+Procedencia: fotografías de campo de Cano & Damas Oleicultores, recortadas y embebidas por Antonio en su constructor
+«Olivos tipo» (olivo-2); se extraen de él tal cual con apps/web/olivo/herramientas/extrae_texturas.mjs.
+Son ILUSTRATIVAS: dan el aspecto de la madera, no describen ningún árbol concreto.
+
+Licencia: © Cano & Damas Oleicultores. Todos los derechos reservados, como el código de este repositorio.
+Se versionan aquí por decisión de Antonio (DECISIONS-PENDING nº 30, ADR-0017). No se pueden reutilizar fuera del gemelo sin permiso.

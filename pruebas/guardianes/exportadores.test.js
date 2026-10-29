@@ -115,3 +115,33 @@ test("finca_8_teselas.py construye() (Cerro) sobre 1 tesela sintética: columnas
   for (const [pos, k] of pc) if (k >= PROV && ph.get(pos) >= PROV) assert.strictEqual(ph.get(pos), k, "el id provisional de " + pos + " difiere entre Cerro y Hituelo");
   assert.ok(fs.existsSync(path.join(BASE, "cerro", "embebido.json")), "falta embebido.json");
 });
+
+// tuberia/puntos_copas.py (de las hojas .laz a los puntos normalizados) y tuberia/parametros_copas.py, de punta a punta, sobre un .laz SINTÉTICO
+// escrito en la propia prueba (pruebas/nube_sintetica.py): conserva solo la vegetación cerca de las copas, resta el suelo del dtm de la tesela
+// (en pendiente), ignora la hoja lejana y el duplicado «(1)», lee por trozos, y copas_param cumple el contrato con las medidas esperadas.
+const LAZ = !py ? "No hay Python 3" : ejecuta(py, ["-P", "-E", "-c", "import numpy, scipy, laspy, lazrs"]).status !== 0 ? "faltan numpy, scipy, laspy o lazrs (pip install -r requirements.txt)" : null;
+test("puntos_copas.py + parametros_copas.py sobre un .laz sintético: puntos conservados, altura sobre el dtm y copas_param del contrato", { timeout: 300000 }, t => {
+  if (LAZ) return t.skip(LAZ + ": puntos_copas.py NO se ha ejecutado");
+  const d = propia("nube");
+  const r = ejecuta(py, ["-P", "-E", path.join("pruebas", "nube_sintetica.py"), d]);
+  assert.strictEqual(r.status, 0, "nube_sintetica.py falló:\n" + r.stdout + r.stderr);
+  const R = JSON.parse(r.stdout);
+  assert.deepStrictEqual(R.hojas, ["500-4001"], "solo la hoja que toca las copas (ni la lejana ni el duplicado «(1)»)");
+  assert.ok(R.trozo_ok, "la hoja debe leerse en más de un trozo");
+  assert.strictEqual(R.conservados, R.esperados, "puntos conservados: solo clases 3-5, 0,3-30 m, a ≤ 6,5 m de una copa y dentro del cuadro");
+  assert.deepStrictEqual(R.clases, [3, 4, 5]);
+  assert.deepStrictEqual(R.dtype, ["float32", "float32", "float32"]);
+  assert.ok(R.h_err_max < 0.011, "altura sobre el suelo con error " + R.h_err_max + " m (el dtm va en cm)");
+  const F = R.copas_param;
+  assert.strictEqual(F.length, 4); assert.strictEqual(F[3], null, "la copa sin puntos lleva null");
+  const V = new Ajv2020({ strict: true, strictRequired: false, allowUnionTypes: true }).compile(ESQ.properties.copas_param);
+  assert.ok(V(F), "copas_param no cumple contratos/indice.schema.json: " + JSON.stringify(V.errors));
+  R.olivos.forEach((o, i) => {
+    const f = F[i], alto = o.base + 0.95 * (o.alto - o.base);    // p95 de alturas uniformes entre base y copa (más un penacho arriba)
+    assert.ok(Math.abs(f[0] - alto) < 0.4 && f[0] <= o.alto, "olivo " + i + ": altura_m " + f[0] + " frente a ≈ " + alto.toFixed(2));
+    assert.ok(Math.abs(f[1] - 2 * 0.975 * o.radio) < 0.4, "olivo " + i + ": copa_m " + f[1] + " frente a ≈ " + (1.95 * o.radio).toFixed(2));
+    const u = Math.max(o.base, 1.2, 0.35 * o.alto), base = u + 0.05 * (o.alto - u);   // p5 de los puntos de copa (h ≥ max(1,2, 0,35·hmax))
+    assert.ok(Math.abs(f[5] - base) < 0.3, "olivo " + i + ": base_m " + f[5] + " frente a ≈ " + base.toFixed(2));
+    assert.strictEqual(f[7], o.tronco ? 0 : 2, "olivo " + i + ": tronco por LiDAR si hay retornos de 0,3-1,2 m; si no, el centro (sin marcas)");
+  });
+});

@@ -1,11 +1,15 @@
 // Utilidades de navegador de los guardianes: servidor estático mínimo y medida de una página del gemelo con escenarios fijos.
 // SwiftShader vale para contar llamadas, triángulos, puntos y memoria; NO para fps (doc/operacion/TESTING.md).
+// Banco de pruebas (TESTING.md §«Banco de pruebas»): un solo Chrome sin pantalla a la vez en el equipo. Con GEMELO_CHROME_WS (lo pone
+// `npm run puerta`) todas las pruebas se conectan al MISMO Chrome; sin él, `lanza()` pide el turno (pruebas/banco/turno.js) y lo suelta al cerrar.
 "use strict";
 const http = require("http");
 const { chrome, playwright, python, fs, path } = require("./_util");
 
 const TIPOS = { ".html": "text/html; charset=utf-8", ".json": "application/json", ".jpg": "image/jpeg", ".js": "text/javascript", ".css": "text/css" };
 const ESPERA_MS = Number(process.env.GEMELO_ESPERA || 45000);
+const TOPE_MEDIDA_MS = Number(process.env.GEMELO_TOPE_MEDIDA || 240000);   // una medida entera (carga + escenarios); si se pasa, sale «parcial»
+const ARGS_CHROME = ["--use-gl=swiftshader", "--enable-unsafe-swiftshader", "--no-sandbox", "--enable-precise-memory-info"];
 const ESCENARIOS = {
   lejos: { az: -0.55, el: 0.62, dist: 600, ox: 0, oy: -130, modo: "gem" },
   cerca: { az: -0.4, el: 0.5, dist: 45, ox: -130, oy: -125, modo: "gem" },
@@ -32,28 +36,42 @@ function motivoSalto(que) {
   return null;
 }
 
-function lanza() {
-  return playwright().chromium.launch({ executablePath: chrome(), args: ["--use-gl=swiftshader", "--enable-unsafe-swiftshader", "--no-sandbox", "--enable-precise-memory-info"] });
+/** El Chrome de las pruebas: el compartido de la puerta si lo hay; si no, uno propio dentro del turno (close() lo cierra y suelta el turno) */
+async function lanza() {
+  const pw = playwright().chromium;
+  if (process.env.GEMELO_CHROME_WS) return pw.connect(process.env.GEMELO_CHROME_WS);
+  const suelta = await require("../banco/turno").pide("chrome: " + path.basename(process.argv[1] || "prueba"));
+  try {
+    const nav = await pw.launch({ executablePath: chrome(), args: ARGS_CHROME }), cierra = nav.close.bind(nav);
+    nav.close = async () => { try { await cierra(); } finally { await suelta(); } };
+    return nav;
+  } catch (e) { await suelta(); throw e; }
 }
 
-/** Abre una URL, espera a __g.listo() y mide cada escenario. Devuelve { errores, fallos, medidas } */
-async function mide(navegador, url) {
-  const p = await navegador.newPage({ viewport: { width: 900, height: 650 } }), errores = [], fallos = [];
+/** Abre una URL, espera a __g.listo() y mide cada escenario. Devuelve { errores, fallos, medidas, parcial }.
+ *  Con un tope (GEMELO_TOPE_MEDIDA, ms): si se pasa, devuelve lo medido hasta entonces con parcial = true (y no deja la página colgada). */
+async function mide(navegador, url, { escenarios = ESCENARIOS, tope = TOPE_MEDIDA_MS, capturas = null } = {}) {   // capturas: carpeta para un PNG por escenario
+  const p = await navegador.newPage({ viewport: { width: 900, height: 650 } }), errores = [], fallos = [], t0 = Date.now(), queda = () => Math.max(1000, tope - (Date.now() - t0));
   p.on("pageerror", e => errores.push("PAGEERROR " + String(e.stack || e).slice(0, 400)));
   p.on("console", m => { if (m.type() === "error") errores.push("CONSOLE " + m.text().slice(0, 300)); });
   p.on("requestfailed", r => fallos.push(r.url()));
   p.on("response", r => { if (r.status() >= 400) fallos.push(r.status() + " " + r.url()); });
-  await p.goto(url + (url.includes("?") ? "&" : "?") + "debug");
-  await p.waitForFunction(() => window.__g && window.__g.listo(), null, { timeout: ESPERA_MS });
   const medidas = {};
-  for (const [nombre, e] of Object.entries(ESCENARIOS)) {
+  let parcial = false;
+  try {
+  await p.goto(url + (url.includes("?") ? "&" : "?") + "debug");
+  await p.waitForFunction(() => window.__g && window.__g.listo(), null, { timeout: Math.min(ESPERA_MS, queda()) });
+  for (const [nombre, e] of Object.entries(escenarios)) {
+    if (Date.now() - t0 > tope) { parcial = true; break; }
     await p.evaluate(e => { const g = window.__g; g.orb.az = e.az; g.orb.el = e.el; g.orb.dist = e.dist; g.objetivo.x = e.ox; g.objetivo.z = -e.oy; g.objetivo.y = g.suelo(e.ox, e.oy) + 4; g.pon(e.modo); }, e);
-    await p.waitForFunction(() => window.__g.Cola.pendientes() === 0, null, { timeout: ESPERA_MS, polling: 500 }).catch(() => {});
+    await p.waitForFunction(() => window.__g.Cola.pendientes() === 0, null, { timeout: Math.min(ESPERA_MS, queda()), polling: 500 }).catch(() => {});
     await p.waitForTimeout(1500);
     medidas[nombre] = await p.evaluate(() => { const g = window.__g, r = g.renderer.info; return { llamadas: r.render.calls, triangulos: r.render.triangles, puntos: r.render.points, geometrias: r.memory.geometries, texturas: r.memory.textures, heapMB: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : -1, olivos: g.Arboles.resumen() }; });
+    if (capturas) { fs.mkdirSync(capturas, { recursive: true }); await p.screenshot({ path: path.join(capturas, nombre + ".png") }); }
   }
-  await p.close();
-  return { errores, fallos, medidas };
+  } catch (e) { if (Date.now() - t0 < tope) throw e; parcial = true; errores.push("TOPE " + Math.round(tope / 1000) + " s: " + String(e.message).slice(0, 200)); }
+  finally { await p.close().catch(() => {}); }
+  return { errores, fallos, medidas, parcial };
 }
 
-module.exports = { ESCENARIOS, sirve, motivoSalto, lanza, mide };
+module.exports = { ESCENARIOS, ARGS_CHROME, sirve, motivoSalto, lanza, mide };

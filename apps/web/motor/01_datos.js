@@ -1,5 +1,5 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: D, $, fmt, b64, i16, RES, x0, yN, ANCHO, ALTO, EXT, FOG0, FOG1, DIST_MAX, DIST_INI, ESTAD, DEPURA, VRP
+// Expone: D, $, fmt, b64, i16, RES, x0, yN, ANCHO, ALTO, EXT, FOG0, FOG1, DIST_MAX, DIST_INI, ESTAD, DEPURA, VRP, FACTOR_R8, ESC_R8
 // Consume: 02_mundo (Mundo, suelo), 04_terreno (terreno), 05_nube (nube)
 // Nota: Abre la IIFE que cierra 99_cierre.js y activa "use strict". Primer módulo: define D (los datos de la finca) y las utilidades.
 // ===============================================================================
@@ -18,4 +18,12 @@
   var ESTAD = { terreno: { n: 0, ms: 0, max: 0 }, celdas: { n: 0, ms: 0, max: 0 }, nube: { n: 0, ms: 0, max: 0 } };   // coste de lo que se construye a demanda (se ve con ?debug)
   var DEPURA = /[?&]debug\b/.test(location.search);
   var VRP = { on: false, hierba: 32 };   // el perfil de las gafas VR (lo fija 29_vr.js; fuera de VR no cambia nada)
+  // Radio dibujado de la copa = r8 × FACTOR_R8 (decisión abierta nº 48, ADR-0017). r8 es el RADIO medido (centro → borde de la cuenca); el motor
+  // lo dibuja hoy a la mitad (0,5). 1 = la copa a su radio medido. Va en la URL (?factorR8=1) o en D.config.factorR8; por defecto 0,5 (como siempre).
+  var FACTOR_R8 = (function () {
+    var m = /[?&]factorR8=([0-9.]+)/.exec(location.search), v = m ? Number(m[1]) : (D.config && D.config.factorR8) || 0.5;
+    return v > 0 && v <= 2 ? v : 0.5;
+  })();
+  // ESC_R8 = FACTOR_R8 / 0,5 escala lo que hoy se dibuja con r8 tal cual (relleno, sombras, ramas): con 0,5 vale 1 y no cambia nada
+  var ESC_R8 = FACTOR_R8 / 0.5;
 
