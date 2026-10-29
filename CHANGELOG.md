@@ -26,6 +26,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 - Andamio: `VERSION`, `package.json`, `Makefile`, `.editorconfig`, `.nvmrc`, `requirements.txt`, `CONTRIBUTING.md`, plantillas de issue y PR.
 
 ### Cambiado
+- El Caddy de producción usa `Referrer-Policy: strict-origin-when-cross-origin` (antes `no-referrer`, que rompía los formularios POST en Chrome; decisión 53).
 - VR: el relieve fino del suelo se apaga en cuanto el perfil de las gafas baja por fotograma justo y se restaura al salir (decisión 24).
 - three 0.186.1 en la web y en la salida artefacto (importmap desde jsDelivr, misma versión): color y luz modernos recalibrados a ojo; presupuesto de dibujo sin cambios (ADR-0016).
 - Exportadores multiplataforma: las rutas de `tuberia/` se arman con `os.path.join` en vez de separadores «\» fijos; guardián `multiplataforma.test.js` (decisión 8). Sin ejecutar con datos reales fuera de Windows.

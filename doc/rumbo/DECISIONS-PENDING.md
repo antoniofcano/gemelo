@@ -7,6 +7,7 @@ Decisiones que **no puede tomar un agente**: las cierra Antonio. Las técnicas s
 | Abierta | Bloquea | Quién la cierra |
 |---|---|---|
 | Marca: si «Cuarenta hazas» es el nombre que ve la gente (aplazada, decisión 44) | portada, correos y pestaña antes de abrir a gente real | Antonio |
+| r8 como radio (`factorR8` 0,5 → 1), decisión 48 | aspecto de las copas y presupuesto cercano | Antonio, con el informe del constructor y la cinta de campo |
 
 ## Cerradas el 2026-10-28 (Antonio, de una en una)
 
@@ -59,3 +60,12 @@ Decisiones que **no puede tomar un agente**: las cierra Antonio. Las técnicas s
 | 45 | **Perfiles de menores** | no / sin chat ni voz / con voz en guiadas | primer acceso, voz | ✅ 2026-10-29: **no por ahora**; solo cuentas adultas; se reabre con asesoría junto a la EIPD de F3 |
 | 46 | **Vincular las gafas** | código corto / enlace mágico / las dos | acceso en Quest | ✅ 2026-10-29: **código corto** (5 min) aprobado desde un dispositivo con sesión |
 | 47 | **Hablar en Quest** | grip derecho provisional / definitivo / botón del panel | F3 | ✅ 2026-10-29: **grip derecho provisional**; se decide al probarlo en casco (no probado) |
+| 48 | **Constructor · r8** | radio / diámetro / medir antes | P7 y copas del motor | 🟡 2026-10-29: **r8 es radio** (lo define el exportador), pero **no cambia el aspecto aún**: parámetro `factorR8` (0,5 = como hoy, 1 = radio) en motor y generador; informe (superposición cenital en Cerro, solapes > 0,5 m e histograma, coste en 3 vistas, capturas 0,5 frente a 1) y la cierra Antonio como decisión pendiente; la cinta de campo (decisión 49) la confirma. Hasta entonces, `factorR8 = 0,5` |
+| 49 | **Constructor · sesgo de la medida** | en el generador / en la tubería / no | `copas_param` | ✅ 2026-10-29: **en la tubería, con factores a 1,0**; los 1,16/1,20 del simulador no se aplican a datos reales. Plantilla de campo (10 olivos: altura y copa con cinta en dos direcciones, id provisional y posición) y script que saca los factores reales |
+| 50 | **Constructor · semilla con id provisional** | aceptar cambio / guardar semilla | censo de OlivarTrack | ✅ 2026-10-29: **la semilla se guarda** en el registro del árbol al asignarse; al llegar el censo, cada id provisional pasa su semilla al olivo más cercano. Solo un cambio de `GEN_VERSION` cambia la forma, y queda escrito |
+| 51 | **Constructor · ids de tipo** | prefijo / rangos | catálogos | ✅ 2026-10-29: **nombre propio de catálogo, sin versión** (p. ej. `olivos:centenario-3p`); `GEN_VERSION` aparte. En el tileset, `_TIPO` es número local con tabla número → nombre en `extras.gemelo`. El tipo 0 de pruebas, solo en el fixture |
+| 52 | **Constructor · coste por árbol** | fusionar (olivo-3) / limitar K | P7 | ✅ 2026-10-29: **ni lo uno ni lo otro**: forma intacta (olivo-2) y fusión en la capa de dibujo, una `BatchedMesh` por material compartida por todos los árboles cercanos (instancias para ramitas y olivas), objetivo ~6–7 llamadas en total; límite de árboles generados por presupuesto de triángulos del aparato (550 k escritorio, perfil VRP en gafas); `renderer.info` antes y después |
+| 53 | **F1a · Referrer-Policy de producción** | `strict-origin-when-cross-origin` / portada con `fetch` | portada | ✅ 2026-10-29: **`strict-origin-when-cross-origin`** en `infra/Caddyfile`, como en dev |
+| 54 | **F1a · certificado en local** | aviso de la CA de Caddy / mkcert | entorno local | ✅ 2026-10-29: **se acepta el aviso**, sin instalar nada (en el Quest saldría igual) |
+| 55 | **F1a · usuario de la base en local** | dueño / mínimos como producción | entorno local | ✅ 2026-10-29: **el mismo usuario de permisos mínimos que en producción** (`gemelo_api`) |
+| 56 | **F1a · dónde vive la portada** | `apps/web` / app aparte | portada y entrada | ✅ 2026-10-29: **`apps/web`**: portada y mundo, la misma web |

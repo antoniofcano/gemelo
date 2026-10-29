@@ -76,7 +76,7 @@ tiene "$r" "^permissions-policy:.*xr-spatial-tracking=(self)" && ok "Permissions
 tiene "$r" "^strict-transport-security: max-age=31536000" && ok "HSTS" || mal "falta HSTS"
 tiene "$r" "^x-content-type-options: nosniff" && ok "nosniff" || mal "falta nosniff"
 tiene "$r" "^x-frame-options: DENY" && ok "X-Frame-Options DENY" || mal "falta X-Frame-Options"
-tiene "$r" "^referrer-policy: no-referrer" && ok "Referrer-Policy no-referrer" || mal "falta Referrer-Policy"
+tiene "$r" "^referrer-policy: strict-origin-when-cross-origin" && ok "Referrer-Policy strict-origin-when-cross-origin" || mal "falta Referrer-Policy"
 tiene "$r" "^cross-origin-opener-policy: same-origin" && ok "COOP" || mal "falta COOP"
 tiene "$r" "^server:" && mal "se anuncia el servidor" || ok "sin cabecera Server"
 tiene "$r" "^cache-control: no-cache" && ok "la portada no se cachea a ciegas" || mal "portada sin Cache-Control no-cache"
