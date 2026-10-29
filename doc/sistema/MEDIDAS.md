@@ -38,6 +38,22 @@ Presupuesto de diseño por fotograma: ≤ 1,7 M triángulos, ≤ 1,4 M puntos (t
 
 Sin cambios de presupuesto: lo que la subida añadía se quitó en el código (lo transparente de dos caras volvía a dibujarse en dos pasadas: `forceSinglePass`; las estelas vacías contaban una llamada: no se dibujan vacías). Los conos tienen menos triángulos (sin caras degeneradas en la punta). El paquete de Vite (motor + three) pesa 981 kB sin comprimir; la salida artefacto pide a jsDelivr `three.module.js` (0,66 MB) y `three.core.js` (1,46 MB) sin minificar. **fps: no medidos** (SwiftShader).
 
+## Presencia simulada (F2 sin red, 2026-10-29, fixture sintético, [presencia](../../contratos/presencia.md))
+
+Cerro embebido, escenarios `lejos` y `cerca` de `pruebas/guardianes/_navegador.js` (900×650), Chrome headless con SwiftShader, dos repeticiones; `?presencia=sim&n=…`. Las llamadas y los triángulos que añade la presencia no varían entre repeticiones; los del resto de la escena en `cerca` sí (lo que la `Cola` ha construido al medir).
+
+| Visitantes | Llamadas lejos / cerca | Triángulos añadidos | JS de la presencia por fotograma (media; pico) | Geometrías / texturas añadidas |
+|---|---|---|---|---|
+| 0 (sin la bandera) | 168 / 56 | 0 | 0 | 0 / 0 |
+| 10 (3 de Quest) | 173 / 61 (+5) | +508 | 0,31–0,48 ms; 0,7 ms | +5 / +1 |
+| 40 (11 de Quest) | 173 / 61 (+5) | +1.984 | 0,56–0,91 ms; 1,1 ms | +5 / +1 |
+
+- **Las mismas 5 llamadas con 10 que con 40** (cuerpo, cabeza, sombrero, manos, nombres): instanciado. Unos 50 triángulos por avatar. Muy por debajo de los topes de `pruebas/presupuesto.json`, que no se tocan.
+- **Sin la bandera se dibuja lo mismo que en `main`:** `carga.test.js` con `GEMELO_MIDE=1`, cuatro pasadas de `main` y cuatro de la rama: Cerro `lejos` 167–168 / 82.364–82.366 y `cerca` 56 / 430.654 en las dos; puntos idénticos; los valores de Hituelo y de `nube` cambian de una pasada a otra también en `main` (lo que haya cargado la `Cola`) y la rama no da ninguno que `main` no dé.
+- **El JS** es el de `Presencia.actualiza` (andar de los simulados, codificar, red de mentira, decodificar, interpolar y colocar instancias), medido con `performance.now()` en este PC; el del fotograma entero en SwiftShader (1–3 fps) no significa nada. **En iPhone y Quest, no medido.**
+- **VR con el WebXR simulado** (`pruebas/mock_xr.js`): con 10 y 40 visitantes entra en VR, los avatares siguen en la escena y llegan todos (`vistos = n`), sin errores. Las llamadas en VR no se comparan (varían de una pasada a otra con la carga).
+- **Red y retardo:** los de la simulación en el navegador no valen (la simulación va al ritmo de los fotogramas y SwiftShader da 1–3). Los de referencia son los de Node en `presencia.test.js` (códec: ≤ 5 mm y 0,241°; interpolación: ≤ 0,8 cm a 10 Hz y ≤ 6 cm a 2 Hz) y la carga útil calculada del contrato (24 B × 10 Hz = 240 B/s por cercano en escritorio; 560 B/s en Quest). Sin LiveKit no hay cifra de retardo real.
+
 ## Tirones (rebanada máxima de la cola, ms, escritorio)
 R (ruido) 13 · N (nube, incluye decodificar una ortofoto) 12–40 antes de separar la decodificación · T (terreno) 6 · C (olivos N0) 10–20 · B 3. Con el presupuesto de 6 ms/fotograma (3,5 en paseo) el peor fotograma añade ≈ una rebanada. En un iPhone espera 2–3 veces más.
 
