@@ -222,10 +222,22 @@ Con menos detalle que el acceso: es la pantalla que más cambiará al probarla.
 
 ### 5.8 Primera llegada: mini-tutorial
 Diálogo breve, una vez (y en Menú → Controles y ayuda):
-- **Escritorio:** W A S D o flechas: andar · arrastrar: mirar · clic en haza o H: datos · T: chat · V o botón: hablar · Esc: menú.
-- **Móvil:** cruceta: andar · arrastrar: mirar · pellizcar: acercar · tocar haza · barra de abajo · ≡: menú.
-- **Quest:** palanca izq.: andar (grip izq.: correr) · palanca der. ← →: girar 30° · palanca der. ↑ y soltar: teletransporte · gatillo der.: elegir · Y: panel · X: viñeta · grip der.: hablar (propuesta). Nota: «Si te mareas, activa la viñeta o usa solo teletransporte».
+- **Escritorio:** W A S D o flechas: andar · arrastrar: mirar · clic en haza o H: datos · T: chat · V o botón: hablar · Esc: menú · con el Dron (E): clic en el suelo marca la llegada, Intro o L aterriza allí (§5.9).
+- **Móvil:** cruceta: andar · arrastrar: mirar · pellizcar: acercar · tocar haza · barra de abajo · ≡: menú · con el Dron: toque corto en el suelo marca la llegada, «Aterrizar aquí» (§5.9).
+- **Quest:** palanca izq.: andar (grip izq.: correr) · palanca der. ← →: girar 30° · palanca der. ↑ y soltar: teletransporte (volando o en el mirador, rayo recto y bajas de pie al anillo, §5.9) · gatillo der.: elegir · Y: panel · X: viñeta · grip der.: hablar (propuesta). Nota: «Si te mareas, activa la viñeta o usa solo teletransporte».
 - **Corresponsal:** emitir · pausar cámara · clip diferido.
+
+### 5.9 Ir a un punto desde el aire: el anillo de llegada (VR y Dron)
+El mismo gesto en las dos formas: **se marca el punto con un anillo ámbar en el suelo y luego se pide bajar**; el salto va con un **fundido corto (~0,3 s)**, nunca con vuelo de cámara, y se aparece **de pie en el anillo** (apartado 0,55 m de los troncos, a la altura del suelo), andando. Sin anillo, «bajar» hace lo de siempre. Una sola pieza en el código: `apps/web/motor/12b_llegada.js` (rayo → suelo de la CPU, también con `?escena=tiles`; el anillo crece con la distancia, ≈ 1,4°, entre 0,4 y 30 m).
+
+| Forma | Marcar la llegada | Bajar allí | Sin anillo |
+|---|---|---|---|
+| **Quest**, volando (A) o en el mirador (B) | Palanca derecha ↑ **mantenida**: rayo recto del mando al suelo y anillo; el anillo sigue al rayo. Si el rayo no toca suelo dentro de la finca o cae por detrás de la mirada (> ~96°), no hay anillo (el rayo se queda corto y tenue) | **Soltar** la palanca: fundido a negro, de pie en el anillo, modo andar | Soltar no hace nada; A o B salen del vuelo o del mirador como siempre |
+| **Quest**, andando | (lo de siempre) palanca derecha ↑: arco azul | Soltar: salto al punto de caída | — |
+| **Escritorio**, con el Dron (E o «Dron») | **Clic** en el suelo (≤ 6 px de movimiento y ≤ 0,4 s); otro clic lo mueve; arrastrar no lo pone | **Intro** o **L**, o el botón «Aterrizar aquí» de la cruceta | «Aterrizar» (o Intro/L) guarda el Dron donde estás |
+| **Móvil**, con el Dron | **Toque corto** en el suelo (≤ 12 px y ≤ 0,4 s); otro toque lo mueve; arrastrar o mantener no lo pone | Botón **«Aterrizar aquí»** (ancho de la cruceta, 44 px de alto) | «Aterrizar» guarda el Dron |
+
+Comodidad: la cámara no se mueve hasta que se suelta o se pulsa; el rayo es una línea fina semitransparente y el anillo es solo un aro (no tapa); sin anillo por detrás del usuario. **No probado en unas Quest, ni en un iPhone ni en un Android** (solo Chrome sin pantalla con WebXR simulado y ratón).
 
 ## 6. Privacidad hecha visible
 

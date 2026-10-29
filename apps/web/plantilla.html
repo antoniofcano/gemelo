@@ -145,6 +145,7 @@ header p { margin: 4px 0 0; color: var(--muted); max-width: 70ch; }
 .t-leyenda { margin: 2px 0 8px; font-size: 11.5px; color: var(--muted); } .t-leyenda i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin: 0 4px 0 8px; vertical-align: -1px; } .t-leyenda i:first-child { margin-left: 0; }
 .t-tabla { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; } .t-tabla th { text-align: left; font-weight: 600; padding: 3px 6px 3px 0; white-space: nowrap; } .t-tabla td { padding: 3px 6px; color: var(--muted); border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent); } .t-tabla th { border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
 #padQuad { grid-column: 1; grid-row: 1; } #padDron { grid-column: 3; grid-row: 1; }
+#padAterriza { grid-column: 1 / 4; grid-row: 4; min-height: 44px; font-size: 13px; }
 #padSube, #padBaja { grid-column: 2; grid-row: 2; height: 21px; padding: 0; line-height: 1; font-size: 11px; } #padSube { align-self: start; } #padBaja { align-self: end; }
 .visor.paseo .t-ins { bottom: auto; top: 12px; }
 .t-dron { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); max-width: calc(100% - 150px); text-align: center; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--fg); background: color-mix(in srgb, var(--panel) 82%, transparent); padding: 4px 10px; border-radius: 99px; pointer-events: none; }
@@ -211,6 +212,7 @@ html.sin-scroll, html.sin-scroll body { overflow: hidden !important; }
         <button type="button" id="padCam" class="pad-txt">Cámara</button>
         <button type="button" id="padQuad" class="pad-txt" aria-pressed="false" hidden>Quad</button>
         <button type="button" id="padDron" class="pad-txt" aria-pressed="false" hidden>Dron</button>
+        <button type="button" id="padAterriza" class="pad-txt" aria-label="Aterrizar: guardar el dron donde estás" hidden>Aterrizar</button>
         <button type="button" id="padSube" class="pad-txt" aria-label="Subir el dron" hidden>▲</button>
         <button type="button" id="padBaja" class="pad-txt" aria-label="Bajar el dron" hidden>▼</button>
       </div>
