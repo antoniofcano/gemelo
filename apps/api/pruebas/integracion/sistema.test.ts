@@ -1,6 +1,9 @@
 // Sistema de la oficina (OF5) contra PostGIS en un contenedor: la salud juntada, OlivarTrack tras una sincronía, el correo de prueba a la propia
 // cuenta, la auditoría filtrada y paginada, y que ni un hogar entra ni sale un secreto. Sin Docker se SALTA con aviso.
 import assert from "node:assert/strict";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { after, before, test } from "node:test";
 import type { FastifyInstance, LightMyRequestResponse } from "fastify";
 import { construyeApp } from "../../src/app.ts";
@@ -123,4 +126,46 @@ test("auditoría: filtra por acción, pagina hacia atrás por cursor y no enseñ
   assert.ok(!/@example\.com/.test(JSON.stringify(p1) + JSON.stringify(f)), "ni un correo en la auditoría");
   // entradas no válidas: 400
   for (const q of ["accion=MAL%20valor", "limite=0", "limite=1000", "antes=abc", "otra=1"]) assert.equal((await pide("GET", "/api/admin/auditoria?" + q, s)).statusCode, 400, q);
+});
+
+test("re-hornear (OF9): solo admin con confirmación reciente; deja el fichero de la petición, la audita, no se repite mientras espera y Sistema la ve atendida cuando el hornero lo anota", async t => {
+  if (salta(t)) return;
+  const dir = mkdtempSync(join(tmpdir(), "rehornear-")), previo = ctx.config.hornero;
+  const pon = (h: unknown) => { (ctx.config as { hornero: unknown }).hornero = h; };
+  try {
+    const estado = join(dir, "estado"), pedido = join(dir, "config", "pedido-rehornear.json");
+    mkdirSync(estado, { recursive: true }); mkdirSync(join(dir, "config"), { recursive: true });
+    const latido = (extra: Record<string, unknown>) => writeFileSync(join(estado, "servicio.json"), JSON.stringify({ v: 1, latido_en: new Date().toISOString(), comprueba_s: 600, fincas: { hituelo: { durmiendo_hasta: null, ultimo_motivo: "arranque", ...extra } } }));
+    latido({});
+    pon({ estado, salida: null, pedido });
+    const ofi = await entra(OFI), admin = await entra(ADMIN);
+    assert.equal((await pide("POST", "/api/admin/hornero/rehornear", ofi, {})).statusCode, 403, "oficina no puede");
+    assert.ok(!existsSync(pedido));
+    // sin confirmación reciente
+    await bd.dueno.query("UPDATE sesiones SET confirmada_en = now() - interval '1 day' WHERE hogar_id = (SELECT id FROM hogares WHERE correo = $1)", [ADMIN]);
+    const sin = await pide("POST", "/api/admin/hornero/rehornear", admin, {});
+    assert.equal(sin.statusCode, 403); assert.equal(sin.json().error, "confirmacion_requerida"); assert.ok(!existsSync(pedido));
+    await bd.dueno.query("UPDATE sesiones SET confirmada_en = now() WHERE hogar_id = (SELECT id FROM hogares WHERE correo = $1)", [ADMIN]);
+    const ok = await pide("POST", "/api/admin/hornero/rehornear", admin, {});
+    assert.equal(ok.statusCode, 202, ok.body);
+    const p = ok.json(); assert.match(p.id, /^[0-9a-f-]{36}$/); assert.equal(p.estado, "pendiente");
+    assert.equal(JSON.parse(readFileSync(pedido, "utf8")).id, p.id, "el fichero lleva el id que se devolvió");
+    // mientras espera: no se amontonan peticiones, y Sistema la ve pendiente
+    const otra = await pide("POST", "/api/admin/hornero/rehornear", admin, {});
+    assert.equal(otra.statusCode, 409); assert.equal(otra.json().error, "ya_pedido");
+    const s1 = (await pide("GET", "/api/admin/sistema", admin)).json().hornero;
+    assert.equal(s1.puede_rehornear, true); assert.equal(s1.pedido.estado, "pendiente"); assert.equal(s1.pedido.id, p.id);
+    assert.ok(!JSON.stringify(s1).includes(dir), "ni una ruta del servidor");
+    // el hornero la atiende y la anota en su latido
+    latido({ pedido_atendido: p.id, pedido_atendido_en: new Date().toISOString() });
+    const s2 = (await pide("GET", "/api/admin/sistema", admin)).json().hornero;
+    assert.equal(s2.pedido.estado, "atendido"); assert.ok(s2.pedido.atendido_en);
+    // atendida, se puede pedir otra
+    assert.equal((await pide("POST", "/api/admin/hornero/rehornear", admin, {})).statusCode, 202);
+    const aud = (await pide("GET", "/api/admin/auditoria?accion=hornero.rehornear", admin)).json();
+    assert.equal(aud.filas.length, 2); assert.equal(aud.filas[1].detalle.pedido, p.id);
+    // sin dónde dejarla: 503 claro
+    pon({ estado, salida: null, pedido: null });
+    assert.equal((await pide("POST", "/api/admin/hornero/rehornear", admin, {})).json().error, "hornero_no_conectado");
+  } finally { pon(previo); rmSync(dir, { recursive: true, force: true }); }
 });

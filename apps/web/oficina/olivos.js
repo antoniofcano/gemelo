@@ -1,18 +1,20 @@
 // Olivos (OF7, doc/sistema/OFICINA.md §9.2): los parámetros de la escalera de olivos (deslizadores con sus límites y su valor de hoy), los interruptores de
 // componentes y el historial de versiones de la configuración, contra la api real (/api/admin/config…, solo admin). Una versión lleva los tres bloques del
-// contrato (contratos/config.schema.json): aquí se editan «escalera» y «componentes»; «epocas» (OF9) se conserva tal cual. Una versión nunca se reescribe:
+// contrato (contratos/config.schema.json): aquí se editan «escalera», «componentes» y, desde OF9, «epocas» (pestaña Épocas: 7 ventanas MM-DD, común y por finca,
+// con la comprobación de los 366 días; si la configuración no las trae, vale el calendario del repo). Una versión nunca se reescribe:
 // un borrador nuevo por cada guardado, «a prueba» (solo la cargan las cuentas de oficina), «para todos» (admin + confirmación reciente) y «volver» (una copia).
 // La vista previa es SIMULADA e ilustrativa: no mide nada. Todo el DOM va con textContent (nada de HTML a mano).
 import { $, api, aviso, conConfirmacion, confirma, fecha, h, vacia } from "./comun.js";
-import { APARATOS, APAR, CAMPO, COMPONENTES, ESTADOS, GRUPOS, PARAM, PARAMS, aCuerpo, acciones, avisosPrevia, cambios, cambiosComp, defectos, desdeCuerpo, formatea, mismosComp, mismosValores, numero, redondea, resumen, simula, valida } from "./olivos_puro.js";
+import { APARATOS, APAR, CAMPO, COMPONENTES, EPOCAS, ESTADOS, GRUPOS, PARAM, PARAMS, aCuerpo, acciones, avisosPrevia, cambios, cambiosComp, cambiosEp, cobertura, copiaTabla, defectos, desdeCuerpo, formatea, mismasEp, mismosComp, mismosValores, numero, redondea, resumen, simula, tablaDePartida, valida, validaEp } from "./olivos_puro.js";
 
 const copia = o => JSON.parse(JSON.stringify(o));
-const PESTANAS = [["esc", "Escalera"], ["com", "Componentes"], ["his", "Historial"]];
+const PESTANAS = [["esc", "Escalera"], ["com", "Componentes"], ["epo", "Épocas"], ["his", "Historial"]];
+const FINCA_ID = /^[a-z0-9_]+$/;
 
 export function iniciaOlivos({ sesion }) {
-  let versiones = [], publicada = null, enPrueba = null, pub = null, prueba = null;   // pub y prueba: { version, vals, comp, cuerpo }
-  let vals = defectos(), comp = {}, base = null, miBorrador = null, cargado = false, pest = "esc", cargas = 0, ocupado = false;
-  const cuerpos = new Map();   // versión → { cuerpo, vals, comp } (una versión no se reescribe: se guarda para siempre)
+  let versiones = [], publicada = null, enPrueba = null, pub = null, prueba = null;   // pub y prueba: { version, vals, comp, ep, cuerpo }
+  let vals = defectos(), comp = {}, ep = null, epSel = "comun", base = null, miBorrador = null, cargado = false, pest = "esc", cargas = 0, ocupado = false;
+  const cuerpos = new Map();   // versión → { cuerpo, vals, comp, ep } (una versión no se reescribe: se guarda para siempre)
   const msgsApi = [];          // lo que la api dijo del último intento (config_no_valida)
 
   // ---------------------------------------------------------------- piezas fijas (se construyen una vez)
@@ -39,6 +41,35 @@ export function iniciaOlivos({ sesion }) {
       sliders[p.k] = { entrada, salida, fila };
     }
   }
+  // ---- Épocas (OF9): las filas se construyen una vez; pintaEpocas() solo cambia valores
+  const celdas = {};
+  for (const [e, n] of EPOCAS) {
+    const ent = c => h("input", { class: "entrada", id: "ep-" + e + "-" + c, "data-e": e, "data-c": c, inputmode: "numeric", maxlength: "5", autocomplete: "off", placeholder: "MM-DD" });
+    const d = ent("desde"), a = ent("hasta"), dias = h("td", { id: "ep-" + e + "-dias" });
+    $("#eTabla").append(h("tr", { "data-epoca": e }, h("th", { scope: "row" }, n), h("td", null, h("label", { class: "vh", for: "ep-" + e + "-desde" }, "Desde, " + n), d),
+      h("td", null, h("label", { class: "vh", for: "ep-" + e + "-hasta" }, "Hasta, " + n), a), dias));
+    celdas[e] = { desde: d, hasta: a, dias };
+  }
+  $("#eTabla").addEventListener("input", ev => {
+    const t = ev.target.closest("[data-e]"); if (!t) return;
+    asegura()[t.dataset.e][t.dataset.c] = t.value.trim(); sincroniza();
+  });
+  $("#eFinca").addEventListener("change", () => { epSel = $("#eFinca").value; pintaEpocas(); });
+  $("#eDef").addEventListener("click", () => { const t = asegura(); for (const [e] of EPOCAS) t[e] = copiaTabla(tablaDePartida())[e]; sincroniza(); aviso("Valores de partida en esta tabla (no se publica nada hasta que lo digas)"); });
+  $("#eRepo").addEventListener("click", () => { ep = null; epSel = "comun"; sincroniza(); aviso("Sin épocas en la configuración: valdría el calendario del repo"); });
+  $("#eAnade").addEventListener("click", () => {
+    const id = $("#eNueva").value.trim();
+    if (!FINCA_ID.test(id)) { aviso("El id de la finca son minúsculas, cifras y «_» (como en la finca_id de la api)", "mal"); return; }
+    const x = asegura(); if (!x || ep.fincas[id]) { aviso(ep.fincas[id] ? "Esa finca ya tiene su tabla" : "No se pudo crear", "mal"); return; }
+    ep.fincas[id] = copiaTabla(ep.comun); epSel = id; $("#eNueva").value = ""; sincroniza(); aviso("La finca " + id + " tiene su tabla propia (empieza como copia de la común)");
+  });
+  $("#eQuita").addEventListener("click", () => { if (!ep || epSel === "comun") return; const id = epSel; delete ep.fincas[id]; epSel = "comun"; sincroniza(); aviso("La finca " + id + " vuelve a la tabla común"); });
+  /** Crea el bloque de épocas (a partir de los valores de partida) si no hay y devuelve la tabla que se está editando. */
+  function asegura() {
+    if (!ep) ep = { comun: tablaDePartida(), fincas: {} };
+    return epSel === "comun" || !ep.fincas[epSel] ? ep.comun : ep.fincas[epSel];
+  }
+
   const sAparato = $("#oAparato"), sPerfil = $("#oPerfil");
   for (const [k, n] of Object.entries(APARATOS)) sAparato.append(h("option", { value: k }, n[0].toUpperCase() + n.slice(1)));
   for (const i of [0, 1, 2, 3]) sPerfil.append(h("option", { value: String(i) }, "perfil " + i));
@@ -47,11 +78,11 @@ export function iniciaOlivos({ sesion }) {
   cambiaAparato();
   window.addEventListener("resize", () => { if (!$("#s-olivos").hidden && pest === "esc") pintaPrevia(); });
 
-  $("#oDefecto").addEventListener("click", () => { vals = defectos(); comp = {}; sincroniza(); aviso("Valores por defecto en el borrador (no se publica nada hasta que lo digas)"); });
+  $("#oDefecto").addEventListener("click", () => { vals = defectos(); comp = {}; ep = null; epSel = "comun"; sincroniza(); aviso("Valores por defecto en el borrador (no se publica nada hasta que lo digas)"); });
   $("#oDescarta").addEventListener("click", () => { reiniciaEditor(); aviso("Cambios descartados: vuelves a lo último en prueba o publicado"); });
   $("#oRecarga").addEventListener("click", () => refresca(false));
   $("#oGuarda").addEventListener("click", () => acciona(async () => {
-    const igual = !!miBorrador && mismosValores(miBorrador.vals, vals) && mismosComp(miBorrador.comp, comp), v = await guardaBorrador();
+    const igual = !!miBorrador && mismosValores(miBorrador.vals, vals) && mismosComp(miBorrador.comp, comp) && mismasEp(miBorrador.ep, ep), v = await guardaBorrador();
     if (v) aviso(igual ? "Ya estaba guardado como borrador v" + v : "Borrador v" + v + " guardado (no lo ve nadie todavía)");
   }));
   $("#oPrueba").addEventListener("click", () => acciona(publicaEnPrueba));
@@ -68,6 +99,7 @@ export function iniciaOlivos({ sesion }) {
     $("#oBarra").hidden = id === "his";
     if (foco) $("#t-" + id).focus();
     if (id === "esc") pintaPrevia();
+    if (id === "epo") pintaEpocas();
     if (id === "his") pintaHistorial();
   }
 
@@ -95,13 +127,14 @@ export function iniciaOlivos({ sesion }) {
   }
   function reiniciaEditor() {
     const x = prueba || pub;
-    vals = x ? copia(x.vals) : defectos(); comp = x ? copia(x.comp) : {};
+    vals = x ? copia(x.vals) : defectos(); comp = x ? copia(x.comp) : {}; ep = x ? copia(x.ep) : null; epSel = "comun";
     base = (x && x.cuerpo) || (pub && pub.cuerpo) || null;
     sincroniza();
   }
   const refPub = () => (pub ? pub.vals : defectos());
   const refPubComp = () => (pub ? pub.comp : {});
-  const igualA = x => !!x && mismosValores(vals, x.vals) && mismosComp(comp, x.comp);
+  const igualA = x => !!x && mismosValores(vals, x.vals) && mismosComp(comp, x.comp) && mismasEp(ep, x.ep);
+  const errsEp = () => validaEp(ep).filter(m => m.nivel === "mal");
 
   // ---------------------------------------------------------------- pintado
   function sincroniza() {
@@ -111,7 +144,7 @@ export function iniciaOlivos({ sesion }) {
       s.entrada.value = String(v === null ? p.max : v); s.salida.textContent = formatea(p.k, v);
       s.fila.classList.toggle("cambiado", v !== ref[p.k]);
     }
-    const nCambios = dif.length + cambiosComp(comp, refPubComp()).length;
+    const nCambios = dif.length + cambiosComp(comp, refPubComp()).length + (mismasEp(ep, pub ? pub.ep : null) ? 0 : 1);
     const e = vacia($("#oEstado"));
     const quien = v => { const f = versiones.find(x => x.version === v); return f ? " · cuenta " + f.autor_id + ", " + fecha(f.estado_en) : ""; };
     e.append(...[publicada ? [h("span", { class: "pill p-ok" }, "publicada v" + publicada), quien(publicada)] : h("span", { class: "pill p-suave" }, "nada publicado: manda lo del código"),
@@ -119,13 +152,14 @@ export function iniciaOlivos({ sesion }) {
       " · borrador: ", nCambios ? h("b", null, nCambios + " cambio" + (nCambios > 1 ? "s" : "")) : "sin cambios", " respecto a lo publicado"].flat().filter(x => x !== null));
     pintaMensajes();
     pintaComponentes();
+    pintaEpocas();
     if (pest === "esc" && !$("#s-olivos").hidden) pintaPrevia();
   }
   function pintaMensajes() {
-    const errs = valida(vals), ul = vacia($("#oMsgs"));
+    const errs = [...valida(vals), ...errsEp()], ul = vacia($("#oMsgs"));
     for (const m of errs) ul.append(h("li", { class: m.nivel }, m.texto));
     for (const t of msgsApi) ul.append(h("li", { class: "mal" }, t));
-    if (!errs.length && !msgsApi.length) ul.append(h("li", { class: "ok" }, "Los valores respetan los límites del contrato"));
+    if (!errs.length && !msgsApi.length) ul.append(h("li", { class: "ok" }, "Los valores respetan los límites del contrato" + (ep ? " y las épocas cubren los 366 días" : "")));
     const sin = errs.length > 0 || ocupado, igualPrueba = igualA(prueba);
     $("#oGuarda").disabled = sin; $("#oPrueba").disabled = sin || igualPrueba; $("#oProbar").disabled = sin;
     $("#oPublica").disabled = sin || !igualPrueba;
@@ -186,6 +220,30 @@ export function iniciaOlivos({ sesion }) {
       $("#cp-" + id).classList.toggle("cambiado", comp[id] !== refPubComp()[id]);
     }
   }
+  function pintaEpocas() {
+    if (!$("#p-epo")) return;
+    const sel = $("#eFinca"), ids = ["comun", ...(ep ? Object.keys(ep.fincas) : [])];
+    if (!ids.includes(epSel)) epSel = "comun";
+    if (sel.dataset.ids !== ids.join()) {
+      sel.dataset.ids = ids.join(); vacia(sel);
+      for (const id of ids) sel.append(h("option", { value: id }, id === "comun" ? "Común (toda finca sin tabla propia)" : "Finca " + id + " (tabla propia)"));
+    }
+    sel.value = epSel;
+    const tabla = !ep ? tablaDePartida() : epSel === "comun" ? ep.comun : ep.fincas[epSel], cob = cobertura(tabla);
+    for (const [e] of EPOCAS) {
+      const c = celdas[e];
+      if (c.desde.value !== tabla[e].desde) c.desde.value = tabla[e].desde;
+      if (c.hasta.value !== tabla[e].hasta) c.hasta.value = tabla[e].hasta;
+      c.dias.textContent = String(cob.dias[e]);
+    }
+    $("#eQuita").disabled = epSel === "comun";
+    const refEp = pub ? pub.ep : null, d = cambiosEp(ep, refEp);
+    vacia($("#eEstado")).append(...(!ep ? [h("span", { class: "pill p-suave" }, "sin épocas en la configuración"), " vale el calendario del repo (valores de partida, sin respaldo de campo). Al editar se crea la tabla propia."]
+      : [h("span", { class: "pill p-info" }, "épocas propias"), " " + (d.length ? d.length + " ventana" + (d.length > 1 ? "s" : "") + " distinta" + (d.length > 1 ? "s" : "") + " de lo publicado" : "iguales a lo publicado")]));
+    const ul = vacia($("#eMsgs")), todos = validaEp(ep), mostrar = !ep ? [] : todos;
+    for (const m of mostrar) ul.append(h("li", { class: m.nivel }, m.texto));
+    if (!todos.some(m => m.nivel === "mal")) ul.append(h("li", { class: "ok" }, "Cubre los 366 días, una época cada día" + (ep ? "" : " (los valores de partida)")));
+  }
   function pintaHistorial() {
     const cuerpo = vacia($("#oHis"));
     if (!versiones.length) { cuerpo.append(h("tr", null, h("td", { colspan: "5", class: "nota" }, "Todavía no hay ninguna versión: el motor usa lo del código."))); return; }
@@ -198,7 +256,7 @@ export function iniciaOlivos({ sesion }) {
       cuerpo.append(h("tr", { "data-version": f.version },
         h("td", null, "v" + f.version), h("td", null, h("span", { class: "pill " + clase }, nombre)),
         h("td", null, "cuenta " + f.autor_id + " · " + fecha(f.estado_en), f.copia_de ? h("span", { class: "interno" }, "copia de v" + f.copia_de) : null),
-        h("td", null, f.nota || "", h("span", { class: "interno" }, x ? resumen(x.vals, x.comp) : "…")), botones));
+        h("td", null, f.nota || "", h("span", { class: "interno" }, x ? resumen(x.vals, x.comp, x.ep) : "…")), botones));
     }
     // los cuerpos que faltan (los 30 últimos) se piden y se vuelve a pintar; una versión no cambia, así que no se piden dos veces
     const faltan = versiones.slice(0, 30).filter(f => !cuerpos.has(f.version));
@@ -218,13 +276,13 @@ export function iniciaOlivos({ sesion }) {
   }
   /** Guarda los valores de la pantalla como borrador (o devuelve el que ya se guardó igual). null si la api no lo acepta. */
   async function guardaBorrador() {
-    if (valida(vals).length) return null;
-    if (miBorrador && mismosValores(miBorrador.vals, vals) && mismosComp(miBorrador.comp, comp)) return miBorrador.version;
-    const cuerpo = aCuerpo(vals, comp, base), nota = resumen(vals, comp);
+    if (valida(vals).length || errsEp().length) return null;
+    if (miBorrador && mismosValores(miBorrador.vals, vals) && mismosComp(miBorrador.comp, comp) && mismasEp(miBorrador.ep, ep)) return miBorrador.version;
+    const cuerpo = aCuerpo(vals, comp, base, ep), nota = resumen(vals, comp, ep);
     const r = await api("POST", "/api/admin/config", { cuerpo, nota: nota.slice(0, 500) });
     if (!r.ok) { fallo(r); return null; }
     msgsApi.length = 0;
-    const anterior = miBorrador; miBorrador = { version: r.datos.version, vals: copia(vals), comp: copia(comp) };
+    const anterior = miBorrador; miBorrador = { version: r.datos.version, vals: copia(vals), comp: copia(comp), ep: copia(ep) };
     if (anterior) await api("POST", "/api/admin/config/" + anterior.version + "/retirar");   // el borrador de antes ya no sirve (se retira, no se borra)
     await refresca(false);
     return r.datos.version;
@@ -252,18 +310,20 @@ export function iniciaOlivos({ sesion }) {
     if (!igualA(prueba)) return;
     const v = prueba.version, ref = pub ? pub.vals : defectos(), refC = pub ? pub.comp : {};
     const lista = [...cambios(vals, ref).map(k => PARAM[k].n + ": " + formatea(k, ref[k]) + " → " + formatea(k, vals[k])),
-      ...cambiosComp(comp, refC).map(id => ((COMPONENTES.find(c => c.id === id) || { n: id }).n) + ": " + estadoComp(refC[id]) + " → " + estadoComp(comp[id]))];
+      ...cambiosComp(comp, refC).map(id => ((COMPONENTES.find(c => c.id === id) || { n: id }).n) + ": " + estadoComp(refC[id]) + " → " + estadoComp(comp[id])),
+      ...cambiosEp(ep, pub ? pub.ep : null)], hayEp = !mismasEp(ep, pub ? pub.ep : null);
     confirma({
       titulo: "Publicar v" + v + " para todos",
       cuerpo: [h("p", null, "Cambia cómo se dibuja el mundo para todas las familias, en su próxima carga:"),
         h("ul", null, lista.length ? lista.map(t => h("li", null, t)) : h("li", null, "sin cambios respecto a lo publicado")),
+        hayEp ? h("p", null, "Cambian las épocas: el hornero re-hornea lo que cambie en su próxima comprobación (como mucho 10 minutos; míralo en Sistema).") : null,
         h("p", { class: "nota" }, "Pide haber entrado hace menos de 15 minutos. Se puede volver atrás desde el historial; ninguna versión se reescribe.")],
       si: "Publicar para todos",
       hecho: async () => {
         const r = await conConfirmacion(() => api("POST", "/api/admin/config/" + v + "/publicar"));
         if (!r.ok) return r.mensaje;
         await refresca(false); reiniciaEditor();
-        aviso("v" + v + " publicada: la verán todos al recargar");
+        aviso("v" + v + " publicada: la verán todos al recargar" + (hayEp ? "; el hornero recoge las épocas en su próxima comprobación (≤ 10 min, mira Sistema)" : ""));
         return undefined;
       },
     });
@@ -273,7 +333,7 @@ export function iniciaOlivos({ sesion }) {
     const x = cuerpos.get(f.version);
     confirma({
       titulo: "Volver a v" + f.version,
-      cuerpo: [h("p", null, ["Se publica una ", h("b", null, "versión nueva"), " con lo de la v" + f.version + " y para todos. Ninguna versión se reescribe."]), h("p", { class: "nota" }, x ? resumen(x.vals, x.comp) : ""),
+      cuerpo: [h("p", null, ["Se publica una ", h("b", null, "versión nueva"), " con lo de la v" + f.version + " y para todos. Ninguna versión se reescribe."]), h("p", { class: "nota" }, x ? resumen(x.vals, x.comp, x.ep) : ""),
         h("p", { class: "nota" }, "Pide haber entrado hace menos de 15 minutos.")],
       si: "Volver y publicar",
       hecho: async () => {
@@ -288,7 +348,7 @@ export function iniciaOlivos({ sesion }) {
   async function alBorrador(f) {
     const x = await trae(f.version);
     if (!x) { aviso("No se pudo leer la v" + f.version, "mal"); return; }
-    vals = copia(x.vals); comp = copia(x.comp); sincroniza(); ve("esc", true);
+    vals = copia(x.vals); comp = copia(x.comp); ep = copia(x.ep); epSel = "comun"; sincroniza(); ve("esc", true);
     aviso("Los valores de v" + f.version + " están en el borrador (no se publica hasta que lo digas)");
   }
   async function retira(f) {
@@ -304,8 +364,8 @@ export function iniciaOlivos({ sesion }) {
     ve,
     /** Solo lectura, para la prueba de Chrome. */
     estado() {
-      return { cargado, publicada, enPrueba, versiones: versiones.map(v => ({ version: v.version, estado: v.estado, nota: v.nota, copia_de: v.copia_de })), vals: copia(vals), comp: copia(comp),
-        errores: valida(vals).map(m => m.texto), pestana: pest, rol: sesion.rol, boton: { prueba: !$("#oPrueba").disabled, publica: !$("#oPublica").disabled } };
+      return { cargado, publicada, enPrueba, versiones: versiones.map(v => ({ version: v.version, estado: v.estado, nota: v.nota, copia_de: v.copia_de })), vals: copia(vals), comp: copia(comp), ep: copia(ep), epSel,
+        errores: [...valida(vals), ...errsEp()].map(m => m.texto), pestana: pest, rol: sesion.rol, boton: { prueba: !$("#oPrueba").disabled, publica: !$("#oPublica").disabled } };
     },
   };
 }

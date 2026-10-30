@@ -123,6 +123,42 @@ test("servicio con GEMELO_HORNERO_CONFIG: hornea con el calendario publicado y v
   parar.parado = true; if (parar.despierta) parar.despierta(); await p;
 });
 
+test("re-hornear desde la oficina (OF9): una petición con id nuevo lanza UNA vuelta y se anota atendida; no se repite, ni siquiera tras reiniciar el hornero", async () => {
+  const t = fs.mkdtempSync(path.join(os.tmpdir(), "servicio-pedido-")), rutaPedido = path.join(t, "pedido-rehornear.json"), cfg = { fincas: ["fixture"], datos: path.join(t, "d"), salida: path.join(t, "s"),
+    estado: path.join(t, "e"), hora: "03:00", compruebaMs: 25, reintentoMs: 60000, calendario: path.join(RAIZ, "contratos", "epocas-calendario.json"), pedido: rutaPedido, release: false, limpia: true };
+  fs.mkdirSync(path.join(cfg.datos, "fixture"), { recursive: true }); fs.writeFileSync(path.join(cfg.datos, "fixture", "indice.json"), "{}");
+  const lat = () => JSON.parse(fs.readFileSync(path.join(cfg.estado, "servicio.json"), "utf8")).fincas.fixture;
+  assert.strictEqual(SV.idDePedido(rutaPedido), null, "sin fichero, sin petición");
+  fs.writeFileSync(rutaPedido, JSON.stringify({ id: "../mal" })); assert.strictEqual(SV.idDePedido(rutaPedido), null, "un id que no vale no cuenta");
+  fs.writeFileSync(rutaPedido, "{no es json"); assert.strictEqual(SV.idDePedido(rutaPedido), null, "ilegible no cuenta ni tumba");
+  const vueltas = [], hornea = async o => { vueltas.push(o); return HN.hornea(o); };
+  let parar = { parado: false }, p = SV.servicio(cfg, { hornea, generador: generador(), parar, log: () => {} });
+  await hasta(() => vueltas.length >= 1); await dormir(300);
+  assert.strictEqual(vueltas.length, 1, "arranque");
+  fs.writeFileSync(rutaPedido, JSON.stringify({ v: 1, id: "11111111-aaaa", pedido_en: "2026-10-30T10:00:00Z", por: 1 }));
+  await hasta(() => vueltas.length >= 2 && lat().pedido_atendido); await dormir(300);
+  assert.strictEqual(vueltas.length, 2, "la petición lanza una vuelta");
+  assert.strictEqual(lat().pedido_atendido, "11111111-aaaa"); assert.match(lat().pedido_atendido_en, /^\d{4}-/); assert.match(lat().ultimo_motivo, /pedido desde la oficina/);
+  await dormir(300); assert.strictEqual(vueltas.length, 2, "la misma petición no se atiende dos veces");
+  parar.parado = true; if (parar.despierta) parar.despierta(); await p;
+  // reinicio: el latido recuerda lo atendido; la vuelta de arranque no es por la petición vieja y una petición nueva sí cuenta
+  const v2 = []; parar = { parado: false };
+  p = SV.servicio(cfg, { hornea: async o => { v2.push(o); return HN.hornea(o); }, generador: generador(), parar, log: () => {} });
+  await hasta(() => v2.length >= 1); await dormir(300);
+  assert.strictEqual(v2.length, 1); assert.doesNotMatch(lat().ultimo_motivo, /pedido/, "tras reiniciar, la petición vieja no se repite");
+  fs.writeFileSync(rutaPedido, JSON.stringify({ v: 1, id: "22222222-bbbb", pedido_en: "2026-10-30T11:00:00Z", por: 1 }));
+  await hasta(() => v2.length >= 2 && lat().pedido_atendido === "22222222-bbbb"); assert.strictEqual(v2.length, 2);
+  parar.parado = true; if (parar.despierta) parar.despierta(); await p;
+});
+
+test("motivoDeVuelta: una petición de re-hornear manda sobre todo, también sobre el reintento de un fallo", () => {
+  const G = { GEN_VERSION: "g1", CACHE_VERSION: 2 }, man = { gen_version: "g1", cache_version: 2, formato: 1, actual: "envero" };
+  const c = x => Object.assign({ primera: false, ahora: 1000, fallo: null, pedido: null, reintentoMs: 300000, manifiesto: man, G, formato: 1, epocaHoy: "envero", sellos: { indice: "a", calendario: "b" }, previos: { indice: "a", calendario: "b" }, despertarEn: 5000 }, x);
+  assert.strictEqual(SV.motivoDeVuelta(c({})), null);
+  assert.match(SV.motivoDeVuelta(c({ pedido: "abc-12345" })), /pedido desde la oficina/);
+  assert.match(SV.motivoDeVuelta(c({ pedido: "abc-12345", fallo: { en: 999 } })), /pedido desde la oficina/);
+});
+
 test("salud: listo y durmiendo = sano; en curso reciente = sano; error, sin estado, atascado o sin latido = enfermo", () => {
   const ahora = Date.parse("2026-10-29T12:00:00Z"), latido = { latido_en: "2026-10-29T11:59:00Z", fincas: { f: { durmiendo_hasta: "2026-11-01T03:00:00Z" } } };
   const listo = { fase: "listo", hechas: 16, total: 16, epoca_actual: "envero", error: null, actualizado_en: "2026-10-29T08:00:00Z" };

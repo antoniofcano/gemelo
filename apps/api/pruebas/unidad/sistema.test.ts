@@ -2,7 +2,7 @@
 // caché de Vigía (de cuándo es lo último que llegó, sin llamar a Vigía) y que las rutas nuevas no se abren sin sesión ni sin Origin.
 // Lo que necesita la base (la salud completa, la auditoría paginada, el correo de prueba) está en pruebas/integracion/sistema.test.ts.
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -10,7 +10,7 @@ import { after, before, test } from "node:test";
 import type { FastifyInstance } from "fastify";
 import pg from "pg";
 import { construyeApp } from "../../src/app.ts";
-import { leeHornero, limpiaMensaje } from "../../src/admin/hornero.ts";
+import { escribePedido, leeHornero, leePedido, limpiaMensaje } from "../../src/admin/hornero.ts";
 import { LectorVigiaFixture } from "../../src/vigia/lector-fixture.ts";
 import { ServicioTiempo } from "../../src/vigia/servicio.ts";
 import { configDePrueba, contexto, deLaWeb } from "../apoyo/contexto.ts";
@@ -84,4 +84,40 @@ test("las rutas de Sistema piden sesión (401) y los POST, el Origin del sitio (
   for (const url of ["/api/admin/sistema", "/api/admin/auditoria", "/api/admin/auditoria?accion=admin.sincronia"]) assert.equal((await app.inject({ method: "GET", url, headers: deLaWeb() })).statusCode, 401, url);
   assert.equal((await app.inject({ method: "POST", url: "/api/admin/correo/prueba", headers: deLaWeb(), payload: {} })).statusCode, 401);
   assert.equal((await app.inject({ method: "POST", url: "/api/admin/correo/prueba", headers: { "x-forwarded-proto": "https" }, payload: {} })).statusCode, 403);
+});
+
+test("re-hornear (OF9): la petición se escribe atómica y el hornero la ve pendiente hasta que la anota en todas sus fincas; ids raros no cuentan", () => {
+  const e = join(carpeta, "pedido", "estado"), c = join(carpeta, "pedido", "config"), pedido = join(c, "pedido-rehornear.json");
+  mkdirSync(c, { recursive: true });
+  const latido = (fincas: Record<string, unknown>) => escribe(join(e, "servicio.json"), { v: 1, latido_en: "2026-10-30T09:58:00Z", comprueba_s: 600, fincas });
+  latido({ hituelo: { ultimo_motivo: "arranque" }, cerro: { ultimo_motivo: "arranque" } });
+  const cfg = { estado: e, salida: null, pedido };
+  assert.equal(leeHornero(cfg, AHORA).pedido, null, "sin fichero, sin petición");
+  assert.equal(leeHornero(cfg, AHORA).puede_rehornear, true);
+  assert.equal(leeHornero({ estado: e, salida: null }, AHORA).puede_rehornear, false, "sin sitio donde dejarla");
+  const p = escribePedido(pedido, 7, new Date(AHORA));
+  assert.match(p.id, /^[0-9a-f-]{36}$/); assert.equal(p.pedido_en, "2026-10-30T10:00:00.000Z");
+  assert.deepEqual(readdirSync(c), ["pedido-rehornear.json"], "no deja temporales");
+  assert.equal(leePedido(pedido)?.id, p.id);
+  assert.equal(leeHornero(cfg, AHORA).pedido?.estado, "pendiente");
+  latido({ hituelo: { pedido_atendido: p.id, pedido_atendido_en: "2026-10-30T10:03:00Z" }, cerro: {} });
+  assert.equal(leeHornero(cfg, AHORA).pedido?.estado, "pendiente", "hasta que no la atienden todas las fincas");
+  latido({ hituelo: { pedido_atendido: p.id, pedido_atendido_en: "2026-10-30T10:03:00Z" }, cerro: { pedido_atendido: p.id, pedido_atendido_en: "2026-10-30T10:05:00Z" } });
+  const h = leeHornero(cfg, AHORA);
+  assert.deepEqual([h.pedido?.estado, h.pedido?.atendido_en], ["atendido", "2026-10-30T10:05:00.000Z"]);
+  latido({ hituelo: { pedido_atendido: "otro-id-viejo" }, cerro: {} });
+  assert.equal(leeHornero(cfg, AHORA).pedido?.estado, "pendiente", "una petición vieja atendida no vale para la nueva");
+  assert.ok(!JSON.stringify(h).includes(carpeta), "ni rutas del servidor");
+  for (const mal of ["../../etc", "x".repeat(80), "corto", 7, null]) { escribe(pedido, { id: mal }); assert.equal(leePedido(pedido), null, String(mal)); }
+  writeFileSync(pedido, "{no es json"); assert.equal(leePedido(pedido), null);
+  assert.equal(leePedido(null), null);
+});
+
+test("re-hornear: sin sesión 401 y sin Origin del sitio 403; la petición por defecto va junto a la configuración publicada", async () => {
+  assert.equal((await app.inject({ method: "POST", url: "/api/admin/hornero/rehornear", headers: deLaWeb(), payload: {} })).statusCode, 401);
+  assert.equal((await app.inject({ method: "POST", url: "/api/admin/hornero/rehornear", headers: { "x-forwarded-proto": "https" }, payload: {} })).statusCode, 403);
+  const c = configDePrueba({ GEMELO_CONFIG_SALIDA: "/datos/config/publicada.json" }).hornero.pedido;
+  assert.equal(c && c.replace(/\\/g, "/"), "/datos/config/pedido-rehornear.json");
+  assert.equal(configDePrueba({ GEMELO_HORNERO_PEDIDO: "/otro/p.json" }).hornero.pedido, "/otro/p.json");
+  assert.equal(configDePrueba({}).hornero.pedido, null, "sin volumen de configuración, no hay dónde dejarla");
 });

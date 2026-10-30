@@ -46,13 +46,14 @@ const url = "https://localhost:" + puerto;
 const bd = await levantaBd();
 // Sistema (OF5): OlivarTrack con las grabaciones, Vigía con el fixture sintético y un hornero de mentira (su estado y manifiesto en una carpeta temporal)
 const hornero = mkdtempSync(join(tmpdir(), "oficina-hornero-"));
-mkdirSync(join(hornero, "estado"), { recursive: true }); mkdirSync(join(hornero, "salida", "hituelo", "olivos"), { recursive: true });
+mkdirSync(join(hornero, "estado"), { recursive: true }); mkdirSync(join(hornero, "salida", "hituelo", "olivos"), { recursive: true }); mkdirSync(join(hornero, "config"), { recursive: true });
 const ahoraIso = new Date().toISOString();
 writeFileSync(join(hornero, "estado", "servicio.json"), JSON.stringify({ v: 1, pid: 1, latido_en: ahoraIso, comprueba_s: 600, fincas: { hituelo: { durmiendo_hasta: "2026-11-01T03:00:00Z", ultimo_motivo: "primera vuelta", ultima_vuelta_en: ahoraIso, fallo: null } } }));
 writeFileSync(join(hornero, "estado", "hituelo.json"), JSON.stringify({ v: 1, finca: "hituelo", fase: "listo", error: null, epoca_actual: "envero", actualizado_en: ahoraIso }));
 writeFileSync(join(hornero, "salida", "hituelo", "olivos", "manifiesto.json"), JSON.stringify({ horneado_en: ahoraIso, actual: "envero", epocas: [{ epoca: "envero" }, { epoca: "madura" }], variantes: [{ bytes_br: 1_500_000 }, { bytes_br: 2_900_000 }] }));
 const ctx = contexto(bd.app, configDePrueba({ GEMELO_URL_PUBLICA: url, GEMELO_ENLACE_POR_CORREO: "100", GEMELO_ENLACE_POR_IP: "1000", GEMELO_OT: "grabado", GEMELO_OT_GRABACIONES: GRABACIONES,
-  GEMELO_VIGIA: "fixture", GEMELO_VIGIA_FIXTURE: GRABACIONES + "../vigia", GEMELO_HORNERO_ESTADO: join(hornero, "estado"), GEMELO_HORNERO_SALIDA: join(hornero, "salida") }));
+  GEMELO_VIGIA: "fixture", GEMELO_VIGIA_FIXTURE: GRABACIONES + "../vigia", GEMELO_HORNERO_ESTADO: join(hornero, "estado"), GEMELO_HORNERO_SALIDA: join(hornero, "salida"),
+  GEMELO_CONFIG_SALIDA: join(hornero, "config", "publicada.json") }));
 ctx.tiempo = new ServicioTiempo(new LectorVigiaFixture(GRABACIONES + "../vigia"));
 const app = await construyeApp(ctx);
 await app.ready();

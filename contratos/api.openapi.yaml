@@ -895,9 +895,19 @@ paths:
                   correo: { type: object, required: [modo, ultima_prueba], properties: { modo: { enum: [smtp, buzon] }, ultima_prueba: { type: [object, "null"], properties: { cuando: { type: string, format: date-time }, ok: { type: boolean } } } } }
                   olivartrack: { type: object, required: [modo, puede_sincronizar, herramientas], properties: { modo: { enum: ["no", grabado, mcp] }, puede_sincronizar: { type: boolean }, herramientas: { type: array, items: { type: object, required: [herramienta, estado, intentada_en, consultado_en, recibidos, guardados, completa, aviso], properties: { estado: { enum: [ok, truncado, parcial, error] }, completa: { type: boolean, description: "false si vino truncada o parcial: no se sacan totales de ahí" } } } } } }
                   vigia: { type: object, required: [modo, conector, origen, herramientas] }
-                  hornero: { type: object, required: [conectado, salud, detalle, latido_en, fincas] }
+                  hornero: { type: object, required: [conectado, salud, detalle, latido_en, fincas, pedido, puede_rehornear] }
         "401": { $ref: "#/components/responses/SinSesion" }
         "403": { $ref: "#/components/responses/SinPermiso" }
+
+  /api/admin/hornero/rehornear:
+    post:
+      summary: "Pide al hornero una vuelta ya (OF9, solo admin con confirmación reciente, ADR-0024). La api deja un fichero `pedido-rehornear.json` en el volumen de la configuración publicada; el hornero lo recoge en su comprobación (hasta GEMELO_HORNERO_COMPRUEBA_S, 10 min) y lo anota como atendido en su latido. Auditoría hornero.rehornear. No fuerza regenerar: es una vuelta idempotente (lo que no cambió se reutiliza)"
+      security: [{ sesion: [] }]
+      responses:
+        "202": { description: "petición dejada: { id, pedido_en, estado: pendiente }; su estado después sale en /api/admin/sistema (hornero.pedido)" }
+        "403": { description: "sin permiso o sin confirmación reciente (confirmacion_requerida)" }
+        "409": { description: "ya_pedido: hay una petición esperando al hornero" }
+        "503": { description: "hornero_no_conectado (falta su estado o el volumen) o pedido_no_escrito" }
 
   /api/admin/auditoria:
     get:

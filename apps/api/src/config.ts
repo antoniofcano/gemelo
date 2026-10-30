@@ -5,6 +5,7 @@
 // `docker inspect`; fuera de producción vale también el valor en la variable (`NOMBRE`), como hace infra/dev.
 import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 
 export type ModoCorreo = "smtp" | "buzon";
 export type ModoOt = "mcp" | "grabado" | "no";
@@ -47,7 +48,7 @@ export interface Config {
   /** dónde dejar también la configuración publicada (GEMELO_CONFIG_SALIDA), para el hornero (calendario de épocas); null = en ningún sitio */
   configFichero: string | null;
   /** el estado del hornero (GEMELO_HORNERO_ESTADO: <finca>.json y servicio.json) y su salida (GEMELO_HORNERO_SALIDA: <finca>/olivos/manifiesto.json), de SOLO LECTURA, para Sistema en la oficina; null = sin conectar */
-  hornero: { estado: string | null; salida: string | null };
+  hornero: { estado: string | null; salida: string | null; pedido: string | null };
 }
 
 export interface ConfigLiveKit {
@@ -246,6 +247,8 @@ export function cargaConfig(e: Entorno = process.env): Config {
       escriturasPorHora: entero(e, "GEMELO_VIDA_ESCRITURAS_HORA", 60, 1, 10000),
     },
     configFichero: e["GEMELO_CONFIG_SALIDA"]?.trim() || null,
-    hornero: { estado: e["GEMELO_HORNERO_ESTADO"]?.trim() || null, salida: e["GEMELO_HORNERO_SALIDA"]?.trim() || null },
+    // la petición de «re-hornear» (OF9): un fichero junto al de la configuración publicada (mismo volumen: la api escribe, el hornero lee), o donde diga GEMELO_HORNERO_PEDIDO
+    hornero: { estado: e["GEMELO_HORNERO_ESTADO"]?.trim() || null, salida: e["GEMELO_HORNERO_SALIDA"]?.trim() || null,
+      pedido: e["GEMELO_HORNERO_PEDIDO"]?.trim() || (e["GEMELO_CONFIG_SALIDA"]?.trim() ? join(dirname(e["GEMELO_CONFIG_SALIDA"].trim()), "pedido-rehornear.json") : null) },
   };
 }

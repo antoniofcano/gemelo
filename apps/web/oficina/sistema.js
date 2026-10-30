@@ -1,5 +1,5 @@
 // Sistema (OF5, doc/sistema/OFICINA.md §10): una página de estado y unos pocos botones. Salud de cada servicio, correo (con prueba a la propia cuenta),
-// OlivarTrack (con «Sincronizar ahora» para admin), Vigía, hornero (solo mostrar: «re-hornear» es de OF9), aparatos de oficina y auditoría.
+// OlivarTrack (con «Sincronizar ahora» para admin), Vigía, hornero (con «Re-hornear ahora» para admin, OF9), aparatos de oficina y auditoría.
 // Todo contra /api/admin/*; el DOM se hace con h() (texto, nunca HTML). La api manda una lista blanca (sin URLs ni rutas del servidor): aquí no se pide nada más.
 import { $, api, aviso, conConfirmacion, confirma, fecha, h, vacia } from "./comun.js";
 import { bytes, ESTADO_APARATO, ESTADO_OT, ESTADO_SALUD, hace, resumenSincronia, sobreQue } from "./sistema_puro.js";
@@ -72,7 +72,17 @@ export function iniciaSistema({ sesion }) {
         f.durmiendo_hasta ? h("p", { class: "nota" }, "Duerme hasta " + fecha(f.durmiendo_hasta)) : null,
         f.error ? h("p", { class: "error" }, "Último error: " + f.error) : null));
     }
-    d.append(h("p", { class: "nota" }, "Re-hornear llega con la oficina de épocas (OF9); aquí solo se mira."));
+    pintaPedido(o);
+  }
+  /** El botón «Re-hornear ahora» (solo admin, y si la api sabe dónde dejar la petición) y en qué va la última petición. */
+  function pintaPedido(o) {
+    const p = o.pedido, b = $("#bRehornear"), nota = vacia($("#sPedido"));
+    b.hidden = !esAdmin(); b.disabled = !o.conectado || !o.puede_rehornear || (p && p.estado === "pendiente");
+    if (!o.conectado) return;
+    if (!o.puede_rehornear) { nota.textContent = "La api no sabe dónde dejarle la petición (falta el volumen de la configuración publicada)."; return; }
+    if (!p) { nota.textContent = "Sin peticiones. Una petición se atiende en la próxima comprobación del hornero (como mucho 10 minutos)."; return; }
+    nota.append(...(p.estado === "pendiente" ? [h("span", { class: "pill p-aviso" }, "pedido, esperando al hornero"), " desde " + cuando(p.pedido_en) + ". El hornero mira cada 10 minutos."]
+      : [h("span", { class: "pill p-ok" }, "atendido"), " pedido " + cuando(p.pedido_en) + ", atendido " + cuando(p.atendido_en) + "."]));
   }
 
   // ---------------------------------------------------------------- acciones
@@ -84,6 +94,22 @@ export function iniciaSistema({ sesion }) {
     b.disabled = false;
     aviso(r.ok ? r.datos.mensaje : r.mensaje, r.ok ? undefined : "mal");
     cargaSistema(); cargaAuditoria(false);
+  });
+
+  $("#bRehornear").addEventListener("click", () => {
+    confirma({
+      titulo: "Re-hornear ahora",
+      cuerpo: [h("p", null, "Se le pide al hornero una vuelta en su próxima comprobación (como mucho 10 minutos). No regenera todo a la fuerza: lo que no ha cambiado se reutiliza, así que si todo está al día tarda un segundo y no escribe nada."),
+        h("p", { class: "nota" }, "Si has entrado hace tiempo te pedirá un enlace nuevo.")],
+      si: "Pedir la vuelta",
+      hecho: async () => {
+        const r = await conConfirmacion(() => api("POST", "/api/admin/hornero/rehornear", {}));
+        if (!r.ok) return r.mensaje || "No se pudo pedir.";
+        aviso("Petición dejada: el hornero la recoge en su próxima comprobación (≤ 10 min)");
+        cargaSistema(); cargaAuditoria(false);
+        return undefined;
+      },
+    });
   });
 
   $("#bSinc").addEventListener("click", () => {
