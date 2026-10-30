@@ -2,6 +2,12 @@
   "v": 1,
   "$comment": "Catálogo de eventos del Bus del motor (apps/web/motor/02c_componentes.js; contratos/eventos.md, ADR-0023). Forma: contratos/eventos.schema.json. Un evento nuevo, o un módulo que empieza a emitirlo o escucharlo, cambia este fichero en el mismo commit: lo comprueba pruebas/guardianes/componentes.test.js.",
   "eventos": {
+    "agenda:cambia": {
+      "descripcion": "La agenda de la finca (componente «agenda») acaba de cargarse o recargarse desde la api: cuántos eventos próximos hay y si esta sesión puede apuntar a la familia (false en las gafas vinculadas). Nadie lo atiende hoy; sirve a quien quiera enseñar un aviso de «hay una visita esta semana».",
+      "datos": { "type": "object", "required": ["proximos", "puede_inscribirse"], "properties": { "proximos": { "type": "integer", "minimum": 0 }, "puede_inscribirse": { "type": "boolean" } } },
+      "emiten": ["43_agenda"],
+      "escuchan": []
+    },
     "audio:desbloquea": {
       "descripcion": "Un gesto del usuario que deja arrancar el audio del navegador (pulsar «Entrar en VR»). Quien haga sonido lo atiende y reanuda su AudioContext; sin nadie, no pasa nada.",
       "datos": {},
@@ -132,7 +138,7 @@
       "descripcion": "Empieza una sesión de realidad virtual (la cámara ya cuelga del rig y el panel está abierto).",
       "datos": {},
       "emiten": ["29_vr"],
-      "escuchan": ["40_juegos"]
+      "escuchan": ["40_juegos", "43_agenda"]
     },
     "vr:sale": {
       "descripcion": "Termina la sesión de realidad virtual (la cámara vuelve a la pantalla). Lo propio de VR se cierra.",

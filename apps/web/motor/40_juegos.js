@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
 // Consume: 01_datos (D, $), 02_mundo (Mundo), 02c_componentes (Bus, Pausa, ConfigPuro, Teclas, Componentes, Config), 02d_laminas (Laminas),
-//   03_escena (lienzo, modo), 09_camara (suelta), 12_paseo (teclas), 14_historia (hist, lista), 15_tiempo (hace), 16_vida (mira),
+//   03_escena (lienzo, modo), 09_camara (suelta), 12_paseo (teclas), 14_historia (hist, tabla, lista), 15_tiempo (hace), 16_vida (mira),
 //   29_vr (VRX, panel, PanelVR), 31_hud (Hud), 32_ventanas (Ventanas), 36_mandos (Mandos), 90_final (bucle)
 // Nota: Componente «juegos» (ADR-0023, C9a): el anfitrión de juegos casuales. Solo se registra; nadie lo nombra. Montado: icono y ventana «Juegos», tecla J, recoge los juegos por el Bus («juego:ofrece» / «juego:pide» / «juego:retira»), abre uno a pantalla completa con el mundo en pausa (Pausa de 02c; su fase «pausa») y guarda el récord (localStorage y, con servidor, /api/juegos/<id>/…). Publica window.__juegos (pruebas). El trozo [puro:…] lo evalúa en Node pruebas/guardianes/juego_cosecha.test.js.
 // ===============================================================================
@@ -64,6 +64,13 @@
       if (!c || !c.mia) return "Aún no estás en la clasificación.";
       return "Tu puesto: " + c.mia.puesto + ".º de " + c.total + (c.total === 1 ? " familia" : " familias");
     }
+    // C9b+: la clasificación en la lámina de VR (sin DOM): { puesto: texto, filas: [{ t: «1.º  alias», p: puntos, mia }] } con como mucho `max` filas; la propia, si no cabe, va la última
+    function filasVR(c, max) {
+      if (!c) return null;
+      var f = c.puestos.slice(0, max).map(function (q) { return { t: q.puesto + ".º  " + nombrePuesto(q), p: fmtPuntos(q.puntos), mia: q.es_mia }; });
+      if (c.mia && !c.puestos.slice(0, max).some(function (q) { return q.es_mia; })) f.push({ t: c.mia.puesto + ".º  " + nombrePuesto(c.mia), p: fmtPuntos(c.mia.puntos), mia: true });
+      return { puesto: textoPuesto(c), filas: f };
+    }
     function rutaRecords(prefijo, id) { return prefijo ? prefijo + "juegos/" + encodeURIComponent(id) + "/records" : null; }
     // una semilla por partida (o la de ?semilla=N, para las pruebas)
     function semilla(busqueda, ahora) { var m = /[?&]semilla=(\d{1,9})(?:[&#]|$)/.exec(busqueda || ""); return m ? Number(m[1]) : (Math.floor(ahora) % 2147483646) + 1; }
@@ -100,7 +107,7 @@
       return sale;
     }
     return { VR: VR, geoVR: geoVR, zonaVR: zonaVR, palanca: palanca, ID: ID, validaJuego: validaJuego, mejor: mejor, claveLocal: claveLocal, leeLocal: leeLocal, guardaLocal: guardaLocal, rutaPartidas: rutaPartidas,
-      rutaClasificacion: rutaClasificacion, validaClasificacion: validaClasificacion, nombrePuesto: nombrePuesto, textoPuesto: textoPuesto, rutaRecords: rutaRecords, semilla: semilla, fmtDuracion: fmtDuracion, fmtPuntos: fmtPuntos };
+      rutaClasificacion: rutaClasificacion, validaClasificacion: validaClasificacion, nombrePuesto: nombrePuesto, textoPuesto: textoPuesto, filasVR: filasVR, rutaRecords: rutaRecords, semilla: semilla, fmtDuracion: fmtDuracion, fmtPuntos: fmtPuntos };
   })();
   // [puro:fin]
 
@@ -281,15 +288,23 @@
         cx.textAlign = "center"; cx.fillStyle = "#fff"; cx.font = "700 46px system-ui, sans-serif"; cx.fillText("Se acabó la partida", w / 2, V.tabY + 270);
         cx.font = "700 52px system-ui, sans-serif"; cx.fillStyle = "#ffe9a8"; cx.fillText(JP.fmtPuntos(r.puntos) + " puntos", w / 2, V.tabY + 350);
         cx.font = "600 30px system-ui, sans-serif"; cx.fillStyle = "#e8eee4"; cx.fillText("en " + JP.fmtDuracion(r.duracion_s), w / 2, V.tabY + 410); cx.fillText(v.mensaje, w / 2, V.tabY + 470);
+        var cl = v.clasif && JP.filasVR(v.clasif, 4);   // C9b+: tu puesto y la tabla corta (solo si el servidor la dio; textos siempre con fillText)
+        if (cl) {
+          var y0 = V.tabY + 560; cx.fillStyle = "rgba(10,14,10,0.86)"; rrect(cx, 80, y0 - 30, w - 160, 70 + cl.filas.length * 38, 20); cx.fill();
+          cx.textAlign = "center"; cx.fillStyle = "#fff"; cx.font = "700 32px system-ui, sans-serif"; cx.fillText(cl.puesto, w / 2, y0);
+          cx.font = "600 28px system-ui, sans-serif";
+          cl.filas.forEach(function (f, i) { var yy = y0 + 44 + i * 38; cx.fillStyle = f.mia ? "#ffe9a8" : "#e8eee4"; cx.textAlign = "left"; cx.fillText(f.t.length > 24 ? f.t.slice(0, 23) + "…" : f.t, 110, yy); cx.textAlign = "right"; cx.fillText(f.p, w - 110, yy); });
+          cx.textAlign = "center";
+        }
         botonVR(cx, g.botones[0], "Otra partida", 34); botonVR(cx, g.botones[1], "Salir", 34);
       } else v.def.vr.botones.forEach(function (b, i) { botonVR(cx, g.botones[i], b.t, 36); });
       cx.textAlign = "center"; cx.font = "600 24px system-ui, sans-serif"; cx.fillStyle = "#a9bba5"; cx.fillText(v.def.vr.ayuda || "", w / 2, V.ayudaY + 16);
     }
-    function firmaVR() { var v = vr; return v ? v.partida.firma() + "|" + v.mensaje + "|" + v.recordTxt : ""; }
+    function firmaVR() { var v = vr; return v ? v.partida.firma() + "|" + v.mensaje + "|" + v.recordTxt + "|" + (v.clasif ? v.clasif.total + ":" + (v.clasif.mia ? v.clasif.mia.puesto : "-") : "") : ""; }
     function nuevaVR() {
       var v = vr, d = v.def;
       if (v.partida) v.partida.libera();
-      v.guardado = false; v.mensaje = ""; v.recordTxt = textoRecord(v.id);
+      v.guardado = false; v.mensaje = ""; v.clasif = null; v.recordTxt = textoRecord(v.id);
       try { v.partida = d.crea(Object.assign(ctxBase(), { lienzo: null, mandos: null, vr: true })); } catch (e) { v.partida = null; try { console.error("[juegos] " + v.id, e); } catch (e2) {} return false; }
       return true;
     }
@@ -332,7 +347,8 @@
       v.partida.actualiza(dt);
       if (v.partida.estado().fin && !v.guardado) {
         v.guardado = true; v.mensaje = "Guardando…";
-        guarda(v.id, v.partida.resultado()).then(function (g) { if (vr === v) v.mensaje = (g.nuevo ? "¡Récord nuevo! " : "") + textoRecord(v.id); });
+        guarda(v.id, v.partida.resultado()).then(function (g) { if (vr === v) v.mensaje = (g.nuevo ? "¡Récord nuevo! " : "") + textoRecord(v.id); return pideClasificacion(v.id); })
+          .then(function (cl) { if (cl && vr === v && v.partida && v.partida.estado().fin) v.clasif = cl; });
       }
       Laminas.repinta(LAM);
     }
@@ -407,7 +423,7 @@
     n.limpia(function () { cierra(); if (vr) cierraVR(); cuerpo = null; });
     window.__juegos = function () {
       return { juegos: orden.slice(), abierto: abierto ? abierto.id : null, pausaMundo: Pausa.activa(), estado: abierto && abierto.partida ? abierto.partida.estado() : null,
-        vr: vr ? { id: vr.id, estado: vr.partida ? vr.partida.estado() : null, pausada: !!(vr.partida && vr.partida.pausada()), lamina: Laminas.info(LAM) } : null,
+        vr: vr ? { id: vr.id, estado: vr.partida ? vr.partida.estado() : null, pausada: !!(vr.partida && vr.partida.pausada()), clasif: vr.clasif || null, lamina: Laminas.info(LAM) } : null,
         ofrecidosVR: ofrecidosVR(), tocaVR: function (u, v) { return vr ? zonaTocada(JP.zonaVR(u, v, vr.def.vr.botones, vr.partida.estado().fin)) : null; },
         msPorCuadro: mide.n ? mide.ms / mide.n : 0, cuadros: mide.n, pintadas: mide.pintadas, prefijo: prefijo, clasificacion: clasif, record: abierto ? recordDe(abierto.id) : null,
         reinicia: function () { mide.n = 0; mide.ms = 0; mide.pintadas = 0; } };
