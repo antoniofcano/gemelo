@@ -281,6 +281,53 @@ test("VR: el anfitrión abre el juego como lámina (el mundo no se pausa), lo to
   assert.strictEqual(api.abreVR("otro-juego"), false);
 });
 
+test("VR (C9b+): al acabar la partida, la lámina enseña tu puesto y la tabla corta (api simulada); sin servidor o con error, nada", async () => {
+  const nada = () => {}, bus = {}, filas = [], VRX = { on: true, captura: null }, laminas = {}, cuenta = { pinta: 0 }, ops = [];
+  const Laminas = {
+    abre(o) { laminas[o.id] = { o, firma: null }; this.repinta(o.id, true); return true; },
+    repinta(id, f) { const l = laminas[id]; if (!l) return false; const fm = l.o.firma(); if (!f && fm === l.firma) return false; const c = contexto(); l.o.pinta(c.g, l.o.w, l.o.h); ops.length = 0; ops.push(...c.ops); l.firma = fm; cuenta.pinta++; return true; },
+    cierra(id, m) { const l = laminas[id]; if (!l) return false; delete laminas[id]; l.o.alCierra(m); return true; }, info: () => ({}), toca: nada
+  };
+  const cuerpo = ANFITRION.slice(ANFITRION.indexOf("  function JuegosMotor"), ANFITRION.indexOf("  // el manifiesto"));
+  const CLAS = { juego: "cae-la-cosecha", total: 7, puestos: [{ puesto: 1, alias: "Olivares Sur", puntos: 9000, es_mia: false }, { puesto: 2, alias: null, puntos: 700, es_mia: false }], mia: { puesto: 6, alias: null, puntos: 120, es_mia: true } };
+  const fetchAnt = globalThis.fetch, pedidas = [];
+  async function juega(prefijo, respuesta) {
+    globalThis.fetch = (u, o) => { pedidas.push((o && o.method || "GET") + " " + u); return Promise.resolve(respuesta(u)); };
+    const g = { D: { base: "", finca_id: "x" }, ConfigPuro: { prefijoApi: () => prefijo }, Config: { tablaEpocas: () => null }, Pausa: { pon: nada, quita: nada, activa: () => false },
+      Ventanas: { registra: () => nada, abierta: () => false }, Teclas: { registra: () => nada }, Hud: { icono: () => nada, alterna: nada }, VRX, Laminas, PanelVR: { filas(p, d) { filas.push(d); return nada; }, cierra: nada, repinta: nada }, window: { localStorage: null }, location: { search: "?semilla=7" }, document: {} };
+    const n = { on: (ev, fn) => { bus[ev] = fn; }, limpia: nada, emite: nada };
+    const api = new Function("JuegosPuro", "n", "g", "\"use strict\";\nvar D = g.D, ConfigPuro = g.ConfigPuro, Config = g.Config, Pausa = g.Pausa, Ventanas = g.Ventanas, Teclas = g.Teclas, Hud = g.Hud, VRX = g.VRX, Laminas = g.Laminas, PanelVR = g.PanelVR, window = g.window, location = g.location, document = g.document, performance = { now: () => 0 };\n" + cuerpo + "\nreturn JuegosMotor(n);")(JP, n, g);
+    let ultima = null; const Partida = PARTIDA();
+    bus["juego:ofrece"]({ id: "cae-la-cosecha", titulo: "Cae la cosecha", vr: { botones: [{ a: "izquierda", t: "I" }, { a: "gira", t: "G" }, { a: "derecha", t: "D" }, { a: "cae", t: "S" }], palanca: { abajo: "cae" } }, crea: ctx => (ultima = Partida(ctx, nada)) });
+    assert.ok(api.abreVR("cae-la-cosecha"));
+    for (let i = 0; i < 80 && !ultima.estado().fin; i++) { VRX.captura.palanca(0, 0.9, 0.016); VRX.captura.palanca(0, 0, 0.016); api.turnoVR(0.5); }
+    assert.ok(ultima.estado().fin); api.turnoVR(0.01);
+    for (let i = 0; i < 10; i++) await new Promise(r => setImmediate(r));
+    api.turnoVR(0.01);
+    return () => ops.filter(o => o[0] === "fillText").map(o => o[1]).join(" | ");
+  }
+  const J = (cuerpo, status) => ({ status: status || 200, json: () => Promise.resolve(cuerpo) });
+  try {
+    const textos = await juega("/api/", u => /clasificacion/.test(u) ? J(CLAS) : /partidas/.test(u) ? J({ juego: "cae-la-cosecha", es_record: false, record: null, partidas: 1 }, 201) : J({ record: null, partidas: 0, juego: "cae-la-cosecha" }));
+    const t = textos();
+    assert.ok(/Tu puesto: 6\.º de 7 familias/.test(t) && /1\.º  Olivares Sur/.test(t) && /2\.º  Una familia/.test(t) && /6\.º  Tu familia/.test(t) && /9\.000/.test(t), "la lámina enseña el puesto y la tabla: " + t);
+    assert.ok(pedidas.some(x => /^GET \/api\/juegos\/cae-la-cosecha\/clasificacion\?n=5/.test(x)), pedidas.join(" | "));
+    for (const k of Object.keys(laminas)) laminas[k].o.alCierra("x"); ops.length = 0;
+    const sin = await juega(null, () => { throw new Error("sin servidor no se pide nada"); });
+    assert.ok(!/Tu puesto|Aún no estás/.test(sin()), "sin servidor, la lámina no enseña clasificación");
+    for (const k of Object.keys(laminas)) delete laminas[k];
+    const err = await juega("/api/", u => /clasificacion/.test(u) ? J({}, 401) : J({ juego: "cae-la-cosecha", es_record: false, record: null, partidas: 1 }, 201));
+    assert.ok(!/Tu puesto|Aún no estás/.test(err()), "sin sesión (401), tampoco");
+  } finally { globalThis.fetch = fetchAnt; }
+});
+
+test("VR (C9b+): filasVR corta la tabla y pone la propia al final si no cabe; no inventa nada sin clasificación", () => {
+  const c = JP.validaClasificacion({ juego: "j", total: 9, puestos: [1, 2, 3, 4, 5].map(i => ({ puesto: i, alias: i === 2 ? "Ana" : null, puntos: i * 1000, es_mia: false })), mia: { puesto: 8, alias: "Yo", puntos: 50, es_mia: true } }, "j");
+  const v = JP.filasVR(c, 3);
+  assert.strictEqual(v.puesto, "Tu puesto: 8.º de 9 familias"); assert.deepStrictEqual(v.filas.map(f => f.t), ["1.º  Una familia", "2.º  Ana", "3.º  Una familia", "8.º  Yo (tú)"]); assert.deepStrictEqual(v.filas.map(f => f.mia), [false, false, false, true]);
+  assert.strictEqual(JP.filasVR(null, 3), null); assert.deepStrictEqual(JP.filasVR({ total: 0, puestos: [], mia: null }, 3).filas, []);
+});
+
 test("en el código: el anfitrión no nombra al juego ni el juego al anfitrión; teclado por captura solo con el juego abierto; sin <style> (CSP)", () => {
   const sin = s => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'\\])\/\/.*$/gm, "$1");
   assert.ok(!/cae-la-cosecha|CaeLaCosecha/.test(sin(ANFITRION)), "40_juegos.js no nombra al juego");
@@ -449,8 +496,16 @@ describe("en el navegador", () => {
     const cap = async n => { await p.screenshot({ path: path.join(CAPS, n), timeout: 120000 }).catch(e => console.log("   (captura " + n + " no hecha: " + String(e.message).split("\n")[0] + ")")); };   // en VR simulada con SwiftShader una captura puede tardar
     const pulsa = async (mano, k) => { await p.evaluate(([m, b]) => window.__mockXR.boton(m, b, true), [mano, k]); await fot(3); await p.evaluate(([m, b]) => window.__mockXR.boton(m, b, false), [mano, k]); await fot(3); };
     const pal = async (x, y) => { await p.evaluate(([a, b]) => window.__mockXR.ejes("right", a, b), [x, y]); await fot(3); await p.evaluate(() => window.__mockXR.ejes("right", 0, 0)); await fot(3); };
+    // C9b+: la clasificación de la lámina de fin (api simulada, como en la prueba de pantalla)
+    const CLAS_VR = { juego: "cae-la-cosecha", total: 7, puestos: [{ puesto: 1, alias: "Olivares Sur", puntos: 900, es_mia: false }, { puesto: 2, alias: null, puntos: 700, es_mia: false }], mia: { puesto: 6, alias: null, puntos: 120, es_mia: true } };
+    await p.route("**/api/juegos/**", r => {
+      const u = r.request().url(), J = (c, st) => r.fulfill({ status: st || 200, contentType: "application/json", body: JSON.stringify(c) });
+      if (/\/clasificacion/.test(u)) return J(CLAS_VR);
+      if (/\/partidas/.test(u)) return J({ juego: "cae-la-cosecha", es_record: true, record: { puntos: 100, duracion_s: 30, fecha: new Date().toISOString() }, partidas: 1 }, 201);
+      return J({ juego: "cae-la-cosecha", record: null, partidas: 0 });
+    });
     try {
-      await p.goto(url + "?debug&hora=12:00&semilla=4242");
+      await p.goto(url + "?debug&hora=12:00&semilla=4242&api=/api/");
       await p.waitForFunction(() => window.__g && window.__g.listo() && window.__vrDebug && window.__juegos && window.__juegos().ofrecidosVR.length, null, { timeout: 120000, polling: 500 });
       await p.waitForSelector("#btnVR", { timeout: 120000 }); await p.click("#btnVR", { timeout: 120000 });
       await p.waitForFunction(() => window.__vrDebug && window.__vrDebug().on, null, { timeout: 120000, polling: 200 });
@@ -490,7 +545,9 @@ describe("en el navegador", () => {
       await pulsa("right", 5); assert.strictEqual((await jue()).vr.pausada, false, "B otra vez, sigue");
       // hasta el final: la palanca hacia atrás suelta ramas; sale «Se acabó la partida» con «Otra partida» y «Salir»
       for (let i = 0; i < 60 && !(await jue()).vr.estado.fin; i++) await pal(0, 0.9);
-      j = await jue(); assert.ok(j.vr.estado.fin, "la partida acaba soltando ramas"); await fot(6); await cap("vr_juego_fin.png");
+      j = await jue(); assert.ok(j.vr.estado.fin, "la partida acaba soltando ramas"); await fot(6);
+      await p.waitForFunction(() => window.__juegos().vr && window.__juegos().vr.clasif, null, { timeout: 15000, polling: 200 }).catch(() => {});
+      j = await jue(); assert.ok(j.vr.clasif && j.vr.clasif.mia && j.vr.clasif.mia.puesto === 6 && j.vr.clasif.total === 7, "la lámina de fin tiene la clasificación: " + JSON.stringify(j.vr.clasif)); await fot(4); await cap("vr_juego_fin.png");   // (la captura enseña tu puesto y la tabla corta)
       const puntosFin = j.vr.estado.puntos; await zona(12 + 98 + 100, 930 + 65); await fot(4);   // «Otra partida»
       j = await jue(); assert.ok(j.vr && !j.vr.estado.fin && j.vr.estado.puntos === 0, "«Otra partida» empieza de cero (la anterior hizo " + puntosFin + ")");
       // Salir (arriba a la derecha) cierra la lámina y libera lo que abrió

@@ -91,7 +91,7 @@ Con el juego abierto, el teclado se coge en la fase de captura (`keydown` de `wi
 ## 8. Lo que falta
 
 - La «partida del día» con algo real de la haza, y los avatares de la familia en el juego (decisión 125): por diseñar.
-- Límite para menores (decisiones 45 y 138) y confirmar la clasificación por alias (137): decisiones de Antonio. La clasificación en la lámina de VR: sin hacer.
+- Límite para menores (decisiones 45 y 138) y confirmar la clasificación por alias (137): decisiones de Antonio. La clasificación en la lámina de VR: hecha (§10).
 
 ## 9. El juego en VR (C9b): una lámina en el mundo
 
@@ -109,3 +109,9 @@ En VR no hay ventana: el anfitrión ofrece el juego desde el **panel VR** (pesta
 - **Qué se ve**: en la pantalla de fin, bajo el récord, un recuadro con «Tu puesto: 6.º de 7 familias» y las 5 primeras filas (puesto, alias, puntos; la tuya resaltada en amarillo y en negrita; si no entras, tu fila va debajo). En la ventana «Juegos», el mismo recuadro bajo cada juego. Letra de 15-16 px (como el resto de la ventana), sin colores solos: la fila propia se distingue también por el texto («Tu familia» o «(tú)») y por la negrita.
 - **Qué se probó**: en Node (`pruebas/guardianes/juego_cosecha.test.js`: ruta, validación de lista blanca, nombres, texto del puesto, esquema con ajv, que la consulta no toca correo ni nombre interno), en la api sin base (`apps/api/pruebas/unidad/juegos.test.ts`: forma pública sin ids, 401/400) y contra PostGIS en contenedor (`apps/api/pruebas/integracion/juegos.test.ts`: mejor por hogar, alias oculto a null, baja fuera, sin ids ni correos). Prueba de navegador escrita (`clasificación entre familias (C9c)` en el mismo guardián, con la api simulada y un móvil de 390 × 780 táctil): **no se ha ejecutado al escribir esto**.
 - **No probado**: un iPhone ni un Android de verdad, si la tarjeta de fin cabe con el teclado o la barra de Safari a la vista, lector de pantalla (la tabla es una lista `<ol>`; no se ha oído), alias largos con letras anchas (se cortan con «…»), ni el efecto en los niños de ver su puesto (decisión 138, abierta).
+
+### En la lámina de VR (C9b+)
+
+- **Qué se ve**: al acabar la partida en VR, bajo «Se acabó la partida», un recuadro con «Tu puesto: 6.º de 7 familias» y las 4 primeras filas (la tuya en amarillo; si no entras, va al final con su puesto). Letra de 28-32 px sobre la lámina de 1,1 × 1,4 m a 1,4 m. Sin servidor, sin sesión o con error, no se enseña nada (como en pantalla). Textos con `fillText` (el alias lo escribe quien juega); la lámina ya existía: no sube el presupuesto (la textura solo se sube con la firma nueva, que ahora incluye el puesto).
+- **Qué se probó**: en Node (`juego_cosecha.test.js`: `filasVR`, y el anfitrión con lámina y `fetch` simulados: con servidor la lámina dibuja el puesto y la tabla; sin servidor y con 401, nada). Prueba de navegador escrita en la VR simulada (`GEMELO_VR=1`, ya existente, ampliada con la clasificación): **no ejecutada**.
+- **No probado**: Quest real, legibilidad de la tabla a distancia, alias largos.
