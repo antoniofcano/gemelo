@@ -125,14 +125,17 @@ function miniatura(ctx, px, N, dx, dy, M) {
   ctx.putImageData(im, dx, dy);
 }
 
-/** cfg: {lados: [512, 128], olivos: [{nombre, entrada, mipsGPU? (los mipmaps de hoja de la GPU), variantes?: [{semilla, copa, altura, etiqueta, impostor?}]}]} */
+/** cfg: {lados: [512, 128], antes? (URL de otro niveles.js), olivos: [{nombre, entrada, mipsGPU? (los mipmaps de hoja de la GPU), variantes?: [{semilla, copa, altura, etiqueta, impostor?, antes? (con el niveles.js de cfg.antes)}]}]} */
 window.mide = async function (cfg) {
   const res = [], hojas = {};
   for (const ol of cfg.olivos) {
     const r0 = O.receta(ol.entrada), filas = [], mats = ol.mipsGPU ? matsGPU : matsCob;
+    // cfg.antes: URL de OTRO niveles.js (p. ej. el de antes de O9b, copiado a pruebas/salida) para comparar en la misma corrida (o9b_tarjetas.mjs)
+    const A = cfg.antes ? await import(cfg.antes) : null;
     for (const k of O.NIVELES) filas.push({ etiqueta: k, receta: O.aNivel(r0, k), tri: O.triangulosNivel(O.aNivel(r0, k)) });
+    if (A) for (const k of ["E1", "E2", "E2VR"]) filas.push({ etiqueta: k + " antes", receta: A.aNivel(r0, k), tri: O.triangulosNivel(A.aNivel(r0, k)) });
     for (const v of ol.variantes || []) {
-      const rv = O.receta({ tipo: "centenario3", epoca: ol.entrada.epoca, semilla: v.semilla }), rn = O.aNivel(rv, v.nivel || "E2");
+      const rv = O.receta({ tipo: "centenario3", epoca: ol.entrada.epoca, semilla: v.semilla }), rn = (v.antes && A ? A : O).aNivel(rv, v.nivel || "E2");
       const kx = v.copa / rn.medidas.copa_m, ky = v.altura / rn.medidas.altura_m;
       filas.push({ etiqueta: v.etiqueta, receta: rn, tri: O.triangulosNivel(rn), estira: [kx, ky], impostor: !!v.impostor });
     }
@@ -169,5 +172,22 @@ window.mide = async function (cfg) {
     }
   }
   return { res, hojas, three: THREE.REVISION };
+};
+// O9b: la fracción opaca (alfa ≥ corte) de las ramitas y de las celdas del atlas de tarjetas (PHI_RAMITA y PHI_CELDA de tarjetas.js), lo que tarda
+// en dibujarse el atlas y sus mipmaps con cobertura, y sus bytes en la GPU (RGBA de todos los niveles)
+window.phi = async function (epocas) {
+  const T = await import("/apps/web/olivo/texturas.js"), Tj = await import("/apps/web/olivo/tarjetas.js"), Ti = await import("/apps/web/olivo/tipos.js");
+  const opaca = (cv, x, y, w, h) => { const d = cv.getContext("2d").getImageData(x, y, w, h).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] >= 0.45 * 255) n++; return n / (w * h); };
+  const out = { PHI_RAMITA: Tj.PHI_RAMITA, PHI_CELDA: Tj.PHI_CELDA, epocas: {} };
+  for (const ep of epocas) {
+    const est = Ti.ESTADOS[ep], ram = [T.dibujaRamita(11, est.flor), T.dibujaRamita(29, est.flor)];
+    let t0 = performance.now(); const at = T.dibujaAtlasTarjetas(ram, { fruto: est.fruto, colorFruto: est.colorFruto }); const msAtlas = performance.now() - t0;
+    t0 = performance.now(); const mips = T.mipsConCobertura(at, 0.45); const msMips = performance.now() - t0;
+    out.epocas[ep] = { ramitas: ram.map(c => +opaca(c, 0, 0, c.width, c.height).toFixed(4)),
+      celdas: [0, 1].map(f => [0, 1, 2].map(c => +T.coberturaCelda(at, c, f).toFixed(4))), ms_atlas: +msAtlas.toFixed(1), ms_mips: +msMips.toFixed(1),
+      bytes_gpu: mips.reduce((a, m) => a + m.data.length, 0), lado: [at.width, at.height], png_bytes: (await at.convertToBlob({ type: "image/png" })).size,
+      imagen: ep === "envero" ? await new Promise(ok => { const fr = new FileReader(); at.convertToBlob({ type: "image/png" }).then(b => { fr.onload = () => ok(fr.result); fr.readAsDataURL(b); }); }) : null };
+  }
+  return out;
 };
 window.listo = true;

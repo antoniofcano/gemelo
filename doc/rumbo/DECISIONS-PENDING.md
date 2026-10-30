@@ -162,3 +162,5 @@ Decisiones que **no puede tomar un agente**: las cierra Antonio. Las técnicas s
 | 146 | **Agenda · quién inscribe** | solo el titular con su enlace (lo que hace OF11, por analogía con la 96, [SUPUESTO]) / también las gafas vinculadas | OF11 | 🟡 abierta (2026-10-30) |
 | 147 | **Agenda · aforo** | solo en personas (lo que hace OF11) / además un máximo de hogares | OF11 | 🟡 abierta (2026-10-30) |
 | 148 | **Agenda · avisos** | tope de 3 avisos de la oficina por hogar y semana, fijo (lo que hace OF11) / otro número / ajustable desde la oficina; y si editar fecha o lugar avisa solo | OF11 | 🟡 abierta (2026-10-30) |
+| 149 | **Olivos · aceitunas de E1** | octaedros en 3D (lo que decía ADR-0022) / dentro del atlas (lo que hace O9b: una llamada menos y E1 tipo 23 k en vez de 41 k, pero por debajo de ~4 m el paso E0→E1 quita las aceitunas en 3D) | O9b | 🟡 abierta (2026-10-30): se decide a ojo en O9d |
+| 150 | **Olivos · atlas de tarjetas** | se dibuja al crear los materiales (lo que hace O9b, 6-17 ms por época) / lo guarda el hornero (`@napi-rs/canvas` o el Chrome de los impostores) | O9b | 🟡 abierta (2026-10-30) |

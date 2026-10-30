@@ -458,6 +458,19 @@ Lecturas: (1) **el E0 ya no va detrás**: es el olivo que se ve a ≥ 700 px (×
 
 Las llamadas de olivos, 7-8 (tope 8); triángulos de olivos 19-231 k de 384 k; s = 1 en los tres (kPx = 590: la ventana del banco es pequeña, así que los olivos tienen pocos píxeles y no hace falta acercar fronteras); sin errores de sombreador (el código de banda compila en WebGL2) y las 4 variantes E2 calculadas en el trabajador. Las llamadas totales suben por la bandada de día de 16_vida (98 llamadas; ver «fixture»), no por los olivos. Los topes de `fixture_olivos_escalera` siguen valiendo y no se tocan.
 
+## Tarjetas de racimo (O9b, 2026-10-30, foto, no se mantiene)
+Chrome sin pantalla con SwiftShader, three 0.186.1, `node pruebas/olivo/o9b_tarjetas.mjs --antes <niveles.js de ede409a>`; recuentos en Node; masa: media de 8 vistas horizontales y la cenital frente al E0 del mismo olivo. Fracciones opacas medidas: ramita 0,182/0,191, celdas 0,24-0,27 (envero). Atlas 1024 × 512: 2,8 MB en GPU con mipmaps; dibujo 6-17 ms, mipmaps 53-235 ms una vez por época.
+
+| Olivo | Escalón | Triángulos | Brotli | Cobertura frente a E0 (512 px) | IoU 512 px | IoU 128 px |
+|---|---|---|---|---|---|---|
+| medido (h 3,8, copa 4,3) | E1 | 31.842 → 19.622 | 234 → 145 KB | −1,9 → +0,3 % | 0,998 → 0,946 | 0,977 → 0,931 |
+| medido | E2 | 11.678 → 7.634 | 209 → 135 KB | −3,5 → −0,1 % | 0,994 → 0,930 | 0,976 → 0,916 |
+| centenario3 semilla 7 | E1 | 48.378 → 23.080 | 364 → 188 KB | −0,5 → +0,4 % | 1,0 → 0,930 | 0,991 → 0,878 |
+| centenario3 semilla 7 | E2 | 19.366 → 10.702 | 322 → 178 KB | −0,6 → +0,5 % | 1,0 → 0,926 | 0,952 → 0,871 |
+| adulto1 | E1 / E2 | 19.082 / 8.954 → 7.776 / 5.016 | 161 / 143 → 77 / 71 KB | +1,4 / +0,9 % | 0,934 / 0,915 | 0,872 / 0,864 |
+
+Sin cumplir: E2 ≤ 10 k en centenario3 (10.702; pesan las ramas, 5.550) e IoU ≥ 0,9 a 128 px en los olivos tipo. A 128 px la cobertura queda +13/+27 % sobre el E0 (de lejos, más llena). Se pierde algo de contraste (E2 medido 0,59 → 0,42). No probado en aparatos.
+
 ## Límites conocidos
 - Las ortofotos decodificadas (2,4 MB por tesela de 768 px; 1 MB a 512 px) se sueltan a 900 m y, desde M4, por LRU con un tope (8 móvil/gafas, 20 escritorio; `?ortoMax=N`); el fixture (2 teselas) no llega al tope, así que su heap no cambia dentro del ruido de SwiftShader (±3 MB); el ahorro es ~2,4 MB por tesela soltada de las reales de 768 px, **no medido** en una finca grande ni en iPhone/Quest. M6 (suelo de fondo, `?sinFondo` lo quita), banco 2026-10-30, fixture de Hituelo: +1 llamada, +10 824 triángulos (82 × 66 celdas × 2), +1 geometría, 0 texturas nuevas, heap sin cambio medible; de lejos el vacío alrededor de la finca queda cubierto y de cerca no asoma.
 - Dentro de una tesela todo el relieve y la copa (258² + 256²) están siempre en memoria: 49 teselas ≈ 20 MB; la nube de las lejanas se libera a > 1,2× 2.300 m.
