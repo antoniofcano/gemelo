@@ -72,6 +72,14 @@ GEMELO_VIGIA=no
 # GEMELO_LIVEKIT_URL=http://livekit:7880
 # GEMELO_LIVEKIT_URL_PUBLICA=wss://gemelo.canoydamas.es/rtc
 # GEMELO_LIVEKIT_CLAVE=
+# --- fotos de los hogares (V7, contratos/vida.md). El compose fija GEMELO_MEDIOS=/datos/medios (volumen `medios`, que entra en las copias)
+# y GEMELO_CONFIG_SALIDA=/datos/config/publicada.json (volumen `config_publicada`, para el hornero): no se ponen aquí.
+# Tope por foto en MB (1–16): el Caddy interno y el de borde dejan pasar POST /api/medios hasta 9 MB; si lo subes de 8, sube también
+# max_size de /api/medios en infra/Caddyfile y en el bloque de borde.
+GEMELO_MEDIOS_MAX_MB=8
+# días que se conserva una foto retirada antes de borrarla del volumen, y subidas por hogar y hora
+GEMELO_MEDIOS_RETENCION_DIAS=30
+GEMELO_MEDIOS_SUBIDAS_HORA=20
 # --- reservada para la fase 2
 # GEMELO_TESELAS=/srv/teselas
 
@@ -82,3 +90,6 @@ GEMELO_RESPALDO_REMOTO=respaldo-ovh:gemelo-respaldos/bd
 GEMELO_RESPALDO_DESTINATARIO_FICHERO=/etc/gemelo/respaldo.age.pub
 GEMELO_RESPALDO_LOCAL=/var/backups/gemelo
 GEMELO_RESPALDO_DIAS_LOCALES=7
+# V7: copiar también el volumen de medios (fotos), cifrado igual y subido junto a la base. «no» lo omite
+GEMELO_RESPALDO_MEDIOS=si
+GEMELO_RESPALDO_CONTENEDOR_API=gemelo-api-1

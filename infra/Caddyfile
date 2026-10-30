@@ -58,6 +58,15 @@
 		respond 404
 	}
 
+	# V7: la subida de una foto (POST /api/medios, hasta GEMELO_MEDIOS_MAX_MB = 8 MB por defecto): ~9 MB de cuerpo (multipart). Solo esa ruta;
+	# el resto de /api/* sigue en 1 MB. Si sube GEMELO_MEDIOS_MAX_MB, sube este tope y el de infra/bloque-borde.txt.
+	handle /api/medios {
+		request_body {
+			max_size 9MB
+		}
+		reverse_proxy api:8000
+	}
+
 	handle /api/* {
 		request_body {
 			max_size 1MB

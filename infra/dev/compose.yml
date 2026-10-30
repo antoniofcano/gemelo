@@ -182,6 +182,8 @@ services:
     tmpfs: ["/tmp:size=16m"]
     volumes:
       - ../../apps/api/pruebas/vigia:/app/vigia-fixture:ro   # el fixture sintético del tiempo (GEMELO_VIGIA=fixture)
+      - medios:/datos/medios                  # V7: las fotos de los hogares (como en producción)
+      - config_publicada:/datos/config        # V10: la configuración publicada, que lee el hornero
     depends_on:
       db: { condition: service_healthy }
       correo: { condition: service_healthy }
@@ -213,6 +215,9 @@ services:
       GEMELO_LIVEKIT_URL_PUBLICA: "/rtc"
       GEMELO_LIVEKIT_CLAVE: ${GEMELO_DEV_LIVEKIT_CLAVE:?falta infra/dev/.env (lo crea npm run dev:arriba)}
       GEMELO_LIVEKIT_SECRETO: ${GEMELO_DEV_LIVEKIT_SECRETO:?falta infra/dev/.env (lo crea npm run dev:arriba)}
+      GEMELO_MEDIOS: /datos/medios
+      GEMELO_MEDIOS_MAX_MB: ${GEMELO_DEV_MEDIOS_MAX_MB:-8}
+      GEMELO_CONFIG_SALIDA: /datos/config/publicada.json
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8000/api/salud').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
       interval: 10s
@@ -239,7 +244,9 @@ services:
       GEMELO_HORNERO_FINCAS: "${GEMELO_DEV_FINCA:-hituelo}"
       GEMELO_HORNERO_HORA: "${GEMELO_DEV_HORNERO_HORA:-03:00}"             # UTC; la hora del día del cambio de época
       GEMELO_HORNERO_COMPRUEBA_S: "${GEMELO_DEV_HORNERO_COMPRUEBA_S:-600}"  # cada cuánto mira los sellos mientras duerme
+      GEMELO_HORNERO_CONFIG: /config/publicada.json   # V10: la configuración publicada por la api (calendario de épocas); si no existe, el del contrato
     volumes:
+      - config_publicada:/config:ro
       # el índice de la finca (la misma carpeta que /srv/finca de Caddy), de solo lectura
       - ${GEMELO_DEV_FINCA_CARPETA:-${GEMELO_DEV_TESELAS:-../../pruebas/salida/fixture}/${GEMELO_DEV_FINCA:-hituelo}}:/datos/${GEMELO_DEV_FINCA:-hituelo}:ro
       # lo único que escribe: la carpeta que Caddy sirve como /teselas/<finca>/olivos/ (levanta.mjs la crea)
@@ -261,6 +268,8 @@ networks:
 volumes:
   pg_datos: {}
   hornero_estado: {}
+  medios: {}              # V7
+  config_publicada: {}    # V10
 
 # Las claves de la base, como secretos de Docker (ficheros en /run/secrets, igual que en producción), pero tomadas de las
 # variables de infra/dev/.env en vez de ficheros de /etc/gemelo/secretos/

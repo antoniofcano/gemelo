@@ -4,6 +4,8 @@
 # Se corre FUERA del VPS (donde está la clave privada de age), al menos una vez al mes y tras cada cambio de esquema.
 # Uso: infra/ensayar-restauracion.sh <copia.dump.age | ultima> <clave-privada-age>
 #   «ultima» baja la más reciente de GEMELO_RESPALDO_REMOTO con rclone.
+# V7: si junto a la copia hay la de medios del mismo sello (gemelo-medios-<sello>.tar.age), también se descifra, se desempaqueta y se comprueba
+# que cada foto que la base restaurada describe (tabla `medios`) está en ella; sin copia de medios y con filas en `medios`, falla.
 # Sale con 0 si la restauración y las comprobaciones pasan.
 set -euo pipefail
 umask 077
@@ -25,12 +27,27 @@ if [ "$COPIA" = "ultima" ]; then
   ULTIMA=$(rclone lsf "$REMOTO" --include 'gemelo-*.dump.age' | sort | tail -1)
   [ -n "$ULTIMA" ] || { echo "no hay copias en $REMOTO" >&2; exit 1; }
   rclone copy "$REMOTO/$ULTIMA" "$TMP/"; rclone copy "$REMOTO/$ULTIMA.sha256" "$TMP/"
+  MEDIOS_REMOTO="gemelo-medios-${ULTIMA#gemelo-}"; MEDIOS_REMOTO="${MEDIOS_REMOTO%.dump.age}.tar.age"
+  if rclone lsf "$REMOTO" --include "$MEDIOS_REMOTO" | grep -qx "$MEDIOS_REMOTO"; then
+    rclone copy "$REMOTO/$MEDIOS_REMOTO" "$TMP/"; rclone copy "$REMOTO/$MEDIOS_REMOTO.sha256" "$TMP/"
+    (cd "$TMP" && sha256sum -c "$MEDIOS_REMOTO.sha256" >/dev/null) || { echo "la suma SHA-256 de los medios no cuadra" >&2; exit 1; }
+  fi
   (cd "$TMP" && sha256sum -c "$ULTIMA.sha256" >/dev/null) || { echo "la suma SHA-256 no cuadra" >&2; exit 1; }
   COPIA="$TMP/$ULTIMA"
 fi
 
 echo "== descifrar $(basename "$COPIA")"
 "$AGE" --decrypt --identity "$CLAVE" --output "$TMP/copia.dump" "$COPIA"
+
+# la copia de medios del mismo sello, al lado de la de la base (gemelo-<sello>.dump.age → gemelo-medios-<sello>.tar.age)
+NOMBRE_COPIA=$(basename "$COPIA")
+COPIA_MEDIOS="$(dirname "$COPIA")/gemelo-medios-${NOMBRE_COPIA#gemelo-}"; COPIA_MEDIOS="${COPIA_MEDIOS%.dump.age}.tar.age"
+if [ -f "$COPIA_MEDIOS" ]; then
+  echo "== descifrar y desempaquetar $(basename "$COPIA_MEDIOS")"
+  mkdir "$TMP/medios"
+  "$AGE" --decrypt --identity "$CLAVE" --output "$TMP/medios.tar" "$COPIA_MEDIOS"
+  tar -xf "$TMP/medios.tar" -C "$TMP/medios" --no-same-owner
+fi
 
 echo "== base de ensayo ($IMAGEN)"
 docker run -d --name "$NOMBRE" -e POSTGRES_PASSWORD=ensayo -e POSTGRES_USER=gemelo_dueno -e POSTGRES_DB=gemelo "$IMAGEN" >/dev/null
@@ -58,6 +75,17 @@ mira "geometrías válidas" "$(consulta "SELECT count(*) FROM hazas WHERE NOT ST
 mira "SRID 25830" "$(consulta "SELECT Find_SRID('public','hazas','geom')")" "25830"
 mira "eventos con su reparto haza-parcela" "$(consulta "SELECT count(*) FROM eventos_haza e LEFT JOIN haza_parcela p USING (haza_id, parcela_ot) WHERE p.haza_id IS NULL")" "0"
 mira "permisos del rol de la api" "$(consulta "SELECT has_table_privilege('gemelo_api','hogares','SELECT') AND NOT has_table_privilege('gemelo_api','auditoria','DELETE')")" "t"
+# V7: cada foto que describe la base está en la copia de medios (la copia de medios es posterior: puede traer más, nunca menos)
+filas_medios=$(consulta "SELECT count(*) FROM medios")
+if [ -d "$TMP/medios" ]; then
+  faltan=0
+  while IFS= read -r clave; do [ -z "$clave" ] || [ -f "$TMP/medios/$clave" ] || faltan=$((faltan + 1)); done < <(consulta "SELECT clave FROM medios")
+  mira "fotos descritas en la base que faltan en la copia de medios (de $filas_medios)" "$faltan" "0"
+elif [ "$filas_medios" = "0" ]; then
+  echo "  --  sin copia de medios al lado, y la base no describe fotos"
+else
+  mira "copia de medios para las $filas_medios fotos que describe la base" "no hay" "hay"
+fi
 echo "  filas: $(consulta "SELECT 'hogares=' || (SELECT count(*) FROM hogares) || ' hazas=' || (SELECT count(*) FROM hazas) || ' olivos=' || (SELECT count(*) FROM olivos) || ' eventos=' || (SELECT count(*) FROM eventos_haza)")"
 
 echo

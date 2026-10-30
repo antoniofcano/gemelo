@@ -21,6 +21,8 @@ COPY --from=construye /app/dist ./dist
 COPY apps/api/package.json ./
 COPY apps/api/migraciones ./migraciones
 COPY contratos/haza.schema.json contratos/olivos-haza.schema.json contratos/tiempo.schema.json contratos/config.schema.json ./contratos/
+# los puntos de montaje de los volúmenes de escritura (medios V7, configuración publicada V10), del usuario node (uid 1000): un volumen nuevo hereda su dueño
+RUN mkdir -p /datos/medios /datos/config && chown node:node /datos/medios /datos/config
 USER node
 EXPOSE 8000
 CMD ["node", "dist/src/principal.js"]
