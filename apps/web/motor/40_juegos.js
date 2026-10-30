@@ -10,7 +10,7 @@
   // récord: en el aparato (localStorage, con try/catch) y, si la página la sirve el servidor, el de la familia en la api (POST /api/juegos/<id>/partidas
   // y GET …/records; contrato en contratos/api.openapi.yaml). Solo el récord del propio hogar: nada de otras familias (lo decide Antonio: DECISIONS-PENDING).
   // Un juego es OTRO componente: se ofrece con «juego:ofrece» { id, titulo, descripcion, ayuda?, crea(ctx) → partida } (si llega antes que el anfitrión,
-  // el anfitrión le pregunta con «juego:pide») y se retira con «juego:retira» { id }. ctx = { tela, mandos, epoca, semilla, reducido }; la partida da
+  // el anfitrión le pregunta con «juego:pide») y se retira con «juego:retira» { id }. ctx = { lienzo, mandos, epoca, semilla, reducido }; la partida da
   // redimensiona(w, h, dpr), actualiza(dt) → ¿repintar?, pinta(), tecla(code) → ¿usada?, pausa(si), pausada(), estado() { puntos, fin }, resultado()
   // { puntos, duracion_s } y libera(). El anfitrión pone la barra (título, puntos, récord, Pausa y Cerrar), el teclado (Esc y P son suyas) y el final.
   // Es un COMPONENTE (ADR-0023): se registra y nadie lo nombra. ?juegos=0 o la configuración del servidor (decisión 118) lo apagan: sin icono, sin ventana.
@@ -121,8 +121,10 @@
       a.fin.hidden = true; a.guardado = false; a.mandos.textContent = "";
       var ep = null; try { var m = /[?&]epoca=([a-z]+)/.exec(location.search); ep = m ? m[1] : (Config.tablaEpocas(D.finca_id) ? Config.epocaDeFecha(Config.tablaEpocas(D.finca_id), new Date()) : null); } catch (e) { ep = null; }
       var reducido = false; try { reducido = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch (e) {}
-      a.partida = d.crea({ tela: a.tela, mandos: a.mandos, epoca: ep, semilla: JP.semilla(location.search, Date.now()), reducido: reducido });
+      try { a.partida = d.crea({ lienzo: a.lienzo, mandos: a.mandos, epoca: ep, semilla: JP.semilla(location.search, Date.now()), reducido: reducido }); }
+      catch (e) { a.partida = null; try { console.error("[juegos] " + a.id, e); } catch (e2) {} cierra(); return false; }
       medidas(); pintaBarra(); a.partida.pinta();
+      return true;
     }
     function abre(id) {
       if (abierto || !juegos[id] || (typeof VRX !== "undefined" && VRX.on)) return false;
@@ -164,7 +166,7 @@
       on(window, "resize", medidas);
       on(document, "visibilitychange", function () { if (document.hidden && abierto && abierto.partida && !abierto.partida.pausada() && !abierto.partida.estado().fin) alternaPausa(); });
       Pausa.pon("juegos");
-      nuevaPartida();
+      if (!nuevaPartida()) return false;
       capa.focus({ preventScroll: true });
       if (!records[id]) pideRecord(id);
       return true;

@@ -69,7 +69,16 @@ Con el juego abierto, el teclado se coge en la fase de captura (`keydown` de `wi
 
 - **Escena 3D**: 0 llamadas y 0 triángulos (los dos componentes declaran presupuesto 0). Con el juego abierto **no hay render** del mundo (0 renders por fotograma) y el último fotograma se queda de fondo bajo la capa.
 - **Lienzo 2D**: un `<canvas>` del tamaño de la zona de juego (× `devicePixelRatio`, hasta 2), que **solo se repinta si cambia algo** (la rama baja, un movimiento, un destello).
-- **JS por fotograma**: medido por el banco (Chrome sin pantalla, SwiftShader; los ms valen para comparar, no como fps del aparato). Cifras en el informe de C9a y en la prueba (`juego_cosecha.test.js` imprime mundo frente a juego).
+- **Medida** (2026-10-30, por el banco: Chrome sin pantalla con SwiftShader, Cerro del fixture, 3 s de cada; `ScriptDuration` de CDP entre fotogramas y `renderer.info.render.frame`; vale para comparar, **no** como fps del aparato):
+
+| Escenario | Fotogramas en 3 s | Renders 3D | Llamadas del último render | JS por fotograma | Fase «pausa» | Repintados del lienzo |
+|---|---|---|---|---|---|---|
+| Escritorio 1280 × 800, mundo | 21 | 21 | 29 | 2,21 ms | — | — |
+| Escritorio, juego abierto | 181 | **0** | — | **0,16 ms** | 0,023 ms | 3 |
+| Móvil 390 × 780 (×2), mundo | 16 | 16 | 22 | 2,17 ms | — | — |
+| Móvil, juego abierto | 180 | **0** | — | **0,17 ms** | 0,031 ms | 3 |
+
+  El juego cuesta unas 13 veces menos JS por fotograma que el mundo que pausa y ninguna llamada de dibujo 3D; con SwiftShader el bucle pasa de ~7 a 60 fotogramas por segundo porque deja de pintar el mundo. Lo comprueba la prueba en cada pasada (`juego_cosecha.test.js`: 0 renders y JS del juego ≤ JS del mundo). **No medido** en un aparato real.
 
 ## 7. Nota de comodidad (regla 11)
 

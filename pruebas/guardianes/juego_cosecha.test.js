@@ -255,6 +255,11 @@ describe("en el navegador", () => {
       const pos1 = await p.evaluate(() => window.__g.camera.position.toArray().map(v => Math.round(v * 100)));
       assert.deepStrictEqual(pos1, pos0, "la cámara sigue donde estaba");
       assert.deepStrictEqual(errores, []);
+    } catch (er) {
+      const d = await p.evaluate(() => ({ juegos: window.__juegos ? window.__juegos() : null, comp: window.__componentes ? window.__componentes().filter(c => /juego|cosecha/.test(c.id)) : null })).catch(() => null);
+      console.log("   fallo en " + modo + ": " + JSON.stringify(d) + " · errores: " + JSON.stringify(errores));
+      await p.screenshot({ path: path.join(CAPS, "fallo_" + (tactil ? "tactil" : "escritorio") + ".png") }).catch(() => {});
+      throw er;
     } finally { await p.close(); }
   });
 });

@@ -186,7 +186,7 @@
         g.fillStyle = "rgba(255,255,255,0.55)"; ovalo(g, x + r * 0.2, y - r * 0.32, r * 0.09, r * 0.17, 0.35); g.fill();
       } else if (nombre === "hoja") {    // la hoja del olivo: estrecha y larga, en diagonal, con su nervio
         g.beginPath(); g.moveTo(x - r * 0.85, y + r * 0.85);
-        g.quadraticCurveTo(x - r * 0.05, y + r * 0.35, x + r * 0.85, y - r * 0.85); g.quadraticCurveTo(x + r * 0.05, y - r * 0.35, x - r * 0.85, y + r * 0.85);
+        g.quadraticCurveTo(x + r * 0.42, y + r * 0.42, x + r * 0.85, y - r * 0.85); g.quadraticCurveTo(x - r * 0.42, y - r * 0.42, x - r * 0.85, y + r * 0.85);
         g.closePath(); g.fill(); g.stroke();
         g.beginPath(); g.moveTo(x - r * 0.7, y + r * 0.7); g.lineTo(x + r * 0.7, y - r * 0.7); g.lineWidth = Math.max(1, r * 0.06); g.stroke();
       } else if (nombre === "flor") {    // la flor del olivo: cuatro pétalos en cruz y el centro amarillo
