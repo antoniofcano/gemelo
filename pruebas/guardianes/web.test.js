@@ -5,7 +5,7 @@
 // Sin Vite instalado (cd apps/web && npm ci) se SALTA con aviso.
 const test = require("node:test"), assert = require("node:assert");
 const { RAIZ, fs, path } = require("./_util");
-const { sirve, motivoSalto, lanza } = require("./_navegador");
+const { sirve, motivoSalto, lanza, VENTANA_CHICA } = require("./_navegador");
 const { montaPagina, saltoPagina } = require("./_pagina");
 
 const WEB = path.join(RAIZ, "apps", "web");
@@ -39,7 +39,7 @@ test("cada `#include <trozo>` que el motor parchea o usa existe en los sombreado
 test("la página empaquetada carga sin errores, lleva la three de apps/web y solo pide a su mismo origen (salvo las fuentes de Google de la plantilla)", { timeout: 300000 }, async t => {
   if (SALTO_NAV) return t.skip(SALTO_NAV);
   const P = montaPagina({ finca: "hituelo" }), s = await sirve(P.carpeta, { csp: true }), nav = await lanza(), origen = "http://127.0.0.1:" + s.address().port;
-  const p = await nav.newPage({ viewport: { width: 900, height: 650 } }), errores = [], fuera = new Set();
+  const p = await nav.newPage({ viewport: VENTANA_CHICA }), errores = [], fuera = new Set();
   p.on("pageerror", e => errores.push("PAGEERROR " + String(e.stack || e).slice(0, 400)));
   p.on("console", m => { if (m.type() === "error" && !/^\[Report Only\]/.test(m.text())) errores.push("CONSOLE " + m.text().slice(0, 300)); });
   p.on("request", r => { const u = r.url(); if (!u.startsWith(origen) && !/^(data|blob):/.test(u)) fuera.add(new URL(u).host); });

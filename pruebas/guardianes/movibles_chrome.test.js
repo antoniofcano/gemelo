@@ -19,7 +19,7 @@ test.after(async () => { if (navegador) await navegador.close(); if (srv) srv.cl
 const cruzan = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 
 async function abre(ancho, alto) {
-  const ctx = await navegador.newContext({ viewport: { width: ancho, height: alto }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 }), p = await ctx.newPage(), errores = [];
+  const ctx = await navegador.newContext({ viewport: { width: ancho, height: alto }, hasTouch: true, isMobile: true, deviceScaleFactor: 1 }), p = await ctx.newPage(), errores = [];
   p.on("pageerror", e => errores.push("PAGEERROR " + String(e.stack || e).slice(0, 400)));
   p.on("console", m => { if (m.type() === "error") errores.push("CONSOLE " + m.text().slice(0, 300)); });
   p.errores = errores; p.ctx = ctx;
