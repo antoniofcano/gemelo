@@ -61,6 +61,11 @@ Requisito de Antonio (2026-10-30): la cola **nunca se queda parada** y **nunca d
 6. **Fusión y pruebas pesadas, agrupadas.** Se juntan las ramas a medida que llegan (con las pruebas de Node), pero la puerta completa y las pruebas de Chrome/Docker van agrupadas, al final de una tanda o tras un cambio importante; `main` se sube a GitHub **solo** con la puerta completa en verde.
 7. **Copias de trabajo limpias.** Ninguna tarea crea uniones (junctions) hacia la copia principal; antes de borrar una copia se buscan y se quitan sin seguirlas (`[System.IO.Directory]::Delete(ruta, $false)`), y después se comprueba que `node_modules` y `pruebas/salida/fixture` de la copia principal siguen llenos.
 8. **Instalar** solo de fuente oficial y versión estable, con versión fijada (regla 12).
+9. **Cada agente, con el modelo de IA más adecuado** (Antonio, 2026-10-30), elegido **antes de lanzarlo** por rendimiento y coste, y dicho en el encargo:
+   - **opus**: diseño y arquitectura, código delicado (sombreadores, presupuesto de dibujo, seguridad, migraciones con datos, contratos nuevos), depuración difícil, propuestas con decisiones para Antonio.
+   - **sonnet**: tareas mecánicas o bien acotadas (documentación, pantallas sobre un diseño ya hecho, infra con receta, adaptar pruebas, componentes sobre un patrón que ya existe).
+   - **haiku**: recuentos, búsquedas y comprobaciones sencillas sin escribir código de producto.
+   - En la duda, el modelo más barato que pueda hacerlo bien; si un agente de sonnet se atasca o la tarea resulta más delicada de lo previsto, se relanza con opus. El tablero de PLAN lleva el modelo de cada tarea («Enrutador de modelo»).
 
 ## Pruebas de navegador (`pruebas/`)
 | Script | Para qué |
