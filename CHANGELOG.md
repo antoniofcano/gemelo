@@ -5,6 +5,11 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- La página de la finca es el visor a toda la ventana; la cabecera y el pie pasan al menú (☰ o Esc: Configuración, Créditos y fuentes, Acerca de la finca) y abajo queda una línea de atribución (U1, decisión 83).
+- HUD de juego: brújula que gira, selector Vista aérea / A pie / Quad / Dron, chip del tiempo, barra de iconos y avisos (U2).
+- Ventanas una a la vez: Mapa y parcelas, Capas con su procedencia, Tiempo con pestañas y una sola fecha del campo, Historia con tarjeta de recorrido, Gente y Ayuda; se quitan «+6 h», «Mañana a las 12:00» y los duplicados (U3, decisiones 87-89).
+- Cruceta y acciones solo en táctil, cruceta a la izquierda y acciones a la derecha, con mano zurda; «Aterrizar» abajo en el centro (U5, decisión 85).
+- Pantalla completa de verdad (⛶ o F, Keyboard Lock para Esc en Chrome/Edge), aviso y manifiesto web para el iPhone, y teclas de juego: 1-6, F1, F, Inicio o 0, Intro y Esc (U7, decisiones 84 y 90). Nada probado en iPhone, Android ni Quest.
 - El chat de la visita en red es una ventana flotante que se arrastra por su barra, se minimiza a una burbuja movible con contador de no leídos y nunca se queda encima de la cruceta ni de la barra; el minimapa se mueve igual, se pliega con su botón o con M, y la brújula ya no lo oculta; sin arrastrar: flechas, Inicio y «Llevar a…»; el sitio se recuerda por forma de pantalla (U6, `34_movibles.js`). Probado en Chrome sin pantalla con emulación táctil; no en iPhone, Android ni Quest.
 - Olivos lejanos (variantes E2/E2-VR e impostores) con la misma copa y altura que su propio árbol: fuera el olivo «esquelético» a media anchura (O9b-0, decisión 81; el nivel de siempre sigue con `FACTOR_R8` 0,5).
 - El escalón de cada olivo (E0/E1/E2/lejano) se elige por su alto en píxeles, con las fronteras desplazadas a la vez por el presupuesto del aparato, y el paso se funde en una banda de ± 1,5 m de camino; el E0 ya no se queda detrás (O9c, decisión 82; `?olivosPx=`, `?olivosBanda=` para ajustar en O9d).
