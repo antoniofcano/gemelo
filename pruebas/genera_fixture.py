@@ -3,13 +3,14 @@ Python puro (sin numpy ni PIL) y determinista (semilla fija): da siempre los mis
 
   python pruebas/genera_fixture.py [--salida pruebas/salida/fixture]
 
-Escribe:
-  hituelo/   modo «ficheros»: indice.json + t/<kx>_<ky>.json|jpg   (finca_id «hituelo»: NDVI en u8; la tesela 2 no lleva nube = calidad Base)
-  cerro/     modo «embebido»: embebido.json                         (finca_id «cerro»: NDVI en Int16 b64; sin fincas)
+Escribe, para cada finca (el cliente solo lee ficheros, T8 fase 2: no hay modo embebido):
+  <finca>/indice.json + t/<kx>_<ky>.json|jpg + tileset/tileset.json y sus glb (3D Tiles, de tuberia/tiles3d/genera.mjs: necesita su `npm ci`, que se hace aquí si falta)
+  hituelo/   finca_id «hituelo»: NDVI en u8; la tesela 2 no lleva nube = calidad Base
+  cerro/     finca_id «cerro»: NDVI en Int16 b64; sin fincas
 Solo hituelo lleva las columnas opcionales del registro de árboles copas_id, copas_tipo y copas_param (ids estables y algún olivo-tipo 0 del catálogo
 sintético de modelos/olivos/fixture/); cerro conserva el formato de antes.
 Mundo: centro_utm en la esquina de las dos teselas (1000_16000 y 1001_16000), 512 × 256 m, 2 parcelas, 140 olivos."""
-import argparse, base64, json, math, os, random, struct
+import argparse, base64, json, math, os, random, shutil, struct, subprocess
 
 R = os.path.dirname(os.path.abspath(__file__))
 TS, RES, SRS, ORTO_PX = 256, 1, 2, 64
@@ -112,23 +113,27 @@ def indice(finca, copas, tes):
         for p in pars: del p["finca"]
     return I
 
+def tileset(d):
+    """El tileset 3D Tiles de la finca, junto a su indice.json (<d>/tileset/), con el generador de tuberia/tiles3d (instala sus dependencias si faltan)"""
+    raiz = os.path.dirname(R); t3 = os.path.join(raiz, "tuberia", "tiles3d"); win = os.name == "nt"
+    if not os.path.isdir(os.path.join(t3, "node_modules")): subprocess.run(["npm", "ci"], cwd=t3, check=True, shell=win)
+    subprocess.run(["node", os.path.join(t3, "genera.mjs"), "--entrada", d, "--salida", os.path.join(d, "tileset"), "--catalogo", os.path.join(raiz, "modelos", "olivos", "fixture", "catalogo.json")], cwd=raiz, check=True)
+
 def main():
-    ap = argparse.ArgumentParser(); ap.add_argument("--salida", default=os.path.join(R, "salida", "fixture")); a = ap.parse_args()
+    ap = argparse.ArgumentParser(); ap.add_argument("--salida", default=os.path.join(R, "salida", "fixture")); ap.add_argument("--sin-tileset", action="store_true", help="solo índice y teselas (no genera el tileset)"); a = ap.parse_args()
     copas = olivos(); rng = random.Random(12345)
     t1 = tesela(KX0, copas, True, rng); t2 = tesela(KX0 + 1, copas, False, rng)
     claves = ["%d_%d" % (KX0, KY), "%d_%d" % (KX0 + 1, KY)]
     tes = {claves[0]: dict(kx=KX0, ky=KY, v=[-TS, -TS, 0, 0], np=t1["np"]), claves[1]: dict(kx=KX0 + 1, ky=KY, v=[0, -TS, TS, 0], np=0)}
     orto = lee("orto.jpg")
-    # modo ficheros (hituelo)
-    h = os.path.join(a.salida, "hituelo"); os.makedirs(os.path.join(h, "t"), exist_ok=True)
-    json.dump(indice("hituelo", copas, tes), open(os.path.join(h, "indice.json"), "w"), separators=(",", ":"))
-    for k, t in zip(claves, (t1, t2)):
-        json.dump(t, open(os.path.join(h, "t", k + ".json"), "w"), separators=(",", ":")); open(os.path.join(h, "t", k + ".jpg"), "wb").write(orto)
-    # modo embebido (cerro)
-    c = os.path.join(a.salida, "cerro"); os.makedirs(c, exist_ok=True)
-    E = indice("cerro", copas, tes); E["t"] = {}
-    for k, t in zip(claves, (t1, t2)): E["t"][k] = dict(t, orto="data:image/jpeg;base64," + b64(orto))
-    json.dump(E, open(os.path.join(c, "embebido.json"), "w"), separators=(",", ":"))
+    for finca in ("hituelo", "cerro"):
+        d = os.path.join(a.salida, finca)
+        os.makedirs(os.path.join(d, "t"), exist_ok=True); shutil.rmtree(os.path.join(d, "tileset"), ignore_errors=True)
+        if os.path.exists(os.path.join(d, "embebido.json")): os.remove(os.path.join(d, "embebido.json"))   # de antes de T8 fase 2
+        json.dump(indice(finca, copas, tes), open(os.path.join(d, "indice.json"), "w"), separators=(",", ":"))
+        for k, t in zip(claves, (t1, t2)):
+            json.dump(t, open(os.path.join(d, "t", k + ".json"), "w"), separators=(",", ":")); open(os.path.join(d, "t", k + ".jpg"), "wb").write(orto)
+        if not a.sin_tileset: tileset(d)
     print("fixture en", a.salida, "| teselas", len(tes), "| olivos", len(copas), "| nube", t1["np"], "puntos")
 
 if __name__ == "__main__":
