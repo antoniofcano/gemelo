@@ -114,6 +114,9 @@ test("la imagen de la api lleva todos los esquemas de contratos/ que la api lee 
   const faltan = [...usados].filter(f => !copiados.has(f));
   assert.deepStrictEqual(faltan, [], "esquemas que la api lee y la imagen no lleva (apps/api/Dockerfile, COPY … ./contratos/)");
   for (const f of copiados) assert.ok(fs.existsSync(path.join(RAIZ, "contratos", f)), "el Dockerfile copia un esquema que no existe: " + f);
+  // y el contexto de construcción los deja pasar (Dockerfile.dockerignore es una lista blanca: sin su «!», «not found» al construir)
+  const pasan = new Set([...lee("apps/api/Dockerfile.dockerignore").matchAll(/^!contratos\/(\S+)\s*$/gm)].map(m => m[1]));
+  assert.deepStrictEqual([...copiados].filter(f => !pasan.has(f)), [], "esquemas que el Dockerfile copia y apps/api/Dockerfile.dockerignore no deja pasar");
 });
 
 test("dependencias de apps/api fijadas a versión exacta y con package-lock", () => {
