@@ -12,6 +12,10 @@ async function mantenEjes(mano, x, y, n) { await pg.evaluate(a => window.__mockX
 (async () => {
   const b = await chromium.launch({ executablePath: process.env.CHROME || "C:/Program Files/Google/Chrome/Application/chrome.exe", args: ["--use-gl=swiftshader", "--enable-unsafe-swiftshader", "--no-sandbox", "--autoplay-policy=no-user-gesture-required", "--disable-dev-shm-usage"] });
   const p = await b.newPage({ viewport: { width: 800, height: 500 } }); pg = p; const err = [], res = {}; let fallos = 0;
+  // I6: peticiones a otro origen (los modelos de los mandos NO deben ir a jsDelivr). Las tipografías de Google las pide plantilla.html (no el motor;
+  // la CSP de dev las permite): se apartan aquí, no son de esta pieza
+  const fuera = [];
+  p.on("request", r => { try { const o = new URL(r.url()); if (/^https?:/.test(o.protocol) && o.origin !== new URL(url).origin && !/^fonts\.(googleapis|gstatic)\.com$/.test(o.hostname)) fuera.push(r.url()); } catch (e) {} });
   p.on("pageerror", e => err.push("PAGEERROR " + String(e))); p.on("console", m => { if (m.type() === "error" && !/favicon|404/.test(m.text())) err.push("CONSOLE " + m.text()); });
   if (!sinxr) await p.addInitScript({ content: fs.readFileSync(path.join(__dirname, "mock_xr.js"), "utf8") });
   await p.goto(url + (url.includes("?") ? "&" : "?") + "debug", { waitUntil: "load" });
@@ -30,6 +34,13 @@ async function mantenEjes(mano, x, y, n) { await pg.evaluate(a => window.__mockX
   ok("la cabeza queda en el suelo del rig + 1,6 m", Math.abs(d.cabeza[1] - d.rig.y - 1.6) < 0.05, { cab: d.cabeza.map(v => +v.toFixed(2)), rig: d.rig });
   ok("el panel se abre al entrar", d.panel);
   ok("perfil VR aplicado", d.nivel >= 0 && d.hierba > 0, { nivel: d.nivel, hierba: d.hierba });
+  // I6: el modelo de cada mando (izquierdo: perfil de Quest 3; derecho: el genérico), sin sombras, sin salir del origen
+  let dmd = null; for (let i = 0; i < 40; i++) { dmd = await p.evaluate(() => window.__mandos()); if (dmd.filas.every(f => f.modelo === "modelo")) break; await dormir(500); }
+  res.mandos = dmd; console.log("mandos:", JSON.stringify(dmd));
+  ok("los mandos se ven con su modelo (Quest 3 a la izquierda, genérico a la derecha), no como cajas", dmd.filas.every(f => f.modelo === "modelo") &&
+    dmd.filas.some(f => f.perfil === "meta-quest-touch-plus") && dmd.filas.some(f => f.perfil === "generic-trigger"), dmd.filas);
+  ok("presupuesto de los mandos: menos de 40.000 triángulos y 40 mallas entre los dos", dmd.tri < 40000 && dmd.mallas < 40, { tri: dmd.tri, mallas: dmd.mallas });
+  ok("ninguna petición fuera del origen de la página (salvo las tipografías de la plantilla)", fuera.length === 0, fuera.slice(0, 4));
   const fr0 = (await p.evaluate(() => window.__mockXR.fotogramas));
   // 1) andar: palanca izquierda adelante 2 s
   await mantenEjes("left", 0, -1, 8);
@@ -97,6 +108,7 @@ async function mantenEjes(mano, x, y, n) { await pg.evaluate(a => window.__mockX
   await pulsa("left", 5);
   await aPanel("sal"); await p.evaluate(() => window.__mockXR.gatillo("right")); await fot(3);
   const ds = await p.evaluate(() => window.__vrDebug()); res.salida = ds;
+  { const dl = await p.evaluate(() => window.__mandos()); ok("al salir, los modelos de los mandos se sueltan y se liberan", !dl.montado && dl.gpu === 0 && dl.mallas === 0, dl); }
   ok("Salir de VR: sesión terminada y estado restaurado", !ds.on && ds.modo === "nube" && ds.near === 0.5 && !ds.paseando, { on: ds.on, modo: ds.modo, near: ds.near, paseando: ds.paseando });
   const f1 = await p.evaluate(() => window.__vrDebug().frames); await dormir(5000); const f2 = await p.evaluate(() => window.__vrDebug().frames);
   ok("el bucle normal vuelve a funcionar (sigue pintando)", f2 > f1, { f1, f2 });
