@@ -1,12 +1,13 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: VRX, vrDebugExtra, vrFundido, vrAparece, panel, ficha, PanelVR, vrMideEmpieza, vrMideFin, vrActualiza, VR_PERFILES, vrFin
 // Consume: 01_datos (D, $, fmt, VRP), 02_mundo (Mundo, suelo, orto, copas), 02c_componentes (Bus, Config),
-//   03_escena (lienzo, renderer, scene, camera, texColor, exag, modo, calidad), 04b_escena3d (Escena3D), 05_nube (nube), 07b_arboles (Arboles),
-//   09_camara (eligeCopa, pon), 10_ndvi (NDV, ndviIdx), 12_paseo (paseando, persona, teclas, primera, entraPaseo, salePaseo, actualizaPaseo),
-//   12b_llegada (Llegada), 13_parcelas (parcelas, fincas), 14_historia (lista, aviso), 15_tiempo (calma, nivel, rumbo, hace),
-//   16_vida (quita, mira, quad, dron), 19_balizas (BAL, cierraBaliza, balizaAbierta, abreBaliza, balizaVR, irABaliza, tBal),
-//   22_huellas (pendFactor), 24_pantalla (suave), 25_perros (perrosLlegan), 26_presencia (Presencia), 30_mide (MideEst, Mide), 33_ajustes (Ajustes),
-//   36_mandos (Mandos), 90_final (tamano, cuadro, bucle)
+//   03_escena (lienzo, visor, renderer, scene, camera, texColor, exag, modo, calidad), 04b_escena3d (Escena3D), 05_nube (nube),
+//   07b_arboles (Arboles), 09_camara (eligeCopa, pon), 10_ndvi (NDV, ndviIdx),
+//   12_paseo (paseando, persona, teclas, primera, entraPaseo, salePaseo, actualizaPaseo), 12b_llegada (Llegada), 13_parcelas (parcelas, fincas),
+//   14_historia (lista, aviso), 15_tiempo (calma, nivel, rumbo, hace), 16_vida (quita, mira, quad, dron),
+//   19_balizas (BAL, cierraBaliza, balizaAbierta, abreBaliza, balizaVR, irABaliza, tBal), 22_huellas (pendFactor), 24_pantalla (suave),
+//   25_perros (perrosLlegan), 26_presencia (Presencia), 30_mide (MideEst, Mide), 33_ajustes (Ajustes), 36_mandos (Mandos),
+//   90_final (tamano, cuadro, bucle)
 // Nota: Publica además window.__vrDebug, __vrOlivo, __vrBotones, __vrVuelo, __vrBalizas y VR_ESTADO (depuración y pruebas VR).
 // ===============================================================================
   // ---------- modo VR inmersivo (WebXR, Meta Quest Browser): el paseo en primera persona con mandos, un panel flotante y un perfil de rendimiento propio
@@ -161,6 +162,10 @@
   var VR_PESTANAS = [["mundo", "Mundo"], ["ira", "Ir a"], ["comodidad", "Comodidad"]], VR_GIROS = [15, 30, 45, 60], VR_DEBUG = /[?&]debug\b/.test(location.search);
   function vrAj(clave, def) { try { if (typeof Ajustes !== "undefined" && Ajustes && Ajustes.lee) { var v = Ajustes.lee(clave); if (v !== undefined && v !== null) return v; } } catch (e) {} return def; }
   function vrAjPon(clave, v) { try { if (typeof Ajustes !== "undefined" && Ajustes && Ajustes.pon) Ajustes.pon(clave, v); } catch (e) {} }
+  // AV2 (decisión 133): «Altura de la vista» (Configuración, vista.altura). Sentado baja la vista VR_SENTADO m respecto a la que dan las gafas (se SUMA al suelo de la sesión: si el visor ya da la
+  // altura real de quien está sentado, se deja «De pie»); independiente del avatar. Solo cambia dónde está el rig: el mundo no se mueve.
+  var VR_SENTADO = 0.42;   // 1,62 m de pie → 1,20 m sentado (los mismos ojos que el paseo en primera persona)
+  function vrBaseY() { return VRX.ojo - (vrAj("vista.altura", "pie") === "sentado" ? VR_SENTADO : 0); }
   function vrLeeAjustes() {   // al entrar en la sesión y cada vez que Configuración cambia algo
     var v = vrAj("vr.vineta", VRX.vineta); VRX.vineta = !(v === false || v === "false" || v === 0 || v === "no");
     var g = Number(vrAj("vr.giro", 30)); VRX.giro = isFinite(g) && g >= 5 && g <= 90 ? g : 30; VRX.sucio = true;
@@ -393,7 +398,7 @@
     var r = VRX.rig; VRX.cab.copy(camera.position).applyAxisAngle(vrEjeY, r.yaw); VRX.cab.x += r.x; VRX.cab.y += r.y; VRX.cab.z += r.z; return VRX.cab;
   }
   function vrIrA(px, py) {   // lleva la cabeza a (px, py) del mundo (py hacia el norte), sin cambiar la dirección de la mirada
-    var h = vrCabeza(); VRX.rig.x += px - h.x; VRX.rig.z += -py - h.z; VRX.rig.y = suelo(px, py) * exag + VRX.ojo;
+    var h = vrCabeza(); VRX.rig.x += px - h.x; VRX.rig.z += -py - h.z; VRX.rig.y = suelo(px, py) * exag + vrBaseY();
   }
   function vrEjes(src) { var g = src && src.gamepad; if (!g || !g.axes) return { x: 0, y: 0, ok: false }; var a = g.axes, i = a.length >= 4 ? 2 : 0; return { x: a[i] || 0, y: a[i + 1] || 0, ok: true }; }
   function vrBoton(src, k) { var g = src && src.gamepad, b = g && g.buttons && g.buttons[k]; return !!(b && b.pressed); }
@@ -432,7 +437,7 @@
     }
     var e = D.ext; nx = Math.max(e[0] + 3, Math.min(e[2] - 3, nx)); nz = Math.max(-e[1] + 3, Math.min(-e[3] - 3, nz));
     r.x += nx - h.x; r.z += nz - h.z; if (VRX.vuelo) r.y += dy;
-    var gnd = suelo(nx, -nz) * exag + VRX.ojo;
+    var gnd = suelo(nx, -nz) * exag + vrBaseY();
     if (VRX.vuelo) r.y = Math.max(r.y, gnd + 0.4); else r.y += (gnd - r.y) * Math.min(1, dt * 12);
     VRX.hMov = Math.max(0, VRX.hMov - dt); var mueve = mov > 0 || VRX.hMov > 0;
     // lo que el resto del programa mira: el «paseo» (pp) es la cabeza; el muñequito va oculto
@@ -460,7 +465,7 @@
   }
   function vrMirador(on) {
     VRX.mirador = on; VRX.vuelo = on; VRX.sucio = true; var h = vrCabeza();
-    if (on) { VRX.rig.y = suelo(h.x, -h.z) * exag + 230; } else { VRX.rig.y = suelo(h.x, -h.z) * exag + VRX.ojo; }
+    if (on) { VRX.rig.y = suelo(h.x, -h.z) * exag + 230; } else { VRX.rig.y = suelo(h.x, -h.z) * exag + vrBaseY(); }
   }
   // el gatillo: sobre el panel pulsa un botón; sobre un olivo, abre su ficha
   function vrGatillo(o) {
@@ -535,7 +540,7 @@
     scene.add(vrRig); vrRig.add(camera); camera.add(vrVineta); camera.position.set(0, VRX.ojo ? 0 : 1.6, 0); camera.quaternion.identity(); VRC.forEach(function (o) { vrRig.add(o.c); vrRig.add(o.g); }); Mandos.monta(renderer, vrRig); scene.add(arco); scene.add(arcoMarca); scene.add(panel.m); scene.add(ficha.m); scene.add(fichaB.m); vrVueloEntra();
     VRP.on = true; vrPerfil(0); VRX.emaDt = 13.9; VRX.emaJs = 6; VRX.tNivel = 0;
     if (!paseando) entraPaseo(); primera = true; TR.act = false; persona.visible = false; try { perrosLlegan(); } catch (e) {}
-    var r = VRX.rig; r.x = pp.x; r.z = -pp.y; r.yaw = 0; r.y = suelo(pp.x, pp.y) * exag + VRX.ojo; VRX.vuelo = false; VRX.mirador = false; VRX.prev = {}; VRX.giroOk = true; VRX.sucio = true; panel.m.visible = true; panel.ini = false; ficha.m.visible = false; fichaB.m.visible = false; VRX.balK = -1; VRX.balFirma = "";
+    var r = VRX.rig; r.x = pp.x; r.z = -pp.y; r.yaw = 0; r.y = suelo(pp.x, pp.y) * exag + vrBaseY(); VRX.vuelo = false; VRX.mirador = false; VRX.prev = {}; VRX.giroOk = true; VRX.sucio = true; panel.m.visible = true; panel.ini = false; ficha.m.visible = false; fichaB.m.visible = false; VRX.balK = -1; VRX.balFirma = "";
     vrAplicaRig(); vrRig.updateMatrixWorld(true); VRX.on = true; VRX.entrando = false; vrEstado("sesión VR en marcha"); Bus.emite("vr:entra");
   }
   function vrAnimacion(t, frame) { if (!frame || !VRX.on) return; VRX.frame = frame; cuadro(performance.now()); }
