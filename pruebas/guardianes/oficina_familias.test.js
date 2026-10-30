@@ -3,7 +3,7 @@
 //  - estática: nada en línea ni de otro origen (CSP estricta), el DOM se construye con textContent (nunca HTML a mano), las secciones de la maqueta
 //    en la barra lateral (solo Inicio y Familias hechas), tema claro/oscuro, foco visible y objetivos de 44 px;
 //  - contrato: las rutas de Familias que usa la página existen en contratos/api.openapi.yaml; el nombre interno (decisión 109) no aparece
-//    en ninguna ruta de los hogares ni en las fichas públicas; la migración 0007 lo crea.
+//    en ninguna ruta de los hogares ni en las fichas públicas; la migración 0008 lo crea.
 // Opcional (GEMELO_DOCKER=1): recorrido en Chrome contra la api REAL con PostGIS en un contenedor (Testcontainers, NO el entorno de la persona):
 // buscar, alta, cerrar una sesión, asignar haza (quitándola a otra familia), baja y borrar, a 1280 y 1024 px, con la CSP de Caddy impuesta.
 const test = require("node:test"), assert = require("node:assert");
@@ -70,7 +70,7 @@ test("el nombre interno (decisión 109) solo sale por las rutas de la oficina", 
   })(api);
   assert.deepStrictEqual(dentro.sort(), ["admin/familias.ts"], "el campo solo lo nombra la ruta de la oficina");
   for (const esquema of ["contratos/haza.schema.json", "contratos/olivos-haza.schema.json"]) assert.ok(!/nombre_interno/.test(lee(esquema)), esquema);
-  const mig = lee("apps/api/migraciones/0007_familias.sql");
+  const mig = lee("apps/api/migraciones/0008_familias.sql");
   assert.match(mig, /ADD COLUMN nombre_interno text CHECK/); assert.match(mig, /ADD COLUMN baja_en\s+timestamptz/);
 });
 
@@ -100,23 +100,26 @@ test("recorrido: buscar, alta, cerrar una sesión, asignar haza, baja y borrar (
       const mira = setInterval(() => {
         const m = /LISTO (\{.*\})/.exec(salida);
         if (m) { clearInterval(mira); clearTimeout(lim); ok(JSON.parse(m[1])); }
-        else if (srv.exitCode !== null) { clearInterval(mira); clearTimeout(lim); mal(new Error("el servidor salió (" + srv.exitCode + "): " + errs)); }
+        else if (srv.exitCode !== null) { clearInterval(mira); clearTimeout(lim); mal(new Error(/SIN_(OPENSSL|DOCKER)/.test(errs) ? "SALTO " + errs.trim() : "el servidor salió (" + srv.exitCode + "): " + errs)); }
       }, 500);
     });
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";   // el certificado del servidor de la prueba es de usar y tirar
     const base = info.url, get = async r => (await fetch(base + r)).json();
-    const ctx = await nav.newContext({ viewport: { width: 1280, height: 800 }, locale: "es-ES" });
-    await ctx.addCookies([{ name: "__Host-gemelo-aparato", value: info.secretoAparato, url: base, secure: true, httpOnly: true, sameSite: "Strict" }]);
+    const ctx = await nav.newContext({ viewport: { width: 1280, height: 800 }, locale: "es-ES", ignoreHTTPSErrors: true });
     await ctx.addInitScript(() => { window.__csp = []; document.addEventListener("securitypolicyviolation", e => window.__csp.push(e.violatedDirective + " " + e.blockedURI)); });
     const pg = await ctx.newPage(), errores = [];
     pg.on("pageerror", e => errores.push(String(e)));
     pg.on("console", m => { if (m.type() === "error" && !/Failed to load resource.*(401|403|404)/.test(m.text())) errores.push(m.text()); });
     const fila = correo => pg.locator("#fTabla tr", { hasText: correo });
 
-    // entrar con el enlace (el aparato ya está aprobado): cae en /oficina/
+    // entrar con el enlace desde un aparato ya aprobado (su cookie, que deja el servidor de la prueba): cae en /oficina/
+    await pg.goto(base + "/__prueba/aparato");
     const { url } = await get("/__prueba/enlace?para=" + encodeURIComponent(info.admin));
     await pg.goto(url);
     await pg.click("button[type=submit], input[type=submit]");
-    await pg.waitForURL(/\/oficina\//);
+    try { await pg.waitForURL(/\/oficina\//, { timeout: 15_000 }); } catch (e) {
+      throw new Error("no se llegó a /oficina/: estoy en " + pg.url() + "; cookies: " + (await ctx.cookies()).map(c => c.name + (c.secure ? "(S)" : "")).join(",") + "; texto: " + (await pg.textContent("body")).slice(0, 300));
+    }
     await pg.waitForFunction(() => document.querySelector("#s-rol").textContent !== "—");
     assert.strictEqual(await pg.textContent("#s-rol"), "admin");
     assert.strictEqual(await pg.locator("#nav button").count(), 9, "las nueve secciones de la maqueta");
@@ -193,7 +196,9 @@ test("recorrido: buscar, alta, cerrar una sesión, asignar haza, baja y borrar (
     await pg.click("#fTabla tr:has-text('pozo@') [data-fam]");
     const [descarga] = await Promise.all([pg.waitForEvent("download"), pg.click("text=Exportar sus datos")]);
     assert.match(descarga.suggestedFilename(), /^datos-hogar-\d+\.json$/);
-    const datos = JSON.parse(fs.readFileSync(await descarga.path(), "utf8"));
+    const destino = path.join(propia("oficina-descarga"), "datos.json");
+    await descarga.saveAs(destino);   // con el Chrome compartido (conexión remota) no hay path()
+    const datos = JSON.parse(fs.readFileSync(destino, "utf8"));
     assert.strictEqual(datos.hogar.correo, "pozo@example.com"); assert.strictEqual(datos.hogar.nombre_interno, "Pozo");
     await pg.click("text=Borrar (RGPD)…");
     assert.strictEqual(await pg.isDisabled("#dlgConfSi"), true, "no se puede borrar sin escribir el correo");

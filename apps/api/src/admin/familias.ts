@@ -42,6 +42,7 @@ export function estadoDeCuenta(c: { activo: boolean; rol: Rol; normas_version: n
 const MENSAJE_ULTIMO_ADMIN = { error: "ultimo_admin", mensaje: "Es la única cuenta admin activa: sin ella nadie podría cambiar los roles. Da de alta otra antes." } as const;
 const MENSAJE_A_TI_MISMO = { error: "a_ti_mismo", mensaje: "No puedes hacerlo con tu propia cuenta." } as const;
 
+class HazaNoExiste extends Error {}
 interface Objetivo { id: number; correo: string; rol: Rol; activo: boolean; normas_version: number | null }
 
 export async function rutasFamilias(app: FastifyInstance, ctx: Contexto): Promise<void> {
@@ -113,16 +114,16 @@ export async function rutasFamilias(app: FastifyInstance, ctx: Contexto): Promis
         let otra: number | null = null;
         if (req.body.haza_id) {
           const h = await c.query<{ hogar_id: number | null }>("SELECT hogar_id FROM hazas WHERE id = $1 FOR UPDATE", [req.body.haza_id]);
-          if (!h.rows[0]) return "haza_no_existe" as const;
+          if (!h.rows[0]) throw new HazaNoExiste();   // lanzar (no devolver): así la transacción deshace también el alta
           otra = h.rows[0].hogar_id;
           await c.query("UPDATE hazas SET hogar_id = $1, actualizada_en = now() WHERE id = $2", [id, req.body.haza_id]);
         }
         await audita(c, req.session.hogarId!, "admin.hogar_creado", { hogar: id, rol: req.body.rol, haza: req.body.haza_id ?? null });
         return { id, otra };
       });
-      if (res === "haza_no_existe") return rep.code(400).send({ error: "haza_no_existe", mensaje: "Esa haza no existe." });
       hogarId = res.id; quitadaA = res.otra;
     } catch (e) {
+      if (e instanceof HazaNoExiste) return rep.code(400).send({ error: "haza_no_existe", mensaje: "Esa haza no existe." });
       if ((e as { code?: string }).code === "23505") return rep.code(409).send({ error: "ya_existe", mensaje: "Ya hay una cuenta con ese correo." });
       throw e;
     }

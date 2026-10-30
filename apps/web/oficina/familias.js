@@ -217,8 +217,8 @@ export function iniciaFamilias({ sesion }) {
   $("#bAlta").addEventListener("click", async () => {
     await cargaHazas();
     $("#fAlta").reset(); $("#altaError").textContent = "";
-    vacia($("#altaHaza")).append(h("option", { value: "" }, "Sin haza por ahora"), hazas.map(z => h("option", { value: z.id }, z.codigo + " · " + z.nombre + (z.hogar_id ? " (de otra familia)" : ""))));
-    vacia($("#altaRol")).append(ROLES.filter(([v]) => esAdmin() || !esOficina(v)).map(([v, t]) => h("option", { value: v }, t)));
+    vacia($("#altaHaza")).append(h("option", { value: "" }, "Sin haza por ahora"), ...hazas.map(z => h("option", { value: z.id }, z.codigo + " · " + z.nombre + (z.hogar_id ? " (de otra familia)" : ""))));
+    vacia($("#altaRol")).append(...ROLES.filter(([v]) => esAdmin() || !esOficina(v)).map(([v, t]) => h("option", { value: v }, t)));
     avisoHaza();
     dlg.showModal(); $("#altaCorreo").focus();
   });

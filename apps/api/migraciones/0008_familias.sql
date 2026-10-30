@@ -1,5 +1,5 @@
--- 0007_familias.sql — la sección Familias de la oficina (OF2, doc/sistema/OFICINA.md §3, decisiones 108 y 109).
--- Solo hacia arriba (src/bd/migra.ts): no se edita una vez publicada; se añade 0008_….
+-- 0008_familias.sql — la sección Familias de la oficina (OF2, doc/sistema/OFICINA.md §3, decisiones 108 y 109).
+-- Solo hacia arriba (src/bd/migra.ts): no se edita una vez publicada; se añade 0009_….
 
 -- Up Migration
 

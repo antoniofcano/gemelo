@@ -50,6 +50,7 @@ Decisiones 46 y 61; UX.md §4.4. Para las Meta Quest, donde teclear un correo y 
 | CSRF | `SameSite=Lax` + comprobación de `Origin` en todo POST/PUT/DELETE (salvo `/api/csp-informe`) + sin `text/plain` |
 | Roles | `hogar`, `guia`, `corresponsal`, `oficina`, `admin` (los dos últimos son de oficina: ver [§ Oficina](#oficina)) |
 | Origen (titular) | cada sesión guarda de dónde nació (`sesiones.origen`, migración 0004): `enlace` (el adulto titular) o `vinculo` (un aparato vinculado con el código corto). `GET /api/sesion` lo da como `titular: true/false`; solo una sesión de titular cuelga contenido (decisión 96, [vida.md](vida.md)) |
+| Aparato de la sesión | `sesiones.aparato_nombre` (migración 0008): nombre deducido del agente («Windows · Chrome», «Gafas (código corto)»), nunca el agente entero; solo lo lee la oficina (`GET /api/admin/hogares/{id}/sesiones`) para reconocer y cerrar sesiones |
 | Estáticos | `/finca/` y `/teselas/` piden sesión al Caddy interno (`forward_auth` → `/api/interno/autoriza`, cerrada desde fuera) |
 
 ## Oficina
@@ -77,4 +78,4 @@ JSON (pino). Nunca: token, cookie, `Authorization`, correo (el límite por corre
 
 ## RGPD
 
-`GET /api/yo/datos` descarga todo lo del hogar (desde la 0004, también lo que colgó, subió, denunció y sugirió, sus avisos, inscripciones y lotes); `DELETE /api/yo` (o la oficina) lo borra en cascada, y la api borra además sus ficheros subidos ([VIDA](../doc/sistema/VIDA.md#datos-personales-para-la-eipd)); la auditoría guarda el hecho, sin el correo.
+`GET /api/yo/datos` descarga todo lo del hogar (desde la 0004, también lo que colgó, subió, denunció y sugirió, sus avisos, inscripciones y lotes); `DELETE /api/yo` (o la oficina) lo borra en cascada, y la api borra además sus ficheros subidos ([VIDA](../doc/sistema/VIDA.md#datos-personales-para-la-eipd)); la auditoría guarda el hecho, sin el correo. La oficina (OF2) exporta lo mismo, más el nombre interno, con `GET /api/admin/hogares/{id}/exportar` y borra con `DELETE /api/admin/hogares/{id}` pidiendo confirmación reciente y el correo escrito en el cuerpo. **Baja** (decisión 108): `POST /api/admin/hogares/{id}/baja` pone `activo = false` y `baja_en`, cierra sesiones, deja la haza sin titular (el contenido que se ve del mundo cuelga de la haza: oculto al momento) y la purga ([`bajas.ts`](../apps/api/src/admin/bajas.ts)) borra la cuenta a los 30 días; `…/reactivar` la devuelve con las hazas que sigan libres.

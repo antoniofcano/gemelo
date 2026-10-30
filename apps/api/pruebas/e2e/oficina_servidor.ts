@@ -4,8 +4,11 @@
 // Va dentro del turno del banco (lo pide quien lo lanza). Escribe en la salida estándar una línea «LISTO {json}» cuando está en marcha.
 //   node pruebas/e2e/oficina_servidor.ts <carpeta del build de la oficina>
 // Rutas de ayuda (solo aquí, nunca en la api): /__prueba/enlace?para=<correo> · /__prueba/buzon?para=<correo> · /__prueba/hogar?correo=<correo>
-import { readFileSync, existsSync, statSync } from "node:fs";
-import http from "node:http";
+import { execFileSync } from "node:child_process";
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
+import type http from "node:http";
+import https from "node:https";
+import { tmpdir } from "node:os";
 import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { construyeApp } from "../../src/app.ts";
@@ -21,10 +24,18 @@ const CADDYFILE = fileURLToPath(new URL("../../../../infra/Caddyfile", import.me
 const csp = /Content-Security-Policy-Report-Only "([^"]+)"/.exec(readFileSync(CADDYFILE, "utf8"))![1]!.split(";").map(x => x.trim()).filter(x => x && !x.startsWith("report-uri")).join("; ");
 const TIPOS: Record<string, string> = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".svg": "image/svg+xml" };
 
-const servidor = http.createServer();
+// HTTPS con un certificado de usar y tirar (openssl): Chrome no guarda las cookies `__Host-` (Secure) que llegan por http, ni siquiera de localhost.
+// El navegador de la prueba se abre con ignoreHTTPSErrors.
+const carpeta = mkdtempSync(join(tmpdir(), "oficina-cert-"));
+try {
+  execFileSync("openssl", ["req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "1", "-subj", "/CN=localhost", "-addext", "subjectAltName=DNS:localhost",
+    "-keyout", join(carpeta, "k.pem"), "-out", join(carpeta, "c.pem")], { stdio: "pipe" });
+} catch { console.error("SIN_OPENSSL"); process.exit(4); }
+const servidor = https.createServer({ key: readFileSync(join(carpeta, "k.pem")), cert: readFileSync(join(carpeta, "c.pem")) });
+rmSync(carpeta, { recursive: true, force: true });
 await new Promise<void>(ok => servidor.listen(0, ok));
 const puerto = (servidor.address() as { port: number }).port;
-const url = "http://localhost:" + puerto;
+const url = "https://localhost:" + puerto;
 
 const bd = await levantaBd();
 const ctx = contexto(bd.app, configDePrueba({ GEMELO_URL_PUBLICA: url, GEMELO_ENLACE_POR_CORREO: "100", GEMELO_ENLACE_POR_IP: "1000" }));
@@ -72,6 +83,10 @@ servidor.on("request", (req, res) => {
       await new Promise(r => setImmediate(r));
       const t = /entrar\?t=([A-Za-z0-9_-]{43})/.exec(ctx.cartero.ultimoPara(para)?.texto ?? "")?.[1];
       return t ? json(res, 200, { url: url + "/api/auth/entrar?t=" + t }) : json(res, 404, { error: "sin_correo" });
+    }
+    if (ruta === "/__prueba/aparato") {   // deja en el navegador la cookie del aparato aprobado (Chrome no deja ponerla __Host- con addCookies sobre http)
+      res.writeHead(200, { "content-type": "text/plain", "set-cookie": "__Host-gemelo-aparato=" + secretoAparato + "; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=86400" });
+      return void res.end("aparato");
     }
     if (ruta === "/__prueba/buzon") { const m = ctx.cartero.ultimoPara(q.get("para") ?? ""); return json(res, m ? 200 : 404, m ?? { error: "sin_correo" }); }
     if (ruta === "/__prueba/hogar") {
