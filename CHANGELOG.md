@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- La «Sala de la visita» puede ligarse a un evento de la agenda (OF10b, decisión 154): al invitar la oficina indicando el evento, solo entran la oficina y las familias apuntadas (no en espera); el resto ve «Esta visita es para las familias apuntadas.» y sigue en la sala general. Contrato `livekit-roles` v5. La ligadura vive en la memoria de la api (se pierde al reiniciarla).
 - Pruebas: dos puertas, `npm run puerta:rapida` (solo Node, unos 3 min, tras cada fusión) y `npm run puerta:pesada` (completa con Chrome y Docker, una vez por tanda; la única que autoriza a subir `main`).
 - Agenda de la oficina (OF11b, decisión 148): cambiar la fecha o el lugar de un evento avisa solo, en la misma transacción, a apuntados y en espera, con «antes → ahora»; es un aviso de sistema y no cuenta para el tope de 3 por semana. La pantalla dice a cuántas familias se avisó.
 - Olivos generados (O5): la caché de recetas se endurece: plazo de 4 s en IndexedDB (un almacén bloqueado ya no deja esperando para siempre), purga en disco de lo guardado con otra versión del generador, `alExpulsar` y `dispose()` al expulsar, y una carrera de la lectura del índice corregida. Prueba de Chrome escrita, sin ejecutar.
