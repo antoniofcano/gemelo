@@ -5,7 +5,7 @@
 //   04b_escena3d (Escena3D), 05_nube (nube), 07b_arboles (Arboles), 09_camara (pon), 10_ndvi (NDV, ndviIdx),
 //   12_paseo (paseando, persona, teclas, primera, entraPaseo, salePaseo, actualizaPaseo), 12b_llegada (Llegada), 13_parcelas (parcelas, fincas),
 //   14_historia (lista, aviso), 15_tiempo (calma, nivel, rumbo, hace), 16_vida (quita, mira, quad, dron), 22_huellas (pendFactor),
-//   24_pantalla (suave), 25_perros (perrosLlegan), 26_presencia (Presencia), 30_mide (MideEst, Mide), 33_ajustes (Ajustes), 36_mandos (Mandos),
+//   24_pantalla (suave), 25_perros (perrosLlegan), 30_mide (MideEst, Mide), 33_ajustes (Ajustes), 36_mandos (Mandos),
 //   90_final (tamano, cuadro, bucle)
 // Nota: Publica además window.__vrDebug, __vrOlivo, __vrBotones, __vrVuelo y VR_ESTADO (depuración y pruebas VR).
 // ===============================================================================
@@ -276,8 +276,8 @@
     ficha.tex.needsUpdate = true; ficha.m.visible = true; ficha.ini = false; VRX.fichaT = 14;
   }
   function vrRumboPanel() { return ((-panel.m.rotation.y * 180 / Math.PI) % 360 + 360) % 360; }   // hacia dónde mira quien ve el panel de frente (PanelVR.rumbo)
-  // ----- 3b) I5: la sección Gente del panel: una fila por persona que se ve (Presencia.puntos: con pose, sin bloquear, no en vista aérea), las más
-  // cercanas arriba, con «Ir con» pulsable con el rayo y el gatillo. Ir es Presencia.irCon (26_presencia.js): fundido a negro y de pie a 2,5-4 m de
+  // ----- 3b) I5: la sección Gente del panel: una fila por persona que se ve (Entidades.lista("persona"): con pose, sin bloquear, no en vista aérea), las más
+  // cercanas arriba, con «Ir con» pulsable con el rayo y el gatillo. Ir es su acción «ir» (Usables.usa; en 26_presencia.js): fundido a negro y de pie a 2,5-4 m de
   // ella, mirándola (Llegada, 12b_llegada.js), nunca un vuelo de cámara; al llegar se cierra el panel (para verla) y Y lo vuelve a abrir.
   // [puro:inicio] (sin THREE ni DOM: lo evalúa en Node pruebas/guardianes/vr_gente.test.js)
   var VrGentePuro = (function () {
@@ -305,7 +305,10 @@
   })();
   // [puro:fin]
   var GENTE_FILAS = 4;   // filas que caben en la pestaña «Ir a»; la sección empieza donde le diga la pestaña (px del canvas del panel)
-  function vrGente() { var pts = typeof Presencia !== "undefined" && Presencia.activo() ? Presencia.puntos() : null; return VrGentePuro.filas(pts, { x: VRX.cab.x, y: -VRX.cab.z }, GENTE_FILAS); }
+  function vrGente() {   // C7: las personas son entidades (26_presencia registra el tipo persona); sin ese tipo (sin presencia), null
+    var l = Entidades.lista("persona"), pts = l ? l.map(function (q) { return { id: q.ref, alias: q.alias, x: q.x, y: q.y, modo: q.modo }; }) : null;
+    return VrGentePuro.filas(pts, { x: VRX.cab.x, y: -VRX.cab.z }, GENTE_FILAS);
+  }
   function vrGenteBotones(b, gy) {   // un «Ir con» grande (240 × 64 px = 23 × 6 cm a 1 m) por fila; gy = dónde empieza la sección
     var g = VRX.gente = vrGente(); VRX.genteFirma = VrGentePuro.firma(g);
     g.filas.forEach(function (f, i) { b("ir:" + f.id, 744, gy + 50 + i * 74, 240, 64, "Ir con", function () { vrIrCon(f.id); }, false); });
@@ -330,7 +333,7 @@
     if (!VRX.mideTarjeta) PanelVR.visibles(VRX.pestana).forEach(function (f) { if (!f.firma) return; var x = ""; try { x = f.firma(); } catch (e) {} if (x !== f.firmaVista) VRX.sucio = true; });
   }
   function vrIrCon(id) {
-    if (typeof Presencia === "undefined" || !Presencia.irCon(id)) { VRX.sucio = true; return false; }   // ya no se ve (se fue, la bloqueaste) o hay un fundido en curso
+    if (!Usables.usa("persona:" + id, "ir")) { VRX.sucio = true; return false; }   // ya no se ve (se fue, la bloqueaste) o hay un fundido en curso
     panel.m.visible = false; VRX.hover = ""; return true;
   }
 
