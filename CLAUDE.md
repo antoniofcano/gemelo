@@ -97,6 +97,7 @@ Ejecuta la [skill `release`](.claude/skills/release/SKILL.md); no la redefine. R
 - Decisiones técnicas: el agente decide y lo cuenta. Decisiones de Antonio (licencia, qué se publica, ramas, datos de la explotación): se preguntan o van a [DECISIONS-PENDING](doc/rumbo/DECISIONS-PENDING.md).
 - Lo que no está en el repo ni en `doc/` se marca **[SUPUESTO]** o se pregunta; nunca se inventa.
 - Agentes largos: cerrarlos en primer plano y verificar su resultado; lo publicado hay que comprobar que es lo nuevo.
+- **La cola de agentes, siempre ocupada y ordenada** (Antonio, 2026-10-30): tareas **atómicas**, por **prioridad, dependencias y coste de procesamiento**; antes de lanzar, se miden CPU y memoria libre. Lo **pesado** (Chrome, Docker, Blender, builds grandes) pasa por el turno del banco y nunca se solapa; lo **ligero** (código, contratos, pruebas de Node) llena la cola mientras tanto: al terminar un agente se lanza el siguiente sin esperar a la puerta. Fusión y pruebas pesadas, agrupadas al final o tras cambios importantes; `main` solo se sube con la puerta completa en verde. Detalle en [TESTING.md](doc/operacion/TESTING.md#la-cola-de-agentes).
 
 | Skill | Cuándo |
 |---|---|
