@@ -8,7 +8,7 @@
 <meta name="color-scheme" content="light dark">
 <title>Oficina · Cuarenta hazas</title>
 <!-- La oficina (/oficina/, doc/sistema/OFICINA.md, ADR-0024). OF2: el esqueleto (barra lateral, cabecera con la sesión, tema) y la
-     sección Familias contra la api real. Sin three ni motor; NADA en línea (CSP estricta: script-src 'self'; style-src 'self'):
+     sección Familias contra la api real; OF3, la sección Hazas (editor de lindes con OpenLayers en EPSG:25830). Sin three ni motor; NADA en línea (CSP estricta: script-src 'self'; style-src 'self'):
      ni estilos ni manejadores de eventos en las etiquetas; el DOM se construye con textContent. Caddy solo la sirve con una sesión de oficina
      (forward_auth a /api/interno/autoriza?para=oficina) y la api vuelve a comprobarlo en cada ruta. Herramienta de ordenador
      (decisión 116): pensada para 1280 y 1024 px de ancho. La maqueta de referencia es prototipos/oficina/index.html. -->
@@ -50,7 +50,7 @@
       <p><button class="boton peq" type="button" data-ir="familias">Ver familias</button></p>
     </div>
   </div>
-  <p class="nota">El resto de secciones (Hazas, Bandeja, Agenda, Directos, Mundo, Olivos y Sistema) llegan en las siguientes tareas de la oficina.</p>
+  <p class="nota">El resto de secciones (Bandeja, Agenda, Directos, Mundo, Olivos y Sistema) llegan en las siguientes tareas de la oficina.</p>
 </section>
 
 <section id="s-familias" hidden>
@@ -70,6 +70,44 @@
   <div class="barra-h">
     <p class="nota" id="fCuenta"></p>
     <button class="boton peq empuja" id="fMas" type="button" hidden>Ver más</button>
+  </div>
+</section>
+
+<section id="s-hazas" hidden>
+  <div class="barra-h">
+    <label class="vh" for="hFinca">Finca</label>
+    <select class="entrada" id="hFinca"></select>
+    <label class="vh" for="hSel">Haza</label>
+    <select class="entrada" id="hSel"></select>
+    <div class="capas" role="group" aria-label="Capas del mapa">
+      <label class="chk"><input type="checkbox" id="cOrto" checked> Ortofoto</label>
+      <label class="chk"><input type="checkbox" id="cCopas" checked> Copas <span class="pill p-ok">medido</span></label>
+      <label class="chk"><input type="checkbox" id="cParc" checked> Parcelas</label>
+      <label class="chk"><input type="checkbox" id="cAjuste" checked> Ajustar a vecinas</label>
+    </div>
+  </div>
+  <div class="editor">
+    <div class="editor-mapa">
+      <div class="mapa-env">
+        <div id="mapa" tabindex="0" role="application" aria-roledescription="mapa" aria-label="Mapa de hazas sobre la ortofoto y las copas medidas" aria-describedby="mAyuda mEstado"></div>
+        <p class="estado-mapa" id="mEstado" aria-live="polite">Cargando…</p>
+      </div>
+      <div class="barra-h" role="toolbar" aria-label="Herramientas de la haza">
+        <button class="boton" id="bNueva" type="button" aria-pressed="false">✏️ Nueva haza</button>
+        <button class="boton" id="bMover" type="button" aria-pressed="false">✥ Mover haza</button>
+        <button class="boton" id="bMas" type="button">＋ Vértice</button>
+        <button class="boton" id="bMenos" type="button">－ Vértice</button>
+        <button class="boton" id="bPartir" type="button" aria-pressed="false">✂️ Partir</button>
+        <label class="vh" for="sJuntar">Juntar con</label>
+        <select class="entrada" id="sJuntar"><option value="">Juntar con…</option></select>
+        <button class="boton" id="bDeshacer" type="button">↶ Deshacer</button>
+        <button class="boton suave" id="bDescartar" type="button">Descartar</button>
+        <button class="boton prim empuja" id="bGuarda" type="button">Guardar versión</button>
+      </div>
+      <p class="nota" id="mAyuda">Ratón: arrastra un vértice, o un lado para crear uno; Alt+clic quita un vértice; clic en una haza para elegirla. Teclado, con el mapa enfocado: Tab y Mayús+Tab eligen vértice, las flechas lo mueven 0,5 m (con Mayús, 5 m), Supr lo quita, Insert añade otro detrás, Ctrl+Z deshace y Esc suelta; sin vértice elegido, las flechas mueven el mapa y + y − acercan y alejan.</p>
+      <p class="leyenda nota"><span>Copas: vuelo LiDAR 2024 <span class="pill p-ok">medido</span></span><span>Ortofoto: PNOA © IGN (CC BY 4.0); puede ir desplazada respecto a las copas (ADR-0006): dibuja sobre las copas</span><span>Parcelas: lindes del índice de la finca</span><span>ETRS89 / UTM 30N (EPSG:25830)</span><span id="mCoord"></span></p>
+    </div>
+    <aside class="tarjeta ficha" id="hFicha" aria-live="polite"></aside>
   </div>
 </section>
 
@@ -112,6 +150,14 @@
     <p class="nota" id="reconfEstado" role="status"></p>
   </div>
   <div class="pie-dlg"><button class="boton" type="button" id="reconfNo">Cancelar</button><button class="boton" type="button" id="reconfManda">Mandarme el enlace</button><button class="boton prim" type="submit" id="reconfReintenta">Ya he entrado: reintentar</button></div>
+</form></dialog>
+<dialog id="dlgHaza" aria-labelledby="dlgHazaT"><form id="fHazaNueva" novalidate>
+  <h2 id="dlgHazaT">Nueva haza</h2>
+  <p class="nota" id="dlgHazaTexto"></p>
+  <label class="campo">Código (único; lo ven las familias) <input id="hzCodigo" maxlength="32" autocomplete="off" required></label>
+  <label class="campo">Nombre <input id="hzNombre" maxlength="60" autocomplete="off" required></label>
+  <p class="error" id="hzError" role="alert"></p>
+  <div class="pie-dlg"><button class="boton" type="button" id="hzCancela">Cancelar</button><button class="boton prim" type="submit" id="hzOk">Guardar</button></div>
 </form></dialog>
 </body>
 </html>
