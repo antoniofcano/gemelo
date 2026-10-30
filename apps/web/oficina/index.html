@@ -129,6 +129,58 @@
   <p class="nota">Lo que cuelgan las familias se ve al momento (decisión 93); aquí se retira en un clic, se puede volver a mostrar y todo queda en la auditoría. «Pasar a OlivarTrack» manda una <b>propuesta</b> que valida una persona en OlivarTrack: el gemelo no escribe allí por su cuenta (decisión 94), así que hoy se copia el texto y se apunta el id de la propuesta.</p>
 </section>
 
+<section id="s-olivos" hidden>
+  <div class="pestanas" role="tablist" aria-label="Olivos" id="oPestanas"></div>
+  <p class="estado-cfg" id="oEstado" role="status" aria-live="polite">Leyendo la configuración…</p>
+  <div class="tarjeta barra-pub" id="oBarra">
+    <div class="barra-h">
+      <button class="boton" id="oDefecto" type="button">Valores por defecto</button>
+      <button class="boton" id="oDescarta" type="button">Descartar cambios</button>
+      <button class="boton" id="oGuarda" type="button">Guardar borrador</button>
+      <button class="boton" id="oProbar" type="button">🔍 Probar en el mundo</button>
+      <button class="boton" id="oPrueba" type="button">Publicar en prueba (solo oficina)</button>
+      <button class="boton prim" id="oPublica" type="button" aria-describedby="oNotaPub">Publicar para todos</button>
+      <button class="boton suave empuja" id="oRecarga" type="button">↻ Recargar</button>
+    </div>
+    <p class="nota" id="oNotaPub"></p>
+    <ul class="mensajes" id="oMsgs" role="status"></ul>
+  </div>
+
+  <div role="tabpanel" id="p-esc" aria-labelledby="t-esc">
+    <div class="escalera">
+      <form id="oForm" class="form-esc" novalidate></form>
+      <div class="previa">
+        <div class="barra-h">
+          <label class="campo en-fila" for="oAparato">Vista previa en <select class="entrada" id="oAparato"></select></label>
+          <label class="campo en-fila" id="oPerfilCampo" for="oPerfil">Gafas, <select class="entrada" id="oPerfil"></select></label>
+          <span class="pill p-ilustrativo">ilustrativo: simulación, no mide nada</span>
+        </div>
+        <canvas id="oLienzo" role="img" aria-label="Vista desde arriba de quien pasea entre olivos, con cada olivo coloreado por su escalón"></canvas>
+        <div class="leyenda"><span><span class="punto e0"></span>E0</span><span><span class="punto e1"></span>E1</span><span><span class="punto e2"></span>E2 (E2-VR en gafas)</span><span><span class="punto e3"></span>lejano (impostor)</span><span>anillos: fronteras de un olivo de 4 m, con su banda</span></div>
+        <div class="tarjeta previa-datos">
+          <div class="cifras cuatro" id="oCifras"></div>
+          <label for="oMeter" class="nota" id="oTriTxt"></label><meter id="oMeter" min="0" max="1" low="0.7" high="0.95" optimum="0.5"></meter>
+          <ul class="mensajes" id="oMsgsPrevia" role="status"></ul>
+        </div>
+        <p class="nota">El motor lee la configuración publicada de <code>/api/config</code> al arrancar; si no puede, usa los valores de siempre. Las cuentas de oficina cargan la versión «en prueba». Los presupuestos de las gafas solo pueden <b>bajar</b>: subirlos pide medirlo en el casco. Las épocas (calendario) llegan con OF9.</p>
+      </div>
+    </div>
+  </div>
+
+  <div role="tabpanel" id="p-com" aria-labelledby="t-com" hidden>
+    <div class="tarjeta">
+      <h2>Interruptores de componentes</h2>
+      <p class="nota">Enciende o apaga una pieza del mundo para quien cargue la versión publicada (decisión 118). «Por defecto» deja lo que dice el manifiesto del componente. Se aplica al recargar el mundo; nada cambia en caliente con alguien dentro.</p>
+      <div id="oComp" class="lista-comp"></div>
+    </div>
+  </div>
+
+  <div role="tabpanel" id="p-his" aria-labelledby="t-his" hidden>
+    <div class="tabla-env"><table><caption class="vh">Historial de versiones de la configuración</caption><thead><tr><th scope="col">Versión</th><th scope="col">Estado</th><th scope="col">Quién y cuándo</th><th scope="col">Qué cambió (respecto a lo de hoy)</th><th scope="col"><span class="vh">Acciones</span></th></tr></thead><tbody id="oHis"></tbody></table></div>
+    <p class="nota">Nunca se reescribe una versión: «volver» publica una copia de la vieja como versión nueva; «al borrador» copia sus valores a la pantalla sin publicar nada.</p>
+  </div>
+</section>
+
 <section id="s-proximamente" hidden>
   <div class="tarjeta">
     <h2 id="proxTitulo">Próximamente</h2>

@@ -24,11 +24,12 @@ test("nada en línea ni de otro origen; el DOM se hace con textContent (un corre
   assert.ok(!/localStorage\.setItem\([^)]*(correo|sesion|token)/i.test(fuentes["oficina.js"]), "el navegador solo guarda el tema");
 });
 
-test("la barra lateral tiene las secciones de la maqueta; Inicio, Familias, Hazas (OF3) y Bandeja (OF4) están hechas", () => {
+test("la barra lateral tiene las secciones de la maqueta; Inicio, Familias, Hazas (OF3), Bandeja (OF4) y Olivos (OF7) están hechas", () => {
   const js = fuentes["oficina.js"];
   const ids = [...js.matchAll(/\["([a-z]+)", "[^"]+", "([^"]+)", (true|false)\]/g)].map(m => [m[1], m[3]]);
   assert.deepStrictEqual(ids.map(x => x[0]), ["inicio", "familias", "hazas", "bandeja", "agenda", "directos", "mundo", "olivos", "sistema"]);
-  assert.deepStrictEqual(ids.filter(x => x[1] === "true").map(x => x[0]), ["inicio", "familias", "hazas", "bandeja"]);
+  const hechas = ids.filter(x => x[1] === "true").map(x => x[0]);   // otras tareas (Sistema, OF5…) irán añadiendo las suyas
+  for (const id of ["inicio", "familias", "hazas", "bandeja", "olivos"]) assert.ok(hechas.includes(id), id + " está hecha");
   assert.match(html, /<a class="boton prim" href="\/finca\/"/, "«Entrar al mundo como oficina» siempre a mano");
   assert.match(js, /aria-current/); assert.match(js, /data-theme/); assert.match(js, /oficina-tema/);
   assert.match(html, /<nav class="lateral" aria-label=/);
@@ -123,7 +124,7 @@ test("recorrido: buscar, alta, cerrar una sesión, asignar haza, baja y borrar (
     await pg.waitForFunction(() => document.querySelector("#s-rol").textContent !== "—");
     assert.strictEqual(await pg.textContent("#s-rol"), "admin");
     assert.strictEqual(await pg.locator("#nav button").count(), 9, "las nueve secciones de la maqueta");
-    assert.strictEqual(await pg.locator("#nav .pronto").count(), 6, "seis «pronto» (Hazas llegó con OF3)");
+    assert.strictEqual(await pg.locator("#nav .pronto").count(), (fuentes["oficina.js"].match(/", false\]/g) || []).length, "tantos «pronto» como secciones sin hacer");
     await pg.click("#nav button[data-sec=bandeja]");
     assert.match(await pg.textContent("#s-proximamente"), /próximamente/i);
 
