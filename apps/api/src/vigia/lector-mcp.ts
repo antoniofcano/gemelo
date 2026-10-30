@@ -1,5 +1,5 @@
 // Cliente MCP de Vigía (SDK oficial, transporte Streamable HTTP) con el token del gemelo en la cabecera Authorization,
-// como el de OlivarTrack (ot/lector-mcp.ts). Solo llama a las dos herramientas del tiempo, sin argumentos.
+// como el de OlivarTrack (ot/lector-mcp.ts). Solo llama a las dos herramientas del tiempo (sin argumentos) y a historico_meteo (desde, hasta).
 // [NO VERIFICADO contra el Vigía real: la forma de las respuestas se leyó por el conector de claude.ai el 2026-10-30]
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
@@ -29,10 +29,18 @@ export class LectorVigiaMcp implements LectorVigia {
 
   async llama(herramienta: HerramientaTiempo): Promise<unknown> {
     if (!esHerramientaTiempo(herramienta)) throw new ErrorDeVigia("herramienta fuera de la lista del tiempo");
+    return this.invoca(herramienta, {});
+  }
+
+  async historico(desde: string, hasta: string): Promise<unknown> {
+    return this.invoca("historico_meteo", { desde, hasta });
+  }
+
+  private async invoca(herramienta: string, argumentos: Record<string, string>): Promise<unknown> {
     let c: Client;
     try { c = await this.conecta(); } catch { throw new ErrorDeVigia("no se pudo conectar con Vigía"); }
     let r: Awaited<ReturnType<Client["callTool"]>>;
-    try { r = await c.callTool({ name: herramienta, arguments: {} }, undefined, { timeout: 20_000 }); }
+    try { r = await c.callTool({ name: herramienta, arguments: argumentos }, undefined, { timeout: 20_000 }); }
     catch {
       // la sesión MCP pudo caducar o cortarse: la próxima vez se conecta de nuevo
       await this.cierra().catch(() => undefined);

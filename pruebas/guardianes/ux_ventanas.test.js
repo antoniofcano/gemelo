@@ -52,7 +52,7 @@ test("los controles de antes viven en su ventana (se movieron; los módulos que 
     ventanaMapa: ["chips", "reiniciar", "tMedido", "kCopas", "sueloCuerpo"],
     ventanaCapas: ["mNube", "mGem", "mOrto", "cLinde", "cCopas", "cMarc", "cDesf", "cNdvi", "cTinte", "bNdvi", "cPaisaje", "cHierba", "cFauna", "cSolo"],
     ventanaTiempo: ["tiempo", "tLeer", "tEstado", "tMomento", "tAhora", "tPlay", "tEst", "tPrev", "ndviSel", "hFecha", "tEstac", "tDemo"],
-    ventanaHistoria: ["historia", "hLeer", "hIni", "hIntro", "hCuerpo", "hAnt", "hSig", "hFin"],
+    ventanaHistoria: ["historia", "hIni", "hIntro", "hCuerpo", "hAnt", "hSig", "hFin"],
   };
   for (const [v, ids] of Object.entries(dentro)) { const s = seccion(v); for (const id of ids) assert.ok(s.includes('id="' + id + '"'), "#" + id + " debía estar en #" + v); }
 });

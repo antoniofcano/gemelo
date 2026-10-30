@@ -73,7 +73,7 @@ Leído de `apps/web/plantilla.html` y de los módulos que crean o tocan cada pie
 
 | # | Elemento | Frecuencia |
 |---|---|---|
-| 25 | «Leer de OlivarTrack», «Empezar el recorrido», introducción, puntos de escena, título, texto, fuente, Anterior/Siguiente/Salir | media (una vez por visita) |
+| 25 | «Empezar el recorrido», introducción, puntos de escena, título, texto, fuente, Anterior/Siguiente/Salir | media (una vez por visita) |
 
 ### 2.5 Columna lateral (`09_camara.js`, `10_ndvi.js`, `13_parcelas.js`, `08_marcadores.js`, `16_vida.js`, `18_paisaje.js`, `20_sonido.js`, `21_suelo.js`)
 

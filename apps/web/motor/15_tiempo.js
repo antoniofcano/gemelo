@@ -1,12 +1,12 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: ahoraMs, TM, calma, texBrillo, lluvia, uViento, uSombra, GLSL_SOMBRA, parcheTiempo, cur, meta, tMundo, ins, nivel, actualizaTiempo,
-//   temaBarrera, colocaBarrera, pintaFondoTiempo, cargaT, fmtHora, fmtClaveDia, num1, rumbo, esc, hace, objetivoMundoBase, aplicaMundo, anuncia,
-//   TiempoVivo, lindes
+// Expone: TiempoPuro, ahoraMs, TM, calma, texBrillo, lluvia, uViento, uSombra, GLSL_SOMBRA, parcheTiempo, cur, meta, tMundo, ins, nivel,
+//   actualizaTiempo, temaBarrera, colocaBarrera, pintaFondoTiempo, fmtHora, fmtClaveDia, num1, rumbo, esc, hace, objetivoMundoBase, aplicaMundo,
+//   anuncia, TiempoVivo, lindes
 // Consume: 01_datos (D, $, FOG0, FOG1), 02_mundo (suelo, copas), 02c_componentes (Bus),
 //   03_escena (visor, scene, camera, SRGB, LUZ_SOL, LUZ_CIELO, hemi, sol, texColor, colorVertSRGB, colorCss, exag, modo),
 //   04d_sombreado_tiles (hash, matSuelo, matOrto), 05_nube (nube), 07_follaje (matHojaG, matHojaP, matCorteza), 08_marcadores (gLinde),
-//   09_camara (objetivo), 12_paseo (primera), 13b_hazas (HazasPuro), 14_historia (mcp, marca, tabla, aviso),
-//   16_vida (mira, bandada, quad, temaEstela, dron), 23_estacion (objetivoMundo), 24_pantalla (suave)
+//   09_camara (objetivo), 13b_hazas (HazasPuro), 14_historia (marca, tabla, aviso), 16_vida (mira, bandada, quad, temaEstela, dron),
+//   23_estacion (objetivoMundo), 24_pantalla (suave)
 // Nota: Lee /api/tiempo (mismo origen) solo con D.base /teselas/… o ?api=; si no, el conector de claude.ai; si no, el tiempo simulado, dicho. Expone TiempoVivo (contratos/interfaces.json). El trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/tiempo_motor.test.js.
 // ===============================================================================
   // ---------- el tiempo: el mundo del gemelo simula el que publica Vigía
@@ -14,7 +14,7 @@
   // pone las nubes, el viento y la lluvia, porque el anemómetro de la estación está en duda para Vigía. El sol sale de la fecha y la hora.
   // Lo que se dibuja (nubes, lluvia, viento en la hierba y las copas) es ilustrativo: se pinta a partir de esos datos.
   // De dónde se lee (contratos/tiempo.md): 1) GET /api/tiempo del mismo origen, si la página la sirve el servidor (o ?api=); 2) si no,
-  // el conector de claude.ai (window.claude, la salida artefacto); 3) si no hay ninguno o fallan, el tiempo simulado de siempre, dicho.
+  // 2) si no hay api o falla, el tiempo simulado de siempre, dicho. (El conector de claude.ai se quitó con la decisión 79.)
   // Expone TiempoVivo.lee() (lo que hay ahora, para otras piezas: fichas del tiempo, VR) y TiempoVivo.alCambiar(fn).
   // Los textos de Vigía son datos: se escapan al pintarlos y nunca se siguen. `dentroDeUmbrales` no se enseña: Vigía no autoriza tratamientos.
   // [puro:inicio] (sin THREE ni DOM: lo evalúa en Node pruebas/guardianes/tiempo_motor.test.js)
@@ -84,10 +84,27 @@
         })
         .catch(function () { return { ok: false, motivo: "red" }; });
     }
+    // GET <prefijo>tiempo/historico?desde&hasta (contratos/tiempo-historico.schema.json); nunca lanza: { ok, datos } o { ok: false, motivo }
+    function leeHistorico(fetchFn, prefijo, desde, hasta) {
+      if (!prefijo || typeof fetchFn !== "function") return Promise.resolve({ ok: false, motivo: "sin_api" });
+      return Promise.resolve().then(function () { return fetchFn(prefijo + "tiempo/historico?desde=" + encodeURIComponent(desde) + "&hasta=" + encodeURIComponent(hasta), { credentials: "same-origin", headers: { accept: "application/json" } }); })
+        .then(function (r) {
+          if (!r || !r.ok) return { ok: false, motivo: "http_" + (r ? r.status : 0) };
+          return r.json().then(function (j) { return j && j.version === 1 && Array.isArray(j.fuentes) ? { ok: true, datos: j } : { ok: false, motivo: "contrato" }; });
+        })
+        .catch(function () { return { ok: false, motivo: "red" }; });
+    }
+    // La semana de la estación del tiempo (la misma que da la lectura de ahora; si no, la de Imarto, como siempre): { tmax, tmin, lluvia, dias, sin } o null si no hay cifras. Medido.
+    function climaSemana(datos, idEstacion) {
+      var fs = (datos && datos.fuentes) || [];
+      var f = fs.filter(function (x) { return idEstacion && x.id === idEstacion; })[0] || fs.filter(function (x) { return /imarto/i.test(x.id || ""); })[0];
+      if (!f || typeof f.temperaturaMaxima !== "number" || typeof f.temperaturaMinima !== "number") return null;
+      return { tmax: f.temperaturaMaxima, tmin: f.temperaturaMinima, lluvia: typeof f.lluviaTotalMm === "number" ? f.lluviaTotalMm : 0, dias: f.dias, sin: f.diasSinDato };
+    }
     var MOTIVOS = { sin_api: "esta página no tiene servidor del tiempo", http_401: "hace falta entrar con tu enlace", http_503: "el servidor no tiene el tiempo de Vigía ahora",
       contrato: "la respuesta del servidor no tiene la forma esperada", red: "no se pudo hablar con el servidor" };
     function motivo(m) { return MOTIVOS[m] || "el servidor respondió con un error (" + String(m).replace(/^http_/, "") + ")"; }
-    return { cielo: cielo, horaIdx: horaIdx, valida: valida, aEstado: aEstado, vivo: vivo, lee: lee, motivo: motivo };
+    return { cielo: cielo, horaIdx: horaIdx, valida: valida, aEstado: aEstado, vivo: vivo, lee: lee, leeHistorico: leeHistorico, climaSemana: climaSemana, motivo: motivo };
   })();
   // [puro:fin]
   // ?hora=HH[:MM] fija la hora del reloj del mundo (hoy, hora local; el sol, el día y la noche, y con ellos la vida: la bandada solo vuela de día); ?hora=AAAA-MM-DDTHH:MM, también la fecha. Para que las medidas no dependan del reloj de la máquina; sin el parámetro, Date.now().
@@ -98,7 +115,7 @@
   })();
   function ahoraMs() { return HORA_FIJA == null ? Date.now() : HORA_FIJA; }
   // origen: de dónde sale lo que se ve («vigia», «fixture» o «simulado»); avisos: los de la api (de Vigía o del gemelo), como datos
-  var TM = { est: null, prev: null, his: null, modo: "ahora", idx: 0, ahoraIdx: 0, demo: "", mcp: null, jugando: false, origen: "simulado", avisos: [], api: null, oyentes: [] };
+  var TM = { est: null, prev: null, his: null, modo: "ahora", idx: 0, ahoraIdx: 0, demo: "", jugando: false, origen: "simulado", avisos: [], api: null, oyentes: [] };
   var LAT = 37.73, LON = -4.006, ZONA = "Europe/Madrid";
   var calma = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   var DEMOS = {
@@ -354,7 +371,6 @@
   function pintaFondoTiempo() { cieloBase = colorCss("--sky"); temaBarrera(); }
 
   // --- los datos
-  function cargaT(r) { var p = r && r.payload; if (typeof p === "string") { try { p = JSON.parse(p); } catch (e) { p = null; } } return p; }
   var fmtDia = new Intl.DateTimeFormat("es-ES", { timeZone: ZONA, weekday: "short", day: "numeric", month: "short" });
   var fmtHora = new Intl.DateTimeFormat("es-ES", { timeZone: ZONA, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
   var fmtClaveDia = new Intl.DateTimeFormat("sv-SE", { timeZone: ZONA });
@@ -503,7 +519,7 @@
     return { lee: lee, alCambiar: alCambiar };
   })();
 
-  // --- de dónde se lee: la api del mismo origen; si no, el conector de claude.ai; si no, simulado (y se dice)
+  // --- de dónde se lee: la api del mismo origen; si no, simulado (y se dice)
   function tiempoSimulado(motivo) {
     TM.origen = "simulado"; TM.est = null; TM.prev = null; TM.his = null; TM.avisos = [];
     tAviso("Tiempo simulado: " + motivo + ". El cielo, el viento y la temperatura que ves no son los reales.", "parcial"); aplicaDatos();
@@ -520,38 +536,11 @@
       ". Estación: medido · previsión: modelado · lo dibujado (nubes, lluvia, viento): ilustrativo.", s.origen === "vigia" && !s.avisos.length ? "vivo" : "parcial");
     aplicaDatos(); return r;
   }
-  async function leerConector() {   // la salida artefacto de claude.ai: el conector Vigía del visor
-    if (!TM.mcp) return;
-    $("tLeer").disabled = true; tAviso("Leyendo de Vigía…", "");
-    var fallos = [];
-    async function una(tool, input) {
-      try { return cargaT(await TM.mcp.callTool("Vigia", tool, input || {}, { cache: false })); }
-      catch (e) { fallos.push(tool + (e && e.code ? " (" + e.code + ")" : "")); return null; }
-    }
-    var est = await una("tiempo_en_la_explotacion");              // la primera llamada a un conector pide permiso al visor
-    var prev = est || !fallos.length ? await una("prevision_72_horas") : null;
-    var hoy = new Date(), ayer = function (n) { return fmtClaveDia.format(new Date(hoy.getTime() - n * 86400000)); };
-    var his = prev ? await una("historico_meteo", { desde: ayer(6), hasta: ayer(0) }) : null;
-    $("tLeer").disabled = false; $("tLeer").textContent = "Volver a leer";
-    if (!est && !prev) { if (TM.origen === "simulado") tiempoSimulado("no se ha podido leer de Vigía" + (fallos.length ? " (" + fallos.join(", ") + ")" : "")); return; }
-    if (est) TM.est = est; if (prev) TM.prev = prev; if (his) TM.his = his; TM.origen = "vigia"; TM.avisos = [];
-    tAviso("Tiempo leído de Vigía a las " + fmtHora.format(new Date()) + (fallos.length ? " · sin " + fallos.join(", ") : "") + ". Estación: medido · previsión: modelado · lo dibujado: ilustrativo.", fallos.length ? "parcial" : "vivo");
-    aplicaDatos();
-  }
   async function leerTiempo() {
-    if (TM.api) {
-      var r = await leerApi(false); if (r.ok) return;
-      if (!TM.mcp) {
-        if (TM.origen === "simulado") tiempoSimulado(TiempoPuro.motivo(r.motivo));
-        else tAviso("No se ha podido volver a leer (" + TiempoPuro.motivo(r.motivo) + "): sigue la lectura anterior.", "error");
-        return;
-      }
-    }
-    if (TM.mcp) return leerConector();
-  }
-  function conectorTiempo() {
-    try { if (window.claude && window.claude.use) return window.claude.use("mcp").then(function (m) { return m || null; }, function () { return null; }); } catch (e) {}
-    return Promise.resolve(null);
+    if (!TM.api) return;
+    var r = await leerApi(false); if (r.ok) return;
+    if (TM.origen === "simulado") tiempoSimulado(TiempoPuro.motivo(r.motivo));
+    else tAviso("No se ha podido volver a leer (" + TiempoPuro.motivo(r.motivo) + "): sigue la lectura anterior.", "error");
   }
   (function () {
     $("tMomento").addEventListener("input", function () { TM.idx = Number($("tMomento").value); TM.modo = TM.idx === TM.ahoraIdx ? "ahora" : "prevision"; refrescaTiempo(); });
@@ -581,11 +570,8 @@
       if (r.ok) {   // la api guarda lo de Vigía (10 min el actual, 1 h la previsión): pedirle cada 10 min no llega a Vigía más a menudo
         setInterval(function () { leerApi(true); }, 10 * 60000); return;
       }
-      return conectorTiempo().then(function (m) {
-        if (m) { TM.mcp = m; $("tLeer").hidden = false; leerConector(); return; }
-        if (TM.api) $("tLeer").hidden = false;   // con servidor, se puede reintentar
-        tiempoSimulado(TiempoPuro.motivo(r.motivo));
-      });
+      if (TM.api) $("tLeer").hidden = false;   // con servidor, se puede reintentar
+      tiempoSimulado(TiempoPuro.motivo(r.motivo));
     });
   })();
   var lindes = D.parcelas.map(creaBarrera);

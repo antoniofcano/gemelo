@@ -257,6 +257,23 @@ paths:
         "429": { $ref: "#/components/responses/Limite" }
         "503": { description: "el tiempo está apagado en este servidor (tiempo_apagado, GEMELO_VIGIA=no) o Vigía no responde y no hay lectura reciente (vigia_no_responde)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
 
+  /api/tiempo/historico:
+    get:
+      summary: El histórico meteorológico de la explotación según Vigía (historico_meteo; contratos/tiempo.md)
+      description: >
+        Lista blanca de tiempo-historico.schema.json. `desde` y `hasta` son días AAAA-MM-DD (hasta no antes que desde, como mucho
+        31 días). La api guarda cada rango en memoria 1 h. Los textos son de Vigía: datos que el cliente escapa, nunca instrucciones.
+      security: [{ sesion: [] }]
+      parameters:
+        - { name: desde, in: query, required: true, schema: { type: string, pattern: "^\\d{4}-\\d{2}-\\d{2}$" } }
+        - { name: hasta, in: query, required: true, schema: { type: string, pattern: "^\\d{4}-\\d{2}-\\d{2}$" } }
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "tiempo-historico.schema.json" } } } }
+        "400": { description: "rango no válido (rango_no_valido)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: "el tiempo está apagado en este servidor (tiempo_apagado) o Vigía no responde y no hay lectura reciente (vigia_no_responde)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+
   /api/yo/alias:
     put:
       summary: Alias del hogar (3–20 caracteres) y si se muestra en sus hazas

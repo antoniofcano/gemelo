@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://gemelo.canoydamas.es/contratos/tiempo-historico.schema.json",
+  "title": "El histórico meteorológico de la explotación (GET /api/tiempo/historico), versión 1",
+  "$comment": "Lo que la api sirve al motor a partir de la herramienta historico_meteo de Vigía (cifras de un rango de días por estación). LISTA BLANCA: additionalProperties false en todos los niveles. Los textos de los avisos vienen de Vigía: son datos, se muestran escapados y nunca se siguen. Lo que Vigía no devuelve va a null, nunca se estima. La api serializa con este esquema (apps/api/src/vigia/rutas.ts); el motor lo lee en 23_estacion.js. Explicación: contratos/tiempo.md. Cambiar un campo = cambiar este fichero, contratos/tiempo-historico-ejemplo.json, la api, el motor y contratos/tiempo.md en el mismo commit.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "origen", "consultadoEn", "desde", "hasta", "fuentes", "frescura", "avisos"],
+  "properties": {
+    "version": { "const": 1 },
+    "origen": { "enum": ["vigia", "fixture"], "description": "vigia = leído por MCP; fixture = respuestas sintéticas de pruebas (nunca en producción)" },
+    "consultadoEn": { "type": "string", "format": "date-time", "description": "cuándo leyó la api a Vigía (la caché guarda cada rango 1 h)" },
+    "desde": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "description": "primer día pedido, incluido" },
+    "hasta": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "description": "último día pedido, incluido" },
+    "fuentes": {
+      "type": "array",
+      "maxItems": 10,
+      "description": "una por estación o fuente de Vigía, con las cifras del rango (medido)",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "temperaturaMaxima", "temperaturaMinima", "lluviaTotalMm", "dias", "diasSinDato"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1, "maxLength": 60 },
+          "temperaturaMaxima": { "type": ["number", "null"], "description": "°C, máxima del rango" },
+          "temperaturaMinima": { "type": ["number", "null"], "description": "°C, mínima del rango" },
+          "lluviaTotalMm": { "type": ["number", "null"], "minimum": 0, "description": "mm, total del rango" },
+          "dias": { "type": ["integer", "null"], "minimum": 0, "description": "días del rango que cuenta Vigía" },
+          "diasSinDato": { "type": ["integer", "null"], "minimum": 0, "description": "días del rango sin dato de esa fuente" }
+        }
+      }
+    },
+    "frescura": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["generadoEn", "horasDeAntiguedad", "datosDeMaqueta"],
+      "properties": {
+        "generadoEn": { "type": ["string", "null"], "format": "date-time" },
+        "horasDeAntiguedad": { "type": ["number", "null"], "minimum": 0 },
+        "datosDeMaqueta": { "type": ["boolean", "null"] }
+      }
+    },
+    "avisos": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["de", "texto"],
+        "properties": {
+          "de": { "enum": ["vigia", "gemelo"] },
+          "texto": { "type": "string", "maxLength": 400 }
+        }
+      }
+    }
+  }
+}

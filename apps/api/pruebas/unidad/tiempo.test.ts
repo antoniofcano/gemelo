@@ -19,10 +19,10 @@ import { cargaConfig, ErrorDeConfig } from "../../src/config.ts";
 import { ErrorDeVigia } from "../../src/vigia/lector.ts";
 import { LectorVigiaFixture, reubica } from "../../src/vigia/lector-fixture.ts";
 import { LectorVigiaMcp } from "../../src/vigia/lector-mcp.ts";
-import { rutasTiempo } from "../../src/vigia/rutas.ts";
-import { normalizaActual, normalizaPrevision, ServicioTiempo } from "../../src/vigia/servicio.ts";
+import { rutasTiempo, rutasTiempoHistorico } from "../../src/vigia/rutas.ts";
+import { normalizaActual, normalizaHistorico, normalizaPrevision, ServicioTiempo } from "../../src/vigia/servicio.ts";
 import { configDePrueba, contexto } from "../apoyo/contexto.ts";
-import { CONTRATOS, validadorTiempo } from "../apoyo/esquemas.ts";
+import { CONTRATOS, validadorTiempo, validadorTiempoHistorico } from "../apoyo/esquemas.ts";
 
 const FIXTURE = fileURLToPath(new URL("../vigia/", import.meta.url));
 const crudo = (h: string) => JSON.parse(readFileSync(FIXTURE + h + ".json", "utf8")) as Record<string, any>;
@@ -225,10 +225,10 @@ async function levantaVigia(opciones: { falla?: boolean }) {
   const s = createServer(async (req: IncomingMessage, res) => {
     cabeceras.push(req.headers.authorization);
     const mcp = new McpServer({ name: "vigia-sintetico", version: "0.0.0" });
-    for (const h of ["tiempo_en_la_explotacion", "prevision_72_horas"]) {
+    for (const h of ["tiempo_en_la_explotacion", "prevision_72_horas", "historico_meteo"]) {
       mcp.registerTool(h, { description: "sintético" }, async () => opciones.falla
         ? { isError: true, content: [{ type: "text" as const, text: "fallo sintético" }] }
-        : { content: [{ type: "text" as const, text: "resumen para un modelo" }], structuredContent: reubica(h as "prevision_72_horas", crudo(h), AHORA) as Record<string, unknown> });
+        : { content: [{ type: "text" as const, text: "resumen para un modelo" }], structuredContent: (h === "historico_meteo" ? crudo(h) : reubica(h as "prevision_72_horas", crudo(h), AHORA)) as Record<string, unknown> });
     }
     const t = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
     res.on("close", () => { void t.close(); void mcp.close(); });
@@ -262,4 +262,85 @@ test("cliente MCP: un error de la herramienta o un Vigía que no está es ErrorD
     await assert.rejects(nadie.llama("tiempo_en_la_explotacion"), ErrorDeVigia);
     assert.equal(await new ServicioTiempo(nadie).lee(), null);
   } finally { await nadie.cierra(); }
+});
+
+// ---------------------------------------------------------------------------------------------- el histórico (GET /api/tiempo/historico)
+const validaHis = validadorTiempoHistorico();
+const erroresHis = () => JSON.stringify(validaHis.errors);
+
+test("el histórico normalizado y el ejemplo del contrato cumplen contratos/tiempo-historico.schema.json", async () => {
+  const ej = JSON.parse(readFileSync(CONTRATOS + "tiempo-historico-ejemplo.json", "utf8"));
+  assert.ok(validaHis(ej), erroresHis());
+  assert.ok(!validaHis({ ...ej, version: 2 }));
+  assert.ok(!validaHis({ ...ej, fuentes: [{ ...ej.fuentes[0], extra: 1 }] }), "lista blanca");
+  const s = new ServicioTiempo(new LectorVigiaFixture(FIXTURE, () => AHORA), { reloj: () => AHORA });
+  const r = await s.historico("2026-03-04", "2026-03-10");
+  assert.ok(r && validaHis(r), erroresHis());
+  assert.equal(r.origen, "fixture");
+  assert.equal(r.fuentes.length, 2);
+  assert.ok(r.avisos.some(a => /maqueta/.test(a.texto)));
+  // lo que está fuera de rango o no es de la lista blanca no pasa / va a null
+  const n = normalizaHistorico({ porFuente: [{ id: "x", temperaturaMaxima: 999, temperaturaMinima: "frío", lluviaTotalMm: -1, dias: 7.5, diasSinDato: 1, secreto: "no" }, { sinId: 1 }] });
+  assert.deepEqual(n?.fuentes, [{ id: "x", temperaturaMaxima: null, temperaturaMinima: null, lluviaTotalMm: null, dias: null, diasSinDato: 1 }]);
+  assert.equal(normalizaHistorico({ porFuente: "no" }), null);
+});
+
+test("histórico: caché por rango, una llamada a la vez, espera tras un fallo y lectura anterior con aviso", async () => {
+  const t = reloj(), l = new LectorVigiaFixture(FIXTURE, t.fn), s = new ServicioTiempo(l, { reloj: t.fn });
+  await Promise.all([s.historico("2026-03-04", "2026-03-10"), s.historico("2026-03-04", "2026-03-10")]);
+  await s.historico("2026-03-04", "2026-03-10");
+  assert.equal(l.llamadasHistorico.length, 1);
+  await s.historico("2026-03-05", "2026-03-11");
+  assert.equal(l.llamadasHistorico.length, 2, "otro rango, otra llamada");
+  t.t += 61 * MIN;
+  l.sustituyeHistorico = new Error("cae");
+  const viejo = await s.historico("2026-03-04", "2026-03-10");
+  assert.ok(viejo && viejo.avisos.some(a => /último que llegó/.test(a.texto)));
+  const n = l.llamadasHistorico.length;
+  await s.historico("2026-03-04", "2026-03-10");
+  assert.equal(l.llamadasHistorico.length, n, "tras un fallo no se vuelve a llamar en un minuto");
+  assert.equal(await new ServicioTiempo(new LectorVigiaFixture("/no/existe/")).historico("2026-03-04", "2026-03-10"), null);
+});
+
+async function appHistorico(tiempo: ServicioTiempo | null) {
+  const app = Fastify();
+  app.decorateRequest("session", null as never);
+  app.addHook("onRequest", async req => { (req as unknown as { session: { hogarId: number } }).session = { hogarId: 1 }; });
+  await rutasTiempoHistorico(app, { ...contexto(bdMuerta()), tiempo });
+  await app.ready();
+  return app;
+}
+
+test("GET /api/tiempo/historico: sin sesión 401; 200 con el contrato; 400 rango malo; 503 apagado y sin respuesta", async () => {
+  const sin = await construyeApp({ ...contexto(bdMuerta()), tiempo: new ServicioTiempo(new LectorVigiaFixture(FIXTURE)) });
+  try { assert.equal((await sin.inject({ method: "GET", url: "/api/tiempo/historico?desde=2026-03-04&hasta=2026-03-10", headers: { "x-forwarded-proto": "https" } })).statusCode, 401); } finally { await sin.close(); }
+  const ok = await appHistorico(new ServicioTiempo(new LectorVigiaFixture(FIXTURE)));
+  try {
+    const r = await ok.inject({ method: "GET", url: "/api/tiempo/historico?desde=2026-03-04&hasta=2026-03-10" });
+    assert.equal(r.statusCode, 200);
+    assert.match(String(r.headers["cache-control"]), /^private/);
+    assert.ok(validaHis(r.json()), erroresHis());
+    for (const q of ["", "?desde=2026-03-04", "?desde=ayer&hasta=hoy", "?desde=2026-03-10&hasta=2026-03-04", "?desde=2026-02-30&hasta=2026-03-04", "?desde=2026-01-01&hasta=2026-03-10"]) {
+      const m = await ok.inject({ method: "GET", url: "/api/tiempo/historico" + q });
+      assert.equal(m.statusCode, 400, q);
+      assert.equal(m.json().error, "rango_no_valido");
+    }
+  } finally { await ok.close(); }
+  const apagada = await appHistorico(null);
+  try { assert.equal((await apagada.inject({ method: "GET", url: "/api/tiempo/historico?desde=2026-03-04&hasta=2026-03-10" })).json().error, "tiempo_apagado"); } finally { await apagada.close(); }
+  const caida = await appHistorico(new ServicioTiempo(new LectorVigiaFixture("/no/existe/")));
+  try {
+    const r = await caida.inject({ method: "GET", url: "/api/tiempo/historico?desde=2026-03-04&hasta=2026-03-10" });
+    assert.equal(r.statusCode, 503); assert.equal(r.json().error, "vigia_no_responde");
+  } finally { await caida.close(); }
+});
+
+test("cliente MCP: historico_meteo sirve el contrato del histórico", async () => {
+  const { url } = await levantaVigia({});
+  const sv = new ServicioTiempo(new LectorVigiaMcp(url, TOKEN));
+  try {
+    const r = await sv.historico("2026-03-04", "2026-03-10");
+    assert.ok(r && validaHis(r), erroresHis());
+    assert.equal(r.origen, "vigia");
+  } finally { await sv.cierra(); }
 });

@@ -43,8 +43,33 @@ test("lectura de /api/tiempo: mismo origen con credenciales; ok, 401, 503, red c
   for (const m of ["sin_api", "http_401", "http_503", "red", "contrato", "http_500"]) assert.ok(P.motivo(m).length > 5, m);
 });
 
-test("la caída a lo simulado: si la lectura falla, el código pasa a tiempoSimulado y lo dice (chip y ventana)", () => {
-  assert.match(FUENTE, /tiempoSimulado\(TiempoPuro\.motivo\(r\.motivo\)\)/, "sin api y sin conector: simulado con el motivo");
+test("histórico semanal de /api/tiempo/historico: misma origen, rango en la consulta, la estación del tiempo o Imarto, sin inventar", async () => {
+  const HIS = JSON.parse(lee("contratos/tiempo-historico-ejemplo.json"));
+  const pedidas = [];
+  const r = await P.leeHistorico((url, o) => { pedidas.push([url, o]); return Promise.resolve(respuesta(200, HIS)); }, "/api/", "2026-03-04", "2026-03-10");
+  assert.deepStrictEqual(pedidas.map(p => p[0]), ["/api/tiempo/historico?desde=2026-03-04&hasta=2026-03-10"]);
+  assert.strictEqual(pedidas[0][1].credentials, "same-origin");
+  assert.ok(r.ok);
+  assert.deepStrictEqual(P.climaSemana(r.datos, "SINT-EST-02"), { tmax: 17.9, tmin: 1.2, lluvia: 5.8, dias: 7, sin: 2 });
+  assert.strictEqual(P.climaSemana(r.datos, "otra"), null, "sin la estación del tiempo ni Imarto no se elige una al azar");
+  assert.strictEqual(P.climaSemana({ fuentes: [{ id: "Imarto", temperaturaMaxima: null, temperaturaMinima: 1 }] }, null), null);
+  assert.strictEqual(P.climaSemana({ fuentes: [{ id: "Imarto", temperaturaMaxima: 9, temperaturaMinima: 1, lluviaTotalMm: null }] }, null).lluvia, 0);
+  assert.deepStrictEqual(await P.leeHistorico(() => Promise.resolve(respuesta(503, {})), "/api/", "a", "b"), { ok: false, motivo: "http_503" });
+  assert.deepStrictEqual(await P.leeHistorico(() => Promise.resolve(respuesta(200, { version: 1 })), "/api/", "a", "b"), { ok: false, motivo: "contrato" });
+  assert.deepStrictEqual(await P.leeHistorico(() => Promise.reject(new Error("x")), "/api/", "a", "b"), { ok: false, motivo: "red" });
+  assert.deepStrictEqual(await P.leeHistorico(() => {}, null, "a", "b"), { ok: false, motivo: "sin_api" });
+});
+
+test("sin conector de claude.ai (decisión 79): ningún módulo del motor usa window.claude, callTool ni TM.mcp", () => {
+  for (const f of ["14_historia.js", "15_tiempo.js", "23_estacion.js"]) {
+    const s = lee("apps/web/motor/" + f).replace(/^\s*\/\/.*$/gm, "");
+    assert.ok(!/window\.claude|callTool|TM\.mcp|\bmcp\./.test(s), f + " no habla con el conector");
+  }
+  assert.match(lee("apps/web/motor/23_estacion.js"), /TiempoPuro\.leeHistorico\(/, "el histórico semanal sale de la api");
+});
+
+test("la caída a lo simulado:si la lectura falla, el código pasa a tiempoSimulado y lo dice (chip y ventana)", () => {
+  assert.match(FUENTE, /tiempoSimulado\(TiempoPuro\.motivo\(r\.motivo\)\)/, "sin api: simulado con el motivo");
   assert.match(FUENTE, /tAviso\("Tiempo simulado: "/, "la ventana lo dice");
   assert.match(FUENTE, /TM\.origen === "simulado" \? " · simulado"/, "el chip lo dice");
   const v = P.vivo("simulado", null, null, ["Tiempo simulado: no hay datos de Vigía."], Date.now());

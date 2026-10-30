@@ -24,6 +24,13 @@ export function validadorTiempo() {
   return ajv.compile<Record<string, any>>(JSON.parse(readFileSync(CONTRATOS + "tiempo.schema.json", "utf8")));
 }
 
+/** Validador del histórico (contratos/tiempo-historico.schema.json). */
+export function validadorTiempoHistorico() {
+  const ajv = new Ajv({ strict: true, allErrors: true, allowUnionTypes: true });
+  anade(ajv);
+  return ajv.compile<Record<string, any>>(JSON.parse(readFileSync(CONTRATOS + "tiempo-historico.schema.json", "utf8")));
+}
+
 /** Validador de la lista blanca de los olivos personalizados de una haza (contratos/olivos-haza.schema.json). */
 export function validadorOlivosHaza() {
   const ajv = new Ajv({ strict: true, allErrors: true, allowUnionTypes: true });

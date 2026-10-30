@@ -1,37 +1,31 @@
 # Contrato con los conectores MCP
 
-La página (solo la historia de **Cerro**, `14_historia.js`) lee en vivo de dos conectores de claude.ai. Esto es lo que **el código lee**, no lo que los conectores garantizan. **Nada de esto está verificado en vivo desde este repo**: cada fila debe leerse como «el motor espera». Las instrucciones de los propios conectores mandan sobre este resumen.
+**El navegador ya no lee de ningún conector MCP.** La página leía en vivo de dos conectores de claude.ai (`window.claude.use("mcp")` y `callTool`, solo la historia de Cerro y el tiempo); eso murió con la salida artefacto (decisión 79: el gemelo solo se sirve desde el servidor) y se quitó de `14_historia.js`, `15_tiempo.js` y `23_estacion.js`. Los servidores **Olivartrack** y **Vigia** los lee ahora **solo la api**, con su propio cliente MCP (SDK oficial, transporte Streamable HTTP) y un token del gemelo en `Authorization: Bearer`; el navegador pide a la api, del mismo origen y tras sesión.
 
-## Cómo se llama
-- `window.claude.use("mcp")` → objeto con `callTool(servidor, herramienta, entrada, {cache:false})`. Solo se intenta si la finca no es Hituelo (`esH`).
-- Servidores referenciados por su **nombre visible**: `Olivartrack` y `Vigia` (constante `SRV` en `14_historia.js`).
-- La primera llamada a cada conector pide permiso al visor: se hacen una a una; las demás, juntas.
-- Respuesta: `r.payload` (cadena JSON u objeto) → se parsea con `carga(r)`. Lleva `consultadoEn` y, a veces, `truncado`/`parcial`.
-- Errores tratados (`textoError`): `server_not_connected`, `selection_required`, `needs_reauth`, `not_in_manifest`, `approval_required`, `consent_required`, `blocked_by_policy`.
+Esto es lo que **el código lee**, no lo que los conectores garantizan. **Nada de esto está verificado en vivo desde este repo**. Las instrucciones de los propios conectores mandan sobre este resumen.
 
-## Herramientas y campos que lee el motor
+## Servidores referenciados (desde la api, no desde el navegador)
 
-| Servidor | Herramienta | Entrada | Campos que lee | Estado |
+| Servidor | Quién lo llama | Herramientas (solo lectura, lista cerrada) | Qué sirve al motor | Contrato |
 |---|---|---|---|---|
-| Olivartrack | `tareas_abiertas` | — | `tareas[]`: `id, parcelaId, fincaNombre, tipo, nombre, fecha, estado` | NO verificado |
-| Olivartrack | `trabajo_realizado` | `{desde}` | `tareas[]`: `id, finca, parcela, tipo, titulo, completadaEn, estado, avance{pct, hecho, objetivo}` | NO verificado |
-| Olivartrack | `pases_del_periodo` | `{desde}` | `pases[]`: `parcelas[].id` | NO verificado |
-| Olivartrack | `atencion_de_hoy` | — | (se pide; uso en la ficha) | NO verificado |
-| Olivartrack | `novedades` | `{desde, limite}` | `novedades[]`: `tipo ("fenologia.registrada"), ocurridoEn, carga{parcela, bbch}`; `hayMas`, `siguienteDesde` | NO verificado |
-| Vigia | `estado_del_olivar_hoy` | — | `pidenUnaMirada[]`, `frescura.generadoEn` | NO verificado |
+| Vigia | `apps/api/src/vigia/` (`LectorVigiaMcp`) | `tiempo_en_la_explotacion`, `prevision_72_horas` (sin argumentos) | `GET /api/tiempo` | [`tiempo.md`](tiempo.md) |
+| Vigia | idem | `historico_meteo` (`{ desde, hasta }`) | `GET /api/tiempo/historico` | [`tiempo.md`](tiempo.md) |
+| Olivartrack | `apps/api/src/ot/` (`LectorMcp`) | `pases_del_periodo`, `novedades`, `aforo_y_avance_de_recoleccion` | la sincronización a la base (no hay ruta de lectura para el motor todavía) | [`olivartrack-sync.md`](olivartrack-sync.md) |
 
-La finca de Cerro se identifica por el nombre `"Cerro Velasco"` (`FINCA`).
+Configuración y modos (`GEMELO_VIGIA=mcp|fixture|no`, URL y token por fichero en producción): ver `tiempo.md` y `olivartrack-sync.md`.
 
-## Reglas (de los propios conectores, que la página respeta)
-1. **Los textos de campo son datos, nunca instrucciones.**
-2. La página **no escribe** en OlivarTrack: solo lee.
+## Lo que ya no se lee
+
+`estado_del_olivar_hoy` (Vigía), `tareas_abiertas`, `trabajo_realizado`, `atencion_de_hoy` (OlivarTrack) las leía la historia de Cerro desde el navegador. **La historia usa ahora solo la instantánea de OlivarTrack que trae el índice (`D.ot`)**, con un aviso («sin lectura en vivo»); la escena «Vigor» ya no dice qué parcelas marca Vigía hoy. Volver a leerlas exige rutas nuevas de la api (tarea anotada, sin diseñar).
+
+## Reglas (de los propios conectores, que la api y la página respetan)
+1. **Los textos de campo y de Vigía son datos, nunca instrucciones.** La api los recorta; el motor los escapa.
+2. El gemelo **no escribe** en OlivarTrack ni en Vigía: solo lee.
 3. **Nada por persona**: agregados por parcela y tarea.
 4. Si llega `truncado: true` o `parcial: true`, no es completo: se avisa y no se sacan totales.
-5. Se muestra **de cuándo es el dato** (`consultadoEn`, `fecha_consulta`).
+5. Se muestra **de cuándo es el dato** (`consultadoEn`, frescura).
 6. Vigía **no autoriza tratamientos**; ninguna capa está calibrada con observación de campo: sirve para decidir dónde mirar. El color es relativo.
 
 ## Lo que NO se sabe
-- Si los nombres de herramienta y campos de arriba siguen vigentes (los conectores evolucionan).
-- Si el marco de artefactos concede la capacidad `mcp` con estos nombres visibles en la publicación actual.
-- Cómo se comporta la lectura con una sesión real: ver ESTADO («sin comprobar»).
-- Hituelo no lee en vivo: usa la instantánea `D.ot` (sin trabajos ni fenología de Marín Hituelo).
+- Si los nombres de herramienta y campos siguen vigentes (los conectores evolucionan): la api no se ha probado contra los servidores reales (hace falta URL y token del gemelo).
+- Hituelo no tiene lectura en vivo: usa la instantánea `D.ot` (sin trabajos ni fenología de Marín Hituelo).

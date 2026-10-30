@@ -2,7 +2,7 @@
 // Expone: EST, construyeFrutosLista, objetivoMundo, actualizaOlivo
 // Consume: 01_datos ($), 02_mundo (suelo, copas), 03_escena (renderer, SRGB, sol, modo), 04d_sombreado_tiles (hash), 06_arboles (gFollaje),
 //   07_follaje (matHojaG, matHojaP), 10_ndvi (NDV, ndviIdx), 13_parcelas (parcelas), 14_historia (hist, aviso),
-//   15_tiempo (lluvia, cargaT, fmtHora, fmtClaveDia, num1, esc, objetivoMundoBase, aplicaMundo)
+//   15_tiempo (TiempoPuro, lluvia, fmtHora, fmtClaveDia, num1, esc, objetivoMundoBase, aplicaMundo)
 // Nota: Publica además window.__otDebug (depuración del olivo estacional).
 // ===============================================================================
   // ---------- el olivo estacional: la fecha de la estación (el deslizador de la hierba) manda en el sol, el clima, el color de la copa y la fenología
@@ -60,13 +60,15 @@
     if (EST.cache[iso] !== undefined) { EST.clima = EST.cache[iso]; EST.estado = EST.clima ? "" : "sin dato de la estación esa semana"; pintaEstacion(); return; }
     function fin(c, msg) { EST.cache[iso] = c; if (fechaEstacion() === iso) { EST.clima = c; EST.estado = c ? "" : msg; pintaEstacion(); } }
     if (window.__TIEMPO_PRUEBA && window.__TIEMPO_PRUEBA.semana) { fin(window.__TIEMPO_PRUEBA.semana, ""); return; }
-    if (!TM.mcp) { EST.clima = null; EST.estado = TM.origen === "simulado" ? "sin conexión con Vigía: el clima del mundo es el simulado de hoy" : "el histórico semanal de Vigía todavía no llega por el servidor: el clima del mundo sigue siendo el de hoy"; pintaEstacion(); return; }
+    // el histórico semanal sale de GET /api/tiempo/historico (contratos/tiempo.md); sin servidor o si falla, el clima del mundo sigue siendo el de hoy y se dice
+    if (!TM.api) { EST.clima = null; EST.estado = "sin servidor del tiempo: el clima del mundo es " + (TM.origen === "simulado" ? "el simulado de hoy" : "el de hoy"); pintaEstacion(); return; }
     EST.estado = "leyendo el clima de esa semana en Vigía…"; EST.clima = null; pintaEstacion();
     var d1 = new Date(iso + "T12:00:00Z"), d0 = new Date(d1.getTime() - 6 * 86400000), ymd = function (d) { return d.toISOString().slice(0, 10); };
-    TM.mcp.callTool("Vigia", "historico_meteo", { desde: ymd(d0), hasta: ymd(d1) }, { cache: true }).then(function (r) {
-      var p = cargaT(r), f = p && (p.porFuente || []).filter(function (x) { return /imarto/i.test(x.id || ""); })[0];
-      if (f && f.temperaturaMaxima != null && f.temperaturaMinima != null) fin({ tmax: f.temperaturaMaxima, tmin: f.temperaturaMinima, lluvia: f.lluviaTotalMm || 0, dias: f.dias, sin: f.diasSinDato }, ""); else fin(null, "la estación no tiene datos de esa semana");
-    }).catch(function () { fin(null, "no se pudo leer el clima de esa semana"); });
+    TiempoPuro.leeHistorico(window.fetch ? window.fetch.bind(window) : null, TM.api, ymd(d0), ymd(d1)).then(function (r) {
+      if (!r.ok) { if (fechaEstacion() === iso) { EST.clima = null; EST.estado = "no se pudo leer el clima de esa semana (" + TiempoPuro.motivo(r.motivo) + "): el clima del mundo es el de hoy"; pintaEstacion(); } return; }
+      var c = TiempoPuro.climaSemana(r.datos, TM.est && TM.est.estacion ? TM.est.estacion.id : null);
+      fin(c, "la estación no tiene datos de esa semana");
+    });
   }
   function actualizaEstacion() {
     EST.activa = !!NDV && ndviIdx !== NDV.fechas.length - 1;
