@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gemelo.invalid/contratos/eventos.schema.json",
+  "$comment": "Forma del catálogo de eventos del Bus del motor (contratos/eventos.json; contratos/eventos.md, ADR-0023). Lo valida ajv en pruebas/guardianes/componentes.test.js, que además comprueba contra el código que cada evento emitido o escuchado está aquí, que quien emite y quien escucha son los que dice el catálogo y que ninguno se escucha sin que nadie lo emita.",
+  "title": "eventos",
+  "type": "object",
+  "required": ["v", "eventos"],
+  "additionalProperties": false,
+  "properties": {
+    "v": { "const": 1, "$comment": "versión del contrato del catálogo" },
+    "$comment": { "type": "string" },
+    "eventos": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z]+:[a-z][a-z-]*$", "$comment": "dominio:accion" },
+      "additionalProperties": {
+        "type": "object",
+        "required": ["descripcion", "datos", "emiten", "escuchan"],
+        "additionalProperties": false,
+        "properties": {
+          "descripcion": { "type": "string", "minLength": 10 },
+          "datos": { "type": "object", "$comment": "esquema JSON (2020-12) de lo que lleva el evento; {} si no lleva nada" },
+          "emiten": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "^[0-9]{2}[a-z]{0,2}_[a-z0-9_]+$", "$comment": "módulo de apps/web/motor/ sin .js" } },
+          "escuchan": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[0-9]{2}[a-z]{0,2}_[a-z0-9_]+$" } }
+        }
+      }
+    }
+  }
+}

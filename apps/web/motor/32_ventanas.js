@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Ventanas
 // Consume: 01_datos ($), 03_escena (lienzo, visor), 08_marcadores (capas), 12_paseo (paseando, persona), 14_historia (FINCA, lista),
-//   22_huellas (hSig), 29_vr (panel), 34_movibles (Movibles)
+//   16_vida (quita), 22_huellas (hSig), 29_vr (panel), 34_movibles (Movibles)
 // ===============================================================================
   // ---------- las ventanas (doc/sistema/UX-FINCA-JUEGO.md §4.4, decisión 87): una grande a la vez, no modales (el mundo sigue vivo y se puede andar con el
   // teclado). Lateral bajo la barra en escritorio; hoja inferior (≤ 72 % del alto) en móvil vertical, que esconde la cruceta; lateral alto en móvil horizontal,
@@ -23,8 +23,8 @@
   // [puro:fin]
 
   var Ventanas = (function () {
-    var actual = null, vuelta = null, gente = { nodo: null, padre: null, sig: null };
-    function el(id) { return $(VentanasPuro.IDS[id] || ""); }
+    var actual = null, vuelta = null, gente = { nodo: null, padre: null, sig: null }, extra = {};
+    function el(id) { return $(VentanasPuro.IDS[id] || extra[id] || ""); }
     function marcaIconos(id, si) { Array.prototype.forEach.call(document.querySelectorAll('#hud [data-abre="' + id + '"][aria-expanded]'), function (b) { b.setAttribute("aria-expanded", String(si)); }); }
     function revisaFlotantes() { if (typeof Movibles !== "undefined" && Movibles && Movibles.revisa) setTimeout(function () { Movibles.revisa(); }, 0); }
     function formaVisor() {
@@ -93,10 +93,27 @@
     if (hc && window.MutationObserver) new MutationObserver(mudaRecorrido).observe(hc, { attributes: true, attributeFilter: ["hidden"] });
     var rc = $("recCerrar"); if (rc) rc.addEventListener("click", function () { $("hFin").click(); });
 
+    // --- punto de extensión (ADR-0023, C2): un componente registra su ventana. Ventanas.registra(id, { titulo, construye(cuerpo) }) crea una ventana como las
+    // de la plantilla (cabecera con su título enfocable y ×, cuerpo), la mete junto a las demás y la abre y cierra igual (una a la vez, foco, Esc). Devuelve
+    // quita (la cierra si está abierta y la saca). Un id que ya existe (los seis de la plantilla u otro registrado) no se registra: devuelve null.
+    function registra(id, def) {
+      if (!def || !/^[a-z][a-z0-9-]*$/.test(id) || VentanasPuro.IDS[id] || extra[id]) return null;
+      var hermana = $(VentanasPuro.IDS.ayuda), casa = hermana ? hermana.parentNode : visor, eid = "ventana-" + id;
+      var v = document.createElement("section"), cab = document.createElement("header"), h = document.createElement("h2"), x = document.createElement("button"), cu = document.createElement("div");
+      v.className = "ventana"; v.id = eid; v.setAttribute("role", "dialog"); v.setAttribute("aria-modal", "false"); v.setAttribute("aria-labelledby", eid + "-t"); v.hidden = true;
+      h.id = eid + "-t"; h.tabIndex = -1; h.textContent = def.titulo || id; x.type = "button"; x.className = "cerrar"; x.setAttribute("data-cierra", ""); x.setAttribute("aria-label", "Cerrar"); x.textContent = "×";
+      cu.className = "cuerpo"; cab.appendChild(h); cab.appendChild(x); v.appendChild(cab); v.appendChild(cu);
+      x.addEventListener("click", function () { cierra(); });
+      v.addEventListener("keydown", function (e) { var t = e.target && e.target.tagName; if ((t === "INPUT" || t === "SELECT" || t === "TEXTAREA") && e.key !== "Escape") e.stopPropagation(); });
+      casa.appendChild(v); extra[id] = eid;
+      try { if (def.construye) def.construye(cu); } catch (e) { try { console.error("[Ventanas] " + id, e); } catch (e2) {} }
+      return function () { if (actual === id) cierra(true); delete extra[id]; if (v.parentNode) v.parentNode.removeChild(v); };
+    }
+
     window.addEventListener("resize", formaVisor); formaVisor();
     return {
       abre: abre, cierra: function () { return cierra(false); }, abierta: function () { return actual; }, pestana: pestana,
-      recorrido: function () { return !!(tarjeta && !tarjeta.hidden); }
+      recorrido: function () { return !!(tarjeta && !tarjeta.hidden); }, registra: registra
     };
   })();
 

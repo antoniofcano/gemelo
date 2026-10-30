@@ -1,5 +1,7 @@
 // Genera la entrada de Vite a partir del motor (ADR-0010, fase 0: sin tocar ni una línea de apps/web/motor/).
-//   node herramientas/genera_motor.mjs --datos <indice.json> [--dest <carpeta>]      (o GEMELO_DATOS / GEMELO_WEB_RAIZ)
+//   node herramientas/genera_motor.mjs --datos <indice.json> [--dest <carpeta>] [--sin 35_fichas_tiempo.js,…]      (o GEMELO_DATOS / GEMELO_WEB_RAIZ / GEMELO_SIN)
+// --sin: ficheros del motor que se dejan fuera (ADR-0023: un componente se puede quitar del motor sin tocar a nadie; lo comprueba
+// pruebas/guardianes/componentes.test.js). Solo componentes: quitar un fichero del núcleo o de los de siempre rompe el motor.
 // Escribe en <dest> (por defecto apps/web/.generado/):
 //   entrada/motor.generado.js  = `import * as THREE from "three";` + los módulos de motor/ concatenados en orden alfabético,
 //                                en orden alfabético, que ES el orden de montaje (01_datos abre la IIFE y 99_cierre la cierra)
@@ -14,9 +16,11 @@ const MOTOR = path.join(WEB, "motor");
 
 function argumento(nombre) { const i = process.argv.indexOf("--" + nombre); return i > 0 ? process.argv[i + 1] : undefined; }
 
-/** La concatenación del motor: readdirSync().sort(), el orden alfabético es el orden de montaje */
-export function concatenaMotor() {
-  const ficheros = fs.readdirSync(MOTOR).filter(f => f.endsWith(".js")).sort();
+/** La concatenación del motor: readdirSync().sort(), el orden alfabético es el orden de montaje. sin = ficheros que se dejan fuera (componentes) */
+export function concatenaMotor(sin = []) {
+  const todos = fs.readdirSync(MOTOR).filter(f => f.endsWith(".js")).sort(), raros = sin.filter(f => !todos.includes(f));
+  if (raros.length) throw new Error("--sin: no están en motor/: " + raros.join(", "));
+  const ficheros = todos.filter(f => !sin.includes(f));
   return ficheros.map(f => fs.readFileSync(path.join(MOTOR, f), "utf8")).join("");
 }
 
@@ -36,11 +40,11 @@ export function textosFinca(cab, T) {
   return cab;
 }
 
-export function genera(datos, dest) {
+export function genera(datos, dest, sin = []) {
   const D = fs.readFileSync(datos, "utf8");
   const J = JSON.parse(D);                                                     // falla aquí, y no en el navegador, si el JSON está roto
   fs.mkdirSync(path.join(dest, "entrada"), { recursive: true });
-  fs.writeFileSync(path.join(dest, "entrada", "motor.generado.js"), 'import * as THREE from "three";\n' + concatenaMotor());
+  fs.writeFileSync(path.join(dest, "entrada", "motor.generado.js"), 'import * as THREE from "three";\n' + concatenaMotor(sin));
   let plantilla = fs.readFileSync(path.join(WEB, "plantilla.html"), "utf8");
   if (J.textos) plantilla = textosFinca(plantilla, J.textos);
   const html = '<!doctype html>\n<html lang="es">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n</head>\n<body>\n' +
@@ -54,6 +58,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const datos = argumento("datos") || process.env.GEMELO_DATOS;
   const dest = path.resolve(argumento("dest") || process.env.GEMELO_WEB_RAIZ || path.join(WEB, ".generado"));
   if (!datos) { console.error("falta --datos <indice.json> (o GEMELO_DATOS)"); process.exit(2); }
-  genera(path.resolve(datos), dest);
+  const sin = (argumento("sin") || process.env.GEMELO_SIN || "").split(",").map(x => x.trim()).filter(Boolean);
+  genera(path.resolve(datos), dest, sin);
+  if (sin.length) console.log("sin:", sin.join(", "));
   console.log("entrada de Vite generada en", dest);
 }

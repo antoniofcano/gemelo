@@ -1,6 +1,6 @@
 # Componentes del mundo: diagnóstico y diseño
 
-Propuesta (estado **Propuesto**, [ADR-0023](../adr/0023-componentes-del-mundo.md)). Responde a la petición de Antonio del 2026-10-30: que el mundo pueda crecer «como si fueran plugins y/o componentes nuevos que pones y quitas», sin romper lo que hay, camino de un **Agro-Verse**. Aquí va el diagnóstico de hoy medido sobre el código, el diseño del contrato de un componente y lo que falta para el Agro-Verse; el ADR recoge la decisión, las alternativas y el plan por fases (C1…C12). Nada de esto está construido.
+Diseño aceptado ([ADR-0023](../adr/0023-componentes-del-mundo.md), **Aceptado**; decisiones 117-124); **C1-C3 hechos** (lo construido y en qué se apartó del diseño: [§6](#6-lo-hecho-c1-c3)). Responde a la petición de Antonio del 2026-10-30: que el mundo pueda crecer «como si fueran plugins y/o componentes nuevos que pones y quitas», sin romper lo que hay, camino de un **Agro-Verse**. Aquí va el diagnóstico de hoy medido sobre el código, el diseño del contrato de un componente y lo que falta para el Agro-Verse; el ADR recoge la decisión, las alternativas y el plan por fases (C1…C12). Los §1-§5 son el diagnóstico y el diseño tal como se aceptaron (foto del 2026-10-30); lo construido está en §6.
 
 ## 1. Diagnóstico (medido sobre `main` en `eb83472`)
 
@@ -146,3 +146,40 @@ El manifiesto y lo barato van en el paquete; lo pesado se pide con `import()` de
 
 - El diseño no cambia ningún gesto ni el panel por sí mismo; cada migración de interacción (C2, C7) lleva su nota de comodidad (regla 11). **No probado**: nada de esto existe; iPhone y Quest, sin probar.
 - El presupuesto por componente es **declarado**; medirlo de verdad exige que cada componente cuelgue lo suyo de un `Group` propio (`n.grupo(id)`) para que `?debug` cuente llamadas y triángulos por componente. Hasta medirlo con el banco, las cifras declaradas son **[SUPUESTO]**. Ejemplo de por qué importa: la bandada de `16_vida.js` suma 98 de las 124 llamadas de «lejos» en el fixture (ver `pruebas/presupuesto.json`), y hoy nada lo atribuye a la fauna.
+
+## 6. Lo hecho (C1-C3)
+
+**C1 · núcleo** (`apps/web/motor/02c_componentes.js`): `ComponentesPuro` (validar el manifiesto, ordenar por `consume` → `expone` con detección de ciclos, encendido, validar la configuración), `Bus`, `Teclas` y `Componentes` (`registra`, `arranca`, `actualiza(fase)`, `configura`, `api`, `activo`, `enciende`, `libera`, `resumen`; `window.__componentes()`). `90_final.js` llama a `Componentes.arranca()` antes del primer fotograma y a las fases `mundo` (tras la cámara y los módulos de siempre), `tarde` (antes de la `Cola`) y `trasRender`; las llamadas de los módulos que no son componentes siguen como estaban. Catálogo de eventos: [eventos.md](../../contratos/eventos.md) (+ `eventos.json` y su esquema). Configuración: [config.schema.json](../../contratos/config.schema.json) con el bloque `componentes` (`{ id: { activo, parametros? } }`). `genera_motor.mjs --sin <fichero>` (o `GEMELO_SIN`) deja componentes fuera del motor. Guardián: `pruebas/guardianes/componentes.test.js`.
+
+**C2 · puntos de extensión** (todos devuelven la función que lo quita): `Hud.icono(def)`, `Ventanas.registra(id, { titulo, construye })`, `Ajustes.registra(prefijo, esquema, pestaña, aplica?)` (con `AjustesPuro.fusiona`), `PanelVR.filas(pestaña, fila)` y `PanelVR.tapa(fn)`, `Minimapa.capa(fn, orden?)`, `Capas.registra(def)` (`32b_capas.js`, exige procedencia). Las ventanas, teclas, ajustes y filas de siempre no cambian de id, tecla ni sitio: en `29_vr.js` las filas de las tres pestañas se registran con `PanelVR.filas` con los mismos altos de antes (88 px; 96 la parcela), así que caen en los mismos píxeles.
+
+**C3 · piloto** (`35_fichas_tiempo.js`, componente `fichas-tiempo`): solo define su lógica (`FichasTiempoPuro`, `FichasTiempoMotor`) y se registra; usa `Teclas` (P), `PanelVR.filas` (la fila del tiempo en Mundo, con «Ver previsión»), `PanelVR.tapa` (la ficha de la baliza espera si la lámina está delante), el Bus (`prevision:alterna` desde la ventana Tiempo, `vr:sale`) y la fase `tarde` cada 0,5 s. Fuera: su `setInterval`, su `setTimeout(0)`, su escucha de `document` y su teclado propio; `29_vr.js` ya no lo nombra (ni `FichasTiempo` ni `vrHayTiempo`). Apagado (`?fichas=0`, configuración) o fuera del motor: el botón de la ventana Tiempo se esconde (`Bus.hay`), la pestaña Mundo del panel VR queda sin su fila y nada más cambia.
+
+**C4 (sonido) no se ha hecho**: `20_sonido.js` lo nombran `29_vr.js` (fila «Sonido» del panel y `iniciaSonido` al entrar), `33_ajustes.js` (`sonido.activo`), `19_balizas.js` y `24_pantalla.js`; convertirlo pide pasar esos usos a eventos y a `Ajustes.registra`, y queda como siguiente paso (ADR, C4).
+
+### En qué se aparta del diseño de §3 (y por qué)
+
+- **`/api/config` no se pide todavía.** Pedirla sin que exista daría un 404 en cada carga con servidor, y las pruebas de dev cuentan cualquier respuesta ≥ 400 como error. El motor ya lee el bloque `componentes` si la página trae `<script type="application/json" id="config">` y expone `Componentes.configura(bloque)`, que enciende y apaga en caliente: C6 solo tiene que hacer el `fetch` y llamar a `configura`.
+- **La fase `tarde` también corre en VR**: en VR el bucle lo lleva la sesión, que llama al mismo `cuadro()`; lo que se para es el reloj propio (`setInterval`) que había antes, que corría aunque la página estuviera oculta. Con la página oculta, el navegador para el bucle y con él las fases.
+- **Regla 1 del guardián, afinada**: un componente no expone nada en su primer nivel, nadie lo nombra (ni su id ni lo que expone, fuera de comentarios) y no consume de otro componente; lo que usa de módulos que aún no son componentes (`TiempoVivo`, `Hud`, `VRX`, `paseando`…) lo declara en `consume`. Durante la migración el «núcleo» que se puede consumir sin declarar es `01_datos`, `02_mundo`, `02b_cola`, `02c_componentes` y `03_escena`.
+- **`PanelVR.filas(pestaña, fila)`** recibe una fila con `alto`, `botones(b, y)`, `pinta(cx, y, W, h)`, `firma()` y `debug()`, no una función suelta: así el panel sabe cuándo repintar sin que la fila lleve su propio reloj.
+
+### Nota de comodidad (regla 11)
+
+- **Qué cambia para quien juega**: nada a propósito. Mismas teclas (P paseando; la P sigue sin hacer nada con el foco en un campo, con Ctrl/Alt/Cmd o al repetirse), mismo botón «Ver la previsión en el mundo», mismas filas y botones del panel VR en las mismas coordenadas del lienzo (lo fija `pruebas/guardianes/fichas_tiempo.test.js`). Diferencia visible: si la lámina no está (apagada o fuera del motor), el botón de la ventana Tiempo no aparece en vez de no hacer nada.
+- **Qué se probó y dónde**: en Node, el registro, las teclas, el panel por filas de la pieza y el montaje y liberado de la lámina con un THREE de mentira; en Chrome sin pantalla por el banco (una vuelta de la puerta con `GEMELO_VR=1`, 2026-10-30): pasan las de las fichas del tiempo (escritorio: 1 llamada y 1 textura que se libera; VR simulada: «Ver previsión» desde la fila del panel), los pasos del panel VR de `prueba_vr.js` (pestañas, modos, hora, relieve, fecha, «Ir a») y las ux_*. Falló una vez el paso «rayo + gatillo sobre un olivo abre su ficha» de `prueba_vr.js`, que no toca nada de esto (con el panel oculto); **sin confirmar** si es la inestabilidad conocida de la VR simulada con SwiftShader.
+
+### Medida (regla 6)
+
+Por el banco, fixture de Cerro, SwiftShader (recuentos, no fps), en la misma ronda: `main` en `449aa97` («antes»), esta rama («después») y esta rama con `?fichas=0`.
+
+| Escenario | antes: llamadas / triángulos / geometrías / texturas | después | después con `?fichas=0` |
+|---|---|---|---|
+| lejos | 30 / 25.014 / 43 / 8 | 30 / 25.014 / 43 / 8 | 30 / 25.014 / 43 / 8 |
+| cerca | 57 / 180.426 / 81 / 21 | 57 / 180.426 / 81 / 21 | 57 / 180.426 / 81 / 21 |
+| paseo | 53 / 179.620 / 93 / 21 | 53 / 179.620 / 91 / 21 | 59 / 180.498 / 96 / 21 |
+| paseoAnda | 75 / 166.626 / 121 / 23 | 75 / 166.626 / 119 / 23 | 55 / 166.396 / 106 / 22 |
+
+Igual en lejos y cerca; en el paseo las diferencias son la fauna y el paso (cambian de una carga a otra, también entre «antes» y «después» con el mismo código de dibujo). El registro no dibuja nada. Coste en JS del bucle por fases: **0,06 µs por fotograma** (3 fases y 1 componente, Node 24, 2 millones de vueltas): no medible frente a los milisegundos del fotograma. Ojo: «lejos» da 25.014 triángulos también en `main` y pasa del tope de regresión de `pruebas/presupuesto.json` (20.000): la puerta falla ahí antes y después de este cambio.
+- **No probado**: en unas Quest (el panel por filas, la fila del tiempo y «Ver previsión» con el rayo) ni en un iPhone. El panel VR por filas solo se ha comprobado con el WebXR simulado.
+

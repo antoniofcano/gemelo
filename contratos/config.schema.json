@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gemelo.invalid/contratos/config.schema.json",
+  "$comment": "Configuración que el servidor da al motor (GET /api/config, fase C6 del ADR-0023; decisión 118: los componentes se encienden desde la oficina). Hoy solo está el bloque «componentes». El motor ya lo lee si la página trae <script type=\"application/json\" id=\"config\"> con este objeto, o si alguien llama a Componentes.configura(bloque) (apps/web/motor/02c_componentes.js); la api y la pantalla de la oficina llegan en C6. Precedencia: URL > este bloque > defecto del manifiesto. Sin datos de la explotación ni secretos. Ejemplo: contratos/config-ejemplo.json; lo valida pruebas/guardianes/componentes.test.js.",
+  "title": "config",
+  "type": "object",
+  "required": ["v"],
+  "additionalProperties": false,
+  "properties": {
+    "v": { "const": 1, "$comment": "versión del contrato de la configuración" },
+    "componentes": {
+      "type": "object",
+      "$comment": "por id de componente (el id de su manifiesto): si está encendido y, opcionalmente, sus parámetros (los recibe en monta como n.parametros). Un id que el motor no tiene se ignora.",
+      "propertyNames": { "pattern": "^[a-z][a-z0-9-]*$" },
+      "additionalProperties": {
+        "type": "object",
+        "required": ["activo"],
+        "additionalProperties": false,
+        "properties": {
+          "activo": { "type": "boolean" },
+          "parametros": { "type": "object" }
+        }
+      }
+    }
+  }
+}

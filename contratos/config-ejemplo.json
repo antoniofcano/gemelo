@@ -1,0 +1,7 @@
+{
+  "v": 1,
+  "componentes": {
+    "fichas-tiempo": { "activo": true },
+    "ejemplo-apagado": { "activo": false, "parametros": { "nota": "un id que el motor no tiene se ignora" } }
+  }
+}

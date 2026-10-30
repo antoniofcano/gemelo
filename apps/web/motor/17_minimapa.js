@@ -1,8 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: mini, actualizaMinimapa
-// Consume: 01_datos (D, $, ANCHO, ALTO), 02_mundo (Mundo, cIn), 12_paseo (paseando, persona), 13_parcelas (parcelas), 14_historia (aviso, carga),
-//   15_tiempo (esc), 16_vida (enQuad, mira, conejos, quad, enDron, dron), 19_balizas (avisoBaliza, dibujaBalizasMini), 25_perros (dibujaPerrosMini),
-//   26_presencia (Presencia), 34_movibles (Movibles), 90_final (cuadro)
+// Consume: 01_datos (D, $, ANCHO, ALTO), 02_mundo (Mundo, cIn), 08_marcadores (capas), 12_paseo (paseando, persona), 13_parcelas (parcelas),
+//   14_historia (aviso, carga), 15_tiempo (esc), 16_vida (enQuad, quita, mira, conejos, quad, enDron, dron),
+//   19_balizas (avisoBaliza, dibujaBalizasMini), 25_perros (dibujaPerrosMini), 26_presencia (Presencia), 34_movibles (Movibles), 90_final (cuadro)
 // ===============================================================================
   // ---------- el minimapa del paseo: la ortofoto vista desde arriba con tú, tu rastro, el dron y los conejos (M o un toque cambia el zoom)
   var mini = { cv: $("mapita"), cerca: false, oculto: false, rastro: [], t: 0, pts: [], bal: [], sel: null }, MW = 240, MH = Math.round(MW * ALTO / ANCHO);
@@ -55,6 +55,18 @@
     setTimeout(function () { if (typeof Movibles !== "undefined" && Movibles) mini.mov = Movibles.hazMovible(wrap, asa, "mapa", null, { defecto: function (d) { return d.tactil ? { x: d.W - d.mg.r - d.w - 10, y: d.mg.t + 64 } : { x: d.mg.l + 14, y: d.mg.t + 112 }; } }); }, 0);
     window.addEventListener("keydown", function (e) { if (!paseando || e.code !== "KeyM") return; var t = e.target && e.target.tagName; if (t === "INPUT" || t === "SELECT" || t === "TEXTAREA") return; plega(!mini.oculto); e.preventDefault(); });
   })();
+  // punto de extensión (ADR-0023, C2): Minimapa.capa(fn, orden?) añade una capa al minimapa; fn(c, X, Y, info) pinta sobre el contexto 2D con X(este) e Y(norte)
+  // en píxeles del mapa, info = { cerca, MW, MH }. Se pinta tras balizas y perros y antes de la gente, de ti y del dron, en orden creciente. Devuelve quita.
+  var Minimapa = (function () {
+    var capas = [];
+    function capa(fn, orden) {
+      if (typeof fn !== "function") return function () {};
+      var c = { fn: fn, orden: orden || 0 }; capas.push(c); capas.sort(function (a, b) { return a.orden - b.orden; }); mini.t = 1;
+      return function () { var i = capas.indexOf(c); if (i >= 0) capas.splice(i, 1); mini.t = 1; };
+    }
+    function pinta(c, X, Y, info) { for (var i = 0; i < capas.length; i++) { c.save(); try { capas[i].fn(c, X, Y, info); } catch (e) {} c.restore(); } }
+    return { capa: capa, pinta: pinta, cuantas: function () { return capas.length; } };
+  })();
   function actualizaMinimapa(dt) {
     var ver = paseando; mini.wrap.hidden = !ver;
     if (ver !== mini.ver) { mini.ver = ver; if (ver && mini.mov) mini.mov.coloca(); }   // al aparecer, a su sitio guardado (o el de partida), fuera de los controles
@@ -79,7 +91,7 @@
     c.lineWidth = 2; c.strokeStyle = "rgba(255,154,46,0.9)"; c.beginPath(); mini.rastro.forEach(function (q, i) { if (i) c.lineTo(X(q[0]), Y(q[1])); else c.moveTo(X(q[0]), Y(q[1])); }); c.stroke();
     // conejos
     c.fillStyle = "#f2dcb8"; conejos.forEach(function (co) { if (!co.visible) return; c.beginPath(); c.arc(X(co.userData.x), Y(co.userData.y), 2.2, 0, 6.283); c.fill(); });
-    dibujaBalizasMini(c, X, Y, mini.bal); dibujaPerrosMini(c, X, Y);
+    dibujaBalizasMini(c, X, Y, mini.bal); dibujaPerrosMini(c, X, Y); Minimapa.pinta(c, X, Y, { cerca: mini.cerca, MW: MW, MH: MH });
     // los demás (solo con la presencia compartida): violeta con borde blanco, distinto de tu flecha naranja; en vista cercana, con su alias al lado
     mini.pts.length = 0;
     if (Presencia.activo()) {

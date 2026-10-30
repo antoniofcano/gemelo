@@ -14,7 +14,17 @@
     "BufferPose": { "modulo": "26_presencia.js", "miembros": ["MAX", "EXTRA", "crea", "recibe", "muestra", "salida"] },
     "Presencia": { "modulo": "26_presencia.js", "miembros": ["activo", "actualiza", "estado", "libera", "texto", "llegadas", "puntos", "irCon", "vrmPersonas", "miVrm", "recolorea", "cambiaron"] },
     "HazasPuro": { "modulo": "13b_hazas.js", "miembros": ["validaColeccion", "aLocal", "anillosLocales", "enElMundo", "dentroPoligono", "hazaEn", "cuentaVertices", "segmentos", "rayoSuelo", "fecha", "fichaFilas", "prefijoApi"] },
-    "Hazas": { "modulo": "13b_hazas.js", "miembros": ["actualiza", "estado", "libera"] }
+    "Hazas": { "modulo": "13b_hazas.js", "miembros": ["actualiza", "estado", "libera"] },
+    "ComponentesPuro": { "modulo": "02c_componentes.js", "miembros": ["FASES", "valida", "orden", "valorUrl", "encendido", "validaConfig", "toca"] },
+    "Componentes": { "modulo": "02c_componentes.js", "miembros": ["registra", "arranca", "actualiza", "configura", "api", "activo", "enciende", "libera", "resumen"] },
+    "Bus": { "modulo": "02c_componentes.js", "miembros": ["on", "emite", "hay"] },
+    "Teclas": { "modulo": "02c_componentes.js", "miembros": ["registra", "dueno", "RESERVADAS"] },
+    "Minimapa": { "modulo": "17_minimapa.js", "miembros": ["capa", "pinta", "cuantas"] },
+    "PanelVR": { "modulo": "29_vr.js", "miembros": ["filas", "visibles", "tapa", "tapado", "debug", "cierra", "repinta", "rumbo", "enVR"] },
+    "Hud": { "modulo": "31_hud.js", "miembros": ["aviso", "zonasProhibidas", "modo", "cierraDesplegable", "alterna", "ponModo", "icono"] },
+    "Ventanas": { "modulo": "32_ventanas.js", "miembros": ["abre", "cierra", "abierta", "pestana", "recorrido", "registra"] },
+    "CapasPuro": { "modulo": "32b_capas.js", "miembros": ["PROC", "GRUPOS", "valida"] },
+    "Capas": { "modulo": "32b_capas.js", "miembros": ["registra", "lista"] }
   },
   "ganchos_window": {
     "__g": { "modulo": "27_debug.js", "miembros": ["Arboles", "Catalogo", "Escena3D", "OlivosTiles", "Cola", "copas", "suelo", "Mundo", "orb", "objetivo", "camera", "renderer", "scene", "pon", "listo", "modo", "Generados", "pendientes", "ponExag", "aplica", "paseoEn", "paseoSale", "paseoTecla", "paseoEstado"] },
@@ -23,7 +33,9 @@
     "__vrBotones": { "modulo": "29_vr.js", "tipo": "function" },
     "__otDebug": { "modulo": "23_estacion.js", "tipo": "function" },
     "__perrosDebug": { "modulo": "25_perros.js", "tipo": "function" },
-    "__presencia": { "modulo": "26_presencia.js", "tipo": "function" }
+    "__presencia": { "modulo": "26_presencia.js", "tipo": "function" },
+    "__componentes": { "modulo": "02c_componentes.js", "tipo": "function" },
+    "__fichaTiempo": { "modulo": "35_fichas_tiempo.js", "tipo": "function" }
   },
   "funciones_globales_del_motor": {
     "$comment": "Firmas heredadas que el resto del motor usa como si fueran globales (alias de Mundo en 02_mundo.js)",
