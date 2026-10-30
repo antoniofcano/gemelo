@@ -134,6 +134,7 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | V4 | Panel de la oficina: dibujar hazas sobre ortofoto y copas (95), bandeja de sugerencias y denuncias con retirada en un clic, pasar una sugerencia a OlivarTrack como propuesta | V3 | media · **opus**; 👤 la oficina | ⬜ |
 | V5 | En el mundo: nombrar un árbol y colgarle una foto o una pintura (solo el titular), verlo los demás, denunciar | V3 | media · **sonnet**; 🔶 | ⬜ |
 | V6 | Icono PNG de la aplicación generado desde el SVG y excepción en el guardián (98) | — | ligera · **sonnet** | ⬜ |
+| I6 | VR: modelo real del mando y manos articuladas (`XRControllerModelFactory`, `XRHandModelFactory`) con los perfiles de `@webxr-input-profiles/assets` servidos desde nuestro origen (hoy se ven dos cubos); módulo `36_mandos.js` | — | media · **opus**; 🔶 VR simulada; 👤 Quest | ⬜ en cola (2026-10-30: equipo saturado) |
 | V1 | VPS: preparar el despliegue (RUNBOOK-VPS al día, SMTP de OVH, token de OlivarTrack, comprobaciones previas) | — | ligera (documentos y guiones) | ✅ (8 preguntas a Antonio en DECISIONS-PENDING) |
 | V2 | VPS: desplegar F1a | A5, A6, V1 (decisión 21) | 👤 confirma cada paso | ⬜ |
 | G1 | Arreglar la facturación de GitHub para que corra el CI | — | 👤 | ⬜ |
