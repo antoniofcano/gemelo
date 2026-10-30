@@ -107,27 +107,27 @@ body { background: #0b0d0a; color: var(--fg); font-family: var(--body); font-siz
 .ndvi-hud small { grid-column: 1 / -1; color: var(--hud-suave); text-align: center; }
 /* los textos de ayuda fijos (decisión 89: se quedan, reubicados y discretos): abajo a la izquierda, pequeños y semitransparentes */
 .ayuda { position: absolute; left: calc(var(--sa-l) + 10px); bottom: calc(var(--sa-b) + 8px); max-width: min(46ch, calc(50% - 110px)); font-size: 11.5px; line-height: 1.35; color: var(--hud-suave); background: rgba(16, 20, 24, .45); padding: 3px 8px; border-radius: 6px; pointer-events: none; }
-.tactil .visor.paseo .ayuda-paseo { display: none; }   /* en táctil el texto del teclado no sirve y su sitio es de la cruceta */
+[data-tactil="si"] .visor.paseo .ayuda-paseo { display: none; }   /* en táctil el texto del teclado no sirve y su sitio es de la cruceta */
 
 /* pulgares (solo táctil y fuera de la vista aérea): cruceta a la izquierda, acciones a la derecha; al revés con «mano zurda» */
 .pad-mov, .pad-acc { position: absolute; bottom: calc(var(--sa-b) + 14px); display: none; gap: 6px; }
 .pad-mov { left: calc(var(--sa-l) + 14px); grid-template-columns: repeat(3, var(--pad)); grid-template-rows: repeat(3, var(--pad)); }
 .pad-acc { right: calc(var(--sa-r) + 14px); grid-template-columns: repeat(2, var(--pad)); grid-auto-rows: var(--pad); align-content: end; }
-.zurda .pad-mov { left: auto; right: calc(var(--sa-r) + 14px); }
-.zurda .pad-acc { right: auto; left: calc(var(--sa-l) + 14px); }
-.tactil .visor.paseo .pad-mov, .tactil .visor.paseo .pad-acc { display: grid; }
+[data-mano="zurda"] .pad-mov { left: auto; right: calc(var(--sa-r) + 14px); }
+[data-mano="zurda"] .pad-acc { right: auto; left: calc(var(--sa-l) + 14px); }
+[data-tactil="si"] .visor.paseo .pad-mov, [data-tactil="si"] .visor.paseo .pad-acc { display: grid; }
 .visor.con-hoja .pad-mov, .visor.con-hoja .pad-acc, .visor.con-lateral .pad-acc { display: none !important; }
 .pad-mov button, .pad-acc button { border-radius: 14px; border: 1px solid var(--hud-borde); background: var(--hud); color: var(--hud-txt); font: inherit; font-size: 18px; cursor: pointer; touch-action: none; padding: 0; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
 .pad-acc button { font-size: 12.5px; }
 .pad-mov button[aria-pressed="true"], .pad-acc button[aria-pressed="true"] { background: var(--olivo); color: var(--sobre-olivo); }
 #pad-up { grid-column: 2; grid-row: 1; } #pad-left { grid-column: 1; grid-row: 2; } #pad-right { grid-column: 3; grid-row: 2; } #pad-down { grid-column: 2; grid-row: 3; }
-.tactil .visor.paseo .ayuda { bottom: calc(var(--sa-b) + 14px + 3 * var(--pad) + 22px); }
-.tactil .visor:not(.paseo) .hud-atrib, .tactil .visor.paseo .hud-atrib { display: none; }   /* en táctil la atribución vive en el menú y en el mapa; el sitio es de los pulgares */
+[data-tactil="si"] .visor.paseo .ayuda { bottom: calc(var(--sa-b) + 14px + 3 * var(--pad) + 22px); }
+[data-tactil="si"] .visor:not(.paseo) .hud-atrib, [data-tactil="si"] .visor.paseo .hud-atrib { display: none; }   /* en táctil la atribución vive en el menú y en el mapa; el sitio es de los pulgares */
 
 /* la ficha contextual (olivo, haza, baliza): bajo la barra en escritorio y bajo el estado en táctil */
 .ficha { position: absolute; z-index: 30; right: calc(var(--sa-r) + 10px); top: calc(var(--sa-t) + 64px); width: min(300px, calc(100% - 20px)); max-height: calc(100% - 140px); overflow: auto; background: var(--hud-fuerte); border: 1px solid var(--hud-borde); border-radius: 12px; padding: 10px 12px; box-shadow: 0 6px 24px rgba(0,0,0,.28); }
 .visor.con-ventana .ficha { right: calc(var(--sa-r) + 400px); }
-.tactil .ficha, .visor.con-hoja .ficha { right: auto; left: calc(var(--sa-l) + 10px); top: calc(var(--sa-t) + 112px); }
+[data-tactil="si"] .ficha, .visor.con-hoja .ficha { right: auto; left: calc(var(--sa-l) + 10px); top: calc(var(--sa-t) + 112px); }
 .ficha h3 { margin: 0 0 4px; padding-right: 36px; font-family: var(--display); font-size: 16px; font-weight: 600; }
 .ficha dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin: 0; font-variant-numeric: tabular-nums; }
 .ficha dt { color: var(--muted); } .ficha dd { margin: 0; text-align: right; }
@@ -159,6 +159,8 @@ kbd { font-family: ui-monospace, Menlo, monospace; font-size: 12px; border: 1px 
 
 /* menú (pausa) y configuración: diálogo modal nativo (atrapa el foco y Esc lo cierra) */
 #menu { padding: 0; border: 1px solid var(--hud-borde); border-radius: 16px; background: #141813; width: min(760px, calc(100vw - 24px)); height: min(580px, calc(100dvh - 24px)); max-height: calc(100dvh - 24px); font-size: 14px; }
+#menuAjustes[data-ajustes="listo"] #ajustesBase { display: none; }   /* 33_ajustes.js pinta los suyos y los mantiene sincronizados con #exag, #corr y #calidad */
+:root[data-brujula="no"] #norte { display: none; }
 #menu::backdrop { background: rgba(0, 0, 0, .55); }
 .menu-rejilla { display: grid; grid-template-columns: 210px 1fr; height: 100%; }
 .menu-nav { border-right: 1px solid var(--hud-borde); padding: 12px; display: flex; flex-direction: column; gap: 4px; overflow: auto; }
@@ -267,7 +269,7 @@ kbd { font-family: ui-monospace, Menlo, monospace; font-size: 12px; border: 1px 
 @media (max-width: 520px) { .mapita { width: 170px !important; height: auto !important; } }
 /* la ficha de una baliza (19_balizas.js) */
 .t-baliza { position: absolute; left: calc(var(--sa-l) + 10px); bottom: calc(var(--sa-b) + 44px); z-index: 30; width: min(310px, calc(100% - 20px)); font-size: 12.5px; background: var(--hud-fuerte); border: 1px solid var(--hud-borde); border-radius: 12px; padding: 9px 12px; box-shadow: 0 6px 22px rgba(0,0,0,.25); pointer-events: none; }
-.tactil .visor.paseo .t-baliza { bottom: auto; top: calc(var(--sa-t) + 112px); }
+[data-tactil="si"] .visor.paseo .t-baliza { bottom: auto; top: calc(var(--sa-t) + 112px); }
 .t-baliza button, .t-baliza a { pointer-events: auto; }   /* la tarjeta no se come los toques del mundo: solo sus botones (la × e «Ir a esta baliza») */
 .t-baliza .cerrar-baliza { position: absolute; top: 2px; right: 2px; min-width: 44px; min-height: 44px; border: 0; background: none; color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; }
 .t-baliza .b-cab { padding-right: 36px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; } .t-baliza strong { font-family: var(--display); font-size: 15px; }

@@ -18,17 +18,19 @@ test("táctil: el ajuste manda y, en automático, la pantalla con dedo", () => {
   assert.strictEqual(P.tactil("auto", true), true);
   assert.strictEqual(P.tactil("auto", false), false);
   assert.strictEqual(P.tactil(undefined, true), true, "sin 33_ajustes.js: automático");
-  assert.strictEqual(P.tactil("siempre", false), true);
-  assert.strictEqual(P.tactil("nunca", true), false);
+  assert.strictEqual(P.tactil("si", false), true);
+  assert.strictEqual(P.tactil("no", true), false);
   assert.strictEqual(P.zurda("zurda"), true);
   assert.strictEqual(P.zurda("diestra"), false);
   assert.strictEqual(P.zurda(undefined), false);
 });
 
-test("31_hud.js lee pointer: coarse y los ajustes «tactil» y «mano» (con respaldo si 33_ajustes.js no está)", () => {
+test("31_hud.js usa Ajustes.tactil() y «controles.mano» de 33_ajustes.js (con respaldo: pointer: coarse, automático y diestra)", () => {
   assert.match(FUENTE, /matchMedia\("\(pointer: coarse\)"\)/);
-  assert.match(FUENTE, /ajuste\("tactil", "auto"\)/);
-  assert.match(FUENTE, /ajuste\("mano", "diestra"\)/);
+  assert.match(FUENTE, /Ajustes\.tactil\(\)/);
+  assert.match(FUENTE, /ajuste\("controles\.tactil", "auto"\)/);
+  assert.match(FUENTE, /ajuste\("controles\.mano", "diestra"\)/);
+  assert.match(FUENTE, /raiz\.setAttribute\("data-tactil", vt\); raiz\.setAttribute\("data-mano", vm\)/, "los mismos atributos que 33_ajustes.js");
   assert.match(FUENTE, /typeof Ajustes !== "undefined"/, "sin ReferenceError si 33_ajustes.js no existe");
   assert.match(FUENTE, /Ajustes\.alCambiar/);
 });
@@ -43,11 +45,11 @@ test("la cruceta (pulgar izquierdo) y las acciones (pulgar derecho), cada una co
 
 test("CSS: solo en táctil y al pasear; izquierda/derecha y al revés con mano zurda; las ventanas las apartan", () => {
   assert.match(css, /\.pad-mov, \.pad-acc \{[^}]*display: none;/, "escondidas por defecto (en el ordenador no salen)");
-  assert.match(css, /\.tactil \.visor\.paseo \.pad-mov, \.tactil \.visor\.paseo \.pad-acc \{ display: grid; \}/);
+  assert.match(css, /\[data-tactil="si"\] \.visor\.paseo \.pad-mov, \[data-tactil="si"\] \.visor\.paseo \.pad-acc \{ display: grid; \}/);
   assert.match(css, /\.pad-mov \{ left: calc\(var\(--sa-l\) \+ 14px\)/);
   assert.match(css, /\.pad-acc \{ right: calc\(var\(--sa-r\) \+ 14px\)/);
-  assert.match(css, /\.zurda \.pad-mov \{ left: auto; right:/);
-  assert.match(css, /\.zurda \.pad-acc \{ right: auto; left:/);
+  assert.match(css, /\[data-mano="zurda"\] \.pad-mov \{ left: auto; right:/);
+  assert.match(css, /\[data-mano="zurda"\] \.pad-acc \{ right: auto; left:/);
   assert.match(css, /\.visor\.con-hoja \.pad-mov, \.visor\.con-hoja \.pad-acc, \.visor\.con-lateral \.pad-acc \{ display: none !important; \}/);
   assert.match(css, /bottom: calc\(var\(--sa-b\) \+ 14px\)/, "por encima de la zona segura de abajo");
 });

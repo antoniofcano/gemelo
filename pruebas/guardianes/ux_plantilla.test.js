@@ -43,7 +43,8 @@ test("la cabecera y el pie de antes viven en el menú (Acerca de la finca y Cré
 test("los ids que usa el motor con $(…) existen en la plantilla o los crea el propio motor", () => {
   const usados = [...new Set([...MOTOR.matchAll(/\$\("([\w-]+)"\)/g)].map(m => m[1]))];
   const creados = new Set([...MOTOR.matchAll(/(?:\.id = |id: |\bid=\\?["'])["']?([\w-]+)/g)].map(m => m[1]));
-  const faltan = usados.filter(i => !IDS.includes(i) && !creados.has(i));
+  const RESPALDO = new Set(["hSel"]);   // 29_vr.js lo busca solo como respaldo: $("hSel") ? "hSel" : "ndviSel"
+  const faltan = usados.filter(i => !IDS.includes(i) && !creados.has(i) && !RESPALDO.has(i));
   assert.deepStrictEqual(faltan, [], "ids que el motor busca y no están");
 });
 

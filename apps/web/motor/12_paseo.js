@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: paseando, persona, teclas, primera, pp, camPos, entraPaseo, salePaseo, actualizaPaseo
 // Consume: 01_datos (D, $), 02_mundo (suelo, copaAlta, copas), 03_escena (lienzo, visor, scene, camera, exag, modo), 06_arboles (tronco),
-//   13_parcelas (fincas, fincaSel, parcelaSel),
+//   08_marcadores (aplica), 09_camara (sensMirar), 13_parcelas (fincas, fincaSel, parcelaSel),
 //   16_vida (enQuad, velPaseo, giroPaseo, ponQuad, vidaPaseo, enDron, ponDron, cicloVista, dronMando, camaraDron, vidaEntra, vidaSale),
 //   24_pantalla (iniciaTransicion, iniciaSalida), 29_vr (ficha)
 // ===============================================================================
@@ -63,7 +63,7 @@
     if (TR.act && TR.t < TR.tCae + 0.25) { av = 0; gi = 0; }   // quieto mientras cae
     if (enDron) { dronMando(av, gi, dt); av = 0; gi = 0; }
     var vel = velPaseo(av, dt);
-    pp.ang += gi * dt * giroPaseo(vel);
+    pp.ang += gi * dt * giroPaseo(vel) * sensMirar().k;   // la sensibilidad de Configuración → Controles también gira al paseante (09_camara.js); el eje vertical no aplica
     var nx = pp.x + Math.sin(pp.ang) * vel * dt, ny = pp.y + Math.cos(pp.ang) * vel * dt;
     // los troncos no se atraviesan: se empuja fuera del círculo de cada tronco
     var RC = enQuad ? 1.05 : 0.55;

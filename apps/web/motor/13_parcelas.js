@@ -1,10 +1,12 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: parcelas, fincas, fincaSel, parcelaSel, claseUsda, elegirParcela, elegirFinca
 // Consume: 01_datos (D, $, fmt, DIST_INI), 02_mundo (suelo, copas, cIn, marc, med), 03_escena (exag, modo, calidad), 08_marcadores (aplicaLuego),
-//   09_camara (objetivo, orb), 14_historia (tabla, nMarc)
+//   09_camara (objetivo, orb), 14_historia (tabla, nMarc), 33_ajustes (Ajustes)
 // ===============================================================================
   // ---------- parcelas: selector, cifras y suelo de cada una
   var parcelas = D.parcelas, fincas = D.fincas || [], fincaSel = -1, parcelaSel = -1, vistaIni = { x: 0, y: 12, z: 0, dist: DIST_INI };
+  // «Superficie en» ha o m² (Configuración → Vista, 33_ajustes.js: Ajustes.superficie); sin 33_ajustes.js, en hectáreas como siempre
+  function sup(ha) { try { if (typeof Ajustes !== "undefined" && Ajustes && Ajustes.superficie) return Ajustes.superficie(ha); } catch (e) {} return fmt(ha, 1) + " ha"; }
   function claseUsda(a, l, c) {
     if (c >= 40 && a <= 45 && l < 40) return "arcilloso"; if (c >= 40 && l >= 40) return "arcillo limoso"; if (c >= 35 && a > 45) return "arcillo arenoso";
     if (c >= 27 && c < 40 && a > 20 && a <= 45) return "franco arcilloso"; if (c >= 27 && c < 40 && a <= 20) return "franco arcillo limoso";
@@ -57,7 +59,7 @@
     Array.prototype.forEach.call(cf.children, function (b) { var f = Number(b.getAttribute("data-f")); b.setAttribute("aria-pressed", String(f === fincaSel)); });
     cp.innerHTML = ""; $("tParcelasFinca").textContent = fincaSel >= 0 ? "Parcelas de " + fincas[fincaSel].nombre : "Elige una finca para ver sus parcelas"; cp.hidden = fincaSel < 0;
     if (fincaSel >= 0) fincas[fincaSel].parcelas.forEach(function (k) {
-      var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.setAttribute("data-k", k); b.setAttribute("aria-pressed", String(k === parcelaSel)); b.textContent = parcelas[k].nombre + " · " + fmt(parcelas[k].ha, 1) + " ha" + (parcelas[k].pasto ? " (pasto)" : ""); b.addEventListener("click", function () { elegirParcela(k); }); cp.appendChild(b);
+      var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.setAttribute("data-k", k); b.setAttribute("aria-pressed", String(k === parcelaSel)); b.textContent = parcelas[k].nombre + " · " + sup(parcelas[k].ha) + (parcelas[k].pasto ? " (pasto)" : ""); b.addEventListener("click", function () { elegirParcela(k); }); cp.appendChild(b);
     });
   }
   (function () {
@@ -70,9 +72,14 @@
       return;
     }
     var cont = $("chips"), chip = function (txt, k) { var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.setAttribute("data-k", k); b.setAttribute("aria-pressed", "false"); b.textContent = txt; b.addEventListener("click", function () { elegirParcela(k); }); cont.appendChild(b); };
-    chip("Toda la finca", -1); parcelas.forEach(function (pr, k) { chip(pr.nombre + " · " + fmt(pr.ha, 1) + " ha", k); });
+    chip("Toda la finca", -1); parcelas.forEach(function (pr, k) { chip(pr.nombre + " · " + sup(pr.ha), k); });
     $("calidad").addEventListener("change", function () { calidad = Number($("calidad").value); if (modo === "gem") aplicaLuego(); });
   })();
   elegirParcela(-1);
+  setTimeout(function () {   // la unidad guardada y, al cambiarla, los textos de las fichas de parcela (33_ajustes.js va después de este módulo)
+    function reescribe() { Array.prototype.forEach.call($("chips").children, function (b) { var k2 = Number(b.getAttribute("data-k")); if (k2 >= 0 && parcelas[k2]) b.textContent = parcelas[k2].nombre + " · " + sup(parcelas[k2].ha) + (fincas.length > 1 && parcelas[k2].pasto ? " (pasto)" : ""); }); }
+    reescribe();
+    try { if (typeof Ajustes !== "undefined" && Ajustes && Ajustes.alCambiar) Ajustes.alCambiar(function (k) { if (!k || k === "vista.unidades") reescribe(); }); } catch (e) {}
+  }, 0);
 
 

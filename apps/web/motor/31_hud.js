@@ -2,7 +2,7 @@
 // Expone: Hud
 // Consume: 01_datos ($), 02_mundo (copas), 03_escena (lienzo, visor, camera, modo), 08_marcadores (capas), 09_camara (orb),
 //   12_paseo (paseando, teclas), 14_historia (FINCA, aviso), 15_tiempo (meta, rumbo, esc), 16_vida (enQuad, quad, ponQuad, enDron, dron, ponDron),
-//   24_pantalla (Menu), 29_vr (VRX, ficha), 32_ventanas (Ventanas)
+//   24_pantalla (Menu), 29_vr (VRX, ficha), 32_ventanas (Ventanas), 33_ajustes (Ajustes)
 // ===============================================================================
   // ---------- el HUD (doc/sistema/UX-FINCA-JUEGO.md §4.3): estado arriba a la izquierda (brújula, cómo te mueves, el tiempo), barra de iconos arriba a la
   // derecha, avisos arriba en el centro, «Pasear» y la atribución abajo en el centro. Es HTML y CSS: no toca triángulos ni llamadas de dibujo.
@@ -22,8 +22,8 @@
       return elems.filter(function (z) { return z.r && z.r.width > 0 && z.r.height > 0; })
         .map(function (z) { return { id: z.id, x: z.r.left - base.left, y: z.r.top - base.top, w: z.r.width, h: z.r.height }; });
     }
-    // controles táctiles (decisión 85): el ajuste «tactil» manda (siempre / nunca); en automático, la pantalla con dedo (pointer: coarse)
-    function tactil(ajuste, coarse) { return ajuste === "siempre" ? true : ajuste === "nunca" ? false : !!coarse; }
+    // controles táctiles (decisión 85): el ajuste «controles.tactil» manda (si / no); en automático, la pantalla con dedo (pointer: coarse)
+    function tactil(ajuste, coarse) { return ajuste === "si" ? true : ajuste === "no" ? false : !!coarse; }
     function zurda(mano) { return mano === "zurda"; }
     // el mapa de teclas (decisión 84, §4.7): 1–6 ventanas, F1 ayuda, F pantalla completa, Inicio o 0 vista aérea, Intro pasear (en vista aérea), Esc como en
     // un juego. Las teclas de letra y número no hacen nada con el foco en un campo (WCAG 2.1.4); Intro sobre un botón es su clic; con Ctrl, Alt o Cmd, nada
@@ -149,18 +149,20 @@
       ponAt(bru, "aria-label", "Brújula: miras al " + ["norte", "nordeste", "este", "sudeste", "sur", "suroeste", "oeste", "noroeste"][Math.round(r / 45) % 8] + ". Toca para mirar al norte");
     }
     // --- pulgares (U5): la cruceta y las acciones solo en pantallas táctiles (o con el ajuste), cruceta a la izquierda y acciones a la derecha;
-    // «mano zurda» (Configuración, 33_ajustes.js) las cambia de lado. Si 33_ajustes.js no está, automático y diestra.
+    // «mano zurda» (Configuración, 33_ajustes.js: controles.tactil y controles.mano) las cambia de lado. Si 33_ajustes.js no está, automático y diestra.
     var mmCoarse = window.matchMedia ? window.matchMedia("(pointer: coarse)") : null;
     function ajuste(k, def) { try { if (typeof Ajustes !== "undefined" && Ajustes && Ajustes.lee) { var v = Ajustes.lee(k); if (v !== undefined && v !== null && v !== "") return v; } } catch (e) {} return def; }
-    function aplicaPulgares() {
-      var raiz = document.documentElement, t = HudPuro.tactil(ajuste("tactil", "auto"), mmCoarse && mmCoarse.matches), z = HudPuro.zurda(ajuste("mano", "diestra"));
-      if (raiz.classList.contains("tactil") === t && raiz.classList.contains("zurda") === z) return;
-      raiz.classList.toggle("tactil", t); raiz.classList.toggle("zurda", z);
+    function aplicaPulgares() {   // los mismos atributos que pone 33_ajustes.js en <html> (data-tactil si/no, data-mano), por si no está
+      var raiz = document.documentElement, hayAj = typeof Ajustes !== "undefined" && Ajustes && Ajustes.tactil;
+      var t = hayAj ? !!Ajustes.tactil() : HudPuro.tactil(ajuste("controles.tactil", "auto"), mmCoarse && mmCoarse.matches), z = HudPuro.zurda(ajuste("controles.mano", "diestra"));
+      var vt = t ? "si" : "no", vm = z ? "zurda" : "diestra";
+      if (raiz.getAttribute("data-tactil") === vt && raiz.getAttribute("data-mano") === vm) return;
+      raiz.setAttribute("data-tactil", vt); raiz.setAttribute("data-mano", vm);
       if (typeof Movibles !== "undefined" && Movibles && Movibles.revisa) setTimeout(function () { Movibles.revisa(); }, 0);   // apareció o se movió la cruceta
     }
     if (mmCoarse) { if (mmCoarse.addEventListener) mmCoarse.addEventListener("change", aplicaPulgares); else if (mmCoarse.addListener) mmCoarse.addListener(aplicaPulgares); }
     setTimeout(function () {   // tras montar todos los módulos: 33_ajustes.js va después de este
-      try { if (typeof Ajustes !== "undefined" && Ajustes && Ajustes.alCambiar) Ajustes.alCambiar(function (k) { if (!k || k === "tactil" || k === "mano") aplicaPulgares(); }); } catch (e) {}
+      try { if (typeof Ajustes !== "undefined" && Ajustes && Ajustes.alCambiar) Ajustes.alCambiar(function (k) { if (!k || k === "controles.tactil" || k === "controles.mano") aplicaPulgares(); }); } catch (e) {}
       aplicaPulgares();
     }, 0);
     aplicaPulgares();
