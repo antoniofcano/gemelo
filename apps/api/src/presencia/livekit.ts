@@ -45,7 +45,29 @@ export function esDelHogar(identidad: string, prefijo: string): boolean {
 }
 
 /** `vrm` (id del catálogo, contratos/avatares.md) solo viaja si el hogar eligió uno; sin él, el muñeco de bloque. */
-export interface Avatar { camisa: number; sombrero: "ninguno" | "paja" | "gorra"; piel: number; vrm?: string }
+export interface Avatar extends Aspecto { camisa: number; sombrero: "ninguno" | "paja" | "gorra"; piel: number; vrm?: string }
+/** El aspecto del muñeco (AV2, decisión 131): campos OPCIONALES del contrato `presencia` v1 (un cliente de antes los ignora). Listas cerradas; nada de género.
+ *  `tono` indexa los 10 tonos de piel y `arriba`/`abajo` los 10 colores de ropa de la paleta del motor (26_presencia.js, Aspecto). */
+export const ASPECTO = {
+  tono: { min: 0, max: 9 }, arriba: { min: 0, max: 9 }, abajo: { min: 0, max: 9 },
+  altura: ["baja", "media", "alta"], complexion: ["delgada", "media", "ancha"], movilidad: ["pie", "baston", "andador", "silla"],
+} as const;
+export interface Aspecto { tono?: number; arriba?: number; abajo?: number; altura?: string; complexion?: string; movilidad?: string }
+/** Deja solo los campos válidos del aspecto (lo que sale de la base se trata como dato, no como orden). */
+export function limpiaAspecto(x: unknown): Aspecto {
+  const o: Aspecto = {};
+  if (!x || typeof x !== "object" || Array.isArray(x)) return o;
+  const v = x as Record<string, unknown>;
+  for (const k of ["tono", "arriba", "abajo"] as const) {
+    const n = v[k];
+    if (typeof n === "number" && Number.isInteger(n) && n >= ASPECTO[k].min && n <= ASPECTO[k].max) o[k] = n;
+  }
+  for (const k of ["altura", "complexion", "movilidad"] as const) {
+    const n = v[k];
+    if (typeof n === "string" && (ASPECTO[k] as readonly string[]).includes(n)) o[k] = n;
+  }
+  return o;
+}
 export const AVATAR_POR_DEFECTO: Avatar = { camisa: 0, sombrero: "paja", piel: 1 };
 export interface Metadatos { alias: string; avatar: Avatar; rol: Rol; dispositivo: Dispositivo }
 

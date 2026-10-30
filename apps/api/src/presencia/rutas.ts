@@ -7,7 +7,7 @@ import { audita } from "../auth/servicio.ts";
 import type { Bd } from "../bd/pool.ts";
 import type { ConfigLiveKit } from "../config.ts";
 import type { Contexto } from "../contexto.ts";
-import { AVATAR_POR_DEFECTO, type Avatar, DISPOSITIVOS, type Dispositivo, Expulsados, firmaToken, ModeradorLiveKit, type ModeradorSala, prefijoHogar, SALA_LIBRE } from "./livekit.ts";
+import { AVATAR_POR_DEFECTO, type Avatar, DISPOSITIVOS, limpiaAspecto, type Dispositivo, Expulsados, firmaToken, ModeradorLiveKit, type ModeradorSala, prefijoHogar, SALA_LIBRE } from "./livekit.ts";
 
 const APAGADA = { error: "presencia_apagada", mensaje: "La visita compartida no está disponible en este servidor." } as const;
 
@@ -43,13 +43,13 @@ export async function rutasPresencia(app: FastifyInstance, ctx: Contexto): Promi
     if (!lk) return rep.code(503).send(APAGADA);
     const id = req.session.hogarId!;
     if (expulsados.esta(id)) return rep.code(403).send({ error: "expulsado", mensaje: "La oficina te ha sacado de la visita compartida. Podrás volver a entrar más tarde." });
-    const r = await bd.query<{ alias: string | null; camisa: number | null; sombrero: Avatar["sombrero"] | null; piel: number | null; vrm: string | null }>(
-      "SELECT g.alias, a.camisa, a.sombrero, a.piel, a.vrm FROM hogares g LEFT JOIN avatares a ON a.hogar_id = g.id WHERE g.id = $1", [id]);
+    const r = await bd.query<{ alias: string | null; camisa: number | null; sombrero: Avatar["sombrero"] | null; piel: number | null; vrm: string | null; aspecto: unknown }>(
+      "SELECT g.alias, a.camisa, a.sombrero, a.piel, a.vrm, a.aspecto FROM hogares g LEFT JOIN avatares a ON a.hogar_id = g.id WHERE g.id = $1", [id]);
     const f = r.rows[0];
     if (!f) return rep.code(401).send({ error: "sin_sesion", mensaje: "Hace falta entrar con tu enlace." });
     // sin alias, un nombre neutro con un trozo del prefijo opaco del hogar (nada del correo ni del id de la base)
     const alias = f.alias ?? "Visitante " + prefijoHogar(lk, id).slice(2, 6);
-    const avatar: Avatar = f.camisa === null || f.sombrero === null || f.piel === null ? AVATAR_POR_DEFECTO : { camisa: f.camisa, sombrero: f.sombrero, piel: f.piel, ...(f.vrm ? { vrm: f.vrm } : {}) };
+    const avatar: Avatar = f.camisa === null || f.sombrero === null || f.piel === null ? AVATAR_POR_DEFECTO : { camisa: f.camisa, sombrero: f.sombrero, piel: f.piel, ...(f.vrm ? { vrm: f.vrm } : {}), ...limpiaAspecto(f.aspecto) };
     return firmaToken(lk, id, req.session.sessionId, { alias, avatar, rol: req.session.rol!, dispositivo: req.body.dispositivo });
   });
 

@@ -107,3 +107,12 @@ test("cada ruta registrada está en contratos/api.openapi.yaml, y cada operació
   assert.deepEqual([...registradas].filter(r => !delContrato.has(r)).sort(), [], "rutas que faltan en el OpenAPI");
   assert.deepEqual([...delContrato].filter(r => !registradas.has(r)).sort(), [], "operaciones del OpenAPI que la api no tiene");
 });
+
+test("avatar (AV2): el aspecto del muñeco solo admite sus listas cerradas (400 antes de la sesión) y, bien formado, pide sesión (401)", async () => {
+  const base = { camisa: 1, sombrero: "paja", piel: 3 };
+  const pon = (extra: object) => app.inject({ method: "PUT", url: "/api/yo/avatar", headers: deLaWeb({}), payload: { ...base, ...extra } });
+  for (const malo of [{ tono: 10 }, { tono: -1 }, { tono: 1.5 }, { arriba: 10 }, { abajo: -1 }, { altura: "gigante" }, { complexion: "obesa" }, { movilidad: "moto" },
+    { sexo: "x" }, { genero: "x" }, { movilidad: null }]) assert.equal((await pon(malo)).statusCode, 400, JSON.stringify(malo));
+  for (const bueno of [{}, { tono: 0 }, { tono: 9, arriba: 9, abajo: 0, altura: "alta", complexion: "ancha", movilidad: "silla" }, { movilidad: "baston" }, { movilidad: "andador" }, { movilidad: "pie", altura: "baja", complexion: "delgada" }])
+    assert.equal((await pon(bueno)).statusCode, 401, JSON.stringify(bueno) + " (sin sesión)");
+});
