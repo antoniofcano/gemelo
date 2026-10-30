@@ -23,6 +23,8 @@ Los componentes del motor ([ADR-0023](../doc/adr/0023-componentes-del-mundo.md),
 | `audio:desbloquea` | — | `29_vr` (al pulsar «Entrar en VR»: el gesto que deja arrancar el audio) | `20_sonido` |
 | `componentes:cambia` | `{ id, activo }` | `02c_componentes` (al montar o liberar un componente) | `15_tiempo` (esconde «Ver la previsión en el mundo» si nadie la atiende) |
 | `depura:lineas` | `{ lineas: [texto] }` | `28_depura` (el contador de `?debug`, cada 0,5 s) | `38_presencia_compartida` (añade su línea si está activa) |
+| `oficina:anuncio` | `{ texto }` (≤ 280, limpio) | `39_oficina_mundo` (OF10: llegó un anuncio de la oficina por la sala) | — (para un sonido o un lector de pantalla; el aviso, la lámina en VR y el chat ya los pone él) |
+| `oficina:sala` | `{ a }` (`general` \| `visita`) | `39_oficina_mundo` (OF10: la oficina invita a pasar a otra sala) | — (la pregunta «Ir» / «Quedarme» ya la hace él) |
 | `juego:ofrece` | `{ id, titulo, descripcion?, ayuda?, vr?, crea }` (`vr: { botones, palanca, ayuda? }` si sabe jugarse en VR, C9b) | `41_cae_la_cosecha` (al montarse y al oír `juego:pide`) | `40_juegos` (el anfitrión: lo pone en la ventana Juegos) |
 | `juego:pide` | — | `40_juegos` (al montarse) | `41_cae_la_cosecha` |
 | `juego:retira` | `{ id }` | `41_cae_la_cosecha` (al liberarse) | `40_juegos` (lo quita y, si estaba abierto, lo cierra) |

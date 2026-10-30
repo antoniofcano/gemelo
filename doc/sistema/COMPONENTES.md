@@ -256,6 +256,20 @@ Igual en lejos y cerca; en el paseo las diferencias son la fauna y el paso (camb
 - **No probado**: en unas Quest (el panel por filas, la fila del tiempo y «Ver previsión» con el rayo) ni en un iPhone. El panel VR por filas solo se ha comprobado con el WebXR simulado.
 
 
+### OF10 · la oficina en el mundo (`oficina-mundo`)
+
+Componente `oficina-mundo` (`39_oficina_mundo.js`, bandera `?oficina=0`; qué hace y por qué: [OFICINA §6](OFICINA.md#6-el-mundo-en-modo-oficina)). **Consume dos componentes** (la red y la presencia, por `n.api`), el primero que lo hace: escucha en la sala «visita» de la red los temas `anuncio`, `sala` y `balizas` (las escuchas son de la sala de la red, no de una Room: siguen valiendo tras cambiar de sala) y usa de la presencia lo que esta gana en su api (`interfaces.json`): `sala()`, `cambiaSala(clave)` (pide el token de la otra sala y se une bajo la misma clave; no avisa de desconexión), `yo()` (`{ alias, rol, oficial }` de tus metadatos) y `mensaje(quien, texto)` (una línea en el chat). Cómo se **ve** la oficina (chaleco, insignia, etiqueta) no es de este componente: es del muñeco (`Aspecto`, `26_presencia.js`) y de la presencia. Registra el tipo **`baliza-oficial`** en Entidades (prioridad 21: sobre las balizas de las parcelas, 20, y bajo las personas, 30), una capa del minimapa y, solo con rol de oficina en pantalla, `Ventanas.registra("oficina")` y `Hud.icono` (◆). Laminas para el anuncio y la invitación en VR. Emite `oficina:anuncio` y `oficina:sala` (nadie los escucha aún: para un sonido o un lector de pantalla). Fase `tarde` (0,5 s): el aviso se va, el panel aparece o se va con el rol, las balizas se repiden cada 5 min y se recolocan si cambia la exageración.
+
+**Lo que cambia fuera.** La presencia: `SalaPose` conoce el rol `oficina` (antes se leía como «hogar»), `leeInfo` da `oficial` y fuerza el alias «Oficina» (y quita cualquier otro que la nombre), `gente()` pone a la oficina primero; `Aspecto` gana `CHALECO`, `INSIGNIA` y `cajas(sombrero, mov, oficial)` (`CAJAS_MAX` 4 → 5). **Arreglo de paso:** en la sala de verdad la reserva de cajas del instanciado del sombrero era de 49 (una por plaza) aunque cada uno puede pedir hasta 4 (sombrero y apoyo): con mucha gente con sombrero y silla o andador se quedaba corta; ahora es `49 × CAJAS_MAX`, como en la simulación (solo se dibujan las que están en uso).
+
+#### Medida (regla 6)
+
+Contado con three 0.186.1 en Node: columna (cilindro abierto de 10 lados) **20 triángulos**, bandera (caja) **12**: **32 por baliza, 640 con las 20**; columnas y banderas son dos `InstancedMesh`: **2 llamadas** tengas 1 o 20, y ninguna sin balizas (el grupo no se crea hasta la primera). La insignia: **1 caja (12 triángulos) por persona de oficina, 0 llamadas**; el chaleco es un color: 0. La lámina del anuncio o de la invitación en VR: 1 llamada, 2 triángulos y una textura de 880 × 288 o 880 × 400 sin mipmaps (≤ 1,4 MB), solo mientras se ve. Presupuesto declarado: 3 llamadas, 650 triángulos, 2 MB. **La medida en la escena** (llamadas y triángulos del grupo con la cámara de arranque, y la caja de más en la simulación) está escrita en `pruebas/guardianes/oficina_mundo_chrome.test.js` y **sin pasar** (banco). Los fps, solo en un aparato real.
+
+#### Nota de comodidad (regla 11)
+
+La de [OFICINA §6](OFICINA.md#6-el-mundo-en-modo-oficina): probado solo en Node; ni Chrome, ni dos aparatos con LiveKit, ni móvil, ni Quest.
+
 ### P7f · la personalización de los árboles en el mundo
 
 Componente `personalizacion` (`42_personalizacion.js`, bandera `?personaliza=0`; qué hace y qué pide a la api: [VIDA.md](VIDA.md#la-pantalla-del-motor-el-componente-personalizacion-p7f)). Sin servidor no crea nada. Lo que añade al núcleo: `Entidades.complementa(tipo, fn)` (un componente completa la ficha común de un tipo ajeno: no hay ficha propia), `Laminas.abre({ en })` (colgada de un sitio del mundo) y `Hazas.vistas()` / `Hazas.enPunto(x, y)` (¿este olivo está en mi haza?). Evento nuevo: `personalizacion:resultado`.

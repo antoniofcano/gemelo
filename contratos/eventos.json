@@ -56,6 +56,18 @@
       "emiten": ["15_tiempo"],
       "escuchan": ["35_fichas_tiempo"]
     },
+    "oficina:anuncio": {
+      "descripcion": "OF10: ha llegado un anuncio de la oficina por la sala (tema «anuncio», mandado por la api sin participante; ya validado y limpio). Para quien quiera reaccionar (un sonido, un lector de pantalla); el aviso, la lámina en VR y la línea del chat ya los pone 39_oficina_mundo.",
+      "datos": { "type": "object", "required": ["texto"], "properties": { "texto": { "type": "string", "maxLength": 280 } } },
+      "emiten": ["39_oficina_mundo"],
+      "escuchan": []
+    },
+    "oficina:sala": {
+      "descripcion": "OF10: la oficina invita a pasar a otra sala del mundo (tema «sala»; a = «general» o «visita»). La pregunta («Ir» / «Quedarme») ya la hace 39_oficina_mundo; nadie cambia de sala sin pulsar.",
+      "datos": { "type": "object", "required": ["a"], "properties": { "a": { "enum": ["general", "visita"] } } },
+      "emiten": ["39_oficina_mundo"],
+      "escuchan": []
+    },
     "personalizacion:resultado": {
       "descripcion": "El resultado de una acción de la ficha de un olivo que no tiene recuadro propio (hoy, «Denunciar» en VR): texto llano para quien lo muestre. En pantalla los resultados salen en el recuadro de la acción y no pasan por aquí.",
       "datos": { "type": "object", "required": ["texto"], "properties": { "texto": { "type": "string" } } },

@@ -2,12 +2,25 @@
 // expulsión con RoomService. Contratos: contratos/livekit-roles.json (permisos), contratos/presencia.md, api.openapi.yaml.
 // La api NO guarda nada de la sala: ni quién entra, ni la pose, ni el chat (decisión 40). Solo la expulsión va a la auditoría.
 import { createHmac } from "node:crypto";
-import { AccessToken, RoomServiceClient, type VideoGrant } from "livekit-server-sdk";
+import { AccessToken, DataPacket_Kind, RoomServiceClient, type VideoGrant } from "livekit-server-sdk";
 import type { Rol } from "../auth/servicio.ts";
 import type { ConfigLiveKit } from "../config.ts";
 
 /** Sala fija de la visita libre de Hituelo (decisiones 39 y 60). Las guiadas (sala por visita) llegan con F3. */
 export const SALA_LIBRE = "hituelo-libre";
+/**
+ * OF10: las salas del mundo por su clave (contratos/livekit-roles.json v4, «salas»): la de siempre («general», la visita libre) y la «visita»,
+ * a la que la oficina puede invitar a la gente (p. ej. durante una visita en grupo). Las dos son fijas; quién puede entrar en «visita» es hoy
+ * cualquiera con sesión (como en la general): restringirla (solo invitados, inscritos en la agenda) es una decisión pendiente de Antonio.
+ */
+export const SALAS = { general: SALA_LIBRE, visita: "hituelo-visita" } as const;
+export type ClaveSala = keyof typeof SALAS;
+export const CLAVES_SALA = Object.keys(SALAS) as ClaveSala[];
+/** OF10 (decisión 107): la oficina se ve siempre, con la etiqueta «Oficina» y sin nombre propio. La api pone este alias en sus metadatos. */
+export const ALIAS_OFICINA = "Oficina";
+export const esRolOficina = (r: Rol): boolean => r === "oficina" || r === "admin";
+/** OF10: los temas de datos que SOLO manda la api (RoomService.sendData, sin participante): el cliente los acepta solo si no traen participante. */
+export const TEMAS_OFICINA = { anuncio: "anuncio", sala: "sala", balizas: "balizas" } as const;
 /** Vida del token: solo vale para ENTRAR; una vez dentro, LiveKit renueva la conexión por su cuenta [NO VERIFICADO en la 1.13.11]. */
 export const TTL_S = 15 * 60;
 export const DISPOSITIVOS = ["escritorio", "movil", "quest"] as const;
@@ -96,20 +109,27 @@ export interface Metadatos { alias: string; avatar: Avatar; rol: Rol; dispositiv
 
 export interface TokenPresencia { url: string; sala: string; identidad: string; token: string; caduca_en: string }
 
-/** Firma el token de entrada a la sala libre. Los metadatos los pone la api; el cliente no puede cambiarlos (canUpdateOwnMetadata: false). */
-export async function firmaToken(lk: ConfigLiveKit, hogarId: number, sesionId: string, m: Metadatos, ahora = Date.now()): Promise<TokenPresencia> {
-  const identidad = identidadOpaca(lk, hogarId, sesionId);
-  const at = new AccessToken(lk.clave, lk.secreto, { identity: identidad, name: m.alias, metadata: JSON.stringify(m), ttl: TTL_S });
-  at.addGrant({ room: SALA_LIBRE, ...PERMISOS[m.rol] });
+/**
+ * Firma el token de entrada a una sala (por omisión la libre). Los metadatos los pone la api; el cliente no puede cambiarlos (canUpdateOwnMetadata: false).
+ * OF10: la oficina (rol oficina o admin) entra con el alias «Oficina» (decisión 107: sin nombre propio); su rol ya va en los metadatos.
+ */
+export async function firmaToken(lk: ConfigLiveKit, hogarId: number, sesionId: string, m: Metadatos, ahora = Date.now(), sala: ClaveSala = "general"): Promise<TokenPresencia> {
+  const identidad = identidadOpaca(lk, hogarId, sesionId), nombre = SALAS[sala];
+  const meta: Metadatos = esRolOficina(m.rol) ? { ...m, alias: ALIAS_OFICINA } : m;
+  const at = new AccessToken(lk.clave, lk.secreto, { identity: identidad, name: meta.alias, metadata: JSON.stringify(meta), ttl: TTL_S });
+  at.addGrant({ room: nombre, ...PERMISOS[m.rol] });
   const token = await at.toJwt();
   // exp lo pone el SDK con su propio reloj: el que se devuelve es una cota (como mucho TTL_S desde ahora)
-  return { url: lk.urlPublica, sala: SALA_LIBRE, identidad, token, caduca_en: new Date(ahora + TTL_S * 1000).toISOString() };
+  return { url: lk.urlPublica, sala: nombre, identidad, token, caduca_en: new Date(ahora + TTL_S * 1000).toISOString() };
 }
 
 /** Lo que la api necesita de la sala para moderar. Se inyecta (las pruebas ponen uno de mentira). */
 export interface ModeradorSala {
   /** saca de la sala a todas las conexiones cuya identidad es de ese hogar (esDelHogar); devuelve cuántas había */
   expulsaHogar(sala: string, prefijo: string): Promise<number>;
+  /** OF10: manda datos a la sala desde el servidor (sin participante: el cliente sabe así que viene de la api), fiable y con su tema; a toda la sala o a
+   *  unas identidades. Una sala sin nadie no es un error: devuelve false (no había a quién). */
+  envia(sala: string, tema: string, datos: Uint8Array, destinos?: string[]): Promise<boolean>;
 }
 
 const esNoEncontrado = (e: unknown) => { const err = e as { status?: number; code?: string }; return err.status === 404 || err.code === "not_found"; };
@@ -127,6 +147,10 @@ export class ModeradorLiveKit implements ModeradorSala {
       try { await this.rs.removeParticipant(sala, identidad); n++; } catch (e) { if (!esNoEncontrado(e)) throw e; }
     }
     return n;
+  }
+  async envia(sala: string, tema: string, datos: Uint8Array, destinos?: string[]): Promise<boolean> {
+    try { await this.rs.sendData(sala, datos, DataPacket_Kind.RELIABLE, { topic: tema, ...(destinos?.length ? { destinationIdentities: destinos } : {}) }); return true; }
+    catch (e) { if (esNoEncontrado(e)) return false; throw e; }   // la sala no existe (nadie dentro) [comportamiento de sendData sin sala: NO VERIFICADO contra LiveKit real]
   }
 }
 
