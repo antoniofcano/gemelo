@@ -23,6 +23,7 @@ El cuello de botella es el **banco** (un solo Chrome con SwiftShader o un Docker
 | Cambio gráfico | `medir` antes/después (`prueba3.js`) y, si procede, subir/bajar `pruebas/presupuesto.json` con razón |
 | Cambio en VR | `vr_mock.js` + nota de comodidad **no probado en casco** |
 | Documento nuevo | su línea en `doc/README.md` (`documentacion.test.js`) |
+| Una regla que debe cumplirse **siempre** (aforo, cobertura de un calendario, «lo que la api produce cumple el esquema», geometría, idempotencia, simetría) | una **propiedad** con `fast-check` (4.10.2, devDependency de la raíz y de `apps/api`), además de 2-3 ejemplos con nombre. Modelo: `apps/api/pruebas/unidad/propiedades.test.ts`. Reglas: semilla fija (`seed`) y `numRuns` acotado (la suite entera, unos segundos); generadores simples (`fc.record`, `fc.uniqueArray`…), nunca un generador de esquemas casero (regla 12); y comparar contra un modelo de referencia o una regla distinta de la del código, no repetir el código. Si falla, fast-check da el **contraejemplo mínimo** y la semilla: se decide si falla el código o la propiedad antes de tocar nada; un fallo real del código sin decidir queda como `test(..., { todo })` con el contraejemplo, nunca se apaga. Para ejemplos concretos (un mensaje, un caso del contrato) sigue valiendo el test de ejemplos |
 
 ## Qué significa este rojo
 | Guardián | Qué vigila | Por qué existe | Cómo se arregla |
