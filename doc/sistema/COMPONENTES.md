@@ -175,6 +175,10 @@ Hecho junto con OF6 ([OFICINA §9.2](OFICINA.md#92-parámetros-de-la-escalera));
 
 Dos componentes que no se nombran (`40_juegos.js`, id `juegos`; `41_cae_la_cosecha.js`, id `cae-la-cosecha`) y se encuentran por el Bus (`juego:ofrece`, `juego:pide`, `juego:retira`); los sonidos, por `sonido:juego` hacia `20_sonido.js`. El núcleo gana **`Pausa`** (`02c`) y una cuarta fase, **`pausa`**: con el mundo en pausa, `cuadro()` solo corre esa fase y el contador de `?debug` (ni cámara, ni módulos, ni Cola, ni render). Todo el detalle (reglas, contrato juego ↔ anfitrión, récord en la api, medida y nota de comodidad): [JUEGOS.md](JUEGOS.md).
 
+### C9b · «Cae la cosecha» en VR ✅
+
+El anfitrión ofrece el juego en el panel VR (`PanelVR.filas("mundo", { id: "juegos" })`, un botón por juego con `vr`) y lo abre como **lámina** (`Laminas.abre`, C8) de 1,1 × 1,4 m: el mundo no se pausa, la lámina pinta con la misma función del juego (`pintaEn`, `firma`, `accion`; en VR `crea` recibe `lienzo` y `mandos` a `null`) y se repinta solo si cambia la firma. El rayo con el gatillo toca las zonas (`alTocar(u, v)` → `JuegosPuro.zonaVR`); la palanca derecha mueve, gira y suelta (`JuegosPuro.palanca`) y B pausa: para eso `29_vr.js` gana un solo punto de extensión, **`VRX.captura`** (`{ palanca(x, y, dt), boton("B"|"palanca") }`, que el anfitrión pone al abrir y quita al cerrar), y mientras está puesto, la palanca derecha y B no giran, teletransportan ni van al mirador. Nuevo en el Bus: el anfitrión escucha también `vr:sale` y emite la fase `mundo` (además de `pausa`). Detalle, controles, presupuesto medido y nota de comodidad: [JUEGOS.md §9](JUEGOS.md#9-el-juego-en-vr-c9b-una-lámina-en-el-mundo).
+
 ### En qué se aparta del diseño de §3 (y por qué)
 
 - **`/api/config` no se pedía en C1-C3** (habría dado un 404 en cada carga con servidor); desde C6 se pide (abajo) y, sin nada publicado, la api responde 200 con `{ v: 1 }`. El bloque de `<script type="application/json" id="config">` de la página se sigue leyendo.

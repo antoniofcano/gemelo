@@ -15,8 +15,8 @@
       "escuchan": ["15_tiempo"]
     },
     "juego:ofrece": {
-      "descripcion": "Un juego casual (componente) se ofrece al anfitrión de juegos: { id, titulo, descripcion?, ayuda?, crea(ctx) → partida } (contrato en doc/sistema/JUEGOS.md). Lo emite al montarse y al oír «juego:pide».",
-      "datos": { "type": "object", "required": ["id", "titulo"], "properties": { "id": { "type": "string" }, "titulo": { "type": "string" }, "descripcion": { "type": "string" }, "ayuda": { "type": "string" }, "version": { "type": "integer" } } },
+      "descripcion": "Un juego casual (componente) se ofrece al anfitrión de juegos: { id, titulo, descripcion?, ayuda?, vr?, crea(ctx) → partida } (contrato en doc/sistema/JUEGOS.md). Lo emite al montarse y al oír «juego:pide».",
+      "datos": { "type": "object", "required": ["id", "titulo"], "properties": { "id": { "type": "string" }, "titulo": { "type": "string" }, "descripcion": { "type": "string" }, "ayuda": { "type": "string" }, "version": { "type": "integer" }, "vr": { "type": "object" } } },
       "emiten": ["41_cae_la_cosecha"],
       "escuchan": ["40_juegos"]
     },
@@ -78,7 +78,7 @@
       "descripcion": "Termina la sesión de realidad virtual (la cámara vuelve a la pantalla). Lo propio de VR se cierra.",
       "datos": {},
       "emiten": ["29_vr"],
-      "escuchan": ["02d_laminas"]
+      "escuchan": ["02d_laminas", "40_juegos"]
     }
   }
 }
