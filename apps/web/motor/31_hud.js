@@ -1,7 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: (nada al resto de módulos)
-// Consume: 01_datos ($), 02_mundo (copas), 03_escena (visor, camera, modo), 09_camara (orb), 12_paseo (paseando), 14_historia (FINCA, aviso),
-//   15_tiempo (rumbo), 16_vida (enQuad, quad, ponQuad, enDron, dron, ponDron), 29_vr (VRX), 32_ventanas (Ventanas)
+// Expone: Hud
+// Consume: 01_datos ($), 02_mundo (copas), 03_escena (lienzo, visor, camera, modo), 08_marcadores (capas), 09_camara (orb),
+//   12_paseo (paseando, teclas), 14_historia (FINCA, aviso), 15_tiempo (meta, rumbo, esc), 16_vida (enQuad, quad, ponQuad, enDron, dron, ponDron),
+//   24_pantalla (Menu), 29_vr (VRX, ficha), 32_ventanas (Ventanas)
 // ===============================================================================
   // ---------- el HUD (doc/sistema/UX-FINCA-JUEGO.md §4.3): estado arriba a la izquierda (brújula, cómo te mueves, el tiempo), barra de iconos arriba a la
   // derecha, avisos arriba en el centro, «Pasear» y la atribución abajo en el centro. Es HTML y CSS: no toca triángulos ni llamadas de dibujo.
@@ -24,7 +25,24 @@
     // controles táctiles (decisión 85): el ajuste «tactil» manda (siempre / nunca); en automático, la pantalla con dedo (pointer: coarse)
     function tactil(ajuste, coarse) { return ajuste === "siempre" ? true : ajuste === "nunca" ? false : !!coarse; }
     function zurda(mano) { return mano === "zurda"; }
-    return { MODOS: MODOS, modoDe: modoDe, rumboCamara: rumboCamara, zonas: zonas, tactil: tactil, zurda: zurda };
+    // el mapa de teclas (decisión 84, §4.7): 1–6 ventanas, F1 ayuda, F pantalla completa, Inicio o 0 vista aérea, Intro pasear (en vista aérea), Esc como en
+    // un juego. Las teclas de letra y número no hacen nada con el foco en un campo (WCAG 2.1.4); Intro sobre un botón es su clic; con Ctrl, Alt o Cmd, nada
+    var VENT = { Digit1: "mapa", Digit2: "capas", Digit3: "tiempo", Digit4: "historia", Digit5: "gente", Digit6: "chat",
+      Numpad1: "mapa", Numpad2: "capas", Numpad3: "tiempo", Numpad4: "historia", Numpad5: "gente", Numpad6: "chat" };
+    function accionTecla(t, est) {
+      if (t.ctrl || t.meta || t.alt) return null;
+      if (t.code === "Escape") return "esc";
+      if (est.campo) return null;
+      if (t.code === "F1") return "v:ayuda";
+      if (VENT[t.code]) return "v:" + VENT[t.code];
+      if (t.code === "KeyF") return "pantalla";
+      if (t.code === "Home" || t.code === "Digit0" || t.code === "Numpad0") return "aereo";
+      if ((t.code === "Enter" || t.code === "NumpadEnter") && !est.paseando && !est.boton) return "pasear";
+      return null;
+    }
+    // Esc cierra lo último abierto, en este orden; si no hay nada, abre el menú
+    function ordenEsc(est) { return est.desplegable ? "desplegable" : est.ficha ? "ficha" : est.baliza ? "baliza" : est.ventana ? "ventana" : est.recorrido ? "recorrido" : "menu"; }
+    return { MODOS: MODOS, modoDe: modoDe, rumboCamara: rumboCamara, zonas: zonas, tactil: tactil, zurda: zurda, accionTecla: accionTecla, ordenEsc: ordenEsc };
   })();
   // [puro:fin]
 
@@ -146,6 +164,33 @@
       aplicaPulgares();
     }, 0);
     aplicaPulgares();
+
+    // --- el teclado (U7)
+    function visible(el) { return !!(el && !el.hidden && el.getClientRects().length); }
+    function esc() {
+      var V = typeof Ventanas !== "undefined" && Ventanas ? Ventanas : null, bal = $("baliza");
+      var q = HudPuro.ordenEsc({ desplegable: (menuModo && !menuModo.hidden) || (hMas && !hMas.hidden), ficha: visible($("ficha")), baliza: visible(bal) && !!bal.querySelector(".cerrar-baliza"),
+        ventana: !!(V && V.abierta()), recorrido: !!(V && V.recorrido()) });
+      if (q === "desplegable") cierraDesplegable();
+      else if (q === "ficha") { $("ficha").hidden = true; if (paseando) lienzo.focus({ preventScroll: true }); }
+      else if (q === "baliza") bal.querySelector(".cerrar-baliza").click();
+      else if (q === "ventana") V.cierra();
+      else if (q === "recorrido") $("hFin").click();
+      else if (typeof Menu !== "undefined" && Menu) Menu.abre();
+    }
+    window.addEventListener("keydown", function (e) {
+      if (VRX.on || (typeof Menu !== "undefined" && Menu && Menu.abierto())) return;   // el menú es un <dialog>: Esc lo cierra él solo
+      var el = e.target, t = el && el.tagName;
+      var a = HudPuro.accionTecla({ code: e.code, ctrl: e.ctrlKey, meta: e.metaKey, alt: e.altKey },
+        { campo: t === "INPUT" || t === "SELECT" || t === "TEXTAREA" || !!(el && el.isContentEditable), paseando: paseando, boton: t === "BUTTON" || t === "A" || t === "SUMMARY" });
+      if (!a || (e.repeat && a !== "esc")) return;
+      e.preventDefault();
+      if (a === "esc") esc();
+      else if (a.indexOf("v:") === 0) alterna(a.slice(2), null);
+      else if (a === "pantalla") $("btnPantalla").click();
+      else if (a === "aereo") { if (paseando) $("btnPaseo").click(); else $("reiniciar").click(); }
+      else if (a === "pasear") $("btnPaseo").click();
+    });
 
     setInterval(refresca, 250); setInterval(refrescaBrujula, 100); refresca(); mudaVR();
     return { aviso: aviso, zonasProhibidas: zonasProhibidas, modo: function () { return modoAct; }, cierraDesplegable: cierraDesplegable, alterna: alterna, ponModo: ponModo };

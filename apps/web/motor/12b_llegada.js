@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Llegada
 // Consume: 01_datos (D, $), 02_mundo (suelo, copas), 03_escena (lienzo, visor, scene, camera, exag), 12_paseo (paseando, camPos, entraPaseo),
-//   16_vida (enDron, ponDron), 29_vr (VRX, vrFundido, vrAparece)
+//   16_vida (enDron, ponDron), 24_pantalla (Pantalla), 29_vr (VRX, vrFundido, vrAparece)
 // Nota: Publica además window.__llegada (pruebas). El trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/llegada.test.js.
 // ===============================================================================
   // ---------- la llegada: el anillo en el suelo adonde quieres ir y el salto hasta él (de pie, fuera de troncos, a la altura del suelo, andando).

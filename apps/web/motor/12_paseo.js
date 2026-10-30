@@ -36,7 +36,7 @@
   window.addEventListener("keydown", function (e) {
     if (!paseando) return; var t = e.target && e.target.tagName;
     if (t === "INPUT" || t === "SELECT" || t === "TEXTAREA") return;
-    if (e.code === "Escape") { salePaseo(); return; }
+    // Esc ya no sale del paseo (decisión 84): cierra lo último abierto o abre el menú (31_hud.js); a la vista aérea se vuelve con Inicio o 0
     if (e.code === "KeyV") { cicloVista(); return; }
     if (e.code === "KeyQ") { ponQuad(!enQuad); return; }
     if (e.code === "KeyE") { ponDron(!enDron); return; }
