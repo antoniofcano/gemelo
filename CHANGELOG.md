@@ -5,6 +5,8 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- El tiempo del mundo, el chip del HUD y la ventana Tiempo leen a Vigía a través del servidor (`GET /api/tiempo`, contrato `tiempo` v1: actual medido y previsión modelada de 72 h, con caché de 10 min y 1 h); sin servidor o si falla, tiempo simulado y dicho. Falta la URL y el token de Vigía: hoy, datos de prueba.
+- «Próximas 72 h» dibuja temperatura, nubosidad, lluvia y viento hora a hora; ya no muestra los umbrales del atomizador (Vigía no autoriza tratamientos). La flecha del viento apunta a de dónde viene, en todos los modos; botón «Ver la previsión en el mundo».
 - api: la vida de las hazas antes del VPS (V3, migración 0004): olivos con id congelado, el titular nombra los olivos de su haza y les cuelga una foto o pintura (re-codificada sin EXIF ni GPS), cualquier hogar lo ve y lo denuncia, y la oficina lo retira en un clic desde su bandeja; tablas de diario, avisos, lotes de aceite y eventos con inscripción (sin pantallas todavía).
 - Previsión del tiempo como lámina en el mundo (`35_fichas_tiempo.js`): en VR, el tiempo en la pestaña Mundo del panel con «Ver previsión»; paseando, la tecla P. «Ahora» medido y próximas horas y días modelado, cielo dibujado y viento orientado en el mundo; 1 llamada y 1 textura que se liberan al cerrar. Con datos simulados hasta que esté `/api/tiempo`. No probado en Quest.
 - Iconos de la aplicación en PNG (192, 512, maskable 512 y apple-touch-icon 180), generados con `sharp` desde `icono.svg` (`npm run iconos` en `apps/web`) y enlazados en el manifiesto y la plantilla; provisionales hasta la marca (decisiones 44 y 98). Sin probar la instalación en iPhone ni Android.
