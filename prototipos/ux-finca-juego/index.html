@@ -1,0 +1,1078 @@
+<!doctype html>
+<html lang="es" data-vista="escritorio">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Maqueta navegable de la interfaz de la página de la finca pensada como un videojuego a pantalla completa. Mundo dibujado y datos ficticios.">
+<title>Finca a pantalla completa · maqueta UX</title>
+<style>
+/* Maqueta de la UX «como videojuego» de /finca/ (doc/sistema/UX-FINCA-JUEGO.md). Un solo fichero, sin recursos externos.
+   El mundo es un dibujo en un lienzo 2D: no es el gemelo ni dice nada de rendimiento. Todos los datos son ficticios.
+   HUD y ventanas en «cristal oscuro» (se leen igual sobre cielo claro o sobre olivar); acento verde olivo de apps/web/plantilla.html. */
+:root {
+  --hud: rgba(16, 20, 24, 0.80); --hud-fuerte: rgba(16, 20, 24, 0.94); --hud-borde: rgba(255, 255, 255, 0.22); --hud-txt: #f2f4ec; --hud-suave: #c3c8b8;
+  --olivo: #9dc16a; --sobre-olivo: #14180f; --lidar: #3ccfc2; --guardado: #f0b13f; --deducido: #c9a6ff; --ilustrativo: #e6e1d3; --modelo: #8fb6ff;
+  --foco: #ffd166; --toque: 44px; --pad: 52px; --r: 12px; --escala-texto: 1;
+  --sa-t: env(safe-area-inset-top, 0px); --sa-b: env(safe-area-inset-bottom, 0px); --sa-l: env(safe-area-inset-left, 0px); --sa-r: env(safe-area-inset-right, 0px);
+  --body: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; --display: Georgia, "Times New Roman", serif;
+  color-scheme: dark;
+}
+:root[data-contraste="alto"] { --hud: rgba(0, 0, 0, 0.96); --hud-fuerte: #000; --hud-borde: #fff; --hud-suave: #fff; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: #0b0d0a; color: var(--hud-txt); font-family: var(--body); font-size: calc(15px * var(--escala-texto)); line-height: 1.4; overflow: hidden; display: flex; flex-direction: column; }
+button, input, select { font: inherit; color: inherit; }
+[hidden] { display: none !important; }
+:focus-visible { outline: 3px solid var(--foco); outline-offset: 2px; }
+.vh { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { :root:not([data-movimiento="normal"]) * { transition: none !important; animation: none !important; } }
+:root[data-movimiento="reducido"] * { transition: none !important; animation: none !important; }
+
+/* ---------- simulador (no es parte del producto) */
+.sim { flex: none; background: repeating-linear-gradient(135deg, #20251c 0 14px, #1a1e17 14px 28px); border-bottom: 2px dashed #4a5440; padding: 6px 12px; display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; font-size: 13px; }
+.sim .sello { background: #f2f4ec; color: #14180f; font-weight: 700; letter-spacing: .08em; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+.sim fieldset { border: 0; margin: 0; padding: 0; display: flex; gap: 4px; align-items: center; }
+.sim legend { float: left; margin-right: 6px; color: var(--hud-suave); }
+.sim button, .sim select { background: #2a3124; border: 1px solid #4a5440; border-radius: 7px; padding: 4px 9px; min-height: 32px; cursor: pointer; }
+.sim button[aria-pressed="true"] { background: var(--olivo); color: var(--sobre-olivo); border-color: var(--olivo); }
+.sim label { display: inline-flex; gap: 5px; align-items: center; cursor: pointer; }
+.sim .nota { color: var(--hud-suave); }
+
+/* ---------- escenario y marco del dispositivo */
+.escenario { flex: 1; min-height: 0; overflow: hidden; position: relative; }
+.pantalla { position: absolute; left: 0; top: 0; overflow: hidden; background: #8fb3c9; container: mundo / size; touch-action: none; -webkit-user-select: none; user-select: none; }
+[data-vista="escritorio"] .pantalla { width: 100%; height: 100%; }
+[data-vista="vertical"] .pantalla { left: 50%; top: 50%; width: 390px; height: 844px; border-radius: 40px; outline: 10px solid #050605; --sa-t: 47px; --sa-b: 34px; --sa-l: 0px; --sa-r: 0px; }
+[data-vista="horizontal"] .pantalla { left: 50%; top: 50%; width: 844px; height: 390px; border-radius: 40px; outline: 10px solid #050605; --sa-t: 0px; --sa-b: 21px; --sa-l: 47px; --sa-r: 47px; }
+.pantalla:fullscreen { left: 0; top: 0; width: 100vw; height: 100vh; border-radius: 0; outline: 0; transform: none !important; }
+#mundo { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; }
+#mundo:active { cursor: grabbing; }
+.marca-sim { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 12px; color: rgba(255,255,255,.55); pointer-events: none; text-align: center; }
+
+/* ---------- piezas comunes del HUD */
+.cristal { background: var(--hud); border: 1px solid var(--hud-borde); border-radius: var(--r); color: var(--hud-txt); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.boton { min-width: var(--toque); min-height: var(--toque); display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--hud-borde); background: var(--hud); cursor: pointer; touch-action: manipulation; }
+.boton:hover { background: var(--hud-fuerte); }
+.boton[aria-pressed="true"], .boton[aria-expanded="true"] { background: var(--olivo); color: var(--sobre-olivo); border-color: var(--olivo); }
+.boton.prim { background: var(--olivo); color: var(--sobre-olivo); border-color: var(--olivo); font-weight: 600; }
+.icono { width: var(--toque); padding: 0; font-size: 19px; position: relative; }
+.insignia { position: absolute; top: -4px; right: -4px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: #e5484d; color: #fff; font-size: 12px; font-weight: 700; line-height: 20px; text-align: center; }
+.pill { display: inline-block; font-size: 11.5px; padding: 1px 8px; border-radius: 99px; border: 1px solid currentColor; white-space: nowrap; }
+.p-medido { color: var(--lidar); } .p-deducido { color: var(--deducido); } .p-ilustrativo { color: var(--ilustrativo); } .p-modelo { color: var(--modelo); } .p-guardado { color: var(--guardado); }
+
+/* arriba a la izquierda: estado (brújula, modo, tiempo) */
+.hud-estado { position: absolute; top: calc(var(--sa-t) + 10px); left: calc(var(--sa-l) + 10px); display: flex; flex-direction: column; gap: 6px; align-items: flex-start; z-index: 20; max-width: calc(100% - 20px); }
+.fila { display: flex; gap: 6px; align-items: center; }
+.brujula { width: var(--toque); height: var(--toque); border-radius: 50%; display: grid; place-items: center; font-family: var(--display); font-weight: 700; padding: 0; }
+.brujula span { display: block; transition: transform .15s; }
+.chip-tiempo { min-height: 34px; font-size: 13px; padding: 0 10px; font-variant-numeric: tabular-nums; }
+.menu-modo { position: absolute; top: 100%; left: 0; margin-top: 6px; padding: 6px; display: grid; gap: 4px; min-width: 230px; z-index: 40; }
+.menu-modo button { justify-content: flex-start; width: 100%; }
+.menu-modo .sub { color: var(--hud-suave); font-size: 12px; margin-left: auto; }
+
+/* arriba a la derecha: barra de iconos (el «inventario» de ventanas) */
+.barra { position: absolute; top: calc(var(--sa-t) + 10px); right: calc(var(--sa-r) + 10px); display: flex; gap: 6px; z-index: 20; }
+.barra .solo-red[hidden] { display: none; }
+.mas-hoja { position: absolute; top: calc(100% + 6px); right: 0; padding: 6px; display: grid; grid-template-columns: repeat(3, auto); gap: 6px; z-index: 40; }
+.mas-hoja .boton { flex-direction: column; min-width: 84px; min-height: 64px; font-size: 12px; padding: 6px; }
+.mas-hoja .boton b { font-size: 20px; font-weight: 400; }
+#bMas { display: none; }
+@container mundo (max-width: 560px) {
+  .barra [data-prio="2"] { display: none; }
+  #bMas { display: inline-flex; }
+}
+@container mundo (max-height: 460px) {
+  .barra [data-prio="2"] { display: none; }
+  #bMas { display: inline-flex; }
+}
+
+/* centro arriba: avisos y telemetría del dron */
+.avisos { position: absolute; top: calc(var(--sa-t) + 64px); left: 50%; transform: translateX(-50%); display: grid; gap: 6px; z-index: 35; width: min(440px, calc(100% - 20px)); pointer-events: none; }
+.aviso { padding: 8px 12px; font-size: 14px; text-align: center; animation: entra .2s ease-out; }
+@keyframes entra { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+.telemetria { position: absolute; top: calc(var(--sa-t) + 10px); left: 50%; transform: translateX(-50%); padding: 6px 12px; font-size: 13px; font-variant-numeric: tabular-nums; z-index: 19; pointer-events: none; white-space: nowrap; }
+@container mundo (max-width: 700px) { .telemetria { top: calc(var(--sa-t) + 110px); } }
+
+/* abajo: acción principal, atribución, leyenda NDVI */
+.abajo-centro { position: absolute; left: 50%; bottom: calc(var(--sa-b) + 12px); transform: translateX(-50%); display: grid; justify-items: center; gap: 6px; z-index: 18; width: max-content; max-width: calc(100% - 20px); }
+.pasear { min-height: 52px; padding: 0 22px; font-size: 17px; border-radius: 26px; }
+.atribucion { font-size: 11px; color: var(--hud-suave); background: rgba(16,20,24,.55); padding: 2px 8px; border-radius: 6px; border: 0; cursor: pointer; min-height: 24px; }
+.leyenda-ndvi { display: grid; grid-template-columns: auto 120px auto; gap: 6px; align-items: center; font-size: 12px; padding: 4px 10px; }
+.leyenda-ndvi i { height: 9px; border-radius: 3px; background: linear-gradient(90deg, #8c4a2f, #d8c75a, #2f7d32); }
+.leyenda-ndvi small { grid-column: 1 / -1; color: var(--hud-suave); text-align: center; }
+
+/* pads táctiles: movimiento a la izquierda, acciones a la derecha (al revés con «mano zurda») */
+.pad-mov, .pad-acc { position: absolute; bottom: calc(var(--sa-b) + 14px); z-index: 18; display: none; gap: 6px; }
+.pad-mov { left: calc(var(--sa-l) + 14px); grid-template-columns: repeat(3, var(--pad)); grid-template-rows: repeat(3, var(--pad)); }
+.pad-acc { right: calc(var(--sa-r) + 14px); grid-template-columns: repeat(2, var(--pad)); grid-auto-rows: var(--pad); align-content: end; }
+:root[data-mano="zurda"] .pad-mov { left: auto; right: calc(var(--sa-r) + 14px); }
+:root[data-mano="zurda"] .pad-acc { right: auto; left: calc(var(--sa-l) + 14px); }
+.pantalla[data-tactil="si"][data-modo]:not([data-modo="orbita"]) .pad-mov, .pantalla[data-tactil="si"][data-modo]:not([data-modo="orbita"]) .pad-acc { display: grid; }
+.pantalla.con-hoja .pad-mov, .pantalla.con-hoja .pad-acc { display: none !important; }
+.pantalla.con-lateral .pad-acc { display: none !important; }
+.pad-mov button, .pad-acc button { border-radius: 14px; border: 1px solid var(--hud-borde); background: var(--hud); font-size: 18px; cursor: pointer; touch-action: none; padding: 0; }
+.pad-acc button { font-size: 12px; }
+.pad-acc button[aria-pressed="true"] { background: var(--olivo); color: var(--sobre-olivo); }
+.pad-mov .arr { grid-column: 2; grid-row: 1; } .pad-mov .izq { grid-column: 1; grid-row: 2; } .pad-mov .der { grid-column: 3; grid-row: 2; } .pad-mov .aba { grid-column: 2; grid-row: 3; }
+.pad-acc .ancho { grid-column: 1 / 3; }
+
+/* ficha contextual (olivo, haza, baliza) */
+.ficha { position: absolute; z-index: 30; width: min(300px, calc(100% - 20px)); padding: 12px 14px; right: calc(var(--sa-r) + 10px); top: calc(var(--sa-t) + 64px); }
+.pantalla.con-ventana .ficha { right: calc(var(--sa-r) + 400px); }
+.pantalla[data-tactil="si"] .ficha, .pantalla.con-hoja .ficha { right: auto; left: calc(var(--sa-l) + 10px); top: calc(var(--sa-t) + 112px); }
+.ficha h3 { font-family: var(--display); margin: 0 40px 6px 0; font-size: 17px; }
+.ficha dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; margin: 0; font-size: 13.5px; }
+.ficha dt { color: var(--hud-suave); } .ficha dd { margin: 0; text-align: right; }
+.cerrar { position: absolute; top: 4px; right: 4px; min-width: var(--toque); min-height: var(--toque); border: 0; background: none; font-size: 22px; cursor: pointer; color: var(--hud-suave); }
+
+/* ventanas emergentes: lateral en escritorio, hoja inferior en móvil vertical, lateral alto en horizontal */
+.ventana { position: absolute; z-index: 25; top: calc(var(--sa-t) + 64px); right: calc(var(--sa-r) + 10px); width: min(380px, calc(100% - 20px)); max-height: calc(100% - var(--sa-t) - var(--sa-b) - 84px); display: flex; flex-direction: column; background: var(--hud-fuerte); }
+.ventana > header { display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 14px; border-bottom: 1px solid var(--hud-borde); }
+.ventana > header h2 { font-family: var(--display); font-size: 18px; margin: 0; flex: 1; }
+.ventana > header .cerrar { position: static; }
+.ventana .cuerpo { overflow: auto; padding: 12px 14px 14px; display: grid; gap: 12px; align-content: start; }
+.ventana .cuerpo h3 { margin: 0; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--hud-suave); }
+.ventana p { margin: 0; }
+.nota { color: var(--hud-suave); font-size: 12.5px; }
+@container mundo (max-width: 560px) {
+  .ventana { top: auto; right: 0; left: 0; bottom: 0; width: 100%; max-height: 72%; border-radius: 18px 18px 0 0; padding-bottom: var(--sa-b); }
+  .ventana > header::before { content: ""; position: absolute; left: 50%; top: 5px; width: 40px; height: 4px; margin-left: -20px; border-radius: 2px; background: var(--hud-borde); }
+  .ventana > header { position: relative; padding-top: 14px; }
+}
+@container mundo (max-height: 460px) and (min-width: 561px) {
+  .ventana { top: 0; bottom: 0; right: 0; max-height: none; width: min(380px, 48%); border-radius: 18px 0 0 18px; padding-right: var(--sa-r); }
+}
+.segmento { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.segmento .boton { padding: 0 6px; font-size: 13.5px; }
+.capa { display: flex; align-items: center; gap: 10px; min-height: var(--toque); cursor: pointer; border-bottom: 1px solid rgba(255,255,255,.07); }
+.capa input { width: 20px; height: 20px; accent-color: var(--olivo); margin: 0; flex: none; }
+.capa .pill { margin-left: auto; }
+.rango { display: grid; gap: 4px; }
+.rango input[type="range"] { width: 100%; accent-color: var(--olivo); min-height: 32px; }
+.rango .t-fila { display: flex; justify-content: space-between; gap: 8px; }
+.pestanas { display: flex; gap: 4px; overflow-x: auto; }
+.pestanas [role="tab"] { min-height: 40px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--hud-borde); background: transparent; cursor: pointer; white-space: nowrap; }
+.pestanas [role="tab"][aria-selected="true"] { background: var(--olivo); color: var(--sobre-olivo); border-color: var(--olivo); }
+.tarjeta { border: 1px solid var(--hud-borde); border-radius: 10px; padding: 10px 12px; display: grid; gap: 6px; }
+.grande { font-family: var(--display); font-size: 34px; line-height: 1.1; }
+.cifras { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; margin: 0; }
+.cifras dt { color: var(--hud-suave); font-size: 12px; } .cifras dd { margin: 0; font-family: var(--display); font-size: 21px; }
+.lista-p { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.lista-p li { display: flex; align-items: center; gap: 8px; min-height: var(--toque); }
+.lista-p li span { flex: 1; }
+.atajos { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.atajos th { text-align: left; font-weight: 600; padding: 5px 8px 5px 0; white-space: nowrap; vertical-align: top; } .atajos td { padding: 5px 0; color: var(--hud-suave); border-top: 1px solid rgba(255,255,255,.08); } .atajos th { border-top: 1px solid rgba(255,255,255,.08); }
+kbd { font-family: ui-monospace, Menlo, monospace; font-size: 12px; border: 1px solid var(--hud-borde); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; }
+
+/* mapa: minimapa flotante y movible, con su barra de arrastre */
+.mapa { position: absolute; z-index: 22; width: 200px; padding: 0; overflow: hidden; }
+.asa { display: flex; align-items: center; gap: 4px; min-height: var(--toque); padding-left: 4px; border-bottom: 1px solid var(--hud-borde); cursor: grab; touch-action: none; }
+.asa:active { cursor: grabbing; }
+.asa .agarre { min-width: 36px; min-height: var(--toque); border: 0; background: none; cursor: grab; font-size: 18px; color: var(--hud-suave); touch-action: none; padding: 0; }
+.asa strong { flex: 1; font-size: 13.5px; }
+.asa .mini { min-width: 40px; min-height: var(--toque); border: 0; background: none; cursor: pointer; font-size: 17px; }
+.mapa canvas { display: block; width: 200px; height: 140px; cursor: pointer; }
+
+/* chat movible y su burbuja */
+.chat { position: absolute; z-index: 24; width: min(300px, calc(100% - 20px)); height: min(300px, 46%); display: flex; flex-direction: column; overflow: hidden; }
+.chat ol { list-style: none; margin: 0; padding: 8px 10px; overflow: auto; flex: 1; display: grid; gap: 4px; align-content: start; font-size: 14px; }
+.chat .sis { font-style: italic; color: var(--hud-suave); }
+.chat form { display: flex; gap: 6px; padding: 8px; border-top: 1px solid var(--hud-borde); }
+.chat input { flex: 1; min-width: 0; min-height: var(--toque); border-radius: 8px; border: 1px solid var(--hud-borde); background: rgba(0,0,0,.35); padding: 0 10px; }
+.chat .pie { font-size: 11.5px; color: var(--hud-suave); padding: 0 10px 6px; }
+.colocar { position: absolute; right: 6px; top: 46px; z-index: 2; padding: 6px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; width: 220px; }
+.colocar .boton { font-size: 13px; padding: 0 6px; }
+.colocar .ancho { grid-column: 1 / -1; }
+.burbuja { position: absolute; z-index: 24; width: 56px; height: 56px; border-radius: 50%; font-size: 24px; display: grid; place-items: center; cursor: grab; touch-action: none; padding: 0; }
+.chat.arrastrando, .burbuja.arrastrando, .mapa.arrastrando { opacity: .85; box-shadow: 0 10px 30px rgba(0,0,0,.45); }
+.zona-prohibida { position: absolute; z-index: 17; border: 2px dashed #e5484d; background: rgba(229,72,77,.12); border-radius: 12px; pointer-events: none; }
+
+/* recorrido de la historia: tarjeta de «misión» */
+.mision { position: absolute; z-index: 26; left: 50%; transform: translateX(-50%); top: calc(var(--sa-t) + 64px); width: min(520px, calc(100% - 20px)); padding: 10px 12px; display: grid; gap: 6px; }
+.mision .nav { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.mision .nav .nota { margin: 0 auto; }
+.mision h3 { margin: 0; font-family: var(--display); font-size: 16px; padding-right: 40px; }
+
+/* depuración (= ?debug) */
+.depura { position: absolute; z-index: 30; left: calc(var(--sa-l) + 8px); bottom: calc(var(--sa-b) + 8px); font: 11px/1.35 ui-monospace, Menlo, monospace; background: rgba(0,0,0,.75); color: #a8f0b0; padding: 4px 7px; border-radius: 5px; white-space: pre; pointer-events: none; }
+.pantalla[data-tactil="si"] .depura { bottom: auto; top: calc(var(--sa-t) + 112px); }
+
+/* menú (pausa) y configuración: diálogo modal */
+dialog.menu { padding: 0; border: 1px solid var(--hud-borde); border-radius: 16px; background: #141813; color: var(--hud-txt); width: min(760px, calc(100vw - 24px)); height: min(560px, calc(100vh - 24px)); }
+dialog.menu::backdrop { background: rgba(0,0,0,.55); }
+.menu-rejilla { display: grid; grid-template-columns: 200px 1fr; height: 100%; }
+.menu-nav { border-right: 1px solid var(--hud-borde); padding: 12px; display: flex; flex-direction: column; gap: 4px; overflow: auto; }
+.menu-nav h2 { font-family: var(--display); margin: 0 0 6px; font-size: 20px; }
+.menu-nav [role="tab"] { text-align: left; min-height: var(--toque); border-radius: 8px; border: 0; background: none; padding: 0 10px; cursor: pointer; }
+.menu-nav [role="tab"][aria-selected="true"] { background: var(--olivo); color: var(--sobre-olivo); }
+.menu-nav .reanudar { margin-bottom: 8px; }
+.menu-cuerpo { overflow: auto; padding: 16px 18px; }
+.menu-cuerpo [role="tabpanel"] { display: grid; gap: 14px; align-content: start; }
+.menu-cuerpo h3 { margin: 0; font-family: var(--display); font-size: 19px; }
+.opcion { display: grid; gap: 6px; }
+.opcion > span, .opcion legend { font-weight: 600; }
+.opcion fieldset { border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.opcion .radio { display: inline-flex; align-items: center; gap: 6px; min-height: var(--toque); padding: 0 12px; border: 1px solid var(--hud-borde); border-radius: 8px; cursor: pointer; }
+.opcion .radio:has(input:checked) { border-color: var(--olivo); background: rgba(157,193,106,.16); }
+.opcion input[type="radio"], .opcion input[type="checkbox"] { accent-color: var(--olivo); width: 18px; height: 18px; }
+.opcion .casilla { display: flex; align-items: center; gap: 10px; min-height: var(--toque); cursor: pointer; }
+@media (max-width: 600px) {
+  .menu-rejilla { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  .menu-nav { flex-direction: row; border-right: 0; border-bottom: 1px solid var(--hud-borde); overflow-x: auto; align-items: center; }
+  .menu-nav h2 { display: none; }
+  .menu-nav [role="tab"], .menu-nav .reanudar { white-space: nowrap; margin: 0; }
+}
+
+/* dibujo del panel VR reorganizado */
+.vr-dibujo { position: absolute; inset: 0; z-index: 60; background: rgba(0,0,0,.6); display: grid; place-items: center; padding: 16px; }
+.vr-panel { width: min(560px, 100%); padding: 16px; display: grid; gap: 10px; background: #1a1f18; border-radius: 18px; border: 2px solid var(--hud-borde); }
+.vr-panel .vr-botones { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.vr-panel .vr-botones .boton { min-height: 64px; font-size: 16px; }
+</style>
+</head>
+<body>
+<header class="sim" aria-label="Simulador de la maqueta (no es parte del producto)">
+  <span class="sello">MAQUETA</span>
+  <span class="nota">El mundo es un dibujo y los datos son ficticios. Diseño: doc/sistema/UX-FINCA-JUEGO.md</span>
+  <fieldset><legend>Ver como</legend>
+    <button type="button" data-vista="escritorio" aria-pressed="true">Escritorio</button>
+    <button type="button" data-vista="vertical" aria-pressed="false">Móvil vertical</button>
+    <button type="button" data-vista="horizontal" aria-pressed="false">Móvil horizontal</button>
+  </fieldset>
+  <label>Navegador <select id="simNav"><option value="chrome">Chrome / Android</option><option value="iphone">Safari / iPhone</option></select></label>
+  <label><input type="checkbox" id="simRed" checked> Mundo en red (chat y gente)</label>
+  <label><input type="checkbox" id="simXr"> WebXR disponible</label>
+  <label><input type="checkbox" id="simZonas"> Ver zonas que el chat no tapa</label>
+  <button type="button" id="simMsg">Llega un mensaje</button>
+  <button type="button" id="simVr">Panel VR (dibujo)</button>
+  <button type="button" id="simBorra">Borrar lo guardado</button>
+</header>
+
+<main class="escenario" id="escenario">
+  <div class="pantalla" id="pantalla" data-modo="orbita" data-tactil="no">
+    <canvas id="mundo" role="img" aria-label="Vista del olivar (dibujo de la maqueta). Arrastra para girar; toca un olivo para ver su ficha." tabindex="0"></canvas>
+    <p class="marca-sim" aria-hidden="true">mundo de mentira · no es el gemelo</p>
+
+    <!-- HUD: estado -->
+    <div class="hud-estado">
+      <div class="fila" style="position:relative">
+        <button type="button" class="cristal brujula" id="bBrujula" aria-label="Brújula. Mira al norte" title="Brújula: toca para mirar al norte"><span id="aguja">N</span></button>
+        <button type="button" class="boton" id="bModo" aria-haspopup="menu" aria-expanded="false" aria-controls="menuModo"><span id="modoIco" aria-hidden="true">🛰️</span> <span id="modoTxt">Vista aérea</span> ▾</button>
+        <div class="cristal menu-modo" id="menuModo" role="menu" aria-label="Cómo te mueves" hidden>
+          <button type="button" class="boton" role="menuitemradio" data-modo="orbita" aria-checked="true">🛰️ Vista aérea <span class="sub">Inicio</span></button>
+          <button type="button" class="boton" role="menuitemradio" data-modo="paseo" aria-checked="false">🚶 A pie <span class="sub">Intro</span></button>
+          <button type="button" class="boton" role="menuitemradio" data-modo="quad" aria-checked="false">🏍️ Quad <span class="sub">Q</span></button>
+          <button type="button" class="boton" role="menuitemradio" data-modo="dron" aria-checked="false">🚁 Dron <span class="sub">E</span></button>
+          <button type="button" class="boton" role="menuitem" data-modo="vr" id="itemVr" hidden>🥽 Entrar en VR</button>
+        </div>
+      </div>
+      <button type="button" class="boton chip-tiempo" id="bChipTiempo" aria-label="El tiempo ahora: soleado, 18 grados, viento del nordeste a 3 metros por segundo. Abre la ventana del tiempo"><span aria-hidden="true">☀️ 18 °C · ↙ NE 3 m/s</span></button>
+    </div>
+
+    <!-- HUD: barra de ventanas -->
+    <nav class="barra" aria-label="Ventanas">
+      <button type="button" class="boton icono" data-abre="mapa" data-prio="1" aria-pressed="true" aria-label="Mapa (M o 1)" title="Mapa · M o 1">🗺️</button>
+      <button type="button" class="boton icono" data-abre="capas" data-prio="1" aria-expanded="false" aria-controls="v-capas" aria-label="Capas y vista (2)" title="Capas y vista · 2">🧭</button>
+      <button type="button" class="boton icono" data-abre="tiempo" data-prio="2" aria-expanded="false" aria-controls="v-tiempo" aria-label="Tiempo y estación (3)" title="Tiempo y estación · 3">🌦️</button>
+      <button type="button" class="boton icono" data-abre="historia" data-prio="2" aria-expanded="false" aria-controls="v-historia" aria-label="Historia de la finca (4)" title="Historia de la finca · 4">📖</button>
+      <button type="button" class="boton icono solo-red" data-abre="gente" data-prio="2" aria-expanded="false" aria-controls="v-gente" aria-label="Gente en la visita (5)" title="Gente · 5">👥<span class="insignia" id="nGente">3</span></button>
+      <button type="button" class="boton icono solo-red" data-abre="chat" data-prio="1" aria-pressed="true" aria-label="Chat (T o 6)" title="Chat · T o 6">💬<span class="insignia" id="nChat" hidden>0</span></button>
+      <button type="button" class="boton icono" data-abre="ayuda" data-prio="2" aria-expanded="false" aria-controls="v-ayuda" aria-label="Ayuda y atajos (F1)" title="Ayuda · F1">❔</button>
+      <button type="button" class="boton icono" id="bPantalla" data-prio="2" aria-pressed="false" aria-label="Pantalla completa (F)" title="Pantalla completa · F">⛶</button>
+      <button type="button" class="boton icono" id="bMas" aria-expanded="false" aria-controls="masHoja" aria-label="Más ventanas">⋯</button>
+      <button type="button" class="boton icono" id="bMenu" aria-haspopup="dialog" aria-label="Menú y configuración (Esc)" title="Menú · Esc">☰</button>
+      <div class="cristal mas-hoja" id="masHoja" role="group" aria-label="Más ventanas" hidden>
+        <button type="button" class="boton" data-abre="tiempo"><b aria-hidden="true">🌦️</b>Tiempo</button>
+        <button type="button" class="boton" data-abre="historia"><b aria-hidden="true">📖</b>Historia</button>
+        <button type="button" class="boton solo-red" data-abre="gente"><b aria-hidden="true">👥</b>Gente</button>
+        <button type="button" class="boton" data-abre="ayuda"><b aria-hidden="true">❔</b>Ayuda</button>
+        <button type="button" class="boton" data-accion="pantalla"><b aria-hidden="true">⛶</b>Pantalla</button>
+      </div>
+    </nav>
+
+    <div class="avisos" id="avisos" role="status" aria-live="polite"></div>
+    <div class="cristal telemetria" id="telemetria" hidden>Dron · 42 m · 3,1 m/s · viento NE 3 m/s</div>
+
+    <!-- HUD: abajo -->
+    <div class="abajo-centro">
+      <div class="cristal leyenda-ndvi" id="leyendaNdvi" hidden><span>menos vigor</span><i></i><span>más vigor</span><small>NDVI · relativo a esta finca y fecha · sin calibrar</small></div>
+      <button type="button" class="boton prim pasear" id="bPasear">🚶 Pasear aquí</button>
+      <button type="button" class="atribucion" id="bAtrib" aria-label="Créditos y fuentes de datos">© IGN-CNIG CC BY 4.0 · Copernicus · ISRIC · ⓘ qué es medido</button>
+    </div>
+
+    <div class="pad-mov" role="group" aria-label="Moverse">
+      <button type="button" class="arr" data-tecla="arr" aria-label="Avanzar">▲</button>
+      <button type="button" class="izq" data-tecla="izq" aria-label="Girar a la izquierda">◀</button>
+      <button type="button" class="der" data-tecla="der" aria-label="Girar a la derecha">▶</button>
+      <button type="button" class="aba" data-tecla="aba" aria-label="Retroceder">▼</button>
+    </div>
+    <div class="pad-acc" role="group" aria-label="Acciones">
+      <button type="button" id="pSube" data-tecla="sube" aria-label="Subir el dron" hidden>⤒</button>
+      <button type="button" id="pBaja" data-tecla="baja" aria-label="Bajar el dron" hidden>⤓</button>
+      <button type="button" id="pAterriza" class="ancho" hidden>Aterrizar aquí</button>
+      <button type="button" id="pCorre" aria-pressed="false">Correr</button>
+      <button type="button" id="pCam">Cámara</button>
+      <button type="button" id="pQuad" aria-pressed="false">Quad</button>
+      <button type="button" id="pDron" aria-pressed="false">Dron</button>
+    </div>
+
+    <!-- ficha contextual -->
+    <section class="cristal ficha" id="ficha" aria-labelledby="fichaT" hidden>
+      <button type="button" class="cerrar" id="fichaX" aria-label="Cerrar la ficha">×</button>
+      <h3 id="fichaT">Olivo</h3>
+      <dl id="fichaD"></dl>
+    </section>
+
+    <!-- minimapa movible -->
+    <section class="cristal mapa" id="mapa" aria-label="Minimapa">
+      <div class="asa" id="mapaAsa">
+        <button type="button" class="agarre" id="mapaAgarre" aria-label="Mover el mapa: arrástralo o usa las flechas" title="Arrastra para mover">⠿</button>
+        <strong>Mapa</strong>
+        <button type="button" class="mini" id="mapaGrande" aria-label="Ampliar el mapa: parcelas y cifras" title="Ampliar">⤢</button>
+        <button type="button" class="mini" id="mapaX" aria-label="Ocultar el mapa (M)" title="Ocultar · M">×</button>
+      </div>
+      <canvas id="miniCv" width="200" height="140" role="img" aria-label="Minimapa: dónde estás en la finca"></canvas>
+    </section>
+
+    <!-- chat movible y su burbuja -->
+    <section class="cristal chat" id="chat" aria-label="Chat de la visita" hidden>
+      <div class="asa" id="chatAsa">
+        <button type="button" class="agarre" id="chatAgarre" aria-label="Mover el chat: arrástralo o usa las flechas" title="Arrastra para mover">⠿</button>
+        <strong>Chat · visita libre</strong>
+        <button type="button" class="mini" id="chatColocar" aria-expanded="false" aria-controls="colocar" aria-label="Llevar el chat a otro sitio" title="Colocar">⋯</button>
+        <button type="button" class="mini" id="chatMin" aria-label="Minimizar el chat" title="Minimizar">–</button>
+      </div>
+      <div class="cristal colocar" id="colocar" role="group" aria-label="Llevar el chat a" hidden>
+        <button type="button" class="boton" data-esquina="ai">↖ Arriba izq.</button>
+        <button type="button" class="boton" data-esquina="ad">↗ Arriba dcha.</button>
+        <button type="button" class="boton" data-esquina="bi">↙ Abajo izq.</button>
+        <button type="button" class="boton" data-esquina="bd">↘ Abajo dcha.</button>
+        <button type="button" class="boton ancho" data-esquina="defecto">Donde estaba al principio</button>
+      </div>
+      <ol id="chatLista" aria-live="polite" aria-label="Mensajes">
+        <li class="sis">Visita libre: sin voz. El chat no se guarda.</li>
+        <li><strong>Mirlo:</strong> ¡Buenas! Estoy junto a la caseta.</li>
+        <li><strong>Encina:</strong> Voy con el dron hacia la parcela C.</li>
+      </ol>
+      <form id="chatForm"><input id="chatIn" maxlength="280" autocomplete="off" placeholder="Escribe a la visita" aria-label="Mensaje para la visita (no se guarda)"><button type="submit" class="boton">Enviar</button></form>
+    </section>
+    <button type="button" class="cristal burbuja" id="burbuja" aria-label="Abrir el chat. Arrastra para mover" hidden>💬<span class="insignia" id="nBurbuja" hidden>0</span></button>
+
+    <!-- recorrido de la historia -->
+    <section class="cristal mision" id="mision" aria-labelledby="misionT" hidden>
+      <button type="button" class="cerrar" id="misionX" aria-label="Salir del recorrido">×</button>
+      <h3 id="misionT"></h3>
+      <p id="misionTxt" class="nota" style="margin:0"></p>
+      <div class="nav"><button type="button" class="boton" id="misionAnt">◀ Anterior</button><span class="nota" id="misionN"></span><button type="button" class="boton prim" id="misionSig">Siguiente ▶</button></div>
+    </section>
+
+    <!-- ventanas -->
+    <section class="ventana cristal" id="v-capas" role="dialog" aria-modal="false" aria-labelledby="v-capas-t" hidden>
+      <header><h2 id="v-capas-t" tabindex="-1">Capas y vista</h2><button type="button" class="cerrar" data-cierra aria-label="Cerrar">×</button></header>
+      <div class="cuerpo">
+        <h3>Cómo se dibuja</h3>
+        <div class="segmento" role="group" aria-label="Modo de vista">
+          <button type="button" class="boton" data-vistam="nube" aria-pressed="false">Nube LiDAR</button>
+          <button type="button" class="boton" data-vistam="gem" aria-pressed="true">Gemelo</button>
+          <button type="button" class="boton" data-vistam="orto" aria-pressed="false">Ortofoto</button>
+        </div>
+        <p class="nota" id="notaVista">Copas medidas por el LiDAR; troncos y ramas, ilustrativos.</p>
+        <h3>Datos</h3>
+        <div>
+          <label class="capa"><input type="checkbox" data-capa="linde" checked> Linde <span class="pill p-medido">medido</span></label>
+          <label class="capa"><input type="checkbox" data-capa="copas" checked> Copas del LiDAR <span class="pill p-medido">medido</span></label>
+          <label class="capa"><input type="checkbox" data-capa="guardados" checked> Guardados en OlivarTrack <span class="pill p-guardado">guardado</span></label>
+          <label class="capa"><input type="checkbox" data-capa="desfase"> Desfase entre ambos <span class="pill p-medido">medido</span></label>
+          <label class="capa"><input type="checkbox" data-capa="ndvi"> Vigor (NDVI Sentinel-2) <span class="pill p-deducido">deducido</span></label>
+          <label class="capa"><input type="checkbox" data-capa="tinte"> Copas coloreadas por NDVI <span class="pill p-deducido">deducido</span></label>
+        </div>
+        <div class="rango" id="ndviFecha" hidden>
+          <div class="t-fila"><label for="ndviSel">Fecha de la imagen</label><strong id="ndviSelV">12/09</strong></div>
+          <input type="range" id="ndviSel" min="0" max="11" value="11">
+          <p class="nota">Cada cuadro de 10 × 10 m cubre varios árboles. El color es relativo a esta finca y a esta fecha. Sin calibrar con campo.</p>
+        </div>
+        <h3>Ambiente</h3>
+        <div>
+          <label class="capa"><input type="checkbox" data-capa="paisaje" checked> Naves, tendido, arroyo y otros árboles <span class="pill p-deducido">deducido</span></label>
+          <label class="capa"><input type="checkbox" data-capa="hierba" checked> Hierba y piedras <span class="pill p-ilustrativo">ilustrativo</span></label>
+          <label class="capa"><input type="checkbox" data-capa="fauna" checked> Pájaros, conejos y perros <span class="pill p-ilustrativo">ilustrativo</span></label>
+          <label class="capa"><input type="checkbox" data-capa="sinarboles"> Ocultar los árboles</label>
+        </div>
+        <p class="nota">Relieve exagerado, corrección de la ortofoto y calidad: en <button type="button" class="atribucion" data-menu="vista">Configuración → Vista</button>.</p>
+      </div>
+    </section>
+
+    <section class="ventana cristal" id="v-tiempo" role="dialog" aria-modal="false" aria-labelledby="v-tiempo-t" hidden>
+      <header><h2 id="v-tiempo-t" tabindex="-1">Tiempo y estación</h2><button type="button" class="cerrar" data-cierra aria-label="Cerrar">×</button></header>
+      <div class="cuerpo">
+        <div class="pestanas" role="tablist" aria-label="Tiempo">
+          <button type="button" role="tab" id="tt-a" aria-controls="tp-a" aria-selected="true">Ahora</button>
+          <button type="button" role="tab" id="tt-p" aria-controls="tp-p" aria-selected="false" tabindex="-1">Próximas 72 h</button>
+          <button type="button" role="tab" id="tt-o" aria-controls="tp-o" aria-selected="false" tabindex="-1">El olivo</button>
+        </div>
+        <div role="tabpanel" id="tp-a" aria-labelledby="tt-a" class="tarjeta">
+          <p class="nota">Lo que publica Vigía (ficticio): estación a 4 km, hace 20 min.</p>
+          <div class="grande">18 °C</div>
+          <p>Soleado · viento del nordeste a 3 m/s · humedad 54 %</p>
+          <div class="rango"><div class="t-fila"><label for="tMom">Momento que ves</label><strong id="tMomV">Ahora</strong></div><input type="range" id="tMom" min="0" max="71" value="0"></div>
+          <div class="fila"><button type="button" class="boton" id="tAhora" aria-pressed="true">Ahora</button><button type="button" class="boton" id="tPlay" aria-pressed="false">▶ Reproducir</button></div>
+        </div>
+        <div role="tabpanel" id="tp-p" aria-labelledby="tt-p" class="tarjeta" hidden>
+          <svg viewBox="0 0 300 80" role="img" aria-label="Temperatura de las próximas 72 horas (ficticia)" style="width:100%"><polyline fill="none" stroke="#f0b13f" stroke-width="2" points="0,50 25,40 50,30 75,35 100,55 125,60 150,45 175,30 200,28 225,40 250,58 275,52 300,40"/><g fill="#8fb6ff" opacity=".7"><rect x="120" y="66" width="8" height="14"/><rect x="132" y="70" width="8" height="10"/></g></svg>
+          <p class="nota">Previsión de una rejilla de ~5 km <span class="pill p-modelo">modelo</span></p>
+        </div>
+        <div role="tabpanel" id="tp-o" aria-labelledby="tt-o" class="tarjeta" hidden>
+          <div class="rango"><div class="t-fila"><label for="tEst">Fecha del campo</label><strong id="tEstV">12/09 (la más reciente)</strong></div><input type="range" id="tEst" min="0" max="41" value="41"></div>
+          <p>Envero: aceituna verde, empieza a cambiar <span class="pill p-deducido">estimado</span></p>
+          <p class="nota">Una sola fecha para la hierba, la estación del olivo y la capa NDVI (hoy son dos deslizadores).</p>
+        </div>
+        <details><summary class="nota" style="min-height:var(--toque);display:flex;align-items:center;cursor:pointer">Probar un efecto (no es el tiempo real)</summary>
+          <div class="segmento" role="group" aria-label="Efecto de ejemplo"><button type="button" class="boton" data-efecto="lluvia">Lluvia</button><button type="button" class="boton" data-efecto="niebla">Niebla</button><button type="button" class="boton" data-efecto="helada">Helada</button></div>
+        </details>
+        <p class="nota">Lo que se dibuja es una interpretación: nubes y viento van más deprisa que los reales para que se vean <span class="pill p-ilustrativo">ilustrativo</span>.</p>
+      </div>
+    </section>
+
+    <section class="ventana cristal" id="v-historia" role="dialog" aria-modal="false" aria-labelledby="v-historia-t" hidden>
+      <header><h2 id="v-historia-t" tabindex="-1">La historia de la finca</h2><button type="button" class="cerrar" data-cierra aria-label="Cerrar">×</button></header>
+      <div class="cuerpo">
+        <p>Cinco escenas (ficticias) que cruzan el gemelo con lo que la explotación sabe de estas parcelas. La ventana se cierra y el recorrido sigue en una tarjeta pequeña arriba: el mundo queda a la vista.</p>
+        <button type="button" class="boton prim" id="hIni">Empezar el recorrido</button>
+        <p class="nota">Avanza con los botones de la tarjeta o con <kbd>←</kbd> <kbd>→</kbd>.</p>
+      </div>
+    </section>
+
+    <section class="ventana cristal" id="v-gente" role="dialog" aria-modal="false" aria-labelledby="v-gente-t" hidden>
+      <header><h2 id="v-gente-t" tabindex="-1">Gente (3)</h2><button type="button" class="cerrar" data-cierra aria-label="Cerrar">×</button></header>
+      <div class="cuerpo">
+        <ul class="lista-p">
+          <li><span><strong>Tú · Alcaudón</strong><br><small class="nota">en el olivar</small></span></li>
+          <li><span>Mirlo<br><small class="nota">a pie · 24 m</small></span><button type="button" class="boton" data-ircon="Mirlo">Ir con</button><button type="button" class="boton" aria-pressed="false" data-bloquea>Bloquear</button></li>
+          <li><span>Encina<br><small class="nota">con el dron · 180 m</small></span><button type="button" class="boton" data-ircon="Encina">Ir con</button><button type="button" class="boton" aria-pressed="false" data-bloquea>Bloquear</button></li>
+        </ul>
+        <p class="nota">Bloquear solo te afecta a ti; nadie se entera. Visita libre: sin voz.</p>
+      </div>
+    </section>
+
+    <section class="ventana cristal" id="v-mapa" role="dialog" aria-modal="false" aria-labelledby="v-mapa-t" hidden>
+      <header><h2 id="v-mapa-t" tabindex="-1">Mapa y parcelas</h2><button type="button" class="cerrar" data-cierra aria-label="Cerrar">×</button></header>
+      <div class="cuerpo">
+        <canvas id="mapaCv" width="340" height="220" role="img" aria-label="Mapa de la finca de ejemplo con sus cinco parcelas" style="width:100%;height:auto;border-radius:8px"></canvas>
+        <ul class="lista-p" id="listaParcelas"></ul>
+        <h3 id="medT">Lo medido · toda la finca</h3>
+        <dl class="cifras"><div><dt>Copas LiDAR <span class="pill p-medido">medido</span></dt><dd id="kC">1.204</dd></div><div><dt>Altura mediana</dt><dd id="kA">3,4 m</dd></div><div><dt>Guardados <span class="pill p-guardado">OlivarTrack</span></dt><dd id="kG">1.188</dd></div><div><dt>Superficie</dt><dd id="kS">6,8 ha</dd></div></dl>
+        <p class="nota">Suelo: franco arcilloso a 0–30 cm <span class="pill p-modelo">modelo SoilGrids 250 m</span> · no es una analítica.</p>
+        <button type="button" class="boton" id="vistaInicial">Ver toda la finca desde arriba</button>
+      </div>
+    </section>
+
+    <section class="ventana cristal" id="v-ayuda" role="dialog" aria-modal="false" aria-labelledby="v-ayuda-t" hidden>
+      <header><h2 id="v-ayuda-t" tabindex="-1">Ayuda</h2><button type="button" class="cerrar" data-cierra aria-label="Cerrar">×</button></header>
+      <div class="cuerpo">
+        <h3>Lo que ves</h3>
+        <p><span class="pill p-medido">medido</span> copas (LiDAR 2024) y relieve · <span class="pill p-deducido">deducido</span> tendido, postes, cauces, vigor · <span class="pill p-ilustrativo">ilustrativo</span> troncos, ramas, hierba y animales · <span class="pill p-modelo">modelo</span> suelo y previsión.</p>
+        <h3>Teclado</h3>
+        <table class="atajos">
+          <tr><th><kbd>W A S D</kbd> / flechas</th><td>andar y girar (en vista aérea, desplazar)</td></tr>
+          <tr><th><kbd>Mayús</kbd></th><td>correr</td></tr>
+          <tr><th><kbd>Intro</kbd> · <kbd>Inicio</kbd></th><td>pasear aquí · volver a la vista aérea</td></tr>
+          <tr><th><kbd>Q</kbd> · <kbd>E</kbd> · <kbd>V</kbd></th><td>quad · dron · primera o tercera persona</td></tr>
+          <tr><th><kbd>Espacio</kbd> / <kbd>C</kbd> · <kbd>L</kbd></th><td>dron: subir / bajar · aterrizar</td></tr>
+          <tr><th><kbd>1</kbd>…<kbd>6</kbd></th><td>mapa, capas, tiempo, historia, gente, chat</td></tr>
+          <tr><th><kbd>M</kbd> · <kbd>T</kbd> · <kbd>H</kbd></th><td>mapa · chat · ficha de la haza donde estás</td></tr>
+          <tr><th><kbd>F</kbd> · <kbd>F1</kbd></th><td>pantalla completa · esta ayuda</td></tr>
+          <tr><th><kbd>Esc</kbd></th><td>cierra lo último abierto; si no hay nada, abre el menú</td></tr>
+        </table>
+        <h3>Pantalla táctil</h3>
+        <p>Cruceta abajo a la izquierda (pulgar izquierdo), acciones abajo a la derecha. Arrastra en el mundo para mirar. «Mano zurda» los cambia de lado (Configuración → Controles).</p>
+        <h3>Mando de juego (propuesta, sin hacer)</h3>
+        <p class="nota">Palanca izq.: andar · palanca der.: mirar · A: acción o pasear · B: cerrar · X: correr · Y: mapa · LB/RB: ventana anterior/siguiente · Menú: menú.</p>
+        <button type="button" class="boton" id="bTutorial">Volver a ver los consejos de inicio</button>
+      </div>
+    </section>
+
+    <div class="depura" id="depura" hidden></div>
+    <div id="zonas" aria-hidden="true"></div>
+
+    <div class="vr-dibujo" id="vrDibujo" role="dialog" aria-modal="true" aria-labelledby="vrT" hidden>
+      <div class="vr-panel">
+        <h2 id="vrT" style="margin:0;font-family:var(--display)">Panel VR (botón Y) · dibujo de la propuesta</h2>
+        <p class="fila" aria-label="Pestañas del panel"><span class="boton" aria-pressed="true">Mundo</span><span class="boton">Ir a</span><span class="boton">Comodidad</span></p>
+        <div class="vr-botones"><span class="boton">Nube LiDAR</span><span class="boton" aria-pressed="true">Gemelo</span><span class="boton">Ortofoto</span><span class="boton">Hora −</span><span class="boton">12:30</span><span class="boton">Hora +</span><span class="boton">Fecha −</span><span class="boton">12/09</span><span class="boton">Fecha +</span></div>
+        <p class="nota">«Ir a»: parcelas y gente («Ir con»). «Comodidad»: viñeta, giro, sonido. Abajo, siempre: <strong>Salir de VR</strong>. «Medir 60 s» solo con ?debug. Botones de 64 px en una lámina de 1 m (≈ 6 cm); sin probar en unas Quest.</p>
+        <button type="button" class="boton prim" id="vrX">Cerrar el dibujo</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- menú (pausa) y configuración -->
+<dialog class="menu" id="menu" aria-labelledby="menuT">
+  <div class="menu-rejilla">
+    <div class="menu-nav" role="tablist" aria-orientation="vertical" aria-label="Menú">
+      <h2 id="menuT">Menú</h2>
+      <button type="button" class="boton prim reanudar" id="bReanudar">▶ Volver a la finca</button>
+      <button type="button" role="tab" id="mt-graficos" aria-controls="mp-graficos" aria-selected="true">Gráficos</button>
+      <button type="button" role="tab" id="mt-vista" aria-controls="mp-vista" aria-selected="false" tabindex="-1">Vista</button>
+      <button type="button" role="tab" id="mt-sonido" aria-controls="mp-sonido" aria-selected="false" tabindex="-1">Sonido</button>
+      <button type="button" role="tab" id="mt-controles" aria-controls="mp-controles" aria-selected="false" tabindex="-1">Controles</button>
+      <button type="button" role="tab" id="mt-vr" aria-controls="mp-vr" aria-selected="false" tabindex="-1">Comodidad VR</button>
+      <button type="button" role="tab" id="mt-acc" aria-controls="mp-acc" aria-selected="false" tabindex="-1">Accesibilidad</button>
+      <button type="button" role="tab" id="mt-avanzado" aria-controls="mp-avanzado" aria-selected="false" tabindex="-1">Avanzado</button>
+      <button type="button" role="tab" id="mt-creditos" aria-controls="mp-creditos" aria-selected="false" tabindex="-1">Créditos y fuentes</button>
+      <button type="button" role="tab" id="mt-finca" aria-controls="mp-finca" aria-selected="false" tabindex="-1">Acerca de la finca</button>
+    </div>
+    <div class="menu-cuerpo">
+      <div role="tabpanel" id="mp-graficos" aria-labelledby="mt-graficos">
+        <h3>Gráficos</h3>
+        <div class="opcion"><fieldset><legend>Calidad</legend>
+          <label class="radio"><input type="radio" name="calidad" value="auto"> Automática (recomendada)</label>
+          <label class="radio"><input type="radio" name="calidad" value="0"> Baja</label>
+          <label class="radio"><input type="radio" name="calidad" value="1"> Media</label>
+          <label class="radio"><input type="radio" name="calidad" value="2"> Alta</label></fieldset>
+          <p class="nota">Automática baja sola si el fotograma se alarga (como el adaptador de VR). Hoy es el selector «Calidad del follaje».</p></div>
+        <label class="opcion casilla"><input type="checkbox" data-cfg="ahorro"> Ahorro de batería (30 fps)</label>
+      </div>
+      <div role="tabpanel" id="mp-vista" aria-labelledby="mt-vista" hidden>
+        <h3>Vista</h3>
+        <div class="opcion rango"><div class="t-fila"><label for="cExag">Relieve exagerado</label><strong id="cExagV">1×</strong></div><input type="range" id="cExag" min="1" max="3" step="0.25" data-cfg="exag"></div>
+        <div class="opcion rango"><div class="t-fila"><label for="cCorr">Corrección de la ortofoto</label><strong id="cCorrV">1×</strong></div><input type="range" id="cCorr" min="0" max="1.5" step="0.25" data-cfg="corr"><p class="nota">Ajuste medido en la finca (las copas se ven desplazadas al este según su altura); no es una ortorrectificación.</p></div>
+        <label class="opcion casilla"><input type="checkbox" data-cfg="brujula"> Mostrar la brújula</label>
+        <div class="opcion"><fieldset><legend>Superficie en</legend>
+          <label class="radio"><input type="radio" name="unidades" value="ha"> hectáreas</label>
+          <label class="radio"><input type="radio" name="unidades" value="m2"> metros cuadrados</label></fieldset></div>
+      </div>
+      <div role="tabpanel" id="mp-sonido" aria-labelledby="mt-sonido" hidden>
+        <h3>Sonido</h3>
+        <label class="opcion casilla"><input type="checkbox" data-cfg="sonido"> Sonido ambiente (pájaros, pasos, viento)</label>
+        <div class="opcion rango"><div class="t-fila"><label for="cVol">Volumen</label><strong id="cVolV">80 %</strong></div><input type="range" id="cVol" min="0" max="100" step="5" data-cfg="volumen"></div>
+        <p class="nota">Hoy hay dos interruptores (🔊 en el visor y la casilla «Sonido ambiente» en Capas): quedan en uno.</p>
+      </div>
+      <div role="tabpanel" id="mp-controles" aria-labelledby="mt-controles" hidden>
+        <h3>Controles</h3>
+        <div class="opcion"><fieldset><legend>Controles táctiles</legend>
+          <label class="radio"><input type="radio" name="tactil" value="auto"> Automático</label>
+          <label class="radio"><input type="radio" name="tactil" value="si"> Siempre</label>
+          <label class="radio"><input type="radio" name="tactil" value="no"> Nunca</label></fieldset>
+          <p class="nota">Automático: solo con pantalla táctil (<code>pointer: coarse</code>). Hoy la cruceta sale también en el ordenador.</p></div>
+        <div class="opcion"><fieldset><legend>Mano</legend>
+          <label class="radio"><input type="radio" name="mano" value="diestra"> Diestra (cruceta a la izquierda)</label>
+          <label class="radio"><input type="radio" name="mano" value="zurda"> Zurda (cruceta a la derecha)</label></fieldset></div>
+        <div class="opcion rango"><div class="t-fila"><label for="cSens">Sensibilidad al mirar</label><strong id="cSensV">1×</strong></div><input type="range" id="cSens" min="0.4" max="2" step="0.2" data-cfg="sens"></div>
+        <label class="opcion casilla"><input type="checkbox" data-cfg="invertir"> Invertir el eje vertical (no se simula en la maqueta)</label>
+        <button type="button" class="boton" data-abre-desde-menu="ayuda">Ver todos los atajos</button>
+      </div>
+      <div role="tabpanel" id="mp-vr" aria-labelledby="mt-vr" hidden>
+        <h3>Comodidad VR</h3>
+        <p class="nota">Se aplica en las gafas. Nada de esto está probado en unas Quest.</p>
+        <div class="opcion"><fieldset><legend>Giro</legend>
+          <label class="radio"><input type="radio" name="giro" value="30"> A saltos de 30°</label>
+          <label class="radio"><input type="radio" name="giro" value="45"> A saltos de 45°</label>
+          <label class="radio"><input type="radio" name="giro" value="suave"> Suave</label></fieldset></div>
+        <div class="opcion"><fieldset><legend>Viñeta</legend>
+          <label class="radio"><input type="radio" name="vineta" value="suave"> Suave</label>
+          <label class="radio"><input type="radio" name="vineta" value="fuerte"> Fuerte</label>
+          <label class="radio"><input type="radio" name="vineta" value="no"> Apagada</label></fieldset></div>
+        <label class="opcion casilla"><input type="checkbox" data-cfg="vuelo"> Permitir vuelo (A) y mirador (B)</label>
+        <div class="opcion"><fieldset><legend>Postura</legend>
+          <label class="radio"><input type="radio" name="postura" value="pie"> De pie</label>
+          <label class="radio"><input type="radio" name="postura" value="sentado"> Sentado</label></fieldset></div>
+      </div>
+      <div role="tabpanel" id="mp-acc" aria-labelledby="mt-acc" hidden>
+        <h3>Accesibilidad</h3>
+        <div class="opcion rango"><div class="t-fila"><label for="cTexto">Tamaño del texto</label><strong id="cTextoV">100 %</strong></div><input type="range" id="cTexto" min="100" max="200" step="25" data-cfg="texto"></div>
+        <label class="opcion casilla"><input type="checkbox" data-cfg="contraste"> Alto contraste en el HUD</label>
+        <div class="opcion"><fieldset><legend>Movimiento</legend>
+          <label class="radio"><input type="radio" name="movimiento" value="sistema"> Como el sistema</label>
+          <label class="radio"><input type="radio" name="movimiento" value="reducido"> Reducido</label>
+          <label class="radio"><input type="radio" name="movimiento" value="normal"> Normal</label></fieldset>
+          <p class="nota">Reducido: sin la bajada volando al pasear (corte con fundido), sin animaciones del HUD.</p></div>
+      </div>
+      <div role="tabpanel" id="mp-avanzado" aria-labelledby="mt-avanzado" hidden>
+        <h3>Avanzado</h3>
+        <label class="opcion casilla"><input type="checkbox" data-cfg="rendimiento"> Contador de rendimiento (lo mismo que <code>?debug</code>)</label>
+        <button type="button" class="boton" id="bMedir">Medir 60 s</button>
+        <p class="nota">El medidor solo aparece con el contador encendido. Los fps solo valen en un aparato real.</p>
+        <button type="button" class="boton" id="bRecoloca">Devolver el chat y el mapa a su sitio</button>
+        <button type="button" class="boton" id="bReinicia">Restablecer toda la configuración</button>
+      </div>
+      <div role="tabpanel" id="mp-creditos" aria-labelledby="mt-creditos" hidden>
+        <h3>Créditos y fuentes</h3>
+        <p>LiDAR, MDT y ortofoto PNOA © Instituto Geográfico Nacional (CNIG), CC BY 4.0 · imágenes Sentinel-2 del programa Copernicus de la UE · suelos: SoilGrids, ISRIC, CC BY 4.0.</p>
+        <p><span class="pill p-medido">medido</span> copas y relieve · <span class="pill p-deducido">deducido</span> tendido, postes, cauces, árboles no olivo, vigor · <span class="pill p-ilustrativo">ilustrativo</span> troncos, ramas, hierba, animales.</p>
+      </div>
+      <div role="tabpanel" id="mp-finca" aria-labelledby="mt-finca" hidden>
+        <h3>Finca de ejemplo, en 3D</h3>
+        <p>Aquí pasan el titular y el párrafo de la cabecera de hoy y la nota del pie: qué es el gemelo, de dónde sale cada cosa y lo que no es («un modelo de trabajo, no una medición topográfica»).</p>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<noscript><p style="padding:16px">La maqueta necesita JavaScript.</p></noscript>
+
+<script>
+"use strict";
+(function () {
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+  var raiz = document.documentElement, P = $("#pantalla"), esc = $("#escenario");
+  var PREF = "ux-finca-juego.";
+  function lee(k) { try { var v = localStorage.getItem(PREF + k); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
+  function guarda(k, v) { try { localStorage.setItem(PREF + k, JSON.stringify(v)); } catch (e) {} }
+
+  var CFG0 = { calidad: "auto", ahorro: false, exag: 1, corr: 1, brujula: true, unidades: "ha", sonido: true, volumen: 80, tactil: "auto", mano: "diestra", sens: 1, invertir: false, giro: "30", vineta: "suave", vuelo: false, postura: "pie", texto: 100, contraste: false, movimiento: "sistema", rendimiento: false };
+  var cfg = Object.assign({}, CFG0, lee("cfg") || {});
+  var est = { vista: "escritorio", nav: "chrome", modo: "orbita", red: true, xr: false, ventana: null, abridor: null, mapa: true, chat: "abierto", noLeidos: 0, hist: -1, escala: 1, correr: false, tercera: false };
+
+  // ---------------------------------------------------------------- avisos
+  function aviso(txt, ms) {
+    var a = document.createElement("div"); a.className = "cristal aviso"; a.textContent = txt; $("#avisos").appendChild(a);
+    while ($("#avisos").children.length > 3) $("#avisos").removeChild($("#avisos").firstChild);
+    setTimeout(function () { if (a.parentNode) a.parentNode.removeChild(a); }, ms || 4000);
+  }
+
+  // ---------------------------------------------------------------- el mundo de mentira (lienzo 2D en perspectiva)
+  var cv = $("#mundo"), cx = cv.getContext("2d"), cam = { x: 0, z: 70, yaw: 0, alt: 0 }, olivos = [], visibles = [];
+  var PARC = [{ n: "A", x0: -100, x1: -10, z0: -100, z1: -10, c: "#c9b27e" }, { n: "B", x0: 10, x1: 100, z0: -100, z1: -10, c: "#bfa874" }, { n: "C", x0: -100, x1: -10, z0: 10, z1: 100, c: "#c4ad79" }, { n: "D", x0: 10, x1: 100, z0: 10, z1: 60, c: "#b9a26e" }, { n: "E", x0: 10, x1: 100, z0: 70, z1: 100, c: "#c2ab78" }];
+  (function () { var s = 11; function r() { s = (s * 16807) % 2147483647; return s / 2147483647; }
+    PARC.forEach(function (p, k) { for (var x = p.x0 + 4; x < p.x1; x += 8) for (var z = p.z0 + 4; z < p.z1; z += 8) olivos.push({ x: x + (r() - .5) * 1.5, z: z + (r() - .5) * 1.5, h: 2.6 + r() * 1.8, rc: 1.8 + r() * .9, v: r(), k: k }); });
+  })();
+  var capas = { linde: true, copas: true, guardados: true, desfase: false, ndvi: false, tinte: false, paisaje: true, hierba: true, fauna: true, sinarboles: false }, vistaM = "gem";
+  function alturaCam() { return est.modo === "orbita" ? 70 : est.modo === "dron" ? 40 + cam.alt : est.modo === "quad" ? 2.1 : (est.tercera ? 3 : 1.7); }
+  function dibuja() {
+    var dpr = Math.min(window.devicePixelRatio || 1, 2), W = P.clientWidth, H = P.clientHeight;
+    if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+    cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    var aire = est.modo === "orbita" || est.modo === "dron", hz = H * (aire ? 0.16 : 0.42), f = H * 0.95, cy = alturaCam();
+    var g = cx.createLinearGradient(0, 0, 0, hz); g.addColorStop(0, "#5f8fb4"); g.addColorStop(1, "#cfe0e6"); cx.fillStyle = g; cx.fillRect(0, 0, W, hz + 1);
+    var g2 = cx.createLinearGradient(0, hz, 0, H); g2.addColorStop(0, vistaM === "orto" ? "#8a7a5a" : "#b8a77c"); g2.addColorStop(1, vistaM === "orto" ? "#6d5f43" : "#9c8a5c"); cx.fillStyle = g2; cx.fillRect(0, hz, W, H - hz);
+    var s = Math.sin(cam.yaw), c = Math.cos(cam.yaw);
+    function pr(x, z, y) { var dx = x - cam.x, dz = z - cam.z, fz = dx * s - dz * c, rx = dx * c + dz * s; if (fz < 0.5) return null; return { x: W / 2 + rx / fz * f, y: hz + (cy - y) / fz * f, fz: fz }; }
+    if (capas.linde) {   // linde: un cuadrado alrededor de la finca, muestreado para cortar lo de detrás
+      cx.strokeStyle = "rgba(64,240,255,.9)"; cx.lineWidth = 2; var L = [[-104, -104], [104, -104], [104, 104], [-104, 104], [-104, -104]];
+      for (var i = 0; i < 4; i++) { cx.beginPath(); var dentro = false; for (var t = 0; t <= 40; t++) { var x = L[i][0] + (L[i + 1][0] - L[i][0]) * t / 40, z = L[i][1] + (L[i + 1][1] - L[i][1]) * t / 40, p = pr(x, z, 0); if (!p) { dentro = false; continue; } if (dentro) cx.lineTo(p.x, p.y); else cx.moveTo(p.x, p.y); dentro = true; } cx.stroke(); }
+    }
+    visibles = [];
+    if (!capas.sinarboles) {
+      var l = [];
+      olivos.forEach(function (o) { var b = pr(o.x, o.z, 0); if (!b || b.fz > 260 || b.x < -80 || b.x > W + 80) return; l.push({ o: o, b: b }); });
+      l.sort(function (a, b) { return b.b.fz - a.b.fz; });
+      l.forEach(function (e) {
+        var o = e.o, b = e.b, k = f / b.fz, rc = o.rc * k, top = b.y - o.h * k, niebla = Math.min(.55, b.fz / 480);
+        if (vistaM === "nube") { cx.fillStyle = "rgba(60,207,194," + (0.9 - niebla) + ")"; for (var j = 0; j < 6; j++) cx.fillRect(b.x + Math.cos(j * 1.1 + o.v * 6) * rc * .7, top + Math.sin(j * 1.7) * rc * .4, Math.max(1, k * .25), Math.max(1, k * .25)); }
+        else {
+          cx.fillStyle = "rgba(70,50,30," + (1 - niebla) + ")"; cx.fillRect(b.x - Math.max(1, k * .12), top + rc * .3, Math.max(2, k * .24), b.y - top - rc * .3);
+          var col = capas.tinte || capas.ndvi ? (o.v < .33 ? "140,74,47" : o.v < .66 ? "200,190,90" : "47,125,50") : vistaM === "orto" ? "45,60,30" : "77,107,47";
+          cx.fillStyle = "rgba(" + col + "," + (1 - niebla) + ")"; cx.beginPath(); cx.ellipse(b.x, top + rc * .35, rc, rc * (aire ? .8 : .62), 0, 0, 6.283); cx.fill();
+        }
+        if (capas.guardados && aire && b.fz < 160) { cx.fillStyle = "#f0b13f"; cx.fillRect(b.x + rc * .3 - 1.5, b.y - 1.5, 3, 3); }
+        visibles.push({ o: o, x: b.x, y: top + rc * .35, r: Math.max(rc, 8) });
+      });
+    }
+    if (est.modo !== "orbita" && est.tercera && est.modo === "paseo") { cx.fillStyle = "#e9d8b4"; cx.fillRect(W / 2 - 6, H * .62, 12, 30); cx.beginPath(); cx.arc(W / 2, H * .62 - 6, 7, 0, 6.283); cx.fill(); }
+    $("#aguja").style.transform = "rotate(" + (-cam.yaw) + "rad)";
+    dibujaMini($("#miniCv"), 200, 140, true); if (est.ventana === "mapa") dibujaMini($("#mapaCv"), 340, 220, false);
+  }
+  function dibujaMini(c, w, h, cerca) {
+    var g = c.getContext("2d"), sx = w / 220, sz = h / 220;
+    g.fillStyle = "#3b4a2a"; g.fillRect(0, 0, w, h);
+    PARC.forEach(function (p) { g.fillStyle = p.c; g.fillRect((p.x0 + 110) * sx, (p.z0 + 110) * sz, (p.x1 - p.x0) * sx, (p.z1 - p.z0) * sz); g.fillStyle = "#14180f"; g.font = "600 12px system-ui"; g.fillText(p.n, (p.x0 + 114) * sx, (p.z0 + 122) * sz); });
+    g.strokeStyle = "#40f0ff"; g.lineWidth = 1.5; g.strokeRect(6 * sx, 6 * sz, 208 * sx, 208 * sz);
+    var px = (cam.x + 110) * sx, pz = (cam.z + 110) * sz;
+    g.save(); g.translate(px, pz); g.rotate(cam.yaw); g.fillStyle = "#fff"; g.beginPath(); g.moveTo(0, -8); g.lineTo(5, 6); g.lineTo(-5, 6); g.closePath(); g.fill(); g.restore();
+    if (est.red) { g.fillStyle = "#c9a6ff"; [[30, 40], [-60, -20]].forEach(function (q) { g.beginPath(); g.arc((q[0] + 110) * sx, (q[1] + 110) * sz, 4, 0, 6.283); g.fill(); }); }
+  }
+
+  // movimiento: teclas y cruceta
+  var teclas = {}, bucle = 0, tAnt = 0;
+  var MAPA_T = { ArrowUp: "arr", KeyW: "arr", ArrowDown: "aba", KeyS: "aba", ArrowLeft: "izq", KeyA: "izq", ArrowRight: "der", KeyD: "der", Space: "sube", KeyC: "baja" };
+  function arranca() { if (!bucle) { tAnt = performance.now(); bucle = requestAnimationFrame(paso); } }
+  function paso(t) {
+    var dt = Math.min(0.1, (t - tAnt) / 1000); tAnt = t; bucle = 0;
+    var algo = Object.keys(teclas).some(function (k) { return teclas[k]; }); if (!algo) return;
+    var v = est.modo === "orbita" ? 40 : est.modo === "dron" ? 15 : est.modo === "quad" ? 10 : (est.correr || teclas.run ? 4.3 : 1.7);
+    var giro = est.modo === "orbita" ? 0 : 1.6, avance = (teclas.arr ? 1 : 0) - (teclas.aba ? 1 : 0), lado = est.modo === "orbita" ? (teclas.der ? 1 : 0) - (teclas.izq ? 1 : 0) : 0;
+    if (est.modo !== "orbita") cam.yaw += ((teclas.der ? 1 : 0) - (teclas.izq ? 1 : 0)) * giro * dt;
+    var s = Math.sin(cam.yaw), c = Math.cos(cam.yaw);
+    cam.x += (s * avance + c * lado) * v * dt; cam.z += (-c * avance + s * lado) * v * dt;
+    cam.x = Math.max(-104, Math.min(104, cam.x)); cam.z = Math.max(-104, Math.min(140, cam.z));
+    if (est.modo === "dron") cam.alt = Math.max(-30, Math.min(80, cam.alt + ((teclas.sube ? 1 : 0) - (teclas.baja ? 1 : 0)) * 6 * dt));
+    if (est.modo === "dron") $("#telemetria").textContent = "Dron · " + Math.round(40 + cam.alt) + " m · " + (avance ? "15" : "0") + " m/s · viento NE 3 m/s";
+    dibuja(); bucle = requestAnimationFrame(paso);
+  }
+  function enCampo(e) { var el = e.target, t = el && el.tagName; return !(t === "INPUT" || t === "SELECT" || t === "TEXTAREA" || (el && el.isContentEditable) || (el && el.getAttribute && /^(tab|menuitem|menuitemradio)$/.test(el.getAttribute("role") || ""))); }
+  window.addEventListener("keyup", function (e) { var k = MAPA_T[e.code]; if (k) teclas[k] = false; if (e.code === "ShiftLeft" || e.code === "ShiftRight") teclas.run = false; });
+  window.addEventListener("blur", function () { teclas = {}; });
+  $$(".pad-mov button, #pSube, #pBaja").forEach(function (b) {
+    var k = b.getAttribute("data-tecla");
+    b.addEventListener("pointerdown", function (e) { e.preventDefault(); teclas[k] = true; arranca(); try { b.setPointerCapture(e.pointerId); } catch (x) {} });
+    ["pointerup", "pointercancel", "lostpointercapture"].forEach(function (ev) { b.addEventListener(ev, function () { teclas[k] = false; }); });
+  });
+
+  // mirar arrastrando y tocar un olivo
+  var arr = null;
+  cv.addEventListener("pointerdown", function (e) { arr = { id: e.pointerId, x: e.clientX, y: e.clientY, yaw: cam.yaw, mov: 0 }; try { cv.setPointerCapture(e.pointerId); } catch (x) {} cerrarPopovers(); });
+  cv.addEventListener("pointermove", function (e) { if (!arr || e.pointerId !== arr.id) return; var dx = (e.clientX - arr.x) / est.escala; arr.mov = Math.max(arr.mov, Math.hypot(e.clientX - arr.x, e.clientY - arr.y)); cam.yaw = arr.yaw - dx * 0.005 * cfg.sens; dibuja(); });
+  cv.addEventListener("pointerup", function (e) {
+    if (!arr || e.pointerId !== arr.id) return; var a = arr; arr = null; if (a.mov >= 6) return;
+    var r = P.getBoundingClientRect(), x = (e.clientX - r.left) / est.escala, y = (e.clientY - r.top) / est.escala, mejor = null, dm = 1e9;
+    visibles.forEach(function (v) { var d = Math.hypot(v.x - x, v.y - y); if (d < v.r && d < dm) { dm = d; mejor = v; } });
+    if (mejor) fichaOlivo(mejor.o); else if (est.modo === "dron") aviso("Anillo de llegada marcado: «Aterrizar aquí» o Intro para bajar.");
+  });
+  cv.addEventListener("pointercancel", function () { arr = null; });
+
+  // ---------------------------------------------------------------- ficha contextual (con su procedencia)
+  function fichaOlivo(o) {
+    $("#fichaT").textContent = "Olivo " + (olivos.indexOf(o) + 1) + " · parcela " + PARC[o.k].n;
+    var d = $("#fichaD"); d.textContent = "";
+    [["Altura de copa", o.h.toFixed(1).replace(".", ",") + " m", "medido", "LiDAR 2024"], ["Diámetro de copa", (o.rc * 2).toFixed(1).replace(".", ",") + " m", "medido", "LiDAR 2024"], ["Vigor", o.v < .33 ? "bajo" : o.v < .66 ? "medio" : "alto", "deducido", "NDVI relativo, sin calibrar"], ["Troncos y ramas", "2 o 3 pies", "ilustrativo", "forma de ejemplo"]].forEach(function (f) {
+      var dt = document.createElement("dt"), dd = document.createElement("dd"), p = document.createElement("span"), sm = document.createElement("small");
+      dt.textContent = f[0]; dd.textContent = f[1] + " "; p.className = "pill p-" + f[2]; p.textContent = f[2]; dd.appendChild(p);
+      sm.textContent = f[3]; sm.style.display = "block"; sm.className = "nota"; dd.appendChild(sm); d.appendChild(dt); d.appendChild(dd);
+    });
+    $("#ficha").hidden = false;
+  }
+  $("#fichaX").addEventListener("click", function () { $("#ficha").hidden = true; });
+
+  // ---------------------------------------------------------------- modos (vista aérea, a pie, quad, dron, VR)
+  var MODOS = { orbita: ["🛰️", "Vista aérea"], paseo: ["🚶", "A pie"], quad: ["🏍️", "Quad"], dron: ["🚁", "Dron"] };
+  function ponModo(m) {
+    if (m === "vr") { aviso(est.xr ? "Entrando en VR… (simulado: en la maqueta no hay gafas)" : "Este navegador no ofrece realidad virtual (WebXR)."); return; }
+    est.modo = m; P.setAttribute("data-modo", m); $("#modoIco").textContent = MODOS[m][0]; $("#modoTxt").textContent = MODOS[m][1];
+    $$("#menuModo [data-modo]").forEach(function (b) { if (b.getAttribute("role") === "menuitemradio") b.setAttribute("aria-checked", String(b.getAttribute("data-modo") === m)); });
+    $("#bPasear").hidden = m !== "orbita"; $("#telemetria").hidden = m !== "dron";
+    $("#pQuad").setAttribute("aria-pressed", String(m === "quad")); $("#pDron").setAttribute("aria-pressed", String(m === "dron"));
+    $("#pSube").hidden = $("#pBaja").hidden = $("#pAterriza").hidden = m !== "dron"; $("#pCorre").hidden = m !== "paseo";
+    cam.alt = 0;
+    $("#bAtrib").hidden = m !== "orbita" && P.getAttribute("data-tactil") === "si";
+    dibuja(); setTimeout(revisaFlotantes, 0);
+  }
+  $("#bPasear").addEventListener("click", function () { ponModo("paseo"); if (!reducido()) aviso("Bajando al olivar…", 1500); });
+  $("#bModo").addEventListener("click", function () { var ab = $("#menuModo").hidden; cerrarPopovers(); $("#menuModo").hidden = !ab; $("#bModo").setAttribute("aria-expanded", String(ab)); if (ab) $("#menuModo [aria-checked='true']").focus(); });
+  $$("#menuModo [data-modo]").forEach(function (b) { b.addEventListener("click", function () { ponModo(b.getAttribute("data-modo")); cerrarPopovers(); $("#bModo").focus(); }); });
+  $("#menuModo").addEventListener("keydown", function (e) { var l = $$("#menuModo button:not([hidden])"), i = l.indexOf(document.activeElement); if (e.key === "ArrowDown") { l[(i + 1) % l.length].focus(); e.preventDefault(); } if (e.key === "ArrowUp") { l[(i - 1 + l.length) % l.length].focus(); e.preventDefault(); } });
+  $("#pQuad").addEventListener("click", function () { ponModo(est.modo === "quad" ? "paseo" : "quad"); });
+  $("#pDron").addEventListener("click", function () { ponModo(est.modo === "dron" ? "paseo" : "dron"); });
+  $("#pAterriza").addEventListener("click", function () { ponModo("paseo"); aviso("Fundido y de pie en el anillo."); });
+  $("#pCorre").addEventListener("click", function () { est.correr = !est.correr; this.setAttribute("aria-pressed", String(est.correr)); });
+  $("#pCam").addEventListener("click", function () { est.tercera = !est.tercera; dibuja(); aviso(est.tercera ? "Tercera persona" : "Primera persona", 1500); });
+  $("#bBrujula").addEventListener("click", function () { cam.yaw = 0; dibuja(); aviso("Mirando al norte", 1500); });
+  function reducido() { return cfg.movimiento === "reducido" || (cfg.movimiento === "sistema" && window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches); }
+
+  // ---------------------------------------------------------------- ventanas emergentes (una grande a la vez)
+  function abreVentana(id, desde) {
+    if (id === "mapa") { ponMapa(!est.mapa); return; }
+    if (id === "chat") { if (!est.red) return; ponChat(est.chat === "abierto" ? "minimo" : "abierto"); return; }
+    if (est.ventana === id) { cierraVentana(); return; }
+    if (est.ventana) cierraVentana(true);
+    var v = $("#v-" + id); if (!v) return;
+    est.ventana = id; est.abridor = desde || document.activeElement; v.hidden = false;
+    $$('[data-abre="' + id + '"][aria-expanded]').forEach(function (b) { b.setAttribute("aria-expanded", "true"); });
+    marcaHoja(); var h = v.querySelector("h2"); if (h) h.focus({ preventScroll: true });
+    if (id === "mapa") dibuja();
+    setTimeout(revisaFlotantes, 0);
+  }
+  function cierraVentana(sinFoco) {
+    if (!est.ventana) return; var v = $("#v-" + est.ventana); v.hidden = true;
+    $$('[data-abre="' + est.ventana + '"][aria-expanded]').forEach(function (b) { b.setAttribute("aria-expanded", "false"); });
+    est.ventana = null; marcaHoja();
+    if (!sinFoco && est.abridor && est.abridor.focus && document.contains(est.abridor) && est.abridor.offsetParent !== null) est.abridor.focus({ preventScroll: true }); else if (!sinFoco) cv.focus({ preventScroll: true });
+    setTimeout(revisaFlotantes, 0);
+  }
+  function marcaHoja() {   // en móvil vertical la ventana es una hoja que tapa la cruceta: se esconde; en horizontal tapa solo las acciones
+    var w = P.clientWidth, h = P.clientHeight;
+    P.classList.toggle("con-ventana", !!est.ventana); P.classList.toggle("con-hoja", !!est.ventana && w <= 560);
+    P.classList.toggle("con-lateral", !!est.ventana && h <= 460 && w > 560);
+  }
+  $$("[data-abre]").forEach(function (b) { b.addEventListener("click", function () { cerrarPopovers(); abreVentana(b.getAttribute("data-abre"), b.closest("#masHoja") ? $("#bMas") : b); }); });
+  $$("[data-cierra]").forEach(function (b) { b.addEventListener("click", function () { cierraVentana(); }); });
+  $("#bChipTiempo").addEventListener("click", function () { abreVentana("tiempo", this); });
+  $("#bMas").addEventListener("click", function () { var ab = $("#masHoja").hidden; cerrarPopovers(); $("#masHoja").hidden = !ab; this.setAttribute("aria-expanded", String(ab)); if (ab) $("#masHoja button").focus(); });
+  $("#masHoja [data-accion='pantalla']").addEventListener("click", function () { cerrarPopovers(); pantallaCompleta(); });
+  function cerrarPopovers() {
+    $("#menuModo").hidden = true; $("#bModo").setAttribute("aria-expanded", "false");
+    $("#masHoja").hidden = true; $("#bMas").setAttribute("aria-expanded", "false");
+    $("#colocar").hidden = true; $("#chatColocar").setAttribute("aria-expanded", "false");
+  }
+  function hayPopover() { return !$("#menuModo").hidden || !$("#masHoja").hidden || !$("#colocar").hidden; }
+
+  // pestañas (patrón ARIA: flechas, Inicio y Fin)
+  function pestanas(lista, vertical) {
+    var tabs = $$('[role="tab"]', lista);
+    function elige(t, foco) { tabs.forEach(function (x) { var s = x === t; x.setAttribute("aria-selected", String(s)); x.tabIndex = s ? 0 : -1; var p = document.getElementById(x.getAttribute("aria-controls")); if (p) p.hidden = !s; }); if (foco) t.focus(); }
+    tabs.forEach(function (t) {
+      t.addEventListener("click", function () { elige(t); });
+      t.addEventListener("keydown", function (e) {
+        var i = tabs.indexOf(t), sig = vertical ? ["ArrowDown", "ArrowRight"] : ["ArrowRight"], ant = vertical ? ["ArrowUp", "ArrowLeft"] : ["ArrowLeft"];
+        if (sig.indexOf(e.key) >= 0) { elige(tabs[(i + 1) % tabs.length], true); e.preventDefault(); }
+        else if (ant.indexOf(e.key) >= 0) { elige(tabs[(i - 1 + tabs.length) % tabs.length], true); e.preventDefault(); }
+        else if (e.key === "Home") { elige(tabs[0], true); e.preventDefault(); } else if (e.key === "End") { elige(tabs[tabs.length - 1], true); e.preventDefault(); }
+      });
+    });
+    return function (id) { var t = tabs.filter(function (x) { return x.id === id; })[0]; if (t) elige(t); };
+  }
+  pestanas($("#v-tiempo .pestanas"), false);
+  var eligeMenu = pestanas($(".menu-nav"), true);
+
+  // capas y vista
+  $$("[data-capa]").forEach(function (c) {
+    c.addEventListener("change", function () {
+      capas[c.getAttribute("data-capa")] = c.checked;
+      $("#ndviFecha").hidden = !capas.ndvi; $("#leyendaNdvi").hidden = !(capas.ndvi || capas.tinte); dibuja();
+    });
+  });
+  var NOTA_V = { nube: "Los puntos del vuelo LiDAR 2024, tal cual (medido).", gem: "Copas medidas por el LiDAR; troncos y ramas, ilustrativos.", orto: "La ortofoto PNOA sobre el relieve (medido)." };
+  $$("[data-vistam]").forEach(function (b) { b.addEventListener("click", function () { vistaM = b.getAttribute("data-vistam"); $$("[data-vistam]").forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); }); $("#notaVista").textContent = NOTA_V[vistaM]; dibuja(); }); });
+  var FECHAS = ["14/10", "13/11", "18/12", "17/01", "16/02", "18/03", "17/04", "17/05", "16/06", "16/07", "15/08", "12/09"];
+  $("#ndviSel").addEventListener("input", function () { $("#ndviSelV").textContent = FECHAS[this.value]; });
+  $("#tMom").addEventListener("input", function () { var v = +this.value; $("#tMomV").textContent = v ? "dentro de " + v + " h" : "Ahora"; $("#tAhora").setAttribute("aria-pressed", String(!v)); });
+  $("#tAhora").addEventListener("click", function () { $("#tMom").value = 0; $("#tMom").dispatchEvent(new Event("input")); });
+  $("#tPlay").addEventListener("click", function () { var on = this.getAttribute("aria-pressed") !== "true"; this.setAttribute("aria-pressed", String(on)); this.textContent = on ? "⏸ Parar" : "▶ Reproducir"; });
+  $("#tEst").addEventListener("input", function () { $("#tEstV").textContent = +this.value === 41 ? "12/09 (la más reciente)" : "imagen nº " + (+this.value + 1); });
+  $$("[data-efecto]").forEach(function (b) { b.addEventListener("click", function () { aviso("Efecto de ejemplo: " + b.textContent.toLowerCase() + " (no es el tiempo real)"); }); });
+
+  // mapa grande: parcelas
+  (function () {
+    var ul = $("#listaParcelas");
+    PARC.forEach(function (p, k) {
+      var li = document.createElement("li"), s = document.createElement("span"), b = document.createElement("button"), v = document.createElement("button");
+      s.textContent = "Parcela " + p.n; b.type = v.type = "button"; b.className = v.className = "boton"; b.textContent = "Ir"; v.textContent = "Cifras";
+      b.addEventListener("click", function () { cam.x = (p.x0 + p.x1) / 2; cam.z = p.z1 + 6; cam.yaw = 0; dibuja(); aviso("Fundido: en la parcela " + p.n); });
+      v.addEventListener("click", function () { $("#medT").textContent = "Lo medido · parcela " + p.n; var n = Math.round((p.x1 - p.x0) * (p.z1 - p.z0) / 64); $("#kC").textContent = n; $("#kG").textContent = n - 3; $("#kA").textContent = (3 + k * .2).toFixed(1).replace(".", ",") + " m"; $("#kS").textContent = cfg.unidades === "ha" ? ((p.x1 - p.x0) * (p.z1 - p.z0) / 10000).toFixed(2).replace(".", ",") + " ha" : ((p.x1 - p.x0) * (p.z1 - p.z0)).toLocaleString("es") + " m²"; });
+      li.appendChild(s); li.appendChild(v); li.appendChild(b); ul.appendChild(li);
+    });
+  })();
+  $("#vistaInicial").addEventListener("click", function () { ponModo("orbita"); cam.x = 0; cam.z = 70; cam.yaw = 0; dibuja(); });
+  $("#mapaGrande").addEventListener("click", function () { abreVentana("mapa-grande"); });
+  // la ventana grande del mapa se llama «mapa» en el DOM (v-mapa); el minimapa no es una ventana
+  var abreV0 = abreVentana; abreVentana = function (id, desde) { if (id === "mapa-grande") { id = "mapa"; if (est.ventana === "mapa") { cierraVentana(); return; } if (est.ventana) cierraVentana(true); var v = $("#v-mapa"); est.ventana = "mapa"; est.abridor = desde || $("#mapaGrande"); v.hidden = false; marcaHoja(); v.querySelector("h2").focus({ preventScroll: true }); dibuja(); setTimeout(revisaFlotantes, 0); return; } abreV0(id, desde); };
+  $("#miniCv").addEventListener("click", function () { abreVentana("mapa-grande", $("#mapaGrande")); });
+  $("#mapaX").addEventListener("click", function () { ponMapa(false); });
+  function ponMapa(v) { est.mapa = v; $("#mapa").hidden = !v; $$('[data-abre="mapa"]').forEach(function (b) { if (b.hasAttribute("aria-pressed")) b.setAttribute("aria-pressed", String(v)); }); guarda("mapa", v); if (v) { colocaGuardado($("#mapa"), "mapa"); dibuja(); } }
+
+  // historia: ventana para empezar, tarjeta de misión para seguir
+  var ESC = [["La finca desde el aire", "Cinco parcelas, 6,8 ha (ficticio). El turquesa es lo que mide el LiDAR."], ["Cómo se cuentan los olivos", "Copas del LiDAR frente a los puntos guardados en OlivarTrack."], ["El desfase", "Los guardados caen 1,5–2 m al este: se marcaron sobre la ortofoto."], ["El vigor", "NDVI relativo de la última imagen; sin calibrar con campo."], ["Dónde mirar hoy", "Una baliza por parcela con lo pendiente."]];
+  function vaA(i) { est.hist = Math.max(0, Math.min(ESC.length - 1, i)); $("#mision").hidden = false; $("#misionT").textContent = ESC[est.hist][0]; $("#misionTxt").textContent = ESC[est.hist][1]; $("#misionN").textContent = (est.hist + 1) + " de " + ESC.length; $("#misionAnt").disabled = est.hist === 0; $("#misionSig").textContent = est.hist === ESC.length - 1 ? "Terminar" : "Siguiente ▶"; }
+  $("#hIni").addEventListener("click", function () { cierraVentana(true); if (est.modo !== "orbita") ponModo("orbita"); vaA(0); $("#misionSig").focus(); });
+  $("#misionAnt").addEventListener("click", function () { vaA(est.hist - 1); });
+  $("#misionSig").addEventListener("click", function () { if (est.hist === ESC.length - 1) saleHistoria(); else vaA(est.hist + 1); });
+  $("#misionX").addEventListener("click", saleHistoria);
+  function saleHistoria() { est.hist = -1; $("#mision").hidden = true; cv.focus({ preventScroll: true }); }
+
+  // gente
+  $$("[data-ircon]").forEach(function (b) { b.addEventListener("click", function () { cierraVentana(); if (est.modo === "orbita") ponModo("paseo"); aviso("Fundido: junto a " + b.getAttribute("data-ircon") + ", mirándola."); }); });
+  $$("[data-bloquea]").forEach(function (b) { b.addEventListener("click", function () { var on = b.getAttribute("aria-pressed") !== "true"; b.setAttribute("aria-pressed", String(on)); b.textContent = on ? "Desbloquear" : "Bloquear"; }); });
+
+  // ---------------------------------------------------------------- arrastrar con zonas que no se tapan (chat, burbuja, minimapa)
+  function rel(el) { var p = P.getBoundingClientRect(), r = el.getBoundingClientRect(), s = est.escala; return { x: (r.left - p.left) / s, y: (r.top - p.top) / s, w: r.width / s, h: r.height / s }; }
+  function seCruzan(a, b) { return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y; }
+  function margenes() { var cs = getComputedStyle(P); return { t: parseFloat(cs.getPropertyValue("--sa-t")) || 0, b: parseFloat(cs.getPropertyValue("--sa-b")) || 0, l: parseFloat(cs.getPropertyValue("--sa-l")) || 0, r: parseFloat(cs.getPropertyValue("--sa-r")) || 0 }; }
+  function zonas() {   // lo que el chat y el mapa nunca tapan: la cruceta, las acciones, la barra, el estado y el botón de pasear
+    var z = [];
+    [".pad-mov", ".pad-acc", ".barra", ".hud-estado", "#bPasear"].forEach(function (s) { var el = $(s); if (el && el.offsetParent !== null && getComputedStyle(el).display !== "none") { var r = rel(el); r.x -= 6; r.y -= 6; r.w += 12; r.h += 12; z.push(r); } });
+    return z;
+  }
+  function limita(el, x, y) { var W = P.clientWidth, H = P.clientHeight, m = margenes(), w = el.offsetWidth, h = el.offsetHeight; return { x: Math.max(m.l + 6, Math.min(W - m.r - w - 6, x)), y: Math.max(m.t + 6, Math.min(H - m.b - h - 6, y)) }; }
+  function libre(el, x, y) {   // el sitio libre más cercano a (x, y) fuera de las zonas
+    var w = el.offsetWidth, h = el.offsetHeight, z = zonas(), p = limita(el, x, y);
+    function ok(q) { var r = { x: q.x, y: q.y, w: w, h: h }; return z.every(function (zz) { return !seCruzan(r, zz); }); }
+    if (ok(p)) return p;
+    var cand = [];
+    z.forEach(function (zz) { cand.push(limita(el, p.x, zz.y - h - 4), limita(el, p.x, zz.y + zz.h + 4), limita(el, zz.x - w - 4, p.y), limita(el, zz.x + zz.w + 4, p.y)); });
+    for (var gy = 0; gy <= 1; gy += 0.125) for (var gx = 0; gx <= 1; gx += 0.25) cand.push(limita(el, gx * P.clientWidth, gy * P.clientHeight));
+    cand = cand.filter(ok); if (!cand.length) return p;
+    cand.sort(function (a, b) { return Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y); });
+    return cand[0];
+  }
+  function pon(el, q) { el.style.left = Math.round(q.x) + "px"; el.style.top = Math.round(q.y) + "px"; }
+  function claveVista() { return est.vista; }
+  function guardaPos(el, clave) { var W = P.clientWidth, H = P.clientHeight; guarda("pos." + clave + "." + claveVista(), { fx: el.offsetLeft / W, fy: el.offsetTop / H }); }
+  function posDefecto(clave) {
+    var W = P.clientWidth, H = P.clientHeight, m = margenes(), t = P.getAttribute("data-tactil") === "si";
+    if (clave === "mapa") return t ? { x: W - m.r - 210, y: m.t + 64 } : { x: m.l + 10, y: m.t + 112 };   // mapa: en táctil arriba a la derecha, bajo la barra
+    if (clave === "burbuja") return { x: m.l + 10, y: H * (t ? .42 : .7) };
+    return t ? { x: m.l + 10, y: H * .36 } : { x: m.l + 10, y: H - m.b - 330 };   // chat: en táctil por encima de la cruceta; en escritorio abajo a la izquierda
+  }
+  function colocaGuardado(el, clave) {
+    var g = lee("pos." + clave + "." + claveVista()), q = g ? { x: g.fx * P.clientWidth, y: g.fy * P.clientHeight } : posDefecto(clave);
+    pon(el, libre(el, q.x, q.y));
+  }
+  function movible(el, asa, clave, alClic) {
+    var a = null;
+    asa.addEventListener("pointerdown", function (e) {
+      if (e.button !== 0 && e.pointerType === "mouse") return;
+      if (e.target.closest(".mini")) return;   // los botones de la barra (minimizar, colocar…) no arrastran
+      a = { id: e.pointerId, x: e.clientX, y: e.clientY, l: el.offsetLeft, t: el.offsetTop, mov: 0 };
+      try { asa.setPointerCapture(e.pointerId); } catch (x) {} e.preventDefault();
+    });
+    asa.addEventListener("pointermove", function (e) {
+      if (!a || e.pointerId !== a.id) return; var dx = (e.clientX - a.x) / est.escala, dy = (e.clientY - a.y) / est.escala; a.mov = Math.max(a.mov, Math.hypot(dx, dy));
+      if (a.mov < 4) return; el.classList.add("arrastrando"); pon(el, limita(el, a.l + dx, a.t + dy)); muestraZonas(true);
+    });
+    function fin(e) {
+      if (!a || e.pointerId !== a.id) return; var mov = a.mov; a = null; el.classList.remove("arrastrando"); muestraZonas(false);
+      if (mov < 6) { if (alClic) alClic(); return; }
+      var q = libre(el, el.offsetLeft, el.offsetTop); if (Math.abs(q.x - el.offsetLeft) > 1 || Math.abs(q.y - el.offsetTop) > 1) aviso("Recolocado para no tapar los controles", 2000);
+      pon(el, q); guardaPos(el, clave);
+    }
+    asa.addEventListener("pointerup", fin); asa.addEventListener("pointercancel", fin);
+    asa.addEventListener("keydown", function (e) {   // alternativa sin arrastrar (WCAG 2.5.7): flechas mueven, Mayús más deprisa, Inicio al sitio de partida
+      if (e.target !== asa && !(e.target.classList && e.target.classList.contains("agarre"))) return;
+      var d = e.shiftKey ? 64 : 16, x = el.offsetLeft, y = el.offsetTop;
+      if (e.key === "ArrowLeft") x -= d; else if (e.key === "ArrowRight") x += d; else if (e.key === "ArrowUp") y -= d; else if (e.key === "ArrowDown") y += d;
+      else if (e.key === "Home") { var q0 = posDefecto(clave); x = q0.x; y = q0.y; } else return;
+      e.preventDefault(); e.stopPropagation(); pon(el, libre(el, x, y)); guardaPos(el, clave);
+    });
+  }
+  function muestraZonas(v) {
+    var c = $("#zonas"); c.textContent = ""; if (!v && !$("#simZonas").checked) return;
+    zonas().forEach(function (z) { var d = document.createElement("div"); d.className = "zona-prohibida"; d.style.cssText = "left:" + z.x + "px;top:" + z.y + "px;width:" + z.w + "px;height:" + z.h + "px"; c.appendChild(d); });
+  }
+  function revisaFlotantes() {   // tras un cambio de modo, de ventana o de tamaño: nada flotante encima de los controles
+    var movido = false;
+    [[$("#chat"), "chat"], [$("#burbuja"), "burbuja"], [$("#mapa"), "mapa"]].forEach(function (p) {
+      var el = p[0]; if (el.hidden) return; var q = libre(el, el.offsetLeft, el.offsetTop);
+      if (Math.abs(q.x - el.offsetLeft) > 1 || Math.abs(q.y - el.offsetTop) > 1) { pon(el, q); movido = true; }
+    });
+    if (movido) aviso("He apartado el chat o el mapa para no tapar los controles", 2500);
+    muestraZonas(false);
+  }
+
+  // chat y burbuja
+  movible($("#chat"), $("#chatAsa"), "chat");
+  movible($("#burbuja"), $("#burbuja"), "burbuja", function () { ponChat("abierto"); });
+  movible($("#mapa"), $("#mapaAsa"), "mapa");
+  $("#burbuja").addEventListener("click", function (e) { if (e.detail === 0) ponChat("abierto"); });   // con teclado (Intro o Espacio) abre; con el dedo lo decide movible()
+  function ponChat(s, sinFoco) {
+    est.chat = s; var c = $("#chat"), b = $("#burbuja");
+    if (!est.red) { c.hidden = b.hidden = true; return; }
+    if (s === "abierto") { b.hidden = true; c.hidden = false; colocaGuardado(c, "chat"); est.noLeidos = 0; if (!sinFoco) $("#chatIn").focus({ preventScroll: true }); }
+    else { c.hidden = true; b.hidden = false; colocaGuardado(b, "burbuja"); }
+    pintaNoLeidos(); $$('[data-abre="chat"]').forEach(function (x) { if (x.hasAttribute("aria-pressed")) x.setAttribute("aria-pressed", String(s === "abierto")); });
+    guarda("chat", s);
+  }
+  function pintaNoLeidos() { var n = est.noLeidos; [$("#nChat"), $("#nBurbuja")].forEach(function (e) { e.hidden = !n; e.textContent = n; }); $("#burbuja").setAttribute("aria-label", "Abrir el chat" + (n ? " (" + n + " sin leer)" : "") + ". Arrastra para mover"); }
+  $("#chatMin").addEventListener("click", function () { ponChat("minimo"); $("#burbuja").focus(); });
+  $("#chatColocar").addEventListener("click", function () { var ab = $("#colocar").hidden; $("#colocar").hidden = !ab; this.setAttribute("aria-expanded", String(ab)); if (ab) $("#colocar button").focus(); });
+  $$("[data-esquina]").forEach(function (b) { b.addEventListener("click", function () {
+    var c = $("#chat"), W = P.clientWidth, H = P.clientHeight, e = b.getAttribute("data-esquina"), q = e === "defecto" ? posDefecto("chat") : { x: e[1] === "i" ? 0 : W, y: e[0] === "a" ? 0 : H };
+    pon(c, libre(c, q.x, q.y)); guardaPos(c, "chat"); $("#colocar").hidden = true; $("#chatColocar").setAttribute("aria-expanded", "false"); $("#chatAgarre").focus();
+  }); });
+  function anade(quien, txt) { var li = document.createElement("li"), s = document.createElement("strong"); s.textContent = quien + ": "; li.appendChild(s); li.appendChild(document.createTextNode(txt)); $("#chatLista").appendChild(li); $("#chatLista").scrollTop = 1e6; }
+  $("#chatForm").addEventListener("submit", function (e) { e.preventDefault(); var v = $("#chatIn").value.trim(); if (!v) return; anade("Tú", v); $("#chatIn").value = ""; });
+  $("#chatIn").addEventListener("keydown", function (e) { e.stopPropagation(); if (e.key === "Escape") { ponChat("minimo"); cv.focus(); } });
+  var FRASES = ["¿Alguien ha visto la baliza de la parcela B?", "Qué bien se ve el envero desde aquí.", "Me bajo del dron, voy andando."];
+  $("#simMsg").addEventListener("click", function () { if (!est.red) { aviso("Activa «Mundo en red» en el simulador"); return; } anade(Math.random() < .5 ? "Mirlo" : "Encina", FRASES[Math.floor(Math.random() * FRASES.length)]); if (est.chat !== "abierto") { est.noLeidos++; pintaNoLeidos(); aviso("Mensaje nuevo en el chat"); } });
+
+  // ---------------------------------------------------------------- pantalla completa
+  function pantallaCompleta() {
+    var puede = est.nav !== "iphone" && (document.fullscreenEnabled || document.webkitFullscreenEnabled);
+    if (!puede) { aviso("En el iPhone, Safari no deja poner una página a pantalla completa. Usa «Compartir → Añadir a pantalla de inicio»: se abre sin barras.", 6000); return; }
+    var dentro = document.fullscreenElement || document.webkitFullscreenElement;
+    try {
+      if (dentro) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+      else { var pr = (P.requestFullscreen || P.webkitRequestFullscreen).call(P, { navigationUI: "hide" }); if (pr && pr.catch) pr.catch(function () { aviso("El navegador no ha dejado poner la pantalla completa."); }); }
+    } catch (e) { aviso("El navegador no ha dejado poner la pantalla completa."); }
+  }
+  $("#bPantalla").addEventListener("click", pantallaCompleta);
+  document.addEventListener("fullscreenchange", function () { var on = !!document.fullscreenElement; $("#bPantalla").setAttribute("aria-pressed", String(on)); $("#bPantalla").setAttribute("aria-label", on ? "Salir de pantalla completa (F)" : "Pantalla completa (F)"); setTimeout(ajusta, 50); });
+
+  // ---------------------------------------------------------------- menú y configuración
+  var menu = $("#menu");
+  function abreMenu(pestana) { cerrarPopovers(); if (pestana) eligeMenu("mt-" + pestana); if (!menu.open) menu.showModal(); teclas = {}; }
+  $("#bMenu").addEventListener("click", function () { abreMenu(); });
+  $("#bReanudar").addEventListener("click", function () { menu.close(); });
+  menu.addEventListener("close", function () { $("#bMenu").focus({ preventScroll: true }); });
+  $$("[data-menu]").forEach(function (b) { b.addEventListener("click", function () { abreMenu(b.getAttribute("data-menu")); }); });
+  $("#bAtrib").addEventListener("click", function () { abreMenu("creditos"); });
+  $$("[data-abre-desde-menu]").forEach(function (b) { b.addEventListener("click", function () { menu.close(); abreVentana(b.getAttribute("data-abre-desde-menu"), $("#bMenu")); }); });
+  function pintaCfg() {
+    $$("#menu input[type=radio]").forEach(function (r) { r.checked = String(cfg[r.name]) === r.value; });
+    $$("#menu [data-cfg]").forEach(function (i) { var k = i.getAttribute("data-cfg"); if (i.type === "checkbox") i.checked = !!cfg[k]; else i.value = cfg[k]; });
+    $("#cExagV").textContent = cfg.exag + "×"; $("#cCorrV").textContent = cfg.corr + "×"; $("#cVolV").textContent = cfg.volumen + " %"; $("#cSensV").textContent = cfg.sens + "×"; $("#cTextoV").textContent = cfg.texto + " %";
+    raiz.style.setProperty("--escala-texto", cfg.texto / 100); raiz.setAttribute("data-contraste", cfg.contraste ? "alto" : "normal"); raiz.setAttribute("data-movimiento", cfg.movimiento); raiz.setAttribute("data-mano", cfg.mano);
+    $("#bBrujula").hidden = !cfg.brujula; $("#depura").hidden = !cfg.rendimiento; $("#bMedir").disabled = !cfg.rendimiento;
+    ponTactil(); setTimeout(revisaFlotantes, 0);
+  }
+  $$("#menu input").forEach(function (i) { i.addEventListener(i.type === "range" ? "input" : "change", function () {
+    var k = i.type === "radio" ? i.name : i.getAttribute("data-cfg"); if (!k) return;
+    cfg[k] = i.type === "checkbox" ? i.checked : i.type === "range" ? Number(i.value) : i.value; guarda("cfg", cfg); pintaCfg();
+  }); });
+  $("#bMedir").addEventListener("click", function () { aviso("Midiendo 60 s… (simulado)"); });
+  $("#bRecoloca").addEventListener("click", function () { ["chat", "burbuja", "mapa"].forEach(function (c) { ["escritorio", "vertical", "horizontal"].forEach(function (v) { try { localStorage.removeItem(PREF + "pos." + c + "." + v); } catch (e) {} }); }); colocaTodo(); aviso("Chat y mapa en su sitio"); });
+  $("#bReinicia").addEventListener("click", function () { cfg = Object.assign({}, CFG0); guarda("cfg", cfg); pintaCfg(); aviso("Configuración restablecida"); });
+  setInterval(function () { if (!cfg.rendimiento) return; $("#depura").textContent = "60 fps · JS 3,1 ms (pico 9)  ← cifras inventadas\n142 llamadas · 410 k tri · teselas 9/12\nolivos N0 220 N1 640 N2 344"; }, 500);
+
+  // ---------------------------------------------------------------- teclado global
+  window.addEventListener("keydown", function (e) {
+    if (menu.open || !$("#vrDibujo").hidden) return;
+    if (e.key === "Escape") {
+      e.preventDefault();
+      if (hayPopover()) { cerrarPopovers(); return; }
+      if (!$("#ficha").hidden) { $("#ficha").hidden = true; return; }
+      if (est.ventana) { cierraVentana(); return; }
+      if (est.hist >= 0) { saleHistoria(); return; }
+      abreMenu(); return;
+    }
+    if (!enCampo(e) || e.ctrlKey || e.metaKey || e.altKey) return;
+    var k = MAPA_T[e.code];
+    if (k) { if (e.target.tagName === "BUTTON" && e.code === "Space") return; if (est.hist >= 0 && (e.code === "ArrowLeft" || e.code === "ArrowRight") && est.modo === "orbita") { vaA(est.hist + (e.code === "ArrowRight" ? 1 : -1)); e.preventDefault(); return; } teclas[k] = true; arranca(); e.preventDefault(); return; }
+    if (e.code === "ShiftLeft" || e.code === "ShiftRight") { teclas.run = true; return; }
+    var t = { Digit1: "mapa", KeyM: "mapa", Digit2: "capas", Digit3: "tiempo", Digit4: "historia", Digit5: "gente", Digit6: "chat", KeyT: "chat" }[e.code];
+    if (t) { if ((t === "gente" || t === "chat") && !est.red) return; abreVentana(t, $('[data-abre="' + t + '"]')); e.preventDefault(); return; }
+    if (e.code === "F1") { e.preventDefault(); abreVentana("ayuda", $('[data-abre="ayuda"]')); return; }
+    if (e.code === "KeyF") { pantallaCompleta(); return; }
+    if (e.code === "KeyQ") { ponModo(est.modo === "quad" ? "paseo" : "quad"); return; }
+    if (e.code === "KeyE") { ponModo(est.modo === "dron" ? "paseo" : "dron"); return; }
+    if (e.code === "KeyV" && est.modo !== "orbita") { $("#pCam").click(); return; }
+    if (e.code === "KeyH") { $("#fichaT").textContent = "Parcela " + PARC[cam.x < 0 ? (cam.z < 0 ? 0 : 2) : (cam.z < 0 ? 1 : 3)].n; $("#fichaD").innerHTML = "<dt>Superficie</dt><dd>1,6 ha <span class='pill p-medido'>medido</span></dd><dt>Último trabajo</dt><dd>poda · 09/2026 <span class='pill p-guardado'>OlivarTrack</span></dd>"; $("#ficha").hidden = false; return; }
+    if (e.code === "Home" || e.code === "Digit0") { ponModo("orbita"); return; }
+    if ((e.code === "Enter" || e.code === "NumpadEnter") && e.target.tagName !== "BUTTON") { if (est.modo === "orbita") $("#bPasear").click(); else if (est.modo === "dron") $("#pAterriza").click(); return; }
+    if (e.code === "KeyL" && est.modo === "dron") { $("#pAterriza").click(); }
+  });
+
+  // ---------------------------------------------------------------- simulador
+  function ponTactil() {
+    var t = cfg.tactil === "auto" ? est.vista !== "escritorio" : cfg.tactil === "si";
+    P.setAttribute("data-tactil", t ? "si" : "no"); $("#bAtrib").hidden = est.modo !== "orbita" && t;
+  }
+  function ajusta() {   // el marco del móvil se encoge si no cabe
+    if (document.fullscreenElement) { est.escala = 1; P.style.transform = ""; marcaHoja(); dibuja(); return; }
+    var w = est.vista === "vertical" ? 390 : est.vista === "horizontal" ? 844 : 0, h = est.vista === "vertical" ? 844 : est.vista === "horizontal" ? 390 : 0;
+    if (!w) { est.escala = 1; P.style.transform = ""; }
+    else { est.escala = Math.min(1, (esc.clientWidth - 40) / w, (esc.clientHeight - 40) / h); P.style.transform = "translate(-50%, -50%) scale(" + est.escala + ")"; }
+    marcaHoja(); dibuja(); revisaFlotantes();
+  }
+  function colocaTodo() { if (est.mapa) colocaGuardado($("#mapa"), "mapa"); if (est.red) colocaGuardado(est.chat === "abierto" ? $("#chat") : $("#burbuja"), est.chat === "abierto" ? "chat" : "burbuja"); }
+  $$(".sim [data-vista]").forEach(function (b) { b.addEventListener("click", function () {
+    est.vista = b.getAttribute("data-vista"); raiz.setAttribute("data-vista", est.vista);
+    $$(".sim [data-vista]").forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); });
+    ponTactil(); requestAnimationFrame(function () { ajusta(); colocaTodo(); revisaFlotantes(); });
+  }); });
+  $("#simNav").addEventListener("change", function () { est.nav = this.value; });
+  $("#simRed").addEventListener("change", function () { est.red = this.checked; $$(".solo-red").forEach(function (e) { e.hidden = !est.red; }); if (!est.red && (est.ventana === "gente")) cierraVentana(); ponChat(est.red ? "abierto" : "minimo", true); dibuja(); });
+  $("#simXr").addEventListener("change", function () { est.xr = this.checked; $("#itemVr").hidden = !est.xr; });
+  $("#simZonas").addEventListener("change", function () { muestraZonas(false); });
+  $("#simVr").addEventListener("click", function () { $("#vrDibujo").hidden = false; $("#vrX").focus(); });
+  $("#vrX").addEventListener("click", function () { $("#vrDibujo").hidden = true; $("#simVr").focus(); });
+  $("#vrDibujo").addEventListener("keydown", function (e) { if (e.key === "Escape") { $("#vrDibujo").hidden = true; $("#simVr").focus(); } });
+  $("#simBorra").addEventListener("click", function () { try { Object.keys(localStorage).forEach(function (k) { if (k.indexOf(PREF) === 0) localStorage.removeItem(k); }); } catch (e) {} cfg = Object.assign({}, CFG0); pintaCfg(); colocaTodo(); aviso("Borrado lo que la maqueta guardaba en este navegador"); });
+  $("#bTutorial").addEventListener("click", function () { cierraVentana(); consejos(true); });
+  function consejos(forzar) {
+    if (!forzar && lee("visto")) return; guarda("visto", true);
+    var t = P.getAttribute("data-tactil") === "si";
+    var l = t ? ["Arrastra en el mundo para mirar", "«Pasear aquí» para bajar al olivar; la cruceta sale abajo", "Los iconos de arriba abren el mapa, las capas y el resto"] : ["Arrastra para mirar · W A S D para moverte", "Intro: pasear aquí · 1–6: ventanas · Esc: menú", "F: pantalla completa · F1: ayuda"];
+    l.forEach(function (x, i) { setTimeout(function () { aviso(x, 4500); }, i * 1600); });
+  }
+  window.addEventListener("resize", function () { ajusta(); });
+
+  // arranque
+  if (lee("mapa") === false) est.mapa = false;
+  est.chat = lee("chat") === "minimo" ? "minimo" : "abierto";
+  pintaCfg(); ajusta(); $("#mapa").hidden = !est.mapa; ponModo("orbita");
+  requestAnimationFrame(function () { colocaTodo(); ponChat(est.chat, true); if (est.mapa) ponMapa(true); consejos(false); });
+})();
+</script>
+</body>
+</html>
