@@ -161,7 +161,7 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | C4 | Componentes: piloto 2, el sonido | C2 | ligera · **sonnet** | ✅ 2026-10-30 |
 | C5 | Componentes: piloto 3, `Red` sobre LiveKit; presencia y avatares como componentes | C1 | media · **opus** | ⬜ |
 | C6 | Componentes: plugins de la api y `/api/config` (se junta con OF6) | C1 | ligera · **sonnet** | ✅ 2026-10-30 (sin plugins de la api por carpeta) |
-| C7 | Entidades con id estable y usables (una sola forma de tocar: dedo, ratón, rayo VR, cercanía) — antes de juegos y fotos (decisión 119) | C2 | media · **opus** | ⬜ |
+| C7 | Entidades con id estable y usables (una sola forma de tocar: dedo, ratón, rayo VR, cercanía) — antes de juegos y fotos (decisión 119) | C2 | media · **opus** | 🟡 en curso |
 | C8 | Láminas en el mundo como servicio del núcleo | C3 | ligera · **sonnet** | ✅ 2026-10-30 (desbloquea C9b) |
 | C9 | Anfitrión de juegos y primer casual (decisión 125): piezas del olivar que caen y se rompen al juntar 3+ iconos iguales; récord validado en la api | C2, C6, C8 | media · **opus**; 👤 qué juego | ⬜ |
 | C9a | **«Cae la cosecha»** en pantalla: anfitrión de juegos (pausa el mundo, juego a pantalla completa, récord) y el juego: piezas del olivar que caen y se rompen al juntar 3+ iguales; teclado, ratón y táctil; récord de la familia en la api (decisiones 125, 136) | C2, C6 | media · **opus**; 🔶 banco al final | ✅ 2026-10-30; medido por el banco (0 renders con el juego abierto); sin probar en aparatos |
@@ -172,7 +172,7 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | AV1 | Biblioteca de avatares familiar e inclusiva: fuentes abiertas, criterios, propuesta y maqueta del selector | P7 | ligera · **opus** | ✅ 2026-10-30: propuesta y maqueta; 9 decisiones (A1-A9) para Antonio |
 | P7f | Hituelo: personalización en el mundo (nombrar árbol, colgar foto o pintura) — antes V5 | V3, C7 | media · **sonnet** | ⬜ |
 | AV2 | Muñeco teñido (decisión 131): 10 tonos de piel, ropa, altura, complexión y silla en el muñeco lejano; altura de la vista de pie/sentado en Configuración (133) | AV1 | ligera · **sonnet**; 🔶 banco | ✅ 2026-10-30; falta la silla con VRM (AV3), la fila de la altura en el panel VR y probar en aparatos |
-| AV3 | Creador por piezas, 1: cuerpos MPFB por edad y complexión generados por un agente con Blender (130), sin peques ofrecidos (132); prueba de arte a ojo | AV1 | pesada · **opus** | ⬜ |
+| AV3 | Creador por piezas, 1: cuerpos MPFB por edad y complexión generados por un agente con Blender (130), sin peques ofrecidos (132); prueba de arte a ojo | AV1 | pesada · **opus** | ✅ 2026-10-30; 👤 revisión a ojo (decisión 130); costura del cuello visible en el primer plano |
 | AV4 | Creador por piezas, 2: ADR y contrato `avatares` v2 (135), repertorio en la tubería y color en el motor (128), pantalla de elección | AV3 | pesada · **opus** | ⬜ |
 
 ## Ideas de mejora (sin fecha; se convierten en tarea cuando Antonio lo diga)
