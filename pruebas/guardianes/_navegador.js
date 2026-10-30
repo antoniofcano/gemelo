@@ -30,6 +30,9 @@ const ESCENARIOS_BORDE = {
   esquina: { az: -0.8, el: 0.3, dist: 150, ox: 256, oy: 0, modo: "gem" },
   bordeRaso: { az: -1.57, el: 0.1, dist: 25, ox: 240, oy: -128, modo: "gem" },
 };
+// Ventanas de las pruebas de navegador (PB1). VENTANA es la de siempre (900×650): la que usan las de PRESUPUESTO (carga, escena3d, olivo…), que no cambian.
+// VENTANA_CHICA es la mitad con la misma proporción (450×325): para las que comprueban lógica o estado y no recuentos de dibujo; SwiftShader pinta por CPU y cuesta ~ por píxel.
+const VENTANA = { width: 900, height: 650 }, VENTANA_CHICA = { width: 450, height: 325 };
 const TODOS_ESCENARIOS = Object.assign({}, ESCENARIOS, ESCENARIOS_PASEO, ESCENARIOS_BORDE);
 
 // La CSP de las pruebas es la de infra/Caddyfile (pacto de T8 fase 2, §4), en el mismo modo que la manda el Caddy de producción: solo informe
@@ -123,8 +126,8 @@ async function entraYMueve(p, c, queda) {
  *  csp: los avisos «[Report Only]» de la CSP de Caddy (lo que rompería al imponerla); no cuentan como errores.
  *  Con un tope (GEMELO_TOPE_MEDIDA, ms): si se pasa, devuelve lo medido hasta entonces con parcial = true (y no deja la página colgada).
  *  Con desglose: además, las llamadas de un fotograma por objeto (desgloseLlamadas) en cada escenario. */
-async function mide(navegador, url, { escenarios = ESCENARIOS, tope = TOPE_MEDIDA_MS, capturas = null, desglose = false } = {}) {   // capturas: carpeta para un PNG por escenario
-  const p = await navegador.newPage({ viewport: { width: 900, height: 650 } }), errores = [], fallos = [], csp = [], t0 = Date.now(), queda = () => Math.max(1000, tope - (Date.now() - t0));
+async function mide(navegador, url, { escenarios = ESCENARIOS, tope = TOPE_MEDIDA_MS, capturas = null, desglose = false, viewport = VENTANA } = {}) {   // capturas: carpeta para un PNG por escenario; viewport: VENTANA (por defecto) o VENTANA_CHICA
+  const p = await navegador.newPage({ viewport }), errores = [], fallos = [], csp = [], t0 = Date.now(), queda = () => Math.max(1000, tope - (Date.now() - t0));
   p.on("pageerror", e => errores.push("PAGEERROR " + String(e.stack || e).slice(0, 400)));
   p.on("console", m => { if (esCsp(m.text())) csp.push(m.text().slice(0, 300)); else if (m.type() === "error") errores.push("CONSOLE " + m.text().slice(0, 300)); });
   p.on("requestfailed", r => fallos.push(r.url()));
@@ -154,4 +157,4 @@ async function mide(navegador, url, { escenarios = ESCENARIOS, tope = TOPE_MEDID
   return { errores, fallos, medidas, parcial, csp };
 }
 
-module.exports = { ESCENARIOS, ESCENARIOS_PASEO, TODOS_ESCENARIOS, ARGS_CHROME, CSP, esCsp, sirve, motivoSalto, lanza, mide, desgloseLlamadas };
+module.exports = { VENTANA, VENTANA_CHICA, ESCENARIOS, ESCENARIOS_PASEO, TODOS_ESCENARIOS, ARGS_CHROME, CSP, esCsp, sirve, motivoSalto, lanza, mide, desgloseLlamadas };

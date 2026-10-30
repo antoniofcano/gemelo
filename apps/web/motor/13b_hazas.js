@@ -266,5 +266,8 @@
       trae(API + "hazas?srs=25830" + fq).then(monta).catch(function (e) { st.error = String(e && e.message || e); });   // sin sesión, sin api o sin red: no se dibuja nada, y en silencio
     }
     function estado() { var e = { api: !!API }; Object.keys(st).forEach(function (k) { e[k] = st[k]; }); return e; }   // para ?debug y las pruebas
-    return { actualiza: actualiza, estado: estado, libera: libera };
+    // vistas() las hazas que se ven { id, es_mia } y enPunto(x este, y norte, locales) la que lo contiene o null (P7f: ¿este olivo es de mi haza?)
+    function vistas() { return hz.map(function (h) { return { id: h.id, es_mia: !!h.es_mia }; }); }
+    function enPunto(x, y) { var k = P.hazaEn(x, y, hz); return k >= 0 ? { id: hz[k].id, es_mia: !!hz[k].es_mia } : null; }
+    return { actualiza: actualiza, estado: estado, libera: libera, vistas: vistas, enPunto: enPunto };
   })();

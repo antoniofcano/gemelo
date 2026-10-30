@@ -5,7 +5,7 @@ import { NOMBRE_COOKIE, OPCIONES_COOKIE, TEXTO_LIMITE_VINCULO } from "../auth/ru
 import { audita, esOficina, NORMAS_VERSION } from "../auth/servicio.ts";
 import { decideCodigo, PATRON_ENTRADA } from "../auth/vinculo.ts";
 import type { Contexto } from "../contexto.ts";
-import { type Aspecto, ASPECTO, limpiaAspecto } from "../presencia/livekit.ts";
+import { ACC_MAX, type Aspecto, ASPECTO, bytesReceta, limpiaAspecto, PATRON_PIEZA, RECETA_MAX_BYTES } from "../presencia/livekit.ts";
 import { borraFicheros, clavesDelHogar } from "../vida/medios.ts";
 
 // 3–20 letras, números, espacios y guiones (doc/sistema/UX.md §4.6)
@@ -84,6 +84,8 @@ export async function rutasYo(app: FastifyInstance, ctx: Contexto): Promise<void
   // siempre: son el muñeco lejano y la caída cuando el VRM no carga.
   // AV2 (decisión 131): `tono` (0-9), `arriba` y `abajo` (0-9, paleta de ropa), `altura`, `complexion` y `movilidad`: todos opcionales y de listas cerradas
   // (ASPECTO); un PUT sin ellos los borra (PUT reemplaza). `piel` (0-4) sigue siendo el tono «de antes» para los clientes que no conocen `tono`.
+  // AV4 (ADR-0025): la receta del creador por piezas (`cuerpo`, `pelo`, `pelo_color`, `vello`, `ropa`, `acc`): ids del catálogo v2 de forma válida (la api no conoce el
+  // catálogo) y como mucho RECETA_MAX_BYTES de JSON entre todo el aspecto; se guarda en la misma columna `aspecto` (jsonb): sin migración.
   app.put<{ Body: { camisa: number; sombrero: string; piel: number; vrm?: string | null } & Aspecto }>("/api/yo/avatar", {
     preHandler: requiereSesion,
     schema: {
@@ -95,11 +97,15 @@ export async function rutasYo(app: FastifyInstance, ctx: Contexto): Promise<void
           tono: { type: "integer", minimum: ASPECTO.tono.min, maximum: ASPECTO.tono.max }, arriba: { type: "integer", minimum: ASPECTO.arriba.min, maximum: ASPECTO.arriba.max },
           abajo: { type: "integer", minimum: ASPECTO.abajo.min, maximum: ASPECTO.abajo.max },
           altura: { type: "string", enum: [...ASPECTO.altura] }, complexion: { type: "string", enum: [...ASPECTO.complexion] }, movilidad: { type: "string", enum: [...ASPECTO.movilidad] },
+          cuerpo: { type: "string", pattern: PATRON_PIEZA }, pelo: { type: "string", pattern: PATRON_PIEZA }, vello: { type: "string", pattern: PATRON_PIEZA }, ropa: { type: "string", pattern: PATRON_PIEZA },
+          pelo_color: { type: "integer", minimum: ASPECTO.pelo_color.min, maximum: ASPECTO.pelo_color.max },
+          acc: { type: "array", maxItems: ACC_MAX, uniqueItems: true, items: { type: "string", pattern: PATRON_PIEZA } },
         },
       },
     },
   }, async (req, rep) => {
     const aspecto = limpiaAspecto(req.body);
+    if (bytesReceta(aspecto) > RECETA_MAX_BYTES) return rep.code(400).send({ error: "receta_larga", mensaje: "La elección del avatar es demasiado larga. Vuelve a elegirla." });
     await bd.query(
       `INSERT INTO avatares (hogar_id, camisa, sombrero, piel, vrm, aspecto) VALUES ($1, $2, $3, $4, $5, $6)
        ON CONFLICT (hogar_id) DO UPDATE SET camisa = $2, sombrero = $3, piel = $4, vrm = $5, aspecto = $6, actualizado_en = now()`,

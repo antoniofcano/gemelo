@@ -11,8 +11,16 @@ export const CAJA_UTM = { emin: 100_000, emax: 900_000, nmin: 3_900_000, nmax: 4
 export const SOLAPE_TOLERADO_M2 = 0.5;
 /** Superficie mínima de una haza (m²). */
 export const AREA_MINIMA_M2 = 10;
-/** Margen (m) alrededor de los olivos medidos de la finca que cuenta como «dentro de la finca». */
+/** Margen (m) alrededor de los olivos medidos de la finca que cuenta como «dentro de la finca» cuando la finca NO tiene contorno cargado. */
 export const MARGEN_FINCA_M = 150;
+/**
+ * Holgura (m) del contorno de la finca (OF3b, migración 0011): una haza vale si cae dentro del contorno ensanchado esta distancia. Absorbe el
+ * redondeo al centímetro del cliente y que las lindes de las parcelas de OlivarTrack (a las que se ajustan los vértices) no casan al
+ * centímetro con las de SIGPAC o el Catastro. [SUPUESTO] 1 m; se revisa cuando haya un contorno real cargado.
+ */
+export const CONTORNO_HOLGURA_M = 1;
+/** Vértices como máximo en un contorno de finca (la unión de sus parcelas puede tener miles). */
+export const MAX_VERTICES_CONTORNO = 50_000;
 /** Distancia (m) a la linde por debajo de la cual un olivo «cae en el borde» (aviso). */
 export const BORDE_M = 1;
 
@@ -29,6 +37,17 @@ export const ESQUEMA_GEOMETRIA = {
   ],
 } as const;
 
+/** Esquema (ajv) del contorno de una finca: como el de una haza, con más vértices y polígonos (la unión de muchas parcelas). */
+export const ESQUEMA_CONTORNO = {
+  oneOf: [
+    { type: "object", additionalProperties: false, required: ["type", "coordinates"],
+      properties: { type: { type: "string", enum: ["Polygon"] }, coordinates: { type: "array", minItems: 1, maxItems: 500, items: { ...anillo, maxItems: MAX_VERTICES_CONTORNO } } } },
+    { type: "object", additionalProperties: false, required: ["type", "coordinates"],
+      properties: { type: { type: "string", enum: ["MultiPolygon"] }, coordinates: { type: "array", minItems: 1, maxItems: 500,
+        items: { type: "array", minItems: 1, maxItems: 500, items: { ...anillo, maxItems: MAX_VERTICES_CONTORNO } } } } },
+  ],
+} as const;
+
 export interface Geometria { type: "Polygon" | "MultiPolygon"; coordinates: number[][][] | number[][][][] }
 export type ErrorGeometria = { error: string; mensaje: string };
 
@@ -39,7 +58,7 @@ export const poligonos = (g: Geometria): number[][][][] => (g.type === "Polygon"
  * Comprueba lo que ajv no puede: anillos cerrados, coordenadas finitas dentro de UTM 30N (no grados, no locales) y el total de
  * vértices. Devuelve null si vale, o el error con su mensaje para la oficina.
  */
-export function compruebaGeometria(g: Geometria): ErrorGeometria | null {
+export function compruebaGeometria(g: Geometria, maxVertices: number = MAX_VERTICES): ErrorGeometria | null {
   let n = 0;
   for (const pol of poligonos(g)) {
     for (const an of pol) {
@@ -54,7 +73,7 @@ export function compruebaGeometria(g: Geometria): ErrorGeometria | null {
       if (an.length - 1 < 3) return { error: "pocos_vertices", mensaje: "Una haza necesita al menos tres vértices." };
     }
   }
-  if (n > MAX_VERTICES) return { error: "demasiados_vertices", mensaje: "La haza tiene demasiados vértices (más de " + MAX_VERTICES + ")." };
+  if (n > maxVertices) return { error: "demasiados_vertices", mensaje: "La geometría tiene demasiados vértices (más de " + maxVertices + ")." };
   return null;
 }
 

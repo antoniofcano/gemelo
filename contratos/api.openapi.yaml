@@ -34,6 +34,12 @@ components:
         altura: { enum: [baja, media, alta], description: "AV2 (opcional): escala el muñeco" }
         complexion: { enum: [delgada, media, ancha], description: "AV2 (opcional): ensancha o afina el muñeco" }
         movilidad: { enum: [pie, baston, andador, silla], description: "AV2 (opcional): apoyo que lleva; con `silla` el muñeco va sentado con sus ruedas. No es una pose: la calcula quien mira" }
+        cuerpo: { type: string, pattern: "^[a-z0-9-]{1,32}$", description: "AV4 (opcional, ADR-0025): id de un cuerpo del catálogo v2 (contratos/avatares.md §9)" }
+        pelo: { type: string, pattern: "^[a-z0-9-]{1,32}$", description: "AV4 (opcional): id de una pieza de pelo del catálogo v2" }
+        pelo_color: { type: integer, minimum: 0, maximum: 9, description: "AV4 (opcional): índice de paletas.pelo" }
+        vello: { type: string, pattern: "^[a-z0-9-]{1,32}$", description: "AV4 (opcional): id de una pieza de vello (para cualquier cuerpo)" }
+        ropa: { type: string, pattern: "^[a-z0-9-]{1,32}$", description: "AV4 (opcional): id de una pieza de ropa; sin ella, la ropa base" }
+        acc: { type: array, maxItems: 3, uniqueItems: true, items: { type: string, pattern: "^[a-z0-9-]{1,32}$" }, description: "AV4 (opcional): otros accesorios (el sombrero sigue en `sombrero`)" }
     RecordJuego:
       type: object
       additionalProperties: false
@@ -50,6 +56,24 @@ components:
             duracion_s: { type: integer }
             fecha: { type: string, format: date-time }
         partidas: { type: integer, minimum: 0 }
+    PuestoJuego:
+      type: object
+      additionalProperties: false
+      required: [puesto, alias, puntos, es_mia]
+      properties:
+        puesto: { type: integer, minimum: 1, description: "los empates comparten puesto" }
+        alias: { type: [string, "null"], description: "el alias del hogar SOLO si lo hizo visible; si no, null (la pantalla dice «Otra familia»). Nunca nombre real ni correo" }
+        puntos: { type: integer, minimum: 1 }
+        es_mia: { type: boolean, description: "la fila del hogar de quien pregunta (no hay ningún id)" }
+    ClasificacionJuego:
+      type: object
+      additionalProperties: false
+      required: [juego, total, puestos, mia]
+      properties:
+        juego: { type: string }
+        total: { type: integer, minimum: 0, description: "hogares activos con alguna partida de más de 0 puntos" }
+        puestos: { type: array, items: { $ref: "#/components/schemas/PuestoJuego" }, description: "los n primeros puestos (se cortan en n)" }
+        mia: { oneOf: [{ $ref: "#/components/schemas/PuestoJuego" }, { type: "null" }], description: "el puesto del propio hogar, esté o no en la tabla; null si no ha puntuado" }
     Error:
       type: object
       additionalProperties: false
@@ -59,6 +83,21 @@ components:
         mensaje: { type: string }
     GeometriaHaza:
       description: "Linde de una haza dibujada en la oficina: GeoJSON Polygon o MultiPolygon en EPSG:25830 (E, N en metros), anillos cerrados, como mucho 2000 vértices"
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [type, coordinates]
+          properties:
+            type: { type: string, enum: [Polygon] }
+            coordinates: { type: array, minItems: 1, items: { type: array, minItems: 4, items: { type: array, minItems: 2, maxItems: 2, items: { type: number } } } }
+        - type: object
+          additionalProperties: false
+          required: [type, coordinates]
+          properties:
+            type: { type: string, enum: [MultiPolygon] }
+            coordinates: { type: array, minItems: 1, items: { type: array, minItems: 1, items: { type: array, minItems: 4, items: { type: array, minItems: 2, maxItems: 2, items: { type: number } } } } }
+    ContornoFinca:
+      description: "Contorno de una finca (OF3b): la unión de sus parcelas SIGPAC o catastrales, GeoJSON Polygon o MultiPolygon en EPSG:25830, anillos cerrados, como mucho 50000 vértices"
       oneOf:
         - type: object
           additionalProperties: false
@@ -380,6 +419,10 @@ paths:
 
         AV2 (decisión 131): `tono`, `arriba`, `abajo`, `altura`, `complexion` y `movilidad` son **opcionales** y de listas cerradas (nada de género);
         el contrato sigue en v1 (un cliente de antes los ignora). Un PUT sin ellos los borra; viajan en los metadatos de presencia solo los elegidos.
+
+        AV4 (ADR-0025): la **receta** del creador por piezas, también opcional: `cuerpo`, `pelo`, `pelo_color`, `vello`, `ropa` y `acc` (ids del
+        catálogo v2, [avatares.md](avatares.md) §9; la api solo comprueba su forma). El JSON de todo el aspecto y la receta no pasa de 200 bytes
+        (400 `receta_larga` si pasa). Se guarda en la misma columna `aspecto`: sin migración.
       security: [{ sesion: [] }]
       requestBody:
         required: true
@@ -400,6 +443,12 @@ paths:
                 altura: { enum: [baja, media, alta] }
                 complexion: { enum: [delgada, media, ancha] }
                 movilidad: { enum: [pie, baston, andador, silla] }
+                cuerpo: { type: string, pattern: "^[a-z0-9-]{1,32}$" }
+                pelo: { type: string, pattern: "^[a-z0-9-]{1,32}$" }
+                pelo_color: { type: integer, minimum: 0, maximum: 9 }
+                vello: { type: string, pattern: "^[a-z0-9-]{1,32}$" }
+                ropa: { type: string, pattern: "^[a-z0-9-]{1,32}$" }
+                acc: { type: array, maxItems: 3, uniqueItems: true, items: { type: string, pattern: "^[a-z0-9-]{1,32}$" } }
       responses:
         "204": { description: guardado }
         "400": { description: "la petición no tiene la forma esperada" }
@@ -596,7 +645,8 @@ paths:
       summary: "Crea una haza dibujada en la oficina. Devuelve 201 { haza } con el recuento del servidor"
       description: >
         PostGIS valida: geometría legible y válida (ST_IsValid; 400 geometria_no_valida con motivo), al menos 10 m² (demasiado_pequena), dentro
-        de la finca = la caja de sus olivos medidos con 150 m de margen (fuera_de_finca; sin olivos de la finca, finca_desconocida) y sin pisar
+        de la finca = su contorno vigente con 1 m de holgura (ST_CoveredBy; 400 fuera_de_contorno con fuera_m2; OF3b) o, si no tiene contorno,
+        la caja de sus olivos medidos con 150 m de margen (fuera_de_finca; sin olivos ni contorno, finca_desconocida) y sin pisar
         otra haza de la finca en más de 0,5 m² (409 solape, con la lista). Nace sin familia y con su versión 1 (accion crear). Auditoría admin.haza_creada.
       security: [{ sesion: [] }]
       requestBody:
@@ -766,6 +816,60 @@ paths:
         "404": { description: "la haza o la versión no existen" }
         "409": { description: "pisa otra haza (solape), sin cambios u otra persona guardó antes" }
 
+  # ---------------------------------------------------------------- contorno de la finca (OF3b, decisión 140; migración 0011)
+  /api/admin/fincas/{finca}/limite:
+    get:
+      summary: "El límite de la finca para el editor de hazas: { finca, srs, tipo (contorno | caja | ninguno), holgura_m, margen_m, geometria (MultiPolygon o null), fuente, consultado_en, parcelas, superficie_ha, cargado_en, hazas_fuera [{ id, codigo, m2 }] }"
+      description: >
+        Con contorno vigente, tipo contorno (fuente sigpac o catastro, cuántas parcelas, fecha de consulta; hazas_fuera = las hazas de la finca que se
+        salen de él más de holgura_m). Sin él, tipo caja: la caja de los olivos medidos con margen_m (150 m), lo de OF3; sin olivos, tipo ninguno.
+      security: [{ sesion: [] }]
+      parameters:
+        - { name: finca, in: path, required: true, schema: { type: string, pattern: "^[a-z0-9_-]{1,32}$" } }
+      responses:
+        "200": { description: ok }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+
+  /api/admin/fincas/{finca}/contorno:
+    put:
+      summary: "Carga el contorno de la finca (sale de tuberia/contorno/contorno_finca.py) y retira el vigente. Devuelve 201 con el límite nuevo (como GET …/limite)"
+      description: >
+        Solo admin, con confirmación reciente (403 sin_permiso / confirmacion_requerida). PostGIS valida (400 contorno_no_valido). La historia no se
+        borra: el anterior queda retirado. No lleva las referencias de las parcelas, solo cuántas. Auditoría admin.contorno_cargado.
+      security: [{ sesion: [] }]
+      parameters:
+        - { name: finca, in: path, required: true, schema: { type: string, pattern: "^[a-z0-9_-]{1,32}$" } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [geometria, fuente, consultado_en, parcelas]
+              properties:
+                geometria: { $ref: "#/components/schemas/ContornoFinca" }
+                fuente: { type: string, enum: [sigpac, catastro] }
+                consultado_en: { type: string, format: date }
+                parcelas: { type: integer, minimum: 1, maximum: 100000 }
+      responses:
+        "201": { description: cargado }
+        "400": { description: "contorno no válido", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+    delete:
+      summary: Retira el contorno vigente; la finca vuelve a la caja de sus olivos + 150 m
+      description: Solo admin, con confirmación reciente. 404 sin_contorno si no tenía. Auditoría admin.contorno_retirado.
+      security: [{ sesion: [] }]
+      parameters:
+        - { name: finca, in: path, required: true, schema: { type: string, pattern: "^[a-z0-9_-]{1,32}$" } }
+      responses:
+        "204": { description: retirado }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: sin contorno }
+
   /api/admin/hogares/{id}/revocar:
     post:
       summary: Cierra todas las sesiones de un hogar
@@ -895,9 +999,19 @@ paths:
                   correo: { type: object, required: [modo, ultima_prueba], properties: { modo: { enum: [smtp, buzon] }, ultima_prueba: { type: [object, "null"], properties: { cuando: { type: string, format: date-time }, ok: { type: boolean } } } } }
                   olivartrack: { type: object, required: [modo, puede_sincronizar, herramientas], properties: { modo: { enum: ["no", grabado, mcp] }, puede_sincronizar: { type: boolean }, herramientas: { type: array, items: { type: object, required: [herramienta, estado, intentada_en, consultado_en, recibidos, guardados, completa, aviso], properties: { estado: { enum: [ok, truncado, parcial, error] }, completa: { type: boolean, description: "false si vino truncada o parcial: no se sacan totales de ahí" } } } } } }
                   vigia: { type: object, required: [modo, conector, origen, herramientas] }
-                  hornero: { type: object, required: [conectado, salud, detalle, latido_en, fincas] }
+                  hornero: { type: object, required: [conectado, salud, detalle, latido_en, fincas, pedido, puede_rehornear] }
         "401": { $ref: "#/components/responses/SinSesion" }
         "403": { $ref: "#/components/responses/SinPermiso" }
+
+  /api/admin/hornero/rehornear:
+    post:
+      summary: "Pide al hornero una vuelta ya (OF9, solo admin con confirmación reciente, ADR-0024). La api deja un fichero `pedido-rehornear.json` en el volumen de la configuración publicada; el hornero lo recoge en su comprobación (hasta GEMELO_HORNERO_COMPRUEBA_S, 10 min) y lo anota como atendido en su latido. Auditoría hornero.rehornear. No fuerza regenerar: es una vuelta idempotente (lo que no cambió se reutiliza)"
+      security: [{ sesion: [] }]
+      responses:
+        "202": { description: "petición dejada: { id, pedido_en, estado: pendiente }; su estado después sale en /api/admin/sistema (hornero.pedido)" }
+        "403": { description: "sin permiso o sin confirmación reciente (confirmacion_requerida)" }
+        "409": { description: "ya_pedido: hay una petición esperando al hornero" }
+        "503": { description: "hornero_no_conectado (falta su estado o el volumen) o pedido_no_escrito" }
 
   /api/admin/auditoria:
     get:
@@ -1024,14 +1138,14 @@ paths:
             schema:
               type: object
               additionalProperties: false
-              required: [nombre, objeto]
+              minProperties: 1
               properties:
-                nombre: { type: [string, "null"], minLength: 1, maxLength: 40 }
+                nombre: { type: [string, "null"], minLength: 1, maxLength: 40, description: "omitido = se queda el que había; null = lo quita" }
                 objeto:
                   type: [object, "null"]
                   additionalProperties: false
                   required: [tipo, medio_id]
-                  properties: { tipo: { enum: [foto, pintura] }, medio_id: { type: integer, minimum: 1, description: "id devuelto por POST /api/medios (del propio hogar)" } }
+                  properties: { tipo: { enum: [foto, pintura] }, medio_id: { type: integer, minimum: 1, description: "id devuelto por POST /api/medios (del propio hogar); `objeto` omitido = se queda el que había (la lista blanca no da el medio_id); null = lo quita" } }
       responses:
         "200": { description: guardada, content: { application/json: { schema: { type: object, additionalProperties: false, required: [id], properties: { id: { type: integer } } } } } }
         "400": { description: "forma, nombre no válido (nombre_no_valido), vacío o foto ajena (medio_no_valido)" }
@@ -1511,4 +1625,195 @@ paths:
         "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/RecordJuego" } } } }
         "401": { $ref: "#/components/responses/SinSesion" }
         "404": { description: no existe ese juego }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/juegos/{id}/clasificacion:
+    get:
+      summary: La clasificación por alias de un juego entre las familias (C9c; decisión 137)
+      description: >
+        La mejor puntuación de cada hogar activo, ordenada. Devuelve los n primeros puestos (n de 1 a 20, 5 por defecto) y el del propio hogar. Del resto de
+        hogares solo salen el puesto, los puntos y su alias si lo hicieron visible (si no, null): nunca nombre real, correo ni id. Una sesión cualquiera del
+        hogar (también la de unas gafas). Límite: 30 por minuto por IP.
+      security: [{ sesion: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, pattern: "^[a-z][a-z0-9-]{1,31}$" } }
+        - { name: n, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 20, default: 5 } }
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/ClasificacionJuego" } } } }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "404": { description: no existe ese juego }
+
+  # ---------------------------------------------------------------- agenda (OF11, doc/sistema/OFICINA.md §7; migraciones 0004 y 0012)
+  # Eventos con aforo en PERSONAS, inscripción por hogar, lista de espera con promoción automática y avisos en la campana del gemelo.
+  # El CORREO de los avisos no sale hoy (no hay emisor de avisos por correo): avisos_hogar.correo_enviado_en queda en NULL.
+  /api/admin/eventos:
+    get:
+      summary: Los eventos de la agenda, con lo apuntado y la espera de cada uno (oficina)
+      security: [{ sesion: [] }]
+      parameters:
+        - { name: desde, in: query, required: false, schema: { type: string, description: "instante ISO 8601; solo los que empiezan desde ahí" } }
+        - { name: limite, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 500 } }
+      responses:
+        "200":
+          description: "ok: eventos[] { id, titulo, tipo (guiada|libre|evento|taller|recoleccion|cata|directo), descripcion, lugar, finca, haza {id, codigo}|null, presencial, empieza_en, termina_en, plazas|null, inscripcion_hasta, estado (borrador|abierta|cerrada|cancelada), apuntadas (personas), hogares, en_espera (hogares), personas_en_espera, plazas_libres|null }"
+          content: { application/json: { schema: { type: object, properties: { eventos: { type: array, items: { type: object } } } } } }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+    post:
+      summary: Crea un evento (empieza en el futuro; el plazo de inscripción no pasa del inicio)
+      security: [{ sesion: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [titulo, tipo, empieza_en]
+              properties:
+                titulo: { type: string, minLength: 1, maxLength: 120 }
+                tipo: { enum: [guiada, libre, evento, taller, recoleccion, cata, directo] }
+                descripcion: { type: [string, "null"], maxLength: 2000 }
+                lugar: { type: [string, "null"], maxLength: 120, description: "sitio dentro del mundo o de la finca, en texto" }
+                finca: { type: [string, "null"], pattern: "^[a-z0-9_-]{1,32}$" }
+                haza_id: { type: [integer, "null"], minimum: 1 }
+                presencial: { type: boolean, default: false }
+                empieza_en: { type: string, description: "instante ISO 8601 con zona" }
+                termina_en: { type: [string, "null"] }
+                plazas: { type: [integer, "null"], minimum: 1, maximum: 5000, description: "aforo en personas; null = sin aforo" }
+                inscripcion_hasta: { type: [string, "null"] }
+                estado: { enum: [borrador, abierta, cerrada], default: abierta }
+      responses:
+        "201": { description: "creado (auditoría admin.evento_creado)", content: { application/json: { schema: { type: object, properties: { id: { type: integer } } } } } }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/admin/eventos/{id}:
+    put:
+      summary: Edita un evento (los campos que se envían). Subir el aforo promueve a la espera; no se baja de lo apuntado
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              minProperties: 1
+              description: "los mismos campos que al crear, todos opcionales; estado solo borrador, abierta o cerrada (cancelar tiene su ruta)"
+      responses:
+        "200": { description: "editado (auditoría admin.evento_editado): promovidos (hogares que pasaron de la espera a apuntados) y con_inscritos (hogares apuntados o en espera, para ofrecer «avisar» si cambió fecha o lugar)", content: { application/json: { schema: { type: object, properties: { promovidos: { type: integer }, con_inscritos: { type: integer } } } } } }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: no existe }
+        "409": { description: "cancelado, o plazas_menores_que_apuntadas" }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/admin/eventos/{id}/cancelar:
+    post:
+      summary: Cancela el evento y avisa (campana del gemelo) a apuntados y a la espera
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody: { required: false, content: { application/json: { schema: { type: object, additionalProperties: false } } } }
+      responses:
+        "204": { description: "cancelado (auditoría admin.evento_cancelado)" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: no existe }
+        "409": { description: ya_cancelado }
+
+  /api/admin/eventos/{id}/inscritos:
+    get:
+      summary: Quién está apuntado, en espera o se borró. Familia (alias, nombre interno, hazas) y personas; nunca el correo
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "200":
+          description: "evento { id, titulo, plazas, estado, apuntadas, plazas_libres, en_espera } e inscritos[] { hogar_id, alias, nombre_interno, de_baja, hazas[], personas, estado (apuntado|en_espera|anulado), apuntado_en, promovida_en, anulado_en }"
+          content: { application/json: { schema: { type: object, properties: { evento: { type: object }, inscritos: { type: array, items: { type: object } } } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: no existe }
+
+  /api/admin/eventos/{id}/avisar:
+    post:
+      summary: Avisa (campana del gemelo) a los apuntados, a la espera o a todos, con un tope de 3 avisos de la oficina por hogar y semana
+      description: >
+        Los hogares que ya llegaron al tope se omiten (omitidos_por_tope). El correo NO sale hoy: correo_pendiente cuenta los hogares con
+        avisos_correo a los que llegará cuando haya emisor. Sin destinatarios, 200 con enviados 0 y sin crear aviso.
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [titulo]
+              properties:
+                titulo: { type: string, minLength: 1, maxLength: 120 }
+                texto: { type: string, minLength: 1, maxLength: 2000 }
+                a: { enum: [apuntados, espera, todos], default: todos }
+      responses:
+        "201": { description: "avisado (auditoría admin.evento_avisado)", content: { application/json: { schema: { type: object, properties: { aviso: { type: [integer, "null"] }, enviados: { type: integer }, omitidos_por_tope: { type: integer }, correo_pendiente: { type: integer } } } } } }
+        "200": { description: "nadie a quien avisar (todos al tope o sin inscritos)" }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: no existe }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/agenda:
+    get:
+      summary: Los próximos eventos (abiertos o cerrados, aún sin empezar) y la inscripción del PROPIO hogar
+      description: >
+        Cualquier sesión. No lleva guía, creador ni otros inscritos. puede_inscribirse es false en una sesión de gafas vinculadas
+        (solo el titular con su enlace apunta a la familia).
+      security: [{ sesion: [] }]
+      responses:
+        "200":
+          description: "ok: puede_inscribirse y eventos[] { id, titulo, tipo, descripcion, lugar, finca, haza (código)|null, presencial, empieza_en, termina_en, plazas|null, plazas_libres|null, inscripcion_hasta, inscripcion_abierta, mia {estado: apuntado|en_espera, personas}|null }"
+          content: { application/json: { schema: { type: object, properties: { puede_inscribirse: { type: boolean }, eventos: { type: array, items: { type: object } } } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/agenda/{id}/inscripcion:
+    post:
+      summary: Apunta al hogar (personas 1-10) o lo deja en la lista de espera si no cabe o ya hay familias esperando
+      description: >
+        Una inscripción por hogar. Solo la sesión de enlace del titular (403 solo_titular desde unas gafas). 409 inscripcion_cerrada
+        (cerrado, plazo vencido o ya empezado) o ya_inscrito; 422 supera_el_aforo si el grupo es mayor que el aforo. Límite por IP (20
+        por minuto) y por hogar (30 por hora). Auditoría agenda.inscripcion.
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [personas], properties: { personas: { type: integer, minimum: 1, maximum: 10 } } }
+      responses:
+        "201": { description: "hecho", content: { application/json: { schema: { type: object, properties: { estado: { enum: [apuntado, en_espera] }, personas: { type: integer }, plazas_libres: { type: [integer, "null"] } } } } } }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/OrigenNoAdmitido" }
+        "404": { description: no existe (o es un borrador o está cancelado) }
+        "409": { description: inscripcion_cerrada o ya_inscrito }
+        "422": { description: supera_el_aforo }
+        "429": { $ref: "#/components/responses/Limite" }
+    delete:
+      summary: Borra la inscripción del hogar; libera la plaza y promueve a la espera (con aviso)
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "204": { description: "borrado (auditoría agenda.baja)" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/OrigenNoAdmitido" }
+        "404": { description: el hogar no estaba apuntado }
         "429": { $ref: "#/components/responses/Limite" }

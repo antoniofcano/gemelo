@@ -1,7 +1,7 @@
 "use strict";
 // La oficina, OF5: la sección Sistema (apps/web/oficina/sistema.js, doc/sistema/OFICINA.md §10). Siempre, y sin red ni Chrome:
 //  - estática: nada en línea ni de otro origen, DOM con h() (texto), nada de secretos en la página ni en lo que pide; las rutas que usa están en el contrato;
-//    lo delicado (sincronizar, aprobar un aparato) pasa por la confirmación reciente; «re-hornear» NO está (es de OF9);
+//    lo delicado (sincronizar, aprobar un aparato, re-hornear) pasa por la confirmación reciente; «Re-hornear ahora» es solo de admin (OF9);
 //  - las piezas puras (sistema_puro.js): hace cuánto, bytes, resumen de la sincronía («truncado» = no completo), «sobre qué» de la auditoría.
 // Opcional (GEMELO_DOCKER=1): recorrido en Chrome contra la api REAL con PostGIS en un contenedor (Testcontainers, NO el entorno de la persona):
 // salud, correo de prueba, OlivarTrack y sincronizar, Vigía, hornero, un aparato pendiente (aprobar y revocar) y la auditoría filtrada y paginada,
@@ -25,17 +25,18 @@ test("nada en línea ni de otro origen; el DOM se hace con h() (un nombre de apa
   assert.match(sec, /<label class="vh" for="sAudF">/); assert.match(sec, /<th scope="col">/);
 });
 
-test("usa solo rutas del contrato; lo delicado reintenta tras confirmar; «Sincronizar» es solo de admin; re-hornear NO está (OF9)", () => {
+test("usa solo rutas del contrato; lo delicado reintenta tras confirmar; «Sincronizar» es solo de admin; «Re-hornear ahora» es solo de admin y pasa por la confirmación (OF9)", () => {
   const openapi = lee("contratos/api.openapi.yaml");
   const usadas = new Set([...js.matchAll(/api\("([A-Z]+)", ["`](\/api\/[^"`?]*)/g)].map(m => m[1] + " " + m[2].replace(/\/"?$/, "")));
-  for (const r of ["/api/admin/sistema", "/api/admin/auditoria", "/api/admin/correo/prueba", "/api/admin/sincronia", "/api/admin/aparatos", "/api/admin/aparatos/{id}/aprobar", "/api/admin/aparatos/{id}/revocar"]) {
+  for (const r of ["/api/admin/sistema", "/api/admin/auditoria", "/api/admin/correo/prueba", "/api/admin/sincronia", "/api/admin/hornero/rehornear", "/api/admin/aparatos", "/api/admin/aparatos/{id}/aprobar", "/api/admin/aparatos/{id}/revocar"]) {
     assert.ok(openapi.includes("  " + r + ":"), r + " está en api.openapi.yaml");
   }
   assert.ok(usadas.size >= 5, "la sección llama a la api: " + [...usadas].join(", "));
   assert.match(js, /conConfirmacion\(\(\) => api\("POST", "\/api\/admin\/sincronia"/);
   assert.match(js, /conConfirmacion\(\(\) => api\("POST", "\/api\/admin\/aparatos\/" \+ id \+ "\/aprobar"/);
   assert.match(js, /\$\("#bSinc"\)\.hidden = !esAdmin\(\)/);
-  assert.ok(!/rehornear|re-hornear"/i.test(js.replace(/Re-hornear llega con la oficina de épocas \(OF9\)/, "")), "sin botón de re-hornear");
+  assert.match(js, /conConfirmacion\(\(\) => api\("POST", "\/api\/admin\/hornero\/rehornear"/);
+  assert.match(js, /b\.hidden = !esAdmin\(\)/, "el botón de re-hornear es solo de admin");
   assert.ok(!/\b(token|secreto|clave|password)\b/i.test(js), "la pantalla no sabe de secretos");
 });
 
@@ -102,7 +103,7 @@ test("recorrido: salud, correo de prueba, OlivarTrack, Vigía, hornero, aparatos
     await pg.click("button[type=submit], input[type=submit]");
     await pg.waitForURL(/\/oficina\//, { timeout: 15_000 });
     await pg.waitForFunction(() => document.querySelector("#s-rol").textContent !== "—");
-    assert.strictEqual(await pg.locator("#nav .pronto").count(), 5, "Sistema ya no es «pronto»");
+    assert.strictEqual(await pg.locator("#nav .pronto").count(), (lee("apps/web/oficina/oficina.js").match(/", false\]/g) || []).length, "tantos «pronto» como secciones sin hacer (Sistema ya no lo es)");
 
     // 1. salud: api, base, LiveKit (apagado en la prueba), correo, hornero (con su latido), todos con palabra
     await pg.click("#nav button[data-sec=sistema]");
@@ -113,11 +114,25 @@ test("recorrido: salud, correo de prueba, OlivarTrack, Vigía, hornero, aparatos
     assert.match(await pg.textContent("#sSalud li[data-servicio=hornero]"), /en marcha/);
     assert.match(await pg.textContent("#sSaludHora"), /Comprobado/);
 
-    // 2. hornero: época actual y siguiente, objetos y tamaño (del manifiesto de la prueba: 2 objetos, 4,2 MB); sin botón de re-hornear
+    // 2. hornero: época actual y siguiente, objetos y tamaño (del manifiesto de la prueba: 2 objetos, 4,2 MB); el botón «Re-hornear ahora» está oculto para quien no es admin
     const hor = await pg.textContent("#sHornero");
     assert.match(hor, /envero/); assert.match(hor, /madura/); assert.match(hor, /2 objetos/); assert.match(hor, /4,2 MB/);
     assert.ok(!/\/tmp|oficina-hornero|[A-Z]:\\/.test(hor), "ni una ruta del servidor");
-    assert.strictEqual(await pg.locator("#sHornero button").count(), 0, "re-hornear llega con OF9");
+    assert.strictEqual(await pg.locator("#sHornero button").count(), 0, "el botón de re-hornear está fuera de #sHornero (en su tarjeta, #bRehornear)");
+
+    // 2b. re-hornear (OF9): solo admin, con confirmación; deja la petición y Sistema la ve pendiente (el hornero de la prueba es de mentira: no la atiende)
+    assert.strictEqual(await pg.isVisible("#bRehornear"), true); assert.strictEqual(await pg.isDisabled("#bRehornear"), false);
+    assert.match(await pg.textContent("#sPedido"), /Sin peticiones/);
+    await pg.click("#bRehornear"); await pg.waitForSelector("#dlgConfirma[open]");
+    assert.match(await pg.textContent("#dlgConfTexto"), /como mucho 10 minutos/);
+    await pg.click("#dlgConfSi");
+    await pg.waitForSelector("#avisos .aviso:has-text('Petición dejada')", { timeout: 15_000 });
+    await pg.waitForFunction(() => /pedido, esperando al hornero/.test(document.querySelector("#sPedido").textContent), null, { timeout: 15_000 });
+    assert.strictEqual(await pg.isDisabled("#bRehornear"), true, "mientras espera no se pide otra");
+    assert.ok(!/\/tmp|oficina-hornero|[A-Z]:\\/.test(await pg.textContent("#sPedido")), "ni una ruta del servidor");
+    const sis = await (await pg.request.get(base + "/api/admin/sistema")).json();
+    assert.strictEqual(sis.hornero.pedido.estado, "pendiente");
+    await pg.waitForSelector("#sAudF option[value='hornero.rehornear']", { state: "attached", timeout: 15_000 }); await pg.selectOption("#sAudF", "hornero.rehornear"); await pg.waitForFunction(() => document.querySelectorAll("#sAud tr[data-audit]").length === 1); await pg.selectOption("#sAudF", "");
 
     // 3. Vigía con el fixture: modo y de cuándo es la lectura
     await pg.waitForFunction(() => /fixture/.test(document.querySelector("#sVigia").textContent) || /sin conector/.test(document.querySelector("#sVigia").textContent));

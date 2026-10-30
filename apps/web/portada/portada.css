@@ -137,6 +137,19 @@ legend { font-weight: 600; margin-bottom: 6px; padding: 0; }
 .tarjeta-av .desc { color: var(--muted); font-size: .92rem; }
 .tarjeta-av input:checked + span { border-color: var(--olivo); box-shadow: 0 0 0 2px var(--olivo); }
 .tarjeta-av input:focus-visible + span { outline: 3px solid var(--foco); outline-offset: 2px; }
+/* avatar por piezas (AV4): desplegables, «algo parecido» y las dos vistas */
+.avatar-zona { grid-template-columns: minmax(180px, 240px) 1fr; }
+@media (max-width: 620px) { .avatar-zona { grid-template-columns: 1fr; } }
+.avatar-prev .vistas { justify-content: center; margin-bottom: 6px; }
+.btn[aria-pressed="true"] { border-color: var(--olivo); box-shadow: 0 0 0 2px var(--olivo); font-weight: 600; }
+details.pieza { border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); margin-bottom: 8px; }
+details.pieza > summary { min-height: var(--toque); display: flex; align-items: center; padding: 0 12px; cursor: pointer; font-weight: 600; }
+details.pieza > summary:focus-visible { outline: 3px solid var(--foco); outline-offset: 2px; }
+.cuerpo-pieza { padding: 4px 12px 8px; }
+.muestra i { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid rgba(0, 0, 0, .3); display: block; flex: none; }
+.parecidos { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); }
+.parecidos .btn { justify-content: flex-start; text-align: left; white-space: normal; min-height: var(--toque); height: auto; padding: 8px 12px; }
+#descAvatar { max-width: 32ch; }
 .lista-cred { list-style: none; padding: 0; display: grid; gap: 10px; }
 .lista-cred li { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; }
 .lista-cred p { margin: 0 0 4px; }

@@ -56,6 +56,12 @@
       "emiten": ["15_tiempo"],
       "escuchan": ["35_fichas_tiempo"]
     },
+    "personalizacion:resultado": {
+      "descripcion": "El resultado de una acción de la ficha de un olivo que no tiene recuadro propio (hoy, «Denunciar» en VR): texto llano para quien lo muestre. En pantalla los resultados salen en el recuadro de la acción y no pasan por aquí.",
+      "datos": { "type": "object", "required": ["texto"], "properties": { "texto": { "type": "string" } } },
+      "emiten": ["42_personalizacion"],
+      "escuchan": []
+    },
     "red:estado": {
       "descripcion": "Una sala de la red (37_red.js) cambia de estado: «conectando», «dentro», «reconectando» o «fuera» (con su motivo: «propio», «expulsado», «duplicado», «desconectado» o «error»). Quien está en la sala lo sigue por su sala (Red.sala(clave).al(\"estado\")); el evento es para lo demás (la oficina, ?debug).",
       "datos": { "type": "object", "required": ["sala", "estado"], "properties": { "sala": { "type": "string" }, "estado": { "enum": ["fuera", "conectando", "dentro", "reconectando"] }, "motivo": { "type": "string" } } },
@@ -96,13 +102,13 @@
       "descripcion": "Se ha elegido una entidad del mundo (un olivo, una baliza, una haza, una persona) con un toque o clic (como \"toque\"), el rayo y el gatillo de un mando (\"rayo\"), una tecla (\"tecla\") o desde el código; su ficha ya se está enseñando.",
       "datos": { "type": "object", "required": ["id", "tipo", "como"], "properties": { "id": { "type": "string" }, "tipo": { "type": "string" }, "como": { "type": "string" } } },
       "emiten": ["02e_entidades"],
-      "escuchan": []
+      "escuchan": ["42_personalizacion"]
     },
     "usable:suelta": {
       "descripcion": "Lo elegido deja de estarlo: motivo \"otra\" (se eligió otra cosa), \"nada\" (un toque sobre nada), \"cerrada\" (su × o su «Cerrar»), \"tiempo\" (la ficha de VR se apagó sola) o \"quitada\" (su tipo salió del registro).",
       "datos": { "type": "object", "required": ["id", "motivo"], "properties": { "id": { "type": "string" }, "motivo": { "type": "string" } } },
       "emiten": ["02e_entidades"],
-      "escuchan": []
+      "escuchan": ["42_personalizacion"]
     },
     "usable:usa": {
       "descripcion": "Se ha usado una acción de la ficha de una entidad («Ir a esta baliza», «Ir con»…) y se ha hecho.",

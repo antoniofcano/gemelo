@@ -1,5 +1,5 @@
 "use strict";
-// Creador por piezas, fase 1 (AV3): los guiones de Blender de tuberia/avatares/creador/ y el envoltorio del banco para procesos que no son Chrome.
+// Creador por piezas (AV3 y AV4): los guiones de Blender de tuberia/avatares/creador/, el catálogo v2 (catalogo.mjs) y el envoltorio del banco para procesos que no son Chrome.
 // Sin Blender: se lee el guion (12 cuerpos, peques sin ofrecer, sin parámetro de sexo, licencia CC0, salida fuera del repo) y se prueba proceso.js.
 // Con Blender y los cuerpos ya generados (GEMELO_AVATARES_CUERPOS = la carpeta de cuerpos.py), además: comprueba.mjs (tubería + three-vrm).
 const test = require("node:test"), assert = require("node:assert");
@@ -44,6 +44,31 @@ test("cuerpos.py: VRM 1.0 con licencia que la tubería acepta, huesos obligatori
   assert.match(PY, /los VRM no se versionan/, "se niega a escribir dentro del repo");
 });
 
+test("cuerpos.py (AV4): piezas mínimas para que nadie quede calvo ni igual — cinco peinados (rapado, corto, afro, recogido, largo), vello, ropa de faena y sombreros; sin sexo; ids del contrato", () => {
+  const piezas = [...bloque("PIEZAS").matchAll(/"([a-z0-9-]+)":\s*\{"tipo": "(\w+)"/g)].map(m => [m[1], m[2]]);
+  const de = t => piezas.filter(x => x[1] === t).map(x => x[0]);
+  assert.deepStrictEqual(de("pelo"), ["pelo-rapado", "pelo-corto", "pelo-afro", "pelo-recogido", "pelo-largo"]);
+  assert.ok(de("vello").length >= 1 && de("ropa").includes("ropa-faena") && de("accesorio").length >= 2);
+  for (const [id] of piezas) assert.match(id, /^[a-z0-9-]{1,32}$/);
+  assert.match(PY, /obj\.name = "pieza_" \+ ident/, "el nodo de cada pieza se llama pieza_<id> (contratos/avatares.md §9)");
+  assert.match(bloque("PIEZAS"), /"ropa-faena":[^\n]*"cubre_ropa_base": True/);
+  // el cuello (decisión 141): un plano inclinado, sin los cortes en escalera de AV3; «mayor» con más edad y postura
+  assert.ok(!/ESCOTE/.test(PY), "sin el escote recto de AV3");
+  assert.match(PY, /"cuello_no": Vector\(\(0, -INCLINA, 1\)\)\.normalized\(\)/);
+  assert.match(bloque("POSTURA"), /"mayor":/);
+  const mayor = /"mayor":\s*\{"age": ([\d.]+)/.exec(bloque("EDADES")); assert.ok(Number(mayor[1]) > 0.9, "más edad que en AV3 (0,88)");
+});
+
+test("catalogo.mjs (AV4): el avatar completo más caro (cuerpo + la pieza más cara de cada tipo; la ropa que cubre quita la base) y sus topes", async () => {
+  const { pathToFileURL } = require("url"), { peorCombinacion, TOPES_COMBINACION, TOPES_CUERPO } = await import(pathToFileURL(path.join(RAIZ, "tuberia", "avatares", "creador", "catalogo.mjs")).href);
+  const nodos = { cuerpo: { primitivas: 3, triangulos: 9000, porMaterial: { piel: 6000, ropa_base: 2000, ropa_abajo: 1000 } }, ojos: { primitivas: 1, triangulos: 300 },
+    "pieza_pelo-a": { primitivas: 1, triangulos: 800 }, "pieza_pelo-b": { primitivas: 1, triangulos: 1500 }, "pieza_ropa-f": { primitivas: 2, triangulos: 2000 }, "pieza_som": { primitivas: 1, triangulos: 140 } };
+  const piezas = [{ id: "pelo-a", tipo: "pelo", malla: "pieza_pelo-a" }, { id: "pelo-b", tipo: "pelo", malla: "pieza_pelo-b" }, { id: "ropa-f", tipo: "ropa", malla: "pieza_ropa-f", cubre_ropa_base: true }, { id: "som", tipo: "accesorio", malla: "pieza_som" }];
+  assert.deepStrictEqual(peorCombinacion(nodos, piezas), { triangulos: 9000 + 300 + 1500 + (2000 - 3000) + 140, primitivas: 4 + 1 + 0 + 1 });
+  assert.deepStrictEqual(TOPES_COMBINACION, { triangulos: 15000, primitivas: 7 });
+  assert.ok(TOPES_CUERPO.triangulos_max >= 20000 && TOPES_CUERPO.materiales_max >= 6);
+});
+
 test("banco/proceso.js: lee la orden tras «--», la memoria pedida y el motivo; sin orden, error", () => {
   const { lee: leeArgs } = require("../banco/proceso");
   const o = leeArgs(["--que", "AV3 cuerpos", "--memoria-gb", "1.5", "--", "blender", "--background"]);
@@ -58,4 +83,5 @@ test("comprueba.mjs con los cuerpos generados: pasan la tubería y three-vrm 3.5
   const r = spawnSync(process.execPath, [path.join(RAIZ, "tuberia", "avatares", "creador", "comprueba.mjs"), "--origen", CUERPOS], { encoding: "utf8" });
   assert.strictEqual(r.status, 0, r.stdout + r.stderr);
   assert.strictEqual((r.stdout.match(/\| cuerpo-/g) || []).length, 12, r.stdout);
+  assert.ok(!/FALLA|RECHAZADO/.test(r.stdout), r.stdout);
 });

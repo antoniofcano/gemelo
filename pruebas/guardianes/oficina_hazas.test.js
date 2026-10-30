@@ -97,6 +97,21 @@ test("cuentas puras: vértices, superficie, recuento orientativo y solapes", asy
   assert.strictEqual(P.codigoLibre(["H-01", "H-02", "H-07", "X-99"]), "H-08"); assert.strictEqual(P.codigoLibre([]), "H-01");
 });
 
+test("cuentas puras: la haza cabe en el límite de la finca (OF3b), también cóncavo y con holgura", async () => {
+  const P = await import(pathToFileURL(path.join(RAIZ, "apps", "web", "oficina", "hazas_puro.js")).href);
+  const sq = (x, y, l) => [[[[x, y], [x + l, y], [x + l, y + l], [x, y + l], [x, y]]]];
+  const L = [[[[0, 0], [100, 0], [100, 50], [50, 50], [50, 100], [0, 100], [0, 0]]]];   // una L: le falta el cuadrante NE
+  assert.ok(P.cabeEn(sq(10, 10, 20), L, 0));
+  assert.ok(!P.cabeEn(sq(40, 40, 20), L, 0), "una esquina en el hueco de la L");
+  assert.ok(P.cabeEn([[[[10, 60], [40, 45], [60, 10], [10, 60]]]], L, 0), "vértices en los dos brazos sin pasar por el hueco");
+  assert.ok(!P.cabeEn([[[[40, 90], [90, 40], [45, 45], [40, 90]]]], L, 0), "vértices dentro pero un lado cruza el hueco");
+  assert.ok(P.cabeEn(sq(0, 0, 10), L, 0), "compartir linde con el límite vale");
+  assert.ok(P.cabeEn(sq(-0.5, 0, 10), L, 1), "medio metro fuera, con holgura de 1 m");
+  assert.ok(!P.cabeEn(sq(-2, 0, 10), L, 1));
+  assert.ok(P.cabeEn(sq(500, 500, 5), null), "sin límite conocido decide el servidor");
+  assert.ok(P.puntoEnLimite(L, 75, 25) && !P.puntoEnLimite(L, 75, 75) && P.puntoEnLimite(L, 100.5, 25, 1) && P.puntoEnLimite(null, 1e9, 1e9));
+});
+
 // ——— recorrido en Chrome (opcional) ———
 const SALTO = process.env.GEMELO_DOCKER !== "1" ? "recorrido de Docker + Chrome opcional (GEMELO_DOCKER=1): el editor de hazas contra la api real NO se ha comprobado" : null;
 
@@ -216,6 +231,32 @@ test("recorrido: crear, mover un vértice (ratón y teclado), solape, guardar co
     await pg.waitForSelector("#hFicha .historial li:has-text('v" + (v0 + 2) + " · vuelta atrás (a la v" + v0 + ")')");
     const v = await pg.evaluate(async id => (await (await fetch("/api/admin/hazas/" + id + "/versiones")).json()).versiones.map(x => x.accion), h2.id);
     assert.deepStrictEqual(v.slice(0, 2), ["volver", "editar"], "el historial no se reescribe"); assert.strictEqual(v.length, v0 + 2);
+
+    // 5b. límite de la finca (OF3b): sin contorno, la caja de los olivos + 150 m; con un contorno cargado (admin, confirmación reciente),
+    //     un vértice de H-02 no sale de él con el teclado y el servidor rechaza guardar fuera (fuera_de_contorno)
+    assert.strictEqual((await est()).limite, "caja");
+    assert.match(await pg.textContent("#mLimite"), /caja de los olivos medidos \+ 150 m/);
+    const rectU = (x0, y0, x1, y1) => ({ type: "Polygon", coordinates: [[U(x0, y0), U(x1, y0), U(x1, y1), U(x0, y1), U(x0, y0)]] });
+    const carga = await pg.evaluate(async b => { const r = await fetch("/api/admin/fincas/hituelo/contorno", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(b) }); return [r.status, await r.json()]; },
+      { geometria: rectU(-140, -400, 400, 400), fuente: "sigpac", consultado_en: "2026-10-30", parcelas: 2 });
+    assert.strictEqual(carga[0], 201, JSON.stringify(carga[1])); assert.strictEqual(carga[1].tipo, "contorno");
+    const fuera = await pg.evaluate(async b => (await fetch("/api/admin/hazas/" + b.id + "/geom", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(b.cuerpo) })).json(),
+      { id: h2.id, cuerpo: { version: h2.version, geometria: rectU(-150, -210, -30, -50) } });
+    assert.strictEqual(fuera.error, "fuera_de_contorno", "el servidor manda: " + JSON.stringify(fuera));
+    await pg.reload();
+    await pg.waitForFunction(() => window.__hazas && window.__hazas().limite === "contorno" && window.__hazas().hazas >= 4, null, { timeout: 30_000 });
+    assert.match(await pg.textContent("#mLimite"), /contorno de 2 parcelas SIGPAC © FEGA \(CC BY 4\.0\)/);
+    await pg.selectOption("#hSel", { label: "H-02 · El Pilar" });
+    await pg.waitForFunction(() => window.__hazas().sel === "H-02");
+    await pg.focus("#mapa");
+    await pg.keyboard.press("Tab");   // vértice 1 = (-135, -210)
+    await pg.keyboard.press("Shift+ArrowLeft");   // -140: en la linde del contorno, cabe
+    await pg.keyboard.press("Shift+ArrowLeft");   // -145: fuera, no se mueve
+    assert.match(await pg.textContent("#mEstado"), /fuera del contorno de la finca \(SIGPAC\): no se mueve/);
+    assert.strictEqual(Math.round((await est()).coordsSel[0][0][0][0] - centro[0]), -140);
+    await pg.keyboard.press("Control+z");
+    await pg.waitForFunction(() => !window.__hazas().sucia);
+    await pg.evaluate(async () => fetch("/api/admin/fincas/hituelo/contorno", { method: "DELETE" }));
 
     // 6. a 1280 y 1024: sin desbordes, con capturas
     const salidaCap = process.env.GEMELO_CAPTURAS || propia("oficina-hazas-capturas");

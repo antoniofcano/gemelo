@@ -92,10 +92,20 @@
     function tipo(t) { return defs[t] || null; }
     function tipos() { return orden.slice(); }
     function existe(x) { var d = de(x); if (!d) return false; try { return d.existe ? !!d.existe(x) : true; } catch (e) { falla(x, e); return false; } }
+    // complementa(tipo, fn): un componente añade filas y acciones a la ficha de un tipo que no es suyo (P7f: «Nombrar» y «Denunciar» en la del olivo) sin
+    // que el tipo lo sepa; fn(ficha, id, modo) modifica la ficha en su sitio (texto llano, como ella). Devuelve la función que lo quita. Un fallo suyo no tira la ficha.
+    var extras = {};
+    function complementa(t, fn) {
+      if (typeof t !== "string" || typeof fn !== "function") return function () {};
+      (extras[t] = extras[t] || []).push(fn);
+      return function () { var l = extras[t], i = l ? l.indexOf(fn) : -1; if (i >= 0) l.splice(i, 1); };
+    }
     function fichaDe(x, modo) {
       var d = de(x), f = null; if (!d) return null;
-      try { f = d.ficha(x, modo || "pantalla"); } catch (e) { falla(x, e); }
+      modo = modo || "pantalla";
+      try { f = d.ficha(x, modo); } catch (e) { falla(x, e); }
       if (!f) return null;
+      (extras[d.tipo] || []).slice().forEach(function (fn) { try { fn(f, x, modo); } catch (e) { falla(x, e); } });
       f.id = x; f.tipo = d.tipo; return f;
     }
     function pos(x) { var d = de(x); try { return d && d.pos ? d.pos(x) || null : null; } catch (e) { falla(x, e); return null; } }
@@ -114,7 +124,7 @@
       return out;
     }
     function resumen() { return orden.map(function (t) { var d = defs[t]; return { tipo: t, dueno: d.dueno, prioridad: d.prioridad, fondo: !!d.fondo, toque: !!d.pantalla, rayo: !!d.rayo, cerca: !!d.cerca }; }); }
-    return { registra: registra, de: de, tipo: tipo, tipos: tipos, existe: existe, ficha: fichaDe, pos: pos, lista: listaTipo, candidatos: candidatos, resumen: resumen };
+    return { registra: registra, complementa: complementa, de: de, tipo: tipo, tipos: tipos, existe: existe, ficha: fichaDe, pos: pos, lista: listaTipo, candidatos: candidatos, resumen: resumen };
   })();
 
   var Usables = (function () {

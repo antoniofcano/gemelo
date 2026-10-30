@@ -117,15 +117,24 @@
     var PIELES = [0xf6dcc8, 0xeec5a6, 0xe0ac86, 0xcf9670, 0xb97d57, 0xa06844, 0x855436, 0x6b412a, 0x523020, 0x3b2217];
     var ROPA = [0x6b7f3a, 0x2f2a2a, 0x8a5a3b, 0xa8432f, 0xd8b65e, 0x6f9fc6, 0xd77a9a, 0xece7dc, 0x4b5563, 0x8b7bb5];
     var CAMISAS = [0xc0533a, 0x3f7cc2, 0xe0b23a, 0x5d9b4a, 0x8a5bb0, 0xe8e2d4], PANTALON = 0x37455c;   // los de antes (camisa 0-5) y el pantalón fijo del paseante
+    // AV4 (ADR-0025): los colores del pelo y del vello del VRM (negro, castaño oscuro, castaño, castaño claro, rubio, cobrizo, canoso, blanco). Las tres paletas son las del
+    // catálogo v2 (contratos/avatares.md §9) y las de la portada: lo vigila pruebas/guardianes/avatares.test.js
+    var PELO = [0x1f1a17, 0x3d2a1e, 0x6a4a30, 0x8f6a45, 0xc9a465, 0xa5522c, 0x9a9690, 0xe6e3dc];
     var PIEL_ANTES = [1, 2, 4, 6, 7];   // piel 0-4 de antes → el tono más cercano de los 10
     var ALTURAS = { baja: 0.93, media: 1, alta: 1.07 }, COMPLEXIONES = { delgada: 0.84, media: 1, ancha: 1.24 }, MOVILIDADES = ["pie", "baston", "andador", "silla"];
     function ent(v, a, b) { return typeof v === "number" && v % 1 === 0 && v >= a && v <= b ? v : null; }
     function opc(v, lista, def) { return typeof v === "string" && Object.prototype.hasOwnProperty.call(lista, v) ? v : def; }
     // lo que trae `avatar` de los metadatos (lo que no cuadra toma el valor neutro: nulo o «media»/«pie»)
+    // AV4 (ADR-0025): la receta del creador por piezas (cuerpo, pelo, color de pelo, vello, ropa y accesorios: ids del catálogo v2, que aquí solo se comprueban de forma;
+    // lo que no esté en el catálogo lo trata 26b_avatares.js como ausente)
+    var ID = /^[a-z0-9-]{1,32}$/;
+    function id(v) { return typeof v === "string" && ID.test(v) ? v : null; }
     function lee(av) {
       av = av && typeof av === "object" ? av : {};
+      var acc = Array.isArray(av.acc) ? av.acc.filter(function (x) { return id(x); }).slice(0, 3) : [];
       return { tono: ent(av.tono, 0, 9), arriba: ent(av.arriba, 0, 9), abajo: ent(av.abajo, 0, 9), altura: opc(av.altura, ALTURAS, "media"), complexion: opc(av.complexion, COMPLEXIONES, "media"),
-        movilidad: MOVILIDADES.indexOf(av.movilidad) >= 0 ? av.movilidad : "pie" };
+        movilidad: MOVILIDADES.indexOf(av.movilidad) >= 0 ? av.movilidad : "pie",
+        cuerpo: id(av.cuerpo), pelo: id(av.pelo), peloColor: ent(av.pelo_color, 0, 9), vello: id(av.vello), ropa: id(av.ropa), acc: acc };
     }
     function hash(t) { var h = 2166136261; t = String(t); for (var i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
     // lo que se dibuja de una persona. info = SalaPose.leeInfo(...): { camisa, piel, alias, aspecto }. Sin tono elegido, el de antes (piel 0-4)
@@ -136,13 +145,14 @@
       return {
         piel: PIELES[tono], tono: tono, camisa: as.arriba !== null ? ROPA[as.arriba] : CAMISAS[info.camisa], pantalon: as.abajo !== null ? ROPA[as.abajo] : PANTALON,
         propioPiel: as.tono !== null, propioCamisa: as.arriba !== null,   // lo que ELIGIÓ la persona manda sobre los colores del catálogo VRM
-        fa: ALTURAS[as.altura], fc: COMPLEXIONES[as.complexion], mov: as.movilidad
+        fa: ALTURAS[as.altura], fc: COMPLEXIONES[as.complexion], mov: as.movilidad,
+        pelo: PELO[as.peloColor !== null && as.peloColor < PELO.length ? as.peloColor : hash(info.alias) % PELO.length], receta: as   // AV4: el color del pelo del VRM y la receta entera
       };
     }
     // cuántas cajas de accesorios pide: el sombrero (1) y el apoyo (silla 2: asiento y respaldo; bastón 1; andador 3: barra y dos laterales)
     var CAJAS_APOYO = { pie: 0, baston: 1, andador: 3, silla: 2 }, CAJAS_MAX = 4;
     function cajas(sombrero, mov) { return (sombrero ? 1 : 0) + (CAJAS_APOYO[mov] || 0); }
-    return { PIELES: PIELES, ROPA: ROPA, CAMISAS: CAMISAS, PANTALON: PANTALON, PIEL_ANTES: PIEL_ANTES, ALTURAS: ALTURAS, COMPLEXIONES: COMPLEXIONES, MOVILIDADES: MOVILIDADES, CAJAS_MAX: CAJAS_MAX, lee: lee, viste: viste, cajas: cajas, hash: hash };
+    return { PIELES: PIELES, ROPA: ROPA, PELO: PELO, CAMISAS: CAMISAS, PANTALON: PANTALON, PIEL_ANTES: PIEL_ANTES, ALTURAS: ALTURAS, COMPLEXIONES: COMPLEXIONES, MOVILIDADES: MOVILIDADES, CAJAS_MAX: CAJAS_MAX, lee: lee, viste: viste, cajas: cajas, hash: hash };
   })();
   // Sala de verdad (?presencia=red): a quién se manda la pose en cada tic (10 Hz a los cercanos, 2 Hz a toda la sala), quién está cerca (entra a 55 m y sale a 65 m),
   // a qué ritmo le llega cada uno (y por tanto con qué retardo se dibuja) y quién está «en vista aérea» (conectado y sin pose reciente: decisión 60).

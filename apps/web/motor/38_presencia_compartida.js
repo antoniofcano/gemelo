@@ -177,6 +177,7 @@
         V.push({
           k: k, alias: aliasK, quest: quest,
           camisa: vest.camisa, piel: vest.piel, pantalon: vest.pantalon, fa: vest.fa, fc: vest.fc, mov: vest.mov, propioPiel: vest.propioPiel, propioCamisa: vest.propioCamisa,
+          pelo: vest.pelo, receta: vest.receta,
           sombrero: sombrero, iSom: -1, iMano: quest ? (nQuest++) * 2 : -1,
           // emisor simulado: dónde está de verdad, adónde va, su reloj (u32, algunos a punto de dar la vuelta) y su secuencia
           home: home, x: home.x + (azar() - 0.5) * 20, y: home.y + (azar() - 0.5) * 20, dest: null, vel: 1.1 + azar() * 0.5, rum: 0, fase: azar() * 6.28,
@@ -263,8 +264,8 @@
       var c = o.cab.p, s = suelo(c[0], -c[2]), conManos = !!(o.hayIzq || o.hayDer);
       q1.set(o.cab.q[0], o.cab.q[1], o.cab.q[2], o.cab.q[3]);
       v2.set(0, 0, -1).applyQuaternion(q1); var yawCab = Math.atan2(-v2.x, -v2.z);
-      // AV2: con la silla de ruedas, sentado (sin VRM: el VRM de cerca no cambia y no la lleva todavía); la altura escala todo el muñeco y la complexión, el ancho y el fondo de cada pieza
-      var fa = a.fa || 1, fc = a.fc || 1, mu = Muneco.avanza(a.mu || (a.mu = Muneco.crea()), c[0], c[2], yawCab, dt, s, exag, o.tipo === PoseCodec.QUEST ? c[1] - s : NaN, conManos, outMu, o.modo, a.mov === "silla" && !a.vrm);
+      // AV2: con la silla de ruedas, sentado (AV4: también con VRM, que se sienta igual: 26b_avatares.js); la altura escala todo el muñeco y la complexión, el ancho y el fondo de cada pieza
+      var fa = a.fa || 1, fc = a.fc || 1, mu = Muneco.avanza(a.mu || (a.mu = Muneco.crea()), c[0], c[2], yawCab, dt, s, exag, o.tipo === PoseCodec.QUEST ? c[1] - s : NaN, conManos, outMu, o.modo, a.mov === "silla");
       var yv = mu.yPies + (mu.yCab - mu.yPies) * fa;
       var cx = c[0] + Math.sin(mu.yaw) * mu.atras, cz = c[2] + Math.cos(mu.yaw) * mu.atras;   // en quad, el cuerpo 0,2 m detrás del centro del quad (16_vida.js)
       mBase.compose(v1.set(cx, mu.yPies, cz), q1.setFromAxisAngle(ejeY, mu.yaw), vF.set(fa, fa, fa));
@@ -291,8 +292,8 @@
       if (vrmG && vrmG.coloca(a, mu, o, yawCab, cx, cz, dt)) {
         m4.makeScale(0, 0, 0);
         for (var jt = 0; jt < NP; jt++) mCuerpo.setMatrixAt(a.k * NP + jt, m4);
-        mCabeza.setMatrixAt(a.k, m4); if (a.cajas) for (var jv = 0; jv < a.cajas.length; jv++) mSombrero.setMatrixAt(a.cajas[jv], m4);   // el sombrero y el apoyo del muñeco (el VRM de cerca no los lleva todavía)
-        if (a.ruedas) for (var jx = 0; jx < a.ruedas.length; jx++) mRuedas.setMatrixAt(a.ruedas[jx], m4);
+        // el sombrero del muñeco, no (el VRM lleva el suyo o ninguno); el apoyo (silla, bastón, andador) sí: AV4, el VRM se sienta en la silla del muñeco
+        mCabeza.setMatrixAt(a.k, m4); if (a.iSom >= 0) mSombrero.setMatrixAt(a.iSom, m4);
         if (a.iMano >= 0) { mManos.setMatrixAt(a.iMano, m4); mManos.setMatrixAt(a.iMano + 1, m4); }
       }
       // el nombre, encima de la cabeza; crece con la distancia para leerse y se apaga lejos (UX §5.4: nombres sobre los avatares)
@@ -388,6 +389,7 @@
       var h = huecos.pop(), mt = SalaPose.leeInfo(de.metadatos);
       var vest = Aspecto.viste(mt);   // AV2: piel (10 tonos), ropa de arriba y de abajo, altura, complexión y apoyo; sin ellos, el de antes
       var a = { k: h, id: id, info: mt, alias: mt.alias, vrm: mt.vrm, camisa: vest.camisa, piel: vest.piel, pantalon: vest.pantalon, fa: vest.fa, fc: vest.fc, mov: vest.mov, propioPiel: vest.propioPiel, propioCamisa: vest.propioCamisa,
+        pelo: vest.pelo, receta: vest.receta,
         sombrero: mt.sombrero, iSom: -1, iMano: h * 2, out: BufferPose.salida(), ret: null, visto: false, cerca: false };
       tomaAccesorios(a);
       a.o = SalaPose.entra(SP, id, mt); a.buf = a.o.buf;
@@ -665,6 +667,12 @@
     var cambio = false;
     function vrmPersonas(todas) { var tMs = performance.now(), l = variante === "red" ? Object.keys(porId).map(function (k) { return porId[k]; }) : V; return todas ? l : l.filter(function (a) { return seVe(a, tMs); }); }
     function miVrm() { return yo && yo.info ? yo.info.vrm : null; }
+    // AV4: lo tuyo para tu paseante con VRM (de tus metadatos: receta, vrm, sombrero y tus colores, los mismos que te ven los demás); null sin sala
+    function miAvatar() {
+      if (!yo || !yo.info) return null;
+      var v = Aspecto.viste(yo.info);
+      return { vrm: yo.info.vrm, receta: v.receta, sombrero: yo.info.sombrero, piel: v.piel, camisa: v.camisa, pantalon: v.pantalon, pelo: v.pelo, fa: v.fa };
+    }
     // lo que ELIGIÓ la persona (tono o ropa de arriba) manda sobre los colores del catálogo (decisión 131); los colores del catálogo solo valen a quien no eligió
     function recolorea(a, camisa, piel) { if (!mCuerpo) return; if (camisa != null && !a.propioCamisa) a.camisa = camisa; if (piel != null && !a.propioPiel) a.piel = piel; colorea(a); }
     function cambiaron() { var c = cambio; cambio = false; return c; }
@@ -674,7 +682,7 @@
     // el icono del chat de la barra (31_hud.js): minimizado (burbuja) → se abre; abierto → se minimiza y el foco va a la burbuja. Sin ventana del chat, nada
     n.on("chat:alterna", function () { if (!ui) return; if (ui.raiz.hidden) ponChat("abierto"); else { ponChat("minimo"); ui.burbuja.focus(); } });
     var api = { activo: function () { return activo; }, actualiza: actualiza, estado: estado, libera: libera, texto: texto, llegadas: llegadas, puntos: puntos, irCon: irCon,
-      vrmPersonas: vrmPersonas, miVrm: miVrm, recolorea: recolorea, cambiaron: cambiaron, enganchaVRM: enganchaVRM };
+      vrmPersonas: vrmPersonas, miVrm: miVrm, miAvatar: miAvatar, recolorea: recolorea, cambiaron: cambiaron, enganchaVRM: enganchaVRM };
     window.__presenciaChat = function (txt) { anadeMensaje("Prueba", String(txt || "Hola"), false); };   // pruebas del chat movible (la ventana solo existe con ?presencia=red o &chat=1)
     // gancho de pruebas: estado; con "libera", apagar el componente (soltar todo; los avatares VRM se sueltan antes); con "llegadas", las poses apuntadas (P4);
     // con "puntos", quién sale en el minimapa; con "ir" e id, ir con esa persona (I1). Tras liberar sigue contestando (activo: false), como antes de C5

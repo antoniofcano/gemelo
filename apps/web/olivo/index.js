@@ -3,6 +3,7 @@
 //   generarOlivo({tipo, parametros, epoca, semilla}, {THREE, materiales, nivel}) → THREE.Group      (síncrono: bloquea; para herramientas)
 //   generarOlivoAsync(entrada, {THREE, materiales, nivel, fabrica})        → Promise<THREE.Group>      (trabajador o rebanadas: sin tirones)
 //   recetaG(entrada) → generador · receta(entrada) → receta · aNivel(receta, "E0"|"E1"|"E2"|"E2VR") → receta
+//   (E1/E2: las ramitas en tarjetas de racimo con un atlas por época, O9b: tarjetas.js y dibujaAtlasTarjetas)
 //   montaOlivo(THREE, receta, materiales) → THREE.Group · huella(receta) → Promise<sha256> · huellaNiveles(receta)
 //   semillaDeCopa(copa, copas_id[i], centro_utm, copas_semilla[i]) → {semilla, provisional, guardada?} · NOMBRE_TIPO («olivos:centenario-3p») · parametrosDeCopa(copa, copas_param[i], tipo) → {tipo, parametros, origen}
 //   creaCache({memMB, discoMB}) · claveReceta(entrada, nivel) (caché de recetas en memoria e IndexedDB, §5 del contrato)
@@ -18,6 +19,7 @@ import { recetaG as recetaGN, receta as recetaN, geosCompartidas, resuelve, tria
 import { montaOlivo as montaN, triangulosDe, liberaOlivo } from "./montaje.js";
 import { aNivel, aNivelG, NIVELES, triangulosNivel, llamadasNivel } from "./niveles.js";
 import { creaFabrica, aRebanadas } from "./fabrica.js";
+import { geosTarjeta } from "./tarjetas.js";
 
 export { GEN_VERSION } from "./version.js";
 export { TIPOS, ESTADOS, RANGOS, ID_TIPO, TIPO_DE_ID, tipoDeId, bbchAEpoca } from "./tipos.js";
@@ -26,7 +28,8 @@ export { semillaDeCopa, parametrosDeCopa, CAMPOS_PARAM, ORIGEN_TRONCO } from "./
 export { CATALOGO, NOMBRE_TIPO, tipoDeNombre, tablaLocal } from "./catalogo.js";
 export { huella, huellaNiveles, huellaEstructura, diferenciaMax } from "./huella.js";
 export { creaMateriales, MATERIALES, encadena, CALIBRACION_LINEAL } from "./materiales.js";
-export { cargaFotos, FOTOS } from "./texturas.js";
+export { cargaFotos, FOTOS, dibujaAtlasTarjetas, coberturaCelda } from "./texturas.js";
+export { RACIMOS, ATLAS, PHI_RAMITA, PHI_CELDA, TRI_TARJETA, geosTarjeta, racimos, tarjetasDe, tarjetasDeG } from "./tarjetas.js";
 export { hornear, glb } from "./hornear.js";
 export { creaCache, claveReceta, bytesReceta, CACHE_VERSION } from "./cache.js";
 export { FORMATO as FORMATO_HORNEADO, TOPES as TOPES_HORNEADO, codifica, decodifica, leeCabecera, huellaBytes, verificaHuella, perdida, igualEstructura, codificaManifiestoTesela, decodificaManifiestoTesela } from "./horneado.js";
@@ -35,8 +38,9 @@ export { IMPOSTOR, direccionDeVista, octaDeDireccion, vistaContinua, baseDeVista
 export { revision,uvDelMapa, texturaDeColor, colorLineal } from "./compat.js";
 export { aNivel, aNivelG, NIVELES, triangulosNivel, llamadasNivel, creaFabrica, aRebanadas, triangulosDe, liberaOlivo, resuelve, triangulos };
 
-/** Las geometrías compartidas (calculadas con three 0.128.0 una vez) */
-export const geos = () => geosCompartidas(G);
+/** Las geometrías compartidas (calculadas con three 0.128.0 una vez) y las de las tarjetas de E1/E2 (tarjetas.js, O9b); siempre el mismo objeto */
+let geosTodas = null;
+export const geos = () => geosTodas || (geosTodas = Object.assign({}, geosCompartidas(G), geosTarjeta()));
 export const recetaG = entrada => recetaGN(G, entrada);
 export const receta = entrada => recetaN(G, entrada);
 export const montaOlivo = (THREE, r, materiales) => montaN(THREE, r, materiales, { geos: geos() });

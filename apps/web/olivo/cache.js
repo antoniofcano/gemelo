@@ -5,7 +5,7 @@ import { createStore, get as get0, set as set0, delMany as delMany0, keys as key
 import { GEN_VERSION } from "./version.js";
 
 /** Sube si cambia lo que da una receta sin que cambie GEN_VERSION (p. ej. niveles.js, que no entra en la huella olivo-2) o el formato guardado */
-export const CACHE_VERSION = 1;
+export const CACHE_VERSION = 2;   // 2: E1/E2 con tarjetas de racimo (O9b)
 const INDICE = "__indice";
 // idb-keyval abre la base al primer uso y puede lanzar ahí mismo (marco que prohíbe IndexedDB): todo pasa a promesa rechazada
 const p = fn => (...a) => new Promise(ok => ok(fn(...a)));

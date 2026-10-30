@@ -226,3 +226,20 @@ test("aspecto del muñeco (AV2): limpiaAspecto deja solo lo válido de las lista
   const c = await new TokenVerifier(LK.clave, LK.secreto).verify(tk.token);
   assert.deepEqual(JSON.parse(c.metadata!).avatar, { camisa: 2, sombrero: "gorra", piel: 3, tono: 8, altura: "baja", movilidad: "silla" });
 });
+
+test("receta del creador (AV4, ADR-0025): limpiaAspecto deja los ids con forma de id y el color de pelo; la receta completa cabe en 200 bytes y viaja en los metadatos", async () => {
+  const { limpiaAspecto, bytesReceta, RECETA_MAX_BYTES } = await import("../../src/presencia/livekit.ts");
+  const r = { cuerpo: "cuerpo-adulta-media", pelo: "pelo-recogido", pelo_color: 6, vello: "vello-bigote", ropa: "ropa-faena", acc: ["gafas", "audifono"] };
+  assert.deepEqual(limpiaAspecto(r), r);
+  assert.deepEqual(limpiaAspecto({ cuerpo: "Malo", pelo: "a/b", pelo_color: 10, vello: 3, ropa: "", acc: ["ok", "OK", 7, "ok", "b", "c", "d"] }), { acc: ["ok", "b", "c"] }, "lo raro fuera; acc sin repetidos y como mucho 3");
+  // la receta más larga de verdad (los ids más largos del catálogo de AV4) cabe en el tope con sitio para dos accesorios; con tres de 32 letras, no
+  const larga = limpiaAspecto({ tono: 9, arriba: 9, abajo: 9, altura: "media", complexion: "delgada", movilidad: "andador", cuerpo: "cuerpo-adulta-delgada", pelo: "pelo-recogido", pelo_color: 7, vello: "vello-bigote", ropa: "ropa-faena" });
+  assert.ok(bytesReceta(larga) <= 120, bytesReceta(larga) + " bytes");
+  assert.ok(bytesReceta({ ...larga, acc: ["sombrero-de-paja-ancho", "gafas-de-sol"] }) <= RECETA_MAX_BYTES);
+  assert.ok(bytesReceta({ ...larga, acc: ["a".repeat(32), "b".repeat(32), "c".repeat(32)] }) > RECETA_MAX_BYTES, "la api la rechaza (400 receta_larga)");
+  assert.equal(RECETA_MAX_BYTES, 200);
+  const tk = await firmaToken(LK, 7, SES, { ...META, avatar: { ...META.avatar, ...limpiaAspecto(r) } });
+  const c = await new TokenVerifier(LK.clave, LK.secreto).verify(tk.token);
+  assert.deepEqual(JSON.parse(c.metadata!).avatar, { camisa: 2, sombrero: "gorra", piel: 3, ...r });
+  for (const k of Object.keys(JSON.parse(c.metadata!).avatar)) assert.ok(!/sexo|genero|género/i.test(k), "sin campos de sexo ni de género (C8)");
+});

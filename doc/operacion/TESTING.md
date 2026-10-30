@@ -68,8 +68,13 @@ Requisito de Antonio (2026-10-30): la cola **nunca se queda parada** y **nunca d
    - **haiku**: recuentos, búsquedas y comprobaciones sencillas sin escribir código de producto.
    - **fable**: permitido por Antonio (2026-10-30) cuando haga falta, para lo que opus no resuelve bien o lo excepcionalmente difícil; se dice en el encargo por qué se elige.
    - En la duda, el modelo más barato que pueda hacerlo bien; si un agente de sonnet se atasca o la tarea resulta más delicada de lo previsto, se relanza con opus. El tablero de PLAN lleva el modelo de cada tarea («Enrutador de modelo»).
+10. **Cada agente pasa solo sus pruebas** (Antonio, 2026-10-30): las de Node que quiera y, de navegador, **solo las que tocan su cambio** (las nuevas y las que comprueban lo que modificó), una a una por el banco. Ni la puerta completa ni tandas grandes de Chrome: la puerta entera la pasa **solo quien coordina**, una vez por tanda, antes de subir `main`. El encargo dice qué pruebas de navegador le tocan. Motivo: una tanda grande tiene el banco 10–30 min y los demás esperan; una prueba suelta, unos minutos.
+11. **Un agente pesado a la vez, acompañado de ligeros** (Antonio, 2026-10-30, sustituye a «dos pesados»): solo un agente en su fase pesada (Chrome, Docker o Blender); mientras mide, el siguiente pesado puede ir escribiendo su código sin tocar el banco. Los huecos se llenan con ligeros según la memoria libre: dos o tres con más de ~1,5 GB, uno con menos. Motivo: el banco solo deja un Chrome, así que un segundo pesado solo espera en fila ocupando memoria; los ligeros, en cambio, avanzan.
+12. **Primero lo que abarata el cuello de botella** (Antonio, 2026-10-30): una tarea que reduce el tiempo del banco (p. ej. PB2) va por delante de las demás pesadas, porque lo que ahorra se gana en cada puerta y en cada agente siguiente.
 
 ## Pruebas de navegador (`pruebas/`)
+
+**Ventana de las pruebas (PB1, 2026-10-30):** las de presupuesto (carga, escena3d, olivo) usan `VENTANA` (900×650) y todos sus escenarios, para seguir comparándose con las cifras de siempre; las demás pueden usar `VENTANA_CHICA` (450×325) o su propio viewport, con DPR 1 si sus comprobaciones son de CSS. Cada prueba tiene un coste fijo (carga y esperas) y solo baja con la ventana si domina el pintado: **medir antes de bajarla**. Para comparar antes y después, calentar primero la caché de páginas de Vite (`pruebas/salida/paginas`).
 | Script | Para qué |
 |---|---|
 | `prueba3.js <url> <prefijo>` | carga con `?debug`, llamadas, triángulos, puntos, heap, peticiones a `/t/`, capturas |

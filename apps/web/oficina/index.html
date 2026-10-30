@@ -56,7 +56,7 @@
       <p><button class="boton peq" type="button" data-ir="bandeja">Abrir la bandeja</button></p>
     </div>
   </div>
-  <p class="nota">El resto de secciones (Agenda, Directos, Mundo y Olivos) llegan en las siguientes tareas de la oficina.</p>
+  <p class="nota">El resto de secciones (Directos y Mundo) llegan en las siguientes tareas de la oficina.</p>
 </section>
 
 <section id="s-familias" hidden>
@@ -89,6 +89,7 @@
       <label class="chk"><input type="checkbox" id="cOrto" checked> Ortofoto</label>
       <label class="chk"><input type="checkbox" id="cCopas" checked> Copas <span class="pill p-ok">medido</span></label>
       <label class="chk"><input type="checkbox" id="cParc" checked> Parcelas</label>
+      <label class="chk"><input type="checkbox" id="cLimite" checked> Límite de la finca</label>
       <label class="chk"><input type="checkbox" id="cAjuste" checked> Ajustar a vecinas</label>
     </div>
   </div>
@@ -110,8 +111,8 @@
         <button class="boton suave" id="bDescartar" type="button">Descartar</button>
         <button class="boton prim empuja" id="bGuarda" type="button">Guardar versión</button>
       </div>
-      <p class="nota" id="mAyuda">Ratón: arrastra un vértice, o un lado para crear uno; Alt+clic quita un vértice; clic en una haza para elegirla. Teclado, con el mapa enfocado: Tab y Mayús+Tab eligen vértice, las flechas lo mueven 0,5 m (con Mayús, 5 m), Supr lo quita, Insert añade otro detrás, Ctrl+Z deshace y Esc suelta; sin vértice elegido, las flechas mueven el mapa y + y − acercan y alejan.</p>
-      <p class="leyenda nota"><span>Copas: vuelo LiDAR 2024 <span class="pill p-ok">medido</span></span><span>Ortofoto: PNOA © IGN (CC BY 4.0); puede ir desplazada respecto a las copas (ADR-0006): dibuja sobre las copas</span><span>Parcelas: lindes del índice de la finca</span><span>ETRS89 / UTM 30N (EPSG:25830)</span><span id="mCoord"></span></p>
+      <p class="nota" id="mAyuda">Ratón: arrastra un vértice, o un lado para crear uno; Alt+clic quita un vértice; clic en una haza para elegirla. Teclado, con el mapa enfocado: Tab y Mayús+Tab eligen vértice, las flechas lo mueven 0,5 m (con Mayús, 5 m), Supr lo quita, Insert añade otro detrás, Ctrl+Z deshace y Esc suelta; sin vértice elegido, las flechas mueven el mapa y + y − acercan y alejan. No se puede dibujar ni guardar una haza fuera del límite de la finca (línea blanca discontinua).</p>
+      <p class="leyenda nota"><span>Copas: vuelo LiDAR 2024 <span class="pill p-ok">medido</span></span><span>Ortofoto: PNOA © IGN (CC BY 4.0); puede ir desplazada respecto a las copas (ADR-0006): dibuja sobre las copas</span><span>Parcelas: lindes del índice de la finca</span><span id="mLimite">Límite de la finca: cargando…</span><span>ETRS89 / UTM 30N (EPSG:25830)</span><span id="mCoord"></span></p>
     </div>
     <aside class="tarjeta ficha" id="hFicha" aria-live="polite"></aside>
   </div>
@@ -139,7 +140,7 @@
     <div class="tarjeta"><h3>Correo</h3><p id="sCorreo"></p><p class="nota">La prueba se manda a tu propia cuenta de oficina, nunca a otra.</p><p><button class="boton" id="bCorreo" type="button">Mandarme un correo de prueba</button></p></div>
     <div class="tarjeta"><h3>OlivarTrack</h3><p class="nota" id="sOtModo"></p><div class="tabla-env"><table aria-label="Última lectura de cada herramienta de OlivarTrack"><thead><tr><th scope="col">Herramienta</th><th scope="col">Estado</th><th scope="col">Dato</th></tr></thead><tbody id="sOt"></tbody></table></div><p><button class="boton" id="bSinc" type="button" hidden>Sincronizar ahora</button></p></div>
     <div class="tarjeta"><h3>Vigía</h3><div id="sVigia"></div></div>
-    <div class="tarjeta"><h3>Hornero</h3><div id="sHornero"></div></div>
+    <div class="tarjeta"><h3>Hornero</h3><div id="sHornero"></div><div class="barra-h"><button class="boton" id="bRehornear" type="button" hidden>Re-hornear ahora</button><p class="nota" id="sPedido"></p></div></div>
     <div class="tarjeta"><h3>Aparatos de oficina</h3><ul class="lista" id="sAparatos"></ul></div>
   </div>
   <div class="tarjeta"><div class="barra-h"><h3>Auditoría</h3>
@@ -181,7 +182,7 @@
           <label for="oMeter" class="nota" id="oTriTxt"></label><meter id="oMeter" min="0" max="1" low="0.7" high="0.95" optimum="0.5"></meter>
           <ul class="mensajes" id="oMsgsPrevia" role="status"></ul>
         </div>
-        <p class="nota">El motor lee la configuración publicada de <code>/api/config</code> al arrancar; si no puede, usa los valores de siempre. Las cuentas de oficina cargan la versión «en prueba». Los presupuestos de las gafas solo pueden <b>bajar</b>: subirlos pide medirlo en el casco. Las épocas (calendario) llegan con OF9.</p>
+        <p class="nota">El motor lee la configuración publicada de <code>/api/config</code> al arrancar; si no puede, usa los valores de siempre. Las cuentas de oficina cargan la versión «en prueba». Los presupuestos de las gafas solo pueden <b>bajar</b>: subirlos pide medirlo en el casco. Las épocas (calendario del olivo) están en su pestaña.</p>
       </div>
     </div>
   </div>
@@ -194,10 +195,61 @@
     </div>
   </div>
 
+  <div role="tabpanel" id="p-epo" aria-labelledby="t-epo" hidden>
+    <p class="estado-cfg" id="eEstado" role="status" aria-live="polite"></p>
+    <div class="dos">
+      <div class="tarjeta">
+        <h2>Calendario de épocas</h2>
+        <div class="barra-h">
+          <label class="campo en-fila" for="eFinca">Tabla de <select class="entrada" id="eFinca"></select></label>
+          <button class="boton peq" id="eQuita" type="button">Quitar la tabla de esta finca</button>
+        </div>
+        <div class="tabla-env"><table class="epocas"><caption class="vh">Las siete ventanas de la época, MM-DD sin año, ambas incluidas</caption><thead><tr><th scope="col">Época</th><th scope="col">Desde (MM-DD)</th><th scope="col">Hasta (MM-DD)</th><th scope="col">Días</th></tr></thead><tbody id="eTabla"></tbody></table></div>
+        <div class="barra-h">
+          <label class="campo en-fila" for="eNueva">Tabla propia para la finca <input class="entrada" id="eNueva" autocomplete="off" placeholder="id de la finca, p. ej. hituelo" maxlength="40"></label>
+          <button class="boton peq" id="eAnade" type="button">Crear</button>
+        </div>
+      </div>
+      <div class="tarjeta">
+        <h3>Comprobación</h3>
+        <ul class="mensajes" id="eMsgs" role="status"></ul>
+        <p class="nota">Las siete ventanas deben cubrir los 366 días de un año bisiesto con una sola época cada día (si desde es posterior a hasta, la ventana cruza el fin de año). No pongas un límite en febrero: el 29 quedaría sin época en un año normal. Son valores de partida escritos a mano, <b>sin respaldo de campo</b> (decisiones 64 y 68).</p>
+        <p class="nota">Una tabla propia de una finca reemplaza a la común entera. Se guarda y se publica con la barra de arriba, por el mismo camino que la escalera: borrador, prueba y para todos (decisión 113). Al publicar para todos, el hornero re-hornea lo que cambie en su próxima comprobación (como mucho 10 minutos); si tienes prisa, «Re-hornear ahora» está en Sistema.</p>
+        <div class="barra-h"><button class="boton" id="eDef" type="button">Valores de partida</button><button class="boton suave" id="eRepo" type="button">Sin épocas (calendario del repo)</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div role="tabpanel" id="p-real" aria-labelledby="t-real" hidden>
+    <div class="tarjeta">
+      <h2>Un olivo real, por su id</h2>
+      <p class="nota">Busca un olivo medido de la finca por su id estable (<code>copas_id</code>, el mismo que usa el mundo: <code>olivo:hituelo:1234</code>) y mira sus escalones de dibujo uno al lado del otro, con sus triángulos. Lo calcula el constructor de olivos con las medidas del LiDAR; la forma del árbol es <b>ilustrativa</b>.</p>
+      <form id="rBusca" class="barra-h" novalidate>
+        <label class="campo en-fila" for="rFinca">Finca <select class="entrada" id="rFinca"></select></label>
+        <label class="campo en-fila" for="rId">Id del olivo <input class="entrada" id="rId" type="text" inputmode="numeric" autocomplete="off" placeholder="1234 o olivo:hituelo:1234" size="26"></label>
+        <label class="campo en-fila" for="rEpoca">Época <select class="entrada" id="rEpoca"></select></label>
+        <button class="boton prim" id="rVer" type="submit">Ver escalones</button>
+      </form>
+      <p class="nota" id="rMsg" role="status" aria-live="polite"></p>
+    </div>
+    <div id="rSalida"></div>
+  </div>
+
   <div role="tabpanel" id="p-his" aria-labelledby="t-his" hidden>
     <div class="tabla-env"><table><caption class="vh">Historial de versiones de la configuración</caption><thead><tr><th scope="col">Versión</th><th scope="col">Estado</th><th scope="col">Quién y cuándo</th><th scope="col">Qué cambió (respecto a lo de hoy)</th><th scope="col"><span class="vh">Acciones</span></th></tr></thead><tbody id="oHis"></tbody></table></div>
     <p class="nota">Nunca se reescribe una versión: «volver» publica una copia de la vieja como versión nueva; «al borrador» copia sus valores a la pantalla sin publicar nada.</p>
   </div>
+</section>
+
+<section id="s-agenda" hidden>
+  <div class="barra-h">
+    <div class="barra-h" role="group" aria-label="Filtrar los eventos" id="aFiltros"></div>
+    <button class="boton empuja" id="aRecarga" type="button">↻ Actualizar</button>
+    <button class="boton prim" id="bEventoNuevo" type="button">＋ Nuevo evento</button>
+  </div>
+  <p class="nota" id="aResumen" aria-live="polite"></p>
+  <ul class="lista" id="aLista"></ul>
+  <p class="nota">El aforo cuenta <b>personas</b>; cada familia se apunta una vez, con las personas que van. Si no caben, queda en la lista de espera y pasa a apuntada sola, por orden, cuando alguien se borra o se sube el aforo. Los avisos llegan a la campana del gemelo (tope de 3 por familia y semana); <b>el correo todavía no sale</b> y la exportación a calendario (.ics) llega más adelante.</p>
 </section>
 
 <section id="s-proximamente" hidden>
@@ -222,6 +274,22 @@
   <label class="chk"><input type="checkbox" id="altaEnviar" checked> Mandar ahora el enlace de bienvenida</label>
   <p class="error" id="altaError" role="alert"></p>
   <div class="pie-dlg"><button class="boton" type="button" id="altaCancela">Cancelar</button><button class="boton prim" type="submit" id="altaOk">Dar de alta</button></div>
+</form></dialog>
+
+<dialog id="dlgEvento" aria-labelledby="dlgEventoT"><form id="fEvento" novalidate>
+  <h2 id="dlgEventoT">Nuevo evento</h2>
+  <label class="campo">Título <input id="evTitulo" maxlength="120" autocomplete="off" required></label>
+  <label class="campo">Tipo <select id="evTipo"></select></label>
+  <label class="campo">Empieza <input id="evEmpieza" type="datetime-local" required></label>
+  <label class="campo">Termina (opcional) <input id="evTermina" type="datetime-local"></label>
+  <label class="campo">Aforo en personas (vacío: sin aforo) <input id="evPlazas" type="number" min="1" max="5000" inputmode="numeric"></label>
+  <label class="campo">Inscripción hasta (opcional) <input id="evHasta" type="datetime-local"></label>
+  <label class="campo">Estado de la inscripción <select id="evEstado"><option value="abierta">Abierta</option><option value="cerrada">Cerrada</option><option value="borrador">Borrador (las familias no lo ven)</option></select></label>
+  <label class="campo">Lugar (en el mundo o en la finca; opcional) <input id="evLugar" maxlength="120" autocomplete="off"></label>
+  <label class="chk"><input type="checkbox" id="evPresencial"> Es presencial, en la finca</label>
+  <label class="campo">Descripción (opcional) <textarea id="evDescripcion" maxlength="2000" rows="3"></textarea></label>
+  <p class="error" id="evError" role="alert"></p>
+  <div class="pie-dlg"><button class="boton" type="button" id="evCancela">Cancelar</button><button class="boton prim" type="submit" id="evOk">Guardar</button></div>
 </form></dialog>
 
 <dialog id="dlgConfirma" aria-labelledby="dlgConfT"><form id="fConfirma" novalidate>
