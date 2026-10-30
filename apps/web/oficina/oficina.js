@@ -4,15 +4,16 @@ import { $, api, fecha, h, vacia } from "./comun.js";
 import { iniciaFamilias } from "./familias.js";
 import { cuentaPendientes, iniciaBandeja } from "./bandeja.js";
 import { iniciaSistema } from "./sistema.js";
+import { iniciaOlivos } from "./olivos.js";
 
 const SECCIONES = [
   ["inicio", "🏠", "Inicio", true], ["familias", "👪", "Familias", true], ["hazas", "🗺️", "Hazas", true], ["bandeja", "📥", "Bandeja", true],
-  ["agenda", "📅", "Agenda", false], ["directos", "🎙️", "Directos", false], ["mundo", "🌳", "Mundo", false], ["olivos", "🫒", "Olivos", false],
+  ["agenda", "📅", "Agenda", false], ["directos", "🎙️", "Directos", false], ["mundo", "🌳", "Mundo", false], ["olivos", "🫒", "Olivos", true],
   ["sistema", "⚙️", "Sistema", true],
 ];
 const sesion = { rol: "oficina", cargada: false };
 let actual = "inicio";
-let familias = null, hazas = null, bandeja = null, sistema = null;
+let familias = null, hazas = null, bandeja = null, sistema = null, olivos = null;
 
 // ------------------------------------------------------------------ tema
 $("#bTema").addEventListener("click", () => {
@@ -37,7 +38,7 @@ function ir(sec, foco) {
   if (!SECCIONES.some(s => s[0] === sec)) sec = "inicio";
   actual = sec;
   const [, , nombre, hecha] = SECCIONES.find(s => s[0] === sec);
-  for (const id of ["inicio", "familias", "hazas", "bandeja", "sistema", "proximamente"]) $("#s-" + id).hidden = id !== (hecha ? sec : "proximamente");
+  for (const id of ["inicio", "familias", "hazas", "bandeja", "olivos", "sistema", "proximamente"]) $("#s-" + id).hidden = id !== (hecha ? sec : "proximamente");
   if (!hecha) $("#proxTitulo").textContent = nombre + ": próximamente";
   for (const b of nav.querySelectorAll("button")) { if (b.dataset.sec === sec) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); }
   $("#titulo").textContent = nombre;
@@ -47,6 +48,7 @@ function ir(sec, foco) {
   if (sec === "hazas") abreHazas();
   if (sec === "bandeja") bandeja.abre();
   if (sec === "sistema") sistema.abre();
+  if (sec === "olivos") olivos.abre();
   if (sec === "inicio") { cuentaFamilias(); cuentaPendientes(); }
   if (foco) $("#titulo").focus();
 }
@@ -90,5 +92,7 @@ $("#salir").addEventListener("click", async () => {
 familias = iniciaFamilias({ sesion });
 bandeja = iniciaBandeja({ sesion });
 sistema = iniciaSistema({ sesion });
+olivos = iniciaOlivos({ sesion });
 if (new URLSearchParams(location.search).has("prueba")) window.__bandeja = () => bandeja.estado();   // solo lectura, para la prueba de Chrome
+if (new URLSearchParams(location.search).has("prueba")) window.__olivos = () => olivos.estado();   // ídem (OF7)
 cargaSesion().then(() => { cuentaPendientes(); setInterval(cuentaPendientes, 60_000); }).then(() => ir(location.hash.slice(1) || "inicio", false)).catch(() => { $("#anuncio").textContent = "No se pudo leer la sesión."; });
