@@ -10,6 +10,7 @@ const MARCA_I = "// ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/
 const MARCA_F = "// ===============================================================================";
 const NOTAS = {
   "01_datos.js": "Abre la IIFE que cierra 99_cierre.js y activa \"use strict\". Primer módulo: define D (los datos de la finca) y las utilidades.",
+  "02c_componentes.js": "Núcleo de componentes (ADR-0023): ComponentesPuro, Bus (catálogo en contratos/eventos.json), Teclas y Componentes (registro, encendido URL > servidor > defecto, fases del bucle). Publica además window.__componentes (pruebas). El trozo [puro:…] lo evalúa en Node pruebas/guardianes/componentes.test.js.",
   "11_sol.js": "Define sol2() (sol según hora y fecha); se engancha al control de hora dentro del propio módulo.",
   "12b_llegada.js": "Publica además window.__llegada (pruebas). El trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/llegada.test.js.",
   "13b_hazas.js": "Sin D.base /teselas/… ni ?api= no pide nada ni crea nada; el trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/hazas.test.js.",
@@ -20,8 +21,8 @@ const NOTAS = {
   "26b_avatares.js": "Sin presencia no crea nada; con ella, pide /avatares/catalogo.json solo si alguien lleva avatar (o con &vrm=1 en la simulación) e import(\"@pixiv/three-vrm\") solo entonces. El trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/avatares.test.js.",
   "27_debug.js": "Publica window.__g, el gancho de las pruebas (contrato en doc/sistema/CONTRATOS.md).",
   "29_vr.js": "Publica además window.__vrDebug, __vrOlivo, __vrBotones, __vrVuelo, __vrBalizas y VR_ESTADO (depuración y pruebas VR).",
-  "35_fichas_tiempo.js": "Publica además window.__fichaTiempo (pruebas) y escucha el evento «gemelo:prevision-mundo». Lee TiempoVivo si el motor lo expone; si no, un respaldo simulado. Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/fichas_tiempo.test.js.",
-  "90_final.js": "Arranque y bucle: Mundo.arranca, cuadro() y requestAnimationFrame. Define el orden de las actualizaciones por fotograma.",
+  "35_fichas_tiempo.js": "Componente «fichas-tiempo» (ADR-0023): solo se registra (Componentes.registra); nadie lo nombra. Montado, publica window.__fichaTiempo (pruebas), la tecla P, la fila del tiempo del panel VR y escucha «prevision:alterna». Lee TiempoVivo si el motor lo expone; si no, un respaldo simulado. Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/fichas_tiempo.test.js.",
+  "90_final.js": "Arranque y bucle: Mundo.arranca, Componentes.arranca, cuadro() y requestAnimationFrame. Define el orden de las actualizaciones por fotograma: los módulos que aún no son componentes a mano y los componentes por fases (mundo, tarde, trasRender).",
   "99_cierre.js": "Cierra la IIFE abierta en 01_datos.js.",
 };
 

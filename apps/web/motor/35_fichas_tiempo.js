@@ -1,9 +1,10 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: FichasTiempoPuro, FichasTiempo
-// Consume: 01_datos (D, $), 02_mundo (Mundo), 03_escena (visor, renderer, scene, camera, sol, texColor, modo), 12_paseo (paseando),
-//   14_historia (FINCA, marca, aviso), 15_tiempo (ahoraMs, calma, lluvia, nivel, rumbo, hace, TiempoVivo), 16_vida (mira), 29_vr (VRX, panel),
-//   31_hud (Hud)
-// Nota: Publica además window.__fichaTiempo (pruebas) y escucha el evento «gemelo:prevision-mundo». Lee TiempoVivo si el motor lo expone; si no, un respaldo simulado. Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/fichas_tiempo.test.js.
+// Expone: (nada al resto de módulos)
+// Consume: 01_datos (D, $), 02_mundo (Mundo), 02c_componentes (Bus, Teclas, Componentes),
+//   03_escena (visor, renderer, scene, camera, sol, texColor, modo), 09_camara (suelta), 12_paseo (paseando), 14_historia (FINCA, marca, aviso),
+//   15_tiempo (ahoraMs, calma, lluvia, nivel, rumbo, hace, TiempoVivo), 16_vida (mira), 29_vr (VRX, panel, ficha, PanelVR), 31_hud (Hud),
+//   90_final (bucle)
+// Nota: Componente «fichas-tiempo» (ADR-0023): solo se registra (Componentes.registra); nadie lo nombra. Montado, publica window.__fichaTiempo (pruebas), la tecla P, la fila del tiempo del panel VR y escucha «prevision:alterna». Lee TiempoVivo si el motor lo expone; si no, un respaldo simulado. Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/fichas_tiempo.test.js.
 // ===============================================================================
   // ---------- la previsión del tiempo como lámina en el mundo (doc/sistema/UX-FINCA-JUEGO.md §4.11): lo que en pantalla es la ventana Tiempo, en VR y en el
   // paseo es una lámina diegética: un cartel de 1,3 × 0,89 m anclado al mundo (no a la cabeza), a la altura de los ojos, que se vuelve despacio hacia quien
@@ -16,7 +17,10 @@
   // Presupuesto (regla 6): una malla (una llamada de dibujo), una textura de 1024 × 704 sin mipmaps (2,9 MB); se crea al abrirla, se libera entera
   // (geometría, material, textura) al cerrarla, y el canvas solo se repinta si cambia lo que se ve (datos, minuto de «hace N min», hora del bloque o el
   // rumbo de la lámina en pasos de 15°). Se abre con «Ver previsión» en la pestaña Mundo del panel VR, con la tecla P paseando, o con el evento
-  // «gemelo:prevision-mundo» (para que la ventana Tiempo pueda ofrecer un botón).
+  // «prevision:alterna» del Bus (el botón de la ventana Tiempo).
+  // Es el primer COMPONENTE del motor (ADR-0023, C3): se registra con Componentes.registra (al final del fichero) y usa los puntos de extensión (Teclas,
+  // PanelVR.filas, PanelVR.tapa, Bus); nadie lo nombra. Quitar este fichero del motor (genera_motor.mjs --sin) o apagarlo (?fichas=0) no rompe nada: el
+  // botón de la ventana Tiempo se esconde (nadie escucha «prevision:alterna») y la pestaña Mundo del panel VR se queda sin su fila.
   // [puro:inicio] (sin THREE ni DOM: lo evalúa en Node pruebas/guardianes/fichas_tiempo.test.js)
   var FichasTiempoPuro = (function () {
     var HUSO = "Europe/Madrid", W = 1024, H = 704, PW = 1.3;
@@ -260,7 +264,10 @@
   // [puro:fin]
 
   // [motor:inicio] (lo evalúa también en Node pruebas/guardianes/fichas_tiempo.test.js con un THREE de mentira, para contar lo que crea y lo que libera)
-  var FichasTiempo = (function () {
+  // FichasTiempoMotor(n): lo que monta el componente (n = el contexto de Componentes: n.on y n.limpia se sueltan solos al liberarlo). Engancha la tecla P
+  // (Teclas), la fila del tiempo del panel VR (PanelVR.filas) y el aviso de la ventana Tiempo (evento «prevision:alterna» del Bus); no crea nada de GPU
+  // hasta que se abre la lámina. libera() la cierra y suelta lo suyo.
+  function FichasTiempoMotor(n) {
     var P = FichasTiempoPuro, L = null, cuenta = { pintadas: 0, abiertas: 0, cerradas: 0 }, vC = new THREE.Vector3(), vD = new THREE.Vector3();
     var LEJOS = { vr: 40, pantalla: 60 };   // si la cabeza se aleja más (te teletransportas, vuelas), la lámina se cierra y se libera
     function datos() {
@@ -268,7 +275,8 @@
       return P.respaldo(ahoraMs());
     }
     function deNoche(ms) { try { return nivel(ms).d < 0.2; } catch (e) { return false; } }
-    function cabeza(v) { if (VRX.on) return v.copy(VRX.cab); camera.updateMatrixWorld(); return v.setFromMatrixPosition(camera.matrixWorld); }
+    function enVR() { return !!VRX.on; }
+    function cabeza(v) { if (enVR()) return v.copy(VRX.cab); camera.updateMatrixWorld(); return v.setFromMatrixPosition(camera.matrixWorld); }
     function rumboDe(m) { return ((-m.rotation.y * 180 / Math.PI) % 360 + 360) % 360; }   // hacia dónde mira quien la ve de frente (0 = norte, 90 = este)
     // se vuelve hacia la cabeza solo si se ha desviado más de 8°, a lo sumo a 60°/s y amortiguado: un cartel que se gira despacio, nunca la vista
     function gira() {
@@ -290,7 +298,7 @@
       return true;
     }
     function abre(forma) {
-      var modoL = forma === "vr" || (forma !== "pantalla" && VRX.on) ? "vr" : "pantalla";
+      var modoL = forma === "vr" || (forma !== "pantalla" && enVR()) ? "vr" : "pantalla";
       if (L) cierra();
       var cv = document.createElement("canvas"); cv.width = P.W; cv.height = P.H;
       var tex = texColor(new THREE.CanvasTexture(cv)); tex.minFilter = THREE.LinearFilter; tex.generateMipmaps = false;
@@ -302,20 +310,20 @@
       m.rotation.set(0, Math.atan2(h.x - m.position.x, h.z - m.position.z), 0); m.updateMatrixWorld();
       m.onBeforeRender = gira;
       scene.add(m);
-      L = { cv: cv, cx: cv.getContext("2d"), tex: tex, geo: geo, mat: mat, m: m, modo: modoL, firma: "", fr: -1, t: performance.now(), girando: false, tRev: 0, origen: "" };
-      cuenta.abiertas++; pinta(true);
+      L = { cv: cv, cx: cv.getContext("2d"), tex: tex, geo: geo, mat: mat, m: m, modo: modoL, firma: "", fr: -1, t: performance.now(), girando: false, origen: "" };
+      cuenta.abiertas++; pinta(true); PanelVR.repinta();
       return true;
     }
     function cierra() {
       if (!L) return false;
       scene.remove(L.m); L.m.onBeforeRender = function () {};
       L.geo.dispose(); L.mat.dispose(); L.tex.dispose(); L.cv.width = L.cv.height = 0;   // regla del repo: todo recurso de GPU se libera
-      L = null; cuenta.cerradas++; return true;
+      L = null; cuenta.cerradas++; PanelVR.repinta(); return true;
     }
-    // dos veces por segundo con la lámina abierta: ¿sigue cerca? ¿cambió lo que se ve? (repintar solo entonces: subir la textura cuesta)
+    // dos veces por segundo con la lámina abierta (fase «tarde» del bucle): ¿sigue cerca? ¿cambió lo que se ve? (repintar solo entonces: subir la textura cuesta)
     function revisa() {
       if (!L) return;
-      if (L.modo === "vr" && !VRX.on) { cierra(); return; }
+      if (L.modo === "vr" && !enVR()) { cierra(); return; }
       var h = cabeza(vC), d = Math.hypot(h.x - L.m.position.x, h.z - L.m.position.z);
       if (d > LEJOS[L.modo]) { cierra(); return; }
       pinta(false);
@@ -325,26 +333,71 @@
       return { abierta: !!L, modo: L ? L.modo : "", origen: L ? L.origen : "", pintadas: cuenta.pintadas, abiertas: cuenta.abiertas, cerradas: cuenta.cerradas,
         pos: L ? [L.m.position.x, L.m.position.y, L.m.position.z] : null, rumbo: L ? P.cuantiza(rumboDe(L.m)) : null, tam: [P.W, P.H, P.PW, P.PW * P.H / P.W] };
     }
-    // para el panel VR (29_vr.js): el resumen grande del tiempo, con la flecha según el rumbo dado
+    // el resumen grande del panel VR: icono, temperatura, cielo, viento con su flecha según el rumbo dado y lluvia de las próximas 3 h
     function panelResumen(rumboVista) { return P.resumen(datos(), { ahora: ahoraMs(), rumboVista: rumboVista || 0, noche: deNoche }); }
-    setInterval(revisa, 500);
-    setTimeout(function () {   // tras montar todos los módulos: si el motor expone TiempoVivo, cada cambio de datos repinta (si está abierta)
-      try { if (typeof TiempoVivo !== "undefined" && TiempoVivo && TiempoVivo.alCambiar) TiempoVivo.alCambiar(function () { if (L) pinta(false); }); } catch (e) {}
-    }, 0);
-    // en pantalla: P la abre o la cierra paseando (con el foco en el mundo, sin Ctrl/Alt/Cmd); en vista aérea, un aviso (a cientos de metros no se lee)
-    window.addEventListener("keydown", function (e) {
-      if (VRX.on || e.code !== "KeyP" || e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
-      var el = e.target, tg = el && el.tagName; if (tg === "INPUT" || tg === "SELECT" || tg === "TEXTAREA" || (el && el.isContentEditable)) return;
-      e.preventDefault();
+
+    // --- la fila del tiempo en la pestaña Mundo del panel VR (doc/sistema/UX-FINCA-JUEGO.md §4.11): 944 × 236 px (92 × 23 cm en el panel de 1 m) con el
+    // resumen (etiqueta medido / modelado / simulado) y «Ver previsión» (72 px de alto), que saca la lámina delante, anclada al mundo, y cierra el panel para
+    // verla (Y lo vuelve a abrir). Va en Mundo y no en una cuarta pestaña: el tiempo es cómo está el mundo, como la hora y la fecha.
+    var ultimo = null;
+    function resPanel() { try { return panelResumen(PanelVR.rumbo()); } catch (e) { return null; } }
+    function pintaFila(cx, y) {
+      var r = ultimo = resPanel(); if (!r) return;
+      var F = P, sim = r.origen === "simulado", et = sim ? "simulado · no es el tiempo real" : r.etiqueta;
+      cx.fillStyle = "#1b232a"; rrPanel(cx, 40, y, 944, 236, 18); cx.fill();
+      cx.textBaseline = "middle"; cx.textAlign = "left"; cx.fillStyle = "#e9eef2"; cx.font = "bold 30px system-ui, sans-serif"; cx.fillText("Tiempo", 60, y + 34);
+      cx.textAlign = "right"; cx.font = "22px system-ui, sans-serif"; cx.fillStyle = sim ? "#ffd28a" : "#9fb1bd"; while (cx.measureText(et).width > 720 && et.length > 4) et = et.slice(0, -2); cx.fillText(et, 964, y + 34);
+      F.icono(cx, r.cielo, r.noche, 128, y + 136, 120, "#1b232a");
+      cx.textAlign = "left"; cx.fillStyle = "#ffffff"; cx.font = "bold 64px system-ui, sans-serif"; cx.fillText(r.temp, 210, y + 110);
+      cx.font = "28px system-ui, sans-serif"; cx.fillStyle = "#dbe6ec"; cx.fillText(r.cieloTxt, 210, y + 170);
+      F.flecha(cx, 548, y + 80, 22, r.flecha, F.cuantiza(PanelVR.rumbo()));
+      var vt = r.viento; cx.font = "bold 26px system-ui, sans-serif"; cx.fillStyle = "#ffffff"; while (cx.measureText(vt).width > 390 && vt.length > 4) vt = vt.slice(0, -2); cx.fillText(vt, 584, y + 80);
+      cx.font = "26px system-ui, sans-serif"; cx.fillStyle = "#9fd3ff"; cx.fillText(r.lluvia, 524, y + 120);
+    }
+    function rrPanel(cx, x, y, w, h, r) { cx.beginPath(); cx.moveTo(x + r, y); cx.arcTo(x + w, y, x + w, y + h, r); cx.arcTo(x + w, y + h, x, y + h, r); cx.arcTo(x, y + h, x, y, r); cx.arcTo(x, y, x + w, y, r); cx.closePath(); }
+    function botonVR() { if (L) cierra(); else { abre("vr"); PanelVR.cierra(); } }
+    n.limpia(PanelVR.filas("mundo", { id: "tiempo", orden: 40, alto: 236,
+      botones: function (b, y) { var ft = !!L; b("tiempo", 520, y + 144, 444, 72, ft ? "Quitar la previsión" : "Ver previsión", botonVR, ft); },
+      pinta: function (cx, y) { pintaFila(cx, y); },
+      firma: function () { var r = resPanel(); return r ? r.firma + (L ? "|1" : "|0") : ""; },   // el tiempo: datos, minuto o rumbo; y si la lámina está abierta
+      debug: function () { return { tiempo: ultimo ? { temp: ultimo.temp, cielo: ultimo.cielo, origen: ultimo.origen, etiqueta: ultimo.etiqueta } : null, fichaTiempo: resumen() }; } }));
+    // ¿está la lámina a menos de 4 m y a menos de 45° de la mirada? Entonces la ficha de la baliza (que se pinta encima) espera
+    n.limpia(PanelVR.tapa(function () {
+      if (!L || !enVR()) return false;
+      var p = L.m.position, h = VRX.cab, g = camera.getWorldDirection(vD), dx = p.x - h.x, dz = p.z - h.z, d = Math.hypot(dx, dz), gl = Math.hypot(g.x, g.z) || 1;
+      return d < 4 && (dx * g.x + dz * g.z) / (d * gl || 1) > 0.707;
+    }));
+
+    // --- los datos: si el motor expone TiempoVivo, cada cambio repinta (si está abierta)
+    try { if (typeof TiempoVivo !== "undefined" && TiempoVivo && TiempoVivo.alCambiar) n.limpia(TiempoVivo.alCambiar(function () { if (L) pinta(false); })); } catch (e) {}
+    // --- en pantalla: P la abre o la cierra paseando (Teclas: no con el foco en un campo ni con Ctrl/Alt/Cmd); en vista aérea, un aviso (a cientos de metros no se lee)
+    n.limpia(Teclas.registra("KeyP", function () {
+      if (enVR()) return false;
       if (!paseando && !L) { try { Hud.aviso("La previsión en el mundo sale paseando (Intro). En vista aérea, la ventana Tiempo (3).", 4000); } catch (e2) {} return; }
       alterna("pantalla");
+    }, n.id));
+    // --- el botón de la ventana Tiempo (15_tiempo.js) emite «prevision:alterna» ({ abre: true|false } o nada para alternar); salir de VR cierra la de VR
+    n.on("prevision:alterna", function (d) {
+      var q = d && d.abre;
+      if (q === true) abre(enVR() ? "vr" : "pantalla"); else if (q === false) cierra(); else alterna(enVR() ? "vr" : "pantalla");
     });
-    // el gancho para la ventana Tiempo (o quien sea): document.dispatchEvent(new CustomEvent("gemelo:prevision-mundo", { detail: { abre: true|false } }))
-    document.addEventListener("gemelo:prevision-mundo", function (e) {
-      var q = e && e.detail && e.detail.abre;
-      if (q === true) abre(VRX.on ? "vr" : "pantalla"); else if (q === false) cierra(); else alterna(VRX.on ? "vr" : "pantalla");
-    });
+    n.on("vr:sale", function () { if (L && L.modo === "vr") cierra(); });
     window.__fichaTiempo = function (accion) { if (accion === "abre") abre(); else if (accion === "cierra") cierra(); return resumen(); };   // pruebas
+    n.limpia(function () { delete window.__fichaTiempo; });
     return { abre: abre, cierra: cierra, alterna: alterna, abierta: function () { return !!L; }, resumen: resumen, panelResumen: panelResumen, revisa: revisa };
-  })();
+  }
   // [motor:fin]
+
+  // el manifiesto (ADR-0023): lo lee el guardián pruebas/guardianes/componentes.test.js sin montar nada. ?fichas=0 la apaga; ?fichas=1 la enciende.
+  Componentes.registra({
+    id: "fichas-tiempo", version: 1,
+    consume: ["TiempoVivo", "Hud", "PanelVR", "Teclas", "VRX", "paseando", "ahoraMs", "nivel"],
+    expone: ["FichasTiempo"],
+    eventos: { escucha: ["prevision:alterna", "vr:sale"], emite: [] },
+    bandera: { defecto: true, url: "fichas" },
+    presupuesto: { llamadas: 1, triangulos: 2, texturasMB: 3 },   // una malla de 2 triángulos y una textura de 1024 × 704 sin mipmaps (2,9 MB), solo con la lámina abierta
+    fases: { tarde: 0.5 },
+    monta: function (n) { return FichasTiempoMotor(n); },
+    actualiza: { tarde: function (dt, t, api) { api.revisa(); } },
+    libera: function (api) { if (api) api.cierra(); }
+  });

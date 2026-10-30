@@ -1,8 +1,9 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Hud
 // Consume: 01_datos ($), 02_mundo (copas), 03_escena (lienzo, visor, camera, modo), 08_marcadores (capas), 09_camara (orb),
-//   12_paseo (paseando, teclas), 14_historia (FINCA, aviso), 15_tiempo (meta, rumbo, esc), 16_vida (enQuad, quad, ponQuad, enDron, dron, ponDron),
-//   24_pantalla (Menu), 29_vr (VRX, ficha), 32_ventanas (Ventanas), 33_ajustes (Ajustes), 34_movibles (Movibles)
+//   12_paseo (paseando, teclas), 14_historia (FINCA, aviso), 15_tiempo (meta, rumbo, esc),
+//   16_vida (enQuad, quita, quad, ponQuad, enDron, dron, ponDron), 24_pantalla (Menu), 29_vr (VRX, ficha), 32_ventanas (Ventanas),
+//   33_ajustes (Ajustes), 34_movibles (Movibles)
 // ===============================================================================
   // ---------- el HUD (doc/sistema/UX-FINCA-JUEGO.md §4.3): estado arriba a la izquierda (brújula, cómo te mueves, el tiempo), barra de iconos arriba a la
   // derecha, avisos arriba en el centro, «Pasear» y la atribución abajo en el centro. Es HTML y CSS: no toca triángulos ni llamadas de dibujo.
@@ -200,7 +201,21 @@
       else if (a === "pasear") $("btnPaseo").click();
     });
 
+    // --- punto de extensión (ADR-0023, C2): un componente pone su icono en la barra, antes de «⋯», y su copia en «⋯» (en pantallas estrechas se ve allí si
+    // es de prioridad 2). def = { id, ico, txt, tecla?, prio? (1 | 2), ventana? (id de Ventanas: abre y cierra esa ventana) o alPulsar?(boton) }. Devuelve quita.
+    function icono(def) {
+      var bar = $("hudBarra"); if (!bar || !def || !def.id || !def.ico || !def.txt || $("hudIco-" + def.id)) return function () {};
+      var et = def.txt + (def.tecla ? " (" + def.tecla + ")" : ""), b = document.createElement("button"), m = document.createElement("button"), bi = document.createElement("b");
+      b.type = "button"; b.id = "hudIco-" + def.id; b.className = "boton icono"; b.setAttribute("data-prio", String(def.prio === 1 ? 1 : 2)); b.setAttribute("aria-label", et); b.title = def.txt + (def.tecla ? " · " + def.tecla : ""); b.textContent = def.ico;
+      m.type = "button"; m.className = "boton"; bi.setAttribute("aria-hidden", "true"); bi.textContent = def.ico; m.appendChild(bi); m.appendChild(document.createTextNode(def.txt));
+      if (def.ventana) [b, m].forEach(function (x) { x.setAttribute("data-abre", def.ventana); x.setAttribute("aria-expanded", "false"); });
+      function pulsa(desde) { if (def.ventana) alterna(def.ventana, desde); else { abreMas(false); if (def.alPulsar) def.alPulsar(desde); } }
+      b.addEventListener("click", function () { pulsa(b); }); m.addEventListener("click", function () { pulsa(bMas); });
+      bar.insertBefore(b, bMas && bMas.parentNode === bar ? bMas : null); if (hMas) hMas.appendChild(m);
+      return function () { [b, m].forEach(function (x) { if (x.parentNode) x.parentNode.removeChild(x); }); };
+    }
+
     setInterval(refresca, 250); setInterval(refrescaBrujula, 100); refresca(); mudaVR();
-    return { aviso: aviso, zonasProhibidas: zonasProhibidas, modo: function () { return modoAct; }, cierraDesplegable: cierraDesplegable, alterna: alterna, ponModo: ponModo };
+    return { aviso: aviso, zonasProhibidas: zonasProhibidas, modo: function () { return modoAct; }, cierraDesplegable: cierraDesplegable, alterna: alterna, ponModo: ponModo, icono: icono };
   })();
 

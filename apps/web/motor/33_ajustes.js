@@ -1,8 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Ajustes
 // Consume: 01_datos ($, fmt), 02_mundo (copas), 03_escena (renderer, exag, modo, calidad), 08_marcadores (listo, aplica), 09_camara (pon),
-//   12_paseo (persona), 14_historia (FINCA, lista, rango), 20_sonido (iniciaSonido), 24_pantalla (suave), 26_presencia (Chat), 29_vr (panel),
-//   30_mide (Mide), 31_hud (Hud), 34_movibles (Movibles), 90_final (tamano, bucle)
+//   12_paseo (persona), 14_historia (FINCA, lista, rango), 16_vida (quita), 20_sonido (iniciaSonido), 24_pantalla (suave), 26_presencia (Chat),
+//   29_vr (panel), 30_mide (Mide), 31_hud (Hud), 32b_capas (Capas), 34_movibles (Movibles), 90_final (tamano, bucle)
 // ===============================================================================
 // ===== CONTRATO DEL MÓDULO =====
 // ===============================================================================
@@ -64,7 +64,27 @@
     }
     // superficie en hectáreas o metros cuadrados (decisión de Configuración → Vista); fmt: formateador (n, decimales) → texto
     function superficie(ha, unidades, fmt) { return unidades === "m2" ? fmt(Math.round(ha * 10000), 0) + " m²" : fmt(ha, 1) + " ha"; }
-    return { PREFIJO: PREFIJO, ESQUEMA: ESQUEMA, valida: valida, crea: crea, superficie: superficie };
+    // punto de extensión (ADR-0023, C2): un componente añade sus ajustes con un prefijo propio. esquema = { clave: { tipo: "bool"|"num"|"opc", def, min?, max?, paso?, ops? } }
+    // (claves sin el prefijo). Devuelve la lista de errores; si está vacía, las claves «prefijo.clave» ya están en ESQUEMA. Un prefijo ya usado no se fusiona.
+    function fusiona(prefijo, esquema) {
+      var e = [], nuevas = {};
+      if (!/^[a-z][a-z0-9]*$/.test(prefijo || "")) return ["prefijo: minúsculas y cifras"];
+      if (Object.keys(ESQUEMA).some(function (k) { return k.indexOf(prefijo + ".") === 0; })) return ["prefijo ya usado: " + prefijo];
+      Object.keys(esquema || {}).forEach(function (k) {
+        var x = esquema[k], c = prefijo + "." + k;
+        if (!/^[a-z][a-zA-Z0-9]*$/.test(k)) { e.push(c + ": clave no válida"); return; }
+        if (!x || ["bool", "num", "opc"].indexOf(x.tipo) < 0) { e.push(c + ": tipo bool, num u opc"); return; }
+        if (x.tipo === "bool" && typeof x.def !== "boolean") { e.push(c + ": def booleano"); return; }
+        if (x.tipo === "num" && !(typeof x.def === "number" && typeof x.min === "number" && typeof x.max === "number" && x.min <= x.def && x.def <= x.max)) { e.push(c + ": num con min ≤ def ≤ max"); return; }
+        if (x.tipo === "opc" && !(Array.isArray(x.ops) && x.ops.indexOf(x.def) >= 0)) { e.push(c + ": opc con def dentro de ops"); return; }
+        nuevas[c] = x.tipo === "bool" ? bool(x.def) : x.tipo === "num" ? num(x.def, x.min, x.max, x.paso || 1) : opc(x.def, x.ops.slice());
+      });
+      if (!Object.keys(nuevas).length && !e.length) e.push("esquema vacío");
+      if (!e.length) Object.keys(nuevas).forEach(function (c) { ESQUEMA[c] = nuevas[c]; });
+      return e;
+    }
+    function retira(prefijo) { Object.keys(ESQUEMA).forEach(function (k) { if (k.indexOf(prefijo + ".") === 0) delete ESQUEMA[k]; }); }
+    return { PREFIJO: PREFIJO, ESQUEMA: ESQUEMA, valida: valida, crea: crea, superficie: superficie, fusiona: fusiona, retira: retira };
   })();
   // [puro:fin]
 
@@ -225,26 +245,28 @@
         t.setAttribute("aria-selected", String(s)); t.tabIndex = s ? 0 : -1; q.hidden = !s; if (s && enfoca) t.focus();
       });
     }
+    var lista = null;
+    function construyePestana(p) {   // su pestaña y su panel (al construir o, si llega de un componente, después)
+      var t = el("button", null, p.t); t.type = "button"; t.id = "aj-t-" + p.id; t.setAttribute("role", "tab"); t.setAttribute("aria-controls", "aj-p-" + p.id); t.setAttribute("aria-selected", "false"); t.tabIndex = -1;
+      t.addEventListener("click", function () { seleccionaPestana(p.id, false); });
+      t.addEventListener("keydown", function (e) {
+        var n = PESTANAS.indexOf(p), m = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key], d = null;
+        if (m) d = (n + m + PESTANAS.length) % PESTANAS.length; else if (e.key === "Home") d = 0; else if (e.key === "End") d = PESTANAS.length - 1;
+        if (d !== null) { e.preventDefault(); seleccionaPestana(PESTANAS[d].id, true); }
+      });
+      lista.appendChild(t);
+      var q = el("div"); q.id = "aj-p-" + p.id; q.setAttribute("role", "tabpanel"); q.setAttribute("aria-labelledby", t.id); q.hidden = true;
+      q.appendChild(el("h3", null, p.t)); if (p.nota) q.appendChild(el("p", "aj-nota", p.nota));
+      p.campos.forEach(function (c) { pintaCampo(c, q); });
+      cont.appendChild(q);
+    }
     function construye() {
       var host = document.getElementById("menuAjustes");
       if (!host) { var dlg = document.getElementById("menu"); if (!dlg || dlg.tagName !== "DIALOG") return; host = document.createElement("section"); host.id = "menuAjustes"; host.setAttribute("aria-label", "Configuración"); dlg.appendChild(host); }
       if (host.getAttribute("data-ajustes") === "listo") return; host.setAttribute("data-ajustes", "listo"); host.classList.add("ajustes"); cont = host; css();
-      var lista = el("div", "aj-pestanas"); lista.setAttribute("role", "tablist"); lista.setAttribute("aria-label", "Configuración");
+      lista = el("div", "aj-pestanas"); lista.setAttribute("role", "tablist"); lista.setAttribute("aria-label", "Configuración");
       host.appendChild(lista);
-      PESTANAS.forEach(function (p, n) {
-        var t = el("button", null, p.t); t.type = "button"; t.id = "aj-t-" + p.id; t.setAttribute("role", "tab"); t.setAttribute("aria-controls", "aj-p-" + p.id); t.setAttribute("aria-selected", "false"); t.tabIndex = -1;
-        t.addEventListener("click", function () { seleccionaPestana(p.id, false); });
-        t.addEventListener("keydown", function (e) {
-          var m = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key], d = null;
-          if (m) d = (n + m + PESTANAS.length) % PESTANAS.length; else if (e.key === "Home") d = 0; else if (e.key === "End") d = PESTANAS.length - 1;
-          if (d !== null) { e.preventDefault(); seleccionaPestana(PESTANAS[d].id, true); }
-        });
-        lista.appendChild(t);
-        var q = el("div"); q.id = "aj-p-" + p.id; q.setAttribute("role", "tabpanel"); q.setAttribute("aria-labelledby", t.id); q.hidden = true;
-        q.appendChild(el("h3", null, p.t)); if (p.nota) q.appendChild(el("p", "aj-nota", p.nota));
-        p.campos.forEach(function (c) { pintaCampo(c, q); });
-        host.appendChild(q);
-      });
+      PESTANAS.forEach(construyePestana);
       host.addEventListener("change", function (e) { var i = e.target, k = i.getAttribute && i.getAttribute("data-aj"); if (!k) return; started = true; api.pon(k, E[k].tipo === "bool" ? i.checked : E[k].tipo === "num" ? Number(i.value) : i.value); });
       host.addEventListener("input", function (e) { var i = e.target, k = i.getAttribute && i.getAttribute("data-aj"); if (!k || i.type !== "range") return; started = true; api.pon(k, Number(i.value)); });
       seleccionaPestana(PESTANAS[0].id, false); pinta();
@@ -258,6 +280,35 @@
     if (window.matchMedia) { try { matchMedia("(prefers-reduced-motion: reduce)").addEventListener("change", function () { aplica("acc.movimiento"); }); matchMedia("(pointer: coarse)").addEventListener("change", function () { aplica("controles.tactil"); }); } catch (e) {} }
     api.claves().forEach(aplica);
     api.pinta = function () { construye(); pinta(); };   // por si el menú se crea después
+    // punto de extensión (ADR-0023, C2): Ajustes.registra(prefijo, esquema, pestaña, aplica?) añade los ajustes de un componente (AjustesPuro.fusiona) y su
+    // pestaña en Configuración, antes de «Avanzado»: pestaña = { id?, t, nota?, campos: [{ k (sin prefijo), t, ops?, fmt?, nota? }] }. aplica(clave, valor), si
+    // se da, se llama al registrarse y en cada cambio de sus claves, como los aplicaPor de aquí. Devuelve quita (saca la pestaña y las claves; lo guardado
+    // se queda para la próxima vez), o null si el esquema no vale (lo dice en la consola).
+    api.registra = function (prefijo, esquema, pestana, aplicaFn) {
+      var e = AjustesPuro.fusiona(prefijo, esquema);
+      if (e.length) { try { console.error("[Ajustes] " + prefijo + ": " + e.join("; ")); } catch (er) {} return null; }
+      var p = null, quitaOy = null;
+      if (pestana) {
+        p = { id: pestana.id || prefijo, t: pestana.t || prefijo, nota: pestana.nota, campos: (pestana.campos || []).map(function (c) { return Object.assign({}, c, { k: prefijo + "." + c.k }); }) };
+        PESTANAS.splice(Math.max(0, PESTANAS.length - 1), 0, p);
+        if (cont) { construyePestana(p); var av = document.getElementById("aj-t-avanzado"), tp = document.getElementById("aj-t-" + p.id); if (av && tp) lista.insertBefore(tp, av); pinta(); }
+      }
+      if (typeof aplicaFn === "function") {
+        quitaOy = api.alCambiar(function (k, v) { if (k && k.indexOf(prefijo + ".") === 0) { try { aplicaFn(k, v); } catch (er) {} } });
+        Object.keys(esquema).forEach(function (k) { try { aplicaFn(prefijo + "." + k, api.lee(prefijo + "." + k)); } catch (er) {} });
+      }
+      return function () {
+        if (quitaOy) quitaOy();
+        if (p) {
+          var i = PESTANAS.indexOf(p), sel = document.getElementById("aj-t-" + p.id), eraSel = !!(sel && sel.getAttribute("aria-selected") === "true");
+          if (i >= 0) PESTANAS.splice(i, 1);
+          ["aj-t-", "aj-p-"].forEach(function (x) { var n = document.getElementById(x + p.id); if (n && n.parentNode) n.parentNode.removeChild(n); });
+          p.campos.forEach(function (c) { delete hojas[c.k]; });
+          if (cont && eraSel) seleccionaPestana(PESTANAS[0].id, false);
+        }
+        AjustesPuro.retira(prefijo);
+      };
+    };
     construye();
     return api;
   })();

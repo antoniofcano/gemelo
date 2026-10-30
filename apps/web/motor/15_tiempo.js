@@ -2,7 +2,7 @@
 // Expone: ahoraMs, TM, calma, texBrillo, lluvia, uViento, uSombra, GLSL_SOMBRA, parcheTiempo, cur, meta, tMundo, ins, nivel, actualizaTiempo,
 //   temaBarrera, colocaBarrera, pintaFondoTiempo, cargaT, fmtHora, fmtClaveDia, num1, rumbo, esc, hace, objetivoMundoBase, aplicaMundo, anuncia,
 //   TiempoVivo, lindes
-// Consume: 01_datos (D, $, FOG0, FOG1), 02_mundo (suelo, copas),
+// Consume: 01_datos (D, $, FOG0, FOG1), 02_mundo (suelo, copas), 02c_componentes (Bus),
 //   03_escena (visor, scene, camera, SRGB, LUZ_SOL, LUZ_CIELO, hemi, sol, texColor, colorVertSRGB, colorCss, exag, modo),
 //   04d_sombreado_tiles (hash, matSuelo, matOrto), 05_nube (nube), 07_follaje (matHojaG, matHojaP, matCorteza), 08_marcadores (gLinde),
 //   09_camara (objetivo), 12_paseo (primera), 13b_hazas (HazasPuro), 14_historia (mcp, marca, tabla, aviso),
@@ -565,8 +565,13 @@
     });
     if (calma) $("tPlay").hidden = true;
     $("tLeer").addEventListener("click", leerTiempo);
-    // la lámina de la previsión en el mundo (35_fichas_tiempo.js escucha el evento; si no está, el botón no hace nada)
-    var vm = $("tVerMundo"); if (vm) vm.addEventListener("click", function () { document.dispatchEvent(new CustomEvent("gemelo:prevision-mundo")); });
+    // la lámina de la previsión en el mundo: la pide por el Bus («prevision:alterna», la atiende el componente fichas-tiempo de 35_fichas_tiempo.js);
+    // el botón solo se ve si alguien la atiende (si el componente está apagado o fuera del motor, no hay botón muerto)
+    var vm = $("tVerMundo");
+    if (vm) {
+      vm.addEventListener("click", function () { Bus.emite("prevision:alterna"); });
+      var veVm = function () { vm.hidden = !Bus.hay("prevision:alterna"); }; Bus.on("componentes:cambia", veVm); veVm();
+    }
     new MutationObserver(pintaFondoTiempo).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
     if (window.matchMedia) window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", pintaFondoTiempo);
     pintaFondoTiempo(); tarjetaEstacion(); tarjetaPrevision();

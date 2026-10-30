@@ -1,5 +1,5 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: depuraCuadro
+// Expone: dep, depuraCuadro
 // Consume: 02_mundo (Mundo), 02b_cola (Cola), 03_escena (visor, renderer), 07b_arboles (Arboles), 15_tiempo (nivel), 26_presencia (Presencia),
 //   29_vr (vrDebugExtra), 30_mide (Mide), 33_ajustes (Ajustes)
 // ===============================================================================

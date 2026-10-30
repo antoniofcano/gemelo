@@ -1,0 +1,30 @@
+{
+  "v": 1,
+  "$comment": "Catálogo de eventos del Bus del motor (apps/web/motor/02c_componentes.js; contratos/eventos.md, ADR-0023). Forma: contratos/eventos.schema.json. Un evento nuevo, o un módulo que empieza a emitirlo o escucharlo, cambia este fichero en el mismo commit: lo comprueba pruebas/guardianes/componentes.test.js.",
+  "eventos": {
+    "componentes:cambia": {
+      "descripcion": "Un componente se ha montado o liberado (al arrancar, por la configuración del servidor o a mano). Sirve para que la interfaz enseñe o esconda lo que depende de él.",
+      "datos": { "type": "object", "required": ["id", "activo"], "properties": { "id": { "type": "string" }, "activo": { "type": "boolean" } } },
+      "emiten": ["02c_componentes"],
+      "escuchan": ["15_tiempo"]
+    },
+    "prevision:alterna": {
+      "descripcion": "Abrir o cerrar la lámina de la previsión del tiempo en el mundo (el botón «Ver la previsión en el mundo» de la ventana Tiempo). Sin datos alterna; con abre true o false, abre o cierra.",
+      "datos": { "type": "object", "properties": { "abre": { "type": "boolean" } } },
+      "emiten": ["15_tiempo"],
+      "escuchan": ["35_fichas_tiempo"]
+    },
+    "vr:entra": {
+      "descripcion": "Empieza una sesión de realidad virtual (la cámara ya cuelga del rig y el panel está abierto).",
+      "datos": {},
+      "emiten": ["29_vr"],
+      "escuchan": []
+    },
+    "vr:sale": {
+      "descripcion": "Termina la sesión de realidad virtual (la cámara vuelve a la pantalla). Lo propio de VR se cierra.",
+      "datos": {},
+      "emiten": ["29_vr"],
+      "escuchan": ["35_fichas_tiempo"]
+    }
+  }
+}
