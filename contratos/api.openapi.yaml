@@ -41,6 +41,21 @@ components:
       properties:
         error: { type: string }
         mensaje: { type: string }
+    GeometriaHaza:
+      description: "Linde de una haza dibujada en la oficina: GeoJSON Polygon o MultiPolygon en EPSG:25830 (E, N en metros), anillos cerrados, como mucho 2000 vértices"
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [type, coordinates]
+          properties:
+            type: { type: string, enum: [Polygon] }
+            coordinates: { type: array, minItems: 1, items: { type: array, minItems: 4, items: { type: array, minItems: 2, maxItems: 2, items: { type: number } } } }
+        - type: object
+          additionalProperties: false
+          required: [type, coordinates]
+          properties:
+            type: { type: string, enum: [MultiPolygon] }
+            coordinates: { type: array, minItems: 1, items: { type: array, minItems: 1, items: { type: array, minItems: 4, items: { type: array, minItems: 2, maxItems: 2, items: { type: number } } } } }
     Hazas:
       type: object
       additionalProperties: false
@@ -545,14 +560,195 @@ paths:
         "404": { description: no existe }
         "403": { $ref: "#/components/responses/SinPermiso" }
 
+  # ---------------------------------------------------------------- hazas de la oficina (OF3, doc/sistema/OFICINA.md §4)
   /api/admin/hazas:
     get:
-      summary: "Las hazas con su titular (solo oficina), para elegir: { hazas: [{ id, codigo, nombre, finca, hogar_id, hogar_correo }] }"
+      summary: "Las hazas como las ve la oficina: { srs: EPSG:25830, hazas: [{ id, codigo, nombre, finca, hogar_id, hogar_correo, version, superficie_ha, olivos, olivos_borde, olivos_declarados, olivos_declarados_fuente, parcelas [{ id, ha }], solapes [{ id, codigo, m2 }], actualizada_en, geometria? }] }"
+      description: >
+        olivos = olivos medidos (LiDAR) dentro o en la linde, el mismo recuento que la ficha pública (PostGIS, ST_Intersects); olivos_borde = de
+        ellos, los que están a menos de 1 m de la linde; solapes = otras hazas de la finca que pisa en más de 0,5 m². Con geometria=true trae la
+        linde (MultiPolygon en EPSG:25830, al centímetro). Familias la usa sin geometría para elegir haza.
       security: [{ sesion: [] }]
+      parameters:
+        - { name: finca, in: query, required: false, schema: { type: string, pattern: "^[a-z0-9_-]{1,32}$" } }
+        - { name: geometria, in: query, required: false, schema: { type: boolean } }
       responses:
         "200": { description: ok }
         "401": { $ref: "#/components/responses/SinSesion" }
         "403": { $ref: "#/components/responses/SinPermiso" }
+    post:
+      summary: "Crea una haza dibujada en la oficina. Devuelve 201 { haza } con el recuento del servidor"
+      description: >
+        PostGIS valida: geometría legible y válida (ST_IsValid; 400 geometria_no_valida con motivo), al menos 10 m² (demasiado_pequena), dentro
+        de la finca = la caja de sus olivos medidos con 150 m de margen (fuera_de_finca; sin olivos de la finca, finca_desconocida) y sin pisar
+        otra haza de la finca en más de 0,5 m² (409 solape, con la lista). Nace sin familia y con su versión 1 (accion crear). Auditoría admin.haza_creada.
+      security: [{ sesion: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [codigo, nombre, finca, geometria]
+              properties:
+                codigo: { type: string, pattern: "^[A-Za-z0-9_-]{1,32}$" }
+                nombre: { type: string, minLength: 1, maxLength: 60 }
+                finca: { type: string, pattern: "^[a-z0-9_-]{1,32}$" }
+                geometria: { $ref: "#/components/schemas/GeometriaHaza" }
+                nota: { type: string, maxLength: 200 }
+      responses:
+        "201": { description: creada }
+        "400": { description: "geometría no válida, fuera de la finca, demasiado pequeña o anillo abierto", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "409": { description: "pisa otra haza (solape, con solapes [{ id, codigo, m2 }]) o el código ya existe (codigo_repetido)" }
+
+  /api/admin/hazas/{id}/geom:
+    put:
+      summary: "Guarda la linde editada como versión nueva, sobre la versión que se editó. Devuelve { haza, sin_cambios, personalizados_fuera }"
+      description: >
+        Mismas comprobaciones que al crear (sin contar la propia haza en los solapes). Si otra persona guardó después de `version`, 409
+        version_cambiada con la haza actual (`actual`), sin pisarla. personalizados_fuera = árboles con nombre o foto de la familia que quedan
+        fuera de la linde nueva (aviso). Auditoría admin.haza_editada.
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [geometria, version]
+              properties:
+                geometria: { $ref: "#/components/schemas/GeometriaHaza" }
+                version: { type: integer, minimum: 1 }
+                nota: { type: string, maxLength: 200 }
+      responses:
+        "200": { description: guardada }
+        "400": { description: "geometría no válida o fuera de la finca", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: no existe }
+        "409": { description: "otra persona guardó antes (version_cambiada, con actual) o pisa otra haza (solape)" }
+
+  /api/admin/hazas/{id}/partir:
+    post:
+      summary: "Parte la haza por la línea entre dos de sus vértices (ST_Split). Devuelve 201 { haza, nueva }"
+      description: >
+        a y b se llevan a su vértice más cercano (a menos de 5 cm). El corte debe ir por dentro y dejar exactamente dos trozos de al menos 10 m²
+        (400 corte_no_valido o demasiado_pequena); solo hazas de un único polígono. El trozo mayor se queda en la haza (versión nueva, accion
+        partir, conserva su familia); el otro es una haza nueva con `codigo` y `nombre`, sin familia y con las mismas parcelas de OlivarTrack.
+        Auditoría admin.haza_partida.
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [a, b, version, codigo, nombre]
+              properties:
+                a: { type: array, minItems: 2, maxItems: 2, items: { type: number } }
+                b: { type: array, minItems: 2, maxItems: 2, items: { type: number } }
+                version: { type: integer, minimum: 1 }
+                codigo: { type: string, pattern: "^[A-Za-z0-9_-]{1,32}$" }
+                nombre: { type: string, minLength: 1, maxLength: 60 }
+                nota: { type: string, maxLength: 200 }
+      responses:
+        "201": { description: partida }
+        "400": { description: "corte no válido o trozo demasiado pequeño", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: no existe }
+        "409": { description: "otra persona guardó antes (version_cambiada) o el código ya existe (codigo_repetido)" }
+
+  /api/admin/hazas/juntar:
+    post:
+      summary: "Junta dos hazas vecinas (ST_Union): a se queda con todo y b desaparece. Devuelve { haza, quitada, titular_de_la_segunda }"
+      description: >
+        Pide confirmación reciente (403 confirmacion_requerida; ADR-0024). Las dos de la misma finca, a menos de 5 cm (409 no_vecinas) y sin
+        familias distintas (409 titulares_distintos). Lo que colgaba de b (árboles con nombre, diario, lotes, bandeja, avisos, visitas, preguntas,
+        parcelas) pasa a a; los eventos de OlivarTrack de b se borran y la siguiente sincronía los rehace. La historia de b se queda en
+        hazas_versiones (accion juntada_en). Auditoría admin.hazas_juntadas.
+      security: [{ sesion: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [a, b, version_a, version_b]
+              properties:
+                a: { type: integer, minimum: 1 }
+                b: { type: integer, minimum: 1 }
+                version_a: { type: integer, minimum: 1 }
+                version_b: { type: integer, minimum: 1 }
+                nota: { type: string, maxLength: 200 }
+      responses:
+        "200": { description: juntadas }
+        "400": { description: "la misma haza, otra finca o unión no válida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: alguna no existe }
+        "409": { description: "no son vecinas, son de familias distintas u otra persona guardó antes (version_cambiada)" }
+
+  /api/admin/hazas/{id}:
+    delete:
+      summary: Borra una haza sin familia y sin nada colgado (árboles con nombre, diario, lotes); su historia queda en hazas_versiones
+      description: Pide confirmación reciente (403 confirmacion_requerida). Con familia, 409 con_titular; con algo colgado, 409 con_contenido (mejor juntarla). Auditoría admin.haza_borrada.
+      security: [{ sesion: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Id" }
+        - { name: version, in: query, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "204": { description: borrada }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: no existe }
+        "409": { description: "con familia, con algo colgado u otra persona guardó antes" }
+
+  /api/admin/hazas/{id}/versiones:
+    get:
+      summary: "El historial de la haza, de la última a la primera: { versiones: [{ version, accion, cuando, autor (correo de la cuenta de oficina o null), nota, desde_version, superficie_ha, parcelas, geometria }] }"
+      description: accion es inicial, carga (la tubería), crear, editar, partir, partida_de, juntar, juntada_en, volver o borrar. Sigue respondiendo aunque la haza ya no exista (juntada o borrada).
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "200": { description: ok }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: no existe }
+
+  /api/admin/hazas/{id}/volver/{version}:
+    post:
+      summary: "Vuelve a una versión vieja guardando una COPIA de su linde como versión nueva (la vieja no se toca). Devuelve { haza, personalizados_fuera }"
+      description: La linde vieja pasa las comprobaciones de hoy (dentro de la finca, sin solapes). version_actual es la versión que se estaba viendo (409 version_cambiada si otra persona guardó). 409 sin_cambios si ya es igual. Auditoría admin.haza_vuelta.
+      security: [{ sesion: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Id" }
+        - { name: version, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [version_actual]
+              properties:
+                version_actual: { type: integer, minimum: 1 }
+                nota: { type: string, maxLength: 200 }
+      responses:
+        "200": { description: vuelta }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: "la haza o la versión no existen" }
+        "409": { description: "pisa otra haza (solape), sin cambios u otra persona guardó antes" }
 
   /api/admin/hogares/{id}/revocar:
     post:

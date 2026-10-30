@@ -7,6 +7,7 @@ import { OFICINA } from "../oficina/acceso.ts";
 import type { Contexto } from "../contexto.ts";
 import { sincroniza } from "../ot/sincronia.ts";
 import { rutasFamilias } from "./familias.ts";
+import { rutasHazasOficina } from "./hazas.ts";
 
 const ID = { type: "object", additionalProperties: false, required: ["id"], properties: { id: { type: "integer", minimum: 1, maximum: 2147483647 } } } as const;
 
@@ -15,6 +16,7 @@ export async function rutasAdmin(app: FastifyInstance, ctx: Contexto): Promise<v
   const soloAdmin = OFICINA;
 
   await rutasFamilias(app, ctx);
+  await rutasHazasOficina(app, ctx);
 
   app.post<{ Params: { id: number } }>("/api/admin/hogares/:id/revocar", { preHandler: soloAdmin, schema: { params: ID } }, async (req, rep) => {
     const n = await revocaTodas(bd, req.params.id);
