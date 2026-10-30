@@ -12,8 +12,10 @@ async function mantenEjes(mano, x, y, n) { await pg.evaluate(a => window.__mockX
 (async () => {
   const b = await chromium.launch({ executablePath: process.env.CHROME || "C:/Program Files/Google/Chrome/Application/chrome.exe", args: ["--use-gl=swiftshader", "--enable-unsafe-swiftshader", "--no-sandbox", "--autoplay-policy=no-user-gesture-required", "--disable-dev-shm-usage"] });
   const p = await b.newPage({ viewport: { width: 800, height: 500 } }); pg = p; const err = [], res = {}; let fallos = 0;
-  const fuera = [];   // I6: peticiones a otro origen (los modelos de los mandos NO deben ir a jsDelivr)
-  p.on("request", r => { try { if (/^https?:/.test(r.url()) && new URL(r.url()).origin !== new URL(url).origin) fuera.push(r.url()); } catch (e) {} });
+  // I6: peticiones a otro origen (los modelos de los mandos NO deben ir a jsDelivr). Las tipografías de Google las pide plantilla.html (no el motor;
+  // la CSP de dev las permite): se apartan aquí, no son de esta pieza
+  const fuera = [];
+  p.on("request", r => { try { const o = new URL(r.url()); if (/^https?:/.test(o.protocol) && o.origin !== new URL(url).origin && !/^fonts\.(googleapis|gstatic)\.com$/.test(o.hostname)) fuera.push(r.url()); } catch (e) {} });
   p.on("pageerror", e => err.push("PAGEERROR " + String(e))); p.on("console", m => { if (m.type() === "error" && !/favicon|404/.test(m.text())) err.push("CONSOLE " + m.text()); });
   if (!sinxr) await p.addInitScript({ content: fs.readFileSync(path.join(__dirname, "mock_xr.js"), "utf8") });
   await p.goto(url + (url.includes("?") ? "&" : "?") + "debug", { waitUntil: "load" });
@@ -38,7 +40,7 @@ async function mantenEjes(mano, x, y, n) { await pg.evaluate(a => window.__mockX
   ok("los mandos se ven con su modelo (Quest 3 a la izquierda, genérico a la derecha), no como cajas", dmd.filas.every(f => f.modelo === "modelo") &&
     dmd.filas.some(f => f.perfil === "meta-quest-touch-plus") && dmd.filas.some(f => f.perfil === "generic-trigger"), dmd.filas);
   ok("presupuesto de los mandos: menos de 40.000 triángulos y 40 mallas entre los dos", dmd.tri < 40000 && dmd.mallas < 40, { tri: dmd.tri, mallas: dmd.mallas });
-  ok("ninguna petición fuera del origen de la página", fuera.length === 0, fuera.slice(0, 4));
+  ok("ninguna petición fuera del origen de la página (salvo las tipografías de la plantilla)", fuera.length === 0, fuera.slice(0, 4));
   const fr0 = (await p.evaluate(() => window.__mockXR.fotogramas));
   // 1) andar: palanca izquierda adelante 2 s
   await mantenEjes("left", 0, -1, 8);

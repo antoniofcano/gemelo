@@ -31,6 +31,7 @@ test("VR con el WebXR simulado: todos los pasos de pruebas/prueba_vr.js pasan", 
   if (motivoSalto) return t.skip(motivoSalto);
   if (!process.env.GEMELO_VR) return t.skip("opcional: define GEMELO_VR=1 para ejecutar la prueba VR completa con el mock (inestable con SwiftShader, ver PLAN P4)");
   const r = await corre();
+  const md = /^mandos: .*$/m.exec(r.stdout); if (md) t.diagnostic(md[0]);   // I6: qué modelo, triángulos y mallas de los mandos (regla 6)
   assert.strictEqual(r.status, 0, "prueba_vr.js salió con " + r.status + "\n" + r.stdout.split("\n").filter(l => /FALLA|EXCEPCI|ERRORES|PAGEERROR|CONSOLE/.test(l)).join("\n") + r.stderr);
   assert.ok(!/^FALLA/m.test(r.stdout));
 });
