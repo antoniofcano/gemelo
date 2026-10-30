@@ -47,14 +47,16 @@ La página pide `t/<clave>.json|jpg` (`D.teselas` es el índice; `D.base` da el 
 | `21_suelo.js`, `22_huellas.js` | cubierta por NDVI, hierba, huellas | radio alrededor del foco |
 | `23_estacion.js` | olivo estacional (BBCH) | |
 | `24_pantalla.js` | pantalla completa, transición de cámara | |
-| `26_presencia.js` | `PoseCodec`, `BufferPose`, `Presencia`, `window.__presencia` | F2 sin red: códec de pose (24/56 B), interpolación y avatares de bloque instanciados (5 llamadas); solo con `?presencia=sim` (visitantes simulados), sin la bandera no crea nada ([presencia](../../contratos/presencia.md)) |
-| `26b_avatares.js` | `AvataresPuro` (y el gancho `avatarVRM` de 26) | P7c: avatares VRM (`@pixiv/three-vrm` 3.5.5 con `import()`) para los N más cercanos por aparato, con histéresis y fundido; el resto, el muñeco; tu paseante en tercera persona es tu avatar (decisión 76). Sin presencia no crea nada ([presencia](../../contratos/presencia.md), [avatares](../../contratos/avatares.md)) |
+| `26_presencia.js` | `PoseCodec`, `BufferPose`, `SalaPose`, `Chat`, `Aspecto`, `Muneco`, `Encuentro`, `sitioJunto` | no es componente: el protocolo y la lógica pura de la presencia (códec de pose de 24/56 B, interpolación, la sala, el chat, el aspecto del muñeco y dónde dejarte junto a alguien o a una baliza) ([presencia](../../contratos/presencia.md)) |
+| `26b_avatares.js` | — (componente `avatares-vrm`; `AvataresPuro`) | P7c: avatares VRM (`@pixiv/three-vrm` 3.5.5 con `import()`) para los N más cercanos por aparato, con histéresis y fundido; el resto, el muñeco; tu paseante en tercera persona es tu avatar (decisión 76). Consume la presencia (C5); sin ella no crea nada ([avatares](../../contratos/avatares.md)) |
 | `27_debug.js` | `window.__g` | gancho de pruebas |
 | `28_depura.js` | contador `?debug` | |
 | `29_vr.js` | `VRX`, `vrActualiza`, `VR_PERFILES`, `PanelVR`, `window.__vrDebug` | todo el WebXR; el panel por filas (`PanelVR.filas`) |
 | `31_hud.js`, `32_ventanas.js`, `33_ajustes.js` | `Hud`, `Ventanas`, `Ajustes` | HUD, ventanas y Configuración; puntos de extensión `Hud.icono`, `Ventanas.registra`, `Ajustes.registra` |
 | `32b_capas.js` | `Capas` | `Capas.registra`: casillas de capas de los componentes en «Capas y vista», con su procedencia |
 | `35_fichas_tiempo.js` | — (componente `fichas-tiempo`) | la lámina de la previsión: primer componente; solo se registra |
+| `37_red.js` | — (componente `red-salas`, expone `Red` por `n.api`; `RedPuro`) | C5: la única pieza que habla con LiveKit (`livekit-client` con `import()` al unirse a una sala): salas por clave, unirse, salir o cambiar, publicar y escuchar por tema, estado y participantes |
+| `38_presencia_compartida.js` | — (componente `presencia-compartida`, expone `Presencia`; `window.__presencia`) | F2 con C5: los demás como muñecos instanciados (5-8 llamadas), la simulación (`?presencia=sim`) y la sala de verdad por la red (`?presencia=red`: sala «visita», Gente y chat); sin la bandera no crea nada ([presencia](../../contratos/presencia.md)) |
 | `90_final.js` | bucle `cuadro()` | orden de actualizaciones |
 | `99_cierre.js` | — | cierra la IIFE |
 
@@ -68,7 +70,7 @@ La página pide `t/<clave>.json|jpg` (`D.teselas` es el índice; `D.base` da el 
 
 ## 4. Bucle por fotograma (`cuadro(t)` en `90_final.js`)
 
-`dt` acotado a 0,1 s → cámara (VR, paseo u órbita) → tiempo, olivo estacional, vida, minimapa, paisaje, balizas, sonido, suelo, nube → **componentes, fase «mundo»** → `Arboles.actualiza` (reclasifica niveles) → `actualizaCarga` cada 0,2 s (`Mundo.actualiza` pide teselas; cada 3 s suelta ortofotos lejanas) → huellas, perros → presencia (`Presencia.actualiza`; nada sin `?presencia=sim`) → hazas → **componentes, fase «tarde»** (cada uno a su ritmo) → `Cola.corre(Arboles.presupuesto())` → suelo de fondo, `Escena3D.actualiza` → `render` → **componentes, fase «trasRender»** → contador `?debug` → `vrFin` en VR. Los módulos que aún no son componentes se llaman a mano; los componentes, por `Componentes.actualiza(fase)` sin nombrarlos (§9). En VR el bucle lo lleva la sesión XR en vez de `requestAnimationFrame`.
+`dt` acotado a 0,1 s → cámara (VR, paseo u órbita) → tiempo, olivo estacional, vida, minimapa, paisaje, balizas, sonido, suelo, nube → **componentes, fase «mundo»** (entre ellos la presencia: nada sin `?presencia=sim|red`) → `Arboles.actualiza` (reclasifica niveles) → `actualizaCarga` cada 0,2 s (`Mundo.actualiza` pide teselas; cada 3 s suelta ortofotos lejanas) → huellas, perros → hazas → **componentes, fase «tarde»** (cada uno a su ritmo) → `Cola.corre(Arboles.presupuesto())` → suelo de fondo, `Escena3D.actualiza` → `render` → **componentes, fase «trasRender»** → contador `?debug` → `vrFin` en VR. Los módulos que aún no son componentes se llaman a mano; los componentes, por `Componentes.actualiza(fase)` sin nombrarlos (§9). En VR el bucle lo lleva la sesión XR en vez de `requestAnimationFrame`.
 
 ## 5. Colas y presupuestos
 

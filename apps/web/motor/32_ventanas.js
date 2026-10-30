@@ -8,7 +8,7 @@
   // que esconde solo las acciones. Al abrir, el foco va al título; al cerrar, vuelve a quien la abrió.
   // Los nodos de antes se movieron dentro de las ventanas en la plantilla (13_parcelas.js, 15_tiempo.js, 14_historia.js y 10_ndvi.js no cambian).
   // Historia: al empezar el recorrido, la ventana se cierra y la escena sigue en una tarjeta arriba (#tarjetaRecorrido), como un registro de misiones.
-  // Gente: 26_presencia.js pinta la lista dentro de #ventanaGente (aquí pasa a su cuerpo); si no la pinta, al abrirla se mete el panel (#presenciaGente) y al cerrarla vuelve.
+  // Gente: la presencia compartida (38_presencia_compartida.js) pinta la lista dentro de #ventanaGente (aquí pasa a su cuerpo); si no la pinta, al abrirla se mete el panel (#presenciaGente) y al cerrarla vuelve.
   // [puro:inicio] (sin THREE ni DOM: lo evalúa en Node pruebas/guardianes/ux_ventanas.test.js)
   var VentanasPuro = (function () {
     var IDS = { mapa: "ventanaMapa", capas: "ventanaCapas", tiempo: "ventanaTiempo", historia: "ventanaHistoria", gente: "ventanaGente", ayuda: "ventanaAyuda" };
@@ -32,7 +32,7 @@
       ["hoja", "alto", "lateral"].forEach(function (k) { visor.classList.toggle("forma-" + k, k === f); });
       visor.classList.toggle("con-ventana", !!actual); visor.classList.toggle("con-hoja", !!actual && f === "hoja"); visor.classList.toggle("con-lateral", !!actual && f === "alto");
     }
-    function meteGente() {   // 26_presencia.js pinta la lista en #ventanaGente: se pasa a su cuerpo; si no hay lista, entra el panel de la presencia mientras está abierta
+    function meteGente() {   // la presencia (38_presencia_compartida.js) pinta la lista en #ventanaGente: se pasa a su cuerpo; si no hay lista, entra el panel de la presencia mientras está abierta
       var vg = $("ventanaGente"), cu = $("ventanaGenteCuerpo"), pg = $("presenciaGente");
       if (vg && cu) Array.prototype.slice.call(vg.children).forEach(function (h) { if (h !== cu && h.tagName !== "HEADER") cu.appendChild(h); });
       if (!cu || !pg || cu.contains(pg) || cu.children.length) return;

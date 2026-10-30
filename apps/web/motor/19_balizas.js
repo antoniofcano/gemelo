@@ -1,9 +1,9 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: colocaBalizas, avisoBaliza, dibujaBalizasMini, actualizaBalizas
 // Consume: 01_datos (D, $), 02_mundo (suelo, copas), 02c_componentes (Bus), 02e_entidades (Entidades, Usables),
-//   03_escena (visor, scene, camera, exag), 09_camara (objetivo, suelta, elige), 12_paseo (paseando, teclas), 12b_llegada (Llegada),
+//   03_escena (visor, scene, camera, exag), 09_camara (objetivo, suelta, elige), 12_paseo (paseando, persona, teclas), 12b_llegada (Llegada),
 //   13_parcelas (parcelas), 13b_hazas (HazasPuro), 14_historia (VIVO, marca, aviso), 15_tiempo (num1, esc, hace),
-//   16_vida (tVida, enQuad, quad, dron), 26_presencia (Encuentro, sitioJunto, Presencia), 29_vr (VRX, ficha)
+//   16_vida (tVida, enQuad, quad, dron), 26_presencia (Encuentro, sitioJunto), 29_vr (VRX, ficha)
 // Nota: Registra el tipo baliza en Entidades (C7). Publica además window.__vrBalizas (pruebas VR: el pie de cada columna de luz).
 // ===============================================================================
   // ---------- las balizas: una por parcela, con lo que OlivarTrack sabe de ella; en el paseo, al acercarte, sale su ficha
@@ -127,9 +127,9 @@
   window.__vrBalizas = function () { return BAL.map(function (g) { return g.position.toArray(); }); };   // el pie de cada columna de luz (pruebas, I5)
   // ---- I4: las balizas como punto de encuentro. Quién está en la parcela (con ?presencia: los que se dibujan, dentro de su linde; null sin presencia),
   // el aviso del minimapa («¿Ir a esta baliza?», con Ir y Cancelar) e ir: a 4-5,5 m de la columna, fuera de copas y troncos, mirándola (Llegada.ve)
-  function genteEnBaliza(k) {
-    if (typeof Presencia === "undefined" || !Presencia.activo()) return null;
-    return Encuentro.enParcela(Presencia.puntos(), parcelas[k].linde, HazasPuro.dentroPoligono);
+  function genteEnBaliza(k) {   // las entidades «persona» (las registra la presencia compartida solo con ?presencia); sin ese tipo, null
+    var gente = Entidades.lista("persona"); if (!gente) return null;
+    return Encuentro.enParcela(gente, parcelas[k].linde, HazasPuro.dentroPoligono);
   }
   function irABaliza(k) {
     var pr = parcelas[k]; if (!pr) return false;

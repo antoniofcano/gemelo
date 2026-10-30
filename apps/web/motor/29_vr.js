@@ -277,7 +277,7 @@
   }
   function vrRumboPanel() { return ((-panel.m.rotation.y * 180 / Math.PI) % 360 + 360) % 360; }   // hacia dónde mira quien ve el panel de frente (PanelVR.rumbo)
   // ----- 3b) I5: la sección Gente del panel: una fila por persona que se ve (Entidades.lista("persona"): con pose, sin bloquear, no en vista aérea), las más
-  // cercanas arriba, con «Ir con» pulsable con el rayo y el gatillo. Ir es su acción «ir» (Usables.usa; en 26_presencia.js): fundido a negro y de pie a 2,5-4 m de
+  // cercanas arriba, con «Ir con» pulsable con el rayo y el gatillo. Ir es su acción «ir» (Usables.usa; en 38_presencia_compartida.js): fundido a negro y de pie a 2,5-4 m de
   // ella, mirándola (Llegada, 12b_llegada.js), nunca un vuelo de cámara; al llegar se cierra el panel (para verla) y Y lo vuelve a abrir.
   // [puro:inicio] (sin THREE ni DOM: lo evalúa en Node pruebas/guardianes/vr_gente.test.js)
   var VrGentePuro = (function () {
@@ -305,7 +305,7 @@
   })();
   // [puro:fin]
   var GENTE_FILAS = 4;   // filas que caben en la pestaña «Ir a»; la sección empieza donde le diga la pestaña (px del canvas del panel)
-  function vrGente() {   // C7: las personas son entidades (26_presencia registra el tipo persona); sin ese tipo (sin presencia), null
+  function vrGente() {   // C7: las personas son entidades (la presencia compartida, 38_presencia_compartida.js, registra el tipo persona); sin ese tipo (sin presencia), null
     var l = Entidades.lista("persona"), pts = l ? l.map(function (q) { return { id: q.ref, alias: q.alias, x: q.x, y: q.y, modo: q.modo }; }) : null;
     return VrGentePuro.filas(pts, { x: VRX.cab.x, y: -VRX.cab.z }, GENTE_FILAS);
   }

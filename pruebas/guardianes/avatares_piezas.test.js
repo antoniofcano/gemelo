@@ -136,7 +136,7 @@ test("motor: con silla de ruedas el VRM va sentado como en el quad (muslos adela
   const quad = AP.huesos({ piernaI: 1.15, piernaD: 1.15, brazoI: 1.05, brazoD: 1.05, agacho: 0, vehiculo: 1 }, { L: 0.9 }, null, {});
   assert.deepStrictEqual([silla.leftUpperLeg, silla.leftLowerLeg, silla.leftLowerArm], [quad.leftUpperLeg, quad.leftLowerLeg, quad.leftLowerArm]);
   assert.deepStrictEqual(silla.leftUpperArm, [-0.55, 0, -AP.BAJA], "los brazos a las ruedas");
-  const p = lee("apps/web/motor/26_presencia.js");
+  const p = lee("apps/web/motor/38_presencia_compartida.js");   // C5: el dibujo de los muñecos es del componente de la presencia
   assert.match(p, /outMu, o\.modo, a\.mov === "silla"\);/, "Muneco.avanza sienta también a quien lleva VRM");
   assert.ok(!/a\.mov === "silla" && !a\.vrm/.test(p));
   assert.match(p, /if \(a\.iSom >= 0\) mSombrero\.setMatrixAt\(a\.iSom, m4\);/, "con VRM se quita el sombrero del muñeco, no el apoyo");
