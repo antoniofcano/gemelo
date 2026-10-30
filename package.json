@@ -11,6 +11,8 @@
     "montar": "npm --prefix apps/web run build",
     "guardianes": "node --test \"pruebas/guardianes/*.test.js\"",
     "puerta": "node pruebas/banco/puerta.js",
+    "puerta:rapida": "node pruebas/banco/puerta_rapida.js",
+    "puerta:pesada": "node pruebas/banco/puerta_pesada.js",
     "banco:ronda": "node pruebas/banco/ronda.js",
     "banco:encarga": "node pruebas/banco/encarga.js",
     "banco:quien": "node -e \"console.log(require('./pruebas/banco/turno').quien() || 'turno libre')\"",
