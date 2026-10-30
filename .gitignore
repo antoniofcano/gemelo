@@ -44,3 +44,6 @@ apps/web/dist-portada/
 
 # los prototipos de UX sí se versionan (son HTML de maqueta, sin datos reales)
 !prototipos/**/*.html
+
+# Ajustes locales del editor (llevan rutas y datos de cada equipo)
+.vscode/
