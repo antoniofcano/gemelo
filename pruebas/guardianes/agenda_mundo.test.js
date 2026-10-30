@@ -1,5 +1,5 @@
 "use strict";
-// La agenda dentro del mundo (OF11c; apps/web/motor/43_agenda.js), en Node y sin navegador:
+// La agenda dentro del mundo (OF11d; apps/web/motor/43_agenda.js), en Node y sin navegador:
 //   · lo puro (AgendaPuro): rutas, lista blanca de la respuesta de GET /api/agenda, fechas, plazas, estado propio, qué se ofrece, textos de error, filas de VR;
 //   · el componente con un DOM falso y la api simulada (fetch): la ventana enseña los próximos con sus plazas y tu estado, apunta con 1-10 personas, borra,
 //     no ofrece nada si la sesión no puede inscribirse, nunca usa HTML (el título es un dato), y la fila del panel VR lista los próximos y dice dónde apuntarse.

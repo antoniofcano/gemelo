@@ -5,6 +5,8 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Agenda en el mundo (OF11d): ventana «Agenda» con los próximos eventos, plazas y tu estado; la titular con su enlace se apunta (1-10 personas) o se borra; en VR, una fila en el panel con los próximos y «Apúntate desde el móvil o el ordenador». Componente `agenda` (`?agenda=0`).
+- «Cae la cosecha» en VR: al acabar la partida, la lámina enseña tu puesto y la tabla corta de la clasificación entre familias (sin servidor o sin sesión, nada). No probado en Quest.
 - La «Sala de la visita» puede ligarse a un evento de la agenda (OF10b, decisión 154): al invitar la oficina indicando el evento, solo entran la oficina y las familias apuntadas (no en espera); el resto ve «Esta visita es para las familias apuntadas.» y sigue en la sala general. Contrato `livekit-roles` v5. La ligadura vive en la memoria de la api (se pierde al reiniciarla).
 - Pruebas: dos puertas, `npm run puerta:rapida` (solo Node, unos 3 min, tras cada fusión) y `npm run puerta:pesada` (completa con Chrome y Docker, una vez por tanda; la única que autoriza a subir `main`).
 - Agenda de la oficina (OF11b, decisión 148): cambiar la fecha o el lugar de un evento avisa solo, en la misma transacción, a apuntados y en espera, con «antes → ahora»; es un aviso de sistema y no cuenta para el tope de 3 por semana. La pantalla dice a cuántas familias se avisó.

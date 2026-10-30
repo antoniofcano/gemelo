@@ -1,5 +1,5 @@
 "use strict";
-// La agenda dentro del mundo (OF11c; apps/web/motor/43_agenda.js) en Chrome, con la api simulada (page.route): NO la ejecuta quien la escribe, la pasa el banco
+// La agenda dentro del mundo (OF11d; apps/web/motor/43_agenda.js) en Chrome, con la api simulada (page.route): NO la ejecuta quien la escribe, la pasa el banco
 // (npm run banco:encarga). Comprueba: el icono y la ventana «Agenda» en móvil y en escritorio, los próximos con plazas y tu estado, apuntarse con N personas (el POST
 // lleva el número), borrarse (DELETE), que sin puede_inscribirse no hay un solo botón, que sin servidor no hay icono, y 0 errores de consola. En VR simulada
 // (opcional, GEMELO_VR=1, como juego_cosecha.test.js) la fila «Agenda» del panel lista los próximos y dice dónde apuntarse, sin botón.
