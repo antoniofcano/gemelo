@@ -4,17 +4,19 @@
 // con la comprobación de los 366 días; si la configuración no las trae, vale el calendario del repo). Una versión nunca se reescribe:
 // un borrador nuevo por cada guardado, «a prueba» (solo la cargan las cuentas de oficina), «para todos» (admin + confirmación reciente) y «volver» (una copia).
 // La vista previa es SIMULADA e ilustrativa: no mide nada. Todo el DOM va con textContent (nada de HTML a mano).
+import { iniciaOlivoReal } from "./olivo_real.js";
 import { $, api, aviso, conConfirmacion, confirma, fecha, h, vacia } from "./comun.js";
 import { APARATOS, APAR, CAMPO, COMPONENTES, EPOCAS, ESTADOS, GRUPOS, PARAM, PARAMS, aCuerpo, acciones, avisosPrevia, cambios, cambiosComp, cambiosEp, cobertura, copiaTabla, defectos, desdeCuerpo, formatea, mismasEp, mismosComp, mismosValores, numero, redondea, resumen, simula, tablaDePartida, valida, validaEp } from "./olivos_puro.js";
 
 const copia = o => JSON.parse(JSON.stringify(o));
-const PESTANAS = [["esc", "Escalera"], ["com", "Componentes"], ["epo", "Épocas"], ["his", "Historial"]];
+const PESTANAS = [["esc", "Escalera"], ["com", "Componentes"], ["epo", "Épocas"], ["real", "Olivo real"], ["his", "Historial"]];
 const FINCA_ID = /^[a-z0-9_]+$/;
 
 export function iniciaOlivos({ sesion }) {
   let versiones = [], publicada = null, enPrueba = null, pub = null, prueba = null;   // pub y prueba: { version, vals, comp, ep, cuerpo }
   let vals = defectos(), comp = {}, ep = null, epSel = "comun", base = null, miBorrador = null, cargado = false, pest = "esc", cargas = 0, ocupado = false;
   const cuerpos = new Map();   // versión → { cuerpo, vals, comp, ep } (una versión no se reescribe: se guarda para siempre)
+  const real = iniciaOlivoReal();   // OF8: un olivo real por su id, con sus escalones lado a lado (no toca la configuración)
   const msgsApi = [];          // lo que la api dijo del último intento (config_no_valida)
 
   // ---------------------------------------------------------------- piezas fijas (se construyen una vez)
@@ -96,11 +98,12 @@ export function iniciaOlivos({ sesion }) {
       b.setAttribute("aria-selected", String(sel)); if (sel) b.removeAttribute("tabindex"); else b.setAttribute("tabindex", "-1");
       $("#p-" + p).hidden = !sel;
     }
-    $("#oBarra").hidden = id === "his";
+    $("#oBarra").hidden = id === "his" || id === "real";
     if (foco) $("#t-" + id).focus();
     if (id === "esc") pintaPrevia();
     if (id === "epo") pintaEpocas();
     if (id === "his") pintaHistorial();
+    if (id === "real") real.abre();
   }
 
   // ---------------------------------------------------------------- estado: carga y reinicio
