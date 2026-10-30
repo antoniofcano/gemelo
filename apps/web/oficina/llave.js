@@ -106,11 +106,11 @@ export function iniciaLlavesSistema({ sesion }) {
     const ul = vacia($("#sLlavesTodas"));
     for (const c of r.datos.cuentas) {
       const vivas = c.llaves.filter(l => !l.revocada_en);
-      const sub = h("ul", { class: "lista" }, ...vivas.map(l => fila(l, false, c.correo)));
+      const sub = h("ul", { class: "lista" }, ...vivas.map(l => fila(l, false, c.nombre)));
       ul.append(h("li", { "data-cuenta": c.hogar_id },
-        h("b", null, c.correo), " ", h("span", { class: "nota" }, c.rol + " · " + vivas.length + (vivas.length === 1 ? " llave viva" : " llaves vivas")),
+        h("b", null, c.nombre), " ", h("span", { class: "nota" }, c.rol + " · " + vivas.length + (vivas.length === 1 ? " llave viva" : " llaves vivas")),
         c.rehabilitada_hasta ? [" ", h("span", { class: "pill p-aviso" }, "alta rehabilitada hasta " + new Date(c.rehabilitada_hasta).toLocaleString("es-ES", { dateStyle: "short", timeStyle: "short" }))] : null,
-        c.es_tuya ? null : [" ", h("button", { class: "boton peq", type: "button", "data-rehabilita": c.hogar_id, "data-correo": c.correo, "aria-label": "Rehabilitar el alta de la llave de " + c.correo }, "Rehabilitar el alta")],
+        c.es_tuya ? null : [" ", h("button", { class: "boton peq", type: "button", "data-rehabilita": c.hogar_id, "data-nombre": c.nombre, "aria-label": "Rehabilitar el alta de la llave de " + c.nombre }, "Rehabilitar el alta")],
         vivas.length ? sub : null));
     }
     if (!ul.children.length) ul.append(h("li", { class: "nota" }, "No hay cuentas de oficina."));
@@ -140,13 +140,13 @@ export function iniciaLlavesSistema({ sesion }) {
         return undefined;
       } });
     } else if (rh) {
-      const id = Number(rh.dataset.rehabilita), correo = rh.dataset.correo;
-      confirma({ titulo: "Rehabilitar el alta de la llave", cuerpo: [h("p", null, "Durante 24 horas, " + correo + " podrá crear una llave nueva entrando solo con un enlace a su correo. Hazlo únicamente si has hablado con esa persona y ha perdido sus llaves."),
-        h("p", { class: "nota" }, "Si sospechas que le robaron una llave, revócala antes. Pide haberte confirmado hace poco.")], si: "Rehabilitar", escribe: correo,
+      const id = Number(rh.dataset.rehabilita), nombre = rh.dataset.nombre;
+      confirma({ titulo: "Rehabilitar el alta de la llave", cuerpo: [h("p", null, "Durante 24 horas, " + nombre + " podrá crear una llave nueva entrando solo con un enlace a su correo. Hazlo únicamente si has hablado con esa persona y ha perdido sus llaves."),
+        h("p", { class: "nota" }, "Si sospechas que le robaron una llave, revócala antes. Pide haberte confirmado hace poco.")], si: "Rehabilitar", escribe: nombre,
       hecho: async () => {
         const r = await conConfirmacion(() => api("POST", "/api/admin/hogares/" + id + "/rehabilitar-llave", {}));
         if (!r.ok) return r.mensaje;
-        aviso("Alta rehabilitada para " + correo + " durante 24 h"); cargaTodas(); return undefined;
+        aviso("Alta rehabilitada para " + nombre + " durante 24 h"); cargaTodas(); return undefined;
       } });
     }
   });

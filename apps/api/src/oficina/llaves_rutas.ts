@@ -180,15 +180,15 @@ export async function rutasLlaves(app: FastifyInstance, ctx: Contexto): Promise<
 
   app.get("/api/admin/llaves", { preHandler: ADMIN }, async (req, rep) => {
     rep.header("cache-control", NO_GUARDAR);
-    const cuentas = await bd.query<{ id: string; correo: string; rol: Rol; llave_rehabilitada_hasta: Date | null }>(
-      "SELECT id, correo, rol, llave_rehabilitada_hasta FROM hogares WHERE rol::text IN ('oficina', 'admin') AND activo ORDER BY id LIMIT 100");
+    const cuentas = await bd.query<{ id: string; nombre_interno: string | null; rol: Rol; llave_rehabilitada_hasta: Date | null }>(
+      "SELECT id, nombre_interno, rol, llave_rehabilitada_hasta FROM hogares WHERE rol::text IN ('oficina', 'admin') AND activo ORDER BY id LIMIT 100");
     const llaves = await bd.query(
       `SELECT id, hogar_id, nombre, transports, respaldada, creada_en, ultima_vez_en, revocada_en FROM llaves_oficina
         WHERE hogar_id = ANY($1::bigint[]) ORDER BY revocada_en IS NOT NULL, id DESC`, [cuentas.rows.map(f => f.id)]);
     return {
       obligatoria: c.obligatoria,
       cuentas: cuentas.rows.map(f => ({
-        hogar_id: Number(f.id), correo: f.correo, rol: f.rol, es_tuya: Number(f.id) === req.session.hogarId,
+        hogar_id: Number(f.id), nombre: f.nombre_interno?.trim() || "Cuenta n.º " + f.id, rol: f.rol, es_tuya: Number(f.id) === req.session.hogarId,
         rehabilitada_hasta: f.llave_rehabilitada_hasta && f.llave_rehabilitada_hasta > new Date() ? f.llave_rehabilitada_hasta : null,
         llaves: llaves.rows.filter(l => Number(l["hogar_id"]) === Number(f.id)).slice(0, 20).map(l => fila(l)),
       })),

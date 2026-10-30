@@ -1063,7 +1063,7 @@ paths:
       summary: "(admin) Las cuentas de oficina con sus llaves (sin clave pública ni id de credencial) y si tienen el alta rehabilitada"
       security: [{ sesion: [] }]
       responses:
-        "200": { description: "{ obligatoria, cuentas: [{ hogar_id, correo, rol, es_tuya, rehabilitada_hasta, llaves }] }" }
+        "200": { description: "{ obligatoria, cuentas: [{ hogar_id, nombre (nombre interno o «Cuenta n.º id»; nunca el correo), rol, es_tuya, rehabilitada_hasta, llaves }] }" }
         "401": { $ref: "#/components/responses/SinSesion" }
         "403": { $ref: "#/components/responses/SinPermiso" }
 
