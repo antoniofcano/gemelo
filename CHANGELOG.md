@@ -5,6 +5,8 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- «Cae la cosecha» se juega en VR como lámina delante, desde la fila «Juegos» del panel: rayo + gatillo, palanca derecha y B (C9b); 2 llamadas del juego (una por ojo). No probado en Quest.
+- Motor: entidades con id estable y una sola forma de elegirlas (C7, `02e_entidades.js`): olivos, balizas, hazas y personas se eligen igual con toque, clic, rayo VR y cercanía, con una ficha común y un anillo de resaltado al pie de lo elegido; con presencia, tocar a una persona abre su ficha con «Ir con».
 - Oficina: sección Olivos (OF7): deslizadores de la escalera con sus límites (en gafas solo bajan) y vista previa simulada (ilustrativa), interruptores de componentes, y versiones con borrador, prueba, publicación para todos con confirmación, historial y «volver».
 - Oficina: sección Sistema (OF5): salud de api, base, LiveKit, correo y hornero; OlivarTrack (estado por herramienta, de cuándo es el dato, truncado o parcial, sincronizar para admin); Vigía (modo y última lectura); hornero (épocas, objetos y tamaño); correo de prueba a la propia cuenta; aparatos y auditoría filtrable y paginada; sin secretos en pantalla.
 - Oficina: sección Bandeja (OF4) contra la api real: filtros por tipo y estado, retirar en un clic con deshacer y volver a mostrar, responder preguntas (la familia lo ve), avisar a una familia, archivar y pasar a OlivarTrack a mano (texto de la familia como dato citado y el id de la propuesta); contador de pendientes; bandera `GEMELO_OFICINA_OT_PROPONER` (`manual` hasta el token de solo proponer).
