@@ -1,3 +1,4 @@
+import polygonClipping from "polygon-clipping";
 // Cuentas puras del editor de hazas (OF3): sin DOM ni OpenLayers, para poder probarlas en Node (pruebas/guardianes/oficina_hazas.test.js).
 // Las coordenadas son las de un MultiPolygon de GeoJSON en EPSG:25830: [polígono][anillo][vértice] = [E, N] en metros, anillos cerrados
 // (el último vértice repite el primero). Lo que se cuenta aquí es ORIENTATIVO: el recuento, la superficie y los solapes que valen son
@@ -101,17 +102,28 @@ function cruzan(a, b, c, d) {
 const lados = c => c.flatMap(pol => pol.flatMap(an => an.slice(0, -1).map((q, i) => [q, an[i + 1]])));
 
 /**
- * ¿Se pisan dos hazas? Aviso orientativo: un vértice de una dentro de la otra a más de `tolerancia` m de su linde, o dos lados que se
- * cruzan. Compartir linde (vértices ajustados) no cuenta. El servidor mide el área pisada con ST_Intersection.
+ * Área (m²) que pisan dos hazas: la de su intersección (polygon-clipping, con aritmética robusta; sirve para lindes coincidentes,
+ * una haza dentro de otra, huecos y MultiPolygon). Es la misma magnitud que mide el servidor con ST_Area(ST_Intersection).
  */
-export function sePisan(a, b, tolerancia = 0.05) {
-  if (!cajasSeTocan(caja(a), caja(b), 0)) return false;
-  const verts = c => c.flatMap(pol => pol.flatMap(an => an.slice(0, -1)));
-  if (verts(a).some(([x, y]) => dentro(b, x, y) && distanciaALinde(b, x, y) > tolerancia)) return true;
-  if (verts(b).some(([x, y]) => dentro(a, x, y) && distanciaALinde(a, x, y) > tolerancia)) return true;
-  const lb = lados(b);
-  return lados(a).some(([p, q]) => lb.some(([r, s]) => cruzan(p, q, r, s) && distSeg(p[0], p[1], r, s) > tolerancia && distSeg(q[0], q[1], r, s) > tolerancia));
+export function areaPisada(a, b) {
+  if (!cajasSeTocan(caja(a), caja(b), 0)) return 0;
+  try { return area(polygonClipping.intersection(a, b)); } catch { return 0; }
 }
+/** Área (m²) por debajo de la cual el pisado se considera ruido del ajuste (la misma regla que SOLAPE_TOLERADO_M2 de apps/api/src/hazas/geometria.ts). */
+export const SOLAPE_TOLERADO_M2 = 0.5;
+/**
+ * ¿Se pisan dos hazas? Aviso orientativo con la regla del servidor: el área de la intersección supera `minM2` (0,5 m²). Compartir
+ * linde, o rozarse por un ajuste de centímetros, no cuenta; dos hazas iguales o una dentro de otra, sí. Simétrico por construcción:
+ * se calcula siempre en el mismo orden (el que fija `clave`, que no depende de cuál es la primera).
+ */
+export function sePisan(a, b, minM2 = SOLAPE_TOLERADO_M2) {
+  const clave = c => [...caja(c), area(c)];
+  const ka = clave(a), kb = clave(b);
+  let orden = 0;
+  for (let i = 0; i < ka.length && !orden; i++) orden = Math.sign(ka[i] - kb[i]);
+  return (orden <= 0 ? areaPisada(a, b) : areaPisada(b, a)) > minM2;
+}
+
 
 /**
  * ¿Cabe la haza en el límite de la finca (OF3b: su contorno o, sin él, la caja de sus olivos + 150 m)? Todos sus vértices dentro del
