@@ -1,6 +1,7 @@
 "use strict";
 // Cliente web con Vite (ADR-0010, fase 0): la entrada generada es exactamente el motor concatenado, el build funciona y la página empaquetada
 // dibuja LO MISMO que la salida artefacto (mismas llamadas, triángulos y puntos en los mismos escenarios), con la misma versión de three en las dos.
+// Las dos con ?escena=clasica (la de siempre; ninguna de las dos lleva tileset, ADR-0015 T8 fase 1): se compara el build, no la escena.
 // Sin Vite instalado (cd apps/web && npm i) se SALTA con aviso. La salida artefacto toma three de jsDelivr: sin red, su carga falla.
 const test = require("node:test"), assert = require("node:assert");
 const { RAIZ, propia, python, fixture, ejecuta, fs, path } = require("./_util");
@@ -71,8 +72,8 @@ test("la página empaquetada carga sin errores y dibuja exactamente lo mismo que
     // Una diferencia aislada puede ser de tiempo y no del build: se repite la pareja de medidas hasta 3 veces; falla si nunca coinciden.
     let dif = [];
     for (let intento = 1; intento <= 3; intento++) {
-      const w = await mide(nav, "http://127.0.0.1:" + s1.address().port + "/index.html");
-      const a = await mide(nav, "http://127.0.0.1:" + s2.address().port + "/index.html");
+      const w = await mide(nav, "http://127.0.0.1:" + s1.address().port + "/index.html?escena=clasica");
+      const a = await mide(nav, "http://127.0.0.1:" + s2.address().port + "/index.html?escena=clasica");
       assert.deepStrictEqual(w.errores, [], "errores en la página de Vite");
       assert.deepStrictEqual(w.fallos, [], "peticiones fallidas en la página de Vite");
       dif = [];
