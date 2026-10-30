@@ -2024,7 +2024,7 @@ paths:
               minProperties: 1
               description: "los mismos campos que al crear, todos opcionales; estado solo borrador, abierta o cerrada (cancelar tiene su ruta)"
       responses:
-        "200": { description: "editado (auditoría admin.evento_editado): promovidos (hogares que pasaron de la espera a apuntados) y con_inscritos (hogares apuntados o en espera, para ofrecer «avisar» si cambió fecha o lugar)", content: { application/json: { schema: { type: object, properties: { promovidos: { type: integer }, con_inscritos: { type: integer } } } } } }
+        "200": { description: "editado (auditoría admin.evento_editado): promovidos (hogares que pasaron de la espera a apuntados), con_inscritos (hogares apuntados o en espera) y avisados (hogares a los que salió solo el aviso por cambio de fecha o lugar, en la misma transacción, como aviso de sistema que no cuenta para el tope semanal; 0 si no cambió ni fecha ni lugar; OF11b)", content: { application/json: { schema: { type: object, properties: { promovidos: { type: integer }, con_inscritos: { type: integer }, avisados: { type: integer } } } } } }
         "400": { $ref: "#/components/responses/EntradaNoValida" }
         "401": { $ref: "#/components/responses/SinSesion" }
         "403": { $ref: "#/components/responses/SinPermiso" }

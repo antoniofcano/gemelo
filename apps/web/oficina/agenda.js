@@ -121,7 +121,7 @@ export function iniciaAgenda({ sesion }) {
   function cancela(e) {
     confirma({
       titulo: "Cancelar el evento",
-      cuerpo: [h("p", null, "Vas a cancelar «" + e.titulo + "». Las " + (e.hogares + e.en_espera) + " familias apuntadas o en espera recibirán un aviso en el gemelo. No se puede deshacer."), h("p", { class: "nota" }, "Para solo cambiar la fecha o el lugar, edítalo y avisa a quien esté apuntado.")],
+      cuerpo: [h("p", null, "Vas a cancelar «" + e.titulo + "». Las " + (e.hogares + e.en_espera) + " familias apuntadas o en espera recibirán un aviso en el gemelo. No se puede deshacer."), h("p", { class: "nota" }, "Para solo cambiar la fecha o el lugar, edítalo: las familias apuntadas o en espera reciben solas el aviso del cambio.")],
       si: "Cancelar el evento",
       hecho: async () => {
         const r = await api("POST", "/api/admin/eventos/" + e.id + "/cancelar", {});
@@ -165,7 +165,7 @@ export function iniciaAgenda({ sesion }) {
     $("#dlgEvento").close();
     if (editando) {
       const d = r.datos || {};
-      aviso("Evento guardado." + (d.promovidos ? " " + d.promovidos + " familia" + (d.promovidos === 1 ? "" : "s") + " pasó de la espera a apuntada." : "") + (d.con_inscritos ? " Hay " + d.con_inscritos + " familias inscritas: si cambió la fecha o el lugar, avísalas." : ""));
+      aviso("Evento guardado." + (d.promovidos ? " " + d.promovidos + " familia" + (d.promovidos === 1 ? "" : "s") + " pasó de la espera a apuntada." : "") + (d.avisados ? " Se ha avisado a " + d.avisados + " familia" + (d.avisados === 1 ? "" : "s") + " del cambio de fecha o lugar." : ""));
     } else aviso("Evento creado.");
     await carga();
   });

@@ -10,7 +10,7 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import fc from "fast-check";
-import { aPromover, cabe, estadoNuevo } from "../../src/agenda/cupo.ts";
+import { aPromover, cabe, cambiosDeCita, estadoNuevo } from "../../src/agenda/cupo.ts";
 import { validaConfig, validaTabla, EPOCAS } from "../../src/config/valida.ts";
 import { CAJA_UTM, compruebaGeometria, MAX_VERTICES, type Geometria } from "../../src/hazas/geometria.ts";
 import { formaClasificacion } from "../../src/juegos/rutas.ts";
@@ -113,6 +113,18 @@ test("agenda: sin aforo pasan todos; y apuntando una a una (estadoNuevo) el afor
       assert.equal(estado === "apuntado", antes + g <= plazas);
     }
   }), par(200));
+});
+
+test("agenda (OF11b): cambiosDeCita es vacío con la cita idéntica y simétrico en qué campos cambian", () => {
+  const fecha = fc.date({ min: new Date("2030-01-01"), max: new Date("2031-01-01"), noInvalidDate: true });
+  const cita = fc.record({
+    empieza_en: fecha, termina_en: fc.option(fecha, { nil: null }), lugar: fc.option(fc.string({ maxLength: 12 }), { nil: null }),
+    finca: fc.option(fc.constantFrom("cerro", "hituelo"), { nil: null }), haza: fc.option(fc.constantFrom("H1", "H2"), { nil: null }),
+  });
+  fc.assert(fc.property(cita, cita, (a, b) => {
+    assert.deepEqual(cambiosDeCita(a, { ...a }), []);
+    assert.deepEqual(cambiosDeCita(a, b).map(c => c.campo), cambiosDeCita(b, a).map(c => c.campo));
+  }), par(100));
 });
 
 // ------------------------------------------------------------------ 3. épocas

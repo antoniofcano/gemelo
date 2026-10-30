@@ -4,7 +4,8 @@ import { after, before, test } from "node:test";
 import type { FastifyInstance } from "fastify";
 import pg from "pg";
 import { construyeApp } from "../../src/app.ts";
-import { aPromover, cabe, estadoNuevo, libres, TOPE_AVISOS_SEMANA } from "../../src/agenda/cupo.ts";
+import { readFileSync } from "node:fs";
+import { aPromover, cabe, cambiosDeCita, type Cita, estadoNuevo, libres, textoDeCambios, TOPE_AVISOS_SEMANA } from "../../src/agenda/cupo.ts";
 import { contexto, deLaWeb } from "../apoyo/contexto.ts";
 
 let app: FastifyInstance;
@@ -65,4 +66,32 @@ test("hogar: sin Origin 403; personas fuera de 1-10 o campos de más, 400; bien 
   assert.equal((await app.inject({ method: "POST", url, headers: deLaWeb(), payload: { personas: 2 } })).statusCode, 401);
   assert.equal((await app.inject({ method: "DELETE", url, headers: deLaWeb() })).statusCode, 401);
   assert.equal((await app.inject({ method: "GET", url: "/api/agenda", headers: deLaWeb() })).statusCode, 401);
+});
+
+// ---- OF11b (decisión 148): cambiar fecha o lugar avisa solo, y ese aviso no cuenta para el tope
+const CITA: Cita = { empieza_en: new Date("2099-01-01T10:00:00Z"), termina_en: new Date("2099-01-01T12:00:00Z"), lugar: "Patio", finca: "cerro", haza: "H1" };
+
+test("OF11b: qué cambió, solo fecha y lugar (título, descripción y aforo no forman parte de la cita)", () => {
+  assert.deepEqual(cambiosDeCita(CITA, { ...CITA }), []);
+  assert.deepEqual(cambiosDeCita(CITA, { ...CITA, empieza_en: new Date(CITA.empieza_en.getTime()) }), [], "misma hora, otro objeto: sin cambio");
+  const c = cambiosDeCita(CITA, { ...CITA, empieza_en: new Date("2099-01-02T10:00:00Z"), lugar: "Era", haza: null, termina_en: null });
+  assert.deepEqual(c.map(x => x.campo), ["empieza_en", "termina_en", "lugar", "haza"]);
+  assert.equal(c.find(x => x.campo === "lugar")!.antes, "Patio");
+  assert.equal(c.find(x => x.campo === "haza")!.ahora, "sin indicar");
+  assert.equal(c.find(x => x.campo === "termina_en")!.ahora, "sin hora de fin");
+});
+
+test("OF11b: el texto dice campo, antes → ahora y que sigue apuntado", () => {
+  const t = textoDeCambios("Cata de aceite", cambiosDeCita(CITA, { ...CITA, lugar: "Era" }));
+  assert.match(t, /^Cata de aceite\./);
+  assert.match(t, /Lugar: Patio → Era/);
+  assert.match(t, /Sigues apuntado/);
+  assert.doesNotMatch(t, /Empieza|Finca/, "solo lo que cambió");
+});
+
+test("OF11b: el aviso de cambio sale de sistema (autor null) y el tope solo cuenta avisos con autor", () => {
+  const rutas = readFileSync(new URL("../../src/agenda/rutas.ts", import.meta.url), "utf8");
+  assert.match(rutas, /textoDeCambios\(n\.titulo, cambios\), null\)/, "autor null");
+  assert.match(rutas, /av\.autor_id IS NOT NULL AND av\.creado_en/, "el tope cuenta solo avisos de la oficina con autor");
+  assert.match(rutas, /cambios\.length && n\.estado !== "borrador"/);
 });
