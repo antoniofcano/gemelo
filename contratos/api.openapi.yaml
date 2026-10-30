@@ -34,6 +34,22 @@ components:
         altura: { enum: [baja, media, alta], description: "AV2 (opcional): escala el muñeco" }
         complexion: { enum: [delgada, media, ancha], description: "AV2 (opcional): ensancha o afina el muñeco" }
         movilidad: { enum: [pie, baston, andador, silla], description: "AV2 (opcional): apoyo que lleva; con `silla` el muñeco va sentado con sus ruedas. No es una pose: la calcula quien mira" }
+    RecordJuego:
+      type: object
+      additionalProperties: false
+      required: [juego, record, partidas]
+      properties:
+        juego: { type: string }
+        es_record: { type: boolean, description: "solo al guardar: esta partida es el récord nuevo del hogar" }
+        record:
+          type: [object, "null"]
+          additionalProperties: false
+          required: [puntos, duracion_s, fecha]
+          properties:
+            puntos: { type: integer }
+            duracion_s: { type: integer }
+            fecha: { type: string, format: date-time }
+        partidas: { type: integer, minimum: 0 }
     Error:
       type: object
       additionalProperties: false
@@ -972,3 +988,43 @@ paths:
         "403": { $ref: "#/components/responses/SinPermiso" }
         "404": { description: no existe }
         "409": { description: "es un borrador, ya no cumple el contrato (config_no_valida) o alguien cambió la configuración a la vez" }
+
+  /api/juegos/{id}/partidas:
+    post:
+      summary: Guarda una partida acabada de un juego casual del hogar (C9a; doc/sistema/JUEGOS.md)
+      description: >
+        Cualquier sesión del hogar (también la de unas gafas vinculadas). Solo juegos que existen (hoy, cae-la-cosecha). Se rechaza
+        (422 partida_no_creible) una duración fuera de 3-3600 s o más puntos de los que caben en esa duración (base + porSegundo ×
+        duración, el mismo tope que el juego). Límite por IP (20 por minuto) y por hogar (60 por hora). Devuelve el récord del hogar.
+      security: [{ sesion: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, pattern: "^[a-z][a-z0-9-]{1,31}$" } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [puntos, duracion_s]
+              properties:
+                puntos: { type: integer, minimum: 0, maximum: 10000000 }
+                duracion_s: { type: integer, minimum: 1, maximum: 86400 }
+      responses:
+        "201": { description: guardada, content: { application/json: { schema: { $ref: "#/components/schemas/RecordJuego" } } } }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/OrigenNoAdmitido" }
+        "404": { description: no existe ese juego }
+        "422": { description: "partida_no_creible: duración o puntos fuera de lo posible; no se guarda" }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/juegos/{id}/records:
+    get:
+      summary: El récord del PROPIO hogar en un juego y cuántas partidas lleva (nada de otras familias)
+      security: [{ sesion: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, pattern: "^[a-z][a-z0-9-]{1,31}$" } }]
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/RecordJuego" } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "404": { description: no existe ese juego }
+        "429": { $ref: "#/components/responses/Limite" }

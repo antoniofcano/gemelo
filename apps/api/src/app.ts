@@ -10,6 +10,7 @@ import { NOMBRE_COOKIE, rutasAuth, TEXTO_LIMITE, TEXTO_LIMITE_VINCULO } from "./
 import { rutasConfig } from "./config/rutas.ts";
 import type { Contexto } from "./contexto.ts";
 import { rutasHazas } from "./hazas/rutas.ts";
+import { rutasJuegos } from "./juegos/rutas.ts";
 import { rutasOficina } from "./oficina/rutas.ts";
 import { rutasPresencia } from "./presencia/rutas.ts";
 import { opcionesRegistro } from "./registro.ts";
@@ -97,5 +98,6 @@ export async function construyeApp(ctx: Contexto, o: OpcionesApp = {}): Promise<
   await rutasTiempoHistorico(app, ctx);
   await rutasVida(app, ctx);
   await rutasConfig(app, ctx);
+  await rutasJuegos(app, ctx);
   return app;
 }
