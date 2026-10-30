@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Olivos generados (O9b, ADR-0022): E1 y E2 dibujan las hojas como tarjetas de racimo derivadas del E0, con un atlas por época. La misma masa visual a 512 px con la mitad de triángulos (centenario3: E1 48 k → 23 k, E2 19 k → 11 k); E2-VR = E2 y las aceitunas de E1/E2 van en el atlas. No probado en aparatos.
 - Avatares por piezas (AV4, ADR-0025): contrato `avatares` v2 (cuerpos con sus piezas dentro, paletas y receta en presencia), cinco peinados, barba, ropa de faena y sombreros generados por guion en los 12 cuerpos, tinte por material en el motor, el VRM sentado en su silla, cuello limpio y «mayor» con postura (decisión 141), y la portada elige por piezas («Empieza por algo parecido», sin hombre/mujer) con vista previa del VRM real. No probado en Quest ni iPhone.
 - Contorno de la finca (OF3c): sale por defecto de las parcelas del gemelo (OlivarTrack, origen SIGPAC), sin red; la descarga de SIGPAC o Catastro queda de respaldo y `--comparar` da la diferencia en m².
 - Pruebas (PB3): la caché de páginas reintenta el renombrado (5 intentos, espera creciente) ante EPERM, EBUSY o EACCES de Windows, para que el antivirus no tumbe escena3d.
