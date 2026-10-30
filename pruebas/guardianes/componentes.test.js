@@ -93,7 +93,7 @@ function nucleo({ busqueda = "", config = null, extra = "", globales = {} } = {}
   const documento = { getElementById: id => id === "config" && config ? { textContent: JSON.stringify(config) } : null };
   const consola = { error: (...a) => errores.push(a.map(String).join(" ")), warn: (...a) => errores.push(a.map(String).join(" ")), log() {} };
   const nombres = Object.keys(globales);
-  const f = new Function(...["window", "location", "document", "console"].concat(nombres), "\"use strict\";\n" + sinCabecera(NUCLEO) + "\n" + extra + "\nreturn { Componentes, Bus, Teclas, ComponentesPuro };");
+  const f = new Function(...["window", "location", "document", "console"].concat(nombres), "\"use strict\";\n" + sinCabecera(NUCLEO) + "\n" + extra + "\nreturn { Componentes, Bus, Teclas, ComponentesPuro, Pausa };");
   const r = f(...[ventana, { search: busqueda }, documento, consola].concat(nombres.map(n => globales[n])));
   r.pulsa = (code, extra2) => { const e = Object.assign({ code, target: { tagName: "CANVAS" }, prevenida: false, preventDefault() { e.prevenida = true; } }, extra2 || {}); teclado.forEach(fn => fn(e)); return e; };
   r.errores = errores; r.ventana = ventana;
@@ -355,4 +355,45 @@ test("Ajustes.registra: AjustesPuro.fusiona añade claves con prefijo propio, va
   assert.ok(A.fusiona("malo", { x: { tipo: "num", def: 5, min: 0, max: 1 } }).length && !("malo.x" in A.ESQUEMA), "un esquema con errores no entra entero");
   assert.ok(A.fusiona("Malo", { x: { tipo: "bool", def: true } }).length);
   A.retira("juego"); assert.strictEqual(Object.keys(A.ESQUEMA).length, n0);
+});
+
+// ---------- C9a: el anfitrión de juegos y «Cae la cosecha», dos componentes que se hablan solo por el Bus
+test("C9a en Node: anfitrión y juego se encuentran por el Bus en cualquier orden; apagar cualquiera de los dos no rompe nada; la pausa del mundo", () => {
+  const H = sinCabecera(lee("apps/web/motor/40_juegos.js")), J = sinCabecera(lee("apps/web/motor/41_cae_la_cosecha.js"));
+  const iconos = [], ventanas = [];
+  const mundo = () => ({ Hud: { icono: d => { iconos.push(d.id); return () => iconos.splice(iconos.indexOf(d.id), 1); }, alterna() {} },
+    Ventanas: { registra: id => { ventanas.push(id); return () => ventanas.splice(ventanas.indexOf(id), 1); }, abierta: () => null, cierra() {} },
+    VRX: { on: false }, D: { base: "", finca_id: "cerro" } });
+  const arranca = (busqueda, extra) => { const r = nucleo({ busqueda, extra, globales: mundo() }); r.Componentes.arranca(); return r; };
+  for (const orden of [H + "\n" + J, J + "\n" + H]) {
+    const r = arranca("", orden);
+    assert.ok(r.Componentes.activo("juegos") && r.Componentes.activo("cae-la-cosecha"), JSON.stringify(r.Componentes.resumen()));
+    assert.deepStrictEqual(r.ventana.__juegos().juegos, ["cae-la-cosecha"], "el anfitrión conoce el juego (" + (orden.startsWith(H) ? "anfitrión primero" : "juego primero") + ")");
+    assert.deepStrictEqual(iconos, ["juegos"]); assert.deepStrictEqual(ventanas, ["juegos"]); assert.strictEqual(r.Teclas.dueno("KeyJ"), "juegos");
+    // apagar el juego desde la configuración: se retira de la lista; encenderlo: vuelve
+    assert.ok(r.Componentes.configura({ "cae-la-cosecha": { activo: false } })); assert.deepStrictEqual(r.ventana.__juegos().juegos, []);
+    assert.ok(r.Componentes.configura({ "cae-la-cosecha": { activo: true } })); assert.deepStrictEqual(r.ventana.__juegos().juegos, ["cae-la-cosecha"]);
+    // apagar el anfitrión: sin icono, sin ventana, sin tecla, sin __juegos; el juego sigue montado y nadie lo oye
+    assert.ok(r.Componentes.configura({ juegos: { activo: false } }));
+    assert.deepStrictEqual(iconos, []); assert.deepStrictEqual(ventanas, []); assert.strictEqual(r.Teclas.dueno("KeyJ"), null); assert.strictEqual(r.ventana.__juegos, undefined);
+    assert.ok(r.Componentes.activo("cae-la-cosecha")); assert.ok(!r.Bus.hay("juego:ofrece"));
+    assert.ok(r.Componentes.configura({ juegos: { activo: true } })); assert.deepStrictEqual(r.ventana.__juegos().juegos, ["cae-la-cosecha"], "al volver, pregunta y el juego responde");
+    assert.deepStrictEqual(r.errores, []);
+    r.Componentes.configura({ juegos: { activo: false } });
+  }
+  // la pausa: «mundo:pausa» al entrar y al salir (no por cada uno que la pide); la fase «pausa» se puede llamar sin juego abierto
+  const r = arranca("", H + "\n" + J);
+  assert.ok(!r.Pausa.activa()); const visto = []; r.Bus.on("mundo:pausa", d => visto.push(d.activa));
+  assert.ok(r.Pausa.pon("x")); assert.ok(!r.Pausa.pon("x"), "dos veces el mismo, una"); r.Pausa.pon("y"); r.Pausa.quita("x"); assert.ok(r.Pausa.activa()); r.Pausa.quita("y");
+  assert.ok(!r.Pausa.activa()); assert.deepStrictEqual(visto, [true, false]);
+  assert.doesNotThrow(() => r.Componentes.actualiza("pausa", 0.016, 0));
+  r.Componentes.configura({ juegos: { activo: false } });
+  const fin = sinComentarios(lee("apps/web/motor/90_final.js"));
+  assert.ok(fin.includes('if (Pausa.activa() && !VRX.on) { Componentes.actualiza("pausa", dt, t); depuraCuadro(t); if (Mide.on) Mide.cuadro(t); return; }'), "en pausa, el bucle solo corre la fase «pausa» (ni render, ni Cola, ni módulos)");
+  assert.ok(fin.indexOf("Pausa.activa()") < fin.indexOf("actualizaTiempo("), "y lo mira antes que nada del mundo");
+  // ?cosecha=0: el anfitrión sin juegos; ?juegos=0: sin anfitrión; sin el fichero del juego: anfitrión vacío
+  let q = arranca("?cosecha=0", H + "\n" + J); assert.deepStrictEqual(q.ventana.__juegos().juegos, []); q.Componentes.configura({ juegos: { activo: false } });
+  q = arranca("?juegos=0", H + "\n" + J); assert.ok(!q.Componentes.activo("juegos") && q.Componentes.activo("cae-la-cosecha")); assert.deepStrictEqual(iconos, []);
+  q = arranca("", H); assert.deepStrictEqual(q.ventana.__juegos().juegos, []); q.Componentes.configura({ juegos: { activo: false } });
+  assert.deepStrictEqual(q.errores, []);
 });

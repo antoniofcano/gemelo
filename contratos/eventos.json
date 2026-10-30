@@ -14,6 +14,30 @@
       "emiten": ["02c_componentes"],
       "escuchan": ["15_tiempo"]
     },
+    "juego:ofrece": {
+      "descripcion": "Un juego casual (componente) se ofrece al anfitrión de juegos: { id, titulo, descripcion?, ayuda?, crea(ctx) → partida } (contrato en doc/sistema/JUEGOS.md). Lo emite al montarse y al oír «juego:pide».",
+      "datos": { "type": "object", "required": ["id", "titulo"], "properties": { "id": { "type": "string" }, "titulo": { "type": "string" }, "descripcion": { "type": "string" }, "ayuda": { "type": "string" }, "version": { "type": "integer" } } },
+      "emiten": ["41_cae_la_cosecha"],
+      "escuchan": ["40_juegos"]
+    },
+    "juego:pide": {
+      "descripcion": "El anfitrión de juegos acaba de montarse y pregunta qué juegos hay: cada juego encendido responde con «juego:ofrece».",
+      "datos": {},
+      "emiten": ["40_juegos"],
+      "escuchan": ["41_cae_la_cosecha"]
+    },
+    "juego:retira": {
+      "descripcion": "Un juego se apaga (se libera su componente): el anfitrión lo quita de la lista y, si estaba abierto, lo cierra y quita la pausa del mundo.",
+      "datos": { "type": "object", "required": ["id"], "properties": { "id": { "type": "string" } } },
+      "emiten": ["41_cae_la_cosecha"],
+      "escuchan": ["40_juegos"]
+    },
+    "mundo:pausa": {
+      "descripcion": "El mundo entra en pausa (activa true: alguien llamó a Pausa.pon, p. ej. un juego a pantalla completa) o sale de ella (activa false). En pausa el bucle no avanza ni pinta el mundo: solo corre la fase «pausa».",
+      "datos": { "type": "object", "required": ["activa"], "properties": { "activa": { "type": "boolean" } } },
+      "emiten": ["02c_componentes"],
+      "escuchan": []
+    },
     "prevision:alterna": {
       "descripcion": "Abrir o cerrar la lámina de la previsión del tiempo en el mundo (el botón «Ver la previsión en el mundo» de la ventana Tiempo). Sin datos alterna; con abre true o false, abre o cierra.",
       "datos": { "type": "object", "properties": { "abre": { "type": "boolean" } } },
@@ -32,6 +56,12 @@
       "emiten": ["24_pantalla"],
       "escuchan": ["20_sonido"]
     },
+    "sonido:juego": {
+      "descripcion": "Un sonido corto de un juego casual: que mueve, gira, asienta, grupo (con cadena: más agudo cuanto más larga) o fin. Sigue el interruptor y el volumen del sonido; sin el componente de sonido, no suena nada.",
+      "datos": { "type": "object", "required": ["que"], "properties": { "que": { "enum": ["mueve", "gira", "asienta", "grupo", "fin"] }, "cadena": { "type": "integer", "minimum": 1 } } },
+      "emiten": ["41_cae_la_cosecha"],
+      "escuchan": ["20_sonido"]
+    },
     "sonido:ladrido": {
       "descripcion": "Un perro ladra (guau-guau, dos veces); grave true para el perro grande.",
       "datos": { "type": "object", "properties": { "grave": { "type": "boolean" } } },
@@ -42,7 +72,7 @@
       "descripcion": "Empieza una sesión de realidad virtual (la cámara ya cuelga del rig y el panel está abierto).",
       "datos": {},
       "emiten": ["29_vr"],
-      "escuchan": []
+      "escuchan": ["40_juegos"]
     },
     "vr:sale": {
       "descripcion": "Termina la sesión de realidad virtual (la cámara vuelve a la pantalla). Lo propio de VR se cierra.",

@@ -2,7 +2,7 @@
 // Expone: TiempoPuro, ahoraMs, TM, calma, texBrillo, lluvia, uViento, uSombra, GLSL_SOMBRA, parcheTiempo, cur, meta, tMundo, ins, nivel,
 //   actualizaTiempo, temaBarrera, colocaBarrera, pintaFondoTiempo, fmtHora, fmtClaveDia, num1, rumbo, esc, hace, objetivoMundoBase, aplicaMundo,
 //   anuncia, TiempoVivo, lindes
-// Consume: 01_datos (D, $, FOG0, FOG1), 02_mundo (suelo, copas), 02c_componentes (Bus),
+// Consume: 01_datos (D, $, FOG0, FOG1), 02_mundo (suelo, copas), 02c_componentes (Bus, Pausa),
 //   03_escena (visor, scene, camera, SRGB, LUZ_SOL, LUZ_CIELO, hemi, sol, texColor, colorVertSRGB, colorCss, exag, modo),
 //   04d_sombreado_tiles (hash, matSuelo, matOrto), 05_nube (nube), 07_follaje (matHojaG, matHojaP, matCorteza), 08_marcadores (gLinde),
 //   09_camara (objetivo), 13b_hazas (HazasPuro), 14_historia (marca, tabla, aviso), 16_vida (mira, bandada, quad, temaEstela, dron),

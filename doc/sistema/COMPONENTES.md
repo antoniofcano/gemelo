@@ -171,6 +171,10 @@ Hecho junto con OF6 ([OFICINA §9.2](OFICINA.md#92-parámetros-de-la-escalera));
 - **Lo que no hace todavía:** el plugin por carpeta del API (`{ id, activo, rutas }` y `app.ts` recorriendo una lista, §3.4) **no** se ha hecho: las rutas se registran como siempre; `GET /api/config` sirve la configuración versionada de la oficina, no una lista derivada de plugins. Tampoco hay pantalla (OF7) ni `?config=borrador-<id>`.
 - **Comprobado:** en Node (`config_motor.test.js`: límites = esquema, máximos de gafas = `VR_PERFILES`, precedencia, recorte, caída sin consola con 401/404/503/red/tarde, `Config` entero con `Componentes`); api en unidad (`config_versiones.test.ts`) e integración con PostGIS (`config.test.ts`, por el banco). **No medido** con Chrome por el banco que, sin configuración publicada, los recuentos sean los de antes (lo esperado: el código no cambia de valores sin configuración); **no probado** en aparato.
 
+### C9a · juegos casuales (anfitrión y «Cae la cosecha»)
+
+Dos componentes que no se nombran (`40_juegos.js`, id `juegos`; `41_cae_la_cosecha.js`, id `cae-la-cosecha`) y se encuentran por el Bus (`juego:ofrece`, `juego:pide`, `juego:retira`); los sonidos, por `sonido:juego` hacia `20_sonido.js`. El núcleo gana **`Pausa`** (`02c`) y una cuarta fase, **`pausa`**: con el mundo en pausa, `cuadro()` solo corre esa fase y el contador de `?debug` (ni cámara, ni módulos, ni Cola, ni render). Todo el detalle (reglas, contrato juego ↔ anfitrión, récord en la api, medida y nota de comodidad): [JUEGOS.md](JUEGOS.md).
+
 ### En qué se aparta del diseño de §3 (y por qué)
 
 - **`/api/config` no se pedía en C1-C3** (habría dado un 404 en cada carga con servidor); desde C6 se pide (abajo) y, sin nada publicado, la api responde 200 con `{ v: 1 }`. El bloque de `<script type="application/json" id="config">` de la página se sigue leyendo.

@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: Bus, Teclas, Componentes, Config
-// Consume: 01_datos (D, $), 02b_cola (Cola), 08_marcadores (listo), 09_camara (suelta), 12_paseo (teclas), 14_historia (tabla, lista),
+// Expone: Bus, Pausa, ConfigPuro, Teclas, Componentes, Config
+// Consume: 01_datos (D, $), 02b_cola (Cola), 08_marcadores (listo, aplica), 09_camara (suelta, pon), 12_paseo (teclas), 14_historia (tabla, lista),
 //   15_tiempo (nivel, hace), 16_vida (quita), 28_depura (dep), 90_final (bucle)
 // Nota: Núcleo de componentes (ADR-0023): ComponentesPuro, Bus (catálogo en contratos/eventos.json), Teclas, Componentes (registro, encendido URL > servidor > defecto, fases del bucle) y Config (GET /api/config del mismo origen al cargar, solo con D.base /teselas/… o ?api=; caída al código; contratos/config.schema.json). Publica además window.__componentes y window.__config (pruebas y ?debug). El trozo [puro:…] lo evalúa en Node pruebas/guardianes/componentes.test.js.
 // ===============================================================================
@@ -9,14 +9,15 @@
   // monta al registrarse: Componentes.arranca() (en 90_final.js, cuando ya están todos los ficheros) decide quién se enciende (URL > configuración del
   // servidor > defecto del manifiesto), los monta en orden de dependencias y, desde entonces, el bucle llama a sus fases sin nombrarlos:
   //   «mundo» cada fotograma, tras la cámara · «tarde» a su ritmo (fases: { tarde: 0.5 } = cada 0,5 s, repartidos entre fotogramas), antes de la Cola ·
-  //   «trasRender» después de pintar. En VR el bucle lo lleva la sesión y las fases siguen; con la página oculta, el navegador para el bucle y con él las fases.
+  //   «trasRender» después de pintar · «pausa» SOLO con el mundo en pausa (Pausa, abajo: un juego a pantalla completa), y entonces es lo único que corre.
+  // En VR el bucle lo lleva la sesión y las fases siguen (la pausa no se aplica en VR); con la página oculta, el navegador para el bucle y con él las fases.
   // Quitar un componente (apagarlo o no montarlo en el motor: genera_motor.mjs --sin) no rompe a nadie: los demás le hablan por el Bus o por
   // Componentes.api(id), que devuelve null si no está. Lo que un componente engancha con n.on / n.limpia se suelta solo al liberarlo.
   // Catálogo de eventos: contratos/eventos.json. La configuración del servidor (GET /api/config, C6/OF6: contratos/config.schema.json) la pide Config al
   // cargar (abajo); su bloque «componentes» entra por Componentes.configura y sus parámetros de la escalera y épocas, por Config.param / Config.tablaEpocas.
   // [puro:inicio] (sin DOM ni THREE: lo evalúa en Node pruebas/guardianes/componentes.test.js)
   var ComponentesPuro = (function () {
-    var FASES = ["mundo", "tarde", "trasRender"];
+    var FASES = ["mundo", "tarde", "trasRender", "pausa"];
     var ID = /^[a-z][a-z0-9-]*$/, URLN = /^[a-z][a-z0-9]*$/;
     function esLista(v) { return Array.isArray(v) && v.every(function (x) { return typeof x === "string" && x.length > 0; }); }
     function num(v) { return typeof v === "number" && isFinite(v) && v >= 0; }
@@ -108,6 +109,17 @@
     }
     function hay(ev) { return !!(oy[ev] && oy[ev].length); }
     return { on: on, emite: emite, hay: hay };
+  })();
+
+  // el mundo en pausa (C9a): mientras alguien la pide (Pausa.pon(quien)), el bucle de 90_final.js no avanza el mundo ni lo pinta: solo corre la fase «pausa» de
+  // los componentes (un juego a pantalla completa) y el contador de ?debug. El reloj del mundo, la fauna, la carga de teselas y la Cola se quedan quietos donde
+  // estaban; al quitarla, todo sigue (el primer dt va recortado a 0,1 s como siempre). No se aplica en VR. Emite «mundo:pausa» al entrar y al salir.
+  var Pausa = (function () {
+    var quien = {}, n = 0;
+    function pon(id) { id = String(id || "?"); if (quien[id]) return false; quien[id] = true; n++; if (n === 1) Bus.emite("mundo:pausa", { activa: true }); return true; }
+    function quita(id) { id = String(id || "?"); if (!quien[id]) return false; delete quien[id]; n--; if (n === 0) Bus.emite("mundo:pausa", { activa: false }); return true; }
+    function activa() { return n > 0; }
+    return { pon: pon, quita: quita, activa: activa, quien: function () { return Object.keys(quien); } };
   })();
 
   // la configuración versionada del servidor (C6 y OF6; contratos/config.schema.json): GET /api/config del mismo origen, con caída a lo del código.
