@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Arboles
 // Consume: 01_datos (FACTOR_R8), 02_mundo (Mundo, suelo, copaAlta, kcor, tinte, aviva, copas), 02b_cola (Cola),
-//   03_escena (renderer, camera, exag, modo, calidad), 04_terreno (hash), 04c_olivos_tiles (OlivosTiles), 05_nube (ALTO_MAX, nube),
+//   03_escena (renderer, camera, exag, modo, calidad), 04c_olivos_tiles (OlivosTiles), 04d_sombreado_tiles (hash), 05_nube (ALTO_MAX, nube),
 //   06_arboles (gArboles, tronco, arbolesG), 07_follaje (follajeG, construyeSombras), 07a_catalogo (Catalogo), 07ab_generados (Escalera, Generados),
 //   07ac_lejanos (Lejanos), 09_camara (objetivo, orb), 10_ndvi (ndviIdx), 12_paseo (paseando), 15_tiempo (nivel, esc, hace), 16_vida (mira)
 // ===============================================================================
@@ -113,7 +113,7 @@
       var fx = paseando ? cam.x : objetivo.x, fz = paseando ? cam.z : objetivo.z, dts = (ahora - ultima.tms) / 1000;
       if (ultima.tms && dts > 0.05 && dts < 3) { vel.x = 0.55 * vel.x + 0.45 * (fx - ultima.fx) / dts; vel.z = 0.55 * vel.z + 0.45 * (fz - ultima.fz) / dts; } else if (!ultima.tms || dts >= 3) { vel.x = vel.z = 0; }
       ultima.fx = fx; ultima.fz = fz; ultima.tms = ahora;
-      // ?escena=tiles (04c_olivos_tiles.js): los olivos de media y larga distancia los dibuja el tileset y sus triángulos cuentan en el tope
+      // con la escena 3D Tiles (04c_olivos_tiles.js): los olivos de media y larga distancia los dibuja el tileset y sus triángulos cuentan en el tope
       var TIL = OlivosTiles.dibuja(), triTil = TIL ? OlivosTiles.triangulos() : 0;
       // el foco de los generados, paseando, es quien pasea (pp), no la cámara: la cámara va detrás y, al girar en el sitio, describe un círculo
       // que cambiaba el plan y rehacía el lote (Antonio, en el móvil: «si giras sin moverte llega a desaparecer»)
@@ -185,7 +185,7 @@
 
     // ----- ?olivos=escalera (ADR-0019, fase A): todos los olivos por la escalera del constructor (07ab en 3D, 07ac de lejos), repartidos por el
     // presupuesto del aparato (Escalera.tope: escritorio TOPE_TRI × esc, móvil 270 k sin medir con esc ≤ 1, gafas el tri del perfil); fuera el nivel 0
-    // de siempre, los niveles 1 y 2 y (con ?escena=tiles) los olivos del tileset, apartados todos con la máscara de 04c. Si el constructor no arranca
+    // de siempre, los niveles 1 y 2 y los olivos del tileset, apartados todos con la máscara de 04c. Si el constructor no arranca
     // (Generados «sin»), vuelve lo de siempre.
     var MOVIL = (function () { var nv = typeof navigator !== "undefined" ? navigator : {}; return /Mobi|Android|iPhone|iPad/i.test(nv.userAgent || "") || !!(nv.deviceMemory && nv.deviceMemory <= 4); })();
     var tilApartados = false, presEsc = 0;

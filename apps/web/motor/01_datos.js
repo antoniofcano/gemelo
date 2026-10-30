@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: D, $, fmt, b64, i16, RES, x0, yN, ANCHO, ALTO, EXT, FOG0, FOG1, DIST_MAX, DIST_INI, ESTAD, DEPURA, VRP, FACTOR_R8, ESC_R8, ESC3D
-// Consume: 02_mundo (Mundo, suelo), 04_terreno (terreno), 05_nube (nube)
+// Expone: D, $, fmt, b64, i16, RES, x0, yN, ANCHO, ALTO, EXT, FOG0, FOG1, DIST_MAX, DIST_INI, DEPURA, VRP, FACTOR_R8, ESC_R8
+// Consume: 02_mundo (Mundo, suelo), 05_nube (nube)
 // Nota: Abre la IIFE que cierra 99_cierre.js y activa "use strict". Primer módulo: define D (los datos de la finca) y las utilidades.
 // ===============================================================================
 
@@ -15,7 +15,6 @@
   // La caja del mundo, en metros relativos a centro_utm. Las rejillas de datos (relieve, copa, suelo, nube y ortofoto) ya no viven aquí: están en las teselas (ver Mundo).
   var RES = D.res, x0 = D.ext[0], yN = D.ext[1], ANCHO = D.ext[2] - D.ext[0], ALTO = D.ext[1] - D.ext[3];
   var EXT = Math.max(ANCHO, ALTO), FOG0 = Math.max(900, EXT * 1.1), FOG1 = Math.max(2600, EXT * 3.2), DIST_MAX = Math.max(900, EXT * 1.1), DIST_INI = Math.max(700, EXT * 0.85);   // la cámara y la niebla siguen a la superficie de la finca
-  var ESTAD = { terreno: { n: 0, ms: 0, max: 0 }, celdas: { n: 0, ms: 0, max: 0 }, nube: { n: 0, ms: 0, max: 0 } };   // coste de lo que se construye a demanda (se ve con ?debug)
   var DEPURA = /[?&]debug\b/.test(location.search);
   var VRP = { on: false, hierba: 32 };   // el perfil de las gafas VR (lo fija 29_vr.js; fuera de VR no cambia nada)
   // Radio dibujado de la copa = r8 × FACTOR_R8 (decisión abierta nº 48, ADR-0017). r8 es el RADIO medido (centro → borde de la cuenca); el motor
@@ -26,14 +25,4 @@
   })();
   // ESC_R8 = FACTOR_R8 / 0,5 escala lo que hoy se dibuja con r8 tal cual (relleno, sombras, ramas): con 0,5 vale 1 y no cambia nada
   var ESC_R8 = FACTOR_R8 / 0.5;
-  // La escena (ADR-0015, T8 fase 1): la 3D Tiles (04b_escena3d.js) es la de por defecto cuando hay tileset, es decir, cuando el índice lo dice
-  // (D.tileset, campo opcional de indice.schema.json) o la URL trae ?tileset=; ?escena=tiles la pide aunque el índice no lo diga (tileset en
-  // <D.base>tileset/tileset.json) y ?escena=clasica pide el relieve de siempre (04_terreno.js) durante una versión (fase 2: se retira). Sin
-  // tileset (la salida artefacto, el fixture sin tileset) no se pide nada: el relieve de siempre, sin peticiones de más. activa vuelve a false si la
-  // escena nueva falla, y entonces el relieve de siempre se monta como sin tileset (y se avisa en la consola)
-  var ESC3D = (function () {
-    var q = location.search, cl = /[?&]escena=clasica\b/.test(q), ti = /[?&]escena=tiles\b/.test(q);
-    var p = !cl && (ti || /[?&]tileset=[^&#]/.test(q) || (typeof D.tileset === "string" && D.tileset.length > 0));
-    return { pedida: p, activa: p, porDefecto: p && !ti, clasica: cl };
-  })();
 

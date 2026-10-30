@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Cola
-// Consume: 03_escena (modo), 04_terreno (terreno), 05_nube (nube), 08_marcadores (pendiente), 15_tiempo (hace)
+// Consume: 03_escena (modo), 05_nube (nube), 08_marcadores (pendiente), 15_tiempo (hace)
 // ===============================================================================
   // ---------- la cola de trabajos: lo pesado (mallas de terreno, nube de una tesela, un olivar de 64 m, texturas de ruido) se construye a rebanadas
   // Cada trabajo es un generador: cada «yield» es un punto donde se puede parar. Cola.corre(ms) hace avanzar el más urgente (menor prio = más cerca) hasta agotar el presupuesto

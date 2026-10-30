@@ -1,7 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Mundo, suelo, copaAlta, orto, kcor, desp, tinte, ndLo, ndHi, aviva, colorEn, copas, cIn, marc, med
-// Consume: 01_datos (D, b64, i16, RES), 03_escena (modo), 04_terreno (terreno), 05_nube (nube), 09_camara (suelta), 10_ndvi (rampa, ndviRel),
-//   14_historia (lista, carga), 16_vida (mira)
+// Consume: 01_datos (D, b64, i16, RES), 05_nube (nube), 09_camara (suelta), 10_ndvi (rampa, ndviRel), 14_historia (lista, carga), 16_vida (mira)
 // ===============================================================================
   // ---------- el mundo: teselas de 256 m con relieve, copa, color del suelo, nube y ortofoto. Todo lo demás pregunta aquí (suelo, copaAlta, colorSuelo, orto).
   // Una tesela (kx, ky) cubre en UTM [kx·256, kx·256+256) × [ky·256, ky·256+256). Las filas de cada rejilla van de sur a norte; el relieve y el color del suelo llevan una celda de margen
@@ -76,15 +75,13 @@
       });
     }
 
-    // carga: los datos de una tesela vienen dentro de la página (modo «un solo HTML», D.t) o de sus ficheros de apoyo (t/<clave>.json y .jpg)
+    // carga: los datos de una tesela vienen de sus ficheros (t/<clave>.json y .jpg, del mismo origen)
     function decodifica(t, c) {
       var d = i16(c.dtm), f = new Float32Array(d.length); for (var i = 0; i < d.length; i++) f[i] = d[i] / 100;
       t.dtm = f; t.chm = b64(c.chm); t.suel = b64(c.suelo); t.pts = c.pts ? i16(c.pts) : null; t.np = c.np || 0; t.estado = 2;
     }
     function cargaImagen(src, fin) { var im = new Image(); im.onload = function () { fin(im); }; im.onerror = function () { fin(null); }; im.src = src; return im; }
     function cargaTesela(t, fin) {
-      var c = D.t && D.t[t.key];
-      if (c) { decodifica(t, c); cargaImagen(c.orto, function (im) { t.ortImg = im; fin(t); }); return; }
       fetch(base + "t/" + t.key + ".json").then(function (r) { if (!r.ok) throw new Error("tesela " + t.key + ": " + r.status); return r.json(); }).then(function (c2) {
         decodifica(t, c2); cargaImagen(base + "t/" + t.key + ".jpg", function (im) { t.ortImg = im; fin(t); });
       }).catch(function (e) { console.error(e); t.estado = 3; t.fallo = performance.now(); fin(t); });
@@ -107,11 +104,8 @@
       for (var i = 0; i < cand.length && enVuelo < MAXF; i++) pide(cand[i]);
     }
     function alCargar(f) { oyentes.push(f); }
-    function arranca(fin) {   // modo «un solo HTML»: todo está en la página y se decodifica ya; en modo ficheros solo se espera al mosaico y las teselas llegan por actualiza()
-      var embebido = !!D.t, pend = (embebido ? lista.length : 0) + 1;
-      function uno() { if (--pend === 0) fin(); }
-      cargaImagen(D.mosaico.jpg, function (im) { if (im) { mos.img = im; var r = pixeles(im); mos.pix = r.px; mos.w = r.cv.width; mos.h = r.cv.height; } uno(); });
-      if (embebido) lista.forEach(function (t) { cargaTesela(t, function () { uno(); }); });
+    function arranca(fin) {   // solo se espera al mosaico; las teselas llegan por actualiza()
+      cargaImagen(D.mosaico.jpg, function (im) { if (im) { mos.img = im; var r = pixeles(im); mos.pix = r.px; mos.w = r.cv.width; mos.h = r.cv.height; } fin(); });
     }
     function liberaOrtoPix(t) { t.ortPix = null; t.ortCv = null; }   // la ortofoto decodificada ocupa 2,4 MB por tesela: se suelta cuando la tesela queda lejos
     function liberaOrtoLejos(px, py, pz) { lista.forEach(function (t) { if (t.ortPix && dist(t, px, py, pz) > 900) liberaOrtoPix(t); }); }
