@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Previsión del tiempo como lámina en el mundo (`35_fichas_tiempo.js`): en VR, el tiempo en la pestaña Mundo del panel con «Ver previsión»; paseando, la tecla P. «Ahora» medido y próximas horas y días modelado, cielo dibujado y viento orientado en el mundo; 1 llamada y 1 textura que se liberan al cerrar. Con datos simulados hasta que esté `/api/tiempo`. No probado en Quest.
 - Iconos de la aplicación en PNG (192, 512, maskable 512 y apple-touch-icon 180), generados con `sharp` desde `icono.svg` (`npm run iconos` en `apps/web`) y enlazados en el manifiesto y la plantilla; provisionales hasta la marca (decisiones 44 y 98). Sin probar la instalación en iPhone ni Android.
 - La página de la finca es el visor a toda la ventana; la cabecera y el pie pasan al menú (☰ o Esc: Configuración, Créditos y fuentes, Acerca de la finca) y abajo queda una línea de atribución (U1, decisión 83).
 - HUD de juego: brújula que gira, selector Vista aérea / A pie / Quad / Dron, chip del tiempo, barra de iconos y avisos (U2).
