@@ -4,9 +4,9 @@
 // (compose.red-local.yml). Sin él, todo como siempre.
 //  1. crea infra/dev/.env con claves aleatorias si falta;
 //  2. genera el fixture sintético si falta (o usa datos reales FUERA del repo: GEMELO_DEV_TESELAS, o GEMELO_DEV_FINCA_CARPETA
-//     para la salida de UNA finca como hituelo-v3, y GEMELO_DEV_TILESET para el tileset 3D Tiles de /teselas/<finca>/tileset/, y GEMELO_DEV_OLIVOS para las recetas horneadas de /teselas/<finca>/olivos/);
+//     para la salida de UNA finca como hituelo-v3, y GEMELO_DEV_TILESET para el tileset 3D Tiles de /teselas/<finca>/tileset/ (sin él, el tileset/ que haya junto al indice.json servido: el del fixture), y GEMELO_DEV_OLIVOS para las recetas horneadas de /teselas/<finca>/olivos/);
 //  3. construye la web con Vite contra el índice de la finca (GEMELO_DEV_FINCA, por defecto hituelo), con base /teselas/<finca>/,
-//     CON el constructor de olivos (apps/web/olivo, ?olivos=gen) y 3DTilesRendererJS (?escena=tiles), instalándolos si faltan,
+//     CON el constructor de olivos (apps/web/olivo, ?olivos=gen) y 3DTilesRendererJS, instalándolos si faltan,
 //     y la portada (apps/web/portada → dist-portada, build:portada), y deja junto a cada fichero su .br/.gz para que Caddy
 //     los sirva ya comprimidos;
 //  4. arranca la base y comprueba que tiene los roles de producción (gemelo_dueno y gemelo_api; decisión 55): un volumen
@@ -32,17 +32,25 @@ const rel = p => path.relative(RAIZ, p) || ".";
 function paso(t) { console.log("\n▸ " + t); }
 
 function preparaFixture() {
-  if (fs.existsSync(path.join(FIXTURE, "hituelo", "indice.json")) && fs.existsSync(path.join(FIXTURE, "cerro", "embebido.json"))) return;
+  if (["hituelo", "cerro"].every(f => fs.existsSync(path.join(FIXTURE, f, "indice.json")) && fs.existsSync(path.join(FIXTURE, f, "tileset", "tileset.json")))) return;
   const py = util.python();
-  if (!py) throw new Error("falta Python 3 para generar el fixture (python pruebas/genera_fixture.py)");
+  if (!py) throw new Error("falta Python 3 para generar el fixture (python pruebas/genera_fixture.py; el tileset lo genera tuberia/tiles3d, con su npm ci)");
   const r = util.ejecuta(py, ["-I", path.join("pruebas", "genera_fixture.py"), "--salida", FIXTURE]);
   if (r.status !== 0) throw new Error("genera_fixture.py falló:\n" + r.stdout + r.stderr);
   console.log("  " + r.stdout.trim());
 }
 
-/** Copia el índice de la finca con `base` = /teselas/<finca>/ (campo del contrato indice.schema.json) para que el motor pida allí t/; con tileset
- *  (GEMELO_DEV_TILESET), también `tileset` = /teselas/<finca>/tileset/tileset.json: la escena 3D Tiles es entonces la de por defecto (ADR-0015, T8
- *  fase 1; la de siempre, con ?escena=clasica). Sin tileset no se escribe y el motor no pide nada (el fixture no lo trae: daría 404) */
+/** La carpeta del tileset que se sirve: GEMELO_DEV_TILESET o, si no se da, el tileset/ que haya junto al indice.json servido (el del fixture, que lo
+ *  genera `npm run fixture`). Null si no hay: la finca se sirve sin escena (el motor lo dice en su panel) */
+function tilesetServido() {
+  const t = carpetaTileset();
+  if (t) return t;
+  const propio = path.join(path.dirname(indiceServido()), "tileset");
+  return fs.existsSync(path.join(propio, "tileset.json")) ? propio : null;
+}
+
+/** Copia el índice de la finca con `base` = /teselas/<finca>/ (campo del contrato indice.schema.json) para que el motor pida allí t/; con tileset,
+ *  también `tileset` = /teselas/<finca>/tileset/tileset.json (ADR-0015): sin él la finca no tiene escena (decisión 79: no hay otra) */
 function datosDeLaWeb(indice, finca, conTileset) {
   if (!fs.existsSync(indice)) throw new Error("no existe " + indice + " (¿GEMELO_DEV_FINCA, GEMELO_DEV_TESELAS o GEMELO_DEV_FINCA_CARPETA mal puestos?)");
   const D = JSON.parse(fs.readFileSync(indice, "utf8"));
@@ -133,8 +141,9 @@ export async function levanta({ sinBuild = false, redLocal = false } = {}) {
   console.log(env === "creado" ? "  creado " + rel(ENV) + " con claves aleatorias"
     : env ? "  " + rel(ENV) + " ya existía: añadidas las claves nuevas " + env.join(", ") : "  " + rel(ENV) + " ya existe (no se toca)");
   cargaEnv();
-  const teselas = carpetaTeselas(), finca = fincaServida(), carpeta = carpetaFinca(), tileset = carpetaTileset(), olivos = carpetaOlivos();
-  if (tileset && !fs.existsSync(path.join(tileset, "tileset.json"))) throw new Error("no existe " + path.join(tileset, "tileset.json") + " (GEMELO_DEV_TILESET: la carpeta del tileset; ver DESARROLLO-LOCAL.md, «Prueba en aparatos con Hituelo v3»)");
+  preparaFixture();                      // los guardianes y la siembra de la finca sintética parten siempre del fixture (con su tileset)
+  const teselas = carpetaTeselas(), finca = fincaServida(), carpeta = carpetaFinca(), tileset = tilesetServido(), olivos = carpetaOlivos();
+  if (tileset && !fs.existsSync(path.join(tileset, "tileset.json"))) throw new Error("no existe " + path.join(tileset, "tileset.json") + " (la carpeta del tileset, GEMELO_DEV_TILESET; ver DESARROLLO-LOCAL.md, «Prueba en aparatos con Hituelo v3»)");
   // la carpeta del hornero (la que Caddy sirve en /teselas/<finca>/olivos/): la crea quien levanta, con permiso de escritura para el uid 1000
   // del contenedor (en Linux el dueño puede no serlo; en Docker Desktop da igual)
   const carpetaHornero = olivosDestino();
@@ -152,8 +161,7 @@ export async function levanta({ sinBuild = false, redLocal = false } = {}) {
       (red.otras.length ? "\n  otras IP posibles: " + red.otras.map(o => o.ip + " (" + o.nombre + ")").join(", ") + " — elige con GEMELO_DEV_IP" : ""));
   }
   paso("datos: " + (esFixture() ? "fixture sintético" : "carpeta local " + (carpeta ? "(GEMELO_DEV_FINCA_CARPETA)" : "(GEMELO_DEV_TESELAS)")) + ", finca " + finca +
-    (tileset ? ", con tileset 3D Tiles (GEMELO_DEV_TILESET)" : "") + ", olivos horneados por el servicio hornero en " + (olivos ? "GEMELO_DEV_OLIVOS" : rel(carpetaHornero)));
-  preparaFixture();                      // los guardianes y la siembra de la finca sintética parten siempre del fixture
+    (tileset ? ", con tileset 3D Tiles (" + (carpetaTileset() ? "GEMELO_DEV_TILESET" : "el de la propia finca") + ")" : ", SIN tileset: la web mostrará que la finca no tiene escena") + ", olivos horneados por el servicio hornero en " + (olivos ? "GEMELO_DEV_OLIVOS" : rel(carpetaHornero)));
   const datos = datosDeLaWeb(indiceServido(), finca, !!tileset);
   if (!sinBuild) { paso("build de la web (Vite)"); construyeWeb(datos); }
   else if (!fs.existsSync(path.join(WEB, "dist", "index.html")) || !fs.existsSync(path.join(WEB, "dist-portada", "index.html"))) throw new Error("--sin-build pero no hay apps/web/dist o dist-portada: quítalo la primera vez");
@@ -176,7 +184,7 @@ export async function levanta({ sinBuild = false, redLocal = false } = {}) {
     "\n  mundo     " + w + "/finca/   (solo con sesión: pide el enlace en la portada y ábrelo desde el buzón)" +
     "\n  api       " + w + "/api/salud" +
     "\n  teselas   " + w + "/teselas/" + finca + "/indice.json   (solo con sesión)" +
-    (tileset ? "\n  tileset   " + w + "/teselas/" + finca + "/tileset/tileset.json   (solo con sesión; es la escena por defecto en /finca/; la de siempre, /finca/?escena=clasica)" : "") +
+    (tileset ? "\n  tileset   " + w + "/teselas/" + finca + "/tileset/tileset.json   (solo con sesión; es la escena de /finca/)" : "") +
     "\n  olivos    " + w + "/teselas/" + finca + "/olivos/manifiesto.json   (solo con sesión; lo hornea el servicio hornero, `npm run dev:estado` dice si está listo; los objetos, /olivos/<huella>.br)" +
     "\n  correo    http://localhost:" + p.correoWeb + "/   (SMTP en 127.0.0.1:" + p.smtp + ")" +
     "\n  db        127.0.0.1:" + p.db + "  base gemelo; " + PG_DUENO + " (dueño) y " + PG_API + " (la api), claves en infra/dev/.env" +

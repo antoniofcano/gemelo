@@ -1,7 +1,7 @@
 // Prototipo F1d: del contrato de datos v2 (doc/sistema/CONTRATOS.md) a 3D Tiles 1.1 — tileset.json + un glb por tesela.
 // Formato, marco y cómo regenerar: doc/sistema/TILES3D.md. Decisión: doc/adr/0015-escena-en-3d-tiles.md (Propuesto).
 //
-//   node tuberia/tiles3d/genera.mjs --entrada <carpeta con indice.json | indice.json | embebido.json> --salida <carpeta>
+//   node tuberia/tiles3d/genera.mjs --entrada <carpeta con indice.json | indice.json> --salida <carpeta>
 //   (sin --entrada se lee GEMELO_DATOS, que apunta al indice.json: los datos reales viven fuera del repo, regla 4 de CLAUDE.md)
 //        [--hoja 128] [--celdas 128] [--textura 256] [--ondulacion 0] [--error-hoja 0.05] [--niveles-olivo 3]
 //        [--nivel-util <m>]   (lado de los hijos de la raíz; por defecto hoja·2^(niveles-olivo − 1), el nivel más alto con olivos)
@@ -39,24 +39,22 @@ function argumentos(argv) {
     a[k] = texto ? v : Number(v);
   }
   a.entrada = a.entrada || process.env.GEMELO_DATOS;
-  if (!a.entrada || !a.salida) throw new Error("uso: node genera.mjs --entrada <carpeta|indice.json|embebido.json> --salida <carpeta> (o GEMELO_DATOS=<indice.json>)");
+  if (!a.entrada || !a.salida) throw new Error("uso: node genera.mjs --entrada <carpeta|indice.json> --salida <carpeta> (o GEMELO_DATOS=<indice.json>)");
   return a;
 }
 
-// ---------------------------------------------------------------- lectura del contrato v2 (modo ficheros o embebido)
+// ---------------------------------------------------------------- lectura del contrato v2 (t/<clave>.json y .jpg junto al índice)
 const deDataUri = s => Buffer.from(s.slice(s.indexOf(",") + 1), "base64");
 const i16 = b64 => { const b = Buffer.from(b64, "base64"); return new Int16Array(b.buffer.slice(b.byteOffset, b.byteOffset + b.length)); };
 
 export function leeContrato(entrada) {
   if (path.basename(entrada) === "indice.json") entrada = path.dirname(entrada);
-  const emb = entrada.endsWith(".json") ? entrada : path.join(entrada, "embebido.json");
-  const fichero = fs.existsSync(path.join(entrada, "indice.json"));
-  const I = JSON.parse(fs.readFileSync(fichero ? path.join(entrada, "indice.json") : emb, "utf8"));
+  const I = JSON.parse(fs.readFileSync(path.join(entrada, "indice.json"), "utf8"));
   if (I.v !== 2) throw new Error("contrato v" + I.v + ": este generador lee la v2");
   const teselas = new Map();
   for (const [k, t] of Object.entries(I.teselas)) {
-    const d = fichero ? JSON.parse(fs.readFileSync(path.join(entrada, "t", k + ".json"), "utf8")) : I.t[k];
-    const jpg = fichero ? fs.readFileSync(path.join(entrada, "t", k + ".jpg")) : deDataUri(d.orto);
+    const d = JSON.parse(fs.readFileSync(path.join(entrada, "t", k + ".json"), "utf8"));
+    const jpg = fs.readFileSync(path.join(entrada, "t", k + ".jpg"));
     teselas.set(k, { kx: t.kx, ky: t.ky, dtm: i16(d.dtm), jpg });
   }
   return { I, teselas };

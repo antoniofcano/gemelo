@@ -7,7 +7,6 @@ Salida en salida/<finca>/ :
   indice.json            lo global (va en la página): extensión, parcelas, copas, NDVI, paisaje, mosaico, relieve grueso, índice de teselas
   t/<kx>_<ky>.json       relieve (Int16 cm, margen de 1 celda), copa (u8 dm), color del suelo (u8 RGB a 2 m con margen) y nube (Int16, barajada)
   t/<kx>_<ky>.jpg        ortofoto de la tesela
-  embebido.json          indice + todas las teselas dentro (modo «un solo HTML»)
 
 Convenciones (las mismas que el gemelo de hoy): x este, y norte, en metros relativos a centro_utm; alturas relativas a z0;
 las celdas se muestrean en su centro; las filas de cada tesela van de SUR a NORTE (la fila 0 es el borde sur).
@@ -103,7 +102,6 @@ def construye(F, salida, anterior=None):
             teselas[key] = dict(kx=kx, ky=ky, v=[round(float(vx0), 2), round(float(vy0), 2), round(float(vx1), 2), round(float(vy1), 2)], np=int(len(pt)))
             json.dump(carga[key], open(os.path.join(salida, "t", key + ".json"), "w"))
             open(os.path.join(salida, "t", key + ".jpg"), "wb").write(jpg)
-            carga[key]["orto"] = "data:image/jpeg;base64," + base64.b64encode(jpg).decode()
             print(key, "pts", len(pt), "válida", teselas[key]["v"], "json %.0f KB  jpg %.0f KB" % (os.path.getsize(os.path.join(salida, "t", key + ".json")) / 1024, len(jpg) / 1024))
     # relieve grueso (8 m, media por bloque) y mosaico 1 m/px para el minimapa y la vista de lejos
     G = 8; gw, gh = W // G, H // G
@@ -123,9 +121,7 @@ def construye(F, salida, anterior=None):
     for a_ in avisos: print("aviso:", a_)
     asigna_semillas(I, salida, anterior)   # antes de escribir: el indice.json que haya en salida es la exportación anterior
     json.dump(I, open(os.path.join(salida, "indice.json"), "w"))
-    E = dict(I); E["t"] = carga
-    json.dump(E, open(os.path.join(salida, "embebido.json"), "w"))
-    print("teselas:", len(teselas), "| indice %.0f KB | embebido %.1f MB" % (os.path.getsize(os.path.join(salida, "indice.json")) / 1024, os.path.getsize(os.path.join(salida, "embebido.json")) / 1048576))
+    print("teselas:", len(teselas), "| indice %.0f KB" % (os.path.getsize(os.path.join(salida, "indice.json")) / 1024))
 
 
 # ---------------------------------------------------------------------------------------------------------------------------
