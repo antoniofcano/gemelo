@@ -165,3 +165,23 @@ La decisión 45 dice **no a perfiles de menores** (se reabre con asesoría y la 
 - La licencia pack a pack de Quaternius (fuera de Universal Base Characters), el formato glTF de Kenney y el uso corporativo de las piezas de serie de VRoid Studio **[NO VERIFICADO]**.
 - La silla, el bastón y el andador en el VRM; el tinte por material en three-vrm (MToon) **no probados**. Nada en iPhone ni en Quest.
 - C12 (que una abuela, un padre y una nieta se reconozcan) solo lo puede decir una prueba con personas (👤).
+
+## 12. Hecho: el muñeco teñido (AV2, 2026-10-30, decisiones 131 y 133)
+Lo de la fase 1 del §6 ya tiene código: `Aspecto` en `apps/web/motor/26_presencia.js` (trozo puro, probado en Node por `pruebas/guardianes/muneco_aspecto.test.js`) y los campos opcionales del avatar en la api ([presencia](../../contratos/presencia.md), «Aspecto del muñeco»).
+- **Piel (C2):** 10 tonos (los de la maqueta; L* de 89 a 16 sin huecos de más de 10 (el mayor, 9); lo comprueba el guardián). Ninguno es «el de serie»: quien no ha elegido (`tono` ausente) ve su muñeco con un tono repartido por el alias. Mientras la portada (AV4) no deje elegir, la api sigue mandando `piel` de antes (0-4, equivalencia en `PIEL_ANTES`).
+- **Ropa (C5):** color de arriba y de abajo por persona, de 10 colores con nombre del campo, para cualquier cuerpo; el pantalón deja de ser fijo. Sin campos de género en la api (400) ni en el motor (el guardián lo vigila).
+- **Cuerpo (C3):** altura ×0,93 / ×1 / ×1,07 (todo el muñeco) y complexión ×0,84 / ×1 / ×1,24 (ancho y fondo de las piezas). Coste cero en llamadas y triángulos.
+- **Apoyos (C7):** silla de ruedas = la postura sentada del quad sin paso (misma velocidad y caminos), asiento y respaldo como cajas del instanciado del sombrero y **dos ruedas en una malla instanciada más (+1 llamada, solo si alguien la lleva)**; bastón (1 caja) y andador (3 cajas) sin llamadas nuevas. Ilustrativo (regla 5); la rueda no gira.
+- **VRM (C13):** el VRM de cerca no cambia. El muñeco lejano de quien lleva VRM sigue tomando `colores_muneco` del catálogo, salvo que la persona eligiera `tono` o `arriba`: manda lo suyo. De momento, **con VRM no se dibuja la silla** (la silla en el VRM, con AV3).
+- **Altura de la vista (decisión 133):** ajuste `vista.altura` en la pestaña «Vista» de Configuración (de pie, ojos a 1,62 m; sentado, a 1,20 m). Al pasear en primera persona cambia la cámara (`12_paseo.js`); en VR baja el rig 0,42 m sumado al suelo de la sesión (`29_vr.js`, `vrBaseY()`). Sustituye al `vr.postura`, que existía sin ningún efecto. Independiente del avatar: llevar silla no cambia la vista.
+
+**Medida (regla 6)**, `?presencia=sim` sobre el Cerro del fixture, escenario `cerca`, Chrome con SwiftShader por el banco, una pasada (recuentos, no fps). «Antes» = `&aspecto=0` (el muñeco de siempre: 988 y 3.904 triángulos, 5 llamadas, idénticos a los medidos en P5); «después» = el aspecto repartido por la simulación (≈ 12 % en silla, 10 % bastón, 6 % andador):
+
+| Simulados | Llamadas de la presencia (antes → después) | Triángulos añadidos (antes → después) | Por persona | Cajas / ruedas |
+|---|---|---|---|---|
+| 10 | 5 → **6** | 988 → 1.152 | 98,8 → 115,2 | 15 / 2 (1 silla, 2 bastones, 1 andador) |
+| 40 | 5 → **6** | 3.904 → 4.684 | 97,6 → 117,1 | 55 / 12 (6 sillas, 4 bastones, 3 andadores) |
+
+La llamada extra es la de las ruedas y solo existe si alguien lleva silla (sin ella, 5 como antes). Sin presencia no cambia nada. `pruebas/presupuesto.json` no se toca (la presencia no tiene tope propio ahí; el de `presencia.test.js`, 120 triángulos por persona, se cumple: 117,1). **En iPhone y Quest, no medido.**
+
+**Nota de comodidad (regla 11).** Probado: la lógica en Node (paletas, escalas, silla, validación de la api) y la presencia simulada en Chrome sin pantalla (SwiftShader), sin errores. **No probado: iPhone, Quest ni a ojo en una pantalla real** (el aspecto de las ruedas de 10 lados, del andador como tres cajas, del bastón y de la complexión ancha de lejos está sin juzgar por una persona; criterio C12 sin hacer). Altura de la vista: de pie es el valor de siempre; «sentado» en las gafas **baja el mundo 0,42 m respecto al visor**, así que quien ya juega sentado y tiene bien puesto el suelo del visor debe dejarlo en «De pie» (si no, la vista queda por debajo de lo natural). No está en el panel VR (solo en Configuración), y el cambio se aplica con suavidad (el rig sigue al suelo a 12 s⁻¹) pero **no se ha probado en unas Quest** que no marée.
