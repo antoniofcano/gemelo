@@ -125,6 +125,10 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | O8b | Impostores: cómo se hornean (vistas del árbol generado → atlas), formato y contrato; el hornero los hornea con las variantes | O8a | ligera; 🔶 si hornea con Chrome · **opus** | ✅ contrato olivo-impostor v1, horneado en Chrome, color calibrado; falta servir .webp en Caddy (O8c) y construir Dockerfile.impostores |
 | O8c | Motor: la escalera en 07b/07ab (variantes E2 e impostores instanciados en lugar de L1/L2), fundido entre niveles, presupuesto por aparato; sin `?olivos=gen` hoy igual, hasta que la escalera pase a ser la de por defecto | O8a (O8b para los impostores) | ligera; 🔶 al medir · **opus** | 🟡 fase A en main (Node: 0 huecos, tabla del ADR; banco con el fixture); falta silueta (IoU), impostores reales, Hituelo y el aparato (O8d) |
 | O8d | Medir en el banco y en aparatos (👤): saltos entre niveles, llamadas y triángulos, fps en el móvil | O8b, O8c | 🔶 · **sonnet**; 👤 | ⬜ |
+| O9a | Escalones por masa visual, 1: medir cobertura de copa, silueta (IoU) y color medio de E0/E1/E2/impostor desde 8 vistas del fixture; diagnóstico de la receta de niveles del constructor | O8c | ligera; 🔶 banco al final · **opus** | 🟡 en curso (decisión 80) |
+| O9b | Escalones por masa visual, 2: E1/E2 derivados de E0 agrupando hojas en tarjetas con atlas horneado por época (objetivo E1 ≤ 30 k, E2 ≤ 10 k, cobertura ≥ 90 % de E0) | O9a, ADR | pesada · **opus** | ⬜ |
+| O9c | Escalones por masa visual, 3: nivel por tamaño en pantalla con fronteras desplazadas por el presupuesto y fundido por banda de metros (07ab) | O9b | media · **opus** | ⬜ |
+| O9d | Escalones por masa visual, 4: prueba en aparatos (paseo real, móvil, Quest) | O9c | 👤 Antonio | ⬜ |
 | O4 | Medir 10 olivos en campo con cinta (decisiones 48-49) | — | 👤 | ⬜ |
 | V1 | VPS: preparar el despliegue (RUNBOOK-VPS al día, SMTP de OVH, token de OlivarTrack, comprobaciones previas) | — | ligera (documentos y guiones) | ✅ (8 preguntas a Antonio en DECISIONS-PENDING) |
 | V2 | VPS: desplegar F1a | A5, A6, V1 (decisión 21) | 👤 confirma cada paso | ⬜ |
