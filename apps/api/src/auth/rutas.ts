@@ -155,7 +155,9 @@ export async function rutasAuth(app: FastifyInstance, ctx: Contexto): Promise<vo
   // Una cuenta de oficina que aún no entró con su llave (OF13) solo pasa a /oficina/, que es donde se da de alta o se usa;
   // navegando a otro sitio (el mundo), allí; lo demás, 403. La api sigue parando cada ruta (requiereRol, requiereSesion).
   app.get<{ Querystring: { para?: "oficina" } }>("/api/interno/autoriza", {
-    schema: { querystring: { type: "object", additionalProperties: false, properties: { para: { type: "string", enum: ["oficina"] } } } },
+    // additionalProperties: true a propósito: el forward_auth de Caddy conserva la consulta de la petición original (/finca/?debug,
+    // ?olivos=gen…), que no es de esta ruta; con false, cualquier /finca/?algo daba 400 y el mundo no cargaba
+    schema: { querystring: { type: "object", additionalProperties: true, properties: { para: { type: "string", enum: ["oficina"] } } } },
   }, async (req, rep) => {
     rep.header("cache-control", NO_GUARDAR);
     const navega = req.headers["sec-fetch-mode"] === "navigate";

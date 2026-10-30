@@ -62,6 +62,10 @@ test("sin sesión: hazas, ficha, yo y admin dan 401; autoriza da 401 a una carga
   const nav = await app.inject({ method: "GET", url: "/api/interno/autoriza", headers: deLaWeb({ "sec-fetch-mode": "navigate" }) });
   assert.equal(nav.statusCode, 303);
   assert.equal(nav.headers["location"], "/");
+  // el forward_auth de Caddy trae la consulta de la página (/finca/?debug&olivos=gen): no es un 400
+  const conConsulta = await app.inject({ method: "GET", url: "/api/interno/autoriza?debug&olivos=gen", headers: deLaWeb({ "sec-fetch-mode": "navigate" }) });
+  assert.equal(conConsulta.statusCode, 303);
+  assert.equal((await app.inject({ method: "GET", url: "/api/interno/autoriza?para=otra", headers: deLaWeb() })).statusCode, 400, "para sigue siendo de lista cerrada");
 });
 
 test("código corto: aprobar y aceptar normas piden sesión; un sondeo mal formado o con campos de más es 400 sin tocar la base", async () => {
