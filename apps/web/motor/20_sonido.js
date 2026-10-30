@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: snd, iniciaSonido, sPaso, sonidoBaliza, ejeArroyo, distArroyo, actualizaSonido
-// Consume: 01_datos ($), 12_paseo (paseando, teclas), 15_tiempo (cur, nivel), 16_vida (tVida, enQuad, quad, enDron, dron),
-//   18_paisaje (EJES, aguaNivel)
+// Consume: 12_paseo (paseando, teclas), 15_tiempo (cur, nivel), 16_vida (tVida, enQuad, quad, enDron, dron), 18_paisaje (EJES, aguaNivel),
+//   33_ajustes (Ajustes)
 // ===============================================================================
   // ---------- el sonido del olivar: todo sintetizado en el navegador (no hay ficheros de audio) y atado al tiempo del mundo
   var snd = { ctx: null, master: null, t: 0, ave: 1.5, grillo: 0.5, pasoAnt: 0 };
@@ -18,7 +18,7 @@
   function sOsc(tipo, f) { var c = snd.ctx, o = c.createOscillator(); o.type = tipo; o.frequency.value = f; var g = c.createGain(); g.gain.value = 0; o.connect(g); o.start(); return { o: o, g: g }; }
   function iniciaSonido() {
     if (snd.ctx) { if (snd.ctx.state === "suspended") snd.ctx.resume(); return; }
-    var AC = window.AudioContext || window.webkitAudioContext; if (!AC || !$("cSonido").checked) return;
+    var AC = window.AudioContext || window.webkitAudioContext; if (!AC || !Ajustes.lee("sonido.activo")) return;
     var c = snd.ctx = new AC(); snd.master = c.createGain(); snd.master.gain.value = 0; snd.master.connect(c.destination);
     var blanco = sRuido(c, false), marron = sRuido(c, true);
     snd.viento = sBucle(marron, "lowpass", 400, 0.5); snd.silbo = sBucle(blanco, "bandpass", 900, 7); snd.lluvia = sBucle(blanco, "highpass", 2400, 0.6); snd.agua = sBucle(blanco, "bandpass", 1500, 0.9);
@@ -55,10 +55,9 @@
   var ejeArroyo = []; EJES.forEach(function (E) { E.forEach(function (e) { ejeArroyo.push([e[0], e[1]]); }); });
   function distArroyo(x, y) { var m = 1e9; for (var i = 0; i < ejeArroyo.length; i += 2) { var d = Math.hypot(ejeArroyo[i][0] - x, ejeArroyo[i][1] - y); if (d < m) m = d; } return m; }
   function actualizaSonido(dt) {
-    var chk = $("cSonido"), quiere = chk.checked && !document.hidden;
-    $("btnSonido").setAttribute("aria-pressed", String(quiere)); $("btnSonido").textContent = quiere ? "🔊" : "🔇";
+    var quiere = Ajustes.lee("sonido.activo") && !document.hidden;   // un solo interruptor (Configuración → Sonido, decisión 89)
     if (!snd.ctx) return; if (snd.ctx.state !== "running") { if (quiere) snd.ctx.resume(); return; }
-    sSuave(snd.master.gain, quiere ? 0.9 : 0, 0.3);
+    sSuave(snd.master.gain, quiere ? 0.9 * Ajustes.lee("sonido.volumen") / 100 : 0, 0.3);
     var d = nivel(cur.ms).d, v = Math.min(1, cur.viento / 9), rafaga = 0.78 + 0.22 * Math.sin(tVida * 0.7 + Math.sin(tVida * 0.23) * 2);
     sSuave(snd.viento.g.gain, (0.012 + 0.11 * v * v) * rafaga, 0.4); sSuave(snd.viento.f.frequency, 260 + 750 * v, 0.4);
     sSuave(snd.silbo.g.gain, 0.012 * Math.pow(Math.min(1, cur.viento / 6), 1.6), 0.4); sSuave(snd.silbo.f.frequency, 700 + 900 * v + 200 * Math.sin(tVida * 0.9), 0.3);
@@ -79,8 +78,5 @@
     if (snd.ave <= 0) { snd.ave = (1.1 + Math.random() * 3.4) / Math.max(0.3, d); if (d > 0.25 && cur.lluvia < 1 && cur.temp > 3 && cur.viento < 10) sPio(0.045 + 0.04 * Math.random()); }
     if (snd.grillo <= 0) { snd.grillo = Math.max(0.18, 0.55 - (cur.temp - 8) * 0.02) * (0.7 + Math.random() * 0.6); if (d < 0.35 && cur.lluvia < 0.3 && cur.temp > 9 && cur.viento < 6) sGrillo(0.014 + 0.012 * (1 - d), 1 + Math.max(0, cur.temp - 14) * 0.04); }
   }
-  (function () {
-    var b = $("btnSonido"); if (b) b.addEventListener("click", function () { var c = $("cSonido"); c.checked = !c.checked; if (c.checked) iniciaSonido(); });
-  })();
 
 
