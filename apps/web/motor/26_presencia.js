@@ -378,6 +378,31 @@
     }
     return { DISTS: DISTS, BALIZA: BALIZA, punto: punto, enParcela: enParcela };
   })();
+  // PB8: lo que cuesta dibujar al grupo «presencia», sin página. Las mallas son instanciadas (38_presencia_compartida.js, montaGrafica): cuerpo (5 cajas por plaza), cabeza y nombre
+  // dibujan SIEMPRE todas las plazas; sombrero y apoyo, manos y ruedas solo las instancias en uso, y una malla sin instancias no cuenta como llamada. Triángulos por instancia:
+  // caja 12, cabeza (icosaedro) 20, nombre (plano) 2, mano (caja) 12, rueda (cilindro de 10 lados) 40. El quad y el dron de los demás (hasta 2 llamadas más) no entran: sin nadie en
+  // vehículo, no se dibujan. Cuenta.instancias reparte las instancias a partir de lo que lleva cada persona (la misma regla que Aspecto.cajas); Cuenta.grupo, el coste del conjunto.
+  var Cuenta = (function () {
+    var TRI = { caja: 12, cabeza: 20, nombre: 2, mano: 12, rueda: 40 };
+    // personas: [{ quest, sombrero, mov, oficial, ruedas? }] (una por plaza ocupada); plazas: las instanciadas (cuerpos); sin ellas, tantas como personas
+    function instancias(personas, plazas) {
+      var n = plazas == null ? personas.length : plazas, quest = 0, cajas = 0, ruedas = 0, i, p;
+      for (i = 0; i < personas.length; i++) {
+        p = personas[i]; if (p.quest) quest++;
+        cajas += Aspecto.cajas(p.sombrero, p.mov, p.oficial); if (p.mov === "silla") ruedas += 2;
+      }
+      return { plazas: n, cuerpo: n * Muneco.PIEZAS.length, cabeza: n, nombres: n, cajas: cajas, manos: quest * 2, ruedas: ruedas };
+    }
+    // c: { plazas, cuerpo, cabeza, nombres, cajas, manos, ruedas } (el resultado de instancias o lo que informa __presencia()); devuelve { llamadas, triangulos }
+    function grupo(c) {
+      var m = Muneco.PIEZAS.length, ll = 0;
+      if (c.plazas > 0) ll += 3;   // cuerpo, cabeza, nombres
+      if (c.cajas > 0) ll++; if (c.manos > 0) ll++; if (c.ruedas > 0) ll++;
+      return { llamadas: ll, triangulos: c.plazas * (m * TRI.caja + TRI.cabeza + TRI.nombre) + c.cajas * TRI.caja + c.manos * TRI.mano + c.ruedas * TRI.rueda };
+    }
+    // el muñeco del paseante a pie sin accesorios (60 + 20 + 2 = 82) y con sombrero (94); con gafas, +24 de las manos: lo que dicen CLAUDE/MEDIDAS
+    return { TRI: TRI, instancias: instancias, grupo: grupo };
+  })();
   // [puro:fin]
 
   // el sitio libre junto a t = {x este, y norte} (Encuentro.punto) con los árboles de alrededor (copas: radio medio del perfil LiDAR); dists, las distancias

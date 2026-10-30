@@ -4,6 +4,7 @@
 // recuerdan su sitio al recargar, «Llevar a…» y el teclado funcionan, la burbuja cuenta los no leídos y el mapa se pliega con M (no con la brújula).
 // No prueba iPhone ni Android reales ni el Quest: eso es la nota de comodidad. Chrome lo lanza lanza() dentro del turno del banco (una sola prueba pesada a la vez).
 const test = require("node:test"), assert = require("node:assert");
+const { lee } = require("./_util");
 const { sirve, motivoSalto, lanza } = require("./_navegador");
 const { montaPagina, saltoPagina } = require("./_pagina");
 
@@ -16,7 +17,11 @@ test.before(async () => {
 });
 test.after(async () => { if (navegador) await navegador.close(); if (srv) srv.close(); });
 
-const cruzan = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+// PB8: la geometría (¿se solapa?, ¿cabe?) es la función pura de 34_movibles.js, probada con rectángulos en movibles.test.js; aquí solo se aplica a lo que mide el navegador
+const MoviblesPuro = (function () {
+  const F = lee("apps/web/motor/34_movibles.js"), i = F.indexOf("// [puro:inicio]"), f = F.indexOf("// [puro:fin]");
+  return new Function("\"use strict\";\n" + F.slice(i, f) + "\nreturn MoviblesPuro;")();
+})();
 
 async function abre(ancho, alto) {
   const ctx = await navegador.newContext({ viewport: { width: ancho, height: alto }, hasTouch: true, isMobile: true, deviceScaleFactor: 1 }), p = await ctx.newPage(), errores = [];
@@ -34,7 +39,7 @@ async function entra(p) {
   await p.waitForFunction(() => { const c = document.getElementById("presenciaGente"); return c && !c.hidden && c.getBoundingClientRect().width > 0; }, null, { timeout: 30000 });
   // Lo que se comprueba es maquetación y arrastre del DOM (CSS px): con la escena montada y el paseo puesto, el dibujo 3D no hace falta y SwiftShader lo paga por
   // fotograma (medido en PB2: cada gesto espera varios fotogramas; cargar la página cuesta ~3,5 s y el resto de los ~110 s por orientación son esos gestos)
-  await p.evaluate(() => { window.__g.renderer.render = function () {}; });
+  await p.evaluate(() => { window.__g.sinDibujo(true); });
   await p.evaluate(() => document.getElementById("visor").scrollIntoView({ block: "start" }));
   await p.waitForTimeout(400);
 }
@@ -47,8 +52,8 @@ const rects = p => p.evaluate(() => {
     agarre: r("#presenciaGente .agarre"), minimiza: r("#presenciaGente button[aria-label='Minimizar el chat']"), vr: { x: vr.left, y: vr.top } };
 });
 const arrastra = async (p, de, a) => { await p.mouse.move(de.cx, de.cy); await p.mouse.down(); await p.mouse.move((de.cx + a.cx) / 2, (de.cy + a.cy) / 2, { steps: 6 }); await p.mouse.move(a.cx, a.cy, { steps: 6 }); await p.mouse.up(); await p.waitForTimeout(250); };
-const libreDe = (r, nombre, otros) => otros.filter(Boolean).forEach(z => assert.ok(!cruzan(r, z), nombre + " tapa " + JSON.stringify(z) + " estando en " + JSON.stringify(r)));
-const dentro = (r, v, nombre) => assert.ok(r.x >= -0.5 && r.y >= -0.5 && r.x + r.w <= v.w + 0.5 && r.y + r.h <= v.h + 0.5, nombre + " se sale del visor: " + JSON.stringify(r));
+const libreDe = (r, nombre, otros) => assert.strictEqual(MoviblesPuro.tapaA(r, otros), null, nombre + " tapa una zona estando en " + JSON.stringify(r));
+const dentro = (r, v, nombre) => assert.ok(MoviblesPuro.dentroDe(r, v), nombre + " se sale del visor: " + JSON.stringify(r));
 
 for (const [nombre, W, H, forma] of [["vertical 390 × 844", 390, 844, "vertical"], ["horizontal 844 × 390", 844, 390, "horizontal"]]) {
   test("[" + nombre + "] el chat, la burbuja y el mapa arrastrados encima de la cruceta acaban fuera de ella", { skip: SALTO || false, timeout: 900000 }, async t => {

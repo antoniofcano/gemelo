@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Movibles
-// Consume: 03_escena (visor), 31_hud (Hud)
+// Consume: 03_escena (visor), 12_paseo (primera), 31_hud (Hud)
 // ===============================================================================
   // ---------- ventanas flotantes que se pueden mover (UX-del-juego §6): el chat, su burbuja y el minimapa se arrastran por su barra, recuerdan su sitio por
   // forma de pantalla (escritorio, vertical, horizontal) y nunca se quedan encima de los controles (cruceta, barra, estado, «Pasear aquí»): si caen allí,
@@ -12,6 +12,11 @@
   var MoviblesPuro = (function () {
     var HUECO = 6, SEPARA = 4;
     function seCruzan(a, b) { return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y; }
+    // PB8: «¿se solapa X con la cruceta o la barra?» como función: la primera zona (de las que no son null) que r cruza, o null si está libre; lo usan los asserts de
+    // colocación de movibles_chrome.test.js (lo que antes comprobaba el navegador rectángulo a rectángulo, ahora se prueba en Node con rectángulos)
+    function tapaA(r, zonas) { for (var i = 0; i < zonas.length; i++) if (zonas[i] && seCruzan(r, zonas[i])) return zonas[i]; return null; }
+    // r cabe en el contenedor {w, h} con una tolerancia de tol px (0,5 por defecto: el redondeo del navegador)
+    function dentroDe(r, v, tol) { tol = tol == null ? 0.5 : tol; return r.x >= -tol && r.y >= -tol && r.x + r.w <= v.w + tol && r.y + r.h <= v.h + tol; }
     function engorda(r, m) { return { x: r.x - m, y: r.y - m, w: r.w + 2 * m, h: r.h + 2 * m }; }
     function marg(mg) { mg = mg || {}; return { t: mg.t || 0, b: mg.b || 0, l: mg.l || 0, r: mg.r || 0 }; }
     // t: {w, h} lo que ocupa la ventana; W, H: el contenedor; mg: márgenes de zona segura. Lo deja dentro, con 6 px de aire
@@ -64,7 +69,7 @@
       if (tecla === "ArrowUp") return { x: x, y: y - d }; if (tecla === "ArrowDown") return { x: x, y: y + d };
       return null;
     }
-    return { HUECO: HUECO, seCruzan: seCruzan, engorda: engorda, limita: limita, libre: libre, forma: forma, clave: clave, guarda: guarda, lee: lee, olvida: olvida, esquina: esquina, mueve: mueve };
+    return { HUECO: HUECO, seCruzan: seCruzan, tapaA: tapaA, dentroDe: dentroDe, engorda: engorda, limita: limita, libre: libre, forma: forma, clave: clave, guarda: guarda, lee: lee, olvida: olvida, esquina: esquina, mueve: mueve };
   })();
   // [puro:fin]
 

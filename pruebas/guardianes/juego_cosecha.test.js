@@ -442,7 +442,7 @@ describe("en el navegador", () => {
     try {
       await p.goto(url + "?debug&hora=12:00&semilla=4242&api=/api/");
       await p.waitForFunction(() => window.__g && window.__g.listo() && window.__juegos && window.__juegos().juegos.length, null, { timeout: 120000, polling: 500 });
-      await p.evaluate(() => { window.__g.renderer.render = function () {}; });   // PB2: esta prueba mira la ventana y la tarjeta (DOM, CSS px), no el dibujo 3D
+      await p.evaluate(() => { window.__g.sinDibujo(true); });   // PB2: esta prueba mira la ventana y la tarjeta (DOM, CSS px), no el dibujo 3D
       const visible = await p.evaluate(() => { const b = document.getElementById("hudIco-juegos"); return !!(b && b.offsetParent); });
       if (visible) await p.tap("#hudIco-juegos"); else { await p.tap("#bMas"); await p.locator("#hudMas button", { hasText: "Juegos" }).tap(); }
       await p.waitForSelector("#ventana-juegos [data-clasificacion]", { timeout: 15000 });
