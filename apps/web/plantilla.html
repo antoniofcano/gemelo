@@ -258,6 +258,7 @@ kbd { font-family: ui-monospace, Menlo, monospace; font-size: 12px; border: 1px 
 .t-cifras { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 10px; margin: 6px 0; } .t-cifras dt { color: var(--muted); font-size: 11.5px; } .t-cifras dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: 500; } .t-cifras small { color: var(--muted); font-weight: 400; }
 @media (max-width: 420px) { .t-cifras { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .t-aviso { margin: 6px 0; padding: 7px 9px; border-radius: 8px; font-size: 12px; color: var(--fg); background: color-mix(in srgb, var(--guardado) 18%, transparent); }
+.t-avisos { margin: 4px 0 6px; padding-left: 18px; font-size: 12px; color: var(--muted); } .t-avisos li { margin: 2px 0; }
 .t-graf { width: 100%; height: auto; display: block; margin: 4px 0; }
 .t-leyenda { margin: 2px 0 8px; font-size: 11.5px; color: var(--muted); } .t-leyenda i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin: 0 4px 0 8px; vertical-align: -1px; } .t-leyenda i:first-child { margin-left: 0; }
 .t-tabla { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; } .t-tabla th { text-align: left; font-weight: 600; padding: 3px 6px 3px 0; white-space: nowrap; border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent); } .t-tabla td { padding: 3px 6px; color: var(--muted); border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
@@ -427,8 +428,8 @@ kbd { font-family: ui-monospace, Menlo, monospace; font-size: 12px; border: 1px 
     <section class="ventana" id="ventanaTiempo" role="dialog" aria-modal="false" aria-labelledby="ventanaTiempoT" hidden>
       <header><h2 id="ventanaTiempoT" tabindex="-1">Tiempo y estación</h2><button type="button" class="cerrar" data-cierra aria-label="Cerrar">×</button></header>
       <div class="cuerpo" id="tiempo" aria-label="El tiempo en la finca">
-        <div class="h-ctl"><button type="button" id="tLeer" class="h-btn" hidden>Leer de Vigía</button></div>
-        <p id="tEstado" class="h-estado" role="status">El mundo simula el tiempo que publica Vigía: el sol, las nubes, el viento y la lluvia.</p>
+        <div class="h-ctl"><button type="button" id="tLeer" class="h-btn" hidden>Volver a leer</button></div>
+        <p id="tEstado" class="h-estado" role="status">Leyendo el tiempo… El mundo dibuja el que publica Vigía: el sol, las nubes, el viento y la lluvia.</p>
         <div class="pestanas" role="tablist" aria-label="Tiempo">
           <button type="button" role="tab" id="tPestAhora" aria-controls="tPanAhora" aria-selected="true" data-pestana="ahora">Ahora</button>
           <button type="button" role="tab" id="tPestPrev" aria-controls="tPanPrev" aria-selected="false" tabindex="-1" data-pestana="prevision">Próximas 72 h</button>
@@ -436,7 +437,7 @@ kbd { font-family: ui-monospace, Menlo, monospace; font-size: 12px; border: 1px 
         </div>
         <div role="tabpanel" id="tPanAhora" aria-labelledby="tPestAhora">
           <div id="tControl" class="t-control" hidden>
-            <div class="t-fila"><label for="tMomento">Momento</label><strong id="tMomentoV"></strong></div>
+            <div class="t-fila"><label for="tMomento">Momento que ves</label><strong id="tMomentoV"></strong></div>
             <input type="range" id="tMomento" min="0" max="71" step="1" value="0" style="width:100%;accent-color:var(--olivo)">
             <div class="t-botones">
               <button type="button" id="tAhora" class="h-btn" aria-pressed="true">Ahora</button>
@@ -448,6 +449,7 @@ kbd { font-family: ui-monospace, Menlo, monospace; font-size: 12px; border: 1px 
         </div>
         <div role="tabpanel" id="tPanPrev" aria-labelledby="tPestPrev" hidden>
           <article class="t-card" id="tPrev" aria-label="Previsión de 72 horas"></article>
+          <div class="h-ctl"><button type="button" id="tVerMundo" class="h-btn" title="Abre o cierra la lámina de la previsión delante de ti, en el mundo">Ver la previsión en el mundo</button></div>
         </div>
         <div role="tabpanel" id="tPanOlivo" aria-labelledby="tPestOlivo" hidden>
           <div class="rango" id="fechaCampo">

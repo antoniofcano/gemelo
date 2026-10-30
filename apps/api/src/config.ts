@@ -8,6 +8,7 @@ import { readFileSync } from "node:fs";
 
 export type ModoCorreo = "smtp" | "buzon";
 export type ModoOt = "mcp" | "grabado" | "no";
+export type ModoVigia = "mcp" | "fixture" | "no";
 
 export interface ConfigSmtp {
   modo: "smtp"; host: string; puerto: number; tls: boolean;
@@ -32,6 +33,11 @@ export interface Config {
     | { modo: "no" }
     | { modo: "grabado"; carpeta: string; cadaMin: number }
     | { modo: "mcp"; url: string; token: string; cadaMin: number };
+  /** el tiempo de Vigía por MCP (contratos/tiempo.md): actual y previsión, solo lectura */
+  vigia:
+    | { modo: "no" }
+    | { modo: "fixture"; carpeta: string }
+    | { modo: "mcp"; url: string; token: string };
   /** null si la presencia compartida (F2, LiveKit) está apagada: falta GEMELO_LIVEKIT_URL */
   livekit: ConfigLiveKit | null;
   /** fotos y pinturas de los hogares (doc/sistema/VIDA.md): carpeta null = subidas apagadas (503) */
@@ -158,6 +164,20 @@ function cargaLiveKit(e: Entorno, produccion: boolean): ConfigLiveKit | null {
   return { url: u.origin, urlPublica: (p ? p.href : pub).replace(/\/$/, ""), clave, secreto: s };
 }
 
+/** Vigía (el tiempo): «no» por defecto; «fixture» lee respuestas sintéticas de una carpeta (nunca en producción); «mcp», la URL y el token. */
+function cargaVigia(e: Entorno, produccion: boolean): Config["vigia"] {
+  const modo = texto(e, "GEMELO_VIGIA", "no");
+  if (modo !== "mcp" && modo !== "fixture" && modo !== "no") throw new ErrorDeConfig("GEMELO_VIGIA debe ser mcp, fixture o no");
+  if (modo === "no") return { modo: "no" };
+  if (modo === "fixture") {
+    if (produccion) throw new ErrorDeConfig("en producción el tiempo no puede ser el fixture de pruebas");
+    return { modo: "fixture", carpeta: texto(e, "GEMELO_VIGIA_FIXTURE") };
+  }
+  const u = url("GEMELO_VIGIA_MCP_URL", texto(e, "GEMELO_VIGIA_MCP_URL"), produccion);
+  if (u.protocol !== "https:" && u.protocol !== "http:") throw new ErrorDeConfig("GEMELO_VIGIA_MCP_URL debe ser https://");
+  return { modo: "mcp", url: u.href, token: secreto(e, "GEMELO_VIGIA_TOKEN", true)! };
+}
+
 export function cargaConfig(e: Entorno = process.env): Config {
   const produccion = esProduccion(e);
   const urlPublica = url("GEMELO_URL_PUBLICA", texto(e, "GEMELO_URL_PUBLICA"), produccion).origin;
@@ -174,6 +194,7 @@ export function cargaConfig(e: Entorno = process.env): Config {
 
   return {
     produccion,
+    vigia: cargaVigia(e, produccion),
     puerto: entero(e, "GEMELO_API_PUERTO", 8000, 1, 65535),
     escucha: texto(e, "GEMELO_API_ESCUCHA", "0.0.0.0"),
     urlPublica,

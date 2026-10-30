@@ -1,0 +1,30 @@
+{
+  "hayLectura": true,
+  "ambito": "toda la explotación",
+  "estacion": {
+    "id": "SINT-EST-01",
+    "distanciaKm": 4.5,
+    "advertencia": "Estación sintética de prueba: no está en la finca."
+  },
+  "temperatura": 14.2,
+  "humedadRelativa": 63,
+  "viento": 1.4,
+  "racha": 3.1,
+  "direccionViento": {
+    "grados": 250,
+    "referencia": "de dónde viene; 0 = norte, 90 = este",
+    "advertencia": "Anemómetro sintético: la dirección solo sirve para ver cambios.",
+    "naturaleza": "medido"
+  },
+  "lluviaAcumulada": 0.8,
+  "deltaT": 3.9,
+  "inhabilitados": [
+    "radiacion"
+  ],
+  "naturaleza": "medido",
+  "frescura": {
+    "generadoEn": "2026-01-15T10:40:00Z",
+    "horasDeAntiguedad": 0.3,
+    "datosDeMaqueta": true
+  }
+}

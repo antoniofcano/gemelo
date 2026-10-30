@@ -1,4 +1,4 @@
-// Arranque de la api en el contenedor: configuración, base, correo, OlivarTrack, tareas periódicas y apagado limpio.
+// Arranque de la api en el contenedor: configuración, base, correo, OlivarTrack, el tiempo de Vigía, tareas periódicas y apagado limpio.
 // Las migraciones NO se aplican aquí (el usuario de la api no puede cambiar el esquema): las aplica el servicio
 // `migra` del compose con el usuario dueño (infra/compose.yml).
 import { construyeApp } from "./app.ts";
@@ -10,6 +10,9 @@ import { LectorGrabado } from "./ot/lector-grabado.ts";
 import { LectorMcp } from "./ot/lector-mcp.ts";
 import type { LectorOlivarTrack } from "./ot/lector.ts";
 import { sincroniza } from "./ot/sincronia.ts";
+import { LectorVigiaFixture } from "./vigia/lector-fixture.ts";
+import { LectorVigiaMcp } from "./vigia/lector-mcp.ts";
+import { ServicioTiempo } from "./vigia/servicio.ts";
 import { purgaMedios } from "./vida/medios.ts";
 
 const config = cargaConfig();
@@ -18,7 +21,11 @@ const cartero: Cartero = config.correo.modo === "smtp" ? new CarteroSmtp(config.
 const lector: LectorOlivarTrack | null = config.ot.modo === "mcp" ? new LectorMcp(config.ot.url, config.ot.token)
   : config.ot.modo === "grabado" ? new LectorGrabado(config.ot.carpeta) : null;
 
-const app = await construyeApp({ config, bd, cartero, lector });
+const tiempo = config.vigia.modo === "mcp" ? new ServicioTiempo(new LectorVigiaMcp(config.vigia.url, config.vigia.token))
+  : config.vigia.modo === "fixture" ? new ServicioTiempo(new LectorVigiaFixture(config.vigia.carpeta)) : null;
+
+const app = await construyeApp({ config, bd, cartero, lector, tiempo });
+if (config.vigia.modo === "fixture") app.log.warn("el tiempo es el fixture SINTÉTICO de pruebas (GEMELO_VIGIA=fixture), no Vigía");
 if (config.correo.modo === "buzon") app.log.warn("correo en modo buzón de pruebas: los enlaces NO se mandan");
 
 const relojes: NodeJS.Timeout[] = [];
@@ -44,7 +51,7 @@ async function apaga(senal: string) {
   app.log.info({ evento: "apagado", senal }, "apagando");
   relojes.forEach(clearInterval);
   await app.close();
-  await Promise.allSettled([bd.end(), cartero.cierra(), lector?.cierra()]);
+  await Promise.allSettled([bd.end(), cartero.cierra(), lector?.cierra(), tiempo?.cierra()]);
   process.exit(0);
 }
 process.on("SIGTERM", () => void apaga("SIGTERM"));

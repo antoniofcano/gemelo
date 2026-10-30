@@ -13,6 +13,7 @@ const NOTAS = {
   "11_sol.js": "Define sol2() (sol según hora y fecha); se engancha al control de hora dentro del propio módulo.",
   "12b_llegada.js": "Publica además window.__llegada (pruebas). El trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/llegada.test.js.",
   "13b_hazas.js": "Sin D.base /teselas/… ni ?api= no pide nada ni crea nada; el trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/hazas.test.js.",
+  "15_tiempo.js": "Lee /api/tiempo (mismo origen) solo con D.base /teselas/… o ?api=; si no, el conector de claude.ai; si no, el tiempo simulado, dicho. Expone TiempoVivo (contratos/interfaces.json). El trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/tiempo_motor.test.js.",
   "23_estacion.js": "Publica además window.__otDebug (depuración del olivo estacional).",
   "25_perros.js": "Publica además window.__perrosDebug (depuración).",
   "26_presencia.js": "Publica además window.__presencia (pruebas). Sin ?presencia=sim o ?presencia=red no crea nada (con red, import(\"livekit-client\") y el panel Gente); el trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/presencia.test.js.",

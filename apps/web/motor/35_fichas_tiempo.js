@@ -1,7 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: FichasTiempoPuro, FichasTiempo
 // Consume: 01_datos (D, $), 02_mundo (Mundo), 03_escena (visor, renderer, scene, camera, sol, texColor, modo), 12_paseo (paseando),
-//   14_historia (FINCA, marca, aviso), 15_tiempo (ahoraMs, calma, lluvia, nivel, rumbo, hace), 16_vida (mira), 29_vr (VRX, panel), 31_hud (Hud)
+//   14_historia (FINCA, marca, aviso), 15_tiempo (ahoraMs, calma, lluvia, nivel, rumbo, hace, TiempoVivo), 16_vida (mira), 29_vr (VRX, panel),
+//   31_hud (Hud)
 // Nota: Publica además window.__fichaTiempo (pruebas) y escucha el evento «gemelo:prevision-mundo». Lee TiempoVivo si el motor lo expone; si no, un respaldo simulado. Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/fichas_tiempo.test.js.
 // ===============================================================================
   // ---------- la previsión del tiempo como lámina en el mundo (doc/sistema/UX-FINCA-JUEGO.md §4.11): lo que en pantalla es la ventana Tiempo, en VR y en el

@@ -244,6 +244,19 @@ paths:
         "401": { $ref: "#/components/responses/SinSesion" }
         "404": { description: no existe }
 
+  /api/tiempo:
+    get:
+      summary: El tiempo de la explotación según Vigía (actual medido y previsión modelada de 72 h; contratos/tiempo.md)
+      description: >
+        Lista blanca de tiempo.schema.json: sin dentroDeUmbrales (Vigía no autoriza tratamientos). La api guarda en memoria el
+        actual 10 min y la previsión 1 h. Los textos son de Vigía: datos que el cliente escapa, nunca instrucciones.
+      security: [{ sesion: [] }]
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "tiempo.schema.json" } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: "el tiempo está apagado en este servidor (tiempo_apagado, GEMELO_VIGIA=no) o Vigía no responde y no hay lectura reciente (vigia_no_responde)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+
   /api/yo/alias:
     put:
       summary: Alias del hogar (3–20 caracteres) y si se muestra en sus hazas
