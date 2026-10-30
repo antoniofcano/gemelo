@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: Muneco, Encuentro, sitioJunto, avatarVRM, Presencia
+// Expone: Chat, Muneco, Encuentro, sitioJunto, avatarVRM, Presencia
 // Consume: 01_datos (D, $), 02_mundo (suelo, copas), 03_escena (visor, renderer, scene, camera, texColor, exag, modo), 06_arboles (tronco),
-//   09_camara (objetivo), 12_paseo (paseando, persona), 12b_llegada (Llegada), 13b_hazas (HazasPuro), 15_tiempo (rumbo, hace),
+//   09_camara (objetivo), 12_paseo (paseando, persona), 12b_llegada (Llegada), 13b_hazas (HazasPuro), 15_tiempo (ahoraMs, rumbo, hace),
 //   16_vida (enQuad, mira, quad, vidaPaseo, enDron, dron), 29_vr (VRX, vrFundido, panel)
 // Nota: Publica además window.__presencia (pruebas). Sin ?presencia=sim o ?presencia=red no crea nada (con red, import("livekit-client") y el panel Gente); el trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/presencia.test.js.
 // ===============================================================================

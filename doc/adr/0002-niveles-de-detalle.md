@@ -1,6 +1,6 @@
 # ADR-0002 — Niveles de detalle de terreno, olivos y nube
 
-- **Estado:** Aceptado
+- **Estado:** Superado por ADR-0021
 - **Fecha:** 2026-10-28 (decidido en el diseño del 27-oct)
 
 ## Contexto
@@ -24,3 +24,6 @@ Presupuesto objetivo por fotograma: ≈1,7 M triángulos, ≈1 M puntos, ≈250 
 
 ## Comprobación
 Cifras antes/después en [MEDIDAS](../sistema/MEDIDAS.md) (solo SwiftShader). **No probado en iPhone ni Quest.** Topes en `pruebas/presupuesto.json`.
+
+## Enmienda 2026-10-30
+Superado por [ADR-0021](0021-se-retira-la-salida-artefacto-y-la-escena-de-siempre.md) (con [ADR-0015](0015-escena-en-3d-tiles.md), fase 2): el terreno lo dan los niveles del tileset (`errorTarget`) y se borra `Terreno`. Los niveles de olivo y la nube se rigen por los ADR 0018-0019 y el motor actual.

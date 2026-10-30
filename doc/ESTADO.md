@@ -22,6 +22,7 @@
 - **Entorno local con Docker** (2026-10-29): web + teselas por Caddy, PostGIS, LiveKit (`--dev`) y buzón; e2e real en verde (el mundo carga con 0 errores servido desde `/teselas`). Desde el 2026-10-29, **la api está enchufada**: el recorrido de entrada (enlace mágico, sesión y hazas con lista blanca) funciona y está probado en local de punta a punta por https (e2e `GEMELO_DOCKER=1`, 8/8). Falta la pantalla de entrada de la UX y que el mundo pinte las lindes; no probado en Firefox, Safari, iPhone ni Quest. Desde el 2026-10-29 usa los roles de producción (`gemelo_dueno`/`gemelo_api`, decisión 55; e2e 10/10) y tiene un interruptor `--red-local` para probar en aparatos por la WiFi (probado solo desde el propio equipo; no probado en ningún aparato real).
 - **F2, parte sin servidor** (2026-10-29): códec de pose (24/56 B, ≤ 5 mm y ≤ 0,25°), interpolación y avatares instanciados con `?presencia=sim` (+5 llamadas con 10 o 40 visitantes, SwiftShader). Desde P1-P3: tokens, expulsión y cliente con `?presencia=red` hechos; P4 hecha en local: dos Chrome en la sala (transporte p95 7 ms, mismo equipo), mismo hogar en dos sesiones, expulsión y permisos verificados contra LiveKit 1.13.11; con 40 clientes se satura el i5; **probada por Antonio entre dos aparatos reales por la WiFi el 2026-10-29: se ven, se escriben y la posición llega a tiempo** (el avatar remoto flotaba y no andaba: P5); nada probado en iPhone ni Quest.
 - **F1a en local** (2026-10-29): `apps/api` + `infra/` de producción + `tuberia/hazas`; 51 pruebas de la api (21 contra PostGIS en contenedor), `infra/probar-caddy.sh` y ensayo de copia/restauración con datos sintéticos en verde. **Sin desplegar**; no probados el VPS, el borde real, el SMTP de OVH, el MCP real de OlivarTrack (formas de respuesta supuestas) ni `age`/`rclone` reales ([RUNBOOK-VPS](operacion/RUNBOOK-VPS.md)). Despliegue preparado (V1): [RUNBOOK-VPS](operacion/RUNBOOK-VPS.md) con lista previa y vuelta atrás, y `infra/comprobar-despliegue.sh`; pendiente de las respuestas de Antonio y de A5/A6.
+- **T8 fase 2** (2026-10-30, decisión 79, ADR-0021): la escena 3D Tiles es la única (fuera `04_terreno.js` y `?escena=`); se retira la salida artefacto: el gemelo solo se sirve desde el servidor (local y VPS); lo publicado antes en claude.ai queda como última foto.
 - **T8 fase 1** (2026-10-30, ADR-0015 Aceptado, decisión 77): la escena 3D Tiles es la de por defecto cuando el índice trae `tileset`; la de siempre con `?escena=clasica` durante una versión; la salida artefacto sigue con la clásica. Medida del banco con el fixture pendiente; Quest y escritorio con GPU, no probados.
 - **Avatares VRM en el motor** (2026-10-30, P7c, ADR-0020): `26b_avatares.js`, los más cercanos con su VRM (6 escritorio, 3 móvil/Quest) y el resto muñeco; paseante = avatar en tercera persona. Medido solo en Chrome headless con VRM sintéticos; P7e (aparatos) pendiente.
 - **F1d, criterios 2-4 del ADR-0015 cumplidos en local** (2026-10-30, T6b; SwiftShader; Quest y escritorio reales sin probar).
@@ -44,7 +45,6 @@ Fuentes: LiDAR PNOA 3.ª cobertura (vuelo 2024), MDT 0,5 m, ortofoto PNOA 2022 (
 ## Sin comprobar en hardware real
 
 - fps en iPhone y Quest; mareo y comodidad del panel VR.
-- Carga de ficheros de apoyo (`fetch`, `<img>`) en el marco de artefactos **con sesión** (prueba 0 «a medias»). Si falla, Hituelo (≈52 MB de teselas) no cabe en una página: plan B en [RUNBOOK](operacion/RUNBOOK.md).
 - Lecturas en vivo por MCP (OlivarTrack, Vigía): [contratos/mcp.md](../contratos/mcp.md).
 - Rodadas del suelo a 0,5 m/px (salen suaves). Alternativa: ortofoto a 0,25 m solo en teselas con caminos, +~2 MB.
 - Generadores y `fetch` de ficheros en Safari iOS.
@@ -54,7 +54,6 @@ Fuentes: LiDAR PNOA 3.ª cobertura (vuelo 2024), MDT 0,5 m, ortofoto PNOA 2022 (
 - **Prueba en aparatos** (decisión 57): navegador, móvil y Quest, cada uno por su cuenta en Hituelo real con los olivos generados. Falta P7 del constructor, `copas_param` de Hituelo (desde las LAZ) y el código corto para entrar en las Quest (decisión 61).
 - **Medir 10 olivos en campo con cinta** (plantilla de `tuberia/factores_campo.py`, rama del constructor): cierra el paso a `factorR8 = 1` (decisión 48) y los factores reales del LiDAR (49).
 - Portada y pantalla de entrada de la UX en `apps/web` (decisión 56) y lindes de las hazas en el mundo.
-- F1d paso 3: la escena 3D Tiles en el motor (`?escena=tiles`), con raíz sin contenido y Hituelo reexportado con `copas_id`. Hituelo en 3D Tiles son 269 glb: no cabe en una publicación de artefacto (≤ 255 ficheros), solo en el VPS.
 - Fundido entre niveles de olivos.
 - Frutales sin marcar en Hituelo (el LiDAR no los distingue).
 - Historia de Marín Hituelo (sin trabajos ni fenología en OlivarTrack).

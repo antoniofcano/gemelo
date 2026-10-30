@@ -13,7 +13,7 @@ Los datos **no se versionan** (ADR-0004): todo sucede en local con variables `GE
 3. **LiDAR → teselas intermedias** (`tuberia/datos/hituelo/01_particiona.py` → `02_tesela.py` → `03_arboles.py` → `04a_candidatos` → `04b_tendido` → `04c_paisaje` → `05_validacion`): usar `python -I`. Salida en `GEMELO_LIDAR` (`tesela/<kx>_<ky>.npz`, `arboles.json`, `paisaje.json`).
 4. **Imagen** (`tuberia/datos/hituelo/imagen/`): ortofoto PNOA por tesela (`ort/<kx>_<ky>.jpg`, 512²), NDVI Sentinel-2 (`ndvi_u8.bin` + json), suelo (`suelo_parcelas`, `suelo_ndvi`), `ot_<finca>.json` (instantánea de OlivarTrack).
 5. **Exportar:** `python tuberia/finca_8_teselas.py --finca <finca> [--salida <carpeta>]` → `salida/<finca>/{indice.json, t/}` (con `copas_id` y `copas_tipo`). Para una finca nueva hay que añadir su opción al exportador (hoy `cerro`|`hituelo`, y `tuberia/hituelo_conv.py` está escrito para Hituelo): decisión técnica, se cuenta en un ADR si cambia el contrato.
-6. **Montar:** `python tuberia/salida_artefacto/montar_v2.py --finca <finca> --modo ficheros` (o embebido si cabe en 16 MB). Si la finca no tiene guion de historia: `textos.sin_historia = true`.
+6. **Tileset y página:** `node tuberia/tiles3d/genera.mjs` sobre la salida del exportador (el índice lleva `tileset`) y `cd apps/web && GEMELO_DATOS=<indice.json> npm run build`, o el entorno local de `infra/dev`. Si la finca no tiene guion de historia: `textos.sin_historia = true` (lo aplica `genera_motor.mjs`).
 7. **Probar:** servir y `node pruebas/prueba3.js <url> <prefijo>` con `?debug`; mirar a ojo órbita, Gemelo, Ortofoto, NDVI, paseo y minimapa.
 8. **Actualizar** `doc/operacion/DATOS.md` (hojas, nombre de la finca), `ESTADO.md` (datos) y CHANGELOG.
 
@@ -30,7 +30,7 @@ Los datos **no se versionan** (ADR-0004): todo sucede en local con variables `GE
 
 ## Problemas conocidos
 - Las rutas de `tuberia/` se arman con `os.path.join`: nunca un separador `\` escrito a mano (lo vigila el guardián `multiplataforma`; decisión 8, D4). Fuera de Windows solo está comprobado que compilan, no se han ejecutado con datos reales.
-- Cerro necesita `datos_cerro_embebido.json`, un intermedio que ningún script del repo produce (D5).
+- Cerro: su intermedio embebido (`datos_cerro_embebido.json`) ya no se usa en la escena ni en el fixture (T8 fase 2); si hace falta regenerar Cerro, ningún script del repo produce ese intermedio (D5).
 - Hojas 404-4181 y 406-4181 de Hituelo sin descargar → 3 teselas del borde norte incompletas.
 - Una petición WMS/WCS grande al IGN se cuelga: pedir en trozos de ≈500 m.
 - La ortofoto PNOA 2022 desplaza las copas hacia el este ~1,1–1,4 m.

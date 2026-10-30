@@ -92,6 +92,10 @@ test("panel VR: «Ir con» de un simulado deja el rig a 2-4 m de él; la ficha d
     await p.waitForSelector("#btnVR", { timeout: 30000 }); await p.click("#btnVR");
     await p.waitForFunction(() => window.__vrDebug && window.__vrDebug().on, null, { timeout: 60000, polling: 200 });
     await fot(4);
+    // 0) el panel abre en «Mundo»; la gente está en la pestaña «Ir a» (U8): se pulsa con el rayo y el gatillo
+    assert.ok(await aBoton("panel", "t_ira"), "el rayo no llegó a resaltar la pestaña «Ir a»");
+    await p.evaluate(() => window.__mockXR.gatillo("right")); await fot(3);
+    assert.strictEqual((await dbg()).pestana, "ira", "la pestaña «Ir a» debería quedar activa");
     // 1) el panel, con la sección Gente: espera a que se vea al menos un simulado (con pose)
     await p.waitForFunction(() => { const d = window.__vrDebug(); return d.panel && d.gente && d.gente.activo && d.gente.filas.length > 0; }, null, { timeout: 90000, polling: 300 });
     let d = await dbg();

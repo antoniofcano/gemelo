@@ -1,15 +1,22 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: TM, calma, texBrillo, lluvia, uViento, uSombra, GLSL_SOMBRA, parcheTiempo, cur, meta, tMundo, ins, nivel, actualizaTiempo, temaBarrera,
-//   colocaBarrera, pintaFondoTiempo, cargaT, fmtHora, fmtClaveDia, num1, rumbo, esc, hace, objetivoMundoBase, aplicaMundo, lindes
+// Expone: ahoraMs, TM, calma, texBrillo, lluvia, uViento, uSombra, GLSL_SOMBRA, parcheTiempo, cur, meta, tMundo, ins, nivel, actualizaTiempo,
+//   temaBarrera, colocaBarrera, pintaFondoTiempo, cargaT, fmtHora, fmtClaveDia, num1, rumbo, esc, hace, objetivoMundoBase, aplicaMundo, lindes
 // Consume: 01_datos (D, $, FOG0, FOG1), 02_mundo (suelo, copas),
 //   03_escena (visor, scene, camera, SRGB, LUZ_SOL, LUZ_CIELO, hemi, sol, texColor, colorVertSRGB, colorCss, exag, modo),
 //   04d_sombreado_tiles (hash, matSuelo, matOrto), 05_nube (nube), 07_follaje (matHojaG, matHojaP, matCorteza), 08_marcadores (gLinde),
-//   09_camara (objetivo, orb), 12_paseo (primera), 14_historia (mcp, marca, tabla, aviso), 16_vida (mira, temaEstela), 23_estacion (objetivoMundo),
-//   24_pantalla (suave)
+//   09_camara (objetivo, orb), 12_paseo (primera), 14_historia (mcp, marca, tabla, aviso), 16_vida (mira, bandada, temaEstela),
+//   23_estacion (objetivoMundo), 24_pantalla (suave)
 // ===============================================================================
   // ---------- el tiempo: el mundo del gemelo simula el que publica Vigía
   // Qué entra y de dónde: la estación (medido) pone la temperatura y la humedad de «ahora»; la previsión (modelado, rejilla de ~5 km)
   // pone las nubes, el viento y la lluvia, porque el anemómetro de la estación está descartado por Vigía. El sol sale de la fecha y la hora.
+  // ?hora=HH[:MM] fija la hora del reloj del mundo (hoy, hora local; el sol, el día y la noche, y con ellos la vida: la bandada solo vuela de día); ?hora=AAAA-MM-DDTHH:MM, también la fecha. Para que las medidas no dependan del reloj de la máquina; sin el parámetro, Date.now().
+  var HORA_FIJA = (function () {
+    var m = /[?&]hora=([0-9T:.\-]+)/.exec(location.search); if (!m) return null; var v = m[1], r = /^(\d{1,2})(?::(\d{2}))?$/.exec(v), t;
+    if (r) { t = new Date(); t.setHours(Number(r[1]), Number(r[2] || 0), 0, 0); t = t.getTime(); } else t = Date.parse(v);
+    return isFinite(t) ? t : null;
+  })();
+  function ahoraMs() { return HORA_FIJA == null ? Date.now() : HORA_FIJA; }
   var TM = { est: null, prev: null, his: null, modo: "ahora", idx: 0, ahoraIdx: 0, demo: "", mcp: null, jugando: false };
   var LAT = 37.73, LON = -4.006, ZONA = "Europe/Madrid";
   var calma = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
@@ -145,7 +152,7 @@
   [matSuelo, matOrto, nube.material].forEach(function (m) { conTiempo(m, false); });
 
   // --- el estado del mundo avanza hacia el objetivo con suavidad
-  var cur = { ms: Date.now(), nub: 0, viento: 0, dir: 0, lluvia: 0, hr: 40, temp: 18 }, meta = { ms: Date.now(), nub: 0, viento: 0, dir: 0, lluvia: 0, hr: 40, temp: 18 };
+  var cur = { ms: ahoraMs(), nub: 0, viento: 0, dir: 0, lluvia: 0, hr: 40, temp: 18 }, meta = { ms: ahoraMs(), nub: 0, viento: 0, dir: 0, lluvia: 0, hr: 40, temp: 18 };
   var tMundo = 0, lluviaVis = 0, ins = { t: 1, txt: "" };
   function nivel(ms) { var s = posSol(ms), d = Math.max(0, Math.min(1, (Math.sin(s.alt) + 0.1) / 0.45)); return { s: s, d: d }; }
   function lerpN(a, b, t) { return a + (b - a) * t; }
@@ -269,15 +276,15 @@
 
   function horaActual() { // la hora de la previsión que contiene el momento
     var h = TM.prev && TM.prev.horas; if (!h || !h.length) return -1;
-    var ahora = Date.now(), i = 0; for (var k = 0; k < h.length; k++) { if (Date.parse(h[k].instante) <= ahora) i = k; else break; } return i;
+    var ahora = ahoraMs(), i = 0; for (var k = 0; k < h.length; k++) { if (Date.parse(h[k].instante) <= ahora) i = k; else break; } return i;
   }
   function objetivoMundoBase() {
-    var h = TM.prev && TM.prev.horas, m = { ms: Date.now(), nub: 0, viento: 0, dir: 0, lluvia: 0, hr: 40, temp: 18 };
-    if (TM.demo && DEMOS[TM.demo]) { var D0 = DEMOS[TM.demo]; m.nub = D0.nub; m.lluvia = D0.lluvia; m.viento = D0.viento; m.dir = D0.dir; m.hr = D0.hr; m.temp = D0.temp; m.ms = TM.modo === "ahora" || !h ? Date.now() : Date.parse(h[TM.idx].instante); return m; }
+    var h = TM.prev && TM.prev.horas, m = { ms: ahoraMs(), nub: 0, viento: 0, dir: 0, lluvia: 0, hr: 40, temp: 18 };
+    if (TM.demo && DEMOS[TM.demo]) { var D0 = DEMOS[TM.demo]; m.nub = D0.nub; m.lluvia = D0.lluvia; m.viento = D0.viento; m.dir = D0.dir; m.hr = D0.hr; m.temp = D0.temp; m.ms = TM.modo === "ahora" || !h ? ahoraMs() : Date.parse(h[TM.idx].instante); return m; }
     if (!h || !h.length) return m;
     var hh = h[Math.max(0, Math.min(h.length - 1, TM.idx))], e = TM.est;
     m.nub = hh.nubosidad; m.viento = hh.viento; m.dir = hh.direccion; m.lluvia = hh.lluvia || 0; m.hr = hh.humedadRelativa; m.temp = hh.temperatura;
-    if (TM.modo === "ahora") { m.ms = Date.now(); if (e && e.hayLectura) { if (e.humedadRelativa != null) m.hr = e.humedadRelativa; if (e.temperatura != null) m.temp = e.temperatura; } }
+    if (TM.modo === "ahora") { m.ms = ahoraMs(); if (e && e.hayLectura) { if (e.humedadRelativa != null) m.hr = e.humedadRelativa; if (e.temperatura != null) m.temp = e.temperatura; } }
     else m.ms = Date.parse(hh.instante);
     return m;
   }

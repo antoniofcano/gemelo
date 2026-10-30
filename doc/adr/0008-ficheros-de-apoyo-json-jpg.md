@@ -24,3 +24,6 @@ Con servidor local, 0 errores de consola. **En el marco de artefactos: no compro
 
 ## Enmienda 2026-10-28
 Con el alojamiento propio ([ADR-0011](0011-alojamiento-en-el-vps-de-ovh.md)) este ADR queda limitado a la **salida artefacto** (`tuberia/salida_artefacto/montar_v2.py`). El servidor no tiene el límite de tipos de la plataforma: usará un formato v3 binario con compresión, que se decidirá en su propio ADR (fase 1a).
+
+## Enmienda 2026-10-30
+La salida artefacto se retira ([ADR-0021](0021-se-retira-la-salida-artefacto-y-la-escena-de-siempre.md)): los límites de la plataforma ya no mandan. El `t/<kx>_<ky>.json` y el `.jpg` siguen siendo lo que lee `Mundo` desde el servidor (decisión 38).
