@@ -190,3 +190,119 @@ test("portada (receta.js): al azar no toca edad, complexión, altura ni apoyo; e
   assert.strictEqual(v.cubre, true); assert.strictEqual(v.colores.piel, "#3b2217"); assert.strictEqual(v.colores.pelo, "#9a9690"); assert.strictEqual(v.colores.sombrero, "#d9bf6a");
   assert.match(R.describe(v2, e), /^Persona adulta, complexión media, .*piel de tono 10.*afro.*canoso.*barba.*ropa de faena.*andador\.$/);
 });
+
+// ------------------------------------------------------------------------------------------------- en Chrome, por el banco, con los cuerpos de verdad
+// GEMELO_AVATARES_CUERPOS = la carpeta de cuerpos.py (hace falta Blender: AVATARES-FAMILIA.md §13-14). SwiftShader: recuentos y memoria, no fps. Las capturas, a
+// pruebas/salida/capturas-avatares-piezas/ (no se versionan). Sin la carpeta, sin Chrome o sin el fixture: se saltan y lo dicen.
+const fs = require("fs"), http = require("http");
+const { sirve, motivoSalto, lanza } = require("./_navegador");
+const { propia, ejecuta } = require("./_util");
+const { montaPagina, saltoPagina } = require("./_pagina");
+const CUERPOS = process.env.GEMELO_AVATARES_CUERPOS, CAPS = path.join(RAIZ, "pruebas", "salida", "capturas-avatares-piezas");
+const SALTO_CH = !(CUERPOS && fs.existsSync(path.join(CUERPOS, "cuerpos.json"))) ? "sin GEMELO_AVATARES_CUERPOS (los cuerpos de cuerpos.py; hace falta Blender): la portada y el motor con el catálogo v2 en Chrome NO se han comprobado"
+  : motivoSalto("los avatares por piezas en navegador") || saltoPagina("los avatares por piezas en navegador");
+let catDir = null, nav = null;
+async function catalogoV2() {
+  if (catDir) return catDir;
+  const { construyeV2 } = await imp("tuberia/avatares/creador/catalogo.mjs"), d = propia("avatares-v2");
+  const r = await construyeV2({ origen: CUERPOS, salida: d });
+  assert.deepStrictEqual(r.rechazados, [], "los cuerpos pasan la tubería v2");
+  catDir = d; return d;
+}
+test.after(async () => { if (nav) await nav.close(); });
+
+test("en Chrome: la portada elige por piezas (algo parecido, pelo, piel, vista de lejos), guarda con PUT /api/yo/avatar una receta que la api acepta y la lee de vuelta", { timeout: 900000 }, async t => {
+  if (SALTO_CH) return t.skip(SALTO_CH);
+  const av = await catalogoV2(), web = propia("portada-av4");
+  const b = ejecuta(process.execPath, [path.join(RAIZ, "apps", "web", "node_modules", "vite", "bin", "vite.js"), "build", "--config", "vite.portada.config.js"], { cwd: path.join(RAIZ, "apps", "web"), env: Object.assign({}, process.env, { GEMELO_PORTADA_SALIDA: web }) });
+  assert.strictEqual(b.status, 0, b.stdout + b.stderr);
+  const { limpiaAspecto, bytesReceta, RECETA_MAX_BYTES } = await imp("apps/api/src/presencia/livekit.ts");
+  let guardado = null; const puts = [];
+  const TIPOS = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".vrm": "model/gltf-binary", ".svg": "image/svg+xml" };
+  const srv = await new Promise(ok => { const s = http.createServer((q, r) => {
+    const url = decodeURIComponent(q.url.split("?")[0]), json = (st, o) => { r.statusCode = st; r.setHeader("content-type", "application/json"); r.end(o === undefined ? "" : JSON.stringify(o)); };
+    if (url === "/api/sesion") return json(200, { alias: "Mirlo", alias_visible: true, primer_acceso: false, rol: "hogar" });
+    if (url === "/api/yo/avatar" && q.method === "GET") return guardado ? json(200, guardado) : json(404, { error: "sin_avatar" });
+    if (url === "/api/yo/avatar" && q.method === "PUT") { let c = ""; q.on("data", x => { c += x; }); q.on("end", () => { const j = JSON.parse(c); puts.push(j); guardado = Object.assign({ vrm: null }, j); r.statusCode = 204; r.end(); }); return; }
+    const f = url.startsWith("/avatares/") ? path.join(av, url.slice(10)) : path.join(web, url === "/" ? "index.html" : url);
+    fs.readFile(f, (e, d) => { if (e) { r.statusCode = 404; return r.end(); } r.setHeader("content-type", TIPOS[path.extname(f)] || "application/octet-stream"); r.end(d); });
+  }).listen(0, "127.0.0.1", () => ok(s)); });
+  const base = "http://127.0.0.1:" + srv.address().port;
+  fs.mkdirSync(CAPS, { recursive: true });
+  try {
+    nav = nav || await lanza();
+    for (const [ancho, alto] of [[1280, 900], [390, 844]]) {
+      const ctx = await nav.newContext({ viewport: { width: ancho, height: alto } }), p = await ctx.newPage(), errores = [];
+      p.on("pageerror", e => errores.push(String(e))); p.on("console", m => { if (m.type() === "error" && !/404|Failed to load resource/.test(m.text())) errores.push(m.text()); });
+      guardado = null; puts.length = 0;
+      await p.goto(base + "/#avatar"); await p.waitForSelector("html[data-listo]"); await p.waitForSelector("#mPelo input[type=radio]", { timeout: 60000 });
+      const edades = await p.$$eval("#mEdad input", l => l.map(i => i.value));
+      assert.deepStrictEqual(edades, ["joven", "adulta", "mayor"], "sin peques (decisión 132)");
+      const texto = await p.textContent("#p-avatar");
+      assert.ok(!/\b(hombre|mujer|chico|chica|abuel)/i.test(texto.replace(/«chico o chica»/, "")), "sin «hombre/mujer» como paso (C8, C9)");
+      assert.ok(await p.isVisible("#fsParecidos"), "«Empieza por algo parecido»");
+      await p.click("#parecidos button:nth-child(2)");
+      await p.check("#mPelo input[value=pelo-afro]"); await p.check("#mPiel input[value='8']"); await p.check("#mPeloColor input[value='6']");
+      // de cerca: el VRM real con sus piezas (SwiftShader, lento)
+      await p.waitForFunction(() => !document.getElementById("avatar3d").hasAttribute("hidden") && document.getElementById("avatarPrev").hasAttribute("hidden"), null, { timeout: 180000 });
+      await p.waitForTimeout(1500);
+      await (await p.$(".avatar-zona")).screenshot({ path: path.join(CAPS, "portada-cerca-" + ancho + ".png") });
+      assert.match(await p.textContent("#descAvatar"), /pelo afro o rizado canoso/i, "la descripción en texto (aria-live) dice lo que se ve");
+      await p.click("#vistaLejos");
+      await p.waitForFunction(() => !document.getElementById("avatarPrev").hasAttribute("hidden"));
+      await (await p.$(".avatar-zona")).screenshot({ path: path.join(CAPS, "portada-lejos-" + ancho + ".png") });
+      const anchos = await p.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
+      assert.ok(anchos[0] <= anchos[1], "a " + ancho + " px desborda: " + anchos.join(" > "));
+      await Promise.all([p.waitForResponse(x => new URL(x.url()).pathname === "/api/yo/avatar" && x.request().method() === "PUT"), p.click("#fAvatar button[type=submit]")]);
+      const put = puts[0];
+      assert.ok(put.cuerpo && /^cuerpo-adulta-/.test(put.cuerpo) && put.pelo === "pelo-afro" && put.tono === 8 && put.pelo_color === 6, JSON.stringify(put));
+      const limpio = limpiaAspecto(put);
+      for (const k of ["cuerpo", "pelo", "pelo_color", "vello", "ropa", "tono", "arriba", "abajo", "complexion", "movilidad"]) assert.deepStrictEqual(limpio[k], put[k], "la api acepta " + k);
+      assert.ok(bytesReceta(limpio) <= RECETA_MAX_BYTES, "receta de " + bytesReceta(limpio) + " bytes");
+      t.diagnostic(ancho + " px: receta " + bytesReceta(limpio) + " bytes: " + JSON.stringify(put));
+      // de vuelta: «Mi avatar» lo trae como estaba
+      await p.goto(base + "/#portada"); await p.goto(base + "/#avatar"); await p.waitForSelector("#mPelo input:checked", { timeout: 60000 });
+      assert.strictEqual(await p.$eval("#mPelo input:checked", e => e.value), "pelo-afro"); assert.strictEqual(await p.$eval("#mPiel input:checked", e => e.value), "8");
+      assert.deepStrictEqual(errores, [], "sin errores de página");
+      await ctx.close();
+    }
+  } finally { srv.close(); }
+});
+
+test("en Chrome: ?presencia=sim&vrm=1 con el catálogo v2 — cuerpos con sus piezas y colores, en silla sentados; lo que cuesta un avatar completo (SwiftShader)", { timeout: 900000 }, async t => {
+  if (SALTO_CH) return t.skip(SALTO_CH);
+  const av = await catalogoV2(), WEBD = propia("web-avatares-v2"), P = montaPagina({ finca: "cerro" });
+  fs.cpSync(P.carpeta, path.join(WEBD, "cerro"), { recursive: true }); fs.cpSync(av, path.join(WEBD, "avatares"), { recursive: true });
+  const srv = await sirve(WEBD), base = "http://127.0.0.1:" + srv.address().port + "/cerro/index.html";
+  fs.mkdirSync(CAPS, { recursive: true });
+  try {
+    nav = nav || await lanza();
+    const medir = async (q, nombre, espera) => {
+      const p = await nav.newPage({ viewport: { width: 900, height: 650 } }), errores = [];
+      p.on("pageerror", e => errores.push(String(e.stack || e).slice(0, 400)));
+      p.on("console", m => { if (m.type() === "error" && !/404|Failed to load resource/.test(m.text())) errores.push(m.text().slice(0, 300)); });
+      await p.goto(base + "?debug" + q);
+      await p.waitForFunction(() => window.__g && window.__g.listo(), null, { timeout: 90000 });
+      await p.evaluate(() => { const g = window.__g; g.orb.dist = 9; g.orb.el = 0.3; });
+      if (espera) await p.waitForFunction(() => { const v = window.__presencia().vrm; return v && v.cuerpos > 0 && v.cargando === 0 && v.fundiendo === 0 && v.vestidos.length >= 3; }, null, { timeout: 240000, polling: 1000 }).catch(() => {});
+      await p.waitForTimeout(2500);
+      const m = await p.evaluate(() => { const r = window.__g.renderer.info, e = window.__presencia(); return { llamadas: r.render.calls, triangulos: r.render.triangles, geometrias: r.memory.geometries, texturas: r.memory.textures, vrm: e.vrm }; });
+      await p.screenshot({ path: path.join(CAPS, nombre + ".png") });
+      await p.close();
+      assert.deepStrictEqual(errores, [], nombre + ": sin errores de página");
+      return m;
+    };
+    const mun = await medir("&presencia=sim&n=20&yo=no", "muneco20", false), con = await medir("&presencia=sim&n=20&vrm=1&yo=no", "piezas20", true);
+    const v = con.vrm;
+    assert.ok(v.cuerpos >= 9 && v.vestidos.length >= 3, JSON.stringify({ cuerpos: v.cuerpos, vestidos: v.vestidos.length, fallos: v.fallos }));
+    const { PALETAS } = await imp("tuberia/avatares/creador/catalogo.mjs"), colores = new Set([].concat(PALETAS.piel, PALETAS.ropa, PALETAS.pelo).map(x => x.color));
+    for (const x of v.vestidos) {
+      assert.ok(x.mallas.some(n => /^pieza_pelo-/.test(n)), x.id + ": con pelo (nadie calvo en la simulación)");
+      assert.ok(x.llamadas <= 7 && x.triangulos <= 15000, x.id + ": " + x.llamadas + " llamadas y " + x.triangulos + " triángulos (topes_combinacion)");
+      for (const k of ["piel", "ropa_base", "ropa_abajo", "pelo"]) if (x.colores[k]) assert.ok(colores.has(x.colores[k]), x.id + " " + k + " " + x.colores[k] + " fuera de las paletas");
+    }
+    t.diagnostic("muñeco (n=20): " + mun.llamadas + " llamadas, " + mun.triangulos + " triángulos; con cuerpos (n=20, " + v.conVrm + " VRM): " + con.llamadas + " llamadas, " + con.triangulos + " triángulos, " + con.geometrias + " geometrías, " + con.texturas + " texturas");
+    t.diagnostic("por avatar: " + JSON.stringify(v.vestidos.map(x => ({ id: x.id, llamadas: x.llamadas, triangulos: x.triangulos, sentado: x.sentado }))));
+    fs.writeFileSync(path.join(CAPS, "medida.json"), JSON.stringify({ muneco: mun, piezas: { llamadas: con.llamadas, triangulos: con.triangulos, geometrias: con.geometrias, texturas: con.texturas, conVrm: v.conVrm, vestidos: v.vestidos } }, null, 2));
+  } finally { srv.close(); }
+});

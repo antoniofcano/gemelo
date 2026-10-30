@@ -2,7 +2,7 @@
   "v": 2,
   "compresion": "cuantizacion",
   "topes": { "triangulos_objetivo": 20000, "triangulos_max": 24000, "bytes_max": 2097152, "textura_px_max": 1024, "texturas_max": 1, "materiales_max": 8 },
-  "topes_combinacion": { "triangulos": 15000, "primitivas": 6 },
+  "topes_combinacion": { "triangulos": 15000, "primitivas": 7 },
   "paletas": {
     "piel": [
       { "id": "tono-1", "nombre": "Tono 1, el más claro", "color": "#f6dcc8" }, { "id": "tono-2", "nombre": "Tono 2", "color": "#eec5a6" },
