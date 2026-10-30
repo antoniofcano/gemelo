@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Propuesta de avatares para toda la familia (`doc/sistema/AVATARES-FAMILIA.md`): fuentes abiertas, 14 criterios de inclusión comprobables, muñeco teñido ya y creador por piezas después; maqueta del selector en `prototipos/avatares/`.
 - Las ortofotos decodificadas tienen tope por aparato (8 en móvil y gafas, 20 en escritorio; `?ortoMax=N`) con desalojo de la menos usada, sin soltar la tesela de la cámara ni sus vecinas (M4; el ahorro en una finca grande, sin medir).
 - Suelo de fondo bajo el tileset: relieve grueso y mosaico de 1 m, 1 llamada (≈ 11 k triángulos), para que los bordes y huecos entre teselas no se vean vacíos; `?sinFondo` lo quita (M6; sin mirar en lomas reales).
 - VR: los mandos se ven con su modelo real según el perfil que anuncia el casco (Quest 3: Touch Plus; Quest 2: Touch v3) y, con seguimiento de manos, la mano articulada; modelos de WebXR Input Profiles (MIT) servidos desde el propio sitio, sin sombras y liberados al salir; ≈ 8,3 k triángulos los dos mandos (I6; no probado en unas Quest).

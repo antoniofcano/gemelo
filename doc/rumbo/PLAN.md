@@ -166,7 +166,7 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | C10 | Migración del resto de módulos a componentes, al tocarlos | C1-C3 | goteo · **sonnet** | ⬜ |
 | C11 | Medida por componente («con y sin» por el banco) | C1 | ligera · **sonnet**; 🔶 | ⬜ |
 | C12 | (Condicional) servidor de estado de juego | decisión de Antonio | —  | ⏸️ no por ahora (decisión 120) |
-| AV1 | Biblioteca de avatares familiar e inclusiva: fuentes abiertas, criterios, propuesta y maqueta del selector | P7 | ligera · **opus** | 🟡 en curso |
+| AV1 | Biblioteca de avatares familiar e inclusiva: fuentes abiertas, criterios, propuesta y maqueta del selector | P7 | ligera · **opus** | ✅ 2026-10-30: propuesta y maqueta; 9 decisiones (A1-A9) para Antonio |
 | P7f | Hituelo: personalización en el mundo (nombrar árbol, colgar foto o pintura) — antes V5 | V3, C7 | media · **sonnet** | ⬜ |
 
 ## Ideas de mejora (sin fecha; se convierten en tarea cuando Antonio lo diga)
