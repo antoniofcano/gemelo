@@ -185,3 +185,9 @@ meter { width: 100%; height: 14px; }
 .lista-comp { display: grid; gap: 4px; max-width: 640px; }
 td.acciones { white-space: nowrap; }
 td.acciones .boton { margin-right: 4px; }
+/* OF8: olivo real, escalones lado a lado */
+.escalones { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 8px; }
+.escalon { border: 1px solid var(--borde); border-radius: var(--r); padding: 12px; min-width: 0; }
+.escalon h4 { margin: 0 0 4px; } .escalon .cifra { font-size: 26px; margin: 0; } .escalon meter { width: 100%; display: block; margin: 6px 0; }
+#rMsg.mal { color: var(--peligro); }
+@media (max-width: 900px) { .escalones { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

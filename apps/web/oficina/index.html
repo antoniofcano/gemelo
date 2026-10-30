@@ -194,6 +194,21 @@
     </div>
   </div>
 
+  <div role="tabpanel" id="p-real" aria-labelledby="t-real" hidden>
+    <div class="tarjeta">
+      <h2>Un olivo real, por su id</h2>
+      <p class="nota">Busca un olivo medido de la finca por su id estable (<code>copas_id</code>, el mismo que usa el mundo: <code>olivo:hituelo:1234</code>) y mira sus escalones de dibujo uno al lado del otro, con sus triángulos. Lo calcula el constructor de olivos con las medidas del LiDAR; la forma del árbol es <b>ilustrativa</b>.</p>
+      <form id="rBusca" class="barra-h" novalidate>
+        <label class="campo en-fila" for="rFinca">Finca <select class="entrada" id="rFinca"></select></label>
+        <label class="campo en-fila" for="rId">Id del olivo <input class="entrada" id="rId" type="text" inputmode="numeric" autocomplete="off" placeholder="1234 o olivo:hituelo:1234" size="26"></label>
+        <label class="campo en-fila" for="rEpoca">Época <select class="entrada" id="rEpoca"></select></label>
+        <button class="boton prim" id="rVer" type="submit">Ver escalones</button>
+      </form>
+      <p class="nota" id="rMsg" role="status" aria-live="polite"></p>
+    </div>
+    <div id="rSalida"></div>
+  </div>
+
   <div role="tabpanel" id="p-his" aria-labelledby="t-his" hidden>
     <div class="tabla-env"><table><caption class="vh">Historial de versiones de la configuración</caption><thead><tr><th scope="col">Versión</th><th scope="col">Estado</th><th scope="col">Quién y cuándo</th><th scope="col">Qué cambió (respecto a lo de hoy)</th><th scope="col"><span class="vh">Acciones</span></th></tr></thead><tbody id="oHis"></tbody></table></div>
     <p class="nota">Nunca se reescribe una versión: «volver» publica una copia de la vieja como versión nueva; «al borrador» copia sus valores a la pantalla sin publicar nada.</p>

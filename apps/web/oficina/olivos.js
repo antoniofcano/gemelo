@@ -3,16 +3,18 @@
 // contrato (contratos/config.schema.json): aquí se editan «escalera» y «componentes»; «epocas» (OF9) se conserva tal cual. Una versión nunca se reescribe:
 // un borrador nuevo por cada guardado, «a prueba» (solo la cargan las cuentas de oficina), «para todos» (admin + confirmación reciente) y «volver» (una copia).
 // La vista previa es SIMULADA e ilustrativa: no mide nada. Todo el DOM va con textContent (nada de HTML a mano).
+import { iniciaOlivoReal } from "./olivo_real.js";
 import { $, api, aviso, conConfirmacion, confirma, fecha, h, vacia } from "./comun.js";
 import { APARATOS, APAR, CAMPO, COMPONENTES, ESTADOS, GRUPOS, PARAM, PARAMS, aCuerpo, acciones, avisosPrevia, cambios, cambiosComp, defectos, desdeCuerpo, formatea, mismosComp, mismosValores, numero, redondea, resumen, simula, valida } from "./olivos_puro.js";
 
 const copia = o => JSON.parse(JSON.stringify(o));
-const PESTANAS = [["esc", "Escalera"], ["com", "Componentes"], ["his", "Historial"]];
+const PESTANAS = [["esc", "Escalera"], ["com", "Componentes"], ["real", "Olivo real"], ["his", "Historial"]];
 
 export function iniciaOlivos({ sesion }) {
   let versiones = [], publicada = null, enPrueba = null, pub = null, prueba = null;   // pub y prueba: { version, vals, comp, cuerpo }
   let vals = defectos(), comp = {}, base = null, miBorrador = null, cargado = false, pest = "esc", cargas = 0, ocupado = false;
   const cuerpos = new Map();   // versión → { cuerpo, vals, comp } (una versión no se reescribe: se guarda para siempre)
+  const real = iniciaOlivoReal();   // OF8: un olivo real por su id, con sus escalones lado a lado (no toca la configuración)
   const msgsApi = [];          // lo que la api dijo del último intento (config_no_valida)
 
   // ---------------------------------------------------------------- piezas fijas (se construyen una vez)
@@ -65,10 +67,11 @@ export function iniciaOlivos({ sesion }) {
       b.setAttribute("aria-selected", String(sel)); if (sel) b.removeAttribute("tabindex"); else b.setAttribute("tabindex", "-1");
       $("#p-" + p).hidden = !sel;
     }
-    $("#oBarra").hidden = id === "his";
+    $("#oBarra").hidden = id === "his" || id === "real";
     if (foco) $("#t-" + id).focus();
     if (id === "esc") pintaPrevia();
     if (id === "his") pintaHistorial();
+    if (id === "real") real.abre();
   }
 
   // ---------------------------------------------------------------- estado: carga y reinicio
