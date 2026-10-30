@@ -22,8 +22,7 @@ Mapa de iniciativas con su estado y el ADR que las sostiene. **No** es el estado
 | M3 | Fundido entre niveles de olivos (dither/histéresis) | 🟡 | resuelto en la escalera por O9c (banda de ± 1,5 m e histéresis, decisión 82); el sistema viejo L0/L1/L2 sin bandera sigue con salto y desaparece cuando la escalera pase a ser la de por defecto (tras O8d) |
 | M4 | LRU fina de ortofotos decodificadas | ⬜ en cola | cada ortofoto decodificada son ~2,4 MB y solo se suelta a 900 m; tope por aparato con LRU en `02_mundo.js` (tarea pequeña, **sonnet**), tras la puerta |
 | M5 | Rodadas del suelo a 0,25 m/px solo en teselas con caminos | ⏸️ | +~2 MB; esperar a ver si hace falta |
-| M6 | Huecos entre teselas sin datos | ⬜ | el mundo es un mosaico, no un rectángulo |
-
+| M6 | Huecos entre teselas sin datos | ⬜ en cola | suelo de fondo de pocos triángulos con el relieve `grueso` y el `mosaico` de 1 m del índice bajo las teselas, para que los huecos y bordes no se vean vacíos (1 malla, 1 llamada); va en la misma tarea que M4 (**sonnet**), tras la puerta |
 ## Datos y contenido
 
 | # | Iniciativa | Estado | Detalle |
