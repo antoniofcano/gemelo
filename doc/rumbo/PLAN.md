@@ -146,6 +146,7 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | OF2 | Esqueleto de `/oficina/` y **Familias** (alta, enlace, sesiones, haza, baja a 30 días, exportar, borrar) | OF1 | media · **sonnet**; 🔶 | ✅ 2026-10-30; sin probar con lector de pantalla ni en Safari o Firefox |
 | OF3 | **Hazas**: dibujar sobre ortofoto y copas (OpenLayers + proj4), partir/juntar en PostGIS, recuento, versiones | OF2, V3 | pesada · **opus**; 🔶 | ✅ 2026-10-30; 👤 la oficina dibuja las hazas reales; sin parcelas de OlivarTrack con geometría |
 | OF3b | Contorno de la finca desde sus parcelas catastrales/SIGPAC (decisión 140): tubería que lo obtiene (fuente pública, con licencia y atribución), dato de la finca en la base, y el editor de hazas no deja salir de él (sustituye a la caja + 150 m) | OF3 | media · **opus** | ✅ 2026-10-30 (Node); integración con PostGIS y recorrido de Chrome, en la puerta; SIGPAC, 1 m y solo admin (decisiones 142-143); 👤 las referencias de las parcelas de cada finca |
+| OF3c | Contorno desde las parcelas que ya tiene el gemelo (las de OlivarTrack, con polígono y límite SIGPAC; `GEMELO_PARCELAS`): la tubería de OF3b las junta sin descargar nada (decisión 143) | OF3b | ligera · **sonnet** | 🟡 en curso |
 | OF4 | **Bandeja**: retirar en un clic, responder, avisar, pasar a OlivarTrack (token solo para proponer, decisión 110) | OF2, V3 | media · **sonnet**; 🔶 Docker | ✅ 2026-10-30; envío directo a OlivarTrack cuando exista el token de solo proponer (👤) |
 | OF5 | **Sistema** mínimo: salud, OlivarTrack, correo de prueba, auditoría, roles | OF2 | ligera · **sonnet** | ✅ 2026-10-30; falta montar el estado del hornero en la api en `infra/compose.yml` y las copias (`ultimo.json`) |
 | OF6 | **Configuración versionada** y `GET /api/config`; el motor la lee con caída a las constantes; interruptores de componentes (decisión 118) | OF2, C1 | media · **opus** | ✅ 2026-10-30 api y motor; falta la pantalla (OF7) |
@@ -154,7 +155,7 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | OF8b | Visor 3D de los escalones de un olivo real en la oficina, lado a lado (Caddy, CSP y three aparte) (decisión 144) | OF8, VPS | media · **opus**; 🔶 | ⬜ después del VPS |
 | OF9 | Épocas desde la oficina y re-hornear (decisión 112) | OF6 | media · **sonnet** | ✅ 2026-10-30; el e2e del hornero en Docker atendiendo la petición, 🔶 sin probar |
 | OF10 | Mundo en modo oficina: insignia y chaleco, anunciar, balizas oficiales, salas | OF1 | media · **opus**; 🔶 | ⬜ |
-| OF11 | Agenda: eventos con aforo, inscripciones, lista de espera, avisos | OF2, V3 | media · **sonnet**; 🔶 Docker | ⬜ |
+| OF11 | Agenda: eventos con aforo, inscripciones, lista de espera, avisos | OF2, V3 | media · **sonnet**; 🔶 Docker | ✅ 2026-10-30 (Node); integración con PostGIS y Chrome en la puerta; pendientes: correo de avisos (sin emisor), .ics y la parte del hogar en el mundo; 👤 decisiones 145-148 |
 | OF12 | Directos: preparación, sala guiada, dar la palabra, silenciar | OF10, F3, EIPD | pesada · **opus**; 🔶 | ⬜ |
 | OF13 | Llave de acceso (WebAuthn) obligatoria para la oficina antes de abrir (decisión 105) | OF1 | media · **sonnet**; 🔶 | ⬜ |
 | C1 | Componentes: núcleo (`Componentes`, `Bus` con catálogo, bucle por fases, encendido URL > configuración > defecto) y guardián | — | media · **opus** | ✅ 2026-10-30 |
