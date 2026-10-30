@@ -130,3 +130,11 @@ Decisiones que **no puede tomar un agente**: las cierra Antonio. Las técnicas s
 | 114 | **Oficina · anuncios en el mundo** | texto, voz solo en guiadas / texto y voz | OF0-OF13 (`doc/sistema/OFICINA.md`) | ✅ 2026-10-30: **texto**; la voz, solo de la guía en las visitas guiadas (F3) |
 | 115 | **Oficina · las familias en un directo** | mano levantada / solo chat / micro abierto | OF0-OF13 (`doc/sistema/OFICINA.md`) | ✅ 2026-10-30: **levantan la mano y la oficina da la palabra** |
 | 116 | **Oficina · tableta** | iPad / Android / ninguna | OF0-OF13 (`doc/sistema/OFICINA.md`) | ✅ 2026-10-30: **ninguna: solo ordenador**; el editor de hazas se prueba en escritorio |
+| 117 | **Arquitectura de componentes** | registro ligero / ECS completo / módulos ES / dejarlo | ADR-0023, C1-C12 | ✅ 2026-10-30: **registro ligero de componentes** (ADR-0023 Aceptado): ciclo de vida, consume/expone, presupuesto, interruptor, bucle por fases y bus de eventos con catálogo; migración poco a poco |
+| 118 | **Quién enciende los componentes** | URL y servidor ahora, oficina después / desde la oficina ya | ADR-0023, C1-C12 | ✅ 2026-10-30: **desde la oficina ya**: interruptores por componente en `/oficina` desde el principio (con la URL mandando en desarrollo); adelanta `/api/config` (C6) y su pantalla en la oficina |
+| 119 | **Entidades y usables** | justo después de los pilotos / cuando haga falta | ADR-0023, C1-C12 | ✅ 2026-10-30: **justo después de los pilotos**, antes de los juegos y de colgar fotos en los árboles |
+| 120 | **Servidor de estado de juego (Colyseus)** | no por ahora / ya | ADR-0023, C1-C12 | ✅ 2026-10-30: **no por ahora**; se reabre con un juego en tiempo real con árbitro |
+| 121 | **ECS** | solo dentro del componente que lo pida / como base | ADR-0023, C1-C12 | ✅ 2026-10-30: **solo dentro del componente que lo pida** |
+| 122 | **Componentes de terceros en ejecución** | solo los del repo / lista blanca | ADR-0023, C1-C12 | ✅ 2026-10-30: **solo los del repo** |
+| 123 | **Nombre** | componentes / plugins / módulos del mundo | ADR-0023, C1-C12 | ✅ 2026-10-30: **componentes** (si entra un ECS, sus datos serán «rasgos») |
+| 124 | **Prioridad** | C1-C3 ya / oficina primero / todo en paralelo | ADR-0023, C1-C12 | ✅ 2026-10-30: **C1-C3 ya**, el resto por goteo al tocar cada pieza |

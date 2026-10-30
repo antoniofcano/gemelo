@@ -1,6 +1,6 @@
 # ADR-0023 — Componentes del mundo: núcleo estable y registro de componentes
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado (Antonio, 2026-10-30; decisiones 117-124: registro ligero, encendido desde la oficina ya, entidades y usables tras los pilotos, sin Colyseus ni ECS general, solo componentes del repo, C1-C3 ya)
 - **Fecha:** 2026-10-30
 
 ## Contexto
