@@ -215,6 +215,8 @@ test("recuperación: un admin rehabilita el alta de otra cuenta (24 h), nunca la
   const lista = (await pide("GET", "/api/admin/llaves", sAdmin)).json();
   const cuenta = lista.cuentas.find((c: { hogar_id: number }) => c.hogar_id === ids[OFI2]);
   assert.ok(cuenta.llaves.length >= 2);
+  assert.equal(cuenta.nombre, "Cuenta n.º " + ids[OFI2], "sin nombre interno, «Cuenta n.º id»");
+  assert.ok(!JSON.stringify(lista).includes("@") && cuenta.correo === undefined, "la lista no lleva correos");
   assert.ok(!JSON.stringify(lista).includes("clave_publica") && !JSON.stringify(lista).includes(a.id), "nunca la clave ni el id de credencial");
 });
 

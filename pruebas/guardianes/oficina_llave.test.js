@@ -91,7 +91,7 @@ test("página: nada en línea ni de otro origen, DOM con h(), rutas del contrato
   }
   assert.match(js, /conConfirmacion\(\(\) => api\("POST", \(propia \? "\/api\/oficina\/llaves\/" : "\/api\/admin\/llaves\/"\) \+ id \+ "\/revocar"/, "revocar pasa por la confirmación");
   assert.match(js, /conConfirmacion\(\(\) => api\("POST", "\/api\/admin\/hogares\/" \+ id \+ "\/rehabilitar-llave"/, "rehabilitar pasa por la confirmación");
-  assert.match(js, /escribe: correo/, "rehabilitar pide escribir el correo");
+  assert.match(js, /escribe: nombre/, "rehabilitar pide escribir el nombre, no el correo");
   assert.match(oficina, /if \(muestraPantallaLlave\(s\.llave\)\) return false;/, "sin llave, solo su pantalla");
   assert.match(oficina, /fijaConfirmador\(conLlave \? usaLlave : null\)/, "con la llave obligatoria, la confirmación es la llave");
   assert.match(comun, /llave\.hidden = !conLlave/);
