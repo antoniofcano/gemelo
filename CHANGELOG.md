@@ -5,6 +5,8 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- El sonido es el componente «sonido-ambiente» (C4, `?sonido=0`): habla por el Bus y registra su pestaña de Configuración y su fila del panel VR; quitarlo del motor no rompe nada.
+- Se retira el conector de claude.ai del motor (V9, decisión 79): el tiempo y el clima de la estación salen solo de la api; nueva `GET /api/tiempo/historico` (contrato `tiempo-historico` v1); la historia usa solo la instantánea del índice.
 - Motor por componentes (ADR-0023, C1-C3): núcleo `Componentes`/`Bus`/`Teclas` con fases del bucle y encendido URL > servidor > defecto; puntos de extensión (`Hud.icono`, `Ventanas.registra`, `Ajustes.registra`, `PanelVR.filas`, `Minimapa.capa`, `Capas.registra`); la lámina de la previsión del tiempo es el primer componente (`?fichas=0` la apaga). Sin coste medible en el fotograma.
 - Propuesta de avatares para toda la familia (`doc/sistema/AVATARES-FAMILIA.md`): fuentes abiertas, 14 criterios de inclusión comprobables, muñeco teñido ya y creador por piezas después; maqueta del selector en `prototipos/avatares/`.
 - Las ortofotos decodificadas tienen tope por aparato (8 en móvil y gafas, 20 en escritorio; `?ortoMax=N`) con desalojo de la menos usada, sin soltar la tesela de la cámara ni sus vecinas (M4; el ahorro en una finca grande, sin medir).
