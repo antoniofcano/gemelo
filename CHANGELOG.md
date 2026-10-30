@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Pruebas (PB2): `movibles_chrome` pasa de 263 s a 27 s sin dibujo 3D (es DOM; cargar la página cuesta 3,5 s, no era el coste); presencia y avatares_motor con ventana chica (recuentos iguales con las dos); la clasificación de juego_cosecha a DPR 1; presencia compara los triángulos de su grupo (el assert por diferencia de totales fallaba según la carga). Las 7 más largas: 878 s → 303 s.
 - Agenda en el mundo (OF11d): ventana «Agenda» con los próximos eventos, plazas y tu estado; la titular con su enlace se apunta (1-10 personas) o se borra; en VR, una fila en el panel con los próximos y «Apúntate desde el móvil o el ordenador». Componente `agenda` (`?agenda=0`).
 - «Cae la cosecha» en VR: al acabar la partida, la lámina enseña tu puesto y la tabla corta de la clasificación entre familias (sin servidor o sin sesión, nada). No probado en Quest.
 - La «Sala de la visita» puede ligarse a un evento de la agenda (OF10b, decisión 154): al invitar la oficina indicando el evento, solo entran la oficina y las familias apuntadas (no en espera); el resto ve «Esta visita es para las familias apuntadas.» y sigue en la sala general. Contrato `livekit-roles` v5. La ligadura vive en la memoria de la api (se pierde al reiniciarla).

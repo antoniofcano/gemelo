@@ -93,7 +93,7 @@ Requisito de Antonio (2026-10-30): la cola **nunca se queda parada** y **nunca d
 
 ## Pruebas de navegador (`pruebas/`)
 
-**Ventana de las pruebas (PB1, 2026-10-30):** las de presupuesto (carga, escena3d, olivo) usan `VENTANA` (900×650) y todos sus escenarios, para seguir comparándose con las cifras de siempre; las demás pueden usar `VENTANA_CHICA` (450×325) o su propio viewport, con DPR 1 si sus comprobaciones son de CSS. Cada prueba tiene un coste fijo (carga y esperas) y solo baja con la ventana si domina el pintado: **medir antes de bajarla**. Para comparar antes y después, calentar primero la caché de páginas de Vite (`pruebas/salida/paginas`).
+**Ventana de las pruebas (PB1, 2026-10-30):** las de presupuesto (carga, escena3d, olivo) usan `VENTANA` (900×650) y todos sus escenarios, para seguir comparándose con las cifras de siempre; las demás pueden usar `VENTANA_CHICA` (450×325) o su propio viewport, con DPR 1 si sus comprobaciones son de CSS. Cada prueba tiene un coste fijo (carga y esperas) y solo baja con la ventana si domina el pintado: **medir antes de bajarla**. Para comparar antes y después, calentar primero la caché de páginas de Vite (`pruebas/salida/paginas`). **PB2:** en SwiftShader el coste es por fotograma, no por cargar la página (unos 3,5 s); las pruebas de maquetación y arrastre (movibles_chrome, la clasificación de juego_cosecha) anulan `renderer.render` tras montar la escena. `ventanaDe()` y `GEMELO_VENTANA=grande|chica` permiten contrastar recuentos con las dos ventanas.
 | Script | Para qué |
 |---|---|
 | `prueba3.js <url> <prefijo>` | carga con `?debug`, llamadas, triángulos, puntos, heap, peticiones a `/t/`, capturas |
