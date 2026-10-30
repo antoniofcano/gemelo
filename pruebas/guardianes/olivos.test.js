@@ -87,12 +87,18 @@ const SALTO = motivoSalto("el catálogo de olivos-tipo en el navegador") || (fs.
 async function ponEscena(p, e) {
   await p.evaluate(e => { const g = window.__g; g.orb.az = e.az; g.orb.el = e.el; g.orb.dist = e.dist; g.objetivo.x = e.ox; g.objetivo.z = -e.oy; g.objetivo.y = g.suelo(e.ox, e.oy) + 4; g.pon(e.modo); }, e);
   await p.waitForFunction(() => window.__g.Cola.pendientes() === 0, null, { timeout: 45000, polling: 500 }).catch(() => {});
-  await p.waitForTimeout(1500);
+  // las celdas de nivel 0 y los generados se montan a su ritmo: se espera a que el reparto se quede quieto (dos lecturas iguales a 1 s), hasta 20 s
+  let previo = "";
+  for (let i = 0; i < 20; i++) {
+    await p.waitForTimeout(1000);
+    const ahora = await p.evaluate(() => { const a = window.__g.Arboles.resumen(); return [a.nivel0, a.nivel1, a.nivel2, a.faltan, window.__g.Cola.pendientes()].join(","); });
+    if (ahora === previo) break; previo = ahora;
+  }
   return p.evaluate(() => {
     const g = window.__g, r = g.renderer.info, C = g.Catalogo, modelo = { 1: 0, 2: 0 };
     for (const t of C.tipos()) if (t !== C.SIN) for (const nv of [1, 2]) { const geos = C.geometria(t, nv, 0).map(q => q.geo); g.scene.traverse(o => { if (o.isInstancedMesh && geos.includes(o.geometry) && o.material === C.geometria(t, nv, 0)[0].mat) modelo[nv] += o.count; }); }
     const a = g.Arboles.resumen();
-    return { llamadas: r.render.calls, triangulos: r.render.triangles, nivel1: a.nivel1, nivel2: a.nivel2, modeloL1: modelo[1], modeloL2: modelo[2] };
+    return { llamadas: r.render.calls, triangulos: r.render.triangles, nivel0: a.nivel0, nivel1: a.nivel1, nivel2: a.nivel2, modeloL1: modelo[1], modeloL2: modelo[2] };
   });
 }
 
@@ -108,7 +114,7 @@ test("[hituelo] Catalogo en la página: vacío no cambia nada; instalado con un 
   p.on("pageerror", e => errores.push("PAGEERROR " + String(e.stack || e).slice(0, 400)));
   p.on("console", m => { if (m.type() === "error") errores.push("CONSOLE " + m.text().slice(0, 300)); });
   try {
-    await p.goto("http://127.0.0.1:" + srv.address().port + "/hituelo/index.html?debug");
+    await p.goto("http://127.0.0.1:" + srv.address().port + "/hituelo/index.html?debug&arbsc=1");   // escala de distancia fija: la adaptativa (07b) cambiaría los recuentos entre «antes» y «retirado»
     await p.waitForFunction(() => window.__g && window.__g.listo(), null, { timeout: 45000 });
     const proc = await p.evaluate(() => { const C = window.__g.Catalogo; return { tipos: C.tipos(), l1: [0, 1, 2, 3].map(v => C.triangulos(-1, 1, v)), l2: [0, 1].map(v => C.triangulos(-1, 2, v)), l0: C.geometria(-1, 0, 0).length }; });
     assert.deepStrictEqual(proc.tipos, [-1], "sin catálogo instalado solo existe el tipo −1");
@@ -136,10 +142,15 @@ test("[hituelo] Catalogo en la página: vacío no cambia nada; instalado con un 
     assert.ok(con.lejos.modeloL2 > 0, "con el catálogo, los olivos de tipo 0 lejanos deberían dibujarse con su L2");
     assert.ok(con.cerca.modeloL1 > 0, "con el catálogo, los olivos de tipo 0 cercanos deberían dibujarse con su L1");
     for (const n of Object.keys(ESC)) {
-      assert.strictEqual(con[n].nivel1 + con[n].nivel2, antes[n].nivel1 + antes[n].nivel2, n + ": el catálogo no debe cambiar cuántos olivos hay en L1+L2");
-      assert.ok(con[n].llamadas <= antes[n].llamadas + 3 + 1, n + ": el tipo 0 cuesta más llamadas de las de sus piezas (" + antes[n].llamadas + " → " + con[n].llamadas + ")");
-      assert.ok(Math.abs(despues[n].llamadas - antes[n].llamadas) <= 2, n + ": al retirar el catálogo las llamadas no vuelven (" + antes[n].llamadas + " → " + despues[n].llamadas + ")");
-      assert.ok(Math.abs(despues[n].triangulos - antes[n].triangulos) <= Math.max(2, 0.01 * antes[n].triangulos), n + ": al retirar el catálogo los triángulos no vuelven");
+      const total = x => x.nivel0 + x.nivel1 + x.nivel2;
+      assert.strictEqual(total(con[n]), total(antes[n]), n + ": el catálogo no debe cambiar cuántos olivos se dibujan (L0+L1+L2)");
+      // una celda de nivel 0 cercana puede estar montada o no según el orden de la Cola (sus olivos pasan de L1 a L0 y cambian las llamadas):
+      // las llamadas y los triángulos solo se comparan entre lecturas con el mismo nivel 0
+      if (con[n].nivel0 === antes[n].nivel0) assert.ok(con[n].llamadas <= antes[n].llamadas + 3 + 1, n + ": el tipo 0 cuesta más llamadas de las de sus piezas (" + antes[n].llamadas + " → " + con[n].llamadas + ")");
+      if (despues[n].nivel0 === antes[n].nivel0) {
+        assert.ok(Math.abs(despues[n].llamadas - antes[n].llamadas) <= 2, n + ": al retirar el catálogo las llamadas no vuelven (" + antes[n].llamadas + " → " + despues[n].llamadas + ")");
+        assert.ok(Math.abs(despues[n].triangulos - antes[n].triangulos) <= Math.max(2, 0.01 * antes[n].triangulos), n + ": al retirar el catálogo los triángulos no vuelven");
+      } else t.diagnostic(n + ": nivel 0 distinto entre antes y retirado (" + antes[n].nivel0 + " → " + despues[n].nivel0 + "): llamadas y triángulos no se comparan");
     }
     assert.deepStrictEqual(errores, [], "errores de consola o de página");
   } finally { await p.close(); await nav.close(); srv.close(); }
