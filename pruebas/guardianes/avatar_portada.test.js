@@ -110,7 +110,7 @@ test("build de la portada (si hay apps/web/node_modules): three y three-vrm van 
   const tam = f => fs.statSync(path.join(salida, "assets", f)).size;
   assert.ok(js_.length >= 2, "three y three-vrm en un trozo aparte: " + js_.join(", "));
   assert.ok(tam(principal[1]) < 40_000, "el script de la portada sigue siendo pequeño: " + tam(principal[1]) + " bytes");
-  assert.ok(![...pagina.matchAll(/<(?:script|link)[^>]*>/gi)].some(m => /vista3d/.test(m[0])), "la página no carga ni precarga el trozo de la vista 3D");
+  assert.ok(![...pagina.matchAll(/<(?:script|link)\b[^>]*>/gi)].some(m => /vista3d/.test(m[0])), "la página no carga ni precarga el trozo de la vista 3D");
   const grande = js_.sort((a, b) => tam(b) - tam(a))[0];
   t.diagnostic("portada: script principal " + tam(principal[1]) + " B; trozo 3D " + grande + " " + tam(grande) + " B (sin comprimir)");
 });

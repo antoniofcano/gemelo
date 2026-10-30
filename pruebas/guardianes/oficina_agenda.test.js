@@ -32,7 +32,7 @@ test("la api: las rutas de oficina con su guarda, las de hogar con la de sesión
   assert.strictEqual(hogar.length, 3, "tres rutas de hogar");
   for (const m of hogar) assert.strictEqual(m[2], "requiereSesion", "ruta de hogar sin guarda de sesión: " + m[0]);
   assert.match(ts, /SELECT \* FROM visitas WHERE id = \$1 FOR UPDATE/, "el evento se bloquea antes de contar plazas");
-  assert.ok(!/(?:g|h|hogares)\.correo|SELECT[^`;]*[ ,]correo[ ,]/i.test(ts), "la api de la agenda nunca lee ni devuelve el correo de una familia");
+  assert.ok(!/(?:\bg|\bh|hogares)\.correo\b|SELECT[^`;]*[ ,]correo[ ,]/i.test(ts), "la api de la agenda nunca lee ni devuelve el correo de una familia");
   assert.match(lee("apps/api/migraciones/0012_agenda.sql"), /promovida_en/);
   assert.match(lee("apps/api/src/app.ts"), /await rutasAgenda\(app, ctx\)/);
 });
