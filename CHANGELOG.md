@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- El chat de la visita en red es una ventana flotante que se arrastra por su barra, se minimiza a una burbuja movible con contador de no leídos y nunca se queda encima de la cruceta ni de la barra; el minimapa se mueve igual, se pliega con su botón o con M, y la brújula ya no lo oculta; sin arrastrar: flechas, Inicio y «Llevar a…»; el sitio se recuerda por forma de pantalla (U6, `34_movibles.js`). Probado en Chrome sin pantalla con emulación táctil; no en iPhone, Android ni Quest.
 - Olivos lejanos (variantes E2/E2-VR e impostores) con la misma copa y altura que su propio árbol: fuera el olivo «esquelético» a media anchura (O9b-0, decisión 81; el nivel de siempre sigue con `FACTOR_R8` 0,5).
 - El escalón de cada olivo (E0/E1/E2/lejano) se elige por su alto en píxeles, con las fronteras desplazadas a la vez por el presupuesto del aparato, y el paso se funde en una banda de ± 1,5 m de camino; el E0 ya no se queda detrás (O9c, decisión 82; `?olivosPx=`, `?olivosBanda=` para ajustar en O9d).
 - Hojas con mipmaps que conservan la cobertura del recorte: de lejos el follaje ya no se deshace en ramas (ADR-0022 §6; `?olivosMips=0` vuelve a los de antes). Las hojas lejanas salen algo más claras: pendiente de mirar a ojo.
