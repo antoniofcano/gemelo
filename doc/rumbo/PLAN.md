@@ -144,7 +144,7 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | OF0 | ADR de la oficina: roles, acceso y configuración versionada (decisiones 104-116) | — | ligera · **opus** | ✅ 2026-10-30 (ADR-0024) |
 | OF1 | Acceso: rol `oficina`, sesión corta, aparatos confiables, Caddy con `/oficina/` por rol | OF0, V3 | media · **opus**; 🔶 Docker | ✅ 2026-10-30: migración 0005, integración y probar-caddy en verde |
 | OF2 | Esqueleto de `/oficina/` y **Familias** (alta, enlace, sesiones, haza, baja a 30 días, exportar, borrar) | OF1 | media · **sonnet**; 🔶 | ✅ 2026-10-30; sin probar con lector de pantalla ni en Safari o Firefox |
-| OF3 | **Hazas**: dibujar sobre ortofoto y copas (OpenLayers + proj4), partir/juntar en PostGIS, recuento, versiones | OF2, V3 | pesada · **opus**; 🔶 | ⬜ |
+| OF3 | **Hazas**: dibujar sobre ortofoto y copas (OpenLayers + proj4), partir/juntar en PostGIS, recuento, versiones | OF2, V3 | pesada · **opus**; 🔶 | ✅ 2026-10-30; 👤 la oficina dibuja las hazas reales; sin parcelas de OlivarTrack con geometría |
 | OF4 | **Bandeja**: retirar en un clic, responder, avisar, pasar a OlivarTrack (token solo para proponer, decisión 110) | OF2, V3 | media · **sonnet**; 🔶 Docker | ⬜ |
 | OF5 | **Sistema** mínimo: salud, OlivarTrack, correo de prueba, auditoría, roles | OF2 | ligera · **sonnet** | ⬜ |
 | OF6 | **Configuración versionada** y `GET /api/config`; el motor la lee con caída a las constantes; interruptores de componentes (decisión 118) | OF2, C1 | media · **opus** | ✅ 2026-10-30 api y motor; falta la pantalla (OF7) |
@@ -164,7 +164,7 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | C7 | Entidades con id estable y usables (una sola forma de tocar: dedo, ratón, rayo VR, cercanía) — antes de juegos y fotos (decisión 119) | C2 | media · **opus** | ⬜ |
 | C8 | Láminas en el mundo como servicio del núcleo | C3 | ligera · **sonnet** | ✅ 2026-10-30 (desbloquea C9b) |
 | C9 | Anfitrión de juegos y primer casual (decisión 125): piezas del olivar que caen y se rompen al juntar 3+ iconos iguales; récord validado en la api | C2, C6, C8 | media · **opus**; 👤 qué juego | ⬜ |
-| C9a | **«Cae la cosecha»** en pantalla: anfitrión de juegos (pausa el mundo, juego a pantalla completa, récord) y el juego: piezas del olivar que caen y se rompen al juntar 3+ iguales; teclado, ratón y táctil; récord de la familia en la api (decisiones 125, 136) | C2, C6 | media · **opus**; 🔶 banco al final | 🟡 en curso |
+| C9a | **«Cae la cosecha»** en pantalla: anfitrión de juegos (pausa el mundo, juego a pantalla completa, récord) y el juego: piezas del olivar que caen y se rompen al juntar 3+ iguales; teclado, ratón y táctil; récord de la familia en la api (decisiones 125, 136) | C2, C6 | media · **opus**; 🔶 banco al final | ✅ 2026-10-30; medido por el banco (0 renders con el juego abierto); sin probar en aparatos |
 | C9b | «Cae la cosecha» en VR, como lámina en el mundo con los mandos | C8, C9a | media · **sonnet** | ⬜ |
 | C10 | Migración del resto de módulos a componentes, al tocarlos | C1-C3 | goteo · **sonnet** | ⬜ |
 | C11 | Medida por componente («con y sin» por el banco) | C1 | ligera · **sonnet**; 🔶 | ⬜ |

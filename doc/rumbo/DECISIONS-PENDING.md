@@ -150,3 +150,7 @@ Decisiones que **no puede tomar un agente**: las cierra Antonio. Las técnicas s
 | 134 | **Avatares · los 4 provisionales** | seguir / retirar | AV2-AV4 (`doc/sistema/AVATARES-FAMILIA.md`) | ✅ 2026-10-30: **seguir**, descritos por lo que se ve y no por su nombre |
 | 135 | **Avatares · contrato v2** | al empezar el creador / ya | AV2-AV4 (`doc/sistema/AVATARES-FAMILIA.md`) | ✅ 2026-10-30: **ADR y contrato `avatares` v2 al empezar el creador** |
 | 136 | **Juegos casuales en 2D antes de las entidades y usables** | excepción a la 119 / esperar a C7 | C9a | ✅ 2026-10-30: **excepción**: un juego casual en pantalla, con el mundo en pausa, no toca nada del mundo y no necesita C7; «Cae la cosecha» (nombre aprobado por Antonio) empieza ya; la versión VR, tras C8 |
+| 137 | **Juegos · récords entre familias** | solo el hogar (lo que hay) / por alias / clasificación | C9a | 🟡 abierta (2026-10-30) |
+| 138 | **Juegos · límite de partidas para menores** | — (enlaza con la decisión 45) | C9a | 🟡 abierta (2026-10-30) |
+| 139 | **Hazas · solapes** | impedir (lo que hace OF3: 409 si pisa > 0,5 m²) / solo avisar (lo que decía OFICINA.md) | OF3 | 🟡 abierta (2026-10-30) |
+| 140 | **Hazas · contorno de la finca** | caja de los olivos medidos + 150 m (lo que hay, [SUPUESTO]) / dibujar el contorno real | OF3 | 🟡 abierta (2026-10-30) |
