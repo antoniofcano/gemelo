@@ -1,9 +1,10 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: OT, hist, mcp, VIVO, marca, dd, tabla, lista, nMarc, sw, avTipo, pintaAvance, rango, aviso, carga
+// Expone: OT, hist, mcp, VIVO, FINCA, marca, dd, tabla, lista, nMarc, sw, avTipo, pintaAvance, rango, aviso, carga
 // Consume: 01_datos (D, $, fmt), 02_mundo (suelo, orto, copas, cIn, marc, med), 03_escena (visor, scene, exag), 05_nube (nube),
 //   08_marcadores (aplica, pendiente), 09_camara (objetivo, orb, pon), 10_ndvi (NDV, ndviIdx, pintaNdvi),
 //   12_paseo (paseando, persona, primera, salePaseo), 13_parcelas (parcelas, fincas, claseUsda, elegirParcela, elegirFinca), 15_tiempo (ins),
-//   16_vida (esfera, mira), 18_paisaje (postes, cable), 21_suelo (cubierta), 22_huellas (hSig), 29_vr (panel), 90_final (cuadro)
+//   16_vida (esfera, mira), 18_paisaje (postes, cable), 21_suelo (cubierta), 22_huellas (hSig), 29_vr (panel), 33_ajustes (Ajustes),
+//   90_final (cuadro)
 // ===============================================================================
   // ---------- la historia: un recorrido guiado que cruza el gemelo con lo que sabe OlivarTrack
   // Los datos de OlivarTrack llegan de dos sitios: una instantánea embebida (D.ot) y, si el visor lo permite,
