@@ -126,9 +126,9 @@ test("migraciones: ninguna expresión regular con repeticiones de más de 255 (P
     const s = fs.readFileSync(path.join(dir, f), "utf8").split("\n").filter(l => !/^\s*--/.test(l)).join("\n");
     for (const m of s.matchAll(/\{(\d+)(?:,(\d+))?\}/g)) if (Math.max(Number(m[1]), Number(m[2] || 0)) > 255) malas.push(f + ": " + m[0]);
   }
-  // la 0013 la trae (credencial_id {16,1366}) y la 0014 la sustituye: las migraciones no se editan una vez escritas
+  // la 0013 la trae (credencial_id {16,1366}) y la 0015 la sustituye: las migraciones no se editan una vez escritas
   assert.deepStrictEqual(malas, ["0013_llaves_oficina.sql: {16,1366}"], "expresiones con más de 255 repeticiones (RE_DUP_MAX): pártelas en alfabeto + char_length");
-  assert.match(lee("apps/api/migraciones/0014_llaves_credencial.sql"), /DROP CONSTRAINT llaves_oficina_credencial_id_check/);
+  assert.match(lee("apps/api/migraciones/0015_llaves_credencial.sql"), /DROP CONSTRAINT llaves_oficina_credencial_id_check/);
 });
 
 test("dependencias de apps/api fijadas a versión exacta y con package-lock", () => {
