@@ -27,3 +27,6 @@ El motor estaba en three r128 (marzo de 2021): la salida artefacto lo cargaba co
 
 ## Comprobación
 `npm run puerta`: `web.test.js` (versión exacta ≥ 0.167 e instalada, el importmap de la artefacto pide la misma versión, cada `#include <trozo>` que el motor parchea existe en la three instalada, y Vite y artefacto dibujan lo mismo), `build.test.js` (importmap y módulo), `carga.test.js` (presupuesto), `olivos.test.js` (GLTFLoader de módulos), `vr.test.js` sin WebXR; `GEMELO_VR=1` con el WebXR simulado. Medidas antes y después en [MEDIDAS](../sistema/MEDIDAS.md). **No probado:** iPhone, Quest y cualquier GPU real (solo SwiftShader); la carga desde jsDelivr dentro de un artefacto publicado de claude.ai (CSP real); la calibración de luz con datos reales de Cerro o Hituelo (solo el fixture sintético).
+
+## Enmienda 2026-10-30
+Sin salida artefacto ([ADR-0021](0021-se-retira-la-salida-artefacto-y-la-escena-de-siempre.md)) ya no hay importmap de jsDelivr: three 0.186.1 va empaquetado por Vite.

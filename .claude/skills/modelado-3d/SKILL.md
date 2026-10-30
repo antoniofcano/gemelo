@@ -19,11 +19,11 @@ El motor **genera toda la geometría por procedimiento** (no hay `GLTFLoader` en
 | L3 | nada: ya está en la ortofoto | 0 | — |
 Cambio de nivel a `U1 = 460` m y `U2 = 1600` m con histéresis; `TOPE_TRI = 550000` reparte entre niveles. La copa es **medida**; el tronco, **ilustrativo**: no presentar la forma del tronco como dato. El color de L1/L2 sale del mosaico ortofoto (`Mundo.ortoGrueso`): hoy es algo verde-gris y uniforme y hay «salto» entre niveles (pendiente M3: dither por píxel o fundido).
 
-## Terreno (`04_terreno.js`)
-Una malla por tesela, **topología compartida** por nivel: L0 1 m (66.049 vértices, 131.072 tri), L1 2 m, L2 8 m. Las costuras se tapan con **faldones verticales de 1,5 m** (más simple que unir vértices). Las alturas se muestrean en una retícula de metros enteros para que teselas vecinas compartan vértices del borde. La exageración vertical es el uniforme `uExag`; **no se recalculan vértices al moverla** (las normales se corrigen en el sombreador).
+## Terreno (tileset 3D Tiles, [ADR-0015](../../../doc/adr/0015-escena-en-3d-tiles.md))
+El terreno ya no lo construye el motor: lo genera `tuberia/tiles3d/genera.mjs` (hojas de 128 m con paso de 1 m, niveles de 1, 2 y 4 m, simplificación con meshoptimizer y faldones de `max(1,5 m, 2 × error)`) y lo carga 3DTilesRendererJS (`04b_escena3d.js`). El `geometricError` de cada nivel lo declara el generador. La exageración vertical es la escala del grupo (`uExag`); el color del suelo, NDVI y ortofoto se reinyectan por `onBeforeCompile` en `04d_sombreado_tiles.js`. La escena de siempre (`04_terreno.js`, `Terreno`) se borró ([ADR-0021](../../../doc/adr/0021-se-retira-la-salida-artefacto-y-la-escena-de-siempre.md)).
 
 ## Materiales y sombreadores
-- Se parte de `MeshLambertMaterial`/`PointsMaterial` y se inyecta GLSL con **`onBeforeCompile`** (terreno, copas, troncos, viento del follaje, sombra de nubes, hielo). Mantener las inyecciones pequeñas y con uniformes compartidos (`UN` en `04_terreno.js`).
+- Se parte de `MeshLambertMaterial`/`PointsMaterial` y se inyecta GLSL con **`onBeforeCompile`** (terreno, copas, troncos, viento del follaje, sombra de nubes, hielo). Mantener las inyecciones pequeñas y con uniformes compartidos (`UN` en `04d_sombreado_tiles.js`).
 - Color del suelo, NDVI y ortofoto se componen **por píxel en la GPU** (textura de suelo de la tesela + NDVI global de 2 fechas); no volver a recolorear vértices en CPU.
 - Suelo abierto con detalle de ortofoto ([ADR-0007](../../../doc/adr/0007-suelo-abierto-de-la-ortofoto.md)): lo oscuro (copas/sombras) se deja igual; no pintar sombras como suelo.
 - Nube: un `THREE.Points` por tesela, orden barajado → `setDrawRange(0, f·n)` es el LOD; al bajar `f`, subir el tamaño del punto (`size *= 1/√f`).
