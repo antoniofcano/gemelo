@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- La bandada y las aves posadas se dibujan con dos mallas instanciadas (cuerpo y alas) en vez de siete mallas por ave: de ≈ 98 llamadas de dibujo a 2-3 de día; nuevo `?hora=HH[:MM]` (o `AAAA-MM-DDTHH:MM`) que fija el reloj del mundo para medir sin depender de la hora de la máquina. Aspecto sin comparar a ojo.
 - T8 fase 2 (decisión 79, ADR-0021): la escena 3D Tiles es la única; fuera `04_terreno.js`, `Terreno`, `ESC3D` y `?escena=`; sin tileset, aviso «Esta finca no tiene escena» y el Mundo sigue cargado. Se retira la salida artefacto de claude.ai (`tuberia/salida_artefacto/`, `contratos/publicacion.json`, skill `publicar-artefacto`): el gemelo solo se sirve desde el servidor (local y VPS). El build de Vite pone los textos de cada finca; el fixture trae su tileset; las pruebas montan sus páginas con `pruebas/guardianes/_pagina.js`; topes de Cerro e Hituelo medidos de nuevo con la escena 3D Tiles (SwiftShader).
 - Propuesta de interfaz de la finca como videojuego a pantalla completa: `doc/sistema/UX-FINCA-JUEGO.md` y maqueta en `prototipos/ux-finca-juego/` (8 decisiones pendientes de Antonio).
 - O9a: medida de masa visual por escalón de olivo (ADR-0022 Propuesto): el salto «esquelético → bonito» es la copa de los lejanos a 2 × r8 × 0,5 frente al propio a 2 × r8, no la receta de niveles; decisiones 81 y 82.
