@@ -1,4 +1,4 @@
-# ADR-0021 — Escalones de olivo por masa visual
+# ADR-0022 — Escalones de olivo por masa visual
 
 - **Estado:** Propuesto
 - **Fecha:** 2026-10-30
