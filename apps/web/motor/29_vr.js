@@ -6,7 +6,7 @@
 //   14_historia (FINCA, aviso), 15_tiempo (calma, lluvia, nivel, rumbo, hace), 16_vida (mira, quad, dron),
 //   19_balizas (BAL, cierraBaliza, balizaAbierta, abreBaliza, balizaVR, irABaliza, tBal), 20_sonido (snd, iniciaSonido), 22_huellas (pendFactor),
 //   24_pantalla (suave), 25_perros (perrosLlegan), 26_presencia (Presencia), 30_mide (MideEst, Mide), 33_ajustes (Ajustes),
-//   35_fichas_tiempo (FichasTiempoPuro, FichasTiempo), 90_final (tamano, cuadro, bucle)
+//   35_fichas_tiempo (FichasTiempoPuro, FichasTiempo), 36_mandos (Mandos), 90_final (tamano, cuadro, bucle)
 // Nota: Publica además window.__vrDebug, __vrOlivo, __vrBotones, __vrVuelo, __vrBalizas y VR_ESTADO (depuración y pruebas VR).
 // ===============================================================================
   // ---------- modo VR inmersivo (WebXR, Meta Quest Browser): el paseo en primera persona con mandos, un panel flotante y un perfil de rendimiento propio
@@ -46,13 +46,12 @@
     ref.parentNode.insertBefore(b, ref); b.addEventListener("click", function () { entraVR(); });
   }
 
-  // ----- 2) mandos, rayo y arco de teletransporte
+  // ----- 2) mandos, rayo y arco de teletransporte (el aspecto del mando o de la mano, en el grip, lo pone 36_mandos: Mandos.monta/libera)
   var vrRayo = new THREE.Raycaster(), vrV1 = new THREE.Vector3(), vrV2 = new THREE.Vector3(), vrV3 = new THREE.Vector3(), vrM4 = new THREE.Matrix4(), vrEjeY = new THREE.Vector3(0, 1, 0), vrQ = new THREE.Quaternion();
   var VRC = [0, 1].map(function (i) {
     var c = renderer.xr.getController(i), g = renderer.xr.getControllerGrip(i), o = { i: i, c: c, g: g, src: null, mano: "", rayo: null };
     var lin = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -8)]), new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6, fog: false }));
     lin.visible = false; c.add(lin); o.rayo = lin;
-    var cuerpo = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.045, 0.13), new THREE.MeshBasicMaterial({ color: 0x4a5560, fog: false })); g.add(cuerpo);
     c.addEventListener("connected", function (e) { o.src = e.data || null; o.mano = (e.data && e.data.handedness) || ""; lin.visible = !!(e.data && e.data.targetRayMode !== "gaze"); });
     c.addEventListener("disconnected", function () { o.src = null; o.mano = ""; lin.visible = false; });
     c.addEventListener("selectstart", function () { if (VRX.on) vrGatillo(o); });
@@ -521,7 +520,7 @@
     var ses = null;
     try {
       renderer.xr.enabled = true; renderer.xr.setReferenceSpaceType("local-floor"); renderer.xr.setFramebufferScaleFactor(0.9);
-      ses = await navigator.xr.requestSession("immersive-vr", { optionalFeatures: ["local-floor", "bounded-floor"] });
+      ses = await navigator.xr.requestSession("immersive-vr", { optionalFeatures: ["local-floor", "bounded-floor", "hand-tracking"] });   // manos: 36_mandos
       VRX.ojo = 0;
       try { await ses.requestReferenceSpace("local-floor"); } catch (e) { renderer.xr.setReferenceSpaceType("local"); VRX.ojo = 1.6; }
       renderer.setAnimationLoop(vrAnimacion);   // antes de setSession: así el bucle de la ventana se para al empezar la sesión
@@ -536,7 +535,7 @@
     vrSuscribe(); vrLeeAjustes(); VRX.pestana = "mundo";
     VRX.modoPrev = modo; VRX.calPrev = calidad; VRX.nearPrev = camera.near; VRX.farPrev = camera.far;
     if (modo !== "gem") pon("gem"); calidad = 0; camera.near = 0.3; camera.far = 6000;
-    scene.add(vrRig); vrRig.add(camera); camera.add(vrVineta); camera.position.set(0, VRX.ojo ? 0 : 1.6, 0); camera.quaternion.identity(); VRC.forEach(function (o) { vrRig.add(o.c); vrRig.add(o.g); }); scene.add(arco); scene.add(arcoMarca); scene.add(panel.m); scene.add(ficha.m); scene.add(fichaB.m); vrVueloEntra();
+    scene.add(vrRig); vrRig.add(camera); camera.add(vrVineta); camera.position.set(0, VRX.ojo ? 0 : 1.6, 0); camera.quaternion.identity(); VRC.forEach(function (o) { vrRig.add(o.c); vrRig.add(o.g); }); Mandos.monta(renderer, vrRig); scene.add(arco); scene.add(arcoMarca); scene.add(panel.m); scene.add(ficha.m); scene.add(fichaB.m); vrVueloEntra();
     VRP.on = true; vrPerfil(0); VRX.emaDt = 13.9; VRX.emaJs = 6; VRX.tNivel = 0;
     if (!paseando) entraPaseo(); primera = true; TR.act = false; persona.visible = false; try { perrosLlegan(); } catch (e) {}
     var r = VRX.rig; r.x = pp.x; r.z = -pp.y; r.yaw = 0; r.y = suelo(pp.x, pp.y) * exag + VRX.ojo; VRX.vuelo = false; VRX.mirador = false; VRX.prev = {}; VRX.giroOk = true; VRX.sucio = true; panel.m.visible = true; panel.ini = false; ficha.m.visible = false; fichaB.m.visible = false; VRX.balK = -1; VRX.balFirma = "";
@@ -546,7 +545,7 @@
   function vrSale() {
     if (!VRX.on && !VRX.sesion) return;
     VRX.on = false; VRP.on = false; VRX.sesion = null; renderer.setAnimationLoop(null); renderer.xr.enabled = false;
-    vrRig.remove(camera); camera.remove(vrVineta); scene.remove(vrRig); VRC.forEach(function (o) { vrRig.remove(o.c); vrRig.remove(o.g); }); scene.remove(arco); scene.remove(arcoMarca); scene.remove(panel.m); scene.remove(ficha.m); scene.remove(fichaB.m); vrVueloSale();
+    vrRig.remove(camera); camera.remove(vrVineta); scene.remove(vrRig); VRC.forEach(function (o) { vrRig.remove(o.c); vrRig.remove(o.g); }); Mandos.libera(); scene.remove(arco); scene.remove(arcoMarca); scene.remove(panel.m); scene.remove(ficha.m); scene.remove(fichaB.m); vrVueloSale();
     Arboles.perfil(null); Escena3D.perfil(null); UN.uBumpK.value = 1; calidad = VRX.calPrev; camera.near = VRX.nearPrev; camera.far = VRX.farPrev; camera.updateProjectionMatrix(); if (modo !== VRX.modoPrev) pon(VRX.modoPrev);
     camera.position.set(0, 0, 0); camera.quaternion.identity(); camera.scale.set(1, 1, 1);
     if (paseando) salePaseo();

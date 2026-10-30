@@ -18,10 +18,11 @@
   window.XRWebGLLayer = function (ses, gl, o) { this.framebuffer = null; this.framebufferWidth = gl.drawingBufferWidth; this.framebufferHeight = gl.drawingBufferHeight; this.fixedFoveation = 0; this.getViewport = function (v) { var w = gl.drawingBufferWidth, h = gl.drawingBufferHeight; return v.eye === "left" ? { x: 0, y: 0, width: w / 2, height: h } : { x: w / 2, y: 0, width: w / 2, height: h }; }; };
   [window.WebGLRenderingContext, window.WebGL2RenderingContext].forEach(function (C) { if (C) C.prototype.makeXRCompatible = function () { return Promise.resolve(); }; });
 
-  var M = window.__mockXR = { sesion: null, cabeza: [0, 1.6, 0], mandos: {}, fotogramas: 0, tope: 0, bloqueadoMarco: false, soporta: true, soloLocal: false, registro: [] };
+  // perfiles que anuncia cada mando (I6): el izquierdo, lo que se espera de un Quest 3; el derecho, uno que el gemelo no copia (cae en el genérico)
+  var M = window.__mockXR = { perfiles: { left: ["meta-quest-touch-plus", "oculus-touch-v3", "oculus-touch-v2", "oculus-touch", "generic-trigger-squeeze-thumbstick"], right: ["oculus-touch"] }, sesion: null, cabeza: [0, 1.6, 0], mandos: {}, fotogramas: 0, tope: 0, bloqueadoMarco: false, soporta: true, soloLocal: false, registro: [] };
   function mando(mano) {
     var x = mano === "left" ? -0.25 : 0.25, pos = [x, 1.2, -0.3];
-    return { handedness: mano, targetRayMode: "tracked-pointer", profiles: ["oculus-touch"], hand: null, pos: pos, dir: [0, 0, -1],
+    return { handedness: mano, targetRayMode: "tracked-pointer", profiles: (M.perfiles && M.perfiles[mano]) || ["oculus-touch"], hand: null, pos: pos, dir: [0, 0, -1],
       targetRaySpace: { get mat() { return lookMat(this.owner.pos, this.owner.dir); } }, gripSpace: { get mat() { return lookMat(this.owner.pos, this.owner.dir); } },
       gamepad: { axes: [0, 0, 0, 0], buttons: [0, 1, 2, 3, 4, 5].map(function () { return { pressed: false, touched: false, value: 0 }; }), hapticActuators: [{ pulse: function () { M.registro.push("pulso"); return Promise.resolve(true); } }] } };
   }

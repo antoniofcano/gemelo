@@ -18,7 +18,9 @@
     "three": "0.186.1"
   },
   "devDependencies": {
+    "@webxr-input-profiles/assets": "1.0.20",
     "sharp": "0.35.5",
-    "vite": "6.4.5"
+    "vite": "6.4.5",
+    "vite-plugin-static-copy": "3.4.0"
   }
 }

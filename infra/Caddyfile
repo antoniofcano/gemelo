@@ -23,6 +23,8 @@
 		Cross-Origin-Resource-Policy "same-origin"
 		Permissions-Policy "xr-spatial-tracking=(self), camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), hid=(), midi=()"
 		# CSP estricta en modo SOLO INFORME (fase F1a): se mira lo que rompería antes de imponerla
+		# Los modelos de mandos y manos en VR (I6) van en /finca/xr/perfiles/, del mismo origen: connect-src 'self' (los glb y json se piden
+		# con fetch) e img-src blob: (sus texturas) bastan; no hace falta abrir cdn.jsdelivr.net, de donde los bajaría three por defecto
 		Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' blob:; worker-src 'self' blob:; media-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; report-uri /api/csp-informe"
 		-Server
 		-Via
