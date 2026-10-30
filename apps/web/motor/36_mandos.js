@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Mandos
-// Consume: 03_escena (renderer)
+// Consume: 03_escena (renderer), 15_tiempo (anuncia)
 // ===============================================================================
   // ---------- I6: el aspecto de los mandos y de las manos en VR. Antes eran dos cubos; ahora, como en el menú de las Meta, el MODELO REAL del mando
   // que anuncia el aparato (perfiles de WebXR Input Profiles: un Quest 3 anuncia el de los Touch Plus y un Quest 2 «oculus-touch-v3») y, con
