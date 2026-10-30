@@ -185,3 +185,5 @@ meter { width: 100%; height: 14px; }
 .lista-comp { display: grid; gap: 4px; max-width: 640px; }
 td.acciones { white-space: nowrap; }
 td.acciones .boton { margin-right: 4px; }
+/* Agenda (OF11): el título del mes encabeza a sus eventos */
+.lista .mes h3 { margin: 12px 0 0; font-size: 15px; text-transform: capitalize; color: var(--suave); }

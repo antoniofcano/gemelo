@@ -5,6 +5,7 @@ import fastifyRateLimit from "@fastify/rate-limit";
 import fastifySession from "@fastify/session";
 import Fastify, { type FastifyInstance } from "fastify";
 import { rutasAdmin } from "./admin/rutas.ts";
+import { rutasAgenda } from "./agenda/rutas.ts";
 import { AlmacenPg } from "./auth/almacen.ts";
 import { NOMBRE_COOKIE, rutasAuth, TEXTO_LIMITE, TEXTO_LIMITE_VINCULO } from "./auth/rutas.ts";
 import { rutasConfig } from "./config/rutas.ts";
@@ -99,5 +100,6 @@ export async function construyeApp(ctx: Contexto, o: OpcionesApp = {}): Promise<
   await rutasVida(app, ctx);
   await rutasConfig(app, ctx);
   await rutasJuegos(app, ctx);
+  await rutasAgenda(app, ctx);
   return app;
 }

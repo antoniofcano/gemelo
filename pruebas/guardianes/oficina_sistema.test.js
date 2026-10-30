@@ -102,7 +102,7 @@ test("recorrido: salud, correo de prueba, OlivarTrack, Vigía, hornero, aparatos
     await pg.click("button[type=submit], input[type=submit]");
     await pg.waitForURL(/\/oficina\//, { timeout: 15_000 });
     await pg.waitForFunction(() => document.querySelector("#s-rol").textContent !== "—");
-    assert.strictEqual(await pg.locator("#nav .pronto").count(), 5, "Sistema ya no es «pronto»");
+    assert.strictEqual(await pg.locator("#nav .pronto").count(), (lee("apps/web/oficina/oficina.js").match(/", false\]/g) || []).length, "tantos «pronto» como secciones sin hacer (Sistema ya no lo es)");
 
     // 1. salud: api, base, LiveKit (apagado en la prueba), correo, hornero (con su latido), todos con palabra
     await pg.click("#nav button[data-sec=sistema]");

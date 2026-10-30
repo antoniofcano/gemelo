@@ -1512,3 +1512,177 @@ paths:
         "401": { $ref: "#/components/responses/SinSesion" }
         "404": { description: no existe ese juego }
         "429": { $ref: "#/components/responses/Limite" }
+
+  # ---------------------------------------------------------------- agenda (OF11, doc/sistema/OFICINA.md §7; migraciones 0004 y 0012)
+  # Eventos con aforo en PERSONAS, inscripción por hogar, lista de espera con promoción automática y avisos en la campana del gemelo.
+  # El CORREO de los avisos no sale hoy (no hay emisor de avisos por correo): avisos_hogar.correo_enviado_en queda en NULL.
+  /api/admin/eventos:
+    get:
+      summary: Los eventos de la agenda, con lo apuntado y la espera de cada uno (oficina)
+      security: [{ sesion: [] }]
+      parameters:
+        - { name: desde, in: query, required: false, schema: { type: string, description: "instante ISO 8601; solo los que empiezan desde ahí" } }
+        - { name: limite, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 500 } }
+      responses:
+        "200":
+          description: "ok: eventos[] { id, titulo, tipo (guiada|libre|evento|taller|recoleccion|cata|directo), descripcion, lugar, finca, haza {id, codigo}|null, presencial, empieza_en, termina_en, plazas|null, inscripcion_hasta, estado (borrador|abierta|cerrada|cancelada), apuntadas (personas), hogares, en_espera (hogares), personas_en_espera, plazas_libres|null }"
+          content: { application/json: { schema: { type: object, properties: { eventos: { type: array, items: { type: object } } } } } }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+    post:
+      summary: Crea un evento (empieza en el futuro; el plazo de inscripción no pasa del inicio)
+      security: [{ sesion: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [titulo, tipo, empieza_en]
+              properties:
+                titulo: { type: string, minLength: 1, maxLength: 120 }
+                tipo: { enum: [guiada, libre, evento, taller, recoleccion, cata, directo] }
+                descripcion: { type: [string, "null"], maxLength: 2000 }
+                lugar: { type: [string, "null"], maxLength: 120, description: "sitio dentro del mundo o de la finca, en texto" }
+                finca: { type: [string, "null"], pattern: "^[a-z0-9_-]{1,32}$" }
+                haza_id: { type: [integer, "null"], minimum: 1 }
+                presencial: { type: boolean, default: false }
+                empieza_en: { type: string, description: "instante ISO 8601 con zona" }
+                termina_en: { type: [string, "null"] }
+                plazas: { type: [integer, "null"], minimum: 1, maximum: 5000, description: "aforo en personas; null = sin aforo" }
+                inscripcion_hasta: { type: [string, "null"] }
+                estado: { enum: [borrador, abierta, cerrada], default: abierta }
+      responses:
+        "201": { description: "creado (auditoría admin.evento_creado)", content: { application/json: { schema: { type: object, properties: { id: { type: integer } } } } } }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/admin/eventos/{id}:
+    put:
+      summary: Edita un evento (los campos que se envían). Subir el aforo promueve a la espera; no se baja de lo apuntado
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              minProperties: 1
+              description: "los mismos campos que al crear, todos opcionales; estado solo borrador, abierta o cerrada (cancelar tiene su ruta)"
+      responses:
+        "200": { description: "editado (auditoría admin.evento_editado): promovidos (hogares que pasaron de la espera a apuntados) y con_inscritos (hogares apuntados o en espera, para ofrecer «avisar» si cambió fecha o lugar)", content: { application/json: { schema: { type: object, properties: { promovidos: { type: integer }, con_inscritos: { type: integer } } } } } }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: no existe }
+        "409": { description: "cancelado, o plazas_menores_que_apuntadas" }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/admin/eventos/{id}/cancelar:
+    post:
+      summary: Cancela el evento y avisa (campana del gemelo) a apuntados y a la espera
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody: { required: false, content: { application/json: { schema: { type: object, additionalProperties: false } } } }
+      responses:
+        "204": { description: "cancelado (auditoría admin.evento_cancelado)" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: no existe }
+        "409": { description: ya_cancelado }
+
+  /api/admin/eventos/{id}/inscritos:
+    get:
+      summary: Quién está apuntado, en espera o se borró. Familia (alias, nombre interno, hazas) y personas; nunca el correo
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "200":
+          description: "evento { id, titulo, plazas, estado, apuntadas, plazas_libres, en_espera } e inscritos[] { hogar_id, alias, nombre_interno, de_baja, hazas[], personas, estado (apuntado|en_espera|anulado), apuntado_en, promovida_en, anulado_en }"
+          content: { application/json: { schema: { type: object, properties: { evento: { type: object }, inscritos: { type: array, items: { type: object } } } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: no existe }
+
+  /api/admin/eventos/{id}/avisar:
+    post:
+      summary: Avisa (campana del gemelo) a los apuntados, a la espera o a todos, con un tope de 3 avisos de la oficina por hogar y semana
+      description: >
+        Los hogares que ya llegaron al tope se omiten (omitidos_por_tope). El correo NO sale hoy: correo_pendiente cuenta los hogares con
+        avisos_correo a los que llegará cuando haya emisor. Sin destinatarios, 200 con enviados 0 y sin crear aviso.
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [titulo]
+              properties:
+                titulo: { type: string, minLength: 1, maxLength: 120 }
+                texto: { type: string, minLength: 1, maxLength: 2000 }
+                a: { enum: [apuntados, espera, todos], default: todos }
+      responses:
+        "201": { description: "avisado (auditoría admin.evento_avisado)", content: { application/json: { schema: { type: object, properties: { aviso: { type: [integer, "null"] }, enviados: { type: integer }, omitidos_por_tope: { type: integer }, correo_pendiente: { type: integer } } } } } }
+        "200": { description: "nadie a quien avisar (todos al tope o sin inscritos)" }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: no existe }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/agenda:
+    get:
+      summary: Los próximos eventos (abiertos o cerrados, aún sin empezar) y la inscripción del PROPIO hogar
+      description: >
+        Cualquier sesión. No lleva guía, creador ni otros inscritos. puede_inscribirse es false en una sesión de gafas vinculadas
+        (solo el titular con su enlace apunta a la familia).
+      security: [{ sesion: [] }]
+      responses:
+        "200":
+          description: "ok: puede_inscribirse y eventos[] { id, titulo, tipo, descripcion, lugar, finca, haza (código)|null, presencial, empieza_en, termina_en, plazas|null, plazas_libres|null, inscripcion_hasta, inscripcion_abierta, mia {estado: apuntado|en_espera, personas}|null }"
+          content: { application/json: { schema: { type: object, properties: { puede_inscribirse: { type: boolean }, eventos: { type: array, items: { type: object } } } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/agenda/{id}/inscripcion:
+    post:
+      summary: Apunta al hogar (personas 1-10) o lo deja en la lista de espera si no cabe o ya hay familias esperando
+      description: >
+        Una inscripción por hogar. Solo la sesión de enlace del titular (403 solo_titular desde unas gafas). 409 inscripcion_cerrada
+        (cerrado, plazo vencido o ya empezado) o ya_inscrito; 422 supera_el_aforo si el grupo es mayor que el aforo. Límite por IP (20
+        por minuto) y por hogar (30 por hora). Auditoría agenda.inscripcion.
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [personas], properties: { personas: { type: integer, minimum: 1, maximum: 10 } } }
+      responses:
+        "201": { description: "hecho", content: { application/json: { schema: { type: object, properties: { estado: { enum: [apuntado, en_espera] }, personas: { type: integer }, plazas_libres: { type: [integer, "null"] } } } } } }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/OrigenNoAdmitido" }
+        "404": { description: no existe (o es un borrador o está cancelado) }
+        "409": { description: inscripcion_cerrada o ya_inscrito }
+        "422": { description: supera_el_aforo }
+        "429": { $ref: "#/components/responses/Limite" }
+    delete:
+      summary: Borra la inscripción del hogar; libera la plaza y promueve a la espera (con aviso)
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "204": { description: "borrado (auditoría agenda.baja)" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/OrigenNoAdmitido" }
+        "404": { description: el hogar no estaba apuntado }
+        "429": { $ref: "#/components/responses/Limite" }

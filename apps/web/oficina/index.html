@@ -56,7 +56,7 @@
       <p><button class="boton peq" type="button" data-ir="bandeja">Abrir la bandeja</button></p>
     </div>
   </div>
-  <p class="nota">El resto de secciones (Agenda, Directos, Mundo y Olivos) llegan en las siguientes tareas de la oficina.</p>
+  <p class="nota">El resto de secciones (Directos y Mundo) llegan en las siguientes tareas de la oficina.</p>
 </section>
 
 <section id="s-familias" hidden>
@@ -200,6 +200,17 @@
   </div>
 </section>
 
+<section id="s-agenda" hidden>
+  <div class="barra-h">
+    <div class="barra-h" role="group" aria-label="Filtrar los eventos" id="aFiltros"></div>
+    <button class="boton empuja" id="aRecarga" type="button">↻ Actualizar</button>
+    <button class="boton prim" id="bEventoNuevo" type="button">＋ Nuevo evento</button>
+  </div>
+  <p class="nota" id="aResumen" aria-live="polite"></p>
+  <ul class="lista" id="aLista"></ul>
+  <p class="nota">El aforo cuenta <b>personas</b>; cada familia se apunta una vez, con las personas que van. Si no caben, queda en la lista de espera y pasa a apuntada sola, por orden, cuando alguien se borra o se sube el aforo. Los avisos llegan a la campana del gemelo (tope de 3 por familia y semana); <b>el correo todavía no sale</b> y la exportación a calendario (.ics) llega más adelante.</p>
+</section>
+
 <section id="s-proximamente" hidden>
   <div class="tarjeta">
     <h2 id="proxTitulo">Próximamente</h2>
@@ -222,6 +233,22 @@
   <label class="chk"><input type="checkbox" id="altaEnviar" checked> Mandar ahora el enlace de bienvenida</label>
   <p class="error" id="altaError" role="alert"></p>
   <div class="pie-dlg"><button class="boton" type="button" id="altaCancela">Cancelar</button><button class="boton prim" type="submit" id="altaOk">Dar de alta</button></div>
+</form></dialog>
+
+<dialog id="dlgEvento" aria-labelledby="dlgEventoT"><form id="fEvento" novalidate>
+  <h2 id="dlgEventoT">Nuevo evento</h2>
+  <label class="campo">Título <input id="evTitulo" maxlength="120" autocomplete="off" required></label>
+  <label class="campo">Tipo <select id="evTipo"></select></label>
+  <label class="campo">Empieza <input id="evEmpieza" type="datetime-local" required></label>
+  <label class="campo">Termina (opcional) <input id="evTermina" type="datetime-local"></label>
+  <label class="campo">Aforo en personas (vacío: sin aforo) <input id="evPlazas" type="number" min="1" max="5000" inputmode="numeric"></label>
+  <label class="campo">Inscripción hasta (opcional) <input id="evHasta" type="datetime-local"></label>
+  <label class="campo">Estado de la inscripción <select id="evEstado"><option value="abierta">Abierta</option><option value="cerrada">Cerrada</option><option value="borrador">Borrador (las familias no lo ven)</option></select></label>
+  <label class="campo">Lugar (en el mundo o en la finca; opcional) <input id="evLugar" maxlength="120" autocomplete="off"></label>
+  <label class="chk"><input type="checkbox" id="evPresencial"> Es presencial, en la finca</label>
+  <label class="campo">Descripción (opcional) <textarea id="evDescripcion" maxlength="2000" rows="3"></textarea></label>
+  <p class="error" id="evError" role="alert"></p>
+  <div class="pie-dlg"><button class="boton" type="button" id="evCancela">Cancelar</button><button class="boton prim" type="submit" id="evOk">Guardar</button></div>
 </form></dialog>
 
 <dialog id="dlgConfirma" aria-labelledby="dlgConfT"><form id="fConfirma" novalidate>
