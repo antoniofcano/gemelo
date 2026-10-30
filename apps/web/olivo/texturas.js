@@ -125,3 +125,43 @@ export function dibujaRelleno(flor, cv) {
 export function dibujos(flor) {
   return { cortezaDibujada: dibujaCorteza(), ramitas: [dibujaRamita(11, flor), dibujaRamita(29, flor)], relleno: dibujaRelleno(flor) };
 }
+
+/**
+ * Mipmaps que CONSERVAN LA COBERTURA del recorte alfa (ADR-0022 §6; The Witness, «Computing alpha mipmaps»; NVIDIA Texture Tools; Unity
+ * `mipMapsPreserveCoverage`). Con los mipmaps de la GPU, el alfa de cada nivel es la media de 2 × 2 texeles y, en una hoja estrecha sobre fondo
+ * transparente, cae por debajo del `alphaTest`: a pocos píxeles el follaje se deshace y quedan las ramas. Aquí cada nivel se reduce del anterior
+ * SIN reescalar (caja 2 × 2; el color, ponderado por el alfa para no oscurecer los bordes) y su alfa se multiplica por el k que deja pasar el
+ * corte a la MISMA fracción de texeles que el nivel 0 (búsqueda binaria). Devuelve [nivel 0, 1, …, 1 × 1] como ImageData (lo que espera
+ * `texture.mipmaps` de three) o null si no hay lienzo 2D (Node).
+ */
+export function mipsConCobertura(cv, corte) {
+  const g = cv && cv.getContext ? cv.getContext("2d") : null;
+  if (!g || typeof ImageData === "undefined") return null;
+  let w = cv.width, h = cv.height;
+  const d0 = g.getImageData(0, 0, w, h).data, out = [new ImageData(new Uint8ClampedArray(d0), w, h)];
+  let A = new Float32Array(w * h * 4); for (let i = 0; i < A.length; i++) A[i] = d0[i] / 255;
+  const cobertura = (B, n, k) => { let c = 0; for (let i = 3; i < n * 4; i += 4) if (B[i] * k >= corte) c++; return c / n; };
+  const meta = cobertura(A, w * h, 1);
+  while (w > 1 || h > 1) {
+    const w2 = Math.max(1, w >> 1), h2 = Math.max(1, h >> 1), B = new Float32Array(w2 * h2 * 4), dx = w > 1 ? 2 : 1, dy = h > 1 ? 2 : 1;
+    for (let y = 0; y < h2; y++) for (let x = 0; x < w2; x++) {
+      let r = 0, gg = 0, b = 0, a = 0, r0 = 0, g0 = 0, b0 = 0;
+      for (let j = 0; j < dy; j++) for (let i = 0; i < dx; i++) {
+        const q = ((y * dy + j) * w + x * dx + i) * 4, al = A[q + 3];
+        r += A[q] * al; gg += A[q + 1] * al; b += A[q + 2] * al; a += al; r0 += A[q]; g0 += A[q + 1]; b0 += A[q + 2];
+      }
+      const n = dx * dy, o = (y * w2 + x) * 4;
+      if (a > 0) { B[o] = r / a; B[o + 1] = gg / a; B[o + 2] = b / a; } else { B[o] = r0 / n; B[o + 1] = g0 / n; B[o + 2] = b0 / n; }
+      B[o + 3] = a / n;
+    }
+    w = w2; h = h2; A = B;
+    // la cobertura crece con k: búsqueda binaria del salto que cruza la del nivel 0 y, de sus dos lados, el que queda más cerca
+    let lo = 0, hi = 1;
+    while (hi < 64 && cobertura(A, w * h, hi) < meta) hi *= 2;
+    for (let it = 0; it < 18; it++) { const m = (lo + hi) / 2; if (cobertura(A, w * h, m) < meta) lo = m; else hi = m; }
+    const k = Math.abs(cobertura(A, w * h, lo) - meta) < Math.abs(cobertura(A, w * h, hi) - meta) ? lo : hi, u = new Uint8ClampedArray(w * h * 4);
+    for (let i = 0; i < u.length; i += 4) { u[i] = A[i] * 255 + 0.5; u[i + 1] = A[i + 1] * 255 + 0.5; u[i + 2] = A[i + 2] * 255 + 0.5; u[i + 3] = Math.min(1, A[i + 3] * k) * 255 + 0.5; }
+    out.push(new ImageData(u, w, h));
+  }
+  return out;
+}

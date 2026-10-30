@@ -115,7 +115,7 @@
         cache = m.creaCache && !/[?&]olivosCache=0\b/.test(location.search) ? m.creaCache({ memMB: topeCacheMem(), discoMB: 300 }) : null;
         M = m; return cargaManifiesto();   // antes de los materiales: la época puede salir del manifiesto
       }).then(function () {
-        mats = M.creaMateriales(THREE, null, { epoca: epoca(), srgb: true, parche: parcheGen });   // sin fotos de campo aquí: corteza dibujada (texturas.js)
+        mats = M.creaMateriales(THREE, null, { epoca: epoca(), srgb: true, parche: parcheGen, mipsCobertura: !/[?&]olivosMips=0\b/.test(location.search) });   // sin fotos de campo aquí: corteza dibujada (texturas.js); hojas con mipmaps que conservan la cobertura (ADR-0022 §6; ?olivosMips=0, los de la GPU)
         prof = { corteza: profundidad(), muerta: profundidad() };   // la sombra de las mallas por lotes, con el mismo fundido
         var f = M.creaFabrica({ trabajador: true }); if (f.modo === "trabajador") fabrica = f; else f.cierra();
         estado = "activo";
