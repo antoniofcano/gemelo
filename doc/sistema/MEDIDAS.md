@@ -448,7 +448,15 @@ Centenario3 (semilla 7) a 128 px, mipmaps de la GPU → con cobertura: E0 0,491 
 
 Lecturas: (1) **el E0 ya no va detrás**: es el olivo que se ve a ≥ 700 px (× s); paseando por el centro de la calle (a 5-6 m de la fila) ningún olivo llega y no hay E0 (el E1 de ese olivo tiene IoU 0,998 frente a su E0 a 512 px); al acercarse a menos de 3,5-4,4 m (escritorio) aparece. (2) **Los cambios ocurren a la misma distancia delante y detrás** (E2→E1 a 10,9 m al acercarse, E1→E2 a 11,2 m al alejarse), no 6 m delante y 14 m detrás. (3) **Con los costes de hoy el presupuesto manda**: en escritorio s ≈ 2, de modo que el vecino de la fila a 11 m está justo en la banda E1|E2; el anillo de E2 (hasta 27-34 m) es lo que más cuesta (16-20 variantes × 18 k): bajar el E2 a ≤ 10 k (O9b) o subir el umbral del E2 (O9d) baja s. (4) **Sin saltos**: en el paseo, ningún cambio de peso de más de 0,35 de un reparto al siguiente sin cambio de s; s cambia 0-1 veces en escritorio y gafas y 41-50 en móvil (presupuesto justo: cada banda cuesta los dos escalones), con 0-4 saltos de peso > 0,35 en esos cambios (`pruebas/olivo/escalera_motor.mjs` lo vigila sin cambio de s).
 
-BANCO
+**Ronda del banco con el fixture** (`?olivos=escalera`, página montada con `--olivos`, escenarios `cerca`, `paseo` y `paseoAnda`, tope 300 s, una corrida; SwiftShader con la máquina cargada: `esc` 0,7 → presupuesto 384 k; recuentos, **no fps**; código de O9c antes de mezclar `main` con los Ajustes). Antes: las cifras de O8c y T8 fase 2 de arriba (otro día y otra carga, sin el mismo estado final), solo como referencia.
+
+| Escenario | Antes: llamadas / tri / heap · E0/E1/E2 | O9c: llamadas / tri / heap · E0/E1/E2 · en banda | Terminó |
+|---|---|---|---|
+| cerca | 33 / 459 k / 61 MB (T8 fase 2) | 26 / 133 k / 39 MB · 0/0/1 · 1 | sí, 18 s |
+| paseo | 90 / 382 k / 52 MB · 1/0/8 (O8c) | 130 / 194 k / 43 MB · 0/1/2 · 0 | sí, 14 s |
+| paseoAnda | 55 / 389 k / 64 MB · 1/1/8 (O8c) | 151 / 328 k / 55 MB · 1/1/5 · 3 | sí, 44 s |
+
+Las llamadas de olivos, 7-8 (tope 8); triángulos de olivos 19-231 k de 384 k; s = 1 en los tres (kPx = 590: la ventana del banco es pequeña, así que los olivos tienen pocos píxeles y no hace falta acercar fronteras); sin errores de sombreador (el código de banda compila en WebGL2) y las 4 variantes E2 calculadas en el trabajador. Las llamadas totales suben por la bandada de día de 16_vida (98 llamadas; ver «fixture»), no por los olivos. Los topes de `fixture_olivos_escalera` siguen valiendo y no se tocan.
 
 ## Límites conocidos
 - Las ortofotos decodificadas (2,4 MB por tesela de 768 px; 1 MB a 512 px) se sueltan solo a 900 m; sin LRU fino.
