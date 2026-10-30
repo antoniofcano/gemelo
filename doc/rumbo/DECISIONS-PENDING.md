@@ -154,3 +154,4 @@ Decisiones que **no puede tomar un agente**: las cierra Antonio. Las técnicas s
 | 138 | **Juegos · límite de partidas para menores** | — (enlaza con la decisión 45) | C9a | 🟡 abierta (2026-10-30) |
 | 139 | **Hazas · solapes** | impedir (lo que hace OF3: 409 si pisa > 0,5 m²) / solo avisar (lo que decía OFICINA.md) | OF3 | 🟡 abierta (2026-10-30) |
 | 140 | **Hazas · contorno de la finca** | caja de los olivos medidos + 150 m (lo que hay, [SUPUESTO]) / dibujar el contorno real | OF3 | 🟡 abierta (2026-10-30) |
+| 141 | **Cuerpos base del creador (AV3)** | visto bueno / cambios | AV4 | ✅ 2026-10-30: **visto bueno de Antonio**; en AV4 se corrigen la costura del cuello y que «mayor» se distinga de «adulta» (postura o edad) |
