@@ -6,7 +6,8 @@
 //  Oficina (rol oficina o admin, aparato aprobado):
 //   GET  /api/admin/eventos                 la lista, con lo apuntado y la espera de cada uno
 //   POST /api/admin/eventos                 crear
-//   PUT  /api/admin/eventos/:id             editar (subir el aforo promueve a la espera; no se baja por debajo de lo apuntado)
+//   PUT  /api/admin/eventos/:id             editar (subir el aforo promueve a la espera; no se baja por debajo de lo apuntado;
+//                                           cambiar fecha o lugar avisa solo a apuntados y espera, aviso de sistema que no cuenta para el tope: OF11b)
 //   POST /api/admin/eventos/:id/cancelar    cancelar, con aviso a apuntados y en espera
 //   GET  /api/admin/eventos/:id/inscritos   inscritos: familia (alias, nombre interno, hazas) y personas; NUNCA el correo
 //   POST /api/admin/eventos/:id/avisar      aviso a apuntados y/o espera, con tope semanal por hogar
@@ -23,7 +24,7 @@ import { enTransaccion } from "../bd/pool.ts";
 import type { Contexto } from "../contexto.ts";
 import { OFICINA } from "../oficina/acceso.ts";
 import { limpia } from "../vida/filtro.ts";
-import { aPromover, estadoNuevo, libres, TOPE_AVISOS_SEMANA } from "./cupo.ts";
+import { aPromover, cambiosDeCita, estadoNuevo, libres, textoDeCambios, TOPE_AVISOS_SEMANA } from "./cupo.ts";
 
 export const TIPOS = ["guiada", "libre", "evento", "taller", "recoleccion", "cata", "directo"] as const;
 export const ESTADOS_EDITABLES = ["borrador", "abierta", "cerrada"] as const;
@@ -87,6 +88,10 @@ export async function promueve(c: Cliente, e: Pick<Evento, "id" | "titulo" | "em
   await audita(c, null, "agenda.espera_promovida", { evento: e.id, hogares: ids.length });
   return ids.length;
 }
+
+/** Código legible de una haza (o null), para el texto de «qué cambió». */
+const codigoHaza = async (c: Pick<Cliente, "query">, id: number | null): Promise<string | null> =>
+  id === null ? null : ((await c.query<{ codigo: string }>("SELECT codigo FROM hazas WHERE id = $1", [id])).rows[0]?.codigo ?? "id " + id);
 
 const bloquea = async (c: Cliente, id: number): Promise<Evento | null> => (await c.query<Evento>("SELECT * FROM visitas WHERE id = $1 FOR UPDATE", [id])).rows[0] ?? null;
 const pasaAFila = (f: Evento & { haza_codigo?: string | null }) => ({
@@ -181,13 +186,24 @@ export async function rutasAgenda(app: FastifyInstance, ctx: Contexto): Promise<
                   plazas = $11, inscripcion_hasta = $12, estado = $13, actualizada_en = now() WHERE id = $1`,
           [e.id, n.titulo, n.tipo, n.descripcion, n.lugar, n.finca, n.haza_id, n.presencial, n.empieza_en, n.termina_en, n.plazas, n.inscripcion_hasta, n.estado]);
         const promovidos = await promueve(c, { id: e.id, titulo: n.titulo, empieza_en: n.empieza_en, plazas: n.plazas, estado: n.estado });
+        // cambió la fecha o el lugar: aviso solo, en esta transacción, a apuntados y en espera; autor null = de sistema, no cuenta para el tope semanal
+        const cambios = cambiosDeCita(
+          { empieza_en: e.empieza_en, termina_en: e.termina_en, lugar: e.lugar, finca: e.finca, haza: await codigoHaza(c, e.haza_id) },
+          { empieza_en: n.empieza_en, termina_en: n.termina_en, lugar: n.lugar, finca: n.finca, haza: await codigoHaza(c, n.haza_id) });
+        let avisados = 0;
+        if (cambios.length && n.estado !== "borrador") {
+          const dest = (await c.query<{ hogar_id: number }>(
+            "SELECT a.hogar_id FROM visitas_asistentes a JOIN hogares g ON g.id = a.hogar_id AND g.activo WHERE a.visita_id = $1 AND a.estado IN ('apuntado', 'en_espera')", [e.id])).rows.map(f => f.hogar_id);
+          await avisaA(c, dest, "Cambia la fecha o el lugar de un evento", textoDeCambios(n.titulo, cambios), null);
+          avisados = dest.length;
+        }
         const { hogares, espera } = await cuentas(c, e.id);
-        await audita(c, req.session.hogarId!, "admin.evento_editado", { evento: e.id, campos: Object.keys(b).length, promovidos });
-        return { codigo: 200 as const, promovidos, con_inscritos: hogares + espera };
+        await audita(c, req.session.hogarId!, "admin.evento_editado", { evento: e.id, campos: Object.keys(b).length, promovidos, cambios: cambios.map(x => x.campo).join(","), avisados });
+        return { codigo: 200 as const, promovidos, con_inscritos: hogares + espera, avisados };
       });
       if (r.codigo === 404) return rep.code(404).send({ error: "no_existe" });
       if (r.codigo !== 200) return rep.code(r.codigo).send({ error: r.error, mensaje: r.mensaje });
-      return { promovidos: r.promovidos, con_inscritos: r.con_inscritos };
+      return { promovidos: r.promovidos, con_inscritos: r.con_inscritos, avisados: r.avisados };
     } catch (e) {
       const m = errorDeEntrada(e);
       if (m) return rep.code(400).send(m);

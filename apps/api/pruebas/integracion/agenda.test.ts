@@ -167,3 +167,30 @@ test("cancelar avisa a apuntados y a la espera, no se puede apuntar ni editar; i
   const datos = (await pide("GET", "/api/yo/datos", ana)).json();
   assert.ok(datos.visitas.some((v: { personas: number }) => v.personas === 2), "sus inscripciones salen en su descarga de datos");
 });
+
+test("OF11b: cambiar fecha o lugar avisa solo a apuntados y espera, sin contar para el tope; título y aforo no avisan", async t => {
+  if (salta(t)) return;
+  const [ana, luis] = [(await entra(ANA)).sesion, (await entra(LUIS)).sesion];
+  const id = await crea({ plazas: 2 });
+  await pide("POST", "/api/agenda/" + id + "/inscripcion", ana, { personas: 2 });
+  await pide("POST", "/api/agenda/" + id + "/inscripcion", luis, { personas: 1 });   // en espera
+  const cambios = async () => (await avisosDe(ANA)).filter(a => /Cambia la fecha o el lugar/.test(a.titulo)).length;
+  const antes = await cambios();
+  let r = await pide("PUT", "/api/admin/eventos/" + id, ofi, { titulo: "Otro título", descripcion: "Nueva" });
+  assert.equal(r.statusCode, 200); assert.equal(r.json().avisados, 0, "título y descripción no avisan solos");
+  assert.equal(await cambios(), antes);
+  r = await pide("PUT", "/api/admin/eventos/" + id, ofi, { lugar: "Era alta", empieza_en: manana(5) });
+  assert.equal(r.statusCode, 200); assert.equal(r.json().avisados, 2, "apuntada y en espera");
+  assert.equal(await cambios(), antes + 1);
+  assert.ok((await avisosDe(LUIS)).some(a => /Cambia la fecha o el lugar/.test(a.titulo)), "la espera también se entera");
+  const aviso = (await q<{ texto: string; autor_id: number | null }>("SELECT texto, autor_id FROM avisos WHERE titulo LIKE 'Cambia la fecha%' ORDER BY id DESC LIMIT 1"))[0]!;
+  assert.match(aviso.texto, /Lugar: Patio → Era alta/); assert.equal(aviso.autor_id, null, "de sistema");
+  // no cuenta para el tope: tres avisos de la oficina siguen saliendo después de varios cambios
+  for (const n of [1, 2]) await pide("PUT", "/api/admin/eventos/" + id, ofi, { lugar: "Sitio " + n });
+  for (const n of [1, 2, 3]) {
+    const a = await pide("POST", "/api/admin/eventos/" + id + "/avisar", ofi, { titulo: "Aviso " + n, a: "apuntados" });
+    assert.equal(a.json().enviados, 1, "aviso " + n + " de la oficina pasa el tope");
+  }
+  const aud = await q<{ detalle: { avisados?: number } }>("SELECT detalle FROM auditoria WHERE accion = 'admin.evento_editado' ORDER BY id DESC LIMIT 1");
+  assert.equal(aud[0]!.detalle.avisados, 2);
+});
