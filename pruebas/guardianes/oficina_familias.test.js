@@ -1,7 +1,7 @@
 "use strict";
 // La oficina, OF2 (apps/web/oficina/, doc/sistema/OFICINA.md §3 Familias). Siempre, y sin red ni Chrome:
 //  - estática: nada en línea ni de otro origen (CSP estricta), el DOM se construye con textContent (nunca HTML a mano), las secciones de la maqueta
-//    en la barra lateral (solo Inicio y Familias hechas), tema claro/oscuro, foco visible y objetivos de 44 px;
+//    en la barra lateral (Inicio, Familias y, desde OF3, Hazas; esta tiene su propio guardián, oficina_hazas.test.js), tema claro/oscuro, foco visible y objetivos de 44 px;
 //  - contrato: las rutas de Familias que usa la página existen en contratos/api.openapi.yaml; el nombre interno (decisión 109) no aparece
 //    en ninguna ruta de los hogares ni en las fichas públicas; la migración 0008 lo crea.
 // Opcional (GEMELO_DOCKER=1): recorrido en Chrome contra la api REAL con PostGIS en un contenedor (Testcontainers, NO el entorno de la persona):
@@ -24,11 +24,11 @@ test("nada en línea ni de otro origen; el DOM se hace con textContent (un corre
   assert.ok(!/localStorage\.setItem\([^)]*(correo|sesion|token)/i.test(fuentes["oficina.js"]), "el navegador solo guarda el tema");
 });
 
-test("la barra lateral tiene las secciones de la maqueta; solo Inicio y Familias están hechas", () => {
+test("la barra lateral tiene las secciones de la maqueta; Inicio, Familias y Hazas (OF3) están hechas", () => {
   const js = fuentes["oficina.js"];
   const ids = [...js.matchAll(/\["([a-z]+)", "[^"]+", "([^"]+)", (true|false)\]/g)].map(m => [m[1], m[3]]);
   assert.deepStrictEqual(ids.map(x => x[0]), ["inicio", "familias", "hazas", "bandeja", "agenda", "directos", "mundo", "olivos", "sistema"]);
-  assert.deepStrictEqual(ids.filter(x => x[1] === "true").map(x => x[0]), ["inicio", "familias"]);
+  assert.deepStrictEqual(ids.filter(x => x[1] === "true").map(x => x[0]), ["inicio", "familias", "hazas"]);
   assert.match(html, /<a class="boton prim" href="\/finca\/"/, "«Entrar al mundo como oficina» siempre a mano");
   assert.match(js, /aria-current/); assert.match(js, /data-theme/); assert.match(js, /oficina-tema/);
   assert.match(html, /<nav class="lateral" aria-label=/);
@@ -39,7 +39,7 @@ test("accesibilidad: foco visible, zonas de 44 px, avisos en región viva, diál
   assert.match(css, /--toque: 44px/); assert.match(css, /\.boton \{ min-height: var\(--toque\)/);
   assert.match(css, /prefers-reduced-motion: reduce/); assert.match(css, /prefers-color-scheme: light/);
   assert.match(html, /id="avisos" aria-live="polite"/); assert.match(html, /id="anuncio" role="status" aria-live="polite"/);
-  assert.equal((html.match(/<dialog /g) || []).length, 3, "alta, confirmar y reconfirmar");
+  assert.equal((html.match(/<dialog /g) || []).length, 4, "alta, confirmar, reconfirmar y la haza nueva (OF3)");
   for (const d of ["dlgAlta", "dlgConfirma", "dlgReconfirma"]) assert.match(html, new RegExp('<dialog id="' + d + '" aria-labelledby='));
   assert.match(html, /<label class="vh" for="fBusca">/); assert.match(html, /<th scope="col">/);
 });
@@ -123,8 +123,8 @@ test("recorrido: buscar, alta, cerrar una sesión, asignar haza, baja y borrar (
     await pg.waitForFunction(() => document.querySelector("#s-rol").textContent !== "—");
     assert.strictEqual(await pg.textContent("#s-rol"), "admin");
     assert.strictEqual(await pg.locator("#nav button").count(), 9, "las nueve secciones de la maqueta");
-    assert.strictEqual(await pg.locator("#nav .pronto").count(), 7, "siete «pronto»");
-    await pg.click("#nav button[data-sec=hazas]");
+    assert.strictEqual(await pg.locator("#nav .pronto").count(), 6, "seis «pronto» (Hazas llegó con OF3)");
+    await pg.click("#nav button[data-sec=bandeja]");
     assert.match(await pg.textContent("#s-proximamente"), /próximamente/i);
 
     // tema claro/oscuro

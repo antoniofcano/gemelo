@@ -10,7 +10,7 @@
 //   POST   /api/admin/hogares/:id/reactivar    devuelve la cuenta y sus hazas (si siguen libres)
 //   GET    /api/admin/hogares/:id/exportar     todos sus datos en JSON (RGPD)
 //   DELETE /api/admin/hogares/:id              borra ya (RGPD): confirmación reciente y el correo escrito en el cuerpo
-//   GET    /api/admin/hazas                    las hazas con su titular (solo oficina), para elegir
+//   (GET /api/admin/hazas, las hazas con su titular para elegir, vive en hazas.ts: es la misma lista que usa la sección Hazas)
 // El nombre interno (decisión 109) no sale por ninguna ruta de los hogares. Todo queda en la auditoría, sin correos en el detalle.
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { enTransaccion } from "../bd/pool.ts";
@@ -82,14 +82,6 @@ export async function rutasFamilias(app: FastifyInstance, ctx: Contexto): Promis
     rep.header("cache-control", "no-store");
     const filas = r.rows as { total: number }[];
     return { hogares: filas.map(({ total: _t, ...fila }) => fila), total: filas[0]?.total ?? 0 };
-  });
-
-  app.get("/api/admin/hazas", { preHandler: OFICINA }, async (_req, rep) => {
-    const r = await bd.query(
-      `SELECT h.id, h.codigo, h.nombre, h.finca, h.hogar_id, g.correo::text AS hogar_correo
-         FROM hazas h LEFT JOIN hogares g ON g.id = h.hogar_id ORDER BY h.codigo`);
-    rep.header("cache-control", "no-store");
-    return { hazas: r.rows };
   });
 
   // ---------------------------------------------------------------- alta

@@ -2,7 +2,9 @@
 // PostGIS en un contenedor (Testcontainers), el build de la oficina servido en /oficina/ detrás de la misma guarda que el Caddy
 // (forward_auth a /api/interno/autoriza?para=oficina) y con la CSP de infra/Caddyfile IMPUESTA (no solo informada).
 // Va dentro del turno del banco (lo pide quien lo lanza). Escribe en la salida estándar una línea «LISTO {json}» cuando está en marcha.
-//   node pruebas/e2e/oficina_servidor.ts <carpeta del build de la oficina>
+//   node pruebas/e2e/oficina_servidor.ts <carpeta del build de la oficina> [<carpeta de la finca del fixture (indice.json y t/)>]
+// Con la carpeta de la finca (pruebas/guardianes/oficina_hazas.test.js) la sirve en /teselas/hituelo/ tras sesión (como el Caddy), carga sus
+// copas como olivos medidos y pone las cuatro hazas sobre sus dos parcelas (cada una partida en dos), como tuberia/hazas/desde_fixture.py.
 // Rutas de ayuda (solo aquí, nunca en la api): /__prueba/enlace?para=<correo> · /__prueba/buzon?para=<correo> · /__prueba/hogar?correo=<correo>
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
@@ -17,12 +19,14 @@ import { hayDocker, levantaBd } from "../apoyo/bd.ts";
 import { configDePrueba, contexto } from "../apoyo/contexto.ts";
 
 const dist = process.argv[2];
+const finca = process.argv[3];
 if (!dist || !existsSync(join(dist, "index.html"))) { console.error("uso: oficina_servidor.ts <carpeta del build de la oficina>"); process.exit(2); }
 if (!hayDocker()) { console.error("SIN_DOCKER"); process.exit(3); }
 
 const CADDYFILE = fileURLToPath(new URL("../../../../infra/Caddyfile", import.meta.url));
 const csp = /Content-Security-Policy-Report-Only "([^"]+)"/.exec(readFileSync(CADDYFILE, "utf8"))![1]!.split(";").map(x => x.trim()).filter(x => x && !x.startsWith("report-uri")).join("; ");
-const TIPOS: Record<string, string> = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".svg": "image/svg+xml" };
+const TIPOS: Record<string, string> = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".svg": "image/svg+xml", ".jpg": "image/jpeg" };
+if (finca && !existsSync(join(finca, "indice.json"))) { console.error("la carpeta de la finca no tiene indice.json: " + finca); process.exit(2); }
 
 // HTTPS con un certificado de usar y tirar (openssl): Chrome no guarda las cookies `__Host-` (Secure) que llegan por http, ni siquiera de localhost.
 // El navegador de la prueba se abre con ignoreHTTPSErrors.
@@ -56,6 +60,22 @@ for (const [correo, interno, haza, normas] of familias) {
   await dueno.query("INSERT INTO hogares (correo, nombre_interno, alias, normas_version, normas_aceptadas_en) VALUES ($1, $2, $3, $4, $5)",
     [correo, interno, normas ? interno.split(" ")[0] : null, normas ? 1 : null, normas ? new Date() : null]);
   if (haza) await dueno.query("UPDATE hazas SET hogar_id = $1 WHERE codigo = $2", [await idDe(correo), haza]);
+}
+// la finca del fixture (sintética): sus copas como olivos medidos y las hazas sobre sus parcelas, cada parcela en dos
+if (finca) {
+  const d = JSON.parse(readFileSync(join(finca, "indice.json"), "utf8")) as { centro_utm: [number, number]; finca_id: string; copas: number[][]; copas_id: number[]; parcelas: { linde: number[][] }[] };
+  const [cx, cy] = d.centro_utm;
+  for (let i = 0; i < d.copas.length; i++) {
+    await dueno.query("INSERT INTO olivos (id_estable, geom, fuente) VALUES ($1, ST_SetSRID(ST_MakePoint($2, $3), 25830), 'lidar')", [d.finca_id + ":" + d.copas_id[i], cx + d.copas[i]![0]!, cy + d.copas[i]![1]!]);
+  }
+  let n = 1;
+  for (const p of d.parcelas) {
+    const xs = p.linde.map(q => q[0]!), ys = p.linde.map(q => q[1]!), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys), xm = (x0 + x1) / 2;
+    for (const [a, b] of [[x0, xm], [xm, x1]] as const) {
+      const wkt = "POLYGON((" + ([[a, y0], [b, y0], [b, y1], [a, y1], [a, y0]] as [number, number][]).map(([x, y]) => (cx + x) + " " + (cy + y)).join(",") + "))";
+      await dueno.query("UPDATE hazas SET geom = ST_Multi(ST_GeomFromText($1, 25830)), finca = $2 WHERE codigo = $3", [wkt, d.finca_id, "H-0" + n++]);
+    }
+  }
 }
 // una sesión abierta de Ruiz en un móvil
 await dueno.query("INSERT INTO sesiones (hogar_id, hash, expira_en, aparato_nombre) VALUES ($1, $2, now() + interval '7 days', 'Android · Chrome')",
@@ -96,6 +116,16 @@ servidor.on("request", (req, res) => {
                 (SELECT count(*)::int FROM sesiones s WHERE s.hogar_id = g.id AND s.revocada_en IS NULL AND s.expira_en > now()) AS sesiones
            FROM hogares g WHERE g.correo = $1`, [q.get("correo")])).rows[0];
       return json(res, h ? 200 : 404, h ?? { error: "no_existe" });
+    }
+    if (finca && ruta.startsWith("/teselas/hituelo/")) {
+      // la guarda del Caddy para las teselas: cualquier sesión válida
+      const g = await app.inject({ method: "GET", url: "/api/interno/autoriza", headers: { cookie: req.headers.cookie ?? "" } });
+      if (g.statusCode !== 204) { res.writeHead(g.statusCode); return void res.end(); }
+      const rel = normalize(ruta.slice("/teselas/hituelo/".length));
+      const f = join(finca, rel);
+      if (rel.startsWith("..") || !existsSync(f) || !statSync(f).isFile()) { res.writeHead(404); return void res.end(); }
+      res.writeHead(200, { "content-type": TIPOS[extname(f)] ?? "application/octet-stream", "cache-control": "no-store" });
+      return void res.end(readFileSync(f));
     }
     if (ruta === "/oficina") { res.writeHead(301, { location: "/oficina/" }); return void res.end(); }
     if (ruta.startsWith("/oficina/")) {

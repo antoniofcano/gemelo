@@ -19,5 +19,6 @@ export default defineConfig({
     sourcemap: false,
     modulePreload: { polyfill: false },
     assetsInlineLimit: 0,             // nada en data: ni en línea
+    chunkSizeWarningLimit: 700,       // el trozo de Hazas (OpenLayers + proj4, ≈ 560 kB) va aparte y solo se pide al entrar en la sección
   },
 });
