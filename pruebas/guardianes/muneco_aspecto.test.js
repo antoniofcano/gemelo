@@ -32,9 +32,10 @@ test("AV2: 10 tonos de piel, de muy claro a muy oscuro, sin huecos de más de 10
 });
 
 test("AV2: lo que llega por los metadatos se lee como dato (listas cerradas); sin género; lo raro toma el valor neutro", () => {
-  assert.deepStrictEqual(Aspecto.lee({ tono: 9, arriba: 0, abajo: 5, altura: "alta", complexion: "ancha", movilidad: "silla" }), { tono: 9, arriba: 0, abajo: 5, altura: "alta", complexion: "ancha", movilidad: "silla" });
+  // (AV4 añade la receta del creador: cuerpo, pelo, color de pelo, vello, ropa y accesorios; sin ella, nula: avatares_piezas.test.js)
+  assert.deepStrictEqual(Aspecto.lee({ tono: 9, arriba: 0, abajo: 5, altura: "alta", complexion: "ancha", movilidad: "silla" }), { tono: 9, arriba: 0, abajo: 5, altura: "alta", complexion: "ancha", movilidad: "silla", cuerpo: null, pelo: null, peloColor: null, vello: null, ropa: null, acc: [] });
   const raro = Aspecto.lee({ tono: 10, arriba: -1, abajo: 1.5, altura: "gigante", complexion: "__proto__", movilidad: "moto", sexo: "x", genero: "y" });
-  assert.deepStrictEqual(raro, { tono: null, arriba: null, abajo: null, altura: "media", complexion: "media", movilidad: "pie" });
+  assert.deepStrictEqual(raro, { tono: null, arriba: null, abajo: null, altura: "media", complexion: "media", movilidad: "pie", cuerpo: null, pelo: null, peloColor: null, vello: null, ropa: null, acc: [] });
   assert.ok(!("sexo" in raro) && !("genero" in raro), "ningún campo de género (C8)");
   for (const v of [null, undefined, "x", 3, []]) assert.strictEqual(Aspecto.lee(v).movilidad, "pie");
   const i = SalaPose.leeInfo(JSON.stringify({ alias: "Mirlo", avatar: { camisa: 2, sombrero: "gorra", piel: 3, tono: 4, movilidad: "baston", altura: "baja" } }));
@@ -84,10 +85,10 @@ test("AV2: la silla de ruedas — sentado como en el quad, sin paso, a la misma 
   assert.strictEqual(Muneco.avanza(Muneco.crea(), 0, 0, 0, 1 / 30, 100, 1, NaN, false, {}, 1, true).vehiculo, 1);
 });
 
-test("AV2: en el código — ruedas con su reserva, dos por silla, sin silla con VRM, lo elegido manda sobre el catálogo y ningún campo de género", () => {
+test("AV2: en el código — ruedas con su reserva, dos por silla, la silla también con VRM (AV4), lo elegido manda sobre el catálogo y ningún campo de género", () => {
   assert.match(FUENTE, /rRuedas = reserva\(mRuedas\)/, "las ruedas, una malla instanciada más con su reserva");
   assert.match(FUENTE, /rRuedas\.toma\(2\)/, "dos ruedas por silla");
-  assert.match(FUENTE, /a\.mov === "silla" && !a\.vrm/, "con VRM, de momento, sin silla (el VRM de cerca no cambia)");
+  assert.match(FUENTE, /outMu, o\.modo, a\.mov === "silla"\);/, "AV4: con VRM también va sentado en su silla (26b_avatares.js lo sienta)");
   assert.match(FUENTE, /camisa != null && !a\.propioCamisa[^\n]*piel != null && !a\.propioPiel/, "lo que eligió la persona manda sobre el catálogo VRM");
   assert.match(FUENTE, /malla\.count = n; malla\.visible = n > 0/, "sin sombreros ni sillas, esa malla no se dibuja");
   const asp = FUENTE.slice(FUENTE.indexOf("var Aspecto"), FUENTE.indexOf("var SalaPose"));
