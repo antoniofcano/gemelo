@@ -125,6 +125,14 @@ test("caché de recetas (O5): clave estable y distinta por época, semilla y ver
   t.diagnostic("clave: " + r.diag.clave);
 });
 
+test("caché de recetas (O5): expulsar libera, invalidación por versión, fallos del almacén y propiedades (fast-check)", { timeout: 120000 }, async t => {
+  if (SALTO) return t.skip(SALTO);
+  const r = json(await nodo([path.join("pruebas", "olivo", "cache_props.mjs")]));
+  assert.ok(!r.error, r.error);
+  assert.deepStrictEqual(r.mal, []);
+  t.diagnostic(JSON.stringify(r.diag));
+});
+
 test("semilla guardada (copas_semilla) y nombres de catálogo de los tipos", t => {
   if (SALTO) return t.skip(SALTO);
   const { python } = require("./_util");

@@ -28,7 +28,7 @@ export { huella, huellaNiveles, huellaEstructura, diferenciaMax } from "./huella
 export { creaMateriales, MATERIALES, encadena, CALIBRACION_LINEAL } from "./materiales.js";
 export { cargaFotos, FOTOS } from "./texturas.js";
 export { hornear, glb } from "./hornear.js";
-export { creaCache, claveReceta, bytesReceta, CACHE_VERSION } from "./cache.js";
+export { creaCache, claveReceta, bytesReceta, CACHE_VERSION, PREFIJO_CLAVE } from "./cache.js";
 export { FORMATO as FORMATO_HORNEADO, TOPES as TOPES_HORNEADO, codifica, decodifica, leeCabecera, huellaBytes, verificaHuella, perdida, igualEstructura, codificaManifiestoTesela, decodificaManifiestoTesela } from "./horneado.js";
 export { ORDEN_EPOCAS, tablaDe, epocaDeFecha, siguienteEpoca, validaTabla } from "./epocas.js";
 export { IMPOSTOR, direccionDeVista, octaDeDireccion, vistaContinua, baseDeVista, celdaUV, celdaPixeles, claveImpostor, validaFilaImpostor } from "./impostor.js";
