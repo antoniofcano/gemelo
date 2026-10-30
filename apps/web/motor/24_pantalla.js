@@ -1,24 +1,42 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: pant, TR, suave, iniciaTransicion, transEntrada, aterriza, iniciaSalida, transSalida
-// Consume: 01_datos ($), 03_escena (visor, camera), 12_paseo (paseando, persona), 15_tiempo (hace), 16_vida (altSuelo), 20_sonido (snd, sPaso),
-//   22_huellas (emitePolvo, sueloSeco), 25_perros (perrosLlegan), 29_vr (panel), 90_final (tamano)
+// Expone: TR, suave, iniciaTransicion, transEntrada, aterriza, iniciaSalida, transSalida
+// Consume: 01_datos ($), 03_escena (visor, camera), 12_paseo (paseando, persona), 16_vida (altSuelo), 20_sonido (snd, sPaso),
+//   22_huellas (emitePolvo, sueloSeco), 25_perros (perrosLlegan)
 // ===============================================================================
-  // ---------- pantalla completa del visor (con botón para volver a la página) y la transición de la cámara entre el mapa y el paseo
-  var pant = { on: false };
-  function pantallaCompleta(v) {
-    pant.on = v; visor.classList.toggle("pantalla", v); document.documentElement.classList.toggle("sin-scroll", v);
-    var b = $("btnPantalla"); b.setAttribute("aria-pressed", String(v)); b.textContent = v ? "✕ Volver" : "⛶"; b.title = v ? "Volver a la página" : "Pantalla completa";
-    // pantalla completa de verdad si el navegador la deja (en el iPhone no la hay para esto: queda la del propio visor, que ocupa toda la ventana)
-    try {
-      if (v && visor.requestFullscreen && !document.fullscreenElement) { var pr = visor.requestFullscreen(); if (pr && pr.catch) pr.catch(function () {}); }
-      if (!v && document.fullscreenElement && document.exitFullscreen) { var pe = document.exitFullscreen(); if (pe && pe.catch) pe.catch(function () {}); }
-    } catch (e) {}
-    setTimeout(tamano, 60); setTimeout(tamano, 350);
-  }
-  (function () {
-    $("btnPantalla").addEventListener("click", function () { pantallaCompleta(!pant.on); });
-    document.addEventListener("fullscreenchange", function () { if (!document.fullscreenElement && pant.on) pantallaCompleta(false); });
-    window.addEventListener("keydown", function (e) { if (e.code === "Escape" && pant.on && !paseando) pantallaCompleta(false); }, true);   // en la fase de captura: el primer Escape sale del paseo y el segundo, de la pantalla completa
+  // ---------- la página ES el visor (decisión 83): el menú (☰ o Esc) y la pantalla completa de verdad
+  // El menú es un <dialog> nativo y modal: atrapa el foco y Esc lo cierra solo. Pestañas con el patrón ARIA (flechas, Inicio, Fin).
+  // Configuración la rellena 33_ajustes.js (#menuAjustes); Créditos y «Acerca de la finca» vienen escritos en la plantilla.
+  var Menu = (function () {
+    var dlg = $("menu"), pestanas = dlg ? Array.prototype.slice.call(dlg.querySelectorAll('#menuPestanas [role="tab"]')) : [], vuelta = null;
+    var NOMBRE = { ajustes: "menuPestAjustes", creditos: "menuPestCreditos", finca: "menuPestFinca" };
+    function eligePest(t, foco) {
+      pestanas.forEach(function (p) { var si = p === t; p.setAttribute("aria-selected", String(si)); p.tabIndex = si ? 0 : -1; var pnl = $(p.getAttribute("aria-controls")); if (pnl) pnl.hidden = !si; });
+      if (foco) t.focus();
+    }
+    function abre(cual) {
+      if (!dlg) return;
+      if (!dlg.open) { vuelta = document.activeElement; try { dlg.showModal(); } catch (e) { dlg.setAttribute("open", ""); } }
+      var t = $(NOMBRE[cual] || "") || pestanas.filter(function (p) { return p.getAttribute("aria-selected") === "true"; })[0] || pestanas[0];
+      if (t) eligePest(t, true);
+    }
+    function cierra() { if (dlg && dlg.open) dlg.close(); }
+    if (dlg) {
+      pestanas.forEach(function (p, i) {
+        p.addEventListener("click", function () { eligePest(p, false); });
+        p.addEventListener("keydown", function (e) {
+          var k = e.key, n = pestanas.length, j = k === "ArrowDown" || k === "ArrowRight" ? (i + 1) % n : k === "ArrowUp" || k === "ArrowLeft" ? (i + n - 1) % n : k === "Home" ? 0 : k === "End" ? n - 1 : -1;
+          if (j < 0) return; e.preventDefault(); e.stopPropagation(); eligePest(pestanas[j], true);
+        });
+      });
+      dlg.addEventListener("keydown", function (e) { if (e.key !== "Escape") e.stopPropagation(); });   // dentro del menú, pulsar no mueve al paseante
+      dlg.addEventListener("close", function () { if (vuelta && vuelta.focus && document.contains(vuelta)) vuelta.focus({ preventScroll: true }); vuelta = null; });
+      dlg.addEventListener("click", function (e) { if (e.target === dlg) cierra(); });   // un toque fuera de la caja (en el fondo) cierra
+      var bv = $("menuVolver"); if (bv) bv.addEventListener("click", cierra);
+      var ba = $("menuAereo"); if (ba) ba.addEventListener("click", function () { cierra(); if (paseando) $("btnPaseo").click(); });
+      var bm = $("bMenu"); if (bm) bm.addEventListener("click", function () { abre(); });
+      var at = $("hudAtrib"); if (at) at.addEventListener("click", function () { abre("creditos"); });
+    }
+    return { abre: abre, cierra: cierra, abierto: function () { return !!(dlg && dlg.open); } };
   })();
 
   // --- del mapa al paseo: la cámara baja volando desde donde estaba hasta detrás del muñequito, que cae desde el cielo y rebota al aterrizar
@@ -54,9 +72,3 @@
     camera.position.lerpVectors(TR.pS, camera.position.clone(), s); qObj.copy(camera.quaternion); camera.quaternion.copy(TR.qS).slerp(qObj, s);
     if (TR.ts > TR.durS) TR.sal = false;
   }
-
-  (function () {   // el botón de pasear del visor hace lo mismo que el del panel y guarda su texto
-    var v = $("btnPaseoV"); if (!v) return; v.addEventListener("click", function () { $("btnPaseo").click(); });
-    new MutationObserver(function () { var on = $("btnPaseo").getAttribute("aria-pressed") === "true"; v.setAttribute("aria-pressed", String(on)); v.textContent = on ? "✕ Salir del paseo" : "🚶 Pasear"; }).observe($("btnPaseo"), { attributes: true, attributeFilter: ["aria-pressed"] });
-  })();
-

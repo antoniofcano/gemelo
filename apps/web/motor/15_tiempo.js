@@ -391,12 +391,7 @@
   (function () {
     $("tMomento").addEventListener("input", function () { TM.idx = Number($("tMomento").value); TM.modo = TM.idx === TM.ahoraIdx ? "ahora" : "prevision"; refrescaTiempo(); });
     $("tAhora").addEventListener("click", function () { TM.demo = ""; $("tDemo").value = ""; TM.modo = "ahora"; TM.idx = TM.ahoraIdx; $("tMomento").value = TM.idx; refrescaTiempo(); });
-    function salta(horas) { var h = TM.prev && TM.prev.horas; if (!h) return; TM.idx = Math.min(h.length - 1, TM.ahoraIdx + horas); TM.modo = "prevision"; $("tMomento").value = TM.idx; refrescaTiempo(); }
-    $("tMas6").addEventListener("click", function () { salta(6); });
-    $("tManana").addEventListener("click", function () { // mañana a las 12:00 locales
-      var h = TM.prev && TM.prev.horas; if (!h) return; var man = fmtClaveDia.format(new Date(Date.now() + 86400000)), i = -1;
-      h.forEach(function (x, k) { if (fmtClaveDia.format(new Date(x.instante)) === man && fmtHora.format(new Date(x.instante)) === "12:00") i = k; }); if (i >= 0) { TM.idx = i; TM.modo = "prevision"; $("tMomento").value = i; refrescaTiempo(); }
-    });
+    // «+6 h» y «Mañana a las 12:00» se quitaron (decisión 89): el deslizador «Momento» y «Ahora» bastan
     $("tDemo").addEventListener("change", function () { TM.demo = $("tDemo").value; refrescaTiempo(); });
     var reloj = null;
     $("tPlay").addEventListener("click", function () {
