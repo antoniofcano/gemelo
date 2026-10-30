@@ -51,7 +51,7 @@ function contexto(busqueda, reloj, extra) {
   const ctx = Object.assign({
     THREE, console, performance: reloj || performance, Promise, Math, Object, Number, String, Error, Float32Array, Uint8Array,   // los del módulo del olivo (instanceof entre contextos vm)
     location: { search: busqueda }, window: { OlivoGen: O },
-    gArboles: new THREE.Group(), D: { copas: [], centro_utm: [0, 0] }, VRP: { on: false }, FACTOR_R8: 0.5, exag: 1,
+    gArboles: new THREE.Group(), D: { copas: [], centro_utm: [0, 0] }, VRP: { on: false }, FACTOR_R8: 0.5, FACTOR_R8_GEN: 1, exag: 1,
     suelo: () => 0, camera: { position: new THREE.Vector3(0, 10, 0) },
     Cola: { add: () => { throw new Error("los generados no deben usar la Cola compartida"); }, hay: () => false }, cola
   }, extra || {});
@@ -92,7 +92,8 @@ for (const n of COLOR) {
   exige(/gl_FragColor\.rgb \*= vSomb/.test(sh.fragmentShader) && /uHielo \* 0\.6/.test(sh.fragmentShader) || n === "puntos", n + ": sin sombra de nubes ni escarcha en el fragmento");
   exige(!/ot_sombra\(position\.xz\)/.test(sh.vertexShader) && /vSomb = ot_sombra\(\(modelMatrix \* ot_w\)\.xz\)/.test(sh.vertexShader), n + ": la sombra de nubes no va en posición del mundo");
   exige(/ot_lin\(vColor\.rgb\)/.test(sh.vertexShader) && /USE_BATCHING_COLOR \) && ! defined/.test(sh.vertexShader), n + ": el color por instancia no se lee en sRGB");
-  exige(/discard;/.test(sh.fragmentShader) && /ot_ign\(gl_FragCoord\.xy\)/.test(sh.fragmentShader) && /vFun = aFun/.test(sh.vertexShader), n + ": sin el tramado del fundido");
+  exige(/discard;/.test(sh.fragmentShader) && /ot_ign\(gl_FragCoord\.xy\)/.test(sh.fragmentShader) && /ot_c = aFun/.test(sh.vertexShader) && /ot_d >= vFr/.test(sh.fragmentShader), n + ": sin el tramado del fundido");
+  exige(sh.uniforms.uBanda && sh.uniforms.uBanda === c.__G._prueba.uBanda && /uBanda\[ot_si \/ 4\]/.test(sh.vertexShader), n + ": sin el peso por banda (O9c)");
   exige(m.customProgramCacheKey().includes("gen-luz-fundido"), n + ": clave de programa sin el parche");
   if (m.map) exige(m.map.colorSpace === THREE.SRGBColorSpace, n + ": textura sin marcar como sRGB");
 }
@@ -100,7 +101,7 @@ exige(Math.abs(mats.pies.color.r - lin(0xbd / 255) * O.CALIBRACION_LINEAL.cortez
 exige(Math.abs(mats.relleno.color.r - O.CALIBRACION_LINEAL.follaje) < 1e-6, "el follaje sin la calibración de la luz lineal (decisión 70): " + mats.relleno.color.r);
 for (const m of SOMBRA.map(n => mats[n]).concat([prof.corteza, prof.muerta])) {
   const sh = compila(m);
-  exige(sh.uniforms.uFun === c.__G._prueba.uFun && /discard;/.test(sh.fragmentShader), m.type + ": la sombra no lleva el fundido");
+  exige(sh.uniforms.uFun === c.__G._prueba.uFun && sh.uniforms.uBanda === c.__G._prueba.uBanda && /discard;/.test(sh.fragmentShader), m.type + ": la sombra no lleva el fundido");
   exige(!sh.uniforms.uHielo, "la sombra no debe llevar la escarcha");
 }
 exige(/#include <common>\n#include <common>/.test(compila(mats.pies).vertexShader) === false, "parche duplicado");
@@ -198,7 +199,7 @@ const PASO_MS = Number(process.env.GEMELO_PASEO_PASO || 0.6);
 }
 
 // ---- 3) con la bandera: el lote y el fundido (tres olivos de prueba; el foco en el primero)
-const perfil = [2, 2, 2, 2, 2, 2, 2, 2];
+const perfil = [1, 1, 1, 1, 1, 1, 1, 1];   // r8 medio 1 m: copa de 2 m con FACTOR_R8_GEN = 1 (la misma que con 2 m y el 0,5 de antes: el TOPE de abajo está hecho a ella)
 c.D.copas = [[0, 0, 4.5, perfil, 1], [9, 0, 4, perfil, 1], [0, 30, 4, perfil, 1]];
 const olivos = c.D.copas.map((q, i) => ({ i, x: q[0], y: q[1], h: q[2], perfil: q[3] }));
 c.__G.actualiza(0, 0, 160000 / 0.45 * 1.05, olivos);

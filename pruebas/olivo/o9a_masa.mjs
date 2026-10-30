@@ -4,8 +4,8 @@
 //   node pruebas/olivo/o9a_masa.mjs [--capturas <carpeta>] [--lados 512,128]   → JSON por stdout (resumen legible por stderr)
 // Olivos (envero, semillas fijas): adulto1 1003 y centenario3 7 con los parámetros de su tipo, y un centenario3 «medido» como lo pide el motor
 // (copas_param del fixture de Hituelo: h 3,8, copa_m 4,3 = 2 × r8 medio) con, además, lo que el motor dibuja de él lejos: la variante E2
-// (semilla 11) estirada a 2 × r8 × factorR8 (0,5 → 2,15 m) y altura 4,0, la misma a factorR8 = 1 (4,3 m, para separar forma de anchura),
-// su E2-VR, y el impostor emulado de esa variante.
+// (semilla 11) a la copa del propio (4,3 m, O9b-0, decisión 81) y altura 4,0, la de antes (2 × r8 × 0,5 = 2,15 m), su E2-VR, y el impostor
+// emulado de esa variante. Las hojas llevan los mipmaps que conservan la cobertura (ADR-0022 §6); «… GPU» repite el olivo con los de la GPU.
 import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
@@ -30,12 +30,14 @@ const CFG = { lados: LADOS, olivos: [
   { nombre: "centenario3-7", entrada: { tipo: "centenario3", epoca: "envero", semilla: 7 } },
   { nombre: "medido-1003", entrada: { tipo: "centenario3", epoca: "envero", semilla: 1003, parametros: { altura: 3.8, copa: 4.3, densidad: 0.85, falda: 0.7, relieve: 0.22, asim: 0 } },
     variantes: [
-      { etiqueta: "var11-E2 r8×0,5", semilla: 11, copa: 2.15, altura: 4.0 },
-      { etiqueta: "var11-E2 r8×1", semilla: 11, copa: 4.3, altura: 4.0 },
-      { etiqueta: "var11-E2VR r8×0,5", semilla: 11, nivel: "E2VR", copa: 2.15, altura: 4.0 },
-      { etiqueta: "impostor var11 r8×0,5", semilla: 11, copa: 2.15, altura: 4.0, impostor: true },
-      { etiqueta: "impostor var11 r8×1", semilla: 11, copa: 4.3, altura: 4.0, impostor: true }
-    ] }
+      { etiqueta: "var11-E2 copa del propio (motor)", semilla: 11, copa: 4.3, altura: 4.0 },
+      { etiqueta: "var11-E2 r8×0,5 (antes)", semilla: 11, copa: 2.15, altura: 4.0 },
+      { etiqueta: "var11-E2VR copa del propio (motor)", semilla: 11, nivel: "E2VR", copa: 4.3, altura: 4.0 },
+      { etiqueta: "impostor var11 copa del propio (motor)", semilla: 11, copa: 4.3, altura: 4.0, impostor: true }
+    ] },
+  { nombre: "centenario3-7 GPU", mipsGPU: true, entrada: { tipo: "centenario3", epoca: "envero", semilla: 7 } },
+  { nombre: "medido-1003 GPU", mipsGPU: true, entrada: { tipo: "centenario3", epoca: "envero", semilla: 1003, parametros: { altura: 3.8, copa: 4.3, densidad: 0.85, falda: 0.7, relieve: 0.22, asim: 0 } },
+    variantes: [{ etiqueta: "var11-E2 copa del propio (motor)", semilla: 11, copa: 4.3, altura: 4.0 }] }
 ] };
 
 const s = await sirve(RAIZ), nav = await lanza();

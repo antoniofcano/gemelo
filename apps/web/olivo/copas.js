@@ -32,8 +32,9 @@ const acota = (k, v) => Math.min(RANGOS[k][1], Math.max(RANGOS[k][0], v));
 /**
  * Parámetros del generador para un árbol. `param` es su fila de copas_param (o null) y `tipo` su tipo (copas_tipo → TIPO_DE_ID) o el que se
  * elija; sin tipo, "centenario3" (como la maqueta). Sin fila de parámetros, solo altura y copa salen del registro (h y r8).
- * `opciones.factorR8`: radio dibujado = r8 × factorR8, como el FACTOR_R8 del motor (apps/web/motor/01_datos.js). r8 es el RADIO medido; por defecto
- * 0,5 (como dibuja hoy el motor: copa = media de r8); 1 = la copa a su radio medido (copa = 2 × media de r8). Decisión abierta nº 48.
+ * `opciones.factorR8`: radio dibujado = r8 × factorR8. r8 es el RADIO medido; por defecto 0,5 (copa = media de r8, como el nivel de siempre del
+ * motor, decisión 48); 1 = la copa a su radio medido (copa = 2 × media de r8): lo que pide el motor para sus olivos generados (FACTOR_R8_GEN de
+ * apps/web/motor/01_datos.js, decisión 81).
  * @returns {{tipo, parametros, origen: {campo: "medido"|"deducido"|"tipo"}}}
  */
 export function parametrosDeCopa(copa, param, tipo, opciones) {

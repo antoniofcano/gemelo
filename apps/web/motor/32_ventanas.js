@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Ventanas
 // Consume: 01_datos ($), 03_escena (lienzo, visor), 08_marcadores (capas), 12_paseo (paseando, persona), 14_historia (FINCA, lista),
-//   22_huellas (hSig), 29_vr (panel)
+//   22_huellas (hSig), 29_vr (panel), 34_movibles (Movibles)
 // ===============================================================================
   // ---------- las ventanas (doc/sistema/UX-FINCA-JUEGO.md §4.4, decisión 87): una grande a la vez, no modales (el mundo sigue vivo y se puede andar con el
   // teclado). Lateral bajo la barra en escritorio; hoja inferior (≤ 72 % del alto) en móvil vertical, que esconde la cruceta; lateral alto en móvil horizontal,

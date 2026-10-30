@@ -2,7 +2,7 @@
 // Expone: Hud
 // Consume: 01_datos ($), 02_mundo (copas), 03_escena (lienzo, visor, camera, modo), 08_marcadores (capas), 09_camara (orb),
 //   12_paseo (paseando, teclas), 14_historia (FINCA, aviso), 15_tiempo (meta, rumbo, esc), 16_vida (enQuad, quad, ponQuad, enDron, dron, ponDron),
-//   24_pantalla (Menu), 29_vr (VRX, ficha), 32_ventanas (Ventanas), 33_ajustes (Ajustes)
+//   24_pantalla (Menu), 29_vr (VRX, ficha), 32_ventanas (Ventanas), 33_ajustes (Ajustes), 34_movibles (Movibles)
 // ===============================================================================
   // ---------- el HUD (doc/sistema/UX-FINCA-JUEGO.md §4.3): estado arriba a la izquierda (brújula, cómo te mueves, el tiempo), barra de iconos arriba a la
   // derecha, avisos arriba en el centro, «Pasear» y la atribución abajo en el centro. Es HTML y CSS: no toca triángulos ni llamadas de dibujo.
