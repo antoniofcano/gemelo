@@ -1,6 +1,6 @@
 # Avatares para toda la familia
 
-**Estado:** propuesta (2026-10-30), pendiente de Antonio. Parte de la pregunta «¿tenemos biblioteca de avatares?» y de la petición de que sean **sobrios**, pensados como un **juego familiar** (madres y padres, abuelas y abuelos, nietas y nietos), **inclusivos** y **nada heteropatriarcales**. Maqueta: [../../prototipos/avatares/index.html](../../prototipos/avatares/index.html) (un solo fichero, datos ficticios, figuras planas en SVG).
+**Estado:** decidida (decisiones 127-135, 2026-10-30); **AV3 hecha** (los 12 cuerpos base, §12). Parte de la pregunta «¿tenemos biblioteca de avatares?» y de la petición de que sean **sobrios**, pensados como un **juego familiar** (madres y padres, abuelas y abuelos, nietas y nietos), **inclusivos** y **nada heteropatriarcales**. Maqueta: [../../prototipos/avatares/index.html](../../prototipos/avatares/index.html) (un solo fichero, datos ficticios, figuras planas en SVG).
 
 Encaja con: [ADR-0020](../adr/0020-avatares-vrm.md) (VRM cerca, muñeco lejos), el contrato [avatares](../../contratos/avatares.md) (catálogo cerrado con `sha256`), el motor `apps/web/motor/26b_avatares.js` y `apps/web/motor/26_presencia.js`, y las decisiones 45 (sin cuentas de menores), 73 (sobrios, propios), 74 (CC0 provisionales), 75 (sin subida propia) y 76 (paseante = avatar) de [DECISIONS-PENDING](../rumbo/DECISIONS-PENDING.md).
 
@@ -16,6 +16,7 @@ Encaja con: [ADR-0020](../adr/0020-avatares-vrm.md) (VRM cerca, muñeco lejos), 
 9. [La maqueta](#9-la-maqueta)
 10. [Decisiones para Antonio](#10-decisiones-para-antonio)
 11. [Lo que no está probado](#11-lo-que-no-está-probado)
+12. [Fase AV3: los cuerpos base (hecho)](#12-fase-av3-los-cuerpos-base-hecho)
 
 ## 1. Respuesta corta
 **No tenemos biblioteca.** Hay 4 VRM CC0 **provisionales** de 100Avatars (fuera del repo, `tuberia/avatares/fuentes.json`) y el muñeco de bloque. Ninguna colección abierta que hayamos encontrado cumple a la vez «sobrio», «de campo», «todas las edades» y «licencia limpia para una empresa»; las que tienen licencia limpia (CC0) parten de cuerpos base **«male / female»** y de dos o tres edades, y las que tienen variedad son de estilo anime o fantasía.
@@ -160,8 +161,86 @@ La decisión 45 dice **no a perfiles de menores** (se reabre con asesoría y la 
 
 ## 11. Lo que no está probado
 - **Nada de esta propuesta tiene código** fuera de la maqueta. Las cifras de llamadas, triángulos y memoria del §6 son **estimadas**.
-- Los cuerpos MPFB estilizados no se han hecho; que quepan en ≤ 12 k triángulos con edad y complexión **[SUPUESTO]**.
+- ~~Los cuerpos MPFB no se han hecho~~: hechos en AV3 (§12), ≈ 11,8 k triángulos; el estilizado (que se vea sobrio y no «de plástico») está **por revisar a ojo**.
 - La variedad real de los 300 de 100Avatars no se ha revisado uno a uno **[NO VERIFICADO]**.
 - La licencia pack a pack de Quaternius (fuera de Universal Base Characters), el formato glTF de Kenney y el uso corporativo de las piezas de serie de VRoid Studio **[NO VERIFICADO]**.
 - La silla, el bastón y el andador en el VRM; el tinte por material en three-vrm (MToon) **no probados**. Nada en iPhone ni en Quest.
 - C12 (que una abuela, un padre y una nieta se reconozcan) solo lo puede decir una prueba con personas (👤).
+
+## 12. Fase AV3: los cuerpos base (hecho)
+**Hecho el 2026-10-30** (decisiones 128-132). Doce cuerpos base generados por un agente con Blender sobre MPFB, exportados a VRM 1.0, que pasan la tubería de siempre y cargan en three-vrm. **Ninguno se ofrece todavía**: el acabado lo revisa Antonio a ojo (decisión 130) con las capturas, y el contrato v2 y la pantalla son de AV4.
+
+### Herramientas (fuera del repo, versiones fijadas)
+| Pieza | Versión | Licencia | De dónde | Comprobación |
+|---|---|---|---|---|
+| Blender | **5.2.3 LTS** (la LTS vigente; 4.5 LTS sigue con soporte) | GPL-3.0-or-later | zip portable de download.blender.org (winget pedía elevación y se quedó esperando la confirmación de UAC) | SHA-256 `723f08a4…5dc2fb`, igual al publicado en `blender-5.2.3.sha256` |
+| MPFB (MakeHuman) | **2.0.18** | código GPL-3.0-or-later; **activos del núcleo (malla base, targets, esqueletos, poses) CC0** | extensions.blender.org | SHA-256 `c075b3e9…8a2dad` (el de la URL de descarga) |
+| VRM Add-on for Blender | **4.10.3** (Blender 4.2-5.3) | MIT o GPL-3.0-or-later (elegimos MIT) | extensions.blender.org | SHA-256 `cbcc06d6…47bf9f5` |
+
+Blender va como carpeta portable (con su `portable/` al lado, así que los complementos y preferencias no tocan el perfil del usuario); en el repo **solo** van los guiones. Las rutas de este equipo no se escriben en el repo (regla 4); cada cual pone las suyas.
+
+### Cómo se regenera
+```
+# una vez: los dos complementos en el Blender portable
+blender --background --command extension install-file -r user_default -e add-on-mpfb-v2.0.18.zip
+blender --background --command extension install-file -r user_default -e add-on-vrm-v4.10.3.zip
+# los 12 cuerpos (≈ 2 min) y las capturas, por el banco (espera 1,5 GB libres y el turno; no coincide con Chrome ni Docker)
+node pruebas/banco/proceso.js --que "AV3 cuerpos" -- blender --background --python-exit-code 1 --python tuberia/avatares/creador/cuerpos.py -- --salida <fuera del repo>
+node pruebas/banco/proceso.js --que "AV3 capturas" -- blender --background --python-exit-code 1 --python tuberia/avatares/creador/capturas.py -- --origen <la misma> --salida pruebas/salida/capturas-avatares-cuerpos
+# comprobación: tubería (licencia, optimización, topes) + three-vrm 3.5.5 en Node + tabla
+node tuberia/avatares/creador/comprueba.mjs --origen <la misma>
+```
+`cuerpos.py` deja `<id>.vrm`, `<id>.avatar.json` (lo que lee `construye.mjs`, más `cuerpo: {edad, complexion, ofrecer, mpfb}`) y `cuerpos.json` (versiones y medidas). Es determinista: la reducción «collapse» no usa azar. `pruebas/guardianes/avatares_creador.test.js` vigila el guion sin Blender y, con `GEMELO_AVATARES_CUERPOS=<carpeta>`, pasa `comprueba.mjs`.
+
+### Qué hace el guion y por qué
+- **Deslizadores de MPFB** (de 0 a 1; la edad va de 1 a 90 años por tramos):
+
+  | Edad | `age` | ≈ años | ¿Se ofrece? |
+  |---|---|---|---|
+  | peque | 0,13 | 8 | **no** (decisión 132, hasta reabrir la 45) |
+  | joven | 0,32 | 17 | sí, tras la revisión a ojo |
+  | adulta | 0,62 | 40 | ídem |
+  | mayor | 0,88 | 75 | ídem |
+
+  | Complexión | `weight` | `muscle` |
+  |---|---|---|
+  | delgada | 0 | 0,35 |
+  | media | 0,5 | 0,5 |
+  | ancha | 1 | 0,65 |
+
+  En la primera tanda se usó 0,25/0,5/0,85 de peso: la cintura cambiaba un 6 % de delgada a ancha (medido sobre el VRM) y a ojo no se distinguían, así que se usa el recorrido entero. **Sin sexo como parámetro:** `gender` = 0,5 en los doce (el valor central de MPFB), y `cupsize`, `firmness`, `proportions` y `height` en su centro; la altura la escala el motor (±7 %). `race` = ⅓ africana, ⅓ asiática, ⅓ europea (el valor por defecto de MPFB): ningún rasgo étnico marcado; el tono lo pone el motor. Lo que distingue a cada cual (pelo, vello, ropa, accesorios, para cualquier cuerpo) es AV4. **A revisar a ojo:** el valor central de `gender` deja un pecho leve en los cuerpos adultos; si se prefiere otra figura común (o variar la silueta sin etiquetarla), es un cambio de un número.
+- **Expresiones:** `blink` (párpados) y `aa` (boca abierta) salen de los targets de expresión de MPFB (CC0), promediando sus tres variantes (`african`, `asian`, `caucasian`) para no elegir una.
+- **Esqueleto:** el `game_engine` de MPFB con sus pesos, llevado a la **pose en T** de MPFB y aplicado como reposo; mapa explícito a los huesos humanoides de VRM 1.0 (los 15 obligatorios, hombros, pecho superior, dedos de pie y los 30 de los dedos). No tiene huesos de ojos: la mirada va por expresión (`lookAt.type = expression`, vacía), así que `VRMLookAt` de 26b no mueve los ojos de estos cuerpos.
+- **Malla:** fuera dientes, lengua, pestañas y ayudas; ojos en malla aparte, al hueso `head`. Reducción Decimate «collapse» simétrica en X hasta 10.000 triángulos (la malla entera de MPFB tiene 26.756; los cortes de la ropa suben a ≈ 11.800) y `blink`/`aa` reconstruidos con los 3 vecinos más cercanos de la malla entera.
+- **Materiales lisos, sin texturas (decisión 128):** `piel` y `ropa_base` en blanco para que el motor multiplique por el color elegido (tono de piel, color de ropa), y `ojos` oscuro. **`ropa_base`** es una camiseta de manga corta y un pantalón hasta encima de la rodilla, con cortes rectos sacados del esqueleto (`RODILLA`, `CUELLO`, `MANGA`, `ESCOTE`): ningún cuerpo va desnudo mientras no haya ropa de verdad (AV4), y deja ver la complexión.
+- **Meta VRM 1.0:** CC0-1.0, `avatarPermission = everyone`, `commercialUsage = corporation`, redistribución y modificación permitidas, crédito no necesario; autor «Cano & Damas Oleicultores (gemelo; generado con MakeHuman/MPFB)». `construye.mjs` lo acepta sin excepciones.
+
+### Cifras (medidas el 2026-10-30)
+Con `comprueba.mjs` (tubería con cuantización, como el catálogo; three-vrm 3.5.5 + three 0.186.1 en Node). Los doce **pasan la licencia y los topes** y **three-vrm los carga** (meta 1.0, los 15 huesos obligatorios, `blink` y `aa` mueven su morph, el brazo baja desde la T).
+
+| Edad | Complexión | ¿Se ofrece? | Altura | Triángulos | Primitivas | Materiales | Texturas | Peso | Tras gzip |
+|---|---|---|---|---|---|---|---|---|---|
+| peque | delgada / media / ancha | **no** (132) | 1,11 m | 11.814 / 11.824 / 11.864 | 3 | 3 | 0 | 461-463 kB | 166-167 kB |
+| joven | delgada / media / ancha | tras revisión | 1,46 m | 11.744 / 11.696 / 11.780 | 3 | 3 | 0 | 458-461 kB | 164-165 kB |
+| adulta | delgada / media / ancha | tras revisión | 1,66 m | 11.722 / 11.774 / 11.842 | 3 | 3 | 0 | 460-464 kB | 164-166 kB |
+| mayor | delgada / media / ancha | tras revisión | 1,65 m | 11.824 / 11.832 / 11.896 | 3 | 3 | 0 | 462-465 kB | 166-167 kB |
+
+- **Presupuesto:** ≤ 12.000 triángulos, 3 materiales y 0 texturas por cuerpo (`PRESUPUESTO_CUERPO` de `comprueba.mjs`), por debajo del objetivo de la tubería (15.000) para dejar sitio a pelo y ropa. Con los 3 VRM del Quest de 26b: ≈ 36 k triángulos y 9 primitivas, sin memoria de texturas. **Holgura justa:** la reducción deja 10.000 y los cortes rectos de la ropa añaden ≈ 1.700; con pelo y ropa (AV4) habrá que bajar el cuerpo o fundir piezas.
+- **Complexión:** media anchura de la cintura del adulto 0,124 / 0,141 / 0,152 m (delgada / media / ancha; +23 % de punta a punta).
+- **Edad:** la altura sale de MPFB (1,11 / 1,46 / 1,66 / 1,65 m). La de «mayor» apenas se distingue de «adulta» a ojo (C1 pide algo más baja y una leve curvatura): **a revisar**; se puede subir `age` o añadir un target de postura.
+
+### Capturas
+En `pruebas/salida/capturas-avatares-cuerpos/` (no se versionan): `frente.png` (los 12 en fila, peque → mayor y delgada → ancha, con su altura), `tres-cuartos.png` y `cara-<edad>.png` (complexión media). Render de Workbench (luz de estudio, colores de material; los tonos más oscuros salen más apagados que en el motor, y la toma de tres cuartos corta al último); **tonos de piel y colores de ropa ilustrativos**: una escala de 10 tonos y siete colores con nombre de campo (verde olivo, tierra, almagra, trigo, cielo, cal, adelfa), no la paleta de AV4.
+
+### Para AV4 (no es de cuerpos)
+- ADR y contrato `avatares` v2 (decisión 135): `cuerpos[]` con `edad`, `complexion` y **`ofrecer`** (los peques, `false`), paletas y receta. Hoy los cuerpos solo caben en v1 como `avatares[]` (máximo 12, sin `ofrecer`): **no se publican así**.
+- El tinte en el motor: `piel` y `ropa_base` por nombre de material (color del material de three-vrm); el muñeco lejano con los colores de la receta.
+- Pelo, vello, ropa de faena y accesorios como piezas con el mismo esqueleto `game_engine` (y por edad: los peques tienen otras longitudes); repertorio de combinaciones en la tubería (decisión 128).
+- Huesos de ojos (o expresiones `lookLeft/Right/Up/Down`) si se quiere mirada; más expresiones (`ih`, `ou`, `happy`…) desde los mismos targets.
+- La pantalla de elección, sin peques (132) y sin «hombre/mujer» (C8).
+
+### Lo que no está probado (AV3)
+- **El acabado no lo ha revisado una persona** (decisión 130): las capturas están para eso.
+- Nada en un navegador con GPU, iPhone ni Quest: three-vrm se probó en Node, sin dibujar. El coste en el Quest (3 VRM a la vez según 26b) es de recuento: ≈ 11,8 k triángulos y 3 primitivas por cuerpo, sin texturas.
+- `blink` y `aa` reconstruidos tras la reducción: que cierren bien los ojos y abran la boca **no se ha visto animado**; three-vrm confirma que mueven su morph.
+- Los pesos se recortan a 4 influencias por vértice al exportar (aviso del exportador de glTF); en las capturas en reposo no se ve nada raro, en movimiento **no probado**.
