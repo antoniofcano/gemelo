@@ -311,7 +311,7 @@
       r.piezas.forEach(function (z) { if (z.rol === "olivas" && z.clase === "instancias") ol += z.n * (z.geo === "octa" ? 8 : 20); });
       return 2 * t - ol;
     }
-    var ESTIM_ESC = { E0: 105000, E1: 50000, E2: 20000, E2VR: 15000 };   // escalera, sin receta aún: los triángulos medidos (ADR-0017 §4) redondeados hacia arriba
+    var ESTIM_ESC = { E0: 105000, E1: 25000, E2: 11000, E2VR: 11000 };   // escalera, sin receta aún: los triángulos medidos (centenario3 semilla 7; E1/E2 con tarjetas, O9b) redondeados hacia arriba
     function estim(niv) { return ESCALERA ? ESTIM_ESC[niv] * (sombras() ? 2 : 1) : ESTIM[niv]; }
 
     // ---- reparte el presupuesto: lo llama el reparto de 07b_arboles.reclasifica con el foco (fx, fz) y el tope de triángulos del aparato
@@ -607,12 +607,15 @@
       if (indice) g.setIndex(new THREE.BufferAttribute(indice, 1));
       return g;
     }
+    // las mallas instanciadas de hoja: por material, salvo las dos tarjetas de E1/E2 (O9b), que comparten material y cambian de geometría
+    var GEO_INST = { ramita0: "ramita", ramita1: "ramita", relleno: "relleno", tarjeta: "tarjeta", tarjetaO: "tarjetaO" };
+    function claveInst(z) { return z.geo === "tarjeta" || z.geo === "tarjetaO" ? z.geo : z.mat; }
     function* construyeG(items) {
       var G = M.geos(), out = new THREE.Group(), m4 = new THREE.Matrix4(), mp = new THREE.Matrix4(), mi = new THREE.Matrix4(), col = new THREE.Vector4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), s3 = new THREE.Vector3();
       var sel = items.map(function (x) { return x.p; }), cod = 0;   // el código de cada pieza va en el alfa de su color en las mallas por lotes (1 − código / 2)
       var salen = { B: {}, I: {}, P: null }, hay2 = items.some(function (x) { return x.cod === 2; });
       // 1) recuento para dar a cada malla su tamaño justo
-      var cap = { corteza: { i: 0, v: 0, x: 0 }, muerta: { i: 0, v: 0, x: 0 }, olivas: { i: 0, v: 0, x: 0 } }, inst = { ramita0: 0, ramita1: 0, relleno: 0 }, npuntos = 0, vistas = {};
+      var cap = { corteza: { i: 0, v: 0, x: 0 }, muerta: { i: 0, v: 0, x: 0 }, olivas: { i: 0, v: 0, x: 0 } }, inst = { ramita0: 0, ramita1: 0, relleno: 0, tarjeta: 0, tarjetaO: 0 }, npuntos = 0, vistas = {};
       function cuenta(b, geoClave, atrib, indice, n) {
         if (!vistas[b + geoClave]) { vistas[b + geoClave] = true; cap[b].v += atrib.position.length / 3; cap[b].x += indice ? indice.length : 0; }
         cap[b].i += n;
@@ -626,13 +629,13 @@
           else if (z.geo === "tocon") cuenta("corteza", "tocon", G.tocon.atrib, G.tocon.indice, z.n);
           else if (z.geo === "corte") cuenta("muerta", "corte", G.corte.atrib, G.corte.indice, z.n);
           else if (z.geo === "oliva" || z.geo === "octa") cuenta("olivas", z.geo, G[z.geo].atrib, G[z.geo].indice, z.n);
-          else if (z.clase === "instancias" && inst[z.mat] !== undefined) inst[z.mat] += z.n;
+          else if (z.clase === "instancias" && inst[claveInst(z)] !== undefined) inst[claveInst(z)] += z.n;
           else if (z.clase === "puntos") npuntos += z.n;
         });
       });
       yield;
       // 2) las mallas
-      var B = {}, geoId = {}, ix = { ramita0: 0, ramita1: 0, relleno: 0 }, I = {}, pts = npuntos ? { p: new Float32Array(npuntos * 3), c: new Float32Array(npuntos * 3), f: new Float32Array(npuntos), n: 0 } : null;
+      var B = {}, geoId = {}, ix = { ramita0: 0, ramita1: 0, relleno: 0, tarjeta: 0, tarjetaO: 0 }, I = {}, pts = npuntos ? { p: new Float32Array(npuntos * 3), c: new Float32Array(npuntos * 3), f: new Float32Array(npuntos), n: 0 } : null;
       var matDe = { corteza: mats.pies, muerta: mats.muerta, olivas: mats.oliva };
       Object.keys(cap).forEach(function (b) {
         if (!cap[b].i) return;
@@ -641,9 +644,9 @@
       });
       Object.keys(inst).forEach(function (k) {
         if (!inst[k]) return;
-        var g = geoDe(k === "relleno" ? G.relleno.atrib : G.ramita.atrib, k === "relleno" ? G.relleno.indice : G.ramita.indice, false);
+        var gk = GEO_INST[k], mk = k === "tarjetaO" ? "tarjeta" : k, g = geoDe(G[gk].atrib, G[gk].indice, false);   // las dos tarjetas (O9b) comparten material: atlas con y sin olivas
         g.setAttribute("aFun", new THREE.InstancedBufferAttribute(new Float32Array(inst[k]), 1));   // el código de fundido de cada instancia
-        var im = new THREE.InstancedMesh(g, mats[k], inst[k]); im.name = "gen-" + k; im.castShadow = true; im.receiveShadow = true; im.customDepthMaterial = mats[k + "_sombra"];
+        var im = new THREE.InstancedMesh(g, mats[mk], inst[k]); im.name = "gen-" + k; im.castShadow = true; im.receiveShadow = true; im.customDepthMaterial = mats[mk + "_sombra"];
         im.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(inst[k] * 3), 3); I[k] = im; out.add(im);
       });
       function idGeo(b, gk, atrib, indice) { var k = b + gk; if (geoId[k] === undefined) geoId[k] = B[b].addGeometry(geoDe(atrib, indice, b === "corteza")); return geoId[k]; }
@@ -664,12 +667,12 @@
           if (z.clase === "puntos") { for (var k2 = 0; k2 < z.n; k2++) { v.fromArray(z.posiciones, k2 * 3).applyMatrix4(m4); pts.p.set([v.x, v.y, v.z], pts.n * 3); pts.c.set(z.colores.subarray(k2 * 3, k2 * 3 + 3), pts.n * 3); pts.f[pts.n] = cod; pts.n++; } continue; }
           if (z.clase !== "instancias") continue;
           var bb = z.geo === "tocon" ? "corteza" : z.geo === "corte" ? "muerta" : (z.geo === "oliva" || z.geo === "octa") ? "olivas" : null;
-          var gid = bb ? idGeo(bb, z.geo, G[z.geo].atrib, G[z.geo].indice) : -1, im2 = bb ? null : I[z.mat];
+          var ki = claveInst(z), gid = bb ? idGeo(bb, z.geo, G[z.geo].atrib, G[z.geo].indice) : -1, im2 = bb ? null : I[ki];
           for (var k3 = 0; k3 < z.n; k3++) {
             mi.fromArray(z.matrices, k3 * 16); mi.premultiply(m4);
             var rgb = z.colores ? [z.colores[k3 * 3], z.colores[k3 * 3 + 1], z.colores[k3 * 3 + 2]] : z.geo === "corte" ? r.corte : [1, 1, 1];
             if (bb) ponBatch(bb, gid, mi, rgb);
-            else if (im2) { var n3 = ix[z.mat]++; im2.setMatrixAt(n3, mi); im2.instanceColor.setXYZ(n3, rgb[0], rgb[1], rgb[2]); im2.geometry.attributes.aFun.array[n3] = cod; }
+            else if (im2) { var n3 = ix[ki]++; im2.setMatrixAt(n3, mi); im2.instanceColor.setXYZ(n3, rgb[0], rgb[1], rgb[2]); im2.geometry.attributes.aFun.array[n3] = cod; }
             if (k3 % 512 === 511) yield;
           }
         }
