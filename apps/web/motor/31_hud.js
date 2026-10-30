@@ -21,7 +21,10 @@
       return elems.filter(function (z) { return z.r && z.r.width > 0 && z.r.height > 0; })
         .map(function (z) { return { id: z.id, x: z.r.left - base.left, y: z.r.top - base.top, w: z.r.width, h: z.r.height }; });
     }
-    return { MODOS: MODOS, modoDe: modoDe, rumboCamara: rumboCamara, zonas: zonas };
+    // controles táctiles (decisión 85): el ajuste «tactil» manda (siempre / nunca); en automático, la pantalla con dedo (pointer: coarse)
+    function tactil(ajuste, coarse) { return ajuste === "siempre" ? true : ajuste === "nunca" ? false : !!coarse; }
+    function zurda(mano) { return mano === "zurda"; }
+    return { MODOS: MODOS, modoDe: modoDe, rumboCamara: rumboCamara, zonas: zonas, tactil: tactil, zurda: zurda };
   })();
   // [puro:fin]
 
@@ -127,6 +130,23 @@
       aguja.style.transform = "rotate(" + (-r) + "deg)";
       ponAt(bru, "aria-label", "Brújula: miras al " + ["norte", "nordeste", "este", "sudeste", "sur", "suroeste", "oeste", "noroeste"][Math.round(r / 45) % 8] + ". Toca para mirar al norte");
     }
+    // --- pulgares (U5): la cruceta y las acciones solo en pantallas táctiles (o con el ajuste), cruceta a la izquierda y acciones a la derecha;
+    // «mano zurda» (Configuración, 33_ajustes.js) las cambia de lado. Si 33_ajustes.js no está, automático y diestra.
+    var mmCoarse = window.matchMedia ? window.matchMedia("(pointer: coarse)") : null;
+    function ajuste(k, def) { try { if (typeof Ajustes !== "undefined" && Ajustes && Ajustes.lee) { var v = Ajustes.lee(k); if (v !== undefined && v !== null && v !== "") return v; } } catch (e) {} return def; }
+    function aplicaPulgares() {
+      var raiz = document.documentElement, t = HudPuro.tactil(ajuste("tactil", "auto"), mmCoarse && mmCoarse.matches), z = HudPuro.zurda(ajuste("mano", "diestra"));
+      if (raiz.classList.contains("tactil") === t && raiz.classList.contains("zurda") === z) return;
+      raiz.classList.toggle("tactil", t); raiz.classList.toggle("zurda", z);
+      if (typeof Movibles !== "undefined" && Movibles && Movibles.revisa) setTimeout(function () { Movibles.revisa(); }, 0);   // apareció o se movió la cruceta
+    }
+    if (mmCoarse) { if (mmCoarse.addEventListener) mmCoarse.addEventListener("change", aplicaPulgares); else if (mmCoarse.addListener) mmCoarse.addListener(aplicaPulgares); }
+    setTimeout(function () {   // tras montar todos los módulos: 33_ajustes.js va después de este
+      try { if (typeof Ajustes !== "undefined" && Ajustes && Ajustes.alCambiar) Ajustes.alCambiar(function (k) { if (!k || k === "tactil" || k === "mano") aplicaPulgares(); }); } catch (e) {}
+      aplicaPulgares();
+    }, 0);
+    aplicaPulgares();
+
     setInterval(refresca, 250); setInterval(refrescaBrujula, 100); refresca(); mudaVR();
     return { aviso: aviso, zonasProhibidas: zonasProhibidas, modo: function () { return modoAct; }, cierraDesplegable: cierraDesplegable, alterna: alterna, ponModo: ponModo };
   })();
