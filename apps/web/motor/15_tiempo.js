@@ -4,12 +4,91 @@
 // Consume: 01_datos (D, $, FOG0, FOG1), 02_mundo (suelo, copas),
 //   03_escena (visor, scene, camera, SRGB, LUZ_SOL, LUZ_CIELO, hemi, sol, texColor, colorVertSRGB, colorCss, exag, modo),
 //   04d_sombreado_tiles (hash, matSuelo, matOrto), 05_nube (nube), 07_follaje (matHojaG, matHojaP, matCorteza), 08_marcadores (gLinde),
-//   09_camara (objetivo, orb), 12_paseo (primera), 14_historia (mcp, marca, tabla, aviso), 16_vida (mira, bandada, temaEstela),
-//   23_estacion (objetivoMundo), 24_pantalla (suave)
+//   09_camara (objetivo), 12_paseo (primera), 13b_hazas (HazasPuro), 14_historia (mcp, marca, tabla, aviso),
+//   16_vida (mira, bandada, quad, temaEstela, dron), 23_estacion (objetivoMundo), 24_pantalla (suave)
+// Nota: Lee /api/tiempo (mismo origen) solo con D.base /teselas/… o ?api=; si no, el conector de claude.ai; si no, el tiempo simulado, dicho. Expone TiempoVivo (contratos/interfaces.json). El trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/tiempo_motor.test.js.
 // ===============================================================================
   // ---------- el tiempo: el mundo del gemelo simula el que publica Vigía
   // Qué entra y de dónde: la estación (medido) pone la temperatura y la humedad de «ahora»; la previsión (modelado, rejilla de ~5 km)
-  // pone las nubes, el viento y la lluvia, porque el anemómetro de la estación está descartado por Vigía. El sol sale de la fecha y la hora.
+  // pone las nubes, el viento y la lluvia, porque el anemómetro de la estación está en duda para Vigía. El sol sale de la fecha y la hora.
+  // Lo que se dibuja (nubes, lluvia, viento en la hierba y las copas) es ilustrativo: se pinta a partir de esos datos.
+  // De dónde se lee (contratos/tiempo.md): 1) GET /api/tiempo del mismo origen, si la página la sirve el servidor (o ?api=); 2) si no,
+  // el conector de claude.ai (window.claude, la salida artefacto); 3) si no hay ninguno o fallan, el tiempo simulado de siempre, dicho.
+  // Expone TiempoVivo.lee() (lo que hay ahora, para otras piezas: fichas del tiempo, VR) y TiempoVivo.alCambiar(fn).
+  // Los textos de Vigía son datos: se escapan al pintarlos y nunca se siguen. `dentroDeUmbrales` no se enseña: Vigía no autoriza tratamientos.
+  // [puro:inicio] (sin THREE ni DOM: lo evalúa en Node pruebas/guardianes/tiempo_motor.test.js)
+  var TiempoPuro = (function () {
+    var ORIGENES = { vigia: 1, fixture: 1 };
+    function n(v) { return typeof v === "number" && isFinite(v) ? v : null; }
+    // el cielo, deducido de la nubosidad y la lluvia de la previsión y de la humedad: despejado, nubes, cubierto, lluvia o niebla
+    function cielo(nub, lluvia, hr) {
+      if (n(lluvia) != null && lluvia > 0.05) return "lluvia";
+      if (n(hr) != null && hr >= 97 && (n(nub) == null || nub >= 80)) return "niebla";
+      if (n(nub) == null) return null;
+      return nub < 25 ? "despejado" : nub < 75 ? "nubes" : "cubierto";
+    }
+    // la hora de la previsión que contiene el momento (la última que ya empezó); −1 sin horas
+    function horaIdx(horas, ms) {
+      if (!horas || !horas.length) return -1;
+      var i = 0; for (var k = 0; k < horas.length; k++) { if (Date.parse(horas[k].instante) <= ms) i = k; else break; } return i;
+    }
+    // ¿cumple lo esencial del contrato (contratos/tiempo.schema.json)? Lo demás se pinta con lo que haya (null = no está)
+    function valida(r) {
+      if (!r || typeof r !== "object" || r.version !== 1 || !ORIGENES[r.origen] || !Array.isArray(r.avisos)) return false;
+      if (r.actual !== null && (typeof r.actual !== "object" || r.actual.naturaleza !== "medido" || !r.actual.estacion)) return false;
+      if (r.prevision !== null && (typeof r.prevision !== "object" || r.prevision.naturaleza !== "modelado" || !Array.isArray(r.prevision.horas))) return false;
+      if (r.prevision && r.prevision.horas.some(function (h) { return !h || !isFinite(Date.parse(h.instante)); })) return false;
+      return true;
+    }
+    // de la respuesta de la api a la forma que pintan las fichas (la de Vigía: est y prev), sin nada que no esté en el contrato
+    function aEstado(r) {
+      var a = r.actual, p = r.prevision;
+      var est = a ? { hayLectura: true, estacion: { id: a.estacion.id, distanciaKm: a.estacion.distanciaKm, advertencia: a.estacion.advertencia },
+        temperatura: a.temperatura, humedadRelativa: a.humedadRelativa, viento: a.viento, racha: a.racha,
+        direccionViento: { grados: a.direccion ? a.direccion.grados : null, advertencia: a.direccion ? a.direccion.advertencia : null },
+        lluviaAcumulada: a.lluviaAcumulada, deltaT: a.deltaT, inhabilitados: a.inhabilitados || [], frescura: a.frescura || {} } : { hayLectura: false };
+      var prev = p && p.horas.length ? { hayPrevision: true, ambito: p.ambito, frescura: p.frescura || {}, horas: p.horas.map(function (h) {
+        return { instante: h.instante, temperatura: h.temperatura, humedadRelativa: h.humedadRelativa, viento: h.viento, racha: h.racha, direccion: h.direccion,
+          nubosidad: h.nubosidad, lluvia: h.lluvia, probabilidadLluvia: h.probabilidadLluvia, deltaT: h.deltaT };
+      }) } : { hayPrevision: false };
+      return { est: est, prev: prev, avisos: r.avisos.map(function (x) { return { de: x.de, texto: String(x.texto) }; }), origen: r.origen, consultadoEn: r.consultadoEn };
+    }
+    // lo que expone TiempoVivo.lee(): el actual medido (con el cielo deducido de la hora de la previsión), las horas modeladas, la frescura y los avisos
+    function vivo(origen, est, prev, avisos, ms) {
+      var hs = prev && prev.hayPrevision && prev.horas ? prev.horas : [], i = horaIdx(hs, ms), h = i >= 0 ? hs[i] : null, e = est && est.hayLectura ? est : null;
+      var f = (e && e.frescura) || (prev && prev.frescura) || {};
+      return {
+        origen: origen,
+        actual: e ? {
+          temperatura: n(e.temperatura), humedadRelativa: n(e.humedadRelativa), viento: n(e.viento), racha: n(e.racha),
+          direccion: e.direccionViento ? n(e.direccionViento.grados) : null, lluvia: n(e.lluviaAcumulada),
+          cielo: cielo(h ? h.nubosidad : null, h ? h.lluvia : null, n(e.humedadRelativa) != null ? e.humedadRelativa : (h ? h.humedadRelativa : null)),
+          estacion: { id: e.estacion ? e.estacion.id || null : null, distanciaKm: e.estacion ? n(e.estacion.distanciaKm) : null }, naturaleza: "medido"
+        } : null,
+        horas: hs.map(function (x) {
+          return { instante: x.instante, temperatura: n(x.temperatura), humedadRelativa: n(x.humedadRelativa), viento: n(x.viento), racha: n(x.racha), direccion: n(x.direccion),
+            nubosidad: n(x.nubosidad), lluvia: n(x.lluvia), probabilidadLluvia: n(x.probabilidadLluvia), naturaleza: "modelado" };
+        }),
+        frescura: { generadoEn: f.generadoEn || null, horasDeAntiguedad: n(f.horasDeAntiguedad) },
+        avisos: (avisos || []).map(function (x) { return typeof x === "string" ? x : String(x.texto); })
+      };
+    }
+    // GET <prefijo>tiempo del mismo origen; nunca lanza: { ok, datos } o { ok: false, motivo }
+    function lee(fetchFn, prefijo) {
+      if (!prefijo || typeof fetchFn !== "function") return Promise.resolve({ ok: false, motivo: "sin_api" });
+      return Promise.resolve().then(function () { return fetchFn(prefijo + "tiempo", { credentials: "same-origin", headers: { accept: "application/json" } }); })
+        .then(function (r) {
+          if (!r || !r.ok) return { ok: false, motivo: "http_" + (r ? r.status : 0) };
+          return r.json().then(function (j) { return valida(j) ? { ok: true, datos: j } : { ok: false, motivo: "contrato" }; });
+        })
+        .catch(function () { return { ok: false, motivo: "red" }; });
+    }
+    var MOTIVOS = { sin_api: "esta página no tiene servidor del tiempo", http_401: "hace falta entrar con tu enlace", http_503: "el servidor no tiene el tiempo de Vigía ahora",
+      contrato: "la respuesta del servidor no tiene la forma esperada", red: "no se pudo hablar con el servidor" };
+    function motivo(m) { return MOTIVOS[m] || "el servidor respondió con un error (" + String(m).replace(/^http_/, "") + ")"; }
+    return { cielo: cielo, horaIdx: horaIdx, valida: valida, aEstado: aEstado, vivo: vivo, lee: lee, motivo: motivo };
+  })();
+  // [puro:fin]
   // ?hora=HH[:MM] fija la hora del reloj del mundo (hoy, hora local; el sol, el día y la noche, y con ellos la vida: la bandada solo vuela de día); ?hora=AAAA-MM-DDTHH:MM, también la fecha. Para que las medidas no dependan del reloj de la máquina; sin el parámetro, Date.now().
   var HORA_FIJA = (function () {
     var m = /[?&]hora=([0-9T:.\-]+)/.exec(location.search); if (!m) return null; var v = m[1], r = /^(\d{1,2})(?::(\d{2}))?$/.exec(v), t;
@@ -17,7 +96,8 @@
     return isFinite(t) ? t : null;
   })();
   function ahoraMs() { return HORA_FIJA == null ? Date.now() : HORA_FIJA; }
-  var TM = { est: null, prev: null, his: null, modo: "ahora", idx: 0, ahoraIdx: 0, demo: "", mcp: null, jugando: false };
+  // origen: de dónde sale lo que se ve («vigia», «fixture» o «simulado»); avisos: los de la api (de Vigía o del gemelo), como datos
+  var TM = { est: null, prev: null, his: null, modo: "ahora", idx: 0, ahoraIdx: 0, demo: "", mcp: null, jugando: false, origen: "simulado", avisos: [], api: null, oyentes: [] };
   var LAT = 37.73, LON = -4.006, ZONA = "Europe/Madrid";
   var calma = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   var DEMOS = {
@@ -153,7 +233,7 @@
 
   // --- el estado del mundo avanza hacia el objetivo con suavidad
   var cur = { ms: ahoraMs(), nub: 0, viento: 0, dir: 0, lluvia: 0, hr: 40, temp: 18 }, meta = { ms: ahoraMs(), nub: 0, viento: 0, dir: 0, lluvia: 0, hr: 40, temp: 18 };
-  var tMundo = 0, lluviaVis = 0, ins = { t: 1, txt: "" };
+  var tMundo = 0, lluviaVis = 0, ins = { t: 1, txt: "" }, vFlecha = new THREE.Vector3();
   function nivel(ms) { var s = posSol(ms), d = Math.max(0, Math.min(1, (Math.sin(s.alt) + 0.1) / 0.45)); return { s: s, d: d }; }
   function lerpN(a, b, t) { return a + (b - a) * t; }
   function angDif(a, b) { var d = ((b - a + 540) % 360) - 180; return d; }
@@ -211,12 +291,21 @@
     lluviaVis += ((cur.lluvia > 0.05 ? 1 : 0) - lluviaVis) * k; var inten = Math.min(1, cur.lluvia / 3) * 0.8 + (cur.lluvia > 0.05 ? 0.15 : 0);
     lluvia.visible = lluviaVis > 0.02 && inten > 0.02; lluvia.position.set(objetivo.x, objetivo.y - 20, objetivo.z);
     uLluvia.uT.value = tMundo; uLluvia.uInt.value = inten * lluviaVis; uLluvia.uViento.value.set(vx * Math.min(1, cur.viento / 6), vz * Math.min(1, cur.viento / 6)); uLluvia.uColor.value.setRGB(0.4 + 0.5 * d, 0.5 + 0.45 * d, 0.6 + 0.35 * d, SRGB);
-    // la chapita del visor: hora, temperatura, nubes y viento, con la flecha de hacia dónde sopla respecto a cómo miras
+    // la chapita del visor: hora, temperatura, nubes y viento, con la flecha de dónde viene el viento respecto a cómo miras
     ins.t += dt; if (ins.t > 0.25) {
-      ins.t = 0; var fw = [-Math.sin(orb.az), -Math.cos(orb.az)], rg = [-fw[1], fw[0]], ang = Math.atan2(vxS * rg[0] + vzS * rg[1], vxS * fw[0] + vzS * fw[1]) * 180 / Math.PI;
+      // la flecha apunta a DE DÓNDE VIENE el viento (como lo da Vigía y como las fichas del tiempo), respecto a hacia dónde mira la cámara
+      // (vale en la vista aérea, a pie, en quad y en dron: se mira la cámara, no la órbita)
+      ins.t = 0; camera.getWorldDirection(vFlecha); var lf = Math.hypot(vFlecha.x, vFlecha.z) || 1, fw = [vFlecha.x / lf, vFlecha.z / lf], rg = [-fw[1], fw[0]];
+      var ang = Math.atan2(-vxS * rg[0] - vzS * rg[1], -vxS * fw[0] - vzS * fw[1]) * 180 / Math.PI;
       $("tFlecha").style.transform = "rotate(" + ang.toFixed(0) + "deg)"; $("tFlecha").style.opacity = cur.viento < 0.3 ? 0.25 : 1;
-      var txt = fmtHora.format(new Date(cur.ms)) + " · " + num1(cur.temp, 0) + " °C · " + (cur.temp <= 0 ? "helada · " : "") + num1(cur.nub, 0) + " % nubes · " + (cur.lluvia > 0.05 ? "lluvia " + num1(cur.lluvia, 1) + " mm · " : "") + (cur.viento < 0.3 ? "calma" : rumbo(cur.dir) + " " + num1(cur.viento, 1) + " m/s");
-      if (txt !== ins.txt) { ins.txt = txt; $("tInsT").textContent = txt; }
+      // temperatura, cielo (deducido) y viento del momento que ves; «simulado» si no hay datos de Vigía (los efectos de ejemplo ya lo dicen en la ventana)
+      var cie = TiempoPuro.cielo(meta.nub, meta.lluvia, meta.hr) || "cielo sin dato";
+      var txt = fmtHora.format(new Date(cur.ms)) + " · " + num1(cur.temp, 0) + " °C · " + (cur.temp <= 0 ? "helada · " : "") + cie + " · " + (cur.viento < 0.3 ? "calma" : "viento del " + rumbo(cur.dir) + " " + num1(cur.viento, 1) + " m/s") +
+        (TM.demo ? " · ejemplo" : TM.origen === "simulado" ? " · simulado" : TM.origen === "fixture" ? " · prueba" : "");
+      if (txt !== ins.txt) {
+        ins.txt = txt; $("tInsT").textContent = txt;
+        $("tIns").setAttribute("aria-label", "El tiempo: " + txt + ". Abre la ventana del tiempo");
+      }
     }
     // la barrera de la linde (Tron) late
     uBarrera.uT.value = tMundo;
@@ -274,17 +363,18 @@
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   function hace(iso) { if (!iso) return ""; var h = (Date.now() - Date.parse(iso)) / 3600000; return h < 1 ? "hace " + Math.max(1, Math.round(h * 60)) + " min" : "hace " + num1(h, 1) + " h"; }
 
-  function horaActual() { // la hora de la previsión que contiene el momento
-    var h = TM.prev && TM.prev.horas; if (!h || !h.length) return -1;
-    var ahora = ahoraMs(), i = 0; for (var k = 0; k < h.length; k++) { if (Date.parse(h[k].instante) <= ahora) i = k; else break; } return i;
-  }
+  function horaActual() { return TiempoPuro.horaIdx(TM.prev && TM.prev.horas, ahoraMs()); }   // la hora de la previsión que contiene el momento
   function objetivoMundoBase() {
     var h = TM.prev && TM.prev.horas, m = { ms: ahoraMs(), nub: 0, viento: 0, dir: 0, lluvia: 0, hr: 40, temp: 18 };
     if (TM.demo && DEMOS[TM.demo]) { var D0 = DEMOS[TM.demo]; m.nub = D0.nub; m.lluvia = D0.lluvia; m.viento = D0.viento; m.dir = D0.dir; m.hr = D0.hr; m.temp = D0.temp; m.ms = TM.modo === "ahora" || !h ? ahoraMs() : Date.parse(h[TM.idx].instante); return m; }
     if (!h || !h.length) return m;
     var hh = h[Math.max(0, Math.min(h.length - 1, TM.idx))], e = TM.est;
-    m.nub = hh.nubosidad; m.viento = hh.viento; m.dir = hh.direccion; m.lluvia = hh.lluvia || 0; m.hr = hh.humedadRelativa; m.temp = hh.temperatura;
-    if (TM.modo === "ahora") { m.ms = ahoraMs(); if (e && e.hayLectura) { if (e.humedadRelativa != null) m.hr = e.humedadRelativa; if (e.temperatura != null) m.temp = e.temperatura; } }
+    // la hora de la previsión (modelado) pone nubes, viento y lluvia; si a una hora le falta un dato, se queda el valor tranquilo de siempre (no se inventa otro)
+    var ok = function (v) { return typeof v === "number" && isFinite(v); };
+    if (ok(hh.nubosidad)) m.nub = hh.nubosidad; if (ok(hh.viento)) m.viento = hh.viento; if (ok(hh.direccion)) m.dir = hh.direccion; if (ok(hh.lluvia)) m.lluvia = hh.lluvia;
+    if (ok(hh.humedadRelativa)) m.hr = hh.humedadRelativa; if (ok(hh.temperatura)) m.temp = hh.temperatura;
+    // «ahora»: la temperatura y la humedad, las medidas en la estación. La lluvia medida es un acumulado (no dice si llueve ahora): la lluvia que se ve sale de la previsión
+    if (TM.modo === "ahora") { m.ms = ahoraMs(); if (e && e.hayLectura) { if (ok(e.humedadRelativa)) m.hr = e.humedadRelativa; if (ok(e.temperatura)) m.temp = e.temperatura; } }
     else m.ms = Date.parse(hh.instante);
     return m;
   }
@@ -293,16 +383,26 @@
   // --- las dos fichas
   function tarjetaEstacion() {
     var e = TM.est, c = $("tEst");
-    if (!e || !e.hayLectura) { c.innerHTML = '<h3>Estación</h3><p class="nota">' + (e ? "Vigía no tiene lectura de la estación ahora mismo." : "Sin leer todavía.") + "</p>"; return; }
+    if (!e || !e.hayLectura) {
+      c.innerHTML = '<h3>Estación</h3><p class="nota">' + (e ? "Vigía no tiene lectura de la estación ahora mismo." : TM.origen === "simulado" ? "Sin datos de Vigía: el tiempo que ves es simulado." : "Sin leer todavía.") + "</p>" +
+        (TM.avisos.length ? '<ul class="t-avisos">' + TM.avisos.map(function (a) { return "<li>" + (a.de === "vigia" ? "Vigía: " : "") + esc(a.texto) + "</li>"; }).join("") + "</ul>" : "");
+      return;
+    }
     var s = e.estacion || {}, f = e.frescura || {}, his = TM.his && (TM.his.porFuente || []).filter(function (x) { return x.id === s.id || /imarto/i.test(x.id || ""); })[0];
     var fil = function (k, v, u) { return "<div><dt>" + k + "</dt><dd>" + v + (u ? ' <small>' + u + "</small>" : "") + "</dd></div>"; };
+    var dv = e.direccionViento || {};
     var h = '<h3>Estación ' + esc(s.id || "") + ' <span class="t-pill">medido</span></h3>' +
-      '<p class="t-sub">A ' + num1(s.distanciaKm, 1) + ' km de la finca: no está en ella. ' + (f.datosDeMaqueta ? "<strong>Datos de maqueta.</strong> " : "") + hace(f.generadoEn) + '.</p>' +
+      '<p class="t-sub">Estación a ' + num1(s.distanciaKm, 1) + ' km (no está en la finca)' + (f.generadoEn ? ", " + hace(f.generadoEn) : ", sin hora de la medida") + "." + (f.datosDeMaqueta ? " <strong>Datos de maqueta.</strong>" : "") +
+      (TM.origen === "fixture" ? " <strong>Datos de prueba sintéticos: no son de Vigía.</strong>" : "") + '</p>' +
       '<div class="t-grande"><span>' + num1(e.temperatura, 1) + '</span><small>°C</small></div><dl class="t-cifras">' +
       fil("Humedad", num1(e.humedadRelativa, 0), "%") + fil("Delta-T", num1(e.deltaT, 1), "°C") +
       fil("Lluvia acumulada", num1(e.lluviaAcumulada, 1), "mm") +
-      fil("Viento", num1(e.viento, 1), "m/s") + fil("Racha", num1(e.racha, 1), "m/s") + fil("Dirección", e.direccionViento ? rumbo(e.direccionViento.grados) + " " + e.direccionViento.grados + "°" : "—", "") + '</dl>';
-    h += '<p class="t-aviso">El anemómetro de esta estación está descartado por Vigía (lee la mitad que el patrón de RIA, resguardado): el viento del mundo sale de la previsión.' + ((e.inhabilitados || []).length ? " Sin " + esc(e.inhabilitados.join(", ")) + "." : "") + "</p>";
+      fil("Viento", num1(e.viento, 1), "m/s") + fil("Racha", num1(e.racha, 1), "m/s") + fil("Dirección", dv.grados != null ? rumbo(dv.grados) + " " + esc(dv.grados) + "°" : "—", "") + '</dl>';
+    // las advertencias son textos de Vigía: datos, escapados
+    var adv = [s.advertencia, dv.advertencia].filter(function (x) { return x; });
+    h += '<p class="t-aviso">' + (adv.length ? "Vigía advierte: " + adv.map(esc).join(" ") + " " : "") + "El viento que mueve el mundo sale de la previsión (modelado), no del anemómetro." +
+      ((e.inhabilitados || []).length ? " Sin " + esc(e.inhabilitados.join(", ")) + "." : "") + "</p>";
+    if (TM.avisos.length) h += '<ul class="t-avisos">' + TM.avisos.map(function (a) { return "<li>" + (a.de === "vigia" ? "Vigía: " : "") + esc(a.texto) + "</li>"; }).join("") + "</ul>";
     if (his) {
       h += '<h4>Últimos 7 días</h4><p class="t-sub">Máx. <strong>' + num1(his.temperaturaMaxima, 1) + '</strong> °C · mín. <strong>' + num1(his.temperaturaMinima, 1) + '</strong> °C · lluvia <strong>' + num1(his.lluviaTotalMm, 1) + '</strong> mm' + (his.diasConLluvia != null ? " en " + his.diasConLluvia + " día(s)" : "") +
         '. ' + (his.diasSinDato ? "Faltan datos de " + his.diasSinDato + " de " + (his.dias + his.diasSinDato) + " días." : "Sin días sin dato.") + "</p>";
@@ -310,40 +410,57 @@
     c.innerHTML = h;
   }
   function resumenDias() {
-    var hs = TM.prev.horas, por = {}, orden = [];
-    hs.forEach(function (x, i) { var k = fmtClaveDia.format(new Date(x.instante)); if (!por[k]) { por[k] = { k: k, ini: i, t: [], nub: [], ll: 0, pr: 0, rf: 0 }; orden.push(k); } var d = por[k]; d.t.push(x.temperatura); d.nub.push(x.nubosidad); d.ll += x.lluvia || 0; d.pr = Math.max(d.pr, x.probabilidadLluvia || 0); d.rf = Math.max(d.rf, x.racha || 0); });
-    return orden.map(function (k) { return por[k]; }).filter(function (d) { return d.t.length >= 3; });
+    var hs = TM.prev.horas, por = {}, orden = [], v = function (x) { return typeof x === "number" && isFinite(x); };
+    hs.forEach(function (x, i) {
+      var k = fmtClaveDia.format(new Date(x.instante)); if (!por[k]) { por[k] = { k: k, ini: i, n: 0, t: [], nub: [], ll: 0, pr: 0, rf: null }; orden.push(k); }
+      var d = por[k]; d.n++; if (v(x.temperatura)) d.t.push(x.temperatura); if (v(x.nubosidad)) d.nub.push(x.nubosidad); d.ll += v(x.lluvia) ? x.lluvia : 0;
+      d.pr = Math.max(d.pr, v(x.probabilidadLluvia) ? x.probabilidadLluvia : 0); if (v(x.racha)) d.rf = Math.max(d.rf || 0, x.racha);
+    });
+    return orden.map(function (k) { return por[k]; }).filter(function (d) { return d.n >= 3; });
   }
+  // «Próximas 72 h»: temperatura (con la nubosidad de fondo), lluvia y viento hora a hora, en un SVG a mano (sin librería); cada hora lleva su <title>
   function tarjetaPrevision() {
     var c = $("tPrev"), p = TM.prev;
-    if (!p || !p.hayPrevision || !p.horas || !p.horas.length) { c.innerHTML = '<h3>Previsión · 72 horas</h3><p class="nota">' + (p ? "Vigía no tiene previsión ahora mismo." : "Sin leer todavía.") + "</p>"; return; }
-    var hs = p.horas, n = hs.length, f = p.frescura || {}, dias = resumenDias(), W = 360, Hs = 118, x0g = 24, x1g = 352, yT0 = 10, yT1 = 70;
-    var tmin = Math.min.apply(null, hs.map(function (x) { return x.temperatura; })), tmax = Math.max.apply(null, hs.map(function (x) { return x.temperatura; }));
-    tmin = Math.floor(tmin - 1); tmax = Math.ceil(tmax + 1);
-    var X = function (i) { return x0g + (x1g - x0g) * i / (n - 1); }, Y = function (t) { return yT1 - (yT1 - yT0) * (t - tmin) / (tmax - tmin); };
-    var lluviaMax = Math.max(0.5, Math.max.apply(null, hs.map(function (x) { return x.lluvia || 0; })));
-    var nubes = "M" + X(0) + "," + yT1 + hs.map(function (x, i) { return "L" + X(i) + "," + (yT1 - (yT1 - yT0) * x.nubosidad / 100 * 0.55); }).join("") + "L" + X(n - 1) + "," + yT1 + "Z";
-    var temp = hs.map(function (x, i) { return (i ? "L" : "M") + X(i).toFixed(1) + "," + Y(x.temperatura).toFixed(1); }).join("");
-    var bw = (x1g - x0g) / n, barras = hs.map(function (x, i) { var hgt = (x.lluvia || 0) / lluviaMax * 22; return hgt > 0 ? '<rect x="' + (X(i) - bw / 2).toFixed(1) + '" y="' + (Hs - 20 - hgt).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + hgt.toFixed(1) + '" fill="var(--lidar)"/>' : ""; }).join("");
-    var aptas = hs.map(function (x, i) { return '<rect x="' + (X(i) - bw / 2).toFixed(1) + '" y="' + (Hs - 12) + '" width="' + (bw + 0.3).toFixed(1) + '" height="6" fill="' + (x.dentroDeUmbrales ? "var(--olivo)" : "var(--line)") + '"/>'; }).join("");
-    var seps = dias.slice(1).map(function (d) { return '<line x1="' + X(d.ini).toFixed(1) + '" x2="' + X(d.ini).toFixed(1) + '" y1="4" y2="' + (Hs - 4) + '" stroke="var(--line)" stroke-dasharray="3 3"/>'; }).join("");
-    var etDias = dias.map(function (d, i) { var a = X(d.ini), b = X(i + 1 < dias.length ? dias[i + 1].ini : n - 1); return '<text x="' + ((a + b) / 2).toFixed(1) + '" y="' + (Hs - 0) + '" text-anchor="middle" fill="var(--muted)" font-size="9.5">' + esc(fmtDia.format(new Date(hs[d.ini].instante))) + "</text>"; }).join("");
-    var marca = '<line id="tLinea" x1="0" x2="0" y1="2" y2="' + (Hs - 12) + '" stroke="var(--fg)" stroke-width="1.2"/>';
-    var svg = '<svg viewBox="0 0 ' + W + " " + (Hs + 4) + '" role="img" aria-label="Temperatura, nubosidad y lluvia de las próximas 72 horas" class="t-graf">' +
-      '<text x="2" y="' + (Y(tmax) + 3) + '" fill="var(--muted)" font-size="9.5">' + tmax + '°</text><text x="2" y="' + (Y(tmin) + 3) + '" fill="var(--muted)" font-size="9.5">' + tmin + '°</text>' +
-      '<path d="' + nubes + '" fill="var(--muted)" opacity="0.22"/>' + seps + barras + '<path d="' + temp + '" fill="none" stroke="var(--guardado)" stroke-width="2" stroke-linejoin="round"/>' + aptas + etDias + marca + "</svg>";
-    var filas = dias.map(function (d, i) {
-      var tn = Math.min.apply(null, d.t), tx = Math.max.apply(null, d.t), nm = d.nub.reduce(function (a, b) { return a + b; }, 0) / d.nub.length;
-      var nom = i === 0 ? "Hoy" : i === 1 ? "Mañana" : fmtDia.format(new Date(hs[d.ini].instante));
-      return "<tr><th scope=\"row\">" + esc(nom) + "</th><td>" + num1(tn, 0) + " – " + num1(tx, 0) + " °C</td><td>" + num1(nm, 0) + " % nubes</td><td>" + (d.ll > 0 ? num1(d.ll, 1) + " mm (" + d.pr + " %)" : "sin lluvia") + "</td><td>racha " + num1(d.rf, 1) + " m/s</td></tr>";
+    if (!p || !p.hayPrevision || !p.horas || !p.horas.length) { c.innerHTML = '<h3>Previsión · 72 horas</h3><p class="nota">' + (p ? "Vigía no tiene previsión ahora mismo." : TM.origen === "simulado" ? "Sin previsión de Vigía: el tiempo que ves es simulado." : "Sin leer todavía.") + "</p>"; return; }
+    var hs = p.horas, n = hs.length, f = p.frescura || {}, dias = resumenDias(), W = 360, Hs = 150, x0g = 24, x1g = 352, yT0 = 10, yT1 = 70, yL = 96, yV0 = 104, yV1 = 130;
+    var v = function (x) { return typeof x === "number" && isFinite(x); };
+    var ts = hs.map(function (x) { return x.temperatura; }).filter(v), tmin = ts.length ? Math.floor(Math.min.apply(null, ts) - 1) : 0, tmax = ts.length ? Math.ceil(Math.max.apply(null, ts) + 1) : 1;
+    var X = function (i) { return x0g + (x1g - x0g) * i / Math.max(1, n - 1); }, Y = function (t) { return yT1 - (yT1 - yT0) * (t - tmin) / (tmax - tmin); };
+    // una línea que se corta donde falta el dato (no se inventa el tramo)
+    var linea = function (val, y) { var d = "", sube = true; hs.forEach(function (x, i) { var q = val(x); if (!v(q)) { sube = true; return; } d += (sube ? "M" : "L") + X(i).toFixed(1) + "," + y(q).toFixed(1); sube = false; }); return d; };
+    var lluviaMax = Math.max(0.5, Math.max.apply(null, hs.map(function (x) { return v(x.lluvia) ? x.lluvia : 0; })));
+    var vMax = Math.max(5, Math.ceil(Math.max.apply(null, hs.map(function (x) { return Math.max(v(x.viento) ? x.viento : 0, v(x.racha) ? x.racha : 0); }))));
+    var YV = function (w) { return yV1 - (yV1 - yV0) * w / vMax; };
+    var nubes = "M" + X(0) + "," + yT1 + hs.map(function (x, i) { return "L" + X(i) + "," + (yT1 - (yT1 - yT0) * (v(x.nubosidad) ? x.nubosidad : 0) / 100 * 0.55); }).join("") + "L" + X(n - 1) + "," + yT1 + "Z";
+    var bw = (x1g - x0g) / n, barras = hs.map(function (x, i) { var hgt = (v(x.lluvia) ? x.lluvia : 0) / lluviaMax * 22; return hgt > 0 ? '<rect x="' + (X(i) - bw / 2).toFixed(1) + '" y="' + (yL - hgt).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + hgt.toFixed(1) + '" fill="var(--lidar)"/>' : ""; }).join("");
+    var seps = dias.slice(1).map(function (d) { return '<line x1="' + X(d.ini).toFixed(1) + '" x2="' + X(d.ini).toFixed(1) + '" y1="4" y2="' + yV1 + '" stroke="var(--line)" stroke-dasharray="3 3"/>'; }).join("");
+    var etDias = dias.map(function (d, i) { var a = X(d.ini), b = X(i + 1 < dias.length ? dias[i + 1].ini : n - 1); return '<text x="' + ((a + b) / 2).toFixed(1) + '" y="' + (Hs - 2) + '" text-anchor="middle" fill="var(--muted)" font-size="9.5">' + esc(fmtDia.format(new Date(hs[d.ini].instante))) + "</text>"; }).join("");
+    var horas = hs.map(function (x, i) {
+      var ms = Date.parse(x.instante), t = fmtDia.format(new Date(ms)) + " " + fmtHora.format(new Date(ms)) + " · " + num1(x.temperatura, 1) + " °C · " + num1(x.nubosidad, 0) + " % nubes · lluvia " + num1(x.lluvia, 1) + " mm · viento " + num1(x.viento, 1) + " m/s" + (v(x.direccion) ? " del " + rumbo(x.direccion) : "") + ", racha " + num1(x.racha, 1);
+      return '<rect x="' + (X(i) - bw / 2).toFixed(1) + '" y="0" width="' + bw.toFixed(1) + '" height="' + yV1 + '" fill="transparent"><title>' + esc(t) + "</title></rect>";
     }).join("");
-    c.innerHTML = '<h3>Previsión · 72 horas <span class="t-pill t-pill-m">modelado</span></h3><p class="t-sub">Una por finca, de una rejilla de ~5 km · ' + hace(f.generadoEn) + '.</p>' + svg +
-      '<p class="t-leyenda"><i style="background:var(--guardado)"></i>temperatura <i style="background:var(--muted);opacity:.4"></i>nubosidad <i style="background:var(--lidar)"></i>lluvia <i style="background:var(--olivo)"></i>condiciones dentro de los umbrales del atomizador (referencia de Vigía: no autoriza ningún tratamiento)</p>' +
+    var marca = '<line id="tLinea" x1="0" x2="0" y1="2" y2="' + yV1 + '" stroke="var(--fg)" stroke-width="1.2"/>';
+    var svg = '<svg viewBox="0 0 ' + W + " " + Hs + '" role="img" aria-label="Temperatura, nubosidad, lluvia y viento de las próximas 72 horas, hora a hora (previsión modelada)" class="t-graf">' +
+      '<text x="2" y="' + (Y(tmax) + 3) + '" fill="var(--muted)" font-size="9.5">' + tmax + '°</text><text x="2" y="' + (Y(tmin) + 3) + '" fill="var(--muted)" font-size="9.5">' + tmin + '°</text>' +
+      '<text x="2" y="' + (yV0 + 6) + '" fill="var(--muted)" font-size="8.5">' + vMax + '</text><text x="2" y="' + (yV1) + '" fill="var(--muted)" font-size="8.5">m/s</text>' +
+      '<path d="' + nubes + '" fill="var(--muted)" opacity="0.22"/>' + seps + barras + '<line x1="' + x0g + '" x2="' + x1g + '" y1="' + yL + '" y2="' + yL + '" stroke="var(--line)"/>' +
+      '<path d="' + linea(function (x) { return x.temperatura; }, Y) + '" fill="none" stroke="var(--guardado)" stroke-width="2" stroke-linejoin="round"/>' +
+      '<path d="' + linea(function (x) { return x.racha; }, YV) + '" fill="none" stroke="var(--fg)" stroke-width="1" stroke-dasharray="2 2" opacity="0.6"/>' +
+      '<path d="' + linea(function (x) { return x.viento; }, YV) + '" fill="none" stroke="var(--fg)" stroke-width="1.6" stroke-linejoin="round"/>' +
+      '<line x1="' + x0g + '" x2="' + x1g + '" y1="' + yV1 + '" y2="' + yV1 + '" stroke="var(--line)"/>' + etDias + marca + horas + "</svg>";
+    var filas = dias.map(function (d, i) {
+      var tn = d.t.length ? Math.min.apply(null, d.t) : null, tx = d.t.length ? Math.max.apply(null, d.t) : null, nm = d.nub.length ? d.nub.reduce(function (a, b) { return a + b; }, 0) / d.nub.length : null;
+      var nom = i === 0 ? "Hoy" : i === 1 ? "Mañana" : fmtDia.format(new Date(hs[d.ini].instante));
+      return "<tr><th scope=\"row\">" + esc(nom) + "</th><td>" + num1(tn, 0) + " – " + num1(tx, 0) + " °C</td><td>" + num1(nm, 0) + " % nubes</td><td>" + (d.ll > 0 ? num1(d.ll, 1) + " mm (" + num1(d.pr, 0) + " %)" : "sin lluvia") + "</td><td>racha " + num1(d.rf, 1) + " m/s</td></tr>";
+    }).join("");
+    c.innerHTML = '<h3>Previsión · 72 horas <span class="t-pill t-pill-m">modelado</span></h3><p class="t-sub">Una por finca, de una rejilla de ~5 km' + (f.generadoEn ? " · " + hace(f.generadoEn) : "") + "." + (f.datosDeMaqueta ? " <strong>Datos de maqueta.</strong>" : "") + (TM.origen === "fixture" ? " <strong>Datos de prueba sintéticos: no son de Vigía.</strong>" : "") + "</p>" + svg +
+      '<p class="t-leyenda"><i style="background:var(--guardado)"></i>temperatura <i style="background:var(--muted);opacity:.4"></i>nubosidad <i style="background:var(--lidar)"></i>lluvia (mm/h) <i style="background:var(--fg)"></i>viento (punteado: racha). Toca o pasa por encima de una hora para ver sus cifras.</p>' +
       lineaHelada(hs) + '<table class="t-tabla"><tbody>' + filas + "</tbody></table>";
     marcaMomento();
   }
   function lineaHelada(hs) {
-    var m = hs.reduce(function (a, x) { return x.temperatura < a.temperatura ? x : a; }, hs[0]), ms = Date.parse(m.instante), cuando = fmtDia.format(new Date(ms)) + " " + fmtHora.format(new Date(ms));
+    var con = hs.filter(function (x) { return typeof x.temperatura === "number" && isFinite(x.temperatura); }); if (!con.length) return '<p class="t-sub">La previsión no trae temperaturas.</p>';
+    var m = con.reduce(function (a, x) { return x.temperatura < a.temperatura ? x : a; }, con[0]), ms = Date.parse(m.instante), cuando = fmtDia.format(new Date(ms)) + " " + fmtHora.format(new Date(ms));
     return m.temperatura <= 0 ? '<p class="t-aviso">Helada prevista: mínima de ' + num1(m.temperatura, 1) + " °C el " + esc(cuando) + ".</p>"
       : '<p class="t-sub">Sin heladas previstas: la mínima de las 72 h es ' + num1(m.temperatura, 1) + " °C (" + esc(cuando) + ").</p>";
   }
@@ -361,16 +478,48 @@
     $("tMomentoV").textContent = textoMomento(); aplicaMundo(); marcaMomento();
     $("tAhora").setAttribute("aria-pressed", String(TM.modo === "ahora" && !TM.demo));
     var h = TM.prev && TM.prev.horas, hh = h && h[TM.idx];
-    $("tResumen").textContent = hh ? (TM.demo ? "" : "En el mundo: " + num1(hh.nubosidad, 0) + " % de nubes · viento " + num1(hh.viento, 1) + " m/s del " + rumbo(hh.direccion) + " · " + (hh.lluvia > 0 ? "lluvia " + num1(hh.lluvia, 1) + " mm" : "sin lluvia") + " (previsión)") : "";
+    $("tResumen").textContent = hh ? (TM.demo ? "" : "En el mundo: " + num1(hh.nubosidad, 0) + " % de nubes · viento " + num1(hh.viento, 1) + " m/s" + (hh.direccion != null ? " del " + rumbo(hh.direccion) : "") + " · " +
+      (hh.lluvia > 0 ? "lluvia " + num1(hh.lluvia, 1) + " mm" : "sin lluvia") + " (previsión: modelado; las nubes, la lluvia y el viento que se ven, dibujados a partir de ella: ilustrativo)") : "";
   }
+  function anuncia() { var v = TiempoVivo.lee(); TM.oyentes.slice().forEach(function (fn) { try { fn(v); } catch (e) {} }); }
   function aplicaDatos() {
     var h = TM.prev && TM.prev.horas, tiene = !!(h && h.length);
     $("tControl").hidden = !tiene; TM.ahoraIdx = Math.max(0, horaActual());
-    if (tiene) { $("tMomento").max = h.length - 1; if (TM.modo === "ahora") TM.idx = TM.ahoraIdx; $("tMomento").value = TM.idx; }
-    tarjetaEstacion(); tarjetaPrevision(); refrescaTiempo();
+    if (tiene) { $("tMomento").max = h.length - 1; if (TM.modo === "ahora") TM.idx = TM.ahoraIdx; TM.idx = Math.min(TM.idx, h.length - 1); $("tMomento").value = TM.idx; }
+    tarjetaEstacion(); tarjetaPrevision(); refrescaTiempo(); anuncia();
   }
+  // Lo que ve el resto del motor (y otras piezas: fichas del tiempo, VR). Sin dentroDeUmbrales. Contrato: doc/sistema/CONTRATOS.md.
+  // alCambiar(fn): fn recibe lo mismo que lee(); devuelve la función para darse de baja
+  var TiempoVivo = (function () {
+    function lee() {
+      var sim = TM.origen === "simulado";
+      return TiempoPuro.vivo(TM.origen, sim ? null : TM.est, sim ? null : TM.prev, sim ? [{ texto: "Tiempo simulado: no hay datos de Vigía." }] : TM.avisos, ahoraMs());
+    }
+    function alCambiar(fn) {
+      if (typeof fn !== "function") return function () {};
+      TM.oyentes.push(fn); return function () { var i = TM.oyentes.indexOf(fn); if (i >= 0) TM.oyentes.splice(i, 1); };
+    }
+    return { lee: lee, alCambiar: alCambiar };
+  })();
 
-  async function leerTiempo() {
+  // --- de dónde se lee: la api del mismo origen; si no, el conector de claude.ai; si no, simulado (y se dice)
+  function tiempoSimulado(motivo) {
+    TM.origen = "simulado"; TM.est = null; TM.prev = null; TM.his = null; TM.avisos = [];
+    tAviso("Tiempo simulado: " + motivo + ". El cielo, el viento y la temperatura que ves no son los reales.", "parcial"); aplicaDatos();
+  }
+  async function leerApi(silencioso) {
+    if (!silencioso) { $("tLeer").disabled = true; tAviso("Leyendo el tiempo de Vigía en el servidor…", ""); }
+    var r = await TiempoPuro.lee(window.fetch ? window.fetch.bind(window) : null, TM.api);
+    $("tLeer").disabled = false;
+    if (!r.ok) return r;
+    var s = TiempoPuro.aEstado(r.datos);
+    TM.est = s.est; TM.prev = s.prev; TM.avisos = s.avisos; TM.origen = s.origen; TM.his = null;
+    $("tLeer").hidden = false; $("tLeer").textContent = "Volver a leer";
+    tAviso((s.origen === "fixture" ? "Datos de PRUEBA sintéticos (no son de Vigía), leídos " : "Tiempo de Vigía, leído por el servidor ") + hace(s.consultadoEn) +
+      ". Estación: medido · previsión: modelado · lo dibujado (nubes, lluvia, viento): ilustrativo.", s.origen === "vigia" && !s.avisos.length ? "vivo" : "parcial");
+    aplicaDatos(); return r;
+  }
+  async function leerConector() {   // la salida artefacto de claude.ai: el conector Vigía del visor
     if (!TM.mcp) return;
     $("tLeer").disabled = true; tAviso("Leyendo de Vigía…", "");
     var fallos = [];
@@ -382,11 +531,26 @@
     var prev = est || !fallos.length ? await una("prevision_72_horas") : null;
     var hoy = new Date(), ayer = function (n) { return fmtClaveDia.format(new Date(hoy.getTime() - n * 86400000)); };
     var his = prev ? await una("historico_meteo", { desde: ayer(6), hasta: ayer(0) }) : null;
-    if (est) TM.est = est; if (prev) TM.prev = prev; if (his) TM.his = his;
     $("tLeer").disabled = false; $("tLeer").textContent = "Volver a leer";
-    if (!est && !prev) tAviso("No se ha podido leer el tiempo de Vigía" + (fallos.length ? " (" + fallos.join(", ") + ")" : "") + ". El mundo se queda con cielo despejado.", "error");
-    else tAviso("Tiempo leído de Vigía a las " + fmtHora.format(new Date()) + (fallos.length ? " · sin " + fallos.join(", ") : "") + ". Naturaleza: estación medido, previsión modelado.", fallos.length ? "parcial" : "vivo");
+    if (!est && !prev) { if (TM.origen === "simulado") tiempoSimulado("no se ha podido leer de Vigía" + (fallos.length ? " (" + fallos.join(", ") + ")" : "")); return; }
+    if (est) TM.est = est; if (prev) TM.prev = prev; if (his) TM.his = his; TM.origen = "vigia"; TM.avisos = [];
+    tAviso("Tiempo leído de Vigía a las " + fmtHora.format(new Date()) + (fallos.length ? " · sin " + fallos.join(", ") : "") + ". Estación: medido · previsión: modelado · lo dibujado: ilustrativo.", fallos.length ? "parcial" : "vivo");
     aplicaDatos();
+  }
+  async function leerTiempo() {
+    if (TM.api) {
+      var r = await leerApi(false); if (r.ok) return;
+      if (!TM.mcp) {
+        if (TM.origen === "simulado") tiempoSimulado(TiempoPuro.motivo(r.motivo));
+        else tAviso("No se ha podido volver a leer (" + TiempoPuro.motivo(r.motivo) + "): sigue la lectura anterior.", "error");
+        return;
+      }
+    }
+    if (TM.mcp) return leerConector();
+  }
+  function conectorTiempo() {
+    try { if (window.claude && window.claude.use) return window.claude.use("mcp").then(function (m) { return m || null; }, function () { return null; }); } catch (e) {}
+    return Promise.resolve(null);
   }
   (function () {
     $("tMomento").addEventListener("input", function () { TM.idx = Number($("tMomento").value); TM.modo = TM.idx === TM.ahoraIdx ? "ahora" : "prevision"; refrescaTiempo(); });
@@ -403,14 +567,18 @@
     new MutationObserver(pintaFondoTiempo).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
     if (window.matchMedia) window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", pintaFondoTiempo);
     pintaFondoTiempo(); tarjetaEstacion(); tarjetaPrevision();
-    if (window.__TIEMPO_PRUEBA) { TM.est = window.__TIEMPO_PRUEBA.est; TM.prev = window.__TIEMPO_PRUEBA.prev; TM.his = window.__TIEMPO_PRUEBA.his; aplicaDatos(); tAviso("Datos de prueba (solo en local).", "parcial"); }
-    // ¿puede este visor hablar con Vigía? Si sí, se lee solo al abrir (la primera vez pide permiso); si no, el mundo queda despejado.
-    try {
-      if (window.claude && window.claude.use) window.claude.use("mcp").then(function (m) {
-        if (!m) { tAviso("Este visor no puede leer de Vigía: el mundo se queda con cielo despejado.", "parcial"); return; }
-        TM.mcp = m; $("tLeer").hidden = false; if (!window.__TIEMPO_PRUEBA) leerTiempo();
-      }).catch(function () {});
-    } catch (e) {}
+    TM.api = typeof HazasPuro !== "undefined" ? HazasPuro.prefijoApi(location.search, D.base) : null;   // «/api/» si la página la sirve el servidor (o ?api=)
+    if (window.__TIEMPO_PRUEBA) { TM.est = window.__TIEMPO_PRUEBA.est; TM.prev = window.__TIEMPO_PRUEBA.prev; TM.his = window.__TIEMPO_PRUEBA.his; TM.origen = "fixture"; aplicaDatos(); tAviso("Datos de prueba (solo en local).", "parcial"); return; }
+    (TM.api ? leerApi(true) : Promise.resolve({ ok: false, motivo: "sin_api" })).then(function (r) {
+      if (r.ok) {   // la api guarda lo de Vigía (10 min el actual, 1 h la previsión): pedirle cada 10 min no llega a Vigía más a menudo
+        setInterval(function () { leerApi(true); }, 10 * 60000); return;
+      }
+      return conectorTiempo().then(function (m) {
+        if (m) { TM.mcp = m; $("tLeer").hidden = false; leerConector(); return; }
+        if (TM.api) $("tLeer").hidden = false;   // con servidor, se puede reintentar
+        tiempoSimulado(TiempoPuro.motivo(r.motivo));
+      });
+    });
   })();
   var lindes = D.parcelas.map(creaBarrera);
 
