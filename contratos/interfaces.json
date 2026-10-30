@@ -30,7 +30,7 @@
     "Capas": { "modulo": "32b_capas.js", "miembros": ["registra", "lista"] }
   },
   "ganchos_window": {
-    "__g": { "modulo": "27_debug.js", "miembros": ["Arboles", "Catalogo", "Escena3D", "OlivosTiles", "Cola", "copas", "suelo", "Mundo", "orb", "objetivo", "camera", "renderer", "scene", "pon", "listo", "modo", "Generados", "pendientes", "ponExag", "aplica", "paseoEn", "paseoSale", "paseoTecla", "paseoEstado"] },
+    "__g": { "modulo": "27_debug.js", "miembros": ["Arboles", "Catalogo", "Escena3D", "OlivosTiles", "Cola", "copas", "suelo", "Mundo", "orb", "objetivo", "camera", "renderer", "scene", "pon", "listo", "modo", "Generados", "pendientes", "ponExag", "aplica", "paseoEn", "paseoSale", "paseoTecla", "paseoEstado", "sinDibujo"] },
     "__vrDebug": { "modulo": "29_vr.js", "tipo": "function" },
     "__vrOlivo": { "modulo": "29_vr.js", "tipo": "function" },
     "__vrBotones": { "modulo": "29_vr.js", "tipo": "function" },

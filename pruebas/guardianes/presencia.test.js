@@ -14,9 +14,9 @@ const FUENTE = lee("apps/web/motor/26_presencia.js");
 function puro() {
   const i = FUENTE.indexOf("// [puro:inicio]"), f = FUENTE.indexOf("// [puro:fin]");
   assert.ok(i >= 0 && f > i, "26_presencia.js debe marcar su trozo puro con // [puro:inicio] y // [puro:fin]");
-  return new Function("\"use strict\";\n" + FUENTE.slice(i, f) + "\nreturn { PoseCodec: PoseCodec, BufferPose: BufferPose, Muneco: Muneco, Encuentro: Encuentro };")();
+  return new Function("\"use strict\";\n" + FUENTE.slice(i, f) + "\nreturn { PoseCodec: PoseCodec, BufferPose: BufferPose, Muneco: Muneco, Encuentro: Encuentro, Cuenta: Cuenta, Aspecto: Aspecto };")();
 }
-const { PoseCodec, BufferPose, Muneco, Encuentro } = puro();
+const { PoseCodec, BufferPose, Muneco, Encuentro, Cuenta, Aspecto } = puro();
 
 // azar con semilla (mulberry32): las pruebas dan siempre lo mismo
 function azarCon(s) { return () => { s = (s + 0x6d2b79f5) | 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
@@ -341,6 +341,45 @@ test("contratos/livekit-roles.json: en F2 ningún rol publica audio ni vídeo, t
   for (const s of ["24 B", "56 B", "smallest-three", "livekit-roles.json", "versión"]) assert.ok(md.includes(s), "presencia.md no menciona «" + s + "»");
 });
 
+// ---------- PB8: lo que cuesta dibujar al grupo, sin página (Cuenta, en el trozo puro). El de Chrome solo confirma que el montaje da lo mismo.
+test("coste del grupo (PB8): el muñeco a pie con sombrero son 94 triángulos y con gafas +24; sin accesorios, 82; llamadas = 3 + sombrero/apoyo + manos + ruedas", () => {
+  const una = (p) => Cuenta.grupo(Cuenta.instancias([p]));
+  assert.deepStrictEqual(una({ quest: false, sombrero: 0, mov: "pie" }), { llamadas: 3, triangulos: 82 }, "cuerpo 60 + cabeza 20 + nombre 2");
+  assert.deepStrictEqual(una({ quest: false, sombrero: 1, mov: "pie" }), { llamadas: 4, triangulos: 94 }, "+ sombrero 12: el 94 de P5");
+  assert.deepStrictEqual(una({ quest: true, sombrero: 1, mov: "pie" }), { llamadas: 5, triangulos: 94 + 24 }, "con gafas, +2 manos de 12");
+  assert.deepStrictEqual(una({ quest: false, sombrero: 1, mov: "silla" }), { llamadas: 5, triangulos: 94 + 24 + 80 }, "silla: 2 cajas de apoyo + 2 ruedas de 40");
+  assert.deepStrictEqual(una({ quest: true, sombrero: 1, mov: "silla" }).llamadas, 6, "el máximo del grupo sin vehículos");
+  assert.deepStrictEqual(Cuenta.grupo(Cuenta.instancias([])), { llamadas: 0, triangulos: 0 }, "sin plazas no se dibuja nada");
+  assert.strictEqual(Cuenta.TRI.rueda, 40); assert.strictEqual(Muneco.PIEZAS.length, 5);
+});
+test("reparto de las instancias (PB8): cuerpo 5 por plaza; cajas según Aspecto.cajas; manos 2 por Quest; ruedas 2 por silla; las llamadas no crecen con la gente (10 → 40 → 49)", () => {
+  const mov = ["pie", "baston", "andador", "silla"], r = azarCon(81031);
+  const gente = n => Array.from({ length: n }, (_, k) => ({ quest: r() < 0.25, sombrero: Math.floor(r() * 3), mov: mov[Math.floor(r() * 4)], oficial: k === 0 }));
+  for (const n of [1, 10, 40, 49]) {
+    const g = gente(n), c = Cuenta.instancias(g);
+    assert.strictEqual(c.cuerpo, n * 5); assert.strictEqual(c.cabeza, n); assert.strictEqual(c.nombres, n);
+    assert.strictEqual(c.cajas, g.reduce((a, p) => a + Aspecto.cajas(p.sombrero, p.mov, p.oficial), 0));
+    assert.strictEqual(c.manos, 2 * g.filter(p => p.quest).length); assert.strictEqual(c.ruedas, 2 * g.filter(p => p.mov === "silla").length);
+    assert.ok(Cuenta.grupo(c).llamadas >= 4 && Cuenta.grupo(c).llamadas <= 6, "n=" + n);
+    assert.ok(c.cajas <= n * Aspecto.CAJAS_MAX, "nunca más cajas que la reserva (plazas × CAJAS_MAX)");
+  }
+  // 49 plazas con la sala llena y todo el mundo con lo máximo: bajo el techo del componente (presupuesto 40000 triángulos, 8 llamadas)
+  const peor = Cuenta.grupo(Cuenta.instancias(Array.from({ length: 49 }, () => ({ quest: true, sombrero: 1, mov: "silla", oficial: true }))));
+  assert.ok(peor.triangulos < 40000 && peor.llamadas <= 8, JSON.stringify(peor));
+});
+test("coste del grupo (PB8), propiedades: llamadas independientes del número de personas; triángulos monótonos al añadir gente o accesorios (500 casos de semilla fija)", () => {
+  const mov = ["pie", "baston", "andador", "silla"], r = azarCon(5);
+  const una = () => ({ quest: r() < 0.5, sombrero: Math.floor(r() * 3), mov: mov[Math.floor(r() * 4)], oficial: r() < 0.1 });
+  for (let i = 0; i < 500; i++) {
+    const g = Array.from({ length: 1 + Math.floor(r() * 49) }, una), extra = g.concat([una()]);
+    const a = Cuenta.grupo(Cuenta.instancias(g)), b = Cuenta.grupo(Cuenta.instancias(extra));
+    assert.ok(b.triangulos > a.triangulos, "una persona más cuesta triángulos");
+    assert.ok(b.llamadas >= a.llamadas && b.llamadas <= 6);
+    const todos = Cuenta.grupo(Cuenta.instancias(g.map(p => Object.assign({}, p, { quest: true, sombrero: 1, mov: "silla" }))));
+    assert.ok(todos.llamadas === 6 && todos.triangulos >= a.triangulos, "con todo puesto, el máximo");
+  }
+});
+
 // ---------- en Chrome
 const SALTO = motivoSalto("la presencia simulada en navegador") || saltoPagina("la presencia simulada en navegador");
 let srv, navegador, base;
@@ -399,9 +438,11 @@ test("en Chrome: sin ?presencia no se añade nada; con ?presencia=sim, 10 y 40 v
     res[n] = r.m;
   }
   if (MIDE) for (const n of [0, 10, 40]) console.log("MEDIDO presencia n=" + n + " " + JSON.stringify(res[n]));
-  const d10 = res[10].presLlamadas - res[0].presLlamadas, d40 = res[40].presLlamadas - res[0].presLlamadas;
-  assert.ok(d10 >= 4 && d10 <= 6, "10 visitantes: " + d10 + " llamadas más (esperadas 4-6: cuerpo, cabeza, sombrero y apoyo, nombres, manos si hay Quest y las ruedas si alguien lleva silla)");
-  assert.ok(d40 === 5 || d40 === 6, "40 visitantes: " + d40 + " llamadas más (esperadas 5, o 6 con las ruedas de la silla de ruedas: AV2, decisión 131)");
-  // P5: el muñeco del paseante: 5 cajas (60) + cabeza (icosaedro, 20) + sombrero (12) + nombre (2) = 94; con gafas, +24 de las manos
-  assert.ok(res[40].presTri <= 40 * 120, "40 visitantes: más de 120 triángulos por avatar");
+  // PB8: el coste esperado es el de Cuenta (puro, probado arriba en Node); aquí solo se confirma que lo montado lo cumple. El reparto sale de lo que la página informa de sí misma
+  const esperado = r => Cuenta.grupo({ plazas: r.pres.n, cuerpo: r.pres.n * 5, cabeza: r.pres.n, nombres: r.pres.n, cajas: r.pres.aspecto.cajas, manos: 2 * r.pres.quest, ruedas: r.pres.aspecto.ruedas });
+  for (const n of [10, 40]) {
+    const e = esperado({ pres: res[n].pres }), real = { llamadas: res[n].presLlamadas - res[0].presLlamadas, triangulos: res[n].presTri };
+    assert.deepStrictEqual(real, e, n + " visitantes: lo dibujado debe ser lo que dice Cuenta (llamadas, triángulos) " + JSON.stringify(real) + " vs " + JSON.stringify(e));
+  }
+  assert.ok(res[40].presLlamadas === res[10].presLlamadas || Math.abs(res[40].presLlamadas - res[10].presLlamadas) <= 2, "10 y 40 visitantes cuestan casi las mismas llamadas (instanciado)");
 });
