@@ -1,11 +1,12 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: tamano, cuadro, bucle
-// Consume: 01_datos (DEPURA), 02_mundo (Mundo), 02b_cola (Cola), 03_escena (visor, renderer, scene, camera), 04b_escena3d (Escena3D),
+// Consume: 02_mundo (Mundo), 02b_cola (Cola), 03_escena (visor, renderer, scene, camera), 04b_escena3d (Escena3D),
 //   05_nube (actualizaNubeTeselas, actualizaNube), 07b_arboles (Arboles), 08_marcadores (listo, aplica), 09_camara (objetivo, camara),
 //   12_paseo (paseando, actualizaPaseo), 13b_hazas (Hazas), 15_tiempo (actualizaTiempo, hace), 16_vida (actualizaVida),
 //   17_minimapa (actualizaMinimapa), 18_paisaje (actualizaPaisaje), 19_balizas (actualizaBalizas), 20_sonido (actualizaSonido),
 //   21_suelo (recoloreaSuelo, actualizaSuelo), 22_huellas (actualizaHuellas), 23_estacion (actualizaOlivo), 24_pantalla (transEntrada, transSalida),
-//   25_perros (actualizaPerros), 26_presencia (Presencia), 28_depura (depuraCuadro), 29_vr (VRX, vrActualiza, vrFin), 30_mide (Mide)
+//   25_perros (actualizaPerros), 26_presencia (Presencia), 28_depura (depuraCuadro), 29_vr (VRX, vrActualiza, vrFin), 30_mide (Mide),
+//   33_ajustes (Ajustes)
 // Nota: Arranque y bucle: Mundo.arranca, cuadro() y requestAnimationFrame. Define el orden de las actualizaciones por fotograma.
 // ===============================================================================
 
@@ -22,8 +23,9 @@
     var dt = Math.min(0.1, (t - tAnt) / 1000); tAnt = t;
     if (VRX.on) vrActualiza(dt, t); else if (paseando) { actualizaPaseo(dt); transEntrada(dt); } else { camara(); transSalida(dt); }
     actualizaTiempo(dt, t); actualizaOlivo(dt); actualizaVida(dt); actualizaMinimapa(dt); actualizaPaisaje(dt); actualizaBalizas(dt); actualizaSonido(dt); actualizaSuelo(dt); actualizaNube(dt); Arboles.actualiza(dt); actualizaCarga(dt); actualizaHuellas(dt); actualizaPerros(dt); Presencia.actualiza(dt); Hazas.actualiza(dt); Cola.corre(Arboles.presupuesto()); Escena3D.actualiza();
-    renderer.render(scene, camera); if (DEPURA) depuraCuadro(t); if (VRX.on) vrFin(dt, performance.now() - t); if (Mide.on) Mide.cuadro(t);
+    renderer.render(scene, camera); depuraCuadro(t); if (VRX.on) vrFin(dt, performance.now() - t); if (Mide.on) Mide.cuadro(t);
   }
-  function bucle() { if (VRX.on) return; cuadro(performance.now()); requestAnimationFrame(bucle); }
+  var tAhorro = 0;   // Configuración → Gráficos → Ahorro de batería: salta los fotogramas que llegan antes de ~25 ms (unos 30 por segundo)
+  function bucle() { if (VRX.on) return; var ahora = performance.now(); if (Ajustes.lee("graficos.ahorro") && ahora - tAhorro < 25) { requestAnimationFrame(bucle); return; } tAhorro = ahora; cuadro(ahora); requestAnimationFrame(bucle); }
   bucle();
 

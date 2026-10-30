@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: MideEst, Mide
 // Consume: 01_datos ($, DEPURA), 03_escena (visor, renderer, modo, calidad), 04b_escena3d (Escena3D), 07b_arboles (Arboles), 08_marcadores (listo),
-//   14_historia (lista, rango), 15_tiempo (nivel, hace), 16_vida (mira), 29_vr (VRX, vrMideEmpieza, vrMideFin, VR_PERFILES),
+//   14_historia (lista, rango), 15_tiempo (nivel, hace), 16_vida (mira), 29_vr (VRX, vrMideEmpieza, vrMideFin, VR_PERFILES), 33_ajustes (Ajustes),
 //   90_final (cuadro, bucle)
 // ===============================================================================
 
@@ -64,6 +64,7 @@
     var N = 60, estado = "inactivo", tArma = 0, t0 = 0, m = null, prev = -1, nvPrev = -2, nivIni = null, cambios = [], modoIni = "", res = null, huboVisib = false, UI = null, copiado = 0, tPinta = 0;
     var CLAVE = "gemelo_mide";
     var api = { on: false, alTerminar: null };
+    function contador() { return typeof Ajustes !== "undefined" && Ajustes ? Ajustes.lee("avanzado.contador") : DEPURA; }   // 33_ajustes.js se monta después: al cargar, solo ?debug
     function modoAhora() { return VRX.on ? "VR" : "pantalla"; }
     function nivelAhora() { return VRX.on ? VRX.nivel : null; }
     function banderas() {
@@ -137,7 +138,7 @@
     }
     // la caja de pantalla: junto al contador de ?debug (o sola si se arma con &mide sin ?debug)
     function ui() {
-      if (UI || !(DEPURA || api.on || estado !== "inactivo")) return;
+      if (UI || !(contador() || api.on || estado !== "inactivo")) return;
       UI = document.createElement("div"); UI.id = "mideCaja";
       UI.style.cssText = "position:absolute;right:8px;bottom:8px;z-index:30;font:11px/1.35 ui-monospace,Menlo,monospace;background:rgba(0,0,0,.78);color:#a8f0b0;padding:5px 7px;border-radius:5px;max-width:min(92%,430px)";
       var b1 = document.createElement("button"), b2 = document.createElement("button"), pre = document.createElement("pre");
@@ -153,10 +154,12 @@
       UI.b2.textContent = copiado === 1 ? "Copiado" : copiado === 2 ? "No se pudo copiar" : "Copiar"; UI.b2.disabled = !res;
       UI.pre.textContent = res ? MideEst.texto(res) : (estado === "midiendo" ? linea().trim() : estado === "esperando" ? linea().trim() : "");
     }
+    // Configuración → Avanzado: la caja sale o se esconde con el contador (armada por &mide o midiendo, se queda)
+    api.muestra = function (on) { if (on) ui(); if (UI) UI.style.display = on || api.on || estado === "esperando" || estado === "midiendo" ? "" : "none"; };
     api.arma = arma; api.inicia = inicia; api.cuadro = cuadro; api.linea = linea; api.copia = copia; api.historial = historial;
     api.resultado = function () { return res; }; api.estado = function () { return estado; }; api.segundos = function () { return N; };
     window.__mide = function () { return { estado: estado, n: N, resultado: res, texto: res ? MideEst.texto(res) : "", historial: historial() }; };
     var param = /[?&]mide(?:=(\d+))?(?=&|$)/.exec(location.search);
-    if (param) arma(param[1] ? Number(param[1]) : 60); else if (DEPURA) ui();
+    if (param) arma(param[1] ? Number(param[1]) : 60); else if (contador()) ui();
     return api;
   })();

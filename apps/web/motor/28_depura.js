@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: depuraCuadro
-// Consume: 01_datos (DEPURA), 02_mundo (Mundo), 02b_cola (Cola), 03_escena (visor, renderer), 07b_arboles (Arboles), 15_tiempo (nivel),
-//   26_presencia (Presencia), 29_vr (vrDebugExtra), 30_mide (Mide)
+// Consume: 02_mundo (Mundo), 02b_cola (Cola), 03_escena (visor, renderer), 07b_arboles (Arboles), 15_tiempo (nivel), 26_presencia (Presencia),
+//   29_vr (vrDebugExtra), 30_mide (Mide), 33_ajustes (Ajustes)
 // ===============================================================================
 
   // ---------- ?debug: un contador en la esquina del visor para medir en el móvil (ms de JS por fotograma, llamadas, triángulos, teselas y olivos por nivel)
@@ -24,7 +24,8 @@
       " · olivos " + (e.triOlivos / 1000).toFixed(0) + " k tri / " + (e.presupuesto / 1000).toFixed(0) + " k · " + e.llamadasOlivos + " llamadas" + (e.movil ? " · móvil" : "") + "\n";
   }
   function depuraCuadro(tIni) {
-    if (!DEPURA) return;
+    if (!Ajustes.lee("avanzado.contador")) { if (dep.el) dep.el.hidden = true; return; }   // ?debug o el ajuste de Configuración → Avanzado
+    if (dep.el) dep.el.hidden = false;
     var js = performance.now() - tIni; dep.n++; dep.js += js; if (js > dep.mx) dep.mx = js;
     var ahora = performance.now(); if (ahora - dep.t0 < 500) return;
     if (!dep.el) { dep.el = document.createElement("div"); dep.el.style.cssText = "position:absolute;left:8px;bottom:8px;z-index:30;font:11px/1.35 ui-monospace,Menlo,monospace;background:rgba(0,0,0,.7);color:#a8f0b0;padding:4px 7px;border-radius:5px;pointer-events:none;white-space:pre"; visor.appendChild(dep.el); }
