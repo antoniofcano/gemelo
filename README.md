@@ -13,9 +13,10 @@ Dos fincas montadas con el mismo motor: **Cerro Velasco** (5 parcelas, 7,1 ha) y
 
 | Carpeta / fichero | Qué es |
 |---|---|
-| `apps/web/motor/*.js` | El motor, en módulos que se concatenan **por orden alfabético** dentro de un solo `<script>`: mundo y teselas (`02`), cola de trabajos (`02b`), terreno con 3 niveles (`04`), nube LiDAR (`05`), olivos con 3 niveles (`06`, `07`, `07b`), cámara, sol, paseo, historia, tiempo, vida, minimapa, paisaje, balizas, sonido, suelo, huellas, estación, perros, depuración (`?debug`) y **VR** (`29_vr.js`) |
+| `apps/web/motor/*.js` | El motor, en módulos que se concatenan **por orden alfabético** (lo fija `apps/web/herramientas/genera_motor.mjs`) y Vite empaqueta: mundo y teselas (`02`), cola de trabajos (`02b`), escena 3D Tiles (`04b`-`04d`), nube LiDAR (`05`), olivos con 3 niveles (`06`, `07`, `07b`), cámara, sol, paseo, historia, tiempo, vida, minimapa, paisaje, balizas, sonido, suelo, huellas, estación, perros, depuración (`?debug`) y **VR** (`29_vr.js`) |
 | `apps/web/plantilla.html` | HTML y CSS de la página |
-| `tuberia/salida_artefacto/montar_v2.py` | Monta la página: cabecera + datos + three.js + `apps/web/motor/` |
+| `apps/web/herramientas/`, `apps/web/vite.config.js` | Generan el motor y construyen la página con Vite |
+| `tuberia/tiles3d/` | Genera el tileset 3D Tiles de cada finca a partir del contrato v2 |
 | `tuberia/finca_8_teselas.py`, `tuberia/hituelo_conv.py` | Exportador: de los intermedios (LiDAR, ortofoto, NDVI, suelo) a teselas de 256 m |
 | `tuberia/datos/` | Scripts que producen esos intermedios (LiDAR del IGN, ortofoto PNOA, Sentinel-2, SoilGrids) para Cerro Velasco y Hituelo |
 | `pruebas/` | Pruebas con Chrome headless (Playwright): carga y presupuesto de dibujo, vistas, VR con una sesión WebXR simulada |
@@ -28,23 +29,21 @@ con `tuberia/datos/` (ver abajo).
 
 ## Arquitectura en una frase
 
-El mundo se parte en teselas de 256 m alineadas a múltiplos de 256 en UTM30; cada tesela lleva suelo a 1 m, ortofoto, nube y árboles, y el coste
-por fotograma depende de la distancia a la cámara (terreno a 1/2/8 m, olivos en 3 niveles, nube submuestreada). Detalle en [doc/sistema/ARCHITECTURE.md](doc/sistema/ARCHITECTURE.md) y en los [ADR](doc/adr/README.md).
+Los datos se parten en teselas de 256 m alineadas a múltiplos de 256 en UTM30 (físicas y consultas de `Mundo`); la escena se sirve como tileset 3D Tiles 1.1 ([ADR-0015](doc/adr/0015-escena-en-3d-tiles.md)) y el coste
+por fotograma depende del error en pantalla y de la distancia a la cámara (terreno por niveles del tileset, olivos por niveles, nube submuestreada). Detalle en [doc/sistema/ARCHITECTURE.md](doc/sistema/ARCHITECTURE.md) y en los [ADR](doc/adr/README.md).
 
 ## Construir
 
 ```bash
+# Exportar una finca (necesita los intermedios de datos/<finca>) y generar su tileset
+python tuberia/finca_8_teselas.py --finca hituelo
+node tuberia/tiles3d/genera.mjs
+
 # Cliente web (Vite; el producto): página empaquetada en apps/web/dist/
-cd apps/web && npm i && GEMELO_DATOS=<ruta a indice.json o embebido.json> npm run build && cd ../..
-
-# Salida artefacto (sin servidor):
-# Cerro Velasco, un solo HTML con todo embebido (≤ 16 MB)
-python tuberia/salida_artefacto/montar_v2.py --finca cerro --salida gemelo_cerro.html   # sin --salida: gemelo_cerro_v2.html
-
-# Hituelo: página ligera + ficheros de apoyo (t/<x>_<y>.json|jpg)
-python tuberia/finca_8_teselas.py --finca hituelo       # necesita los intermedios de datos/hituelo
-python tuberia/salida_artefacto/montar_v2.py --finca hituelo --modo ficheros
+cd apps/web && npm i && GEMELO_DATOS=<ruta a indice.json> npm run build && cd ../..
 ```
+
+El gemelo se sirve solo desde el servidor: el entorno local (`npm run dev:arriba`, [DESARROLLO-LOCAL](doc/operacion/DESARROLLO-LOCAL.md)) o, más adelante, el VPS. La salida artefacto de claude.ai se retiró ([ADR-0021](doc/adr/0021-se-retira-la-salida-artefacto-y-la-escena-de-siempre.md)).
 
 Los scripts de `tuberia/datos/` leen sus rutas de variables de entorno (`GEMELO_DATOS`, `GEMELO_DESCARGAS`, `GEMELO_LIDAR`, `GEMELO_IMAGEN`,
 `GEMELO_HITUELO`, `GEMELO_PARCELAS`, `GEMELO_MDS`, `GEMELO_SUELO`); los valores por defecto son carpetas relativas. Requieren Python con
@@ -55,9 +54,9 @@ Los scripts de `tuberia/datos/` leen sus rutas de variables de entorno (`GEMELO_
 ```bash
 npm i && npm run puerta                    # la puerta: guardianes con un fixture sintético (≈2-3 min con Chrome)
 npm i playwright-core                      # y Chrome instalado (variable CHROME si no está en la ruta por defecto)
-python -m http.server 8000
-node pruebas/prueba3.js http://localhost:8000/hituelo/index.html salida/h     # carga, presupuesto, capturas
-GEMELO_URL=http://localhost:8000/gemelo_cerro.html node pruebas/vr_mock.js     # VR con sesión simulada
+# con la web servida (npm run dev:arriba) o una página de pruebas/salida/paginas/
+node pruebas/prueba3.js <url de la página> salida/h     # carga, presupuesto, capturas
+GEMELO_URL=<url de la página> node pruebas/vr_mock.js   # VR con sesión simulada
 ```
 
 Añade `?debug` a la URL para ver fps, milisegundos de JS por fotograma, llamadas de dibujo, triángulos, teselas y olivos por nivel.
