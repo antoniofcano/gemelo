@@ -17,6 +17,9 @@ if (!fs.existsSync(TILES)) throw new Error("falta 3d-tiles-renderer: cd apps/web
 export default defineConfig({
   root: process.env.GEMELO_WEB_RAIZ || path.join(WEB, ".generado"),
   base: "./",
+  // el manifiesto de aplicación web y su icono (decisión 90: en el iPhone, «Añadir a pantalla de inicio» abre la finca sin las barras de Safari);
+  // la raíz es una carpeta generada, así que la carpeta pública se dice aquí
+  publicDir: path.join(WEB, "public"),
   logLevel: "warn",
   // la raíz puede estar fuera de apps/web (las pruebas la generan en pruebas/salida/): «three» se resuelve siempre al de apps/web/node_modules
   resolve: {

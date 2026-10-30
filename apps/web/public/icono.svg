@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Gemelo del olivar">
+  <rect width="512" height="512" rx="96" fill="#101418"/>
+  <path d="M96 392c60-28 128-36 160-36s100 8 160 36" fill="none" stroke="#b9a57a" stroke-width="18" stroke-linecap="round"/>
+  <path d="M248 356c4-52 0-92-18-128M262 356c-2-44 10-84 34-116" fill="none" stroke="#8b755a" stroke-width="20" stroke-linecap="round"/>
+  <ellipse cx="256" cy="196" rx="132" ry="92" fill="#4d6b2f"/>
+  <ellipse cx="200" cy="176" rx="64" ry="44" fill="#9dc16a" opacity=".55"/>
+  <circle cx="318" cy="214" r="14" fill="#3ccfc2"/>
+</svg>

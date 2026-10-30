@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Movibles
-// Consume: 03_escena (visor)
+// Consume: 03_escena (visor), 31_hud (Hud)
 // ===============================================================================
   // ---------- ventanas flotantes que se pueden mover (UX-del-juego §6): el chat, su burbuja y el minimapa se arrastran por su barra, recuerdan su sitio por
   // forma de pantalla (escritorio, vertical, horizontal) y nunca se quedan encima de los controles (cruceta, barra, estado, «Pasear aquí»): si caen allí,

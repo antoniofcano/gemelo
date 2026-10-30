@@ -1,13 +1,19 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: objetivo, orb, camara, suelta, eligeCopa, pon
+// Expone: objetivo, orb, camara, sensMirar, suelta, eligeCopa, pon
 // Consume: 01_datos (D, $, fmt, DIST_MAX, DIST_INI), 02_mundo (suelo, orto, kcor, copas, marc), 03_escena (lienzo, camera, exag, modo),
 //   05_nube (nube), 07ab_generados (Generados), 08_marcadores (aplica, capas, aplicaLuego), 12_paseo (paseando),
-//   13_parcelas (parcelas, parcelaSel, elegirParcela), 19_balizas (eligeBaliza, sueltaBaliza), 29_vr (ficha)
+//   13_parcelas (parcelas, parcelaSel, elegirParcela), 19_balizas (eligeBaliza, sueltaBaliza), 29_vr (ficha), 33_ajustes (Ajustes)
 // ===============================================================================
 
   // cámara orbital
   var objetivo = new THREE.Vector3(0, 12, 0), orb = { az: -0.55, el: 0.62, dist: DIST_INI }, orbIni = JSON.parse(JSON.stringify(orb));
   function camara() { var ce = Math.cos(orb.el), se = Math.sin(orb.el); camera.position.set(objetivo.x + orb.dist * ce * Math.sin(orb.az), objetivo.y + orb.dist * se, objetivo.z + orb.dist * ce * Math.cos(orb.az)); camera.lookAt(objetivo); }
+  // Configuración → Controles (33_ajustes.js): sensibilidad al mirar y eje vertical invertido; sin 33_ajustes.js, 1× y sin invertir
+  function sensMirar() {
+    var k = 1, y = 1;
+    try { if (typeof Ajustes !== "undefined" && Ajustes && Ajustes.lee) { k = Number(Ajustes.lee("controles.sens")) || 1; y = Ajustes.lee("controles.invertir") ? -1 : 1; } } catch (e) {}
+    return { k: k, y: y };
+  }
   var punteros = {}, movido = 0;
   var toquePaseo = null;   // en el paseo no se gira la vista con el dedo, pero un toque corto elige olivo o baliza
   lienzo.addEventListener("pointerdown", function (e) {
@@ -17,7 +23,7 @@
     if (paseando) return;
     var p = punteros[e.pointerId]; if (!p) return;
     var ids = Object.keys(punteros), dx = e.clientX - p.x, dy = e.clientY - p.y; movido += Math.abs(dx) + Math.abs(dy);
-    if (ids.length === 1) { if (e.shiftKey || e.buttons === 2) pan(dx, dy); else { orb.az -= dx * 0.006; orb.el = Math.max(0.08, Math.min(1.5, orb.el + dy * 0.006)); } }
+    if (ids.length === 1) { if (e.shiftKey || e.buttons === 2) pan(dx, dy); else { var se = sensMirar(); orb.az -= dx * 0.006 * se.k; orb.el = Math.max(0.08, Math.min(1.5, orb.el + dy * 0.006 * se.k * se.y)); } }
     else if (ids.length === 2) { var o = punteros[ids.filter(function (i) { return i != e.pointerId; })[0]]; var antes = Math.hypot(p.x - o.x, p.y - o.y), ahora = Math.hypot(e.clientX - o.x, e.clientY - o.y); orb.dist = Math.max(30, Math.min(DIST_MAX, orb.dist * (antes / Math.max(ahora, 1)))); pan(dx / 2, dy / 2); }
     p.x = e.clientX; p.y = e.clientY;
   });

@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: tVida, enQuad, vq, gFauna, esfera, altSuelo, mira, bandada, conejos, quad, temaEstela, velPaseo, giroPaseo, ponQuad, vidaPaseo, enDron,
-//   dr, dron, ponDron, cicloVista, dronMando, camaraDron, vidaEntra, vidaSale, actualizaVida
+// Expone: tVida, enQuad, vq, gFauna, esfera, altSuelo, quita, mira, bandada, conejos, quad, temaEstela, velPaseo, giroPaseo, ponQuad, vidaPaseo,
+//   enDron, dr, dron, ponDron, cicloVista, dronMando, camaraDron, vidaEntra, vidaSale, actualizaVida
 // Consume: 01_datos (D, $), 02_mundo (suelo, copaAlta, copas, cIn), 03_escena (scene, camera, exag, modo), 07_follaje (matSombra, geoSombra),
 //   12_paseo (paseando, persona, teclas, primera, camPos), 12b_llegada (Llegada),
 //   15_tiempo (calma, texBrillo, cur, meta, ins, nivel, temaBarrera, num1, rumbo), 22_huellas (pendFactor, quadInc, inclinaQuad),

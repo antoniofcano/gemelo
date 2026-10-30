@@ -43,7 +43,7 @@ export function genera(datos, dest) {
   fs.writeFileSync(path.join(dest, "entrada", "motor.generado.js"), 'import * as THREE from "three";\n' + concatenaMotor());
   let plantilla = fs.readFileSync(path.join(WEB, "plantilla.html"), "utf8");
   if (J.textos) plantilla = textosFinca(plantilla, J.textos);
-  const html = '<!doctype html>\n<html lang="es">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n</head>\n<body>\n' +
+  const html = '<!doctype html>\n<html lang="es">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n</head>\n<body>\n' +
     plantilla + '<script type="application/json" id="datos">' + D.trim() + "</script>\n" +
     '<script type="module" src="./entrada/motor.generado.js"></script>\n</body>\n</html>\n';
   fs.writeFileSync(path.join(dest, "index.html"), html);

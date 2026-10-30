@@ -1,9 +1,9 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: paseando, persona, teclas, primera, pp, camPos, entraPaseo, salePaseo, actualizaPaseo
-// Consume: 01_datos (D, $), 02_mundo (suelo, copaAlta, copas), 03_escena (lienzo, visor, scene, camera, exag), 06_arboles (tronco),
-//   13_parcelas (fincas, fincaSel, parcelaSel),
+// Consume: 01_datos (D, $), 02_mundo (suelo, copaAlta, copas), 03_escena (lienzo, visor, scene, camera, exag, modo), 06_arboles (tronco),
+//   08_marcadores (aplica), 09_camara (sensMirar), 13_parcelas (fincas, fincaSel, parcelaSel),
 //   16_vida (enQuad, velPaseo, giroPaseo, ponQuad, vidaPaseo, enDron, ponDron, cicloVista, dronMando, camaraDron, vidaEntra, vidaSale),
-//   24_pantalla (pant, iniciaTransicion, iniciaSalida), 29_vr (ficha)
+//   24_pantalla (iniciaTransicion, iniciaSalida), 29_vr (ficha)
 // ===============================================================================
   // ---------- paseo: una persona que camina por el olivar (flechas o WASD; Mayús corre; V cambia de cámara)
   var paseando = false, persona = null, teclas = {}, primera = false, pp = { x: 0, y: 0, ang: 0, paso: 0 }, camPos = new THREE.Vector3();
@@ -23,12 +23,12 @@
   function entraPaseo() {
     paseando = true; primera = false;
     var pr0 = D.parcelas[parcelaSel >= 0 ? parcelaSel : (fincaSel >= 0 ? fincas[fincaSel].parcelas[0] : 0)]; pp.x = pr0.centro[0]; pp.y = pr0.centro[1] - 6; pp.ang = 0;
-    persona.visible = true; $("btnPaseo").setAttribute("aria-pressed", "true"); $("btnPaseo").textContent = "Salir del paseo";
+    persona.visible = true; $("btnPaseo").setAttribute("aria-pressed", "true");   // el botón «Pasear» se esconde al pasear: se sale con Inicio o el selector de modo (31_hud.js)
     visor.classList.add("paseo"); $("ayudaPaseo").hidden = false; $("ayuda").hidden = true; $("ficha").hidden = true; lienzo.tabIndex = 0; lienzo.focus({ preventScroll: true });
     camPos.set(pp.x, 5, -pp.y + 5); vidaEntra(); iniciaTransicion();
   }
   function salePaseo() {
-    paseando = false; persona.visible = false; teclas = {}; vidaSale(); iniciaSalida(); $("btnPaseo").setAttribute("aria-pressed", "false"); $("btnPaseo").textContent = "Pasear por el olivar";
+    paseando = false; persona.visible = false; teclas = {}; vidaSale(); iniciaSalida(); $("btnPaseo").setAttribute("aria-pressed", "false");
     visor.classList.remove("paseo"); $("ayudaPaseo").hidden = true; $("ayuda").hidden = false;
   }
   $("btnPaseo").addEventListener("click", function () { if (paseando) salePaseo(); else entraPaseo(); });
@@ -36,7 +36,7 @@
   window.addEventListener("keydown", function (e) {
     if (!paseando) return; var t = e.target && e.target.tagName;
     if (t === "INPUT" || t === "SELECT" || t === "TEXTAREA") return;
-    if (e.code === "Escape") { salePaseo(); return; }
+    // Esc ya no sale del paseo (decisión 84): cierra lo último abierto o abre el menú (31_hud.js); a la vista aérea se vuelve con Inicio o 0
     if (e.code === "KeyV") { cicloVista(); return; }
     if (e.code === "KeyQ") { ponQuad(!enQuad); return; }
     if (e.code === "KeyE") { ponDron(!enDron); return; }
@@ -63,7 +63,7 @@
     if (TR.act && TR.t < TR.tCae + 0.25) { av = 0; gi = 0; }   // quieto mientras cae
     if (enDron) { dronMando(av, gi, dt); av = 0; gi = 0; }
     var vel = velPaseo(av, dt);
-    pp.ang += gi * dt * giroPaseo(vel);
+    pp.ang += gi * dt * giroPaseo(vel) * sensMirar().k;   // la sensibilidad de Configuración → Controles también gira al paseante (09_camara.js); el eje vertical no aplica
     var nx = pp.x + Math.sin(pp.ang) * vel * dt, ny = pp.y + Math.cos(pp.ang) * vel * dt;
     // los troncos no se atraviesan: se empuja fuera del círculo de cada tronco
     var RC = enQuad ? 1.05 : 0.55;

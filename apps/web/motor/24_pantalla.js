@@ -1,24 +1,81 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: pant, TR, suave, iniciaTransicion, transEntrada, aterriza, iniciaSalida, transSalida
-// Consume: 01_datos ($), 03_escena (visor, camera), 12_paseo (paseando, persona), 15_tiempo (hace), 16_vida (altSuelo), 20_sonido (snd, sPaso),
-//   22_huellas (emitePolvo, sueloSeco), 25_perros (perrosLlegan), 29_vr (panel), 90_final (tamano)
+// Expone: Menu, Pantalla, TR, suave, iniciaTransicion, transEntrada, aterriza, iniciaSalida, transSalida
+// Consume: 01_datos ($), 03_escena (visor, camera, modo), 09_camara (pon), 12_paseo (paseando, persona), 15_tiempo (hace),
+//   16_vida (altSuelo, quita), 20_sonido (snd, sPaso), 22_huellas (emitePolvo, sueloSeco), 25_perros (perrosLlegan), 31_hud (Hud), 90_final (tamano)
 // ===============================================================================
-  // ---------- pantalla completa del visor (con botón para volver a la página) y la transición de la cámara entre el mapa y el paseo
-  var pant = { on: false };
-  function pantallaCompleta(v) {
-    pant.on = v; visor.classList.toggle("pantalla", v); document.documentElement.classList.toggle("sin-scroll", v);
-    var b = $("btnPantalla"); b.setAttribute("aria-pressed", String(v)); b.textContent = v ? "✕ Volver" : "⛶"; b.title = v ? "Volver a la página" : "Pantalla completa";
-    // pantalla completa de verdad si el navegador la deja (en el iPhone no la hay para esto: queda la del propio visor, que ocupa toda la ventana)
-    try {
-      if (v && visor.requestFullscreen && !document.fullscreenElement) { var pr = visor.requestFullscreen(); if (pr && pr.catch) pr.catch(function () {}); }
-      if (!v && document.fullscreenElement && document.exitFullscreen) { var pe = document.exitFullscreen(); if (pe && pe.catch) pe.catch(function () {}); }
-    } catch (e) {}
-    setTimeout(tamano, 60); setTimeout(tamano, 350);
-  }
-  (function () {
-    $("btnPantalla").addEventListener("click", function () { pantallaCompleta(!pant.on); });
-    document.addEventListener("fullscreenchange", function () { if (!document.fullscreenElement && pant.on) pantallaCompleta(false); });
-    window.addEventListener("keydown", function (e) { if (e.code === "Escape" && pant.on && !paseando) pantallaCompleta(false); }, true);   // en la fase de captura: el primer Escape sale del paseo y el segundo, de la pantalla completa
+  // ---------- la página ES el visor (decisión 83): el menú (☰ o Esc) y la pantalla completa de verdad
+  // El menú es un <dialog> nativo y modal: atrapa el foco y Esc lo cierra solo. Pestañas con el patrón ARIA (flechas, Inicio, Fin).
+  // Configuración la rellena 33_ajustes.js (#menuAjustes); Créditos y «Acerca de la finca» vienen escritos en la plantilla.
+  var Menu = (function () {
+    var dlg = $("menu"), pestanas = dlg ? Array.prototype.slice.call(dlg.querySelectorAll('#menuPestanas [role="tab"]')) : [], vuelta = null;
+    var NOMBRE = { ajustes: "menuPestAjustes", creditos: "menuPestCreditos", finca: "menuPestFinca" };
+    function eligePest(t, foco) {
+      pestanas.forEach(function (p) { var si = p === t; p.setAttribute("aria-selected", String(si)); p.tabIndex = si ? 0 : -1; var pnl = $(p.getAttribute("aria-controls")); if (pnl) pnl.hidden = !si; });
+      if (foco) t.focus();
+    }
+    function abre(cual) {
+      if (!dlg) return;
+      if (!dlg.open) { vuelta = document.activeElement; try { dlg.showModal(); } catch (e) { dlg.setAttribute("open", ""); } }
+      var t = $(NOMBRE[cual] || "") || pestanas.filter(function (p) { return p.getAttribute("aria-selected") === "true"; })[0] || pestanas[0];
+      if (t) eligePest(t, true);
+    }
+    function cierra() { if (dlg && dlg.open) dlg.close(); }
+    if (dlg) {
+      pestanas.forEach(function (p, i) {
+        p.addEventListener("click", function () { eligePest(p, false); });
+        p.addEventListener("keydown", function (e) {
+          var k = e.key, n = pestanas.length, j = k === "ArrowDown" || k === "ArrowRight" ? (i + 1) % n : k === "ArrowUp" || k === "ArrowLeft" ? (i + n - 1) % n : k === "Home" ? 0 : k === "End" ? n - 1 : -1;
+          if (j < 0) return; e.preventDefault(); e.stopPropagation(); eligePest(pestanas[j], true);
+        });
+      });
+      dlg.addEventListener("keydown", function (e) { if (e.key !== "Escape") e.stopPropagation(); });   // dentro del menú, pulsar no mueve al paseante
+      dlg.addEventListener("close", function () { if (vuelta && vuelta.focus && document.contains(vuelta)) vuelta.focus({ preventScroll: true }); vuelta = null; });
+      dlg.addEventListener("click", function (e) { if (e.target === dlg) cierra(); });   // un toque fuera de la caja (en el fondo) cierra
+      var bv = $("menuVolver"); if (bv) bv.addEventListener("click", cierra);
+      var ba = $("menuAereo"); if (ba) ba.addEventListener("click", function () { cierra(); if (paseando) $("btnPaseo").click(); });
+      var bm = $("bMenu"); if (bm) bm.addEventListener("click", function () { abre(); });
+      var at = $("hudAtrib"); if (at) at.addEventListener("click", function () { abre("creditos"); });
+    }
+    return { abre: abre, cierra: cierra, abierto: function () { return !!(dlg && dlg.open); } };
+  })();
+
+  // ---------- pantalla completa de verdad (⛶ o F): la página ya ocupa la ventana; esto quita además las barras del navegador (Fullscreen API, con gesto
+  // del usuario). En Chrome y Edge de escritorio se pide Keyboard Lock para Esc: así Esc abre el menú y para salir hay que mantenerlo pulsado; en el resto, el
+  // primer Esc saca de la pantalla completa (lo hace el navegador y la página no lo recibe). La orientación no se bloquea.
+  // iPhone: Safari no tiene pantalla completa para una página; ⛶ explica «Compartir → Añadir a pantalla de inicio» (manifiesto en apps/web/public/). No probado.
+  var Pantalla = (function () {
+    var raiz = document.documentElement, b = $("btnPantalla");
+    function hay() { return !!(raiz.requestFullscreen || raiz.webkitRequestFullscreen); }
+    function dentro() { return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+    function comoApp() { try { return (window.matchMedia && window.matchMedia("(display-mode: fullscreen), (display-mode: standalone)").matches) || window.navigator.standalone === true; } catch (e) { return false; } }
+    function avisa(t, ms) { if (typeof Hud !== "undefined" && Hud) Hud.aviso(t, ms); }
+    function pinta() {
+      var si = dentro(); if (!b) return;
+      b.setAttribute("aria-pressed", String(si)); b.textContent = si ? "🗗" : "⛶";
+      b.setAttribute("aria-label", si ? "Salir de la pantalla completa (F)" : "Pantalla completa (F)"); b.title = si ? "Salir de la pantalla completa · F" : "Pantalla completa · F";
+    }
+    function bloqueaEsc(si) {
+      var k = navigator.keyboard; if (!k) return false;
+      try { if (si && k.lock) { var pr = k.lock(["Escape"]); if (pr && pr.catch) pr.catch(function () {}); return true; } if (!si && k.unlock) k.unlock(); } catch (e) {}
+      return false;
+    }
+    function ponPantalla(si) {
+      if (si === undefined) si = !dentro();
+      if (!hay()) {
+        avisa(comoApp() ? "Ya estás a pantalla completa (modo aplicación)." : "En el iPhone, Safari no deja poner una página a pantalla completa: toca Compartir → «Añadir a pantalla de inicio» y ábrela desde allí.", 9000);
+        return;
+      }
+      try {
+        if (si && !dentro()) {
+          var pr = raiz.requestFullscreen ? raiz.requestFullscreen({ navigationUI: "hide" }) : raiz.webkitRequestFullscreen();
+          if (pr && pr.then) pr.then(function () { avisa(bloqueaEsc(true) ? "Pantalla completa: mantén pulsado Esc para salir." : "Pantalla completa: Esc o F para salir.", 3500); }, function () { avisa("El navegador no ha dejado poner la pantalla completa.", 4000); });
+        } else if (!si && dentro()) { bloqueaEsc(false); var pe = document.exitFullscreen ? document.exitFullscreen() : document.webkitExitFullscreen(); if (pe && pe.catch) pe.catch(function () {}); }
+      } catch (e) {}
+    }
+    if (b) b.addEventListener("click", function () { ponPantalla(); });
+    ["fullscreenchange", "webkitfullscreenchange"].forEach(function (ev) { document.addEventListener(ev, function () { if (!dentro()) bloqueaEsc(false); pinta(); setTimeout(tamano, 60); }); });
+    pinta();
+    return { pon: ponPantalla, dentro: dentro, hay: hay, comoApp: comoApp };
   })();
 
   // --- del mapa al paseo: la cámara baja volando desde donde estaba hasta detrás del muñequito, que cae desde el cielo y rebota al aterrizar
@@ -54,9 +111,3 @@
     camera.position.lerpVectors(TR.pS, camera.position.clone(), s); qObj.copy(camera.quaternion); camera.quaternion.copy(TR.qS).slerp(qObj, s);
     if (TR.ts > TR.durS) TR.sal = false;
   }
-
-  (function () {   // el botón de pasear del visor hace lo mismo que el del panel y guarda su texto
-    var v = $("btnPaseoV"); if (!v) return; v.addEventListener("click", function () { $("btnPaseo").click(); });
-    new MutationObserver(function () { var on = $("btnPaseo").getAttribute("aria-pressed") === "true"; v.setAttribute("aria-pressed", String(on)); v.textContent = on ? "✕ Salir del paseo" : "🚶 Pasear"; }).observe($("btnPaseo"), { attributes: true, attributeFilter: ["aria-pressed"] });
-  })();
-

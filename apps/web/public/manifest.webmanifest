@@ -1,0 +1,16 @@
+{
+  "name": "Gemelo del olivar · Cano & Damas",
+  "short_name": "Gemelo",
+  "lang": "es",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "any",
+  "background_color": "#0b0d0a",
+  "theme_color": "#101418",
+  "icons": [
+    { "src": "icono.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

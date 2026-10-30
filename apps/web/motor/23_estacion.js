@@ -92,7 +92,7 @@
     }
     if (modo !== "gem") h += '<p class="t-aviso">Las flores y las aceitunas solo se ven en el modo «Gemelo» (copas en 3D). <button type="button" class="h-btn" id="tVerGem">Ver en Gemelo</button></p>';
     h += '<p class="t-sub">Flores y aceitunas son ilustrativas: la etapa sale de un calendario típico, el color de la copa del NDVI y el clima de la estación; no hay conteo de frutos.</p>';
-    c.innerHTML = h; var vg = $("tVerGem"); if (vg) vg.addEventListener("click", function () { $("mGem").click(); }); var b = $("tHoy"); if (b) b.addEventListener("click", function () { var s = $("hSel"); s.value = NDV.fechas.length - 1; s.dispatchEvent(new Event("input", { bubbles: true })); });
+    c.innerHTML = h; var vg = $("tVerGem"); if (vg) vg.addEventListener("click", function () { $("mGem").click(); }); var b = $("tHoy"); if (b) b.addEventListener("click", function () { var s = $("ndviSel"); s.value = NDV.fechas.length - 1; s.dispatchEvent(new Event("input", { bubbles: true })); });
   }
   var tonoO = new THREE.Color(1, 1, 1);
   function actualizaOlivo(dt) {
@@ -106,7 +106,7 @@
   window.__otDebug = function () { var o = gFollaje.children.length ? gFollaje.children[gFollaje.children.length - 1].children.slice(-1)[0] : null; return { hijos: gFollaje.children.length, puntos: o && o.geometry && o.geometry.attributes.position ? o.geometry.attributes.position.count : -1, bbch: uFruto.uBBCH.value, esc: uFruto.uEsc.value, visible: gFollaje.visible, tipo: o && o.type }; };
   calibraFenologia();
   (function () {
-    var h = $("hSel"); if (h) h.addEventListener("input", function () { actualizaEstacion(); });
+    var h = $("ndviSel"); if (h) h.addEventListener("input", function () { actualizaEstacion(); });   // la fecha del campo, una sola (decisión 88)
     ["mNube", "mGem", "mOrto"].forEach(function (id) { var b = $(id); if (b) b.addEventListener("click", function () { setTimeout(pintaEstacion, 0); }); });
     pintaEstacion();
   })();
