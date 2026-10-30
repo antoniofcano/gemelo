@@ -27,6 +27,7 @@
 - [sistema/VR.md](sistema/VR.md) — modo VR (Meta Quest): controles, perfiles, qué se probó y qué no.
 - [sistema/UX.md](sistema/UX.md) — propuesta de UX: acceso, configuración e interacción (pendiente de revisión); maqueta en [../prototipos/ux/](../prototipos/ux/).
 - [sistema/UX-FINCA-JUEGO.md](sistema/UX-FINCA-JUEGO.md) — propuesta: la página de la finca como un videojuego a pantalla completa (HUD mínimo, ventanas, Configuración, chat movible), con inventario, «antes → después» y plan; maqueta en [../prototipos/ux-finca-juego/](../prototipos/ux-finca-juego/).
+- [sistema/OFICINA.md](sistema/OFICINA.md) — propuesta: `/oficina`, la herramienta de la oficina (familias, hazas, bandeja, mundo en modo oficina, agenda, directos, constructor y parámetros de la escalera versionados, sistema), con plan OF0-OF13 y decisiones; maqueta en [../prototipos/oficina/](../prototipos/oficina/).
 - [sistema/ARQUITECTURA-MULTIUSUARIO.md](sistema/ARQUITECTURA-MULTIUSUARIO.md) — «Cuarenta hazas»: la visión multiusuario que da sentido al proyecto (propuesta, pendiente de estudio).
 
 ## Cómo se opera — `operacion/`

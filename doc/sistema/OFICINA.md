@@ -1,0 +1,273 @@
+# La oficina (`/oficina`)
+
+> **Estado: propuesta (2026-10-30), pendiente de Antonio; sin implementar.** Plan y diseño del acceso de la oficina al gemelo. Maqueta navegable con datos ficticios: [`prototipos/oficina/index.html`](../../prototipos/oficina/index.html) (un solo fichero, sin red: doble clic, o `python -m http.server 8000` y `/prototipos/oficina/`). Encaja con [ADR-0009](../adr/0009-plataforma-multiusuario-cuarenta-hazas.md), [ADR-0013](../adr/0013-enlace-magico-y-sesiones.md) (sesiones), [ADR-0014](../adr/0014-proyeccion-publica-por-haza.md) (lista blanca), [ADR-0019](../adr/0019-escalera-de-olivos.md) y [ADR-0022](../adr/0022-escalones-de-olivo-por-masa-visual.md) (escalera), y con las decisiones 10, 12-17, 42-47 y 91-97 de [DECISIONS-PENDING](../rumbo/DECISIONS-PENDING.md). Concreta y amplía la tarea V4 del [PLAN](../rumbo/PLAN.md).
+
+Petición de Antonio (30-oct-2026): «un acceso al gemelo que sea /oficina en el que poder configurar cosas: las familias (mails, revocaciones, dibujo de las hazas, etc.), configuración de los parámetros del sistema, acceso a la UI del constructor de olivos (estaría guai la parametrización de los distintos escalones poder hacerla desde la oficina, por si quiero luego hacer ajustes no depender de ti), acceso al mundo en modo oficinario pudiendo abrir salas, manejando la agenda, los futuros streamings, etc.»
+
+## Índice
+1. [Qué es y para quién](#1-qué-es-y-para-quién)
+2. [Acceso y seguridad](#2-acceso-y-seguridad)
+3. [Familias](#3-familias)
+4. [Hazas](#4-hazas)
+5. [Bandeja](#5-bandeja)
+6. [El mundo en modo oficina](#6-el-mundo-en-modo-oficina)
+7. [Agenda](#7-agenda)
+8. [Directos](#8-directos)
+9. [Olivos: constructor y parámetros de la escalera](#9-olivos-constructor-y-parámetros-de-la-escalera)
+10. [Sistema](#10-sistema)
+11. [Plan por fases](#11-plan-por-fases)
+12. [Decisiones para Antonio](#12-decisiones-para-antonio)
+13. [Lo que no está probado](#13-lo-que-no-está-probado)
+
+---
+
+## 1. Qué es y para quién
+
+`/oficina/` es una **herramienta de escritorio** (también usable en tableta) para las personas de Cano & Damas que llevan la comunidad: dar de alta a las familias, dibujar y asignar sus hazas, atender la bandeja, preparar la agenda y los directos, ajustar los parámetros del gemelo y entrar al mundo con poderes de oficina. No es parte del mundo: es otra página de la misma web (decisión 56: todo en `apps/web`), sin three ni motor, con su propio build de Vite (como la portada, `apps/web/vite.portada.config.js`) y la misma CSP estricta (`script-src 'self'`).
+
+**Quién entra.** Hoy el enum `rol_hogar` (migración 0001) tiene `hogar`, `guia`, `corresponsal` y `admin`, y todas las rutas de oficina (`/api/admin/*`) piden `admin`. Se propone **separar dos roles** (decisión [DO-1](#12-decisiones-para-antonio)):
+
+| Rol | Para quién | Qué puede |
+|---|---|---|
+| `oficina` (nuevo) | el día a día (1-3 personas) | Familias, Hazas, Bandeja, Agenda, Directos, Mundo en modo oficina; ver Sistema y Olivos sin publicar |
+| `admin` | Antonio (y quien él diga) | Todo lo anterior, más publicar parámetros, roles, re-hornear, auditoría completa |
+
+Cada cuenta de oficina es **una cuenta propia**, con un correo distinto del de cualquier hogar ([DO-3](#12-decisiones-para-antonio)): la oficina no es una familia y lo que hace queda a su nombre en la auditoría.
+
+**Forma de la página.** Barra lateral de secciones (Inicio, Familias, Hazas, Bandeja, Agenda, Directos, Mundo, Olivos, Sistema) y contenido a la derecha; en tableta vertical, la barra se pliega a un botón. Arriba, el botón **«Entrar al mundo como oficina»** siempre a mano. Textos en español, zonas táctiles ≥ 44 px, foco visible, `aria-current` en la sección activa, diálogos nativos (`<dialog>`) y avisos en una región `aria-live`.
+
+## 2. Acceso y seguridad
+
+La oficina puede borrar familias, cambiar quién es dueño de qué y cambiar cómo se dibuja el mundo para todos: una sesión robada vale mucho más que la de un hogar. Por eso:
+
+- **Ruta y servidor.** Caddy sirve `/oficina/*` tras `forward_auth` a `/api/interno/autoriza` (como `/finca/`), con un parámetro de rol: sin sesión, a la portada; con sesión de hogar, 403. La api vuelve a comprobar el rol en cada ruta (`requiereRol`): la página nunca es la única barrera.
+- **Sesión propia y más corta** que la de los hogares (ADR-0013: 30 días absolutos, 7 de inactividad): **12 h absolutas y 2 h de inactividad** [valores de partida]. Mismo almacén en Postgres, misma cookie `__Host-gemelo` (el prefijo `__Host-` obliga a `Path=/`); lo que cambia es la caducidad según el rol.
+- **Aparato confiable.** El primer enlace mágico desde un aparato nuevo no basta: el aparato queda **pendiente** hasta que otro aparato de oficina ya confiable (o Antonio, con `admin`) lo aprueba, o hasta que se confirma con un segundo enlace al mismo correo pasados 5 min. Tabla nueva `aparatos_oficina` (hogar, nombre que le da la persona, huella de un secreto en cookie aparte, aprobado_por, último uso, revocado_en). Se ven y se revocan en Sistema.
+- **Reautenticación para lo grave.** Borrar una familia, cambiar un rol, publicar parámetros y re-hornear piden haber entrado hace menos de 15 min; si no, un enlace nuevo («confirmación reciente», un campo en la sesión).
+- **Segundo factor: llave de acceso (passkey, WebAuthn)** con `@simplewebauthn/server` y `@simplewebauthn/browser` (regla 12: librería mantenida; versión por fijar al implementarlo). Funciona con Windows Hello, Touch ID/Face ID y Android sin instalar nada. **Recomendación** ([DO-2](#12-decisiones-para-antonio)): enlace mágico + aparato confiable desde el primer día (OF1) y llave de acceso **obligatoria para `admin` y para `oficina` antes de abrir a familias reales** (OF13). TOTP (app de códigos) solo si alguien no puede usar llaves.
+- **Auditoría** de todo lo que hace la oficina (tabla `auditoria` de la 0001, sin datos personales en `detalle`): quién, cuándo, qué, sobre qué id. La ve `admin` en Sistema.
+- **Límites** de `@fastify/rate-limit` en todas las rutas de oficina, y comprobación de origen (ya existe: `apps/api/src/seguridad/origen.ts`).
+
+**Lo que no se hará:** contraseñas; entrar a la oficina desde la sesión de un hogar; un rol con todos los poderes sin auditoría; claves o secretos editables desde la web (siguen en ficheros del servidor).
+
+## 3. Familias
+
+**Qué se hace.** Lista con búsqueda (correo, alias, haza) y filtros (activas, pendientes de primer acceso, de baja); alta por correo; ficha de cada familia con:
+- **Alta**: correo + rol (por defecto `hogar`) → manda el enlace mágico de bienvenida (el mismo de ADR-0013, con otro texto).
+- **Reenviar enlace** (con los mismos límites por correo que la entrada normal).
+- **Aparatos y sesiones**: cada sesión abierta (tipo de aparato deducido del agente, última actividad, si vino por código corto de las gafas, decisión 46) con **revocar uno** o **revocar todos** (ya existe `POST /api/admin/hogares/:id/revocar`).
+- **Haza**: asignar o quitar (ya existe `PUT /api/admin/hazas/:id/hogar`; decisión 91: un hogar tiene su haza).
+- **Alias**: lo pone la familia (`/api/yo/alias`); la oficina solo puede **quitarlo** si es ofensivo (y queda en la auditoría).
+- **Titular**: decisión 96, solo el adulto del enlace cuelga contenido. La oficina ve el correo; un **nombre interno** opcional para reconocerla ([DO-6](#12-decisiones-para-antonio)), que **nunca** sale por la api de los hogares (lista blanca de ADR-0014).
+- **Normas** aceptadas (versión y fecha, migración 0002) y si quiere avisos por correo.
+- **Baja**: la cuenta pasa a `activo = false`, se revocan sus sesiones y aparatos, la haza queda sin asignar y su contenido (nombres de árboles, fotos, pinturas, diario: lo que añade V3) **se oculta al momento y se borra a los 30 días** salvo que se exporte antes ([DO-5](#12-decisiones-para-antonio)). Reactivar dentro de esos 30 días lo devuelve todo.
+- **RGPD**: **exportar** (lo mismo que `/api/yo/datos`, en un zip con JSON y las imágenes que subió) y **borrar** (ya existe `DELETE /api/admin/hogares/:id`: cascada de la 0001; la auditoría queda anónima). Borrar pide confirmación reciente y escribir el correo.
+
+**Datos.** `hogares`, `sesiones`, `tokens_acceso`, `codigos_vinculo`, `avatares`, `hazas.hogar_id`, `auditoria` (todas existen); de V3: personalización de árboles, diario, avisos y quién subió qué. Nuevas: `hogares.nombre_interno` (si se decide), `hogares.baja_en`, `aparatos_oficina`.
+
+**Rutas nuevas** (todas `requiereRol("oficina", "admin")` salvo las marcadas): `PATCH /api/admin/hogares/:id` (rol [admin], quitar alias, nombre interno), `POST /api/admin/hogares/:id/enlace`, `GET /api/admin/hogares/:id/sesiones`, `DELETE /api/admin/sesiones/:id`, `POST /api/admin/hogares/:id/baja` y `/reactivar`, `GET /api/admin/hogares/:id/exportar`. La lista actual (`GET /api/admin/hogares`) gana paginación y búsqueda.
+
+**Riesgos.** Dar de alta un correo equivocado (se ve el correo completo antes de enviar, y un alta sin primer acceso caduca a los 30 días); borrar por error (reautenticación + escribir el correo + 30 días de baja antes); que el nombre interno se filtre (no entra en ninguna proyección; un guardián busca el campo en las respuestas de `/api/hazas` y `/api/yo`).
+
+**Lo que no se hará:** alta abierta (las cuentas las da la oficina, ADR-0013); ver el contenido privado de una familia que no esté publicado en el mundo; cambiar el correo de una cuenta (se da de alta la nueva y se pasa la haza).
+
+## 4. Hazas
+
+**Qué se hace** (decisiones 12 y 95). Un mapa con la **ortofoto** y las **copas medidas** (LiDAR) de Hituelo, las **parcelas de OlivarTrack** como contornos y las hazas como polígonos de color:
+- **Dibujar** una haza nueva vértice a vértice, **mover** vértices arrastrando (y con el teclado: elegir vértice con Tab, mover con flechas, 0,5 m por pulsación, Mayús × 10), añadir y quitar vértices, con **ajuste** (*snap*) a los bordes de parcela y a los vértices de las hazas vecinas.
+- **Partir** una haza por una línea y **juntar** dos vecinas; **partir o juntar parcelas** de OlivarTrack (una haza que es un trozo de parcela o varias parcelas: tabla `haza_parcela` con `ha_compartidas`).
+- **Recuento automático** de olivos dentro (de la tabla `olivos`, con los ids congelados de V3, decisión 92), con su fuente («medido, LiDAR 2024») y el **declarado** al lado (decisión 14); superficie (columna generada de la 0001); aviso si un olivo cae en el borde (a menos de 1 m) o si dos hazas se pisan.
+- **Historial** de cada haza: cada guardado es una versión (geometría, parcelas, quién y cuándo) y se puede **volver** a una anterior (una versión nueva igual a la vieja, nunca reescribir).
+- **Asignar** la haza a una familia desde aquí o desde Familias.
+
+**Cómo.** El mapa con **OpenLayers** (dibujo, modificación y ajuste incluidos, y proyecciones propias con **proj4**: se trabaja en ETRS89/UTM 30N, EPSG:25830, como la base y el motor, sin pasar por Web Mercator) [versiones por fijar al implementarlo; alternativa: MapLibre GL + Terra Draw, más pensada para Mercator]. La geometría manda en el servidor: **PostGIS** valida (`ST_IsValid`, `ST_MakeValid` con aviso), parte (`ST_Split`), junta (`ST_Union`), cuenta (`ST_Contains` con el índice GiST de `olivos`) y detecta solapes (`ST_Overlaps`). La ortofoto y las copas salen de las teselas que ya sirve Caddy tras sesión (mismo origen; el motor y la oficina no piden nada a otros hosts).
+
+**Datos.** `hazas`, `haza_parcela`, `olivos` (existen); nueva `hazas_versiones` (haza, versión, geom, parcelas en jsonb, autor, cuándo, nota). Las geometrías de las parcelas de OlivarTrack: **[NO VERIFICADO]** que su MCP las dé (el MCP ofrece una herramienta `parcelas` que aún no está en [contratos/mcp.md](../../contratos/mcp.md); su forma, sin comprobar). Si no las da, se importan una vez de un GeoJSON que prepare la oficina (fuera del repo, regla 4).
+
+**Rutas nuevas.** `GET /api/admin/hazas` (con GeoJSON y recuentos), `POST /api/admin/hazas`, `PUT /api/admin/hazas/:id/geom` (con la versión que se editó: si otra persona guardó antes, 409 y se enseña la diferencia), `POST /api/admin/hazas/:id/partir`, `POST /api/admin/hazas/juntar`, `GET /api/admin/hazas/:id/versiones`, `POST /api/admin/hazas/:id/volver/:version`, `GET /api/admin/parcelas-ot`. Cambia el contrato `haza.schema.json` solo si se añade algo visible a los hogares (hoy no).
+
+**Riesgos.** Que cambiar una haza borre eventos (`eventos_haza` cuelga de `haza_parcela` con borrado en cascada: quitar una parcela borra sus eventos, que la siguiente sincronía rehace; se dice antes de guardar); hazas que se pisan (se avisa, no se impide: puede haber lindes dudosas); la ortofoto desplazada respecto a las copas (ADR-0006: se dibuja sobre las copas, que son lo medido).
+
+**Lo que no se hará:** dibujar en el mundo 3D (el mapa 2D es más preciso y funciona en tableta); escribir las hazas en OlivarTrack; editar los olivos medidos.
+
+## 5. Bandeja
+
+**Qué se hace** (decisiones 93, 94 y 96). Todo lo que pide atención de la oficina en una sola lista, con filtros por tipo y estado (nuevo, visto, resuelto):
+- **Sugerencias** de las familias sobre su haza o sus árboles (decisión 91: la personalización sirve de sugerencia).
+- **Denuncias** de contenido (nombre de árbol, foto o pintura): se ve el contenido, quién lo subió (titular, decisión 96), quién lo denunció y por qué.
+- **Contenido nuevo**: lo que se ha colgado (se ve al momento, decisión 93), para mirarlo sin esperar a una denuncia.
+- **Preguntas sobre una haza** (tabla `preguntas` de la 0001) con **responder**.
+
+Acciones: **retirar en un clic** (el contenido deja de verse al momento; se puede deshacer durante la sesión y queda en la auditoría), **avisar a la familia** (aviso de V3), **archivar**, y **pasar a OlivarTrack** como propuesta (decisión 94): un botón que enseña lo que se va a mandar, como **texto de campo que es dato, nunca instrucción** (regla de [contratos/mcp.md](../../contratos/mcp.md)), y lo manda solo cuando la oficina confirma. El gemelo no escribe en OlivarTrack por su cuenta.
+
+**Datos.** Las tablas de V3 (bandeja, denuncias, personalización con autor, avisos) y `preguntas`. **Rutas**: las que defina V3 para la bandeja; si faltan, `GET /api/admin/bandeja`, `POST /api/admin/bandeja/:id/retirar`, `/restaurar`, `/archivar`, `/responder`, `/a-olivartrack`.
+
+**Pasar a OlivarTrack exige escribir**, y el token del gemelo es **de solo lectura** (decisión 17). Opciones en [DO-7](#12-decisiones-para-antonio); se recomienda un **segundo token**, propio, limitado a las herramientas que proponen (`proponer_tarea`, `anotar_observacion`, que se añadirían a [contratos/mcp.md](../../contratos/mcp.md): lo que se escribe nace como propuesta y lo valida una persona en el panel de OlivarTrack), usado solo desde esta ruta y con auditoría.
+
+**Riesgos.** Contenido inadecuado visible hasta que alguien lo retira (lo asume la decisión 93; la bandeja avisa por correo a la oficina si hay una denuncia sin mirar en 24 h [valor de partida]); fotos con caras de menores (el aviso al subir es de V3/V5; la oficina retira).
+
+**Lo que no se hará:** moderación automática con IA; borrar sin rastro (lo retirado queda 30 días por si hay reclamación, y luego se borra).
+
+## 6. El mundo en modo oficina
+
+**Entrar.** El botón «Entrar al mundo como oficina» abre `/finca/` en otra pestaña con la sesión de oficina: el mismo mundo, el mismo motor, con un **panel de oficina** más. La api firma el token de LiveKit con `rol: "oficina"` en sus metadatos (hoy ningún token lleva `roomAdmin`, [contratos/livekit-roles.json](../../contratos/livekit-roles.json), y así sigue: los poderes los ejecuta la api con su clave de servidor).
+
+**Cómo se distingue la oficina** ([DO-4](#12-decisiones-para-antonio)): avatar con **chaleco verde oliva y etiqueta «Oficina»** encima (sin nombre propio), y en el panel Gente, primera de la lista con su insignia. **Nunca invisible**: las familias saben siempre si la oficina está mirando (confianza y RGPD).
+
+**Poderes** (todos por la api, con auditoría; ninguno en el cliente):
+
+| Poder | Cómo | Existe hoy |
+|---|---|---|
+| Ver a todos | Gente lista también a quien está en vista aérea (decisión 60) y a qué haza mira | parcial (la lista) |
+| Abrir y cerrar salas | Una visita guiada abre su sala `guiada-<id>` (decisión 39); cerrarla saca a todos con aviso previo de 1 min (`RoomService.deleteRoom`) | no |
+| Balizas oficiales | Poner, mover y quitar una baliza con título y texto («Aquí se recoge hoy»), visible para todos y con caducidad | no (las balizas de hoy salen de los datos) |
+| Silenciar | En F3 (voz): `RoomService.mutePublishedTrack`; en F2 no hay voz | no |
+| Expulsar | 15 min sin tokens nuevos y fuera de la sala (decisión 42) | **sí**: `POST /api/admin/presencia/expulsar` |
+| Anunciar | Un aviso de texto a toda la sala o a la visita, que sale arriba unos segundos y queda en el chat como «Oficina» (tema de datos `anuncio`, fiable, enviado por la api con `RoomService.sendData`) | no |
+| Ir con alguien | El «Ir con» de siempre, sin pedir permiso | sí (como todos) |
+
+**Datos.** Nueva `balizas_oficiales` (finca, punto en 25830, título, texto, desde, hasta, autor). Cambia el contrato `livekit-roles` (rol `oficina`, tema `anuncio`: versión 3) y `presencia.md`, en el mismo commit (regla 3). **Rutas nuevas**: `POST /api/admin/presencia/anuncio`, `POST /api/admin/salas/:sala/cerrar`, `GET/POST/PUT/DELETE /api/admin/balizas`, `POST /api/admin/presencia/silenciar` (F3).
+
+**Riesgos y comodidad (regla 11).** Un anuncio que tapa el HUD o los controles (sale arriba, se cierra solo y no recibe toques; el chat movible no se mueve); en VR, el anuncio va al panel, nunca pegado a la cara. **No probado** nada de esto (no existe); el panel de oficina en VR se deja para después: en gafas la oficina entra como un visitante más con su insignia.
+
+**Lo que no se hará:** espiar chats privados (no hay: el chat es de sala y no se guarda, decisión 40); mover a una familia de sitio; entrar invisible.
+
+## 7. Agenda
+
+**Qué se hace** (decisión 97: eventos y visitas con inscripción entran en la base antes del VPS). Calendario de mes (y lista) con los eventos: **visita guiada**, **cosecha abierta**, **cata**, **taller** y **directo**. Por evento: título, tipo, fecha y hora, lugar (en el mundo: una baliza o una haza; o presencial en la finca), **aforo** (por hogar y número de personas), **inscripción** abierta/cerrada y fecha de cierre, **lista de espera**, guía asignado, y si lleva directo (pasa a Directos).
+
+Acciones: crear, duplicar (la cata de cada mes), cancelar (con aviso), ver inscritos (solo alias o «familia de la haza X», nunca el correo en pantalla salvo que se pida), **avisar a las familias** (aviso de V3 en el gemelo y, a quien marcó `avisos_correo` en la 0002, por correo; con plantilla y vista previa), exportar el evento a calendario (`.ics`, con la librería `ical-generator` o similar: por elegir).
+
+**Datos.** `visitas` y `visitas_asistentes` (0001) y lo que añada V3 (eventos e inscripciones, avisos). **Rutas**: las de V3; si faltan, `GET/POST/PUT /api/admin/eventos`, `POST /api/admin/eventos/:id/cancelar`, `GET /api/admin/eventos/:id/inscritos`, `POST /api/admin/eventos/:id/avisar`.
+
+**Riesgos.** Avisos de más (un tope de avisos por semana a cada hogar [valor de partida: 3]); correo que no llega (SMTP de OVH **no verificado**, ADR-0013); presencial con menores (decisión 45: hoy solo cuentas adultas; un evento presencial no cambia eso).
+
+**Lo que no se hará:** cobros o entradas de pago; inscripciones de personas sin cuenta.
+
+## 8. Directos
+
+**Qué es.** La preparación y el «control de realización» de una visita guiada en directo (fase 3, voz) o con el corresponsal de campo (fase 4, vídeo y GPS), sobre LiveKit, la única pieza de tiempo real ([ADR-0009](../adr/0009-plataforma-multiusuario-cuarenta-hazas.md)). Llega **después** de lo que bloquea el VPS.
+
+**Preparación** (una ficha por directo, nacida de un evento de la Agenda):
+- **Escaleta**: los puntos del recorrido (balizas en orden), minutos aproximados y qué se cuenta en cada uno.
+- **Quién habla**: guía (voz), corresponsal (vídeo y GPS, decisión 19: la misma web como PWA), oficina (realiza: da y quita la palabra). Las familias **escuchan** y **levantan la mano**; la oficina les da la palabra un rato ([DO-12](#12-decisiones-para-antonio)).
+- **Comprobaciones antes de abrir**: micrófono del guía, cobertura del corresponsal en el recorrido (prueba de velocidad en 5-6 puntos, riesgo de ARQUITECTURA-MULTIUSUARIO), aforo e inscritos, EIPD de F3 hecha (decisión 41: hasta entonces, solo cuentas de prueba).
+- **Sala**: se abre 15 min antes (sala `guiada-<id>`), se cierra al terminar.
+
+**Durante**: lista de quién está, quién habla, manos levantadas, silenciar a uno o a todos menos el guía, anunciar, cerrar.
+
+**Grabar** (decisión 10): **no se graba el directo.** Como mucho, **clips cortos** que el corresponsal graba en su aparato y sube; la oficina los revisa **antes** de publicarlos (en la Bandeja, como contenido nuevo de la oficina). En la oficina no hay botón «Grabar»; hay «Marcar momento» (una nota con la hora, para pedir luego el clip).
+
+**Datos y contratos.** Los permisos de LiveKit cambian (el guía y el corresponsal publican audio/vídeo; `livekit-roles` versión nueva y `presencia.md`); tabla `directos` (evento, escaleta en jsonb, estado, sala) y `clips` (con revisión). **Rutas**: `POST /api/admin/directos/:id/abrir`, `/cerrar`, `/palabra` (dar o quitar), `/silenciar`.
+
+**Lo que no se hará:** grabar la sala (LiveKit Egress) ni retransmitir a otras plataformas; vídeo de las familias.
+
+## 9. Olivos: constructor y parámetros de la escalera
+
+### 9.1 El constructor
+
+La herramienta que ya existe ([apps/web/olivo/herramienta/index.html](../../apps/web/olivo/herramienta/index.html): tipo, época, semilla, nivel y three del anfitrión, con el árbol de ADR-0017) pasa a ser una entrada más del build de la oficina, dentro de la sección Olivos, **sin cambiarla** (sigue siendo la referencia de las pruebas `pruebas/olivo/`). Se añade lo que la oficina necesita para mirar: elegir un **olivo real** por su id congelado (decisión 92) y ver su receta con sus `copas_param`, y comparar escalones lado a lado (E0, E1, E2, E2-VR, impostor). Cambiar los **17 parámetros de forma** de un tipo o crear tipos nuevos **no** se abre a la oficina: cambia `GEN_VERSION`, re-hornea todo y cambia el aspecto de toda la finca; sigue siendo trabajo de código con su medida.
+
+### 9.2 Parámetros de la escalera
+
+Hoy los escalones se ajustan con **constantes en el motor** (y con banderas de URL para probar):
+
+| Parámetro | Qué hace | Hoy | Dónde | Límites seguros propuestos |
+|---|---|---|---|---|
+| Umbral E0 (px de alto) | por encima, el olivo va en E0 | 700 | `apps/web/motor/07ab_generados.js` (`UMBRALES`, `?olivosPx=`) | 300-2.000 |
+| Umbral E1 (px) | E1 | 250 | ídem | 100-1.000 y < E0 / 1,5 |
+| Umbral E2 (px) | E2 (E2-VR en gafas); por debajo, lejano | 90 | ídem | 30-400 y < E1 / 1,5 |
+| Banda de fundido (± m) | anchura del paso continuo entre escalones | 1,5 | ídem (`BANDA`, `?olivosBanda=`) | 0-3 (el motor ya la corta a 5 y al 45 % del hueco) |
+| Histéresis (%) | margen para salir de la banda | 8 % (≥ 0,4 m) | ídem (`HIST`, `HIST_MIN`) | 3-20 % |
+| Máx. propios | olivos E0/E1 calculados en el aparato | 6 | ídem (`MAX_PROPIOS`) | 1-8 (escritorio); 1-4 (gafas) |
+| Máx. variantes | olivos E2 horneados | 48 | ídem (`MAX_VAR`) | 0-64 |
+| Presupuesto escritorio (triángulos) | lo que puede dibujar la escalera | 550.000 | `apps/web/motor/07b_arboles.js` (`TOPE_TRI`) | 300.000-700.000 |
+| Presupuesto móvil | ídem | 270.000 (sin medir) | `07ab` (`TRI_MOVIL`) | 120.000-300.000 |
+| Presupuesto gafas (perfil 0 a 3) | ídem, por perfil | 380/270/190/130 k | `apps/web/motor/29_vr.js` (`VR_PERFILES[].tri`) | **solo a la baja** desde la oficina |
+| Fracción de E0 en gafas | parte del presupuesto para el E0 | 0,4 | `07ab` (`FR_E0_VR`) | 0-0,5 |
+| Factor de copa | copa = 2 × r8 × factor | 1 (generados), 0,5 (nivel de siempre) | `apps/web/motor/01_datos.js` (`FACTOR_R8_GEN`, `?factorR8=`) | 0,5-1,5 |
+| Épocas | ventanas de fechas de las 7 épocas | calendario de partida | [contratos/epocas-calendario.json](../../contratos/epocas-calendario.json) (decisiones 64 y 68) | las 7 cubren los 366 días |
+
+Lo experto (`PASO_S`, `S_MAX`, `HOLGURA`, `T_BAJA`, las estimaciones por escalón) **no** se abre: son del motor y se ajustan con medida.
+
+**Lo que se propone: una configuración versionada que el motor lee de `/api/config`.**
+1. **Contrato** nuevo (regla 3): contratos/config.schema.json y config.md, con un ejemplo y su fixture, versión 1. Cada parámetro con tipo, unidad, valor por defecto (los de hoy) y **mínimo y máximo seguros** (la tabla de arriba), más reglas entre campos (E0 > E1 > E2 con margen; las ventanas de épocas sin huecos ni solapes, como ya comprueba `pruebas/guardianes/horneado.test.js`).
+2. **Base**: tabla `config_versiones` (clave «escalera» o «epocas», número de versión, valores en jsonb, versión del esquema, estado `borrador` → `en_prueba` → `publicada` → `retirada`, autor, cuándo, nota). Nunca se reescribe una fila: **volver atrás** es publicar una copia de una versión vieja como versión nueva.
+3. **Api**: `GET /api/config` (con sesión; `ETag` y caché corta) devuelve la versión publicada, o la `en_prueba` si quien pide es de la oficina ([DO-10](#12-decisiones-para-antonio): primero se prueba con las cuentas de oficina, luego para todos). `GET/POST /api/admin/config` (borradores, historial), `POST /api/admin/config/:id/publicar` (`admin`, confirmación reciente). La api **valida contra el esquema** (Ajv, el validador de Fastify) y rechaza lo que se salga de los límites: la página de la oficina también lo comprueba, pero no es la barrera.
+4. **Motor**: al arrancar pide `/api/config`; si falla, tarda más de 2 s o no cumple el esquema, usa **las constantes de siempre** (que pasan a ser los valores por defecto del contrato) y lo dice en `?debug`. Vuelve a comprobar la configuración en cada recarga (no en caliente: cambiar umbrales en mitad de un paseo daría saltos). Orden: bandera de URL (pruebas) > configuración > constantes. El motor **recorta** cada valor a sus límites aunque la api ya lo haya validado.
+5. **Quest**: los presupuestos de gafas **solo pueden bajar** desde la oficina; subirlos por encima de los de hoy exige medir en el casco (O9d) y un cambio de código. La escala adaptativa y los perfiles VR (que bajan la carga si el fotograma se alarga) siguen mandando por encima de la configuración: la oficina fija el techo, no impide que el aparato se defienda.
+6. **Épocas**: cambiar el calendario desde la oficina cambia la decisión 64 («calendario fijo en el repo») ([DO-9](#12-decisiones-para-antonio)). Si se acepta, el hornero lee el calendario publicado de la api (o de un fichero que la api escribe en un volumen compartido) como uno de sus sellos, y re-hornea la época que cambie (ADR-0018: segundos para las variantes).
+
+**Vista previa en vivo.** En la sección, a la izquierda los deslizadores y a la derecha **una vista simulada** (una fila de olivos desde quien pasea, coloreados por escalón, con las bandas y el recuento de triángulos frente al presupuesto del aparato elegido: escritorio, móvil o Quest), que responde al momento. Debajo, **«Probar en el mundo»** abre `/finca/?config=borrador-<id>` (solo para la oficina) con `?debug`, para verlo de verdad en el aparato que se tenga delante. La vista simulada es **ilustrativa** (se dice): no mide nada.
+
+**Riesgos.** Un umbral E0 muy bajo pone E0 a todo lo cercano y hunde el fotograma (por eso los límites, el factor `s` del presupuesto, que acerca todas las fronteras si no cabe, y la publicación en prueba); un calendario mal hecho re-hornea de más (el hornero ya es incremental); confusión entre lo que se ve en la oficina y lo publicado (la cabecera de la sección dice siempre «publicada vN · borrador» y quién la publicó).
+
+**Lo que no se hará:** cambiar la forma de los tipos de olivo, `GEN_VERSION` o el catálogo desde la web; subir presupuestos de gafas sin medida; aplicar cambios en caliente a quien ya está dentro.
+
+## 10. Sistema
+
+Una página de **estado** y unos pocos botones, no un panel de administración del servidor.
+
+| Bloque | Qué se ve | Qué se puede hacer | De dónde sale |
+|---|---|---|---|
+| Correo | modo (`smtp`/`buzon`), último envío correcto y último fallo | **mandar un correo de prueba** a la propia oficina | `apps/api/src/auth/correo.ts`; registro de envíos (nuevo, sin destinatarios en claro) |
+| OlivarTrack | por herramienta: última lectura, estado (`ok`/`truncado`/`parcial`/`error`) y de cuándo es el dato | **sincronizar ahora** (ya existe: `POST /api/admin/sincronia`) | tabla `sincronias_ot` |
+| Vigía | última lectura y su frescura, o «sin conector» | nada | **[SUPUESTO]** que la api lo lea por MCP como OlivarTrack; hoy no lo hace |
+| Hornero | por finca: época actual y siguiente, cuándo horneó, objetos y bytes, próxima fecha | **re-hornear** (`admin`, confirmación) | el `estado.json` que escribe el hornero (ADR-0018); el botón deja un pedido en un volumen compartido que el hornero mira en su vuelta de 10 min |
+| Copias | última copia (fecha, tamaño, si subió fuera), próxima | nada desde la web | un `ultimo.json` que escribe `infra/respaldo.sh`, montado de solo lectura |
+| Salud | api, base, LiveKit, correo, hornero, Caddy: en verde/ámbar/rojo con la hora de la última comprobación | nada | `GET /api/admin/salud` (nuevo, detallado; `/api/salud` sigue siendo mínima y pública) |
+| Auditoría | quién hizo qué y cuándo, con filtros por acción y fecha | exportar CSV (`admin`) | tabla `auditoria` |
+| Aparatos de oficina | los aparatos confiables | aprobar, revocar | `aparatos_oficina` |
+| Roles | quién es `oficina`, `guia`, `corresponsal`, `admin` | cambiar (`admin`, confirmación reciente) | `hogares.rol` |
+
+**Rutas nuevas.** `GET /api/admin/salud`, `POST /api/admin/correo/prueba`, `GET /api/admin/hornero`, `POST /api/admin/hornero/rehornear`, `GET /api/admin/copias`, `GET /api/admin/auditoria`.
+
+**Lo que no se hará:** **restaurar una copia desde la web** (es una operación del [RUNBOOK-VPS](../operacion/RUNBOOK-VPS.md), en el servidor y con confirmación de Antonio); ver o cambiar secretos; reiniciar contenedores; ver registros crudos del servidor.
+
+## 11. Plan por fases
+
+Primero lo que **bloquea abrir el VPS a familias reales** (acceso, familias, hazas, bandeja); después los parámetros y el constructor (lo que Antonio quiere tocar sin depender de un agente); al final el mundo con poderes, la agenda y los directos. Las tareas OF2-OF4 **sustituyen a V4** del PLAN. 🔶 = necesita Chrome o Docker (por el banco, al final de la tarea); 👤 = de Antonio.
+
+| Id | Tarea | Depende de | Modelo | Chrome / Docker | De Antonio |
+|---|---|---|---|---|---|
+| OF0 | ADR «la oficina: roles, acceso y configuración versionada» con las respuestas a [§12](#12-decisiones-para-antonio) | decisiones DO-1 a DO-4 | **opus**, ligera | — | 👤 decide |
+| OF1 | Acceso: rol `oficina` (migración), sesión de oficina más corta, aparatos confiables, confirmación reciente; Caddy sirve `/oficina/` con `forward_auth` por rol (dev y producción); pruebas de integración | OF0, V3 (migración 0004 primero: la de OF1 va detrás) | **opus**, media | 🔶 Docker (integración api) | — |
+| OF2 | Esqueleto de `/oficina/` (Vite, sin three, CSP estricta, barra lateral, tableta) y **Familias**: lista, alta, reenviar, sesiones y aparatos, revocar, asignar haza, baja con 30 días, exportar y borrar | OF1 | **sonnet**, media | 🔶 Chrome (recorrido) + Docker | 👤 DO-5, DO-6 |
+| OF3 | **Hazas**: mapa con OpenLayers + proj4 en 25830 (ortofoto y copas de las teselas), dibujar, mover, partir y juntar en PostGIS, recuento de olivos, versiones y volver, solapes | OF2, V3 (ids congelados) | **opus**, media-pesada | 🔶 Chrome + Docker | 👤 la oficina prueba a dibujar las hazas reales de Hituelo |
+| OF4 | **Bandeja**: lista, retirar en un clic y deshacer, responder preguntas, avisar a la familia; «pasar a OlivarTrack» detrás de una bandera hasta DO-7 | OF2, V3 (bandeja, denuncias) | **sonnet**, media | 🔶 Docker | 👤 DO-7 (y el token, si va) |
+| OF5 | **Sistema, lo mínimo**: salud detallada, OlivarTrack (estado y sincronizar), correo de prueba, auditoría, roles | OF2 | **sonnet**, ligera | 🔶 Docker | — |
+| — | *Hasta aquí, lo que conviene tener antes de abrir el VPS a familias (V2 puede desplegarse antes con cuentas de prueba)* | | | | |
+| OF6 | **Configuración versionada**: contrato y esquema `config` (fixture, guardián), tabla, `GET /api/config` y rutas de oficina con validación; **motor** lee la configuración al arrancar con caída a las constantes (07ab, 07b, 29_vr, 01_datos) y la enseña en `?debug`; sin configuración publicada, mismos recuentos que hoy | OF1 | **opus**, media | 🔶 Chrome (banco: recuentos iguales) + Docker | — |
+| OF7 | **Panel de la escalera**: deslizadores con límites, vista previa simulada, presupuesto por aparato, «probar en el mundo» con el borrador, publicar en prueba / para todos, historial y volver | OF6, OF2 | **sonnet**, media | 🔶 Chrome | 👤 DO-8, DO-10; ajustar en aparatos (O9d) |
+| OF8 | **Constructor en la oficina**: la herramienta actual como entrada del build de la oficina, olivo real por id, escalones lado a lado | OF2, V3 | **sonnet**, ligera | 🔶 Chrome | — |
+| OF9 | **Épocas desde la oficina** y **re-hornear**: calendario en la configuración versionada, el hornero lo lee como sello; botón re-hornear con pedido en volumen compartido; estado del hornero y de las copias en Sistema | OF6, DO-9 | **sonnet**, media | 🔶 Docker (e2e del hornero) | 👤 DO-9 |
+| OF10 | **Mundo en modo oficina**: rol en el token de LiveKit, insignia y chaleco, Gente con la oficina primero, anunciar, balizas oficiales, cerrar sala; `livekit-roles` v3 y `presencia.md`; nota de comodidad | OF1, F2 en main | **opus**, media | 🔶 Chrome (dos pestañas) + Docker (LiveKit) | 👤 DO-4, DO-11; probarlo con dos aparatos |
+| OF11 | **Agenda**: calendario y lista, eventos con aforo, inscripciones y lista de espera, avisos en el gemelo y por correo con tope, `.ics` | OF2, V3 (eventos, avisos) | **sonnet**, media | 🔶 Docker | 👤 la primera cata o visita real |
+| OF12 | **Directos**: ficha de preparación (escaleta, comprobaciones), abrir/cerrar sala guiada, dar la palabra, silenciar, «marcar momento»; permisos de audio/vídeo en LiveKit | OF10, F3 (voz), EIPD (decisión 41) | **opus**, pesada | 🔶 Chrome + Docker | 👤 DO-12; EIPD; prueba con el guía y el corresponsal |
+| OF13 | **Llave de acceso (WebAuthn)** obligatoria para la oficina | OF1 | **sonnet**, media | 🔶 Chrome (autenticador virtual de CDP) | 👤 DO-2; registrar sus llaves |
+
+Orden de trabajo sugerido: OF0 → OF1 → OF2 → (OF3 y OF5 en paralelo) → OF4 → OF6 → OF7 → OF8 → OF9 → OF13 → OF10 → OF11 → OF12. OF6-OF7 pueden adelantarse si Antonio quiere ajustar la escalera antes que otra cosa: no dependen de V3.
+
+## 12. Decisiones para Antonio
+
+Numeradas para preguntarlas de una en una (al pasarlas a DECISIONS-PENDING tomarán su número correlativo). Entre corchetes, la recomendación.
+
+| # | Pregunta | Opciones | Recomendación |
+|---|---|---|---|
+| DO-1 | ¿Uno o dos roles de oficina? | un solo `admin` para todo / `oficina` (día a día) y `admin` (parámetros, roles, re-hornear) | **[dos roles]**: quien atiende la bandeja no necesita poder cambiar la escalera ni los roles |
+| DO-2 | ¿Qué hace falta para entrar en la oficina? | enlace mágico como los hogares / enlace + aparato confiable / enlace + aparato confiable + llave de acceso (passkey) | **[enlace + aparato confiable ya; llave de acceso obligatoria antes de abrir a familias reales]** |
+| DO-3 | ¿La cuenta de oficina es aparte del hogar? | aparte, con otro correo / la misma persona con dos roles | **[aparte]**: lo que hace la oficina no se mezcla con lo de una familia |
+| DO-4 | ¿Cómo se ve la oficina en el mundo? | siempre visible con insignia / puede entrar invisible | **[siempre visible]**, chaleco verde oliva y etiqueta «Oficina» |
+| DO-5 | ¿Qué pasa con el contenido de una familia que se da de baja? | oculto y borrado a los 30 días / borrado al momento / pasa a quien herede la haza | **[oculto al momento y borrado a los 30 días]** (se puede exportar antes; reactivar lo devuelve) |
+| DO-6 | ¿La oficina guarda un nombre de la familia? | solo el correo / nombre interno (nunca sale a los hogares) / nombre y teléfono | **[nombre interno, sin teléfono]**: lo mínimo para reconocerla |
+| DO-7 | ¿Cómo pasa una sugerencia a OlivarTrack? | token propio limitado a proponer / copiar el texto para pegarlo a mano / no se pasa | **[token propio limitado a proponer]** (cambio pequeño en OlivarTrack, como el de lectura de la decisión 17); mientras, copiar el texto |
+| DO-8 | ¿Qué parámetros se abren a la oficina? | los de la tabla de §9.2 / solo umbrales y banda / todo, también lo experto | **[los de la tabla]**, con los límites propuestos; lo experto queda en el código |
+| DO-9 | ¿Las épocas se cambian desde la oficina? | sí, calendario en la base y versionado (cambia la decisión 64) / no, sigue en el repo | **[sí]**: es lo que más va a querer ajustar Antonio por campaña, y el hornero ya re-hornea en segundos |
+| DO-10 | ¿Cómo se publica un cambio de parámetros? | directo para todos / primero «en prueba» solo para cuentas de oficina, luego para todos | **[en prueba primero]** |
+| DO-11 | ¿Cómo anuncia la oficina en el mundo? | texto arriba y en el chat / también voz / no hay anuncios | **[texto]**; la voz, solo de la guía en las guiadas (F3) |
+| DO-12 | En un directo, ¿pueden hablar las familias? | solo escuchan / levantan la mano y la oficina da la palabra / micro abierto | **[levantan la mano]** |
+| DO-13 | ¿Qué tableta usará la oficina? | iPad / Android / ninguna | **[decirlo]**: es donde hay que probar el editor de hazas con el dedo |
+
+## 13. Lo que no está probado
+
+Nada de esto existe aún. La maqueta se comprobó en Chrome sin pantalla (por el turno del banco) a 1280 × 800 y 1024 × 768: sin errores de consola, sin desbordamiento horizontal, todas las secciones navegables. **No probado:** tabletas reales (iPad, Android), lectores de pantalla, el editor de hazas con el dedo, las librerías propuestas (OpenLayers, proj4, `@simplewebauthn`, `ical-generator`: versiones y licencias por comprobar al implementarlas), que el MCP de OlivarTrack dé geometrías de parcela, y cualquier cosa de LiveKit fuera de lo que ya hay en F2.
