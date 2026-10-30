@@ -12,14 +12,15 @@ cd "$(dirname "$0")"
 CADDY=$(sed -n 's/^\s*image:\s*\(caddy:[^ ]*\)\s*$/\1/p' compose.yml | head -1)
 CURL="curlimages/curl:8.23.0@sha256:3fb7e13e5d179a845c97d78204f3f1064d1907037f26a3ebf91710571151fd93"
 [ -n "$CADDY" ] || { echo "no encuentro la imagen de Caddy en compose.yml"; exit 2; }
+NODE="node:24.22.1-alpine3.24@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53"   # la misma imagen que apps/api/Dockerfile
 SUFIJO="$$"
-RED="gemelo-prueba-$SUFIJO"; WEB="gemelo-prueba-web-$SUFIJO"; BORDE="gemelo-prueba-borde-$SUFIJO"; API="gemelo-prueba-api-$SUFIJO"
+RED="gemelo-prueba-$SUFIJO"; WEB="gemelo-prueba-web-$SUFIJO"; BORDE="gemelo-prueba-borde-$SUFIJO"; API="gemelo-prueba-api-$SUFIJO"; SUMI="gemelo-prueba-sumidero-$SUFIJO"
 TMP=$(mktemp -d)
 # en Git Bash (Windows): que no traduzca las rutas del contenedor, y ruta nativa para las del anfitrión
 export MSYS_NO_PATHCONV=1
 anfitrion() { if command -v cygpath >/dev/null 2>&1; then cygpath -w "$1"; else printf '%s' "$1"; fi; }
 fallos=0
-limpia() { docker rm -f "$WEB" "$BORDE" "$API" >/dev/null 2>&1 || true; docker network rm "$RED" >/dev/null 2>&1 || true; rm -rf "$TMP"; }
+limpia() { docker rm -f "$WEB" "$BORDE" "$API" "$SUMI" >/dev/null 2>&1 || true; docker network rm "$RED" >/dev/null 2>&1 || true; rm -rf "$TMP"; }
 trap limpia EXIT
 
 ok() { echo "  ok  $1"; }
@@ -35,7 +36,9 @@ echo 'console.log(2)' > "$TMP/srv/oficina/assets/oficina-abc123.js"
 echo '{"v":2}' > "$TMP/srv/teselas/hituelo/indice.json"
 
 # ---- api simulada: 204 con la cookie «valida» (un hogar) o «oficina»; con ?para=oficina, solo «oficina» (el hogar, 403);
-#      sin sesión, 303 a / si es navegación y 401 si no. Así se comprueba que Caddy le pasa la consulta ?para=oficina
+#      sin sesión, 303 a / si es navegación y 401 si no. Así se comprueba que Caddy le pasa la consulta ?para=oficina.
+#      El resto de /api/* va a un «sumidero» (node) que LEE el cuerpo entero y responde 200: un `respond` de Caddy no lo lee y el tope
+#      de request_body nunca se dispararía (el límite se aplica al leer el cuerpo, no al ver Content-Length).
 cat > "$TMP/Caddyfile.api" <<'EOF'
 {
 	admin off
@@ -60,12 +63,18 @@ cat > "$TMP/Caddyfile.api" <<'EOF'
 		respond 401
 	}
 	header /api/* Set-Cookie "__Host-gemelo=SECRETO-DE-RESPUESTA; Path=/; HttpOnly; Secure; SameSite=Lax"
-	respond /api/* `{"ok":true}` 200
+	reverse_proxy sumidero:9000
 }
 EOF
 
+cat > "$TMP/sumidero.js" <<'JS'
+require("http").createServer((q, r) => { q.on("error", () => {}); q.resume(); q.on("end", () => { r.setHeader("Content-Type", "application/json"); r.end('{"ok":true}'); }); }).listen(9000);
+JS
+
 echo "== validar el Caddyfile ($CADDY)"
 docker network create "$RED" >/dev/null
+docker create --name "$SUMI" --network "$RED" --network-alias sumidero "$NODE" node /sumidero.js >/dev/null
+docker cp "$(anfitrion "$TMP/sumidero.js")" "$SUMI:/sumidero.js"
 docker create --name "$API" --network "$RED" --network-alias api "$CADDY" caddy run --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null
 docker cp "$(anfitrion "$TMP/Caddyfile.api")" "$API:/etc/caddy/Caddyfile"
 docker create --name "$WEB" --network "$RED" --network-alias gemelo-web "$CADDY" >/dev/null
@@ -75,7 +84,7 @@ docker cp "$(anfitrion "$TMP/srv")/." "$WEB:/srv/"
 { printf '{\n\tadmin off\n\tauto_https off\n}\n'; grep -v '^#' "$PWD/bloque-borde.txt" | sed 's/^gemelo\.canoydamas\.es {/:8081 {/'; } > "$TMP/Caddyfile.borde"
 docker create --name "$BORDE" --network "$RED" "$CADDY" >/dev/null
 docker cp "$(anfitrion "$TMP/Caddyfile.borde")" "$BORDE:/etc/caddy/Caddyfile"
-docker start "$API" "$WEB" "$BORDE" >/dev/null
+docker start "$SUMI" "$API" "$WEB" "$BORDE" >/dev/null
 if docker exec "$WEB" caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null 2>&1; then ok "configuración válida"; else mal "configuración NO válida"; fi
 if docker exec "$BORDE" caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null 2>&1; then ok "bloque de borde válido"; else mal "bloque de borde NO válido"; fi
 sleep 2
@@ -131,9 +140,10 @@ r=$(pide "/api/auth/entrar?t=SECRETO-DEL-ENLACE" -H "Cookie: __Host-gemelo=SECRE
 tiene "$r" "^HTTP/1.1 200" && ok "/api pasa a la api" || mal "/api no llega a la api: $(head -1 <<<"$r")"
 
 echo "== cuerpos grandes: /api/medios hasta ~9 MB, el resto de /api/* a 1 MB (interno) y 2 MB (borde)"
-# curl envía Content-Length y Caddy rechaza con 413 antes de leer el cuerpo; el fichero se crea y se usa DENTRO de la red de Docker
-sube() {  # sube <host:puerto> <ruta> <MB> → código HTTP de un POST con un cuerpo de ese tamaño
-  docker run --rm --network "$RED" --entrypoint sh "$CURL" -c "head -c $(( $3 * 1024 * 1024 )) /dev/zero > /tmp/c; curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/octet-stream' --data-binary @/tmp/c http://$1$2"
+# Caddy corta con 413 al leer el cuerpo de más (el sumidero lo lee); el fichero se crea y se usa DENTRO de la red de Docker.
+# Con el 413, Caddy puede cortar la conexión y curl salir con 55 (fallo al enviar) aunque ya imprimió el código: `|| true`, que `set -e` no tumbe el script.
+sube() {  # sube <host:puerto> <ruta> <MB> (admite decimales vía KB: 0.9 = 921 KB) → código HTTP de un POST con un cuerpo de ese tamaño
+  docker run --rm --network "$RED" --entrypoint sh "$CURL" -c "head -c $(awk "BEGIN{printf \"%d\", $3 * 1048576}") /dev/zero > /tmp/c; curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/octet-stream' --data-binary @/tmp/c http://$1$2 || true"
 }
 c=$(sube "$WEB:8080" /api/medios 5); [ "$c" = 200 ] && ok "interno: POST /api/medios de 5 MB pasa" || mal "interno: POST /api/medios de 5 MB da $c"
 c=$(sube "$WEB:8080" /api/medios 8); [ "$c" = 200 ] && ok "interno: POST /api/medios de 8 MB (el tope por defecto) pasa" || mal "interno: POST /api/medios de 8 MB da $c"
@@ -143,7 +153,7 @@ c=$(sube "$WEB:8080" /api/medios-x 2); [ "$c" = 413 ] && ok "interno: /api/medio
 c=$(sube "$BORDE:8081" /api/medios 8); [ "$c" = 200 ] && ok "borde: POST /api/medios de 8 MB pasa hasta la api" || mal "borde: POST /api/medios de 8 MB da $c"
 c=$(sube "$BORDE:8081" /api/medios 10); [ "$c" = 413 ] && ok "borde: POST /api/medios de 10 MB, 413" || mal "borde: POST /api/medios de 10 MB da $c"
 c=$(sube "$BORDE:8081" /api/sesion 3); [ "$c" = 413 ] && ok "borde: el resto corta a 2 MB" || mal "borde: POST /api/sesion de 3 MB da $c (se esperaba 413)"
-c=$(sube "$BORDE:8081" /api/sesion 1); [ "$c" = 200 ] && ok "borde: 1 MB al resto sigue pasando" || mal "borde: POST /api/sesion de 1 MB da $c"
+c=$(sube "$BORDE:8081" /api/sesion 0.9); [ "$c" = 200 ] && ok "borde: 0,9 MB al resto sigue pasando" || mal "borde: POST /api/sesion de 0,9 MB da $c"
 
 echo "== registros sin credenciales"
 sleep 1
