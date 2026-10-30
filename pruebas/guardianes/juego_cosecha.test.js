@@ -292,7 +292,7 @@ describe("en el navegador", () => {
   for (const modo of ["escritorio", "táctil"]) test(modo + ": J abre la ventana, «Jugar» pausa el mundo, se juega, Esc vuelve; 0 errores", { timeout: 300000 }, async t => {
     if (SALTO) return t.skip(SALTO);
     const tactil = modo === "táctil";
-    const p = await nav.newPage(tactil ? { viewport: { width: 390, height: 780 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 } : { viewport: { width: 1280, height: 800 } }), errores = [];
+    const p = await nav.newPage(tactil ? { viewport: { width: 390, height: 780 }, hasTouch: true, isMobile: true, deviceScaleFactor: 1 } : { viewport: { width: 1280, height: 800 } }), errores = [];
     p.on("pageerror", e => errores.push("PAGEERROR " + String(e.stack || e).slice(0, 300)));
     p.on("console", m => { if (m.type() === "error" && !/favicon/.test(m.text())) errores.push("CONSOLE " + m.text().slice(0, 300)); });
     try {

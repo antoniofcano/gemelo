@@ -44,7 +44,7 @@ test("la puerta, el Chrome de las pruebas y la e2e de Docker pasan por el turno"
 });
 
 test("[hituelo] el banco mide y captura el PASEO: ronda pequeña con paseo y paseoAnda sobre el fixture (pide el turno solo)", { timeout: 420000 }, async t => {
-  const { motivoSalto, sirve, lanza, mide, TODOS_ESCENARIOS } = require("./_navegador");
+  const { motivoSalto, sirve, lanza, mide, TODOS_ESCENARIOS, VENTANA_CHICA } = require("./_navegador");
   const { montaPagina, saltoPagina } = require("./_pagina");
   const salto = motivoSalto("el paseo en el banco") || saltoPagina("el paseo en el banco"); if (salto) return t.skip(salto);
   const WEB = propia("banco-paseo");
@@ -59,7 +59,7 @@ test("[hituelo] el banco mide y captura el PASEO: ronda pequeña con paseo y pas
   const srv = await sirve(WEB), nav = await lanza(), caps = path.join(WEB, "capturas"), P0 = TODOS_ESCENARIOS.paseo.paseo;
   try {
     const esc = { paseo: TODOS_ESCENARIOS.paseo, paseoAnda: { paseo: Object.assign({}, TODOS_ESCENARIOS.paseoAnda.paseo, { anda: 3 }) } };
-    const r = await mide(nav, "http://127.0.0.1:" + srv.address().port + "/hituelo/index.html", { escenarios: esc, capturas: caps });
+    const r = await mide(nav, "http://127.0.0.1:" + srv.address().port + "/hituelo/index.html", { escenarios: esc, capturas: caps, viewport: VENTANA_CHICA });
     assert.deepStrictEqual(r.errores, [], r.errores.join("\n"));
     for (const n of ["paseo", "paseoAnda"]) {
       const x = r.medidas[n]; assert.ok(x, "falta la medida " + n);
