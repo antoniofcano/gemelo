@@ -4,9 +4,9 @@
 //   04e_suelo_fondo (SueloFondo), 05_nube (actualizaNubeTeselas, actualizaNube), 07b_arboles (Arboles), 08_marcadores (listo, aplica),
 //   09_camara (objetivo, camara), 12_paseo (paseando, actualizaPaseo), 13b_hazas (Hazas), 15_tiempo (actualizaTiempo, hace),
 //   16_vida (quita, actualizaVida), 17_minimapa (actualizaMinimapa), 18_paisaje (actualizaPaisaje), 19_balizas (actualizaBalizas),
-//   20_sonido (actualizaSonido), 21_suelo (recoloreaSuelo, actualizaSuelo), 22_huellas (actualizaHuellas), 23_estacion (actualizaOlivo),
-//   24_pantalla (transEntrada, transSalida), 25_perros (actualizaPerros), 26_presencia (Presencia), 28_depura (depuraCuadro),
-//   29_vr (VRX, vrActualiza, vrFin), 30_mide (Mide), 33_ajustes (Ajustes)
+//   21_suelo (recoloreaSuelo, actualizaSuelo), 22_huellas (actualizaHuellas), 23_estacion (actualizaOlivo), 24_pantalla (transEntrada, transSalida),
+//   25_perros (actualizaPerros), 26_presencia (Presencia), 28_depura (depuraCuadro), 29_vr (VRX, vrActualiza, vrFin), 30_mide (Mide),
+//   33_ajustes (Ajustes)
 // Nota: Arranque y bucle: Mundo.arranca, Componentes.arranca, cuadro() y requestAnimationFrame. Define el orden de las actualizaciones por fotograma: los módulos que aún no son componentes a mano y los componentes por fases (mundo, tarde, trasRender).
 // ===============================================================================
 
@@ -24,7 +24,7 @@
   function cuadro(t) {
     var dt = Math.min(0.1, (t - tAnt) / 1000); tAnt = t;
     if (VRX.on) vrActualiza(dt, t); else if (paseando) { actualizaPaseo(dt); transEntrada(dt); } else { camara(); transSalida(dt); }
-    actualizaTiempo(dt, t); actualizaOlivo(dt); actualizaVida(dt); actualizaMinimapa(dt); actualizaPaisaje(dt); actualizaBalizas(dt); actualizaSonido(dt); actualizaSuelo(dt); actualizaNube(dt);
+    actualizaTiempo(dt, t); actualizaOlivo(dt); actualizaVida(dt); actualizaMinimapa(dt); actualizaPaisaje(dt); actualizaBalizas(dt); actualizaSuelo(dt); actualizaNube(dt);
     Componentes.actualiza("mundo", dt, t);
     Arboles.actualiza(dt); actualizaCarga(dt); actualizaHuellas(dt); actualizaPerros(dt); Presencia.actualiza(dt); Hazas.actualiza(dt);
     Componentes.actualiza("tarde", dt, t);

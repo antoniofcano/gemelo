@@ -1,8 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: PA, matTronco, postes, cable, EJES, colocaPaisaje, instSombra, sombrasSol, aguaNivel, actualizaPaisaje
+// Expone: PA, matTronco, postes, cable, colocaPaisaje, instSombra, sombrasSol, aguaNivel, actualizaPaisaje, ejeArroyo, distArroyo
 // Consume: 01_datos (D, $, ESC_R8), 02_mundo (suelo, desp, copas), 03_escena (scene, SRGB, sol, exag), 04d_sombreado_tiles (hash),
-//   06_arboles (gSombras, tronco), 07_follaje (matSombra, geoSombra), 09_camara (pon), 15_tiempo (lluvia, cur, tMundo, nivel), 16_vida (esfera),
-//   23_estacion (EST)
+//   06_arboles (gSombras, tronco), 07_follaje (matSombra, geoSombra), 09_camara (pon), 14_historia (lista), 15_tiempo (lluvia, cur, tMundo, nivel),
+//   16_vida (esfera), 23_estacion (EST)
 // ===============================================================================
   // ---------- el paisaje que sale del LiDAR: edificios (clase 6), el tendido y sus postes, el arroyo y los árboles que no son olivos
   // Lo que el LiDAR clasifica de verdad son los edificios. El tendido, los postes, el cauce y las copas se deducen de la geometría (alturas, alineación, relieve) y se rotulan así.
@@ -143,5 +143,6 @@
     tSombra += dt; if (tSombra > 0.4) { tSombra = 0; sombrasSol(false); }
   }
   (function () { var c = $("cPaisaje"); if (c) c.addEventListener("change", function () { gPaisaje.visible = c.checked; }); })();
-
-
+  // los puntos de los cauces en una lista plana y la distancia al más cercano (los usan el suelo, 21, y el sonido del agua; vivían en 20_sonido)
+  var ejeArroyo = []; EJES.forEach(function (E) { E.forEach(function (e) { ejeArroyo.push([e[0], e[1]]); }); });
+  function distArroyo(x, y) { var m = 1e9; for (var i = 0; i < ejeArroyo.length; i += 2) { var d = Math.hypot(ejeArroyo[i][0] - x, ejeArroyo[i][1] - y); if (d < m) m = d; } return m; }

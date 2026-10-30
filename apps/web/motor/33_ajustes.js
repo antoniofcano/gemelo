@@ -1,8 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Ajustes
 // Consume: 01_datos ($, fmt), 02_mundo (copas), 03_escena (renderer, exag, modo, calidad), 08_marcadores (listo, aplica), 09_camara (pon),
-//   12_paseo (persona), 14_historia (FINCA, lista, rango), 16_vida (quita), 20_sonido (iniciaSonido), 24_pantalla (suave), 26_presencia (Chat),
-//   29_vr (panel), 30_mide (Mide), 31_hud (Hud), 32b_capas (Capas), 34_movibles (Movibles), 90_final (tamano, bucle)
+//   12_paseo (persona), 14_historia (FINCA, lista, rango), 16_vida (quita), 24_pantalla (suave), 26_presencia (Chat), 29_vr (panel), 30_mide (Mide),
+//   31_hud (Hud), 32b_capas (Capas), 34_movibles (Movibles), 90_final (tamano, bucle)
 // ===============================================================================
 // ===== CONTRATO DEL MÓDULO =====
 // ===============================================================================
@@ -21,7 +21,6 @@
     var ESQUEMA = {
       "graficos.calidad": opc("auto", ["auto", "0", "1", "2"]), "graficos.ahorro": bool(false),
       "vista.exag": num(1, 1, 3, 0.25), "vista.corr": num(1, 0, 1.5, 0.25), "vista.brujula": bool(true), "vista.unidades": opc("ha", ["ha", "m2"]),
-      "sonido.activo": bool(true), "sonido.volumen": num(80, 0, 100, 5),
       "controles.tactil": opc("auto", ["auto", "si", "no"]), "controles.mano": opc("diestra", ["diestra", "zurda"]), "controles.sens": num(1, 0.4, 2, 0.2), "controles.invertir": bool(false),
       "vr.giro": opc("30", ["15", "30", "45", "60"]), "vr.vineta": opc("suave", ["suave", "fuerte", "no"]), "vr.vuelo": bool(false), "vr.postura": opc("pie", ["pie", "sentado"]),
       "acc.texto": num(100, 100, 200, 25), "acc.contraste": bool(false), "acc.movimiento": opc("sistema", ["sistema", "reducido", "normal"]),
@@ -140,10 +139,6 @@
       "vista.corr": function (v) { empujaControl("corr", v, "input"); },
       "vista.brujula": function (v) { raiz.setAttribute("data-brujula", v ? "si" : "no"); },
       "vista.unidades": function (v) { raiz.setAttribute("data-unidades", v); },
-      "sonido.activo": function (v) {   // un solo interruptor: la casilla vieja de Capas y el 🔊 se quitan (decisión 89); #cSonido queda oculta y sincronizada porque el panel VR la lee
-        var c = $("cSonido"); if (c && c.checked !== v) c.checked = v;
-        if (v && typeof iniciaSonido === "function" && started) iniciaSonido();
-      },
       "controles.tactil": function () { raiz.setAttribute("data-tactil", tactil() ? "si" : "no"); },
       "controles.mano": function (v) { raiz.setAttribute("data-mano", v); },
       "acc.texto": function (v) { raiz.style.setProperty("--escala-texto", String(v / 100)); raiz.setAttribute("data-texto", v > 100 ? "mayor" : "normal"); },
@@ -164,9 +159,6 @@
         { k: "vista.corr", t: "Corrección de la ortofoto", fmt: function (v) { return fmt(v, v % 1 ? 2 : 0) + "×"; }, nota: "Ajuste medido en la finca (las copas se ven desplazadas al este según su altura); no es una ortorrectificación." },
         { k: "vista.brujula", t: "Mostrar la brújula" },
         { k: "vista.unidades", t: "Superficie en", ops: [["ha", "hectáreas"], ["m2", "metros cuadrados"]] } ] },
-      { id: "sonido", t: "Sonido", campos: [
-        { k: "sonido.activo", t: "Sonido ambiente (pájaros, pasos, viento)" },
-        { k: "sonido.volumen", t: "Volumen", fmt: function (v) { return v + " %"; } } ] },
       { id: "controles", t: "Controles", campos: [
         { k: "controles.tactil", t: "Controles táctiles", ops: [["auto", "Automático"], ["si", "Siempre"], ["no", "Nunca"]], nota: "Automático: solo con pantalla táctil." },
         { k: "controles.mano", t: "Mano", ops: [["diestra", "Diestra (cruceta a la izquierda)"], ["zurda", "Zurda (cruceta a la derecha)"]] },
@@ -274,7 +266,7 @@
 
     // ----- arranque
     var textoBtn = $("btnSonido"); if (textoBtn && textoBtn.parentNode) textoBtn.parentNode.removeChild(textoBtn);   // el 🔊 duplicado (decisión 89)
-    var cs = $("cSonido"); if (cs) { cs.addEventListener("change", function () { api.pon("sonido.activo", cs.checked); }); var lab = cs.closest && cs.closest("label"); if (lab) lab.hidden = true; }
+    var cs = $("cSonido"); if (cs) { var lab = cs.closest && cs.closest("label"); if (lab) lab.hidden = true; }   // la casilla vieja de Capas: el sonido tiene ahora su pestaña (la añade el componente, Ajustes.registra)
     ligaControl("exag", "vista.exag", "input"); ligaControl("corr", "vista.corr", "input");
     api.alCambiar(function (clave) { aplica(clave); pinta(); });
     if (window.matchMedia) { try { matchMedia("(prefers-reduced-motion: reduce)").addEventListener("change", function () { aplica("acc.movimiento"); }); matchMedia("(pointer: coarse)").addEventListener("change", function () { aplica("controles.tactil"); }); } catch (e) {} }
