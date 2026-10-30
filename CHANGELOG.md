@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Configuración versionada del mundo (C6/OF6): `GET /api/config` y `/api/admin/config` (borrador, prueba solo para la oficina, publicar y volver con confirmación reciente, auditoría); el motor lee de ahí interruptores, parámetros de la escalera (en gafas solo a la baja) y épocas, con caída a lo de siempre; el hornero toma el calendario publicado como sello.
 - Oficina (OF0-OF1, ADR-0024): rol `oficina`, cuenta aparte con aparato confiable (aprobación desde otro aparato o con un segundo enlace), sesión de 12 h / 2 h sin actividad, confirmación reciente para lo delicado; `/oficina/` solo con sesión de oficina (página mínima); todas las `/api/admin/*` admiten `oficina` y `admin`; `livekit-roles` v3.
 - El sonido es el componente «sonido-ambiente» (C4, `?sonido=0`): habla por el Bus y registra su pestaña de Configuración y su fila del panel VR; quitarlo del motor no rompe nada.
 - Se retira el conector de claude.ai del motor (V9, decisión 79): el tiempo y el clima de la estación salen solo de la api; nueva `GET /api/tiempo/historico` (contrato `tiempo-historico` v1); la historia usa solo la instantánea del índice.
