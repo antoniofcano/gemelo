@@ -41,6 +41,36 @@ test("dev y producción usan las mismas imágenes de base, web y LiveKit", () =>
   }
 });
 
+test("V7/V10: volúmenes de medios y de configuración publicada (la api escribe, el hornero lee), y /api/medios hasta 9 MB en los dos Caddy y el borde", () => {
+  const V = CONTRATO.volumenes_api, L = CONTRATO.limites_cuerpo_mb;
+  const re = (s, f) => new RegExp(s, f);
+  for (const f of ["infra/compose.yml", "infra/dev/compose.yml"]) {
+    const c = sinComentarios(f).replace(/\s+#.*$/gm, "");   // sin comentarios al final de línea
+    assert.match(c, re("^\\s*- medios:" + V.medios + "\\s*$", "m"), f + ": el volumen medios en " + V.medios);
+    assert.match(c, re("^\\s*- config_publicada:" + V.config_publicada + "\\s*$", "m"), f + ": la api escribe la configuración publicada");
+    assert.match(c, re("GEMELO_MEDIOS:\\s*" + V.medios + "\\s*$", "m"), f + ": GEMELO_MEDIOS");
+    assert.match(c, re("GEMELO_CONFIG_SALIDA:\\s*" + V.config_publicada + "/publicada\\.json\\s*$", "m"), f + ": GEMELO_CONFIG_SALIDA");
+    assert.match(c, /^\s*- config_publicada:\/config:ro\s*$/m, f + ": el hornero lee la configuración, de solo lectura");
+    assert.match(c, /GEMELO_HORNERO_CONFIG:\s*\/config\/publicada\.json/, f + ": GEMELO_HORNERO_CONFIG");
+    assert.match(c, /^  medios: \{\}/m, f + ": volumen medios declarado");
+    assert.match(c, /^  config_publicada: \{\}/m, f + ": volumen config_publicada declarado");
+  }
+  assert.match(lee("apps/api/Dockerfile"), /mkdir -p \/datos\/medios \/datos\/config && chown node:node \/datos\/medios \/datos\/config/, "los puntos de montaje son del usuario node (un volumen nuevo hereda su dueño)");
+  for (const f of ["infra/Caddyfile", "infra/dev/Caddyfile"]) {
+    const c = sinComentarios(f);
+    assert.match(c, re("handle /api/medios \\{\\s*request_body \\{\\s*max_size " + L.api_medios + "MB"), f + ": /api/medios hasta " + L.api_medios + " MB");
+    assert.match(c, re("handle /api/\\* \\{\\s*request_body \\{\\s*max_size " + L.api + "MB"), f + ": el resto de /api/* sigue en " + L.api + " MB");
+    assert.ok(c.indexOf("handle /api/medios") < c.indexOf("handle /api/*"), f + ": /api/medios va antes que /api/*");
+  }
+  const b = sinComentarios("infra/bloque-borde.txt");
+  assert.match(b, re("handle /api/medios \\{\\s*request_body \\{\\s*max_size " + L.api_medios + "MB"), "borde: /api/medios hasta " + L.api_medios + " MB");
+  assert.match(b, re("handle \\{\\s*request_body \\{\\s*max_size " + L.borde + "MB"), "borde: el resto en " + L.borde + " MB");
+  const e = lee("infra/entorno.ejemplo");
+  for (const v of ["GEMELO_MEDIOS_MAX_MB", "GEMELO_MEDIOS_RETENCION_DIAS", "GEMELO_MEDIOS_SUBIDAS_HORA", "GEMELO_RESPALDO_MEDIOS"]) assert.match(e, re("^" + v + "=", "m"), "entorno.ejemplo: " + v);
+  assert.match(lee("infra/respaldo.sh"), /gemelo-medios-\$SELLO\.tar\.age/, "respaldo.sh copia el volumen de medios");
+  assert.match(lee("infra/ensayar-restauracion.sh"), /gemelo-medios-/, "el ensayo restaura la copia de medios");
+});
+
 test("producción: ningún puerto publicado, secretos solo por fichero, red de borde externa", () => {
   const c = sinComentarios("infra/compose.yml");
   assert.ok(!/^\s*ports:/m.test(c), "infra/compose.yml publica puertos (se entra solo por la red borde)");

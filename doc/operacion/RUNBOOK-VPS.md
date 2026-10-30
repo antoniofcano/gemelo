@@ -168,6 +168,25 @@ El servicio `hornero` de `infra/compose.yml` (ADR-0018 § 4) hornea las variante
 - **Salud:** el healthcheck lee el estado: sano si la última vuelta terminó en `listo` (con «durmiendo hasta <fecha>»), o está en curso y se movió hace menos de 15 min; enfermo si acabó en `error`, está atascada o el servicio dejó de latir.
 - **Sin puertos y sin salida a Internet** (red `bd`, interna), usuario 1000, sistema de ficheros de solo lectura, sin capacidades, 512 MB. Memoria y tiempo con Hituelo real en el VPS: **sin medir**.
 
+## Volúmenes (qué guardan, cómo se copian y se restauran)
+
+Todos son volúmenes con nombre de Docker del proyecto `gemelo` (`docker volume ls`: `gemelo_<nombre>`); ninguno se versiona.
+
+| Volumen | Lo monta | Qué guarda | Copia | Si se pierde |
+|---|---|---|---|---|
+| `pg_datos` | `db` (`/var/lib/postgresql`) | la base: hogares, hazas, olivos, medios (descripción), configuración versionada | `infra/respaldo.sh`: `pg_dump` cifrado con `age` → `rclone` fuera del VPS | restaurar la copia (abajo) |
+| `medios` (V7) | `api` en `/datos/medios` (escribe, uid 1000) | las **fotos de los hogares** (`GEMELO_MEDIOS`; nombre al azar `<32 hex>.webp\|jpg\|png`, ya re-codificadas por sharp) | `infra/respaldo.sh`: `tar` dentro del contenedor `api` → `age` → `rclone` (`gemelo-medios-<sello>.tar.age`, con su `.sha256`); `GEMELO_RESPALDO_MEDIOS=no` la omite | las filas de `medios` quedan apuntando a nada: restaurar la copia de medios del mismo sello |
+| `config_publicada` (V10) | `api` en `/datos/config` (escribe `publicada.json`) y `hornero` en `/config` (solo lectura) | el cuerpo de la configuración **publicada** desde la oficina (`GEMELO_CONFIG_SALIDA`; el hornero lee de ahí el calendario de épocas, `GEMELO_HORNERO_CONFIG`) | **ninguna propia**: la verdad es `config_versiones` en la base; el fichero se rehace publicando de nuevo desde la oficina. Sin él, el hornero usa el calendario de `contratos/epocas-calendario.json` | el hornero vuelve al calendario del contrato hasta la próxima publicación |
+| `hornero_estado` | `hornero` (`/estado`) | estado.json por finca, candado, latido | ninguna: se recalcula en la primera vuelta | una vuelta completa de más |
+| `caddy_datos`, `caddy_config` | `web` | estado de Caddy (sin TLS propio: el borde termina TLS) | ninguna | nada |
+
+- **Orden de la copia:** primero la base, luego los medios (la foto subida entre las dos es huérfana inofensiva; al revés habría filas sin foto). La api borra los huérfanos al barrer.
+- **Restaurar la base:** `docker compose -f infra/compose.yml stop api web`; descifrar (`age --decrypt -i <clave-privada>`) y `pg_restore --clean --if-exists` sobre la base `gemelo` con el dueño; `up -d`. Se ensaya aparte con `infra/ensayar-restauracion.sh`.
+- **Restaurar los medios:** con la `api` parada, vaciar y rellenar el volumen: `age --decrypt -i <clave-privada> gemelo-medios-<sello>.tar.age | docker run --rm -i -v gemelo_medios:/datos/medios --entrypoint sh <imagen gemelo-api> -c 'tar -xf - -C /datos/medios'` y comprobar el dueño (`chown -R 1000:1000`, uid de `node`); luego `up -d api`. El ensayo (`infra/ensayar-restauracion.sh`) descifra y desempaqueta la copia de medios del mismo sello **fuera del VPS** y comprueba que cada foto que describe la base restaurada está en ella.
+- **Tamaño:** estimado, no medido con fotos reales (cientos de KB por foto, ≤ 1600 px). Mirarlo con `docker system df -v`; el disco decide el plazo de retención (`GEMELO_MEDIOS_RETENCION_DIAS`).
+- **Subida de fotos y Caddy:** el borde y el Caddy interno dejan pasar `POST /api/medios` hasta **9 MB**; el resto de `/api/*` sigue en 2 MB (borde) y 1 MB (interno). Si se sube `GEMELO_MEDIOS_MAX_MB` por encima de 8, subir `max_size` de `/api/medios` en `infra/Caddyfile` y en `infra/bloque-borde.txt` (y `limites_cuerpo_mb` en `contratos/publicacion-vps.json`); el bloque de borde hay que **volver a pegarlo** en el Caddy de Oficultor (cambió: antes era un solo `request_body 2MB`).
+- **Primera vez en un VPS con la versión anterior:** los volúmenes nuevos se crean solos con el dueño `node` (el Dockerfile crea `/datos/medios` y `/datos/config`); hace falta `up -d --build` para reconstruir la imagen de la api.
+
 ## Operación
 
 | Quiero… | Cómo |

@@ -23,7 +23,7 @@ Base de datos y api de lo que hacen las familias en su haza antes de subir al VP
 
 La base guarda solo la descripción (`medios`: clave al azar, tipo, bytes, ancho, alto, SHA-256, quién y desde qué sesión, aviso aceptado). Los ficheros entran en las copias junto con la base.
 
-**Pendiente en `infra/` (no tocado aquí):** volumen y variable `GEMELO_MEDIOS` del servicio `api` en `infra/compose.yml` e `infra/dev`; abrir el tamaño de `POST /api/medios` en el Caddy interno (hoy `request_body max_size 1MB` en `/api/*`) y en el bloque de borde (2 MB), o reducir la foto en el navegador antes de subirla (lo más barato: el panel la reduce a 1600 px antes de mandarla); la copia de seguridad del volumen; `GEMELO_MEDIOS*` en `infra/entorno.ejemplo`.
+**Hecho en `infra/` (V7):** volumen `medios` en `/datos/medios` (`GEMELO_MEDIOS`) en `infra/compose.yml` e `infra/dev/compose.yml`; `POST /api/medios` hasta ~9 MB en el Caddy interno, el de dev y el bloque de borde (el resto de `/api/*` sigue en 1 MB / 2 MB), con la prueba en `infra/probar-caddy.sh`; copia cifrada del volumen en `infra/respaldo.sh` y su ensayo en `infra/ensayar-restauracion.sh`; `GEMELO_MEDIOS*` en `infra/entorno.ejemplo`. Cómo se copia y se restaura: [RUNBOOK-VPS § Volúmenes](../operacion/RUNBOOK-VPS.md#volúmenes-qué-guardan-cómo-se-copian-y-se-restauran).
 
 ## Vuelo LiDAR nuevo (anotado, no implementado)
 
