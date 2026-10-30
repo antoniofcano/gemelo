@@ -154,12 +154,12 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | OF11 | Agenda: eventos con aforo, inscripciones, lista de espera, avisos | OF2, V3 | media · **sonnet**; 🔶 Docker | ⬜ |
 | OF12 | Directos: preparación, sala guiada, dar la palabra, silenciar | OF10, F3, EIPD | pesada · **opus**; 🔶 | ⬜ |
 | OF13 | Llave de acceso (WebAuthn) obligatoria para la oficina antes de abrir (decisión 105) | OF1 | media · **sonnet**; 🔶 | ⬜ |
-| C1 | Componentes: núcleo (`Componentes`, `Bus` con catálogo, bucle por fases, encendido URL > configuración > defecto) y guardián | — | media · **opus** | 🟡 en curso |
-| C2 | Componentes: puntos de extensión (HUD, ventanas, teclas, ajustes, panel VR por filas, minimapa, capas) | C1 | media · **opus** | 🟡 en curso |
-| C3 | Componentes: piloto 1, las fichas del tiempo como componente | C2 | ligera · **opus** | 🟡 en curso |
+| C1 | Componentes: núcleo (`Componentes`, `Bus` con catálogo, bucle por fases, encendido URL > configuración > defecto) y guardián | — | media · **opus** | ✅ 2026-10-30 |
+| C2 | Componentes: puntos de extensión (HUD, ventanas, teclas, ajustes, panel VR por filas, minimapa, capas) | C1 | media · **opus** | ✅ 2026-10-30 |
+| C3 | Componentes: piloto 1, las fichas del tiempo como componente | C2 | ligera · **opus** | ✅ 2026-10-30 |
 | C4 | Componentes: piloto 2, el sonido | C2 | ligera · **sonnet** | ⬜ |
 | C5 | Componentes: piloto 3, `Red` sobre LiveKit; presencia y avatares como componentes | C1 | media · **opus** | ⬜ |
-| C6 | Componentes: plugins de la api y `/api/config` (se junta con OF6) | C1 | ligera · **sonnet** | ⬜ |
+| C6 | Componentes: plugins de la api y `/api/config` (se junta con OF6) | C1 | ligera · **sonnet** | ⬜ adelantada (decisión 118): el motor ya lee el bloque `componentes`; falta la ruta y el `fetch` |
 | C7 | Entidades con id estable y usables (una sola forma de tocar: dedo, ratón, rayo VR, cercanía) — antes de juegos y fotos (decisión 119) | C2 | media · **opus** | ⬜ |
 | C8 | Láminas en el mundo como servicio del núcleo | C3 | ligera · **sonnet** | ⬜ |
 | C9 | Anfitrión de juegos y primer casual (decisión 125): piezas del olivar que caen y se rompen al juntar 3+ iconos iguales; récord validado en la api | C2, C6, C8 | media · **opus**; 👤 qué juego | ⬜ |
