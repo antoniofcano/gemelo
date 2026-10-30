@@ -6,16 +6,14 @@
 
 /** Versión vigente de las normas: la misma que NORMAS_VERSION de apps/api/src/auth/servicio.ts (lo vigila un guardián). */
 export const NORMAS_VERSION = 1;
-const CAMISAS = [["#c0563a", "Teja"], ["#2f5d8a", "Azul"], ["#3f7f5a", "Verde"], ["#d9822b", "Naranja"], ["#7a3f8f", "Morado"], ["#e8e2cf", "Crudo"]];
-const SOMBREROS = [["ninguno", "Ninguno", null], ["paja", "Paja", "#e1c46a"], ["gorra", "Gorra", "#3a3f46"]];
-const PIELES = [["#f1d0b5", "Muy claro"], ["#e0b48f", "Claro"], ["#c48c63", "Medio"], ["#95623f", "Oscuro"], ["#5e3c27", "Muy oscuro"]];
+const COLOR_SOMBRERO = { ninguno: null, paja: "#d9bf6a", gorra: "#2e5d34" };   // los del muñeco del motor (26_presencia.js)
 const SUGERENCIAS = ["Tordo del Llano", "Abubilla", "Encina 42", "Alcaraván", "Acebuche"];
 const CON_SESION = new Set(["bienvenida", "alias", "avatar", "creditos", "dispositivos"]);
 const SIN_SESION = new Set(["entrar", "revisa", "vincular"]);
 const TEXTO_RED = "No hemos podido conectar. Comprueba la conexión y vuelve a probar.";
 
 const $ = id => document.getElementById(id);
-const S = { sesion: null, pantalla: null, correo: "", avatar: { camisa: 0, sombrero: 1, piel: 1 }, vrm: null, catalogo: null, vista: null, pausada: false, tok: 0, vinculo: null };
+const S = { sesion: null, pantalla: null, correo: "", R: null, e: null, v2: null, lejos: false, cuerpoCargado: null, catalogo: null, vista: null, pausada: false, tok: 0, vinculo: null };
 
 // ---------- red
 async function pide(metodo, ruta, cuerpo) {
@@ -218,7 +216,8 @@ $("fAlias").addEventListener("submit", async e => {
   errorCampo(i, $("eAlias"), TEXTO_RED);
 });
 
-// ---------- 4.7 avatar (SVG con atributos de presentación: nada de style)
+// ---------- 4.7 avatar, por piezas (AV4, ADR-0025; doc/sistema/AVATARES-FAMILIA.md). Lo puro (estado, receta, «algo parecido», al azar) está en receta.js y se pide con import()
+// al abrir esta pantalla, como la vista 3D. Sin «hombre/mujer» en ningún paso (C8); los peques no se ofrecen (decisión 132). SVG con atributos de presentación: nada de style.
 const NS = "http://www.w3.org/2000/svg";
 function rect(g, x, y, w, h, fill, clase) {
   const r = document.createElementNS(NS, "rect");
@@ -227,71 +226,96 @@ function rect(g, x, y, w, h, fill, clase) {
   if (clase) r.setAttribute("class", clase);
   g.appendChild(r);
 }
-function dibujaAvatar(svg, a) {
+function circulo(g, cx, cy, r, fill, trazo) {
+  const c = document.createElementNS(NS, "circle");
+  for (const [k, v] of Object.entries({ cx, cy, r })) c.setAttribute(k, String(v));
+  c.setAttribute("fill", fill || "none"); if (trazo) { c.setAttribute("stroke", trazo); c.setAttribute("stroke-width", "2.5"); }
+  g.appendChild(c);
+}
+/** El muñeco de lejos (como lo verán los demás a distancia: piel, ropa de arriba y de abajo, sombrero, altura, complexión y silla; C13) */
+function dibujaMuneco(svg, e) {
   svg.replaceChildren();
-  const g = document.createElementNS(NS, "g"), cam = CAMISAS[a.camisa][0], piel = PIELES[a.piel][0], som = SOMBREROS[a.sombrero][2];
-  g.setAttribute("transform", "scale(1.25)");
-  rect(g, -9, 10, 7, 14, null, "av-pierna"); rect(g, 2, 10, 7, 14, null, "av-pierna");
-  rect(g, -12, -10, 24, 22, cam, "av-borde"); rect(g, -18, -9, 6, 16, cam, "av-borde"); rect(g, 12, -9, 6, 16, cam, "av-borde");
-  rect(g, -10, -32, 20, 20, piel, "av-borde"); rect(g, -6, -25, 3, 3, null, "av-ojo"); rect(g, 3, -25, 3, 3, null, "av-ojo");
-  if (a.sombrero === 1) { rect(g, -16, -35, 32, 5, som); rect(g, -9, -43, 18, 9, som); }
-  if (a.sombrero === 2) { rect(g, -11, -38, 22, 8, som); rect(g, 4, -33, 12, 3, som); }
+  const P = S.R.PALETAS, g = document.createElementNS(NS, "g"), piel = P.piel[e.tono].color, cam = P.ropa[e.arriba].color, pan = P.ropa[e.abajo].color, som = COLOR_SOMBRERO[e.sombrero];
+  const fa = { baja: 0.93, media: 1, alta: 1.07 }[e.altura] || 1, fc = { delgada: 0.84, media: 1, ancha: 1.24 }[e.complexion] || 1, silla = e.movilidad === "silla";
+  g.setAttribute("transform", "translate(0 24) scale(" + (1.25 * fa).toFixed(3) + ") translate(0 -24)");
+  const w = 24 * fc, dy = silla ? 8 : 0;
+  if (silla) { circulo(g, -w / 2 - 3, 18, 10, null, "#22262a"); circulo(g, w / 2 + 3, 18, 10, null, "#22262a"); rect(g, -w / 2 - 2, 10, w + 4, 3, "#4a4f55"); }
+  if (silla) { rect(g, -9 * fc, 10 + dy - 8, 7 * fc, 8, pan, "av-borde"); rect(g, 2 * fc, 10 + dy - 8, 7 * fc, 8, pan, "av-borde"); }
+  else { rect(g, -9 * fc, 10, 7 * fc, 14, pan, "av-borde"); rect(g, 2 * fc, 10, 7 * fc, 14, pan, "av-borde"); }
+  rect(g, -w / 2, -10 + dy, w, 22, cam, "av-borde"); rect(g, -w / 2 - 6, -9 + dy, 6, 16, cam, "av-borde"); rect(g, w / 2, -9 + dy, 6, 16, cam, "av-borde");
+  rect(g, -10, -32 + dy, 20, 20, piel, "av-borde"); rect(g, -6, -25 + dy, 3, 3, null, "av-ojo"); rect(g, 3, -25 + dy, 3, 3, null, "av-ojo");
+  if (e.sombrero === "paja") { rect(g, -16, -35 + dy, 32, 5, som); rect(g, -9, -43 + dy, 18, 9, som); }
+  if (e.sombrero === "gorra") { rect(g, -11, -38 + dy, 22, 8, som); rect(g, 4, -33 + dy, 12, 3, som); }
+  if (e.movilidad === "baston") rect(g, w / 2 + 6, 2, 2, 22, "#5a3d22");
+  if (e.movilidad === "andador") { rect(g, -w / 2 - 8, 0, 2, 24, "#a9b1b8"); rect(g, w / 2 + 6, 0, 2, 24, "#a9b1b8"); rect(g, -w / 2 - 8, 0, w + 16, 2, "#a9b1b8"); }
   svg.appendChild(g);
 }
-function muestras(cont, nombre, lista, clave, color) {
+/** Un grupo de radios; `color` da el de su muestra (o null). Cada radio dentro de su <label>, con nombre visible; el elegido se ve sin depender del color (borde y sombra) */
+function muestras(cont, nombre, lista, valor, color, alCambiar) {
   cont.replaceChildren();
-  lista.forEach((it, i) => {
+  lista.forEach(([v, texto]) => {
     const l = document.createElement("label"), inp = document.createElement("input"), sp = document.createElement("span");
-    l.className = "muestra"; inp.type = "radio"; inp.name = nombre; inp.value = String(i); inp.checked = S.avatar[clave] === i;
-    inp.addEventListener("change", () => { S.avatar[clave] = i; dibujaAvatar($("avatarPrev"), S.avatar); });
-    const c = color(it);
-    if (c) { const s = document.createElementNS(NS, "svg"); s.setAttribute("viewBox", "0 0 26 26"); s.setAttribute("aria-hidden", "true"); rect(s, 1, 1, 24, 24, c, "av-borde"); sp.appendChild(s); }
-    sp.appendChild(document.createTextNode(it[1]));
+    l.className = "muestra"; inp.type = "radio"; inp.name = nombre; inp.value = String(v); inp.checked = valor === v;
+    inp.addEventListener("change", () => alCambiar(v));
+    const c = color ? color(v) : null;
+    if (c) { const s2 = document.createElementNS(NS, "svg"); s2.setAttribute("viewBox", "0 0 26 26"); s2.setAttribute("aria-hidden", "true"); rect(s2, 1, 1, 24, 24, c, "av-borde"); sp.appendChild(s2); }
+    sp.appendChild(document.createTextNode(texto));
     l.append(inp, sp); cont.appendChild(l);
   });
 }
+function cambia(k, v) { S.e = Object.assign({}, S.e, { [k]: v }, k === "vrm" ? {} : { vrm: null }); pintaAvatar(); vistaPrevia(); }
 function pintaAvatar() {
-  muestras($("mCamisa"), "camisa", CAMISAS, "camisa", it => it[0]);
-  muestras($("mSombrero"), "sombrero", SOMBREROS, "sombrero", it => it[2]);
-  muestras($("mPiel"), "piel", PIELES, "piel", it => it[0]);
-  dibujaAvatar($("avatarPrev"), S.avatar);
+  const R = S.R, e = S.e, v2 = S.v2, P = R.PALETAS, deTipo = l => l.filter(p => { const c = R.cuerpoDe(v2, e.edad, e.complexion); return c && (c.piezas || []).includes(p.id); });
+  const idx = l => l.map((x, i) => [i, x.nombre]);
+  muestra($("fsEdad"), !!v2); muestra($("dPelo"), !!v2); muestra($("fsRopa"), !!v2);
+  if (v2) muestras($("mEdad"), "edad", R.edadesDe(v2), e.edad, null, v => cambia("edad", v));
+  muestras($("mComplexion"), "complexion", R.COMPLEXIONES, e.complexion, null, v => cambia("complexion", v));
+  muestras($("mAltura"), "altura", R.ALTURAS, e.altura, null, v => cambia("altura", v));
+  muestras($("mPiel"), "piel", idx(P.piel), e.tono, i => P.piel[i].color, v => cambia("tono", v));
+  if (v2) {
+    muestras($("mPelo"), "pelo", [[null, "Sin pelo"]].concat(deTipo(v2.pelos).map(p => [p.id, p.nombre])), e.pelo, null, v => cambia("pelo", v));
+    muestras($("mPeloColor"), "pelo_color", idx(P.pelo), e.peloColor, i => P.pelo[i].color, v => cambia("peloColor", v));
+    muestras($("mVello"), "vello", [[null, "Ninguno"]].concat(deTipo(v2.vellos).map(p => [p.id, p.nombre])), e.vello, null, v => cambia("vello", v));
+    muestras($("mRopa"), "ropa", [[null, "Camiseta y pantalón corto"]].concat(deTipo(v2.ropas).map(p => [p.id, p.nombre])), e.ropa, null, v => cambia("ropa", v));
+  }
+  muestras($("mArriba"), "arriba", idx(P.ropa), e.arriba, i => P.ropa[i].color, v => cambia("arriba", v));
+  muestras($("mAbajo"), "abajo", idx(P.ropa), e.abajo, i => P.ropa[i].color, v => cambia("abajo", v));
+  muestras($("mSombrero"), "sombrero", R.SOMBREROS, e.sombrero, v => COLOR_SOMBRERO[v], v => cambia("sombrero", v));
+  muestras($("mMovilidad"), "movilidad", R.MOVILIDADES, e.movilidad, null, v => cambia("movilidad", v));
+  const par = R.parecidos(v2); muestra($("fsParecidos"), par.length > 0);
+  $("parecidos").replaceChildren(...par.map(p => {
+    const b = document.createElement("button"); b.type = "button"; b.className = "btn"; b.textContent = p.nombre;
+    b.addEventListener("click", () => { S.e = R.aplica(S.e, p.receta); pintaAvatar(); vistaPrevia(); anuncia("Empiezas por: " + p.nombre + ". Cambia lo que quieras."); });
+    return b;
+  }));
+  const hay = catalogados().length > 0; muestra($("fsGaleria"), hay);
+  if (hay) pintaGaleria();
+  muestra($("bloquePiezas"), !delCatalogo(e.vrm));
+  dibujaMuneco($("avatarPrev"), e);
+  $("descAvatar").textContent = delCatalogo(e.vrm) ? delCatalogo(e.vrm).nombre + (delCatalogo(e.vrm).descripcion ? ": " + delCatalogo(e.vrm).descripcion : "") : R.describe(v2, e);
   $("aliasPrev").textContent = S.sesion?.alias || "—";
 }
 
-// ---- catálogo de avatares VRM (/avatares/catalogo.json, tras sesión; contratos/avatares.md). Sin él, solo el muñeco de bloque.
+// ---- catálogo de avatares (/avatares/catalogo.json, tras sesión; contratos/avatares.md). v2: cuerpos y piezas; v1 (o los `avatares` de la v2): avatares ya hechos. Sin él, el muñeco.
 async function leeCatalogo() {
   if (S.catalogo !== null) return S.catalogo || null;
   try {
     const r = await pide("GET", "/avatares/catalogo.json");
     const c = r.status === 200 ? r.json : null;
-    S.catalogo = c && c.v === 1 && Array.isArray(c.avatares) && c.avatares.length ? c : false;
+    S.catalogo = c && (c.v === 1 || c.v === 2) && ((Array.isArray(c.avatares) && c.avatares.length) || (Array.isArray(c.cuerpos) && c.cuerpos.length)) ? c : false;
   } catch { S.catalogo = false; }
   return S.catalogo || null;
 }
 const catalogados = () => S.catalogo?.avatares || [];
 const delCatalogo = id => (id ? catalogados().find(a => a.id === id) : null) || null;
-const rgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
-/** Índice del color de la paleta más cercano a `hexa` (el catálogo da colores libres; la api guarda índices). */
-function cercano(lista, hexa) {
-  const c = rgb(hexa); let mejor = 0, d0 = Infinity;
-  lista.forEach((it, i) => { const q = rgb(it[0]), d = (q[0] - c[0]) ** 2 + (q[1] - c[1]) ** 2 + (q[2] - c[2]) ** 2; if (d < d0) { d0 = d; mejor = i; } });
-  return mejor;
-}
 function muestra(el, si) { if (si) el.removeAttribute("hidden"); else el.setAttribute("hidden", ""); }
-
-/** Al elegir un VRM, el muñeco lejano (y la caída) lleva los colores que declara el catálogo, a la paleta más cercana. */
-function muniecoDe(a) {
-  const c = a.colores_muneco; if (!c) return;
-  S.avatar.camisa = cercano(CAMISAS, c.camisa); S.avatar.piel = cercano(PIELES, c.piel);
-  S.avatar.sombrero = Math.max(0, SOMBREROS.findIndex(x => x[0] === c.sombrero));
-}
 
 function pintaGaleria() {
   const g = $("galeria"); g.replaceChildren();
-  const opciones = [{ id: "", nombre: "Muñeco de bloque", descripcion: "Estilo bloque, como la finca. Eliges camisa, sombrero y tono de piel." }].concat(catalogados());
+  const opciones = [{ id: "", nombre: "Hecho por piezas", descripcion: "El tuyo, con las piezas de arriba." }].concat(catalogados());
   for (const o of opciones) {
     const l = document.createElement("label"), inp = document.createElement("input"), sp = document.createElement("span"), n = document.createElement("strong");
-    l.className = "tarjeta-av"; inp.type = "radio"; inp.name = "avatar"; inp.value = o.id; inp.checked = (S.vrm || "") === o.id;
+    l.className = "tarjeta-av"; inp.type = "radio"; inp.name = "avatar"; inp.value = o.id; inp.checked = (S.e.vrm || "") === o.id;
     inp.addEventListener("change", () => eligeVrm(o.id || null));
     n.textContent = o.nombre; sp.appendChild(n);
     if (o.descripcion) { const d = document.createElement("span"); d.className = "desc"; d.textContent = o.descripcion; sp.appendChild(d); }
@@ -299,36 +323,43 @@ function pintaGaleria() {
   }
 }
 
-// ---- vista previa 3D: three y three-vrm solo se piden (import) al abrir esta pantalla; sin WebGL o si falla, queda la lista y el muñeco
+// ---- vista previa: de cerca, el VRM de verdad con three (vista3d.js, import() solo en esta pantalla): el cuerpo de la receta con sus piezas y sus colores, o el avatar ya
+// hecho; de lejos (y sin WebGL, sin catálogo o si falla), el muñeco en SVG, que es como te verán a distancia
 const PASO_GIRO = Math.PI / 8;
 function hayWebGL() {
   try { return !!document.createElement("canvas").getContext("webgl2"); } catch { return false; }
 }
 const quietoPorPreferencia = () => globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
-function paraVista() { S.tok++; if (S.vista) { S.vista.destruye(); S.vista = null; } }
+function paraVista() { S.tok++; S.cuerpoCargado = null; if (S.vista) { S.vista.destruye(); S.vista = null; } }
 function estado3d(t) { $("estado3d").textContent = t || ""; }
 function soloMuneco(texto) { muestra($("avatar3d"), false); muestra($("giro"), false); muestra($("avatarPrev"), true); estado3d(texto); }
+function pintaVistas() { $("vistaCerca").setAttribute("aria-pressed", S.lejos ? "false" : "true"); $("vistaLejos").setAttribute("aria-pressed", S.lejos ? "true" : "false"); }
 async function vistaPrevia() {
-  const tok = ++S.tok, a = delCatalogo(S.vrm);
-  dibujaAvatar($("avatarPrev"), S.avatar);   // el muñeco (con los colores del catálogo): mientras carga y si no carga
-  if (!a) { S.vista?.quita(); soloMuneco(""); return; }
-  if (!hayWebGL()) { soloMuneco("Este aparato no enseña la vista previa en 3D. Puedes elegir «" + a.nombre + "» igualmente."); return; }
-  estado3d("Cargando la vista previa de «" + a.nombre + "»…");
+  const tok = ++S.tok, e = S.e, a = delCatalogo(e.vrm), v = a ? null : S.R.vestido(S.v2, e), c = v ? v.cuerpo : null;
+  const nombre = a ? a.nombre : "tu avatar", fichero = a ? a.fichero : c ? c.fichero : null, sha = a ? a.sha256 : c ? c.sha256 : null;
+  dibujaMuneco($("avatarPrev"), e);   // el muñeco: mientras carga, de lejos y si no carga
+  if (!fichero || S.lejos) { S.vista?.quita(); S.cuerpoCargado = null; soloMuneco(S.lejos && fichero ? "De lejos te verán así, como un muñeco con tus colores." : ""); return; }
+  if (!hayWebGL()) { soloMuneco("Este aparato no enseña la vista previa en 3D. Puedes elegir igualmente."); return; }
   try {
     if (!S.vista) {
       const m = await import("./vista3d.js");
       if (tok !== S.tok) return;
       muestra($("avatar3d"), true);   // con tamaño antes de crear la vista: el lienzo mide lo que dice el CSS
-      S.vista = m.creaVista($("avatar3d"), { quieto: S.pausada, alPerder: () => soloMuneco("Se ha perdido la vista previa en 3D. Tu elección sigue siendo «" + a.nombre + "».") });
+      S.vista = m.creaVista($("avatar3d"), { quieto: S.pausada, alPerder: () => soloMuneco("Se ha perdido la vista previa en 3D. Tu elección se guarda igual.") });
       pintaPausa();
     }
-    await S.vista.carga("/avatares/" + encodeURIComponent(a.fichero) + "?v=" + a.sha256, a.sha256);
-    if (tok !== S.tok) return;
+    if (S.cuerpoCargado !== fichero) {
+      estado3d("Cargando la vista previa…");
+      await S.vista.carga("/avatares/" + encodeURIComponent(fichero) + "?v=" + sha, sha, { realista: !!c });
+      if (tok !== S.tok) return;
+      S.cuerpoCargado = fichero;
+    }
+    if (v) S.vista.viste(v);
     muestra($("avatarPrev"), false); muestra($("avatar3d"), true); muestra($("giro"), true); estado3d("");
-    anuncia("Vista previa de " + a.nombre + ".");
+    anuncia("Vista previa de " + nombre + ".");
   } catch {
     if (tok !== S.tok) return;
-    paraVista(); soloMuneco("No hemos podido enseñar la vista previa de «" + a.nombre + "». Puedes elegirlo igualmente.");
+    paraVista(); soloMuneco("No hemos podido enseñar la vista previa en 3D. Puedes elegir igualmente.");
   }
 }
 function pintaPausa() {
@@ -338,48 +369,34 @@ function pintaPausa() {
 $("giroIzq").addEventListener("click", () => S.vista?.gira(-PASO_GIRO));
 $("giroDer").addEventListener("click", () => S.vista?.gira(PASO_GIRO));
 $("giroPausa").addEventListener("click", () => { S.pausada = !S.pausada; S.vista?.pausa(S.pausada); pintaPausa(); });
+$("vistaCerca").addEventListener("click", () => { S.lejos = false; pintaVistas(); vistaPrevia(); });
+$("vistaLejos").addEventListener("click", () => { S.lejos = true; pintaVistas(); vistaPrevia(); });
 
-function eligeVrm(id) {
-  S.vrm = delCatalogo(id) ? id : null;
-  const a = delCatalogo(S.vrm);
-  if (a) muniecoDe(a);
-  muestra($("bloqueMuneco"), !a);
-  pintaAvatar(); vistaPrevia();
-}
+function eligeVrm(id) { cambia("vrm", delCatalogo(id) ? id : null); }
 async function entraAvatar() {
   const primero = !!S.sesion?.primer_acceso;
   muestra($("pasosAvatar"), primero); muestra($("atrasAvatar"), primero); muestra($("volverAvatar"), !primero);
-  S.pausada = quietoPorPreferencia();
-  pintaAvatar(); soloMuneco("");
-  // lo que ya tiene elegido el hogar (si lo hay) y el catálogo, a la vez
-  const [guardado] = await Promise.all([pide("GET", "/api/yo/avatar").catch(() => null), leeCatalogo()]);
+  S.pausada = quietoPorPreferencia(); S.lejos = false; pintaVistas();
+  // lo puro (receta.js), lo que ya tiene elegido el hogar (si lo hay) y el catálogo, a la vez
+  const [R, guardado] = await Promise.all([S.R ? S.R : import("./receta.js"), pide("GET", "/api/yo/avatar").catch(() => null), leeCatalogo()]);
+  S.R = R;
   if (S.pantalla !== "avatar") return;
   if (guardado?.status === 401) { await leeSesion(); ir("portada"); return; }
-  if (guardado?.status === 200 && guardado.json) {
-    const j = guardado.json;
-    S.avatar = { camisa: j.camisa, sombrero: Math.max(0, SOMBREROS.findIndex(x => x[0] === j.sombrero)), piel: j.piel };
-    S.vrm = delCatalogo(j.vrm) ? j.vrm : null;
-  }
-  const hay = catalogados().length > 0;
-  muestra($("fsGaleria"), hay);
-  if (hay) pintaGaleria();
-  muestra($("bloqueMuneco"), !delCatalogo(S.vrm));
-  pintaAvatar();
-  if (delCatalogo(S.vrm)) vistaPrevia();
+  S.v2 = R.leeV2(S.catalogo || null);
+  S.e = guardado?.status === 200 && guardado.json ? R.deGuardado(S.v2, guardado.json, catalogados()) : R.inicial(S.v2);
+  pintaAvatar(); soloMuneco("");
+  vistaPrevia();
 }
 $("btnAzar").addEventListener("click", () => {
-  const az = n => Math.floor(Math.random() * n), ids = [null].concat(catalogados().map(a => a.id)), id = ids[az(ids.length)];
-  S.avatar = { camisa: az(CAMISAS.length), sombrero: az(SOMBREROS.length), piel: az(PIELES.length) };
-  S.vrm = id; if (id) muniecoDe(delCatalogo(id));
-  if (catalogados().length) pintaGaleria();
-  muestra($("bloqueMuneco"), !id);
+  if (!S.R) return;
+  S.e = S.R.azar(S.e, S.v2);
   pintaAvatar(); vistaPrevia();
-  anuncia("Avatar cambiado al azar" + (id ? ": " + delCatalogo(id).nombre : "") + ".");
+  anuncia("Cambiado al azar: " + S.R.describe(S.v2, S.e));
 });
 $("fAvatar").addEventListener("submit", async e => {
   e.preventDefault();
-  const a = S.avatar;
-  let r; try { r = await pide("PUT", "/api/yo/avatar", { camisa: a.camisa, sombrero: SOMBREROS[a.sombrero][0], piel: a.piel, vrm: S.vrm }); } catch { r = { status: 0 }; }
+  if (!S.R || !S.e) return;
+  let r; try { r = await pide("PUT", "/api/yo/avatar", S.R.peticion(S.v2, S.e)); } catch { r = { status: 0 }; }
   if (r.status === 204) { aviso($("eAvatar"), $("eAvatarTxt"), null); await leeSesion(); ir("portada"); anuncia("Ya está. Puedes seguir a la finca."); $("btnSeguir").focus(); return; }
   if (r.status === 401) { await leeSesion(); ir("portada"); return; }
   aviso($("eAvatar"), $("eAvatarTxt"), r.json?.mensaje || TEXTO_RED);
@@ -399,7 +416,8 @@ async function pintaCreditos() {
   muestra($("avCreditos"), !cat);
   $("avCreditosTxt").textContent = "No hay catálogo de avatares disponible ahora mismo.";
   if (!cat) return;
-  for (const a of cat.avatares) {
+  // los avatares ya hechos (v1) y los cuerpos del creador que se ofrecen (v2; los peques no, decisión 132)
+  for (const a of [...(cat.avatares || []), ...(cat.cuerpos || []).filter(c => c.ofrecer)]) {
     const li = document.createElement("li"), p1 = document.createElement("p"), p2 = document.createElement("p"), p3 = document.createElement("p"), n = document.createElement("strong");
     n.textContent = a.nombre; p1.append(n, " — de " + a.autor);
     p2.append("Licencia: ", enlace(a.licencia.spdx, a.licencia.url));

@@ -181,10 +181,14 @@
     <ol class="pasos" id="pasosAvatar" aria-label="Pasos del primer acceso"><li>1. Privacidad y normas</li><li>2. Alias</li><li aria-current="step">3. Avatar</li></ol>
     <a class="btn btn-txt" href="#portada" id="volverAvatar" hidden>← Volver</a>
     <h1 id="t-avatar" tabindex="-1">Tu avatar</h1>
-    <p id="introAvatar">Elige cómo te verán los demás en la finca. Sin rasgos de edad ni de género.</p>
+    <p id="introAvatar">Elige cómo te verán los demás en la finca, por piezas: cuerpo, piel, pelo, ropa y lo que llevas al campo. Cualquier pieza vale para cualquiera, sin preguntas de «chico o chica».</p>
     <div class="avatar-zona">
       <div class="avatar-prev">
-        <svg id="avatarPrev" viewBox="-40 -60 80 90" role="img" aria-label="Vista previa del avatar"></svg>
+        <div class="fila vistas" role="group" aria-label="Qué vista enseñar">
+          <button type="button" class="btn" id="vistaCerca" aria-pressed="true">De cerca</button>
+          <button type="button" class="btn" id="vistaLejos" aria-pressed="false">De lejos</button>
+        </div>
+        <svg id="avatarPrev" viewBox="-40 -60 80 90" role="img" aria-label="Vista previa del avatar: el muñeco de lejos"></svg>
         <canvas id="avatar3d" class="av3d" role="img" aria-label="Vista previa en 3D del avatar elegido" hidden></canvas>
         <p class="nota centro" id="estado3d" role="status"></p>
         <div class="fila giro" id="giro" hidden role="group" aria-label="Girar la vista previa">
@@ -193,20 +197,49 @@
           <button type="button" class="btn" id="giroDer" aria-label="Girar a la derecha">▶</button>
         </div>
         <p class="nota centro" id="aliasPrev">—</p>
+        <p class="nota" id="descAvatar" aria-live="polite"></p>
       </div>
       <form id="fAvatar" novalidate>
-        <fieldset id="fsGaleria">
-          <legend>Elige tu avatar</legend>
+        <fieldset id="fsParecidos" hidden>
+          <legend>Empieza por algo parecido (si quieres)</legend>
+          <div class="parecidos" id="parecidos"></div>
+          <p class="pista">Son puntos de partida descritos por lo que se ve. Tu tono de piel no cambia; luego se cambia cualquier pieza.</p>
+        </fieldset>
+        <div id="bloquePiezas">
+          <details class="pieza" open><summary>Cuerpo</summary><div class="cuerpo-pieza">
+            <fieldset id="fsEdad" hidden><legend>Edad</legend><div class="muestras" id="mEdad"></div></fieldset>
+            <fieldset><legend>Complexión</legend><div class="muestras" id="mComplexion"></div></fieldset>
+            <fieldset><legend>Altura</legend><div class="muestras" id="mAltura"></div></fieldset>
+          </div></details>
+          <details class="pieza" open><summary>Piel</summary><div class="cuerpo-pieza">
+            <fieldset><legend>Tono de piel</legend><div class="muestras" id="mPiel"></div></fieldset>
+          </div></details>
+          <details class="pieza" id="dPelo" hidden><summary>Pelo y cara</summary><div class="cuerpo-pieza">
+            <fieldset><legend>Peinado</legend><div class="muestras" id="mPelo"></div></fieldset>
+            <fieldset><legend>Color del pelo</legend><div class="muestras" id="mPeloColor"></div></fieldset>
+            <fieldset><legend>Vello en la cara</legend><div class="muestras" id="mVello"></div></fieldset>
+          </div></details>
+          <details class="pieza"><summary>Ropa</summary><div class="cuerpo-pieza">
+            <fieldset id="fsRopa" hidden><legend>Qué llevas</legend><div class="muestras" id="mRopa"></div></fieldset>
+            <fieldset><legend>Color de arriba</legend><div class="muestras" id="mArriba"></div></fieldset>
+            <fieldset><legend>Color de abajo</legend><div class="muestras" id="mAbajo"></div></fieldset>
+          </div></details>
+          <details class="pieza"><summary>Lo que llevas al campo</summary><div class="cuerpo-pieza">
+            <fieldset><legend>Sombrero</legend><div class="muestras" id="mSombrero"></div></fieldset>
+          </div></details>
+          <details class="pieza"><summary>Cómo te mueves</summary><div class="cuerpo-pieza">
+            <fieldset><legend>Apoyo</legend><div class="muestras" id="mMovilidad"></div></fieldset>
+            <p class="pista">Misma velocidad y mismos caminos para todo el mundo. La altura de tu vista se cambia aparte, en Configuración.</p>
+          </div></details>
+        </div>
+        <fieldset id="fsGaleria" hidden>
+          <legend>O un avatar ya hecho (provisional)</legend>
           <div class="galeria" id="galeria"></div>
           <p class="pista" id="pistaGaleria"></p>
         </fieldset>
-        <div id="bloqueMuneco">
-          <fieldset><legend>Color de la camisa</legend><div class="muestras" id="mCamisa"></div></fieldset>
-          <fieldset><legend>Sombrero</legend><div class="muestras" id="mSombrero"></div></fieldset>
-          <fieldset><legend>Tono de piel</legend><div class="muestras" id="mPiel"></div></fieldset>
-        </div>
         <div class="aviso aviso-err" id="eAvatar" role="alert" hidden><p id="eAvatarTxt"></p></div>
         <div class="fila"><button type="button" class="btn" id="btnAzar">Al azar</button><button type="submit" class="btn btn-prim btn-grande">Listo</button><a class="btn btn-txt" href="#alias" id="atrasAvatar">Atrás</a></div>
+        <p class="pista">«Al azar» cambia piel, pelo, ropa y sombrero; no cambia la edad, el cuerpo ni cómo te mueves.</p>
         <p class="nota"><a href="#creditos">Créditos de los avatares</a></p>
       </form>
     </div>

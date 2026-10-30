@@ -34,7 +34,7 @@ test("la vista previa 3D no depende de nada de fuera ni escribe en línea; three
 });
 
 test("alternativa accesible: la lista de avatares son radios con nombre y descripción, no depende de WebGL; la vista 3D, con nombre y mandos por teclado", () => {
-  assert.match(html, /<fieldset id="fsGaleria">\s*<legend>[^<]+<\/legend>/, "la galería es un grupo con leyenda");
+  assert.match(html, /<fieldset id="fsGaleria" hidden>\s*<legend>[^<]+<\/legend>/, "la galería (avatares ya hechos, AV4: aparte de las piezas) es un grupo con leyenda");
   assert.match(js, /inp\.type = "radio"; inp\.name = "avatar"/);
   assert.match(js, /l\.append\(inp, sp\)/, "cada radio dentro de su <label>");
   assert.match(js, /d\.className = "desc"; d\.textContent = o\.descripcion/, "con la descripción");
@@ -76,10 +76,11 @@ test("créditos: sale cada avatar con autor, licencia y fuente; los que piden cr
 });
 
 test("contrato: `vrm` es el mismo campo (mismo patrón) en la portada, la api, el contrato OpenAPI, la migración y el esquema del catálogo", () => {
-  assert.match(js, /vrm: S\.vrm \}\)/, "la portada lo manda en el PUT");
+  assert.match(js, /pide\("PUT", "\/api\/yo\/avatar", S\.R\.peticion\(S\.v2, S\.e\)\)/, "la portada lo manda en el PUT (AV4: con la receta, receta.js)");
+  assert.match(lee("apps/web/portada/receta.js"), /vrm: e\.vrm \|\| null/, "vrm, el de siempre");
   assert.match(js, /pide\("GET", "\/api\/yo\/avatar"\)/, "y lo lee de vuelta");
   assert.match(js, /pide\("GET", "\/avatares\/catalogo\.json"\)/);
-  assert.match(js, /"\/avatares\/" \+ encodeURIComponent\(a\.fichero\) \+ "\?v=" \+ a\.sha256/, "con ?v=<sha256>, como pide contratos/avatares.md");
+  assert.match(js, /"\/avatares\/" \+ encodeURIComponent\(fichero\) \+ "\?v=" \+ sha/, "con ?v=<sha256>, como pide contratos/avatares.md");
   const api = lee("apps/api/src/yo/rutas.ts");
   assert.ok(api.includes('pattern: "' + PATRON_ID + '"'), "la api valida el id con el patrón del catálogo");
   assert.match(api, /app\.get\("\/api\/yo\/avatar"/);
