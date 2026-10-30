@@ -33,4 +33,4 @@ Cada decisión con alternativas reales se escribe una vez, con su porqué y su c
 | [0018](0018-hornero-de-olivos.md) | Hornero de olivos: variantes horneadas en el servidor, propios cercanos en el aparato | Aceptado |
 | [0019](0019-escalera-de-olivos.md) | Escalera de olivos: niveles del constructor e impostores | Aceptado |
 | [0020](0020-avatares-vrm.md) | Avatares VRM | Aceptado |
-| [0021](0021-escalones-de-olivo-por-masa-visual.md) | Escalones de olivo por masa visual | Propuesto |
+| [0022](0022-escalones-de-olivo-por-masa-visual.md) | Escalones de olivo por masa visual | Propuesto |
