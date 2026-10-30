@@ -1,0 +1,9 @@
+{
+  "finca": "prueba",
+  "fuente": "catastro",
+  "sintetico": true,
+  "parcelas": [
+    { "refcat": "99999A99900001" },
+    { "refcat": "99999A99900002" }
+  ]
+}

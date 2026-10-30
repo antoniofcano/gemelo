@@ -89,6 +89,7 @@
       <label class="chk"><input type="checkbox" id="cOrto" checked> Ortofoto</label>
       <label class="chk"><input type="checkbox" id="cCopas" checked> Copas <span class="pill p-ok">medido</span></label>
       <label class="chk"><input type="checkbox" id="cParc" checked> Parcelas</label>
+      <label class="chk"><input type="checkbox" id="cLimite" checked> Límite de la finca</label>
       <label class="chk"><input type="checkbox" id="cAjuste" checked> Ajustar a vecinas</label>
     </div>
   </div>
@@ -110,8 +111,8 @@
         <button class="boton suave" id="bDescartar" type="button">Descartar</button>
         <button class="boton prim empuja" id="bGuarda" type="button">Guardar versión</button>
       </div>
-      <p class="nota" id="mAyuda">Ratón: arrastra un vértice, o un lado para crear uno; Alt+clic quita un vértice; clic en una haza para elegirla. Teclado, con el mapa enfocado: Tab y Mayús+Tab eligen vértice, las flechas lo mueven 0,5 m (con Mayús, 5 m), Supr lo quita, Insert añade otro detrás, Ctrl+Z deshace y Esc suelta; sin vértice elegido, las flechas mueven el mapa y + y − acercan y alejan.</p>
-      <p class="leyenda nota"><span>Copas: vuelo LiDAR 2024 <span class="pill p-ok">medido</span></span><span>Ortofoto: PNOA © IGN (CC BY 4.0); puede ir desplazada respecto a las copas (ADR-0006): dibuja sobre las copas</span><span>Parcelas: lindes del índice de la finca</span><span>ETRS89 / UTM 30N (EPSG:25830)</span><span id="mCoord"></span></p>
+      <p class="nota" id="mAyuda">Ratón: arrastra un vértice, o un lado para crear uno; Alt+clic quita un vértice; clic en una haza para elegirla. Teclado, con el mapa enfocado: Tab y Mayús+Tab eligen vértice, las flechas lo mueven 0,5 m (con Mayús, 5 m), Supr lo quita, Insert añade otro detrás, Ctrl+Z deshace y Esc suelta; sin vértice elegido, las flechas mueven el mapa y + y − acercan y alejan. No se puede dibujar ni guardar una haza fuera del límite de la finca (línea blanca discontinua).</p>
+      <p class="leyenda nota"><span>Copas: vuelo LiDAR 2024 <span class="pill p-ok">medido</span></span><span>Ortofoto: PNOA © IGN (CC BY 4.0); puede ir desplazada respecto a las copas (ADR-0006): dibuja sobre las copas</span><span>Parcelas: lindes del índice de la finca</span><span id="mLimite">Límite de la finca: cargando…</span><span>ETRS89 / UTM 30N (EPSG:25830)</span><span id="mCoord"></span></p>
     </div>
     <aside class="tarjeta ficha" id="hFicha" aria-live="polite"></aside>
   </div>

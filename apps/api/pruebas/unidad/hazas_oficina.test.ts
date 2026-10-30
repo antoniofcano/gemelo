@@ -5,7 +5,7 @@ import { after, before, test } from "node:test";
 import type { FastifyInstance } from "fastify";
 import pg from "pg";
 import { construyeApp } from "../../src/app.ts";
-import { compruebaCorte, compruebaGeometria, MAX_VERTICES } from "../../src/hazas/geometria.ts";
+import { compruebaCorte, compruebaGeometria, CONTORNO_HOLGURA_M, MAX_VERTICES, MAX_VERTICES_CONTORNO } from "../../src/hazas/geometria.ts";
 import { contexto, deLaWeb } from "../apoyo/contexto.ts";
 
 const E0 = 430_000, N0 = 4_180_000;
@@ -64,4 +64,27 @@ test("la forma mala es 400 antes de mirar la sesión: campos de más, tipo de ge
   assert.equal(corte.statusCode, 400, "un punto con tres coordenadas");
   const sinVersion = await app.inject({ method: "DELETE", url: "/api/admin/hazas/1", headers: deLaWeb() });
   assert.equal(sinVersion.statusCode, 400, "borrar pide la versión que se ve");
+});
+
+// ---------------------------------------------------------------- el contorno de la finca (OF3b)
+test("contorno: sin sesión 401 en las tres rutas; la forma mala, 400 (fuente fuera de la lista, referencias, fecha, finca rara)", async () => {
+  const bien = { geometria: { type: "Polygon", coordinates: [cuadro(0, 0, 100)] }, fuente: "sigpac", consultado_en: "2026-10-30", parcelas: 2 };
+  for (const [method, url, payload] of [["GET", "/api/admin/fincas/hituelo/limite", undefined], ["PUT", "/api/admin/fincas/hituelo/contorno", bien],
+    ["DELETE", "/api/admin/fincas/hituelo/contorno", undefined]] as const) {
+    const r = await app.inject({ method, url, headers: deLaWeb(), ...(payload ? { payload } : {}) });
+    assert.equal(r.statusCode, 401, method + " " + url + ": " + r.body);
+  }
+  for (const malo of [{ ...bien, fuente: "osm" }, { ...bien, refcat: "99999A99900001" }, { ...bien, consultado_en: "30/10/2026" }, { ...bien, parcelas: 0 },
+    { ...bien, geometria: { type: "Point", coordinates: [E0, N0] } }, { geometria: bien.geometria, fuente: "sigpac", parcelas: 2 }]) {
+    const r = await app.inject({ method: "PUT", url: "/api/admin/fincas/hituelo/contorno", headers: deLaWeb(), payload: malo });
+    assert.equal(r.statusCode, 400, JSON.stringify(malo).slice(0, 90));
+  }
+  assert.equal((await app.inject({ method: "GET", url: "/api/admin/fincas/Hituelo%20mala/limite", headers: deLaWeb() })).statusCode, 400);
+});
+
+test("contorno: más vértices que una haza, pero con tope", () => {
+  const anillo = (n: number) => { const a = Array.from({ length: n }, (_, i) => [E0 + Math.cos(i / n * 6.28) * 500, N0 + Math.sin(i / n * 6.28) * 500]); a.push(a[0]!); return a; };
+  assert.equal(compruebaGeometria({ type: "Polygon", coordinates: [anillo(MAX_VERTICES + 500)] }, MAX_VERTICES_CONTORNO), null);
+  assert.equal(compruebaGeometria({ type: "Polygon", coordinates: [anillo(MAX_VERTICES + 500)] })?.error, "demasiados_vertices", "una haza sigue con su tope");
+  assert.equal(CONTORNO_HOLGURA_M, 1);
 });
