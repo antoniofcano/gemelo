@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Oficina (OF3d): el aviso de solape de las hazas mide el área de la intersección (> 0,5 m², igual que el servidor) con `polygon-clipping` 0.15.7; ahora avisa con hazas idénticas o de lindes coincidentes y es simétrico.
 - Pruebas: propiedades con `fast-check` 4.10.2 (PB7) en contratos (clasificación, config, receta de avatar), agenda (aforo y promoción de la espera), épocas (366 días) y geometría de hazas; las pruebas al azar de épocas pasan a fast-check. Encontró que el aviso de solape de la oficina (`sePisan`) no detecta hazas con lindes coincidentes (tarea OF3d; el servidor sí las rechaza).
 - Banco: pruebas inestables a la vista (PB6). La puerta registra cada fallo en `pruebas/salida/inestables.json`, reintenta una sola vez y marcado los de infraestructura con firma conocida (`pruebas/banco/inestables.json`: arranque de PostGIS, EPERM del antivirus, Chrome sin memoria) y termina con un informe de las que pasaron al segundo intento y desde cuándo fallan a veces.
 - La oficina en el mundo (OF10): chaleco, insignia y «◆ Oficina» (primera en Gente); anuncios de texto (arriba, en VR en lámina y en el chat), invitación a la «Sala de la visita» con «Ir» o «Quedarme» y balizas oficiales con caducidad (columna verde oliva con bandera). Lo manda la api con su auditoría; migración 0014; `livekit-roles` v4. Probado en Node; Chrome y Docker pendientes.
