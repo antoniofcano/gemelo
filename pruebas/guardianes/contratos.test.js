@@ -16,13 +16,13 @@ const bytes = s => Buffer.from(s, "base64");
 const esJpeg = b => b[0] === 0xff && b[1] === 0xd8 && b[b.length - 2] === 0xff && b[b.length - 1] === 0xd9;
 const dataJpg = s => bytes(s.slice(s.indexOf(",") + 1));
 
-let DIR; test.before(() => { DIR = fixture(); });
+let DIR; test.before(() => { DIR = fixture({ sinTileset: true }); });
 const fx = (...p) => path.join(DIR, ...p);
 const jsonFx = (...p) => JSON.parse(fs.readFileSync(fx(...p), "utf8"));
 
 // ---------- datos: exportador → motor ----------
 for (const finca of ["hituelo", "cerro"]) {
-  const cargaIndice = () => jsonFx(finca, finca === "cerro" ? "embebido.json" : "indice.json");
+  const cargaIndice = () => jsonFx(finca, "indice.json");   // desde T8 fase 2 las dos fincas van con indice.json y t/ (Cerro ya no va embebido)
 
   test("[" + finca + "] el índice cumple contratos/indice.schema.json", () => {
     assert.ok(DIR);
@@ -58,7 +58,7 @@ for (const finca of ["hituelo", "cerro"]) {
 
   test("[" + finca + "] cada tesela cumple tesela.schema.json y tiene los tamaños del contrato", () => {
     const I = cargaIndice(), N2 = 258, N = 256, NS2 = 130;
-    const tesela = k => finca === "cerro" ? I.t[k] : jsonFx("hituelo", "t", k + ".json");
+    const tesela = k => jsonFx(finca, "t", k + ".json");
     for (const k of Object.keys(I.teselas)) {
       const t = tesela(k);
       assert.deepStrictEqual(valida(V_TESELA, t).slice(0, 10), [], "tesela " + k);
@@ -72,8 +72,7 @@ for (const finca of ["hituelo", "cerro"]) {
         const v = new Int16Array(bytes(t.pts).buffer.slice(bytes(t.pts).byteOffset, bytes(t.pts).byteOffset + bytes(t.pts).length));
         for (let i = 0; i < v.length; i += 3) { assert.ok(v[i] >= 0 && v[i] < 25600 && v[i + 1] >= 0 && v[i + 1] < 25600, "punto fuera de la tesela"); }
       }
-      if (finca === "cerro") assert.ok(esJpeg(dataJpg(t.orto)), k + ": orto no es JPEG");
-      else assert.ok(esJpeg(fs.readFileSync(fx("hituelo", "t", k + ".jpg"))), k + ": .jpg no es JPEG");
+      assert.ok(esJpeg(fs.readFileSync(fx(finca, "t", k + ".jpg"))), k + ": .jpg no es JPEG");
     }
   });
 }
@@ -113,7 +112,7 @@ test("el fixture ejercita la calidad Base: hay una tesela sin nube (ADR-0003)", 
 });
 
 test("el fixture ejercita las dos formas del registro de árboles: Hituelo con copas_id y copas_tipo (algún tipo asignado), Cerro sin ellas", () => {
-  const H = jsonFx("hituelo", "indice.json"), C = jsonFx("cerro", "embebido.json");
+  const H = jsonFx("hituelo", "indice.json"), C = jsonFx("cerro", "indice.json");
   assert.ok(H.copas_id && H.copas_tipo, "Hituelo debe llevar copas_id y copas_tipo");
   assert.ok(H.copas_param && H.copas_param.some(f => f === null) && H.copas_param.some(f => f !== null), "Hituelo debe llevar copas_param con filas medidas y sin medir (ADR-0017)");
   assert.ok(H.copas_tipo.some(t => t >= 0) && H.copas_tipo.some(t => t === -1), "Hituelo debe tener olivos con tipo y sin tipo");

@@ -1,62 +1,50 @@
 "use strict";
-// Build de las dos fincas desde el fixture sintético, con los límites de la plataforma de artefactos (contratos/publicacion.json).
+// Build de las dos fincas del fixture sintético con el cliente web (genera_motor.mjs + Vite: pruebas/guardianes/_pagina.js). Desde T8 fase 2
+// (decisión 79) no hay salida artefacto: la página se sirve con su índice, t/ y tileset/ al lado, del mismo origen.
+// Sin Vite o sin 3d-tiles-renderer instalados (cd apps/web && npm ci) se SALTA con aviso.
 const test = require("node:test"), assert = require("node:assert");
-const { RAIZ, python, fixture, propia, ejecuta, ficheros, fs, path } = require("./_util");
+const { RAIZ, ficheros, fs, path } = require("./_util");
+const { montaPagina, saltoPagina, datosDe } = require("./_pagina");
 
-const LIM = JSON.parse(fs.readFileSync(path.join(RAIZ, "contratos", "publicacion.json"), "utf8"));
-const py = python();
+const SALTO = saltoPagina("el build de las fincas");
 const SRC = ficheros().filter(f => /^apps\/web\/motor\/[^/]+\.js$/.test(f)).sort();
-let FIX, SALIDA_WEB; test.before(() => { if (!py) return; FIX = path.relative(RAIZ, fixture()); SALIDA_WEB = propia("web-build"); });
 
-function monta(args) {
-  const r = ejecuta(py, ["-I", "tuberia/salida_artefacto/montar_v2.py"].concat(args));
-  assert.strictEqual(r.status, 0, "montar_v2.py falló:\n" + r.stdout + r.stderr);
-  return r.stdout;
-}
-function revisaPagina(html) {
-  assert.match(html, /<script type="application\/json" id="datos">/, "falta el JSON de datos");
-  const v = JSON.parse(fs.readFileSync(path.join(RAIZ, "apps", "web", "package.json"), "utf8")).dependencies.three;   // la misma three que el cliente web (ADR-0016)
-  assert.ok(html.includes('"three": "https://cdn.jsdelivr.net/npm/three@' + v + '/build/three.module.js"'), "three " + v + " debe cargarse de jsDelivr con un importmap");
-  const js = SRC.map(f => fs.readFileSync(path.join(RAIZ, f), "utf8")).join("");   // exactamente lo que concatena montar_v2.py: orden alfabético, sin huecos
-  assert.ok(html.includes('<script type="module">import * as THREE from "three";\n' + js + "</script>"), "los módulos de src/ no están en la página tal cual, en orden alfabético y en un módulo que importa three");
+for (const finca of ["cerro", "hituelo"]) {
+  test("[" + finca + "] el build con tileset: la entrada es el motor en orden, la página lleva el índice (sin relieve de teselas) y tiene t/ y tileset/ al lado", t => {
+    if (SALTO) return t.skip(SALTO);
+    const P = montaPagina({ finca });
+    const js = SRC.map(f => fs.readFileSync(path.join(RAIZ, f), "utf8")).join("");   // lo que concatena genera_motor.mjs: orden alfabético, sin huecos
+    assert.strictEqual(fs.readFileSync(path.join(P.raiz, "entrada", "motor.generado.js"), "utf8"), 'import * as THREE from "three";\n' + js);
+    const html = fs.readFileSync(path.join(P.carpeta, P.url), "utf8");
+    assert.match(html, /<script type="module"[^>]*src="\.\/assets\/[^"]+\.js"/, "la página no carga el motor empaquetado de assets/");
+    assert.ok(!/cdn\.jsdelivr\.net|<script type="importmap">/.test(html), "queda un importmap o una carga de jsDelivr (la salida artefacto ya no existe)");
+    const D = datosDe(P.carpeta);
+    assert.strictEqual(D.finca_id, finca);
+    assert.strictEqual(D.tileset, "tileset/tileset.json", "el índice de la página debe llevar el tileset del mismo origen");
+    assert.ok(Object.values(D.teselas).every(x => !("dtm" in x)), "la página no debe llevar el relieve de las teselas (va en t/)");
+    const ts = fs.readdirSync(path.join(P.carpeta, "t"));
+    assert.strictEqual(ts.filter(f => f.endsWith(".json")).length, Object.keys(D.teselas).length, "un t/<k>.json por tesela");
+    assert.strictEqual(ts.filter(f => f.endsWith(".jpg")).length, Object.keys(D.teselas).length, "un t/<k>.jpg por tesela");
+    const tileset = JSON.parse(fs.readFileSync(path.join(P.carpeta, "tileset", "tileset.json"), "utf8"));
+    assert.ok(tileset.asset && tileset.root, "tileset/tileset.json no parece un tileset");
+    assert.ok(fs.readdirSync(path.join(P.carpeta, "tileset"), { recursive: true }).some(f => String(f).endsWith(".glb")), "el tileset no trae glb");
+  });
 }
 
-test("Cerro (embebido): una sola página que cabe en el límite de 16 MB", t => {
-  if (!py) return t.skip("No hay Python 3: el build NO se ha comprobado");
-  const salida = path.join(SALIDA_WEB, "cerro", "index.html");
-  monta(["--datos", "" + FIX + "/cerro/embebido.json", "--salida", path.relative(RAIZ, salida)]);
-  const html = fs.readFileSync(salida, "utf8");
-  assert.ok(Buffer.byteLength(html) <= LIM.pagina_max_bytes, "la página pasa de " + LIM.pagina_max_bytes + " bytes");
-  revisaPagina(html);
-  assert.ok(html.includes('"finca_id":"cerro"') || html.includes('"finca_id": "cerro"'));
+test("[hituelo] sin tileset: el índice de la página no lo lleva y no hay tileset/ al lado", t => {
+  if (SALTO) return t.skip(SALTO);
+  const P = montaPagina({ finca: "hituelo", conTileset: false });
+  assert.ok(!("tileset" in datosDe(P.carpeta)));
+  assert.ok(!fs.existsSync(path.join(P.carpeta, "tileset")));
 });
 
-test("Hituelo (ficheros): página ligera + t/ al lado, dentro de los límites de una publicación", t => {
-  if (!py) return t.skip("No hay Python 3: el build NO se ha comprobado");
-  const dir = path.join(SALIDA_WEB, "hituelo"); fs.rmSync(dir, { recursive: true, force: true });
-  monta(["--finca", "hituelo", "--modo", "ficheros", "--datos", "" + FIX + "/hituelo/indice.json", "--salida", path.relative(RAIZ, path.join(dir, "index.html"))]);
-  const html = fs.readFileSync(path.join(dir, "index.html"), "utf8");
-  revisaPagina(html);
-  assert.ok(!html.includes('"dtm"'), "en modo ficheros la página no debe llevar el relieve de las teselas");
-  const ts = fs.readdirSync(path.join(dir, "t"));
-  assert.strictEqual(ts.filter(f => f.endsWith(".json")).length, 2);
-  assert.strictEqual(ts.filter(f => f.endsWith(".jpg")).length, 2);
-  const lista = ["index.html"].concat(ts.map(f => "t/" + f));
-  let total = 0;
-  for (const f of lista) {
-    const ext = path.extname(f).slice(1), tam = fs.statSync(path.join(dir, f)).size; total += tam;
-    assert.ok(LIM.tipos_admitidos.includes(ext), f + ": tipo «" + ext + "» no admitido por la plataforma");
-    assert.ok(tam <= (["jpg", "png", "webp", "wasm"].includes(ext) ? LIM.fichero_binario_max_bytes : LIM.fichero_texto_max_bytes), f + " pasa del límite por fichero");
-  }
-  assert.ok(lista.length <= LIM.publicacion_max_ficheros, "más de " + LIM.publicacion_max_ficheros + " ficheros");
-  assert.ok(total <= LIM.publicacion_max_bytes, "más de 64 MB en una publicación");
-});
-
-test("el montador con --salida deja los ficheros de apoyo junto a la página (no en publicar/)", t => {
-  if (!py) return t.skip("No hay Python 3");
-  const ts = path.join(SALIDA_WEB, "hituelo", "t");
-  assert.ok(fs.existsSync(ts), "no hay t/ junto a la página montada");
-  assert.ok(!fs.existsSync(path.join(RAIZ, "publicar")), "montar con --salida no debe crear publicar/");
+test("la caché de páginas: la misma petición devuelve la misma carpeta sin reconstruir", t => {
+  if (SALTO) return t.skip(SALTO);
+  const a = montaPagina({ finca: "hituelo" }), antes = fs.statSync(path.join(a.carpeta, "index.html")).mtimeMs;
+  const b = montaPagina({ finca: "hituelo" });
+  assert.strictEqual(b.carpeta, a.carpeta);
+  assert.strictEqual(fs.statSync(path.join(b.carpeta, "index.html")).mtimeMs, antes, "se reconstruyó");
+  assert.notStrictEqual(montaPagina({ finca: "hituelo", conTileset: false }).carpeta, a.carpeta, "con otro índice, otra página");
 });
 
 test("los .html generados no se versionan (el repo es público, ADR-0004)", () => {

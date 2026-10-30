@@ -185,7 +185,7 @@ Pestañas (patrón ARIA con flechas): **Gráficos · Sonido · Voz · Accesibili
 
 ## 5. Dentro del mundo
 
-Con menos detalle que el acceso: es la pantalla que más cambiará al probarla.
+Con menos detalle que el acceso: es la pantalla que más cambiará al probarla. La página de la finca, pensada como un videojuego a pantalla completa (HUD, ventanas, Configuración, chat movible), se detalla en [UX-FINCA-JUEGO.md](UX-FINCA-JUEGO.md) (propuesta, pendiente de Antonio).
 
 ### 5.1 HUD
 - **Arriba a la izquierda (estado):** «En: haza 7 · Las Tejas (tuya)» o «En: camino» · tipo de visita («Visita guiada · voz abierta · no se graba») · **● Tu micro está abierto** (rojo, solo mientras lo está) · **EN DIRECTO · Vídeo de campo** (mientras hay emisión) · «Sin conexión · reconectando…».

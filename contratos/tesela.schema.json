@@ -10,7 +10,6 @@
     "chm": { "type": "string", "pattern": "^[A-Za-z0-9+/=]+$" },
     "suelo": { "type": "string", "pattern": "^[A-Za-z0-9+/=]+$" },
     "pts": { "type": "string", "pattern": "^[A-Za-z0-9+/=]*$", "$comment": "opcional: sin él la tesela es de calidad Base (copas generadas, sin nube)" },
-    "np": { "type": "integer", "minimum": 0, "$comment": "número de puntos de pts" },
-    "orto": { "type": "string", "pattern": "^data:image/jpeg;base64,", "$comment": "solo en embebido.json; en modo ficheros la ortofoto es t/<clave>.jpg" }
+    "np": { "type": "integer", "minimum": 0, "$comment": "número de puntos de pts; la ortofoto de la tesela no va aquí sino en t/<clave>.jpg" }
   }
 }

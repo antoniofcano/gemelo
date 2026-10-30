@@ -1,7 +1,7 @@
 "use strict";
 // Criterios 3 y 4 del ADR-0015 con cualquier finca servida (p. ej. Hituelo real con su tileset al lado, fuera del repo):
 //   node pruebas/escena3d_recorrido.js <carpeta servida (index.html + t/ + tileset/)> [--pasos 60] [--salida <resultado.json>]
-// Abre la página con ?escena=tiles en UN Chrome dentro del turno del banco (lanza() de _navegador.js lo pide; TESTING.md §«Banco de pruebas»),
+// Abre la página (con ?tileset=tileset/tileset.json, por si su índice no lo trae) en UN Chrome dentro del turno del banco (lanza() de _navegador.js lo pide; TESTING.md §«Banco de pruebas»),
 // y mide: (3) vuelos de punta a punta sin esperar a la carga contando rayos desde la cámara sin relieve dentro de los datos, empezando como un
 // visitante (vista de lejos cargada) y, aparte, en frío (de cerca en una punta, sin vista de lejos); (4) el relieve dibujado frente a Mundo.suelo
 // de cerca y de lejos, por lado de tesela. Con SwiftShader: rayos y alturas (CPU), nada de fps.
@@ -25,7 +25,7 @@ function resumeRelieve(filas) {
 }
 
 (async () => {
-  const srv = await sirve(RAIZ), url = "http://127.0.0.1:" + srv.address().port + "/index.html?debug&escena=tiles", nav = await lanza(), res = { raiz: path.basename(RAIZ), pasos: PASOS };
+  const srv = await sirve(RAIZ), url = "http://127.0.0.1:" + srv.address().port + "/index.html?debug&tileset=" + encodeURIComponent("tileset/tileset.json"), nav = await lanza(), res = { raiz: path.basename(RAIZ), pasos: PASOS };
   const abre = async () => {
     const p = await nav.newPage({ viewport: { width: 900, height: 650 } }), errores = [];
     p.on("pageerror", e => errores.push("PAGEERROR " + String(e).slice(0, 300)));

@@ -36,7 +36,9 @@ services:
       # la finca servida (/teselas/<GEMELO_DEV_FINCA>/…): por defecto la misma de arriba; GEMELO_DEV_FINCA_CARPETA es una carpeta
       # con indice.json y t/ directamente dentro (p. ej. la salida de referencia hituelo-v3, fuera del repo)
       - ${GEMELO_DEV_FINCA_CARPETA:-${GEMELO_DEV_TESELAS:-../../pruebas/salida/fixture}/${GEMELO_DEV_FINCA:-hituelo}}:/srv/finca:ro
-      # el tileset 3D Tiles (/teselas/<finca>/tileset/…); sin GEMELO_DEV_TILESET se monta el fixture, que no trae tileset.json (404)
+      # el tileset 3D Tiles (/teselas/<finca>/tileset/…); GEMELO_DEV_TILESET lo pone levanta.mjs (si no se da, el tileset/
+      # junto al indice.json servido: el del fixture, que lo trae desde T8 fase 2); el valor por defecto de aquí (la raíz del fixture) solo
+      # entra si se levanta a mano sin él, y entonces tileset.json da 404
       - ${GEMELO_DEV_TILESET:-../../pruebas/salida/fixture}:/srv/tileset:ro
       # las recetas horneadas (/teselas/<finca>/olivos/…): la carpeta que escribe el hornero (<salida>/<finca>/olivos/, con
       # manifiesto.json y los <huella>.br dentro); la escribe el servicio `hornero` (mismo origen abajo); sin GEMELO_DEV_OLIVOS, la

@@ -4,8 +4,9 @@
 // sin &mide el motor no crea nada; con ?debug&mide=5 termina y devuelve números por window.__mide(). GEMELO_VR=1 añade la vuelta con el WebXR simulado (mock_xr.js).
 // Los números de SwiftShader NO son fps de nada: aquí solo se comprueba que el medidor mide y termina.
 const test = require("node:test"), assert = require("node:assert");
-const { RAIZ, propia, python, fixture, ejecuta, lee, path, fs } = require("./_util");
+const { RAIZ, lee, path, fs } = require("./_util");
 const { sirve, motivoSalto, lanza } = require("./_navegador");
+const { montaPagina, saltoPagina } = require("./_pagina");
 
 const FUENTE = lee("apps/web/motor/30_mide.js");
 function puro() {
@@ -55,9 +56,9 @@ test("fotogramas por encima de 13,9 ms: cuenta y porcentaje (el umbral es estric
 test("el texto trae todo lo pedido y el resumen del navegador no lleva datos personales", () => {
   const e = E.calcula(serie(Array.from({ length: 200 }, (_, i) => 12 + (i % 10)), 3, 0.05), 3, 60);
   const r = { version: 1, fecha: "2026-10-29T10:00:00Z", aparato: { modo: "VR", ua: E.resumeUA("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) OculusBrowser/38.0.0 Chrome/126.0.0.0 Safari/537.36 Mozilla/5.0 (Linux; Android 12; Quest 3) usuario@correo.example") },
-    escena: "tiles", banderas: "escena=tiles arbsc=0.5", duracion: 60, calentamiento: 3, est: e, nivel: { ini: 0, fin: 1, cambios: [{ t: 12.3, de: 0, a: 1 }] }, olivos: [10, 200, 3000], avisos: [] };
+    escena: "tiles", banderas: "olivos=gen arbsc=0.5", duracion: 60, calentamiento: 3, est: e, nivel: { ini: 0, fin: 1, cambios: [{ t: 12.3, de: 0, a: 1 }] }, olivos: [10, 200, 3000], avisos: [] };
   const tx = E.texto(r);
-  for (const s of ["mediana", "p95", "p99", "peor", "Por encima de 13,9 ms", "al empezar 0", "al terminar 1", "0 → 1", "Escena: tiles", "escena=tiles arbsc=0.5", "VR", "2026-10-29", "N0 10", "criterio 5"]) assert.ok(tx.includes(s), "falta «" + s + "» en:\n" + tx);
+  for (const s of ["mediana", "p95", "p99", "peor", "Por encima de 13,9 ms", "al empezar 0", "al terminar 1", "0 → 1", "Escena: tiles", "olivos=gen arbsc=0.5", "VR", "2026-10-29", "N0 10", "criterio 5"]) assert.ok(tx.includes(s), "falta «" + s + "» en:\n" + tx);
   assert.ok(!/correo|@|x86_64|X11/.test(tx), "el resumen del navegador se cuela con datos de más:\n" + tx);
   assert.ok(/OculusBrowser\/38/.test(tx) && /Quest 3/.test(tx));
   assert.ok(E.lineas(r, true).length <= 14, "la tarjeta de VR debe caber en el panel");
@@ -72,14 +73,11 @@ test("sin &mide el motor no hace nada: 90_final solo mira Mide.on, y 30_mide no 
 });
 
 // ---------- en Chrome
-const SALTO = motivoSalto("el medidor en navegador");
-let srv, navegador, base, dirWeb;
+const SALTO = motivoSalto("el medidor en navegador") || saltoPagina("el medidor en navegador");
+let srv, navegador, base;
 test.before(async () => {
   if (SALTO) return;
-  const FIX = path.relative(RAIZ, fixture()), WEB = propia("web-mide"); dirWeb = WEB;
-  const r = ejecuta(python(), ["-I", "tuberia/salida_artefacto/montar_v2.py", "--datos", FIX + "/cerro/embebido.json", "--salida", path.relative(RAIZ, path.join(WEB, "cerro", "index.html"))]);
-  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
-  srv = await sirve(WEB); base = "http://127.0.0.1:" + srv.address().port + "/cerro/index.html";
+  srv = await sirve(montaPagina({ finca: "cerro" }).carpeta); base = "http://127.0.0.1:" + srv.address().port + "/index.html";
   navegador = await lanza();
 });
 test.after(async () => { if (navegador) await navegador.close(); if (srv) srv.close(); });
@@ -104,7 +102,7 @@ test("en Chrome: sin &mide no hay estado ni medida; con ?debug&mide=5 termina y 
   assert.strictEqual(await sinDebug.p.evaluate(() => document.getElementById("mideCaja")), null, "sin ?debug ni &mide no debe haber caja");
   await sinDebug.p.close();
 
-  const c = await abre("?escena=tiles&debug&mide=5");
+  const c = await abre("?debug&mide=5&arbsc=1");
   const antes = await c.p.evaluate(() => window.__mide().estado);
   assert.ok(["esperando", "midiendo"].includes(antes), "armado por &mide: " + antes);
   await c.p.waitForFunction(() => window.__mide().estado === "listo", null, { timeout: 180000, polling: 500 });
@@ -112,8 +110,8 @@ test("en Chrome: sin &mide no hay estado ni medida; con ?debug&mide=5 termina y 
   assert.deepStrictEqual(c.errores, []);
   const res = r.m.resultado;
   assert.ok(res.est.n > 0, "debe haber fotogramas");
-  assert.strictEqual(res.duracion, 5); assert.strictEqual(res.calentamiento, 3); assert.strictEqual(res.aparato.modo, "pantalla"); assert.strictEqual(res.escena, "tiles");
-  assert.ok(res.banderas.includes("escena=tiles"));
+  assert.strictEqual(res.duracion, 5); assert.strictEqual(res.calentamiento, 3); assert.strictEqual(res.aparato.modo, "pantalla"); assert.strictEqual(res.escena, "tiles", "con tileset, la escena 3D Tiles (la única desde T8 fase 2)");
+  assert.ok(String(res.banderas).includes("arbsc=1"), "las banderas de la URL van en el resultado: " + res.banderas);
   for (const k of ["mediana", "p95", "p99", "peor"]) assert.ok(res.est.ms[k] > 0 && res.est.ms[k] < 60000, k);
   assert.ok(res.est.ms.mediana <= res.est.ms.p95 && res.est.ms.p95 <= res.est.ms.p99 && res.est.ms.p99 <= res.est.ms.peor);
   assert.ok(res.est.js.mediana >= 0);

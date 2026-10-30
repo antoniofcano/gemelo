@@ -346,6 +346,75 @@ Primera ronda (encargo de 5 escenarios, página montada con `--olivos`, máquina
 
 Con la bandera: 0 mallas de nivel 0, 0 instancias de los niveles 1-2, 6-7 llamadas de olivos. **Las 4 variantes E2 no llegaron en 12 min** (página sin trabajador, a rebanadas por la cola propia): sin ellas no hay capa de lejanos y de lejos solo se ve la ortofoto (la excepción de la primera carga del ADR §3). Por eso las variantes de los lejanos pasan a pedirse justo después de los propios de menos de 50 m. Segunda ronda con ese cambio (tope 300 s, `cerca` y `lejos` antes de cortarse): las mismas cifras (27 / 426 k / 38 MB; 76 / 125 k / 45 MB) y 2 variantes E2 a los 5 min: en SwiftShader y sin trabajador no se llega al estado final; los topes de `fixture_olivos_escalera` salen del estado final calculado (ver su `$comment`). El estado final sí se comprueba en Node (`pruebas/olivo/escalera_motor.mjs`: 0 huecos y 0 dobles en 607 pasos de paseo y órbita, ≤ 8 llamadas, triángulos ≤ presupuesto). En Hituelo real (encargo cortado a petición: máquina sin memoria) pasó lo mismo, y en el paseo del banco no había olivos en 160 m: ningún olivo dibujado.
 
+## Escalones de olivo por masa visual (O9a, 2026-10-30, foto, no se mantiene)
+Diagnóstico de la decisión 80 ([ADR-0022](../adr/0022-escalones-de-olivo-por-masa-visual.md), Propuesto). Scripts: `node pruebas/olivo/o9a_escalones.mjs` (Node: recetas, variante estirada y paseo con `Escalera.planifica` real) y `node pruebas/olivo/o9a_masa.mjs` (Chrome sin pantalla por el turno del banco, SwiftShader, three 0.186.1: áreas y colores de imágenes fijas, **no fps**; 55 s). Olivos en envero: adulto1 semilla 1003 y centenario3 semilla 7 con los parámetros de su tipo, y «medido» = centenario3 semilla 1003 con `copas_param` h 3,8 m, copa 4,3 m (como un olivo del fixture de Hituelo: r8 medio 2,15 m).
+
+**Recetas (Node).** E0, E1 y E2 de una misma receta tienen las mismas tarjetas, la misma caja de copa y las mismas medidas; solo E2-VR quita la mitad de las ramitas (las interiores y bajas) y agranda las demás.
+
+| Olivo | E0 | E1 | E2 | E2-VR | Ramitas E0 → E2-VR | Área de ramitas E0 → E2-VR |
+|---|---|---|---|---|---|---|
+| adulto1 1003 | 48.474 tri | 19.082 | 8.954 | 6.566 | 2.389 → 1.195 | 192 → 181 m² |
+| centenario3 7 | 102.978 | 48.378 | 19.366 | 14.618 | 4.749 → 2.375 | 1.156 → 1.095 m² |
+| medido 1003 | 67.356 | 31.842 | 11.678 | 9.242 | 2.436 → 1.218 | 132 → 124 m² (la tarjeta más baja, de 1,1 a 1,7 m) |
+
+**Variante estirada (Node).** El motor estira la variante (centenario3, copa 9,4 m, alto 5 m) a 2 × r8 medio × `FACTOR_R8` = 2,15 m, mientras el propio sale de `copas_param` a 4,3 m: k = 0,229 en horizontal y 0,8 en vertical; sus 3.973-4.617 ramitas caben en una caja de 1,5-1,9 m de ancho (las del propio, 3,5-3,8 m).
+
+**Masa visual (Chrome).** Media de 8 vistas horizontales (cada 45°, elevación 0) y vista cenital aparte; cámara ortográfica con el encuadre del E0 de cada olivo; fondo transparente; sol + cielo sin sombras. Cobertura = píxeles de árbol dentro del casco convexo de la silueta del E0; IoU = de la silueta cerrada y rellena frente a la del E0; huecos = % de la silueta con fondo; contraste = desviación típica de la luminancia / media. «128 px» ≈ el olivo a 60-75 px de alto; «512 px» ≈ 230-310 px. Impostor **emulado** (celda de 128 px sobre 2 × semilado, 4 × 4 submuestras, ampliado con corte en 0,5; sin la rejilla 8 × 8 ni *mipmaps*: cota optimista).
+
+| Olivo · lado | Escalón | Tri | Cobertura (Δ E0) | IoU (cenital) | Huecos | Agujeros / 10k px | Luz media | Contraste |
+|---|---|---|---|---|---|---|---|---|
+| adulto1 · 512 | E0 | 48 k | 0,587 | 1 | 18,5 % | 152 | 58 | 0,60 |
+| | E1 | 19 k | 0,575 (−2,1 %) | 1,000 (0,999) | 20,2 % | 166 | 58 | 0,58 |
+| | E2 | 9 k | 0,568 (−3,3 %) | 0,996 (0,997) | 20,8 % | 169 | 55 | 0,51 |
+| | E2-VR | 7 k | 0,600 (+2,2 %) | 0,864 (0,813) | 19,7 % | 131 | 56 | 0,50 |
+| adulto1 · 128 | E0 | | 0,378 | 1 | 38,9 % | 359 | 66 | 0,80 |
+| | E1 | | 0,277 (−26,8 %) | 0,896 (0,815) | 50,1 % | 216 | 70 | 0,81 |
+| | E2 | | 0,397 (+4,9 %) | 0,891 (0,891) | 40,7 % | 366 | 120 | 0,64 |
+| | E2-VR | | 0,437 (+15,5 %) | 0,878 (0,811) | 36,3 % | 381 | 110 | 0,68 |
+| centenario3 · 512 | E0 | 103 k | 0,760 | 1 | 11,4 % | 106 | 57 | 0,51 |
+| | E1 | 48 k | 0,756 (−0,5 %) | 1,000 (1,000) | 11,9 % | 112 | 57 | 0,50 |
+| | E2 | 19 k | 0,755 (−0,6 %) | 1,000 (1,000) | 12,0 % | 112 | 57 | 0,51 |
+| | E2-VR | 15 k | 0,788 (+3,7 %) | 0,856 (0,890) | 14,1 % | 105 | 58 | 0,51 |
+| centenario3 · 128 | E0 | | 0,491 | 1 | 35,1 % | 351 | 59 | 0,75 |
+| | E1 | | 0,359 (−26,8 %) | 0,915 (0,796) | 48,1 % | 230 | 63 | 0,78 |
+| | E2 | | 0,605 (+23,3 %) | 0,876 (0,899) | 27,7 % | 337 | 136 | 0,55 |
+| | E2-VR | | 0,650 (+32,5 %) | 0,832 (0,820) | 25,7 % | 298 | 121 | 0,62 |
+| medido · 512 | E0 | 67 k | 0,670 | 1 | 16,0 % | 102 | 59 | 0,63 |
+| | E1 | 32 k | 0,656 (−2,1 %) | 0,998 (0,998) | 17,6 % | 115 | 58 | 0,61 |
+| | E2 | 12 k | 0,645 (−3,7 %) | 0,994 (0,997) | 18,7 % | 122 | 54 | 0,51 |
+| | E2-VR | 9 k | 0,658 (−1,8 %) | 0,890 (0,876) | 20,7 % | 91 | 54 | 0,51 |
+| | variante E2, r8 × 0,5 (motor) | 18 k | 0,370 (−44,8 %) | 0,473 (0,250) | 14,0 % | 107 | 57 | 0,44 |
+| | variante E2, copa del propio | 18 k | 0,719 (+7,3 %) | 0,692 (0,693) | 10,9 % | 86 | 58 | 0,42 |
+| | variante E2-VR, r8 × 0,5 | 14 k | 0,389 (−41,9 %) | 0,482 (0,285) | 16,2 % | 100 | 57 | 0,43 |
+| | impostor emulado, r8 × 0,5 | 2 | 0,389 (−41,9 %) | 0,455 (0,239) | 3,7 % | 11 | 56 | 0,17 |
+| | impostor emulado, copa del propio | 2 | 0,730 (+9,0 %) | 0,703 (0,690) | 2,5 % | 7 | 56 | 0,20 |
+| medido · 128 | E0 | | 0,537 | 1 | 28,5 % | 212 | 63 | 0,77 |
+| | E1 | | 0,445 (−17,2 %) | 0,936 (0,876) | 36,8 % | 166 | 66 | 0,78 |
+| | E2 | | 0,506 (−5,8 %) | 0,954 (0,929) | 32,0 % | 214 | 92 | 0,77 |
+| | E2-VR | | 0,543 (+1,1 %) | 0,942 (0,872) | 29,3 % | 237 | 86 | 0,79 |
+| | variante E2, r8 × 0,5 | | 0,298 (−44,5 %) | 0,457 (0,289) | 23,8 % | 329 | 139 | 0,53 |
+| | variante E2, copa del propio | | 0,525 (−2,3 %) | 0,657 (0,670) | 29,2 % | 303 | 105 | 0,70 |
+| | impostor emulado, r8 × 0,5 | | 0,423 (−21,3 %) | 0,479 (0,297) | 4,3 % | 77 | 56 | 0,17 |
+| | impostor emulado, copa del propio | | 0,774 (+44,1 %) | 0,634 (0,676) | 3,2 % | 47 | 56 | 0,20 |
+
+Lectura: de cerca (512) E1/E2 propios conservan la masa (Δ ≤ 4 %, IoU ≥ 0,99); E2-VR pierde la falda (IoU 0,86-0,89). La variante del motor es la mitad de ancha (cobertura −45 %, IoU 0,47); con la copa del propio queda el salto de forma (IoU 0,69). A 128 px el follaje se deshace en todos los escalones (recorte alfa con *mipmaps*: la cobertura del E0 de centenario3 pasa de 0,76 a 0,49 y los huecos del 11 al 35 %; E1 pierde un 17-27 % más al quitar los brotes) y en E2 las olivas como puntos sin luz aclaran la copa (luz 58 → 92-136). El impostor es una mancha casi sin huecos ni contraste.
+
+**Dónde salta (Node, `Escalera.planifica` real).** Rejilla cuadrada de olivos, paseo por la calle (a media distancia entre filas) a 1,4 m/s, reparto cada 0,25 s, triángulos del olivo «medido», 5.882 lejanos × 2 tri; sin espera de recetas (cota optimista). Distancia mediana del paseante al olivo que cambia y si ocurre delante o detrás:
+
+| Aparato (presupuesto) | Rejilla | Asentado: E0 + E1 + E2 (radio) | lejano → E2 | E2 → E1 | E1 → E0 | E0 → E1 | E1 → E2 | E2 → lejano |
+|---|---|---|---|---|---|---|---|---|
+| Escritorio (538 k) | 10 m | 1 + 5 + 26 (32 m) | 28,4 delante | 9,9 delante | 6,0 detrás | 12,9 detrás | 22,1 detrás | 38,5 detrás |
+| | 11 m | 1 + 5 + 26 (35 m) | 31,9 | 11,4 | 6,2 detrás | 13,6 | 23,7 | 41,7 |
+| | 12 m | 1 + 5 + 26 (38 m) | 35,5 | 12,9 | 6,4 detrás | 14,3 | 25,3 | 44,9 |
+| Móvil (258 k) | 10 m | 1 + 2 + 10 (21 m) | 15,2 | 5,6 | 5,1 delante | 9,1 | 17,8 | 26,7 |
+| | 11 m | 1 + 2 + 10 (23 m) | 16,8 | 6,6 | 5,9 delante | 9,3 | 18,8 | 28,7 |
+| | 12 m | 1 + 2 + 10 (25 m) | 18,7 | 7,7 | 6,8 delante | 9,6 | 19,9 | 30,8 |
+| Gafas, perfil 0 (368 k) | 10 m | 1 + 4 + 18 E2-VR (27 m) | 23,0 | 13,2 | 5,1 delante | 9,1 | 19,5 | 34,3 |
+| | 11 m | 1 + 4 + 18 (30 m) | 26,1 | 15,4 | 5,9 delante | 9,3 | 20,5 | 37,0 |
+| | 12 m | 1 + 4 + 18 (32 m) | 29,4 | 12,8 | 6,4 detrás | 14,3 | 25,1 | 42,2 |
+
+En escritorio el E0 pasa al olivo cuando ya se ha dejado atrás (histéresis de `MARGEN` y prima del E0) y se queda en él hasta 13-14 m por detrás. Alto en pantalla de un olivo de 5 m (cálculo, no medida): escritorio 1080p con la cámara de 42° → 1.407 px a 5 m, 703 a 10, 639 a 11, 586 a 12, 352 a 20, 234 a 30, 156 a 45; Quest 3 (≈ 96° vertical y 0,9 × 1.760 px por ojo, **[NO VERIFICADO]**) → 357 px a 10 m, 324 a 11, 297 a 12, 178 a 20, 119 a 30.
+
 ## Límites conocidos
 - Las ortofotos decodificadas (2,4 MB por tesela de 768 px; 1 MB a 512 px) se sueltan solo a 900 m; sin LRU fino.
 - Dentro de una tesela todo el relieve y la copa (258² + 256²) están siempre en memoria: 49 teselas ≈ 20 MB; la nube de las lejanas se libera a > 1,2× 2.300 m.

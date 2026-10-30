@@ -7,6 +7,7 @@
 const test = require("node:test"), assert = require("node:assert");
 const { RAIZ, propia, python, fixture, ejecuta, lee, fs, path } = require("./_util");
 const { sirve, motivoSalto, lanza, ESCENARIOS } = require("./_navegador");
+const { montaPagina, saltoPagina } = require("./_pagina");
 const Ajv2020 = require("ajv/dist/2020").default, validador = require("gltf-validator"), { NodeIO, getBounds } = require("@gltf-transform/core");
 
 const ESQ = JSON.parse(lee("contratos/olivos-tipo.schema.json")), PRES = ESQ.presupuesto_tri;
@@ -74,15 +75,15 @@ test("el motor usa el mismo presupuesto de triángulos que el esquema (07a_catal
 });
 
 test("los tipos del registro del fixture (copas_tipo) son −1 o tipos del catálogo sintético", () => {
-  const FX = fixture(), I = JSON.parse(fs.readFileSync(path.join(FX, "hituelo", "indice.json"), "utf8")), ids = new Set(CAT.tipos.map(t => t.id).concat([-1]));
+  const FX = fixture({ sinTileset: true }), I = JSON.parse(fs.readFileSync(path.join(FX, "hituelo", "indice.json"), "utf8")), ids = new Set(CAT.tipos.map(t => t.id).concat([-1]));
   assert.ok(I.copas_tipo, "el fixture de Hituelo debe llevar copas_tipo");
   assert.deepStrictEqual(I.copas_tipo.filter(t => !ids.has(t)), []);
 });
 
 // ---------- en el navegador: el hueco funciona sin cambiar lo que se ve ----------
 const JSM = path.join(RAIZ, "apps", "web", "node_modules", "three", "examples", "jsm"), GLTF = path.join(JSM, "loaders", "GLTFLoader.js");   // el de la misma three que la página (ADR-0016)
-const PIEZAS_GLTF = ["loaders/GLTFLoader.js", "utils/BufferGeometryUtils.js", "utils/SkeletonUtils.js"];   // GLTFLoader y lo que importa por ruta relativa; «three» lo resuelve el importmap de la página
-const SALTO = motivoSalto("el catálogo de olivos-tipo en el navegador") || (fs.existsSync(GLTF) ? null : "falta three en apps/web (cd apps/web && npm i): el catálogo en el navegador NO se ha comprobado");
+const PIEZAS_GLTF = ["loaders/GLTFLoader.js", "utils/BufferGeometryUtils.js", "utils/SkeletonUtils.js"];   // GLTFLoader y lo que importa por ruta relativa; «three», la del motor (ver la prueba)
+const SALTO = motivoSalto("el catálogo de olivos-tipo en el navegador") || saltoPagina("el catálogo de olivos-tipo en el navegador") || (fs.existsSync(GLTF) ? null : "falta three en apps/web (cd apps/web && npm i): el catálogo en el navegador NO se ha comprobado");
 
 async function ponEscena(p, e) {
   await p.evaluate(e => { const g = window.__g; g.orb.az = e.az; g.orb.el = e.el; g.orb.dist = e.dist; g.objetivo.x = e.ox; g.objetivo.z = -e.oy; g.objetivo.y = g.suelo(e.ox, e.oy) + 4; g.pon(e.modo); }, e);
@@ -104,12 +105,20 @@ async function ponEscena(p, e) {
 
 test("[hituelo] Catalogo en la página: vacío no cambia nada; instalado con un cargador inyectado dibuja el tipo 0; retirado vuelve a lo de antes", { timeout: 300000 }, async t => {
   if (SALTO) return t.skip(SALTO);
-  const FX = fixture(), WEB = propia("olivos-web"), html = path.join(WEB, "hituelo", "index.html");
-  const m = ejecuta(python(), ["-I", "tuberia/salida_artefacto/montar_v2.py", "--finca", "hituelo", "--modo", "ficheros", "--datos", path.relative(RAIZ, path.join(FX, "hituelo", "indice.json")), "--salida", path.relative(RAIZ, html)]);
-  assert.strictEqual(m.status, 0, m.stdout + m.stderr);
+  const WEB = propia("olivos-web");
+  // SIN tileset: con él, los olivos de media y larga distancia los dibuja el tileset (04c) y 07b no usa los niveles 1 y 2 del catálogo; sin escena,
+  // el motor dibuja sus olivos como siempre y el aviso de la finca sin escena es el único error esperado (pacto de T8 fase 2, §1)
+  fs.cpSync(montaPagina({ finca: "hituelo", conTileset: false }).carpeta, path.join(WEB, "hituelo"), { recursive: true });
   fs.mkdirSync(path.join(WEB, "hituelo", "olivos"), { recursive: true });
   for (const f of fs.readdirSync(DIR)) if (/\.(glb|json)$/.test(f)) fs.copyFileSync(path.join(DIR, f), path.join(WEB, "hituelo", "olivos", f));
-  for (const f of PIEZAS_GLTF) { const d = path.join(WEB, "hituelo", "jsm", f); fs.mkdirSync(path.dirname(d), { recursive: true }); fs.copyFileSync(path.join(JSM, f), d); }
+  // el GLTFLoader de la misma three (ADR-0016): el motor va empaquetado por Vite (sin importmap), así que sus `import … from "three"` se cambian por
+  // la three que el motor pasa al cargador (globalThis.__THREE_PRUEBA, la pone el cargador antes de importar)
+  for (const f of PIEZAS_GLTF) {
+    const d = path.join(WEB, "hituelo", "jsm", f); fs.mkdirSync(path.dirname(d), { recursive: true });
+    const src = fs.readFileSync(path.join(JSM, f), "utf8").replace(/import\s*\{([^}]*)\}\s*from\s*['"]three['"];?/g, (m, n) => "const {" + n.replace(/\s+as\s+/g, ": ") + "} = globalThis.__THREE_PRUEBA;");
+    assert.ok(!/from\s*['"]three['"]/.test(src), f + ": queda un import de «three»");
+    fs.writeFileSync(d, src);
+  }
   const srv = await sirve(WEB), nav = await lanza(), p = await nav.newPage({ viewport: { width: 900, height: 650 } }), errores = [];
   p.on("pageerror", e => errores.push("PAGEERROR " + String(e.stack || e).slice(0, 400)));
   p.on("console", m => { if (m.type() === "error") errores.push("CONSOLE " + m.text().slice(0, 300)); });
@@ -125,11 +134,13 @@ test("[hituelo] Catalogo en la página: vacío no cambia nada; instalado con un 
 
     const ESC = { lejos: ESCENARIOS.lejos, cerca: ESCENARIOS.cerca }, antes = {}, con = {}, despues = {};
     for (const [n, e] of Object.entries(ESC)) antes[n] = await ponEscena(p, e);
-    // el cargador lo inyecta quien llama (aquí, la prueba): el motor no añade dependencias. GLTFLoader es un módulo que importa «three»: el importmap de la página lo resuelve a la misma three del motor
+    // el cargador lo inyecta quien llama (aquí, la prueba): el motor no añade dependencias. El GLTFLoader copiado toma la three que el motor le pasa al cargador
     const inst = await p.evaluate(async () => {
-      const { GLTFLoader } = await import(new URL("jsm/loaders/GLTFLoader.js", location.href).href);
       const desc = await (await fetch("olivos/catalogo.json")).json();
-      const cargador = async (url, THREE) => { const g = await new GLTFLoader().loadAsync(url), out = []; g.scene.traverse(o => { if (o.isMesh) out.push({ nombre: o.name, geometria: o.geometry }); }); return out; };
+      const cargador = async (url, THREE) => {
+        globalThis.__THREE_PRUEBA = THREE;
+        const { GLTFLoader } = await import(new URL("jsm/loaders/GLTFLoader.js", location.href).href);
+        const g = await new GLTFLoader().loadAsync(url), out = []; g.scene.traverse(o => { if (o.isMesh) out.push({ nombre: o.name, geometria: o.geometry }); }); return out; };
       const tipos = await window.__g.Catalogo.instala(desc, cargador, "olivos/");
       return { tipos, avisos: window.__g.Catalogo.avisos(), info: window.__g.Catalogo.info(0) };
     });
@@ -152,6 +163,7 @@ test("[hituelo] Catalogo en la página: vacío no cambia nada; instalado con un 
         assert.ok(Math.abs(despues[n].triangulos - antes[n].triangulos) <= Math.max(2, 0.01 * antes[n].triangulos), n + ": al retirar el catálogo los triángulos no vuelven");
       } else t.diagnostic(n + ": nivel 0 distinto entre antes y retirado (" + antes[n].nivel0 + " → " + despues[n].nivel0 + "): llamadas y triángulos no se comparan");
     }
-    assert.deepStrictEqual(errores, [], "errores de consola o de página");
+    assert.deepStrictEqual(errores.filter(e => !/^CONSOLE escena 3D Tiles: falta el tileset/.test(e)), [], "errores de consola o de página");
+    assert.strictEqual(errores.length, 1, "un solo console.error, el de la finca sin escena: " + JSON.stringify(errores));
   } finally { await p.close(); await nav.close(); srv.close(); }
 });

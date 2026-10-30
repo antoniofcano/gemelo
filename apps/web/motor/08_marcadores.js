@@ -1,8 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: gLinde, tmp, listo, aplica, capas, pendiente, aplicaLuego
-// Consume: 01_datos (D, $), 02_mundo (suelo, orto, copas, cIn, marc), 03_escena (scene, colorCss, exag, modo), 04_terreno (Terreno, terreno),
-//   05_nube (nube, pintaNube), 06_arboles (gArboles, gFollaje, gSombras, tronco), 07b_arboles (Arboles), 14_historia (avTipo, pintaAvance),
-//   15_tiempo (colocaBarrera, lindes), 16_vida (esfera), 18_paisaje (colocaPaisaje), 19_balizas (colocaBalizas), 21_suelo (recoloreaSuelo)
+// Consume: 01_datos (D, $), 02_mundo (suelo, orto, copas, cIn, marc), 03_escena (scene, colorCss, exag, modo), 05_nube (nube, pintaNube),
+//   06_arboles (gArboles, gFollaje, gSombras, tronco), 07b_arboles (Arboles), 14_historia (avTipo, pintaAvance), 15_tiempo (colocaBarrera, lindes),
+//   16_vida (esfera), 18_paisaje (colocaPaisaje), 19_balizas (colocaBalizas), 21_suelo (recoloreaSuelo)
 // ===============================================================================
 
   // linde y marcadores
@@ -37,7 +37,7 @@
   function aplica() {
     if (!listo) return;
     UN.uExag.value = exag; if (modo === "nube") pintaNube(); if (modo === "gem") Arboles.refresca(); marcadores(); colocaPaisaje(); colocaBalizas(); recoloreaSuelo(); if (avTipo) pintaAvance(avTipo);
-    Terreno.modoOrto(modo === "orto");
+    UN.uModoOrto.value = modo === "orto" ? 1 : 0;   // el relieve (04d) pinta la ortofoto del glb tal cual
     nube.visible = modo === "nube"; gArboles.visible = modo === "gem"; gFollaje.visible = modo === "gem"; gSombras.visible = modo === "gem";
     $("notaModo").textContent = NOTAS[modo]; capas();
     if ($("cSolo") && $("cSolo").checked) { gArboles.visible = false; gFollaje.visible = false; gSombras.visible = false; nube.visible = false; }

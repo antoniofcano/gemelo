@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: NDV, ndviIdx, rampa, pintaNdvi, ndviRel
-// Consume: 01_datos (D, $, fmt, b64, i16, ANCHO, ALTO), 02_mundo (tinte, ndLo, ndHi), 03_escena (modo), 04_terreno (terreno), 05_nube (nube),
+// Consume: 01_datos (D, $, fmt, b64, i16, ANCHO, ALTO), 02_mundo (tinte, ndLo, ndHi), 03_escena (modo), 05_nube (nube),
 //   06_arboles (gArboles, gFollaje, gSombras), 08_marcadores (aplicaLuego), 14_historia (rango), 15_tiempo (hace)
 // ===============================================================================
   // ---------- NDVI de Sentinel-2 (10 m) sobre el terreno, con escala relativa a la parcela (como hace Vigía)

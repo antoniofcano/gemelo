@@ -113,7 +113,7 @@ test("finca_8_teselas.py construye() (Cerro) sobre 1 tesela sintética: columnas
   compruebaCenso(C, esperado().cerro, "cerro (marcados_id del intermedio)");
   const pc = porPosicion(C), ph = porPosicion(H);
   for (const [pos, k] of pc) if (k >= PROV && ph.get(pos) >= PROV) assert.strictEqual(ph.get(pos), k, "el id provisional de " + pos + " difiere entre Cerro y Hituelo");
-  assert.ok(fs.existsSync(path.join(BASE, "cerro", "embebido.json")), "falta embebido.json");
+  for (const k of Object.keys(C.teselas)) for (const ext of [".json", ".jpg"]) assert.ok(fs.existsSync(path.join(BASE, "cerro", "t", k + ext)), "Cerro: falta t/" + k + ext + " (se sirve con ficheros, como Hituelo; T8 fase 2)");
 });
 
 // copas_semilla dentro de los exportadores (ADR-0017, decisión 50, tuberia/semillas_copas.py): sin índice anterior, semilla = copas_id; con él (por

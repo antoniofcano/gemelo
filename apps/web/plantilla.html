@@ -158,6 +158,11 @@ header p { margin: 4px 0 0; color: var(--muted); max-width: 70ch; }
 .t-baliza .cerrar-baliza { position: absolute; top: 2px; right: 2px; min-width: 44px; min-height: 44px; border: 0; background: none; color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; }
 .t-baliza .b-cab { padding-right: 36px; }
 .t-baliza[hidden] { display: none; }
+/* sin escena (04b_escena3d.js: sin tileset o si falla): un letrero en el centro del visor que no se come los toques; el panel y las fichas siguen */
+.sin-escena { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(340px, calc(100% - 32px)); text-align: center; font-size: 14px; color: var(--fg); background: color-mix(in srgb, var(--panel) 94%, transparent); border: 1px solid var(--line); border-left: 4px solid var(--guardado); border-radius: 10px; padding: 12px 16px; box-shadow: 0 6px 22px rgba(0,0,0,.25); pointer-events: none; }
+.sin-escena[hidden] { display: none; }
+.sin-escena strong { font-family: var(--display); font-size: 16px; display: block; margin-bottom: 2px; }
+.sin-escena span { color: var(--muted); }
 .t-baliza .b-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; } .t-baliza strong { font-family: var(--display); font-size: 15px; }
 .t-baliza .b-pill { font-size: 11px; padding: 1px 8px; border-radius: 99px; background: color-mix(in srgb, var(--c) 24%, transparent); }
 .t-baliza h4 { margin: 8px 0 2px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
@@ -196,6 +201,7 @@ html.sin-scroll, html.sin-scroll body { overflow: hidden !important; }
 <canvas id="mapita" class="mapita" role="img" aria-label="Minimapa: dónde estás en la finca" hidden></canvas>
       
       <div class="t-baliza" id="baliza" role="status" hidden></div>
+      <div class="sin-escena" id="sinEscena" role="alert" hidden><strong>Esta finca no tiene escena:</strong> <span id="sinEscenaMotivo">falta el tileset</span></div>
       
       <div class="t-barra" role="group" aria-label="Controles del visor">
         <button type="button" class="t-son" id="btnSonido" aria-pressed="true" aria-label="Activar o silenciar el sonido">🔊</button>

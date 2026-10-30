@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Catalogo
-// Consume: 04_terreno (hash), 06_arboles (tronco), 08_marcadores (tmp), 15_tiempo (parcheTiempo, nivel)
+// Consume: 04d_sombreado_tiles (hash), 06_arboles (tronco), 08_marcadores (tmp), 15_tiempo (parcheTiempo, nivel)
 // ===============================================================================
   // ---------- el catálogo de olivos-tipo (ADR-0012; contrato de entrada en contratos/olivos-tipo.md): de dónde sacan los niveles 1 y 2 su geometría
   // Hoy solo hay el tipo −1 («sin asignar»): las formas por procedimiento de siempre (4 variantes de copa en vaso con su tronco en L1 y 2 masas en L2), las
