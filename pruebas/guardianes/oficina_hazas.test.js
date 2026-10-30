@@ -159,8 +159,12 @@ test("recorrido: crear, mover un vértice (ratón y teclado), solape, guardar co
     await pg.click("button[type=submit], input[type=submit]");
     await pg.waitForURL(/\/oficina\//, { timeout: 15_000 });
     await pg.goto(base + "/oficina/?prueba#hazas");
-    await pg.waitForFunction(() => window.__hazas && window.__hazas().hazas === 4 && window.__hazas().copas === 140, null, { timeout: 30_000 });
-    const est = () => pg.evaluate(() => { const e = window.__hazas(); delete e.pixelDe; return e; });
+    await pg.waitForFunction(() => window.__hazas && window.__hazas().hazas === 4 && window.__hazas().copas === 140, null, { timeout: 30_000 }).catch(async e => {
+      // sin esto, el tiempo agotado no dice qué tenía la página: lo que contaba __hazas, el estado y los errores
+      const vio = await pg.evaluate(() => ({ hazas: window.__hazas ? (({ hazas, copas, limite }) => ({ hazas, copas, limite }))(window.__hazas()) : null, url: location.href, estado: (document.querySelector("#mEstado") || {}).textContent || null, avisos: (document.querySelector("#avisos") || {}).textContent || null, csp: window.__csp, llave: !(document.querySelector("#pLlave") || { hidden: true }).hidden, anuncio: (document.querySelector("#anuncio") || {}).textContent || null, titulo: document.title })).catch(() => null);
+      throw new Error(String(e.message).split("\n")[0] + " esperando el editor de hazas; la página: " + JSON.stringify(vio) + "; errores: " + JSON.stringify(errores));
+    });
+    const est =() => pg.evaluate(() => { const e = window.__hazas(); delete e.pixelDe; return e; });
     const pixel = async (x, y) => { const p = await pg.evaluate(([a, b]) => window.__hazas().pixelDe(a, b), [x, y]); const r = await pg.locator("#mapa").boundingBox(); return [r.x + p[0], r.y + p[1]]; };
     const { centro } = { centro: JSON.parse(fs.readFileSync(path.join(finca, "indice.json"), "utf8")).centro_utm };
     const U = (x, y) => [centro[0] + x, centro[1] + y];
