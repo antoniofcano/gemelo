@@ -1,10 +1,10 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: BAL, colocaBalizas, cierraBaliza, balizaAbierta, abreBaliza, balizaVR, eligeBaliza, sueltaBaliza, irABaliza, avisoBaliza,
-//   dibujaBalizasMini, tBal, actualizaBalizas
-// Consume: 01_datos (D, $), 02_mundo (suelo, copas), 02c_componentes (Bus), 03_escena (lienzo, visor, scene, camera, exag),
-//   09_camara (objetivo, suelta), 12_paseo (paseando, teclas), 12b_llegada (Llegada), 13_parcelas (parcelas), 13b_hazas (HazasPuro),
-//   14_historia (VIVO, marca, aviso), 15_tiempo (num1, esc, hace), 16_vida (tVida, enQuad, enDron), 26_presencia (Encuentro, sitioJunto, Presencia),
-//   29_vr (VRX, ficha)
+// Expone: colocaBalizas, avisoBaliza, dibujaBalizasMini, actualizaBalizas
+// Consume: 01_datos (D, $), 02_mundo (suelo, copas), 02c_componentes (Bus), 02e_entidades (Entidades, Usables),
+//   03_escena (visor, scene, camera, exag), 09_camara (objetivo, suelta, elige), 12_paseo (paseando, teclas), 12b_llegada (Llegada),
+//   13_parcelas (parcelas), 13b_hazas (HazasPuro), 14_historia (VIVO, marca, aviso), 15_tiempo (num1, esc, hace),
+//   16_vida (tVida, enQuad, quad, dron), 26_presencia (Encuentro, sitioJunto, Presencia), 29_vr (VRX, ficha)
+// Nota: Registra el tipo baliza en Entidades (C7). Publica además window.__vrBalizas (pruebas VR: el pie de cada columna de luz).
 // ===============================================================================
   // ---------- las balizas: una por parcela, con lo que OlivarTrack sabe de ella; en el paseo, al acercarte, sale su ficha
   // Los datos son los de la historia (instantánea embebida, o la lectura en vivo por el MCP si se ha pulsado «Leer de OlivarTrack»).
@@ -71,20 +71,27 @@
     cierraBaliza();
   });
   function cierraBaliza() { balCerrada = balForzada >= 0 ? balForzada : balCerca; balForzada = -1; $("baliza").hidden = true; }
-  // I5, la ficha de baliza en VR (29_vr.js la pinta en su lámina y allí «Ir a esta baliza» se pulsa con el rayo): qué baliza tiene la ficha abierta
-  // (-1 si ninguna), abrir la de la baliza i (el rayo sobre su columna de luz, como tocarla en pantalla) y su contenido en texto llano.
-  function balizaAbierta() { var b = $("baliza"), ib = b && !b.hidden && b.querySelector(".ir-baliza"); return ib ? Number(ib.getAttribute("data-k")) : -1; }
-  function abreBaliza(i) { if (!BAL[i]) return false; balCerrada = -1; balForzada = i; ultFicha = -2; return true; }
-  function balizaVR(k) {   // { k, titulo, estado, lineas, gente (como genteEnBaliza: null sin presencia), pie }; los alias van como texto (se pintan en un canvas, nunca HTML)
-    var d = datosBal(k), pr = d.pr, l = [PILL_TXT[d.estado] + " · " + num1(pr.ha, 1) + " ha"], dm = function (f) { return String(f).slice(8, 10) + "/" + String(f).slice(5, 7); };
+  // ---- C7 (02e_entidades.js): las balizas como entidades, baliza:<id de la parcela>. Tocar su columna de luz (en pantalla, del pie a 27 m, a menos de 22 px;
+  // con el rayo de VR, del pie a 28,5 m, con un radio que crece con la distancia) la elige y abre su ficha en su propio recuadro (#baliza; en VR, la lámina con
+  // botones de 29_vr); al pasear, la cercanía de Usables (a menos de 17 m) abre la de la más cercana. Su ficha como datos (para VR y para usar «Ir a esta
+  // baliza»): estado, quién está, lo abierto, lo hecho, la fenología y la fuente; los alias van como texto (se pintan en un canvas, nunca HTML).
+  function idBal(k) { return "baliza:" + parcelas[k].id; }
+  function balDe(id) { for (var i = 0; i < BAL.length; i++) if (idBal(BAL[i].userData.k) === id) return i; return -1; }
+  function balizaAbierta() { var b = $("baliza"), ib = b && !b.hidden && b.querySelector(".ir-baliza"); return ib ? Number(ib.getAttribute("data-k")) : -1; }   // la k de la parcela con la ficha abierta, o -1
+  function fichaBalEnt(id) {
+    var i = balDe(id); if (i < 0) return null;
+    var k = BAL[i].userData.k, d = datosBal(k), pr = d.pr, l = [PILL_TXT[d.estado] + " · " + num1(pr.ha, 1) + " ha"], dm = function (f) { return String(f).slice(8, 10) + "/" + String(f).slice(5, 7); };
     if (d.vg) l.push("Vigía la marca hoy (" + (d.vg.gravedad || "pide una mirada") + "): relativo y sin calibrar, sirve para decidir dónde mirar.");
     if (d.abiertas.length) l.push("Abiertas: " + d.abiertas.slice(0, 3).map(function (t) { return t.titulo + (t.avance != null ? " (" + num1(t.avance, 0) + " %)" : ""); }).join("; "));
     else if (d.hechas.length) l.push("Hecho hace poco: " + d.hechas[0].titulo + " (" + dm(d.hechas[0].fecha) + ")");
     if (d.fen) l.push("Fenología: BBCH " + d.fen.bbch + " · " + (BBCH_TXT[Math.floor(d.fen.bbch / 10)] || "") + " · " + dm(d.fen.fecha));
-    return { k: k, titulo: pr.nombre, estado: d.estado, color: COLB[d.estado], lineas: l, gente: genteEnBaliza(k), pie: fuenteBal() + " · visitadas " + balVisitas + " de " + BAL.length };
+    var gente = genteEnBaliza(k);
+    return { titulo: "Baliza · " + pr.nombre, color: COLB[d.estado], gente: gente, destacado: gente ? (gente.length ? "Aquí están: " + gente.join(", ") : "No hay nadie en esta parcela") : null,
+      lineas: l, pie: fuenteBal() + " · visitadas " + balVisitas + " de " + BAL.length, acciones: [{ id: "bir", txt: "Ir a esta baliza", fn: function () { return irABaliza(k); } }] };
   }
-  function eligeBaliza(cx, cy) {   // toque en pantalla (cx, cy): ¿está sobre la columna de luz de alguna baliza? (de su pie a 27 m de alto)
-    var r = lienzo.getBoundingClientRect(), a = new THREE.Vector3(), b = new THREE.Vector3(), mejor = -1, md = 22;
+  var balV1 = new THREE.Vector3(), balV2 = new THREE.Vector3(), balW0 = new THREE.Vector3();
+  function balEnPantalla(cx, cy, r) {   // ¿está el toque (cx, cy) sobre la columna de luz de alguna baliza (de su pie a 27 m de alto)?
+    var a = balV1, b = balV2, mejor = -1, md = 22;
     BAL.forEach(function (g, i) {
       var pr = parcelas[g.userData.k], y0 = suelo(pr.centro[0], pr.centro[1]) * exag;
       a.set(pr.centro[0], y0, -pr.centro[1]).project(camera); b.set(pr.centro[0], y0 + 27, -pr.centro[1]).project(camera); if (a.z > 1 && b.z > 1) return;
@@ -92,10 +99,32 @@
       var vx = bx - ax, vy = by - ay, L = vx * vx + vy * vy || 1, t = Math.max(0, Math.min(1, ((cx - ax) * vx + (cy - ay) * vy) / L)), d = Math.hypot(cx - (ax + t * vx), cy - (ay + t * vy));
       if (d < md) { md = d; mejor = i; }
     });
-    if (mejor < 0) return false;
-    balCerrada = -1; balForzada = mejor; ultFicha = -2; return true;
+    return mejor < 0 ? null : { id: idBal(BAL[mejor].userData.k), s: md / 22 };
   }
-  function sueltaBaliza() { balForzada = -1; }
+  function balEnRayo(rr) {   // ¿apunta el rayo a la columna de luz de una baliza (del pie a 28,5 m)? el radio crece con la distancia
+    var o = rr.ray.origin, d = rr.ray.direction, bb = d.y, den = 1 - bb * bb, mejor = null, ms = 1e9;
+    if (den < 1e-6) return null;
+    for (var i = 0; i < BAL.length; i++) {
+      var g = BAL[i].position; balW0.set(o.x - g.x, o.y - g.y, o.z - g.z);
+      var dw = d.x * balW0.x + d.y * balW0.y + d.z * balW0.z, s = Math.max(0, Math.min(28.5, (balW0.y - bb * dw) / den));   // altura del punto más cercano en la columna
+      var t = (g.x - o.x) * d.x + (g.y + s - o.y) * d.y + (g.z - o.z) * d.z; if (t < 0.5 || t > 2500) continue;
+      var dist = Math.hypot(o.x + d.x * t - g.x, o.y + d.y * t - g.y - s, o.z + d.z * t - g.z), rad = Math.max(1.2, t * 0.012), sc = dist / rad;
+      if (sc < 1 && sc + t * 0.0005 < ms) { ms = sc + t * 0.0005; mejor = { id: idBal(BAL[i].userData.k), t: t, s: sc }; }
+    }
+    return mejor;
+  }
+  Entidades.registra({ tipo: "baliza", dueno: "19_balizas", prioridad: 20, sinAnillo: true, pantalla: balEnPantalla, rayo: balEnRayo, ficha: fichaBalEnt,
+    cerca: function (x, y) {   // la más cercana a quien pasea (Usables decide si está a menos de radioCerca)
+      var mejor = -1, md = 1e9; BAL.forEach(function (g, i) { var pr = parcelas[g.userData.k], d = Math.hypot(pr.centro[0] - x, pr.centro[1] - y); if (d < md) { md = d; mejor = i; } });
+      return mejor < 0 ? null : { id: idBal(BAL[mejor].userData.k), d: md };
+    }, radioCerca: 17,
+    existe: function (id) { return balDe(id) >= 0; },
+    pos: function (id) { var i = balDe(id); return i < 0 ? null : { x: BAL[i].position.x, y: BAL[i].position.y, z: BAL[i].position.z }; },
+    muestra: function (id) { var i = balDe(id); if (i < 0) return false; balCerrada = -1; balForzada = i; ultFicha = -2; return true; },   // en su recuadro (y en VR, la lámina de botones la recoge por abierta)
+    abierta: function () { var k = balizaAbierta(); return k >= 0 && parcelas[k] ? idBal(k) : null; },
+    cierra: function () { cierraBaliza(); },
+    suelta: function () { balForzada = -1; } });   // al tocar otra cosa (olivo, suelo), la ficha forzada se suelta y vuelve la de cercanía
+  window.__vrBalizas = function () { return BAL.map(function (g) { return g.position.toArray(); }); };   // el pie de cada columna de luz (pruebas, I5)
   // ---- I4: las balizas como punto de encuentro. Quién está en la parcela (con ?presencia: los que se dibujan, dentro de su linde; null sin presencia),
   // el aviso del minimapa («¿Ir a esta baliza?», con Ir y Cancelar) e ir: a 4-5,5 m de la columna, fuera de copas y troncos, mirándola (Llegada.ve)
   function genteEnBaliza(k) {
@@ -137,7 +166,7 @@
     if (!avisoB || avisoB.raiz.hidden) return;
     avisoB.raiz.hidden = true; avisoB.k = -1;
     try { if (avisoB.foco && avisoB.foco.focus) avisoB.foco.focus({ preventScroll: true }); } catch (e) {}
-  }   // al tocar otra cosa (olivo, suelo), la ficha forzada se suelta y vuelve la de cercanía
+  }
   function dibujaBalizasMini(c, X, Y, pts) {   // pts (opcional): ahí se apunta dónde cae cada rombo, para tocarlo (17_minimapa.js)
     if (pts) pts.length = 0;
     BAL.forEach(function (g) {
@@ -159,8 +188,8 @@
     if (balForzada >= 0) { if (ultFicha !== balForzada || tBal > 2) { tBal = 0; ultFicha = balForzada; $("baliza").innerHTML = fichaBal(BAL[balForzada].userData.k); } $("baliza").hidden = false; return; }   // abierta al tocar su baliza
     if (!paseando) { $("baliza").hidden = true; balCerca = -1; return; }
     if (TR.act && TR.t < TR.tCae + 0.4) { $("baliza").hidden = true; return; }   // la ficha espera a que el muñequito aterrice
-    var mejor = -1, md = 1e9; BAL.forEach(function (g, i) { var pr = parcelas[g.userData.k], d = Math.hypot(pr.centro[0] - (enDron ? dr.x : pp.x), pr.centro[1] - (enDron ? dr.y : pp.y)); if (d < md) { md = d; mejor = i; } });
-    var dentro = mejor >= 0 && md < 17;
+    var c = Usables.cercano(), mejor = c ? balDe(c.id) : -1;   // C7: la cercanía la lleva Usables (a pie, en quad o con el dron; a menos de 17 m)
+    var dentro = mejor >= 0;
     if (dentro) {
       if (!BAL[mejor].userData.visita) { BAL[mejor].userData.visita = true; balVisitas = BAL.filter(function (g) { return g.userData.visita; }).length; Bus.emite("sonido:baliza", { completa: balVisitas === BAL.length }); ultFicha = -2; }
       if (mejor !== ultFicha || tBal > 2) { tBal = 0; ultFicha = mejor; $("baliza").innerHTML = fichaBal(BAL[mejor].userData.k); }

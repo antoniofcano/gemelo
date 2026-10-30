@@ -1,8 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: objetivo, orb, camara, sensMirar, suelta, elige, pon
 // Consume: 01_datos ($, fmt, DIST_MAX, DIST_INI), 02_mundo (orto, kcor), 02e_entidades (Usables), 03_escena (lienzo, camera, exag, modo),
-//   05_nube (nube), 08_marcadores (aplica, capas, aplicaLuego), 12_paseo (paseando), 13_parcelas (parcelaSel, elegirParcela),
-//   19_balizas (eligeBaliza, sueltaBaliza), 29_vr (ficha), 33_ajustes (Ajustes)
+//   05_nube (nube), 08_marcadores (aplica, capas, aplicaLuego), 12_paseo (paseando), 13_parcelas (parcelaSel, elegirParcela), 29_vr (ficha),
+//   33_ajustes (Ajustes)
 // ===============================================================================
 
   // cámara orbital
@@ -36,11 +36,7 @@
 
   // un toque corto o un clic: elige lo que haya debajo (C7: Usables, 02e_entidades.js; cada tipo de cosa del mundo dice si está bajo el dedo y gana por
   // tipo y por cercanía); sobre nada, suelta lo elegido y cierra la ficha
-  function elige(cx, cy) {
-    if (eligeBaliza(cx, cy)) return;   // una baliza (columna de luz) tocada abre la ficha de su parcela
-    sueltaBaliza();
-    Usables.toque(cx, cy);
-  }
+  function elige(cx, cy) { Usables.toque(cx, cy); }
 
   function pon(m) { modo = m; ["Nube", "Gem", "Orto"].forEach(function (n) { $("m" + n).setAttribute("aria-pressed", String((n === "Nube" && m === "nube") || (n === "Gem" && m === "gem") || (n === "Orto" && m === "orto"))); }); aplica(); }
   $("mNube").addEventListener("click", function () { pon("nube"); }); $("mGem").addEventListener("click", function () { pon("gem"); }); $("mOrto").addEventListener("click", function () { pon("orto"); });

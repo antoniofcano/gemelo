@@ -133,9 +133,9 @@ test("panel VR: «Ir con» de un simulado deja el rig a 2-4 m de él; la ficha d
     const col = (await p.evaluate(() => window.__vrBalizas()))[0];
     await p.evaluate(v => window.__mockXR.apunta("right", v), fisica(d.rig, [col[0], col[1] + 25, col[2]])); await fot(3);
     await p.evaluate(() => window.__mockXR.gatillo("right"));
-    await p.waitForFunction(() => { const d = window.__vrDebug(); return d.fichaB && d.balK === 0; }, null, { timeout: 30000, polling: 200 });
+    await p.waitForFunction(() => { const d = window.__vrDebug(); return d.fichaB && /^baliza:/.test(d.fichaId || ""); }, null, { timeout: 30000, polling: 200 });
     d = await dbg();
-    assert.ok(Array.isArray(d.balGente), "con presencia, la ficha de la baliza dice quién está (lista, aunque esté vacía): " + JSON.stringify(d.balGente));
+    assert.ok(Array.isArray(d.fichaGente), "con presencia, la ficha de la baliza dice quién está (lista, aunque esté vacía): " + JSON.stringify(d.fichaGente));
     const n1 = (await p.evaluate(() => window.__llegada())).n;
     assert.ok(await aBoton("baliza", "bir"), "el rayo no llegó a resaltar «Ir a esta baliza»");
     await p.evaluate(() => window.__mockXR.gatillo("right"));
