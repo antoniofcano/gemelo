@@ -1,8 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: actualizaMinimapa
-// Consume: 01_datos (D, $, ANCHO, ALTO), 02_mundo (Mundo, cIn), 12_paseo (paseando, persona), 13_parcelas (parcelas), 14_historia (aviso),
+// Expone: mini, actualizaMinimapa
+// Consume: 01_datos (D, $, ANCHO, ALTO), 02_mundo (Mundo, cIn), 12_paseo (paseando, persona), 13_parcelas (parcelas), 14_historia (aviso, carga),
 //   15_tiempo (esc), 16_vida (enQuad, mira, conejos, quad, enDron, dron), 19_balizas (avisoBaliza, dibujaBalizasMini), 25_perros (dibujaPerrosMini),
-//   26_presencia (Presencia), 90_final (cuadro)
+//   26_presencia (Presencia), 34_movibles (Movibles), 90_final (cuadro)
 // ===============================================================================
   // ---------- el minimapa del paseo: la ortofoto vista desde arriba con tú, tu rastro, el dron y los conejos (M o un toque cambia el zoom)
   var mini = { cv: $("mapita"), cerca: false, oculto: false, rastro: [], t: 0, pts: [], bal: [], sel: null }, MW = 240, MH = Math.round(MW * ALTO / ANCHO);
@@ -11,7 +11,7 @@
   var SEL_T = 4, TOQUE = 14;
   (function () {
     var dpr = Math.min(window.devicePixelRatio || 1, 2); mini.cv.width = MW * dpr; mini.cv.height = MH * dpr; mini.cv.style.width = MW + "px"; mini.cv.style.height = MH + "px"; mini.dpr = dpr; mini.ctx = mini.cv.getContext("2d");
-    function cambia() { mini.cerca = !mini.cerca; mini.t = 1; mini.cv.title = mini.cerca ? "Vista cercana: toca para ver toda la finca" : "Toda la finca: toca para acercar"; }
+    function cambia() { mini.cerca = !mini.cerca; mini.t = 1; mini.cv.title = mini.cerca ? "Vista cercana: toca para ver toda la finca" : "Toda la finca: toca para acercar"; pintaZoom(); }
     mini.cv.addEventListener("click", function (e) {
       var r = mini.cv.getBoundingClientRect(), x = (e.clientX - r.left) * MW / (r.width || MW), y = (e.clientY - r.top) * MH / (r.height || MH), mejor = null, dm = TOQUE * TOQUE;
       mini.pts.forEach(function (p) { var d = (p.px - x) * (p.px - x) + (p.py - y) * (p.py - y); if (d < dm) { dm = d; mejor = p; } });
@@ -25,16 +25,39 @@
       mini.t = 1;
     });
     mini.cv.title = "Toda la finca: toca para acercar";
-    // la brújula (N ↑) oculta o muestra el minimapa; se recuerda en este navegador (si el almacenamiento falla, solo dura la visita)
+    // el minimapa es una ventana flotante y movible (34_movibles.js): una barra con el agarre ⠿, el zoom y plegar. Plegado deja solo la barra (así se vuelve a abrir
+    // también con el dedo); M lo pliega y lo despliega en el paseo. La brújula (N ↑) ya no lo oculta. Se recuerda en este navegador (si el almacenamiento falla, solo dura la visita)
     try { mini.oculto = localStorage.getItem("gemelo.minimapa") === "oculto"; } catch (e) {}
     var bru = $("norte");
-    function pintaBru() { if (!bru) return; bru.setAttribute("aria-pressed", String(!mini.oculto)); bru.title = mini.oculto ? "Brújula: toca para mostrar el minimapa" : "Brújula: toca para ocultar el minimapa"; }
-    if (bru) bru.addEventListener("click", function () { mini.oculto = !mini.oculto; pintaBru(); try { localStorage.setItem("gemelo.minimapa", mini.oculto ? "oculto" : "visible"); } catch (e) {} });
-    pintaBru();
-    window.addEventListener("keydown", function (e) { if (!paseando || e.code !== "KeyM") return; var t = e.target && e.target.tagName; if (t === "INPUT" || t === "SELECT" || t === "TEXTAREA") return; cambia(); e.preventDefault(); });
+    if (bru) { bru.removeAttribute("aria-pressed"); bru.title = "Brújula: el norte, arriba"; }
+    var mb = "font:inherit;color:inherit;background:none;border:0;min-width:44px;min-height:44px;cursor:pointer;padding:0;font-size:17px";
+    function boton(txt, etiqueta, clase) { var b = document.createElement("button"); b.type = "button"; b.textContent = txt; b.setAttribute("aria-label", etiqueta); b.title = etiqueta; b.style.cssText = mb; if (clase) b.className = clase; return b; }
+    var agarre = boton("⠿", "Mover el minimapa: flechas del teclado (Mayús, más deprisa; Inicio, a su sitio)", "agarre"), tit = document.createElement("strong"),
+      bZoom = boton("🔍", "Acercar el mapa"), bPlega = boton("▾", "Plegar el minimapa"), asa = document.createElement("div");
+    agarre.style.cursor = "grab"; agarre.style.color = "rgba(255,255,255,0.7)"; tit.textContent = "Mapa"; tit.style.cssText = "flex:1;font-size:13px;padding-right:6px";
+    asa.className = "asa"; asa.style.cssText = "display:flex;align-items:center;gap:2px;padding-left:2px;cursor:grab"; [agarre, tit, bZoom, bPlega].forEach(function (e) { asa.appendChild(e); });
+    var wrap = document.createElement("div"); wrap.id = "mapaFlotante"; wrap.hidden = true;
+    wrap.style.cssText = "position:absolute;left:14px;top:48px;z-index:6;border-radius:10px;overflow:hidden;width:max-content;max-width:calc(100% - 28px);background:rgba(16,20,24,0.88);color:#fff;font:13px system-ui,sans-serif;border:1.5px solid rgba(255,255,255,0.25);box-shadow:0 4px 16px rgba(0,0,0,.28)";
+    mini.cv.parentNode.insertBefore(wrap, mini.cv); wrap.appendChild(asa); wrap.appendChild(mini.cv);
+    mini.cv.hidden = false; mini.cv.style.cssText += ";position:static;display:block;border:0;border-radius:0;box-shadow:none;max-width:none";
+    mini.wrap = wrap;
+    function pintaZoom() { bZoom.setAttribute("aria-pressed", String(mini.cerca)); bZoom.title = mini.cerca ? "Ver toda la finca" : "Acercar el mapa"; bZoom.setAttribute("aria-label", bZoom.title); }
+    function pintaPlega() { mini.cv.hidden = mini.oculto; bPlega.textContent = mini.oculto ? "▸" : "▾"; bPlega.title = mini.oculto ? "Desplegar el minimapa (M)" : "Plegar el minimapa (M)"; bPlega.setAttribute("aria-label", bPlega.title); bPlega.setAttribute("aria-expanded", String(!mini.oculto)); }
+    function plega(v) {
+      mini.oculto = v; pintaPlega(); mini.t = 1;
+      try { localStorage.setItem("gemelo.minimapa", mini.oculto ? "oculto" : "visible"); } catch (e) {}
+      if (typeof Movibles !== "undefined" && Movibles) Movibles.revisa();   // al plegarse o desplegarse cambia de tamaño: que no pise nada
+    }
+    bZoom.addEventListener("click", cambia); bPlega.addEventListener("click", function () { plega(!mini.oculto); });
+    pintaZoom(); pintaPlega();
+    mini.plega = plega;
+    // 34_movibles.js se carga después de este módulo: se engancha cuando ya está
+    setTimeout(function () { if (typeof Movibles !== "undefined" && Movibles) mini.mov = Movibles.hazMovible(wrap, asa, "mapa", null, { defecto: function (d) { return d.tactil ? { x: d.W - d.mg.r - d.w - 10, y: d.mg.t + 64 } : { x: d.mg.l + 14, y: d.mg.t + 112 }; } }); }, 0);
+    window.addEventListener("keydown", function (e) { if (!paseando || e.code !== "KeyM") return; var t = e.target && e.target.tagName; if (t === "INPUT" || t === "SELECT" || t === "TEXTAREA") return; plega(!mini.oculto); e.preventDefault(); });
   })();
   function actualizaMinimapa(dt) {
-    mini.cv.hidden = !paseando || mini.oculto;
+    var ver = paseando; mini.wrap.hidden = !ver;
+    if (ver !== mini.ver) { mini.ver = ver; if (ver && mini.mov) mini.mov.coloca(); }   // al aparecer, a su sitio guardado (o el de partida), fuera de los controles
     if (!paseando) { mini.rastro.length = 0; return; }
     var u = mini.rastro[mini.rastro.length - 1];
     if (u && Math.hypot(u[0] - pp.x, u[1] - pp.y) > 25) mini.rastro.length = 0;   // un salto (ir con alguien): el rastro empieza de nuevo, sin una raya de lado a lado

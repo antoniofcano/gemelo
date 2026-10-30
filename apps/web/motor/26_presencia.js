@@ -1,8 +1,9 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Muneco, Encuentro, sitioJunto, avatarVRM, Presencia
 // Consume: 01_datos (D, $), 02_mundo (suelo, copas), 03_escena (visor, renderer, scene, camera, texColor, exag, modo), 06_arboles (tronco),
-//   09_camara (objetivo), 12_paseo (paseando, persona), 12b_llegada (Llegada), 13b_hazas (HazasPuro), 15_tiempo (ahoraMs, rumbo, hace),
-//   16_vida (enQuad, mira, quad, vidaPaseo, enDron, dron), 29_vr (VRX, vrFundido, panel)
+//   09_camara (objetivo), 12_paseo (paseando, persona), 12b_llegada (Llegada), 13b_hazas (HazasPuro), 14_historia (lista, carga),
+//   15_tiempo (ahoraMs, rumbo, hace), 16_vida (enQuad, mira, quad, vidaPaseo, enDron, dron), 17_minimapa (mini), 29_vr (VRX, vrFundido, panel),
+//   34_movibles (Movibles)
 // Nota: Publica además window.__presencia (pruebas). Sin ?presencia=sim o ?presencia=red no crea nada (con red, import("livekit-client") y el panel Gente); el trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/presencia.test.js.
 // ===============================================================================
   // ---------- presencia compartida (F2, contratos/presencia.md): la pose de cada visitante en binario, su interpolación y los avatares de bloque instanciados.
@@ -703,22 +704,36 @@
 
     // ---- apartado Gente y chat (solo con ?presencia=red). Todo el texto que llega se pone con textContent: nunca como HTML
     function el(tag, props, hijos) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === "style") e.style.cssText = props[k]; else if (k in e) e[k] = props[k]; else e.setAttribute(k, props[k]); }); (hijos || []).forEach(function (h) { e.appendChild(typeof h === "string" ? document.createTextNode(h) : h); }); return e; }
+    // el chat es una ventana flotante que se mueve (34_movibles.js): barra con agarre ⠿, «Llevar a…» ⋯ y minimizar –; minimizada es una burbuja, también movible,
+    // con los mensajes sin leer. La lista de Gente va en #ventanaGente si la página la trae (UX §6); si no, dentro del chat, como hasta ahora
+    function conMov(fn) { if (typeof Movibles !== "undefined" && Movibles && Movibles.hazMovible) fn(); else setTimeout(function () { if (typeof Movibles !== "undefined" && Movibles && Movibles.hazMovible) fn(); }, 0); }   // 34_ se carga después de este módulo
     function montaPanel() {
-      var boton = "font:inherit;color:inherit;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.3);border-radius:8px;padding:4px 10px;min-height:32px;cursor:pointer";
-      var titulo = el("button", { type: "button", style: boton + ";width:100%;text-align:left;font-weight:600", "aria-expanded": "true" }, ["Gente"]);
-      var cuerpo = el("div", {});
+      var boton = "font:inherit;color:inherit;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.3);border-radius:8px;padding:4px 10px;min-height:44px;cursor:pointer";
+      var mini = "font:inherit;color:inherit;background:none;border:0;min-width:44px;min-height:44px;cursor:pointer;padding:0;font-size:18px";
+      var agarre = el("button", { type: "button", className: "agarre", style: mini + ";cursor:grab;color:rgba(255,255,255,0.7)", "aria-label": "Mover el chat: flechas del teclado (Mayús, más deprisa; Inicio, a su sitio)", title: "Arrastra para mover el chat" }, ["⠿"]);
+      var titulo = el("strong", { style: "flex:1;font-size:14px" }, ["Chat"]);
+      var llevar = el("button", { type: "button", style: mini, "aria-label": "Llevar el chat a…", title: "Llevar a…" }, ["⋯"]);
+      var minimiza = el("button", { type: "button", style: mini, "aria-label": "Minimizar el chat", title: "Minimizar" }, ["–"]);
+      var asa = el("div", { className: "asa", style: "display:flex;align-items:center;gap:2px;padding-left:2px;border-bottom:1px solid rgba(255,255,255,0.2);cursor:grab" }, [agarre, titulo, llevar, minimiza]);
+      var cuerpo = el("div", { style: "flex:1;min-height:0;overflow:auto;padding:0 8px" });
       var estado = el("p", { style: "margin:6px 0;color:#ffd58a", role: "status" });
       var reentra = el("button", { type: "button", style: boton, hidden: true }, ["Volver a entrar"]);
-      var listaG = el("ul", { style: "list-style:none;margin:6px 0;padding:0;max-height:22vh;overflow:auto" });
-      var chat = el("ol", { style: "list-style:none;margin:6px 0;padding:0;max-height:18vh;overflow:auto", "aria-live": "polite", "aria-label": "Chat de la visita" });
-      var entrada = el("input", { type: "text", maxLength: Chat.MAX, autocomplete: "off", placeholder: "Escribe a la visita", "aria-label": "Mensaje para la visita (no se guarda)", style: "flex:1;min-width:0;font:inherit;padding:4px 6px;border-radius:6px;border:1px solid rgba(255,255,255,0.3);background:rgba(0,0,0,0.3);color:inherit" });
-      var forma = el("form", { style: "display:flex;gap:6px" }, [entrada, el("button", { type: "submit", style: boton }, ["Enviar"])]);
-      var nota = el("p", { style: "margin:4px 0 0;opacity:0.7;font-size:11px" }, ["Visita libre: sin voz. El chat no se guarda."]);
-      cuerpo.appendChild(estado); cuerpo.appendChild(reentra); cuerpo.appendChild(listaG); cuerpo.appendChild(chat); cuerpo.appendChild(forma); cuerpo.appendChild(nota);
-      var raiz = el("section", { id: "presenciaGente", "aria-label": "Gente en la visita", style: "position:absolute;right:12px;bottom:12px;z-index:30;width:min(280px,calc(100% - 24px));max-height:60vh;overflow:auto;padding:8px;border-radius:12px;background:rgba(16,20,24,0.86);color:#fff;font:13px/1.35 system-ui,sans-serif;box-sizing:border-box" }, [titulo, cuerpo]);
-      titulo.addEventListener("click", function () { var abierto = titulo.getAttribute("aria-expanded") === "true"; titulo.setAttribute("aria-expanded", abierto ? "false" : "true"); cuerpo.hidden = abierto; });
+      var gTitulo = el("h3", { style: "margin:6px 0 0;font-size:13px" }, ["Gente"]);
+      var listaG = el("ul", { style: "list-style:none;margin:4px 0;padding:0;max-height:22vh;overflow:auto" });
+      var gSeccion = el("div", { id: "presenciaListaGente" }, [gTitulo, listaG]);
+      var chat = el("ol", { style: "list-style:none;margin:6px 0;padding:0", "aria-live": "polite", "aria-label": "Chat de la visita" });
+      var entrada = el("input", { type: "text", maxLength: Chat.MAX, autocomplete: "off", placeholder: "Escribe a la visita", "aria-label": "Mensaje para la visita (no se guarda)", style: "flex:1;min-width:0;font:inherit;min-height:44px;padding:0 8px;border-radius:8px;border:1px solid rgba(255,255,255,0.3);background:rgba(0,0,0,0.3);color:inherit" });
+      var forma = el("form", { style: "display:flex;gap:6px;padding:6px 8px 0" }, [entrada, el("button", { type: "submit", style: boton }, ["Enviar"])]);
+      var nota = el("p", { style: "margin:4px 0;padding:0 8px;opacity:0.7;font-size:11px" }, ["Visita libre: sin voz. El chat no se guarda."]);
+      var ventanaG = document.getElementById("ventanaGente");
+      cuerpo.appendChild(estado); cuerpo.appendChild(reentra); if (!ventanaG) cuerpo.appendChild(gSeccion); cuerpo.appendChild(chat);
+      if (ventanaG) ventanaG.appendChild(gSeccion);
+      var raiz = el("section", { id: "presenciaGente", "aria-label": "Chat y gente de la visita", style: "position:absolute;left:12px;bottom:12px;z-index:30;width:min(300px,calc(100% - 24px));height:min(320px,46%);display:flex;flex-direction:column;overflow:hidden;border-radius:12px;background:rgba(16,20,24,0.88);color:#fff;font:13px/1.35 system-ui,sans-serif;box-sizing:border-box" }, [asa, cuerpo, forma, nota]);
+      var cont = el("span", { style: "position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;padding:0 4px;box-sizing:border-box;border-radius:10px;background:#e5484d;color:#fff;font-size:12px;line-height:20px;text-align:center", hidden: true });
+      var burbuja = el("button", { type: "button", id: "presenciaBurbuja", style: "position:absolute;left:12px;bottom:12px;z-index:30;width:56px;height:56px;padding:0;border-radius:50%;border:1px solid rgba(255,255,255,0.3);background:rgba(16,20,24,0.88);color:#fff;font-size:24px;cursor:grab;display:grid;place-items:center", hidden: true }, ["💬", cont]);
       reentra.addEventListener("click", function () { conecta(); });
-      entrada.addEventListener("keydown", function (e) { e.stopPropagation(); });   // al escribir, las pulsaciones no mueven al paseante
+      entrada.addEventListener("keydown", function (e) { e.stopPropagation(); if (e.key === "Escape") { ponChat("minimo"); burbuja.focus(); } });   // al escribir, las pulsaciones no mueven al paseante; Esc minimiza
+      minimiza.addEventListener("click", function () { ponChat("minimo"); burbuja.focus(); });
       forma.addEventListener("submit", function (e) {
         e.preventDefault();
         var txt = Chat.limpia(entrada.value), ahora = performance.now();
@@ -726,8 +741,28 @@
         tChat = ahora; entrada.value = "";
         sala.localParticipant.publishData(Chat.codifica(txt), { reliable: true, topic: "chat" }).then(function () { anadeMensaje("Tú", txt, true); }, function () { ponEstado("No se pudo mandar el mensaje.", false); });
       });
-      (visor || document.body).appendChild(raiz);
-      ui = { raiz: raiz, titulo: titulo, estado: estado, reentra: reentra, listaG: listaG, chat: chat };
+      (visor || document.body).appendChild(raiz); (visor || document.body).appendChild(burbuja);
+      ui = { raiz: raiz, burbuja: burbuja, cont: cont, titulo: titulo, gTitulo: gTitulo, gSeccion: gSeccion, cuerpo: cuerpo, estado: estado, reentra: reentra, listaG: listaG, chat: chat, entrada: entrada, noLeidos: 0, ventana: "abierto", mov: null, movB: null };
+      conMov(function () {
+        if (!ui || ui.raiz !== raiz) return;
+        var defecto = function (d) { return d.tactil ? { x: d.mg.l + 10, y: d.H * 0.36 } : { x: d.mg.l + 12, y: d.H - d.mg.b - d.h - 12 }; };   // escritorio, abajo a la izquierda; táctil, a la izquierda por encima de la cruceta
+        ui.mov = Movibles.hazMovible(raiz, asa, "chat", null, { defecto: defecto });
+        ui.movB = Movibles.hazMovible(burbuja, burbuja, "burbuja", function () { ponChat("abierto"); }, { defecto: function (d) { return { x: d.mg.l + 10, y: d.H * (d.tactil ? 0.42 : 0.7) }; } });
+        ui.mov.menuLlevar(llevar);
+        ponChat(ui.ventana, true);
+      });
+    }
+    function ponChat(s, sinFoco) {
+      if (!ui) return;
+      ui.ventana = s;
+      if (s === "abierto") { ui.burbuja.hidden = true; ui.raiz.hidden = false; ui.noLeidos = 0; if (ui.mov) ui.mov.coloca(); if (!sinFoco) ui.entrada.focus({ preventScroll: true }); }
+      else { ui.raiz.hidden = true; ui.burbuja.hidden = false; if (ui.movB) ui.movB.coloca(); }
+      pintaNoLeidos();
+    }
+    function pintaNoLeidos() {
+      if (!ui) return;
+      var n = ui.noLeidos; ui.cont.hidden = !n; ui.cont.textContent = n > 99 ? "99+" : String(n);
+      ui.burbuja.setAttribute("aria-label", "Abrir el chat" + (n ? " (" + n + " sin leer)" : "") + ". Arrastra para mover");
     }
     function ponEstado(t, conBoton) { if (!ui) return; ui.estado.textContent = t; ui.estado.hidden = !t; ui.reentra.hidden = !conBoton; }
     function anadeMensaje(quien, txt, mio) {   // solo en memoria, los últimos 40: el chat no se guarda (decisión 40)
@@ -735,13 +770,14 @@
       if (!ui) return;
       ui.chat.appendChild(el("li", { style: "margin:2px 0" + (mio ? ";opacity:0.85" : "") }, [el("strong", {}, [quien + ": "]), txt]));
       while (ui.chat.children.length > 40) ui.chat.removeChild(ui.chat.firstChild);
-      ui.chat.scrollTop = ui.chat.scrollHeight;
+      ui.cuerpo.scrollTop = ui.cuerpo.scrollHeight;
+      if (!mio && ui.ventana === "minimo") { ui.noLeidos++; pintaNoLeidos(); }
     }
     function pintaGente(ahoraMs) {
       if (!ui) return;
       var enMundo = !!(sala && poseLocal(ahoraMs)), g = SalaPose.gente(SP, ahoraMs), clave = (yo ? "1" : "0") + (enMundo ? "m" : "a") + g.map(function (x) { return x.id + x.estado + (bloqueados[x.id] ? "b" : ""); }).join("|");
       if (clave === claveGente) return; claveGente = clave;
-      ui.titulo.textContent = "Gente (" + (g.length + (yo ? 1 : 0)) + ")";
+      ui.gTitulo.textContent = "Gente (" + (g.length + (yo ? 1 : 0)) + ")";
       while (ui.listaG.firstChild) ui.listaG.removeChild(ui.listaG.firstChild);
       if (yo) ui.listaG.appendChild(el("li", { style: "margin:3px 0" }, [el("strong", {}, ["Tú · " + yo.info.alias]), " · " + (enMundo ? "en el olivar" : "en vista aérea (no te ven)")]));
       g.forEach(function (x) {
@@ -820,13 +856,14 @@
       activo = false;
       if (avatarVRM) avatarVRM.libera();
       if (sala) { var s = sala; sala = null; s.disconnect(); }
-      if (ui) { ui.raiz.remove(); ui = null; }
+      if (ui) { ui.raiz.remove(); ui.burbuja.remove(); ui.gSeccion.remove(); ui = null; }
       scene.remove(grupo); [mCuerpo, mCabeza, mSombrero, mManos, mNombres, mQuad, mDron].forEach(function (m) { if (m) m.dispose(); }); mQuad = null; mDron = null;
       geos.forEach(function (g) { g.dispose(); }); mats.forEach(function (m) { m.dispose(); }); if (texNombres) texNombres.dispose();
       grupo = null; V = []; red = []; porId = Object.create(null); mensajes = [];
     }
     function texto() { return activo ? "presencia (" + variante + ") " + est.n + " · cerca " + est.cerca + " · " + est.bps + " B/s · JS " + est.ms.toFixed(2) + " ms" + (variante === "sim" ? " · retardo p95 " + est.retP95 + " ms" : sala ? "" : " · sin conexión") : ""; }
-    if (variante === "sim") inicia(); else if (variante === "red") iniciaRed();
+    if (variante === "sim") { inicia(); if (/[?&]chat=1(&|$)/.test(location.search)) montaPanel(); }   // &chat=1 (solo pruebas): la ventana del chat también en la simulación, sin sala
+    else if (variante === "red") iniciaRed();
     function llegadas() { return { origen: performance.timeOrigin, l: medLlegadas ? medLlegadas.splice(0) : null }; }
     // para los avatares VRM (26b_avatares.js): las personas (todas, o solo las que se dibujan), tu id de avatar (de tus metadatos), recolorear el muñeco
     // lejano con los colores de su avatar y si ha entrado alguien desde la última vez que se preguntó
@@ -835,6 +872,7 @@
     function miVrm() { return yo && yo.info ? yo.info.vrm : null; }
     function recolorea(a, camisa, piel) { if (!mCuerpo) return; if (camisa != null) a.camisa = camisa; if (piel != null) a.piel = piel; colorea(a); }
     function cambiaron() { var c = cambio; cambio = false; return c; }
+    window.__presenciaChat = function (txt) { anadeMensaje("Prueba", String(txt || "Hola"), false); };   // pruebas del chat movible (la ventana solo existe con ?presencia=red o &chat=1)
     return { activo: function () { return activo; }, actualiza: actualiza, estado: estado, libera: libera, texto: texto, llegadas: llegadas, puntos: puntos, irCon: irCon,
       vrmPersonas: vrmPersonas, miVrm: miVrm, recolorea: recolorea, cambiaron: cambiaron };
   })();
