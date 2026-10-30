@@ -2,7 +2,7 @@
 // Expone: (nada al resto de módulos)
 // Consume: 01_datos (D, $), 02_mundo (suelo), 02c_componentes (Componentes), 02e_entidades (Entidades),
 //   03_escena (visor, renderer, scene, camera, texColor, exag, modo), 06_arboles (tronco), 09_camara (objetivo, suelta, elige),
-//   12_paseo (paseando, persona, primera), 12b_llegada (Llegada), 14_historia (lista), 15_tiempo (rumbo, hace),
+//   12_paseo (paseando, persona, primera), 12b_llegada (Llegada), 14_historia (lista, aviso), 15_tiempo (rumbo, hace),
 //   16_vida (enQuad, quita, mira, quad, enDron, dron), 26_presencia (PoseCodec, BufferPose, Aspecto, SalaPose, Chat, Muneco, Encuentro, sitioJunto),
 //   29_vr (VRX, vrFundido, panel, ficha), 34_movibles (Movibles)
 // Nota: Componente «presencia-compartida» (ADR-0023, C5): solo se registra; consume la red (sala «visita») y expone «Presencia» (para los avatares VRM). Sin ?presencia=sim o ?presencia=red, montado no crea nada; con red, el panel Gente y el chat. Registra el tipo persona en Entidades (C7) y da su línea de ?debug por «depura:lineas». Publica window.__presencia y window.__presenciaChat (pruebas). Lo prueba en Node pruebas/guardianes/red.test.js.
@@ -355,7 +355,13 @@
       if (SR) conecta(); else ponEstado("La visita compartida no está disponible en esta página.", false);
     }
     function dispositivo() { var ua = navigator.userAgent || ""; return /OculusBrowser|Quest/i.test(ua) ? "quest" : /Mobi|Android|iPhone|iPad/i.test(ua) ? "movil" : "escritorio"; }
+    var volverGeneral = "";   // OF10b: el aviso de que no te dejaron entrar en la sala de la visita; tras él se vuelve a la general
+    // OF10b: entra en la sala de claveSala; si la api la niega por ser de un evento (403 visita_solo_inscritos), avisa con amabilidad y vuelve a la general
     async function conecta() {
+      await conectaUna();
+      if (volverGeneral) { var msgSala = volverGeneral; volverGeneral = ""; await conectaUna(); ponEstado(msgSala, false); pintaNota(); }
+    }
+    async function conectaUna() {
       if (conectando || sala || !SR) return;
       conectando = true; ponEstado("Entrando en la visita compartida…", false);
       try {
@@ -364,6 +370,11 @@
         var r = await fetch("/api/presencia/token", { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify(cuerpo) });
         if (!r.ok) {
           var e = null; try { e = await r.json(); } catch (x) { e = null; }
+          // OF10b: la sala de la visita ligada a un evento de la agenda es solo de las familias apuntadas (403 visita_solo_inscritos): mensaje amable y de vuelta a la general
+          if (r.status === 403 && e && e.error === "visita_solo_inscritos" && claveSala !== "general") {
+            claveSala = "general"; volverGeneral = typeof e.mensaje === "string" && e.mensaje ? e.mensaje : "Esta visita es para las familias apuntadas.";
+            return;
+          }
           ponEstado(r.status === 401 ? "Entra con tu enlace para ver a los demás." : (e && typeof e.mensaje === "string" ? e.mensaje : "No se pudo entrar en la visita compartida (" + r.status + ")."), true);
           return;
         }
@@ -400,7 +411,7 @@
       if (!SR || !Object.prototype.hasOwnProperty.call(SALAS_MUNDO, clave) || conectando) return Promise.resolve(false);
       if (clave === claveSala && sala) return Promise.resolve(false);
       claveSala = clave; Object.keys(porId).forEach(saleOtro); sala = null; yo = null; claveGente = "";   // así el «fuera» de la sala vieja no avisa de nada
-      return conecta().then(function () { pintaNota(); return !!sala; });
+      return conecta().then(function () { pintaNota(); return !!sala && claveSala === clave; });
     }
     function pintaNota() { if (ui && ui.nota) ui.nota.textContent = SALAS_MUNDO[claveSala] + ": sin voz. El chat no se guarda."; }
     // de = { identidad, metadatos } (37_red.js): los metadatos los pone la api en el token y se leen como DATOS (SalaPose.leeInfo)
