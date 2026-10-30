@@ -6,26 +6,22 @@
 // Escribe la orden del encargo al banco: variantes calc (?olivosHorneado=0) y horn, con ?olivosPropios=0 (todo lo cercano son variantes) y ?epoca=envero.
 import fs from "node:fs";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
+import { createRequire } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const AQUI = path.dirname(fileURLToPath(import.meta.url)), RAIZ = path.resolve(AQUI, "..", "..", ".."), OLIVO = path.join(RAIZ, "apps", "web", "olivo");
 const i = process.argv.indexOf("--salida"), SAL = path.resolve(RAIZ, i > 0 ? process.argv[i + 1] : path.join("pruebas", "salida", "o7e-banco"));
-const FX = path.join(RAIZ, "pruebas", "salida", "fixture", "hituelo", "indice.json");
-if (!fs.existsSync(FX)) { console.error("falta el fixture: npm run fixture"); process.exit(1); }
+const FX = path.join(RAIZ, "pruebas", "salida", "fixture");
+if (!fs.existsSync(path.join(FX, "hituelo", "indice.json"))) { console.error("falta el fixture: npm run fixture"); process.exit(1); }
+// la página: el cliente web (Vite) con el constructor empaquetado y el tileset, de montaPagina (pruebas/guardianes/_pagina.js, T8 fase 2)
+const { montaPagina } = createRequire(import.meta.url)(path.join(RAIZ, "pruebas", "guardianes", "_pagina.js"));
 const O = await import(pathToFileURL(path.join(OLIVO, "index.js")).href);
 const { horneaObjeto } = await import(pathToFileURL(path.join(OLIVO, "horneado_node.js")).href);
 const CAL = JSON.parse(fs.readFileSync(path.join(RAIZ, "contratos", "epocas-calendario.json"), "utf8")).comun;
 
-function corre(cmd, args, cwd) {
-  const r = spawnSync(cmd, args, { cwd: cwd || RAIZ, encoding: "utf8" });
-  if (r.status !== 0) { console.error(cmd + " " + args.join(" ") + " falló:\n" + r.stdout + r.stderr); process.exit(1); }
-}
-fs.rmSync(SAL, { recursive: true, force: true }); fs.mkdirSync(path.join(SAL, "olivos"), { recursive: true });
-const IIFE = path.join(SAL, "_iife");
-corre(process.execPath, [path.join("herramientas", "iife.mjs"), "--salida", IIFE], OLIVO);
-corre(process.env.PYTHON || "python", ["-I", path.join("tuberia", "salida_artefacto", "montar_v2.py"), "--datos", path.relative(RAIZ, FX), "--modo", "ficheros",
-  "--salida", path.relative(RAIZ, path.join(SAL, "index.html")), "--olivos", path.join(IIFE, "olivo.iife.js")]);
+const P = montaPagina({ finca: "hituelo", olivos: true, fixture: FX });   // de la caché de páginas: se copia, porque aquí se le añade olivos/
+fs.rmSync(SAL, { recursive: true, force: true }); fs.cpSync(P.carpeta, SAL, { recursive: true });
+fs.mkdirSync(path.join(SAL, "olivos"), { recursive: true });
 
 // las variantes que hornearía el hornero hoy: centenario3, las 4 semillas de SEM_VAR, E2 y E2VR, la época de partida y la siguiente
 const SEMS = [11, 23, 37, 51], NIVELES = ["E2", "E2VR"], EPOCAS = ["envero", "madura"], variantes = [];
@@ -40,7 +36,6 @@ for (const epoca of EPOCAS) for (const semilla of SEMS) {
 const m = { v: 1, finca: "hituelo", formato: O.FORMATO_HORNEADO, gen_version: O.GEN_VERSION, cache_version: O.CACHE_VERSION, horneado_en: new Date().toISOString().replace(/\.\d+Z$/, "Z"),
   brotli: 9, actual: "envero", epocas: EPOCAS.map(x => ({ epoca: x, desde: CAL[x].desde, hasta: CAL[x].hasta })), variantes, propios: { activos: false } };
 fs.writeFileSync(path.join(SAL, "olivos", "manifiesto.json"), JSON.stringify(m, null, 2) + "\n");
-fs.rmSync(IIFE, { recursive: true, force: true });
 const q = "?olivos=gen&olivosDir=olivos/&olivosPropios=0&epoca=envero";
 console.log(variantes.length + " variantes horneadas en " + path.relative(RAIZ, SAL) + "/olivos/ (" + O.GEN_VERSION + ", c" + O.CACHE_VERSION + ")");
 console.log("encargo: npm run banco:encarga -- --raiz " + path.relative(RAIZ, SAL).split(path.sep).join("/") + " --escenarios cerca --capturas --de O7e" +

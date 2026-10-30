@@ -45,11 +45,10 @@ test("la puerta, el Chrome de las pruebas y la e2e de Docker pasan por el turno"
 
 test("[hituelo] el banco mide y captura el PASEO: ronda pequeña con paseo y paseoAnda sobre el fixture (pide el turno solo)", { timeout: 420000 }, async t => {
   const { motivoSalto, sirve, lanza, mide, TODOS_ESCENARIOS } = require("./_navegador");
-  const { python, fixture, ejecuta } = require("./_util");
-  const salto = motivoSalto("el paseo en el banco"); if (salto) return t.skip(salto);
-  const FX = fixture(), WEB = propia("banco-paseo"), html = path.join(WEB, "hituelo", "index.html");
-  const m = ejecuta(python(), ["-I", "tuberia/salida_artefacto/montar_v2.py", "--finca", "hituelo", "--modo", "ficheros", "--datos", path.relative(RAIZ, path.join(FX, "hituelo", "indice.json")), "--salida", path.relative(RAIZ, html)]);
-  assert.strictEqual(m.status, 0, m.stdout + m.stderr);
+  const { montaPagina, saltoPagina } = require("./_pagina");
+  const salto = motivoSalto("el paseo en el banco") || saltoPagina("el paseo en el banco"); if (salto) return t.skip(salto);
+  const WEB = propia("banco-paseo");
+  fs.cpSync(montaPagina({ finca: "hituelo" }).carpeta, path.join(WEB, "hituelo"), { recursive: true });
   // el encargo acepta los escenarios del paseo y rechaza los que no existen
   process.env.GEMELO_BANCO = BANCO;
   delete require.cache[require.resolve("../banco/turno")]; delete require.cache[require.resolve("../banco/encarga")];

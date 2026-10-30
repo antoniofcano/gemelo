@@ -87,20 +87,17 @@ test("toque frente a arrastre: umbral de movimiento (px) y de tiempo (ms)", () =
   assert.ok(P.esToque(3, 200, undefined), "tipo desconocido: como el ratón");
 });
 
-// ---------- en el navegador (Cerro del fixture, por file://). Chrome por lanza(): el compartido de la puerta o uno propio dentro del turno del banco.
+// ---------- en el navegador (Cerro del fixture con el cliente web, por HTTP). Chrome por lanza(): el compartido de la puerta o uno propio dentro del turno del banco.
 // Comprueban la LÓGICA (dónde acaba el usuario, qué modo, sin errores); no dicen nada de comodidad ni de fps en un iPhone, un Android o unas Quest.
-const { pathToFileURL } = require("url");
-const { RAIZ, propia, python, fixture, ejecuta, path } = require("./_util");
-const { motivoSalto, lanza } = require("./_navegador");
-const SALTO = motivoSalto("la llegada en el navegador (Dron y VR)");
-let nav, url, preparado = null;
+const { sirve, motivoSalto, lanza } = require("./_navegador");
+const { montaPagina, saltoPagina } = require("./_pagina");
+const SALTO = motivoSalto("la llegada en el navegador (Dron y VR)") || saltoPagina("la llegada en el navegador (Dron y VR)");
+let nav, srv, url, preparado = null;
 const prepara = () => preparado || (preparado = (async () => {
-  const FIX = path.relative(RAIZ, fixture()), pag = path.join(propia("llegada"), "cerro", "index.html");
-  const r = ejecuta(python(), ["-I", "tuberia/salida_artefacto/montar_v2.py", "--datos", FIX + "/cerro/embebido.json", "--salida", path.relative(RAIZ, pag)]);
-  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
-  url = pathToFileURL(pag).href; nav = await lanza();
+  srv = await sirve(montaPagina({ finca: "cerro" }).carpeta); url = "http://127.0.0.1:" + srv.address().port + "/index.html";
+  nav = await lanza();
 })());
-test.after(async () => { if (nav) await nav.close(); });
+test.after(async () => { if (nav) await nav.close(); if (srv) srv.close(); });
 async function abre(mockXR) {
   const p = await nav.newPage({ viewport: { width: 900, height: 650 } }), errores = [];
   if (mockXR) await p.addInitScript({ content: lee("pruebas/mock_xr.js") });

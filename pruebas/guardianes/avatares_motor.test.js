@@ -133,13 +133,12 @@ test("parpadeo: cierres de 0,15 s cada 2-6 s, del 0 al 1 y vuelta", () => {
   assert.ok(n >= 600 / 6.2 && n <= 600 / 2, n + " parpadeos en 10 min"); assert.ok(max > 0.95); cerca(cerr / n, 0.15, 0.02, "duración");
 });
 
-test("motor: @pixiv/three-vrm con versión exacta, pedido con import() solo dentro de Avatares (con presencia); el importmap de la salida artefacto la lleva", () => {
+test("motor: @pixiv/three-vrm con versión exacta, pedido con import() solo dentro de Avatares (con presencia); Vite la resuelve", () => {
   const p = JSON.parse(lee("apps/web/package.json")); assert.strictEqual(p.dependencies["@pixiv/three-vrm"], "3.5.5");
   const f = lee("apps/web/motor/26b_avatares.js");
   assert.match(f, /import\("@pixiv\/three-vrm"\)/); assert.ok(f.indexOf('import("@pixiv/three-vrm")', f.indexOf("[puro:fin]")) > f.indexOf("if (!Presencia.activo()) return null;"), "solo con presencia");
   assert.ok(!/fetch\("http|fetch\('http|https?:\/\//.test(f.replace(/\/\/.*$/gm, "")), "el motor no pide a otros hosts");
   assert.match(lee("apps/web/vite.config.js"), /@pixiv\\\/three-vrm/);
-  assert.match(lee("tuberia/salida_artefacto/montar_v2.py"), /@pixiv\/three-vrm@%s\/lib\/three-vrm\.module\.js/);
 });
 
 // three-vrm de verdad (si apps/web y tuberia/avatares están instalados: npm i en cada una)
@@ -201,15 +200,15 @@ test("varias personas con el mismo avatar: dos análisis del mismo búfer dan la
 
 // ---------------------------------------------------------------- en Chrome (SwiftShader: recuentos y memoria, no fps), con dos VRM sintéticos de la tubería
 const { sirve, motivoSalto, lanza } = require("./_navegador");
-const { propia, python, fixture, ejecuta } = require("./_util");
+const { propia } = require("./_util");
+const { montaPagina, saltoPagina } = require("./_pagina");
 const crypto = require("crypto");
-const SALTO = motivoSalto("los avatares VRM en navegador") || (!fs.existsSync(path.join(RAIZ, "node_modules", "@gltf-transform", "core")) && "falta @gltf-transform/core (npm i en la raíz): los avatares VRM en navegador NO se han comprobado");
+const SALTO = motivoSalto("los avatares VRM en navegador") || saltoPagina("los avatares VRM en navegador") || (!fs.existsSync(path.join(RAIZ, "node_modules", "@gltf-transform", "core")) && "falta @gltf-transform/core (npm i en la raíz): los avatares VRM en navegador NO se han comprobado");
 let srv, nav, base, baseSin;
 test.before(async () => {
   if (SALTO) return;
-  const FIX = path.relative(RAIZ, fixture()), WEB = propia("web-avatares");
-  const r = ejecuta(python(), ["-I", "tuberia/salida_artefacto/montar_v2.py", "--datos", FIX + "/cerro/embebido.json", "--salida", path.relative(RAIZ, path.join(WEB, "cerro", "index.html"))]);
-  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+  const WEB = propia("web-avatares"), P = montaPagina({ finca: "cerro" });
+  fs.cpSync(P.carpeta, path.join(WEB, "cerro"), { recursive: true });
   // el catálogo (contratos/avatares.md v1) con dos sintéticos distintos, en /avatares/ del mismo origen; y una copia de la página sin catálogo
   const { generaVRM } = await import(pathToFileURL(path.join(AV, "sintetico.mjs")).href), dA = path.join(WEB, "avatares"); fs.mkdirSync(dA);
   const avatares = ["sint-a", "sint-b"].map((id, k) => {
@@ -217,7 +216,7 @@ test.before(async () => {
     return { id, nombre: id, fichero: id + ".vrm", sha256: crypto.createHash("sha256").update(b).digest("hex"), bytes: b.length, vrm_version: "1.0", colores_muneco: { camisa: k ? "#b07050" : "#5f7fb0", piel: "#e0b090", sombrero: "ninguno" } };
   });
   fs.writeFileSync(path.join(dA, "catalogo.json"), JSON.stringify({ v: 1, compresion: "ninguna", avatares }));
-  const SIN = propia("web-avatares-sin"); fs.mkdirSync(path.join(SIN, "cerro")); fs.copyFileSync(path.join(WEB, "cerro", "index.html"), path.join(SIN, "cerro", "index.html"));
+  const SIN = propia("web-avatares-sin"); fs.cpSync(P.carpeta, path.join(SIN, "cerro"), { recursive: true });
   srv = [await sirve(WEB), await sirve(SIN)]; base = "http://127.0.0.1:" + srv[0].address().port + "/cerro/index.html"; baseSin = "http://127.0.0.1:" + srv[1].address().port + "/cerro/index.html";
   nav = await lanza();
 });

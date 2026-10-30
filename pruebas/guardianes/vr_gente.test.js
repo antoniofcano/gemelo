@@ -47,19 +47,16 @@ test("la distancia se lee por tramos (y así el panel no se repinta a cada paso 
   assert.notStrictEqual(G.firma(a), G.firma(c), "cambiar de modo sí");
 });
 
-// ---------- en el navegador (Cerro del fixture, por file://), OPCIONAL con GEMELO_VR=1. Chrome por lanza(): el compartido de la puerta o uno propio dentro del turno.
-const { pathToFileURL } = require("url");
-const { RAIZ, propia, python, fixture, ejecuta, path } = require("./_util");
-const { motivoSalto, lanza } = require("./_navegador");
-const SALTO = motivoSalto("«Ir con» e «Ir a esta baliza» en la VR simulada");
-let nav, url, preparado = null;
+// ---------- en el navegador (Cerro del fixture con el cliente web, por HTTP), OPCIONAL con GEMELO_VR=1. Chrome por lanza(): el compartido de la puerta o uno propio dentro del turno.
+const { sirve, motivoSalto, lanza } = require("./_navegador");
+const { montaPagina, saltoPagina } = require("./_pagina");
+const SALTO = motivoSalto("«Ir con» e «Ir a esta baliza» en la VR simulada") || saltoPagina("«Ir con» e «Ir a esta baliza» en la VR simulada");
+let nav, srv, url, preparado = null;
 const prepara = () => preparado || (preparado = (async () => {
-  const FIX = path.relative(RAIZ, fixture()), pag = path.join(propia("vr-gente"), "cerro", "index.html");
-  const r = ejecuta(python(), ["-I", "tuberia/salida_artefacto/montar_v2.py", "--datos", FIX + "/cerro/embebido.json", "--salida", path.relative(RAIZ, pag)]);
-  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
-  url = pathToFileURL(pag).href; nav = await lanza();
+  srv = await sirve(montaPagina({ finca: "cerro" }).carpeta); url = "http://127.0.0.1:" + srv.address().port + "/index.html";
+  nav = await lanza();
 })());
-test.after(async () => { if (nav) await nav.close(); });
+test.after(async () => { if (nav) await nav.close(); if (srv) srv.close(); });
 
 describe("en el navegador (VR simulada)", () => {
 before(async () => { if (!SALTO && process.env.GEMELO_VR) await prepara(); });
