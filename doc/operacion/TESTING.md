@@ -2,6 +2,19 @@
 
 Dos familias: **guardianes** (proceso, rápidos, en la puerta) y **pruebas de navegador** (medida y comportamiento, con Chrome). Lista de la puerta: [ONBOARDING](ONBOARDING.md#la-puerta).
 
+## Estrategia de pruebas (desde el 2026-10-30)
+
+El cuello de botella es el **banco** (un solo Chrome con SwiftShader o un Docker en un i5): cada minuto de navegador que se ahorra se gana en cada puerta y en cada agente. La estrategia ataca eso sin perder lo que vigilamos. Las tareas que la construyen están en el [tablero](../rumbo/PLAN.md) (PB2, PB4-PB9).
+
+1. **Pirámide: lo más abajo posible.** Primero lógica pura en Node (funciones `XPuro`, milisegundos); el navegador solo confirma el montaje, el dibujo y los recorridos de pantalla; Docker solo lo que necesita la base, LiveKit o el Caddy reales. Una prueba de navegador que comprueba lógica se baja a Node (PB2, PB8).
+2. **Propiedades además de ejemplos.** Para reglas que siempre se cumplen (contratos, validaciones, geometría, calendarios, aforo) se generan miles de casos con `fast-check` en vez de diez a mano (PB7). Ya lo hacíamos a mano en épocas y oficina.
+3. **Solo lo afectado mientras se trabaja; todo antes de subir.** Un selector decide qué pruebas tocan los ficheros cambiados (a partir de las cabeceras Expone/Consume, los contratos y un mapa prueba → rutas); los agentes y las tandas intermedias pasan solo eso; la **puerta completa** sigue siendo obligatoria antes de subir `main` (PB4).
+4. **Pruebas inestables, a la vista.** Un registro de qué prueba ha fallado a veces y por qué (arranque de PostGIS, antivirus, página caída por memoria); un reintento único y marcado para las conocidas, nunca silencioso; una prueba inestable se arregla o se aparta con su tarea, no se tapa (PB6).
+5. **«Se ve igual», con referencia aprobada.** Para lo visual (olivos, avatares, luz, UI) se comparan capturas con una imagen de referencia que aprueba Antonio (Playwright `toHaveScreenshot`, con tolerancia); un cambio visual querido actualiza la referencia en el mismo commit (PB5).
+6. **Recuentos, no fps, en el banco; fps solo en aparatos.** SwiftShader mide triángulos, llamadas y memoria contra `pruebas/presupuesto.json`. La fluidez real sale del medidor del gemelo (`&mide=60`) en el Quest y el móvil, guardada para compararla en el tiempo (PB9); hasta entonces, «no probado».
+7. **La máquina de pruebas, fuera de este equipo.** En cuanto haya CI (G1), la puerta corre en GitHub en paralelo y con caché en cada subida; este equipo queda para los agentes y la VR.
+8. **Cada prueba dice qué vigila y qué no.** Los saltos se anuncian con su motivo («NO se ha comprobado…»), y lo no probado en aparatos se dice no probado.
+
 ## Qué test escribo
 | Cambio | Prueba |
 |---|---|
