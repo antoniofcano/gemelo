@@ -1,0 +1,8 @@
+{
+  "nota": "Firmas de fallos de INFRAESTRUCTURA que se reintentan UNA vez (TESTING.md, «Pruebas inestables a la vista»). Una firma nueva entra con su motivo y la tarea que la arreglará; un fallo que no casa con ninguna no se reintenta nunca.",
+  "firmas": [
+    { "id": "postgis-arranque", "patron": "Health check not healthy after \\d+ms", "motivo": "el contenedor PostGIS de testcontainers no arranca a tiempo (equipo cargado)", "tarea": "PB6: esperar al banco y subir el margen de arranque" },
+    { "id": "eperm-antivirus", "patron": "EPERM[^\\n]*(rename|unlink|rmdir)", "motivo": "el antivirus de Windows retiene un fichero al renombrarlo o borrarlo", "tarea": "PB3: reintento en _pagina.js; falta el resto de renombrados" },
+    { "id": "chrome-sin-memoria", "patron": "Page crashed|Target (page, context or browser )?has been closed", "motivo": "Chrome sin pantalla se queda sin memoria en el equipo de 7,7 GB", "tarea": "PB6: ceder memoria antes del turno (proceso.js --memoria-gb)" }
+  ]
+}
