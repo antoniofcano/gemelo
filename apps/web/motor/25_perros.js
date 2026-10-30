@@ -1,8 +1,9 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: perrosLlegan, amenazaConejo, actualizaPerros, dibujaPerrosMini
-// Consume: 01_datos (D), 02_mundo (copas), 03_escena (camera, texColor), 04d_sombreado_tiles (hash), 07_follaje (matSombra, geoSombra),
-//   12_paseo (paseando), 15_tiempo (esc), 16_vida (tVida, enQuad, gFauna, altSuelo, mira, conejos, quad, enDron, dron), 20_sonido (snd),
-//   22_huellas (pendienteRumbo, emitePolvo, sueloSeco), 24_pantalla (aterriza)
+// Expone: ladrido, perrosLlegan, amenazaConejo, actualizaPerros, dibujaPerrosMini
+// Consume: 01_datos (D), 02_mundo (copas), 02c_componentes (Bus), 03_escena (camera, texColor), 04d_sombreado_tiles (hash),
+//   07_follaje (matSombra, geoSombra), 12_paseo (paseando), 15_tiempo (esc),
+//   16_vida (tVida, enQuad, gFauna, altSuelo, mira, conejos, quad, enDron, dron), 22_huellas (pendienteRumbo, emitePolvo, sueloSeco),
+//   24_pantalla (aterriza)
 // Nota: Publica además window.__perrosDebug (depuración).
 // ===============================================================================
   // ---------- los perros del paseo: una dálmata adulta y un cruce de dálmata y mastín (rubio y sin manchas). Te siguen, exploran, persiguen conejos y vuelven a tu lado.
@@ -43,14 +44,7 @@
   PERROS.forEach(function (d, i) { d.x = 0; d.y = 0; d.ang = 0; d.v = 0; d.est = "fuera"; d.t = 0; d.fase = Math.random() * 6; d.obj = null; d.pit = 0; d.rol = 0; d.sentado = 0; d.ult = 0; d.idx = i; d.parado = 0; d.excit = 0; });
   var jugador = { x: 0, y: 0, v: 0, quieto: 0 }, jugAnt = null;
   function angCorto(a, b) { var d = (b - a) % 6.2832; if (d > 3.1416) d -= 6.2832; if (d < -3.1416) d += 6.2832; return d; }
-  function ladrido(d) {   // guau-guau sintetizado: el cruce, más grave
-    if (!snd.ctx || snd.ctx.state !== "running") return;
-    [0, 0.26].forEach(function (retraso) {
-      var c = snd.ctx, t = c.currentTime + retraso, o = c.createOscillator(), g = c.createGain(), f = c.createBiquadFilter(), grave = d.idx === 1;
-      o.type = "sawtooth"; o.frequency.setValueAtTime(grave ? 160 : 300, t); o.frequency.exponentialRampToValueAtTime(grave ? 95 : 190, t + 0.15); f.type = "bandpass"; f.frequency.value = grave ? 460 : 820; f.Q.value = 1.1;
-      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.2, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.19); o.connect(f); f.connect(g); g.connect(snd.master); o.start(t); o.stop(t + 0.22);
-    });
-  }
+  function ladrido(d) { Bus.emite("sonido:ladrido", { grave: d.idx === 1 }); }   // guau-guau: lo sintetiza quien atienda el evento (el sonido); sin él, calla
   function perrosLlegan() {   // cuando el muñequito aterriza, los perros salen de entre los olivos corriendo hacia él
     PERROS.forEach(function (d, i) { var a = (i ? 2.4 : 0.7) + Math.random() * 0.8; d.x = pp.x + Math.cos(a) * 24; d.y = pp.y + Math.sin(a) * 24; d.ang = Math.atan2(pp.y - d.y, pp.x - d.x); d.v = 0; d.est = "viene"; d.t = 0; d.obj = null; d.malla.visible = true; });
     setTimeout(function () { if (paseando && PERROS[0].est === "viene") ladrido(PERROS[0]); }, 900);

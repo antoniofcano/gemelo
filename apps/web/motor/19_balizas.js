@@ -1,9 +1,9 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: BAL, colocaBalizas, cierraBaliza, balizaAbierta, abreBaliza, balizaVR, eligeBaliza, sueltaBaliza, irABaliza, avisoBaliza,
 //   dibujaBalizasMini, tBal, actualizaBalizas
-// Consume: 01_datos (D, $), 02_mundo (suelo, copas), 03_escena (lienzo, visor, scene, camera, exag), 09_camara (objetivo, suelta),
-//   12_paseo (paseando, teclas), 12b_llegada (Llegada), 13_parcelas (parcelas), 13b_hazas (HazasPuro), 14_historia (VIVO, marca, aviso),
-//   15_tiempo (num1, esc, hace), 16_vida (tVida, enQuad, enDron), 20_sonido (sonidoBaliza), 26_presencia (Encuentro, sitioJunto, Presencia),
+// Consume: 01_datos (D, $), 02_mundo (suelo, copas), 02c_componentes (Bus), 03_escena (lienzo, visor, scene, camera, exag),
+//   09_camara (objetivo, suelta), 12_paseo (paseando, teclas), 12b_llegada (Llegada), 13_parcelas (parcelas), 13b_hazas (HazasPuro),
+//   14_historia (VIVO, marca, aviso), 15_tiempo (num1, esc, hace), 16_vida (tVida, enQuad, enDron), 26_presencia (Encuentro, sitioJunto, Presencia),
 //   29_vr (VRX, ficha)
 // ===============================================================================
   // ---------- las balizas: una por parcela, con lo que OlivarTrack sabe de ella; en el paseo, al acercarte, sale su ficha
@@ -162,7 +162,7 @@
     var mejor = -1, md = 1e9; BAL.forEach(function (g, i) { var pr = parcelas[g.userData.k], d = Math.hypot(pr.centro[0] - (enDron ? dr.x : pp.x), pr.centro[1] - (enDron ? dr.y : pp.y)); if (d < md) { md = d; mejor = i; } });
     var dentro = mejor >= 0 && md < 17;
     if (dentro) {
-      if (!BAL[mejor].userData.visita) { BAL[mejor].userData.visita = true; balVisitas = BAL.filter(function (g) { return g.userData.visita; }).length; if (typeof sonidoBaliza === "function") sonidoBaliza(balVisitas === BAL.length); ultFicha = -2; }
+      if (!BAL[mejor].userData.visita) { BAL[mejor].userData.visita = true; balVisitas = BAL.filter(function (g) { return g.userData.visita; }).length; Bus.emite("sonido:baliza", { completa: balVisitas === BAL.length }); ultFicha = -2; }
       if (mejor !== ultFicha || tBal > 2) { tBal = 0; ultFicha = mejor; $("baliza").innerHTML = fichaBal(BAL[mejor].userData.k); }
       $("baliza").hidden = mejor === balCerrada; balCerca = mejor;   // cerrada con la ×: no vuelve sola hasta que te alejes
     } else { $("baliza").hidden = true; balCerca = -1; ultFicha = -2; balCerrada = -1; }

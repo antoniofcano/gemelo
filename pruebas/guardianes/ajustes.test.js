@@ -23,7 +23,7 @@ function almacen(datos, falla) {
 
 test("valores por defecto de todos los ajustes (los del diseño, UX-FINCA-JUEGO §4.5)", () => {
   const a = P.crea(almacen({}), "");
-  const esperado = { "graficos.calidad": "auto", "graficos.ahorro": false, "vista.exag": 1, "vista.corr": 1, "vista.brujula": true, "vista.unidades": "ha", "sonido.activo": true, "sonido.volumen": 80,
+  const esperado = { "graficos.calidad": "auto", "graficos.ahorro": false, "vista.exag": 1, "vista.corr": 1, "vista.brujula": true, "vista.unidades": "ha", 
     "controles.tactil": "auto", "controles.mano": "diestra", "controles.sens": 1, "controles.invertir": false, "vr.giro": "30", "vr.vineta": "suave", "vr.vuelo": false, "vr.postura": "pie",
     "acc.texto": 100, "acc.contraste": false, "acc.movimiento": "sistema", "avanzado.contador": false };
   assert.deepStrictEqual(a.claves().sort(), Object.keys(esperado).sort());
@@ -33,16 +33,16 @@ test("valores por defecto de todos los ajustes (los del diseño, UX-FINCA-JUEGO 
 
 test("guardado: pon escribe con el prefijo gemelo.ajustes. y otra instancia lo lee; el defecto no se guarda", () => {
   const al = almacen({}), a = P.crea(al, "");
-  assert.ok(a.pon("vr.giro", "45")); assert.ok(a.pon("sonido.volumen", 35)); assert.ok(a.pon("acc.contraste", true));
-  assert.strictEqual(al.d["gemelo.ajustes.vr.giro"], "\"45\""); assert.strictEqual(al.d["gemelo.ajustes.sonido.volumen"], "35");
-  const b = P.crea(al, ""); assert.strictEqual(b.lee("vr.giro"), "45"); assert.strictEqual(b.lee("sonido.volumen"), 35); assert.strictEqual(b.lee("acc.contraste"), true);
+  assert.ok(a.pon("vr.giro", "45")); assert.ok(a.pon("acc.texto", 150)); assert.ok(a.pon("acc.contraste", true));
+  assert.strictEqual(al.d["gemelo.ajustes.vr.giro"], "\"45\""); assert.strictEqual(al.d["gemelo.ajustes.acc.texto"], "150");
+  const b = P.crea(al, ""); assert.strictEqual(b.lee("vr.giro"), "45"); assert.strictEqual(b.lee("acc.texto"), 150); assert.strictEqual(b.lee("acc.contraste"), true);
   a.pon("vr.giro", "30"); assert.ok(!("gemelo.ajustes.vr.giro" in al.d), "volver al defecto borra la clave");
 });
 
 test("validación: lo ilegal se rechaza al poner y se cura al leer (almacén manipulado)", () => {
-  const al = almacen({ "gemelo.ajustes.vr.giro": "\"90\"", "gemelo.ajustes.sonido.volumen": "999", "gemelo.ajustes.acc.contraste": "\"si\"", "gemelo.ajustes.vista.exag": "{roto" }), a = P.crea(al, "");
-  assert.strictEqual(a.lee("vr.giro"), "30"); assert.strictEqual(a.lee("sonido.volumen"), 100); assert.strictEqual(a.lee("acc.contraste"), false); assert.strictEqual(a.lee("vista.exag"), 1);
-  assert.strictEqual(a.pon("vr.giro", "90"), false); assert.strictEqual(a.pon("acc.contraste", "true"), false); assert.strictEqual(a.pon("sonido.volumen", NaN), false); assert.strictEqual(a.pon("nada", 1), false);
+  const al = almacen({ "gemelo.ajustes.vr.giro": "\"90\"", "gemelo.ajustes.acc.texto": "999", "gemelo.ajustes.acc.contraste": "\"si\"", "gemelo.ajustes.vista.exag": "{roto" }), a = P.crea(al, "");
+  assert.strictEqual(a.lee("vr.giro"), "30"); assert.strictEqual(a.lee("acc.texto"), 200); assert.strictEqual(a.lee("acc.contraste"), false); assert.strictEqual(a.lee("vista.exag"), 1);
+  assert.strictEqual(a.pon("vr.giro", "90"), false); assert.strictEqual(a.pon("acc.contraste", "true"), false); assert.strictEqual(a.pon("acc.texto", NaN), false); assert.strictEqual(a.pon("nada", 1), false);
   assert.strictEqual(a.pon("acc.texto", 500), true); assert.strictEqual(a.lee("acc.texto"), 200, "los rangos se recortan");
 });
 

@@ -88,7 +88,8 @@ test("el Bus: on devuelve quita, emite cuenta oyentes, hay; un oyente que falla 
 // ---------- el registro de verdad, en Node: 02c entero con una ventana de mentira (y, si se pide, ficheros componente del motor)
 function nucleo({ busqueda = "", config = null, extra = "", globales = {} } = {}) {
   const teclado = [], errores = [];
-  const ventana = { addEventListener: (n, f) => { if (n === "keydown") teclado.push(f); } };
+  const oyentes = {};
+  const ventana = { addEventListener: (n, f) => { if (n === "keydown") teclado.push(f); (oyentes[n] = oyentes[n] || []).push(f); }, removeEventListener: (n, f) => { const l = oyentes[n] || [], i = l.indexOf(f); if (i >= 0) l.splice(i, 1); }, oyentes };
   const documento = { getElementById: id => id === "config" && config ? { textContent: JSON.stringify(config) } : null };
   const consola = { error: (...a) => errores.push(a.map(String).join(" ")), warn: (...a) => errores.push(a.map(String).join(" ")), log() {} };
   const nombres = Object.keys(globales);
@@ -277,6 +278,59 @@ test("en Node: el núcleo con la pieza de las fichas del tiempo de verdad arranc
   r = arranca("?fichas=0", fuente); assert.ok(!r.Componentes.activo("fichas-tiempo")); assert.ok(!r.Bus.hay("prevision:alterna"));
   r = arranca("", ""); assert.deepStrictEqual(r.Componentes.resumen(), []); assert.ok(!r.Bus.hay("prevision:alterna"), "sin el fichero: nadie atiende el botón (15_tiempo.js lo esconde)");
   assert.match(lee("apps/web/motor/15_tiempo.js"), /vm\.hidden = !Bus\.hay\("prevision:alterna"\)/);
+});
+
+// ---------- C4: el sonido como componente
+/** un AudioContext de mentira: cualquier método devuelve otro nodo, las propiedades se guardan; cuenta los que se crean y cierra */
+function audioFalso() {
+  const cuenta = { creados: 0, cerrados: 0 };
+  const nodo = () => { const g = {}; return new Proxy(function () {}, { get: (t, k) => k === "getChannelData" ? () => new Float32Array(64) : k in g ? g[k] : (g[k] = nodo()), set: (t, k, v) => { g[k] = v; return true; }, apply: () => nodo() }); };
+  class AC { constructor() { cuenta.creados++; const n = nodo(); this.n = n; this.state = "running"; this.currentTime = 0; this.sampleRate = 8000; this.destination = nodo(); }
+    resume() { return Promise.resolve(); } close() { cuenta.cerrados++; return Promise.resolve(); }
+    createBuffer() { return { getChannelData: () => new Float32Array(16000) }; } }
+  return { AC: new Proxy(AC, { construct: (T, a) => new Proxy(new T(...a), { get: (o, k) => k in o ? o[k] : (typeof k === "string" && k.startsWith("create") ? () => nodo() : undefined) }) }), cuenta };
+}
+test("C4 en Node: el sonido se monta con su pestaña de Configuración y su fila del panel VR, atiende al Bus, y apagado o sin el fichero no se rompe nada", () => {
+  const F = "20_sonido.js", fuente = sinCabecera(fs.readFileSync(path.join(MOTOR, F), "utf8"));
+  const filas = [], ajustes = [], quitados = { ajustes: 0 };
+  const mundo = () => ({ PanelVR: { filas: (p, f) => { filas.push([p, f]); return () => filas.splice(filas.findIndex(x => x[1] === f), 1); } }, VRX: { sucio: false },
+    Ajustes: { lee: k => ({ "sonido.activo": true, "sonido.volumen": 80 })[k], pon() {}, registra: (pre, esq, pes, ap) => { ajustes.push({ pre, esq, pes }); ap && ap("sonido.activo", true); return () => { quitados.ajustes++; }; } },
+    paseando: true, teclas: { run: false }, cur: { ms: 0, viento: 3, lluvia: 0, temp: 20 }, nivel: () => ({ d: 1 }), tVida: 0, enQuad: false, quad: {}, vq: 0, enDron: false, dr: { x: 0, y: 0, vf: 0, vh: 0 },
+    pp: { x: 0, y: 0, paso: 0 }, aguaNivel: 0, distArroyo: () => 50 });
+  const arranca = (busqueda, extra, g) => { const r = nucleo({ busqueda, extra, globales: g }); r.Componentes.arranca(); for (let i = 0; i < 30; i++) ["mundo", "tarde", "trasRender"].forEach(fa => r.Componentes.actualiza(fa, 0.05, i)); return r; };
+  const A = audioFalso(); let g = mundo(); g = Object.assign(g, {});
+  let r = arranca("", fuente, g); r.ventana.AudioContext = A.AC;
+  assert.ok(r.Componentes.activo("sonido-ambiente"), JSON.stringify(r.Componentes.resumen()));
+  for (const e of ["audio:desbloquea", "sonido:baliza", "sonido:golpe", "sonido:ladrido"]) assert.ok(r.Bus.hay(e), e);
+  assert.strictEqual(ajustes.length, 1); assert.strictEqual(ajustes[0].pre, "sonido"); assert.deepStrictEqual(Object.keys(ajustes[0].esq), ["activo", "volumen"]);
+  assert.strictEqual(filas.length, 1); assert.strictEqual(filas[0][0], "comodidad"); assert.strictEqual(filas[0][1].id, "sonido");
+  assert.ok(r.ventana.oyentes.pointerdown.length === 1 && r.ventana.oyentes.keydown.length >= 1, "el audio arranca tras un gesto (pointerdown/keydown)");
+  assert.strictEqual(A.cuenta.creados, 0, "antes del gesto no hay AudioContext");
+  r.Bus.emite("audio:desbloquea", {}); assert.strictEqual(A.cuenta.creados, 1, "«Entrar en VR» deja arrancar el audio");
+  r.Bus.emite("audio:desbloquea", {}); assert.strictEqual(A.cuenta.creados, 1, "un solo AudioContext");
+  for (let i = 0; i < 60; i++) r.Componentes.actualiza("mundo", 0.05, i);
+  r.Bus.emite("sonido:baliza", { completa: true }); r.Bus.emite("sonido:golpe", {}); r.Bus.emite("sonido:ladrido", { grave: true });
+  assert.deepStrictEqual(r.errores, []);
+  assert.ok(r.Componentes.configura({ "sonido-ambiente": { activo: false } }));
+  assert.ok(!r.Componentes.activo("sonido-ambiente")); assert.strictEqual(A.cuenta.cerrados, 1, "libera cierra el AudioContext");
+  assert.strictEqual(filas.length, 0); assert.strictEqual(quitados.ajustes, 1); assert.ok(!r.Bus.hay("sonido:baliza")); assert.strictEqual(r.ventana.oyentes.pointerdown.length, 0, "suelta el gesto");
+  assert.doesNotThrow(() => { r.Bus.emite("sonido:baliza", { completa: false }); r.Bus.emite("audio:desbloquea", {}); r.Bus.emite("sonido:ladrido", {}); }); assert.strictEqual(A.cuenta.creados, 1);
+  assert.ok(r.Componentes.configura({ "sonido-ambiente": { activo: true } }) && r.Componentes.activo("sonido-ambiente"), "vuelve a encenderse");
+  r.Bus.emite("audio:desbloquea", {}); assert.strictEqual(A.cuenta.creados, 2); assert.deepStrictEqual(r.errores, []);
+  // ?sonido=0: ni nodos, ni pestaña, ni fila; los demás módulos siguen emitiendo sin que pase nada
+  filas.length = 0; ajustes.length = 0;
+  r = arranca("?sonido=0", fuente, mundo()); r.ventana.AudioContext = A.AC;
+  assert.ok(!r.Componentes.activo("sonido-ambiente")); assert.strictEqual(filas.length, 0); assert.strictEqual(ajustes.length, 0);
+  assert.strictEqual(r.Bus.emite("sonido:baliza", { completa: true }), 0); assert.strictEqual(r.Bus.emite("audio:desbloquea", {}), 0); assert.strictEqual(A.cuenta.creados, 2);
+  // sin Configuración ni panel VR (no existen esos globales): se monta igual, con los ajustes de siempre
+  r = arranca("", fuente, Object.assign(mundo(), { Ajustes: undefined, PanelVR: undefined })); r.ventana.AudioContext = A.AC;
+  assert.ok(r.Componentes.activo("sonido-ambiente")); r.Bus.emite("audio:desbloquea", {}); assert.strictEqual(A.cuenta.creados, 3); assert.deepStrictEqual(r.errores, []);
+  // sin el fichero: nadie atiende y el resumen está vacío
+  r = arranca("", "", {}); assert.deepStrictEqual(r.Componentes.resumen(), []); assert.strictEqual(r.Bus.emite("sonido:golpe", {}), 0);
+  // los demás módulos hablan por el Bus (no nombran al sonido): la fuente de cada uno emite lo que el catálogo dice
+  assert.match(lee("apps/web/motor/19_balizas.js"), /Bus\.emite\("sonido:baliza"/); assert.match(lee("apps/web/motor/24_pantalla.js"), /Bus\.emite\("sonido:golpe"/);
+  assert.match(lee("apps/web/motor/25_perros.js"), /Bus\.emite\("sonido:ladrido"/); assert.match(lee("apps/web/motor/29_vr.js"), /Bus\.emite\("audio:desbloquea"/);
+  assert.doesNotMatch(sinComentarios(lee("apps/web/motor/90_final.js")), /actualizaSonido/);
 });
 
 // ---------- puntos de extensión con trozo puro (C2): las capas con su procedencia y los ajustes de un componente

@@ -5,8 +5,8 @@
 //   09_camara (eligeCopa, pon), 10_ndvi (NDV, ndviIdx), 12_paseo (paseando, persona, teclas, primera, entraPaseo, salePaseo, actualizaPaseo),
 //   12b_llegada (Llegada), 13_parcelas (parcelas, fincas), 14_historia (lista, aviso), 15_tiempo (calma, nivel, rumbo, hace),
 //   16_vida (quita, mira, quad, dron), 19_balizas (BAL, cierraBaliza, balizaAbierta, abreBaliza, balizaVR, irABaliza, tBal),
-//   20_sonido (snd, iniciaSonido), 22_huellas (pendFactor), 24_pantalla (suave), 25_perros (perrosLlegan), 26_presencia (Presencia),
-//   30_mide (MideEst, Mide), 33_ajustes (Ajustes), 36_mandos (Mandos), 90_final (tamano, cuadro, bucle)
+//   22_huellas (pendFactor), 24_pantalla (suave), 25_perros (perrosLlegan), 26_presencia (Presencia), 30_mide (MideEst, Mide), 33_ajustes (Ajustes),
+//   36_mandos (Mandos), 90_final (tamano, cuadro, bucle)
 // Nota: Publica además window.__vrDebug, __vrOlivo, __vrBotones, __vrVuelo, __vrBalizas y VR_ESTADO (depuración y pruebas VR).
 // ===============================================================================
   // ---------- modo VR inmersivo (WebXR, Meta Quest Browser): el paseo en primera persona con mandos, un panel flotante y un perfil de rendimiento propio
@@ -155,7 +155,7 @@
   }
   function vrRect(cx, x, y, w, h, r) { cx.beginPath(); cx.moveTo(x + r, y); cx.arcTo(x + w, y, x + w, y + h, r); cx.arcTo(x + w, y + h, x, y + h, r); cx.arcTo(x, y + h, x, y, r); cx.arcTo(x, y, x + w, y, r); cx.closePath(); }
   function dd2(iso) { return iso ? iso.split("-").reverse().join("/") : "–"; }
-  // ----- 3a) el panel en tres pestañas (U8, decisiones 83-90): Mundo (modo, hora, fecha y lo que añadan los componentes, como el tiempo) · Ir a (parcelas y gente con «Ir con») · Comodidad (viñeta, giro, sonido, relieve; «Medir 60 s» solo con ?debug).
+  // ----- 3a) el panel en tres pestañas (U8, decisiones 83-90): Mundo (modo, hora, fecha y lo que añadan los componentes, como el tiempo) · Ir a (parcelas y gente con «Ir con») · Comodidad (viñeta, giro, relieve y lo que añadan los componentes, como el sonido; «Medir 60 s» solo con ?debug).
   // «Salir de VR» y las ayudas de los mandos quedan abajo en todas. Botones de 64 px en 1.024 px por metro (6,25 cm a 1 m). Los ajustes de comodidad se leen de Configuración (Ajustes.lee("vr.*"))
   // si ese módulo existe; si no, valen los de siempre (viñeta sí, giro de 30°).
   var VR_PESTANAS = [["mundo", "Mundo"], ["ira", "Ir a"], ["comodidad", "Comodidad"]], VR_GIROS = [15, 30, 45, 60], VR_DEBUG = /[?&]debug\b/.test(location.search);
@@ -180,7 +180,7 @@
   // alto. PanelVR.filas(pestaña, { id, orden, alto, visible?(), botones?(b, y), pinta?(cx, y, W, h), firma?(), debug?() }) → quita: b(id, x, y, w, h, texto,
   // fn, encendido) añade un botón pulsable con el rayo (x en px del lienzo de 1.024); h = { fila(texto, y, valor), valores }; firma() se mira dos veces por
   // segundo con el panel abierto y, si cambia, se repinta; debug() se suma a window.__vrDebug(). Las filas de siempre (modos, hora, fecha; parcela y gente;
-  // viñeta, giro, sonido, relieve y medida) se registran aquí mismo y caen donde caían. PanelVR.tapa(fn): una lámina propia que está delante (la ficha de
+  // viñeta, giro, relieve y medida) se registran aquí mismo y caen donde caían. PanelVR.tapa(fn): una lámina propia que está delante (la ficha de
   // la baliza espera). PanelVR.cierra() cierra el panel (Y lo vuelve a abrir); PanelVR.rumbo(): hacia dónde mira quien ve el panel de frente.
   var PanelVR = (function () {
     var filas = {}, tapan = [];
@@ -226,8 +226,6 @@
     botones: function (b, y) { b("vig", 420, y, 470, 64, "Viñeta: " + (VRX.vineta ? "sí" : "no"), function () { VRX.vineta = !VRX.vineta; vrAjPon("vr.vineta", VRX.vineta ? (vrAj("vr.vineta", "suave") === "fuerte" ? "fuerte" : "suave") : "no"); VRX.sucio = true; }, VRX.vineta); } });
   PanelVR.filas("comodidad", { id: "giro", orden: 20, alto: 88, pinta: function (cx, y, W, h) { h.fila("Giro", y); },
     botones: function (b, y) { b("giro", 420, y, 470, 64, "Giro por saltos de " + VRX.giro + "°", function () { var i = VR_GIROS.indexOf(VRX.giro); VRX.giro = VR_GIROS[(i + 1) % VR_GIROS.length]; vrAjPon("vr.giro", String(VRX.giro)); VRX.sucio = true; }, false); } });
-  PanelVR.filas("comodidad", { id: "sonido", orden: 30, alto: 88, visible: function () { return !!$("cSonido"); }, pinta: function (cx, y, W, h) { h.fila("Sonido", y); },
-    botones: function (b, y) { var cs = $("cSonido"); b("snd", 420, y, 470, 64, "Sonido: " + (cs.checked ? "sí" : "no"), function () { cs.checked = !cs.checked; cs.dispatchEvent(new Event("change", { bubbles: true })); if (cs.checked) iniciaSonido(); VRX.sucio = true; }, cs.checked); } });
   PanelVR.filas("comodidad", { id: "relieve", orden: 40, alto: 88, pinta: function (cx, y, W, h) { h.fila("Relieve", y, h.valores.exag); },
     botones: function (b, y) { b("e-", 420, y, 90, 64, "−", function () { vrSlider("exag", -1); }); b("e+", 800, y, 90, 64, "+", function () { vrSlider("exag", 1); }); } });
   PanelVR.filas("comodidad", { id: "mide", orden: 50, alto: 88, visible: function () { return VR_DEBUG; }, pinta: function (cx, y, W, h) { h.fila("Medida", y); },
@@ -512,7 +510,7 @@
   // ----- 7) entrar y salir
   async function entraVR() {
     if (VRX.on || VRX.entrando || !VRX.soporta) return; VRX.entrando = true;
-    try { iniciaSonido(); } catch (e) {}   // el gesto de pulsar el botón es lo que deja arrancar el audio
+    Bus.emite("audio:desbloquea", {});   // el gesto de pulsar el botón es lo que deja arrancar el audio (quien haga sonido lo atiende)
     var ses = null;
     try {
       renderer.xr.enabled = true; renderer.xr.setReferenceSpaceType("local-floor"); renderer.xr.setFramebufferScaleFactor(0.9);
