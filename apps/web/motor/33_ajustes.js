@@ -2,7 +2,7 @@
 // Expone: Ajustes
 // Consume: 01_datos ($, fmt), 02_mundo (copas), 03_escena (renderer, exag, modo, calidad), 08_marcadores (listo, aplica), 09_camara (pon),
 //   12_paseo (persona), 14_historia (FINCA, lista, rango), 20_sonido (iniciaSonido), 24_pantalla (suave), 26_presencia (Chat), 29_vr (panel),
-//   30_mide (Mide), 90_final (tamano, bucle)
+//   30_mide (Mide), 34_movibles (Movibles), 90_final (tamano, bucle)
 // ===============================================================================
 // ===== CONTRATO DEL MÓDULO =====
 // ===============================================================================
