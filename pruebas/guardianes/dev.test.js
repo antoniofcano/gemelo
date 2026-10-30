@@ -235,7 +235,9 @@ test("la oficina (ADR-0024): /oficina/ solo con sesión de oficina en los dos Ca
   const html = lee("apps/web/oficina/index.html"), js = lee("apps/web/oficina/oficina.js"), css = lee("apps/web/oficina/oficina.css");
   assert.ok(!/<style|\sstyle=|\son[a-z]+=/i.test(html), "nada de estilos ni manejadores en línea");
   for (const m of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)) assert.strictEqual(m[1].trim(), "", "un <script> con código en línea");
-  assert.ok(!/\bthree\b|motor\//.test(js) && !/import\s/.test(js), "la oficina no carga three ni el motor");
+  // desde OF2 la oficina importa sus propios módulos (y OpenLayers en Hazas): lo que no puede es cargar three ni el motor
+  const fuentesOf = fs.readdirSync(path.join(RAIZ, "apps/web/oficina")).filter(f => f.endsWith(".js")).map(f => lee("apps/web/oficina/" + f)).join("\n");
+  assert.ok(js.length > 0 && !/from\s+["']three["']|from\s+["'][^"']*motor\//.test(fuentesOf), "la oficina no carga three ni el motor");
   assert.ok(!/https?:\/\//.test(js) && !/@import|url\(\s*["']?https?:/i.test(css), "solo su mismo origen");
   assert.ok(!/innerHTML|insertAdjacentHTML|eval\(|new Function/.test(js), "sin HTML a mano");
   assert.match(html, /<html lang="es"/);
