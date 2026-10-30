@@ -151,7 +151,7 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | OF6 | **Configuración versionada** y `GET /api/config`; el motor la lee con caída a las constantes; interruptores de componentes (decisión 118) | OF2, C1 | media · **opus** | ✅ 2026-10-30 api y motor; falta la pantalla (OF7) |
 | OF7 | Panel de la escalera: deslizadores con límites, vista previa, publicar en prueba y para todos, historial | OF6 | media · **sonnet**; 🔶 | ✅ 2026-10-30; sin probar en tableta ni con lector de pantalla |
 | OF8 | Constructor en la oficina (olivo real por id, escalones lado a lado) | OF2, V3 | ligera · **sonnet** | ⬜ |
-| OF9 | Épocas desde la oficina y re-hornear (decisión 112) | OF6 | media · **sonnet** | 🟡 en curso |
+| OF9 | Épocas desde la oficina y re-hornear (decisión 112) | OF6 | media · **sonnet** | ✅ 2026-10-30; el e2e del hornero en Docker atendiendo la petición, 🔶 sin probar |
 | OF10 | Mundo en modo oficina: insignia y chaleco, anunciar, balizas oficiales, salas | OF1 | media · **opus**; 🔶 | ⬜ |
 | OF11 | Agenda: eventos con aforo, inscripciones, lista de espera, avisos | OF2, V3 | media · **sonnet**; 🔶 Docker | ⬜ |
 | OF12 | Directos: preparación, sala guiada, dar la palabra, silenciar | OF10, F3, EIPD | pesada · **opus**; 🔶 | ⬜ |

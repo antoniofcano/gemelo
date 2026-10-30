@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Oficina: pestaña Épocas en Olivos (7 ventanas MM-DD, común y por finca, comprobación de los 366 días, mismo flujo de versiones) y botón «Re-hornear ahora» en Sistema (`POST /api/admin/hornero/rehornear`; el hornero recoge la petición en su comprobación de cada 10 min); la api ve al hornero en los compose (OF9).
 - «Cae la cosecha» se juega en VR como lámina delante, desde la fila «Juegos» del panel: rayo + gatillo, palanca derecha y B (C9b); 2 llamadas del juego (una por ojo). No probado en Quest.
 - Motor: entidades con id estable y una sola forma de elegirlas (C7, `02e_entidades.js`): olivos, balizas, hazas y personas se eligen igual con toque, clic, rayo VR y cercanía, con una ficha común y un anillo de resaltado al pie de lo elegido; con presencia, tocar a una persona abre su ficha con «Ir con».
 - Oficina: sección Olivos (OF7): deslizadores de la escalera con sus límites (en gafas solo bajan) y vista previa simulada (ilustrativa), interruptores de componentes, y versiones con borrador, prueba, publicación para todos con confirmación, historial y «volver».
