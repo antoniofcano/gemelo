@@ -48,7 +48,7 @@
       "descripcion": "Termina la sesión de realidad virtual (la cámara vuelve a la pantalla). Lo propio de VR se cierra.",
       "datos": {},
       "emiten": ["29_vr"],
-      "escuchan": ["35_fichas_tiempo"]
+      "escuchan": ["02d_laminas"]
     }
   }
 }

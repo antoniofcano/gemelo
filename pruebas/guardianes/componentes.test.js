@@ -215,7 +215,7 @@ test("consume resuelto y sin ciclos; un componente no expone nada en su primer n
     for (const g of Object.keys(d.cons[f])) assert.ok(!comp.has(g), f + " consume de otro componente: " + g);
     // lo que su código (sin comentarios) usa de los módulos que no son el núcleo de componentes ni lo básico de la escena, está en su consume
     const codigo = sinComentarios(sinCabecera(fs.readFileSync(path.join(MOTOR, f), "utf8"))).replace(/"(?:[^"\\\n]|\\.)*"/g, '""');
-    const LIBRE = new Set(["01_datos", "02_mundo", "02b_cola", "02c_componentes", "03_escena"]);
+    const LIBRE = new Set(["01_datos", "02_mundo", "02b_cola", "02c_componentes", "02d_laminas", "03_escena"]);
     const usa = n => new RegExp("(?<![\\w$.])" + n.replace(/\$/g, "\\$") + "(?![\\w$]|\\s*:(?!:))").test(codigo);   // sin propiedades (.x) ni claves de objeto (x:)
     for (const [g, ns] of Object.entries(d.cons[f])) if (!LIBRE.has(g)) for (const n of ns) if (usa(n)) assert.ok(def.consume.includes(n), f + ": usa «" + n + "» de " + g + " sin declararlo en consume");
   }
@@ -264,11 +264,12 @@ test("en Node: el núcleo con la pieza de las fichas del tiempo de verdad arranc
   class V3 { constructor() { this.x = this.y = this.z = 0; } set(x, y, z) { this.x = x; this.y = y; this.z = z; return this; } copy(v) { return this.set(v.x, v.y, v.z); } }
   const filas = [], tapas = [];
   const globales = { THREE: { Vector3: V3 }, PanelVR: { filas: (p, f) => { filas.push(f); return () => filas.splice(filas.indexOf(f), 1); }, tapa: fn => { tapas.push(fn); return () => tapas.splice(tapas.indexOf(fn), 1); }, repinta() {}, cierra() {}, rumbo: () => 0 },
-    TiempoVivo: { lee: () => null, alCambiar: () => () => {} }, VRX: { on: false }, paseando: false, Hud: { aviso() {} }, ahoraMs: () => Date.parse("2026-10-30T12:00:00Z"), nivel: () => ({ d: 1 }) };
+    TiempoVivo: { lee: () => null, alCambiar: () => () => {} }, VRX: { on: false }, paseando: false, Hud: { aviso() {} }, ahoraMs: () => Date.parse("2026-10-30T12:00:00Z"), nivel: () => ({ d: 1 }),
+    Laminas: { abre: () => true, cierra: () => false, hay: () => false, repinta: () => false, revisa() {}, info: () => ({ abierta: false }) } };
   const arranca = (busqueda, extra) => { const r = nucleo({ busqueda, extra, globales }); r.Componentes.arranca(); for (let i = 0; i < 40; i++) ["mundo", "tarde", "trasRender"].forEach(fa => r.Componentes.actualiza(fa, 0.05, i)); return r; };
   let r = arranca("", fuente);
   assert.ok(r.Componentes.activo("fichas-tiempo"), JSON.stringify(r.Componentes.resumen()));
-  assert.ok(r.Bus.hay("prevision:alterna") && r.Bus.hay("vr:sale")); assert.strictEqual(filas.length, 1); assert.strictEqual(typeof r.ventana.__fichaTiempo, "function");
+  assert.ok(r.Bus.hay("prevision:alterna") && !r.Bus.hay("vr:sale"), "salir de VR lo atiende Laminas, no la ficha"); assert.strictEqual(filas.length, 1); assert.strictEqual(typeof r.ventana.__fichaTiempo, "function");
   assert.strictEqual(r.Teclas.dueno("KeyP"), "fichas-tiempo");
   assert.ok(r.Componentes.configura({ "fichas-tiempo": { activo: false } }));
   assert.ok(!r.Componentes.activo("fichas-tiempo")); assert.ok(!r.Bus.hay("prevision:alterna")); assert.strictEqual(filas.length, 0); assert.strictEqual(tapas.length, 0);

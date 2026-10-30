@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: VRX, vrDebugExtra, vrFundido, vrAparece, panel, ficha, PanelVR, vrMideEmpieza, vrMideFin, vrActualiza, VR_PERFILES, vrFin
-// Consume: 01_datos (D, $, fmt, VRP), 02_mundo (Mundo, suelo, orto, copas), 02c_componentes (Bus, Config),
+// Consume: 01_datos (D, $, fmt, VRP), 02_mundo (Mundo, suelo, orto, copas), 02c_componentes (Bus, Config), 02d_laminas (Laminas),
 //   03_escena (lienzo, visor, renderer, scene, camera, texColor, exag, modo, calidad), 04b_escena3d (Escena3D), 05_nube (nube),
 //   07b_arboles (Arboles), 09_camara (eligeCopa, pon), 10_ndvi (NDV, ndviIdx),
 //   12_paseo (paseando, persona, teclas, primera, entraPaseo, salePaseo, actualizaPaseo), 12b_llegada (Llegada), 13_parcelas (parcelas, fincas),
@@ -480,6 +480,7 @@
       if (qb) { vrPulso(o, 0.4, 25); qb.fn(); return; }
       if (qb === false) return;
     }
+    if (Laminas.toca(rr)) { vrPulso(o, 0.4, 25); return; }   // C8: una lámina del mundo con alTocar (02d_laminas.js) recibe el toque (u, v)
     var best = null, bs = 1e9, bt = 1e9, ro = rr.ray.origin, rd = rr.ray.direction;
     copas.forEach(function (c) {
       if (!c.oliv) return; var cy = (suelo(c.x, c.y) + c.h * 0.6) * exag; vrV3.set(c.x - ro.x, cy - ro.y, -c.y - ro.z); var t = vrV3.dot(rd); if (t < 0.4 || t > 150) return;
