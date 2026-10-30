@@ -157,6 +157,13 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 
   Orden propuesto: 3 (quiz) y 2 (pistas) primero (sin física y con lo que ya hay), luego 1 (necesita la conducción arcade y los modelos de vehículos), después 5 y 4.
 
+**Juegos casuales «para volver»** — anotado el 2026-10-30 a propuesta de Antonio: partidas cortas que relajan y no hacen pensar, para que un miembro de la familia entre de vez en cuando «a echar una» y, ya que está, mire su haza (sus árboles, el diario, los avisos).
+- **Géneros, no copias:** se toma el género (piezas que caen y se encajan, juntar tres iguales, romper bloques, fusionar piezas iguales), que es libre, y se hace un diseño **propio** con el tema del olivar; **ningún juego concreto se reproduce** (ni su nombre, ni sus piezas, ni sus pantallas, ni sus reglas exactas).
+- **Ideas de partida** (por diseñar): *Encaja la cosecha* (cajas y capachos de aceituna que caen y se encajan en el remolque; filas completas se van a la almazara), *Tres olivas* (juntar tres o más aceitunas, hojas o flores de la misma época; los comodines salen de lo que pasó esta semana en tu haza), *Rompe el terrón* (una pelota y una pala que despejan la tierra de una parcela vista desde arriba, con la forma real de tu haza), *Fusiona tu olivo* (juntar dos plantones iguales da un olivo mayor, hasta el centenario).
+- **Enganche ligero y honesto:** partidas de 1-3 minutos, sin compras ni anuncios, sin castigos por no entrar; una «partida del día» que usa algo real de tu haza (la época del olivo, el tiempo de Vigía, el último trabajo de OlivarTrack) y un récord familiar visible solo dentro del hogar (o por alias, decisión de Antonio).
+- **Dónde se juega:** en la pantalla (2D, `<canvas>` sobre el mundo en pausa) en escritorio y móvil; en VR, como una lámina en el mundo (como la de la previsión). Sin motor de juegos: el mismo criterio que los minijuegos de arriba.
+- **Lo que hay que decidir antes:** si cuentan récords entre familias, si hay límite de partidas para menores (decisión 45) y qué datos de la haza se pueden usar en el juego sin enseñar nada de otra familia (decisión 13).
+
 ## Decidido no hacerlo (por ahora)
 
 - 🚫 `logarithmicDepthBuffer`: se usa `near` dinámico y `far` mayor (coste en iOS sin medir **[SUPUESTO]**).
