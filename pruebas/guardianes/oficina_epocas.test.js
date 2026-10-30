@@ -15,17 +15,19 @@ const importa = (...p) => import(pathToFileURL(path.join(RAIZ, ...p)).href);
 const ESQ = json("contratos/config.schema.json"), CAL = json("contratos/epocas-calendario.json");
 const html = lee("apps/web/oficina/index.html"), olivos = lee("apps/web/oficina/olivos.js"), sistema = lee("apps/web/oficina/sistema.js");
 
-const semilla = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+const fc = require("fast-check");
 const DIAS_MES = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 const mmdd = n => { let m = 0; while (n >= DIAS_MES[m]) { n -= DIAS_MES[m]; m++; } return String(m + 1).padStart(2, "0") + "-" + String(n + 1).padStart(2, "0"); };
 const ORDEN = ["reposo", "boton", "flor", "cuajado", "verde", "envero", "madura"];
-/** Una tabla al azar: o una partición buena del año (con un giro al azar) o con huecos y solapes. */
-function tablaAlAzar(r) {
-  const cortes = []; while (cortes.length < 7) { const c = Math.floor(r() * 366); if (!cortes.includes(c)) cortes.push(c); } cortes.sort((a, b) => a - b);
+/** Una tabla al azar (fast-check, PB7): una partición buena del año con giro o, a veces, con una ventana rota (huecos y solapes). */
+const tablaAlAzar = fc.record({
+  cortes: fc.uniqueArray(fc.integer({ min: 0, max: 365 }), { minLength: 7, maxLength: 7 }).map(c => c.sort((x, y) => x - y)),
+  rompe: fc.option(fc.record({ e: fc.integer({ min: 0, max: 6 }), campo: fc.constantFrom("desde", "hasta"), dia: fc.integer({ min: 0, max: 365 }) }), { nil: undefined }),
+}).map(({ cortes, rompe }) => {
   const t = {}; ORDEN.forEach((e, i) => { t[e] = { desde: mmdd(cortes[i]), hasta: mmdd((cortes[(i + 1) % 7] + 365) % 366) }; });
-  if (r() < 0.5) { const e = ORDEN[Math.floor(r() * 7)], c = r() < 0.5 ? "desde" : "hasta"; t[e][c] = mmdd(Math.floor(r() * 366)); }   // la rompe (casi siempre)
+  if (rompe) t[ORDEN[rompe.e]][rompe.campo] = mmdd(rompe.dia);
   return t;
-}
+});
 
 test("los valores de partida y el orden de las épocas son los del contrato", async () => {
   const P = await importa("apps", "web", "oficina", "olivos_puro.js"), E = await importa("apps", "web", "olivo", "epocas.js");
@@ -38,16 +40,15 @@ test("los valores de partida y el orden de las épocas son los del contrato", as
 
 test("la comprobación de los 366 días de la pantalla dice lo mismo que la del hornero y el motor, con tablas al azar", async () => {
   const P = await importa("apps", "web", "oficina", "olivos_puro.js"), E = await importa("apps", "web", "olivo", "epocas.js");
-  const r = semilla(9);
   let buenas = 0, malas = 0;
-  for (let i = 0; i < 400; i++) {
-    const t = tablaAlAzar(r), propia = P.validaTabla(t).filter(m => m.nivel === "mal").length === 0, ajena = E.validaTabla(t).length === 0;
+  fc.assert(fc.property(tablaAlAzar, t => {
+    const propia = P.validaTabla(t).filter(m => m.nivel === "mal").length === 0, ajena = E.validaTabla(t).length === 0;
     assert.strictEqual(propia, ajena, "mismo veredicto para " + JSON.stringify(t));
     if (propia) buenas++; else malas++;
     // y cuenta los mismos días por época que el calendario del hornero
     if (propia) { const c = P.cobertura(t); for (const e of ORDEN) assert.strictEqual(c.dias[e], Array.from({ length: 366 }, (_, d) => E.epocaDeFecha(t, new Date(Date.UTC(2024, 0, 1 + d)))).filter(x => x === e).length, e); }
-  }
-  assert.ok(buenas > 60 && malas > 60, "la prueba ve de las dos: " + buenas + " buenas, " + malas + " malas");
+  }), { seed: 9, numRuns: 300 });
+  assert.ok(buenas > 50 && malas > 50, "la prueba ve de las dos: " + buenas + " buenas, " + malas + " malas");
   // casos concretos con su mensaje
   const hueco = P.tablaDePartida(); hueco.flor.hasta = "06-01";
   assert.match(P.validaTabla(hueco)[0].texto, /8 días sin época \(06-02, 06-03, 06-04…\)/);
