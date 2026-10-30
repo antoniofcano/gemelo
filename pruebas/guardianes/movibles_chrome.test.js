@@ -39,7 +39,8 @@ async function entra(p) {
 const rects = p => p.evaluate(() => {
   const v = document.getElementById("visor"), vr = v.getBoundingClientRect();
   const r = s => { const e = document.querySelector(s); if (!e || e.hidden || !e.getClientRects().length) return null; const b = e.getBoundingClientRect(); return { x: b.left - vr.left, y: b.top - vr.top, w: b.width, h: b.height, cx: b.left + b.width / 2, cy: b.top + b.height / 2 }; };
-  return { visor: { w: vr.width, h: vr.height }, chat: r("#presenciaGente"), burbuja: r("#presenciaBurbuja"), mapa: r("#mapaFlotante"), pad: r(".pad"), barra: r(".t-barra"), ins: r("#tIns"), norte: r("#norte"),
+  return { visor: { w: vr.width, h: vr.height }, chat: r("#presenciaGente"), burbuja: r("#presenciaBurbuja"), mapa: r("#mapaFlotante"), pad: r(".pad-mov") || r(".pad"), barra: r("#hudBarra") || r(".t-barra"),   // la plantilla de la UX (U1-U5): cruceta .pad-mov y barra #hudBarra; las de antes, de respaldo
+    ins: r("#tIns"), norte: r("#norte"),
     agarre: r("#presenciaGente .agarre"), minimiza: r("#presenciaGente button[aria-label='Minimizar el chat']"), vr: { x: vr.left, y: vr.top } };
 });
 const arrastra = async (p, de, a) => { await p.mouse.move(de.cx, de.cy); await p.mouse.down(); await p.mouse.move((de.cx + a.cx) / 2, (de.cy + a.cy) / 2, { steps: 6 }); await p.mouse.move(a.cx, a.cy, { steps: 6 }); await p.mouse.up(); await p.waitForTimeout(250); };
@@ -51,7 +52,7 @@ for (const [nombre, W, H, forma] of [["vertical 390 × 844", 390, 844, "vertical
     const p = await abre(W, H);
     try {
       let R = await rects(p);
-      assert.ok(R.pad, "con el paseo debe verse la cruceta (.pad)"); assert.ok(R.chat, "el chat debe verse");
+      assert.ok(R.pad, "con el paseo debe verse la cruceta (.pad-mov)"); assert.ok(R.chat, "el chat debe verse");
       libreDe(R.chat, "el chat de partida", [R.pad, R.barra, R.norte]); dentro(R.chat, R.visor, "el chat");
       const zonasFijas = r => [r.pad, r.barra, r.ins, r.norte];
 
