@@ -98,7 +98,13 @@
     // --- la barra: cada icono abre (o cierra) su ventana; el chat es flotante (34_movibles.js / 26_presencia.js)
     function alterna(id, desde) {
       abreMas(false);
-      if (id === "chat") { document.dispatchEvent(new CustomEvent("gemelo:chat", { detail: { desde: desde || null } })); var ent = document.querySelector("#presenciaGente input[type=text]"); if (ent) ent.focus(); return; }
+      if (id === "chat") {   // el chat flotante de 26_presencia.js: minimizado (burbuja) → se abre; abierto → se minimiza
+        document.dispatchEvent(new CustomEvent("gemelo:chat", { detail: { desde: desde || null } }));
+        var raizC = $("presenciaGente"), burb = $("presenciaBurbuja");
+        if (raizC && raizC.hidden && burb) burb.click();
+        else if (raizC) { var bm = raizC.querySelector('button[aria-label="Minimizar el chat"]'); if (bm) bm.click(); }
+        return;
+      }
       if (typeof Ventanas !== "undefined" && Ventanas) { if (Ventanas.abierta() === id) Ventanas.cierra(); else Ventanas.abre(id, desde); }
     }
     Array.prototype.forEach.call(document.querySelectorAll("#hud [data-abre]"), function (b) {
