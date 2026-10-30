@@ -830,7 +830,8 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
         const codigo = await gq.textContent("#codigo");
         tiempos.codigo = r0();
         const altoBtn = await gq.evaluate(() => document.getElementById("btnPrefieroCorreo").getBoundingClientRect().height);
-        assert.ok(altoBtn >= 56, "en las Quest, botones de ≥ 56 px: " + altoBtn);
+        assert.ok(Math.round(altoBtn * 100) / 100 >= 56,   // redondeo a centésimas: el navegador da 55,99997 por la escala
+           "en las Quest, botones de ≥ 56 px: " + altoBtn);
         assert.match(await gq.textContent("#avVincularTxt"), /Esperando/);
         assert.strictEqual((await ctxG.cookies(base)).filter(x => x.name === COOKIE).length, 0, "las gafas aún no tienen sesión");
         // en el aparato con sesión: Mis dispositivos → Vincular
