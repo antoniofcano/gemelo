@@ -9,7 +9,7 @@
   //   · VR (29_vr.js), volando o en el mirador: palanca derecha ↑ mantenida = rayo recto del mando al suelo y anillo; al soltar, fundido y de pie en el anillo.
   //   · Pantalla (con el Dron de 16_vida.js): un clic o un toque corto en el suelo pone el anillo (otro lo mueve; arrastrar no lo pone); «Aterrizar aquí»,
   //     Intro o L te deja de pie en él con un fundido corto; sin anillo, aterrizar guarda el Dron como siempre.
-  // El suelo es el de la CPU (suelo()·exag), también con ?escena=tiles. Nada se mueve sin que el usuario lo pida y el salto va con fundido (~0,3 s), nunca con vuelo de cámara.
+  // El suelo es el de la CPU (suelo()·exag), no el relieve dibujado del tileset. Nada se mueve sin que el usuario lo pida y el salto va con fundido (~0,3 s), nunca con vuelo de cámara.
   // aparece(x, y, ang) y ve(x, y, ang) (con fundido) los puede usar cualquier otro módulo para «aparecer en (x, y) mirando a ang» (p. ej. ir con otro visitante).
   // [puro:inicio] (sin THREE ni DOM: lo evalúa en Node pruebas/guardianes/llegada.test.js)
   var LlegadaPuro = (function () {

@@ -427,7 +427,7 @@
   vrVineta.position.set(0, 0, -0.32); vrVineta.renderOrder = 999; vrVineta.frustumCulled = false; vrVineta.visible = false;
 
   // ----- 6) el perfil de rendimiento de las gafas y el adaptador por tiempo de fotograma
-  var VR_PERFILES = [{ n: 0.8, r: 0.75, tri: 380000, h: 32, b: 1, e: 16 }, { n: 0.55, r: 0.6, tri: 270000, h: 20, b: 0, e: 24 }, { n: 0.35, r: 0.45, tri: 190000, h: 0, b: 0, e: 32 }, { n: 0.2, r: 0.3, tri: 130000, h: 0, b: 0, e: 48 }];   // b: relieve fino del suelo (uBumpK); se apaga en cuanto el fotograma va justo (decisión 24). e: errorTarget (px) de la escena 3D Tiles (?escena=tiles); valores de partida SIN medir en las gafas
+  var VR_PERFILES = [{ n: 0.8, r: 0.75, tri: 380000, h: 32, b: 1, e: 16 }, { n: 0.55, r: 0.6, tri: 270000, h: 20, b: 0, e: 24 }, { n: 0.35, r: 0.45, tri: 190000, h: 0, b: 0, e: 32 }, { n: 0.2, r: 0.3, tri: 130000, h: 0, b: 0, e: 48 }];   // b: relieve fino del suelo (uBumpK); se apaga en cuanto el fotograma va justo (decisión 24). e: errorTarget (px) de la escena 3D Tiles; valores de partida SIN medir en las gafas
   function vrPerfil(n) { n = Math.max(0, Math.min(VR_PERFILES.length - 1, n)); VRX.nivel = n; var p = VR_PERFILES[n]; VRP.hierba = p.h; UN.uBumpK.value = p.b; Arboles.perfil(p); Escena3D.perfil(p); }
   function vrAdapta(dtMs, jsMs, dt) {   // por encima de 13 ms de trabajo (o con fotogramas perdidos) baja de nivel; tras un rato holgado, sube
     VRX.emaDt += (dtMs - VRX.emaDt) * 0.05; VRX.emaJs += (jsMs - VRX.emaJs) * 0.05; VRX.tNivel += dt;

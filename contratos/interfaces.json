@@ -3,7 +3,6 @@
   "interfaces": {
     "Mundo": { "modulo": "02_mundo.js", "miembros": ["TS", "N", "N2", "NS", "NS2", "SRS", "cx", "cy", "lista", "tesela", "suelo", "copaAlta", "colorSuelo", "orto", "ortoGrueso", "pintaOrto", "arranca", "actualiza", "alCargar", "dist", "liberaOrtoPix", "cargaTesela", "aseguraOrto", "liberaOrtoLejos", "decodificaOrto", "mosaico"] },
     "Cola": { "modulo": "02b_cola.js", "miembros": ["est", "add", "cancela", "hay", "corre", "vacia", "pendientes"] },
-    "Terreno": { "modulo": "04_terreno.js", "miembros": ["grupo", "monta", "montaTodas", "actualiza", "modoOrto", "tileCargada", "iniciaMosaico", "UN", "parche", "prepara", "pideDetalle", "U1"] },
     "Escena3D": { "modulo": "04b_escena3d.js", "miembros": ["actualiza", "perfil", "resumen", "libera", "listo", "alturaEn", "relieveEn", "sondea", "engancha", "grupo"] },
     "OlivosTiles": { "modulo": "04c_olivos_tiles.js", "miembros": ["dibuja", "cerca", "triangulos", "resumen", "tipo", "tipos", "instanciasDe"] },
     "SombreadoTiles": { "modulo": "04d_sombreado_tiles.js", "miembros": ["modelo", "suelta", "actualiza", "libera", "resumen", "OP"] },
@@ -16,7 +15,7 @@
     "Hazas": { "modulo": "13b_hazas.js", "miembros": ["actualiza", "estado", "libera"] }
   },
   "ganchos_window": {
-    "__g": { "modulo": "27_debug.js", "miembros": ["Arboles", "Catalogo", "Escena3D", "OlivosTiles", "Cola", "copas", "suelo", "Mundo", "Terreno", "orb", "objetivo", "camera", "renderer", "scene", "pon", "listo", "modo", "Generados", "pendientes", "ponExag", "aplica", "paseoEn", "paseoSale", "paseoTecla", "paseoEstado"] },
+    "__g": { "modulo": "27_debug.js", "miembros": ["Arboles", "Catalogo", "Escena3D", "OlivosTiles", "Cola", "copas", "suelo", "Mundo", "orb", "objetivo", "camera", "renderer", "scene", "pon", "listo", "modo", "Generados", "pendientes", "ponExag", "aplica", "paseoEn", "paseoSale", "paseoTecla", "paseoEstado"] },
     "__vrDebug": { "modulo": "29_vr.js", "tipo": "function" },
     "__vrOlivo": { "modulo": "29_vr.js", "tipo": "function" },
     "__vrBotones": { "modulo": "29_vr.js", "tipo": "function" },

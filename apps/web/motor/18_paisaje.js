@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: PA, matTronco, postes, cable, EJES, colocaPaisaje, instSombra, sombrasSol, aguaNivel, actualizaPaisaje
-// Consume: 01_datos (D, $, ESC_R8), 02_mundo (suelo, desp, copas), 03_escena (scene, SRGB, sol, exag), 04_terreno (hash, terreno),
+// Consume: 01_datos (D, $, ESC_R8), 02_mundo (suelo, desp, copas), 03_escena (scene, SRGB, sol, exag), 04d_sombreado_tiles (hash),
 //   06_arboles (gSombras, tronco), 07_follaje (matSombra, geoSombra), 09_camara (pon), 15_tiempo (lluvia, cur, tMundo, nivel), 16_vida (esfera),
 //   23_estacion (EST)
 // ===============================================================================

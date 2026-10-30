@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: matHojaG, matHojaP, matCorteza, matSombra, geoSombra, follajeG, construyeSombras
-// Consume: 01_datos (ESC_R8), 02_mundo (suelo, copaAlta, aviva, colorEn, copas), 03_escena (texColor, exag, calidad), 04_terreno (hash),
+// Consume: 01_datos (ESC_R8), 02_mundo (suelo, copaAlta, aviva, colorEn, copas), 03_escena (texColor, exag, calidad), 04d_sombreado_tiles (hash),
 //   06_arboles (gSombras, radioEn), 14_historia (lista), 16_vida (esfera), 18_paisaje (instSombra, sombrasSol), 23_estacion (construyeFrutosLista)
 // ===============================================================================
 
