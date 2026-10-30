@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Maqueta del selector de avatar familiar: elegir por piezas sin pasar por género, edades y cuerpos variados, accesorios de campo, el hogar junto y el muñeco lejano. Datos ficticios.">
+<title>Avatares de la familia · maqueta</title>
+<style>
+/* Maqueta del selector de avatar familiar (doc/sistema/AVATARES-FAMILIA.md). Un solo fichero, sin recursos externos, datos ficticios.
+   Las figuras son dibujos SVG planos: no son los VRM ni dicen nada de rendimiento. Estilo de las otras maquetas: cristal oscuro y acento olivo. */
+:root {
+  --fondo: #0b0d0a; --panel: rgba(16, 20, 24, 0.86); --panel-fuerte: #141a14; --borde: rgba(255, 255, 255, 0.22); --txt: #f2f4ec; --suave: #c3c8b8;
+  --olivo: #9dc16a; --sobre-olivo: #14180f; --foco: #ffd166; --aviso: #f0b13f; --toque: 44px; --r: 12px;
+  --body: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; --display: Georgia, "Times New Roman", serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--fondo); color: var(--txt); font-family: var(--body); font-size: 15px; line-height: 1.45; overflow-x: hidden; }
+button, input { font: inherit; color: inherit; }
+[hidden] { display: none !important; }
+:focus-visible { outline: 3px solid var(--foco); outline-offset: 2px; }
+.vh { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+.sim { background: repeating-linear-gradient(135deg, #20251c 0 14px, #1a1e17 14px 28px); border-bottom: 2px dashed #4a5440; padding: 6px 16px; display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; font-size: 13px; }
+.sim .sello { background: #f2f4ec; color: #14180f; font-weight: 700; letter-spacing: .08em; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+.sim .nota { color: var(--suave); }
+
+header.cab { padding: 14px 16px 4px; max-width: 1240px; margin: 0 auto; }
+header.cab h1 { font-family: var(--display); font-weight: 600; font-size: 24px; margin: 0 0 2px; }
+header.cab p { margin: 0; color: var(--suave); max-width: 70ch; }
+
+main { max-width: 1240px; margin: 0 auto; padding: 12px 16px 32px; display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 960px) { main { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); align-items: start; } .col-vista { position: sticky; top: 12px; } }
+
+.caja { background: var(--panel); border: 1px solid var(--borde); border-radius: var(--r); padding: 12px; min-width: 0; }
+.caja h2 { font-size: 15px; margin: 0 0 8px; font-weight: 650; letter-spacing: .01em; }
+.caja + .caja { margin-top: 16px; }
+
+.boton { min-width: var(--toque); min-height: var(--toque); display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--borde); background: var(--panel-fuerte); cursor: pointer; touch-action: manipulation; }
+.boton:hover { border-color: var(--olivo); }
+.boton.prim { background: var(--olivo); color: var(--sobre-olivo); border-color: var(--olivo); font-weight: 600; }
+.boton[aria-pressed="true"] { background: var(--olivo); color: var(--sobre-olivo); border-color: var(--olivo); }
+
+/* el hogar */
+.hogar { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+.miembro { flex: 0 0 auto; width: 92px; min-height: 120px; padding: 6px 4px; flex-direction: column; gap: 2px; font-size: 13px; }
+.miembro svg { width: 64px; height: 84px; display: block; }
+.miembro small { color: inherit; opacity: .8; font-size: 11px; }
+.nota-45 { font-size: 12px; color: var(--aviso); }
+
+/* vista grande */
+.escena { position: relative; border-radius: 10px; overflow: hidden; background: linear-gradient(#8fb3c9, #c9d9c2 62%, #a89a6c 62%, #8c7d52); }
+.escena svg { display: block; width: 100%; height: auto; }
+.vistas { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 6px; }
+.descr { margin: 8px 0 0; color: var(--suave); font-size: 14px; min-height: 3em; }
+.lejos-nota { font-size: 12.5px; color: var(--suave); margin: 6px 0 0; }
+
+/* piezas */
+details.pieza { border: 1px solid var(--borde); border-radius: 10px; background: var(--panel-fuerte); }
+details.pieza + details.pieza { margin-top: 8px; }
+details.pieza > summary { min-height: var(--toque); display: flex; align-items: center; gap: 8px; padding: 0 12px; cursor: pointer; font-weight: 600; list-style: none; }
+details.pieza > summary::-webkit-details-marker { display: none; }
+details.pieza > summary::before { content: "▸"; color: var(--olivo); transition: transform .15s; }
+details.pieza[open] > summary::before { transform: rotate(90deg); }
+details.pieza > summary .resumen { margin-left: auto; font-weight: 400; color: var(--suave); font-size: 13px; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 55%; }
+.cuerpo-pieza { padding: 4px 12px 12px; }
+fieldset { border: 0; margin: 0 0 10px; padding: 0; min-width: 0; }
+legend { padding: 0; margin: 0 0 6px; color: var(--suave); font-size: 13px; }
+.opciones { display: flex; flex-wrap: wrap; gap: 6px; }
+.op { position: relative; }
+.op input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.op span { min-height: var(--toque); min-width: var(--toque); display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border: 1px solid var(--borde); border-radius: 10px; background: #1b221b; }
+.op input:checked + span { background: var(--olivo); color: var(--sobre-olivo); border-color: var(--olivo); font-weight: 600; }
+.op input:focus-visible + span { outline: 3px solid var(--foco); outline-offset: 2px; }
+.op input:disabled + span { opacity: .45; cursor: not-allowed; }
+.op.color span { padding: 0; width: var(--toque); justify-content: center; }
+.op.color span i { width: 30px; height: 30px; border-radius: 50%; border: 2px solid rgba(255,255,255,.55); display: block; }
+.op.color input:checked + span { background: #1b221b; border: 3px solid var(--foco); }
+.op.color input:checked + span i::after { content: ""; }
+.ayuda { font-size: 12.5px; color: var(--suave); margin: 4px 0 0; }
+.parecidos { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.parecido { flex-direction: row; justify-content: flex-start; text-align: left; padding: 6px 10px; min-height: 64px; font-size: 13px; }
+.parecido svg { width: 40px; height: 52px; flex: none; }
+.acciones { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.criterios { font-size: 13px; color: var(--suave); padding-left: 18px; margin: 4px 0 0; }
+.criterios li { margin: 2px 0; }
+footer { max-width: 1240px; margin: 0 auto; padding: 0 16px 24px; font-size: 12.5px; color: var(--suave); }
+</style>
+</head>
+<body>
+<div class="sim" role="note"><span class="sello">MAQUETA</span><span class="nota">Datos ficticios. Las figuras son dibujos planos, no los avatares 3D. Ver doc/sistema/AVATARES-FAMILIA.md.</span></div>
+
+<header class="cab">
+  <h1>Cómo te verán en la finca</h1>
+  <p>Elige por piezas, sin preguntas de «chico o chica»: cuerpo, piel, pelo, ropa y lo que llevas al campo. Cualquier pieza vale para cualquiera.</p>
+</header>
+
+<main>
+  <div class="col-vista">
+    <section class="caja" aria-labelledby="tHogar">
+      <h2 id="tHogar">Tu hogar <small style="font-weight:400;color:var(--suave)">(familia ficticia)</small></h2>
+      <div class="hogar" id="hogar" role="group" aria-label="Personas del hogar: elige a quién editar"></div>
+      <p class="nota-45" id="nota45" hidden>Las cuentas de peques no existen todavía (decisión 45): este cuerpo está diseñado, pero no se podría elegir hasta que se reabra.</p>
+    </section>
+
+    <section class="caja" aria-labelledby="tVista">
+      <h2 id="tVista">Vista</h2>
+      <div class="vistas" role="group" aria-label="Qué vista mostrar">
+        <button class="boton" type="button" data-vista="cerca" aria-pressed="true">De cerca</button>
+        <button class="boton" type="button" data-vista="lejos" aria-pressed="false">De lejos (muñeco)</button>
+        <button class="boton" type="button" data-vista="manos" aria-pressed="false">Con gafas de VR</button>
+        <button class="boton" type="button" data-vista="hogar" aria-pressed="false">El hogar junto</button>
+      </div>
+      <div class="escena" id="escena"></div>
+      <p class="descr" id="descr" aria-live="polite"></p>
+      <p class="lejos-nota" id="notaVista"></p>
+    </section>
+  </div>
+
+  <div>
+    <section class="caja" aria-labelledby="tParecido">
+      <h2 id="tParecido">Empieza por algo parecido (opcional)</h2>
+      <div class="parecidos" id="parecidos"></div>
+      <p class="ayuda">Son puntos de partida descritos por lo que se ve, no por género ni por parentesco. Luego se cambia cualquier pieza.</p>
+    </section>
+
+    <section class="caja" aria-labelledby="tPiezas">
+      <h2 id="tPiezas">Piezas de <span id="nombreSel">…</span></h2>
+      <div id="piezas"></div>
+      <div class="acciones">
+        <button class="boton" type="button" id="bAzar">Al azar</button>
+        <button class="boton prim" type="button" id="bGuardar">Guardar (maqueta)</button>
+      </div>
+      <p class="ayuda" id="guardado" aria-live="polite"></p>
+    </section>
+
+    <section class="caja" aria-labelledby="tCriterios">
+      <h2 id="tCriterios">Lo que esta maqueta quiere enseñar</h2>
+      <ul class="criterios">
+        <li>No hay selector de género ni primer paso «hombre / mujer»; tampoco ropa o colores «de chico» o «de chica».</li>
+        <li>Diez tonos de piel con el mismo peso; nada viene preseleccionado de serie (cada persona del hogar empieza en el suyo).</li>
+        <li>Edades con su proporción (peque, joven, adulto, mayor), alturas y complexiones.</li>
+        <li>Pelo rapado, canoso, afro, trenzas, rizado, largo, sin pelo…; vello facial para quien quiera.</li>
+        <li>Bastón, andador y silla de ruedas como piezas más, a la misma velocidad que todo el mundo.</li>
+        <li>De lejos, el muñeco lleva tu piel, tu ropa, tu sombrero, tu altura y tu silla.</li>
+      </ul>
+    </section>
+  </div>
+</main>
+<footer>Maqueta sin red ni datos reales. Nombres y familia inventados. Ningún dibujo representa a una persona real.</footer>
+
+<script>
+"use strict";
+(function () {
+  // ---------- paletas y opciones (nombres neutros; el orden no marca un «por defecto»)
+  var PIEL = ["#f6dcc8", "#eec5a6", "#e0ac86", "#cf9670", "#b97d57", "#a06844", "#855436", "#6b412a", "#523020", "#3b2217"];
+  var PELO_COLOR = [["negro", "#1f1a17"], ["castaño oscuro", "#3d2a1e"], ["castaño", "#6a4a30"], ["rubio", "#c9a465"], ["cobrizo", "#a5522c"], ["canoso", "#9a9690"], ["blanco", "#e6e3dc"]];
+  var ROPA_COLOR = [["verde olivo", "#6b7f3a"], ["aceituna negra", "#2f2a2a"], ["tierra", "#8a5a3b"], ["almagra", "#a8432f"], ["trigo", "#d8b65e"], ["cielo", "#6f9fc6"], ["adelfa", "#d77a9a"], ["cal", "#ece7dc"], ["pizarra", "#4b5563"], ["lavanda", "#8b7bb5"]];
+  var OPC = {
+    edad: [["peque", "Peque"], ["joven", "Joven"], ["adulto", "Adulta"], ["mayor", "Mayor"]],
+    altura: [["baja", "Más baja"], ["media", "Media"], ["alta", "Más alta"]],
+    complexion: [["delgada", "Delgada"], ["media", "Media"], ["ancha", "Ancha"]],
+    pelo: [["rapado", "Rapado"], ["corto", "Corto"], ["rizado", "Rizado corto"], ["afro", "Afro"], ["ondulado", "Media melena"], ["largo", "Largo"], ["trenzas", "Trenzas"], ["mono", "Moño"], ["coleta", "Coleta"], ["sin", "Sin pelo"]],
+    vello: [["ninguno", "Ninguno"], ["bigote", "Bigote"], ["barba", "Barba"]],
+    arriba: [["camisa", "Camisa"], ["camiseta", "Camiseta"], ["jersey", "Jersey"], ["chaqueta", "Chaqueta de faena"]],
+    abajo: [["pantalon", "Pantalón"], ["corto", "Pantalón corto"], ["falda", "Falda"], ["peto", "Peto"]],
+    movilidad: [["pie", "A pie"], ["baston", "Con bastón"], ["andador", "Con andador"], ["silla", "En silla de ruedas"]]
+  };
+  var ACCES = [["paja", "Sombrero de paja", "cabeza"], ["gorra", "Gorra", "cabeza"], ["panuelo", "Pañuelo al cuello"], ["gafas", "Gafas"], ["gafassol", "Gafas de sol"], ["audifono", "Audífono"], ["chaleco", "Chaleco de campo"], ["cesta", "Espuerta"]];
+  var NOMBRE = {}; Object.keys(OPC).forEach(function (k) { NOMBRE[k] = {}; OPC[k].forEach(function (o) { NOMBRE[k][o[0]] = o[1]; }); });
+  ACCES.forEach(function (a) { NOMBRE[a[0]] = a[1]; });
+
+  // ---------- el hogar (ficticio)
+  var hogar = [
+    { alias: "Encarna", edad: "mayor", altura: "baja", complexion: "ancha", piel: 4, pelo: "mono", peloColor: 5, vello: "ninguno", arriba: "camisa", arribaColor: 4, abajo: "pantalon", abajoColor: 2, movilidad: "baston", acc: ["paja", "gafas"] },
+    { alias: "Toni", edad: "adulto", altura: "alta", complexion: "media", piel: 7, pelo: "afro", peloColor: 0, vello: "ninguno", arriba: "chaqueta", arribaColor: 0, abajo: "falda", abajoColor: 8, movilidad: "pie", acc: ["gorra", "panuelo"] },
+    { alias: "Rafa", edad: "adulto", altura: "media", complexion: "ancha", piel: 2, pelo: "rapado", peloColor: 5, vello: "barba", arriba: "jersey", arribaColor: 6, abajo: "pantalon", abajoColor: 1, movilidad: "silla", acc: ["audifono"] },
+    { alias: "Lu", edad: "joven", altura: "media", complexion: "delgada", piel: 9, pelo: "trenzas", peloColor: 0, vello: "ninguno", arriba: "camiseta", arribaColor: 5, abajo: "peto", abajoColor: 3, movilidad: "pie", acc: ["chaleco", "gafassol"] },
+    { alias: "Nico", edad: "peque", altura: "media", complexion: "media", piel: 5, pelo: "rizado", peloColor: 2, vello: "ninguno", arriba: "camiseta", arribaColor: 7, abajo: "corto", abajoColor: 9, movilidad: "pie", acc: ["paja"] }
+  ];
+  var PARECIDOS = [
+    ["Persona mayor, con sombrero y bastón", { edad: "mayor", complexion: "media", pelo: "corto", peloColor: 6, vello: "ninguno", arriba: "camisa", arribaColor: 7, abajo: "pantalon", abajoColor: 2, movilidad: "baston", acc: ["paja"] }],
+    ["Persona adulta, chaqueta de faena y gorra", { edad: "adulto", complexion: "ancha", pelo: "rapado", peloColor: 0, vello: "bigote", arriba: "chaqueta", arribaColor: 0, abajo: "pantalon", abajoColor: 1, movilidad: "pie", acc: ["gorra"] }],
+    ["Persona joven, trenzas y peto", { edad: "joven", complexion: "media", pelo: "trenzas", peloColor: 1, vello: "ninguno", arriba: "camiseta", arribaColor: 4, abajo: "peto", abajoColor: 5, movilidad: "pie", acc: ["chaleco"] }],
+    ["Persona mayor, moño canoso y pañuelo", { edad: "mayor", complexion: "ancha", pelo: "mono", peloColor: 6, vello: "ninguno", arriba: "jersey", arribaColor: 9, abajo: "falda", abajoColor: 8, movilidad: "andador", acc: ["panuelo", "gafas"] }],
+    ["Persona adulta en silla, con gafas de sol", { edad: "adulto", complexion: "media", pelo: "ondulado", peloColor: 3, vello: "ninguno", arriba: "camisa", arribaColor: 3, abajo: "pantalon", abajoColor: 1, movilidad: "silla", acc: ["gafassol"] }],
+    ["Persona adulta, afro y espuerta", { edad: "adulto", complexion: "delgada", pelo: "afro", peloColor: 0, vello: "barba", arriba: "camiseta", arribaColor: 6, abajo: "corto", abajoColor: 2, movilidad: "pie", acc: ["cesta"] }]
+  ];
+  var sel = 0, vista = "cerca";
+
+  // ---------- dibujo de la figura (vista de frente). Devuelve el contenido SVG en un marco de 200 × 300, suelo en y = 288
+  function medidas(p) {
+    var fe = { peque: 0.6, joven: 0.92, adulto: 1, mayor: 0.96 }[p.edad], fa = { baja: 0.93, media: 1, alta: 1.07 }[p.altura], fc = { delgada: 0.84, media: 1, ancha: 1.24 }[p.complexion];
+    var H = 250 * fe * fa, cab = p.edad === "peque" ? 0.13 : 0.085;
+    return { H: H, r: H * cab, ancho: 44 * fc * (p.edad === "peque" ? 0.82 : 1), fc: fc };
+  }
+  function pelo(p, cx, cy, r, detras) {
+    var c = PELO_COLOR[p.peloColor][1], s = "";
+    if (detras) {
+      if (p.pelo === "afro") s += '<circle cx="' + cx + '" cy="' + (cy - r * 0.2) + '" r="' + (r * 1.55) + '" fill="' + c + '"/>';
+      if (p.pelo === "largo") s += '<rect x="' + (cx - r * 1.1) + '" y="' + (cy - r * 0.4) + '" width="' + (r * 2.2) + '" height="' + (r * 2.6) + '" rx="' + (r * 0.6) + '" fill="' + c + '"/>';
+      if (p.pelo === "ondulado") s += '<rect x="' + (cx - r * 1.12) + '" y="' + (cy - r * 0.4) + '" width="' + (r * 2.24) + '" height="' + (r * 1.6) + '" rx="' + (r * 0.7) + '" fill="' + c + '"/>';
+      if (p.pelo === "coleta") s += '<ellipse cx="' + (cx + r * 1.05) + '" cy="' + (cy + r * 0.5) + '" rx="' + (r * 0.35) + '" ry="' + (r * 0.9) + '" fill="' + c + '"/>';
+      return s;
+    }
+    if (p.pelo === "sin") return "";
+    var top = '<path d="M' + (cx - r) + ' ' + cy + ' A' + r + ' ' + r + ' 0 0 1 ' + (cx + r) + ' ' + cy + ' Q' + cx + ' ' + (cy - r * 0.45) + ' ' + (cx - r) + ' ' + cy + 'Z" fill="' + c + '"' + (p.pelo === "rapado" ? ' opacity=".55"' : "") + '/>';
+    s += top;
+    if (p.pelo === "rizado") for (var i = -2; i <= 2; i++) s += '<circle cx="' + (cx + i * r * 0.42) + '" cy="' + (cy - r * 0.78 + Math.abs(i) * r * 0.18) + '" r="' + (r * 0.3) + '" fill="' + c + '"/>';
+    if (p.pelo === "mono") s += '<circle cx="' + cx + '" cy="' + (cy - r * 1.15) + '" r="' + (r * 0.42) + '" fill="' + c + '"/>';
+    if (p.pelo === "trenzas") for (var l = -1; l <= 1; l += 2) for (var j = 0; j < 5; j++) s += '<ellipse cx="' + (cx + l * r * 1.02) + '" cy="' + (cy + r * 0.2 + j * r * 0.42) + '" rx="' + (r * 0.2) + '" ry="' + (r * 0.24) + '" fill="' + c + '"/>';
+    return s;
+  }
+  function figura(p, x0) {
+    var m = medidas(p), suelo = 288, cx = x0 == null ? 100 : x0, sentado = p.movilidad === "silla";
+    var piel = PIEL[p.piel], ca = ROPA_COLOR[p.arribaColor][1], cb = ROPA_COLOR[p.abajoColor][1];
+    var Hv = sentado ? m.H * 0.72 : m.H, inclina = p.edad === "mayor" ? 3 : 0;
+    var cabY = suelo - Hv + m.r, cuelloY = cabY + m.r * 0.95, tronco = m.H * 0.32, caderaY = cuelloY + tronco, w = m.ancho, s = "";
+    // silla detrás
+    if (sentado) {
+      s += '<rect x="' + (cx - w * 0.75) + '" y="' + (cuelloY + tronco * 0.25) + '" width="' + (w * 1.5) + '" height="' + (tronco * 0.95) + '" rx="4" fill="#3a3f45"/>';
+      [-1, 1].forEach(function (l) { var rx = cx + l * (w * 0.78), ry = suelo - 34; s += '<circle cx="' + rx + '" cy="' + ry + '" r="34" fill="none" stroke="#22262a" stroke-width="7"/><circle cx="' + rx + '" cy="' + ry + '" r="27" fill="none" stroke="#9aa3ab" stroke-width="2"/><line x1="' + rx + '" y1="' + (ry - 27) + '" x2="' + rx + '" y2="' + (ry + 27) + '" stroke="#9aa3ab" stroke-width="1.5"/><line x1="' + (rx - 27) + '" y1="' + ry + '" x2="' + (rx + 27) + '" y2="' + ry + '" stroke="#9aa3ab" stroke-width="1.5"/>'; });
+    }
+    s += pelo(p, cx + inclina, cabY, m.r, true);
+    // piernas
+    var largo = suelo - caderaY, pw = w * 0.36;
+    if (sentado) {
+      s += '<rect x="' + (cx - w * 0.5) + '" y="' + caderaY + '" width="' + w + '" height="' + (largo * 0.35) + '" rx="5" fill="' + cb + '"/>';
+      [-1, 1].forEach(function (l) { s += '<rect x="' + (cx + l * w * 0.24 - pw / 2) + '" y="' + (caderaY + largo * 0.3) + '" width="' + pw + '" height="' + (largo * 0.62) + '" rx="5" fill="' + (p.abajo === "corto" || p.abajo === "falda" ? piel : cb) + '"/><rect x="' + (cx + l * w * 0.24 - pw / 2 - 2) + '" y="' + (suelo - 8) + '" width="' + (pw + 6) + '" height="8" rx="3" fill="#2b2420"/>'; });
+      s += '<rect x="' + (cx - w * 0.7) + '" y="' + (suelo - 12) + '" width="' + (w * 1.4) + '" height="4" fill="#22262a"/>';
+    } else {
+      [-1, 1].forEach(function (l) {
+        var lx = cx + l * w * 0.24 - pw / 2, corto = p.abajo === "corto" || p.abajo === "falda";
+        s += '<rect x="' + lx + '" y="' + caderaY + '" width="' + pw + '" height="' + largo + '" rx="5" fill="' + (corto ? piel : cb) + '"/>';
+        if (p.abajo === "corto") s += '<rect x="' + (lx - 1) + '" y="' + caderaY + '" width="' + (pw + 2) + '" height="' + (largo * 0.38) + '" rx="4" fill="' + cb + '"/>';
+        s += '<rect x="' + (lx - 2) + '" y="' + (suelo - 8) + '" width="' + (pw + 6) + '" height="8" rx="3" fill="#2b2420"/>';
+      });
+      if (p.abajo === "falda") s += '<path d="M' + (cx - w * 0.5) + ' ' + caderaY + ' L' + (cx + w * 0.5) + ' ' + caderaY + ' L' + (cx + w * 0.72) + ' ' + (caderaY + largo * 0.55) + ' L' + (cx - w * 0.72) + ' ' + (caderaY + largo * 0.55) + 'Z" fill="' + cb + '"/>';
+    }
+    // tronco y brazos
+    var mangaCorta = p.arriba === "camiseta";
+    s += '<rect x="' + (cx - w / 2) + '" y="' + cuelloY + '" width="' + w + '" height="' + (tronco + 4) + '" rx="' + (w * 0.22) + '" fill="' + ca + '"/>';
+    if (p.abajo === "peto") s += '<rect x="' + (cx - w * 0.32) + '" y="' + (cuelloY + tronco * 0.4) + '" width="' + (w * 0.64) + '" height="' + (tronco * 0.62) + '" rx="3" fill="' + cb + '"/><line x1="' + (cx - w * 0.28) + '" y1="' + (cuelloY + tronco * 0.4) + '" x2="' + (cx - w * 0.36) + '" y2="' + cuelloY + '" stroke="' + cb + '" stroke-width="4"/><line x1="' + (cx + w * 0.28) + '" y1="' + (cuelloY + tronco * 0.4) + '" x2="' + (cx + w * 0.36) + '" y2="' + cuelloY + '" stroke="' + cb + '" stroke-width="4"/>';
+    if (p.arriba === "camisa") s += '<path d="M' + (cx - w * 0.14) + ' ' + cuelloY + ' L' + cx + ' ' + (cuelloY + 10) + ' L' + (cx + w * 0.14) + ' ' + cuelloY + '" fill="none" stroke="rgba(0,0,0,.35)" stroke-width="2"/>';
+    if (p.arriba === "chaqueta") s += '<line x1="' + cx + '" y1="' + cuelloY + '" x2="' + cx + '" y2="' + (caderaY + 2) + '" stroke="rgba(0,0,0,.4)" stroke-width="2"/>';
+    if (p.acc.indexOf("chaleco") >= 0) s += '<path d="M' + (cx - w / 2) + ' ' + (cuelloY + 4) + ' h' + (w * 0.36) + ' v' + tronco + ' h-' + (w * 0.36) + 'Z M' + (cx + w / 2) + ' ' + (cuelloY + 4) + ' h-' + (w * 0.36) + ' v' + tronco + ' h' + (w * 0.36) + 'Z" fill="#7a6a3a"/><rect x="' + (cx - w * 0.44) + '" y="' + (cuelloY + tronco * 0.55) + '" width="' + (w * 0.24) + '" height="' + (tronco * 0.22) + '" fill="#665830"/>';
+    var bw = w * 0.22, bl = tronco * 1.02, manoY = cuelloY + 4 + bl;
+    [-1, 1].forEach(function (l) {
+      var bx = cx + l * (w / 2 + bw * 0.55) - bw / 2;
+      s += '<rect x="' + bx + '" y="' + (cuelloY + 4) + '" width="' + bw + '" height="' + bl + '" rx="' + (bw / 2) + '" fill="' + (mangaCorta ? piel : ca) + '"/>';
+      if (mangaCorta) s += '<rect x="' + (bx - 1) + '" y="' + (cuelloY + 2) + '" width="' + (bw + 2) + '" height="' + (bl * 0.32) + '" rx="' + (bw / 2) + '" fill="' + ca + '"/>';
+      s += '<circle cx="' + (bx + bw / 2) + '" cy="' + manoY + '" r="' + (bw * 0.62) + '" fill="' + piel + '"/>';
+    });
+    var manoD = cx + (w / 2 + bw * 0.55), manoI = cx - (w / 2 + bw * 0.55);
+    // apoyos
+    if (p.movilidad === "baston") s += '<path d="M' + (manoD + 2) + ' ' + (manoY - 6) + ' q8 -6 10 4 L' + (manoD + 10) + ' ' + suelo + '" fill="none" stroke="#5a3d22" stroke-width="4" stroke-linecap="round"/>';
+    if (p.movilidad === "andador") s += '<rect x="' + (manoI - 4) + '" y="' + (manoY - 4) + '" width="' + (manoD - manoI + 8) + '" height="' + (suelo - manoY + 4) + '" fill="none" stroke="#a9b1b8" stroke-width="4" rx="4"/><line x1="' + (manoI - 4) + '" y1="' + (manoY + (suelo - manoY) * 0.5) + '" x2="' + (manoD + 4) + '" y2="' + (manoY + (suelo - manoY) * 0.5) + '" stroke="#a9b1b8" stroke-width="3"/>';
+    if (p.acc.indexOf("cesta") >= 0) s += '<path d="M' + (manoI - 14) + ' ' + (manoY + 4) + ' h28 l-4 20 h-20 Z" fill="#b08a4a" stroke="#7d5f2e" stroke-width="2"/><path d="M' + (manoI - 10) + ' ' + (manoY + 4) + ' q10 -14 20 0" fill="none" stroke="#7d5f2e" stroke-width="2"/>';
+    // cabeza
+    var hx = cx + inclina;
+    s += '<rect x="' + (hx - m.r * 0.3) + '" y="' + (cabY + m.r * 0.6) + '" width="' + (m.r * 0.6) + '" height="' + (m.r * 0.6) + '" fill="' + piel + '"/>';
+    s += '<circle cx="' + hx + '" cy="' + cabY + '" r="' + m.r + '" fill="' + piel + '"/>';
+    if (p.acc.indexOf("panuelo") >= 0) s += '<path d="M' + (hx - m.r * 0.8) + ' ' + (cuelloY - 1) + ' L' + (hx + m.r * 0.8) + ' ' + (cuelloY - 1) + ' L' + hx + ' ' + (cuelloY + m.r * 0.9) + 'Z" fill="#c23b3b"/><circle cx="' + (hx - m.r * 0.2) + '" cy="' + (cuelloY + 3) + '" r="1.6" fill="#f2e6d0"/><circle cx="' + (hx + m.r * 0.25) + '" cy="' + (cuelloY + 6) + '" r="1.6" fill="#f2e6d0"/>';
+    var ojoY = cabY + m.r * 0.05, ojo = m.r * 0.38;
+    s += '<circle cx="' + (hx - ojo) + '" cy="' + ojoY + '" r="' + (m.r * 0.09) + '" fill="#1b1512"/><circle cx="' + (hx + ojo) + '" cy="' + ojoY + '" r="' + (m.r * 0.09) + '" fill="#1b1512"/>';
+    s += '<path d="M' + (hx - m.r * 0.25) + ' ' + (cabY + m.r * 0.45) + ' q' + (m.r * 0.25) + ' ' + (m.r * 0.18) + ' ' + (m.r * 0.5) + ' 0" fill="none" stroke="#5a2f22" stroke-width="1.6" stroke-linecap="round"/>';
+    if (p.edad === "mayor") s += '<path d="M' + (hx - ojo - m.r * 0.18) + ' ' + (ojoY + m.r * 0.2) + ' q' + (m.r * 0.18) + ' ' + (m.r * 0.08) + ' ' + (m.r * 0.36) + ' 0 M' + (hx + ojo - m.r * 0.18) + ' ' + (ojoY + m.r * 0.2) + ' q' + (m.r * 0.18) + ' ' + (m.r * 0.08) + ' ' + (m.r * 0.36) + ' 0" fill="none" stroke="rgba(0,0,0,.28)" stroke-width="1"/>';
+    var cp = PELO_COLOR[p.peloColor][1];
+    if (p.vello === "bigote") s += '<path d="M' + (hx - m.r * 0.32) + ' ' + (cabY + m.r * 0.36) + ' q' + (m.r * 0.32) + ' -' + (m.r * 0.14) + ' ' + (m.r * 0.64) + ' 0" fill="none" stroke="' + cp + '" stroke-width="' + (m.r * 0.14) + '" stroke-linecap="round"/>';
+    if (p.vello === "barba") s += '<path d="M' + (hx - m.r * 0.92) + ' ' + (cabY + m.r * 0.1) + ' Q' + (hx - m.r * 0.8) + ' ' + (cabY + m.r * 1.15) + ' ' + hx + ' ' + (cabY + m.r * 1.2) + ' Q' + (hx + m.r * 0.8) + ' ' + (cabY + m.r * 1.15) + ' ' + (hx + m.r * 0.92) + ' ' + (cabY + m.r * 0.1) + ' Q' + hx + ' ' + (cabY + m.r * 0.75) + ' ' + (hx - m.r * 0.92) + ' ' + (cabY + m.r * 0.1) + 'Z" fill="' + cp + '"/>';
+    if (p.acc.indexOf("audifono") >= 0) s += '<path d="M' + (hx - m.r * 1.02) + ' ' + (cabY - m.r * 0.2) + ' q-' + (m.r * 0.3) + ' ' + (m.r * 0.3) + ' 0 ' + (m.r * 0.55) + '" fill="none" stroke="#d9c7a8" stroke-width="' + (m.r * 0.18) + '" stroke-linecap="round"/>';
+    if (p.acc.indexOf("gafas") >= 0 || p.acc.indexOf("gafassol") >= 0) {
+      var sol = p.acc.indexOf("gafassol") >= 0, gr = m.r * 0.27;
+      s += '<g fill="' + (sol ? "#1d2228" : "none") + '" stroke="#2a2a2a" stroke-width="1.6"><circle cx="' + (hx - ojo) + '" cy="' + ojoY + '" r="' + gr + '"/><circle cx="' + (hx + ojo) + '" cy="' + ojoY + '" r="' + gr + '"/><line x1="' + (hx - ojo + gr) + '" y1="' + ojoY + '" x2="' + (hx + ojo - gr) + '" y2="' + ojoY + '"/></g>';
+    }
+    s += pelo(p, hx, cabY, m.r, false);
+    if (p.acc.indexOf("paja") >= 0) s += '<ellipse cx="' + hx + '" cy="' + (cabY - m.r * 0.55) + '" rx="' + (m.r * 2) + '" ry="' + (m.r * 0.32) + '" fill="#d9bf6a" stroke="#b39845" stroke-width="1.2"/><path d="M' + (hx - m.r * 0.85) + ' ' + (cabY - m.r * 0.55) + ' Q' + (hx - m.r * 0.8) + ' ' + (cabY - m.r * 1.45) + ' ' + hx + ' ' + (cabY - m.r * 1.45) + ' Q' + (hx + m.r * 0.8) + ' ' + (cabY - m.r * 1.45) + ' ' + (hx + m.r * 0.85) + ' ' + (cabY - m.r * 0.55) + 'Z" fill="#e2c978"/><rect x="' + (hx - m.r * 0.85) + '" y="' + (cabY - m.r * 0.8) + '" width="' + (m.r * 1.7) + '" height="' + (m.r * 0.2) + '" fill="#6b4a2a"/>';
+    else if (p.acc.indexOf("gorra") >= 0) s += '<path d="M' + (hx - m.r * 1.02) + ' ' + (cabY - m.r * 0.25) + ' A' + (m.r * 1.02) + ' ' + (m.r * 1.02) + ' 0 0 1 ' + (hx + m.r * 1.02) + ' ' + (cabY - m.r * 0.25) + 'Z" fill="#2e5d34"/><ellipse cx="' + hx + '" cy="' + (cabY - m.r * 0.22) + '" rx="' + (m.r * 1.15) + '" ry="' + (m.r * 0.2) + '" fill="#244a29"/>';
+    return s;
+  }
+  // el muñeco lejano de 26_presencia.js: cajas instanciadas. Lo que lleva de ti: piel, camisa, pantalón, sombrero (paja/gorra/ninguno), altura y silla
+  function muneco(p, x0) {
+    var m = medidas(p), suelo = 288, cx = x0 == null ? 100 : x0, sentado = p.movilidad === "silla", esc = m.H / 250, s = "";
+    var piel = PIEL[p.piel], ca = ROPA_COLOR[p.arribaColor][1], cb = ROPA_COLOR[p.abajoColor][1];
+    var Hv = sentado ? m.H * 0.72 : m.H, top = suelo - Hv, w = 40 * esc * Math.min(1.15, m.fc), cab = 26 * esc;
+    if (sentado) [-1, 1].forEach(function (l) { s += '<circle cx="' + (cx + l * w * 0.85) + '" cy="' + (suelo - 30 * esc) + '" r="' + (30 * esc) + '" fill="none" stroke="#22262a" stroke-width="' + (6 * esc) + '"/>'; });
+    var cuerpoY = top + cab * 1.9, tronco = Hv * 0.34;
+    s += '<rect x="' + (cx - w * 0.45) + '" y="' + (cuerpoY + tronco) + '" width="' + (w * 0.4) + '" height="' + (suelo - cuerpoY - tronco) + '" fill="' + cb + '"/><rect x="' + (cx + w * 0.05) + '" y="' + (cuerpoY + tronco) + '" width="' + (w * 0.4) + '" height="' + (suelo - cuerpoY - tronco) + '" fill="' + cb + '"/>';
+    s += '<rect x="' + (cx - w / 2) + '" y="' + cuerpoY + '" width="' + w + '" height="' + tronco + '" fill="' + ca + '"/>';
+    s += '<rect x="' + (cx - w / 2 - w * 0.24) + '" y="' + cuerpoY + '" width="' + (w * 0.22) + '" height="' + (tronco * 0.95) + '" fill="' + ca + '"/><rect x="' + (cx + w / 2 + w * 0.02) + '" y="' + cuerpoY + '" width="' + (w * 0.22) + '" height="' + (tronco * 0.95) + '" fill="' + ca + '"/>';
+    var hy = top + cab, pts = [];
+    for (var i = 0; i < 6; i++) { var a = Math.PI / 6 + i * Math.PI / 3; pts.push((cx + Math.cos(a) * cab).toFixed(1) + "," + (hy + Math.sin(a) * cab).toFixed(1)); }
+    s += '<polygon points="' + pts.join(" ") + '" fill="' + piel + '"/>';
+    if (p.acc.indexOf("paja") >= 0) s += '<rect x="' + (cx - cab * 1.8) + '" y="' + (hy - cab * 1.05) + '" width="' + (cab * 3.6) + '" height="' + (cab * 0.32) + '" fill="#d9bf6a"/>';
+    else if (p.acc.indexOf("gorra") >= 0) s += '<rect x="' + (cx - cab * 1.1) + '" y="' + (hy - cab * 1.2) + '" width="' + (cab * 2.4) + '" height="' + (cab * 0.45) + '" fill="#2e5d34"/>';
+    return s;
+  }
+  function olivo(x, y, k) {
+    return '<rect x="' + (x - 3 * k) + '" y="' + (y - 40 * k) + '" width="' + (6 * k) + '" height="' + (40 * k) + '" fill="#6b5640"/><ellipse cx="' + x + '" cy="' + (y - 52 * k) + '" rx="' + (34 * k) + '" ry="' + (24 * k) + '" fill="#6f8a4c"/><ellipse cx="' + (x - 14 * k) + '" cy="' + (y - 60 * k) + '" rx="' + (16 * k) + '" ry="' + (12 * k) + '" fill="#82a05a"/>';
+  }
+
+  // ---------- texto accesible (lo que lee un lector de pantalla y lo que verá la portada como alternativa al 3D)
+  function describe(p) {
+    var t = [NOMBRE.edad[p.edad].toLowerCase(), "altura " + NOMBRE.altura[p.altura].toLowerCase(), "complexión " + NOMBRE.complexion[p.complexion].toLowerCase(), "tono de piel " + (p.piel + 1) + " de 10"];
+    t.push(p.pelo === "sin" ? "sin pelo" : "pelo " + NOMBRE.pelo[p.pelo].toLowerCase() + " " + PELO_COLOR[p.peloColor][0]);
+    if (p.vello !== "ninguno") t.push(NOMBRE.vello[p.vello].toLowerCase());
+    t.push(NOMBRE.arriba[p.arriba].toLowerCase() + " " + ROPA_COLOR[p.arribaColor][0], NOMBRE.abajo[p.abajo].toLowerCase() + " " + ROPA_COLOR[p.abajoColor][0]);
+    p.acc.forEach(function (a) { t.push(NOMBRE[a].toLowerCase()); });
+    if (p.movilidad !== "pie") t.push(NOMBRE.movilidad[p.movilidad].toLowerCase());
+    return t.join(", ");
+  }
+  function svg(contenido, etiqueta, vb) { return '<svg viewBox="' + (vb || "0 0 200 300") + '" role="img" aria-label="' + etiqueta.replace(/"/g, "") + '">' + contenido + "</svg>"; }
+
+  // ---------- pintar
+  var $ = function (id) { return document.getElementById(id); };
+  function pintaHogar() {
+    $("hogar").innerHTML = hogar.map(function (p, i) {
+      return '<button type="button" class="boton miembro" data-i="' + i + '" aria-pressed="' + (i === sel) + '" aria-label="Editar a ' + p.alias + (p.edad === "peque" ? " (peque, pendiente de la decisión 45)" : "") + '">' + svg(figura(p), "") + "<span>" + p.alias + "</span>" + (p.edad === "peque" ? "<small>sin cuenta aún</small>" : "") + "</button>";
+    }).join("");
+  }
+  function pintaVista() {
+    var p = hogar[sel], e = $("escena"), nota = $("notaVista"), suelo = '<rect x="0" y="288" width="600" height="12" fill="#7a6a42"/>';
+    if (vista === "cerca") { e.innerHTML = svg(olivo(30, 288, 1.1) + suelo + figura(p, 120), "Vista de cerca de " + p.alias + ": " + describe(p), "0 0 220 300"); nota.textContent = "De cerca (los más cercanos que caben en el presupuesto del aparato) se ve el avatar entero."; }
+    if (vista === "lejos") { e.innerHTML = svg(olivo(40, 288, 0.8) + olivo(190, 288, 0.6) + suelo + muneco(p, 120), "El muñeco lejano de " + p.alias + " con su piel, su ropa, su sombrero y su altura", "0 0 220 300"); nota.textContent = "De lejos, el muñeco de bloque (5 llamadas de dibujo para todo el mundo) lleva tu piel, tu camisa, tu pantalón, tu sombrero, tu altura y tu silla."; }
+    if (vista === "manos") {
+      var piel = PIEL[p.piel];
+      e.innerHTML = svg('<rect width="220" height="300" fill="#101510"/><text x="110" y="40" text-anchor="middle" fill="#c3c8b8" font-size="12">Con gafas solo ves tus manos</text>' + [-1, 1].map(function (l) { var x = 110 + l * 48; return '<g transform="translate(' + x + ' 190) rotate(' + (l * -12) + ')"><rect x="-22" y="-18" width="44" height="52" rx="16" fill="' + piel + '"/>' + [0, 1, 2, 3].map(function (k) { return '<rect x="' + (-20 + k * 11) + '" y="-46" width="9" height="34" rx="4.5" fill="' + piel + '"/>'; }).join("") + '<rect x="' + (l * 18 - 5) + '" y="-14" width="10" height="26" rx="5" transform="rotate(' + (l * 35) + ' ' + (l * 18) + ' 0)" fill="' + piel + '"/><rect x="-24" y="32" width="48" height="40" rx="6" fill="' + ROPA_COLOR[p.arribaColor][1] + '"/></g>'; }).join(""), "Las manos de " + p.alias + " en VR, con su tono de piel", "0 0 220 300");
+      nota.textContent = "En primera persona y en VR no ves tu cuerpo (ADR-0020 §7): solo tus manos, con tu tono de piel y el puño de tu manga.";
+    }
+    if (vista === "hogar") {
+      var n = hogar.length, paso = 560 / n, c = olivo(30, 288, 1) + olivo(570, 288, 0.9) + '<rect x="0" y="288" width="600" height="12" fill="#7a6a42"/>';
+      hogar.forEach(function (q, i) { c += figura(q, 40 + paso * (i + 0.5)); });
+      e.innerHTML = svg(c, "El hogar junto: " + hogar.map(function (q) { return q.alias + ", " + describe(q); }).join(". "), "0 0 600 300");
+      nota.textContent = "La misma escala para todos: peques, mayores, quien va en silla. Nadie es «el personaje principal».";
+    }
+    $("descr").textContent = p.alias + ": " + describe(p) + ".";
+    $("nota45").hidden = p.edad !== "peque";
+  }
+  function grupo(nombre, titulo, opciones, valor, tipo, colores) {
+    var h = '<fieldset><legend>' + titulo + '</legend><div class="opciones">';
+    opciones.forEach(function (o, i) {
+      var v = colores ? String(i) : o[0], marcado = colores ? i === valor : o[0] === valor;
+      var etq = colores ? o[0] : o[1];
+      h += '<label class="op' + (colores ? " color" : "") + '"><input type="' + (tipo || "radio") + '" name="' + nombre + '" value="' + v + '"' + (marcado ? " checked" : "") + (colores ? ' aria-label="' + etq + '"' : "") + '><span>' + (colores ? '<i style="background:' + o[1] + '"></i>' : etq) + "</span></label>";
+    });
+    return h + "</div></fieldset>";
+  }
+  var abiertos = { cuerpo: true };
+  function pieza(id, titulo, resumen, dentro) { return '<details class="pieza" data-id="' + id + '"' + (abiertos[id] ? " open" : "") + '><summary>' + titulo + '<span class="resumen">' + resumen + '</span></summary><div class="cuerpo-pieza">' + dentro + "</div></details>"; }
+  function pintaPiezas() {
+    var p = hogar[sel], pielOps = PIEL.map(function (c, i) { return ["Tono " + (i + 1) + " de 10", c]; });
+    $("nombreSel").textContent = p.alias;
+    var h = "";
+    h += pieza("cuerpo", "Cuerpo", NOMBRE.edad[p.edad] + " · " + NOMBRE.altura[p.altura] + " · " + NOMBRE.complexion[p.complexion],
+      grupo("edad", "Edad (cambia las proporciones)", OPC.edad, p.edad) + grupo("altura", "Altura", OPC.altura, p.altura) + grupo("complexion", "Complexión", OPC.complexion, p.complexion));
+    h += pieza("piel", "Piel", "tono " + (p.piel + 1) + " de 10", grupo("piel", "Tono de piel (diez, de claro a oscuro; ninguno es el de serie)", pielOps, p.piel, "radio", true));
+    h += pieza("pelo", "Pelo y cara", (p.pelo === "sin" ? "sin pelo" : NOMBRE.pelo[p.pelo]) + " · " + PELO_COLOR[p.peloColor][0],
+      grupo("pelo", "Peinado", OPC.pelo, p.pelo) + grupo("peloColor", "Color del pelo", PELO_COLOR, p.peloColor, "radio", true) + grupo("vello", "Vello facial (para quien quiera, sin condiciones)", OPC.vello, p.vello));
+    h += pieza("ropa", "Ropa", NOMBRE.arriba[p.arriba] + " · " + NOMBRE.abajo[p.abajo],
+      grupo("arriba", "Arriba", OPC.arriba, p.arriba) + grupo("arribaColor", "Color de arriba", ROPA_COLOR, p.arribaColor, "radio", true) + grupo("abajo", "Abajo", OPC.abajo, p.abajo) + grupo("abajoColor", "Color de abajo", ROPA_COLOR, p.abajoColor, "radio", true) + '<p class="ayuda">Los colores llevan nombres del campo; ninguno está reservado a nadie.</p>');
+    var accH = '<fieldset><legend>Lo que llevas (varios a la vez)</legend><div class="opciones">' + ACCES.map(function (a) { return '<label class="op"><input type="checkbox" name="acc" value="' + a[0] + '"' + (p.acc.indexOf(a[0]) >= 0 ? " checked" : "") + "><span>" + a[1] + "</span></label>"; }).join("") + '</div></fieldset><p class="ayuda">Sombrero de paja y gorra no van juntos (una sola prenda en la cabeza).</p>';
+    h += pieza("acc", "Accesorios de campo", p.acc.length ? p.acc.map(function (a) { return NOMBRE[a]; }).join(", ") : "ninguno", accH);
+    h += pieza("mov", "Cómo te mueves", NOMBRE.movilidad[p.movilidad], grupo("movilidad", "Apoyo", OPC.movilidad, p.movilidad) + '<p class="ayuda">Van a la misma velocidad que todo el mundo y por los mismos sitios. La silla usa la postura sentada que ya tiene el quad; el bastón y el andador, el paso de siempre con la mano fija.</p>');
+    $("piezas").innerHTML = h;
+  }
+  function pintaParecidos() {
+    $("parecidos").innerHTML = PARECIDOS.map(function (x, i) {
+      var p = Object.assign({}, hogar[sel], x[1]);
+      return '<button type="button" class="boton parecido" data-p="' + i + '">' + svg(figura(p), "") + "<span>" + x[0] + "</span></button>";
+    }).join("");
+  }
+  function todo() { pintaHogar(); pintaVista(); pintaPiezas(); pintaParecidos(); }
+
+  // ---------- eventos
+  $("hogar").addEventListener("click", function (ev) { var b = ev.target.closest("[data-i]"); if (!b) return; sel = +b.dataset.i; todo(); $("guardado").textContent = ""; });
+  document.querySelector(".vistas").addEventListener("click", function (ev) {
+    var b = ev.target.closest("[data-vista]"); if (!b) return; vista = b.dataset.vista;
+    document.querySelectorAll("[data-vista]").forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); }); pintaVista();
+  });
+  $("piezas").addEventListener("toggle", function (ev) { var d = ev.target; if (d.dataset && d.dataset.id) abiertos[d.dataset.id] = d.open; }, true);
+  $("piezas").addEventListener("change", function (ev) {
+    var t = ev.target, p = hogar[sel], foco = t.name + "=" + t.value;
+    if (t.name === "acc") {
+      var i = p.acc.indexOf(t.value);
+      if (t.checked && i < 0) { p.acc.push(t.value); if (t.value === "paja" || t.value === "gorra") p.acc = p.acc.filter(function (a) { return a === t.value || (a !== "paja" && a !== "gorra"); }); if (t.value === "gafas" || t.value === "gafassol") p.acc = p.acc.filter(function (a) { return a === t.value || (a !== "gafas" && a !== "gafassol"); }); }
+      if (!t.checked && i >= 0) p.acc.splice(i, 1);
+    } else if (/Color$|^piel$/.test(t.name)) p[t.name] = +t.value;
+    else p[t.name] = t.value;
+    pintaHogar(); pintaVista(); pintaPiezas(); pintaParecidos();
+    var n = document.querySelector('#piezas input[name="' + foco.split("=")[0] + '"][value="' + foco.split("=")[1] + '"]'); if (n) n.focus();
+    $("guardado").textContent = "";
+  });
+  $("parecidos").addEventListener("click", function (ev) {
+    var b = ev.target.closest("[data-p]"); if (!b) return; var x = PARECIDOS[+b.dataset.p][1];
+    Object.keys(x).forEach(function (k) { hogar[sel][k] = Array.isArray(x[k]) ? x[k].slice() : x[k]; }); todo();
+    $("guardado").textContent = "Aplicado «" + PARECIDOS[+b.dataset.p][0] + "». La piel, la altura y la edad de " + hogar[sel].alias + " no se tocan si el punto de partida no las dice.";
+  });
+  function azar(n) { return Math.floor(Math.random() * n); }
+  $("bAzar").addEventListener("click", function () {
+    var p = hogar[sel], cual = function (k) { return OPC[k][azar(OPC[k].length)][0]; };
+    p.altura = cual("altura"); p.complexion = cual("complexion"); p.piel = azar(PIEL.length); p.pelo = cual("pelo"); p.peloColor = azar(PELO_COLOR.length);
+    p.vello = azar(4) ? "ninguno" : cual("vello"); p.arriba = cual("arriba"); p.abajo = cual("abajo"); p.arribaColor = azar(ROPA_COLOR.length); p.abajoColor = azar(ROPA_COLOR.length);
+    var cab = [null, "paja", "gorra"][azar(3)]; p.acc = (cab ? [cab] : []).concat(["panuelo", "gafas", "audifono", "chaleco", "cesta"].filter(function () { return Math.random() < 0.25; }));
+    todo(); $("guardado").textContent = "Al azar: la edad y el apoyo para moverse no se sortean (son tuyos).";
+  });
+  $("bGuardar").addEventListener("click", function () { $("guardado").textContent = "Guardado en la maqueta (no va a ningún sitio). En el producto: PUT /api/yo/avatar con las piezas."; });
+  todo();
+})();
+</script>
+</body>
+</html>
