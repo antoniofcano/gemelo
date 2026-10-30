@@ -53,7 +53,7 @@ test("nombre del aparato deducido del agente, corto y sin el agente entero", () 
 
 test("configuración de la oficina: 12 h, 120 min, 15 min y 5 min por defecto; en producción el segundo enlace no baja de 5 min", () => {
   const c = configDePrueba();
-  assert.deepEqual(c.oficina, { horasSesion: 12, minInactividad: 120, minConfirmacion: 15, minSegundoEnlace: 5 });
+  assert.deepEqual(c.oficina, { horasSesion: 12, minInactividad: 120, minConfirmacion: 15, minSegundoEnlace: 5, otProponer: "manual" });
   assert.equal(configDePrueba({ GEMELO_OFICINA_SEGUNDO_ENLACE_MIN: "0" }).oficina.minSegundoEnlace, 0);
   assert.throws(() => configDePrueba({ GEMELO_OFICINA_SESION_HORAS: "48" }), /fuera de rango/);
 });

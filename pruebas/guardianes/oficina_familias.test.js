@@ -24,11 +24,11 @@ test("nada en línea ni de otro origen; el DOM se hace con textContent (un corre
   assert.ok(!/localStorage\.setItem\([^)]*(correo|sesion|token)/i.test(fuentes["oficina.js"]), "el navegador solo guarda el tema");
 });
 
-test("la barra lateral tiene las secciones de la maqueta; Inicio, Familias y Hazas (OF3) están hechas", () => {
+test("la barra lateral tiene las secciones de la maqueta; Inicio, Familias, Hazas (OF3) y Bandeja (OF4) están hechas", () => {
   const js = fuentes["oficina.js"];
   const ids = [...js.matchAll(/\["([a-z]+)", "[^"]+", "([^"]+)", (true|false)\]/g)].map(m => [m[1], m[3]]);
   assert.deepStrictEqual(ids.map(x => x[0]), ["inicio", "familias", "hazas", "bandeja", "agenda", "directos", "mundo", "olivos", "sistema"]);
-  assert.deepStrictEqual(ids.filter(x => x[1] === "true").map(x => x[0]), ["inicio", "familias", "hazas"]);
+  assert.deepStrictEqual(ids.filter(x => x[1] === "true").map(x => x[0]), ["inicio", "familias", "hazas", "bandeja"]);
   assert.match(html, /<a class="boton prim" href="\/finca\/"/, "«Entrar al mundo como oficina» siempre a mano");
   assert.match(js, /aria-current/); assert.match(js, /data-theme/); assert.match(js, /oficina-tema/);
   assert.match(html, /<nav class="lateral" aria-label=/);
