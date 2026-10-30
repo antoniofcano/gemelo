@@ -1,8 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: Bus, Teclas, Componentes
-// Consume: 01_datos ($), 02b_cola (Cola), 09_camara (suelta), 12_paseo (teclas), 14_historia (lista), 15_tiempo (nivel, hace), 16_vida (quita),
-//   28_depura (dep), 90_final (bucle)
-// Nota: Núcleo de componentes (ADR-0023): ComponentesPuro, Bus (catálogo en contratos/eventos.json), Teclas y Componentes (registro, encendido URL > servidor > defecto, fases del bucle). Publica además window.__componentes (pruebas). El trozo [puro:…] lo evalúa en Node pruebas/guardianes/componentes.test.js.
+// Expone: Bus, Teclas, Componentes, Config
+// Consume: 01_datos (D, $), 02b_cola (Cola), 08_marcadores (listo), 09_camara (suelta), 12_paseo (teclas), 14_historia (tabla, lista),
+//   15_tiempo (nivel, hace), 16_vida (quita), 28_depura (dep), 90_final (bucle)
+// Nota: Núcleo de componentes (ADR-0023): ComponentesPuro, Bus (catálogo en contratos/eventos.json), Teclas, Componentes (registro, encendido URL > servidor > defecto, fases del bucle) y Config (GET /api/config del mismo origen al cargar, solo con D.base /teselas/… o ?api=; caída al código; contratos/config.schema.json). Publica además window.__componentes y window.__config (pruebas y ?debug). El trozo [puro:…] lo evalúa en Node pruebas/guardianes/componentes.test.js.
 // ===============================================================================
   // ---------- núcleo de componentes (ADR-0023, doc/sistema/COMPONENTES.md §3): el registro, el bus de eventos y las teclas.
   // Un componente es un fichero de apps/web/motor/ que en su primer nivel solo define su lógica pura y llama a Componentes.registra({ … }). Nada se
@@ -12,7 +12,8 @@
   //   «trasRender» después de pintar. En VR el bucle lo lleva la sesión y las fases siguen; con la página oculta, el navegador para el bucle y con él las fases.
   // Quitar un componente (apagarlo o no montarlo en el motor: genera_motor.mjs --sin) no rompe a nadie: los demás le hablan por el Bus o por
   // Componentes.api(id), que devuelve null si no está. Lo que un componente engancha con n.on / n.limpia se suelta solo al liberarlo.
-  // Catálogo de eventos: contratos/eventos.json; bloque «componentes» de la configuración del servidor: contratos/config.schema.json.
+  // Catálogo de eventos: contratos/eventos.json. La configuración del servidor (GET /api/config, C6/OF6: contratos/config.schema.json) la pide Config al
+  // cargar (abajo); su bloque «componentes» entra por Componentes.configura y sus parámetros de la escalera y épocas, por Config.param / Config.tablaEpocas.
   // [puro:inicio] (sin DOM ni THREE: lo evalúa en Node pruebas/guardianes/componentes.test.js)
   var ComponentesPuro = (function () {
     var FASES = ["mundo", "tarde", "trasRender"];
@@ -107,6 +108,109 @@
     }
     function hay(ev) { return !!(oy[ev] && oy[ev].length); }
     return { on: on, emite: emite, hay: hay };
+  })();
+
+  // la configuración versionada del servidor (C6 y OF6; contratos/config.schema.json): GET /api/config del mismo origen, con caída a lo del código.
+  // Precedencia de cada parámetro: URL (pruebas) > configuración > código; el motor RECORTA cada valor a sus límites aunque la api ya los haya
+  // validado, y los presupuestos de gafas solo pueden bajar respecto al código. La respuesta se espera como mucho ESPERA ms al arrancar: si llega
+  // tarde, se ignora (nada cambia en caliente con alguien dentro); sin servidor, con 401/404/503, sin red o con una respuesta rara, los defectos, sin
+  // avisar en consola (las pruebas cuentan los errores).
+  var ConfigPuro = (function () {
+    var ESPERA = 2000;
+    // los límites de contratos/config.schema.json (pruebas/guardianes/config_motor.test.js comprueba que son los mismos): [mín, máx, entero?, soloBaja?]
+    var LIMITES = {
+      "escalera.umbralesPx.e0": [300, 2000], "escalera.umbralesPx.e1": [100, 1000], "escalera.umbralesPx.e2": [30, 400],
+      "escalera.bandaM": [0, 3], "escalera.histeresis": [0.03, 0.2],
+      "escalera.maxPropios": [1, 8, true], "escalera.maxPropiosGafas": [1, 4, true], "escalera.maxVariantes": [0, 64, true],
+      "escalera.triangulos.escritorio": [300000, 700000, true], "escalera.triangulos.movil": [120000, 300000, true],
+      "escalera.triangulos.gafas": [50000, 380000, true, true],
+      "escalera.fraccionE0Gafas": [0, 0.5], "escalera.factorCopa": [0.5, 1.5]
+    };
+    var EPOCAS = ["reposo", "boton", "flor", "cuajado", "verde", "envero", "madura"];
+    function esObj(v) { return !!v && typeof v === "object" && !Array.isArray(v); }
+    // el valor de una ruta «a.b.c» (o «a.b.2» en una lista); undefined si no está
+    function busca(cfg, ruta) {
+      var v = cfg; ruta.split(".").forEach(function (k) { v = v !== null && typeof v === "object" ? v[k] : undefined; });
+      return v;
+    }
+    // recorta un valor de la configuración a sus límites (ruta sin el índice: «escalera.triangulos.gafas.1» usa los de «…gafas»); undefined si no es número
+    function recorta(ruta, v, codigo) {
+      var L = LIMITES[ruta] || LIMITES[ruta.replace(/\.\d+$/, "")];
+      if (!L || typeof v !== "number" || !isFinite(v)) return undefined;
+      v = Math.min(L[1], Math.max(L[0], v)); if (L[2]) v = Math.round(v);
+      if (L[3] && typeof codigo === "number" && isFinite(codigo)) v = Math.min(v, codigo);
+      return v;
+    }
+    // un parámetro: { v, origen: "url" | "config" | "codigo" }. url: lo que dio la URL (undefined o null si nada; la URL ya trae sus propios topes)
+    function param(cfg, ruta, codigo, url) {
+      if (url !== undefined && url !== null && !(typeof url === "number" && isNaN(url))) return { v: url, origen: "url" };
+      var c = cfg ? recorta(ruta, busca(cfg, ruta), codigo) : undefined;
+      return c !== undefined ? { v: c, origen: "config" } : { v: codigo, origen: "codigo" };
+    }
+    // los tres umbrales van juntos: con e1 ≤ e0 / 1,5 y e2 ≤ e1 / 1,5 (tras recortar) o ninguno
+    function umbrales(cfg, codigo, url) {
+      if (url) return { v: url, origen: "url" };
+      var u = cfg ? busca(cfg, "escalera.umbralesPx") : undefined;
+      if (!esObj(u)) return { v: codigo, origen: "codigo" };
+      var e = ["e0", "e1", "e2"].map(function (k) { return recorta("escalera.umbralesPx." + k, u[k]); });
+      if (e.some(function (x) { return x === undefined; }) || e[1] > e[0] / 1.5 || e[2] > e[1] / 1.5) return { v: codigo, origen: "codigo", motivo: "umbrales de la configuración incoherentes" };
+      return { v: e, origen: "config" };
+    }
+    // las épocas (como apps/web/olivo/epocas.js): «MM-DD» en UTC, ventanas con ambos extremos dentro; si desde > hasta, cruza el fin de año
+    function mmdd(f) { var d = f instanceof Date ? f : new Date(f); return ("0" + (d.getUTCMonth() + 1)).slice(-2) + "-" + ("0" + d.getUTCDate()).slice(-2); }
+    function dentro(m, v) { return v.desde <= v.hasta ? m >= v.desde && m <= v.hasta : m >= v.desde || m <= v.hasta; }
+    function validaTabla(t) {
+      if (!esObj(t)) return ["la tabla no es un objeto"];
+      var err = EPOCAS.filter(function (e) { return !esObj(t[e]) || typeof t[e].desde !== "string" || typeof t[e].hasta !== "string"; }).map(function (e) { return "falta la época " + e; });
+      if (err.length) return err;
+      for (var d = 0; d < 366; d++) {
+        var m = mmdd(new Date(Date.UTC(2024, 0, 1 + d))), n = EPOCAS.filter(function (e) { return dentro(m, t[e]); }).length;
+        if (n !== 1) err.push(m + (n ? ": en varias épocas" : ": sin época"));
+      }
+      return err.slice(0, 10);
+    }
+    // la tabla de épocas de una finca (la suya o la común), solo si cubre los 366 días con una época por día; si no, null
+    function tablaEpocas(cfg, finca) {
+      var ep = cfg && cfg.epocas; if (!esObj(ep)) return null;
+      var t = (esObj(ep.fincas) && ep.fincas[finca]) || ep.comun;
+      return validaTabla(t).length ? null : t;
+    }
+    function epocaDeFecha(t, fecha) { var m = mmdd(fecha); for (var i = 0; i < EPOCAS.length; i++) if (dentro(m, t[EPOCAS[i]])) return EPOCAS[i]; return null; }
+    // de dónde pedirla: ?api=<prefijo> (pruebas; ruta relativa del mismo origen acabada en «/») o «/api/» si la página la sirve el servidor (D.base /teselas/…)
+    function prefijoApi(busqueda, base) {
+      var m = /[?&]api=([^&#]*)/.exec(busqueda || "");
+      if (m) { var p = decodeURIComponent(m[1]); return /^\/?[A-Za-z0-9_\-.][A-Za-z0-9_\-./]*\/$/.test(p) && p.indexOf("//") < 0 && p.indexOf("..") < 0 ? p : null; }
+      return /^\/teselas\//.test(base || "") ? "/api/" : null;
+    }
+    // la forma mínima de la respuesta { version, estado, config: { v: 1, … } }; lo fino (límites) se recorta al usarlo
+    function validaRespuesta(j) {
+      if (!esObj(j) || !esObj(j.config) || j.config.v !== 1) return "la respuesta no trae config v1";
+      var c = j.config;
+      if (c.componentes !== undefined && ComponentesPuro.validaConfig(c.componentes).length) return "componentes no válidos";
+      if (c.escalera !== undefined && !esObj(c.escalera)) return "escalera no es un objeto";
+      if (c.epocas !== undefined && !esObj(c.epocas)) return "epocas no es un objeto";
+      return "";
+    }
+    /** pide la configuración: o = { fetch, prefijo, espera?, ahora? } → Promise de { cfg (o null), estado: { origen, version?, estadoVersion?, motivo?, ms? } }.
+     *  Nunca falla ni escribe en la consola. */
+    function lee(o) {
+      var ahora = o.ahora || Date.now, t0 = ahora();
+      if (!o.prefijo || typeof o.fetch !== "function") return Promise.resolve({ cfg: null, estado: { origen: "codigo", motivo: "sin servidor" } });
+      var pide = Promise.resolve().then(function () {
+        return o.fetch(o.prefijo + "config", { credentials: "same-origin", cache: "no-cache", headers: { accept: "application/json" } });
+      }).then(function (r) {
+        if (!r || r.status !== 200) return { cfg: null, estado: { origen: "codigo", motivo: "http " + (r ? r.status : "?") } };
+        return r.json().then(function (j) {
+          var mal = validaRespuesta(j);
+          if (mal) return { cfg: null, estado: { origen: "codigo", motivo: mal } };
+          return { cfg: j.config, estado: { origen: j.version ? "servidor" : "codigo", motivo: j.version ? "" : "sin versión publicada", version: j.version || null, estadoVersion: j.estado || null } };
+        });
+      }).catch(function () { return { cfg: null, estado: { origen: "codigo", motivo: "sin red o respuesta ilegible" } }; });
+      var reloj = null, espera = new Promise(function (res) { reloj = setTimeout(function () { res({ cfg: null, estado: { origen: "codigo", motivo: "tarde (más de " + (o.espera || ESPERA) + " ms)" }, tarde: true }); }, o.espera || ESPERA); });
+      return Promise.race([pide, espera]).then(function (r) { clearTimeout(reloj); r.estado.ms = Math.round(ahora() - t0); return r; });
+    }
+    return { ESPERA: ESPERA, LIMITES: LIMITES, EPOCAS: EPOCAS, busca: busca, recorta: recorta, param: param, umbrales: umbrales, validaTabla: validaTabla, tablaEpocas: tablaEpocas,
+      epocaDeFecha: epocaDeFecha, prefijoApi: prefijoApi, validaRespuesta: validaRespuesta, lee: lee };
   })();
   // [puro:fin]
 
@@ -238,3 +342,25 @@
     return { registra: registra, arranca: arranca, actualiza: actualiza, configura: configura, api: api, activo: activo, enciende: enciende, libera: function (id) { return libera(id, "apagado a mano"); }, resumen: resumen };
   })();
   window.__componentes = function () { return Componentes.resumen(); };   // pruebas
+
+  // la configuración del servidor, pedida UNA vez al cargar (ConfigPuro.lee): Config.listo (promesa que nunca falla, con la configuración o null),
+  // Config.al(fn) (fn(cfg) al llegar, o ya si llegó), Config.param(ruta, código, url) y Config.umbrales(código, url) para los parámetros (la escalera:
+  // 01_datos, 07ab, 07b; los perfiles VR: 29_vr), Config.tablaEpocas(finca) y Config.estado() (lo enseña ?debug con window.__config). Su bloque
+  // «componentes» va a Componentes.configura.
+  var Config = (function () {
+    var P = ConfigPuro, cfg = null, est = { origen: "codigo", motivo: "pidiendo" }, hecho = false, esperan = [], usados = {};
+    var listo = P.lee({ fetch: typeof fetch === "function" ? function (u, o) { return fetch(u, o); } : null,
+      prefijo: P.prefijoApi(typeof location !== "undefined" ? location.search : "", typeof D !== "undefined" && D ? D.base : "") }).then(function (r) {
+      cfg = r.cfg; est = r.estado; hecho = true;
+      if (cfg && cfg.componentes) Componentes.configura(cfg.componentes);
+      esperan.splice(0).forEach(function (fn) { try { fn(cfg); } catch (e) { try { console.error("[Config]", e); } catch (e2) {} } });
+      return cfg;
+    });
+    function al(fn) { if (hecho) fn(cfg); else esperan.push(fn); }
+    function param(ruta, codigo, url) { var r = P.param(cfg, ruta, codigo, url); usados[ruta] = { v: r.v, origen: r.origen }; return r.v; }
+    function umbrales(codigo, url) { var r = P.umbrales(cfg, codigo, url); usados["escalera.umbralesPx"] = r; return r.v; }
+    function tablaEpocas(finca) { return P.tablaEpocas(cfg, finca); }
+    function estado() { return Object.assign({ hecho: hecho, usados: usados }, est); }
+    return { listo: listo, al: al, param: param, umbrales: umbrales, tablaEpocas: tablaEpocas, epocaDeFecha: P.epocaDeFecha, estado: estado };
+  })();
+  window.__config = function () { return Config.estado(); };   // ?debug y pruebas

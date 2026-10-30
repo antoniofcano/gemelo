@@ -10,6 +10,7 @@
 //     --limpia           borra los objetos que ni el manifiesto nuevo ni el anterior (manifiesto.anterior.json) referencian
 //     --estado <ruta>    dónde escribir estado.json (por defecto <salida>/<finca>/olivos/estado.json)
 //     --calendario <ruta> otro epocas-calendario.json (por defecto contratos/epocas-calendario.json)
+//     --config <ruta>    la configuración publicada (contratos/config.schema.json): si trae «epocas» válidas, manda sobre --calendario (decisión 112)
 //     --impostores       además hornea los impostores de cada época (O8b, tuberia/olivos/impostores.mjs: Chrome sin pantalla, dentro del turno del banco);
 //                        también con GEMELO_HORNERO_IMPOSTORES=1. Sin él, se conservan los impostores del manifiesto anterior que sigan valiendo
 //     --propios          NO implementado (propios E0/E1 por tesela con su manifiesto binario): sale con error
@@ -193,7 +194,7 @@ function lee(argv) {
   for (let i = 0; i < argv.length; i++) {
     const x = argv[i];
     if (["--release", "--limpia", "--propios", "--impostores"].includes(x)) a[x.slice(2)] = true;
-    else if (["--finca", "--indice", "--salida", "--fecha", "--estado", "--calendario"].includes(x)) a[x.slice(2)] = argv[++i];
+    else if (["--finca", "--indice", "--salida", "--fecha", "--estado", "--calendario", "--config"].includes(x)) a[x.slice(2)] = argv[++i];
     else throw new Error("opción desconocida: " + x);
   }
   return a;
@@ -209,7 +210,15 @@ export async function principal(argv) {
   const finca = a.finca || fincaIndice; if (!finca) throw new Error("falta --finca o un índice (--indice / GEMELO_DATOS)");
   if (!a.salida) throw new Error("falta --salida");
   return hornea({ finca, salida: a.salida, fecha: a.fecha, release: a.release, limpia: a.limpia, estado: a.estado, propios: a.propios, impostores: a.impostores || process.env.GEMELO_HORNERO_IMPOSTORES === "1",
-    calendario: a.calendario ? JSON.parse(fs.readFileSync(a.calendario, "utf8")) : undefined, log: m => process.stderr.write(m + "\n") });
+    calendario: await calendarioCli(a), log: m => process.stderr.write(m + "\n") });
+}
+// el calendario de la línea de órdenes: el de --config si trae épocas válidas (como el servicio), si no el de --calendario, si no el del repo
+async function calendarioCli(a) {
+  if (!a.config) return a.calendario ? JSON.parse(fs.readFileSync(a.calendario, "utf8")) : undefined;
+  const { calendarioDe } = await import("./servicio.mjs"), E = await imp("epocas.js");
+  const C = calendarioDe(a.calendario || path.join(RAIZ, "contratos", "epocas-calendario.json"), a.config, E.validaTabla);
+  if (C.aviso) process.stderr.write("hornero: " + C.aviso + "\n");
+  return C.cal;
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   principal(process.argv.slice(2)).then(r => { console.log(JSON.stringify(r)); }, e => { process.stderr.write("hornero: " + (e && e.message || e) + "\n"); process.exit(1); });

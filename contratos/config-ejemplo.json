@@ -3,5 +3,28 @@
   "componentes": {
     "fichas-tiempo": { "activo": true },
     "ejemplo-apagado": { "activo": false, "parametros": { "nota": "un id que el motor no tiene se ignora" } }
+  },
+  "escalera": {
+    "umbralesPx": { "e0": 800, "e1": 300, "e2": 100 },
+    "bandaM": 1.2,
+    "histeresis": 0.1,
+    "maxPropios": 5,
+    "maxPropiosGafas": 3,
+    "maxVariantes": 40,
+    "triangulos": { "escritorio": 500000, "movil": 200000, "gafas": [340000, 250000, 180000, 120000] },
+    "fraccionE0Gafas": 0.35,
+    "factorCopa": 1.1
+  },
+  "epocas": {
+    "comun": {
+      "reposo": { "desde": "01-16", "hasta": "03-31" },
+      "boton": { "desde": "04-01", "hasta": "05-09" },
+      "flor": { "desde": "05-10", "hasta": "06-09" },
+      "cuajado": { "desde": "06-10", "hasta": "07-09" },
+      "verde": { "desde": "07-10", "hasta": "09-14" },
+      "envero": { "desde": "09-15", "hasta": "10-31" },
+      "madura": { "desde": "11-01", "hasta": "01-15" }
+    },
+    "fincas": {}
   }
 }

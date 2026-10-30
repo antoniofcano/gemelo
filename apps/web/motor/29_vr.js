@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: VRX, vrDebugExtra, vrFundido, vrAparece, panel, ficha, PanelVR, vrMideEmpieza, vrMideFin, vrActualiza, VR_PERFILES, vrFin
-// Consume: 01_datos (D, $, fmt, VRP), 02_mundo (Mundo, suelo, orto, copas), 02c_componentes (Bus),
+// Consume: 01_datos (D, $, fmt, VRP), 02_mundo (Mundo, suelo, orto, copas), 02c_componentes (Bus, Config),
 //   03_escena (lienzo, renderer, scene, camera, texColor, exag, modo, calidad), 04b_escena3d (Escena3D), 05_nube (nube), 07b_arboles (Arboles),
 //   09_camara (eligeCopa, pon), 10_ndvi (NDV, ndviIdx), 12_paseo (paseando, persona, teclas, primera, entraPaseo, salePaseo, actualizaPaseo),
 //   12b_llegada (Llegada), 13_parcelas (parcelas, fincas), 14_historia (lista, aviso), 15_tiempo (calma, nivel, rumbo, hace),
@@ -500,6 +500,9 @@
 
   // ----- 6) el perfil de rendimiento de las gafas y el adaptador por tiempo de fotograma
   var VR_PERFILES = [{ n: 0.8, r: 0.75, tri: 380000, h: 32, b: 1, e: 16 }, { n: 0.55, r: 0.6, tri: 270000, h: 20, b: 0, e: 24 }, { n: 0.35, r: 0.45, tri: 190000, h: 0, b: 0, e: 32 }, { n: 0.2, r: 0.3, tri: 130000, h: 0, b: 0, e: 48 }];   // b: relieve fino del suelo (uBumpK); se apaga en cuanto el fotograma va justo (decisión 24). e: errorTarget (px) de la escena 3D Tiles; valores de partida SIN medir en las gafas
+  // C6/OF6: el presupuesto de cada perfil puede venir de la configuración del servidor (escalera.triangulos.gafas, contratos/config.schema.json), SOLO A
+  // LA BAJA respecto a estos (Config.param, 02c, lo recorta); la escala adaptativa sigue bajando de perfil si el fotograma se alarga
+  Config.al(function () { VR_PERFILES.forEach(function (p, i) { p.tri = Config.param("escalera.triangulos.gafas." + i, p.tri); }); });
   function vrPerfil(n) { n = Math.max(0, Math.min(VR_PERFILES.length - 1, n)); VRX.nivel = n; var p = VR_PERFILES[n]; VRP.hierba = p.h; UN.uBumpK.value = p.b; Arboles.perfil(p); Escena3D.perfil(p); }
   function vrAdapta(dtMs, jsMs, dt) {   // por encima de 13 ms de trabajo (o con fotogramas perdidos) baja de nivel; tras un rato holgado, sube
     VRX.emaDt += (dtMs - VRX.emaDt) * 0.05; VRX.emaJs += (jsMs - VRX.emaJs) * 0.05; VRX.tNivel += dt;

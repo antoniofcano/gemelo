@@ -740,3 +740,124 @@ paths:
         "401": { $ref: "#/components/responses/SinSesion" }
         "403": { $ref: "#/components/responses/SinPermiso" }
         "404": { description: "no existe o ya estaba retirado" }
+
+  # ---------------------------------------------------------------- configuración versionada (C6 de ADR-0023, OF6; decisiones 111-113 y 118)
+  /api/config:
+    get:
+      summary: La configuración del mundo que lee el motor al arrancar (contratos/config.schema.json)
+      description: >
+        La versión publicada; a una sesión de la oficina (rol oficina o admin), la «en prueba» si hay una (decisión 113). Sin
+        nada publicado, 200 con version null y config { v: 1 } (el motor sigue con lo del código). Lleva ETag (cfg-<versión>-<estado>)
+        y responde 304 a If-None-Match; caché privada que siempre pregunta. Sin datos de la explotación ni secretos.
+      security: [{ sesion: [] }]
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [version, estado, desde, config]
+                properties:
+                  version: { type: [integer, "null"] }
+                  estado: { enum: [publicada, en_prueba, null] }
+                  desde: { type: [string, "null"], format: date-time, description: cuándo pasó a ese estado }
+                  config: { $ref: "config.schema.json" }
+        "304": { description: sin cambios (If-None-Match) }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/admin/config:
+    get:
+      summary: Historial de versiones de la configuración (sin el cuerpo) y cuál está publicada y cuál en prueba
+      security: [{ sesion: [] }]
+      responses:
+        "200": { description: "{ publicada, en_prueba, versiones: [{ version, estado, nota, autor_id, copia_de, creada_en, estado_en }] } (las 200 últimas)" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+    post:
+      summary: Crea un borrador (validado contra config.schema.json y sus reglas entre campos)
+      description: >
+        Límites de la decisión 111 (en las gafas los presupuestos solo bajan), E1 ≤ E0 / 1,5 y E2 ≤ E1 / 1,5, y épocas que cubren
+        los 366 días con una sola época por día. Queda en la auditoría (config.borrador).
+      security: [{ sesion: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [cuerpo]
+              properties:
+                cuerpo: { $ref: "config.schema.json" }
+                nota: { type: string, maxLength: 500 }
+      responses:
+        "201": { description: "{ version, estado: borrador }" }
+        "400": { description: "no cumple el contrato (config_no_valida, con detalles) o la petición no tiene la forma esperada", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+
+  /api/admin/config/{version}:
+    get:
+      summary: Una versión con su cuerpo
+      security: [{ sesion: [] }]
+      parameters: [{ name: version, in: path, required: true, schema: { type: integer, minimum: 1 } }]
+      responses:
+        "200": { description: "{ version, estado, nota, autor_id, copia_de, creada_en, estado_en, cuerpo }" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: no existe }
+
+  /api/admin/config/{version}/prueba:
+    post:
+      summary: Pasa un borrador a «en prueba» (solo lo ven las cuentas de la oficina); retira la prueba anterior
+      security: [{ sesion: [] }]
+      parameters: [{ name: version, in: path, required: true, schema: { type: integer, minimum: 1 } }]
+      responses:
+        "200": { description: "{ version, estado: en_prueba, retirada }" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: no existe }
+        "409": { description: "no es un borrador (estado_no_permitido) o alguien cambió la configuración a la vez (a_la_vez)" }
+
+  /api/admin/config/{version}/publicar:
+    post:
+      summary: Publica para todos la versión en prueba; retira la publicada anterior
+      description: Si la api tiene GEMELO_CONFIG_SALIDA, deja también ahí el cuerpo publicado (el hornero lee de él el calendario de épocas). Auditoría config.publicada.
+      security: [{ sesion: [] }]
+      parameters: [{ name: version, in: path, required: true, schema: { type: integer, minimum: 1 } }]
+      responses:
+        "200": { description: "{ version, estado: publicada, retirada }" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: no existe }
+        "409": { description: "no está en prueba (estado_no_permitido) o alguien cambió la configuración a la vez (a_la_vez)" }
+
+  /api/admin/config/{version}/retirar:
+    post:
+      summary: Descarta un borrador o una prueba (la publicada no se retira así; se publica otra o se vuelve a una vieja)
+      security: [{ sesion: [] }]
+      parameters: [{ name: version, in: path, required: true, schema: { type: integer, minimum: 1 } }]
+      responses:
+        "200": { description: "{ version, estado: retirada }" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: no existe }
+        "409": { description: no es un borrador ni una prueba }
+
+  /api/admin/config/{version}/volver:
+    post:
+      summary: Vuelve a una versión vieja publicando una COPIA suya como versión nueva (la vieja no se toca)
+      description: >
+        Nunca se reescribe una versión. La copia nace publicada (copia_de = la vieja) y retira la publicada de antes; la vieja
+        tiene que cumplir el contrato de hoy. No vale para un borrador. Auditoría config.vuelta.
+      security: [{ sesion: [] }]
+      parameters: [{ name: version, in: path, required: true, schema: { type: integer, minimum: 1 } }]
+      responses:
+        "201": { description: "{ version (la nueva), estado: publicada, copia_de, retirada }" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: no existe }
+        "409": { description: "es un borrador, ya no cumple el contrato (config_no_valida) o alguien cambió la configuración a la vez" }

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://gemelo.invalid/contratos/config.schema.json",
-  "$comment": "Configuración que el servidor da al motor (GET /api/config, fase C6 del ADR-0023; decisión 118: los componentes se encienden desde la oficina). Hoy solo está el bloque «componentes». El motor ya lo lee si la página trae <script type=\"application/json\" id=\"config\"> con este objeto, o si alguien llama a Componentes.configura(bloque) (apps/web/motor/02c_componentes.js); la api y la pantalla de la oficina llegan en C6. Precedencia: URL > este bloque > defecto del manifiesto. Sin datos de la explotación ni secretos. Ejemplo: contratos/config-ejemplo.json; lo valida pruebas/guardianes/componentes.test.js.",
+  "$comment": "Configuración versionada que el servidor da al motor (GET /api/config, fase C6 del ADR-0023 y OF6 de doc/sistema/OFICINA.md; decisiones 111-113 y 118). Tres bloques, todos opcionales: «componentes» (interruptores), «escalera» (parámetros de la escalera de olivos, decisión 111, con sus límites seguros) y «epocas» (calendario de épocas, decisión 112). Lo que falta vale lo del código. Precedencia en el motor: URL > esta configuración > código; el motor recorta cada valor a sus límites aunque la api ya los haya validado (apps/web/motor/02c_componentes.js, ConfigPuro.LIMITES: pruebas/guardianes/config_motor.test.js comprueba que son los de aquí). Reglas entre campos que el esquema no dice y que comprueban la api (apps/api/src/config/valida.ts) y el motor: E1 ≤ E0 / 1,5 y E2 ≤ E1 / 1,5; cada tabla de épocas cubre los 366 días de un año bisiesto con una sola época por día. Los máximos de «triangulos.gafas» son los VR_PERFILES[].tri del código (apps/web/motor/29_vr.js): desde la oficina solo pueden bajar. Sin datos de la explotación ni secretos. Ejemplo: contratos/config-ejemplo.json; documentación: doc/sistema/CONTRATOS.md § Configuración.",
   "title": "config",
   "type": "object",
   "required": ["v"],
@@ -20,6 +20,85 @@
           "activo": { "type": "boolean" },
           "parametros": { "type": "object" }
         }
+      }
+    },
+    "escalera": {
+      "type": "object",
+      "additionalProperties": false,
+      "$comment": "decisión 111 y doc/sistema/OFICINA.md §9.2. Entre paréntesis, el valor de hoy en el código (el que vale si falta).",
+      "properties": {
+        "umbralesPx": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["e0", "e1", "e2"],
+          "$comment": "px de alto del olivo en pantalla por encima de los cuales va en E0, E1 y E2 (700, 250, 90); por debajo de E2, lejano. Reglas: e1 ≤ e0 / 1,5 y e2 ≤ e1 / 1,5. ?olivosPx= manda.",
+          "properties": {
+            "e0": { "type": "number", "minimum": 300, "maximum": 2000 },
+            "e1": { "type": "number", "minimum": 100, "maximum": 1000 },
+            "e2": { "type": "number", "minimum": 30, "maximum": 400 }
+          }
+        },
+        "bandaM": { "type": "number", "minimum": 0, "maximum": 3, "$comment": "media banda del fundido entre escalones, en metros (1,5). ?olivosBanda= manda." },
+        "histeresis": { "type": "number", "minimum": 0.03, "maximum": 0.2, "$comment": "margen para salir de la banda, fracción de la distancia de la frontera (0,08; al menos 0,4 m, fijo)" },
+        "maxPropios": { "type": "integer", "minimum": 1, "maximum": 8, "$comment": "olivos E0/E1 calculados en el aparato, escritorio y móvil (6). ?olivosPropios= manda." },
+        "maxPropiosGafas": { "type": "integer", "minimum": 1, "maximum": 4, "$comment": "lo mismo en las gafas (sin él, el de escritorio: 6)" },
+        "maxVariantes": { "type": "integer", "minimum": 0, "maximum": 64, "$comment": "olivos E2 horneados a la vez (48)" },
+        "triangulos": {
+          "type": "object",
+          "additionalProperties": false,
+          "$comment": "presupuesto de triángulos de la escalera por aparato",
+          "properties": {
+            "escritorio": { "type": "integer", "minimum": 300000, "maximum": 700000, "$comment": "(550.000; TOPE_TRI de 07b_arboles.js)" },
+            "movil": { "type": "integer", "minimum": 120000, "maximum": 300000, "$comment": "(270.000, sin medir; TRI_MOVIL de 07ab_generados.js)" },
+            "gafas": {
+              "type": "array",
+              "$comment": "uno por perfil VR, del 0 (el mejor) al 3. SOLO A LA BAJA: el máximo de cada uno es el del código (VR_PERFILES[].tri, 29_vr.js); subirlo exige medir en el casco (O9d) y un cambio de código. La escala adaptativa sigue bajando de perfil si el fotograma se alarga.",
+              "minItems": 4,
+              "maxItems": 4,
+              "items": false,
+              "prefixItems": [
+                { "type": "integer", "minimum": 50000, "maximum": 380000 },
+                { "type": "integer", "minimum": 50000, "maximum": 270000 },
+                { "type": "integer", "minimum": 50000, "maximum": 190000 },
+                { "type": "integer", "minimum": 50000, "maximum": 130000 }
+              ]
+            }
+          }
+        },
+        "fraccionE0Gafas": { "type": "number", "minimum": 0, "maximum": 0.5, "$comment": "parte del presupuesto de las gafas que puede llevarse el E0 (0,4)" },
+        "factorCopa": { "type": "number", "minimum": 0.5, "maximum": 1.5, "$comment": "copa de los olivos del constructor = 2 × r8 × factor (1; FACTOR_R8_GEN de 01_datos.js). El nivel de siempre (0,5) no cambia desde aquí. ?factorR8= manda." }
+      }
+    },
+    "epocas": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["comun"],
+      "$comment": "decisión 112 (cambia la 64): el calendario de épocas, con la misma forma que contratos/epocas-calendario.json (que es la caída si falta). Lo leen el motor (la época que dibuja, si el hornero la tiene) y el hornero (como sello: si cambia, re-hornea).",
+      "properties": {
+        "comun": { "$ref": "#/$defs/tabla", "$comment": "la tabla de toda finca que no tenga la suya" },
+        "fincas": {
+          "type": "object",
+          "propertyNames": { "pattern": "^[a-z0-9_]+$" },
+          "additionalProperties": { "$ref": "#/$defs/tabla", "$comment": "la tabla de una finca (su finca_id) REEMPLAZA a la común entera" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "fecha": { "type": "string", "pattern": "^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$" },
+    "ventana": {
+      "type": "object",
+      "required": ["desde", "hasta"],
+      "additionalProperties": false,
+      "properties": { "desde": { "$ref": "#/$defs/fecha" }, "hasta": { "$ref": "#/$defs/fecha" } }
+    },
+    "tabla": {
+      "type": "object",
+      "required": ["reposo", "boton", "flor", "cuajado", "verde", "envero", "madura"],
+      "additionalProperties": false,
+      "properties": {
+        "reposo": { "$ref": "#/$defs/ventana" }, "boton": { "$ref": "#/$defs/ventana" }, "flor": { "$ref": "#/$defs/ventana" }, "cuajado": { "$ref": "#/$defs/ventana" },
+        "verde": { "$ref": "#/$defs/ventana" }, "envero": { "$ref": "#/$defs/ventana" }, "madura": { "$ref": "#/$defs/ventana" }
       }
     }
   }

@@ -7,6 +7,7 @@ import Fastify, { type FastifyInstance } from "fastify";
 import { rutasAdmin } from "./admin/rutas.ts";
 import { AlmacenPg } from "./auth/almacen.ts";
 import { NOMBRE_COOKIE, rutasAuth, TEXTO_LIMITE, TEXTO_LIMITE_VINCULO } from "./auth/rutas.ts";
+import { rutasConfig } from "./config/rutas.ts";
 import type { Contexto } from "./contexto.ts";
 import { rutasHazas } from "./hazas/rutas.ts";
 import { rutasPresencia } from "./presencia/rutas.ts";
@@ -92,5 +93,6 @@ export async function construyeApp(ctx: Contexto, o: OpcionesApp = {}): Promise<
   await rutasPresencia(app, ctx);
   await rutasTiempo(app, ctx);
   await rutasVida(app, ctx);
+  await rutasConfig(app, ctx);
   return app;
 }
