@@ -96,6 +96,32 @@ test("límite por hogar: pasadas " + PARTIDAS_POR_HORA + " partidas en una hora,
   assert.equal(ultimo!.statusCode, 429); assert.equal(ultimo!.json().error, "demasiadas_peticiones");
 });
 
+test("clasificación (C9c): mejor de cada hogar, puestos, alias solo si es visible, sin hogares de baja y sin ningún id ni correo", async t => {
+  if (salta(t)) return;
+  const nuevo = async (correo: string, alias: string, visible: boolean, activo: boolean) => (await bd.dueno.query<{ id: number }>(
+    "INSERT INTO hogares (correo, rol, alias, alias_visible, activo, baja_en) VALUES ($1, 'hogar', $2, $3, $4, CASE WHEN $4 THEN NULL ELSE now() END) RETURNING id", [correo, alias, visible, activo])).rows[0]!.id;
+  const oso = await nuevo("oso@example.com", "Oso Pardo", true, true), secreta = await nuevo("secreta@example.com", "Secreta", false, true), baja = await nuevo("baja@example.com", "De Baja", true, false);
+  const pon = (h: number, puntos: number) => bd.dueno.query("INSERT INTO juegos_partidas (hogar_id, juego, puntos, duracion_s) VALUES ($1, 'cae-la-cosecha', $2, 100)", [h, puntos]);
+  await pon(oso, 3000); await pon(oso, 5000); await pon(oso, 100); await pon(secreta, 4000); await pon(baja, 9000);
+  const ana = await entra(ANA), luis = await entra(LUIS);
+  let r = await con("GET", J + "/clasificacion", ana);
+  assert.equal(r.statusCode, 200, r.body);
+  const c = r.json();
+  assert.deepEqual(Object.keys(c).sort(), ["juego", "mia", "puestos", "total"]);
+  assert.deepEqual(c.puestos.slice(0, 2).map((f: { puesto: number; alias: string | null; puntos: number }) => [f.puesto, f.alias, f.puntos]), [[1, "Oso Pardo", 5000], [2, null, 4000]], "una fila por hogar (su mejor); el alias oculto sale null; el hogar de baja no sale");
+  assert.ok(!/Secreta|De Baja|oso@|secreta@|ana@|hogar_id/.test(r.body), "ni nombres ocultos, ni correos, ni ids: " + r.body);
+  assert.ok(c.puestos.every((f: object) => Object.keys(f).sort().join() === "alias,es_mia,puesto,puntos"));
+  assert.equal(c.mia?.es_mia, true); assert.equal(c.mia.puntos, 610, "Ana (610 de las partidas de arriba) aparece con su puesto");
+  assert.equal(c.puestos.filter((f: { es_mia: boolean }) => f.es_mia).length, c.mia.puesto <= 5 ? 1 : 0);
+  r = await con("GET", J + "/clasificacion?n=1", ana);
+  assert.equal(r.json().puestos.length, 1); assert.equal(r.json().mia.puntos, 610, "fuera de la tabla, el propio puesto sale aparte"); assert.ok(r.json().mia.puesto >= 3);
+  assert.equal(r.json().total, c.total);
+  r = await con("GET", J + "/clasificacion", luis);
+  assert.equal(r.statusCode, 200); assert.ok(r.json().mia === null || r.json().mia.es_mia === true, "quien no ha puntuado no tiene puesto propio inventado");
+  assert.equal((await con("GET", "/api/juegos/otro-juego/clasificacion", ana)).statusCode, 404);
+  assert.equal((await con("GET", J + "/clasificacion?n=99", ana)).statusCode, 400);
+});
+
 test("RGPD: las partidas salen en /api/yo/datos y se van con el hogar", async t => {
   if (salta(t)) return;
   const ana = await entra(ANA);

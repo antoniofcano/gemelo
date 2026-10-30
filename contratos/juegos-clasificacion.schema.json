@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gemelo.canoydamas.es/contratos/juegos-clasificacion.schema.json",
+  "title": "Clasificación de un juego casual entre familias, por alias (GET /api/juegos/{id}/clasificacion)",
+  "$comment": "C9c, decisión 137 (opción «por alias»). LISTA BLANCA: additionalProperties false en todos los niveles. De cada hogar solo salen el puesto, los puntos y su alias SI lo hizo visible (si no, null y la pantalla dice «Otra familia»). Nunca nombre real, correo, ni id del hogar o de la base: la fila del propio hogar se marca con es_mia. La api serializa con apps/api/src/juegos/rutas.ts (formaClasificacion) y pruebas/guardianes/juego_cosecha.test.js lo valida con ajv. Cambiar un campo = cambiar este fichero, la api, contratos/api.openapi.yaml y doc/sistema/JUEGOS.md en el mismo commit.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["juego", "total", "puestos", "mia"],
+  "properties": {
+    "juego": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,31}$" },
+    "total": { "type": "integer", "minimum": 0, "description": "hogares activos con alguna partida de más de 0 puntos" },
+    "puestos": { "type": "array", "maxItems": 20, "items": { "$ref": "#/$defs/puesto" }, "description": "los n primeros puestos; los empates comparten puesto" },
+    "mia": { "oneOf": [{ "$ref": "#/$defs/puesto" }, { "type": "null" }], "description": "el puesto del propio hogar, esté o no en la tabla; null si no ha puntuado" }
+  },
+  "$defs": {
+    "puesto": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["puesto", "alias", "puntos", "es_mia"],
+      "properties": {
+        "puesto": { "type": "integer", "minimum": 1 },
+        "alias": { "type": ["string", "null"], "minLength": 3, "maxLength": 20 },
+        "puntos": { "type": "integer", "minimum": 1, "maximum": 10000000 },
+        "es_mia": { "type": "boolean" }
+      }
+    }
+  }
+}

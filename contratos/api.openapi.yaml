@@ -50,6 +50,24 @@ components:
             duracion_s: { type: integer }
             fecha: { type: string, format: date-time }
         partidas: { type: integer, minimum: 0 }
+    PuestoJuego:
+      type: object
+      additionalProperties: false
+      required: [puesto, alias, puntos, es_mia]
+      properties:
+        puesto: { type: integer, minimum: 1, description: "los empates comparten puesto" }
+        alias: { type: [string, "null"], description: "el alias del hogar SOLO si lo hizo visible; si no, null (la pantalla dice «Otra familia»). Nunca nombre real ni correo" }
+        puntos: { type: integer, minimum: 1 }
+        es_mia: { type: boolean, description: "la fila del hogar de quien pregunta (no hay ningún id)" }
+    ClasificacionJuego:
+      type: object
+      additionalProperties: false
+      required: [juego, total, puestos, mia]
+      properties:
+        juego: { type: string }
+        total: { type: integer, minimum: 0, description: "hogares activos con alguna partida de más de 0 puntos" }
+        puestos: { type: array, items: { $ref: "#/components/schemas/PuestoJuego" }, description: "los n primeros puestos (se cortan en n)" }
+        mia: { oneOf: [{ $ref: "#/components/schemas/PuestoJuego" }, { type: "null" }], description: "el puesto del propio hogar, esté o no en la tabla; null si no ha puntuado" }
     Error:
       type: object
       additionalProperties: false
@@ -1509,6 +1527,24 @@ paths:
       parameters: [{ name: id, in: path, required: true, schema: { type: string, pattern: "^[a-z][a-z0-9-]{1,31}$" } }]
       responses:
         "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/RecordJuego" } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "404": { description: no existe ese juego }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/juegos/{id}/clasificacion:
+    get:
+      summary: La clasificación por alias de un juego entre las familias (C9c; decisión 137)
+      description: >
+        La mejor puntuación de cada hogar activo, ordenada. Devuelve los n primeros puestos (n de 1 a 20, 5 por defecto) y el del propio hogar. Del resto de
+        hogares solo salen el puesto, los puntos y su alias si lo hicieron visible (si no, null): nunca nombre real, correo ni id. Una sesión cualquiera del
+        hogar (también la de unas gafas). Límite: 30 por minuto por IP.
+      security: [{ sesion: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, pattern: "^[a-z][a-z0-9-]{1,31}$" } }
+        - { name: n, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 20, default: 5 } }
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/ClasificacionJuego" } } } }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
         "401": { $ref: "#/components/responses/SinSesion" }
         "404": { description: no existe ese juego }
         "429": { $ref: "#/components/responses/Limite" }

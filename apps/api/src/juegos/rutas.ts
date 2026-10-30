@@ -3,8 +3,10 @@
 //  - POST /api/juegos/:id/partidas (cualquier sesión del hogar, también la de unas gafas vinculadas: juegan los nietos): { puntos, duracion_s }.
 //    Se rechaza lo que no es creíble (más puntos de los que caben en esa duración: TOPES, el mismo cálculo que el juego) y hay límite de
 //    frecuencia por IP y por hogar. No pretende parar a quien se empeñe (el juego corre en su aparato): solo las trampas groseras.
-//  - GET /api/juegos/:id/records: el récord del PROPIO hogar y cuántas partidas lleva. Nada de otras familias: si se comparan récords entre
-//    familias (o por alias) lo decide Antonio (DECISIONS-PENDING).
+//  - GET /api/juegos/:id/records: el récord del PROPIO hogar y cuántas partidas lleva. Nada de otras familias.
+//  - GET /api/juegos/:id/clasificacion?n=: (C9c, decisión 137, opción «por alias») la mejor puntuación de cada hogar activo, ordenada: las n primeras y el
+//    puesto del propio hogar. De cada fila solo sale el puesto, los puntos y el alias SI el hogar lo hizo visible (alias_visible); sin alias, null (la pantalla
+//    dice «Otra familia»). Nunca nombre real, correo, ni id del hogar o de la base: la fila propia se marca con es_mia.
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { requiereSesion } from "../auth/roles.ts";
 import type { Contexto } from "../contexto.ts";
@@ -29,11 +31,23 @@ export function motivoNoCreible(juego: string, puntos: number, duracion: number)
   return null;
 }
 
+export const CLASIFICACION = { porDefecto: 5, max: 20 } as const;
+
 const PARAM = { type: "object", additionalProperties: false, required: ["id"], properties: { id: { type: "string", pattern: "^[a-z][a-z0-9-]{1,31}$" } } } as const;
+const CONSULTA = { type: "object", additionalProperties: false, properties: { n: { type: "integer", minimum: 1, maximum: CLASIFICACION.max, default: CLASIFICACION.porDefecto } } } as const;
 const CUERPO = {
   type: "object", additionalProperties: false, required: ["puntos", "duracion_s"],
   properties: { puntos: { type: "integer", minimum: 0, maximum: 10_000_000 }, duracion_s: { type: "integer", minimum: 1, maximum: 86_400 } },
 } as const;
+
+interface FilaPuesto { puesto: string; puntos: number; hogar_id: string; alias: string | null; total: string }
+export interface PuestoClasificacion { puesto: number; alias: string | null; puntos: number; es_mia: boolean }
+
+/** Da forma pública a las filas de la consulta: nada del id del hogar sale de aquí (solo si la fila es la propia). Pura, para probarla sin base. */
+export function formaClasificacion(filas: FilaPuesto[], hogar: number, n: number): { total: number; puestos: PuestoClasificacion[]; mia: PuestoClasificacion | null } {
+  const todas = filas.map(f => ({ puesto: Number(f.puesto), alias: f.alias, puntos: f.puntos, es_mia: Number(f.hogar_id) === hogar }));
+  return { total: filas.length ? Number(filas[0]!.total) : 0, puestos: todas.filter(f => f.puesto <= n).slice(0, n), mia: todas.find(f => f.es_mia) ?? null };
+}
 
 interface FilaRecord { puntos: number; duracion_s: number; jugada_en: Date }
 
@@ -81,5 +95,29 @@ export async function rutasJuegos(app: FastifyInstance, ctx: Contexto): Promise<
     if (!TOPES[juego]) return noExiste(rep);
     rep.header("cache-control", "private, no-cache");
     return { juego, ...(await record(req.session.hogarId!, juego)) };
+  });
+
+  // la mejor puntuación de cada hogar activo (> 0), empates con el mismo puesto; las n primeras y la del propio hogar, vengan de donde vengan
+  app.get<{ Params: { id: string }; Querystring: { n?: number } }>("/api/juegos/:id/clasificacion", {
+    preHandler: requiereSesion,
+    config: { rateLimit: { max: 30, timeWindow: 60_000 } },
+    schema: { params: PARAM, querystring: CONSULTA },
+  }, async (req, rep) => {
+    const juego = req.params.id;
+    if (!TOPES[juego]) return noExiste(rep);
+    const n = req.query.n ?? CLASIFICACION.porDefecto, hogar = req.session.hogarId!;
+    const r = await bd.query<FilaPuesto>(
+      `WITH mejores AS (
+         SELECT DISTINCT ON (p.hogar_id) p.hogar_id, p.puntos, p.jugada_en
+           FROM juegos_partidas p JOIN hogares g ON g.id = p.hogar_id
+          WHERE p.juego = $1 AND g.activo AND p.puntos > 0
+          ORDER BY p.hogar_id, p.puntos DESC, p.jugada_en ASC),
+       puestos AS (SELECT m.*, rank() OVER (ORDER BY m.puntos DESC) AS puesto, count(*) OVER () AS total FROM mejores m)
+       SELECT q.puesto, q.puntos, q.hogar_id, q.total, CASE WHEN g.alias_visible THEN g.alias END AS alias
+         FROM puestos q JOIN hogares g ON g.id = q.hogar_id
+        WHERE q.puesto <= $2 OR q.hogar_id = $3
+        ORDER BY q.puesto, q.jugada_en, q.hogar_id`, [juego, n, hogar]);
+    rep.header("cache-control", "private, no-cache");
+    return { juego, ...formaClasificacion(r.rows, hogar, n) };
   });
 }
