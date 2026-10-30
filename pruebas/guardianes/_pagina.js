@@ -37,6 +37,18 @@ let fixturePropio = null;
 const fixtureDe = dir => dir || fixturePropio || (fixturePropio = fixture());
 
 const duerme = ms => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+// Windows: el antivirus o el indexador pueden tener la carpeta abierta y el renombrado da EPERM/EBUSY/EACCES; se reintenta poco
+const INTENTOS_RENOMBRE = 5, CODIGOS_RENOMBRE_TRANSITORIOS = new Set(["EPERM", "EBUSY", "EACCES"]);
+/** fs.renameSync con hasta INTENTOS_RENOMBRE intentos (espera 100, 200, 400… ms) solo para errores transitorios; el resto se lanza tal cual */
+function renombraConReintento(de, a) {
+  for (let i = 1; ; i++) {
+    try { return fs.renameSync(de, a); }
+    catch (e) {
+      if (!CODIGOS_RENOMBRE_TRANSITORIOS.has(e.code) || i >= INTENTOS_RENOMBRE) throw e;
+      duerme(100 * 2 ** (i - 1));
+    }
+  }
+}
 const hashFicheros = (h, dir, base) => {   // nombre y contenido de todo lo que cuelga de dir, en orden fijo
   if (!fs.existsSync(dir)) return;
   for (const f of fs.readdirSync(dir).sort()) {
@@ -127,7 +139,7 @@ function montaPagina({ finca = "hituelo", conTileset = true, tileset, olivos = f
     const tmp = dest + ".tmp-" + process.pid;
     fs.rmSync(tmp, { recursive: true, force: true }); fs.rmSync(dest, { recursive: true, force: true });
     construye(tmp, finca, dirFinca, indice, conTs && typeof tileset !== "string");
-    fs.renameSync(tmp, dest);
+    renombraConReintento(tmp, dest);
   } finally { fs.rmSync(cerrojo, { recursive: true, force: true }); }
   return res;
 }
@@ -138,4 +150,4 @@ function datosDe(carpeta, pagina = "index.html") {
   return JSON.parse(m ? m[1] : fs.readFileSync(path.join(carpeta, "indice.json"), "utf8"));
 }
 
-module.exports = { montaPagina, saltoPagina, datosDe, WEB, VITE };
+module.exports = { montaPagina, saltoPagina, datosDe, renombraConReintento, WEB, VITE };
