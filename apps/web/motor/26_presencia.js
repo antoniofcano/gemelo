@@ -1,9 +1,9 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Chat, Muneco, Encuentro, sitioJunto, avatarVRM, Presencia
-// Consume: 01_datos (D, $), 02_mundo (suelo, copas), 03_escena (visor, renderer, scene, camera, texColor, exag, modo), 04d_sombreado_tiles (hash),
-//   06_arboles (tronco), 09_camara (objetivo, suelta, elige), 12_paseo (paseando, persona, primera), 12b_llegada (Llegada), 13b_hazas (HazasPuro),
-//   14_historia (lista), 15_tiempo (ahoraMs, rumbo, hace), 16_vida (enQuad, mira, quad, vidaPaseo, enDron, dron), 17_minimapa (mini),
-//   29_vr (VRX, vrFundido, panel), 34_movibles (Movibles)
+// Consume: 01_datos (D, $), 02_mundo (suelo, copas), 02e_entidades (Entidades), 03_escena (visor, renderer, scene, camera, texColor, exag, modo),
+//   04d_sombreado_tiles (hash), 06_arboles (tronco), 09_camara (objetivo, suelta, elige), 12_paseo (paseando, persona, primera),
+//   12b_llegada (Llegada), 13b_hazas (HazasPuro), 14_historia (lista), 15_tiempo (ahoraMs, rumbo, hace),
+//   16_vida (enQuad, mira, quad, vidaPaseo, enDron, dron), 17_minimapa (mini), 29_vr (VRX, vrFundido, panel, ficha), 34_movibles (Movibles)
 // Nota: Publica además window.__presencia (pruebas). Sin ?presencia=sim o ?presencia=red no crea nada (con red, import("livekit-client") y el panel Gente); el trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/presencia.test.js.
 // ===============================================================================
   // ---------- presencia compartida (F2, contratos/presencia.md): la pose de cada visitante en binario, su interpolación y los avatares de bloque instanciados.
@@ -925,6 +925,45 @@
       });
     }
 
+    // ---- C7 (02e_entidades.js): las personas que se ven, como entidades persona:<id> (el de la sala o, en la simulación, sim<k>). Solo con presencia y solo
+    // las que se dibujan (de esta sala, con pose, sin bloquear). Tocarla (a menos de 24 px de su cuerpo, de los pies a la cabeza) o apuntarla con el rayo de un
+    // mando la elige y abre su ficha: cómo va, a cuántos metros y «Ir con» (irCon: fundido y de pie a su lado). El alias es de otra persona: siempre como texto.
+    var quitaPersona = null, pv1 = new THREE.Vector3(), pv2 = new THREE.Vector3(), MODOS_P = ["a pie", "en quad", "con el dron"];
+    function personaDe(id) { var m = /^persona:(.+)$/.exec(String(id)), a = m ? busca(m[1]) : null; return a && seVe(a, performance.now()) ? a : null; }
+    function personasVistas() { var ahoraMs = performance.now(); return lista().filter(function (a) { return seVe(a, ahoraMs); }); }
+    function personaEnPantalla(cx, cy, r) {
+      var mejor = null, md = 24;
+      personasVistas().forEach(function (a) {
+        var c = a.out.cab.p; pv1.set(c[0], c[1] - 1.55, c[2]).project(camera); pv2.set(c[0], c[1] + 0.15, c[2]).project(camera); if (pv1.z > 1 && pv2.z > 1) return;
+        var ax = (pv1.x * 0.5 + 0.5) * r.width + r.left, ay = (-pv1.y * 0.5 + 0.5) * r.height + r.top, bx = (pv2.x * 0.5 + 0.5) * r.width + r.left, by = (-pv2.y * 0.5 + 0.5) * r.height + r.top;
+        var vx = bx - ax, vy = by - ay, L = vx * vx + vy * vy || 1, t = Math.max(0, Math.min(1, ((cx - ax) * vx + (cy - ay) * vy) / L)), d = Math.hypot(cx - (ax + t * vx), cy - (ay + t * vy));
+        if (d < md) { md = d; mejor = a; }
+      });
+      return mejor ? { id: "persona:" + idDe(mejor), s: md / 24 } : null;
+    }
+    function personaEnRayo(rr) {   // un cilindro de los pies a la cabeza con un radio que crece con la distancia (al menos 0,5 m), a 0,4-300 m
+      var o = rr.ray.origin, d = rr.ray.direction, bb = d.y, den = 1 - bb * bb, mejor = null, ms = 1e9; if (den < 1e-6) return null;
+      personasVistas().forEach(function (a) {
+        var c = a.out.cab.p, y0 = c[1] - 1.55; pv1.set(o.x - c[0], o.y - y0, o.z - c[2]);
+        var dw = d.x * pv1.x + d.y * pv1.y + d.z * pv1.z, s = Math.max(0, Math.min(1.7, (pv1.y - bb * dw) / den)), t = (c[0] - o.x) * d.x + (y0 + s - o.y) * d.y + (c[2] - o.z) * d.z;
+        if (t < 0.4 || t > 300) return;
+        var dist = Math.hypot(o.x + d.x * t - c[0], o.y + d.y * t - y0 - s, o.z + d.z * t - c[2]), sc = dist / Math.max(0.5, t * 0.01);
+        if (sc < 1 && sc + t * 0.0005 < ms) { ms = sc + t * 0.0005; mejor = { id: "persona:" + idDe(a), t: t, s: sc }; }
+      });
+      return mejor;
+    }
+    function fichaPersona(id, modoF) {
+      var a = personaDe(id); if (!a) return null;
+      var c = a.out.cab.p, o = oyente(), m = MODOS_P[a.out.modo | 0] || MODOS_P[0], al = String(a.alias || "Visitante"), dm = Math.round(Math.hypot(c[0] - o.x, -c[2] - o.y));
+      return { titulo: al, filas: [{ k: "Va", v: m }, { k: "Está", v: "a " + dm + " m de ti" }], lineas: [m + " · a " + dm + " m de ti"],
+        acciones: [{ id: "ir", txt: modoF === "vr" ? "Ir con" : "Ir con " + al, fn: function () { return irCon(idDe(a)); } }] };
+    }
+    if (variante) quitaPersona = Entidades.registra({ tipo: "persona", dueno: "26_presencia", prioridad: 30, pantalla: personaEnPantalla, rayo: personaEnRayo, ficha: fichaPersona,
+      existe: function (id) { return !!personaDe(id); },
+      lista: function () { return puntos().map(function (q) { return { id: "persona:" + q.id, ref: q.id, alias: q.alias, x: q.x, y: q.y, modo: q.modo }; }); },
+      pos: function (id) { var a = personaDe(id), c = a && a.out.cab.p; return c ? { x: c[0], y: suelo(c[0], -c[2]) * exag, z: c[2] } : null; },
+      radio: function () { return 0.7; } });
+
     function actualiza(dt) {
       if (!activo) return;
       var t0 = performance.now(), ahoraMs = Math.round(t0), nc = 0, i;
@@ -958,6 +997,7 @@
       return e;
     }
     function libera() {   // libera todo lo de la GPU (y, en red, sale de la sala y retira el apartado) y deja el módulo como sin la bandera
+      if (quitaPersona) { quitaPersona(); quitaPersona = null; }   // C7: sin presencia no hay personas que elegir
       if (!grupo) return;
       activo = false;
       if (avatarVRM) avatarVRM.libera();

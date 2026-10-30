@@ -215,7 +215,7 @@ test("consume resuelto y sin ciclos; un componente no expone nada en su primer n
     for (const g of Object.keys(d.cons[f])) assert.ok(!comp.has(g), f + " consume de otro componente: " + g);
     // lo que su código (sin comentarios) usa de los módulos que no son el núcleo de componentes ni lo básico de la escena, está en su consume
     const codigo = sinComentarios(sinCabecera(fs.readFileSync(path.join(MOTOR, f), "utf8"))).replace(/"(?:[^"\\\n]|\\.)*"/g, '""');
-    const LIBRE = new Set(["01_datos", "02_mundo", "02b_cola", "02c_componentes", "02d_laminas", "03_escena"]);
+    const LIBRE = new Set(["01_datos", "02_mundo", "02b_cola", "02c_componentes", "02d_laminas", "02e_entidades", "03_escena"]);
     const usa = n => new RegExp("(?<![\\w$.])" + n.replace(/\$/g, "\\$") + "(?![\\w$]|\\s*:(?!:))").test(codigo);   // sin propiedades (.x) ni claves de objeto (x:)
     for (const [g, ns] of Object.entries(d.cons[f])) if (!LIBRE.has(g)) for (const n of ns) if (usa(n)) assert.ok(def.consume.includes(n), f + ": usa «" + n + "» de " + g + " sin declararlo en consume");
   }

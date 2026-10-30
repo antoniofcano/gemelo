@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: tamano, cuadro, bucle
-// Consume: 02_mundo (Mundo), 02b_cola (Cola), 02c_componentes (Pausa, Componentes), 02d_laminas (Laminas),
+// Consume: 02_mundo (Mundo), 02b_cola (Cola), 02c_componentes (Pausa, Componentes), 02d_laminas (Laminas), 02e_entidades (Usables),
 //   03_escena (visor, renderer, scene, camera), 04b_escena3d (Escena3D), 04e_suelo_fondo (SueloFondo),
 //   05_nube (actualizaNubeTeselas, actualizaNube), 07b_arboles (Arboles), 08_marcadores (listo, aplica), 09_camara (objetivo, camara),
 //   12_paseo (paseando, actualizaPaseo), 13b_hazas (Hazas), 15_tiempo (actualizaTiempo, hace), 16_vida (quita, actualizaVida),
@@ -27,6 +27,7 @@
     // el mundo en pausa (02c Pausa: un juego a pantalla completa): ni cámara, ni módulos, ni Cola, ni render; solo la fase «pausa» y el contador de ?debug
     if (Pausa.activa() && !VRX.on) { Componentes.actualiza("pausa", dt, t); depuraCuadro(t); if (Mide.on) Mide.cuadro(t); return; }
     if (VRX.on) vrActualiza(dt, t); else if (paseando) { actualizaPaseo(dt); transEntrada(dt); } else { camara(); transSalida(dt); }
+    Usables.actualiza(dt);   // la cercanía (02e_entidades.js): antes que las balizas, que la leen
     actualizaTiempo(dt, t); actualizaOlivo(dt); actualizaVida(dt); actualizaMinimapa(dt); actualizaPaisaje(dt); actualizaBalizas(dt); actualizaSuelo(dt); actualizaNube(dt);
     Componentes.actualiza("mundo", dt, t);
     Arboles.actualiza(dt); actualizaCarga(dt); actualizaHuellas(dt); actualizaPerros(dt); Presencia.actualiza(dt); Hazas.actualiza(dt);

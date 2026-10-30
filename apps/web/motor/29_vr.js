@@ -1,14 +1,13 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: VRX, vrDebugExtra, vrFundido, vrAparece, panel, ficha, PanelVR, vrMideEmpieza, vrMideFin, vrActualiza, VR_PERFILES, vrFin
 // Consume: 01_datos (D, $, fmt, VRP), 02_mundo (Mundo, suelo, orto, copas), 02c_componentes (Bus, Config), 02d_laminas (Laminas),
-//   03_escena (lienzo, visor, renderer, scene, camera, texColor, exag, modo, calidad), 04b_escena3d (Escena3D), 05_nube (nube),
-//   07b_arboles (Arboles), 09_camara (eligeCopa, pon), 10_ndvi (NDV, ndviIdx),
+//   02e_entidades (EntidadesPuro, Entidades, Usables), 03_escena (lienzo, visor, renderer, scene, camera, texColor, exag, modo, calidad),
+//   04b_escena3d (Escena3D), 05_nube (nube), 07b_arboles (Arboles), 09_camara (pon), 10_ndvi (NDV, ndviIdx),
 //   12_paseo (paseando, persona, teclas, primera, entraPaseo, salePaseo, actualizaPaseo), 12b_llegada (Llegada), 13_parcelas (parcelas, fincas),
-//   14_historia (lista, aviso), 15_tiempo (calma, nivel, rumbo, hace), 16_vida (quita, mira, quad, dron),
-//   19_balizas (BAL, cierraBaliza, balizaAbierta, abreBaliza, balizaVR, irABaliza, tBal), 22_huellas (pendFactor), 24_pantalla (suave),
-//   25_perros (perrosLlegan), 26_presencia (Presencia), 30_mide (MideEst, Mide), 33_ajustes (Ajustes), 36_mandos (Mandos),
+//   14_historia (lista, aviso), 15_tiempo (calma, nivel, rumbo, hace), 16_vida (quita, mira, quad, dron), 22_huellas (pendFactor),
+//   24_pantalla (suave), 25_perros (perrosLlegan), 30_mide (MideEst, Mide), 33_ajustes (Ajustes), 36_mandos (Mandos),
 //   90_final (tamano, cuadro, bucle)
-// Nota: Publica además window.__vrDebug, __vrOlivo, __vrBotones, __vrVuelo, __vrBalizas y VR_ESTADO (depuración y pruebas VR).
+// Nota: Publica además window.__vrDebug, __vrOlivo, __vrBotones, __vrVuelo y VR_ESTADO (depuración y pruebas VR).
 // ===============================================================================
   // ---------- modo VR inmersivo (WebXR, Meta Quest Browser): el paseo en primera persona con mandos, un panel flotante y un perfil de rendimiento propio
   // Fuera de una sesión XR este bloque no hace nada salvo comprobar (una vez) si el navegador ofrece WebXR y, si lo ofrece, mostrar el botón «Entrar en VR».
@@ -19,8 +18,8 @@
     on: false, entrando: false, sesion: null, base: null, soporta: false, estado: "comprobando…", ojo: 0, frame: null,
     rig: { x: 0, y: 0, z: 0, yaw: 0 }, vuelo: false, mirador: false, correr: false, vineta: true, nivel: 0,
     modoPrev: "nube", calPrev: 1, nearPrev: 0.5, farPrev: 5000, prev: {}, giroOk: true, parcSel: 0, emaDt: 13.9, emaJs: 6, nBaj: 0, nAlt: 0, tNivel: 0,
-    tp: null, hover: "", tBal: 0, fichaT: 0, sucio: true, hapt: 0, hMov: 0, sesionesN: 0, cab: new THREE.Vector3(),
-    captura: null, gente: null, genteFirma: "", tGente: 0, pestana: "mundo", giro: 30, sinPint: false, balK: -1, balFirma: "", balInfo: null, hoverB: "", botonesB: []
+    tp: null, hover: "", tFicha: 0, fichaT: 0, fichaDe: "", sucio: true, hapt: 0, hMov: 0, sesionesN: 0, cab: new THREE.Vector3(),
+    captura: null, gente: null, genteFirma: "", tGente: 0, pestana: "mundo", giro: 30, sinPint: false, fichaId: "", balFirma: "", balInfo: null, hoverB: "", botonesB: []
   };
   var vrRig = new THREE.Group();
   function vrEstado(t) { VRX.estado = t; window.VR_ESTADO = "WebXR: " + t; try { console.log("[VR] " + window.VR_ESTADO); } catch (e) {} }
@@ -277,8 +276,8 @@
     ficha.tex.needsUpdate = true; ficha.m.visible = true; ficha.ini = false; VRX.fichaT = 14;
   }
   function vrRumboPanel() { return ((-panel.m.rotation.y * 180 / Math.PI) % 360 + 360) % 360; }   // hacia dónde mira quien ve el panel de frente (PanelVR.rumbo)
-  // ----- 3b) I5: la sección Gente del panel: una fila por persona que se ve (Presencia.puntos: con pose, sin bloquear, no en vista aérea), las más
-  // cercanas arriba, con «Ir con» pulsable con el rayo y el gatillo. Ir es Presencia.irCon (26_presencia.js): fundido a negro y de pie a 2,5-4 m de
+  // ----- 3b) I5: la sección Gente del panel: una fila por persona que se ve (Entidades.lista("persona"): con pose, sin bloquear, no en vista aérea), las más
+  // cercanas arriba, con «Ir con» pulsable con el rayo y el gatillo. Ir es su acción «ir» (Usables.usa; en 26_presencia.js): fundido a negro y de pie a 2,5-4 m de
   // ella, mirándola (Llegada, 12b_llegada.js), nunca un vuelo de cámara; al llegar se cierra el panel (para verla) y Y lo vuelve a abrir.
   // [puro:inicio] (sin THREE ni DOM: lo evalúa en Node pruebas/guardianes/vr_gente.test.js)
   var VrGentePuro = (function () {
@@ -306,7 +305,10 @@
   })();
   // [puro:fin]
   var GENTE_FILAS = 4;   // filas que caben en la pestaña «Ir a»; la sección empieza donde le diga la pestaña (px del canvas del panel)
-  function vrGente() { var pts = typeof Presencia !== "undefined" && Presencia.activo() ? Presencia.puntos() : null; return VrGentePuro.filas(pts, { x: VRX.cab.x, y: -VRX.cab.z }, GENTE_FILAS); }
+  function vrGente() {   // C7: las personas son entidades (26_presencia registra el tipo persona); sin ese tipo (sin presencia), null
+    var l = Entidades.lista("persona"), pts = l ? l.map(function (q) { return { id: q.ref, alias: q.alias, x: q.x, y: q.y, modo: q.modo }; }) : null;
+    return VrGentePuro.filas(pts, { x: VRX.cab.x, y: -VRX.cab.z }, GENTE_FILAS);
+  }
   function vrGenteBotones(b, gy) {   // un «Ir con» grande (240 × 64 px = 23 × 6 cm a 1 m) por fila; gy = dónde empieza la sección
     var g = VRX.gente = vrGente(); VRX.genteFirma = VrGentePuro.firma(g);
     g.filas.forEach(function (f, i) { b("ir:" + f.id, 744, gy + 50 + i * 74, 240, 64, "Ir con", function () { vrIrCon(f.id); }, false); });
@@ -331,51 +333,40 @@
     if (!VRX.mideTarjeta) PanelVR.visibles(VRX.pestana).forEach(function (f) { if (!f.firma) return; var x = ""; try { x = f.firma(); } catch (e) {} if (x !== f.firmaVista) VRX.sucio = true; });
   }
   function vrIrCon(id) {
-    if (typeof Presencia === "undefined" || !Presencia.irCon(id)) { VRX.sucio = true; return false; }   // ya no se ve (se fue, la bloqueaste) o hay un fundido en curso
+    if (!Usables.usa("persona:" + id, "ir")) { VRX.sucio = true; return false; }   // ya no se ve (se fue, la bloqueaste) o hay un fundido en curso
     panel.m.visible = false; VRX.hover = ""; return true;
   }
 
-  // ----- 3c) I5: la ficha de la baliza en VR, en su propia lámina: estado, quién está y «Ir a esta baliza» y «Cerrar», pulsables con el rayo y el gatillo.
-  // Sale cuando la ficha de la baliza está abierta (a menos de 17 m de ella, o con el rayo y el gatillo sobre su columna de luz) y no está delante el
-  // panel ni la ficha de un olivo. Ir es irABaliza (19_balizas.js): fundido y de pie a 4-5,5 m de la columna, mirándola (Llegada.ve).
-  function vrBalizaTic(dt) {
-    VRX.tBal += dt; if (VRX.tBal < 0.6) return; VRX.tBal = 0;
-    var k = balizaAbierta();
-    if (k < 0) { fichaB.m.visible = false; VRX.balK = -1; VRX.balFirma = ""; return; }
+  // ----- 3c) la ficha con botones en VR (I5; C7: de cualquier entidad, Usables.abierta()), en su propia lámina: título, el color de su estado, lo destacado
+  // (quién está), sus líneas, su pie y sus acciones («Ir a esta baliza», «Ir con»…) más «Cerrar», pulsables con el rayo y el gatillo. Sale cuando hay una
+  // abierta (la baliza a menos de 17 m o con el rayo y el gatillo sobre su columna de luz; la persona elegida con el rayo) y no está delante el panel ni la
+  // ficha de un olivo. Ir es la acción de la entidad (Usables.usa): fundido y de pie a unos metros, mirándola (Llegada).
+  function vrFichaTic(dt) {
+    VRX.tFicha += dt; if (VRX.tFicha < 0.6) return; VRX.tFicha = 0;
+    var id = Usables.abierta(), b = id ? Entidades.ficha(id, "vr") : null;
+    if (!b || !b.acciones || !b.acciones.length) { fichaB.m.visible = false; VRX.fichaId = ""; VRX.balFirma = ""; return; }
     if (panel.m.visible || ficha.m.visible || PanelVR.tapado()) { fichaB.m.visible = false; return; }
-    var b = balizaVR(k), f = JSON.stringify(b);
-    if (k !== VRX.balK || !fichaB.m.visible) fichaB.ini = false;
-    if (k !== VRX.balK || f !== VRX.balFirma) { VRX.balK = k; VRX.balFirma = f; vrPintaBaliza(b); }
+    var f = JSON.stringify(b);
+    if (id !== VRX.fichaId || !fichaB.m.visible) fichaB.ini = false;
+    if (id !== VRX.fichaId || f !== VRX.balFirma) { VRX.fichaId = id; VRX.balFirma = f; vrPintaAcciones(b); }
     fichaB.m.visible = true;
   }
-  function vrPintaBaliza(b) {   // 768 × 480 px en 0,62 × 0,39 m; botones de 72 px (6 cm de alto)
-    var cx = fichaB.cx, W = fichaB.W, H = fichaB.H, B = [], y = 70;
+  function vrPintaAcciones(b) {   // 768 × 480 px en 0,62 × 0,39 m; botones de 72 px (6 cm de alto): las acciones a la izquierda (470 px entre todas) y «Cerrar» a la derecha
+    var cx = fichaB.cx, W = fichaB.W, H = fichaB.H, B = [], y = 70, id = b.id, ac = b.acciones || [], lineas = EntidadesPuro.lineas(b);
     VRX.balInfo = b;
     cx.clearRect(0, 0, W, H); cx.fillStyle = "rgba(14,18,22,0.93)"; vrRect(cx, 0, 0, W, H, 22); cx.fill(); cx.textBaseline = "top"; cx.textAlign = "left";
-    cx.fillStyle = "#" + ("000000" + (b.color || 0).toString(16)).slice(-6); vrRect(cx, 0, 22, 10, H - 44, 4); cx.fill();   // el color de su estado, como la columna
-    cx.fillStyle = "#ffffff"; cx.font = "bold 34px system-ui, sans-serif"; vrTexto(cx, "Baliza · " + b.titulo, 26, 18, W - 52, 0, 40, 1);
-    if (b.gente) { cx.fillStyle = "#7fe3ff"; cx.font = "bold 26px system-ui, sans-serif"; y += vrTexto(cx, b.gente.length ? "Aquí están: " + b.gente.join(", ") : "No hay nadie en esta parcela", 26, y, W - 52, 0, 32, 2) * 32 + 8; }
+    if (b.color != null) { cx.fillStyle = "#" + ("000000" + (b.color || 0).toString(16)).slice(-6); vrRect(cx, 0, 22, 10, H - 44, 4); cx.fill(); }   // el color de su estado, como la columna
+    cx.fillStyle = "#ffffff"; cx.font = "bold 34px system-ui, sans-serif"; vrTexto(cx, b.titulo || "", 26, 18, W - 52, 0, 40, 1);
+    if (b.destacado) { cx.fillStyle = "#7fe3ff"; cx.font = "bold 26px system-ui, sans-serif"; y += vrTexto(cx, b.destacado, 26, y, W - 52, 0, 32, 2) * 32 + 8; }
     cx.fillStyle = "#cfd9df"; cx.font = "24px system-ui, sans-serif";
-    for (var i = 0; i < b.lineas.length && y < H - 160; i++) y += vrTexto(cx, b.lineas[i], 26, y, W - 52, 0, 30, 2) * 30 + 4;
-    cx.fillStyle = "#6f808c"; cx.font = "18px system-ui, sans-serif"; vrTexto(cx, b.pie, 26, H - 120, W - 52, 0, 22, 1);
-    B.push({ id: "bir", x: 26, y: H - 92, w: 470, h: 72, txt: "Ir a esta baliza", fn: function () { irABaliza(b.k); } });
-    B.push({ id: "bce", x: 516, y: H - 92, w: 226, h: 72, txt: "Cerrar", fn: function () { cierraBaliza(); fichaB.m.visible = false; VRX.balK = -1; VRX.balFirma = ""; } });
+    for (var i = 0; i < lineas.length && y < H - 160; i++) if (lineas[i]) y += vrTexto(cx, lineas[i], 26, y, W - 52, 0, 30, 2) * 30 + 4;
+    if (b.pie) { cx.fillStyle = "#6f808c"; cx.font = "18px system-ui, sans-serif"; vrTexto(cx, b.pie, 26, H - 120, W - 52, 0, 22, 1); }
+    var n = Math.max(1, ac.length), wa = (470 - (n - 1) * 12) / n;
+    ac.forEach(function (a, k) { B.push({ id: a.id, x: 26 + k * (wa + 12), y: H - 92, w: wa, h: 72, txt: a.txt, prim: k === 0, fn: function () { Usables.usa(id, a.id); } }); });
+    B.push({ id: "bce", x: 516, y: H - 92, w: 226, h: 72, txt: "Cerrar", fn: function () { Usables.cierra(id, "cerrada"); fichaB.m.visible = false; VRX.fichaId = ""; VRX.balFirma = ""; } });
     cx.textBaseline = "middle"; cx.textAlign = "center"; cx.font = "bold 30px system-ui, sans-serif";
-    B.forEach(function (q) { cx.fillStyle = VRX.hoverB === q.id ? "#4a5866" : q.id === "bir" ? "#1d5f6b" : "#2a3139"; vrRect(cx, q.x, q.y, q.w, q.h, 14); cx.fill(); cx.fillStyle = "#ffffff"; cx.fillText(q.txt, q.x + q.w / 2, q.y + q.h / 2 + 1); });
+    B.forEach(function (q) { cx.fillStyle = VRX.hoverB === q.id ? "#4a5866" : q.prim ? "#1d5f6b" : "#2a3139"; vrRect(cx, q.x, q.y, q.w, q.h, 14); cx.fill(); cx.fillStyle = "#ffffff"; cx.fillText(q.txt, q.x + q.w / 2, q.y + q.h / 2 + 1); });
     cx.textAlign = "left"; fichaB.tex.needsUpdate = true; VRX.botonesB = B;
-  }
-  var vrW0 = new THREE.Vector3();
-  function vrColumnaBajo(rr) {   // ¿apunta el rayo a la columna de luz de una baliza (del pie a 28,5 m)? { i, t (m por el rayo) } o null; el radio crece con la distancia
-    var o = rr.ray.origin, d = rr.ray.direction, b = d.y, den = 1 - b * b, mejor = null, ms = 1e9;
-    if (den < 1e-6) return null;
-    for (var i = 0; i < BAL.length; i++) {
-      var g = BAL[i].position; vrW0.set(o.x - g.x, o.y - g.y, o.z - g.z);
-      var dw = d.x * vrW0.x + d.y * vrW0.y + d.z * vrW0.z, s = Math.max(0, Math.min(28.5, (vrW0.y - b * dw) / den));   // altura del punto más cercano en la columna
-      var t = (g.x - o.x) * d.x + (g.y + s - o.y) * d.y + (g.z - o.z) * d.z; if (t < 0.5 || t > 2500) continue;
-      var dist = Math.hypot(o.x + d.x * t - g.x, o.y + d.y * t - g.y - s, o.z + d.z * t - g.z), rad = Math.max(1.2, t * 0.012), sc = dist / rad;
-      if (sc < 1 && sc + t * 0.0005 < ms) { ms = sc + t * 0.0005; mejor = { i: i, t: t }; }
-    }
-    return mejor;
   }
   function vrParcela(d) { VRX.parcSel = (VRX.parcSel + d + parcelas.length) % parcelas.length; var p = parcelas[VRX.parcSel]; vrIrA(p.centro[0], p.centro[1] - 6); VRX.sucio = true; }
   // T7a: la tarjeta de la medida (30_mide.js) sobre el panel: texto a 29 px en un panel de 1 m (letra de ≈ 2,8 cm, legible a 1 m) y «Cerrar» pulsable con el gatillo
@@ -458,12 +449,12 @@
       if (hv !== VRX.hover) { VRX.hover = hv; VRX.sucio = true; }
       if (VRX.sucio) vrPintaPanel();
     }
-    if (ficha.m.visible) { vrSigue(ficha, dt, 0.95, -0.38); VRX.fichaT -= dt; if (VRX.fichaT <= 0) ficha.m.visible = false; }
-    vrBalizaTic(dt);
+    if (ficha.m.visible) { vrSigue(ficha, dt, 0.95, -0.38); VRX.fichaT -= dt; if (VRX.fichaT <= 0) { ficha.m.visible = false; if (VRX.fichaDe) Usables.cierra(VRX.fichaDe, "tiempo"); VRX.fichaDe = ""; } }
+    vrFichaTic(dt);
     if (fichaB.m.visible) {
       vrSigue(fichaB, dt, 0.95, -0.42);
       var qb = vrBajoRayo(fichaB, VRX.botonesB, rr), hb = qb ? qb.id : "";
-      if (hb !== VRX.hoverB) { VRX.hoverB = hb; if (VRX.balInfo) vrPintaBaliza(VRX.balInfo); }
+      if (hb !== VRX.hoverB) { VRX.hoverB = hb; if (VRX.balInfo) vrPintaAcciones(VRX.balInfo); }
     }
   }
   function vrMirador(on) {
@@ -478,24 +469,19 @@
       if (q) { vrPulso(o, 0.4, 25); q.fn(); VRX.sucio = true; return; }
       if (q === false) return;
     }
-    if (fichaB.m.visible) {   // la ficha de la baliza (I5): «Ir a esta baliza» y «Cerrar»
+    if (fichaB.m.visible) {   // la ficha con botones (I5, C7): sus acciones y «Cerrar»
       var qb = vrBajoRayo(fichaB, VRX.botonesB, rr);
       if (qb) { vrPulso(o, 0.4, 25); qb.fn(); return; }
       if (qb === false) return;
     }
     if (Laminas.toca(rr)) { vrPulso(o, 0.4, 25); return; }   // C8: una lámina del mundo con alTocar (02d_laminas.js) recibe el toque (u, v)
-    var best = null, bs = 1e9, bt = 1e9, ro = rr.ray.origin, rd = rr.ray.direction;
-    copas.forEach(function (c) {
-      if (!c.oliv) return; var cy = (suelo(c.x, c.y) + c.h * 0.6) * exag; vrV3.set(c.x - ro.x, cy - ro.y, -c.y - ro.z); var t = vrV3.dot(rd); if (t < 0.4 || t > 150) return;
-      var perp = vrV3.addScaledVector(rd, -t).length(), rad = Math.max(1.3, 0.55 * (c.perfil.reduce(function (a, b) { return a + b; }, 0) / 8)), s = perp / rad; if (s < 1 && t * 0.02 + s < bs) { bs = t * 0.02 + s; best = c; bt = t; }
-    });
-    var col = vrColumnaBajo(rr);   // la columna de luz de una baliza, si está antes que el olivo: abre su ficha (I5; como tocarla en pantalla)
-    if (col && (!best || col.t < bt)) { abreBaliza(col.i); VRX.tBal = 1; vrPulso(o, 0.4, 25); return; }
-    if (best) {
-      eligeCopa(best); var pares = [], dts = $("fichaDatos").children; for (var j = 0; j + 1 < dts.length; j += 2) pares.push(dts[j].textContent + ": " + dts[j + 1].textContent);
-      $("ficha").hidden = true; vrPintaFicha($("fichaTitulo").textContent, [pares.slice(0, 3).join(" · "), pares.slice(3).join(" · ")]); vrPulso(o, 0.4, 25);
-    }
+    if (Usables.rayo(rr)) { VRX.tFicha = 1; vrPulso(o, 0.4, 25); }   // C7: lo primero por el rayo (un olivo, la columna de luz de una baliza…); su ficha, abajo
   }
+  // C7: la ficha común en VR (Usables.presentador): sin acciones, en la lámina pequeña (título y dos líneas «k: v», 14 s); con acciones, en la de los botones
+  Usables.presentador("vr", function (f) {
+    if (f.acciones && f.acciones.length) { VRX.tFicha = 1; return; }
+    vrPintaFicha(f.titulo, EntidadesPuro.lineas(f)); VRX.fichaDe = f.id;
+  });
 
   // ----- 5) la viñeta de confort (un velo con el centro transparente, pegado a la cabeza)
   var vrVineta = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.4), new THREE.ShaderMaterial({
@@ -544,7 +530,7 @@
     scene.add(vrRig); vrRig.add(camera); camera.add(vrVineta); camera.position.set(0, VRX.ojo ? 0 : 1.6, 0); camera.quaternion.identity(); VRC.forEach(function (o) { vrRig.add(o.c); vrRig.add(o.g); }); Mandos.monta(renderer, vrRig); scene.add(arco); scene.add(arcoMarca); scene.add(panel.m); scene.add(ficha.m); scene.add(fichaB.m); vrVueloEntra();
     VRP.on = true; vrPerfil(0); VRX.emaDt = 13.9; VRX.emaJs = 6; VRX.tNivel = 0;
     if (!paseando) entraPaseo(); primera = true; TR.act = false; persona.visible = false; try { perrosLlegan(); } catch (e) {}
-    var r = VRX.rig; r.x = pp.x; r.z = -pp.y; r.yaw = 0; r.y = suelo(pp.x, pp.y) * exag + vrBaseY(); VRX.vuelo = false; VRX.mirador = false; VRX.prev = {}; VRX.giroOk = true; VRX.sucio = true; panel.m.visible = true; panel.ini = false; ficha.m.visible = false; fichaB.m.visible = false; VRX.balK = -1; VRX.balFirma = "";
+    var r = VRX.rig; r.x = pp.x; r.z = -pp.y; r.yaw = 0; r.y = suelo(pp.x, pp.y) * exag + vrBaseY(); VRX.vuelo = false; VRX.mirador = false; VRX.prev = {}; VRX.giroOk = true; VRX.sucio = true; panel.m.visible = true; panel.ini = false; ficha.m.visible = false; fichaB.m.visible = false; VRX.fichaId = ""; VRX.balFirma = "";
     vrAplicaRig(); vrRig.updateMatrixWorld(true); VRX.on = true; VRX.entrando = false; vrEstado("sesión VR en marcha"); Bus.emite("vr:entra");
   }
   function vrAnimacion(t, frame) { if (!frame || !VRX.on) return; VRX.frame = frame; cuadro(performance.now()); }
@@ -558,11 +544,10 @@
     VRX.vuelo = false; VRX.mirador = false; vrEstado("soportado (sesión terminada)"); Bus.emite("vr:sale"); tamano(); requestAnimationFrame(bucle);
   }
   window.__vrDebug = function () { return Object.assign({ on: VRX.on, estado: VRX.estado, nivel: VRX.nivel, rig: JSON.parse(JSON.stringify(VRX.rig)), cabeza: [VRX.cab.x, VRX.cab.y, VRX.cab.z], pp: [pp.x, pp.y], vuelo: VRX.vuelo, panel: panel.m.visible, ficha: ficha.m.visible, hover: VRX.hover, pestana: VRX.pestana, giro: VRX.giro, sinEscena: VRX.sinPint, vinetaOn: VRX.vineta, vineta: vrVineta.material.uniforms.uK.value, sesionesN: VRX.sesionesN, paseando: paseando, primera: primera, modo: modo, exag: exag, hora: $("hora").value, ndvi: ndviIdx, parcSel: VRX.parcSel, panelPos: panel.m.position.toArray(), fichaPos: ficha.m.position.toArray(), frames: renderer.info.render.frame, nivelArb: Arboles.resumen(), hierba: VRP.hierba, bump: UN.uBumpK.value, perfiles: VR_PERFILES.length, near: camera.near, far: camera.far,
-    panelTam: [panel.W, panel.H, panel.pw, panel.ph], fichaB: fichaB.m.visible, fichaBPos: fichaB.m.position.toArray(), fichaBTam: [fichaB.W, fichaB.H, fichaB.pw, fichaB.ph], balK: VRX.balK, hoverB: VRX.hoverB, balGente: VRX.balInfo ? VRX.balInfo.gente : null,
+    panelTam: [panel.W, panel.H, panel.pw, panel.ph], fichaB: fichaB.m.visible, fichaBPos: fichaB.m.position.toArray(), fichaBTam: [fichaB.W, fichaB.H, fichaB.pw, fichaB.ph], fichaId: VRX.fichaId, hoverB: VRX.hoverB, fichaGente: VRX.balInfo && VRX.fichaId ? VRX.balInfo.gente : null,
     tiempo: null, fichaTiempo: null,   // los pone la fila del componente fichas-tiempo (35_fichas_tiempo.js) por PanelVR.debug(), si está
     gente: VRX.gente ? { activo: VRX.gente.activo, n: VRX.gente.n, filas: VRX.gente.filas.map(function (f) { return { id: f.id, alias: f.alias, modo: f.modo, dist: f.dist }; }) } : null }, PanelVR.debug()); };
   window.__vrPerfil = function (n) { vrPerfil(n); VRX.tNivel = 0; };   // fuerza un perfil (pruebas): el adaptador espera 4 s antes de volver a decidir
   window.__vrOlivo = function () { var h = VRX.cab, b = null, bd = 1e9; copas.forEach(function (c) { if (!c.oliv) return; var d = Math.hypot(c.x - h.x, -c.y - h.z); if (d > 6 && d < bd) { bd = d; b = c; } }); return b ? [b.x, (suelo(b.x, b.y) + b.h * 0.6) * exag, -b.y] : null; };
   window.__vrBotones = function (cual) { return ((cual === "baliza" ? VRX.botonesB : VRX.botones) || []).map(function (b) { return { id: b.id, x: b.x, y: b.y, w: b.w, h: b.h }; }); };
-  window.__vrBalizas = function () { return BAL.map(function (g) { return g.position.toArray(); }); };   // el pie de cada columna de luz (pruebas, I5)
   vrDetecta();

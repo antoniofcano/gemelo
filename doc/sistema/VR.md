@@ -96,7 +96,7 @@ Para la prueba T7 (criterios 5 y 6 de [ADR-0015](../adr/0015-escena-en-3d-tiles.
 - Si el casco no ofrece `local-floor`, se usa `local` con 1,6 m de altura de ojos.
 
 ## Dónde está en el código
-Todo vive ya en `apps/web/motor/` (integrado en el repo): `29_vr.js` (el modo VR completo), `30_mide.js` (el medidor de fotogramas), `90_final.js` (bucle `cuadro()` compartido), `07b_arboles.js` (`Arboles.perfil`), `21_suelo.js` (radio de la hierba en VR), `09_camara.js` (`eligeCopa`), `28_depura.js` (línea `WebXR: …`), `01_datos.js` (`VRP`). Contrato: [CONTRATOS.md](CONTRATOS.md#vr-29_vrjs); decisión: [ADR-0005](../adr/0005-webxr-perfil-propio.md).
+Todo vive ya en `apps/web/motor/` (integrado en el repo): `29_vr.js` (el modo VR completo), `30_mide.js` (el medidor de fotogramas), `90_final.js` (bucle `cuadro()` compartido), `07b_arboles.js` (`Arboles.perfil`), `21_suelo.js` (radio de la hierba en VR), `02e_entidades.js` (`Usables`: el rayo y las fichas, C7), `28_depura.js` (línea `WebXR: …`), `01_datos.js` (`VRP`). Contrato: [CONTRATOS.md](CONTRATOS.md#vr-29_vrjs); decisión: [ADR-0005](../adr/0005-webxr-perfil-propio.md).
 
 ## Probar
 ```
