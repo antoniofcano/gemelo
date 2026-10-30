@@ -620,7 +620,10 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
       assert.strictEqual(await pg.inputValue("#alias"), yo.alias, "el alias que ya tenía, puesto");
       await pg.click("#fAlias button[type=submit]");
       await pg.waitForSelector("#t-avatar", { state: "visible" });
-      await pg.click("#mCamisa label:nth-child(3)");
+      // AV4: el avatar por piezas; el color de arriba (antes «camisa») está en «Ropa», que empieza plegada
+      await pg.click("details:has(#mArriba) > summary");
+      await pg.click("#mArriba label:nth-child(3)");
+      assert.strictEqual(await pg.$eval("#mArriba input:checked", e => e.value), "2", "el tercer color de arriba, elegido");
       await pg.click("#fAvatar button[type=submit]");
       await pg.waitForSelector("#btnSeguir", { state: "visible" });
       const l2 = await enLinea(pg); cspPortada.push(...l2.csp);
@@ -853,7 +856,7 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
         assert.deepStrictEqual([l4.estilos, l4.scripts], [0, 0], "la pantalla de las gafas no lleva estilos ni scripts en línea");
         await Promise.all([gq.waitForURL(base + "/finca/"), gq.click("#btnGafasFinca")]);
         const sg = JSON.parse((await pide("/api/sesion", { cookie: cg.value })).texto);
-        assert.deepStrictEqual({ rol: sg.rol, alias: sg.alias, primer_acceso: sg.primer_acceso }, { rol: "hogar", alias: yo.alias, primer_acceso: false }, "la sesión de las gafas es la del hogar que aprobó");
+        assert.deepStrictEqual({ rol: sg.rol, alias: sg.alias, primer_acceso: sg.primer_acceso, titular: sg.titular }, { rol: "hogar", alias: yo.alias, primer_acceso: false, titular: false }, "la sesión de las gafas es la del hogar que aprobó (y no es titular: nació del código corto)");
         t.diagnostic("gafas: código en pantalla en " + tiempos.codigo.toFixed(2) + " s; de «Aprobar» a la sesión en las gafas " + tiempos.aprobado.toFixed(2) + " s (sondeo cada 3 s)");
         // un solo uso: el mismo código ya no se aprueba otra vez
         const otraVez = await pide("/api/yo/dispositivos/vincular", { method: "POST", cookie: (await ctx.cookies(base)).find(x => x.name === COOKIE).value, body: JSON.stringify({ codigo, aprobar: true }), headers: { "content-type": "application/json", origin: base } });
@@ -893,7 +896,7 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
     const I = JSON.parse(ti.texto), [cx, cy] = I.centro_utm;
 
     const s = await json("/api/sesion", cookie);
-    assert.deepStrictEqual(s.cuerpo, { rol: "hogar", alias: yo.alias, alias_visible: true, primer_acceso: false }, "con el primer acceso hecho");
+    assert.deepStrictEqual(s.cuerpo, { rol: "hogar", alias: yo.alias, alias_visible: true, primer_acceso: false, titular: true }, "con el primer acceso hecho (y titular: la sesión nació del enlace mágico)");
 
     const g = await json("/api/hazas", cookie);
     assert.strictEqual(g.status, 200);

@@ -136,7 +136,10 @@ async function mide(navegador, url, { escenarios = ESCENARIOS, tope = TOPE_MEDID
   let parcial = false;
   try {
   await p.goto(url + (url.includes("?") ? "&" : "?") + "debug");
-  await p.waitForFunction(() => window.__g && window.__g.listo(), null, { timeout: Math.min(ESPERA_MS, queda()) });
+  await p.waitForFunction(() => window.__g && window.__g.listo(), null, { timeout: Math.min(ESPERA_MS, queda()) }).catch(e => {
+    // sin esto, el tiempo agotado se traga lo que dijo la página: se cuenta con el error
+    throw new Error(String(e.message).split("\n")[0] + " esperando a __g.listo() en " + url + "; errores: " + JSON.stringify(errores.slice(0, 8)) + "; fallos: " + JSON.stringify(fallos.slice(0, 8)));
+  });
   for (const [nombre, e] of Object.entries(escenarios)) {
     if (Date.now() - t0 > tope) { parcial = true; break; }
     if (e.paseo) await entraYMueve(p, e.paseo, queda); else await p.evaluate(() => window.__g.paseoSale && window.__g.paseoSale());
