@@ -12,8 +12,8 @@ test("el motor tiene módulos y el orden alfabético es el de montaje (01_ prime
   assert.deepStrictEqual(SRC, ord);
 });
 
-test("el script montado (todos los src/*.js concatenados, como hace montar_v2.py) es JavaScript válido", () => {
-  // El montador hace sorted(glob): orden ASCII. 01_datos abre la IIFE y 99_cierre la cierra, así que sólo el conjunto es válido.
+test("el motor montado (todos los motor/*.js concatenados, como hace genera_motor.mjs) es JavaScript válido", () => {
+  // genera_motor.mjs hace readdirSync().sort(): orden de código. 01_datos abre la IIFE y 99_cierre la cierra, así que sólo el conjunto es válido.
   const todo = SRC.map(f => fs.readFileSync(path.join(RAIZ, f), "utf8")).join("");
   const tmp = path.join(os.tmpdir(), "gemelo_todo_" + process.pid + ".js");
   fs.writeFileSync(tmp, todo);

@@ -1,38 +1,46 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Escena3D
-// Consume: 01_datos (D, ESC3D), 02_mundo (Mundo, suelo), 03_escena (renderer, scene, camera, exag), 04_terreno (Terreno),
-//   04d_sombreado_tiles (SombreadoTiles), 08_marcadores (listo, aplica), 09_camara (objetivo), 16_vida (mira)
+// Consume: 01_datos (D), 02_mundo (Mundo, suelo), 03_escena (visor, renderer, scene, camera, exag), 04d_sombreado_tiles (SombreadoTiles),
+//   05_nube (nube), 08_marcadores (listo, aplica), 09_camara (objetivo), 14_historia (aviso, carga), 16_vida (mira), 29_vr (panel)
 // ===============================================================================
-  // ---------- la escena en 3D Tiles 1.1 (ADR-0015, aceptado; formato en doc/sistema/TILES3D.md): la de por defecto cuando hay tileset (T8 fase 1,
-  // ESC3D en 01_datos.js: D.tileset del índice, ?tileset= o ?escena=tiles); con ?escena=clasica, o sin tileset, no crea nada y el motor dibuja lo de
-  // siempre. Cuando actúa, el relieve con su ortofoto lo dibuja 3DTilesRendererJS (versión
-  // fijada en apps/web/package.json) desde un tileset.json de tuberia/tiles3d/, y 04_terreno.js no construye nada (ESC3D.activa).
+  // ---------- la escena en 3D Tiles 1.1 (ADR-0015, aceptado; formato en doc/sistema/TILES3D.md): la ÚNICA escena (T8 fase 2, decisión 79). El relieve
+  // con su ortofoto lo dibuja 3DTilesRendererJS (versión fijada en apps/web/package.json) desde un tileset.json de tuberia/tiles3d/, con el sombreado
+  // de 04d_sombreado_tiles.js. Sin tileset (ni D.tileset en el índice ni ?tileset=) o si falla (la librería, otro origen, la raíz), no hay otra
+  // escena a la que volver: estado "sin", un console.error y el aviso #sinEscena de la página («Esta finca no tiene escena: <motivo>»); el Mundo
+  // se carga igual, así que el panel, las fichas, la nube y los olivos siguen funcionando.
   // La física y las consultas en CPU (alturas, copa y color de la tierra para el paseo, la VR, las balizas y las huellas) siguen con el json de
   // siempre (decisión 38: doble descarga aceptada); los puntos LiDAR (decisión 37) y las construcciones (decisión 36) no cambian. Los olivos
   // del glb los gestiona 04c_olivos_tiles.js por los ganchos de engancha() (alRaiz, alModelo, alSoltar, alApagar, fotograma); sin él, o si los rechaza, se quitan.
-  // Tileset: ?tileset=<ruta relativa>, si no D.tileset (el índice) y si no <D.base>tileset/tileset.json; nunca otro host (§5 de CLAUDE.md: solo el mismo origen).
+  // Tileset: ?tileset=<ruta relativa> (pruebas), si no D.tileset (el índice); nunca otro host (§5 de CLAUDE.md: solo el mismo origen).
   // Marco: la raíz lleva LOCAL → ECEF; el grupo lo deshace y pasa de z arriba a y arriba, como la página de prueba de tuberia/tiles3d/, y
-  // aplica la exageración vertical en la misma matriz. Si la librería o el tileset fallan, vuelve el relieve de 04_terreno.js (y se avisa una vez).
+  // aplica la exageración vertical en la misma matriz.
   var Escena3D = (function () {
-    var estado = ESC3D.pedida ? "cargando" : "apagado", motivo = "", tiles = null, Sched = null, raizT = null, exagPuesta = NaN, sesion = null, errores = 0;
+    var pedida = /[?&]tileset=[^&#]/.test(location.search) || (typeof D.tileset === "string" && D.tileset.length > 0);
+    var estado = pedida ? "cargando" : "apagado", motivo = "", tiles = null, Sched = null, raizT = null, exagPuesta = NaN, sesion = null, errores = 0;
     var ERROR_ESCRITORIO = (function () { var m = /[?&]tilesError=([0-9.]+)/.exec(location.search), v = m ? Number(m[1]) : 16; return v > 0 && v <= 256 ? v : 16; })();
     var errorPerfil = null;   // el del perfil VR (29_vr.js, campo e de cada perfil); null = el de escritorio
     var tam = new THREE.Vector2();
     var ganchos = {};   // los pone 04c_olivos_tiles.js con engancha(): alRaiz(tileset), alModelo(scene, tile) → true si se queda con sus olivos, alSoltar(scene), alApagar(motivo), fotograma()
     function url() {
-      var m = /[?&]tileset=([^&#]+)/.exec(location.search), u = m ? decodeURIComponent(m[1]) : (typeof D.tileset === "string" && D.tileset) || (D.base || "") + "tileset/tileset.json";
+      var m = /[?&]tileset=([^&#]+)/.exec(location.search), u = m ? decodeURIComponent(m[1]) : D.tileset;
       if (/^[a-z][a-z0-9+.-]*:|^\/\//i.test(u)) throw new Error("tileset fuera del mismo origen: " + u);   // ni http(s):, ni data:, ni //host
       return u;
     }
     function falla(e) {
       if (estado === "sin") return;
-      estado = "sin"; motivo = String(e && e.message || e); console.warn("escena 3D Tiles: " + motivo + " (vuelve el relieve de siempre)");
+      estado = "sin"; motivo = String(e && e.message || e); console.error("escena 3D Tiles: " + motivo + " (esta finca se queda sin escena)");
       if (tiles) { try { scene.remove(tiles.group); tiles.dispose(); } catch (e2) {} tiles = null; }
-      // falla() puede llegar mientras se monta el motor (un ?tileset= de otro host falla dentro de arranca(), al definir este módulo): 04d y 04c
+      // falla() puede llegar mientras se monta el motor (sin tileset, o un ?tileset= de otro host, falla al definir este módulo): 04d y 04c
       // vienen después y aún no existen; a 04c se le avisa al engancharse (engancha)
       if (SombreadoTiles) SombreadoTiles.libera();
-      ESC3D.activa = false; Terreno.grupo.visible = true; if (ganchos.alApagar) ganchos.alApagar(motivo);
-      if (listo) { Terreno.iniciaMosaico(); Terreno.montaTodas(); aplica(); }   // si ya arrancó; si no, lo montará el arranque (90_final.js)
+      if (ganchos.alApagar) ganchos.alApagar(motivo);
+      avisa(motivo);
+    }
+    // el aviso en la página (#sinEscena de plantilla.html): role="alert", no tapa los toques del visor ni el panel
+    function avisa(m) {
+      if (typeof document === "undefined") return;   // (las pruebas de Node evalúan el módulo sin DOM)
+      var el = document.getElementById("sinEscena"), tx = document.getElementById("sinEscenaMotivo"); if (!el) return;
+      if (tx) tx.textContent = m; el.hidden = false;
     }
     function colocaGrupo() {   // tiles.group.matrix = escala vertical (exag) · Rx(−π/2) · transform⁻¹ de la raíz
       if (!tiles || !raizT) return;
@@ -62,7 +70,7 @@
           if (ganchos.alRaiz) ganchos.alRaiz(e.tileset);
         });
         tiles.addEventListener("load-model", function (e) { if (!(ganchos.alModelo && ganchos.alModelo(e.scene, e.tile))) quitaOlivos(e.scene); e.scene.userData.tesela = { uri: e.tile.content && e.tile.content.uri, lado: e.tile.boundingVolume && e.tile.boundingVolume.box ? 2 * e.tile.boundingVolume.box[3] : null, error: e.tile.geometricError }; });
-        tiles.addEventListener("load-model", function (e) { SombreadoTiles.modelo(e.scene, e.tile); });   // el relieve, con el sombreado del Terreno (04d)
+        tiles.addEventListener("load-model", function (e) { SombreadoTiles.modelo(e.scene, e.tile); });   // el relieve, con su sombreado (04d)
         tiles.addEventListener("dispose-model", function (e) { SombreadoTiles.suelta(e.scene); });
         tiles.addEventListener("dispose-model", function (e) { if (ganchos.alSoltar) ganchos.alSoltar(e.scene); });   // los olivos (04c)
         tiles.addEventListener("load-error", function (e) {
@@ -116,7 +124,7 @@
     // Sonda de huecos (criterio 3 del ADR-0015; solo pruebas): nx × ny rayos desde la cámara por la pantalla, más uno vertical bajo la cámara y otro
     // bajo el objetivo. Para cada rayo se busca en la CPU dónde corta el relieve (Mundo.suelo, marcha de 1 m y bisección; con la exageración puesta)
     // y, si ese punto cae dentro de los datos (tesela del contrato con un margen de 2 m), el rayo debe dar con el relieve dibujado: las teselas
-    // visibles del tileset o, si la escena 3D Tiles no está, el Terreno de siempre. Devuelve cuántos rayos caen en los datos y cuántos no
+    // visibles del tileset (sin escena no hay relieve dibujado: todo rayo en los datos cuenta como sin relieve). Devuelve cuántos rayos caen en los datos y cuántos no
     // encuentran relieve (con las primeras muestras de los que fallan).
     var ndc = new THREE.Vector2();
     function cortaCPU(o, d) {   // primer t > 0 con o + t·d bajo el relieve de la CPU, o −1 (hasta 6 km)
@@ -128,7 +136,7 @@
     function enDatos(x, y) { var M = 2; return !!(Mundo.tesela(x - M, y - M) && Mundo.tesela(x + M, y - M) && Mundo.tesela(x - M, y + M) && Mundo.tesela(x + M, y + M)); }
     function sondea(nx, ny) {
       nx = nx || 7; ny = ny || 5;
-      var objs = []; if (tiles && estado === "activo") objs.push(tiles.group); if (Terreno.grupo.visible) objs.push(Terreno.grupo);
+      var objs = []; if (tiles && estado === "activo") objs.push(tiles.group);
       camera.updateMatrixWorld();
       var rayos = [], cam = camera.getWorldPosition(new THREE.Vector3());
       for (var j = 0; j < ny; j++) for (var i = 0; i < nx; i++) { ndc.set(-0.9 + 1.8 * i / (nx - 1), -0.9 + 1.8 * j / (ny - 1)); rayo.setFromCamera(ndc, camera); rayos.push({ o: rayo.ray.origin.clone(), d: rayo.ray.direction.clone(), que: "pantalla " + i + "," + j }); }
@@ -156,6 +164,6 @@
     }
     function libera() { if (!tiles) return; SombreadoTiles.libera(); if (ganchos.alApagar) ganchos.alApagar("liberada"); if (Sched) Sched.setXRSession(null); scene.remove(tiles.group); tiles.dispose(); tiles = null; estado = "apagado"; }
     function engancha(g) { for (var k in g) ganchos[k] = g[k]; if (estado === "sin" && ganchos.alApagar) ganchos.alApagar(motivo); }
-    if (ESC3D.pedida) { Terreno.grupo.visible = false; arranca(); }
+    if (pedida) arranca(); else falla(new Error("falta el tileset"));
     return { actualiza: actualiza, perfil: perfil, resumen: resumen, libera: libera, listo: cargada, alturaEn: alturaEn, relieveEn: relieveEn, sondea: sondea, engancha: engancha, grupo: function () { return tiles && tiles.group; } };
   })();

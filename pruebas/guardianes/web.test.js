@@ -1,35 +1,18 @@
 "use strict";
-// Cliente web con Vite (ADR-0010, fase 0): la entrada generada es exactamente el motor concatenado, el build funciona y la página empaquetada
-// dibuja LO MISMO que la salida artefacto (mismas llamadas, triángulos y puntos en los mismos escenarios), con la misma versión de three en las dos.
-// Las dos con ?escena=clasica (la de siempre; ninguna de las dos lleva tileset, ADR-0015 T8 fase 1): se compara el build, no la escena.
-// Sin Vite instalado (cd apps/web && npm i) se SALTA con aviso. La salida artefacto toma three de jsDelivr: sin red, su carga falla.
+// Cliente web con Vite (ADR-0010): la versión de three es una y exacta, los trozos de sombreador que parchea el motor existen en ella y la página
+// empaquetada (pruebas/guardianes/_pagina.js) carga sin errores pidiendo solo a su mismo origen, como la sirve Caddy (decisión 79: ya no hay
+// salida artefacto con la que compararla; T8 fase 2). Las fuentes de Google de la plantilla son la única excepción conocida, y se dice.
+// Sin Vite instalado (cd apps/web && npm ci) se SALTA con aviso.
 const test = require("node:test"), assert = require("node:assert");
-const { RAIZ, propia, python, fixture, ejecuta, fs, path } = require("./_util");
-const { sirve, motivoSalto, lanza, mide } = require("./_navegador");
+const { RAIZ, fs, path } = require("./_util");
+const { sirve, motivoSalto, lanza } = require("./_navegador");
+const { montaPagina, saltoPagina } = require("./_pagina");
 
 const WEB = path.join(RAIZ, "apps", "web");
-const VITE = path.join(WEB, "node_modules", "vite", "bin", "vite.js");
-const SALTO = !fs.existsSync(VITE) ? "Vite no instalado (cd apps/web && npm i): el cliente web NO se ha comprobado" : motivoSalto("el cliente web");
+const SALTO = saltoPagina("el cliente web");
+const SALTO_NAV = SALTO || motivoSalto("el cliente web en el navegador");
 
-let FIX, raiz, dist, artefacto;
-test.before(() => {
-  if (SALTO) return;
-  FIX = fixture(); raiz = propia("web-raiz"); dist = propia("web-dist"); artefacto = propia("web-artefacto");
-  const g = ejecuta(process.execPath, [path.join(WEB, "herramientas", "genera_motor.mjs"), "--datos", path.join(FIX, "cerro", "embebido.json"), "--dest", raiz]);
-  assert.strictEqual(g.status, 0, g.stdout + g.stderr);
-  const b = ejecuta(process.execPath, [VITE, "build"], { cwd: WEB, env: Object.assign({}, process.env, { GEMELO_WEB_RAIZ: raiz, GEMELO_WEB_SALIDA: dist }) });
-  assert.strictEqual(b.status, 0, "vite build falló:\n" + b.stdout + b.stderr);
-  const m = ejecuta(python(), ["-I", "tuberia/salida_artefacto/montar_v2.py", "--datos", path.relative(RAIZ, path.join(FIX, "cerro", "embebido.json")), "--salida", path.relative(RAIZ, path.join(artefacto, "index.html"))]);
-  assert.strictEqual(m.status, 0, m.stdout + m.stderr);
-});
-
-test("la entrada de Vite es `import THREE` + los módulos del motor concatenados en orden, sin cambiar nada", t => {
-  if (SALTO) return t.skip(SALTO);
-  const motor = path.join(WEB, "motor"), esperado = 'import * as THREE from "three";\n' + fs.readdirSync(motor).filter(f => f.endsWith(".js")).sort().map(f => fs.readFileSync(path.join(motor, f), "utf8")).join("");
-  assert.strictEqual(fs.readFileSync(path.join(raiz, "entrada", "motor.generado.js"), "utf8"), esperado);
-});
-
-// La versión de three es UNA (ADR-0016): la exacta de apps/web/package.json, la instalada y la que la salida artefacto pide a jsDelivr en su importmap.
+// La versión de three es UNA (ADR-0016): la exacta de apps/web/package.json, la instalada y la que empaqueta Vite.
 const VERSION_THREE = JSON.parse(fs.readFileSync(path.join(WEB, "package.json"), "utf8")).dependencies.three;
 
 test("three va con versión exacta, ≥ 0.167 (ADR-0009, 3D Tiles), y es la instalada en apps/web", t => {
@@ -37,15 +20,6 @@ test("three va con versión exacta, ≥ 0.167 (ADR-0009, 3D Tiles), y es la inst
   assert.ok(Number(VERSION_THREE.split(".")[1]) >= 167, "three " + VERSION_THREE + " < 0.167");
   if (SALTO) return t.skip(SALTO);
   assert.strictEqual(JSON.parse(fs.readFileSync(path.join(WEB, "node_modules", "three", "package.json"), "utf8")).version, VERSION_THREE, "la three instalada no es la de package.json (cd apps/web && npm ci)");
-});
-
-test("la salida artefacto carga la MISMA three que el cliente web (importmap a jsDelivr con la versión de package.json)", t => {
-  if (SALTO) return t.skip(SALTO);
-  const html = fs.readFileSync(path.join(artefacto, "index.html"), "utf8"), m = html.match(/<script type="importmap">(.*?)<\/script>/s);
-  assert.ok(m, "la salida artefacto no lleva importmap");
-  const im = JSON.parse(m[1]).imports;
-  assert.strictEqual(im.three, "https://cdn.jsdelivr.net/npm/three@" + VERSION_THREE + "/build/three.module.js");
-  assert.ok(!/three\.min\.js|cdnjs\.cloudflare\.com\/ajax\/libs\/three/.test(html), "queda una carga de three r128 (three.min.js)");
 });
 
 // Los parches de sombreador (onBeforeCompile) sustituyen trozos de los sombreadores de three por su nombre: si un trozo cambia de nombre entre versiones
@@ -62,29 +36,21 @@ test("cada `#include <trozo>` que el motor parchea o usa existe en los sombreado
   for (const fn of ["sRGBTransferEOTF", "sRGBTransferOETF"]) assert.ok(cs.includes(fn), fn + " ya no existe en colorspace_pars_fragment");
 });
 
-test("la página empaquetada carga sin errores y dibuja exactamente lo mismo que la salida artefacto", { timeout: 300000 }, async t => {
-  if (SALTO) return t.skip(SALTO);
-  const s1 = await sirve(dist), s2 = await sirve(artefacto), nav = await lanza();
+test("la página empaquetada carga sin errores, lleva la three de apps/web y solo pide a su mismo origen (salvo las fuentes de Google de la plantilla)", { timeout: 300000 }, async t => {
+  if (SALTO_NAV) return t.skip(SALTO_NAV);
+  const P = montaPagina({ finca: "hituelo" }), s = await sirve(P.carpeta, { csp: true }), nav = await lanza(), origen = "http://127.0.0.1:" + s.address().port;
+  const p = await nav.newPage({ viewport: { width: 900, height: 650 } }), errores = [], fuera = new Set();
+  p.on("pageerror", e => errores.push("PAGEERROR " + String(e.stack || e).slice(0, 400)));
+  p.on("console", m => { if (m.type() === "error" && !/^\[Report Only\]/.test(m.text())) errores.push("CONSOLE " + m.text().slice(0, 300)); });
+  p.on("request", r => { const u = r.url(); if (!u.startsWith(origen) && !/^(data|blob):/.test(u)) fuera.add(new URL(u).host); });
   try {
-    // Iguales salvo la variación propia del motor entre dos cargas (vida, nubes y la Cola dependen del tiempo). Medido el 2026-10-28:
-    // en solitario, ±1 llamada; con la máquina cargada, las LLAMADAS del escenario «nube» llegan a variar un tercio (95 frente a 127)
-    // porque dependen de cuánto ha avanzado la carga. Por eso esas se registran pero no se comparan; el resto, con 2 unidades o el 2 %.
-    // Una diferencia aislada puede ser de tiempo y no del build: se repite la pareja de medidas hasta 3 veces; falla si nunca coinciden.
-    let dif = [];
-    for (let intento = 1; intento <= 3; intento++) {
-      const w = await mide(nav, "http://127.0.0.1:" + s1.address().port + "/index.html?escena=clasica");
-      const a = await mide(nav, "http://127.0.0.1:" + s2.address().port + "/index.html?escena=clasica");
-      assert.deepStrictEqual(w.errores, [], "errores en la página de Vite");
-      assert.deepStrictEqual(w.fallos, [], "peticiones fallidas en la página de Vite");
-      dif = [];
-      for (const e of Object.keys(a.medidas)) for (const k of ["llamadas", "triangulos", "puntos"]) {
-        const v = w.medidas[e][k], r = a.medidas[e][k];
-        if (e === "nube" && k === "llamadas") { if (v !== r) t.diagnostic("nube/llamadas (no se compara): Vite " + v + ", artefacto " + r); continue; }
-        if (Math.abs(v - r) > Math.max(2, 0.02 * r)) dif.push(e + "/" + k + ": Vite " + v + " frente a artefacto " + r);
-      }
-      if (!dif.length) break;
-      t.diagnostic("intento " + intento + " con diferencias: " + dif.join("; "));
-    }
-    assert.deepStrictEqual(dif, [], "la página de Vite no dibuja lo mismo que la artefacto (3 intentos)");
-  } finally { await nav.close(); s1.close(); s2.close(); }
+    await p.goto(origen + "/" + P.url + "?debug");
+    await p.waitForFunction(() => window.__g && window.__g.listo() && window.__g.Escena3D.listo(), null, { timeout: 120000, polling: 500 });
+    await p.waitForTimeout(1500);
+    assert.deepStrictEqual(errores, []);
+    assert.strictEqual(await p.evaluate(() => window.__THREE__), VERSION_THREE.split(".")[1], "la three empaquetada no es la de apps/web/package.json");
+    const ajenos = [...fuera].filter(h => !/^fonts\.(googleapis|gstatic)\.com$/.test(h));
+    if (fuera.size > ajenos.length) t.diagnostic("fuentes de Google pedidas por la plantilla: " + [...fuera].join(", ") + " (la CSP de Caddy, al imponerse, las bloquearía)");
+    assert.deepStrictEqual(ajenos, [], "la página pide a otros hosts (el motor solo pide a su mismo origen)");
+  } finally { await p.close(); await nav.close(); s.close(); }
 });

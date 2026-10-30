@@ -8,7 +8,7 @@
   },
   "scripts": {
     "fixture": "python pruebas/genera_fixture.py",
-    "montar": "python tuberia/salida_artefacto/montar_v2.py",
+    "montar": "npm --prefix apps/web run build",
     "guardianes": "node --test \"pruebas/guardianes/*.test.js\"",
     "puerta": "node pruebas/banco/puerta.js",
     "banco:ronda": "node pruebas/banco/ronda.js",

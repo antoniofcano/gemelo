@@ -46,12 +46,13 @@ function propia(nombre) {
   process.on("exit", () => { try { fs.rmSync(d, { recursive: true, force: true }); } catch (e) { /* nada que hacer */ } });
   return d;
 }
-/** Genera el fixture sintético (determinista) y devuelve su carpeta */
-function fixture() {
+/** Genera el fixture sintético (determinista) y devuelve su carpeta: {cerro,hituelo}/{indice.json, t/, tileset/}. Con sinTileset, sin tileset/
+ *  (para las pruebas que solo leen índices y teselas: el tileset tarda y la primera vez instala las dependencias de tuberia/tiles3d) */
+function fixture({ sinTileset = false } = {}) {
   const py = python();
   if (!py) throw new Error("No hay Python 3: no se puede generar el fixture");
-  const dest = propia("fixture");
-  const r = ejecuta(py, ["-I", path.join("pruebas", "genera_fixture.py"), "--salida", dest]);
+  const dest = propia(sinTileset ? "fixture-sin-tileset" : "fixture");
+  const r = ejecuta(py, ["-I", path.join("pruebas", "genera_fixture.py"), "--salida", dest].concat(sinTileset ? ["--sin-tileset"] : []));
   if (r.status !== 0) throw new Error("genera_fixture.py falló:\n" + r.stdout + r.stderr);
   return dest;
 }

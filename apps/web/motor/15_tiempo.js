@@ -3,7 +3,7 @@
 //   colocaBarrera, pintaFondoTiempo, cargaT, fmtHora, fmtClaveDia, num1, rumbo, esc, hace, objetivoMundoBase, aplicaMundo, lindes
 // Consume: 01_datos (D, $, FOG0, FOG1), 02_mundo (suelo, copas),
 //   03_escena (visor, scene, camera, SRGB, LUZ_SOL, LUZ_CIELO, hemi, sol, texColor, colorVertSRGB, colorCss, exag, modo),
-//   04_terreno (hash, matSuelo, matOrto, terreno), 05_nube (nube), 07_follaje (matHojaG, matHojaP, matCorteza), 08_marcadores (gLinde),
+//   04d_sombreado_tiles (hash, matSuelo, matOrto), 05_nube (nube), 07_follaje (matHojaG, matHojaP, matCorteza), 08_marcadores (gLinde),
 //   09_camara (objetivo, orb), 12_paseo (primera), 14_historia (mcp, marca, tabla, aviso), 16_vida (mira, temaEstela), 23_estacion (objetivoMundo),
 //   24_pantalla (suave)
 // ===============================================================================

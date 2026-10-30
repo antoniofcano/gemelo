@@ -6,7 +6,7 @@
 const http = require("http");
 const { chrome, playwright, python, fs, path } = require("./_util");
 
-const TIPOS = { ".html": "text/html; charset=utf-8", ".json": "application/json", ".jpg": "image/jpeg", ".js": "text/javascript", ".css": "text/css" };
+const TIPOS = { ".html": "text/html; charset=utf-8", ".json": "application/json", ".jpg": "image/jpeg", ".png": "image/png", ".webp": "image/webp", ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css", ".glb": "model/gltf-binary", ".vrm": "model/gltf-binary", ".wasm": "application/wasm", ".svg": "image/svg+xml" };
 const ESPERA_MS = Number(process.env.GEMELO_ESPERA || 45000);
 const ESPERA_GEN_MS = Number(process.env.GEMELO_ESPERA_GEN || 180000);   // con ?olivos=gen, lo que se espera a los generados en un escenario (en SwiftShader, una receta E0 tarda decenas de s)
 const TOPE_MEDIDA_MS = Number(process.env.GEMELO_TOPE_MEDIDA || 240000);   // una medida entera (carga + escenarios); si se pasa, sale «parcial»
@@ -25,14 +25,33 @@ const ESCENARIOS_PASEO = {
 };
 const TODOS_ESCENARIOS = Object.assign({}, ESCENARIOS, ESCENARIOS_PASEO);
 
-function sirve(raiz) {
+// La CSP de las pruebas es la de infra/Caddyfile (pacto de T8 fase 2, §4), en el mismo modo que la manda el Caddy de producción: solo informe
+// (Content-Security-Policy-Report-Only) y sin report-uri (aquí no hay api). Lo que rompería al imponerla sale en la consola como «[Report Only]»:
+// mide() lo aparta en `csp` (no son errores de la página) para que cada prueba decida qué exige.
+const CSP = (() => {
+  const m = /Content-Security-Policy-Report-Only "([^"]+)"/.exec(fs.readFileSync(path.join(__dirname, "..", "..", "infra", "Caddyfile"), "utf8"));
+  if (!m) throw new Error("no encuentro la CSP en infra/Caddyfile");
+  return m[1].split(";").map(x => x.trim()).filter(x => x && !x.startsWith("report-uri")).join("; ");
+})();
+const esCsp = texto => /^\[Report Only\]/.test(texto);
+
+/** Servidor estático mínimo. opciones: { csp: true (manda la CSP de Caddy, solo informe; la piden las pruebas que la miran: carga, web,
+ *  escena3d; en el resto solo añadiría avisos «[Report Only]» de las fuentes y estilos de la plantilla), peticiones: [] (apunta cada ruta pedida),
+ *  bloquea: RegExp (responde 404 a esas rutas) } */
+function sirve(raiz, { csp = false, peticiones = null, bloquea = null } = {}) {
   return new Promise(ok => {
     const s = http.createServer((q, r) => {
       const url = decodeURIComponent(q.url.split("?")[0]);
+      if (peticiones) peticiones.push(url);
       if (url === "/favicon.ico") { r.statusCode = 204; return r.end(); }
       const f = path.join(raiz, url);
-      if (!f.startsWith(raiz)) { r.statusCode = 403; return r.end(); }
-      fs.readFile(f, (e, d) => { if (e) { r.statusCode = 404; r.end(); } else { r.setHeader("content-type", TIPOS[path.extname(f)] || "application/octet-stream"); r.end(d); } });
+      if (!f.startsWith(raiz) || (bloquea && bloquea.test(url))) { r.statusCode = f.startsWith(raiz) ? 404 : 403; return r.end(); }
+      fs.readFile(f, (e, d) => {
+        if (e) { r.statusCode = 404; return r.end(); }
+        r.setHeader("content-type", TIPOS[path.extname(f)] || "application/octet-stream");
+        if (csp) r.setHeader("content-security-policy-report-only", CSP);
+        r.end(d);
+      });
     }).listen(0, "127.0.0.1", () => ok(s));
   });
 }
@@ -60,11 +79,11 @@ async function lanza() {
 /** Desglose de las llamadas de dibujo de UN fotograma, por objeto (en la página: p.evaluate(desgloseLlamadas)). Envuelve
  *  renderer.renderBufferDirect (por donde pasan la pasada principal y la de sombras de three 0.186.1; en la de sombras scene === null) durante
  *  un fotograma y agrupa por «pasada · #i hijo de la escena [pista] › objeto · material». La pista dice si el hijo es el grupo de la escena
- *  3D Tiles, el del Terreno o el de los árboles; el resto, por su posición en scene.children (el orden de montaje de apps/web/motor/).
+ *  3D Tiles o el de los árboles; el resto, por su posición en scene.children (el orden de montaje de apps/web/motor/).
  *  Devuelve { total, info, filas: [[clave, llamadas]] } (info = renderer.info.render.calls del mismo fotograma, para contrastar). */
 function desgloseLlamadas() {
   const g = window.__g, R = g.renderer, S = g.scene, orig = R.renderBufferDirect, cuenta = {};
-  const tiles = g.Escena3D && g.Escena3D.grupo ? g.Escena3D.grupo() : null, pista = t => t === tiles ? " [3dtiles]" : t === g.Terreno.grupo ? " [terreno]" : g.Arboles && g.Arboles.grupo === t ? " [arboles]" : "";
+  const tiles = g.Escena3D && g.Escena3D.grupo ? g.Escena3D.grupo() : null, pista = t => t === tiles ? " [3dtiles]" : g.Arboles && g.Arboles.grupo === t ? " [arboles]" : "";
   const arriba = o => { let p = o; while (p.parent && p.parent !== S) p = p.parent; return p; };
   const nombre = o => (o.name ? o.name + ":" : "") + o.type;
   const espia = function (cam, sc, geo, mat, obj) {
@@ -93,13 +112,14 @@ async function entraYMueve(p, c, queda) {
   }
 }
 
-/** Abre una URL, espera a __g.listo() y mide cada escenario. Devuelve { errores, fallos, medidas, parcial }.
+/** Abre una URL, espera a __g.listo() y mide cada escenario. Devuelve { errores, fallos, medidas, parcial, csp }.
+ *  csp: los avisos «[Report Only]» de la CSP de Caddy (lo que rompería al imponerla); no cuentan como errores.
  *  Con un tope (GEMELO_TOPE_MEDIDA, ms): si se pasa, devuelve lo medido hasta entonces con parcial = true (y no deja la página colgada).
  *  Con desglose: además, las llamadas de un fotograma por objeto (desgloseLlamadas) en cada escenario. */
 async function mide(navegador, url, { escenarios = ESCENARIOS, tope = TOPE_MEDIDA_MS, capturas = null, desglose = false } = {}) {   // capturas: carpeta para un PNG por escenario
-  const p = await navegador.newPage({ viewport: { width: 900, height: 650 } }), errores = [], fallos = [], t0 = Date.now(), queda = () => Math.max(1000, tope - (Date.now() - t0));
+  const p = await navegador.newPage({ viewport: { width: 900, height: 650 } }), errores = [], fallos = [], csp = [], t0 = Date.now(), queda = () => Math.max(1000, tope - (Date.now() - t0));
   p.on("pageerror", e => errores.push("PAGEERROR " + String(e.stack || e).slice(0, 400)));
-  p.on("console", m => { if (m.type() === "error") errores.push("CONSOLE " + m.text().slice(0, 300)); });
+  p.on("console", m => { if (esCsp(m.text())) csp.push(m.text().slice(0, 300)); else if (m.type() === "error") errores.push("CONSOLE " + m.text().slice(0, 300)); });
   p.on("requestfailed", r => fallos.push(r.url()));
   p.on("response", r => { if (r.status() >= 400) fallos.push(r.status() + " " + r.url()); });
   const medidas = {};
@@ -113,9 +133,10 @@ async function mide(navegador, url, { escenarios = ESCENARIOS, tope = TOPE_MEDID
     if (!e.paseo) await p.evaluate(e => { const g = window.__g; g.orb.az = e.az; g.orb.el = e.el; g.orb.dist = e.dist; g.objetivo.x = e.ox; g.objetivo.z = -e.oy; g.objetivo.y = g.suelo(e.ox, e.oy) + 4; g.pon(e.modo); }, e);
     // la Cola y, con ?olivos=gen, la cola propia de los generados (que en SwiftShader tarda más: ESPERA_GEN_MS); si no termina, se mide igual y se dice
     const t1 = Date.now(), conGen = await p.evaluate(() => !!(window.__g.Generados && window.__g.Generados.activo()));
-    const acabo = await p.waitForFunction(() => (window.__g.pendientes ? window.__g.pendientes() : window.__g.Cola.pendientes()) === 0, null, { timeout: Math.min(conGen ? ESPERA_GEN_MS : ESPERA_MS, queda()), polling: 500 }).then(() => true, () => false);
+    // y la escena 3D Tiles (la única desde T8 fase 2): que termine de bajar teselas; si no hay escena (estado «sin»), no se la espera
+    const acabo = await p.waitForFunction(() => { const g = window.__g, E = g.Escena3D; return (g.pendientes ? g.pendientes() : g.Cola.pendientes()) === 0 && (!E || E.resumen().estado !== "activo" || E.listo()); }, null, { timeout: Math.min(conGen ? ESPERA_GEN_MS : ESPERA_MS, queda()), polling: 500 }).then(() => true, () => false);
     await p.waitForTimeout(1500);
-    medidas[nombre] = await p.evaluate(() => { const g = window.__g, r = g.renderer.info; return { llamadas: r.render.calls, triangulos: r.render.triangles, puntos: r.render.points, geometrias: r.memory.geometries, texturas: r.memory.textures, heapMB: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : -1, olivos: g.Arboles.resumen(), generados: window.__olivosGen ? window.__olivosGen() : undefined, paseo: g.paseoEstado && g.paseoEstado().paseando ? g.paseoEstado() : undefined, vrm: window.__presencia && window.__presencia().vrm || undefined }; });   // vrm: avatares VRM (P7c), solo con presencia
+    medidas[nombre] = await p.evaluate(() => { const g = window.__g, r = g.renderer.info; return { llamadas: r.render.calls, triangulos: r.render.triangles, puntos: r.render.points, geometrias: r.memory.geometries, texturas: r.memory.textures, heapMB: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : -1, olivos: g.Arboles.resumen(), generados: window.__olivosGen ? window.__olivosGen() : undefined, paseo: g.paseoEstado && g.paseoEstado().paseando ? g.paseoEstado() : undefined, vrm: window.__presencia && window.__presencia().vrm || undefined, escena3d: g.Escena3D ? g.Escena3D.resumen().estado : undefined }; });   // vrm: avatares VRM (P7c), solo con presencia
     medidas[nombre].espera = { ms: Date.now() - t1, termino: acabo, pendientes: await p.evaluate(() => window.__g.pendientes ? window.__g.pendientes() : window.__g.Cola.pendientes()) };
     if (desglose) medidas[nombre].desglose = await p.evaluate(desgloseLlamadas);
     if (desglose) medidas[nombre].escena3d = await p.evaluate(() => window.__g.Escena3D ? window.__g.Escena3D.resumen() : null);
@@ -123,7 +144,7 @@ async function mide(navegador, url, { escenarios = ESCENARIOS, tope = TOPE_MEDID
   }
   } catch (e) { if (Date.now() - t0 < tope) throw e; parcial = true; errores.push("TOPE " + Math.round(tope / 1000) + " s: " + String(e.message).slice(0, 200)); }
   finally { await p.close().catch(() => {}); }
-  return { errores, fallos, medidas, parcial };
+  return { errores, fallos, medidas, parcial, csp };
 }
 
-module.exports = { ESCENARIOS, ESCENARIOS_PASEO, TODOS_ESCENARIOS, ARGS_CHROME, sirve, motivoSalto, lanza, mide, desgloseLlamadas };
+module.exports = { ESCENARIOS, ESCENARIOS_PASEO, TODOS_ESCENARIOS, ARGS_CHROME, CSP, esCsp, sirve, motivoSalto, lanza, mide, desgloseLlamadas };

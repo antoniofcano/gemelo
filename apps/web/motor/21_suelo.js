@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: SN, S0, V0, vn2, cubierta, recoloreaSuelo, actualizaSuelo
-// Consume: 01_datos (D, $, i16, ANCHO, ALTO, VRP), 02_mundo (suelo), 03_escena (scene, texColor, colorVertSRGB, exag), 04_terreno (hash),
+// Consume: 01_datos (D, $, i16, ANCHO, ALTO, VRP), 02_mundo (suelo), 03_escena (scene, texColor, colorVertSRGB, exag), 04d_sombreado_tiles (hash),
 //   05_nube (nube), 09_camara (objetivo, orb), 10_ndvi (NDV, ndviIdx, pintaNdvi), 12_paseo (paseando),
 //   15_tiempo (uViento, uSombra, GLSL_SOMBRA, nivel, num1), 16_vida (esfera, enDron), 20_sonido (ejeArroyo, distArroyo)
 // ===============================================================================

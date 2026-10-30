@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: EST, construyeFrutosLista, objetivoMundo, actualizaOlivo
-// Consume: 01_datos ($), 02_mundo (suelo, copas), 03_escena (renderer, SRGB, sol, modo), 04_terreno (hash), 06_arboles (gFollaje),
+// Consume: 01_datos ($), 02_mundo (suelo, copas), 03_escena (renderer, SRGB, sol, modo), 04d_sombreado_tiles (hash), 06_arboles (gFollaje),
 //   07_follaje (matHojaG, matHojaP), 10_ndvi (NDV, ndviIdx), 13_parcelas (parcelas), 14_historia (aviso),
 //   15_tiempo (lluvia, cargaT, fmtHora, fmtClaveDia, num1, esc, objetivoMundoBase, aplicaMundo)
 // Nota: Publica además window.__otDebug (depuración del olivo estacional).

@@ -1,9 +1,9 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: OlivosTiles
-// Consume: 01_datos (D, ESC3D), 02_mundo (copas), 04b_escena3d (Escena3D), 06_arboles (gArboles)
+// Consume: 01_datos (D), 02_mundo (copas), 04b_escena3d (Escena3D), 06_arboles (gArboles)
 // ===============================================================================
-  // ---------- los olivos del tileset (F1d paso 4, ADR-0015; contrato tileset v2 en contratos/tileset.schema.json), solo con la escena 3D Tiles (ESC3D.pedida).
-  // Sin la bandera no actúa. Con ella, los olivos de media y larga distancia los dibuja el tileset (las instancias EXT_mesh_gpu_instancing de cada
+  // ---------- los olivos del tileset (F1d paso 4, ADR-0015; contrato tileset v2 en contratos/tileset.schema.json), solo cuando hay escena 3D Tiles (04b_escena3d.js).
+  // Sin tileset no actúa. Con él, los olivos de media y larga distancia los dibuja el tileset (las instancias EXT_mesh_gpu_instancing de cada
   // glb, que 04b_escena3d.js ya no retira) y los de cerca siguen siendo del motor: el detalle de cerca de siempre (07b_arboles.js) y, con ?olivos=gen,
   // los generados (07ab_generados.js). Para que ningún olivo se dibuje dos veces, una MÁSCARA: 07b dice qué olivos dibuja de cerca (índices de copas[])
   // y en cada malla del tileset esas instancias se apartan al final y no se dibujan (count menor; ver Mascara), sin rehacer el glb.
@@ -61,7 +61,7 @@
   // [puro:fin]
 
   var OlivosTiles = (function () {
-    var estado = ESC3D.pedida ? "esperando" : "apagado", motivo = "", avisados = {}, porHuella = true;
+    var estado = Escena3D.resumen().estado === "sin" ? "apagado" : "esperando", motivo = "", avisados = {}, porHuella = true;
     var G = null, ids = null, teselas = [], marcas = new Uint8Array(copas.length), deCerca = [], tipoG = null, nombres = null, visPuesta = null;
     var subtle = typeof crypto !== "undefined" && crypto && crypto.subtle ? crypto.subtle : null;
     function avisa(s) { if (avisados[s]) return; avisados[s] = true; console.warn("olivos del tileset: " + s); }
@@ -173,6 +173,6 @@
     /** pruebas: en qué teselas cargadas está el olivo g y si está apartado en cada una */
     function instanciasDe(g) { var r = []; teselas.forEach(function (T) { T.masc.forEach(function (x) { var o = x.M.apartadoG(g); if (o !== null) r.push({ uri: T.uri, apartado: o, visible: x.m.visible }); }); }); return r; }
 
-    if (ESC3D.pedida) Escena3D.engancha({ alRaiz: alRaiz, alModelo: alModelo, alSoltar: alSoltar, alApagar: function (m) { apaga(m, true); }, fotograma: fotograma });
+    if (estado === "esperando") Escena3D.engancha({ alRaiz: alRaiz, alModelo: alModelo, alSoltar: alSoltar, alApagar: function (m) { apaga(m, true); }, fotograma: fotograma });
     return { dibuja: function () { return estado === "activo"; }, cerca: cerca, triangulos: triangulos, resumen: resumen, tipo: tipo, tipos: tipos, instanciasDe: instanciasDe };
   })();

@@ -2,7 +2,7 @@
 // valida 3d-tiles-validator): cada instancia de cada glb se resuelve como lo hará el motor —lista de copas del cuadro de la tesela,
 // comprobada con su huella— y casa con el registro; en las hojas está cada olivo una vez; _TIPO casa con copas_tipo por la tabla.
 //
-//   node tuberia/tiles3d/comprueba.mjs --entrada <carpeta con indice.json | indice.json | embebido.json> --tileset <carpeta del tileset>
+//   node tuberia/tiles3d/comprueba.mjs --entrada <carpeta con indice.json | indice.json> --tileset <carpeta del tileset>
 //        [--catalogo <catalogo.json>]   (el mismo que se pasó a genera.mjs; sin él, el catálogo «olivos»)
 //   (sin --entrada se lee GEMELO_DATOS, que apunta al indice.json). La raíz no tiene contenido (generador ≥ 0.3.0): se salta.
 //
@@ -62,7 +62,7 @@ export async function comprueba(entrada, dir, catalogo) {
 if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(import.meta.url).pathname.replace(/^\/(\w:)/, "$1"))) {
   const a = process.argv.slice(2), arg = k => a[a.indexOf("--" + k) + 1];
   const entrada = a.includes("--entrada") ? arg("entrada") : process.env.GEMELO_DATOS;
-  if (!entrada || !a.includes("--tileset")) throw new Error("uso: node comprueba.mjs --entrada <carpeta|indice.json|embebido.json> --tileset <carpeta> (o GEMELO_DATOS=<indice.json>)");
+  if (!entrada || !a.includes("--tileset")) throw new Error("uso: node comprueba.mjs --entrada <carpeta|indice.json> --tileset <carpeta> (o GEMELO_DATOS=<indice.json>)");
   const r = await comprueba(entrada, arg("tileset"), a.includes("--catalogo") ? arg("catalogo") : undefined);
   console.log(JSON.stringify(r, null, 1));
   process.exitCode = r.errores.length ? 1 : 0;

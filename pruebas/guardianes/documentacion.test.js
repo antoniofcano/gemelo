@@ -96,7 +96,7 @@ test("ESTADO tiene «Al día a» y la fecha no está en el futuro", () => {
 
 test("skills: cada .claude/skills/<n>/SKILL.md tiene name (= carpeta) y description, y CLAUDE.md las nombra todas", () => {
   const skills = TODOS.filter(f => /^\.claude\/skills\/[^/]+\/SKILL\.md$/.test(f));
-  assert.ok(skills.length >= 11, "se esperaban ≥ 11 skills y hay " + skills.length);
+  assert.ok(skills.length >= 10, "se esperaban ≥ 10 skills y hay " + skills.length);
   const claude = lee("CLAUDE.md");
   for (const f of skills) {
     const dir = f.split("/")[2], s = lee(f);

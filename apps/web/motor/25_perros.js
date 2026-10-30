@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: perrosLlegan, amenazaConejo, actualizaPerros, dibujaPerrosMini
-// Consume: 01_datos (D), 02_mundo (copas), 03_escena (camera, texColor), 04_terreno (hash, terreno), 07_follaje (matSombra, geoSombra),
+// Consume: 01_datos (D), 02_mundo (copas), 03_escena (camera, texColor), 04d_sombreado_tiles (hash), 07_follaje (matSombra, geoSombra),
 //   12_paseo (paseando), 15_tiempo (esc), 16_vida (tVida, enQuad, gFauna, altSuelo, mira, conejos, quad, enDron, dron), 20_sonido (snd),
 //   22_huellas (pendienteRumbo, emitePolvo, sueloSeco), 24_pantalla (aterriza)
 // Nota: Publica además window.__perrosDebug (depuración).
