@@ -19,6 +19,8 @@ descargas/
 t/
 cap/
 *.png
+# iconos de la app (decisión 98)
+!apps/web/public/icono-*.png
 *.jpg
 *.log
 __pycache__/
