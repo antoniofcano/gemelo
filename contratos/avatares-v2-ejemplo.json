@@ -1,0 +1,63 @@
+{
+  "v": 2,
+  "compresion": "cuantizacion",
+  "topes": { "triangulos_objetivo": 20000, "triangulos_max": 24000, "bytes_max": 2097152, "textura_px_max": 1024, "texturas_max": 1, "materiales_max": 8 },
+  "topes_combinacion": { "triangulos": 15000, "primitivas": 6 },
+  "paletas": {
+    "piel": [
+      { "id": "tono-1", "nombre": "Tono 1, el más claro", "color": "#f6dcc8" }, { "id": "tono-2", "nombre": "Tono 2", "color": "#eec5a6" },
+      { "id": "tono-3", "nombre": "Tono 3", "color": "#e0ac86" }, { "id": "tono-4", "nombre": "Tono 4", "color": "#cf9670" },
+      { "id": "tono-5", "nombre": "Tono 5", "color": "#b97d57" }, { "id": "tono-6", "nombre": "Tono 6", "color": "#a06844" },
+      { "id": "tono-7", "nombre": "Tono 7", "color": "#855436" }, { "id": "tono-8", "nombre": "Tono 8", "color": "#6b412a" },
+      { "id": "tono-9", "nombre": "Tono 9", "color": "#523020" }, { "id": "tono-10", "nombre": "Tono 10, el más oscuro", "color": "#3b2217" }
+    ],
+    "ropa": [
+      { "id": "verde-olivo", "nombre": "Verde olivo", "color": "#6b7f3a" }, { "id": "aceituna-negra", "nombre": "Aceituna negra", "color": "#2f2a2a" },
+      { "id": "tierra", "nombre": "Tierra", "color": "#8a5a3b" }, { "id": "almagra", "nombre": "Almagra", "color": "#a8432f" },
+      { "id": "trigo", "nombre": "Trigo", "color": "#d8b65e" }, { "id": "cielo", "nombre": "Cielo", "color": "#6f9fc6" },
+      { "id": "adelfa", "nombre": "Adelfa", "color": "#d77a9a" }, { "id": "cal", "nombre": "Cal", "color": "#ece7dc" },
+      { "id": "pizarra", "nombre": "Pizarra", "color": "#4b5563" }, { "id": "lavanda", "nombre": "Lavanda", "color": "#8b7bb5" }
+    ],
+    "pelo": [
+      { "id": "negro", "nombre": "Negro", "color": "#1f1a17" }, { "id": "castano-oscuro", "nombre": "Castaño oscuro", "color": "#3d2a1e" },
+      { "id": "castano", "nombre": "Castaño", "color": "#6a4a30" }, { "id": "castano-claro", "nombre": "Castaño claro", "color": "#8f6a45" },
+      { "id": "rubio", "nombre": "Rubio", "color": "#c9a465" }, { "id": "cobrizo", "nombre": "Cobrizo", "color": "#a5522c" },
+      { "id": "canoso", "nombre": "Canoso", "color": "#9a9690" }, { "id": "blanco", "nombre": "Blanco", "color": "#e6e3dc" }
+    ]
+  },
+  "cuerpos": [
+    {
+      "id": "cuerpo-ejemplo-adulta", "nombre": "Persona adulta, complexión media", "descripcion": "Cuerpo inventado para este ejemplo: no existe ese fichero",
+      "edad": "adulta", "complexion": "media", "ofrecer": true, "fichero": "cuerpo-ejemplo-adulta.vrm", "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "bytes": 1000000, "vrm_version": "1.0", "triangulos": 10500, "primitivas": 4, "materiales": 6, "texturas": 0, "autor": "Autor de ejemplo",
+      "licencia": { "spdx": "CC0-1.0", "url": "https://creativecommons.org/publicdomain/zero/1.0/", "credito_obligatorio": false, "texto_credito": "Ejemplo — Autor de ejemplo — CC0-1.0" },
+      "fuente": { "nombre": "Ejemplo inventado" },
+      "piezas": ["pelo-corto", "pelo-afro", "vello-barba", "ropa-faena", "sombrero-paja"], "mirada": "ninguna"
+    },
+    {
+      "id": "cuerpo-ejemplo-peque", "nombre": "Peque, complexión media", "edad": "peque", "complexion": "media", "ofrecer": false,
+      "fichero": "cuerpo-ejemplo-peque.vrm", "sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+      "bytes": 900000, "vrm_version": "1.0", "triangulos": 10400, "primitivas": 4, "materiales": 6, "texturas": 0, "autor": "Autor de ejemplo",
+      "licencia": { "spdx": "CC0-1.0", "url": "https://creativecommons.org/publicdomain/zero/1.0/", "credito_obligatorio": false, "texto_credito": "Ejemplo — Autor de ejemplo — CC0-1.0" },
+      "fuente": { "nombre": "Ejemplo inventado" },
+      "piezas": ["pelo-corto", "pelo-afro", "ropa-faena", "sombrero-paja"], "mirada": "ninguna"
+    }
+  ],
+  "piezas": [
+    { "id": "pelo-corto", "tipo": "pelo", "nombre": "Corto", "malla": "pieza_pelo-corto", "materiales": ["pelo"], "triangulos": 850 },
+    { "id": "pelo-afro", "tipo": "pelo", "nombre": "Afro o rizado", "malla": "pieza_pelo-afro", "materiales": ["pelo"], "triangulos": 850 },
+    { "id": "vello-barba", "tipo": "vello", "nombre": "Barba corta", "malla": "pieza_vello-barba", "materiales": ["pelo"], "triangulos": 540, "edades": ["joven", "adulta", "mayor"] },
+    { "id": "ropa-faena", "tipo": "ropa", "nombre": "Ropa de faena", "malla": "pieza_ropa-faena", "materiales": ["ropa_base", "ropa_abajo"], "triangulos": 2030, "cubre_ropa_base": true },
+    { "id": "sombrero-paja", "tipo": "accesorio", "nombre": "Sombrero de paja", "malla": "pieza_sombrero-paja", "materiales": ["sombrero"], "triangulos": 140, "sombrero": "paja", "color": "#d9bf6a" }
+  ],
+  "avatares": [
+    {
+      "id": "ejemplo-cc0", "nombre": "Ejemplo CC0", "descripcion": "Personaje inventado para este ejemplo: no existe ese fichero",
+      "fichero": "ejemplo-cc0.vrm", "sha256": "0000000000000000000000000000000000000000000000000000000000000000", "bytes": 700000, "vrm_version": "0.x",
+      "triangulos": 4700, "primitivas": 1, "materiales": 1, "texturas": 1, "autor": "Autor de ejemplo",
+      "licencia": { "spdx": "CC0-1.0", "url": "https://creativecommons.org/publicdomain/zero/1.0/", "credito_obligatorio": false, "texto_credito": "Ejemplo CC0 — Autor de ejemplo — CC0-1.0" },
+      "fuente": { "nombre": "Ejemplo inventado" },
+      "colores_muneco": { "camisa": "#3f7cc2", "piel": "#d9a47c", "sombrero": "ninguno" }
+    }
+  ]
+}

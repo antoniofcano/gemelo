@@ -34,6 +34,12 @@ components:
         altura: { enum: [baja, media, alta], description: "AV2 (opcional): escala el muñeco" }
         complexion: { enum: [delgada, media, ancha], description: "AV2 (opcional): ensancha o afina el muñeco" }
         movilidad: { enum: [pie, baston, andador, silla], description: "AV2 (opcional): apoyo que lleva; con `silla` el muñeco va sentado con sus ruedas. No es una pose: la calcula quien mira" }
+        cuerpo: { type: string, pattern: "^[a-z0-9-]{1,32}$", description: "AV4 (opcional, ADR-0025): id de un cuerpo del catálogo v2 (contratos/avatares.md §9)" }
+        pelo: { type: string, pattern: "^[a-z0-9-]{1,32}$", description: "AV4 (opcional): id de una pieza de pelo del catálogo v2" }
+        pelo_color: { type: integer, minimum: 0, maximum: 9, description: "AV4 (opcional): índice de paletas.pelo" }
+        vello: { type: string, pattern: "^[a-z0-9-]{1,32}$", description: "AV4 (opcional): id de una pieza de vello (para cualquier cuerpo)" }
+        ropa: { type: string, pattern: "^[a-z0-9-]{1,32}$", description: "AV4 (opcional): id de una pieza de ropa; sin ella, la ropa base" }
+        acc: { type: array, maxItems: 3, uniqueItems: true, items: { type: string, pattern: "^[a-z0-9-]{1,32}$" }, description: "AV4 (opcional): otros accesorios (el sombrero sigue en `sombrero`)" }
     RecordJuego:
       type: object
       additionalProperties: false
@@ -380,6 +386,10 @@ paths:
 
         AV2 (decisión 131): `tono`, `arriba`, `abajo`, `altura`, `complexion` y `movilidad` son **opcionales** y de listas cerradas (nada de género);
         el contrato sigue en v1 (un cliente de antes los ignora). Un PUT sin ellos los borra; viajan en los metadatos de presencia solo los elegidos.
+
+        AV4 (ADR-0025): la **receta** del creador por piezas, también opcional: `cuerpo`, `pelo`, `pelo_color`, `vello`, `ropa` y `acc` (ids del
+        catálogo v2, [avatares.md](avatares.md) §9; la api solo comprueba su forma). El JSON de todo el aspecto y la receta no pasa de 200 bytes
+        (400 `receta_larga` si pasa). Se guarda en la misma columna `aspecto`: sin migración.
       security: [{ sesion: [] }]
       requestBody:
         required: true
@@ -400,6 +410,12 @@ paths:
                 altura: { enum: [baja, media, alta] }
                 complexion: { enum: [delgada, media, ancha] }
                 movilidad: { enum: [pie, baston, andador, silla] }
+                cuerpo: { type: string, pattern: "^[a-z0-9-]{1,32}$" }
+                pelo: { type: string, pattern: "^[a-z0-9-]{1,32}$" }
+                pelo_color: { type: integer, minimum: 0, maximum: 9 }
+                vello: { type: string, pattern: "^[a-z0-9-]{1,32}$" }
+                ropa: { type: string, pattern: "^[a-z0-9-]{1,32}$" }
+                acc: { type: array, maxItems: 3, uniqueItems: true, items: { type: string, pattern: "^[a-z0-9-]{1,32}$" } }
       responses:
         "204": { description: guardado }
         "400": { description: "la petición no tiene la forma esperada" }
