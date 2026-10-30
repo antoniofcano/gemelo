@@ -178,7 +178,7 @@ export async function rutasLlaves(app: FastifyInstance, ctx: Contexto): Promise<
   // ---------------------------------------------------------------- admin
   const ADMIN = [requiereRol("admin")], ADMIN_CONFIRMADO = [requiereRol("admin"), requiereConfirmacionReciente()];
 
-  app.get("/api/admin/llaves", { preHandler: ADMIN }, async (_req, rep) => {
+  app.get("/api/admin/llaves", { preHandler: ADMIN }, async (req, rep) => {
     rep.header("cache-control", NO_GUARDAR);
     const cuentas = await bd.query<{ id: string; correo: string; rol: Rol; llave_rehabilitada_hasta: Date | null }>(
       "SELECT id, correo, rol, llave_rehabilitada_hasta FROM hogares WHERE rol::text IN ('oficina', 'admin') AND activo ORDER BY id LIMIT 100");
@@ -188,7 +188,7 @@ export async function rutasLlaves(app: FastifyInstance, ctx: Contexto): Promise<
     return {
       obligatoria: c.obligatoria,
       cuentas: cuentas.rows.map(f => ({
-        hogar_id: Number(f.id), correo: f.correo, rol: f.rol,
+        hogar_id: Number(f.id), correo: f.correo, rol: f.rol, es_tuya: Number(f.id) === req.session.hogarId,
         rehabilitada_hasta: f.llave_rehabilitada_hasta && f.llave_rehabilitada_hasta > new Date() ? f.llave_rehabilitada_hasta : null,
         llaves: llaves.rows.filter(l => Number(l["hogar_id"]) === Number(f.id)).slice(0, 20).map(l => fila(l)),
       })),

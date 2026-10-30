@@ -1,6 +1,7 @@
 // La oficina (OF2): el esqueleto (navegación por secciones, cabecera con la sesión, tema), la sección Familias, (OF3) la de Hazas, (OF4) la Bandeja, (OF5) la de Sistema y (OF11) la Agenda.
 // Mismo origen; nada en línea (CSP estricta). Las secciones hechas son funcionales; las demás dicen «próximamente».
-import { $, api, fecha, h, vacia } from "./comun.js";
+import { $, api, fecha, fijaConfirmador, h, marcaOficinaAbierta, vacia } from "./comun.js";
+import { iniciaLlavesSistema, muestraPantallaLlave, usaLlave } from "./llave.js";
 import { iniciaFamilias } from "./familias.js";
 import { cuentaPendientes, iniciaBandeja } from "./bandeja.js";
 import { iniciaSistema } from "./sistema.js";
@@ -14,7 +15,7 @@ const SECCIONES = [
 ];
 const sesion = { rol: "oficina", cargada: false };
 let actual = "inicio";
-let familias = null, hazas = null, bandeja = null, sistema = null, olivos = null, agenda = null;
+let familias = null, hazas = null, bandeja = null, sistema = null, olivos = null, agenda = null, llaves = null;
 
 // ------------------------------------------------------------------ tema
 $("#bTema").addEventListener("click", () => {
@@ -49,23 +50,29 @@ function ir(sec, foco) {
   if (sec === "hazas") abreHazas();
   if (sec === "bandeja") bandeja.abre();
   if (sec === "agenda") agenda.abre();
-  if (sec === "sistema") sistema.abre();
+  if (sec === "sistema") { sistema.abre(); llaves.abre(); }
   if (sec === "olivos") olivos.abre();
   if (sec === "inicio") { cuentaFamilias(); cuentaPendientes(); }
   if (foco) $("#titulo").focus();
 }
 
 // ------------------------------------------------------------------ sesión
+/** Lee la sesión; devuelve false si la oficina no se puede abrir todavía (OF13: falta entrar con la llave, y se enseña su pantalla). */
 async function cargaSesion() {
   const r = await api("GET", "/api/oficina/sesion");
-  if (!r.ok) { $("#pieSesion").textContent = "No se pudo leer la sesión (" + r.estado + ")."; return; }
+  if (!r.ok) { $("#pieSesion").textContent = "No se pudo leer la sesión (" + r.estado + ")."; return true; }
   const s = r.datos;
+  if (muestraPantallaLlave(s.llave)) return false;
+  // con la llave obligatoria, lo delicado se confirma con ella (no con un enlace por correo)
+  const conLlave = !!(s.llave && s.llave.obligatoria);
+  fijaConfirmador(conLlave ? usaLlave : null);
   sesion.rol = s.rol; sesion.cargada = true; sesion.otProponer = s.ot_proponer || "manual";
   const caduca = fecha(s.caduca_en) + ", o tras " + s.inactividad_min + " min sin actividad";
   $("#s-rol").textContent = s.rol === "admin" ? "admin" : "oficina";
   $("#s-aparato").textContent = s.aparato.nombre + " (" + s.aparato.estado + ")";
   $("#s-caduca").textContent = caduca;
-  $("#s-confirmacion").textContent = s.confirmacion_vigente ? "sí (entraste hace poco)" : "no: lo delicado te pedirá un enlace nuevo";
+  $("#s-confirmacion").textContent = s.confirmacion_vigente ? (conLlave ? "sí (usaste tu llave hace poco)" : "sí (entraste hace poco)")
+    : (conLlave ? "no: lo delicado te pedirá tu llave" : "no: lo delicado te pedirá un enlace nuevo");
   vacia($("#pieSesion")).append("Entraste como ", h("b", null, s.rol === "admin" ? "admin" : "oficina"), " · este aparato: " + s.aparato.nombre + " · caduca " + fecha(s.caduca_en));
 }
 
@@ -98,4 +105,11 @@ olivos = iniciaOlivos({ sesion });
 agenda = iniciaAgenda({ sesion });
 if (new URLSearchParams(location.search).has("prueba")) window.__bandeja = () => bandeja.estado();   // solo lectura, para la prueba de Chrome
 if (new URLSearchParams(location.search).has("prueba")) window.__olivos = () => olivos.estado();   // ídem (OF7)
-cargaSesion().then(() => { cuentaPendientes(); setInterval(cuentaPendientes, 60_000); }).then(() => ir(location.hash.slice(1) || "inicio", false)).catch(() => { $("#anuncio").textContent = "No se pudo leer la sesión."; });
+llaves = iniciaLlavesSistema({ sesion });
+// OF13: si la sesión aún tiene que abrirse con la llave, solo se ve su pantalla y no se pide nada más a la api
+cargaSesion().then(abierta => {
+  if (!abierta) return;
+  marcaOficinaAbierta();
+  cuentaPendientes(); setInterval(cuentaPendientes, 60_000);
+  ir(location.hash.slice(1) || "inicio", false);
+}).catch(() => { $("#anuncio").textContent = "No se pudo leer la sesión."; });

@@ -20,6 +20,9 @@ export const fecha = iso => (iso ? new Date(iso).toLocaleString("es-ES", { dateS
 export const dia = iso => (iso ? new Date(iso).toLocaleDateString("es-ES", { dateStyle: "medium" }) : "—");
 
 // ------------------------------------------------------------------ api
+let oficinaAbierta = false;
+/** oficina.js lo llama cuando la sesión ya vale para la oficina (OF13: abierta con la llave, si es obligatoria). */
+export function marcaOficinaAbierta() { oficinaAbierta = true; }
 /**
  * Llama a la api. Devuelve { ok, estado, datos, error, mensaje }. Una sesión caducada (401) vuelve a la portada.
  * Con `crudo` devuelve el Response entero en `respuesta` (para descargar ficheros).
@@ -33,6 +36,9 @@ export async function api(metodo, url, cuerpo, opciones) {
   if (opciones && opciones.crudo && r.ok) return { ok: true, estado: r.status, respuesta: r };
   let datos = null;
   try { datos = r.status === 204 ? null : await r.json(); } catch { /* sin cuerpo */ }
+  // OF13: la sesión dejó de valer para la oficina (p. ej. revocaron la llave con la que se entró): vuelta a la pantalla de la llave
+  // (solo con la oficina ya abierta: antes, la pantalla de la llave ya está a la vista y recargar no arreglaría nada)
+  if (r.status === 403 && datos && datos.error === "llave_requerida" && oficinaAbierta) location.reload();
   return { ok: r.ok, estado: r.status, datos, error: datos && datos.error, mensaje: (datos && datos.mensaje) || (r.ok ? "" : "No se pudo completar (" + r.status + ").") };
 }
 
@@ -83,12 +89,28 @@ export async function conConfirmacion(accion) {
     if (!sigue) return r;
   }
 }
+// OF13: con la llave de acceso obligatoria, la confirmación reciente es usar la llave (oficina.js pone aquí usaLlave de llave.js).
+let confirmador = null;
+/** `fn()` devuelve el resultado de api() de la aserción WebAuthn; null vuelve al enlace por correo. */
+export function fijaConfirmador(fn) { confirmador = fn; }
+const TEXTO_RECONF_ENLACE = "Esto es delicado y pide haber entrado hace poco. Te mandamos un enlace nuevo a tu correo: ábrelo en este mismo navegador (vale 15 minutos) y vuelve aquí.";
+const TEXTO_RECONF_LLAVE = "Esto es delicado y pide haberte confirmado hace poco. Usa tu llave de acceso (la huella, la cara o el PIN de este aparato, tu teléfono o tu llave física) y se reintenta solo.";
+
 function pideReconfirmar() {
   return new Promise(resuelve => {
-    const dl = $("#dlgReconfirma"), estado = $("#reconfEstado"), manda = $("#reconfManda");
-    estado.textContent = ""; manda.disabled = false;
+    const dl = $("#dlgReconfirma"), estado = $("#reconfEstado"), manda = $("#reconfManda"), llave = $("#reconfLlave"), conLlave = !!confirmador;
+    estado.textContent = ""; manda.disabled = false; llave.disabled = false;
+    $("#reconfTexto").textContent = conLlave ? TEXTO_RECONF_LLAVE : TEXTO_RECONF_ENLACE;
+    manda.hidden = conLlave; $("#reconfReintenta").hidden = conLlave; llave.hidden = !conLlave;
     let fin = false;
     const cierra = valor => { if (fin) return; fin = true; dl.close(); resuelve(valor); };
+    llave.onclick = async () => {
+      llave.disabled = true;
+      estado.textContent = "Esperando a tu llave…";
+      const r = await confirmador();
+      if (r.ok) { cierra(true); return; }
+      estado.textContent = r.mensaje; llave.disabled = false;
+    };
     manda.onclick = async () => {
       manda.disabled = true;
       const r = await api("POST", "/api/oficina/confirmar", {});
