@@ -1,20 +1,25 @@
 {
-  "$comment": "Topes de dibujo que comprueba pruebas/guardianes/carga.test.js. 'diseno' es el presupuesto por fotograma de ADR-0002 (techo absoluto). 'fixture' son topes de REGRESIÓN sobre el fixture sintético (2 teselas, 140 olivos), fijados el 2026-10-28 con ≈25 % de margen sobre lo medido (GEMELO_MIDE=1; medido: lejos 168 llamadas / 82 k tri / 620 pts; cerca 56 / 431 k / 2,8 k; nube 109 / 175 k / 3 k; heap 23-34 MB). NO son rendimiento real: SwiftShader, sin fps. Subirlos exige explicarlo en el commit. Desde T8 fase 1 (ADR-0015, 2026-10-30) 'fixture' es la escena CLÁSICA (Terreno de siempre): carga.test.js la pide con ?escena=clasica; es también la que dibuja por defecto la salida artefacto, que no lleva tileset. Los topes no cambian.",
-  "diseno": { "triangulos": 1700000, "puntos": 1400000, "llamadas": 250, "heapMB": 350 },
+  "$comment": "Topes de dibujo que comprueban pruebas/guardianes/carga.test.js y escena3d.test.js. 'diseno' es el presupuesto por fotograma de ADR-0002 (techo absoluto). 'fixture' son topes de REGRESIÓN sobre el fixture sintético (2 teselas, 140 olivos) con la escena 3D Tiles, la única desde T8 fase 2 (decisión 79), por finca. NO son rendimiento real: SwiftShader, sin fps. Subirlos exige explicarlo en el commit.",
+  "diseno": {
+    "triangulos": 1700000,
+    "puntos": 1400000,
+    "llamadas": 250,
+    "heapMB": 350
+  },
   "fixture": {
-    "lejos": { "llamadas": 220, "triangulos": 105000, "puntos": 800, "heapMB": 60 },
-    "cerca": { "llamadas": 75, "triangulos": 540000, "puntos": 3600, "heapMB": 60 },
-    "nube": { "llamadas": 140, "triangulos": 220000, "puntos": 3800, "heapMB": 60 }
+    "$comment": "T8 fase 2 (2026-10-30): se funden los antiguos «fixture» (la escena clásica, borrada con 04_terreno.js) y «fixture_escena_tiles». hituelo: llamadas, triángulos y heap son los de «fixture_escena_tiles» (medidos el 2026-10-29 tras T6b, GEMELO_MIDE=1, SwiftShader: lejos 25 llamadas / 7,7 k tri, cerca 53 / 163 k, nube 24 / 4,3 k, heap 28-30 MB; topes con ≈ 25-40 % de margen); los PUNTOS, los de la escena clásica (la nube sigue en el motor, decisión 37; medido el 2026-10-28: lejos 620, cerca 2,8 k, nube 3 k). cerro: el fixture de Cerro no se había medido nunca con tileset (hasta T8 fase 2 iba embebido, sin tileset): sus topes quedan A MEDIR; mientras, carga.test.js lo mide e imprime y solo comprueba los de diseño.",
+    "hituelo": {
+      "lejos": { "llamadas": 35, "triangulos": 20000, "puntos": 800, "heapMB": 45 },
+      "cerca": { "llamadas": 70, "triangulos": 210000, "puntos": 3600, "heapMB": 45 },
+      "nube": { "llamadas": 35, "triangulos": 13000, "puntos": 3800, "heapMB": 45 }
+    },
+    "cerro": {
+      "a_medir": true
+    }
   },
   "fixture_olivos_gen": {
     "$comment": "Con ?olivos=gen (ADR-0017, decisión 52), escenario «cerca» del fixture de Hituelo montado con --olivos. Medido el 2026-10-29 (SwiftShader, máquina cargada): 47 llamadas / 546 k tri / 2,8 k pts / heap 44 MB, con un lote de 6 mallas para 2 olivos generados (E0 + E1: 135 k tri; 222 k contando la pasada de sombras). Topes con ≈25 % de margen; lo comprueba pruebas/guardianes/olivo.test.js.",
     "cerca": { "llamadas": 60, "triangulos": 680000, "puntos": 3600, "heapMB": 95, "llamadas_lote": 7 }
-  },
-  "fixture_escena_tiles": {
-    "$comment": "La escena 3D Tiles (ADR-0015, F1d), fixture de Hituelo con su tileset: con ?escena=tiles y, desde T8 fase 1 (2026-10-30), la de POR DEFECTO cuando el índice trae `tileset` (escena3d.test.js la mide así, sin bandera; mismos topes, la escena es la misma). Topes de REGRESIÓN fijados el 2026-10-29 con ≈25 % de margen sobre el máximo de las tres medidas de la primera ronda del banco (T1, T5, T4; SwiftShader, recuentos, NO fps; ver doc/sistema/MEDIDAS.md): lejos 167 llamadas / 16 k tri; cerca 56 / 168 k; nube 125 / 10 k; heap 26-27 MB (tope más holgado por lo variable que es). Los PUNTOS no se midieron con la bandera (la nube de puntos sigue en el motor, decisión 37): se comprueban contra los topes de «fixture». Con &olivos=gen dio lo mismo. Sin la bandera no cambia nada de «fixture». Lo comprueba pruebas/guardianes/escena3d.test.js. BAJADOS el 2026-10-29 (T6b): las 230 manchas de nubes (15_tiempo.js) eran un sprite y una llamada cada una, también con opacidad 0, y ahora van en una malla y una llamada; medido después (GEMELO_MIDE=1, SwiftShader): lejos 25 llamadas / 7,7 k tri, cerca 53 / 163 k, nube 24 / 4,3 k, heap 28-30 MB; topes de llamadas con ≈ 25-40 % de margen.",
-    "lejos": { "llamadas": 35, "triangulos": 20000, "heapMB": 45 },
-    "cerca": { "llamadas": 70, "triangulos": 210000, "heapMB": 45 },
-    "nube": { "llamadas": 35, "triangulos": 13000, "heapMB": 45 }
   },
   "fixture_olivos_escalera": {
     "$comment": "Con ?olivos=escalera (ADR-0019 fase A, O8c), fixture de Hituelo montado con --olivos. Medido el 2026-10-29 en dos rondas del banco (SwiftShader, máquina al 100 % de CPU, esc 0,7 → presupuesto de olivos 385 k): cerca 27 llamadas / 426 k tri / 38-46 MB; lejos 76-77 / 125 k / 42-45 MB; SIN terminar: a los 5-12 min solo había 2-3 variantes E2, ni capa de lejanos ni propios (página sin trabajador). Por eso los topes no son el 25 % sobre lo medido sino el estado final calculado: cerca = 372 k del resto de la escena + el presupuesto de olivos (550 k × 0,7 + 10 % del fundido) ≈ 800 k → 1 M; lejos = 125 k + lejanos (140 × 4) → 160 k; llamadas, las medidas + 2 (lejanos y puntos) y ≈ 25 %. llamadas_olivos: el del ADR §5. La nube no se midió con la bandera: valen los de «fixture». Lo comprueba pruebas/guardianes/olivo.test.js; O8d los fija con medidas completas.",
