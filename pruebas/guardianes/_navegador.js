@@ -23,7 +23,14 @@ const ESCENARIOS_PASEO = {
   paseoAnda: { paseo: { x: -130, y: -125, ang: 0, anda: 6 } },
   paseoGira: { paseo: { x: -130, y: -125, ang: 0, gira: true } },
 };
-const TODOS_ESCENARIOS = Object.assign({}, ESCENARIOS, ESCENARIOS_PASEO);
+// Escenarios de BORDE (opcionales, M6): miran desde dentro de la caja del fixture hacia fuera, donde no hay tesela (se ve el suelo de fondo o, sin él, ?sinFondo, el vacío).
+// borde: la cara este desde el oeste; esquina: la esquina NE desde el suroeste; bordeRaso: casi a ras del suelo junto al borde este (el fondo no debe asomar por encima de las teselas).
+const ESCENARIOS_BORDE = {
+  borde: { az: -1.57, el: 0.25, dist: 120, ox: 250, oy: -128, modo: "gem" },
+  esquina: { az: -0.8, el: 0.3, dist: 150, ox: 256, oy: 0, modo: "gem" },
+  bordeRaso: { az: -1.57, el: 0.1, dist: 25, ox: 240, oy: -128, modo: "gem" },
+};
+const TODOS_ESCENARIOS = Object.assign({}, ESCENARIOS, ESCENARIOS_PASEO, ESCENARIOS_BORDE);
 
 // La CSP de las pruebas es la de infra/Caddyfile (pacto de T8 fase 2, §4), en el mismo modo que la manda el Caddy de producción: solo informe
 // (Content-Security-Policy-Report-Only) y sin report-uri (aquí no hay api). Lo que rompería al imponerla sale en la consola como «[Report Only]»:

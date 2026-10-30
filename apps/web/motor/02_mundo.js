@@ -1,6 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Mundo, suelo, copaAlta, orto, kcor, desp, tinte, ndLo, ndHi, aviva, colorEn, copas, cIn, marc, med
-// Consume: 01_datos (D, b64, i16, RES), 05_nube (nube), 09_camara (suelta), 10_ndvi (rampa, ndviRel), 14_historia (lista, carga), 16_vida (mira)
+// Consume: 01_datos (D, b64, i16, RES), 05_nube (nube), 09_camara (suelta), 10_ndvi (rampa, ndviRel), 14_historia (marca, lista, carga),
+//   16_vida (mira)
 // ===============================================================================
   // ---------- el mundo: teselas de 256 m con relieve, copa, color del suelo, nube y ortofoto. Todo lo demás pregunta aquí (suelo, copaAlta, colorSuelo, orto).
   // Una tesela (kx, ky) cubre en UTM [kx·256, kx·256+256) × [ky·256, ky·256+256). Las filas de cada rejilla van de sur a norte; el relieve y el color del suelo llevan una celda de margen
@@ -41,16 +42,35 @@
     }
 
     // ortofoto: cada tesela trae la suya (768 px); los píxeles se decodifican solo cuando alguien los muestrea, y para lo lejano hay un mosaico de 1 m
-    var mos = { img: null, pix: null, w: 0, h: 0 };
+    var mos = { img: null, pix: null, w: 0, h: 0 }, reloj = 0;   // reloj: ms del último refresco (cada 0,2 s en actualiza); marca el último uso de cada ortofoto
     function pixeles(img) { var c = document.createElement("canvas"); c.width = img.naturalWidth || img.width; c.height = img.naturalHeight || img.height; var g = c.getContext("2d", { willReadFrequently: true }); g.drawImage(img, 0, 0); return { cv: c, px: g.getImageData(0, 0, c.width, c.height).data }; }
-    function decodificaOrto(t) { var r = pixeles(t.ortImg); t.ortCv = r.cv; t.ortPix = r.px; t.ortW = r.cv.width; t.ortH = r.cv.height; return t.ortPix; }
+    function decodificaOrto(t) {
+      var r = pixeles(t.ortImg); t.ortCv = r.cv; t.ortPix = r.px; t.ortW = r.cv.width; t.ortH = r.cv.height; t.uso = performance.now(); nDec++;
+      desalojaOrto(); return t.ortPix;
+    }
+    // M4: tope de ortofotos decodificadas a la vez (cada una ~2,4 MB de píxeles). Pasado el tope se suelta la MENOS USADA recientemente (t.uso = el último muestreo), salvo
+    // la tesela bajo la cámara y sus cuatro vecinas (foco: lo fija liberaOrtoLejos) y las usadas en los últimos ORTO_GRACIA ms: así nada se suelta para decodificarse
+    // otra vez en el mismo fotograma (el tope es blando: si todo está protegido se excede). ?ortoMax=N lo fija a mano (para medir); por defecto 8 en móvil/gafas y 20 en escritorio.
+    var ORTO_GRACIA = 8000, nDec = 0, nDes = 0, foco = null;
+    var ORTO_MAX = (function () {
+      var q = typeof location !== "undefined" ? location.search : "", m = /[?&]ortoMax=(\d+)/.exec(q); if (m && +m[1] >= 1) return +m[1];
+      var nv = typeof navigator !== "undefined" ? navigator : {}, movil = /Mobi|Android|iPhone|iPad|OculusBrowser|Quest/i.test(nv.userAgent || "") || !!(nv.deviceMemory && nv.deviceMemory <= 4);
+      return movil ? 8 : 20;
+    })();
+    function desalojaOrto() {
+      var vivas = lista.filter(function (t) { return t.ortPix; }); if (vivas.length <= ORTO_MAX) return;
+      var ahora = performance.now(), prot = {}, c = foco && tesela(foco.x, foco.y);
+      if (c) [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) { var v = G[(c.ky + d[1] - ky0) * NKX + (c.kx + d[0] - kx0)]; if (v && c.kx + d[0] >= kx0 && c.kx + d[0] <= kx1 && c.ky + d[1] >= ky0 && c.ky + d[1] <= ky1) prot[v.key] = 1; });
+      var cand = vivas.filter(function (t) { return !prot[t.key] && ahora - (t.uso || 0) > ORTO_GRACIA; }).sort(function (a, b) { return (a.uso || 0) - (b.uso || 0); });
+      for (var i = 0; i < cand.length && vivas.length - i > ORTO_MAX; i++) { liberaOrtoPix(cand[i]); nDes++; }
+    }
     function muestrea(p, w, h, u, v, out) {
       u = cl(u, 0, w - 1.001); v = cl(v, 0, h - 1.001);
       var iu = Math.floor(u), iv = Math.floor(v), tu = u - iu, tv = v - iv, o = (iv * w + iu) * 4, o2 = o + w * 4;
       for (var c = 0; c < 3; c++) out[c] = ((p[o + c] * (1 - tu) + p[o + 4 + c] * tu) * (1 - tv) + (p[o2 + c] * (1 - tu) + p[o2 + 4 + c] * tu) * tv) / 255;
     }
     function orto(x, y, out) {
-      var t = tesela(x, y), p = t && t.ortPix;
+      var t = tesela(x, y), p = t && t.ortPix; if (p) t.uso = reloj;
       if (!p && t && t.ortImg && t.ortImg.complete && t.ortImg.naturalWidth) p = decodificaOrto(t);
       if (p) { muestrea(p, t.ortW, t.ortH, (x - t.ox) / TS * t.ortW - 0.5, (TS - (y - t.oy)) / TS * t.ortH - 0.5, out); return; }
       if (mos.pix) { var M = D.mosaico; muestrea(mos.pix, mos.w, mos.h, (x - M.x0) / M.res - 0.5, (M.yN - y) / M.res - 0.5, out); return; }
@@ -98,6 +118,7 @@
       cargaTesela(t, function () { enVuelo--; if (t.dtm) oyentes.forEach(function (f) { f(t); }); });
     }
     function actualiza(px, py, pz) {
+      reloj = performance.now();
       if (enVuelo >= MAXF) return;
       var cand = lista.filter(function (t) { return (t.estado === 0 || (t.estado === 3 && performance.now() - t.fallo > 15000)) && dist(t, px, py, pz) < RADIO_CARGA; });
       cand.sort(function (a, b) { return dist(a, px, py, pz) - dist(b, px, py, pz); });
@@ -108,17 +129,22 @@
       cargaImagen(D.mosaico.jpg, function (im) { if (im) { mos.img = im; var r = pixeles(im); mos.pix = r.px; mos.w = r.cv.width; mos.h = r.cv.height; } fin(); });
     }
     function liberaOrtoPix(t) { t.ortPix = null; t.ortCv = null; }   // la ortofoto decodificada ocupa 2,4 MB por tesela: se suelta cuando la tesela queda lejos
-    function liberaOrtoLejos(px, py, pz) { lista.forEach(function (t) { if (t.ortPix && dist(t, px, py, pz) > 900) liberaOrtoPix(t); }); }
+    function liberaOrtoLejos(px, py, pz) {
+      reloj = performance.now(); foco = { x: px, y: -pz };
+      lista.forEach(function (t) { if (t.ortPix && dist(t, px, py, pz) > 900) liberaOrtoPix(t); });
+      desalojaOrto();
+    }
+    function ortoEstado() { return { max: ORTO_MAX, vivas: lista.filter(function (t) { return t.ortPix; }).length, decodificadas: nDec, desalojadas: nDes, mb: Math.round(lista.reduce(function (a, t) { return a + (t.ortPix ? t.ortPix.length : 0); }, 0) / 1048576 * 10) / 10 }; }
     function* aseguraOrto(t) {   // decodifica (en su propia rebanada) la ortofoto de la tesela y de sus vecinas cargadas: el color de un punto a veces cae en la de al lado
       var ks = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
       for (var i = 0; i < ks.length; i++) {
         var v = G[(t.ky + ks[i][1] - ky0) * NKX + (t.kx + ks[i][0] - kx0)]; if (!v || v.ortPix || !v.ortImg || !v.ortImg.complete || !v.ortImg.naturalWidth) continue;
         if (ks[i][0] || ks[i][1]) { if (Math.abs(ks[i][0]) + Math.abs(ks[i][1]) > 1) continue; }   // las diagonales no hacen falta: el desplazamiento es de pocos metros
-        decodificaOrto(v); yield;
+        v.uso = performance.now(); decodificaOrto(v); yield;
       }
     }
     return { TS: TS, N: N, N2: N2, NS: NS, NS2: NS2, SRS: SRS, cx: cx, cy: cy, lista: lista, tesela: tesela, suelo: suelo, copaAlta: copaAlta, colorSuelo: colorSuelo, orto: orto, ortoGrueso: ortoGrueso, pintaOrto: pintaOrto, arranca: arranca, actualiza: actualiza, alCargar: alCargar, dist: dist, liberaOrtoPix: liberaOrtoPix,
-      cargaTesela: cargaTesela, aseguraOrto: aseguraOrto, liberaOrtoLejos: liberaOrtoLejos, decodificaOrto: decodificaOrto, mosaico: mos };
+      cargaTesela: cargaTesela, aseguraOrto: aseguraOrto, liberaOrtoLejos: liberaOrtoLejos, decodificaOrto: decodificaOrto, ortoEstado: ortoEstado, grueso: grueso, mosaico: mos };
   })();
   var suelo = Mundo.suelo, copaAlta = Mundo.copaAlta, colorSuelo = Mundo.colorSuelo, orto = Mundo.orto;
 
