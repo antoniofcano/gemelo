@@ -158,7 +158,7 @@ test("semilla guardada (copas_semilla) y nombres de catálogo de los tipos", t =
 test("tuberia/factores_campo.py: plantilla de 10 olivos y factores de campo sobre el fixture (datos sintéticos)", t => {
   const { python, fixture, propia } = require("./_util");
   const py = python(); if (!py) return t.skip("sin Python: factores_campo.py NO se ha comprobado");
-  const fx = fixture(), dir = propia("olivo-campo"), ind = path.join(fx, "hituelo", "indice.json"), I = JSON.parse(fs.readFileSync(ind, "utf8"));
+  const fx = fixture({ sinTileset: true }), dir = propia("olivo-campo"), ind = path.join(fx, "hituelo", "indice.json"), I = JSON.parse(fs.readFileSync(ind, "utf8"));
   const pl = path.join(dir, "plantilla.csv");
   const r1 = ejecuta(py, ["-I", path.join("tuberia", "factores_campo.py"), "--plantilla", pl, "--indice", ind]);
   assert.strictEqual(r1.status, 0, r1.stderr);

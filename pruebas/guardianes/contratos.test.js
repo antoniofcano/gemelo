@@ -16,7 +16,7 @@ const bytes = s => Buffer.from(s, "base64");
 const esJpeg = b => b[0] === 0xff && b[1] === 0xd8 && b[b.length - 2] === 0xff && b[b.length - 1] === 0xd9;
 const dataJpg = s => bytes(s.slice(s.indexOf(",") + 1));
 
-let DIR; test.before(() => { DIR = fixture(); });
+let DIR; test.before(() => { DIR = fixture({ sinTileset: true }); });
 const fx = (...p) => path.join(DIR, ...p);
 const jsonFx = (...p) => JSON.parse(fs.readFileSync(fx(...p), "utf8"));
 

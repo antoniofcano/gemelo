@@ -28,7 +28,7 @@ const imp = f => import(pathToFileURL(f).href);
 
 test.before(async () => {
   if (SALTO) return;
-  FIX = fixture(); SAL = propia("tiles3d");
+  FIX = fixture({ sinTileset: true }); SAL = propia("tiles3d");
   const g = ejecuta(process.execPath, [path.join(T3D, "genera.mjs"), "--entrada", path.join(FIX, "hituelo"), "--salida", SAL, "--catalogo", CAT_FIXTURE]);
   assert.strictEqual(g.status, 0, "genera.mjs falló:\n" + g.stdout + g.stderr);
   TS = JSON.parse(fs.readFileSync(path.join(SAL, "tileset.json"), "utf8"));

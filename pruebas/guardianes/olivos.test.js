@@ -74,7 +74,7 @@ test("el motor usa el mismo presupuesto de triángulos que el esquema (07a_catal
 });
 
 test("los tipos del registro del fixture (copas_tipo) son −1 o tipos del catálogo sintético", () => {
-  const FX = fixture(), I = JSON.parse(fs.readFileSync(path.join(FX, "hituelo", "indice.json"), "utf8")), ids = new Set(CAT.tipos.map(t => t.id).concat([-1]));
+  const FX = fixture({ sinTileset: true }), I = JSON.parse(fs.readFileSync(path.join(FX, "hituelo", "indice.json"), "utf8")), ids = new Set(CAT.tipos.map(t => t.id).concat([-1]));
   assert.ok(I.copas_tipo, "el fixture de Hituelo debe llevar copas_tipo");
   assert.deepStrictEqual(I.copas_tipo.filter(t => !ids.has(t)), []);
 });

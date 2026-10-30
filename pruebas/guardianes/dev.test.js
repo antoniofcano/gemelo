@@ -10,7 +10,7 @@
 //    la sesión; las lindes de las hazas dibujadas (LineSegments en __g.scene); las gafas (UA de Quest) vinculadas por código;
 //    las recetas horneadas por Caddy (O7d: objeto .br con Content-Encoding br e immutable y manifiesto con no-cache, con sesión; 401 sin
 //    ella; se escriben aquí con el hornero de referencia o son las de GEMELO_DEV_OLIVOS),
-//    el tileset por Caddy (200 con sesión, 401 sin ella; con el fixture se genera aquí) y /finca/?escena=tiles y ?olivos=gen sin
+//    el tileset por Caddy (200 con sesión, 401 sin ella; con el fixture se genera aquí) y /finca/ (la escena 3D Tiles, la única) y ?olivos=gen sin
 //    errores ni avisos de CSP. Mide tiempos y lo baja (si ya estaba levantado antes, lo deja como estaba).
 const test = require("node:test"), assert = require("node:assert");
 const { spawnSync } = require("child_process");
@@ -243,7 +243,7 @@ test("siembra sintética: desde_fixture.py da 4 hazas y los olivos del fixture, 
   if (!py) return t.skip("sin Python 3: la siembra NO se ha comprobado");
   if (spawnSync(py, ["-c", "import jsonschema"], { encoding: "utf8" }).status !== 0) return t.skip("sin jsonschema (pip install -r tuberia/hazas/requirements.txt): la siembra NO se ha comprobado");
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "gemelo-siembra-"));
-  const fx = ejecuta(py, ["-I", "pruebas/genera_fixture.py", "--salida", path.join(tmp, "fx")]);
+  const fx = ejecuta(py, ["-I", "pruebas/genera_fixture.py", "--salida", path.join(tmp, "fx"), "--sin-tileset"]);
   assert.strictEqual(fx.status, 0, fx.stderr);
   const indice = path.join(tmp, "fx", "hituelo", "indice.json");
   const r = ejecuta(py, ["tuberia/hazas/desde_fixture.py", "--indice", indice, "--salida", path.join(tmp, "s")]);
@@ -440,21 +440,10 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
   const comun = await imp("_comun.mjs"), { HOGARES, HAZAS_SIN_ASIGNAR } = await imp("siembra.mjs");
   const Ajv = require("ajv");
   const antes = comun.compose(["ps", "-q"], { captura: true }).stdout.trim() !== "";
-  // el tileset 3D Tiles que sirve Caddy: el de GEMELO_DEV_TILESET (datos reales, fuera del repo) o, con el fixture, uno generado aquí
-  // con tuberia/tiles3d/genera.mjs (1,5 s); sin su npm ci, esa parte se salta y el informe lo dice
+  // el tileset 3D Tiles que sirve Caddy: el de GEMELO_DEV_TILESET (datos reales, fuera del repo) o, sin él, el tileset/ del fixture, que
+  // levanta.mjs genera con el fixture si falta (T8 fase 2: npm run fixture trae el tileset de las dos fincas). Sin Python, esa parte se salta y se dice
   let tilesetMotivo = "";
-  if (!process.env.GEMELO_DEV_TILESET && !DE_PRUEBA) {
-    const salida = path.join(RAIZ, "pruebas", "salida", "tiles3d-fixture"), py = python();
-    if (!py) tilesetMotivo = "sin Python 3 para generar el fixture";
-    else if (!fs.existsSync(path.join(RAIZ, "tuberia", "tiles3d", "node_modules"))) tilesetMotivo = "sin tuberia/tiles3d/node_modules (cd tuberia/tiles3d && npm ci)";
-    else {
-      const fx = path.join(RAIZ, "pruebas", "salida", "fixture");
-      if (!fs.existsSync(path.join(fx, "hituelo", "indice.json"))) ejecuta(py, ["-I", path.join("pruebas", "genera_fixture.py"), "--salida", fx]);
-      const g = ejecuta(process.execPath, [path.join("tuberia", "tiles3d", "genera.mjs"), "--entrada", path.join(fx, "hituelo", "indice.json"), "--salida", salida, "--catalogo", path.join("modelos", "olivos", "fixture", "catalogo.json")]);
-      if (g.status !== 0) tilesetMotivo = "genera.mjs falló: " + String(g.stderr).slice(-200);
-      else process.env.GEMELO_DEV_TILESET = salida;
-    }
-  }
+  if (!process.env.GEMELO_DEV_TILESET && !DE_PRUEBA && !python()) tilesetMotivo = "sin Python 3 para generar el fixture (y su tileset)";
   // la carpeta del hornero de este e2e: vacía al empezar (así se mide la primera vuelta desde cero) y distinta de la del entorno de uso
   // (pruebas/salida/olivos-dev/<finca>); con GEMELO_DEV_OLIVOS dada, es la de la persona y no se toca
   if (!process.env.GEMELO_DEV_OLIVOS) {
@@ -644,7 +633,7 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
       assert.deepStrictEqual(vistos, [], "la CSP (Report-Only) avisa de violaciones");
 
       // 4a. A4: las lindes de las hazas dibujadas (LineSegments «linde de las hazas»), la propia con otro color que las ajenas;
-      //     A3: el tileset por Caddy (200 con sesión, 401 sin ella) y las escenas ?escena=tiles y ?olivos=gen sin errores ni avisos de CSP
+      //     A3: el tileset por Caddy (200 con sesión, 401 sin ella) y /finca/ (escena 3D Tiles) y ?olivos=gen sin errores ni avisos de CSP
       const finca = process.env.GEMELO_DEV_FINCA || "hituelo";
       const abre = async (ruta, esperaFn, c = ctx) => {
         const q = await c.newPage(), errs = [], csp = [];
@@ -685,12 +674,12 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
         assert.match(ts.cabeceras["cache-control"] || "", /private/, "el tileset, tras sesión, con caché privada");
         assert.strictEqual(sin.status, 401, turl + " sin sesión");
         r0 = reloj();
-        const { q, errs, csp } = await abre("/finca/?escena=tiles", () => { const r = window.__g.Escena3D.resumen(); return r.estado === "activo" && r.visibles > 0; });
+        const { q, errs, csp } = await abre("/finca/", () => { const r = window.__g.Escena3D.resumen(); return r.estado === "activo" && r.visibles > 0; });
         const rs = await q.evaluate(() => { const r = window.__g.Escena3D.resumen(); return { estado: r.estado, motivo: r.motivo, errores: r.errores, visibles: r.visibles }; });
         await q.close();
         assert.deepStrictEqual([rs.estado, rs.errores], ["activo", 0], "escena 3D Tiles: " + JSON.stringify(rs));
-        assert.deepStrictEqual(errs, [], "errores en /finca/?escena=tiles"); assert.deepStrictEqual(csp, [], "CSP en /finca/?escena=tiles");
-        t.diagnostic("tileset por Caddy 200/401 y ?escena=tiles activa con " + rs.visibles + " tesela(s) con contenido, sin errores ni CSP, en " + r0().toFixed(1) + " s");
+        assert.deepStrictEqual(errs, [], "errores en /finca/ (escena 3D Tiles)"); assert.deepStrictEqual(csp, [], "CSP en /finca/ (escena 3D Tiles)");
+        t.diagnostic("tileset por Caddy 200/401 y la escena 3D Tiles activa con " + rs.visibles + " tesela(s) con contenido, sin errores ni CSP, en " + r0().toFixed(1) + " s");
       }
       {   // O7d: las recetas horneadas, tras sesión: el objeto en brotli e inmutable, el manifiesto revalidado, sin sesión 401
         const base_ = "/teselas/" + finca + "/olivos/", obj = base_ + olivosHorneados.huella + ".br", mf = base_ + "manifiesto.json";
