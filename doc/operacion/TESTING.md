@@ -65,6 +65,7 @@ Requisito de Antonio (2026-10-30): la cola **nunca se queda parada** y **nunca d
    - **opus**: diseño y arquitectura, código delicado (sombreadores, presupuesto de dibujo, seguridad, migraciones con datos, contratos nuevos), depuración difícil, propuestas con decisiones para Antonio.
    - **sonnet**: tareas mecánicas o bien acotadas (documentación, pantallas sobre un diseño ya hecho, infra con receta, adaptar pruebas, componentes sobre un patrón que ya existe).
    - **haiku**: recuentos, búsquedas y comprobaciones sencillas sin escribir código de producto.
+   - **fable**: permitido por Antonio (2026-10-30) cuando haga falta, para lo que opus no resuelve bien o lo excepcionalmente difícil; se dice en el encargo por qué se elige.
    - En la duda, el modelo más barato que pueda hacerlo bien; si un agente de sonnet se atasca o la tarea resulta más delicada de lo previsto, se relanza con opus. El tablero de PLAN lleva el modelo de cada tarea («Enrutador de modelo»).
 
 ## Pruebas de navegador (`pruebas/`)
