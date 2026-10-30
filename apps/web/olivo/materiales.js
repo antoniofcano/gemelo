@@ -4,11 +4,11 @@
 // `parche(material, nombre)` permite al anfitrión encadenar su propio onBeforeCompile (p. ej. el parcheTiempo del gemelo: luz, nubes y helada).
 import { colorLineal, texturaDeColor, uvDelMapa } from "./compat.js";
 import { ESTADOS } from "./tipos.js";
-import { dibujaCorteza, dibujaRamita, dibujaRelleno, mipsConCobertura } from "./texturas.js";
+import { dibujaCorteza, dibujaRamita, dibujaRelleno, dibujaAtlasTarjetas, mipsConCobertura } from "./texturas.js";
 
 /** Nombres de material que puede pedir una receta (montaOlivo falla si falta uno) */
 export const MATERIALES = ["corteza", "pies", "musgo", "muerta", "raiz", "corte", "tutor", "oliva", "relleno", "relleno_sombra",
-  "ramita0", "ramita1", "ramita0_sombra", "ramita1_sombra", "puntos"];
+  "ramita0", "ramita1", "ramita0_sombra", "ramita1_sombra", "puntos", "tarjeta", "tarjeta_sombra"];
 
 /**
  * Calibración del color para un anfitrión con LUZ LINEAL (opción `srgb`: el motor del gemelo con three ≥ 0.152), decisión 70. Los colores de la
@@ -19,7 +19,7 @@ export const MATERIALES = ["corteza", "pies", "musgo", "muerta", "raiz", "corte"
  * referencia con la misma sombra (medido: contratos/olivo-impostor.md §5). `calibracion: false` lo quita; `calibracion: {follaje, corteza}` lo cambia.
  */
 export const CALIBRACION_LINEAL = Object.freeze({ follaje: 0.3, corteza: 0.5 });
-const FOLLAJE = ["relleno", "ramita0", "ramita1"], CORTEZA = ["corteza", "pies", "musgo", "muerta", "raiz"];
+const FOLLAJE = ["relleno", "ramita0", "ramita1", "tarjeta"], CORTEZA = ["corteza", "pies", "musgo", "muerta", "raiz"];
 
 /** Encadena un onBeforeCompile al que ya tenga el material, y da a la combinación su propia clave de programa */
 export function encadena(mat, fn, clave) {
@@ -53,7 +53,7 @@ function conMarcas(THREE, mat, texMuerta) {
  */
 export function creaMateriales(THREE, fotos, opciones) {
   const o = opciones || {}, f = fotos || {}, avisos = [].concat(f.avisos || []), texturas = [];
-  const flor = (ESTADOS[o.epoca || "envero"] || ESTADOS.envero).flor;
+  const est = ESTADOS[o.epoca || "envero"] || ESTADOS.envero, flor = est.flor;
   const tex = (img, desdeBitmap) => {
     if (!img) return null;
     const t = desdeBitmap ? new THREE.Texture(img) : new THREE.CanvasTexture(img);
@@ -86,7 +86,9 @@ export function creaMateriales(THREE, fotos, opciones) {
     if (mips) { t.mipmaps = mips; t.generateMipmaps = false; t.minFilter = THREE.LinearMipmapLinearFilter; }
     return t;
   };
-  const ramitas = [dibujaRamita(11, flor), dibujaRamita(29, flor)].map(c => hoja(c, 0.45));
+  const lienzosRamita = [dibujaRamita(11, flor), dibujaRamita(29, flor)], ramitas = lienzosRamita.map(c => hoja(c, 0.45));
+  // el atlas de las tarjetas de racimo de E1/E2 (O9b), con las mismas ramitas y, en la fila de E2, las olivas de la época
+  const texAtlas = hoja(dibujaAtlasTarjetas(lienzosRamita, { fruto: est.fruto, colorFruto: est.colorFruto }), 0.45);
   const texRel = hoja(dibujaRelleno(flor), 0.5);
   M.relleno = S({ map: texRel, alphaTest: 0.5, side: D, roughness: 0.9 }, 0xffffff);
   M.relleno_sombra = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: texRel, alphaTest: 0.5 });
@@ -94,6 +96,8 @@ export function creaMateriales(THREE, fotos, opciones) {
     M["ramita" + i] = S({ map: ramitas[i], alphaTest: 0.45, side: D, roughness: 0.85 }, 0xffffff);
     M["ramita" + i + "_sombra"] = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: ramitas[i], alphaTest: 0.45 });
   });
+  M.tarjeta = S({ map: texAtlas, alphaTest: 0.45, side: D, roughness: 0.85 }, 0xffffff);
+  M.tarjeta_sombra = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: texAtlas, alphaTest: 0.45 });
   M.puntos = new THREE.PointsMaterial({ size: 0.045, vertexColors: true });
   if (o.parche) for (const n of MATERIALES) o.parche(M[n], n);
   // luz lineal (srgb: el motor del gemelo): el color se calibra DESPUÉS del parche del anfitrión, que ya lo pasó a lineal (decisión 70, CALIBRACION_LINEAL)

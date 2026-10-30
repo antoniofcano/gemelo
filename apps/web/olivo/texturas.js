@@ -121,6 +121,65 @@ export function dibujaRelleno(flor, cv) {
   return cv;
 }
 
+/**
+ * Atlas de las tarjetas de racimo de E1/E2 (O9b, ADR-0022 §3; tarjetas.js: ATLAS): 1024 × 512, 4 × 2 celdas de 256 px. Cada celda es un racimo
+ * de las MISMAS ramitas de la época (las dos de dibujaRamita, ya dibujadas: `ramitas`) que salen del centro hacia fuera, más oscuras dentro (la
+ * sombra propia que el E0 da con sus normales) y más claras en el borde; la fila 1 repite la 0 con olivas del color de la época (E2: las olivas
+ * van en el atlas, no como puntos). Columnas 0-2: los planos A, B y C de la tarjeta; la 3, libre. Determinista (semillas fijas).
+ * @param ramitas  [lienzo, lienzo] de dibujaRamita (256 × 512)
+ * @param opciones { fruto (ESTADOS[epoca].fruto), colorFruto (ESTADOS[epoca].colorFruto) }
+ * @returns el lienzo, o null sin lienzo 2D
+ */
+export function dibujaAtlasTarjetas(ramitas, opciones, cv) {
+  const o = opciones || {}, A = 256, cols = 4;
+  cv = cv || lienzo(A * cols, A * 2); if (!cv || !ramitas || !ramitas[0]) return null;
+  const g = cv.getContext("2d"); g.clearRect(0, 0, cv.width, cv.height);
+  // tres tonos de cada ramita (1, 0,8 y 0,62 de luz): se oscurece con «source-atop» en un lienzo aparte
+  const tonos = ramitas.map(rc => [1, 0.8, 0.62].map(k => {
+    if (k === 1) return rc;
+    const c = lienzo(rc.width, rc.height), x = c.getContext("2d"); x.drawImage(rc, 0, 0);
+    x.globalCompositeOperation = "source-atop"; x.fillStyle = "rgba(0,0,0," + (1 - k) + ")"; x.fillRect(0, 0, c.width, c.height); return c;
+  }));
+  const N = 34, fr = o.fruto > 0 && typeof o.colorFruto === "function" ? o.fruto : 0;
+  for (let col = 0; col < 3; col++) {
+    const r = rngFrom(4049 + 131 * col), sprites = [];
+    for (let k = 0; k < N; k++) {
+      const a = r() * 6.2832, d = Math.sqrt(r()) * 0.42, bx = Math.cos(a) * d * 0.3, by = Math.sin(a) * d * 0.3;   // la base, cerca del centro
+      const ang = Math.atan2(by, bx) + (r() - 0.5) * 1.6, largo = 0.28 + r() * 0.1, tono = d < 0.16 ? 2 : d < 0.3 ? 1 : 0;
+      sprites.push({ bx, by, ang, largo, tono, t: r() < 0.5 ? 0 : 1, espejo: r() < 0.5 ? -1 : 1 });
+    }
+    sprites.sort((p, q) => q.tono - p.tono);   // las oscuras (dentro) primero
+    const olivas = [], ro = rngFrom(7121 + 17 * col), nOl = Math.round(10 * fr);
+    for (let k = 0; k < nOl; k++) { const a = ro() * 6.2832, d = 0.08 + Math.sqrt(ro()) * 0.3; olivas.push({ x: Math.cos(a) * d, y: Math.sin(a) * d, c: o.colorFruto(ro), r: 0.018 + ro() * 0.008 }); }
+    for (let fila = 0; fila < 2; fila++) {
+      const cx = (col + 0.5) * A, cy = (fila + 0.5) * A;
+      g.save(); g.beginPath(); g.rect(col * A + 1, fila * A + 1, A - 2, A - 2); g.clip();
+      for (const s of sprites) {
+        const img = tonos[s.t][s.tono], esc = s.largo * A / img.height;   // la ramita mide `largo` de la celda; su base (abajo, centro) en (bx, by)
+        // la ramita de dibujaRamita crece hacia −y del lienzo: se gira para que crezca en la dirección `ang`
+        g.setTransform(1, 0, 0, 1, 0, 0); g.translate(cx + s.bx * A, cy + s.by * A); g.rotate(s.ang + Math.PI / 2); g.scale(esc * s.espejo, esc);
+        g.drawImage(img, -img.width / 2, -img.height + 6);
+      }
+      g.setTransform(1, 0, 0, 1, 0, 0);
+      if (fila === 1) for (const ol of olivas) {
+        const x = cx + ol.x * A, y = cy + ol.y * A, R = ol.r * A, c = ol.c.map(v => Math.max(0, Math.min(255, Math.round(v * 255))));
+        g.fillStyle = "rgb(" + c.map(v => Math.round(v * 0.7)).join(",") + ")"; g.beginPath(); g.arc(x, y, R, 0, 7); g.fill();
+        g.fillStyle = "rgb(" + c.join(",") + ")"; g.beginPath(); g.arc(x - R * 0.15, y - R * 0.15, R * 0.8, 0, 7); g.fill();
+      }
+      g.restore();
+    }
+  }
+  return cv;
+}
+
+/** Fracción de una celda del atlas que pasa el corte alfa (`corte`, por defecto 0,45): la PHI_CELDA de tarjetas.js (null sin lienzo 2D) */
+export function coberturaCelda(cv, col, fila, corte) {
+  const g = cv && cv.getContext ? cv.getContext("2d") : null; if (!g) return null;
+  const A = 256, d = g.getImageData(col * A, fila * A, A, A).data, c = (corte === undefined ? 0.45 : corte) * 255; let n = 0;
+  for (let i = 3; i < d.length; i += 4) if (d[i] >= c) n++;
+  return n / (A * A);
+}
+
 /** Todo lo de una época: fotos (si se pasan) + dibujos. `flor` sale de ESTADOS[epoca].flor */
 export function dibujos(flor) {
   return { cortezaDibujada: dibujaCorteza(), ramitas: [dibujaRamita(11, flor), dibujaRamita(29, flor)], relleno: dibujaRelleno(flor) };

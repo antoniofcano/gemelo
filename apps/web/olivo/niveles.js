@@ -1,15 +1,16 @@
 // Niveles de detalle del olivo generado: aNivel() de la maqueta «Olivos en el gemelo» (referencia/olivos-en-el-gemelo.html), portado de mallas
 // a RECETAS (arrays tipados): sin THREE, apto para el trabajador. La entrada es la receta E0 (la del núcleo) y la salida, otra receta que
-// montaOlivo monta igual. Recuentos medidos en la maqueta (centenario 3 pies, envero, semilla 7) y comprobados en olivo.test.js:
-//   E0    102 978 tri   el árbol tal como sale del generador
-//   E1     48 378 tri   sin los prismas de los brotes finos; olivas como octaedros (8 tri)
-//   E2     19 366 tri   además pies, raíces, ramas madre y muñón a un cuarto de resolución (uno de cada dos anillos y de cada dos lados) y
-//                       olivas como puntos
-//   E2VR   14 618 tri   además ACLAREO para las gafas: fuera la mitad de las ramitas, las más interiores (puntuación = radio horizontal /
-//                       radio de copa + 0,75·max(0, y/H − 0,35), con un desempate fijo por índice); las que quedan ×1,38; el relleno se
-//                       queda, ×1,25
+// montaOlivo monta igual. Desde O9b (ADR-0022 §3) las hojas de E1 y E2 ya no son las ramitas del E0 sino TARJETAS de racimo (tarjetas.js):
+//   E0    el árbol tal como sale del generador
+//   E1    sin los prismas de los brotes finos; las ramitas, en ~320 tarjetas de 3 planos; las olivas, dentro del atlas de las tarjetas (geo
+//         «tarjetaO» en las épocas con fruto) en vez de octaedros: así E1 y E2 van en UNA malla instanciada (una llamada) y E1 cabe en 30 k
+//   E2    además pies, raíces, ramas madre y muñón a un cuarto de resolución (uno de cada dos anillos y de cada dos lados); las ramitas, en
+//         ~140 tarjetas; las olivas, en el atlas (antes, puntos sin luz)
+//   E2VR  = E2 (las gafas ya no aclaran: el aclareo de la maqueta perdía la falda, O9a)
+// Recuentos de centenario 3 pies, envero, semilla 7, en pruebas/olivo/niveles.mjs (los de la maqueta, antes de O9b: 102 978 / 48 378 / 19 366 / 14 618).
+import { tarjetasDeG } from "./tarjetas.js";
+
 export const NIVELES = ["E0", "E1", "E2", "E2VR"];
-export const ESCALA_RAMITAS_VR = 1.38, ESCALA_RELLENO_VR = 1.25;
 
 // Matrix4.multiplyMatrices de three (columna mayor), para que una instancia escalada dé los mismos bytes que en la maqueta
 function multiplica(a, b, o) {
@@ -42,19 +43,6 @@ export function copiaInstancias(p, geo, filtro, escala) {
   return Object.assign({}, p, { geo: geo || p.geo, n, matrices, colores, nodo });
 }
 
-/** Aclareo de E2-VR: quedan la mitad de las instancias (las de mayor puntuación, las de la silueta) y crecen ×1,38 */
-export function aclareo(p, H, Rc) {
-  const punt = [];
-  for (let i = 0; i < p.n; i++) {
-    const x = p.matrices[i * 16 + 12], y = p.matrices[i * 16 + 13], z = p.matrices[i * 16 + 14];
-    const exterior = Math.hypot(x, z) / Rc + 0.75 * Math.max(0, y / H - 0.35);
-    punt.push([exterior + 0.08 * ((i * 2654435761 >>> 0) % 1000) / 1000, i]);
-  }
-  punt.sort((a, b) => b[0] - a[0]);
-  const quedan = new Set(punt.slice(0, Math.ceil(p.n / 2)).map(x => x[1]));
-  return copiaInstancias(p, null, i => quedan.has(i), ESCALA_RAMITAS_VR);
-}
-
 /** rejillaReducida de la maqueta: tubo de (segs+1) × (rad+1) vértices → uno de cada dos anillos y de cada dos lados (los mismos vértices) */
 export function rejillaReducida(p) {
   const [segs, rad] = p.rejilla, sel = n => { const a = []; for (let i = 0; i <= n; i += 2) a.push(i); if (a[a.length - 1] !== n) a.push(n); return a; };
@@ -80,14 +68,6 @@ export function sinBrotes(p) {
   return Object.assign({}, p, { atrib, indice, brote: new Uint8Array(n) });
 }
 
-/** Olivas como puntos (E2): la posición de cada instancia y su color */
-function comoPuntos(p) {
-  const posiciones = new Float32Array(p.n * 3);
-  for (let i = 0; i < p.n; i++) posiciones.set(p.matrices.subarray(i * 16 + 12, i * 16 + 15), i * 3);
-  return { clase: "puntos", mat: "puntos", geo: "puntos", sombra: [false, false], prof: null, pos: p.pos, rot: p.rot, esc: p.esc, rol: p.rol, rejilla: null,
-    n: p.n, posiciones, colores: p.colores ? new Float32Array(p.colores) : new Float32Array(p.n * 3).fill(1), nodo: p.nodo };
-}
-
 /**
  * La receta del nivel k a partir de la E0. No toca la de entrada (los arrays que no cambian se comparten).
  * @param {object} r   receta E0 (de recetaG / receta)
@@ -102,15 +82,19 @@ export function aNivel(r, k) {
 export function* aNivelG(r, k) {
   if (!NIVELES.includes(k)) throw new Error("nivel desconocido: " + k);
   if (k === "E0") return r;
-  const H = r.medidas.altura_m || 5, Rc = (r.medidas.copa_m || 8) / 2, piezas = [];
+  const fino = k !== "E1", ramitas = r.piezas.filter(p => p.rol === "ramitas" && p.clase === "instancias" && p.n > 0);
+  const olivas = r.piezas.some(p => p.rol === "olivas" && p.n > 0), piezas = [];
+  let tarjetas = false;
   for (const p of r.piezas) {
     if (p.rol === "brotes") continue;
     if (p.rol === "ramas" && p.brote) { piezas.push(sinBrotes(p)); yield; continue; }   // la maqueta quita la malla «brotes»
-    if (p.rol === "olivas") { piezas.push(k === "E1" ? copiaInstancias(p, "octa") : comoPuntos(p)); yield; continue; }
-    if (k === "E2VR" && p.rol === "relleno") { piezas.push(copiaInstancias(p, null, null, ESCALA_RELLENO_VR)); yield; continue; }
-    if (k === "E2VR" && p.rol === "ramitas") { piezas.push(aclareo(p, H, Rc)); yield; continue; }
+    if (p.rol === "ramitas" && p.clase === "instancias") {   // todas las ramitas, en UNA pieza de tarjetas (donde estaba la primera)
+      if (!tarjetas && ramitas.length) { tarjetas = true; piezas.push(yield* tarjetasDeG(ramitas, r.escala, fino ? "E2" : "E1", olivas)); }
+      yield; continue;
+    }
+    if (p.rol === "olivas") { if (!ramitas.length) piezas.push(copiaInstancias(p, "octa")); yield; continue; }   // dentro del atlas de las tarjetas
     if (p.clase === "instancias") { piezas.push(copiaInstancias(p)); yield; continue; }
-    if (k !== "E1" && p.clase === "malla" && p.rejilla) { piezas.push(rejillaReducida(p)); yield; continue; }
+    if (fino && p.clase === "malla" && p.rejilla) { piezas.push(rejillaReducida(p)); yield; continue; }
     piezas.push(p);
     yield;
   }
@@ -119,7 +103,7 @@ export function* aNivelG(r, k) {
 
 /** Triángulos de una receta (cualquier nivel); los puntos no cuentan */
 export function triangulosNivel(r) {
-  const TRI = { oliva: 20, octa: 8, relleno: 2, tocon: 14, corte: 9, ramita: 2 };
+  const TRI = { oliva: 20, octa: 8, relleno: 2, tocon: 14, corte: 9, ramita: 2, tarjeta: 6, tarjetaO: 6 };
   return r.piezas.reduce((t, p) => p.clase === "puntos" ? t : t + (p.indice ? p.indice.length / 3 : TRI[p.geo]) * (p.clase === "instancias" ? p.n : 1), 0);
 }
 /** Llamadas de dibujo (una por pieza; los puntos también) */
