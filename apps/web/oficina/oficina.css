@@ -193,3 +193,5 @@ td.acciones .boton { margin-right: 4px; }
 .escalon h4 { margin: 0 0 4px; } .escalon .cifra { font-size: 26px; margin: 0; } .escalon meter { width: 100%; display: block; margin: 6px 0; }
 #rMsg.mal { color: var(--peligro); }
 @media (max-width: 900px) { .escalones { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* Agenda (OF11): el título del mes encabeza a sus eventos */
+.lista .mes h3 { margin: 12px 0 0; font-size: 15px; text-transform: capitalize; color: var(--suave); }
