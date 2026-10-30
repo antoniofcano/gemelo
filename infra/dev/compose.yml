@@ -199,6 +199,9 @@ services:
       GEMELO_SESION_SECRETO: ${GEMELO_DEV_SESION_SECRETO:?falta GEMELO_DEV_SESION_SECRETO en infra/dev/.env (npm run dev:arriba lo añade)}
       GEMELO_URL_PUBLICA: "https://localhost:${GEMELO_DEV_PUERTO_HTTPS:-8743}"   # https: la cookie de sesión es Secure
       GEMELO_API_ORIGENES: "https://localhost:${GEMELO_DEV_PUERTO_HTTPS:-8743}"
+      # llave de acceso de la oficina (OF13): obligatoria también en local (https://localhost vale como RP ID); para relajarla,
+      # GEMELO_DEV_OFICINA_LLAVE=no en infra/dev/.env (explícito; en producción no se admite)
+      GEMELO_OFICINA_LLAVE: ${GEMELO_DEV_OFICINA_LLAVE:-obligatoria}
       GEMELO_CORREO: smtp
       GEMELO_SMTP_HOST: correo
       GEMELO_SMTP_PUERTO: "1025"

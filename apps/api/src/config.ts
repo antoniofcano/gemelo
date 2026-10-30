@@ -28,6 +28,8 @@ export interface Config {
   sesion: { diasAbsolutos: number; diasInactividad: number; secreto: string };
   /** sesión de oficina (ADR-0024, contratos/sesion.md § Oficina): más corta, con aparato confiable y confirmación reciente */
   oficina: { horasSesion: number; minInactividad: number; minConfirmacion: number; minSegundoEnlace: number; otProponer: "manual" | "token" };
+  /** llave de acceso (WebAuthn, passkey) de la oficina (OF13, contratos/sesion.md § Llave de acceso): obligatoria salvo GEMELO_OFICINA_LLAVE=no fuera de producción */
+  llave: ConfigLlave;
   enlace: { minutos: number; porIp: number; porCorreo: number; ventanaMin: number };
   /** código corto de las gafas (contratos/sesion.md § Código corto): códigos pedidos por IP, intentos de aprobar por hogar y por IP */
   vinculo: { porIp: number; intentosPorHogar: number; intentosPorIp: number; sondeosPorMin: number; ventanaMin: number };
@@ -57,6 +59,13 @@ export interface ConfigLiveKit {
                         // el cliente resuelve contra su página (así vale para https://localhost y para la IP de la red local)
   clave: string;        // API key de LiveKit (un nombre, no un secreto)
   secreto: string;      // API secret (≥ 32 caracteres): firma los tokens
+}
+
+export interface ConfigLlave {
+  obligatoria: boolean;
+  rpId: string;         // el dominio al que se atan las llaves (GEMELO_LLAVE_RP_ID; por defecto, el de GEMELO_URL_PUBLICA)
+  origen: string;       // el origen que firma el navegador (GEMELO_LLAVE_ORIGEN; por defecto, GEMELO_URL_PUBLICA)
+  rpNombre: string;     // lo que enseña el aparato al pedir la llave
 }
 
 export class ErrorDeConfig extends Error {}
@@ -185,6 +194,31 @@ function cargaVigia(e: Entorno, produccion: boolean): Config["vigia"] {
   return { modo: "mcp", url: u.href, token: secreto(e, "GEMELO_VIGIA_TOKEN", true)! };
 }
 
+/**
+ * Llave de acceso de la oficina (OF13). Obligatoria por defecto en todas partes; relajarla («no») pide la variable explícita y
+ * no se admite en producción. El RP ID es un dominio (sin esquema ni puerto) que tiene que ser el del origen o uno de sus padres.
+ */
+function cargaLlave(e: Entorno, produccion: boolean, urlPublica: string): ConfigLlave {
+  const modo = texto(e, "GEMELO_OFICINA_LLAVE", "obligatoria");
+  if (modo !== "obligatoria" && modo !== "no") throw new ErrorDeConfig("GEMELO_OFICINA_LLAVE debe ser obligatoria o no");
+  if (produccion && modo === "no") throw new ErrorDeConfig("en producción la llave de acceso de la oficina es obligatoria (GEMELO_OFICINA_LLAVE=no solo en local)");
+  const origen = url("GEMELO_LLAVE_ORIGEN", texto(e, "GEMELO_LLAVE_ORIGEN", urlPublica), produccion);
+  try { return compruebaLlave(e, produccion, modo, origen); }
+  catch (err) {
+    // relajada («no», fuera de producción) y servida desde una IP: la api arranca igual; la llave, opcional, no funcionará ahí
+    if (modo === "no" && err instanceof ErrorDeConfig) return { obligatoria: false, rpId: origen.hostname, origen: origen.origin, rpNombre: "Cuarenta hazas · Oficina" };
+    throw err;
+  }
+}
+function compruebaLlave(e: Entorno, produccion: boolean, modo: string, origen: URL): ConfigLlave {
+  if (origen.protocol !== "https:" && !(origen.protocol === "http:" && origen.hostname === "localhost")) throw new ErrorDeConfig("GEMELO_LLAVE_ORIGEN debe ser https:// (o http://localhost fuera de producción)");
+  if (produccion && origen.protocol !== "https:") throw new ErrorDeConfig("GEMELO_LLAVE_ORIGEN debe ser https en producción");
+  const rpId = texto(e, "GEMELO_LLAVE_RP_ID", origen.hostname).toLowerCase();
+  if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/.test(rpId) || /^\d+(\.\d+){3}$/.test(rpId)) throw new ErrorDeConfig("GEMELO_LLAVE_RP_ID debe ser un nombre de dominio (sin https:// ni puerto, y no una IP)");
+  if (origen.hostname !== rpId && !origen.hostname.endsWith("." + rpId)) throw new ErrorDeConfig("GEMELO_LLAVE_RP_ID (" + rpId + ") debe ser el dominio de GEMELO_LLAVE_ORIGEN o uno de sus padres");
+  return { obligatoria: modo === "obligatoria", rpId, origen: origen.origin, rpNombre: "Cuarenta hazas · Oficina" };
+}
+
 export function cargaConfig(e: Entorno = process.env): Config {
   const produccion = esProduccion(e);
   const urlPublica = url("GEMELO_URL_PUBLICA", texto(e, "GEMELO_URL_PUBLICA"), produccion).origin;
@@ -223,6 +257,7 @@ export function cargaConfig(e: Entorno = process.env): Config {
       // reservado para cuando exista el token de solo proponer (DO-7) y todavía no hace nada distinto
       otProponer: texto(e, "GEMELO_OFICINA_OT_PROPONER", "manual") === "token" ? "token" : "manual",
     },
+    llave: cargaLlave(e, produccion, urlPublica),
     enlace: {
       minutos: 15,
       porIp: entero(e, "GEMELO_ENLACE_POR_IP", 10, 1, 1000),

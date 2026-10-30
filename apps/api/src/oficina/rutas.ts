@@ -2,6 +2,7 @@
 //   GET  /api/oficina/sesion             qué sesión de oficina tengo (aparato, caducidad, confirmación reciente); vale con el aparato pendiente
 //   GET  /api/oficina/pendiente          página HTML «este aparato está pendiente» (a donde va el enlace si el aparato es nuevo)
 //   POST /api/oficina/confirmar          manda un enlace nuevo a la propia cuenta: entrar con él es la «confirmación reciente»
+//                                        (con la llave obligatoria, OF13, 409 usa_la_llave: la confirmación es POST /api/oficina/llaves/entrada)
 //   GET  /api/admin/aparatos             aparatos de las cuentas de oficina
 //   POST /api/admin/aparatos/:id/aprobar desde un aparato ya aprobado, con confirmación reciente (los de `admin`, solo `admin`)
 //   POST /api/admin/aparatos/:id/revocar cierra además sus sesiones (los de `admin`, solo `admin` o la propia cuenta)
@@ -14,9 +15,11 @@ import type { Contexto } from "../contexto.ts";
 import { huella } from "../seguridad/cripto.ts";
 import { OFICINA, OFICINA_CONFIRMADA, SIN_PERMISO, SIN_SESION } from "./acceso.ts";
 import { HORAS_PENDIENTE, revocaAparato } from "./aparatos.ts";
+import { estadoLlaves, permisoAlta } from "./llaves.ts";
 
 const ID = { type: "object", additionalProperties: false, required: ["id"], properties: { id: { type: "integer", minimum: 1, maximum: 2147483647 } } } as const;
 const NO_GUARDAR = "no-store";
+export const TEXTO_USA_LA_LLAVE = "Confirma con tu llave de acceso: la oficina ya no confirma con enlaces.";
 export const TEXTO_CONFIRMAR = "Te hemos mandado un enlace nuevo. Ábrelo en este mismo navegador para confirmar que eres tú; vale 15 minutos.";
 
 export async function rutasOficina(app: FastifyInstance, ctx: Contexto): Promise<void> {
@@ -28,8 +31,16 @@ export async function rutasOficina(app: FastifyInstance, ctx: Contexto): Promise
     if (typeof s?.hogarId !== "number") return rep.code(401).send(SIN_SESION);
     if (!esOficina(s.rol)) return rep.code(403).send(SIN_PERMISO);
     const a = await bd.query<{ nombre: string }>("SELECT nombre FROM aparatos_oficina WHERE id = $1", [s.aparatoId]);
+    const conLlave = typeof s.llaveId === "number";
+    const e = await estadoLlaves(bd, s.hogarId);
     return {
       rol: s.rol,
+      // OF13: si la llave es obligatoria y esta sesión aún no se abrió con ella, la página enseña el alta o la entrada
+      llave: {
+        obligatoria: config.llave.obligatoria, con_llave: conLlave, requerida: s.llaveRequerida === true, activas: e.activas,
+        puede_alta: permisoAlta(conLlave, e) === "si",
+        rehabilitada_hasta: e.rehabilitadaHasta && e.rehabilitadaHasta > new Date() ? e.rehabilitadaHasta.toISOString() : null,
+      },
       aparato: { id: s.aparatoId, nombre: a.rows[0]?.nombre ?? "Aparato", estado: s.aparatoAprobado ? "aprobado" : "pendiente" },
       caduca_en: s.cookie.expires instanceof Date ? s.cookie.expires.toISOString() : null,
       inactividad_min: config.oficina.minInactividad,
@@ -58,6 +69,7 @@ export async function rutasOficina(app: FastifyInstance, ctx: Contexto): Promise
     schema: { body: { type: "object", additionalProperties: false, properties: {} } },
   }, async (req, rep) => {
     rep.header("cache-control", NO_GUARDAR);
+    if (config.llave.obligatoria) return rep.code(409).send({ error: "usa_la_llave", mensaje: TEXTO_USA_LA_LLAVE });
     const lim = await porCuenta(req);
     if (!lim.isAllowed && lim.isExceeded) return rep.code(429).send({ error: "demasiadas_peticiones", mensaje: TEXTO_LIMITE });
     const c = await bd.query<{ correo: string }>("SELECT correo FROM hogares WHERE id = $1 AND activo", [req.session.hogarId]);

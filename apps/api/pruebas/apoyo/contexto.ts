@@ -18,6 +18,9 @@ export function configDePrueba(extra: Record<string, string> = {}): Config {
     GEMELO_CORREO: "buzon",
     GEMELO_API_REGISTRO: "silent",
     GEMELO_API_PROXIES: "1",
+    // la llave de acceso de la oficina (OF13) se relaja aquí para las pruebas que entran solo con el enlace; las suyas
+    // (pruebas/unidad/llaves.test.ts, pruebas/integracion/llaves.test.ts) la ponen obligatoria
+    GEMELO_OFICINA_LLAVE: "no",
     ...extra,
   });
 }

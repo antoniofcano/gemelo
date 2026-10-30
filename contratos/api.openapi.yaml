@@ -141,12 +141,22 @@ components:
                   nombre: { type: string }
                   finca: { type: string }
                   es_mia: { type: boolean }
+    RespuestaWebAuthn:
+      type: object
+      description: "La PublicKeyCredential del navegador en JSON (RegistrationResponseJSON o AuthenticationResponseJSON de WebAuthn, como la da @simplewebauthn/browser). La forma fina la comprueba @simplewebauthn/server"
+      required: [id, rawId, type, response]
+      additionalProperties: true
+      properties:
+        id: { type: string, pattern: "^[A-Za-z0-9_-]{16,1366}$" }
+        rawId: { type: string, pattern: "^[A-Za-z0-9_-]{16,1366}$" }
+        type: { enum: [public-key] }
+        response: { type: object, additionalProperties: true }
   responses:
     SinSesion:
       description: Sin sesión (o caducada o revocada)
       content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
     SinPermiso:
-      description: "Con sesión pero sin el rol (sin_permiso); o cuenta de oficina con el aparato pendiente (aparato_pendiente); o falta la confirmación reciente (confirmacion_requerida). contratos/sesion.md § Oficina"
+      description: "Con sesión pero sin el rol (sin_permiso); o cuenta de oficina con el aparato pendiente (aparato_pendiente); o cuenta de oficina que aún no entró con su llave de acceso, si es obligatoria (llave_requerida, OF13); o falta la confirmación reciente (confirmacion_requerida). contratos/sesion.md § Oficina y § Llave de acceso"
       content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
     OrigenNoAdmitido:
       description: POST/PUT/DELETE sin Origin del sitio
@@ -916,14 +926,26 @@ paths:
               schema:
                 type: object
                 additionalProperties: false
-                required: [rol, aparato, caduca_en, inactividad_min, confirmada_en, confirmacion_vigente]
+                required: [rol, llave, aparato, caduca_en, inactividad_min, confirmada_en, confirmacion_vigente]
                 properties:
                   rol: { enum: [oficina, admin] }
+                  llave:
+                    type: object
+                    additionalProperties: false
+                    required: [obligatoria, con_llave, requerida, activas, puede_alta, rehabilitada_hasta]
+                    description: "La llave de acceso (OF13). requerida: la sesión aún no se abrió con una llave y la oficina la pide (la página enseña el alta o la entrada)"
+                    properties:
+                      obligatoria: { type: boolean, description: "GEMELO_OFICINA_LLAVE (obligatoria por defecto; «no» solo fuera de producción)" }
+                      con_llave: { type: boolean, description: "esta sesión se abrió o se confirmó con una llave viva" }
+                      requerida: { type: boolean }
+                      activas: { type: integer, minimum: 0 }
+                      puede_alta: { type: boolean, description: "esta sesión puede dar de alta una llave (la primera vez, con llave o con el alta rehabilitada)" }
+                      rehabilitada_hasta: { type: [string, "null"], format: date-time }
                   aparato: { type: object, additionalProperties: false, required: [id, nombre, estado], properties: { id: { type: integer }, nombre: { type: string }, estado: { enum: [pendiente, aprobado] } } }
                   caduca_en: { type: [string, "null"], format: date-time, description: "caducidad absoluta (12 h desde que se entró, por defecto)" }
                   inactividad_min: { type: integer, description: "minutos sin actividad que cierran la sesión (120 por defecto)" }
                   confirmada_en: { type: [string, "null"], format: date-time }
-                  confirmacion_vigente: { type: boolean, description: "true si se entró con un enlace hace menos de GEMELO_OFICINA_CONFIRMACION_MIN (15 min)" }
+                  confirmacion_vigente: { type: boolean, description: "true si la sesión se confirmó hace menos de GEMELO_OFICINA_CONFIRMACION_MIN (15 min): con la llave obligatoria, una aserción WebAuthn; si no, también entrar con un enlace" }
                   ot_proponer: { enum: [manual, token], description: "cómo se pasa algo a OlivarTrack desde la bandeja (GEMELO_OFICINA_OT_PROPONER): manual = copiar el texto y apuntar el id de la propuesta; token queda reservado para el token de solo proponer (DO-7)" }
         "401": { $ref: "#/components/responses/SinSesion" }
         "403": { $ref: "#/components/responses/SinPermiso" }
@@ -937,7 +959,7 @@ paths:
 
   /api/oficina/confirmar:
     post:
-      summary: "Manda un enlace nuevo a la propia cuenta de oficina: entrar con él es la confirmación reciente (abre una sesión nueva)"
+      summary: "Manda un enlace nuevo a la propia cuenta de oficina: entrar con él es la confirmación reciente (abre una sesión nueva). Con la llave obligatoria (OF13), 409 usa_la_llave: la confirmación es POST /api/oficina/llaves/entrada"
       security: [{ sesion: [] }]
       requestBody:
         required: true
@@ -946,9 +968,131 @@ paths:
             schema: { type: object, additionalProperties: false, properties: {} }
       responses:
         "202": { description: enlace mandado }
+        "409": { description: "usa_la_llave: con la llave obligatoria la confirmación es una aserción WebAuthn" }
         "401": { $ref: "#/components/responses/SinSesion" }
         "403": { $ref: "#/components/responses/SinPermiso" }
         "429": { $ref: "#/components/responses/Limite" }
+
+  /api/oficina/llaves/alta/opciones:
+    post:
+      summary: "Llave de acceso (OF13): opciones para navigator.credentials.create() (PublicKeyCredentialCreationOptionsJSON de WebAuthn; verificación de la persona obligatoria, attestation none). Vale con la sesión de oficina aún sin llave (aparato aprobado): la primera vez, o si un admin rehabilitó el alta; si la cuenta ya tuvo llaves, solo desde una sesión abierta con llave. El reto vale 5 min y una vez"
+      security: [{ sesion: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, additionalProperties: false, properties: {} } } } }
+      responses:
+        "200": { description: "opciones (rp, user, challenge, pubKeyCredParams, excludeCredentials, authenticatorSelection, timeout)" }
+        "403": { description: "entra_con_llave: la cuenta ya tiene (o tuvo) llaves; también los de SinPermiso" }
+        "409": { description: "demasiadas_llaves (10 vivas por cuenta)" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/oficina/llaves/alta:
+    post:
+      summary: "Verifica la respuesta de navigator.credentials.create() con el reto de la sesión y guarda la llave (id de credencial, clave pública, contador, transports, nombre). La sesión queda abierta con ella (cuenta como confirmación reciente). Auditoría oficina.llave_alta / oficina.llave_fallida"
+      security: [{ sesion: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [respuesta]
+              properties:
+                nombre: { type: string, maxLength: 80, description: "nombre que le da la persona (se recorta a 40); si falta, el del aparato" }
+                respuesta: { $ref: "#/components/schemas/RespuestaWebAuthn" }
+      responses:
+        "201": { description: "guardada: { id, nombre }" }
+        "400": { description: "llave_no_valida (origen, RP ID, reto, firma o sin verificar a la persona); o entrada_no_valida" }
+        "403": { description: "entra_con_llave; también los de SinPermiso" }
+        "409": { description: "sin_reto (caducó o no se pidió), llave_repetida o demasiadas_llaves" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/oficina/llaves/entrada/opciones:
+    post:
+      summary: "Opciones para navigator.credentials.get() (PublicKeyCredentialRequestOptionsJSON) con las llaves vivas de la propia cuenta; verificación de la persona obligatoria. Vale con la sesión de oficina aún sin llave"
+      security: [{ sesion: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, additionalProperties: false, properties: {} } } } }
+      responses:
+        "200": { description: "opciones (rpId, challenge, allowCredentials, userVerification, timeout)" }
+        "409": { description: "sin_llave: la cuenta no tiene ninguna llave viva" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/oficina/llaves/entrada:
+    post:
+      summary: "Verifica la aserción (navigator.credentials.get()) de una llave viva DE LA PROPIA CUENTA: abre la sesión de oficina y es la confirmación reciente (sesiones.llave_id y confirmada_en). Un contador que no sube se rechaza. Auditoría oficina.llave_entrada / oficina.llave_fallida"
+      security: [{ sesion: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [respuesta], properties: { respuesta: { $ref: "#/components/schemas/RespuestaWebAuthn" } } }
+      responses:
+        "200": { description: "{ ok: true, confirmacion_min }" }
+        "400": { description: "llave_no_valida; o entrada_no_valida" }
+        "409": { description: "sin_reto" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/oficina/llaves:
+    get:
+      summary: "Las llaves de la propia cuenta (vivas y revocadas, las 50 últimas): nombre, transports, respaldada, creada, última vez, revocada; es_esta marca la de la sesión. Nunca la clave pública ni el id de credencial"
+      security: [{ sesion: [] }]
+      responses:
+        "200": { description: "{ obligatoria, llaves: [...] }" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+
+  /api/oficina/llaves/{id}/revocar:
+    post:
+      summary: "Revoca una llave propia y cierra las sesiones abiertas o confirmadas con ella; pide confirmación reciente; nunca la última (409 ultima_llave). Auditoría oficina.llave_revocada"
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "200": { description: "{ sesiones_cerradas, era_esta }" }
+        "404": { description: no es una llave viva de la cuenta }
+        "409": { description: "ultima_llave" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+
+  /api/admin/llaves:
+    get:
+      summary: "(admin) Las cuentas de oficina con sus llaves (sin clave pública ni id de credencial) y si tienen el alta rehabilitada"
+      security: [{ sesion: [] }]
+      responses:
+        "200": { description: "{ obligatoria, cuentas: [{ hogar_id, correo, rol, rehabilitada_hasta, llaves }] }" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+
+  /api/admin/llaves/{id}/revocar:
+    post:
+      summary: "(admin, confirmación reciente) Revoca la llave de cualquier cuenta de oficina y cierra sus sesiones. Auditoría oficina.llave_revocada"
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "200": { description: "{ sesiones_cerradas, era_esta }" }
+        "404": { description: no existe, ya estaba revocada o no es de una cuenta de oficina }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+
+  /api/admin/hogares/{id}/rehabilitar-llave:
+    post:
+      summary: "(admin, confirmación reciente) Camino de recuperación: durante 24 h la cuenta de oficina {id} puede dar de alta una llave con la sesión del enlace (y el aparato aprobado). Nunca la propia (403 no_a_ti_mismo: otro admin o la consola del servidor, RUNBOOK-VPS). Con revocar_llaves, revoca antes todas sus llaves vivas. Auditoría oficina.llave_rehabilitada"
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, properties: { revocar_llaves: { type: boolean } } }
+      responses:
+        "200": { description: "{ rehabilitada_hasta, llaves_revocadas, sesiones_cerradas }" }
+        "404": { description: no es una cuenta de oficina activa }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
 
   /api/admin/aparatos:
     get:

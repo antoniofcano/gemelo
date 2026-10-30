@@ -12,6 +12,7 @@ import { rutasConfig } from "./config/rutas.ts";
 import type { Contexto } from "./contexto.ts";
 import { rutasHazas } from "./hazas/rutas.ts";
 import { rutasJuegos } from "./juegos/rutas.ts";
+import { rutasLlaves } from "./oficina/llaves_rutas.ts";
 import { rutasOficina } from "./oficina/rutas.ts";
 import { rutasPresencia } from "./presencia/rutas.ts";
 import { opcionesRegistro } from "./registro.ts";
@@ -66,7 +67,7 @@ export async function construyeApp(ctx: Contexto, o: OpcionesApp = {}): Promise<
     secret: config.sesion.secreto,
     cookieName: NOMBRE_COOKIE,
     cookie: { path: "/", httpOnly: true, secure: true, sameSite: "lax", maxAge: config.sesion.diasAbsolutos * 86_400_000 },
-    store: new AlmacenPg(ctx.bd, config.sesion.diasInactividad, config.oficina),
+    store: new AlmacenPg(ctx.bd, config.sesion.diasInactividad, { ...config.oficina, llaveObligatoria: config.llave.obligatoria }),
     saveUninitialized: false,
     rolling: false,
     idGenerator: () => nuevoToken(),
@@ -94,6 +95,7 @@ export async function construyeApp(ctx: Contexto, o: OpcionesApp = {}): Promise<
   await rutasYo(app, ctx);
   await rutasAdmin(app, ctx);
   await rutasOficina(app, ctx);
+  await rutasLlaves(app, ctx);
   await rutasPresencia(app, ctx);
   await rutasTiempo(app, ctx);
   await rutasTiempoHistorico(app, ctx);
