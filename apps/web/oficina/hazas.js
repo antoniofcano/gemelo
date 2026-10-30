@@ -493,7 +493,7 @@ export function iniciaHazas({ sesion }) {
     const z = sel.get("haza"), c = coords(), s = sucia(), cl = cuenta(c, puntos, BORDE), ha = area(c) / 10000;
     for (const o of hazas.filter(x => x.finca === finca && x.id !== z.id)) junto.append(h("option", { value: o.id }, o.codigo + " · " + o.nombre));
     const pisa = fuenteHazas.getFeatures().filter(f => f !== sel && sePisan(c, f.getGeometry().getCoordinates())).map(f => f.get("haza").codigo);
-    el.append(
+    el.append(...[   // Element.append pondría «null» como texto: lo que no toca se filtra
       h("h2", { tabindex: "-1" }, z.codigo + " · " + z.nombre),
       h("p", { class: "nota" }, "Versión " + z.version + " · guardada " + fecha(z.actualizada_en) + (s ? " · " : ""), s ? h("b", { class: "p-aviso" }, "cambios sin guardar") : null),
       h("div", { class: "cifras" },
@@ -517,7 +517,7 @@ export function iniciaHazas({ sesion }) {
         v.version === z.version ? h("span", { class: "pill p-ok" }, "actual") : h("span", { class: "en-linea" },
           h("button", { class: "boton peq", type: "button", "aria-pressed": String(vista === v), onclick: () => { vista = vista === v ? null : v; marcas(); ficha(); } }, "Ver"),
           h("button", { class: "boton peq", type: "button", "data-volver": v.version, onclick: () => vuelve(v) }, "Volver"))))) : h("p", { class: "nota" }, "Cargando el historial…"),
-      h("p", null, h("button", { class: "boton peq peligro-suave", type: "button", onclick: borra }, "Borrar la haza…")));
+      h("p", null, h("button", { class: "boton peq peligro-suave", type: "button", onclick: borra }, "Borrar la haza…"))].filter(x => x !== null));
     botones();
   }
   function selectorFamilia(z) {

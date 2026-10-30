@@ -190,6 +190,7 @@ test("recorrido: crear, mover un vértice (ratón y teclado), solape, guardar co
     await pg.selectOption("#hSel", { label: "H-02 · El Pilar" });
     await pg.waitForFunction(() => window.__hazas().sel === "H-02");
     await pg.waitForSelector("#hFicha .cifra:text-is('35')");
+    assert.ok(!/\bnull\b|undefined|NaN/.test(await pg.textContent("#hFicha")), "la ficha no enseña null, undefined ni NaN");
     await pg.focus("#mapa");
     await pg.keyboard.press("Tab"); await pg.keyboard.press("Tab");
     for (let i = 0; i < 5; i++) await pg.keyboard.press("Shift+ArrowLeft");
