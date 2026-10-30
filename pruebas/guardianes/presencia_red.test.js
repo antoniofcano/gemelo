@@ -86,7 +86,7 @@ test("lo que no es del contrato o es viejo se descarta; quien vuelve tras un rat
 
 test("metadatos de la sala: se leen como datos (tipos y rangos), lo raro toma un valor neutro", () => {
   assert.deepStrictEqual(SalaPose.leeInfo(JSON.stringify({ alias: "Mirlo", avatar: { camisa: 2, sombrero: "gorra", piel: 3 }, rol: "guia", dispositivo: "quest" })),
-    { alias: "Mirlo", rol: "guia", dispositivo: "quest", camisa: 2, piel: 3, sombrero: 2, vrm: null,   // vrm (P7c): sin avatar del catálogo, null
+    { alias: "Mirlo", rol: "guia", oficial: false, dispositivo: "quest", camisa: 2, piel: 3, sombrero: 2, vrm: null,   // vrm (P7c): sin avatar del catálogo, null
       aspecto: { tono: null, arriba: null, abajo: null, altura: "media", complexion: "media", movilidad: "pie",   // AV2: sin aspecto elegido, el neutro
         cuerpo: null, pelo: null, peloColor: null, vello: null, ropa: null, acc: [] } });   // AV4 (receta v2): sin piezas elegidas, nada
   const malo = SalaPose.leeInfo(JSON.stringify({ alias: "<img src=x onerror=alert(1)>‮" + "x".repeat(50), avatar: { camisa: 99, sombrero: "corona", piel: -1 }, rol: "root", dispositivo: "nevera" }));

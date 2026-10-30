@@ -144,13 +144,21 @@ test("configuración en producción: wss:// y el secreto solo desde fichero", ()
 // ---------------------------------------------------------------- moderación (P3, decisión 42)
 class ModeradorDePrueba implements ModeradorSala {
   llamadas: [string, string][] = [];
+  enviados: { sala: string; tema: string; datos: string; destinos?: string[] }[] = [];
   private readonly presentes: Set<string>;
-  constructor(presentes: Set<string>) { this.presentes = presentes; }
+  /** presentes: las identidades de la sala libre; enLaVisita (OF10): las de «hituelo-visita» */
+  private readonly enLaVisita: Set<string>;
+  constructor(presentes: Set<string>, enLaVisita: Set<string> = new Set()) { this.presentes = presentes; this.enLaVisita = enLaVisita; }
   async expulsaHogar(sala: string, prefijo: string) {
     this.llamadas.push([sala, prefijo]);
+    const de = sala === "hituelo-visita" ? this.enLaVisita : this.presentes;
     let n = 0;
-    for (const i of [...this.presentes]) if (esDelHogar(i, prefijo)) { this.presentes.delete(i); n++; }
+    for (const i of [...de]) if (esDelHogar(i, prefijo)) { de.delete(i); n++; }
     return n;
+  }
+  async envia(sala: string, tema: string, datos: Uint8Array, destinos?: string[]) {
+    this.enviados.push({ sala, tema, datos: new TextDecoder().decode(datos), ...(destinos ? { destinos } : {}) });
+    return sala !== "vacia";
   }
 }
 function bdDePrueba(hogares: number[]) {
@@ -165,13 +173,13 @@ function bdDePrueba(hogares: number[]) {
   return { bd: bd as unknown as Pick<pg.Pool, "query">, consultas };
 }
 
-test("expulsar: saca de hituelo-libre TODAS las conexiones del hogar (una por aparato), lo apunta en la auditoría y no le da token en 15 min", async () => {
+test("expulsar: saca de las dos salas (hituelo-libre y, OF10, hituelo-visita) TODAS las conexiones del hogar (una por aparato), lo apunta en la auditoría y no le da token en 15 min", async () => {
   const pc = identidadOpaca(LK, 9, "ordenador"), movil = identidadOpaca(LK, 9, "movil"), quest = identidadOpaca(LK, 9, "quest"), otro = identidadOpaca(LK, 10, "ordenador");
   const sala = new Set([pc, movil, quest, otro]);
   const mod = new ModeradorDePrueba(sala), { bd, consultas } = bdDePrueba([9]), expulsados = new Expulsados();
   const r = await expulsa({ bd, lk: LK, moderador: mod, expulsados }, 1, 9, "insultos en el chat");
   assert.deepEqual(r, { ok: true, estaba_en_sala: true, conexiones: 3 });
-  assert.deepEqual(mod.llamadas, [["hituelo-libre", prefijoHogar(LK, 9)]]);
+  assert.deepEqual(mod.llamadas, [["hituelo-libre", prefijoHogar(LK, 9)], ["hituelo-visita", prefijoHogar(LK, 9)]], "las dos salas del mundo");
   assert.deepEqual([...sala], [otro], "el otro hogar sigue dentro");
   const aud = consultas.find(c => /INSERT INTO auditoria/.test(c.sql));
   assert.ok(aud, "queda en la auditoría");
@@ -195,7 +203,7 @@ test("expulsar a quien no está en la sala también se apunta (estaba: false); a
 });
 
 test("si LiveKit falla, el error sube (la oficina lo ve), el hogar queda sin token igualmente y no se apunta lo que no se hizo", async () => {
-  const roto: ModeradorSala = { expulsaHogar: async () => { throw new Error("LiveKit no responde"); } }, e = new Expulsados(), { bd, consultas } = bdDePrueba([5]);
+  const roto: ModeradorSala = { expulsaHogar: async () => { throw new Error("LiveKit no responde"); }, envia: async () => { throw new Error("LiveKit no responde"); } }, e = new Expulsados(), { bd, consultas } = bdDePrueba([5]);
   await assert.rejects(expulsa({ bd, lk: LK, moderador: roto, expulsados: e }, 1, 5, null), /LiveKit/);
   assert.equal(e.esta(5), true);
   assert.ok(!consultas.some(c => /auditoria/.test(c.sql)));

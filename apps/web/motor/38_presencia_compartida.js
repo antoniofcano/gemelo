@@ -1,10 +1,10 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
 // Consume: 01_datos (D, $), 02_mundo (suelo), 02c_componentes (Componentes), 02e_entidades (Entidades),
-//   03_escena (visor, renderer, scene, camera, texColor, exag, modo), 09_camara (objetivo, suelta, elige), 12_paseo (paseando, persona, primera),
-//   12b_llegada (Llegada), 14_historia (lista), 15_tiempo (rumbo), 16_vida (enQuad, quita, mira, quad, enDron, dron),
-//   26_presencia (PoseCodec, BufferPose, Aspecto, SalaPose, Chat, Muneco, Encuentro, sitioJunto), 29_vr (VRX, vrFundido, panel, ficha),
-//   34_movibles (Movibles)
+//   03_escena (visor, renderer, scene, camera, texColor, exag, modo), 06_arboles (tronco), 09_camara (objetivo, suelta, elige),
+//   12_paseo (paseando, persona, primera), 12b_llegada (Llegada), 14_historia (lista), 15_tiempo (rumbo, hace),
+//   16_vida (enQuad, quita, mira, quad, enDron, dron), 26_presencia (PoseCodec, BufferPose, Aspecto, SalaPose, Chat, Muneco, Encuentro, sitioJunto),
+//   29_vr (VRX, vrFundido, panel, ficha), 34_movibles (Movibles)
 // Nota: Componente «presencia-compartida» (ADR-0023, C5): solo se registra; consume la red (sala «visita») y expone «Presencia» (para los avatares VRM). Sin ?presencia=sim o ?presencia=red, montado no crea nada; con red, el panel Gente y el chat. Registra el tipo persona en Entidades (C7) y da su línea de ?debug por «depura:lineas». Publica window.__presencia y window.__presenciaChat (pruebas). Lo prueba en Node pruebas/guardianes/red.test.js.
 // ===============================================================================
   // ---------- presencia compartida (F2, contratos/presencia.md), componente «presencia-compartida» (C5, ADR-0023): los demás visitantes como muñecos instanciados,
@@ -45,11 +45,14 @@
       };
     }
     // las cajas y ruedas de a según su sombrero y su apoyo; a.iSom = la caja del sombrero (o −1) y a.iApoyo = la primera del apoyo en a.cajas
+    // OF10: la oficina pide una caja más, la última, para su insignia (a.iIns; −1 si no es oficina o si la reserva se quedó corta)
     function tomaAccesorios(a) {
-      a.cajas = rCajas.toma(Aspecto.cajas(a.sombrero, a.mov)); a.ruedas = a.mov === "silla" ? rRuedas.toma(2) : [];
+      var nc = Aspecto.cajas(a.sombrero, a.mov, a.oficial);
+      a.cajas = rCajas.toma(nc); a.ruedas = a.mov === "silla" ? rRuedas.toma(2) : [];
       a.iSom = a.sombrero ? a.cajas[0] : -1; a.iApoyo = a.sombrero ? 1 : 0;
+      a.iIns = a.oficial && a.cajas.length === nc ? a.cajas[nc - 1] : -1;
     }
-    function sueltaAccesorios(a) { if (a.cajas) rCajas.suelta(a.cajas); if (a.ruedas) rRuedas.suelta(a.ruedas); a.cajas = []; a.ruedas = []; a.iSom = -1; }
+    function sueltaAccesorios(a) { if (a.cajas) rCajas.suelta(a.cajas); if (a.ruedas) rRuedas.suelta(a.ruedas); a.cajas = []; a.ruedas = []; a.iSom = -1; a.iIns = -1; }
     // P6: el quad y el dron de los demás, el mismo modelo del paseante local (16_vida.js) fundido en una sola malla con color por vértice e instanciado:
     // una llamada para todos los quads y otra para todos los drones, y solo si alguien los lleva (si no, la malla no se dibuja)
     var mQuad = null, mDron = null, nVehQ = 0, nVehD = 0, vEsc = null, tVeh = 0, DRON_DELANTE = 5, DRON_ALTO = 4, DRON_ESC = 1.8;
@@ -123,22 +126,24 @@
       im.frustumCulled = false; im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); im.visible = false; grupo.add(im);
       return im;
     }
-    function pintaNombre(k, alias) {   // la celda k del atlas; vacía si no hay alias
+    function pintaNombre(k, alias, oficial) {   // la celda k del atlas; vacía si no hay alias. OF10: la oficina, «◆ Oficina» sobre verde oliva (su insignia, también de lejos)
       var x = (k % cNom) * 256 + 128, y = Math.floor(k / cNom) * 48 + 24;
       cxNom.clearRect(x - 128, y - 24, 256, 48);
+      if (alias && oficial) alias = "◆ " + alias;
       if (alias) {
         var w = Math.min(248, cxNom.measureText(alias).width + 24);
-        cxNom.fillStyle = "rgba(16,20,24,0.72)"; cxNom.beginPath(); if (cxNom.roundRect) cxNom.roundRect(x - w / 2, y - 19, w, 38, 12); else cxNom.rect(x - w / 2, y - 19, w, 38); cxNom.fill();
+        cxNom.fillStyle = oficial ? "rgba(92,104,26,0.94)" : "rgba(16,20,24,0.72)"; cxNom.beginPath(); if (cxNom.roundRect) cxNom.roundRect(x - w / 2, y - 19, w, 38, 12); else cxNom.rect(x - w / 2, y - 19, w, 38); cxNom.fill();
         cxNom.fillStyle = "#ffffff"; cxNom.fillText(alias, x, y + 1, 236);
       }
       texNombres.needsUpdate = true;
     }
     function colorea(a) {
       var c = new THREE.Color();
-      for (var j = 0; j < NP; j++) mCuerpo.setColorAt(a.k * NP + j, c.setHex(Muneco.PIEZAS[j][5] ? (a.pantalon == null ? PANTALON : a.pantalon) : a.camisa));
+      // OF10: con chaleco, el tronco (la pieza 0) en su color; los brazos siguen con la camisa
+      for (var j = 0; j < NP; j++) mCuerpo.setColorAt(a.k * NP + j, c.setHex(Muneco.PIEZAS[j][5] ? (a.pantalon == null ? PANTALON : a.pantalon) : j === 0 && a.chaleco ? a.chaleco : a.camisa));
       mCabeza.setColorAt(a.k, c.setHex(a.piel));
       if (a.iSom >= 0) mSombrero.setColorAt(a.iSom, c.setHex(SOMBREROS[a.sombrero].c));
-      if (a.cajas) for (var ja = a.iApoyo; ja < a.cajas.length; ja++) mSombrero.setColorAt(a.cajas[ja], c.setHex(COLOR_APOYO[a.mov]));
+      if (a.cajas) for (var ja = a.iApoyo; ja < a.cajas.length; ja++) mSombrero.setColorAt(a.cajas[ja], c.setHex(a.cajas[ja] === a.iIns ? Aspecto.INSIGNIA : COLOR_APOYO[a.mov]));
       if (a.ruedas) for (var jr = 0; jr < a.ruedas.length; jr++) mRuedas.setColorAt(a.ruedas[jr], c.setHex(COLOR_RUEDA));
       if (a.iMano >= 0) { mManos.setColorAt(a.iMano, c.setHex(a.piel)); mManos.setColorAt(a.iMano + 1, c.setHex(a.piel)); }
       [mCuerpo, mCabeza, mSombrero, mManos, mRuedas].forEach(function (m) { if (m.instanceColor) m.instanceColor.needsUpdate = true; });
@@ -173,9 +178,11 @@
           movilidad: u < 0.12 ? "silla" : u < 0.22 ? "baston" : u < 0.28 ? "andador" : "pie" };
         var home = cercano ? { x: objetivo.x + (azar() - 0.5) * 80, y: -objetivo.z + (azar() - 0.5) * 80 } : { x: D.ext[0] + 10 + azar() * (D.ext[2] - D.ext[0] - 20), y: D.ext[3] + 10 + azar() * (D.ext[1] - D.ext[3] - 20) };
         var rCam = azar(), rPiel = azar();   // las dos tiradas de siempre (camisa y piel): se gastan igual para no cambiar el resto de la simulación
-        var vest = Aspecto.viste({ alias: aliasK, camisa: Math.floor(rCam * CAMISAS.length), piel: conAspecto ? 1 : Math.floor(rPiel * 5), aspecto: Aspecto.lee(av) });
+        var oficialK = k === 0 && /[?&]oficial=1(&|$)/.test(location.search);   // OF10, solo para probar: &oficial=1 hace oficina al primero (chaleco, insignia y «◆ Oficina»)
+        if (oficialK) aliasK = "Oficina";
+        var vest = Aspecto.viste({ alias: aliasK, camisa: Math.floor(rCam * CAMISAS.length), piel: conAspecto ? 1 : Math.floor(rPiel * 5), aspecto: Aspecto.lee(av), oficial: oficialK });
         V.push({
-          k: k, alias: aliasK, quest: quest,
+          k: k, alias: aliasK, quest: quest, oficial: vest.oficial, chaleco: vest.chaleco, iIns: -1,
           camisa: vest.camisa, piel: vest.piel, pantalon: vest.pantalon, fa: vest.fa, fc: vest.fc, mov: vest.mov, propioPiel: vest.propioPiel, propioCamisa: vest.propioCamisa,
           pelo: vest.pelo, receta: vest.receta,
           sombrero: sombrero, iSom: -1, iMano: quest ? (nQuest++) * 2 : -1,
@@ -189,7 +196,7 @@
       est.quest = nQuest;
       montaGrafica(N, N * Aspecto.CAJAS_MAX, Math.max(1, nQuest * 2));
       mManos.count = nQuest * 2;
-      V.forEach(function (a) { tomaAccesorios(a); colorea(a); pintaNombre(a.k, a.alias); });
+      V.forEach(function (a) { tomaAccesorios(a); colorea(a); pintaNombre(a.k, a.alias, a.oficial); });
       [mCuerpo, mCabeza, mSombrero, mManos, mNombres].forEach(function (m) { for (var i = 0; i < m.count; i++) m.setMatrixAt(i, m4.makeScale(0, 0, 0)); });   // nada se ve hasta que llega la pose inicial
     }
 
@@ -280,6 +287,7 @@
       m4.compose(v1.set(cx, yv, cz), q1, vF); mCabeza.setMatrixAt(a.k, m4);
       if (a.iSom >= 0) { m4b.multiplyMatrices(m4, matSombreroLocal[a.sombrero]); mSombrero.setMatrixAt(a.iSom, m4b); }
       if (a.cajas && a.cajas.length > a.iApoyo) apoyo(a, mu, fc);
+      if (a.iIns >= 0) caja(a.iIns, -0.11 * fc, 1.33 - mu.agacho, -0.125 * fc - 0.016, 0.12, 0.09, 0.03);   // OF10: la insignia, en el pecho (delante es −z), a la izquierda
       if (a.iMano >= 0) {
         [o.izq, o.der].forEach(function (h, i) {
           var hay = i === 0 ? o.hayIzq : o.hayDer;
@@ -293,7 +301,7 @@
         m4.makeScale(0, 0, 0);
         for (var jt = 0; jt < NP; jt++) mCuerpo.setMatrixAt(a.k * NP + jt, m4);
         // el sombrero del muñeco, no (el VRM lleva el suyo o ninguno); el apoyo (silla, bastón, andador) sí: AV4, el VRM se sienta en la silla del muñeco
-        mCabeza.setMatrixAt(a.k, m4); if (a.iSom >= 0) mSombrero.setMatrixAt(a.iSom, m4);
+        mCabeza.setMatrixAt(a.k, m4); if (a.iSom >= 0) mSombrero.setMatrixAt(a.iSom, m4); if (a.iIns >= 0) mSombrero.setMatrixAt(a.iIns, m4);   // con VRM, la insignia va en su etiqueta
         if (a.iMano >= 0) { mManos.setMatrixAt(a.iMano, m4); mManos.setMatrixAt(a.iMano + 1, m4); }
       }
       // el nombre, encima de la cabeza; crece con la distancia para leerse y se apaga lejos (UX §5.4: nombres sobre los avatares)
@@ -318,6 +326,8 @@
     // ---- la sala de verdad (?presencia=red): la sala «visita» de la red (37_red.js, el único que habla con LiveKit), el token de la api, la pose propia y el
     // apartado Gente con el chat. sala = la sala de la red mientras estás dentro (o reconectando); null fuera
     var SR = null, sala = null, SP = null, porId = Object.create(null), huecos = [], bloqueados = Object.create(null), yo = null, manoDe = ["", ""], quitaRed = [], quitaMandos = [];
+    // OF10: la sala del mundo en la que estás, por su clave (contratos/livekit-roles.json v4): «general» (la de siempre) o «visita» (a la que invita la oficina)
+    var SALAS_MUNDO = { general: "Visita libre", visita: "Sala de la visita" }, claveSala = "general";
     var ui = null, mensajes = [], tChat = 0, tGente = 0, claveGente = "", conectando = false, poseL = { tipo: 1, seq: 0, t: 0, cab: { p: [0, 0, 0], q: [0, 0, 0, 1] }, izq: null, der: null };
     var mDesc = null, vDesc = null, qDesc = null, sDesc = null;
     // medida de las pruebas (P4): con window.__presenciaMide puesto ANTES de cargar, se apunta cada pose que llega
@@ -325,7 +335,7 @@
     var medLlegadas = null;
     function iniciaRed() {
       if (window.__presenciaMide) medLlegadas = [];
-      montaGrafica(MAXV, MAXV, MAXV * 2);
+      montaGrafica(MAXV, MAXV * Aspecto.CAJAS_MAX, MAXV * 2);   // las cajas de accesorios: las que pueda pedir cada uno (antes, MAXV: con sombrero y apoyo se quedaban cortas)
       for (var k = MAXV - 1; k >= 0; k--) huecos.push(k);
       [mCuerpo, mCabeza, mSombrero, mManos, mNombres].forEach(function (m) { for (var i = 0; i < m.count; i++) m.setMatrixAt(i, m4.makeScale(0, 0, 0)); });
       mDesc = new THREE.Matrix4(); vDesc = new THREE.Vector3(); qDesc = new THREE.Quaternion(); sDesc = new THREE.Vector3();
@@ -350,7 +360,8 @@
       conectando = true; ponEstado("Entrando en la visita compartida…", false);
       try {
         // el token lo da la api con tu sesión (mismo origen); la identidad, el alias y el avatar los pone ella
-        var r = await fetch("/api/presencia/token", { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify({ dispositivo: dispositivo() }) });
+        var cuerpo = { dispositivo: dispositivo() }; if (claveSala !== "general") cuerpo.sala = claveSala;   // OF10: sin sala, la general (como siempre)
+        var r = await fetch("/api/presencia/token", { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify(cuerpo) });
         if (!r.ok) {
           var e = null; try { e = await r.json(); } catch (x) { e = null; }
           ponEstado(r.status === 401 ? "Entra con tu enlace para ver a los demás." : (e && typeof e.mensaje === "string" ? e.mensaje : "No se pudo entrar en la visita compartida (" + r.status + ")."), true);
@@ -363,7 +374,7 @@
         var mi = SR.yo(); sala = SR;
         yo = { identidad: mi.identidad, info: SalaPose.leeInfo(mi.metadatos) };
         SR.participantes().forEach(function (de) { entraOtro(de); });
-        ponEstado("", false);
+        ponEstado("", false); pintaNota();
       } catch (err) {
         ponEstado("No se pudo conectar con la visita compartida.", true);
         if (typeof console !== "undefined") console.warn("presencia: " + (err && err.message ? err.message : err));
@@ -382,18 +393,28 @@
       if (!activo) return;
       ponEstado(motivo === "expulsado" ? "La oficina te ha sacado de la visita compartida." : motivo === "duplicado" ? "Has abierto la visita compartida en otra pestaña: aquí se ha cerrado." : "Te has desconectado de la visita compartida.", true);
     }
+    // OF10: pasar a otra sala del mundo (la invitación de la oficina, 39_oficina_mundo.js, o la propia oficina). Se deja de ver a los de la sala de antes y se pide
+    // un token de la nueva; la red (37_red.js) deja la vieja al unirse a la nueva bajo la misma clave «visita». No te mueve de sitio en el mundo: cambia con quién estás.
+    // Promesa: true si queda dentro de la nueva; false si no había sala, ya estabas en ella, estaba entrando o no se pudo
+    function cambiaSala(clave) {
+      if (!SR || !Object.prototype.hasOwnProperty.call(SALAS_MUNDO, clave) || conectando) return Promise.resolve(false);
+      if (clave === claveSala && sala) return Promise.resolve(false);
+      claveSala = clave; Object.keys(porId).forEach(saleOtro); sala = null; yo = null; claveGente = "";   // así el «fuera» de la sala vieja no avisa de nada
+      return conecta().then(function () { pintaNota(); return !!sala; });
+    }
+    function pintaNota() { if (ui && ui.nota) ui.nota.textContent = SALAS_MUNDO[claveSala] + ": sin voz. El chat no se guarda."; }
     // de = { identidad, metadatos } (37_red.js): los metadatos los pone la api en el token y se leen como DATOS (SalaPose.leeInfo)
     function entraOtro(de) {
       var id = de && de.identidad; if (!id || porId[id]) return porId[id] || null;
       if (!huecos.length) { est.sinPlaza = (est.sinPlaza || 0) + 1; return null; }
       var h = huecos.pop(), mt = SalaPose.leeInfo(de.metadatos);
       var vest = Aspecto.viste(mt);   // AV2: piel (10 tonos), ropa de arriba y de abajo, altura, complexión y apoyo; sin ellos, el de antes
-      var a = { k: h, id: id, info: mt, alias: mt.alias, vrm: mt.vrm, camisa: vest.camisa, piel: vest.piel, pantalon: vest.pantalon, fa: vest.fa, fc: vest.fc, mov: vest.mov, propioPiel: vest.propioPiel, propioCamisa: vest.propioCamisa,
+      var a = { k: h, id: id, info: mt, alias: mt.alias, vrm: mt.vrm, oficial: vest.oficial, chaleco: vest.chaleco, iIns: -1, camisa: vest.camisa, piel: vest.piel, pantalon: vest.pantalon, fa: vest.fa, fc: vest.fc, mov: vest.mov, propioPiel: vest.propioPiel, propioCamisa: vest.propioCamisa,
         pelo: vest.pelo, receta: vest.receta,
         sombrero: mt.sombrero, iSom: -1, iMano: h * 2, out: BufferPose.salida(), ret: null, visto: false, cerca: false };
       tomaAccesorios(a);
       a.o = SalaPose.entra(SP, id, mt); a.buf = a.o.buf;
-      colorea(a); pintaNombre(h, mt.alias); oculta(a);
+      colorea(a); pintaNombre(h, mt.alias, mt.oficial); oculta(a);
       porId[id] = a; claveGente = ""; cambio = true; return a;
     }
     function saleOtro(id) {
@@ -495,7 +516,7 @@
         sala.publica("chat", Chat.codifica(txt), { fiable: true }).then(function () { anadeMensaje("Tú", txt, true); }, function () { ponEstado("No se pudo mandar el mensaje.", false); });
       });
       (visor || document.body).appendChild(raiz); (visor || document.body).appendChild(burbuja);
-      ui = { raiz: raiz, burbuja: burbuja, cont: cont, titulo: titulo, gTitulo: gTitulo, gSeccion: gSeccion, cuerpo: cuerpo, estado: estado, reentra: reentra, listaG: listaG, chat: chat, entrada: entrada, noLeidos: 0, ventana: "abierto", mov: null, movB: null };
+      ui = { nota: nota, raiz: raiz, burbuja: burbuja, cont: cont, titulo: titulo, gTitulo: gTitulo, gSeccion: gSeccion, cuerpo: cuerpo, estado: estado, reentra: reentra, listaG: listaG, chat: chat, entrada: entrada, noLeidos: 0, ventana: "abierto", mov: null, movB: null };
       conMov(function () {
         if (!ui || ui.raiz !== raiz) return;
         var defecto = function (d) { return d.tactil ? { x: d.mg.l + 10, y: d.H * 0.36 } : { x: d.mg.l + 12, y: d.H - d.mg.b - d.h - 12 }; };   // escritorio, abajo a la izquierda; táctil, a la izquierda por encima de la cruceta
@@ -532,12 +553,13 @@
       if (clave === claveGente) return; claveGente = clave;
       ui.gTitulo.textContent = "Gente (" + (g.length + (yo ? 1 : 0)) + ")";
       while (ui.listaG.firstChild) ui.listaG.removeChild(ui.listaG.firstChild);
-      if (yo) ui.listaG.appendChild(el("li", { style: "margin:3px 0" }, [el("strong", {}, ["Tú · " + yo.info.alias]), " · " + (enMundo ? "en el olivar" : "en vista aérea (no te ven)")]));
+      if (yo) ui.listaG.appendChild(el("li", { style: "margin:3px 0" }, [el("strong", {}, ["Tú · " + (yo.info.oficial ? "◆ " : "") + yo.info.alias]), " · " + (enMundo ? "en el olivar" : "en vista aérea (no te ven)")]));
       g.forEach(function (x) {
         var m = x.info || SalaPose.leeInfo(""), bl = !!bloqueados[x.id];
         var b = el("button", { type: "button", style: "font:inherit;color:inherit;background:none;border:1px solid rgba(255,255,255,0.3);border-radius:6px;padding:1px 6px;margin-left:6px;cursor:pointer", "aria-pressed": bl ? "true" : "false", title: "Solo te afecta a ti; nadie se entera" }, [bl ? "Desbloquear" : "Bloquear"]);
         b.addEventListener("click", function () { if (bloqueados[x.id]) delete bloqueados[x.id]; else bloqueados[x.id] = true; claveGente = ""; pintaGente(performance.now()); });
-        var hijos = [m.alias + " · " + m.rol + " · " + m.dispositivo + " · " + x.estado, b];
+        // OF10: la oficina, la primera (SalaPose.gente) y con su insignia ◆ (decisión 107: siempre se sabe si la oficina está)
+        var hijos = [(m.oficial ? "◆ " : "") + m.alias + " · " + m.rol + " · " + m.dispositivo + " · " + x.estado, b];
         if (x.enMundo && !bl) {   // «Ir con»: solo a quien está en el olivar (con pose) y no has bloqueado
           var ic = el("button", { type: "button", style: "font:inherit;color:inherit;background:rgba(64,240,255,0.16);border:1px solid rgba(64,240,255,0.55);border-radius:6px;padding:1px 6px;margin-left:6px;cursor:pointer", title: "Te deja a unos pasos, mirándola" }, ["Ir con " + m.alias]);
           ic.addEventListener("click", function () { irCon(x.id); });
@@ -642,7 +664,7 @@
         bytesPorSegundo: est.bps, ms: Math.round(est.ms * 1000) / 1000, msMax: Math.round(est.msMax * 1000) / 1000, retardoP95ms: est.retP95, errorP95m: est.errP95, vistos: V.filter(function (a) { return a.visto; }).length,
         enQuad: est.quad || 0, conDron: est.dron || 0, vehiculos: !!(mQuad && mDron), idas: est.idas || 0, ultimaIda: est.ultimaIda || null, vrm: vrmG ? vrmG.estado() : null,
         aspecto: mSombrero ? { cajas: mSombrero.count, ruedas: mRuedas.count, sillas: personasTodas().filter(function (a) { return a.mov === "silla"; }).length, bastones: personasTodas().filter(function (a) { return a.mov === "baston"; }).length, andadores: personasTodas().filter(function (a) { return a.mov === "andador"; }).length } : null };
-      if (variante === "red") { e.conectado = !!sala; e.identidad = yo ? yo.identidad : null; e.vistos = Object.keys(porId).filter(function (k) { return porId[k].visto; }).length; e.sinPlaza = est.sinPlaza || 0; e.enVistaAerea = !(sala && poseLocal(Math.round(performance.now()))); }
+      if (variante === "red") { e.sala = claveSala; e.oficina = !!(yo && yo.info.oficial); e.conectado = !!sala; e.identidad = yo ? yo.identidad : null; e.vistos = Object.keys(porId).filter(function (k) { return porId[k].visto; }).length; e.sinPlaza = est.sinPlaza || 0; e.enVistaAerea = !(sala && poseLocal(Math.round(performance.now()))); }
       return e;
     }
     function libera() {   // libera todo lo de la GPU (y, en red, sale de la sala y retira el apartado) y deja la presencia como sin la bandera
@@ -671,7 +693,7 @@
     function miAvatar() {
       if (!yo || !yo.info) return null;
       var v = Aspecto.viste(yo.info);
-      return { vrm: yo.info.vrm, receta: v.receta, sombrero: yo.info.sombrero, piel: v.piel, camisa: v.camisa, pantalon: v.pantalon, pelo: v.pelo, fa: v.fa };
+      return { vrm: yo.info.vrm, receta: v.receta, sombrero: yo.info.sombrero, piel: v.piel, camisa: v.camisa, pantalon: v.pantalon, pelo: v.pelo, fa: v.fa, chaleco: v.chaleco };
     }
     // lo que ELIGIÓ la persona (tono o ropa de arriba) manda sobre los colores del catálogo (decisión 131); los colores del catálogo solo valen a quien no eligió
     function recolorea(a, camisa, piel) { if (!mCuerpo) return; if (camisa != null && !a.propioCamisa) a.camisa = camisa; if (piel != null && !a.propioPiel) a.piel = piel; colorea(a); }
@@ -681,8 +703,13 @@
     n.on("depura:lineas", function (d) { var t = texto(); if (t && d && d.lineas) d.lineas.push(t); });
     // el icono del chat de la barra (31_hud.js): minimizado (burbuja) → se abre; abierto → se minimiza y el foco va a la burbuja. Sin ventana del chat, nada
     n.on("chat:alterna", function () { if (!ui) return; if (ui.raiz.hidden) ponChat("abierto"); else { ponChat("minimo"); ui.burbuja.focus(); } });
+    // OF10 (39_oficina_mundo.js): en qué sala estás y cambiar de sala, quién eres en la sala (tus metadatos leídos como datos: { alias, rol, oficial }; null fuera) y
+    // dejar un mensaje en el chat (el anuncio de la oficina: el texto ya viene limpio, y se pinta como texto)
+    function miInfo() { return yo && yo.info ? { alias: yo.info.alias, rol: yo.info.rol, oficial: !!yo.info.oficial } : null; }
+    function mensaje(quien, txt) { var t = Chat.limpia(txt), q = Chat.limpia(quien); if (t && q) anadeMensaje(q, t, false); return !!(t && q); }
     var api = { activo: function () { return activo; }, actualiza: actualiza, estado: estado, libera: libera, texto: texto, llegadas: llegadas, puntos: puntos, irCon: irCon,
-      vrmPersonas: vrmPersonas, miVrm: miVrm, miAvatar: miAvatar, recolorea: recolorea, cambiaron: cambiaron, enganchaVRM: enganchaVRM };
+      vrmPersonas: vrmPersonas, miVrm: miVrm, miAvatar: miAvatar, recolorea: recolorea, cambiaron: cambiaron, enganchaVRM: enganchaVRM,
+      sala: function () { return claveSala; }, cambiaSala: cambiaSala, yo: miInfo, mensaje: mensaje };
     window.__presenciaChat = function (txt) { anadeMensaje("Prueba", String(txt || "Hola"), false); };   // pruebas del chat movible (la ventana solo existe con ?presencia=red o &chat=1)
     // gancho de pruebas: estado; con "libera", apagar el componente (soltar todo; los avatares VRM se sueltan antes); con "llegadas", las poses apuntadas (P4);
     // con "puntos", quién sale en el minimapa; con "ir" e id, ir con esa persona (I1). Tras liberar sigue contestando (activo: false), como antes de C5

@@ -1,5 +1,5 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: actualizaMinimapa
+// Expone: Minimapa, actualizaMinimapa
 // Consume: 01_datos (D, $, ANCHO, ALTO), 02_mundo (Mundo, cIn), 02e_entidades (Entidades, Usables), 03_escena (modo), 08_marcadores (capas),
 //   12_paseo (paseando, persona), 13_parcelas (parcelas), 14_historia (aviso), 15_tiempo (esc),
 //   16_vida (enQuad, quita, mira, conejos, quad, enDron, dron), 19_balizas (avisoBaliza, dibujaBalizasMini), 25_perros (dibujaPerrosMini),

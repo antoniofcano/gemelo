@@ -33,7 +33,8 @@ const moderadorDePrueba = { presentes: new Set<string>(), llamadas: [] as [strin
     let n = 0;
     for (const i of [...this.presentes]) if (esDelHogar(i, prefijo)) { this.presentes.delete(i); n++; }
     return n;
-  } };
+  },
+  async envia() { return true; } };
 const ADMIN = "oficina@example.com", ANA = "ana@example.com", LUIS = "luis@example.com";
 
 before(async () => {
@@ -395,7 +396,7 @@ test("presencia: solo la oficina expulsa; queda en la auditoría y el expulsado 
   const r = await con("POST", "/api/admin/presencia/expulsar", admin, { hogar_id: ids[LUIS]!, motivo: "prueba de moderación" });
   assert.equal(r.statusCode, 200, r.body);
   assert.deepEqual(r.json(), { estaba_en_sala: true, conexiones: 2 }, "sus dos aparatos");
-  assert.deepEqual(moderadorDePrueba.llamadas.at(-1), ["hituelo-libre", identidad.slice(0, 24)]);
+  assert.deepEqual(moderadorDePrueba.llamadas.slice(-2), [["hituelo-libre", identidad.slice(0, 24)], ["hituelo-visita", identidad.slice(0, 24)]], "OF10: de las dos salas");
   const aud = await bd.dueno.query("SELECT hogar_id, detalle FROM auditoria WHERE accion = 'admin.presencia_expulsado' ORDER BY id DESC LIMIT 1");
   assert.equal(Number(aud.rows[0].hogar_id), ids[ADMIN]);
   assert.deepEqual(aud.rows[0].detalle, { hogar: ids[LUIS], sala: "hituelo-libre", estaba: true, conexiones: 2, motivo: "prueba de moderación" });
