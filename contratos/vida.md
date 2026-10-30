@@ -38,7 +38,7 @@ Un hogar ajeno ve de cada olivo personalizado **solo** `id` (de la personalizaci
 | Aviso | `?acepto=true` obligatorio: «Sube solo fotos o pinturas del olivo o del campo. No subas caras de menores ni datos personales (nombres, matrículas, direcciones, teléfonos). Lo que subes lo ven al momento las demás familias; la oficina puede retirarlo.» (`TEXTO_AVISO`, versión `AVISO_VERSION` = 1, se guarda con la fecha en `medios`) |
 | Comprobación | el formato se lee del **contenido** con sharp (libvips): un PNG que dice ser JPEG, un GIF o un SVG → 415; más de 40 MP → 413 sin descomprimir |
 | Lo que se guarda | **WebP** re-codificado (calidad 82), enderezado por su EXIF y reducido a **≤ 1600 px** de lado, **sin metadatos** (ni EXIF, ni GPS, ni XMP, ni ICC); nombre al azar de 128 bits; nunca el fichero original |
-| Tamaño | `GEMELO_MEDIOS_MAX_MB` (8 por defecto). **Ojo:** el Caddy interno y el de borde cortan hoy `/api/*` a 1 MB y 2 MB: hay que abrir `/api/medios` (ver VIDA.md) o reducir la foto en el navegador antes de subirla |
+| Tamaño | `GEMELO_MEDIOS_MAX_MB` (8 por defecto). El Caddy interno y el de borde dejan pasar `POST /api/medios` hasta 9 MB y cortan el resto de `/api/*` a 1 MB y 2 MB (V7; si se sube el tope por encima de 8, subir también `max_size` en `infra/Caddyfile` y `infra/bloque-borde.txt`) |
 | Límites | 30/min por IP; `GEMELO_MEDIOS_SUBIDAS_HORA` (20) por hogar; las escrituras (personalizar, denunciar, sugerir), `GEMELO_VIDA_ESCRITURAS_HORA` (60) por hogar |
 | Servir | `GET /api/medios/{clave}` tras sesión, `cache-control: private, max-age=300`, `content-security-policy: default-src 'none'; sandbox` |
 

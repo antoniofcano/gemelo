@@ -28,6 +28,12 @@ components:
         sombrero: { enum: [ninguno, paja, gorra] }
         piel: { type: integer, minimum: 0, maximum: 4 }
         vrm: { type: [string, "null"], description: "id del catálogo de avatares VRM; null = el muñeco de bloque" }
+        tono: { type: integer, minimum: 0, maximum: 9, description: "AV2 (opcional): tono de piel del muñeco, de los 10 de la paleta del motor (ninguno es «el de serie»); manda sobre `piel`" }
+        arriba: { type: integer, minimum: 0, maximum: 9, description: "AV2 (opcional): color de la ropa de arriba, de los 10 de la paleta (nombres del campo); manda sobre `camisa`" }
+        abajo: { type: integer, minimum: 0, maximum: 9, description: "AV2 (opcional): color de la ropa de abajo (pantalón o falda), de la misma paleta" }
+        altura: { enum: [baja, media, alta], description: "AV2 (opcional): escala el muñeco" }
+        complexion: { enum: [delgada, media, ancha], description: "AV2 (opcional): ensancha o afina el muñeco" }
+        movilidad: { enum: [pie, baston, andador, silla], description: "AV2 (opcional): apoyo que lleva; con `silla` el muñeco va sentado con sus ruedas. No es una pose: la calcula quien mira" }
     Error:
       type: object
       additionalProperties: false
@@ -340,6 +346,9 @@ paths:
         `vrm` es el `id` de `/avatares/catalogo.json` ([avatares.md](avatares.md)); ausente o `null`, el muñeco. La api no conoce el
         catálogo (lo sirve Caddy): un id que ya no esté en él lo trata el cliente como ausente. Viaja en los metadatos de presencia
         (`avatar.vrm`) solo si hay uno.
+
+        AV2 (decisión 131): `tono`, `arriba`, `abajo`, `altura`, `complexion` y `movilidad` son **opcionales** y de listas cerradas (nada de género);
+        el contrato sigue en v1 (un cliente de antes los ignora). Un PUT sin ellos los borra; viajan en los metadatos de presencia solo los elegidos.
       security: [{ sesion: [] }]
       requestBody:
         required: true
@@ -354,6 +363,12 @@ paths:
                 sombrero: { enum: [ninguno, paja, gorra] }
                 piel: { type: integer, minimum: 0, maximum: 4 }
                 vrm: { type: [string, "null"], pattern: "^[a-z0-9-]{1,32}$" }
+                tono: { type: integer, minimum: 0, maximum: 9 }
+                arriba: { type: integer, minimum: 0, maximum: 9 }
+                abajo: { type: integer, minimum: 0, maximum: 9 }
+                altura: { enum: [baja, media, alta] }
+                complexion: { enum: [delgada, media, ancha] }
+                movilidad: { enum: [pie, baston, andador, silla] }
       responses:
         "204": { description: guardado }
         "400": { description: "la petición no tiene la forma esperada" }

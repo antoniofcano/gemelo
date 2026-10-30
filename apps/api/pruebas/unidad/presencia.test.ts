@@ -215,3 +215,14 @@ test("POST /api/admin/presencia/expulsar: sin Origin 403, cuerpo raro 400, sin s
     assert.equal(mod.llamadas.length, 0);
   } finally { await app.close(); await pool.end(); }
 });
+
+test("aspecto del muñeco (AV2): limpiaAspecto deja solo lo válido de las listas cerradas y los metadatos lo llevan sin tocar lo de antes", async () => {
+  const { ASPECTO, limpiaAspecto } = await import("../../src/presencia/livekit.ts");
+  assert.deepEqual(limpiaAspecto({ tono: 4, arriba: 0, abajo: 9, altura: "alta", complexion: "ancha", movilidad: "silla" }), { tono: 4, arriba: 0, abajo: 9, altura: "alta", complexion: "ancha", movilidad: "silla" });
+  assert.deepEqual(limpiaAspecto({ tono: 10, arriba: -1, abajo: 1.5, altura: "gigante", complexion: 3, movilidad: "moto", sexo: "x", extra: 1 }), {}, "lo raro se descarta, nada de campos de más");
+  for (const raro of [null, undefined, "x", 7, [1, 2]]) assert.deepEqual(limpiaAspecto(raro), {});
+  assert.equal(ASPECTO.tono.max + 1, 10, "diez tonos de piel (decisión 131)");
+  const tk = await firmaToken(LK, 7, SES, { ...META, avatar: { ...META.avatar, ...limpiaAspecto({ tono: 8, movilidad: "silla", altura: "baja" }) } });
+  const c = await new TokenVerifier(LK.clave, LK.secreto).verify(tk.token);
+  assert.deepEqual(JSON.parse(c.metadata!).avatar, { camisa: 2, sombrero: "gorra", piel: 3, tono: 8, altura: "baja", movilidad: "silla" });
+});

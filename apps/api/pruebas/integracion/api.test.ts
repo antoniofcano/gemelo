@@ -343,6 +343,20 @@ test("avatar: el hogar elige uno del catálogo, lo lee de vuelta, viaja en los m
   assert.equal((await app.inject({ method: "PUT", url: "/api/yo/avatar", headers: deLaWeb({}), payload: { camisa: 1, sombrero: "paja", piel: 3 } })).statusCode, 401);
 });
 
+test("avatar (AV2): el aspecto del muñeco se guarda, se lee aplanado, viaja en los metadatos y un PUT sin él lo borra (NO ejecutada aquí: pide Docker)", async t => {
+  if (salta(t)) return;
+  const ana2 = await entra(ANA);
+  const asp = { tono: 8, arriba: 3, abajo: 1, altura: "alta", complexion: "ancha", movilidad: "silla" };
+  assert.equal((await con("PUT", "/api/yo/avatar", ana2, { camisa: 1, sombrero: "paja", piel: 3, ...asp })).statusCode, 204);
+  assert.deepEqual((await con("GET", "/api/yo/avatar", ana2)).json(), { camisa: 1, sombrero: "paja", piel: 3, vrm: null, ...asp });
+  const tk = await con("POST", "/api/presencia/token", ana2, { dispositivo: "escritorio" });
+  const c = await new TokenVerifier(LIVEKIT.GEMELO_LIVEKIT_CLAVE, LIVEKIT.GEMELO_LIVEKIT_SECRETO).verify(tk.json().token);
+  assert.deepEqual(JSON.parse(c.metadata!).avatar, { camisa: 1, sombrero: "paja", piel: 3, ...asp });
+  assert.equal((await con("PUT", "/api/yo/avatar", ana2, { camisa: 1, sombrero: "paja", piel: 3, tono: 10 })).statusCode, 400);
+  assert.equal((await con("PUT", "/api/yo/avatar", ana2, { camisa: 1, sombrero: "paja", piel: 3 })).statusCode, 204);
+  assert.deepEqual((await con("GET", "/api/yo/avatar", ana2)).json(), { camisa: 1, sombrero: "paja", piel: 3, vrm: null }, "sin aspecto, la respuesta de siempre");
+});
+
 // ---------------------------------------------------------------- presencia (F2)
 test("presencia: con sesión, token de la sala libre con identidad opaca, metadatos de la base y solo datos", async t => {
   if (salta(t)) return;

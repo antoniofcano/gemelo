@@ -1,9 +1,9 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Chat, Muneco, Encuentro, sitioJunto, avatarVRM, Presencia
-// Consume: 01_datos (D, $), 02_mundo (suelo, copas), 03_escena (visor, renderer, scene, camera, texColor, exag, modo), 06_arboles (tronco),
-//   09_camara (objetivo), 12_paseo (paseando, persona), 12b_llegada (Llegada), 13b_hazas (HazasPuro), 14_historia (lista),
-//   15_tiempo (ahoraMs, rumbo, hace), 16_vida (enQuad, mira, quad, vidaPaseo, enDron, dron), 17_minimapa (mini), 29_vr (VRX, vrFundido, panel),
-//   34_movibles (Movibles)
+// Consume: 01_datos (D, $), 02_mundo (suelo, copas), 03_escena (visor, renderer, scene, camera, texColor, exag, modo), 04d_sombreado_tiles (hash),
+//   06_arboles (tronco), 09_camara (objetivo, suelta, elige), 12_paseo (paseando, persona, primera), 12b_llegada (Llegada), 13b_hazas (HazasPuro),
+//   14_historia (lista), 15_tiempo (ahoraMs, rumbo, hace), 16_vida (enQuad, mira, quad, vidaPaseo, enDron, dron), 17_minimapa (mini),
+//   29_vr (VRX, vrFundido, panel), 34_movibles (Movibles)
 // Nota: Publica además window.__presencia (pruebas). Sin ?presencia=sim o ?presencia=red no crea nada (con red, import("livekit-client") y el panel Gente); el trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/presencia.test.js.
 // ===============================================================================
   // ---------- presencia compartida (F2, contratos/presencia.md): la pose de cada visitante en binario, su interpolación y los avatares de bloque instanciados.
@@ -112,6 +112,42 @@
     function salida() { return { cab: { p: [0, 0, 0], q: [0, 0, 0, 1] }, izq: { p: [0, 0, 0], q: [0, 0, 0, 1] }, der: { p: [0, 0, 0], q: [0, 0, 0, 1] }, hayIzq: false, hayDer: false, tipo: 1, modo: 0, t: 0 }; }
     return { MAX: MAX, EXTRA: EXTRA, crea: crea, recibe: recibe, muestra: muestra, salida: salida };
   })();
+  // El aspecto del muñeco lejano (AV2, decisión 131; criterios C2, C3, C5, C7 y C13 de doc/sistema/AVATARES-FAMILIA.md): 10 tonos de piel (ninguno «de serie»: lo que no se
+  // ha elegido se reparte por el alias), color de ropa de arriba y de abajo por persona (10 nombres del campo, para cualquier cuerpo), altura (3) y complexión (3) que escalan el
+  // muñeco, y el apoyo que lleva (a pie, bastón, andador o silla de ruedas). NADA depende del género. Lo que llega por los metadatos de la sala son campos OPCIONALES del contrato
+  // `presencia` v1 (contratos/presencia.md): un cliente de antes los ignora, y sin ellos el muñeco es el de siempre (camisa 0-5, piel 0-4, pantalón del paseante).
+  var Aspecto = (function () {
+    // los 10 tonos de la maqueta (prototipos/avatares), de muy claro a muy oscuro; la ropa, con nombres del campo (verde olivo, aceituna negra, tierra, almagra, trigo, cielo, adelfa, cal, pizarra, lavanda)
+    var PIELES = [0xf6dcc8, 0xeec5a6, 0xe0ac86, 0xcf9670, 0xb97d57, 0xa06844, 0x855436, 0x6b412a, 0x523020, 0x3b2217];
+    var ROPA = [0x6b7f3a, 0x2f2a2a, 0x8a5a3b, 0xa8432f, 0xd8b65e, 0x6f9fc6, 0xd77a9a, 0xece7dc, 0x4b5563, 0x8b7bb5];
+    var CAMISAS = [0xc0533a, 0x3f7cc2, 0xe0b23a, 0x5d9b4a, 0x8a5bb0, 0xe8e2d4], PANTALON = 0x37455c;   // los de antes (camisa 0-5) y el pantalón fijo del paseante
+    var PIEL_ANTES = [1, 2, 4, 6, 7];   // piel 0-4 de antes → el tono más cercano de los 10
+    var ALTURAS = { baja: 0.93, media: 1, alta: 1.07 }, COMPLEXIONES = { delgada: 0.84, media: 1, ancha: 1.24 }, MOVILIDADES = ["pie", "baston", "andador", "silla"];
+    function ent(v, a, b) { return typeof v === "number" && v % 1 === 0 && v >= a && v <= b ? v : null; }
+    function opc(v, lista, def) { return typeof v === "string" && Object.prototype.hasOwnProperty.call(lista, v) ? v : def; }
+    // lo que trae `avatar` de los metadatos (lo que no cuadra toma el valor neutro: nulo o «media»/«pie»)
+    function lee(av) {
+      av = av && typeof av === "object" ? av : {};
+      return { tono: ent(av.tono, 0, 9), arriba: ent(av.arriba, 0, 9), abajo: ent(av.abajo, 0, 9), altura: opc(av.altura, ALTURAS, "media"), complexion: opc(av.complexion, COMPLEXIONES, "media"),
+        movilidad: MOVILIDADES.indexOf(av.movilidad) >= 0 ? av.movilidad : "pie" };
+    }
+    function hash(t) { var h = 2166136261; t = String(t); for (var i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+    // lo que se dibuja de una persona. info = SalaPose.leeInfo(...): { camisa, piel, alias, aspecto }. Sin tono elegido, el de antes (piel 0-4)
+    // si la api lo mandó distinto del de serie (1); si no, uno repartido por el alias, para que nadie tenga «el tono por defecto».
+    function viste(info) {
+      var as = info.aspecto || lee(null), tono = as.tono;
+      if (tono === null) tono = info.piel !== 1 && info.piel >= 0 && info.piel <= 4 ? PIEL_ANTES[info.piel] : hash(info.alias) % 10;
+      return {
+        piel: PIELES[tono], tono: tono, camisa: as.arriba !== null ? ROPA[as.arriba] : CAMISAS[info.camisa], pantalon: as.abajo !== null ? ROPA[as.abajo] : PANTALON,
+        propioPiel: as.tono !== null, propioCamisa: as.arriba !== null,   // lo que ELIGIÓ la persona manda sobre los colores del catálogo VRM
+        fa: ALTURAS[as.altura], fc: COMPLEXIONES[as.complexion], mov: as.movilidad
+      };
+    }
+    // cuántas cajas de accesorios pide: el sombrero (1) y el apoyo (silla 2: asiento y respaldo; bastón 1; andador 3: barra y dos laterales)
+    var CAJAS_APOYO = { pie: 0, baston: 1, andador: 3, silla: 2 }, CAJAS_MAX = 4;
+    function cajas(sombrero, mov) { return (sombrero ? 1 : 0) + (CAJAS_APOYO[mov] || 0); }
+    return { PIELES: PIELES, ROPA: ROPA, CAMISAS: CAMISAS, PANTALON: PANTALON, PIEL_ANTES: PIEL_ANTES, ALTURAS: ALTURAS, COMPLEXIONES: COMPLEXIONES, MOVILIDADES: MOVILIDADES, CAJAS_MAX: CAJAS_MAX, lee: lee, viste: viste, cajas: cajas, hash: hash };
+  })();
   // Sala de verdad (?presencia=red): a quién se manda la pose en cada tic (10 Hz a los cercanos, 2 Hz a toda la sala), quién está cerca (entra a 55 m y sale a 65 m),
   // a qué ritmo le llega cada uno (y por tanto con qué retardo se dibuja) y quién está «en vista aérea» (conectado y sin pose reciente: decisión 60).
   // No sabe nada de LiveKit: el motor le pasa lo que recibe y publica lo que devuelve tic(). Los metadatos de la sala se leen como DATOS (leeInfo()).
@@ -177,7 +213,8 @@
         rol: ROLES.indexOf(m.rol) >= 0 ? m.rol : "hogar",
         dispositivo: DISPOSITIVOS.indexOf(m.dispositivo) >= 0 ? m.dispositivo : "escritorio",
         camisa: entero(av.camisa, 0, 5, 0), piel: entero(av.piel, 0, 4, 1), sombrero: SOMBREROS.indexOf(av.sombrero) >= 0 ? SOMBREROS.indexOf(av.sombrero) : 1,
-        vrm: typeof av.vrm === "string" && /^[a-z0-9-]{1,32}$/.test(av.vrm) ? av.vrm : null   // P7c (ADR-0020 §6): id del catálogo de avatares; si no cuadra, el muñeco
+        vrm: typeof av.vrm === "string" && /^[a-z0-9-]{1,32}$/.test(av.vrm) ? av.vrm : null,   // P7c (ADR-0020 §6): id del catálogo de avatares; si no cuadra, el muñeco
+        aspecto: Aspecto.lee(av)   // AV2: tono, ropa, altura, complexión y apoyo (opcionales; ver Aspecto)
       };
     }
     return { TICK: TICK, SIN_POSE: SIN_POSE, crea: crea, entra: entra, sale: sale, recibe: recibe, tic: tic, retardo: retardo, gente: gente, conPose: conPose, seVe: seVe, leeInfo: leeInfo };
@@ -212,6 +249,7 @@
     var ALTURA = 1.6, PASO = 3.4, VREF = 1.7, AMP = 0.75, BRAZO = 0.8, BOTE = 0.03;   // los de su paseo (12_paseo.js)
     var SUAVE_V = 8, GIRO = 6, V_ANDA = 0.25, V_MAX = 8, SALTO = 5, AGACHO_MAX = 0.9;
     var SENTADO_P = 1.15, SENTADO_B = 1.05, MANDO_B = 1.0;   // los de 16_vida.js (vidaPaseo): en quad, piernas 1,15 y brazos 1,05 rad; con el dron, brazos 1,0
+    var SILLA_BAJA = 0.31, SILLA_B = 0.55;   // AV2: cuánto baja el cuerpo sentado en su silla (cadera a ≈ 0,55 m) y el ángulo de los brazos hacia las ruedas
     var V_MAX_QUAD = 14;   // en quad se va a 12 m/s: la velocidad suavizada no se recorta a la de andar
     function crea() { return { x: null, z: null, vel: 0, paso: 0, yaw: 0 }; }
     function ang(d) { return Math.atan2(Math.sin(d), Math.cos(d)); }
@@ -220,7 +258,9 @@
     // conManos: trae manos (Quest) → los brazos no se animan; modo (P6): 0 a pie, 1 en quad (sentado: piernas y brazos adelante, sin paso, el cuerpo
     // 0,2 m detrás del centro del quad, como el paseante local en 16_vida.js), 2 con el dron (de pie, brazos al mando, sin paso).
     // Devuelve en `o` lo que se necesita para colocar las piezas (y el vehículo: o.vehiculo, o.yVeh, o.atras).
-    function avanza(st, x, z, yawCab, dt, sueloLocal, exag, hCab, conManos, o, modo) {
+    // silla (AV2, decisión 131, criterio C7): a pie (modo 0) y con la silla de ruedas puesta, va SENTADO como en el quad (piernas 1,15 rad, sin paso) pero con los brazos a las ruedas, a la
+    // misma velocidad y por los mismos caminos; el cuerpo baja SILLA_BAJA para que la cadera quede a ≈ 0,55 m y la cabeza a ≈ 1,3 m. o.vehiculo = 3 (la silla: se dibuja aparte).
+    function avanza(st, x, z, yawCab, dt, sueloLocal, exag, hCab, conManos, o, modo, silla) {
       o = o || {}; modo = modo === 1 || modo === 2 ? modo : 0;
       if (st.x === null) { st.x = x; st.z = z; st.yaw = yawCab; }
       var dx = x - st.x, dz = z - st.z, d = Math.sqrt(dx * dx + dz * dz), v = dt > 0 && d < SALTO ? d / dt : 0;   // un salto (vuelve tras un hueco) no es andar
@@ -231,6 +271,15 @@
       var obj = !modo && st.vel > V_ANDA && d > 1e-6 ? Math.atan2(-dx, -dz) : yawCab;
       st.yaw = ang(st.yaw + ang(obj - st.yaw) * Math.min(1, dt * GIRO));
       st.x = x; st.z = z; o.vehiculo = modo; o.atras = 0;
+      if (!modo && silla) {
+        var ms = Math.min(1, st.vel / VREF);
+        st.paso += st.vel * dt * PASO;   // solo para el vaivén de los brazos
+        o.vehiculo = 3; o.yVeh = 0; o.yPies = sueloLocal * exag - SILLA_BAJA; o.yaw = st.yaw; o.vel = st.vel; o.mov = ms;
+        o.piernaI = o.piernaD = SENTADO_P;
+        o.brazoI = o.brazoD = conManos ? 0 : SILLA_B + Math.sin(st.paso) * 0.2 * ms;
+        o.agacho = 0; o.yCab = o.yPies + ALTURA;
+        return o;
+      }
       if (modo) {   // sentado en el quad o quieto con el mando: sin paso ni bote
         var q = modo === 1;
         o.yVeh = sueloLocal * exag + 0.02; o.yPies = sueloLocal * exag - (q ? 0.02 : 0); o.atras = q ? 0.2 : 0;
@@ -253,7 +302,7 @@
     // piezas del muñeco (las mismas medidas que el paseante de 12_paseo.js), con el pivote ARRIBA (hombro, cadera, cuello):
     // [ancho, largo, fondo, x, y del pivote, ¿pierna?, ¿brazo?]. y del pivote sin agacharse; agachado, baja el cuerpo y encogen las piernas
     var PIEZAS = [[0.46, 0.62, 0.25, 0, 1.48, 0, 0], [0.17, 0.86, 0.2, -0.12, 0.86, 1, 0], [0.17, 0.86, 0.2, 0.12, 0.86, 1, 0], [0.11, 0.58, 0.12, -0.3, 1.46, 0, 1], [0.11, 0.58, 0.12, 0.3, 1.46, 0, 1]];
-    return { ALTURA: ALTURA, SENTADO_P: SENTADO_P, SENTADO_B: SENTADO_B, MANDO_B: MANDO_B, crea: crea, avanza: avanza, PIEZAS: PIEZAS };
+    return { ALTURA: ALTURA, SILLA_BAJA: SILLA_BAJA, SILLA_B: SILLA_B, SENTADO_P: SENTADO_P, SENTADO_B: SENTADO_B, MANDO_B: MANDO_B, crea: crea, avanza: avanza, PIEZAS: PIEZAS };
   })();
   // «Ir con alguien» (I1): dónde dejarte cuando vas a donde está otra persona (Encuentro; el salto lo hace Llegada, 12b_llegada.js). A 2,5 m de ella (si no cabe, 3, 2, 3,5 o 4 m), por el lado desde el que
   // llegas y, si ahí hay árbol, probando cada 30° alrededor; mirándola. Un sitio vale si no cae dentro de ninguna copa (radio medio de su perfil LiDAR)
@@ -335,9 +384,27 @@
     var semilla = 20261029;
     function azar() { semilla = (semilla + 0x6d2b79f5) | 0; var t = Math.imul(semilla ^ (semilla >>> 15), 1 | semilla); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }
     var ALIAS = ["Mirlo", "Abubilla", "Jilguero", "Carbonero", "Alcaraván", "Verdecillo", "Golondrina", "Perdiz", "Abejaruco", "Cogujada", "Encina", "Lentisco", "Retama", "Acebuche", "Coscoja", "Romero", "Tomillo", "Jara", "Algarrobo", "Almendro"];
-    var CAMISAS = [0xc0533a, 0x3f7cc2, 0xe0b23a, 0x5d9b4a, 0x8a5bb0, 0xe8e2d4], PIELES = [0xf1c9a5, 0xd9a47c, 0xb57d55, 0x8a5a3a, 0x5e3b24], SOMBREROS = [null, { c: 0xd9bf6a, w: 0.46, h: 0.07, d: 0.46, z: 0 }, { c: 0x2e5d34, w: 0.3, h: 0.09, d: 0.36, z: -0.04 }];
+    var CAMISAS = Aspecto.CAMISAS, PIELES = Aspecto.PIELES, SOMBREROS = [null, { c: 0xd9bf6a, w: 0.46, h: 0.07, d: 0.46, z: 0 }, { c: 0x2e5d34, w: 0.3, h: 0.09, d: 0.36, z: -0.04 }];
     var m4 = null, m4b = null, q1 = null, v1 = null, v2 = null, vS = null, ejeY = null, cNom = 4, fNom = 1, matSombreroLocal = [];
-    var NP = Muneco.PIEZAS.length, PANTALON = 0x37455c, mBase = null, mPieza = null, ejeX = null, outMu = {};   // pantalón: el del paseante
+    var NP = Muneco.PIEZAS.length, PANTALON = Aspecto.PANTALON, mBase = null, mPieza = null, ejeX = null, outMu = {};   // pantalón: el del paseante, si la persona no eligió otro
+    // AV2 (decisión 131): los accesorios (sombrero y apoyo: asiento y respaldo de la silla, bastón, andador) son más instancias de la MISMA caja unidad del sombrero (0 llamadas nuevas) y las
+    // ruedas de la silla, una malla instanciada más (1 llamada, y solo si alguien lleva silla). Cada persona toma las cajas y ruedas que necesita de una reserva; la malla dibuja hasta la última en uso
+    var mRuedas = null, rCajas = null, rRuedas = null, vF = null, qI = null, vU = null, COLOR_APOYO = { silla: 0x4a4f55, baston: 0x5a3d22, andador: 0xa9b1b8 }, COLOR_RUEDA = 0x22262a;
+    function reserva(malla) {
+      var oc = [], cap = malla.instanceMatrix.count;
+      function fija() { var n = 0; for (var i = 0; i < cap; i++) if (oc[i]) n = i + 1; malla.count = n; malla.visible = n > 0; }
+      fija();
+      return {
+        toma: function (n) { var r = []; for (var i = 0; i < cap && r.length < n; i++) if (!oc[i]) { oc[i] = true; r.push(i); } fija(); return r; },
+        suelta: function (r) { for (var i = 0; i < r.length; i++) { oc[r[i]] = false; malla.setMatrixAt(r[i], m4.makeScale(0, 0, 0)); } malla.instanceMatrix.needsUpdate = true; fija(); }
+      };
+    }
+    // las cajas y ruedas de a según su sombrero y su apoyo; a.iSom = la caja del sombrero (o −1) y a.iApoyo = la primera del apoyo en a.cajas
+    function tomaAccesorios(a) {
+      a.cajas = rCajas.toma(Aspecto.cajas(a.sombrero, a.mov)); a.ruedas = a.mov === "silla" ? rRuedas.toma(2) : [];
+      a.iSom = a.sombrero ? a.cajas[0] : -1; a.iApoyo = a.sombrero ? 1 : 0;
+    }
+    function sueltaAccesorios(a) { if (a.cajas) rCajas.suelta(a.cajas); if (a.ruedas) rRuedas.suelta(a.ruedas); a.cajas = []; a.ruedas = []; a.iSom = -1; }
     // P6: el quad y el dron de los demás, el mismo modelo del paseante local (16_vida.js) fundido en una sola malla con color por vértice e instanciado:
     // una llamada para todos los quads y otra para todos los drones, y solo si alguien los lleva (si no, la malla no se dibuja)
     var mQuad = null, mDron = null, nVehQ = 0, nVehD = 0, vEsc = null, tVeh = 0, DRON_DELANTE = 5, DRON_ALTO = 4, DRON_ESC = 1.8;
@@ -346,6 +413,7 @@
     function montaGrafica(nCuerpos, nSom, nManos) {
       mBase = new THREE.Matrix4(); mPieza = new THREE.Matrix4(); ejeX = new THREE.Vector3(1, 0, 0);
       m4 = new THREE.Matrix4(); m4b = new THREE.Matrix4(); q1 = new THREE.Quaternion(); v1 = new THREE.Vector3(); v2 = new THREE.Vector3(); vS = new THREE.Vector3(1, 1, 1); ejeY = new THREE.Vector3(0, 1, 0);
+      vF = new THREE.Vector3(1, 1, 1); qI = new THREE.Quaternion(); vU = new THREE.Vector3(1, 1, 1);
       grupo = new THREE.Group(); grupo.name = "presencia"; scene.add(grupo);
       // el muñeco del paseante (12_paseo.js): cuerpo, dos piernas y dos brazos son la MISMA caja unidad con el pivote arriba,
       // escalada y girada por instancia (Muneco.PIEZAS): 5 instancias por avatar en una sola llamada; color por instancia
@@ -353,8 +421,11 @@
       var gC = new THREE.BoxGeometry(1, 1, 1); gC.translate(0, -0.5, 0);
       var gCab = new THREE.IcosahedronGeometry(0.135, 0), gSom = new THREE.BoxGeometry(1, 1, 1), gMano = new THREE.BoxGeometry(0.08, 0.08, 0.13), gNom = new THREE.PlaneGeometry(1.6, 0.3);
       var matC = new THREE.MeshLambertMaterial({ flatShading: true }), matL = new THREE.MeshLambertMaterial({ flatShading: true });
-      geos = [gC, gCab, gSom, gMano, gNom]; mats = [matC, matL];
+      var gRueda = new THREE.CylinderGeometry(0.3, 0.3, 0.05, 10); gRueda.rotateZ(Math.PI / 2);   // la rueda de la silla, con el eje en x (10 lados: 40 triángulos)
+      geos = [gC, gCab, gSom, gMano, gNom, gRueda]; mats = [matC, matL];
       mCuerpo = new THREE.InstancedMesh(gC, matC, nCuerpos * NP); mCabeza = new THREE.InstancedMesh(gCab, matL, nCuerpos); mSombrero = new THREE.InstancedMesh(gSom, matL, nSom); mManos = new THREE.InstancedMesh(gMano, matL, nManos);
+      mRuedas = new THREE.InstancedMesh(gRueda, matL, nCuerpos * 2);
+      rCajas = reserva(mSombrero); rRuedas = reserva(mRuedas);   // sin nadie con sombrero ni silla, no se dibujan (count 0, invisible)
       SOMBREROS.forEach(function (s, i) { matSombreroLocal[i] = s ? new THREE.Matrix4().compose(new THREE.Vector3(0, 0.14 + s.h / 2, s.z), new THREE.Quaternion(), new THREE.Vector3(s.w, s.h, s.d)) : null; });
       // nombres: un atlas con todos los alias y un plano instanciado vuelto hacia la cámara en el sombreador (una llamada para todos)
       fNom = Math.ceil(nCuerpos / cNom);
@@ -372,7 +443,7 @@
       });
       mats.push(matN);
       mNombres = new THREE.InstancedMesh(gNom, matN, nCuerpos); mNombres.renderOrder = 5;
-      [mCuerpo, mCabeza, mSombrero, mManos, mNombres].forEach(function (m) { m.frustumCulled = false; m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); grupo.add(m); });   // se mueven cada fotograma: el volumen envolvente de una InstancedMesh se calcula una vez (r151)
+      [mCuerpo, mCabeza, mSombrero, mManos, mNombres, mRuedas].forEach(function (m) { m.frustumCulled = false; m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); grupo.add(m); });   // se mueven cada fotograma: el volumen envolvente de una InstancedMesh se calcula una vez (r151)
       vEsc = new THREE.Vector3(DRON_ESC, DRON_ESC, DRON_ESC);
       cargaVehiculos(nCuerpos);
     }
@@ -419,18 +490,21 @@
     }
     function colorea(a) {
       var c = new THREE.Color();
-      for (var j = 0; j < NP; j++) mCuerpo.setColorAt(a.k * NP + j, c.setHex(Muneco.PIEZAS[j][5] ? PANTALON : a.camisa));
+      for (var j = 0; j < NP; j++) mCuerpo.setColorAt(a.k * NP + j, c.setHex(Muneco.PIEZAS[j][5] ? (a.pantalon == null ? PANTALON : a.pantalon) : a.camisa));
       mCabeza.setColorAt(a.k, c.setHex(a.piel));
       if (a.iSom >= 0) mSombrero.setColorAt(a.iSom, c.setHex(SOMBREROS[a.sombrero].c));
+      if (a.cajas) for (var ja = a.iApoyo; ja < a.cajas.length; ja++) mSombrero.setColorAt(a.cajas[ja], c.setHex(COLOR_APOYO[a.mov]));
+      if (a.ruedas) for (var jr = 0; jr < a.ruedas.length; jr++) mRuedas.setColorAt(a.ruedas[jr], c.setHex(COLOR_RUEDA));
       if (a.iMano >= 0) { mManos.setColorAt(a.iMano, c.setHex(a.piel)); mManos.setColorAt(a.iMano + 1, c.setHex(a.piel)); }
-      [mCuerpo, mCabeza, mSombrero, mManos].forEach(function (m) { if (m.instanceColor) m.instanceColor.needsUpdate = true; });
+      [mCuerpo, mCabeza, mSombrero, mManos, mRuedas].forEach(function (m) { if (m.instanceColor) m.instanceColor.needsUpdate = true; });
     }
     function oculta(a) {   // nada de ese avatar se ve (escala 0) hasta que llegue su pose
       m4.makeScale(0, 0, 0);
       for (var j = 0; j < NP; j++) mCuerpo.setMatrixAt(a.k * NP + j, m4);
       mCabeza.setMatrixAt(a.k, m4); mNombres.setMatrixAt(a.k, m4);
       a.mu = null;   // al volver, empieza quieto donde aparezca (no se desliza desde donde se fue)
-      if (a.iSomHueco >= 0) mSombrero.setMatrixAt(a.iSomHueco, m4); else if (a.iSom >= 0) mSombrero.setMatrixAt(a.iSom, m4);
+      if (a.cajas) for (var jc = 0; jc < a.cajas.length; jc++) mSombrero.setMatrixAt(a.cajas[jc], m4);   // sombrero y apoyo
+      if (a.ruedas) for (var jw = 0; jw < a.ruedas.length; jw++) mRuedas.setMatrixAt(a.ruedas[jw], m4);
       if (a.iMano >= 0) { mManos.setMatrixAt(a.iMano, m4); mManos.setMatrixAt(a.iMano + 1, m4); }
       if (mQuad) mQuad.setMatrixAt(a.k, m4); if (mDron) mDron.setMatrixAt(a.k, m4);
       if (avatarVRM) avatarVRM.oculta(a);
@@ -442,13 +516,23 @@
       var p = (/[?&]n=(\d+)/.exec(location.search) || [])[1]; N = Math.max(1, Math.min(64, p ? Number(p) : 10)); est.n = N;
       // P6, solo para probar: &vehiculo=quad|dron|mixto pone a los simulados en quad, con el dron o un tercio de cada (sin él, todos a pie, como siempre)
       var veh = (/[?&]vehiculo=(quad|dron|mixto)\b/.exec(location.search) || [])[1] || "";
-      var nSom = 0, nQuest = 0;
+      // AV2, solo para probar: cada simulado lleva un aspecto repartido por su propio azar (semilla aparte: no cambia dónde pasean); &aspecto=0 los deja como antes (camisa y piel de antes, a pie, altura y complexión medias)
+      var conAspecto = !/[?&]aspecto=0\b/.test(location.search), semA = 20261031;
+      function azarA() { semA = (semA + 0x6d2b79f5) | 0; var t = Math.imul(semA ^ (semA >>> 15), 1 | semA); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }
+      function elige(l) { return l[Math.floor(azarA() * l.length)]; }
+      var nQuest = 0;
       for (var k = 0; k < N; k++) {
         var sombrero = Math.floor(azar() * 3), quest = azar() < 0.3, cercano = k < Math.ceil(N / 2);
+        var aliasK = ALIAS[k % ALIAS.length] + (k >= ALIAS.length ? " " + (1 + Math.floor(k / ALIAS.length)) : "");
+        var u = azarA(), av = !conAspecto ? {} : { tono: Math.floor(azarA() * 10), arriba: Math.floor(azarA() * 10), abajo: Math.floor(azarA() * 10), altura: elige(Object.keys(Aspecto.ALTURAS)), complexion: elige(Object.keys(Aspecto.COMPLEXIONES)),
+          movilidad: u < 0.12 ? "silla" : u < 0.22 ? "baston" : u < 0.28 ? "andador" : "pie" };
         var home = cercano ? { x: objetivo.x + (azar() - 0.5) * 80, y: -objetivo.z + (azar() - 0.5) * 80 } : { x: D.ext[0] + 10 + azar() * (D.ext[2] - D.ext[0] - 20), y: D.ext[3] + 10 + azar() * (D.ext[1] - D.ext[3] - 20) };
+        var rCam = azar(), rPiel = azar();   // las dos tiradas de siempre (camisa y piel): se gastan igual para no cambiar el resto de la simulación
+        var vest = Aspecto.viste({ alias: aliasK, camisa: Math.floor(rCam * CAMISAS.length), piel: conAspecto ? 1 : Math.floor(rPiel * 5), aspecto: Aspecto.lee(av) });
         V.push({
-          k: k, alias: ALIAS[k % ALIAS.length] + (k >= ALIAS.length ? " " + (1 + Math.floor(k / ALIAS.length)) : ""), quest: quest,
-          camisa: CAMISAS[Math.floor(azar() * CAMISAS.length)], piel: PIELES[Math.floor(azar() * PIELES.length)], sombrero: sombrero, iSom: sombrero ? nSom++ : -1, iMano: quest ? (nQuest++) * 2 : -1,
+          k: k, alias: aliasK, quest: quest,
+          camisa: vest.camisa, piel: vest.piel, pantalon: vest.pantalon, fa: vest.fa, fc: vest.fc, mov: vest.mov, propioPiel: vest.propioPiel, propioCamisa: vest.propioCamisa,
+          sombrero: sombrero, iSom: -1, iMano: quest ? (nQuest++) * 2 : -1,
           // emisor simulado: dónde está de verdad, adónde va, su reloj (u32, algunos a punto de dar la vuelta) y su secuencia
           home: home, x: home.x + (azar() - 0.5) * 20, y: home.y + (azar() - 0.5) * 20, dest: null, vel: 1.1 + azar() * 0.5, rum: 0, fase: azar() * 6.28,
           reloj: k % 4 === 0 ? 4294967296 - 3000 - k * 1000 - Math.round(performance.now()) : Math.floor(azar() * 1e9), seq: Math.floor(azar() * 65536), tTick: azar() * TICK, nTick: 0, cerca: false,
@@ -457,9 +541,9 @@
         var nuevo = V[V.length - 1]; if (nuevo.modo === 1) nuevo.vel = 5.5; else if (nuevo.modo === 2) nuevo.vel = 0;   // en quad, deprisa; con el dron, quieto
       }
       est.quest = nQuest;
-      montaGrafica(N, Math.max(1, nSom), Math.max(1, nQuest * 2));
-      mSombrero.count = nSom; mManos.count = nQuest * 2;
-      V.forEach(function (a) { colorea(a); pintaNombre(a.k, a.alias); });
+      montaGrafica(N, N * Aspecto.CAJAS_MAX, Math.max(1, nQuest * 2));
+      mManos.count = nQuest * 2;
+      V.forEach(function (a) { tomaAccesorios(a); colorea(a); pintaNombre(a.k, a.alias); });
       [mCuerpo, mCabeza, mSombrero, mManos, mNombres].forEach(function (m) { for (var i = 0; i < m.count; i++) m.setMatrixAt(i, m4.makeScale(0, 0, 0)); });   // nada se ve hasta que llega la pose inicial
     }
 
@@ -509,6 +593,19 @@
       }
     }
 
+    // AV2: el apoyo de a (ilustrativo, no medido), en el espacio del cuerpo (mBase, ya con la altura): hacia −z es delante, y = 0 el origen del cuerpo (sentado en la silla, el suelo queda en y = 0,31).
+    // Silla: asiento, respaldo y dos ruedas (solo con mu.vehiculo === 3); bastón: una caja fina junto a la mano derecha; andador: una barra delante y dos laterales (los dos, solo a pie).
+    // En quad, con el dron o con VRM no se dibujan. La rueda no gira (una caja instanciada de 10 lados: no se vería).
+    function caja(i, x, y, z, sx, sy, sz) { mPieza.compose(v1.set(x, y, z), qI, v2.set(sx, sy, sz)); mSombrero.setMatrixAt(i, m4b.multiplyMatrices(mBase, mPieza)); }
+    function apoyo(a, mu, fc) {
+      var n = a.iApoyo, ids = a.cajas, v = mu.vehiculo, vis = a.mov === "silla" ? v === 3 : v === 0, i;
+      if (!vis) { m4b.makeScale(0, 0, 0); for (i = n; i < ids.length; i++) mSombrero.setMatrixAt(ids[i], m4b); for (i = 0; i < a.ruedas.length; i++) mRuedas.setMatrixAt(a.ruedas[i], m4b); return; }
+      if (a.mov === "silla") {
+        caja(ids[n], 0, 0.8, -0.12, 0.62, 0.06, 0.52); caja(ids[n + 1], 0, 1.1, 0.17, 0.6, 0.5, 0.04);
+        for (i = 0; i < 2; i++) { mPieza.compose(v1.set((i ? 1 : -1) * (0.3 * fc + 0.14), 0.61, 0.1), qI, vU); mRuedas.setMatrixAt(a.ruedas[i], m4b.multiplyMatrices(mBase, mPieza)); }
+      } else if (a.mov === "baston") caja(ids[n], 0.3 * fc + 0.04, 0.43, -0.05, 0.035, 0.86, 0.035);
+      else if (a.mov === "andador") { caja(ids[n], 0, 0.85, -0.5, 0.64, 0.04, 0.04); caja(ids[n + 1], -0.31, 0.425, -0.3, 0.03, 0.85, 0.4); caja(ids[n + 2], 0.31, 0.425, -0.3, 0.03, 0.85, 0.4); }
+    }
     // ---- el receptor (las dos variantes): interpola y coloca las instancias. ret = el retardo que toca (150 ms si llega a 10 Hz, 650 si a 2 Hz)
     function coloca(a, ahoraMs, dt, ret) {
       var paso = dt * 500; a.ret = a.ret == null ? ret : a.ret + Math.max(-paso, Math.min(paso, ret - a.ret));   // el retardo cambia a 0,5 s por segundo: el avatar no salta al cambiar de tasa
@@ -521,19 +618,22 @@
       var c = o.cab.p, s = suelo(c[0], -c[2]), conManos = !!(o.hayIzq || o.hayDer);
       q1.set(o.cab.q[0], o.cab.q[1], o.cab.q[2], o.cab.q[3]);
       v2.set(0, 0, -1).applyQuaternion(q1); var yawCab = Math.atan2(-v2.x, -v2.z);
-      var mu = Muneco.avanza(a.mu || (a.mu = Muneco.crea()), c[0], c[2], yawCab, dt, s, exag, o.tipo === PoseCodec.QUEST ? c[1] - s : NaN, conManos, outMu, o.modo), yv = mu.yCab;
+      // AV2: con la silla de ruedas, sentado (sin VRM: el VRM de cerca no cambia y no la lleva todavía); la altura escala todo el muñeco y la complexión, el ancho y el fondo de cada pieza
+      var fa = a.fa || 1, fc = a.fc || 1, mu = Muneco.avanza(a.mu || (a.mu = Muneco.crea()), c[0], c[2], yawCab, dt, s, exag, o.tipo === PoseCodec.QUEST ? c[1] - s : NaN, conManos, outMu, o.modo, a.mov === "silla" && !a.vrm);
+      var yv = mu.yPies + (mu.yCab - mu.yPies) * fa;
       var cx = c[0] + Math.sin(mu.yaw) * mu.atras, cz = c[2] + Math.cos(mu.yaw) * mu.atras;   // en quad, el cuerpo 0,2 m detrás del centro del quad (16_vida.js)
-      mBase.compose(v1.set(cx, mu.yPies, cz), q1.setFromAxisAngle(ejeY, mu.yaw), vS);
+      mBase.compose(v1.set(cx, mu.yPies, cz), q1.setFromAxisAngle(ejeY, mu.yaw), vF.set(fa, fa, fa));
       var giros = [0, mu.piernaI, mu.piernaD, mu.brazoI, mu.brazoD];
       for (var j = 0; j < NP; j++) {
         var P = Muneco.PIEZAS[j], largo = P[5] ? Math.max(0.2, P[1] - mu.agacho) : P[1];   // agachado: baja el cuerpo y encogen las piernas
-        mPieza.compose(v1.set(P[3], P[4] - mu.agacho, 0), q1.setFromAxisAngle(ejeX, giros[j]), v2.set(P[0], largo, P[2]));
+        mPieza.compose(v1.set(P[3] * fc, P[4] - mu.agacho, 0), q1.setFromAxisAngle(ejeX, giros[j]), v2.set(P[0] * fc, largo, P[2] * fc));
         mCuerpo.setMatrixAt(a.k * NP + j, m4.multiplyMatrices(mBase, mPieza));
       }
       // la cabeza encima del muñeco, girada como la de verdad (apunta donde apunta)
       q1.set(o.cab.q[0], o.cab.q[1], o.cab.q[2], o.cab.q[3]);
-      m4.compose(v1.set(cx, yv, cz), q1, vS); mCabeza.setMatrixAt(a.k, m4);
+      m4.compose(v1.set(cx, yv, cz), q1, vF); mCabeza.setMatrixAt(a.k, m4);
       if (a.iSom >= 0) { m4b.multiplyMatrices(m4, matSombreroLocal[a.sombrero]); mSombrero.setMatrixAt(a.iSom, m4b); }
+      if (a.cajas && a.cajas.length > a.iApoyo) apoyo(a, mu, fc);
       if (a.iMano >= 0) {
         [o.izq, o.der].forEach(function (h, i) {
           var hay = i === 0 ? o.hayIzq : o.hayDer;
@@ -546,7 +646,8 @@
       if (avatarVRM && avatarVRM.coloca(a, mu, o, yawCab, cx, cz, dt)) {
         m4.makeScale(0, 0, 0);
         for (var jt = 0; jt < NP; jt++) mCuerpo.setMatrixAt(a.k * NP + jt, m4);
-        mCabeza.setMatrixAt(a.k, m4); if (a.iSom >= 0) mSombrero.setMatrixAt(a.iSom, m4);
+        mCabeza.setMatrixAt(a.k, m4); if (a.cajas) for (var jv = 0; jv < a.cajas.length; jv++) mSombrero.setMatrixAt(a.cajas[jv], m4);   // el sombrero y el apoyo del muñeco (el VRM de cerca no los lleva todavía)
+        if (a.ruedas) for (var jx = 0; jx < a.ruedas.length; jx++) mRuedas.setMatrixAt(a.ruedas[jx], m4);
         if (a.iMano >= 0) { mManos.setMatrixAt(a.iMano, m4); mManos.setMatrixAt(a.iMano + 1, m4); }
       }
       // el nombre, encima de la cabeza; crece con la distancia para leerse y se apaga lejos (UX §5.4: nombres sobre los avatares)
@@ -638,7 +739,10 @@
       var id = p.identity; if (!id || porId[id]) return porId[id] || null;
       if (!huecos.length) { est.sinPlaza = (est.sinPlaza || 0) + 1; return null; }
       var h = huecos.pop(), mt = SalaPose.leeInfo(p.metadata);
-      var a = { k: h, id: id, info: mt, alias: mt.alias, vrm: mt.vrm, camisa: CAMISAS[mt.camisa], piel: PIELES[mt.piel], sombrero: mt.sombrero, iSom: mt.sombrero ? h : -1, iSomHueco: h, iMano: h * 2, out: BufferPose.salida(), ret: null, visto: false, cerca: false };
+      var vest = Aspecto.viste(mt);   // AV2: piel (10 tonos), ropa de arriba y de abajo, altura, complexión y apoyo; sin ellos, el de antes
+      var a = { k: h, id: id, info: mt, alias: mt.alias, vrm: mt.vrm, camisa: vest.camisa, piel: vest.piel, pantalon: vest.pantalon, fa: vest.fa, fc: vest.fc, mov: vest.mov, propioPiel: vest.propioPiel, propioCamisa: vest.propioCamisa,
+        sombrero: mt.sombrero, iSom: -1, iMano: h * 2, out: BufferPose.salida(), ret: null, visto: false, cerca: false };
+      tomaAccesorios(a);
       a.o = SalaPose.entra(SP, id, mt); a.buf = a.o.buf;
       colorea(a); pintaNombre(h, mt.alias); oculta(a);
       porId[id] = a; claveGente = ""; cambio = true; return a;
@@ -646,7 +750,7 @@
     function saleOtro(id) {
       var a = porId[id]; if (!a) return;
       if (avatarVRM) avatarVRM.sale(a);
-      oculta(a); pintaNombre(a.k, ""); huecos.push(a.k); delete porId[id]; SalaPose.sale(SP, id); claveGente = "";
+      oculta(a); sueltaAccesorios(a); pintaNombre(a.k, ""); huecos.push(a.k); delete porId[id]; SalaPose.sale(SP, id); claveGente = "";
     }
     function recibeDatos(datos, p, tema) {
       if (!p || !p.identity || (yo && p.identity === yo.identidad)) return;
@@ -834,7 +938,7 @@
         est.cerca = nc;
       }
       if (avatarVRM) avatarVRM.actualiza(dt);
-      [mCuerpo, mCabeza, mSombrero, mManos, mNombres].forEach(function (m) { m.instanceMatrix.needsUpdate = true; });
+      [mCuerpo, mCabeza, mSombrero, mManos, mNombres, mRuedas].forEach(function (m) { m.instanceMatrix.needsUpdate = true; });
       if (mQuad) { mQuad.visible = nVehQ > 0; mQuad.instanceMatrix.needsUpdate = true; } if (mDron) { mDron.visible = nVehD > 0; mDron.instanceMatrix.needsUpdate = true; }
       est.quad = nVehQ; est.dron = nVehD;
       var ms = performance.now() - t0; msVentana = Math.max(msVentana, ms); est.ms = est.ms ? est.ms * 0.95 + ms * 0.05 : ms;
@@ -844,10 +948,12 @@
         bytesVentana = 0; msVentana = 0; tEst = 0; if (muestrasRet.length > 4000) { muestrasRet = muestrasRet.slice(-2000); muestrasErr = muestrasErr.slice(-2000); }
       }
     }
+    function lista() { return variante === "red" ? Object.keys(porId).map(function (k) { return porId[k]; }) : V; }
     function estado() {
       var e = { activo: activo, variante: variante, n: est.n, quest: est.quest, cerca: est.cerca, enviados: est.enviados, recibidos: est.recibidos, perdidos: est.perdidos, viejos: est.viejos, bytes: est.bytes,
         bytesPorSegundo: est.bps, ms: Math.round(est.ms * 1000) / 1000, msMax: Math.round(est.msMax * 1000) / 1000, retardoP95ms: est.retP95, errorP95m: est.errP95, vistos: V.filter(function (a) { return a.visto; }).length,
-        enQuad: est.quad || 0, conDron: est.dron || 0, vehiculos: !!(mQuad && mDron), idas: est.idas || 0, ultimaIda: est.ultimaIda || null, vrm: avatarVRM ? avatarVRM.estado() : null };
+        enQuad: est.quad || 0, conDron: est.dron || 0, vehiculos: !!(mQuad && mDron), idas: est.idas || 0, ultimaIda: est.ultimaIda || null, vrm: avatarVRM ? avatarVRM.estado() : null,
+        aspecto: mSombrero ? { cajas: mSombrero.count, ruedas: mRuedas.count, sillas: lista().filter(function (a) { return a.mov === "silla"; }).length, bastones: lista().filter(function (a) { return a.mov === "baston"; }).length, andadores: lista().filter(function (a) { return a.mov === "andador"; }).length } : null };
       if (variante === "red") { e.conectado = !!sala; e.identidad = yo ? yo.identidad : null; e.vistos = Object.keys(porId).filter(function (k) { return porId[k].visto; }).length; e.sinPlaza = est.sinPlaza || 0; e.enVistaAerea = !(sala && poseLocal(Math.round(performance.now()))); }
       return e;
     }
@@ -857,7 +963,7 @@
       if (avatarVRM) avatarVRM.libera();
       if (sala) { var s = sala; sala = null; s.disconnect(); }
       if (ui) { ui.raiz.remove(); ui.burbuja.remove(); ui.gSeccion.remove(); ui = null; }
-      scene.remove(grupo); [mCuerpo, mCabeza, mSombrero, mManos, mNombres, mQuad, mDron].forEach(function (m) { if (m) m.dispose(); }); mQuad = null; mDron = null;
+      scene.remove(grupo); [mCuerpo, mCabeza, mSombrero, mManos, mNombres, mRuedas, mQuad, mDron].forEach(function (m) { if (m) m.dispose(); }); mQuad = null; mDron = null;
       geos.forEach(function (g) { g.dispose(); }); mats.forEach(function (m) { m.dispose(); }); if (texNombres) texNombres.dispose();
       grupo = null; V = []; red = []; porId = Object.create(null); mensajes = [];
     }
@@ -870,7 +976,8 @@
     var cambio = false;
     function vrmPersonas(todas) { var ahoraMs = performance.now(), l = variante === "red" ? Object.keys(porId).map(function (k) { return porId[k]; }) : V; return todas ? l : l.filter(function (a) { return seVe(a, ahoraMs); }); }
     function miVrm() { return yo && yo.info ? yo.info.vrm : null; }
-    function recolorea(a, camisa, piel) { if (!mCuerpo) return; if (camisa != null) a.camisa = camisa; if (piel != null) a.piel = piel; colorea(a); }
+    // lo que ELIGIÓ la persona (tono o ropa de arriba) manda sobre los colores del catálogo (decisión 131); los colores del catálogo solo valen a quien no eligió
+    function recolorea(a, camisa, piel) { if (!mCuerpo) return; if (camisa != null && !a.propioCamisa) a.camisa = camisa; if (piel != null && !a.propioPiel) a.piel = piel; colorea(a); }
     function cambiaron() { var c = cambio; cambio = false; return c; }
     window.__presenciaChat = function (txt) { anadeMensaje("Prueba", String(txt || "Hola"), false); };   // pruebas del chat movible (la ventana solo existe con ?presencia=red o &chat=1)
     return { activo: function () { return activo; }, actualiza: actualiza, estado: estado, libera: libera, texto: texto, llegadas: llegadas, puntos: puntos, irCon: irCon,

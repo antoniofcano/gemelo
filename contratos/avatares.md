@@ -36,7 +36,7 @@ Compresión de transporte: la tubería deja junto a cada `.vrm` su `.vrm.br`, `.
 | · `autor` | del `meta` del VRM |
 | · `licencia` | `{spdx, url, credito_obligatorio, texto_credito}`; `credito_obligatorio` → «Créditos» de la portada |
 | · `fuente` | `{nombre, url?}` de dónde salió |
-| · `colores_muneco` | `{camisa, piel, sombrero}` (`#rrggbb`, `#rrggbb`, `ninguno`\|`paja`\|`gorra`): el muñeco lejano (ADR-0020 §5) |
+| · `colores_muneco` | `{camisa, piel, sombrero}` (`#rrggbb`, `#rrggbb`, `ninguno`\|`paja`\|`gorra`): el muñeco lejano (ADR-0020 §5). Solo valen a quien no eligió piel ni ropa: si la persona eligió `tono` o `arriba` (AV2, [presencia](presencia.md)), manda lo suyo |
 
 El catálogo no lleva fechas ni nada que cambie sin que cambie un avatar: la tubería es **determinista** (mismo origen, mismos bytes, probado).
 

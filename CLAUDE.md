@@ -23,7 +23,7 @@ Gemelo digital en 3D de fincas de olivar (three.js 0.186.1, teselas de 256 m, Li
 9. **Confirmar antes de publicar, etiquetar o subir.** `git push`, tags, desplegar al servidor: lo decide la persona. Un agente propone y espera el OK.
 10. **Idioma del producto, del código, de la documentación y de los commits: español.**
 11. **Todo cambio de interacción (UI, mandos, panel VR) lleva su nota de comodidad:** qué se probó, dónde y qué **no** se ha probado (iPhone, Quest). Ver [skill `interaccion`](.claude/skills/interaccion/SKILL.md).
-12. **No reinventar ruedas.** Se usan librerías y herramientas existentes y mantenidas (npm, pip, imágenes oficiales de Docker) en lugar de código propio; hay permiso para instalarlas. Cada dependencia se declara con versión fijada en su `package.json`/`requirements.txt`, y el código casero que una librería resuelve se sustituye.
+12. **No reinventar ruedas: nunca reescribir lo que ya existe y se puede reusar** (Antonio, 2026-10-30). Se usan librerías y herramientas existentes y mantenidas (npm, pip, imágenes oficiales de Docker) en lugar de código propio; hay permiso para instalarlas. Cada dependencia se declara con versión fijada en su `package.json`/`requirements.txt`, y el código casero que una librería resuelve se sustituye. Antes de escribir código: (1) buscar en el repo si ya existe (un módulo, una función `XPuro`, un punto de extensión, un contrato) y reusarlo; (2) si no, buscar una librería mantenida; (3) solo entonces, código propio, y el encargo o el commit dicen por qué no sirvió lo existente.
 
 ---
 
@@ -97,6 +97,7 @@ Ejecuta la [skill `release`](.claude/skills/release/SKILL.md); no la redefine. R
 - Decisiones técnicas: el agente decide y lo cuenta. Decisiones de Antonio (licencia, qué se publica, ramas, datos de la explotación): se preguntan o van a [DECISIONS-PENDING](doc/rumbo/DECISIONS-PENDING.md).
 - Lo que no está en el repo ni en `doc/` se marca **[SUPUESTO]** o se pregunta; nunca se inventa.
 - Agentes largos: cerrarlos en primer plano y verificar su resultado; lo publicado hay que comprobar que es lo nuevo.
+- **La cola de agentes, siempre ocupada y ordenada** (Antonio, 2026-10-30): tareas **atómicas**, por **prioridad, dependencias y coste de procesamiento**; antes de lanzar, se miden CPU y memoria libre. Lo **pesado** (Chrome, Docker, Blender, builds grandes) pasa por el turno del banco y nunca se solapa; lo **ligero** (código, contratos, pruebas de Node) llena la cola mientras tanto: al terminar un agente se lanza el siguiente sin esperar a la puerta. Fusión y pruebas pesadas, agrupadas al final o tras cambios importantes; `main` solo se sube con la puerta completa en verde. **Antes de lanzar cada agente se le asigna el modelo de IA más adecuado por rendimiento y coste** (opus para lo delicado o de diseño, sonnet para lo acotado, haiku para comprobaciones simples; fable, si hace falta, para lo excepcionalmente difícil). Detalle en [TESTING.md](doc/operacion/TESTING.md#la-cola-de-agentes).
 
 | Skill | Cuándo |
 |---|---|

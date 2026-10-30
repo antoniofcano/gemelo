@@ -49,6 +49,25 @@ El equipo de trabajo es un i5 de 4 núcleos con 7,7 GB: dos Chrome sin pantalla 
 - **Orden de trabajo:** primero lo que no necesita navegador ni Docker (código, contratos, pruebas de Node); lo que pasa por Chrome o Docker, al final y por el banco. Lo visual lo mira Antonio en su Chrome (con GPU), no se espera a SwiftShader para eso.
 - Los scripts sueltos de medida (`pruebas/olivo/*.mjs`, `prueba3.js`, `vistas2.js`…) deben pedir el turno (`require("./banco/turno").conTurno(...)`) o pasar por un encargo; los nuevos, siempre.
 
+## La cola de agentes
+
+Requisito de Antonio (2026-10-30): la cola **nunca se queda parada** y **nunca deja el equipo frito**. Quien coordina (persona o agente) la lleva así:
+
+1. **Tareas atómicas.** Cada tarea hace una cosa, con su comprobación, en su copia de trabajo y con sus ficheros en exclusiva; si dos tocan lo mismo, se reparte por ficheros o se ponen en fila. Un pacto escrito fija los nombres que se comparten.
+2. **Orden: prioridad, dependencias y coste.** Primero lo que desbloquea a otras tareas o al VPS; una tarea no arranca antes que aquello de lo que depende.
+3. **Mirar la máquina antes de lanzar** (`Get-CimInstance Win32_Processor` y `Win32_OperatingSystem` en PowerShell). Con poca memoria libre (< ~1,5 GB) no se lanza nada pesado y se mira qué ocupa: el entorno Docker (`npm run dev:abajo` / `dev:arriba`, sin borrar datos) se puede parar si nadie lo está usando.
+4. **Pesado frente a ligero.** Pesado: Chrome sin pantalla, Docker, Blender, builds grandes; pasa **siempre** por el turno del banco y no se solapa. Ligero: leer, escribir, contratos, pruebas de Node; llena la cola mientras lo pesado espera su turno.
+5. **La cola siempre ocupada.** Al terminar un agente, se lanza el siguiente en la misma respuesta si hay recursos; no se espera a que acabe la puerta ni una fusión.
+6. **Fusión y pruebas pesadas, agrupadas.** Se juntan las ramas a medida que llegan (con las pruebas de Node), pero la puerta completa y las pruebas de Chrome/Docker van agrupadas, al final de una tanda o tras un cambio importante; `main` se sube a GitHub **solo** con la puerta completa en verde.
+7. **Copias de trabajo limpias.** Ninguna tarea crea uniones (junctions) hacia la copia principal; antes de borrar una copia se buscan y se quitan sin seguirlas (`[System.IO.Directory]::Delete(ruta, $false)`), y después se comprueba que `node_modules` y `pruebas/salida/fixture` de la copia principal siguen llenos.
+8. **Instalar** solo de fuente oficial y versión estable, con versión fijada (regla 12).
+9. **Cada agente, con el modelo de IA más adecuado** (Antonio, 2026-10-30), elegido **antes de lanzarlo** por rendimiento y coste, y dicho en el encargo:
+   - **opus**: diseño y arquitectura, código delicado (sombreadores, presupuesto de dibujo, seguridad, migraciones con datos, contratos nuevos), depuración difícil, propuestas con decisiones para Antonio.
+   - **sonnet**: tareas mecánicas o bien acotadas (documentación, pantallas sobre un diseño ya hecho, infra con receta, adaptar pruebas, componentes sobre un patrón que ya existe).
+   - **haiku**: recuentos, búsquedas y comprobaciones sencillas sin escribir código de producto.
+   - **fable**: permitido por Antonio (2026-10-30) cuando haga falta, para lo que opus no resuelve bien o lo excepcionalmente difícil; se dice en el encargo por qué se elige.
+   - En la duda, el modelo más barato que pueda hacerlo bien; si un agente de sonnet se atasca o la tarea resulta más delicada de lo previsto, se relanza con opus. El tablero de PLAN lleva el modelo de cada tarea («Enrutador de modelo»).
+
 ## Pruebas de navegador (`pruebas/`)
 | Script | Para qué |
 |---|---|

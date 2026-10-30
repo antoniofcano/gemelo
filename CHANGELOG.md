@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Muñeco teñido (AV2): 10 tonos de piel, color de ropa de arriba y de abajo, altura, complexión, silla de ruedas, bastón y andador en el muñeco lejano; campos opcionales del avatar en la api (`tono`, `arriba`, `abajo`, `altura`, `complexion`, `movilidad`; migración 0007). Ajuste «Altura de la vista» (de pie / sentado) al pasear y en VR. +1 llamada solo con silla, ≈ 117 triángulos por persona. No probado en iPhone ni Quest.
 - Configuración versionada del mundo (C6/OF6): `GET /api/config` y `/api/admin/config` (borrador, prueba solo para la oficina, publicar y volver con confirmación reciente, auditoría); el motor lee de ahí interruptores, parámetros de la escalera (en gafas solo a la baja) y épocas, con caída a lo de siempre; el hornero toma el calendario publicado como sello.
 - Oficina (OF0-OF1, ADR-0024): rol `oficina`, cuenta aparte con aparato confiable (aprobación desde otro aparato o con un segundo enlace), sesión de 12 h / 2 h sin actividad, confirmación reciente para lo delicado; `/oficina/` solo con sesión de oficina (página mínima); todas las `/api/admin/*` admiten `oficina` y `admin`; `livekit-roles` v3.
 - El sonido es el componente «sonido-ambiente» (C4, `?sonido=0`): habla por el Bus y registra su pestaña de Configuración y su fila del panel VR; quitarlo del motor no rompe nada.

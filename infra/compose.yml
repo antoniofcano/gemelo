@@ -68,6 +68,15 @@ services:
       # GEMELO_VIGIA_TOKEN_FICHERO: /run/secrets/vigia_token
       # F2: el API secret de LiveKit (firma los tokens de la sala). Solo se lee si /etc/gemelo/entorno trae GEMELO_LIVEKIT_URL
       GEMELO_LIVEKIT_SECRETO_FICHERO: /run/secrets/livekit_secreto
+      # V7: las fotos de los hogares (contratos/vida.md), en el volumen `medios` (entra en las copias: infra/respaldo.sh). El tope por foto
+      # y el resto (GEMELO_MEDIOS_MAX_MB…) vienen de /etc/gemelo/entorno; si GEMELO_MEDIOS_MAX_MB pasa de 8, sube también max_size de /api/medios
+      # en infra/Caddyfile y en infra/bloque-borde.txt
+      GEMELO_MEDIOS: /datos/medios
+      # V10: la configuración publicada desde la oficina, también en un fichero para el hornero (volumen `config_publicada`, que él monta de solo lectura)
+      GEMELO_CONFIG_SALIDA: /datos/config/publicada.json
+    volumes:
+      - medios:/datos/medios
+      - config_publicada:/datos/config
     secrets: [pg_api, sesion_secreto, smtp_clave, ot_token, livekit_secreto]
     networks: [bd, interna]
     depends_on:
@@ -97,7 +106,10 @@ services:
     environment:
       GEMELO_HORNERO_FINCAS: hituelo
       GEMELO_HORNERO_HORA: "03:00"
+      # V10: la configuración publicada (calendario de épocas) que deja la api; sin fichero, el hornero usa el calendario del contrato
+      GEMELO_HORNERO_CONFIG: /config/publicada.json
     volumes:
+      - config_publicada:/config:ro
       - /srv/gemelo/publicado/teselas/hituelo:/datos/hituelo:ro
       - /srv/gemelo/publicado/teselas/hituelo/olivos:/salida/hituelo/olivos
       - hornero_estado:/estado
@@ -147,6 +159,8 @@ volumes:
   caddy_datos: {}
   caddy_config: {}
   hornero_estado: {}
+  medios: {}              # V7: fotos de los hogares; en las copias (infra/respaldo.sh)
+  config_publicada: {}    # V10: la api escribe, el hornero lee; regenerable desde la base (config_versiones): sin copia propia
 
 secrets:
   pg_dueno: { file: /etc/gemelo/secretos/pg_dueno }

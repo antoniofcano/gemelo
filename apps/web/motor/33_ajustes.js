@@ -1,8 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Ajustes
-// Consume: 01_datos ($, fmt), 02_mundo (copas), 03_escena (renderer, exag, modo, calidad), 08_marcadores (listo, aplica), 09_camara (pon),
-//   12_paseo (persona), 14_historia (FINCA, lista, rango), 16_vida (quita), 24_pantalla (suave), 26_presencia (Chat), 29_vr (panel), 30_mide (Mide),
-//   31_hud (Hud), 32b_capas (Capas), 34_movibles (Movibles), 90_final (tamano, bucle)
+// Consume: 01_datos ($, fmt), 02_mundo (suelo, copas), 03_escena (visor, renderer, exag, modo, calidad), 08_marcadores (listo, aplica),
+//   09_camara (pon), 12_paseo (persona), 14_historia (FINCA, lista, rango), 16_vida (quita), 24_pantalla (suave), 26_presencia (Chat),
+//   29_vr (panel), 30_mide (Mide), 31_hud (Hud), 32b_capas (Capas), 34_movibles (Movibles), 90_final (tamano, bucle)
 // ===============================================================================
 // ===== CONTRATO DEL MÓDULO =====
 // ===============================================================================
@@ -20,9 +20,9 @@
     function opc(def, ops) { return { tipo: "opc", def: def, ops: ops }; }
     var ESQUEMA = {
       "graficos.calidad": opc("auto", ["auto", "0", "1", "2"]), "graficos.ahorro": bool(false),
-      "vista.exag": num(1, 1, 3, 0.25), "vista.corr": num(1, 0, 1.5, 0.25), "vista.brujula": bool(true), "vista.unidades": opc("ha", ["ha", "m2"]),
+      "vista.exag": num(1, 1, 3, 0.25), "vista.corr": num(1, 0, 1.5, 0.25), "vista.brujula": bool(true), "vista.unidades": opc("ha", ["ha", "m2"]), "vista.altura": opc("pie", ["pie", "sentado"]),
       "controles.tactil": opc("auto", ["auto", "si", "no"]), "controles.mano": opc("diestra", ["diestra", "zurda"]), "controles.sens": num(1, 0.4, 2, 0.2), "controles.invertir": bool(false),
-      "vr.giro": opc("30", ["15", "30", "45", "60"]), "vr.vineta": opc("suave", ["suave", "fuerte", "no"]), "vr.vuelo": bool(false), "vr.postura": opc("pie", ["pie", "sentado"]),
+      "vr.giro": opc("30", ["15", "30", "45", "60"]), "vr.vineta": opc("suave", ["suave", "fuerte", "no"]), "vr.vuelo": bool(false),
       "acc.texto": num(100, 100, 200, 25), "acc.contraste": bool(false), "acc.movimiento": opc("sistema", ["sistema", "reducido", "normal"]),
       "avanzado.contador": bool(false)
     };
@@ -158,7 +158,8 @@
         { k: "vista.exag", t: "Relieve exagerado", fmt: function (v) { return fmt(v, v % 1 ? 2 : 0) + "×"; } },
         { k: "vista.corr", t: "Corrección de la ortofoto", fmt: function (v) { return fmt(v, v % 1 ? 2 : 0) + "×"; }, nota: "Ajuste medido en la finca (las copas se ven desplazadas al este según su altura); no es una ortorrectificación." },
         { k: "vista.brujula", t: "Mostrar la brújula" },
-        { k: "vista.unidades", t: "Superficie en", ops: [["ha", "hectáreas"], ["m2", "metros cuadrados"]] } ] },
+        { k: "vista.unidades", t: "Superficie en", ops: [["ha", "hectáreas"], ["m2", "metros cuadrados"]] },
+        { k: "vista.altura", t: "Altura de la vista", ops: [["pie", "De pie (ojos a 1,62 m)"], ["sentado", "Sentado (ojos a 1,20 m)"]], nota: "Al pasear y en las gafas VR. No depende de tu avatar. En las gafas se suma a la altura que dé el visor: si juegas sentado y el visor ya sabe dónde está el suelo, déjalo en «De pie»." } ] },
       { id: "controles", t: "Controles", campos: [
         { k: "controles.tactil", t: "Controles táctiles", ops: [["auto", "Automático"], ["si", "Siempre"], ["no", "Nunca"]], nota: "Automático: solo con pantalla táctil." },
         { k: "controles.mano", t: "Mano", ops: [["diestra", "Diestra (cruceta a la izquierda)"], ["zurda", "Zurda (cruceta a la derecha)"]] },
@@ -167,8 +168,7 @@
       { id: "vr", t: "Comodidad VR", nota: "Se aplica en las gafas. Nada de esto está probado en unas Quest.", campos: [
         { k: "vr.giro", t: "Giro", ops: [["15", "A saltos de 15°"], ["30", "A saltos de 30°"], ["45", "A saltos de 45°"], ["60", "A saltos de 60°"]] },
         { k: "vr.vineta", t: "Viñeta", ops: [["suave", "Suave"], ["fuerte", "Fuerte"], ["no", "Apagada"]] },
-        { k: "vr.vuelo", t: "Permitir vuelo (A) y mirador (B)" },
-        { k: "vr.postura", t: "Postura", ops: [["pie", "De pie"], ["sentado", "Sentado"]] } ] },
+        { k: "vr.vuelo", t: "Permitir vuelo (A) y mirador (B)" } ] },
       { id: "acc", t: "Accesibilidad", campos: [
         { k: "acc.texto", t: "Tamaño del texto", fmt: function (v) { return v + " %"; } },
         { k: "acc.contraste", t: "Alto contraste en el HUD" },

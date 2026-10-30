@@ -4,7 +4,7 @@
 # Comprueba: validez, cabeceras de seguridad (CSP Report-Only, Permissions-Policy con xr-spatial-tracking, HSTS…),
 # caché inmutable de estáticos, portada pública, finca y teselas solo con sesión, /oficina/ solo con sesión de oficina
 # (forward_auth con ?para=oficina, ADR-0024), /api/interno cerrado desde fuera, y que
-# los registros NO contienen cookies, Authorization ni el token del enlace.
+# /api/medios admite ~9 MB (V7) y el resto de /api/* sigue cortando a 1 MB, también en el bloque de borde (2 MB / 9 MB), y que los registros NO contienen cookies, Authorization ni el token del enlace.
 # Uso: bash infra/probar-caddy.sh   (necesita Docker; sale con 0 si todo pasa)
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -13,13 +13,13 @@ CADDY=$(sed -n 's/^\s*image:\s*\(caddy:[^ ]*\)\s*$/\1/p' compose.yml | head -1)
 CURL="curlimages/curl:8.23.0@sha256:3fb7e13e5d179a845c97d78204f3f1064d1907037f26a3ebf91710571151fd93"
 [ -n "$CADDY" ] || { echo "no encuentro la imagen de Caddy en compose.yml"; exit 2; }
 SUFIJO="$$"
-RED="gemelo-prueba-$SUFIJO"; WEB="gemelo-prueba-web-$SUFIJO"; API="gemelo-prueba-api-$SUFIJO"
+RED="gemelo-prueba-$SUFIJO"; WEB="gemelo-prueba-web-$SUFIJO"; BORDE="gemelo-prueba-borde-$SUFIJO"; API="gemelo-prueba-api-$SUFIJO"
 TMP=$(mktemp -d)
 # en Git Bash (Windows): que no traduzca las rutas del contenedor, y ruta nativa para las del anfitrión
 export MSYS_NO_PATHCONV=1
 anfitrion() { if command -v cygpath >/dev/null 2>&1; then cygpath -w "$1"; else printf '%s' "$1"; fi; }
 fallos=0
-limpia() { docker rm -f "$WEB" "$API" >/dev/null 2>&1 || true; docker network rm "$RED" >/dev/null 2>&1 || true; rm -rf "$TMP"; }
+limpia() { docker rm -f "$WEB" "$BORDE" "$API" >/dev/null 2>&1 || true; docker network rm "$RED" >/dev/null 2>&1 || true; rm -rf "$TMP"; }
 trap limpia EXIT
 
 ok() { echo "  ok  $1"; }
@@ -68,11 +68,16 @@ echo "== validar el Caddyfile ($CADDY)"
 docker network create "$RED" >/dev/null
 docker create --name "$API" --network "$RED" --network-alias api "$CADDY" caddy run --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null
 docker cp "$(anfitrion "$TMP/Caddyfile.api")" "$API:/etc/caddy/Caddyfile"
-docker create --name "$WEB" --network "$RED" "$CADDY" >/dev/null
+docker create --name "$WEB" --network "$RED" --network-alias gemelo-web "$CADDY" >/dev/null
 docker cp "$(anfitrion "$PWD/Caddyfile")" "$WEB:/etc/caddy/Caddyfile"
 docker cp "$(anfitrion "$TMP/srv")/." "$WEB:/srv/"
-docker start "$API" "$WEB" >/dev/null
+# el bloque de BORDE (infra/bloque-borde.txt) tal cual, con el dominio cambiado por un puerto de prueba (sin TLS), delante del Caddy interno
+{ printf '{\n\tadmin off\n\tauto_https off\n}\n'; grep -v '^#' "$PWD/bloque-borde.txt" | sed 's/^gemelo\.canoydamas\.es {/:8081 {/'; } > "$TMP/Caddyfile.borde"
+docker create --name "$BORDE" --network "$RED" "$CADDY" >/dev/null
+docker cp "$(anfitrion "$TMP/Caddyfile.borde")" "$BORDE:/etc/caddy/Caddyfile"
+docker start "$API" "$WEB" "$BORDE" >/dev/null
 if docker exec "$WEB" caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null 2>&1; then ok "configuración válida"; else mal "configuración NO válida"; fi
+if docker exec "$BORDE" caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null 2>&1; then ok "bloque de borde válido"; else mal "bloque de borde NO válido"; fi
 sleep 2
 
 pide() {  # pide <ruta> [cabeceras curl…] → cabeceras de respuesta (código en la primera línea)
@@ -124,6 +129,21 @@ r=$(pide /api/interno/autoriza -H "Cookie: __Host-gemelo=valida")
 tiene "$r" "^HTTP/1.1 404" && ok "/api/interno cerrado desde fuera" || mal "/api/interno accesible desde fuera: $(head -1 <<<"$r")"
 r=$(pide "/api/auth/entrar?t=SECRETO-DEL-ENLACE" -H "Cookie: __Host-gemelo=SECRETO-DE-COOKIE" -H "Authorization: Bearer SECRETO-DE-CABECERA")
 tiene "$r" "^HTTP/1.1 200" && ok "/api pasa a la api" || mal "/api no llega a la api: $(head -1 <<<"$r")"
+
+echo "== cuerpos grandes: /api/medios hasta ~9 MB, el resto de /api/* a 1 MB (interno) y 2 MB (borde)"
+# curl envía Content-Length y Caddy rechaza con 413 antes de leer el cuerpo; el fichero se crea y se usa DENTRO de la red de Docker
+sube() {  # sube <host:puerto> <ruta> <MB> → código HTTP de un POST con un cuerpo de ese tamaño
+  docker run --rm --network "$RED" --entrypoint sh "$CURL" -c "head -c $(( $3 * 1024 * 1024 )) /dev/zero > /tmp/c; curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/octet-stream' --data-binary @/tmp/c http://$1$2"
+}
+c=$(sube "$WEB:8080" /api/medios 5); [ "$c" = 200 ] && ok "interno: POST /api/medios de 5 MB pasa" || mal "interno: POST /api/medios de 5 MB da $c"
+c=$(sube "$WEB:8080" /api/medios 8); [ "$c" = 200 ] && ok "interno: POST /api/medios de 8 MB (el tope por defecto) pasa" || mal "interno: POST /api/medios de 8 MB da $c"
+c=$(sube "$WEB:8080" /api/medios 10); [ "$c" = 413 ] && ok "interno: POST /api/medios de 10 MB, 413" || mal "interno: POST /api/medios de 10 MB da $c"
+c=$(sube "$WEB:8080" /api/sesion 2); [ "$c" = 413 ] && ok "interno: el resto de /api/* sigue cortando a 1 MB" || mal "interno: POST /api/sesion de 2 MB da $c (se esperaba 413)"
+c=$(sube "$WEB:8080" /api/medios-x 2); [ "$c" = 413 ] && ok "interno: /api/medios-x no hereda el tope grande" || mal "interno: POST /api/medios-x de 2 MB da $c"
+c=$(sube "$BORDE:8081" /api/medios 8); [ "$c" = 200 ] && ok "borde: POST /api/medios de 8 MB pasa hasta la api" || mal "borde: POST /api/medios de 8 MB da $c"
+c=$(sube "$BORDE:8081" /api/medios 10); [ "$c" = 413 ] && ok "borde: POST /api/medios de 10 MB, 413" || mal "borde: POST /api/medios de 10 MB da $c"
+c=$(sube "$BORDE:8081" /api/sesion 3); [ "$c" = 413 ] && ok "borde: el resto corta a 2 MB" || mal "borde: POST /api/sesion de 3 MB da $c (se esperaba 413)"
+c=$(sube "$BORDE:8081" /api/sesion 1); [ "$c" = 200 ] && ok "borde: 1 MB al resto sigue pasando" || mal "borde: POST /api/sesion de 1 MB da $c"
 
 echo "== registros sin credenciales"
 sleep 1

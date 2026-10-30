@@ -24,7 +24,7 @@ function almacen(datos, falla) {
 test("valores por defecto de todos los ajustes (los del diseño, UX-FINCA-JUEGO §4.5)", () => {
   const a = P.crea(almacen({}), "");
   const esperado = { "graficos.calidad": "auto", "graficos.ahorro": false, "vista.exag": 1, "vista.corr": 1, "vista.brujula": true, "vista.unidades": "ha", 
-    "controles.tactil": "auto", "controles.mano": "diestra", "controles.sens": 1, "controles.invertir": false, "vr.giro": "30", "vr.vineta": "suave", "vr.vuelo": false, "vr.postura": "pie",
+    "controles.tactil": "auto", "controles.mano": "diestra", "controles.sens": 1, "controles.invertir": false, "vr.giro": "30", "vr.vineta": "suave", "vr.vuelo": false, "vista.altura": "pie",
     "acc.texto": 100, "acc.contraste": false, "acc.movimiento": "sistema", "avanzado.contador": false };
   assert.deepStrictEqual(a.claves().sort(), Object.keys(esperado).sort());
   for (const k of Object.keys(esperado)) assert.strictEqual(a.lee(k), esperado[k], k);
@@ -49,7 +49,7 @@ test("validación: lo ilegal se rechaza al poner y se cura al leer (almacén man
 test("sin localStorage (lanza): los ajustes duran la visita en memoria y nada revienta", () => {
   const a = P.crea(almacen({}, true), ""); assert.strictEqual(a.lee("vr.vineta"), "suave");
   assert.ok(a.pon("vr.vineta", "fuerte")); assert.strictEqual(a.lee("vr.vineta"), "fuerte");
-  const sin = P.crea(null, ""); assert.ok(sin.pon("vr.postura", "sentado")); assert.strictEqual(sin.lee("vr.postura"), "sentado");
+  const sin = P.crea(null, ""); assert.ok(sin.pon("vista.altura", "sentado")); assert.strictEqual(sin.lee("vista.altura"), "sentado");
 });
 
 test("precedencia: la URL (?debug) manda sobre el ajuste, no se guarda y el ajuste vuelve al quitarla", () => {
