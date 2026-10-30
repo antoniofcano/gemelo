@@ -74,6 +74,7 @@ async function cargaSesion() {
   $("#s-confirmacion").textContent = s.confirmacion_vigente ? (conLlave ? "sí (usaste tu llave hace poco)" : "sí (entraste hace poco)")
     : (conLlave ? "no: lo delicado te pedirá tu llave" : "no: lo delicado te pedirá un enlace nuevo");
   vacia($("#pieSesion")).append("Entraste como ", h("b", null, s.rol === "admin" ? "admin" : "oficina"), " · este aparato: " + s.aparato.nombre + " · caduca " + fecha(s.caduca_en));
+  return true;   // abierta: sin esto, quien la llama (que solo sigue con true) dejaba la oficina en «Cargando…»
 }
 
 async function cuentaFamilias() {

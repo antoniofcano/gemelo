@@ -110,7 +110,7 @@ test("build de la portada (si hay apps/web/node_modules): three y three-vrm van 
   const tam = f => fs.statSync(path.join(salida, "assets", f)).size;
   assert.ok(js_.length >= 2, "three y three-vrm en un trozo aparte: " + js_.join(", "));
   assert.ok(tam(principal[1]) < 40_000, "el script de la portada sigue siendo pequeño: " + tam(principal[1]) + " bytes");
-  assert.ok(![...pagina.matchAll(/<(?:script|link)[^>]*>/gi)].some(m => /vista3d/.test(m[0])), "la página no carga ni precarga el trozo de la vista 3D");
+  assert.ok(![...pagina.matchAll(/<(?:script|link)\b[^>]*>/gi)].some(m => /vista3d/.test(m[0])), "la página no carga ni precarga el trozo de la vista 3D");
   const grande = js_.sort((a, b) => tam(b) - tam(a))[0];
   t.diagnostic("portada: script principal " + tam(principal[1]) + " B; trozo 3D " + grande + " " + tam(grande) + " B (sin comprimir)");
 });
@@ -123,7 +123,10 @@ test("e2e: primer acceso → galería del catálogo sintético → vista previa 
   const { pathToFileURL } = require("url"), { motivoSalto, lanza } = require("./_navegador");
   const motivo = motivoSalto("elegir avatar en la portada"); if (motivo) return t.skip(motivo);
   // NUNCA el entorno de la persona (gemelo-dev): proyecto, puertos y carpeta de avatares propios
-  const env = { COMPOSE_PROJECT_NAME: "gemelo-dev-p7d", GEMELO_DEV_PUERTO_WEB: "8880", GEMELO_DEV_PUERTO_HTTPS: "8843", GEMELO_DEV_PUERTO_DB: "55532", GEMELO_DEV_PUERTO_LIVEKIT: "7980", GEMELO_DEV_PUERTO_CORREO_WEB: "8125", GEMELO_DEV_PUERTO_SMTP: "1125" };
+  const env = { COMPOSE_PROJECT_NAME: "gemelo-dev-p7d", GEMELO_DEV_PUERTO_WEB: "8880", GEMELO_DEV_PUERTO_HTTPS: "8843", GEMELO_DEV_PUERTO_DB: "55532", GEMELO_DEV_PUERTO_LIVEKIT: "7980", GEMELO_DEV_PUERTO_LIVEKIT_TCP: "7981", GEMELO_DEV_PUERTO_LIVEKIT_UDP: "7982", GEMELO_DEV_PUERTO_CORREO_WEB: "8125", GEMELO_DEV_PUERTO_SMTP: "1125" };
+  // todos los puertos publicados del compose, propios: con uno compartido, «port is already allocated» si el entorno de la persona está arriba
+  const puertosCompose = [...new Set(lee("infra/dev/compose.yml").match(/GEMELO_DEV_PUERTO_[A-Z_]+/g))];
+  assert.deepStrictEqual(puertosCompose.filter(k => !(k in env)), [], "puertos del compose de dev sin valor propio en esta e2e");
   const previo = {}; for (const [k, v] of Object.entries(env)) { previo[k] = process.env[k]; process.env[k] = v; }
   assert.strictEqual(process.env.COMPOSE_PROJECT_NAME, "gemelo-dev-p7d");
   const sueltaTurno = await require("../banco/turno").pide("docker: e2e de avatar en la portada");
@@ -181,27 +184,30 @@ test("e2e: primer acceso → galería del catálogo sintético → vista previa 
       await pg.waitForSelector("#t-alias", { state: "visible" });
       await pg.click("#fAlias button[type=submit]");
       await pg.waitForSelector("#t-avatar", { state: "visible" });
-      // la galería: el muñeco y los dos del catálogo, como radios con nombre y descripción; el teclado los recorre
-      await pg.waitForSelector("#galeria input[type=radio]");
+      // la galería (AV4: los avatares ya hechos, aparte de las piezas): «Hecho por piezas» y los dos del catálogo, como radios con nombre y
+      // descripción; el teclado los recorre
+      await pg.waitForSelector("#fsGaleria:not([hidden]) #galeria input[type=radio]");
       const opciones = await pg.$$eval("#galeria label", ls => ls.map(l => l.textContent));
-      assert.strictEqual(opciones.length, 3); assert.match(opciones[0], /Muñeco de bloque/); assert.match(opciones[2], /Sintético dos.*Avatar sintético/);
-      assert.ok(await pg.isVisible("#bloqueMuneco"), "con el muñeco elegido, sus colores");
+      assert.strictEqual(opciones.length, 3); assert.match(opciones[0], /Hecho por piezas/);
+      // en el orden del catálogo (construye.mjs los ordena por id: «sintetico-dos» < «sintetico-uno»)
+      assert.match(opciones[1], /Sintético dos.*Avatar sintético/); assert.match(opciones[2], /Sintético uno.*Avatar sintético/);
+      assert.ok(await pg.isVisible("#bloquePiezas"), "hecho por piezas: las piezas a la vista");
       const alto = await pg.$eval("#galeria label:nth-child(2) > span", e => e.getBoundingClientRect().height);
       assert.ok(alto >= 44, "objetivo de ≥ 44 px: " + alto);
       await pg.focus("#galeria input:checked");
       await pg.keyboard.press("ArrowDown");   // teclado: el siguiente radio se elige solo
-      assert.strictEqual(await pg.$eval("#galeria input:checked", e => e.value), "sintetico-uno");
+      assert.strictEqual(await pg.$eval("#galeria input:checked", e => e.value), "sintetico-dos");
       // vista previa 3D: el lienzo sustituye al muñeco cuando el VRM carga (SwiftShader, lento)
       await pg.waitForSelector("#avatar3d:not([hidden])", { timeout: 120000 });
       await pg.waitForFunction(() => document.getElementById("avatarPrev").hasAttribute("hidden") && !document.getElementById("giro").hasAttribute("hidden"), null, { timeout: 120000 });
-      assert.ok(!(await pg.isVisible("#bloqueMuneco")), "con un VRM elegido, los colores del muñeco se ocultan");
+      assert.ok(!(await pg.isVisible("#bloquePiezas")), "con un VRM ya hecho elegido, las piezas se ocultan");
       assert.ok(await pg.isVisible("#giroPausa") && (await pg.getAttribute("#giroPausa", "aria-pressed")) === "false");
       await pg.click("#giroPausa");
       assert.strictEqual(await pg.getAttribute("#giroPausa", "aria-pressed"), "true", "parar el giro");
       await pg.click("#giroDer");
       assert.deepStrictEqual(errores, [], "sin errores de página");
-      // el segundo
-      await pg.check("#galeria input[value=sintetico-dos]");
+      // el otro
+      await pg.check("#galeria input[value=sintetico-uno]");
       // créditos: el de CC BY aparte, con enlace https
       await pg.click("#fAvatar a[href='#creditos']");
       await pg.waitForSelector("#t-creditos", { state: "visible" });
@@ -219,7 +225,9 @@ test("e2e: primer acceso → galería del catálogo sintético → vista previa 
       assert.strictEqual(put.request().postDataJSON().vrm, "sintetico-dos");
       await pg.waitForSelector("#btnSeguir", { state: "visible" });
       const leido = await pg.evaluate(async () => (await fetch("/api/yo/avatar")).json());
-      assert.strictEqual(leido.vrm, "sintetico-dos"); assert.deepStrictEqual(Object.keys(leido).sort(), ["camisa", "piel", "sombrero", "vrm"]);
+      // lo que se lee es lo que se mandó, ni un campo más (AV4: el PUT lleva también tono, colores de ropa y complexión; sin cuerpo con VRM ya hecho)
+      assert.strictEqual(leido.vrm, "sintetico-dos"); assert.deepStrictEqual(Object.keys(leido).sort(), Object.keys(put.request().postDataJSON()).sort());
+      assert.ok(!("cuerpo" in leido), "un avatar ya hecho no lleva cuerpo de la receta");
       // Configuración: «Mi avatar» lo trae marcado
       await pg.click("a[href='#avatar']");
       await pg.waitForSelector("#t-avatar", { state: "visible" });
@@ -229,7 +237,7 @@ test("e2e: primer acceso → galería del catálogo sintético → vista previa 
       // a 390 px sin desbordar
       const anchos = await pg.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
       assert.ok(anchos[0] <= anchos[1], "a 390 px desborda: " + anchos.join(" > "));
-      // «Muñeco de bloque» vuelve a quitar el VRM
+      // «Hecho por piezas» vuelve a quitar el VRM
       await pg.check("#galeria input[value='']");
       await Promise.all([pg.waitForResponse(x => new URL(x.url()).pathname === "/api/yo/avatar" && x.request().method() === "PUT"), pg.click("#fAvatar button[type=submit]")]);
       assert.strictEqual((await pg.evaluate(async () => (await fetch("/api/yo/avatar")).json())).vrm, null);
