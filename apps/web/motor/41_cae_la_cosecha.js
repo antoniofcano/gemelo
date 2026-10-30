@@ -3,6 +3,7 @@
 // Consume: 02c_componentes (Bus, Componentes), 03_escena (lienzo)
 // Nota: Componente «cae-la-cosecha» (ADR-0023, C9a): el primer juego casual (diseño propio del género «piezas que caen»). Solo se registra; nadie lo nombra. Se ofrece al anfitrión por el Bus y pide sus sonidos con «sonido:juego». Los trozos [puro:…] (las reglas, con semilla) y [dibujo:…] los evalúa en Node pruebas/guardianes/juego_cosecha.test.js.
 // ===============================================================================
+
   // ---------- «Cae la cosecha» (C9a, decisiones 125 y 136; doc/sistema/JUEGOS.md): el primer juego casual. Diseño propio del género «piezas que caen»
   // (no copia de ningún juego concreto): un tablero de 7 × 12 donde caen ramas de 2 (y, pasado un rato, de 3) piezas del olivar; se mueven, se giran y
   // se dejan caer; al tocarse 3 o más iguales —en cualquier forma, con tal de que se toquen por un lado— se van al capacho, las de arriba caen y, si al
@@ -211,16 +212,21 @@
   // ---------- una partida en pantalla: la crea el anfitrión con su lienzo y su caja de botones; aquí, el dibujo, el teclado, el puntero y los botones
   function CaeLaCosechaPartida(ctx, suena) {
     var P = CaeLaCosechaPuro, Dib = CaeLaCosechaDibujo;
-    var e = P.nueva({ semilla: ctx.semilla, epoca: ctx.epoca }), cv = ctx.lienzo, g = cv.getContext("2d");
+    // ctx.lienzo es null en VR (C9b): allí no hay lienzo propio, el anfitrión pone la lámina y llama a pintaEn(g, w, h) con el contexto de la lámina
+    var e = P.nueva({ semilla: ctx.semilla, epoca: ctx.epoca }), cv = ctx.lienzo || null, g = cv ? cv.getContext("2d") : null;
     var W = 0, H = 0, dpr = 1, cs = 0, ox = 0, oy = 0, sucio = true, vista = -1, pausada = false, destellos = [], quitar = [];
     var pulsado = null, tPulsado = 0, REPITE_TRAS = 0.28, REPITE_CADA = 0.09;
 
-    function on(el, ev, fn, op) { el.addEventListener(ev, fn, op); quitar.push(function () { el.removeEventListener(ev, fn, op); }); }
-    function redimensiona(w, h, ratio) {
+    function on(el, ev, fn, op) { if (!el) return; el.addEventListener(ev, fn, op); quitar.push(function () { el.removeEventListener(ev, fn, op); }); }
+    function medidas(w, h, ratio) {
       W = Math.max(1, Math.floor(w)); H = Math.max(1, Math.floor(h)); dpr = Math.min(2, ratio || 1);
-      cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); cv.style.width = W + "px"; cv.style.height = H + "px";
       cs = Math.max(8, Math.floor(Math.min(W / (e.ancho + 2.8), (H - 8) / e.alto)));
       ox = Math.floor((W - cs * (e.ancho + 2.8)) / 2); oy = Math.floor((H - cs * e.alto) / 2); sucio = true;
+    }
+    function redimensiona(w, h, ratio) {
+      medidas(w, h, ratio);
+      if (!cv) return;
+      cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); cv.style.width = W + "px"; cv.style.height = H + "px";
     }
     function hacer(a) {
       if (pausada || e.fin) return false;
@@ -246,11 +252,21 @@
       if (e.v !== vista) sucio = true;
       return sucio;
     }
-    function texto(t, x, y, tam, color, alin) { g.font = "600 " + tam + "px system-ui, -apple-system, Segoe UI, Roboto, sans-serif"; g.fillStyle = color; g.textAlign = alin || "left"; g.textBaseline = "middle"; g.fillText(t, x, y); }
+    var gd = g;   // el contexto con el que se dibuja ahora (el del lienzo o el de la lámina)
+    function texto(t, x, y, tam, color, alin) { gd.font = "600 " + tam + "px system-ui, -apple-system, Segoe UI, Roboto, sans-serif"; gd.fillStyle = color; gd.textAlign = alin || "left"; gd.textBaseline = "middle"; gd.fillText(t, x, y); }
     function pinta() {
-      if (!sucio) return false;
-      sucio = false; vista = e.v;
-      g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+      if (!sucio || !g) return false;
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      return dibuja(g);
+    }
+    // VR (C9b): el mismo dibujo en el contexto de la lámina, en un rectángulo de w × h (el anfitrión pone el origen con translate); sin tocar el lienzo propio
+    function pintaEn(gl, w, h) {
+      medidas(w, h, 1);
+      return dibuja(gl);
+    }
+    function dibuja(g) {
+      gd = g; sucio = false; vista = e.v;
+      g.clearRect(0, 0, W, H);
       var bw = cs * e.ancho, bh = cs * e.alto, r = cs * 0.42, x, y;
       // el tablero: tierra oscura con la cuadrícula tenue y la raya de arriba (si una rama no cabe ahí, se acaba)
       g.fillStyle = "#1f2b1c"; g.fillRect(ox, oy, bw, bh);
@@ -274,9 +290,9 @@
       if (pausada && !e.fin) {
         g.fillStyle = "rgba(10,14,10,0.78)"; g.fillRect(ox, oy, bw, bh);
         texto("En pausa", ox + bw / 2, oy + bh / 2 - tam, Math.round(tam * 1.4), "#ffffff", "center");
-        texto("P o «Seguir» para continuar", ox + bw / 2, oy + bh / 2 + tam * 0.8, Math.max(16, Math.round(tam * 0.8)), "#e8eee4", "center");
+        if (!ctx.vr) texto("P o «Seguir» para continuar", ox + bw / 2, oy + bh / 2 + tam * 0.8, Math.max(16, Math.round(tam * 0.8)), "#e8eee4", "center");
       }
-      cv.setAttribute("aria-label", "Tablero de Cae la cosecha: " + e.puntos + " puntos" + (pausada ? ", en pausa" : "") + (e.fin ? ", partida acabada" : ""));
+      if (cv) cv.setAttribute("aria-label", "Tablero de Cae la cosecha: " + e.puntos + " puntos" + (pausada ? ", en pausa" : "") + (e.fin ? ", partida acabada" : ""));
       return true;
     }
     // el teclado lo reparte el anfitrión (que se queda Esc y la P): flechas o WASD para mover y girar, abajo para bajar, espacio o Intro para dejar caer
@@ -301,7 +317,7 @@
       toque = null;
     }
     on(cv, "pointerup", alSoltar); on(cv, "pointercancel", alSoltar);
-    cv.style.touchAction = "none";
+    if (cv) cv.style.touchAction = "none";
 
     // los botones grandes (≥ 56 px; para quien no quiera deslizar): mantener pulsado repite mover y bajar
     var BOTONES = [
@@ -309,8 +325,8 @@
       { a: "derecha", t: "Derecha", d: "M9 5 L17 12 L9 19", repite: true }, { a: "baja", t: "Bajar", d: "M5 9 L12 16 L19 9", repite: true },
       { a: "cae", t: "Soltar", d: "M5 6 L12 13 L19 6 M5 12 L12 19 L19 12", repite: false }
     ];
-    var caja = ctx.mandos;
-    BOTONES.forEach(function (b) {
+    var caja = ctx.mandos;   // null en VR: los botones son las zonas de la lámina
+    if (caja) BOTONES.forEach(function (b) {
       var el = document.createElement("button"), svg = document.createElementNS("http://www.w3.org/2000/svg", "svg"), ruta = document.createElementNS("http://www.w3.org/2000/svg", "path"), et = document.createElement("span");
       el.type = "button"; el.setAttribute("aria-label", b.t); el.setAttribute("data-accion", b.a);
       el.style.cssText = "flex:1 1 0;min-width:56px;max-width:120px;min-height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;" +
@@ -325,7 +341,9 @@
     });
 
     return {
-      redimensiona: redimensiona, actualiza: actualiza, pinta: pinta, tecla: tecla,
+      redimensiona: redimensiona, actualiza: actualiza, pinta: pinta, tecla: tecla, pintaEn: pintaEn, accion: hacer,
+      // lo que cambia lo que se ve (VR: la lámina solo se sube a la GPU si esto cambia): la partida, la pausa, el fin y el destello en curso
+      firma: function () { return e.v + "." + e.puntos + "." + (pausada ? 1 : 0) + "." + (e.fin ? 1 : 0) + "." + (destellos.length ? destellos.length + ":" + Math.round(destellos[0].t * 20) : ""); },
       pausa: function (si) { pausada = !!si; pulsado = null; sucio = true; },
       pausada: function () { return pausada; },
       estado: function () { return { puntos: e.puntos, fin: e.fin, t: e.t, cadenaMax: e.cadenaMax, piezas: e.tipos.map(function (tp) { return P.PIEZAS[tp]; }) }; },
@@ -349,6 +367,9 @@
         id: "cae-la-cosecha", version: 1, titulo: "Cae la cosecha",
         descripcion: "Junta tres o más piezas iguales del olivar para echarlas al capacho. Partidas de uno a tres minutos.",
         ayuda: "Flechas o deslizar: mover · Arriba o tocar: girar · Abajo: bajar · Espacio o deslizar hacia abajo: soltar · P: pausa · Esc: salir",
+        // en VR (C9b): la lámina dibuja con pintaEn; sus cuatro zonas son estas acciones y la palanca del mando derecho las reparte así
+        vr: { botones: [{ a: "izquierda", t: "Izquierda" }, { a: "gira", t: "Girar" }, { a: "derecha", t: "Derecha" }, { a: "cae", t: "Soltar" }],
+          palanca: { izquierda: "izquierda", derecha: "derecha", arriba: "gira", abajo: "cae" }, ayuda: "Palanca: mover, girar (↑) y soltar (↓) · B: pausa · pulsar palanca: salir" },
         crea: function (ctx) { return CaeLaCosechaPartida(ctx, function (d) { n.emite("sonido:juego", d); }); }
       };
       n.on("juego:pide", function () { n.emite("juego:ofrece", def); });

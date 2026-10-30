@@ -165,6 +165,96 @@ test("anfitrión: un juego necesita id, título y crea; el récord del aparato a
   assert.strictEqual(JP.fmtDuracion(95), "1 min 35 s"); assert.strictEqual(JP.fmtPuntos(12345), "12.345");
 });
 
+// ---------- el juego en VR (C9b): zonas de la lámina, la palanca, y el anfitrión con una lámina y un mundo de mentira
+const PARTIDA = () => new Function("CaeLaCosechaPuro", "CaeLaCosechaDibujo", "performance", "\"use strict\";\n" + FUENTE.slice(FUENTE.indexOf("  function CaeLaCosechaPartida"), FUENTE.indexOf("  // el manifiesto")) + "\nreturn CaeLaCosechaPartida;")(P, Dib, { now: () => 0 });
+
+test("VR: la lámina da cada zona (izquierda, girar, derecha, soltar; Pausa y Salir arriba) y, acabada la partida, «Otra partida» y «Salir»", () => {
+  const bt = [{ a: "izquierda" }, { a: "gira" }, { a: "derecha" }, { a: "cae" }], V = JP.VR, z = (x, y, fin) => JP.zonaVR(x / V.w, y / V.h, bt, fin);
+  const g = JP.geoVR(4), c = r => [r.x + r.w / 2, r.y + r.h / 2];
+  assert.deepStrictEqual(g.botones.map(r => z(...c(r))), bt.map(b => ({ tipo: "accion", a: b.a })), "cada botón del pie da su acción, de izquierda a derecha");
+  assert.deepStrictEqual(z(...c(g.pausa)), { tipo: "pausa" }); assert.deepStrictEqual(z(...c(g.salir)), { tipo: "salir" });
+  assert.strictEqual(z(V.w / 2, V.tabY + 300), null, "el tablero no es una zona"); assert.strictEqual(z(2, 2), null, "el borde vacío no hace nada");
+  const g2 = JP.geoVR(2);
+  assert.deepStrictEqual(z(...c(g2.botones[0]), true), { tipo: "otra" }); assert.deepStrictEqual(z(...c(g2.botones[1]), true), { tipo: "salir" });
+  assert.strictEqual(z(...c(g.pausa), true), null, "acabada la partida ya no hay Pausa");
+  for (const r of g.botones.concat([g.pausa, g.salir])) assert.ok(r.w >= 150 && r.h >= 72 && r.x >= 0 && r.x + r.w <= V.w && r.y + r.h <= V.h, "zonas de ≥ 19 × 9 cm a 800 px/m y dentro de la lámina");
+  assert.ok(g.botones.every((r, i) => !i || r.x >= g.botones[i - 1].x + g.botones[i - 1].w), "las zonas del pie no se pisan");
+});
+
+test("VR: la palanca mueve (y repite), gira y suelta; se rearma al soltarla; elige el eje que más se inclina", () => {
+  const st = { dir: "", t: 0 }, p = (x, y, dt) => JP.palanca(st, x, y, dt || 0.016);
+  assert.deepStrictEqual(p(0.1, 0.1), []); assert.deepStrictEqual(p(-0.9, 0), ["izquierda"], "al inclinar, una orden");
+  assert.deepStrictEqual(p(-0.9, 0, 0.2), [], "no se repite enseguida"); assert.deepStrictEqual(p(-0.9, 0, 0.2), ["izquierda"], "a los 0,35 s, otra");
+  let n = 0; for (let i = 0; i < 20; i++) n += p(-0.9, 0, 0.14).length; assert.ok(n >= 19, "luego, una cada 0,14 s");
+  assert.deepStrictEqual(p(0, 0), []); assert.deepStrictEqual(p(0.8, 0), ["derecha"], "tras soltar se rearma");
+  p(0, 0); assert.deepStrictEqual(p(0, -0.9), ["arriba"], "hacia delante = girar"); assert.deepStrictEqual(p(0, -0.9, 1), [], "arriba no se repite");
+  p(0, 0); assert.deepStrictEqual(p(0, 0.9), ["abajo"], "hacia atrás = soltar"); assert.deepStrictEqual(p(0, 0.9, 1), []);
+  p(0, 0); assert.deepStrictEqual(p(0.7, -0.9), ["arriba"], "gana el eje más inclinado");
+  p(0, 0); assert.deepStrictEqual(p(0.5, 0), [], "una inclinación leve (< 0,6) no arranca"); assert.deepStrictEqual(p(0.65, 0), ["derecha"]);
+  assert.deepStrictEqual(p(0.45, 0), [], "dentro de la histéresis (0,35-0,6) sigue la orden sin cambiarla"); assert.deepStrictEqual(p(0.45, 0, 0.5), ["derecha"], "y repite");
+});
+
+test("VR: la partida se dibuja en la lámina con la MISMA función del juego (sin lienzo propio ni botones del DOM) y la firma solo cambia si cambia lo que se ve", () => {
+  const mk = PARTIDA()({ lienzo: null, mandos: null, semilla: 5, epoca: null, reducido: false, vr: true }, () => {});
+  for (const f of ["pintaEn", "firma", "accion"]) assert.strictEqual(typeof mk[f], "function", f);
+  const f0 = mk.firma(); assert.strictEqual(mk.firma(), f0, "sin jugar, la misma firma");
+  const { g, ops } = contexto(); assert.strictEqual(mk.pintaEn(g, 880, 780), true);
+  assert.ok(ops.some(o => o[0] === "fillRect") && ops.some(o => o[0] === "strokeRect") && ops.some(o => o[0] === "ellipse"), "dibuja el tablero y las piezas con el dibujo del juego (Dib.pieza)");
+  assert.ok(ops.every(o => o[0] !== "setTransform"), "no toca la transformación de quien le presta el contexto (la lámina pone su propio origen)");
+  assert.strictEqual(mk.accion("izquierda"), true); assert.notStrictEqual(mk.firma(), f0, "mover cambia la firma");
+  const f1 = mk.firma(); mk.actualiza(0.01); assert.strictEqual(mk.firma(), f1, "pasar 10 ms sin que baje la rama no la cambia (no se sube la textura)");
+  mk.pausa(true); assert.notStrictEqual(mk.firma(), f1, "pausar la cambia"); assert.strictEqual(mk.accion("derecha"), false, "en pausa no se mueve");
+  const pr = contexto(); mk.pintaEn(pr.g, 880, 780); assert.ok(!pr.ops.some(o => o[0] === "fillText" && /continuar/.test(o[1])), "en VR no sale el texto de la tecla P");
+  assert.match(FUENTE, /vr: \{ botones: \[\{ a: "izquierda", t: "Izquierda" \}, \{ a: "gira", t: "Girar" \}, \{ a: "derecha", t: "Derecha" \}, \{ a: "cae", t: "Soltar" \}\]/, "las cuatro zonas");
+  assert.match(FUENTE, /palanca: \{ izquierda: "izquierda", derecha: "derecha", arriba: "gira", abajo: "cae" \}/, "la palanca reparte igual");
+});
+
+test("VR: el anfitrión abre el juego como lámina (el mundo no se pausa), lo tocan el rayo, la palanca y B, repinta solo con firma nueva y lo libera todo al cerrar", () => {
+  const nada = () => {}, laminas = {}, cuenta = { abre: 0, cierra: 0, pinta: 0, panel: 0 }, bus = {}, filas = [], VRX = { on: true, captura: null }, pausas = [];
+  const Laminas = {
+    abre(o) { if (laminas[o.id]) this.cierra(o.id, "reabierta"); laminas[o.id] = { o, firma: null, cx: contexto().g }; cuenta.abre++; this.repinta(o.id, true); return true; },
+    repinta(id, f) { const l = laminas[id]; if (!l) return false; const fm = l.o.firma(); if (!f && fm === l.firma) return false; l.o.pinta(l.cx, l.o.w, l.o.h); l.firma = fm; cuenta.pinta++; return true; },
+    cierra(id, m) { const l = laminas[id]; if (!l) return false; delete laminas[id]; cuenta.cierra++; l.o.alCierra(m); return true; },
+    info: id => ({ abierta: !!laminas[id], pintadas: cuenta.pinta }), toca(u, v) { const l = laminas["juego-vr"]; return l ? l.o.alTocar(u, v) : false; }
+  };
+  const PanelVR = { filas(p, d) { filas.push({ p, d }); return nada; }, cierra() { cuenta.panel++; }, repinta: nada };
+  const cuerpo = ANFITRION.slice(ANFITRION.indexOf("  function JuegosMotor"), ANFITRION.indexOf("  // el manifiesto"));
+  const g = { D: { base: "", finca_id: "x" }, ConfigPuro: { prefijoApi: () => null }, Config: { tablaEpocas: () => null }, Pausa: { pon: q => pausas.push(q), quita: nada, activa: () => false },
+    Ventanas: { registra: () => nada, abierta: () => false }, Teclas: { registra: () => nada }, Hud: { icono: () => nada, alterna: nada }, VRX, Laminas, PanelVR, window: { localStorage: null }, location: { search: "?semilla=7" }, document: {} };
+  const n = { on: (ev, fn) => { bus[ev] = fn; }, limpia: nada, emite: nada };
+  const api = new Function("JuegosPuro", "n", "g", "\"use strict\";\nvar D = g.D, ConfigPuro = g.ConfigPuro, Config = g.Config, Pausa = g.Pausa, Ventanas = g.Ventanas, Teclas = g.Teclas, Hud = g.Hud, VRX = g.VRX, Laminas = g.Laminas, PanelVR = g.PanelVR, window = g.window, location = g.location, document = g.document, performance = { now: () => 0 };\n" + cuerpo + "\nreturn JuegosMotor(n);")(JP, n, g);
+  const Partida = PARTIDA(); let ultima = null;
+  const def = { id: "cae-la-cosecha", titulo: "Cae la cosecha", descripcion: "x", vr: { botones: [{ a: "izquierda", t: "Izquierda" }, { a: "gira", t: "Girar" }, { a: "derecha", t: "Derecha" }, { a: "cae", t: "Soltar" }], palanca: { izquierda: "izquierda", derecha: "derecha", arriba: "gira", abajo: "cae" }, ayuda: "a" }, crea: ctx => (ultima = Partida(ctx, nada)) };
+  const fin = () => ultima.estado().fin;
+  bus["juego:ofrece"](def);
+  const fila = filas.find(f => f.p === "mundo" && f.d.id === "juegos"); assert.ok(fila, "el anfitrión pone la fila «Juegos» en la pestaña Mundo del panel VR"); assert.strictEqual(fila.d.visible(), true);
+  const btn = []; fila.d.botones((id, x, y, w, h, txt, fn) => btn.push({ id, txt, fn }), 600); assert.deepStrictEqual(btn.map(b => b.txt), ["Cae la cosecha"]);
+  btn[0].fn();
+  assert.strictEqual(api.abierto(), null, "no hay ventana a pantalla completa"); assert.strictEqual(pausas.length, 0, "el mundo NO se pausa en VR");
+  assert.ok(laminas["juego-vr"], "la lámina está abierta"); assert.strictEqual(cuenta.abre, 1); assert.strictEqual(cuenta.panel, 1, "abrir el juego cierra el panel");
+  const o = laminas["juego-vr"].o; assert.strictEqual(o.modo, "vr"); assert.ok(o.ancho > 0.9 && o.ancho < 1.3 && o.alto / o.ancho > 1.2, "≈ 1,1 × 1,4 m: piezas de ≈ 8 cm a 1,4 m");
+  assert.ok(VRX.captura && typeof VRX.captura.palanca === "function", "la palanca queda para el juego (29_vr.js la lee)"); assert.strictEqual(cuenta.pinta, 1);
+  const p0 = cuenta.pinta; api.turnoVR(0.01); api.turnoVR(0.01); assert.strictEqual(cuenta.pinta, p0, "sin cambios, no se repinta (no se sube la textura)");
+  const G = JP.geoVR(4), c = r => [r.x + r.w / 2, r.y + r.h / 2], z = (x, y) => Laminas.toca(x / JP.VR.w, y / JP.VR.h);
+  assert.strictEqual(z(...c(G.botones[0])), true, "el gatillo sobre una zona la usa"); api.turnoVR(0.01); assert.strictEqual(cuenta.pinta, p0 + 1, "tras mover, se repinta una vez");
+  assert.strictEqual(z(440, JP.VR.tabY + 300), true, "tocar el tablero no se escapa al olivo de detrás (devuelve true)");
+  VRX.captura.palanca(0.9, 0, 0.016); api.turnoVR(0.01); assert.strictEqual(cuenta.pinta, p0 + 2, "la palanca mueve y repinta");
+  z(...c(G.botones[1])); z(...c(G.botones[2]));
+  assert.strictEqual(VRX.captura.boton("B"), true, "B pausa"); api.turnoVR(0.01); const pz = cuenta.pinta; z(...c(G.botones[0])); api.turnoVR(0.01); assert.strictEqual(cuenta.pinta, pz, "en pausa, el gatillo no mueve");
+  VRX.captura.boton("B"); z(...c(G.botones[3])); api.turnoVR(0.01);
+  assert.strictEqual(z(...c(G.salir)), true); assert.strictEqual(laminas["juego-vr"], undefined, "Salir cierra la lámina"); assert.strictEqual(VRX.captura, null, "y suelta la palanca");
+  assert.strictEqual(cuenta.abre, cuenta.cierra, "todo lo abierto está cerrado");
+  // hasta el final: se pinta «Se acabó la partida», el pie son «Otra partida» y «Salir», y «Otra partida» empieza de cero
+  btn[0].fn(); for (let i = 0; i < 80 && !fin(); i++) { VRX.captura.palanca(0, 0.9, 0.016); VRX.captura.palanca(0, 0, 0.016); api.turnoVR(0.5); }
+  assert.ok(fin(), "soltando ramas, la partida acaba"); api.turnoVR(0.01);
+  const G2 = JP.geoVR(2); assert.strictEqual(z(...c(G2.botones[0])), true); assert.ok(!fin(), "«Otra partida» empieza otra"); assert.strictEqual(z(...c(G2.salir)), true); assert.strictEqual(laminas["juego-vr"], undefined);
+  btn[0].fn(); assert.ok(laminas["juego-vr"]); laminas["juego-vr"].o.alCierra("lejos"); assert.strictEqual(VRX.captura, null, "cerrada por Laminas (lejos), suelta la palanca");
+  delete laminas["juego-vr"]; btn[0].fn(); assert.ok(VRX.captura); VRX.captura.boton("palanca"); assert.strictEqual(laminas["juego-vr"], undefined, "pulsar la palanca sale");
+  btn[0].fn(); bus["vr:sale"](); assert.strictEqual(laminas["juego-vr"], undefined, "al salir de VR se cierra"); assert.strictEqual(VRX.captura, null);
+  bus["juego:ofrece"]({ id: "otro-juego", titulo: "Otro", crea: nada }); const b2 = []; fila.d.botones((id, x, y, w, h, txt) => b2.push(txt), 600); assert.deepStrictEqual(b2, ["Cae la cosecha"], "un juego sin `vr` no se ofrece en VR");
+  assert.strictEqual(api.abreVR("otro-juego"), false);
+});
+
 test("en el código: el anfitrión no nombra al juego ni el juego al anfitrión; teclado por captura solo con el juego abierto; sin <style> (CSP)", () => {
   const sin = s => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'\\])\/\/.*$/gm, "$1");
   assert.ok(!/cae-la-cosecha|CaeLaCosecha/.test(sin(ANFITRION)), "40_juegos.js no nombra al juego");
@@ -175,7 +265,7 @@ test("en el código: el anfitrión no nombra al juego ni el juego al anfitrión;
 });
 
 // ---------- en el navegador (Cerro del fixture con el cliente web). Chrome por lanza(): el compartido de la puerta o uno propio dentro del turno.
-const { sirve, motivoSalto, lanza } = require("./_navegador");
+const { sirve, motivoSalto, lanza, desgloseLlamadas } = require("./_navegador");
 const { montaPagina, saltoPagina } = require("./_pagina");
 const SALTO = motivoSalto("el juego Cae la cosecha") || saltoPagina("el juego Cae la cosecha");
 const SALIDA = path.join(RAIZ, "pruebas", "salida"), CAPS = path.join(SALIDA, "capturas-juego");
@@ -260,6 +350,95 @@ describe("en el navegador", () => {
       console.log("   fallo en " + modo + ": " + JSON.stringify(d) + " · errores: " + JSON.stringify(errores));
       await p.screenshot({ path: path.join(CAPS, "fallo_" + (tactil ? "tactil" : "escritorio") + ".png") }).catch(() => {});
       throw er;
+    } finally { await p.close(); }
+  });
+
+  test("VR simulada: la fila «Juegos» del panel abre el juego como lámina delante, el rayo con el gatillo y la palanca juegan, B pausa, Salir cierra; sin pausar el mundo ni subir el presupuesto", { timeout: 400000 }, async t => {
+    if (SALTO) return t.skip(SALTO);
+    if (!process.env.GEMELO_VR) return t.skip("opcional: define GEMELO_VR=1 para el juego en VR con el WebXR simulado (inestable con SwiftShader, como vr.test.js)");
+    const p = await nav.newPage({ viewport: { width: 900, height: 650 } }), errores = [];
+    await p.addInitScript({ content: lee("pruebas/mock_xr.js") });
+    p.on("pageerror", e => errores.push("PAGEERROR " + String(e.stack || e).slice(0, 300)));
+    p.on("console", m => { if (m.type() === "error" && !/favicon/.test(m.text())) errores.push("CONSOLE " + m.text().slice(0, 300)); });
+    const dbg = () => p.evaluate(() => window.__vrDebug()), jue = () => p.evaluate(() => window.__juegos());
+    const fot = async n => { const f0 = await p.evaluate(() => window.__mockXR.fotogramas); await p.waitForFunction(f => window.__mockXR.fotogramas >= f, f0 + n, { timeout: 60000, polling: 100 }); };
+    const fisica = (r, w) => { const c = Math.cos(-r.yaw), s = Math.sin(-r.yaw), x = w[0] - r.x, y = w[1] - r.y, z = w[2] - r.z; return [x * c + z * s, y, -x * s + z * c]; };
+    const mem = () => p.evaluate(() => { const m = window.__g.renderer.info.memory; return [m.textures, m.geometries]; });
+    // apunta el mando derecho a un punto (u, v) de la lámina (u a la derecha, v hacia abajo, de 0 a 1) y dispara el gatillo
+    async function toca(u, v) {
+      const d = await dbg(), j = await jue(), pos = j.vr.lamina.pos, ang = Math.atan2(d.cabeza[0] - pos[0], d.cabeza[2] - pos[2]), lx = (u - 0.5) * 1.1, ly = (0.5 - v) * 1.4;
+      await p.evaluate(w => window.__mockXR.apunta("right", w), fisica(d.rig, [pos[0] + lx * Math.cos(ang), pos[1] + ly, pos[2] - lx * Math.sin(ang)]));
+      await fot(2); await p.evaluate(() => window.__mockXR.gatillo("right")); await fot(2);
+    }
+    const V = { w: 880, h: 1120 }, zona = (x, y) => toca(x / V.w, y / V.h);
+    async function aBoton(id) {
+      for (let i = 0; i < 12; i++) {
+        const d = await dbg(), q = (await p.evaluate(() => window.__vrBotones())).find(b => b.id === id);
+        assert.ok(q, "no hay botón " + id);
+        if (d.hover === id) return q;
+        const tam = d.panelTam, pos = d.panelPos, lx = ((q.x + q.w / 2) / tam[0] - 0.5) * tam[2], ly = (0.5 - (q.y + q.h / 2) / tam[1]) * tam[3], ang = Math.atan2(d.cabeza[0] - pos[0], d.cabeza[2] - pos[2]);
+        await p.evaluate(v => window.__mockXR.apunta("right", v), fisica(d.rig, [pos[0] + lx * Math.cos(ang), pos[1] + ly, pos[2] - lx * Math.sin(ang)]));
+        await fot(3);
+      }
+      return (await dbg()).hover === id ? true : null;
+    }
+    const cap = async n => { await p.screenshot({ path: path.join(CAPS, n), timeout: 120000 }).catch(e => console.log("   (captura " + n + " no hecha: " + String(e.message).split("\n")[0] + ")")); };   // en VR simulada con SwiftShader una captura puede tardar
+    const pulsa = async (mano, k) => { await p.evaluate(([m, b]) => window.__mockXR.boton(m, b, true), [mano, k]); await fot(3); await p.evaluate(([m, b]) => window.__mockXR.boton(m, b, false), [mano, k]); await fot(3); };
+    const pal = async (x, y) => { await p.evaluate(([a, b]) => window.__mockXR.ejes("right", a, b), [x, y]); await fot(3); await p.evaluate(() => window.__mockXR.ejes("right", 0, 0)); await fot(3); };
+    try {
+      await p.goto(url + "?debug&hora=12:00&semilla=4242");
+      await p.waitForFunction(() => window.__g && window.__g.listo() && window.__vrDebug && window.__juegos && window.__juegos().ofrecidosVR.length, null, { timeout: 120000, polling: 500 });
+      await p.waitForSelector("#btnVR", { timeout: 120000 }); await p.click("#btnVR", { timeout: 120000 });
+      await p.waitForFunction(() => window.__vrDebug && window.__vrDebug().on, null, { timeout: 120000, polling: 200 });
+      await fot(6); await p.waitForFunction(() => window.__g.pendientes() === 0, null, { timeout: 120000, polling: 500 }).catch(() => {}); await fot(6);
+      const [tex0, geo0] = await mem();
+      const q = await aBoton("juego:cae-la-cosecha"); assert.ok(q, "el rayo no llegó a «Cae la cosecha» en la fila «Juegos»");
+      assert.ok(q === true || (q.h >= 64 && q.w >= 200), "el botón es grande");
+      await cap("vr_juego_panel.png");
+      await p.evaluate(() => window.__mockXR.gatillo("right")); await fot(6);
+      let d = await dbg(), j = await jue();
+      assert.ok(j.vr && j.vr.id === "cae-la-cosecha" && j.vr.lamina.abierta, JSON.stringify(j.vr)); assert.strictEqual(d.panel, false, "el panel se cierra para ver la lámina");
+      assert.strictEqual(j.abierto, null, "no hay ventana a pantalla completa"); assert.strictEqual(j.pausaMundo, false, "el mundo NO se pausa en VR");
+      const lp = j.vr.lamina.pos, dist = Math.hypot(lp[0] - d.cabeza[0], lp[2] - d.cabeza[2]);
+      assert.ok(dist > 1.2 && dist < 1.6 && Math.abs(lp[1] - d.cabeza[1]) < 0.3, "delante (1,4 m) y a la altura de los ojos: " + dist.toFixed(2) + " m, Δy " + (lp[1] - d.cabeza[1]).toFixed(2));
+      await cap("vr_juego_abre.png");
+      // presupuesto: el juego en lámina = 1 llamada (por ojo) y 1 textura más; el mundo sigue dibujándose
+      let dl = await p.evaluate(desgloseLlamadas); for (let i = 0; i < 8 && !dl.total; i++) { await fot(2); dl = await p.evaluate(desgloseLlamadas); }   // (entre dos fotogramas el contador puede estar a cero)
+      const [tex1, geo1] = await mem(), nJ = dl.filas.filter(f => /juegoVR/.test(f[0])).reduce((s, f) => s + f[1], 0);
+      console.log("   juego en VR: " + nJ + " llamada(s) de " + dl.total + ", texturas " + tex0 + " → " + tex1 + ", geometrías " + geo0 + " → " + geo1 + ", lámina " + j.vr.lamina.w + " × " + j.vr.lamina.h + " px");
+      assert.ok(nJ >= 1 && nJ <= 2, "la lámina del juego cuesta 1-2 llamadas (una por ojo): " + nJ);
+      // (las texturas y geometrías del panel VR y de las teselas que llegan también cuentan entre tex0 y tex1: la lámina se mide al cerrarla, más abajo)
+      const fr0 = await p.evaluate(() => window.__g.renderer.info.render.frame); await fot(8);
+      assert.ok(await p.evaluate(f => window.__g.renderer.info.render.frame > f, fr0), "el mundo sigue dibujándose alrededor");
+      // jugar con el rayo y el gatillo: zonas de «Izquierda», «Girar», «Derecha» y «Soltar» (el pie de la lámina)
+      const pie = 930 + 65, X = [12, 232, 452, 672].map(x => x + 98), pint0 = (await jue()).vr.lamina.pintadas;
+      await zona(X[0], pie); await zona(X[0], pie); await zona(X[1], pie); await zona(X[2], pie); await zona(X[3], pie);
+      await cap("vr_juego_gatillo.png");
+      assert.ok((await jue()).vr.lamina.pintadas > pint0, "tocar repinta la lámina");
+      // la palanca derecha: ← → mueve, ↑ gira, ↓ suelta (y ni gira ni teletransporta al mundo)
+      const rig0 = (await dbg()).rig, pint1 = (await jue()).vr.lamina.pintadas;
+      await pal(-0.9, 0); await pal(0.9, 0); await pal(0, -0.9); await pal(0, 0.9);
+      assert.ok((await jue()).vr.lamina.pintadas > pint1, "la palanca juega"); const rig1 = (await dbg()).rig;
+      assert.ok(Math.abs(rig1.yaw - rig0.yaw) < 1e-6 && Math.hypot(rig1.x - rig0.x, rig1.z - rig0.z) < 0.05, "con el juego abierto la palanca no gira ni teletransporta al mundo");
+      // B pausa y vuelve a seguir; no lleva al mirador
+      await pulsa("right", 5); assert.strictEqual((await jue()).vr.pausada, true, "B pausa"); await cap("vr_juego_pausa.png");
+      assert.strictEqual((await dbg()).vuelo, false, "B no lleva al mirador mientras hay juego");
+      await pulsa("right", 5); assert.strictEqual((await jue()).vr.pausada, false, "B otra vez, sigue");
+      // hasta el final: la palanca hacia atrás suelta ramas; sale «Se acabó la partida» con «Otra partida» y «Salir»
+      for (let i = 0; i < 60 && !(await jue()).vr.estado.fin; i++) await pal(0, 0.9);
+      j = await jue(); assert.ok(j.vr.estado.fin, "la partida acaba soltando ramas"); await fot(6); await cap("vr_juego_fin.png");
+      const puntosFin = j.vr.estado.puntos; await zona(12 + 98 + 100, 930 + 65); await fot(4);   // «Otra partida»
+      j = await jue(); assert.ok(j.vr && !j.vr.estado.fin && j.vr.estado.puntos === 0, "«Otra partida» empieza de cero (la anterior hizo " + puntosFin + ")");
+      // Salir (arriba a la derecha) cierra la lámina y libera lo que abrió
+      await zona(790, 50); await fot(4);
+      j = await jue(); assert.strictEqual(j.vr, null, "Salir cierra"); assert.strictEqual((await dbg()).on, true);
+      await p.waitForTimeout(300); const [tex2, geo2] = await mem(); assert.strictEqual(tex1 - tex2, 1, "al cerrar se libera su textura (y solo esa): " + [tex1, tex2]); assert.strictEqual(await p.evaluate(() => !!window.__g.scene.getObjectByName("juegoVR")), false, "y su malla sale de la escena (las geometrías de las teselas que llegan cambian la cuenta: " + [geo1, geo2] + ")");
+      // abrirlo otra vez y salir de VR con él abierto: se cierra y se libera
+      await pulsa("left", 5); await fot(3); const q2 = await aBoton("juego:cae-la-cosecha"); assert.ok(q2, "el panel con la fila otra vez");
+      await p.evaluate(() => window.__mockXR.gatillo("right")); await fot(4); assert.ok((await jue()).vr, "abierto de nuevo");
+      await p.evaluate(() => window.__mockXR.sesion.end()); await p.waitForFunction(() => !window.__vrDebug().on, null, { timeout: 30000, polling: 200 });
+      await p.waitForFunction(() => window.__juegos().vr === null, null, { timeout: 5000, polling: 100 });
+      assert.deepStrictEqual(errores, []);
     } finally { await p.close(); }
   });
 });
