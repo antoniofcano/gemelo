@@ -8,12 +8,14 @@ import type { Contexto } from "../contexto.ts";
 import { construyeFicha, type FilaEvento, type FilaHaza, type FilaParcela, type FilaSincronia, HERRAMIENTAS_FICHA } from "./ficha.ts";
 
 const CONTRATOS = process.env["GEMELO_CONTRATOS"] ?? fileURLToPath(new URL("../../../../contratos/", import.meta.url));
-/** El contrato es la única fuente del esquema de la ficha: la api lo lee del repo (o de la imagen, GEMELO_CONTRATOS). */
-export function esquemaFicha(): Record<string, unknown> {
-  const e = JSON.parse(readFileSync(CONTRATOS.replace(/[\\/]?$/, "/") + "haza.schema.json", "utf8")) as Record<string, unknown>;
+/** Un esquema de contratos/ (la única fuente): la api lo lee del repo (o de la imagen, GEMELO_CONTRATOS). */
+export function esquemaContrato(fichero: string): Record<string, unknown> {
+  const e = JSON.parse(readFileSync(CONTRATOS.replace(/[\\/]?$/, "/") + fichero, "utf8")) as Record<string, unknown>;
   delete e["$schema"]; delete e["$id"]; delete e["$comment"];
   return e;
 }
+/** El esquema de la ficha de haza (contratos/haza.schema.json). */
+export const esquemaFicha = (): Record<string, unknown> => esquemaContrato("haza.schema.json");
 
 const coleccion = {
   type: "object", additionalProperties: false, required: ["type", "srs", "features"],

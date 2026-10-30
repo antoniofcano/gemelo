@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://gemelo.canoydamas.es/contratos/olivos-haza.schema.json",
+  "title": "Olivos personalizados de una haza (GET /api/hazas/{id}/olivos)",
+  "$comment": "GET /api/hazas/{id}/olivos: los olivos personalizados de una haza, con LISTA BLANCA (decisiones 13, 91 y 93; contratos/vida.md). Lo ve cualquier hogar con sesión: nunca sale quién lo subió, ni su sesión, ni el hogar titular, ni fechas, ni el nombre del fichero original. La api serializa con este esquema (additionalProperties: false): un campo de más no sale.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["haza_id", "es_mia", "olivos"],
+  "properties": {
+    "haza_id": { "type": "integer", "minimum": 1 },
+    "es_mia": { "type": "boolean", "$comment": "true si la haza es del hogar de la sesión (entonces puede personalizar, si su sesión es de titular)" },
+    "olivos": {
+      "type": "array",
+      "maxItems": 5000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "finca", "copas_id", "nombre", "objeto"],
+        "properties": {
+          "id": { "type": "integer", "minimum": 1, "$comment": "id de la personalización: el que se usa para denunciarla" },
+          "finca": { "type": "string", "pattern": "^[a-z0-9_-]{1,32}$" },
+          "copas_id": { "type": "integer", "minimum": 0, "maximum": 4294967295, "$comment": "id congelado del olivo (decisión 92): el copas_id del índice del motor" },
+          "nombre": { "type": ["string", "null"], "minLength": 1, "maxLength": 40 },
+          "objeto": {
+            "oneOf": [
+              { "type": "null" },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["tipo", "url", "ancho", "alto"],
+                "properties": {
+                  "tipo": { "enum": ["foto", "pintura"] },
+                  "url": { "type": "string", "pattern": "^/api/medios/[a-f0-9]{32}\\.webp$" },
+                  "ancho": { "type": "integer", "minimum": 1, "maximum": 1600 },
+                  "alto": { "type": "integer", "minimum": 1, "maximum": 1600 }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

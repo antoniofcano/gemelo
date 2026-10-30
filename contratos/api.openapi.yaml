@@ -1,6 +1,7 @@
 # Contrato HTTP de la api del gemelo (fase F1a). Lo vigila apps/api/pruebas/unidad/app.test.ts: cada ruta registrada
 # está aquí y cada operación de aquí existe. La ficha de haza remite a haza.schema.json (lista blanca, ADR-0014);
-# la sesión, a sesion.md (ADR-0013). Todo POST/PUT/DELETE exige Origin del sitio (salvo /api/csp-informe).
+# la sesión, a sesion.md (ADR-0013); la vida de las hazas (olivos personalizados, fotos, denuncias, bandeja), a vida.md
+# y olivos-haza.schema.json. Todo POST/PUT/DELETE exige Origin del sitio (salvo /api/csp-informe).
 openapi: 3.1.0
 info:
   title: Gemelo · api
@@ -196,7 +197,7 @@ paths:
       summary: Quién soy (rol, alias y si me toca el primer acceso)
       security: [{ sesion: [] }]
       responses:
-        "200": { description: ok, content: { application/json: { schema: { type: object, additionalProperties: false, required: [rol, alias, alias_visible, primer_acceso], properties: { rol: { enum: [hogar, guia, corresponsal, admin] }, alias: { type: [string, "null"] }, alias_visible: { type: boolean }, primer_acceso: { type: boolean, description: "true si no ha aceptado la versión vigente de las normas (PUT /api/yo/normas)" } } } } } }
+        "200": { description: ok, content: { application/json: { schema: { type: object, additionalProperties: false, required: [rol, alias, alias_visible, primer_acceso, titular], properties: { rol: { enum: [hogar, guia, corresponsal, admin] }, alias: { type: [string, "null"] }, alias_visible: { type: boolean }, primer_acceso: { type: boolean, description: "true si no ha aceptado la versión vigente de las normas (PUT /api/yo/normas)" }, titular: { type: boolean, description: "true si la sesión nació del enlace mágico (el adulto titular); false en un aparato vinculado con el código corto. Solo el titular cuelga contenido (decisión 96, vida.md)" } } } } } }
         "401": { $ref: "#/components/responses/SinSesion" }
 
   /api/sesion/salir:
@@ -474,3 +475,255 @@ paths:
         "403": { $ref: "#/components/responses/SinPermiso" }
         "404": { description: el hogar no existe }
         "503": { description: la presencia está apagada en este servidor }
+
+  # ---------------------------------------------------------------- vida de las hazas (decisiones 91-97; vida.md)
+  /api/hazas/{id}/olivos:
+    get:
+      summary: Olivos personalizados de una haza (lista blanca, sin quién lo subió)
+      description: Cualquier hogar con sesión. Solo lo visible y del titular ACTUAL de la haza. Ver olivos-haza.schema.json.
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "olivos-haza.schema.json" } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "404": { description: no existe la haza }
+
+  /api/olivos/{finca}/{copas_id}:
+    parameters:
+      - { name: finca, in: path, required: true, schema: { type: string, pattern: "^[a-z0-9_-]{1,32}$" } }
+      - { name: copas_id, in: path, required: true, schema: { type: integer, minimum: 0, maximum: 4294967295 }, description: "id congelado del olivo (decisión 92)" }
+    put:
+      summary: Personaliza un olivo de MI haza (nombre y una foto o pintura ya subida)
+      description: >
+        Solo una sesión de titular (nacida del enlace mágico; 403 solo_titular en un aparato vinculado) y solo en un olivo que
+        cae dentro de una haza asignada a su hogar (403 no_es_tu_haza). Se ve al momento; entra en la bandeja de la oficina
+        como contenido nuevo. Nombre de 1-40 caracteres con filtro básico (sin enlaces, teléfonos ni palabras gruesas).
+        Límite por hogar y hora (GEMELO_VIDA_ESCRITURAS_HORA).
+      security: [{ sesion: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [nombre, objeto]
+              properties:
+                nombre: { type: [string, "null"], minLength: 1, maxLength: 40 }
+                objeto:
+                  type: [object, "null"]
+                  additionalProperties: false
+                  required: [tipo, medio_id]
+                  properties: { tipo: { enum: [foto, pintura] }, medio_id: { type: integer, minimum: 1, description: "id devuelto por POST /api/medios (del propio hogar)" } }
+      responses:
+        "200": { description: guardada, content: { application/json: { schema: { type: object, additionalProperties: false, required: [id], properties: { id: { type: integer } } } } } }
+        "400": { description: "forma, nombre no válido (nombre_no_valido), vacío o foto ajena (medio_no_valido)" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: "sin Origin, aparato vinculado (solo_titular) u olivo fuera de su haza (no_es_tu_haza)" }
+        "404": { description: "no hay olivo con ese id (olivo_no_existe)" }
+        "409": { description: "dos cambios a la vez en el mismo olivo" }
+        "429": { $ref: "#/components/responses/Limite" }
+    delete:
+      summary: Quita mi personalización de ese olivo (queda retirada; el fichero se purga como el de lo retirado)
+      security: [{ sesion: [] }]
+      responses:
+        "204": { description: quitada }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: "sin Origin o aparato vinculado (solo_titular)" }
+        "404": { description: no tenía nada en ese olivo }
+
+  /api/medios:
+    post:
+      summary: Sube una foto o pintura (la imagen tal cual en el cuerpo; se re-codifica sin EXIF ni GPS)
+      description: >
+        Cuerpo binario con Content-Type image/jpeg, image/png o image/webp (otro tipo: 415). Se comprueba el formato por el
+        contenido (un PNG que dice ser JPEG: 415), se endereza, se reduce a 1600 px de lado y se guarda en WebP sin metadatos.
+        `acepto=true` es la aceptación obligatoria del aviso «sin caras de menores ni datos personales» (versión en
+        vida.md); sin ella, 400. Solo sesión de titular (se comprueba antes de leer el cuerpo). Tamaño máximo
+        GEMELO_MEDIOS_MAX_MB (8 MB por defecto; 413); límite por hogar y hora (GEMELO_MEDIOS_SUBIDAS_HORA). Sin GEMELO_MEDIOS, 503.
+      security: [{ sesion: [] }]
+      parameters:
+        - { name: acepto, in: query, required: true, schema: { const: true }, description: "acepto el aviso: sin caras de menores ni datos personales" }
+      requestBody:
+        required: true
+        content:
+          image/jpeg: { schema: { type: string, contentMediaType: image/jpeg } }
+          image/png: { schema: { type: string, contentMediaType: image/png } }
+          image/webp: { schema: { type: string, contentMediaType: image/webp } }
+      responses:
+        "201":
+          description: subida (aún no se ve; hay que colgarla en un olivo con PUT /api/olivos/…)
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [id, url, ancho, alto, bytes]
+                properties:
+                  id: { type: integer }
+                  url: { type: string, pattern: "^/api/medios/[a-f0-9]{32}\\.webp$" }
+                  ancho: { type: integer, maximum: 1600 }
+                  alto: { type: integer, maximum: 1600 }
+                  bytes: { type: integer }
+        "400": { description: "sin aceptar el aviso" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: "sin Origin o aparato vinculado (solo_titular)" }
+        "413": { description: demasiado grande }
+        "415": { description: "tipo no admitido o no es una imagen de ese tipo" }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: "subidas apagadas (falta GEMELO_MEDIOS)" }
+
+  /api/medios/{clave}:
+    get:
+      summary: El fichero, si se puede ver (colgado y visible, del diario, propio o para la oficina)
+      description: Retirar un contenido corta el acceso en el acto. Caché privada de 5 minutos.
+      security: [{ sesion: [] }]
+      parameters:
+        - { name: clave, in: path, required: true, schema: { type: string, pattern: "^[a-f0-9]{32}\\.webp$" } }
+      responses:
+        "200": { description: la imagen, content: { image/webp: { schema: { type: string, contentMediaType: image/webp } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "404": { description: "no existe o no se puede ver (misma respuesta)" }
+
+  /api/personalizaciones/{id}/denuncias:
+    post:
+      summary: Denuncia un contenido (cualquier hogar con sesión); entra en la bandeja de la oficina
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [motivo]
+              properties:
+                motivo: { enum: [menores, datos_personales, ofensivo, no_es_del_olivar, otro] }
+                texto: { type: string, minLength: 1, maxLength: 500 }
+      responses:
+        "201": { description: recibida, content: { application/json: { schema: { type: object, additionalProperties: false, required: [id], properties: { id: { type: integer } } } } } }
+        "400": { description: "forma, o texto con enlaces o números largos" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "404": { description: "no existe o ya no se ve" }
+        "409": { description: "este hogar ya lo había denunciado" }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/hazas/{id}/sugerencias:
+    post:
+      summary: Sugerencia del titular a la oficina sobre SU haza (opcionalmente sobre un olivo)
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [texto]
+              properties:
+                texto: { type: string, minLength: 1, maxLength: 1000 }
+                finca: { type: string, pattern: "^[a-z0-9_-]{1,32}$" }
+                copas_id: { type: integer, minimum: 0, maximum: 4294967295, description: "con finca, y solo con ella" }
+      responses:
+        "201": { description: recibida, content: { application/json: { schema: { type: object, additionalProperties: false, required: [id], properties: { id: { type: integer } } } } } }
+        "400": { description: "forma, texto no válido o el olivo no está en la haza" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: "sin Origin, aparato vinculado o la haza no es suya" }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/admin/bandeja:
+    get:
+      summary: Bandeja de la oficina (contenido nuevo, sugerencias y denuncias), lo más nuevo primero
+      security: [{ sesion: [] }]
+      parameters:
+        - { name: estado, in: query, schema: { enum: [nueva, vista, pasada_ot, descartada] } }
+        - { name: limite, in: query, schema: { type: integer, minimum: 1, maximum: 500, default: 100 } }
+      responses:
+        "200":
+          description: ok (sin caché)
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [bandeja]
+                properties:
+                  bandeja:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, tipo, estado, creada_en, texto, hogar_id, haza, olivo, contenido]
+                      properties:
+                        id: { type: integer }
+                        tipo: { enum: [contenido_nuevo, sugerencia, denuncia] }
+                        estado: { enum: [nueva, vista, pasada_ot, descartada] }
+                        creada_en: { type: string, format: date-time }
+                        vista_en: { type: [string, "null"], format: date-time }
+                        decidida_en: { type: [string, "null"], format: date-time }
+                        ot_propuesta_id: { type: [string, "null"] }
+                        texto: { type: [string, "null"] }
+                        hogar_id: { type: [integer, "null"], description: "quién lo mandó (solo la oficina lo ve)" }
+                        hogar_alias: { type: [string, "null"] }
+                        haza: { type: [object, "null"], properties: { id: { type: integer }, codigo: { type: string } } }
+                        olivo: { type: [object, "null"], properties: { finca: { type: string }, copas_id: { type: integer } } }
+                        denuncia_motivo: { type: [string, "null"] }
+                        contenido:
+                          type: [object, "null"]
+                          properties:
+                            id: { type: integer }
+                            nombre: { type: [string, "null"] }
+                            objeto_tipo: { enum: [foto, pintura, null] }
+                            url: { type: [string, "null"] }
+                            estado: { enum: [visible, retirado] }
+                            motivo_retirada: { type: [string, "null"] }
+                            denuncias_abiertas: { type: integer }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+
+  /api/admin/bandeja/{id}/estado:
+    post:
+      summary: Cambia el estado de una entrada (vista, pasada a OlivarTrack con el id de la propuesta, descartada)
+      description: >
+        El gemelo no escribe en OlivarTrack por su cuenta (decisión 94): la oficina crea la propuesta allí y apunta aquí su
+        id. Descartar una denuncia la resuelve como «se mantiene». Queda en la auditoría (admin.bandeja).
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [estado]
+              properties:
+                estado: { enum: [vista, pasada_ot, descartada] }
+                ot_propuesta_id: { type: string, pattern: "^[A-Za-z0-9:_.-]{1,64}$", description: "obligatorio con pasada_ot y solo con ella" }
+      responses:
+        "204": { description: hecho }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: no existe }
+
+  /api/admin/personalizaciones/{id}/retirar:
+    post:
+      summary: Retira un contenido en un clic (deja de verse y de servirse al momento)
+      description: >
+        Resuelve sus denuncias como «retirado», pasa a «vista» lo pendiente de la bandeja sobre él, manda un aviso al hogar
+        que lo colgó y lo apunta en la auditoría (admin.contenido_retirado, con el motivo).
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [motivo], properties: { motivo: { type: string, minLength: 1, maxLength: 200 } } }
+      responses:
+        "204": { description: retirado }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: "no existe o ya estaba retirado" }

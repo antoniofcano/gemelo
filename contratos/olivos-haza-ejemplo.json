@@ -1,0 +1,27 @@
+{
+  "haza_id": 1,
+  "es_mia": false,
+  "olivos": [
+    {
+      "id": 7,
+      "finca": "hituelo",
+      "copas_id": 900001,
+      "nombre": "El abuelo",
+      "objeto": { "tipo": "foto", "url": "/api/medios/0123456789abcdef0123456789abcdef.webp", "ancho": 800, "alto": 1600 }
+    },
+    {
+      "id": 8,
+      "finca": "hituelo",
+      "copas_id": 900002,
+      "nombre": "La niña",
+      "objeto": null
+    },
+    {
+      "id": 9,
+      "finca": "hituelo",
+      "copas_id": 900004,
+      "nombre": null,
+      "objeto": { "tipo": "pintura", "url": "/api/medios/fedcba9876543210fedcba9876543210.webp", "ancho": 1600, "alto": 1200 }
+    }
+  ]
+}

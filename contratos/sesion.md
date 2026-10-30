@@ -49,6 +49,7 @@ Decisiones 46 y 61; UX.md §4.4. Para las Meta Quest, donde teclear un correo y 
 | Revocación | inmediata en la base: salir, salir de todas, la oficina (`/api/admin/hogares/{id}/revocar`), hogar desactivado o borrado |
 | CSRF | `SameSite=Lax` + comprobación de `Origin` en todo POST/PUT/DELETE (salvo `/api/csp-informe`) + sin `text/plain` |
 | Roles | `hogar`, `guia`, `corresponsal`, `admin` |
+| Origen (titular) | cada sesión guarda de dónde nació (`sesiones.origen`, migración 0004): `enlace` (el adulto titular) o `vinculo` (un aparato vinculado con el código corto). `GET /api/sesion` lo da como `titular: true/false`; solo una sesión de titular cuelga contenido (decisión 96, [vida.md](vida.md)) |
 | Estáticos | `/finca/` y `/teselas/` piden sesión al Caddy interno (`forward_auth` → `/api/interno/autoriza`, cerrada desde fuera) |
 
 ## Registros
@@ -57,4 +58,4 @@ JSON (pino). Nunca: token, cookie, `Authorization`, correo (el límite por corre
 
 ## RGPD
 
-`GET /api/yo/datos` descarga todo lo del hogar; `DELETE /api/yo` (o la oficina) lo borra en cascada; la auditoría guarda el hecho, sin el correo.
+`GET /api/yo/datos` descarga todo lo del hogar (desde la 0004, también lo que colgó, subió, denunció y sugirió, sus avisos, inscripciones y lotes); `DELETE /api/yo` (o la oficina) lo borra en cascada, y la api borra además sus ficheros subidos ([VIDA](../doc/sistema/VIDA.md#datos-personales-para-la-eipd)); la auditoría guarda el hecho, sin el correo.

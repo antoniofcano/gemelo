@@ -10,6 +10,7 @@ import { LectorGrabado } from "./ot/lector-grabado.ts";
 import { LectorMcp } from "./ot/lector-mcp.ts";
 import type { LectorOlivarTrack } from "./ot/lector.ts";
 import { sincroniza } from "./ot/sincronia.ts";
+import { purgaMedios } from "./vida/medios.ts";
 
 const config = cargaConfig();
 const bd = creaBd(config.bd);
@@ -33,7 +34,11 @@ if (lector && config.ot.modo !== "no" && config.ot.cadaMin > 0) {
   relojes.push(setInterval(tarea, config.ot.cadaMin * 60_000));
   setTimeout(tarea, 10_000).unref();
 }
-relojes.push(setInterval(() => { purga(bd).catch(() => undefined); }, 6 * 3600_000));
+relojes.push(setInterval(() => {
+  purga(bd).catch(() => undefined);
+  purgaMedios(bd, config.medios.carpeta, config.medios.retencionDias).catch(() => undefined);
+}, 6 * 3600_000));
+if (!config.medios.carpeta) app.log.warn("sin GEMELO_MEDIOS: las fotos de los hogares están apagadas (503)");
 
 async function apaga(senal: string) {
   app.log.info({ evento: "apagado", senal }, "apagando");
