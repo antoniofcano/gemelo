@@ -1,6 +1,6 @@
 # Componentes del mundo: diagnóstico y diseño
 
-Diseño aceptado ([ADR-0023](../adr/0023-componentes-del-mundo.md), **Aceptado**; decisiones 117-124); **C1-C3 hechos** (lo construido y en qué se apartó del diseño: [§6](#6-lo-hecho-c1-c3)). Responde a la petición de Antonio del 2026-10-30: que el mundo pueda crecer «como si fueran plugins y/o componentes nuevos que pones y quitas», sin romper lo que hay, camino de un **Agro-Verse**. Aquí va el diagnóstico de hoy medido sobre el código, el diseño del contrato de un componente y lo que falta para el Agro-Verse; el ADR recoge la decisión, las alternativas y el plan por fases (C1…C12). Los §1-§5 son el diagnóstico y el diseño tal como se aceptaron (foto del 2026-10-30); lo construido está en §6.
+Diseño aceptado ([ADR-0023](../adr/0023-componentes-del-mundo.md), **Aceptado**; decisiones 117-124); **C1-C3 hechos** (lo construido y en qué se apartó del diseño: [§6](#6-lo-hecho-c1-c3-y-c4-más-abajo)). Responde a la petición de Antonio del 2026-10-30: que el mundo pueda crecer «como si fueran plugins y/o componentes nuevos que pones y quitas», sin romper lo que hay, camino de un **Agro-Verse**. Aquí va el diagnóstico de hoy medido sobre el código, el diseño del contrato de un componente y lo que falta para el Agro-Verse; el ADR recoge la decisión, las alternativas y el plan por fases (C1…C12). Los §1-§5 son el diagnóstico y el diseño tal como se aceptaron (foto del 2026-10-30); lo construido está en §6.
 
 ## 1. Diagnóstico (medido sobre `main` en `eb83472`)
 
@@ -147,7 +147,7 @@ El manifiesto y lo barato van en el paquete; lo pesado se pide con `import()` de
 - El diseño no cambia ningún gesto ni el panel por sí mismo; cada migración de interacción (C2, C7) lleva su nota de comodidad (regla 11). **No probado**: nada de esto existe; iPhone y Quest, sin probar.
 - El presupuesto por componente es **declarado**; medirlo de verdad exige que cada componente cuelgue lo suyo de un `Group` propio (`n.grupo(id)`) para que `?debug` cuente llamadas y triángulos por componente. Hasta medirlo con el banco, las cifras declaradas son **[SUPUESTO]**. Ejemplo de por qué importa: la bandada de `16_vida.js` suma 98 de las 124 llamadas de «lejos» en el fixture (ver `pruebas/presupuesto.json`), y hoy nada lo atribuye a la fauna.
 
-## 6. Lo hecho (C1-C4)
+## 6. Lo hecho (C1-C3, y C4 más abajo)
 
 **C1 · núcleo** (`apps/web/motor/02c_componentes.js`): `ComponentesPuro` (validar el manifiesto, ordenar por `consume` → `expone` con detección de ciclos, encendido, validar la configuración), `Bus`, `Teclas` y `Componentes` (`registra`, `arranca`, `actualiza(fase)`, `configura`, `api`, `activo`, `enciende`, `libera`, `resumen`; `window.__componentes()`). `90_final.js` llama a `Componentes.arranca()` antes del primer fotograma y a las fases `mundo` (tras la cámara y los módulos de siempre), `tarde` (antes de la `Cola`) y `trasRender`; las llamadas de los módulos que no son componentes siguen como estaban. Catálogo de eventos: [eventos.md](../../contratos/eventos.md) (+ `eventos.json` y su esquema). Configuración: [config.schema.json](../../contratos/config.schema.json) con el bloque `componentes` (`{ id: { activo, parametros? } }`). `genera_motor.mjs --sin <fichero>` (o `GEMELO_SIN`) deja componentes fuera del motor. Guardián: `pruebas/guardianes/componentes.test.js`.
 
