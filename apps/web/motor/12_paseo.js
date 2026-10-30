@@ -3,10 +3,13 @@
 // Consume: 01_datos (D, $), 02_mundo (suelo, copaAlta, copas), 03_escena (lienzo, visor, scene, camera, exag, modo), 06_arboles (tronco),
 //   08_marcadores (aplica), 09_camara (sensMirar), 13_parcelas (fincas, fincaSel, parcelaSel),
 //   16_vida (enQuad, velPaseo, giroPaseo, ponQuad, vidaPaseo, enDron, ponDron, cicloVista, dronMando, camaraDron, vidaEntra, vidaSale),
-//   24_pantalla (iniciaTransicion, iniciaSalida), 29_vr (ficha)
+//   24_pantalla (iniciaTransicion, iniciaSalida), 29_vr (ficha), 33_ajustes (Ajustes)
 // ===============================================================================
   // ---------- paseo: una persona que camina por el olivar (flechas o WASD; Mayús corre; V cambia de cámara)
   var paseando = false, persona = null, teclas = {}, primera = false, pp = { x: 0, y: 0, ang: 0, paso: 0 }, camPos = new THREE.Vector3();
+  // AV2 (decisión 133): «Altura de la vista» en Configuración (vista.altura): de pie (ojos a 1,62 m, como siempre) o sentado (1,20 m); independiente del avatar. Sin Configuración, de pie.
+  var OJOS_PIE = 1.62, OJOS_SENTADO = 1.2;
+  function alturaOjos() { return typeof Ajustes !== "undefined" && Ajustes.lee && Ajustes.lee("vista.altura") === "sentado" ? OJOS_SENTADO : OJOS_PIE; }
   function creaPersona() {
     var g = new THREE.Group(), mt = function (c) { return new THREE.MeshLambertMaterial({ color: c }); };
     var piel = mt(0xd6a27a), camisa = mt(0xe28a1c), pant = mt(0x37455c), gorra = mt(0x2e5d34);
@@ -79,7 +82,7 @@
     persona.position.set(pp.x, gy + Math.abs(Math.sin(pp.paso)) * 0.03 * mov, -pp.y); persona.rotation.y = -pp.ang; persona.visible = !primera; vidaPaseo(dt, gy, vel);
     var fx = Math.sin(pp.ang), fz = -Math.cos(pp.ang);
     if (camaraDron(dt, gy)) { }
-    else if (primera) { camera.position.set(pp.x, gy + 1.62, -pp.y); camera.lookAt(pp.x + fx * 10, gy + 1.45, -pp.y + fz * 10); }
+    else if (primera) { var oj = alturaOjos(); camera.position.set(pp.x, gy + oj, -pp.y); camera.lookAt(pp.x + fx * 10, gy + oj - 0.17, -pp.y + fz * 10); }
     else {
       var DC = enQuad ? 7.2 : 4.4;
       // la cámara no se mete en las copas: se recorre el tramo cabeza → cámara cada 25 cm y, si entra en una copa (altura medida del LiDAR,

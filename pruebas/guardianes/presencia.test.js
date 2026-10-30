@@ -391,8 +391,8 @@ test("en Chrome: sin ?presencia no se añade nada; con ?presencia=sim, 10 y 40 v
   }
   if (MIDE) for (const n of [0, 10, 40]) console.log("MEDIDO presencia n=" + n + " " + JSON.stringify(res[n]));
   const d10 = res[10].presLlamadas - res[0].presLlamadas, d40 = res[40].presLlamadas - res[0].presLlamadas;
-  assert.ok(d10 >= 4 && d10 <= 5, "10 visitantes: " + d10 + " llamadas más (esperadas 4-5: cuerpo, cabeza, sombrero, nombres y manos si hay Quest)");
-  assert.strictEqual(d40, 5, "40 visitantes: " + d40 + " llamadas más (esperadas 5)");
+  assert.ok(d10 >= 4 && d10 <= 6, "10 visitantes: " + d10 + " llamadas más (esperadas 4-6: cuerpo, cabeza, sombrero y apoyo, nombres, manos si hay Quest y las ruedas si alguien lleva silla)");
+  assert.ok(d40 === 5 || d40 === 6, "40 visitantes: " + d40 + " llamadas más (esperadas 5, o 6 con las ruedas de la silla de ruedas: AV2, decisión 131)");
   // P5: el muñeco del paseante: 5 cajas (60) + cabeza (icosaedro, 20) + sombrero (12) + nombre (2) = 94; con gafas, +24 de las manos
   assert.ok(res[40].triangulos - res[0].triangulos <= 40 * 120, "40 visitantes: más de 120 triángulos por avatar");
 });

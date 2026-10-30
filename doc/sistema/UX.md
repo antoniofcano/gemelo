@@ -162,7 +162,7 @@ Pestañas (patrón ARIA con flechas): **Gráficos · Sonido · Voz · Accesibili
 | Voz | Cómo se abre el micro: **pulsar para abrir y cerrar** (defecto, más accesible) o mantener para hablar · dispositivo · reducción de ruido · ir a la prueba |
 | Accesibilidad | Tamaño del texto 100–200 % (también paneles del mundo y VR) · alto contraste · movimiento (sistema / reducido / normal) · nombres sobre avatares siempre visibles · subtítulos de la voz del guía (**propuesta sin probar**) · descripción para lector de pantalla («Estás en la haza 7; cerca: Mirlo») |
 | Controles | Sensibilidad de mirada · invertir eje vertical · velocidad · lista de teclas · ver la ayuda |
-| Comodidad VR | Giro por saltos 30° (defecto) / 45° / suave · viñeta suave (defecto) / fuerte / apagada · desplazamiento: palanca + teletransporte / solo teletransporte · **vuelo y mirador: desactivados de entrada** · postura de pie / sentado · mano principal |
+| Comodidad VR | Giro por saltos 30° (defecto) / 45° / suave · viñeta suave (defecto) / fuerte / apagada · desplazamiento: palanca + teletransporte / solo teletransporte · **vuelo y mirador: desactivados de entrada** · mano principal |
 | Cuenta | Alias y avatar · mis dispositivos (vincular) · avisos por correo · descargar mis datos · borrar la cuenta |
 
 ### 4.12 Elegir visita
