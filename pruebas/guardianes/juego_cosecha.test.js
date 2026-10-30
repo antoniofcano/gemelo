@@ -181,7 +181,7 @@ test("clasificación por alias (C9c): ruta, validación de lista blanca, nombres
   assert.strictEqual(JP.validaClasificacion({ ...ok, puestos: [{ puesto: 1, alias: 7, puntos: 5, es_mia: false }] }, "cae-la-cosecha"), null, "alias que no es texto");
   assert.deepStrictEqual(JP.validaClasificacion({ juego: "j", total: 0, puestos: [], mia: null }, "j"), { total: 0, puestos: [], mia: null });
   assert.deepStrictEqual(JP.validaClasificacion({ ...ok, extra: 1, puestos: [{ puesto: 1, alias: null, puntos: 5, es_mia: false, hogar_id: 9 }] }, "cae-la-cosecha").puestos, [{ puesto: 1, alias: null, puntos: 5, es_mia: false }], "lo que no es de la lista blanca no pasa al motor");
-  assert.strictEqual(JP.nombrePuesto({ alias: "Olivares Sur", es_mia: false }), "Olivares Sur"); assert.strictEqual(JP.nombrePuesto({ alias: null, es_mia: false }), "Otra familia");
+  assert.strictEqual(JP.nombrePuesto({ alias: "Olivares Sur", es_mia: false }), "Olivares Sur"); assert.strictEqual(JP.nombrePuesto({ alias: null, es_mia: false }), "Una familia");
   assert.strictEqual(JP.nombrePuesto({ alias: null, es_mia: true }), "Tu familia"); assert.strictEqual(JP.nombrePuesto({ alias: "Ana", es_mia: true }), "Ana (tú)");
   assert.strictEqual(JP.textoPuesto(c), "Tu puesto: 6.º de 7 familias"); assert.strictEqual(JP.textoPuesto({ total: 1, puestos: [], mia: { puesto: 1 } }), "Tu puesto: 1.º de 1 familia");
   assert.strictEqual(JP.textoPuesto({ total: 3, puestos: [], mia: null }), "Aún no estás en la clasificación."); assert.strictEqual(JP.textoPuesto(null), "Aún no estás en la clasificación.");
@@ -399,7 +399,7 @@ describe("en el navegador", () => {
       if (visible) await p.tap("#hudIco-juegos"); else { await p.tap("#bMas"); await p.locator("#hudMas button", { hasText: "Juegos" }).tap(); }
       await p.waitForSelector("#ventana-juegos [data-clasificacion]", { timeout: 15000 });
       const txt = await p.locator("#ventana-juegos [data-clasificacion]").innerText();
-      for (const f of ["Olivares Sur", "Otra familia", "Ana", "Tu puesto: 6.º de 7 familias", "900"]) assert.ok(txt.includes(f), "la ventana enseña «" + f + "»: " + txt);
+      for (const f of ["Olivares Sur", "Una familia", "Ana", "Tu puesto: 6.º de 7 familias", "900"]) assert.ok(txt.includes(f), "la ventana enseña «" + f + "»: " + txt);
       assert.ok(!/hogar|correo|@/i.test(txt), "nada de ids ni correos");
       await p.screenshot({ path: path.join(CAPS, "clasificacion_ventana.png") });
       await p.tap("[data-juega]");
@@ -408,7 +408,7 @@ describe("en el navegador", () => {
       assert.ok(await p.evaluate(() => window.__juegos().estado.fin), "la partida acaba soltando ramas");
       await p.waitForSelector("#juegoCapa [data-clasificacion]:not([hidden])", { timeout: 15000 });
       const fin = await p.locator("#juegoCapa [data-clasificacion]").innerText();
-      assert.ok(/Tu puesto: 6\.º de 7 familias/.test(fin) && /Olivares Sur/.test(fin) && /Otra familia/.test(fin), "el fin de partida enseña tu puesto y la tabla corta: " + fin);
+      assert.ok(/Tu puesto: 6\.º de 7 familias/.test(fin) && /Olivares Sur/.test(fin) && /Una familia/.test(fin), "el fin de partida enseña tu puesto y la tabla corta: " + fin);
       const tam = await p.evaluate(() => { const r = document.querySelector("#juegoCapa [role=alertdialog] > div").getBoundingClientRect(); return [r.width, r.height, window.innerWidth, window.innerHeight]; });
       assert.ok(tam[0] <= tam[2] && tam[1] <= tam[3], "la tarjeta de fin cabe en el móvil: " + tam);
       await p.screenshot({ path: path.join(CAPS, "clasificacion_fin.png") });

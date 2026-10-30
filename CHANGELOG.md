@@ -5,6 +5,8 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Oficina (OF3b): el contorno de cada finca, unión de sus parcelas SIGPAC o catastrales, sale de `tuberia/contorno/`, se guarda en la base (migración 0011) y limita el editor de hazas: no se puede dibujar, mover ni guardar una haza fuera de él, y la api lo comprueba con `ST_CoveredBy`. Sin contorno cargado sigue la caja de los olivos + 150 m. Falta elegir fuente y parcelas (decisión 143).
+- Juegos (C9c): clasificación de «Cae la cosecha» por alias entre familias, en la pantalla de fin de partida y en la ventana Juegos (`GET /api/juegos/:id/clasificacion`: puesto, puntos y alias solo si es visible; nunca nombres, correos ni ids). No está en la lámina de VR.
 - Árboles personalizados en el mundo (P7f): el titular nombra y cuelga una foto o dibujo en los olivos de su haza desde la ficha común; las demás familias ven el nombre sobre el olivo y la imagen en una lámina colgada, y pueden denunciarla. Componente `personalizacion` (`?personaliza=0`). `PUT /api/olivos` acepta nombre u objeto sueltos. No probado en iPhone ni Quest.
 - Oficina: pestaña Épocas en Olivos (7 ventanas MM-DD, común y por finca, comprobación de los 366 días, mismo flujo de versiones) y botón «Re-hornear ahora» en Sistema (`POST /api/admin/hornero/rehornear`; el hornero recoge la petición en su comprobación de cada 10 min); la api ve al hornero en los compose (OF9).
 - «Cae la cosecha» se juega en VR como lámina delante, desde la fila «Juegos» del panel: rayo + gatillo, palanca derecha y B (C9b); 2 llamadas del juego (una por ojo). No probado en Quest.

@@ -10,7 +10,7 @@
   // en la ventana «Juegos» (icono de la barra y tecla J), abre uno a pantalla completa sobre el mundo EN PAUSA (Pausa de 02c: el bucle sigue, pero el mundo no
   // avanza ni se pinta; solo corre la fase «pausa», que es la de aquí), lo cierra con Esc o con su botón y devuelve a quien juega donde estaba. Guarda el
   // récord: en el aparato (localStorage, con try/catch) y, si la página la sirve el servidor, el de la familia en la api (POST /api/juegos/<id>/partidas
-  // y GET …/records; contrato en contratos/api.openapi.yaml). El récord es el del propio hogar; además (C9c, decisión 137) la clasificación por alias entre familias (GET …/clasificacion): puesto, puntos y el alias solo si el hogar lo hizo visible («Otra familia» si no), en la ventana y al acabar la partida.
+  // y GET …/records; contrato en contratos/api.openapi.yaml). El récord es el del propio hogar; además (C9c, decisión 137) la clasificación por alias entre familias (GET …/clasificacion): puesto, puntos y el alias solo si el hogar lo hizo visible («Una familia» si no), en la ventana y al acabar la partida.
   // Un juego es OTRO componente: se ofrece con «juego:ofrece» { id, titulo, descripcion, ayuda?, crea(ctx) → partida } (si llega antes que el anfitrión,
   // el anfitrión le pregunta con «juego:pide») y se retira con «juego:retira» { id }. ctx = { lienzo, mandos, epoca, semilla, reducido }; la partida da
   // redimensiona(w, h, dpr), actualiza(dt) → ¿repintar?, pinta(), tecla(code) → ¿usada?, pausa(si), pausada(), estado() { puntos, fin }, resultado()
@@ -58,8 +58,8 @@
       var mia = j.mia == null ? null : puesto(j.mia); if (j.mia != null && !mia) return null;
       return { total: Math.floor(j.total), puestos: filas, mia: mia };
     }
-    // cómo se llama una fila: el alias si es visible; la propia, «(tú)»; sin alias, «Otra familia»
-    function nombrePuesto(p) { return p.es_mia ? (p.alias ? p.alias + " (tú)" : "Tu familia") : (p.alias || "Otra familia"); }
+    // cómo se llama una fila: el alias si es visible; la propia, «(tú)»; sin alias, «Una familia»
+    function nombrePuesto(p) { return p.es_mia ? (p.alias ? p.alias + " (tú)" : "Tu familia") : (p.alias || "Una familia"); }
     function textoPuesto(c) {
       if (!c || !c.mia) return "Aún no estás en la clasificación.";
       return "Tu puesto: " + c.mia.puesto + ".º de " + c.total + (c.total === 1 ? " familia" : " familias");
@@ -178,7 +178,7 @@
         cuerpo.appendChild(t);
       });
       cuerpo.appendChild(el("p", "margin:10px 0 0;font-size:14px;opacity:.75", "El mundo se queda en pausa mientras juegas. Sin compras ni anuncios. " +
-        (prefijo ? "El récord es el de tu familia. En la clasificación, las otras familias salen con su alias si lo hicieron visible, y si no, como «Otra familia»." : "El récord se guarda en este aparato.")));
+        (prefijo ? "El récord es el de tu familia. En la clasificación, las otras familias salen con su alias si lo hicieron visible, y si no, como «Una familia»." : "El récord se guarda en este aparato.")));
     }
 
     // --- la partida a pantalla completa
