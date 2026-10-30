@@ -1,9 +1,10 @@
 // La escalera de olivos (ADR-0019, fase A, O8c; ?olivos=escalera) en Node, sin navegador ni GPU: 07ab_generados.js (el reparto Escalera y los
 // generados) y 07ac_lejanos.js (la capa de lejanos, aquí sin hornear su textura) se ejecutan en un contexto vm con three 0.186.1, el constructor de
 // olivos real y el parcheTiempo y colorVertSRGB REALES. Comprueba:
-//   - el reparto por presupuesto con los triángulos medidos (ADR-0017 §4) da la tabla del ADR §1 en escritorio, móvil y gafas (perfiles 0 y 3);
-//   - histéresis: con el reparto asentado, moverse 1 m no cambia el escalón de nadie; en un ida y vuelta de ± 3 m (10 veces), ≤ 2 cambios por olivo;
-//     ningún olivo cambia dos veces en menos de 1 s;
+//   - el reparto por alto en píxeles (O9c, decisión 82, ADR-0022): dentro del presupuesto en escritorio, móvil y gafas (perfiles 0 y 3), el escalón
+//     nunca más grueso hacia dentro, fuera de la banda el de sus píxeles con la s del reparto, y con presupuesto de sobra s = 1 (700/250/90 px);
+//   - continuidad: paseando, el peso visible de cada escalón cambia poco a poco (ningún salto sin cambio de s); ida y vuelta de ± 3 m, pocos cambios;
+//   - O9b-0: la variante y el impostor, con la copa y la altura del propio (decisión 81);
 //   - con el fixture de Hituelo y recetas de verdad, paseando 160 m y en una órbita de 230 a 30 m: en cada paso, todo olivo a menos de U2 está en
 //     3D o en lejanos (nunca en ninguno, salvo antes de que haya capa de lejanos); fuera de un fundido, en uno solo; las llamadas de olivos ≤ 8 y los
 //     triángulos de olivos ≤ presupuesto (+10 % de lo que sale durante el fundido);
@@ -56,52 +57,78 @@ function contexto(busqueda, reloj) {
 const espera = () => new Promise(r => setTimeout(r, 0));
 const TRI = { E0: 102978, E1: 48378, E2: 19366, E2VR: 14618 }, LEJ = 5859 * 2;   // ADR-0017 §4 y los impostores de Hituelo (2 tri × 5.859)
 
-// ---- 1) el reparto por presupuesto: la tabla del ADR §1 (centenario de 3 pies; 28 copas a menos de 40 m)
+// ---- 1) el reparto por alto en píxeles con fronteras desplazadas por el presupuesto (O9c, decisión 82; triángulos de ADR-0017 §4, olivos de 4 m)
 const c0 = contexto("?olivos=escalera"), E = c0.__E;
-function linea(n, paso) { return Array.from({ length: n }, (_, k) => ({ c: { i: k }, d: (k + 1) * paso })); }
-function reparto(pres, vr, cand) {
-  const r = E.planifica(cand || linea(120, 40 / 28 * 1.2), {}, { pres, vr, ahora: 0, costo: (cl, niv) => TRI[niv], clavePropia: (c, n) => "p" + c.i + ":" + n, claveVar: c => "v" + (c.i % 4) + ":" + (vr ? "E2VR" : "E2") });
-  const n = { E0: 0, E1: 0, E2: 0, E2VR: 0 }; r.plan.forEach(p => n[p.niv]++); return Object.assign(n, { usado: r.usado });
+function linea(n, paso) { return Array.from({ length: n }, (_, k) => ({ c: { i: k, h: 4 }, d: (k + 1) * paso })); }
+const ORD = { E0: 0, E1: 1, E2: 2, E2VR: 2 };
+function reparto(pres, vr, cand, extra) {
+  const est = {}, o = Object.assign({ pres, vr, costo: (cl, niv) => TRI[niv], clavePropia: (c, n) => "p" + c.i + ":" + n, claveVar: c => "v" + (c.i % 4) + ":" + (vr ? "E2VR" : "E2") }, extra || {});
+  let r; for (let k = 0; k < 4; k++) r = E.planifica(cand || linea(120, 40 / 28 * 1.2), est, o);   // asentado (la s baja un paso por reparto si sobra)
+  const n = { E0: 0, E1: 0, E2: 0, E2VR: 0 }; r.plan.forEach(p => n[p.niv]++);
+  return Object.assign(n, { usado: r.usado, s: r.s, propios: r.propios, variantes: r.variantes, enBanda: r.enBanda, plan: r.plan });
 }
+const KVR = 0.9 * 1760 / (2 * Math.tan(48 * Math.PI / 180));   // Quest 3 aproximado (NO VERIFICADO): px por ojo, fov vertical ≈ 96°
 const casos = {
-  escritorio: { pres: E.tope({ base: 550000, vr: null, movil: false, escala: 1, triLejanos: LEJ }), vr: false, quiere: { E0: 1, E1: 4, E2: 12, E2VR: 0 } },
-  movil: { pres: E.tope({ base: 550000, vr: null, movil: true, escala: 1.6, triLejanos: LEJ }), vr: false, quiere: { E0: 1, E1: 1, E2: 5, E2VR: 0 } },
-  gafas0: { pres: E.tope({ base: 550000, vr: { tri: 380000 }, movil: false, escala: 2, triLejanos: LEJ }), vr: true, quiere: { E0: 1, E1: 2, E2: 0, E2VR: 11 } },
-  gafas3: { pres: E.tope({ base: 550000, vr: { tri: 130000 }, movil: false, escala: 2, triLejanos: LEJ }), vr: true, quiere: { E0: 0, E1: 1, E2: 0, E2VR: 4 } },
+  escritorio: { pres: E.tope({ base: 550000, vr: null, movil: false, escala: 1, triLejanos: LEJ }), vr: false },
+  movil: { pres: E.tope({ base: 550000, vr: null, movil: true, escala: 1.6, triLejanos: LEJ }), vr: false },
+  gafas0: { pres: E.tope({ base: 550000, vr: { tri: 380000 }, movil: false, escala: 2, triLejanos: LEJ }), vr: true, kPx: KVR },
+  gafas3: { pres: E.tope({ base: 550000, vr: { tri: 130000 }, movil: false, escala: 2, triLejanos: LEJ }), vr: true, kPx: KVR },
 };
 diag.reparto = {};
 for (const [k, x] of Object.entries(casos)) {
-  const n = reparto(x.pres, x.vr); diag.reparto[k] = Object.assign({ pres: x.pres }, n);
-  for (const niv of ["E0", "E1", "E2", "E2VR"]) exige(n[niv] === x.quiere[niv], k + ": " + niv + " " + n[niv] + " (el ADR dice " + x.quiere[niv] + ") · " + JSON.stringify(n));
-  exige(n.usado <= x.pres, k + ": usa " + n.usado + " de " + x.pres);
+  const n = reparto(x.pres, x.vr, null, { kPx: x.kPx }), F = E.fronteras(4, x.kPx || E.K_PX, E.UMBRALES, n.s, E.BANDA);
+  diag.reparto[k] = { pres: x.pres, E0: n.E0, E1: n.E1, E2: n.E2, E2VR: n.E2VR, usado: n.usado, s: +n.s.toFixed(2), enBanda: n.enBanda, fronteras_4m: F.D.map(v => +v.toFixed(1)) };
+  exige(n.usado <= x.pres && n.propios <= 6 && n.variantes <= 48, k + ": se pasa del presupuesto: " + JSON.stringify(diag.reparto[k]));
+  exige(n.E0 + n.E1 + n.E2 + n.E2VR >= 1, k + ": nada en 3D");
+  exige(x.vr ? n.E2 === 0 : n.E2VR === 0, k + ": el escalón 2 no es el del aparato");
+  // el escalón nunca empeora hacia dentro: un olivo más cercano no lleva un escalón más grueso que otro más lejano (cada uno, por su parte más fina)
+  const fino = {}; n.plan.forEach(p => { fino[p.c.i] = Math.min(fino[p.c.i] === undefined ? 9 : fino[p.c.i], ORD[p.niv]); });
+  const ids = Object.keys(fino).map(Number).sort((a, b) => a - b);
+  for (let q = 1; q < ids.length; q++) exige(fino[ids[q]] >= fino[ids[q - 1]], k + ": el olivo " + ids[q] + " (más lejos) va más fino que el " + ids[q - 1]);
+  // fuera de su banda, cada olivo lleva el escalón de sus píxeles con la s del reparto
+  n.plan.forEach(p => { if (p.rol) return; const px = 4 * (x.kPx || E.K_PX) / p.d / n.s, quiere = px >= E.UMBRALES[0] && !(x.vr && TRI.E0 > 0.4 * x.pres) ? 0 : px >= E.UMBRALES[1] ? 1 : 2;
+    if (ORD[p.niv] !== quiere && Math.abs(p.d - F.D[Math.min(ORD[p.niv], quiere)]) > 0.6 + 0.08 * F.D[Math.min(ORD[p.niv], quiere)]) mal.push(k + ": a " + p.d.toFixed(1) + " m va en " + p.niv + " y sus píxeles piden el escalón " + quiere); });
+}
+exige(diag.reparto.gafas3.E0 === 0, "gafas, perfil 3: el E0 pasa del 40 % del perfil y no debe salir");
+// con presupuesto de sobra, s = 1: las fronteras son las de los umbrales de partida (700, 250 y 90 px)
+{
+  const n = reparto(1e9, false, linea(120, 1), { maxPropios: 999, maxVar: 999 }), F = E.fronteras(4, E.K_PX, E.UMBRALES, 1, E.BANDA);
+  diag.sinTope = { s: n.s, fronteras_4m: F.D.map(v => +v.toFixed(2)), bandas: F.b };
+  exige(n.s === 1, "con presupuesto de sobra, s debe ser 1 (es " + n.s + ")");
+  exige(Math.abs(F.D[0] - 4 * E.K_PX / 700) < 1e-9 && Math.abs(F.D[2] - 4 * E.K_PX / 90) < 1e-9, "las fronteras no son h · kPx / umbral");
+  const e0 = n.plan.filter(p => p.niv === "E0" && !p.rol).map(p => p.d), b0 = n.plan.filter(p => p.banda && p.banda.k === 0);
+  exige(e0.length && Math.max(...e0) <= F.D[0] - F.b[0] + 1e-9 && b0.length >= 2 && b0.every(p => Math.abs(p.d - F.D[0]) <= F.b[0] + 1e-9), "el E0 entero y su banda no están donde dicen los 700 px: " + JSON.stringify({ e0, b0: b0.map(p => [p.niv, p.rol, p.d]) }));
 }
 exige(E.tope({ base: 550000, movil: true, escala: 0.7, triLejanos: 0 }) === 270000 * 0.7, "móvil: la escala adaptativa no baja el tope");
 exige(E.tope({ base: 550000, movil: false, escala: 2, triLejanos: 1000 }) === 1099000, "escritorio: tope = base × escala − lejanos");
 
-// ---- 2) histéresis (pura): olivos en rejilla de 7 m (≈ 28 a menos de 40 m), el foco anda por la x
+// ---- 2) continuidad (pura): olivos en rejilla de 7 m, el ojo anda por la x. El PESO visible de cada escalón de cada olivo (entero 1; en banda, f
+// el más fino y 1 − f el más grueso; lejano lo que falta) cambia poco a poco: fuera de un cambio de s, ningún salto de más de 0,35 en un paso de
+// 0,35 m (con la banda de ± 1,5 m, un paso así mueve el peso ≈ 0,12); y en un ida y vuelta de ± 3 m los cambios de estado de cada olivo son pocos
 {
-  const ol = []; for (let i = -12; i <= 30; i++) for (let j = -6; j <= 6; j++) ol.push({ i: ol.length, x: i * 7 + (j % 2) * 3.5, y: j * 7 });
-  const pres = casos.escritorio.pres, est = {}; let ahora = 0, cambios = {}, ultimo = {};
+  const ol = []; for (let i = -12; i <= 30; i++) for (let j = -6; j <= 6; j++) ol.push({ i: ol.length, x: i * 7 + (j % 2) * 3.5, y: j * 7, h: 4 });
+  const pres = casos.escritorio.pres, est = {}; let ahora = 0;
+  const pesos = r => { const w = {}; r.plan.forEach(p => { const v = w[p.c.i] || (w[p.c.i] = [0, 0, 0, 0]); const f = p.rol === 0 ? 1 : p.rol === 1 ? p.f : 1 - p.f; v[ORD[p.niv]] += f; if (p.rol === 1 && p.lej) v[3] += 1 - p.f; }); return w; };
   const plan = fx => {
-    const cand = ol.map(c => ({ c, d: Math.hypot(c.x - fx, c.y) })).filter(x => x.d < 160).sort((a, b) => a.d - b.d);
-    const r = E.planifica(cand, est, { pres, vr: false, ahora, costo: (cl, niv) => TRI[niv], clavePropia: (c, n) => "p" + c.i + ":" + n, claveVar: c => "v" + (c.i % 4) + ":E2" });
-    const m = {}; r.plan.forEach(p => { m[p.c.i] = p.clave; }); return m;
+    const cand = ol.map(c => ({ c, d: Math.hypot(c.x - fx, c.y) })).filter(x => x.d < 160).sort((a, b) => a.d - b.d).slice(0, 120);
+    ahora += 0.25;   // a 1,4 m/s, un reparto cada 0,25 s
+    return E.planifica(cand, est, { pres, vr: false, ahora, costo: (cl, niv) => TRI[niv], clavePropia: (c, n) => "p" + c.i + ":" + n, claveVar: c => "v" + (c.i % 4) + ":E2" });
   };
-  const cuenta = (a, b, t) => { new Set(Object.keys(a).concat(Object.keys(b))).forEach(i => { if (a[i] !== b[i]) { cambios[i] = (cambios[i] || 0) + 1; if (ultimo[i] !== undefined && t - ultimo[i] < E.T_MIN) mal.push("histéresis: el olivo " + i + " cambia dos veces en " + (t - ultimo[i]) + " s"); ultimo[i] = t; } }); };
-  let m = plan(0); for (let k = 0; k < 5; k++) { ahora += 2; m = plan(0); }
-  ahora += 2; const m1 = plan(1); let n1 = 0; new Set(Object.keys(m).concat(Object.keys(m1))).forEach(i => { if (m[i] !== m1[i]) n1++; });
-  diag.histeresis = { arboles3D: Object.keys(m).length, cambiosAl1m: n1 };
-  exige(n1 === 0, "histéresis: moverse 1 m cambia el escalón de " + n1 + " olivos");
-  // ida y vuelta de ± 3 m, 10 veces, a 0,5 s por paso (más deprisa que T_MIN)
-  let prev = m1;
-  for (let v = 0; v < 10; v++) for (const fx of [2, 3, 2, 1, 0, -1, -2, -3, -2, -1, 0]) { ahora += 0.5; const mm = plan(fx); cuenta(prev, mm, ahora); prev = mm; }
+  const salto = (a, b) => { let m = 0; new Set(Object.keys(a).concat(Object.keys(b))).forEach(i => { const u = a[i] || [0, 0, 0, 1], v = b[i] || [0, 0, 0, 1]; for (let k = 0; k < 4; k++) m = Math.max(m, Math.abs(u[k] - v[k])); }); return m; };
+  let r = plan(0); for (let k = 0; k < 6; k++) r = plan(0);
+  let w = pesos(r), sAnt = r.s, saltos = 0, saltosS = 0, maxSalto = 0, maxSaltoS = 0, cambiosS = 0;
+  const anda = fx => { const r2 = plan(fx), w2 = pesos(r2), m = salto(w, w2); if (r2.s !== sAnt) { cambiosS++; maxSaltoS = Math.max(maxSaltoS, m); if (m > 0.35) saltosS++; } else { maxSalto = Math.max(maxSalto, m); if (m > 0.35) saltos++; } sAnt = r2.s; w = w2; return r2; };
+  for (let fx = 0; fx <= 150; fx += 0.35) anda(fx);
+  diag.continuidad = { maxSaltoSinCambioDeS: +maxSalto.toFixed(3), saltos, cambiosDeS: cambiosS, saltosConCambioDeS: saltosS, maxSaltoConCambioDeS: +maxSaltoS.toFixed(3) };
+  exige(saltos === 0, "paseo: " + saltos + " saltos de peso > 0,35 sin cambiar s (máx. " + maxSalto.toFixed(2) + ")");
+  // ida y vuelta de ± 3 m a pasos de 0,35 m, 10 veces: cuántas veces cambia el estado (entero / banda) de cada olivo
+  const estado = () => { const m = {}; Object.keys(est).forEach(i => { if (i !== "_s") m[i] = JSON.stringify(est[i]); }); return m; };
+  let prev = estado(); const cambios = {};
+  for (let v = 0; v < 10; v++) for (const fx of [...Array(9).keys()].map(k => 150 + 0.35 * k).concat([...Array(17).keys()].map(k => 152.8 - 0.35 * k), [...Array(8).keys()].map(k => 147.2 + 0.35 * k))) { anda(fx); const e = estado(); Object.keys(e).forEach(i => { if (prev[i] !== undefined && prev[i] !== e[i]) cambios[i] = (cambios[i] || 0) + 1; }); prev = e; }
   const max = Math.max(0, ...Object.values(cambios));
-  diag.histeresis.idaYVuelta = { olivosQueCambian: Object.keys(cambios).length, maxCambios: max };
-  exige(max <= 2, "histéresis: en un ida y vuelta de ± 3 m, un olivo cambia " + max + " veces (tope 2)");
-  // un paseo largo: lo que cambia lo hace de cerca a lejos (los nuevos, cerca; los que salen, lejos), sin parpadeo de un paso al siguiente
-  cambios = {}; ultimo = {};
-  for (let fx = 0; fx <= 150; fx++) { ahora += 0.7; const mm = plan(fx); cuenta(prev, mm, ahora); prev = mm; }
-  diag.histeresis.paseo150 = { olivosQueCambian: Object.keys(cambios).length, maxCambios: Math.max(0, ...Object.values(cambios)) };
+  diag.continuidad.idaYVuelta = { olivosQueCambian: Object.keys(cambios).length, maxCambios: max, saltos, cambiosDeS: cambiosS, saltosConCambioDeS: saltosS };
+  exige(saltos === 0, "ida y vuelta: saltos de peso sin cambiar s");
+  exige(max <= 80, "ida y vuelta de ± 3 m: un olivo cambia de estado " + max + " veces en 10 vueltas (tope 80: el que pasa por debajo cruza la banda del E0 dos veces a la ida y dos a la vuelta, entrando y saliendo)");
 }
 
 // ---- 2b) el sombreador del impostor (07ac) usa la disposición del formato 1 de apps/web/olivo/impostor.js: el texto GLSL lleva las fórmulas que
@@ -149,7 +176,7 @@ else {
   const ol = I.copas.map((q, i) => ({ i, x: q[0], y: q[1], h: q[2], perfil: q[3], gz: 0 })).filter(c => !(c.h > 8));
   cx.__L._prueba.sinGPU(); cx.__L.inicia(ol);
   const G = cx.__G, L = cx.__L, P = G._prueba, U2 = 1600;
-  let huecos = [], dobles = [], antesDeCapa = 0, pasos = 0, maxLlamadas = 0, maxTri = 0, sobre = [], conCapa = -1;
+  let huecos = [], dobles = [], antesDeCapa = 0, pasos = 0, maxLlamadas = 0, maxTri = 0, sobre = [], conCapa = -1, maxBanda = 0, malBanda = [];
   function fotograma(fx, fz, cam) {
     cx.camera.position.set(cam[0], cam[1], cam[2]);
     const pres = E.tope({ base: 550000, vr: null, movil: false, escala: 1, triLejanos: L.triangulos() });
@@ -157,14 +184,23 @@ else {
     const GEN = G.actualiza(fx, fz, pres, ol, 1, !L.hayCapa()); L.reparte(cx.camera.position, GEN);
     pasos++;
     const listos = P.listos(), sal = P.saliendo(), mesh = L._prueba.malla(), st = cx.window.__olivosGen(), fund = st.fundido.activo;
-    const lej = new Set(L._prueba.ids());
+    const lej = new Set(L._prueba.ids()), lr = P.lejRanura();
     if (!L.hayCapa()) { antesDeCapa++; return; }
+    // O9c: cada ranura en banda tiene su peso en uBanda (el de la distancia de este fotograma) y el lejano de un olivo en la banda E2|lejano lleva
+    // el código 2 + 3 · ranura (el complementario de su E2)
+    const B = P.bandas(), ub = P.uBanda.value, ids = L._prueba.ids(), fun = mesh ? mesh.geometry.attributes.aFun.array : null;
+    maxBanda = Math.max(maxBanda, Object.keys(B).length);
+    for (const k of Object.keys(B)) {
+      const b = B[k], d = Math.hypot(b.c.x - cam[0], -b.c.y - cam[2], cam[1]), f = b.b > 0 ? Math.min(1, Math.max(0, (b.D + b.b - d) / (2 * b.b))) : d <= b.D ? 1 : 0, u = ub[k >> 2].getComponent(k & 3);
+      if (Math.abs(u - f) > 1e-6) malBanda.push(pasos + ": ranura " + k + " pesa " + u.toFixed(3) + " y debe " + f.toFixed(3));
+    }
+    ids.forEach((i, q) => { if (lr[i] && fun[q] !== 2 + 3 * lr[i]) malBanda.push(pasos + ": el lejano de " + i + " lleva " + fun[q] + " y no 2 + 3 · " + lr[i]); });
     if (conCapa < 0) conCapa = pasos;
     for (const c of ol) {
       const d = Math.hypot(c.x - cam[0], -c.y - cam[2], cam[1]); if (d >= U2) continue;
       const en3D = !!listos[c.i] || (fund && !!sal[c.i]), enL = lej.has(c.i);
       if (!en3D && !enL) huecos.push(pasos + ":" + c.i);
-      if (!fund && en3D && enL) dobles.push(pasos + ":" + c.i);
+      if (!fund && en3D && enL && !lr[c.i]) dobles.push(pasos + ":" + c.i);   // en la banda E2|lejano van los dos, con el tramado complementario
     }
     const llam = (st.info.llamadas || 0) + (mesh && mesh.count ? 1 : 0), tri = (st.info.triangulos || 0) - (st.info.triSaliendo || 0) + L.triangulos();
     maxLlamadas = Math.max(maxLlamadas, llam); maxTri = Math.max(maxTri, tri);
@@ -195,8 +231,10 @@ else {
   for (let r = 230; r >= 30; r -= 5) fotograma(fo, -y0, [fo + r * 0.6, r * 0.55, -y0 + r * 0.6]);
   for (let k = 0; k < 40; k++) fotograma(fo, -y0, [fo + 18, 16, -y0 + 18]);   // quieto: que acaben lotes y fundidos
   const st = cx.window.__olivosGen();
-  diag.fixture = { pasos, antesDeCapa, conCapaEnPaso: conCapa, huecos: huecos.length, dobles: dobles.length, maxLlamadas, maxTri, sobre: sobre.length, final: st.info, reparto: st.escalera, lejanos: L.resumen(), ms: Date.now() - t0 };
+  diag.fixture = { pasos, antesDeCapa, conCapaEnPaso: conCapa, huecos: huecos.length, dobles: dobles.length, maxEnBanda: maxBanda, malBanda: malBanda.length, maxLlamadas, maxTri, sobre: sobre.length, final: st.info, reparto: st.escalera, lejanos: L.resumen(), ms: Date.now() - t0 };
   exige(huecos.length === 0, "escalera: olivos sin dibujar (paso:olivo): " + huecos.slice(0, 8).join(", "));
+  exige(malBanda.length === 0, "escalera: bandas mal pesadas o lejanos sin su ranura: " + malBanda.slice(0, 4).join(" · "));
+  exige(maxBanda >= 1, "escalera: en todo el paseo ningún olivo pasó por una banda");
   exige(dobles.length === 0, "escalera: olivos en 3D y en lejanos fuera de un fundido: " + dobles.slice(0, 8).join(", "));
   exige(maxLlamadas <= 8, "escalera: " + maxLlamadas + " llamadas de olivos (tope 8)");
   exige(sobre.length === 0, "escalera: triángulos de olivos por encima del presupuesto: " + sobre.slice(0, 4).join(", "));

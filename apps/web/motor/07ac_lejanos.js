@@ -20,7 +20,8 @@
   // 07ab retiene en 3D lo que sale; cuando están, la capa entra con un tramado de 1 s (uCapa). Sin WebGL para hornear, o si falla: «sin» y solo
   // ortofoto lejos (se dice en ?debug).
   // Fundido: el lejano de un olivo que ENTRA en 3D sale con el tramado complementario del de su 3D (mismo ruido, mismo uFun: código 2) y el de uno
-  // que SALE del 3D entra (código 1); así no hay huecos ni dobles durante los 0,6 s.
+  // que SALE del 3D entra (código 1); así no hay huecos ni dobles durante los 0,6 s. En la banda E2|lejano (O9c, ADR-0022 §5), el lejano lleva el
+  // código 2 con la ranura de su olivo (2 + 3 · ranura): el complementario de su E2, con el peso que 07ab pone cada fotograma según la distancia.
   var Lejanos = (function () {
     var activo = Generados.escalera(), via = activo ? "esperando" : "apagado", motivo = "", U2 = 1600, CEL = 128, CAPA_S = 1;
     var olivos = null, malla = null, matrices = null, posDe = {}, exagM = -1, nv = 0, triPor = 0, texMiB = 0, rt = null, uCapa = { value: 0 }, tCapa = 0, avisoImp = false;
@@ -202,7 +203,7 @@
         if (f === 1) continue;   // en 3D
         var dx = c.x - cam.x, dz = -c.y - cam.z, dy = Math.max(0, cam.y - (c.gz || 0) * exag);
         if (dx * dx + dz * dz + dy * dy >= U2 * U2) continue;
-        A.set(matrices.subarray(q * 16, q * 16 + 16), k * 16); F[k] = f === 2 ? 2 : f === 3 ? 1 : 0; V[k] = c.i % nv; ids[k] = c.i;
+        A.set(matrices.subarray(q * 16, q * 16 + 16), k * 16); F[k] = f === 2 ? 2 + 3 * (GEN.ranura ? GEN.ranura(c.i) : 0) : f === 3 ? 1 : 0; V[k] = c.i % nv; ids[k] = c.i;
         if (f === 2) sa++; else if (f === 3) en++;
         k++;
       }

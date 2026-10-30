@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Escalera, Generados
 // Consume: 01_datos (D, VRP, FACTOR_R8_GEN), 02_mundo (suelo, copas), 03_escena (renderer, camera, colorVertSRGB, exag), 06_arboles (gArboles),
-//   12_paseo (paseando, primera), 14_historia (hist, lista), 15_tiempo (parcheTiempo, nivel), 16_vida (esfera)
+//   12_paseo (paseando, primera), 14_historia (hist, lista), 15_tiempo (parcheTiempo, nivel, hace), 16_vida (esfera)
 // ===============================================================================
   // ---------- olivos GENERADOS cerca (ADR-0017, decisiones 26-28, 34 y 52), solo con ?olivos=gen: sin la bandera no no actúa y el motor dibuja lo de siempre.
   // El árbol lo da el constructor de olivos (apps/web/olivo/, three 0.128 dentro): window.OlivoGen (el IIFE de la salida artefacto) o, en el cliente
@@ -16,7 +16,7 @@
   // hoja (ramitas A y B, relleno) y unos puntos (olivas de E2), compartidas por todos los generados: ~6-7 llamadas en total, no por árbol.
   // Luz: sus materiales llevan el mismo parche que el resto del motor (parcheTiempo: sombra de nubes y escarcha, color por instancia en sRGB) y sus
   // colores y texturas se leen como sRGB (el convenio de 03_escena); la forma no cambia (la receta es la misma: huella olivo-2 y GEN_VERSION intactas).
-  // Fundido (sin saltos de forma): cada árbol del lote lleva un código (0 se queda, 1 entra, 2 sale) y, al colocar un lote nuevo, un tramado de pantalla
+  // Fundido (sin saltos de forma): cada pieza del lote lleva un código (0 se queda, 1 entra, 2 sale; más la ranura de banda, abajo) y, al colocar un lote nuevo, un tramado de pantalla
   // (descarte por ruido de gradiente entrelazado, sin transparencia ni ordenación, también en la pasada de sombras) deja aparecer lo que entra y
   // desaparecer lo que sale en FUNDIDO s; lo que sale va en el mismo lote (al final) y se oculta al acabar. Mientras dura, el dibujo de siempre de lo que
   // entra sigue dibujándose debajo y el de lo que sale vuelve a dibujarse desde el principio. ?olivosFundido=0 lo suprime (salto, como antes).
@@ -28,66 +28,95 @@
   // comparar a ojo): se lee el manifiesto (mismas variantes y época) pero no se descarga nada; todas se calculan. Para pruebas y comparaciones sin
   // servidor: ?olivosDir=<carpeta relativa del mismo origen, acabada en «/»> en vez de <D.base>olivos/, y ?olivosPropios=N (0-6) cuántos propios.
   // ESCALERA (ADR-0019, fase A, O8c), solo con ?olivos=escalera: los mismos generados para TODOS los olivos, con el reparto del ADR (Escalera, abajo):
-  // presupuesto entero del aparato (no el 45 %) menos los lejanos (07ac), E0 el más cercano, propios E1 hasta el 60 %, variantes E2 (E2-VR en gafas)
-  // con el resto; histéresis por distancia (MARGEN m o × 1,15) y por tiempo (1 s); un olivo cambia de escalón solo cuando el pedido está preparado (hasta
-  // entonces se queda en el que tenía) y, mientras no haya lejanos, lo que sale del 3D se queda en el lote (nunca sin dibujar). El coste ya no dobla
-  // por la pasada de sombras si renderer.shadowMap no está activo (el motor no lo activa: ver costo()). ?olivos=gen no cambia.
+  // presupuesto entero del aparato (no el 45 %) menos los lejanos (07ac); el escalón de cada olivo, por su alto en píxeles con las fronteras
+  // desplazadas a la vez por el presupuesto, y en la banda de cada frontera los dos escalones con el tramado complementario según la distancia (O9c,
+  // decisión 82, ADR-0022: ver Escalera); un olivo cambia de escalón solo cuando el pedido está preparado (hasta entonces se queda en el que tenía) y,
+  // mientras no haya lejanos, lo que sale del 3D se queda en el lote (nunca sin dibujar). El coste ya no dobla por la pasada de sombras si
+  // renderer.shadowMap no está activo (el motor no lo activa: ver costo()). La copa y la altura de todos, las del propio (parametrosDe, decisión 81).
+  // ?olivos=gen no cambia.
 
-  // [puro:inicio] — el reparto de la escalera por presupuesto, sin THREE ni DOM (lo evalúa pruebas/olivo/escalera_motor.mjs)
+  // [puro:inicio] — el reparto de la escalera por presupuesto, sin THREE ni DOM (lo evalúan pruebas/olivo/escalera_motor.mjs y o9a_escalones.mjs)
+  // O9c (decisión 82, ADR-0022 §4-5): el escalón de cada olivo sale de su alto en píxeles, px = h · kPx / d (kPx = alto del búfer / (2 · tan(fov/2))):
+  // E0 si px ≥ U0, E1 si ≥ U1, E2 (E2-VR en gafas) si ≥ U2 y lejano (07ac) por debajo. Dicho en metros, cada olivo tiene sus fronteras
+  // D_k = h · kPx / (U_k · s). Si el presupuesto (triángulos, 6 propios, 48 variantes) no da, s sube y TODAS las fronteras se acercan a la vez (nunca
+  // «el segundo baja a esquelético»); si sobra (cabe en el 70 %) y hace T_BAJA s (8) que no sube, s baja un paso del 2 % (hasta 1: los umbrales de partida). Alrededor de cada frontera, una BANDA de ± BANDA m
+  // en la que el olivo se dibuja en los dos escalones con un tramado complementario de peso f = (D + b − d) / 2b para el más fino: el paso de uno a
+  // otro es continuo con la distancia, no un disparo. Histéresis pequeña: se sale de la banda HIST (8 %, al menos 0,4 m) más allá de donde se entró,
+  // y un olivo sin banda no cambia de escalón hasta pasar la frontera ese mismo margen. Sin prima de E0: el E0 es el que se ve grande.
   var Escalera = (function () {
-    var MAX_PROPIOS = 6, MAX_VAR = 48, MARGEN = 12, FAC_SALIDA = 1.15, T_MIN = 1, FR_PROPIOS = 0.6, FR_E0_VR = 0.4, TRI_MOVIL = 270000;
+    var MAX_PROPIOS = 6, MAX_VAR = 48, TRI_MOVIL = 270000, FR_E0_VR = 0.4, UMBRALES = [700, 250, 90], BANDA = 1.5, HIST = 0.08, HIST_MIN = 0.4;
+    var PASO_S = 1.02, S_MAX = 64, HOLGURA = 0.7, T_BAJA = 8, K_PX = 1080 / (2 * Math.tan(21 * Math.PI / 180));   // sin cámara: 1080 p con el fov de 42° del motor
     /** el presupuesto de triángulos de la escalera (ADR-0019 §1): {base: TOPE_TRI de escritorio, vr: perfil VR o null, movil, escala, triLejanos}.
      *  Gafas: el tri del perfil, escala 1. Móvil: 270 k (valor de partida SIN medir), escala ≤ 1. Escritorio: base × escala. Menos lo que cuestan los lejanos. */
     function tope(o) {
       var t = o.vr ? o.vr.tri : o.movil ? TRI_MOVIL : o.base, k = o.vr ? 1 : o.movil ? Math.min(1, o.escala) : o.escala;
       return Math.max(0, t * k - (o.triLejanos || 0));
     }
-    /** El plan de la escalera. cand: [{c: {i,…}, d}] (distancia al foco); est: estado por olivo {i: {clave, niv, propio, en, t}} que se actualiza aquí;
-     *  o: {pres, vr, ahora (s), costo(clave, niv), clavePropia(c, niv), claveVar(c), maxPropios?, maxVar?}.
-     *  Devuelve {plan: [{c, d, clave, niv, propio}] de cerca a lejos, usado, propios, variantes}. */
-    function planifica(cand, est, o) {
-      var pres = o.pres, maxP = o.maxPropios === undefined ? MAX_PROPIOS : o.maxPropios, maxV = o.maxVar === undefined ? MAX_VAR : o.maxVar, ahora = o.ahora;
-      // histéresis por distancia: lo que ya estaba en 3D se ordena como si estuviera MARGEN m (o un 15 %) más cerca, y MARGEN m más por cada escalón
-      // por encima de variante (propio E1, E0): así moverse 1 m no cambia ni quién está en 3D ni quién es propio ni quién es el E0
-      var L = cand.map(function (x) {
-        var e = est[x.c.i], en = e && e.en, k = x.d;
-        if (en) k = Math.min(x.d - MARGEN, x.d / FAC_SALIDA) - MARGEN * (e.niv === "E0" ? 2 : e.propio ? 1 : 0);
-        return { c: x.c, d: x.d, e: en ? e : null, k: k, fuera: !!(e && !e.en && ahora - e.t < T_MIN) };
-      });
-      L.sort(function (a, b) { return a.k - b.k || a.d - b.d; });
-      var plan = [], usado = 0, usadoP = 0, nP = 0, nV = 0, propios = true, puesto = {};
-      function asigna(x, clave, niv, propio, t) { plan.push({ c: x.c, d: x.d, clave: clave, niv: niv, propio: propio }); usado += t; if (propio) { usadoP += t; nP++; } else nV++; puesto[x.c.i] = true; }
-      // histéresis por tiempo: lo que cambió en los últimos T_MIN s se queda como está (si cabe en el total)
-      L.forEach(function (x) {
-        if (!x.e || ahora - x.e.t >= T_MIN) return;
-        var t = o.costo(x.e.clave, x.e.niv); if (usado + t > pres) return;
-        asigna(x, x.e.clave, x.e.niv, x.e.propio, t);
-      });
-      for (var j = 0; j < L.length; j++) {
-        var x = L[j]; if (puesto[x.c.i] || x.fuera) continue;   // lo que salió en los últimos T_MIN s no vuelve todavía
-        if (propios && nP < maxP) {
-          var nivs = nP === 0 ? ["E0", "E1"] : ["E1"], hecho = false;
-          for (var q = 0; q < nivs.length && !hecho; q++) {
-            var cl = o.clavePropia(x.c, nivs[q]), t = o.costo(cl, nivs[q]);
-            if (nivs[q] === "E0" && o.vr && t > FR_E0_VR * pres) continue;   // en gafas, el E0 solo si no pasa del 40 % del perfil
-            if (usado + t <= pres && usadoP + t <= (nP === 0 ? pres : FR_PROPIOS * pres)) { asigna(x, cl, nivs[q], true, t); hecho = true; }   // el primero, si cabe en el total
-          }
-          if (hecho) continue;
-          propios = false;
-        }
-        if (nV >= maxV) break;
-        var cv = o.claveVar(x.c), tv = o.costo(cv, o.vr ? "E2VR" : "E2");
-        if (usado + tv > pres) break;
-        asigna(x, cv, o.vr ? "E2VR" : "E2", false, tv);
+    /** las fronteras de un olivo de alto h (m): D[k] (m) entre el escalón k y el k+1 (E0|E1, E1|E2, E2|lejano) y la media banda b[k], que no
+     *  pasa del 45 % del hueco con la frontera vecina (dos bandas nunca se pisan) */
+    function fronteras(h, kPx, U, s, banda) {
+      var D = [0, 1, 2].map(function (k) { return U[k] > 0 && isFinite(U[k]) ? h * kPx / (U[k] * s) : 0; }), b = [];
+      for (var k = 0; k < 3; k++) {
+        var lo = k ? D[k] - D[k - 1] : D[k], hi = k < 2 ? D[k + 1] - D[k] : Infinity;
+        b.push(D[k] > 0 ? Math.max(0, Math.min(banda, 0.45 * lo, 0.45 * hi)) : 0);
       }
-      plan.sort(function (a, b) { return a.d - b.d; });
-      // el estado: cada cambio (entrar, salir o cambiar de escalón) apunta su instante
-      var ya = {};
-      plan.forEach(function (p) { var e = est[p.c.i]; ya[p.c.i] = true; if (!e || !e.en || e.clave !== p.clave) est[p.c.i] = { clave: p.clave, niv: p.niv, propio: p.propio, en: true, t: ahora }; });
-      Object.keys(est).forEach(function (i) { var e = est[i]; if (e.en && !ya[i]) { e.en = false; e.t = ahora; } else if (!e.en && ahora - e.t > 5) delete est[i]; });
-      return { plan: plan, usado: usado, propios: nP, variantes: nV };
+      return { D: D, b: b };
     }
-    return { tope: tope, planifica: planifica, MAX_PROPIOS: MAX_PROPIOS, MAX_VAR: MAX_VAR, MARGEN: MARGEN, T_MIN: T_MIN, TRI_MOVIL: TRI_MOVIL };
+    function peso(d, F, k) { return F.b[k] > 0 ? Math.min(1, Math.max(0, (F.D[k] + F.b[k] - d) / (2 * F.b[k]))) : d <= F.D[k] ? 1 : 0; }
+    /** el estado de un olivo a d m: {n} escalón entero (0 E0, 1 E1, 2 E2, 3 lejano) o {k, f} en la banda de la frontera k con peso f del más fino;
+     *  ant: el estado anterior (histéresis) */
+    function estadoDe(d, F, ant, hist) {
+      var m = function (k) { return Math.max(HIST_MIN, hist * F.D[k]); }, k;
+      if (ant && ant.k !== undefined && F.b[ant.k] > 0 && Math.abs(d - F.D[ant.k]) <= F.b[ant.k] + m(ant.k)) return { k: ant.k, f: peso(d, F, ant.k) };
+      for (k = 0; k < 3; k++) if (F.b[k] > 0 && Math.abs(d - F.D[k]) <= F.b[k]) return { k: k, f: peso(d, F, k) };
+      var n = 0; while (n < 3 && d > F.D[n]) n++;
+      if (ant && ant.n !== undefined && Math.abs(n - ant.n) === 1) { k = Math.min(n, ant.n); if (Math.abs(d - F.D[k]) <= F.b[k] + m(k)) return { n: ant.n }; }
+      return { n: n };
+    }
+    /** El plan de la escalera. cand: [{c: {i, h?,…}, d}] (d: la distancia del ojo con la que se miden los píxeles); est: estado por olivo y la s
+     *  ({_s, i: {n} | {k}}), que se actualiza aquí; o: {pres, vr, costo(clave, niv), clavePropia(c, niv), claveVar(c), kPx?, umbrales?, banda?,
+     *  hist?, alto(c)?, maxPropios?, maxVar?, ahora? (s)}. Devuelve {plan: [{c, d, clave, niv, propio, rol, banda, f, lej, F}] de cerca a lejos (rol 0: entero;
+     *  en banda, 1 el más fino y 2 el más grueso; lej: el más grueso es el lejano de 07ac), usado, propios, variantes, s, enBanda}. */
+    function planifica(cand, est, o) {
+      var pres = o.pres, maxP = o.maxPropios === undefined ? MAX_PROPIOS : o.maxPropios, maxV = o.maxVar === undefined ? MAX_VAR : o.maxVar;
+      var kPx = o.kPx > 0 ? o.kPx : K_PX, U0 = o.umbrales || UMBRALES, banda = o.banda === undefined ? BANDA : o.banda, hist = o.hist === undefined ? HIST : o.hist;
+      var NV = ["E0", "E1", o.vr ? "E2VR" : "E2"], alto = o.alto || function (c) { return c.h > 0 ? c.h : 4; };
+      // en gafas, el E0 solo si no pasa del 40 % del perfil (con el coste del primer candidato: todos los propios cuestan parecido)
+      var sinE0 = o.vr && cand.length && o.costo(o.clavePropia(cand[0].c, "E0"), "E0") > FR_E0_VR * pres, U = [sinE0 ? Infinity : U0[0], U0[1], U0[2]];
+      var hs = cand.map(function (x) { return alto(x.c); });
+      function evalua(s) {
+        var L = [], usado = 0, nP = 0, nV = 0, nB = 0;
+        for (var j = 0; j < cand.length; j++) {
+          var x = cand[j], F = fronteras(hs[j], kPx, U, s, banda), st = estadoDe(x.d, F, est[x.c.i], hist), partes = [];
+          if (st.n !== undefined) { if (st.n < 3) partes.push({ niv: NV[st.n], rol: 0 }); }
+          else { nB++; partes.push({ niv: NV[st.k], rol: 1 }); if (st.k < 2) partes.push({ niv: NV[st.k + 1], rol: 2 }); }
+          for (var q = 0; q < partes.length; q++) {
+            var p = partes[q]; p.propio = p.niv === "E0" || p.niv === "E1"; p.clave = p.propio ? o.clavePropia(x.c, p.niv) : o.claveVar(x.c);
+            usado += o.costo(p.clave, p.niv); if (p.propio) nP++; else nV++;
+          }
+          L.push({ x: x, F: F, st: st, partes: partes });
+        }
+        return { L: L, usado: usado, nP: nP, nV: nV, nB: nB, s: s };
+      }
+      function cabe(r, lim) { return r.usado <= lim && r.nP <= maxP && r.nV <= maxV; }
+      var s0 = Math.max(1, est._s || 1), r = evalua(s0), ahora = o.ahora;
+      if (!cabe(r, pres)) { var s = s0; while (s < S_MAX) { s = Math.min(S_MAX, s * PASO_S); r = evalua(s); if (cabe(r, pres)) break; } est._tSube = ahora; }
+      else if (s0 > 1 && (ahora === undefined || est._tSube === undefined || ahora - est._tSube >= T_BAJA)) { var rb = evalua(Math.max(1, s0 / PASO_S)); if (cabe(rb, HOLGURA * pres)) r = rb; }
+      var plan = [], vivos = {};
+      r.L.forEach(function (e) {
+        vivos[e.x.c.i] = true; est[e.x.c.i] = e.st.n !== undefined ? { n: e.st.n } : { k: e.st.k };
+        e.partes.forEach(function (p) {
+          plan.push({ c: e.x.c, d: e.x.d, clave: p.clave, niv: p.niv, propio: p.propio, rol: p.rol, f: e.st.f, lej: e.st.k === 2,
+            banda: e.st.k !== undefined ? { k: e.st.k, D: e.F.D[e.st.k], b: e.F.b[e.st.k] } : null, F: e.F });
+        });
+      });
+      Object.keys(est).forEach(function (i) { if (i.charAt(0) !== "_" && !vivos[i]) delete est[i]; });
+      est._s = r.s;
+      plan.sort(function (a, b) { return a.d - b.d || a.rol - b.rol; });
+      return { plan: plan, usado: r.usado, propios: r.nP, variantes: r.nV, s: r.s, enBanda: r.nB };
+    }
+    return { tope: tope, planifica: planifica, fronteras: fronteras, peso: peso, MAX_PROPIOS: MAX_PROPIOS, MAX_VAR: MAX_VAR, TRI_MOVIL: TRI_MOVIL,
+      UMBRALES: UMBRALES, BANDA: BANDA, HIST: HIST, K_PX: K_PX };
   })();
   // [puro:fin]
 
@@ -97,7 +126,7 @@
     var fr = /[?&]olivosTri=([0-9.]+)/.exec(location.search), FRACCION = fr && !ESCALERA ? Math.min(0.9, Number(fr[1])) : ESCALERA ? 1 : 0.45;
     var mpr = /[?&]olivosPropios=([0-6])\b/.exec(location.search);
     var ESTIM = { E0: 160000, E1: 80000, E2: 38000, E2VR: 28000 }, SEM_VAR = [11, 23, 37, 51], MAX_PROPIOS = mpr ? Number(mpr[1]) : 6, MAX_VAR = 48, RADIO_CAND = 160, MARGEN = 12;
-    var recetas = {}, pidiendo = {}, nPidiendo = 0, plan = [], listos = {}, lote = null, claveLote = "", nuevo = null, R = 0, triGen = 0, costoGen = 0, info = { llamadas: 0, triangulos: 0 };
+    var recetas = {}, pidiendo = {}, nPidiendo = 0, plan = [], listos = {}, enLote = {}, lote = null, claveLote = "", nuevo = null, R = 0, triGen = 0, costoGen = 0, info = { llamadas: 0, triangulos: 0 };
     var ff = /[?&]olivosFundido=([0-9.]+)/.exec(location.search), FUNDIDO = ff ? Math.min(3, Number(ff[1])) : 0.6;
     var HORNEADO = !/[?&]olivosHorneado=0\b/.test(location.search), manif = null, varSem = null, epocaManif = null, fechaPrueba = null;
     var horn = { estado: "no", motivo: "", horneadas: 0, calculadas: 0, fallos: 0, cache: 0, propios: 0, ultimoFallo: "" };
@@ -186,15 +215,21 @@
         });
     }
     // ---- los materiales: el parche del motor (luz, nubes, escarcha) y el fundido por tramado
-    // GLSL: vFun = código del árbol (0 se queda, 1 entra, 2 sale): en las mallas por lotes va en el alfa de su color por instancia (1, 0,5, 0); en las
-    // instanciadas y los puntos, en el atributo aFun. uFun (0 → 1) es el avance del fundido; fuera de un fundido vale 1 y no descarta nada.
-    var GLSL_FUN_V = "varying float vFun;\n#ifndef USE_BATCHING\nattribute float aFun;\n#endif\n";
-    var GLSL_FUN_M = "\n#ifdef USE_BATCHING_COLOR\n vFun = floor((1.0 - getBatchingColor(getIndirectIndex(gl_DrawID)).a) * 2.0 + 0.5);\n#elif defined( USE_BATCHING )\n vFun = 0.0;\n#else\n vFun = aFun;\n#endif\n";
-    var GLSL_FUN_F = "varying float vFun; uniform float uFun;\nfloat ot_ign(vec2 p) { return fract(52.9829189 * fract(dot(p, vec2(0.06711056, 0.00583715)))); }\n";
+    // GLSL: código de cada pieza c = rol + 3 · ranura. rol 0 se queda (no descarta nada), 1 entra (se dibuja donde el ruido < f), 2 sale (donde ≥ f: el
+    // complementario). Ranura 0: f = uFun (0 → 1), el fundido por tiempo al colocar un lote; fuera de él vale 1. Ranuras 1-63 (O9c, la escalera): f
+    // = uBanda[ranura], el peso del escalón más fino de un olivo en la banda de su frontera, que paso() pone cada fotograma según la distancia
+    // (ADR-0022 §5). En las mallas por lotes, c va en el alfa del color por instancia (1 − c / 2: 1, 0,5, 0, −0,5…); en las instanciadas y los
+    // puntos, en el atributo aFun. vFun = rol y vFr = f, del vértice al fragmento.
+    var GLSL_FUN_V = "varying float vFun; varying float vFr; uniform float uFun; uniform vec4 uBanda[16];\n#ifndef USE_BATCHING\nattribute float aFun;\n#endif\n";
+    var GLSL_FUN_M = "\n float ot_c;\n#ifdef USE_BATCHING_COLOR\n ot_c = floor((1.0 - getBatchingColor(getIndirectIndex(gl_DrawID)).a) * 2.0 + 0.5);\n#elif defined( USE_BATCHING )\n ot_c = 0.0;\n#else\n ot_c = aFun;\n#endif\n" +
+      " float ot_s = floor(ot_c / 3.0 + 0.01); vFun = ot_c - 3.0 * ot_s; int ot_si = int(ot_s + 0.5);\n" +
+      " vFr = ot_si == 0 ? uFun : dot(uBanda[ot_si / 4], vec4(equal(ivec4(0, 1, 2, 3), ivec4(ot_si - (ot_si / 4) * 4))));\n";
+    var GLSL_FUN_F = "varying float vFun; varying float vFr;\nfloat ot_ign(vec2 p) { return fract(52.9829189 * fract(dot(p, vec2(0.06711056, 0.00583715)))); }\n";
+    var uBanda = { value: [] }; for (var ib = 0; ib < 16; ib++) uBanda.value.push(new THREE.Vector4(1, 1, 1, 1));
     function parcheFundido(sh) {
-      sh.uniforms.uFun = uFun;
+      sh.uniforms.uFun = uFun; sh.uniforms.uBanda = uBanda;
       sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\n" + GLSL_FUN_V).replace("#include <begin_vertex>", "#include <begin_vertex>" + GLSL_FUN_M);
-      sh.fragmentShader = sh.fragmentShader.replace("void main() {", GLSL_FUN_F + "void main() {\n if (vFun > 0.5) { float ot_d = ot_ign(gl_FragCoord.xy); if (vFun < 1.5 ? ot_d >= uFun : ot_d < uFun) discard; }");
+      sh.fragmentShader = sh.fragmentShader.replace("void main() {", GLSL_FUN_F + "void main() {\n if (vFun > 0.5) { float ot_d = ot_ign(gl_FragCoord.xy); if (vFun < 1.5 ? ot_d >= vFr : ot_d < vFr) discard; }");
     }
     function parcheLuz(sh) {
       parcheTiempo(sh, false);   // sombra de nubes y escarcha (15_tiempo) y color por instancia en sRGB (03_escena)
@@ -334,68 +369,128 @@
       }
       return { radio: fundido ? Math.min(R, fundido.Rviejo) : R, tri: triGen, tiene: tiene };
     }
-    // ---- la escalera (?olivos=escalera): todo el presupuesto que da 07b (ya sin los lejanos), el reparto de Escalera.planifica y, si retener (aún
-    // no hay lejanos), lo que sale del 3D se queda en el lote
-    var estEsc = {}, reparto = { propios: 0, variantes: 0, usado: 0, pres: 0 };
+    // ---- la escalera (?olivos=escalera): todo el presupuesto que da 07b (ya sin los lejanos), el reparto de Escalera.planifica por alto en píxeles
+    // (O9c) y, si retener (aún no hay lejanos), lo que sale del 3D se queda en el lote. ?olivosPx=E0,E1,E2 cambia los umbrales de partida (px de alto;
+    // para afinarlos en aparato, O9d) y ?olivosBanda=m la media banda del fundido (0: sin banda, salto en la frontera con el fundido por tiempo).
+    var estEsc = {}, reparto = { propios: 0, variantes: 0, usado: 0, pres: 0 }, prePide = {}, ranuraDe = {}, bandas = {}, lejRanura = {}, v2 = null;
+    var mU = /[?&]olivosPx=([0-9.]+),([0-9.]+),([0-9.]+)/.exec(location.search), UMB = mU ? [Number(mU[1]), Number(mU[2]), Number(mU[3])] : Escalera.UMBRALES;
+    var mB = /[?&]olivosBanda=([0-9.]+)/.exec(location.search), BANDA = mB ? Math.min(5, Number(mB[1])) : Escalera.BANDA, PRE = 6, MAX_PRE = 2;
     function nVar() { return (varSem || SEM_VAR).length; }
     function pideVariante(j, niv, prio) {
       var sv = varSem ? varSem[j] : { tipo: "centenario3", semilla: SEM_VAR[j] };
       pide("v" + j + ":" + niv, { tipo: sv.tipo, epoca: epoca(), semilla: sv.semilla }, niv, prio, true);
     }
+    // el ojo con el que se miden los píxeles: paseando, quien pasea (en el plano: girar en el sitio no cambia nada); si no, la cámara
+    function ojoAhora() {
+      if (typeof paseando !== "undefined" && paseando && typeof pp !== "undefined") return { x: pp.x, z: -pp.y, plano: true };
+      var c = camera.position; return { x: c.x, y: c.y, z: c.z, plano: false };
+    }
+    function distOjo(c, o) {
+      var dx = c.x - o.x, dz = -c.y - o.z; if (o.plano) return Math.hypot(dx, dz);
+      return Math.hypot(dx, dz, Math.max(0, o.y - (c.gz !== undefined ? c.gz : suelo(c.x, c.y)) * exag));
+    }
+    // px por (metro de alto / metro de distancia): alto del búfer · P[5] / 2 (P[5] = 1 / tan(fov/2)); en VR, el de un ojo; sin cámara, 1080 p a 42°
+    function kPixeles() {
+      if (typeof renderer === "undefined" || !renderer) return Escalera.K_PX;
+      if (renderer.xr && renderer.xr.isPresenting) {
+        var xc = renderer.xr.getCamera(), c0 = xc && xc.cameras && xc.cameras[0];
+        if (c0 && c0.viewport && c0.viewport.w > 0) return c0.viewport.w * c0.projectionMatrix.elements[5] / 2;
+      }
+      if (!renderer.getDrawingBufferSize || !camera.projectionMatrix) return Escalera.K_PX;
+      v2 = v2 || new THREE.Vector2(); renderer.getDrawingBufferSize(v2);
+      return v2.y > 0 ? v2.y * camera.projectionMatrix.elements[5] / 2 : Escalera.K_PX;
+    }
+    function altoDe(c) { var P = parametrosDe(c).parametros; return (P.altura > 0 ? P.altura : Math.max(1, c.h || 4)) * exag; }
     function actualizaEscalera(fx, fz, tope, olivos, escala, retener) {
       var cam = camera.position, amplia = Math.max(1, Math.sqrt(escala || 1)), lejos = Math.hypot(cam.x - fx, cam.z - fz, Math.max(0, cam.y - suelo(fx, -fz) * exag)) > 150 * amplia;
-      var vr = VRP.on, nivV = vr ? "E2VR" : "E2", nv = nVar(), cand = [];
-      if (!lejos) for (var i = 0; i < olivos.length; i++) { var c = olivos[i], d = Math.hypot(c.x - fx, -c.y - fz); if (d < RADIO_CAND * amplia) cand.push({ c: c, d: d }); }
+      var vr = VRP.on, NIV = ["E0", "E1", vr ? "E2VR" : "E2"], nv = nVar(), ojo = ojoAhora(), kPx = kPixeles(), cand = [];
+      if (!lejos) for (var i = 0; i < olivos.length; i++) { var c = olivos[i]; if (Math.hypot(c.x - fx, -c.y - fz) < RADIO_CAND * amplia) cand.push({ c: c, d: distOjo(c, ojo) }); }
       cand.sort(function (a, b) { return a.d - b.d; }); if (cand.length > 120) cand.length = 120;
-      var r = Escalera.planifica(cand, estEsc, { pres: tope, vr: vr, ahora: performance.now() / 1000, maxPropios: MAX_PROPIOS, maxVar: MAX_VAR,
+      var r = Escalera.planifica(cand, estEsc, { pres: tope, vr: vr, ahora: performance.now() / 1000, kPx: kPx, umbrales: UMB, banda: BANDA, maxPropios: MAX_PROPIOS, maxVar: MAX_VAR, alto: altoDe,
         costo: function (cl, niv) { return recetas[cl] ? costo(recetas[cl]) : estim(niv); },
-        clavePropia: function (c, niv) { return "p" + c.i + ":" + niv; }, claveVar: function (c) { return "v" + (c.i % nv) + ":" + nivV; } });
-      plan = r.plan; reparto = { propios: r.propios, variantes: r.variantes, usado: Math.round(r.usado), pres: Math.round(tope) };
+        clavePropia: function (c, niv) { return "p" + c.i + ":" + niv; }, claveVar: function (c) { return "v" + (c.i % nv) + ":" + NIV[2]; } });
+      plan = r.plan; reparto = { propios: r.propios, variantes: r.variantes, usado: Math.round(r.usado), pres: Math.round(tope), s: +r.s.toFixed(3), enBanda: r.enBanda, kPx: Math.round(kPx), umbrales: UMB, banda: BANDA };
       // lo que falta se pide por prioridad (como mucho 2 a la vez): los propios por su distancia; las variantes E2 de los lejanos (07ac), siempre
       // aunque no haya nada en 3D, justo después de los propios de menos de 50 m (sin ellas, de lejos no hay olivos: en SwiftShader, sin trabajador
-      // y detrás de los propios, no llegaron en 12 min en el banco de O8c); las variantes del plan, detrás
-      var pedir = [];
+      // y detrás de los propios, no llegaron en 12 min en el banco de O8c); las variantes del plan, detrás; y, detrás de todo, el escalón vecino de
+      // un olivo a menos de PRE m de su banda (como mucho MAX_PRE), para que esté cuando entre en ella
+      var pedir = [], pre = {}, nPre = 0;
       plan.forEach(function (p) {
         if (recetas[p.clave]) return;
         if (p.propio) pedir.push({ prio: p.d, f: function () { var e2 = entrada(p.c); p.provisional = e2.provisional; pide(p.clave, e2, p.niv, p.d); } });
         else pedir.push({ prio: p.d + 200, f: function () { pideVariante(Number(p.clave.slice(1, p.clave.indexOf(":"))), p.niv, p.d + 200); } });
       });
       for (var j = 0; j < nv; j++) (function (j) { if (!recetas["v" + j + ":E2"]) pedir.push({ prio: 50 + j, f: function () { pideVariante(j, "E2", 50 + j); } }); })(j);
-      pedir.sort(function (a, b) { return a.prio - b.prio; }).forEach(function (x) { x.f(); });
-      // lo que ya se puede dibujar: el escalón pedido si su receta está; si no, el otro nivel propio de ese olivo; si no, el que tenía en el lote
-      var antes = {}, enPlan = {}, listosAhora = [];
-      selLote.forEach(function (p) { antes[p.c.i] = p; });
       plan.forEach(function (p) {
-        enPlan[p.c.i] = true;
-        if (recetas[p.clave]) { listosAhora.push(p); return; }
-        var otra = p.propio ? "p" + p.c.i + ":" + (p.niv === "E0" ? "E1" : "E0") : null;
-        if (otra && recetas[otra]) { listosAhora.push({ c: p.c, d: p.d, clave: otra, niv: p.niv === "E0" ? "E1" : "E0", propio: true, provisional: p.provisional }); return; }
-        var a = antes[p.c.i]; if (a && recetas[a.clave]) listosAhora.push({ c: a.c, d: p.d, clave: a.clave, niv: a.niv, propio: a.propio, provisional: a.provisional });
+        if (p.rol !== 0 || !p.F) return;
+        var F = p.F, n = NIV.indexOf(p.niv), quiere = [];
+        if (n >= 1 && F.D[n - 1] > 0 && p.d < F.D[n - 1] + F.b[n - 1] + PRE) quiere.push(NIV[n - 1]);
+        if (n === 0 && p.d > F.D[0] - F.b[0] - PRE) quiere.push("E1");
+        quiere.forEach(function (niv) {
+          var cl = "p" + p.c.i + ":" + niv; pre[cl] = true;
+          if (!recetas[cl] && nPre < MAX_PRE) { nPre++; pedir.push({ prio: p.d + 300, f: function () { var e2 = entrada(p.c); pide(cl, e2, niv, p.d + 300); } }); }
+        });
       });
-      if (retener) selLote.forEach(function (p) { if (!enPlan[p.c.i] && recetas[p.clave]) listosAhora.push(p); });   // sin lejanos todavía: nada se queda sin dibujar
-      listosAhora.sort(function (a, b) { return a.d - b.d; });
-      var cl = exag + "|" + listosAhora.map(function (p) { return p.c.i + "=" + p.clave; }).join(",");
+      prePide = pre;
+      pedir.sort(function (a, b) { return a.prio - b.prio; }).forEach(function (x) { x.f(); });
+      // lo que ya se puede dibujar, por olivo: sus partes si están todas; si en una banda solo está una, esa entera; si no hay ninguna, el otro
+      // nivel propio de ese olivo o lo que tenía en el lote. Sin lejanos todavía (retener), lo de la banda E2|lejano va entero
+      var antes = {}, porOlivo = {}, orden = [], listosAhora = [];
+      selLote.forEach(function (p) { (antes[p.c.i] = antes[p.c.i] || []).push(p); });
+      plan.forEach(function (p) { if (!porOlivo[p.c.i]) { porOlivo[p.c.i] = []; orden.push(p.c.i); } porOlivo[p.c.i].push(p); });
+      orden.forEach(function (i) {
+        var ps = porOlivo[i], hay = ps.filter(function (p) { return recetas[p.clave]; });
+        if (hay.length === ps.length) { ps.forEach(function (p) { listosAhora.push(retener && p.lej ? conRol(p, 0) : p); }); return; }
+        if (hay.length) { listosAhora.push(conRol(hay[0], 0)); return; }
+        var p = ps[0], otra = p.propio ? "p" + i + ":" + (p.niv === "E0" ? "E1" : "E0") : null;
+        if (otra && recetas[otra]) { listosAhora.push(Object.assign(conRol(p, 0), { clave: otra, niv: p.niv === "E0" ? "E1" : "E0" })); return; }
+        (antes[i] || []).forEach(function (a) { if (recetas[a.clave]) listosAhora.push(Object.assign({}, a, { d: p.d })); });
+      });
+      if (retener) selLote.forEach(function (p) { if (!porOlivo[p.c.i] && recetas[p.clave]) listosAhora.push(p); });   // sin lejanos todavía: nada se queda sin dibujar
+      listosAhora.sort(function (a, b) { return a.d - b.d || (a.rol || 0) - (b.rol || 0); });
+      ranuras(listosAhora);
+      var cl = exag + "|" + listosAhora.map(function (p) { return p.c.i + "=" + p.clave + ":" + (p.rol || 0) + ":" + (p.ranura || 0); }).join(",");
       if (cl !== claveLote && !hay("Glote") && !fundido) {
         var fija = listosAhora.slice(), items = elementos(fija);
         encola("Glote", -1, seguro(construyeG(items)), function (g) { if (g) colocaLote(g, fija, items, cl); });
       }
-      return { radio: fundido ? Math.min(R, fundido.Rviejo) : R, tri: triGen, tiene: tiene, fase: fase };
+      return { radio: fundido ? Math.min(R, fundido.Rviejo) : R, tri: triGen, tiene: tiene, fase: fase, ranura: ranuraLej };
+    }
+    function conRol(p, rol) { var q = Object.assign({}, p); q.rol = rol; if (!rol) { q.banda = null; q.ranura = 0; } return q; }
+    // la ranura de cada olivo con partes en banda (1-63): la misma mientras siga en banda (en el lote colocado o en el que se monta), y se libera al
+    // colocar un lote que ya no la usa (colocaLote)
+    function ranuras(lista) {
+      var usadas = {}; Object.keys(ranuraDe).forEach(function (i) { usadas[ranuraDe[i]] = true; });
+      lista.forEach(function (p) {
+        if (!(p.rol > 0)) { p.ranura = 0; return; }
+        var i = p.c.i;
+        if (!ranuraDe[i]) { for (var s = 1; s < 64; s++) if (!usadas[s]) { ranuraDe[i] = s; usadas[s] = true; break; } }
+        if (!ranuraDe[i]) { p.rol = 0; p.ranura = 0; p.banda = null; return; }   // sin ranuras libres (más de 63 olivos en banda): entero
+        p.ranura = ranuraDe[i];
+      });
     }
     // durante un fundido, el dibujo de siempre de lo que entra sigue dibujándose (y el de lo que sale ya vuelve): tiene() solo si ya estaba antes
     function tiene(i) { return !!listos[i] && (!fundido || !!fundido.viejos[i]); }
     /** escalera: cómo está el olivo i en el lote, para el tramado complementario de los lejanos (07ac): 0 no está en 3D, 1 está (y no entra), 2 entra
-     *  con fundido (el lejano sale con el tramado complementario), 3 sale con fundido (el lejano entra) */
+     *  con fundido o está en la banda E2|lejano (el lejano sale con el tramado complementario), 3 sale con fundido (el lejano entra) */
     function fase(i) {
+      if (lejRanura[i]) return 2;
       var en = !!listos[i]; if (!fundido) return en ? 1 : 0;
       var v = !!fundido.viejos[i]; return en ? (v ? 1 : 2) : v && saliendo[i] ? 3 : 0;
     }
+    function ranuraLej(i) { return lejRanura[i] || 0; }
     var saliendo = {};
-    // lo que va en el lote nuevo: lo de ahora (0 si ya estaba igual, 1 si entra) y, al final, lo del lote anterior que se va o cambia de detalle (2)
+    // lo que va en el lote nuevo y su código (rol + 3 · ranura): en banda, el suyo; entero, 0 si ya estaba (entero o en banda) y 1 si entra con el
+    // fundido por tiempo; y, al final, lo entero del lote anterior que se va (2). Lo que estaba en banda y se va, se va sin fundido: al salir de la
+    // banda su peso ya es 0
     function elementos(fija) {
       var antes = {}, ahora = {}, out = [];
-      selLote.forEach(function (p) { antes[p.c.i] = p.clave; });
-      fija.forEach(function (p) { ahora[p.c.i] = p.clave; out.push({ p: p, cod: FUNDIDO > 0 && antes[p.c.i] !== p.clave ? 1 : 0 }); });
-      if (FUNDIDO > 0) selLote.forEach(function (p) { if (ahora[p.c.i] !== p.clave && recetas[p.clave]) out.push({ p: p, cod: 2 }); });
+      selLote.forEach(function (p) { (antes[p.c.i] = antes[p.c.i] || {})[p.clave] = true; });
+      fija.forEach(function (p) {
+        (ahora[p.c.i] = ahora[p.c.i] || {})[p.clave] = true;
+        out.push({ p: p, cod: p.rol > 0 ? p.rol + 3 * p.ranura : FUNDIDO > 0 && !(antes[p.c.i] && antes[p.c.i][p.clave]) ? 1 : 0 });
+      });
+      if (FUNDIDO > 0) selLote.forEach(function (p) { if (!(p.rol > 0) && !(ahora[p.c.i] && ahora[p.c.i][p.clave]) && recetas[p.clave]) out.push({ p: p, cod: 2 }); });
       return out;
     }
     // la cola propia: como la del motor (menor prio = antes; cada next() es una rebanada), pero solo con lo de los generados y con su propio tope de ms
@@ -409,7 +504,7 @@
     function pendientes() {
       if (estado !== "activo") return 0;
       var n = trabajos.length + nPidiendo + (fundido ? 1 : 0);
-      plan.forEach(function (p) { if (!recetas[p.clave] || !listos[p.c.i] || listos[p.c.i].clave !== p.clave) n++; });
+      plan.forEach(function (p) { if (!recetas[p.clave] || !enLote[p.c.i] || !enLote[p.c.i][p.clave]) n++; });
       return n;
     }
     function corre(ms) {
@@ -429,7 +524,17 @@
         fundido.t += Math.min(dt, 0.1); uFun.value = Math.min(1, fundido.t / FUNDIDO);
         if (fundido.t >= FUNDIDO) { terminaFundido(); avisa = true; }
       }
+      pesaBandas();
       var a = avisa; avisa = false; return a;
+    }
+    // O9c: el peso de cada olivo en banda (el de su escalón más fino), con la distancia de ESTE fotograma a la frontera que tenía al montar el lote
+    function pesaBandas() {
+      var ks = Object.keys(bandas); if (!ks.length) return;
+      var o = ojoAhora();
+      ks.forEach(function (s) {
+        var B = bandas[s], d = distOjo(B.c, o), f = B.b > 0 ? Math.min(1, Math.max(0, (B.D + B.b - d) / (2 * B.b))) : d <= B.D ? 1 : 0;
+        uBanda.value[s >> 2].setComponent(s & 3, f);
+      });
     }
     function terminaFundido() {   // lo que salía se oculta de verdad (deja de costar) y el lote queda quieto
       fundido = null; uFun.value = 1;
@@ -446,16 +551,24 @@
       if (lote) { grupo.remove(lote); libera(lote); }   // lo que sale del lote anterior ya va dentro del nuevo
       var viejos = {}, Rviejo = R, entran = 0, salen = 0, triSalen = 0;
       selLote.forEach(function (p) { viejos[p.c.i] = true; });
-      lote = g; grupo.add(g); claveLote = cl; listos = {}; R = 0; triGen = 0; costoGen = 0;
-      sel.forEach(function (p) { listos[p.c.i] = p; R = Math.max(R, p.d + 8); triGen += tri(recetas[p.clave]); costoGen += costo(recetas[p.clave]); });
+      lote = g; grupo.add(g); claveLote = cl; listos = {}; enLote = {}; R = 0; triGen = 0; costoGen = 0;
+      var nArb = 0, conRanura = {}; bandas = {}; lejRanura = {};
+      sel.forEach(function (p) {
+        if (!listos[p.c.i]) { listos[p.c.i] = p; nArb++; }   // el primero de cada olivo: el más fino (lo que dice el rótulo)
+        (enLote[p.c.i] = enLote[p.c.i] || {})[p.clave] = true;
+        if (p.rol > 0 && p.ranura) { conRanura[p.c.i] = true; bandas[p.ranura] = { c: p.c, D: p.banda.D, b: p.banda.b }; if (p.lej) lejRanura[p.c.i] = p.ranura; }
+        R = Math.max(R, p.d + 8); triGen += tri(recetas[p.clave]); costoGen += costo(recetas[p.clave]);
+      });
+      Object.keys(ranuraDe).forEach(function (i) { if (!conRanura[i]) delete ranuraDe[i]; });   // las ranuras que este lote ya no usa quedan libres
+      pesaBandas();
       saliendo = {};
       items.forEach(function (x) { if (x.cod === 1) entran++; else if (x.cod === 2) { salen++; triSalen += tri(recetas[x.p.clave]); saliendo[x.p.c.i] = true; } });
-      info = { llamadas: g.children.length, triangulos: triGen, costo: costoGen, arboles: sel.length, propios: sel.filter(function (p) { return p.propio; }).length, entran: entran, saliendo: salen, triSaliendo: triSalen };
+      info = { llamadas: g.children.length, triangulos: triGen, costo: costoGen, arboles: nArb, enBanda: Object.keys(conRanura).length, propios: sel.filter(function (p) { return p.propio; }).length, entran: entran, saliendo: salen, triSaliendo: triSalen };
       if (ESCALERA) { info.niveles = { E0: 0, E1: 0, E2: 0, E2VR: 0 }; sel.forEach(function (p) { info.niveles[p.niv]++; }); }
       selLote = sel; avisa = true;
       if (entran + salen > 0) { fundido = { t: 0, viejos: viejos, Rviejo: Rviejo }; uFun.value = 0; } else { fundido = null; uFun.value = 1; }
       // las recetas que ya no se usan se sueltan (las variantes se quedan; las del lote colocado, hasta el siguiente: son lo que saldrá con fundido)
-      var usadas = {}; plan.forEach(function (p) { usadas[p.clave] = true; if (p.propio) { usadas["p" + p.c.i + ":E0"] = true; usadas["p" + p.c.i + ":E1"] = true; } }); sel.forEach(function (p) { usadas[p.clave] = true; });
+      var usadas = Object.assign({}, prePide); plan.forEach(function (p) { usadas[p.clave] = true; if (p.propio) { usadas["p" + p.c.i + ":E0"] = true; usadas["p" + p.c.i + ":E1"] = true; } }); sel.forEach(function (p) { usadas[p.clave] = true; });
       Object.keys(recetas).forEach(function (k) { if (k.charAt(0) === "p" && !usadas[k]) delete recetas[k]; });
     }
     function libera(g) {
@@ -475,7 +588,7 @@
     }
     function* construyeG(items) {
       var G = M.geos(), out = new THREE.Group(), m4 = new THREE.Matrix4(), mp = new THREE.Matrix4(), mi = new THREE.Matrix4(), col = new THREE.Vector4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), s3 = new THREE.Vector3();
-      var sel = items.map(function (x) { return x.p; }), cod = 0, ALFA = [1, 0.5, 0];   // el código de cada árbol va en el alfa de su color en las mallas por lotes
+      var sel = items.map(function (x) { return x.p; }), cod = 0;   // el código de cada pieza va en el alfa de su color en las mallas por lotes (1 − código / 2)
       var salen = { B: {}, I: {}, P: null }, hay2 = items.some(function (x) { return x.cod === 2; });
       // 1) recuento para dar a cada malla su tamaño justo
       var cap = { corteza: { i: 0, v: 0, x: 0 }, muerta: { i: 0, v: 0, x: 0 }, olivas: { i: 0, v: 0, x: 0 } }, inst = { ramita0: 0, ramita1: 0, relleno: 0 }, npuntos = 0, vistas = {};
@@ -514,7 +627,7 @@
       });
       function idGeo(b, gk, atrib, indice) { var k = b + gk; if (geoId[k] === undefined) geoId[k] = B[b].addGeometry(geoDe(atrib, indice, b === "corteza")); return geoId[k]; }
       function ponBatch(b, gid, m, rgb) {
-        var id = B[b].addInstance(gid); B[b].setMatrixAt(id, m); col.set(rgb[0], rgb[1], rgb[2], ALFA[cod]); B[b].setColorAt(id, col);
+        var id = B[b].addInstance(gid); B[b].setMatrixAt(id, m); col.set(rgb[0], rgb[1], rgb[2], 1 - cod / 2); B[b].setColorAt(id, col);
         if (cod === 2) (salen.B[b] || (salen.B[b] = { m: B[b], ids: [] })).ids.push(id);
       }
       for (var ip = 0; ip < sel.length; ip++) {
@@ -588,5 +701,6 @@
       return no.length ? { motivo: no.join("; ").slice(0, 120) } : f;
     }
     return { escalera: function () { return ESCALERA; }, lejanos: paraLejanos, activo: function () { return estado === "activo"; }, actualiza: actualiza, paso: paso, gastado: function () { return gastado; }, pendientes: pendientes, rotulo: rotulo, estado: function () { return estado; },
-      _prueba: { fecha: function (f) { fechaPrueba = f; }, mats: function () { return mats; }, prof: function () { return prof; }, uFun: uFun, lote: function () { return lote; }, tiene: tiene, fase: fase, listos: function () { return listos; }, saliendo: function () { return saliendo; }, recetas: function () { return recetas; } } };
+      _prueba: { fecha: function (f) { fechaPrueba = f; }, mats: function () { return mats; }, prof: function () { return prof; }, uFun: uFun, lote: function () { return lote; }, tiene: tiene, fase: fase, listos: function () { return listos; }, saliendo: function () { return saliendo; }, recetas: function () { return recetas; },
+        uBanda: uBanda, bandas: function () { return bandas; }, lejRanura: function () { return lejRanura; }, enLote: function () { return enLote; }, selLote: function () { return selLote; } } };
   })();
