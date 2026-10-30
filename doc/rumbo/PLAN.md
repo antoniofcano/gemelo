@@ -130,6 +130,10 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | O9c | Escalones por masa visual, 3: nivel por tamaño en pantalla con fronteras desplazadas por el presupuesto y fundido por banda de metros (07ab) | O9b | media · **opus** | ✅ 2026-10-30 con O9b-0 (copa igual, decisión 81) y mipmaps de hoja: lejano −45 % → +6,5 % de cobertura, IoU 0,47 → 0,69; E2→E1 a la misma distancia delante y detrás |
 | O9d | Escalones por masa visual, 4: prueba en aparatos (paseo real, móvil, Quest) | O9c | 👤 Antonio | ⬜ |
 | O4 | Medir 10 olivos en campo con cinta (decisiones 48-49) | — | 👤 | ⬜ |
+| V3 | Base de la «vida» antes del VPS (migración 0004): ids de olivo congelados (decisión 92), personalización de árboles con registro de quién sube (91, 93, 96), denuncias y bandeja de la oficina (94), diario de la haza, avisos, trazabilidad del aceite, eventos (97); API y pruebas | — | media · **opus** | ⬜ |
+| V4 | Panel de la oficina: dibujar hazas sobre ortofoto y copas (95), bandeja de sugerencias y denuncias con retirada en un clic, pasar una sugerencia a OlivarTrack como propuesta | V3 | media · **opus**; 👤 la oficina | ⬜ |
+| V5 | En el mundo: nombrar un árbol y colgarle una foto o una pintura (solo el titular), verlo los demás, denunciar | V3 | media · **sonnet**; 🔶 | ⬜ |
+| V6 | Icono PNG de la aplicación generado desde el SVG y excepción en el guardián (98) | — | ligera · **sonnet** | ⬜ |
 | V1 | VPS: preparar el despliegue (RUNBOOK-VPS al día, SMTP de OVH, token de OlivarTrack, comprobaciones previas) | — | ligera (documentos y guiones) | ✅ (8 preguntas a Antonio en DECISIONS-PENDING) |
 | V2 | VPS: desplegar F1a | A5, A6, V1 (decisión 21) | 👤 confirma cada paso | ⬜ |
 | G1 | Arreglar la facturación de GitHub para que corra el CI | — | 👤 | ⬜ |
