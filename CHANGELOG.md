@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Agenda de la oficina (OF11b, decisión 148): cambiar la fecha o el lugar de un evento avisa solo, en la misma transacción, a apuntados y en espera, con «antes → ahora»; es un aviso de sistema y no cuenta para el tope de 3 por semana. La pantalla dice a cuántas familias se avisó.
 - Olivos generados (O5): la caché de recetas se endurece: plazo de 4 s en IndexedDB (un almacén bloqueado ya no deja esperando para siempre), purga en disco de lo guardado con otra versión del generador, `alExpulsar` y `dispose()` al expulsar, y una carrera de la lectura del índice corregida. Prueba de Chrome escrita, sin ejecutar.
 - Oficina (OF3d): el aviso de solape de las hazas mide el área de la intersección (> 0,5 m², igual que el servidor) con `polygon-clipping` 0.15.7; ahora avisa con hazas idénticas o de lindes coincidentes y es simétrico.
 - Pruebas: propiedades con `fast-check` 4.10.2 (PB7) en contratos (clasificación, config, receta de avatar), agenda (aforo y promoción de la espera), épocas (366 días) y geometría de hazas; las pruebas al azar de épocas pasan a fast-check. Encontró que el aviso de solape de la oficina (`sePisan`) no detecta hazas con lindes coincidentes (tarea OF3d; el servidor sí las rechaza).
