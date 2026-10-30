@@ -175,6 +175,10 @@ Hecho junto con OF6 ([OFICINA §9.2](OFICINA.md#92-parámetros-de-la-escalera));
 
 Dos componentes que no se nombran (`40_juegos.js`, id `juegos`; `41_cae_la_cosecha.js`, id `cae-la-cosecha`) y se encuentran por el Bus (`juego:ofrece`, `juego:pide`, `juego:retira`); los sonidos, por `sonido:juego` hacia `20_sonido.js`. El núcleo gana **`Pausa`** (`02c`) y una cuarta fase, **`pausa`**: con el mundo en pausa, `cuadro()` solo corre esa fase y el contador de `?debug` (ni cámara, ni módulos, ni Cola, ni render). Todo el detalle (reglas, contrato juego ↔ anfitrión, récord en la api, medida y nota de comodidad): [JUEGOS.md](JUEGOS.md).
 
+### C7 · entidades con id estable y usables
+
+Servicio del núcleo en `apps/web/motor/02e_entidades.js` (no es un componente: no se apaga). **`Entidades`** es un registro de **tipos**, no de objetos: cada módulo que tiene cosas en el mundo registra su tipo y responde por ellas (las copas siguen en su array; el registro solo sabe a quién preguntar por un id). **`Usables`** es la selección única para el toque, el clic, el rayo de VR y la cercanía al pasear, con una ficha común y un anillo de resaltado. Contrato en [CONTRATOS](CONTRATOS.md); eventos `usable:*` en [eventos.md](../../contratos/eventos.md); pruebas en Node en `pruebas/guardianes/entidades.test.js`.
+
 ### En qué se aparta del diseño de §3 (y por qué)
 
 - **`/api/config` no se pedía en C1-C3** (habría dado un 404 en cada carga con servidor); desde C6 se pide (abajo) y, sin nada publicado, la api responde 200 con `{ v: 1 }`. El bloque de `<script type="application/json" id="config">` de la página se sigue leyendo.

@@ -3,6 +3,8 @@
   "interfaces": {
     "Mundo": { "modulo": "02_mundo.js", "miembros": ["TS", "N", "N2", "NS", "NS2", "SRS", "cx", "cy", "lista", "tesela", "suelo", "copaAlta", "colorSuelo", "orto", "ortoGrueso", "pintaOrto", "arranca", "actualiza", "alCargar", "dist", "liberaOrtoPix", "cargaTesela", "aseguraOrto", "liberaOrtoLejos", "decodificaOrto", "ortoEstado", "grueso", "mosaico"] },
     "Cola": { "modulo": "02b_cola.js", "miembros": ["est", "add", "cancela", "hay", "corre", "vacia", "pendientes"] },
+    "Entidades": { "modulo": "02e_entidades.js", "miembros": ["registra", "de", "tipo", "tipos", "existe", "ficha", "pos", "lista", "candidatos", "resumen"] },
+    "Usables": { "modulo": "02e_entidades.js", "miembros": ["toque", "rayo", "elige", "suelta", "cierra", "refresca", "usa", "mensaje", "abierta", "elegido", "actualiza", "cercano", "presentador", "olvida", "libera", "estado"] },
     "Escena3D": { "modulo": "04b_escena3d.js", "miembros": ["actualiza", "estado", "perfil", "resumen", "libera", "listo", "alturaEn", "relieveEn", "sondea", "engancha", "grupo"] },
     "OlivosTiles": { "modulo": "04c_olivos_tiles.js", "miembros": ["dibuja", "cerca", "triangulos", "resumen", "tipo", "tipos", "instanciasDe"] },
     "SombreadoTiles": { "modulo": "04d_sombreado_tiles.js", "miembros": ["modelo", "suelta", "actualiza", "libera", "resumen", "OP"] },

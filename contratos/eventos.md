@@ -30,6 +30,10 @@ Los componentes del motor ([ADR-0023](../doc/adr/0023-componentes-del-mundo.md),
 | `sonido:golpe` | — | `24_pantalla` (el aterrizaje del paseo) | `20_sonido` |
 | `sonido:juego` | `{ que, cadena? }` | `41_cae_la_cosecha` | `20_sonido` (notas cortas sintetizadas) |
 | `sonido:ladrido` | `{ grave? }` | `25_perros` | `20_sonido` |
+| `usable:cerca` | `{ id \| null }` | `02e_entidades` (`Usables.actualiza`, al pasear: cambia lo más cercano dentro de su radio) | (nadie todavía: `19_balizas` lo lee con `Usables.cercano()`) |
+| `usable:elige` | `{ id, tipo, como }` | `02e_entidades` (toque, clic, rayo y gatillo, tecla) | (nadie todavía) |
+| `usable:suelta` | `{ id, motivo }` | `02e_entidades` | (nadie todavía) |
+| `usable:usa` | `{ id, accion }` | `02e_entidades` (una acción de la ficha: «Ir a esta baliza», «Ir con») | (nadie todavía) |
 | `vr:entra` | — | `29_vr` | `40_juegos` (cierra el juego abierto: en VR no hay juegos hasta C9b) |
 | `vr:sale` | — | `29_vr` | `35_fichas_tiempo` (cierra la lámina de VR) |
 

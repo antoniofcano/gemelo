@@ -68,6 +68,30 @@
       "emiten": ["25_perros"],
       "escuchan": ["20_sonido"]
     },
+    "usable:cerca": {
+      "descripcion": "Al pasear (a pie, en quad, con el dron o en VR), lo más cercano de los tipos con cercanía ha cambiado (hoy, una baliza a menos de 17 m de quien pasea); id null si ya no hay nada cerca. Usables.cercano() lo dice en cualquier momento.",
+      "datos": { "type": "object", "required": ["id"], "properties": { "id": { "type": ["string", "null"] } } },
+      "emiten": ["02e_entidades"],
+      "escuchan": []
+    },
+    "usable:elige": {
+      "descripcion": "Se ha elegido una entidad del mundo (un olivo, una baliza, una haza, una persona) con un toque o clic (como \"toque\"), el rayo y el gatillo de un mando (\"rayo\"), una tecla (\"tecla\") o desde el código; su ficha ya se está enseñando.",
+      "datos": { "type": "object", "required": ["id", "tipo", "como"], "properties": { "id": { "type": "string" }, "tipo": { "type": "string" }, "como": { "type": "string" } } },
+      "emiten": ["02e_entidades"],
+      "escuchan": []
+    },
+    "usable:suelta": {
+      "descripcion": "Lo elegido deja de estarlo: motivo \"otra\" (se eligió otra cosa), \"nada\" (un toque sobre nada), \"cerrada\" (su × o su «Cerrar»), \"tiempo\" (la ficha de VR se apagó sola) o \"quitada\" (su tipo salió del registro).",
+      "datos": { "type": "object", "required": ["id", "motivo"], "properties": { "id": { "type": "string" }, "motivo": { "type": "string" } } },
+      "emiten": ["02e_entidades"],
+      "escuchan": []
+    },
+    "usable:usa": {
+      "descripcion": "Se ha usado una acción de la ficha de una entidad («Ir a esta baliza», «Ir con»…) y se ha hecho.",
+      "datos": { "type": "object", "required": ["id", "accion"], "properties": { "id": { "type": "string" }, "accion": { "type": "string" } } },
+      "emiten": ["02e_entidades"],
+      "escuchan": []
+    },
     "vr:entra": {
       "descripcion": "Empieza una sesión de realidad virtual (la cámara ya cuelga del rig y el panel está abierto).",
       "datos": {},
