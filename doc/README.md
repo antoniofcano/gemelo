@@ -31,6 +31,7 @@
 - [sistema/OFICINA.md](sistema/OFICINA.md) — propuesta: `/oficina`, la herramienta de la oficina (familias, hazas, bandeja, mundo en modo oficina, agenda, directos, constructor y parámetros de la escalera versionados, sistema), con plan OF0-OF13 y decisiones; maqueta en [../prototipos/oficina/](../prototipos/oficina/).
 - [sistema/AVATARES-FAMILIA.md](sistema/AVATARES-FAMILIA.md) — propuesta: avatares para toda la familia (fuentes abiertas, criterios de inclusión comprobables, muñeco teñido ya y creador por piezas después, silla/andador/bastón, peques y la decisión 45); maqueta en [../prototipos/avatares/](../prototipos/avatares/).
 - [sistema/COMPONENTES.md](sistema/COMPONENTES.md) — componentes del mundo («plugins»): diagnóstico del acoplamiento de hoy, contrato de un componente, puntos de extensión y lo que falta para el Agro-Verse (propuesta, ADR-0023).
+- [sistema/JUEGOS.md](sistema/JUEGOS.md) — juegos casuales (C9a): la pausa del mundo, el anfitrión de juegos, «Cae la cosecha» (reglas, controles, dibujo), el récord de la familia en la api y su nota de comodidad.
 - [sistema/ARQUITECTURA-MULTIUSUARIO.md](sistema/ARQUITECTURA-MULTIUSUARIO.md) — «Cuarenta hazas»: la visión multiusuario que da sentido al proyecto (propuesta, pendiente de estudio).
 
 ## Cómo se opera — `operacion/`

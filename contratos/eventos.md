@@ -21,11 +21,16 @@ Los componentes del motor ([ADR-0023](../doc/adr/0023-componentes-del-mundo.md),
 |---|---|---|---|
 | `audio:desbloquea` | — | `29_vr` (al pulsar «Entrar en VR»: el gesto que deja arrancar el audio) | `20_sonido` |
 | `componentes:cambia` | `{ id, activo }` | `02c_componentes` (al montar o liberar un componente) | `15_tiempo` (esconde «Ver la previsión en el mundo» si nadie la atiende) |
+| `juego:ofrece` | `{ id, titulo, descripcion?, ayuda?, crea }` | `41_cae_la_cosecha` (al montarse y al oír `juego:pide`) | `40_juegos` (el anfitrión: lo pone en la ventana Juegos) |
+| `juego:pide` | — | `40_juegos` (al montarse) | `41_cae_la_cosecha` |
+| `juego:retira` | `{ id }` | `41_cae_la_cosecha` (al liberarse) | `40_juegos` (lo quita y, si estaba abierto, lo cierra) |
+| `mundo:pausa` | `{ activa }` | `02c_componentes` (`Pausa.pon` / `Pausa.quita`) | (nadie todavía) |
 | `prevision:alterna` | `{ abre? }` | `15_tiempo` (botón de la ventana Tiempo) | `35_fichas_tiempo` (la lámina de la previsión) |
 | `sonido:baliza` | `{ completa? }` | `19_balizas` (al llegar a una baliza) | `20_sonido` (campanilla o arpegio) |
 | `sonido:golpe` | — | `24_pantalla` (el aterrizaje del paseo) | `20_sonido` |
+| `sonido:juego` | `{ que, cadena? }` | `41_cae_la_cosecha` | `20_sonido` (notas cortas sintetizadas) |
 | `sonido:ladrido` | `{ grave? }` | `25_perros` | `20_sonido` |
-| `vr:entra` | — | `29_vr` | (nadie todavía) |
+| `vr:entra` | — | `29_vr` | `40_juegos` (cierra el juego abierto: en VR no hay juegos hasta C9b) |
 | `vr:sale` | — | `29_vr` | `35_fichas_tiempo` (cierra la lámina de VR) |
 
 Lo que aún va por `CustomEvent` en `document` (`gemelo:chat` de `31_hud.js`, que hoy no escucha ningún módulo del motor) pasará al bus cuando se migre la presencia (C5).

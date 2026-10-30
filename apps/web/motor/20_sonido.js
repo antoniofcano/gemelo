@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos (fmt), 02c_componentes (Componentes), 09_camara (suelta), 12_paseo (paseando, teclas), 15_tiempo (lluvia, cur, nivel),
+// Consume: 01_datos (fmt), 02c_componentes (Bus, Componentes), 09_camara (suelta), 12_paseo (paseando, teclas), 15_tiempo (lluvia, cur, nivel),
 //   16_vida (tVida, enQuad, quad, enDron, dron), 18_paisaje (aguaNivel, distArroyo), 25_perros (ladrido), 29_vr (VRX, panel, PanelVR),
 //   33_ajustes (Ajustes)
 // ===============================================================================
@@ -87,6 +87,24 @@
     });
   }
   function sGolpe() { if (snd.ctx && snd.ctx.state === "running") { sPaso(0.2); setTimeout(function () { sPaso(0.12); }, 90); } }   // el aterrizaje del muñequito: un golpe sordo y su rebote
+  // los sonidos de los juegos casuales (C9a): cortos y suaves, sintetizados; los pide el juego por el Bus («sonido:juego») y siguen el interruptor y el volumen
+  // de siempre. que: mueve | gira | asienta | grupo (con cadena: cada eslabón, una nota más aguda) | fin
+  function sJuego(d) {
+    if (!snd.ctx || snd.ctx.state !== "running" || !d) return;
+    var c = snd.ctx, t = c.currentTime, que = d.que, notas;
+    if (que === "mueve") notas = [[520, 0.035, 0.035, "triangle"]];
+    else if (que === "gira") notas = [[660, 0.05, 0.05, "triangle"]];
+    else if (que === "asienta") notas = [[180, 0.08, 0.09, "sine"]];
+    else if (que === "grupo") { var k = Math.min(5, Math.max(1, d.cadena || 1)); notas = [[523 * Math.pow(1.122, k - 1), 0.1, 0.12, "sine"], [659 * Math.pow(1.122, k - 1), 0.1, 0.16, "sine"]]; }
+    else if (que === "fin") notas = [[392, 0.12, 0.25, "sine"], [330, 0.12, 0.3, "sine"], [262, 0.12, 0.45, "sine"]];
+    else return;
+    var ini = t;
+    notas.forEach(function (q) {   // [frecuencia, volumen, duración, forma]
+      var o = c.createOscillator(), g = c.createGain(); o.type = q[3]; o.frequency.value = q[0];
+      g.gain.setValueAtTime(0.0001, ini); g.gain.exponentialRampToValueAtTime(q[1], ini + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, ini + q[2]);
+      o.connect(g); g.connect(snd.master); o.start(ini); o.stop(ini + q[2] + 0.02); ini += q[2] * 0.7;
+    });
+  }
   function sueltaSonido() {   // cierra el AudioContext y suelta todos los nodos (libera del componente)
     var c = snd.ctx; snd.ctx = null; snd.master = null; snd.blanco = null;
     ["viento", "silbo", "lluvia", "agua", "m1", "m2", "d1", "d2", "lp"].forEach(function (k) { snd[k] = null; });
@@ -100,6 +118,7 @@
     n.on("sonido:baliza", function (d) { sonidoBaliza(!!(d && d.completa)); });
     n.on("sonido:golpe", sGolpe);
     n.on("sonido:ladrido", function (d) { sLadrido(!!(d && d.grave)); });
+    n.on("sonido:juego", sJuego);
     // el interruptor y el volumen: su pestaña en Configuración (Ajustes.registra) y su fila en la pestaña Comodidad del panel VR (PanelVR.filas); sin ellos, el sonido sigue con los valores de siempre
     if (typeof Ajustes !== "undefined" && Ajustes.registra) {
       n.limpia(Ajustes.registra("sonido", { activo: { tipo: "bool", def: true }, volumen: { tipo: "num", def: 80, min: 0, max: 100, paso: 5 } },
@@ -121,7 +140,7 @@
     id: "sonido-ambiente", version: 1,
     consume: ["Ajustes", "PanelVR", "VRX", "paseando", "teclas", "cur", "nivel", "tVida", "enQuad", "quad", "vq", "enDron", "dr", "pp", "aguaNivel", "distArroyo"],
     expone: [],
-    eventos: { escucha: ["audio:desbloquea", "sonido:baliza", "sonido:golpe", "sonido:ladrido"], emite: [] },
+    eventos: { escucha: ["audio:desbloquea", "sonido:baliza", "sonido:golpe", "sonido:juego", "sonido:ladrido"], emite: [] },
     bandera: { defecto: true, url: "sonido" },
     presupuesto: { llamadas: 0, triangulos: 0 },   // sin dibujo: solo Web Audio (un AudioContext, ~14 nodos fijos y los de cada trino, que se sueltan solos)
     fases: { mundo: 0 },
