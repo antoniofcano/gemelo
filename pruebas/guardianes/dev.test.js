@@ -218,6 +218,29 @@ test("Caddyfile de dev con la forma de producción: portada pública, /finca/ y 
   assert.match(lee("infra/dev/compose.yml"), /\.\.\/\.\.\/apps\/web\/dist-portada:\/srv\/portada:ro/, "la portada es el build de apps/web/portada");
 });
 
+test("la oficina (ADR-0024): /oficina/ solo con sesión de oficina en los dos Caddyfile; su página, sin three ni nada en línea", () => {
+  const sinComentarios = f => lee(f).split("\n").filter(l => !/^\s*#/.test(l)).join("\n");
+  for (const f of ["infra/Caddyfile", "infra/dev/Caddyfile"]) {
+    const c = sinComentarios(f);
+    assert.match(c, /@oficina path \/oficina \/oficina\/\*/, f + ": /oficina en su matcher");
+    assert.match(c, /handle @oficina \{\s*forward_auth api:8000 \{\s*uri \/api\/interno\/autoriza\?para=oficina\s*\}/, f + ": forward_auth con ?para=oficina, lo primero del bloque");
+    const bloque = c.slice(c.indexOf("handle @oficina {"), c.indexOf("@con_sesion"));
+    assert.ok(c.indexOf("handle @oficina {") >= 0 && bloque.length > 0, f + ": el bloque de la oficina va antes del de sesión");
+    assert.ok(!/\/srv\/(portada|web)\b|\/finca/.test(bloque.replace(/redir \/oficina \/oficina\/ 308/, "")), f + ": la oficina no sirve la portada ni el mundo");
+    assert.ok(!/@con_sesion path[^\n]*oficina/.test(c), f + ": /oficina no cuelga de la sesión de hogar");
+  }
+  assert.match(lee("infra/dev/compose.yml"), /\.\.\/\.\.\/apps\/web\/dist-oficina:\/srv\/oficina:ro/, "la oficina es el build de apps/web/oficina");
+  assert.match(lee("apps/web/package.json"), /"build:oficina": "vite build --config vite.oficina.config.js"/);
+  assert.match(lee("apps/web/vite.oficina.config.js"), /base: "\/oficina\/"/);
+  const html = lee("apps/web/oficina/index.html"), js = lee("apps/web/oficina/oficina.js"), css = lee("apps/web/oficina/oficina.css");
+  assert.ok(!/<style|\sstyle=|\son[a-z]+=/i.test(html), "nada de estilos ni manejadores en línea");
+  for (const m of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)) assert.strictEqual(m[1].trim(), "", "un <script> con código en línea");
+  assert.ok(!/\bthree\b|motor\//.test(js) && !/import\s/.test(js), "la oficina no carga three ni el motor");
+  assert.ok(!/https?:\/\//.test(js) && !/@import|url\(\s*["']?https?:/i.test(css), "solo su mismo origen");
+  assert.ok(!/innerHTML|insertAdjacentHTML|eval\(|new Function/.test(js), "sin HTML a mano");
+  assert.match(html, /<html lang="es"/);
+});
+
 test("portada y entrada (apps/web/portada): sin nada en línea (CSP estricta), solo su mismo origen, accesible y con la versión de normas de la api", () => {
   const html = lee("apps/web/portada/index.html"), js = lee("apps/web/portada/portada.js"), css = lee("apps/web/portada/portada.css");
   assert.ok(!/<style|\sstyle=|\son[a-z]+=/i.test(html), "nada de estilos ni manejadores en línea (style-src 'self', script-src 'self')");

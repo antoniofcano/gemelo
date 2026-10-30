@@ -14,6 +14,7 @@ descargas/
 *.html
 !apps/web/plantilla.html
 !apps/web/portada/index.html
+!apps/web/oficina/index.html
 !apps/web/olivo/herramienta/index.html
 !tuberia/olivos/impostores/pagina.html
 t/
@@ -44,6 +45,7 @@ graphify-out/
 apps/web/.generado/
 apps/web/dist/
 apps/web/dist-portada/
+apps/web/dist-oficina/
 
 # los prototipos de UX sí se versionan (son HTML de maqueta, sin datos reales)
 !prototipos/**/*.html

@@ -2,6 +2,7 @@
 # Lo comprueba infra/probar-caddy.sh (cabeceras, caché, sesión y redacción de los registros).
 #   /                      portada pública (sin sesión: decisión 16)
 #   /finca/…, /teselas/…, /avatares/…   solo con sesión (forward_auth a la api)
+#   /oficina/…             solo con sesión de OFICINA (forward_auth a la api con ?para=oficina, ADR-0024)
 #   /api/…                 api (la api decide su propia autorización)
 {
 	admin off
@@ -62,6 +63,25 @@
 			max_size 1MB
 		}
 		reverse_proxy api:8000
+	}
+
+	# la oficina (ADR-0024, contratos/sesion.md § Oficina; el build de apps/web/oficina en /srv/oficina): solo con sesión de
+	# OFICINA (rol oficina o admin con su aparato aprobado). Sin sesión, a la portada (303); con sesión de hogar, 403; con el
+	# aparato pendiente, a /api/oficina/pendiente. La api vuelve a mirar el rol en cada ruta: esto no es la única barrera.
+	@oficina path /oficina /oficina/*
+	handle @oficina {
+		forward_auth api:8000 {
+			uri /api/interno/autoriza?para=oficina
+		}
+		# assets/ con hash en el nombre (Vite) → inmutable, pero privado (tras sesión); la página, siempre revalidada
+		@oficina_inmutable path /oficina/assets/*
+		header @oficina_inmutable Cache-Control "private, max-age=31536000, immutable"
+		@oficina_html path /oficina /oficina/ /oficina/*.html
+		header @oficina_html Cache-Control "no-cache"
+		redir /oficina /oficina/ 308
+		root * /srv
+		encode zstd gzip
+		file_server
 	}
 
 	@con_sesion path /finca /finca/* /teselas/* /avatares /avatares/*

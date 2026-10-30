@@ -2,7 +2,8 @@
 # Prueba el Caddyfile INTERNO con la misma imagen que producción, sin tocar ningún servidor:
 # una red de Docker de usar y tirar, una api simulada (otro Caddy que imita /api/interno/autoriza) y curl dentro de la red.
 # Comprueba: validez, cabeceras de seguridad (CSP Report-Only, Permissions-Policy con xr-spatial-tracking, HSTS…),
-# caché inmutable de estáticos, portada pública, finca y teselas solo con sesión, /api/interno cerrado desde fuera, y que
+# caché inmutable de estáticos, portada pública, finca y teselas solo con sesión, /oficina/ solo con sesión de oficina
+# (forward_auth con ?para=oficina, ADR-0024), /api/interno cerrado desde fuera, y que
 # los registros NO contienen cookies, Authorization ni el token del enlace.
 # Uso: bash infra/probar-caddy.sh   (necesita Docker; sale con 0 si todo pasa)
 set -euo pipefail
@@ -25,13 +26,16 @@ ok() { echo "  ok  $1"; }
 mal() { echo "  MAL $1"; fallos=$((fallos + 1)); }
 
 # ---- contenido estático de prueba (sintético)
-mkdir -p "$TMP/srv/portada" "$TMP/srv/finca/assets" "$TMP/srv/teselas/hituelo"
+mkdir -p "$TMP/srv/portada" "$TMP/srv/finca/assets" "$TMP/srv/oficina/assets" "$TMP/srv/teselas/hituelo"
 echo '<!doctype html><title>portada</title>' > "$TMP/srv/portada/index.html"
 echo '<!doctype html><title>finca</title>' > "$TMP/srv/finca/index.html"
 echo 'console.log(1)' > "$TMP/srv/finca/assets/motor-abc123.js"
+echo '<!doctype html><title>oficina</title>' > "$TMP/srv/oficina/index.html"
+echo 'console.log(2)' > "$TMP/srv/oficina/assets/oficina-abc123.js"
 echo '{"v":2}' > "$TMP/srv/teselas/hituelo/indice.json"
 
-# ---- api simulada: 204 con la cookie «valida», 303 a / si es navegación, 401 si no
+# ---- api simulada: 204 con la cookie «valida» (un hogar) o «oficina»; con ?para=oficina, solo «oficina» (el hogar, 403);
+#      sin sesión, 303 a / si es navegación y 401 si no. Así se comprueba que Caddy le pasa la consulta ?para=oficina
 cat > "$TMP/Caddyfile.api" <<'EOF'
 {
 	admin off
@@ -39,6 +43,16 @@ cat > "$TMP/Caddyfile.api" <<'EOF'
 }
 :8000 {
 	route /api/interno/autoriza {
+		@oficina_ok {
+			query para=oficina
+			header Cookie *__Host-gemelo=oficina*
+		}
+		respond @oficina_ok 204
+		@oficina_no {
+			query para=oficina
+			header Cookie *__Host-gemelo=valida*
+		}
+		respond @oficina_no 403
 		@ok header Cookie *__Host-gemelo=valida*
 		respond @ok 204
 		@nav header Sec-Fetch-Mode navigate
@@ -92,6 +106,18 @@ r=$(pide /finca/assets/motor-abc123.js -H "Cookie: __Host-gemelo=valida")
 tiene "$r" "^cache-control: public, max-age=31536000, immutable" && ok "estáticos con hash: caché inmutable" || mal "estáticos sin caché inmutable"
 r=$(pide /teselas/hituelo/indice.json -H "Cookie: __Host-gemelo=valida")
 tiene "$r" "^HTTP/1.1 200" && tiene "$r" "^cache-control: private" && ok "teselas con sesión: 200 y caché privada" || mal "teselas con sesión: $(head -1 <<<"$r")"
+
+echo "== oficina, solo con sesión de oficina"
+r=$(pide /oficina/ -H "Sec-Fetch-Mode: navigate")
+tiene "$r" "^HTTP/1.1 303" && tiene "$r" "^location: /$" && ok "sin sesión, /oficina/ manda a la portada (303)" || mal "sin sesión /oficina/ no redirige: $(head -1 <<<"$r")"
+r=$(pide /oficina/ -H "Cookie: __Host-gemelo=valida")
+tiene "$r" "^HTTP/1.1 403" && ok "con sesión de hogar, /oficina/ da 403 (Caddy pasa ?para=oficina a la api)" || mal "con sesión de hogar /oficina/ no da 403: $(head -1 <<<"$r")"
+r=$(pide /oficina/assets/oficina-abc123.js -H "Cookie: __Host-gemelo=valida")
+tiene "$r" "^HTTP/1.1 403" && ok "con sesión de hogar, los assets de la oficina tampoco" || mal "assets de la oficina con sesión de hogar: $(head -1 <<<"$r")"
+r=$(pide /oficina/ -H "Cookie: __Host-gemelo=oficina")
+tiene "$r" "^HTTP/1.1 200" && tiene "$r" "^cache-control: no-cache" && ok "con sesión de oficina, /oficina/ responde 200 y se revalida" || mal "con sesión de oficina /oficina/: $(head -1 <<<"$r")"
+r=$(pide /oficina/assets/oficina-abc123.js -H "Cookie: __Host-gemelo=oficina")
+tiene "$r" "^cache-control: private, max-age=31536000, immutable" && ok "assets de la oficina: inmutables y privados" || mal "assets de la oficina sin caché privada inmutable"
 
 echo "== api"
 r=$(pide /api/interno/autoriza -H "Cookie: __Host-gemelo=valida")

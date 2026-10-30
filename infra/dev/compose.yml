@@ -32,6 +32,7 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ../../apps/web/dist-portada:/srv/portada:ro   # la portada y la entrada (apps/web/portada, build:portada)
       - ../../apps/web/dist:/srv/web:ro
+      - ../../apps/web/dist-oficina:/srv/oficina:ro   # la oficina (apps/web/oficina, build:oficina), solo con sesión de oficina (ADR-0024)
       - ${GEMELO_DEV_TESELAS:-../../pruebas/salida/fixture}:/srv/teselas:ro
       # la finca servida (/teselas/<GEMELO_DEV_FINCA>/…): por defecto la misma de arriba; GEMELO_DEV_FINCA_CARPETA es una carpeta
       # con indice.json y t/ directamente dentro (p. ej. la salida de referencia hituelo-v3, fuera del repo)
