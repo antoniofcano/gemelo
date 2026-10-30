@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "origen": "fixture",
+  "consultadoEn": "2026-01-15T10:25:00.000Z",
+  "actual": {
+    "naturaleza": "medido",
+    "estacion": {
+      "id": "SINT-EST-01",
+      "distanciaKm": 4.5,
+      "advertencia": "Estación sintética de prueba: no está en la finca."
+    },
+    "temperatura": 14.2,
+    "humedadRelativa": 63,
+    "viento": 1.4,
+    "racha": 3.1,
+    "direccion": {
+      "grados": 250,
+      "advertencia": "Anemómetro sintético: la dirección solo sirve para ver cambios."
+    },
+    "lluviaAcumulada": 0.8,
+    "deltaT": 3.9,
+    "inhabilitados": [
+      "radiacion"
+    ],
+    "frescura": {
+      "generadoEn": "2026-01-15T10:05:00.000Z",
+      "horasDeAntiguedad": 0.3,
+      "datosDeMaqueta": true
+    }
+  },
+  "prevision": {
+    "naturaleza": "modelado",
+    "ambito": "una previsión por finca; la rejilla ronda los 5 km",
+    "horas": [
+      {
+        "instante": "2026-01-15T10:00:00.000Z",
+        "temperatura": 10.6,
+        "humedadRelativa": 65,
+        "viento": 1.5,
+        "racha": 2.7,
+        "direccion": 230,
+        "nubosidad": 20,
+        "lluvia": 0,
+        "probabilidadLluvia": 5,
+        "deltaT": 3.5
+      },
+      {
+        "instante": "2026-01-15T11:00:00.000Z",
+        "temperatura": 12,
+        "humedadRelativa": 61,
+        "viento": 1.7,
+        "racha": 3.1,
+        "direccion": 232,
+        "nubosidad": 23,
+        "lluvia": 0,
+        "probabilidadLluvia": 5,
+        "deltaT": 4
+      },
+      {
+        "instante": "2026-01-15T12:00:00.000Z",
+        "temperatura": 13.2,
+        "humedadRelativa": 57,
+        "viento": 1.8,
+        "racha": 3.2,
+        "direccion": 234,
+        "nubosidad": 26,
+        "lluvia": 0,
+        "probabilidadLluvia": 5,
+        "deltaT": 4.4
+      }
+    ],
+    "frescura": {
+      "generadoEn": "2026-01-15T10:05:00.000Z",
+      "horasDeAntiguedad": 0.3,
+      "datosDeMaqueta": true
+    }
+  },
+  "avisos": [
+    {
+      "de": "gemelo",
+      "texto": "La lectura de la estación: Vigía avisa de que son datos de maqueta."
+    },
+    {
+      "de": "gemelo",
+      "texto": "La previsión: Vigía avisa de que son datos de maqueta."
+    }
+  ]
+}

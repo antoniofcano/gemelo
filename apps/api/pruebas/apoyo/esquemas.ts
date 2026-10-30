@@ -16,3 +16,10 @@ export function validadorFicha() {
   // «any» a propósito: las pruebas leen campos de una ficha que el propio validador acaba de comprobar
   return ajv.compile<Record<string, any>>(JSON.parse(readFileSync(CONTRATOS + "haza.schema.json", "utf8")));
 }
+
+/** Validador del tiempo (contratos/tiempo.schema.json), igual de estricto. */
+export function validadorTiempo() {
+  const ajv = new Ajv({ strict: true, allErrors: true, allowUnionTypes: true });
+  anade(ajv);
+  return ajv.compile<Record<string, any>>(JSON.parse(readFileSync(CONTRATOS + "tiempo.schema.json", "utf8")));
+}

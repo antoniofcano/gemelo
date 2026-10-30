@@ -19,7 +19,7 @@ COPY --from=construye /app/node_modules ./node_modules
 COPY --from=construye /app/dist ./dist
 COPY apps/api/package.json ./
 COPY apps/api/migraciones ./migraciones
-COPY contratos/haza.schema.json ./contratos/
+COPY contratos/haza.schema.json contratos/tiempo.schema.json ./contratos/
 USER node
 EXPOSE 8000
 CMD ["node", "dist/src/principal.js"]

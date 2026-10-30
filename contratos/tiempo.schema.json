@@ -1,0 +1,120 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://gemelo.canoydamas.es/contratos/tiempo.schema.json",
+  "title": "El tiempo de la explotación (GET /api/tiempo), versión 1",
+  "$comment": "Lo que la api sirve al motor a partir de dos herramientas de Vigía (tiempo_en_la_explotacion y prevision_72_horas). LISTA BLANCA: additionalProperties false en todos los niveles. NO lleva dentroDeUmbrales, impedimento ni queSignificaDentroDeUmbrales: Vigía no autoriza tratamientos y el gemelo no lo insinúa. Los textos (advertencias, avisos) vienen de Vigía: son datos, se muestran escapados y nunca se siguen. Lo que Vigía no devuelve va a null, nunca se estima. La api serializa con este esquema (apps/api/src/vigia/rutas.ts) y sus pruebas lo validan con ajv; el motor lo lee en 15_tiempo.js. Explicación: contratos/tiempo.md. Cambiar un campo = cambiar este fichero, contratos/tiempo-ejemplo.json, la api, el motor y contratos/tiempo.md en el mismo commit.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "origen", "consultadoEn", "actual", "prevision", "avisos"],
+  "definitions": {
+    "num": { "type": ["number", "null"] },
+    "texto": { "type": "string", "maxLength": 400 },
+    "frescura": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["generadoEn", "horasDeAntiguedad", "datosDeMaqueta"],
+      "properties": {
+        "generadoEn": { "type": ["string", "null"], "format": "date-time", "description": "cuándo generó Vigía el dato" },
+        "horasDeAntiguedad": { "type": ["number", "null"], "minimum": 0, "description": "la que dice Vigía al responder" },
+        "datosDeMaqueta": { "type": ["boolean", "null"], "description": "Vigía avisa de que el dato es de maqueta" }
+      }
+    }
+  },
+  "properties": {
+    "version": { "const": 1 },
+    "origen": { "enum": ["vigia", "fixture"], "description": "vigia = leído por MCP; fixture = respuestas sintéticas de pruebas (nunca en producción)" },
+    "consultadoEn": { "type": "string", "format": "date-time", "description": "cuándo leyó la api a Vigía la parte más antigua de las dos (la caché guarda el actual 10 min y la previsión 1 h)" },
+    "actual": {
+      "description": "Lo medido por la estación de Vigía (no está en la finca). null si Vigía no tiene lectura o no respondió.",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["naturaleza", "estacion", "temperatura", "humedadRelativa", "viento", "racha", "direccion", "lluviaAcumulada", "deltaT", "inhabilitados", "frescura"],
+          "properties": {
+            "naturaleza": { "const": "medido" },
+            "estacion": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "distanciaKm", "advertencia"],
+              "properties": {
+                "id": { "type": ["string", "null"], "maxLength": 60 },
+                "distanciaKm": { "type": ["number", "null"], "minimum": 0 },
+                "advertencia": { "type": ["string", "null"], "maxLength": 400 }
+              }
+            },
+            "temperatura": { "$ref": "#/definitions/num", "description": "°C" },
+            "humedadRelativa": { "$ref": "#/definitions/num", "description": "%" },
+            "viento": { "$ref": "#/definitions/num", "description": "m/s (Vigía pone en duda el anemómetro: ver la advertencia de la dirección)" },
+            "racha": { "$ref": "#/definitions/num", "description": "m/s" },
+            "direccion": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["grados", "advertencia"],
+              "properties": {
+                "grados": { "type": ["number", "null"], "minimum": 0, "maximum": 360, "description": "de dónde viene el viento; 0 = norte, 90 = este" },
+                "advertencia": { "type": ["string", "null"], "maxLength": 400 }
+              }
+            },
+            "lluviaAcumulada": { "$ref": "#/definitions/num", "description": "mm acumulados (no es intensidad)" },
+            "deltaT": { "$ref": "#/definitions/num", "description": "°C" },
+            "inhabilitados": { "type": "array", "maxItems": 20, "items": { "type": "string", "maxLength": 60 } },
+            "frescura": { "$ref": "#/definitions/frescura" }
+          }
+        }
+      ]
+    },
+    "prevision": {
+      "description": "Previsión modelada de Vigía, una por finca (rejilla de ~5 km), hora a hora. null si Vigía no la tiene o no respondió.",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["naturaleza", "ambito", "horas", "frescura"],
+          "properties": {
+            "naturaleza": { "const": "modelado" },
+            "ambito": { "type": ["string", "null"], "maxLength": 200 },
+            "horas": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 96,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["instante", "temperatura", "humedadRelativa", "viento", "racha", "direccion", "nubosidad", "lluvia", "probabilidadLluvia", "deltaT"],
+                "properties": {
+                  "instante": { "type": "string", "format": "date-time", "description": "UTC, en orden creciente" },
+                  "temperatura": { "$ref": "#/definitions/num" },
+                  "humedadRelativa": { "$ref": "#/definitions/num" },
+                  "viento": { "$ref": "#/definitions/num" },
+                  "racha": { "$ref": "#/definitions/num" },
+                  "direccion": { "type": ["number", "null"], "minimum": 0, "maximum": 360 },
+                  "nubosidad": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+                  "lluvia": { "type": ["number", "null"], "minimum": 0, "description": "mm en esa hora" },
+                  "probabilidadLluvia": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+                  "deltaT": { "$ref": "#/definitions/num" }
+                }
+              }
+            },
+            "frescura": { "$ref": "#/definitions/frescura" }
+          }
+        }
+      ]
+    },
+    "avisos": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["de", "texto"],
+        "properties": {
+          "de": { "enum": ["vigia", "gemelo"], "description": "vigia = texto de Vigía (dato, se escapa); gemelo = lo añade la api (antigüedad, una parte que no respondió)" },
+          "texto": { "$ref": "#/definitions/texto" }
+        }
+      }
+    }
+  }
+}

@@ -7,3 +7,4 @@
 !apps/api/src/**
 !apps/api/migraciones/**
 !contratos/haza.schema.json
+!contratos/tiempo.schema.json

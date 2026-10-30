@@ -52,6 +52,14 @@ GEMELO_OT=no
 # GEMELO_OT_MCP_URL=https://olivartrack.ejemplo.invalid/mcp
 GEMELO_OT_CADA_MIN=60
 
+# --- el tiempo de Vigía por MCP, solo lectura (contratos/tiempo.md): GET /api/tiempo, actual y previsión de 72 h, con caché en
+# memoria (10 min el actual, 1 h la previsión). «no» hasta que Antonio dé la URL y el token; «fixture» solo fuera de producción.
+# El token NO va aquí: /etc/gemelo/secretos/vigia_token (descomentar el secreto vigia_token en infra/compose.yml).
+GEMELO_VIGIA=no
+# GEMELO_VIGIA=mcp
+# la URL del MCP de Vigía (https obligatorio en producción)
+# GEMELO_VIGIA_MCP_URL=https://vigia.ejemplo.invalid/mcp
+
 # --- presencia compartida (F2, LiveKit). Sin GEMELO_LIVEKIT_URL la api la deja apagada (POST /api/presencia/token → 503).
 # El secreto (API secret, ≥ 32 caracteres) NO va aquí: /etc/gemelo/secretos/livekit_secreto (el compose lo monta y pone
 # GEMELO_LIVEKIT_SECRETO_FICHERO). La URL pública puede ser wss://… o la ruta del mismo origen /rtc (el borde la pasa a LiveKit).

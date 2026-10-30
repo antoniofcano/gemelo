@@ -179,6 +179,8 @@ services:
     read_only: true
     cap_drop: [ALL]
     tmpfs: ["/tmp:size=16m"]
+    volumes:
+      - ../../apps/api/pruebas/vigia:/app/vigia-fixture:ro   # el fixture sintético del tiempo (GEMELO_VIGIA=fixture)
     depends_on:
       db: { condition: service_healthy }
       correo: { condition: service_healthy }
@@ -198,6 +200,12 @@ services:
       GEMELO_SMTP_TLS: "no"
       GEMELO_CORREO_REMITENTE: "gemelo@canoydamas.invalid"
       GEMELO_OT: "no"                  # sin OlivarTrack en local: la ficha sale con el aviso ot_sin_sincronia
+      # el tiempo (GET /api/tiempo, contratos/tiempo.md): en local, el fixture SINTÉTICO de apps/api/pruebas/vigia (las fechas se corren a
+      # «ahora»). Para el Vigía de verdad, en infra/dev/.env: GEMELO_DEV_VIGIA=mcp, GEMELO_DEV_VIGIA_MCP_URL y GEMELO_DEV_VIGIA_TOKEN
+      GEMELO_VIGIA: ${GEMELO_DEV_VIGIA:-fixture}
+      GEMELO_VIGIA_FIXTURE: /app/vigia-fixture
+      GEMELO_VIGIA_MCP_URL: ${GEMELO_DEV_VIGIA_MCP_URL:-}
+      GEMELO_VIGIA_TOKEN: ${GEMELO_DEV_VIGIA_TOKEN:-}
       # presencia (F2): la api firma los tokens con las claves aleatorias de LiveKit de .env y le habla por la red interna;
       # el navegador entra por el mismo origen («/rtc», que Caddy pasa a LiveKit): vale en localhost y con --red-local
       GEMELO_LIVEKIT_URL: "http://livekit:7880"
