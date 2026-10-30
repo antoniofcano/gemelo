@@ -6,7 +6,7 @@
 // GEMELO_MIDE=1 imprime las cifras. SwiftShader vale para recuentos, no para fps.
 const test = require("node:test"), assert = require("node:assert");
 const { lee, path } = require("./_util");
-const { sirve, motivoSalto, lanza, ESCENARIOS } = require("./_navegador");
+const { sirve, motivoSalto, lanza, ESCENARIOS, desgloseLlamadas } = require("./_navegador");
 const { montaPagina, saltoPagina } = require("./_pagina");
 
 const MIDE = !!process.env.GEMELO_MIDE;
@@ -358,6 +358,10 @@ async function abre(consulta) {
     return { llamadas: r.render.calls, triangulos: r.render.triangles, puntos: r.render.points, geometrias: r.memory.geometries, texturas: r.memory.textures,
       grupo: !!g.scene.getObjectByName("presencia"), pres: window.__presencia(), jsFotograma: Number((/JS ([\d.]+) ms/.exec(dep) || [])[1]) };
   });
+  // las llamadas del grupo «presencia» de un fotograma (desgloseLlamadas): la diferencia de totales entre dos cargas la mueve también el nivel 0 de
+  // los olivos (qué celdas cercanas están montadas), que no es cosa de la presencia (medido en T8 fase 2: ±5 llamadas entre cargas)
+  const d = await p.evaluate(desgloseLlamadas);
+  m.presLlamadas = d.filas.filter(([k]) => / presencia:/.test(k)).reduce((a, f) => a + f[1], 0);
   return { p, errores, m };
 }
 
@@ -385,7 +389,7 @@ test("en Chrome: sin ?presencia no se añade nada; con ?presencia=sim, 10 y 40 v
     res[n] = r.m;
   }
   if (MIDE) for (const n of [0, 10, 40]) console.log("MEDIDO presencia n=" + n + " " + JSON.stringify(res[n]));
-  const d10 = res[10].llamadas - res[0].llamadas, d40 = res[40].llamadas - res[0].llamadas;
+  const d10 = res[10].presLlamadas - res[0].presLlamadas, d40 = res[40].presLlamadas - res[0].presLlamadas;
   assert.ok(d10 >= 4 && d10 <= 5, "10 visitantes: " + d10 + " llamadas más (esperadas 4-5: cuerpo, cabeza, sombrero, nombres y manos si hay Quest)");
   assert.strictEqual(d40, 5, "40 visitantes: " + d40 + " llamadas más (esperadas 5)");
   // P5: el muñeco del paseante: 5 cajas (60) + cabeza (icosaedro, 20) + sombrero (12) + nombre (2) = 94; con gafas, +24 de las manos

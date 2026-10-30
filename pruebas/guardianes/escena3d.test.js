@@ -218,7 +218,7 @@ const prepara = () => preparado || (preparado = preparaYa());
 async function preparaYa() {
   const con = montaPagina({ finca: "hituelo" }), sin = montaPagina({ finca: "hituelo", conTileset: false }), otro = montaPagina({ finca: "hituelo", tileset: "https://ejemplo.invalid/tileset.json" });
   for (const [k, carpeta, opc] of [["con", con.carpeta, { peticiones }], ["falla", con.carpeta, { peticiones, bloquea: /^\/tileset\// }], ["sin", sin.carpeta, { peticiones }], ["otro", otro.carpeta, { peticiones }]]) {
-    srv[k] = await sirve(carpeta, opc); base[k] = "http://127.0.0.1:" + srv[k].address().port + "/";
+    srv[k] = await sirve(carpeta, Object.assign({ csp: true }, opc)); base[k] = "http://127.0.0.1:" + srv[k].address().port + "/";
   }
   const n = await lanza();
   if (cerrado) { await n.close(); throw new Error("las pruebas acabaron (por tiempo) mientras se esperaba el turno del banco"); }
@@ -281,7 +281,8 @@ function casaRelieve(t, cmp) {
 
 // Sin escena (pacto de T8 fase 2, §1): sin tileset en el índice, con uno de otro host (se rechaza sin pedirlo) o si no se puede leer (404). En los
 // tres: estado «sin» con su motivo, el aviso #sinEscena visible, el Mundo cargado (el suelo de la CPU responde y el panel está) y la escena de
-// siempre no vuelve (no existe). Sin tileset y con otro host: EXACTAMENTE un console.error, el de 04b; con el 404, además el del fallo de la tesela.
+// siempre no vuelve (no existe). Sin tileset y con otro host: EXACTAMENTE un console.error, el de 04b; con el 404, además los del navegador y de
+// 3DTilesRendererJS por el fichero que falta.
 const SIN_ESCENA = [
   ["sin tileset en el índice", "sin", /falta el tileset/, 1],
   ["con un tileset de otro host", "otro", /mismo origen/, 1],
@@ -298,7 +299,7 @@ for (const [nombre, k, motivo, nErrores] of SIN_ESCENA) {
       if (MIDE) t.diagnostic(nombre + ", lejos: " + JSON.stringify(m));
       assert.strictEqual(m.escena3d.estado, "sin"); assert.match(m.escena3d.motivo, motivo);
       const consola = errores.filter(e => e.startsWith("CONSOLE "));
-      assert.ok(consola.length >= 1 && consola.every(e => /^CONSOLE escena 3D Tiles: /.test(e) || /Failed to load resource/.test(e)), "errores de consola: " + JSON.stringify(errores));
+      assert.ok(consola.length >= 1 && consola.every(e => /^CONSOLE escena 3D Tiles: /.test(e) || /Failed to load resource|TilesRenderer: Failed to load tileset/.test(e)), "errores de consola: " + JSON.stringify(errores));
       assert.ok(consola.some(e => motivo.test(e)), "el console.error debe decir el motivo: " + JSON.stringify(consola));
       if (nErrores !== null) assert.deepStrictEqual(errores.length, nErrores, "exactamente un error (el console.error de 04b): " + JSON.stringify(errores));
       assert.ok(!errores.some(e => e.startsWith("PAGEERROR")), "el motor no se rompe");

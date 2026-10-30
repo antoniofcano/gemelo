@@ -38,7 +38,7 @@ test("cada `#include <trozo>` que el motor parchea o usa existe en los sombreado
 
 test("la página empaquetada carga sin errores, lleva la three de apps/web y solo pide a su mismo origen (salvo las fuentes de Google de la plantilla)", { timeout: 300000 }, async t => {
   if (SALTO_NAV) return t.skip(SALTO_NAV);
-  const P = montaPagina({ finca: "hituelo" }), s = await sirve(P.carpeta), nav = await lanza(), origen = "http://127.0.0.1:" + s.address().port;
+  const P = montaPagina({ finca: "hituelo" }), s = await sirve(P.carpeta, { csp: true }), nav = await lanza(), origen = "http://127.0.0.1:" + s.address().port;
   const p = await nav.newPage({ viewport: { width: 900, height: 650 } }), errores = [], fuera = new Set();
   p.on("pageerror", e => errores.push("PAGEERROR " + String(e.stack || e).slice(0, 400)));
   p.on("console", m => { if (m.type() === "error" && !/^\[Report Only\]/.test(m.text())) errores.push("CONSOLE " + m.text().slice(0, 300)); });

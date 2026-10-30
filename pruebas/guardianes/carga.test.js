@@ -17,7 +17,7 @@ const FINCAS = ["cerro", "hituelo"];
 const srv = {}; let navegador;
 test.before(async () => {
   if (SALTO) return;
-  for (const f of FINCAS) srv[f] = await sirve(montaPagina({ finca: f }).carpeta);
+  for (const f of FINCAS) srv[f] = await sirve(montaPagina({ finca: f }).carpeta, { csp: true });
   navegador = await lanza();
 });
 test.after(async () => { if (navegador) await navegador.close(); for (const s of Object.values(srv)) s.close(); });

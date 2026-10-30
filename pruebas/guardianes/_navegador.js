@@ -35,8 +35,10 @@ const CSP = (() => {
 })();
 const esCsp = texto => /^\[Report Only\]/.test(texto);
 
-/** Servidor estático mínimo con la CSP de Caddy. opciones: { peticiones: [] (apunta cada ruta pedida), bloquea: RegExp (responde 404 a esas rutas) } */
-function sirve(raiz, { peticiones = null, bloquea = null } = {}) {
+/** Servidor estático mínimo. opciones: { csp: true (manda la CSP de Caddy, solo informe; la piden las pruebas que la miran: carga, web,
+ *  escena3d; en el resto solo añadiría avisos «[Report Only]» de las fuentes y estilos de la plantilla), peticiones: [] (apunta cada ruta pedida),
+ *  bloquea: RegExp (responde 404 a esas rutas) } */
+function sirve(raiz, { csp = false, peticiones = null, bloquea = null } = {}) {
   return new Promise(ok => {
     const s = http.createServer((q, r) => {
       const url = decodeURIComponent(q.url.split("?")[0]);
@@ -47,7 +49,7 @@ function sirve(raiz, { peticiones = null, bloquea = null } = {}) {
       fs.readFile(f, (e, d) => {
         if (e) { r.statusCode = 404; return r.end(); }
         r.setHeader("content-type", TIPOS[path.extname(f)] || "application/octet-stream");
-        r.setHeader("content-security-policy-report-only", CSP);
+        if (csp) r.setHeader("content-security-policy-report-only", CSP);
         r.end(d);
       });
     }).listen(0, "127.0.0.1", () => ok(s));

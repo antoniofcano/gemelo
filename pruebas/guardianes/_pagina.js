@@ -12,7 +12,7 @@
 // - fixture: carpeta del fixture ya generado (por defecto, uno propio de este proceso con _util.fixture()).
 // Devuelve la carpeta servible (carpeta), la página dentro de ella (url, relativa), la raíz que vio Vite (raiz, con entrada/motor.generado.js)
 // y el índice con el que se montó (indice).
-// Servir: sirve() de _navegador.js, que pone la CSP de infra/Caddyfile (en modo solo informe, como el Caddy de producción).
+// Servir: sirve() de _navegador.js; con { csp: true }, con la CSP de infra/Caddyfile (en modo solo informe, como el Caddy de producción).
 "use strict";
 const crypto = require("crypto");
 const { RAIZ, SALIDA, ejecuta, fixture, python, fs, path } = require("./_util");
