@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Hud
-// Consume: 01_datos ($), 02_mundo (copas), 03_escena (lienzo, visor, camera, modo), 08_marcadores (capas), 09_camara (orb),
-//   12_paseo (paseando, teclas), 14_historia (FINCA, aviso), 15_tiempo (meta, rumbo, esc),
+// Consume: 01_datos ($), 02_mundo (copas), 02c_componentes (Bus), 03_escena (lienzo, visor, camera, modo), 08_marcadores (capas), 09_camara (orb),
+//   12_paseo (paseando, teclas), 14_historia (FINCA, aviso), 15_tiempo (meta, rumbo, esc, hace),
 //   16_vida (enQuad, quita, quad, ponQuad, enDron, dron, ponDron), 24_pantalla (Menu), 29_vr (VRX, ficha), 32_ventanas (Ventanas),
 //   33_ajustes (Ajustes), 34_movibles (Movibles)
 // ===============================================================================
@@ -96,16 +96,10 @@
       return false;
     }
 
-    // --- la barra: cada icono abre (o cierra) su ventana; el chat es flotante (34_movibles.js / 26_presencia.js)
+    // --- la barra: cada icono abre (o cierra) su ventana; el chat es flotante (34_movibles.js) y es de la presencia compartida (38_presencia_compartida.js)
     function alterna(id, desde) {
       abreMas(false);
-      if (id === "chat") {   // el chat flotante de 26_presencia.js: minimizado (burbuja) → se abre; abierto → se minimiza
-        document.dispatchEvent(new CustomEvent("gemelo:chat", { detail: { desde: desde || null } }));
-        var raizC = $("presenciaGente"), burb = $("presenciaBurbuja");
-        if (raizC && raizC.hidden && burb) burb.click();
-        else if (raizC) { var bm = raizC.querySelector('button[aria-label="Minimizar el chat"]'); if (bm) bm.click(); }
-        return;
-      }
+      if (id === "chat") { Bus.emite("chat:alterna", {}); return; }   // el chat flotante: minimizado (burbuja) → se abre; abierto → se minimiza (lo hace la presencia; sin ella, nada)
       if (typeof Ventanas !== "undefined" && Ventanas) { if (Ventanas.abierta() === id) Ventanas.cierra(); else Ventanas.abre(id, desde); }
     }
     Array.prototype.forEach.call(document.querySelectorAll("#hud [data-abre]"), function (b) {
@@ -139,7 +133,7 @@
         if (menuModo) Array.prototype.forEach.call(menuModo.querySelectorAll("[data-modo]"), function (b) { b.setAttribute("aria-checked", String(b.getAttribute("data-modo") === m)); });
         ["aereo", "pie", "quad", "dron"].forEach(function (k) { visor.classList.toggle("modo-" + k, k === m); });
       }
-      // gente y chat: solo en el mundo en red (26_presencia.js crea #presenciaGente al conectarse)
+      // gente y chat: solo en el mundo en red (la presencia compartida, 38_presencia_compartida.js, crea #presenciaGente)
       var red = !!$("presenciaGente") || !!$("ventanaGenteCuerpo") && $("ventanaGenteCuerpo").children.length > 0;
       Array.prototype.forEach.call(document.querySelectorAll('#hud [data-abre="gente"], #hud [data-abre="chat"]'), function (b) { if (b.hidden === red) b.hidden = !red; });
       // la historia: sin recorrido para esta finca (genera_motor.mjs la oculta), sin icono

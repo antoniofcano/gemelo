@@ -282,9 +282,12 @@ test("ir con alguien: junto a la linde de la finca, dentro (3 m de margen); y si
   const S = Encuentro.punto({ x: 100, y: 100 }, { x: 100, y: 100 }, [], EXT); assert.ok(Math.abs(S.x - 100) < 1e-9 && S.y < 100, "encima de ella: por el sur");
 });
 test("ir con alguien y minimapa: en la página, solo con la bandera; con ella, solo a quien se dibuja (de la sala, con pose, sin bloquear)", () => {
-  const M = lee("apps/web/motor/17_minimapa.js"), F = FUENTE;
-  assert.match(M, /if \(Presencia\.activo\(\)\) \{/, "el minimapa solo pinta a los demás con la presencia activa");
-  assert.match(F, /function seVe\(a, ahoraMs\) \{ return !!a && a\.visto && \(variante !== "red" \|\| SalaPose\.seVe\(SP, a\.id, ahoraMs, bloqueados\)\); \}/);
+  const M = lee("apps/web/motor/17_minimapa.js"), F = lee("apps/web/motor/38_presencia_compartida.js");
+  // C5: el minimapa no nombra a la presencia: pinta las entidades «persona» (las registra la presencia solo con su bandera) e «Ir con» es su acción «ir»
+  assert.match(M, /var gente = Entidades\.lista\("persona"\);[^\n]*\n\s*if \(gente\) \{/, "el minimapa solo pinta a los demás si hay tipo «persona» (presencia activa)");
+  assert.match(M, /Usables\.usa\(mejor\.id, "ir"\)/, "el segundo toque va con esa persona por su acción «ir»");
+  assert.match(F, /if \(variante\) quitaPersona = Entidades\.registra\(\{ tipo: "persona"/, "el tipo «persona» solo con ?presencia=sim|red");
+  assert.match(F, /function seVe\(a, tMs\) \{ return !!a && a\.visto && \(variante !== "red" \|\| SalaPose\.seVe\(SP, a\.id, tMs, bloqueados\)\); \}/);
   assert.match(F, /function irCon\(id\) \{\s*if \(!activo\) return false;\s*var a = busca\(id\); if \(!seVe\(a, performance\.now\(\)\)\) return false;/, "irCon solo va con quien se ve");
   assert.match(F, /if \(x\.enMundo && !bl\) \{/, "el botón «Ir con» solo para quien está en el olivar y no está bloqueado");
 });
@@ -297,10 +300,11 @@ test("balizas (I4): quién está en una parcela, por su linde (HazasPuro.dentroP
   assert.deepStrictEqual(Encuentro.enParcela(pts, linde, HazasPuro.dentroPoligono), ["Abubilla", "Jara", "Mirlo"], "Perdiz cae en el hueco de la L; Fuera, fuera");
   assert.deepStrictEqual(Encuentro.enParcela([], linde, HazasPuro.dentroPoligono), []);
   assert.deepStrictEqual(Encuentro.enParcela(null, linde, HazasPuro.dentroPoligono), []);
-  // los de vista aérea y los bloqueados no llegan aquí: enParcela recibe Presencia.puntos(), que ya los quita (seVe; prueba de SalaPose.seVe en presencia_red.test.js)
+  // los de vista aérea y los bloqueados no llegan aquí: enParcela recibe las entidades «persona», que son los puntos de la presencia, que ya los quita (seVe; prueba de SalaPose.seVe en presencia_red.test.js)
   const B = lee("apps/web/motor/19_balizas.js");
-  assert.match(B, /return Encuentro\.enParcela\(Presencia\.puntos\(\), parcelas\[k\]\.linde, HazasPuro\.dentroPoligono\);/, "la lista sale de Presencia.puntos()");
-  assert.match(B, /if \(typeof Presencia === "undefined" \|\| !Presencia\.activo\(\)\) return null;/, "sin presencia, no hay lista (el aviso solo pregunta)");
+  assert.match(B, /return Encuentro\.enParcela\(gente, parcelas\[k\]\.linde, HazasPuro\.dentroPoligono\);/, "la lista sale de las entidades «persona»");
+  assert.match(B, /var gente = Entidades\.lista\("persona"\); if \(!gente\) return null;/, "sin presencia (sin tipo «persona»), no hay lista (el aviso solo pregunta)");
+  assert.match(lee("apps/web/motor/38_presencia_compartida.js"), /lista: function \(\) \{ return puntos\(\)\.map\(/, "la lista del tipo «persona» son los puntos de la presencia (los que se dibujan)");
   assert.match(B, /avisoB\.txt\.textContent = textoAvisoBaliza\(k\)/, "el aviso pone los alias como texto, nunca como HTML");
   assert.match(B, /gente\.map\(esc\)/, "en la ficha (HTML), los alias escapados");
 });

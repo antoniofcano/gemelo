@@ -157,12 +157,12 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | OF10 | Mundo en modo oficina: insignia y chaleco, anunciar, balizas oficiales, salas | OF1 | media · **opus**; 🔶 | ⬜ |
 | OF11 | Agenda: eventos con aforo, inscripciones, lista de espera, avisos | OF2, V3 | media · **sonnet**; 🔶 Docker | ✅ 2026-10-30 (Node); integración con PostGIS y Chrome en la puerta; pendientes: correo de avisos (sin emisor), .ics y la parte del hogar en el mundo; 👤 decisiones 145-148 |
 | OF12 | Directos: preparación, sala guiada, dar la palabra, silenciar | OF10, F3, EIPD | pesada · **opus**; 🔶 | ⬜ |
-| OF13 | Llave de acceso (WebAuthn) obligatoria para la oficina antes de abrir (decisión 105) | OF1 | media · **sonnet**; 🔶 | ⬜ |
+| OF13 | Llave de acceso (WebAuthn) obligatoria para la oficina antes de abrir (decisión 105) | OF1 | media · **sonnet**; 🔶 | ✅ 2026-10-30 en código (api, migración 0013, pantalla y Sistema; unidad y guardianes en verde); falta integración con Docker, el recorrido con el autenticador virtual y registrar llaves reales (Windows Hello, teléfono, llave física); 👤 decisiones 151-152 |
 | C1 | Componentes: núcleo (`Componentes`, `Bus` con catálogo, bucle por fases, encendido URL > configuración > defecto) y guardián | — | media · **opus** | ✅ 2026-10-30 |
 | C2 | Componentes: puntos de extensión (HUD, ventanas, teclas, ajustes, panel VR por filas, minimapa, capas) | C1 | media · **opus** | ✅ 2026-10-30 |
 | C3 | Componentes: piloto 1, las fichas del tiempo como componente | C2 | ligera · **opus** | ✅ 2026-10-30 |
 | C4 | Componentes: piloto 2, el sonido | C2 | ligera · **sonnet** | ✅ 2026-10-30 |
-| C5 | Componentes: piloto 3, `Red` sobre LiveKit; presencia y avatares como componentes | C1 | media · **opus** | ⬜ |
+| C5 | Componentes: piloto 3, `Red` sobre LiveKit; presencia y avatares como componentes | C1 | media · **opus** | ✅ 2026-10-30 en Node (`red.test.js`); pendiente Chrome por el banco (presencia, presencia_dev, vr_gente, avatares_motor, movibles_chrome, personalizacion_e2e, recuentos de carga); deja preparadas las salas por clave para OF10 y OF12 |
 | C6 | Componentes: plugins de la api y `/api/config` (se junta con OF6) | C1 | ligera · **sonnet** | ✅ 2026-10-30 (sin plugins de la api por carpeta) |
 | C7 | Entidades con id estable y usables (una sola forma de tocar: dedo, ratón, rayo VR, cercanía) — antes de juegos y fotos (decisión 119) | C2 | media · **opus** | ✅ 2026-10-30; desbloquea P7f (nombrar árboles y colgar fotos) |
 | C8 | Láminas en el mundo como servicio del núcleo | C3 | ligera · **sonnet** | ✅ 2026-10-30 (desbloquea C9b) |

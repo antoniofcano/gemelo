@@ -19,13 +19,16 @@ Los componentes del motor ([ADR-0023](../doc/adr/0023-componentes-del-mundo.md),
 
 | Evento | Datos | Emite | Escucha |
 |---|---|---|---|
+| `chat:alterna` | — | `31_hud` (el icono del chat de la barra o del menú «Más») | `38_presencia_compartida` (abre el chat minimizado o lo minimiza; sin chat, nada) |
 | `audio:desbloquea` | — | `29_vr` (al pulsar «Entrar en VR»: el gesto que deja arrancar el audio) | `20_sonido` |
 | `componentes:cambia` | `{ id, activo }` | `02c_componentes` (al montar o liberar un componente) | `15_tiempo` (esconde «Ver la previsión en el mundo» si nadie la atiende) |
+| `depura:lineas` | `{ lineas: [texto] }` | `28_depura` (el contador de `?debug`, cada 0,5 s) | `38_presencia_compartida` (añade su línea si está activa) |
 | `juego:ofrece` | `{ id, titulo, descripcion?, ayuda?, vr?, crea }` (`vr: { botones, palanca, ayuda? }` si sabe jugarse en VR, C9b) | `41_cae_la_cosecha` (al montarse y al oír `juego:pide`) | `40_juegos` (el anfitrión: lo pone en la ventana Juegos) |
 | `juego:pide` | — | `40_juegos` (al montarse) | `41_cae_la_cosecha` |
 | `juego:retira` | `{ id }` | `41_cae_la_cosecha` (al liberarse) | `40_juegos` (lo quita y, si estaba abierto, lo cierra) |
 | `mundo:pausa` | `{ activa }` | `02c_componentes` (`Pausa.pon` / `Pausa.quita`) | (nadie todavía) |
 | `prevision:alterna` | `{ abre? }` | `15_tiempo` (botón de la ventana Tiempo) | `35_fichas_tiempo` (la lámina de la previsión) |
+| `red:estado` | `{ sala, estado, motivo? }` | `37_red` (una sala cambia de estado: `conectando`, `dentro`, `reconectando`, `fuera` con su motivo) | (nadie todavía: quien está en la sala lo sigue con `sala.al("estado")`) |
 | `sonido:baliza` | `{ completa? }` | `19_balizas` (al llegar a una baliza) | `20_sonido` (campanilla o arpegio) |
 | `sonido:golpe` | — | `24_pantalla` (el aterrizaje del paseo) | `20_sonido` |
 | `sonido:juego` | `{ que, cadena? }` | `41_cae_la_cosecha` | `20_sonido` (notas cortas sintetizadas) |
@@ -37,4 +40,4 @@ Los componentes del motor ([ADR-0023](../doc/adr/0023-componentes-del-mundo.md),
 | `vr:entra` | — | `29_vr` | `40_juegos` (cierra el juego abierto: en VR no hay juegos hasta C9b) |
 | `vr:sale` | — | `29_vr` | `02d_laminas` (cierra las láminas de VR), `40_juegos` (cierra el juego en lámina) |
 
-Lo que aún va por `CustomEvent` en `document` (`gemelo:chat` de `31_hud.js`, que hoy no escucha ningún módulo del motor) pasará al bus cuando se migre la presencia (C5).
+Ya no queda nada por `CustomEvent` en `document`: el `gemelo:chat` de `31_hud.js` pasó a `chat:alterna` con C5. Los mensajes de la red (las poses, el chat) **no** van por el Bus: van por la sala de la red (`Red.sala(clave).escucha(tema, fn)`, `37_red.js`), de punto a punto y sin copias.
