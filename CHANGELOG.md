@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Propuesta de `/oficina` (`doc/sistema/OFICINA.md`): acceso con roles `oficina` y `admin`, Familias, Hazas, Bandeja, Mundo en modo oficina, Agenda, Directos, Olivos (constructor y parámetros de la escalera como configuración versionada en `/api/config`, con límites seguros para el Quest) y Sistema; plan OF0-OF13 y 13 decisiones para Antonio; maqueta navegable con datos ficticios en `prototipos/oficina/`. Sin implementar.
 - El tiempo del mundo, el chip del HUD y la ventana Tiempo leen a Vigía a través del servidor (`GET /api/tiempo`, contrato `tiempo` v1: actual medido y previsión modelada de 72 h, con caché de 10 min y 1 h); sin servidor o si falla, tiempo simulado y dicho. Falta la URL y el token de Vigía: hoy, datos de prueba.
 - «Próximas 72 h» dibuja temperatura, nubosidad, lluvia y viento hora a hora; ya no muestra los umbrales del atomizador (Vigía no autoriza tratamientos). La flecha del viento apunta a de dónde viene, en todos los modos; botón «Ver la previsión en el mundo».
 - api: la vida de las hazas antes del VPS (V3, migración 0004): olivos con id congelado, el titular nombra los olivos de su haza y les cuelga una foto o pintura (re-codificada sin EXIF ni GPS), cualquier hogar lo ve y lo denuncia, y la oficina lo retira en un clic desde su bandeja; tablas de diario, avisos, lotes de aceite y eventos con inscripción (sin pantallas todavía).
