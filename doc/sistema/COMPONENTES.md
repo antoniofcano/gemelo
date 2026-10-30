@@ -167,6 +167,19 @@ El manifiesto y lo barato van en el paquete; lo pesado se pide con `import()` de
 ### Nota de comodidad (regla 11)
 
 - **Qué cambia para quien juega**: nada a propósito. Mismas teclas (P paseando; la P sigue sin hacer nada con el foco en un campo, con Ctrl/Alt/Cmd o al repetirse), mismo botón «Ver la previsión en el mundo», mismas filas y botones del panel VR en las mismas coordenadas del lienzo (lo fija `pruebas/guardianes/fichas_tiempo.test.js`). Diferencia visible: si la lámina no está (apagada o fuera del motor), el botón de la ventana Tiempo no aparece en vez de no hacer nada.
-- **Qué se probó y dónde**: en Node, el registro, las teclas, el panel por filas de la pieza y el montaje y liberado de la lámina con un THREE de mentira; en Chrome sin pantalla por el banco, las pruebas de navegador de la puerta (ver el informe de la medida en el commit).
+- **Qué se probó y dónde**: en Node, el registro, las teclas, el panel por filas de la pieza y el montaje y liberado de la lámina con un THREE de mentira; en Chrome sin pantalla por el banco (una vuelta de la puerta con `GEMELO_VR=1`, 2026-10-30): pasan las de las fichas del tiempo (escritorio: 1 llamada y 1 textura que se libera; VR simulada: «Ver previsión» desde la fila del panel), los pasos del panel VR de `prueba_vr.js` (pestañas, modos, hora, relieve, fecha, «Ir a») y las ux_*. Falló una vez el paso «rayo + gatillo sobre un olivo abre su ficha» de `prueba_vr.js`, que no toca nada de esto (con el panel oculto); **sin confirmar** si es la inestabilidad conocida de la VR simulada con SwiftShader.
+
+### Medida (regla 6)
+
+Por el banco, fixture de Cerro, SwiftShader (recuentos, no fps), en la misma ronda: `main` en `449aa97` («antes»), esta rama («después») y esta rama con `?fichas=0`.
+
+| Escenario | antes: llamadas / triángulos / geometrías / texturas | después | después con `?fichas=0` |
+|---|---|---|---|
+| lejos | 30 / 25.014 / 43 / 8 | 30 / 25.014 / 43 / 8 | 30 / 25.014 / 43 / 8 |
+| cerca | 57 / 180.426 / 81 / 21 | 57 / 180.426 / 81 / 21 | 57 / 180.426 / 81 / 21 |
+| paseo | 53 / 179.620 / 93 / 21 | 53 / 179.620 / 91 / 21 | 59 / 180.498 / 96 / 21 |
+| paseoAnda | 75 / 166.626 / 121 / 23 | 75 / 166.626 / 119 / 23 | 55 / 166.396 / 106 / 22 |
+
+Igual en lejos y cerca; en el paseo las diferencias son la fauna y el paso (cambian de una carga a otra, también entre «antes» y «después» con el mismo código de dibujo). El registro no dibuja nada. Coste en JS del bucle por fases: **0,06 µs por fotograma** (3 fases y 1 componente, Node 24, 2 millones de vueltas): no medible frente a los milisegundos del fotograma. Ojo: «lejos» da 25.014 triángulos también en `main` y pasa del tope de regresión de `pruebas/presupuesto.json` (20.000): la puerta falla ahí antes y después de este cambio.
 - **No probado**: en unas Quest (el panel por filas, la fila del tiempo y «Ver previsión» con el rayo) ni en un iPhone. El panel VR por filas solo se ha comprobado con el WebXR simulado.
 
