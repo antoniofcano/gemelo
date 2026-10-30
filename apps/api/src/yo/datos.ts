@@ -7,7 +7,7 @@ import type { Bd } from "../bd/pool.ts";
 export async function datosDelHogar(bd: Bd, id: number): Promise<Record<string, unknown> | null> {
   const [h, av, hz, pr, vi, se, cv] = await Promise.all([
     bd.query("SELECT correo, rol, alias, alias_visible, normas_version, normas_aceptadas_en, avisos_correo, creado_en FROM hogares WHERE id = $1", [id]),
-    bd.query("SELECT camisa, sombrero, piel, vrm, actualizado_en FROM avatares WHERE hogar_id = $1", [id]),
+    bd.query("SELECT camisa, sombrero, piel, vrm, aspecto, actualizado_en FROM avatares WHERE hogar_id = $1", [id]),
     bd.query("SELECT codigo, nombre FROM hazas WHERE hogar_id = $1 ORDER BY codigo", [id]),
     bd.query("SELECT texto, creada_en, respuesta, respondida_en FROM preguntas WHERE hogar_id = $1 ORDER BY creada_en", [id]),
     bd.query("SELECT v.titulo, v.empieza_en, a.personas, a.estado FROM visitas_asistentes a JOIN visitas v ON v.id = a.visita_id WHERE a.hogar_id = $1 ORDER BY v.empieza_en", [id]),
