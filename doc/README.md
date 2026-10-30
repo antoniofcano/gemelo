@@ -28,6 +28,7 @@
 - [sistema/UX.md](sistema/UX.md) — propuesta de UX: acceso, configuración e interacción (pendiente de revisión); maqueta en [../prototipos/ux/](../prototipos/ux/).
 - [sistema/UX-FINCA-JUEGO.md](sistema/UX-FINCA-JUEGO.md) — propuesta: la página de la finca como un videojuego a pantalla completa (HUD mínimo, ventanas, Configuración, chat movible), con inventario, «antes → después» y plan; maqueta en [../prototipos/ux-finca-juego/](../prototipos/ux-finca-juego/).
 - [sistema/VIDA.md](sistema/VIDA.md) — la vida de las hazas en el servidor (V3): olivos con id congelado, personalización, fotos, denuncias, bandeja, diario, avisos, lotes y eventos; almacenamiento y datos personales (EIPD).
+- [sistema/COMPONENTES.md](sistema/COMPONENTES.md) — componentes del mundo («plugins»): diagnóstico del acoplamiento de hoy, contrato de un componente, puntos de extensión y lo que falta para el Agro-Verse (propuesta, ADR-0023).
 - [sistema/ARQUITECTURA-MULTIUSUARIO.md](sistema/ARQUITECTURA-MULTIUSUARIO.md) — «Cuarenta hazas»: la visión multiusuario que da sentido al proyecto (propuesta, pendiente de estudio).
 
 ## Cómo se opera — `operacion/`
