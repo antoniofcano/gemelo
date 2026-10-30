@@ -261,7 +261,8 @@
     function viste(inst, v) {
       var e = cat && cat.porId[inst.id]; if (!e || !e.cuerpo || !v) return;
       if (!mallasDe) { mallasDe = Object.create(null); for (var k in cat.piezas) mallasDe[cat.piezas[k].malla] = true; }
-      var pz = AvataresPuro.piezasDe(cat, e, v.receta, v.sombrero), col = { piel: v.piel, arriba: v.camisa, abajo: v.pantalon, pelo: v.pelo }, raiz = inst.vrm.scene;
+      // OF10: la oficina, con la ropa de arriba teñida del verde oliva de su chaleco (la insignia va en su etiqueta, que se sigue dibujando encima)
+      var pz = AvataresPuro.piezasDe(cat, e, v.receta, v.sombrero), col = { piel: v.piel, arriba: v.chaleco || v.camisa, abajo: v.pantalon, pelo: v.pelo }, raiz = inst.vrm.scene;
       raiz.traverse(function (o) {
         // por el nombre ORIGINAL del nodo (GLTFLoader lo deja en userData.name; el de three puede llevar «_1» si la malla se llama igual)
         // (también las que trae el VRM pero el catálogo no ofrece, p. ej. una pieza retenida: «pieza_» sin entrada → oculta)
@@ -275,7 +276,7 @@
       });
       var s = v.fa || 1; inst.giro.scale.setScalar(s); inst.s = s; inst.L = inst.yCad * s;
     }
-    function vestimenta(a) { return { receta: a.receta, sombrero: a.sombrero, piel: a.piel, camisa: a.camisa, pantalon: a.pantalon, pelo: a.pelo, fa: a.fa }; }
+    function vestimenta(a) { return { receta: a.receta, sombrero: a.sombrero, piel: a.piel, camisa: a.camisa, pantalon: a.pantalon, pelo: a.pelo, fa: a.fa, chaleco: a.chaleco || null }; }
     function clave(a) { return AvataresPuro.cualVrm(cat, a.receta, a.vrm); }
     function sueltaInst(inst) {
       if (inst.raiz.parent) inst.raiz.parent.remove(inst.raiz);

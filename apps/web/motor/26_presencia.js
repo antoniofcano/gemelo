@@ -1,8 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: PoseCodec, BufferPose, Aspecto, SalaPose, Chat, Muneco, Encuentro, sitioJunto
 // Consume: 01_datos (D, $), 02_mundo (suelo, copas), 02e_entidades (Entidades), 03_escena (exag, modo), 04d_sombreado_tiles (hash),
-//   06_arboles (tronco), 12_paseo (paseando, persona), 12b_llegada (Llegada), 13b_hazas (HazasPuro), 14_historia (lista), 15_tiempo (rumbo, hace),
-//   16_vida (quad, vidaPaseo, dron)
+//   06_arboles (tronco), 12_paseo (paseando, persona, primera), 12b_llegada (Llegada), 13b_hazas (HazasPuro), 14_historia (lista),
+//   15_tiempo (rumbo, hace), 16_vida (quad, vidaPaseo, dron)
 // Nota: No es un componente ni monta nada: el protocolo y la lógica pura de la presencia compartida (PoseCodec, BufferPose, Aspecto, SalaPose, Chat, Muneco, Encuentro) y sitioJunto. La presencia que los usa es el componente de 38_presencia_compartida.js (C5). El trozo entre [puro:inicio] y [puro:fin] lo evalúan en Node pruebas/guardianes/presencia.test.js, presencia_red.test.js y muneco_aspecto.test.js.
 // ===============================================================================
   // ---------- presencia compartida (F2, contratos/presencia.md): el protocolo y la lógica pura que comparten la presencia y quien la usa. Este fichero NO es un
@@ -117,6 +117,9 @@
     var PIELES = [0xf6dcc8, 0xeec5a6, 0xe0ac86, 0xcf9670, 0xb97d57, 0xa06844, 0x855436, 0x6b412a, 0x523020, 0x3b2217];
     var ROPA = [0x6b7f3a, 0x2f2a2a, 0x8a5a3b, 0xa8432f, 0xd8b65e, 0x6f9fc6, 0xd77a9a, 0xece7dc, 0x4b5563, 0x8b7bb5];
     var CAMISAS = [0xc0533a, 0x3f7cc2, 0xe0b23a, 0x5d9b4a, 0x8a5bb0, 0xe8e2d4], PANTALON = 0x37455c;   // los de antes (camisa 0-5) y el pantalón fijo del paseante
+    // OF10 (decisión 107): la oficina, siempre visible, con CHALECO verde oliva (el tronco del muñeco; más claro que el «verde olivo» de la ropa de las familias,
+    // ROPA[0], para que no se confundan) e INSIGNIA (una caja clara en el pecho, del instanciado del sombrero). Ilustrativo (regla 5)
+    var CHALECO = 0xa3b236, INSIGNIA = 0xf4ecc2;
     // AV4 (ADR-0025): los colores del pelo y del vello del VRM (negro, castaño oscuro, castaño, castaño claro, rubio, cobrizo, canoso, blanco). Las tres paletas son las del
     // catálogo v2 (contratos/avatares.md §9) y las de la portada: lo vigila pruebas/guardianes/avatares.test.js
     var PELO = [0x1f1a17, 0x3d2a1e, 0x6a4a30, 0x8f6a45, 0xc9a465, 0xa5522c, 0x9a9690, 0xe6e3dc];
@@ -146,20 +149,21 @@
         piel: PIELES[tono], tono: tono, camisa: as.arriba !== null ? ROPA[as.arriba] : CAMISAS[info.camisa], pantalon: as.abajo !== null ? ROPA[as.abajo] : PANTALON,
         propioPiel: as.tono !== null, propioCamisa: as.arriba !== null,   // lo que ELIGIÓ la persona manda sobre los colores del catálogo VRM
         fa: ALTURAS[as.altura], fc: COMPLEXIONES[as.complexion], mov: as.movilidad,
-        pelo: PELO[as.peloColor !== null && as.peloColor < PELO.length ? as.peloColor : hash(info.alias) % PELO.length], receta: as   // AV4: el color del pelo del VRM y la receta entera
+        pelo: PELO[as.peloColor !== null && as.peloColor < PELO.length ? as.peloColor : hash(info.alias) % PELO.length], receta: as,   // AV4: el color del pelo del VRM y la receta entera
+        oficial: !!info.oficial, chaleco: info.oficial ? CHALECO : null   // OF10: la oficina lleva chaleco (y su insignia: una caja más, ver cajas())
       };
     }
-    // cuántas cajas de accesorios pide: el sombrero (1) y el apoyo (silla 2: asiento y respaldo; bastón 1; andador 3: barra y dos laterales)
-    var CAJAS_APOYO = { pie: 0, baston: 1, andador: 3, silla: 2 }, CAJAS_MAX = 4;
-    function cajas(sombrero, mov) { return (sombrero ? 1 : 0) + (CAJAS_APOYO[mov] || 0); }
-    return { PIELES: PIELES, ROPA: ROPA, PELO: PELO, CAMISAS: CAMISAS, PANTALON: PANTALON, PIEL_ANTES: PIEL_ANTES, ALTURAS: ALTURAS, COMPLEXIONES: COMPLEXIONES, MOVILIDADES: MOVILIDADES, CAJAS_MAX: CAJAS_MAX, lee: lee, viste: viste, cajas: cajas, hash: hash };
+    // cuántas cajas de accesorios pide: el sombrero (1), el apoyo (silla 2: asiento y respaldo; bastón 1; andador 3: barra y dos laterales) y, la oficina, su insignia (1, la última)
+    var CAJAS_APOYO = { pie: 0, baston: 1, andador: 3, silla: 2 }, CAJAS_MAX = 5;
+    function cajas(sombrero, mov, oficial) { return (sombrero ? 1 : 0) + (CAJAS_APOYO[mov] || 0) + (oficial ? 1 : 0); }
+    return { PIELES: PIELES, ROPA: ROPA, PELO: PELO, CAMISAS: CAMISAS, PANTALON: PANTALON, PIEL_ANTES: PIEL_ANTES, ALTURAS: ALTURAS, COMPLEXIONES: COMPLEXIONES, MOVILIDADES: MOVILIDADES, CAJAS_MAX: CAJAS_MAX, CHALECO: CHALECO, INSIGNIA: INSIGNIA, lee: lee, viste: viste, cajas: cajas, hash: hash };
   })();
   // Sala de verdad (?presencia=red): a quién se manda la pose en cada tic (10 Hz a los cercanos, 2 Hz a toda la sala), quién está cerca (entra a 55 m y sale a 65 m),
   // a qué ritmo le llega cada uno (y por tanto con qué retardo se dibuja) y quién está «en vista aérea» (conectado y sin pose reciente: decisión 60).
   // No sabe nada de LiveKit: la presencia le pasa lo que recibe por la red (37_red.js) y publica lo que devuelve tic(). Los metadatos de la sala se leen como DATOS (leeInfo()).
   var SalaPose = (function () {
     var TICK = 100, CADA_LEJOS = 5, ENTRA = 55, SALE = 65, SIN_POSE = 2000, RAPIDO = 300, RET_CERCA = 150, RET_LEJOS = 650;
-    var ROLES = ["hogar", "guia", "corresponsal", "admin"], DISPOSITIVOS = ["escritorio", "movil", "quest"], SOMBREROS = ["ninguno", "paja", "gorra"];
+    var ROLES = ["hogar", "guia", "corresponsal", "oficina", "admin"], OFICIALES = ["oficina", "admin"], DISPOSITIVOS = ["escritorio", "movil", "quest"], SOMBREROS = ["ninguno", "paja", "gorra"];
     function crea(seq) { return { otros: Object.create(null), seq: (seq | 0) & 0xffff, nTick: 0, tTick: null, enviados: 0, recibidos: 0, viejos: 0, malos: 0 }; }
     function entra(s, id, info) {
       var o = s.otros[id];
@@ -203,7 +207,11 @@
     function gente(s, ahora) {
       var l = [], id, o;
       for (id in s.otros) { o = s.otros[id]; l.push({ id: id, info: o.info, enMundo: conPose(o, ahora), estado: conPose(o, ahora) ? (o.tipo === PoseCodec.QUEST ? "con gafas" : o.modo === PoseCodec.QUAD ? "en quad" : o.modo === PoseCodec.DRON ? "con el dron" : "paseando") : "en vista aérea" }); }
-      return l.sort(function (a, b) { var x = (a.info && a.info.alias) || "", y = (b.info && b.info.alias) || ""; return x < y ? -1 : x > y ? 1 : 0; });
+      // la oficina, primera (OF10, OFICINA.md §6); luego por alias
+      return l.sort(function (a, b) {
+        var oa = a.info && a.info.oficial ? 0 : 1, ob = b.info && b.info.oficial ? 0 : 1; if (oa !== ob) return oa - ob;
+        var x = (a.info && a.info.alias) || "", y = (b.info && b.info.alias) || ""; return x < y ? -1 : x > y ? 1 : 0;
+      });
     }
     // a quién se dibuja (avatar, minimapa, «Ir con»): a quien está en la sala, con pose reciente (no «en vista aérea») y no has bloqueado tú
     function seVe(s, id, ahora, bloqueados) { var o = s.otros[id]; return !!o && !(bloqueados && bloqueados[id]) && conPose(o, ahora); }
@@ -214,9 +222,14 @@
       try { m = JSON.parse(typeof txt === "string" && txt ? txt : "{}"); } catch (e) { m = null; }
       if (!m || typeof m !== "object") m = {};
       var av = m.avatar && typeof m.avatar === "object" ? m.avatar : {}, alias = typeof m.alias === "string" ? Chat.limpia(m.alias) : null;
+      var rol = ROLES.indexOf(m.rol) >= 0 ? m.rol : "hogar", oficial = OFICIALES.indexOf(rol) >= 0;
+      // OF10 (decisión 107): la oficina se ve como «Oficina» (la api ya lo pone así; aquí se asegura) y ningún otro alias que la nombre se enseña (no suplanta:
+      // «Oficina», «0ficina», «La oficina de Ana»… se ven como «Visitante»; se compara sin tildes, espacios ni signos y con 0 → o, 1 → i)
+      if (oficial) alias = "Oficina";
+      else if (alias && /oficina/.test(alias.normalize("NFD").toLowerCase().replace(/0/g, "o").replace(/[1l|!]/g, "i").replace(/[^a-z]/g, ""))) alias = null;
       return {
         alias: alias ? Array.from(alias).slice(0, 24).join("") : "Visitante",
-        rol: ROLES.indexOf(m.rol) >= 0 ? m.rol : "hogar",
+        rol: rol, oficial: oficial,
         dispositivo: DISPOSITIVOS.indexOf(m.dispositivo) >= 0 ? m.dispositivo : "escritorio",
         camisa: entero(av.camisa, 0, 5, 0), piel: entero(av.piel, 0, 4, 1), sombrero: SOMBREROS.indexOf(av.sombrero) >= 0 ? SOMBREROS.indexOf(av.sombrero) : 1,
         vrm: typeof av.vrm === "string" && /^[a-z0-9-]{1,32}$/.test(av.vrm) ? av.vrm : null,   // P7c (ADR-0020 §6): id del catálogo de avatares; si no cuadra, el muñeco
