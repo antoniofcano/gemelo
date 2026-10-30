@@ -761,7 +761,7 @@
     }
     function pintaNoLeidos() {
       if (!ui) return;
-      var n = ui.noLeidos; ui.cont.hidden = !n; ui.cont.textContent = n > 99 ? "99+" : String(n);
+      var n = ui.noLeidos; ui.cont.hidden = !n; ui.cont.textContent = n > 99 ? "99+" : n ? String(n) : "";
       ui.burbuja.setAttribute("aria-label", "Abrir el chat" + (n ? " (" + n + " sin leer)" : "") + ". Arrastra para mover");
     }
     function ponEstado(t, conBoton) { if (!ui) return; ui.estado.textContent = t; ui.estado.hidden = !t; ui.reentra.hidden = !conBoton; }

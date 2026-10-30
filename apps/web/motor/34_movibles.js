@@ -81,15 +81,19 @@
     function relativo(r, c) { var cr = c.getBoundingClientRect(); return { x: r.left - cr.left, y: r.top - cr.top, w: r.width, h: r.height }; }
     function tam(m) { return { w: m.el.offsetWidth, h: m.el.offsetHeight }; }
     // lo que una ventana flotante nunca tapa: Hud.zonasProhibidas() (31_hud.js) si existe; si no, los selectores de respaldo. Más el resto de flotantes visibles
-    function zonas(m) {
+    function zonas(m, soloFijas) {
       var c = cont(m), z = [];
       if (typeof Hud !== "undefined" && Hud && typeof Hud.zonasProhibidas === "function") { try { z = Hud.zonasProhibidas().slice(); } catch (e) { z = []; } }
       else Array.prototype.forEach.call(c.ownerDocument.querySelectorAll(SEL_RESPALDO), function (el) { if (c.contains(el) && visible(el)) z.push(relativo(el.getBoundingClientRect(), c)); });
-      registro.forEach(function (o) { if (o !== m && o.el.parentElement === c && visible(o.el)) z.push(relativo(o.el.getBoundingClientRect(), c)); });
+      if (!soloFijas) registro.forEach(function (o) { if (o !== m && o.el.parentElement === c && visible(o.el)) z.push(relativo(o.el.getBoundingClientRect(), c)); });
       return z.map(function (r) { return MoviblesPuro.engorda(r, MoviblesPuro.HUECO); });
     }
     function situa(m, q) { m.el.style.left = Math.round(q.x) + "px"; m.el.style.top = Math.round(q.y) + "px"; }
-    function libreEn(m, x, y) { var d = medidas(cont(m)); return MoviblesPuro.libre(tam(m), x, y, zonas(m), d.W, d.H, d.mg); }
+    // primero evitando también a los otros flotantes; en una pantalla pequeña puede no haber hueco para todos, y entonces solo mandan los controles (cruceta, barra, estado)
+    function libreEn(m, x, y) {
+      var d = medidas(cont(m)), q = MoviblesPuro.libre(tam(m), x, y, zonas(m), d.W, d.H, d.mg);
+      return q.libre ? q : MoviblesPuro.libre(tam(m), x, y, zonas(m, true), d.W, d.H, d.mg);
+    }
     function avisa(txt) {
       if (typeof Hud !== "undefined" && Hud && typeof Hud.aviso === "function") { Hud.aviso(txt, 2500); return; }
       var c = registro.length ? cont(registro[0]) : document.body;
