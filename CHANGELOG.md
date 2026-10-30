@@ -4,6 +4,9 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 
 ## [No publicado]
 
+### Corregido
+- Tras la tanda del 2026-10-30: la api arranca en Docker (faltaba `tiempo-historico.schema.json` en la imagen, con guardián nuevo); `/finca/?debug` ya no da 400 tras el Caddy; la oficina vuelve a abrir (OF13 la dejaba en «Cargando…»); migración 0015: ya se pueden dar de alta llaves de la oficina (la 0013 rompía cualquier inserción); la exportación RGPD de la oficina incluye las partidas de juegos. Pruebas al día con AV4, U2, OF1/OF13 y `titular`; dos comprobaciones que no miraban nada (un U+0008 en vez de ``) arregladas; la carga de presencia en la puerta pasa a 20 clientes (40 se mide aparte).
+
 ### Añadido
 - Oficina (OF3d): el aviso de solape de las hazas mide el área de la intersección (> 0,5 m², igual que el servidor) con `polygon-clipping` 0.15.7; ahora avisa con hazas idénticas o de lindes coincidentes y es simétrico.
 - Pruebas: propiedades con `fast-check` 4.10.2 (PB7) en contratos (clasificación, config, receta de avatar), agenda (aforo y promoción de la espera), épocas (366 días) y geometría de hazas; las pruebas al azar de épocas pasan a fast-check. Encontró que el aviso de solape de la oficina (`sePisan`) no detecta hazas con lindes coincidentes (tarea OF3d; el servidor sí las rechaza).

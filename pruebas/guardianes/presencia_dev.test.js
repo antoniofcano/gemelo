@@ -14,7 +14,7 @@
 //     ws://localhost:7880 desde https://localhost:8743 (y wss://localhost:8743/rtc, por Caddy).
 //  4. Carga: N clientes ligeros en Node (@livekit/rtc-node, el SDK oficial de LiveKit para Node; sin navegador), repartidos en
 //     P procesos (_carga_presencia.mjs), en la misma sala publican pose a 10 Hz a toda la sala durante S segundos; CPU y
-//     memoria del contenedor de LiveKit (docker stats), pérdidas y retardo. GEMELO_CARGA_N (40), GEMELO_CARGA_S (60),
+//     memoria del contenedor de LiveKit (docker stats), pérdidas y retardo. GEMELO_CARGA_N (20 en la puerta: el i5 no simula 40 y mueve LiveKit a la vez, MEDIDAS; la medida de 40 se pide con GEMELO_CARGA_N=40 en otra máquina o en CI), GEMELO_CARGA_S (60),
 //     GEMELO_CARGA_PROCESOS (4); GEMELO_P4_SOLO_CARGA=1 hace solo esta parte.
 const test = require("node:test"), assert = require("node:assert");
 const { spawnSync, spawn, execFile } = require("child_process");
@@ -31,7 +31,7 @@ const SALTO = process.env.GEMELO_DOCKER !== "1" ? "e2e de presencia opcional (GE
   : SIN_DOCKER ? SIN_DOCKER + ": la presencia contra LiveKit NO se ha comprobado" : motivoSalto("la presencia en dos navegadores");
 const COOKIE = "__Host-gemelo";
 const SALA = "hituelo-libre";
-const N_CARGA = Number(process.env.GEMELO_CARGA_N || 40), S_CARGA = Number(process.env.GEMELO_CARGA_S || 60), P_CARGA = Number(process.env.GEMELO_CARGA_PROCESOS || 4), SOLO_CARGA = process.env.GEMELO_P4_SOLO_CARGA === "1";
+const N_CARGA = Number(process.env.GEMELO_CARGA_N || 20), S_CARGA = Number(process.env.GEMELO_CARGA_S || 60), P_CARGA = Number(process.env.GEMELO_CARGA_PROCESOS || 4), SOLO_CARGA = process.env.GEMELO_P4_SOLO_CARGA === "1";
 
 const espera = ms => new Promise(ok => setTimeout(ok, ms));
 const p95 = v => { if (!v.length) return NaN; const s = v.slice().sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.floor(s.length * 0.95))]; };
