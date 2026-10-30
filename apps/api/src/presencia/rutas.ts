@@ -7,7 +7,8 @@ import { audita } from "../auth/servicio.ts";
 import type { Bd } from "../bd/pool.ts";
 import type { ConfigLiveKit } from "../config.ts";
 import type { Contexto } from "../contexto.ts";
-import { AVATAR_POR_DEFECTO, type Avatar, type ClaveSala, CLAVES_SALA, DISPOSITIVOS, limpiaAspecto, type Dispositivo, Expulsados, firmaToken, ModeradorLiveKit, type ModeradorSala, prefijoHogar, SALA_LIBRE, SALAS } from "./livekit.ts";
+import { AVATAR_POR_DEFECTO, type Avatar, type ClaveSala, CLAVES_SALA, DISPOSITIVOS, limpiaAspecto, type Dispositivo, Expulsados, esRolOficina, firmaToken, ModeradorLiveKit, type ModeradorSala, prefijoHogar, SALA_LIBRE, SALAS } from "./livekit.ts";
+import { LigaduraVisita, puedeEntrar } from "./acceso_visita.ts";
 import { rutasOficinaMundo } from "./oficina_mundo.ts";
 
 const APAGADA = { error: "presencia_apagada", mensaje: "La visita compartida no está disponible en este servidor." } as const;
@@ -36,6 +37,7 @@ export async function expulsa(d: DepsExpulsion, adminId: number, hogarId: number
 export async function rutasPresencia(app: FastifyInstance, ctx: Contexto): Promise<void> {
   const { bd } = ctx;
   const expulsados = new Expulsados();
+  const ligadura = new LigaduraVisita();   // OF10b: el evento de la agenda al que está ligada la sala de la visita (null = abierta a quien invite la oficina)
   const lk = ctx.config.livekit;
   const moderador: ModeradorSala | null = ctx.moderador ?? (lk ? new ModeradorLiveKit(lk) : null);
 
@@ -48,6 +50,15 @@ export async function rutasPresencia(app: FastifyInstance, ctx: Contexto): Promi
     if (!lk) return rep.code(503).send(APAGADA);
     const id = req.session.hogarId!;
     if (expulsados.esta(id)) return rep.code(403).send({ error: "expulsado", mensaje: "La oficina te ha sacado de la visita compartida. Podrás volver a entrar más tarde." });
+    // OF10b (decisión 154): la sala de la visita ligada a un evento es solo de la oficina y de los hogares apuntados (no en espera) a ese evento
+    const evento = req.body.sala === "visita" ? ligadura.vigente() : null;
+    if (evento !== null && !esRolOficina(req.session.rol!)) {
+      const apuntado = ((await bd.query(
+        `SELECT 1 FROM visitas_asistentes a JOIN visitas v ON v.id = a.visita_id JOIN hogares g ON g.id = a.hogar_id AND g.activo
+          WHERE a.visita_id = $1 AND a.hogar_id = $2 AND a.estado = 'apuntado' AND v.estado <> 'cancelada'`, [evento, id])).rowCount ?? 0) > 0;
+      const d = puedeEntrar({ sala: "visita", esOficina: false, evento, apuntado });
+      if (!d.ok) return rep.code(403).send({ error: d.codigo, mensaje: d.mensaje });
+    }
     const r = await bd.query<{ alias: string | null; camisa: number | null; sombrero: Avatar["sombrero"] | null; piel: number | null; vrm: string | null; aspecto: unknown }>(
       "SELECT g.alias, a.camisa, a.sombrero, a.piel, a.vrm, a.aspecto FROM hogares g LEFT JOIN avatares a ON a.hogar_id = g.id WHERE g.id = $1", [id]);
     const f = r.rows[0];
@@ -75,5 +86,5 @@ export async function rutasPresencia(app: FastifyInstance, ctx: Contexto): Promi
   });
 
   // OF10: el mundo en modo oficina (anunciar, llevar a otra sala, balizas oficiales): src/presencia/oficina_mundo.ts
-  await rutasOficinaMundo(app, ctx, moderador);
+  await rutasOficinaMundo(app, ctx, moderador, ligadura);
 }

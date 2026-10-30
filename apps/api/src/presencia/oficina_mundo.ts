@@ -8,7 +8,8 @@
 //  · las balizas oficiales se guardan en la base (migración 0014): se ven aunque entres después y caducan solas.
 //  Oficina (rol oficina o admin, aparato aprobado y llave; OFICINA de oficina/acceso.ts):
 //   POST   /api/admin/presencia/anuncio   { texto, sala: general|visita|todas }   aviso de texto (como el chat: ≤ 280, sin control ni dirección)
-//   POST   /api/admin/presencia/llevar    { de, a }                               invita a quien está en la sala «de» a pasar a la sala «a»
+//   POST   /api/admin/presencia/llevar    { de, a, evento? }                      invita a quien está en la sala «de» a pasar a la sala «a». OF10b: con `evento`
+//                                         (de la agenda) y a = visita, la sala queda ligada a ese evento: solo entran la oficina y los hogares apuntados
 //   POST   /api/admin/balizas             { finca, x, y, titulo, texto?, horas? }  pone una baliza oficial (EPSG:25830)
 //   PUT    /api/admin/balizas/:id         { x, y }                                 la mueve
 //   DELETE /api/admin/balizas/:id                                                  la quita (queda retirada, no se borra)
@@ -21,6 +22,7 @@ import type { Bd } from "../bd/pool.ts";
 import type { Contexto } from "../contexto.ts";
 import { CONTORNO_HOLGURA_M, MARGEN_FINCA_M } from "../hazas/geometria.ts";
 import { OFICINA } from "../oficina/acceso.ts";
+import { LigaduraVisita } from "./acceso_visita.ts";
 import { type ClaveSala, CLAVES_SALA, type ModeradorSala, SALAS, TEMAS_OFICINA } from "./livekit.ts";
 
 /** El mismo límite que el chat (contratos/presencia.md; Chat de apps/web/motor/26_presencia.js): 280 caracteres. */
@@ -85,7 +87,7 @@ async function avisaBalizas(moderador: ModeradorSala | null, finca: string, log:
   }
 }
 
-export async function rutasOficinaMundo(app: FastifyInstance, ctx: Contexto, moderador: ModeradorSala | null): Promise<void> {
+export async function rutasOficinaMundo(app: FastifyInstance, ctx: Contexto, moderador: ModeradorSala | null, ligadura = new LigaduraVisita()): Promise<void> {
   const { bd } = ctx;
   const lk = ctx.config.livekit;
 
@@ -106,15 +108,24 @@ export async function rutasOficinaMundo(app: FastifyInstance, ctx: Contexto, mod
   });
 
   // ---- llevar a la gente a otra sala: la api INVITA (cada uno decide en su pantalla si va; decisión pendiente de Antonio si un día se lleva sin preguntar)
-  app.post<{ Body: { de: ClaveSala; a: ClaveSala } }>("/api/admin/presencia/llevar", {
+  app.post<{ Body: { de: ClaveSala; a: ClaveSala; evento?: number } }>("/api/admin/presencia/llevar", {
     preHandler: OFICINA,
     config: { rateLimit: { max: 6, timeWindow: 60_000 } },
-    schema: { body: { type: "object", additionalProperties: false, required: ["de", "a"], properties: { de: { type: "string", enum: [...CLAVES_SALA] }, a: { type: "string", enum: [...CLAVES_SALA] } } } },
+    schema: { body: { type: "object", additionalProperties: false, required: ["de", "a"], properties: { de: { type: "string", enum: [...CLAVES_SALA] }, a: { type: "string", enum: [...CLAVES_SALA] }, evento: { type: "integer", minimum: 1, maximum: 2147483647 } } } },
   }, async (req, rep) => {
     if (!lk || !moderador) return rep.code(503).send(APAGADA);
     if (req.body.de === req.body.a) return rep.code(400).send({ error: "misma_sala", mensaje: "La sala de destino es la misma." });
+    const evento = req.body.evento ?? null;
+    if (evento !== null && req.body.a !== "visita") return rep.code(400).send({ error: "evento_solo_visita", mensaje: "Solo la sala de la visita se liga a un evento." });
+    if (evento !== null) {   // OF10b: el evento tiene que existir y no estar cancelado ni en borrador
+      const e = (await bd.query<{ estado: string }>("SELECT estado FROM visitas WHERE id = $1", [evento])).rows[0];
+      if (!e) return rep.code(404).send({ error: "evento_no_existe", mensaje: "Ese evento no existe." });
+      if (e.estado === "cancelada" || e.estado === "borrador") return rep.code(409).send({ error: "evento_no_vigente", mensaje: "Ese evento está cancelado o sin abrir." });
+    }
     const llego = await moderador.envia(SALAS[req.body.de], TEMAS_OFICINA.sala, mensaje.sala(req.body.a));
-    await audita(bd, req.session.hogarId!, "admin.presencia_llevar", { de: req.body.de, a: req.body.a, habia_sala: llego });
+    // invitar a la sala de la visita fija su ligadura: al evento indicado o, sin él, a ninguno (abierta a quien invite la oficina). Invitar a la general no la toca
+    if (req.body.a === "visita") ligadura.liga(evento);
+    await audita(bd, req.session.hogarId!, "admin.presencia_llevar", { de: req.body.de, a: req.body.a, habia_sala: llego, ...(evento !== null ? { evento } : {}) });
     return { enviado: llego };
   });
 
