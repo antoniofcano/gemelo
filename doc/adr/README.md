@@ -36,3 +36,4 @@ Cada decisión con alternativas reales se escribe una vez, con su porqué y su c
 | [0021](0021-se-retira-la-salida-artefacto-y-la-escena-de-siempre.md) | Se retira la salida artefacto y la escena de siempre | Aceptado |
 | [0022](0022-escalones-de-olivo-por-masa-visual.md) | Escalones de olivo por masa visual | Propuesto |
 | [0023](0023-componentes-del-mundo.md) | Componentes del mundo: núcleo estable y registro de componentes | Aceptado |
+| [0024](0024-la-oficina-roles-acceso-y-configuracion-versionada.md) | La oficina: roles, acceso y configuración versionada | Aceptado |
