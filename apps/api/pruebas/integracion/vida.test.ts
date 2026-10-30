@@ -40,7 +40,7 @@ before(async () => {
     ('hituelo:900002', ST_SetSRID(ST_MakePoint(500050, 4100060), 25830), 'lidar'),
     ('hituelo:900003', ST_SetSRID(ST_MakePoint(500150, 4100050), 25830), 'lidar')`);
   carpeta = mkdtempSync(join(tmpdir(), "gemelo-medios-"));
-  ctx = contexto(bd.app, configDePrueba({ GEMELO_ENLACE_POR_CORREO: "100", GEMELO_ENLACE_POR_IP: "1000", GEMELO_MEDIOS: carpeta, GEMELO_MEDIOS_SUBIDAS_HORA: "6" }));
+  ctx = contexto(bd.app, configDePrueba({ GEMELO_ENLACE_POR_CORREO: "100", GEMELO_ENLACE_POR_IP: "1000", GEMELO_MEDIOS: carpeta, GEMELO_MEDIOS_SUBIDAS_HORA: "10" }));
   app = await construyeApp(ctx);
   await app.ready();
 }, { timeout: 240_000 });
@@ -144,10 +144,11 @@ test("subida: solo el titular (no las gafas vinculadas ni sin sesión), y con l�
   const g = await sube(quest, png, "image/png");
   assert.equal(g.statusCode, 403); assert.equal(g.json().error, "solo_titular");
   assert.equal((await app.inject({ method: "POST", url: "/api/medios?acepto=true", headers: deLaWeb({ "content-type": "image/png" }), payload: png })).statusCode, 401);
-  // GEMELO_MEDIOS_SUBIDAS_HORA = 6: la de la prueba anterior + estas
+  // GEMELO_MEDIOS_SUBIDAS_HORA = 10, y cuenta todo intento que llega al proceso (también los rechazados por tipo): la prueba
+  // anterior gastó 3 (PNG disfrazado, texto y la buena; el GIF y las de forma mala no llegan al proceso), así que quedan 7
   const rs = [];
-  for (let i = 0; i < 6; i++) rs.push((await sube(ana, png, "image/png")).statusCode);
-  assert.deepEqual(rs, [201, 201, 201, 201, 201, 429]);
+  for (let i = 0; i < 8; i++) rs.push((await sube(ana, png, "image/png")).statusCode);
+  assert.deepEqual(rs, [201, 201, 201, 201, 201, 201, 201, 429]);
 });
 
 // ---------------------------------------------------------------- personalizar: permisos
@@ -173,8 +174,8 @@ test("personalizar: el titular en SU haza sí; otro hogar no; las gafas no; nomb
   assert.equal((await con("PUT", "/api/olivos/hituelo/900003", luis, { nombre: null, objeto })).json().error, "medio_no_valido");
   const fila = (await bd.dueno.query("SELECT nombre, objeto_tipo, hogar_id, sesion_id FROM personalizaciones WHERE id = $1", [ids["p1"]])).rows[0];
   assert.equal(fila.nombre, "El abuelo"); assert.equal(fila.objeto_tipo, "foto"); assert.equal(Number(fila.hogar_id), ids[ANA]); assert.ok(fila.sesion_id);
-  const aud = (await bd.dueno.query("SELECT detalle FROM auditoria WHERE accion = 'vida.personalizacion' ORDER BY id DESC LIMIT 1")).rows[0].detalle;
-  assert.equal(aud.personalizacion, ids["p1"]);
+  const aud = (await bd.dueno.query("SELECT detalle FROM auditoria WHERE accion = 'vida.personalizacion' AND hogar_id = $1 ORDER BY id", [ids[ANA]])).rows.map(r => r.detalle.personalizacion);
+  assert.ok(aud.includes(ids["p1"]), "queda en la auditoría");
 });
 
 test("ver: un hogar ajeno ve la lista blanca (sin quién ni cuándo) y la foto colgada", async t => {
