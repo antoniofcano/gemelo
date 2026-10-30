@@ -1,7 +1,6 @@
 // Todo lo que se guarda de un hogar, en un objeto (derecho de acceso y portabilidad, RGPD). Lo usa la exportación de la oficina
-// (GET /api/admin/hogares/:id/exportar). OJO: es la MISMA lista que GET /api/yo/datos (src/yo/rutas.ts); está duplicada solo para no
-// tocar yo/rutas.ts mientras AV2 lo edita. Una prueba de integración (familias.test.ts) compara las claves de las dos; cuando AV2 acabe,
-// yo/rutas.ts debe llamar a esta función y la copia desaparece.
+// (GET /api/admin/hogares/:id/exportar) y GET /api/yo/datos (src/yo/rutas.ts): una sola lista, para que no se separen (la copia que
+// hubo en yo/rutas.ts se separó al añadir los juegos). Una prueba de integración (familias.test.ts) compara las claves de las dos.
 import type { Bd } from "../bd/pool.ts";
 
 export async function datosDelHogar(bd: Bd, id: number): Promise<Record<string, unknown> | null> {
@@ -24,8 +23,10 @@ export async function datosDelHogar(bd: Bd, id: number): Promise<Record<string, 
     bd.query("SELECT a.titulo, a.texto, a.creado_en, ah.leido_en FROM avisos_hogar ah JOIN avisos a ON a.id = ah.aviso_id WHERE ah.hogar_id = $1 ORDER BY a.id", [id]),
     bd.query("SELECT l.codigo, l.campana FROM lote_hogar lh JOIN lotes l ON l.id = lh.lote_id WHERE lh.hogar_id = $1 ORDER BY l.codigo", [id]),
   ]);
+  // los juegos (0009): sus partidas
+  const ju = await bd.query("SELECT juego, puntos, duracion_s, jugada_en FROM juegos_partidas WHERE hogar_id = $1 ORDER BY id", [id]);
   return {
     hogar: h.rows[0], avatar: av.rows[0] ?? null, hazas: hz.rows, preguntas: pr.rows, visitas: vi.rows, sesiones: se.rows, aparatos_vinculados: cv.rows,
-    olivos_personalizados: pe.rows, fotos_subidas: me.rows, denuncias: de.rows, sugerencias: su.rows, avisos: avi.rows, lotes: lo.rows,
+    olivos_personalizados: pe.rows, fotos_subidas: me.rows, denuncias: de.rows, sugerencias: su.rows, avisos: avi.rows, lotes: lo.rows, partidas_de_juegos: ju.rows,
   };
 }
