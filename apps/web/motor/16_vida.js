@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: tVida, enQuad, vq, gFauna, esfera, altSuelo, mira, conejos, quad, temaEstela, velPaseo, giroPaseo, ponQuad, vidaPaseo, enDron, dr, dron,
-//   ponDron, cicloVista, dronMando, camaraDron, vidaEntra, vidaSale, actualizaVida
+// Expone: tVida, enQuad, vq, gFauna, esfera, altSuelo, mira, bandada, conejos, quad, temaEstela, velPaseo, giroPaseo, ponQuad, vidaPaseo, enDron,
+//   dr, dron, ponDron, cicloVista, dronMando, camaraDron, vidaEntra, vidaSale, actualizaVida
 // Consume: 01_datos (D, $), 02_mundo (suelo, copaAlta, copas, cIn), 03_escena (scene, camera, exag, modo), 04_terreno (terreno),
 //   07_follaje (matSombra, geoSombra), 12_paseo (paseando, persona, teclas, primera, camPos), 12b_llegada (Llegada),
 //   15_tiempo (calma, texBrillo, cur, meta, ins, nivel, temaBarrera, num1, rumbo), 22_huellas (pendFactor, quadInc, inclinaQuad),
@@ -8,26 +8,55 @@
 // ===============================================================================
   // ---------- la vida del olivar: pájaros, conejos y un quad con estela de luz (Tron) para el paseo
   var tVida = 0, enQuad = false, vq = 0, gFauna = new THREE.Group(); gFauna.name = "fauna"; scene.add(gFauna);
-  var matAveC = new THREE.MeshLambertMaterial({ color: 0x4a3f33 }), matAveV = new THREE.MeshLambertMaterial({ color: 0xd9cdb4 }), matAla = new THREE.MeshLambertMaterial({ color: 0x302b2a, side: THREE.DoubleSide }), matPico = new THREE.MeshLambertMaterial({ color: 0xd49a30 });
+  var matAla = new THREE.MeshLambertMaterial({ color: 0x302b2a, side: THREE.DoubleSide });
   var matConejo = new THREE.MeshLambertMaterial({ color: 0x8b755a }), matConejoB = new THREE.MeshLambertMaterial({ color: 0xece4d4 }), matOreja = new THREE.MeshLambertMaterial({ color: 0xa88f78 });
   function esfera(r, m, sx, sy, sz, x, y, z, padre) { var me = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 8), m); me.scale.set(sx, sy, sz); me.position.set(x, y, z); padre.add(me); return me; }
   function altSuelo(x, y) { return suelo(x, y) * exag; }
   function quita(a, o) { var i = a.indexOf(o); if (i >= 0) a.splice(i, 1); }
 
-  // --- pájaros: el ave mira hacia -z; el aleteo mueve dos alas con bisagra
-  function creaAve() {
-    var g = new THREE.Group();
-    esfera(0.1, matAveC, 0.85, 0.8, 1.8, 0, 0, 0, g); esfera(0.1, matAveV, 0.7, 0.45, 1.2, 0, -0.035, 0.02, g); esfera(0.065, matAveC, 1, 1, 1, 0, 0.03, -0.2, g);
-    var pico = new THREE.Mesh(new THREE.ConeGeometry(0.022, 0.08, 5), matPico); pico.rotation.x = -Math.PI / 2; pico.position.set(0, 0.025, -0.3); g.add(pico);
-    var cola = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.012, 0.2), matAveC); cola.position.set(0, 0.01, 0.27); g.add(cola);
-    function ala(lado) { var piv = new THREE.Group(); piv.position.set(lado * 0.05, 0.02, -0.02); var m = new THREE.Mesh(new THREE.PlaneGeometry(0.44, 0.2), matAla); m.rotation.x = -Math.PI / 2; m.position.x = lado * 0.22; piv.add(m); g.add(piv); return piv; }
-    g.userData = { ai: ala(-1), ad: ala(1), fase: Math.random() * 6.28 };
-    gFauna.add(g); return g;
+  // --- pájaros: el ave mira hacia -z. Cada ave es un Group SIN hijos (solo lleva la posición, el giro y la fase); se dibujan todas juntas
+  // con dos mallas instanciadas (2 llamadas, antes 7 por ave): el cuerpo (una geometría fusionada con el color por vértice) y las alas
+  // (2 por ave, con la bisagra del aleteo calculada por matriz cada fotograma, igual que giraba el pivote antes).
+  var NAVES = 22, geoAveCuerpo = (function () {   // cuerpo, vientre, cabeza, pico y cola en una sola geometría
+    var partes = [], m4 = new THREE.Matrix4(), q0 = new THREE.Quaternion();
+    function parte(geo, hex, sx, sy, sz, x, y, z, rx) { m4.compose(new THREE.Vector3(x, y, z), rx ? q0.setFromAxisAngle(new THREE.Vector3(1, 0, 0), rx) : q0.identity(), new THREE.Vector3(sx, sy, sz)); geo.applyMatrix4(m4); partes.push([geo, new THREE.Color(hex)]); }
+    parte(new THREE.SphereGeometry(0.1, 10, 8), 0x4a3f33, 0.85, 0.8, 1.8, 0, 0, 0); parte(new THREE.SphereGeometry(0.1, 10, 8), 0xd9cdb4, 0.7, 0.45, 1.2, 0, -0.035, 0.02);
+    parte(new THREE.SphereGeometry(0.065, 10, 8), 0x4a3f33, 1, 1, 1, 0, 0.03, -0.2); parte(new THREE.ConeGeometry(0.022, 0.08, 5), 0xd49a30, 1, 1, 1, 0, 0.025, -0.3, -Math.PI / 2);
+    parte(new THREE.BoxGeometry(0.07, 0.012, 0.2), 0x4a3f33, 1, 1, 1, 0, 0.01, 0.27);
+    var nv = 0, ni = 0; partes.forEach(function (p) { nv += p[0].attributes.position.count; ni += p[0].index.count; });
+    var pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3), col = new Float32Array(nv * 3), idx = new Uint16Array(ni), o = 0, oi = 0;
+    partes.forEach(function (p) {
+      var g = p[0], n = g.attributes.position.count, c = p[1]; pos.set(g.attributes.position.array, o * 3); nor.set(g.attributes.normal.array, o * 3);
+      for (var k = 0; k < n; k++) { col[(o + k) * 3] = c.r; col[(o + k) * 3 + 1] = c.g; col[(o + k) * 3 + 2] = c.b; }
+      for (var t = 0; t < g.index.count; t++) idx[oi + t] = g.index.array[t] + o;
+      o += n; oi += g.index.count; g.dispose();
+    });
+    var geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.BufferAttribute(pos, 3)); geo.setAttribute("normal", new THREE.BufferAttribute(nor, 3)); geo.setAttribute("color", new THREE.BufferAttribute(col, 3)); geo.setIndex(new THREE.BufferAttribute(idx, 1));
+    return geo;
+  })();
+  var geoAla = (function () { var g = new THREE.PlaneGeometry(0.44, 0.2); g.rotateX(-Math.PI / 2); g.translate(0.22, 0, 0); return g; })();   // el ala derecha; la izquierda es su espejo
+  var matAveInst = new THREE.MeshLambertMaterial({ vertexColors: true });
+  var mallaAveCuerpo = new THREE.InstancedMesh(geoAveCuerpo, matAveInst, NAVES), mallaAveAlas = new THREE.InstancedMesh(geoAla, matAla, NAVES * 2);
+  [mallaAveCuerpo, mallaAveAlas].forEach(function (im) { im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); im.frustumCulled = false; im.count = 0; im.visible = false; gFauna.add(im); });
+  mallaAveCuerpo.name = "aves"; mallaAveAlas.name = "aves-alas";
+  var aves = [], tmpAlaM = new THREE.Matrix4(), tmpAlaA = new THREE.Matrix4(), tmpAlaQ = new THREE.Quaternion(), tmpAlaP = new THREE.Vector3(), tmpAlaS = new THREE.Vector3(), EJE_Z = new THREE.Vector3(0, 0, 1);
+  function creaAve() { var g = new THREE.Group(); g.userData = { ang: 0, fase: Math.random() * 6.28 }; aves.push(g); return g; }
+  function aleteo(g, quieta, rapido) { var u = g.userData; u.ang = quieta ? 0.05 : Math.sin(tVida * (rapido ? 22 : 15) + u.fase) * 0.85; }
+  function empacaAves() {   // las aves visibles, juntas en las dos mallas (una vez por fotograma)
+    var n = 0;
+    for (var i = 0; i < aves.length; i++) {
+      var g = aves[i]; if (!g.visible) continue;
+      g.updateMatrix(); mallaAveCuerpo.setMatrixAt(n, g.matrix);
+      for (var l = -1; l <= 1; l += 2) {   // l = -1 izquierda (espejo), 1 derecha; la bisagra gira l·(-ang) como antes (ai = +a, ad = -a)
+        tmpAlaQ.setFromAxisAngle(EJE_Z, -l * g.userData.ang); tmpAlaP.set(l * 0.05, 0.02, -0.02); tmpAlaS.set(l, 1, 1);
+        tmpAlaA.compose(tmpAlaP, tmpAlaQ, tmpAlaS); tmpAlaM.multiplyMatrices(g.matrix, tmpAlaA); mallaAveAlas.setMatrixAt(n * 2 + (l < 0 ? 0 : 1), tmpAlaM);
+      }
+      n++;
+    }
+    mallaAveCuerpo.count = n; mallaAveAlas.count = n * 2; mallaAveCuerpo.visible = mallaAveAlas.visible = n > 0;   // vacía no se dibuja (three cuenta la llamada aunque no haya instancias)
+    mallaAveCuerpo.instanceMatrix.needsUpdate = true; mallaAveAlas.instanceMatrix.needsUpdate = true;
   }
-  function aleteo(g, quieta, rapido) {
-    var u = g.userData, a = quieta ? 0.05 : Math.sin(tVida * (rapido ? 22 : 15) + u.fase) * 0.85;
-    u.ai.rotation.z = a; u.ad.rotation.z = -a;
-  }
+  function disposaAves() { geoAveCuerpo.dispose(); geoAla.dispose(); matAveInst.dispose(); matAla.dispose(); mallaAveCuerpo.dispose(); mallaAveAlas.dispose(); gFauna.remove(mallaAveCuerpo); gFauna.remove(mallaAveAlas); }
   function mira(g, hx, hz) { g.rotation.y = Math.atan2(-hx, -hz); }
   function escalaVista(g, base) { var d = camera.position.distanceTo(g.position); g.scale.setScalar(base * Math.max(1, Math.min(9, d / 60))); }
   var bandada = [], BANDADAS = [{ a: 320, b: 150, w: 0.11, h: 38, ph: 0 }, { a: 210, b: 260, w: -0.085, h: 55, ph: 2.4 }];
@@ -242,7 +271,7 @@
       var alt = altSuelo(x, y) + b.h + u.of[1] + Math.sin(tVida * 0.9 * u.fx + u.fase) * 2.5;
       g.position.set(x, alt, -y); mira(g, hx, -hy); g.rotation.z = Math.sign(b.w) * -0.25; aleteo(g, false, false); escalaVista(g, 1);
     });
-    if (!paseando) return;
+    if (!paseando) { empacaAves(); return; }
     var dq = enQuad ? 16 : 9;
     // aves posadas: salen volando si te acercas, suben y se alejan; luego otra ocupa su sitio
     posadas.forEach(function (a) {
@@ -277,6 +306,7 @@
       u.orejas.forEach(function (o, k) { o.rotation.x = vel > 3 ? 0.9 : (u.est === "huye" ? 0.5 : 0.05 * Math.sin(u.fase * 0.7 + k)); });
       co.visible = true;
     });
+    empacaAves();
   }
   (function () {
     $("btnQuad").addEventListener("click", function () { ponQuad(!enQuad); }); $("padQuad").addEventListener("click", function () { ponQuad(!enQuad); });
