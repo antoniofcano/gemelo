@@ -125,6 +125,9 @@
       if (quitaX) return; var x = $("cerrarFicha"); if (!x) return;
       quitaX = function () { if (enFicha && enFicha === actual) cierra(actual, "cerrada"); enFicha = null; var f = $("ficha"); if (f) f.hidden = true; };
       x.addEventListener("click", quitaX);
+      // la ficha también se cierra por otros sitios (Esc en 31_hud, entrar al paseo en 12_paseo): si se esconde con algo elegido, se suelta (y su anillo)
+      var caja = $("ficha");
+      if (caja && typeof MutationObserver !== "undefined") new MutationObserver(function () { if (caja.hidden && enFicha) { var e = enFicha; enFicha = null; if (e === actual) cierra(e, "cerrada"); } }).observe(caja, { attributes: true, attributeFilter: ["hidden"] });
     }
     function botonesPantalla(caja, acciones) {
       var ac = $("fichaAcciones");
@@ -155,9 +158,9 @@
     }
     // presentador(modo, fn): quién pinta la ficha en ese modo (29_vr registra el de "vr"); fn(ficha). Devuelve la función que lo quita
     function presentador(m, fn) { if (typeof fn !== "function") return function () {}; presentadores[m] = fn; return function () { if (presentadores[m] === fn) delete presentadores[m]; }; }
-    function muestra(x) {
+    function muestra(x, repinta) {   // repinta: la ficha ya estaba a la vista y solo ha cambiado (no se vuelve a avisar al tipo)
       var d = Entidades.de(x), m = modoVista(), propio = false; if (!d) return false;
-      if (d.muestra) { try { propio = d.muestra(x, m) === true; } catch (e) { try { console.error("[Usables] " + x, e); } catch (e2) {} } }
+      if (d.muestra && !repinta) { try { propio = d.muestra(x, m) === true; } catch (e) { try { console.error("[Usables] " + x, e); } catch (e2) {} } }
       if (propio) { conAcciones = false; return true; }   // la enseña él (la baliza, en su propio recuadro)
       var f = Entidades.ficha(x, m); if (!f) return false;
       conAcciones = !!(f.acciones && f.acciones.length);
@@ -198,8 +201,8 @@
     }
     // la ficha de x ha cambiado (la de la haza llega de la api): si está a la vista, se repinta
     function refresca(x) {
-      if (modoVista() === "pantalla") { if (enFicha === x && !$("ficha").hidden) muestra(x); }
-      else if (x === actual && !conAcciones) muestra(x);
+      if (modoVista() === "pantalla") { if (enFicha === x && !$("ficha").hidden) muestra(x, true); }
+      else if (x === actual && !conAcciones) muestra(x, true);
     }
     // una acción de la ficha de x («Ir a esta baliza», «Ir con»…): true si se hizo
     function usa(x, accion) {

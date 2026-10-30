@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: HazasPuro, Hazas
-// Consume: 01_datos (D, $), 02_mundo (Mundo, suelo), 03_escena (lienzo, camera, SRGB, exag), 08_marcadores (gLinde), 09_camara (objetivo),
-//   12_paseo (paseando), 13_parcelas (parcelas), 29_vr (ficha)
+// Consume: 01_datos (D, $), 02_mundo (Mundo, suelo), 02e_entidades (Entidades, Usables), 03_escena (camera, SRGB, exag), 08_marcadores (gLinde),
+//   09_camara (objetivo, elige), 12_paseo (paseando, primera), 13_parcelas (parcelas), 29_vr (ficha)
 // Nota: Sin D.base /teselas/… ni ?api= no pide nada ni crea nada; el trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/hazas.test.js.
 // ===============================================================================
   // ---------- las hazas en el mundo (F1, el «3c»): sus límites dibujados sobre el suelo y, al tocar una, su ficha pública (ADR-0014, contratos/haza.schema.json).
@@ -180,7 +180,7 @@
   var Hazas = (function () {
     var P = HazasPuro, API = P.prefijoApi(location.search, D.base), PASO = 2, ALTURA = 0.45;
     var st = { activo: false, n: 0, propias: 0, vertices: 0, error: null };
-    var hz = [], linea = null, geo = null, mat = null, sucio = false, tSucio = 0, exagHecha = -1, pide = 0, cache = {};
+    var hz = [], linea = null, geo = null, mat = null, sucio = false, tSucio = 0, exagHecha = -1, cache = {};
     // colores «tal como se ven» (sRGB) pasados a lineal: la propia en ámbar, las ajenas en blanco roto (se distinguen también por luminancia)
     function lin(hex) { var c = new THREE.Color(); c.setHex(hex, SRGB); return [c.r, c.g, c.b]; }
     function trae(url) {
@@ -213,64 +213,52 @@
       if (exag !== exagHecha) sucio = true;
       if (sucio) { tSucio += dt; if (tSucio > 0.5) { tSucio = 0; sucio = false; repega(); } }
     }
-    // ---- la ficha (se usa el mismo recuadro #ficha que la del olivo; se escribe con textContent, nunca HTML de la red)
-    var fichaDe = null;   // id de la haza cuya ficha está en el recuadro, o null si enseña otra cosa
-    function pintaFicha(h, f, msg) {
-      var cu = $("fichaDatos"); $("fichaTitulo").textContent = f ? P.fichaFilas(f).titulo : h.nombre + " · " + h.codigo; cu.textContent = "";
-      var linea2 = function (k, v, de) {
-        var dt = document.createElement("dt"), dd = document.createElement("dd"); dt.textContent = k; dd.textContent = v;
-        if (de) { var s = document.createElement("small"); s.style.display = "block"; s.style.color = "var(--muted)"; s.textContent = de; dd.appendChild(s); }
-        cu.appendChild(dt); cu.appendChild(dd);
-      };
-      if (!f) { linea2("Haza", h.es_mia ? "la tuya" : "de otro hogar", ""); linea2("Ficha", msg, ""); }
-      else {
-        var r = P.fichaFilas(f); linea2("Haza", r.quien, "linde dibujada por la oficina");
-        r.filas.forEach(function (q) { linea2(q.k, q.v, q.de); }); if (r.alerta) linea2("Aviso", r.alerta, "");
-      }
-      $("ficha").hidden = false;
-    }
-    function abre(k) {
-      var h = hz[k], yo = ++pide; fichaDe = h.id;
-      var c = cache[h.id]; if (c && performance.now() - c.t < 60000) { pintaFicha(h, c.f); return; }
-      pintaFicha(h, null, "leyendo…");
-      trae(API + "hazas/" + encodeURIComponent(h.id)).then(function (f) {
-        if (yo !== pide || !f || typeof f !== "object") return; cache[h.id] = { t: performance.now(), f: f }; pintaFicha(h, f);
-      }).catch(function () { if (yo === pide) pintaFicha(h, null, "no se ha podido leer (sin sesión o sin conexión)"); });
-    }
-    function otraCosa() { pide++; fichaDe = null; }   // la ficha pasa a otra cosa (un olivo, cerrarla): una respuesta tardía ya no la pisa
-    function sinHaza(msg) { otraCosa(); $("fichaTitulo").textContent = "Hazas"; var cu = $("fichaDatos"); cu.textContent = ""; var dt = document.createElement("dt"), dd = document.createElement("dd"); dt.textContent = "Aquí"; dd.textContent = msg; cu.appendChild(dt); cu.appendChild(dd); $("ficha").hidden = false; }
-    // ---- tocar: un toque corto (< 6 px, un dedo) en la órbita que no ha elegido un olivo (09_camara decide antes) abre la haza bajo el dedo
-    var dedos = {}, mov = 0, antes = { oculta: true, titulo: "" }, rayoH = null, ndc = null;
+    // ---- C7 (02e_entidades.js): las hazas como entidades, haza:<id>. Su ficha va en el recuadro común (#ficha, con textContent: nunca HTML de la red) y la
+    // pinta Usables; un toque corto en la órbita sobre una haza la elige solo si no hay delante otra cosa (es «de fondo»: el olivo o la baliza ganan).
+    // La ficha pública se pide a la api la primera vez (y pasado un minuto): mientras, «leyendo…»; al llegar, Usables.refresca la repinta si sigue a la vista.
+    var rayoH = null, ndc = null, quitaEnt = null, pend = {}, fallo = {};
     function alturaEscena(x, z) { return suelo(x, -z) * exag; }
-    function bajoDedo(cx2, cy2) {
-      var r = lienzo.getBoundingClientRect(); ndc.set((cx2 - r.left) / r.width * 2 - 1, -(cy2 - r.top) / r.height * 2 + 1); rayoH.setFromCamera(ndc, camera);
+    function bajoDedo(cx2, cy2, r) {
+      ndc.set((cx2 - r.left) / r.width * 2 - 1, -(cy2 - r.top) / r.height * 2 + 1); rayoH.setFromCamera(ndc, camera);
       var o = rayoH.ray.origin, d = rayoH.ray.direction, q = P.rayoSuelo([o.x, o.y, o.z], [d.x, d.y, d.z], alturaEscena, camera.far);
       return q ? P.hazaEn(q[0], q[1], hz) : -1;
     }
+    function idHaza(h) { return "haza:" + h.id; }
+    function hazaDe(id) { for (var k = 0; k < hz.length; k++) if (idHaza(hz[k]) === id) return hz[k]; return null; }
+    function filasDe(h, f, msg) {
+      if (!f) return { titulo: h.nombre + " · " + h.codigo, filas: [{ k: "Haza", v: h.es_mia ? "la tuya" : "de otro hogar" }, { k: "Ficha", v: msg }] };
+      var r = P.fichaFilas(f), out = [{ k: "Haza", v: r.quien, de: "linde dibujada por la oficina" }];
+      r.filas.forEach(function (q) { out.push({ k: q.k, v: q.v, de: q.de }); }); if (r.alerta) out.push({ k: "Aviso", v: r.alerta });
+      return { titulo: r.titulo, filas: out };
+    }
+    function fichaHaza(id) {
+      var h = hazaDe(id); if (!h) return null;
+      var c = cache[h.id]; if (c && performance.now() - c.t < 60000) return filasDe(h, c.f);
+      if (fallo[h.id]) return filasDe(h, null, "no se ha podido leer (sin sesión o sin conexión)");
+      if (!pend[h.id]) {
+        pend[h.id] = true;
+        trae(API + "hazas/" + encodeURIComponent(h.id)).then(function (f) {
+          delete pend[h.id]; if (!f || typeof f !== "object") { fallo[h.id] = true; } else cache[h.id] = { t: performance.now(), f: f }; Usables.refresca(id);
+        }).catch(function () { delete pend[h.id]; fallo[h.id] = true; Usables.refresca(id); });
+      }
+      return filasDe(h, null, "leyendo…");
+    }
     function engancha() {
       rayoH = new THREE.Raycaster(); ndc = new THREE.Vector2();
-      lienzo.addEventListener("pointerdown", function (e) { dedos[e.pointerId] = { x: e.clientX, y: e.clientY }; if (Object.keys(dedos).length === 1) mov = 0; });
-      lienzo.addEventListener("pointermove", function (e) { var p = dedos[e.pointerId]; if (!p) return; mov += Math.abs(e.clientX - p.x) + Math.abs(e.clientY - p.y); p.x = e.clientX; p.y = e.clientY; });
-      var suelta2 = function (e) {
-        var uno = Object.keys(dedos).length === 1; delete dedos[e.pointerId];
-        if (e.type !== "pointerup" || !uno || mov >= 6 || paseando || !st.activo) return;
-        var olivo = !$("ficha").hidden && (fichaDe === null || antes.oculta || $("fichaTitulo").textContent !== antes.titulo);
-        if (olivo) { otraCosa(); return; }   // 09_camara ha elegido un olivo con este toque (o enseña el suyo): manda el olivo
-        var k = bajoDedo(e.clientX, e.clientY); if (k >= 0) abre(k); else if (fichaDe !== null) { otraCosa(); $("ficha").hidden = true; }
-      };
-      // en la fase de captura (antes que 09_camara): cómo estaba la ficha, para saber después si el toque ha elegido un olivo
-      window.addEventListener("pointerup", function () { antes.oculta = $("ficha").hidden; antes.titulo = $("fichaTitulo").textContent; }, true);
-      lienzo.addEventListener("pointerup", suelta2); lienzo.addEventListener("pointercancel", suelta2);
-      $("cerrarFicha").addEventListener("click", otraCosa);
+      quitaEnt = Entidades.registra({ tipo: "haza", dueno: "13b_hazas", prioridad: 0, fondo: true, sinAnillo: true, ficha: fichaHaza,
+        pantalla: function (cx2, cy2, r) { if (paseando || !st.activo) return null; var k = bajoDedo(cx2, cy2, r); return k >= 0 ? { id: idHaza(hz[k]), s: 0 } : null; },   // solo en la órbita, como antes
+        existe: function (id) { return !!hazaDe(id); },
+        muestra: function (id) { var h = hazaDe(id); if (h) delete fallo[h.id]; return false; } });   // elegirla otra vez vuelve a intentar leerla
       // H (UX §5.2): la ficha de la haza en la que estás (en el paseo, donde andas; en la órbita, la del punto al que miras)
       window.addEventListener("keydown", function (e) {
         if (e.code !== "KeyH" || !st.activo || e.ctrlKey || e.metaKey || e.altKey) return; var t = e.target && e.target.tagName; if (t === "INPUT" || t === "SELECT" || t === "TEXTAREA") return;
         var x = paseando ? pp.x : objetivo.x, y = paseando ? pp.y : -objetivo.z, k = P.hazaEn(x, y, hz);
-        if (k >= 0) abre(k); else sinHaza("No estás dentro de ninguna haza.");
+        if (k >= 0) Usables.elige(idHaza(hz[k]), "tecla"); else Usables.mensaje("Hazas", [{ k: "Aquí", v: "No estás dentro de ninguna haza." }]);
       });
     }
     function libera() {
       if (linea) { gLinde.remove(linea); geo.dispose(); mat.dispose(); }
+      if (quitaEnt) { quitaEnt(); quitaEnt = null; }
       linea = null; geo = null; mat = null; hz = []; st.activo = false; st.vertices = 0;
     }
     if (API) {
