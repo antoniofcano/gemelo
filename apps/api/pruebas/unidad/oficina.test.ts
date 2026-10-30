@@ -31,9 +31,10 @@ test("sin sesión: las rutas de oficina dan 401 y la autorización de /oficina/ 
   assert.deepEqual([pend.statusCode, pend.headers.location], [303, "/"]);
 });
 
-test("la autorización solo admite para=oficina; lo demás es entrada no válida", async () => {
+test("la autorización solo admite para=oficina; una consulta ajena de la página no es entrada no válida", async () => {
   assert.equal((await app.inject({ method: "GET", url: "/api/interno/autoriza?para=admin" })).statusCode, 400);
-  assert.equal((await app.inject({ method: "GET", url: "/api/interno/autoriza?otra=1" })).statusCode, 400);
+  // el forward_auth de Caddy pasa la consulta de la página (?debug, ?vr…): se admite y decide la sesión (401 sin ella)
+  assert.equal((await app.inject({ method: "GET", url: "/api/interno/autoriza?otra=1" })).statusCode, 401);
 });
 
 test("POST de oficina sin Origin del sitio: 403 antes de nada", async () => {
