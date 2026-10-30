@@ -63,7 +63,7 @@ Para una visita compartida el muñeco se queda corto: todos se parecen y no hay 
 | Móvil (3) y Quest nivel 0 (3) | ídem | 3 × 4 + 5 = **17**; ≈ 60 k + 0,7 k = **≈ 61 k** | **17**; ≈ 60 k + 3,6 k = **≈ 64 k** |
 | Quest nivel 3 (0) | ídem | **5**; ≈ 1 k | **5**; ≈ 3,9 k |
 
-Contra lo que hay: 29 llamadas sobre las 87 de Hituelo real «cerca» (ADR-0019) dejan unas 116, por debajo de las 250 del diseño; 120 k triángulos son el 7 % de 1,7 M. En Quest nivel 0, 61 k son el 16 % de los 380 k del perfil. **El tope de regresión del fixture «cerca» (75 llamadas sobre 56 medidas) no admite +24:** P7e fija un tope propio con presencia (como `fixture_escena_tiles`), sin tocar los de siempre.
+Contra lo que hay: 29 llamadas sobre las 87 de Hituelo real «cerca» (ADR-0019) dejan unas 116, por debajo de las 250 del diseño; 120 k triángulos son el 7 % de 1,7 M. En Quest nivel 0, 61 k son el 16 % de los 380 k del perfil. **El tope de regresión del fixture «cerca» (75 llamadas sobre 56 medidas) no admite +24:** P7e fija un tope propio con presencia (como el antiguo bloque de topes de la escena (hoy `fixture.cerro` y `fixture.hituelo`)), sin tocar los de siempre.
 
 **Memoria (ESTIMADO):** una textura de 1024² RGBA con mipmaps ocupa ≈ 5,6 MB en la GPU; con 3 por avatar, ≈ 17 MB; 6 avatares distintos ≈ 100 MB en escritorio y 3 ≈ 50 MB en Quest. Es lo que más pesa: P7b mide si compensa KTX2 (necesita el transcodificador servido desde nuestro origen) o bajar a 512 las texturas secundarias. Descarga: ≤ 2 MB por avatar, una vez por sesión (caché del navegador).
 

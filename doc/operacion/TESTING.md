@@ -19,12 +19,12 @@ Dos familias: **guardianes** (proceso, rápidos, en la puerta) y **pruebas de na
 | `version` | versión única en `VERSION`, `package.json`, CHANGELOG, CLAUDE, README, ESTADO | las versiones divergen en silencio | subir todas juntas (skill `release`) |
 | `documentacion` | enlaces relativos, índices, techos, «foto» en histórico | la doc se pudre | añadir la fila, arreglar el enlace, archivar |
 | `contratos` | fixture y `apps/web/motor/` contra los esquemas (JSON Schema 2020-12 con ajv, estricto; también que los esquemas rechazan datos rotos) | el exportador y el motor se desacoplan | cambiar contrato, esquema y fixture a la vez |
-| `build` | la web de Vite construida con el fixture, las dos fincas (TODO-C: confirmar qué comprueba tras retirar `montar_v2.py`) | un cambio rompe el build | ver el error de Vite |
+| `build` | la web de Vite construida con el fixture, las dos fincas con tileset y sin él, y la caché de páginas | un cambio rompe el build | ver el error de Vite |
 | `carga` | 0 errores de consola y topes de dibujo | regresiones de render | mirar consola; si el tope sube a propósito, explicarlo en el commit |
 | `secretos` | claves, datos de explotación, ficheros pesados | datos privados en repo público | sacarlo del historial si ya se subió (consultar antes) |
 | `vr` | sin WebXR no hay botón ni errores; prueba completa con el mock (opcional) | regresiones del modo VR | ver `pruebas/prueba_vr.js` y `doc/sistema/VR.md` |
 | `multiplataforma` | rutas con separador `\` escrito a mano en `tuberia/**/*.py`; `os.path.join` sin `import os` | los exportadores deben funcionar en Windows, Linux y macOS (decisión 8) | armar la ruta con `os.path.join` (o `pathlib`) e importar `os` |
-| `web` | la web de Vite = el motor tal cual (TODO-C: ya no hay artefacto con la que comparar el dibujo) | el build no debe cambiar el comportamiento | mirar la diferencia por escenario; si es intencionada, va con su ADR |
+| `web` | la web de Vite = el motor tal cual ; carga sin errores, con la three de `apps/web`, y solo pide a su mismo origen | el build no debe cambiar el comportamiento | mirar la diferencia por escenario; si es intencionada, va con su ADR |
 | `olivos` | catálogo de olivos-tipo: esquema (ajv), glb válido (`gltf-validator`), reglas del contrato y triángulos por nivel; activación del `Catalogo` en Chrome | el constructor de olivos-tipo y el motor se desacoplan | ver `contratos/olivos-tipo.md`; si cambia la forma sintética, `node modelos/olivos/fixture/genera.js` |
 
 ## Entorno

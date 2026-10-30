@@ -14,13 +14,13 @@ La página pide `t/<clave>.json|jpg` (`D.teselas` es el índice; `D.base` da el 
 
 | Fichero | Expone | Notas |
 |---|---|---|
-| `01_datos.js` | `D`, `$`, `fmt`, `b64`, `i16` | abre la IIFE; la escena es siempre la 3D Tiles ([TILES3D](TILES3D.md#la-escena-sin-vuelta-atrás-t8-fase-2)); TODO-A: confirmar si queda algo de `ESC3D` |
+| `01_datos.js` | `D`, `$`, `fmt`, `b64`, `i16` | abre la IIFE; la escena es siempre la 3D Tiles ([TILES3D](TILES3D.md#la-escena-sin-vuelta-atrás-t8-fase-2)); `ESC3D` y `ESTAD` ya no existen |
 | `02_mundo.js` | `Mundo` (`suelo`, `copaAlta`, `orto`, `colorSuelo`, `alCargar`, `arranca`, `actualiza`, `liberaOrtoLejos`…) | teselas, carga, `desp`/`colorEn` |
 | `02b_cola.js` | `Cola` (`add`, `corre(ms)`, `vacia`) | trabajos como generadores |
 | `03_escena.js` | `renderer`, `scene`, `camera`, luces (`LUZ_SOL`, `LUZ_CIELO`), `SRGB`, `texColor`, `colorVertSRGB` | `far = max(5000, 4·EXT)`, `near` inicial 0,5; salida sRGB y convenio de color: lo escrito a mano va en sRGB y se pasa a lineal al entrar en la luz (ADR-0016) |
 | `04b_escena3d.js` | `Escena3D` | la escena 3D Tiles (ADR-0015) con 3DTilesRendererJS: relieve y ortofoto del tileset; sin tileset o si falla, panel «Esta finca no tiene escena» (`estado === "sin"`), sin vuelta a otra escena |
 | `04c_olivos_tiles.js` | `OlivosTiles` | los olivos instanciados del tileset (media y larga distancia), resueltos por huella; aparta los que dibuja el motor de cerca |
-| `04d_sombreado_tiles.js` | `SombreadoTiles` | el relieve del tileset con su sombreado (NDVI, escarcha, nubes, suelo abierto) y lo compartido que dejó `Terreno` (`UN`, `parche`, `prepara`, `U1`…; TODO-A: nombres) |
+| `04d_sombreado_tiles.js` | `SombreadoTiles` | el relieve del tileset con su sombreado (NDVI, escarcha, nubes, suelo abierto) y lo compartido que dejó `Terreno`: `hash`, `matSuelo`, `matOrto` y `UN` en el primer nivel; `SombreadoTiles` expone texturas, texturasReales, ruidoG, detalleG, pideDetalle, prepara, U1, parche y OP |
 | `05_nube.js` | `actualizaNubeTeselas` | un `Points` por tesela |
 | `06_arboles.js`, `07_follaje.js` | copa, tronco, hojas | piezas del nivel 0 |
 | `07a_catalogo.js` | `Catalogo` (`tipos`, `geometria`, `instala`, `retira`…) | formas de L1/L2 por olivo-tipo; tipo −1 = las de siempre (ADR-0012) |

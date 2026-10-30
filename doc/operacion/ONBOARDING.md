@@ -7,12 +7,12 @@
 ## 2. Primer vistazo
 1. Lee [CLAUDE.md](../../CLAUDE.md) (reglas de oro) y [ESTADO.md](../ESTADO.md).
 2. `npm run fixture` genera (si falta) el fixture sintético; `npm run puerta` debe salir en verde.
-3. Mira una página montada: levanta el entorno local con el fixture (`npm run dev:arriba`, [DESARROLLO-LOCAL](DESARROLLO-LOCAL.md)) o construye la web contra `pruebas/salida/fixture/cerro/indice.json` (`GEMELO_DATOS=… npm run build` en `apps/web`) y ábrela con `?debug`. La escena necesita el tileset del fixture; no se abre con `file://`. TODO-C: la orden exacta de las páginas de prueba (`_pagina.js` de los guardianes).
+3. Mira una página montada: levanta el entorno local con el fixture (`npm run dev:arriba`, [DESARROLLO-LOCAL](DESARROLLO-LOCAL.md)) o construye la web contra `pruebas/salida/fixture/cerro/indice.json` (`GEMELO_DATOS=… npm run build` en `apps/web`) y ábrela con `?debug`. La escena necesita el tileset del fixture; no se abre con `file://`. Las pruebas montan sus páginas con `montaPagina` de [`pruebas/guardianes/_pagina.js`](../../pruebas/guardianes/_pagina.js) (motor generado + Vite contra el índice de la finca, con caché por huella en `pruebas/salida/paginas/`).
 
 ## 3. La puerta
 <a id="la-puerta"></a>
 
-**Esta es la única lista de la puerta.** CLAUDE.md, CONTRIBUTING y las skills remiten aquí; no la copian. Comando: `npm run puerta` (equivale a `node --test "pruebas/guardianes/*.test.js"`).
+**Esta es la única lista de la puerta.** CLAUDE.md, CONTRIBUTING y las skills remiten aquí; no la copian. Comando: `npm run puerta` (≈ 11-12 min medidos con la escena única: 683 y 740 s) (equivale a `node --test "pruebas/guardianes/*.test.js"`).
 
 | # | Comprobación | Guardián |
 |---|---|---|
@@ -21,11 +21,11 @@
 | 3 | `VERSION`, `package.json`, CHANGELOG, CLAUDE.md, README y ESTADO dicen la misma versión | `version.test.js` |
 | 4 | Documentación: enlaces relativos, índices (ADR, doc/README), techos, `historico/` con «foto» | `documentacion.test.js` |
 | 5 | Contratos: el fixture cumple los esquemas (ajv), las interfaces devuelven los miembros declarados y las cabeceras «Expone / Consume» de `apps/web/motor/` están al día | `contratos.test.js` |
-| 6 | Build de las dos fincas desde el fixture (índice + `t/` + tileset) con Vite. TODO-C: confirmar qué comprueba tras retirar los límites de publicación | `build.test.js` |
+| 6 | Build de las dos fincas desde el fixture (índice + `t/` + tileset) con Vite («[cerro\|hituelo] el build con tileset…», «[hituelo] sin tileset…», «la caché de páginas…») | `build.test.js` |
 | 7 | Carga en Chrome headless: 0 errores de consola y presupuesto de dibujo bajo `pruebas/presupuesto.json` | `carga.test.js` |
 | 8 | Sin secretos, ni datos de la explotación, ni ficheros pesados versionados | `secretos.test.js` |
 | 9 | VR: sin WebXR no hay botón ni errores; con el mock, la prueba completa (**opcional**, `GEMELO_VR=1`) | `vr.test.js` |
-| 10 | Cliente web: la entrada de Vite es la concatenación exacta, three con versión exacta ≥ 0.167 y los trozos de sombreador que parchea el motor existen, y la página empaquetada carga sin errores (TODO-C: ya no hay artefacto con la que compararla) | `web.test.js` |
+| 10 | Cliente web: la entrada de Vite es la concatenación exacta, three con versión exacta ≥ 0.167 y los trozos de sombreador que parchea el motor existen, y la página empaquetada carga sin errores, lleva la three de `apps/web` y solo pide a su mismo origen | `web.test.js` |
 | 11 | Exportadores multiplataforma: ninguna ruta con separador `\` escrito a mano en `tuberia/**/*.py` (se arman con `os.path.join`) | `multiplataforma.test.js` |
 | 12 | Catálogo de olivos-tipo: el catálogo sintético cumple su esquema (ajv), cada glb pasa `gltf-validator` y su presupuesto de triángulos por nivel, el generador es determinista; en Chrome, instalar y retirar el catálogo funciona sin cambiar lo de siempre | `olivos.test.js` |
 | 13 | Entorno de desarrollo: compose válido, imágenes con versión fija + digest sin preliminares, puertos solo en 127.0.0.1, sin secretos; e2e opcional con Docker (`GEMELO_DOCKER=1`) | `dev.test.js` |
@@ -36,8 +36,8 @@
 | 18 | Banco de pruebas: el turno de lo pesado (un Chrome o un Docker de pruebas a la vez en el equipo) es exclusivo entre procesos; los encargos de medida se validan; la puerta, `lanza()` y la e2e de Docker pasan por el turno | `banco.test.js` |
 | 19 | Hazas en el motor (F1 «3c», `13b_hazas.js`, en Node sin navegador): el GeoJSON de `/api/hazas` cumple el esquema `Hazas` de `api.openapi.yaml` (ajv) y el validador del motor rechaza lo mismo que el contrato; UTM → local con `centro_utm`; la linde pegada al suelo en tramos de ≤ 2 m; la ficha solo enseña la lista blanca de `haza.schema.json` con procedencia (nada de titular, kilos, personas, GPS ni texto libre aunque llegue); sin api, con 401, error o datos fuera de contrato no se pide o no se crea nada y no se escribe en la consola; con datos, una sola `LineSegments` que `libera()` suelta | `hazas.test.js` |
 | 20 | Tubería 3D Tiles: tileset válido (CesiumGS), identidad por instancia (`_INDICE_COPA` + huella) y `_TIPO` con nombres del catálogo, raíz sin contenido | `tiles3d.test.js` |
-| 21 | Escena 3D Tiles en el motor (la única): tileset sin errores ni CSP, raíz vacía visible de lejos, relieve a ≤ 1,5 m del de la CPU; tileset de otro host rechazado; sin tileset, panel «Esta finca no tiene escena» y `Escena3D.resumen().estado === "sin"` (TODO-C: confirmar lo que queda del guardián) | `escena3d.test.js` |
-| 22 | Sombreado del tileset: el parche GLSL de `04d_sombreado_tiles.js` y sus uniformes (TODO-C: ya no hay `Terreno` con el que compararlo) | `sombreado_tiles.test.js` |
+| 21 | Escena 3D Tiles en el motor (la única): tileset sin errores ni CSP, raíz vacía visible de lejos, relieve a ≤ 1,5 m del de la CPU; tileset de otro host rechazado; sin tileset, panel «Esta finca no tiene escena» y `Escena3D.resumen().estado === "sin"` (tres casos: sin tileset, otro host, 404); «el motor: `04b_escena3d.js` es la única escena» | `escena3d.test.js` |
+| 22 | Sombreado del tileset: el parche del glb aplica TODAS sus sustituciones (`04d_sombreado_tiles.js`) y los uniformes compartidos | `sombreado_tiles.test.js` |
 | 23 | Receta de olivo horneada v1 y manifiestos del hornero (ADR-0018, O7b): esquemas del manifiesto y del calendario de épocas con ajv (el ejemplo los cumple y rechazan lo que deben; 366 días con una sola época), ida y vuelta cuantizar → decuantizar de una receta sintética en los cuatro niveles dentro de las pérdidas de O6 (≤ 0,11 mm, ≤ 0,39°), huella fijada, brotli 9/11, objetos estropeados rechazados, manifiesto de tesela de 68 B por olivo; con `npm i` en `apps/web/olivo`, además recetas reales de `olivo-2` con los mismos triángulos | `horneado.test.js` |
 | 24 | La llegada (`12b_llegada.js`): rayo → suelo (llano, relieve, hacia arriba, fuera de la finca, tope), sin anillo por detrás de la mirada, tamaño del anillo, apartado de troncos y umbral toque/arrastre, en Node; en Chrome, el Dron en pantalla (arrastrar no marca, clic sí, Intro aterriza de pie en el anillo, sin anillo guarda el Dron); la VR desde el mirador, **opcional** (`GEMELO_VR=1`) | `llegada.test.js` |
 

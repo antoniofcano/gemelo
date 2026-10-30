@@ -41,7 +41,7 @@ La **ficha de una baliza** (I5) tiene su propia tarjeta (0,62 × 0,39 m, a ~0,95
 ## Medir con el medidor
 Para la prueba T7 (criterios 5 y 6 de [ADR-0015](../adr/0015-escena-en-3d-tiles.md)) no hay que calcular a ojo: el motor trae un **medidor** (`apps/web/motor/30_mide.js`). Sin `&mide` ni botón pulsado **no hace nada** (coste cero: el bucle solo mira un booleano).
 
-**Qué mide.** Durante N segundos (60 por defecto, `&mide=N`, de 1 a 600) y **tras 3 s de calentamiento**, el intervalo entre fotogramas (en VR, entre fotogramas XR) y, aparte, los ms de JS de cada fotograma. No cuenta los fotogramas con la pestaña oculta (en VR no se aplica esa regla). Al terminar da: nº de fotogramas, mediana, p95, p99 y peor (ms), fotogramas por encima de 13,9 ms (nº y %), nivel de `VR_PERFILES` al empezar, al terminar y cada cambio (solo en VR), escena (hoy siempre la 3D Tiles; TODO-A: el campo del medidor), banderas de olivos de la URL (`escena`, `olivos`, `arbsc`, `tiles`, `lod`, `calidad`), olivos por nivel, aparato (VR o pantalla y el `userAgent` resumido a producto, versión y sistema) y fecha. Estadística: percentil por rango más próximo; mediana = media de los dos centrales.
+**Qué mide.** Durante N segundos (60 por defecto, `&mide=N`, de 1 a 600) y **tras 3 s de calentamiento**, el intervalo entre fotogramas (en VR, entre fotogramas XR) y, aparte, los ms de JS de cada fotograma. No cuenta los fotogramas con la pestaña oculta (en VR no se aplica esa regla). Al terminar da: nº de fotogramas, mediana, p95, p99 y peor (ms), fotogramas por encima de 13,9 ms (nº y %), nivel de `VR_PERFILES` al empezar, al terminar y cada cambio (solo en VR), escena (vale `tiles` o `sin`), banderas de olivos de la URL (`escena`, `olivos`, `arbsc`, `tiles`, `lod`, `calidad`), olivos por nivel, aparato (VR o pantalla y el `userAgent` resumido a producto, versión y sistema) y fecha. Estadística: percentil por rango más próximo; mediana = media de los dos centrales.
 
 **Cuándo empieza.** Con `&mide=N` el medidor queda armado: en VR empieza **al entrar en la sesión**; en pantalla, a los 4 s de cargar si el navegador no ofrece VR. Con el botón (**«Medir 60 s»** en el panel de VR y en la caja de `?debug`, abajo a la derecha) empieza al momento, en el modo en que estés; en VR el panel se oculta mientras dura la medida para no tapar la vista.
 
@@ -66,7 +66,7 @@ Para la prueba T7 (criterios 5 y 6 de [ADR-0015](../adr/0015-escena-en-3d-tiles.
 - Modo **Gemelo** forzado (la nube LiDAR no se dibuja), calidad de follaje **baja**, `near` 0,3 / `far` 6.000.
 - Olivos: tope de nivel 0 ×0,8, radio ×0,75 y presupuesto de 380.000 triángulos (el de escritorio es 550.000). Hierba: radio de 32 m.
 - **Adaptador**: cada 4 s mira el tiempo de fotograma; si el JS pasa de 13 ms o se pierden fotogramas (>15,2 ms con 72 Hz) **baja un nivel** (hasta 4 niveles: olivos ×0,55/×0,35/×0,2, hierba 20 m → 0, 270.000 → 130.000 triángulos); si va holgado 25 s seguidos, sube. Se ve en `?debug`.
-- **Con la escena 3D Tiles** (ADR-0015, la única) cada perfil trae también el error en pantalla que se pide a la escena 3D Tiles (`e` de `VR_PERFILES`, en `29_vr.js`): **16 / 24 / 32 / 48 px** (escritorio: 16). El relieve fino del suelo (`b`) está encendido solo en el nivel 0 y se apaga en los demás. **Los valores de `e` son de partida: se eligieron sin medir y se ajustan en el Quest (T7)**; no se cambian sin medida. La prueba `escena3d.test.js` («VR simulada», opcional con `GEMELO_VR=1`; TODO-C: el nombre del caso) comprueba la lógica con el mock (cada perfil aplica su `e` al renderer de tiles, `b` se apaga, se sale restaurando), no su efecto en fps.
+- **Con la escena 3D Tiles** (ADR-0015, la única) cada perfil trae también el error en pantalla que se pide a la escena 3D Tiles (`e` de `VR_PERFILES`, en `29_vr.js`): **16 / 24 / 32 / 48 px** (escritorio: 16). El relieve fino del suelo (`b`) está encendido solo en el nivel 0 y se apaga en los demás. **Los valores de `e` son de partida: se eligieron sin medir y se ajustan en el Quest (T7)**; no se cambian sin medida. La prueba `escena3d.test.js` («VR simulada», opcional con `GEMELO_VR=1`) comprueba la lógica con el mock (cada perfil aplica su `e` al renderer de tiles, `b` se apaga, se sale restaurando), no su efecto en fps.
 - Objetivo de diseño: ≈ 0,5–0,7 M triángulos **por ojo**, ≈ 150 llamadas. **No está medido** (en Chrome sin GPU no hay forma de medirlo).
 
 ## Lo que se probó y cómo
@@ -93,7 +93,7 @@ Todo vive ya en `apps/web/motor/` (integrado en el repo): `29_vr.js` (el modo VR
 
 ## Probar
 ```
-# con el WebXR simulado (mock_xr.js vive en pruebas/): sirve una página con tileset (entorno local, o una de pruebas/salida/paginas/, TODO-C)
+# con el WebXR simulado (mock_xr.js vive en pruebas/): sirve una página con tileset (entorno local, o una página de `montaPagina` en `pruebas/salida/paginas/`)
 node pruebas/prueba_vr.js <url de la página> pruebas/salida/vr/cap
 node pruebas/prueba_vr.js <url> pruebas/salida/vr/cap sinxr       # sin WebXR: no hay botón, 0 errores (esta sí está en la puerta)
 GEMELO_VR=1 npm run puerta                                         # incluye la prueba VR completa con el mock
