@@ -203,7 +203,7 @@ test("confirmación reciente: sin ella no se borra una familia ni se aprueba un 
   const borrable = Number((await bd.dueno.query<{ id: number }>("INSERT INTO hogares (correo) VALUES ('borrable@example.com') RETURNING id")).rows[0]!.id);
   await bd.dueno.query("UPDATE sesiones SET confirmada_en = now() - interval '20 minutes' WHERE hash = $1", [idSesion(antonio.sesion)]);
   assert.equal((await pide("GET", "/api/oficina/sesion", antonio.sesion)).json().confirmacion_vigente, false);
-  let r = await pide("DELETE", "/api/admin/hogares/" + borrable, antonio.sesion);
+  let r = await pide("DELETE", "/api/admin/hogares/" + borrable, antonio.sesion, { correo: "borrable@example.com" });
   assert.equal(r.statusCode, 403); assert.equal(r.json().error, "confirmacion_requerida");
   r = await pide("POST", "/api/admin/hogares", antonio.sesion, { correo: "nueva-oficina@example.com", rol: "oficina" });
   assert.equal(r.statusCode, 403); assert.equal(r.json().error, "confirmacion_requerida", "dar un rol de oficina pide confirmación");
@@ -217,12 +217,12 @@ test("confirmación reciente: sin ella no se borra una familia ni se aprueba un 
   const conf = await gastaUltimoEnlace(ANTONIO, antonio.aparato);
   assert.equal(conf.destino, "/oficina/");
   assert.equal((await pide("GET", "/api/oficina/sesion", conf.sesion)).json().confirmacion_vigente, true);
-  assert.equal((await pide("DELETE", "/api/admin/hogares/" + borrable, conf.sesion)).statusCode, 204);
+  assert.equal((await pide("DELETE", "/api/admin/hogares/" + borrable, conf.sesion, { correo: "borrable@example.com" })).statusCode, 204);
   assert.equal((await pide("POST", "/api/admin/hogares", conf.sesion, { correo: "nueva-oficina@example.com", rol: "oficina" })).statusCode, 201);
   // la oficina (no admin) no da roles de oficina ni borra cuentas de oficina, aunque esté confirmada
   r = await pide("POST", "/api/admin/hogares", ofi.sesion, { correo: "otra-oficina@example.com", rol: "admin" });
   assert.equal(r.statusCode, 403); assert.equal(r.json().error, "sin_permiso");
-  assert.equal((await pide("DELETE", "/api/admin/hogares/" + ids[OFI2], ofi.sesion)).statusCode, 403);
+  assert.equal((await pide("DELETE", "/api/admin/hogares/" + ids[OFI2], ofi.sesion, { correo: OFI2 })).statusCode, 403);
   assert.equal((await pide("POST", "/api/admin/hogares", ofi.sesion, { correo: "familia-nueva@example.com", rol: "hogar" })).statusCode, 201, "dar de alta familias, sí");
 });
 

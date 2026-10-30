@@ -67,3 +67,19 @@ export function mensajeDeEnlace(para: string, enlace: string, minutos: number): 
       "Si no lo has pedido tú, ignora este correo: nadie puede entrar sin él.\n",
   };
 }
+
+/** El enlace de bienvenida de una cuenta recién dada de alta (o que aún no ha entrado): mismo enlace, otro texto. */
+export function mensajeDeBienvenida(para: string, enlace: string, minutos: number): Mensaje {
+  return {
+    para,
+    asunto: "Bienvenida al gemelo del olivar",
+    texto:
+      "Hola:\n\n" +
+      "Cano & Damas Oleicultores te ha dado acceso al gemelo del olivar, para que veas tu haza y pasees por la finca. " +
+      "Para entrar por primera vez, abre este enlace en el dispositivo donde quieras usarlo. " +
+      "Caduca en " + minutos + " minutos y sirve una sola vez:\n\n" +
+      enlace + "\n\n" +
+      "Si caduca, no pasa nada: se puede pedir otro desde la portada con este mismo correo. " +
+      "Si no esperabas este mensaje, ignóralo: nadie puede entrar sin el enlace.\n",
+  };
+}

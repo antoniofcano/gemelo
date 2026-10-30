@@ -2,6 +2,7 @@
 // Las migraciones NO se aplican aquí (el usuario de la api no puede cambiar el esquema): las aplica el servicio
 // `migra` del compose con el usuario dueño (infra/compose.yml).
 import { construyeApp } from "./app.ts";
+import { purgaBajas } from "./admin/bajas.ts";
 import { purga } from "./auth/servicio.ts";
 import { BuzonDePruebas, type Cartero, CarteroSmtp } from "./auth/correo.ts";
 import { creaBd } from "./bd/pool.ts";
@@ -43,6 +44,7 @@ if (lector && config.ot.modo !== "no" && config.ot.cadaMin > 0) {
 }
 relojes.push(setInterval(() => {
   purga(bd).catch(() => undefined);
+  purgaBajas(bd, config.medios.carpeta).catch(() => undefined);
   purgaMedios(bd, config.medios.carpeta, config.medios.retencionDias).catch(() => undefined);
 }, 6 * 3600_000));
 if (!config.medios.carpeta) app.log.warn("sin GEMELO_MEDIOS: las fotos de los hogares están apagadas (503)");
