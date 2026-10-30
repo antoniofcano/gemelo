@@ -3,7 +3,12 @@
 El contorno es la UNIÓN de las parcelas de la finca, en ETRS89 / UTM 30N (EPSG:25830, la de la base, el motor y la oficina). Sustituye a la
 «caja de los olivos medidos + 150 m» como límite del editor de hazas (migración 0011, tabla fincas_contorno).
 
-Fuentes (las dos verificadas el 2026-10-30; licencias distintas: cuál se usa la decide Antonio, decisión 140; doc/operacion/DATOS.md):
+Fuente POR DEFECTO (OF3c, decisión 143): «gemelo». Las parcelas de OlivarTrack que ya usa el gemelo para las teselas (GEMELO_PARCELAS,
+  {"parcelas": [{id, nombre, finca, ha, olivos, utm: [[E, N], …]}]}, en EPSG:25830; el mismo fichero que lee tuberia/hituelo_conv.py)
+  traen su polígono, y su límite viene de SIGPAC (FEGA, CC BY 4.0). Se filtran por finca (--finca) y se juntan con la misma unión. Sin red.
+  Las dos de abajo quedan de RESPALDO y de comprobación (--comparar da la diferencia en m²).
+
+Fuentes de respaldo (las dos verificadas el 2026-10-30; licencias distintas: cuál se usa la decide Antonio, decisión 140; doc/operacion/DATOS.md):
   sigpac    FEGA, OGC API Features «recintos» (https://sigpac-hubcloud.es/ogcapi), CC BY 4.0. Una parcela SIGPAC son sus recintos
             (provincia, municipio, agregado, zona, polígono, parcela). Devuelve GeoJSON en CRS84 (lon, lat): se proyecta con pyproj.
   catastro  Dirección General del Catastro, WFS INSPIRE de parcelas (https://ovc.catastro.meh.es/INSPIRE/wfsCP.aspx, consulta GetParcel
@@ -21,7 +26,10 @@ referencias. Con --sql, además el SQL que lo carga con psql (fincas_contorno_ca
 
 La unión cierra las rendijas entre parcelas vecinas (--cierre, 0,5 m por defecto: ensancha y vuelve a encoger) y redondea al centímetro.
 
-Uso:
+Uso (por defecto, desde las parcelas del gemelo):
+  GEMELO_PARCELAS=<parcelas_utm.json> GEMELO_CONTORNO=<contorno.geojson> python tuberia/contorno/contorno_finca.py --finca <finca> [--sql <contorno.sql>]
+  ... --finca <finca> --comparar <parcelas_sigpac.json> [--desde <carpeta>]   (une también las del respaldo y escribe la diferencia)
+Respaldo (descarga de SIGPAC o Catastro):
   GEMELO_CONTORNO_PARCELAS=<parcelas.json> python tuberia/contorno/contorno_finca.py --salida <contorno.geojson> [--sql <contorno.sql>]
   python tuberia/contorno/contorno_finca.py --parcelas <p.json> --desde <carpeta> --salida <c.geojson>
       (--desde: lee las respuestas grabadas, <clave>.json o <clave>.xml, en vez de pedirlas; lo usan las pruebas, sin red)
@@ -32,7 +40,9 @@ import datetime
 import json
 import os
 import sys
+import re
 import time
+import unicodedata
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -46,10 +56,13 @@ from shapely.validation import make_valid
 
 SRS = "EPSG:25830"
 ETIQUETA = "$gemelo_contorno$"
+# Lo que se guarda en la base como fuente: el ORIGEN del polígono (la tabla solo admite sigpac | catastro, migración 0011).
+FUENTE_EN_BASE = {"gemelo": "sigpac", "sigpac": "sigpac", "catastro": "catastro"}
 URL_SIGPAC = "https://sigpac-hubcloud.es/ogcapi/collections/recintos/items"
 URL_CATASTRO = "https://ovc.catastro.meh.es/INSPIRE/wfsCP.aspx"
 ATRIBUCION = {
     "sigpac": "Recintos SIGPAC © Fondo Español de Garantía Agraria (FEGA), CC BY 4.0. Contorno = unión de recintos, transformada por el gemelo.",
+    "gemelo": "Parcelas de OlivarTrack (polígono con origen SIGPAC, © Fondo Español de Garantía Agraria (FEGA), CC BY 4.0). Contorno = unión de parcelas, transformada por el gemelo.",
     "catastro": "Parcelas catastrales © Dirección General del Catastro (licencia de uso de la DGC). Contorno = unión de parcelas, transformada por el gemelo.",
 }
 PAUSA_S = 0.5            # entre peticiones: los dos servicios cortan a quien los satura
@@ -107,6 +120,40 @@ def clave(fuente, p):
     if fuente == "catastro":
         return "catastro_" + p["refcat"]
     return "sigpac_" + "-".join(str(p.get(k, 0)) for k in ("provincia", "municipio", "agregado", "zona", "poligono", "parcela"))
+
+
+def slug(nombre):
+    """«Hituelo» → «hituelo», «Cerro Velasco» → «cerro-velasco»: el nombre de finca del fichero de parcelas como id de finca."""
+    t = unicodedata.normalize("NFKD", (nombre or "").replace("\ufffd", "i")).encode("ascii", "ignore").decode()
+    return re.sub(r"[^a-z0-9]+", "-", t.lower()).strip("-")
+
+
+def lee_gemelo(ruta, finca):
+    """Polígonos (EPSG:25830) de las parcelas de `finca` en el fichero de parcelas del gemelo (GEMELO_PARCELAS) y cuántas son."""
+    try:
+        with open(ruta, encoding="utf-8") as f:
+            todas = json.load(f)["parcelas"]
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        raise ErrorDeEntrada("no se pudo leer el fichero de parcelas del gemelo (GEMELO_PARCELAS): " + str(e))
+    if not isinstance(todas, list):
+        raise ErrorDeEntrada("el fichero de parcelas del gemelo no trae una lista «parcelas»")
+    if not re.fullmatch(r"[a-z0-9_-]{1,32}", finca or ""):
+        raise ErrorDeEntrada("--finca: minúsculas, cifras, «-» o «_» (hasta 32)")
+    pols = []
+    for p in todas:
+        if not isinstance(p, dict) or slug(p.get("finca")) != finca:
+            continue
+        try:
+            pts = [(float(q[0]), float(q[1])) for q in p["utm"]]
+        except (KeyError, TypeError, ValueError, IndexError):
+            raise ErrorDeEntrada("una parcela de la finca no trae «utm» con pares [E, N]")
+        if len(pts) < 3 or not all(1e5 < x < 1e6 and 3e6 < y < 5e6 for x, y in pts):
+            raise ErrorDeEntrada("«utm» de una parcela no son coordenadas UTM 30N de España (¿otro sistema?)")
+        pols.append(Polygon(pts))
+    if not pols:
+        nombres = sorted({slug(p.get("finca")) for p in todas if isinstance(p, dict) and p.get("finca")})
+        raise ErrorDeEntrada("ninguna parcela del gemelo es de la finca «" + finca + "» (hay: " + ", ".join(nombres) + ")")
+    return pols
 
 
 # ---------------------------------------------------------------- red
@@ -283,38 +330,65 @@ def genera_sql(fc):
     geo = json.dumps(f["geometry"], separators=(",", ":"))
     if ETIQUETA in geo:
         raise ErrorDeEntrada("la geometría contiene la etiqueta reservada")
-    detalle = json.dumps({"finca": p["finca"], "fuente": p["fuente"], "consultado_en": p["consultado_en"], "parcelas": p["parcelas"],
+    detalle = json.dumps({"finca": p["finca"], "fuente": FUENTE_EN_BASE[p["fuente"]], "consultado_en": p["consultado_en"], "parcelas": p["parcelas"],
                           "superficie_ha": p["superficie_ha"]}, separators=(",", ":"))
     return "\n".join([
         "-- generado por tuberia/contorno/contorno_finca.py (OF3b); retira el contorno vigente de la finca y carga este",
         "BEGIN;",
-        "SELECT fincas_contorno_carga('%s', %s%s%s, '%s', DATE '%s', %d, NULL);" % (p["finca"], ETIQUETA, geo, ETIQUETA, p["fuente"], p["consultado_en"], p["parcelas"]),
+        "SELECT fincas_contorno_carga('%s', %s%s%s, '%s', DATE '%s', %d, NULL);" % (p["finca"], ETIQUETA, geo, ETIQUETA, FUENTE_EN_BASE[p["fuente"]], p["consultado_en"], p["parcelas"]),
         "INSERT INTO auditoria (hogar_id, accion, detalle) VALUES (NULL, 'tuberia.contorno_cargado', %s%s%s::jsonb);" % (ETIQUETA, detalle, ETIQUETA),
         "COMMIT;",
         "",
     ])
 
 
+def diferencia(a, b):
+    """m² de a que no están en b, de b que no están en a, y lo común."""
+    return {"solo_gemelo_m2": round(a.difference(b).area, 1), "solo_respaldo_m2": round(b.difference(a).area, 1),
+            "comun_m2": round(a.intersection(b).area, 1)}
+
+
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="Contorno de una finca (unión de sus parcelas SIGPAC o catastrales) en EPSG:25830")
-    ap.add_argument("--parcelas", default=os.environ.get("GEMELO_CONTORNO_PARCELAS"), help="JSON de parcelas (fuera del repo); o GEMELO_CONTORNO_PARCELAS")
+    ap = argparse.ArgumentParser(description="Contorno de una finca (unión de sus parcelas) en EPSG:25830. Por defecto, de las parcelas del gemelo; SIGPAC o Catastro, de respaldo")
+    ap.add_argument("--finca", help="id de la finca (p. ej. hituelo): con la fuente por defecto, las parcelas del gemelo cuyo nombre de finca da este id")
+    ap.add_argument("--gemelo", default=os.environ.get("GEMELO_PARCELAS"), help="parcelas del gemelo en UTM (fuera del repo); o GEMELO_PARCELAS")
+    ap.add_argument("--parcelas", default=os.environ.get("GEMELO_CONTORNO_PARCELAS"), help="RESPALDO: JSON de parcelas SIGPAC/Catastro (fuera del repo); o GEMELO_CONTORNO_PARCELAS")
+    ap.add_argument("--comparar", help="JSON de parcelas SIGPAC/Catastro: une también esas y escribe la diferencia en m² con las del gemelo (necesita --finca)")
     ap.add_argument("--salida", default=os.environ.get("GEMELO_CONTORNO"), help="GeoJSON de salida (fuera del repo); o GEMELO_CONTORNO")
     ap.add_argument("--sql", help="además, el SQL que lo carga con psql")
-    ap.add_argument("--desde", help="carpeta con las respuestas grabadas (sin red; para pruebas)")
+    ap.add_argument("--desde", help="carpeta con las respuestas grabadas de SIGPAC/Catastro (sin red; para pruebas)")
     ap.add_argument("--cierre", type=float, default=0.5, help="m para cerrar rendijas entre parcelas vecinas (0: sin cierre)")
     ap.add_argument("--fecha", help="fecha de consulta AAAA-MM-DD (por defecto, hoy)")
     a = ap.parse_args(argv)
+    diff = None
     try:
-        if not a.parcelas or not a.salida:
-            raise ErrorDeEntrada("faltan --parcelas (o GEMELO_CONTORNO_PARCELAS) y --salida (o GEMELO_CONTORNO)")
+        if not a.salida:
+            raise ErrorDeEntrada("falta --salida (o GEMELO_CONTORNO)")
         if not 0 <= a.cierre <= 5:
             raise ErrorDeEntrada("--cierre entre 0 y 5 m")
         fecha = a.fecha or datetime.date.today().isoformat()
         datetime.date.fromisoformat(fecha)
-        datos = lee_parcelas(a.parcelas)
-        pols = obtiene(datos, a.desde)
-        mp = une(pols, a.cierre)
+        if a.comparar and not a.finca:
+            raise ErrorDeEntrada("--comparar necesita --finca (las parcelas del gemelo)")
+        if a.finca or not a.parcelas:
+            # fuente por defecto: las parcelas del gemelo
+            if not a.finca or not a.gemelo:
+                raise ErrorDeEntrada("faltan --finca y --gemelo (o GEMELO_PARCELAS); el respaldo de SIGPAC/Catastro es --parcelas")
+            pols = lee_gemelo(a.gemelo, a.finca)
+            datos = {"finca": a.finca, "fuente": "gemelo", "parcelas": pols}
+            mp = une(pols, a.cierre)
+            if a.comparar:
+                otros = lee_parcelas(a.comparar)
+                if otros["finca"] != a.finca:
+                    raise ErrorDeEntrada("--comparar es de otra finca")
+                diff = diferencia(mp, une(obtiene(otros, a.desde), a.cierre))
+        else:
+            datos = lee_parcelas(a.parcelas)
+            pols = obtiene(datos, a.desde)
+            mp = une(pols, a.cierre)
         fc = coleccion(datos, mp, len(pols), fecha)
+        if diff:
+            fc["features"][0]["properties"]["comparacion"] = diff
         with open(a.salida, "w", encoding="utf-8", newline="\n") as f:
             json.dump(fc, f, ensure_ascii=False, separators=(",", ":"))
         if a.sql:
@@ -325,6 +399,8 @@ def main(argv=None):
         return 2
     p = fc["features"][0]["properties"]
     print("contorno de %s (%s): %d parcelas, %d recintos, %d polígono(s), %.4f ha" % (p["finca"], p["fuente"], p["parcelas"], p["recintos"], len(mp.geoms), p["superficie_ha"]))
+    if diff:
+        print("comparación con el respaldo: solo en el gemelo %.1f m², solo en el respaldo %.1f m², en común %.1f m²" % (diff["solo_gemelo_m2"], diff["solo_respaldo_m2"], diff["comun_m2"]))
     return 0
 
 

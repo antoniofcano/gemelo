@@ -113,6 +113,39 @@ def prueba(tmp):
     assert abs(g.area - (15000 - 100)) < 1, "superficie %.1f" % g.area
     assert "Catastro" in f["properties"]["atribucion"]
 
+    # --- fuente POR DEFECTO (OF3c): parcelas del gemelo (formato de GEMELO_PARCELAS), sin red, filtradas por finca
+    gem = os.path.join(tmp, "gemelo_parcelas.json")
+
+    def pg(i, nom, finca, *r):
+        return {"id": i, "nombre": nom, "finca": finca, "ha": 1.0, "olivos": 10, "utm": [list(q) for q in rect(*r)]}
+    json.dump({"parcelas": [pg(1, "P1", "Prueba", 0, 0, 200, 100), pg(2, "P2", "Prueba", 200.3, 0, 400.3, 100), pg(3, "P3", "Prueba", 1000, 1000, 1050, 1040),
+                            pg(4, "Otra", "Finca Ñandú", 5000, 5000, 5100, 5100)]}, open(gem, "w", encoding="utf-8"))
+    r = os.path.join(tmp, "g.geojson")
+    s2 = os.path.join(tmp, "g.sql")
+    assert corre("--gemelo", gem, "--finca", "prueba", "--salida", r, "--sql", s2, "--fecha", "2026-10-30") == 0
+    f = json.load(open(r, encoding="utf-8"))["features"][0]
+    g = shape(f["geometry"])
+    assert f["properties"]["fuente"] == "gemelo" and f["properties"]["parcelas"] == 3 and len(g.geoms) == 2, "rendija cerrada y la parcela 3 aparte"
+    assert abs(g.area - (40030 + 2000)) < 5 and "OlivarTrack" in f["properties"]["atribucion"] and "FEGA" in f["properties"]["atribucion"]
+    assert "'sigpac', DATE '2026-10-30', 3, NULL);" in open(s2, encoding="utf-8").read(), "en la base, el origen: sigpac"
+    assert corre("--gemelo", gem, "--finca", "finca-nandu", "--salida", r) == 0, "el nombre con tilde y eñe da su id"
+    assert corre("--gemelo", gem, "--finca", "no-existe", "--salida", r) == 2
+    assert corre("--gemelo", gem, "--salida", r) == 2, "sin --finca no se elige"
+    # comparar con el respaldo (respuestas grabadas de SIGPAC con la misma geometría): 0 m² de diferencia
+    json.dump(fc_sigpac(rect(0, 0, 200, 100)), open(os.path.join(resp, k[0] + ".json"), "w"))
+    ej = os.path.join(EJEMPLO, "parcelas.sigpac.sintetico.json")
+    assert corre("--gemelo", gem, "--finca", "prueba", "--comparar", ej, "--desde", resp, "--salida", r) == 0
+    c = json.load(open(r, encoding="utf-8"))["features"][0]["properties"]["comparacion"]
+    assert c["solo_gemelo_m2"] < 1 and c["solo_respaldo_m2"] < 1 and abs(c["comun_m2"] - 42030) < 5, c
+    # ... y con 10,3 × 100 m menos en el gemelo, la diferencia sale en m²
+    json.dump({"parcelas": [pg(1, "P1", "Prueba", 0, 0, 190, 100), pg(2, "P2", "Prueba", 200.3, 0, 400.3, 100), pg(3, "P3", "Prueba", 1000, 1000, 1050, 1040)]}, open(gem, "w", encoding="utf-8"))
+    assert corre("--gemelo", gem, "--finca", "prueba", "--comparar", ej, "--desde", resp, "--salida", r) == 0
+    c = json.load(open(r, encoding="utf-8"))["features"][0]["properties"]["comparacion"]
+    assert abs(c["solo_respaldo_m2"] - 1030) < 15 and c["solo_gemelo_m2"] < 1, c
+    # coordenadas que no son UTM de España: rechazo
+    json.dump({"parcelas": [{"finca": "Prueba", "utm": [[0, 0], [1, 0], [0, 1]]}]}, open(gem, "w"))
+    assert corre("--gemelo", gem, "--finca", "prueba", "--salida", r) == 2
+
     # --- rechazos (salida 2, sin traza)
     def mal(datos, *extra):
         r = os.path.join(tmp, "mal.json")
