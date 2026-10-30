@@ -165,5 +165,5 @@
     function libera() { if (!tiles) return; SombreadoTiles.libera(); if (ganchos.alApagar) ganchos.alApagar("liberada"); if (Sched) Sched.setXRSession(null); scene.remove(tiles.group); tiles.dispose(); tiles = null; estado = "apagado"; }
     function engancha(g) { for (var k in g) ganchos[k] = g[k]; if (estado === "sin" && ganchos.alApagar) ganchos.alApagar(motivo); }
     if (pedida) arranca(); else falla(new Error("falta el tileset"));
-    return { actualiza: actualiza, perfil: perfil, resumen: resumen, libera: libera, listo: cargada, alturaEn: alturaEn, relieveEn: relieveEn, sondea: sondea, engancha: engancha, grupo: function () { return tiles && tiles.group; } };
+    return { actualiza: actualiza, estado: function () { return estado; }, perfil: perfil, resumen: resumen, libera: libera, listo: cargada, alturaEn: alturaEn, relieveEn: relieveEn, sondea: sondea, engancha: engancha, grupo: function () { return tiles && tiles.group; } };
   })();

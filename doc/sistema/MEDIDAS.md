@@ -459,7 +459,7 @@ Lecturas: (1) **el E0 ya no va detrás**: es el olivo que se ve a ≥ 700 px (×
 Las llamadas de olivos, 7-8 (tope 8); triángulos de olivos 19-231 k de 384 k; s = 1 en los tres (kPx = 590: la ventana del banco es pequeña, así que los olivos tienen pocos píxeles y no hace falta acercar fronteras); sin errores de sombreador (el código de banda compila en WebGL2) y las 4 variantes E2 calculadas en el trabajador. Las llamadas totales suben por la bandada de día de 16_vida (98 llamadas; ver «fixture»), no por los olivos. Los topes de `fixture_olivos_escalera` siguen valiendo y no se tocan.
 
 ## Límites conocidos
-- Las ortofotos decodificadas (2,4 MB por tesela de 768 px; 1 MB a 512 px) se sueltan solo a 900 m; sin LRU fino.
+- Las ortofotos decodificadas (2,4 MB por tesela de 768 px; 1 MB a 512 px) se sueltan a 900 m y, desde M4, por LRU con un tope (8 móvil/gafas, 20 escritorio; `?ortoMax=N`); el fixture (2 teselas) no llega al tope, así que su heap no cambia dentro del ruido de SwiftShader (±3 MB); el ahorro es ~2,4 MB por tesela soltada de las reales de 768 px, **no medido** en una finca grande ni en iPhone/Quest. M6 (suelo de fondo, `?sinFondo` lo quita), banco 2026-10-30, fixture de Hituelo: +1 llamada, +10 824 triángulos (82 × 66 celdas × 2), +1 geometría, 0 texturas nuevas, heap sin cambio medible; de lejos el vacío alrededor de la finca queda cubierto y de cerca no asoma.
 - Dentro de una tesela todo el relieve y la copa (258² + 256²) están siempre en memoria: 49 teselas ≈ 20 MB; la nube de las lejanas se libera a > 1,2× 2.300 m.
 - Las teselas se piden a ≤ 1.800 m de la cámara, de 3 en 3.
 - Las teselas sin datos (fuera de las parcelas + 60 m) son un hueco: el mundo de Hituelo es un mosaico, no un rectángulo.
