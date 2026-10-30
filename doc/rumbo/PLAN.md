@@ -148,7 +148,7 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | OF4 | **Bandeja**: retirar en un clic, responder, avisar, pasar a OlivarTrack (token solo para proponer, decisión 110) | OF2, V3 | media · **sonnet**; 🔶 Docker | ✅ 2026-10-30; envío directo a OlivarTrack cuando exista el token de solo proponer (👤) |
 | OF5 | **Sistema** mínimo: salud, OlivarTrack, correo de prueba, auditoría, roles | OF2 | ligera · **sonnet** | ✅ 2026-10-30; falta montar el estado del hornero en la api en `infra/compose.yml` y las copias (`ultimo.json`) |
 | OF6 | **Configuración versionada** y `GET /api/config`; el motor la lee con caída a las constantes; interruptores de componentes (decisión 118) | OF2, C1 | media · **opus** | ✅ 2026-10-30 api y motor; falta la pantalla (OF7) |
-| OF7 | Panel de la escalera: deslizadores con límites, vista previa, publicar en prueba y para todos, historial | OF6 | media · **sonnet**; 🔶 | ⬜ |
+| OF7 | Panel de la escalera: deslizadores con límites, vista previa, publicar en prueba y para todos, historial | OF6 | media · **sonnet**; 🔶 | ✅ 2026-10-30; sin probar en tableta ni con lector de pantalla |
 | OF8 | Constructor en la oficina (olivo real por id, escalones lado a lado) | OF2, V3 | ligera · **sonnet** | ⬜ |
 | OF9 | Épocas desde la oficina y re-hornear (decisión 112) | OF6 | media · **sonnet** | ⬜ |
 | OF10 | Mundo en modo oficina: insignia y chaleco, anunciar, balizas oficiales, salas | OF1 | media · **opus**; 🔶 | ⬜ |
