@@ -210,6 +210,7 @@ Las teclas de letra solo funcionan con el foco en el mundo, nunca en un campo (W
 | Espacio / C · L | dron: subir / bajar · aterrizar | igual |
 | **1–6** | mapa, capas, tiempo, historia, gente, chat | nuevo |
 | M · T · H | minimapa · chat · ficha de la haza donde estás | M y H iguales; T como en UX.md |
+| **P** (paseando) | saca o quita la **lámina de la previsión** en el mundo ([§4.11](#411-el-tiempo-en-un-mundo-3d-de-la-ventana-a-la-lámina)); en vista aérea, un aviso | nuevo |
 | F · F1 | pantalla completa · ayuda | nuevo |
 | **Esc** | cierra lo último abierto (menú desplegable → ficha → ventana → recorrido); si no hay nada, **abre el menú** | hoy sale del paseo y de la pantalla completa |
 | ← → (con el recorrido abierto, en vista aérea) | escena anterior / siguiente | igual |
@@ -252,6 +253,21 @@ Las etiquetas **no** se pueden apagar en Configuración.
 - **Contraste**: el HUD y las ventanas usan «cristal oscuro» (fondo ≈ 80–94 % opaco con desenfoque) y texto claro: se lee igual sobre cielo claro que sobre el olivar; alto contraste opcional (fondo negro opaco y bordes blancos).
 - **Movimiento**: `prefers-reduced-motion` y el ajuste propio (sistema / reducido / normal) quitan animaciones del HUD y cambian la bajada volando por un fundido.
 - **Arrastrar tiene alternativa sin arrastrar** (WCAG 2.5.7): el chat y el minimapa se mueven con las flechas desde su agarre y con «⋯ Llevar a…» (cuatro esquinas o su sitio de partida).
+
+### 4.11 El tiempo en un mundo 3D: de la ventana a la lámina
+
+**Revisión (2026-10-30, leído del código).** En pantalla, el tiempo se cuenta tres veces: el **mundo** lo simula (nubes, lluvia, viento en las copas: `15_tiempo.js`), la **chapita** del HUD (`#tIns`) lo resume en una línea con una flecha de hacia dónde sopla, y la **ventana Tiempo** (3) trae las tarjetas de la estación (*medido*) y de la previsión (*modelado*). En VR solo queda el mundo: la chapita y la ventana son HTML y **no se ven en las gafas**, y el panel no tenía nada del tiempo; no había forma de leer la previsión con el casco puesto. Además, de paso: la flecha de la chapita gira con `orb.az` también al pasear (con el paseo manda `pp.ang`), y el gráfico de la ventana pinta `dentroDeUmbrales` (lo lleva el otro trabajo de `/api/tiempo`).
+
+**Propuesta.** Lo que en pantalla es una ventana, en el mundo es un **objeto del mundo**: una **lámina** que se saca cuando se pide, se planta delante a la altura de los ojos y se queda **anclada al sitio** (no pegada a la cabeza, que marea y tapa), girándose despacio hacia quien la mira, como un cartel de campo; se lee de pie a 1-2 m y se deja atrás al irse (a más de 40 m en VR o 60 m en pantalla se cierra y se libera). Cuenta lo mismo que la ventana pero en **tarjetas grandes** y sin gráficos finos: **Ahora** (temperatura, humedad y lluvia *medidas* en la estación, con «estación a X km, hace N min»; cielo y viento de la previsión, porque el anemómetro está descartado por Vigía) y las **próximas horas** por bloques de 3 h hoy y por días después (*modelado*: «por finca, rejilla de ~5 km»), cada una con el cielo **dibujado** (sin emoji: sale igual en las Quest), la temperatura, la probabilidad y los mm de lluvia y el viento con una **flecha que apunta de dónde viene, orientada en el mundo** (arriba en la lámina = hacia donde miras a través de ella; por eso la lámina sabe hacia dónde está girada y redibuja las flechas al cambiar 15°). La honestidad va en la propia lámina: *medido* / *modelado*, y con datos simulados un rótulo ámbar «SIMULADO · no es el tiempo real». **Nada de umbrales ni de «se puede tratar»**: la lámina no lo cuenta (regla 1 de Vigía). En VR el resumen grande vive en la pestaña **Mundo** del panel (el tiempo es cómo está el mundo, como la hora y la fecha; se ve nada más entrar; y una cuarta pestaña estrecharía las tres de 1 m) con **«Ver previsión»** (444 × 72 px, 7 cm de alto), que saca la lámina y cierra el panel para verla (Y lo vuelve a abrir); en pantalla, **P** paseando, o el evento `gemelo:prevision-mundo` si la ventana Tiempo quiere ofrecer un botón.
+
+| | Lo que hay (`35_fichas_tiempo.js`, `29_vr.js`) |
+|---|---|
+| Datos | `TiempoVivo.lee()` cuando el motor lo exponga; si no, un respaldo **simulado** con la misma forma (ningún valor de la explotación) |
+| Lámina | 1,3 × 0,89 m, canvas de 1.024 × 704 (788 px/m): letra mínima 24 px (3 cm de cuerpo), cifras de 36-84 px; a 1,4 m en VR y 2,4 m en pantalla; gira a lo sumo 60°/s y solo si se ha desviado más de 8° |
+| Presupuesto | **1 malla** (1 llamada de dibujo) y **1 textura** de 2,9 MB sin mipmaps; se crea al abrir y se libera entera al cerrar; el canvas se repinta solo si cambia lo que se ve (datos, el minuto de «hace», la hora del bloque o 15° de rumbo) |
+| Pruebas | `pruebas/guardianes/fichas_tiempo.test.js`: maqueta, iconos, flecha, firma y liberar en Node; en el navegador, P en escritorio (llamadas y texturas) y, con `GEMELO_VR=1`, «Ver previsión» en la VR simulada |
+
+**No probado:** nada en unas Quest ni en un móvil: si se lee a 1-2 m, si el giro de la lámina incomoda, si la flecha «arriba = hacia donde miras» se entiende sin explicarla, ni cuánto cuesta subir la textura en el casco.
 
 ## 5. Antes → después, elemento por elemento
 

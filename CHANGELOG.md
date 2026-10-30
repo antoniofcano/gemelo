@@ -5,6 +5,9 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- api: la vida de las hazas antes del VPS (V3, migración 0004): olivos con id congelado, el titular nombra los olivos de su haza y les cuelga una foto o pintura (re-codificada sin EXIF ni GPS), cualquier hogar lo ve y lo denuncia, y la oficina lo retira en un clic desde su bandeja; tablas de diario, avisos, lotes de aceite y eventos con inscripción (sin pantallas todavía).
+- Previsión del tiempo como lámina en el mundo (`35_fichas_tiempo.js`): en VR, el tiempo en la pestaña Mundo del panel con «Ver previsión»; paseando, la tecla P. «Ahora» medido y próximas horas y días modelado, cielo dibujado y viento orientado en el mundo; 1 llamada y 1 textura que se liberan al cerrar. Con datos simulados hasta que esté `/api/tiempo`. No probado en Quest.
+- Iconos de la aplicación en PNG (192, 512, maskable 512 y apple-touch-icon 180), generados con `sharp` desde `icono.svg` (`npm run iconos` en `apps/web`) y enlazados en el manifiesto y la plantilla; provisionales hasta la marca (decisiones 44 y 98). Sin probar la instalación en iPhone ni Android.
 - La página de la finca es el visor a toda la ventana; la cabecera y el pie pasan al menú (☰ o Esc: Configuración, Créditos y fuentes, Acerca de la finca) y abajo queda una línea de atribución (U1, decisión 83).
 - HUD de juego: brújula que gira, selector Vista aérea / A pie / Quad / Dron, chip del tiempo, barra de iconos y avisos (U2).
 - Ventanas una a la vez: Mapa y parcelas, Capas con su procedencia, Tiempo con pestañas y una sola fecha del campo, Historia con tarjeta de recorrido, Gente y Ayuda; se quitan «+6 h», «Mañana a las 12:00» y los duplicados (U3, decisiones 87-89).

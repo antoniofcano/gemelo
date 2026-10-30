@@ -8,3 +8,4 @@
 !apps/api/migraciones/**
 !contratos/haza.schema.json
 !contratos/tiempo.schema.json
+!contratos/olivos-haza.schema.json

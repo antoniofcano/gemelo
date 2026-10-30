@@ -18,12 +18,11 @@ Mapa de iniciativas con su estado y el ADR que las sostiene. **No** es el estado
 | # | Iniciativa | Estado | Detalle |
 |---|---|---|---|
 | M1 | Suelo abierto con detalle de ortofoto | ✅ | ADR-0007 (Aceptado): el suelo nuevo sustituye al anterior |
-| M2 | Suelo realista en la rama de producción | ✅ | integrado en `apps/web/motor/` el 2026-10-28 (04_terreno, 21_suelo); falta medir presupuesto con datos reales |
-| M3 | Fundido entre niveles de olivos (dither/histéresis) | ⬜ | hoy hay «salto» al cambiar de nivel |
-| M4 | LRU fina de ortofotos decodificadas | ⬜ | hoy solo se sueltan a 900 m |
+| M2 | Suelo realista en la rama de producción | ✅ | integrado el 2026-10-28; desde T8 el suelo se sombrea sobre el tileset (`04d_sombreado_tiles.js`); falta medir presupuesto con datos reales |
+| M3 | Fundido entre niveles de olivos (dither/histéresis) | 🟡 | resuelto en la escalera por O9c (banda de ± 1,5 m e histéresis, decisión 82); el sistema viejo L0/L1/L2 sin bandera sigue con salto y desaparece cuando la escalera pase a ser la de por defecto (tras O8d) |
+| M4 | LRU fina de ortofotos decodificadas | ⬜ en cola | cada ortofoto decodificada son ~2,4 MB y solo se suelta a 900 m; tope por aparato con LRU en `02_mundo.js` (tarea pequeña, **sonnet**), tras la puerta |
 | M5 | Rodadas del suelo a 0,25 m/px solo en teselas con caminos | ⏸️ | +~2 MB; esperar a ver si hace falta |
-| M6 | Huecos entre teselas sin datos | ⬜ | el mundo es un mosaico, no un rectángulo |
-
+| M6 | Huecos entre teselas sin datos | ⬜ en cola | suelo de fondo de pocos triángulos con el relieve `grueso` y el `mosaico` de 1 m del índice bajo las teselas, para que los huecos y bordes no se vean vacíos (1 malla, 1 llamada); va en la misma tarea que M4 (**sonnet**), tras la puerta |
 ## Datos y contenido
 
 | # | Iniciativa | Estado | Detalle |
@@ -130,10 +129,12 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | O9c | Escalones por masa visual, 3: nivel por tamaño en pantalla con fronteras desplazadas por el presupuesto y fundido por banda de metros (07ab) | O9b | media · **opus** | ✅ 2026-10-30 con O9b-0 (copa igual, decisión 81) y mipmaps de hoja: lejano −45 % → +6,5 % de cobertura, IoU 0,47 → 0,69; E2→E1 a la misma distancia delante y detrás |
 | O9d | Escalones por masa visual, 4: prueba en aparatos (paseo real, móvil, Quest) | O9c | 👤 Antonio | ⬜ |
 | O4 | Medir 10 olivos en campo con cinta (decisiones 48-49) | — | 👤 | ⬜ |
-| V3 | Base de la «vida» antes del VPS (migración 0004): ids de olivo congelados (decisión 92), personalización de árboles con registro de quién sube (91, 93, 96), denuncias y bandeja de la oficina (94), diario de la haza, avisos, trazabilidad del aceite, eventos (97); API y pruebas | — | media · **opus** | ⬜ |
+| V3 | Base de la «vida» antes del VPS (migración 0004): ids de olivo congelados (decisión 92), personalización de árboles con registro de quién sube (91, 93, 96), denuncias y bandeja de la oficina (94), diario de la haza, avisos, trazabilidad del aceite, eventos (97); API y pruebas | — | media · **opus** | ✅ 2026-10-30 en api, contratos y doc (`doc/sistema/VIDA.md`); probado con PostGIS en contenedor; falta V7 (infra de medios) y las pantallas |
+| V7 | Infra de medios: volumen y `GEMELO_MEDIOS` para la api en `infra/compose.yml` e `infra/dev`, Caddy interno y de borde con `/api/medios` hasta ~9 MB, copia de seguridad del volumen, `GEMELO_MEDIOS*` en `infra/entorno.ejemplo`; probar sharp en la imagen alpine | V3 | ligera · **sonnet**; 🔶 Docker | ⬜ en cola |
 | V4 | Panel de la oficina: dibujar hazas sobre ortofoto y copas (95), bandeja de sugerencias y denuncias con retirada en un clic, pasar una sugerencia a OlivarTrack como propuesta | V3 | media · **opus**; 👤 la oficina | ⬜ |
 | V5 | En el mundo: nombrar un árbol y colgarle una foto o una pintura (solo el titular), verlo los demás, denunciar | V3 | media · **sonnet**; 🔶 | ⬜ |
-| V6 | Icono PNG de la aplicación generado desde el SVG y excepción en el guardián (98) | — | ligera · **sonnet** | ⬜ |
+| V6 | Icono PNG de la aplicación generado desde el SVG y excepción en el guardián (98) | — | ligera · **sonnet** | ✅ 2026-10-30: 4 PNG desde el SVG con sharp; falta probar la instalación en aparatos |
+| I6 | VR: modelo real del mando y manos articuladas (`XRControllerModelFactory`, `XRHandModelFactory`) con los perfiles de `@webxr-input-profiles/assets` servidos desde nuestro origen (hoy se ven dos cubos); módulo `36_mandos.js` | — | media · **opus**; 🔶 VR simulada; 👤 Quest | ⬜ en cola (2026-10-30: equipo saturado) |
 | V1 | VPS: preparar el despliegue (RUNBOOK-VPS al día, SMTP de OVH, token de OlivarTrack, comprobaciones previas) | — | ligera (documentos y guiones) | ✅ (8 preguntas a Antonio en DECISIONS-PENDING) |
 | V2 | VPS: desplegar F1a | A5, A6, V1 (decisión 21) | 👤 confirma cada paso | ⬜ |
 | G1 | Arreglar la facturación de GitHub para que corra el CI | — | 👤 | ⬜ |

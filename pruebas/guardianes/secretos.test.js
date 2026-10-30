@@ -38,11 +38,16 @@ test("sin ficheros de datos, credenciales ni binarios pesados", () => {
 // con su licencia al lado; ni ortofotos ni datos de la explotación. Solo esos tres nombres y hasta 160 KB cada una.
 const TEXTURAS_OLIVO = ["apps/web/olivo/texturas/corteza.jpg", "apps/web/olivo/texturas/musgo.jpg", "apps/web/olivo/texturas/muerta.jpg"];
 
+// Excepción acotada (decisión 98): los iconos de la aplicación (manifiesto web y apple-touch-icon), PNG generados con sharp desde
+// apps/web/public/icono.svg por apps/web/herramientas/iconos.mjs. Icono provisional hasta la marca (decisión 44); nada más en public/.
+const ICONOS_APP = /^apps\/web\/public\/icono-[a-z0-9-]+\.png$/;
+
 test("sólo hay imágenes del fixture sintético (ninguna ortofoto real) y las texturas de campo del olivo", () => {
   const img = TODOS.filter(f => /\.(jpe?g|png|webp|gif)$/i.test(f));
-  assert.deepStrictEqual(img.filter(f => !f.startsWith("pruebas/fixture/") && !TEXTURAS_OLIVO.includes(f)), [], "imágenes fuera de pruebas/fixture/: ¿ortofotos reales?");
+  assert.deepStrictEqual(img.filter(f => !f.startsWith("pruebas/fixture/") && !TEXTURAS_OLIVO.includes(f) && !ICONOS_APP.test(f)), [], "imágenes fuera de pruebas/fixture/: ¿ortofotos reales?");
   img.filter(f => TEXTURAS_OLIVO.includes(f)).forEach(f => assert.ok(fs.statSync(path.join(RAIZ, f)).size <= 160 * 1024, f + ": una textura del olivo no debe pasar de 160 KB"));
   if (img.some(f => TEXTURAS_OLIVO.includes(f))) assert.ok(fs.existsSync(path.join(RAIZ, "apps", "web", "olivo", "texturas", "LICENCIA.txt")), "las texturas del olivo van con su LICENCIA.txt");
+  img.filter(f => ICONOS_APP.test(f)).forEach(f => assert.ok(fs.statSync(path.join(RAIZ, f)).size <= 30 * 1024, f + ": un icono no debe pasar de 30 KB"));
   img.filter(f => f.startsWith("pruebas/fixture/")).forEach(f => assert.ok(fs.statSync(path.join(RAIZ, f)).size < 20 * 1024, f + ": una imagen del fixture no debe pasar de 20 KB"));
 });
 

@@ -18,6 +18,10 @@ declare module "fastify" {
     aliasVisible?: boolean;
     /** versión de las normas que aceptó el hogar (null: aún no; primer acceso, contratos/sesion.md) */
     normasVersion?: number | null;
+    /** de dónde nació (decisión 96): «enlace» = el adulto titular con el enlace mágico; «vinculo» = un aparato vinculado */
+    origen?: "enlace" | "vinculo";
+    /** id de la fila en `sesiones` (para apuntar desde qué sesión se subió algo); falta en la petición que la crea */
+    idBd?: number;
   }
 }
 
@@ -43,8 +47,8 @@ export class AlmacenPg implements SessionStore {
   }
 
   private async lee(id: string): Promise<Session | null> {
-    const r = await this.bd.query<{ sid: number; hogar_id: number; rol: Rol; alias: string | null; alias_visible: boolean; normas_version: number | null; expira_en: Date; refrescar: boolean }>(
-      `SELECT s.id AS sid, h.id AS hogar_id, h.rol, h.alias, h.alias_visible, h.normas_version, s.expira_en,
+    const r = await this.bd.query<{ sid: number; hogar_id: number; rol: Rol; alias: string | null; alias_visible: boolean; normas_version: number | null; origen: "enlace" | "vinculo"; expira_en: Date; refrescar: boolean }>(
+      `SELECT s.id AS sid, s.origen, h.id AS hogar_id, h.rol, h.alias, h.alias_visible, h.normas_version, s.expira_en,
               s.ultima_actividad_en < now() - interval '5 minutes' AS refrescar
          FROM sesiones s JOIN hogares h ON h.id = s.hogar_id
         WHERE s.hash = $1 AND s.revocada_en IS NULL AND s.expira_en > now() AND h.activo
@@ -53,15 +57,15 @@ export class AlmacenPg implements SessionStore {
     if (!f) return null;
     if (f.refrescar) await this.bd.query("UPDATE sesiones SET ultima_actividad_en = now() WHERE id = $1", [f.sid]);
     // la cookie se reconstruye con la caducidad absoluta guardada (no se alarga al usarla)
-    return { hogarId: f.hogar_id, rol: f.rol, alias: f.alias, aliasVisible: f.alias_visible, normasVersion: f.normas_version, cookie: { expires: f.expira_en } } as unknown as Session;
+    return { hogarId: f.hogar_id, rol: f.rol, alias: f.alias, aliasVisible: f.alias_visible, normasVersion: f.normas_version, origen: f.origen, idBd: f.sid, cookie: { expires: f.expira_en } } as unknown as Session;
   }
 
   private async guarda(id: string, s: Session): Promise<void> {
     if (typeof s.hogarId !== "number") return;
     const expira = s.cookie?.expires instanceof Date ? s.cookie.expires : new Date(Date.now() + 86_400_000);
     await this.bd.query(
-      `INSERT INTO sesiones (hogar_id, hash, expira_en) VALUES ($1, $2, $3)
+      `INSERT INTO sesiones (hogar_id, hash, expira_en, origen) VALUES ($1, $2, $3, $4)
        ON CONFLICT (hash) DO UPDATE SET ultima_actividad_en = now() WHERE sesiones.revocada_en IS NULL`,
-      [s.hogarId, hashToken(id), expira]);
+      [s.hogarId, hashToken(id), expira, s.origen === "vinculo" ? "vinculo" : "enlace"]);
   }
 }
