@@ -168,6 +168,7 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | C9a | **«Cae la cosecha»** en pantalla: anfitrión de juegos (pausa el mundo, juego a pantalla completa, récord) y el juego: piezas del olivar que caen y se rompen al juntar 3+ iguales; teclado, ratón y táctil; récord de la familia en la api (decisiones 125, 136) | C2, C6 | media · **opus**; 🔶 banco al final | ✅ 2026-10-30; medido por el banco (0 renders con el juego abierto); sin probar en aparatos |
 | C9b | «Cae la cosecha» en VR, como lámina en el mundo con los mandos | C8, C9a | media · **sonnet** | ✅ 2026-10-30; no probado en Quest |
 | C9c | Clasificación de «Cae la cosecha» por alias entre familias (decisión 137): ruta de la api, pantalla de fin de partida y ventana Juegos | C9a | ligera · **sonnet** | ⬜ |
+| PB1 | Pruebas de navegador más baratas: medir cuánto tarda hoy cada una (ranking) y, en las que no son de presupuesto, ventana a la mitad con la misma forma (450×325) y solo el escenario que necesitan; antes y después medidos. Las de presupuesto no cambian | — | media · **sonnet** · 🔶 | ⬜ |
 | C10 | Migración del resto de módulos a componentes, al tocarlos | C1-C3 | goteo · **sonnet** | ⬜ |
 | C11 | Medida por componente («con y sin» por el banco) | C1 | ligera · **sonnet**; 🔶 | ⬜ |
 | C12 | (Condicional) servidor de estado de juego | decisión de Antonio | —  | ⏸️ no por ahora (decisión 120) |

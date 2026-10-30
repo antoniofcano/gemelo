@@ -68,6 +68,8 @@ Requisito de Antonio (2026-10-30): la cola **nunca se queda parada** y **nunca d
    - **haiku**: recuentos, búsquedas y comprobaciones sencillas sin escribir código de producto.
    - **fable**: permitido por Antonio (2026-10-30) cuando haga falta, para lo que opus no resuelve bien o lo excepcionalmente difícil; se dice en el encargo por qué se elige.
    - En la duda, el modelo más barato que pueda hacerlo bien; si un agente de sonnet se atasca o la tarea resulta más delicada de lo previsto, se relanza con opus. El tablero de PLAN lleva el modelo de cada tarea («Enrutador de modelo»).
+10. **Cada agente pasa solo sus pruebas** (Antonio, 2026-10-30): las de Node que quiera y, de navegador, **solo las que tocan su cambio** (las nuevas y las que comprueban lo que modificó), una a una por el banco. Ni la puerta completa ni tandas grandes de Chrome: la puerta entera la pasa **solo quien coordina**, una vez por tanda, antes de subir `main`. El encargo dice qué pruebas de navegador le tocan. Motivo: una tanda grande tiene el banco 10–30 min y los demás esperan; una prueba suelta, unos minutos.
+11. **Como mucho dos agentes pesados a la vez** (Antonio, 2026-10-30): en una misma tanda no corren más de dos agentes que necesiten Chrome, Docker o Blender; el resto de huecos se llenan con tareas ligeras. Motivo: el banco solo deja un Chrome, así que un tercero solo espera en fila ocupando memoria.
 
 ## Pruebas de navegador (`pruebas/`)
 | Script | Para qué |
