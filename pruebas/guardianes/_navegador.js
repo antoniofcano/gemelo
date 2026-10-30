@@ -33,6 +33,8 @@ const ESCENARIOS_BORDE = {
 // Ventanas de las pruebas de navegador (PB1). VENTANA es la de siempre (900×650): la que usan las de PRESUPUESTO (carga, escena3d, olivo…), que no cambian.
 // VENTANA_CHICA es la mitad con la misma proporción (450×325): para las que comprueban lógica o estado y no recuentos de dibujo; SwiftShader pinta por CPU y cuesta ~ por píxel.
 const VENTANA = { width: 900, height: 650 }, VENTANA_CHICA = { width: 450, height: 325 };
+// GEMELO_VENTANA=grande|chica fuerza la ventana de las pruebas que usan ventanaDe() (para medir con las dos que sus recuentos no dependen de ella, PB2)
+const ventanaDe = porDefecto => process.env.GEMELO_VENTANA === "grande" ? VENTANA : process.env.GEMELO_VENTANA === "chica" ? VENTANA_CHICA : porDefecto;
 const TODOS_ESCENARIOS = Object.assign({}, ESCENARIOS, ESCENARIOS_PASEO, ESCENARIOS_BORDE);
 
 // La CSP de las pruebas es la de infra/Caddyfile (pacto de T8 fase 2, §4), en el mismo modo que la manda el Caddy de producción: solo informe
@@ -160,4 +162,4 @@ async function mide(navegador, url, { escenarios = ESCENARIOS, tope = TOPE_MEDID
   return { errores, fallos, medidas, parcial, csp };
 }
 
-module.exports = { VENTANA, VENTANA_CHICA, ESCENARIOS, ESCENARIOS_PASEO, TODOS_ESCENARIOS, ARGS_CHROME, CSP, esCsp, sirve, motivoSalto, lanza, mide, desgloseLlamadas };
+module.exports = { VENTANA, VENTANA_CHICA, ventanaDe, ESCENARIOS, ESCENARIOS_PASEO, TODOS_ESCENARIOS, ARGS_CHROME, CSP, esCsp, sirve, motivoSalto, lanza, mide, desgloseLlamadas };

@@ -32,6 +32,9 @@ async function entra(p) {
   await p.evaluate(() => document.getElementById("btnPaseo").click());   // paseo: aparece la cruceta
   await p.waitForFunction(() => document.getElementById("visor").classList.contains("paseo"), null, { timeout: 30000 });
   await p.waitForFunction(() => { const c = document.getElementById("presenciaGente"); return c && !c.hidden && c.getBoundingClientRect().width > 0; }, null, { timeout: 30000 });
+  // Lo que se comprueba es maquetación y arrastre del DOM (CSS px): con la escena montada y el paseo puesto, el dibujo 3D no hace falta y SwiftShader lo paga por
+  // fotograma (medido en PB2: cada gesto espera varios fotogramas; cargar la página cuesta ~3,5 s y el resto de los ~110 s por orientación son esos gestos)
+  await p.evaluate(() => { window.__g.renderer.render = function () {}; });
   await p.evaluate(() => document.getElementById("visor").scrollIntoView({ block: "start" }));
   await p.waitForTimeout(400);
 }

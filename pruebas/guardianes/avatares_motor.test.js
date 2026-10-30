@@ -199,7 +199,7 @@ test("varias personas con el mismo avatar: dos análisis del mismo búfer dan la
 });
 
 // ---------------------------------------------------------------- en Chrome (SwiftShader: recuentos y memoria, no fps), con dos VRM sintéticos de la tubería
-const { sirve, motivoSalto, lanza } = require("./_navegador");
+const { sirve, motivoSalto, lanza, VENTANA_CHICA, ventanaDe } = require("./_navegador");
 const { propia } = require("./_util");
 const { montaPagina, saltoPagina } = require("./_pagina");
 const crypto = require("crypto");
@@ -224,7 +224,7 @@ test.after(async () => { if (nav) await nav.close(); if (srv) srv.forEach(s => s
 
 // abre, deja la cámara en órbita baja a 14 m del punto de partida (donde pasea la mitad de los simulados) y espera a que el reparto se asiente
 async function abre(url, consulta, espera) {
-  const p = await nav.newPage({ viewport: { width: 900, height: 650 } }), errores = [];
+  const p = await nav.newPage({ viewport: ventanaDe(VENTANA_CHICA) }), errores = [];
   p.on("pageerror", e => errores.push("PAGEERROR " + String(e.stack || e).slice(0, 400)));
   p.on("console", m => { if (m.type() === "error" && !/404|Failed to load resource/.test(m.text())) errores.push("CONSOLE " + m.text().slice(0, 300)); });
   await p.goto(url + "?debug" + consulta);
