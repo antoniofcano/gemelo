@@ -4,8 +4,10 @@ import type { Contexto } from "../contexto.ts";
 import { huella, PATRON_TOKEN } from "../seguridad/cripto.ts";
 import { mensajeDeEnlace } from "./correo.ts";
 import { paginaEnlaceMalo, paginaEntrar, POLITICA_REFERENTE } from "./paginas.ts";
+import { aparatoPendiente } from "../oficina/acceso.ts";
+import { aparatoAlEntrar, COOKIE_APARATO, OPCIONES_COOKIE_APARATO } from "../oficina/aparatos.ts";
 import { requiereSesion } from "./roles.ts";
-import { audita, consumeEnlace, creaEnlace, estadoEnlace, normalizaCorreo, primerAcceso, revocaTodas } from "./servicio.ts";
+import { audita, consumeEnlace, creaEnlace, esOficina, estadoEnlace, normalizaCorreo, primerAcceso, revocaTodas } from "./servicio.ts";
 import { creaCodigo, SONDEO_S, sondea } from "./vinculo.ts";
 
 export const NOMBRE_COOKIE = "__Host-gemelo";
@@ -16,6 +18,9 @@ export const TEXTO_LIMITE_VINCULO = "Demasiados intentos seguidos. Por seguridad
 /** Adónde va quien acaba de entrar: la primera vez (o si cambiaron las normas), al primer acceso de la portada; si no, al mundo. */
 export const DESTINO_PRIMER_ACCESO = "/#bienvenida";
 export const DESTINO_MUNDO = "/finca/";
+/** Adónde va una cuenta de oficina (ADR-0024): a la oficina si el aparato está aprobado; si no, a la página de «aparato pendiente». */
+export const DESTINO_OFICINA = "/oficina/";
+export const DESTINO_APARATO_PENDIENTE = "/api/oficina/pendiente";
 
 const NO_GUARDAR = "no-store";
 
@@ -77,10 +82,22 @@ export async function rutasAuth(app: FastifyInstance, ctx: Contexto): Promise<vo
     if (req.validationError) return malo(rep, html, "no_valido");
     const r = await consumeEnlace(bd, req.body.t);
     if (!r.ok) return malo(rep, html, r.motivo);
+    // cuenta de oficina: el aparato (cookie aparte) decide si la sesión sirve ya o queda pendiente de aprobar (ADR-0024)
+    const aparato = esOficina(r.rol)
+      ? await aparatoAlEntrar(bd, r.hogarId, req.cookies[COOKIE_APARATO], req.headers["user-agent"], config.oficina.minSegundoEnlace)
+      : null;
     // rotación: la sesión que trajera el navegador se destruye y nace otra con id nuevo (contra la fijación de sesión)
     await req.session.regenerate();
     req.session.hogarId = r.hogarId;
     req.session.origen = "enlace";
+    if (aparato) {
+      req.session.aparatoId = aparato.id;
+      req.session.confirmadaEn = new Date();
+      req.session.cookie.maxAge = config.oficina.horasSesion * 3_600_000;   // 12 h, no 30 días
+      if (aparato.secretoNuevo) rep.setCookie(COOKIE_APARATO, aparato.secretoNuevo, OPCIONES_COOKIE_APARATO);
+      return html ? rep.code(303).header("location", aparato.estado === "aprobado" ? DESTINO_OFICINA : DESTINO_APARATO_PENDIENTE).send()
+        : rep.send({ ok: true, primer_acceso: false, aparato: aparato.estado });
+    }
     return html ? rep.code(303).header("location", r.primerAcceso ? DESTINO_PRIMER_ACCESO : DESTINO_MUNDO).send()
       : rep.send({ ok: true, primer_acceso: r.primerAcceso });
   });
@@ -130,11 +147,18 @@ export async function rutasAuth(app: FastifyInstance, ctx: Contexto): Promise<vo
   });
 
   // Para el forward_auth del Caddy interno: sin sesión, nada fuera de la portada (decisión 16). Caddy no lo expone fuera.
-  app.get("/api/interno/autoriza", async (req, rep) => {
+  // `?para=oficina` (lo pone el Caddy en /oficina/): además, rol oficina o admin (ADR-0024); con sesión de hogar, 403.
+  // Una cuenta de oficina con el aparato pendiente no pasa a ningún sitio: navegando, a la página que lo explica.
+  app.get<{ Querystring: { para?: "oficina" } }>("/api/interno/autoriza", {
+    schema: { querystring: { type: "object", additionalProperties: false, properties: { para: { type: "string", enum: ["oficina"] } } } },
+  }, async (req, rep) => {
     rep.header("cache-control", NO_GUARDAR);
-    if (typeof req.session?.hogarId === "number") return rep.code(204).send();
+    const navega = req.headers["sec-fetch-mode"] === "navigate";
     // una navegación (abrir /finca/ sin sesión) va a la portada; una carga (teselas, fetch) recibe 401
-    return req.headers["sec-fetch-mode"] === "navigate" ? rep.code(303).header("location", "/").send() : rep.code(401).send();
+    if (typeof req.session?.hogarId !== "number") return navega ? rep.code(303).header("location", "/").send() : rep.code(401).send();
+    if (aparatoPendiente(req.session)) return navega ? rep.code(303).header("location", DESTINO_APARATO_PENDIENTE).send() : rep.code(403).send();
+    if (req.query.para === "oficina" && !esOficina(req.session.rol)) return rep.code(403).send();
+    return rep.code(204).send();
   });
 }
 

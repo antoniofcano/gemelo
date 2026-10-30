@@ -9,7 +9,8 @@
     "build": "node herramientas/genera_motor.mjs && vite build",
     "dev": "node herramientas/genera_motor.mjs && vite",
     "iconos": "node herramientas/iconos.mjs",
-    "build:portada": "vite build --config vite.portada.config.js"
+    "build:portada": "vite build --config vite.portada.config.js",
+    "build:oficina": "vite build --config vite.oficina.config.js"
   },
   "dependencies": {
     "@pixiv/three-vrm": "3.5.5",

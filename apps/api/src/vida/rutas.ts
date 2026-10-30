@@ -11,7 +11,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { requiereRol, requiereSesion } from "../auth/roles.ts";
-import { audita } from "../auth/servicio.ts";
+import { audita, esOficina } from "../auth/servicio.ts";
 import { enTransaccion } from "../bd/pool.ts";
 import type { Contexto } from "../contexto.ts";
 import { esquemaContrato } from "../hazas/rutas.ts";
@@ -98,7 +98,7 @@ export async function rutasVida(app: FastifyInstance, ctx: Contexto): Promise<vo
            OR EXISTS (SELECT 1 FROM personalizaciones p JOIN hazas h ON h.id = p.haza_id
                        WHERE p.medio_id = m.id AND p.estado = 'visible' AND p.hogar_id = h.hogar_id)
            OR EXISTS (SELECT 1 FROM diario_haza d WHERE d.medio_id = m.id AND d.visible))`,
-      [req.params.clave, req.session.hogarId, req.session.rol === "admin"]);
+      [req.params.clave, req.session.hogarId, esOficina(req.session.rol)]);
     const f = r.rows[0];
     if (!f) return rep.code(404).send({ error: "no_existe" });
     let datos: Buffer;
@@ -274,7 +274,7 @@ export async function rutasVida(app: FastifyInstance, ctx: Contexto): Promise<vo
   });
 
   // ---------------------------------------------------------------- la oficina
-  const soloAdmin = requiereRol("admin");
+  const soloAdmin = requiereRol("oficina", "admin");
   const ESTADOS = ["nueva", "vista", "pasada_ot", "descartada"] as const;
 
   app.get<{ Querystring: { estado?: (typeof ESTADOS)[number]; limite?: number } }>("/api/admin/bandeja", {

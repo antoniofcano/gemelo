@@ -1,0 +1,16 @@
+/* La oficina, OF1: página mínima. Escritorio (decisión 116: solo ordenador); zonas de toque ≥ 44 px y foco visible igualmente. */
+:root { --fondo: #f6f4ee; --texto: #1f2a1c; --oliva: #556b2f; --borde: #c9c3b3; color-scheme: light dark; }
+@media (prefers-color-scheme: dark) { :root { --fondo: #171a14; --texto: #e8e6de; --oliva: #9bb36a; --borde: #3a4032; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--fondo); color: var(--texto); font: 16px/1.5 system-ui, sans-serif; }
+.barra { display: flex; gap: 12px; align-items: center; padding: 12px 24px; border-bottom: 1px solid var(--borde); }
+.barra h1 { font-size: 1.25rem; margin: 0 auto 0 0; color: var(--oliva); }
+.caja { max-width: 720px; margin: 0 auto; padding: 24px; }
+.btn { display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border: 1px solid var(--oliva); border-radius: 8px;
+  background: transparent; color: var(--texto); font: inherit; text-decoration: none; cursor: pointer; }
+.btn-txt { border-color: transparent; }
+:focus-visible { outline: 3px solid var(--oliva); outline-offset: 2px; }
+dl { display: grid; grid-template-columns: max-content 1fr; gap: 8px 16px; }
+dt { font-weight: 600; }
+dd { margin: 0; }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

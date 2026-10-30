@@ -80,6 +80,8 @@ async function entra(correo: string, cookiePrevia?: string): Promise<string> {
   assert.equal(r.statusCode, 303, r.body);
   const c = cookieDe(r);
   assert.ok(c);
+  // la cuenta de oficina entra desde un aparato nuevo (pendiente, ADR-0024): se aprueba desde la consola, como el arranque del RUNBOOK
+  if (correo === ADMIN) await bd.dueno.query("UPDATE aparatos_oficina SET aprobado_en = now(), aprobado_como = 'consola' WHERE aprobado_en IS NULL AND hogar_id = $1", [ids[ADMIN]]);
   return c;
 }
 const get = (url: string, cookie?: string) => app.inject({ method: "GET", url, headers: deLaWeb(cookie ? { cookie: "__Host-gemelo=" + cookie } : {}) });
