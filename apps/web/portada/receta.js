@@ -75,7 +75,7 @@ export function azar(e, v2, rnd = Math.random) {
 /** Puntos de partida («Empieza por algo parecido»): descritos por lo que se ve, sin género ni parentesco (C9). Solo los que el catálogo puede hacer */
 const PARECIDOS = [
   ["Persona mayor, pelo canoso y sombrero, con bastón", { edad: "mayor", complexion: "media", pelo: "pelo-corto", peloColor: 6, vello: null, ropa: "ropa-faena", arriba: 7, abajo: 2, sombrero: "paja", movilidad: "baston" }],
-  ["Persona adulta, ropa de faena y gorra", { edad: "adulta", complexion: "ancha", pelo: "pelo-rapado", peloColor: 0, vello: "vello-bigote", ropa: "ropa-faena", arriba: 0, abajo: 1, sombrero: "gorra", movilidad: "pie" }],
+  ["Persona adulta, ropa de faena y gorra", { edad: "adulta", complexion: "ancha", pelo: "pelo-rapado", peloColor: 0, vello: null, ropa: "ropa-faena", arriba: 0, abajo: 1, sombrero: "gorra", movilidad: "pie" }],
   ["Persona joven, pelo largo y camiseta", { edad: "joven", complexion: "media", pelo: "pelo-largo", peloColor: 1, vello: null, ropa: null, arriba: 4, abajo: 5, sombrero: "ninguno", movilidad: "pie" }],
   ["Persona mayor, moño blanco y andador", { edad: "mayor", complexion: "ancha", pelo: "pelo-recogido", peloColor: 7, vello: null, ropa: "ropa-faena", arriba: 9, abajo: 8, sombrero: "ninguno", movilidad: "andador" }],
   ["Persona adulta en silla de ruedas, pelo afro", { edad: "adulta", complexion: "media", pelo: "pelo-afro", peloColor: 0, vello: null, ropa: null, arriba: 3, abajo: 1, sombrero: "ninguno", movilidad: "silla" }],
