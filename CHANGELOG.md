@@ -4,9 +4,6 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 
 ## [No publicado]
 
-### Corregido
-- Tras la tanda del 2026-10-30: la api arranca en Docker (faltaba `tiempo-historico.schema.json` en la imagen, con guardián nuevo); `/finca/?debug` ya no da 400 tras el Caddy; la oficina vuelve a abrir (OF13 la dejaba en «Cargando…»); migración 0015: ya se pueden dar de alta llaves de la oficina (la 0013 rompía cualquier inserción); la exportación RGPD de la oficina incluye las partidas de juegos. Pruebas al día con AV4, U2, OF1/OF13 y `titular`; dos comprobaciones que no miraban nada (un U+0008 en vez de ``) arregladas; la carga de presencia en la puerta pasa a 20 clientes (40 se mide aparte).
-
 ### Añadido
 - Oficina (OF3d): el aviso de solape de las hazas mide el área de la intersección (> 0,5 m², igual que el servidor) con `polygon-clipping` 0.15.7; ahora avisa con hazas idénticas o de lindes coincidentes y es simétrico.
 - Pruebas: propiedades con `fast-check` 4.10.2 (PB7) en contratos (clasificación, config, receta de avatar), agenda (aforo y promoción de la espera), épocas (366 días) y geometría de hazas; las pruebas al azar de épocas pasan a fast-check. Encontró que el aviso de solape de la oficina (`sePisan`) no detecta hazas con lindes coincidentes (tarea OF3d; el servidor sí las rechaza).
@@ -162,6 +159,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 - `doc/ESTADO.md` reescrito como único sitio de «dónde estamos»; se retira el id y el enlace del artefacto privado (el repo es público).
 
 ### Arreglado
+- Tras la tanda del 2026-10-30: la api arranca en Docker (faltaba `tiempo-historico.schema.json` en la imagen, con guardián nuevo); `/finca/?debug` ya no da 400 tras el Caddy; la oficina vuelve a abrir (OF13 la dejaba en «Cargando…»); migración 0015: ya se pueden dar de alta llaves de la oficina (la 0013 rompía cualquier inserción); la exportación RGPD de la oficina incluye las partidas de juegos. Pruebas al día con AV4, U2, OF1/OF13 y `titular`; dos comprobaciones que no miraban nada (un U+0008 en vez de ``) arregladas; la carga de presencia en la puerta pasa a 20 clientes (40 se mide aparte).
 - Los olivos generados ya no salen crema: los colores del constructor se calibran para la luz lineal del motor (follaje × 0,3, corteza × 0,5, `CALIBRACION_LINEAL`); la causa era la luz (lineal y sin sombras), no la gestión de color (decisión 70). No cambia la forma ni la huella olivo-2.
 - Olivos generados: las olivas en puntos vuelven a recortarse por frustum (su esfera ya cubría todo); la prueba de Node del giro exigía ver mallas que no llevan piezas del árbol mirado y ahora comprueba que la esfera y la caja de cada malla del lote cubren todo lo que dibuja. El recorte no explica que desaparezcan al girar: sigue sin probar en aparato.
 - Presencia: los demás son el mismo muñeco que el paseante y andan con piernas y brazos según su velocidad; los pies van al suelo de tu mundo (antes flotaban). Siguen siendo 5 llamadas de dibujo; la pose no cambia (v1).
