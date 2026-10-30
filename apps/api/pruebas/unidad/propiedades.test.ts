@@ -175,27 +175,30 @@ test("geometría: una haza que sobresale del contorno más que la holgura no cab
   }), par(150));
 });
 
-// CONTRAEJEMPLO ENCONTRADO por la propiedad (PB7), pendiente de decisión: dos hazas iguales (o una dentro de otra con lados sobre los de la otra) NO se
-// marcan como pisadas, porque sus vértices caen sobre la linde (distancia 0 ≤ tolerancia) y sus lados son colineales (no «se cruzan»). Es solo un aviso
-// orientativo (el servidor mide el área pisada con ST_Intersection y manda), pero la oficina no avisaría de una haza duplicada. `todo`: se ejecuta y se
-// ve en el informe, pero no tumba la puerta; al arreglar `sePisan` en hazas_puro.js, quitar el `todo`.
-test("geometría: dos hazas idénticas, o una dentro de otra con lados sobre los suyos, se pisan", { todo: "sePisan no detecta lindes coincidentes (contraejemplo: dos cuadrados 2×2 iguales)" }, () => {
+// Contraejemplos de la primera versión de PB7 (arreglados en OF3d): dos hazas iguales, o una dentro de otra con lados sobre los suyos, no se marcaban
+// como pisadas, y con lindes casi coincidentes el resultado dependía del orden. Ahora `sePisan` usa la regla del servidor (área de la intersección > 0,5 m²).
+test("geometría: dos hazas idénticas, o una dentro de otra con lados sobre los suyos, se pisan; con lindes casi coincidentes es simétrico", () => {
   assert.ok(H.sePisan(rect(200_000, 4_000_000, 2, 2), rect(200_000, 4_000_000, 2, 2)));
   assert.ok(H.sePisan(rect(200_000, 4_000_000, 10, 10), rect(200_000, 4_000_002, 10, 3)));
-  // y, con lindes casi coincidentes, el resultado depende del orden (contraejemplo mínimo de la propiedad de simetría)
   const a = rect(200_000, 4_000_000, 2.05, 2), b = rect(200_000, 4_000_000, 2, 2.000000000232831);
   assert.equal(H.sePisan(a, b), H.sePisan(b, a), "simétrico");
 });
 
-test("geometría: «se pisan» es simétrico, no pisa quien está separado, y dos hazas que se solapan más de 1 m en ambos ejes (sin lados coincidentes) se pisan", () => {
+test("geometría: «se pisan» es simétrico y coincide con la regla del servidor (área de la intersección > 0,5 m²), también con lindes coincidentes", () => {
   fc.assert(fc.property(pos, lado, lado, fc.double({ min: -300, max: 300, noNaN: true }), fc.double({ min: -300, max: 300, noNaN: true }), lado, lado, (p, aw, ah, dx, dy, bw, bh) => {
     const A = rect(p.x, p.y, aw, ah), B = rect(p.x + dx, p.y + dy, bw, bh);
-    const coincide = [dx, dy, dx + bw - aw, dy + bh - ah].some(d => Math.abs(d) < 0.2);   // algún lado de B sobre uno de A: es el «todo» de arriba
-    if (!coincide) assert.equal(H.sePisan(A, B), H.sePisan(B, A), "simétrico");
-    const ox = Math.min(aw, dx + bw) - Math.max(0, dx), oy = Math.min(ah, dy + bh) - Math.max(0, dy);
-    if (ox < -0.1 || oy < -0.1) assert.ok(!H.sePisan(A, B), "separadas, no se pisan");
-    if (ox > 1 && oy > 1 && !coincide) assert.ok(H.sePisan(A, B), "solape " + ox + " × " + oy);
+    assert.equal(H.sePisan(A, B), H.sePisan(B, A), "simétrico");
+    const ox = Math.max(0, Math.min(aw, dx + bw) - Math.max(0, dx)), oy = Math.max(0, Math.min(ah, dy + bh) - Math.max(0, dy));
+    const pisada = ox * oy;   // la intersección de dos rectángulos alineados, a mano
+    if (pisada > 0.5 + 1e-3 * (ox + oy + 1)) assert.ok(H.sePisan(A, B), "solape " + ox + " × " + oy);
+    if (pisada < 0.5 - 1e-3 * (ox + oy + 1)) assert.ok(!H.sePisan(A, B), "separadas o rozándose: " + ox + " × " + oy);
   }), par(400));
+  // lindes coincidentes a propósito: una misma haza desplazada por un múltiplo exacto de su lado, o con un lado compartido
+  fc.assert(fc.property(pos, lado, lado, fc.constantFrom(-1, 0, 1), fc.constantFrom(-1, 0, 1), (p, w, h, kx, ky) => {
+    const A = rect(p.x, p.y, w, h), B = rect(p.x + kx * w, p.y + ky * h, w, h);
+    assert.equal(H.sePisan(A, B), H.sePisan(B, A));
+    assert.equal(H.sePisan(A, B), kx === 0 && ky === 0, "iguales se pisan; vecinas por un lado o una esquina, no");
+  }), par(150));
 });
 
 test("geometría: compruebaGeometria acepta un anillo cerrado en UTM 30N y rechaza el abierto, el de fuera de la caja y el que pasa de vértices", () => {
