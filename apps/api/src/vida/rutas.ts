@@ -145,14 +145,16 @@ export async function rutasVida(app: FastifyInstance, ctx: Contexto): Promise<vo
   });
 
   // ---------------------------------------------------------------- personalizar un olivo (titular, en su haza)
-  type CuerpoOlivo = { nombre: string | null; objeto: { tipo: "foto" | "pintura"; medio_id: number } | null };
+  // nombre y objeto son opcionales (P7f): lo que no viene se queda como estaba (la lista blanca no da el medio_id de la foto colgada, así que quien solo
+  // cambia el nombre no puede volver a mandarlo); null lo quita. Al menos uno de los dos.
+  type CuerpoOlivo = { nombre?: string | null; objeto?: { tipo: "foto" | "pintura"; medio_id: number } | null };
   app.put<{ Params: { finca: string; copas_id: number }; Body: CuerpoOlivo }>("/api/olivos/:finca/:copas_id", {
     preHandler: soloTitular,
     config: { rateLimit: { max: 60, timeWindow: 60_000 } },
     schema: {
       params: PARAM_OLIVO,
       body: {
-        type: "object", additionalProperties: false, required: ["nombre", "objeto"],
+        type: "object", additionalProperties: false, minProperties: 1,
         properties: {
           nombre: { type: ["string", "null"], minLength: 1, maxLength: 40 },
           objeto: { type: ["object", "null"], additionalProperties: false, required: ["tipo", "medio_id"], properties: { tipo: { type: "string", enum: ["foto", "pintura"] }, medio_id: ID } },
@@ -161,9 +163,8 @@ export async function rutasVida(app: FastifyInstance, ctx: Contexto): Promise<vo
     },
   }, async (req, rep) => {
     if (!(await pasaLimite(limEscrituras, req, rep))) return rep;
-    const nombre = req.body.nombre === null ? null : limpia(req.body.nombre);
-    if (nombre !== null && (nombre.length === 0 || nombre.length > 40 || revisaNombre(nombre))) return rep.code(400).send({ error: "nombre_no_valido", mensaje: TEXTO_NOMBRE });
-    if (nombre === null && req.body.objeto === null) return rep.code(400).send({ error: "vacio", mensaje: "Para quitarlo todo, borra la personalización." });
+    const nombreNuevo = req.body.nombre === undefined || req.body.nombre === null ? req.body.nombre : limpia(req.body.nombre);
+    if (typeof nombreNuevo === "string" && (nombreNuevo.length === 0 || nombreNuevo.length > 40 || revisaNombre(nombreNuevo))) return rep.code(400).send({ error: "nombre_no_valido", mensaje: TEXTO_NOMBRE });
     const yo = req.session.hogarId!;
     const r = await enTransaccion(bd, async c => {
       const o = (await c.query<{ id: number }>("SELECT id FROM olivos WHERE finca = $1 AND copas_id = $2 AND retirado_en IS NULL", [req.params.finca, req.params.copas_id])).rows[0];
@@ -175,8 +176,12 @@ export async function rutasVida(app: FastifyInstance, ctx: Contexto): Promise<vo
         const m = await c.query("SELECT 1 FROM medios WHERE id = $1 AND hogar_id = $2", [req.body.objeto.medio_id, yo]);
         if (!m.rowCount) return falla(400, "medio_no_valido", "Esa foto no es tuya o ya no existe.");
       }
-      const tipo = req.body.objeto?.tipo ?? null, medio = req.body.objeto?.medio_id ?? null;
-      const previa = (await c.query<{ id: number }>("SELECT id FROM personalizaciones WHERE olivo_id = $1 AND hogar_id = $2 AND estado = 'visible' FOR UPDATE", [o.id, yo])).rows[0];
+      const previa = (await c.query<{ id: number; nombre: string | null; objeto_tipo: "foto" | "pintura" | null; medio_id: number | null }>(
+        "SELECT id, nombre, objeto_tipo, medio_id FROM personalizaciones WHERE olivo_id = $1 AND hogar_id = $2 AND estado = 'visible' FOR UPDATE", [o.id, yo])).rows[0];
+      const nombre = nombreNuevo === undefined ? previa?.nombre ?? null : nombreNuevo;
+      const tipo = req.body.objeto === undefined ? previa?.objeto_tipo ?? null : req.body.objeto?.tipo ?? null;
+      const medio = req.body.objeto === undefined ? previa?.medio_id ?? null : req.body.objeto?.medio_id ?? null;
+      if (nombre === null && medio === null) return falla(400, "vacio", "Para quitarlo todo, borra la personalización.");
       let id: number;
       if (previa) {
         await c.query("UPDATE personalizaciones SET nombre = $2, objeto_tipo = $3, medio_id = $4, haza_id = $5, sesion_id = $6, actualizada_en = now() WHERE id = $1",

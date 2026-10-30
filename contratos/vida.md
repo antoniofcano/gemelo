@@ -18,7 +18,7 @@ Decisiones 91-97 ([DECISIONS-PENDING](../doc/rumbo/DECISIONS-PENDING.md)). Rutas
 | Ver los olivos personalizados de una haza | cualquier sesión | `GET /api/hazas/{id}/olivos` |
 | Ver una foto | cualquier sesión, si está colgada y visible (o es suya, o es la oficina) | `GET /api/medios/{clave}` |
 | Subir una foto o pintura | **titular**: sesión nacida del enlace mágico (`/api/sesion` → `titular: true`); unas gafas vinculadas con el código corto, no (decisión 96) | `POST /api/medios?acepto=true` |
-| Nombrar un olivo y colgarle la foto | titular, y solo en un olivo que cae dentro de una haza asignada a su hogar | `PUT /api/olivos/{finca}/{copas_id}` |
+| Nombrar un olivo y colgarle la foto | titular, y solo en un olivo que cae dentro de una haza asignada a su hogar. Cuerpo `{ nombre?, objeto? }` (al menos uno): lo omitido se queda como estaba (la lista blanca no da el `medio_id` de la foto colgada, así que quien solo cambia el nombre no puede volver a mandarlo; P7f), `null` lo quita | `PUT /api/olivos/{finca}/{copas_id}` |
 | Quitar lo suyo | titular | `DELETE /api/olivos/{finca}/{copas_id}` |
 | Denunciar | cualquier sesión, una vez por contenido | `POST /api/personalizaciones/{id}/denuncias` |
 | Sugerir a la oficina | titular, sobre su haza (y opcionalmente un olivo de ella) | `POST /api/hazas/{id}/sugerencias` |

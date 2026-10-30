@@ -73,6 +73,13 @@ test("abrir crea UNA malla y UNA textura delante de la mirada, a la altura de lo
   assert.deepStrictEqual(L.cuenta(), { abiertas: 1, cerradas: 1, pintadas: 1, vivas: 0 });
 });
 
+test("con «en» se cuelga de un sitio del mundo (P7f: la imagen de un olivo) en vez de ponerse delante de la mirada; se libera igual", () => {
+  const { L, reg } = mundo(), d = def({ en: { x: 30, y: 4, z: -10 } });
+  assert.strictEqual(L.abre(d), true); const i = L.info("l1");
+  assert.deepStrictEqual(i.pos, [30, 4, -10], "en el sitio dado, no a 2,4 m de la cabeza"); assert.strictEqual(reg.escena.size, 1, "sigue siendo UNA malla");
+  L.cierra("l1"); assert.strictEqual(reg.escena.size, 0); assert.deepStrictEqual(reg.liberadas.map(x => x.tipo).sort(), ["geometria", "material", "textura"]);
+});
+
 test("se repinta SOLO si cambia la firma (o se fuerza); sin firma, repinta(id) pinta siempre y revisa nunca", () => {
   const { L } = mundo(), d = def();
   L.abre(d); L.revisa(); L.revisa(); assert.strictEqual(d.pintadas, 1, "nada cambió");

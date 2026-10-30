@@ -105,6 +105,8 @@ test("rutas de la vida: sin Origin 403; sin sesión 401; forma mala 400 (sin toc
   for (const url of ["/api/hazas/1/olivos", "/api/medios/" + "a".repeat(32) + ".webp", "/api/admin/bandeja"]) assert.equal((await app.inject({ method: "GET", url, headers: deLaWeb() })).statusCode, 401, url);
   assert.equal((await app.inject({ method: "POST", url: "/api/medios?acepto=true", headers: deLaWeb({ "content-type": "image/png" }), payload: png })).statusCode, 401, "subir sin sesión: 401 antes de leer el cuerpo");
   assert.equal((await app.inject({ method: "PUT", url: "/api/olivos/hituelo/1", headers: deLaWeb(), payload: { nombre: "A", objeto: null, hogar_id: 3 } })).statusCode, 400, "campo de más");
+  assert.equal((await app.inject({ method: "PUT", url: "/api/olivos/hituelo/1", headers: deLaWeb(), payload: {} })).statusCode, 400, "al menos nombre u objeto");
+  assert.notEqual((await app.inject({ method: "PUT", url: "/api/olivos/hituelo/1", headers: deLaWeb(), payload: { nombre: "Solo nombre" } })).statusCode, 400, "solo el nombre vale (P7f): el objeto se queda como estaba");
   assert.equal((await app.inject({ method: "PUT", url: "/api/olivos/HITUELO/1", headers: deLaWeb(), payload: { nombre: "A", objeto: null } })).statusCode, 400, "finca con mayúsculas");
   assert.equal((await app.inject({ method: "PUT", url: "/api/olivos/hituelo/4294967296", headers: deLaWeb(), payload: { nombre: "A", objeto: null } })).statusCode, 400, "copas_id fuera de rango");
   assert.equal((await app.inject({ method: "POST", url: "/api/personalizaciones/1/denuncias", headers: deLaWeb(), payload: { motivo: "porque sí" } })).statusCode, 400);
