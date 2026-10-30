@@ -117,3 +117,4 @@ Decisiones que **no puede tomar un agente**: las cierra Antonio. Las técnicas s
 | 101 | **Base legal y texto final del aviso al subir** (versión 1 en `contratos/vida.md`) y de la política de privacidad | con asesoría | abrir a familias reales | 🟡 abierta (2026-10-30, de V3) |
 | 102 | **Las fotos de las familias en la EIPD** | EIPD única con F3 (decisión 41) / adelantarla antes de abrir la personalización | abrir la personalización | 🟡 abierta (2026-10-30, de V3) |
 | 103 | **Botón «pasar a OlivarTrack»** | token con solo `proponer_*` para que la api cree la propuesta / la oficina la crea a mano y apunta el id (lo que hay) | panel de oficina | 🟡 abierta (2026-10-30, de V3) |
+| 104 | **Oficina · roles** | dos (oficina y admin) / uno | OF0 | ✅ 2026-10-30: **dos**: `oficina` para el día a día; `admin` además para parámetros, roles y re-hornear |

@@ -85,3 +85,7 @@ Exportador (`tuberia/finca_8_teselas.py`, `tuberia/hituelo_conv.py`) → `indice
 ## 8. VR
 
 `29_vr.js`: botón «Entrar en VR» solo si `navigator.xr` soporta `immersive-vr`. Rig `Group` para desplazar al usuario. `VR_PERFILES` (4 niveles) baja si el JS pasa de 13 ms o el fotograma de 15,2 ms, y sube tras 25 s con JS <7 ms. Probado solo con un mock de WebXR (`pruebas/mock_xr.js`; [VR.md](VR.md), [ADR-0005](../adr/0005-webxr-perfil-propio.md)).
+
+## 9. Hacia componentes
+
+Propuesta, aún sin construir ([ADR-0023](../adr/0023-componentes-del-mundo.md), **Propuesto**): separar un núcleo estable (datos, mundo, cola, escena, cámara, entradas, ajustes) de **componentes registrados** con `Componentes.registra(...)` (qué consumen y exponen, eventos, bandera, presupuesto de dibujo, fases del bucle y `libera()`), con puntos de extensión en el HUD, las ventanas, las teclas, la Configuración, el panel VR y el minimapa, y un bus de eventos. El bucle de §4 pasaría a recorrer fases sin nombrar componentes. Diagnóstico medido del acoplamiento de hoy, diseño del contrato y piezas que faltan para el Agro-Verse (entidades con id estable, usables, red, láminas, juegos): [COMPONENTES.md](COMPONENTES.md).
