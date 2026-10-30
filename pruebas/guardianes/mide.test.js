@@ -54,7 +54,7 @@ test("fotogramas por encima de 13,9 ms: cuenta y porcentaje (el umbral es estric
 
 test("el texto trae todo lo pedido y el resumen del navegador no lleva datos personales", () => {
   const e = E.calcula(serie(Array.from({ length: 200 }, (_, i) => 12 + (i % 10)), 3, 0.05), 3, 60);
-  const r = { version: 1, fecha: "2026-10-29T10:00:00Z", aparato: { modo: "VR", ua: E.resumeUA("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) OculusBrowser/38.0.0 Chrome/126.0.0.0 Safari/537.36 Mozilla/5.0 (Linux; Android 12; Quest 3) usuario@correo.es") },
+  const r = { version: 1, fecha: "2026-10-29T10:00:00Z", aparato: { modo: "VR", ua: E.resumeUA("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) OculusBrowser/38.0.0 Chrome/126.0.0.0 Safari/537.36 Mozilla/5.0 (Linux; Android 12; Quest 3) usuario@correo.example") },
     escena: "tiles", banderas: "escena=tiles arbsc=0.5", duracion: 60, calentamiento: 3, est: e, nivel: { ini: 0, fin: 1, cambios: [{ t: 12.3, de: 0, a: 1 }] }, olivos: [10, 200, 3000], avisos: [] };
   const tx = E.texto(r);
   for (const s of ["mediana", "p95", "p99", "peor", "Por encima de 13,9 ms", "al empezar 0", "al terminar 1", "0 → 1", "Escena: tiles", "escena=tiles arbsc=0.5", "VR", "2026-10-29", "N0 10", "criterio 5"]) assert.ok(tx.includes(s), "falta «" + s + "» en:\n" + tx);
