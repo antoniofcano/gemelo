@@ -10,7 +10,7 @@ const MARCA_I = "// ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/
 const MARCA_F = "// ===============================================================================";
 const NOTAS = {
   "01_datos.js": "Abre la IIFE que cierra 99_cierre.js y activa \"use strict\". Primer módulo: define D (los datos de la finca) y las utilidades.",
-  "02c_componentes.js": "Núcleo de componentes (ADR-0023): ComponentesPuro, Bus (catálogo en contratos/eventos.json), Teclas y Componentes (registro, encendido URL > servidor > defecto, fases del bucle). Publica además window.__componentes (pruebas). El trozo [puro:…] lo evalúa en Node pruebas/guardianes/componentes.test.js.",
+  "02c_componentes.js": "Núcleo de componentes (ADR-0023): ComponentesPuro, Bus (catálogo en contratos/eventos.json), Teclas, Componentes (registro, encendido URL > servidor > defecto, fases del bucle) y Config (GET /api/config del mismo origen al cargar, solo con D.base /teselas/… o ?api=; caída al código; contratos/config.schema.json). Publica además window.__componentes y window.__config (pruebas y ?debug). El trozo [puro:…] lo evalúa en Node pruebas/guardianes/componentes.test.js.",
   "11_sol.js": "Define sol2() (sol según hora y fecha); se engancha al control de hora dentro del propio módulo.",
   "12b_llegada.js": "Publica además window.__llegada (pruebas). El trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/llegada.test.js.",
   "13b_hazas.js": "Sin D.base /teselas/… ni ?api= no pide nada ni crea nada; el trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/hazas.test.js.",

@@ -18,6 +18,7 @@
     "ComponentesPuro": { "modulo": "02c_componentes.js", "miembros": ["FASES", "valida", "orden", "valorUrl", "encendido", "validaConfig", "toca"] },
     "Componentes": { "modulo": "02c_componentes.js", "miembros": ["registra", "arranca", "actualiza", "configura", "api", "activo", "enciende", "libera", "resumen"] },
     "Bus": { "modulo": "02c_componentes.js", "miembros": ["on", "emite", "hay"] },
+    "Config": { "modulo": "02c_componentes.js", "miembros": ["listo", "al", "param", "umbrales", "tablaEpocas", "epocaDeFecha", "estado"] },
     "Teclas": { "modulo": "02c_componentes.js", "miembros": ["registra", "dueno", "RESERVADAS"] },
     "Minimapa": { "modulo": "17_minimapa.js", "miembros": ["capa", "pinta", "cuantas"] },
     "PanelVR": { "modulo": "29_vr.js", "miembros": ["filas", "visibles", "tapa", "tapado", "debug", "cierra", "repinta", "rumbo", "enVR"] },
@@ -35,6 +36,7 @@
     "__perrosDebug": { "modulo": "25_perros.js", "tipo": "function" },
     "__presencia": { "modulo": "26_presencia.js", "tipo": "function" },
     "__componentes": { "modulo": "02c_componentes.js", "tipo": "function" },
+    "__config": { "modulo": "02c_componentes.js", "tipo": "function" },
     "__fichaTiempo": { "modulo": "35_fichas_tiempo.js", "tipo": "function" }
   },
   "funciones_globales_del_motor": {

@@ -85,6 +85,44 @@ test("servicio: hornea al arrancar, no hace nada mientras duerme y vuelve a horn
   await ajeno(); parar.parado = true; if (parar.despierta) parar.despierta(); await p;
 });
 
+test("calendario de la configuración publicada (decisión 112): manda si cubre el año; si no o si falta, el fichero; su sello solo mira las épocas", () => {
+  const t = fs.mkdtempSync(path.join(os.tmpdir(), "calcfg-")), rutaCal = path.join(RAIZ, "contratos", "epocas-calendario.json"), rutaCfg = path.join(t, "config.json");
+  const sinCfg = SV.calendarioDe(rutaCal, null, E.validaTabla);
+  assert.deepStrictEqual([sinCfg.origen, sinCfg.cal.comun], ["fichero", cal.comun]);
+  assert.strictEqual(SV.calendarioDe(rutaCal, rutaCfg, E.validaTabla).origen, "fichero", "el fichero de la configuración aún no existe");
+  const comun = JSON.parse(JSON.stringify(cal.comun)); comun.verde.hasta = "09-14"; comun.envero.desde = "09-15";
+  fs.writeFileSync(rutaCfg, JSON.stringify({ v: 1, epocas: { comun } }));
+  const c1 = SV.calendarioDe(rutaCal, rutaCfg, E.validaTabla);
+  assert.strictEqual(c1.origen, "configuración"); assert.deepStrictEqual(c1.cal.comun, comun); assert.deepStrictEqual(c1.cal.fincas, {});
+  assert.strictEqual(E.epocaDeFecha(E.tablaDe(c1.cal, "hituelo"), new Date("2026-09-12T00:00:00Z")), "verde", "el 12 de septiembre es verde con la configuración");
+  fs.writeFileSync(rutaCfg, JSON.stringify({ v: 1, escalera: { bandaM: 1 }, epocas: { comun } }));
+  assert.strictEqual(SV.calendarioDe(rutaCal, rutaCfg, E.validaTabla).sello, c1.sello, "cambiar la escalera no cambia el sello de las épocas");
+  const hueco = JSON.parse(JSON.stringify(comun)); hueco.flor.hasta = "06-01";
+  fs.writeFileSync(rutaCfg, JSON.stringify({ v: 1, epocas: { comun: hueco } }));
+  const c2 = SV.calendarioDe(rutaCal, rutaCfg, E.validaTabla);
+  assert.strictEqual(c2.origen, "fichero"); assert.match(c2.aviso, /no cubren el año/);
+  fs.writeFileSync(rutaCfg, JSON.stringify({ v: 1, componentes: {} }));
+  assert.strictEqual(SV.calendarioDe(rutaCal, rutaCfg, E.validaTabla).origen, "fichero", "una configuración sin épocas no cambia nada");
+});
+
+test("servicio con GEMELO_HORNERO_CONFIG: hornea con el calendario publicado y vuelve a hornear si cambian sus épocas", async () => {
+  const t = fs.mkdtempSync(path.join(os.tmpdir(), "servicio-cfg-")), rutaCfg = path.join(t, "config.json"), cfg = { fincas: ["fixture"], datos: path.join(t, "d"), salida: path.join(t, "s"),
+    estado: path.join(t, "e"), hora: "03:00", compruebaMs: 25, reintentoMs: 60000, calendario: path.join(RAIZ, "contratos", "epocas-calendario.json"), config: rutaCfg, release: false, limpia: true };
+  fs.mkdirSync(path.join(cfg.datos, "fixture"), { recursive: true }); fs.writeFileSync(path.join(cfg.datos, "fixture", "indice.json"), "{}");
+  const comun = JSON.parse(JSON.stringify(cal.comun)); fs.writeFileSync(rutaCfg, JSON.stringify({ v: 1, epocas: { comun } }));
+  const vueltas = [], hornea = async o => { vueltas.push(o); return HN.hornea(o); }, parar = { parado: false };
+  const p = SV.servicio(cfg, { hornea, generador: generador(), parar, log: () => {} });
+  await hasta(() => vueltas.length >= 1); await dormir(300);
+  assert.strictEqual(vueltas.length, 1); assert.strictEqual(vueltas[0].calendario.origen, "configuración versionada (GEMELO_HORNERO_CONFIG)");
+  fs.writeFileSync(rutaCfg, JSON.stringify({ v: 1, escalera: { bandaM: 1 }, epocas: { comun } })); await dormir(300);
+  assert.strictEqual(vueltas.length, 1, "cambiar otra cosa de la configuración no re-hornea");
+  comun.verde.hasta = "09-14"; comun.envero.desde = "09-15"; fs.writeFileSync(rutaCfg, JSON.stringify({ v: 1, epocas: { comun } }));
+  await hasta(() => vueltas.length >= 2); await dormir(200);
+  assert.strictEqual(vueltas.length, 2, "cambiaron las épocas publicadas: una vuelta más");
+  assert.match(JSON.parse(fs.readFileSync(path.join(cfg.estado, "servicio.json"), "utf8")).fincas.fixture.ultimo_motivo, /calendario/);
+  parar.parado = true; if (parar.despierta) parar.despierta(); await p;
+});
+
 test("salud: listo y durmiendo = sano; en curso reciente = sano; error, sin estado, atascado o sin latido = enfermo", () => {
   const ahora = Date.parse("2026-10-29T12:00:00Z"), latido = { latido_en: "2026-10-29T11:59:00Z", fincas: { f: { durmiendo_hasta: "2026-11-01T03:00:00Z" } } };
   const listo = { fase: "listo", hechas: 16, total: 16, epoca_actual: "envero", error: null, actualizado_en: "2026-10-29T08:00:00Z" };

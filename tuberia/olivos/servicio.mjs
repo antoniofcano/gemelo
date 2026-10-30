@@ -11,6 +11,8 @@
 //   GEMELO_HORNERO_SALIDA   se escribe en <salida>/<finca>/olivos/ (por defecto /salida)
 //   GEMELO_HORNERO_ESTADO   <estado>/<finca>.json (estado del hornero), <finca>.lock y servicio.json (el latido); por defecto /estado
 //   GEMELO_HORNERO_CALENDARIO  otro epocas-calendario.json; GEMELO_HORNERO_RELEASE=1 brotli 11
+//   GEMELO_HORNERO_CONFIG   la configuración PUBLICADA que deja la api (su GEMELO_CONFIG_SALIDA, contratos/config.schema.json): si trae «epocas» y
+//                           cubren los 366 días, ese es el calendario (decisión 112) y su huella es el sello; si no, el de GEMELO_HORNERO_CALENDARIO
 //   GEMELO_HORNERO_IMPOSTORES=1  además hornea los impostores (O8b: Chrome; la imagen Dockerfile.impostores lo trae y lo pone)
 import fs from "node:fs";
 import path from "node:path";
@@ -28,6 +30,23 @@ const escribeAtomico = (r, t) => { const tmp = r + ".tmp-" + process.pid; fs.wri
 export function sello(ruta) { try { const s = fs.statSync(ruta); return s.size + ":" + Math.round(s.mtimeMs); } catch (e) { return null; } }
 /** Huella de un fichero pequeño (el calendario) */
 export function huella(ruta) { try { return crypto.createHash("sha256").update(fs.readFileSync(ruta)).digest("hex").slice(0, 16); } catch (e) { return null; } }
+
+/**
+ * El calendario de épocas que vale (decisión 112): el de la configuración publicada (bloque «epocas» de contratos/config.schema.json) si existe y cada
+ * tabla cubre los 366 días con una época por día; si no, el fichero del calendario (contratos/epocas-calendario.json o GEMELO_HORNERO_CALENDARIO).
+ * Devuelve { cal, sello, origen: "configuración" | "fichero", aviso? }. `validaTabla` es la de apps/web/olivo/epocas.js.
+ */
+export function calendarioDe(rutaCal, rutaConfig, validaTabla) {
+  const cfg = rutaConfig ? leeJson(rutaConfig) : null, ep = cfg && cfg.epocas;
+  let aviso = null;
+  if (ep && ep.comun) {
+    const tablas = [ep.comun, ...Object.values(ep.fincas || {})], mal = tablas.flatMap(t => validaTabla(t));
+    if (!mal.length) return { cal: { v: 1, estado: "publicado desde la oficina", origen: "configuración versionada (GEMELO_HORNERO_CONFIG)", comun: ep.comun, fincas: ep.fincas || {} },
+      sello: "config:" + crypto.createHash("sha256").update(JSON.stringify(ep)).digest("hex").slice(0, 16), origen: "configuración" };
+    aviso = "las épocas de la configuración no cubren el año (" + mal.slice(0, 2).join("; ") + "): uso el fichero del calendario";
+  }
+  return { cal: JSON.parse(fs.readFileSync(rutaCal, "utf8")), sello: huella(rutaCal), origen: "fichero", aviso };
+}
 
 /**
  * La próxima fecha en que cambia el par (época actual, siguiente), es decir, el primer día después de `fecha` cuya época es otra.
@@ -81,7 +100,7 @@ export function configDe(env = process.env) {
   const n = (k, d) => Number(env[k] || d);
   return { fincas, datos: env.GEMELO_HORNERO_DATOS || "/datos", salida: env.GEMELO_HORNERO_SALIDA || "/salida", estado: env.GEMELO_HORNERO_ESTADO || "/estado",
     hora: env.GEMELO_HORNERO_HORA || "03:00", compruebaMs: n("GEMELO_HORNERO_COMPRUEBA_S", 600) * 1000, reintentoMs: n("GEMELO_HORNERO_REINTENTO_S", 300) * 1000,
-    calendario: env.GEMELO_HORNERO_CALENDARIO || path.join(RAIZ, "contratos", "epocas-calendario.json"), release: env.GEMELO_HORNERO_RELEASE === "1", limpia: env.GEMELO_HORNERO_LIMPIA !== "0", impostores: env.GEMELO_HORNERO_IMPOSTORES === "1" };
+    calendario: env.GEMELO_HORNERO_CALENDARIO || path.join(RAIZ, "contratos", "epocas-calendario.json"), config: env.GEMELO_HORNERO_CONFIG || null, release: env.GEMELO_HORNERO_RELEASE === "1", limpia: env.GEMELO_HORNERO_LIMPIA !== "0", impostores: env.GEMELO_HORNERO_IMPOSTORES === "1" };
 }
 
 /**
@@ -101,8 +120,9 @@ export async function servicio(cfg, o = {}) {
 
   const pasada = async finca => {
     const s = por[finca], rutaCal = cfg.calendario, rutaIndice = path.join(cfg.datos, finca, "indice.json"), t = ahora();
-    const cal = JSON.parse(fs.readFileSync(rutaCal, "utf8")), tabla = E.tablaDe(cal, finca), fecha = new Date(t);
-    const sellos = { indice: sello(rutaIndice), calendario: huella(rutaCal) };
+    const C = calendarioDe(rutaCal, cfg.config, E.validaTabla), cal = C.cal, tabla = E.tablaDe(cal, finca), fecha = new Date(t);
+    if (C.aviso && C.aviso !== s.avisoCal) log("[hornero " + finca + "] " + C.aviso); s.avisoCal = C.aviso;
+    const sellos = { indice: sello(rutaIndice), calendario: C.sello };
     const manifiesto = leeJson(path.join(cfg.salida, finca, "olivos", "manifiesto.json"));
     const motivo = motivoDeVuelta({ primera: s.primera, ahora: t, fallo: s.fallo, reintentoMs: cfg.reintentoMs, manifiesto, G, formato: F.FORMATO, epocaHoy: E.epocaDeFecha(tabla, fecha),
       sellos, previos: s.previos, despertarEn: s.despertarEn ?? null });

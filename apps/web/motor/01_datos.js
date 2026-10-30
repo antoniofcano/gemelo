@@ -1,6 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: D, $, fmt, b64, i16, RES, x0, yN, ANCHO, ALTO, EXT, FOG0, FOG1, DIST_MAX, DIST_INI, DEPURA, VRP, FACTOR_R8, FACTOR_R8_GEN, ESC_R8
-// Consume: 02_mundo (Mundo, suelo), 05_nube (nube), 15_tiempo (nivel)
+// Expone: D, $, fmt, b64, i16, RES, x0, yN, ANCHO, ALTO, EXT, FOG0, FOG1, DIST_MAX, DIST_INI, DEPURA, VRP, FACTOR_R8, FACTOR_R8_GEN,
+//   factorCopaDeConfig, ESC_R8
+// Consume: 02_mundo (Mundo, suelo), 02c_componentes (Config), 05_nube (nube), 15_tiempo (nivel)
 // Nota: Abre la IIFE que cierra 99_cierre.js y activa "use strict". Primer módulo: define D (los datos de la finca) y las utilidades.
 // ===============================================================================
 
@@ -22,12 +23,15 @@
   //   FACTOR_R8_GEN, los olivos del constructor (?olivos=escalera y ?olivos=gen: propios E0/E1, variantes E2/E2-VR e impostores), 1 (decisión 81):
   //     copa = 2 × r8 medio, la misma que copas_param.copa_m; todos con la copa que pide el propio (07ab medidasDe).
   //   FACTOR_R8, el nivel de siempre (06_arboles, 07b niveles 1 y 2), 0,5 hasta que la cinta de campo (O4) confirme el 1 (decisión 48).
-  // ?factorR8=<v> (o D.config.factorR8) fija LOS DOS a la vez: así la cinta los afina juntos.
-  var FACTOR_R8 = 0.5, FACTOR_R8_GEN = 1;
+  // ?factorR8=<v> (o D.config.factorR8) fija LOS DOS a la vez: así la cinta los afina juntos. La configuración del servidor (escalera.factorCopa,
+  // contratos/config.schema.json, recortado a 0,5-1,5) cambia SOLO FACTOR_R8_GEN, y la pone 07ab con factorCopaDeConfig() antes de generar nada;
+  // precedencia: ?factorR8= > configuración > D.config > código.
+  var FACTOR_R8 = 0.5, FACTOR_R8_GEN = 1, FACTOR_R8_URL = null;
   (function () {
     var m = /[?&]factorR8=([0-9.]+)/.exec(location.search), v = m ? Number(m[1]) : (D.config && D.config.factorR8) || 0;
-    if (v > 0 && v <= 2) FACTOR_R8 = FACTOR_R8_GEN = v;
+    if (v > 0 && v <= 2) { FACTOR_R8 = FACTOR_R8_GEN = v; if (m) FACTOR_R8_URL = v; }
   })();
+  function factorCopaDeConfig() { FACTOR_R8_GEN = Config.param("escalera.factorCopa", FACTOR_R8_GEN, FACTOR_R8_URL); return FACTOR_R8_GEN; }
   // ESC_R8 = FACTOR_R8 / 0,5 escala lo que hoy se dibuja con r8 tal cual (relleno, sombras, ramas): con 0,5 vale 1 y no cambia nada
   var ESC_R8 = FACTOR_R8 / 0.5;
 

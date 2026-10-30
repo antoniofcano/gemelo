@@ -1,10 +1,10 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Arboles
-// Consume: 01_datos (FACTOR_R8), 02_mundo (Mundo, suelo, copaAlta, kcor, tinte, aviva, copas), 02b_cola (Cola),
+// Consume: 01_datos (FACTOR_R8), 02_mundo (Mundo, suelo, copaAlta, kcor, tinte, aviva, copas), 02b_cola (Cola), 02c_componentes (Config),
 //   03_escena (renderer, camera, exag, modo, calidad), 04c_olivos_tiles (OlivosTiles), 04d_sombreado_tiles (hash), 05_nube (ALTO_MAX, nube),
 //   06_arboles (gArboles, tronco, arbolesG), 07_follaje (follajeG, construyeSombras), 07a_catalogo (Catalogo), 07ab_generados (Escalera, Generados),
 //   07ac_lejanos (Lejanos), 09_camara (objetivo, orb), 10_ndvi (ndviIdx), 12_paseo (paseando), 15_tiempo (nivel, esc, hace), 16_vida (mira),
-//   33_ajustes (Ajustes)
+//   29_vr (VR_PERFILES), 33_ajustes (Ajustes)
 // ===============================================================================
   // ---------- los olivos del modo Gemelo con tres niveles de detalle: el coste de dibujo no crece con la superficie de la finca
   // Nivel 0: celdas de 64 m con el modelo completo (copa medida, troncos, hojas, flores y aceitunas) alrededor de lo que se mira (o de quien pasea), hasta MAX0 olivos.
@@ -17,7 +17,13 @@
     var version = 0, CEL = 64, MAX0 = 450, MAX1 = 3000, MAX2 = 16000, U1 = 460, U2 = 1600, TOPE_TRI = 550000, TRI0 = 800, TRI1 = 170, TRI2 = 30, NP1 = Catalogo.variantes(Catalogo.SIN, 1), NP2 = Catalogo.variantes(Catalogo.SIN, 2);
     var olivos = copas.filter(function (c) { return c.oliv; }), celdas = {}, ultima = { x: 1e9, y: 1e9, z: 1e9, fx: 0, fz: 0, tms: 0, exag: -1, k: "" }, t = 0, sucio = true, nL0 = 0, n1 = 0, n2 = 0, faltan = 0, nPre = 0, triEst = 0;
     var cx = Mundo.cx, cy = Mundo.cy, m4 = new THREE.Matrix4(), c3 = [0, 0, 0], vel = { x: 0, z: 0 };
-    var vrP = null, TOPE_TRI0 = TOPE_TRI;   // perfil de las gafas VR (29_vr.js): menos olivos de nivel 0, radio más corto y menos triángulos
+    var vrP = null, TOPE_TRI0 = TOPE_TRI, TRI_MOVIL_CFG = 0;   // perfil de las gafas VR (29_vr.js): menos olivos de nivel 0, radio más corto y menos triángulos
+    // el presupuesto de escritorio y el de móvil de la configuración del servidor (escalera.triangulos, contratos/config.schema.json; recortados por
+    // Config, 02c), al llegar en el arranque; sin ella, los de siempre. Los de gafas van en VR_PERFILES (29_vr.js).
+    Config.al(function () {
+      TOPE_TRI0 = Config.param("escalera.triangulos.escritorio", TOPE_TRI0); if (!vrP) TOPE_TRI = TOPE_TRI0;
+      TRI_MOVIL_CFG = Config.param("escalera.triangulos.movil", Escalera.TRI_MOVIL); sucio = true;
+    });
     // el aparato: escala (0,7–2,5) de cuántos olivos de nivel 0 se pagan; sube si los fotogramas van holgados y baja si van justos (?arbsc=1 la fija).
     // Por encima de 1,6 solo con fotogramas muy holgados (< 16 ms): un aparato sobrado ve olivos detallados más lejos (radio hasta ~330 m en órbita).
     var fijaSc = /[?&]arbsc=([0-9.]+)/.exec(location.search), esc = fijaSc ? Number(fijaSc[1]) : 1, emaDt = 0.017, claveDib = "";
@@ -207,7 +213,7 @@
       var cam = camera.position, vis = gArboles.visible, fx = paseando ? cam.x : objetivo.x, fz = paseando ? cam.z : objetivo.z;
       apagaSiempre();
       ajustaEscala();
-      presEsc = Escalera.tope({ base: TOPE_TRI, vr: vrP, movil: MOVIL, escala: esc, triLejanos: Lejanos.triangulos() });
+      presEsc = Escalera.tope({ base: TOPE_TRI, vr: vrP, movil: MOVIL, triMovil: TRI_MOVIL_CFG, escala: esc, triLejanos: Lejanos.triangulos() });
       // el foco, paseando, es quien pasea (pp); retener: sin lejanos todavía, lo que sale del 3D se queda en él
       var GEN = Generados.actualiza(paseando ? pp.x : fx, paseando ? -pp.y : fz, presEsc, olivos, esc, !Lejanos.hayCapa());
       if (vis) Lejanos.reparte(cam, GEN);

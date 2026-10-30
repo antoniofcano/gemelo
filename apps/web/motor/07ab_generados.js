@@ -1,7 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Escalera, Generados
-// Consume: 01_datos (D, VRP, FACTOR_R8_GEN), 02_mundo (suelo, copas), 03_escena (renderer, camera, colorVertSRGB, exag), 06_arboles (gArboles),
-//   12_paseo (paseando, primera), 14_historia (hist, lista), 15_tiempo (parcheTiempo, nivel, hace), 16_vida (esfera)
+// Consume: 01_datos (D, VRP, FACTOR_R8_GEN, factorCopaDeConfig), 02_mundo (suelo, copas), 02c_componentes (Config),
+//   03_escena (renderer, camera, colorVertSRGB, exag), 06_arboles (gArboles), 08_marcadores (aplica), 12_paseo (paseando, primera),
+//   14_historia (hist, lista), 15_tiempo (parcheTiempo, nivel, hace), 16_vida (esfera), 29_vr (VR_PERFILES)
 // ===============================================================================
   // ---------- olivos GENERADOS cerca (ADR-0017, decisiones 26-28, 34 y 52), solo con ?olivos=gen: sin la bandera no no actúa y el motor dibuja lo de siempre.
   // El árbol lo da el constructor de olivos (apps/web/olivo/, three 0.128 dentro): window.OlivoGen (el IIFE de la salida artefacto) o, en el cliente
@@ -47,9 +48,10 @@
     var MAX_PROPIOS = 6, MAX_VAR = 48, TRI_MOVIL = 270000, FR_E0_VR = 0.4, UMBRALES = [700, 250, 90], BANDA = 1.5, HIST = 0.08, HIST_MIN = 0.4;
     var PASO_S = 1.02, S_MAX = 64, HOLGURA = 0.7, T_BAJA = 8, K_PX = 1080 / (2 * Math.tan(21 * Math.PI / 180));   // sin cámara: 1080 p con el fov de 42° del motor
     /** el presupuesto de triángulos de la escalera (ADR-0019 §1): {base: TOPE_TRI de escritorio, vr: perfil VR o null, movil, escala, triLejanos}.
-     *  Gafas: el tri del perfil, escala 1. Móvil: 270 k (valor de partida SIN medir), escala ≤ 1. Escritorio: base × escala. Menos lo que cuestan los lejanos. */
+     *  Gafas: el tri del perfil, escala 1. Móvil: triMovil (la configuración) o 270 k (valor de partida SIN medir), escala ≤ 1. Escritorio: base × escala.
+     *  Menos lo que cuestan los lejanos. */
     function tope(o) {
-      var t = o.vr ? o.vr.tri : o.movil ? TRI_MOVIL : o.base, k = o.vr ? 1 : o.movil ? Math.min(1, o.escala) : o.escala;
+      var t = o.vr ? o.vr.tri : o.movil ? (o.triMovil > 0 ? o.triMovil : TRI_MOVIL) : o.base, k = o.vr ? 1 : o.movil ? Math.min(1, o.escala) : o.escala;
       return Math.max(0, t * k - (o.triLejanos || 0));
     }
     /** las fronteras de un olivo de alto h (m): D[k] (m) entre el escalón k y el k+1 (E0|E1, E1|E2, E2|lejano) y la media banda b[k], que no
@@ -75,14 +77,14 @@
     }
     /** El plan de la escalera. cand: [{c: {i, h?,…}, d}] (d: la distancia del ojo con la que se miden los píxeles); est: estado por olivo y la s
      *  ({_s, i: {n} | {k}}), que se actualiza aquí; o: {pres, vr, costo(clave, niv), clavePropia(c, niv), claveVar(c), kPx?, umbrales?, banda?,
-     *  hist?, alto(c)?, maxPropios?, maxVar?, ahora? (s)}. Devuelve {plan: [{c, d, clave, niv, propio, rol, banda, f, lej, F}] de cerca a lejos (rol 0: entero;
+     *  hist?, alto(c)?, maxPropios?, maxVar?, frE0Vr? (parte del presupuesto de gafas para el E0), ahora? (s)}. Devuelve {plan: [{c, d, clave, niv, propio, rol, banda, f, lej, F}] de cerca a lejos (rol 0: entero;
      *  en banda, 1 el más fino y 2 el más grueso; lej: el más grueso es el lejano de 07ac), usado, propios, variantes, s, enBanda}. */
     function planifica(cand, est, o) {
       var pres = o.pres, maxP = o.maxPropios === undefined ? MAX_PROPIOS : o.maxPropios, maxV = o.maxVar === undefined ? MAX_VAR : o.maxVar;
       var kPx = o.kPx > 0 ? o.kPx : K_PX, U0 = o.umbrales || UMBRALES, banda = o.banda === undefined ? BANDA : o.banda, hist = o.hist === undefined ? HIST : o.hist;
       var NV = ["E0", "E1", o.vr ? "E2VR" : "E2"], alto = o.alto || function (c) { return c.h > 0 ? c.h : 4; };
       // en gafas, el E0 solo si no pasa del 40 % del perfil (con el coste del primer candidato: todos los propios cuestan parecido)
-      var sinE0 = o.vr && cand.length && o.costo(o.clavePropia(cand[0].c, "E0"), "E0") > FR_E0_VR * pres, U = [sinE0 ? Infinity : U0[0], U0[1], U0[2]];
+      var frE0 = o.frE0Vr === undefined ? FR_E0_VR : o.frE0Vr, sinE0 = o.vr && cand.length && o.costo(o.clavePropia(cand[0].c, "E0"), "E0") > frE0 * pres, U = [sinE0 ? Infinity : U0[0], U0[1], U0[2]];
       var hs = cand.map(function (x) { return alto(x.c); });
       function evalua(s) {
         var L = [], usado = 0, nP = 0, nV = 0, nB = 0;
@@ -116,7 +118,7 @@
       return { plan: plan, usado: r.usado, propios: r.nP, variantes: r.nV, s: r.s, enBanda: r.nB };
     }
     return { tope: tope, planifica: planifica, fronteras: fronteras, peso: peso, MAX_PROPIOS: MAX_PROPIOS, MAX_VAR: MAX_VAR, TRI_MOVIL: TRI_MOVIL,
-      UMBRALES: UMBRALES, BANDA: BANDA, HIST: HIST, K_PX: K_PX };
+      UMBRALES: UMBRALES, BANDA: BANDA, HIST: HIST, FR_E0_VR: FR_E0_VR, K_PX: K_PX };
   })();
   // [puro:fin]
 
@@ -124,7 +126,7 @@
     var ESCALERA = /[?&]olivos=escalera\b/.test(location.search);
     var pedido = ESCALERA || /[?&]olivos=gen\b/.test(location.search), estado = pedido ? "cargando" : "apagado", motivo = "", M = null, mats = null, fabrica = null;
     var fr = /[?&]olivosTri=([0-9.]+)/.exec(location.search), FRACCION = fr && !ESCALERA ? Math.min(0.9, Number(fr[1])) : ESCALERA ? 1 : 0.45;
-    var mpr = /[?&]olivosPropios=([0-6])\b/.exec(location.search);
+    var mpr = /[?&]olivosPropios=([0-6])\b/.exec(location.search), MAX_PROPIOS_VR = null;   // MAX_PROPIOS_VR: el de las gafas, si la configuración lo da
     var ESTIM = { E0: 160000, E1: 80000, E2: 38000, E2VR: 28000 }, SEM_VAR = [11, 23, 37, 51], MAX_PROPIOS = mpr ? Number(mpr[1]) : 6, MAX_VAR = 48, RADIO_CAND = 160, MARGEN = 12;
     var recetas = {}, pidiendo = {}, nPidiendo = 0, plan = [], listos = {}, enLote = {}, lote = null, claveLote = "", nuevo = null, R = 0, triGen = 0, costoGen = 0, info = { llamadas: 0, triangulos: 0 };
     var ff = /[?&]olivosFundido=([0-9.]+)/.exec(location.search), FUNDIDO = ff ? Math.min(3, Number(ff[1])) : 0.6;
@@ -134,10 +136,14 @@
     var NADA = { radio: 0, tri: 0, tiene: function () { return false; } };
     var grupo = new THREE.Group(); grupo.name = "olivosGenerados";
     if (pedido) { gArboles.add(grupo); arrancaGen(); }
-    function epoca() { var m = /[?&]epoca=([a-z]+)/.exec(location.search); return m ? m[1] : epocaManif || "envero"; }
+    function epoca() { var m = /[?&]epoca=([a-z]+)/.exec(location.search); return m ? m[1] : epocaManif || epocaConfig(D.finca_id) || "envero"; }
+    // la época de hoy según el calendario de la configuración del servidor (02c Config; null si no lo trae o no cubre los 366 días)
+    function epocaConfig(finca) { var t = Config.tablaEpocas(finca); return t ? Config.epocaDeFecha(t, fechaPrueba || new Date()) : null; }
     function arrancaGen() {
       var p = typeof window !== "undefined" && window.OlivoGen ? Promise.resolve(window.OlivoGen) : import("gemelo-olivo");
-      p.then(function (m) {
+      // la configuración del servidor (02c Config: espera como mucho 2 s; sin servidor, al momento) se aplica antes del primer olivo: nada cambia en caliente
+      Promise.all([p, Config.listo]).then(function (r) {
+        var m = r[0]; aplicaConfig();
         if (!m || !m.recetaG) throw new Error("sin el constructor de olivos (OlivoGen)");
         if (!THREE.BatchedMesh) throw new Error("este three no tiene BatchedMesh");
         // caché de recetas (O5): memoria con LRU (60 MB en móvil, gafas o con ≤ 4 GB; 150 MB si no) e IndexedDB (300 MB, LRU); ?olivosCache=0 la apaga
@@ -166,9 +172,10 @@
         .then(function (m) {
           var no = manifiestoNoVale(m); if (no) throw new Error(no);
           manif = m;
-          if (!/[?&]epoca=/.test(location.search)) {   // la época por fecha con el calendario del manifiesto (sus ventanas); si hoy no cae en ninguna, la actual
-            var ventanas = {}; m.epocas.forEach(function (e) { ventanas[e.epoca] = { desde: e.desde, hasta: e.hasta }; });
-            epocaManif = M.epocaDeFecha(M.tablaDe({ comun: ventanas }, m.finca), fechaPrueba || new Date()) || m.actual;
+          if (!/[?&]epoca=/.test(location.search)) {   // la época por fecha: la del calendario de la configuración (decisión 112) si el hornero la tiene;
+            // si no, con el calendario del manifiesto (sus ventanas); si hoy no cae en ninguna, la actual
+            var ventanas = {}, ec = epocaConfig(m.finca); m.epocas.forEach(function (e) { ventanas[e.epoca] = { desde: e.desde, hasta: e.hasta }; });
+            epocaManif = (ec && m.epocas.some(function (e) { return e.epoca === ec; }) ? ec : null) || M.epocaDeFecha(M.tablaDe({ comun: ventanas }, m.finca), fechaPrueba || new Date()) || m.actual;
           }
           var ep = epoca(), vistos = {}; varSem = [];
           m.variantes.forEach(function (v) { var k = v.tipo + "|" + v.semilla; if (v.epoca === ep && !vistos[k]) { vistos[k] = true; varSem.push({ tipo: v.tipo, semilla: v.semilla }); } });
@@ -375,6 +382,19 @@
     var estEsc = {}, reparto = { propios: 0, variantes: 0, usado: 0, pres: 0 }, prePide = {}, ranuraDe = {}, bandas = {}, lejRanura = {}, v2 = null;
     var mU = /[?&]olivosPx=([0-9.]+),([0-9.]+),([0-9.]+)/.exec(location.search), UMB = mU ? [Number(mU[1]), Number(mU[2]), Number(mU[3])] : Escalera.UMBRALES;
     var mB = /[?&]olivosBanda=([0-9.]+)/.exec(location.search), BANDA = mB ? Math.min(5, Number(mB[1])) : Escalera.BANDA, PRE = 6, MAX_PRE = 2;
+    var HIST_E = Escalera.HIST, FR_E0 = Escalera.FR_E0_VR;
+    // los parámetros de la escalera de la configuración del servidor (decisión 111, contratos/config.schema.json), una vez al arrancar: URL > configuración
+    // > código, recortados a sus límites por Config (02c). El presupuesto de escritorio y el de móvil los aplica 07b; los de gafas, 29_vr (VR_PERFILES).
+    function aplicaConfig() {
+      UMB = Config.umbrales(Escalera.UMBRALES, mU ? UMB : null);
+      BANDA = Config.param("escalera.bandaM", Escalera.BANDA, mB ? BANDA : null);
+      HIST_E = Config.param("escalera.histeresis", Escalera.HIST);
+      MAX_PROPIOS = Config.param("escalera.maxPropios", MAX_PROPIOS, mpr ? MAX_PROPIOS : null);
+      MAX_PROPIOS_VR = Config.param("escalera.maxPropiosGafas", null, mpr ? MAX_PROPIOS : null);
+      MAX_VAR = Config.param("escalera.maxVariantes", MAX_VAR);
+      FR_E0 = Config.param("escalera.fraccionE0Gafas", Escalera.FR_E0_VR);
+      factorCopaDeConfig();
+    }
     function nVar() { return (varSem || SEM_VAR).length; }
     function pideVariante(j, niv, prio) {
       var sv = varSem ? varSem[j] : { tipo: "centenario3", semilla: SEM_VAR[j] };
@@ -406,7 +426,8 @@
       var vr = VRP.on, NIV = ["E0", "E1", vr ? "E2VR" : "E2"], nv = nVar(), ojo = ojoAhora(), kPx = kPixeles(), cand = [];
       if (!lejos) for (var i = 0; i < olivos.length; i++) { var c = olivos[i]; if (Math.hypot(c.x - fx, -c.y - fz) < RADIO_CAND * amplia) cand.push({ c: c, d: distOjo(c, ojo) }); }
       cand.sort(function (a, b) { return a.d - b.d; }); if (cand.length > 120) cand.length = 120;
-      var r = Escalera.planifica(cand, estEsc, { pres: tope, vr: vr, ahora: performance.now() / 1000, kPx: kPx, umbrales: UMB, banda: BANDA, maxPropios: MAX_PROPIOS, maxVar: MAX_VAR, alto: altoDe,
+      var r = Escalera.planifica(cand, estEsc, { pres: tope, vr: vr, ahora: performance.now() / 1000, kPx: kPx, umbrales: UMB, banda: BANDA, hist: HIST_E, frE0Vr: FR_E0,
+        maxPropios: vr && MAX_PROPIOS_VR !== null ? MAX_PROPIOS_VR : MAX_PROPIOS, maxVar: MAX_VAR, alto: altoDe,
         costo: function (cl, niv) { return recetas[cl] ? costo(recetas[cl]) : estim(niv); },
         clavePropia: function (c, niv) { return "p" + c.i + ":" + niv; }, claveVar: function (c) { return "v" + (c.i % nv) + ":" + NIV[2]; } });
       plan = r.plan; reparto = { propios: r.propios, variantes: r.variantes, usado: Math.round(r.usado), pres: Math.round(tope), s: +r.s.toFixed(3), enBanda: r.enBanda, kPx: Math.round(kPx), umbrales: UMB, banda: BANDA };

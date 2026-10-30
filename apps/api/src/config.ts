@@ -44,6 +44,8 @@ export interface Config {
   livekit: ConfigLiveKit | null;
   /** fotos y pinturas de los hogares (doc/sistema/VIDA.md): carpeta null = subidas apagadas (503) */
   medios: { carpeta: string | null; maxBytes: number; retencionDias: number; subidasPorHora: number; escriturasPorHora: number };
+  /** dónde dejar también la configuración publicada (GEMELO_CONFIG_SALIDA), para el hornero (calendario de épocas); null = en ningún sitio */
+  configFichero: string | null;
 }
 
 export interface ConfigLiveKit {
@@ -238,5 +240,6 @@ export function cargaConfig(e: Entorno = process.env): Config {
       subidasPorHora: entero(e, "GEMELO_MEDIOS_SUBIDAS_HORA", 20, 1, 1000),
       escriturasPorHora: entero(e, "GEMELO_VIDA_ESCRITURAS_HORA", 60, 1, 10000),
     },
+    configFichero: e["GEMELO_CONFIG_SALIDA"]?.trim() || null,
   };
 }
