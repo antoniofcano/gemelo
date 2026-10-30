@@ -140,6 +140,34 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | V1 | VPS: preparar el despliegue (RUNBOOK-VPS al día, SMTP de OVH, token de OlivarTrack, comprobaciones previas) | — | ligera (documentos y guiones) | ✅ (8 preguntas a Antonio en DECISIONS-PENDING) |
 | V2 | VPS: desplegar F1a | A5, A6, V1 (decisión 21) | 👤 confirma cada paso | ⬜ |
 | G1 | Arreglar la facturación de GitHub para que corra el CI | — | 👤 | ⬜ |
+| OF0 | ADR de la oficina: roles, acceso y configuración versionada (decisiones 104-116) | — | ligera · **opus** | ⬜ |
+| OF1 | Acceso: rol `oficina`, sesión corta, aparatos confiables, Caddy con `/oficina/` por rol | OF0, V3 | media · **opus**; 🔶 Docker | ⬜ |
+| OF2 | Esqueleto de `/oficina/` y **Familias** (alta, enlace, sesiones, haza, baja a 30 días, exportar, borrar) | OF1 | media · **sonnet**; 🔶 | ⬜ |
+| OF3 | **Hazas**: dibujar sobre ortofoto y copas (OpenLayers + proj4), partir/juntar en PostGIS, recuento, versiones | OF2, V3 | pesada · **opus**; 🔶 | ⬜ |
+| OF4 | **Bandeja**: retirar en un clic, responder, avisar, pasar a OlivarTrack (token solo para proponer, decisión 110) | OF2, V3 | media · **sonnet**; 🔶 Docker | ⬜ |
+| OF5 | **Sistema** mínimo: salud, OlivarTrack, correo de prueba, auditoría, roles | OF2 | ligera · **sonnet** | ⬜ |
+| OF6 | **Configuración versionada** y `GET /api/config`; el motor la lee con caída a las constantes; interruptores de componentes (decisión 118) | OF2, C1 | media · **opus** | ⬜ |
+| OF7 | Panel de la escalera: deslizadores con límites, vista previa, publicar en prueba y para todos, historial | OF6 | media · **sonnet**; 🔶 | ⬜ |
+| OF8 | Constructor en la oficina (olivo real por id, escalones lado a lado) | OF2, V3 | ligera · **sonnet** | ⬜ |
+| OF9 | Épocas desde la oficina y re-hornear (decisión 112) | OF6 | media · **sonnet** | ⬜ |
+| OF10 | Mundo en modo oficina: insignia y chaleco, anunciar, balizas oficiales, salas | OF1 | media · **opus**; 🔶 | ⬜ |
+| OF11 | Agenda: eventos con aforo, inscripciones, lista de espera, avisos | OF2, V3 | media · **sonnet**; 🔶 Docker | ⬜ |
+| OF12 | Directos: preparación, sala guiada, dar la palabra, silenciar | OF10, F3, EIPD | pesada · **opus**; 🔶 | ⬜ |
+| OF13 | Llave de acceso (WebAuthn) obligatoria para la oficina antes de abrir (decisión 105) | OF1 | media · **sonnet**; 🔶 | ⬜ |
+| C1 | Componentes: núcleo (`Componentes`, `Bus` con catálogo, bucle por fases, encendido URL > configuración > defecto) y guardián | — | media · **opus** | 🟡 en curso |
+| C2 | Componentes: puntos de extensión (HUD, ventanas, teclas, ajustes, panel VR por filas, minimapa, capas) | C1 | media · **opus** | 🟡 en curso |
+| C3 | Componentes: piloto 1, las fichas del tiempo como componente | C2 | ligera · **opus** | 🟡 en curso |
+| C4 | Componentes: piloto 2, el sonido | C2 | ligera · **sonnet** | ⬜ |
+| C5 | Componentes: piloto 3, `Red` sobre LiveKit; presencia y avatares como componentes | C1 | media · **opus** | ⬜ |
+| C6 | Componentes: plugins de la api y `/api/config` (se junta con OF6) | C1 | ligera · **sonnet** | ⬜ |
+| C7 | Entidades con id estable y usables (una sola forma de tocar: dedo, ratón, rayo VR, cercanía) — antes de juegos y fotos (decisión 119) | C2 | media · **opus** | ⬜ |
+| C8 | Láminas en el mundo como servicio del núcleo | C3 | ligera · **sonnet** | ⬜ |
+| C9 | Anfitrión de juegos y primer casual; récord validado en la api | C2, C6, C8 | media · **opus**; 👤 qué juego | ⬜ |
+| C10 | Migración del resto de módulos a componentes, al tocarlos | C1-C3 | goteo · **sonnet** | ⬜ |
+| C11 | Medida por componente («con y sin» por el banco) | C1 | ligera · **sonnet**; 🔶 | ⬜ |
+| C12 | (Condicional) servidor de estado de juego | decisión de Antonio | —  | ⏸️ no por ahora (decisión 120) |
+| AV1 | Biblioteca de avatares familiar e inclusiva: fuentes abiertas, criterios, propuesta y maqueta del selector | P7 | ligera · **opus** | 🟡 en curso |
+| P7f | Hituelo: personalización en el mundo (nombrar árbol, colgar foto o pintura) — antes V5 | V3, C7 | media · **sonnet** | ⬜ |
 
 ## Ideas de mejora (sin fecha; se convierten en tarea cuando Antonio lo diga)
 
