@@ -72,6 +72,8 @@ Requisito de Antonio (2026-10-30): la cola **nunca se queda parada** y **nunca d
 11. **Como mucho dos agentes pesados a la vez** (Antonio, 2026-10-30): en una misma tanda no corren más de dos agentes que necesiten Chrome, Docker o Blender; el resto de huecos se llenan con tareas ligeras. Motivo: el banco solo deja un Chrome, así que un tercero solo espera en fila ocupando memoria.
 
 ## Pruebas de navegador (`pruebas/`)
+
+**Ventana de las pruebas (PB1, 2026-10-30):** las de presupuesto (carga, escena3d, olivo) usan `VENTANA` (900×650) y todos sus escenarios, para seguir comparándose con las cifras de siempre; las demás pueden usar `VENTANA_CHICA` (450×325) o su propio viewport, con DPR 1 si sus comprobaciones son de CSS. Cada prueba tiene un coste fijo (carga y esperas) y solo baja con la ventana si domina el pintado: **medir antes de bajarla**. Para comparar antes y después, calentar primero la caché de páginas de Vite (`pruebas/salida/paginas`).
 | Script | Para qué |
 |---|---|
 | `prueba3.js <url> <prefijo>` | carga con `?debug`, llamadas, triángulos, puntos, heap, peticiones a `/t/`, capturas |

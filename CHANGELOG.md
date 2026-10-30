@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Pruebas (PB1): `mide()` acepta `viewport` (900×650 por defecto, 450×325 la chica); banco y web usan la chica y las táctiles pasan de DPR 2 a 1. movibles_chrome baja de 754 s a 316 s (medido con la caché caliente); las de presupuesto no cambian.
 - Oficina: sección Agenda (OF11). Eventos con aforo en personas, inscripción por hogar, lista de espera con promoción automática al liberarse plaza y avisos en el gemelo (tope de 3 por semana). Migración 0012, rutas `/api/admin/eventos…` y `/api/agenda…`. El correo de los avisos y el `.ics` quedan pendientes.
 - Oficina, Olivos, pestaña «Olivo real» (OF8): se busca un olivo de la finca por su id estable y se ven sus escalones E0, E1, E2 y E2-VR lado a lado con sus triángulos, calculados por el constructor con las medidas del LiDAR (forma ilustrativa). Solo cifras; el 3D sigue en la herramienta del constructor.
 - Oficina (OF3b): el contorno de cada finca, unión de sus parcelas SIGPAC o catastrales, sale de `tuberia/contorno/`, se guarda en la base (migración 0011) y limita el editor de hazas: no se puede dibujar, mover ni guardar una haza fuera de él, y la api lo comprueba con `ST_CoveredBy`. Sin contorno cargado sigue la caja de los olivos + 150 m. Fuente: las parcelas SIGPAC de OlivarTrack, con holgura de 1 m (decisión 143).
