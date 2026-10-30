@@ -30,15 +30,15 @@
 
 ## Cómo se opera — `operacion/`
 - [operacion/ONBOARDING.md](operacion/ONBOARDING.md) — alta y la puerta.
-- [operacion/RUNBOOK.md](operacion/RUNBOOK.md) — qué hacer si falla una carga, una tesela, el WMS del IGN o el marco de artefactos.
-- [operacion/PUBLICACION.md](operacion/PUBLICACION.md) — receta de publicar y límites de la plataforma.
+- [operacion/RUNBOOK.md](operacion/RUNBOOK.md) — qué hacer si falla una carga, una tesela o el WMS del IGN.
+- [operacion/PUBLICACION.md](operacion/PUBLICACION.md) — cómo se sirve el gemelo (local y VPS; la salida artefacto se retiró).
 - [operacion/DATOS.md](operacion/DATOS.md) — fuentes, hojas LiDAR/MDT por finca, cómo regenerar, licencias.
 - [operacion/DESARROLLO-LOCAL.md](operacion/DESARROLLO-LOCAL.md) — el mundo y los servicios base (Caddy, PostGIS, LiveKit, buzón) en local con Docker: `npm run dev:arriba`.
 - [operacion/RUNBOOK-VPS.md](operacion/RUNBOOK-VPS.md) — servidor F1a en el VPS: puesta en marcha, operación, copias cifradas y ensayo de restauración (aún sin ejecutar en el VPS).
 - [operacion/TESTING.md](operacion/TESTING.md) — qué prueba cada cosa y qué significa cada rojo.
 
 ## Skills — `.claude/skills/`
-`adr`, `documentalista`, `release`, `auditoria`, `publicar-artefacto`, `medir`, `datos-finca`, `modelado-3d`, `videojuegos`, `mundos-virtuales`, `interaccion` (tabla de cuándo usar cada una en [CLAUDE.md §6](../CLAUDE.md)). Agente: [`arquitecto-multiusuario`](../.claude/agents/arquitecto-multiusuario.md) (estudia la arquitectura multiusuario, solo lectura).
+`adr`, `documentalista`, `release`, `auditoria`, `medir`, `datos-finca`, `modelado-3d`, `videojuegos`, `mundos-virtuales`, `interaccion` (tabla de cuándo usar cada una en [CLAUDE.md §6](../CLAUDE.md)). Agente: [`arquitecto-multiusuario`](../.claude/agents/arquitecto-multiusuario.md) (estudia la arquitectura multiusuario, solo lectura).
 
 ## Histórico — `historico/` (foto, no se mantiene)
-- [historico/DISENO-2026-10.md](historico/DISENO-2026-10.md) — diseño de la refactorización por teselas (27-oct-2026). Lo vigente: ADR 0001–0008 y ARCHITECTURE.
+- [historico/DISENO-2026-10.md](historico/DISENO-2026-10.md) — diseño de la refactorización por teselas (27-oct-2026). Lo vigente: ADR 0015, 0021 y ARCHITECTURE.

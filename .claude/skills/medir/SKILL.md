@@ -16,7 +16,7 @@ Regla 7: *medir antes de afirmar*. Sin una medida reproducible no se dice «más
 Los fps reales **solo** los da un dispositivo real. Una cifra de SwiftShader se rotula «(SwiftShader)».
 
 ## Antes / después con la misma cámara
-1. Servir la finca con su tileset (fixture: `npm run fixture` y la página de `montaPagina` de `pruebas/guardianes/_pagina.js`; reales: según `DATOS.md` y el entorno local de `DESARROLLO-LOCAL.md`). Las cifras de la escena de siempre ya no se pueden reproducir: las anteriores a T8 fase 2 son historia.
+1. Servir la finca con su tileset (fixture: `npm run fixture` y la página de `montaPagina` de `_pagina.js` (guardianes); reales: según `DATOS.md` y el entorno local de `DESARROLLO-LOCAL.md`). Las cifras de la escena de siempre ya no se pueden reproducir: las anteriores a T8 fase 2 son historia.
 2. **Antes** (en la rama sin el cambio): `node pruebas/prueba3.js <url> <prefijo>` con escenarios fijos. Escenario = `{az, el, dist, ox, oy, modo}`; `modo` ∈ `nube|gem|orto`. Por defecto ejecuta inicial/medio/…; pasa un JSON como 3.º argumento para fijar los tuyos. Esperar a que `Cola.pendientes() === 0` (variable `ESPERA` en ms).
 3. **Después** (con el cambio), idénticos escenarios y datos.
 4. Para el fixture, el guardián `carga` hace lo mismo con tres escenarios (`lejos`, `cerca`, `nube`); `GEMELO_MIDE=1 node --test pruebas/guardianes/carga.test.js` imprime las cifras.

@@ -37,7 +37,7 @@ por fotograma depende del error en pantalla y de la distancia a la cámara (terr
 ```bash
 # Exportar una finca (necesita los intermedios de datos/<finca>) y generar su tileset
 python tuberia/finca_8_teselas.py --finca hituelo
-node tuberia/tiles3d/genera.mjs
+node tuberia/tiles3d/genera.mjs --salida <carpeta del tileset>
 
 # Cliente web (Vite; el producto): página empaquetada en apps/web/dist/
 cd apps/web && npm i && GEMELO_DATOS=<ruta a indice.json> npm run build && cd ../..

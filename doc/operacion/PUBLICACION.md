@@ -1,32 +1,25 @@
 # Publicación
 
-No hay servidor ni hosting: el gemelo se publica como **artefacto de claude.ai** (página + ficheros de apoyo) o como **HTML estático** (cualquier servidor de ficheros). **Publicar lo decide Antonio** (CLAUDE.md regla 9): un agente prepara la carpeta, lista lo que subirá y espera el OK. Receta paso a paso: [skill `publicar-artefacto`](../../.claude/skills/publicar-artefacto/SKILL.md).
+El gemelo **solo se sirve desde un servidor**: el entorno local de `infra/dev` y, más adelante, el VPS de OVH ([ADR-0011](../adr/0011-alojamiento-en-el-vps-de-ovh.md)). La salida artefacto (una página para claude.ai) se retiró ([ADR-0021](../adr/0021-se-retira-la-salida-artefacto-y-la-escena-de-siempre.md)); lo que ya estaba publicado en claude.ai queda como última foto, sin mantener. **Desplegar lo decide Antonio** (CLAUDE.md regla 9): un agente prepara, lista lo que sube y espera el OK.
 
-## Límites de la plataforma de artefactos
-(Leídos de las instrucciones de la herramienta y del contrato 0.2.90; ver [ADR-0008](../adr/0008-ficheros-de-apoyo-json-jpg.md). Lo marcado **[SUPUESTO]** no está comprobado.)
+## Qué se sirve
+- La web construida con Vite (`apps/web/dist/`): la página, el motor empaquetado y three 0.186.1 incluido (sin CDN).
+- Por finca, con su `indice.json` (que trae `tileset`): `t/<kx>_<ky>.json|jpg` (lo que lee `Mundo`, [CONTRATOS](../sistema/CONTRATOS.md) §1.2-1.3) y `tileset/` (`tileset.json` + glb, [TILES3D](../sistema/TILES3D.md)). Sin tileset la finca muestra «Esta finca no tiene escena».
+- Caddy interno con las cabeceras y la CSP del [`infra/Caddyfile`](../../infra/Caddyfile): el motor solo hace `fetch` a su mismo origen.
+- No hay límites de tamaño ni de número de ficheros de plataforma: Hituelo son 248 glb + `tileset.json` + 92 ficheros de `t/` (cifras en [MEDIDAS](../sistema/MEDIDAS.md)).
 
-| Mecanismo | Límite |
-|---|---|
-| Página HTML (todo embebido) | ≤ 16 MB, incluidos los `data:` |
-| `files` (ficheros de apoyo, rutas relativas) | texto ≤ 16 MB; binario ≤ 15 MB por fichero; **64 MB y 255 ficheros por publicación**; **511 ficheros / 256 MB por versión**; solo tipos web estándar; se pueden añadir en publicaciones sucesivas a la misma `url` |
-| Tipos admitidos | html, css, js, mjs, wasm, json, txt, csv, png, jpg, webp, svg, fuentes, mp3/mp4… **Un `.bin` no se admite** (comprobado al publicar la prueba 0) |
-| `assets` | 20 MiB por activo; exige la capacidad `db`; solo editores suben; ata a una sesión |
-| `fetch` a otros hosts | bloqueado por la CSP (solo scripts de cdnjs/jsdelivr/unpkg/tailwind/jquery y hojas de Google Fonts) |
-| `fetch` y `<img>` del mismo origen a ficheros de apoyo | **[SUPUESTO] sin comprobar con sesión** (prueba 0 «a medias») |
-| Conectores MCP | capacidad `mcp`; los conectores se referencian por su **nombre visible** |
+## En local
+`npm run dev:arriba` ([DESARROLLO-LOCAL](DESARROLLO-LOCAL.md)): web, api y Caddy con https en `localhost:8743`; la escena la da `GEMELO_DEV_TILESET`. No es producción.
 
-## Formato de los ficheros de apoyo
-`t/<kx>_<ky>.json` (relieve, copa, suelo, nube en base64) y `t/<kx>_<ky>.jpg` (ortofoto 512²). Sin binario crudo. Detalle en [CONTRATOS](../sistema/CONTRATOS.md#4-contrato-de-publicación).
+## En el VPS
+Contrato de lo que se despliega: [`contratos/publicacion-vps.json`](../../contratos/publicacion-vps.json). Puesta en marcha, copias y vuelta atrás: [RUNBOOK-VPS](RUNBOOK-VPS.md). El despliegue irá por CI **con aprobación manual**. **Nada se ha ejecutado todavía en el VPS.**
 
 ## Receta resumida
 1. Puerta en verde (`npm run puerta`).
-2. Montar la finca (`tuberia/salida_artefacto/montar_v2.py`) a una **carpeta de trabajo fuera de `publicar/` versionado** (`publicar/` ya está ignorado por git).
-3. Hituelo: ≈52 MB de teselas + página de ≈4,6 MB ≈ 57 MB en 93 ficheros: **cabe en una publicación (64 MB, 255 ficheros) con ≈7 MB de margen**. Si crece, partir en tandas a la misma `url`.
-4. Lista de `files` con ruta publicada → ruta de origen; capacidades (`mcp` si la historia lee en vivo).
-5. **Pedir confirmación** a Antonio con la lista.
-6. Publicar; verificar que lo publicado es lo nuevo (leer el artefacto de vuelta, comparar tamaño/versión).
-7. Anotar en ESTADO (enlace **no** en el repo público si el artefacto es privado: ver DECISIONS-PENDING).
-8. Recordar: sin navegador autenticado, **solo una persona** puede confirmar que las teselas cargan en el marco.
+2. Generar los datos y el tileset de cada finca ([DATOS](DATOS.md), skill `datos-finca`), fuera del repo.
+3. Construir la web y servirla en local para mirarla con `?debug`.
+4. **Pedir confirmación** a Antonio con lo que se sube.
+5. Desplegar según RUNBOOK-VPS; verificar que lo servido es lo nuevo (versión leída de vuelta) y anotarlo en ESTADO.
 
 ## Qué no se publica
-Datos de la explotación no destinados a ello, claves, rutas locales. El artefacto herda la privacidad del enlace: si lleva datos de OlivarTrack (`D.ot`), es **privado por defecto**.
+Datos de la explotación no destinados a ello, claves, rutas locales. Si la página lleva datos de OlivarTrack (`D.ot`), el acceso va tras la sesión de la api.

@@ -7,7 +7,7 @@
 ## 2. Primer vistazo
 1. Lee [CLAUDE.md](../../CLAUDE.md) (reglas de oro) y [ESTADO.md](../ESTADO.md).
 2. `npm run fixture` genera (si falta) el fixture sintético; `npm run puerta` debe salir en verde.
-3. Mira una página montada: levanta el entorno local con el fixture (`npm run dev:arriba`, [DESARROLLO-LOCAL](DESARROLLO-LOCAL.md)) o construye la web contra `pruebas/salida/fixture/cerro/indice.json` (`GEMELO_DATOS=… npm run build` en `apps/web`) y ábrela con `?debug`. La escena necesita el tileset del fixture; no se abre con `file://`. TODO-C: la orden exacta de las páginas de prueba (`pruebas/guardianes/_pagina.js`).
+3. Mira una página montada: levanta el entorno local con el fixture (`npm run dev:arriba`, [DESARROLLO-LOCAL](DESARROLLO-LOCAL.md)) o construye la web contra `pruebas/salida/fixture/cerro/indice.json` (`GEMELO_DATOS=… npm run build` en `apps/web`) y ábrela con `?debug`. La escena necesita el tileset del fixture; no se abre con `file://`. TODO-C: la orden exacta de las páginas de prueba (`_pagina.js` de los guardianes).
 
 ## 3. La puerta
 <a id="la-puerta"></a>

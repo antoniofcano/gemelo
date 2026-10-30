@@ -5,7 +5,7 @@ Términos del proyecto, en el sentido en que los usa el código y la documentaci
 | Término | Significado |
 |---|---|
 | **Tesela** | Cuadrado de 256 m de lado alineado a múltiplos de 256 en UTM 30N. La tesela `(kx, ky)` cubre `[kx·256, +256) × [ky·256, +256)`; se llama `kx_ky` con `kx = floor(E/256)`. Lleva relieve, copa, color de suelo, nube y ortofoto. ADR-0001. |
-| **Nivel (L0/L1/L2)** | Grado de detalle según la distancia a la cámara. Terreno: L0 1 m, L1 2 m, L2 8 m. Olivos: L0 modelo completo, L1 instanciado (~170 tri), L2 instanciado (~30 tri). ADR-0002. |
+| **Nivel (L0/L1/L2)** | Grado de detalle según la distancia a la cámara. Terreno: los niveles del tileset (hojas de 128 m con paso de 1 m; 2 y 4 m más arriba), no el L0/L1/L2 de 1/2/8 m de la escena de siempre, que se retiró (ADR-0021). Olivos: L0 modelo completo, L1 instanciado (~170 tri), L2 instanciado (~30 tri). ADR-0002 (superado). |
 | **Copa** | Registro de un árbol: `x, y, h` y 8 radios (`r8`), más parcela. La forma es medida del LiDAR. En `D.copas`: `[x, y, h, r8[8], parcela+1]`. |
 | **r8** | Los 8 radios de la copa, uno cada 45°, en metros; con ellos se construye la malla de copa. Si faltan, la copa se genera por procedimiento. |
 | **Foco** | El punto que se mira (en órbita) o quien pasea; las distancias de los niveles se miden desde el foco, con un adelanto hacia donde se va (`distFoco`, `07b_arboles.js`). |

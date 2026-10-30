@@ -4,25 +4,23 @@ Mapa vivo. Si el código cambia de forma, esto cambia en el mismo commit. Decisi
 
 ## 1. Cómo se monta
 
-Hay dos salidas con el mismo motor (`apps/web/motor/`, ADR-0010):
+Hay **una sola salida**, la web de Vite (`apps/web/motor/`, [ADR-0010](../adr/0010-monorepo-y-build-con-vite.md)); la salida artefacto se retiró ([ADR-0021](../adr/0021-se-retira-la-salida-artefacto-y-la-escena-de-siempre.md)).
 
-- **Web (Vite), la del producto:** `apps/web/herramientas/genera_motor.mjs` escribe `entrada/motor.generado.js` = `import * as THREE from "three"` + la concatenación de `motor/*.js` en orden, y un `index.html` con la plantilla y el `#datos`; `vite build` lo empaqueta en `apps/web/dist/` con three 0.186.1 (versión exacta de `apps/web/package.json`, [ADR-0016](../adr/0016-actualizacion-de-three.md)). El guardián `web.test.js` comprueba que dibuja lo mismo que la salida artefacto y con la misma three.
-- **Artefacto (sin servidor), la secundaria:** `tuberia/salida_artefacto/montar_v2.py` concatena `apps/web/plantilla.html` + `<script type="application/json" id="datos">` (el `D` de la finca) + un `<script type="importmap">` que lleva `three` y `three/addons/` a jsDelivr con la misma versión + **todos los `apps/web/motor/*.js` en orden alfabético** dentro de un solo `<script type="module">` que empieza por `import * as THREE from "three"`. `01_datos.js` abre una IIFE con `"use strict"` y `99_cierre.js` la cierra: todo el motor comparte ámbito, sin módulos ES. El orden de los prefijos (`02_` < `02b_` < `03_`) es el orden de montaje y, por tanto, de dependencias.
+`apps/web/herramientas/genera_motor.mjs` escribe `entrada/motor.generado.js` = `import * as THREE from "three"` + la concatenación de `motor/*.js` en orden (`readdirSync().sort()`: **él fija el orden de montaje**), aplica los textos por finca a la plantilla (título, entradilla, pie, `sin_historia`) y escribe un `index.html` con la plantilla y el `#datos`; `vite build` lo empaqueta en `apps/web/dist/` con three 0.186.1 (versión exacta de `apps/web/package.json`, [ADR-0016](../adr/0016-actualizacion-de-three.md)). `01_datos.js` abre una IIFE con `"use strict"` y `99_cierre.js` la cierra: todo el motor comparte ámbito, sin módulos ES. El orden de los prefijos fijos (`02_` < `02b_` < `03_`) es el orden de montaje y, por tanto, de dependencias.
 
-Dos modos: **embebido** (`D` incluye `t{}`; ≤16 MB, Cerro) y **ficheros** (`D.teselas` es el índice y la página pide `t/<clave>.json|jpg`; `D.base` da el prefijo, por defecto relativo; Hituelo).
+La página pide `t/<clave>.json|jpg` (`D.teselas` es el índice; `D.base` da el prefijo, por defecto relativo) y, para la escena, el `tileset` del índice. Ya no hay modo embebido.
 
 ## 2. Módulos (`apps/web/motor/`)
 
 | Fichero | Expone | Notas |
 |---|---|---|
-| `01_datos.js` | `D`, `$`, `fmt`, `b64`, `i16`, `ESC3D` | abre la IIFE; `ESC3D` decide la escena: 3D Tiles por defecto si el índice trae `tileset` (o `?tileset=`, `?escena=tiles`), la de siempre con `?escena=clasica` o sin tileset ([TILES3D](TILES3D.md#la-escena-por-defecto-t8-fase-1)) |
+| `01_datos.js` | `D`, `$`, `fmt`, `b64`, `i16` | abre la IIFE; la escena es siempre la 3D Tiles ([TILES3D](TILES3D.md#la-escena-sin-vuelta-atrás-t8-fase-2)); TODO-A: confirmar si queda algo de `ESC3D` |
 | `02_mundo.js` | `Mundo` (`suelo`, `copaAlta`, `orto`, `colorSuelo`, `alCargar`, `arranca`, `actualiza`, `liberaOrtoLejos`…) | teselas, carga, `desp`/`colorEn` |
 | `02b_cola.js` | `Cola` (`add`, `corre(ms)`, `vacia`) | trabajos como generadores |
 | `03_escena.js` | `renderer`, `scene`, `camera`, luces (`LUZ_SOL`, `LUZ_CIELO`), `SRGB`, `texColor`, `colorVertSRGB` | `far = max(5000, 4·EXT)`, `near` inicial 0,5; salida sRGB y convenio de color: lo escrito a mano va en sRGB y se pasa a lineal al entrar en la luz (ADR-0016) |
-| `04_terreno.js` | `Terreno` | la escena de siempre (`?escena=clasica` o sin tileset): 3 niveles por tesela, sombreador (NDVI, escarcha, nubes, suelo abierto). No construye nada con la escena 3D Tiles (`ESC3D.activa`); se retira en la fase 2 de T8 |
-| `04b_escena3d.js` | `Escena3D` | la escena 3D Tiles (ADR-0015) con 3DTilesRendererJS: relieve y ortofoto del tileset; si falla, vuelve `Terreno` |
+| `04b_escena3d.js` | `Escena3D` | la escena 3D Tiles (ADR-0015) con 3DTilesRendererJS: relieve y ortofoto del tileset; sin tileset o si falla, panel «Esta finca no tiene escena» (`estado === "sin"`), sin vuelta a otra escena |
 | `04c_olivos_tiles.js` | `OlivosTiles` | los olivos instanciados del tileset (media y larga distancia), resueltos por huella; aparta los que dibuja el motor de cerca |
-| `04d_sombreado_tiles.js` | `SombreadoTiles` | el relieve del tileset con el mismo sombreado que `Terreno` |
+| `04d_sombreado_tiles.js` | `SombreadoTiles` | el relieve del tileset con su sombreado (NDVI, escarcha, nubes, suelo abierto) y lo compartido que dejó `Terreno` (`UN`, `parche`, `prepara`, `U1`…; TODO-A: nombres) |
 | `05_nube.js` | `actualizaNubeTeselas` | un `Points` por tesela |
 | `06_arboles.js`, `07_follaje.js` | copa, tronco, hojas | piezas del nivel 0 |
 | `07a_catalogo.js` | `Catalogo` (`tipos`, `geometria`, `instala`, `retira`…) | formas de L1/L2 por olivo-tipo; tipo −1 = las de siempre (ADR-0012) |
@@ -59,8 +57,8 @@ Dos modos: **embebido** (`D` incluye `t{}`; ≤16 MB, Cerro) y **ficheros** (`D.
 
 ## 3. Flujo de arranque
 
-1. `01_datos` parsea `D`. `02_mundo` indexa las teselas de `D.teselas` (o `D.t` si va embebido) y prepara el mosaico y el relieve grueso de 8 m.
-2. `90_final`: `Mundo.alCargar(fn)` avisa a `Terreno` y `Arboles` cuando llega una tesela. `Mundo.arranca(fn)` pide las primeras teselas; al terminar monta el árbol de olivos, el mosaico, el terreno de todas las teselas, la nube, vacía la `Cola` (hasta 10 s), recolorea el suelo, marca `listo = true` y aplica el modo.
+1. `01_datos` parsea `D`. `02_mundo` indexa las teselas de `D.teselas` y prepara el mosaico y el relieve grueso de 8 m.
+2. `90_final`: `Mundo.alCargar(fn)` avisa a `Arboles` cuando llega una tesela. `Mundo.arranca(fn)` pide las primeras teselas; al terminar monta el árbol de olivos, el mosaico, la nube, vacía la `Cola` (hasta 10 s), recolorea el suelo, marca `listo = true` y aplica el modo.
 3. `window.__g.listo()` devuelve `true`: es la señal que esperan las pruebas.
 
 ## 4. Bucle por fotograma (`cuadro(t)` en `90_final.js`)
@@ -82,7 +80,7 @@ Dos modos: **embebido** (`D` incluye `t{}`; ≤16 MB, Cerro) y **ficheros** (`D.
 
 ## 7. Datos hacia el motor
 
-Exportador (`tuberia/finca_8_teselas.py`, `tuberia/hituelo_conv.py`) → `indice.json` + `t/<kx>_<ky>.json|jpg` → `tuberia/salida_artefacto/montar_v2.py` → página. Formato exacto: [CONTRATOS](CONTRATOS.md).
+Exportador (`tuberia/finca_8_teselas.py`, `tuberia/hituelo_conv.py`) → `indice.json` + `t/<kx>_<ky>.json|jpg` → `tuberia/tiles3d/genera.mjs` (tileset) → `genera_motor.mjs` + Vite → página. Formato exacto: [CONTRATOS](CONTRATOS.md).
 
 ## 8. VR
 

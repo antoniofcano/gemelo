@@ -20,4 +20,4 @@ Se **borra la escena de siempre** (`apps/web/motor/04_terreno.js`, el espacio de
 - **Supera:** [ADR-0001](0001-teselas-256m-utm30.md) y [ADR-0002](0002-niveles-de-detalle.md) (junto con ADR-0015, que cierra aquí su fase 2). **Enmienda:** [ADR-0008](0008-ficheros-de-apoyo-json-jpg.md) (el json/jpg de `t/` sigue por Mundo; el motivo de los límites de artefactos desaparece), [ADR-0010](0010-monorepo-y-build-con-vite.md) (una sola salida) y [ADR-0016](0016-actualizacion-de-three.md) (sin importmap de jsDelivr). No toca [ADR-0004](0004-datos-fuera-del-repo.md).
 
 ## Comprobación
-`npm run puerta` sin referencias a la salida artefacto ni a `Terreno`; el fixture trae tileset y las pruebas montan la página con Vite (`pruebas/guardianes/_pagina.js`). **No probado:** Quest y escritorio con GPU (T7); iPhone.
+`npm run puerta` sin referencias a la salida artefacto ni a `Terreno`; el fixture trae tileset y las pruebas montan la página con Vite (`_pagina.js` de los guardianes). **No probado:** Quest y escritorio con GPU (T7); iPhone.

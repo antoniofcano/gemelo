@@ -2,6 +2,8 @@
 
 > Referencia viva: se actualiza al volver a medir (protocolo: [skill `medir`](../../.claude/skills/medir/SKILL.md)). Cifras de octubre de 2026; solo SwiftShader, los fps reales faltan.
 
+> **Invalidadas el 2026-10-30 (T8 fase 2, [ADR-0021](../adr/0021-se-retira-la-salida-artefacto-y-la-escena-de-siempre.md)).** Todas las cifras medidas con la **escena de siempre** (`Terreno`, `?escena=clasica`, topes `fixture` de `pruebas/presupuesto.json`) o con la **salida artefacto / modo embebido** ya no se pueden reproducir: se conservan como historia, no como referencia. Son las de «Cerro Velasco, antes y después», «Escala», «three 0.128.0 → 0.186.1», «Presencia simulada», «Hituelo real con `?olivos=gen`» y las comparaciones «escena de siempre frente a 3D Tiles» de «Criterios 2, 3 y 4 del ADR-0015». Las cifras de la escena 3D Tiles (secciones de Hituelo en 3D Tiles y topes `fixture_escena_tiles`) siguen siendo las de la única escena, pero el banco debe volver a medir con la página de Vite antes de afirmar nada nuevo (TODO-C: topes definitivos).
+
 ## Cerro Velasco, antes y después (mismas cámaras; banco de entonces `prueba.js`, no versionado: hoy `pruebas/prueba3.js`)
 
 | Vista | Llamadas | Triángulos | Puntos | Heap JS |

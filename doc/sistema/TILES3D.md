@@ -98,7 +98,7 @@ Decisión 79 de Antonio ([ADR-0021](../adr/0021-se-retira-la-salida-artefacto-y-
 
 El campo del índice se mantiene en vez de probar a pedir `<D.base>tileset/tileset.json`: quien sirve el tileset lo dice y el motor no adivina (regla 3 de CLAUDE.md). Los exportadores no lo escriben. En local, `infra/dev/herramientas/levanta.mjs` escribe `tileset = /teselas/<finca>/tileset/tileset.json` con `GEMELO_DEV_TILESET`; las páginas de prueba lo escriben en el índice que montan ([TESTING](../operacion/TESTING.md)). El VPS tendrá que escribirlo en el índice que publique. TODO-B: confirmar que `levanta.mjs` y el fixture siguen igual.
 
-**Pruebas:** el fixture trae `tileset/` y las pruebas montan la página con Vite (`pruebas/guardianes/_pagina.js`, `montaPagina`). TODO-C: topes y pruebas concretas (`escena3d.test.js`, `carga.test.js`) cuando C cierre.
+**Pruebas:** el fixture trae `tileset/` y las pruebas montan la página con Vite (`_pagina.js` de los guardianes, `montaPagina`). TODO-C: topes y pruebas concretas (`escena3d.test.js`, `carga.test.js`) cuando C cierre.
 
 ### La escena por defecto (T8 fase 1)
 
