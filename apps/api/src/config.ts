@@ -26,7 +26,7 @@ export interface Config {
   bd: { host: string; puerto: number; base: string; usuario: string; clave: string | undefined; max: number };
   sesion: { diasAbsolutos: number; diasInactividad: number; secreto: string };
   /** sesión de oficina (ADR-0024, contratos/sesion.md § Oficina): más corta, con aparato confiable y confirmación reciente */
-  oficina: { horasSesion: number; minInactividad: number; minConfirmacion: number; minSegundoEnlace: number };
+  oficina: { horasSesion: number; minInactividad: number; minConfirmacion: number; minSegundoEnlace: number; otProponer: "manual" | "token" };
   enlace: { minutos: number; porIp: number; porCorreo: number; ventanaMin: number };
   /** código corto de las gafas (contratos/sesion.md § Código corto): códigos pedidos por IP, intentos de aprobar por hogar y por IP */
   vinculo: { porIp: number; intentosPorHogar: number; intentosPorIp: number; sondeosPorMin: number; ventanaMin: number };
@@ -216,6 +216,9 @@ export function cargaConfig(e: Entorno = process.env): Config {
       minInactividad: entero(e, "GEMELO_OFICINA_INACTIVIDAD_MIN", 120, 5, 720),
       minConfirmacion: entero(e, "GEMELO_OFICINA_CONFIRMACION_MIN", 15, 1, 60),
       minSegundoEnlace: entero(e, "GEMELO_OFICINA_SEGUNDO_ENLACE_MIN", 5, produccion ? 5 : 0, 60),
+      // «pasar a OlivarTrack» desde la bandeja (OF4): hoy «manual» (la persona copia el texto y apunta el id de la propuesta); «token» queda
+      // reservado para cuando exista el token de solo proponer (DO-7) y todavía no hace nada distinto
+      otProponer: texto(e, "GEMELO_OFICINA_OT_PROPONER", "manual") === "token" ? "token" : "manual",
     },
     enlace: {
       minutos: 15,

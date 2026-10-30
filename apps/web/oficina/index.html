@@ -49,8 +49,14 @@
       <p class="nota" id="kFamNota"></p>
       <p><button class="boton peq" type="button" data-ir="familias">Ver familias</button></p>
     </div>
+    <div class="tarjeta">
+      <h2>Bandeja</h2>
+      <p class="cifra" id="kBandeja">—</p>
+      <p class="nota" id="kBandejaNota"></p>
+      <p><button class="boton peq" type="button" data-ir="bandeja">Abrir la bandeja</button></p>
+    </div>
   </div>
-  <p class="nota">El resto de secciones (Bandeja, Agenda, Directos, Mundo, Olivos y Sistema) llegan en las siguientes tareas de la oficina.</p>
+  <p class="nota">El resto de secciones (Agenda, Directos, Mundo, Olivos y Sistema) llegan en las siguientes tareas de la oficina.</p>
 </section>
 
 <section id="s-familias" hidden>
@@ -109,6 +115,18 @@
     </div>
     <aside class="tarjeta ficha" id="hFicha" aria-live="polite"></aside>
   </div>
+</section>
+
+<section id="s-bandeja" hidden>
+  <div class="barra-h">
+    <div class="barra-h" role="group" aria-label="Filtrar la bandeja por tipo" id="bFiltros"></div>
+    <label class="vh" for="bEstado">Filtrar por estado</label>
+    <select class="entrada empuja" id="bEstado"></select>
+    <button class="boton suave" id="bRecarga" type="button">↻ Actualizar</button>
+  </div>
+  <p class="nota" id="bResumen" aria-live="polite"></p>
+  <ul class="lista" id="bLista"></ul>
+  <p class="nota">Lo que cuelgan las familias se ve al momento (decisión 93); aquí se retira en un clic, se puede volver a mostrar y todo queda en la auditoría. «Pasar a OlivarTrack» manda una <b>propuesta</b> que valida una persona en OlivarTrack: el gemelo no escribe allí por su cuenta (decisión 94), así que hoy se copia el texto y se apunta el id de la propuesta.</p>
 </section>
 
 <section id="s-proximamente" hidden>

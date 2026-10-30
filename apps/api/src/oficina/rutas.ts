@@ -35,6 +35,7 @@ export async function rutasOficina(app: FastifyInstance, ctx: Contexto): Promise
       inactividad_min: config.oficina.minInactividad,
       confirmada_en: s.confirmadaEn instanceof Date ? s.confirmadaEn.toISOString() : null,
       confirmacion_vigente: s.confirmacionVigente === true,
+      ot_proponer: config.oficina.otProponer,
     };
   });
 

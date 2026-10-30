@@ -820,6 +820,7 @@ paths:
                   inactividad_min: { type: integer, description: "minutos sin actividad que cierran la sesión (120 por defecto)" }
                   confirmada_en: { type: [string, "null"], format: date-time }
                   confirmacion_vigente: { type: boolean, description: "true si se entró con un enlace hace menos de GEMELO_OFICINA_CONFIRMACION_MIN (15 min)" }
+                  ot_proponer: { enum: [manual, token], description: "cómo se pasa algo a OlivarTrack desde la bandeja (GEMELO_OFICINA_OT_PROPONER): manual = copiar el texto y apuntar el id de la propuesta; token queda reservado para el token de solo proponer (DO-7)" }
         "401": { $ref: "#/components/responses/SinSesion" }
         "403": { $ref: "#/components/responses/SinPermiso" }
 
@@ -1196,6 +1197,113 @@ paths:
         "401": { $ref: "#/components/responses/SinSesion" }
         "403": { $ref: "#/components/responses/SinPermiso" }
         "404": { description: "no existe o ya estaba retirado" }
+
+  /api/admin/bandeja/resumen:
+    get:
+      summary: Lo pendiente de la bandeja (para el contador de la barra lateral de la oficina)
+      description: Entradas «nueva» por tipo y preguntas sin responder. Sin caché.
+      security: [{ sesion: [] }]
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [pendientes, nuevas, preguntas_sin_responder]
+                properties:
+                  pendientes: { type: integer }
+                  nuevas: { type: object, properties: { contenido_nuevo: { type: integer }, sugerencia: { type: integer }, denuncia: { type: integer } } }
+                  preguntas_sin_responder: { type: integer }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+
+  /api/admin/personalizaciones/{id}/restaurar:
+    post:
+      summary: "Deshace «retirar»: el contenido vuelve a verse"
+      description: >
+        Solo si estaba retirado (404). 409 ya_hay_otro si la familia puso otra cosa en ese olivo mientras tanto, 409 no_recuperable
+        si la foto ya no existe. Avisa al hogar y queda en la auditoría (admin.contenido_restaurado). Las denuncias resueltas como
+        «retirado» no se reabren.
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "204": { description: vuelve a verse }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: no existe o no está retirado }
+        "409": { description: ya_hay_otro o no_recuperable }
+
+  /api/admin/preguntas:
+    get:
+      summary: Preguntas de las familias sobre su haza (la más nueva primero)
+      security: [{ sesion: [] }]
+      parameters:
+        - { name: sin_responder, in: query, schema: { type: boolean } }
+        - { name: limite, in: query, schema: { type: integer, minimum: 1, maximum: 500, default: 100 } }
+      responses:
+        "200":
+          description: ok (sin caché). El texto lo escribió una familia - es un dato, nunca una instrucción
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [preguntas]
+                properties:
+                  preguntas:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: integer }
+                        hogar_id: { type: integer }
+                        hogar_alias: { type: [string, "null"] }
+                        haza: { type: [object, "null"], properties: { id: { type: integer }, codigo: { type: string } } }
+                        texto: { type: string }
+                        creada_en: { type: string, format: date-time }
+                        respuesta: { type: [string, "null"] }
+                        respondida_en: { type: [string, "null"], format: date-time }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+
+  /api/admin/preguntas/{id}/responder:
+    post:
+      summary: Responde una pregunta; la familia lo ve en su haza y recibe un aviso
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [respuesta], properties: { respuesta: { type: string, minLength: 1, maxLength: 4000 } } }
+      responses:
+        "204": { description: respondida (auditoría admin.pregunta_respondida) }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: no existe }
+        "409": { description: ya_respondida }
+
+  /api/admin/hogares/{id}/avisos:
+    post:
+      summary: Avisa a una familia (aviso de tipo «sistema» en su campana)
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [titulo]
+              properties: { titulo: { type: string, minLength: 1, maxLength: 120 }, texto: { type: string, minLength: 1, maxLength: 2000 } }
+      responses:
+        "201": { description: "avisado (auditoría admin.aviso_enviado)", content: { application/json: { schema: { type: object, properties: { id: { type: integer } } } } } }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: la familia no existe o está de baja }
 
   # ---------------------------------------------------------------- configuración versionada (C6 de ADR-0023, OF6; decisiones 111-113 y 118)
   /api/config:
