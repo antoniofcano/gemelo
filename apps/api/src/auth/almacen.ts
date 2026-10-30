@@ -28,6 +28,8 @@ declare module "fastify" {
     /** solo en cuentas de oficina: el aparato desde el que se entró y si ya está aprobado (contratos/sesion.md § Oficina) */
     aparatoId?: number;
     aparatoAprobado?: boolean;
+    /** nombre deducido del agente («Windows · Chrome»; «Gafas (código corto)»), solo para que la oficina reconozca la sesión */
+    aparatoNombre?: string;
     /** solo en cuentas de oficina: cuándo se confirmó por última vez (entrar con un enlace) y si eso fue hace poco */
     confirmadaEn?: Date;
     confirmacionVigente?: boolean;
@@ -97,8 +99,8 @@ export class AlmacenPg implements SessionStore {
     if (typeof s.hogarId !== "number") return;
     const expira = s.cookie?.expires instanceof Date ? s.cookie.expires : new Date(Date.now() + 86_400_000);
     await this.bd.query(
-      `INSERT INTO sesiones (hogar_id, hash, expira_en, origen, aparato_id, confirmada_en) VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO sesiones (hogar_id, hash, expira_en, origen, aparato_id, confirmada_en, aparato_nombre) VALUES ($1, $2, $3, $4, $5, $6, $7)
        ON CONFLICT (hash) DO UPDATE SET ultima_actividad_en = now() WHERE sesiones.revocada_en IS NULL`,
-      [s.hogarId, hashToken(id), expira, s.origen === "vinculo" ? "vinculo" : "enlace", s.aparatoId ?? null, s.confirmadaEn ?? null]);
+      [s.hogarId, hashToken(id), expira, s.origen === "vinculo" ? "vinculo" : "enlace", s.aparatoId ?? null, s.confirmadaEn ?? null, s.aparatoNombre ?? null]);
   }
 }

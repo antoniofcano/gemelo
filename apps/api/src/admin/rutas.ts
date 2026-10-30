@@ -1,12 +1,12 @@
-// Panel de la oficina (roles oficina y admin, ADR-0024): dar de alta hogares, asignar hazas (decisión 12: la haza la asigna la
-// oficina), cerrar sesiones, borrar un hogar (RGPD, con confirmación reciente) y lanzar la sincronía con OlivarTrack.
+// Panel de la oficina (roles oficina y admin, ADR-0024): asignar hazas (decisión 12: la haza la asigna la oficina), cerrar todas las
+// sesiones de un hogar y lanzar la sincronía con OlivarTrack. Lo de las familias (lista, alta, baja, borrado RGPD…) vive en familias.ts.
 // Dar de alta o borrar una cuenta de OFICINA (rol oficina o admin) es cambiar roles: solo `admin`, con confirmación reciente.
 import type { FastifyInstance } from "fastify";
-import { audita, esOficina, normalizaCorreo, revocaTodas, ROLES, type Rol } from "../auth/servicio.ts";
-import { CONFIRMACION_REQUERIDA, OFICINA, OFICINA_CONFIRMADA, SIN_PERMISO } from "../oficina/acceso.ts";
+import { audita, revocaTodas } from "../auth/servicio.ts";
+import { OFICINA } from "../oficina/acceso.ts";
 import type { Contexto } from "../contexto.ts";
 import { sincroniza } from "../ot/sincronia.ts";
-import { borraFicheros, clavesDelHogar } from "../vida/medios.ts";
+import { rutasFamilias } from "./familias.ts";
 
 const ID = { type: "object", additionalProperties: false, required: ["id"], properties: { id: { type: "integer", minimum: 1, maximum: 2147483647 } } } as const;
 
@@ -14,45 +14,7 @@ export async function rutasAdmin(app: FastifyInstance, ctx: Contexto): Promise<v
   const { bd } = ctx;
   const soloAdmin = OFICINA;
 
-  app.get("/api/admin/hogares", { preHandler: soloAdmin }, async (_req, rep) => {
-    const r = await bd.query(
-      `SELECT g.id, g.correo, g.rol, g.alias, g.alias_visible, g.activo, g.creado_en,
-              coalesce(array_agg(h.codigo ORDER BY h.codigo) FILTER (WHERE h.id IS NOT NULL), '{}') AS hazas
-         FROM hogares g LEFT JOIN hazas h ON h.hogar_id = g.id GROUP BY g.id ORDER BY g.id`);
-    rep.header("cache-control", "no-store");
-    return { hogares: r.rows };
-  });
-
-  app.post<{ Body: { correo: string; rol: string } }>("/api/admin/hogares", {
-    preHandler: soloAdmin,
-    schema: { body: { type: "object", additionalProperties: false, required: ["correo", "rol"], properties: { correo: { type: "string", maxLength: 254 }, rol: { type: "string", enum: [...ROLES] } } } },
-  }, async (req, rep) => {
-    if (esOficina(req.body.rol as Rol)) {
-      if (req.session.rol !== "admin") return rep.code(403).send(SIN_PERMISO);
-      if (req.session.confirmacionVigente !== true) return rep.code(403).send(CONFIRMACION_REQUERIDA);
-    }
-    const correo = normalizaCorreo(req.body.correo);
-    if (!correo) return rep.code(400).send({ error: "correo_no_valido" });
-    try {
-      const r = await bd.query<{ id: number }>("INSERT INTO hogares (correo, rol) VALUES ($1, $2) RETURNING id", [correo, req.body.rol]);
-      await audita(bd, req.session.hogarId!, "admin.hogar_creado", { hogar: r.rows[0]!.id, rol: req.body.rol });
-      return rep.code(201).send({ id: r.rows[0]!.id });
-    } catch (e) {
-      if ((e as { code?: string }).code === "23505") return rep.code(409).send({ error: "ya_existe" });
-      throw e;
-    }
-  });
-
-  app.delete<{ Params: { id: number } }>("/api/admin/hogares/:id", { preHandler: OFICINA_CONFIRMADA, schema: { params: ID } }, async (req, rep) => {
-    const objetivo = await bd.query<{ rol: Rol }>("SELECT rol FROM hogares WHERE id = $1", [req.params.id]);
-    if (esOficina(objetivo.rows[0]?.rol) && req.session.rol !== "admin") return rep.code(403).send(SIN_PERMISO);
-    const claves = await clavesDelHogar(bd, req.params.id);
-    const r = await bd.query("DELETE FROM hogares WHERE id = $1", [req.params.id]);
-    if (!r.rowCount) return rep.code(404).send({ error: "no_existe" });
-    await borraFicheros(ctx.config.medios.carpeta, claves);
-    await audita(bd, req.session.hogarId!, "hogar.borrado", { por: "oficina" });
-    return rep.code(204).send();
-  });
+  await rutasFamilias(app, ctx);
 
   app.post<{ Params: { id: number } }>("/api/admin/hogares/:id/revocar", { preHandler: soloAdmin, schema: { params: ID } }, async (req, rep) => {
     const n = await revocaTodas(bd, req.params.id);

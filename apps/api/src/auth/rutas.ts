@@ -5,7 +5,7 @@ import { huella, PATRON_TOKEN } from "../seguridad/cripto.ts";
 import { mensajeDeEnlace } from "./correo.ts";
 import { paginaEnlaceMalo, paginaEntrar, POLITICA_REFERENTE } from "./paginas.ts";
 import { aparatoPendiente } from "../oficina/acceso.ts";
-import { aparatoAlEntrar, COOKIE_APARATO, OPCIONES_COOKIE_APARATO } from "../oficina/aparatos.ts";
+import { aparatoAlEntrar, COOKIE_APARATO, nombreDeAparato, OPCIONES_COOKIE_APARATO } from "../oficina/aparatos.ts";
 import { requiereSesion } from "./roles.ts";
 import { audita, consumeEnlace, creaEnlace, esOficina, estadoEnlace, normalizaCorreo, primerAcceso, revocaTodas } from "./servicio.ts";
 import { creaCodigo, SONDEO_S, sondea } from "./vinculo.ts";
@@ -90,6 +90,7 @@ export async function rutasAuth(app: FastifyInstance, ctx: Contexto): Promise<vo
     await req.session.regenerate();
     req.session.hogarId = r.hogarId;
     req.session.origen = "enlace";
+    req.session.aparatoNombre = nombreDeAparato(req.headers["user-agent"]);
     if (aparato) {
       req.session.aparatoId = aparato.id;
       req.session.confirmadaEn = new Date();
@@ -123,6 +124,7 @@ export async function rutasAuth(app: FastifyInstance, ctx: Contexto): Promise<vo
     await req.session.regenerate();
     req.session.hogarId = e.hogarId;
     req.session.origen = "vinculo";
+    req.session.aparatoNombre = "Gafas (código corto)";
     return { estado: "aprobado", primer_acceso: primerAcceso(e.normasVersion) };
   });
 

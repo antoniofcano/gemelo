@@ -392,33 +392,166 @@ paths:
 
   /api/admin/hogares:
     get:
-      summary: Lista de hogares (oficina)
+      summary: "Familias (oficina): lista con búsqueda q (correo, alias, nombre interno, haza), filtro estado (activa, pendiente = sin primer acceso, baja) y paginación. Devuelve { hogares: [{ id, correo, rol, alias, alias_visible, activo, nombre_interno, estado, hazas (códigos), sesiones, creado_en, baja_en, borrado_en, avisos_correo, normas_version, normas_aceptadas_en }], total }"
       security: [{ sesion: [] }]
+      parameters:
+        - { name: q, in: query, schema: { type: string, maxLength: 80 } }
+        - { name: estado, in: query, schema: { enum: [activa, pendiente, baja] } }
+        - { name: limite, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 100 } }
+        - { name: desde, in: query, schema: { type: integer, minimum: 0, default: 0 } }
       responses:
         "200": { description: ok }
         "401": { $ref: "#/components/responses/SinSesion" }
         "403": { $ref: "#/components/responses/SinPermiso" }
     post:
-      summary: "Da de alta un hogar (las cuentas las da la explotación). Una cuenta de oficina (rol oficina o admin): solo admin, con confirmación reciente"
+      summary: "Da de alta un hogar (las cuentas las da la explotación) y le manda el enlace de bienvenida (enviar: false lo evita). Opcionales: nombre_interno (solo lo ve la oficina, decisión 109) y haza_id (si la tenía otra familia, se le quita y se dice en haza_quitada_a). Una cuenta de oficina (rol oficina o admin): solo admin, con confirmación reciente"
       security: [{ sesion: [] }]
       requestBody:
         required: true
         content:
           application/json:
-            schema: { type: object, additionalProperties: false, required: [correo, rol], properties: { correo: { type: string }, rol: { enum: [hogar, guia, corresponsal, oficina, admin] } } }
+            schema:
+              type: object
+              additionalProperties: false
+              required: [correo, rol]
+              properties:
+                correo: { type: string }
+                rol: { enum: [hogar, guia, corresponsal, oficina, admin] }
+                nombre_interno: { type: [string, "null"], maxLength: 60 }
+                haza_id: { type: [integer, "null"] }
+                enviar: { type: boolean }
       responses:
-        "201": { description: creado }
+        "201": { description: "creado: { id, enlace_enviado, haza_quitada_a }" }
+        "400": { description: correo no válido o haza que no existe }
         "409": { description: ya existe }
         "403": { $ref: "#/components/responses/SinPermiso" }
 
   /api/admin/hogares/{id}:
+    patch:
+      summary: "Cambia el nombre interno (decisión 109), quita el alias (si es ofensivo) o cambia el rol (solo admin, con confirmación reciente; nunca el propio ni el del último admin)"
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              minProperties: 1
+              properties:
+                nombre_interno: { type: [string, "null"], maxLength: 60 }
+                quitar_alias: { const: true }
+                rol: { enum: [hogar, guia, corresponsal, oficina, admin] }
+      responses:
+        "204": { description: hecho }
+        "404": { description: no existe }
+        "409": { description: a ti mismo o último admin }
+        "403": { $ref: "#/components/responses/SinPermiso" }
     delete:
-      summary: "Borra un hogar en cascada (RGPD). Pide confirmación reciente; borrar una cuenta de oficina, solo admin"
+      summary: "Borra un hogar en cascada ya (RGPD). Pide confirmación reciente y el correo de la cuenta escrito en el cuerpo; borrar una cuenta de oficina, solo admin"
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [correo], properties: { correo: { type: string } } }
+      responses:
+        "204": { description: borrado }
+        "400": { description: el correo escrito no es el de la cuenta }
+        "404": { description: no existe }
+        "409": { description: a ti mismo o último admin }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+
+  /api/admin/hogares/{id}/enlace:
+    post:
+      summary: Reenvía el enlace de entrada (el de bienvenida si aún no ha entrado); mismos límites por correo que la entrada normal
       security: [{ sesion: [] }]
       parameters: [{ $ref: "#/components/parameters/Id" }]
       responses:
-        "204": { description: borrado }
+        "202": { description: mandado }
         "404": { description: no existe }
+        "409": { description: la cuenta está de baja }
+        "429": { $ref: "#/components/responses/Limite" }
+        "502": { description: el correo no salió }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+
+  /api/admin/hogares/{id}/sesiones:
+    get:
+      summary: "Sesiones abiertas de una cuenta ({ sesiones: [{ id, aparato, por_codigo_corto, creada_en, ultima_actividad_en, expira_en }], aparatos_oficina })"
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "200": { description: ok }
+        "404": { description: no existe }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+
+  /api/admin/sesiones/{id}:
+    delete:
+      summary: Cierra una sesión (las de cuentas de oficina, solo admin o la propia cuenta)
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "204": { description: cerrada }
+        "404": { description: no existe o ya estaba cerrada }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+
+  /api/admin/hogares/{id}/haza:
+    put:
+      summary: "Asigna (o quita, con null) la haza de una familia (decisión 91: una por hogar; suelta las demás). Si la tenía otra familia se le quita y se dice en quitada_a"
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [haza_id], properties: { haza_id: { type: [integer, "null"] } } }
+      responses:
+        "200": { description: "{ haza_id, quitada_a: { id, correo } | null, soltadas }" }
+        "404": { description: la cuenta o la haza no existen }
+        "409": { description: la cuenta está de baja }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+
+  /api/admin/hogares/{id}/baja:
+    post:
+      summary: "Da de baja (decisión 108): cierra sus sesiones, la haza queda sin titular y su contenido se oculta al momento; se borra a los 30 días. Devuelve { borrado_en }"
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "200": { description: de baja }
+        "404": { description: no existe }
+        "409": { description: ya de baja, a ti mismo o último admin }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+
+  /api/admin/hogares/{id}/reactivar:
+    post:
+      summary: "Reactiva una cuenta de baja y le devuelve las hazas que siguen sin titular. Devuelve { hazas_devueltas }"
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "200": { description: reactivada }
+        "404": { description: no existe }
+        "409": { description: no está de baja }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+
+  /api/admin/hogares/{id}/exportar:
+    get:
+      summary: Todos los datos de la cuenta en JSON (RGPD), los mismos de GET /api/yo/datos más el nombre interno
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "200": { description: ok (attachment) }
+        "404": { description: no existe }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+
+  /api/admin/hazas:
+    get:
+      summary: "Las hazas con su titular (solo oficina), para elegir: { hazas: [{ id, codigo, nombre, finca, hogar_id, hogar_correo }] }"
+      security: [{ sesion: [] }]
+      responses:
+        "200": { description: ok }
+        "401": { $ref: "#/components/responses/SinSesion" }
         "403": { $ref: "#/components/responses/SinPermiso" }
 
   /api/admin/hogares/{id}/revocar:

@@ -7,31 +7,111 @@
 <meta name="robots" content="noindex">
 <meta name="color-scheme" content="light dark">
 <title>Oficina · Cuarenta hazas</title>
-<!-- La oficina (/oficina/, doc/sistema/OFICINA.md, ADR-0024). OF1: página mínima «en construcción»; las secciones llegan con OF2.
-     Sin three ni motor; sin nada en línea (CSP estricta: script-src 'self'; style-src 'self'). Caddy solo la sirve con una
-     sesión de oficina (forward_auth a /api/interno/autoriza?para=oficina), y la api vuelve a comprobarlo en cada ruta. -->
+<!-- La oficina (/oficina/, doc/sistema/OFICINA.md, ADR-0024). OF2: el esqueleto (barra lateral, cabecera con la sesión, tema) y la
+     sección Familias contra la api real. Sin three ni motor; NADA en línea (CSP estricta: script-src 'self'; style-src 'self'):
+     ni estilos ni manejadores de eventos en las etiquetas; el DOM se construye con textContent. Caddy solo la sirve con una sesión de oficina
+     (forward_auth a /api/interno/autoriza?para=oficina) y la api vuelve a comprobarlo en cada ruta. Herramienta de ordenador
+     (decisión 116): pensada para 1280 y 1024 px de ancho. La maqueta de referencia es prototipos/oficina/index.html. -->
 <link rel="stylesheet" href="./oficina.css">
 <script type="module" src="./oficina.js"></script>
 </head>
 <body>
 <p class="vh" id="anuncio" role="status" aria-live="polite"></p>
-<header class="barra">
-  <h1>Oficina</h1>
-  <a class="btn" href="/finca/">Entrar al mundo como oficina</a>
-  <button type="button" class="btn btn-txt" id="salir">Cerrar sesión</button>
-</header>
-<main class="caja" id="principal">
-  <h2>En construcción</h2>
-  <p>Aquí estarán Familias, Hazas, Bandeja, Agenda, Directos, Mundo, Olivos y Sistema (<a href="/">portada</a>).</p>
-  <section aria-labelledby="t-sesion">
-    <h3 id="t-sesion">Tu sesión de oficina</h3>
-    <dl id="sesion">
-      <dt>Cuenta</dt><dd id="s-rol">—</dd>
-      <dt>Este aparato</dt><dd id="s-aparato">—</dd>
-      <dt>Caduca</dt><dd id="s-caduca">—</dd>
-      <dt>Confirmación reciente</dt><dd id="s-confirmacion">—</dd>
-    </dl>
-  </section>
-</main>
+<div class="app">
+  <nav class="lateral" aria-label="Secciones de la oficina">
+    <div class="marca"><b>Oficina</b><span>Gemelo · Cuarenta hazas</span></div>
+    <ul class="nav" id="nav"></ul>
+    <div class="pie" id="pieSesion">Leyendo tu sesión…</div>
+  </nav>
+  <div class="principal">
+    <header class="cabecera">
+      <h1 id="titulo" tabindex="-1">Inicio</h1>
+      <a class="boton prim" href="/finca/" id="bMundo">🌳 Entrar al mundo <span class="largo">como oficina</span></a>
+      <button class="boton suave" id="bTema" type="button" aria-label="Cambiar entre tema claro y oscuro">◐ Tema</button>
+      <button class="boton suave" id="salir" type="button">Cerrar sesión</button>
+    </header>
+    <main id="contenido">
+
+<section id="s-inicio" aria-labelledby="titulo">
+  <div class="rejilla">
+    <div class="tarjeta">
+      <h2>Tu sesión de oficina</h2>
+      <dl class="datos" id="sesion">
+        <dt>Cuenta</dt><dd id="s-rol">—</dd>
+        <dt>Este aparato</dt><dd id="s-aparato">—</dd>
+        <dt>Caduca</dt><dd id="s-caduca">—</dd>
+        <dt>Confirmación reciente</dt><dd id="s-confirmacion">—</dd>
+      </dl>
+    </div>
+    <div class="tarjeta">
+      <h2>Familias</h2>
+      <p class="cifra" id="kFamilias">—</p>
+      <p class="nota" id="kFamNota"></p>
+      <p><button class="boton peq" type="button" data-ir="familias">Ver familias</button></p>
+    </div>
+  </div>
+  <p class="nota">El resto de secciones (Hazas, Bandeja, Agenda, Directos, Mundo, Olivos y Sistema) llegan en las siguientes tareas de la oficina.</p>
+</section>
+
+<section id="s-familias" hidden>
+  <div class="barra-h">
+    <label class="vh" for="fBusca">Buscar familia</label>
+    <input class="entrada crece" id="fBusca" type="search" placeholder="Buscar por correo, alias, nombre interno o haza" autocomplete="off">
+    <label class="vh" for="fFiltro">Filtrar por estado</label>
+    <select class="entrada" id="fFiltro"><option value="">Todas</option><option value="activa">Activas</option><option value="pendiente">Sin primer acceso</option><option value="baja">De baja</option></select>
+    <button class="boton prim" id="bAlta" type="button">＋ Dar de alta</button>
+  </div>
+  <div class="dos">
+    <div class="tabla-env"><table aria-describedby="fCuenta">
+      <thead><tr><th scope="col">Correo</th><th scope="col">Alias</th><th scope="col">Haza</th><th scope="col">Estado</th><th scope="col">Sesiones</th><th scope="col"><span class="vh">Acciones</span></th></tr></thead>
+      <tbody id="fTabla"></tbody></table></div>
+    <aside class="tarjeta ficha" id="fFicha" aria-live="polite"><p class="nota">Elige una familia para ver su ficha.</p></aside>
+  </div>
+  <div class="barra-h">
+    <p class="nota" id="fCuenta"></p>
+    <button class="boton peq empuja" id="fMas" type="button" hidden>Ver más</button>
+  </div>
+</section>
+
+<section id="s-proximamente" hidden>
+  <div class="tarjeta">
+    <h2 id="proxTitulo">Próximamente</h2>
+    <p>Esta sección todavía no está hecha. Su diseño está en la maqueta (<code>prototipos/oficina/</code>) y en <code>doc/sistema/OFICINA.md</code>.</p>
+  </div>
+</section>
+
+    </main>
+  </div>
+</div>
+<div id="avisos" aria-live="polite" aria-atomic="false"></div>
+
+<dialog id="dlgAlta" aria-labelledby="dlgAltaT"><form id="fAlta" novalidate>
+  <h2 id="dlgAltaT">Dar de alta una familia</h2>
+  <label class="campo">Correo del titular (el adulto que recibe el enlace) <input id="altaCorreo" type="email" required autocomplete="off" placeholder="nombre@example.com"></label>
+  <label class="campo">Nombre interno (solo lo ve la oficina; opcional) <input id="altaNombre" maxlength="60" autocomplete="off"></label>
+  <label class="campo">Haza <select id="altaHaza"></select></label>
+  <p class="nota" id="altaAviso"></p>
+  <label class="campo">Rol <select id="altaRol"></select></label>
+  <label class="chk"><input type="checkbox" id="altaEnviar" checked> Mandar ahora el enlace de bienvenida</label>
+  <p class="error" id="altaError" role="alert"></p>
+  <div class="pie-dlg"><button class="boton" type="button" id="altaCancela">Cancelar</button><button class="boton prim" type="submit" id="altaOk">Dar de alta</button></div>
+</form></dialog>
+
+<dialog id="dlgConfirma" aria-labelledby="dlgConfT"><form id="fConfirma" novalidate>
+  <h2 id="dlgConfT">¿Seguro?</h2>
+  <div id="dlgConfTexto" class="texto"></div>
+  <label class="campo" id="dlgConfEscribe" hidden><span id="dlgConfEscribeT"></span><input id="dlgConfEntrada" autocomplete="off"></label>
+  <p class="error" id="dlgConfError" role="alert"></p>
+  <div class="pie-dlg"><button class="boton" type="button" id="dlgConfNo">Cancelar</button><button class="boton peligro" type="submit" id="dlgConfSi">Sí</button></div>
+</form></dialog>
+
+<dialog id="dlgReconfirma" aria-labelledby="dlgReconfT"><form id="fReconfirma" novalidate>
+  <h2 id="dlgReconfT">Confirma que eres tú</h2>
+  <div class="texto">
+    <p>Esto es delicado y pide haber entrado hace poco. Te mandamos un enlace nuevo a tu correo: ábrelo en este mismo navegador (vale 15 minutos) y vuelve aquí.</p>
+    <p class="nota" id="reconfEstado" role="status"></p>
+  </div>
+  <div class="pie-dlg"><button class="boton" type="button" id="reconfNo">Cancelar</button><button class="boton" type="button" id="reconfManda">Mandarme el enlace</button><button class="boton prim" type="submit" id="reconfReintenta">Ya he entrado: reintentar</button></div>
+</form></dialog>
 </body>
 </html>
