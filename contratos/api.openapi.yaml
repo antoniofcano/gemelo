@@ -1024,14 +1024,14 @@ paths:
             schema:
               type: object
               additionalProperties: false
-              required: [nombre, objeto]
+              minProperties: 1
               properties:
-                nombre: { type: [string, "null"], minLength: 1, maxLength: 40 }
+                nombre: { type: [string, "null"], minLength: 1, maxLength: 40, description: "omitido = se queda el que había; null = lo quita" }
                 objeto:
                   type: [object, "null"]
                   additionalProperties: false
                   required: [tipo, medio_id]
-                  properties: { tipo: { enum: [foto, pintura] }, medio_id: { type: integer, minimum: 1, description: "id devuelto por POST /api/medios (del propio hogar)" } }
+                  properties: { tipo: { enum: [foto, pintura] }, medio_id: { type: integer, minimum: 1, description: "id devuelto por POST /api/medios (del propio hogar); `objeto` omitido = se queda el que había (la lista blanca no da el medio_id); null = lo quita" } }
       responses:
         "200": { description: guardada, content: { application/json: { schema: { type: object, additionalProperties: false, required: [id], properties: { id: { type: integer } } } } } }
         "400": { description: "forma, nombre no válido (nombre_no_valido), vacío o foto ajena (medio_no_valido)" }
