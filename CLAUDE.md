@@ -23,7 +23,7 @@ Gemelo digital en 3D de fincas de olivar (three.js 0.186.1, teselas de 256 m, Li
 9. **Confirmar antes de publicar, etiquetar o subir.** `git push`, tags, desplegar al servidor: lo decide la persona. Un agente propone y espera el OK.
 10. **Idioma del producto, del código, de la documentación y de los commits: español.**
 11. **Todo cambio de interacción (UI, mandos, panel VR) lleva su nota de comodidad:** qué se probó, dónde y qué **no** se ha probado (iPhone, Quest). Ver [skill `interaccion`](.claude/skills/interaccion/SKILL.md).
-12. **No reinventar ruedas.** Se usan librerías y herramientas existentes y mantenidas (npm, pip, imágenes oficiales de Docker) en lugar de código propio; hay permiso para instalarlas. Cada dependencia se declara con versión fijada en su `package.json`/`requirements.txt`, y el código casero que una librería resuelve se sustituye.
+12. **No reinventar ruedas: nunca reescribir lo que ya existe y se puede reusar** (Antonio, 2026-10-30). Se usan librerías y herramientas existentes y mantenidas (npm, pip, imágenes oficiales de Docker) en lugar de código propio; hay permiso para instalarlas. Cada dependencia se declara con versión fijada en su `package.json`/`requirements.txt`, y el código casero que una librería resuelve se sustituye. Antes de escribir código: (1) buscar en el repo si ya existe (un módulo, una función `XPuro`, un punto de extensión, un contrato) y reusarlo; (2) si no, buscar una librería mantenida; (3) solo entonces, código propio, y el encargo o el commit dicen por qué no sirvió lo existente.
 
 ---
 
