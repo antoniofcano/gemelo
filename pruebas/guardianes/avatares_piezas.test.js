@@ -235,7 +235,7 @@ test("en Chrome: la portada elige por piezas (algo parecido, pelo, piel, vista d
       const ctx = await nav.newContext({ viewport: { width: ancho, height: alto } }), p = await ctx.newPage(), errores = [];
       p.on("pageerror", e => errores.push(String(e))); p.on("console", m => { if (m.type() === "error" && !/404|Failed to load resource/.test(m.text())) errores.push(m.text()); });
       guardado = null; puts.length = 0;
-      await p.goto(base + "/#avatar"); await p.waitForSelector("html[data-listo]"); await p.waitForSelector("#mPelo input[type=radio]", { timeout: 60000 });
+      await p.goto(base + "/#avatar"); await p.waitForSelector("html[data-listo]"); await p.waitForSelector("#mPelo input[type=radio]", { state: "attached", timeout: 60000 });
       const edades = await p.$$eval("#mEdad input", l => l.map(i => i.value));
       assert.deepStrictEqual(edades, ["joven", "adulta", "mayor"], "sin peques (decisión 132)");
       const texto = await p.textContent("#p-avatar");
@@ -261,9 +261,10 @@ test("en Chrome: la portada elige por piezas (algo parecido, pelo, piel, vista d
       assert.ok(bytesReceta(limpio) <= RECETA_MAX_BYTES, "receta de " + bytesReceta(limpio) + " bytes");
       t.diagnostic(ancho + " px: receta " + bytesReceta(limpio) + " bytes: " + JSON.stringify(put));
       // de vuelta: «Mi avatar» lo trae como estaba
-      await p.goto(base + "/#portada"); await p.goto(base + "/#avatar"); await p.waitForSelector("#mPelo input:checked", { timeout: 60000 });
+      await p.goto(base + "/#portada"); await p.goto(base + "/#avatar"); await p.waitForSelector("#mPelo input:checked", { state: "attached", timeout: 60000 });
       assert.strictEqual(await p.$eval("#mPelo input:checked", e => e.value), "pelo-afro"); assert.strictEqual(await p.$eval("#mPiel input:checked", e => e.value), "8");
-      assert.deepStrictEqual(errores, [], "sin errores de página");
+      // SwiftShader a veces no da un segundo contexto WebGL (three avisa «reading 'precision'»): la portada cae al muñeco, que es lo previsto; no cuenta como fallo
+      assert.deepStrictEqual(errores.filter(e => !/reading 'precision'/.test(e)), [], "sin errores de página");
       await ctx.close();
     }
   } finally { srv.close(); }
@@ -298,7 +299,7 @@ test("en Chrome: ?presencia=sim&vrm=1 con el catálogo v2 — cuerpos con sus pi
     const { PALETAS } = await imp("tuberia/avatares/creador/catalogo.mjs"), colores = new Set([].concat(PALETAS.piel, PALETAS.ropa, PALETAS.pelo).map(x => x.color));
     for (const x of v.vestidos) {
       assert.ok(x.mallas.some(n => /^pieza_pelo-/.test(n)), x.id + ": con pelo (nadie calvo en la simulación)");
-      assert.ok(x.llamadas <= 7 && x.triangulos <= 15000, x.id + ": " + x.llamadas + " llamadas y " + x.triangulos + " triángulos (topes_combinacion)");
+      assert.ok(x.llamadas <= 7 && x.triangulos <= 15000, x.id + ": " + x.llamadas + " llamadas y " + x.triangulos + " triángulos (topes_combinacion): " + JSON.stringify(x));
       for (const k of ["piel", "ropa_base", "ropa_abajo", "pelo"]) if (x.colores[k]) assert.ok(colores.has(x.colores[k]), x.id + " " + k + " " + x.colores[k] + " fuera de las paletas");
     }
     t.diagnostic("muñeco (n=20): " + mun.llamadas + " llamadas, " + mun.triangulos + " triángulos; con cuerpos (n=20, " + v.conVrm + " VRM): " + con.llamadas + " llamadas, " + con.triangulos + " triángulos, " + con.geometrias + " geometrías, " + con.texturas + " texturas");

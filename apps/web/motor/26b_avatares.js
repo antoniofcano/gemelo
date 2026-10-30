@@ -264,7 +264,8 @@
       var pz = AvataresPuro.piezasDe(cat, e, v.receta, v.sombrero), col = { piel: v.piel, arriba: v.camisa, abajo: v.pantalon, pelo: v.pelo }, raiz = inst.vrm.scene;
       raiz.traverse(function (o) {
         // por el nombre ORIGINAL del nodo (GLTFLoader lo deja en userData.name; el de three puede llevar «_1» si la malla se llama igual)
-        var pieza = null; for (var p = o; p && p !== raiz; p = p.parent) { var nm = p.userData && p.userData.name; if (nm && mallasDe[nm]) { pieza = p; break; } }
+        // (también las que trae el VRM pero el catálogo no ofrece, p. ej. una pieza retenida: «pieza_» sin entrada → oculta)
+        var pieza = null; for (var p = o; p && p !== raiz; p = p.parent) { var nm = p.userData && p.userData.name; if (nm && (mallasDe[nm] || /^pieza_/.test(nm))) { pieza = p; break; } }
         if (pieza === o) o.visible = !!pz.mallas[o.userData.name];
         if (!o.isMesh) return;
         [].concat(o.material).forEach(function (m) {
