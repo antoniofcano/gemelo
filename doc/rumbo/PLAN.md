@@ -173,7 +173,7 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | C11 | Medida por componente («con y sin» por el banco) | C1 | ligera · **sonnet**; 🔶 | ⬜ |
 | C12 | (Condicional) servidor de estado de juego | decisión de Antonio | —  | ⏸️ no por ahora (decisión 120) |
 | AV1 | Biblioteca de avatares familiar e inclusiva: fuentes abiertas, criterios, propuesta y maqueta del selector | P7 | ligera · **opus** | ✅ 2026-10-30: propuesta y maqueta; 9 decisiones (A1-A9) para Antonio |
-| P7f | Hituelo: personalización en el mundo (nombrar árbol, colgar foto o pintura) — antes V5 | V3, C7 | media · **sonnet** | 🟡 en curso |
+| P7f | Hituelo: personalización en el mundo (nombrar árbol, colgar foto o pintura) — antes V5 | V3, C7 | media · **sonnet** | ✅ 2026-10-30, probado contra la api real en Chrome; sin probar en iPhone, Quest ni con fotos reales de móvil (HEIC, EXIF) |
 | AV2 | Muñeco teñido (decisión 131): 10 tonos de piel, ropa, altura, complexión y silla en el muñeco lejano; altura de la vista de pie/sentado en Configuración (133) | AV1 | ligera · **sonnet**; 🔶 banco | ✅ 2026-10-30; falta la silla con VRM (AV3), la fila de la altura en el panel VR y probar en aparatos |
 | AV3 | Creador por piezas, 1: cuerpos MPFB por edad y complexión generados por un agente con Blender (130), sin peques ofrecidos (132); prueba de arte a ojo | AV1 | pesada · **opus** | ✅ 2026-10-30; 👤 revisión a ojo (decisión 130); costura del cuello visible en el primer plano |
 | AV4 | Creador por piezas, 2: ADR y contrato `avatares` v2 (135), repertorio en la tubería y color en el motor (128), pantalla de elección | AV3 | pesada · **opus** | 🟡 en curso (decisión 141) |

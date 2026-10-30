@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Árboles personalizados en el mundo (P7f): el titular nombra y cuelga una foto o dibujo en los olivos de su haza desde la ficha común; las demás familias ven el nombre sobre el olivo y la imagen en una lámina colgada, y pueden denunciarla. Componente `personalizacion` (`?personaliza=0`). `PUT /api/olivos` acepta nombre u objeto sueltos. No probado en iPhone ni Quest.
 - Oficina: pestaña Épocas en Olivos (7 ventanas MM-DD, común y por finca, comprobación de los 366 días, mismo flujo de versiones) y botón «Re-hornear ahora» en Sistema (`POST /api/admin/hornero/rehornear`; el hornero recoge la petición en su comprobación de cada 10 min); la api ve al hornero en los compose (OF9).
 - «Cae la cosecha» se juega en VR como lámina delante, desde la fila «Juegos» del panel: rayo + gatillo, palanca derecha y B (C9b); 2 llamadas del juego (una por ojo). No probado en Quest.
 - Motor: entidades con id estable y una sola forma de elegirlas (C7, `02e_entidades.js`): olivos, balizas, hazas y personas se eligen igual con toque, clic, rayo VR y cercanía, con una ficha común y un anillo de resaltado al pie de lo elegido; con presencia, tocar a una persona abre su ficha con «Ir con».
