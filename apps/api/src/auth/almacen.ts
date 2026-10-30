@@ -7,6 +7,9 @@
 //  - una cuenta de OFICINA (rol oficina o admin, ADR-0024) tiene su propia caducidad (12 h absolutas, 2 h sin actividad, por
 //    defecto) y su sesión solo vale si viene de un aparato de oficina suyo y no revocado; si está pendiente de aprobar, la
 //    sesión existe pero marcada (las guardas de oficina/acceso.ts la paran). Las de antes de la 0005 o de unas gafas, sin aparato: no valen.
+//  - con la llave de acceso obligatoria (OF13), una sesión de oficina que no se abrió ni se confirmó con una llave viva queda
+//    marcada `llaveRequerida` (solo sirve para dar de alta la llave o entrar con ella) y su «confirmación reciente» es la última
+//    aserción WebAuthn (confirmada_en solo la pone la llave).
 import type { SessionStore } from "@fastify/session";
 import type { Session } from "fastify";
 import type { Bd } from "../bd/pool.ts";
@@ -33,6 +36,10 @@ declare module "fastify" {
     /** solo en cuentas de oficina: cuándo se confirmó por última vez (entrar con un enlace) y si eso fue hace poco */
     confirmadaEn?: Date;
     confirmacionVigente?: boolean;
+    /** solo en cuentas de oficina (OF13): la llave viva con la que se abrió o se confirmó la sesión (sesiones.llave_id) */
+    llaveId?: number;
+    /** solo en cuentas de oficina con la llave obligatoria: true si la sesión aún no se abrió con una llave (las guardas la paran) */
+    llaveRequerida?: boolean;
   }
 }
 
@@ -40,7 +47,7 @@ type Cb = (err?: unknown) => void;
 type CbSesion = (err: unknown, sesion?: Session | null) => void;
 
 /** Caducidad de las sesiones de oficina (config.oficina). */
-export interface PlazosOficina { horasSesion: number; minInactividad: number; minConfirmacion: number }
+export interface PlazosOficina { horasSesion: number; minInactividad: number; minConfirmacion: number; llaveObligatoria?: boolean }
 
 export class AlmacenPg implements SessionStore {
   private readonly bd: Bd;
@@ -64,13 +71,14 @@ export class AlmacenPg implements SessionStore {
   private async lee(id: string): Promise<Session | null> {
     const o = this.oficina;
     const r = await this.bd.query<{ sid: number; hogar_id: number; rol: Rol; alias: string | null; alias_visible: boolean; normas_version: number | null; origen: "enlace" | "vinculo"; expira_en: Date; refrescar: boolean;
-      de_oficina: boolean; aparato_id: number | null; aparato_aprobado: boolean; confirmada_en: Date | null; confirmacion_vigente: boolean }>(
+      de_oficina: boolean; aparato_id: number | null; aparato_aprobado: boolean; confirmada_en: Date | null; confirmacion_vigente: boolean; llave_id: number | null }>(
       `SELECT s.id AS sid, s.origen, h.id AS hogar_id, h.rol, h.alias, h.alias_visible, h.normas_version, s.expira_en,
               s.ultima_actividad_en < now() - interval '5 minutes' AS refrescar,
               h.rol::text IN ('oficina', 'admin') AS de_oficina, a.id AS aparato_id, a.aprobado_en IS NOT NULL AS aparato_aprobado,
-              s.confirmada_en, coalesce(s.confirmada_en > now() - make_interval(mins => $5), false) AS confirmacion_vigente
+              s.confirmada_en, coalesce(s.confirmada_en > now() - make_interval(mins => $5), false) AS confirmacion_vigente, l.id AS llave_id
          FROM sesiones s JOIN hogares h ON h.id = s.hogar_id
          LEFT JOIN aparatos_oficina a ON a.id = s.aparato_id AND a.hogar_id = s.hogar_id AND a.revocado_en IS NULL
+         LEFT JOIN llaves_oficina l ON l.id = s.llave_id AND l.hogar_id = s.hogar_id AND l.revocada_en IS NULL
         WHERE s.hash = $1 AND s.revocada_en IS NULL AND s.expira_en > now() AND h.activo
           AND CASE WHEN h.rol::text IN ('oficina', 'admin')
                    THEN a.id IS NOT NULL AND s.origen = 'enlace'
@@ -90,7 +98,11 @@ export class AlmacenPg implements SessionStore {
       s.aparatoId = f.aparato_id!;
       s.aparatoAprobado = f.aparato_aprobado;
       if (f.confirmada_en) s.confirmadaEn = f.confirmada_en;
-      s.confirmacionVigente = f.confirmacion_vigente;
+      if (f.llave_id !== null) s.llaveId = Number(f.llave_id);
+      const conLlave = f.llave_id !== null;
+      s.llaveRequerida = o.llaveObligatoria === true && !conLlave;
+      // con la llave obligatoria, la confirmación reciente solo la da una aserción WebAuthn (y en una sesión con llave viva)
+      s.confirmacionVigente = f.confirmacion_vigente && (o.llaveObligatoria !== true || conLlave);
     }
     return s;
   }

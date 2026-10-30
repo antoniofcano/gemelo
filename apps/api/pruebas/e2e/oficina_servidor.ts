@@ -6,6 +6,7 @@
 // Con la carpeta de la finca (pruebas/guardianes/oficina_hazas.test.js) la sirve en /teselas/hituelo/ tras sesión (como el Caddy), carga sus
 // copas como olivos medidos y pone las cuatro hazas sobre sus dos parcelas (cada una partida en dos), como tuberia/hazas/desde_fixture.py.
 // Rutas de ayuda (solo aquí, nunca en la api): /__prueba/aparato-pendiente?nombre=<nombre> · /__prueba/enlace?para=<correo> · /__prueba/buzon?para=<correo> · /__prueba/hogar?correo=<correo>
+// · /__prueba/caduca-confirmacion. Con `--llave` (OF13) la llave de acceso es obligatoria (pruebas/guardianes/oficina_llave.test.js).
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import type http from "node:http";
@@ -20,8 +21,11 @@ import { LectorVigiaFixture } from "../../src/vigia/lector-fixture.ts";
 import { ServicioTiempo } from "../../src/vigia/servicio.ts";
 import { configDePrueba, contexto, GRABACIONES } from "../apoyo/contexto.ts";
 
-const dist = process.argv[2];
-const finca = process.argv[3];
+// --llave (OF13, pruebas/guardianes/oficina_llave.test.js): la llave de acceso OBLIGATORIA; sin él, relajada como en las demás pruebas
+const conLlave = process.argv.includes("--llave");
+const args = process.argv.filter(a => a !== "--llave");
+const dist = args[2];
+const finca = args[3];
 if (!dist || !existsSync(join(dist, "index.html"))) { console.error("uso: oficina_servidor.ts <carpeta del build de la oficina>"); process.exit(2); }
 if (!hayDocker()) { console.error("SIN_DOCKER"); process.exit(3); }
 
@@ -53,7 +57,7 @@ writeFileSync(join(hornero, "estado", "hituelo.json"), JSON.stringify({ v: 1, fi
 writeFileSync(join(hornero, "salida", "hituelo", "olivos", "manifiesto.json"), JSON.stringify({ horneado_en: ahoraIso, actual: "envero", epocas: [{ epoca: "envero" }, { epoca: "madura" }], variantes: [{ bytes_br: 1_500_000 }, { bytes_br: 2_900_000 }] }));
 const ctx = contexto(bd.app, configDePrueba({ GEMELO_URL_PUBLICA: url, GEMELO_ENLACE_POR_CORREO: "100", GEMELO_ENLACE_POR_IP: "1000", GEMELO_OT: "grabado", GEMELO_OT_GRABACIONES: GRABACIONES,
   GEMELO_VIGIA: "fixture", GEMELO_VIGIA_FIXTURE: GRABACIONES + "../vigia", GEMELO_HORNERO_ESTADO: join(hornero, "estado"), GEMELO_HORNERO_SALIDA: join(hornero, "salida"),
-  GEMELO_CONFIG_SALIDA: join(hornero, "config", "publicada.json") }));
+  GEMELO_CONFIG_SALIDA: join(hornero, "config", "publicada.json"), GEMELO_OFICINA_LLAVE: conLlave ? "obligatoria" : "no" }));
 ctx.tiempo = new ServicioTiempo(new LectorVigiaFixture(GRABACIONES + "../vigia"));
 const app = await construyeApp(ctx);
 await app.ready();
@@ -132,6 +136,10 @@ servidor.on("request", (req, res) => {
       await new Promise(r => setImmediate(r));
       const t = /entrar\?t=([A-Za-z0-9_-]{43})/.exec(ctx.cartero.ultimoPara(para)?.texto ?? "")?.[1];
       return t ? json(res, 200, { url: url + "/api/auth/entrar?t=" + t }) : json(res, 404, { error: "sin_correo" });
+    }
+    if (ruta === "/__prueba/caduca-confirmacion") {   // OF13: la confirmación reciente de la cuenta de prueba pasa a ser vieja (para ver la de la llave)
+      await dueno.query("UPDATE sesiones SET confirmada_en = now() - interval '1 hour' WHERE hogar_id = $1", [await idDe(ADMIN)]);
+      return json(res, 200, { ok: true });
     }
     if (ruta === "/__prueba/aparato") {   // deja en el navegador la cookie del aparato aprobado (Chrome no deja ponerla __Host- con addCookies sobre http)
       res.writeHead(200, { "content-type": "text/plain", "set-cookie": "__Host-gemelo-aparato=" + secretoAparato + "; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=86400" });

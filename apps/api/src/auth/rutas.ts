@@ -4,7 +4,7 @@ import type { Contexto } from "../contexto.ts";
 import { huella, PATRON_TOKEN } from "../seguridad/cripto.ts";
 import { mensajeDeEnlace } from "./correo.ts";
 import { paginaEnlaceMalo, paginaEntrar, POLITICA_REFERENTE } from "./paginas.ts";
-import { aparatoPendiente } from "../oficina/acceso.ts";
+import { aparatoPendiente, llaveRequerida } from "../oficina/acceso.ts";
 import { aparatoAlEntrar, COOKIE_APARATO, nombreDeAparato, OPCIONES_COOKIE_APARATO } from "../oficina/aparatos.ts";
 import { requiereSesion } from "./roles.ts";
 import { audita, consumeEnlace, creaEnlace, esOficina, estadoEnlace, normalizaCorreo, primerAcceso, revocaTodas } from "./servicio.ts";
@@ -93,7 +93,8 @@ export async function rutasAuth(app: FastifyInstance, ctx: Contexto): Promise<vo
     req.session.aparatoNombre = nombreDeAparato(req.headers["user-agent"]);
     if (aparato) {
       req.session.aparatoId = aparato.id;
-      req.session.confirmadaEn = new Date();
+      // con la llave obligatoria (OF13) el enlace ya no confirma: la confirmación reciente la da la llave
+      if (!config.llave.obligatoria) req.session.confirmadaEn = new Date();
       req.session.cookie.maxAge = config.oficina.horasSesion * 3_600_000;   // 12 h, no 30 días
       if (aparato.secretoNuevo) rep.setCookie(COOKIE_APARATO, aparato.secretoNuevo, OPCIONES_COOKIE_APARATO);
       return html ? rep.code(303).header("location", aparato.estado === "aprobado" ? DESTINO_OFICINA : DESTINO_APARATO_PENDIENTE).send()
@@ -151,6 +152,8 @@ export async function rutasAuth(app: FastifyInstance, ctx: Contexto): Promise<vo
   // Para el forward_auth del Caddy interno: sin sesión, nada fuera de la portada (decisión 16). Caddy no lo expone fuera.
   // `?para=oficina` (lo pone el Caddy en /oficina/): además, rol oficina o admin (ADR-0024); con sesión de hogar, 403.
   // Una cuenta de oficina con el aparato pendiente no pasa a ningún sitio: navegando, a la página que lo explica.
+  // Una cuenta de oficina que aún no entró con su llave (OF13) solo pasa a /oficina/, que es donde se da de alta o se usa;
+  // navegando a otro sitio (el mundo), allí; lo demás, 403. La api sigue parando cada ruta (requiereRol, requiereSesion).
   app.get<{ Querystring: { para?: "oficina" } }>("/api/interno/autoriza", {
     schema: { querystring: { type: "object", additionalProperties: false, properties: { para: { type: "string", enum: ["oficina"] } } } },
   }, async (req, rep) => {
@@ -160,6 +163,7 @@ export async function rutasAuth(app: FastifyInstance, ctx: Contexto): Promise<vo
     if (typeof req.session?.hogarId !== "number") return navega ? rep.code(303).header("location", "/").send() : rep.code(401).send();
     if (aparatoPendiente(req.session)) return navega ? rep.code(303).header("location", DESTINO_APARATO_PENDIENTE).send() : rep.code(403).send();
     if (req.query.para === "oficina" && !esOficina(req.session.rol)) return rep.code(403).send();
+    if (llaveRequerida(req.session) && req.query.para !== "oficina") return navega ? rep.code(303).header("location", DESTINO_OFICINA).send() : rep.code(403).send();
     return rep.code(204).send();
   });
 }
