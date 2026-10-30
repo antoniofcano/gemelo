@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
 // Consume: 01_datos (D, $, ALTO), 02_mundo (suelo), 02c_componentes (Componentes), 02d_laminas (Laminas), 02e_entidades (Entidades),
-//   03_escena (visor, scene, camera, exag, modo), 09_camara (objetivo), 12_paseo (paseando, teclas, primera), 12b_llegada (Llegada),
+//   03_escena (visor, scene, camera, exag, modo), 09_camara (objetivo, suelta), 12_paseo (paseando, teclas, primera), 12b_llegada (Llegada),
 //   13_parcelas (parcelas), 13b_hazas (HazasPuro), 14_historia (lista, aviso), 15_tiempo (hace, anuncia), 16_vida (enQuad), 17_minimapa (Minimapa),
 //   26_presencia (Aspecto, Chat, Encuentro, sitioJunto), 29_vr (VRX, panel, ficha), 31_hud (Hud), 32_ventanas (Ventanas)
 // Nota: Componente «oficina-mundo» (OF10, ADR-0023 y ADR-0024; decisiones 107 y 114): lo que la oficina hace en el mundo. Solo se registra; nadie lo nombra. Consume la red (sala «visita») y la presencia. Anuncios (tema «anuncio»: aviso arriba, lámina en VR y chat), invitación a otra sala (tema «sala»: «Ir» o «Quedarme»), balizas oficiales (tipo «baliza-oficial» de Entidades, GET /api/balizas-oficiales, tema «balizas») y, si tu rol en la sala es de oficina, la ventana «Oficina» (anunciar, invitar, poner baliza). Los tres temas solo valen SIN participante (los manda la api). Emite oficina:anuncio y oficina:sala. Publica window.__oficinaMundo (pruebas). Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/oficina_mundo.test.js.
