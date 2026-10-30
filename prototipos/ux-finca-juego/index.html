@@ -65,7 +65,7 @@ button, input, select { font: inherit; color: inherit; }
 .fila { display: flex; gap: 6px; align-items: center; }
 .brujula { width: var(--toque); height: var(--toque); border-radius: 50%; display: grid; place-items: center; font-family: var(--display); font-weight: 700; padding: 0; }
 .brujula span { display: block; transition: transform .15s; }
-.chip-tiempo { min-height: 34px; font-size: 13px; padding: 0 10px; font-variant-numeric: tabular-nums; }
+.chip-tiempo { min-height: var(--toque); font-size: 13px; padding: 0 10px; font-variant-numeric: tabular-nums; }
 .menu-modo { position: absolute; top: 100%; left: 0; margin-top: 6px; padding: 6px; display: grid; gap: 4px; min-width: 230px; z-index: 40; }
 .menu-modo button { justify-content: flex-start; width: 100%; }
 .menu-modo .sub { color: var(--hud-suave); font-size: 12px; margin-left: auto; }
@@ -78,6 +78,7 @@ button, input, select { font: inherit; color: inherit; }
 .mas-hoja .boton b { font-size: 20px; font-weight: 400; }
 #bMas { display: none; }
 @container mundo (max-width: 560px) {
+  #modoTxt { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }   /* en el móvil vertical el selector se queda en el icono (el nombre sigue para el lector) */
   .barra [data-prio="2"] { display: none; }
   #bMas { display: inline-flex; }
 }
@@ -168,9 +169,9 @@ kbd { font-family: ui-monospace, Menlo, monospace; font-size: 12px; border: 1px 
 .mapa { position: absolute; z-index: 22; width: 200px; padding: 0; overflow: hidden; }
 .asa { display: flex; align-items: center; gap: 4px; min-height: var(--toque); padding-left: 4px; border-bottom: 1px solid var(--hud-borde); cursor: grab; touch-action: none; }
 .asa:active { cursor: grabbing; }
-.asa .agarre { min-width: 36px; min-height: var(--toque); border: 0; background: none; cursor: grab; font-size: 18px; color: var(--hud-suave); touch-action: none; padding: 0; }
+.asa .agarre { min-width: var(--toque); min-height: var(--toque); border: 0; background: none; cursor: grab; font-size: 18px; color: var(--hud-suave); touch-action: none; padding: 0; }
 .asa strong { flex: 1; font-size: 13.5px; }
-.asa .mini { min-width: 40px; min-height: var(--toque); border: 0; background: none; cursor: pointer; font-size: 17px; }
+.asa .mini { min-width: var(--toque); min-height: var(--toque); border: 0; background: none; cursor: pointer; font-size: 17px; }
 .mapa canvas { display: block; width: 200px; height: 140px; cursor: pointer; }
 
 /* chat movible y su burbuja */
@@ -868,14 +869,14 @@ dialog.menu::backdrop { background: rgba(0,0,0,.55); }
   function rel(el) { var p = P.getBoundingClientRect(), r = el.getBoundingClientRect(), s = est.escala; return { x: (r.left - p.left) / s, y: (r.top - p.top) / s, w: r.width / s, h: r.height / s }; }
   function seCruzan(a, b) { return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y; }
   function margenes() { var cs = getComputedStyle(P); return { t: parseFloat(cs.getPropertyValue("--sa-t")) || 0, b: parseFloat(cs.getPropertyValue("--sa-b")) || 0, l: parseFloat(cs.getPropertyValue("--sa-l")) || 0, r: parseFloat(cs.getPropertyValue("--sa-r")) || 0 }; }
-  function zonas() {   // lo que el chat y el mapa nunca tapan: la cruceta, las acciones, la barra, el estado y el botón de pasear
+  function zonas(yo) {   // lo que el chat y el mapa nunca tapan: la cruceta, las acciones, la barra, el estado, el botón de pasear y el otro flotante
     var z = [];
-    [".pad-mov", ".pad-acc", ".barra", ".hud-estado", "#bPasear"].forEach(function (s) { var el = $(s); if (el && el.offsetParent !== null && getComputedStyle(el).display !== "none") { var r = rel(el); r.x -= 6; r.y -= 6; r.w += 12; r.h += 12; z.push(r); } });
+    [".pad-mov", ".pad-acc", ".barra", ".hud-estado", "#bPasear", "#chat", "#burbuja", "#mapa"].forEach(function (s) { var el = $(s); if (!el || el === yo || el.hidden || el.offsetParent === null || getComputedStyle(el).display === "none") return; var r = rel(el); r.x -= 6; r.y -= 6; r.w += 12; r.h += 12; z.push(r); });
     return z;
   }
   function limita(el, x, y) { var W = P.clientWidth, H = P.clientHeight, m = margenes(), w = el.offsetWidth, h = el.offsetHeight; return { x: Math.max(m.l + 6, Math.min(W - m.r - w - 6, x)), y: Math.max(m.t + 6, Math.min(H - m.b - h - 6, y)) }; }
   function libre(el, x, y) {   // el sitio libre más cercano a (x, y) fuera de las zonas
-    var w = el.offsetWidth, h = el.offsetHeight, z = zonas(), p = limita(el, x, y);
+    var w = el.offsetWidth, h = el.offsetHeight, z = zonas(el), p = limita(el, x, y);
     function ok(q) { var r = { x: q.x, y: q.y, w: w, h: h }; return z.every(function (zz) { return !seCruzan(r, zz); }); }
     if (ok(p)) return p;
     var cand = [];
@@ -927,7 +928,7 @@ dialog.menu::backdrop { background: rgba(0,0,0,.55); }
   }
   function muestraZonas(v) {
     var c = $("#zonas"); c.textContent = ""; if (!v && !$("#simZonas").checked) return;
-    zonas().forEach(function (z) { var d = document.createElement("div"); d.className = "zona-prohibida"; d.style.cssText = "left:" + z.x + "px;top:" + z.y + "px;width:" + z.w + "px;height:" + z.h + "px"; c.appendChild(d); });
+    zonas(null).forEach(function (z) { var d = document.createElement("div"); d.className = "zona-prohibida"; d.style.cssText = "left:" + z.x + "px;top:" + z.y + "px;width:" + z.w + "px;height:" + z.h + "px"; c.appendChild(d); });
   }
   function revisaFlotantes() {   // tras un cambio de modo, de ventana o de tamaño: nada flotante encima de los controles
     var movido = false;
