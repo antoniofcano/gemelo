@@ -17,6 +17,7 @@ La página pide `t/<clave>.json|jpg` (`D.teselas` es el índice; `D.base` da el 
 | `01_datos.js` | `D`, `$`, `fmt`, `b64`, `i16` | abre la IIFE; la escena es siempre la 3D Tiles ([TILES3D](TILES3D.md#la-escena-sin-vuelta-atrás-t8-fase-2)); `ESC3D` y `ESTAD` ya no existen |
 | `02_mundo.js` | `Mundo` (`suelo`, `copaAlta`, `orto`, `colorSuelo`, `alCargar`, `arranca`, `actualiza`, `liberaOrtoLejos`…) | teselas, carga, `desp`/`colorEn` |
 | `02b_cola.js` | `Cola` (`add`, `corre(ms)`, `vacia`) | trabajos como generadores |
+| `02c_componentes.js` | `Componentes`, `Bus`, `Teclas` (y `ComponentesPuro`) | núcleo de componentes ([ADR-0023](../adr/0023-componentes-del-mundo.md), §9): registro, encendido, fases del bucle, bus de eventos y teclas de los componentes |
 | `03_escena.js` | `renderer`, `scene`, `camera`, luces (`LUZ_SOL`, `LUZ_CIELO`), `SRGB`, `texColor`, `colorVertSRGB` | `far = max(5000, 4·EXT)`, `near` inicial 0,5; salida sRGB y convenio de color: lo escrito a mano va en sRGB y se pasa a lineal al entrar en la luz (ADR-0016) |
 | `04b_escena3d.js` | `Escena3D` | la escena 3D Tiles (ADR-0015) con 3DTilesRendererJS: relieve y ortofoto del tileset; sin tileset o si falla, panel «Esta finca no tiene escena» (`estado === "sin"`), sin vuelta a otra escena |
 | `04c_olivos_tiles.js` | `OlivosTiles` | los olivos instanciados del tileset (media y larga distancia), resueltos por huella; aparta los que dibuja el motor de cerca |
@@ -39,7 +40,7 @@ La página pide `t/<clave>.json|jpg` (`D.teselas` es el índice; `D.base` da el 
 | `14_historia.js` | `ESCENAS` (Cerro/Hituelo) | cruza OlivarTrack (`D.ot`, MCP) |
 | `15_tiempo.js` | `actualizaTiempo` | estación, previsión, demos (Vigía) |
 | `16_vida.js`, `25_perros.js` | fauna | pájaros, conejos, quad, perros |
-| `17_minimapa.js` | minimapa | mosaico + rastro |
+| `17_minimapa.js` | minimapa, `Minimapa` | mosaico + rastro; `Minimapa.capa(fn)`: capas que pintan los componentes |
 | `18_paisaje.js` | edificios, tendido, arroyo, árboles no olivo | `D.paisaje` (deducido) |
 | `19_balizas.js` | una baliza por parcela + ficha | |
 | `20_sonido.js` | audio sintetizado | |
@@ -50,7 +51,10 @@ La página pide `t/<clave>.json|jpg` (`D.teselas` es el índice; `D.base` da el 
 | `26b_avatares.js` | `AvataresPuro` (y el gancho `avatarVRM` de 26) | P7c: avatares VRM (`@pixiv/three-vrm` 3.5.5 con `import()`) para los N más cercanos por aparato, con histéresis y fundido; el resto, el muñeco; tu paseante en tercera persona es tu avatar (decisión 76). Sin presencia no crea nada ([presencia](../../contratos/presencia.md), [avatares](../../contratos/avatares.md)) |
 | `27_debug.js` | `window.__g` | gancho de pruebas |
 | `28_depura.js` | contador `?debug` | |
-| `29_vr.js` | `VRX`, `vrActualiza`, `VR_PERFILES`, `window.__vrDebug` | todo el WebXR |
+| `29_vr.js` | `VRX`, `vrActualiza`, `VR_PERFILES`, `PanelVR`, `window.__vrDebug` | todo el WebXR; el panel por filas (`PanelVR.filas`) |
+| `31_hud.js`, `32_ventanas.js`, `33_ajustes.js` | `Hud`, `Ventanas`, `Ajustes` | HUD, ventanas y Configuración; puntos de extensión `Hud.icono`, `Ventanas.registra`, `Ajustes.registra` |
+| `32b_capas.js` | `Capas` | `Capas.registra`: casillas de capas de los componentes en «Capas y vista», con su procedencia |
+| `35_fichas_tiempo.js` | — (componente `fichas-tiempo`) | la lámina de la previsión: primer componente; solo se registra |
 | `90_final.js` | bucle `cuadro()` | orden de actualizaciones |
 | `99_cierre.js` | — | cierra la IIFE |
 
@@ -64,7 +68,7 @@ La página pide `t/<clave>.json|jpg` (`D.teselas` es el índice; `D.base` da el 
 
 ## 4. Bucle por fotograma (`cuadro(t)` en `90_final.js`)
 
-`dt` acotado a 0,1 s → cámara (VR, paseo u órbita) → tiempo, olivo estacional, vida, minimapa, paisaje, balizas, sonido, suelo, terreno, nube → `Arboles.actualiza` (reclasifica niveles) → `actualizaCarga` cada 0,2 s (`Mundo.actualiza` pide teselas; cada 3 s suelta ortofotos lejanas) → huellas, perros → presencia (`Presencia.actualiza`; nada sin `?presencia=sim`) → `Cola.corre(Arboles.presupuesto())` → `render` → contador `?debug` → `vrFin` en VR. En VR el bucle lo lleva la sesión XR en vez de `requestAnimationFrame`.
+`dt` acotado a 0,1 s → cámara (VR, paseo u órbita) → tiempo, olivo estacional, vida, minimapa, paisaje, balizas, sonido, suelo, nube → **componentes, fase «mundo»** → `Arboles.actualiza` (reclasifica niveles) → `actualizaCarga` cada 0,2 s (`Mundo.actualiza` pide teselas; cada 3 s suelta ortofotos lejanas) → huellas, perros → presencia (`Presencia.actualiza`; nada sin `?presencia=sim`) → hazas → **componentes, fase «tarde»** (cada uno a su ritmo) → `Cola.corre(Arboles.presupuesto())` → suelo de fondo, `Escena3D.actualiza` → `render` → **componentes, fase «trasRender»** → contador `?debug` → `vrFin` en VR. Los módulos que aún no son componentes se llaman a mano; los componentes, por `Componentes.actualiza(fase)` sin nombrarlos (§9). En VR el bucle lo lleva la sesión XR en vez de `requestAnimationFrame`.
 
 ## 5. Colas y presupuestos
 
@@ -87,6 +91,13 @@ Exportador (`tuberia/finca_8_teselas.py`, `tuberia/hituelo_conv.py`) → `indice
 
 `29_vr.js`: botón «Entrar en VR» solo si `navigator.xr` soporta `immersive-vr`. Rig `Group` para desplazar al usuario. `VR_PERFILES` (4 niveles) baja si el JS pasa de 13 ms o el fotograma de 15,2 ms, y sube tras 25 s con JS <7 ms. Probado solo con un mock de WebXR (`pruebas/mock_xr.js`; [VR.md](VR.md), [ADR-0005](../adr/0005-webxr-perfil-propio.md)).
 
-## 9. Hacia componentes
+## 9. Componentes
 
-Propuesta, aún sin construir ([ADR-0023](../adr/0023-componentes-del-mundo.md), **Propuesto**): separar un núcleo estable (datos, mundo, cola, escena, cámara, entradas, ajustes) de **componentes registrados** con `Componentes.registra(...)` (qué consumen y exponen, eventos, bandera, presupuesto de dibujo, fases del bucle y `libera()`), con puntos de extensión en el HUD, las ventanas, las teclas, la Configuración, el panel VR y el minimapa, y un bus de eventos. El bucle de §4 pasaría a recorrer fases sin nombrar componentes. Diagnóstico medido del acoplamiento de hoy, diseño del contrato y piezas que faltan para el Agro-Verse (entidades con id estable, usables, red, láminas, juegos): [COMPONENTES.md](COMPONENTES.md).
+[ADR-0023](../adr/0023-componentes-del-mundo.md) (**Aceptado**; C1-C3 hechos). Diseño y diagnóstico: [COMPONENTES.md](COMPONENTES.md).
+
+- **Núcleo** (`02c_componentes.js`): `Componentes.registra(manifiesto)` solo apunta; `Componentes.arranca()` (en `90_final.js`, cuando están todos los ficheros) decide quién se enciende —**URL** (`?<bandera>=0|1`) > **configuración del servidor** (bloque `componentes` de [config.schema.json](../../contratos/config.schema.json): hoy desde `<script id="config">` en la página o `Componentes.configura(bloque)`; `GET /api/config` llega en C6) > **defecto del manifiesto**— y los monta en orden de dependencias (`consume` → `expone`). `monta(n)` recibe un contexto cuyo `n.on` y `n.limpia` se sueltan solos al liberar. Un componente que falla en una fase se apaga solo. `window.__componentes()` lo resume.
+- **Bus** de eventos (`Bus.on/emite/hay`), con catálogo en [eventos.md](../../contratos/eventos.md). **Teclas** de los componentes (`Teclas.registra`): una escucha, sin campos ni modificadores ni repetición; las de los módulos de siempre, reservadas.
+- **Puntos de extensión**: `Hud.icono`, `Ventanas.registra`, `Ajustes.registra`, `PanelVR.filas` (el panel VR por filas apiladas desde arriba; las de siempre se registran así y caen en los mismos píxeles), `PanelVR.tapa`, `Minimapa.capa`, `Capas.registra` (con procedencia medido/deducido/ilustrativo).
+- **Componentes de hoy**: `fichas-tiempo` (`35_fichas_tiempo.js`): tecla P, fila del tiempo en la pestaña Mundo del panel VR, botón de la ventana Tiempo por `prevision:alterna`, revisión cada 0,5 s en la fase «tarde». `?fichas=0` lo apaga; `genera_motor.mjs --sin 35_fichas_tiempo.js` lo saca del motor; en los dos casos el botón de la ventana Tiempo se esconde y nada más cambia.
+- **Guardián** `pruebas/guardianes/componentes.test.js` (Node): manifiestos válidos con presupuesto y `libera`, `consume` resuelto y sin ciclos, nada expuesto en el primer nivel de un componente, nadie que lo nombre, suma de presupuestos dentro de `diseno`, eventos iguales en código, manifiesto y catálogo, y el motor sin cada componente válido y arrancable en Node.
+- **Migración incremental**: el resto de módulos sigue como antes (C4 sonido, C5 red y presencia, C10 el resto, al tocarlos).
