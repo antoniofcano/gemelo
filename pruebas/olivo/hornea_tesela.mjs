@@ -13,7 +13,7 @@
 //                        todos los de salida cada 50 m en 4 rumbos; con --anillos a,b además cuántos caen en cada banda (a, b, R) para repartir niveles
 //     --epocas           compara las recetas de un olivo entre épocas: qué piezas cambian y cuántos bytes (para guardar la época aparte)
 //   Escribe una línea JSON por stdout (y el resumen legible por stderr). Entrada del generador como el motor (07ab_generados.js): tipo
-//   «centenario3», parametrosDeCopa(copas_param, factorR8 = 0,5), semillaDeCopa(copas_id, copas_semilla) y la época dada.
+//   «centenario3», parametrosDeCopa(copas_param, factorR8 = 1 como FACTOR_R8_GEN del motor, decisión 81), semillaDeCopa(copas_id, copas_semilla) y la época dada.
 //
 // Cuantización (todo medido contra el original; las pérdidas máximas salen en el JSON como «perdida»):
 //   position  Int16 normalizado a la caja de la pieza (por eje)            normal  Int8 (×127)           uv, aHueco, aMuerta  Uint16/Uint8 en su rango
@@ -34,7 +34,7 @@ const O = await import(pathToFileURL(path.join(RAIZ, "apps", "web", "olivo", "in
 const args = process.argv.slice(2), val = (k, d) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : d; };
 const todas = k => args.reduce((a, x, i) => (x === k ? a.concat(args[i + 1]) : a), []);
 const EPOCA = val("--epoca", "envero"), CALIDAD = Number(val("--brotli", 11)), NIV = val("--niveles", "E0,E1,E2,E2VR").split(",");
-const MUESTRA = Number(val("--muestra", 0)), CORRIENTE = args.includes("--corriente"), FACTOR_R8 = 0.5;
+const MUESTRA = Number(val("--muestra", 0)), CORRIENTE = args.includes("--corriente"), FACTOR_R8 = 1;   // el FACTOR_R8_GEN del motor (01_datos.js, decisión 81)
 let ruta = process.env.GEMELO_DATOS; if (!ruta) { console.error("Falta GEMELO_DATOS (indice.json o su carpeta, fuera del repo)"); process.exit(2); }
 if (fs.statSync(ruta).isDirectory()) ruta = path.join(ruta, "indice.json");
 const D = JSON.parse(fs.readFileSync(ruta, "utf8"));

@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Escalera, Generados
-// Consume: 01_datos (D, VRP, FACTOR_R8), 02_mundo (suelo, copas), 03_escena (renderer, camera, colorVertSRGB, exag), 06_arboles (gArboles),
+// Consume: 01_datos (D, VRP, FACTOR_R8_GEN), 02_mundo (suelo, copas), 03_escena (renderer, camera, colorVertSRGB, exag), 06_arboles (gArboles),
 //   12_paseo (paseando, primera), 14_historia (hist, lista), 15_tiempo (parcheTiempo, nivel), 16_vida (esfera)
 // ===============================================================================
   // ---------- olivos GENERADOS cerca (ADR-0017, decisiones 26-28, 34 y 52), solo con ?olivos=gen: sin la bandera no no actúa y el motor dibuja lo de siempre.
@@ -209,12 +209,20 @@
       M.encadena(m, function (sh) { parcheLuz(sh); parcheFundido(sh); }, "gen-luz-fundido");
     }
     function profundidad() { var d = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking }); M.encadena(d, parcheFundido, "gen-fundido"); return d; }
-    // la entrada del generador para un olivo del registro: semilla guardada o su id; parámetros medidos (copas_param) o h y r8 × factorR8
+    // la entrada del generador para un olivo del registro: semilla guardada o su id; parámetros medidos (copas_param) o h y r8 × FACTOR_R8_GEN
     function entrada(c) {
       var raw = D.copas[c.i], id = D.copas_id ? D.copas_id[c.i] : -1;
       var s = M.semillaDeCopa(raw, id, D.centro_utm, D.copas_semilla ? D.copas_semilla[c.i] : undefined) || { semilla: c.i + 1, provisional: true };
-      var p = M.parametrosDeCopa(raw, D.copas_param ? D.copas_param[c.i] : null, "centenario3", { factorR8: FACTOR_R8 });
+      var p = parametrosDe(c);
       return { tipo: p.tipo, parametros: p.parametros, epoca: epoca(), semilla: s.semilla, provisional: s.provisional };
+    }
+    // LA fuente de la copa y la altura de un olivo (decisión 81, ADR-0022 §1): las del generador (copas_param si las hay; si no, h y 2 × r8 medio ×
+    // FACTOR_R8_GEN, acotadas como en el constructor). El propio se genera con ellas (entrada) y la variante y el impostor se estiran a ellas
+    // (matrizDe): el mismo olivo tiene la misma anchura y altura en todos los escalones. Se guarda en el olivo (no cambia con la época ni el nivel).
+    function parametrosDe(c) {
+      if (c.pgen && c.pgen.f === FACTOR_R8_GEN) return c.pgen.p;
+      var raw = D.copas[c.i] || [c.x, c.y, c.h, c.perfil], p = M.parametrosDeCopa(raw, D.copas_param ? D.copas_param[c.i] : null, "centenario3", { factorR8: FACTOR_R8_GEN });
+      c.pgen = { f: FACTOR_R8_GEN, p: p }; return p;
     }
     function topeCacheMem() {
       var nv = typeof navigator !== "undefined" ? navigator : {}, movil = /Mobi|Android|iPhone|iPad|OculusBrowser|Quest/i.test(nv.userAgent || "");
@@ -243,8 +251,8 @@
     // la transformación de cada árbol: su sitio, la exageración vertical y, en las variantes, el estirado a la copa y la altura medidas
     function matrizDe(c, r, variante) {
       var gz = suelo(c.x, c.y) * exag, sx = r.escala[0], sy = r.escala[1], sz = r.escala[2];
-      if (variante) {
-        var rm = c.perfil.reduce(function (a, b) { return a + b; }, 0) / 8, copa = Math.max(0.8, 2 * rm * FACTOR_R8), k = copa / r.medidas.copa_m, ky = Math.max(1, c.h) / r.medidas.altura_m;
+      if (variante) {   // a la copa y la altura del propio (parametrosDe); lo que no se sepa, a las de la receta
+        var P = parametrosDe(c).parametros, k = P.copa > 0 ? P.copa / r.medidas.copa_m : 1, ky = P.altura > 0 ? P.altura / r.medidas.altura_m : 1;
         sx *= k; sz *= k; sy *= ky;
       }
       return new THREE.Matrix4().makeScale(sx, sy * exag, sz).setPosition(c.x, gz, -c.y);

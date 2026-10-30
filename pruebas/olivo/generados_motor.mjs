@@ -51,7 +51,7 @@ function contexto(busqueda, reloj, extra) {
   const ctx = Object.assign({
     THREE, console, performance: reloj || performance, Promise, Math, Object, Number, String, Error, Float32Array, Uint8Array,   // los del módulo del olivo (instanceof entre contextos vm)
     location: { search: busqueda }, window: { OlivoGen: O },
-    gArboles: new THREE.Group(), D: { copas: [], centro_utm: [0, 0] }, VRP: { on: false }, FACTOR_R8: 0.5, exag: 1,
+    gArboles: new THREE.Group(), D: { copas: [], centro_utm: [0, 0] }, VRP: { on: false }, FACTOR_R8: 0.5, FACTOR_R8_GEN: 1, exag: 1,
     suelo: () => 0, camera: { position: new THREE.Vector3(0, 10, 0) },
     Cola: { add: () => { throw new Error("los generados no deben usar la Cola compartida"); }, hay: () => false }, cola
   }, extra || {});
@@ -198,7 +198,7 @@ const PASO_MS = Number(process.env.GEMELO_PASEO_PASO || 0.6);
 }
 
 // ---- 3) con la bandera: el lote y el fundido (tres olivos de prueba; el foco en el primero)
-const perfil = [2, 2, 2, 2, 2, 2, 2, 2];
+const perfil = [1, 1, 1, 1, 1, 1, 1, 1];   // r8 medio 1 m: copa de 2 m con FACTOR_R8_GEN = 1 (la misma que con 2 m y el 0,5 de antes: el TOPE de abajo está hecho a ella)
 c.D.copas = [[0, 0, 4.5, perfil, 1], [9, 0, 4, perfil, 1], [0, 30, 4, perfil, 1]];
 const olivos = c.D.copas.map((q, i) => ({ i, x: q[0], y: q[1], h: q[2], perfil: q[3] }));
 c.__G.actualiza(0, 0, 160000 / 0.45 * 1.05, olivos);

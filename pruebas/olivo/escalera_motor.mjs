@@ -45,7 +45,7 @@ function contexto(busqueda, reloj) {
   const ctx = {
     THREE, console, performance: reloj || performance, Promise, Math, Object, Number, String, Error, Float32Array, Uint8Array,
     location: { search: busqueda }, window: { OlivoGen: O },
-    gArboles: new THREE.Group(), D: { copas: [], centro_utm: [0, 0] }, VRP: { on: false }, FACTOR_R8: 0.5, exag: 1,
+    gArboles: new THREE.Group(), D: { copas: [], centro_utm: [0, 0] }, VRP: { on: false }, FACTOR_R8: 0.5, FACTOR_R8_GEN: 1, exag: 1,
     suelo: () => 0, camera: { position: new THREE.Vector3(0, 10, 0) },
     Cola: { add: () => { throw new Error("los generados no deben usar la Cola compartida"); }, hay: () => false }
   };
@@ -175,6 +175,19 @@ else {
   // primero quieto hasta que la capa de lejanos exista (las 4 variantes E2 calculadas), luego el paseo de 160 m y la órbita de 230 a 30 m
   for (let k = 0; k < 400 && !L.hayCapa(); k++) { fotograma(x0, -y0, [x0, 1.7, -y0]); await espera(); }
   exige(L.hayCapa(), "escalera: la capa de lejanos no llega (variantes: " + JSON.stringify(cx.window.__olivosGen().recetas) + ")");
+  // O9b-0 (decisión 81, ADR-0022 §1): la variante (y el impostor, que usa su matriz) se estira a la MISMA copa y altura que pide el propio:
+  // copas_param.copa_m si la hay; si no, 2 × r8 medio (FACTOR_R8_GEN = 1) y h
+  {
+    // dos olivos de prueba fuera del registro del fixture (que no trae copas_param): uno con su fila de copas_param y otro sin ella
+    const rv = G.lejanos.variante(0), n = I.copas.length, fila = [3.8, 4.3, 0.2, 90, 0.85, 1.1, 0.12, 0];
+    cx.D.copas_param = []; cx.D.copas_param[n + 3] = fila;
+    const conP = { i: n + 3, x: 0, y: 0, h: 4.0, perfil: [2.15, 2.15, 2.15, 2.15, 2.15, 2.15, 2.15, 2.15], gz: 0 }, sinP = { i: n + 7, x: 0, y: 0, h: 4.2, perfil: [2, 2, 2, 2, 2.4, 2.4, 2.4, 2.4], gz: 0 };
+    const dib = c => { const e = G.lejanos.matriz(c, rv).elements; return { copa: e[0] / rv.escala[0] * rv.medidas.copa_m, alto: e[5] / rv.escala[1] * rv.medidas.altura_m }; };
+    const a = dib(conP), b = dib(sinP); cx.D.copas_param = undefined;
+    diag.copaVariante = { conParam: { copa: +a.copa.toFixed(3), quiere: fila[1], alto: +a.alto.toFixed(3), quiereAlto: fila[0] }, sinParam: { copa: +b.copa.toFixed(3), quiere: 4.4, alto: +b.alto.toFixed(3) } };
+    exige(Math.abs(a.copa - fila[1]) < 1e-3 && Math.abs(a.alto - fila[0]) < 1e-3, "O9b-0: la variante no se estira a la copa y altura de copas_param: " + JSON.stringify(diag.copaVariante.conParam));
+    exige(Math.abs(b.copa - 4.4) < 1e-3 && Math.abs(b.alto - 4.2) < 1e-3, "O9b-0: sin copas_param, la variante no va a 2 × r8 medio y h: " + JSON.stringify(diag.copaVariante.sinParam));
+  }
   const cajas = L._prueba.cajas();
   exige(cajas && cajas.length === 4 && cajas.every(b => b.max.y - b.min.y > 2 && b.max.x - b.min.x > 2), "las cajas de las variantes no tienen tamaño de olivo: " + JSON.stringify(cajas && cajas.map(b => [b.min, b.max])));
   for (let n = 0; n <= 160; n++) { const fx = x0 + n; fotograma(fx, -y0, [fx, 1.7, -y0]); }
