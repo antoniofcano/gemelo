@@ -1,9 +1,9 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: VRX, vrDebugExtra, vrFundido, vrAparece, panel, ficha, vrMideEmpieza, vrMideFin, vrActualiza, VR_PERFILES, vrFin
-// Consume: 01_datos (D, $, fmt, VRP), 02_mundo (suelo, orto, copas), 03_escena (renderer, scene, camera, texColor, exag, modo, calidad),
+// Consume: 01_datos (D, $, fmt, VRP), 02_mundo (Mundo, suelo, orto, copas), 03_escena (renderer, scene, camera, texColor, exag, modo, calidad),
 //   04b_escena3d (Escena3D), 05_nube (nube), 07b_arboles (Arboles), 09_camara (eligeCopa, pon), 10_ndvi (NDV, ndviIdx),
 //   12_paseo (paseando, persona, teclas, primera, entraPaseo, salePaseo, actualizaPaseo), 12b_llegada (Llegada), 13_parcelas (parcelas, fincas),
-//   15_tiempo (calma, nivel, hace), 16_vida (mira, quad, dron),
+//   14_historia (aviso), 15_tiempo (calma, nivel, hace), 16_vida (mira, quad, dron),
 //   19_balizas (BAL, cierraBaliza, balizaAbierta, abreBaliza, balizaVR, irABaliza, tBal), 20_sonido (snd, iniciaSonido), 22_huellas (pendFactor),
 //   25_perros (perrosLlegan), 26_presencia (Presencia), 30_mide (MideEst, Mide), 90_final (tamano, cuadro, bucle)
 // Nota: Publica además window.__vrDebug, __vrOlivo, __vrBotones, __vrVuelo, __vrBalizas y VR_ESTADO (depuración y pruebas VR).
@@ -18,7 +18,7 @@
     rig: { x: 0, y: 0, z: 0, yaw: 0 }, vuelo: false, mirador: false, correr: false, vineta: true, nivel: 0,
     modoPrev: "nube", calPrev: 1, nearPrev: 0.5, farPrev: 5000, prev: {}, giroOk: true, parcSel: 0, emaDt: 13.9, emaJs: 6, nBaj: 0, nAlt: 0, tNivel: 0,
     tp: null, hover: "", tBal: 0, fichaT: 0, sucio: true, hapt: 0, hMov: 0, sesionesN: 0, cab: new THREE.Vector3(),
-    gente: null, genteFirma: "", tGente: 0, balK: -1, balFirma: "", balInfo: null, hoverB: "", botonesB: []
+    gente: null, genteFirma: "", tGente: 0, pestana: "mundo", giro: 30, sinPint: false, balK: -1, balFirma: "", balInfo: null, hoverB: "", botonesB: []
   };
   var vrRig = new THREE.Group();
   function vrEstado(t) { VRX.estado = t; window.VR_ESTADO = "WebXR: " + t; try { console.log("[VR] " + window.VR_ESTADO); } catch (e) {} }
@@ -155,21 +155,50 @@
   }
   function vrRect(cx, x, y, w, h, r) { cx.beginPath(); cx.moveTo(x + r, y); cx.arcTo(x + w, y, x + w, y + h, r); cx.arcTo(x + w, y + h, x, y + h, r); cx.arcTo(x, y + h, x, y, r); cx.arcTo(x, y, x + w, y, r); cx.closePath(); }
   function dd2(iso) { return iso ? iso.split("-").reverse().join("/") : "–"; }
-  function vrSlider(id, d) { var s = $(id); if (!s) return; var v = Math.max(Number(s.min), Math.min(Number(s.max), Number(s.value) + d * Number(s.step || 1))); s.value = v; s.dispatchEvent(new Event("input", { bubbles: true })); VRX.sucio = true; }
+  // ----- 3a) el panel en tres pestañas (U8, decisiones 83-90): Mundo (modo, hora, fecha) · Ir a (parcelas y gente con «Ir con») · Comodidad (viñeta, giro, sonido, relieve; «Medir 60 s» solo con ?debug).
+  // «Salir de VR» y las ayudas de los mandos quedan abajo en todas. Botones de 64 px en 1.024 px por metro (6,25 cm a 1 m). Los ajustes de comodidad se leen de Configuración (Ajustes.lee("vr.*"))
+  // si ese módulo existe; si no, valen los de siempre (viñeta sí, giro de 30°).
+  var VR_PESTANAS = [["mundo", "Mundo"], ["ira", "Ir a"], ["comodidad", "Comodidad"]], VR_GIROS = [15, 30, 45, 60], VR_DEBUG = /[?&]debug\b/.test(location.search);
+  function vrAj(clave, def) { try { if (typeof Ajustes !== "undefined" && Ajustes && Ajustes.lee) { var v = Ajustes.lee(clave); if (v !== undefined && v !== null) return v; } } catch (e) {} return def; }
+  function vrAjPon(clave, v) { try { if (typeof Ajustes !== "undefined" && Ajustes && Ajustes.pon) Ajustes.pon(clave, v); } catch (e) {} }
+  function vrLeeAjustes() {   // al entrar en la sesión y cada vez que Configuración cambia algo
+    var v = vrAj("vr.vineta", VRX.vineta); VRX.vineta = !(v === false || v === "false" || v === 0 || v === "no");
+    var g = Number(vrAj("vr.giro", 30)); VRX.giro = isFinite(g) && g >= 5 && g <= 90 ? g : 30; VRX.sucio = true;
+  }
+  var vrSuscrito = false;   // 33_ajustes.js se monta después de este módulo: se suscribe al entrar en la sesión, no al cargar
+  function vrSuscribe() { if (vrSuscrito) return; try { if (typeof Ajustes !== "undefined" && Ajustes && Ajustes.alCambiar) { Ajustes.alCambiar(function () { vrLeeAjustes(); }); vrSuscrito = true; } } catch (e) {} }
+  function vrSinEscena() { try { return typeof Escena3D !== "undefined" && Escena3D.resumen().estado === "sin"; } catch (e) { return false; } }   // T8: #sinEscena (HTML) no se ve dentro de las gafas
+  function vrMotivoSin() { try { return Escena3D.resumen().motivo || ""; } catch (e) { return ""; } }
+  function vrY0() { return 196 + (VRX.sinPint ? 84 : 0); }   // dónde empieza el contenido de la pestaña (px del canvas): debajo de las pestañas y, si hace falta, del letrero
+  function vrSlider(id, d) {
+    var s = $(id); if (!s) return;
+    if (s.tagName === "SELECT") s.selectedIndex = Math.max(0, Math.min(s.options.length - 1, s.selectedIndex + d)); else s.value = Math.max(Number(s.min), Math.min(Number(s.max), Number(s.value) + d * Number(s.step || 1)));
+    s.dispatchEvent(new Event(s.tagName === "SELECT" ? "change" : "input", { bubbles: true })); VRX.sucio = true;
+  }
+  function vrFecha(d) { vrSlider($("hSel") ? "hSel" : "ndviSel", d); }   // una sola fecha del campo (decisión 88)
   function vrBotones() {
     var B = [];
     function b(id, x, y, w, h, txt, fn, on) { B.push({ id: id, x: x, y: y, w: w, h: h, txt: txt, fn: fn, on: !!on }); }
     if (VRX.mideTarjeta) { b("mideX", 372, 668, 280, 76, "Cerrar", function () { VRX.mideTarjeta = false; }); return B; }   // T7a: con la tarjeta de la medida abierta, solo «Cerrar»
-    ["nube", "gem", "orto"].forEach(function (m, i) { b("m_" + m, 40 + i * 316, 112, 300, 64, ["Nube LiDAR", "Gemelo", "Ortofoto"][i], function () { pon(m); VRX.sucio = true; }, modo === m); });
-    b("h-", 420, 200, 90, 64, "−", function () { vrSlider("hora", -1); }); b("h+", 800, 200, 90, 64, "+", function () { vrSlider("hora", 1); });
-    b("f-", 420, 276, 90, 64, "−", function () { vrSlider("hSel", -1); }); b("f+", 800, 276, 90, 64, "+", function () { vrSlider("hSel", 1); });
-    b("e-", 420, 352, 90, 64, "−", function () { vrSlider("exag", -1); }); b("e+", 800, 352, 90, 64, "+", function () { vrSlider("exag", 1); });
-    b("p-", 420, 428, 90, 64, "◀", function () { vrParcela(-1); }); b("p+", 800, 428, 90, 64, "▶", function () { vrParcela(1); });
-    b("snd", 40, 520, 222, 64, "Sonido: " + ($("cSonido").checked ? "sí" : "no"), function () { var c = $("cSonido"); c.checked = !c.checked; c.dispatchEvent(new Event("change", { bubbles: true })); if (c.checked) iniciaSonido(); VRX.sucio = true; }, $("cSonido").checked);
-    b("vig", 278, 520, 222, 64, "Viñeta: " + (VRX.vineta ? "sí" : "no"), function () { VRX.vineta = !VRX.vineta; VRX.sucio = true; }, VRX.vineta);
-    b("mide", 516, 520, 222, 64, "Medir " + Mide.segundos() + " s", function () { Mide.inicia(); }, Mide.estado() === "midiendo");
-    b("sal", 754, 520, 230, 64, "Salir de VR", function () { if (VRX.sesion) VRX.sesion.end(); }, false);
-    vrGenteBotones(b);
+    var y0 = vrY0(), p = VRX.pestana;
+    VR_PESTANAS.forEach(function (t, i) { b("t_" + t[0], 40 + i * 316, 104, 300, 64, t[1], function () { VRX.pestana = t[0]; VRX.hover = ""; }, p === t[0]); });
+    if (p === "mundo") {
+      ["nube", "gem", "orto"].forEach(function (m, i) { b("m_" + m, 40 + i * 316, y0, 300, 64, ["Nube LiDAR", "Gemelo", "Ortofoto"][i], function () { pon(m); VRX.sucio = true; }, modo === m); });
+      b("h-", 420, y0 + 88, 90, 64, "−", function () { vrSlider("hora", -1); }); b("h+", 800, y0 + 88, 90, 64, "+", function () { vrSlider("hora", 1); });
+      b("f-", 420, y0 + 176, 90, 64, "−", function () { vrFecha(-1); }); b("f+", 800, y0 + 176, 90, 64, "+", function () { vrFecha(1); });
+    } else if (p === "ira") {
+      b("p-", 420, y0, 90, 64, "◀", function () { vrParcela(-1); }); b("p+", 800, y0, 90, 64, "▶", function () { vrParcela(1); });
+      vrGenteBotones(b, y0 + 96);
+    } else {
+      var cs = $("cSonido");
+      b("vig", 420, y0, 470, 64, "Viñeta: " + (VRX.vineta ? "sí" : "no"), function () { VRX.vineta = !VRX.vineta; vrAjPon("vr.vineta", VRX.vineta); VRX.sucio = true; }, VRX.vineta);
+      b("giro", 420, y0 + 88, 470, 64, "Giro por saltos de " + VRX.giro + "°", function () { var i = VR_GIROS.indexOf(VRX.giro); VRX.giro = VR_GIROS[(i + 1) % VR_GIROS.length]; vrAjPon("vr.giro", VRX.giro); VRX.sucio = true; }, false);
+      if (cs) b("snd", 420, y0 + 176, 470, 64, "Sonido: " + (cs.checked ? "sí" : "no"), function () { cs.checked = !cs.checked; cs.dispatchEvent(new Event("change", { bubbles: true })); if (cs.checked) iniciaSonido(); VRX.sucio = true; }, cs.checked);
+      b("e-", 420, y0 + 264, 90, 64, "−", function () { vrSlider("exag", -1); }); b("e+", 800, y0 + 264, 90, 64, "+", function () { vrSlider("exag", 1); });
+      if (VR_DEBUG) b("mide", 420, y0 + 352, 470, 64, "Medir " + Mide.segundos() + " s", function () { Mide.inicia(); }, Mide.estado() === "midiendo");
+    }
+    b("sal", 40, 984, 944, 64, "Salir de VR", function () { if (VRX.sesion) VRX.sesion.end(); }, false);   // siempre abajo
+    VRX.gente = vrGente(); VRX.genteFirma = VrGentePuro.firma(VRX.gente);   // el estado de Gente también sin su pestaña (para detectar cambios y para las pruebas)
     return B;
   }
   function vrValores() {
@@ -177,25 +206,34 @@
     return { hora: hh + ":" + mm, fecha: NDV ? dd2(NDV.fechas[ndviIdx]) : "–", exag: fmt(exag, exag % 1 ? 2 : 0) + "×", parcela: fn + pr.nombre };
   }
   function vrPintaPanel() {
-    var cx = panel.cx, W = panel.W, H = panel.H, B = vrBotones(), v = vrValores();
+    VRX.sinPint = vrSinEscena();   // antes de construir los botones: el letrero desplaza el contenido
+    var cx = panel.cx, W = panel.W, H = panel.H, B = vrBotones(), v = vrValores(), y0 = vrY0(), p = VRX.pestana;
     if (VRX.mideTarjeta) { vrPintaMide(B); return; }
     cx.clearRect(0, 0, W, H); cx.fillStyle = "rgba(14,18,22,0.93)"; vrRect(cx, 0, 0, W, H, 30); cx.fill();
-    cx.fillStyle = "#e9eef2"; cx.font = "bold 40px system-ui, sans-serif"; cx.textBaseline = "middle"; cx.fillText(D.titulo_vr || (document.title || "Gemelo"), 40, 54);
+    cx.fillStyle = "#e9eef2"; cx.font = "bold 40px system-ui, sans-serif"; cx.textBaseline = "middle"; cx.textAlign = "left"; cx.fillText(D.titulo_vr || (document.title || "Gemelo"), 40, 54);
     cx.font = "26px system-ui, sans-serif"; cx.fillStyle = "#9fb1bd"; cx.textAlign = "right"; cx.fillText("Y: ocultar · gatillo: pulsar", W - 36, 54); cx.textAlign = "left";
-    cx.font = "28px system-ui, sans-serif"; cx.fillStyle = "#c9d5dc";
-    [["Hora", 232], ["Fecha NDVI", 308], ["Exageración", 384], ["Parcela", 460]].forEach(function (f) { cx.fillText(f[0], 40, f[1]); });
-    cx.textAlign = "center"; cx.fillStyle = "#ffffff"; cx.font = "bold 30px system-ui, sans-serif";
-    cx.fillText(v.hora, 655, 232); cx.fillText(v.fecha, 655, 308); cx.fillText(v.exag, 655, 384);
-    cx.font = "bold 24px system-ui, sans-serif"; var nombre = v.parcela; while (cx.measureText(nombre).width > 270 && nombre.length > 4) nombre = nombre.slice(0, -2); if (nombre !== v.parcela) nombre += "…"; cx.fillText(nombre, 655, 460);
+    if (VRX.sinPint) {   // T8: el aviso de la página no se ve en las gafas
+      cx.fillStyle = "#5a2b22"; vrRect(cx, 40, 184, W - 80, 72, 14); cx.fill();
+      cx.fillStyle = "#ffd9cf"; cx.font = "bold 26px system-ui, sans-serif"; cx.textBaseline = "top"; cx.fillText("Esta finca no tiene escena", 58, 192);
+      cx.font = "22px system-ui, sans-serif"; var mo = vrMotivoSin(); while (mo && cx.measureText(mo).width > W - 120 && mo.length > 4) mo = mo.slice(0, -2); cx.fillText(mo, 58, 224); cx.textBaseline = "middle";
+    }
+    function fila(txt, y, valor) { cx.textAlign = "left"; cx.font = "28px system-ui, sans-serif"; cx.fillStyle = "#c9d5dc"; cx.fillText(txt, 40, y + 33); if (valor !== undefined) { cx.textAlign = "center"; cx.fillStyle = "#ffffff"; cx.font = "bold 30px system-ui, sans-serif"; cx.fillText(valor, 655, y + 33); } }
+    if (p === "mundo") { fila("Hora", y0 + 88, v.hora); fila("Fecha del campo", y0 + 176, v.fecha); }
+    else if (p === "ira") {
+      fila("Parcela", y0); cx.textAlign = "center"; cx.fillStyle = "#ffffff"; cx.font = "bold 24px system-ui, sans-serif"; var nombre = v.parcela; while (cx.measureText(nombre).width > 270 && nombre.length > 4) nombre = nombre.slice(0, -2); if (nombre !== v.parcela) nombre += "…"; cx.fillText(nombre, 655, y0 + 33);
+    } else {
+      fila("Viñeta", y0); fila("Giro", y0 + 88); if ($("cSonido")) fila("Sonido", y0 + 176); fila("Relieve", y0 + 264, v.exag); if (VR_DEBUG) fila("Medida", y0 + 352);
+    }
     B.forEach(function (q) {
       cx.fillStyle = VRX.hover === q.id ? "#4a5866" : q.on ? "#2e7d3a" : "#2a3139"; vrRect(cx, q.x, q.y, q.w, q.h, 14); cx.fill();
-      cx.fillStyle = "#ffffff"; cx.font = "bold 28px system-ui, sans-serif"; cx.textAlign = "center"; cx.fillText(q.txt, q.x + q.w / 2, q.y + q.h / 2 + 1);
+      cx.fillStyle = "#ffffff"; cx.font = "bold 28px system-ui, sans-serif"; cx.textAlign = "center"; cx.textBaseline = "middle"; cx.fillText(q.txt, q.x + q.w / 2, q.y + q.h / 2 + 1);
     });
-    vrPintaGente(cx, W);
-    cx.textAlign = "left"; cx.font = "24px system-ui, sans-serif"; cx.fillStyle = "#9fb1bd"; cx.fillText("Mandos: izq. palanca = andar · grip = correr · X = viñeta · Y = panel", 40, 966);
-    cx.fillText("der. palanca ←→ = girar 30° · ↑ = teletransporte · A = volar · B = mirador", 40, 1000);
-    cx.fillStyle = "#7fe3ff"; cx.fillText(VRX.vuelo ? "Volando: izq. avanza · der. ↑ apunta al suelo; al soltar, bajas allí" : "Caminando por el olivar", 40, 1036);
-    cx.fillStyle = "#6f808c"; cx.font = "20px system-ui, sans-serif"; cx.fillText("LiDAR PNOA 2024 · © Instituto Geográfico Nacional (CC BY 4.0)", 40, 1068);
+    if (p === "ira") vrPintaGente(cx, W, y0 + 96);
+    cx.textAlign = "left"; cx.font = "22px system-ui, sans-serif"; cx.fillStyle = "#9fb1bd";
+    cx.fillText("Mandos: izq. palanca = andar · grip = correr · X = viñeta · Y = panel", 40, 890);
+    cx.fillText("der. palanca ←→ = girar " + VRX.giro + "° · ↑ = teletransporte · A = volar · B = mirador", 40, 920);
+    cx.fillStyle = "#7fe3ff"; cx.fillText(VRX.vuelo ? "Volando: izq. avanza · der. ↑ apunta al suelo; al soltar, bajas allí" : "Caminando por el olivar", 40, 950);
+    cx.fillStyle = "#6f808c"; cx.font = "20px system-ui, sans-serif"; cx.fillText("LiDAR PNOA 2024 · © Instituto Geográfico Nacional (CC BY 4.0)", 40, 1074);
     panel.tex.needsUpdate = true; VRX.sucio = false; VRX.botones = B;
   }
   function vrPintaFicha(titulo, lineas) {
@@ -234,13 +272,13 @@
     return { distTxt: distTxt, filas: filas, firma: firma, MODOS: MODOS };
   })();
   // [puro:fin]
-  var GENTE_FILAS = 4, GENTE_Y = 604;   // filas que caben en el panel; dónde empieza la sección (px del canvas del panel)
+  var GENTE_FILAS = 4;   // filas que caben en la pestaña «Ir a»; la sección empieza donde le diga la pestaña (px del canvas del panel)
   function vrGente() { var pts = typeof Presencia !== "undefined" && Presencia.activo() ? Presencia.puntos() : null; return VrGentePuro.filas(pts, { x: VRX.cab.x, y: -VRX.cab.z }, GENTE_FILAS); }
-  function vrGenteBotones(b) {   // un «Ir con» grande (240 × 64 px = 23 × 6 cm a 1 m) por fila
+  function vrGenteBotones(b, gy) {   // un «Ir con» grande (240 × 64 px = 23 × 6 cm a 1 m) por fila; gy = dónde empieza la sección
     var g = VRX.gente = vrGente(); VRX.genteFirma = VrGentePuro.firma(g);
-    g.filas.forEach(function (f, i) { b("ir:" + f.id, 744, GENTE_Y + 50 + i * 74, 240, 64, "Ir con", function () { vrIrCon(f.id); }, false); });
+    g.filas.forEach(function (f, i) { b("ir:" + f.id, 744, gy + 50 + i * 74, 240, 64, "Ir con", function () { vrIrCon(f.id); }, false); });
   }
-  function vrPintaGente(cx, W) {
+  function vrPintaGente(cx, W, GENTE_Y) {
     var g = VRX.gente || vrGente();
     cx.textBaseline = "middle"; cx.textAlign = "left"; cx.fillStyle = "#e9eef2"; cx.font = "bold 30px system-ui, sans-serif"; cx.fillText("Gente", 40, GENTE_Y + 20);
     cx.textAlign = "right"; cx.font = "24px system-ui, sans-serif"; cx.fillStyle = "#9fb1bd";
@@ -254,7 +292,11 @@
       cx.fillText(t, 40, y);
     });
   }
-  function vrGenteTic(dt) { VRX.tGente += dt; if (VRX.tGente < 0.5) return; VRX.tGente = 0; if (VrGentePuro.firma(vrGente()) !== VRX.genteFirma) VRX.sucio = true; }   // dos veces por segundo, con el panel abierto
+  function vrGenteTic(dt) {   // dos veces por segundo, con el panel abierto: ¿cambió la gente (solo importa en «Ir a») o el estado de la escena (T8)?
+    VRX.tGente += dt; if (VRX.tGente < 0.5) return; VRX.tGente = 0;
+    if (VRX.pestana === "ira" && VrGentePuro.firma(vrGente()) !== VRX.genteFirma) VRX.sucio = true;
+    if (vrSinEscena() !== VRX.sinPint) VRX.sucio = true;
+  }
   function vrIrCon(id) {
     if (typeof Presencia === "undefined" || !Presencia.irCon(id)) { VRX.sucio = true; return false; }   // ya no se ve (se fue, la bloqueaste) o hay un fundido en curso
     panel.m.visible = false; VRX.hover = ""; return true;
@@ -335,14 +377,14 @@
     var r = VRX.rig, h = vrCabeza(), L = vrMano("left"), R = vrMano("right"), iz = vrEjes(L.src), de = vrEjes(R.src);
     // botones: Y panel, X viñeta, A vuelo, B mirador
     if (vrFlanco("Y", vrBoton(L.src, 5))) { panel.m.visible = !panel.m.visible; if (panel.m.visible) { panel.ini = false; VRX.sucio = true; } vrPulso(L, 0.2, 20); }
-    if (vrFlanco("X", vrBoton(L.src, 4))) { VRX.vineta = !VRX.vineta; VRX.sucio = true; }
+    if (vrFlanco("X", vrBoton(L.src, 4))) { VRX.vineta = !VRX.vineta; vrAjPon("vr.vineta", VRX.vineta); VRX.sucio = true; }
     if (vrFlanco("A", vrBoton(R.src, 4))) { VRX.vuelo = !VRX.vuelo; VRX.mirador = false; VRX.sucio = true; vrPulso(R, 0.2, 20); }
     if (vrFlanco("B", vrBoton(R.src, 5))) { vrMirador(!VRX.mirador); vrPulso(R, 0.3, 25); }
     VRX.correr = vrBoton(L.src, 1);
     // giro a saltos (palanca derecha ← →) y teletransporte (palanca derecha ↑: arco; al soltar, salta)
     var gx = vrDz(de.x), gy = vrDz(de.y), mueveStick = 0;
     if (Math.abs(gx) > 0.7 && Math.abs(gx) > Math.abs(gy)) {
-      if (VRX.giroOk) { VRX.giroOk = false; var d = -Math.sign(gx) * Math.PI / 6; vrV2.set(r.x - h.x, 0, r.z - h.z).applyAxisAngle(vrEjeY, d); r.x = h.x + vrV2.x; r.z = h.z + vrV2.z; r.yaw += d; VRX.hMov = 0.25; vrPulso(R, 0.1, 10); }
+      if (VRX.giroOk) { VRX.giroOk = false; var d = -Math.sign(gx) * VRX.giro * Math.PI / 180; vrV2.set(r.x - h.x, 0, r.z - h.z).applyAxisAngle(vrEjeY, d); r.x = h.x + vrV2.x; r.z = h.z + vrV2.z; r.yaw += d; VRX.hMov = 0.25; vrPulso(R, 0.1, 10); }
     } else if (Math.abs(gx) < 0.35) VRX.giroOk = true;
     if (VRX.vuelo || VT.act) vrVueloTp(R, gy < -0.6 && Math.abs(gx) < 0.5);   // desde el aire: rayo recto y anillo (2b)
     else if (gy < -0.6 && Math.abs(gx) < 0.5) { VRX.tp = vrArco(R); arco.visible = true; arcoMarca.visible = !!VRX.tp; if (VRX.tp) arcoMarca.position.set(VRX.tp.x, suelo(VRX.tp.x, -VRX.tp.z) * exag + 0.08, VRX.tp.z); VRX.tpAct = true; }
@@ -456,6 +498,7 @@
     try { var capa = ses.renderState && ses.renderState.baseLayer; if (capa && "fixedFoveation" in capa) capa.fixedFoveation = 1; } catch (e) {}
     try { if (ses.supportedFrameRates && ses.updateTargetFrameRate && Array.prototype.indexOf.call(ses.supportedFrameRates, 72) >= 0) ses.updateTargetFrameRate(72); } catch (e) {}
     ses.addEventListener("end", vrSale);
+    vrSuscribe(); vrLeeAjustes(); VRX.pestana = "mundo";
     VRX.modoPrev = modo; VRX.calPrev = calidad; VRX.nearPrev = camera.near; VRX.farPrev = camera.far;
     if (modo !== "gem") pon("gem"); calidad = 0; camera.near = 0.3; camera.far = 6000;
     scene.add(vrRig); vrRig.add(camera); camera.add(vrVineta); camera.position.set(0, VRX.ojo ? 0 : 1.6, 0); camera.quaternion.identity(); VRC.forEach(function (o) { vrRig.add(o.c); vrRig.add(o.g); }); scene.add(arco); scene.add(arcoMarca); scene.add(panel.m); scene.add(ficha.m); scene.add(fichaB.m); vrVueloEntra();
@@ -474,7 +517,7 @@
     if (paseando) salePaseo();
     VRX.vuelo = false; VRX.mirador = false; vrEstado("soportado (sesión terminada)"); tamano(); requestAnimationFrame(bucle);
   }
-  window.__vrDebug = function () { return { on: VRX.on, estado: VRX.estado, nivel: VRX.nivel, rig: JSON.parse(JSON.stringify(VRX.rig)), cabeza: [VRX.cab.x, VRX.cab.y, VRX.cab.z], pp: [pp.x, pp.y], vuelo: VRX.vuelo, panel: panel.m.visible, ficha: ficha.m.visible, hover: VRX.hover, vineta: vrVineta.material.uniforms.uK.value, sesionesN: VRX.sesionesN, paseando: paseando, primera: primera, modo: modo, exag: exag, hora: $("hora").value, ndvi: ndviIdx, parcSel: VRX.parcSel, panelPos: panel.m.position.toArray(), fichaPos: ficha.m.position.toArray(), frames: renderer.info.render.frame, nivelArb: Arboles.resumen(), hierba: VRP.hierba, bump: UN.uBumpK.value, perfiles: VR_PERFILES.length, near: camera.near, far: camera.far,
+  window.__vrDebug = function () { return { on: VRX.on, estado: VRX.estado, nivel: VRX.nivel, rig: JSON.parse(JSON.stringify(VRX.rig)), cabeza: [VRX.cab.x, VRX.cab.y, VRX.cab.z], pp: [pp.x, pp.y], vuelo: VRX.vuelo, panel: panel.m.visible, ficha: ficha.m.visible, hover: VRX.hover, pestana: VRX.pestana, giro: VRX.giro, sinEscena: VRX.sinPint, vinetaOn: VRX.vineta, vineta: vrVineta.material.uniforms.uK.value, sesionesN: VRX.sesionesN, paseando: paseando, primera: primera, modo: modo, exag: exag, hora: $("hora").value, ndvi: ndviIdx, parcSel: VRX.parcSel, panelPos: panel.m.position.toArray(), fichaPos: ficha.m.position.toArray(), frames: renderer.info.render.frame, nivelArb: Arboles.resumen(), hierba: VRP.hierba, bump: UN.uBumpK.value, perfiles: VR_PERFILES.length, near: camera.near, far: camera.far,
     panelTam: [panel.W, panel.H, panel.pw, panel.ph], fichaB: fichaB.m.visible, fichaBPos: fichaB.m.position.toArray(), fichaBTam: [fichaB.W, fichaB.H, fichaB.pw, fichaB.ph], balK: VRX.balK, hoverB: VRX.hoverB, balGente: VRX.balInfo ? VRX.balInfo.gente : null,
     gente: VRX.gente ? { activo: VRX.gente.activo, n: VRX.gente.n, filas: VRX.gente.filas.map(function (f) { return { id: f.id, alias: f.alias, modo: f.modo, dist: f.dist }; }) } : null }; };
   window.__vrPerfil = function (n) { vrPerfil(n); VRX.tNivel = 0; };   // fuerza un perfil (pruebas): el adaptador espera 4 s antes de volver a decidir
