@@ -246,25 +246,29 @@ describe("en el navegador", () => {
       const c = await p.evaluate(() => { const c = window.__g.copas.find(c => c.oliv) || window.__g.copas[0]; return { x: c.x + 6, y: c.y - 8 }; });
       await p.evaluate(c => window.__g.paseoEn(c.x, c.y, 0), c);
       await p.waitForFunction(() => window.__g.pendientes() === 0, null, { timeout: 120000, polling: 500 }).catch(() => {});
-      await p.waitForTimeout(1500);
-      const tex0 = await p.evaluate(() => window.__g.renderer.info.memory.textures), geo0 = await p.evaluate(() => window.__g.renderer.info.memory.geometries);
-      await p.click("canvas", { position: { x: 640, y: 420 } }).catch(() => {});
+      // el mundo sigue cargando teselas y texturas un rato: se espera a que la cuenta de texturas y geometrías se quede quieta 8 s seguidos (en el fixture hay pausas de 4 s entre tandas)
+      const mem = () => p.evaluate(() => { const m = window.__g.renderer.info.memory; return m.textures + "/" + m.geometries; });
+      async function quieta() { let a = await mem(), n = 0; for (let i = 0; i < 120 && n < 8; i++) { await p.waitForTimeout(1000); const b = await mem(); n = b === a ? n + 1 : 0; a = b; } return a.split("/").map(Number); }
+      const [tex0, geo0] = await quieta();
+      await p.evaluate(() => { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); });
       await p.keyboard.press("KeyP");
       await p.waitForFunction(() => window.__fichaTiempo().abierta, null, { timeout: 10000, polling: 100 });
       await p.waitForTimeout(800);
       const r = await p.evaluate(() => window.__fichaTiempo()), d = await p.evaluate(desgloseLlamadas);
-      const tex1 = await p.evaluate(() => window.__g.renderer.info.memory.textures), geo1 = await p.evaluate(() => window.__g.renderer.info.memory.geometries);
+      const [tex1, geo1] = (await mem()).split("/").map(Number);
       console.log("   lámina del tiempo (escritorio): " + llamadasFicha(d) + " llamada(s) de " + d.total + ", texturas " + tex0 + " → " + tex1 + ", geometrías " + geo0 + " → " + geo1 + ", repintadas " + r.pintadas + ", origen " + r.origen);
       assert.ok(llamadasFicha(d) >= 1 && llamadasFicha(d) <= 2, "la lámina cuesta 1-2 llamadas: " + JSON.stringify(d.filas.filter(f => /fichaTiempo/.test(f[0]))));
       assert.strictEqual(tex1 - tex0, 1, "una textura");
       await p.screenshot({ path: path.join(CAPS, "escritorio.png") });
       const n0 = r.pintadas; await p.waitForTimeout(2500);
       assert.ok((await p.evaluate(() => window.__fichaTiempo())).pintadas - n0 <= 1, "en 2,5 s sin cambios no se repinta (como mucho una vez, si cambia el minuto)");
+      const [tex1b] = (await mem()).split("/").map(Number);
       await p.keyboard.press("KeyP");
       await p.waitForFunction(() => !window.__fichaTiempo().abierta, null, { timeout: 10000, polling: 100 });
-      await p.waitForTimeout(500);
-      const tex2 = await p.evaluate(() => window.__g.renderer.info.memory.textures), geo2 = await p.evaluate(() => window.__g.renderer.info.memory.geometries);
-      assert.strictEqual(tex2, tex0, "al cerrar, la textura se libera"); assert.strictEqual(geo2, geo0, "y la geometría");
+      await p.waitForTimeout(300);
+      const [tex2, geo2] = (await mem()).split("/").map(Number);
+      console.log("   al cerrar: texturas " + tex1b + " → " + tex2 + ", geometrías → " + geo2);
+      assert.strictEqual(tex1b - tex2, 1, "al cerrar, la textura se libera"); assert.ok(geo2 <= geo1 - 1, "y la geometría");
       assert.deepStrictEqual(errores, []);
     } finally { await p.close(); }
   });

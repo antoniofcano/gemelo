@@ -254,6 +254,11 @@
   function vrRumboPanel() { return ((-panel.m.rotation.y * 180 / Math.PI) % 360 + 360) % 360; }   // hacia dónde mira quien ve el panel de frente
   function vrTiempoRes() { try { return vrHayTiempo() ? FichasTiempo.panelResumen(vrRumboPanel()) : null; } catch (e) { return null; } }
   function vrTiempoFirma(r) { return r ? r.firma + (FichasTiempo.abierta() ? "|1" : "|0") : ""; }
+  function vrTiempoDelante() {   // ¿está la lámina de la previsión a menos de 4 m y a menos de 45° de la mirada? (entonces la ficha de la baliza, que se pinta encima, espera)
+    if (!vrHayTiempo() || !FichasTiempo.abierta()) return false;
+    var p = FichasTiempo.resumen().pos, h = VRX.cab, g = camera.getWorldDirection(vrV3), dx = p[0] - h.x, dz = p[2] - h.z, d = Math.hypot(dx, dz), gl = Math.hypot(g.x, g.z) || 1;
+    return d < 4 && (dx * g.x + dz * g.z) / (d * gl || 1) > 0.707;
+  }
   function vrTiempo() {
     if (FichasTiempo.abierta()) FichasTiempo.cierra();
     else { FichasTiempo.abre("vr"); panel.m.visible = false; VRX.hover = ""; }
@@ -339,7 +344,7 @@
     VRX.tBal += dt; if (VRX.tBal < 0.6) return; VRX.tBal = 0;
     var k = balizaAbierta();
     if (k < 0) { fichaB.m.visible = false; VRX.balK = -1; VRX.balFirma = ""; return; }
-    if (panel.m.visible || ficha.m.visible) { fichaB.m.visible = false; return; }
+    if (panel.m.visible || ficha.m.visible || vrTiempoDelante()) { fichaB.m.visible = false; return; }
     var b = balizaVR(k), f = JSON.stringify(b);
     if (k !== VRX.balK || !fichaB.m.visible) fichaB.ini = false;
     if (k !== VRX.balK || f !== VRX.balFirma) { VRX.balK = k; VRX.balFirma = f; vrPintaBaliza(b); }
