@@ -413,6 +413,39 @@ Lectura: de cerca (512) E1/E2 propios conservan la masa (Δ ≤ 4 %, IoU ≥ 0,9
 
 En escritorio el E0 pasa al olivo cuando ya se ha dejado atrás (histéresis de `MARGEN` y prima del E0) y se queda en él hasta 13-14 m por detrás. Alto en pantalla de un olivo de 5 m (cálculo, no medida): escritorio 1080p con la cámara de 42° → 1.407 px a 5 m, 703 a 10, 639 a 11, 586 a 12, 352 a 20, 234 a 30, 156 a 45; Quest 3 (≈ 96° vertical y 0,9 × 1.760 px por ojo, **[NO VERIFICADO]**) → 357 px a 10 m, 324 a 11, 297 a 12, 178 a 20, 119 a 30.
 
+## Escalones por alto en píxeles y con la misma copa (O9b-0 + O9c, 2026-10-30, foto, no se mantiene)
+Lo que cambiaron las decisiones 81 y 82 ([ADR-0022](../adr/0022-escalones-de-olivo-por-masa-visual.md)), medido con los mismos scripts que O9a (antes = la tabla de O9a de arriba, código de `main` en `ae37904`). Node: `node pruebas/olivo/o9a_escalones.mjs` (el reparto real, sin navegador). Chrome sin pantalla (turno del banco, SwiftShader, three 0.186.1: áreas y colores de imágenes fijas, **no fps**; 104 s): `node pruebas/olivo/o9a_masa.mjs`, que ahora repite centenario3 y «medido» con los mipmaps de la GPU («GPU», lo de antes) para comparar en la misma corrida.
+
+**Copa de la variante (O9b-0).** La variante E2 (centenario3, copa 9,4 m) se estira a la copa del propio (`copas_param.copa_m`, o 2 × r8 medio con `FACTOR_R8_GEN` = 1): k = 0,457 en horizontal (antes 0,229) y 0,8 en vertical; su caja de tarjetas pasa de 1,6-1,9 m a 3,2-3,8 m (la del propio, 3,5-3,8 m) y la tarjeta deja de aplastarse (aspecto 1,06-1,10 frente a 1,27-1,37). El área de hoja de la variante queda en 298-365 m² frente a 132 m² del propio: más densa (es una copa de 9,4 m comprimida; el punto 2 del ADR, variantes del tamaño de la finca, va con O9b).
+
+**Masa visual (Chrome), olivo «medido» (h 3,8, copa 4,3), media de 8 vistas; Δ e IoU frente al E0 del mismo olivo y lado.**
+
+| Lado | Escalón | Antes: cobertura (Δ) · IoU · huecos | Después: cobertura (Δ) · IoU · huecos |
+|---|---|---|---|
+| 512 | variante E2 que dibuja el motor | 0,370 (−44,8 %) · 0,473 · 14,0 % (r8 × 0,5) | **0,714 (+6,5 %) · 0,692** · 11,5 % (copa del propio) |
+| 512 | variante E2-VR que dibuja el motor | 0,389 (−41,9 %) · 0,482 | 0,707 (+5,4 %) · 0,654 |
+| 512 | impostor emulado | 0,389 (−41,9 %) · 0,455 | 0,726 (+8,2 %) · 0,703 |
+| 128 | E0 | 0,537 · 1 · 28,5 % | **0,606** · 1 · **20,5 %** |
+| 128 | E1 | 0,445 (−17,2 %) · 0,936 · 36,8 % | **0,570 (−5,9 %) · 0,977** · 23,5 % |
+| 128 | E2 | 0,506 (−5,8 %) · 0,954 · 32,0 % | 0,596 (−1,6 %) · 0,976 · 21,7 % |
+| 128 | E2-VR | 0,543 (+1,1 %) · 0,942 · 29,3 % | 0,636 (+5,0 %) · 0,919 · 20,1 % |
+| 128 | variante E2 que dibuja el motor | 0,298 (−44,5 %) · 0,457 | **0,612 (+1,0 %) · 0,683** · 18,1 % |
+
+Centenario3 (semilla 7) a 128 px, mipmaps de la GPU → con cobertura: E0 0,491 → 0,627 de cobertura y 35,1 → 19,5 % de huecos; E1 −26,8 → −4,7 % frente a su E0 e IoU 0,915 → 0,991; E2 +23,3 → +7,1 %; E2-VR +32,5 → +17,8 %. Adulto1 a 128: E0 0,378 → 0,494 y huecos 38,9 → 23,3 %; E1 −26,8 → −8,2 %. A 512 px los mipmaps casi no cambian la cobertura (±0,5 %). **Color:** con los mipmaps nuevos las hojas son más claras de lejos: luz media del E0 a 512 px 57-59 → 65-67 (centenario3, medido) y contraste 0,51-0,63 → 0,47-0,59, porque el color de cada nivel se promedia pesado por el alfa (sin el negro de los píxeles transparentes que oscurecía el borde de cada hoja con los de la GPU). Afecta al color calibrado en la decisión 70: **a mirar a ojo** (`?olivosMips=0` vuelve a los de la GPU).
+
+**Dónde cambia el escalón paseando (Node, `Escalera.planifica` real).** La misma rejilla y paseo que O9a (olivo de 4 m de alto, 1080 p a 42°; gafas, Quest 3 aproximado [NO VERIFICADO]: 1.584 px por ojo a 96°). Ahora el «cambio» es cuando el escalón que más pesa (f ≥ 0,5 dentro de la banda) pasa a otro; s es el factor que acerca las fronteras cuando el presupuesto no da (1 = 700/250/90 px).
+
+| Aparato · rejilla | Antes: asentado (radio) · E2→E1 · E1→E0 · E0→E1 | Después: s · asentado (radio) · fronteras 4 m (E0/E1/E2) · E2→E1 · E1→E2 · lejano→E2 |
+|---|---|---|
+| Escritorio · 11 m | 1 E0 + 5 E1 + 26 E2 (35 m) · 11,4 delante · 6,2 **detrás** · 13,6 detrás | 2,04 · 2 E1 + 4 E1/E2 en banda + 20 E2 (30 m) · 3,9 / 11,0 / 30,6 m · 10,9 delante · 11,2 detrás · 30,5 delante |
+| Escritorio · 10 / 12 m | 1 + 5 + 26 (32 / 38 m) · 9,9 / 12,9 · 6,0 / 6,4 detrás | 2,30 / 1,81 · fronteras E1/E2 9,8 / 12,2 m · 9,6 / 12,1 delante |
+| Móvil · 11 m | 1 E0 + 2 E1 + 10 E2 (23 m) · 6,6 · 5,9 delante · 9,3 detrás | 2,44 asentado (3,35-3,77 paseando) · 2 E1 + 14 E2 (23 m) · 2,1 / 6,0 / 16,6 · 6,0 delante · 6,1 detrás · 16,7 delante |
+| Gafas perfil 0 · 11 m | 1 E0 + 4 E1 + 18 E2-VR (30 m) · 15,4 · 5,9 delante · 9,3 detrás | 1,06 · 2 E1 + 24 E2-VR (30 m) · 3,7 / 10,3 / 28,7 · 10,2 delante · 10,5 detrás · 28,6 delante |
+
+Lecturas: (1) **el E0 ya no va detrás**: es el olivo que se ve a ≥ 700 px (× s); paseando por el centro de la calle (a 5-6 m de la fila) ningún olivo llega y no hay E0 (el E1 de ese olivo tiene IoU 0,998 frente a su E0 a 512 px); al acercarse a menos de 3,5-4,4 m (escritorio) aparece. (2) **Los cambios ocurren a la misma distancia delante y detrás** (E2→E1 a 10,9 m al acercarse, E1→E2 a 11,2 m al alejarse), no 6 m delante y 14 m detrás. (3) **Con los costes de hoy el presupuesto manda**: en escritorio s ≈ 2, de modo que el vecino de la fila a 11 m está justo en la banda E1|E2; el anillo de E2 (hasta 27-34 m) es lo que más cuesta (16-20 variantes × 18 k): bajar el E2 a ≤ 10 k (O9b) o subir el umbral del E2 (O9d) baja s. (4) **Sin saltos**: en el paseo, ningún cambio de peso de más de 0,35 de un reparto al siguiente sin cambio de s; s cambia 0-1 veces en escritorio y gafas y 41-50 en móvil (presupuesto justo: cada banda cuesta los dos escalones), con 0-4 saltos de peso > 0,35 en esos cambios (`pruebas/olivo/escalera_motor.mjs` lo vigila sin cambio de s).
+
+BANCO
+
 ## Límites conocidos
 - Las ortofotos decodificadas (2,4 MB por tesela de 768 px; 1 MB a 512 px) se sueltan solo a 900 m; sin LRU fino.
 - Dentro de una tesela todo el relieve y la copa (258² + 256²) están siempre en memoria: 49 teselas ≈ 20 MB; la nube de las lejanas se libera a > 1,2× 2.300 m.
