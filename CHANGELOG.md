@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Pruebas: dos puertas, `npm run puerta:rapida` (solo Node, unos 3 min, tras cada fusión) y `npm run puerta:pesada` (completa con Chrome y Docker, una vez por tanda; la única que autoriza a subir `main`).
 - Agenda de la oficina (OF11b, decisión 148): cambiar la fecha o el lugar de un evento avisa solo, en la misma transacción, a apuntados y en espera, con «antes → ahora»; es un aviso de sistema y no cuenta para el tope de 3 por semana. La pantalla dice a cuántas familias se avisó.
 - Olivos generados (O5): la caché de recetas se endurece: plazo de 4 s en IndexedDB (un almacén bloqueado ya no deja esperando para siempre), purga en disco de lo guardado con otra versión del generador, `alExpulsar` y `dispose()` al expulsar, y una carrera de la lectura del índice corregida. Prueba de Chrome escrita, sin ejecutar.
 - Oficina (OF3d): el aviso de solape de las hazas mide el área de la intersección (> 0,5 m², igual que el servidor) con `polygon-clipping` 0.15.7; ahora avisa con hazas idénticas o de lindes coincidentes y es simétrico.
@@ -161,6 +162,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 - `doc/ESTADO.md` reescrito como único sitio de «dónde estamos»; se retira el id y el enlace del artefacto privado (el repo es público).
 
 ### Arreglado
+- Oficina: las llaves de acceso identifican cada cuenta por su nombre interno (o «Cuenta n.º id») y no por el correo; rehabilitar el alta se confirma escribiendo ese nombre.
 - Tras la tanda del 2026-10-30: la api arranca en Docker (faltaba `tiempo-historico.schema.json` en la imagen, con guardián nuevo); `/finca/?debug` ya no da 400 tras el Caddy; la oficina vuelve a abrir (OF13 la dejaba en «Cargando…»); migración 0015: ya se pueden dar de alta llaves de la oficina (la 0013 rompía cualquier inserción); la exportación RGPD de la oficina incluye las partidas de juegos. Pruebas al día con AV4, U2, OF1/OF13 y `titular`; dos comprobaciones que no miraban nada (un U+0008 en vez de ``) arregladas; la carga de presencia en la puerta pasa a 20 clientes (40 se mide aparte).
 - Los olivos generados ya no salen crema: los colores del constructor se calibran para la luz lineal del motor (follaje × 0,3, corteza × 0,5, `CALIBRACION_LINEAL`); la causa era la luz (lineal y sin sombras), no la gestión de color (decisión 70). No cambia la forma ni la huella olivo-2.
 - Olivos generados: las olivas en puntos vuelven a recortarse por frustum (su esfera ya cubría todo); la prueba de Node del giro exigía ver mallas que no llevan piezas del árbol mirado y ahora comprueba que la esfera y la caja de cada malla del lote cubren todo lo que dibuja. El recorte no explica que desaparezcan al girar: sigue sin probar en aparato.
