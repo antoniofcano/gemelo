@@ -5,6 +5,9 @@
 // Translate, Snap); lo que este fichero añade es el teclado, el estado y la conversación con la api. El recuento y la superficie que se
 // ven mientras se edita son ORIENTATIVOS (hazas_puro.js, en el navegador); los que valen los calcula PostGIS al guardar.
 // Datos: /teselas/<finca>/indice.json (mosaico, copas, parcelas) y /teselas/<finca>/t/<kx>_<ky>.jpg, tras la misma sesión (mismo origen).
+// Límite (OF3b): GET /api/admin/fincas/<finca>/limite da el contorno de la finca (unión de sus parcelas SIGPAC o catastrales) o, sin él,
+// la caja de sus olivos medidos + 150 m. No se deja poner un vértice fuera, ni soltar un arrastre, ni guardar; el servidor lo vuelve a
+// comprobar (ST_CoveredBy) y es quien manda.
 import "ol/ol.css";
 import Map from "ol/Map.js";
 import View from "ol/View.js";
@@ -21,12 +24,13 @@ import VectorSource from "ol/source/Vector.js";
 import TileGrid from "ol/tilegrid/TileGrid.js";
 import { defaults as controlesBase, ScaleLine } from "ol/control.js";
 import { defaults as interaccionesBase, Draw, Modify, Snap, Translate } from "ol/interaction.js";
+import { noModifierKeys } from "ol/events/condition.js";
 import { Circle as CirculoEstilo, Fill, Stroke, Style, Text } from "ol/style.js";
 import { register } from "ol/proj/proj4.js";
 import { get as proyeccion } from "ol/proj.js";
 import proj4 from "proj4";
 import { $, api, aviso, conConfirmacion, confirma, fecha, h, vacia } from "./comun.js";
-import { area, codigoLibre, cuenta, inserta, mueve, num, quita, redondea, sePisan, verticeCercano, vertices } from "./hazas_puro.js";
+import { area, cabeEn, codigoLibre, cuenta, inserta, mueve, num, puntoEnLimite, quita, redondea, sePisan, verticeCercano, vertices } from "./hazas_puro.js";
 
 // ETRS89 / UTM 30N, la de la base, el motor y la api (EPSG:25830)
 proj4.defs("EPSG:25830", "+proj=utm +zone=30 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs +type=crs");
@@ -40,9 +44,10 @@ const ACCIONES = { inicial: "versión inicial", carga: "cargada por la tubería"
   juntar: "juntada con otra", juntada_en: "juntada en otra", volver: "vuelta atrás", borrar: "borrada" };
 
 export function iniciaHazas({ sesion }) {
-  let mapa = null, finca = null, indice = null, puntos = [], hazas = [], familias = [];
+  let mapa = null, finca = null, indice = null, puntos = [], hazas = [], familias = [], limite = null;
   let sel = null, guardada = null, pila = [], vk = -1, modo = null, corte = [], versiones = [], vista = null, cargando = 0;
   const fuenteHazas = new VectorSource(), fuenteParcelas = new VectorSource(), fuenteBorrador = new VectorSource(), fuenteMarcas = new VectorSource();
+  const fuenteLimite = new VectorSource();
   const enEdicion = new Collection();
 
   // ---------------------------------------------------------------- estilos
@@ -61,6 +66,7 @@ export function iniciaHazas({ sesion }) {
     stroke: new Stroke({ color: "#f0b13f", width: 1.5, lineDash: [6, 4] }),
     text: new Text({ text: f.get("nombre") || "", font: "12px system-ui, sans-serif", fill: new Fill({ color: "#f0b13f" }), stroke: new Stroke({ color: "#000", width: 3 }), placement: "line" }),
   });
+  const estiloLimite = new Style({ stroke: new Stroke({ color: "#ffffff", width: 3, lineDash: [14, 8] }) });
   const estiloMarca = f => {
     const t = f.get("tipo");
     if (t === "corte") return new Style({ stroke: new Stroke({ color: COLOR.mal, width: 3, lineDash: [10, 6] }) });
@@ -74,6 +80,7 @@ export function iniciaHazas({ sesion }) {
   const fuenteCopas = new ImageCanvasSource({ ratio: 1, canvasFunction: dibujaCopas });
   const capaCopas = new ImageLayer({ source: fuenteCopas, maxResolution: 4 });
   const capaParcelas = new VectorLayer({ source: fuenteParcelas, style: estiloParcela });
+  const capaLimite = new VectorLayer({ source: fuenteLimite, style: estiloLimite });
   const capaHazas = new VectorLayer({ source: fuenteHazas, style: estiloHaza });
   const capaBorrador = new VectorLayer({ source: fuenteBorrador });
   const capaMarcas = new VectorLayer({ source: fuenteMarcas, style: estiloMarca });
@@ -100,20 +107,60 @@ export function iniciaHazas({ sesion }) {
   // ---------------------------------------------------------------- interacciones (OpenLayers)
   const modifica = new Modify({ features: enEdicion, pixelTolerance: 10 });
   const traslada = new Translate({ features: enEdicion });
-  const dibuja = new Draw({ source: fuenteBorrador, type: "Polygon" });
+  // un vértice fuera del límite de la finca no se pone (el clic se ignora y se dice por qué)
+  const dibuja = new Draw({ source: fuenteBorrador, type: "Polygon", condition: e => noModifierKeys(e) && puedePoner(e.coordinate) });
   const ajusteH = new Snap({ source: fuenteHazas, pixelTolerance: 12 });
   const ajusteP = new Snap({ source: fuenteParcelas, pixelTolerance: 12 });
   traslada.setActive(false); dibuja.setActive(false);
   modifica.on("modifystart", () => apila());
-  modifica.on("modifyend", () => { cambiado(); });
+  modifica.on("modifyend", () => { if (sigueDentro()) cambiado(); });
   traslada.on("translatestart", () => apila());
-  traslada.on("translateend", () => cambiado());
-  dibuja.on("drawend", e => { const g = e.feature.getGeometry(); setTimeout(() => { fuenteBorrador.clear(); pideDatosNueva(g.getCoordinates()); }, 0); });
+  traslada.on("translateend", () => { if (sigueDentro()) cambiado(); });
+  dibuja.on("drawend", e => {
+    const g = e.feature.getGeometry();
+    setTimeout(() => {
+      fuenteBorrador.clear();
+      if (!cabe(redondea([g.getCoordinates()]))) { estadoMapa("La haza se sale del " + nombreLimite() + ": no se crea. Dibújala por dentro de la línea blanca."); return; }
+      pideDatosNueva(g.getCoordinates());
+    }, 0);
+  });
+
+  // ---------------------------------------------------------------- límite de la finca (OF3b)
+  const holgura = () => (limite && limite.tipo === "contorno" ? limite.holgura_m : 0);
+  const limiteC = () => (limite && limite.geometria ? limite.geometria.coordinates : null);
+  const cabe = c => cabeEn(c, limiteC(), holgura());
+  const nombreLimite = () => (limite && limite.tipo === "contorno" ? "contorno de la finca (" + (limite.fuente === "catastro" ? "Catastro" : "SIGPAC") + ")"
+    : "límite de la finca (la caja de sus olivos medidos + " + ((limite && limite.margen_m) || 150) + " m)");
+  function puedePoner(q) {
+    if (puntoEnLimite(limiteC(), q[0], q[1], holgura())) return true;
+    estadoMapa("Ese punto cae fuera del " + nombreLimite() + ": no se pone.");
+    return false;
+  }
+  /** Tras arrastrar un vértice o la haza: si se sale del límite, se deshace el arrastre. */
+  function sigueDentro() {
+    if (!sel || cabe(coords())) return true;
+    if (pila.length) pon(pila.pop());
+    cambiado();
+    estadoMapa("Así la haza se sale del " + nombreLimite() + ": se deshace el movimiento.");
+    return false;
+  }
+  async function cargaLimite() {
+    const f = finca;
+    const r = await api("GET", "/api/admin/fincas/" + encodeURIComponent(f) + "/limite");
+    if (f !== finca) return;
+    limite = r.ok ? r.datos : null;
+    fuenteLimite.clear();
+    if (limite && limite.geometria) fuenteLimite.addFeature(new Feature({ geometry: new MultiPolygon(limite.geometria.coordinates) }));
+    $("#mLimite").textContent = !limite ? "Límite de la finca: no se pudo leer (lo comprueba el servidor al guardar)"
+      : limite.tipo === "contorno" ? "Límite: contorno de " + limite.parcelas + " parcelas " + (limite.fuente === "catastro" ? "© Dirección General del Catastro" : "SIGPAC © FEGA (CC BY 4.0)") + ", consultado el " + limite.consultado_en
+        : limite.tipo === "caja" ? "Límite: caja de los olivos medidos + " + limite.margen_m + " m [SUPUESTO] (sin contorno cargado)"
+          : "Límite: ninguno (sin olivos ni contorno: el servidor no aceptará hazas)";
+  }
 
   function creaMapa() {
     mapa = new Map({
       target: "mapa",
-      layers: [capaMosaico, capaTeselas, capaCopas, capaParcelas, capaHazas, capaBorrador, capaMarcas],
+      layers: [capaMosaico, capaTeselas, capaCopas, capaParcelas, capaLimite, capaHazas, capaBorrador, capaMarcas],
       controls: controlesBase({ attribution: false, rotate: false }).extend([new ScaleLine()]),
       // sin el teclado de OpenLayers: las flechas son del editor (mover vértices) y, sin vértice elegido, mueven el mapa (abajo)
       interactions: interaccionesBase({ keyboard: false, altShiftDragRotate: false, pinchRotate: false, doubleClickZoom: false }),
@@ -152,6 +199,7 @@ export function iniciaHazas({ sesion }) {
 
   async function cargaFinca() {
     estadoMapa("Cargando la ortofoto y las copas de " + finca + "…");
+    await cargaLimite();
     const base = "/teselas/" + encodeURIComponent(finca) + "/";
     let d = null;
     try { const r = await fetch(base + "indice.json", { credentials: "same-origin" }); if (r.ok) d = await r.json(); } catch { /* sin red */ }
@@ -184,7 +232,7 @@ export function iniciaHazas({ sesion }) {
       fuenteParcelas.addFeature(new Feature({ geometry: new LineString(an), nombre: p.nombre || p.id }));
     }
     fuenteCopas.changed();
-    const e = d.ext ? [cx + d.ext[0], cy + d.ext[3], cx + d.ext[2], cy + d.ext[1]] : null;
+    const e = d.ext ? [cx + d.ext[0], cy + d.ext[3], cx + d.ext[2], cy + d.ext[1]] : fuenteLimite.getFeatures().length ? fuenteLimite.getExtent() : null;
     if (e) mapa.getView().fit(e, { padding: [20, 20, 20, 20] });
     estadoMapa(puntos.length ? num(puntos.length) + " copas medidas cargadas. Elige una haza en el mapa o en la lista." : "Esta finca no trae copas en su índice.");
   }
@@ -272,8 +320,9 @@ export function iniciaHazas({ sesion }) {
     if (flechas[k]) {
       e.preventDefault();
       if (sel && vk >= 0) {
-        const p = mayus ? PASO_GRANDE : PASO;
-        apila(); pon(mueve(coords(), vk, flechas[k][0] * p, flechas[k][1] * p)); cambiado(); dice();
+        const p = mayus ? PASO_GRANDE : PASO, n = mueve(coords(), vk, flechas[k][0] * p, flechas[k][1] * p);
+        if (!cabe(n)) { estadoMapa("Ahí el vértice deja la haza fuera del " + nombreLimite() + ": no se mueve."); return; }
+        apila(); pon(n); cambiado(); dice();
       } else {
         const vw = mapa.getView(), c = vw.getCenter(), r = vw.getResolution() * 80;
         vw.setCenter([c[0] + flechas[k][0] * r, c[1] + flechas[k][1] * r]);
@@ -417,6 +466,7 @@ export function iniciaHazas({ sesion }) {
     if (!sel) { estadoMapa("Elige antes una haza."); return; }
     if (!sucia()) { aviso("No hay cambios que guardar."); return; }
     const z = sel.get("haza"), c = redondea(coords());
+    if (!cabe(c)) { aviso("La linde de " + z.codigo + " se sale del " + nombreLimite() + ": no se guarda.", "mal"); return; }
     $("#bGuarda").disabled = true;
     const r = await api("PUT", "/api/admin/hazas/" + z.id + "/geom", { geometria: { type: "MultiPolygon", coordinates: c }, version: z.version });
     $("#bGuarda").disabled = false;
@@ -487,7 +537,9 @@ export function iniciaHazas({ sesion }) {
     junto.disabled = !sel;
     if (!sel) {
       el.append(h("h2", null, "Hazas de " + (finca || "…")), h("p", { class: "nota" }, "Elige una haza en el mapa o en la lista, o dibuja una nueva."),
-        h("p", { class: "nota" }, num(hazas.filter(x => x.finca === finca).length) + " hazas · azul: sin familia · verde: con familia · rojo discontinuo: se pisan"));
+        h("p", { class: "nota" }, num(hazas.filter(x => x.finca === finca).length) + " hazas · azul: sin familia · verde: con familia · rojo discontinuo: se pisan · blanco discontinuo: límite de la finca"),
+        ...(limite && limite.hazas_fuera && limite.hazas_fuera.length
+          ? [h("p", { class: "p-mal" }, "⚠ Se salen del contorno: " + limite.hazas_fuera.map(x => x.codigo + " (" + num(x.m2, 1) + " m²)").join(", ") + ". No se podrán guardar hasta meterlas dentro.")] : []));
       botones(); return;
     }
     const z = sel.get("haza"), c = coords(), s = sucia(), cl = cuenta(c, puntos, BORDE), ha = area(c) / 10000;
@@ -507,6 +559,7 @@ export function iniciaHazas({ sesion }) {
       pisa.length || (!s && z.solapes.length)
         ? h("p", { class: "p-mal" }, "⚠ Se pisa con " + (pisa.length ? pisa.join(", ") : z.solapes.map(x => x.codigo + " (" + x.m2 + " m²)").join(", ")) + ": el servidor no guardará una linde que pise otra haza.")
         : h("p", { class: "p-ok" }, "✓ No se pisa con ninguna haza"),
+      cabe(c) ? null : h("p", { class: "p-mal" }, "⚠ Se sale del " + nombreLimite() + ": no se podrá guardar así."),
       error ? h("p", { class: "error", role: "alert" }, error) : null,
       h("p", { class: "nota" }, "Parcelas de OlivarTrack: " + (z.parcelas.length ? z.parcelas.map(p => p.id).join(", ") : "ninguna")),
       selectorFamilia(z),
@@ -566,12 +619,13 @@ export function iniciaHazas({ sesion }) {
   $("#cOrto").addEventListener("change", e => { capaMosaico.setVisible(e.target.checked); capaTeselas.setVisible(e.target.checked); });
   $("#cCopas").addEventListener("change", e => capaCopas.setVisible(e.target.checked));
   $("#cParc").addEventListener("change", e => capaParcelas.setVisible(e.target.checked));
+  $("#cLimite").addEventListener("change", e => capaLimite.setVisible(e.target.checked));
   $("#cAjuste").addEventListener("change", e => { ajusteH.setActive(e.target.checked); ajusteP.setActive(e.target.checked); });
   window.addEventListener("beforeunload", e => { if (sucia()) e.preventDefault(); });
   void sesion;   // el rol no cambia nada aquí: oficina y admin editan igual (ADR-0024)
 
   /** Para las pruebas de Chrome: estado legible sin tocar nada (no hay forma de cambiar datos desde aquí). */
-  const estado = () => ({ finca, hazas: fuenteHazas.getFeatures().length, sel: sel ? sel.get("haza").codigo : null, vertice: vk, sucia: sucia(), copas: puntos.length,
+  const estado = () => ({ finca, limite: limite ? limite.tipo : null, hazas: fuenteHazas.getFeatures().length, sel: sel ? sel.get("haza").codigo : null, vertice: vk, sucia: sucia(), copas: puntos.length,
     resolucion: mapa ? mapa.getView().getResolution() : null, vertices: sel ? vertices(coords()).length : 0,
     pixelDe: (x, y) => (mapa ? mapa.getPixelFromCoordinate([x, y]) : null), coordsSel: sel ? coords() : null });
   return { abre, estado };

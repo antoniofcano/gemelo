@@ -90,6 +90,21 @@ components:
           properties:
             type: { type: string, enum: [MultiPolygon] }
             coordinates: { type: array, minItems: 1, items: { type: array, minItems: 1, items: { type: array, minItems: 4, items: { type: array, minItems: 2, maxItems: 2, items: { type: number } } } } }
+    ContornoFinca:
+      description: "Contorno de una finca (OF3b): la unión de sus parcelas SIGPAC o catastrales, GeoJSON Polygon o MultiPolygon en EPSG:25830, anillos cerrados, como mucho 50000 vértices"
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [type, coordinates]
+          properties:
+            type: { type: string, enum: [Polygon] }
+            coordinates: { type: array, minItems: 1, items: { type: array, minItems: 4, items: { type: array, minItems: 2, maxItems: 2, items: { type: number } } } }
+        - type: object
+          additionalProperties: false
+          required: [type, coordinates]
+          properties:
+            type: { type: string, enum: [MultiPolygon] }
+            coordinates: { type: array, minItems: 1, items: { type: array, minItems: 1, items: { type: array, minItems: 4, items: { type: array, minItems: 2, maxItems: 2, items: { type: number } } } } }
     Hazas:
       type: object
       additionalProperties: false
@@ -614,7 +629,8 @@ paths:
       summary: "Crea una haza dibujada en la oficina. Devuelve 201 { haza } con el recuento del servidor"
       description: >
         PostGIS valida: geometría legible y válida (ST_IsValid; 400 geometria_no_valida con motivo), al menos 10 m² (demasiado_pequena), dentro
-        de la finca = la caja de sus olivos medidos con 150 m de margen (fuera_de_finca; sin olivos de la finca, finca_desconocida) y sin pisar
+        de la finca = su contorno vigente con 1 m de holgura (ST_CoveredBy; 400 fuera_de_contorno con fuera_m2; OF3b) o, si no tiene contorno,
+        la caja de sus olivos medidos con 150 m de margen (fuera_de_finca; sin olivos ni contorno, finca_desconocida) y sin pisar
         otra haza de la finca en más de 0,5 m² (409 solape, con la lista). Nace sin familia y con su versión 1 (accion crear). Auditoría admin.haza_creada.
       security: [{ sesion: [] }]
       requestBody:
@@ -783,6 +799,60 @@ paths:
         "403": { $ref: "#/components/responses/SinPermiso" }
         "404": { description: "la haza o la versión no existen" }
         "409": { description: "pisa otra haza (solape), sin cambios u otra persona guardó antes" }
+
+  # ---------------------------------------------------------------- contorno de la finca (OF3b, decisión 140; migración 0011)
+  /api/admin/fincas/{finca}/limite:
+    get:
+      summary: "El límite de la finca para el editor de hazas: { finca, srs, tipo (contorno | caja | ninguno), holgura_m, margen_m, geometria (MultiPolygon o null), fuente, consultado_en, parcelas, superficie_ha, cargado_en, hazas_fuera [{ id, codigo, m2 }] }"
+      description: >
+        Con contorno vigente, tipo contorno (fuente sigpac o catastro, cuántas parcelas, fecha de consulta; hazas_fuera = las hazas de la finca que se
+        salen de él más de holgura_m). Sin él, tipo caja: la caja de los olivos medidos con margen_m (150 m), lo de OF3; sin olivos, tipo ninguno.
+      security: [{ sesion: [] }]
+      parameters:
+        - { name: finca, in: path, required: true, schema: { type: string, pattern: "^[a-z0-9_-]{1,32}$" } }
+      responses:
+        "200": { description: ok }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+
+  /api/admin/fincas/{finca}/contorno:
+    put:
+      summary: "Carga el contorno de la finca (sale de tuberia/contorno/contorno_finca.py) y retira el vigente. Devuelve 201 con el límite nuevo (como GET …/limite)"
+      description: >
+        Solo admin, con confirmación reciente (403 sin_permiso / confirmacion_requerida). PostGIS valida (400 contorno_no_valido). La historia no se
+        borra: el anterior queda retirado. No lleva las referencias de las parcelas, solo cuántas. Auditoría admin.contorno_cargado.
+      security: [{ sesion: [] }]
+      parameters:
+        - { name: finca, in: path, required: true, schema: { type: string, pattern: "^[a-z0-9_-]{1,32}$" } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [geometria, fuente, consultado_en, parcelas]
+              properties:
+                geometria: { $ref: "#/components/schemas/ContornoFinca" }
+                fuente: { type: string, enum: [sigpac, catastro] }
+                consultado_en: { type: string, format: date }
+                parcelas: { type: integer, minimum: 1, maximum: 100000 }
+      responses:
+        "201": { description: cargado }
+        "400": { description: "contorno no válido", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+    delete:
+      summary: Retira el contorno vigente; la finca vuelve a la caja de sus olivos + 150 m
+      description: Solo admin, con confirmación reciente. 404 sin_contorno si no tenía. Auditoría admin.contorno_retirado.
+      security: [{ sesion: [] }]
+      parameters:
+        - { name: finca, in: path, required: true, schema: { type: string, pattern: "^[a-z0-9_-]{1,32}$" } }
+      responses:
+        "204": { description: retirado }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: sin contorno }
 
   /api/admin/hogares/{id}/revocar:
     post:

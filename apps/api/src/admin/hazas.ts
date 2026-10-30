@@ -1,5 +1,5 @@
 // Hazas de la oficina (OF3, doc/sistema/OFICINA.md §4, decisiones 12 y 95). La geometría MANDA EN EL SERVIDOR: PostGIS valida
-// (ST_IsValid), comprueba que cae dentro de la finca y que no pisa otra haza, parte (ST_Split), junta (ST_Union) y cuenta los olivos
+// (ST_IsValid), comprueba que cae dentro de la finca (su contorno, OF3b; sin él, la caja de sus olivos + 150 m) y que no pisa otra haza, parte (ST_Split), junta (ST_Union) y cuenta los olivos
 // medidos (ST_Intersects con el índice GiST de `olivos`, lo mismo que la ficha pública). El recuento del cliente es orientativo.
 // Cada guardado es una VERSIÓN (tabla hazas_versiones, migración 0010, escrita por el disparador de `hazas`); «volver» guarda una
 // copia de una versión vieja como versión nueva: el historial no se reescribe nunca. Rutas, todas con `requiereRol("oficina", "admin")`:
@@ -17,7 +17,7 @@ import type { FastifyInstance, FastifyReply } from "fastify";
 import { audita } from "../auth/servicio.ts";
 import { type Bd, type Cliente, enTransaccion } from "../bd/pool.ts";
 import type { Contexto } from "../contexto.ts";
-import { AREA_MINIMA_M2, BORDE_M, compruebaCorte, compruebaGeometria, ESQUEMA_GEOMETRIA, type Geometria, MARGEN_FINCA_M, SOLAPE_TOLERADO_M2 } from "../hazas/geometria.ts";
+import { AREA_MINIMA_M2, BORDE_M, compruebaCorte, compruebaGeometria, CONTORNO_HOLGURA_M, ESQUEMA_GEOMETRIA, type Geometria, MARGEN_FINCA_M, SOLAPE_TOLERADO_M2 } from "../hazas/geometria.ts";
 import { OFICINA, OFICINA_CONFIRMADA } from "../oficina/acceso.ts";
 
 const ENTERO = { type: "integer", minimum: 1, maximum: 2147483647 } as const;
@@ -75,8 +75,9 @@ async function motivo(c: Cliente, autor: number, accion: string, nota: string | 
 }
 
 /**
- * Valida en PostGIS una geometría (GeoJSON en EPSG:25830): válida, con superficie, dentro de la finca (la caja de sus olivos medidos
- * con MARGEN_FINCA_M) y sin pisar otras hazas de la finca (salvo las de `excluir`). Lanza un Rechazo si no.
+ * Valida en PostGIS una geometría (GeoJSON en EPSG:25830): válida, con superficie, dentro de la finca (su contorno vigente con
+ * CONTORNO_HOLGURA_M, ST_CoveredBy; sin contorno, la caja de sus olivos medidos con MARGEN_FINCA_M) y sin pisar otras hazas de la finca
+ * (salvo las de `excluir`). Lanza un Rechazo si no.
  */
 async function validaEnFinca(c: Cliente, geojson: string, finca: string, excluir: number[]): Promise<void> {
   let v: { valida: boolean; motivo: string; area: number } | undefined;
@@ -88,12 +89,25 @@ async function validaEnFinca(c: Cliente, geojson: string, finca: string, excluir
   }
   if (!v!.valida) rechaza(400, "geometria_no_valida", "La linde se cruza consigo misma o tiene un pico: corrígela antes de guardar.", { motivo: v!.motivo });
   if (v!.area < AREA_MINIMA_M2) rechaza(400, "demasiado_pequena", "La haza es demasiado pequeña (menos de " + AREA_MINIMA_M2 + " m²).");
-  const f = (await c.query<{ hay: boolean; dentro: boolean | null }>(
-    `SELECT count(*) > 0 AS hay,
-            ST_Within(ST_SetSRID(ST_GeomFromGeoJSON($1), 25830), ST_SetSRID(ST_Expand(ST_Extent(geom), $3)::geometry, 25830)) AS dentro
-       FROM olivos WHERE finca = $2`, [geojson, finca, MARGEN_FINCA_M])).rows[0]!;
-  if (!f.hay) rechaza(400, "finca_desconocida", "No hay olivos medidos de esa finca en la base: sin ellos no se sabe dónde está.");
-  if (!f.dentro) rechaza(400, "fuera_de_finca", "La haza se sale de la finca (más de " + MARGEN_FINCA_M + " m más allá de sus olivos medidos).");
+  // el límite: el contorno vigente de la finca (OF3b, migración 0011) si lo hay; si no, la caja de sus olivos medidos + MARGEN_FINCA_M
+  const k = (await c.query<{ fuente: string | null; dentro_contorno: boolean | null; fuera_m2: number | null }>(
+    `SELECT k.fuente, ST_CoveredBy(x.g, ST_Buffer(k.geom, $3)) AS dentro_contorno,
+            round(ST_Area(ST_Difference(x.g, k.geom))::numeric, 1)::float AS fuera_m2
+       FROM fincas_contorno k, (SELECT ST_SetSRID(ST_GeomFromGeoJSON($1), 25830) AS g) x
+      WHERE k.finca = $2 AND k.retirado_en IS NULL`, [geojson, finca, CONTORNO_HOLGURA_M])).rows[0];
+  if (k) {
+    if (!k.dentro_contorno) {
+      rechaza(400, "fuera_de_contorno", "La haza se sale del contorno de la finca (" + k.fuente + "): unos " + k.fuera_m2 + " m² quedan fuera. Ajusta la linde a la de la finca.",
+        { fuera_m2: k.fuera_m2 });
+    }
+  } else {
+    const f = (await c.query<{ hay: boolean; dentro: boolean | null }>(
+      `SELECT count(*) > 0 AS hay,
+              ST_Within(ST_SetSRID(ST_GeomFromGeoJSON($1), 25830), ST_SetSRID(ST_Expand(ST_Extent(geom), $3)::geometry, 25830)) AS dentro
+         FROM olivos WHERE finca = $2`, [geojson, finca, MARGEN_FINCA_M])).rows[0]!;
+    if (!f.hay) rechaza(400, "finca_desconocida", "No hay olivos medidos de esa finca en la base ni contorno cargado: sin ellos no se sabe dónde está.");
+    if (!f.dentro) rechaza(400, "fuera_de_finca", "La haza se sale de la finca (más de " + MARGEN_FINCA_M + " m más allá de sus olivos medidos).");
+  }
   const s = await c.query<{ id: number; codigo: string; m2: number }>(
     `SELECT h.id::int AS id, h.codigo, round(ST_Area(ST_Intersection(h.geom, x.g))::numeric, 1)::float AS m2
        FROM hazas h, (SELECT ST_SetSRID(ST_GeomFromGeoJSON($1), 25830) AS g) x
