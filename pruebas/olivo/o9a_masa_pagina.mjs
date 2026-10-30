@@ -17,7 +17,8 @@ const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true, preser
 renderer.setPixelRatio(1); renderer.setClearColor(0x000000, 0);
 document.body.appendChild(renderer.domElement);
 const gl = renderer.getContext();
-const mats = O.creaMateriales(THREE, null, { epoca: "envero", srgb: true });
+const matsCob = O.creaMateriales(THREE, null, { epoca: "envero", srgb: true });   // hojas con mipmaps que conservan la cobertura (ADR-0022 §6)
+const matsGPU = O.creaMateriales(THREE, null, { epoca: "envero", srgb: true, mipsCobertura: false });   // los mipmaps de la GPU (como antes de O9c), para comparar
 const escena = new THREE.Scene();
 const sol = new THREE.DirectionalLight(0xffffff, 1.5 * Math.PI); sol.position.set(Math.cos(2.4) * 0.6, 0.8, Math.sin(2.4) * 0.6); escena.add(sol); escena.add(sol.target);
 escena.add(new THREE.HemisphereLight(0xcfe0ff, 0x7a6a55, 1.1 * Math.PI));
@@ -124,11 +125,11 @@ function miniatura(ctx, px, N, dx, dy, M) {
   ctx.putImageData(im, dx, dy);
 }
 
-/** cfg: {lados: [512, 128], olivos: [{nombre, entrada, variantes?: [{semilla, copa, altura, etiqueta, impostor?}]}]} */
+/** cfg: {lados: [512, 128], olivos: [{nombre, entrada, mipsGPU? (los mipmaps de hoja de la GPU), variantes?: [{semilla, copa, altura, etiqueta, impostor?}]}]} */
 window.mide = async function (cfg) {
   const res = [], hojas = {};
   for (const ol of cfg.olivos) {
-    const r0 = O.receta(ol.entrada), filas = [];
+    const r0 = O.receta(ol.entrada), filas = [], mats = ol.mipsGPU ? matsGPU : matsCob;
     for (const k of O.NIVELES) filas.push({ etiqueta: k, receta: O.aNivel(r0, k), tri: O.triangulosNivel(O.aNivel(r0, k)) });
     for (const v of ol.variantes || []) {
       const rv = O.receta({ tipo: "centenario3", epoca: ol.entrada.epoca, semilla: v.semilla }), rn = O.aNivel(rv, v.nivel || "E2");

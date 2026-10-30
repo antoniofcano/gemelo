@@ -4,7 +4,7 @@
 // `parche(material, nombre)` permite al anfitrión encadenar su propio onBeforeCompile (p. ej. el parcheTiempo del gemelo: luz, nubes y helada).
 import { colorLineal, texturaDeColor, uvDelMapa } from "./compat.js";
 import { ESTADOS } from "./tipos.js";
-import { dibujaCorteza, dibujaRamita, dibujaRelleno } from "./texturas.js";
+import { dibujaCorteza, dibujaRamita, dibujaRelleno, mipsConCobertura } from "./texturas.js";
 
 /** Nombres de material que puede pedir una receta (montaOlivo falla si falta uno) */
 export const MATERIALES = ["corteza", "pies", "musgo", "muerta", "raiz", "corte", "tutor", "oliva", "relleno", "relleno_sombra",
@@ -47,7 +47,8 @@ function conMarcas(THREE, mat, texMuerta) {
  * @param fotos     lo que da cargaFotos() ({corteza, musgo, muerta: ImageBitmap|null}) o null (sin fotos: corteza dibujada y colores lisos)
  * @param opciones  { epoca (las ramitas y el relleno llevan flor según la época; por defecto "envero"), parche(material, nombre), srgb (marca
  *                  las texturas como sRGB, para un anfitrión con gestión de color, y calibra el color para su luz lineal: CALIBRACION_LINEAL; por defecto
- *                  no, como r128), calibracion (false o {follaje, corteza}: solo con srgb) }
+ *                  no, como r128), calibracion (false o {follaje, corteza}: solo con srgb), mipsCobertura (false: los mipmaps de hoja de la GPU,
+ *                  sin conservar la cobertura; por defecto se conserva) }
  * @returns { nombre → material } y además .avisos (lo que falta) y .libera()
  */
 export function creaMateriales(THREE, fotos, opciones) {
@@ -76,8 +77,17 @@ export function creaMateriales(THREE, fotos, opciones) {
   M.corte = S({ roughness: 0.85, side: D }, 0xffffff);   // el color del corte va por instancia (receta.corte)
   M.tutor = S({ roughness: 0.9 }, 0xcdb88f);
   M.oliva = S({ roughness: 0.5 }, 0xffffff);
-  const ramitas = [dibujaRamita(11, flor), dibujaRamita(29, flor)].map(c => { const t = tex(c, false); if (t) t.anisotropy = 4; return t; });
-  const texRel = tex(dibujaRelleno(flor), false); if (texRel) texRel.anisotropy = 4;
+  // las hojas (recorte alfa): mipmaps que conservan la cobertura del corte (texturas.js, ADR-0022 §6); `mipsCobertura: false` (en el motor,
+  // ?olivosMips=0) los deja en los de la GPU, para comparar. Sin lienzo 2D (Node), los de siempre.
+  const hoja = (c, corte) => {
+    const t = tex(c, false); if (!t) return t;
+    t.anisotropy = 4;
+    const mips = o.mipsCobertura === false ? null : mipsConCobertura(c, corte);
+    if (mips) { t.mipmaps = mips; t.generateMipmaps = false; t.minFilter = THREE.LinearMipmapLinearFilter; }
+    return t;
+  };
+  const ramitas = [dibujaRamita(11, flor), dibujaRamita(29, flor)].map(c => hoja(c, 0.45));
+  const texRel = hoja(dibujaRelleno(flor), 0.5);
   M.relleno = S({ map: texRel, alphaTest: 0.5, side: D, roughness: 0.9 }, 0xffffff);
   M.relleno_sombra = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: texRel, alphaTest: 0.5 });
   [0, 1].forEach(i => {

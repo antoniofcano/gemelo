@@ -1,9 +1,12 @@
 // O9a (decisión 80): diagnóstico de los escalones del olivo SIN navegador. Solo mide; no cambia el constructor ni el motor.
 //   1. Receta de cada escalón (E0, E1, E2, E2-VR) para olivos de prueba con semilla fija: triángulos, llamadas, tarjetas de hoja (ramitas y relleno),
 //      ÁREA de tarjetas (m² en el mundo, con receta.escala), caja de la copa (de los centros de tarjeta) y medidas (altura y copa).
-//   2. La VARIANTE estirada (matrizDe de 07ab) frente al PROPIO del mismo olivo: copa dibujada, área de hoja y deformación de las tarjetas.
-//   3. Dónde salta el escalón paseando: Escalera.planifica REAL (el bloque [puro] de 07ab) en una rejilla de olivos a 10, 11 y 12 m, con los
+//   2. La VARIANTE estirada (matrizDe de 07ab) frente al PROPIO del mismo olivo: copa dibujada, área de hoja y deformación de las tarjetas. Desde
+//      O9b-0 (decisión 81) la variante va a la copa del propio (2 × r8 medio, FACTOR_R8_GEN = 1); con --factor 0.5, la de antes.
+//   3. Dónde cambia el escalón paseando: Escalera.planifica REAL (el bloque [puro] de 07ab) en una rejilla de olivos a 10, 11 y 12 m, con los
 //      triángulos de recetas reales, en escritorio (550 k), móvil (270 k) y gafas perfil 0 (380 k); y el alto en píxeles de un olivo de 5 m.
+//      Desde O9c (decisión 82): el escalón por alto en píxeles con las fronteras desplazadas por el presupuesto (s) y la banda de ± 1,5 m: el
+//      «cambio» es cuando el escalón que pesa más (f ≥ 0,5) pasa a ser otro; se cuentan además los saltos de peso > 0,35 de un reparto al siguiente.
 //   node pruebas/olivo/o9a_escalones.mjs   → una línea JSON por stdout (el resumen legible, por stderr)
 import fs from "node:fs";
 import path from "node:path";
@@ -55,7 +58,7 @@ for (const c of CASOS) {
 }
 
 // ---- 2. la variante estirada (07ab matrizDe: copa = 2 × r8 medio × FACTOR_R8, altura = h) frente al propio (copas_param: copa_m = 2 × r8 medio)
-const FACTOR_R8 = 0.5;
+const FACTOR_R8 = process.argv.includes("--factor") ? Number(process.argv[process.argv.indexOf("--factor") + 1]) : 1;
 for (const sv of [11, 23, 37, 51]) {
   const rv = O.aNivel(O.receta({ tipo: "centenario3", epoca: "envero", semilla: sv }), "E2");
   const h = 4.0, r8medio = 2.15, copaVar = Math.max(0.8, 2 * r8medio * FACTOR_R8), k = copaVar / rv.medidas.copa_m, ky = Math.max(1, h) / rv.medidas.altura_m;
@@ -65,7 +68,7 @@ for (const sv of [11, 23, 37, 51]) {
 }
 const prop = salida.recetas[2].niveles.E2;
 say("propio E2 (copa_m de copas_param 4,3): copa " + prop.medidas.copa_m + " m, ramitas " + prop.areaRamitas + " m², aspecto " + prop.aspecto);
-salida.variante.forEach(v => say("variante " + v.semilla + " estirada a r8×0,5: copa " + v.copa_dibujada_m + " m (k " + v.k_horizontal + " × " + v.k_vertical + "), ramitas " + v.areaRamitas + " m², aspecto " + v.aspecto_tarjeta));
+salida.variante.forEach(v => say("variante " + v.semilla + " estirada a 2 × r8 × " + FACTOR_R8 + ": copa " + v.copa_dibujada_m + " m (k " + v.k_horizontal + " × " + v.k_vertical + "), ramitas " + v.areaRamitas + " m², aspecto " + v.aspecto_tarjeta));
 
 // ---- 3. el paseo con el reparto real
 const src = fs.readFileSync(path.join(RAIZ, "apps", "web", "motor", "07ab_generados.js"), "utf8");
@@ -79,34 +82,46 @@ const PERFILES = [
   { n: "gafas perfil 0", tope: E.tope({ base: 550000, vr: { tri: 380000 }, escala: 1, triLejanos: 2 * 5882 }), vr: { tri: 380000 } }
 ];
 const mediana = a => { if (!a.length) return null; const s = a.slice().sort((x, y) => x - y); return +s[Math.floor(s.length / 2)].toFixed(1); };
+const KVR = 0.9 * 1760 / (2 * Math.tan(48 * Math.PI / 180));   // Quest 3 aproximado [NO VERIFICADO]: px por ojo y fov vertical ≈ 96°
+const ORD = { E0: 0, E1: 1, E2: 2, E2VR: 2 }, NOMBRE = ["E0", "E1", "E2", "lejano"];
+// el peso visible de cada escalón de cada olivo del plan (entero 1; en banda, f el más fino y 1 − f el más grueso, lejano lo que falta)
+const pesos = r => { const w = {}; r.plan.forEach(p => { const v = w[p.c.i] || (w[p.c.i] = [0, 0, 0, 0]); const f = p.rol === 0 ? 1 : p.rol === 1 ? p.f : 1 - p.f; v[ORD[p.niv]] += f; if (p.rol === 1 && p.lej) v[3] += 1 - p.f; }); return w; };
+const dominante = v => { let m = 0; for (let k = 1; k < 4; k++) if (v[k] > v[m] + 1e-9) m = k; return m; };
 for (const P of PERFILES) for (const paso of [10, 11, 12]) {
   const olivos = []; let i = 0;
-  for (let gx = -12; gx <= 12; gx++) for (let gy = -12; gy <= 12; gy++) olivos.push({ i: i++, x: gx * paso, y: gy * paso });
-  const est = {}, niv = {}, cambios = [];
+  for (let gx = -12; gx <= 12; gx++) for (let gy = -12; gy <= 12; gy++) olivos.push({ i: i++, x: gx * paso, y: gy * paso, h: 4.0 });
+  const est = {}, niv = {}, cambios = [], kPx = P.vr ? KVR : E.K_PX, e2 = P.vr ? "E2VR" : "E2";
+  const opc = t => ({ pres: P.tope, vr: P.vr, ahora: t, kPx, costo: (cl, n) => TRI[n], clavePropia: (c, n) => "p" + c.i + ":" + n, claveVar: c => "v" + (c.i % 4) + ":" + e2 });
+  let wAnt = {}, sAnt = null, saltos = 0, saltosS = 0, cambiosS = 0, sMin = 1e9, sMax = 0;
   // paseo por la calle (a media distancia entre dos filas), de x = −90 a +90 a 1,4 m/s, reparto cada 0,25 s
   for (let t = 0, x = -90; x <= 90; t += 0.25, x += 1.4 * 0.25) {
     const fx = x, fy = paso / 2, cand = olivos.map(c => ({ c, d: Math.hypot(c.x - fx, c.y - fy) })).filter(o => o.d < 160).sort((a, b) => a.d - b.d).slice(0, 120);
-    const r = E.planifica(cand, est, { pres: P.tope, vr: P.vr, ahora: t, costo: (cl, n) => TRI[n], clavePropia: (c, n) => "p" + c.i + ":" + n, claveVar: c => "v" + (c.i % 4) + ":" + (P.vr ? "E2VR" : "E2") });
-    const ahora = {}; r.plan.forEach(p => { ahora[p.c.i] = p.niv; });
+    const r = E.planifica(cand, est, opc(t)), w = pesos(r);
+    if (x > -60 && x < 60) {
+      sMin = Math.min(sMin, r.s); sMax = Math.max(sMax, r.s);
+      let m = 0; for (const k of new Set(Object.keys(w).concat(Object.keys(wAnt)))) { const u = wAnt[k] || [0, 0, 0, 1], v = w[k] || [0, 0, 0, 1]; for (let q = 0; q < 4; q++) m = Math.max(m, Math.abs(u[q] - v[q])); }
+      if (sAnt !== null && r.s !== sAnt) { cambiosS++; if (m > 0.35) saltosS++; } else if (m > 0.35) saltos++;
+    }
     for (const o of cand) {
-      const a = niv[o.c.i] || "lejano", b = ahora[o.c.i] || "lejano";
-      if (a !== b && x > -60 && x < 60) cambios.push({ de: a, a: b, d: o.d, detras: o.c.x < fx });
+      const a = niv[o.c.i] === undefined ? 3 : niv[o.c.i], b = w[o.c.i] ? dominante(w[o.c.i]) : 3;
+      if (a !== b && x > -60 && x < 60) cambios.push({ de: NOMBRE[a], a: NOMBRE[b], d: o.d, detras: o.c.x < fx });
       niv[o.c.i] = b;
     }
+    wAnt = w; sAnt = r.s;
   }
   // cada paso de escalón: distancia mediana al paseante y qué parte ocurre con el olivo ya DETRÁS (x del olivo < x del paseante)
   const T = (de, a) => { const l = cambios.filter(c => c.de === de && c.a === a); return l.length ? { d: mediana(l.map(c => c.d)), detras_pct: Math.round(100 * l.filter(c => c.detras).length / l.length), n: l.length } : null; };
-  const e2 = P.vr ? "E2VR" : "E2";
-  const fila = { perfil: P.n, presupuesto: Math.round(P.tope), paso_m: paso,
-    pasos: { lejano_a_E2: T("lejano", e2), E2_a_E1: T(e2, "E1"), E1_a_E0: T("E1", "E0"), E0_a_E1: T("E0", "E1"), E1_a_E2: T("E1", e2), E2_a_lejano: T(e2, "lejano") },
-    cambios: cambios.length };
-  // el reparto asentado en un punto (cuántos en cada escalón y hasta qué distancia)
+  const fila = { perfil: P.n, presupuesto: Math.round(P.tope), paso_m: paso, s: { min: +sMin.toFixed(2), max: +sMax.toFixed(2) },
+    fronteras_4m: E.fronteras(4, kPx, E.UMBRALES, sMax, E.BANDA).D.map(v => +v.toFixed(1)),
+    pasos: { lejano_a_E2: T("lejano", "E2"), E2_a_E1: T("E2", "E1"), E1_a_E0: T("E1", "E0"), E0_a_E1: T("E0", "E1"), E1_a_E2: T("E1", "E2"), E2_a_lejano: T("E2", "lejano") },
+    cambios: cambios.length, saltos_peso: saltos, cambios_de_s: cambiosS, saltos_con_cambio_de_s: saltosS };
+  // el reparto asentado en un punto (cuántos en cada escalón, enteros o en banda, y hasta qué distancia)
   const est2 = {}, fx = 0, fy = paso / 2, cand = olivos.map(c => ({ c, d: Math.hypot(c.x - fx, c.y - fy) })).sort((a, b) => a.d - b.d).slice(0, 120);
-  let r2; for (let t = 0; t < 4; t += 0.5) r2 = E.planifica(cand, est2, { pres: P.tope, vr: P.vr, ahora: t, costo: (cl, n) => TRI[n], clavePropia: (c, n) => "p" + c.i + ":" + n, claveVar: c => "v" + (c.i % 4) + ":" + e2 });
-  const por = {}; r2.plan.forEach(p => { por[p.niv] = por[p.niv] || { n: 0, dmax: 0 }; por[p.niv].n++; por[p.niv].dmax = Math.max(por[p.niv].dmax, +p.d.toFixed(1)); });
-  fila.asentado = por; fila.usado = Math.round(r2.usado);
+  let r2; for (let t = 0; t < 4; t += 0.5) r2 = E.planifica(cand, est2, Object.assign(opc(t), { ahora: undefined }));
+  const por = {}; r2.plan.forEach(p => { const k = p.niv + (p.rol ? " (banda)" : ""); por[k] = por[k] || { n: 0, dmax: 0 }; por[k].n++; por[k].dmax = Math.max(por[k].dmax, +p.d.toFixed(1)); });
+  fila.asentado = por; fila.usado = Math.round(r2.usado); fila.s_asentado = +r2.s.toFixed(2);
   salida.paseo.push(fila);
-  say(P.n + " " + paso + " m: " + JSON.stringify(fila.asentado) + " | " + Object.entries(fila.pasos).map(([k, v]) => k + " " + (v ? v.d + " m (" + v.detras_pct + " % detrás)" : "—")).join(", "));
+  say(P.n + " " + paso + " m: s " + fila.s_asentado + " " + JSON.stringify(fila.asentado) + " | " + Object.entries(fila.pasos).map(([k, v]) => k + " " + (v ? v.d + " m (" + v.detras_pct + " % detrás)" : "—")).join(", ") + " | saltos " + saltos + ", s cambia " + cambiosS + " (saltos con ello " + saltosS + ")");
 }
 salida.triangulos_usados = TRI;
 
