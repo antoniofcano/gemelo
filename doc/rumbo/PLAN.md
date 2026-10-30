@@ -143,7 +143,7 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | G1 | Arreglar la facturación de GitHub para que corra el CI | — | 👤 | ⬜ |
 | OF0 | ADR de la oficina: roles, acceso y configuración versionada (decisiones 104-116) | — | ligera · **opus** | ✅ 2026-10-30 (ADR-0024) |
 | OF1 | Acceso: rol `oficina`, sesión corta, aparatos confiables, Caddy con `/oficina/` por rol | OF0, V3 | media · **opus**; 🔶 Docker | ✅ 2026-10-30: migración 0005, integración y probar-caddy en verde |
-| OF2 | Esqueleto de `/oficina/` y **Familias** (alta, enlace, sesiones, haza, baja a 30 días, exportar, borrar) | OF1 | media · **sonnet**; 🔶 | ⬜ |
+| OF2 | Esqueleto de `/oficina/` y **Familias** (alta, enlace, sesiones, haza, baja a 30 días, exportar, borrar) | OF1 | media · **sonnet**; 🔶 | ✅ 2026-10-30; sin probar con lector de pantalla ni en Safari o Firefox |
 | OF3 | **Hazas**: dibujar sobre ortofoto y copas (OpenLayers + proj4), partir/juntar en PostGIS, recuento, versiones | OF2, V3 | pesada · **opus**; 🔶 | ⬜ |
 | OF4 | **Bandeja**: retirar en un clic, responder, avisar, pasar a OlivarTrack (token solo para proponer, decisión 110) | OF2, V3 | media · **sonnet**; 🔶 Docker | ⬜ |
 | OF5 | **Sistema** mínimo: salud, OlivarTrack, correo de prueba, auditoría, roles | OF2 | ligera · **sonnet** | ⬜ |
