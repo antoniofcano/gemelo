@@ -1189,14 +1189,21 @@ paths:
         Sala fija «hituelo-libre» (decisiones 39 y 60). La identidad es un id opaco, uno por sesión (aparato), con el
         hogar como prefijo: h_<22>_<8> (ni correo, ni id de la base, ni id de la sesión). El mismo hogar puede estar a la
         vez en varios aparatos; dos pestañas de la misma sesión comparten identidad. Permisos del rol según livekit-roles.json: en F2 solo datos (pose y chat), sin audio ni vídeo, sin
-        roomAdmin. Los metadatos (alias, avatar, rol, dispositivo) los pone la api y el cliente no puede cambiarlos.
+        roomAdmin. Los metadatos (alias, avatar, rol, dispositivo) los pone la api y el cliente no puede cambiarlos; la oficina (rol oficina o
+        admin) entra con el alias «Oficina», sin nombre propio (OF10, decisión 107).
         El token caduca a los 15 minutos (solo sirve para entrar). Nada de la sala se guarda.
       security: [{ sesion: [] }]
       requestBody:
         required: true
         content:
           application/json:
-            schema: { type: object, additionalProperties: false, required: [dispositivo], properties: { dispositivo: { enum: [escritorio, movil, quest] } } }
+            schema:
+              type: object
+              additionalProperties: false
+              required: [dispositivo]
+              properties:
+                dispositivo: { enum: [escritorio, movil, quest] }
+                sala: { enum: [general, visita], description: "OF10: la sala del mundo por su clave (livekit-roles.json v4). Sin ella, «general» (hituelo-libre); «visita» es hituelo-visita, a la que invita la oficina" }
       responses:
         "200":
           description: token firmado
@@ -1208,7 +1215,7 @@ paths:
                 required: [url, sala, identidad, token, caduca_en]
                 properties:
                   url: { type: string, description: "a dónde se conecta el navegador: wss:// de LiveKit (ws:// solo fuera de producción) o una ruta del mismo origen (/rtc) que el cliente resuelve contra su página (https → wss)" }
-                  sala: { const: hituelo-libre }
+                  sala: { enum: [hituelo-libre, hituelo-visita] }
                   identidad: { type: string, pattern: "^h_[A-Za-z0-9_-]{22}_[A-Za-z0-9_-]{8}$" }
                   token: { type: string, description: JWT de LiveKit }
                   caduca_en: { type: string, format: date-time }
@@ -1220,7 +1227,7 @@ paths:
 
   /api/admin/presencia/expulsar:
     post:
-      summary: Saca a un hogar de la sala libre (moderación mínima de F2, decisión 42; solo la oficina)
+      summary: Saca a un hogar de las salas del mundo (la libre y, OF10, la de la visita; moderación mínima de F2, decisión 42; solo la oficina)
       description: >
         La api saca TODAS las conexiones del hogar (una por aparato: lista la sala con RoomService.ListParticipants y
         quita con RemoveParticipant las que llevan su prefijo; ningún token de cliente lleva roomAdmin), no le da token
@@ -1250,6 +1257,172 @@ paths:
         "403": { $ref: "#/components/responses/SinPermiso" }
         "404": { description: el hogar no existe }
         "503": { description: la presencia está apagada en este servidor }
+
+  # ---------------------------------------------------------------- el mundo en modo oficina (OF10; OFICINA.md §6; presencia/oficina_mundo.ts)
+  /api/admin/presencia/anuncio:
+    post:
+      summary: Un aviso de texto de la oficina a una sala del mundo o a las dos (OF10, decisión 114)
+      description: >
+        Solo la oficina. La api lo manda con RoomService.sendData por el tema «anuncio» (fiable; JSON {v: 1, texto}): llega SIN participante y el
+        motor solo lo acepta así (LiveKit no deja restringir un tema por rol). El texto se limpia como el chat (sin control ni dirección, espacios
+        juntos, ≤ 280 caracteres). Queda en la auditoría (admin.presencia_anuncio: sala, a qué salas llegó y el texto). Si LiveKit falla, 500 y no
+        se apunta. Una sala sin nadie no es un error: no sale en «salas».
+      security: [{ sesion: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [texto, sala]
+              properties:
+                texto: { type: string, minLength: 1, maxLength: 280 }
+                sala: { enum: [general, visita, todas] }
+      responses:
+        "200":
+          description: mandado; salas = las de LiveKit en las que había alguien
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: false, required: [salas], properties: { salas: { type: array, items: { type: string } } } }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: la presencia está apagada en este servidor }
+
+  /api/admin/presencia/llevar:
+    post:
+      summary: Invita a quien está en una sala del mundo a pasar a la otra (OF10)
+      description: >
+        Solo la oficina. La api manda por el tema «sala» (fiable; JSON {v: 1, a}) a la sala «de»; cada uno ve la invitación y decide si va (nadie
+        cambia de sala sin pulsar). Queda en la auditoría (admin.presencia_llevar). Llevar sin preguntar es una decisión pendiente de Antonio.
+      security: [{ sesion: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [de, a], properties: { de: { enum: [general, visita] }, a: { enum: [general, visita] } } }
+      responses:
+        "200":
+          description: enviado (false si en la sala «de» no había nadie)
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: false, required: [enviado], properties: { enviado: { type: boolean } } }
+        "400": { description: "entrada no válida o la misma sala (misma_sala)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: la presencia está apagada en este servidor }
+
+  /api/balizas-oficiales:
+    get:
+      summary: Las balizas oficiales vigentes de una finca (OF10)
+      description: >
+        Cualquiera con sesión. Las que puso la oficina, sin retirar y sin caducar (como mucho 20, de la más nueva a la más vieja), en EPSG:25830
+        al centímetro. Sin quién la puso. Los textos son de la oficina y se pintan como texto, nunca como HTML.
+      security: [{ sesion: [] }]
+      parameters:
+        - { name: finca, in: query, required: true, schema: { type: string, pattern: "^[a-z0-9_-]{1,32}$" } }
+      responses:
+        "200":
+          description: las vigentes
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [finca, srs, balizas]
+                properties:
+                  finca: { type: string }
+                  srs: { const: "EPSG:25830" }
+                  balizas:
+                    type: array
+                    maxItems: 20
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required: [id, finca, x, y, titulo, texto, hasta]
+                      properties:
+                        id: { type: integer, minimum: 1 }
+                        finca: { type: string }
+                        x: { type: number }
+                        y: { type: number }
+                        titulo: { type: string, minLength: 1, maxLength: 60 }
+                        texto: { type: [string, "null"], maxLength: 280 }
+                        hasta: { type: string, format: date-time }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+
+  /api/admin/balizas:
+    post:
+      summary: Pone una baliza oficial en el mundo (OF10)
+      description: >
+        Solo la oficina. Punto en EPSG:25830 dentro de la finca (su contorno vigente o la caja de sus olivos medidos + 150 m, como el editor de
+        hazas), título (≤ 60) y texto (≤ 280) limpios como el chat, y caducidad en horas (1-168; 8 por omisión). Como mucho 20 vigentes por finca.
+        Avisa a las salas por el tema «balizas» (si LiveKit falla, no pasa nada: el motor las repide). Auditoría: admin.baliza_puesta.
+      security: [{ sesion: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [finca, x, y, titulo]
+              properties:
+                finca: { type: string, pattern: "^[a-z0-9_-]{1,32}$" }
+                x: { type: number, minimum: 100000, maximum: 900000 }
+                y: { type: number, minimum: 3900000, maximum: 4900000 }
+                titulo: { type: string, minLength: 1, maxLength: 60 }
+                texto: { type: string, minLength: 1, maxLength: 280 }
+                horas: { type: integer, minimum: 1, maximum: 168 }
+      responses:
+        "201":
+          description: puesta
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: false, required: [id], properties: { id: { type: integer, minimum: 1 } } }
+        "400": { description: "entrada no válida, título vacío, finca_desconocida o fuera_de_finca", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "409": { description: "ya hay 20 vigentes en esa finca (demasiadas)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/admin/balizas/{id}:
+    put:
+      summary: Mueve una baliza oficial vigente (OF10)
+      description: Solo la oficina. El punto nuevo, dentro de la misma finca. El título y el texto no se cambian (se quita y se pone otra). Auditoría admin.baliza_movida.
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [x, y]
+              properties:
+                x: { type: number, minimum: 100000, maximum: 900000 }
+                y: { type: number, minimum: 3900000, maximum: 4900000 }
+      responses:
+        "200": { description: movida, content: { application/json: { schema: { type: object, additionalProperties: false, required: [id], properties: { id: { type: integer } } } } } }
+        "400": { description: "entrada no válida o fuera_de_finca", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: no existe, ya caducó o se quitó }
+    delete:
+      summary: Quita una baliza oficial (OF10)
+      description: Solo la oficina. Queda retirada (no se borra la fila). Auditoría admin.baliza_quitada.
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "204": { description: quitada }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: no existe o ya se quitó }
 
   # ---------------------------------------------------------------- vida de las hazas (decisiones 91-97; vida.md)
   /api/hazas/{id}/olivos:
