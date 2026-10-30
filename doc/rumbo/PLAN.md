@@ -131,7 +131,7 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | O4 | Medir 10 olivos en campo con cinta (decisiones 48-49) | — | 👤 | ⬜ |
 | V3 | Base de la «vida» antes del VPS (migración 0004): ids de olivo congelados (decisión 92), personalización de árboles con registro de quién sube (91, 93, 96), denuncias y bandeja de la oficina (94), diario de la haza, avisos, trazabilidad del aceite, eventos (97); API y pruebas | — | media · **opus** | ✅ 2026-10-30 en api, contratos y doc (`doc/sistema/VIDA.md`); probado con PostGIS en contenedor; falta V7 (infra de medios) y las pantallas |
 | V7 | Infra de medios: volumen y `GEMELO_MEDIOS` para la api en `infra/compose.yml` e `infra/dev`, Caddy interno y de borde con `/api/medios` hasta ~9 MB, copia de seguridad del volumen, `GEMELO_MEDIOS*` en `infra/entorno.ejemplo`; probar sharp en la imagen alpine | V3 | ligera · **sonnet**; 🔶 Docker | ⬜ en cola |
-| V8 | Vigía real: URL del MCP y token propio de solo lectura (decisión de Antonio); `GEMELO_VIGIA=mcp` en local y en el VPS; comprobar las dos herramientas contra el contrato `tiempo` v1 | — | ligera · **sonnet**; 👤 token | ⬜ espera el token |
+| V8 | Vigía real: URL del MCP y token propio de solo lectura (decisión de Antonio); `GEMELO_VIGIA=mcp` en local y en el VPS; comprobar las dos herramientas contra el contrato `tiempo` v1 | — | ligera · **sonnet**; 👤 token | 👤 URL lista en `infra/dev/.env`; falta el valor de `VIGIA_MCP_TOKEN` (decisión 126) |
 | V9 | Limpieza: el conector de claude.ai (`window.claude`) que aún usan 14_historia, 15_tiempo y 23_estacion como respaldo quedó muerto con la decisión 79; el histórico semanal de Vigía, por la api | — | ligera · **sonnet** | ⬜ |
 | V4 | Panel de la oficina: dibujar hazas sobre ortofoto y copas (95), bandeja de sugerencias y denuncias con retirada en un clic, pasar una sugerencia a OlivarTrack como propuesta | V3 | media · **opus**; 👤 la oficina | → sustituida por OF0-OF13 (`doc/sistema/OFICINA.md` §11); primero OF0-OF5 (acceso, familias, hazas, bandeja, sistema mínimo) |
 | V5 | En el mundo: nombrar un árbol y colgarle una foto o una pintura (solo el titular), verlo los demás, denunciar | V3 | media · **sonnet**; 🔶 | → pasa a P7f (tras C7, usables) |
@@ -162,7 +162,7 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | C6 | Componentes: plugins de la api y `/api/config` (se junta con OF6) | C1 | ligera · **sonnet** | ⬜ |
 | C7 | Entidades con id estable y usables (una sola forma de tocar: dedo, ratón, rayo VR, cercanía) — antes de juegos y fotos (decisión 119) | C2 | media · **opus** | ⬜ |
 | C8 | Láminas en el mundo como servicio del núcleo | C3 | ligera · **sonnet** | ⬜ |
-| C9 | Anfitrión de juegos y primer casual; récord validado en la api | C2, C6, C8 | media · **opus**; 👤 qué juego | ⬜ |
+| C9 | Anfitrión de juegos y primer casual (decisión 125): piezas del olivar que caen y se rompen al juntar 3+ iconos iguales; récord validado en la api | C2, C6, C8 | media · **opus**; 👤 qué juego | ⬜ |
 | C10 | Migración del resto de módulos a componentes, al tocarlos | C1-C3 | goteo · **sonnet** | ⬜ |
 | C11 | Medida por componente («con y sin» por el banco) | C1 | ligera · **sonnet**; 🔶 | ⬜ |
 | C12 | (Condicional) servidor de estado de juego | decisión de Antonio | —  | ⏸️ no por ahora (decisión 120) |
