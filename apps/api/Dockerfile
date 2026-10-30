@@ -1,5 +1,6 @@
 # Imagen de la api. Contexto de construcción: la raíz del repo (infra/compose.yml: context ..), porque necesita
-# contratos/haza.schema.json, olivos-haza.schema.json, tiempo.schema.json y config.schema.json (sharp trae libvips precompilada para alpine/musl en el lock).
+# los esquemas de contratos/ que la api lee al arrancar (haza, olivos-haza, tiempo, tiempo-historico y config; lo vigila
+# pruebas/guardianes/api.test.js) (sharp trae libvips precompilada para alpine/musl en el lock).
 # Node 24 LTS (en mantenimiento hasta 2028-04-30) fijado por versión y digest:
 # la 26 es LTS activa desde el 2026-10-28 pero su imagen oficial con sello LTS (26.13.0) no estaba publicada al
 # comprobarlo (2026-10-29). Ver doc/operacion/RUNBOOK-VPS.md.
@@ -20,7 +21,7 @@ COPY --from=construye /app/node_modules ./node_modules
 COPY --from=construye /app/dist ./dist
 COPY apps/api/package.json ./
 COPY apps/api/migraciones ./migraciones
-COPY contratos/haza.schema.json contratos/olivos-haza.schema.json contratos/tiempo.schema.json contratos/config.schema.json ./contratos/
+COPY contratos/haza.schema.json contratos/olivos-haza.schema.json contratos/tiempo.schema.json contratos/tiempo-historico.schema.json contratos/config.schema.json ./contratos/
 # los puntos de montaje de los volúmenes de escritura (medios V7, configuración publicada V10), del usuario node (uid 1000): un volumen nuevo hereda su dueño
 RUN mkdir -p /datos/medios /datos/config /datos/hornero && chown node:node /datos/medios /datos/config /datos/hornero
 USER node

@@ -96,6 +96,26 @@ test("el Dockerfile usa la imagen de Node del contrato y corre sin root", () => 
   assert.match(d, new RegExp("^EXPOSE " + CONTRATO.puerto_api + "$", "m"));
 });
 
+test("la imagen de la api lleva todos los esquemas de contratos/ que la api lee (sin uno, no arranca: ENOENT y contenedor unhealthy)", () => {
+  const usados = new Set();
+  const recorre = d => { for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+    const f = path.join(d, e.name);
+    if (e.isDirectory()) recorre(f);
+    else if (/\.ts$/.test(e.name)) for (const l of fs.readFileSync(f, "utf8").split("\n")) {
+      if (/^\s*(\/\/|\*|\/\*)/.test(l)) continue;   // los comentarios citan contratos sin leerlos
+      for (const m of l.matchAll(/"([a-z0-9-]+\.schema\.json)"/g)) usados.add(m[1]);
+    }
+  } };
+  recorre(path.join(API, "src"));
+  assert.ok(usados.has("tiempo.schema.json") && usados.has("haza.schema.json"), "no se encuentran las lecturas de esquemas: " + [...usados].join(", "));
+  const copia = /^COPY\s+(.+?)\s+\.\/contratos\/\s*$/m.exec(lee("apps/api/Dockerfile"));
+  assert.ok(copia, "el Dockerfile copia los esquemas a ./contratos/");
+  const copiados = new Set(copia[1].split(/\s+/).map(f => f.replace(/^contratos\//, "")));
+  const faltan = [...usados].filter(f => !copiados.has(f));
+  assert.deepStrictEqual(faltan, [], "esquemas que la api lee y la imagen no lleva (apps/api/Dockerfile, COPY … ./contratos/)");
+  for (const f of copiados) assert.ok(fs.existsSync(path.join(RAIZ, "contratos", f)), "el Dockerfile copia un esquema que no existe: " + f);
+});
+
 test("dependencias de apps/api fijadas a versión exacta y con package-lock", () => {
   const p = JSON.parse(lee("apps/api/package.json"));
   for (const [n, v] of Object.entries({ ...p.dependencies, ...p.devDependencies })) assert.match(v, /^\d+\.\d+\.\d+$/, n + "@" + v + ": versión sin fijar");
