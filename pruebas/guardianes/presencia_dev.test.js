@@ -71,7 +71,7 @@ test("e2e: presencia con LiveKit real (dos Chrome, mismo hogar en dos aparatos, 
 
         // una sesión por el camino de verdad: enlace mágico → buzón (Mailpit) → POST /api/auth/entrar → cookie
         const vistos = new Set();
-        async function sesion(correo) {
+        async function sesion(correo, cabeceras) {
           const busca = async () => (await (await fetch(buzon + "/api/v1/search?query=" + encodeURIComponent("to:" + correo))).json()).messages || [];
           for (const m of await busca()) vistos.add(m.ID);
           const e = await pide("/api/auth/enlace", { method: "POST", body: JSON.stringify({ correo }) });
@@ -83,13 +83,22 @@ test("e2e: presencia con LiveKit real (dos Chrome, mismo hogar en dos aparatos, 
           const txt = (await (await fetch(buzon + "/api/v1/message/" + msg.ID)).json()).Text;
           const tok = (/\/api\/auth\/entrar\?t=([A-Za-z0-9_-]{43})/.exec(txt) || [])[1];
           assert.ok(tok, "sin token en el correo");
-          const r = await pide("/api/auth/entrar", { method: "POST", body: JSON.stringify({ t: tok }) });
+          const r = await pide("/api/auth/entrar", { method: "POST", body: JSON.stringify({ t: tok }), headers: cabeceras });
           assert.strictEqual(r.status, 200, "entrar: " + r.status + " " + r.texto.slice(0, 120));
           const c = [].concat(r.cabeceras["set-cookie"] || []).map(x => new RegExp("^" + COOKIE + "=([^;]+)").exec(x)).find(Boolean);
           assert.ok(c, "sin cookie de sesión");
           return c[1];
         }
-        const ses = { yo1: await sesion(yo.correo), yo2: await sesion(yo.correo), vecino: await sesion(vecino.correo), mirlo: await sesion(mirlo.correo), oficina: await sesion(OFICINA) };
+        // la cuenta de oficina entra desde un aparato ya aprobado (ADR-0024; aquí, «desde la consola»: su cookie y su hash, sembrados en la
+        // base) y su sesión queda abierta con una llave (OF13; una fila sintética que nunca firma nada): lo que se prueba es la expulsión,
+        // no el acceso a la oficina, que tiene sus propias pruebas (oficina.test.ts, oficina_llave.test.js)
+        const cripto = require("crypto"), aparato = cripto.randomBytes(32).toString("base64url");
+        await bd.query("INSERT INTO aparatos_oficina (hogar_id, nombre, hash, aprobado_en, aprobado_como) SELECT id, 'e2e presencia', $2, now(), 'consola' FROM hogares WHERE correo = $1",
+          [OFICINA, cripto.createHash("sha256").update(aparato, "utf8").digest()]);
+        const ses = { yo1: await sesion(yo.correo), yo2: await sesion(yo.correo), vecino: await sesion(vecino.correo), mirlo: await sesion(mirlo.correo), oficina: await sesion(OFICINA, { cookie: "__Host-gemelo-aparato=" + aparato }) };
+        const llave = (await bd.query(`INSERT INTO llaves_oficina (hogar_id, credencial_id, clave_publica, nombre) SELECT id, $2, $3, 'e2e presencia' FROM hogares WHERE correo = $1 RETURNING id`,
+          [OFICINA, cripto.randomBytes(24).toString("base64url"), cripto.randomBytes(64)])).rows[0].id;
+        await bd.query("UPDATE sesiones SET llave_id = $2, confirmada_en = now() WHERE hogar_id = (SELECT id FROM hogares WHERE correo = $1) AND revocada_en IS NULL", [OFICINA, llave]);
         const token = async (cookie, dispositivo = "escritorio") => { const r = await pide("/api/presencia/token", { method: "POST", cookie, body: JSON.stringify({ dispositivo }) }); return { status: r.status, cuerpo: JSON.parse(r.texto) }; };
 
         // ---- permisos reales del token: canPublish false + canPublishSources [] → el micrófono se rechaza; los datos, sí
@@ -226,7 +235,8 @@ test("e2e: presencia con LiveKit real (dos Chrome, mismo hogar en dos aparatos, 
           const a = await A.est(), b = await B.est();
           assert.strictEqual(a.enVistaAerea, true); assert.strictEqual(a.enviados, 0, "en órbita no se publica pose"); assert.strictEqual(b.enviados, 0);
           assert.strictEqual(b.recibidos, 0); assert.strictEqual(b.vistos, 0, "no se dibuja a quien está en vista aérea");
-          const gente = await B.pg.textContent("#presenciaGente");
+          // la lista de Gente (U2): en su ventana (#ventanaGente) si la página la trae, si no dentro del chat; siempre #presenciaListaGente
+          const gente = await B.pg.textContent("#presenciaListaGente");
           assert.match(gente, new RegExp(yo.alias + " · hogar · escritorio · en vista aérea"), "B lista a A en vista aérea: " + gente.slice(0, 200));
           tt.diagnostic("Gente en B: " + gente.replace(/\s+/g, " ").slice(0, 160));
         });
