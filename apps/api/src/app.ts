@@ -12,6 +12,7 @@ import { rutasHazas } from "./hazas/rutas.ts";
 import { rutasPresencia } from "./presencia/rutas.ts";
 import { opcionesRegistro } from "./registro.ts";
 import { rutasSalud } from "./salud/rutas.ts";
+import { rutasVida } from "./vida/rutas.ts";
 import { nuevoToken } from "./seguridad/cripto.ts";
 import { compruebaOrigen } from "./seguridad/origen.ts";
 import { rutasYo } from "./yo/rutas.ts";
@@ -88,5 +89,6 @@ export async function construyeApp(ctx: Contexto, o: OpcionesApp = {}): Promise<
   await rutasYo(app, ctx);
   await rutasAdmin(app, ctx);
   await rutasPresencia(app, ctx);
+  await rutasVida(app, ctx);
   return app;
 }

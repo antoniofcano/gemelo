@@ -5,6 +5,7 @@ import { requiereRol } from "../auth/roles.ts";
 import { audita, normalizaCorreo, revocaTodas, ROLES } from "../auth/servicio.ts";
 import type { Contexto } from "../contexto.ts";
 import { sincroniza } from "../ot/sincronia.ts";
+import { borraFicheros, clavesDelHogar } from "../vida/medios.ts";
 
 const ID = { type: "object", additionalProperties: false, required: ["id"], properties: { id: { type: "integer", minimum: 1, maximum: 2147483647 } } } as const;
 
@@ -38,8 +39,10 @@ export async function rutasAdmin(app: FastifyInstance, ctx: Contexto): Promise<v
   });
 
   app.delete<{ Params: { id: number } }>("/api/admin/hogares/:id", { preHandler: soloAdmin, schema: { params: ID } }, async (req, rep) => {
+    const claves = await clavesDelHogar(bd, req.params.id);
     const r = await bd.query("DELETE FROM hogares WHERE id = $1", [req.params.id]);
     if (!r.rowCount) return rep.code(404).send({ error: "no_existe" });
+    await borraFicheros(ctx.config.medios.carpeta, claves);
     await audita(bd, req.session.hogarId!, "hogar.borrado", { por: "oficina" });
     return rep.code(204).send();
   });

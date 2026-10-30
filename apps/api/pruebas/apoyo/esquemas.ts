@@ -16,3 +16,10 @@ export function validadorFicha() {
   // «any» a propósito: las pruebas leen campos de una ficha que el propio validador acaba de comprobar
   return ajv.compile<Record<string, any>>(JSON.parse(readFileSync(CONTRATOS + "haza.schema.json", "utf8")));
 }
+
+/** Validador de la lista blanca de los olivos personalizados de una haza (contratos/olivos-haza.schema.json). */
+export function validadorOlivosHaza() {
+  const ajv = new Ajv({ strict: true, allErrors: true, allowUnionTypes: true });
+  anade(ajv);
+  return ajv.compile<Record<string, any>>(JSON.parse(readFileSync(CONTRATOS + "olivos-haza.schema.json", "utf8")));
+}

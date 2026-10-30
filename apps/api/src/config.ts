@@ -34,6 +34,8 @@ export interface Config {
     | { modo: "mcp"; url: string; token: string; cadaMin: number };
   /** null si la presencia compartida (F2, LiveKit) está apagada: falta GEMELO_LIVEKIT_URL */
   livekit: ConfigLiveKit | null;
+  /** fotos y pinturas de los hogares (doc/sistema/VIDA.md): carpeta null = subidas apagadas (503) */
+  medios: { carpeta: string | null; maxBytes: number; retencionDias: number; subidasPorHora: number; escriturasPorHora: number };
 }
 
 export interface ConfigLiveKit {
@@ -200,5 +202,12 @@ export function cargaConfig(e: Entorno = process.env): Config {
     correo: cargaCorreo(e, produccion),
     ot,
     livekit: cargaLiveKit(e, produccion),
+    medios: {
+      carpeta: e["GEMELO_MEDIOS"]?.trim() || null,
+      maxBytes: entero(e, "GEMELO_MEDIOS_MAX_MB", 8, 1, 16) * 1024 * 1024,
+      retencionDias: entero(e, "GEMELO_MEDIOS_RETENCION_DIAS", 30, 1, 365),
+      subidasPorHora: entero(e, "GEMELO_MEDIOS_SUBIDAS_HORA", 20, 1, 1000),
+      escriturasPorHora: entero(e, "GEMELO_VIDA_ESCRITURAS_HORA", 60, 1, 10000),
+    },
   };
 }

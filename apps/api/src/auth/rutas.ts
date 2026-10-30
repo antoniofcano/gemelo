@@ -80,6 +80,7 @@ export async function rutasAuth(app: FastifyInstance, ctx: Contexto): Promise<vo
     // rotación: la sesión que trajera el navegador se destruye y nace otra con id nuevo (contra la fijación de sesión)
     await req.session.regenerate();
     req.session.hogarId = r.hogarId;
+    req.session.origen = "enlace";
     return html ? rep.code(303).header("location", r.primerAcceso ? DESTINO_PRIMER_ACCESO : DESTINO_MUNDO).send()
       : rep.send({ ok: true, primer_acceso: r.primerAcceso });
   });
@@ -104,12 +105,13 @@ export async function rutasAuth(app: FastifyInstance, ctx: Contexto): Promise<vo
     // como al entrar con el enlace: la sesión que trajera el navegador se destruye y nace otra (rotación)
     await req.session.regenerate();
     req.session.hogarId = e.hogarId;
+    req.session.origen = "vinculo";
     return { estado: "aprobado", primer_acceso: primerAcceso(e.normasVersion) };
   });
 
   app.get("/api/sesion", { preHandler: requiereSesion }, async (req, rep) => {
     rep.header("cache-control", NO_GUARDAR);
-    return { rol: req.session.rol, alias: req.session.alias ?? null, alias_visible: req.session.aliasVisible ?? false, primer_acceso: primerAcceso(req.session.normasVersion) };
+    return { rol: req.session.rol, alias: req.session.alias ?? null, alias_visible: req.session.aliasVisible ?? false, primer_acceso: primerAcceso(req.session.normasVersion), titular: req.session.origen !== "vinculo" };
   });
 
   app.post("/api/sesion/salir", async (req, rep) => {
