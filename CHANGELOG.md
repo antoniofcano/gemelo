@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Pruebas (PB3): la caché de páginas reintenta el renombrado (5 intentos, espera creciente) ante EPERM, EBUSY o EACCES de Windows, para que el antivirus no tumbe escena3d.
 - Pruebas (PB1): `mide()` acepta `viewport` (900×650 por defecto, 450×325 la chica); banco y web usan la chica y las táctiles pasan de DPR 2 a 1. movibles_chrome baja de 754 s a 316 s (medido con la caché caliente); las de presupuesto no cambian.
 - Oficina: sección Agenda (OF11). Eventos con aforo en personas, inscripción por hogar, lista de espera con promoción automática al liberarse plaza y avisos en el gemelo (tope de 3 por semana). Migración 0012, rutas `/api/admin/eventos…` y `/api/agenda…`. El correo de los avisos y el `.ics` quedan pendientes.
 - Oficina, Olivos, pestaña «Olivo real» (OF8): se busca un olivo de la finca por su id estable y se ven sus escalones E0, E1, E2 y E2-VR lado a lado con sus triángulos, calculados por el constructor con las medidas del LiDAR (forma ilustrativa). Solo cifras; el 3D sigue en la herramienta del constructor.
