@@ -5,6 +5,8 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Las ortofotos decodificadas tienen tope por aparato (8 en móvil y gafas, 20 en escritorio; `?ortoMax=N`) con desalojo de la menos usada, sin soltar la tesela de la cámara ni sus vecinas (M4; el ahorro en una finca grande, sin medir).
+- Suelo de fondo bajo el tileset: relieve grueso y mosaico de 1 m, 1 llamada (≈ 11 k triángulos), para que los bordes y huecos entre teselas no se vean vacíos; `?sinFondo` lo quita (M6; sin mirar en lomas reales).
 - VR: los mandos se ven con su modelo real según el perfil que anuncia el casco (Quest 3: Touch Plus; Quest 2: Touch v3) y, con seguimiento de manos, la mano articulada; modelos de WebXR Input Profiles (MIT) servidos desde el propio sitio, sin sombras y liberados al salir; ≈ 8,3 k triángulos los dos mandos (I6; no probado en unas Quest).
 - Documentación: propuesta de arquitectura de componentes del mundo («plugins»), con diagnóstico medido del acoplamiento y plan C1-C12 (ADR-0023, Propuesto; `doc/sistema/COMPONENTES.md`).
 - Propuesta de `/oficina` (`doc/sistema/OFICINA.md`): acceso con roles `oficina` y `admin`, Familias, Hazas, Bandeja, Mundo en modo oficina, Agenda, Directos, Olivos (constructor y parámetros de la escalera como configuración versionada en `/api/config`, con límites seguros para el Quest) y Sistema; plan OF0-OF13 y 13 decisiones para Antonio; maqueta navegable con datos ficticios en `prototipos/oficina/`. Sin implementar.
