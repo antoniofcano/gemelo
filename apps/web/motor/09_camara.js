@@ -1,8 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: objetivo, orb, camara, sensMirar, suelta, elige, eligeCopa, pon
-// Consume: 01_datos (D, $, fmt, DIST_MAX, DIST_INI), 02_mundo (suelo, orto, kcor, copas, marc), 03_escena (lienzo, camera, exag, modo),
-//   05_nube (nube), 07ab_generados (Generados), 08_marcadores (aplica, capas, aplicaLuego), 12_paseo (paseando),
-//   13_parcelas (parcelas, parcelaSel, elegirParcela), 19_balizas (eligeBaliza, sueltaBaliza), 29_vr (ficha), 33_ajustes (Ajustes)
+// Expone: objetivo, orb, camara, sensMirar, suelta, elige, pon
+// Consume: 01_datos ($, fmt, DIST_MAX, DIST_INI), 02_mundo (orto, kcor), 02e_entidades (Usables), 03_escena (lienzo, camera, exag, modo),
+//   05_nube (nube), 08_marcadores (aplica, capas, aplicaLuego), 12_paseo (paseando), 13_parcelas (parcelaSel, elegirParcela),
+//   19_balizas (eligeBaliza, sueltaBaliza), 29_vr (ficha), 33_ajustes (Ajustes)
 // ===============================================================================
 
   // cámara orbital
@@ -15,7 +15,7 @@
     return { k: k, y: y };
   }
   var punteros = {}, movido = 0;
-  var toquePaseo = null;   // en el paseo no se gira la vista con el dedo, pero un toque corto elige olivo o baliza
+  var toquePaseo = null;   // en el paseo no se gira la vista con el dedo, pero un toque corto elige lo que haya debajo (olivo, baliza…)
   lienzo.addEventListener("pointerdown", function (e) {
     if (paseando) { toquePaseo = { x: e.clientX, y: e.clientY, t: performance.now() }; return; }
     lienzo.setPointerCapture(e.pointerId); punteros[e.pointerId] = { x: e.clientX, y: e.clientY }; movido = 0; });
@@ -34,32 +34,13 @@
   lienzo.addEventListener("wheel", function (e) { e.preventDefault(); if (paseando) return; orb.dist = Math.max(30, Math.min(DIST_MAX, orb.dist * (1 + Math.sign(e.deltaY) * 0.1))); }, { passive: false });
   function pan(dx, dy) { var f = orb.dist * 0.0016, rx = Math.cos(orb.az), rz = -Math.sin(orb.az); objetivo.x -= dx * f * rx; objetivo.z -= dx * f * rz; objetivo.x += dy * f * Math.sin(orb.az); objetivo.z += dy * f * Math.cos(orb.az); }
 
+  // un toque corto o un clic: elige lo que haya debajo (C7: Usables, 02e_entidades.js; cada tipo de cosa del mundo dice si está bajo el dedo y gana por
+  // tipo y por cercanía); sobre nada, suelta lo elegido y cierra la ficha
   function elige(cx, cy) {
     if (eligeBaliza(cx, cy)) return;   // una baliza (columna de luz) tocada abre la ficha de su parcela
     sueltaBaliza();
-    var r = lienzo.getBoundingClientRect(), best = null, bd = 26, v = new THREE.Vector3();
-    copas.forEach(function (c) {
-      if (!c.oliv) return;
-      v.set(c.x, (suelo(c.x, c.y) + c.h * 0.7) * exag, -c.y).project(camera); if (v.z > 1) return;
-      var sx = (v.x * 0.5 + 0.5) * r.width + r.left, sy = (-v.y * 0.5 + 0.5) * r.height + r.top, d = Math.hypot(sx - cx, sy - cy); if (d < bd) { bd = d; best = c; }
-    });
-    if (!best) { $("ficha").hidden = true; return; }
-    eligeCopa(best);
+    Usables.toque(cx, cy);
   }
-  function rotuloGenerado(i) {   // decisión 34: si el olivo se dibuja generado (?olivos=gen), se dice que su forma es ilustrativa y si su id es provisional
-    var r = Generados.rotulo(i); if (!r) return "";
-    return "<dt>Forma</dt><dd>ilustrativa con medidas del LiDAR" + (r.lejano ? " (lejano)" : r.variante ? " (variante)" : r.niv && Generados.escalera() ? " (propio)" : "") + "</dd>" + (r.provisional ? "<dt>Id</dt><dd>provisional (aún no viene del censo)</dd>" : "");
-  }
-  function eligeCopa(best) {
-    var f = $("ficha");
-    var m = marc.filter(function (q) { return q.par === best.i; })[0], rm = best.perfil.reduce(function (a, b) { return a + b; }, 0) / 8;
-    $("fichaTitulo").textContent = "Olivo " + (best.i + 1);
-    $("fichaDatos").innerHTML = "<dt>Parcela</dt><dd>" + (best.dentro ? parcelas[best.parc].nombre : "fuera de las parcelas") + "</dd><dt>Altura</dt><dd>" + fmt(best.h, 1) + " m</dd><dt>Radio de copa</dt><dd>" + fmt(rm, 1) + " m</dd>" +
-      "<dt>Guardado en OlivarTrack</dt><dd>" + (best.dentro ? (m ? "sí" : "no") : "fuera de esta parcela") + "</dd>" + (m ? "<dt>Desfase</dt><dd>" + fmt(Math.hypot(m.x - best.x, m.y - best.y), 1) + " m</dd>" : "") +
-      "<dt>Pies del olivo</dt><dd>2–3, lo habitual (no medido)</dd>" + rotuloGenerado(best.i) + "<dt>UTM 30 (ETRS89)</dt><dd>" + fmt(D.centro_utm[0] + best.x) + ", " + fmt(D.centro_utm[1] + best.y) + "</dd>";
-    f.hidden = false;
-  }
-  $("cerrarFicha").addEventListener("click", function () { $("ficha").hidden = true; });
 
   function pon(m) { modo = m; ["Nube", "Gem", "Orto"].forEach(function (n) { $("m" + n).setAttribute("aria-pressed", String((n === "Nube" && m === "nube") || (n === "Gem" && m === "gem") || (n === "Orto" && m === "orto"))); }); aplica(); }
   $("mNube").addEventListener("click", function () { pon("nube"); }); $("mGem").addEventListener("click", function () { pon("gem"); }); $("mOrto").addEventListener("click", function () { pon("orto"); });

@@ -1,8 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: VRX, vrDebugExtra, vrFundido, vrAparece, panel, ficha, PanelVR, vrMideEmpieza, vrMideFin, vrActualiza, VR_PERFILES, vrFin
 // Consume: 01_datos (D, $, fmt, VRP), 02_mundo (Mundo, suelo, orto, copas), 02c_componentes (Bus, Config), 02d_laminas (Laminas),
-//   03_escena (lienzo, visor, renderer, scene, camera, texColor, exag, modo, calidad), 04b_escena3d (Escena3D), 05_nube (nube),
-//   07b_arboles (Arboles), 09_camara (eligeCopa, pon), 10_ndvi (NDV, ndviIdx),
+//   02e_entidades (EntidadesPuro, Entidades, Usables), 03_escena (lienzo, visor, renderer, scene, camera, texColor, exag, modo, calidad),
+//   04b_escena3d (Escena3D), 05_nube (nube), 07b_arboles (Arboles), 09_camara (pon), 10_ndvi (NDV, ndviIdx),
 //   12_paseo (paseando, persona, teclas, primera, entraPaseo, salePaseo, actualizaPaseo), 12b_llegada (Llegada), 13_parcelas (parcelas, fincas),
 //   14_historia (lista, aviso), 15_tiempo (calma, nivel, rumbo, hace), 16_vida (quita, mira, quad, dron),
 //   19_balizas (BAL, cierraBaliza, balizaAbierta, abreBaliza, balizaVR, irABaliza, tBal), 22_huellas (pendFactor), 24_pantalla (suave),
@@ -19,7 +19,7 @@
     on: false, entrando: false, sesion: null, base: null, soporta: false, estado: "comprobando…", ojo: 0, frame: null,
     rig: { x: 0, y: 0, z: 0, yaw: 0 }, vuelo: false, mirador: false, correr: false, vineta: true, nivel: 0,
     modoPrev: "nube", calPrev: 1, nearPrev: 0.5, farPrev: 5000, prev: {}, giroOk: true, parcSel: 0, emaDt: 13.9, emaJs: 6, nBaj: 0, nAlt: 0, tNivel: 0,
-    tp: null, hover: "", tBal: 0, fichaT: 0, sucio: true, hapt: 0, hMov: 0, sesionesN: 0, cab: new THREE.Vector3(),
+    tp: null, hover: "", tBal: 0, fichaT: 0, fichaDe: "", sucio: true, hapt: 0, hMov: 0, sesionesN: 0, cab: new THREE.Vector3(),
     gente: null, genteFirma: "", tGente: 0, pestana: "mundo", giro: 30, sinPint: false, balK: -1, balFirma: "", balInfo: null, hoverB: "", botonesB: []
   };
   var vrRig = new THREE.Group();
@@ -455,7 +455,7 @@
       if (hv !== VRX.hover) { VRX.hover = hv; VRX.sucio = true; }
       if (VRX.sucio) vrPintaPanel();
     }
-    if (ficha.m.visible) { vrSigue(ficha, dt, 0.95, -0.38); VRX.fichaT -= dt; if (VRX.fichaT <= 0) ficha.m.visible = false; }
+    if (ficha.m.visible) { vrSigue(ficha, dt, 0.95, -0.38); VRX.fichaT -= dt; if (VRX.fichaT <= 0) { ficha.m.visible = false; if (VRX.fichaDe) Usables.cierra(VRX.fichaDe, "tiempo"); VRX.fichaDe = ""; } }
     vrBalizaTic(dt);
     if (fichaB.m.visible) {
       vrSigue(fichaB, dt, 0.95, -0.42);
@@ -481,18 +481,16 @@
       if (qb === false) return;
     }
     if (Laminas.toca(rr)) { vrPulso(o, 0.4, 25); return; }   // C8: una lámina del mundo con alTocar (02d_laminas.js) recibe el toque (u, v)
-    var best = null, bs = 1e9, bt = 1e9, ro = rr.ray.origin, rd = rr.ray.direction;
-    copas.forEach(function (c) {
-      if (!c.oliv) return; var cy = (suelo(c.x, c.y) + c.h * 0.6) * exag; vrV3.set(c.x - ro.x, cy - ro.y, -c.y - ro.z); var t = vrV3.dot(rd); if (t < 0.4 || t > 150) return;
-      var perp = vrV3.addScaledVector(rd, -t).length(), rad = Math.max(1.3, 0.55 * (c.perfil.reduce(function (a, b) { return a + b; }, 0) / 8)), s = perp / rad; if (s < 1 && t * 0.02 + s < bs) { bs = t * 0.02 + s; best = c; bt = t; }
-    });
-    var col = vrColumnaBajo(rr);   // la columna de luz de una baliza, si está antes que el olivo: abre su ficha (I5; como tocarla en pantalla)
-    if (col && (!best || col.t < bt)) { abreBaliza(col.i); VRX.tBal = 1; vrPulso(o, 0.4, 25); return; }
-    if (best) {
-      eligeCopa(best); var pares = [], dts = $("fichaDatos").children; for (var j = 0; j + 1 < dts.length; j += 2) pares.push(dts[j].textContent + ": " + dts[j + 1].textContent);
-      $("ficha").hidden = true; vrPintaFicha($("fichaTitulo").textContent, [pares.slice(0, 3).join(" · "), pares.slice(3).join(" · ")]); vrPulso(o, 0.4, 25);
-    }
+    var g = EntidadesPuro.gana(Entidades.candidatos("rayo", rr), "rayo");   // C7: lo primero por el rayo de lo que se puede elegir (un olivo…)
+    var col = vrColumnaBajo(rr);   // la columna de luz de una baliza, si está antes: abre su ficha (I5; como tocarla en pantalla)
+    if (col && (!g || col.t < g.t)) { abreBaliza(col.i); VRX.tBal = 1; vrPulso(o, 0.4, 25); return; }
+    if (g && Usables.elige(g.id, "rayo")) vrPulso(o, 0.4, 25);   // su ficha la pinta el presentador de VR (abajo)
   }
+  // C7: la ficha común en VR (Usables.presentador): sin acciones, en la lámina pequeña (título y dos líneas «k: v», 14 s); con acciones, en la de los botones
+  Usables.presentador("vr", function (f) {
+    if (f.acciones && f.acciones.length) { VRX.tBal = 1; return; }
+    vrPintaFicha(f.titulo, EntidadesPuro.lineas(f)); VRX.fichaDe = f.id;
+  });
 
   // ----- 5) la viñeta de confort (un velo con el centro transparente, pegado a la cabeza)
   var vrVineta = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.4), new THREE.ShaderMaterial({

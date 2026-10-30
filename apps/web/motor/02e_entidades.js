@@ -1,5 +1,5 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: Usables
+// Expone: EntidadesPuro, Entidades, Usables
 // Consume: 01_datos ($), 02_mundo (suelo, copas), 02c_componentes (Bus), 03_escena (lienzo, scene, modo), 09_camara (suelta, elige),
 //   12_paseo (paseando, persona, primera), 14_historia (lista), 16_vida (quita, quad, enDron, dron), 29_vr (VRX, ficha)
 // Nota: Servicio del núcleo (ADR-0023, C7): EntidadesPuro, Entidades (registro de tipos de cosas del mundo con id estable; cada módulo registra su tipo y responde por sus cosas) y Usables (la selección única para toque, clic, rayo VR y cercanía, la ficha común #ficha, el anillo de resaltado y los eventos usable:*). Publica además window.__usables (pruebas). Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/entidades.test.js.
@@ -254,6 +254,7 @@
     function libera() { if (anillo) { scene.remove(anillo); anillo.geometry.dispose(); anillo.material.dispose(); anillo = null; } }
     function estado() { return { actual: actual, como: como, conAcciones: conAcciones, enFicha: enFicha, cerca: cercano(), anillo: !!(anillo && anillo.visible), tipos: Entidades.resumen() }; }
     function elegido() { return actual; }
+    engancha();   // la × de la ficha común, desde el principio (también para lo que aún escribe #ficha por su cuenta)
     return { toque: toque, rayo: rayo, elige: eligeU, suelta: sueltaU, cierra: cierra, refresca: refresca, usa: usa, mensaje: mensaje, abierta: abierta, elegido: elegido,
       actualiza: actualiza, cercano: cercano, presentador: presentador, olvida: olvida, libera: libera, estado: estado };
   })();
