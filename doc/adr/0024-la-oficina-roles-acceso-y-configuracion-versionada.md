@@ -1,0 +1,38 @@
+# ADR-0024 — La oficina: roles, acceso y configuración versionada
+
+- **Estado:** Aceptado
+- **Fecha:** 2026-10-30
+
+## Contexto
+Antonio pidió (30-oct-2026) un acceso `/oficina` para llevar la comunidad: familias, hazas, bandeja, agenda, directos, parámetros del gemelo y entrar al mundo con poderes de oficina. El diseño completo está en [OFICINA.md](../sistema/OFICINA.md) (con su maqueta) y Antonio cerró sus preguntas el mismo día: decisiones 104 a 116 de [DECISIONS-PENDING](../rumbo/DECISIONS-PENDING.md).
+
+Hasta ahora todas las rutas de oficina (`/api/admin/*`) pedían el rol `admin` del enum `rol_hogar` (migración 0001), con la misma sesión que un hogar ([ADR-0013](0013-enlace-magico-y-sesiones.md): enlace mágico, 30 días absolutos, 7 de inactividad). La oficina puede borrar familias, cambiar quién es dueño de qué y cambiar cómo se dibuja el mundo para todos: una sesión robada vale mucho más que la de un hogar, y entrar solo con un enlace por correo es poco para eso. La regla 12 pide librerías mantenidas; la 4, que no haya secretos ni datos de la explotación en el repo.
+
+## Decisión
+**Roles y cuenta.** Dos roles de oficina (decisión 104): `oficina` para el día a día (familias, hazas, bandeja, agenda, directos, mundo) y `admin`, que además publica parámetros, cambia roles y re-hornea. Cada cuenta de oficina es **aparte**, con un correo distinto del de cualquier hogar (decisión 106): lo que hace queda a su nombre en la auditoría y no se mezcla con lo de una familia.
+
+**Acceso** (decisión 105). Se entra con el **enlace mágico** de siempre más un **aparato confiable**: el primer enlace desde un aparato nuevo deja el aparato **pendiente** (una cookie propia, `__Host-gemelo-aparato`, con un secreto cuyo SHA-256 se guarda en `aparatos_oficina`) hasta que lo aprueba otro aparato de oficina ya confiable (o `admin`), o hasta que la misma persona lo confirma con un **segundo enlace pasados 5 minutos**. Con el aparato pendiente, la sesión no sirve para nada más que ver que está pendiente. La **sesión de oficina** es más corta: **12 h absolutas y 2 h sin actividad** [valores de partida, configurables]. Lo delicado (borrar una familia, cambiar un rol, aprobar un aparato, publicar parámetros, re-hornear) pide **confirmación reciente**: haber entrado con un enlace hace menos de 15 min. La **llave de acceso (WebAuthn)** es **obligatoria** para `oficina` y `admin` **antes de abrir a familias reales** (OF13). La api comprueba rol, aparato y confirmación en cada ruta (`requiereRol`, `requiereConfirmacionReciente`, en `apps/api/src/oficina/acceso.ts`); Caddy sirve `/oficina/` solo con sesión de oficina (`forward_auth` a `/api/interno/autoriza?para=oficina`), pero la página nunca es la única barrera.
+
+**En el mundo** (decisión 107): la oficina es **siempre visible**, con chaleco verde oliva y etiqueta «Oficina»; nunca de incógnito. Sus poderes (anunciar, balizas, cerrar salas, expulsar) los ejecuta la api con su clave de servidor y quedan en la auditoría; ningún token de cliente lleva `roomAdmin`.
+
+**Configuración versionada** (decisiones 111-113): los parámetros de la escalera que enseña la maqueta, con sus límites (en las gafas los presupuestos solo bajan), y el calendario de épocas (cambia la decisión 64) pasan a una configuración **versionada** en la base que el motor lee de `/api/config` al arrancar, con caída a las constantes de siempre. Un cambio se publica **primero en prueba** (solo cuentas de oficina) y **luego para todos**; volver atrás es publicar una copia de una versión vieja. La forma de los tipos de olivo sigue en el código.
+
+Lo demás de §12 de OFICINA.md queda como lo cerró Antonio: baja con contenido oculto al momento y borrado a los 30 días (108), nombre interno de la familia solo para la oficina (109), token propio de OlivarTrack solo para proponer (110), anuncios de texto (114), manos levantadas en los directos (115) y oficina solo en ordenador (116).
+
+## Alternativas consideradas
+- **Un solo rol `admin` para todo** — quien atiende la bandeja no necesita poder cambiar la escalera ni los roles; un rol menos poderoso limita el daño de una cuenta robada.
+- **La misma cuenta con dos roles (hogar y oficina)** — mezcla en la auditoría lo que hace una familia y lo que hace la oficina, y una sesión de hogar (30 días, con aparatos vinculados) acabaría teniendo poderes de oficina.
+- **Solo enlace mágico, como los hogares** — un correo comprometido daría la oficina entera durante 15 minutos y luego 30 días.
+- **Llave de acceso desde el primer día** — lo más seguro, pero retrasa OF1-OF5 (que bloquean el VPS) por una pieza que se prueba en navegador con autenticador virtual; se pide antes de abrir a familias reales, no antes de empezar con cuentas de prueba.
+- **TOTP (app de códigos)** — una app más que instalar y un secreto compartido que guardar; solo si alguien no puede usar llaves de acceso.
+- **Proveedor externo (Keycloak, Auth0)** — un servicio más que operar en un VPS compartido o datos de la oficina en un tercero, para tres o cuatro cuentas.
+- **Oficina invisible en el mundo** — rompe la confianza de las familias y complica la EIPD.
+- **Parámetros en el código (como hasta ahora)** — obliga a Antonio a depender de un agente para cada ajuste; publicarlos directos para todos, sin fase de prueba, arriesga el fotograma de todos de una vez.
+
+## Consecuencias
+- **Positivas:** una sesión de oficina robada dura poco y no sirve en otro aparato sin aprobación; lo grave pide haber entrado hace poco; todo queda en la auditoría a nombre de una cuenta de oficina; Antonio ajusta la escalera y las épocas sin código y con vuelta atrás.
+- **Negativas / coste:** la oficina entra más a menudo (12 h, 2 h sin actividad) y la primera vez en cada aparato tiene que esperar una aprobación o un segundo enlace; un navegador guarda **un** aparato de oficina (dos cuentas de oficina en el mismo navegador se pisan la cookie: se recomienda un perfil de navegador por persona); la confirmación reciente es entrar otra vez con un enlace (sale un correo más); si se pierden todos los aparatos de `admin`, se recupera con el segundo enlace o desde la consola del servidor (RUNBOOK-VPS). El segundo enlace solo protege de quien tiene un enlace un momento (un reenvío, un escáner), **no** de quien controla el buzón: eso lo cierra la llave de acceso (OF13), y por eso es obligatoria antes de abrir a familias reales.
+- **Implicaciones futuras:** OF13 añade la llave de acceso sobre esta sesión (la confirmación reciente podrá darla la llave en vez de un enlace); OF10 añade el rol `oficina` con su insignia en el token de LiveKit (`livekit-roles` v3 ya lo lista, con los mismos permisos que un hogar); la configuración versionada (C6/OF6) usa `requiereRol` y `requiereConfirmacionReciente` para publicar.
+
+## Comprobación
+`apps/api/pruebas/integracion/oficina.test.ts` (contra PostGIS en contenedor, por el turno del banco): un hogar no entra en `/oficina` ni en `/api/admin`; la oficina con aparato aprobado sí; con aparato pendiente no; el segundo enlace antes de 5 min no aprueba y después sí; aprobar desde otro aparato confiable; caducidad absoluta y por inactividad; confirmación reciente; revocar un aparato cierra sus sesiones. Guardianes de texto de los dos Caddyfile (`/oficina` tras `forward_auth` con `para=oficina`) e `infra/probar-caddy.sh` (Caddy real de producción con una api simulada: sin sesión 303, hogar 403, oficina 200; comprobado el 2026-10-30). **No probado:** el Caddyfile de dev levantado entero con la api real, el envío real del segundo enlace por el SMTP de OVH, la llave de acceso (OF13, no existe aún), la página de la oficina en una tableta (decisión 116: solo ordenador).

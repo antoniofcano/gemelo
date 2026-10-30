@@ -10,13 +10,14 @@ import { NOMBRE_COOKIE, rutasAuth, TEXTO_LIMITE, TEXTO_LIMITE_VINCULO } from "./
 import { rutasConfig } from "./config/rutas.ts";
 import type { Contexto } from "./contexto.ts";
 import { rutasHazas } from "./hazas/rutas.ts";
+import { rutasOficina } from "./oficina/rutas.ts";
 import { rutasPresencia } from "./presencia/rutas.ts";
 import { opcionesRegistro } from "./registro.ts";
 import { rutasSalud } from "./salud/rutas.ts";
 import { rutasVida } from "./vida/rutas.ts";
 import { nuevoToken } from "./seguridad/cripto.ts";
 import { compruebaOrigen } from "./seguridad/origen.ts";
-import { rutasTiempo } from "./vigia/rutas.ts";
+import { rutasTiempo, rutasTiempoHistorico } from "./vigia/rutas.ts";
 import { rutasYo } from "./yo/rutas.ts";
 
 /** El código corto de las gafas tiene su propio texto de límite (el del enlace habla de enlaces). */
@@ -63,7 +64,7 @@ export async function construyeApp(ctx: Contexto, o: OpcionesApp = {}): Promise<
     secret: config.sesion.secreto,
     cookieName: NOMBRE_COOKIE,
     cookie: { path: "/", httpOnly: true, secure: true, sameSite: "lax", maxAge: config.sesion.diasAbsolutos * 86_400_000 },
-    store: new AlmacenPg(ctx.bd, config.sesion.diasInactividad),
+    store: new AlmacenPg(ctx.bd, config.sesion.diasInactividad, config.oficina),
     saveUninitialized: false,
     rolling: false,
     idGenerator: () => nuevoToken(),
@@ -90,8 +91,10 @@ export async function construyeApp(ctx: Contexto, o: OpcionesApp = {}): Promise<
   await rutasHazas(app, ctx);
   await rutasYo(app, ctx);
   await rutasAdmin(app, ctx);
+  await rutasOficina(app, ctx);
   await rutasPresencia(app, ctx);
   await rutasTiempo(app, ctx);
+  await rutasTiempoHistorico(app, ctx);
   await rutasVida(app, ctx);
   await rutasConfig(app, ctx);
   return app;

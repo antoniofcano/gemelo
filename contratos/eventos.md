@@ -19,8 +19,12 @@ Los componentes del motor ([ADR-0023](../doc/adr/0023-componentes-del-mundo.md),
 
 | Evento | Datos | Emite | Escucha |
 |---|---|---|---|
+| `audio:desbloquea` | — | `29_vr` (al pulsar «Entrar en VR»: el gesto que deja arrancar el audio) | `20_sonido` |
 | `componentes:cambia` | `{ id, activo }` | `02c_componentes` (al montar o liberar un componente) | `15_tiempo` (esconde «Ver la previsión en el mundo» si nadie la atiende) |
 | `prevision:alterna` | `{ abre? }` | `15_tiempo` (botón de la ventana Tiempo) | `35_fichas_tiempo` (la lámina de la previsión) |
+| `sonido:baliza` | `{ completa? }` | `19_balizas` (al llegar a una baliza) | `20_sonido` (campanilla o arpegio) |
+| `sonido:golpe` | — | `24_pantalla` (el aterrizaje del paseo) | `20_sonido` |
+| `sonido:ladrido` | `{ grave? }` | `25_perros` | `20_sonido` |
 | `vr:entra` | — | `29_vr` | (nadie todavía) |
 | `vr:sale` | — | `29_vr` | `35_fichas_tiempo` (cierra la lámina de VR) |
 

@@ -60,6 +60,8 @@ async function entra(correo: string): Promise<string> {
   const t = /entrar\?t=([A-Za-z0-9_-]{43})/.exec(ctx.cartero.ultimoPara(correo)?.texto ?? "")![1]!;
   const r = await app.inject({ method: "POST", url: "/api/auth/entrar", headers: deLaWeb({ "content-type": "application/json", "x-forwarded-for": ip() }), payload: { t } });
   assert.equal(r.statusCode, 200, r.body);
+  // la cuenta de oficina entra desde un aparato nuevo (pendiente, ADR-0024): se aprueba desde la consola, como el arranque del RUNBOOK
+  if (correo === ADMIN) await bd.dueno.query("UPDATE aparatos_oficina SET aprobado_en = now(), aprobado_como = 'consola' WHERE aprobado_en IS NULL AND hogar_id = $1", [ids[ADMIN]]);
   return cookieDe(r)!;
 }
 /** Una sesión de aparato vinculado (las gafas), aprobada desde la sesión del titular. */

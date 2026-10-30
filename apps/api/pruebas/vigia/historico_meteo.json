@@ -1,0 +1,27 @@
+{
+  "ambito": "toda la explotación",
+  "naturaleza": "medido",
+  "porFuente": [
+    {
+      "id": "SINT-EST-01",
+      "temperaturaMaxima": 18.4,
+      "temperaturaMinima": 2.1,
+      "lluviaTotalMm": 6.5,
+      "dias": 7,
+      "diasSinDato": 0
+    },
+    {
+      "id": "SINT-EST-02",
+      "temperaturaMaxima": 17.9,
+      "temperaturaMinima": 1.2,
+      "lluviaTotalMm": 5.8,
+      "dias": 7,
+      "diasSinDato": 2
+    }
+  ],
+  "frescura": {
+    "generadoEn": "2026-01-15T10:40:00Z",
+    "horasDeAntiguedad": 0.3,
+    "datosDeMaqueta": true
+  }
+}

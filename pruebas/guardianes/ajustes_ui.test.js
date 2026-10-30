@@ -28,7 +28,7 @@ async function abre(consulta) {
   await p.waitForFunction(() => window.__g && window.__g.listo(), null, { timeout: 60000 });
   return { p, errores };
 }
-const IDS = ["graficos", "vista", "sonido", "controles", "vr", "acc", "avanzado"];
+const IDS = ["graficos", "vista", "controles", "vr", "acc", "sonido", "avanzado"];
 
 test("en Chrome: las siete pestañas, cada ajuste cambia sin errores, se guarda y ?debug manda", { timeout: 240000 }, async t => {
   if (SALTO) return t.skip(SALTO);

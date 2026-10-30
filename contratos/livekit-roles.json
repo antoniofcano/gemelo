@@ -1,7 +1,7 @@
 {
   "$comment": "Qué puede hacer cada rol en una sala de LiveKit en F2 (presencia compartida): SOLO datos (pose y chat), sin audio ni vídeo. La api firma el token con estos permisos; el cliente no los elige. Descripción y tabla de bytes de la pose: contratos/presencia.md. Lo comprueba pruebas/guardianes/presencia.test.js. Los nombres de los permisos son los del VideoGrant de livekit-server-sdk 2.19.2 (comprobado contra sus tipos; apps/api/src/presencia/livekit.ts los copia y apps/api/pruebas/unidad/presencia.test.ts compara las dos cosas y decodifica el token). Cómo los aplica el servidor (p. ej. canPublishSources vacío con canPublish false) NO se ha comprobado contra LiveKit real. Cambiar un permiso es cambiar este fichero, su versión y presencia.md en el mismo commit.",
   "contrato": "livekit-roles",
-  "version": 2,
+  "version": 3,
   "fase": "F2",
   "salas": {
     "visita_libre": { "nombre": "hituelo-libre", "fija": true, "nota": "decisiones 39 y 60: una sala fija de Hituelo para la visita libre, con este nombre" },
@@ -17,10 +17,12 @@
     "pose": { "fiable": false, "formato": "binario, contratos/presencia.md", "tasa": "10 Hz a los cercanos (destinationIdentities) y 2 Hz a toda la sala", "se_guarda": false },
     "chat": { "fiable": true, "formato": "texto UTF-8, como mucho 280 caracteres", "se_guarda": false, "nota": "decisión 40: el chat no se guarda; las preguntas sobre una haza van por la api, no por este canal" }
   },
+  "roles_nota": "versión 3 (2026-10-30, OF1, ADR-0024): se añade el rol «oficina» con los mismos permisos que los demás; la oficina nunca va oculta (hidden false, decisión 107). Su insignia y el tema «anuncio» llegan con OF10",
   "roles": {
     "hogar": { "roomJoin": true, "canSubscribe": true, "canPublish": false, "canPublishData": true, "canPublishSources": [], "canUpdateOwnMetadata": false, "hidden": false, "roomAdmin": false },
     "guia": { "roomJoin": true, "canSubscribe": true, "canPublish": false, "canPublishData": true, "canPublishSources": [], "canUpdateOwnMetadata": false, "hidden": false, "roomAdmin": false },
     "corresponsal": { "roomJoin": true, "canSubscribe": true, "canPublish": false, "canPublishData": true, "canPublishSources": [], "canUpdateOwnMetadata": false, "hidden": false, "roomAdmin": false },
+    "oficina": { "roomJoin": true, "canSubscribe": true, "canPublish": false, "canPublishData": true, "canPublishSources": [], "canUpdateOwnMetadata": false, "hidden": false, "roomAdmin": false },
     "admin": { "roomJoin": true, "canSubscribe": true, "canPublish": false, "canPublishData": true, "canPublishSources": [], "canUpdateOwnMetadata": false, "hidden": false, "roomAdmin": false }
   },
   "moderacion": {

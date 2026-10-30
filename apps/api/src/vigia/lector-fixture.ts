@@ -45,5 +45,17 @@ export class LectorVigiaFixture implements LectorVigia {
     return reubica(herramienta, datos, this.reloj());
   }
 
+  /** el histórico sintético (<carpeta>/historico_meteo.json), tal cual; en pruebas se sustituye con `sustituyeHistorico` (o un Error) */
+  sustituyeHistorico: unknown = undefined;
+  readonly llamadasHistorico: [string, string][] = [];
+  async historico(desde: string, hasta: string): Promise<unknown> {
+    this.llamadasHistorico.push([desde, hasta]);
+    const s = this.sustituyeHistorico;
+    if (s instanceof Error) throw s;
+    if (s !== undefined) return structuredClone(s);
+    try { return JSON.parse(await readFile(join(this.carpeta, "historico_meteo.json"), "utf8")); }
+    catch { throw new ErrorDeVigia("historico_meteo: no se puede leer el fixture"); }
+  }
+
   async cierra(): Promise<void> { /* nada */ }
 }

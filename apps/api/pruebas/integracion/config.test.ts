@@ -15,14 +15,16 @@ import { CONTRATOS } from "../apoyo/esquemas.ts";
 
 const SALTO = hayDocker() ? null : "Docker no disponible: la integración de la configuración con PostGIS NO se ha comprobado";
 let bd: BdDePrueba, app: FastifyInstance, ctx: ReturnType<typeof contexto>, carpeta: string;
-const ADMIN = "oficina-config@example.com", ANA = "ana-config@example.com";
+const ADMIN = "admin-config@example.com", OFI = "oficina-config@example.com", ANA = "ana-config@example.com";
+const ids: Record<string, number> = {};
 const EJEMPLO = JSON.parse(readFileSync(CONTRATOS + "config-ejemplo.json", "utf8")) as Record<string, any>;
 let ipN = 0;
 
 before(async () => {
   if (SALTO) return;
   bd = await levantaBd();
-  for (const [c, rol] of [[ADMIN, "admin"], [ANA, "hogar"]] as const) await bd.dueno.query("INSERT INTO hogares (correo, rol) VALUES ($1, $2)", [c, rol]);
+  for (const [c, rol] of [[ADMIN, "admin"], [OFI, "oficina"], [ANA, "hogar"]] as const)
+    ids[c] = (await bd.dueno.query<{ id: number }>("INSERT INTO hogares (correo, rol) VALUES ($1, $2) RETURNING id", [c, rol])).rows[0]!.id;
   carpeta = mkdtempSync(join(tmpdir(), "gemelo-config-"));
   ctx = contexto(bd.app, configDePrueba({ GEMELO_ENLACE_POR_CORREO: "100", GEMELO_ENLACE_POR_IP: "1000", GEMELO_CONFIG_SALIDA: join(carpeta, "config.json") }));
   app = await construyeApp(ctx);
@@ -43,6 +45,8 @@ async function entra(correo: string): Promise<string> {
   const t = /entrar\?t=([A-Za-z0-9_-]{43})/.exec(ctx.cartero.ultimoPara(correo)?.texto ?? "")![1]!;
   const r = await app.inject({ method: "POST", url: "/api/auth/entrar", headers: deLaWeb({ "content-type": "application/json", "x-forwarded-for": ip() }), payload: { t } });
   assert.equal(r.statusCode, 200, r.body);
+  // una cuenta de oficina entra desde un aparato nuevo (pendiente, ADR-0024): se aprueba desde la consola, como el arranque del RUNBOOK
+  if (correo !== ANA) await bd.dueno.query("UPDATE aparatos_oficina SET aprobado_en = now(), aprobado_como = 'consola' WHERE aprobado_en IS NULL AND hogar_id = $1", [ids[correo]]);
   return cookieDe(r)!;
 }
 const con = (method: "GET" | "POST", url: string, cookie: string | null, payload?: object, extra: Record<string, string> = {}) =>
@@ -68,11 +72,27 @@ test("permisos: sin sesión 401; un hogar lee /api/config pero no toca /api/admi
   assert.equal((await con("GET", "/api/admin/config", ana)).statusCode, 403);
   assert.equal((await con("POST", "/api/admin/config", ana, { cuerpo: { v: 1 } })).statusCode, 403);
   assert.equal((await con("POST", "/api/admin/config/1/publicar", ana)).statusCode, 403);
+  const ofi = await entra(OFI);
+  assert.equal((await con("GET", "/api/config", ofi)).statusCode, 200, "la oficina lee la configuración");
+  assert.equal((await con("GET", "/api/admin/config", ofi)).statusCode, 403, "pero tocarla es solo de admin (decisión 111)");
+  assert.equal((await con("POST", "/api/admin/config", ofi, { cuerpo: { v: 1 } })).statusCode, 403);
+});
+
+test("publicar y volver piden confirmación reciente (403 confirmacion_requerida sin ella)", async t => {
+  if (salta(t)) return;
+  const adm = await entra(ADMIN);
+  const v = (await con("POST", "/api/admin/config", adm, { cuerpo: { v: 1 } })).json().version as number;
+  assert.equal((await con("POST", `/api/admin/config/${v}/prueba`, adm)).statusCode, 200);
+  await bd.dueno.query("UPDATE sesiones SET confirmada_en = now() - interval '1 day' WHERE hogar_id = $1", [ids[ADMIN]]);
+  const r = await con("POST", `/api/admin/config/${v}/publicar`, adm);
+  assert.equal(r.statusCode, 403, r.body); assert.equal(r.json().error, "confirmacion_requerida");
+  assert.equal((await con("POST", `/api/admin/config/${v}/volver`, adm)).statusCode, 403);
+  assert.equal((await con("POST", `/api/admin/config/${v}/retirar`, adm)).statusCode, 200, "descartar una prueba no la pide");
 });
 
 test("validación: fuera de límites, gafas por encima del código, umbrales incoherentes y épocas con hueco se rechazan (400)", async t => {
   if (salta(t)) return;
-  const adm = await entra(ADMIN);
+  const adm = await entra(ADMIN), cuantas = async () => (await bd.dueno.query("SELECT count(*)::int AS n FROM config_versiones")).rows[0].n as number, antes = await cuantas();
   const malos = [
     (c: any) => { c.escalera.triangulos.gafas[0] = 380001; },
     (c: any) => { c.escalera.umbralesPx.e0 = 5000; },
@@ -88,18 +108,19 @@ test("validación: fuera de límites, gafas por encima del código, umbrales inc
     assert.ok(Array.isArray(r.json().detalles) && r.json().detalles.length > 0);
   }
   assert.equal((await con("POST", "/api/admin/config", adm, { cuerpo: EJEMPLO, nota: "x".repeat(501) })).statusCode, 400, "nota demasiado larga");
-  assert.equal((await bd.dueno.query("SELECT count(*)::int AS n FROM config_versiones")).rows[0].n, 0, "nada se guardó");
+  assert.equal(await cuantas(), antes, "nada se guardó");
 });
 
 test("estados: borrador → en prueba (solo la oficina la ve) → publicada (todos); volver publica una copia; nada se reescribe", async t => {
   if (salta(t)) return;
-  const adm = await entra(ADMIN), ana = await entra(ANA);
+  const adm = await entra(ADMIN), ana = await entra(ANA), ofi = await entra(OFI);
   const v1 = (await con("POST", "/api/admin/config", adm, { cuerpo: EJEMPLO, nota: "primera" })).json().version as number;
   assert.equal((await con("POST", `/api/admin/config/${v1}/publicar`, adm)).statusCode, 409, "un borrador no se publica sin pasar por prueba");
   assert.equal((await con("GET", "/api/config", adm)).json().version, null, "un borrador no lo ve nadie");
 
   assert.equal((await con("POST", `/api/admin/config/${v1}/prueba`, adm)).statusCode, 200);
   assert.equal((await con("GET", "/api/config", adm)).json().estado, "en_prueba", "la oficina ve la prueba");
+  assert.equal((await con("GET", "/api/config", ofi)).json().estado, "en_prueba", "también el rol oficina");
   assert.deepEqual((await con("GET", "/api/config", ana)).json().config, { v: 1 }, "un hogar, no");
 
   const p = await con("POST", `/api/admin/config/${v1}/publicar`, adm);
@@ -127,7 +148,7 @@ test("estados: borrador → en prueba (solo la oficina la ve) → publicada (tod
   assert.deepEqual((await con("GET", "/api/config", ana)).json().config, EJEMPLO);
   const hist = (await con("GET", "/api/admin/config", adm)).json();
   assert.equal(hist.publicada, v3); assert.equal(hist.en_prueba, null);
-  assert.deepEqual(hist.versiones.map((f: { version: number; estado: string }) => [f.version, f.estado]), [[v3, "publicada"], [v2, "retirada"], [v1, "retirada"]]);
+  assert.deepEqual(hist.versiones.filter((f: { version: number }) => f.version >= v1).map((f: { version: number; estado: string }) => [f.version, f.estado]), [[v3, "publicada"], [v2, "retirada"], [v1, "retirada"]]);
   assert.equal((await con("GET", `/api/admin/config/${v1}`, adm)).json().cuerpo.escalera.bandaM, EJEMPLO.escalera.bandaM);
 
   // un borrador no vale para volver; una retirada no vuelve a prueba; un borrador se puede descartar
@@ -145,10 +166,10 @@ test("estados: borrador → en prueba (solo la oficina la ve) → publicada (tod
 
   // auditoría de cada paso, sin datos personales
   assert.ok((await auditado("config.borrador")).length >= 3);
-  assert.deepEqual((await auditado("config.en_prueba")).map(d => d.version), [v1, v2]);
+  assert.deepEqual((await auditado("config.en_prueba")).map(d => d.version).filter(v => v >= v1), [v1, v2]);
   assert.deepEqual((await auditado("config.publicada")).map(d => d.version), [v1, v2]);
   assert.deepEqual(await auditado("config.vuelta"), [{ version: v3, copia_de: v1, retira: v2 }]);
-  assert.deepEqual((await auditado("config.retirada")).map(d => d.version), [v4]);
+  assert.deepEqual((await auditado("config.retirada")).map(d => d.version).filter(v => v >= v1), [v4]);
   const detalles = JSON.stringify((await bd.dueno.query("SELECT detalle FROM auditoria WHERE accion LIKE 'config.%'")).rows);
   assert.ok(!/@/.test(detalles), "sin correos en la auditoría");
 });

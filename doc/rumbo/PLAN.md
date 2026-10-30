@@ -132,7 +132,7 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | V3 | Base de la «vida» antes del VPS (migración 0004): ids de olivo congelados (decisión 92), personalización de árboles con registro de quién sube (91, 93, 96), denuncias y bandeja de la oficina (94), diario de la haza, avisos, trazabilidad del aceite, eventos (97); API y pruebas | — | media · **opus** | ✅ 2026-10-30 en api, contratos y doc (`doc/sistema/VIDA.md`); probado con PostGIS en contenedor; falta V7 (infra de medios) y las pantallas |
 | V7 | Infra de medios: volumen y `GEMELO_MEDIOS` para la api en `infra/compose.yml` e `infra/dev`, Caddy interno y de borde con `/api/medios` hasta ~9 MB, copia de seguridad del volumen, `GEMELO_MEDIOS*` en `infra/entorno.ejemplo`; probar sharp en la imagen alpine | V3 | ligera · **sonnet**; 🔶 Docker | ⬜ en cola |
 | V8 | Vigía real: URL del MCP y token propio de solo lectura (decisión de Antonio); `GEMELO_VIGIA=mcp` en local y en el VPS; comprobar las dos herramientas contra el contrato `tiempo` v1 | — | ligera · **sonnet**; 👤 token | 👤 URL lista en `infra/dev/.env`; falta el valor de `VIGIA_MCP_TOKEN` (decisión 126) |
-| V9 | Limpieza: el conector de claude.ai (`window.claude`) que aún usan 14_historia, 15_tiempo y 23_estacion como respaldo quedó muerto con la decisión 79; el histórico semanal de Vigía, por la api | — | ligera · **sonnet** | ⬜ |
+| V9 | Limpieza: el conector de claude.ai (`window.claude`) que aún usan 14_historia, 15_tiempo y 23_estacion como respaldo quedó muerto con la decisión 79; el histórico semanal de Vigía, por la api | — | ligera · **sonnet** | ✅ 2026-10-30; falta una ruta de la api para la lectura en vivo de OlivarTrack y de `estado_del_olivar_hoy` en la historia |
 | V4 | Panel de la oficina: dibujar hazas sobre ortofoto y copas (95), bandeja de sugerencias y denuncias con retirada en un clic, pasar una sugerencia a OlivarTrack como propuesta | V3 | media · **opus**; 👤 la oficina | → sustituida por OF0-OF13 (`doc/sistema/OFICINA.md` §11); primero OF0-OF5 (acceso, familias, hazas, bandeja, sistema mínimo) |
 | V5 | En el mundo: nombrar un árbol y colgarle una foto o una pintura (solo el titular), verlo los demás, denunciar | V3 | media · **sonnet**; 🔶 | → pasa a P7f (tras C7, usables) |
 | V6 | Icono PNG de la aplicación generado desde el SVG y excepción en el guardián (98) | — | ligera · **sonnet** | ✅ 2026-10-30: 4 PNG desde el SVG con sharp; falta probar la instalación en aparatos |
@@ -140,8 +140,8 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | V1 | VPS: preparar el despliegue (RUNBOOK-VPS al día, SMTP de OVH, token de OlivarTrack, comprobaciones previas) | — | ligera (documentos y guiones) | ✅ (8 preguntas a Antonio en DECISIONS-PENDING) |
 | V2 | VPS: desplegar F1a | A5, A6, V1 (decisión 21) | 👤 confirma cada paso | ⬜ |
 | G1 | Arreglar la facturación de GitHub para que corra el CI | — | 👤 | ⬜ |
-| OF0 | ADR de la oficina: roles, acceso y configuración versionada (decisiones 104-116) | — | ligera · **opus** | ⬜ |
-| OF1 | Acceso: rol `oficina`, sesión corta, aparatos confiables, Caddy con `/oficina/` por rol | OF0, V3 | media · **opus**; 🔶 Docker | ⬜ |
+| OF0 | ADR de la oficina: roles, acceso y configuración versionada (decisiones 104-116) | — | ligera · **opus** | ✅ 2026-10-30 (ADR-0024) |
+| OF1 | Acceso: rol `oficina`, sesión corta, aparatos confiables, Caddy con `/oficina/` por rol | OF0, V3 | media · **opus**; 🔶 Docker | ✅ 2026-10-30: migración 0005, integración y probar-caddy en verde |
 | OF2 | Esqueleto de `/oficina/` y **Familias** (alta, enlace, sesiones, haza, baja a 30 días, exportar, borrar) | OF1 | media · **sonnet**; 🔶 | ⬜ |
 | OF3 | **Hazas**: dibujar sobre ortofoto y copas (OpenLayers + proj4), partir/juntar en PostGIS, recuento, versiones | OF2, V3 | pesada · **opus**; 🔶 | ⬜ |
 | OF4 | **Bandeja**: retirar en un clic, responder, avisar, pasar a OlivarTrack (token solo para proponer, decisión 110) | OF2, V3 | media · **sonnet**; 🔶 Docker | ⬜ |
@@ -157,7 +157,7 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | C1 | Componentes: núcleo (`Componentes`, `Bus` con catálogo, bucle por fases, encendido URL > configuración > defecto) y guardián | — | media · **opus** | ✅ 2026-10-30 |
 | C2 | Componentes: puntos de extensión (HUD, ventanas, teclas, ajustes, panel VR por filas, minimapa, capas) | C1 | media · **opus** | ✅ 2026-10-30 |
 | C3 | Componentes: piloto 1, las fichas del tiempo como componente | C2 | ligera · **opus** | ✅ 2026-10-30 |
-| C4 | Componentes: piloto 2, el sonido | C2 | ligera · **sonnet** | ⬜ |
+| C4 | Componentes: piloto 2, el sonido | C2 | ligera · **sonnet** | ✅ 2026-10-30 |
 | C5 | Componentes: piloto 3, `Red` sobre LiveKit; presencia y avatares como componentes | C1 | media · **opus** | ⬜ |
 | C6 | Componentes: plugins de la api y `/api/config` (se junta con OF6) | C1 | ligera · **sonnet** | ⬜ adelantada (decisión 118): el motor ya lee el bloque `componentes`; falta la ruta y el `fetch` |
 | C7 | Entidades con id estable y usables (una sola forma de tocar: dedo, ratón, rayo VR, cercanía) — antes de juegos y fotos (decisión 119) | C2 | media · **opus** | ⬜ |

@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "origen": "fixture",
+  "consultadoEn": "2026-03-10T08:25:00.000Z",
+  "desde": "2026-03-04",
+  "hasta": "2026-03-10",
+  "fuentes": [
+    { "id": "SINT-EST-01", "temperaturaMaxima": 18.4, "temperaturaMinima": 2.1, "lluviaTotalMm": 6.5, "dias": 7, "diasSinDato": 0 },
+    { "id": "SINT-EST-02", "temperaturaMaxima": 17.9, "temperaturaMinima": 1.2, "lluviaTotalMm": 5.8, "dias": 7, "diasSinDato": 2 }
+  ],
+  "frescura": { "generadoEn": "2026-03-10T08:05:00.000Z", "horasDeAntiguedad": 0.3, "datosDeMaqueta": true },
+  "avisos": [
+    { "de": "gemelo", "texto": "El histórico: Vigía avisa de que son datos de maqueta." }
+  ]
+}

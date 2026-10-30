@@ -7,7 +7,8 @@
 //     para la salida de UNA finca como hituelo-v3, y GEMELO_DEV_TILESET para el tileset 3D Tiles de /teselas/<finca>/tileset/ (sin él, el tileset/ que haya junto al indice.json servido: el del fixture), y GEMELO_DEV_OLIVOS para las recetas horneadas de /teselas/<finca>/olivos/);
 //  3. construye la web con Vite contra el índice de la finca (GEMELO_DEV_FINCA, por defecto hituelo), con base /teselas/<finca>/,
 //     CON el constructor de olivos (apps/web/olivo, ?olivos=gen) y 3DTilesRendererJS, instalándolos si faltan,
-//     y la portada (apps/web/portada → dist-portada, build:portada), y deja junto a cada fichero su .br/.gz para que Caddy
+//     la portada (apps/web/portada → dist-portada, build:portada) y la oficina (apps/web/oficina → dist-oficina, build:oficina),
+//     y deja junto a cada fichero su .br/.gz para que Caddy
 //     los sirva ya comprimidos;
 //  4. arranca la base y comprueba que tiene los roles de producción (gemelo_dueno y gemelo_api; decisión 55): un volumen
 //     de antes no los tiene y se dice cómo arreglarlo;
@@ -98,7 +99,8 @@ function construyeWeb(datos) {
   aseguraDependenciasWeb();
   npm(["run", "build"], WEB, { GEMELO_DATOS: datos });
   npm(["run", "build:portada"], WEB);          // la portada y la entrada (apps/web/portada → dist-portada), servida en /
-  for (const d of ["dist", "dist-portada"]) {
+  npm(["run", "build:oficina"], WEB);          // la oficina (apps/web/oficina → dist-oficina), servida en /oficina/ tras sesión de oficina
+  for (const d of ["dist", "dist-portada", "dist-oficina"]) {
     const dist = path.join(WEB, d);
     console.log("  " + precomprime(dist) + " ficheros precomprimidos (br, gz) en " + rel(dist));
   }
@@ -164,7 +166,7 @@ export async function levanta({ sinBuild = false, redLocal = false } = {}) {
     (tileset ? ", con tileset 3D Tiles (" + (carpetaTileset() ? "GEMELO_DEV_TILESET" : "el de la propia finca") + ")" : ", SIN tileset: la web mostrará que la finca no tiene escena") + ", olivos horneados por el servicio hornero en " + (olivos ? "GEMELO_DEV_OLIVOS" : rel(carpetaHornero)));
   const datos = datosDeLaWeb(indiceServido(), finca, !!tileset);
   if (!sinBuild) { paso("build de la web (Vite)"); construyeWeb(datos); }
-  else if (!fs.existsSync(path.join(WEB, "dist", "index.html")) || !fs.existsSync(path.join(WEB, "dist-portada", "index.html"))) throw new Error("--sin-build pero no hay apps/web/dist o dist-portada: quítalo la primera vez");
+  else if (["dist", "dist-portada", "dist-oficina"].some(d => !fs.existsSync(path.join(WEB, d, "index.html")))) throw new Error("--sin-build pero no hay apps/web/dist, dist-portada o dist-oficina: quítalo la primera vez");
   paso("dependencias de las herramientas");
   aseguraDependencias();
   paso("base de datos y sus roles (" + PG_DUENO + ", " + PG_API + ")");
@@ -182,6 +184,7 @@ export async function levanta({ sinBuild = false, redLocal = false } = {}) {
   console.log("\nListo (por https: la CA local de Caddy no está instalada, el navegador avisará; http://localhost:" + p.web + " redirige aquí):" +
     "\n  portada   " + w + "/" +
     "\n  mundo     " + w + "/finca/   (solo con sesión: pide el enlace en la portada y ábrelo desde el buzón)" +
+    "\n  oficina   " + w + "/oficina/   (solo con una cuenta de oficina y su aparato aprobado: contratos/sesion.md § Oficina)" +
     "\n  api       " + w + "/api/salud" +
     "\n  teselas   " + w + "/teselas/" + finca + "/indice.json   (solo con sesión)" +
     (tileset ? "\n  tileset   " + w + "/teselas/" + finca + "/tileset/tileset.json   (solo con sesión; es la escena de /finca/)" : "") +

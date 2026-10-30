@@ -1,8 +1,9 @@
-// Panel de la oficina (rol admin): dar de alta hogares, asignar hazas (decisión 12: la haza la asigna la oficina),
-// cerrar sesiones, borrar un hogar (RGPD) y lanzar la sincronía con OlivarTrack.
+// Panel de la oficina (roles oficina y admin, ADR-0024): dar de alta hogares, asignar hazas (decisión 12: la haza la asigna la
+// oficina), cerrar sesiones, borrar un hogar (RGPD, con confirmación reciente) y lanzar la sincronía con OlivarTrack.
+// Dar de alta o borrar una cuenta de OFICINA (rol oficina o admin) es cambiar roles: solo `admin`, con confirmación reciente.
 import type { FastifyInstance } from "fastify";
-import { requiereRol } from "../auth/roles.ts";
-import { audita, normalizaCorreo, revocaTodas, ROLES } from "../auth/servicio.ts";
+import { audita, esOficina, normalizaCorreo, revocaTodas, ROLES, type Rol } from "../auth/servicio.ts";
+import { CONFIRMACION_REQUERIDA, OFICINA, OFICINA_CONFIRMADA, SIN_PERMISO } from "../oficina/acceso.ts";
 import type { Contexto } from "../contexto.ts";
 import { sincroniza } from "../ot/sincronia.ts";
 import { borraFicheros, clavesDelHogar } from "../vida/medios.ts";
@@ -11,7 +12,7 @@ const ID = { type: "object", additionalProperties: false, required: ["id"], prop
 
 export async function rutasAdmin(app: FastifyInstance, ctx: Contexto): Promise<void> {
   const { bd } = ctx;
-  const soloAdmin = requiereRol("admin");
+  const soloAdmin = OFICINA;
 
   app.get("/api/admin/hogares", { preHandler: soloAdmin }, async (_req, rep) => {
     const r = await bd.query(
@@ -26,6 +27,10 @@ export async function rutasAdmin(app: FastifyInstance, ctx: Contexto): Promise<v
     preHandler: soloAdmin,
     schema: { body: { type: "object", additionalProperties: false, required: ["correo", "rol"], properties: { correo: { type: "string", maxLength: 254 }, rol: { type: "string", enum: [...ROLES] } } } },
   }, async (req, rep) => {
+    if (esOficina(req.body.rol as Rol)) {
+      if (req.session.rol !== "admin") return rep.code(403).send(SIN_PERMISO);
+      if (req.session.confirmacionVigente !== true) return rep.code(403).send(CONFIRMACION_REQUERIDA);
+    }
     const correo = normalizaCorreo(req.body.correo);
     if (!correo) return rep.code(400).send({ error: "correo_no_valido" });
     try {
@@ -38,7 +43,9 @@ export async function rutasAdmin(app: FastifyInstance, ctx: Contexto): Promise<v
     }
   });
 
-  app.delete<{ Params: { id: number } }>("/api/admin/hogares/:id", { preHandler: soloAdmin, schema: { params: ID } }, async (req, rep) => {
+  app.delete<{ Params: { id: number } }>("/api/admin/hogares/:id", { preHandler: OFICINA_CONFIRMADA, schema: { params: ID } }, async (req, rep) => {
+    const objetivo = await bd.query<{ rol: Rol }>("SELECT rol FROM hogares WHERE id = $1", [req.params.id]);
+    if (esOficina(objetivo.rows[0]?.rol) && req.session.rol !== "admin") return rep.code(403).send(SIN_PERMISO);
     const claves = await clavesDelHogar(bd, req.params.id);
     const r = await bd.query("DELETE FROM hogares WHERE id = $1", [req.params.id]);
     if (!r.rowCount) return rep.code(404).send({ error: "no_existe" });

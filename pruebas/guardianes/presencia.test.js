@@ -317,8 +317,9 @@ test("balizas (I4): ir a una baliza te deja a 4-5,5 m de la columna, fuera de co
 });
 test("contratos/livekit-roles.json: en F2 ningún rol publica audio ni vídeo, todos publican datos, nadie lleva roomAdmin y la identidad es opaca", () => {
   const R = JSON.parse(lee("contratos/livekit-roles.json"));
-  assert.strictEqual(R.contrato, "livekit-roles"); assert.strictEqual(R.version, 2); assert.strictEqual(R.fase, "F2");
-  assert.deepStrictEqual(Object.keys(R.roles).sort(), ["admin", "corresponsal", "guia", "hogar"], "los roles de contratos/sesion.md");
+  assert.strictEqual(R.contrato, "livekit-roles"); assert.strictEqual(R.version, 3); assert.strictEqual(R.fase, "F2");
+  assert.deepStrictEqual(Object.keys(R.roles).sort(), ["admin", "corresponsal", "guia", "hogar", "oficina"], "los roles de contratos/sesion.md");
+  assert.strictEqual(R.roles.oficina.hidden, false, "la oficina es siempre visible en el mundo (decisión 107)");
   for (const [rol, p] of Object.entries(R.roles)) {
     assert.strictEqual(p.canPublish, false, rol + ": canPublish (pistas de audio o vídeo) debe ser false en F2");
     assert.deepStrictEqual(p.canPublishSources, [], rol + ": sin fuentes (ni cámara ni micrófono) en F2");

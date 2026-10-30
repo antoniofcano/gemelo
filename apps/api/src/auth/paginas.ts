@@ -30,3 +30,13 @@ export function paginaEnlaceMalo(motivo: keyof typeof TEXTOS_ENLACE): string {
   const [t, p] = TEXTOS_ENLACE[motivo];
   return pagina(t, "<h1>" + esc(t) + "</h1><p>" + esc(p) + "</p><p><a href=\"/\">Pedir un enlace nuevo</a></p>");
 }
+
+/** Cuenta de oficina que entra desde un aparato aún no aprobado (ADR-0024, contratos/sesion.md § Oficina). */
+export function paginaAparatoPendiente(nombre: string, minSegundoEnlace: number): string {
+  return pagina("Aparato pendiente", "<h1>Este aparato está pendiente</h1>" +
+    "<p>Has entrado en la oficina desde un aparato nuevo (<strong>" + esc(nombre) + "</strong>). Por seguridad, la oficina no se abre en él hasta que se apruebe.</p>" +
+    "<ul><li>Pide a otra persona de la oficina que lo apruebe desde un aparato ya aprobado (Sistema → Aparatos de oficina), o</li>" +
+    "<li>pasados " + minSegundoEnlace + " minutos, pide otro enlace desde este mismo navegador y ábrelo aquí: eso lo aprueba.</li></ul>" +
+    "<p>Si no has sido tú, avisa a la oficina: alguien puede estar usando tu correo.</p>" +
+    "<p><a href=\"/\">Pedir un enlace</a></p>");
+}

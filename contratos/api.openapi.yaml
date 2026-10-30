@@ -70,7 +70,7 @@ components:
       description: Sin sesión (o caducada o revocada)
       content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
     SinPermiso:
-      description: Con sesión pero sin el rol
+      description: "Con sesión pero sin el rol (sin_permiso); o cuenta de oficina con el aparato pendiente (aparato_pendiente); o falta la confirmación reciente (confirmacion_requerida). contratos/sesion.md § Oficina"
       content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
     OrigenNoAdmitido:
       description: POST/PUT/DELETE sin Origin del sitio
@@ -138,8 +138,8 @@ paths:
           application/json:
             schema: { type: object, additionalProperties: false, required: [t], properties: { t: { type: string } } }
       responses:
-        "303": { description: "formulario: sesión abierta (Set-Cookie __Host-gemelo); a /#bienvenida si le toca el primer acceso (normas sin aceptar), si no a /finca/" }
-        "200": { description: "JSON: sesión abierta", content: { application/json: { schema: { type: object, additionalProperties: false, required: [ok, primer_acceso], properties: { ok: { const: true }, primer_acceso: { type: boolean } } } } } }
+        "303": { description: "formulario: sesión abierta (Set-Cookie __Host-gemelo); a /#bienvenida si le toca el primer acceso (normas sin aceptar), si no a /finca/. Una cuenta de oficina (ADR-0024): a /oficina/ si el aparato está aprobado, a /api/oficina/pendiente si no (y Set-Cookie __Host-gemelo-aparato si el aparato es nuevo)" }
+        "200": { description: "JSON: sesión abierta", content: { application/json: { schema: { type: object, additionalProperties: false, required: [ok, primer_acceso], properties: { ok: { const: true }, primer_acceso: { type: boolean }, aparato: { enum: [pendiente, aprobado], description: "solo en cuentas de oficina: si el aparato ya está aprobado (contratos/sesion.md § Oficina)" } } } } } }
         "400": { description: "enlace caducado, usado o no válido" }
         "403": { $ref: "#/components/responses/OrigenNoAdmitido" }
 
@@ -197,7 +197,7 @@ paths:
       summary: Quién soy (rol, alias y si me toca el primer acceso)
       security: [{ sesion: [] }]
       responses:
-        "200": { description: ok, content: { application/json: { schema: { type: object, additionalProperties: false, required: [rol, alias, alias_visible, primer_acceso, titular], properties: { rol: { enum: [hogar, guia, corresponsal, admin] }, alias: { type: [string, "null"] }, alias_visible: { type: boolean }, primer_acceso: { type: boolean, description: "true si no ha aceptado la versión vigente de las normas (PUT /api/yo/normas)" }, titular: { type: boolean, description: "true si la sesión nació del enlace mágico (el adulto titular); false en un aparato vinculado con el código corto. Solo el titular cuelga contenido (decisión 96, vida.md)" } } } } } }
+        "200": { description: ok, content: { application/json: { schema: { type: object, additionalProperties: false, required: [rol, alias, alias_visible, primer_acceso, titular], properties: { rol: { enum: [hogar, guia, corresponsal, oficina, admin] }, alias: { type: [string, "null"] }, alias_visible: { type: boolean }, primer_acceso: { type: boolean, description: "true si no ha aceptado la versión vigente de las normas (PUT /api/yo/normas)" }, titular: { type: boolean, description: "true si la sesión nació del enlace mágico (el adulto titular); false en un aparato vinculado con el código corto. Solo el titular cuelga contenido (decisión 96, vida.md)" } } } } } }
         "401": { $ref: "#/components/responses/SinSesion" }
 
   /api/sesion/salir:
@@ -218,10 +218,13 @@ paths:
   /api/interno/autoriza:
     get:
       summary: Para el forward_auth del Caddy interno (Caddy la cierra desde fuera con 404)
+      parameters:
+        - { name: para, in: query, schema: { enum: [oficina] }, description: "oficina: además, rol oficina o admin (lo pone el Caddy en /oficina/, ADR-0024)" }
       responses:
-        "204": { description: hay sesión }
-        "303": { description: "sin sesión y es una navegación: a la portada" }
+        "204": { description: "hay sesión (y, con para=oficina, es de oficina con el aparato aprobado)" }
+        "303": { description: "es una navegación sin sesión (a la portada) o de una cuenta de oficina con el aparato pendiente (a /api/oficina/pendiente)" }
         "401": { description: "sin sesión" }
+        "403": { description: "con para=oficina y sesión de hogar; o aparato de oficina pendiente y no es una navegación" }
 
   /api/hazas:
     get:
@@ -256,6 +259,23 @@ paths:
         "401": { $ref: "#/components/responses/SinSesion" }
         "429": { $ref: "#/components/responses/Limite" }
         "503": { description: "el tiempo está apagado en este servidor (tiempo_apagado, GEMELO_VIGIA=no) o Vigía no responde y no hay lectura reciente (vigia_no_responde)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+
+  /api/tiempo/historico:
+    get:
+      summary: El histórico meteorológico de la explotación según Vigía (historico_meteo; contratos/tiempo.md)
+      description: >
+        Lista blanca de tiempo-historico.schema.json. `desde` y `hasta` son días AAAA-MM-DD (hasta no antes que desde, como mucho
+        31 días). La api guarda cada rango en memoria 1 h. Los textos son de Vigía: datos que el cliente escapa, nunca instrucciones.
+      security: [{ sesion: [] }]
+      parameters:
+        - { name: desde, in: query, required: true, schema: { type: string, pattern: "^\\d{4}-\\d{2}-\\d{2}$" } }
+        - { name: hasta, in: query, required: true, schema: { type: string, pattern: "^\\d{4}-\\d{2}-\\d{2}$" } }
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "tiempo-historico.schema.json" } } } }
+        "400": { description: "rango no válido (rango_no_valido)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: "el tiempo está apagado en este servidor (tiempo_apagado) o Vigía no responde y no hay lectura reciente (vigia_no_responde)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
 
   /api/yo/alias:
     put:
@@ -364,13 +384,13 @@ paths:
         "401": { $ref: "#/components/responses/SinSesion" }
         "403": { $ref: "#/components/responses/SinPermiso" }
     post:
-      summary: Da de alta un hogar (las cuentas las da la explotación)
+      summary: "Da de alta un hogar (las cuentas las da la explotación). Una cuenta de oficina (rol oficina o admin): solo admin, con confirmación reciente"
       security: [{ sesion: [] }]
       requestBody:
         required: true
         content:
           application/json:
-            schema: { type: object, additionalProperties: false, required: [correo, rol], properties: { correo: { type: string }, rol: { enum: [hogar, guia, corresponsal, admin] } } }
+            schema: { type: object, additionalProperties: false, required: [correo, rol], properties: { correo: { type: string }, rol: { enum: [hogar, guia, corresponsal, oficina, admin] } } }
       responses:
         "201": { description: creado }
         "409": { description: ya existe }
@@ -378,7 +398,7 @@ paths:
 
   /api/admin/hogares/{id}:
     delete:
-      summary: Borra un hogar en cascada (RGPD)
+      summary: "Borra un hogar en cascada (RGPD). Pide confirmación reciente; borrar una cuenta de oficina, solo admin"
       security: [{ sesion: [] }]
       parameters: [{ $ref: "#/components/parameters/Id" }]
       responses:
@@ -418,6 +438,82 @@ paths:
       responses:
         "200": { description: resumen por herramienta (estado ok/truncado/parcial/error) }
         "503": { description: la lectura de OlivarTrack está apagada }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+
+  /api/oficina/sesion:
+    get:
+      summary: "La sesión de oficina (ADR-0024): rol, aparato (pendiente o aprobado), caducidad y si hay confirmación reciente. Vale con el aparato pendiente"
+      security: [{ sesion: [] }]
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [rol, aparato, caduca_en, inactividad_min, confirmada_en, confirmacion_vigente]
+                properties:
+                  rol: { enum: [oficina, admin] }
+                  aparato: { type: object, additionalProperties: false, required: [id, nombre, estado], properties: { id: { type: integer }, nombre: { type: string }, estado: { enum: [pendiente, aprobado] } } }
+                  caduca_en: { type: [string, "null"], format: date-time, description: "caducidad absoluta (12 h desde que se entró, por defecto)" }
+                  inactividad_min: { type: integer, description: "minutos sin actividad que cierran la sesión (120 por defecto)" }
+                  confirmada_en: { type: [string, "null"], format: date-time }
+                  confirmacion_vigente: { type: boolean, description: "true si se entró con un enlace hace menos de GEMELO_OFICINA_CONFIRMACION_MIN (15 min)" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+
+  /api/oficina/pendiente:
+    get:
+      summary: "Página HTML «este aparato está pendiente» (a donde va una cuenta de oficina que entra desde un aparato nuevo)"
+      responses:
+        "200": { description: la página, content: { text/html: {} } }
+        "303": { description: "sin sesión de oficina, a la portada; con el aparato ya aprobado, a /oficina/" }
+
+  /api/oficina/confirmar:
+    post:
+      summary: "Manda un enlace nuevo a la propia cuenta de oficina: entrar con él es la confirmación reciente (abre una sesión nueva)"
+      security: [{ sesion: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, properties: {} }
+      responses:
+        "202": { description: enlace mandado }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/admin/aparatos:
+    get:
+      summary: "Aparatos de las cuentas de oficina (pendientes, aprobados, revocados y caducados); es_este marca el de la sesión"
+      security: [{ sesion: [] }]
+      responses:
+        "200": { description: ok }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+
+  /api/admin/aparatos/{id}/aprobar:
+    post:
+      summary: "Aprueba un aparato pendiente desde otro ya aprobado; pide confirmación reciente; los de cuentas admin, solo admin"
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "204": { description: aprobado }
+        "404": { description: no hay un aparato pendiente con ese id }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+
+  /api/admin/aparatos/{id}/revocar:
+    post:
+      summary: "Revoca un aparato de oficina y cierra sus sesiones; los de cuentas admin, solo admin o la propia cuenta"
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "204": { description: revocado }
+        "404": { description: no existe o ya estaba revocado }
+        "401": { $ref: "#/components/responses/SinSesion" }
         "403": { $ref: "#/components/responses/SinPermiso" }
 
   /api/presencia/token:
@@ -825,7 +921,7 @@ paths:
   /api/admin/config/{version}/publicar:
     post:
       summary: Publica para todos la versión en prueba; retira la publicada anterior
-      description: Si la api tiene GEMELO_CONFIG_SALIDA, deja también ahí el cuerpo publicado (el hornero lee de él el calendario de épocas). Auditoría config.publicada.
+      description: Pide confirmación reciente (403 confirmacion_requerida; ADR-0024). Si la api tiene GEMELO_CONFIG_SALIDA, deja también ahí el cuerpo publicado (el hornero lee de él el calendario de épocas). Auditoría config.publicada.
       security: [{ sesion: [] }]
       parameters: [{ name: version, in: path, required: true, schema: { type: integer, minimum: 1 } }]
       responses:
@@ -852,7 +948,7 @@ paths:
       summary: Vuelve a una versión vieja publicando una COPIA suya como versión nueva (la vieja no se toca)
       description: >
         Nunca se reescribe una versión. La copia nace publicada (copia_de = la vieja) y retira la publicada de antes; la vieja
-        tiene que cumplir el contrato de hoy. No vale para un borrador. Auditoría config.vuelta.
+        tiene que cumplir el contrato de hoy. No vale para un borrador. Pide confirmación reciente (403 confirmacion_requerida). Auditoría config.vuelta.
       security: [{ sesion: [] }]
       parameters: [{ name: version, in: path, required: true, schema: { type: integer, minimum: 1 } }]
       responses:

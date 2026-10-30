@@ -1,5 +1,6 @@
 # Caddy del entorno de DESARROLLO (infra/dev/compose.yml). No es el de producción (infra/Caddyfile, otro trabajo).
-# Misma forma que producción: portada en /, mundo en /finca/ y teselas tras sesión (forward_auth), api en /api/.
+# Misma forma que producción: portada en /, mundo en /finca/ y teselas tras sesión (forward_auth), la oficina en /oficina/ tras
+# sesión de oficina, api en /api/.
 # Diferencias a propósito: sin HSTS (en localhost estorba), CSP en modo Report-Only, certificado de una CA local
 # no instalada (tls internal), y la CA se pierde al parar (tmpfs). Ver doc/operacion/DESARROLLO-LOCAL.md.
 {
@@ -71,6 +72,28 @@
 			max_size 1MB
 		}
 		reverse_proxy api:8000
+	}
+
+	# la oficina (ADR-0024, contratos/sesion.md § Oficina): el build de apps/web/oficina (dist-oficina, build:oficina) en
+	# /srv/oficina, solo con sesión de OFICINA (rol oficina o admin con su aparato aprobado). Sin sesión, a la portada (303); con
+	# sesión de hogar, 403; con el aparato pendiente, a /api/oficina/pendiente. Igual que infra/Caddyfile (producción).
+	@oficina path /oficina /oficina/*
+	handle @oficina {
+		forward_auth api:8000 {
+			uri /api/interno/autoriza?para=oficina
+		}
+		redir /oficina /oficina/ 308
+		handle_path /oficina/* {
+			root * /srv/oficina
+			@inmutable path /assets/*
+			header @inmutable Cache-Control "private, max-age=31536000, immutable"
+			@pagina path / /index.html
+			header @pagina Cache-Control "no-cache"
+			file_server {
+				precompressed br zstd gzip
+				hide .*
+			}
+		}
 	}
 
 	# decisión 16: sin sesión, solo la portada. El mundo (/finca/), las teselas y los avatares preguntan a la api si hay sesión; sin ella,

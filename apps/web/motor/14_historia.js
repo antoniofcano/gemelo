@@ -1,16 +1,15 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: OT, hist, mcp, VIVO, FINCA, marca, dd, tabla, lista, nMarc, sw, avTipo, pintaAvance, rango, aviso, carga
-// Consume: 01_datos (D, $, fmt), 02_mundo (suelo, orto, copas, cIn, marc, med), 03_escena (visor, scene, exag), 05_nube (nube),
+// Expone: OT, hist, VIVO, FINCA, marca, dd, tabla, lista, nMarc, sw, avTipo, pintaAvance, rango, aviso
+// Consume: 01_datos (D, $, fmt), 02_mundo (suelo, orto, copas, cIn, marc, med), 03_escena (scene, exag), 05_nube (nube),
 //   08_marcadores (aplica, pendiente), 09_camara (objetivo, orb, pon), 10_ndvi (NDV, ndviIdx, pintaNdvi),
 //   12_paseo (paseando, persona, primera, salePaseo), 13_parcelas (parcelas, fincas, claseUsda, elegirParcela, elegirFinca), 15_tiempo (ins),
-//   16_vida (esfera, mira), 18_paisaje (postes, cable), 21_suelo (cubierta), 22_huellas (hSig), 29_vr (panel), 33_ajustes (Ajustes),
-//   90_final (cuadro)
+//   16_vida (esfera, mira), 18_paisaje (postes, cable), 21_suelo (cubierta), 22_huellas (hSig), 29_vr (panel), 90_final (cuadro)
 // ===============================================================================
   // ---------- la historia: un recorrido guiado que cruza el gemelo con lo que sabe OlivarTrack
-  // Los datos de OlivarTrack llegan de dos sitios: una instantánea embebida (D.ot) y, si el visor lo permite,
-  // la lectura en vivo por el MCP (botón «Leer de OlivarTrack»). Los textos se calculan siempre de los datos.
-  var OT = D.ot, hist = -1, overlays = [], mcp = null, VIVO = null;
-  var FINCA = "Cerro Velasco", SRV = { ot: "Olivartrack", vig: "Vigia" };
+  // Los datos de OlivarTrack son la instantánea que trae el índice (D.ot): el navegador no lee en vivo (decisión 79, sin conector de claude.ai).
+  // Una lectura en vivo pediría una ruta de la api (tarea anotada); VIVO queda en null y lo sigue leyendo 19_balizas. Los textos se calculan siempre de los datos.
+  var OT = D.ot, hist = -1, overlays = [], VIVO = null;
+  var FINCA = "Cerro Velasco";
   var COL = { ok: 0x2e8b3d, atencion: 0xe0a030, nada: 0x8a8a8a, pase: 0x3b82c4 }, PALETA = [0x2e8b3d, 0xd98c2b, 0x3b82c4, 0x8e5bc4, 0xc4504a];
   function creaOverlay(k) {  // la parcela pegada al terreno (retícula de 2 m sobre el relieve); se construye la primera vez que se resalta
     var poly = parcelas[k].linde, minx = 1e9, maxx = -1e9, miny = 1e9, maxy = -1e9, PA = 2;
@@ -61,7 +60,7 @@
       (grandes.length ? "Las diferencias mayores están en <strong>" + grandes.map(function (x) { return x.n + " (" + x.d + " %)"; }).join(" y ") + "</strong>. " : "") +
       "Puede ser que copas que se tocan cuenten como una sola, o que haya marcas de olivos que ya no están: son sitios a mirar, no un veredicto.</p>";
   }
-  function origenDatos() { return OT.fuente === "vivo" ? "<p class='h-nota'>Leído en vivo de OlivarTrack el " + dd(OT.fecha_consulta) + ".</p>" : "<p class='h-nota'>Instantánea de OlivarTrack del " + dd(OT.fecha_consulta) + (mcp ? ". Pulsa «Leer de OlivarTrack» para traer los datos de ahora." : ".") + "</p>"; }
+  function origenDatos() { return OT.fuente === "vivo" ? "<p class='h-nota'>Leído en vivo de OlivarTrack el " + dd(OT.fecha_consulta) + ".</p>" : "<p class='h-nota'>Instantánea de OlivarTrack del " + dd(OT.fecha_consulta) + ".</p>"; }
 
   // ---------- avance árbol a árbol (prototipo): el estado de una tarea sobre cada olivo, sin personas
   var AV = D.avance, avTipo = null, gAvance = new THREE.Group(); gAvance.visible = false; scene.add(gAvance);
@@ -171,7 +170,7 @@
       html: function () {
         var v = VIVO && VIVO.vigia, nombres = parcelas.map(function (p) { return p.nombre.toLowerCase(); });
         var propia = v ? v.filter(function (x) { var n = String(x.parcela || "").toLowerCase(); return nombres.some(function (m) { return m === n || n.indexOf(m) >= 0 || m.indexOf(n) >= 0; }); }) : [];
-        var vig = !v ? "<p>Vigía mira cada día toda la explotación y marca las parcelas que se desvían del resto. <strong>Pulsa «Leer de OlivarTrack» para ver qué marca hoy.</strong></p>"
+        var vig = !v ? "<p>Vigía mira cada día toda la explotación y marca las parcelas que se desvían del resto. Este recorrido no la lee en vivo.</p>"
           : "<p>Vigía, que mira toda la explotación, <strong>hoy marca " + v.length + " " + (v.length === 1 ? "parcela" : "parcelas") + "</strong>" + (propia.length ? ", y " + lista(propia.map(function (x) { return "<strong>" + x.parcela + "</strong> (" + x.gravedad + ")"; })) + " es de esta finca" : ", ninguna de esta finca") + (VIVO.vigiaFrescura ? " (dato de las " + VIVO.vigiaFrescura + ")" : "") + ".</p>";
         return "<p>Última imagen Sentinel-2: <strong>" + dd(NDV.fechas[NDV.fechas.length - 1]) + "</strong>. Las copas toman el tono del vigor de su zona (marrón, menos; verde, más), con la escala relativa de esa fecha.</p>" + vig +
           "<p>Cruzar las dos miradas sirve para decidir dónde ir, no para decir que algo está enfermo: ninguna capa está calibrada con observación de campo. A 10 m, cada cuadro cubre varios olivos; es el vigor de una zona, no de un árbol.</p>"; } },
@@ -366,76 +365,13 @@
         li.push("<strong>Tendido, cauces y tipo de árbol</strong> son deducciones (escena anterior), no medidas.");
         li.push("<strong>La ortofoto es de julio de 2022 y el LiDAR de 2024:</strong> un arranque o un replante entre medias se ve en la nube y no en la foto.");
         li.push("<strong>Borde norte:</strong> faltan dos hojas LiDAR (404-4181 y 406-4181). Tres teselas de ese borde tienen suelo, pero no nube de puntos ni copas completas.");
-        li.push("<strong>Lectura en vivo:</strong> el botón «Leer de OlivarTrack» no está en Hituelo. El MCP no devuelve la parcela de cada trabajo y, con 27 parcelas, asignarlos por el nº de olivos daría falsos emparejamientos.");
+        li.push("<strong>Lectura en vivo:</strong> la historia no lee OlivarTrack en vivo (solo la instantánea de arriba). El MCP no devuelve la parcela de cada trabajo y, con 27 parcelas, asignarlos por el nº de olivos daría falsos emparejamientos.");
         return "<p>Un gemelo que solo cuenta lo que sabe sería deshonesto. Esto es lo que <strong>no</strong> sabemos, o sabemos a medias:</p><ul>" + li.map(function (x) { return "<li>" + x + "</li>"; }).join("") + "</ul>"; } }
   ];
   var ESCENAS = esH ? ESCENAS_H : ESCENAS_C;
 
-  // ---------- lectura en vivo por el MCP del visor (solo lectura; nada se escribe)
+  // ---------- el aviso de la ventana
   function aviso(txt, tipo) { var e = $("hEstado"); e.textContent = txt; e.setAttribute("data-t", tipo || ""); }
-  function textoError(e, srv) {
-    var c = e && e.code;
-    if (c === "server_not_connected" || c === "selection_required") return "No tienes conectado «" + srv + "» en claude.ai (Ajustes › Conectores)";
-    if (c === "needs_reauth") return "Reconecta «" + srv + "» en claude.ai (Ajustes › Conectores)";
-    if (c === "not_in_manifest" || c === "approval_required" || c === "consent_required") return "No has permitido leer «" + srv + "» en este artefacto";
-    if (c === "blocked_by_policy") return "Tu organización bloquea «" + srv + "»";
-    return "Fallo al leer «" + srv + "» (" + (c || "error") + ")";
-  }
-  function carga(r) { var p = r && r.payload; if (typeof p === "string") { try { p = JSON.parse(p); } catch (e) { p = null; } } return p; }
-  function aplicaVivo(res) {
-    var ids = parcelas.map(function (p) { return p.id; }), nuevo = { fuente: "vivo", fecha_consulta: (res.consulta || new Date().toISOString()).slice(0, 10), pases_finca: OT.pases_finca, entregas_finca: OT.entregas_finca, analiticas_finca: OT.analiticas_finca, parcelas: {} };
-    ids.forEach(function (id) { nuevo.parcelas[id] = { tareas: [], fenologia: [] }; });
-    var abiertas = {}; ((res.abiertas && res.abiertas.tareas) || []).forEach(function (t) { abiertas[t.id] = t; });
-    var vistos = {};
-    ((res.trabajo && res.trabajo.tareas) || []).forEach(function (t) {
-      if (t.finca !== FINCA) return;
-      var ab = abiertas[t.id], pid = null, obj = t.avance && t.avance.objetivo;
-      if (ab && ids.indexOf(ab.parcelaId) >= 0) pid = ab.parcelaId;
-      else if (t.parcela && ids.indexOf(t.parcela) >= 0) pid = t.parcela;
-      else if (obj != null) { var c = []; parcelas.forEach(function (p, k) { if (nMarc(k) === obj) c.push(p.id); }); if (c.length === 1) pid = c[0]; }
-      if (!pid) return;
-      vistos[t.id] = 1;
-      nuevo.parcelas[pid].tareas.push({ tipo: t.tipo, titulo: t.titulo, fecha: t.completadaEn || (ab && ab.fecha) || null, estado: t.estado, avance: t.avance ? t.avance.pct : null, fuente: null, andados: t.avance ? t.avance.hecho : null, objetivo: obj != null ? obj : null });
-    });
-    Object.keys(abiertas).forEach(function (id) { var ab = abiertas[id]; if (vistos[id] || ab.fincaNombre !== FINCA || ids.indexOf(ab.parcelaId) < 0) return; nuevo.parcelas[ab.parcelaId].tareas.push({ tipo: ab.tipo, titulo: ab.nombre, fecha: ab.fecha, estado: ab.estado, avance: 0, fuente: null, andados: null, objetivo: null }); });
-    (res.novedades || []).forEach(function (n) { if (n.tipo === "fenologia.registrada" && n.carga && ids.indexOf(n.carga.parcela) >= 0) nuevo.parcelas[n.carga.parcela].fenologia.push({ fecha: String(n.ocurridoEn).slice(0, 10), bbch: n.carga.bbch }); });
-    Object.keys(nuevo.parcelas).forEach(function (id) { nuevo.parcelas[id].fenologia.sort(function (a, b) { return a.fecha < b.fecha ? -1 : 1; }); });
-    if (res.pases) nuevo.pases_finca = (res.pases.pases || []).filter(function (p) { return (p.parcelas || []).some(function (q) { return ids.indexOf(q.id) >= 0; }); }).length;
-    OT = nuevo;
-    VIVO = { pasesFinca: res.pases ? nuevo.pases_finca : null, vigia: res.vigia ? (res.vigia.pidenUnaMirada || []) : null, vigiaFrescura: res.vigia && res.vigia.frescura ? String(res.vigia.frescura.generadoEn).slice(11, 16) + " UTC" : null };
-  }
-  async function leerVivo() {
-    if (!mcp) return;
-    $("hLeer").disabled = true; aviso("Leyendo de OlivarTrack…", "");
-    var res = { consulta: null }, fallos = [], desde = "2026-06-01";
-    async function una(clave, srv, tool, input) {
-      try { var r = await mcp.callTool(srv, tool, input || {}, { cache: false }); res[clave] = carga(r); var c = res[clave] && res[clave].consultadoEn; if (c && (!res.consulta || c > res.consulta)) res.consulta = c; return true; }
-      catch (e) { fallos.push({ tool: tool, srv: srv, e: e }); return false; }
-    }
-    // la primera llamada a cada conector pide permiso al visor: una a una; las demás, juntas
-    var okOt = await una("abiertas", SRV.ot, "tareas_abiertas");
-    var okVig = await una("vigia", SRV.vig, "estado_del_olivar_hoy");
-    if (okOt) {
-      await Promise.all([una("trabajo", SRV.ot, "trabajo_realizado", { desde: desde }), una("pases", SRV.ot, "pases_del_periodo", { desde: "2026-01-01" }), una("atencion", SRV.ot, "atencion_de_hoy")]);
-      var ev = [], desdeN = desde + "T00:00:00Z", vueltas = 0, ok = true;
-      while (ok && vueltas++ < 4) {
-        try { var r = await mcp.callTool(SRV.ot, "novedades", { desde: desdeN, limite: 500 }, { cache: false }), p = carga(r) || {}; ev = ev.concat(p.novedades || []); if (p.hayMas && p.siguienteDesde) desdeN = p.siguienteDesde; else break; }
-        catch (e) { fallos.push({ tool: "novedades", srv: SRV.ot, e: e }); ok = false; }
-      }
-      res.novedades = ev;
-    }
-    $("hLeer").disabled = false;
-    if (!res.trabajo && !res.abiertas) {
-      var f0 = fallos[0]; aviso(f0 ? textoError(f0.e, f0.srv) : "No se pudo leer OlivarTrack", "error");
-      return;
-    }
-    aplicaVivo(res);
-    var hora = new Date().toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
-    aviso("En vivo · leído a las " + hora + (fallos.length ? " · incompleto: " + fallos.map(function (f) { return f.tool + " (" + ((f.e && f.e.code) || "error") + ")"; }).join(", ") : ""), fallos.length ? "parcial" : "vivo");
-    $("hLeer").textContent = "Actualizar";
-    if (hist >= 0) { ESCENAS[hist].ir(); pintaEscena(); }
-  }
-
   function pintaEscena() {
     var e = ESCENAS[hist]; $("hTitulo").textContent = (hist + 1) + ". " + e.t; $("hTexto").innerHTML = e.html();
     if (e.alMostrar) e.alMostrar();
@@ -448,14 +384,11 @@
   (function () {
     var cont = $("hPuntos"); ESCENAS.forEach(function (e, i) { var b = document.createElement("button"); b.type = "button"; b.className = "h-punto"; b.setAttribute("aria-label", "Escena " + (i + 1) + ": " + e.t); b.title = e.t; b.addEventListener("click", function () { vaA(i); }); cont.appendChild(b); });
     $("hIni").addEventListener("click", function () { vaA(0); }); $("hAnt").addEventListener("click", function () { vaA(hist - 1); }); $("hSig").addEventListener("click", function () { vaA(hist + 1); }); $("hFin").addEventListener("click", saleHistoria);
-    $("hLeer").addEventListener("click", leerVivo);
     window.addEventListener("keydown", function (e) {
       if (hist < 0 || paseando) return; var t = e.target && e.target.tagName; if (t === "INPUT" || t === "SELECT" || t === "TEXTAREA" || t === "BUTTON") return;
       if (e.code === "ArrowRight") { vaA(hist + 1); e.preventDefault(); } else if (e.code === "ArrowLeft") { vaA(hist - 1); e.preventDefault(); }
     });
-    aviso("Datos: instantánea de OlivarTrack del " + dd(OT.fecha_consulta) + (esH ? " · sin lectura en vivo en Hituelo" : ""), "");
-    // ¿puede este visor hablar con los conectores? Si no, la historia sigue con la instantánea.
-    try { if (!esH && window.claude && window.claude.use) window.claude.use("mcp").then(function (m) { if (m) { mcp = m; $("hLeer").hidden = false; } }).catch(function () {}); } catch (e) {}
+    aviso("Datos: instantánea de OlivarTrack del " + dd(OT.fecha_consulta) + " · sin lectura en vivo", "");
   })();
 
 

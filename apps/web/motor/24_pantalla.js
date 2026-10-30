@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Menu, Pantalla, TR, suave, iniciaTransicion, transEntrada, aterriza, iniciaSalida, transSalida
-// Consume: 01_datos ($), 03_escena (visor, camera, modo), 09_camara (pon), 12_paseo (paseando, persona), 15_tiempo (hace),
-//   16_vida (altSuelo, quita), 20_sonido (snd, sPaso), 22_huellas (emitePolvo, sueloSeco), 25_perros (perrosLlegan), 31_hud (Hud), 90_final (tamano)
+// Consume: 01_datos ($), 02c_componentes (Bus), 03_escena (visor, camera, modo), 09_camara (pon), 12_paseo (paseando, persona), 15_tiempo (hace),
+//   16_vida (altSuelo, quita), 22_huellas (emitePolvo, sueloSeco), 25_perros (perrosLlegan), 31_hud (Hud), 90_final (tamano)
 // ===============================================================================
   // ---------- la página ES el visor (decisión 83): el menú (☰ o Esc) y la pantalla completa de verdad
   // El menú es un <dialog> nativo y modal: atrapa el foco y Esc lo cierra solo. Pestañas con el patrón ARIA (flechas, Inicio, Fin).
@@ -100,7 +100,7 @@
     perrosLlegan();
     var fx = Math.sin(pp.ang), fy = Math.cos(pp.ang);
     if (sueloSeco(pp.x, pp.y)) for (var i = 0; i < 16; i++) { var a = i / 16 * 6.283 + Math.random() * 0.4; emitePolvo(pp.x + Math.cos(a) * 0.3, pp.y + Math.sin(a) * 0.3, altSuelo(pp.x, pp.y) + 0.1, Math.cos(a) * (1.4 + Math.random()), 0.5 + Math.random() * 0.5, Math.sin(a) * (1.4 + Math.random()), 0.45 + Math.random() * 0.3, 0.9 + Math.random() * 0.5); }
-    if (snd.ctx && snd.ctx.state === "running") { sPaso(0.2); setTimeout(function () { sPaso(0.12); }, 90); }
+    Bus.emite("sonido:golpe", {});
   }
   function iniciaSalida() {   // al salir del paseo la cámara vuelve sin salto a la órbita
     TR.sal = true; TR.ts = 0; TR.act = false; TR.pS.copy(camera.position); TR.qS.copy(camera.quaternion);

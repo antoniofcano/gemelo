@@ -48,9 +48,28 @@ Decisiones 46 y 61; UX.md §4.4. Para las Meta Quest, donde teclear un correo y 
 | Caducidad | absoluta 30 días; por inactividad 7 días (configurables) |
 | Revocación | inmediata en la base: salir, salir de todas, la oficina (`/api/admin/hogares/{id}/revocar`), hogar desactivado o borrado |
 | CSRF | `SameSite=Lax` + comprobación de `Origin` en todo POST/PUT/DELETE (salvo `/api/csp-informe`) + sin `text/plain` |
-| Roles | `hogar`, `guia`, `corresponsal`, `admin` |
+| Roles | `hogar`, `guia`, `corresponsal`, `oficina`, `admin` (los dos últimos son de oficina: ver [§ Oficina](#oficina)) |
 | Origen (titular) | cada sesión guarda de dónde nació (`sesiones.origen`, migración 0004): `enlace` (el adulto titular) o `vinculo` (un aparato vinculado con el código corto). `GET /api/sesion` lo da como `titular: true/false`; solo una sesión de titular cuelga contenido (decisión 96, [vida.md](vida.md)) |
 | Estáticos | `/finca/` y `/teselas/` piden sesión al Caddy interno (`forward_auth` → `/api/interno/autoriza`, cerrada desde fuera) |
+
+## Oficina
+
+Decisión: [ADR-0024](../doc/adr/0024-la-oficina-roles-acceso-y-configuracion-versionada.md) (decisiones 104-106); diseño: [OFICINA.md §2](../doc/sistema/OFICINA.md#2-acceso-y-seguridad). Migración `0005`; código: `apps/api/src/oficina/` (`acceso.ts`: las guardas; `aparatos.ts`; `rutas.ts`). Lo comprueban `apps/api/pruebas/integracion/oficina.test.ts` y `apps/api/pruebas/unidad/oficina.test.ts`.
+
+| Qué | Valor |
+|---|---|
+| Cuentas | rol `oficina` (día a día) o `admin` (además parámetros, roles, re-hornear); cada una con su correo, aparte de cualquier hogar. Dar de alta o borrar una cuenta de oficina: solo `admin`, con confirmación reciente |
+| Entrar | el mismo enlace mágico; al gastarlo, la api mira el **aparato** (cookie `__Host-gemelo-aparato`: secreto de 256 bits, `HttpOnly; Secure; SameSite=Strict; Path=/`, un año; en la base, `aparatos_oficina.hash` = su SHA-256). Aparato aprobado → `303 /oficina/`; nuevo o pendiente → `303 /api/oficina/pendiente` (JSON: `aparato: "pendiente"`) |
+| Aparato pendiente | la sesión existe pero **no sirve**: todo lo que pide sesión da `403 aparato_pendiente` (también `/api/sesion`, las hazas, el token de LiveKit y el mundo); solo valen `GET /api/oficina/sesion` y la página de pendiente |
+| Aprobar un aparato | (a) desde otro aparato de oficina ya aprobado, con confirmación reciente: `POST /api/admin/aparatos/{id}/aprobar` (los de cuentas `admin`, solo `admin`); (b) la misma persona entra con **otro enlace desde ese aparato** pasados ≥ 5 min (`GEMELO_OFICINA_SEGUNDO_ENLACE_MIN`) y antes de 24 h; (c) desde la consola del servidor (`aprobado_como = 'consola'`, RUNBOOK-VPS). Un pendiente de más de 24 h ya no se aprueba: el siguiente enlace crea otro |
+| Revocar un aparato | `POST /api/admin/aparatos/{id}/revocar` (los de `admin`, solo `admin` o su propia cuenta): cierra en el acto todas las sesiones que salieron de él |
+| Caducidad | **12 h absolutas** (`GEMELO_OFICINA_SESION_HORAS`; la cookie y `expira_en` se fijan al entrar y además se mira `creada_en`) y **2 h sin actividad** (`GEMELO_OFICINA_INACTIVIDAD_MIN`), en vez de 30 y 7 días |
+| Confirmación reciente | `sesiones.confirmada_en` (al entrar con un enlace) de hace menos de 15 min (`GEMELO_OFICINA_CONFIRMACION_MIN`); si no, lo delicado (borrar una familia, dar o quitar roles de oficina, aprobar un aparato; después: publicar parámetros, re-hornear) da `403 confirmacion_requerida`. `POST /api/oficina/confirmar` manda un enlace nuevo a la propia cuenta (mismos límites que el de la portada); entrar con él abre una sesión nueva y confirmada. Con OF13 la dará también la llave de acceso |
+| Sesiones que no valen | las de una cuenta de oficina **sin aparato** (anteriores a la 0005) o **de un código corto** (`origen = 'vinculo'`); la oficina no puede aprobar códigos cortos (403) |
+| Guardas (para cualquier ruta) | `requiereSesion`, `requiereRol(...roles)`, `requiereConfirmacionReciente()` en `apps/api/src/oficina/acceso.ts` (`auth/roles.ts` las reexporta). Todas las `/api/admin/*` piden `requiereRol("oficina", "admin")` |
+| Estáticos | `/oficina/` solo con sesión de oficina: Caddy hace `forward_auth` a `/api/interno/autoriza?para=oficina` → 204; sin sesión, `303 /`; con sesión de hogar, 403; con el aparato pendiente, `303 /api/oficina/pendiente` |
+| Auditoría | `oficina.aparato_nuevo`, `oficina.aparato_aprobado` (`como`: aparato, segundo_enlace), `oficina.aparato_revocado`, `oficina.confirmacion_pedida`; nunca el secreto del aparato |
+| Riesgo que queda | el **segundo enlace** solo protege de quien tiene un enlace un momento (un reenvío, un escáner), **no** de quien controla el buzón: eso lo cierra la llave de acceso obligatoria (OF13) antes de abrir a familias reales. Un navegador guarda un solo aparato de oficina: dos cuentas en el mismo perfil se pisan la cookie |
 
 ## Registros
 

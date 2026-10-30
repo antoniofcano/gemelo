@@ -91,6 +91,33 @@ export function normalizaPrevision(v: unknown): Prevision | null {
   return { naturaleza: "modelado", ambito: texto(d["ambito"], 200), horas: horas.slice(0, 96), frescura: frescura(d["frescura"]) };
 }
 
+// ---------- el histórico (GET /api/tiempo/historico)
+export interface FuenteHistorico {
+  id: string; temperaturaMaxima: number | null; temperaturaMinima: number | null; lluviaTotalMm: number | null;
+  dias: number | null; diasSinDato: number | null;
+}
+export interface RespuestaHistorico {
+  version: 1; origen: "vigia" | "fixture"; consultadoEn: string; desde: string; hasta: string;
+  fuentes: FuenteHistorico[]; frescura: Frescura; avisos: Aviso[];
+}
+const entero = (v: unknown, max: number): number | null => { const n = num(v, 0, max); return n !== null && Number.isInteger(n) ? n : null; };
+
+/** Lista blanca de historico_meteo: solo las fuentes con id (una por estación) y sus cifras de la semana; lo que falta, null. */
+export function normalizaHistorico(v: unknown): { fuentes: FuenteHistorico[]; frescura: Frescura } | null {
+  const d = obj(v);
+  if (!d || !Array.isArray(d["porFuente"])) return null;
+  const fuentes: FuenteHistorico[] = [];
+  for (const x of d["porFuente"] as unknown[]) {
+    const f = obj(x), id = f && texto(f["id"], 60);
+    if (!f || !id) continue;
+    fuentes.push({
+      id, temperaturaMaxima: num(f["temperaturaMaxima"], -60, 60), temperaturaMinima: num(f["temperaturaMinima"], -60, 60),
+      lluviaTotalMm: num(f["lluviaTotalMm"], 0, 5000), dias: entero(f["dias"], 366), diasSinDato: entero(f["diasSinDato"], 366),
+    });
+  }
+  return { fuentes: fuentes.slice(0, 10), frescura: frescura(d["frescura"]) };
+}
+
 // ---------- la caché
 interface Lectura { crudo: unknown; leidoEn: number }
 interface Parte { lectura: Lectura | null; fallo: boolean }
@@ -164,6 +191,41 @@ export class ServicioTiempo {
       version: 1, origen: this.lector.origen, consultadoEn: new Date(Math.min(...leidos)).toISOString(),
       actual, prevision, avisos: avisos.slice(0, 20),
     };
+  }
+
+  private readonly cacheHis = new Map<string, Lectura>();
+  private readonly enCursoHis = new Map<string, Promise<RespuestaHistorico | null>>();
+  private readonly falloHis = new Map<string, number>();
+
+  /** El histórico entre dos días (caché 1 h por rango, una llamada a la vez, un minuto de espera tras un fallo). null si no hay dato que servir. */
+  async historico(desde: string, hasta: string): Promise<RespuestaHistorico | null> {
+    const clave = desde + "|" + hasta, ahora = this.reloj(), c = this.cacheHis.get(clave);
+    const arma = (l: Lectura, viejo: boolean): RespuestaHistorico | null => {
+      const n = normalizaHistorico(l.crudo);
+      if (!n) return null;
+      const avisos: Aviso[] = [];
+      if (viejo) avisos.push({ de: "gemelo", texto: "Vigía no ha respondido ahora: el histórico es el último que llegó, de hace " + Math.max(1, Math.round((this.reloj() - l.leidoEn) / MIN)) + " min." });
+      for (const t of avisosDeFrescura(obj(l.crudo)?.["frescura"])) avisos.push({ de: "vigia", texto: t });
+      if (n.frescura.datosDeMaqueta) avisos.push({ de: "gemelo", texto: "El histórico: Vigía avisa de que son datos de maqueta." });
+      return { version: 1, origen: this.lector.origen, consultadoEn: new Date(l.leidoEn).toISOString(), desde, hasta, fuentes: n.fuentes, frescura: n.frescura, avisos: avisos.slice(0, 20) };
+    };
+    if (c && ahora - c.leidoEn < this.ttl["prevision_72_horas"]) return arma(c, false);
+    const viejo = () => (c && this.reloj() - c.leidoEn < this.maxViejo ? arma(c, true) : null);
+    const f = this.falloHis.get(clave);
+    if (f !== undefined && ahora - f < this.espera) return viejo();
+    const ya = this.enCursoHis.get(clave);
+    if (ya) return ya;
+    const p = (async (): Promise<RespuestaHistorico | null> => {
+      try {
+        const l = { crudo: await this.lector.historico(desde, hasta), leidoEn: this.reloj() };
+        this.cacheHis.set(clave, l); this.falloHis.delete(clave);
+        if (this.cacheHis.size > 40) this.cacheHis.delete(this.cacheHis.keys().next().value as string);
+        return arma(l, false);
+      } catch { this.falloHis.set(clave, this.reloj()); return viejo(); }
+      finally { this.enCursoHis.delete(clave); }
+    })();
+    this.enCursoHis.set(clave, p);
+    return p;
   }
 
   async cierra(): Promise<void> { await this.lector.cierra(); }

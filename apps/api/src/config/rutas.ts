@@ -1,16 +1,15 @@
 // Configuración versionada del mundo (C6 de ADR-0023, OF6 de doc/sistema/OFICINA.md; decisiones 111-113 y 118; contrato:
 // contratos/config.schema.json, doc/sistema/CONTRATOS.md § Configuración, api.openapi.yaml; tabla: migraciones/0006_config.sql).
-//  - GET /api/config (cualquier sesión): la versión publicada; a una sesión de la oficina (rol oficina o admin), la «en prueba»
-//    si hay una (decisión 113: primero se prueba con las cuentas de la oficina). Sin nada publicado, 200 con { v: 1 } (el
+//  - GET /api/config (cualquier sesión): la versión publicada; a una sesión de la oficina (rol oficina o admin, con su aparato
+//    aprobado: ADR-0024), la «en prueba» si hay una (decisión 113: primero se prueba con las cuentas de la oficina). Sin nada publicado, 200 con { v: 1 } (el
 //    motor sigue con lo del código; un 404 ensuciaría la consola de cada carga).
 //  - /api/admin/config… (solo admin): historial, crear borrador (validado), pasarlo a prueba, publicarlo para todos, retirar
 //    un borrador o una prueba, y «volver» (publicar una COPIA de una versión vieja como versión nueva). Una versión nunca se
-//    reescribe (lo impide también la base). Cada paso queda en la auditoría.
-// TODO(OF1): la confirmación reciente («reautenticación para lo grave», OFICINA §2) para publicar y volver, cuando OF1 la
-// dé; y el rol «oficina» en el tipo Rol (aquí se compara como texto para no depender de la 0005).
+//    reescribe (lo impide también la base). Publicar para todos y volver piden además confirmación reciente (OF1, ADR-0024).
+//    Cada paso queda en la auditoría.
 import { renameSync, writeFileSync } from "node:fs";
 import type { FastifyInstance, FastifyReply } from "fastify";
-import { requiereRol, requiereSesion } from "../auth/roles.ts";
+import { esSesionDeOficina, requiereConfirmacionReciente, requiereRol, requiereSesion } from "../oficina/acceso.ts";
 import { audita } from "../auth/servicio.ts";
 import { type Cliente, enTransaccion } from "../bd/pool.ts";
 import type { Contexto } from "../contexto.ts";
@@ -18,9 +17,6 @@ import { validaConfig } from "./valida.ts";
 
 export type EstadoConfig = "borrador" | "en_prueba" | "publicada" | "retirada";
 interface Fila { version: number; estado: EstadoConfig; nota: string | null; autor_id: number | null; copia_de: number | null; creada_en: Date; estado_en: Date; cuerpo?: Record<string, unknown> }
-
-/** ¿Ve la versión «en prueba»? Las cuentas de la oficina (decisión 113). */
-export const esOficina = (rol: string | undefined): boolean => rol === "admin" || rol === "oficina";
 
 const VERSION = { type: "object", additionalProperties: false, required: ["version"], properties: { version: { type: "integer", minimum: 1, maximum: 2147483647 } } } as const;
 const LIMITE = { rateLimit: { max: 60, timeWindow: 60_000 } };
@@ -31,7 +27,7 @@ const falla = (codigo: number, error: string, mensaje: string): Resultado => ({ 
 
 export async function rutasConfig(app: FastifyInstance, ctx: Contexto): Promise<void> {
   const { bd } = ctx;
-  const soloAdmin = requiereRol("admin");
+  const soloAdmin = requiereRol("admin"), adminConfirmado = [requiereRol("admin"), requiereConfirmacionReciente()];
 
   /** La publicada va también a un fichero (GEMELO_CONFIG_SALIDA) para quien no habla con la api: el hornero lee de ahí el calendario de épocas. */
   function escribeFichero(cuerpo: unknown): void {
@@ -48,7 +44,7 @@ export async function rutasConfig(app: FastifyInstance, ctx: Contexto): Promise<
   app.get("/api/config", { preHandler: requiereSesion, config: { rateLimit: { max: 120, timeWindow: 60_000 } } }, async (req, rep) => {
     const r = await bd.query<{ version: number; estado: EstadoConfig; cuerpo: Record<string, unknown>; estado_en: Date }>(
       `SELECT version, estado, cuerpo, estado_en FROM config_versiones
-        WHERE estado = 'publicada' OR ($1 AND estado = 'en_prueba') ORDER BY (estado = 'en_prueba') DESC LIMIT 1`, [esOficina(req.session.rol)]);
+        WHERE estado = 'publicada' OR ($1 AND estado = 'en_prueba') ORDER BY (estado = 'en_prueba') DESC LIMIT 1`, [esSesionDeOficina(req.session)]);
     const f = r.rows[0];
     const etag = "\"cfg-" + (f ? f.version + "-" + f.estado : "0") + "\"";
     rep.header("cache-control", "private, no-cache").header("vary", "cookie").header("etag", etag);
@@ -107,13 +103,13 @@ export async function rutasConfig(app: FastifyInstance, ctx: Contexto): Promise<
 
   app.post<{ Params: { version: number } }>("/api/admin/config/:version/prueba", { preHandler: soloAdmin, config: LIMITE, schema: { params: VERSION } },
     async (req, rep) => responde(rep, await pasa(req.params.version, req.session.hogarId!, ["borrador"], "en_prueba", "config.en_prueba")));
-  app.post<{ Params: { version: number } }>("/api/admin/config/:version/publicar", { preHandler: soloAdmin, config: LIMITE, schema: { params: VERSION } },
+  app.post<{ Params: { version: number } }>("/api/admin/config/:version/publicar", { preHandler: adminConfirmado, config: LIMITE, schema: { params: VERSION } },
     async (req, rep) => responde(rep, await pasa(req.params.version, req.session.hogarId!, ["en_prueba"], "publicada", "config.publicada")));
   app.post<{ Params: { version: number } }>("/api/admin/config/:version/retirar", { preHandler: soloAdmin, config: LIMITE, schema: { params: VERSION } },
     async (req, rep) => responde(rep, await pasa(req.params.version, req.session.hogarId!, ["borrador", "en_prueba"], "retirada", "config.retirada")));
 
   // volver: una COPIA de una versión vieja (no un borrador) nace publicada como versión nueva; la vieja no se toca
-  app.post<{ Params: { version: number } }>("/api/admin/config/:version/volver", { preHandler: soloAdmin, config: LIMITE, schema: { params: VERSION } }, async (req, rep) => {
+  app.post<{ Params: { version: number } }>("/api/admin/config/:version/volver", { preHandler: adminConfirmado, config: LIMITE, schema: { params: VERSION } }, async (req, rep) => {
     const yo = req.session.hogarId!, desde = req.params.version;
     try {
       const r = await enTransaccion(bd, async c => {

@@ -4,7 +4,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { esOficina } from "../../src/config/rutas.ts";
 import { validaConfig, validaTabla } from "../../src/config/valida.ts";
 import { CONTRATOS, RAIZ } from "../apoyo/esquemas.ts";
 
@@ -78,9 +77,4 @@ test("componentes: el bloque de C1 sigue igual", () => {
   assert.deepEqual(validaConfig({ v: 1, componentes: { "fichas-tiempo": { activo: false, parametros: { a: 1 } } } }), []);
   assert.notDeepEqual(validaConfig({ v: 1, componentes: { Fichas: { activo: true } } }), []);
   assert.notDeepEqual(validaConfig({ v: 1, componentes: { a: { activo: "si" } } }), []);
-});
-
-test("quién ve la versión en prueba: la oficina (oficina, admin), no los hogares", () => {
-  assert.equal(esOficina("admin"), true); assert.equal(esOficina("oficina"), true);
-  for (const r of ["hogar", "guia", "corresponsal", undefined]) assert.equal(esOficina(r), false, String(r));
 });

@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Escena3D
 // Consume: 01_datos (D), 02_mundo (Mundo, suelo), 03_escena (visor, renderer, scene, camera, exag), 04d_sombreado_tiles (SombreadoTiles),
-//   05_nube (nube), 08_marcadores (listo, aplica), 09_camara (objetivo), 14_historia (aviso, carga), 16_vida (mira), 29_vr (panel)
+//   05_nube (nube), 08_marcadores (listo, aplica), 09_camara (objetivo), 14_historia (aviso), 16_vida (mira), 29_vr (panel)
 // ===============================================================================
   // ---------- la escena en 3D Tiles 1.1 (ADR-0015, aceptado; formato en doc/sistema/TILES3D.md): la ÚNICA escena (T8 fase 2, decisión 79). El relieve
   // con su ortofoto lo dibuja 3DTilesRendererJS (versión fijada en apps/web/package.json) desde un tileset.json de tuberia/tiles3d/, con el sombreado

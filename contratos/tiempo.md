@@ -34,12 +34,21 @@ En los dos 503, y sin servidor (salida artefacto sin conector, pruebas antiguas)
 
 `GEMELO_VIGIA=mcp|fixture|no` (por defecto `no`), `GEMELO_VIGIA_MCP_URL` (https en producción), token en `GEMELO_VIGIA_TOKEN_FICHERO` (en producción solo fichero; fuera, también `GEMELO_VIGIA_TOKEN`), que va en la cabecera `Authorization: Bearer`. `fixture` lee las respuestas **sintéticas** de `apps/api/pruebas/vigia/` (`GEMELO_VIGIA_FIXTURE`) y corre sus fechas a «ahora»; prohibido en producción. En local (infra/dev) el modo por defecto es `fixture`.
 
+## El histórico (`GET /api/tiempo/historico?desde=AAAA-MM-DD&hasta=AAAA-MM-DD`, versión 1)
+
+Para la estación del olivo (`23_estacion.js`: el clima de la semana de la fecha que se elige). Esquema: [`tiempo-historico.schema.json`](tiempo-historico.schema.json) (lista blanca). Ejemplo sintético: [`tiempo-historico-ejemplo.json`](tiempo-historico-ejemplo.json). Misma configuración, mismos modos (`GEMELO_VIGIA=mcp|fixture|no`) y misma sesión que `/api/tiempo`.
+
+- Herramienta de Vigía: `historico_meteo` con `{ desde, hasta }`. Respuesta: `fuentes[]` (una por estación o fuente: `id`, `temperaturaMaxima`, `temperaturaMinima`, `lluviaTotalMm`, `dias`, `diasSinDato`; **medido**), `frescura`, `avisos` (los de antigüedad o de maqueta, como en `/api/tiempo`).
+- Rango: días reales, `hasta` no antes que `desde`, como mucho 31 días; si no, `400 rango_no_valido`. Caché en la api: 1 h por rango; un fallo no se repite hasta pasado un minuto; si Vigía falla y hay una lectura anterior de menos de 24 h, se sirve con aviso. `503 tiempo_apagado` / `503 vigia_no_responde` como en `/api/tiempo`. `cache-control: private, max-age=300`.
+- El motor elige la fuente de la **estación del tiempo de ahora** (`estacion.id`) o, si no, la que se llama «Imarto» (lo que hacía antes); si no hay ninguna, no elige otra al azar: dice que la estación no tiene datos esa semana. Sin api o con error, el clima del mundo sigue siendo el de hoy y la ventana lo dice.
+- **[NO VERIFICADO contra el Vigía real]**: los nombres de campo salen de lo que leía el motor por el conector de claude.ai (`porFuente[]`, `temperaturaMaxima`, `temperaturaMinima`, `lluviaTotalMm`, `dias`, `diasSinDato`).
+
 ## En el motor
 
 `15_tiempo.js` lee `/api/tiempo` del mismo origen (solo si la página la sirve el servidor, o con `?api=`), refresca cada 10 min y expone `TiempoVivo.lee()` → `{ origen: "vigia"|"fixture"|"simulado", actual: { temperatura, humedadRelativa, viento, racha, direccion, lluvia, cielo, estacion: { id, distanciaKm }, naturaleza: "medido" } | null, horas: [ { instante, temperatura, humedadRelativa, viento, racha, direccion, nubosidad, lluvia, probabilidadLluvia, naturaleza: "modelado" } ], frescura: { generadoEn, horasDeAntiguedad }, avisos: [texto] }` y `TiempoVivo.alCambiar(fn)`. `cielo` (`despejado|nubes|cubierto|lluvia|niebla`) es **deducido** de la nubosidad y la lluvia de la hora de la previsión y de la humedad medida; `lluvia` del actual es el acumulado medido.
 
 ## Lo que NO se sabe
 
-- La forma se leyó por el conector de claude.ai el 2026-10-30; **no se ha probado contra el MCP de Vigía desde la api** (hace falta la URL y un token del gemelo).
+- La forma se leyó por el conector de claude.ai el 2026-10-30 (ya retirado, decisión 79); **no se ha probado contra el MCP de Vigía desde la api** (hace falta la URL y un token del gemelo).
 - Si Vigía mete avisos de antigüedad dentro de `frescura` y con qué nombre: la api recoge `aviso`, `advertencia` o `avisoDeAntiguedad` si vienen. **[SUPUESTO]**
 - El periodo del acumulado `lluviaAcumulada` (¿desde medianoche?). **[SUPUESTO: no se usa para dibujar lluvia]**
