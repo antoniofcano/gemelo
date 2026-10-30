@@ -7,14 +7,14 @@
     "heapMB": 350
   },
   "fixture": {
-    "$comment": "T8 fase 2 (2026-10-30): la escena 3D Tiles es la única (decisión 79); se funden los antiguos «fixture» (la escena clásica, borrada con 04_terreno.js) y «fixture_escena_tiles», y van por finca (las dos del fixture se sirven igual: indice.json, t/ y tileset/). Topes fijados con dos vueltas de la puerta por el banco (GEMELO_MIDE=1, SwiftShader: recuentos y memoria, NO fps), iguales en las dos fincas del fixture sintético. Medido (llamadas / triángulos / puntos / heap MB): cerro lejos 124 / 14,2 k / 620 / 25, cerca 54 / 163 k / 2,8 k / 25-26, nube 73 / 7,4 k / 2,96 k / 25-28; hituelo lejos 124 / 14,2 k / 620 / 25-26, cerca 54 / 163 k / 2,8 k / 25-28, nube 78-80 / 7,7-7,8 k / 2,96 k / 24-27. OJO: de las 124 llamadas de «lejos», 98 son la bandada de 16_vida.js (una malla por ave), que solo vuela DE DÍA y sin lluvia (reloj real de la máquina): las medidas de «fixture_escena_tiles» del 2026-10-29 (lejos 25, nube 24) eran de noche o con lluvia. Los topes cubren el día: llamadas ≈ 25-30 % sobre lo medido (lejos 155, cerca 70, nube 100); triángulos, puntos y heap se quedan como estaban (cubren lo medido con ≥ 25 %).",
+    "$comment": "T8 fase 2 (2026-10-30): la escena 3D Tiles es la única (decisión 79); se funden los antiguos «fixture» (la escena clásica, borrada con 04_terreno.js) y «fixture_escena_tiles», y van por finca (las dos del fixture se sirven igual: indice.json, t/ y tileset/). Topes fijados con dos vueltas de la puerta por el banco (GEMELO_MIDE=1, SwiftShader: recuentos y memoria, NO fps), iguales en las dos fincas del fixture sintético. Medido (llamadas / triángulos / puntos / heap MB): cerro lejos 124 / 14,2 k / 620 / 25, cerca 54 / 163 k / 2,8 k / 25-26, nube 73 / 7,4 k / 2,96 k / 25-28; hituelo lejos 124 / 14,2 k / 620 / 25-26, cerca 54 / 163 k / 2,8 k / 25-28, nube 78-80 / 7,7-7,8 k / 2,96 k / 24-27. OJO: de las 124 llamadas de «lejos», 98 son la bandada de 16_vida.js (una malla por ave), que solo vuela DE DÍA y sin lluvia (reloj real de la máquina): las medidas de «fixture_escena_tiles» del 2026-10-29 (lejos 25, nube 24) eran de noche o con lluvia. Los topes cubren el día: llamadas ≈ 25-30 % sobre lo medido (lejos 155, cerca 70, nube 100); triángulos, puntos y heap se quedan como estaban (cubren lo medido con ≥ 25 %). M6 (2026-10-30): el suelo de fondo bajo el tileset (04e_suelo_fondo.js) suma 1 llamada y 10.824 triángulos en «lejos» (puerta: 25.014 en las dos fincas frente a 14.190 sin fondo); el tope de triángulos de «lejos» pasa de 20.000 a 30.000. Coste buscado: tapa el vacío de los bordes.",
     "hituelo": {
-      "lejos": { "llamadas": 155, "triangulos": 20000, "puntos": 800, "heapMB": 45 },
+      "lejos": { "llamadas": 155, "triangulos": 30000, "puntos": 800, "heapMB": 45 },
       "cerca": { "llamadas": 70, "triangulos": 210000, "puntos": 3600, "heapMB": 45 },
       "nube": { "llamadas": 100, "triangulos": 13000, "puntos": 3800, "heapMB": 45 }
     },
     "cerro": {
-      "lejos": { "llamadas": 155, "triangulos": 20000, "puntos": 800, "heapMB": 45 },
+      "lejos": { "llamadas": 155, "triangulos": 30000, "puntos": 800, "heapMB": 45 },
       "cerca": { "llamadas": 70, "triangulos": 210000, "puntos": 3600, "heapMB": 45 },
       "nube": { "llamadas": 100, "triangulos": 13000, "puntos": 3800, "heapMB": 45 }
     }
