@@ -8,7 +8,7 @@
 <meta name="color-scheme" content="light dark">
 <title>Oficina · Cuarenta hazas</title>
 <!-- La oficina (/oficina/, doc/sistema/OFICINA.md, ADR-0024). OF2: el esqueleto (barra lateral, cabecera con la sesión, tema) y la
-     sección Familias contra la api real; OF3, la sección Hazas (editor de lindes con OpenLayers en EPSG:25830). Sin three ni motor; NADA en línea (CSP estricta: script-src 'self'; style-src 'self'):
+     sección Familias contra la api real; OF3, la sección Hazas (editor de lindes con OpenLayers en EPSG:25830) y, OF5, Sistema (estado, correo de prueba, OlivarTrack, Vigía, hornero, aparatos, auditoría). Sin three ni motor; NADA en línea (CSP estricta: script-src 'self'; style-src 'self'):
      ni estilos ni manejadores de eventos en las etiquetas; el DOM se construye con textContent. Caddy solo la sirve con una sesión de oficina
      (forward_auth a /api/interno/autoriza?para=oficina) y la api vuelve a comprobarlo en cada ruta. Herramienta de ordenador
      (decisión 116): pensada para 1280 y 1024 px de ancho. La maqueta de referencia es prototipos/oficina/index.html. -->
@@ -50,7 +50,7 @@
       <p><button class="boton peq" type="button" data-ir="familias">Ver familias</button></p>
     </div>
   </div>
-  <p class="nota">El resto de secciones (Bandeja, Agenda, Directos, Mundo, Olivos y Sistema) llegan en las siguientes tareas de la oficina.</p>
+  <p class="nota">El resto de secciones (Bandeja, Agenda, Directos, Mundo y Olivos) llegan en las siguientes tareas de la oficina.</p>
 </section>
 
 <section id="s-familias" hidden>
@@ -109,6 +109,25 @@
     </div>
     <aside class="tarjeta ficha" id="hFicha" aria-live="polite"></aside>
   </div>
+</section>
+
+<section id="s-sistema" hidden>
+  <div class="barra-h">
+    <p class="nota" id="sSaludHora">Comprobando…</p>
+    <button class="boton empuja" id="bSistemaRefresca" type="button">↻ Actualizar</button>
+  </div>
+  <div class="rejilla">
+    <div class="tarjeta"><h3>Salud</h3><ul class="lista salud" id="sSalud"></ul></div>
+    <div class="tarjeta"><h3>Correo</h3><p id="sCorreo"></p><p class="nota">La prueba se manda a tu propia cuenta de oficina, nunca a otra.</p><p><button class="boton" id="bCorreo" type="button">Mandarme un correo de prueba</button></p></div>
+    <div class="tarjeta"><h3>OlivarTrack</h3><p class="nota" id="sOtModo"></p><div class="tabla-env"><table aria-label="Última lectura de cada herramienta de OlivarTrack"><thead><tr><th scope="col">Herramienta</th><th scope="col">Estado</th><th scope="col">Dato</th></tr></thead><tbody id="sOt"></tbody></table></div><p><button class="boton" id="bSinc" type="button" hidden>Sincronizar ahora</button></p></div>
+    <div class="tarjeta"><h3>Vigía</h3><div id="sVigia"></div></div>
+    <div class="tarjeta"><h3>Hornero</h3><div id="sHornero"></div></div>
+    <div class="tarjeta"><h3>Aparatos de oficina</h3><ul class="lista" id="sAparatos"></ul></div>
+  </div>
+  <div class="tarjeta"><div class="barra-h"><h3>Auditoría</h3>
+    <label class="vh" for="sAudF">Filtrar por acción</label><select class="entrada empuja" id="sAudF"><option value="">Todas las acciones</option></select></div>
+    <div class="tabla-env"><table aria-describedby="sAudCuenta"><thead><tr><th scope="col">Cuándo</th><th scope="col">Quién</th><th scope="col">Acción</th><th scope="col">Sobre</th></tr></thead><tbody id="sAud"></tbody></table></div>
+    <div class="barra-h"><p class="nota" id="sAudCuenta"></p><button class="boton peq empuja" id="sAudMas" type="button" hidden>Ver más</button></div></div>
 </section>
 
 <section id="s-proximamente" hidden>

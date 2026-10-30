@@ -1,16 +1,17 @@
-// La oficina (OF2): el esqueleto (navegación por secciones, cabecera con la sesión, tema), la sección Familias y (OF3) la de Hazas.
+// La oficina (OF2): el esqueleto (navegación por secciones, cabecera con la sesión, tema), la sección Familias, (OF3) la de Hazas y (OF5) la de Sistema.
 // Mismo origen; nada en línea (CSP estricta). Familias y Hazas son funcionales; las demás secciones dicen «próximamente».
 import { $, api, fecha, h, vacia } from "./comun.js";
 import { iniciaFamilias } from "./familias.js";
+import { iniciaSistema } from "./sistema.js";
 
 const SECCIONES = [
   ["inicio", "🏠", "Inicio", true], ["familias", "👪", "Familias", true], ["hazas", "🗺️", "Hazas", true], ["bandeja", "📥", "Bandeja", false],
   ["agenda", "📅", "Agenda", false], ["directos", "🎙️", "Directos", false], ["mundo", "🌳", "Mundo", false], ["olivos", "🫒", "Olivos", false],
-  ["sistema", "⚙️", "Sistema", false],
+  ["sistema", "⚙️", "Sistema", true],
 ];
 const sesion = { rol: "oficina", cargada: false };
 let actual = "inicio";
-let familias = null, hazas = null;
+let familias = null, hazas = null, sistema = null;
 
 // ------------------------------------------------------------------ tema
 $("#bTema").addEventListener("click", () => {
@@ -34,7 +35,7 @@ function ir(sec, foco) {
   if (!SECCIONES.some(s => s[0] === sec)) sec = "inicio";
   actual = sec;
   const [, , nombre, hecha] = SECCIONES.find(s => s[0] === sec);
-  for (const id of ["inicio", "familias", "hazas", "proximamente"]) $("#s-" + id).hidden = id !== (hecha ? sec : "proximamente");
+  for (const id of ["inicio", "familias", "hazas", "sistema", "proximamente"]) $("#s-" + id).hidden = id !== (hecha ? sec : "proximamente");
   if (!hecha) $("#proxTitulo").textContent = nombre + ": próximamente";
   for (const b of nav.querySelectorAll("button")) { if (b.dataset.sec === sec) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); }
   $("#titulo").textContent = nombre;
@@ -42,6 +43,7 @@ function ir(sec, foco) {
   if (location.hash !== "#" + sec) history.replaceState(null, "", "#" + sec);
   if (sec === "familias") familias.abre();
   if (sec === "hazas") abreHazas();
+  if (sec === "sistema") sistema.abre();
   if (sec === "inicio") cuentaFamilias();
   if (foco) $("#titulo").focus();
 }
@@ -83,4 +85,5 @@ $("#salir").addEventListener("click", async () => {
 });
 
 familias = iniciaFamilias({ sesion });
+sistema = iniciaSistema({ sesion });
 cargaSesion().then(() => ir(location.hash.slice(1) || "inicio", false)).catch(() => { $("#anuncio").textContent = "No se pudo leer la sesión."; });

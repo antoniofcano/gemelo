@@ -46,6 +46,8 @@ export interface Config {
   medios: { carpeta: string | null; maxBytes: number; retencionDias: number; subidasPorHora: number; escriturasPorHora: number };
   /** dónde dejar también la configuración publicada (GEMELO_CONFIG_SALIDA), para el hornero (calendario de épocas); null = en ningún sitio */
   configFichero: string | null;
+  /** el estado del hornero (GEMELO_HORNERO_ESTADO: <finca>.json y servicio.json) y su salida (GEMELO_HORNERO_SALIDA: <finca>/olivos/manifiesto.json), de SOLO LECTURA, para Sistema en la oficina; null = sin conectar */
+  hornero: { estado: string | null; salida: string | null };
 }
 
 export interface ConfigLiveKit {
@@ -241,5 +243,6 @@ export function cargaConfig(e: Entorno = process.env): Config {
       escriturasPorHora: entero(e, "GEMELO_VIDA_ESCRITURAS_HORA", 60, 1, 10000),
     },
     configFichero: e["GEMELO_CONFIG_SALIDA"]?.trim() || null,
+    hornero: { estado: e["GEMELO_HORNERO_ESTADO"]?.trim() || null, salida: e["GEMELO_HORNERO_SALIDA"]?.trim() || null },
   };
 }

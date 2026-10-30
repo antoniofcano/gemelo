@@ -5,9 +5,9 @@
 //   node pruebas/e2e/oficina_servidor.ts <carpeta del build de la oficina> [<carpeta de la finca del fixture (indice.json y t/)>]
 // Con la carpeta de la finca (pruebas/guardianes/oficina_hazas.test.js) la sirve en /teselas/hituelo/ tras sesión (como el Caddy), carga sus
 // copas como olivos medidos y pone las cuatro hazas sobre sus dos parcelas (cada una partida en dos), como tuberia/hazas/desde_fixture.py.
-// Rutas de ayuda (solo aquí, nunca en la api): /__prueba/enlace?para=<correo> · /__prueba/buzon?para=<correo> · /__prueba/hogar?correo=<correo>
+// Rutas de ayuda (solo aquí, nunca en la api): /__prueba/aparato-pendiente?nombre=<nombre> · /__prueba/enlace?para=<correo> · /__prueba/buzon?para=<correo> · /__prueba/hogar?correo=<correo>
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import type http from "node:http";
 import https from "node:https";
 import { tmpdir } from "node:os";
@@ -16,7 +16,9 @@ import { fileURLToPath } from "node:url";
 import { construyeApp } from "../../src/app.ts";
 import { hashToken, nuevoToken } from "../../src/seguridad/cripto.ts";
 import { hayDocker, levantaBd } from "../apoyo/bd.ts";
-import { configDePrueba, contexto } from "../apoyo/contexto.ts";
+import { LectorVigiaFixture } from "../../src/vigia/lector-fixture.ts";
+import { ServicioTiempo } from "../../src/vigia/servicio.ts";
+import { configDePrueba, contexto, GRABACIONES } from "../apoyo/contexto.ts";
 
 const dist = process.argv[2];
 const finca = process.argv[3];
@@ -42,7 +44,16 @@ const puerto = (servidor.address() as { port: number }).port;
 const url = "https://localhost:" + puerto;
 
 const bd = await levantaBd();
-const ctx = contexto(bd.app, configDePrueba({ GEMELO_URL_PUBLICA: url, GEMELO_ENLACE_POR_CORREO: "100", GEMELO_ENLACE_POR_IP: "1000" }));
+// Sistema (OF5): OlivarTrack con las grabaciones, Vigía con el fixture sintético y un hornero de mentira (su estado y manifiesto en una carpeta temporal)
+const hornero = mkdtempSync(join(tmpdir(), "oficina-hornero-"));
+mkdirSync(join(hornero, "estado"), { recursive: true }); mkdirSync(join(hornero, "salida", "hituelo", "olivos"), { recursive: true });
+const ahoraIso = new Date().toISOString();
+writeFileSync(join(hornero, "estado", "servicio.json"), JSON.stringify({ v: 1, pid: 1, latido_en: ahoraIso, comprueba_s: 600, fincas: { hituelo: { durmiendo_hasta: "2026-11-01T03:00:00Z", ultimo_motivo: "primera vuelta", ultima_vuelta_en: ahoraIso, fallo: null } } }));
+writeFileSync(join(hornero, "estado", "hituelo.json"), JSON.stringify({ v: 1, finca: "hituelo", fase: "listo", error: null, epoca_actual: "envero", actualizado_en: ahoraIso }));
+writeFileSync(join(hornero, "salida", "hituelo", "olivos", "manifiesto.json"), JSON.stringify({ horneado_en: ahoraIso, actual: "envero", epocas: [{ epoca: "envero" }, { epoca: "madura" }], variantes: [{ bytes_br: 1_500_000 }, { bytes_br: 2_900_000 }] }));
+const ctx = contexto(bd.app, configDePrueba({ GEMELO_URL_PUBLICA: url, GEMELO_ENLACE_POR_CORREO: "100", GEMELO_ENLACE_POR_IP: "1000", GEMELO_OT: "grabado", GEMELO_OT_GRABACIONES: GRABACIONES,
+  GEMELO_VIGIA: "fixture", GEMELO_VIGIA_FIXTURE: GRABACIONES + "../vigia", GEMELO_HORNERO_ESTADO: join(hornero, "estado"), GEMELO_HORNERO_SALIDA: join(hornero, "salida") }));
+ctx.tiempo = new ServicioTiempo(new LectorVigiaFixture(GRABACIONES + "../vigia"));
 const app = await construyeApp(ctx);
 await app.ready();
 
@@ -108,6 +119,10 @@ servidor.on("request", (req, res) => {
       res.writeHead(200, { "content-type": "text/plain", "set-cookie": "__Host-gemelo-aparato=" + secretoAparato + "; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=86400" });
       return void res.end("aparato");
     }
+    if (ruta === "/__prueba/aparato-pendiente") {   // OF5: un aparato nuevo de la cuenta de oficina, a la espera de que otro lo apruebe
+      await dueno.query("INSERT INTO aparatos_oficina (hogar_id, nombre, hash) VALUES ($1, $2, $3)", [await idDe(ADMIN), q.get("nombre") ?? "Aparato nuevo", hashToken(nuevoToken())]);
+      return json(res, 200, { ok: true });
+    }
     if (ruta === "/__prueba/buzon") { const m = ctx.cartero.ultimoPara(q.get("para") ?? ""); return json(res, m ? 200 : 404, m ?? { error: "sin_correo" }); }
     if (ruta === "/__prueba/hogar") {
       const h = (await dueno.query(
@@ -144,7 +159,7 @@ servidor.on("request", (req, res) => {
 });
 
 console.log("LISTO " + JSON.stringify({ url, secretoAparato, admin: ADMIN }));
-const cierra = async () => { try { await app.close(); await bd.cierra(); } finally { process.exit(0); } };
+const cierra = async () => { try { await app.close(); await bd.cierra(); } finally { rmSync(hornero, { recursive: true, force: true }); process.exit(0); } };
 process.on("SIGTERM", () => void cierra());
 process.on("SIGINT", () => void cierra());
 process.stdin.on("end", () => void cierra());
