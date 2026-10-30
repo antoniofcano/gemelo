@@ -14,7 +14,7 @@
 /** Racimos objetivo por escalón (E2VR = E2: las gafas usan las mismas tarjetas, ADR-0022 §3) */
 export const RACIMOS = Object.freeze({ E1: 320, E2: 140 });
 /** Fracción opaca (alfa ≥ 0,45) de la imagen de una ramita (dibujaRamita, 256 × 512) y de una celda del atlas; medidas en Chrome (o9b_tarjetas.mjs) */
-export const PHI_RAMITA = 0.30, PHI_CELDA = 0.55;
+export const PHI_RAMITA = 0.19, PHI_CELDA = 0.25;   // envero y reposo (medido: 0,182/0,191 y 0,24-0,27); en flor 0,22-0,24 y 0,27-0,30
 const REJ = 10, MIN_CAJA = 0.35;
 /** El atlas: 4 × 2 celdas de 256 px; fila 0 sin olivas (geo «tarjeta»), fila 1 con olivas (geo «tarjetaO», E2 en épocas con fruto); columnas 0-2 = planos A, B, C */
 export const ATLAS = Object.freeze({ ancho: 1024, alto: 512, cols: 4, filas: 2, celda: 256, version: 1 });
