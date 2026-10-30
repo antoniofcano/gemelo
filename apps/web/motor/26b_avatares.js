@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
 // Consume: 01_datos ($), 02_mundo (suelo), 03_escena (renderer, scene, camera, exag), 12_paseo (paseando, persona, primera),
-//   16_vida (enQuad, quad, enDron, dron), 26_presencia (Muneco, avatarVRM, Presencia), 29_vr (VRX)
+//   16_vida (enQuad, quad, enDron, dron), 26_presencia (Aspecto, Muneco, avatarVRM, Presencia), 29_vr (VRX)
 // Nota: Sin presencia no crea nada; con ella, pide /avatares/catalogo.json solo si alguien lleva avatar (o con &vrm=1 en la simulación) e import("@pixiv/three-vrm") solo entonces. El trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/avatares.test.js.
 // ===============================================================================
   // ---------- avatares VRM (P7c, ADR-0020): los N más cercanos que caben en el presupuesto del aparato llevan su VRM del catálogo; el resto, el muñeco
@@ -18,13 +18,17 @@
   //    azar y mirada (VRMLookAt) hacia la cámara si está cerca y delante. Muelles (pelo, ropa) solo en escritorio y fuera de VR. Todo ilustrativo (regla 5).
   //  · Varias personas con el mismo avatar: three-vrm no clona un VRM (VRMUtils no trae clon): se vuelve a analizar desde el MISMO ArrayBuffer y la
   //    geometría y las texturas se toman de la primera copia viva (?vrmcomparte=no lo apaga, para medir); se sueltan con la última (deepDispose).
+  //  · AV4 (ADR-0025, catálogo v2): el CUERPO de la receta (metadatos: avatar.cuerpo, pelo, vello, ropa…) es un VRM con todas sus piezas dentro; se enseñan las de la
+  //    receta (lo oculto ni se dibuja ni se sube a la GPU), se tiñe por nombre de material con los colores de la persona (los del muñeco: Aspecto) y va a su tamaño
+  //    de verdad × su altura. Los peques (ofrecer: false) no se dibujan (decisión 132). Con silla de ruedas, sentado como en el quad. Sin huesos de ojos: sin VRMLookAt.
 
   // [puro:inicio] — sin THREE ni DOM: pruebas/guardianes/avatares.test.js evalúa este trozo tal cual en Node
   var AvataresPuro = (function () {
     var CUPO = { escritorio: 6, movil: 3, quest: 3 }, CUPO_VR = [3, 2, 1, 0];
     var DMAX = 40, PUESTOS_EXTRA = 2, DIST_EXTRA = 1.1, MEJORA = 0.9;
     var BAJA = 1.25, CODO = 0.15, CODO_QUAD = 0.4, CODO_DRON = 0.9, RODILLA = 0.6, INCLINA = 0.35, CAB_YAW = 1.1, CAB_PITCH = 0.6;
-    var ID = /^[a-z0-9-]{1,32}$/, FICHERO = /^[a-z0-9-]{1,32}\.vrm$/, SHA = /^[0-9a-f]{64}$/, HEX = /^#?([0-9a-fA-F]{6})$/;
+    var ID = /^[a-z0-9-]{1,32}$/, FICHERO = /^[a-z0-9-]{1,32}\.vrm$/, SHA = /^[0-9a-f]{64}$/, HEX = /^#?([0-9a-fA-F]{6})$/, MALLA = /^pieza_[a-z0-9-]{1,32}$/;
+    var TIPOS = ["pelo", "vello", "ropa", "accesorio"], EDADES = ["peque", "joven", "adulta", "mayor"], SOMBRERO = ["", "paja", "gorra"];
     // cuántos VRM a la vez: con gafas, según el escalón de los perfiles de VR (29_vr.js); si no, por aparato
     function cupo(disp, vr, nivelVR) {
       if (vr) { var n = nivelVR | 0; return CUPO_VR[Math.max(0, Math.min(CUPO_VR.length - 1, n))]; }
@@ -34,20 +38,65 @@
       if (typeof v === "number" && v % 1 === 0 && v >= 0 && v <= 0xffffff) return v;
       var m = typeof v === "string" ? HEX.exec(v) : null; return m ? parseInt(m[1], 16) : null;
     }
-    // catalogo.json (P7b, contratos/avatares.md): { v: 1, avatares: [{ id, fichero, sha256, bytes, vrm_version, colores_muneco: {camisa, piel, sombrero} … }] }. Es un DATO del servidor: lo que no
-    // cuadra (id, fichero) se descarta; el resto de campos (licencia, atribución…) no los usa el motor. null si no hay ninguno válido
+    // catalogo.json (contratos/avatares.md): v1 { v: 1, avatares: [{ id, fichero, sha256, bytes, vrm_version, colores_muneco: {camisa, piel, sombrero} … }] } y, desde AV4 (ADR-0025),
+    // v2 { v: 2, cuerpos: [{ id, edad, complexion, ofrecer, fichero, sha256, bytes, piezas: [ids], mirada }], piezas: [{ id, tipo, malla, cubre_ropa_base?, sombrero?, color? }],
+    // paletas, avatares?: [los de v1] }. Es un DATO del servidor: lo que no cuadra (id, fichero, malla) se descarta; el resto de campos (licencia, atribución, paletas: el motor
+    // tiñe con las suyas, que son las mismas) no los usa el motor. Los cuerpos sin `ofrecer` (peques, decisión 132) se leen pero no se dibujan. null si no hay nada válido
     function leeCatalogo(j) {
-      var l = j && j.v === 1 && Array.isArray(j.avatares) ? j.avatares : null; if (!l) return null;   // otra versión del contrato: como sin catálogo
-      var todos = [], porId = Object.create(null);
-      for (var i = 0; i < l.length && todos.length < 64; i++) {
-        var e = l[i]; if (!e || typeof e !== "object" || !ID.test(e.id) || porId[e.id]) continue;
-        var f = e.fichero == null ? e.id + ".vrm" : e.fichero; if (!FICHERO.test(f)) continue;
-        var c = e.colores_muneco && typeof e.colores_muneco === "object" ? e.colores_muneco : {};
-        var a = { id: e.id, nombre: typeof e.nombre === "string" ? e.nombre.slice(0, 40) : e.id, fichero: f, sha256: SHA.test(e.sha256) ? e.sha256 : null,
-          bytes: typeof e.bytes === "number" && e.bytes > 0 ? e.bytes : null, camisa: color(c.camisa), piel: color(c.piel) };
+      if (!j || (j.v !== 1 && j.v !== 2)) return null;   // otra versión del contrato: como sin catálogo
+      var l = Array.isArray(j.avatares) ? j.avatares : [], todos = [], porId = Object.create(null), cuerpos = [], piezas = Object.create(null), i;
+      function base(e) {
+        if (!e || typeof e !== "object" || !ID.test(e.id) || porId[e.id]) return null;
+        var f = e.fichero == null ? e.id + ".vrm" : e.fichero; if (!FICHERO.test(f)) return null;
+        return { id: e.id, nombre: typeof e.nombre === "string" ? e.nombre.slice(0, 40) : e.id, fichero: f, sha256: SHA.test(e.sha256) ? e.sha256 : null, bytes: typeof e.bytes === "number" && e.bytes > 0 ? e.bytes : null };
+      }
+      for (i = 0; i < l.length && todos.length < 64; i++) {
+        var a = base(l[i]); if (!a) continue;
+        var c = l[i].colores_muneco && typeof l[i].colores_muneco === "object" ? l[i].colores_muneco : {};
+        a.camisa = color(c.camisa); a.piel = color(c.piel);
         todos.push(a); porId[a.id] = a;
       }
-      return todos.length ? { todos: todos, porId: porId } : null;
+      if (j.v === 2) {
+        var lp = Array.isArray(j.piezas) ? j.piezas : [], lc = Array.isArray(j.cuerpos) ? j.cuerpos : [];
+        for (i = 0; i < lp.length && i < 64; i++) {
+          var p = lp[i]; if (!p || typeof p !== "object" || !ID.test(p.id) || piezas[p.id] || TIPOS.indexOf(p.tipo) < 0 || !MALLA.test(p.malla)) continue;
+          piezas[p.id] = { id: p.id, tipo: p.tipo, malla: p.malla, cubre: p.cubre_ropa_base === true, color: color(p.color), sombrero: SOMBRERO.indexOf(p.sombrero) > 0 ? SOMBRERO.indexOf(p.sombrero) : 0 };
+        }
+        for (i = 0; i < lc.length && cuerpos.length < 32; i++) {
+          var b = base(lc[i]); if (!b || EDADES.indexOf(lc[i].edad) < 0) continue;
+          b.cuerpo = true; b.edad = lc[i].edad; b.ofrecer = lc[i].ofrecer === true; b.mirada = lc[i].mirada === "huesos" || lc[i].mirada === "expresion" ? lc[i].mirada : "ninguna";
+          b.piezas = (Array.isArray(lc[i].piezas) ? lc[i].piezas : []).filter(function (x) { return typeof x === "string" && !!piezas[x]; });
+          cuerpos.push(b); porId[b.id] = b;
+        }
+      }
+      return todos.length || cuerpos.length ? { todos: todos, porId: porId, cuerpos: cuerpos, piezas: piezas, ofrecidos: cuerpos.filter(function (b) { return b.ofrecer; }) } : null;
+    }
+    // qué VRM lleva una persona (AV4): el cuerpo de su receta si está en el catálogo y se ofrece; si no, su avatar cerrado (v1, avatar.vrm); si no, ninguno (el muñeco)
+    function cualVrm(cat, receta, vrm) {
+      if (!cat) return null;
+      var c = receta && receta.cuerpo ? cat.porId[receta.cuerpo] : null;
+      if (c && c.cuerpo && c.ofrecer) return c.id;
+      var v = vrm ? cat.porId[vrm] : null;
+      return v && !v.cuerpo ? v.id : null;
+    }
+    // qué mallas de piezas se ven con esa receta en ese cuerpo: { mallas: {pieza_x: true}, cubre: la ropa base no se dibuja, colorSombrero }. Una pieza que el cuerpo no trae,
+    // o de otro tipo, no se pone. El sombrero sale del de siempre (avatar.sombrero: 0 ninguno, 1 paja, 2 gorra), el mismo del muñeco (C13); `acc`, el resto de accesorios
+    function piezasDe(cat, c, receta, sombrero) {
+      var out = { mallas: {}, cubre: false, colorSombrero: null }; if (!c || !c.cuerpo) return out;
+      receta = receta || {};
+      function ponPieza(id, tipo) {
+        var p = id && c.piezas.indexOf(id) >= 0 ? cat.piezas[id] : null; if (!p || p.tipo !== tipo) return;
+        out.mallas[p.malla] = true; if (p.cubre) out.cubre = true; if (p.sombrero && p.color !== null) out.colorSombrero = p.color;
+      }
+      ponPieza(receta.pelo, "pelo"); ponPieza(receta.vello, "vello"); ponPieza(receta.ropa, "ropa");
+      (receta.acc || []).forEach(function (x) { var p = cat.piezas[x]; if (p && !p.sombrero) ponPieza(x, "accesorio"); });
+      if (sombrero > 0) for (var i = 0; i < c.piezas.length; i++) { var q = cat.piezas[c.piezas[i]]; if (q.sombrero === sombrero) { ponPieza(q.id, "accesorio"); break; } }
+      return out;
+    }
+    // el color de cada material por su nombre (decisión 128: se tiñe en el motor, sin texturas). col = { piel, arriba, abajo, pelo } (0xrrggbb) de la persona; null = como viene
+    function colorMaterial(nombre, col, colorSombrero) {
+      var n = String(nombre || "").replace(/\.\d+$/, "");
+      return n === "piel" ? col.piel : n === "ropa_base" ? col.arriba : n === "ropa_abajo" ? col.abajo : n === "pelo" ? col.pelo : n === "sombrero" ? colorSombrero : null;
     }
     // quién lleva VRM: tengo = {id: true} los de ahora; cand = [{id, d}] los que podrían (se ven, tienen avatar del catálogo y no ha fallado su fichero);
     // n = plazas. Devuelve el conjunto nuevo (nunca más de n). Histéresis: quien ya lo lleva sigue mientras esté en los n + 2 primeros y a menos de 44 m;
@@ -75,13 +124,13 @@
       var veh = mu.vehiculo | 0, L = opc.L > 0.3 ? opc.L : 0.9, ag = Math.max(0, Math.min(L * 0.8, mu.agacho || 0));
       var al = ag > 0 ? Math.acos(1 - ag / L) : 0;   // agacharse: muslo adelante al y espinilla atrás 2·al; la cadera baja L·(1 − cos al) = ag
       var pI = mu.piernaI || 0, pD = mu.piernaD || 0;
-      if (veh === 1) {   // sentado en el quad: muslos adelante (1,15 rad) y espinillas en vertical
+      if (veh === 1 || veh === 3) {   // sentado en el quad o en la silla de ruedas (AV4): muslos adelante (1,15 rad) y espinillas en vertical
         out.leftUpperLeg = [-pI, 0, 0]; out.rightUpperLeg = [-pD, 0, 0]; out.leftLowerLeg = [pI, 0, 0]; out.rightLowerLeg = [pD, 0, 0];
       } else {
         out.leftUpperLeg = [-pI - al, 0, 0]; out.rightUpperLeg = [-pD - al, 0, 0];
         out.leftLowerLeg = [2 * al + RODILLA * Math.max(0, -pI), 0, 0]; out.rightLowerLeg = [2 * al + RODILLA * Math.max(0, -pD), 0, 0];   // la rodilla se dobla al ir atrás (ilustrativo)
       }
-      var codo = veh === 1 ? CODO_QUAD : veh === 2 ? CODO_DRON : CODO;
+      var codo = veh === 1 || veh === 3 ? CODO_QUAD : veh === 2 ? CODO_DRON : CODO;
       out.leftUpperArm = [-(mu.brazoI || 0), 0, -BAJA]; out.rightUpperArm = [-(mu.brazoD || 0), 0, BAJA];   // brazos abajo desde la T, y el balanceo
       out.leftLowerArm = [0, -codo, 0]; out.rightLowerArm = [0, codo, 0];
       out.spine = [al * INCLINA, 0, 0]; out.chest = [0, 0, 0];
@@ -111,7 +160,7 @@
       var f = (st.t - st.prox) / DUR; if (f >= 1) { st.t = 0; st.prox = 2 + r() * 4; return 0; }
       return 1 - Math.abs(f * 2 - 1);
     }
-    return { CUPO: CUPO, CUPO_VR: CUPO_VR, DMAX: DMAX, BAJA: BAJA, cupo: cupo, leeCatalogo: leeCatalogo, reparte: reparte, huesos: huesos, ik: ik, parpadeo: parpadeo };
+    return { CUPO: CUPO, CUPO_VR: CUPO_VR, DMAX: DMAX, BAJA: BAJA, cupo: cupo, leeCatalogo: leeCatalogo, cualVrm: cualVrm, piezasDe: piezasDe, colorMaterial: colorMaterial, reparte: reparte, huesos: huesos, ik: ik, parpadeo: parpadeo };
   })();
   // [puro:fin]
 
@@ -160,7 +209,7 @@
         var vrm = g.userData.vrm; if (!vrm || !vrm.humanoid) throw new Error("no es un VRM");
         LIB.V.VRMUtils.removeUnnecessaryVertices(g.scene); LIB.V.VRMUtils.combineSkeletons(g.scene); LIB.V.VRMUtils.rotateVRM0(vrm);
         var base = comparte && vivos[id] && vivos[id][0], compartida = base ? comparteCon(base.vrm.scene, vrm.scene) : false;
-        var inst = monta(id, vrm, compartida); (vivos[id] = vivos[id] || []).push(inst); est.instancias++; est.cargas++;
+        var inst = monta(e, vrm, compartida); (vivos[id] = vivos[id] || []).push(inst); est.instancias++; est.cargas++;
         est.msParse = Math.round((performance.now() - t0) * 10) / 10;
         return inst;
       });
@@ -191,18 +240,43 @@
       m.customProgramCacheKey = function () { return (clave ? clave.call(this) : "") + "|vrm-fundido"; };
       m.needsUpdate = true;
     }
-    function monta(id, vrm, compartida) {
-      var raiz = new THREE.Group(), giro = new THREE.Group(), h = {}, uni = { value: 0 };
+    function monta(e, vrm, compartida) {
+      var id = e.id, raiz = new THREE.Group(), giro = new THREE.Group(), h = {}, uni = { value: 0 };
       raiz.name = "vrm:" + id; giro.rotation.y = Math.PI;   // el VRM está vuelto hacia +Z; el muñeco y los ejes del motor, a −Z
       vrm.scene.updateMatrixWorld(true);
       ["hips", "spine", "chest", "neck", "head", "leftUpperArm", "leftLowerArm", "leftHand", "rightUpperArm", "rightLowerArm", "rightHand", "leftUpperLeg", "leftLowerLeg", "rightUpperLeg", "rightLowerLeg"].forEach(function (n) { h[n] = vrm.humanoid.getNormalizedBoneNode(n); });
       var yCab = h.head ? h.head.getWorldPosition(v1).y : 1.5, yCad = h.hips ? h.hips.getWorldPosition(v1).y : 0.9;
-      var s = 1.5 / Math.max(0.3, yCab);   // la base de la cabeza a 1,5 m: los ojos quedan a ~1,6 m, la ALTURA del muñeco y de la pose [SUPUESTO: 10 cm de la base a los ojos]
+      // los avatares cerrados (v1): la base de la cabeza a 1,5 m, los ojos a ~1,6 m, la ALTURA del muñeco y de la pose [SUPUESTO: 10 cm de la base a los ojos]. Los cuerpos del creador
+      // (v2) van a su tamaño de verdad (MPFB, en metros: cada edad con su altura, criterio C1) por la altura de la receta (viste)
+      var s = e.cuerpo ? 1 : 1.5 / Math.max(0.3, yCab);
       giro.scale.setScalar(s); giro.add(vrm.scene); raiz.add(giro);
       vrm.scene.traverse(function (o) { if (o.isMesh) { o.frustumCulled = false; [].concat(o.material).forEach(function (m) { parcheFundido(m, uni); }); } });   // el volumen de una malla con esqueleto es el de reposo
       raiz.visible = false;
-      return { id: id, vrm: vrm, raiz: raiz, h: h, s: s, L: yCad * s, cadera0: h.hips ? h.hips.position.y : 0, v0: !!(vrm.meta && vrm.meta.metaVersion === "0"), uni: uni, blink: {}, compartida: compartida };
+      return { id: id, vrm: vrm, raiz: raiz, giro: giro, h: h, s: s, yCad: yCad, L: yCad * s, cadera0: h.hips ? h.hips.position.y : 0, v0: !!(vrm.meta && vrm.meta.metaVersion === "0"), uni: uni, blink: {}, compartida: compartida,
+        cuerpo: !!e.cuerpo, conMirada: !e.cuerpo || e.mirada !== "ninguna" };
     }
+    // AV4 (ADR-0025): un cuerpo del creador con lo de la persona: enseña las piezas de su receta (las demás no se dibujan ni se suben a la GPU), tiñe por nombre de material
+    // (piel, ropa_base, ropa_abajo, pelo, sombrero) con SUS colores (los mismos del muñeco: Aspecto) y lo escala por su altura. v = { receta, sombrero, piel, camisa, pantalon, pelo, fa }
+    var mallasDe = null;
+    function viste(inst, v) {
+      var e = cat && cat.porId[inst.id]; if (!e || !e.cuerpo || !v) return;
+      if (!mallasDe) { mallasDe = Object.create(null); for (var k in cat.piezas) mallasDe[cat.piezas[k].malla] = true; }
+      var pz = AvataresPuro.piezasDe(cat, e, v.receta, v.sombrero), col = { piel: v.piel, arriba: v.camisa, abajo: v.pantalon, pelo: v.pelo }, raiz = inst.vrm.scene;
+      raiz.traverse(function (o) {
+        // por el nombre ORIGINAL del nodo (GLTFLoader lo deja en userData.name; el de three puede llevar «_1» si la malla se llama igual)
+        // (también las que trae el VRM pero el catálogo no ofrece, p. ej. una pieza retenida: «pieza_» sin entrada → oculta)
+        var pieza = null; for (var p = o; p && p !== raiz; p = p.parent) { var nm = p.userData && p.userData.name; if (nm && (mallasDe[nm] || /^pieza_/.test(nm))) { pieza = p; break; } }
+        if (pieza === o) o.visible = !!pz.mallas[o.userData.name];
+        if (!o.isMesh) return;
+        [].concat(o.material).forEach(function (m) {
+          var c = AvataresPuro.colorMaterial(m.name, col, pz.colorSombrero); if (c != null && m.color) m.color.setHex(c);
+          if (!pieza && /^ropa_/.test(m.name)) o.visible = !pz.cubre;   // con la ropa de faena, la ropa base del cuerpo (que va debajo) no se dibuja
+        });
+      });
+      var s = v.fa || 1; inst.giro.scale.setScalar(s); inst.s = s; inst.L = inst.yCad * s;
+    }
+    function vestimenta(a) { return { receta: a.receta, sombrero: a.sombrero, piel: a.piel, camisa: a.camisa, pantalon: a.pantalon, pelo: a.pelo, fa: a.fa }; }
+    function clave(a) { return AvataresPuro.cualVrm(cat, a.receta, a.vrm); }
     function sueltaInst(inst) {
       if (inst.raiz.parent) inst.raiz.parent.remove(inst.raiz);
       var l = vivos[inst.id] || [], i = l.indexOf(inst); if (i >= 0) l.splice(i, 1);
@@ -220,7 +294,7 @@
       inst.raiz.updateMatrixWorld(true);
       if (manos) { if (manos.izq) brazo(inst, "left", manos.izq, mu.yaw); if (manos.der) brazo(inst, "right", manos.der, mu.yaw); }
       var vrm = inst.vrm; vrm.humanoid.update();
-      if (vrm.lookAt) {
+      if (vrm.lookAt && inst.conMirada) {   // los cuerpos del creador no tienen huesos de ojos (mirada «ninguna»): la mirada va con la cabeza
         var hd = vrm.humanoid.getRawBoneNode("head");
         if (hd && mirar) { hd.updateWorldMatrix(true, false); hd.getWorldPosition(v1); v2.copy(camera.position).sub(v1); var d = v2.length(); q1.setFromAxisAngle(v3.set(0, 1, 0), mu.yaw); v3.set(0, 0, -1).applyQuaternion(q1); mirar = d < CERCA_MIRA && v2.dot(v3) > d * COS_MIRA; }
         if (mirar) vrm.lookAt.lookAt(camera.position); else { vrm.lookAt.yaw = 0; vrm.lookAt.pitch = 0; }
@@ -250,16 +324,17 @@
 
     // ---- los demás: quién lleva VRM, su descarga, el fundido y el reposo antes de soltar
     function pide(a) {
-      var r = { a: a, id: a.vrm, inst: null, estado: "cargando", k: 0, dir: 1, tRep: 0 };
+      var id = clave(a), r = { a: a, id: id, inst: null, estado: "cargando", k: 0, dir: 1, tRep: 0 };
       regs.set(a, r);
-      instancia(a.vrm).then(function (inst) {
+      instancia(id).then(function (inst) {
         if (regs.get(a) !== r || !gVrm) { sueltaInst(inst); return; }
+        viste(inst, vestimenta(a));
         r.inst = inst; gVrm.add(inst.raiz);
         var c = renderer.compileAsync ? renderer.compileAsync(inst.raiz, camera, scene) : Promise.resolve();   // que el primer fotograma no compile el MToon
         inst.raiz.visible = false;
         return c.then(function () { if (regs.get(a) === r) r.estado = "preparado"; });
       }).catch(function (e) {
-        falla[a.vrm] = true; est.fallos++; avisa("sin el avatar " + a.vrm + ", el muñeco", e);
+        falla[id] = true; est.fallos++; avisa("sin el avatar " + id + ", el muñeco", e);
         if (regs.get(a) === r) regs.delete(a);
       });
     }
@@ -267,7 +342,7 @@
     function candidatos() {
       var l = [], ps = Presencia.vrmPersonas();
       for (var i = 0; i < ps.length; i++) {
-        var a = ps[i]; if (!a.vrm || !cat || !cat.porId[a.vrm] || falla[a.vrm]) continue;
+        var a = ps[i], id = clave(a); if (!id || falla[id]) continue;
         var c = a.out.cab.p; l.push({ id: a, d: Math.hypot(c[0] - camera.position.x, c[1] * exag - camera.position.y, c[2] - camera.position.z) });
       }
       return l;
@@ -303,16 +378,28 @@
 
     // ---- tu paseante (decisión 76): en tercera persona, tu avatar en lugar del muñeco naranja (12_paseo.js); en primera persona y en VR, nada
     var cuerpoNaranja = null;
-    function miId() { var v = Presencia.miVrm(); if (v) return v; return simVrm && !sinPropio && cat ? cat.todos[0].id : null; }
+    // tu avatar: el de tus metadatos (receta o vrm); en la simulación con &vrm=1, el primer cuerpo ofrecido (con pelo corto) o el primer avatar cerrado
+    var miSim = null;
+    function miAvatar() {
+      var m = Presencia.miAvatar(); if (m) return m;
+      if (!simVrm || sinPropio || !cat) return null;
+      if (!miSim) {
+        var c = cat.ofrecidos[0], pelo = c ? c.piezas.filter(function (x) { return cat.piezas[x].tipo === "pelo"; })[0] : null;
+        miSim = { vrm: c ? null : (cat.todos[0] || {}).id, receta: c ? { cuerpo: c.id, pelo: pelo } : null, sombrero: 0, piel: Aspecto.PIELES[4], camisa: 0xd9822b, pantalon: Aspecto.PANTALON, pelo: Aspecto.PELO[1], fa: 1 };
+      }
+      return miSim;
+    }
+    function miId() { var m = miAvatar(); return m ? clave(m) : null; }
     function propio(dt) {
       var id = cat ? miId() : null;
       if (mio && mio.id !== id) { quitaPropio(); }
-      if (!id || !cat.porId[id] || falla[id] || !persona) return;
+      if (!id || falla[id] || !persona) return;
       if (!mio) {
         mio = { id: id, inst: null, k: 0, preparado: false };
         var m = mio;
         instancia(id).then(function (inst) {
           if (mio !== m) { sueltaInst(inst); return; }
+          viste(inst, miAvatar());
           m.inst = inst; persona.add(inst.raiz); inst.raiz.rotation.set(0, 0, 0);   // hijo del paseante: su posición, su giro y su visibilidad (primera persona, VR)
           return (renderer.compileAsync ? renderer.compileAsync(inst.raiz, camera, scene) : Promise.resolve()).then(function () { if (mio === m) m.preparado = true; });
         }).catch(function (e) { falla[id] = true; est.fallos++; avisa("sin tu avatar " + id + ", el muñeco naranja", e); if (mio === m) mio = null; });
@@ -335,15 +422,28 @@
       var ps = Presencia.vrmPersonas(true);
       if (simVrm && !asignado) {   // simulación: tres de cada cuatro llevan un avatar del catálogo (por turno); el cuarto, sin él (el muñeco de siempre)
         asignado = true;
-        for (var i = 0; i < ps.length; i++) ps[i].vrm = ps[i].k % 4 === 3 ? null : cat.todos[ps[i].k % cat.todos.length].id;
+        for (var i = 0; i < ps.length; i++) {
+          var k = ps[i].k;
+          if (k % 4 === 3) { ps[i].vrm = null; continue; }
+          if (cat.ofrecidos.length) { ps[i].receta = recetaSim(k, ps[i].receta); ps[i].pelo = Aspecto.PELO[ps[i].receta.peloColor]; } else ps[i].vrm = cat.todos[k % cat.todos.length].id;
+        }
       }
-      for (var j = 0; j < ps.length; j++) { var e = ps[j].vrm && cat.porId[ps[j].vrm]; if (e) Presencia.recolorea(ps[j], e.camisa, e.piel); }   // de lejos, el muñeco con los colores de su avatar
+      for (var j = 0; j < ps.length; j++) { var e = cat.porId[clave(ps[j]) || ""]; if (e && !e.cuerpo) Presencia.recolorea(ps[j], e.camisa, e.piel); }   // de lejos, el muñeco con los colores de su avatar cerrado (los del creador ya son los suyos)
+    }
+    // simulación con el catálogo v2: una receta por persona, repartida por su número (cuerpo, pelo, color, vello cada tres, ropa de faena cada dos); el resto del aspecto, el suyo
+    function recetaSim(k, r) {
+      var c = cat.ofrecidos[k % cat.ofrecidos.length], de = function (t) { return c.piezas.filter(function (x) { return cat.piezas[x].tipo === t; }); };
+      var pelos = de("pelo"), vellos = de("vello"), ropas = de("ropa"), o = {};
+      for (var x in r || {}) o[x] = r[x];
+      o.cuerpo = c.id; o.pelo = pelos.length ? pelos[(k * 7) % pelos.length] : null; o.peloColor = k % Aspecto.PELO.length;
+      o.vello = vellos.length && k % 3 === 0 ? vellos[k % vellos.length] : null; o.ropa = ropas.length && k % 2 === 0 ? ropas[0] : null;
+      return o;
     }
     function actualiza(dt) {
       if (!gVrm) return;
       if (!pideCat) {   // el catálogo solo se pide si alguien lleva avatar (o con &vrm=1)
-        var hay = simVrm || !!Presencia.miVrm(), ps = hay ? null : Presencia.vrmPersonas(true);
-        if (ps) for (var i = 0; i < ps.length && !hay; i++) if (ps[i].vrm) hay = true;
+        var mm = Presencia.miAvatar(), hay = simVrm || !!(mm && (mm.vrm || (mm.receta && mm.receta.cuerpo))), ps = hay ? null : Presencia.vrmPersonas(true);
+        if (ps) for (var i = 0; i < ps.length && !hay; i++) if (ps[i].vrm || (ps[i].receta && ps[i].receta.cuerpo)) hay = true;
         if (hay) catalogo();
         return;
       }
@@ -361,6 +461,19 @@
     function estado() {
       var e = { catalogo: est.catalogo, cupo: cupo(), dispositivo: disp, comparte: comparte, cargas: est.cargas, fallos: est.fallos, instancias: est.instancias, msParse: est.msParse, propio: propioVisible() && !!mio && mio.k >= 1, conVrm: 0, fundiendo: 0, cargando: 0, enReposo: 0, ids: [] };
       regs.forEach(function (r) { if (r.estado === "cargando") e.cargando++; else if (r.estado === "reposo") e.enReposo++; else if (r.k >= 1 && r.dir > 0) { e.conVrm++; e.ids.push(r.id); } else e.fundiendo++; });
+      // AV4: de los cuerpos del creador que se ven, qué mallas se dibujan (con su material y su color) y sus triángulos: para las pruebas y para medir el avatar completo
+      e.cuerpos = cat ? cat.cuerpos.length : 0; e.vestidos = [];
+      regs.forEach(function (r) {
+        if (!r.inst || !r.inst.cuerpo || !(r.k >= 1 && r.dir > 0)) return;
+        var v = { id: r.id, mallas: [], llamadas: 0, triangulos: 0, colores: {}, sentado: r.a && r.a.mov === "silla" };
+        r.inst.vrm.scene.traverse(function (o) {
+          if (!o.isMesh) return;
+          for (var p = o; p; p = p.parent) if (!p.visible) return;
+          var g = o.geometry, n = g.index ? g.index.count / 3 : g.attributes.position.count / 3, m = [].concat(o.material)[0];
+          v.llamadas++; v.triangulos += n; v.mallas.push(o.name); if (m && m.color) v.colores[m.name] = "#" + m.color.getHexString();
+        });
+        e.vestidos.push(v);
+      });
       e.libreria = !!LIB; return e;
     }
     function libera() {

@@ -1,6 +1,6 @@
 # ADR-0020 — Avatares VRM
 
-- **Estado:** Aceptado (Antonio, 2026-10-29; decisiones 73-76)
+- **Estado:** Aceptado (Antonio, 2026-10-29; decisiones 73-76); el §2 (catálogo cerrado de 6-12) **superado en parte por [ADR-0025](0025-avatares-por-piezas-contrato-v2.md)** (2026-10-30)
 - **Fecha:** 2026-10-29
 
 ## Contexto
@@ -104,6 +104,9 @@ La **posición** del avatar es medida (la pose); su **cuerpo y sus gestos son il
 ## Comprobación
 - **Lo vigilarán:** el guardián del catálogo (esquema, topes de §2, `meta` y `sha256`; P7b); `presencia.test.js` (lo puro: ángulos por hueso, nivel de detalle con histéresis, caída al muñeco, `leeInfo` con `vrm`); `api.test.js` (solo ids del catálogo); `contratos.test.js` y `documentacion.test.js`; la medida del banco con 10 y 40 contra la tabla de §5 y sus topes nuevos (P7e); `renderer.info.memory` vuelve al soltar.
 - **No probado** (a 2026-10-29): nada de esta decisión tiene código; todas las cifras de §5 son **estimadas**. three-vrm 3.5.5 con three 0.186.1, el tirón al cargar, la memoria real de GPU, el coste de los muelles, los fps en **iPhone, móvil Android y Quest**, el mareo del fundido y de ver avatares de cerca en VR, y la licencia de las piezas de serie de VRoid Studio: **no probados / no verificados**.
+
+## Enmienda (2026-10-30)
+El §2 lo supera en parte [ADR-0025](0025-avatares-por-piezas-contrato-v2.md) (decisiones 127-135 y 141): el catálogo pasa a v2, con cuerpos que llevan sus piezas dentro, paletas y una receta en los metadatos; los avatares cerrados quedan como opción (`avatares[]`). El resto de este ADR sigue vigente.
 
 ## Decisiones para Antonio
 1. **Estilo:** anime (VRoid Studio, rápido y gratis) frente a algo más **sobrio o realista** para Cano & Damas (modelos propios o encargados, más caros), o los de pocos polígonos de 100Avatars (CC0).

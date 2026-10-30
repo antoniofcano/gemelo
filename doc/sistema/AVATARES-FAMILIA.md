@@ -1,6 +1,6 @@
 # Avatares para toda la familia
 
-**Estado:** decidida (decisiones 127-135, 2026-10-30); **AV3 hecha** (los 12 cuerpos base, §12). Parte de la pregunta «¿tenemos biblioteca de avatares?» y de la petición de que sean **sobrios**, pensados como un **juego familiar** (madres y padres, abuelas y abuelos, nietas y nietos), **inclusivos** y **nada heteropatriarcales**. Maqueta: [../../prototipos/avatares/index.html](../../prototipos/avatares/index.html) (un solo fichero, datos ficticios, figuras planas en SVG).
+**Estado:** decidida (decisiones 127-135 y 141, 2026-10-30); **AV3 hecha** (los 12 cuerpos base, §13); **AV4 hecha en código** (creador por piezas, §14; el acabado de las piezas, por revisar a ojo). Parte de la pregunta «¿tenemos biblioteca de avatares?» y de la petición de que sean **sobrios**, pensados como un **juego familiar** (madres y padres, abuelas y abuelos, nietas y nietos), **inclusivos** y **nada heteropatriarcales**. Maqueta: [../../prototipos/avatares/index.html](../../prototipos/avatares/index.html) (un solo fichero, datos ficticios, figuras planas en SVG).
 
 Encaja con: [ADR-0020](../adr/0020-avatares-vrm.md) (VRM cerca, muñeco lejos), el contrato [avatares](../../contratos/avatares.md) (catálogo cerrado con `sha256`), el motor `apps/web/motor/26b_avatares.js` y `apps/web/motor/26_presencia.js`, y las decisiones 45 (sin cuentas de menores), 73 (sobrios, propios), 74 (CC0 provisionales), 75 (sin subida propia) y 76 (paseante = avatar) de [DECISIONS-PENDING](../rumbo/DECISIONS-PENDING.md).
 
@@ -17,6 +17,7 @@ Encaja con: [ADR-0020](../adr/0020-avatares-vrm.md) (VRM cerca, muñeco lejos), 
 10. [Decisiones para Antonio](#10-decisiones-para-antonio)
 11. [Lo que no está probado](#11-lo-que-no-está-probado)
 13. [Fase AV3: los cuerpos base (hecho)](#13-fase-av3-los-cuerpos-base-hecho)
+14. [Fase AV4: el creador por piezas](#14-fase-av4-el-creador-por-piezas)
 
 ## 1. Respuesta corta
 **No tenemos biblioteca.** Hay 4 VRM CC0 **provisionales** de 100Avatars (fuera del repo, `tuberia/avatares/fuentes.json`) y el muñeco de bloque. Ninguna colección abierta que hayamos encontrado cumple a la vez «sobrio», «de campo», «todas las edades» y «licencia limpia para una empresa»; las que tienen licencia limpia (CC0) parten de cuerpos base **«male / female»** y de dos o tres edades, y las que tienen variedad son de estilo anime o fantasía.
@@ -249,6 +250,10 @@ Con `comprueba.mjs` (tubería con cuantización, como el catálogo; three-vrm 3.
 - **Complexión:** media anchura de la cintura del adulto 0,124 / 0,141 / 0,152 m (delgada / media / ancha; +23 % de punta a punta).
 - **Edad:** la altura sale de MPFB (1,11 / 1,46 / 1,66 / 1,65 m). La de «mayor» apenas se distingue de «adulta» a ojo (C1 pide algo más baja y una leve curvatura): **a revisar**; se puede subir `age` o añadir un target de postura.
 
+**Medida en Chrome por el banco** (SwiftShader, recuentos y no fps; `avatares_piezas.test.js` con `GEMELO_AVATARES_CUERPOS`): `?presencia=sim&n=20&vrm=1&yo=no` sobre el Cerro del fixture, cámara a 9 m. Solo muñeco: 24 llamadas y 73.822 triángulos en toda la escena; con los cuerpos (6 VRM, el cupo de escritorio): **61 llamadas y 140.052 triángulos** (82 geometrías, 51 texturas de la escena). Por avatar completo, lo que cuenta 26b: **6-7 llamadas y 10.545-11.573 triángulos**; uno de los seis, sentado en su silla. Capturas en `pruebas/salida/capturas-avatares-piezas/` (`piezas20.png`, `muneco20.png`, `portada-cerca-*.png`, `portada-lejos-*.png`, `medida.json`).
+
+**Nota de comodidad (regla 11).** Probado: la pantalla de elección en Chrome sin pantalla a 1280 y 390 px (sin desbordar, radios de ≥ 44 px dentro de su `<label>`, foco visible, descripción en texto `aria-live`, guardado y lectura de vuelta con una api de mentira que valida con `limpiaAspecto` de la api de verdad), y la presencia simulada con los cuerpos. **No probado:** iPhone, Quest, una pantalla real a ojo, ni la portada con lector de pantalla; la vista previa 3D es pequeña (160 × 200 px) y en el Quest su coste de compilar MToon/PBR al cambiar de cuerpo no se ha medido; el cambio de pieza en la vista previa no recarga el fichero (solo se ocultan y tiñen mallas), pero cambiar de edad o complexión sí baja otro VRM (≈ 260 kB con gzip). En VR uno mismo sigue viendo solo sus manos (ADR-0020 §7).
+
 ### Capturas
 En `pruebas/salida/capturas-avatares-cuerpos/` (no se versionan): `frente.png` (los 12 en fila, peque → mayor y delgada → ancha, con su altura), `tres-cuartos.png` y `cara-<edad>.png` (complexión media). Render de Workbench (luz de estudio, colores de material; los tonos más oscuros salen más apagados que en el motor, y la toma de tres cuartos corta al último); **tonos de piel y colores de ropa ilustrativos**: una escala de 10 tonos y siete colores con nombre de campo (verde olivo, tierra, almagra, trigo, cielo, cal, adelfa), no la paleta de AV4.
 
@@ -264,3 +269,54 @@ En `pruebas/salida/capturas-avatares-cuerpos/` (no se versionan): `frente.png` (
 - Nada en un navegador con GPU, iPhone ni Quest: three-vrm se probó en Node, sin dibujar. El coste en el Quest (3 VRM a la vez según 26b) es de recuento: ≈ 11,8 k triángulos y 3 primitivas por cuerpo, sin texturas.
 - `blink` y `aa` reconstruidos tras la reducción: que cierren bien los ojos y abran la boca **no se ha visto animado**; three-vrm confirma que mueven su morph.
 - Los pesos se recortan a 4 influencias por vértice al exportar (aviso del exportador de glTF); en las capturas en reposo no se ve nada raro, en movimiento **no probado**.
+
+## 14. Fase AV4: el creador por piezas
+**2026-10-30** (decisiones 128, 132, 135 y 141; [ADR-0025](../adr/0025-avatares-por-piezas-contrato-v2.md), contrato [avatares](../../contratos/avatares.md) §9).
+
+### Qué hay
+- **Contrato v2** (`contratos/avatares.schema.json`, `oneOf` v1/v2; ejemplo sintético `contratos/avatares-v2-ejemplo.json`): `cuerpos[]` (edad, complexión, **`ofrecer`**: los peques, `false`), `piezas[]` (pelo, vello, ropa, accesorio; `malla` = `pieza_<id>`), `paletas` (piel 10, ropa 10, pelo 8 con canoso y blanco), `topes_combinacion` y, opcionales, los avatares cerrados de v1. **Receta** = campos opcionales del `avatar` de presencia (`cuerpo`, `pelo`, `pelo_color`, `vello`, `ropa`, `acc`), ≤ 200 bytes (la api lo comprueba; sin migración: va en la columna `aspecto`). Un cliente v1 ve el v2 como «sin catálogo» y dibuja el muñeco.
+- **Un VRM por cuerpo con todas sus piezas dentro**, hechas por `cuerpos.py` a partir de las ayudas de MakeHuman (CC0, del núcleo): `helper-hair` (pelo), `helper-tights` (ropa de faena), la piel copiada (vello) y primitivas de Blender (sombreros). Cada pieza, pesada al mismo esqueleto. Lo construye `tuberia/avatares/creador/catalogo.mjs` (tubería de siempre + medida del avatar completo).
+- **Piezas mínimas:** peinados **rapado, corto, afro o rizado, recogido (moño) y largo** (canoso y blanco son colores); vello **barba corta y bigote** (para cualquier cuerpo); **ropa de faena** (camisa de manga larga y pantalón largo; tapa la ropa base, que entonces no se dibuja); **sombrero de paja y gorra** (el `sombrero` de siempre del muñeco enseña el suyo). Ninguna pieza tiene compatibilidad por sexo (C4, C5).
+- **Motor** (`26b_avatares.js`): de cerca, el cuerpo de la receta con sus piezas, **teñido por nombre de material** (`piel`, `ropa_base`, `ropa_abajo`, `pelo`, `sombrero`) con los colores del muñeco, a su tamaño real × la altura; los peques no se dibujan; **con silla de ruedas, sentado** como en el quad, en la silla del muñeco. Sin receta válida, el `vrm` de antes; sin él, el muñeco.
+- **Mirada:** los cuerpos **no tienen huesos de ojos** (el esqueleto `game_engine` de MPFB no los trae) y los ojos son una malla oscura de un solo color: girarlos no se vería. `mirada: "ninguna"` en el catálogo y 26b no gasta `VRMLookAt` con ellos; la mirada va con la cabeza (el giro de la pose). Para tenerla haría falta añadir dos huesos y ojos con blanco e iris (anotado, no hecho).
+- **Portada:** pantalla por piezas (cuerpo: edad joven/adulta/mayor, complexión y altura; piel; pelo y cara; ropa; sombrero; cómo te mueves), **sin «hombre/mujer» en ningún paso** y sin peques; **«Empieza por algo parecido»** (seis puntos de partida descritos por lo que se ve, que no tocan el tono de piel); «Al azar» que no sortea edad, cuerpo ni apoyo; vista **de cerca** (el VRM real con three-vrm, con sus piezas y colores: `vista3d.js`) y **de lejos** (el muñeco en SVG, como te verán a distancia); descripción en texto (`aria-live`). Lo puro en `apps/web/portada/receta.js` (import() al abrir la pantalla). Guarda con `PUT /api/yo/avatar`.
+
+### Arreglos de los cuerpos (decisión 141)
+- **Cuello:** AV3 lo cortaba con planos rectos y clasificaba los triángulos del hombro por su centro: quedaba una escalera de cerca. Ahora el escote son **tres planos** (uno inclinado, más bajo delante, y dos laterales que suben hacia los hombros) y la malla se corta por los tres: el borde es limpio. Ver `cuello.png`.
+- **«Mayor»:** edad de MPFB 0,97 (≈ 85 años; antes 0,88) y una **postura** leve fijada en el reposo (espalda alta 0,14 rad, cuello 0,12, cabeza −0,18 para mirar al frente): la cabeza va ≈ 7,6 cm más adelante y la altura baja de 1,66 a 1,62 m (adulta y mayor de complexión media). Ver `mayor-adulta.png`.
+
+### Cifras (medidas el 2026-10-30, `comprueba.mjs`: tubería v2 con cuantización + three-vrm 3.5.5 en Node)
+Los doce **pasan la tubería y three-vrm los carga** (huesos, `blink`/`aa`, brazo desde la T, cada pieza un nodo con piel).
+
+| | Cuerpo solo | Avatar completo (peor caso) | Fichero | Tras gzip |
+|---|---|---|---|---|
+| 12 cuerpos | 10.098-10.406 triángulos, 4 primitivas (piel, ropa_base, ropa_abajo, ojos) | 11.422-11.782 triángulos, **7 primitivas** (cuerpo 4 + pelo + vello + sombrero; la ropa de faena sustituye a la base) | 633-652 kB, 6 materiales, 0 texturas | 259-268 kB |
+
+| Pieza | Triángulos (máx.) | | Pieza | Triángulos (máx.) |
+|---|---|---|---|---|
+| pelo-rapado / corto / afro | 932 | | ropa-faena | 2.521 |
+| pelo-recogido | 1.100 | | vello-barba | 427 |
+| pelo-largo | 1.420 | | sombrero-paja / gorra | 136 / 124 |
+
+- **Presupuesto (`topes_combinacion`): ≤ 15.000 triángulos y ≤ 7 primitivas por avatar completo.** En el Quest (26b, 3 VRM a la vez): ≤ 35 k triángulos y 21 llamadas, frente a los 61 k y 12 llamadas que estimaba ADR-0020 §5 para avatares cerrados de 4 materiales: **menos triángulos y más llamadas**. Sin texturas (memoria de GPU solo de geometría). Recuento, no fps: **en el Quest, no medido.**
+- **El bigote no se ofrece:** sale de 18-82 triángulos y en las capturas apenas se ve. Va dentro del VRM pero `catalogo.mjs` lo retiene (`RETENIDAS`); queda por rehacer.
+- **A revisar a ojo (decisión 130):** el afro sale con la silueta algo picuda en los bordes bajos; el largo, al despejar la frente, queda como dos mechones a los lados delante (detrás sí cae a media espalda); el corto y el rapado se parecen de frente (el corto es 1,2 cm más ancho); el sombrero de paja flota un poco sobre el pelo; con afro o moño el sombrero se cruza.
+
+**Medida en Chrome por el banco** (SwiftShader, recuentos y no fps; `avatares_piezas.test.js` con `GEMELO_AVATARES_CUERPOS`): `?presencia=sim&n=20&vrm=1&yo=no` sobre el Cerro del fixture, cámara a 9 m. Solo muñeco: 24 llamadas y 73.822 triángulos en toda la escena; con los cuerpos (6 VRM, el cupo de escritorio): **61 llamadas y 140.052 triángulos** (82 geometrías, 51 texturas de la escena). Por avatar completo, lo que cuenta 26b: **6-7 llamadas y 10.545-11.573 triángulos**; uno de los seis, sentado en su silla. Capturas en `pruebas/salida/capturas-avatares-piezas/` (`piezas20.png`, `muneco20.png`, `portada-cerca-*.png`, `portada-lejos-*.png`, `medida.json`).
+
+**Nota de comodidad (regla 11).** Probado: la pantalla de elección en Chrome sin pantalla a 1280 y 390 px (sin desbordar, radios de ≥ 44 px dentro de su `<label>`, foco visible, descripción en texto `aria-live`, guardado y lectura de vuelta con una api de mentira que valida con `limpiaAspecto` de la api de verdad), y la presencia simulada con los cuerpos. **No probado:** iPhone, Quest, una pantalla real a ojo, ni la portada con lector de pantalla; la vista previa 3D es pequeña (160 × 200 px) y en el Quest su coste de compilar MToon/PBR al cambiar de cuerpo no se ha medido; el cambio de pieza en la vista previa no recarga el fichero (solo se ocultan y tiñen mallas), pero cambiar de edad o complexión sí baja otro VRM (≈ 260 kB con gzip). En VR uno mismo sigue viendo solo sus manos (ADR-0020 §7).
+
+### Capturas
+En `pruebas/salida/capturas-avatares-cuerpos/` (no se versionan): `frente.png` y `tres-cuartos.png` (los 12 con recetas distintas), `peinados.png`, `peinados-detras.png`, `cabezas.png` (las diez piezas de cerca) y `cabeza-*.png`/`lado-*.png`, `cuello.png` y `cuello-tres-cuartos.png` (la costura), `mayor-adulta.png` y `mayor-adulta-cabeza.png` (de perfil) y `cara-<edad>.png`. Workbench, sin sombras (el brazo en T dejaba una raya).
+
+### Cómo se regenera
+```
+node pruebas/banco/proceso.js --que "AV4 cuerpos" -- blender --background --python-exit-code 1 --python tuberia/avatares/creador/cuerpos.py -- --salida <fuera del repo>
+node pruebas/banco/proceso.js --que "AV4 capturas" -- blender --background --python-exit-code 1 --python tuberia/avatares/creador/capturas.py -- --origen <la misma> --salida pruebas/salida/capturas-avatares-cuerpos
+node tuberia/avatares/creador/comprueba.mjs --origen <la misma>            # tabla y three-vrm
+node tuberia/avatares/creador/catalogo.mjs --origen <la misma> --salida <GEMELO_AVATARES> [--provisionales <los CC0>]
+```
+
+### Lo que no está probado (AV4)
+- **El acabado no lo ha revisado una persona** (decisión 130): pelo, vello, ropa y sombreros, con las capturas.
+- Nada en iPhone, Quest ni una GPU de verdad; el cuerpo sentado en la silla del muñeco solo se ha visto en recuento (no a ojo de cerca); el vello no sigue la boca al abrirse (`aa`); la portada con el VRM real, solo en Chrome sin pantalla.

@@ -116,3 +116,14 @@ test("avatar (AV2): el aspecto del muñeco solo admite sus listas cerradas (400 
   for (const bueno of [{}, { tono: 0 }, { tono: 9, arriba: 9, abajo: 0, altura: "alta", complexion: "ancha", movilidad: "silla" }, { movilidad: "baston" }, { movilidad: "andador" }, { movilidad: "pie", altura: "baja", complexion: "delgada" }])
     assert.equal((await pon(bueno)).statusCode, 401, JSON.stringify(bueno) + " (sin sesión)");
 });
+
+test("avatar (AV4): la receta del creador por piezas solo admite ids con forma de id y su color de pelo (400 antes de la sesión); bien formada, pide sesión (401)", async () => {
+  const base = { camisa: 1, sombrero: "paja", piel: 3 };
+  const pon = (extra: object) => app.inject({ method: "PUT", url: "/api/yo/avatar", headers: deLaWeb({}), payload: { ...base, ...extra } });
+  for (const malo of [{ cuerpo: "Cuerpo" }, { cuerpo: "a/b" }, { pelo: "x".repeat(33) }, { vello: "Barba" }, { ropa: null }, { pelo_color: 10 }, { pelo_color: -1 },
+    { acc: ["a", "b", "c", "d"] }, { acc: ["a", "a"] }, { acc: ["Gafas"] }, { edad: "mayor" }, { sexo: "x" }])
+    assert.equal((await pon(malo)).statusCode, 400, JSON.stringify(malo));
+  for (const bueno of [{ cuerpo: "cuerpo-adulta-media", pelo: "pelo-afro", pelo_color: 6, vello: "vello-barba", ropa: "ropa-faena", acc: ["gafas"] },
+    { cuerpo: "cuerpo-mayor-ancha", tono: 9, arriba: 1, abajo: 2, altura: "baja", complexion: "ancha", movilidad: "silla" }])
+    assert.equal((await pon(bueno)).statusCode, 401, JSON.stringify(bueno) + " (sin sesión)");
+});
