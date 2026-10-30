@@ -11,7 +11,7 @@
 | Ortofoto PNOA 2022 | IGN (WMS) | © IGN, CC BY 4.0 |
 | NDVI | Sentinel-2 (48 fechas), Planetary Computer | Copernicus |
 | Suelo | SoilGrids | ISRIC, CC BY 4.0 |
-| three.js 0.186.1 | npm (web) y jsDelivr (salida artefacto, importmap) | MIT |
+| three.js 0.186.1 | npm (empaquetado por Vite) | MIT |
 | Parcelas, marcas de olivos, datos de la explotación | OlivarTrack | **privado**, no se versiona |
 
 ## Nomenclatura de hojas
@@ -32,8 +32,8 @@ Detalle paso a paso y comprobaciones: [skill `datos-finca`](../../.claude/skills
 
 1. Descargar las hojas y el MDT (`GEMELO_DESCARGAS`) y tener las parcelas en UTM (`GEMELO_PARCELAS`).
 2. **Hituelo**: `tuberia/datos/hituelo/01_particiona.py` → `02_tesela.py` → `03_arboles.py` → `04a_candidatos` → `04b_tendido` → `04c_paisaje` → `05_validacion`; imagen en `tuberia/datos/hituelo/imagen/` (`orto`, `ndvi`, `suelo_ndvi`, `suelo_parcelas`). Luego `python tuberia/finca_8_teselas.py --finca hituelo` (delega en `tuberia/hituelo_conv.py`).
-3. **Cerro**: `tuberia/datos/cerro/finca_1…finca_6`, `ndvi_sentinel`, `paisaje_1…6`, `suelo_1…2`. `finca_8_teselas.py --finca cerro` lee `datos_cerro_embebido.json`, **un intermedio que ningún script del repo produce** (pendiente D5).
-4. Montar: `python tuberia/salida_artefacto/montar_v2.py --finca <finca> [--modo ficheros]`.
+3. **Cerro**: `tuberia/datos/cerro/finca_1…finca_6`, `ndvi_sentinel`, `paisaje_1…6`, `suelo_1…2`. `finca_8_teselas.py --finca cerro` lee `datos_cerro_embebido.json`, **un intermedio que ningún script del repo produce** (pendiente D5); ya no hay un `embebido.json` de salida.
+4. Generar el tileset: `node tuberia/tiles3d/genera.mjs --salida <carpeta>` ([TILES3D](../sistema/TILES3D.md)) y servir con el entorno local o construir la web con Vite ([DESARROLLO-LOCAL](DESARROLLO-LOCAL.md)).
 
 ### Parámetros de cada olivo (`copas_param`, ADR-0017)
 La columna opcional `copas_param` del índice ([contrato](../../contratos/olivo-generado.md#3-copas_param-columna-paralela-opcional-del-índice)) sale de las hojas LiDAR en dos pasos, después de exportar la finca (hace falta su `indice.json` y sus `t/*.json`). Necesita `laspy` y `lazrs` (`requirements.txt`).

@@ -4,9 +4,8 @@ Primero, siempre: abre la página con `?debug` y la consola del navegador. `wind
 
 ## No carga / se queda en «cargando»
 1. Consola: ¿`PAGEERROR`? Casi siempre es un módulo con un error de sintaxis o un orden roto: `npm run puerta` (sintaxis) lo localiza.
-2. `file://` sin servidor: el modo ficheros necesita `fetch` y no funciona; sirve con `python -m http.server 8000`.
-3. three viene de jsDelivr (importmap de la salida artefacto): sin red no hay motor. La web de Vite lo lleva empaquetado.
-4. Cerro embebido: ¿pesa más de 16 MB? La plataforma lo rechaza.
+2. `file://` no sirve: la página necesita `fetch` a `t/` y al tileset del mismo origen; sírvela con el entorno local (`npm run dev:arriba`) o una página de pruebas.
+3. Panel «Esta finca no tiene escena»: el índice no trae `tileset` o el tileset falló (el panel dice el motivo y la consola trae un `console.error`). Mira que `tileset/tileset.json` se sirva del mismo origen y que el índice apunte a él.
 
 ## Una tesela falla o falta
 - Síntoma: hueco, relieve plano o ortofoto gris en un cuadrado de 256 m.
@@ -19,14 +18,7 @@ Primero, siempre: abre la página con `?debug` y la consola del navegador. `wind
 ## El WMS del IGN no responde (al regenerar la ortofoto)
 - Los scripts de `tuberia/datos/` piden en trozos pequeños. Una petición grande se cuelga (comprobado con el WCS del MDT 5 m: 500×500 m responde en 0,2 s, la caja entera no responde en 60 s).
 - Reintenta con trozos más pequeños; la ortofoto PNOA es la de 2022. El IGN cae a ratos: espera y repite, no cambies de fuente sin decidirlo.
-- La página publicada **no** depende del IGN: la CSP impide pedirlo desde ella.
-
-## Falla el marco de artefactos (ficheros de apoyo)
-- Prueba 0 «a medias»: no se ha confirmado con sesión que `fetch` e `<img>` del mismo origen funcionen en el marco.
-- Síntoma: la página carga pero las teselas dan error de red o CSP.
-- **Plan B** (por orden): (1) probar `<img>` en vez de `fetch` para las ortofotos; (2) Hituelo en varias páginas, una por zona, que quepan cada una en 16 MB; (3) JSON/base64 como `assets` (ata la subida a una sesión de editor).
-- Sin navegador autenticado, **solo una persona** puede confirmar que cargan: díselo a Antonio.
-- Un `.bin` no se admite (tipos servidos: html, css, js, mjs, wasm, json, txt, csv, png, jpg, webp, svg, fuentes, mp3/mp4…). Por eso json/jpg ([ADR-0008](../adr/0008-ficheros-de-apoyo-json-jpg.md)).
+- La página servida **no** depende del IGN: el motor solo pide a su mismo origen y la CSP lo impide.
 
 ## Va lento / se cierra la pestaña (móvil)
 - `?debug`: mira ms de JS, llamadas y triángulos. SwiftShader no sirve para fps ([skill `medir`](../../.claude/skills/medir/SKILL.md)).

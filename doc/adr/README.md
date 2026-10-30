@@ -13,8 +13,8 @@ Cada decisión con alternativas reales se escribe una vez, con su porqué y su c
 
 | ADR | Título | Estado |
 |---|---|---|
-| [0001](0001-teselas-256m-utm30.md) | Teselas de 256 m alineadas a múltiplos en UTM30 | Aceptado |
-| [0002](0002-niveles-de-detalle.md) | Niveles de detalle de terreno, olivos y nube | Aceptado |
+| [0001](0001-teselas-256m-utm30.md) | Teselas de 256 m alineadas a múltiplos en UTM30 | Superado por ADR-0021 |
+| [0002](0002-niveles-de-detalle.md) | Niveles de detalle de terreno, olivos y nube | Superado por ADR-0021 |
 | [0003](0003-calidad-base-alta.md) | Calidad Base y Alta con el mismo motor | Aceptado |
 | [0004](0004-datos-fuera-del-repo.md) | Los datos no se versionan | Aceptado |
 | [0005](0005-webxr-perfil-propio.md) | WebXR con perfil de rendimiento propio | Aceptado |
@@ -33,4 +33,5 @@ Cada decisión con alternativas reales se escribe una vez, con su porqué y su c
 | [0018](0018-hornero-de-olivos.md) | Hornero de olivos: variantes horneadas en el servidor, propios cercanos en el aparato | Aceptado |
 | [0019](0019-escalera-de-olivos.md) | Escalera de olivos: niveles del constructor e impostores | Aceptado |
 | [0020](0020-avatares-vrm.md) | Avatares VRM | Aceptado |
+| [0021](0021-se-retira-la-salida-artefacto-y-la-escena-de-siempre.md) | Se retira la salida artefacto y la escena de siempre | Aceptado |
 | [0022](0022-escalones-de-olivo-por-masa-visual.md) | Escalones de olivo por masa visual | Propuesto |

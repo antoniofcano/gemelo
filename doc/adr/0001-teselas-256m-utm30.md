@@ -1,6 +1,6 @@
 # ADR-0001 — Teselas de 256 m alineadas a múltiplos en UTM30
 
-- **Estado:** Aceptado
+- **Estado:** Superado por ADR-0021
 - **Fecha:** 2026-10-28 (decidido en el diseño del 27-oct)
 
 ## Contexto
@@ -21,3 +21,6 @@ El mundo es un conjunto de teselas de 256 m alineadas a múltiplos de 256 en UTM
 
 ## Comprobación
 Cerro (12 teselas) y Hituelo (46) cargan con 0 errores; capturas de Cerro antes/después casi idénticas. Contrato en [CONTRATOS](../sistema/CONTRATOS.md).
+
+## Enmienda 2026-10-30
+Superado por [ADR-0021](0021-se-retira-la-salida-artefacto-y-la-escena-de-siempre.md) (con [ADR-0015](0015-escena-en-3d-tiles.md), fase 2). La rejilla de 256 m alineada a UTM30 se conserva para los datos de `Mundo` (`t/*.json`, `t/*.jpg`); lo que se retira es la escena que dibujaba esas teselas.

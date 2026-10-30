@@ -82,7 +82,7 @@ En una zona densa (hasta 1.225 olivos en 128 × 128 m) el radio 3D baja a unos 6
 
 Todo **estimado** salvo lo marcado como medido. **[DEDUCIDO]** las llamadas de olivos bajan: hoy suman 10 de los niveles 1-2, varias por cada celda de nivel 0 y las de olivos de cada glb del tileset, y la escalera las deja en 7-8. Con eso, el «lejos» de Hituelo con tileset (258 llamadas) debería quedar bajo 250; se comprueba en O8d.
 
-**Topes de `pruebas/presupuesto.json` que cambiarían:** en la fase A, un bloque nuevo `fixture_olivos_escalera` (lejos, cerca y nube: llamadas, triángulos, heap; llamadas de olivos ≤ 8; MiB de textura de impostores, que da el motor desde el tamaño de los atlas porque three solo cuenta texturas) con ≈ 25 % de margen sobre la primera medida. En la fase B se vuelven a fijar `fixture` y `fixture_escena_tiles` con la escalera de serie, explicándolo en el commit. En la fase C se retira `fixture_olivos_gen`. `diseno` no cambia.
+**Topes de `pruebas/presupuesto.json` que cambiarían:** en la fase A, un bloque nuevo `fixture_olivos_escalera` (lejos, cerca y nube: llamadas, triángulos, heap; llamadas de olivos ≤ 8; MiB de textura de impostores, que da el motor desde el tamaño de los atlas porque three solo cuenta texturas) con ≈ 25 % de margen sobre la primera medida. En la fase B se vuelven a fijar `fixture` (hoy `fixture.cerro` y `fixture.hituelo`) con la escalera de serie, explicándolo en el commit. En la fase C se retira `fixture_olivos_gen`. `diseno` no cambia.
 
 ## Alternativas consideradas
 - **Mantener la mezcla** (nivel 0 de siempre cerca, pelotillas, generados en medio) — es lo que da los saltos «descarados» (decisión 66).

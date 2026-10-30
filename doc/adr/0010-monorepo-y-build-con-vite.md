@@ -21,3 +21,6 @@ El repo pasa a ser un monorepo: `apps/web/` (cliente: `motor/` = el antiguo `src
 
 ## Comprobación
 `pruebas/guardianes/web.test.js`: la entrada es exactamente la concatenación, three es 0.128.0, y la página empaquetada carga sin errores con los mismos recuentos que la artefacto (tolerancia: 2 unidades o 2 %, por la variación propia del motor entre cargas). **Datos aún en línea** en la página; pasan a pedirse a la api en la fase 1a.
+
+## Enmienda 2026-10-30
+Con [ADR-0021](0021-se-retira-la-salida-artefacto-y-la-escena-de-siempre.md) se retira la salida artefacto: queda una sola salida, la web de Vite (el orden de montaje de los módulos lo fija `apps/web/herramientas/genera_motor.mjs`).
