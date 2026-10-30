@@ -67,7 +67,7 @@ test("alCambiar avisa solo si cambia, con clave, valor y antes; se puede dejar d
   a.pon("vr.giro", "45"); a.pon("vr.giro", "45"); a.pon("vista.exag", 2);
   assert.deepStrictEqual(visto, [["vr.giro", "45", "30"], ["vista.exag", 2, 1]]);
   a.restablece(); assert.strictEqual(a.lee("vr.giro"), "30"); assert.strictEqual(a.lee("vista.exag"), 1); assert.strictEqual(visto.length, 4);
-  quita(); a.pon("vr.giro", "suave"); assert.strictEqual(visto.length, 4);
+  quita(); a.pon("vr.giro", "45"); assert.strictEqual(visto.length, 4);
   a.alCambiar(() => { throw new Error("oyente roto"); }); assert.doesNotThrow(() => a.pon("vr.giro", "30"));
 });
 

@@ -23,7 +23,7 @@
       "vista.exag": num(1, 1, 3, 0.25), "vista.corr": num(1, 0, 1.5, 0.25), "vista.brujula": bool(true), "vista.unidades": opc("ha", ["ha", "m2"]),
       "sonido.activo": bool(true), "sonido.volumen": num(80, 0, 100, 5),
       "controles.tactil": opc("auto", ["auto", "si", "no"]), "controles.mano": opc("diestra", ["diestra", "zurda"]), "controles.sens": num(1, 0.4, 2, 0.2), "controles.invertir": bool(false),
-      "vr.giro": opc("30", ["30", "45", "suave"]), "vr.vineta": opc("suave", ["suave", "fuerte", "no"]), "vr.vuelo": bool(false), "vr.postura": opc("pie", ["pie", "sentado"]),
+      "vr.giro": opc("30", ["15", "30", "45", "60"]), "vr.vineta": opc("suave", ["suave", "fuerte", "no"]), "vr.vuelo": bool(false), "vr.postura": opc("pie", ["pie", "sentado"]),
       "acc.texto": num(100, 100, 200, 25), "acc.contraste": bool(false), "acc.movimiento": opc("sistema", ["sistema", "reducido", "normal"]),
       "avanzado.contador": bool(false)
     };
@@ -153,7 +153,7 @@
         { k: "controles.sens", t: "Sensibilidad al mirar", fmt: function (v) { return fmt(v, 1) + "×"; } },
         { k: "controles.invertir", t: "Invertir el eje vertical al mirar" } ] },
       { id: "vr", t: "Comodidad VR", nota: "Se aplica en las gafas. Nada de esto está probado en unas Quest.", campos: [
-        { k: "vr.giro", t: "Giro", ops: [["30", "A saltos de 30°"], ["45", "A saltos de 45°"], ["suave", "Suave"]] },
+        { k: "vr.giro", t: "Giro", ops: [["15", "A saltos de 15°"], ["30", "A saltos de 30°"], ["45", "A saltos de 45°"], ["60", "A saltos de 60°"]] },
         { k: "vr.vineta", t: "Viñeta", ops: [["suave", "Suave"], ["fuerte", "Fuerte"], ["no", "Apagada"]] },
         { k: "vr.vuelo", t: "Permitir vuelo (A) y mirador (B)" },
         { k: "vr.postura", t: "Postura", ops: [["pie", "De pie"], ["sentado", "Sentado"]] } ] },

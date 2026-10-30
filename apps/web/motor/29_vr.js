@@ -5,7 +5,8 @@
 //   12_paseo (paseando, persona, teclas, primera, entraPaseo, salePaseo, actualizaPaseo), 12b_llegada (Llegada), 13_parcelas (parcelas, fincas),
 //   14_historia (aviso), 15_tiempo (calma, nivel, hace), 16_vida (mira, quad, dron),
 //   19_balizas (BAL, cierraBaliza, balizaAbierta, abreBaliza, balizaVR, irABaliza, tBal), 20_sonido (snd, iniciaSonido), 22_huellas (pendFactor),
-//   25_perros (perrosLlegan), 26_presencia (Presencia), 30_mide (MideEst, Mide), 90_final (tamano, cuadro, bucle)
+//   24_pantalla (suave), 25_perros (perrosLlegan), 26_presencia (Presencia), 30_mide (MideEst, Mide), 33_ajustes (Ajustes),
+//   90_final (tamano, cuadro, bucle)
 // Nota: Publica además window.__vrDebug, __vrOlivo, __vrBotones, __vrVuelo, __vrBalizas y VR_ESTADO (depuración y pruebas VR).
 // ===============================================================================
   // ---------- modo VR inmersivo (WebXR, Meta Quest Browser): el paseo en primera persona con mandos, un panel flotante y un perfil de rendimiento propio
@@ -191,8 +192,8 @@
       vrGenteBotones(b, y0 + 96);
     } else {
       var cs = $("cSonido");
-      b("vig", 420, y0, 470, 64, "Viñeta: " + (VRX.vineta ? "sí" : "no"), function () { VRX.vineta = !VRX.vineta; vrAjPon("vr.vineta", VRX.vineta); VRX.sucio = true; }, VRX.vineta);
-      b("giro", 420, y0 + 88, 470, 64, "Giro por saltos de " + VRX.giro + "°", function () { var i = VR_GIROS.indexOf(VRX.giro); VRX.giro = VR_GIROS[(i + 1) % VR_GIROS.length]; vrAjPon("vr.giro", VRX.giro); VRX.sucio = true; }, false);
+      b("vig", 420, y0, 470, 64, "Viñeta: " + (VRX.vineta ? "sí" : "no"), function () { VRX.vineta = !VRX.vineta; vrAjPon("vr.vineta", VRX.vineta ? (vrAj("vr.vineta", "suave") === "fuerte" ? "fuerte" : "suave") : "no"); VRX.sucio = true; }, VRX.vineta);
+      b("giro", 420, y0 + 88, 470, 64, "Giro por saltos de " + VRX.giro + "°", function () { var i = VR_GIROS.indexOf(VRX.giro); VRX.giro = VR_GIROS[(i + 1) % VR_GIROS.length]; vrAjPon("vr.giro", String(VRX.giro)); VRX.sucio = true; }, false);
       if (cs) b("snd", 420, y0 + 176, 470, 64, "Sonido: " + (cs.checked ? "sí" : "no"), function () { cs.checked = !cs.checked; cs.dispatchEvent(new Event("change", { bubbles: true })); if (cs.checked) iniciaSonido(); VRX.sucio = true; }, cs.checked);
       b("e-", 420, y0 + 264, 90, 64, "−", function () { vrSlider("exag", -1); }); b("e+", 800, y0 + 264, 90, 64, "+", function () { vrSlider("exag", 1); });
       if (VR_DEBUG) b("mide", 420, y0 + 352, 470, 64, "Medir " + Mide.segundos() + " s", function () { Mide.inicia(); }, Mide.estado() === "midiendo");
@@ -377,7 +378,7 @@
     var r = VRX.rig, h = vrCabeza(), L = vrMano("left"), R = vrMano("right"), iz = vrEjes(L.src), de = vrEjes(R.src);
     // botones: Y panel, X viñeta, A vuelo, B mirador
     if (vrFlanco("Y", vrBoton(L.src, 5))) { panel.m.visible = !panel.m.visible; if (panel.m.visible) { panel.ini = false; VRX.sucio = true; } vrPulso(L, 0.2, 20); }
-    if (vrFlanco("X", vrBoton(L.src, 4))) { VRX.vineta = !VRX.vineta; vrAjPon("vr.vineta", VRX.vineta); VRX.sucio = true; }
+    if (vrFlanco("X", vrBoton(L.src, 4))) { VRX.vineta = !VRX.vineta; vrAjPon("vr.vineta", VRX.vineta ? (vrAj("vr.vineta", "suave") === "fuerte" ? "fuerte" : "suave") : "no"); VRX.sucio = true; }
     if (vrFlanco("A", vrBoton(R.src, 4))) { VRX.vuelo = !VRX.vuelo; VRX.mirador = false; VRX.sucio = true; vrPulso(R, 0.2, 20); }
     if (vrFlanco("B", vrBoton(R.src, 5))) { vrMirador(!VRX.mirador); vrPulso(R, 0.3, 25); }
     VRX.correr = vrBoton(L.src, 1);
