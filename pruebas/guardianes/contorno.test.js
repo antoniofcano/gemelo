@@ -20,6 +20,12 @@ test("la tubería: fuente obligatoria y pública, entrada por GEMELO_*, dependen
   assert.match(src, /https:\/\/sigpac-hubcloud\.es\/ogcapi\/collections\/recintos\/items/);
   assert.match(src, /https:\/\/ovc\.catastro\.meh\.es\/INSPIRE\/wfsCP\.aspx/);
   assert.match(src, /CC BY 4\.0/); assert.match(src, /Dirección General del Catastro/);
+  // OF3c (decisión 143): la fuente por defecto son las parcelas del gemelo (sin red), con la atribución de OlivarTrack/SIGPAC; el respaldo sigue
+  assert.match(src, /GEMELO_PARCELAS/); assert.match(src, /def lee_gemelo\(/); assert.match(src, /--comparar/);
+  assert.match(src, /"gemelo": "Parcelas de OlivarTrack \(polígono con origen SIGPAC, © Fondo Español de Garantía Agraria \(FEGA\), CC BY 4\.0\)/);
+  assert.match(src, /FUENTE_EN_BASE = \{"gemelo": "sigpac"/, "en la base se guarda el origen: la tabla solo admite sigpac | catastro");
+  const docc = lee("doc/operacion/DATOS.md");
+  assert.match(docc, /parcelas del gemelo/); assert.match(docc, /OlivarTrack, con origen SIGPAC/); assert.match(docc, /1 m/);
   const req = lee("tuberia/contorno/requirements.txt").split("\n").filter(l => l.trim() && !l.startsWith("#"));
   assert.ok(req.length >= 3 && req.every(l => /^[a-z0-9_-]+==\d+(\.\d+)+$/i.test(l.trim())), "versiones fijadas: " + req.join(", "));
   for (const f of fs.readdirSync(path.join(RAIZ, "tuberia", "contorno", "ejemplo"))) {

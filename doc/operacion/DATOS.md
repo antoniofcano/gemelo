@@ -13,8 +13,9 @@
 | Suelo | SoilGrids | ISRIC, CC BY 4.0 |
 | three.js 0.186.1 | npm (empaquetado por Vite) | MIT |
 | Parcelas, marcas de olivos, datos de la explotación | OlivarTrack | **privado**, no se versiona |
-| Contorno de la finca (OF3b), opción A | Recintos SIGPAC, FEGA (OGC API Features `sigpac-hubcloud.es/ogcapi`, colección `recintos`) | © FEGA, CC BY 4.0 (ficha del servicio en datos.gob.es) |
-| Contorno de la finca (OF3b), opción B | Parcelas catastrales, Dirección General del Catastro (WFS INSPIRE `ovc.catastro.meh.es/INSPIRE/wfsCP.aspx`, `GetParcel`) | © Dirección General del Catastro, licencia de uso propia de la DGC (ver abajo) |
+| Contorno de la finca (OF3c), por defecto | Parcelas de OlivarTrack que ya usa el gemelo (`GEMELO_PARCELAS`): polígono con límite SIGPAC | Dato de OlivarTrack, con origen SIGPAC © FEGA, CC BY 4.0 (atribución «© FEGA») |
+| Contorno de la finca (OF3b), respaldo A | Recintos SIGPAC, FEGA (OGC API Features `sigpac-hubcloud.es/ogcapi`, colección `recintos`) | © FEGA, CC BY 4.0 (ficha del servicio en datos.gob.es) |
+| Contorno de la finca (OF3b), respaldo B | Parcelas catastrales, Dirección General del Catastro (WFS INSPIRE `ovc.catastro.meh.es/INSPIRE/wfsCP.aspx`, `GetParcel`) | © Dirección General del Catastro, licencia de uso propia de la DGC (ver abajo) |
 
 ## Nomenclatura de hojas
 - **LiDAR**: `PNOA_2024_AND_<E>-<N>_H30_NPC01.laz`, hojas de 1×1 km. **En el nombre, la segunda cifra (`N`, «Y») es el borde NORTE de la hoja**, no el sur (`hoja_de()` en `tuberia/datos/hituelo/comun.py`).
@@ -72,19 +73,32 @@ Lo comprueba `pruebas/guardianes/exportadores.test.js` con los exportadores sint
 
 Variables de entorno: `GEMELO_DATOS`, `GEMELO_DESCARGAS`, `GEMELO_LIDAR`, `GEMELO_IMAGEN`, `GEMELO_HITUELO`, `GEMELO_PARCELAS`, `GEMELO_MDS`, `GEMELO_SUELO`. Los valores por defecto son rutas relativas a la carpeta desde la que se lanza el script. Las rutas se arman con `os.path.join`, así que los scripts valen en Windows, Linux y macOS (decisión 8, D4; lo vigila el guardián `multiplataforma`). Probado solo con `py_compile`: no se han vuelto a ejecutar con datos reales fuera de Windows.
 
-## Contorno de la finca (OF3b, decisión 140)
+## Contorno de la finca (OF3b y OF3c, decisiones 140 y 143)
 
 El contorno de una finca es la **unión de sus parcelas** y limita el editor de hazas de la oficina (migración 0011, tabla `fincas_contorno`;
 sin contorno cargado, el límite sigue siendo la caja de los olivos medidos + 150 m de OF3). Lo saca `tuberia/contorno/contorno_finca.py`:
 
 ```
 pip install -r tuberia/contorno/requirements.txt            # jsonschema, shapely, pyproj (versiones fijadas)
+# por defecto (OF3c): las parcelas del gemelo, sin red
+GEMELO_PARCELAS=<parcelas_utm.json> GEMELO_CONTORNO=<contorno.geojson> python tuberia/contorno/contorno_finca.py --finca <finca> --sql <contorno.sql>
+# contrastar con SIGPAC (diferencia en m², en `properties.comparacion`)
+... --finca <finca> --comparar <parcelas_sigpac.json>
+# respaldo: descarga de SIGPAC o Catastro
 GEMELO_CONTORNO_PARCELAS=<parcelas.json> GEMELO_CONTORNO=<contorno.geojson> python tuberia/contorno/contorno_finca.py --sql <contorno.sql>
 ```
 
-- **Entrada** (fuera del repo: son datos de la explotación): `{"finca": "hituelo", "fuente": "sigpac" | "catastro", "parcelas": [...]}`;
+- **Fuente por defecto, «parcelas del gemelo» (OF3c, decisión 143):** las parcelas de OlivarTrack ya traen su polígono y su límite SIGPAC, y
+  son las mismas que dan las teselas. Lee el mismo fichero que `tuberia/hituelo_conv.py` (`GEMELO_PARCELAS`: `{"parcelas": [{id, nombre,
+  finca, ha, olivos, utm: [[E, N], …]}]}`, UTM 30N), se queda con las de `--finca` (el nombre de finca del fichero pasado a id: «Cerro
+  Velasco» → `cerro-velasco`) y las junta igual que las otras fuentes. Sin red. **El dato es de OlivarTrack, con origen SIGPAC (FEGA, CC BY
+  4.0)**; la salida lleva `fuente: "gemelo"` y su atribución, y en la base se guarda como `sigpac` (su origen; la tabla solo admite
+  `sigpac | catastro`). No lleva las referencias.
+- **Holgura:** el editor admite hazas hasta **1 m** fuera del contorno (`CONTORNO_HOLGURA_M`, decisión 143); no es de la tubería.
+
+- **Entrada del respaldo** (fuera del repo: son datos de la explotación): `{"finca": "hituelo", "fuente": "sigpac" | "catastro", "parcelas": [...]}`;
   en SIGPAC cada parcela es `{provincia, municipio, agregado, zona, poligono, parcela}` (se piden todos sus recintos), en Catastro
-  `{refcat}` (referencia de 14 caracteres). La **fuente es obligatoria**: el script no elige. Ejemplos sintéticos en `tuberia/contorno/ejemplo/`.
+  `{refcat}` (referencia de 14 caracteres). En el respaldo la **fuente es obligatoria** (el script no elige entre SIGPAC y Catastro). Ejemplos sintéticos en `tuberia/contorno/ejemplo/`.
 - **Salida** (fuera del repo): GeoJSON en EPSG:25830 con un MultiPolygon y `finca`, `fuente`, `consultado_en`, `parcelas` (cuántas),
   `superficie_ha` y `atribucion`; **sin las referencias**. Une las parcelas, cierra rendijas entre vecinas (`--cierre`, 0,5 m) y redondea al cm.
 - **Carga:** con psql, como las hazas (`<contorno.sql>`: `fincas_contorno_carga(...)` y la línea de auditoría `tuberia.contorno_cargado`), o
@@ -92,7 +106,7 @@ GEMELO_CONTORNO_PARCELAS=<parcelas.json> GEMELO_CONTORNO=<contorno.geojson> pyth
   uno nuevo retira el anterior (queda en la tabla); `DELETE` lo retira y la finca vuelve a la caja.
 - **Comprobado** (2026-10-30): los dos servicios responden; con una parcela pública de ejemplo de cada uno la tubería sale bien (Catastro:
   la superficie coincide con su `areaValue`). Prueba sintética sin red: `python tuberia/contorno/prueba_contorno.py` (guardián `contorno`).
-  **No probado** con las parcelas reales de ninguna finca.
+  **No probado** con las parcelas reales de ninguna finca (tampoco la comparación del gemelo con SIGPAC).
 
 **Las dos fuentes no tienen la misma licencia** y la elección es de Antonio (decisión 140, [DECISIONS-PENDING](../rumbo/DECISIONS-PENDING.md)):
 
