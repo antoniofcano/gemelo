@@ -52,10 +52,17 @@ test("V7/V10: volúmenes de medios y de configuración publicada (la api escribe
     assert.match(c, re("GEMELO_CONFIG_SALIDA:\\s*" + V.config_publicada + "/publicada\\.json\\s*$", "m"), f + ": GEMELO_CONFIG_SALIDA");
     assert.match(c, /^\s*- config_publicada:\/config:ro\s*$/m, f + ": el hornero lee la configuración, de solo lectura");
     assert.match(c, /GEMELO_HORNERO_CONFIG:\s*\/config\/publicada\.json/, f + ": GEMELO_HORNERO_CONFIG");
+    // OF9: re-hornear. La petición va en el MISMO volumen de la configuración publicada (la api escribe, el hornero la lee de solo lectura: junto a GEMELO_HORNERO_CONFIG,
+    // sin otra variable); la api ve el latido del hornero (su volumen de estado, de solo lectura) y así dice «pedido / atendido»
+    assert.match(c, /GEMELO_HORNERO_ESTADO:\s*\/datos\/hornero\s*$/m, f + ": la api conoce el estado del hornero");
+    assert.match(c, /^\s*- hornero_estado:\/datos\/hornero:ro\s*$/m, f + ": la api lee el estado del hornero, de solo lectura");
+    assert.match(c, /^\s*- hornero_estado:\/estado\s*$/m, f + ": el hornero escribe su estado (donde anota la petición atendida)");
+    assert.ok(!/GEMELO_HORNERO_PEDIDO/.test(c), f + ": la petición va por defecto junto a la configuración publicada (api: dirname de GEMELO_CONFIG_SALIDA; hornero: dirname de GEMELO_HORNERO_CONFIG)");
+    assert.match(c, /GEMELO_HORNERO_SALIDA:/, f + ": la api lee el manifiesto horneado (solo lectura)");
     assert.match(c, /^  medios: \{\}/m, f + ": volumen medios declarado");
     assert.match(c, /^  config_publicada: \{\}/m, f + ": volumen config_publicada declarado");
   }
-  assert.match(lee("apps/api/Dockerfile"), /mkdir -p \/datos\/medios \/datos\/config && chown node:node \/datos\/medios \/datos\/config/, "los puntos de montaje son del usuario node (un volumen nuevo hereda su dueño)");
+  assert.match(lee("apps/api/Dockerfile"), /mkdir -p \/datos\/medios \/datos\/config \/datos\/hornero && chown node:node \/datos\/medios \/datos\/config \/datos\/hornero/, "los puntos de montaje son del usuario node (un volumen nuevo hereda su dueño)");
   for (const f of ["infra/Caddyfile", "infra/dev/Caddyfile"]) {
     const c = sinComentarios(f);
     assert.match(c, re("handle /api/medios \\{\\s*request_body \\{\\s*max_size " + L.api_medios + "MB"), f + ": /api/medios hasta " + L.api_medios + " MB");

@@ -13,6 +13,10 @@
 //   GEMELO_HORNERO_CALENDARIO  otro epocas-calendario.json; GEMELO_HORNERO_RELEASE=1 brotli 11
 //   GEMELO_HORNERO_CONFIG   la configuración PUBLICADA que deja la api (su GEMELO_CONFIG_SALIDA, contratos/config.schema.json): si trae «epocas» y
 //                           cubren los 366 días, ese es el calendario (decisión 112) y su huella es el sello; si no, el de GEMELO_HORNERO_CALENDARIO
+//   GEMELO_HORNERO_PEDIDO   la petición de «re-hornear ya» (OF9): un `pedido-rehornear.json` { id, pedido_en } que deja la api (POST /api/admin/hornero/rehornear)
+//                           en el mismo volumen de la configuración publicada (solo lectura para el hornero); por defecto, junto a GEMELO_HORNERO_CONFIG.
+//                           Es un sello más: un id que no ha atendido lanza una vuelta en la próxima comprobación (≤ GEMELO_HORNERO_COMPRUEBA_S) y lo anota como
+//                           atendido en servicio.json (fincas.<f>.pedido_atendido). No fuerza regenerar: la vuelta es idempotente (lo que no cambió se reutiliza)
 //   GEMELO_HORNERO_IMPOSTORES=1  además hornea los impostores (O8b: Chrome; la imagen Dockerfile.impostores lo trae y lo pone)
 import fs from "node:fs";
 import path from "node:path";
@@ -28,6 +32,8 @@ const escribeAtomico = (r, t) => { const tmp = r + ".tmp-" + process.pid; fs.wri
 
 /** Sello barato de un fichero: tamaño y fecha de modificación (null si no existe) */
 export function sello(ruta) { try { const s = fs.statSync(ruta); return s.size + ":" + Math.round(s.mtimeMs); } catch (e) { return null; } }
+/** El id de la petición de re-hornear que hay en `ruta`, o null (sin fichero, ilegible o con un id que no vale) */
+export function idDePedido(ruta) { const p = ruta ? leeJson(ruta) : null; return p && typeof p.id === "string" && /^[A-Za-z0-9-]{8,64}$/.test(p.id) ? p.id : null; }
 /** Huella de un fichero pequeño (el calendario) */
 export function huella(ruta) { try { return crypto.createHash("sha256").update(fs.readFileSync(ruta)).digest("hex").slice(0, 16); } catch (e) { return null; } }
 
@@ -70,10 +76,11 @@ export function minutosDe(hora) {
 export const despertarEn = (desde, hora) => Date.parse(desde + "T00:00:00Z") + minutosDe(hora) * 60000;
 
 /**
- * Pura: ¿hay que lanzar una vuelta, y por qué? c: { primera, ahora (ms), fallo: { en (ms) } | null, reintentoMs, manifiesto, G: {GEN_VERSION, CACHE_VERSION},
+ * Pura: ¿hay que lanzar una vuelta, y por qué? c: { primera, ahora (ms), fallo: { en (ms) } | null, pedido (id de una petición de re-hornear sin atender | null), reintentoMs, manifiesto, G: {GEN_VERSION, CACHE_VERSION},
  * formato, epocaHoy, sellos, previos, despertarEn (ms | null) }. Devuelve el motivo o null (seguir durmiendo).
  */
 export function motivoDeVuelta(c) {
+  if (c.pedido) return "re-horneado pedido desde la oficina";   // lo ha pedido una persona: no espera ni al reintento de un fallo
   if (c.fallo) return c.ahora - c.fallo.en >= c.reintentoMs ? "reintento tras un fallo" : null;
   if (c.primera) return "arranque";
   const m = c.manifiesto;
@@ -100,7 +107,8 @@ export function configDe(env = process.env) {
   const n = (k, d) => Number(env[k] || d);
   return { fincas, datos: env.GEMELO_HORNERO_DATOS || "/datos", salida: env.GEMELO_HORNERO_SALIDA || "/salida", estado: env.GEMELO_HORNERO_ESTADO || "/estado",
     hora: env.GEMELO_HORNERO_HORA || "03:00", compruebaMs: n("GEMELO_HORNERO_COMPRUEBA_S", 600) * 1000, reintentoMs: n("GEMELO_HORNERO_REINTENTO_S", 300) * 1000,
-    calendario: env.GEMELO_HORNERO_CALENDARIO || path.join(RAIZ, "contratos", "epocas-calendario.json"), config: env.GEMELO_HORNERO_CONFIG || null, release: env.GEMELO_HORNERO_RELEASE === "1", limpia: env.GEMELO_HORNERO_LIMPIA !== "0", impostores: env.GEMELO_HORNERO_IMPOSTORES === "1" };
+    calendario: env.GEMELO_HORNERO_CALENDARIO || path.join(RAIZ, "contratos", "epocas-calendario.json"), config: env.GEMELO_HORNERO_CONFIG || null,
+    pedido: env.GEMELO_HORNERO_PEDIDO || (env.GEMELO_HORNERO_CONFIG ? path.join(path.dirname(env.GEMELO_HORNERO_CONFIG), "pedido-rehornear.json") : null), release: env.GEMELO_HORNERO_RELEASE === "1", limpia: env.GEMELO_HORNERO_LIMPIA !== "0", impostores: env.GEMELO_HORNERO_IMPOSTORES === "1" };
 }
 
 /**
@@ -113,9 +121,13 @@ export async function servicio(cfg, o = {}) {
   const G = o.generador || await generadorReal(), ahora = o.ahora || (() => Date.now());
   fs.mkdirSync(cfg.estado, { recursive: true });
   const rutaLatido = path.join(cfg.estado, "servicio.json"), iniciado = ahoraISO();
-  const por = Object.fromEntries(cfg.fincas.map(f => [f, { primera: true, fallo: null, previos: {}, durmiendo_hasta: null, ultimo_motivo: null, ultima_vuelta_en: null }]));
+  const por = Object.fromEntries(cfg.fincas.map(f => [f, { primera: true, fallo: null, previos: {}, durmiendo_hasta: null, ultimo_motivo: null, ultima_vuelta_en: null,
+    pedidoAtendido: null, pedidoAtendidoEn: null }]));
+  // lo que ya atendí antes de reiniciarme (un reinicio no repite una petición vieja)
+  const previo = leeJson(rutaLatido);
+  for (const f of cfg.fincas) { const pf = previo && previo.fincas && previo.fincas[f]; if (pf && pf.pedido_atendido) { por[f].pedidoAtendido = pf.pedido_atendido; por[f].pedidoAtendidoEn = pf.pedido_atendido_en || null; } }
   const latido = () => { try { escribeAtomico(rutaLatido, JSON.stringify({ v: 1, pid: process.pid, iniciado_en: iniciado, latido_en: ahoraISO(), comprueba_s: cfg.compruebaMs / 1000,
-    fincas: Object.fromEntries(cfg.fincas.map(f => [f, { durmiendo_hasta: por[f].durmiendo_hasta, ultimo_motivo: por[f].ultimo_motivo, ultima_vuelta_en: por[f].ultima_vuelta_en, fallo: por[f].fallo ? por[f].fallo.mensaje : null }])) }, null, 2) + "\n"); } catch (e) { /* el latido nunca tumba el trabajo */ } };
+    fincas: Object.fromEntries(cfg.fincas.map(f => [f, { durmiendo_hasta: por[f].durmiendo_hasta, ultimo_motivo: por[f].ultimo_motivo, ultima_vuelta_en: por[f].ultima_vuelta_en, pedido_atendido: por[f].pedidoAtendido, pedido_atendido_en: por[f].pedidoAtendidoEn, fallo: por[f].fallo ? por[f].fallo.mensaje : null }])) }, null, 2) + "\n"); } catch (e) { /* el latido nunca tumba el trabajo */ } };
   const resultado = { fincas: {} };
 
   const pasada = async finca => {
@@ -124,7 +136,8 @@ export async function servicio(cfg, o = {}) {
     if (C.aviso && C.aviso !== s.avisoCal) log("[hornero " + finca + "] " + C.aviso); s.avisoCal = C.aviso;
     const sellos = { indice: sello(rutaIndice), calendario: C.sello };
     const manifiesto = leeJson(path.join(cfg.salida, finca, "olivos", "manifiesto.json"));
-    const motivo = motivoDeVuelta({ primera: s.primera, ahora: t, fallo: s.fallo, reintentoMs: cfg.reintentoMs, manifiesto, G, formato: F.FORMATO, epocaHoy: E.epocaDeFecha(tabla, fecha),
+    const idPedido = idDePedido(cfg.pedido), pedido = idPedido && idPedido !== s.pedidoAtendido ? idPedido : null;
+    const motivo = motivoDeVuelta({ pedido, primera: s.primera, ahora: t, fallo: s.fallo, reintentoMs: cfg.reintentoMs, manifiesto, G, formato: F.FORMATO, epocaHoy: E.epocaDeFecha(tabla, fecha),
       sellos, previos: s.previos, despertarEn: s.despertarEn ?? null });
     if (!motivo) return;
     const libera = await tomaCandado(path.join(cfg.estado, finca), { onCompromised: e => log("hornero: candado de " + finca + " comprometido: " + e.message) });
@@ -143,7 +156,7 @@ export async function servicio(cfg, o = {}) {
       s.fallo = { en: ahora(), mensaje: String(e && e.message || e) }; s.primera = false;
       resultado.fincas[finca] = { motivo, error: s.fallo.mensaje };
       log("[hornero " + finca + "] FALLÓ: " + s.fallo.mensaje + " (reintento en " + cfg.reintentoMs / 1000 + " s)");
-    } finally { await libera().catch(() => {}); latido(); }
+    } finally { await libera().catch(() => {}); if (pedido) { s.pedidoAtendido = pedido; s.pedidoAtendidoEn = ahoraISO(); } latido(); }   // la petición queda atendida salga bien o mal (un fallo se reintenta solo)
   };
 
   for (;;) {
