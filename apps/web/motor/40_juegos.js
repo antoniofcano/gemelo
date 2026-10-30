@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
 // Consume: 01_datos (D, $), 02_mundo (Mundo), 02c_componentes (Bus, Pausa, ConfigPuro, Teclas, Componentes, Config), 02d_laminas (Laminas),
-//   03_escena (lienzo, modo), 09_camara (suelta), 12_paseo (teclas), 14_historia (hist), 15_tiempo (hace), 16_vida (mira),
+//   03_escena (lienzo, modo), 09_camara (suelta), 12_paseo (teclas), 14_historia (hist, lista), 15_tiempo (hace), 16_vida (mira),
 //   29_vr (VRX, panel, PanelVR), 31_hud (Hud), 32_ventanas (Ventanas), 36_mandos (Mandos), 90_final (bucle)
 // Nota: Componente «juegos» (ADR-0023, C9a): el anfitrión de juegos casuales. Solo se registra; nadie lo nombra. Montado: icono y ventana «Juegos», tecla J, recoge los juegos por el Bus («juego:ofrece» / «juego:pide» / «juego:retira»), abre uno a pantalla completa con el mundo en pausa (Pausa de 02c; su fase «pausa») y guarda el récord (localStorage y, con servidor, /api/juegos/<id>/…). Publica window.__juegos (pruebas). El trozo [puro:…] lo evalúa en Node pruebas/guardianes/juego_cosecha.test.js.
 // ===============================================================================
@@ -10,7 +10,7 @@
   // en la ventana «Juegos» (icono de la barra y tecla J), abre uno a pantalla completa sobre el mundo EN PAUSA (Pausa de 02c: el bucle sigue, pero el mundo no
   // avanza ni se pinta; solo corre la fase «pausa», que es la de aquí), lo cierra con Esc o con su botón y devuelve a quien juega donde estaba. Guarda el
   // récord: en el aparato (localStorage, con try/catch) y, si la página la sirve el servidor, el de la familia en la api (POST /api/juegos/<id>/partidas
-  // y GET …/records; contrato en contratos/api.openapi.yaml). Solo el récord del propio hogar: nada de otras familias (lo decide Antonio: DECISIONS-PENDING).
+  // y GET …/records; contrato en contratos/api.openapi.yaml). El récord es el del propio hogar; además (C9c, decisión 137) la clasificación por alias entre familias (GET …/clasificacion): puesto, puntos y el alias solo si el hogar lo hizo visible («Otra familia» si no), en la ventana y al acabar la partida.
   // Un juego es OTRO componente: se ofrece con «juego:ofrece» { id, titulo, descripcion, ayuda?, crea(ctx) → partida } (si llega antes que el anfitrión,
   // el anfitrión le pregunta con «juego:pide») y se retira con «juego:retira» { id }. ctx = { lienzo, mandos, epoca, semilla, reducido }; la partida da
   // redimensiona(w, h, dpr), actualiza(dt) → ¿repintar?, pinta(), tecla(code) → ¿usada?, pausa(si), pausada(), estado() { puntos, fin }, resultado()
@@ -45,6 +45,25 @@
       return { record: r, nuevo: res.puntos > 0 };
     }
     function rutaPartidas(prefijo, id) { return prefijo ? prefijo + "juegos/" + encodeURIComponent(id) + "/partidas" : null; }
+    function rutaClasificacion(prefijo, id, n) { return prefijo ? prefijo + "juegos/" + encodeURIComponent(id) + "/clasificacion?n=" + (n || 5) : null; }
+    // la respuesta de la clasificación, validada y sin nada de más (lista blanca, contratos/juegos-clasificacion.schema.json); null si no es lo esperado
+    function validaClasificacion(j, id) {
+      function puesto(p) {
+        if (!p || typeof p !== "object" || !(p.puesto >= 1) || !(p.puntos >= 1) || typeof p.es_mia !== "boolean") return null;
+        if (p.alias !== null && (typeof p.alias !== "string" || p.alias.length > 20)) return null;
+        return { puesto: Math.floor(p.puesto), alias: p.alias, puntos: Math.floor(p.puntos), es_mia: p.es_mia };
+      }
+      if (!j || typeof j !== "object" || j.juego !== id || !(j.total >= 0) || !Array.isArray(j["puestos"])) return null;
+      var filas = []; for (var i = 0; i < j["puestos"].length && i < 20; i++) { var q = puesto(j["puestos"][i]); if (!q) return null; filas.push(q); }
+      var mia = j.mia == null ? null : puesto(j.mia); if (j.mia != null && !mia) return null;
+      return { total: Math.floor(j.total), puestos: filas, mia: mia };
+    }
+    // cómo se llama una fila: el alias si es visible; la propia, «(tú)»; sin alias, «Otra familia»
+    function nombrePuesto(p) { return p.es_mia ? (p.alias ? p.alias + " (tú)" : "Tu familia") : (p.alias || "Otra familia"); }
+    function textoPuesto(c) {
+      if (!c || !c.mia) return "Aún no estás en la clasificación.";
+      return "Tu puesto: " + c.mia.puesto + ".º de " + c.total + (c.total === 1 ? " familia" : " familias");
+    }
     function rutaRecords(prefijo, id) { return prefijo ? prefijo + "juegos/" + encodeURIComponent(id) + "/records" : null; }
     // una semilla por partida (o la de ?semilla=N, para las pruebas)
     function semilla(busqueda, ahora) { var m = /[?&]semilla=(\d{1,9})(?:[&#]|$)/.exec(busqueda || ""); return m ? Number(m[1]) : (Math.floor(ahora) % 2147483646) + 1; }
@@ -81,12 +100,12 @@
       return sale;
     }
     return { VR: VR, geoVR: geoVR, zonaVR: zonaVR, palanca: palanca, ID: ID, validaJuego: validaJuego, mejor: mejor, claveLocal: claveLocal, leeLocal: leeLocal, guardaLocal: guardaLocal, rutaPartidas: rutaPartidas,
-      rutaRecords: rutaRecords, semilla: semilla, fmtDuracion: fmtDuracion, fmtPuntos: fmtPuntos };
+      rutaClasificacion: rutaClasificacion, validaClasificacion: validaClasificacion, nombrePuesto: nombrePuesto, textoPuesto: textoPuesto, rutaRecords: rutaRecords, semilla: semilla, fmtDuracion: fmtDuracion, fmtPuntos: fmtPuntos };
   })();
   // [puro:fin]
 
   function JuegosMotor(n) {
-    var JP = JuegosPuro, juegos = {}, orden = [], records = {}, cuerpo = null, abierto = null, vr = null, LAM = "juego-vr", mide = { n: 0, ms: 0, pintadas: 0 };
+    var JP = JuegosPuro, juegos = {}, orden = [], records = {}, clasif = {}, cuerpo = null, abierto = null, vr = null, LAM = "juego-vr", mide = { n: 0, ms: 0, pintadas: 0 };
     var prefijo = ConfigPuro.prefijoApi(location.search, D && D.base);
     var almacen = null; try { almacen = window.localStorage; } catch (e) { almacen = null; }
 
@@ -104,6 +123,31 @@
       var url = JP.rutaRecords(prefijo, id); if (!url || typeof fetch !== "function") return;
       fetch(url, { credentials: "same-origin", cache: "no-cache", headers: { accept: "application/json" } }).then(function (r) { return r.status === 200 ? r.json() : null; })
         .then(function (j) { if (j && j.juego === id) { records[id] = { familia: j.record || null, partidas: j.partidas || 0 }; pintaLista(); pintaBarra(); if (vr && vr.id === id) vr.recordTxt = textoRecord(id); } }).catch(function () {});
+    }
+    // la clasificación entre familias por alias (solo con servidor); sin servidor, sin sesión o sin red, no se enseña y no se dice nada
+    function pideClasificacion(id) {
+      var url = JP.rutaClasificacion(prefijo, id, 5);
+      if (!url || typeof fetch !== "function") return Promise.resolve(null);
+      return fetch(url, { credentials: "same-origin", cache: "no-cache", headers: { accept: "application/json" } }).then(function (r) { return r.status === 200 ? r.json() : null; })
+        .then(function (j) { var c = JP.validaClasificacion(j, id); if (c) { clasif[id] = c; if (!abierto) pintaLista(); } return c; }).catch(function () { return null; });
+    }
+    // el puesto y las primeras filas dentro de `cont` (textContent siempre: el alias lo escribe quien juega)
+    function pintaTabla(cont, c) {
+      cont.textContent = "";
+      cont.appendChild(el("p", "margin:0 0 4px;font-size:16px;font-weight:700", JP.textoPuesto(c)));
+      if (!c.puestos.length) { cont.appendChild(el("p", "margin:0;font-size:14px;opacity:.8", "Todavía nadie ha puntuado.")); return; }
+      var t = el("ol", "margin:0;padding:0;list-style:none;font-size:15px;text-align:left");
+      c.puestos.forEach(function (f) {
+        var li = el("li", "display:flex;gap:8px;padding:2px 0" + (f.es_mia ? ";font-weight:700;color:#ffe9a8" : ""));
+        li.appendChild(el("span", "flex:0 0 2.2em;opacity:.85", f.puesto + ".º")); li.appendChild(el("span", "flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap", JP.nombrePuesto(f)));
+        li.appendChild(el("span", "flex:0 0 auto", JP.fmtPuntos(f.puntos))); t.appendChild(li);
+      });
+      cont.appendChild(t);
+      if (c.mia && c.mia.puesto > c.puestos.length && !c.puestos.some(function (f) { return f.es_mia; })) {
+        var m = el("div", "display:flex;gap:8px;padding:4px 0 0;font-weight:700;color:#ffe9a8;font-size:15px;text-align:left");
+        m.appendChild(el("span", "flex:0 0 2.2em", c.mia.puesto + ".º")); m.appendChild(el("span", "flex:1 1 auto", JP.nombrePuesto(c.mia))); m.appendChild(el("span", "flex:0 0 auto", JP.fmtPuntos(c.mia.puntos)));
+        cont.appendChild(m);
+      }
     }
     function guarda(id, res) {
       var loc = JP.guardaLocal(almacen, id, res, new Date().toISOString()), url = JP.rutaPartidas(prefijo, id);
@@ -129,10 +173,12 @@
         if (d.descripcion) t.appendChild(el("p", "margin:0 0 6px;font-size:16px;line-height:1.35", d.descripcion));
         var rec = el("p", "margin:0 0 8px;font-size:15px;opacity:.85", textoRecord(id)); rec.setAttribute("data-record", id); t.appendChild(rec);
         var b = el("button", BOTON, "Jugar"); b.type = "button"; b.setAttribute("data-juega", id); b.addEventListener("click", function () { abre(id); });
-        t.appendChild(b); cuerpo.appendChild(t);
+        t.appendChild(b);
+        if (clasif[id]) { var cl = el("div", "margin:10px 0 0;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,0.08)"); cl.setAttribute("data-clasificacion", id); cl.appendChild(el("h4", "margin:0 0 4px;font-size:15px;opacity:.85", "Clasificación")); var ct = el("div"); pintaTabla(ct, clasif[id]); cl.appendChild(ct); t.appendChild(cl); }
+        cuerpo.appendChild(t);
       });
       cuerpo.appendChild(el("p", "margin:10px 0 0;font-size:14px;opacity:.75", "El mundo se queda en pausa mientras juegas. Sin compras ni anuncios. " +
-        (prefijo ? "El récord es el de tu familia; no se ve el de otras." : "El récord se guarda en este aparato.")));
+        (prefijo ? "El récord es el de tu familia. En la clasificación, las otras familias salen con su alias si lo hicieron visible, y si no, como «Otra familia»." : "El récord se guarda en este aparato.")));
     }
 
     // --- la partida a pantalla completa
@@ -310,13 +356,15 @@
       c.appendChild(el("p", "margin:0 0 6px;font-size:22px;font-weight:700", JP.fmtPuntos(res.puntos) + " puntos"));
       c.appendChild(el("p", "margin:0 0 12px;font-size:16px;opacity:.85", "en " + JP.fmtDuracion(res.duracion_s)));
       var linea = el("p", "margin:0 0 16px;font-size:17px", "Guardando…"); c.appendChild(linea);
+      var puesto = el("div", "margin:0 0 14px;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,0.08)"); puesto.setAttribute("data-clasificacion", a.id); puesto.hidden = true; c.appendChild(puesto);
       var otra = el("button", BOTON + ";margin:4px", "Otra partida"), volver = el("button", BOTON + ";margin:4px", "Volver al olivar");
       otra.type = "button"; volver.type = "button"; otra.addEventListener("click", function () { if (abierto === a) nuevaPartida(); }); volver.addEventListener("click", function () { cierra(); });
       c.appendChild(otra); c.appendChild(volver); a.fin.appendChild(c); a.fin.hidden = false; otra.focus({ preventScroll: true });
       guarda(a.id, res).then(function (g) {
         linea.textContent = (g.nuevo ? "¡Récord nuevo! " : "") + textoRecord(a.id);
         if (abierto === a) pintaBarra();
-      });
+        return pideClasificacion(a.id);
+      }).then(function (cl) { if (cl && abierto === a) { pintaTabla(puesto, cl); puesto.hidden = false; } });
     }
     // la fase «pausa» (solo con el mundo en pausa): avanza la partida y la pinta si cambió
     function turno(dt) {
@@ -351,7 +399,7 @@
     n.limpia(Ventanas.registra("juegos", { titulo: "Juegos", construye: function (cu) { cuerpo = cu; pintaLista(); } }));
     // al abrir la ventana se pide el récord de la familia (solo con servidor)
     if (cuerpo && window.MutationObserver && cuerpo.parentNode) {
-      var mo = new MutationObserver(function () { if (!cuerpo.parentNode.hidden) orden.forEach(pideRecord); });
+      var mo = new MutationObserver(function () { if (!cuerpo.parentNode.hidden) orden.forEach(function (id) { pideRecord(id); pideClasificacion(id); }); });
       mo.observe(cuerpo.parentNode, { attributes: true, attributeFilter: ["hidden"] }); n.limpia(function () { mo.disconnect(); });
     }
     n.limpia(Hud.icono({ id: "juegos", ico: "🎲", txt: "Juegos", tecla: "J", prio: 2, ventana: "juegos" }));
@@ -361,7 +409,7 @@
       return { juegos: orden.slice(), abierto: abierto ? abierto.id : null, pausaMundo: Pausa.activa(), estado: abierto && abierto.partida ? abierto.partida.estado() : null,
         vr: vr ? { id: vr.id, estado: vr.partida ? vr.partida.estado() : null, pausada: !!(vr.partida && vr.partida.pausada()), lamina: Laminas.info(LAM) } : null,
         ofrecidosVR: ofrecidosVR(), tocaVR: function (u, v) { return vr ? zonaTocada(JP.zonaVR(u, v, vr.def.vr.botones, vr.partida.estado().fin)) : null; },
-        msPorCuadro: mide.n ? mide.ms / mide.n : 0, cuadros: mide.n, pintadas: mide.pintadas, prefijo: prefijo, record: abierto ? recordDe(abierto.id) : null,
+        msPorCuadro: mide.n ? mide.ms / mide.n : 0, cuadros: mide.n, pintadas: mide.pintadas, prefijo: prefijo, clasificacion: clasif, record: abierto ? recordDe(abierto.id) : null,
         reinicia: function () { mide.n = 0; mide.ms = 0; mide.pintadas = 0; } };
     };
     n.limpia(function () { try { delete window.__juegos; } catch (e) { window.__juegos = undefined; } });

@@ -4,7 +4,7 @@ import { after, before, test } from "node:test";
 import type { FastifyInstance } from "fastify";
 import pg from "pg";
 import { construyeApp } from "../../src/app.ts";
-import { DURACION, motivoNoCreible, TOPES } from "../../src/juegos/rutas.ts";
+import { DURACION, formaClasificacion, motivoNoCreible, TOPES } from "../../src/juegos/rutas.ts";
 import { contexto, deLaWeb } from "../apoyo/contexto.ts";
 
 let app: FastifyInstance;
@@ -33,4 +33,24 @@ test("sin Origin del sitio, 403; con forma mala, 400 (campos de más, tipos); si
   assert.equal((await app.inject({ method: "POST", url: "/api/juegos/MAL/partidas", headers: deLaWeb(), payload: { puntos: 1, duracion_s: 10 } })).statusCode, 400, "id con mayúsculas");
   assert.equal((await app.inject({ method: "POST", url, headers: deLaWeb(), payload: { puntos: 1, duracion_s: 10 } })).statusCode, 401);
   assert.equal((await app.inject({ method: "GET", url: "/api/juegos/cae-la-cosecha/records", headers: deLaWeb() })).statusCode, 401);
+});
+
+test("clasificación (C9c): la forma pública no lleva ids; la propia fila se marca; fuera de la tabla sale en `mia`; sin nadie, vacía", () => {
+  const fila = (puesto: number, hogar: number, puntos: number, alias: string | null) => ({ puesto: String(puesto), puntos, hogar_id: String(hogar), alias, total: "8" });
+  const r = formaClasificacion([fila(1, 4, 900, "Olivares Sur"), fila(2, 9, 700, null), fila(2, 3, 700, "Ana"), fila(7, 5, 40, null)], 5, 3);
+  assert.equal(r.total, 8);
+  assert.deepEqual(r.puestos.map(f => f.puesto), [1, 2, 2], "los empates comparten puesto y se corta en n");
+  assert.deepEqual(r.mia, { puesto: 7, alias: null, puntos: 40, es_mia: true });
+  assert.ok(r.puestos.every(f => !f.es_mia));
+  assert.ok(!/hogar|"id"|@/.test(JSON.stringify(r)), JSON.stringify(r));
+  for (const f of [...r.puestos, r.mia!]) assert.deepEqual(Object.keys(f).sort(), ["alias", "es_mia", "puesto", "puntos"]);
+  assert.deepEqual(formaClasificacion([], 5, 5), { total: 0, puestos: [], mia: null });
+});
+
+test("clasificación (C9c): sin sesión 401, forma mala 400 (n fuera de 1-20, parámetros de más, mal id); antes de tocar la base", async () => {
+  const url = "/api/juegos/cae-la-cosecha/clasificacion";
+  assert.equal((await app.inject({ method: "GET", url, headers: deLaWeb() })).statusCode, 401);
+  assert.equal((await app.inject({ method: "GET", url: url + "?n=3", headers: deLaWeb() })).statusCode, 401);
+  for (const q of ["?n=0", "?n=21", "?n=abc", "?otro=1"]) assert.equal((await app.inject({ method: "GET", url: url + q, headers: deLaWeb() })).statusCode, 400, q);
+  assert.equal((await app.inject({ method: "GET", url: "/api/juegos/MAL/clasificacion", headers: deLaWeb() })).statusCode, 400);
 });
