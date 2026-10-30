@@ -877,6 +877,53 @@ paths:
         "401": { $ref: "#/components/responses/SinSesion" }
         "403": { $ref: "#/components/responses/SinPermiso" }
 
+  /api/admin/sistema:
+    get:
+      summary: "Sistema de la oficina (OF5): salud de api, base, LiveKit, correo y hornero; OlivarTrack (última sincronía por herramienta y de cuándo es el dato); Vigía (modo y de cuándo es lo último que llegó); hornero (épocas, objetos, bytes). Solo lectura, sin secretos ni rutas"
+      security: [{ sesion: [] }]
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [generado_en, salud, correo, olivartrack, vigia, hornero]
+                properties:
+                  generado_en: { type: string, format: date-time }
+                  salud: { type: array, items: { type: object, required: [id, nombre, estado, detalle], properties: { id: { enum: [api, base, livekit, correo, hornero] }, nombre: { type: string }, estado: { enum: [ok, aviso, mal, apagado] }, detalle: { type: string } } } }
+                  correo: { type: object, required: [modo, ultima_prueba], properties: { modo: { enum: [smtp, buzon] }, ultima_prueba: { type: [object, "null"], properties: { cuando: { type: string, format: date-time }, ok: { type: boolean } } } } }
+                  olivartrack: { type: object, required: [modo, puede_sincronizar, herramientas], properties: { modo: { enum: ["no", grabado, mcp] }, puede_sincronizar: { type: boolean }, herramientas: { type: array, items: { type: object, required: [herramienta, estado, intentada_en, consultado_en, recibidos, guardados, completa, aviso], properties: { estado: { enum: [ok, truncado, parcial, error] }, completa: { type: boolean, description: "false si vino truncada o parcial: no se sacan totales de ahí" } } } } } }
+                  vigia: { type: object, required: [modo, conector, origen, herramientas] }
+                  hornero: { type: object, required: [conectado, salud, detalle, latido_en, fincas] }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+
+  /api/admin/auditoria:
+    get:
+      summary: "La auditoría, de la más reciente a la más antigua; filtro por acción y cursor `antes` (id); la primera página trae también `acciones`. Quién = rol e id del hogar, nunca el correo"
+      security: [{ sesion: [] }]
+      parameters:
+        - { name: accion, in: query, schema: { type: string, pattern: "^[a-z_.]{1,64}$" } }
+        - { name: antes, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: limite, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
+      responses:
+        "200": { description: "{ filas: [{ id, cuando, accion, quien: { hogar, rol } | null, detalle }], siguiente: id | null, acciones?: [string] }" }
+        "400": { description: entrada no válida }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+
+  /api/admin/correo/prueba:
+    post:
+      summary: "Manda un correo de prueba a la propia cuenta de oficina (nunca a otra), sin enlace; queda en la auditoría como oficina.correo_prueba { ok }; 5 cada 10 min por cuenta"
+      security: [{ sesion: [] }]
+      responses:
+        "200": { description: mandado }
+        "429": { description: demasiadas pruebas seguidas }
+        "502": { description: el correo no salió (el texto del error queda en el registro del servidor, no en la respuesta) }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+
   /api/presencia/token:
     post:
       summary: Token para entrar a la sala libre de LiveKit (F2, presencia compartida; contratos/livekit-roles.json y presencia.md)

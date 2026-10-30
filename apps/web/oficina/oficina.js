@@ -1,17 +1,18 @@
-// La oficina (OF2): el esqueleto (navegación por secciones, cabecera con la sesión, tema), la sección Familias, (OF3) la de Hazas y (OF4) la Bandeja.
-// Mismo origen; nada en línea (CSP estricta). Familias y Hazas son funcionales; las demás secciones dicen «próximamente».
+// La oficina (OF2): el esqueleto (navegación por secciones, cabecera con la sesión, tema), la sección Familias, (OF3) la de Hazas, (OF4) la Bandeja y (OF5) la de Sistema.
+// Mismo origen; nada en línea (CSP estricta). Las secciones hechas son funcionales; las demás dicen «próximamente».
 import { $, api, fecha, h, vacia } from "./comun.js";
 import { iniciaFamilias } from "./familias.js";
 import { cuentaPendientes, iniciaBandeja } from "./bandeja.js";
+import { iniciaSistema } from "./sistema.js";
 
 const SECCIONES = [
   ["inicio", "🏠", "Inicio", true], ["familias", "👪", "Familias", true], ["hazas", "🗺️", "Hazas", true], ["bandeja", "📥", "Bandeja", true],
   ["agenda", "📅", "Agenda", false], ["directos", "🎙️", "Directos", false], ["mundo", "🌳", "Mundo", false], ["olivos", "🫒", "Olivos", false],
-  ["sistema", "⚙️", "Sistema", false],
+  ["sistema", "⚙️", "Sistema", true],
 ];
 const sesion = { rol: "oficina", cargada: false };
 let actual = "inicio";
-let familias = null, hazas = null, bandeja = null;
+let familias = null, hazas = null, bandeja = null, sistema = null;
 
 // ------------------------------------------------------------------ tema
 $("#bTema").addEventListener("click", () => {
@@ -36,7 +37,7 @@ function ir(sec, foco) {
   if (!SECCIONES.some(s => s[0] === sec)) sec = "inicio";
   actual = sec;
   const [, , nombre, hecha] = SECCIONES.find(s => s[0] === sec);
-  for (const id of ["inicio", "familias", "hazas", "bandeja", "proximamente"]) $("#s-" + id).hidden = id !== (hecha ? sec : "proximamente");
+  for (const id of ["inicio", "familias", "hazas", "bandeja", "sistema", "proximamente"]) $("#s-" + id).hidden = id !== (hecha ? sec : "proximamente");
   if (!hecha) $("#proxTitulo").textContent = nombre + ": próximamente";
   for (const b of nav.querySelectorAll("button")) { if (b.dataset.sec === sec) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); }
   $("#titulo").textContent = nombre;
@@ -45,6 +46,7 @@ function ir(sec, foco) {
   if (sec === "familias") familias.abre();
   if (sec === "hazas") abreHazas();
   if (sec === "bandeja") bandeja.abre();
+  if (sec === "sistema") sistema.abre();
   if (sec === "inicio") { cuentaFamilias(); cuentaPendientes(); }
   if (foco) $("#titulo").focus();
 }
@@ -87,5 +89,6 @@ $("#salir").addEventListener("click", async () => {
 
 familias = iniciaFamilias({ sesion });
 bandeja = iniciaBandeja({ sesion });
+sistema = iniciaSistema({ sesion });
 if (new URLSearchParams(location.search).has("prueba")) window.__bandeja = () => bandeja.estado();   // solo lectura, para la prueba de Chrome
 cargaSesion().then(() => { cuentaPendientes(); setInterval(cuentaPendientes, 60_000); }).then(() => ir(location.hash.slice(1) || "inicio", false)).catch(() => { $("#anuncio").textContent = "No se pudo leer la sesión."; });

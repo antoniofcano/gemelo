@@ -83,3 +83,12 @@ export function mensajeDeBienvenida(para: string, enlace: string, minutos: numbe
       "Si no esperabas este mensaje, ignóralo: nadie puede entrar sin el enlace.\n",
   };
 }
+
+/** El correo de prueba de Sistema (oficina): sin enlace ni datos, solo dice que el envío funciona. */
+export function mensajeDePrueba(para: string): Mensaje {
+  return {
+    para,
+    asunto: "Prueba de correo de la oficina",
+    texto: "Hola:\n\nEste es un correo de prueba mandado desde Sistema, en la oficina del gemelo. Si lo lees, el envío funciona.\n\nNo hace falta hacer nada.\n",
+  };
+}

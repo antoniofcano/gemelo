@@ -228,5 +228,14 @@ export class ServicioTiempo {
     return p;
   }
 
+  /** Solo lectura, para la oficina (Sistema): de cuándo es lo último que llegó de cada herramienta y si el último intento falló. No llama a Vigía. */
+  instantanea(): { origen: "vigia" | "fixture"; herramientas: { herramienta: HerramientaTiempo; leidoEn: string | null; fallo: boolean }[] } {
+    const hs: HerramientaTiempo[] = ["tiempo_en_la_explotacion", "prevision_72_horas"];
+    return {
+      origen: this.lector.origen,
+      herramientas: hs.map(h => ({ herramienta: h, leidoEn: this.cache.has(h) ? new Date(this.cache.get(h)!.leidoEn).toISOString() : null, fallo: this.falloEn.has(h) })),
+    };
+  }
+
   async cierra(): Promise<void> { await this.lector.cierra(); }
 }
