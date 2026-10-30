@@ -19,8 +19,8 @@
   // bajo el dedo) solo si no hay otro. Una ficha común: en pantalla el recuadro #ficha de siempre (título, pares y botones de acción); en VR la pinta quien
   // se registre como presentador (29_vr, en sus láminas). Resaltado común: un anillo al pie de lo elegido (1 llamada, 80 triángulos, solo mientras hay algo
   // elegido; se crea la primera vez y se libera con Usables.libera). Eventos en el Bus: usable:elige, usable:suelta, usable:usa, usable:cerca.
-  // Presupuesto (regla 6): nada por fotograma salvo la cercanía (paseando: una distancia por cosa de los tipos con cerca, hoy las balizas) y recolocar el
-  // anillo si está visible; ni un raycast por fotograma (el toque proyecta o lanza un rayo solo al tocar; el rayo de VR, solo al apretar el gatillo).
+  // Presupuesto (regla 6): nada por fotograma salvo la cercanía (paseando y cada 0,1 s: una distancia por cosa de los tipos con cerca, hoy las balizas) y
+  // recolocar el anillo si está visible; ni un raycast por fotograma (el toque proyecta o lanza un rayo solo al tocar; el rayo de VR, solo al apretar el gatillo).
   // [puro:inicio] (sin DOM ni THREE: lo evalúa en Node pruebas/guardianes/entidades.test.js)
   var EntidadesPuro = (function () {
     var TIPO = /^[a-z][a-z0-9-]*$/, OPC = ["pantalla", "rayo", "cerca", "pos", "radio", "existe", "lista", "muestra", "abierta", "cierra", "suelta"];
@@ -228,10 +228,16 @@
       if (typeof enDron !== "undefined" && enDron && typeof dr !== "undefined") return { x: dr.x, y: dr.y };
       return typeof pp !== "undefined" ? { x: pp.x, y: pp.y } : null;
     }
-    function actualiza() {
-      var p = dondeEstoy(), c = p ? P.cercano(Entidades.candidatos("cerca", p.x, p.y)) : null, antes = cerca ? cerca.id : null;
-      cerca = c ? { id: c.id, d: c.d } : null;
-      if ((c ? c.id : null) !== antes) Bus.emite("usable:cerca", { id: c ? c.id : null });
+    // cada 0,1 s, no en cada fotograma (medido en Node: así cuesta de media menos que el recorrido de 19_balizas que sustituye; un paseante a 7 m/s anda 0,7 m)
+    var tCerca = 1;
+    function actualiza(dt) {
+      tCerca += dt || 0;
+      if (tCerca >= 0.1) {
+        tCerca = 0;
+        var p = dondeEstoy(), c = p ? P.cercano(Entidades.candidatos("cerca", p.x, p.y)) : null, antes = cerca ? cerca.id : null;
+        cerca = c ? { id: c.id, d: c.d } : null;
+        if ((c ? c.id : null) !== antes) Bus.emite("usable:cerca", { id: c ? c.id : null });
+      }
       if (anillo && anillo.visible) colocaAnillo();
     }
     function cercano() { return cerca ? { id: cerca.id, d: cerca.d } : null; }

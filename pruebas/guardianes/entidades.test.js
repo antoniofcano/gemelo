@@ -164,16 +164,19 @@ test("VR: el presentador pinta las fichas sin acciones; abierta() da la elegida 
   quita(); m.Usables.elige("olivo:cerro:3"); assert.strictEqual(pintadas.length, 1, "sin presentador no se pinta nada");
 });
 
-test("cercanía: solo paseando, dentro del radio, con usable:cerca al cambiar (y no en cada fotograma)", () => {
+test("cercanía: solo paseando, dentro del radio, cada 0,1 s, con usable:cerca al cambiar", () => {
   const m = mundo(), t = tipos(m, {});
-  m.pp.x = 0; m.Usables.actualiza(0.016); assert.strictEqual(m.Usables.cercano(), null, "en la órbita, nada");
-  m.__pon("paseando", true); m.pp.x = -20; m.Usables.actualiza(0.016); assert.strictEqual(m.Usables.cercano(), null, "a 30 m de la baliza: fuera de sus 17 m");
-  m.pp.x = 0.5; m.Usables.actualiza(0.016);
+  m.pp.x = 0; m.Usables.actualiza(0.2); assert.strictEqual(m.Usables.cercano(), null, "en la órbita, nada");
+  m.__pon("paseando", true); m.pp.x = -20; m.Usables.actualiza(0.2); assert.strictEqual(m.Usables.cercano(), null, "a 30 m de la baliza: fuera de sus 17 m");
+  m.pp.x = 0.5; m.Usables.actualiza(0.2);
   assert.deepStrictEqual(m.Usables.cercano(), { id: "baliza:p1", d: 9.5 });
-  m.Usables.actualiza(0.016); m.Usables.actualiza(0.016);
+  m.Usables.actualiza(0.2); m.Usables.actualiza(0.2);
   assert.strictEqual(evs(m, "usable:cerca").length, 1, "un aviso al entrar, no uno por fotograma");
-  m.pp.x = 40; m.Usables.actualiza(0.016); assert.strictEqual(m.Usables.cercano(), null); assert.deepStrictEqual(evs(m, "usable:cerca").pop()[1], { id: null });
-  m.__pon("enDron", true); m.dr.x = 12; m.Usables.actualiza(0.016); assert.strictEqual(m.Usables.cercano().id, "baliza:p1", "con el dron cuenta el dron");
+  m.pp.x = 40; m.Usables.actualiza(0.016); assert.strictEqual(m.Usables.cercano().id, "baliza:p1", "se mira cada 0,1 s, no en cada fotograma");
+  m.Usables.actualiza(0.09); assert.strictEqual(m.Usables.cercano(), null, "pasados 0,1 s, ya sí");
+  m.pp.x = 0.5; m.Usables.actualiza(0.2);
+  m.pp.x = 40; m.Usables.actualiza(0.2); assert.strictEqual(m.Usables.cercano(), null); assert.deepStrictEqual(evs(m, "usable:cerca").pop()[1], { id: null });
+  m.__pon("enDron", true); m.dr.x = 12; m.Usables.actualiza(0.2); assert.strictEqual(m.Usables.cercano().id, "baliza:p1", "con el dron cuenta el dron");
   void t;
 });
 
@@ -186,4 +189,14 @@ test("el anillo: se crea al elegir algo que lo lleva, se esconde al soltar, no s
   m.Usables.elige("olivo:cerro:9"); assert.strictEqual(m.reg.creadas.length, 2, "se reusa");
   m.Usables.libera(); assert.strictEqual(m.reg.liberadas.length, 2); assert.strictEqual(m.reg.escena.size, 0);
   void t;
+});
+
+test("presupuesto: lo que corre por fotograma (Usables.actualiza) no lanza rayos ni proyecta: solo la cercanía cada 0,1 s y el anillo", () => {
+  const i = FUENTE.indexOf("    function actualiza(dt) {"), f = FUENTE.indexOf("\n    }\n", i), cuerpo = FUENTE.slice(i, f);
+  assert.ok(i > 0 && f > i, "Usables.actualiza(dt)");
+  assert.doesNotMatch(cuerpo, /Raycaster|setFromCamera|intersect|project\(|"rayo"|"pantalla"/, "ni rayos ni proyecciones por fotograma");
+  assert.match(cuerpo, /tCerca >= 0\.1/, "la cercanía, cada 0,1 s");
+  const fin = lee("apps/web/motor/90_final.js");
+  assert.match(fin, /Usables\.actualiza\(dt\)/, "el bucle la llama");
+  assert.doesNotMatch(fin, /Usables\.(toque|rayo)\(/, "el bucle no elige nada");
 });
