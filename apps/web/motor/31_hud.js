@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
 // Consume: 01_datos ($), 02_mundo (copas), 03_escena (visor, camera, modo), 09_camara (orb), 12_paseo (paseando), 14_historia (FINCA, aviso),
-//   15_tiempo (rumbo), 16_vida (enQuad, quad, ponQuad, enDron, dron, ponDron), 29_vr (VRX)
+//   15_tiempo (rumbo), 16_vida (enQuad, quad, ponQuad, enDron, dron, ponDron), 29_vr (VRX), 32_ventanas (Ventanas)
 // ===============================================================================
   // ---------- el HUD (doc/sistema/UX-FINCA-JUEGO.md §4.3): estado arriba a la izquierda (brújula, cómo te mueves, el tiempo), barra de iconos arriba a la
   // derecha, avisos arriba en el centro, «Pasear» y la atribución abajo en el centro. Es HTML y CSS: no toca triángulos ni llamadas de dibujo.
