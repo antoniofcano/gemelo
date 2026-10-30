@@ -22,7 +22,7 @@ const SOLO_DATOS: Permisos = { roomJoin: true, canSubscribe: true, canPublish: f
  * permite ninguna fuente. Comprobado contra LiveKit 1.13.11 (P4, presencia_dev.test.js): una pista de micrófono no se
  * publica y los datos sí.
  */
-export const PERMISOS: Record<Rol, Permisos> = { hogar: SOLO_DATOS, guia: SOLO_DATOS, corresponsal: SOLO_DATOS, admin: SOLO_DATOS };
+export const PERMISOS: Record<Rol, Permisos> = { hogar: SOLO_DATOS, guia: SOLO_DATOS, corresponsal: SOLO_DATOS, oficina: SOLO_DATOS, admin: SOLO_DATOS };
 
 /**
  * Identidad en la sala: opaca, UNA POR SESIÓN (aparato) y con el hogar como prefijo:

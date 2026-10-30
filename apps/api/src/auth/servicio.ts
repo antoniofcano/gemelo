@@ -3,8 +3,11 @@
 import type { Bd, Cliente } from "../bd/pool.ts";
 import { hashToken, nuevoToken } from "../seguridad/cripto.ts";
 
-export type Rol = "hogar" | "guia" | "corresponsal" | "admin";
-export const ROLES: readonly Rol[] = ["hogar", "guia", "corresponsal", "admin"];
+export type Rol = "hogar" | "guia" | "corresponsal" | "oficina" | "admin";
+export const ROLES: readonly Rol[] = ["hogar", "guia", "corresponsal", "oficina", "admin"];
+/** Roles de la oficina (ADR-0024, decisión 104): su sesión es más corta y exige un aparato confiable (contratos/sesion.md § Oficina). */
+export const ROLES_OFICINA: readonly Rol[] = ["oficina", "admin"];
+export const esOficina = (rol: Rol | null | undefined): boolean => rol === "oficina" || rol === "admin";
 
 /** Versión vigente de las normas y la privacidad del primer acceso (UX.md §4.5). Si cambian, se sube y se vuelven a pedir. */
 export const NORMAS_VERSION = 1;
@@ -55,15 +58,15 @@ export async function estadoEnlace(bd: Bd, token: string): Promise<"valido" | Mo
 }
 
 /** Gasta el enlace de forma atómica: con dos peticiones a la vez y el mismo token, solo una entra. */
-export async function consumeEnlace(bd: Bd, token: string): Promise<{ ok: true; hogarId: number; primerAcceso: boolean } | { ok: false; motivo: MotivoEnlace }> {
-  const r = await bd.query<{ hogar_id: number; normas_version: number | null }>(
+export async function consumeEnlace(bd: Bd, token: string): Promise<{ ok: true; hogarId: number; rol: Rol; primerAcceso: boolean } | { ok: false; motivo: MotivoEnlace }> {
+  const r = await bd.query<{ hogar_id: number; rol: Rol; normas_version: number | null }>(
     `UPDATE tokens_acceso t SET usado_en = now() FROM hogares h
       WHERE t.hash = $1 AND t.usado_en IS NULL AND t.expira_en > now() AND h.id = t.hogar_id AND h.activo
-      RETURNING t.hogar_id, h.normas_version`, [hashToken(token)]);
+      RETURNING t.hogar_id, h.rol, h.normas_version`, [hashToken(token)]);
   const f = r.rows[0];
   if (f) {
     await audita(bd, f.hogar_id, "enlace.usado");
-    return { ok: true, hogarId: f.hogar_id, primerAcceso: primerAcceso(f.normas_version) };
+    return { ok: true, hogarId: f.hogar_id, rol: f.rol, primerAcceso: primerAcceso(f.normas_version) };
   }
   const e = await estadoEnlace(bd, token);
   return { ok: false, motivo: e === "valido" ? "usado" : e };

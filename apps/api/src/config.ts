@@ -25,6 +25,8 @@ export interface Config {
   nivelRegistro: string;
   bd: { host: string; puerto: number; base: string; usuario: string; clave: string | undefined; max: number };
   sesion: { diasAbsolutos: number; diasInactividad: number; secreto: string };
+  /** sesión de oficina (ADR-0024, contratos/sesion.md § Oficina): más corta, con aparato confiable y confirmación reciente */
+  oficina: { horasSesion: number; minInactividad: number; minConfirmacion: number; minSegundoEnlace: number };
   enlace: { minutos: number; porIp: number; porCorreo: number; ventanaMin: number };
   /** código corto de las gafas (contratos/sesion.md § Código corto): códigos pedidos por IP, intentos de aprobar por hogar y por IP */
   vinculo: { porIp: number; intentosPorHogar: number; intentosPorIp: number; sondeosPorMin: number; ventanaMin: number };
@@ -206,6 +208,12 @@ export function cargaConfig(e: Entorno = process.env): Config {
       diasAbsolutos: entero(e, "GEMELO_SESION_DIAS", 30, 1, 365),
       diasInactividad: entero(e, "GEMELO_SESION_INACTIVIDAD_DIAS", 7, 1, 365),
       secreto: secretoSesion(e),
+    },
+    oficina: {
+      horasSesion: entero(e, "GEMELO_OFICINA_SESION_HORAS", 12, 1, 24),
+      minInactividad: entero(e, "GEMELO_OFICINA_INACTIVIDAD_MIN", 120, 5, 720),
+      minConfirmacion: entero(e, "GEMELO_OFICINA_CONFIRMACION_MIN", 15, 1, 60),
+      minSegundoEnlace: entero(e, "GEMELO_OFICINA_SEGUNDO_ENLACE_MIN", 5, produccion ? 5 : 0, 60),
     },
     enlace: {
       minutos: 15,

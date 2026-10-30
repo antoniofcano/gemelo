@@ -54,7 +54,7 @@ export async function rutasPresencia(app: FastifyInstance, ctx: Contexto): Promi
   });
 
   app.post<{ Body: { hogar_id: number; motivo?: string } }>("/api/admin/presencia/expulsar", {
-    preHandler: requiereRol("admin"),
+    preHandler: requiereRol("oficina", "admin"),
     schema: {
       body: {
         type: "object", additionalProperties: false, required: ["hogar_id"],

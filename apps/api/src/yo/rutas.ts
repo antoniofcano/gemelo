@@ -2,7 +2,7 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { requiereSesion } from "../auth/roles.ts";
 import { NOMBRE_COOKIE, OPCIONES_COOKIE, TEXTO_LIMITE_VINCULO } from "../auth/rutas.ts";
-import { audita, NORMAS_VERSION } from "../auth/servicio.ts";
+import { audita, esOficina, NORMAS_VERSION } from "../auth/servicio.ts";
 import { decideCodigo, PATRON_ENTRADA } from "../auth/vinculo.ts";
 import type { Contexto } from "../contexto.ts";
 import { borraFicheros, clavesDelHogar } from "../vida/medios.ts";
@@ -42,6 +42,8 @@ export async function rutasYo(app: FastifyInstance, ctx: Contexto): Promise<void
     config: { rateLimit: { max: config.vinculo.intentosPorIp, timeWindow: ventanaVinculo } },
     schema: { body: { type: "object", additionalProperties: false, required: ["codigo", "aprobar"], properties: { codigo: { type: "string", pattern: PATRON_ENTRADA }, aprobar: { type: "boolean" } } } },
   }, async (req, rep) => {
+    // la oficina no vincula gafas con el código corto: su sesión exige un aparato confiable y el enlace (ADR-0024)
+    if (esOficina(req.session.rol)) return rep.code(403).send({ error: "sin_permiso", mensaje: "Las cuentas de la oficina no vinculan aparatos con el código corto." });
     const lim = await porHogar(req);
     if (!lim.isAllowed && lim.isExceeded) return rep.code(429).send({ error: "demasiadas_peticiones", mensaje: TEXTO_LIMITE_VINCULO });
     const ok = await decideCodigo(bd, config.sesion.secreto, req.session.hogarId!, req.body.codigo, req.body.aprobar);
