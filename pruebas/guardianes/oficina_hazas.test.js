@@ -145,7 +145,13 @@ test("recorrido: crear, mover un vértice (ratón y teclado), solape, guardar co
     await ctx.addInitScript(() => { window.__csp = []; document.addEventListener("securitypolicyviolation", e => window.__csp.push(e.violatedDirective + " " + e.blockedURI)); });
     const pg = await ctx.newPage(), errores = [];
     pg.on("pageerror", e => errores.push(String(e)));
-    pg.on("console", m => { if (m.type() === "error" && !/Failed to load resource.*(401|403|404|409)/.test(m.text())) errores.push(m.text()); });
+    // un 400 provocado a propósito (paso 5b: guardar fuera del contorno) se descuenta por su URL; cualquier otro 400 cuenta como error
+    const provocados400 = [], ruta = u => { try { return new URL(u).pathname; } catch { return ""; } };
+    pg.on("console", m => {
+      if (m.type() !== "error" || /Failed to load resource.*(401|403|404|409)/.test(m.text())) return;
+      const i = /Failed to load resource.*\b400\b/.test(m.text()) ? provocados400.indexOf(ruta(m.location().url)) : -1;
+      if (i >= 0) provocados400.splice(i, 1); else errores.push(m.text() + " " + m.location().url);
+    });
 
     await pg.goto(base + "/__prueba/aparato");
     const { url } = await get("/__prueba/enlace?para=" + encodeURIComponent(info.admin));
@@ -240,6 +246,7 @@ test("recorrido: crear, mover un vértice (ratón y teclado), solape, guardar co
     const carga = await pg.evaluate(async b => { const r = await fetch("/api/admin/fincas/hituelo/contorno", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(b) }); return [r.status, await r.json()]; },
       { geometria: rectU(-140, -400, 400, 400), fuente: "sigpac", consultado_en: "2026-10-30", parcelas: 2 });
     assert.strictEqual(carga[0], 201, JSON.stringify(carga[1])); assert.strictEqual(carga[1].tipo, "contorno");
+    provocados400.push("/api/admin/hazas/" + h2.id + "/geom");   // el contrato dice 400 fuera_de_contorno (api.openapi.yaml)
     const fuera = await pg.evaluate(async b => (await fetch("/api/admin/hazas/" + b.id + "/geom", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(b.cuerpo) })).json(),
       { id: h2.id, cuerpo: { version: h2.version, geometria: rectU(-150, -210, -30, -50) } });
     assert.strictEqual(fuera.error, "fuera_de_contorno", "el servidor manda: " + JSON.stringify(fuera));
