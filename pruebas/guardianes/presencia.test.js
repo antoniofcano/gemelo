@@ -6,7 +6,7 @@
 // GEMELO_MIDE=1 imprime las cifras. SwiftShader vale para recuentos, no para fps.
 const test = require("node:test"), assert = require("node:assert");
 const { lee, path } = require("./_util");
-const { sirve, motivoSalto, lanza, ESCENARIOS, desgloseLlamadas } = require("./_navegador");
+const { sirve, motivoSalto, lanza, ESCENARIOS, desgloseLlamadas, VENTANA_CHICA, ventanaDe } = require("./_navegador");
 const { montaPagina, saltoPagina } = require("./_pagina");
 
 const MIDE = !!process.env.GEMELO_MIDE;
@@ -352,7 +352,7 @@ test.before(async () => {
 test.after(async () => { if (navegador) await navegador.close(); if (srv) srv.close(); });
 
 async function abre(consulta) {
-  const p = await navegador.newPage({ viewport: { width: 900, height: 650 } }), errores = [];
+  const p = await navegador.newPage({ viewport: ventanaDe(VENTANA_CHICA) }), errores = [];
   p.on("pageerror", e => errores.push("PAGEERROR " + String(e.stack || e).slice(0, 400)));
   p.on("console", m => { if (m.type() === "error") errores.push("CONSOLE " + m.text().slice(0, 300)); });
   await p.goto(base + "?debug" + consulta);
@@ -370,6 +370,8 @@ async function abre(consulta) {
   // los olivos (qué celdas cercanas están montadas), que no es cosa de la presencia (medido en T8 fase 2: ±5 llamadas entre cargas)
   const d = await p.evaluate(desgloseLlamadas);
   m.presLlamadas = d.filas.filter(([k]) => / presencia:/.test(k)).reduce((a, f) => a + f[1], 0);
+  // los triángulos del grupo «presencia» (instancias incluidas): la diferencia de triángulos totales entre cargas también la mueven las celdas de olivos montadas (medido en PB2: +1152 con 10, +6268 / +7108 con 40 según la carga y la ventana)
+  m.presTri = await p.evaluate(() => { const g = window.__g.scene.getObjectByName("presencia"); let t = 0; if (g) g.traverse(o => { if (!o.isMesh || !o.geometry || o.visible === false) return; const n = o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count; t += n / 3 * (o.isInstancedMesh ? o.count : 1); }); return Math.round(t); });
   return { p, errores, m };
 }
 
@@ -401,5 +403,5 @@ test("en Chrome: sin ?presencia no se añade nada; con ?presencia=sim, 10 y 40 v
   assert.ok(d10 >= 4 && d10 <= 6, "10 visitantes: " + d10 + " llamadas más (esperadas 4-6: cuerpo, cabeza, sombrero y apoyo, nombres, manos si hay Quest y las ruedas si alguien lleva silla)");
   assert.ok(d40 === 5 || d40 === 6, "40 visitantes: " + d40 + " llamadas más (esperadas 5, o 6 con las ruedas de la silla de ruedas: AV2, decisión 131)");
   // P5: el muñeco del paseante: 5 cajas (60) + cabeza (icosaedro, 20) + sombrero (12) + nombre (2) = 94; con gafas, +24 de las manos
-  assert.ok(res[40].triangulos - res[0].triangulos <= 40 * 120, "40 visitantes: más de 120 triángulos por avatar");
+  assert.ok(res[40].presTri <= 40 * 120, "40 visitantes: más de 120 triángulos por avatar");
 });

@@ -428,7 +428,7 @@ describe("en el navegador", () => {
 
   test("clasificación entre familias (C9c): con la api simulada, la ventana Juegos enseña la tabla y la pantalla de fin, tu puesto; sin ids ni correos; 0 errores", { timeout: 300000 }, async t => {
     if (SALTO) return t.skip(SALTO);
-    const p = await nav.newPage({ viewport: { width: 390, height: 780 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 }), errores = [], pedidas = [];
+    const p = await nav.newPage({ viewport: { width: 390, height: 780 }, hasTouch: true, isMobile: true, deviceScaleFactor: 1 }), errores = [], pedidas = [];
     p.on("pageerror", e => errores.push("PAGEERROR " + String(e.stack || e).slice(0, 300)));
     p.on("console", m => { if (m.type() === "error" && !/favicon|404|Failed to load resource/.test(m.text())) errores.push("CONSOLE " + m.text().slice(0, 300)); });
     const J = (cuerpo, status) => ({ status: status || 200, contentType: "application/json", body: JSON.stringify(cuerpo) });
@@ -442,6 +442,7 @@ describe("en el navegador", () => {
     try {
       await p.goto(url + "?debug&hora=12:00&semilla=4242&api=/api/");
       await p.waitForFunction(() => window.__g && window.__g.listo() && window.__juegos && window.__juegos().juegos.length, null, { timeout: 120000, polling: 500 });
+      await p.evaluate(() => { window.__g.renderer.render = function () {}; });   // PB2: esta prueba mira la ventana y la tarjeta (DOM, CSS px), no el dibujo 3D
       const visible = await p.evaluate(() => { const b = document.getElementById("hudIco-juegos"); return !!(b && b.offsetParent); });
       if (visible) await p.tap("#hudIco-juegos"); else { await p.tap("#bMas"); await p.locator("#hudMas button", { hasText: "Juegos" }).tap(); }
       await p.waitForSelector("#ventana-juegos [data-clasificacion]", { timeout: 15000 });
