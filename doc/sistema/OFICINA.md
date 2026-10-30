@@ -126,7 +126,7 @@ Acciones: **retirar en un clic** (el contenido deja de verse al momento; se pued
 | Anunciar | Un aviso de texto a toda la sala o a la visita, que sale arriba unos segundos y queda en el chat como «Oficina» (tema de datos `anuncio`, fiable, enviado por la api con `RoomService.sendData`) | no |
 | Ir con alguien | El «Ir con» de siempre, sin pedir permiso | sí (como todos) |
 
-**Datos.** Nueva `balizas_oficiales` (finca, punto en 25830, título, texto, desde, hasta, autor). Cambia el contrato `livekit-roles` (rol `oficina`, tema `anuncio`: versión 3) y `presencia.md`, en el mismo commit (regla 3). **Rutas nuevas**: `POST /api/admin/presencia/anuncio`, `POST /api/admin/salas/:sala/cerrar`, `GET/POST/PUT/DELETE /api/admin/balizas`, `POST /api/admin/presencia/silenciar` (F3).
+**Datos.** Nueva `balizas_oficiales` (finca, punto en 25830, título, texto, desde, hasta, autor). Cambia el contrato `livekit-roles` (el rol `oficina` ya entró en la versión 3 con OF1; el tema `anuncio`, versión 4) y `presencia.md`, en el mismo commit (regla 3). **Rutas nuevas**: `POST /api/admin/presencia/anuncio`, `POST /api/admin/salas/:sala/cerrar`, `GET/POST/PUT/DELETE /api/admin/balizas`, `POST /api/admin/presencia/silenciar` (F3).
 
 **Riesgos y comodidad (regla 11).** Un anuncio que tapa el HUD o los controles (sale arriba, se cierra solo y no recibe toques; el chat movible no se mueve); en VR, el anuncio va al panel, nunca pegado a la cara. **No probado** nada de esto (no existe); el panel de oficina en VR se deja para después: en gafas la oficina entra como un visitante más con su insignia.
 
