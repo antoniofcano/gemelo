@@ -37,7 +37,7 @@ Diseño del contrato y de los servicios: [COMPONENTES.md §3](../sistema/COMPONE
 | C5 | Piloto 3: `Red` (la conexión de LiveKit fuera de `26_presencia.js`, temas por componente) y presencia como componente sobre ella; avatares como componente que consume `Presencia` | C1 | opus | ⬜ |
 | C6 | Encendido por servidor: plugins del API (`{ id, activo, rutas }`, `app.ts` recorre una lista) y `GET /api/config` con contrato y OpenAPI; el cliente lo lee con precedencia URL > servidor > defecto | C1 | sonnet | ✅ `GET /api/config` versionada y su lectura en el motor (con OF6: [COMPONENTES §6](../sistema/COMPONENTES.md#c6--encendido-y-parámetros-por-servidor)); los plugins del API, sin hacer |
 | C7 | Entidades con id estable y usables (selección única para toque, clic, rayo VR y cercanía; ficha común): copas, balizas, hazas y personas, uno por commit | C2 | opus | ⬜ |
-| C8 | Láminas: el lienzo-en-el-mundo de las fichas del tiempo como servicio del núcleo | C3 | sonnet | ⬜ |
+| C8 | Láminas: el lienzo-en-el-mundo de las fichas del tiempo como servicio del núcleo | C3 | sonnet | ✅ `02d_laminas.js` (servicio `Laminas`; las fichas del tiempo lo usan) |
 | C9 | Anfitrión de juegos y primer casual («Tres olivas» u otro que elija Antonio) como componente; récord validado en el API | C2, C6, C8 y decisiones de Antonio | opus | ⬜ |
 | C10 | Migración del resto (vida, perros, paisaje, minimapa, balizas, hazas, estación, huellas, suelo, depura, mide) al tocarlos; componentes grandes como módulo ES con `import()` si conviene | C1-C3 | sonnet | ⬜ |
 | C11 | 🔶 Medida por componente: `Group` propio por componente, recuento en `?debug` y «con y sin» por el banco | C1 | sonnet | ⬜ |

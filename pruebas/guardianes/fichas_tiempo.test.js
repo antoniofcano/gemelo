@@ -9,11 +9,12 @@ const test = require("node:test"), { describe, before } = test, assert = require
 const { lee, SALIDA, fs, path } = require("./_util");
 
 const FUENTE = lee("apps/web/motor/35_fichas_tiempo.js"), VR = lee("apps/web/motor/29_vr.js");
-function trozo(ini, fin) {
-  const i = FUENTE.indexOf(ini), f = FUENTE.indexOf(fin);
-  assert.ok(i >= 0 && f > i, "35_fichas_tiempo.js debe marcar " + ini + " … " + fin);
-  return FUENTE.slice(i, f);
+function trozo(ini, fin, fuente = FUENTE) {
+  const i = fuente.indexOf(ini), f = fuente.indexOf(fin);
+  assert.ok(i >= 0 && f > i, "el fichero debe marcar " + ini + " … " + fin);
+  return fuente.slice(i, f);
 }
+const LAMINAS = lee("apps/web/motor/02d_laminas.js");   // el servicio de la lámina (C8): se monta debajo de la ficha, con el mismo THREE de mentira
 const F = new Function("\"use strict\";\n" + trozo("// [puro:inicio]", "// [puro:fin]") + "\nreturn FichasTiempoPuro;")();
 
 // un contexto 2D de mentira: apunta los textos (con su fuente) y cuenta las operaciones de dibujo
@@ -166,7 +167,7 @@ test("el panel VR: el resumen va en la pestaña Mundo, con «Ver previsión» de
 // ---------- el motor con un THREE de mentira: abrir crea una malla y una textura; repintar solo si cambia; cerrar libera todo. Se monta como lo monta
 // Componentes: FichasTiempoMotor(n), con Teclas, PanelVR y el Bus de mentira, para comprobar también que libera() suelta todo lo que enganchó.
 function motor() {
-  const reg = { creadas: [], liberadas: [], escena: new Set(), teclas: {}, bus: {}, filas: [], tapas: [], oyentesTV: 0, repintes: 0, cierresPanel: 0, limpias: [] };
+  const reg = { creadas: [], liberadas: [], escena: new Set(), teclas: {}, bus: {}, busNucleo: {}, filas: [], tapas: [], oyentesTV: 0, repintes: 0, cierresPanel: 0, limpias: [] };
   class V3 { constructor(x = 0, y = 0, z = 0) { this.x = x; this.y = y; this.z = z; } set(x, y, z) { this.x = x; this.y = y; this.z = z; return this; } copy(v) { return this.set(v.x, v.y, v.z); }
     setFromMatrixPosition(m) { return this.set(m.p[0], m.p[1], m.p[2]); } lengthSq() { return this.x * this.x + this.y * this.y + this.z * this.z; } normalize() { const l = Math.sqrt(this.lengthSq()) || 1; return this.set(this.x / l, this.y / l, this.z / l); } }
   const recurso = tipo => class { constructor(a) { this.tipo = tipo; this.a = a; reg.creadas.push(this); } dispose() { reg.liberadas.push(this); } };
@@ -183,12 +184,15 @@ function motor() {
   const n = { id: "fichas-tiempo", limpia: f => { reg.limpias.push(f); return f; }, on: (ev, f) => { (reg.bus[ev] = reg.bus[ev] || []).push(f); return n.limpia(() => { reg.bus[ev].splice(reg.bus[ev].indexOf(f), 1); }); } };
   const fuente = trozo("// [puro:inicio]", "// [puro:fin]") + trozo("// [motor:inicio]", "// [motor:fin]");
   const cuerpo = "\"use strict\";\n" + fuente + "\nreturn FichasTiempoMotor;";
-  const fn = new Function("THREE", "scene", "camera", "renderer", "texColor", "VRX", "paseando", "Hud", "ahoraMs", "nivel", "document", "window", "performance", "TiempoVivo", "Teclas", "PanelVR", cuerpo);
+  const fn = new Function("THREE", "scene", "camera", "renderer", "texColor", "VRX", "paseando", "Hud", "ahoraMs", "nivel", "document", "window", "performance", "TiempoVivo", "Teclas", "PanelVR", "Laminas", cuerpo);
   const est = { datos: sinteticos(), oyente: null, ahora: AHORA };
   const TV = { lee: () => est.datos, alCambiar: f => { est.oyente = f; reg.oyentesTV++; return () => { reg.oyentesTV--; est.oyente = null; }; } };
   const VRX = { on: false, cab: new V3() };
-  const FTM = fn(THREE, scene, camera, { info: { render: { frame: 0 } } }, t => t, VRX, true, { aviso() {} }, () => est.ahora, () => ({ d: 1 }),
-    documento, ventana, { now: () => 0 }, TV, Teclas, PanelVR);
+  const renderer = { info: { render: { frame: 0 } } }, perf = { now: () => 0 }, Bus = { on: (ev, f) => { (reg.busNucleo[ev] = reg.busNucleo[ev] || []).push(f); return () => {}; } };
+  const Laminas = new Function("THREE", "scene", "camera", "renderer", "texColor", "VRX", "document", "performance", "Bus", "console",
+    "\"use strict\";\n" + trozo("// [puro:inicio]", "// [puro:fin]", LAMINAS) + trozo("// [motor:inicio]", "// [motor:fin]", LAMINAS) + "\nreturn Laminas;")(THREE, scene, camera, renderer, t => t, VRX, documento, perf, Bus, console);
+  const FTM = fn(THREE, scene, camera, renderer, t => t, VRX, true, { aviso() {} }, () => est.ahora, () => ({ d: 1 }),
+    documento, ventana, perf, TV, Teclas, PanelVR, Laminas);
   const FT = FTM(n);
   const libera = () => { FT.cierra(); reg.limpias.splice(0).reverse().forEach(f => f()); };
   return { FT, reg, est, lienzos, ventana, VRX, libera };
@@ -230,7 +234,7 @@ test("montado: la tecla P, la fila del panel VR, la tapa de la baliza, el oyente
   assert.deepStrictEqual(Object.keys(reg.teclas), ["KeyP"], "la P, por Teclas");
   assert.deepStrictEqual(reg.filas.map(f => f.pestana + ":" + f.id), ["mundo:tiempo"], "una fila en la pestaña Mundo");
   assert.strictEqual(reg.tapas.length, 1); assert.strictEqual(reg.oyentesTV, 1);
-  assert.deepStrictEqual(Object.keys(reg.bus).sort(), ["prevision:alterna", "vr:sale"]);
+  assert.deepStrictEqual(Object.keys(reg.bus).sort(), ["prevision:alterna"], "la ficha solo escucha al botón de la ventana Tiempo; salir de VR lo atiende Laminas");
   assert.strictEqual(typeof ventana.__fichaTiempo, "function");
   // la P paseando abre y cierra; en VR no es suya
   assert.notStrictEqual(reg.teclas.KeyP(), false); assert.ok(FT.abierta()); reg.teclas.KeyP(); assert.ok(!FT.abierta());
@@ -243,10 +247,10 @@ test("montado: la tecla P, la fila del panel VR, la tapa de la baliza, el oyente
   B[0].fn(); assert.strictEqual(FT.resumen().modo, "vr"); assert.strictEqual(reg.cierresPanel, 1, "abrir desde el panel lo cierra para verla");
   assert.match(f.firma(), /\|1$/); const c = ctx(); f.pinta(c, 460); assert.ok(c.textos.some(x => x.t === "Tiempo"));
   assert.ok(f.debug().fichaTiempo.abierta && f.debug().tiempo.temp, JSON.stringify(f.debug()));
-  reg.bus["vr:sale"][0](); assert.ok(!FT.abierta(), "salir de VR cierra la lámina de VR");
+  reg.busNucleo["vr:sale"][0](); assert.ok(!FT.abierta(), "salir de VR cierra la lámina de VR (Laminas)");
   // liberar: nada enganchado, nada vivo
   FT.abre("pantalla"); libera();
-  assert.deepStrictEqual([Object.keys(reg.teclas).length, reg.filas.length, reg.tapas.length, reg.oyentesTV, (reg.bus["prevision:alterna"] || []).length, (reg.bus["vr:sale"] || []).length], [0, 0, 0, 0, 0, 0]);
+  assert.deepStrictEqual([Object.keys(reg.teclas).length, reg.filas.length, reg.tapas.length, reg.oyentesTV, (reg.bus["prevision:alterna"] || []).length], [0, 0, 0, 0, 0]);
   assert.strictEqual(ventana.__fichaTiempo, undefined, "el gancho de pruebas se va con el componente");
   assert.strictEqual(reg.creadas.length, reg.liberadas.length, "ni geometría, ni material, ni textura");
 });
