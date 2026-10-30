@@ -90,7 +90,7 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | T7a | Medidor para T7: `&mide=60` registra 60 s de fotogramas y enseña mediana, p95 y peor (y el nivel del perfil) en el panel de VR y en `?debug`; se guarda para leerlo luego | — | ligera · **sonnet** | ✅ `30_mide.js` + protocolo en VR.md; falta usarlo en el Quest (T7) |
 | T6b | F1d: criterios 2, 3 y 4 del ADR-0015 en local | T6 | ligera · **opus** | ✅ nubes en una llamada (lejos Hituelo 98 llamadas), vuelo sin huecos (0 de 5.638 rayos), relieve dentro del error declarado |
 | T7 | F1d 8: Quest real (p95 ≤ 13,9 ms) | T6 | 👤 | ⬜ |
-| T8 | F1d 9: la escena nueva por defecto; se retira la vieja | T6 (T7 o «no probado», decisión 35) | ligera | 🟡 fase 1 ✅ 2026-10-30: 3D Tiles por defecto cuando hay tileset, `?escena=clasica` una versión, artefacto con la clásica; medida del banco pendiente (encargo del fixture). Fase 2 ✅ 2026-10-30 (decisión 79, ADR-0021): escena 3D Tiles única, salida artefacto retirada; topes medidos de nuevo |
+| T8 | F1d 9: la escena nueva por defecto; se retira la vieja | T6 (T7 o «no probado», decisión 35) | ligera | ✅ 2026-10-30: fase 1 (3D Tiles por defecto) y fase 2 (escena única, salida artefacto retirada, decisión 79) |
 | P1 | F2: la api firma tokens de LiveKit (`POST /api/presencia/token`, `livekit-server-sdk`, roles del contrato) | — | ligera | ✅ |
 | P2 | F2: el motor publica y recibe la pose con `livekit-client` (sustituye a la red simulada) | P1 | ligera | ✅ `?presencia=red`; probado con dos Chrome en P4 |
 | P3 | F2: chat por el canal de datos y moderación mínima (expulsar con auditoría, decisión 42) | P1 | ligera | ✅ chat y expulsión; probados contra LiveKit real en P4 |
@@ -151,7 +151,7 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | OF6 | **Configuración versionada** y `GET /api/config`; el motor la lee con caída a las constantes; interruptores de componentes (decisión 118) | OF2, C1 | media · **opus** | ✅ 2026-10-30 api y motor; falta la pantalla (OF7) |
 | OF7 | Panel de la escalera: deslizadores con límites, vista previa, publicar en prueba y para todos, historial | OF6 | media · **sonnet**; 🔶 | ✅ 2026-10-30; sin probar en tableta ni con lector de pantalla |
 | OF8 | Constructor en la oficina (olivo real por id, escalones lado a lado) | OF2, V3 | ligera · **sonnet** | ⬜ |
-| OF9 | Épocas desde la oficina y re-hornear (decisión 112) | OF6 | media · **sonnet** | ⬜ |
+| OF9 | Épocas desde la oficina y re-hornear (decisión 112) | OF6 | media · **sonnet** | 🟡 en curso |
 | OF10 | Mundo en modo oficina: insignia y chaleco, anunciar, balizas oficiales, salas | OF1 | media · **opus**; 🔶 | ⬜ |
 | OF11 | Agenda: eventos con aforo, inscripciones, lista de espera, avisos | OF2, V3 | media · **sonnet**; 🔶 Docker | ⬜ |
 | OF12 | Directos: preparación, sala guiada, dar la palabra, silenciar | OF10, F3, EIPD | pesada · **opus**; 🔶 | ⬜ |
@@ -164,7 +164,7 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | C6 | Componentes: plugins de la api y `/api/config` (se junta con OF6) | C1 | ligera · **sonnet** | ✅ 2026-10-30 (sin plugins de la api por carpeta) |
 | C7 | Entidades con id estable y usables (una sola forma de tocar: dedo, ratón, rayo VR, cercanía) — antes de juegos y fotos (decisión 119) | C2 | media · **opus** | ✅ 2026-10-30; desbloquea P7f (nombrar árboles y colgar fotos) |
 | C8 | Láminas en el mundo como servicio del núcleo | C3 | ligera · **sonnet** | ✅ 2026-10-30 (desbloquea C9b) |
-| C9 | Anfitrión de juegos y primer casual (decisión 125): piezas del olivar que caen y se rompen al juntar 3+ iconos iguales; récord validado en la api | C2, C6, C8 | media · **opus**; 👤 qué juego | ⬜ |
+| C9 | Anfitrión de juegos y primer casual (decisión 125): piezas del olivar que caen y se rompen al juntar 3+ iconos iguales; récord validado en la api | C2, C6, C8 | media · **opus**; 👤 qué juego | ✅ 2026-10-30 con C9a (pantalla) y C9b (VR) |
 | C9a | **«Cae la cosecha»** en pantalla: anfitrión de juegos (pausa el mundo, juego a pantalla completa, récord) y el juego: piezas del olivar que caen y se rompen al juntar 3+ iguales; teclado, ratón y táctil; récord de la familia en la api (decisiones 125, 136) | C2, C6 | media · **opus**; 🔶 banco al final | ✅ 2026-10-30; medido por el banco (0 renders con el juego abierto); sin probar en aparatos |
 | C9b | «Cae la cosecha» en VR, como lámina en el mundo con los mandos | C8, C9a | media · **sonnet** | ✅ 2026-10-30; no probado en Quest |
 | C9c | Clasificación de «Cae la cosecha» por alias entre familias (decisión 137): ruta de la api, pantalla de fin de partida y ventana Juegos | C9a | ligera · **sonnet** | ⬜ |
@@ -172,7 +172,7 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | C11 | Medida por componente («con y sin» por el banco) | C1 | ligera · **sonnet**; 🔶 | ⬜ |
 | C12 | (Condicional) servidor de estado de juego | decisión de Antonio | —  | ⏸️ no por ahora (decisión 120) |
 | AV1 | Biblioteca de avatares familiar e inclusiva: fuentes abiertas, criterios, propuesta y maqueta del selector | P7 | ligera · **opus** | ✅ 2026-10-30: propuesta y maqueta; 9 decisiones (A1-A9) para Antonio |
-| P7f | Hituelo: personalización en el mundo (nombrar árbol, colgar foto o pintura) — antes V5 | V3, C7 | media · **sonnet** | ⬜ |
+| P7f | Hituelo: personalización en el mundo (nombrar árbol, colgar foto o pintura) — antes V5 | V3, C7 | media · **sonnet** | 🟡 en curso |
 | AV2 | Muñeco teñido (decisión 131): 10 tonos de piel, ropa, altura, complexión y silla en el muñeco lejano; altura de la vista de pie/sentado en Configuración (133) | AV1 | ligera · **sonnet**; 🔶 banco | ✅ 2026-10-30; falta la silla con VRM (AV3), la fila de la altura en el panel VR y probar en aparatos |
 | AV3 | Creador por piezas, 1: cuerpos MPFB por edad y complexión generados por un agente con Blender (130), sin peques ofrecidos (132); prueba de arte a ojo | AV1 | pesada · **opus** | ✅ 2026-10-30; 👤 revisión a ojo (decisión 130); costura del cuello visible en el primer plano |
 | AV4 | Creador por piezas, 2: ADR y contrato `avatares` v2 (135), repertorio en la tubería y color en el motor (128), pantalla de elección | AV3 | pesada · **opus** | 🟡 en curso (decisión 141) |
