@@ -115,10 +115,11 @@ test("«Devolver a su sitio» borra lo guardado de las tres formas", () => {
 
 // ---------- lo que el chat y el minimapa guardan de siempre
 test("el chat usa Movibles, sigue con sus ids (#presenciaGente, «Volver a entrar», ol, input) y mete el texto con textContent", () => {
-  const P = lee("apps/web/motor/26_presencia.js");
+  const P = lee("apps/web/motor/38_presencia_compartida.js");   // C5: el chat es del componente de la presencia
   assert.match(P, /Movibles\.hazMovible\(raiz, asa, "chat"/); assert.match(P, /Movibles\.hazMovible\(burbuja, burbuja, "burbuja"/);
   assert.match(P, /id: "presenciaGente"/); assert.match(P, /"Volver a entrar"/); assert.match(P, /getElementById\("ventanaGente"\)/);
   assert.match(P, /"aria-live": "polite", "aria-label": "Chat de la visita"/); assert.match(P, /type: "text", maxLength: Chat\.MAX/);
+  assert.match(P, /n\.on\("chat:alterna"/, "el icono del chat de la barra le llega por el Bus (31_hud.js ya no toca sus botones)");
   assert.match(P, /function irCon\(id\)/); assert.match(P, /"Ir con " \+ m\.alias/); assert.match(P, /bloqueados\[x\.id\]/);
   assert.doesNotMatch(P, /innerHTML/);
 });

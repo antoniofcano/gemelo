@@ -8,11 +8,23 @@
       "emiten": ["29_vr"],
       "escuchan": ["20_sonido"]
     },
+    "chat:alterna": {
+      "descripcion": "El icono del chat de la barra (o del menú «Más»): si el chat de la visita compartida está minimizado (burbuja) se abre; si está abierto, se minimiza. Sin chat (sin presencia en red, o sin &chat=1 en la simulación) nadie lo atiende y no pasa nada.",
+      "datos": {},
+      "emiten": ["31_hud"],
+      "escuchan": ["38_presencia_compartida"]
+    },
     "componentes:cambia": {
       "descripcion": "Un componente se ha montado o liberado (al arrancar, por la configuración del servidor o a mano). Sirve para que la interfaz enseñe o esconda lo que depende de él.",
       "datos": { "type": "object", "required": ["id", "activo"], "properties": { "id": { "type": "string" }, "activo": { "type": "boolean" } } },
       "emiten": ["02c_componentes"],
       "escuchan": ["15_tiempo"]
+    },
+    "depura:lineas": {
+      "descripcion": "El contador de ?debug (cada 0,5 s) pide sus líneas a los componentes: quien tenga algo que decir añade una cadena a «lineas» (hoy, la presencia compartida). Se pintan en ese orden, tras la de VR.",
+      "datos": { "type": "object", "required": ["lineas"], "properties": { "lineas": { "type": "array", "items": { "type": "string" } } } },
+      "emiten": ["28_depura"],
+      "escuchan": ["38_presencia_compartida"]
     },
     "juego:ofrece": {
       "descripcion": "Un juego casual (componente) se ofrece al anfitrión de juegos: { id, titulo, descripcion?, ayuda?, vr?, crea(ctx) → partida } (contrato en doc/sistema/JUEGOS.md). Lo emite al montarse y al oír «juego:pide».",
@@ -43,6 +55,12 @@
       "datos": { "type": "object", "properties": { "abre": { "type": "boolean" } } },
       "emiten": ["15_tiempo"],
       "escuchan": ["35_fichas_tiempo"]
+    },
+    "red:estado": {
+      "descripcion": "Una sala de la red (37_red.js) cambia de estado: «conectando», «dentro», «reconectando» o «fuera» (con su motivo: «propio», «expulsado», «duplicado», «desconectado» o «error»). Quien está en la sala lo sigue por su sala (Red.sala(clave).al(\"estado\")); el evento es para lo demás (la oficina, ?debug).",
+      "datos": { "type": "object", "required": ["sala", "estado"], "properties": { "sala": { "type": "string" }, "estado": { "enum": ["fuera", "conectando", "dentro", "reconectando"] }, "motivo": { "type": "string" } } },
+      "emiten": ["37_red"],
+      "escuchan": []
     },
     "sonido:baliza": {
       "descripcion": "Se ha llegado a una baliza de parcela: campanilla; con completa true (todas visitadas), un arpegio.",

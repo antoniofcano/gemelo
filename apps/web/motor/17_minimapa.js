@@ -1,13 +1,15 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: mini, actualizaMinimapa
-// Consume: 01_datos (D, $, ANCHO, ALTO), 02_mundo (Mundo, cIn), 08_marcadores (capas), 12_paseo (paseando, persona), 13_parcelas (parcelas),
-//   14_historia (aviso), 15_tiempo (esc), 16_vida (enQuad, quita, mira, conejos, quad, enDron, dron), 19_balizas (avisoBaliza, dibujaBalizasMini),
-//   25_perros (dibujaPerrosMini), 26_presencia (Presencia), 34_movibles (Movibles), 90_final (cuadro)
+// Expone: actualizaMinimapa
+// Consume: 01_datos (D, $, ANCHO, ALTO), 02_mundo (Mundo, cIn), 02e_entidades (Entidades, Usables), 03_escena (modo), 08_marcadores (capas),
+//   12_paseo (paseando, persona), 13_parcelas (parcelas), 14_historia (aviso), 15_tiempo (esc),
+//   16_vida (enQuad, quita, mira, conejos, quad, enDron, dron), 19_balizas (avisoBaliza, dibujaBalizasMini), 25_perros (dibujaPerrosMini),
+//   29_vr (panel, ficha), 34_movibles (Movibles), 90_final (cuadro)
 // ===============================================================================
   // ---------- el minimapa del paseo: la ortofoto vista desde arriba con tú, tu rastro, el dron y los conejos (M o un toque cambia el zoom)
   var mini = { cv: $("mapita"), cerca: false, oculto: false, rastro: [], t: 0, pts: [], bal: [], sel: null }, MW = 240, MH = Math.round(MW * ALTO / ANCHO);
-  // I1: con la presencia compartida, los demás que se ven (Presencia.puntos: de tu sala, con pose y sin bloquear) salen como puntos violeta (en quad, un
-  // cuadrado; con el dron, un rombo). Un toque en un punto muestra su alias («toca otra vez para ir»); otro toque en 4 s te lleva con esa persona
+  // I1: con la presencia compartida, los demás que se ven (las entidades «persona», Entidades.lista: de tu sala, con pose y sin bloquear) salen como puntos
+  // violeta (en quad, un cuadrado; con el dron, un rombo). Un toque en un punto muestra su alias («toca otra vez para ir»); otro toque en 4 s te lleva con esa
+  // persona (su acción «ir», Usables.usa: la misma que «Ir con» de su ficha y del panel VR). Sin presencia no hay tipo «persona» y no sale nadie
   var SEL_T = 4, TOQUE = 14;
   (function () {
     var dpr = Math.min(window.devicePixelRatio || 1, 2); mini.cv.width = MW * dpr; mini.cv.height = MH * dpr; mini.cv.style.width = MW + "px"; mini.cv.style.height = MH + "px"; mini.dpr = dpr; mini.ctx = mini.cv.getContext("2d");
@@ -20,7 +22,7 @@
         mini.bal.forEach(function (p) { var d = (p.px - x) * (p.px - x) + (p.py - y) * (p.py - y); if (d < db) { db = d; bal = p; } });
         mini.sel = null; if (bal) avisoBaliza(bal.k); else cambia(); return;
       }
-      if (mini.sel && mini.sel.id === mejor.id && mini.sel.t > 0) { mini.sel = null; Presencia.irCon(mejor.id); }   // segundo toque: vamos
+      if (mini.sel && mini.sel.id === mejor.id && mini.sel.t > 0) { mini.sel = null; Usables.usa(mejor.id, "ir"); }   // segundo toque: vamos
       else mini.sel = { id: mejor.id, t: SEL_T };
       mini.t = 1;
     });
@@ -94,8 +96,9 @@
     dibujaBalizasMini(c, X, Y, mini.bal); dibujaPerrosMini(c, X, Y); Minimapa.pinta(c, X, Y, { cerca: mini.cerca, MW: MW, MH: MH });
     // los demás (solo con la presencia compartida): violeta con borde blanco, distinto de tu flecha naranja; en vista cercana, con su alias al lado
     mini.pts.length = 0;
-    if (Presencia.activo()) {
-      var gente = Presencia.puntos(), etiq = [];
+    var gente = Entidades.lista("persona");   // [{ id: "persona:…", alias, x este, y norte, modo }] o null sin presencia
+    if (gente) {
+      var etiq = [];
       c.lineWidth = 1.4; c.strokeStyle = "#ffffff"; c.fillStyle = "#b26bff";
       gente.forEach(function (g) {
         var px = X(g.x), py = Y(g.y); if (px < -4 || px > MW + 4 || py < -4 || py > MH + 4) return;

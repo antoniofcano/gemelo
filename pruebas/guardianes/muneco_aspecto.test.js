@@ -85,11 +85,12 @@ test("AV2: la silla de ruedas — sentado como en el quad, sin paso, a la misma 
 });
 
 test("AV2: en el código — ruedas con su reserva, dos por silla, sin silla con VRM, lo elegido manda sobre el catálogo y ningún campo de género", () => {
-  assert.match(FUENTE, /rRuedas = reserva\(mRuedas\)/, "las ruedas, una malla instanciada más con su reserva");
-  assert.match(FUENTE, /rRuedas\.toma\(2\)/, "dos ruedas por silla");
-  assert.match(FUENTE, /a\.mov === "silla" && !a\.vrm/, "con VRM, de momento, sin silla (el VRM de cerca no cambia)");
-  assert.match(FUENTE, /camisa != null && !a\.propioCamisa[^\n]*piel != null && !a\.propioPiel/, "lo que eligió la persona manda sobre el catálogo VRM");
-  assert.match(FUENTE, /malla\.count = n; malla\.visible = n > 0/, "sin sombreros ni sillas, esa malla no se dibuja");
+  const C = lee("apps/web/motor/38_presencia_compartida.js");   // C5: el dibujo de los muñecos es del componente de la presencia; la lógica pura sigue en 26_presencia.js
+  assert.match(C, /rRuedas = reserva\(mRuedas\)/, "las ruedas, una malla instanciada más con su reserva");
+  assert.match(C, /rRuedas\.toma\(2\)/, "dos ruedas por silla");
+  assert.match(C, /a\.mov === "silla" && !a\.vrm/, "con VRM, de momento, sin silla (el VRM de cerca no cambia)");
+  assert.match(C, /camisa != null && !a\.propioCamisa[^\n]*piel != null && !a\.propioPiel/, "lo que eligió la persona manda sobre el catálogo VRM");
+  assert.match(C, /malla\.count = n; malla\.visible = n > 0/, "sin sombreros ni sillas, esa malla no se dibuja");
   const asp = FUENTE.slice(FUENTE.indexOf("var Aspecto"), FUENTE.indexOf("var SalaPose"));
   assert.ok(!/\b(genero|género|sexo)\b\s*[:=]/.test(asp), "ningún campo de género en el aspecto");
 });

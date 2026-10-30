@@ -1,11 +1,11 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos ($), 02_mundo (suelo), 03_escena (renderer, scene, camera, exag), 12_paseo (paseando, persona, primera),
-//   16_vida (enQuad, quad, enDron, dron), 26_presencia (Muneco, avatarVRM, Presencia), 29_vr (VRX)
-// Nota: Sin presencia no crea nada; con ella, pide /avatares/catalogo.json solo si alguien lleva avatar (o con &vrm=1 en la simulación) e import("@pixiv/three-vrm") solo entonces. El trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/avatares.test.js.
+// Consume: 01_datos ($), 02_mundo (suelo), 02c_componentes (Componentes), 03_escena (renderer, scene, camera, exag),
+//   12_paseo (paseando, persona, primera), 16_vida (enQuad, quad, enDron, dron), 26_presencia (Muneco), 29_vr (VRX)
+// Nota: Componente «avatares-vrm» (ADR-0023, C5): solo se registra; consume la presencia (n.api) y se engancha a ella con enganchaVRM. Sin presencia activa no crea nada; con ella, pide /avatares/catalogo.json solo si alguien lleva avatar (o con &vrm=1 en la simulación) e import("@pixiv/three-vrm") solo entonces. El trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/avatares_motor.test.js.
 // ===============================================================================
-  // ---------- avatares VRM (P7c, ADR-0020): los N más cercanos que caben en el presupuesto del aparato llevan su VRM del catálogo; el resto, el muñeco
-  // instanciado de 26_presencia.js. Y, en tercera persona, tu paseante es tu avatar (decisión 76). Sin presencia (?presencia=sim|red) no crea nada.
+  // ---------- avatares VRM (P7c, ADR-0020), componente «avatares-vrm» (C5, ADR-0023, consume la presencia): los N más cercanos que caben en el presupuesto del aparato llevan su VRM del catálogo; el resto, el muñeco
+  // instanciado de la presencia (38_presencia_compartida.js). Y, en tercera persona, tu paseante es tu avatar (decisión 76). Sin presencia (?presencia=sim|red) no crea nada.
   //  · Catálogo: /avatares/catalogo.json y /avatares/<fichero>?v=<sha256> (mismo origen, tras sesión; contratos/avatares.md). Se pide solo cuando alguien lleva un id de
   //    avatar (metadatos del participante, avatar.vrm) o, en la simulación, con &vrm=1. Si no está, si el id no está en él o el fichero no baja o no pasa
   //    su sha256: el muñeco, como siempre. @pixiv/three-vrm 3.5.5 y el GLTFLoader de three, con import() solo entonces.
@@ -115,8 +115,8 @@
   })();
   // [puro:fin]
 
-  var Avatares = (function () {
-    if (!Presencia.activo()) return null;
+  // Presencia = la api del componente de la presencia (38_presencia_compartida.js, expone «Presencia»); se monta solo si está activa (?presencia=sim|red)
+  function AvataresMotor(n, Presencia) {
     var BASE = "/avatares/", FUNDIDO = 0.6, REPOSO = 5, TICK = 0.5, CERCA_MIRA = 8, COS_MIRA = Math.cos(70 * Math.PI / 180);
     var simVrm = /[?&]vrm=1\b/.test(location.search), comparte = !/[?&]vrmcomparte=no\b/.test(location.search), sinPropio = /[?&]yo=no\b/.test(location.search);
     var ua = navigator.userAgent || "", disp = /OculusBrowser|Quest/i.test(ua) ? "quest" : /Mobi|Android|iPhone|iPad/i.test(ua) ? "movil" : "escritorio";
@@ -284,7 +284,7 @@
       regs.forEach(function (r, a) { if (!quedan.has(a) && r.dir > 0) r.dir = -1; });
       quedan.forEach(function (a) { var r = regs.get(a); if (!r) pide(a); else if (r.dir < 0) { r.dir = 1; r.tRep = 0; } });
     }
-    // de 26_presencia.js, por cada persona que se dibuja: devuelve true si su VRM ya se ve entero (entonces el muñeco se oculta)
+    // de la presencia (38_presencia_compartida.js), por cada persona que se dibuja: devuelve true si su VRM ya se ve entero (entonces el muñeco se oculta)
     function coloca(a, mu, o, yawCab, cx, cz, dt) {
       var r = regs.get(a); if (!r || !r.inst || r.estado === "cargando" || r.estado === "reposo") return false;
       var inst = r.inst, R = inst.raiz;
@@ -365,9 +365,31 @@
     }
     function libera() {
       regs.forEach(function (r) { if (r.inst) sueltaInst(r.inst); }); regs.clear(); quitaPropio();
-      if (gVrm) scene.remove(gVrm); gVrm = null; avatarVRM = null;
+      if (gVrm) scene.remove(gVrm); gVrm = null; Presencia.enganchaVRM(null);
     }
     gVrm = new THREE.Group(); gVrm.name = "avatares-vrm"; scene.add(gVrm);
-    avatarVRM = { coloca: coloca, oculta: oculta, sale: quitaReg, actualiza: actualiza, estado: estado, libera: libera };
-    return avatarVRM;
-  })();
+    var gancho = { coloca: coloca, oculta: oculta, sale: quitaReg, actualiza: actualiza, estado: estado, libera: libera };
+    Presencia.enganchaVRM(gancho);   // la presencia llama a coloca/oculta/sale por cada persona y a actualiza al final de su fase
+    return gancho;
+  }
+
+  // el manifiesto (ADR-0023): lo lee el guardián pruebas/guardianes/componentes.test.js sin montar nada. ?avatares=0 lo apaga (los demás, con el muñeco de siempre).
+  // Consume la presencia: sin ella no se monta; con ella pero sin ?presencia=sim|red, montado no crea nada.
+  Componentes.registra({
+    id: "avatares-vrm", version: 1,
+    consume: ["Presencia", "VRX", "paseando", "persona", "primera", "enQuad", "enDron", "pp"],
+    expone: [],
+    eventos: { escucha: [], emite: [] },
+    bandera: { defecto: true, url: "avatares" },
+    // escritorio: 6 VRM a la vez (cupo; 3 en móvil y Quest) × ≤ 4 primitivas y ≤ 20.000 triángulos cada uno (topes de la tubería, ADR-0020 §2: ESTIMADO, sin medir);
+    // texturas: ≤ 3 de 1024 px por avatar (≈ 16 MB cada uno con mipmaps, ADR-0020: 50-100 MB estimados)
+    presupuesto: { llamadas: 24, triangulos: 120000, texturasMB: 100 },
+    fases: {},
+    monta: function (n) {
+      var P = n.api("presencia-compartida");
+      if (!P || !P.activo()) return { estado: function () { return null; }, libera: function () {} };   // sin presencia activa, como antes: nada
+      return AvataresMotor(n, P);
+    },
+    actualiza: {},
+    libera: function (api) { if (api) api.libera(); }
+  });
