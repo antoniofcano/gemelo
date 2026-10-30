@@ -69,7 +69,7 @@ test("el nombre interno (decisión 109) solo sale por las rutas de la oficina", 
       if (e.isDirectory()) recorre(f); else if (/\.ts$/.test(e.name) && /nombre_interno/.test(fs.readFileSync(f, "utf8"))) dentro.push(path.relative(api, f).replace(/\\/g, "/"));
     }
   })(api);
-  assert.deepStrictEqual(dentro.sort(), ["admin/familias.ts", "agenda/rutas.ts"], "el campo solo lo nombran rutas de la oficina (Familias y, en los inscritos de un evento, la Agenda: GET /api/admin/eventos/:id/inscritos)");
+  assert.deepStrictEqual(dentro.sort(), ["admin/familias.ts", "agenda/rutas.ts", "oficina/llaves_rutas.ts"], "el campo solo lo nombran rutas de la oficina (Familias; en los inscritos de un evento, la Agenda: GET /api/admin/eventos/:id/inscritos; y en las llaves de las cuentas de oficina, solo admin: GET /api/admin/llaves)");
   for (const esquema of ["contratos/haza.schema.json", "contratos/olivos-haza.schema.json"]) assert.ok(!/nombre_interno/.test(lee(esquema)), esquema);
   const mig = lee("apps/api/migraciones/0008_familias.sql");
   assert.match(mig, /ADD COLUMN nombre_interno text CHECK/); assert.match(mig, /ADD COLUMN baja_en\s+timestamptz/);
