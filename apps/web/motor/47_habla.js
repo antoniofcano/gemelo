@@ -1,7 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos ($), 02c_componentes (Teclas, Componentes), 02d_laminas (Laminas), 03_escena (visor, modo), 09_camara (suelta),
-//   12_paseo (persona, teclas), 14_historia (aviso), 15_tiempo (hace), 16_vida (quita), 29_vr (VRX, panel, PanelVR), 33_ajustes (Ajustes)
+// Consume: 01_datos ($), 02c_componentes (Teclas, Componentes), 02d_laminas (Laminas), 03_escena (visor, modo), 08_marcadores (aplica),
+//   09_camara (suelta), 12_paseo (persona, teclas, primera), 14_historia (marca, aviso), 15_tiempo (hace), 16_vida (quita),
+//   29_vr (VRX, panel, PanelVR), 33_ajustes (Ajustes)
 // Nota: Componente «habla-guiada» (F3e, ADR-0026; decisiones 157-162): la interacción de la voz en la visita guiada, solo dentro de una sala guiada y con papel. «Hablar» con botón (≥ 44 px; 56 en el navegador de Quest), tecla T y, en VR, el gatillo izquierdo (VRX.voz, que 29_vr.js lee cada fotograma), en dos modos según el ajuste «Hablar» de Configuración: pulsar para abrir y cerrar (por defecto) o mantener pulsado (familias; el guía siempre pulsa y abre su micro con el primer gesto, una vez). Sin la palabra, «Levantar la mano» / «Bajar la mano» por la api de F3c y «Estás 2.º en la cola» (la cola, de la api «Guiada» de 46). El micro siempre con icono y texto en una región aria-live; «Silenciarme» siempre a mano; el aviso de que con el micro abierto el sonido no es espacial y la casilla «Llevo auriculares» (Voz.auriculares). En VR, una lámina de 3 s al abrir o cerrar, una fila del panel («Ir a») y un pulso del mando. Emite «habla:micro» y «habla:mano»; escucha «voz:estado», «guiada:palabra» y «depura:lineas». ?habla=0 lo apaga. Publica window.__habla (pruebas). Todo con textContent. Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/habla.test.js.
 // ===============================================================================
   // ---------- hablar en la visita guiada (F3e; ADR-0026, decisiones 157-162; COMPONENTES §F3e).
