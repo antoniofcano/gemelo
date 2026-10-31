@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Panel del guía en el mundo (F3f, absorbe OF12): cuenta atrás de la palabra para todos; ventana «Visita guiada» con manos en orden, dar la palabra, +1 min, cortar, silenciar, sacar y cerrar la sala con aviso y vuelta a la visita libre (decisión 155); fila en el panel VR. La presencia viaja a la sala guiada y la voz suena desde cada avatar. Api: `POST /api/presencia/guiadas/:evento/cerrar` (livekit-roles v7). Probado en Node; Quest e iPhone sin probar.
 - Voz de las visitas guiadas en el mundo (F3d, componente `voz-guiada`, `?voz=0`): en una sala `guiada-<evento>` las voces suenan desde el avatar de quien habla (Web Audio con HRTF, atenuación por distancia; guía, oficina y quien tiene la palabra nunca bajan de −12 dB) y, con tu micro abierto sin auriculares, sin espacializar para que actúe la cancelación de eco; el micrófono solo se abre con permiso y tras un gesto. Sin grabación. Probado en Node; Chrome, Quest, iPhone y auriculares reales, no probado.
 - C10 (1.ª tanda): las huellas y el polvo (`?huellas=0`) y los perros (`?perros=0`) pasan a ser componentes y se hablan por el Bus. Sin cambio visible.
 - Banco (PB4b): la puerta rápida y la de afectadas en solo-Node ya no piden el turno del banco ni lanzan Chrome.
