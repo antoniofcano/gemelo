@@ -12,7 +12,12 @@ set -euo pipefail
 umask 077
 
 ENTORNO="${GEMELO_ENTORNO:-/etc/gemelo/entorno}"
-if [ -r "$ENTORNO" ]; then set -a; . "$ENTORNO"; set +a; fi
+# solo las líneas GEMELO_RESPALDO_*, leídas como texto: el entorno es para env_file de Docker, no es shell (el remitente lleva espacios y <…>, y cargarlo tumbaría la copia)
+if [ -r "$ENTORNO" ]; then
+  while IFS='=' read -r nombre valor; do
+    case "$nombre" in GEMELO_RESPALDO_[A-Z_]*) export "$nombre=$valor" ;; esac
+  done < "$ENTORNO"
+fi
 SUBIR=1; [ "${1:-}" = "--sin-subir" ] && SUBIR=0
 
 CONTENEDOR="${GEMELO_RESPALDO_CONTENEDOR:-gemelo-db-1}"

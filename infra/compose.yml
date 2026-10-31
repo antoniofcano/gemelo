@@ -1,11 +1,14 @@
 # Producción del gemelo en el VPS de OVH, como INQUILINO de la red `borde` (ADR-0011). Runbook: doc/operacion/RUNBOOK-VPS.md.
-# - NINGÚN puerto publicado: el Caddy de Oficultor llega al Caddy interno (`web`) por la red externa `borde`
-#   (bloque en infra/bloque-borde.txt). Docker se salta ufw con los puertos publicados: por eso no hay ninguno.
+# - NINGÚN puerto web publicado: el Caddy de Oficultor llega al Caddy interno (`web`) por la red externa `borde`
+#   (bloque en infra/bloque-borde.txt). Docker se salta ufw con los puertos publicados: por eso los únicos son los dos de medios de
+#   LiveKit (7881/tcp y 7882/udp), solo con el perfil `presencia` (ADR-0027).
 # - La base solo está en la red `bd` (internal: sin salida); la api sale a Internet (SMTP de OVH, MCP de OlivarTrack)
 #   por la red `interna`.
 # - Secretos en ficheros fuera del repo (/etc/gemelo/secretos/, ver infra/entorno.ejemplo); nada en variables.
 # - Imágenes fijadas por versión exacta Y digest; las mismas que infra/dev (comprobadas el 2026-10-29, ver RUNBOOK-VPS).
 #   Al cambiar una, cámbiala también en infra/dev/compose.yml y en contratos/publicacion-vps.json.
+# - TODOS los servicios llevan mem_limit: el VPS no tiene swap y lo comparte con Oficultor, Vigía y Filo; sin tope, un pico del gemelo podría hacer que el OOM
+#   killer mate a un vecino. Con tope, muere solo el contenedor que se pasa. Las cifras son [SUPUESTO] hasta medirlas en el VPS (DESPLIEGUE-V2 § Memoria).
 name: gemelo
 
 services:
@@ -25,6 +28,7 @@ services:
       - ./bd-inicial:/docker-entrypoint-initdb.d:ro
     networks: [bd]
     shm_size: 256mb
+    mem_limit: 1g
     security_opt: ["no-new-privileges:true"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U gemelo_dueno -d gemelo"]
@@ -49,6 +53,7 @@ services:
     read_only: true
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
+    mem_limit: 256m
 
   api:
     image: gemelo-api:0.2.0
@@ -63,9 +68,8 @@ services:
       GEMELO_SESION_SECRETO_FICHERO: /run/secrets/sesion_secreto
       GEMELO_SMTP_CLAVE_FICHERO: /run/secrets/smtp_clave
       GEMELO_OT_TOKEN_FICHERO: /run/secrets/ot_token
-      # el token de Vigía (el tiempo): descomentar esta línea, `vigia_token` en secrets y el secreto del final cuando exista
-      # /etc/gemelo/secretos/vigia_token y /etc/gemelo/entorno traiga GEMELO_VIGIA=mcp (sin el fichero, el compose no arranca)
-      # GEMELO_VIGIA_TOKEN_FICHERO: /run/secrets/vigia_token
+      # el token de Vigía (el tiempo). Como ot_token, el fichero debe existir aunque esté apagado (`echo no > vigia_token`): solo se lee con GEMELO_VIGIA=mcp
+      GEMELO_VIGIA_TOKEN_FICHERO: /run/secrets/vigia_token
       # F2: el API secret de LiveKit (firma los tokens de la sala). Solo se lee si /etc/gemelo/entorno trae GEMELO_LIVEKIT_URL
       GEMELO_LIVEKIT_SECRETO_FICHERO: /run/secrets/livekit_secreto
       # V7: las fotos de los hogares (contratos/vida.md), en el volumen `medios` (entra en las copias: infra/respaldo.sh). El tope por foto
@@ -84,7 +88,7 @@ services:
       - config_publicada:/datos/config
       - hornero_estado:/datos/hornero:ro
       - /srv/gemelo/publicado:/datos/publicado:ro
-    secrets: [pg_api, sesion_secreto, smtp_clave, ot_token, livekit_secreto]
+    secrets: [pg_api, sesion_secreto, smtp_clave, ot_token, vigia_token, livekit_secreto]
     networks: [bd, interna]
     depends_on:
       migra: { condition: service_completed_successfully }
@@ -134,6 +138,35 @@ services:
       retries: 3
       start_period: 60s
 
+  # LiveKit (F2/F3, ADR-0027): la presencia y la voz. En el perfil `presencia`: un `up -d` normal no lo arranca. La señalización entra por Caddy (/rtc, red
+  # `interna`); los medios van directos por los DOS ÚNICOS puertos publicados del compose. Docker se salta ufw con ellos: quedan abiertos a Internet aunque ufw
+  # diga otra cosa (DESPLIEGUE-V2 § LiveKit y ufw). NODE_IP (la IP pública que anuncia) viene de /etc/gemelo/entorno; las claves, de un fichero (key_file), nunca
+  # de LIVEKIT_KEYS, que saldría en `docker inspect`. No se une a la red `borde`.
+  livekit:
+    image: livekit/livekit-server:v1.13.11@sha256:25cd902de7cacbd5f1f779f6a6ac1eae20ba8f56b0935934ce6b0ab80d1e3d20
+    profiles: [presencia]    # `docker compose -f infra/compose.yml --profile presencia up -d livekit`
+    restart: unless-stopped
+    command: ["--config", "/etc/livekit.yaml"]
+    env_file: [/etc/gemelo/entorno]
+    user: "1000:1000"
+    ports:
+      - "7881:7881/tcp"
+      - "7882:7882/udp"
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro
+    secrets: [livekit_claves]
+    networks: [interna]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:7880/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
   # Caddy INTERNO: estáticos (portada pública; finca y teselas tras sesión), cabeceras de seguridad y proxy a la api.
   web:
     image: caddy:2.11.7-alpine@sha256:eb4d35b7452d1ab6171fbdbe8d9275b2301dad6dad92115d91e19fb9b24d510f
@@ -175,5 +208,6 @@ secrets:
   sesion_secreto: { file: /etc/gemelo/secretos/sesion_secreto }
   smtp_clave: { file: /etc/gemelo/secretos/smtp_clave }
   ot_token: { file: /etc/gemelo/secretos/ot_token }
-  # vigia_token: { file: /etc/gemelo/secretos/vigia_token }
+  vigia_token: { file: /etc/gemelo/secretos/vigia_token }
   livekit_secreto: { file: /etc/gemelo/secretos/livekit_secreto }
+  livekit_claves: { file: /etc/gemelo/secretos/livekit_claves }

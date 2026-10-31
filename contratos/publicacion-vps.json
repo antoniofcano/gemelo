@@ -1,6 +1,6 @@
 {
   "$comment": "Contrato de la publicación en el VPS de OVH (ADR-0011, fase F1a). Lo comprueba pruebas/guardianes/api.test.js contra infra/compose.yml, infra/dev/compose.yml, apps/api/Dockerfile y apps/api/package.json. Imágenes: versión exacta Y digest, la misma en dev y en producción; comprobadas como estables el 2026-10-29 (Docker Hub, nodejs.org, curl.se). Cambiar una imagen = cambiarla aquí, en los dos compose y en doc/operacion/RUNBOOK-VPS.md en el mismo commit.",
-  "version": 1,
+  "version": 2,
   "dominio": "gemelo.canoydamas.es",
   "red_borde": "borde",
   "alias_en_borde": "gemelo-web",
@@ -8,6 +8,7 @@
   "puerto_api": 8000,
   "salud": "/api/salud",
   "puertos_publicados": [],
+  "livekit": { "perfil": "presencia", "puertos_publicados": ["7881/tcp", "7882/udp"], "senalizacion": "/rtc", "nota": "los unicos puertos publicados del compose, y solo con el perfil (ADR-0027)" },
   "imagenes": {
     "db": "postgis/postgis:18-3.6-alpine@sha256:c53a483fc274072dfa02cd491efa79f3c8ae0a10774a0ece6c9c53b6a632cdef",
     "web": "caddy:2.11.7-alpine@sha256:eb4d35b7452d1ab6171fbdbe8d9275b2301dad6dad92115d91e19fb9b24d510f",
@@ -18,8 +19,8 @@
   },
   "volumen_bd": "/var/lib/postgresql",
   "volumenes_api": { "medios": "/datos/medios", "config_publicada": "/datos/config" },
-  "limites_cuerpo_mb": { "api": 1, "borde": 2, "api_medios": 9 },
-  "secretos": ["pg_dueno", "pg_api", "sesion_secreto", "smtp_clave", "ot_token", "livekit_secreto"],
+  "limites_cuerpo_mb": { "api": 1, "borde": 2, "api_medios": 9, "api_contorno": 5 },
+  "secretos": ["pg_dueno", "pg_api", "sesion_secreto", "smtp_clave", "ot_token", "vigia_token", "livekit_secreto", "livekit_claves"],
   "variables_api": [
     "NODE_ENV", "GEMELO_API_PUERTO", "GEMELO_API_ESCUCHA", "GEMELO_URL_PUBLICA", "GEMELO_API_ORIGENES", "GEMELO_API_PROXIES",
     "GEMELO_API_REGISTRO", "GEMELO_DB_URL", "GEMELO_DB_CLAVE_FICHERO", "GEMELO_DB_CONEXIONES",
@@ -43,5 +44,5 @@
     "hsts_max_age": 31536000
   },
   "copias": { "cifrado": "age", "transporte": "rclone", "fuera_del_vps": true, "ensayo_restauracion": "infra/ensayar-restauracion.sh" },
-  "no_verificado": ["borde real de Oficultor", "SMTP de OVH", "MCP real de OlivarTrack", "age y rclone reales", "despliegue en el VPS"]
+  "no_verificado": ["borde real de Oficultor", "SMTP de OVH", "MCP real de OlivarTrack", "MCP real de Vigia", "LiveKit fuera del equipo", "age y rclone reales", "despliegue en el VPS"]
 }

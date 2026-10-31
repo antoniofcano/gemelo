@@ -6,8 +6,10 @@
 #   sesion_secreto  ≥ 32 caracteres aleatorios para firmar la cookie (openssl rand -base64 48)
 #   smtp_clave      contraseña del buzón SMTP de OVH
 #   ot_token        token PROPIO de solo lectura de OlivarTrack (decisión 17)
-#   livekit_secreto API secret de LiveKit, ≥ 32 caracteres aleatorios (openssl rand -base64 48); F2
-# Nada de este fichero se versiona con valores reales. Copia: sudo install -m 0640 infra/entorno.ejemplo /etc/gemelo/entorno
+#   vigia_token     token de Vigía, solo lectura («no» mientras GEMELO_VIGIA=no)
+#   livekit_secreto API secret de LiveKit, ≥ 32 caracteres aleatorios (openssl rand -base64 48); lo lee la api
+#   livekit_claves  el mismo par para el servidor LiveKit, una línea YAML «<GEMELO_LIVEKIT_CLAVE>: <secreto>»
+# Lo carga también infra/respaldo.sh, solo sus líneas GEMELO_RESPALDO_*. Nada de este fichero se versiona con valores reales. Copia: sudo install -m 0640 infra/entorno.ejemplo /etc/gemelo/entorno
 
 # --- web
 GEMELO_URL_PUBLICA=https://gemelo.canoydamas.es
@@ -67,10 +69,12 @@ GEMELO_OT=no
 # la URL del MCP de OlivarTrack (https obligatorio en producción)
 # GEMELO_OT_MCP_URL=https://olivartrack.ejemplo.invalid/mcp
 GEMELO_OT_CADA_MIN=60
+# «pasar a OlivarTrack» desde la bandeja: «manual» (la persona copia el texto). «token» está reservado para el token de solo proponer y aún no cambia nada
+GEMELO_OFICINA_OT_PROPONER=manual
 
 # --- el tiempo de Vigía por MCP, solo lectura (contratos/tiempo.md): GET /api/tiempo, actual y previsión de 72 h, con caché en
 # memoria (10 min el actual, 1 h la previsión). «no» hasta que Antonio dé la URL y el token; «fixture» solo fuera de producción.
-# El token NO va aquí: /etc/gemelo/secretos/vigia_token (descomentar el secreto vigia_token en infra/compose.yml).
+# El token NO va aquí: /etc/gemelo/secretos/vigia_token (el compose lo monta siempre: el fichero debe existir, con «no» hasta tenerlo).
 GEMELO_VIGIA=no
 # GEMELO_VIGIA=mcp
 # la URL del MCP de Vigía (https obligatorio en producción)
@@ -79,9 +83,12 @@ GEMELO_VIGIA=no
 # --- presencia compartida (F2, LiveKit). Sin GEMELO_LIVEKIT_URL la api la deja apagada (POST /api/presencia/token → 503).
 # El secreto (API secret, ≥ 32 caracteres) NO va aquí: /etc/gemelo/secretos/livekit_secreto (el compose lo monta y pone
 # GEMELO_LIVEKIT_SECRETO_FICHERO). La URL pública puede ser wss://… o la ruta del mismo origen /rtc (el borde la pasa a LiveKit).
+# Se enciende junto con el perfil `presencia` del compose (ADR-0027): el servidor LiveKit lee su par de /etc/gemelo/secretos/livekit_claves.
 # GEMELO_LIVEKIT_URL=http://livekit:7880
-# GEMELO_LIVEKIT_URL_PUBLICA=wss://gemelo.canoydamas.es/rtc
-# GEMELO_LIVEKIT_CLAVE=
+# GEMELO_LIVEKIT_URL_PUBLICA=/rtc
+# GEMELO_LIVEKIT_CLAVE=<nombre de la clave, el mismo de livekit_claves>
+# para el contenedor de LiveKit: la IP pública del VPS, el candidato ICE que anuncia (sin ella, los medios no llegan)
+# NODE_IP=<IP pública del VPS>
 # --- fotos de los hogares (V7, contratos/vida.md). El compose fija GEMELO_MEDIOS=/datos/medios (volumen `medios`, que entra en las copias)
 # y GEMELO_CONFIG_SALIDA=/datos/config/publicada.json (volumen `config_publicada`, para el hornero): no se ponen aquí.
 # Tope por foto en MB (1–16): el Caddy interno y el de borde dejan pasar POST /api/medios hasta 9 MB; si lo subes de 8, sube también
@@ -90,8 +97,8 @@ GEMELO_MEDIOS_MAX_MB=8
 # días que se conserva una foto retirada antes de borrarla del volumen, y subidas por hogar y hora
 GEMELO_MEDIOS_RETENCION_DIAS=30
 GEMELO_MEDIOS_SUBIDAS_HORA=20
-# --- reservada para la fase 2
-# GEMELO_TESELAS=/srv/teselas
+# escrituras de la vida de las hazas (nombres, pinturas, denuncias…) por hogar y hora
+GEMELO_VIDA_ESCRITURAS_HORA=60
 
 # --- copias (infra/respaldo.sh; no las lee la api)
 # destino de rclone FUERA del VPS (p. ej. Object Storage de OVH en otra región): «remoto:cubo/ruta»

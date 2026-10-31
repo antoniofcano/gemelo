@@ -24,7 +24,7 @@ const pruebas = (args, extra) => spawnSync(process.execPath, ["--test", "--test-
 
 test("imágenes de producción: versión exacta y digest, sin preliminares, y las del contrato", () => {
   const prod = imagenes("infra/compose.yml");
-  assert.deepStrictEqual(prod.slice().sort(), [CONTRATO.imagenes.db, CONTRATO.imagenes.web].sort());
+  assert.deepStrictEqual(prod.slice().sort(), [CONTRATO.imagenes.db, CONTRATO.imagenes.web, CONTRATO.imagenes_fase_2.livekit].sort());
   const todas = [...prod, ...Object.values(CONTRATO.imagenes), ...Object.values(CONTRATO.imagenes_fase_2)];
   for (const i of todas) {
     const m = CON_DIGEST.exec(i);
@@ -72,6 +72,11 @@ test("V7/V10: volúmenes de medios y de configuración publicada (la api escribe
   const b = sinComentarios("infra/bloque-borde.txt");
   assert.match(b, re("handle /api/medios \\{\\s*request_body \\{\\s*max_size " + L.api_medios + "MB"), "borde: /api/medios hasta " + L.api_medios + " MB");
   assert.match(b, re("handle \\{\\s*request_body \\{\\s*max_size " + L.borde + "MB"), "borde: el resto en " + L.borde + " MB");
+  // OF3b: la api admite 4 MiB en el contorno; los tres Caddy, algo más, y con matcher de ruta en línea (uno con nombre quedaría detrás de /api/*)
+  for (const [f, c] of [["infra/Caddyfile", sinComentarios("infra/Caddyfile")], ["infra/dev/Caddyfile", sinComentarios("infra/dev/Caddyfile")], ["infra/bloque-borde.txt", b]]) {
+    assert.match(c, re("handle /api/admin/fincas/\\*/contorno \\{\\s*request_body \\{\\s*max_size " + L.api_contorno + "MB"), f + ": el contorno hasta " + L.api_contorno + " MB");
+  }
+  assert.match(lee("apps/api/src/admin/contorno.ts"), /bodyLimit: 4 \* 1024 \* 1024/, "si cambia el tope del contorno en la api, cambia limites_cuerpo_mb.api_contorno y los tres Caddy");
   const e = lee("infra/entorno.ejemplo");
   for (const v of ["GEMELO_MEDIOS_MAX_MB", "GEMELO_MEDIOS_RETENCION_DIAS", "GEMELO_MEDIOS_SUBIDAS_HORA", "GEMELO_RESPALDO_MEDIOS"]) assert.match(e, re("^" + v + "=", "m"), "entorno.ejemplo: " + v);
   assert.match(lee("infra/respaldo.sh"), /gemelo-medios-\$SELLO\.tar\.age/, "respaldo.sh copia el volumen de medios");
@@ -80,12 +85,51 @@ test("V7/V10: volúmenes de medios y de configuración publicada (la api escribe
 
 test("producción: ningún puerto publicado, secretos solo por fichero, red de borde externa", () => {
   const c = sinComentarios("infra/compose.yml");
-  assert.ok(!/^\s*ports:/m.test(c), "infra/compose.yml publica puertos (se entra solo por la red borde)");
+  // los únicos puertos publicados son los de medios de LiveKit, en su perfil (ADR-0027): todo lo demás entra por la red borde
+  const bloques = c.split(/^(?=  [a-z]+:\s*$)/m), conPuertos = bloques.filter(s => /^\s*ports:/m.test(s));
+  assert.strictEqual(conPuertos.length, 1, "solo LiveKit publica puertos");
+  assert.match(conPuertos[0], /^  livekit:/, "solo LiveKit publica puertos");
+  assert.match(conPuertos[0], new RegExp("profiles: \\[" + CONTRATO.livekit.perfil + "\\]"), "LiveKit, solo con su perfil: un up -d normal no abre puertos");
+  assert.deepStrictEqual([...conPuertos[0].matchAll(/^\s*- "(\d+):\1\/(tcp|udp)"/gm)].map(m => m[1] + "/" + m[2]), CONTRATO.livekit.puertos_publicados, "puertos de LiveKit del contrato");
+  assert.ok(!/borde/.test(conPuertos[0]) && !/LIVEKIT_KEYS/.test(conPuertos[0]), "LiveKit, fuera de la red borde y con las claves en key_file");
+  const yaml = lee("infra/livekit.yaml");
+  assert.match(yaml, /^key_file: \/run\/secrets\/livekit_claves$/m, "livekit.yaml: las claves, por fichero");
+  assert.ok(!/^\s*(keys|node_ip)\s*:/m.test(yaml), "livekit.yaml sin claves ni IP");
+  // sin swap y con vecinos: cada servicio con su tope de memoria
+  for (const s of bloques.slice(1).filter(s => /^  [a-z]+:\s*$/m.test(s.split("\n")[0]) && /^\s+(image|build):/m.test(s))) assert.match(s, /^\s+mem_limit: \d+[mg]$/m, "sin mem_limit: " + s.split("\n")[0]);
   assert.ok(!/(PASSWORD|CLAVE|SECRETO|TOKEN)(_[A-Z]+)*:\s*["']?[^"'\s/][^\n]*$/m.test(c.replace(/_FICHERO:\s*\/run\/secrets\/\S+/g, "")),
     "hay un secreto escrito en el compose: van en /run/secrets (secretos de Docker)");
   assert.match(c, /borde:\s*\n\s*external:\s*true/, "la red borde debe ser externa (la crea Oficultor)");
   assert.match(c, /pg_datos:\/var\/lib\/postgresql\s*$/m, "con PostgreSQL 18 el volumen va en " + CONTRATO.volumen_bd);
   for (const s of CONTRATO.secretos) assert.match(c, new RegExp("^\\s*" + s + ":\\s*\\{\\s*file:\\s*/etc/gemelo/secretos/" + s + "\\s*\\}", "m"), "secreto " + s);
+});
+
+test("infra/Caddyfile de producción deja pasar la voz y no registra el token de LiveKit", () => {
+  const c = sinComentarios("infra/Caddyfile");
+  assert.match(c, /Permissions-Policy "[^"]*microphone=\(self\)/, "con microphone=() el navegador niega el micrófono y la voz (F3) no abre");
+  assert.match(c, /handle_path \/rtc\/\* \{\s*reverse_proxy livekit:7880/, "la señalización de LiveKit por el mismo origen, como en dev");
+  assert.match(c, /replace access_token REDACTADO/, "el token de LiveKit va en la URL de /rtc");
+  assert.match(c, /handle_errors \{/, "un 404 en assets/ no debe heredar immutable");
+});
+
+test("infra/respaldo.sh aguanta el entorno real: el remitente con espacios y <…> no es shell (sin Docker, con sustitutos)", t => {
+  const hay = h => spawnSync("bash", ["-c", "command -v " + h], { encoding: "utf8" }).status === 0;
+  if (!hay("bash") || !hay("sha256sum")) return t.skip("sin bash o sha256sum: respaldo.sh NO se ha ejecutado");
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), "gemelo-respaldo-")), b = d.replace(/\\/g, "/");
+  try {
+    fs.writeFileSync(path.join(d, "docker"), "#!/bin/sh\necho volcado\n");
+    fs.writeFileSync(path.join(d, "age"), "#!/bin/sh\nwhile [ $# -gt 0 ]; do [ \"$1\" = --output ] && o=$2; shift; done\ncat > \"$o\"\n");
+    fs.chmodSync(path.join(d, "docker"), 0o755); fs.chmodSync(path.join(d, "age"), 0o755);
+    fs.writeFileSync(path.join(d, "clave.pub"), "age1sintetica\n");
+    fs.writeFileSync(path.join(d, "entorno"), lee("infra/entorno.ejemplo")
+      .replace(/^GEMELO_RESPALDO_DESTINATARIO_FICHERO=.*$/m, "GEMELO_RESPALDO_DESTINATARIO_FICHERO=" + b + "/clave.pub")
+      .replace(/^GEMELO_RESPALDO_LOCAL=.*$/m, "GEMELO_RESPALDO_LOCAL=" + b + "/copias"));
+    const k = Object.keys(ENTORNO_HIJO).find(n => /^path$/i.test(n));
+    const r = spawnSync("bash", ["infra/respaldo.sh", "--sin-subir"], { cwd: RAIZ, encoding: "utf8",
+      env: Object.assign({}, ENTORNO_HIJO, { [k]: d + path.delimiter + ENTORNO_HIJO[k], GEMELO_ENTORNO: b + "/entorno", GEMELO_AGE: b + "/age" }) });
+    assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+    assert.ok(fs.readdirSync(path.join(d, "copias")).some(f => /^gemelo-medios-.*\.tar\.age$/.test(f)), "copia de la base y de los medios: " + r.stdout);
+  } finally { fs.rmSync(d, { recursive: true, force: true }); }
 });
 
 test("el Dockerfile usa la imagen de Node del contrato y corre sin root", () => {
@@ -224,7 +268,7 @@ test("infra/comprobar-despliegue.sh contra un servidor falso que imita al Caddy 
   const SEG = {
     "Strict-Transport-Security": "max-age=31536000", "X-Content-Type-Options": "nosniff", "X-Frame-Options": "DENY",
     "Referrer-Policy": "strict-origin-when-cross-origin", "Cross-Origin-Opener-Policy": "same-origin",
-    "Permissions-Policy": "xr-spatial-tracking=(self), camera=()",
+    "Permissions-Policy": "xr-spatial-tracking=(self), microphone=(self), camera=()",
     "Content-Security-Policy-Report-Only": "default-src 'self'; script-src 'self'; object-src 'none'",
   };
   const arranca = roto => new Promise(res => {
@@ -234,7 +278,9 @@ test("infra/comprobar-despliegue.sh contra un servidor falso que imita al Caddy 
       if (u === "/") { h["Cache-Control"] = "no-cache"; rep.writeHead(200, h); return rep.end("<!doctype html>"); }
       if (u === "/api/salud") { h["Cache-Control"] = "no-store"; rep.writeHead(200, h); return rep.end(roto ? '{"estado":"mal","bd":"mal"}' : '{"estado":"ok","bd":"ok"}'); }
       if (u.startsWith("/api/interno/")) { rep.writeHead(roto ? 204 : 404, h); return rep.end(); }
-      if (u.startsWith("/finca") && req.headers["sec-fetch-mode"] === "navigate") { h.Location = "/"; rep.writeHead(303, h); return rep.end(); }
+      if (u === "/api/avisos/baja") { rep.writeHead(roto ? 401 : 400, h); return rep.end(); }
+      if (u === "/rtc/") { rep.writeHead(502, h); return rep.end(); }
+      if ((u.startsWith("/finca") || u.startsWith("/oficina")) && req.headers["sec-fetch-mode"] === "navigate") { h.Location = "/"; rep.writeHead(303, h); return rep.end(); }
       rep.writeHead(401, h); rep.end();
     });
     srv.listen(0, "127.0.0.1", () => res(srv));
@@ -253,6 +299,6 @@ test("infra/comprobar-despliegue.sh contra un servidor falso que imita al Caddy 
   try {
     const r = await corre(malo);
     assert.strictEqual(r.code, 1, "contra un servidor mal configurado debe fallar:\n" + r.out);
-    for (const s of ["falta Referrer-Policy", "/api/salud responde", "/api/interno accesible desde fuera"]) assert.ok(r.out.includes(s), "no detecta: " + s + "\n" + r.out);
+    for (const s of ["falta Referrer-Policy", "/api/salud responde", "/api/interno accesible desde fuera", "/api/avisos/baja sin sesión"]) assert.ok(r.out.includes(s), "no detecta: " + s + "\n" + r.out);
   } finally { malo.close(); }
 });

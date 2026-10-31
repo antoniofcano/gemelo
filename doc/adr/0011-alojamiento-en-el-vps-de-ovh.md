@@ -2,6 +2,7 @@
 
 - **Estado:** Aceptado
 - **Fecha:** 2026-10-28 (aprobado por Antonio con el plan multiusuario)
+- **Enmendado por:** [ADR-0027](0027-livekit-en-produccion-puertos-publicados.md) (cómo se publica LiveKit)
 
 ## Contexto
 Antonio decidió alojar el gemelo multiusuario en su VPS de OVH con el dominio `gemelo.canoydamas.es`. Ese VPS no está vacío: según la documentación de los proyectos hermanos (Vigía, ADR-0012 de su repo), Oficultor es el dueño del Caddy de borde y de los puertos 80/443, y Vigía vive como inquilina en su red. El repo decía «no hay servidor ni despliegue» (CLAUDE.md, PUBLICACION) y había descartado CI (PLAN).

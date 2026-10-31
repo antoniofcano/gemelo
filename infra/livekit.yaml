@@ -1,0 +1,15 @@
+# LiveKit de PRODUCCIÓN (perfil `presencia` de infra/compose.yml, ADR-0027). Sin secretos ni IP: las claves llegan en un fichero
+# (key_file: «<clave>: <secreto>», sin permisos para «otros»: LiveKit se niega a arrancar si los tiene) y la IP pública por NODE_IP.
+port: 7880
+key_file: /run/secrets/livekit_claves
+rtc:
+  tcp_port: 7881          # ICE por TCP, para las redes que cortan UDP
+  udp_port: 7882          # un solo puerto UDP multiplexado, como en infra/dev: un puerto abierto en lugar de 10.000
+  use_external_ip: false  # la IP la da NODE_IP: sin consultar a un STUN ajeno
+  # node_ip NO va aquí: mandaría sobre NODE_IP (comprobado con la 1.13.11, ver infra/dev/livekit.yaml)
+room:
+  empty_timeout: 300
+  max_participants: 50
+logging:
+  level: info
+  json: true

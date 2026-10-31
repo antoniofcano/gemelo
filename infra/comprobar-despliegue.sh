@@ -12,6 +12,7 @@
 #                                          pone quien despliega); basta con que no den error 5xx ni fallen al conectar
 #   GEMELO_IP_ESPERADA=<ip>                comprobar que el dominio resuelve a la IP del VPS
 #   GEMELO_DIAS_CERTIFICADO=14             días mínimos de vida del certificado
+#   GEMELO_CON_LIVEKIT=1                   LiveKit encendido (perfil presencia): /rtc/ debe responder y, con --en-vps, estar sano
 # Sale con 0 si todo pasa; con 1 si algo falla.
 set -uo pipefail
 
@@ -19,7 +20,7 @@ EN_VPS=0; URL="https://gemelo.canoydamas.es"
 for a in "$@"; do
   case "$a" in
     --en-vps) EN_VPS=1 ;;
-    -h|--help) sed -n '2,15p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,16p' "$0"; exit 0 ;;
     http://*|https://*) URL="${a%/}" ;;
     *) echo "argumento desconocido: $a" >&2; exit 2 ;;
   esac
@@ -78,6 +79,7 @@ tiene "$r" "^HTTP/[0-9.]* 200" && ok "/ responde 200 sin sesión" || mal "/ no r
 tiene "$r" "^content-security-policy-report-only: default-src 'self'; script-src 'self'" && ok "CSP estricta en Report-Only" || mal "falta la CSP Report-Only"
 tiene "$r" "^content-security-policy:" && mal "hay CSP impuesta (en F1a es solo informe; ¿la pone el borde?)" || ok "la CSP no se impone todavía"
 tiene "$r" "^permissions-policy:.*xr-spatial-tracking=\(self\)" && ok "Permissions-Policy con xr-spatial-tracking=(self)" || mal "Permissions-Policy sin xr-spatial-tracking"
+tiene "$r" "^permissions-policy:.*microphone=\(self\)" && ok "Permissions-Policy con microphone=(self) (la voz)" || mal "Permissions-Policy niega el micrófono: la voz no abrirá"
 tiene "$r" "^strict-transport-security: max-age=31536000" && ok "HSTS" || mal "falta HSTS"
 tiene "$r" "^x-content-type-options: nosniff" && ok "nosniff" || mal "falta nosniff"
 tiene "$r" "^x-frame-options: DENY" && ok "X-Frame-Options DENY" || mal "falta X-Frame-Options"
@@ -105,6 +107,10 @@ r=$(pide /api/interno/autoriza -H "Cookie: __Host-gemelo=inventada")
 tiene "$r" "^HTTP/[0-9.]* 404" && ok "/api/interno da 404 también con cookie" || mal "/api/interno con cookie: $(primera "$r")"
 r=$(pide /finca/ -H "Sec-Fetch-Mode: navigate")
 tiene "$r" "^HTTP/[0-9.]* 303" && tiene "$r" "^location: /$" && ok "sin sesión, /finca/ manda a la portada (303)" || mal "sin sesión /finca/ no redirige: $(primera "$r")"
+r=$(pide /oficina/ -H "Sec-Fetch-Mode: navigate")
+tiene "$r" "^HTTP/[0-9.]* 303" && ok "sin sesión, /oficina/ manda a la portada (303)" || mal "sin sesión /oficina/: $(primera "$r")"
+r=$(pide /avatares/catalogo.json)
+tiene "$r" "^HTTP/[0-9.]* 401" && ok "sin sesión, los avatares dan 401" || mal "sin sesión /avatares/: $(primera "$r")"
 r=$(pide /teselas/hituelo/indice.json)
 tiene "$r" "^HTTP/[0-9.]* 401" && ok "sin sesión, las teselas dan 401" || mal "sin sesión las teselas no dan 401: $(primera "$r")"
 r=$(pide /api/sesion)
@@ -113,6 +119,15 @@ r=$(pide /api/hazas)
 tiene "$r" "^HTTP/[0-9.]* 401" && ok "sin sesión, /api/hazas da 401" || mal "sin sesión /api/hazas: $(primera "$r")"
 r=$(pide /api/admin/hogares)
 tiene "$r" "^HTTP/[0-9.]* 40[13]" && ok "sin sesión, el panel de la oficina está cerrado" || mal "sin sesión /api/admin/hogares: $(primera "$r")"
+
+echo "== lo que va sin sesión a propósito"
+# la baja de los avisos abre desde el correo, sin sesión: sin token válido la api contesta 400 con su página (ni 401 ni la portada)
+r=$(pide /api/avisos/baja)
+tiene "$r" "^HTTP/[0-9.]* 400" && ok "/api/avisos/baja llega a la api sin sesión" || mal "/api/avisos/baja sin sesión: $(primera "$r")"
+r=$(pide /rtc/)
+if [ "${GEMELO_CON_LIVEKIT:-0}" = 1 ]; then
+  tiene "$r" "^HTTP/[0-9.]* 200" && ok "/rtc/ llega a LiveKit" || mal "/rtc/ no llega a LiveKit: $(primera "$r")"
+else info "/rtc/ responde $(primera "$r") (LiveKit apagado: se espera 502)"; fi
 
 if [ -n "${GEMELO_VECINOS:-}" ]; then
   echo "== vecinos del borde (solo el código de respuesta)"
@@ -132,8 +147,13 @@ if [ "$EN_VPS" = 1 ]; then
   done
   for s in db api; do grep -q "^$s running healthy" <<<"$estado" && ok "$s sano" || mal "$s no está healthy"; done
   grep -Eq "^migra exited +0$" <<<"$estado" && ok "migra terminó bien" || mal "migra: $(grep '^migra' <<<"$estado")"
-  pub=$(docker ps --filter label=com.docker.compose.project=gemelo --format '{{.Names}} {{.Ports}}' | grep -- '->' || true)
-  [ -z "$pub" ] && ok "ningún contenedor del gemelo publica puertos" || mal "puertos publicados: $pub"
+  # solo LiveKit publica, y solo sus dos puertos de medios (ADR-0027)
+  pub=$(docker ps --filter label=com.docker.compose.project=gemelo --format '{{.Names}} {{.Ports}}' | grep -- '->' | grep -v '^gemelo-livekit-' || true)
+  [ -z "$pub" ] && ok "ningún contenedor web, api ni base del gemelo publica puertos" || mal "puertos publicados: $pub"
+  lk=$(docker ps --filter label=com.docker.compose.project=gemelo --filter name=livekit --format '{{.Ports}}' | tr ',' '\n' | grep -- '->' | grep -Ev -- '->(7881/tcp|7882/udp)$' || true)
+  [ -z "$lk" ] && ok "LiveKit publica como mucho 7881/tcp y 7882/udp" || mal "LiveKit publica de más: $lk"
+  if [ "${GEMELO_CON_LIVEKIT:-0}" = 1 ]; then grep -q "^livekit running healthy" <<<"$estado" && ok "LiveKit sano" || mal "LiveKit no está healthy"; fi
+  info "hornero: $(grep '^hornero' <<<"$estado" || echo 'sin arrancar (perfil hornero)')"
   docker network inspect borde --format '{{range .Containers}}{{.Name}} {{end}}' 2>/dev/null | grep -q 'gemelo-web' \
     && ok "el Caddy interno está en la red borde" || mal "gemelo-web no está en la red borde"
   info "en la red borde: $(docker network inspect borde --format '{{range .Containers}}{{.Name}} {{end}}' 2>/dev/null)"
@@ -145,10 +165,16 @@ if [ "$EN_VPS" = 1 ]; then
     && ok "gemelo_api no es dueño de ninguna tabla" || mal "gemelo_api es dueño de algo"
   u=$(q "SELECT string_agg(DISTINCT usename, ',') FROM pg_stat_activity WHERE application_name = 'gemelo-api'")
   [ "$u" = gemelo_api ] && ok "la api se conecta como gemelo_api" || mal "la api se conecta como: ${u:-nadie}"
+  esperadas=$(find apps/api/migraciones -maxdepth 1 -name '*.sql' | wc -l | tr -d ' ')
+  [ "$(q "SELECT count(*) FROM esquema_migraciones")" = "$esperadas" ] && ok "las $esperadas migraciones aplicadas" || mal "migraciones aplicadas: $(q "SELECT count(*) FROM esquema_migraciones"), en el repo: $esperadas"
+  if [ -r /etc/gemelo/secretos ]; then
+    abiertos=$(find /etc/gemelo/secretos -type f -perm /o=rwx)
+    [ -z "$abiertos" ] && ok "ningún secreto legible por «otros»" || mal "secretos abiertos: $abiertos"
+  else info "secretos sin mirar (hace falta root)"; fi
   [ -n "$(q "SELECT extversion FROM pg_extension WHERE extname = 'postgis'")" ] && ok "PostGIS instalado (por la migración 0001)" || mal "falta PostGIS"
   # registros de la última hora: ni cookies, ni Authorization, ni el token del enlace sin redactar
-  reg=$($C logs --since 1h api web 2>&1)
-  fuga=$( { grep -Eo '__Host-gemelo=[A-Za-z0-9]|Bearer [A-Za-z0-9]' <<<"$reg"; grep -Eo '[?&]t=[A-Za-z0-9_-]{8,}' <<<"$reg" | grep -v '=REDACTADO$'; } | head -1)
+  reg=$($C logs --since 1h api web 2>&1)   # (el token de LiveKit va en la URL de /rtc: access_token)
+  fuga=$( { grep -Eo '__Host-gemelo=[A-Za-z0-9]|Bearer [A-Za-z0-9]' <<<"$reg"; grep -Eo '[?&](t|access_token)=[A-Za-z0-9_.-]{8,}' <<<"$reg" | grep -v '=REDACTADO$'; } | head -1)
   [ -z "$fuga" ] && ok "registros sin credenciales" || mal "los registros contienen credenciales (cookie, Authorization o token del enlace)"
   command -v ufw >/dev/null && [ "$(id -u)" = 0 ] && info "ufw: $(ufw status | head -1)"
 fi

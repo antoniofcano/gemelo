@@ -4,10 +4,16 @@
 # y la autorización (infra/Caddyfile). Caddy no se fía del X-Forwarded-For que mande un cliente: pone el suyo.
 # Lo NO probado contra el borde real: doc/operacion/RUNBOOK-VPS.md.
 gemelo.canoydamas.es {
-	# V7: la subida de una foto (POST /api/medios) admite ~9 MB; el Caddy interno vuelve a limitarla. Todo lo demás, 2 MB.
+	# V7: la subida de una foto (POST /api/medios) admite ~9 MB y OF3b, el contorno de una finca, ~5 MB; el Caddy interno vuelve a limitarlos. Todo lo demás, 2 MB.
 	handle /api/medios {
 		request_body {
 			max_size 9MB
+		}
+		reverse_proxy gemelo-web:8080
+	}
+	handle /api/admin/fincas/*/contorno {
+		request_body {
+			max_size 5MB
 		}
 		reverse_proxy gemelo-web:8080
 	}
