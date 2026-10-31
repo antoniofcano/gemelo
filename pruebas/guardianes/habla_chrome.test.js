@@ -29,6 +29,8 @@ async function abre(consulta) {
   p.on("console", m => { if (m.type() === "error" && !/Failed to load resource|favicon|AudioContext/.test(m.text())) errores.push("CONSOLE " + m.text().slice(0, 300)); });
   await p.goto(base + consulta);
   await p.waitForFunction(() => window.__g && window.__g.listo(), null, { timeout: 90000 });
+  // el dibujo depende de lo que la Cola ya haya cargado (teselas y generados): se espera a que se vacíe y se estabilice antes de comparar
+  await p.waitForFunction(() => { const g = window.__g, E = g.Escena3D; return g.pendientes() === 0 && (!E || E.resumen().estado !== "activo" || E.listo()); }, null, { timeout: 120000, polling: 500 });
   await p.waitForTimeout(1500);
   return { p, errores };
 }
