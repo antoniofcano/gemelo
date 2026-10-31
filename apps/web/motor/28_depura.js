@@ -5,7 +5,9 @@
 // ===============================================================================
 
   // ---------- ?debug: un contador en la esquina del visor para medir en el móvil (ms de JS por fotograma, llamadas, triángulos, teselas y olivos por nivel)
-  var dep = { n: 0, t0: performance.now(), js: 0, mx: 0, el: null };
+  var dep = { n: 0, t0: performance.now(), js: 0, mx: 0, el: null, ultimo: null };
+  // para las medidas del banco (gancho __g de 27_debug): ms de JS por fotograma, media y pico de la última media seg. del contador de ?debug
+  if (window.__g) window.__g.depuraJs = function () { return dep.ultimo; };
   // con ?olivos=gen, una línea con su estado (en el móvil no hay consola): cargando / activo / sin (y por qué), plan, dibujados y la vía; y las
   // variantes: horneadas (descargadas), calculadas y fallos de descarga (ADR-0018), con el estado del manifiesto si no se usa
   function genDebug() {
@@ -35,5 +37,6 @@
       i.render.calls + " llamadas · " + (i.render.triangles / 1000).toFixed(0) + " k tri · " + (i.render.points / 1000).toFixed(0) + " k pts\n" +
       "cola " + Cola.pendientes() + " pendientes · rebanada máx (ms): " + Object.keys(Cola.est).map(function (k) { return k + " " + Cola.est[k].max.toFixed(0); }).join(" · ") + "\n" +
       (window.VR_ESTADO ? window.VR_ESTADO + vrDebugExtra() + "\n" : "") + (ext.lineas.length ? ext.lineas.join("\n") + "\n" : "") + genDebug() + escDebug(a) + Mide.linea() + "teselas " + cargadas + "/" + Mundo.lista.length + " · olivos N0 " + a.nivel0 + " N1 " + a.nivel1 + " N2 " + a.nivel2 + " · heap " + mem;
+    dep.ultimo = { fps: +(dep.n * 1000 / (ahora - dep.t0)).toFixed(1), js: +(dep.js / dep.n).toFixed(2), pico: +dep.mx.toFixed(1) };   // para __g.depuraJs() (las medidas del banco)
     dep.n = 0; dep.js = 0; dep.mx = 0; dep.t0 = ahora;
   }
