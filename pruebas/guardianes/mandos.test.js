@@ -14,14 +14,14 @@ const lee = f => fs.readFileSync(path.join(MOTOR, f), "utf8");
 const ESPERADOS = ["generic-hand", "generic-trigger", "generic-trigger-squeeze-thumbstick", "meta-quest-touch-plus", "meta-quest-touch-plus-v2",
   "meta-quest-touch-pro", "oculus-touch-v2", "oculus-touch-v3"];
 
-test("el motor: Mandos usa la ruta propia, pide las manos y ya no dibuja cubos en 29_vr", () => {
+test("el motor: el componente mandos-vr usa la ruta propia, pide las manos y ya no dibuja cubos en 29_vr", () => {
   const m = lee("36_mandos.js"), vr = lee("29_vr.js");
   assert.ok(!/jsdelivr|https?:\/\//.test(m.replace(/^\s*\/\/.*$/gm, "")), "36_mandos.js no debe nombrar otro host");
   assert.match(m, /RUTA = "\.\/xr\/perfiles"/);
   assert.match(m, /\.setPath\(RUTA\)/, "la fábrica de mandos debe ir a la ruta propia");
   assert.match(m, /setPath\(RUTA \+ "\/generic-hand\/"\)/, "la fábrica de manos debe ir a la ruta propia");
   assert.match(vr, /optionalFeatures: \[[^\]]*"hand-tracking"/, "la sesión debe pedir hand-tracking como opcional");
-  assert.match(vr, /Mandos\.monta\(renderer, vrRig\)/); assert.match(vr, /Mandos\.libera\(\)/);
+  assert.match(vr, /Bus\.emite\("vr:rig-monta", \{ rig: vrRig \}\)/); assert.match(vr, /Bus\.emite\("vr:rig-libera"\)/);
   assert.ok(!/BoxGeometry\(0\.045/.test(vr), "el cubo del mando ya no vive en 29_vr.js (solo como respaldo en 36_mandos.js)");
 });
 

@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: Mandos
-// Consume: 03_escena (renderer), 15_tiempo (anuncia)
+// Expone: (nada al resto de módulos)
+// Consume: 02c_componentes (Bus, Componentes), 03_escena (renderer), 09_camara (suelta), 15_tiempo (anuncia), 16_vida (quita)
 // ===============================================================================
   // ---------- I6: el aspecto de los mandos y de las manos en VR. Antes eran dos cubos; ahora, como en el menú de las Meta, el MODELO REAL del mando
   // que anuncia el aparato (perfiles de WebXR Input Profiles: un Quest 3 anuncia el de los Touch Plus y un Quest 2 «oculus-touch-v3») y, con
@@ -12,7 +12,8 @@
   // Presupuesto (regla 6): sin sombras (ni proyectan ni reciben), y todo lo de GPU se libera al salir de la sesión (libera()).
   // Las fábricas escuchan a un «apoderado» (un EventDispatcher por mando y sesión), no a los grupos de three, que viven toda la vida de la página:
   // así cada sesión empieza limpia y no se acumulan escuchas. Los grupos reales (grip y mano) solo los escucha este módulo, una vez.
-  var Mandos = (function () {
+  var mandosSuelta = null;   // lo que libera el componente montado
+  function MandosMotor(n) {
     var RUTA = "./xr/perfiles", ESPERA = 6000;
     var pideLib = null, S = null, avisos = {};
     function avisa1(clave, txt) { if (avisos[clave]) return; avisos[clave] = true; try { console.warn("[VR] " + txt); } catch (e) {} }
@@ -32,8 +33,8 @@
     // los dos mandos de three (índice 0 y 1): grip (dónde se agarra, donde va el modelo) y mano (las articulaciones)
     var E = [0, 1].map(function (i) {
       var e = { i: i, grip: renderer.xr.getControllerGrip(i), mano: renderer.xr.getHand(i), src: null, pxC: null, pxM: null, modC: null, modM: null, okC: false, okM: false, cubo: null, reloj: 0 };
-      e.grip.addEventListener("connected", function (ev) { conecta(e, ev.data); });
-      e.grip.addEventListener("disconnected", function () { desconecta(e); });
+      e.alConecta = function (ev) { conecta(e, ev.data); }; e.alDesconecta = function () { desconecta(e); };
+      e.grip.addEventListener("connected", e.alConecta); e.grip.addEventListener("disconnected", e.alDesconecta);
       return e;
     });
     function esMando(src) { return !!(src && src.targetRayMode === "tracked-pointer" && src.gamepad && !src.hand); }
@@ -151,6 +152,26 @@
       });
       return { montado: !!S, fabricas: !!(S && S.L), filas: filas, tri: Math.round(tri), mallas: mallas, gpu: S ? S.gpu.size : 0 };
     }
-    window.__mandos = resumen;
+    window.__mandos = function () { return resumen(); };
+    // el montaje y la suelta de cada sesión los pide 29_vr por el Bus (antes llamaba a Mandos.monta / Mandos.libera)
+    n.on("vr:rig-monta", function (d) { if (d && d.rig) monta(renderer, d.rig); });
+    n.on("vr:rig-libera", function () { libera(); });
+    // al apagar el componente: suelta la sesión si la hay y quita las escuchas de los mandos (los grupos de three viven toda la vida de la página)
+    mandosSuelta = function () {
+      libera();
+      E.forEach(function (e) { e.grip.removeEventListener("connected", e.alConecta); e.grip.removeEventListener("disconnected", e.alDesconecta); });
+      delete window.__mandos;
+    };
     return { monta: monta, libera: libera, resumen: resumen };
-  })();
+  }
+  Componentes.registra({
+    id: "mandos-vr", version: 1,
+    consume: ["renderer"],
+    expone: [],
+    eventos: { escucha: ["vr:rig-monta", "vr:rig-libera"], emite: [] },
+    bandera: { defecto: true, url: "mandos" },
+    presupuesto: { llamadas: 0, triangulos: 0 },   // sin sesión VR no dibuja nada; en sesión, el modelo del mando (o la mano) por mando, sin sombras: medido en Quest NO (solo con el WebXR simulado, prueba_vr.js)
+    fases: {},
+    monta: function (n) { return MandosMotor(n); },
+    libera: function () { if (mandosSuelta) mandosSuelta(); mandosSuelta = null; }
+  });

@@ -176,6 +176,18 @@
       "emiten": ["29_vr"],
       "escuchan": ["40_juegos", "43_agenda"]
     },
+    "vr:rig-libera": {
+      "descripcion": "La sesión de realidad virtual termina y el rig se deshace: quien dibuje los mandos y las manos suelta sus modelos y sus recursos de GPU.",
+      "datos": {},
+      "emiten": ["29_vr"],
+      "escuchan": ["36_mandos"]
+    },
+    "vr:rig-monta": {
+      "descripcion": "La sesión de realidad virtual empieza y el rig (el grupo que lleva la cámara, los mandos y las manos) ya está en la escena: quien dibuje los mandos y las manos les pone su modelo.",
+      "datos": { "type": "object", "required": ["rig"], "properties": { "rig": { "type": "object" } } },
+      "emiten": ["29_vr"],
+      "escuchan": ["36_mandos"]
+    },
     "vr:sale": {
       "descripcion": "Termina la sesión de realidad virtual (la cámara vuelve a la pantalla). Lo propio de VR se cierra.",
       "datos": {},

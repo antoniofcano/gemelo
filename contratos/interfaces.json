@@ -35,6 +35,7 @@
     "__vrOlivo": { "modulo": "29_vr.js", "tipo": "function" },
     "__vrBotones": { "modulo": "29_vr.js", "tipo": "function" },
     "__otDebug": { "modulo": "23_estacion.js", "tipo": "function" },
+    "__mandos": { "modulo": "36_mandos.js", "tipo": "function" },
     "__perrosDebug": { "modulo": "25_perros.js", "tipo": "function" },
     "__presencia": { "modulo": "38_presencia_compartida.js", "tipo": "function" },
     "__presenciaChat": { "modulo": "38_presencia_compartida.js", "tipo": "function" },
