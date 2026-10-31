@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
 // Consume: 01_datos ($), 02c_componentes (Componentes), 03_escena (camera, modo), 15_tiempo (nivel), 29_vr (VRX)
-// Nota: Componente «voz-guiada» (F3d, ADR-0026; decisiones 157-162): la voz de las visitas guiadas, SOLO en una sala «guiada-<evento>» de la red (Voz.entra(evento) con el token de F3c, Voz.usa(clave) o ?guiada=<evento>). Consume la red y la presencia (Presencia.cabeza: de dónde sale cada voz). Pide las pistas de micrófono, cada una a un <audio> silenciado y de él a Web Audio (ganancia por distancia y PannerNode HRTF; la escucha, la cámara o la cabeza en VR); con tu micrófono abierto y sin auriculares, plano por los <audio> (cancelación de eco). Abre tu micrófono solo con permiso y tras un gesto (Voz.abre; lo dispara F3e). Emite «voz:habla» y «voz:estado»; escucha «audio:desbloquea» y «depura:lineas». Sin grabación. ?voz=0 lo apaga; ?voz=plano, sin espacializar. Publica window.__voz (pruebas). Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/voz.test.js.
+// Nota: Componente «voz-guiada» (F3d, ADR-0026; decisiones 157-162): la voz de las visitas guiadas, SOLO en una sala «guiada-<evento>» de la red (Voz.entra(evento) con el token de F3c, Voz.usa(clave) o ?guiada=<evento>; F3f: con ?presencia=red viaja la presencia y la voz usa su conexión, y se engancha sola a una sala de la red que entra en una guiada, «red:estado»). Consume la red y la presencia (Presencia.cabeza: de dónde sale cada voz). Pide las pistas de micrófono, cada una a un <audio> silenciado y de él a Web Audio (ganancia por distancia y PannerNode HRTF; la escucha, la cámara o la cabeza en VR); con tu micrófono abierto y sin auriculares, plano por los <audio> (cancelación de eco). Abre tu micrófono solo con permiso y tras un gesto (Voz.abre; lo dispara F3e). Emite «voz:habla» y «voz:estado»; escucha «audio:desbloquea», «depura:lineas» y «red:estado». Sin grabación. ?voz=0 lo apaga; ?voz=plano, sin espacializar. Publica window.__voz (pruebas). Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/voz.test.js.
 // ===============================================================================
   // ---------- la voz de las visitas guiadas (F3d; ADR-0026, decisiones 157-162; contratos/livekit-roles.json v6 y presencia.md «La voz de las visitas guiadas»).
   // El componente «voz-guiada» consume la red (37_red.js, el único que habla con LiveKit) y la presencia (38_presencia_compartida.js, para saber dónde está cada avatar).
@@ -275,6 +275,16 @@
     /** entra en la sala de voz de ese evento: token de la api (F3c) y la clave «guiada» de la red. Promesa de true si queda dentro de una guiada */
     async function entra(ev) {
       var id = V.evento(ev); if (id === null || !R || entrando) return false;
+      // F3f: con la presencia de verdad (?presencia=red), la PRESENCIA viaja a la guiada y la voz usa su misma conexión (sala «visita» de la red): una sola
+      // identidad por sesión (dos conexiones con la misma se echarían una a otra) y cada voz sale de su avatar. Sin ella, la voz entra por su cuenta (clave «guiada»)
+      if (P && P.entraGuiada && P.estado && P.estado().variante === "red") {
+        entrando = true; motivo = ""; emiteEstado();
+        try {
+          var ok = await P.entraGuiada(id); if (!vivo) return false;
+          if (!ok) { motivo = "no_entra"; return false; }
+          return usa("visita");
+        } finally { entrando = false; emiteEstado(); }
+      }
       entrando = true; motivo = ""; emiteEstado();
       try {
         var r = await fetch("/api/presencia/guiadas/" + id + "/token", { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" },
@@ -315,6 +325,11 @@
     // el primer gesto (tocar, una tecla, entrar en VR) deja arrancar el audio: solo estando en una guiada
     ["pointerdown", "keydown"].forEach(function (evn) { window.addEventListener(evn, desbloquea, { passive: true }); n.limpia(function () { window.removeEventListener(evn, desbloquea); }); });
     n.on("audio:desbloquea", desbloquea);
+    // F3f: una sala de la red que acaba de entrar en una guiada (la presencia que viaja a ella): la voz se engancha sola, sin que nadie se lo pida
+    n.on("red:estado", function (d) {
+      if (!vivo || sala || !d || d.estado !== "dentro" || !R) return;
+      var s = R.sala(d.sala); if (s && s.estado() === "dentro" && V.esGuiada(s.nombre())) engancha(s, false);
+    });
     n.on("depura:lineas", function (d) { if (sala && d && d.lineas) { var e = estado(); d.lineas.push("voz " + e.sala + " · " + e.voces + " voces · micro " + e.micro + " · " + e.modo + (e.bloqueado ? " · sin gesto" : "")); } });
 
     function libera() {
@@ -346,7 +361,7 @@
     id: "voz-guiada", version: 1,
     consume: ["Red", "Presencia", "VRX"],
     expone: ["Voz"],
-    eventos: { escucha: ["audio:desbloquea", "depura:lineas"], emite: ["voz:habla", "voz:estado"] },
+    eventos: { escucha: ["audio:desbloquea", "depura:lineas", "red:estado"], emite: ["voz:habla", "voz:estado"] },
     bandera: { defecto: true, url: "voz" },
     presupuesto: { llamadas: 0, triangulos: 0 },   // sin dibujo: Web Audio (un AudioContext, una ganancia y un panner HRTF por voz, como mucho 4) y <audio> ocultos
     fases: { tarde: 0.05 },
