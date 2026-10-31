@@ -185,12 +185,16 @@ test("OF11b: cambiar fecha o lugar avisa solo a apuntados y espera, sin contar p
   assert.ok((await avisosDe(LUIS)).some(a => /Cambia la fecha o el lugar/.test(a.titulo)), "la espera también se entera");
   const aviso = (await q<{ texto: string; autor_id: number | null }>("SELECT texto, autor_id FROM avisos WHERE titulo LIKE 'Cambia la fecha%' ORDER BY id DESC LIMIT 1"))[0]!;
   assert.match(aviso.texto, /Lugar: Patio → Era alta/); assert.equal(aviso.autor_id, null, "de sistema");
-  // no cuenta para el tope: tres avisos de la oficina siguen saliendo después de varios cambios
+  // no cuenta para el tope: tres avisos de la oficina siguen saliendo después de varios cambios. La prueba anterior ya gastó el tope semanal de
+  // Ana (3 avisos de la oficina): se envejecen esos avisos más allá de la semana para que el tope empiece vacío y solo cuenten los de aquí.
+  await q("UPDATE avisos SET creado_en = now() - interval '8 days' WHERE tipo = 'evento' AND autor_id IS NOT NULL");
   for (const n of [1, 2]) await pide("PUT", "/api/admin/eventos/" + id, ofi, { lugar: "Sitio " + n });
   for (const n of [1, 2, 3]) {
     const a = await pide("POST", "/api/admin/eventos/" + id + "/avisar", ofi, { titulo: "Aviso " + n, a: "apuntados" });
     assert.equal(a.json().enviados, 1, "aviso " + n + " de la oficina pasa el tope");
   }
+  const cuarto = await pide("POST", "/api/admin/eventos/" + id + "/avisar", ofi, { titulo: "Uno de más", a: "apuntados" });
+  assert.equal(cuarto.json().omitidos_por_tope, 1, "el cuarto de la oficina sí topa: los cambios de fecha o lugar no gastaron ninguno");
   const aud = await q<{ detalle: { avisados?: number } }>("SELECT detalle FROM auditoria WHERE accion = 'admin.evento_editado' ORDER BY id DESC LIMIT 1");
   assert.equal(aud[0]!.detalle.avisados, 2);
 });

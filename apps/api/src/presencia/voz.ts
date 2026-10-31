@@ -65,8 +65,9 @@ export function decideGuiada(e: EventoGuiada | null | undefined, q: Quien, ahora
 
 // ---------------------------------------------------------------- la palabra
 
-/** El reloj se inyecta: las pruebas lo adelantan a mano. */
-export interface Reloj { ahora(): number; programa(ms: number, fn: () => void): unknown; cancela(h: unknown): void }
+/** El reloj se inyecta: las pruebas lo adelantan a mano. `fn` puede devolver una promesa: el reloj real la ignora (como antes con `void`) y el de las
+ *  pruebas la espera, para que adelantar el reloj deje hecho lo que vence (sin carreras con la base de datos). */
+export interface Reloj { ahora(): number; programa(ms: number, fn: () => unknown): unknown; cancela(h: unknown): void }
 export const RELOJ_REAL: Reloj = {
   ahora: () => Date.now(),
   programa: (ms, fn) => { const t = setTimeout(fn, ms); t.unref(); return t; },
@@ -207,7 +208,7 @@ export class Palabra {
   }
 
   private programa(evento: number, identidad: string, ms: number): unknown {
-    return this.reloj.programa(Math.max(0, ms), () => { void this.vence(evento, identidad); });
+    return this.reloj.programa(Math.max(0, ms), () => this.vence(evento, identidad));
   }
   /** El temporizador del turno: si sigue siendo el mismo turno y ya pasó su hora, se quita. Si LiveKit falla, se reintenta (el turno sigue en la vista). */
   vence(evento: number, identidad: string): Promise<void> {

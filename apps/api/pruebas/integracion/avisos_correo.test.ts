@@ -27,7 +27,8 @@ before(async () => {
   bd = await levantaBd();
   for (const [c, rol] of [[OFI, "oficina"], [ANA, "hogar"], [LUIS, "hogar"], [MARTA, "hogar"]] as const)
     ids[c] = Number((await bd.dueno.query<{ id: number }>("INSERT INTO hogares (correo, rol) VALUES ($1, $2) RETURNING id", [c, rol])).rows[0]!.id);
-  await bd.dueno.query("UPDATE hogares SET alias = 'Ana', avisos_correo = true WHERE id = ANY($1)", [[ids[ANA], ids[LUIS]]]);
+  // el alias es único sin distinguir mayúsculas (hogares_alias_unico): cada familia el suyo
+  await bd.dueno.query("UPDATE hogares SET alias = CASE id WHEN $1 THEN 'Ana' ELSE 'Luis' END, avisos_correo = true WHERE id = ANY($2)", [ids[ANA], [ids[ANA], ids[LUIS]]]);
   await bd.dueno.query("UPDATE hogares SET alias = 'Marta Secreta' WHERE id = $1", [ids[MARTA]]);   // sin avisos_correo
   const base = contexto(bd.app, configDePrueba({ GEMELO_ENLACE_POR_CORREO: "100", GEMELO_ENLACE_POR_IP: "1000" }));
   // el temporizador largo: solo se reparte cuando la prueba llama a reparte()

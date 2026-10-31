@@ -271,7 +271,7 @@ export async function rutasVoz(app: FastifyInstance, bd: Bd, d: DepsVoz): Promis
     borrados.set(ev, reloj.programa(segundos * 1000, () => {
       borrados.delete(ev);
       palabra.olvidaSala(ev);
-      voz.borraSala(sala).catch(err => app.log.warn({ err: (err as Error).message, evento: ev }, "voz: no se pudo borrar la sala guiada al cerrarla"));
+      return voz.borraSala(sala).catch(err => app.log.warn({ err: (err as Error).message, evento: ev }, "voz: no se pudo borrar la sala guiada al cerrarla"));
     }));
     await audita(bd, req.session.hogarId!, "guiada.cerrada", { evento: ev, segundos, palabra_quitada: palabraQuitada, avisados });
     return { cierra_en: new Date(en).toISOString(), segundos, avisados };
