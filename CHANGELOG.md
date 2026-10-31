@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- La linde de las hazas en el mundo, gruesa y pegada al relieve (A4, componente `lindes-hazas`, `?lindes=0`): la tuya en ámbar y 4 px, las ajenas en blanco roto, finas y medio transparentes, con las líneas gruesas de three; tramos de ≤ 2 m cortados en cada borde de tesela, sin parpadeo; 2 llamadas y 3 triángulos por metro (tope de 48 k). La ficha dice que la linde es un dato dibujado por la oficina. Probado en Node; Chrome, iPhone y Quest, no probado.
 - Correo de los avisos de la agenda y de la oficina (OF11c), en segundo plano y con reintento acotado, y `.ics` de cada evento (inscripción, cambio de fecha o lugar y cancelación; `GET /api/agenda/:id/evento.ics`), con baja con un clic (enlace firmado). Migración 0016. Probado en Node; PostGIS, Mailpit y el buzón real sin probar.
 - Pruebas (PB4): `npm run puerta:afectadas` pasa solo las pruebas que tocan los ficheros cambiados frente a `main` (cabeceras Expone/Consume, rutas que lee cada guardián, reglas gruesas); un fichero desconocido elige todo; no autoriza a subir.
 - Pruebas (PB8): el coste de dibujo del grupo de presencia (`Cuenta`), la colocación de movibles (`tapaA`, `dentroDe`) y `__g.sinDibujo` se prueban en Node; las pruebas de Chrome de presencia y movibles quedan como humo y comparan con el valor puro, exacto.

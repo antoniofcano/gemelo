@@ -78,7 +78,7 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | A1 | Código corto para vincular las gafas: api, contrato y pruebas unitarias | — | ligera | ✅ (e2e con Docker en verde) |
 | A2 | Portada y pantalla de entrada (UX) en `apps/web` | — | ligera | ✅ (e2e con Docker en verde) |
 | A3 | Entorno local sirve Hituelo v3 con los olivos generados (cliente web con `gemelo-olivo`) | D1 | ligera | ✅ e2e 13/13 con Hituelo v3; tileset por Caddy y aparatos reales, sin probar |
-| A4 | Lindes de las hazas en el motor (el «3c») | — | ligera; 🔶 al medir | 🟡 código y pruebas de Node en main; medida encargada |
+| A4 | Lindes de las hazas en el motor (el «3c») | — | ligera; 🔶 al medir | 🟡 2026-10-31: código y Node (`44_lindes.js`); falta por el banco `lindes_chrome.test.js` (medida y capturas) y `dev.test.js` (Docker) |
 | A5 | e2e de entrada completa: portada → enlace → mundo con lindes; gafas → código → sesión | A1, A2, A4 | 🔶 Docker | ✅ fixture (Hituelo v3 sin pasar por la e2e) |
 | A6 | **Prueba en aparatos** (navegador, móvil, Quest; decisión 57) | A1, A2, A3 | 👤 | 👤 lista para Antonio; y con `--red-local` y `?presencia=red`, ordenador + móvil + Quest a la vez (DESARROLLO-LOCAL, «Prueba en aparatos con Hituelo v3») |
 | T1 | F1d 3b: terreno 3D Tiles en el motor (`04b_escena3d.js`, `?escena=tiles`), código | — | ligera | ✅ en main (sin medir: T3) |
