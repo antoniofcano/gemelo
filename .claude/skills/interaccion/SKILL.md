@@ -12,7 +12,7 @@ Regla 11 de [CLAUDE.md](../../../CLAUDE.md): todo cambio de interacción lleva s
 |---|---|
 | **Órbita** (`09_camara.js`) | arrastrar con un dedo/ratón: girar (`az`, `el` limitado 0,08–1,5); dos dedos: zoom/pan; **Shift o botón derecho**: pan; rueda: distancia (30 m–`DIST_MAX`); toque corto sin mover (<6 px): elegir copa |
 | **Paseo** (`12_paseo.js`) | teclas (`MAPA`), **V** cambia de vista, **Q** quad, **E** dron, **Esc** sale; en pantalla táctil, cruceta (`pad-up/down/left/right`), botón correr (`aria-pressed`) y cámara |
-| **VR** (`29_vr.js`) | palanca izquierda: andar · derecha: giro **por saltos de 30°** · gatillo derecho: teletransporte · izq. botón 1 (grip): correr · **X** viñeta · **Y** panel · **A** vuelo · **B** mirador |
+| **VR** (`29_vr.js`) | palanca izquierda: andar · derecha: giro **por saltos de 30°** · gatillo derecho: teletransporte · izq. botón 1 (grip): correr · **X** viñeta · **Y** panel · **A** vuelo · **B** mirador · **gatillo izquierdo**: tu micrófono, solo dentro de una visita guiada y mientras puedas hablar (`47_habla.js`, `VRX.voz`; esa mano deja de apuntar). **Tecla T** (escritorio): lo mismo |
 
 ## Comodidad en VR (lo que hay y lo que falta)
 Hay: giro por saltos, **viñeta** de confort (conmutable con X), teletransporte, velocidad de andar/correr, perfiles que bajan la carga si el fotograma se alarga, cabeza en el mundo y no movimiento de cámara impuesto. **Falta probar:** mareo (sobre todo en **vuelo** y **mirador**), legibilidad y alcance del panel flotante, tamaño de texto a distancia, háptica (`vrPulso`), y fps reales. No afirmar comodidad sin sesión real.

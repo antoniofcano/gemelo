@@ -30,7 +30,7 @@
       "descripcion": "El contador de ?debug (cada 0,5 s) pide sus líneas a los componentes: quien tenga algo que decir añade una cadena a «lineas» (hoy, la presencia compartida y las lindes de las hazas). Se pintan en ese orden, tras la de VR.",
       "datos": { "type": "object", "required": ["lineas"], "properties": { "lineas": { "type": "array", "items": { "type": "string" } } } },
       "emiten": ["28_depura"],
-      "escuchan": ["38_presencia_compartida", "44_lindes", "45_voz", "46_guiada"]
+      "escuchan": ["38_presencia_compartida", "44_lindes", "45_voz", "46_guiada", "47_habla"]
     },
     "guiada:cierre": {
       "descripcion": "F3f (decisión 155): ha llegado el aviso de que el guía o la oficina cierran la sala guiada (tema «cierre», mandado por la api sin participante; ya validado). en = cuándo se borra la sala; segundos = cuánto falta. La cuenta atrás, la lámina en VR y la vuelta a la visita libre ya las pone 46_guiada; es para quien quiera reaccionar (un sonido, un lector de pantalla).",
@@ -42,6 +42,18 @@
       "descripcion": "F3f: en la sala guiada cambia quién tiene la palabra (leído del atributo palabra_hasta que pone la api): identidad (\"\" si ya nadie), los segundos que le quedan al empezar y si eres tú. La tira, la cuenta atrás y los avisos ya los pone 46_guiada; es para quien quiera reaccionar (F3e: el botón Hablar, la háptica).",
       "datos": { "type": "object", "required": ["identidad", "segundos", "yo"], "properties": { "identidad": { "type": "string" }, "segundos": { "type": "integer", "minimum": 0 }, "yo": { "type": "boolean" } } },
       "emiten": ["46_guiada"],
+      "escuchan": ["47_habla"]
+    },
+    "habla:mano": {
+      "descripcion": "F3e: esta sesión pidió a la api levantar o bajar la mano (POST o DELETE /api/presencia/guiadas/:evento/mano). accion = levanta | baja; ok = si la api lo aceptó; puesto = el puesto en la cola que dio la api al levantar (1 = la siguiente) o null. El estado verdadero de la mano es el atributo «mano» de la sala (lo lee 46_guiada); esto es para quien quiera reaccionar (un sonido, la háptica).",
+      "datos": { "type": "object", "required": ["accion", "ok", "puesto"], "properties": { "accion": { "enum": ["levanta", "baja"] }, "ok": { "type": "boolean" }, "puesto": { "type": ["integer", "null"], "minimum": 1 } } },
+      "emiten": ["47_habla"],
+      "escuchan": []
+    },
+    "habla:micro": {
+      "descripcion": "F3e: esta sesión pidió abrir o cerrar su micrófono (Voz.abre / Voz.cierra, que exige permiso y gesto: el estado de verdad llega por voz:estado). accion = abre | cierra; fuente = boton | tecla | gatillo | panel | auto (el guía, con el primer gesto de la sala); modo = pulsar | mantener (el ajuste «Hablar»).",
+      "datos": { "type": "object", "required": ["accion", "fuente", "modo"], "properties": { "accion": { "enum": ["abre", "cierra"] }, "fuente": { "enum": ["boton", "tecla", "gatillo", "panel", "auto"] }, "modo": { "enum": ["pulsar", "mantener"] } } },
+      "emiten": ["47_habla"],
       "escuchan": []
     },
     "hazas:cambia": {
@@ -186,7 +198,7 @@
       "descripcion": "F3d: algo ha cambiado en la voz de la visita guiada (componente «voz»): si estás en una sala guiada-<evento>, tu papel, si el permiso te deja hablar, el estado de tu micrófono (cerrado, abriendo, abierto), los segundos de tu turno (palabra_hasta), si las voces suenan espaciales o planas (micrófono abierto sin auriculares: con cancelación de eco), si el navegador bloqueó el audio por falta de gesto, cuántas voces y el motivo del último rechazo. Para el indicador «Tu micro está abierto», el botón Hablar y el panel (F3e, F3f). Lo mismo que Voz.estado().",
       "datos": { "type": "object", "required": ["sala", "dentro", "guiada", "papel", "puede", "micro", "modo", "voces", "motivo"], "properties": { "sala": { "type": "string" }, "dentro": { "type": "boolean" }, "guiada": { "type": "boolean" }, "entrando": { "type": "boolean" }, "papel": { "enum": ["", "guia", "oficina", "familia"] }, "puede": { "type": "boolean" }, "micro": { "enum": ["cerrado", "abriendo", "abierto"] }, "turno": { "type": ["integer", "null"], "minimum": 0 }, "modo": { "enum": ["plano", "espacial"] }, "auriculares": { "type": "boolean" }, "bloqueado": { "type": "boolean" }, "voces": { "type": "integer", "minimum": 0 }, "hablan": { "type": "integer", "minimum": 0 }, "motivo": { "type": "string" } } },
       "emiten": ["45_voz"],
-      "escuchan": ["46_guiada"]
+      "escuchan": ["46_guiada", "47_habla"]
     },
     "voz:habla": {
       "descripcion": "F3d: alguien de la sala guiada empieza a hablar (habla true), su nivel cambia en 0,1 o más, o calla (habla false, nivel 0). Sale de ActiveSpeakers de LiveKit: solo de las voces que se oyen (suscritas) y de la tuya (yo true). La identidad es la opaca de la sala (la del avatar en la presencia): para la etiqueta del avatar y la lista de Gente (F3e). Sin nadie que lo escuche, no pasa nada.",

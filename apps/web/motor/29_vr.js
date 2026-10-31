@@ -18,7 +18,7 @@
     rig: { x: 0, y: 0, z: 0, yaw: 0 }, vuelo: false, mirador: false, correr: false, vineta: true, nivel: 0,
     modoPrev: "nube", calPrev: 1, nearPrev: 0.5, farPrev: 5000, prev: {}, giroOk: true, parcSel: 0, emaDt: 13.9, emaJs: 6, nBaj: 0, nAlt: 0, tNivel: 0,
     tp: null, hover: "", tFicha: 0, fichaT: 0, fichaDe: "", sucio: true, hapt: 0, hMov: 0, sesionesN: 0, cab: new THREE.Vector3(),
-    captura: null, gente: null, genteFirma: "", tGente: 0, pestana: "mundo", giro: 30, sinPint: false, fichaId: "", balFirma: "", balInfo: null, hoverB: "", botonesB: []
+    captura: null, voz: null, gente: null, genteFirma: "", tGente: 0, pestana: "mundo", giro: 30, sinPint: false, fichaId: "", balFirma: "", balInfo: null, hoverB: "", botonesB: []
   };
   var vrRig = new THREE.Group();
   function vrEstado(t) { VRX.estado = t; window.VR_ESTADO = "WebXR: " + t; try { console.log("[VR] " + window.VR_ESTADO); } catch (e) {} }
@@ -53,7 +53,7 @@
     lin.visible = false; c.add(lin); o.rayo = lin;
     c.addEventListener("connected", function (e) { o.src = e.data || null; o.mano = (e.data && e.data.handedness) || ""; lin.visible = !!(e.data && e.data.targetRayMode !== "gaze"); });
     c.addEventListener("disconnected", function () { o.src = null; o.mano = ""; lin.visible = false; });
-    c.addEventListener("selectstart", function () { if (VRX.on) vrGatillo(o); });
+    c.addEventListener("selectstart", function () { if (VRX.on && !(o.mano === "left" && VRX.voz && VRX.voz.toma())) vrGatillo(o); });   // F3e: en una visita guiada con micrófono, el gatillo izquierdo es el micro (47_habla.js), no pulsa con el rayo
     return o;
   });
   function vrMano(m) { var a = VRC.filter(function (o) { return o.src && o.mano === m; })[0]; return a || (m === "right" ? VRC[1] : VRC[0]); }
@@ -267,6 +267,7 @@
     cx.fillText("Mandos: izq. palanca = andar · grip = correr · X = viñeta · Y = panel", 40, 890);
     cx.fillText("der. palanca ←→ = girar " + VRX.giro + "° · ↑ = teletransporte · A = volar · B = mirador", 40, 920);
     cx.fillStyle = "#7fe3ff"; cx.fillText(VRX.vuelo ? "Volando: izq. avanza · der. ↑ apunta al suelo; al soltar, bajas allí" : "Caminando por el olivar", 40, 950);
+    if (VRX.voz && VRX.voz.toma()) { cx.fillStyle = "#ffd58a"; cx.fillText("Gatillo izquierdo = tu micrófono de la visita guiada (la derecha sigue pulsando el panel)", 40, 990); }
     cx.fillStyle = "#6f808c"; cx.font = "20px system-ui, sans-serif"; cx.fillText("LiDAR PNOA 2024 · © Instituto Geográfico Nacional (CC BY 4.0)", 40, 1074);
     panel.tex.needsUpdate = true; VRX.sucio = false; VRX.botones = B;
   }
@@ -399,6 +400,7 @@
   function vrBoton(src, k) { var g = src && src.gamepad, b = g && g.buttons && g.buttons[k]; return !!(b && b.pressed); }
   function vrFlanco(clave, v) { var a = VRX.prev[clave]; VRX.prev[clave] = v; return v && !a; }
   function vrPulso(o, fuerza, ms) { try { var g = o && o.src && o.src.gamepad, h = g && g.hapticActuators && g.hapticActuators[0]; if (h && h.pulse) h.pulse(fuerza, ms); } catch (e) {} }
+  var vrPulsoIzq = function (fuerza, ms) { vrPulso(vrMano("left"), fuerza, ms); };
   var vrDz = function (v) { return Math.abs(v) < 0.18 ? 0 : v; };
   function vrActualiza(dt, tms) {
     vrFundidoPaso(dt);
@@ -411,6 +413,7 @@
     if (VRX.captura && (fB || fP)) { if (VRX.captura.boton(fB ? "B" : "palanca")) vrPulso(R, 0.3, 25); }   // C9b: con un juego en lámina, B pausa y pulsar la palanca sale
     else if (fB) { vrMirador(!VRX.mirador); vrPulso(R, 0.3, 25); }
     VRX.correr = vrBoton(L.src, 1);
+    if (VRX.voz) VRX.voz.mando(vrBoton(L.src, 0), vrPulsoIzq);   // F3e: el gatillo izquierdo (botón 0) y el pulso del mando, cada fotograma
     // giro a saltos (palanca derecha ← →) y teletransporte (palanca derecha ↑: arco; al soltar, salta)
     var gx = vrDz(de.x), gy = vrDz(de.y), mueveStick = 0;
     if (VRX.captura) { VRX.captura.palanca(de.x, de.y, dt); gx = gy = 0; }   // C9b: la palanca derecha es del juego en lámina (ni giro ni teletransporte)

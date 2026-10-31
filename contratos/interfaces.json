@@ -47,7 +47,8 @@
     "red-salas": { "modulo": "37_red.js", "expone": "Red", "miembros": ["sala", "salas", "info", "cierra", "cargada"],
       "sala": ["clave", "une", "sale", "publica", "escucha", "al", "estado", "motivo", "yo", "participantes", "info", "cierra", "nombre", "permisos", "atributos", "publicaciones", "suscribe", "microfono", "microAbierto"] },
     "presencia-compartida": { "modulo": "38_presencia_compartida.js", "expone": "Presencia", "miembros": ["activo", "actualiza", "estado", "libera", "texto", "llegadas", "puntos", "irCon", "vrmPersonas", "miVrm", "miAvatar", "recolorea", "cambiaron", "enganchaVRM", "sala", "cambiaSala", "entraGuiada", "evento", "nombreSala", "yo", "mensaje", "cabeza"] },
-    "voz-guiada": { "modulo": "45_voz.js", "expone": "Voz", "miembros": ["entra", "usa", "sale", "abre", "cierra", "estado", "hablan", "auriculares", "actualiza", "libera"] }
+    "voz-guiada": { "modulo": "45_voz.js", "expone": "Voz", "miembros": ["entra", "usa", "sale", "abre", "cierra", "estado", "hablan", "auriculares", "actualiza", "libera"] },
+    "visita-guiada": { "modulo": "46_guiada.js", "expone": "Guiada", "miembros": ["tarde", "libera", "estado"] }
   },
   "funciones_globales_del_motor": {
     "$comment": "Firmas heredadas que el resto del motor usa como si fueran globales (alias de Mundo en 02_mundo.js)",
