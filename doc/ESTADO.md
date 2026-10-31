@@ -2,11 +2,11 @@
 
 Único sitio de «dónde estamos y qué falta». Se toca solo cuando el estado cambia (no en cada commit). Lo hecho se cuenta en el [CHANGELOG](../CHANGELOG.md); el rumbo, en [PLAN](rumbo/PLAN.md).
 
-**Versión: v0.2.0** · **Al día a: 2026-10-30** · **Prototipo**: funciona en Chrome con renderizado por software y sin errores de consola; el rendimiento en iPhone y Quest **no está medido**.
+**Versión: v0.2.0** · **Al día a: 2026-10-31** · **Prototipo**: funciona en Chrome con renderizado por software y sin errores de consola; el rendimiento en iPhone y Quest **no está medido**. Puerta pesada en verde el 2026-10-31 (800 pruebas: 786 pasan, 0 fallan, 14 saltadas) y `main` subido a GitHub (el CI de Actions sigue sin correr por la facturación, G1).
 
 ## Publicado
 
-- **Nada publicado de forma estable desde este repo.** Existe un artefacto desechable de la prueba de plataforma (privado; su enlace no se guarda en el repo público). Hay que borrarlo cuando proceda (**pide confirmación**).
+- **Nada desplegado ni publicado de forma estable** (el VPS no existe aún; el código está en GitHub, repo público). Existe un artefacto desechable de la prueba de plataforma (privado; su enlace no se guarda en el repo público). Hay que borrarlo cuando proceda (**pide confirmación**).
 - Un gemelo anterior (v20) vive como artefacto de claude.ai y no se ha tocado.
 
 ## Hecho
@@ -36,7 +36,19 @@
 - **Olivos generados** (2026-10-29, ADR-0017 Propuesto): constructor «olivo-2» en `apps/web/olivo/` y enganchado en el motor detrás de `?olivos=gen` (lote de 6-7 llamadas; fixture de Hituelo de cerca 47 llamadas / 546 k tri). Hituelo tiene `copas_param` medido desde las LAZ (5.874/5.882; copa ≈ 1,13 × 2·r8) en un índice aparte, aún sin cargar en el motor. `factorR8 = 1` casi dobla los triángulos del motor (medido con la escala fija; causa sin localizar). No probado en aparatos ni con Hituelo real.
 - **Ids estables por árbol** (2026-10-29): los exportadores emiten `copas_id`/`copas_tipo`; hoy **todos los ids son provisionales** (por posición) porque las marcas de OlivarTrack no traen el id del olivo. Falta ese campo en la exportación de OlivarTrack (CONTRATOS §1.1).
 - **F1c** (2026-10-29): three 0.186.1 (ADR-0016): motor en color y luz modernos; la artefacto carga three de jsDelivr con importmap. Aspecto nuevo aprobado por Antonio; en VR el relieve fino del suelo se apaga si el fotograma va justo. No probado en iPhone, Quest ni en un artefacto publicado.
-- Repositorio público con las fuentes unificadas y este sistema de trabajo: puerta con ~140 comprobaciones (`npm run puerta`; 138 en la última vuelta en main, unos 11 min con la máquina cargada), fixture sintético, contratos, 8 ADR y 11 skills.
+- Repositorio público con las fuentes unificadas y este sistema de trabajo: puerta con 800 pruebas (`npm run puerta:pesada`, 2026-10-31) y una rápida solo de Node, fixture sintético, contratos, 8 ADR y 11 skills.
+
+## Hecho y probado en local (noche del 30 al 31 de octubre de 2026)
+
+Cada línea resume; el detalle y las cifras, en el [CHANGELOG](../CHANGELOG.md) («No publicado») y el estado por tarea en el [PLAN](rumbo/PLAN.md). Probado en Node, Chrome sin pantalla (SwiftShader) y Docker en el propio equipo; **nada de esto en aparatos reales**.
+
+- **Oficina completa** (`/oficina/`, ADR-0024): familias, hazas con contorno de la finca (OF3b-OF3d), bandeja, sistema, olivos (escalera, «Olivo real» OF8, épocas OF9), agenda con aforo, espera, correo y `.ics` (OF11, OF11b-d), llave de acceso WebAuthn (OF13) y la oficina en el mundo (OF10, OF10b: chaleco, anuncios, balizas, sala de visita ligada a un evento).
+- **Voz de las visitas guiadas** (F3a-F3f, [ADR-0026](adr/0026-voz-y-moderacion.md)): permisos y palabra en la api, voz espacial desde cada avatar, panel del guía que absorbe OF12, y pulsar para hablar y mano. [EIPD-VOZ](sistema/EIPD-VOZ.md) en borrador. Sin grabación del directo.
+- **Motor por componentes** (ADR-0023): la red como componente (C5, `37_red.js`) con presencia y avatares sobre ella; sonido, huellas y perros (C4, C10), entidades con id estable (C7), láminas (C8), juego «Cae la cosecha» con clasificación (C9).
+- **Avatares por piezas** (AV2-AV4, ADR-0025): 12 cuerpos VRM CC0, peinados, barba, ropa y sombreros, tinte por material.
+- **Olivos**: tarjetas de racimo en E1 y E2 (O9b, la mitad de triángulos a la misma masa visual), escalera real E0-E1-E2-impostor con `?olivos=gen` (O8c) y caché de recetas endurecida (O5). Personalización de olivos en el mundo (P7f).
+- **Datos vivos**: la historia de Cerro lee lo de hoy de OlivarTrack por la api (V11, con grabaciones sintéticas); conector de claude.ai retirado (V9); lindes de las hazas gruesas en el mundo (A4).
+- **Pruebas** (PB1-PB9): dos puertas (`npm run puerta:rapida`, solo Node, ~3 min; `npm run puerta:pesada`, la única que autoriza a subir `main`), `puerta:afectadas`, pruebas al azar con `fast-check`, pruebas inestables a la vista y telemetría de fluidez enviada por el usuario desde el aparato (PB9).
 
 ## Datos
 
@@ -47,25 +59,34 @@
 
 Fuentes: LiDAR PNOA 3.ª cobertura (vuelo 2024), MDT 0,5 m, ortofoto PNOA 2022 (copas ~1,1–1,4 m al este), NDVI Sentinel-2 (48 fechas), SoilGrids. Detalle y licencias: [DATOS.md](operacion/DATOS.md).
 
-## Sin comprobar en hardware real
+## No probado (honesto)
 
-- fps en iPhone y Quest; mareo y comodidad del panel VR.
-- Lecturas en vivo por MCP (OlivarTrack, Vigía): [contratos/mcp.md](../contratos/mcp.md).
-- Rodadas del suelo a 0,5 m/px (salen suaves). Alternativa: ortofoto a 0,25 m solo en teselas con caminos, +~2 MB.
-- Generadores y `fetch` de ficheros en Safari iOS.
+- **Aparatos reales**: fps, comodidad y mareo en iPhone, Android y Quest (avatares VRM, voz, panel VR, mandos, escalera de olivos, juego en VR); Firefox y Safari.
+- **Servicios reales**: Vigía y OlivarTrack sin tokens (todo con grabaciones y datos sintéticos; [contratos/mcp.md](../contratos/mcp.md)), correo real de OVH (solo Mailpit), llaves de acceso físicas, LiveKit fuera del equipo.
+- **VPS sin desplegar**: ni el borde real, ni `age`/`rclone` reales, ni el RUNBOOK ensayado fuera de local.
+- **Carga**: con 40 clientes se satura el i5 de desarrollo; la carga de 40 visitantes reales no está medida.
+- Rodadas del suelo a 0,5 m/px (salen suaves); generadores y `fetch` de ficheros en Safari iOS.
+
+## Espera a Antonio
+
+- **Tokens**: de Vigía (V8) y de OlivarTrack (incluido el de solo proponer); **cuenta de correo** de OVH.
+- **EIPD y decisiones 163-169** ([DECISIONS-PENDING](rumbo/DECISIONS-PENDING.md)): base jurídica y plazo de la voz, datos legales, textos de OlivarTrack en vivo y la escalera de olivos; validar [EIPD-VOZ](sistema/EIPD-VOZ.md) (las fotos de las familias esperan a la EIPD).
+- **Facturación de GitHub (G1)** para que corra el CI, y el **despliegue en el VPS (V2)**, siempre con su confirmación.
+- **Pruebas en aparatos** (P7e y el resto): navegador, móvil y Quest en Hituelo real; dibujar las hazas reales en la oficina.
+- Borrar el artefacto desechable de la prueba de plataforma (con confirmación).
 
 ## Pendiente
 
 - **Prueba en aparatos** (decisión 57): navegador, móvil y Quest, cada uno por su cuenta en Hituelo real con los olivos generados. Falta P7 del constructor, `copas_param` de Hituelo (desde las LAZ) y el código corto para entrar en las Quest (decisión 61).
 - **Medir 10 olivos en campo con cinta** (plantilla de `tuberia/factores_campo.py`, rama del constructor): cierra el paso a `factorR8 = 1` (decisión 48) y los factores reales del LiDAR (49).
-- Portada y pantalla de entrada de la UX en `apps/web` (decisión 56) y lindes de las hazas en el mundo.
-- Fundido entre niveles de olivos.
+- Portada y pantalla de entrada de la UX en `apps/web` (decisión 56).
+- Fundido entre niveles de olivos (decisión 168).
+- Voz pendiente de F3g-F3i y de las pruebas de Chrome por el banco (`voz_dev`, presencia, avatares).
 - Frutales sin marcar en Hituelo (el LiDAR no los distingue).
 - Historia de Marín Hituelo (sin trabajos ni fenología en OlivarTrack).
 - Tres teselas del borde norte con cobertura incompleta si faltan las hojas 404-4181 y 406-4181.
 - Estabilizar la prueba VR completa con el mock: con SwiftShader la página se cae («Target crashed») tras ~25 pasos; es opcional en la puerta (PLAN P4).
 - **Arquitectura multiusuario «Cuarenta hazas»** ([ARQUITECTURA-MULTIUSUARIO](sistema/ARQUITECTURA-MULTIUSUARIO.md), [ADR-0009](adr/0009-plataforma-multiusuario-cuarenta-hazas.md), Aceptado): fases y estado en [PLAN](rumbo/PLAN.md). Nada se despliega en el VPS hasta que funcione y esté probado en local (decisión 21).
-- Borrar el artefacto desechable de la prueba de plataforma (con confirmación).
 - Más: [DECISIONS-PENDING](rumbo/DECISIONS-PENDING.md).
 
 ## Riesgos
