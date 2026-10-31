@@ -43,7 +43,7 @@ Abreviatura: `C="docker compose -f infra/compose.yml"`, desde la copia del repo 
 
 Solo miran. Cualquier sorpresa: se para y se pregunta; no se arregla nada del vecino.
 
-**El Caddy de borde.** No se sabe qué fichero usa ni cómo se recarga. Estas órdenes lo dicen:
+**El Caddy de borde.** Comprobado el 2026-10-31: su configuración es `/opt/oficultor/caddy/Caddyfile`, montada como **fichero suelto** y de solo lectura en `/etc/caddy/Caddyfile`. Falta saber cómo se recarga. Estas órdenes lo dicen:
 
 ```sh
 docker inspect oficultor_caddy --format '{{json .Mounts}}'                                # dónde está su Caddyfile en el anfitrión
@@ -79,7 +79,7 @@ dig +short A gemelo.canoydamas.es; dig +short AAAA gemelo.canoydamas.es; dig +sh
 
 El resto de la lista previa, en [RUNBOOK-VPS](RUNBOOK-VPS.md#lista-de-comprobación-previa-solo-mirar-no-cambia-nada). Sobre todo los uid de las imágenes (paso 14): los permisos de los secretos dependen de ellos.
 
-**`autoheal`.** Reinicia contenedores cuando su salud falla. Si es la imagen habitual (**[SUPUESTO]**), solo actúa sobre los que llevan la etiqueta `autoheal=true`, salvo que su entorno traiga `AUTOHEAL_CONTAINER_LABEL=all`. El compose del gemelo **no pone esa etiqueta**: por defecto no le afecta. Si sale `all`, tocaría a `db`, `api`, `livekit` y `hornero`, que llevan healthcheck, y un reinicio en mitad de una migración o de un horneado no conviene: se habla con Oficultor antes de la fase 5. Tampoco se añade la etiqueta por iniciativa propia: el gemelo se recupera con `restart: unless-stopped` y su fallo se ve en Kuma (fase 11).
+**`autoheal`.** Comprobado el 2026-10-31: `AUTOHEAL_CONTAINER_LABEL=autoheal`, así que solo actúa sobre los contenedores con la etiqueta `autoheal=true`. El compose del gemelo **no pone esa etiqueta** y no le afecta: un reinicio en mitad de una migración o de un horneado no conviene. Tampoco se añade la etiqueta por iniciativa propia: el gemelo se recupera con `restart: unless-stopped` y su fallo se ve en Kuma (fase 11).
 
 ## Memoria y el VPS sin swap
 
