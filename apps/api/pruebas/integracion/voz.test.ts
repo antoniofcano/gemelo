@@ -35,6 +35,8 @@ before(async () => {
   ev = Number((await bd.dueno.query<{ id: number }>("INSERT INTO visitas (titulo, tipo, empieza_en, termina_en, estado, plazas) VALUES ('Guiada F3c', 'guiada', now() + interval '5 minutes', now() + interval '65 minutes', 'abierta', 10) RETURNING id")).rows[0]!.id);
   otro = Number((await bd.dueno.query<{ id: number }>("INSERT INTO visitas (titulo, tipo, empieza_en, estado) VALUES ('Taller F3c', 'taller', now() + interval '5 minutes', 'abierta') RETURNING id")).rows[0]!.id);
   await bd.dueno.query("INSERT INTO visitas_asistentes (visita_id, hogar_id, estado) VALUES ($1, $2, 'apuntado'), ($1, $3, 'apuntado'), ($1, $4, 'en_espera')", [ev, ids[ANA], ids[BETA], ids[GAMMA]]);
+  // F3j (decisión 163): sin haber aceptado el aviso de voz la api no da la palabra ni acepta la mano; Ana y Beta ya lo aceptaron (el recorrido sin aceptar, en voz_consentimiento.test.ts)
+  await bd.dueno.query("INSERT INTO voz_consentimientos (hogar_id, version) VALUES ($1, 1), ($2, 1)", [ids[ANA], ids[BETA]]);
   ctx = contexto(bd.app, configDePrueba({ GEMELO_ENLACE_POR_CORREO: "100", GEMELO_ENLACE_POR_IP: "1000", ...LIVEKIT }));
   ctx.moderador = moderador; ctx.moderadorVoz = sala; ctx.relojVoz = reloj;
   app = await construyeApp(ctx);
