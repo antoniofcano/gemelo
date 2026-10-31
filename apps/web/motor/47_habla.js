@@ -124,7 +124,7 @@
   // [motor:inicio] (lo evalúa en Node pruebas/guardianes/habla.test.js con un DOM, una voz y una guiada de mentira)
   function HablaMotor(n, Vz, Gd) {
     var H = HablaPuro, modoAj = H.DEFECTO, v = null, ult = "", mensaje = "", tMsg = 0, puntero = false, sosten = "", pulsa = null, pidiendo = false, manoSup = null, ultMicro = "cerrado", autoEv = null, vivo = true, tLam = 0;
-    var cons = "?", consCarga = null, consIniciada = false, aviso = null, avisoErr = "", avisoOcupado = false, avisoDom = null, avisoFoco = null;   // F3j: el consentimiento de voz ("si" | "no" | "?"), el aviso en pantalla
+    var cons = "?", consCarga = null, consIniciada = false, avisoVoz = null, avisoErr = "", avisoOcupado = false, avisoDom = null, avisoFoco = null;   // F3j: el consentimiento de voz ("si" | "no" | "?"), el aviso en pantalla
     var caja = null, estadoEl = null, icoEl = null, txtEl = null, boton = null, silencio = null, casilla = null, avisoEl = null, quitaFila = null, abriendoP = null;
     var est = { aperturas: 0, cierres: 0, manos: 0, errores: 0, teclas: 0, gatillos: 0, autos: 0, avisos: 0, aceptados: 0, retirados: 0 }, LAM = "habla-micro", LAM_AVISO = "habla-consent";
     function el(tag, props, hijos) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === "style") e.style.cssText = props[k]; else if (k in e) e[k] = props[k]; else e.setAttribute(k, props[k]); }); (hijos || []).forEach(function (h) { e.appendChild(typeof h === "string" ? document.createTextNode(h) : h); }); return e; }
@@ -228,21 +228,21 @@
     }
     function emiteCons(accion, ok) { n.emite("habla:consentimiento", { accion: accion, ok: ok, version: H.AVISO_VERSION }); }
     function muestraAviso() {
-      if (aviso) return aviso.promesa;
+      if (avisoVoz) return avisoVoz.promesa;
       var res; var promesa = new Promise(function (r) { res = r; });
-      aviso = { promesa: promesa, res: res, vr: vr() }; avisoErr = ""; avisoOcupado = false; est.avisos++;
-      if (aviso.vr) avisoLamina(); else avisoPantalla();
+      avisoVoz = { promesa: promesa, res: res, vr: vr() }; avisoErr = ""; avisoOcupado = false; est.avisos++;
+      if (avisoVoz.vr) avisoLamina(); else avisoPantalla();
       return promesa;
     }
     function cierraAviso(resultado) {
-      var a = aviso; if (!a) return; aviso = null; avisoOcupado = false;
+      var a = avisoVoz; if (!a) return; avisoVoz = null; avisoOcupado = false;
       if (avisoDom && avisoDom.parentNode) avisoDom.parentNode.removeChild(avisoDom); avisoDom = null;
       if (typeof Laminas !== "undefined" && Laminas && Laminas.hay && Laminas.hay(LAM_AVISO)) Laminas.cierra(LAM_AVISO, "cerrada");
       try { if (avisoFoco && avisoFoco.focus) avisoFoco.focus(); } catch (e) {} avisoFoco = null;
       a.res(resultado); pinta();
     }
     function aceptaAviso() {
-      if (!aviso || avisoOcupado) return;
+      if (!avisoVoz || avisoOcupado) return;
       avisoOcupado = true; avisoErr = ""; repintaAviso();
       llama("PUT", { version: H.AVISO_VERSION }).then(function (r) {
         if (r.status === 200 && H.consentimiento(r.j) === "si") { cons = "si"; est.aceptados++; emiteCons("acepta", true); registraAjuste(); cierraAviso("aceptado"); return; }
@@ -250,7 +250,7 @@
       }, function () { avisoErr = H.errorAceptar(0, null); avisoOcupado = false; emiteCons("acepta", false); repintaAviso(); });
     }
     function rechazaAviso() {
-      if (!aviso || avisoOcupado) return;
+      if (!avisoVoz || avisoOcupado) return;
       emiteCons("rechaza", true); cierraAviso("no"); msg("De acuerdo: no hablarás hasta que aceptes el aviso de voz.");
     }
     // retirarlo (Configuración o el panel de VR): la api borra la fila y, si hablaba o esperaba, le quita la palabra y baja su mano al momento
@@ -316,7 +316,7 @@
         },
         // la franja de abajo: izquierda «Ahora no», derecha «Aceptar»; el resto de la lámina no hace nada pero tampoco deja pasar el toque
         alTocar: function (u, v) { if (v >= 0.84) { if (u < 0.5) rechazaAviso(); else aceptaAviso(); } return true; },
-        alCierra: function (motivo) { if (aviso && motivo !== "cerrada") { var a = aviso; aviso = null; avisoOcupado = false; emiteCons("rechaza", true); a.res("no"); pinta(); } } });
+        alCierra: function (motivo) { if (avisoVoz && motivo !== "cerrada") { var a = avisoVoz; avisoVoz = null; avisoOcupado = false; emiteCons("rechaza", true); a.res("no"); pinta(); } } });
     }
 
     // ---- la pantalla: una caja arriba, bajo la tira de la palabra de 46 (no tapa los mandos táctiles de abajo)
@@ -465,7 +465,7 @@
     // ---- fase «tarde» (cada 0,25 s): la cola cambia sin que nadie avise, la lámina de VR se cierra, el guía en VR abre solo, un «mantener» huérfano se suelta
     function tarde(dt) {
       if (!consIniciada) { consIniciada = true; cargaConsent().then(function () { if (vivo && cons === "si") { registraAjuste(); refrescaAjustes(); } }); }
-      if (aviso && aviso.vr !== vr()) { var a = aviso; cierraAviso("no"); a.res("no"); }   // se cambió de pantalla a VR (o al revés) con el aviso abierto: se cierra y se vuelve a pedir
+      if (avisoVoz && avisoVoz.vr !== vr()) { var a = avisoVoz; cierraAviso("no"); a.res("no"); }   // se cambió de pantalla a VR (o al revés) con el aviso abierto: se cierra y se vuelve a pedir
       if (tMsg > 0) { tMsg -= dt; if (tMsg <= 0) { mensaje = ""; ult = ""; } }
       pinta();
       if (tLam > 0) { tLam -= dt; if (tLam <= 0 && typeof Laminas !== "undefined" && Laminas.hay(LAM)) Laminas.cierra(LAM, "cerrada"); }
@@ -477,11 +477,11 @@
       return { visible: w.v.visible, modo: modoAj, micro: w.e.micro, papel: w.e.papel, puede: w.e.puede, accion: w.v.primaria.accion, texto: w.v.primaria.texto, estado: H.textoEstado(w.v), cola: w.v.cola,
         puesto: w.e.puesto, mano: w.e.mano, aviso: w.v.aviso, sosten: sosten, silenciar: w.v.silenciar, auriculares: w.e.auriculares, boton: px(), aperturas: est.aperturas, cierres: est.cierres,
         manos: est.manos, errores: est.errores, teclas: est.teclas, gatillos: est.gatillos, autos: est.autos, teclaT: !!quitaT,
-        consentimiento: cons, aviso: !!aviso, avisos: est.avisos, aceptados: est.aceptados, retirados: est.retirados };
+        consentimiento: cons, aviso: !!avisoVoz, avisos: est.avisos, aceptados: est.aceptados, retirados: est.retirados };
     }
     function libera() {
       vivo = false; sosten = "";
-      if (aviso) cierraAviso("no");
+      if (avisoVoz) cierraAviso("no");
       if (Laminas && Laminas.hay && Laminas.hay(LAM)) Laminas.cierra(LAM, "cerrada");
       if (typeof VRX !== "undefined" && VRX && VRX.voz === gancho) VRX.voz = null;
       if (caja && caja.parentNode) caja.parentNode.removeChild(caja); caja = estadoEl = icoEl = txtEl = boton = silencio = casilla = avisoEl = null;
