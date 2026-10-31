@@ -1334,6 +1334,201 @@ paths:
         "429": { $ref: "#/components/responses/Limite" }
         "503": { description: la presencia está apagada en este servidor }
 
+  # ---------------------------------------------------------------- la voz de las visitas guiadas (F3c; ADR-0026; presencia/voz.ts y voz_rutas.ts)
+  /api/presencia/guiadas/{evento}/token:
+    post:
+      summary: Token de la sala de voz de una visita guiada, `guiada-<evento>` (F3c; decisiones 39 y 157-162; livekit-roles.json v6)
+      description: >
+        Solo eventos de la agenda de tipo «guiada» o «directo», ni cancelados ni en borrador. Lo obtienen el guía del evento (visitas.guia_id, papel
+        «guia») y la oficina (rol oficina o admin con su aparato aprobado, papel «oficina»), los dos con micrófono (canPublish y canPublishSources
+        [microphone]); y las familias APUNTADAS (no en espera) y activas (papel «familia»), sin poder publicar pistas: la palabra se la da la api en vivo
+        (POST …/palabra). No hay papel de menor (no hay cuentas de menores, decisión 159). Ventana: las familias desde 15 min antes de empezar; el guía y la
+        oficina desde 60 min antes; todos hasta 30 min después del fin (sin fin, 3 h después de empezar). Identidad y metadatos como en
+        /api/presencia/token, más `papel` en los metadatos. Nada se graba (sin Egress, decisión 10).
+      security: [{ sesion: [] }]
+      parameters: [{ name: evento, in: path, required: true, schema: { type: integer, minimum: 1, maximum: 2147483647 } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [dispositivo], properties: { dispositivo: { enum: [escritorio, movil, quest] } } }
+      responses:
+        "200":
+          description: token firmado, con el papel
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [url, sala, identidad, token, caduca_en, papel]
+                properties:
+                  url: { type: string }
+                  sala: { type: string, pattern: "^guiada-[1-9][0-9]{0,9}$" }
+                  identidad: { type: string, pattern: "^h_[A-Za-z0-9_-]{22}_[A-Za-z0-9_-]{8}$" }
+                  token: { type: string, description: JWT de LiveKit }
+                  caduca_en: { type: string, format: date-time }
+                  papel: { enum: [guia, oficina, familia] }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: "sin Origin del sitio (origen_no_admitido); expulsado de las salas o de esta visita hace menos de 15 min (expulsado); o tu hogar no está apuntado, o está en espera (guiada_solo_inscritos: Esta visita es para las familias apuntadas.)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { description: "no hay un evento guiado con ese id (guiada_no_existe)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "409": { description: "cancelado o en borrador (guiada_no_vigente); aún no abre (guiada_aun_no, con abre_en); ya terminó (guiada_terminada)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: la presencia está apagada en este servidor }
+
+  /api/presencia/guiadas/{evento}/mano:
+    post:
+      summary: Una familia apuntada levanta la mano (F3c; la cola es del servidor, en orden de llegada)
+      description: >
+        Desde la conexión de esta sesión a la sala guiada (la identidad la calcula la api). La api pone el atributo `mano` (instante ISO) en su participante
+        de LiveKit para que el guía la vea, y la apunta en la auditoría (guiada.mano_levantada). Idempotente: si ya estaba levantada, devuelve su puesto.
+        No da ningún permiso por sí sola.
+      security: [{ sesion: [] }]
+      parameters: [{ name: evento, in: path, required: true, schema: { type: integer, minimum: 1, maximum: 2147483647 } }]
+      requestBody: { required: false, content: { application/json: { schema: { type: object, additionalProperties: false } } } }
+      responses:
+        "200": { description: "levantada; puesto en la cola (1 = la primera)", content: { application/json: { schema: { type: object, additionalProperties: false, required: [puesto], properties: { puesto: { type: integer, minimum: 1 } } } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: "sin Origin, o no apuntada (guiada_solo_inscritos)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { description: "guiada_no_existe" }
+        "409": { description: "fuera de su ventana o no vigente; eres el guía o la oficina (no_eres_familia); no estás en la sala (no_estas_en_la_sala); ya tienes la palabra (ya_tienes_la_palabra); cola llena (demasiadas_manos)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: la presencia está apagada en este servidor }
+    delete:
+      summary: La familia baja la mano (idempotente; auditoría guiada.mano_bajada si la tenía levantada)
+      security: [{ sesion: [] }]
+      parameters: [{ name: evento, in: path, required: true, schema: { type: integer, minimum: 1, maximum: 2147483647 } }]
+      responses:
+        "204": { description: bajada (o no estaba levantada) }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: "sin Origin, o no apuntada", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { description: "guiada_no_existe" }
+        "409": { description: "fuera de su ventana, no vigente o no_eres_familia" }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: la presencia está apagada en este servidor }
+
+  /api/presencia/guiadas/{evento}/palabra:
+    get:
+      summary: Quién tiene la palabra (y hasta cuándo) y las manos levantadas, en orden (el guía del evento o la oficina)
+      description: >
+        Estado EN MEMORIA de la api (una sola instancia; no sobrevive a un reinicio: al arrancar, la api quita en LiveKit las palabras que quedaran
+        dadas). La fuente de verdad del permiso es LiveKit. Solo identidades opacas; el alias de cada una lo tiene el panel por la sala.
+      security: [{ sesion: [] }]
+      parameters: [{ name: evento, in: path, required: true, schema: { type: integer, minimum: 1, maximum: 2147483647 } }]
+      responses:
+        "200":
+          description: estado de la palabra
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [evento, sala, turno, manos]
+                properties:
+                  evento: { type: integer }
+                  sala: { type: string }
+                  turno:
+                    oneOf:
+                      - { type: "null" }
+                      - { type: object, additionalProperties: false, required: [identidad, hasta, alargues], properties: { identidad: { type: string }, hasta: { type: string, format: date-time }, alargues: { type: integer, minimum: 0, maximum: 5 } } }
+                  manos: { type: array, items: { type: object, additionalProperties: false, required: [identidad, desde], properties: { identidad: { type: string }, desde: { type: string, format: date-time } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: "ni guía de esta visita ni oficina (sin_permiso)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { description: "guiada_no_existe" }
+        "503": { description: la presencia está apagada en este servidor }
+    post:
+      summary: Da la palabra a UNA familia durante 2 minutos (decisión 161; el guía del evento o la oficina)
+      description: >
+        `identidad` es la de una conexión de un hogar APUNTADO al evento (no el guía). La api le da en vivo el permiso de micrófono con
+        RoomService.UpdateParticipant (canPublish y canPublishSources [microphone]) y el atributo `palabra_hasta` (instante ISO de fin, para la cuenta
+        atrás), le baja la mano y lo apunta (guiada.palabra_dada: quién, a qué hogar, cuántos segundos). Al vencer, la api le quita el permiso
+        (al quitar canPublish, LiveKit despublica sus pistas) y lo apunta (guiada.palabra_quitada, motivo vencida). Una sola familia a la vez: si otra la
+        tiene, 409 palabra_ocupada (hay que quitársela antes). Sin desmute remoto: la api nunca abre el micrófono de nadie, solo deja publicarlo.
+      security: [{ sesion: [] }]
+      parameters: [{ name: evento, in: path, required: true, schema: { type: integer, minimum: 1, maximum: 2147483647 } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [identidad], properties: { identidad: { type: string, pattern: "^h_[A-Za-z0-9_-]{22}_[A-Za-z0-9_-]{8}$" } } }
+      responses:
+        "200": { description: "dada; hasta = cuándo acaba el turno", content: { application/json: { schema: { type: object, additionalProperties: false, required: [identidad, hasta], properties: { identidad: { type: string }, hasta: { type: string, format: date-time } } } } } }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: "sin Origin, o ni guía de esta visita ni oficina (sin_permiso)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { description: "guiada_no_existe" }
+        "409": { description: "no vigente (guiada_no_vigente); no es una familia apuntada (no_es_familia_apuntada); otra familia la tiene (palabra_ocupada); ya la tiene (ya_tiene_la_palabra); esa conexión ya no está en la sala (no_esta_en_la_sala)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: la presencia está apagada en este servidor }
+    delete:
+      summary: "Quita la palabra antes de tiempo (cortar; auditoría guiada.palabra_quitada, motivo cortada)"
+      security: [{ sesion: [] }]
+      parameters: [{ name: evento, in: path, required: true, schema: { type: integer, minimum: 1, maximum: 2147483647 } }]
+      responses:
+        "204": { description: quitada }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: "sin Origin, o sin_permiso", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { description: "guiada_no_existe" }
+        "409": { description: "nadie_tiene_la_palabra", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: la presencia está apagada en este servidor }
+
+  /api/presencia/guiadas/{evento}/palabra/alargar:
+    post:
+      summary: Alarga 1 minuto el turno en curso (hasta 5 veces; auditoría guiada.palabra_alargada)
+      security: [{ sesion: [] }]
+      parameters: [{ name: evento, in: path, required: true, schema: { type: integer, minimum: 1, maximum: 2147483647 } }]
+      requestBody: { required: false, content: { application/json: { schema: { type: object, additionalProperties: false } } } }
+      responses:
+        "200": { description: "alargado; hasta = el nuevo fin (también en el atributo palabra_hasta)", content: { application/json: { schema: { type: object, additionalProperties: false, required: [hasta], properties: { hasta: { type: string, format: date-time } } } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: "sin Origin, o sin_permiso", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { description: "guiada_no_existe" }
+        "409": { description: "nadie_tiene_la_palabra o tope_de_alargues", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: la presencia está apagada en este servidor }
+
+  /api/presencia/guiadas/{evento}/silenciar:
+    post:
+      summary: Silencia a todos menos al guía y a quien lo pide (RoomService.MutePublishedTrack) y quita la palabra si alguien la tenía
+      description: >
+        El guía del evento o la oficina. Silencia desde el servidor cada pista de micrófono publicada que no sea del guía ni de quien lo pide; nadie puede
+        quitar ese silencio desde fuera (sin desmute remoto). Auditoría guiada.silenciados (cuántas pistas y si había palabra).
+      security: [{ sesion: [] }]
+      parameters: [{ name: evento, in: path, required: true, schema: { type: integer, minimum: 1, maximum: 2147483647 } }]
+      requestBody: { required: false, content: { application/json: { schema: { type: object, additionalProperties: false } } } }
+      responses:
+        "200": { description: hecho, content: { application/json: { schema: { type: object, additionalProperties: false, required: [pistas, palabra_quitada], properties: { pistas: { type: integer, minimum: 0 }, palabra_quitada: { type: boolean } } } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: "sin Origin, o sin_permiso", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { description: "guiada_no_existe" }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: la presencia está apagada en este servidor }
+
+  /api/presencia/guiadas/{evento}/expulsar:
+    post:
+      summary: Saca de la sala guiada a todas las conexiones del hogar de esa identidad (RoomService.RemoveParticipant); 15 min sin volver a esa visita
+      description: >
+        El guía del evento o la oficina; solo a familias apuntadas (la oficina saca a cualquiera de todas las salas con POST /api/admin/presencia/expulsar).
+        Le quita la palabra si la tenía y saca sus manos de la cola. En memoria (no sobrevive a un reinicio). Auditoría guiada.expulsado (evento, hogar,
+        conexiones, motivo).
+      security: [{ sesion: [] }]
+      parameters: [{ name: evento, in: path, required: true, schema: { type: integer, minimum: 1, maximum: 2147483647 } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [identidad], properties: { identidad: { type: string, pattern: "^h_[A-Za-z0-9_-]{22}_[A-Za-z0-9_-]{8}$" }, motivo: { type: string, minLength: 1, maxLength: 200 } } }
+      responses:
+        "200": { description: "hecho; conexiones = cuántas se sacaron", content: { application/json: { schema: { type: object, additionalProperties: false, required: [conexiones], properties: { conexiones: { type: integer, minimum: 0 } } } } } }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: "sin Origin, o sin_permiso", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { description: "guiada_no_existe" }
+        "409": { description: "no_es_familia_apuntada", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: la presencia está apagada en este servidor }
+
   /api/balizas-oficiales:
     get:
       summary: Las balizas oficiales vigentes de una finca (OF10)
@@ -2103,6 +2298,28 @@ paths:
         "403": { $ref: "#/components/responses/SinPermiso" }
         "404": { description: no existe }
         "409": { description: ya_cancelado }
+
+  /api/admin/eventos/{id}/guia:
+    put:
+      summary: "El guía del evento (F3c): quién habla con micrófono abierto y modera la voz de su visita guiada"
+      description: >
+        Solo la oficina. Una cuenta activa de rol guia, oficina o admin, o null para quitarlo. Se guarda en visitas.guia_id (columna de la 0001).
+        Sin guía, la voz de la visita la lleva la oficina. Auditoría admin.evento_guia.
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [hogar_id], properties: { hogar_id: { type: [integer, "null"], minimum: 1, maximum: 2147483647 } } }
+      responses:
+        "200": { description: puesto, content: { application/json: { schema: { type: object, additionalProperties: false, required: [guia_id], properties: { guia_id: { type: [integer, "null"] } } } } } }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: "el evento no existe (no_existe) o la cuenta no existe o está de baja (guia_no_existe)" }
+        "409": { description: "evento cancelado (cancelado) o la cuenta no es de guía ni de la oficina (no_es_guia)" }
+        "429": { $ref: "#/components/responses/Limite" }
 
   /api/admin/eventos/{id}/inscritos:
     get:

@@ -319,9 +319,9 @@ test("balizas (I4): ir a una baliza te deja a 4-5,5 m de la columna, fuera de co
   }
   assert.strictEqual(Encuentro.punto({ x: 100, y: 100 }, { x: 100, y: 0 }, [], EXT, { dists: Encuentro.BALIZA }).d, 4.5, "en abierto, a 4,5 m");
 });
-test("contratos/livekit-roles.json: en F2 ningún rol publica audio ni vídeo, todos publican datos, nadie lleva roomAdmin y la identidad es opaca", () => {
+test("contratos/livekit-roles.json: en las salas fijas ningún rol publica audio ni vídeo, todos publican datos, nadie lleva roomAdmin y la identidad es opaca", () => {
   const R = JSON.parse(lee("contratos/livekit-roles.json"));
-  assert.strictEqual(R.contrato, "livekit-roles"); assert.strictEqual(R.version, 5); assert.strictEqual(R.fase, "F2");
+  assert.strictEqual(R.contrato, "livekit-roles"); assert.strictEqual(R.version, 6); assert.strictEqual(R.fase, "F3");
   assert.deepStrictEqual(Object.keys(R.roles).sort(), ["admin", "corresponsal", "guia", "hogar", "oficina"], "los roles de contratos/sesion.md");
   assert.strictEqual(R.roles.oficina.hidden, false, "la oficina es siempre visible en el mundo (decisión 107)");
   for (const [rol, p] of Object.entries(R.roles)) {
@@ -339,6 +339,22 @@ test("contratos/livekit-roles.json: en F2 ningún rol publica audio ni vídeo, t
   assert.deepStrictEqual(Object.values(R.salas).filter(s => s.clave).map(s => s.clave + "=" + s.nombre).sort(), ["general=hituelo-libre", "visita=hituelo-visita"]);
   const md = lee("contratos/presencia.md");
   for (const s of ["24 B", "56 B", "smallest-three", "livekit-roles.json", "versión"]) assert.ok(md.includes(s), "presencia.md no menciona «" + s + "»");
+});
+
+test("contratos/livekit-roles.json v6 (F3c, ADR-0026): en la sala guiada solo el guía y la oficina publican, y solo micrófono; la familia, nada hasta que la api le da la palabra; sin grabación ni desmute remoto", () => {
+  const R = JSON.parse(lee("contratos/livekit-roles.json"));
+  assert.deepStrictEqual(Object.keys(R.roles_guiada).filter(k => k !== "$comment").sort(), ["familia", "guia", "oficina"], "tres papeles; ninguno de menor (decisión 159)");
+  for (const p of ["guia", "oficina"]) {
+    assert.strictEqual(R.roles_guiada[p].canPublish, true, p); assert.deepStrictEqual(R.roles_guiada[p].canPublishSources, ["microphone"], p + ": solo micrófono (ni cámara ni pantalla)");
+  }
+  assert.strictEqual(R.roles_guiada.familia.canPublish, false); assert.deepStrictEqual(R.roles_guiada.familia.canPublishSources, []);
+  for (const [p, x] of Object.entries(R.roles_guiada)) if (p !== "$comment") { assert.strictEqual(x.roomAdmin, false, p); assert.strictEqual(x.canUpdateOwnMetadata, false, p); assert.strictEqual(x.hidden, false, p); }
+  assert.match(R.salas.guiada.nombre, /^guiada-/); assert.ok(new RegExp(R.salas.guiada.patron).test("guiada-42")); assert.ok(!new RegExp(R.salas.guiada.patron).test("hituelo-libre"));
+  assert.strictEqual(R.palabra.una_a_la_vez, true); assert.strictEqual(R.palabra.duracion_s, 120, "decisión 161: 2 min"); assert.strictEqual(R.palabra.alargar_s, 60);
+  assert.strictEqual(R.palabra.desmute_remoto, false); assert.match(R.grabacion, /Egress/);
+  for (const a of ["palabra_hasta", "mano"]) assert.ok(R.atributos[a], "atributo " + a);
+  assert.ok(R.identidad.metadata.campos.includes("papel"));
+  assert.ok(lee("contratos/presencia.md").includes("guiada-"), "presencia.md describe la sala guiada");
 });
 
 // ---------- PB8: lo que cuesta dibujar al grupo, sin página (Cuenta, en el trozo puro). El de Chrome solo confirma que el montaje da lo mismo.

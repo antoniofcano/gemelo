@@ -17,6 +17,9 @@ import { LectorVigiaFixture } from "./vigia/lector-fixture.ts";
 import { LectorVigiaMcp } from "./vigia/lector-mcp.ts";
 import { ServicioTiempo } from "./vigia/servicio.ts";
 import { purgaMedios } from "./vida/medios.ts";
+import { audita } from "./auth/servicio.ts";
+import { ModeradorLiveKit } from "./presencia/livekit.ts";
+import { limpiaAlArrancar } from "./presencia/voz.ts";
 
 const config = cargaConfig();
 const bd = creaBd(config.bd);
@@ -71,3 +74,11 @@ process.on("SIGTERM", () => void apaga("SIGTERM"));
 process.on("SIGINT", () => void apaga("SIGINT"));
 
 await app.listen({ port: config.puerto, host: config.escucha });
+
+// F3c (ADR-0026): los turnos de palabra viven en memoria; tras un reinicio se quitan en LiveKit las palabras que quedaran dadas (en segundo plano: si LiveKit
+// no está, solo se avisa en el registro)
+if (config.livekit) {
+  limpiaAlArrancar(new ModeradorLiveKit(config.livekit), (actor, accion, detalle) => audita(bd, actor, accion, detalle))
+    .then(n => { if (n) app.log.warn({ evento: "voz_palabras_quitadas", conexiones: n }, "voz: palabras de antes del reinicio quitadas"); })
+    .catch(e => app.log.warn({ evento: "voz_limpieza_fallida", error: e instanceof Error ? e.message : "?" }, "voz: no se pudieron revisar las salas guiadas al arrancar"));
+}
