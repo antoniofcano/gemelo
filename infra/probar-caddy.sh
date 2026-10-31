@@ -34,6 +34,10 @@ echo 'console.log(1)' > "$TMP/srv/finca/assets/motor-abc123.js"
 echo '<!doctype html><title>oficina</title>' > "$TMP/srv/oficina/index.html"
 echo 'console.log(2)' > "$TMP/srv/oficina/assets/oficina-abc123.js"
 echo '{"v":2}' > "$TMP/srv/teselas/hituelo/indice.json"
+mkdir -p "$TMP/srv/teselas/hituelo/olivos"
+echo '{}' > "$TMP/srv/teselas/hituelo/olivos/manifiesto.json"
+echo '{}' > "$TMP/srv/teselas/hituelo/olivos/estado.json"
+echo 'RIFF' > "$TMP/srv/teselas/hituelo/olivos/0123456789abcdef0123456789abcdef.webp"
 
 # ---- api simulada: 204 con la cookie «valida» (un hogar) o «oficina»; con ?para=oficina, solo «oficina» (el hogar, 403);
 #      sin sesión, 303 a / si es navegación y 401 si no. Así se comprueba que Caddy le pasa la consulta ?para=oficina.
@@ -101,6 +105,7 @@ tiene "$r" "^HTTP/1.1 200" && ok "/ responde 200 sin sesión" || mal "/ no respo
 tiene "$r" "^content-security-policy-report-only: default-src 'self'; script-src 'self'" && ok "CSP estricta en Report-Only" || mal "falta la CSP Report-Only"
 tiene "$r" "^content-security-policy:" && mal "hay CSP impuesta (debe ser solo informe en F1a)" || ok "la CSP no se impone todavía"
 tiene "$r" "^permissions-policy:.*xr-spatial-tracking=(self)" && ok "Permissions-Policy con xr-spatial-tracking=(self)" || mal "Permissions-Policy sin xr-spatial-tracking"
+tiene "$r" "^permissions-policy:.*microphone=(self)" && ok "Permissions-Policy con microphone=(self) (la voz)" || mal "Permissions-Policy niega el micrófono"
 tiene "$r" "^strict-transport-security: max-age=31536000" && ok "HSTS" || mal "falta HSTS"
 tiene "$r" "^x-content-type-options: nosniff" && ok "nosniff" || mal "falta nosniff"
 tiene "$r" "^x-frame-options: DENY" && ok "X-Frame-Options DENY" || mal "falta X-Frame-Options"
@@ -121,6 +126,13 @@ tiene "$r" "^cache-control: public, max-age=31536000, immutable" && ok "estátic
 r=$(pide /teselas/hituelo/indice.json -H "Cookie: __Host-gemelo=valida")
 tiene "$r" "^HTTP/1.1 200" && tiene "$r" "^cache-control: private" && ok "teselas con sesión: 200 y caché privada" || mal "teselas con sesión: $(head -1 <<<"$r")"
 
+r=$(pide /finca/assets/no-existe.js -H "Cookie: __Host-gemelo=valida")
+tiene "$r" "^HTTP/1.1 404" && tiene "$r" "^cache-control: no-store" && ok "un 404 en assets/ no se guarda como inmutable" || mal "404 en assets/: $(grep -i '^cache-control' <<<"$r")"
+r=$(pide /teselas/hituelo/olivos/0123456789abcdef0123456789abcdef.webp -H "Cookie: __Host-gemelo=valida")
+tiene "$r" "^HTTP/1.1 200" && tiene "$r" "^content-type: image/webp" && tiene "$r" "^cache-control: private, max-age=31536000, immutable" && ok "atlas de impostor: webp inmutable y privado" || mal "atlas de impostor: $(head -1 <<<"$r")"
+r=$(pide /teselas/hituelo/olivos/estado.json -H "Cookie: __Host-gemelo=valida")
+tiene "$r" "^HTTP/1.1 404" && ok "el estado del hornero no se sirve" || mal "estado.json del hornero: $(head -1 <<<"$r")"
+
 echo "== oficina, solo con sesión de oficina"
 r=$(pide /oficina/ -H "Sec-Fetch-Mode: navigate")
 tiene "$r" "^HTTP/1.1 303" && tiene "$r" "^location: /$" && ok "sin sesión, /oficina/ manda a la portada (303)" || mal "sin sesión /oficina/ no redirige: $(head -1 <<<"$r")"
@@ -139,6 +151,12 @@ tiene "$r" "^HTTP/1.1 404" && ok "/api/interno cerrado desde fuera" || mal "/api
 r=$(pide "/api/auth/entrar?t=SECRETO-DEL-ENLACE" -H "Cookie: __Host-gemelo=SECRETO-DE-COOKIE" -H "Authorization: Bearer SECRETO-DE-CABECERA")
 tiene "$r" "^HTTP/1.1 200" && ok "/api pasa a la api" || mal "/api no llega a la api: $(head -1 <<<"$r")"
 
+r=$(pide "/api/avisos/baja?t=SECRETO-DE-BAJA")
+tiene "$r" "^HTTP/1.1 200" && ok "/api/avisos/baja llega a la api sin sesión" || mal "/api/avisos/baja sin sesión: $(head -1 <<<"$r")"
+# LiveKit no existe aquí: 502, y lo que se mira es que el token de la URL no llegue al registro
+r=$(pide "/rtc/rtc?access_token=SECRETO-DE-LIVEKIT")
+tiene "$r" "^HTTP/1.1 502" && tiene "$r" "^x-content-type-options: nosniff" && ok "/rtc va a LiveKit (aquí no hay: 502, con cabeceras)" || mal "/rtc: $(head -1 <<<"$r")"
+
 echo "== cuerpos grandes: /api/medios hasta ~9 MB, el resto de /api/* a 1 MB (interno) y 2 MB (borde)"
 # Caddy corta con 413 al leer el cuerpo de más (el sumidero lo lee); el fichero se crea y se usa DENTRO de la red de Docker.
 # Con el 413, Caddy puede cortar la conexión y curl salir con 55 (fallo al enviar) aunque ya imprimió el código: `|| true`, que `set -e` no tumbe el script.
@@ -148,6 +166,9 @@ sube() {  # sube <host:puerto> <ruta> <MB> (admite decimales vía KB: 0.9 = 921 
 c=$(sube "$WEB:8080" /api/medios 5); [ "$c" = 200 ] && ok "interno: POST /api/medios de 5 MB pasa" || mal "interno: POST /api/medios de 5 MB da $c"
 c=$(sube "$WEB:8080" /api/medios 8); [ "$c" = 200 ] && ok "interno: POST /api/medios de 8 MB (el tope por defecto) pasa" || mal "interno: POST /api/medios de 8 MB da $c"
 c=$(sube "$WEB:8080" /api/medios 10); [ "$c" = 413 ] && ok "interno: POST /api/medios de 10 MB, 413" || mal "interno: POST /api/medios de 10 MB da $c"
+c=$(sube "$WEB:8080" /api/admin/fincas/hituelo/contorno 4); [ "$c" = 200 ] && ok "interno: el contorno de 4 MB pasa" || mal "interno: contorno de 4 MB da $c"
+c=$(sube "$WEB:8080" /api/admin/fincas/hituelo/contorno 6); [ "$c" = 413 ] && ok "interno: el contorno de 6 MB, 413" || mal "interno: contorno de 6 MB da $c"
+c=$(sube "$BORDE:8081" /api/admin/fincas/hituelo/contorno 4); [ "$c" = 200 ] && ok "borde: el contorno de 4 MB pasa" || mal "borde: contorno de 4 MB da $c"
 c=$(sube "$WEB:8080" /api/sesion 2); [ "$c" = 413 ] && ok "interno: el resto de /api/* sigue cortando a 1 MB" || mal "interno: POST /api/sesion de 2 MB da $c (se esperaba 413)"
 c=$(sube "$WEB:8080" /api/medios-x 2); [ "$c" = 413 ] && ok "interno: /api/medios-x no hereda el tope grande" || mal "interno: POST /api/medios-x de 2 MB da $c"
 c=$(sube "$BORDE:8081" /api/medios 8); [ "$c" = 200 ] && ok "borde: POST /api/medios de 8 MB pasa hasta la api" || mal "borde: POST /api/medios de 8 MB da $c"
@@ -158,7 +179,7 @@ c=$(sube "$BORDE:8081" /api/sesion 0.9); [ "$c" = 200 ] && ok "borde: 0,9 MB al 
 echo "== registros sin credenciales"
 sleep 1
 registro=$(docker logs "$WEB" 2>&1)
-for s in SECRETO-DEL-ENLACE SECRETO-DE-COOKIE SECRETO-DE-CABECERA SECRETO-DE-RESPUESTA; do
+for s in SECRETO-DEL-ENLACE SECRETO-DE-BAJA SECRETO-DE-LIVEKIT SECRETO-DE-COOKIE SECRETO-DE-CABECERA SECRETO-DE-RESPUESTA; do
   grep -q "$s" <<<"$registro" && mal "el registro contiene $s" || ok "el registro no contiene $s"
 done
 grep -q '"uri":"/api/auth/entrar?t=REDACTADO"' <<<"$registro" && ok "el token del enlace sale como REDACTADO" || mal "no veo la URI con el token redactado"

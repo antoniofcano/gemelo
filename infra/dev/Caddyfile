@@ -75,6 +75,15 @@
 		reverse_proxy api:8000
 	}
 
+	# OF3b: el contorno de una finca (PUT /api/admin/fincas/<finca>/contorno, GeoJSON de hasta 50.000 vértices): la api admite 4 MiB; el resto de /api/*
+	# sigue en 1 MB. Matcher de RUTA en línea y no con nombre: Caddy ordena los handle por ruta y uno con nombre quedaría detrás de /api/*.
+	handle /api/admin/fincas/*/contorno {
+		request_body {
+			max_size 5MB
+		}
+		reverse_proxy api:8000
+	}
+
 	# la api (apps/api): ella decide su propia autorización
 	handle /api/* {
 		request_body {

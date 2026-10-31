@@ -3,7 +3,8 @@
 #   /                      portada pública (sin sesión: decisión 16)
 #   /finca/…, /teselas/…, /avatares/…   solo con sesión (forward_auth a la api)
 #   /oficina/…             solo con sesión de OFICINA (forward_auth a la api con ?para=oficina, ADR-0024)
-#   /api/…                 api (la api decide su propia autorización)
+#   /api/…                 api (la api decide su propia autorización; /api/avisos/baja va sin sesión: la protege su firma)
+#   /rtc/…                 señalización de LiveKit (perfil `presencia` del compose; apagado, 502)
 {
 	admin off
 	auto_https off
@@ -22,7 +23,8 @@
 		Referrer-Policy "strict-origin-when-cross-origin"
 		Cross-Origin-Opener-Policy "same-origin"
 		Cross-Origin-Resource-Policy "same-origin"
-		Permissions-Policy "xr-spatial-tracking=(self), camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), hid=(), midi=()"
+		# el micrófono, para este origen: la voz de las visitas guiadas (F3, ADR-0026); con microphone=() el navegador lo niega sin preguntar
+		Permissions-Policy "xr-spatial-tracking=(self), microphone=(self), camera=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), hid=(), midi=()"
 		# CSP estricta en modo SOLO INFORME (fase F1a): se mira lo que rompería antes de imponerla
 		# Los modelos de mandos y manos en VR (I6) van en /finca/xr/perfiles/, del mismo origen: connect-src 'self' (los glb y json se piden
 		# con fetch) e img-src blob: (sus texturas) bastan; no hace falta abrir cdn.jsdelivr.net, de donde los bajaría three por defecto
@@ -46,6 +48,8 @@
 			resp_headers>Set-Cookie delete
 			request>uri query {
 				replace t REDACTADO
+				# el token de LiveKit viaja en la URL del WebSocket de /rtc
+				replace access_token REDACTADO
 			}
 			# la IP, recortada: basta para ver un abuso y no identifica un hogar
 			request>remote_ip ip_mask 24 48
@@ -58,11 +62,26 @@
 		respond 404
 	}
 
+	# LiveKit (F2/F3, ADR-0027): la señalización por el MISMO origen (wss://<sitio>/rtc), sin sesión del gemelo: LiveKit exige su propio token, que firma
+	# la api. livekit-client añade /rtc/… a la URL que le da la api («/rtc»): Caddy quita el primer /rtc y LiveKit recibe /rtc/…. Los medios (WebRTC) van aparte, directos a LiveKit por 7881/tcp y 7882/udp.
+	handle_path /rtc/* {
+		reverse_proxy livekit:7880
+	}
+
 	# V7: la subida de una foto (POST /api/medios, hasta GEMELO_MEDIOS_MAX_MB = 8 MB por defecto): ~9 MB de cuerpo (multipart). Solo esa ruta;
 	# el resto de /api/* sigue en 1 MB. Si sube GEMELO_MEDIOS_MAX_MB, sube este tope y el de infra/bloque-borde.txt.
 	handle /api/medios {
 		request_body {
 			max_size 9MB
+		}
+		reverse_proxy api:8000
+	}
+
+	# OF3b: el contorno de una finca (PUT /api/admin/fincas/<finca>/contorno, GeoJSON de hasta 50.000 vértices): la api admite 4 MiB; el resto de /api/*
+	# sigue en 1 MB. Matcher de RUTA en línea y no con nombre: Caddy ordena los handle por ruta y uno con nombre quedaría detrás de /api/*.
+	handle /api/admin/fincas/*/contorno {
+		request_body {
+			max_size 5MB
 		}
 		reverse_proxy api:8000
 	}
@@ -173,5 +192,12 @@
 		header ?Cache-Control "no-cache"
 		encode zstd gzip
 		file_server
+	}
+
+	# los errores (404…) llevan las mismas cabeceras y nunca se guardan en caché (si no, un 404 en assets/ heredaría «immutable»); igual que infra/dev/Caddyfile
+	handle_errors {
+		import cabeceras_seguridad
+		header Cache-Control "no-store"
+		respond "{err.status_code} {err.status_text}" {err.status_code}
 	}
 }
