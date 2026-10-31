@@ -217,7 +217,9 @@ test("e2e F3g: guía y dos familias en tres Chrome (entrar desde la agenda, sin 
 
       await t.test("sin grabación y sin errores en las páginas", async () => {
         for (const s of await rs.listRooms()) assert.ok(!s.activeRecording, "la sala " + s.name + " no se graba");
-        assert.deepStrictEqual([...G.errores, ...A.errores, ...B.errores], []);
+        // ruido esperable de livekit-client cuando el servidor cierra la sala (DeleteRoom) o expulsa (RemoveParticipant): canales de datos cerrados; ver guiada_dev.test.js
+        const ruido = /DataChannel error on (lossy|reliable): User-Initiated Abort|publisher data channel '[A-Z_]+' closed unexpectedly/;
+        assert.deepStrictEqual([...G.errores, ...A.errores, ...B.errores].filter(x => !ruido.test(x)), []);
       });
     } finally {
       if (nav) await nav.close().catch(() => {});
