@@ -7,7 +7,7 @@
 // Nota: Registra el tipo baliza en Entidades (C7). Publica además window.__vrBalizas (pruebas VR: el pie de cada columna de luz).
 // ===============================================================================
   // ---------- las balizas: una por parcela, con lo que OlivarTrack sabe de ella; en el paseo, al acercarte, sale su ficha
-  // Los datos son los de la historia (instantánea embebida, o la lectura en vivo por el MCP si se ha pulsado «Leer de OlivarTrack»).
+  // Los datos son los de la historia (la instantánea D.ot o, si la api responde, lo de hoy que lee el servidor: GET /api/ot/hoy).
   var gBal = new THREE.Group(); gBal.name = "balizas"; scene.add(gBal);
   var COLB = { alerta: 0xff4d3d, abierta: 0xffb02e, hecha: 0x35d07f, nada: 0x9aa4ad };
   var uBaliza = { uT: { value: 0 } };
