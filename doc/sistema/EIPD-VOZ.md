@@ -28,6 +28,8 @@ Que una visita guiada de hasta ~10 personas (hasta 40 hogares en la plataforma) 
 | **Interés legítimo** (art. 6.1.f) **[SUPUESTO]** | No depende de cada gesto; cubre a guía y oficina. | Exige ponderación escrita y derecho de oposición; la voz de una persona en una sala con desconocidos pesa en la balanza; difícil de defender para familias que solo oyen. |
 | **Ejecución de un servicio** (art. 6.1.b) **[SUPUESTO]** | Si la visita es un servicio que las familias contratan o piden. | **[SUPUESTO]** Depende de qué relación hay con las familias (cuotas, adopción de haza): no está en el repo. |
 
+**Hecho en el código (F3j, 2026-10-31; [contrato](../../contratos/voz-consentimiento.md)):** la primera vez que una familia va a pedir la palabra, un aviso con «Aceptar» y «Ahora no» (qué se trata; tu voz en directo para la sala; no se graba; puedes dejar de hablar cuando quieras; enlace a la privacidad). Se guarda por hogar y **versión del texto** (tabla `voz_consentimientos`; si cambia el texto, se vuelve a pedir) y se puede retirar en Configuración o en el panel de VR. **El servidor no da la palabra a quien no ha aceptado** (`409 sin_consentimiento`, sin tocar LiveKit). **El texto del aviso es un BORRADOR pendiente de la asesoría** (así se dice en el propio aviso). Esto implementa la propuesta de abajo para las familias; no cierra la decisión 163 (guía y oficina siguen sin aviso, base por decidir).
+
 **Propuesta del agente (no decisión):** consentimiento para las **familias** (se renueva en cada gesto de abrir el micro, con aviso previo) y, para el **guía y la oficina**, que lo valide la asesoría (relación laboral o mercantil con la empresa, interés legítimo). **[Antonio: ¿consentimiento, interés legítimo o mezcla? ¿Qué relación jurídica tienen las familias con la empresa?]**
 
 ## 4. Categorías de datos
@@ -59,7 +61,8 @@ Que una visita guiada de hasta ~10 personas (hasta 40 hogares en la plataforma) 
 
 - **El audio no se conserva**: no se escribe a disco ni a la base en ningún punto (ADR-0026, «Sin grabación»).
 - **Metadatos de moderación** en la tabla `auditoria` (migración 0001 de la api: `hogar_id`, `accion`, `detalle` sin datos personales, `cuando`): acciones previstas `presencia.palabra_dada`, `palabra_quitada`, silenciar, expulsar, cerrar sala. Contienen **quién (hogar) y cuándo**, no qué se dijo. Al borrar el hogar la fila queda **anónima** (`ON DELETE SET NULL`).
-- **Plazo: sin decidir.** La auditoría no tiene hoy plazo fijado (el ADR-0026 lo deja «a fijar en F3b»). **Propuesta: la campaña y un año más**, como los avisos e inscripciones (decisión 100), y después borrar o anonimizar. **[Antonio: ¿plazo de la auditoría de voz?]**
+- **Plazo (decisión 164, implementado en F3j; pendiente de que Antonio la cierre): la campaña y un año más**, como los avisos e inscripciones (decisión 100). Una fila de la auditoría de voz (`guiada.*` y los consentimientos retirados) se **borra** el 1 de octubre del segundo año tras la campaña (octubre a septiembre **[SUPUESTO]**) en que se escribió, con una tarea de la api cada 6 h ([contrato](../../contratos/voz-consentimiento.md)). **[Antonio: ¿confirmas la 164 y que la campaña va de octubre a septiembre?]**
+- **Consentimiento guardado:** una fila por hogar (versión del aviso y fecha; nada de la voz) mientras el hogar exista y no lo retire; se borra con el hogar. Aceptar y retirar quedan en la auditoría (`voz.consentimiento_dado` y `voz.consentimiento_retirado`, con la versión).
 - El **chat** de la sala no se guarda (decisión 40) y no cambia.
 - Logs del servidor y de LiveKit: **[NO VERIFICADO]** contenido y rotación; deben fijarse y no contener audio.
 
@@ -84,6 +87,7 @@ Gravedad y probabilidad son juicio del agente, sin medir.
 - **El permiso lo da el servidor**: el token de la sala guiada solo da micrófono a guía y oficina; las familias lo reciben en vivo (`UpdateParticipant`) y se les quita al acabar el turno o antes; quitarlo despublica sus pistas. **[NO VERIFICADO en LiveKit 1.13.11]**: lo comprueba F3g.
 - **Moderación en servidor y con auditoría**: silenciar, expulsar y cerrar sala por la api con la clave de servidor; ningún token de cliente lleva `roomAdmin`; **sin desmute remoto** (nadie abre el micro de otro).
 - **Sala por evento con inscritos**: la api comprueba la inscripción contra la base al firmar el token.
+- **Aviso de voz con consentimiento antes de pedir la palabra (F3j)**, por hogar y versión del texto, que se puede retirar cuando se quiera (Configuración o panel de VR), y **comprobado por el servidor** (sin él no se da la palabra);
 - **Aviso antes de hablar** e **indicador fijo «● Tu micro está abierto»**; el micrófono se pide tras un gesto, explicándolo (decisión 43, UX); recomendación de auriculares.
 - **Sin grabar, sin Egress, sin transcripción, sin terceros.**
 - **Solo cuentas adultas** y solo cuentas de prueba hasta cerrar esta EIPD (decisiones 41, 45).

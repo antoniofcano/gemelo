@@ -14,6 +14,10 @@
 //   POST   /api/presencia/guiadas/:evento/silenciar      {}                silenciar a todos menos al guía (MutePublishedTrack) y quitar la palabra
 //   POST   /api/presencia/guiadas/:evento/expulsar       { identidad, motivo? }  sacar de la sala a todas las conexiones de ese hogar (RemoveParticipant), 15 min
 //   POST   /api/presencia/guiadas/:evento/cerrar         { segundos? }     F3f (decisión 155): aviso por el tema «cierre» y, a los segundos (15 por omisión), DeleteRoom
+//  Cualquiera con sesión, F3j (decisión 163; contratos/voz-consentimiento.md): el consentimiento de voz de SU hogar
+//   GET    /api/presencia/voz/consentimiento                              la versión vigente del aviso y si este hogar la ha aceptado
+//   PUT    /api/presencia/voz/consentimiento     { version }               aceptar el aviso (la versión vigente; otra da 409 version_distinta)
+//   DELETE /api/presencia/voz/consentimiento                               retirarlo: se le quita la palabra y se baja su mano al momento
 //  La oficina:
 //   PUT    /api/admin/eventos/:id/guia                   { hogar_id | null }  el guía del evento (una cuenta activa de rol guia, oficina o admin)
 // Por qué /api/presencia/guiadas y no /api/admin/directos (OFICINA §8 lo esbozaba así): el guía no es la oficina, y las rutas /api/admin/* son solo suyas.
@@ -23,6 +27,7 @@ import { requiereSesion } from "../auth/roles.ts";
 import type { Bd } from "../bd/pool.ts";
 import type { ConfigLiveKit } from "../config.ts";
 import { OFICINA } from "../oficina/acceso.ts";
+import { aceptaVoz, consiente, estadoConsentimiento, retiraVoz, VOZ_AVISO_VERSION } from "./consentimiento_voz.ts";
 import { AVATAR_POR_DEFECTO, type Avatar, DISPOSITIVOS, type Dispositivo, Expulsados, firmaTokenGuiada, identidadOpaca, limpiaAspecto, type ModeradorVoz, prefijoHogar, SALA_GUIADA } from "./livekit.ts";
 import { AVISO_CIERRE_MAX_S, AVISO_CIERRE_MIN_S, AVISO_CIERRE_S, type Auditor, Cierres, cuerpoCierre, decideGuiada, esGuiada, type EventoGuiada, Palabra, puedeModerar, type Rechazo, type Reloj, RELOJ_REAL, TEMA_CIERRE, ventana } from "./voz.ts";
 
@@ -45,6 +50,7 @@ const MENSAJES: Record<string, string> = {
   demasiadas_manos: "Hay demasiadas manos levantadas; espera un poco.",
   no_es_familia_apuntada: "Esa conexión no es de una familia apuntada a esta visita.",
   ya_cerrandose: "La sala ya se está cerrando.",
+  sin_consentimiento: "Esa familia aún no ha aceptado el aviso de voz, así que no puede hablar.",
 };
 const falla = (rep: FastifyReply, http: number, codigo: string) => rep.code(http).send({ error: codigo, mensaje: MENSAJES[codigo] ?? codigo });
 
@@ -80,7 +86,7 @@ export function hogarDeIdentidad(lk: Pick<ConfigLiveKit, "secreto">, identidad: 
 export async function rutasVoz(app: FastifyInstance, bd: Bd, d: DepsVoz): Promise<Palabra | null> {
   const { lk, voz } = d;
   const auditor: Auditor = (actor, accion, detalle) => audita(bd, actor, accion, detalle);
-  const palabra = voz ? new Palabra(voz, auditor, d.reloj ?? RELOJ_REAL, app.log) : null;
+  const palabra = voz ? new Palabra(voz, auditor, d.reloj ?? RELOJ_REAL, app.log, hogar => consiente(bd, hogar)) : null;
   const expulsadosGuiada = new ExpulsadosGuiada();
   const reloj = d.reloj ?? RELOJ_REAL, cierres = new Cierres(), borrados = new Map<number, unknown>();
   app.addHook("onClose", async () => { palabra?.cierra(); for (const h of borrados.values()) reloj.cancela(h); borrados.clear(); });
@@ -138,6 +144,7 @@ export async function rutasVoz(app: FastifyInstance, bd: Bd, d: DepsVoz): Promis
     const f = await deFamilia(req, rep);
     if (!f) return rep;
     const r = await palabra!.levanta(req.params.evento, f.identidad, f.hogar);
+    if (!r.ok && r.codigo === "sin_consentimiento") return rep.code(409).send({ error: r.codigo, mensaje: "Antes de pedir la palabra hay que aceptar el aviso de voz.", version: VOZ_AVISO_VERSION });
     if (!r.ok) return falla(rep, 409, r.codigo);
     return { puesto: r.puesto };
   });
@@ -149,6 +156,35 @@ export async function rutasVoz(app: FastifyInstance, bd: Bd, d: DepsVoz): Promis
     const f = await deFamilia(req, rep);
     if (!f) return rep;
     await palabra!.baja(req.params.evento, f.identidad, f.hogar);
+    return rep.code(204).send();
+  });
+
+  // ---- el consentimiento de voz del hogar (F3j, decisión 163): no depende de LiveKit ni de una visita, y solo habla del hogar de la sesión
+  const SIN_CACHE = (rep: FastifyReply) => rep.header("cache-control", "no-store");
+  app.get("/api/presencia/voz/consentimiento", { preHandler: requiereSesion }, async (req, rep) => {
+    SIN_CACHE(rep);
+    return estadoConsentimiento(bd, req.session.hogarId!);
+  });
+  app.put<{ Body: { version: number } }>("/api/presencia/voz/consentimiento", {
+    preHandler: requiereSesion,
+    config: { rateLimit: { max: 10, timeWindow: 60_000 } },
+    schema: { body: { type: "object", additionalProperties: false, required: ["version"], properties: { version: { type: "integer", minimum: 1, maximum: 32767 } } } },
+  }, async (req, rep) => {
+    SIN_CACHE(rep);
+    // el cliente dice QUÉ texto vio: si no es el vigente (p. ej. una pestaña vieja), no vale y se le pide que lo vuelva a leer
+    if (req.body.version !== VOZ_AVISO_VERSION) return rep.code(409).send({ error: "version_distinta", mensaje: "El aviso ha cambiado: léelo de nuevo.", version: VOZ_AVISO_VERSION });
+    await aceptaVoz(bd, req.session.hogarId!);
+    return estadoConsentimiento(bd, req.session.hogarId!);
+  });
+  app.delete("/api/presencia/voz/consentimiento", {
+    preHandler: requiereSesion,
+    config: { rateLimit: { max: 10, timeWindow: 60_000 } },
+  }, async (req, rep) => {
+    const hogar = req.session.hogarId!;
+    await retiraVoz(bd, hogar);   // primero la fila: desde este instante la api ya no le da la palabra
+    // y luego, si hablaba o esperaba, se le quita en LiveKit; si LiveKit no responde, el consentimiento ya está retirado y solo se avisa en el registro
+    try { await palabra?.retiraConsentimiento(hogar, hogar); }
+    catch (err) { app.log.warn({ err: (err as Error).message }, "voz: consentimiento retirado, pero no se pudo quitar la palabra en LiveKit"); }
     return rep.code(204).send();
   });
 

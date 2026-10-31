@@ -92,6 +92,7 @@ La decisión 115 ya dice **mano levantada y la oficina da la palabra**. Queda po
 - **F3f** — panel del guía y de la oficina (absorbe OF12): manos en orden, dar y quitar la palabra con cuenta atrás, silenciar a todos, expulsar, cerrar con aviso (decisión 155).
 - **F3g** — e2e con tres Chrome y micrófono simulado (`--use-fake-device-for-media-stream`), por el banco: nadie publica sin permiso, la palabra se da y se quita sola, el permiso revocado despublica.
 - **F3h** — medida con 10 personas con audio (CPU y salida de LiveKit, bajada por cliente, coste del panner) en CI o en el VPS; con 40, generada desde otra máquina.
+- **F3j** — consentimiento de voz antes de hablar (decisión 163) y plazo de la auditoría de voz (decisión 164): aviso con «Aceptar» / «Ahora no» por hogar y versión del texto, comprobado por el servidor (sin él no se da la palabra), retirable en Configuración y en VR; la auditoría `guiada.*` y los consentimientos retirados se borran «la campaña y un año más». [contrato](../../contratos/voz-consentimiento.md), [EIPD-VOZ](../sistema/EIPD-VOZ.md) §3 y §7.
 - **F3i** — visita real de 10 personas con Quest y móviles: eco con altavoces del casco, comodidad del gatillo, que «suena limpia».
 
 ## Comprobación

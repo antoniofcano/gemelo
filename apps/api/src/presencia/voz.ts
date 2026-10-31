@@ -83,7 +83,9 @@ export const RELOJ_REAL: Reloj = {
 };
 /** Apunta en la auditoría (actor null = el sistema: un turno que vence, la limpieza al arrancar). Solo números, textos cortos y sí/no: nada de voz. */
 export type Auditor = (actor: number | null, accion: string, detalle: Record<string, string | number | boolean>) => Promise<void>;
-export type MotivoQuitar = "cortada" | "vencida" | "silencio" | "expulsion" | "cierre";
+export type MotivoQuitar = "cortada" | "vencida" | "silencio" | "expulsion" | "cierre" | "consentimiento";
+/** F3j (decisión 163): ¿tiene ese hogar consentimiento de voz VIGENTE? Sin él, ni se levanta la mano ni se da la palabra. */
+export type Consiente = (hogar: number) => Promise<boolean>;
 
 interface Turno { identidad: string; hogar: number; hasta: number; alargues: number; temporizador: unknown }
 interface Mano { identidad: string; hogar: number; desde: number }
@@ -100,8 +102,10 @@ export class Palabra {
   private readonly audita: Auditor;
   private readonly reloj: Reloj;
   private readonly log: { warn: (o: unknown, m: string) => void };
-  constructor(mod: ModeradorVoz, audita: Auditor, reloj: Reloj = RELOJ_REAL, log: { warn: (o: unknown, m: string) => void } = { warn: () => undefined }) {
-    this.mod = mod; this.audita = audita; this.reloj = reloj; this.log = log;
+  private readonly consiente: Consiente | null;
+  /** `consiente`: la comprobación del consentimiento de voz (F3j). La api siempre la pasa; sin ella (solo pruebas viejas) no se exige. */
+  constructor(mod: ModeradorVoz, audita: Auditor, reloj: Reloj = RELOJ_REAL, log: { warn: (o: unknown, m: string) => void } = { warn: () => undefined }, consiente: Consiente | null = null) {
+    this.mod = mod; this.audita = audita; this.reloj = reloj; this.log = log; this.consiente = consiente;
   }
 
   private sala(evento: number): EstadoSala {
@@ -131,6 +135,7 @@ export class Palabra {
   levanta(evento: number, identidad: string, hogar: number): Promise<Resultado<{ puesto: number }>> {
     return this.enOrden(evento, async s => {
       if (s.turno?.identidad === identidad) return { ok: false, codigo: "ya_tienes_la_palabra" };
+      if (this.consiente && !(await this.consiente(hogar))) return { ok: false, codigo: "sin_consentimiento" };
       const ya = s.manos.findIndex(m => m.identidad === identidad);
       if (ya >= 0) return { ok: true, puesto: ya + 1 };
       if (s.manos.length >= MANOS_MAX) return { ok: false, codigo: "demasiadas_manos" };
@@ -157,6 +162,8 @@ export class Palabra {
   da(evento: number, identidad: string, hogar: number, actor: number): Promise<Resultado<{ hasta: string }>> {
     return this.enOrden(evento, async s => {
       if (s.turno) return { ok: false, codigo: s.turno.identidad === identidad ? "ya_tiene_la_palabra" : "palabra_ocupada" };
+      // F3j (decisión 163): LA comprobación que manda. Sin consentimiento vigente no se abre el permiso de micrófono en LiveKit, diga lo que diga el cliente
+      if (this.consiente && !(await this.consiente(hogar))) return { ok: false, codigo: "sin_consentimiento" };
       const hasta = this.reloj.ahora() + TURNO_S * 1000;
       const esta = await this.mod.actualiza(SALA_GUIADA(evento), identidad, { micro: true, atributos: { [ATRIBUTOS.palabra]: iso(hasta), [ATRIBUTOS.mano]: "" } });
       s.manos = s.manos.filter(m => m.identidad !== identidad);
@@ -196,6 +203,16 @@ export class Palabra {
       s.manos = s.manos.filter(m => m.hogar !== hogar);
       if (s.turno?.hogar === hogar) await this.quitaTurno(evento, s, actor, "expulsion");
     });
+  }
+  /** F3j (decisión 163): el hogar retira su consentimiento: en TODAS las salas se le quita la palabra si la tenía (LiveKit despublica su micro) y se baja su mano. */
+  retiraConsentimiento(hogar: number, actor: number): Promise<void> {
+    return Promise.all([...this.salas.keys()].map(ev => this.enOrden(ev, async s => {
+      if (s.turno?.hogar === hogar) await this.quitaTurno(ev, s, actor, "consentimiento");
+      for (const m of s.manos.filter(x => x.hogar === hogar)) {
+        try { await this.mod.actualiza(SALA_GUIADA(ev), m.identidad, { atributos: { [ATRIBUTOS.mano]: "" } }); } catch { /* ya no está: la mano se baja igual */ }
+        s.manos = s.manos.filter(x => x !== m);
+      }
+    }))).then(() => undefined);
   }
   /** Para cerrar la sala (F3f, decisión 155) o apagar la api: cancela los temporizadores y olvida el estado (no toca LiveKit). */
   olvidaSala(evento: number): void {

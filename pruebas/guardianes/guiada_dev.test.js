@@ -71,6 +71,8 @@ test("e2e: el panel del guía en dos Chrome (la presencia viaja a la guiada, man
         return [].concat(r.cabeceras["set-cookie"] || []).map(x => new RegExp("^" + COOKIE + "=([^;]+)").exec(x)).find(Boolean)[1];
       }
       const ses = { guia: await sesion(GUIA), familia: await sesion(familia.correo) };
+      // F3j (decisión 163): sin haber aceptado el aviso de voz la api no da la palabra; las familias de este recorrido ya lo aceptaron (el aviso en sí, en habla_consentimiento_chrome.test.js)
+      for (const quien of ["familia"]) assert.strictEqual((await pide("/api/presencia/voz/consentimiento", { method: "PUT", cookie: ses[quien], body: JSON.stringify({ version: 1 }) })).status, 200, "aceptar el aviso de voz: " + quien);
       nav = await playwright().chromium.launch({ executablePath: chrome(), args: ARGS_CHROME });
       const abre = async cookie => {
         const ctx = await nav.newContext({ viewport: { width: 900, height: 650 }, ignoreHTTPSErrors: true });

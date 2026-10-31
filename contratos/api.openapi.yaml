@@ -74,6 +74,15 @@ components:
         total: { type: integer, minimum: 0, description: "hogares activos con alguna partida de más de 0 puntos" }
         puestos: { type: array, items: { $ref: "#/components/schemas/PuestoJuego" }, description: "los n primeros puestos (se cortan en n)" }
         mia: { oneOf: [{ $ref: "#/components/schemas/PuestoJuego" }, { type: "null" }], description: "el puesto del propio hogar, esté o no en la tabla; null si no ha puntuado" }
+    VozConsentimiento:
+      type: object
+      additionalProperties: false
+      required: [version, aceptada, version_aceptada, aceptada_en]
+      properties:
+        version: { type: integer, minimum: 1, description: la versión VIGENTE del texto del aviso de voz }
+        aceptada: { type: boolean, description: este hogar ha aceptado la versión vigente }
+        version_aceptada: { oneOf: [{ type: "null" }, { type: integer, minimum: 1 }], description: la que aceptó (puede ser una vieja; entonces aceptada es falsa) }
+        aceptada_en: { oneOf: [{ type: "null" }, { type: string, format: date-time }] }
     Error:
       type: object
       additionalProperties: false
@@ -1391,7 +1400,7 @@ paths:
         "401": { $ref: "#/components/responses/SinSesion" }
         "403": { description: "sin Origin, o no apuntada (guiada_solo_inscritos)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
         "404": { description: "guiada_no_existe" }
-        "409": { description: "fuera de su ventana o no vigente; eres el guía o la oficina (no_eres_familia); no estás en la sala (no_estas_en_la_sala); ya tienes la palabra (ya_tienes_la_palabra); cola llena (demasiadas_manos)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "409": { description: "fuera de su ventana o no vigente; eres el guía o la oficina (no_eres_familia); no estás en la sala (no_estas_en_la_sala); ya tienes la palabra (ya_tienes_la_palabra); cola llena (demasiadas_manos); aún no has aceptado el aviso de voz (sin_consentimiento, F3j)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
         "429": { $ref: "#/components/responses/Limite" }
         "503": { description: la presencia está apagada en este servidor }
     delete:
@@ -1406,6 +1415,46 @@ paths:
         "409": { description: "fuera de su ventana, no vigente o no_eres_familia" }
         "429": { $ref: "#/components/responses/Limite" }
         "503": { description: la presencia está apagada en este servidor }
+
+  /api/presencia/voz/consentimiento:
+    get:
+      summary: El consentimiento de voz de MI hogar frente a la versión vigente del aviso (F3j, decisión 163)
+      description: >
+        Contrato: contratos/voz-consentimiento.md. `aceptada` es verdadera solo si la versión que aceptó es la vigente (`version`): si el texto del aviso
+        cambia, hay que volver a aceptarlo. No depende de LiveKit ni de una visita.
+      security: [{ sesion: [] }]
+      responses:
+        "200": { description: el estado, content: { application/json: { schema: { $ref: "#/components/schemas/VozConsentimiento" } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+    put:
+      summary: Aceptar el aviso de voz (F3j; auditoría voz.consentimiento_dado)
+      description: >
+        El cliente dice qué versión del texto ha enseñado; si no es la vigente, 409 version_distinta (una pestaña vieja). Idempotente: aceptar la versión
+        ya aceptada no escribe nada. Guarda solo la versión y el instante; nada de la voz.
+      security: [{ sesion: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [version], properties: { version: { type: integer, minimum: 1, maximum: 32767 } } }
+      responses:
+        "200": { description: aceptado; el estado nuevo, content: { application/json: { schema: { $ref: "#/components/schemas/VozConsentimiento" } } } }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: sin Origin, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "409": { description: "la versión no es la vigente (version_distinta; trae `version`)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/Limite" }
+    delete:
+      summary: Retirar el consentimiento de voz (F3j; auditoría voz.consentimiento_retirado)
+      description: >
+        Borra la fila del hogar: desde ese instante la api no le da la palabra. Si tenía la palabra o la mano levantada en alguna sala, se le quita al
+        momento (LiveKit despublica su micro). Idempotente. Sin consecuencias para el resto de la cuenta.
+      security: [{ sesion: [] }]
+      responses:
+        "204": { description: retirado (o no había) }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: sin Origin, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/Limite" }
 
   /api/presencia/guiadas/{evento}/palabra:
     get:
@@ -1464,7 +1513,7 @@ paths:
         "401": { $ref: "#/components/responses/SinSesion" }
         "403": { description: "sin Origin, o ni guía de esta visita ni oficina (sin_permiso)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
         "404": { description: "guiada_no_existe" }
-        "409": { description: "no vigente (guiada_no_vigente); no es una familia apuntada (no_es_familia_apuntada); otra familia la tiene (palabra_ocupada); ya la tiene (ya_tiene_la_palabra); esa conexión ya no está en la sala (no_esta_en_la_sala)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "409": { description: "no vigente (guiada_no_vigente); no es una familia apuntada (no_es_familia_apuntada); otra familia la tiene (palabra_ocupada); ya la tiene (ya_tiene_la_palabra); esa conexión ya no está en la sala (no_esta_en_la_sala); esa familia no ha aceptado el aviso de voz vigente (sin_consentimiento, F3j: la comprobación que manda, antes de abrir el permiso en LiveKit)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
         "429": { $ref: "#/components/responses/Limite" }
         "503": { description: la presencia está apagada en este servidor }
     delete:
