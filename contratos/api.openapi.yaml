@@ -1,7 +1,7 @@
 # Contrato HTTP de la api del gemelo (fase F1a). Lo vigila apps/api/pruebas/unidad/app.test.ts: cada ruta registrada
 # está aquí y cada operación de aquí existe. La ficha de haza remite a haza.schema.json (lista blanca, ADR-0014);
 # la sesión, a sesion.md (ADR-0013); la vida de las hazas (olivos personalizados, fotos, denuncias, bandeja), a vida.md
-# y olivos-haza.schema.json. Todo POST/PUT/DELETE exige Origin del sitio (salvo /api/csp-informe).
+# y olivos-haza.schema.json. Todo POST/PUT/DELETE exige Origin del sitio (salvo /api/csp-informe y /api/avisos/baja, que se protege con la firma del enlace).
 openapi: 3.1.0
 info:
   title: Gemelo · api
@@ -2067,8 +2067,9 @@ paths:
     post:
       summary: Avisa (campana del gemelo) a los apuntados, a la espera o a todos, con un tope de 3 avisos de la oficina por hogar y semana
       description: >
-        Los hogares que ya llegaron al tope se omiten (omitidos_por_tope). El correo NO sale hoy: correo_pendiente cuenta los hogares con
-        avisos_correo a los que llegará cuando haya emisor. Sin destinatarios, 200 con enviados 0 y sin crear aviso.
+        Los hogares que ya llegaron al tope se omiten (omitidos_por_tope). El correo sale aparte, en segundo plano (OF11c): correo_pendiente
+        cuenta los hogares con avisos_correo a los que se les pone en cola (la petición no espera al SMTP; reintento acotado, ver
+        contratos/avisos-correo.md). Sin destinatarios, 200 con enviados 0 y sin crear aviso.
       security: [{ sesion: [] }]
       parameters: [{ $ref: "#/components/parameters/Id" }]
       requestBody:
@@ -2104,6 +2105,47 @@ paths:
           description: "ok: puede_inscribirse y eventos[] { id, titulo, tipo, descripcion, lugar, finca, haza (código)|null, presencial, empieza_en, termina_en, plazas|null, plazas_libres|null, inscripcion_hasta, inscripcion_abierta, mia {estado: apuntado|en_espera, personas}|null }"
           content: { application/json: { schema: { type: object, properties: { puede_inscribirse: { type: boolean }, eventos: { type: array, items: { type: object } } } } } }
         "401": { $ref: "#/components/responses/SinSesion" }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/agenda/{id}/evento.ics:
+    get:
+      summary: La invitación de calendario (.ics) de un evento abierto o cerrado, con horas en Europe/Madrid
+      description: >
+        Cualquier sesión. text/calendar, METHOD:PUBLISH, UID estable (evento-<id>@<dominio>) y SEQUENCE que sube con cada edición. 404 si el
+        evento no existe, es un borrador o está cancelado. Los correos de inscripción y de cambio de fecha o lugar llevan este mismo .ics;
+        el de cancelación, METHOD:CANCEL.
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "200": { description: "el .ics (adjunto evento-<id>.ics)", content: { text/calendar: { schema: { type: string } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "404": { description: no existe (o es un borrador o está cancelado) }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/avisos/baja:
+    get:
+      summary: Página con el botón para dejar de recibir los avisos por correo (el enlace de cada correo lleva la firma t)
+      description: Sin sesión. No hace nada por sí sola (un escáner de correo que abra el enlace no da de baja a nadie). 400 si la firma no vale.
+      parameters: [{ name: t, in: query, required: true, schema: { type: string, pattern: "^[0-9]{1,15}[.][A-Za-z0-9_-]{32}$" } }]
+      responses:
+        "200": { description: la página, content: { text/html: { schema: { type: string } } } }
+        "400": { description: enlace no válido, content: { text/html: { schema: { type: string } } } }
+        "429": { $ref: "#/components/responses/Limite" }
+    post:
+      summary: Da de baja los avisos por correo del hogar de la firma (hogares.avisos_correo = false)
+      description: >
+        Sin sesión ni Origin (exenta de la comprobación de Origin: la protege la firma, que solo sirve para esto). Cuerpo de formulario con t
+        (el botón de la página) o, con la firma en la consulta, List-Unsubscribe=One-Click (RFC 8058, lo que manda el cliente de correo).
+        Idempotente. Auditoría avisos.baja_correo.
+      parameters: [{ name: t, in: query, required: false, schema: { type: string } }]
+      requestBody:
+        required: false
+        content:
+          application/x-www-form-urlencoded:
+            schema: { type: object, additionalProperties: false, properties: { t: { type: string }, List-Unsubscribe: { const: One-Click } } }
+      responses:
+        "200": { description: hecho, content: { text/html: { schema: { type: string } } } }
+        "400": { description: enlace no válido, content: { text/html: { schema: { type: string } } } }
         "429": { $ref: "#/components/responses/Limite" }
 
   /api/agenda/{id}/inscripcion:

@@ -91,7 +91,7 @@ test("OF11b: el texto dice campo, antes → ahora y que sigue apuntado", () => {
 
 test("OF11b: el aviso de cambio sale de sistema (autor null) y el tope solo cuenta avisos con autor", () => {
   const rutas = readFileSync(new URL("../../src/agenda/rutas.ts", import.meta.url), "utf8");
-  assert.match(rutas, /textoDeCambios\(n\.titulo, cambios\), null\)/, "autor null");
+  assert.match(rutas, /textoDeCambios\(n\.titulo, cambios\), null[,)]/, "autor null");
   assert.match(rutas, /av\.autor_id IS NOT NULL AND av\.creado_en/, "el tope cuenta solo avisos de la oficina con autor");
   assert.match(rutas, /cambios\.length && n\.estado !== "borrador"/);
 });

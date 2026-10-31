@@ -54,6 +54,10 @@ GEMELO_SMTP_TLS=si
 GEMELO_SMTP_USUARIO=buzon-del-gemelo@ejemplo.invalid
 # la MISMA dirección que el usuario [SUPUESTO: OVH rechaza o marca un remitente distinto del buzón autenticado]
 GEMELO_CORREO_REMITENTE=Gemelo del olivar <buzon-del-gemelo@ejemplo.invalid>
+# Avisos de la campana y .ics de la Agenda por correo a los hogares que lo pidieron (OF11c, contratos/avisos-correo.md): mismo buzón de arriba
+GEMELO_CORREO_AVISOS=si
+GEMELO_CORREO_REINTENTOS=5
+GEMELO_CORREO_AVISOS_CADA_SEG=60
 
 # --- OlivarTrack por MCP, solo lectura (contratos/olivartrack-sync.md). «no» hasta que exista el token propio
 # (decisión 17) y se hayan ajustado las formas de respuesta reales. El token NO va aquí: /etc/gemelo/secretos/ot_token.

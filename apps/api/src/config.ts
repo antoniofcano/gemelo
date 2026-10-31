@@ -34,6 +34,8 @@ export interface Config {
   /** código corto de las gafas (contratos/sesion.md § Código corto): códigos pedidos por IP, intentos de aprobar por hogar y por IP */
   vinculo: { porIp: number; intentosPorHogar: number; intentosPorIp: number; sondeosPorMin: number; ventanaMin: number };
   correo: { modo: "buzon" } | ConfigSmtp;
+  /** el correo de los avisos de la campana y los .ics de la Agenda (OF11c): usa el mismo cartero; apagable sin tocar el del enlace mágico */
+  avisosCorreo: { activo: boolean; reintentos: number; cadaSeg: number };
   ot:
     | { modo: "no" }
     | { modo: "grabado"; carpeta: string; cadaMin: number }
@@ -78,6 +80,11 @@ function texto(e: Entorno, nombre: string, defecto?: string): string {
   if (v) return v;
   if (defecto !== undefined) return defecto;
   throw new ErrorDeConfig("falta la variable " + nombre);
+}
+function siNo(e: Entorno, nombre: string, defecto: boolean): boolean {
+  const v = texto(e, nombre, defecto ? "si" : "no");
+  if (v !== "si" && v !== "no") throw new ErrorDeConfig(nombre + " debe ser si o no");
+  return v === "si";
 }
 function entero(e: Entorno, nombre: string, defecto: number, min: number, max: number): number {
   const s = e[nombre]?.trim();
@@ -272,6 +279,11 @@ export function cargaConfig(e: Entorno = process.env): Config {
       ventanaMin: entero(e, "GEMELO_VINCULO_VENTANA_MIN", 15, 1, 1440),
     },
     correo: cargaCorreo(e, produccion),
+    avisosCorreo: {
+      activo: siNo(e, "GEMELO_CORREO_AVISOS", true),
+      reintentos: entero(e, "GEMELO_CORREO_REINTENTOS", 5, 1, 10),
+      cadaSeg: entero(e, "GEMELO_CORREO_AVISOS_CADA_SEG", 60, 0, 3600),
+    },
     ot,
     livekit: cargaLiveKit(e, produccion),
     medios: {

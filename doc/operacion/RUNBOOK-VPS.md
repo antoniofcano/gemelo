@@ -104,6 +104,7 @@ Decisión 15: el correo sale del **SMTP de OVH** con el dominio `canoydamas.es`.
 | `GEMELO_SMTP_USUARIO` | la dirección completa del buzón |
 | `GEMELO_CORREO_REMITENTE` | `Nombre visible <la misma dirección>`: **[SUPUESTO]** OVH rechaza o marca un remitente distinto del buzón autenticado |
 | `GEMELO_SMTP_CLAVE_FICHERO` | ya puesta en el compose (`/run/secrets/smtp_clave`) |
+| `GEMELO_CORREO_AVISOS`, `GEMELO_CORREO_REINTENTOS`, `GEMELO_CORREO_AVISOS_CADA_SEG` | los avisos de la campana y los `.ics` de la Agenda por este mismo buzón (OF11c, [avisos-correo.md](../../contratos/avisos-correo.md)): `si`, `5`, `60`. `GEMELO_CORREO_AVISOS=no` los apaga sin tocar el enlace mágico. **No probado** contra el buzón real |
 
 **Comprobaciones del dominio** (solo lecturas, desde cualquier equipo; en Windows, `nslookup -type=TXT …`). Aquí no se escriben registros: lo que falte se propone a Antonio y lo cambia quien lleve el DNS.
 

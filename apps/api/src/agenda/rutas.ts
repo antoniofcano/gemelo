@@ -1,8 +1,8 @@
 // La Agenda (OF11, doc/sistema/OFICINA.md §7; contrato: contratos/api.openapi.yaml; tablas: `visitas` y `visitas_asistentes`, migraciones 0001, 0004 y 0012).
 // Un evento tiene aforo en PERSONAS (`plazas`, null = sin aforo); cada hogar se inscribe una vez, con su número de personas; si no cabe, queda en la
 // lista de espera y pasa a apuntado solo cuando se libera plaza (promoción dentro de la misma transacción, con el evento bloqueado: dos inscripciones
-// a la vez no pasan del aforo). Los avisos son filas de `avisos`/`avisos_hogar` (la campana del gemelo); el CORREO no sale: hoy no hay emisor de
-// avisos por correo (solo el cartero del enlace mágico), así que `avisos_hogar.correo_enviado_en` queda en NULL a la espera de uno (OFICINA.md §7).
+// a la vez no pasan del aforo). Los avisos son filas de `avisos`/`avisos_hogar` (la campana del gemelo); el CORREO (con el .ics del evento) lo manda aparte,
+// en segundo plano, el repartidor de src/avisos/correo.ts a los hogares con `avisos_correo` (OF11c): estas rutas solo escriben las filas.
 //  Oficina (rol oficina o admin, aparato aprobado):
 //   GET  /api/admin/eventos                 la lista, con lo apuntado y la espera de cada uno
 //   POST /api/admin/eventos                 crear
@@ -15,15 +15,18 @@
 //   GET    /api/agenda                      los próximos eventos y mi inscripción
 //   POST   /api/agenda/:id/inscripcion      apuntarse (personas) o quedar en espera
 //   DELETE /api/agenda/:id/inscripcion      borrarse (libera plaza y promueve a la espera)
+//   GET    /api/agenda/:id/evento.ics       la invitación de calendario del evento (OF11c)
 // Los textos que escribe la oficina salen tal cual como datos; la web los pinta con textContent.
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { audita } from "../auth/servicio.ts";
+import type { TipoIcs } from "../avisos/correo.ts";
 import { requiereSesion } from "../auth/roles.ts";
 import type { Cliente } from "../bd/pool.ts";
 import { enTransaccion } from "../bd/pool.ts";
 import type { Contexto } from "../contexto.ts";
 import { OFICINA } from "../oficina/acceso.ts";
 import { limpia } from "../vida/filtro.ts";
+import { icsDeEvento } from "./ics.ts";
 import { aPromover, cambiosDeCita, estadoNuevo, libres, textoDeCambios, TOPE_AVISOS_SEMANA } from "./cupo.ts";
 
 export const TIPOS = ["guiada", "libre", "evento", "taller", "recoleccion", "cata", "directo"] as const;
@@ -62,10 +65,14 @@ async function cuentas(c: Pick<Cliente, "query">, id: number): Promise<{ apuntad
   return r.rows[0]!;
 }
 
-/** Inserta un aviso de evento y lo entrega a esos hogares. `autor` null = lo genera el sistema (promoción, cancelación): no cuenta para el tope. */
-async function avisaA(c: Cliente, hogares: number[], titulo: string, texto: string, autor: number | null): Promise<number | null> {
+/**
+ * Inserta un aviso de evento y lo entrega a esos hogares. `autor` null = lo genera el sistema (promoción, cancelación): no cuenta para el tope.
+ * `ics`: el aviso viene de ese evento y su correo (si el hogar lo pidió) lleva la invitación de calendario (OF11c; la manda el repartidor, no esta petición).
+ */
+async function avisaA(c: Cliente, hogares: number[], titulo: string, texto: string, autor: number | null, ics?: { evento: number; tipo: TipoIcs }): Promise<number | null> {
   if (!hogares.length) return null;
-  const id = (await c.query<{ id: number }>("INSERT INTO avisos (tipo, titulo, texto, autor_id) VALUES ('evento', $1, $2, $3) RETURNING id", [titulo, texto, autor])).rows[0]!.id;
+  const id = (await c.query<{ id: number }>("INSERT INTO avisos (tipo, titulo, texto, autor_id, evento_id, ics) VALUES ('evento', $1, $2, $3, $4, $5) RETURNING id",
+    [titulo, texto, autor, ics?.evento ?? null, ics?.tipo ?? null])).rows[0]!.id;
   await c.query("INSERT INTO avisos_hogar (aviso_id, hogar_id) SELECT $1, unnest($2::bigint[])", [id, hogares]);
   return id;
 }
@@ -84,7 +91,7 @@ export async function promueve(c: Cliente, e: Pick<Evento, "id" | "titulo" | "em
   const ids = aPromover(e.plazas, apuntadas, espera.map(f => ({ hogar: f.hogar_id, personas: f.personas })));
   if (!ids.length) return 0;
   await c.query("UPDATE visitas_asistentes SET estado = 'apuntado', promovida_en = now() WHERE visita_id = $1 AND hogar_id = ANY($2::bigint[]) AND estado = 'en_espera'", [e.id, ids]);
-  await avisaA(c, ids, "Ha quedado una plaza libre y es tuya", descripcionDe(e) + ". Estabas en la lista de espera y ya estás apuntado. Si no puedes ir, bórrate para dejar el sitio a otra familia.", null);
+  await avisaA(c, ids, "Ha quedado una plaza libre y es tuya", descripcionDe(e) + ". Estabas en la lista de espera y ya estás apuntado. Si no puedes ir, bórrate para dejar el sitio a otra familia.", null, { evento: e.id, tipo: "inscripcion" });
   await audita(c, null, "agenda.espera_promovida", { evento: e.id, hogares: ids.length });
   return ids.length;
 }
@@ -194,7 +201,7 @@ export async function rutasAgenda(app: FastifyInstance, ctx: Contexto): Promise<
         if (cambios.length && n.estado !== "borrador") {
           const dest = (await c.query<{ hogar_id: number }>(
             "SELECT a.hogar_id FROM visitas_asistentes a JOIN hogares g ON g.id = a.hogar_id AND g.activo WHERE a.visita_id = $1 AND a.estado IN ('apuntado', 'en_espera')", [e.id])).rows.map(f => f.hogar_id);
-          await avisaA(c, dest, "Cambia la fecha o el lugar de un evento", textoDeCambios(n.titulo, cambios), null);
+          await avisaA(c, dest, "Cambia la fecha o el lugar de un evento", textoDeCambios(n.titulo, cambios), null, { evento: e.id, tipo: "cambio" });
           avisados = dest.length;
         }
         const { hogares, espera } = await cuentas(c, e.id);
@@ -222,7 +229,7 @@ export async function rutasAgenda(app: FastifyInstance, ctx: Contexto): Promise<
       await c.query("UPDATE visitas SET estado = 'cancelada', cancelada_en = now(), actualizada_en = now() WHERE id = $1", [e.id]);
       const dest = (await c.query<{ hogar_id: number }>(
         "SELECT a.hogar_id FROM visitas_asistentes a JOIN hogares g ON g.id = a.hogar_id AND g.activo WHERE a.visita_id = $1 AND a.estado IN ('apuntado', 'en_espera')", [e.id])).rows.map(f => f.hogar_id);
-      await avisaA(c, dest, "Se cancela un evento al que estabas apuntado", descripcionDe(e) + ". La oficina lo ha cancelado; sentimos las molestias.", null);
+      await avisaA(c, dest, "Se cancela un evento al que estabas apuntado", descripcionDe(e) + ". La oficina lo ha cancelado; sentimos las molestias.", null, { evento: e.id, tipo: "cancelacion" });
       await audita(c, req.session.hogarId!, "admin.evento_cancelado", { evento: e.id, avisados: dest.length });
       return { codigo: 204 as const };
     });
@@ -298,6 +305,21 @@ export async function rutasAgenda(app: FastifyInstance, ctx: Contexto): Promise<
     };
   });
 
+  // La invitación de calendario de un evento visible (abierto o cerrado, no borrador ni cancelado). Zona Europe/Madrid (src/agenda/ics.ts).
+  app.get<{ Params: { id: number } }>("/api/agenda/:id/evento.ics", {
+    preHandler: requiereSesion,
+    config: { rateLimit: { max: 60, timeWindow: 60_000 } },
+    schema: { params: ID },
+  }, async (req, rep) => {
+    const e = (await bd.query<Evento & { actualizada_en: Date }>(
+      "SELECT * FROM visitas WHERE id = $1 AND estado IN ('abierta', 'cerrada')", [req.params.id])).rows[0];
+    if (!e) return rep.code(404).send({ error: "no_existe" });
+    rep.header("content-type", "text/calendar; charset=utf-8");
+    rep.header("content-disposition", "attachment; filename=\"evento-" + Number(e.id) + ".ics\"");
+    rep.header("cache-control", "private, no-cache");
+    return icsDeEvento({ ...e, id: Number(e.id) }, { metodo: "PUBLISH", urlPublica: ctx.config.urlPublica });
+  });
+
   app.post<{ Params: { id: number }; Body: { personas: number } }>("/api/agenda/:id/inscripcion", {
     preHandler: requiereSesion,
     config: { rateLimit: { max: 20, timeWindow: 60_000 } },
@@ -323,6 +345,9 @@ export async function rutasAgenda(app: FastifyInstance, ctx: Contexto): Promise<
         `INSERT INTO visitas_asistentes (visita_id, hogar_id, personas, estado) VALUES ($1, $2, $3, $4)
          ON CONFLICT (visita_id, hogar_id) DO UPDATE SET personas = $3, estado = $4, apuntado_en = now(), anulado_en = NULL, promovida_en = NULL`, [e.id, hogar, personas, estado]);
       await audita(c, hogar, "agenda.inscripcion", { evento: e.id, personas, estado });
+      // confirmación por correo con la invitación de calendario, solo si ya está apuntado y pidió los avisos por correo (el envío es del repartidor, en segundo plano)
+      if (estado === "apuntado" && (await c.query<{ avisos_correo: boolean }>("SELECT avisos_correo FROM hogares WHERE id = $1", [hogar])).rows[0]?.avisos_correo)
+        await avisaA(c, [hogar], "Estás apuntado: " + e.titulo, descripcionDe(e) + ". Sois " + personas + (personas === 1 ? " persona" : " personas") + ". Si no podéis ir, borraos desde el gemelo para dejar el sitio a otra familia.", null, { evento: e.id, tipo: "inscripcion" });
       const ocupadas = apuntadas + (estado === "apuntado" ? personas : 0);
       return { codigo: 201 as const, estado, personas, plazas_libres: libres(e.plazas, ocupadas) };
     });
