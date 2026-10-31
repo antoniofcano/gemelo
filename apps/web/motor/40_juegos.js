@@ -2,7 +2,7 @@
 // Expone: (nada al resto de módulos)
 // Consume: 01_datos (D, $), 02_mundo (Mundo), 02c_componentes (Bus, Pausa, ConfigPuro, Teclas, Componentes, Config), 02d_laminas (Laminas),
 //   03_escena (lienzo, modo), 09_camara (suelta), 12_paseo (teclas), 14_historia (hist, tabla, lista), 15_tiempo (hace), 16_vida (mira),
-//   29_vr (VRX, panel, PanelVR), 31_hud (Hud), 32_ventanas (Ventanas), 36_mandos (Mandos), 90_final (bucle)
+//   29_vr (VRX, panel, PanelVR), 31_hud (Hud), 32_ventanas (Ventanas), 90_final (bucle)
 // Nota: Componente «juegos» (ADR-0023, C9a): el anfitrión de juegos casuales. Solo se registra; nadie lo nombra. Montado: icono y ventana «Juegos», tecla J, recoge los juegos por el Bus («juego:ofrece» / «juego:pide» / «juego:retira»), abre uno a pantalla completa con el mundo en pausa (Pausa de 02c; su fase «pausa») y guarda el récord (localStorage y, con servidor, /api/juegos/<id>/…). Publica window.__juegos (pruebas). El trozo [puro:…] lo evalúa en Node pruebas/guardianes/juego_cosecha.test.js.
 // ===============================================================================
 
