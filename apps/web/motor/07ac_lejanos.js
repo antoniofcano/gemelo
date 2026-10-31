@@ -218,8 +218,8 @@
     /** la capa ya entró entera (uCapa = 1): con la escalera horneada, 07b aparta entonces todos los olivos del tileset */
     function capaCompleta() { return hayCapa() && uCapa.value >= 1; }
     function triangulos() { return malla && hayCapa() ? malla.count * triPor : 0; }
-    // también mientras la capa entra con su tramado (una vez repartida): las pruebas miden con la capa entera
-    function pendientes() { return activo() && ((via === "esperando" || via === "cargando impostores") && Generados.activo() || hayCapa() && repartido && uCapa.value < 1) ? 1 : 0; }
+    // también mientras la capa entra con su tramado (o va a entrar: hay capa y los olivos se ven): las pruebas miden con la capa entera
+    function pendientes() { return activo() && ((via === "esperando" || via === "cargando impostores") && Generados.activo() || hayCapa() && (repartido || gArboles.visible) && uCapa.value < 1) ? 1 : 0; }
     function resumen() { return activo() ? { fuente: via, motivo: motivo, aviso2: avisoImp || undefined, dibujados: info.dibujados, entran: info.entran, salen: info.salen, triangulos: triangulos(), llamadas: malla && hayCapa() && malla.count ? 1 : 0, capa: +uCapa.value.toFixed(2), texturaMiB: +texMiB.toFixed(2) } : null; }
     return { inicia: inicia, paso: paso, hayCapa: hayCapa, capaCompleta: capaCompleta, reparte: reparte, triangulos: triangulos, pendientes: pendientes, resumen: resumen,
       _prueba: { sinGPU: function () { sinGPU = true; }, malla: function () { return malla; }, cajas: function () { return cajas; }, ids: function () { return ids && malla ? Array.from(ids.subarray(0, malla.count)) : []; } } };
