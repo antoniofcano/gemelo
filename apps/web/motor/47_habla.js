@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
 // Consume: 01_datos ($), 02c_componentes (Teclas, Componentes), 02d_laminas (Laminas), 03_escena (visor, modo), 08_marcadores (aplica, pendiente),
-//   09_camara (suelta), 12_paseo (persona, teclas, primera), 14_historia (marca, lista, aviso), 15_tiempo (hace), 16_vida (quita),
+//   09_camara (suelta), 12_paseo (persona, teclas, primera), 14_historia (marca, aviso), 15_tiempo (hace), 16_vida (quita),
 //   29_vr (VRX, panel, PanelVR), 33_ajustes (Ajustes)
 // Nota: Componente «habla-guiada» (F3e, ADR-0026; decisiones 157-162): la interacción de la voz en la visita guiada, solo dentro de una sala guiada y con papel. «Hablar» con botón (≥ 44 px; 56 en el navegador de Quest), tecla T y, en VR, el gatillo izquierdo (VRX.voz, que 29_vr.js lee cada fotograma), en dos modos según el ajuste «Hablar» de Configuración: pulsar para abrir y cerrar (por defecto) o mantener pulsado (familias; el guía siempre pulsa y abre su micro con el primer gesto, una vez). Sin la palabra, «Levantar la mano» / «Bajar la mano» por la api de F3c y «Estás 2.º en la cola» (la cola, de la api «Guiada» de 46). El micro siempre con icono y texto en una región aria-live; «Silenciarme» siempre a mano; el aviso de que con el micro abierto el sonido no es espacial y la casilla «Llevo auriculares» (Voz.auriculares). En VR, una lámina de 3 s al abrir o cerrar, una fila del panel («Ir a») y un pulso del mando. Emite «habla:micro» y «habla:mano»; escucha «voz:estado», «guiada:palabra» y «depura:lineas». ?habla=0 lo apaga. Publica window.__habla (pruebas). Todo con textContent. Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/habla.test.js.
 // ===============================================================================
@@ -271,14 +271,14 @@
       try { avisoFoco = document.activeElement || null; } catch (e) { avisoFoco = null; }
       var cuerpo = el("div", { id: "hablaConsentCaja", style: "background:#101418;color:#fff;border:1px solid rgba(64,240,255,0.6);border-radius:16px;padding:16px 18px;max-width:min(460px,calc(100% - 24px));max-height:calc(100% - 24px);overflow:auto;box-sizing:border-box;font:15px/1.45 system-ui,sans-serif;text-align:left" });
       var tit = el("h2", { id: "hablaConsentT", style: "margin:0 0 8px;font:700 18px/1.3 system-ui,sans-serif" }, [A.titulo]);
-      var lista = el("ul", { style: "margin:0 0 10px;padding-left:20px" }, A.puntos.map(function (t) { return el("li", { style: "margin:4px 0" }, [t]); }));
+      var puntos = el("ul", { style: "margin:0 0 10px;padding-left:20px" }, A.puntos.map(function (t) { return el("li", { style: "margin:4px 0" }, [t]); }));
       var enlace = el("a", { id: "hablaConsentEnlace", href: A.enlace.href, target: "_blank", rel: "noopener noreferrer", style: "color:#7fe9ff;display:inline-block;min-height:" + h + "px;line-height:" + h + "px" }, [A.enlace.texto]);
       var nota = el("p", { style: "margin:4px 0 10px;font-size:12px;opacity:0.75" }, [A.nota]);
       var err = el("p", { id: "hablaConsentError", role: "alert", hidden: true, style: "margin:0 0 8px;color:#ffb4b4;font-weight:600" });
       var ok = el("button", { id: "hablaConsentAcepta", type: "button", style: CSS_BTN + ";min-height:" + h + "px;min-width:" + h + "px" }, [A.aceptar]);
       var no = el("button", { id: "hablaConsentNo", type: "button", style: CSS_BTN + ";min-height:" + h + "px;min-width:" + h + "px;background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.5)" }, [A.ahoraNo]);
       var fila = el("div", { style: "display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end" }, [no, ok]);
-      [tit, lista, enlace, nota, err, fila].forEach(function (x) { cuerpo.appendChild(x); });
+      [tit, puntos, enlace, nota, err, fila].forEach(function (x) { cuerpo.appendChild(x); });
       avisoDom = el("div", { id: "hablaConsent", role: "dialog", "aria-modal": "true", "aria-labelledby": "hablaConsentT", tabindex: "-1",
         style: "position:absolute;left:0;top:0;right:0;bottom:0;z-index:60;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6)" }, [cuerpo]);
       avisoDom._err = err; avisoDom._ok = ok; avisoDom._no = no;
