@@ -37,7 +37,11 @@ function perfilesXrSinCdn() {
   };
 }
 
+// la versión del gemelo (fichero VERSION de la raíz del repo) para la telemetría de fluidez (PB9): el motor la manda con la medida si la persona la envía
+const VERSION = (() => { try { return fs.readFileSync(path.join(WEB, "..", "..", "VERSION"), "utf8").trim(); } catch { return "dev"; } })();
+
 export default defineConfig({
+  define: { __GEMELO_VERSION__: JSON.stringify(VERSION) },
   root: process.env.GEMELO_WEB_RAIZ || path.join(WEB, ".generado"),
   base: "./",
   // el manifiesto de aplicación web y su icono (decisión 90: en el iPhone, «Añadir a pantalla de inicio» abre la finca sin las barras de Safari);

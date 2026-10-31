@@ -1966,6 +1966,46 @@ paths:
         "401": { $ref: "#/components/responses/SinSesion" }
         "404": { description: no existe ese juego }
 
+  # ---------------------------------------------------------------- medidas de fluidez (PB9, contratos/medidas.md; migración 0017)
+  /api/medidas:
+    post:
+      summary: Guarda una medida de fluidez del aparato (el medidor `&mide=60`) que la persona decidió mandar a la oficina. Nada personal
+      description: >
+        Cualquier sesión (también unas gafas vinculadas). Esquema estricto (contratos/medidas.schema.json). 422 medida_no_creible si
+        mediana ≤ p95 ≤ peor no se cumple o la fecha es futura o de hace más de 7 días. Límite por IP (10 por minuto) y por hogar
+        (10 por día, en memoria: el hogar no se guarda, ni IP, ni el agente de usuario entero; no se audita).
+      security: [{ sesion: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "medidas.schema.json" }
+      responses:
+        "201": { description: "{ guardada: true }" }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/OrigenNoAdmitido" }
+        "422": { description: "medida_no_creible: cifras desordenadas o fecha que no es de ahora; no se guarda" }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/admin/medidas:
+    get:
+      summary: Las medidas de fluidez, agregadas por día, aparato y VR (oficina y admin); filtros por aparato y fechas
+      description: >
+        Filas { dia, aparato, vr, medidas, p95_mediano_ms, p95_peor_ms, mediana_ms, peor_ms, fotogramas, navegadores, versiones, objetivo_p95_ms, cumple }
+        y `objetivos_p95_ms` por aparato (Quest 13,9 ms, ADR-0015; escritorio y móvil, null: sin umbral escrito). Es MEDIDO por cada aparato de sí mismo.
+      security: [{ sesion: [] }]
+      parameters:
+        - { name: aparato, in: query, schema: { type: string, enum: [escritorio, movil, quest] } }
+        - { name: desde, in: query, schema: { type: string, pattern: "^\\d{4}-\\d{2}-\\d{2}$" } }
+        - { name: hasta, in: query, schema: { type: string, pattern: "^\\d{4}-\\d{2}-\\d{2}$" } }
+        - { name: limite, in: query, schema: { type: integer, minimum: 1, maximum: 500, default: 100 } }
+      responses:
+        "200": { description: "{ generado_en, objetivos_p95_ms, filas }" }
+        "400": { description: entrada no válida }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+
   # ---------------------------------------------------------------- agenda (OF11, doc/sistema/OFICINA.md §7; migraciones 0004 y 0012)
   # Eventos con aforo en PERSONAS, inscripción por hogar, lista de espera con promoción automática y avisos en la campana del gemelo.
   # El CORREO de los avisos no sale hoy (no hay emisor de avisos por correo): avisos_hogar.correo_enviado_en queda en NULL.

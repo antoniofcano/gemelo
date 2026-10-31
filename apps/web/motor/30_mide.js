@@ -1,8 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: MideEst, Mide
-// Consume: 01_datos ($, DEPURA), 03_escena (visor, renderer, modo, calidad), 04b_escena3d (Escena3D), 07b_arboles (Arboles), 08_marcadores (listo),
-//   14_historia (lista, rango), 15_tiempo (nivel, hace), 16_vida (mira), 29_vr (VRX, vrMideEmpieza, vrMideFin, VR_PERFILES), 33_ajustes (Ajustes),
-//   90_final (cuadro, bucle)
+// Consume: 01_datos (D, $, DEPURA), 02c_componentes (ConfigPuro), 03_escena (visor, renderer, modo, calidad), 04b_escena3d (Escena3D),
+//   07b_arboles (Arboles), 08_marcadores (listo), 12_paseo (persona), 14_historia (tabla, lista, rango), 15_tiempo (nivel, hace), 16_vida (mira),
+//   29_vr (VRX, vrMideEmpieza, vrMideEnvio, vrMideFin, VR_PERFILES), 33_ajustes (Ajustes), 90_final (cuadro, bucle)
 // ===============================================================================
 
   // ---------- medidor de fotogramas para la prueba en el aparato (T7a, doc/sistema/VR.md#medir-con-el-medidor). Sin &mide ni botón pulsado no hace nada: Mide.on es falso y el bucle ni lo mira.
@@ -56,12 +56,36 @@
       var m = String(ua || "").match(/(OculusBrowser\/[\d.]+|Chrome\/\d+|Firefox\/\d+|Version\/[\d.]+|Android \d+|Windows NT [\d.]+|Mac OS X|iPhone OS|Linux|Quest ?\w*)/g);
       return m ? m.filter(function (x, i) { return m.indexOf(x) === i; }).join(", ") : "n/d";
     }
-    return { UMBRAL: UMBRAL, CALENTAMIENTO: CALENTAMIENTO, calcula: calcula, serie: serie, percentil: percentil, mediana: mediana, lineas: lineas, texto: texto, resumeUA: resumeUA };
+    // ---- PB9: lo que se manda a la oficina si la persona pulsa «Enviar esta medida a la oficina» (contratos/medidas.md). Nada personal: ni hogar, ni posición, ni IP,
+    // ni el agente de usuario entero (solo la clase de aparato, el producto del navegador y su versión mayor).
+    function aparatoDe(ua) { ua = String(ua || ""); return /OculusBrowser|Quest/i.test(ua) ? "quest" : /Android|iPhone|iPad|iPod|Mobile/i.test(ua) ? "movil" : "escritorio"; }
+    function navegadorDe(ua) {
+      ua = String(ua || "");
+      var tabla = [[/OculusBrowser\/(\d+)/, "Quest Browser"], [/Edg(?:e|A|iOS)?\/(\d+)/, "Edge"], [/Firefox\/(\d+)/, "Firefox"], [/(?:Chrome|CriOS)\/(\d+)/, "Chrome"], [/Version\/(\d+)[\s\S]*Safari/, "Safari"]], i, m;
+      for (i = 0; i < tabla.length; i++) if ((m = tabla[i][0].exec(ua))) return { nombre: tabla[i][1], mayor: Math.min(999, Number(m[1])) };
+      return { nombre: "otro", mayor: 0 };
+    }
+    function limpia(v, patron, por) { v = String(v == null ? "" : v); return patron.test(v) ? v : por; }
+    function r2(v) { return Math.round(v * 100) / 100; }
+    // x = { ua, finca, modo, version }; null si la medida no sirve (pocos fotogramas, cifras que no cuadran)
+    function cuerpoEnvio(r, x) {
+      if (!r || !r.est || !(r.est.n >= 10)) return null;
+      var m = r.est.ms, nav = navegadorDe(x.ua), vr = !!(r.aparato && r.aparato.modo === "VR");
+      var c = {
+        aparato: aparatoDe(x.ua), navegador: nav.nombre, nav_mayor: nav.mayor, perfil: vr && r.nivel ? Math.max(-1, Math.min(9, r.nivel.fin | 0)) : -1,
+        finca: limpia(x.finca, /^[A-Za-z0-9_-]{1,40}$/, "desconocida"), modo: limpia(x.modo, /^[A-Za-z0-9_-]{1,24}$/, "desconocido"), vr: vr,
+        mediana_ms: r2(m.mediana), p95_ms: r2(m.p95), peor_ms: r2(m.peor), fotogramas: r.est.n, duracion_s: r.duracion | 0,
+        version: limpia(x.version, /^[0-9A-Za-z.+-]{1,24}$/, "desconocida"), medida_en: r.fecha
+      };
+      if (!(c.mediana_ms <= c.p95_ms && c.p95_ms <= c.peor_ms) || c.peor_ms > 100000 || c.p95_ms > 10000 || c.duracion_s < 1 || c.duracion_s > 600) return null;
+      return c;
+    }
+    return { UMBRAL: UMBRAL, CALENTAMIENTO: CALENTAMIENTO, calcula: calcula, serie: serie, percentil: percentil, mediana: mediana, lineas: lineas, texto: texto, resumeUA: resumeUA, aparatoDe: aparatoDe, navegadorDe: navegadorDe, cuerpoEnvio: cuerpoEnvio };
   })();
   // [puro:fin]
 
   var Mide = (function () {
-    var N = 60, estado = "inactivo", tArma = 0, t0 = 0, m = null, prev = -1, nvPrev = -2, nivIni = null, cambios = [], modoIni = "", res = null, huboVisib = false, UI = null, copiado = 0, tPinta = 0;
+    var N = 60, estado = "inactivo", tArma = 0, t0 = 0, m = null, prev = -1, nvPrev = -2, nivIni = null, cambios = [], modoIni = "", res = null, huboVisib = false, UI = null, copiado = 0, tPinta = 0, envio = "";   // envio: "" | "enviando" | "ok" | "limite" | "mal"
     var CLAVE = "gemelo_mide";
     var api = { on: false, alTerminar: null };
     function contador() { return typeof Ajustes !== "undefined" && Ajustes ? Ajustes.lee("avanzado.contador") : DEPURA; }   // 33_ajustes.js se monta después: al cargar, solo ?debug
@@ -78,7 +102,7 @@
       empieza(performance.now());
     }
     function empieza(tIni) {
-      t0 = tIni; m = { t: [], ms: [], js: [], oc: [] }; prev = -1; nvPrev = -2; nivIni = null; cambios = []; modoIni = modoAhora(); res = null; estado = "midiendo"; api.on = true;
+      t0 = tIni; m = { t: [], ms: [], js: [], oc: [] }; prev = -1; nvPrev = -2; nivIni = null; cambios = []; modoIni = modoAhora(); res = null; envio = ""; estado = "midiendo"; api.on = true;
       if (!huboVisib) { document.addEventListener("visibilitychange", alVisibilidad); huboVisib = true; }
       ui(); pinta();
       if (VRX.on && typeof vrMideEmpieza === "function") vrMideEmpieza();
@@ -126,6 +150,22 @@
       if (estado === "midiendo") { var t = (performance.now() - t0) / 1000; return "medida: " + (t < MideEst.CALENTAMIENTO ? "calentando " + t.toFixed(0) + "/" + MideEst.CALENTAMIENTO + " s" : "midiendo " + Math.min(N, t - MideEst.CALENTAMIENTO).toFixed(0) + "/" + N + " s") + "\n"; }
       return "medida lista (p95 " + res.est.ms.p95.toFixed(1) + " ms)\n";
     }
+    // PB9: manda la medida a la api SOLO a petición (el botón), al mismo origen (CLAUDE.md §5). Sin api (página sin servidor) no hay botón. Devuelve una promesa del estado.
+    function prefijo() { try { return ConfigPuro.prefijoApi(location.search, D && D.base); } catch (e) { return null; } }
+    function puedeEnviar() { return estado === "listo" && !!res && !!prefijo() && typeof fetch === "function" && envio !== "ok" && envio !== "enviando" && !!cuerpo(); }
+    function cuerpo() {
+      var ver = typeof __GEMELO_VERSION__ !== "undefined" ? __GEMELO_VERSION__ : "dev";   // lo inyecta Vite (apps/web/vite.config.js) desde VERSION
+      return MideEst.cuerpoEnvio(res, { ua: navigator.userAgent, finca: D && D.finca_id, modo: modo, version: ver });
+    }
+    function envia() {
+      var c = puedeEnviar() ? cuerpo() : null, pre = prefijo();
+      if (!c || !pre) return Promise.resolve(envio);
+      envio = "enviando"; pinta(); if (typeof vrMideEnvio === "function") vrMideEnvio();
+      return fetch(pre + "medidas", { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json", accept: "application/json" }, body: JSON.stringify(c) })
+        .then(function (r) { envio = r.status === 201 ? "ok" : r.status === 429 ? "limite" : "mal"; }, function () { envio = "mal"; })
+        .then(function () { pinta(); if (typeof vrMideEnvio === "function") vrMideEnvio(); return envio; });
+    }
+    function textoEnvio() { return envio === "enviando" ? "Enviando…" : envio === "ok" ? "Enviada a la oficina" : envio === "limite" ? "Ya mandaste varias hoy" : envio === "mal" ? "No se pudo enviar" : "Enviar esta medida a la oficina"; }
     function copia() {
       if (!res) return;
       var tx = MideEst.texto(res);
@@ -141,21 +181,23 @@
       if (UI || !(contador() || api.on || estado !== "inactivo")) return;
       UI = document.createElement("div"); UI.id = "mideCaja";
       UI.style.cssText = "position:absolute;right:8px;bottom:8px;z-index:30;font:11px/1.35 ui-monospace,Menlo,monospace;background:rgba(0,0,0,.78);color:#a8f0b0;padding:5px 7px;border-radius:5px;max-width:min(92%,430px)";
-      var b1 = document.createElement("button"), b2 = document.createElement("button"), pre = document.createElement("pre");
-      b1.type = b2.type = "button"; b1.id = "mideMide"; b2.id = "mideCopia";
-      [b1, b2].forEach(function (b) { b.style.cssText = "font:inherit;margin-right:6px;padding:3px 8px;border-radius:4px;border:1px solid #5a8a62;background:#1d2b20;color:#d6ffdc;cursor:pointer"; });
-      b1.addEventListener("click", function () { inicia(); }); b2.addEventListener("click", copia);
+      var b1 = document.createElement("button"), b2 = document.createElement("button"), b3 = document.createElement("button"), pre = document.createElement("pre");
+      b1.type = b2.type = b3.type = "button"; b1.id = "mideMide"; b2.id = "mideCopia"; b3.id = "mideEnvia";
+      [b1, b2, b3].forEach(function (b) { b.style.cssText = "font:inherit;margin-right:6px;padding:3px 8px;border-radius:4px;border:1px solid #5a8a62;background:#1d2b20;color:#d6ffdc;cursor:pointer"; });
+      b1.addEventListener("click", function () { inicia(); }); b2.addEventListener("click", copia); b3.addEventListener("click", envia); b3.hidden = true;
       pre.style.cssText = "margin:5px 0 0;white-space:pre-wrap;font:inherit"; pre.id = "mideTexto";
-      UI.appendChild(b1); UI.appendChild(b2); UI.appendChild(pre); visor.appendChild(UI); UI.b1 = b1; UI.b2 = b2; UI.pre = pre;
+      UI.appendChild(b1); UI.appendChild(b2); UI.appendChild(b3); UI.appendChild(pre); visor.appendChild(UI); UI.b1 = b1; UI.b2 = b2; UI.b3 = b3; UI.pre = pre;
     }
     function pinta() {
       if (!UI) return;
       UI.b1.textContent = estado === "midiendo" ? "Midiendo…" : "Medir " + N + " s"; UI.b1.disabled = estado === "midiendo";
       UI.b2.textContent = copiado === 1 ? "Copiado" : copiado === 2 ? "No se pudo copiar" : "Copiar"; UI.b2.disabled = !res;
+      UI.b3.hidden = !(estado === "listo" && res && prefijo() && cuerpo()); UI.b3.textContent = textoEnvio(); UI.b3.disabled = !puedeEnviar();
       UI.pre.textContent = res ? MideEst.texto(res) : (estado === "midiendo" ? linea().trim() : estado === "esperando" ? linea().trim() : "");
     }
     // Configuración → Avanzado: la caja sale o se esconde con el contador (armada por &mide o midiendo, se queda)
     api.muestra = function (on) { if (on) ui(); if (UI) UI.style.display = on || api.on || estado === "esperando" || estado === "midiendo" ? "" : "none"; };
+    api.envia = envia; api.puedeEnviar = puedeEnviar; api.textoEnvio = textoEnvio; api.envio = function () { return envio; };
     api.arma = arma; api.inicia = inicia; api.cuadro = cuadro; api.linea = linea; api.copia = copia; api.historial = historial;
     api.resultado = function () { return res; }; api.estado = function () { return estado; }; api.segundos = function () { return N; };
     window.__mide = function () { return { estado: estado, n: N, resultado: res, texto: res ? MideEst.texto(res) : "", historial: historial() }; };
