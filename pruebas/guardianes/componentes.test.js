@@ -330,7 +330,7 @@ test("C4 en Node: el sonido se monta con su pestaña de Configuración y su fila
   r = arranca("", "", {}); assert.deepStrictEqual(r.Componentes.resumen(), []); assert.strictEqual(r.Bus.emite("sonido:golpe", {}), 0);
   // los demás módulos hablan por el Bus (no nombran al sonido): la fuente de cada uno emite lo que el catálogo dice
   assert.match(lee("apps/web/motor/19_balizas.js"), /Bus\.emite\("sonido:baliza"/); assert.match(lee("apps/web/motor/24_pantalla.js"), /Bus\.emite\("sonido:golpe"/);
-  assert.match(lee("apps/web/motor/25_perros.js"), /Bus\.emite\("sonido:ladrido"/); assert.match(lee("apps/web/motor/29_vr.js"), /Bus\.emite\("audio:desbloquea"/);
+  assert.match(lee("apps/web/motor/25_perros.js"), /n\.emite\("sonido:ladrido"/); assert.match(lee("apps/web/motor/29_vr.js"), /Bus\.emite\("audio:desbloquea"/);
   assert.doesNotMatch(sinComentarios(lee("apps/web/motor/90_final.js")), /actualizaSonido/);
 });
 

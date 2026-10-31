@@ -1,8 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
 // Consume: 01_datos (fmt), 02c_componentes (Bus, Componentes), 09_camara (suelta), 12_paseo (paseando, teclas), 15_tiempo (lluvia, cur, nivel),
-//   16_vida (tVida, enQuad, quad, enDron, dron), 18_paisaje (aguaNivel, distArroyo), 25_perros (ladrido), 29_vr (VRX, panel, PanelVR),
-//   33_ajustes (Ajustes)
+//   16_vida (tVida, enQuad, quad, enDron, dron), 18_paisaje (aguaNivel, distArroyo), 29_vr (VRX, panel, PanelVR), 33_ajustes (Ajustes)
 // ===============================================================================
   // ---------- el sonido del olivar: todo sintetizado en el navegador (no hay ficheros de audio) y atado al tiempo del mundo
   var snd = { ctx: null, master: null, t: 0, ave: 1.5, grillo: 0.5, pasoAnt: 0 };
