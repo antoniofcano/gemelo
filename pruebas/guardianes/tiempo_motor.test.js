@@ -128,3 +128,30 @@ test("en el código: dentroDeUmbrales no se pinta, los textos de Vigía se escap
   assert.match(FUENTE, /<span class="t-pill">medido<\/span>/); assert.match(FUENTE, /t-pill-m">modelado<\/span>/); assert.match(FUENTE, /ilustrativo/);
   assert.match(PL, /<label for="tMomento">Momento que ves<\/label>/);
 });
+
+test("el paso de hora de VR (h−/h+) mueve el reloj del mundo con la regla del deslizador «Momento»: índice con previsión, corrimiento sin ella, y «ahora» al volver", () => {
+  // con previsión de 72 h y la hora de ahora en el índice 5
+  let e = { idx: 5, modo: "ahora", ahoraIdx: 5, corrimientoH: 0 };
+  let r = P.pasoMomento(e, 1, 72);
+  assert.deepStrictEqual(r, { idx: 6, modo: "prevision", corrimientoH: 0 }, "+1 sale de «ahora» a la previsión");
+  r = P.pasoMomento(Object.assign({}, e, r), -1, 72);
+  assert.deepStrictEqual(r, { idx: 5, modo: "ahora", corrimientoH: 0 }, "al caer en la hora de ahora vuelve al reloj real, como el deslizador");
+  assert.strictEqual(P.pasoMomento({ idx: 0, modo: "prevision", ahoraIdx: 5, corrimientoH: 0 }, -1, 72).idx, 0, "no se sale por abajo");
+  assert.strictEqual(P.pasoMomento({ idx: 71, modo: "prevision", ahoraIdx: 5, corrimientoH: 0 }, 1, 72).idx, 71, "ni por arriba");
+  // sin previsión: corrimiento en horas enteras, topado, y 0 es «ahora»
+  e = { idx: 0, modo: "ahora", ahoraIdx: 0, corrimientoH: 0 };
+  r = P.pasoMomento(e, 1, 0); assert.deepStrictEqual(r, { idx: 0, modo: "prevision", corrimientoH: 1 });
+  r = P.pasoMomento(Object.assign({}, e, r), -1, 0); assert.deepStrictEqual(r, { idx: 0, modo: "ahora", corrimientoH: 0 });
+  assert.strictEqual(P.pasoMomento({ idx: 0, modo: "prevision", ahoraIdx: 0, corrimientoH: 12 }, 1, 0).corrimientoH, 12, "tope de 12 h");
+  assert.strictEqual(P.pasoMomento({ idx: 0, modo: "ahora", ahoraIdx: 0 }, -1, 0).corrimientoH, -1, "sin corrimiento previo cuenta como 0");
+});
+
+test("en el código: los botones h−/h+ de VR llaman al reloj del mundo (no al #hora que actualizaTiempo pisa) y el corrimiento llega a la luz", () => {
+  const VR = lee("apps/web/motor/29_vr.js").replace(/^\s*\/\/.*$/gm, "");
+  assert.ok(!/vrSlider\(\s*["']hora["']/.test(VR), "ya no se mueve #hora desde VR");
+  assert.strictEqual((VR.match(/pasoHoraMundo\(-1\)/g) || []).length, 1); assert.strictEqual((VR.match(/pasoHoraMundo\(1\)/g) || []).length, 1);
+  assert.ok(!/\$\("hora"\)/.test(VR), "ni se lee la hora de #hora: el rótulo sale del reloj del mundo");
+  assert.match(VR, /hora: horaMundoTexto\(\)/);
+  assert.match(FUENTE, /m\.ms \+= TM\.corrimientoH \* 3600000/, "sin previsión el corrimiento mueve m.ms, que es de donde actualizaTiempo saca el sol");
+  assert.match(FUENTE, /TM\.corrimientoH = 0; \$\("tMomento"\)\.value/, "«Ahora» también quita el corrimiento");
+});

@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: TiempoPuro, ahoraMs, TM, calma, texBrillo, lluvia, uViento, uSombra, GLSL_SOMBRA, parcheTiempo, cur, meta, tMundo, ins, nivel,
-//   actualizaTiempo, temaBarrera, colocaBarrera, pintaFondoTiempo, fmtHora, fmtClaveDia, num1, rumbo, esc, hace, objetivoMundoBase, aplicaMundo,
-//   anuncia, TiempoVivo, lindes
+//   actualizaTiempo, temaBarrera, colocaBarrera, pintaFondoTiempo, fmtHora, fmtClaveDia, num1, rumbo, esc, hace, objetivoMundoBase, pasoHoraMundo,
+//   horaMundoTexto, aplicaMundo, anuncia, TiempoVivo, lindes
 // Consume: 01_datos (D, $, FOG0, FOG1), 02_mundo (suelo, copas), 02c_componentes (Bus, Pausa),
 //   03_escena (visor, scene, camera, SRGB, LUZ_SOL, LUZ_CIELO, hemi, sol, texColor, colorVertSRGB, colorCss, exag, modo),
 //   04d_sombreado_tiles (hash, matSuelo, matOrto), 05_nube (nube), 07_follaje (matHojaG, matHojaP, matCorteza), 08_marcadores (gLinde),
@@ -104,7 +104,15 @@
     var MOTIVOS = { sin_api: "esta página no tiene servidor del tiempo", http_401: "hace falta entrar con tu enlace", http_503: "el servidor no tiene el tiempo de Vigía ahora",
       contrato: "la respuesta del servidor no tiene la forma esperada", red: "no se pudo hablar con el servidor" };
     function motivo(m) { return MOTIVOS[m] || "el servidor respondió con un error (" + String(m).replace(/^http_/, "") + ")"; }
-    return { cielo: cielo, horaIdx: horaIdx, valida: valida, aEstado: aEstado, vivo: vivo, lee: lee, leeHistorico: leeHistorico, climaSemana: climaSemana, motivo: motivo };
+    // Un paso de hora (±1) del reloj del mundo, con la misma regla que el deslizador «Momento» y el botón «Ahora»: con previsión mueve el índice de hora y, si cae en la hora
+    // de ahora, vuelve al modo «ahora» (el reloj real); sin previsión no hay deslizador, así que el paso es un desfase de horas enteras (tope ±12 h) y a 0 se vuelve a «ahora».
+    // e = { idx, modo, ahoraIdx, corrimientoH }, n = horas de previsión (0 si no hay), d = ±1 → { idx, modo, corrimientoH }. Es el reloj de cada visitante: no se comparte.
+    function pasoMomento(e, d, n) {
+      var s = d < 0 ? -1 : 1;
+      if (n > 0) { var i = Math.max(0, Math.min(n - 1, e.idx + s)); return { idx: i, modo: i === e.ahoraIdx ? "ahora" : "prevision", corrimientoH: 0 }; }
+      var f = Math.max(-12, Math.min(12, (e.corrimientoH || 0) + s)); return { idx: e.idx, modo: f === 0 ? "ahora" : "prevision", corrimientoH: f };
+    }
+    return { cielo: cielo, horaIdx: horaIdx, pasoMomento: pasoMomento, valida: valida, aEstado: aEstado, vivo: vivo, lee: lee, leeHistorico: leeHistorico, climaSemana: climaSemana, motivo: motivo };
   })();
   // [puro:fin]
   // ?hora=HH[:MM] fija la hora del reloj del mundo (hoy, hora local; el sol, el día y la noche, y con ellos la vida: la bandada solo vuela de día); ?hora=AAAA-MM-DDTHH:MM, también la fecha. Para que las medidas no dependan del reloj de la máquina; sin el parámetro, Date.now().
@@ -115,7 +123,7 @@
   })();
   function ahoraMs() { return HORA_FIJA == null ? Date.now() : HORA_FIJA; }
   // origen: de dónde sale lo que se ve («vigia», «fixture» o «simulado»); avisos: los de la api (de Vigía o del gemelo), como datos
-  var TM = { est: null, prev: null, his: null, modo: "ahora", idx: 0, ahoraIdx: 0, demo: "", jugando: false, origen: "simulado", avisos: [], api: null, oyentes: [] };
+  var TM = { est: null, prev: null, his: null, modo: "ahora", idx: 0, ahoraIdx: 0, corrimientoH: 0, demo: "", jugando: false, origen: "simulado", avisos: [], api: null, oyentes: [] };
   var LAT = 37.73, LON = -4.006, ZONA = "Europe/Madrid";
   var calma = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   var DEMOS = {
@@ -384,7 +392,7 @@
   function objetivoMundoBase() {
     var h = TM.prev && TM.prev.horas, m = { ms: ahoraMs(), nub: 0, viento: 0, dir: 0, lluvia: 0, hr: 40, temp: 18 };
     if (TM.demo && DEMOS[TM.demo]) { var D0 = DEMOS[TM.demo]; m.nub = D0.nub; m.lluvia = D0.lluvia; m.viento = D0.viento; m.dir = D0.dir; m.hr = D0.hr; m.temp = D0.temp; m.ms = TM.modo === "ahora" || !h ? ahoraMs() : Date.parse(h[TM.idx].instante); return m; }
-    if (!h || !h.length) return m;
+    if (!h || !h.length) { m.ms += TM.corrimientoH * 3600000; return m; }   // sin previsión: el paso de hora de VR es un corrimiento sobre el reloj
     var hh = h[Math.max(0, Math.min(h.length - 1, TM.idx))], e = TM.est;
     // la hora de la previsión (modelado) pone nubes, viento y lluvia; si a una hora le falta un dato, se queda el valor tranquilo de siempre (no se inventa otro)
     var ok = function (v) { return typeof v === "number" && isFinite(v); };
@@ -395,6 +403,13 @@
     else m.ms = Date.parse(hh.instante);
     return m;
   }
+  // El paso de hora de VR (h− / h+): mueve el reloj del mundo como el deslizador «Momento» (ver TiempoPuro.pasoMomento) y con él la luz; devuelve la hora que se ve
+  function pasoHoraMundo(d) {
+    var h = TM.prev && TM.prev.horas, r = TiempoPuro.pasoMomento({ idx: TM.idx, modo: TM.modo, ahoraIdx: TM.ahoraIdx, corrimientoH: TM.corrimientoH }, d, h ? h.length : 0);
+    TM.demo = ""; if ($("tDemo")) $("tDemo").value = ""; TM.idx = r.idx; TM.modo = r.modo; TM.corrimientoH = r.corrimientoH; if (h && h.length) $("tMomento").value = TM.idx;
+    refrescaTiempo(); return horaMundoTexto();
+  }
+  function horaMundoTexto() { return fmtHora.format(new Date(meta.ms)); }   // la hora (de la zona de la finca) a la que tiende el mundo
   function aplicaMundo() { var m = objetivoMundo(); Object.keys(m).forEach(function (c) { meta[c] = m[c]; }); }
 
   // --- las dos fichas
@@ -544,7 +559,7 @@
   }
   (function () {
     $("tMomento").addEventListener("input", function () { TM.idx = Number($("tMomento").value); TM.modo = TM.idx === TM.ahoraIdx ? "ahora" : "prevision"; refrescaTiempo(); });
-    $("tAhora").addEventListener("click", function () { TM.demo = ""; $("tDemo").value = ""; TM.modo = "ahora"; TM.idx = TM.ahoraIdx; $("tMomento").value = TM.idx; refrescaTiempo(); });
+    $("tAhora").addEventListener("click", function () { TM.demo = ""; $("tDemo").value = ""; TM.modo = "ahora"; TM.idx = TM.ahoraIdx; TM.corrimientoH = 0; $("tMomento").value = TM.idx; refrescaTiempo(); });
     // «+6 h» y «Mañana a las 12:00» se quitaron (decisión 89): el deslizador «Momento» y «Ahora» bastan
     $("tDemo").addEventListener("change", function () { TM.demo = $("tDemo").value; refrescaTiempo(); });
     var reloj = null;
