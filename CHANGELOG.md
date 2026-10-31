@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Avatares (AV5): el afro ya no hace picos en el borde bajo, el pelo largo cae también por delante, el sombrero de paja se asienta sobre el pelo y hay una pieza nueva «perilla» para cualquier cuerpo, en el creador y en la portada; de paso se arreglan las rayas claras de la coronilla en todos los peinados. Avatar completo ≤ 12.372 triángulos y 7 primitivas. El catálogo v2 espera el visto bueno de Antonio a las capturas.
 - C10 (2.ª tanda): los mandos y las manos de VR (`?mandos=0`) y las aves y los conejos (`?fauna=0`) pasan a ser componentes; `29_vr` monta los mandos por el Bus y los perros ya no leen la lista global de conejos. Sin cambio visible a propósito (los conejos del minimapa se pintan ahora sobre las balizas).
 - Hituelo real horneado con dos épocas, medido (O7h): 88,5 s y 6,1 MB en disco (≈ 3,1 MB por época); un paseo de 2 min baja 48,8 MB, de los que lo horneado son 2,45 MB (el 95 % son teselas y tileset). Procedimiento en DATOS; medida en MEDIDAS. El móvil, sin probar.
 - Agenda del mundo (OF11e): botón «Entrar en la visita» (ventana y fila de VR) para las guiadas y directos en los que tu familia está apuntada, dentro de su ventana de entrada (familias 15 min antes; guía y oficina 60; todos hasta 30 min tras el fin), por el Bus (`guiada:entrar` / `guiada:entrada`), sin depender de la presencia; si la api no deja entrar, enseña su frase. `GET /api/agenda` mantiene la guiada en curso y da a cada evento su ventana `entrada`.
