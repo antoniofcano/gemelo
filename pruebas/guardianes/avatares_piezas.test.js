@@ -126,6 +126,22 @@ test("motor: las piezas de la receta (solo las que trae el cuerpo y de su tipo),
   assert.deepStrictEqual(AP.piezasDe(c, c.porId["cuerpo-ejemplo-peque"], { vello: "vello-barba" }, 2).mallas, {}, "el peque no trae barba ni gorra");
 });
 
+test("AV5: la perilla es un vello más — el motor la enseña sola (no con la barba: un vello por receta), se tiñe con el color del pelo, y la portada la ofrece y la describe", async () => {
+  const c = AP.leeCatalogo(V2), cu = c.porId["cuerpo-ejemplo-adulta"], pe = V2.piezas.find(p => p.id === "vello-perilla");
+  assert.ok(pe && pe.tipo === "vello" && pe.malla === "pieza_vello-perilla" && pe.materiales.join() === "pelo", "en el ejemplo del contrato, de tipo vello y teñida como el pelo");
+  assert.deepStrictEqual(Object.keys(AP.piezasDe(c, cu, { pelo: "pelo-corto", vello: "vello-perilla" }, 0).mallas).sort(), ["pieza_pelo-corto", "pieza_vello-perilla"]);
+  assert.deepStrictEqual(AP.piezasDe(c, cu, { pelo: "vello-perilla" }, 0).mallas, {}, "no hace de pelo");
+  assert.strictEqual(AP.colorMaterial("pelo", { piel: 1, arriba: 2, abajo: 3, pelo: 0x9a9690 }, null), 0x9a9690, "el vello va con el color de pelo de la receta");
+  assert.deepStrictEqual(Aspecto.lee({ vello: "vello-perilla" }).vello, "vello-perilla");
+  assert.match("vello-perilla", /^[a-z0-9-]{1,32}$/, "la api la deja pasar: solo mira la forma del id (PATRON_PIEZA), no el catálogo");
+  const R = await imp("apps/web/portada/receta.js"), v2 = R.leeV2(V2);
+  assert.ok(v2.vellos.some(p => p.id === "vello-perilla"), "la portada la lista entre los vellos");
+  const e = Object.assign(R.inicial(v2, () => 0), { pelo: "pelo-corto", vello: "vello-perilla", peloColor: 6, ropa: null, sombrero: "ninguno" });
+  assert.deepStrictEqual(Object.keys(R.vestido(v2, e).mallas).sort(), ["pieza_pelo-corto", "pieza_vello-perilla"]);
+  assert.match(R.describe(v2, e), /perilla/);
+  assert.strictEqual(R.peticion(v2, e).vello, "vello-perilla");
+});
+
 test("motor: tinte por nombre de material (decisión 128): piel, ropa de arriba y de abajo, pelo y sombrero; los ojos y lo demás, como vienen", () => {
   const col = { piel: 1, arriba: 2, abajo: 3, pelo: 4 };
   assert.deepStrictEqual(["piel", "ropa_base", "ropa_abajo", "pelo", "sombrero", "ojos", "", "piel.001"].map(n => AP.colorMaterial(n, col, 9)), [1, 2, 3, 4, 9, null, null, 1]);
@@ -243,11 +259,12 @@ test("en Chrome: la portada elige por piezas (algo parecido, pelo, piel, vista d
       assert.ok(await p.isVisible("#fsParecidos"), "«Empieza por algo parecido»");
       await p.click("#parecidos button:nth-child(2)");
       await p.check("#mPelo input[value=pelo-afro]"); await p.check("#mPiel input[value='8']"); await p.check("#mPeloColor input[value='6']");
+      await p.check("#mVello input[value=vello-perilla]");   // AV5: la perilla, en la elección por piezas
       // de cerca: el VRM real con sus piezas (SwiftShader, lento)
       await p.waitForFunction(() => !document.getElementById("avatar3d").hasAttribute("hidden") && document.getElementById("avatarPrev").hasAttribute("hidden"), null, { timeout: 180000 });
       await p.waitForTimeout(1500);
       await (await p.$(".avatar-zona")).screenshot({ path: path.join(CAPS, "portada-cerca-" + ancho + ".png") });
-      assert.match(await p.textContent("#descAvatar"), /pelo afro o rizado canoso/i, "la descripción en texto (aria-live) dice lo que se ve");
+      assert.match(await p.textContent("#descAvatar"), /pelo afro o rizado canoso.*perilla/i, "la descripción en texto (aria-live) dice lo que se ve");
       await p.click("#vistaLejos");
       await p.waitForFunction(() => !document.getElementById("avatarPrev").hasAttribute("hidden"));
       await (await p.$(".avatar-zona")).screenshot({ path: path.join(CAPS, "portada-lejos-" + ancho + ".png") });
@@ -255,7 +272,7 @@ test("en Chrome: la portada elige por piezas (algo parecido, pelo, piel, vista d
       assert.ok(anchos[0] <= anchos[1], "a " + ancho + " px desborda: " + anchos.join(" > "));
       await Promise.all([p.waitForResponse(x => new URL(x.url()).pathname === "/api/yo/avatar" && x.request().method() === "PUT"), p.click("#fAvatar button[type=submit]")]);
       const put = puts[0];
-      assert.ok(put.cuerpo && /^cuerpo-adulta-/.test(put.cuerpo) && put.pelo === "pelo-afro" && put.tono === 8 && put.pelo_color === 6, JSON.stringify(put));
+      assert.ok(put.cuerpo && /^cuerpo-adulta-/.test(put.cuerpo) && put.pelo === "pelo-afro" && put.tono === 8 && put.pelo_color === 6 && put.vello === "vello-perilla", JSON.stringify(put));
       const limpio = limpiaAspecto(put);
       for (const k of ["cuerpo", "pelo", "pelo_color", "vello", "ropa", "tono", "arriba", "abajo", "complexion", "movilidad"]) assert.deepStrictEqual(limpio[k], put[k], "la api acepta " + k);
       assert.ok(bytesReceta(limpio) <= RECETA_MAX_BYTES, "receta de " + bytesReceta(limpio) + " bytes");
