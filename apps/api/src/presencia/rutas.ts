@@ -10,10 +10,15 @@ import type { Contexto } from "../contexto.ts";
 import { AVATAR_POR_DEFECTO, type Avatar, type ClaveSala, CLAVES_SALA, DISPOSITIVOS, limpiaAspecto, type Dispositivo, Expulsados, esRolOficina, firmaToken, ModeradorLiveKit, type ModeradorSala, prefijoHogar, SALA_LIBRE, SALAS } from "./livekit.ts";
 import { LigaduraVisita, puedeEntrar } from "./acceso_visita.ts";
 import { rutasOficinaMundo } from "./oficina_mundo.ts";
+import { rutasVoz } from "./voz_rutas.ts";
 
 const APAGADA = { error: "presencia_apagada", mensaje: "La visita compartida no está disponible en este servidor." } as const;
 
-export interface DepsExpulsion { bd: Pick<Bd, "query">; lk: ConfigLiveKit; moderador: ModeradorSala; expulsados: Expulsados }
+export interface DepsExpulsion {
+  bd: Pick<Bd, "query">; lk: ConfigLiveKit; moderador: ModeradorSala; expulsados: Expulsados;
+  /** F3c: las salas guiadas abiertas ahora (`guiada-<evento>`), para sacarle también de ellas; sin esto, solo las dos fijas */
+  guiadas?: () => Promise<string[]>;
+}
 export type ResultadoExpulsion = { ok: true; estaba_en_sala: boolean; conexiones: number } | { ok: false; motivo: "no_existe" };
 
 /**
@@ -28,7 +33,8 @@ export async function expulsa(d: DepsExpulsion, adminId: number, hogarId: number
   d.expulsados.marca(hogarId);
   const prefijo = prefijoHogar(d.lk, hogarId), donde: string[] = [];
   let conexiones = 0;
-  for (const k of CLAVES_SALA) { const n = await d.moderador.expulsaHogar(SALAS[k], prefijo); if (n > 0) donde.push(SALAS[k]); conexiones += n; }
+  const salas = [...CLAVES_SALA.map(k => SALAS[k]), ...(d.guiadas ? await d.guiadas() : [])];
+  for (const s of salas) { const n = await d.moderador.expulsaHogar(s, prefijo); if (n > 0) donde.push(s); conexiones += n; }
   const estaba = conexiones > 0;
   await audita(d.bd as Bd, adminId, "admin.presencia_expulsado", { hogar: hogarId, sala: donde.length ? donde.join(",") : SALA_LIBRE, estaba, conexiones, ...(motivo ? { motivo } : {}) });
   return { ok: true, estaba_en_sala: estaba, conexiones };
@@ -39,7 +45,10 @@ export async function rutasPresencia(app: FastifyInstance, ctx: Contexto): Promi
   const expulsados = new Expulsados();
   const ligadura = new LigaduraVisita();   // OF10b: el evento de la agenda al que está ligada la sala de la visita (null = abierta a quien invite la oficina)
   const lk = ctx.config.livekit;
-  const moderador: ModeradorSala | null = ctx.moderador ?? (lk ? new ModeradorLiveKit(lk) : null);
+  const real = lk ? new ModeradorLiveKit(lk) : null;
+  const moderador: ModeradorSala | null = ctx.moderador ?? real;
+  // F3c: con un moderador de mentira (pruebas) y sin uno de voz, la voz queda apagada (503) en vez de llamar a un LiveKit que no existe
+  const voz = ctx.moderadorVoz ?? (ctx.moderador ? null : real);
 
   // OF10: `sala` (opcional) elige la sala del mundo: «general» (la de siempre, por omisión) o «visita» (a la que invita la oficina)
   app.post<{ Body: { dispositivo: Dispositivo; sala?: ClaveSala } }>("/api/presencia/token", {
@@ -80,11 +89,13 @@ export async function rutasPresencia(app: FastifyInstance, ctx: Contexto): Promi
   }, async (req, rep) => {
     if (!lk || !moderador) return rep.code(503).send(APAGADA);
     const motivo = req.body.motivo?.trim().replace(/\s+/g, " ") || null;
-    const r = await expulsa({ bd, lk, moderador, expulsados }, req.session.hogarId!, req.body.hogar_id, motivo);
+    const r = await expulsa({ bd, lk, moderador, expulsados, ...(voz ? { guiadas: () => voz.salasGuiadas() } : {}) }, req.session.hogarId!, req.body.hogar_id, motivo);
     if (!r.ok) return rep.code(404).send({ error: "no_existe" });
     return { estaba_en_sala: r.estaba_en_sala, conexiones: r.conexiones };
   });
 
   // OF10: el mundo en modo oficina (anunciar, llevar a otra sala, balizas oficiales): src/presencia/oficina_mundo.ts
   await rutasOficinaMundo(app, ctx, moderador, ligadura);
+  // F3c: la voz de las visitas guiadas (sala `guiada-<evento>`, la palabra, silenciar, expulsar): src/presencia/voz_rutas.ts
+  await rutasVoz(app, bd, { lk: lk ?? null, voz, expulsados, ...(ctx.relojVoz ? { reloj: ctx.relojVoz } : {}) });
 }

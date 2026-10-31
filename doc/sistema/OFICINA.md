@@ -199,6 +199,8 @@ Acciones: crear, duplicar (la cata de cada mes), cancelar (con aviso), ver inscr
 
 **Datos y contratos.** Los permisos de LiveKit cambian (el guía y el corresponsal publican audio/vídeo; `livekit-roles` versión nueva y `presencia.md`); tabla `directos` (evento, escaleta en jsonb, estado, sala) y `clips` (con revisión). **Rutas**: `POST /api/admin/directos/:id/abrir`, `/cerrar`, `/palabra` (dar o quitar), `/silenciar`.
 
+**Hecho en la api (F3c, 2026-10-31; [ADR-0026](../adr/0026-voz-y-moderacion.md), `livekit-roles` v6, [presencia.md](../../contratos/presencia.md#la-voz-de-las-visitas-guiadas-f3c-livekit-roles-v6)).** La palabra, silenciar y expulsar no van por `/api/admin/directos/…` sino por `/api/presencia/guiadas/:evento/…`, porque los usa también **el guía del evento**, que no es la oficina: token de la sala `guiada-<evento>` (guía y oficina con micrófono; familias apuntadas sin él), mano (de la familia), palabra (dar a una familia cada vez 2 min, alargar +1 min, quitar; la cuenta atrás la hace cumplir el servidor), silenciar a todos menos al guía y expulsar, todo con auditoría. El guía lo pone la oficina en `PUT /api/admin/eventos/:id/guia` (la columna `visitas.guia_id` ya existía; falta en la pantalla de la Agenda). **No hecho:** abrir y cerrar la sala con aviso (decisión 155), la ficha del directo (`directos`, escaleta) y el panel (F3f); nada probado contra LiveKit real (F3g).
+
 **Lo que no se hará:** grabar la sala (LiveKit Egress) ni retransmitir a otras plataformas; vídeo de las familias.
 
 ## 9. Olivos: constructor y parámetros de la escalera
