@@ -1,16 +1,17 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: HazasPuro, Hazas
-// Consume: 01_datos (D, $), 02_mundo (Mundo, suelo), 02e_entidades (Entidades, Usables), 03_escena (camera, SRGB, exag), 08_marcadores (gLinde),
-//   09_camara (objetivo, elige), 12_paseo (paseando, primera), 13_parcelas (parcelas), 29_vr (ficha)
-// Nota: Sin D.base /teselas/… ni ?api= no pide nada ni crea nada; el trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/hazas.test.js.
+// Consume: 01_datos (D, $), 02_mundo (suelo), 02c_componentes (Bus), 02e_entidades (Entidades, Usables), 03_escena (camera, exag),
+//   09_camara (objetivo, elige), 12_paseo (paseando, primera), 13_parcelas (parcelas), 15_tiempo (lindes), 29_vr (ficha)
+// Nota: Sin D.base /teselas/… ni ?api= no pide nada ni crea nada. No dibuja la linde: la da con Hazas.lindes() y avisa con «hazas:cambia» (la dibuja 44_lindes.js); el trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/hazas.test.js.
 // ===============================================================================
-  // ---------- las hazas en el mundo (F1, el «3c»): sus límites dibujados sobre el suelo y, al tocar una, su ficha pública (ADR-0014, contratos/haza.schema.json).
+  // ---------- las hazas en el mundo (F1, el «3c»): sus límites (los dibuja sobre el suelo el componente «lindes», 44_lindes.js, con Hazas.lindes() y el evento
+  // «hazas:cambia») y, al tocar una, su ficha pública (ADR-0014, contratos/haza.schema.json).
   // Solo habla con la api cuando la página la sirve el servidor (D.base empieza por /teselas/: la web y las teselas van tras la sesión) o con ?api=<prefijo>
   // relativo del mismo origen (pruebas). En la salida artefacto, el fixture o sin api no pide nada, no crea nada y no escribe en la consola: el motor dibuja
   // exactamente lo mismo que sin este módulo. Si la api contesta 401, otro error o algo que no cumple el contrato, tampoco se dibuja nada.
   // La linde de cada haza la dibuja la oficina (decisión 12): es un límite de gestión, no un deslinde. Nunca se pide ni se muestra el titular (solo el alias que el hogar deja ver).
 
-  // [puro:inicio] — validación del GeoJSON, coordenadas, geometría de la linde y filas de la ficha: sin THREE ni DOM; lo evalúa en Node pruebas/guardianes/hazas.test.js
+  // [puro:inicio] — validación del GeoJSON, coordenadas, punto en haza y filas de la ficha: sin THREE ni DOM; lo evalúa en Node pruebas/guardianes/hazas.test.js
   var HazasPuro = (function () {
     var MAX_HAZAS = 2000, MAX_VERT = 200000, CLAVES_COL = ["type", "srs", "features"], CLAVES_F = ["type", "id", "geometry", "properties"], CLAVES_P = ["codigo", "nombre", "finca", "es_mia"];
     function esObj(o) { return o !== null && typeof o === "object" && !Array.isArray(o); }
@@ -89,27 +90,6 @@
       for (var k = 0; k < hs.length; k++) for (var p = 0; p < hs[k].poligonosLoc.length; p++) if (dentroPoligono(x, y, hs[k].poligonosLoc[p])) return k;
       return -1;
     }
-    // la linde de cada haza como segmentos de línea pegados al suelo: cada lado se parte en tramos de ≤ paso metros y cada punto va a (suelo + alto) × exag.
-    // hs: [{ anillos: [[x, y]…]…, color: [r, g, b] lineal }]; suelo(x, y) en metros. Devuelve { pos: Float32Array, col: Float32Array, n } (n vértices).
-    function cuentaVertices(hs, paso) {
-      var n = 0;
-      hs.forEach(function (h) { h.anillos.forEach(function (an) { for (var i = 0; i + 1 < an.length; i++) n += 2 * Math.max(1, Math.ceil(Math.hypot(an[i + 1][0] - an[i][0], an[i + 1][1] - an[i][1]) / paso)); }); });
-      return n;
-    }
-    function segmentos(hs, suelo, exag, paso, alto, pos, col) {
-      var n = cuentaVertices(hs, paso), k = 0;
-      pos = pos && pos.length === n * 3 ? pos : new Float32Array(n * 3); col = col && col.length === n * 3 ? col : new Float32Array(n * 3);
-      function escribe(x, y, c) { pos[k * 3] = x; pos[k * 3 + 1] = (suelo(x, y) + alto) * exag; pos[k * 3 + 2] = -y; col[k * 3] = c[0]; col[k * 3 + 1] = c[1]; col[k * 3 + 2] = c[2]; k++; }
-      hs.forEach(function (h) {
-        h.anillos.forEach(function (an) {
-          for (var i = 0; i + 1 < an.length; i++) {
-            var a = an[i], b = an[i + 1], m = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / paso));
-            for (var s = 0; s < m; s++) { var t0 = s / m, t1 = (s + 1) / m; escribe(a[0] + (b[0] - a[0]) * t0, a[1] + (b[1] - a[1]) * t0, h.color); escribe(a[0] + (b[0] - a[0]) * t1, a[1] + (b[1] - a[1]) * t1, h.color); }
-          }
-        });
-      });
-      return { pos: pos, col: col, n: n };
-    }
     // del toque al suelo: avanza por el rayo (origen o, dirección d unitaria, en la escena) hasta pasar bajo alturaEn(x, z) y afina por bisección.
     // Devuelve el punto local [x, y] (y = −z) o null si el rayo no toca el suelo antes de tMax.
     function rayoSuelo(o, d, alturaEn, tMax) {
@@ -173,45 +153,31 @@
       return /^\/teselas\//.test(base || "") ? "/api/" : null;
     }
     return { validaColeccion: validaColeccion, aLocal: aLocal, anillosLocales: anillosLocales, enElMundo: enElMundo, dentroPoligono: dentroPoligono, hazaEn: hazaEn,
-      cuentaVertices: cuentaVertices, segmentos: segmentos, rayoSuelo: rayoSuelo, fecha: fecha, fichaFilas: fichaFilas, prefijoApi: prefijoApi };
+      rayoSuelo: rayoSuelo, fecha: fecha, fichaFilas: fichaFilas, prefijoApi: prefijoApi };
   })();
   // [puro:fin]
 
   var Hazas = (function () {
-    var P = HazasPuro, API = P.prefijoApi(location.search, D.base), PASO = 2, ALTURA = 0.45;
-    var st = { activo: false, n: 0, propias: 0, vertices: 0, error: null };
-    var hz = [], linea = null, geo = null, mat = null, sucio = false, tSucio = 0, exagHecha = -1, cache = {};
-    // colores «tal como se ven» (sRGB) pasados a lineal: la propia en ámbar, las ajenas en blanco roto (se distinguen también por luminancia)
-    function lin(hex) { var c = new THREE.Color(); c.setHex(hex, SRGB); return [c.r, c.g, c.b]; }
+    var P = HazasPuro, API = P.prefijoApi(location.search, D.base);
+    var st = { activo: false, n: 0, propias: 0, error: null };
+    var hz = [], cache = {};
     function trae(url) {
       return fetch(url, { credentials: "same-origin", headers: { accept: "application/geo+json, application/json" } }).then(function (r) { if (!r.ok) throw new Error("http " + r.status); return r.json(); });
     }
     function monta(col) {
       var v = P.validaColeccion(col); if (v.error) { st.error = "no cumple el contrato: " + v.error; return; }
-      var fid = D.finca_id, cx = D.centro_utm[0], cy = D.centro_utm[1], C_MIA = lin(0xffb020), C_OTRA = lin(0xe8ecf0);
+      var fid = D.finca_id, cx = D.centro_utm[0], cy = D.centro_utm[1];
       hz = v.hazas.filter(function (h) { return !fid || h.finca === fid; }).map(function (h) {
         var an = P.anillosLocales(h, cx, cy);
-        return { id: h.id, codigo: h.codigo, nombre: h.nombre, es_mia: h.es_mia, anillos: an, color: h.es_mia ? C_MIA : C_OTRA,
+        return { id: h.id, codigo: h.codigo, nombre: h.nombre, es_mia: h.es_mia, anillos: an,
           poligonosLoc: h.poligonos.map(function (pol) { return pol.map(function (r) { return r.map(function (q) { return P.aLocal(q, cx, cy); }); }); }) };
       }).filter(function (h) { return P.enElMundo(h.anillos, D.ext, 50); });
       st.n = hz.length; st.propias = hz.filter(function (h) { return h.es_mia; }).length;
       if (!hz.length) return;
-      var s = P.segmentos(hz, suelo, exag, PASO, ALTURA);
-      geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.BufferAttribute(s.pos, 3)); geo.setAttribute("color", new THREE.BufferAttribute(s.col, 3)); geo.computeBoundingSphere();
-      mat = new THREE.LineBasicMaterial({ vertexColors: true });
-      linea = new THREE.LineSegments(geo, mat); linea.name = "linde de las hazas"; gLinde.add(linea);   // la casilla «Linde» del menú la enciende y apaga
-      st.vertices = s.n; st.activo = true; exagHecha = exag;
-      Mundo.alCargar(function () { sucio = true; });   // llega relieve fino: se vuelven a pegar al suelo (en actualiza, sin prisa)
+      st.activo = true;
+      // la linde la dibuja el componente «lindes-hazas» (44_lindes.js) si está encendido: aquí solo se avisa de que hay hazas nuevas (Hazas.lindes() las da)
+      Bus.emite("hazas:cambia", { n: st.n, propias: st.propias });
       engancha();
-    }
-    function repega() {
-      var pa = geo.getAttribute("position"), ca = geo.getAttribute("color");
-      P.segmentos(hz, suelo, exag, PASO, ALTURA, pa.array, ca.array); pa.needsUpdate = true; geo.computeBoundingSphere(); exagHecha = exag;
-    }
-    function actualiza(dt) {
-      if (!st.activo) return;
-      if (exag !== exagHecha) sucio = true;
-      if (sucio) { tSucio += dt; if (tSucio > 0.5) { tSucio = 0; sucio = false; repega(); } }
     }
     // ---- C7 (02e_entidades.js): las hazas como entidades, haza:<id>. Su ficha va en el recuadro común (#ficha, con textContent: nunca HTML de la red) y la
     // pinta Usables; un toque corto en la órbita sobre una haza la elige solo si no hay delante otra cosa (es «de fondo»: el olivo o la baliza ganan).
@@ -227,7 +193,7 @@
     function hazaDe(id) { for (var k = 0; k < hz.length; k++) if (idHaza(hz[k]) === id) return hz[k]; return null; }
     function filasDe(h, f, msg) {
       if (!f) return { titulo: h.nombre + " · " + h.codigo, filas: [{ k: "Haza", v: h.es_mia ? "la tuya" : "de otro hogar" }, { k: "Ficha", v: msg }] };
-      var r = P.fichaFilas(f), out = [{ k: "Haza", v: r.quien, de: "linde dibujada por la oficina" }];
+      var r = P.fichaFilas(f), out = [{ k: "Haza", v: r.quien, de: "linde: dato dibujado por la oficina (límite de gestión, no un deslinde)" }];
       r.filas.forEach(function (q) { out.push({ k: q.k, v: q.v, de: q.de }); }); if (r.alerta) out.push({ k: "Aviso", v: r.alerta });
       return { titulo: r.titulo, filas: out };
     }
@@ -257,9 +223,10 @@
       });
     }
     function libera() {
-      if (linea) { gLinde.remove(linea); geo.dispose(); mat.dispose(); }
+      var habia = st.activo;
       if (quitaEnt) { quitaEnt(); quitaEnt = null; }
-      linea = null; geo = null; mat = null; hz = []; st.activo = false; st.vertices = 0;
+      hz = []; st.activo = false;
+      if (habia) Bus.emite("hazas:cambia", { n: 0, propias: 0 });
     }
     if (API) {
       var fq = typeof D.finca_id === "string" && /^[a-z0-9_-]{1,32}$/.test(D.finca_id) ? "&finca=" + D.finca_id : "";
@@ -269,5 +236,8 @@
     // vistas() las hazas que se ven { id, es_mia } y enPunto(x este, y norte, locales) la que lo contiene o null (P7f: ¿este olivo es de mi haza?)
     function vistas() { return hz.map(function (h) { return { id: h.id, es_mia: !!h.es_mia }; }); }
     function enPunto(x, y) { var k = P.hazaEn(x, y, hz); return k >= 0 ? { id: hz[k].id, es_mia: !!hz[k].es_mia } : null; }
-    return { actualiza: actualiza, estado: estado, libera: libera, vistas: vistas, enPunto: enPunto };
+    // lindes() la geometría de la linde de cada haza vista, para quien la dibuje (44_lindes.js): [{ id, es_mia, anillos: [[[x este, y norte] locales…]…] }].
+    // Son las del contrato tal cual (la oficina las dibuja; aquí no se simplifican ni se mueven): una copia, que nadie toca las de Hazas.
+    function lindes() { return hz.map(function (h) { return { id: h.id, es_mia: !!h.es_mia, anillos: h.anillos.map(function (an) { return an.map(function (q) { return [q[0], q[1]]; }); }) }; }); }
+    return { estado: estado, libera: libera, vistas: vistas, enPunto: enPunto, lindes: lindes };
   })();
