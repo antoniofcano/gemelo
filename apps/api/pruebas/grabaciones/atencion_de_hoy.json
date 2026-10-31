@@ -1,0 +1,12 @@
+{
+  "$comentario": "SINTÉTICO: no es una respuesta real de OlivarTrack. Forma esperada de atencion_de_hoy [NO VERIFICADA]: la que describe la herramienta (atencion[].tipo, n, severidad, texto; total; parcial; avisos). Una fuente caída: parcial y su aviso. Lleva a propósito un asunto de campo y una persona que la lista blanca debe tirar.",
+  "consultadoEn": "2026-10-28T09:00:00Z",
+  "total": 3,
+  "parcial": true,
+  "avisos": ["Sintético: la fuente de fichajes no respondió; el recuento de discrepancias falta."],
+  "atencion": [
+    { "tipo": "incidencias_graves", "n": 1, "severidad": "alta", "texto": "1 incidencia grave sin clasificar (sintético)", "asunto": "TEXTO LIBRE DE CAMPO QUE NO DEBE SALIR", "quien": "PERSONA SINTETICA 3" },
+    { "tipo": "propuestas_de_tarea", "n": 2, "severidad": "media", "texto": "2 propuestas de tarea sin resolver (sintético)" },
+    { "tipo": "<script>", "n": -1, "severidad": "x" }
+  ]
+}
