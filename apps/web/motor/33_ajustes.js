@@ -1,8 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Ajustes
-// Consume: 01_datos ($, fmt), 02_mundo (suelo, copas), 03_escena (visor, renderer, exag, modo, calidad), 08_marcadores (listo, aplica),
-//   09_camara (pon), 12_paseo (persona), 14_historia (FINCA, lista, rango), 16_vida (quita), 24_pantalla (suave), 26_presencia (Chat),
-//   29_vr (panel), 30_mide (Mide), 31_hud (Hud), 32b_capas (Capas), 34_movibles (Movibles), 90_final (tamano, bucle)
+// Consume: 01_datos ($, fmt), 02_mundo (suelo, copas), 02c_componentes (Bus), 03_escena (visor, renderer, exag, modo, calidad),
+//   08_marcadores (listo, aplica), 09_camara (pon), 12_paseo (persona), 14_historia (FINCA, lista, rango), 16_vida (quita), 24_pantalla (suave),
+//   26_presencia (Chat), 29_vr (panel), 31_hud (Hud), 32b_capas (Capas), 34_movibles (Movibles), 90_final (tamano, bucle)
 // ===============================================================================
 // ===== CONTRATO DEL MÓDULO =====
 // ===============================================================================
@@ -144,7 +144,7 @@
       "acc.texto": function (v) { raiz.style.setProperty("--escala-texto", String(v / 100)); raiz.setAttribute("data-texto", v > 100 ? "mayor" : "normal"); },
       "acc.contraste": function (v) { raiz.setAttribute("data-contraste", v ? "alto" : "normal"); },
       "acc.movimiento": function () { raiz.setAttribute("data-movimiento", movimientoReducido() ? "reducido" : "normal"); },
-      "avanzado.contador": function () { if (typeof Mide !== "undefined" && Mide.muestra) Mide.muestra(!!api.lee("avanzado.contador")); }
+      "avanzado.contador": function () { Bus.emite("medida:muestra", { on: !!api.lee("avanzado.contador") }); }
     };
     var started = false;   // el audio solo arranca con un gesto: el primer cambio hecho por la persona
     function aplica(clave) { var f = aplicaPor[clave]; if (f) { try { f(api.lee(clave)); } catch (e) {} } }
@@ -191,7 +191,7 @@
       try { if (typeof Hud !== "undefined" && Hud && Hud.aviso) Hud.aviso("Chat y mapa en su sitio", 2500); } catch (e) {}
     }
     var ACCIONES = {
-      ajMedir: function () { if (typeof Mide !== "undefined" && Mide.inicia) { var d = $("menu"); try { if (d && d.close) d.close(); } catch (e) {} Mide.inicia(60); } },
+      ajMedir: function () { if (!Bus.hay("medida:inicia")) return; var d = $("menu"); try { if (d && d.close) d.close(); } catch (e) {} Bus.emite("medida:inicia", { segundos: 60 }); },
       ajRecoloca: recoloca,
       ajReinicia: function () { api.restablece(); try { if (typeof Hud !== "undefined" && Hud && Hud.aviso) Hud.aviso("Configuración restablecida", 2500); } catch (e) {} }
     };

@@ -1,14 +1,17 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: SueloFondo
-// Consume: 01_datos (D), 02_mundo (Mundo, suelo), 03_escena (scene, exag), 04b_escena3d (Escena3D), 04d_sombreado_tiles (matSuelo),
-//   15_tiempo (lluvia)
+// Expone: (nada al resto de módulos)
+// Consume: 01_datos (D), 02_mundo (Mundo, suelo), 02b_cola (Cola), 02c_componentes (Componentes), 03_escena (scene, exag), 04b_escena3d (Escena3D),
+//   04d_sombreado_tiles (matSuelo), 15_tiempo (lluvia), 90_final (bucle)
 // ===============================================================================
   // ---------- M6: el suelo de fondo. El mundo es un mosaico de teselas; donde falta una (bordes, esquinas, teselas sin datos) se veía el vacío. Esta malla cubre la caja
   // de la finca más un margen con el relieve GRUESO del índice (8 m, el mismo medido, con menos detalle: regla 5) y el mosaico de 1 m como textura, POR DEBAJO del tileset:
   // BAJA metros más abajo y con polygonOffset, para que nunca asome por encima de las teselas ni haga z-fighting (el relieve grueso, interpolado, puede quedar por encima
   // del fino en una loma de metro y medio). Una malla, una llamada, sin sombras ni detalle de suelo. Comparte la textura del mosaico de 04d (no se sube otra vez a la GPU
   // y no se libera aquí: es de 04d) y el color de matSuelo (luz, lluvia y niebla como el resto del relieve). Solo existe mientras la escena 3D Tiles esté activa.
-  var SueloFondo = (function () {
+  // Componente «suelo-fondo» (ADR-0023, C10 tercera tanda): ya no lo llama el bucle de 90_final.js; corre en la fase «tarde» (cada fotograma, tras la carga y antes de la
+  // Cola, el mismo sitio de siempre salvo por la Cola). ?fondo=0 lo apaga (y ?sinFondo, como siempre): sin él se ve el vacío de los bordes, y nada más cambia.
+  var fondoSuelta = null;   // lo que libera el componente montado
+  function SueloFondoMotor(n) {
     var MARGEN = 400, BAJA = 1.5, CELDAS_MAX = 128, malla = null, expPuesta = NaN;
     var APAGADO = typeof location !== "undefined" && /[?&]sinFondo/.test(location.search);   // ?sinFondo: sin el suelo de fondo (para comparar y medir)
     function construye() {
@@ -44,5 +47,18 @@
       if (!malla) construye();
       if (exag !== expPuesta) { malla.matrix.makeScale(1, exag, 1); malla.matrixWorldNeedsUpdate = true; malla.updateMatrixWorld(true); expPuesta = exag; }
     }
-    return { actualiza: actualiza, libera: libera, malla: function () { return malla; }, BAJA: BAJA, MARGEN: MARGEN };
-  })();
+    fondoSuelta = libera;
+    return { actualiza: actualiza, libera: libera, malla: function () { return malla; }, BAJA: BAJA, MARGEN: MARGEN, CELDAS_MAX: CELDAS_MAX };
+  }
+  Componentes.registra({
+    id: "suelo-fondo", version: 1,
+    consume: ["D", "Mundo", "UN", "matSuelo", "Escena3D", "scene", "exag"],
+    expone: [],
+    eventos: { escucha: [], emite: [] },
+    bandera: { defecto: true, url: "fondo" },
+    presupuesto: { llamadas: 1, triangulos: 32768 },   // el techo: CELDAS_MAX² celdas de 2 triángulos (128 × 128). Medido en Node (componentes_c10c.test.js) con la caja del fixture: 1 llamada y 10.824 triángulos, los de pruebas/presupuesto.json («lejos»)
+    fases: { tarde: 0 },
+    monta: function (n) { return SueloFondoMotor(n); },
+    actualiza: { tarde: function (dt, t, api) { api.actualiza(); } },
+    libera: function () { if (fondoSuelta) fondoSuelta(); fondoSuelta = null; }
+  });

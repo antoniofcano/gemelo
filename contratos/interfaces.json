@@ -9,7 +9,6 @@
     "OlivosTiles": { "modulo": "04c_olivos_tiles.js", "miembros": ["dibuja", "cerca", "triangulos", "resumen", "tipo", "tipos", "instanciasDe"] },
     "SombreadoTiles": { "modulo": "04d_sombreado_tiles.js", "miembros": ["modelo", "suelta", "actualiza", "libera", "resumen", "OP"] },
     "TiempoVivo": { "modulo": "15_tiempo.js", "miembros": ["lee", "alCambiar"] },
-    "SueloFondo": { "modulo": "04e_suelo_fondo.js", "miembros": ["actualiza", "libera", "malla", "BAJA", "MARGEN"] },
     "Catalogo": { "modulo": "07a_catalogo.js", "miembros": ["SIN", "PRES_TRI", "tipos", "tiene", "variantes", "geometria", "triangulos", "info", "instala", "retira", "alCambiar", "avisos"] },
     "Arboles": { "modulo": "07b_arboles.js", "miembros": ["perfil", "inicia", "tileCargada", "refresca", "actualiza", "presupuesto", "resumen", "celdas"] },
     "PoseCodec": { "modulo": "26_presencia.js", "miembros": ["VERSION", "ESCRITORIO", "QUEST", "BYTES", "PIE", "QUAD", "DRON", "codifica", "decodifica", "empaquetaQ", "desempaquetaQ"] },

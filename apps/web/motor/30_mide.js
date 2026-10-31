@@ -1,11 +1,11 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: MideEst, Mide
-// Consume: 01_datos (D, $, DEPURA), 02c_componentes (ConfigPuro), 03_escena (visor, renderer, modo, calidad), 04b_escena3d (Escena3D),
-//   07b_arboles (Arboles), 08_marcadores (listo), 12_paseo (persona), 14_historia (tabla, lista, rango), 15_tiempo (nivel, hace), 16_vida (mira),
-//   29_vr (VRX, vrMideEmpieza, vrMideEnvio, vrMideFin, VR_PERFILES), 33_ajustes (Ajustes), 90_final (cuadro, bucle)
+// Expone: (nada al resto de módulos)
+// Consume: 01_datos (D, $, DEPURA), 02c_componentes (Bus, ConfigPuro, Componentes), 03_escena (visor, renderer, modo, calidad),
+//   04b_escena3d (Escena3D), 07b_arboles (Arboles), 08_marcadores (listo), 12_paseo (persona), 14_historia (lista, rango), 15_tiempo (nivel, hace),
+//   29_vr (VRX, panel, PanelVR, VR_PERFILES), 33_ajustes (Ajustes), 90_final (cuadro, bucle)
 // ===============================================================================
 
-  // ---------- medidor de fotogramas para la prueba en el aparato (T7a, doc/sistema/VR.md#medir-con-el-medidor). Sin &mide ni botón pulsado no hace nada: Mide.on es falso y el bucle ni lo mira.
+  // ---------- medidor de fotogramas para la prueba en el aparato (T7a, doc/sistema/VR.md#medir-con-el-medidor). Componente «medidor-fotogramas» (ADR-0023, C10 tercera tanda; ?medidor=0 lo apaga). Sin &mide ni botón pulsado no hace nada: no escucha «cuadro:fin» y el bucle no paga nada.
   // Mide, durante N s (por defecto 60) y tras 3 s de calentamiento, el intervalo entre fotogramas (en VR, entre fotogramas XR) y el ms de JS de cada uno.
   // Es una medida del aparato donde se corre: en Chrome sin GPU (SwiftShader) los números no valen como fps (CLAUDE.md, regla 7).
 
@@ -61,8 +61,8 @@
     function aparatoDe(ua) { ua = String(ua || ""); return /OculusBrowser|Quest/i.test(ua) ? "quest" : /Android|iPhone|iPad|iPod|Mobile/i.test(ua) ? "movil" : "escritorio"; }
     function navegadorDe(ua) {
       ua = String(ua || "");
-      var tabla = [[/OculusBrowser\/(\d+)/, "Quest Browser"], [/Edg(?:e|A|iOS)?\/(\d+)/, "Edge"], [/Firefox\/(\d+)/, "Firefox"], [/(?:Chrome|CriOS)\/(\d+)/, "Chrome"], [/Version\/(\d+)[\s\S]*Safari/, "Safari"]], i, m;
-      for (i = 0; i < tabla.length; i++) if ((m = tabla[i][0].exec(ua))) return { nombre: tabla[i][1], mayor: Math.min(999, Number(m[1])) };
+      var casos = [[/OculusBrowser\/(\d+)/, "Quest Browser"], [/Edg(?:e|A|iOS)?\/(\d+)/, "Edge"], [/Firefox\/(\d+)/, "Firefox"], [/(?:Chrome|CriOS)\/(\d+)/, "Chrome"], [/Version\/(\d+)[\s\S]*Safari/, "Safari"]], i, m;
+      for (i = 0; i < casos.length; i++) if ((m = casos[i][0].exec(ua))) return { nombre: casos[i][1], mayor: Math.min(999, Number(m[1])) };
       return { nombre: "otro", mayor: 0 };
     }
     function limpia(v, patron, por) { v = String(v == null ? "" : v); return patron.test(v) ? v : por; }
@@ -84,7 +84,8 @@
   })();
   // [puro:fin]
 
-  var Mide = (function () {
+  var medSuelta = null;   // lo que libera el componente montado
+  function MedidorMotor(n) {
     var N = 60, estado = "inactivo", tArma = 0, t0 = 0, m = null, prev = -1, nvPrev = -2, nivIni = null, cambios = [], modoIni = "", res = null, huboVisib = false, UI = null, copiado = 0, tPinta = 0, envio = "";   // envio: "" | "enviando" | "ok" | "limite" | "mal"
     var CLAVE = "gemelo_mide";
     var api = { on: false, alTerminar: null };
@@ -96,19 +97,23 @@
       while ((x = r.exec(location.search))) if (/^(escena|olivos?|arbsc|tiles?|lod|calidad)$/.test(x[1])) out.push(x[1] + (x[2] != null ? "=" + x[2] : ""));
       return out.join(" ");
     }
-    function arma(n) { N = Math.max(1, Math.min(600, Number(n) || 60)); estado = "esperando"; tArma = performance.now(); api.on = true; ui(); pinta(); }
-    function inicia(n) {   // el botón: empieza ya, en el modo en que se esté (VR o pantalla)
-      if (n) N = Math.max(1, Math.min(600, Number(n) || 60));
+    function arma(seg) { N = Math.max(1, Math.min(600, Number(seg) || 60)); estado = "esperando"; tArma = performance.now(); api.on = true; engancha(); ui(); pinta(); }
+    function inicia(seg) {   // el botón: empieza ya, en el modo en que se esté (VR o pantalla)
+      if (seg) N = Math.max(1, Math.min(600, Number(seg) || 60));
       empieza(performance.now());
     }
     function empieza(tIni) {
-      t0 = tIni; m = { t: [], ms: [], js: [], oc: [] }; prev = -1; nvPrev = -2; nivIni = null; cambios = []; modoIni = modoAhora(); res = null; envio = ""; estado = "midiendo"; api.on = true;
+      t0 = tIni; m = { t: [], ms: [], js: [], oc: [] }; prev = -1; nvPrev = -2; nivIni = null; cambios = []; modoIni = modoAhora(); res = null; envio = ""; estado = "midiendo"; api.on = true; engancha();
       if (!huboVisib) { document.addEventListener("visibilitychange", alVisibilidad); huboVisib = true; }
       ui(); pinta();
-      if (VRX.on && typeof vrMideEmpieza === "function") vrMideEmpieza();
+      if (VRX.on) n.emite("medida:empieza");   // 29_vr.js: el panel no tapa la vista durante la medida
     }
+    // el fotograma acaba: 90_final.js emite «cuadro:fin»; solo se escucha mientras está armado o midiendo (sin &mide ni botón pulsado el bucle no paga nada)
+    var quitaCuadro = null;
+    function engancha() { if (!quitaCuadro) quitaCuadro = n.on("cuadro:fin", function (d) { if (api.on) fotograma(d.t); }); }
+    function desengancha() { if (quitaCuadro) { quitaCuadro(); quitaCuadro = null; } }
     function alVisibilidad() { prev = -1; }   // el intervalo que cruza un cambio de pestaña no es un fotograma
-    function cuadro(tIni) {   // una vez por fotograma, al final de cuadro() (90_final.js), solo si Mide.on
+    function fotograma(tIni) {   // una vez por fotograma, al final de cuadro() (90_final.js: «cuadro:fin»), y solo mientras está armado o midiendo
       var ahora = performance.now(), js = ahora - tIni;
       if (estado === "esperando") {   // armado por &mide: empieza al entrar en VR, o en pantalla si no hay casco (WebXR sin soporte) a los 4 s
         if (VRX.on || (!VRX.soporta && !VRX.entrando && ahora - tArma > 4000)) empieza(tIni); else return;
@@ -132,10 +137,10 @@
         escena: Escena3D.resumen().estado === "sin" ? "sin" : "tiles", banderas: banderas(), duracion: N, calentamiento: MideEst.CALENTAMIENTO, est: e,
         nivel: modoIni === "VR" ? { ini: nivIni === null ? -1 : nivIni, fin: nv === null ? -1 : nv, cambios: cambios } : null, olivos: [a.nivel0, a.nivel1, a.nivel2], avisos: avisos
       };
-      estado = "listo"; api.on = false; prev = -1;
+      estado = "listo"; api.on = false; desengancha(); prev = -1;
       if (huboVisib) { document.removeEventListener("visibilitychange", alVisibilidad); huboVisib = false; }
       guarda(); ui(); pinta();
-      if (typeof vrMideFin === "function" && VRX.on) vrMideFin();
+      if (VRX.on) n.emite("medida:fin");   // 29_vr.js: la tarjeta con el resultado sobre el panel
     }
     function guarda() {
       try {
@@ -160,10 +165,10 @@
     function envia() {
       var c = puedeEnviar() ? cuerpo() : null, pre = prefijo();
       if (!c || !pre) return Promise.resolve(envio);
-      envio = "enviando"; pinta(); if (typeof vrMideEnvio === "function") vrMideEnvio();
+      envio = "enviando"; pinta(); n.emite("medida:envio");
       return fetch(pre + "medidas", { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json", accept: "application/json" }, body: JSON.stringify(c) })
         .then(function (r) { envio = r.status === 201 ? "ok" : r.status === 429 ? "limite" : "mal"; }, function () { envio = "mal"; })
-        .then(function () { pinta(); if (typeof vrMideEnvio === "function") vrMideEnvio(); return envio; });
+        .then(function () { pinta(); n.emite("medida:envio"); return envio; });
     }
     function textoEnvio() { return envio === "enviando" ? "Enviando…" : envio === "ok" ? "Enviada a la oficina" : envio === "limite" ? "Ya mandaste varias hoy" : envio === "mal" ? "No se pudo enviar" : "Enviar esta medida a la oficina"; }
     function copia() {
@@ -198,10 +203,38 @@
     // Configuración → Avanzado: la caja sale o se esconde con el contador (armada por &mide o midiendo, se queda)
     api.muestra = function (on) { if (on) ui(); if (UI) UI.style.display = on || api.on || estado === "esperando" || estado === "midiendo" ? "" : "none"; };
     api.envia = envia; api.puedeEnviar = puedeEnviar; api.textoEnvio = textoEnvio; api.envio = function () { return envio; };
-    api.arma = arma; api.inicia = inicia; api.cuadro = cuadro; api.linea = linea; api.copia = copia; api.historial = historial;
+    api.arma = arma; api.inicia = inicia; api.cuadro = fotograma; api.linea = linea; api.copia = copia; api.historial = historial;
     api.resultado = function () { return res; }; api.estado = function () { return estado; }; api.segundos = function () { return N; };
     window.__mide = function () { return { estado: estado, n: N, resultado: res, texto: res ? MideEst.texto(res) : "", historial: historial() }; };
+    // lo que antes llamaban a mano 28_depura (la línea del contador), 29_vr (la tarjeta de la medida) y 33_ajustes (Medir y la caja del contador) llega por el Bus
+    n.on("depura:lineas", function (d) { var t = linea().replace(/\n$/, ""); if (t && d && d.lineas) d.lineas.push(t); });
+    n.on("medida:estado", function (q) {   // 29_vr.js pregunta por lo que pinta la tarjeta del panel de VR
+      if (q) q.res = { resultado: res, lineas: res ? MideEst.lineas(res, true) : [], puedeEnviar: puedeEnviar(), envio: envio, textoEnvio: textoEnvio() };
+    });
+    n.on("medida:envia", function () { envia(); });
+    n.on("medida:inicia", function (d) { inicia(d && d.segundos); });
+    n.on("medida:muestra", function (d) { api.muestra(!!(d && d.on)); });
+    // la fila «Medida» de la pestaña Comodidad del panel de VR (solo con ?debug), que 29_vr.js ya no conoce
+    n.limpia(PanelVR.filas("comodidad", { id: "mide", orden: 50, alto: 88, visible: function () { return DEPURA; }, pinta: function (cx, y, W, h) { h.fila("Medida", y); },
+      botones: function (b, y) { b("mide", 420, y, 470, 64, "Medir " + N + " s", function () { inicia(); }, estado === "midiendo"); } }));
     var param = /[?&]mide(?:=(\d+))?(?=&|$)/.exec(location.search);
     if (param) arma(param[1] ? Number(param[1]) : 60); else if (contador()) ui();
+    medSuelta = function () {   // libera: la caja del DOM, la escucha de la pestaña, el gancho de pruebas y lo que estaba midiendo
+      desengancha(); if (huboVisib) { document.removeEventListener("visibilitychange", alVisibilidad); huboVisib = false; }
+      if (UI && UI.parentNode) UI.parentNode.removeChild(UI);
+      UI = null; api.on = false; estado = "inactivo"; res = null; m = null; try { delete window.__mide; } catch (e) { window.__mide = undefined; }
+    };
     return api;
-  })();
+  }
+  Componentes.registra({
+    id: "medidor-fotogramas", version: 1,
+    consume: ["visor", "renderer", "modo", "D", "DEPURA", "ConfigPuro", "Ajustes", "Arboles", "Escena3D", "VRX", "PanelVR"],
+    expone: [],
+    eventos: { escucha: ["cuadro:fin", "depura:lineas", "medida:estado", "medida:envia", "medida:inicia", "medida:muestra"], emite: ["medida:empieza", "medida:envio", "medida:fin"] },
+    bandera: { defecto: true, url: "medidor" },
+    presupuesto: { llamadas: 0, triangulos: 0 },   // no dibuja nada en la escena: solo una caja de DOM (con ?debug, &mide o el botón de Configuración → Avanzado)
+    fases: {},
+    monta: function (n) { return MedidorMotor(n); },
+    actualiza: {},
+    libera: function () { if (medSuelta) medSuelta(); medSuelta = null; }
+  });

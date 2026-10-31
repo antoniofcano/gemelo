@@ -22,7 +22,9 @@ Los componentes del motor ([ADR-0023](../doc/adr/0023-componentes-del-mundo.md),
 | `chat:alterna` | — | `31_hud` (el icono del chat de la barra o del menú «Más») | `38_presencia_compartida` (abre el chat minimizado o lo minimiza; sin chat, nada) |
 | `audio:desbloquea` | — | `29_vr` (al pulsar «Entrar en VR»: el gesto que deja arrancar el audio) | `20_sonido`, `45_voz` (arranca el AudioContext de la voz si estás en una guiada) |
 | `componentes:cambia` | `{ id, activo }` | `02c_componentes` (al montar o liberar un componente) | `15_tiempo` (esconde «Ver la previsión en el mundo» si nadie la atiende) |
-| `depura:lineas` | `{ lineas: [texto] }` | `28_depura` (el contador de `?debug`, cada 0,5 s) | `38_presencia_compartida` (añade su línea si está activa), `44_lindes` (llamadas, tramos, triángulos y paso de la linde), `45_voz` (sala, voces, micro y modo, si está en una guiada), `46_guiada` (evento, papel, palabra, manos y si se está cerrando), `47_habla` (micro, modo y mano) |
+| `capas:cambia` | (nada) | `08_marcadores` (`capas()`: cambió una casilla de capas o se aplicó el estado) | `08b_marcadores_lidar` (lee las casillas de copas, marcas y desfase) |
+| `cuadro:fin` | `{ t }` (el mismo objeto cada fotograma) | `90_final` (al acabar `cuadro()`, también en pausa) | `30_mide` (solo mientras está armado o midiendo) |
+| `depura:lineas` | `{ lineas: [texto] }` | `28_depura` (el contador de `?debug`, cada 0,5 s) | `30_mide` (la línea de la medida, si hay una en curso o lista), `38_presencia_compartida` (añade su línea si está activa), `44_lindes` (llamadas, tramos, triángulos y paso de la linde), `45_voz` (sala, voces, micro y modo, si está en una guiada), `46_guiada` (evento, papel, palabra, manos y si se está cerrando), `47_habla` (micro, modo y mano) |
 | `guiada:entrada` | `{ evento, ok, mensaje }` | `38_presencia_compartida` (OF11e: resultado de `guiada:entrar`; `mensaje` es la frase de la api si no dejó entrar) | `43_agenda` (pinta «Estáis en la visita» o la frase) |
 | `guiada:entrar` | `{ evento }` | `43_agenda` (OF11e: pulsó «Entrar en la visita»; sin nadie que escuche no hay botón) | `38_presencia_compartida` (solo con `?presencia=red`: `Presencia.entraGuiada`, y contesta `guiada:entrada`) |
 | `guiada:cierre` | `{ en, segundos }` | `46_guiada` (F3f: llegó el aviso de que se cierra la sala guiada, tema `cierre` sin participante) | — (la cuenta atrás, la lámina en VR y la vuelta a la visita libre ya las pone él) |
@@ -35,6 +37,14 @@ Los componentes del motor ([ADR-0023](../doc/adr/0023-componentes-del-mundo.md),
 | `juego:ofrece` | `{ id, titulo, descripcion?, ayuda?, vr?, crea }` (`vr: { botones, palanca, ayuda? }` si sabe jugarse en VR, C9b) | `41_cae_la_cosecha` (al montarse y al oír `juego:pide`) | `40_juegos` (el anfitrión: lo pone en la ventana Juegos) |
 | `juego:pide` | — | `40_juegos` (al montarse) | `41_cae_la_cosecha` |
 | `juego:retira` | `{ id }` | `41_cae_la_cosecha` (al liberarse) | `40_juegos` (lo quita y, si estaba abierto, lo cierra) |
+| `medida:empieza` | (nada) | `30_mide` (empieza a medir dentro de VR) | `29_vr` (esconde el panel) |
+| `medida:envia` | (nada) | `29_vr` (el botón «Enviar esta medida a la oficina») | `30_mide` |
+| `medida:envio` | (nada) | `30_mide` (cambió el estado del envío) | `29_vr` (repinta la tarjeta) |
+| `medida:estado` | `{ res }` (pregunta: el medidor rellena `res` con `{ resultado, lineas, puedeEnviar, envio, textoEnvio }`) | `29_vr` | `30_mide` |
+| `medida:fin` | (nada) | `30_mide` (termina una medida dentro de VR) | `29_vr` (abre la tarjeta del resultado) |
+| `medida:inicia` | `{ segundos? }` | `33_ajustes` («Medir 60 s» de Configuración → Avanzado) | `30_mide` |
+| `medida:muestra` | `{ on }` | `33_ajustes` (cambia «Contador de rendimiento») | `30_mide` (enseña o esconde su caja) |
+| `mundo:aplica` | (nada) | `08_marcadores` (`aplica()`: cambió la exageración, el modo o los datos de las teselas) | `08b_marcadores_lidar` (recoloca copas, anillos y desfase) |
 | `mundo:pausa` | `{ activa }` | `02c_componentes` (`Pausa.pon` / `Pausa.quita`) | (nadie todavía) |
 | `voz:estado` | `{ sala, dentro, guiada, papel, puede, micro, turno, modo, auriculares, bloqueado, voces, hablan, motivo }` | `45_voz` (F3d: algo cambió en la voz de la guiada) | `46_guiada` (F3f: vuelve a leer la sala enseguida), `47_habla` (F3e: el indicador del micro, el botón Hablar, la háptica y la lámina de VR) |
 | `voz:habla` | `{ identidad, nivel, habla, yo }` | `45_voz` (F3d: alguien empieza a hablar, cambia de nivel en ≥ 0,1 o calla; ActiveSpeakers) | — (para la etiqueta del avatar y Gente: F3e) |

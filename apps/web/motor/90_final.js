@@ -1,11 +1,11 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: tamano, cuadro, bucle
-// Consume: 02_mundo (Mundo), 02b_cola (Cola), 02c_componentes (Pausa, Componentes), 02d_laminas (Laminas), 02e_entidades (Usables),
-//   03_escena (visor, renderer, scene, camera), 04b_escena3d (Escena3D), 04e_suelo_fondo (SueloFondo),
-//   05_nube (actualizaNubeTeselas, actualizaNube), 07b_arboles (Arboles), 08_marcadores (listo, aplica), 09_camara (objetivo, camara),
-//   12_paseo (paseando, actualizaPaseo), 15_tiempo (actualizaTiempo, hace), 16_vida (quita, actualizaVida), 17_minimapa (actualizaMinimapa),
-//   18_paisaje (actualizaPaisaje), 19_balizas (actualizaBalizas), 21_suelo (recoloreaSuelo, actualizaSuelo), 23_estacion (actualizaOlivo),
-//   24_pantalla (transEntrada, transSalida), 28_depura (depuraCuadro), 29_vr (VRX, vrActualiza, vrFin), 30_mide (Mide), 33_ajustes (Ajustes)
+// Consume: 02_mundo (Mundo), 02b_cola (Cola), 02c_componentes (Bus, Pausa, Componentes), 02d_laminas (Laminas), 02e_entidades (Usables),
+//   03_escena (visor, renderer, scene, camera), 04b_escena3d (Escena3D), 05_nube (actualizaNubeTeselas, actualizaNube), 07b_arboles (Arboles),
+//   08_marcadores (listo, aplica), 09_camara (objetivo, camara), 12_paseo (paseando, actualizaPaseo), 15_tiempo (actualizaTiempo, hace),
+//   16_vida (quita, actualizaVida), 17_minimapa (actualizaMinimapa), 18_paisaje (actualizaPaisaje), 19_balizas (actualizaBalizas),
+//   21_suelo (recoloreaSuelo, actualizaSuelo), 23_estacion (actualizaOlivo), 24_pantalla (transEntrada, transSalida), 28_depura (depuraCuadro),
+//   29_vr (VRX, vrActualiza, vrFin), 33_ajustes (Ajustes)
 // Nota: Arranque y bucle: Mundo.arranca, Componentes.arranca, cuadro() y requestAnimationFrame. Define el orden de las actualizaciones por fotograma: los módulos que aún no son componentes a mano y los componentes por fases (mundo, tarde, trasRender).
 // ===============================================================================
 
@@ -21,18 +21,20 @@
   // Los componentes registrados (02c_componentes.js, ADR-0023) van por fases sin nombrarlos: «mundo» tras la cámara, «tarde» antes de la Cola y «trasRender»;
   // con el mundo en pausa (Pausa), solo «pausa».
   // Los módulos que aún no son componentes siguen llamándose aquí a mano (migración incremental: cada uno que se convierte quita su llamada).
+  var FIN = { t: 0 };   // «cuadro:fin»: el fotograma acabó (lo escucha el medidor de fotogramas solo mientras mide); el mismo objeto cada vez, sin crear nada
   function cuadro(t) {
+    FIN.t = t;
     var dt = Math.min(0.1, (t - tAnt) / 1000); tAnt = t;
     // el mundo en pausa (02c Pausa: un juego a pantalla completa): ni cámara, ni módulos, ni Cola, ni render; solo la fase «pausa» y el contador de ?debug
-    if (Pausa.activa() && !VRX.on) { Componentes.actualiza("pausa", dt, t); depuraCuadro(t); if (Mide.on) Mide.cuadro(t); return; }
+    if (Pausa.activa() && !VRX.on) { Componentes.actualiza("pausa", dt, t); depuraCuadro(t); Bus.emite("cuadro:fin", FIN); return; }
     if (VRX.on) vrActualiza(dt, t); else if (paseando) { actualizaPaseo(dt); transEntrada(dt); } else { camara(); transSalida(dt); }
     Usables.actualiza(dt);   // la cercanía (02e_entidades.js): antes que las balizas, que la leen
     actualizaTiempo(dt, t); actualizaOlivo(dt); actualizaVida(dt); actualizaMinimapa(dt); actualizaPaisaje(dt); actualizaBalizas(dt); actualizaSuelo(dt); actualizaNube(dt);
     Componentes.actualiza("mundo", dt, t);
     Arboles.actualiza(dt); actualizaCarga(dt);
     Componentes.actualiza("tarde", dt, t); Laminas.revisa(dt);
-    Cola.corre(Arboles.presupuesto()); SueloFondo.actualiza(); Escena3D.actualiza();
-    renderer.render(scene, camera); Componentes.actualiza("trasRender", dt, t); depuraCuadro(t); if (VRX.on) vrFin(dt, performance.now() - t); if (Mide.on) Mide.cuadro(t);
+    Cola.corre(Arboles.presupuesto()); Escena3D.actualiza();
+    renderer.render(scene, camera); Componentes.actualiza("trasRender", dt, t); depuraCuadro(t); if (VRX.on) vrFin(dt, performance.now() - t); Bus.emite("cuadro:fin", FIN);
   }
   var tAhorro = 0;   // Configuración → Gráficos → Ahorro de batería: salta los fotogramas que llegan antes de ~25 ms (unos 30 por segundo)
   function bucle() { if (VRX.on) return; var ahora = performance.now(); if (Ajustes.lee("graficos.ahorro") && ahora - tAhorro < 25) { requestAnimationFrame(bucle); return; } tAhorro = ahora; cuadro(ahora); requestAnimationFrame(bucle); }

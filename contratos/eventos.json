@@ -14,6 +14,12 @@
       "emiten": ["29_vr"],
       "escuchan": ["20_sonido", "45_voz"]
     },
+    "capas:cambia": {
+      "descripcion": "Cambió alguna casilla de capas del menú (Linde, Copas del LiDAR, Guardados en OlivarTrack, Desfase) o se aplicó el estado al cargar: quien dibuja una de esas capas lee su casilla y se enseña o se esconde. 08_marcadores.js se ocupa de la linde; el resto lo atiende el componente de los marcadores. Sin él (?marcadores=0), no pasa nada.",
+      "datos": {},
+      "emiten": ["08_marcadores"],
+      "escuchan": ["08b_marcadores_lidar"]
+    },
     "chat:alterna": {
       "descripcion": "El icono del chat de la barra (o del menú «Más»): si el chat de la visita compartida está minimizado (burbuja) se abre; si está abierto, se minimiza. Sin chat (sin presencia en red, o sin &chat=1 en la simulación) nadie lo atiende y no pasa nada.",
       "datos": {},
@@ -26,11 +32,17 @@
       "emiten": ["02c_componentes"],
       "escuchan": ["15_tiempo"]
     },
+    "cuadro:fin": {
+      "descripcion": "El fotograma acaba (después de pintar y del contador de ?debug), también en pausa. Lo emite 90_final.js con el mismo objeto cada vez ({ t }: la hora del fotograma, la de requestAnimationFrame). Solo lo escucha el medidor de fotogramas, y solo mientras está armado o midiendo; sin él, nadie lo atiende y no cuesta nada.",
+      "datos": { "type": "object", "required": ["t"], "properties": { "t": { "type": "number" } } },
+      "emiten": ["90_final"],
+      "escuchan": ["30_mide"]
+    },
     "depura:lineas": {
       "descripcion": "El contador de ?debug (cada 0,5 s) pide sus líneas a los componentes: quien tenga algo que decir añade una cadena a «lineas» (hoy, la presencia compartida y las lindes de las hazas). Se pintan en ese orden, tras la de VR.",
       "datos": { "type": "object", "required": ["lineas"], "properties": { "lineas": { "type": "array", "items": { "type": "string" } } } },
       "emiten": ["28_depura"],
-      "escuchan": ["38_presencia_compartida", "44_lindes", "45_voz", "46_guiada", "47_habla"]
+      "escuchan": ["30_mide", "38_presencia_compartida", "44_lindes", "45_voz", "46_guiada", "47_habla"]
     },
     "fauna:conejo-cerca": {
       "descripcion": "Una pregunta con respuesta en el mismo objeto: un perro en { x, y } busca, en un radio (m), el conejo visible más cercano; la fauna rellena res con ese conejo (el grupo de three, con su estado en userData) o lo deja en null. Sin fauna (?fauna=0), res queda en null y los perros no persiguen a nadie.",
@@ -136,6 +148,48 @@
       "emiten": ["41_cae_la_cosecha"],
       "escuchan": ["40_juegos"]
     },
+    "medida:empieza": {
+      "descripcion": "El medidor de fotogramas empieza a medir dentro de una sesión de VR: el panel de VR se esconde para no tapar la vista durante la medida.",
+      "datos": {},
+      "emiten": ["30_mide"],
+      "escuchan": ["29_vr"]
+    },
+    "medida:envia": {
+      "descripcion": "El botón «Enviar esta medida a la oficina» del panel de VR (con el gatillo): el medidor manda la medida a la api del mismo origen. Sin medidor (?medidor=0) nadie lo atiende.",
+      "datos": {},
+      "emiten": ["29_vr"],
+      "escuchan": ["30_mide"]
+    },
+    "medida:envio": {
+      "descripcion": "Cambió el estado del envío de la medida a la oficina (enviando, enviada, límite, mal): el panel de VR repinta su tarjeta.",
+      "datos": {},
+      "emiten": ["30_mide"],
+      "escuchan": ["29_vr"]
+    },
+    "medida:estado": {
+      "descripcion": "Una pregunta con respuesta en el mismo objeto: el panel de VR pide lo que pinta en la tarjeta de la medida; el medidor rellena res con { resultado, lineas, puedeEnviar, envio, textoEnvio }. Sin medidor, res queda en null y la tarjeta no se abre (nunca llega «medida:fin»).",
+      "datos": { "type": "object", "properties": { "res": { "type": ["object", "null"] } } },
+      "emiten": ["29_vr"],
+      "escuchan": ["30_mide"]
+    },
+    "medida:fin": {
+      "descripcion": "El medidor de fotogramas termina una medida dentro de una sesión de VR: el panel vuelve a verse con la tarjeta del resultado.",
+      "datos": {},
+      "emiten": ["30_mide"],
+      "escuchan": ["29_vr"]
+    },
+    "medida:inicia": {
+      "descripcion": "Configuración → Avanzado → «Medir 60 s»: el medidor empieza a medir ya, en el modo en que se esté. Sin medidor (?medidor=0) nadie lo atiende.",
+      "datos": { "type": "object", "properties": { "segundos": { "type": "number" } } },
+      "emiten": ["33_ajustes"],
+      "escuchan": ["30_mide"]
+    },
+    "medida:muestra": {
+      "descripcion": "El ajuste «Contador de rendimiento» de Configuración → Avanzado cambia: el medidor enseña o esconde su caja junto al contador.",
+      "datos": { "type": "object", "required": ["on"], "properties": { "on": { "type": "boolean" } } },
+      "emiten": ["33_ajustes"],
+      "escuchan": ["30_mide"]
+    },
     "mundo:pausa": {
       "descripcion": "El mundo entra en pausa (activa true: alguien llamó a Pausa.pon, p. ej. un juego a pantalla completa) o sale de ella (activa false). En pausa el bucle no avanza ni pinta el mundo: solo corre la fase «pausa».",
       "datos": { "type": "object", "required": ["activa"], "properties": { "activa": { "type": "boolean" } } },
@@ -177,6 +231,12 @@
       "datos": { "type": "object", "properties": { "abre": { "type": "boolean" } } },
       "emiten": ["15_tiempo"],
       "escuchan": ["35_fichas_tiempo"]
+    },
+    "mundo:aplica": {
+      "descripcion": "El mundo se ha vuelto a aplicar (aplica() de 08_marcadores.js: cambió la exageración vertical, el modo o los datos de las teselas): lo que cuelga del terreno se recoloca. Hoy lo atiende el componente de los marcadores del LiDAR (copas, anillos y desfase); sin él (?marcadores=0), nadie.",
+      "datos": {},
+      "emiten": ["08_marcadores"],
+      "escuchan": ["08b_marcadores_lidar"]
     },
     "oficina:anuncio": {
       "descripcion": "OF10: ha llegado un anuncio de la oficina por la sala (tema «anuncio», mandado por la api sin participante; ya validado y limpio). Para quien quiera reaccionar (un sonido, un lector de pantalla); el aviso, la lámina en VR y la línea del chat ya los pone 39_oficina_mundo.",

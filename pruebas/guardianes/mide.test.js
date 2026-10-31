@@ -119,12 +119,14 @@ test("PB9: el envío es SOLO a petición (el botón), al mismo origen, sin nada 
   assert.ok(!/envia\(\)/.test(FUENTE.slice(FUENTE.indexOf("function termina()"), FUENTE.indexOf("function guarda()"))), "termina() no envía nada por su cuenta");
   assert.ok(/Enviar esta medida a la oficina/.test(FUENTE), "el texto del botón");
   const vr = lee("apps/web/motor/29_vr.js");
-  assert.ok(/b\("mideEnvia"[^;]*Mide\.envia\(\)/.test(vr), "el botón del panel de VR llama a Mide.envia() con el gatillo");
+  assert.ok(/b\("mideEnvia"[^;]*Bus\.emite\("medida:envia"\)/.test(vr), "el botón del panel de VR pide el envío por el Bus (medida:envia) con el gatillo");
+  assert.ok(/n\.on\("medida:envia", function \(\) \{ envia\(\); \}\)/.test(FUENTE), "y el medidor lo atiende");
   assert.ok(!/localStorage/.test(envia));
 });
 
-test("sin &mide el motor no hace nada: 90_final solo mira Mide.on, y 30_mide no registra nada hasta armarse", () => {
-  assert.ok(/if \(Mide\.on\) Mide\.cuadro\(t\);/.test(lee("apps/web/motor/90_final.js")));
+test("sin &mide el motor no hace nada: 90_final solo emite «cuadro:fin», y 30_mide solo lo escucha armado o midiendo", () => {
+  assert.ok(/Bus\.emite\("cuadro:fin", FIN\);/.test(lee("apps/web/motor/90_final.js")));
+  assert.ok(/function engancha\(\) \{ if \(!quitaCuadro\) quitaCuadro = n\.on\("cuadro:fin"/.test(FUENTE) && /desengancha\(\); prev = -1;/.test(FUENTE), "la escucha del fotograma solo existe mientras mide");
   const i = FUENTE.indexOf("var param = ");
   assert.ok(i > 0 && /if \(param\) arma\(/.test(FUENTE.slice(i)), "el armado debe depender de &mide");
   assert.ok(!/addEventListener\("visibilitychange"[^;]*;\s*\n\s*var param/.test(FUENTE));

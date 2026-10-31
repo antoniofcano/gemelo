@@ -1,31 +1,21 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: gLinde, tmp, listo, aplica, capas, pendiente, aplicaLuego
-// Consume: 01_datos (D, $), 02_mundo (suelo, orto, copas, cIn, marc), 03_escena (scene, colorCss, exag, modo), 05_nube (nube, pintaNube),
+// Expone: gLinde, tmp, marcadores, listo, aplica, capas, pendiente, aplicaLuego
+// Consume: 01_datos (D, $), 02_mundo (orto, copas), 02c_componentes (Bus), 03_escena (scene, exag, modo), 05_nube (nube, pintaNube),
 //   06_arboles (gArboles, gFollaje, gSombras, tronco), 07b_arboles (Arboles), 14_historia (avTipo, pintaAvance), 15_tiempo (colocaBarrera, lindes),
-//   16_vida (esfera), 18_paisaje (colocaPaisaje), 19_balizas (colocaBalizas), 21_suelo (recoloreaSuelo)
+//   18_paisaje (colocaPaisaje), 19_balizas (colocaBalizas), 21_suelo (recoloreaSuelo)
 // ===============================================================================
 
-  // linde y marcadores
-  var gLinde = new THREE.Group(), gCopas = new THREE.Group(), gMarc = new THREE.Group(), gDesf = new THREE.Group();
-  gLinde.name = "lindes"; gCopas.name = "copas"; gMarc.name = "marcas"; gDesf.name = "desfase";   // los nombres los usa el desglose de llamadas de las pruebas
-  [gLinde, gCopas, gMarc, gDesf].forEach(function (g) { scene.add(g); });
+  // la linde y lo que cuelga del terreno al aplicar. Las copas del LiDAR, los anillos de OlivarTrack y el desfase son el componente «marcadores-lidar»
+  // (08b_marcadores_lidar.js): aplica() les avisa con «mundo:aplica» y capas() con «capas:cambia»; sin él (?marcadores=0) esas tres casillas no hacen nada.
+  var gLinde = new THREE.Group();
+  gLinde.name = "lindes"; scene.add(gLinde);   // el nombre lo usa el desglose de llamadas de las pruebas
   // (las lindes son ahora una barrera de luz: ver el bloque del tiempo)
-  var mCopas = new THREE.InstancedMesh(new THREE.OctahedronGeometry(0.38), new THREE.MeshBasicMaterial({ color: colorCss("--lidar") }), cIn.length); mCopas.frustumCulled = false; gCopas.add(mCopas);   // r151: la esfera de una InstancedMesh se calcula una vez con sus instancias; estas se recolocan con la exageración
-  var ani = new THREE.RingGeometry(0.55, 0.95, 20); ani.rotateX(-Math.PI / 2);
-  var mMarc = new THREE.InstancedMesh(ani, new THREE.MeshBasicMaterial({ color: colorCss("--guardado"), side: THREE.DoubleSide }), marc.length); mMarc.frustumCulled = false; gMarc.add(mMarc);
-  var desfGeo = new THREE.BufferGeometry(); gDesf.add(new THREE.LineSegments(desfGeo, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 })));
   var tmp = new THREE.Object3D();
   function marcadores() {
     D.parcelas.forEach(function (pr, k) {
       colocaBarrera(k);
     });
-    cIn.forEach(function (c, i) { tmp.position.set(c.x, (suelo(c.x, c.y) + c.h + 1.4) * exag, -c.y); tmp.updateMatrix(); mCopas.setMatrixAt(i, tmp.matrix); }); mCopas.instanceMatrix.needsUpdate = true;
-    var seg = [];
-    marc.forEach(function (m, i) {
-      var gz = suelo(m.x, m.y); tmp.position.set(m.x, (gz + 0.35) * exag, -m.y); tmp.updateMatrix(); mMarc.setMatrixAt(i, tmp.matrix);
-      if (m.par >= 0) { var c = copas[m.par], g2 = suelo(c.x, c.y); seg.push(m.x, (gz + 0.5) * exag, -m.y, c.x, (g2 + 0.5) * exag, -c.y); }
-    }); mMarc.instanceMatrix.needsUpdate = true;
-    desfGeo.setAttribute("position", new THREE.Float32BufferAttribute(seg, 3));
+    Bus.emite("mundo:aplica");   // el componente de los marcadores recoloca copas, anillos y desfase
   }
 
   var NOTAS = {
@@ -42,6 +32,6 @@
     $("notaModo").textContent = NOTAS[modo]; capas();
     if ($("cSolo") && $("cSolo").checked) { gArboles.visible = false; gFollaje.visible = false; gSombras.visible = false; nube.visible = false; }
   }
-  function capas() { gLinde.visible = $("cLinde").checked; gCopas.visible = $("cCopas").checked; gMarc.visible = $("cMarc").checked; gDesf.visible = $("cDesf").checked; }
+  function capas() { gLinde.visible = $("cLinde").checked; Bus.emite("capas:cambia"); }   // las casillas de copas, marcas y desfase las atiende su componente
   var pendiente = false;
   function aplicaLuego() { if (pendiente) return; pendiente = true; requestAnimationFrame(function () { pendiente = false; aplica(); }); }
