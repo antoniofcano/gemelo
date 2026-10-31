@@ -718,9 +718,16 @@
     // dejar un mensaje en el chat (el anuncio de la oficina: el texto ya viene limpio, y se pinta como texto)
     function miInfo() { return yo && yo.info ? { alias: yo.info.alias, rol: yo.info.rol, oficial: !!yo.info.oficial } : null; }
     function mensaje(quien, txt) { var t = Chat.limpia(txt), q = Chat.limpia(quien); if (t && q) anadeMensaje(q, t, false); return !!(t && q); }
+    // F3d (45_voz.js): dónde está la cabeza de esa identidad en la escena (x, z de la pose interpolada; y, el suelo de ESTE mundo × exageración + los ojos),
+    // para situar su voz; null si no está en tu sala de presencia, no tiene pose, está en vista aérea o la bloqueaste. En la simulación, el id es «sim<k>»
+    function cabeza(identidad) {
+      var a = activo ? busca(identidad) : null;
+      if (!seVe(a, performance.now())) return null;
+      var c = a.out.cab.p; return { x: c[0], y: suelo(c[0], -c[2]) * exag + ALTO_OJOS, z: c[2] };
+    }
     var api = { activo: function () { return activo; }, actualiza: actualiza, estado: estado, libera: libera, texto: texto, llegadas: llegadas, puntos: puntos, irCon: irCon,
       vrmPersonas: vrmPersonas, miVrm: miVrm, miAvatar: miAvatar, recolorea: recolorea, cambiaron: cambiaron, enganchaVRM: enganchaVRM,
-      sala: function () { return claveSala; }, cambiaSala: cambiaSala, yo: miInfo, mensaje: mensaje };
+      sala: function () { return claveSala; }, cambiaSala: cambiaSala, yo: miInfo, mensaje: mensaje, cabeza: cabeza };
     window.__presenciaChat = function (txt) { anadeMensaje("Prueba", String(txt || "Hola"), false); };   // pruebas del chat movible (la ventana solo existe con ?presencia=red o &chat=1)
     // gancho de pruebas: estado; con "libera", apagar el componente (soltar todo; los avatares VRM se sueltan antes); con "llegadas", las poses apuntadas (P4);
     // con "puntos", quién sale en el minimapa; con "ir" e id, ir con esa persona (I1). Tras liberar sigue contestando (activo: false), como antes de C5
