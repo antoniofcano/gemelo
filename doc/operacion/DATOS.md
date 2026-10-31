@@ -73,6 +73,14 @@ Lo comprueba `pruebas/guardianes/exportadores.test.js` con los exportadores sint
 
 Variables de entorno: `GEMELO_DATOS`, `GEMELO_DESCARGAS`, `GEMELO_LIDAR`, `GEMELO_IMAGEN`, `GEMELO_HITUELO`, `GEMELO_PARCELAS`, `GEMELO_MDS`, `GEMELO_SUELO`. Los valores por defecto son rutas relativas a la carpeta desde la que se lanza el script. Las rutas se arman con `os.path.join`, así que los scripts valen en Windows, Linux y macOS (decisión 8, D4; lo vigila el guardián `multiplataforma`). Probado solo con `py_compile`: no se han vuelto a ejecutar con datos reales fuera de Windows.
 
+## Hornear Hituelo real y medir un paseo (O7h)
+Todo fuera del repo; las rutas van por variables, nunca escritas. Cifras de un día: [MEDIDAS](../sistema/MEDIDAS.md#hituelo-real-horneado-con-dos-épocas-o7h-2026-10-31-foto-no-se-mantiene).
+
+1. `cd tuberia/olivos && npm ci` (y `npm ci` en `apps/web/olivo`, `apps/web` y `tuberia/tiles3d`).
+2. Hornear (dentro del turno del banco; el hornero abre Chrome para los impostores): `GEMELO_DATOS=<exportación de Hituelo> node pruebas/banco/proceso.js --que "hornear Hituelo" --memoria-gb 1.5 -- node tuberia/olivos/hornero.mjs --impostores --fecha AAAA-MM-DD --salida <salida>`. Escribe `<salida>/hituelo/olivos/` (manifiesto + `.br` + `.webp`) y una línea JSON con tiempos y bytes por nivel. Las dos épocas son la de `--fecha` y la siguiente del calendario. Si el total pasa de 1 h, parar tras la primera época y estimar.
+3. Montar el mundo servible: `node tuberia/tiles3d/genera.mjs --entrada <indice.json> --salida <mundo>/tileset`; `node apps/web/herramientas/genera_motor.mjs --datos <indice.json> --dest <web>` y `GEMELO_WEB_RAIZ=<web> npx vite build --outDir <mundo> --emptyOutDir false` desde `apps/web`; copiar `t/` de la exportación y la carpeta `olivos/` a `<mundo>/`.
+4. Servir `<mundo>` con un servidor estático que ponga `Content-Encoding: br` a `olivos/<huella>.br` (el de `_navegador.js` no lo hace) y abrir `index.html?olivos=gen&olivosDir=olivos/&tileset=tileset/tileset.json`; sin `olivosDir` la página no pide el manifiesto (solo lo hace con `D.base` = `/teselas/<finca>/`). Contar los bytes por petición en una entrada y un recorrido fijo.
+
 ## Contorno de la finca (OF3b y OF3c, decisiones 140 y 143)
 
 El contorno de una finca es la **unión de sus parcelas** y limita el editor de hazas de la oficina (migración 0011, tabla `fincas_contorno`;
