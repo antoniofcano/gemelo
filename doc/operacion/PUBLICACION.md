@@ -4,7 +4,8 @@ El gemelo **solo se sirve desde un servidor**: el entorno local de `infra/dev` y
 
 ## Qué se sirve
 - La web construida con Vite (`apps/web/dist/`): la página, el motor empaquetado y three 0.186.1 incluido (sin CDN).
-- Por finca, con su `indice.json` (que trae `tileset`): `t/<kx>_<ky>.json|jpg` (lo que lee `Mundo`, [CONTRATOS](../sistema/CONTRATOS.md) §1.2-1.3) y `tileset/` (`tileset.json` + glb, [TILES3D](../sistema/TILES3D.md)). Sin tileset la finca muestra «Esta finca no tiene escena».
+- Por finca, con su `indice.json` (que trae `tileset`): `t/<kx>_<ky>.json|jpg` (lo que lee `Mundo`, [CONTRATOS](../sistema/CONTRATOS.md) §1.2-1.3), `tileset/` (`tileset.json` + glb, [TILES3D](../sistema/TILES3D.md)) y `olivos/` (manifiesto, `<huella>.br` y atlas `<huella>.webp` del hornero). Sin tileset la finca muestra «Esta finca no tiene escena».
+- La portada (`dist-portada`), la oficina (`dist-oficina`, tras sesión de oficina) y el catálogo de avatares (`/avatares/`, tras sesión).
 - Caddy interno con las cabeceras y la CSP del [`infra/Caddyfile`](../../infra/Caddyfile): el motor solo hace `fetch` a su mismo origen.
 - No hay límites de tamaño ni de número de ficheros de plataforma: Hituelo son 248 glb + `tileset.json` + 92 ficheros de `t/` (cifras en [MEDIDAS](../sistema/MEDIDAS.md)).
 
@@ -12,14 +13,14 @@ El gemelo **solo se sirve desde un servidor**: el entorno local de `infra/dev` y
 `npm run dev:arriba` ([DESARROLLO-LOCAL](DESARROLLO-LOCAL.md)): web, api y Caddy con https en `localhost:8743`; la escena la da `GEMELO_DEV_TILESET`. No es producción.
 
 ## En el VPS
-Contrato de lo que se despliega: [`contratos/publicacion-vps.json`](../../contratos/publicacion-vps.json). Puesta en marcha, copias y vuelta atrás: [RUNBOOK-VPS](RUNBOOK-VPS.md). El despliegue irá por CI **con aprobación manual**. **Nada se ha ejecutado todavía en el VPS.**
+Contrato de lo que se despliega: [`contratos/publicacion-vps.json`](../../contratos/publicacion-vps.json). El primer despliegue, paso a paso: [DESPLIEGUE-V2](DESPLIEGUE-V2.md). Referencia de operación, copias y vuelta atrás: [RUNBOOK-VPS](RUNBOOK-VPS.md). El CI de hoy (`puerta.yml`) no despliega: el primer despliegue es a mano y, más adelante, irá por CI **con aprobación manual**. **Nada se ha ejecutado todavía en el VPS.**
 
 ## Receta resumida
 1. Puerta en verde (`npm run puerta`).
 2. Generar los datos y el tileset de cada finca ([DATOS](DATOS.md), skill `datos-finca`), fuera del repo.
 3. Construir la web y servirla en local para mirarla con `?debug`.
 4. **Pedir confirmación** a Antonio con lo que se sube.
-5. Desplegar según RUNBOOK-VPS; verificar que lo servido es lo nuevo (versión leída de vuelta) y anotarlo en ESTADO.
+5. Desplegar según [DESPLIEGUE-V2](DESPLIEGUE-V2.md); verificar que lo servido es lo nuevo (versión leída de vuelta) y anotarlo en ESTADO.
 
 ## Qué no se publica
 Datos de la explotación no destinados a ello, claves, rutas locales. Si la página lleva datos de OlivarTrack (`D.ot`), el acceso va tras la sesión de la api.

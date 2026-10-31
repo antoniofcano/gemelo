@@ -42,6 +42,7 @@
 - [operacion/DATOS.md](operacion/DATOS.md) — fuentes, hojas LiDAR/MDT por finca, cómo regenerar, licencias.
 - [operacion/DESARROLLO-LOCAL.md](operacion/DESARROLLO-LOCAL.md) — el mundo y los servicios base (Caddy, PostGIS, LiveKit, buzón) en local con Docker: `npm run dev:arriba`.
 - [operacion/RUNBOOK-VPS.md](operacion/RUNBOOK-VPS.md) — servidor F1a en el VPS: puesta en marcha, operación, copias cifradas y ensayo de restauración (aún sin ejecutar en el VPS).
+- [operacion/DESPLIEGUE-V2.md](operacion/DESPLIEGUE-V2.md) — **el primer despliegue en el VPS, paso a paso**: qué hace Antonio, comprobación y vuelta atrás de cada paso, y qué bloquea enseñarlo o abrirlo a familias.
 - [operacion/TESTING.md](operacion/TESTING.md) — qué prueba cada cosa y qué significa cada rojo.
 
 ## Skills — `.claude/skills/`

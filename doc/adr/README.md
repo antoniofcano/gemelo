@@ -39,3 +39,4 @@ Cada decisión con alternativas reales se escribe una vez, con su porqué y su c
 | [0024](0024-la-oficina-roles-acceso-y-configuracion-versionada.md) | La oficina: roles, acceso y configuración versionada | Aceptado |
 | [0025](0025-avatares-por-piezas-contrato-v2.md) | Avatares por piezas: contrato `avatares` v2 y receta | Aceptado |
 | [0026](0026-voz-y-moderacion.md) | Voz y moderación | Aceptado |
+| [0027](0027-livekit-en-produccion-puertos-publicados.md) | LiveKit en producción: red de Docker y dos puertos publicados | Aceptado |
