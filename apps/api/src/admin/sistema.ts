@@ -2,15 +2,16 @@
 //   GET  /api/admin/sistema        salud de cada servicio + OlivarTrack + Vigía + hornero + correo, juntos y sin secretos
 //   GET  /api/admin/auditoria      la auditoría, filtrable por acción y paginada hacia atrás (cursor = id)
 //   POST /api/admin/correo/prueba  manda un correo de prueba a la propia cuenta (nunca a otra) y lo deja en la auditoría
-// «Sincronizar ahora» ya existe (POST /api/admin/sincronia, en rutas.ts); «re-hornear» es de OF9.
+//   POST /api/admin/hornero/rehornear  (OF9, admin + confirmación reciente) deja la petición de una vuelta ya al hornero (fichero en el volumen compartido)
+// «Sincronizar ahora» ya existe (POST /api/admin/sincronia, en rutas.ts).
 // Nada de lo que sale lleva tokens, claves, URLs ni rutas del servidor: el modo y el estado, sí.
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { mensajeDePrueba } from "../auth/correo.ts";
 import { audita } from "../auth/servicio.ts";
 import type { Contexto } from "../contexto.ts";
 import { huella } from "../seguridad/cripto.ts";
-import { OFICINA, SIN_SESION } from "../oficina/acceso.ts";
-import { leeHornero, limpiaMensaje } from "./hornero.ts";
+import { OFICINA, SIN_SESION, requiereConfirmacionReciente, requiereRol } from "../oficina/acceso.ts";
+import { escribePedido, leeHornero, limpiaMensaje } from "./hornero.ts";
 
 export type EstadoSalud = "ok" | "aviso" | "mal" | "apagado";
 export interface Servicio { id: string; nombre: string; estado: EstadoSalud; detalle: string }
@@ -76,6 +77,19 @@ export async function rutasSistema(app: FastifyInstance, ctx: Contexto): Promise
     const vigia = { modo: config.vigia.modo, conector: config.vigia.modo !== "no" && !!sv, origen: sv ? sv.origen : null, herramientas: sv ? sv.herramientas : [] };
 
     return { generado_en: new Date().toISOString(), salud, correo, olivartrack, vigia, hornero };
+  });
+
+  // Re-hornear (OF9): el hornero es otro contenedor y la api no le habla; le deja una petición en el volumen que ya comparten (el de la configuración
+  // publicada: la api lo escribe, él lo monta de solo lectura) y él la recoge en su comprobación (≤ GEMELO_HORNERO_COMPRUEBA_S, 10 min) como un sello más.
+  app.post("/api/admin/hornero/rehornear", { preHandler: [requiereRol("admin"), requiereConfirmacionReciente()], config: { rateLimit: { max: 10, timeWindow: 60_000 } } }, async (req, rep) => {
+    const ruta = config.hornero.pedido, h = leeHornero(config.hornero);
+    if (!ruta || !config.hornero.estado) return rep.code(503).send({ error: "hornero_no_conectado", mensaje: "La api no está conectada al hornero (falta su estado o el volumen de la petición)." });
+    if (h.pedido?.estado === "pendiente") return rep.code(409).send({ error: "ya_pedido", mensaje: "Ya hay una petición esperando al hornero: espera a que la atienda (mira hasta 10 minutos).", pedido: h.pedido });
+    let p: { id: string; pedido_en: string };
+    try { p = escribePedido(ruta, req.session.hogarId!); }
+    catch (e) { app.log.error({ evento: "hornero_pedido", error: (e as Error).message }, "no se pudo dejar la petición de re-hornear"); return rep.code(503).send({ error: "pedido_no_escrito", mensaje: "No se pudo dejar la petición al hornero." }); }
+    await audita(bd, req.session.hogarId!, "hornero.rehornear", { pedido: p.id });
+    return rep.code(202).send({ id: p.id, pedido_en: p.pedido_en, estado: "pendiente" });
   });
 
   app.get<{ Querystring: { accion?: string; antes?: number; limite?: number } }>("/api/admin/auditoria", {

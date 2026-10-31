@@ -276,7 +276,7 @@ Lo que falta:
 - El mundo (`/finca/`) no exige el primer acceso (lo pide la portada) ni enlaza de vuelta a «Mis dispositivos».
 - Aviso legal, política de privacidad y declaración de accesibilidad: sin redactar (lo dice el pie).
 - ✅ **La política de referente de producción** (decisión 53, 2026-10-29): `infra/Caddyfile` pasa a `strict-origin-when-cross-origin`, como el de dev; un formulario POST de la portada manda su origen. Las páginas del enlace llevan además su propia `<meta name="referrer" content="strict-origin">`.
-- ✅ **Las hazas en el mundo** (tarea A4): con la web servida aquí (`D.base` = `/teselas/<finca>/`), el motor pide `/api/hazas` con la cookie y pinta la linde de cada haza (la tuya en ámbar, las ajenas en blanco roto; casilla «Linde»); al tocar una, o con H, abre su ficha de `/api/hazas/{id}` ([`13b_hazas.js`](../../apps/web/motor/13b_hazas.js)). Lo comprueba en Node `pruebas/guardianes/hazas.test.js`; la e2e con sesión real es la tarea A5 (**no probado** aún contra la api).
+- ✅ **Las hazas en el mundo** (tarea A4): con la web servida aquí (`D.base` = `/teselas/<finca>/`), el motor pide `/api/hazas` con la cookie y pinta la linde de cada haza (la tuya en ámbar y gruesa, las ajenas en blanco roto y finas; casilla «Linde»; `?lindes=0` la apaga); al tocar una, o con H, abre su ficha de `/api/hazas/{id}` ([`13b_hazas.js`](../../apps/web/motor/13b_hazas.js) y el componente [`44_lindes.js`](../../apps/web/motor/44_lindes.js)). Lo comprueban en Node `pruebas/guardianes/hazas.test.js` y `lindes.test.js`, y en Chrome `lindes_chrome.test.js` (por el banco); la e2e con sesión real es la tarea A5 (**no probado** aún contra la api).
 
 ## Problemas conocidos
 

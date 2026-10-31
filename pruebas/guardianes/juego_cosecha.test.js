@@ -3,7 +3,8 @@
 //   · las reglas (CaeLaCosechaPuro de apps/web/motor/41_cae_la_cosecha.js) con casos deterministas: grupos conectados, cadenas, puntos, giro, fin, semilla;
 //   · el tope de puntos creíbles es el mismo en el motor y en la api, y una partida jugada a lo loco no lo pasa;
 //   · el dibujo: cada pieza con su silueta (no solo su color), sin texto ni emoji;
-//   · lo puro del anfitrión (JuegosPuro de 40_juegos.js): validar un juego, récords en el aparato (con un almacén que falla), rutas y semilla.
+//   · lo puro del anfitrión (JuegosPuro de 40_juegos.js): validar un juego, récords en el aparato (con un almacén que falla), rutas y semilla;
+//   · la clasificación entre familias por alias (C9c): ruta, lista blanca, nombres sin datos personales y el esquema contratos/juegos-clasificacion.schema.json.
 // El registro de los dos componentes (con y sin cada uno, en cualquier orden) está en componentes.test.js; lo de Chrome, abajo (por el banco).
 const test = require("node:test"), assert = require("node:assert");
 const { describe, before } = test;
@@ -165,6 +166,31 @@ test("anfitrión: un juego necesita id, título y crea; el récord del aparato a
   assert.strictEqual(JP.fmtDuracion(95), "1 min 35 s"); assert.strictEqual(JP.fmtPuntos(12345), "12.345");
 });
 
+test("clasificación por alias (C9c): ruta, validación de lista blanca, nombres sin datos personales y el esquema del contrato", () => {
+  const Ajv2020 = require("ajv/dist/2020").default;
+  const esq = JSON.parse(lee("contratos/juegos-clasificacion.schema.json")); delete esq.$schema;
+  const V = new Ajv2020({ strict: false, allErrors: true }).compile(esq);
+  assert.strictEqual(JP.rutaClasificacion("/api/", "cae-la-cosecha", 5), "/api/juegos/cae-la-cosecha/clasificacion?n=5"); assert.strictEqual(JP.rutaClasificacion(null, "x"), null);
+  const ok = { juego: "cae-la-cosecha", total: 7, puestos: [{ puesto: 1, alias: "Olivares Sur", puntos: 900, es_mia: false }, { puesto: 2, alias: null, puntos: 700, es_mia: false }], mia: { puesto: 6, alias: null, puntos: 120, es_mia: true } };
+  assert.ok(V(ok), JSON.stringify(V.errors)); assert.ok(V({ ...ok, mia: null }));
+  for (const mal of [{ ...ok, hogar_id: 3 }, { ...ok, puestos: [{ puesto: 1, alias: "x", puntos: 9, es_mia: false, correo: "a@b.c" }] }, { ...ok, puestos: [{ puesto: 1, alias: "xyz", puntos: 9, es_mia: false, hogar_id: 1 }] }])
+    assert.ok(!V(mal), "el esquema rechaza campos de más: " + JSON.stringify(mal).slice(0, 80));
+  const c = JP.validaClasificacion(ok, "cae-la-cosecha"); assert.deepStrictEqual(c, { total: 7, puestos: ok.puestos, mia: ok.mia });
+  assert.strictEqual(JP.validaClasificacion(ok, "otro"), null, "de otro juego"); assert.strictEqual(JP.validaClasificacion(null, "x"), null);
+  assert.strictEqual(JP.validaClasificacion({ ...ok, puestos: [{ puesto: 0, alias: null, puntos: 5, es_mia: false }] }, "cae-la-cosecha"), null, "puesto 0");
+  assert.strictEqual(JP.validaClasificacion({ ...ok, puestos: [{ puesto: 1, alias: 7, puntos: 5, es_mia: false }] }, "cae-la-cosecha"), null, "alias que no es texto");
+  assert.deepStrictEqual(JP.validaClasificacion({ juego: "j", total: 0, puestos: [], mia: null }, "j"), { total: 0, puestos: [], mia: null });
+  assert.deepStrictEqual(JP.validaClasificacion({ ...ok, extra: 1, puestos: [{ puesto: 1, alias: null, puntos: 5, es_mia: false, hogar_id: 9 }] }, "cae-la-cosecha").puestos, [{ puesto: 1, alias: null, puntos: 5, es_mia: false }], "lo que no es de la lista blanca no pasa al motor");
+  assert.strictEqual(JP.nombrePuesto({ alias: "Olivares Sur", es_mia: false }), "Olivares Sur"); assert.strictEqual(JP.nombrePuesto({ alias: null, es_mia: false }), "Una familia");
+  assert.strictEqual(JP.nombrePuesto({ alias: null, es_mia: true }), "Tu familia"); assert.strictEqual(JP.nombrePuesto({ alias: "Ana", es_mia: true }), "Ana (tú)");
+  assert.strictEqual(JP.textoPuesto(c), "Tu puesto: 6.º de 7 familias"); assert.strictEqual(JP.textoPuesto({ total: 1, puestos: [], mia: { puesto: 1 } }), "Tu puesto: 1.º de 1 familia");
+  assert.strictEqual(JP.textoPuesto({ total: 3, puestos: [], mia: null }), "Aún no estás en la clasificación."); assert.strictEqual(JP.textoPuesto(null), "Aún no estás en la clasificación.");
+  const api = lee("apps/api/src/juegos/rutas.ts"), cuerpo = api.slice(api.indexOf("/clasificacion\"")), consulta = cuerpo.slice(cuerpo.indexOf("`WITH"), cuerpo.indexOf("[juego, n, hogar]"));
+  assert.ok(/alias_visible/.test(consulta) && /g\.activo/.test(consulta), "solo alias visibles y hogares activos");
+  assert.ok(!/correo|nombre_interno/.test(consulta), "la consulta no toca correo ni nombre interno");
+  assert.ok(!/<style/i.test(ANFITRION), "sin <style> (CSP)"); assert.ok(!/innerHTML/.test(ANFITRION), "el alias lo escribe una persona: solo textContent");
+});
+
 // ---------- el juego en VR (C9b): zonas de la lámina, la palanca, y el anfitrión con una lámina y un mundo de mentira
 const PARTIDA = () => new Function("CaeLaCosechaPuro", "CaeLaCosechaDibujo", "performance", "\"use strict\";\n" + FUENTE.slice(FUENTE.indexOf("  function CaeLaCosechaPartida"), FUENTE.indexOf("  // el manifiesto")) + "\nreturn CaeLaCosechaPartida;")(P, Dib, { now: () => 0 });
 
@@ -255,6 +281,53 @@ test("VR: el anfitrión abre el juego como lámina (el mundo no se pausa), lo to
   assert.strictEqual(api.abreVR("otro-juego"), false);
 });
 
+test("VR (C9b+): al acabar la partida, la lámina enseña tu puesto y la tabla corta (api simulada); sin servidor o con error, nada", async () => {
+  const nada = () => {}, bus = {}, filas = [], VRX = { on: true, captura: null }, laminas = {}, cuenta = { pinta: 0 }, ops = [];
+  const Laminas = {
+    abre(o) { laminas[o.id] = { o, firma: null }; this.repinta(o.id, true); return true; },
+    repinta(id, f) { const l = laminas[id]; if (!l) return false; const fm = l.o.firma(); if (!f && fm === l.firma) return false; const c = contexto(); l.o.pinta(c.g, l.o.w, l.o.h); ops.length = 0; ops.push(...c.ops); l.firma = fm; cuenta.pinta++; return true; },
+    cierra(id, m) { const l = laminas[id]; if (!l) return false; delete laminas[id]; l.o.alCierra(m); return true; }, info: () => ({}), toca: nada
+  };
+  const cuerpo = ANFITRION.slice(ANFITRION.indexOf("  function JuegosMotor"), ANFITRION.indexOf("  // el manifiesto"));
+  const CLAS = { juego: "cae-la-cosecha", total: 7, puestos: [{ puesto: 1, alias: "Olivares Sur", puntos: 9000, es_mia: false }, { puesto: 2, alias: null, puntos: 700, es_mia: false }], mia: { puesto: 6, alias: null, puntos: 120, es_mia: true } };
+  const fetchAnt = globalThis.fetch, pedidas = [];
+  async function juega(prefijo, respuesta) {
+    globalThis.fetch = (u, o) => { pedidas.push((o && o.method || "GET") + " " + u); return Promise.resolve(respuesta(u)); };
+    const g = { D: { base: "", finca_id: "x" }, ConfigPuro: { prefijoApi: () => prefijo }, Config: { tablaEpocas: () => null }, Pausa: { pon: nada, quita: nada, activa: () => false },
+      Ventanas: { registra: () => nada, abierta: () => false }, Teclas: { registra: () => nada }, Hud: { icono: () => nada, alterna: nada }, VRX, Laminas, PanelVR: { filas(p, d) { filas.push(d); return nada; }, cierra: nada, repinta: nada }, window: { localStorage: null }, location: { search: "?semilla=7" }, document: {} };
+    const n = { on: (ev, fn) => { bus[ev] = fn; }, limpia: nada, emite: nada };
+    const api = new Function("JuegosPuro", "n", "g", "\"use strict\";\nvar D = g.D, ConfigPuro = g.ConfigPuro, Config = g.Config, Pausa = g.Pausa, Ventanas = g.Ventanas, Teclas = g.Teclas, Hud = g.Hud, VRX = g.VRX, Laminas = g.Laminas, PanelVR = g.PanelVR, window = g.window, location = g.location, document = g.document, performance = { now: () => 0 };\n" + cuerpo + "\nreturn JuegosMotor(n);")(JP, n, g);
+    let ultima = null; const Partida = PARTIDA();
+    bus["juego:ofrece"]({ id: "cae-la-cosecha", titulo: "Cae la cosecha", vr: { botones: [{ a: "izquierda", t: "I" }, { a: "gira", t: "G" }, { a: "derecha", t: "D" }, { a: "cae", t: "S" }], palanca: { abajo: "cae" } }, crea: ctx => (ultima = Partida(ctx, nada)) });
+    assert.ok(api.abreVR("cae-la-cosecha"));
+    for (let i = 0; i < 80 && !ultima.estado().fin; i++) { VRX.captura.palanca(0, 0.9, 0.016); VRX.captura.palanca(0, 0, 0.016); api.turnoVR(0.5); }
+    assert.ok(ultima.estado().fin); api.turnoVR(0.01);
+    for (let i = 0; i < 10; i++) await new Promise(r => setImmediate(r));
+    api.turnoVR(0.01);
+    return () => ops.filter(o => o[0] === "fillText").map(o => o[1]).join(" | ");
+  }
+  const J = (cuerpo, status) => ({ status: status || 200, json: () => Promise.resolve(cuerpo) });
+  try {
+    const textos = await juega("/api/", u => /clasificacion/.test(u) ? J(CLAS) : /partidas/.test(u) ? J({ juego: "cae-la-cosecha", es_record: false, record: null, partidas: 1 }, 201) : J({ record: null, partidas: 0, juego: "cae-la-cosecha" }));
+    const t = textos();
+    assert.ok(/Tu puesto: 6\.º de 7 familias/.test(t) && /1\.º  Olivares Sur/.test(t) && /2\.º  Una familia/.test(t) && /6\.º  Tu familia/.test(t) && /9\.000/.test(t), "la lámina enseña el puesto y la tabla: " + t);
+    assert.ok(pedidas.some(x => /^GET \/api\/juegos\/cae-la-cosecha\/clasificacion\?n=5/.test(x)), pedidas.join(" | "));
+    for (const k of Object.keys(laminas)) laminas[k].o.alCierra("x"); ops.length = 0;
+    const sin = await juega(null, () => { throw new Error("sin servidor no se pide nada"); });
+    assert.ok(!/Tu puesto|Aún no estás/.test(sin()), "sin servidor, la lámina no enseña clasificación");
+    for (const k of Object.keys(laminas)) delete laminas[k];
+    const err = await juega("/api/", u => /clasificacion/.test(u) ? J({}, 401) : J({ juego: "cae-la-cosecha", es_record: false, record: null, partidas: 1 }, 201));
+    assert.ok(!/Tu puesto|Aún no estás/.test(err()), "sin sesión (401), tampoco");
+  } finally { globalThis.fetch = fetchAnt; }
+});
+
+test("VR (C9b+): filasVR corta la tabla y pone la propia al final si no cabe; no inventa nada sin clasificación", () => {
+  const c = JP.validaClasificacion({ juego: "j", total: 9, puestos: [1, 2, 3, 4, 5].map(i => ({ puesto: i, alias: i === 2 ? "Ana" : null, puntos: i * 1000, es_mia: false })), mia: { puesto: 8, alias: "Yo", puntos: 50, es_mia: true } }, "j");
+  const v = JP.filasVR(c, 3);
+  assert.strictEqual(v.puesto, "Tu puesto: 8.º de 9 familias"); assert.deepStrictEqual(v.filas.map(f => f.t), ["1.º  Una familia", "2.º  Ana", "3.º  Una familia", "8.º  Yo (tú)"]); assert.deepStrictEqual(v.filas.map(f => f.mia), [false, false, false, true]);
+  assert.strictEqual(JP.filasVR(null, 3), null); assert.deepStrictEqual(JP.filasVR({ total: 0, puestos: [], mia: null }, 3).filas, []);
+});
+
 test("en el código: el anfitrión no nombra al juego ni el juego al anfitrión; teclado por captura solo con el juego abierto; sin <style> (CSP)", () => {
   const sin = s => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'\\])\/\/.*$/gm, "$1");
   assert.ok(!/cae-la-cosecha|CaeLaCosecha/.test(sin(ANFITRION)), "40_juegos.js no nombra al juego");
@@ -292,7 +365,7 @@ describe("en el navegador", () => {
   for (const modo of ["escritorio", "táctil"]) test(modo + ": J abre la ventana, «Jugar» pausa el mundo, se juega, Esc vuelve; 0 errores", { timeout: 300000 }, async t => {
     if (SALTO) return t.skip(SALTO);
     const tactil = modo === "táctil";
-    const p = await nav.newPage(tactil ? { viewport: { width: 390, height: 780 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 } : { viewport: { width: 1280, height: 800 } }), errores = [];
+    const p = await nav.newPage(tactil ? { viewport: { width: 390, height: 780 }, hasTouch: true, isMobile: true, deviceScaleFactor: 1 } : { viewport: { width: 1280, height: 800 } }), errores = [];
     p.on("pageerror", e => errores.push("PAGEERROR " + String(e.stack || e).slice(0, 300)));
     p.on("console", m => { if (m.type() === "error" && !/favicon/.test(m.text())) errores.push("CONSOLE " + m.text().slice(0, 300)); });
     try {
@@ -353,6 +426,45 @@ describe("en el navegador", () => {
     } finally { await p.close(); }
   });
 
+  test("clasificación entre familias (C9c): con la api simulada, la ventana Juegos enseña la tabla y la pantalla de fin, tu puesto; sin ids ni correos; 0 errores", { timeout: 300000 }, async t => {
+    if (SALTO) return t.skip(SALTO);
+    const p = await nav.newPage({ viewport: { width: 390, height: 780 }, hasTouch: true, isMobile: true, deviceScaleFactor: 1 }), errores = [], pedidas = [];
+    p.on("pageerror", e => errores.push("PAGEERROR " + String(e.stack || e).slice(0, 300)));
+    p.on("console", m => { if (m.type() === "error" && !/favicon|404|Failed to load resource/.test(m.text())) errores.push("CONSOLE " + m.text().slice(0, 300)); });
+    const J = (cuerpo, status) => ({ status: status || 200, contentType: "application/json", body: JSON.stringify(cuerpo) });
+    const CLAS = { juego: "cae-la-cosecha", total: 7, puestos: [{ puesto: 1, alias: "Olivares Sur", puntos: 900, es_mia: false }, { puesto: 2, alias: null, puntos: 700, es_mia: false }, { puesto: 3, alias: "Ana", puntos: 500, es_mia: false }], mia: { puesto: 6, alias: null, puntos: 120, es_mia: true } };
+    await p.route("**/api/juegos/**", r => {
+      const u = r.request().url(); pedidas.push(r.request().method() + " " + u.replace(/^.*\/api\//, ""));
+      if (/\/clasificacion/.test(u)) return r.fulfill(J(CLAS));
+      if (/\/partidas/.test(u)) return r.fulfill(J({ juego: "cae-la-cosecha", es_record: true, record: { puntos: 100, duracion_s: 30, fecha: new Date().toISOString() }, partidas: 1 }, 201));
+      return r.fulfill(J({ juego: "cae-la-cosecha", record: null, partidas: 0 }));
+    });
+    try {
+      await p.goto(url + "?debug&hora=12:00&semilla=4242&api=/api/");
+      await p.waitForFunction(() => window.__g && window.__g.listo() && window.__juegos && window.__juegos().juegos.length, null, { timeout: 120000, polling: 500 });
+      await p.evaluate(() => { window.__g.sinDibujo(true); });   // PB2: esta prueba mira la ventana y la tarjeta (DOM, CSS px), no el dibujo 3D
+      const visible = await p.evaluate(() => { const b = document.getElementById("hudIco-juegos"); return !!(b && b.offsetParent); });
+      if (visible) await p.tap("#hudIco-juegos"); else { await p.tap("#bMas"); await p.locator("#hudMas button", { hasText: "Juegos" }).tap(); }
+      await p.waitForSelector("#ventana-juegos [data-clasificacion]", { timeout: 15000 });
+      const txt = await p.locator("#ventana-juegos [data-clasificacion]").innerText();
+      for (const f of ["Olivares Sur", "Una familia", "Ana", "Tu puesto: 6.º de 7 familias", "900"]) assert.ok(txt.includes(f), "la ventana enseña «" + f + "»: " + txt);
+      assert.ok(!/hogar|correo|@/i.test(txt), "nada de ids ni correos");
+      await p.screenshot({ path: path.join(CAPS, "clasificacion_ventana.png") });
+      await p.tap("[data-juega]");
+      await p.waitForFunction(() => window.__juegos().abierto, null, { timeout: 10000 });
+      for (let i = 0; i < 80 && !(await p.evaluate(() => window.__juegos().estado.fin)); i++) { await p.tap('[data-accion="cae"]').catch(() => {}); await p.waitForTimeout(60); }
+      assert.ok(await p.evaluate(() => window.__juegos().estado.fin), "la partida acaba soltando ramas");
+      await p.waitForSelector("#juegoCapa [data-clasificacion]:not([hidden])", { timeout: 15000 });
+      const fin = await p.locator("#juegoCapa [data-clasificacion]").innerText();
+      assert.ok(/Tu puesto: 6\.º de 7 familias/.test(fin) && /Olivares Sur/.test(fin) && /Una familia/.test(fin), "el fin de partida enseña tu puesto y la tabla corta: " + fin);
+      const tam = await p.evaluate(() => { const r = document.querySelector("#juegoCapa [role=alertdialog] > div").getBoundingClientRect(); return [r.width, r.height, window.innerWidth, window.innerHeight]; });
+      assert.ok(tam[0] <= tam[2] && tam[1] <= tam[3], "la tarjeta de fin cabe en el móvil: " + tam);
+      await p.screenshot({ path: path.join(CAPS, "clasificacion_fin.png") });
+      assert.ok(pedidas.some(x => /^POST juegos\/cae-la-cosecha\/partidas/.test(x)) && pedidas.some(x => /clasificacion\?n=5/.test(x)), pedidas.join(" | "));
+      assert.deepStrictEqual(errores, []);
+    } finally { await p.close(); }
+  });
+
   test("VR simulada: la fila «Juegos» del panel abre el juego como lámina delante, el rayo con el gatillo y la palanca juegan, B pausa, Salir cierra; sin pausar el mundo ni subir el presupuesto", { timeout: 400000 }, async t => {
     if (SALTO) return t.skip(SALTO);
     if (!process.env.GEMELO_VR) return t.skip("opcional: define GEMELO_VR=1 para el juego en VR con el WebXR simulado (inestable con SwiftShader, como vr.test.js)");
@@ -385,8 +497,16 @@ describe("en el navegador", () => {
     const cap = async n => { await p.screenshot({ path: path.join(CAPS, n), timeout: 120000 }).catch(e => console.log("   (captura " + n + " no hecha: " + String(e.message).split("\n")[0] + ")")); };   // en VR simulada con SwiftShader una captura puede tardar
     const pulsa = async (mano, k) => { await p.evaluate(([m, b]) => window.__mockXR.boton(m, b, true), [mano, k]); await fot(3); await p.evaluate(([m, b]) => window.__mockXR.boton(m, b, false), [mano, k]); await fot(3); };
     const pal = async (x, y) => { await p.evaluate(([a, b]) => window.__mockXR.ejes("right", a, b), [x, y]); await fot(3); await p.evaluate(() => window.__mockXR.ejes("right", 0, 0)); await fot(3); };
+    // C9b+: la clasificación de la lámina de fin (api simulada, como en la prueba de pantalla)
+    const CLAS_VR = { juego: "cae-la-cosecha", total: 7, puestos: [{ puesto: 1, alias: "Olivares Sur", puntos: 900, es_mia: false }, { puesto: 2, alias: null, puntos: 700, es_mia: false }], mia: { puesto: 6, alias: null, puntos: 120, es_mia: true } };
+    await p.route("**/api/juegos/**", r => {
+      const u = r.request().url(), J = (c, st) => r.fulfill({ status: st || 200, contentType: "application/json", body: JSON.stringify(c) });
+      if (/\/clasificacion/.test(u)) return J(CLAS_VR);
+      if (/\/partidas/.test(u)) return J({ juego: "cae-la-cosecha", es_record: true, record: { puntos: 100, duracion_s: 30, fecha: new Date().toISOString() }, partidas: 1 }, 201);
+      return J({ juego: "cae-la-cosecha", record: null, partidas: 0 });
+    });
     try {
-      await p.goto(url + "?debug&hora=12:00&semilla=4242");
+      await p.goto(url + "?debug&hora=12:00&semilla=4242&api=/api/");
       await p.waitForFunction(() => window.__g && window.__g.listo() && window.__vrDebug && window.__juegos && window.__juegos().ofrecidosVR.length, null, { timeout: 120000, polling: 500 });
       await p.waitForSelector("#btnVR", { timeout: 120000 }); await p.click("#btnVR", { timeout: 120000 });
       await p.waitForFunction(() => window.__vrDebug && window.__vrDebug().on, null, { timeout: 120000, polling: 200 });
@@ -426,7 +546,9 @@ describe("en el navegador", () => {
       await pulsa("right", 5); assert.strictEqual((await jue()).vr.pausada, false, "B otra vez, sigue");
       // hasta el final: la palanca hacia atrás suelta ramas; sale «Se acabó la partida» con «Otra partida» y «Salir»
       for (let i = 0; i < 60 && !(await jue()).vr.estado.fin; i++) await pal(0, 0.9);
-      j = await jue(); assert.ok(j.vr.estado.fin, "la partida acaba soltando ramas"); await fot(6); await cap("vr_juego_fin.png");
+      j = await jue(); assert.ok(j.vr.estado.fin, "la partida acaba soltando ramas"); await fot(6);
+      await p.waitForFunction(() => window.__juegos().vr && window.__juegos().vr.clasif, null, { timeout: 15000, polling: 200 }).catch(() => {});
+      j = await jue(); assert.ok(j.vr.clasif && j.vr.clasif.mia && j.vr.clasif.mia.puesto === 6 && j.vr.clasif.total === 7, "la lámina de fin tiene la clasificación: " + JSON.stringify(j.vr.clasif)); await fot(4); await cap("vr_juego_fin.png");   // (la captura enseña tu puesto y la tabla corta)
       const puntosFin = j.vr.estado.puntos; await zona(12 + 98 + 100, 930 + 65); await fot(4);   // «Otra partida»
       j = await jue(); assert.ok(j.vr && !j.vr.estado.fin && j.vr.estado.puntos === 0, "«Otra partida» empieza de cero (la anterior hizo " + puntosFin + ")");
       // Salir (arriba a la derecha) cierra la lámina y libera lo que abrió

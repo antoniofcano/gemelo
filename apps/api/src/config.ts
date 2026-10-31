@@ -5,6 +5,7 @@
 // `docker inspect`; fuera de producción vale también el valor en la variable (`NOMBRE`), como hace infra/dev.
 import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 
 export type ModoCorreo = "smtp" | "buzon";
 export type ModoOt = "mcp" | "grabado" | "no";
@@ -27,10 +28,14 @@ export interface Config {
   sesion: { diasAbsolutos: number; diasInactividad: number; secreto: string };
   /** sesión de oficina (ADR-0024, contratos/sesion.md § Oficina): más corta, con aparato confiable y confirmación reciente */
   oficina: { horasSesion: number; minInactividad: number; minConfirmacion: number; minSegundoEnlace: number; otProponer: "manual" | "token" };
+  /** llave de acceso (WebAuthn, passkey) de la oficina (OF13, contratos/sesion.md § Llave de acceso): obligatoria salvo GEMELO_OFICINA_LLAVE=no fuera de producción */
+  llave: ConfigLlave;
   enlace: { minutos: number; porIp: number; porCorreo: number; ventanaMin: number };
   /** código corto de las gafas (contratos/sesion.md § Código corto): códigos pedidos por IP, intentos de aprobar por hogar y por IP */
   vinculo: { porIp: number; intentosPorHogar: number; intentosPorIp: number; sondeosPorMin: number; ventanaMin: number };
   correo: { modo: "buzon" } | ConfigSmtp;
+  /** el correo de los avisos de la campana y los .ics de la Agenda (OF11c): usa el mismo cartero; apagable sin tocar el del enlace mágico */
+  avisosCorreo: { activo: boolean; reintentos: number; cadaSeg: number };
   ot:
     | { modo: "no" }
     | { modo: "grabado"; carpeta: string; cadaMin: number }
@@ -47,7 +52,7 @@ export interface Config {
   /** dónde dejar también la configuración publicada (GEMELO_CONFIG_SALIDA), para el hornero (calendario de épocas); null = en ningún sitio */
   configFichero: string | null;
   /** el estado del hornero (GEMELO_HORNERO_ESTADO: <finca>.json y servicio.json) y su salida (GEMELO_HORNERO_SALIDA: <finca>/olivos/manifiesto.json), de SOLO LECTURA, para Sistema en la oficina; null = sin conectar */
-  hornero: { estado: string | null; salida: string | null };
+  hornero: { estado: string | null; salida: string | null; pedido: string | null };
 }
 
 export interface ConfigLiveKit {
@@ -56,6 +61,13 @@ export interface ConfigLiveKit {
                         // el cliente resuelve contra su página (así vale para https://localhost y para la IP de la red local)
   clave: string;        // API key de LiveKit (un nombre, no un secreto)
   secreto: string;      // API secret (≥ 32 caracteres): firma los tokens
+}
+
+export interface ConfigLlave {
+  obligatoria: boolean;
+  rpId: string;         // el dominio al que se atan las llaves (GEMELO_LLAVE_RP_ID; por defecto, el de GEMELO_URL_PUBLICA)
+  origen: string;       // el origen que firma el navegador (GEMELO_LLAVE_ORIGEN; por defecto, GEMELO_URL_PUBLICA)
+  rpNombre: string;     // lo que enseña el aparato al pedir la llave
 }
 
 export class ErrorDeConfig extends Error {}
@@ -68,6 +80,11 @@ function texto(e: Entorno, nombre: string, defecto?: string): string {
   if (v) return v;
   if (defecto !== undefined) return defecto;
   throw new ErrorDeConfig("falta la variable " + nombre);
+}
+function siNo(e: Entorno, nombre: string, defecto: boolean): boolean {
+  const v = texto(e, nombre, defecto ? "si" : "no");
+  if (v !== "si" && v !== "no") throw new ErrorDeConfig(nombre + " debe ser si o no");
+  return v === "si";
 }
 function entero(e: Entorno, nombre: string, defecto: number, min: number, max: number): number {
   const s = e[nombre]?.trim();
@@ -184,14 +201,40 @@ function cargaVigia(e: Entorno, produccion: boolean): Config["vigia"] {
   return { modo: "mcp", url: u.href, token: secreto(e, "GEMELO_VIGIA_TOKEN", true)! };
 }
 
+/**
+ * Llave de acceso de la oficina (OF13). Obligatoria por defecto en todas partes; relajarla («no») pide la variable explícita y
+ * no se admite en producción. El RP ID es un dominio (sin esquema ni puerto) que tiene que ser el del origen o uno de sus padres.
+ */
+function cargaLlave(e: Entorno, produccion: boolean, urlPublica: string): ConfigLlave {
+  const modo = texto(e, "GEMELO_OFICINA_LLAVE", "obligatoria");
+  if (modo !== "obligatoria" && modo !== "no") throw new ErrorDeConfig("GEMELO_OFICINA_LLAVE debe ser obligatoria o no");
+  if (produccion && modo === "no") throw new ErrorDeConfig("en producción la llave de acceso de la oficina es obligatoria (GEMELO_OFICINA_LLAVE=no solo en local)");
+  const origen = url("GEMELO_LLAVE_ORIGEN", texto(e, "GEMELO_LLAVE_ORIGEN", urlPublica), produccion);
+  try { return compruebaLlave(e, produccion, modo, origen); }
+  catch (err) {
+    // relajada («no», fuera de producción) y servida desde una IP: la api arranca igual; la llave, opcional, no funcionará ahí
+    if (modo === "no" && err instanceof ErrorDeConfig) return { obligatoria: false, rpId: origen.hostname, origen: origen.origin, rpNombre: "Cuarenta hazas · Oficina" };
+    throw err;
+  }
+}
+function compruebaLlave(e: Entorno, produccion: boolean, modo: string, origen: URL): ConfigLlave {
+  if (origen.protocol !== "https:" && !(origen.protocol === "http:" && origen.hostname === "localhost")) throw new ErrorDeConfig("GEMELO_LLAVE_ORIGEN debe ser https:// (o http://localhost fuera de producción)");
+  if (produccion && origen.protocol !== "https:") throw new ErrorDeConfig("GEMELO_LLAVE_ORIGEN debe ser https en producción");
+  const rpId = texto(e, "GEMELO_LLAVE_RP_ID", origen.hostname).toLowerCase();
+  if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/.test(rpId) || /^\d+(\.\d+){3}$/.test(rpId)) throw new ErrorDeConfig("GEMELO_LLAVE_RP_ID debe ser un nombre de dominio (sin https:// ni puerto, y no una IP)");
+  if (origen.hostname !== rpId && !origen.hostname.endsWith("." + rpId)) throw new ErrorDeConfig("GEMELO_LLAVE_RP_ID (" + rpId + ") debe ser el dominio de GEMELO_LLAVE_ORIGEN o uno de sus padres");
+  return { obligatoria: modo === "obligatoria", rpId, origen: origen.origin, rpNombre: "Cuarenta hazas · Oficina" };
+}
+
 export function cargaConfig(e: Entorno = process.env): Config {
   const produccion = esProduccion(e);
   const urlPublica = url("GEMELO_URL_PUBLICA", texto(e, "GEMELO_URL_PUBLICA"), produccion).origin;
   const origenes = (e["GEMELO_API_ORIGENES"]?.trim() ? e["GEMELO_API_ORIGENES"]!.split(",") : [urlPublica])
     .map(o => url("GEMELO_API_ORIGENES", o.trim(), produccion).origin);
 
-  const modoOt = texto(e, "GEMELO_OT", "no");
-  if (modoOt !== "mcp" && modoOt !== "grabado" && modoOt !== "no") throw new ErrorDeConfig("GEMELO_OT debe ser mcp, grabado o no");
+  // «fixture» es otro nombre de «grabado» (como GEMELO_VIGIA=fixture): las respuestas sintéticas de apps/api/pruebas/grabaciones/
+  const modoOt = texto(e, "GEMELO_OT", "no").replace(/^fixture$/, "grabado");
+  if (modoOt !== "mcp" && modoOt !== "grabado" && modoOt !== "no") throw new ErrorDeConfig("GEMELO_OT debe ser mcp, grabado (o fixture) o no");
   if (produccion && modoOt === "grabado") throw new ErrorDeConfig("en producción OlivarTrack no puede ser la grabación de pruebas");
   const cadaMin = entero(e, "GEMELO_OT_CADA_MIN", 60, 0, 1440);
   const ot: Config["ot"] = modoOt === "no" ? { modo: "no" }
@@ -222,6 +265,7 @@ export function cargaConfig(e: Entorno = process.env): Config {
       // reservado para cuando exista el token de solo proponer (DO-7) y todavía no hace nada distinto
       otProponer: texto(e, "GEMELO_OFICINA_OT_PROPONER", "manual") === "token" ? "token" : "manual",
     },
+    llave: cargaLlave(e, produccion, urlPublica),
     enlace: {
       minutos: 15,
       porIp: entero(e, "GEMELO_ENLACE_POR_IP", 10, 1, 1000),
@@ -236,6 +280,11 @@ export function cargaConfig(e: Entorno = process.env): Config {
       ventanaMin: entero(e, "GEMELO_VINCULO_VENTANA_MIN", 15, 1, 1440),
     },
     correo: cargaCorreo(e, produccion),
+    avisosCorreo: {
+      activo: siNo(e, "GEMELO_CORREO_AVISOS", true),
+      reintentos: entero(e, "GEMELO_CORREO_REINTENTOS", 5, 1, 10),
+      cadaSeg: entero(e, "GEMELO_CORREO_AVISOS_CADA_SEG", 60, 0, 3600),
+    },
     ot,
     livekit: cargaLiveKit(e, produccion),
     medios: {
@@ -246,6 +295,8 @@ export function cargaConfig(e: Entorno = process.env): Config {
       escriturasPorHora: entero(e, "GEMELO_VIDA_ESCRITURAS_HORA", 60, 1, 10000),
     },
     configFichero: e["GEMELO_CONFIG_SALIDA"]?.trim() || null,
-    hornero: { estado: e["GEMELO_HORNERO_ESTADO"]?.trim() || null, salida: e["GEMELO_HORNERO_SALIDA"]?.trim() || null },
+    // la petición de «re-hornear» (OF9): un fichero junto al de la configuración publicada (mismo volumen: la api escribe, el hornero lee), o donde diga GEMELO_HORNERO_PEDIDO
+    hornero: { estado: e["GEMELO_HORNERO_ESTADO"]?.trim() || null, salida: e["GEMELO_HORNERO_SALIDA"]?.trim() || null,
+      pedido: e["GEMELO_HORNERO_PEDIDO"]?.trim() || (e["GEMELO_CONFIG_SALIDA"]?.trim() ? join(dirname(e["GEMELO_CONFIG_SALIDA"].trim()), "pedido-rehornear.json") : null) },
   };
 }

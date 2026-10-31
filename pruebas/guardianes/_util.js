@@ -30,6 +30,7 @@ function python() {
 }
 /** Ruta de Chrome o null */
 function chrome() {
+  if (process.env.GEMELO_SOLO_NODE === "1") return null;   // puerta rápida: sin Chrome, las partes de navegador se saltan con su aviso
   const c = [process.env.CHROME, "C:/Program Files/Google/Chrome/Application/chrome.exe", "C:/Program Files (x86)/Google/Chrome/Application/chrome.exe",
     "/usr/bin/google-chrome", "/usr/bin/chromium", "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"].filter(Boolean);
   return c.find(p => fs.existsSync(p)) || null;

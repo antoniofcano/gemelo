@@ -18,7 +18,7 @@ Decisiones 91-97 ([DECISIONS-PENDING](../doc/rumbo/DECISIONS-PENDING.md)). Rutas
 | Ver los olivos personalizados de una haza | cualquier sesión | `GET /api/hazas/{id}/olivos` |
 | Ver una foto | cualquier sesión, si está colgada y visible (o es suya, o es la oficina) | `GET /api/medios/{clave}` |
 | Subir una foto o pintura | **titular**: sesión nacida del enlace mágico (`/api/sesion` → `titular: true`); unas gafas vinculadas con el código corto, no (decisión 96) | `POST /api/medios?acepto=true` |
-| Nombrar un olivo y colgarle la foto | titular, y solo en un olivo que cae dentro de una haza asignada a su hogar | `PUT /api/olivos/{finca}/{copas_id}` |
+| Nombrar un olivo y colgarle la foto | titular, y solo en un olivo que cae dentro de una haza asignada a su hogar. Cuerpo `{ nombre?, objeto? }` (al menos uno): lo omitido se queda como estaba (la lista blanca no da el `medio_id` de la foto colgada, así que quien solo cambia el nombre no puede volver a mandarlo; P7f), `null` lo quita | `PUT /api/olivos/{finca}/{copas_id}` |
 | Quitar lo suyo | titular | `DELETE /api/olivos/{finca}/{copas_id}` |
 | Denunciar | cualquier sesión, una vez por contenido | `POST /api/personalizaciones/{id}/denuncias` |
 | Sugerir a la oficina | titular, sobre su haza (y opcionalmente un olivo de ella) | `POST /api/hazas/{id}/sugerencias` |
@@ -56,4 +56,4 @@ Entradas de tres tipos: `contenido_nuevo` (cada personalización creada o cambia
 
 ## Tablas sin pantalla todavía (decisión 97)
 
-`diario_haza` (labor, nota, foto, hito; de la oficina, del corresponsal o de OlivarTrack con clave natural), `avisos` + `avisos_hogar` (entrega por hogar, leído y correo enviado), `lotes` + `lote_haza` (fechas de recogida) + `lote_hogar` (sin kilos ni litros), y `visitas` ampliada a eventos (tipos `evento`, `taller`, `recoleccion`; plazas, plazo, estado) con inscripción (`personas`, `apuntado`/`en_espera`/`anulado`). Sus rutas llegan con sus pantallas; la descarga de datos del hogar (`GET /api/yo/datos`) ya las incluye.
+`diario_haza` (labor, nota, foto, hito; de la oficina, del corresponsal o de OlivarTrack con clave natural), `avisos` + `avisos_hogar` (entrega por hogar, leído y correo enviado), `lotes` + `lote_haza` (fechas de recogida) + `lote_hogar` (sin kilos ni litros), y `visitas` ampliada a eventos (tipos `evento`, `taller`, `recoleccion`; plazas, plazo, estado) con inscripción (`personas`, `apuntado`/`en_espera`/`anulado`). Las rutas de la agenda (eventos e inscripción, 0012) llegaron con OF11 (`/api/admin/eventos…`, `/api/agenda…`); el resto, con sus pantallas; la descarga de datos del hogar (`GET /api/yo/datos`) ya las incluye.

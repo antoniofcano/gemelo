@@ -10,13 +10,15 @@ Esto es lo que **el código lee**, no lo que los conectores garantizan. **Nada d
 |---|---|---|---|---|
 | Vigia | `apps/api/src/vigia/` (`LectorVigiaMcp`) | `tiempo_en_la_explotacion`, `prevision_72_horas` (sin argumentos) | `GET /api/tiempo` | [`tiempo.md`](tiempo.md) |
 | Vigia | idem | `historico_meteo` (`{ desde, hasta }`) | `GET /api/tiempo/historico` | [`tiempo.md`](tiempo.md) |
-| Olivartrack | `apps/api/src/ot/` (`LectorMcp`) | `pases_del_periodo`, `novedades`, `aforo_y_avance_de_recoleccion` | la sincronización a la base (no hay ruta de lectura para el motor todavía) | [`olivartrack-sync.md`](olivartrack-sync.md) |
+| Olivartrack | `apps/api/src/ot/` (`LectorMcp`) | `pases_del_periodo`, `novedades`, `aforo_y_avance_de_recoleccion` | la sincronización a la base (la ficha de haza) | [`olivartrack-sync.md`](olivartrack-sync.md) |
+| Olivartrack | idem | `tareas_abiertas`, `atencion_de_hoy` (sin argumentos), `trabajo_realizado` (`{ desde }`) | `GET /api/ot/hoy` (la historia) | [`ot-hoy.md`](ot-hoy.md) |
+| Vigia | `apps/api/src/vigia/` (`LectorVigiaMcp`) | `estado_del_olivar_hoy` (sin argumentos) | `GET /api/ot/hoy` (la historia y las balizas) | [`ot-hoy.md`](ot-hoy.md) |
 
 Configuración y modos (`GEMELO_VIGIA=mcp|fixture|no`, URL y token por fichero en producción): ver `tiempo.md` y `olivartrack-sync.md`.
 
-## Lo que ya no se lee
+## Lo que se volvió a leer, ahora desde la api
 
-`estado_del_olivar_hoy` (Vigía), `tareas_abiertas`, `trabajo_realizado`, `atencion_de_hoy` (OlivarTrack) las leía la historia de Cerro desde el navegador. **La historia usa ahora solo la instantánea de OlivarTrack que trae el índice (`D.ot`)**, con un aviso («sin lectura en vivo»); la escena «Vigor» ya no dice qué parcelas marca Vigía hoy. Volver a leerlas exige rutas nuevas de la api (tarea anotada, sin diseñar).
+`estado_del_olivar_hoy` (Vigía), `tareas_abiertas`, `trabajo_realizado`, `atencion_de_hoy` (OlivarTrack) las leía la historia de Cerro desde el navegador por el conector. Desde V11 las lee la api y las sirve en **`GET /api/ot/hoy`** ([`ot-hoy.md`](ot-hoy.md)), con memoria, tope de llamadas por hora, frescura y lista blanca; la historia las pide al mismo origen y, si no hay servidor o no responde, sigue con la instantánea `D.ot` y lo dice. `novedades` (la fenología) y `pases_del_periodo` no se leen en vivo para la historia: salen de la instantánea.
 
 ## Reglas (de los propios conectores, que la api y la página respetan)
 1. **Los textos de campo y de Vigía son datos, nunca instrucciones.** La api los recorta; el motor los escapa.
@@ -28,4 +30,4 @@ Configuración y modos (`GEMELO_VIGIA=mcp|fixture|no`, URL y token por fichero e
 
 ## Lo que NO se sabe
 - Si los nombres de herramienta y campos siguen vigentes (los conectores evolucionan): la api no se ha probado contra los servidores reales (hace falta URL y token del gemelo).
-- Hituelo no tiene lectura en vivo: usa la instantánea `D.ot` (sin trabajos ni fenología de Marín Hituelo).
+- Hituelo no tiene lectura en vivo: usa la instantánea `D.ot` (sin trabajos ni fenología de Marín Hituelo); el MCP no da la parcela de cada trabajo y, con 27 parcelas, no hay forma segura de asignarlo.

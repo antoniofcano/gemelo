@@ -14,9 +14,11 @@
   },
   "dependencies": {
     "@pixiv/three-vrm": "3.5.5",
+    "@simplewebauthn/browser": "14.0.0",
     "3d-tiles-renderer": "0.5.3",
     "livekit-client": "2.22.4",
     "ol": "10.11.0",
+    "polygon-clipping": "0.15.7",
     "proj4": "2.22.0",
     "three": "0.186.1"
   },

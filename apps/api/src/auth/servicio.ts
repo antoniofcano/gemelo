@@ -83,4 +83,5 @@ export async function purga(bd: Bd): Promise<void> {
   await bd.query("DELETE FROM tokens_acceso WHERE expira_en < now() - interval '1 day'");
   await bd.query("DELETE FROM codigos_vinculo WHERE expira_en < now() - interval '1 day'");
   await bd.query("DELETE FROM sesiones WHERE expira_en < now() - interval '1 day' OR revocada_en < now() - interval '1 day'");
+  await bd.query("DELETE FROM llaves_retos WHERE expira_en < now()");   // los retos de la llave de acceso (OF13), de 5 min
 }

@@ -1,0 +1,168 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://gemelo.canoydamas.es/contratos/ot-hoy.schema.json",
+  "title": "Lo de hoy en OlivarTrack y Vigía (GET /api/ot/hoy), versión 1",
+  "$comment": "Lo que la api sirve al motor (la historia y las balizas) a partir de tareas_abiertas, trabajo_realizado y atencion_de_hoy de OlivarTrack y estado_del_olivar_hoy de Vigía. LISTA BLANCA: additionalProperties false en todos los niveles. Nada por persona, ni GPS, ni textos de campo; los ids de tarea de OlivarTrack van como `clave` opaca. Los textos que pasan (títulos de tarea, recuentos de atención, motivos de Vigía, avisos) son DATOS: el motor los escapa y nunca los sigue. Cada parte puede faltar (null). La api serializa con este esquema (apps/api/src/ot/rutas-hoy.ts); el motor lo lee en 14_historia.js. Explicación: contratos/ot-hoy.md. Cambiar un campo = cambiar este fichero, contratos/ot-hoy-ejemplo.json, la api, el motor y contratos/ot-hoy.md en el mismo commit.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "origen", "consultadoEn", "completo", "tareasAbiertas", "trabajoRealizado", "atencion", "vigia", "avisos"],
+  "definitions": {
+    "dia": { "type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    "clave": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16}$", "description": "huella opaca del id de tarea de OlivarTrack: solo sirve para cruzar las dos listas" },
+    "parcela": { "type": ["string", "null"], "pattern": "^[A-Za-z0-9_.:#-]{1,64}$", "description": "id de parcela de OlivarTrack, como en la instantánea D.ot del índice" },
+    "palabra": { "type": "string", "pattern": "^[a-z0-9_.-]{1,60}$" }
+  },
+  "properties": {
+    "version": { "const": 1 },
+    "origen": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ot", "vigia"],
+      "properties": {
+        "ot": { "enum": ["olivartrack", "grabado", null], "description": "olivartrack = leído por MCP; grabado = respuestas sintéticas de pruebas (nunca en producción); null = apagado" },
+        "vigia": { "enum": ["vigia", "fixture", null] }
+      }
+    },
+    "consultadoEn": { "type": "string", "format": "date-time", "description": "cuándo leyó la api la parte más antigua de las que se sirven" },
+    "completo": { "type": "boolean", "description": "false si falta alguna parte, si alguna es la última que llegó (fallo o tope), si viene truncada o parcial, o si se descartó algo" },
+    "tareasAbiertas": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["leidoEn", "consultadoEn", "viejo", "descartadas", "truncado", "tareas"],
+      "properties": {
+        "leidoEn": { "type": "string", "format": "date-time" },
+        "consultadoEn": { "type": ["string", "null"], "format": "date-time", "description": "el consultadoEn de OlivarTrack" },
+        "viejo": { "type": "boolean", "description": "true: OlivarTrack no respondió (o se llegó al tope) y es la última lectura" },
+        "descartadas": { "type": "integer", "minimum": 0 },
+        "truncado": { "type": "boolean" },
+        "tareas": {
+          "type": "array", "maxItems": 500,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["clave", "parcela", "finca", "tipo", "nombre", "fecha", "estado"],
+            "properties": {
+              "clave": { "$ref": "#/definitions/clave" },
+              "parcela": { "$ref": "#/definitions/parcela" },
+              "finca": { "type": ["string", "null"], "maxLength": 80 },
+              "tipo": { "$ref": "#/definitions/palabra" },
+              "nombre": { "type": ["string", "null"], "maxLength": 120 },
+              "fecha": { "$ref": "#/definitions/dia" },
+              "estado": { "enum": ["pendiente", "activo", "pausada"] }
+            }
+          }
+        }
+      }
+    },
+    "trabajoRealizado": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["leidoEn", "consultadoEn", "viejo", "descartadas", "desde", "hasta", "truncado", "tareas"],
+      "properties": {
+        "leidoEn": { "type": "string", "format": "date-time" },
+        "consultadoEn": { "type": ["string", "null"], "format": "date-time" },
+        "viejo": { "type": "boolean" },
+        "descartadas": { "type": "integer", "minimum": 0 },
+        "desde": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+        "hasta": { "$ref": "#/definitions/dia" },
+        "truncado": { "type": "boolean" },
+        "tareas": {
+          "type": "array", "maxItems": 500,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["clave", "parcela", "finca", "tipo", "titulo", "completadaEn", "estado", "avance"],
+            "properties": {
+              "clave": { "$ref": "#/definitions/clave" },
+              "parcela": { "$ref": "#/definitions/parcela" },
+              "finca": { "type": ["string", "null"], "maxLength": 80 },
+              "tipo": { "$ref": "#/definitions/palabra" },
+              "titulo": { "type": ["string", "null"], "maxLength": 120 },
+              "completadaEn": { "$ref": "#/definitions/dia" },
+              "estado": { "$ref": "#/definitions/palabra" },
+              "avance": {
+                "type": ["object", "null"], "additionalProperties": false,
+                "required": ["pct", "hecho", "objetivo"],
+                "properties": {
+                  "pct": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+                  "hecho": { "type": ["integer", "null"], "minimum": 0, "description": "olivos hechos" },
+                  "objetivo": { "type": ["integer", "null"], "minimum": 0, "description": "olivos de la tarea" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "atencion": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["leidoEn", "consultadoEn", "viejo", "descartadas", "parcial", "total", "puntos"],
+      "properties": {
+        "leidoEn": { "type": "string", "format": "date-time" },
+        "consultadoEn": { "type": ["string", "null"], "format": "date-time" },
+        "viejo": { "type": "boolean" },
+        "descartadas": { "type": "integer", "minimum": 0 },
+        "parcial": { "type": "boolean" },
+        "total": { "type": ["integer", "null"], "minimum": 0 },
+        "puntos": {
+          "type": "array", "maxItems": 30,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["tipo", "n", "severidad", "texto"],
+            "properties": {
+              "tipo": { "$ref": "#/definitions/palabra" },
+              "n": { "type": "integer", "minimum": 0 },
+              "severidad": { "type": ["string", "null"], "pattern": "^[a-z0-9_.-]{1,40}$" },
+              "texto": { "type": ["string", "null"], "maxLength": 160, "description": "el recuento en palabras de OlivarTrack (sin nombres, según la herramienta)" }
+            }
+          }
+        }
+      }
+    },
+    "vigia": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["leidoEn", "consultadoEn", "viejo", "descartadas", "fecha", "calibrada", "frescura", "pidenUnaMirada"],
+      "properties": {
+        "leidoEn": { "type": "string", "format": "date-time" },
+        "consultadoEn": { "type": ["string", "null"], "format": "date-time", "description": "frescura.generadoEn de Vigía" },
+        "viejo": { "type": "boolean" },
+        "descartadas": { "type": "integer", "minimum": 0 },
+        "fecha": { "$ref": "#/definitions/dia" },
+        "calibrada": { "type": ["boolean", "null"], "description": "Vigía: ninguna capa está calibrada contra observación de campo" },
+        "frescura": {
+          "type": "object", "additionalProperties": false,
+          "required": ["generadoEn", "horasDeAntiguedad", "datosDeMaqueta"],
+          "properties": {
+            "generadoEn": { "type": ["string", "null"], "format": "date-time" },
+            "horasDeAntiguedad": { "type": ["number", "null"], "minimum": 0 },
+            "datosDeMaqueta": { "type": ["boolean", "null"] }
+          }
+        },
+        "pidenUnaMirada": {
+          "type": "array", "maxItems": 100,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["parcela", "gravedad", "motivo", "comoSeLee"],
+            "properties": {
+              "parcela": { "type": "string", "minLength": 1, "maxLength": 80, "description": "nombre de la parcela según Vigía" },
+              "gravedad": { "type": ["string", "null"], "pattern": "^[a-z0-9_.-]{1,40}$" },
+              "motivo": { "type": ["string", "null"], "maxLength": 300 },
+              "comoSeLee": { "type": ["string", "null"], "maxLength": 300 }
+            }
+          }
+        }
+      }
+    },
+    "avisos": {
+      "type": "array", "maxItems": 20,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["de", "texto"],
+        "properties": {
+          "de": { "enum": ["gemelo", "olivartrack", "vigia"] },
+          "texto": { "type": "string", "maxLength": 400 }
+        }
+      }
+    }
+  }
+}

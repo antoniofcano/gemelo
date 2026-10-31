@@ -183,7 +183,9 @@ services:
     volumes:
       - ../../apps/api/pruebas/vigia:/app/vigia-fixture:ro   # el fixture sintético del tiempo (GEMELO_VIGIA=fixture)
       - medios:/datos/medios                  # V7: las fotos de los hogares (como en producción)
-      - config_publicada:/datos/config        # V10: la configuración publicada, que lee el hornero
+      - config_publicada:/datos/config        # V10: la configuración publicada, que lee el hornero (y OF9: ahí deja la api `pedido-rehornear.json`)
+      - hornero_estado:/datos/hornero:ro      # OF9: el latido y el estado del hornero, para Sistema (solo lectura)
+      - ${GEMELO_DEV_OLIVOS:-../../pruebas/salida/olivos-dev/${GEMELO_DEV_FINCA:-hituelo}}:/datos/olivos/${GEMELO_DEV_FINCA:-hituelo}/olivos:ro   # OF9: el manifiesto horneado, para Sistema
     depends_on:
       db: { condition: service_healthy }
       correo: { condition: service_healthy }
@@ -197,6 +199,9 @@ services:
       GEMELO_SESION_SECRETO: ${GEMELO_DEV_SESION_SECRETO:?falta GEMELO_DEV_SESION_SECRETO en infra/dev/.env (npm run dev:arriba lo añade)}
       GEMELO_URL_PUBLICA: "https://localhost:${GEMELO_DEV_PUERTO_HTTPS:-8743}"   # https: la cookie de sesión es Secure
       GEMELO_API_ORIGENES: "https://localhost:${GEMELO_DEV_PUERTO_HTTPS:-8743}"
+      # llave de acceso de la oficina (OF13): obligatoria también en local (https://localhost vale como RP ID); para relajarla,
+      # GEMELO_DEV_OFICINA_LLAVE=no en infra/dev/.env (explícito; en producción no se admite)
+      GEMELO_OFICINA_LLAVE: ${GEMELO_DEV_OFICINA_LLAVE:-obligatoria}
       GEMELO_CORREO: smtp
       GEMELO_SMTP_HOST: correo
       GEMELO_SMTP_PUERTO: "1025"
@@ -218,6 +223,8 @@ services:
       GEMELO_MEDIOS: /datos/medios
       GEMELO_MEDIOS_MAX_MB: ${GEMELO_DEV_MEDIOS_MAX_MB:-8}
       GEMELO_CONFIG_SALIDA: /datos/config/publicada.json
+      GEMELO_HORNERO_ESTADO: /datos/hornero      # OF9: Sistema ve al hornero y le pide «re-hornear ahora» (fichero en config_publicada, que él lee)
+      GEMELO_HORNERO_SALIDA: /datos/olivos
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8000/api/salud').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
       interval: 10s

@@ -6,7 +6,7 @@
 // GEMELO_MIDE=1 imprime las cifras. SwiftShader vale para recuentos, no para fps.
 const test = require("node:test"), assert = require("node:assert");
 const { lee, path } = require("./_util");
-const { sirve, motivoSalto, lanza, ESCENARIOS, desgloseLlamadas } = require("./_navegador");
+const { sirve, motivoSalto, lanza, ESCENARIOS, desgloseLlamadas, VENTANA_CHICA, ventanaDe } = require("./_navegador");
 const { montaPagina, saltoPagina } = require("./_pagina");
 
 const MIDE = !!process.env.GEMELO_MIDE;
@@ -14,9 +14,9 @@ const FUENTE = lee("apps/web/motor/26_presencia.js");
 function puro() {
   const i = FUENTE.indexOf("// [puro:inicio]"), f = FUENTE.indexOf("// [puro:fin]");
   assert.ok(i >= 0 && f > i, "26_presencia.js debe marcar su trozo puro con // [puro:inicio] y // [puro:fin]");
-  return new Function("\"use strict\";\n" + FUENTE.slice(i, f) + "\nreturn { PoseCodec: PoseCodec, BufferPose: BufferPose, Muneco: Muneco, Encuentro: Encuentro };")();
+  return new Function("\"use strict\";\n" + FUENTE.slice(i, f) + "\nreturn { PoseCodec: PoseCodec, BufferPose: BufferPose, Muneco: Muneco, Encuentro: Encuentro, Cuenta: Cuenta, Aspecto: Aspecto };")();
 }
-const { PoseCodec, BufferPose, Muneco, Encuentro } = puro();
+const { PoseCodec, BufferPose, Muneco, Encuentro, Cuenta, Aspecto } = puro();
 
 // azar con semilla (mulberry32): las pruebas dan siempre lo mismo
 function azarCon(s) { return () => { s = (s + 0x6d2b79f5) | 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
@@ -282,9 +282,12 @@ test("ir con alguien: junto a la linde de la finca, dentro (3 m de margen); y si
   const S = Encuentro.punto({ x: 100, y: 100 }, { x: 100, y: 100 }, [], EXT); assert.ok(Math.abs(S.x - 100) < 1e-9 && S.y < 100, "encima de ella: por el sur");
 });
 test("ir con alguien y minimapa: en la página, solo con la bandera; con ella, solo a quien se dibuja (de la sala, con pose, sin bloquear)", () => {
-  const M = lee("apps/web/motor/17_minimapa.js"), F = FUENTE;
-  assert.match(M, /if \(Presencia\.activo\(\)\) \{/, "el minimapa solo pinta a los demás con la presencia activa");
-  assert.match(F, /function seVe\(a, ahoraMs\) \{ return !!a && a\.visto && \(variante !== "red" \|\| SalaPose\.seVe\(SP, a\.id, ahoraMs, bloqueados\)\); \}/);
+  const M = lee("apps/web/motor/17_minimapa.js"), F = lee("apps/web/motor/38_presencia_compartida.js");
+  // C5: el minimapa no nombra a la presencia: pinta las entidades «persona» (las registra la presencia solo con su bandera) e «Ir con» es su acción «ir»
+  assert.match(M, /var gente = Entidades\.lista\("persona"\);[^\n]*\n\s*if \(gente\) \{/, "el minimapa solo pinta a los demás si hay tipo «persona» (presencia activa)");
+  assert.match(M, /Usables\.usa\(mejor\.id, "ir"\)/, "el segundo toque va con esa persona por su acción «ir»");
+  assert.match(F, /if \(variante\) quitaPersona = Entidades\.registra\(\{ tipo: "persona"/, "el tipo «persona» solo con ?presencia=sim|red");
+  assert.match(F, /function seVe\(a, tMs\) \{ return !!a && a\.visto && \(variante !== "red" \|\| SalaPose\.seVe\(SP, a\.id, tMs, bloqueados\)\); \}/);
   assert.match(F, /function irCon\(id\) \{\s*if \(!activo\) return false;\s*var a = busca\(id\); if \(!seVe\(a, performance\.now\(\)\)\) return false;/, "irCon solo va con quien se ve");
   assert.match(F, /if \(x\.enMundo && !bl\) \{/, "el botón «Ir con» solo para quien está en el olivar y no está bloqueado");
 });
@@ -297,10 +300,11 @@ test("balizas (I4): quién está en una parcela, por su linde (HazasPuro.dentroP
   assert.deepStrictEqual(Encuentro.enParcela(pts, linde, HazasPuro.dentroPoligono), ["Abubilla", "Jara", "Mirlo"], "Perdiz cae en el hueco de la L; Fuera, fuera");
   assert.deepStrictEqual(Encuentro.enParcela([], linde, HazasPuro.dentroPoligono), []);
   assert.deepStrictEqual(Encuentro.enParcela(null, linde, HazasPuro.dentroPoligono), []);
-  // los de vista aérea y los bloqueados no llegan aquí: enParcela recibe Presencia.puntos(), que ya los quita (seVe; prueba de SalaPose.seVe en presencia_red.test.js)
+  // los de vista aérea y los bloqueados no llegan aquí: enParcela recibe las entidades «persona», que son los puntos de la presencia, que ya los quita (seVe; prueba de SalaPose.seVe en presencia_red.test.js)
   const B = lee("apps/web/motor/19_balizas.js");
-  assert.match(B, /return Encuentro\.enParcela\(Presencia\.puntos\(\), parcelas\[k\]\.linde, HazasPuro\.dentroPoligono\);/, "la lista sale de Presencia.puntos()");
-  assert.match(B, /if \(typeof Presencia === "undefined" \|\| !Presencia\.activo\(\)\) return null;/, "sin presencia, no hay lista (el aviso solo pregunta)");
+  assert.match(B, /return Encuentro\.enParcela\(gente, parcelas\[k\]\.linde, HazasPuro\.dentroPoligono\);/, "la lista sale de las entidades «persona»");
+  assert.match(B, /var gente = Entidades\.lista\("persona"\); if \(!gente\) return null;/, "sin presencia (sin tipo «persona»), no hay lista (el aviso solo pregunta)");
+  assert.match(lee("apps/web/motor/38_presencia_compartida.js"), /lista: function \(\) \{ return puntos\(\)\.map\(/, "la lista del tipo «persona» son los puntos de la presencia (los que se dibujan)");
   assert.match(B, /avisoB\.txt\.textContent = textoAvisoBaliza\(k\)/, "el aviso pone los alias como texto, nunca como HTML");
   assert.match(B, /gente\.map\(esc\)/, "en la ficha (HTML), los alias escapados");
 });
@@ -315,9 +319,9 @@ test("balizas (I4): ir a una baliza te deja a 4-5,5 m de la columna, fuera de co
   }
   assert.strictEqual(Encuentro.punto({ x: 100, y: 100 }, { x: 100, y: 0 }, [], EXT, { dists: Encuentro.BALIZA }).d, 4.5, "en abierto, a 4,5 m");
 });
-test("contratos/livekit-roles.json: en F2 ningún rol publica audio ni vídeo, todos publican datos, nadie lleva roomAdmin y la identidad es opaca", () => {
+test("contratos/livekit-roles.json: en las salas fijas ningún rol publica audio ni vídeo, todos publican datos, nadie lleva roomAdmin y la identidad es opaca", () => {
   const R = JSON.parse(lee("contratos/livekit-roles.json"));
-  assert.strictEqual(R.contrato, "livekit-roles"); assert.strictEqual(R.version, 3); assert.strictEqual(R.fase, "F2");
+  assert.strictEqual(R.contrato, "livekit-roles"); assert.strictEqual(R.version, 6); assert.strictEqual(R.fase, "F3");
   assert.deepStrictEqual(Object.keys(R.roles).sort(), ["admin", "corresponsal", "guia", "hogar", "oficina"], "los roles de contratos/sesion.md");
   assert.strictEqual(R.roles.oficina.hidden, false, "la oficina es siempre visible en el mundo (decisión 107)");
   for (const [rol, p] of Object.entries(R.roles)) {
@@ -330,8 +334,66 @@ test("contratos/livekit-roles.json: en F2 ningún rol publica audio ni vídeo, t
   assert.match(R.identidad.identity, /opaco/); assert.match(R.identidad.identity, /sesión/, "una identidad por sesión (aparato), no por hogar");
   assert.ok(new RegExp(R.identidad.formato).test("h_" + "a".repeat(22) + "_" + "b-_c".repeat(2))); assert.doesNotMatch(JSON.stringify(R.identidad.metadata.campos), /correo|email/);
   assert.strictEqual(R.temas_de_datos.pose.fiable, false); assert.strictEqual(R.temas_de_datos.chat.se_guarda, false, "decisión 40");
+  // v4 (OF10): los temas que solo manda la api (sin participante) y las dos salas por clave
+  for (const t of ["anuncio", "sala", "balizas"]) { assert.strictEqual(R.temas_de_datos[t].lo_manda, "api", t); assert.strictEqual(R.temas_de_datos[t].fiable, true, t); }
+  assert.deepStrictEqual(Object.values(R.salas).filter(s => s.clave).map(s => s.clave + "=" + s.nombre).sort(), ["general=hituelo-libre", "visita=hituelo-visita"]);
   const md = lee("contratos/presencia.md");
   for (const s of ["24 B", "56 B", "smallest-three", "livekit-roles.json", "versión"]) assert.ok(md.includes(s), "presencia.md no menciona «" + s + "»");
+});
+
+test("contratos/livekit-roles.json v6 (F3c, ADR-0026): en la sala guiada solo el guía y la oficina publican, y solo micrófono; la familia, nada hasta que la api le da la palabra; sin grabación ni desmute remoto", () => {
+  const R = JSON.parse(lee("contratos/livekit-roles.json"));
+  assert.deepStrictEqual(Object.keys(R.roles_guiada).filter(k => k !== "$comment").sort(), ["familia", "guia", "oficina"], "tres papeles; ninguno de menor (decisión 159)");
+  for (const p of ["guia", "oficina"]) {
+    assert.strictEqual(R.roles_guiada[p].canPublish, true, p); assert.deepStrictEqual(R.roles_guiada[p].canPublishSources, ["microphone"], p + ": solo micrófono (ni cámara ni pantalla)");
+  }
+  assert.strictEqual(R.roles_guiada.familia.canPublish, false); assert.deepStrictEqual(R.roles_guiada.familia.canPublishSources, []);
+  for (const [p, x] of Object.entries(R.roles_guiada)) if (p !== "$comment") { assert.strictEqual(x.roomAdmin, false, p); assert.strictEqual(x.canUpdateOwnMetadata, false, p); assert.strictEqual(x.hidden, false, p); }
+  assert.match(R.salas.guiada.nombre, /^guiada-/); assert.ok(new RegExp(R.salas.guiada.patron).test("guiada-42")); assert.ok(!new RegExp(R.salas.guiada.patron).test("hituelo-libre"));
+  assert.strictEqual(R.palabra.una_a_la_vez, true); assert.strictEqual(R.palabra.duracion_s, 120, "decisión 161: 2 min"); assert.strictEqual(R.palabra.alargar_s, 60);
+  assert.strictEqual(R.palabra.desmute_remoto, false); assert.match(R.grabacion, /Egress/);
+  for (const a of ["palabra_hasta", "mano"]) assert.ok(R.atributos[a], "atributo " + a);
+  assert.ok(R.identidad.metadata.campos.includes("papel"));
+  assert.ok(lee("contratos/presencia.md").includes("guiada-"), "presencia.md describe la sala guiada");
+});
+
+// ---------- PB8: lo que cuesta dibujar al grupo, sin página (Cuenta, en el trozo puro). El de Chrome solo confirma que el montaje da lo mismo.
+test("coste del grupo (PB8): el muñeco a pie con sombrero son 94 triángulos y con gafas +24; sin accesorios, 82; llamadas = 3 + sombrero/apoyo + manos + ruedas", () => {
+  const una = (p) => Cuenta.grupo(Cuenta.instancias([p]));
+  assert.deepStrictEqual(una({ quest: false, sombrero: 0, mov: "pie" }), { llamadas: 3, triangulos: 82 }, "cuerpo 60 + cabeza 20 + nombre 2");
+  assert.deepStrictEqual(una({ quest: false, sombrero: 1, mov: "pie" }), { llamadas: 4, triangulos: 94 }, "+ sombrero 12: el 94 de P5");
+  assert.deepStrictEqual(una({ quest: true, sombrero: 1, mov: "pie" }), { llamadas: 5, triangulos: 94 + 24 }, "con gafas, +2 manos de 12");
+  assert.deepStrictEqual(una({ quest: false, sombrero: 1, mov: "silla" }), { llamadas: 5, triangulos: 94 + 24 + 80 }, "silla: 2 cajas de apoyo + 2 ruedas de 40");
+  assert.deepStrictEqual(una({ quest: true, sombrero: 1, mov: "silla" }).llamadas, 6, "el máximo del grupo sin vehículos");
+  assert.deepStrictEqual(Cuenta.grupo(Cuenta.instancias([])), { llamadas: 0, triangulos: 0 }, "sin plazas no se dibuja nada");
+  assert.strictEqual(Cuenta.TRI.rueda, 40); assert.strictEqual(Muneco.PIEZAS.length, 5);
+});
+test("reparto de las instancias (PB8): cuerpo 5 por plaza; cajas según Aspecto.cajas; manos 2 por Quest; ruedas 2 por silla; las llamadas no crecen con la gente (10 → 40 → 49)", () => {
+  const mov = ["pie", "baston", "andador", "silla"], r = azarCon(81031);
+  const gente = n => Array.from({ length: n }, (_, k) => ({ quest: r() < 0.25, sombrero: Math.floor(r() * 3), mov: mov[Math.floor(r() * 4)], oficial: k === 0 }));
+  for (const n of [1, 10, 40, 49]) {
+    const g = gente(n), c = Cuenta.instancias(g);
+    assert.strictEqual(c.cuerpo, n * 5); assert.strictEqual(c.cabeza, n); assert.strictEqual(c.nombres, n);
+    assert.strictEqual(c.cajas, g.reduce((a, p) => a + Aspecto.cajas(p.sombrero, p.mov, p.oficial), 0));
+    assert.strictEqual(c.manos, 2 * g.filter(p => p.quest).length); assert.strictEqual(c.ruedas, 2 * g.filter(p => p.mov === "silla").length);
+    assert.ok(Cuenta.grupo(c).llamadas >= 4 && Cuenta.grupo(c).llamadas <= 6, "n=" + n);
+    assert.ok(c.cajas <= n * Aspecto.CAJAS_MAX, "nunca más cajas que la reserva (plazas × CAJAS_MAX)");
+  }
+  // 49 plazas con la sala llena y todo el mundo con lo máximo: bajo el techo del componente (presupuesto 40000 triángulos, 8 llamadas)
+  const peor = Cuenta.grupo(Cuenta.instancias(Array.from({ length: 49 }, () => ({ quest: true, sombrero: 1, mov: "silla", oficial: true }))));
+  assert.ok(peor.triangulos < 40000 && peor.llamadas <= 8, JSON.stringify(peor));
+});
+test("coste del grupo (PB8), propiedades: llamadas independientes del número de personas; triángulos monótonos al añadir gente o accesorios (500 casos de semilla fija)", () => {
+  const mov = ["pie", "baston", "andador", "silla"], r = azarCon(5);
+  const una = () => ({ quest: r() < 0.5, sombrero: Math.floor(r() * 3), mov: mov[Math.floor(r() * 4)], oficial: r() < 0.1 });
+  for (let i = 0; i < 500; i++) {
+    const g = Array.from({ length: 1 + Math.floor(r() * 49) }, una), extra = g.concat([una()]);
+    const a = Cuenta.grupo(Cuenta.instancias(g)), b = Cuenta.grupo(Cuenta.instancias(extra));
+    assert.ok(b.triangulos > a.triangulos, "una persona más cuesta triángulos");
+    assert.ok(b.llamadas >= a.llamadas && b.llamadas <= 6);
+    const todos = Cuenta.grupo(Cuenta.instancias(g.map(p => Object.assign({}, p, { quest: true, sombrero: 1, mov: "silla" }))));
+    assert.ok(todos.llamadas === 6 && todos.triangulos >= a.triangulos, "con todo puesto, el máximo");
+  }
 });
 
 // ---------- en Chrome
@@ -345,7 +407,7 @@ test.before(async () => {
 test.after(async () => { if (navegador) await navegador.close(); if (srv) srv.close(); });
 
 async function abre(consulta) {
-  const p = await navegador.newPage({ viewport: { width: 900, height: 650 } }), errores = [];
+  const p = await navegador.newPage({ viewport: ventanaDe(VENTANA_CHICA) }), errores = [];
   p.on("pageerror", e => errores.push("PAGEERROR " + String(e.stack || e).slice(0, 400)));
   p.on("console", m => { if (m.type() === "error") errores.push("CONSOLE " + m.text().slice(0, 300)); });
   await p.goto(base + "?debug" + consulta);
@@ -363,6 +425,8 @@ async function abre(consulta) {
   // los olivos (qué celdas cercanas están montadas), que no es cosa de la presencia (medido en T8 fase 2: ±5 llamadas entre cargas)
   const d = await p.evaluate(desgloseLlamadas);
   m.presLlamadas = d.filas.filter(([k]) => / presencia:/.test(k)).reduce((a, f) => a + f[1], 0);
+  // los triángulos del grupo «presencia» (instancias incluidas): la diferencia de triángulos totales entre cargas también la mueven las celdas de olivos montadas (medido en PB2: +1152 con 10, +6268 / +7108 con 40 según la carga y la ventana)
+  m.presTri = await p.evaluate(() => { const g = window.__g.scene.getObjectByName("presencia"); let t = 0; if (g) g.traverse(o => { if (!o.isMesh || !o.geometry || o.visible === false) return; const n = o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count; t += n / 3 * (o.isInstancedMesh ? o.count : 1); }); return Math.round(t); });
   return { p, errores, m };
 }
 
@@ -390,9 +454,11 @@ test("en Chrome: sin ?presencia no se añade nada; con ?presencia=sim, 10 y 40 v
     res[n] = r.m;
   }
   if (MIDE) for (const n of [0, 10, 40]) console.log("MEDIDO presencia n=" + n + " " + JSON.stringify(res[n]));
-  const d10 = res[10].presLlamadas - res[0].presLlamadas, d40 = res[40].presLlamadas - res[0].presLlamadas;
-  assert.ok(d10 >= 4 && d10 <= 6, "10 visitantes: " + d10 + " llamadas más (esperadas 4-6: cuerpo, cabeza, sombrero y apoyo, nombres, manos si hay Quest y las ruedas si alguien lleva silla)");
-  assert.ok(d40 === 5 || d40 === 6, "40 visitantes: " + d40 + " llamadas más (esperadas 5, o 6 con las ruedas de la silla de ruedas: AV2, decisión 131)");
-  // P5: el muñeco del paseante: 5 cajas (60) + cabeza (icosaedro, 20) + sombrero (12) + nombre (2) = 94; con gafas, +24 de las manos
-  assert.ok(res[40].triangulos - res[0].triangulos <= 40 * 120, "40 visitantes: más de 120 triángulos por avatar");
+  // PB8: el coste esperado es el de Cuenta (puro, probado arriba en Node); aquí solo se confirma que lo montado lo cumple. El reparto sale de lo que la página informa de sí misma
+  const esperado = r => Cuenta.grupo({ plazas: r.pres.n, cuerpo: r.pres.n * 5, cabeza: r.pres.n, nombres: r.pres.n, cajas: r.pres.aspecto.cajas, manos: 2 * r.pres.quest, ruedas: r.pres.aspecto.ruedas });
+  for (const n of [10, 40]) {
+    const e = esperado({ pres: res[n].pres }), real = { llamadas: res[n].presLlamadas - res[0].presLlamadas, triangulos: res[n].presTri };
+    assert.deepStrictEqual(real, e, n + " visitantes: lo dibujado debe ser lo que dice Cuenta (llamadas, triángulos) " + JSON.stringify(real) + " vs " + JSON.stringify(e));
+  }
+  assert.ok(res[40].presLlamadas === res[10].presLlamadas || Math.abs(res[40].presLlamadas - res[10].presLlamadas) <= 2, "10 y 40 visitantes cuestan casi las mismas llamadas (instanciado)");
 });

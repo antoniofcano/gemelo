@@ -40,3 +40,16 @@ export function paginaAparatoPendiente(nombre: string, minSegundoEnlace: number)
     "<p>Si no has sido tú, avisa a la oficina: alguien puede estar usando tu correo.</p>" +
     "<p><a href=\"/\">Pedir un enlace</a></p>");
 }
+
+/** La baja de los avisos por correo (OF11c): el GET de un escáner de correo no la hace; hace falta pulsar (POST). */
+export function paginaBajaAvisos(token: string): string {
+  return pagina("Avisos por correo", "<h1>Dejar de recibir los avisos por correo</h1><p>Seguirás viendo los avisos dentro del gemelo.</p>" +
+    "<form method=\"post\" action=\"/api/avisos/baja\"><input type=\"hidden\" name=\"t\" value=\"" + esc(token) + "\">" +
+    "<button type=\"submit\">Dejar de recibirlos</button></form>");
+}
+export function paginaBajaHecha(): string {
+  return pagina("Avisos por correo", "<h1>Listo</h1><p>No te mandaremos más avisos por correo. Los seguirás viendo dentro del gemelo.</p><p><a href=\"/\">Ir al gemelo</a></p>");
+}
+export function paginaBajaMala(): string {
+  return pagina("Avisos por correo", "<h1>Este enlace no sirve</h1><p>Puede que esté incompleto. Entra en el gemelo para cambiar tus avisos.</p><p><a href=\"/\">Ir al gemelo</a></p>");
+}

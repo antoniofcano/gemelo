@@ -1,8 +1,9 @@
 "use strict";
 // Las hazas en el motor (apps/web/motor/13b_hazas.js, F1 «3c»). En Node, sin navegador: el GeoJSON de GET /api/hazas se valida contra el esquema
-// `Hazas` de contratos/api.openapi.yaml (ajv) y el validador del motor dice lo mismo; UTM → local con centro_utm; la linde pegada al suelo; el toque
-// al suelo; la ficha solo con la lista blanca de contratos/haza.schema.json (con procedencia y fecha); y, con un THREE y un fetch falsos, que sin api,
-// con 401 o con datos que no cumplen el contrato no se crea nada ni se escribe en la consola, y que con datos se crea UNA LineSegments que libera() suelta.
+// `Hazas` de contratos/api.openapi.yaml (ajv) y el validador del motor dice lo mismo; UTM → local con centro_utm; el toque al suelo; la ficha solo con
+// la lista blanca de contratos/haza.schema.json (con procedencia y fecha); y, con un THREE y un fetch falsos, que sin api, con 401 o con datos que no
+// cumplen el contrato no se crea nada ni se escribe en la consola, y que con datos Hazas.lindes() da la linde y «hazas:cambia» lo avisa (el dibujo de la
+// linde es del componente 44_lindes.js: pruebas/guardianes/lindes.test.js).
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
 const Ajv2020 = require("ajv/dist/2020").default;
@@ -92,23 +93,6 @@ test("punto en haza: el agujero queda fuera; los polígonos sueltos de un MultiP
   assert.strictEqual(P.hazaEn(400, 400, hs), -1);
 });
 
-test("la linde se pega al suelo: tramos de ≤ 2 m, a (suelo + alto) × exag, z = −y, con el color de cada haza; y se reescribe en el mismo búfer", () => {
-  const suelo = (x, y) => 100 + 0.1 * x - 0.05 * y, rojo = [1, 0, 0], azul = [0, 0, 1];
-  const hs = [{ anillos: [[[0, 0], [10, 0], [10, 5], [0, 0]]], color: rojo }, { anillos: [[[20, 0], [21, 0], [21, 1], [20, 0]]], color: azul }];
-  const s = P.segmentos(hs, suelo, 2, 2, 0.45);
-  // 10 m → 5 tramos, 5 m → 3, √125 ≈ 11,2 m → 6 (14); y la segunda: 1 + 1 + 1 (√2 < 2) → 17 tramos = 34 vértices
-  assert.strictEqual(s.n, 34); assert.strictEqual(P.cuentaVertices(hs, 2), 34); assert.strictEqual(s.pos.length, 34 * 3);
-  for (let k = 0; k < s.n; k++) {
-    const x = s.pos[k * 3], y = -s.pos[k * 3 + 2];
-    assert.ok(Math.abs(s.pos[k * 3 + 1] - (suelo(x, y) + 0.45) * 2) < 1e-3, "vértice " + k + " pegado al suelo");
-    if (k % 2 === 1) assert.ok(Math.hypot(s.pos[k * 3] - s.pos[k * 3 - 3], s.pos[k * 3 + 2] - s.pos[k * 3 - 1]) <= 2 + 1e-6, "tramo ≤ 2 m");
-  }
-  assert.deepStrictEqual([...s.col.slice(0, 3)], rojo); assert.deepStrictEqual([...s.col.slice(-3)], azul);
-  const pos = s.pos, s2 = P.segmentos(hs, () => 0, 1, 2, 0.45, s.pos, s.col);
-  assert.strictEqual(s2.pos, pos, "mismo búfer (sin crear memoria al repegar)");
-  assert.ok(Math.abs(s2.pos[1] - 0.45) < 1e-6);
-});
-
 test("del toque al suelo: el rayo encuentra el suelo (llano y en cuesta) y no lo encuentra si mira al cielo", () => {
   const llano = () => 10, q = P.rayoSuelo([0, 110, 0], [0, -Math.SQRT1_2, -Math.SQRT1_2], llano, 5000);
   assert.ok(Math.abs(q[0]) < 1e-6 && Math.abs(q[1] - 100) < 1e-3, "a 100 m al norte: " + q);
@@ -173,7 +157,7 @@ test("a qué api se habla: solo el servidor (D.base /teselas/…) o ?api= relati
 
 // ---------- el módulo entero con un THREE, un DOM y un fetch falsos ----------
 function entorno({ base, busqueda = "", respuesta }) {
-  const reg = { fetch: [], añadidos: [], quitados: [], oyentes: [], consola: [], dispose: 0, creados: 0 };
+  const reg = { fetch: [], añadidos: [], quitados: [], oyentes: [], consola: [], dispose: 0, creados: 0, eventos: [] };
   class Geo { constructor() { reg.creados++; this.a = {}; } setAttribute(n, a) { this.a[n] = a; } getAttribute(n) { return this.a[n]; } computeBoundingSphere() {} dispose() { reg.dispose++; } }
   class Mat { constructor(o) { reg.creados++; this.o = o; } dispose() { reg.dispose++; } }
   const THREE = {
@@ -191,7 +175,7 @@ function entorno({ base, busqueda = "", respuesta }) {
     THREE, D, fetch, console: consola, location: { search: busqueda }, $: () => elemento(), document: { createElement: elemento },
     window: oyente("window"), lienzo: oyente("lienzo"), camera: { far: 5000 }, SRGB: "srgb", exag: 1, paseando: false, pp: { x: 0, y: 0 }, objetivo: { x: 0, z: 0 },
     suelo: () => 0, Mundo: { alCargar: () => reg.oyentes.push("Mundo.alCargar") }, gLinde: { add: o => reg.añadidos.push(o), remove: o => reg.quitados.push(o) },
-    performance: { now: () => 0 },
+    performance: { now: () => 0 }, Entidades: { registra: () => () => reg.oyentes.push("Entidades:quita") }, Bus: { emite: (ev, d) => { reg.eventos.push([ev, d]); return 0; }, on: () => () => {}, hay: () => false },
   };
   const nombres = Object.keys(env);
   const { Hazas } = new Function(...nombres, "\"use strict\";\n" + FUENTE + "\nreturn { Hazas: Hazas };")(...nombres.map(n => env[n]));
@@ -203,9 +187,10 @@ const resp = (status, cuerpo) => Promise.resolve({ ok: status >= 200 && status <
 test("sin api (fixture, salida artefacto): no pide nada, no crea nada, no escucha nada y no escribe en la consola", async () => {
   for (const base of ["", undefined, "t/"]) {
     const { Hazas, reg } = entorno({ base, respuesta: resp(200, coleccion()) });
-    await espera(); Hazas.actualiza(0.1);
-    assert.deepStrictEqual([reg.fetch.length, reg.creados, reg.añadidos.length, reg.oyentes.length, reg.consola.length], [0, 0, 0, 0, 0], "base " + base);
-    assert.deepStrictEqual(Hazas.estado(), { api: false, activo: false, n: 0, propias: 0, vertices: 0, error: null });
+    await espera();
+    assert.deepStrictEqual([reg.fetch.length, reg.creados, reg.añadidos.length, reg.oyentes.length, reg.consola.length, reg.eventos.length], [0, 0, 0, 0, 0, 0], "base " + base);
+    assert.deepStrictEqual(Hazas.estado(), { api: false, activo: false, n: 0, propias: 0, error: null });
+    assert.deepStrictEqual(Hazas.lindes(), []);
     Hazas.libera();
   }
 });
@@ -217,27 +202,31 @@ test("con api pero sin sesión (401), con error de red o con datos fuera de cont
     "fuera del mundo": () => resp(200, (() => { const c = coleccion(); c.features = [c.features[0]]; c.features[0].geometry.coordinates = [[cuadro(CX + 5000, CY, CX + 5100, CY + 80)]]; return c; })()) };
   for (const [nombre, r] of Object.entries(casos)) {
     const { Hazas, reg } = entorno({ base: "/teselas/hituelo/", respuesta: r });
-    await espera(); Hazas.actualiza(1);
+    await espera();
     assert.strictEqual(reg.fetch.length, 1, nombre);
-    assert.deepStrictEqual([reg.creados, reg.añadidos.length, reg.oyentes.length, reg.consola.length], [0, 0, 0, 0], nombre);
+    assert.deepStrictEqual([reg.creados, reg.añadidos.length, reg.oyentes.length, reg.consola.length, reg.eventos.length], [0, 0, 0, 0, 0], nombre);
     assert.strictEqual(Hazas.estado().activo, false, nombre);
   }
 });
 
-test("con api y datos: pide /api/hazas?srs=25830&finca=… con la cookie del mismo origen, crea UNA LineSegments en gLinde y libera() la suelta", async () => {
+test("con api y datos: pide /api/hazas?srs=25830&finca=… con la cookie del mismo origen; no dibuja nada él mismo, da la linde con lindes() y avisa con «hazas:cambia»", async () => {
   const { Hazas, reg } = entorno({ base: "/teselas/hituelo/", respuesta: resp(200, coleccion()) });
   await espera();
   assert.deepStrictEqual(reg.fetch[0][0], "/api/hazas?srs=25830&finca=hituelo");
   assert.strictEqual(reg.fetch[0][1].credentials, "same-origin");
-  assert.strictEqual(reg.añadidos.length, 1, "una sola llamada de dibujo");
+  assert.deepStrictEqual([reg.creados, reg.añadidos.length], [0, 0], "el dibujo es del componente «lindes-hazas»");
   const e = Hazas.estado();
-  assert.deepStrictEqual([e.activo, e.n, e.propias], [true, 2, 1]);
-  assert.ok(e.vertices > 0 && e.vertices % 2 === 0);
-  assert.strictEqual(reg.añadidos[0].geometry.getAttribute("position").array.length, e.vertices * 3);
+  assert.deepStrictEqual([e.activo, e.n, e.propias, e.error], [true, 2, 1, null]);
+  assert.deepStrictEqual(reg.eventos, [["hazas:cambia", { n: 2, propias: 1 }]]);
+  const l = Hazas.lindes();
+  assert.deepStrictEqual(l.map(h => [h.id, h.es_mia, h.anillos.length]), [[1, true, 2], [2, false, 2]], "anillo exterior y agujero; dos polígonos");
+  assert.deepStrictEqual(l[0].anillos[0][1], [100, 0], "en locales (relativas a centro_utm)");
+  l[0].anillos[0][1][0] = 999; assert.deepStrictEqual(Hazas.lindes()[0].anillos[0][1], [100, 0], "una copia: quien la recibe no toca las de Hazas");
   assert.strictEqual(reg.consola.length, 0);
-  Hazas.actualiza(1); Hazas.libera();
-  assert.strictEqual(reg.quitados.length, 1); assert.strictEqual(reg.dispose, 2, "geometría y material");
-  assert.strictEqual(Hazas.estado().activo, false);
+  Hazas.libera();
+  assert.deepStrictEqual(reg.eventos[1], ["hazas:cambia", { n: 0, propias: 0 }]);
+  assert.strictEqual(Hazas.estado().activo, false); assert.deepStrictEqual(Hazas.lindes(), []);
+  Hazas.libera(); assert.strictEqual(reg.eventos.length, 2, "liberar dos veces no avisa dos veces");
   const t = entorno({ base: "", busqueda: "?api=api-falsa/", respuesta: resp(200, coleccion()) }); await espera();
   assert.strictEqual(t.reg.fetch[0][0], "api-falsa/hazas?srs=25830&finca=hituelo", "?api= para las pruebas");
 });

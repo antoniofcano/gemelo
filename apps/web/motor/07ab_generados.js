@@ -34,7 +34,9 @@
   // decisión 82, ADR-0022: ver Escalera); un olivo cambia de escalón solo cuando el pedido está preparado (hasta entonces se queda en el que tenía) y,
   // mientras no haya lejanos, lo que sale del 3D se queda en el lote (nunca sin dibujar). El coste ya no dobla por la pasada de sombras si
   // renderer.shadowMap no está activo (el motor no lo activa: ver costo()). La copa y la altura de todos, las del propio (parametrosDe, decisión 81).
-  // ?olivos=gen no cambia.
+  // Con ?olivos=gen (O8c, Escalera.modoGen): si el manifiesto trae variantes horneadas de la época, la MISMA escalera («horneada»): variantes E2 e
+  // impostores (07ac) en lugar del nivel 0 de siempre y de los olivos del tileset, en cuanto la capa de lejanos está (hasta entonces, como ?olivos=gen,
+  // con la escalera dentro de lo generado: Escalera.dibuja); sin variantes horneadas, o con ?olivosEscalera=0, lo de antes («gen»).
 
   // [puro:inicio] — el reparto de la escalera por presupuesto, sin THREE ni DOM (lo evalúan pruebas/olivo/escalera_motor.mjs y o9a_escalones.mjs)
   // O9c (decisión 82, ADR-0022 §4-5): el escalón de cada olivo sale de su alto en píxeles, px = h · kPx / d (kPx = alto del búfer / (2 · tan(fov/2))):
@@ -117,14 +119,40 @@
       plan.sort(function (a, b) { return a.d - b.d || a.rol - b.rol; });
       return { plan: plan, usado: r.usado, propios: r.nP, variantes: r.nV, s: r.s, enBanda: r.nB };
     }
-    return { tope: tope, planifica: planifica, fronteras: fronteras, peso: peso, MAX_PROPIOS: MAX_PROPIOS, MAX_VAR: MAX_VAR, TRI_MOVIL: TRI_MOVIL,
-      UMBRALES: UMBRALES, BANDA: BANDA, HIST: HIST, FR_E0_VR: FR_E0_VR, K_PX: K_PX };
+    /** el escalón entero de un olivo a d m con sus fronteras F, sin banda ni histéresis: 0 E0, 1 E1, 2 E2 (E2-VR), 3 lejano */
+    function nivel(d, F) { var n = 0; while (n < 3 && d > F.D[n]) n++; return n; }
+    // ---- O8c: cuándo dibuja el motor la escalera (ADR-0019) y qué olivos aparta del tileset
+    /** cómo van los generados: {bandera: "escalera" | "gen" | null (?olivos=), manifiesto: el de la finca vale, variantes: las de la época en él,
+     *  sinEscalera: ?olivosEscalera=0}. «forzada» con ?olivos=escalera (siempre, como en la fase A); «horneada» con ?olivos=gen y variantes horneadas
+     *  de la época (la escalera real: variantes E2 e impostores en lugar del nivel 0 de siempre y de los olivos del tileset); «gen» con ?olivos=gen sin
+     *  ellas (lo de antes: propios y variantes cerca y, más allá, lo de siempre); «apagado» sin la bandera */
+    function modoGen(o) {
+      if (o.bandera === "escalera") return "forzada";
+      if (o.bandera !== "gen") return "apagado";
+      return !o.sinEscalera && o.manifiesto && o.variantes > 0 ? "horneada" : "gen";
+    }
+    /** si 07b reparte con la escalera ({modoGen, estado de Generados, hayCapa: la de lejanos de 07ac}). La horneada espera a la capa de lejanos: hasta
+     *  entonces 07b reparte como con ?olivos=gen (el nivel 0 de siempre y el tileset fuera de lo generado, que ya va por la escalera con FR_ESPERA del
+     *  presupuesto), sin el hueco de la primera carga (ADR-0019 §3) que sí tiene la forzada */
+    function dibuja(o) {
+      if (o.estado === "sin") return false;
+      if (o.modoGen === "forzada") return true;
+      return o.modoGen === "horneada" && !!o.hayCapa;
+    }
+    /** qué olivos aparta 07b del tileset (la máscara de 04c) con la escalera: «todos» (la forzada, o la horneada con la capa de lejanos ya entera) o
+     *  «3d» (solo los que están en 3D: durante el segundo en que la capa de lejanos entra con su tramado, el tileset sigue debajo) */
+    function mascaraTiles(o) { return o.modoGen === "forzada" || o.capaCompleta ? "todos" : "3d"; }
+    return { tope: tope, planifica: planifica, fronteras: fronteras, peso: peso, estado: estadoDe, nivel: nivel, modoGen: modoGen, dibuja: dibuja, mascaraTiles: mascaraTiles,
+      MAX_PROPIOS: MAX_PROPIOS, MAX_VAR: MAX_VAR, TRI_MOVIL: TRI_MOVIL, UMBRALES: UMBRALES, BANDA: BANDA, HIST: HIST, FR_E0_VR: FR_E0_VR, K_PX: K_PX, FR_ESPERA: 0.45 };
   })();
   // [puro:fin]
 
   var Generados = (function () {
-    var ESCALERA = /[?&]olivos=escalera\b/.test(location.search);
-    var pedido = ESCALERA || /[?&]olivos=gen\b/.test(location.search), estado = pedido ? "cargando" : "apagado", motivo = "", M = null, mats = null, fabrica = null;
+    // O8c: con ?olivos=gen, «gen» u «horneada» (Escalera.modoGen) se decide con el manifiesto, antes de que Generados quede activo; ESCALERA
+    // (reparte con la escalera: forzada u horneada) ya no cambia después
+    var BANDERA = /[?&]olivos=escalera\b/.test(location.search) ? "escalera" : /[?&]olivos=gen\b/.test(location.search) ? "gen" : null;
+    var MODO = Escalera.modoGen({ bandera: BANDERA }), ESCALERA = MODO === "forzada", SIN_ESCALERA = /[?&]olivosEscalera=0\b/.test(location.search);
+    var pedido = !!BANDERA, estado = pedido ? "cargando" : "apagado", motivo = "", M = null, mats = null, fabrica = null;
     var fr = /[?&]olivosTri=([0-9.]+)/.exec(location.search), FRACCION = fr && !ESCALERA ? Math.min(0.9, Number(fr[1])) : ESCALERA ? 1 : 0.45;
     var mpr = /[?&]olivosPropios=([0-6])\b/.exec(location.search), MAX_PROPIOS_VR = null;   // MAX_PROPIOS_VR: el de las gafas, si la configuración lo da
     var ESTIM = { E0: 160000, E1: 80000, E2: 38000, E2VR: 28000 }, SEM_VAR = [11, 23, 37, 51], MAX_PROPIOS = mpr ? Number(mpr[1]) : 6, MAX_VAR = 48, RADIO_CAND = 160, MARGEN = 12;
@@ -150,6 +178,9 @@
         cache = m.creaCache && !/[?&]olivosCache=0\b/.test(location.search) ? m.creaCache({ memMB: topeCacheMem(), discoMB: 300 }) : null;
         M = m; return cargaManifiesto();   // antes de los materiales: la época puede salir del manifiesto
       }).then(function () {
+        // con ?olivos=gen y variantes horneadas de la época, la escalera (O8c); sin ellas, como siempre
+        MODO = Escalera.modoGen({ bandera: BANDERA, manifiesto: !!manif, variantes: varSem ? varSem.length : 0, sinEscalera: SIN_ESCALERA });
+        ESCALERA = MODO === "forzada" || MODO === "horneada";
         mats = M.creaMateriales(THREE, null, { epoca: epoca(), srgb: true, parche: parcheGen, mipsCobertura: !/[?&]olivosMips=0\b/.test(location.search) });   // sin fotos de campo aquí: corteza dibujada (texturas.js); hojas con mipmaps que conservan la cobertura (ADR-0022 §6; ?olivosMips=0, los de la GPU)
         prof = { corteza: profundidad(), muerta: profundidad() };   // la sombra de las mallas por lotes, con el mismo fundido
         var f = M.creaFabrica({ trabajador: true }); if (f.modo === "trabajador") fabrica = f; else f.cierra();
@@ -311,7 +342,7 @@
       r.piezas.forEach(function (z) { if (z.rol === "olivas" && z.clase === "instancias") ol += z.n * (z.geo === "octa" ? 8 : 20); });
       return 2 * t - ol;
     }
-    var ESTIM_ESC = { E0: 105000, E1: 50000, E2: 20000, E2VR: 15000 };   // escalera, sin receta aún: los triángulos medidos (ADR-0017 §4) redondeados hacia arriba
+    var ESTIM_ESC = { E0: 105000, E1: 25000, E2: 11000, E2VR: 11000 };   // escalera, sin receta aún: los triángulos medidos (centenario3 semilla 7; E1/E2 con tarjetas, O9b) redondeados hacia arriba
     function estim(niv) { return ESCALERA ? ESTIM_ESC[niv] * (sombras() ? 2 : 1) : ESTIM[niv]; }
 
     // ---- reparte el presupuesto: lo llama el reparto de 07b_arboles.reclasifica con el foco (fx, fz) y el tope de triángulos del aparato
@@ -607,12 +638,15 @@
       if (indice) g.setIndex(new THREE.BufferAttribute(indice, 1));
       return g;
     }
+    // las mallas instanciadas de hoja: por material, salvo las dos tarjetas de E1/E2 (O9b), que comparten material y cambian de geometría
+    var GEO_INST = { ramita0: "ramita", ramita1: "ramita", relleno: "relleno", tarjeta: "tarjeta", tarjetaO: "tarjetaO" };
+    function claveInst(z) { return z.geo === "tarjeta" || z.geo === "tarjetaO" ? z.geo : z.mat; }
     function* construyeG(items) {
       var G = M.geos(), out = new THREE.Group(), m4 = new THREE.Matrix4(), mp = new THREE.Matrix4(), mi = new THREE.Matrix4(), col = new THREE.Vector4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), s3 = new THREE.Vector3();
       var sel = items.map(function (x) { return x.p; }), cod = 0;   // el código de cada pieza va en el alfa de su color en las mallas por lotes (1 − código / 2)
       var salen = { B: {}, I: {}, P: null }, hay2 = items.some(function (x) { return x.cod === 2; });
       // 1) recuento para dar a cada malla su tamaño justo
-      var cap = { corteza: { i: 0, v: 0, x: 0 }, muerta: { i: 0, v: 0, x: 0 }, olivas: { i: 0, v: 0, x: 0 } }, inst = { ramita0: 0, ramita1: 0, relleno: 0 }, npuntos = 0, vistas = {};
+      var cap = { corteza: { i: 0, v: 0, x: 0 }, muerta: { i: 0, v: 0, x: 0 }, olivas: { i: 0, v: 0, x: 0 } }, inst = { ramita0: 0, ramita1: 0, relleno: 0, tarjeta: 0, tarjetaO: 0 }, npuntos = 0, vistas = {};
       function cuenta(b, geoClave, atrib, indice, n) {
         if (!vistas[b + geoClave]) { vistas[b + geoClave] = true; cap[b].v += atrib.position.length / 3; cap[b].x += indice ? indice.length : 0; }
         cap[b].i += n;
@@ -626,13 +660,13 @@
           else if (z.geo === "tocon") cuenta("corteza", "tocon", G.tocon.atrib, G.tocon.indice, z.n);
           else if (z.geo === "corte") cuenta("muerta", "corte", G.corte.atrib, G.corte.indice, z.n);
           else if (z.geo === "oliva" || z.geo === "octa") cuenta("olivas", z.geo, G[z.geo].atrib, G[z.geo].indice, z.n);
-          else if (z.clase === "instancias" && inst[z.mat] !== undefined) inst[z.mat] += z.n;
+          else if (z.clase === "instancias" && inst[claveInst(z)] !== undefined) inst[claveInst(z)] += z.n;
           else if (z.clase === "puntos") npuntos += z.n;
         });
       });
       yield;
       // 2) las mallas
-      var B = {}, geoId = {}, ix = { ramita0: 0, ramita1: 0, relleno: 0 }, I = {}, pts = npuntos ? { p: new Float32Array(npuntos * 3), c: new Float32Array(npuntos * 3), f: new Float32Array(npuntos), n: 0 } : null;
+      var B = {}, geoId = {}, ix = { ramita0: 0, ramita1: 0, relleno: 0, tarjeta: 0, tarjetaO: 0 }, I = {}, pts = npuntos ? { p: new Float32Array(npuntos * 3), c: new Float32Array(npuntos * 3), f: new Float32Array(npuntos), n: 0 } : null;
       var matDe = { corteza: mats.pies, muerta: mats.muerta, olivas: mats.oliva };
       Object.keys(cap).forEach(function (b) {
         if (!cap[b].i) return;
@@ -641,9 +675,9 @@
       });
       Object.keys(inst).forEach(function (k) {
         if (!inst[k]) return;
-        var g = geoDe(k === "relleno" ? G.relleno.atrib : G.ramita.atrib, k === "relleno" ? G.relleno.indice : G.ramita.indice, false);
+        var gk = GEO_INST[k], mk = k === "tarjetaO" ? "tarjeta" : k, g = geoDe(G[gk].atrib, G[gk].indice, false);   // las dos tarjetas (O9b) comparten material: atlas con y sin olivas
         g.setAttribute("aFun", new THREE.InstancedBufferAttribute(new Float32Array(inst[k]), 1));   // el código de fundido de cada instancia
-        var im = new THREE.InstancedMesh(g, mats[k], inst[k]); im.name = "gen-" + k; im.castShadow = true; im.receiveShadow = true; im.customDepthMaterial = mats[k + "_sombra"];
+        var im = new THREE.InstancedMesh(g, mats[mk], inst[k]); im.name = "gen-" + k; im.castShadow = true; im.receiveShadow = true; im.customDepthMaterial = mats[mk + "_sombra"];
         im.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(inst[k] * 3), 3); I[k] = im; out.add(im);
       });
       function idGeo(b, gk, atrib, indice) { var k = b + gk; if (geoId[k] === undefined) geoId[k] = B[b].addGeometry(geoDe(atrib, indice, b === "corteza")); return geoId[k]; }
@@ -664,12 +698,12 @@
           if (z.clase === "puntos") { for (var k2 = 0; k2 < z.n; k2++) { v.fromArray(z.posiciones, k2 * 3).applyMatrix4(m4); pts.p.set([v.x, v.y, v.z], pts.n * 3); pts.c.set(z.colores.subarray(k2 * 3, k2 * 3 + 3), pts.n * 3); pts.f[pts.n] = cod; pts.n++; } continue; }
           if (z.clase !== "instancias") continue;
           var bb = z.geo === "tocon" ? "corteza" : z.geo === "corte" ? "muerta" : (z.geo === "oliva" || z.geo === "octa") ? "olivas" : null;
-          var gid = bb ? idGeo(bb, z.geo, G[z.geo].atrib, G[z.geo].indice) : -1, im2 = bb ? null : I[z.mat];
+          var ki = claveInst(z), gid = bb ? idGeo(bb, z.geo, G[z.geo].atrib, G[z.geo].indice) : -1, im2 = bb ? null : I[ki];
           for (var k3 = 0; k3 < z.n; k3++) {
             mi.fromArray(z.matrices, k3 * 16); mi.premultiply(m4);
             var rgb = z.colores ? [z.colores[k3 * 3], z.colores[k3 * 3 + 1], z.colores[k3 * 3 + 2]] : z.geo === "corte" ? r.corte : [1, 1, 1];
             if (bb) ponBatch(bb, gid, mi, rgb);
-            else if (im2) { var n3 = ix[z.mat]++; im2.setMatrixAt(n3, mi); im2.instanceColor.setXYZ(n3, rgb[0], rgb[1], rgb[2]); im2.geometry.attributes.aFun.array[n3] = cod; }
+            else if (im2) { var n3 = ix[ki]++; im2.setMatrixAt(n3, mi); im2.instanceColor.setXYZ(n3, rgb[0], rgb[1], rgb[2]); im2.geometry.attributes.aFun.array[n3] = cod; }
             if (k3 % 512 === 511) yield;
           }
         }
@@ -696,7 +730,7 @@
       var k0 = Object.keys(listos)[0], p0 = k0 !== undefined ? listos[k0].c : null;   // un olivo generado ya dibujado
       return { primero: p0 ? { x: p0.x, y: p0.y, h: p0.h } : null, estado: estado, motivo: motivo, via: fabrica ? "trabajador" : "rebanadas", plan: plan.length, recetas: Object.keys(recetas).length, pidiendo: nPidiendo, trabajos: trabajos.length, radio: R, info: info,
         cache: cache ? cache.estado() : null,
-        escalera: ESCALERA ? { reparto: reparto, sombras: sombras(), variantes: nVar() } : undefined,
+        modoGen: MODO, escalera: ESCALERA ? { reparto: reparto, sombras: sombras(), variantes: nVar() } : undefined,
         horneado: { estado: horn.estado, motivo: horn.motivo, epoca: M && mats ? epoca() : null, variantes: (varSem || SEM_VAR).length, horneadas: horn.horneadas, calculadas: horn.calculadas,
           fallos: horn.fallos, cache: horn.cache, propiosCalculados: horn.propios, ultimoFallo: horn.ultimoFallo }, fundido: { activo: !!fundido, avance: +uFun.value.toFixed(3), duracion: FUNDIDO } };
     };
@@ -721,7 +755,7 @@
       });
       return no.length ? { motivo: no.join("; ").slice(0, 120) } : f;
     }
-    return { escalera: function () { return ESCALERA; }, lejanos: paraLejanos, activo: function () { return estado === "activo"; }, actualiza: actualiza, paso: paso, gastado: function () { return gastado; }, pendientes: pendientes, rotulo: rotulo, estado: function () { return estado; },
+    return { escalera: function () { return ESCALERA; }, modoGen: function () { return MODO; }, lejanos: paraLejanos, activo: function () { return estado === "activo"; }, actualiza: actualiza, paso: paso, gastado: function () { return gastado; }, pendientes: pendientes, rotulo: rotulo, estado: function () { return estado; },
       _prueba: { fecha: function (f) { fechaPrueba = f; }, mats: function () { return mats; }, prof: function () { return prof; }, uFun: uFun, lote: function () { return lote; }, tiene: tiene, fase: fase, listos: function () { return listos; }, saliendo: function () { return saliendo; }, recetas: function () { return recetas; },
         uBanda: uBanda, bandas: function () { return bandas; }, lejRanura: function () { return lejRanura; }, enLote: function () { return enLote; }, selLote: function () { return selLote; } } };
   })();

@@ -1,8 +1,8 @@
-# Contrato `avatares` (v = 1)
+# Contrato `avatares` (v = 1 y v = 2)
 
 Qué sirve el servidor para que el motor dibuje **avatares VRM** (ADR-0020, P7b) y cómo se hace. El cliente (P7c) y la portada (P7d) leen **solo** este contrato. Esquema: [`avatares.schema.json`](avatares.schema.json) (JSON Schema 2020-12). Ejemplo que lo cumple: [`avatares-ejemplo.json`](avatares-ejemplo.json) (inventado: no hay tales ficheros). Lo vigila `pruebas/guardianes/avatares.test.js` (esquema, tubería sobre un VRM sintético, licencias, `fuentes.json`) y, para Caddy, `pruebas/guardianes/dev.test.js`.
 
-La idea en una frase: **un catálogo cerrado de 6-12 avatares, optimizado y con la licencia leída del propio fichero, servido tras sesión desde el mismo origen.** Los `.vrm` no se versionan (regla 4); en el repo van el esquema, el ejemplo, la tubería y un VRM sintético que las pruebas generan.
+La idea en una frase: **un catálogo cerrado de 6-12 avatares, optimizado y con la licencia leída del propio fichero, servido tras sesión desde el mismo origen.** Desde la **v2** ([ADR-0025](../doc/adr/0025-avatares-por-piezas-contrato-v2.md), AV4) el catálogo es de **cuerpos con sus piezas dentro, paletas y receta** (§9); los §1-8 siguen valiendo para los dos (la v2 admite aún los `avatares[]` de la v1). Ejemplo v2: [`avatares-v2-ejemplo.json`](avatares-v2-ejemplo.json) (inventado). Los `.vrm` no se versionan (regla 4); en el repo van el esquema, el ejemplo, la tubería y un VRM sintético que las pruebas generan.
 
 ## 1. Lo que se sirve
 
@@ -89,3 +89,37 @@ Los del ADR-0020 §2, que son **valores de partida sin medir en aparatos** (P7e 
 ## 8. La portada (P7d)
 
 La pantalla del avatar ([UX §4.7](../doc/sistema/UX.md)) lee `/avatares/catalogo.json` (tras sesión; sin él, 404 o vacío, solo ofrece el muñeco), enseña `nombre` y `descripcion` como lista de radios y, con WebGL, una vista previa 3D (`apps/web/portada/vista3d.js`, cargada con `import()` solo en esa pantalla; `@pixiv/three-vrm` 3.5.5 y `three` 0.186.1 como el motor). Pide `/avatares/<fichero>?v=<sha256>`, comprueba la huella del `ArrayBuffer` y, si no coincide o falla, se queda sin vista 3D (el avatar se elige igual). Guarda la elección con `PUT /api/yo/avatar` (`vrm` = el `id`; `null` o ausente = el muñeco) y la lee con `GET /api/yo/avatar` ([api.openapi.yaml](api.openapi.yaml)); la api la guarda en `avatares.vrm` (migración `0003_avatar_vrm.sql`, `CHECK` con el mismo patrón de `id`) y la pone en los metadatos de presencia como `avatar.vrm` **solo si hay uno**. La api **no conoce el catálogo**: un `id` que ya no esté lo trata el cliente como ausente (muñeco). Los créditos: la pantalla «Créditos de los avatares» lista `autor`, `licencia` (`spdx` con su `url`, solo si es https), `texto_credito` y `fuente`; los de `credito_obligatorio` aparte.
+
+## 9. La v2: cuerpos, piezas, paletas y receta (AV4, [ADR-0025](../doc/adr/0025-avatares-por-piezas-contrato-v2.md))
+
+**Un VRM por cuerpo con todas sus piezas dentro** (pelo, vello, ropa de faena, sombreros), cada una una malla con nombre propio pesada al mismo esqueleto y ajustada a ese cuerpo, hechas por el mismo guion (`tuberia/avatares/creador/cuerpos.py`). El motor enseña las de la receta, oculta las demás (lo oculto ni se dibuja ni se sube a la GPU) y tiñe por nombre de material. Lo escribe `tuberia/avatares/creador/catalogo.mjs`; el esquema es el mismo fichero (`oneOf` v1 / v2).
+
+| Campo | Contenido |
+|---|---|
+| `v` | 2 |
+| `compresion`, `topes` | como en v1; los `topes` son los del **fichero** de cada cuerpo (lleva todas sus piezas: más triángulos y materiales que un avatar cerrado) |
+| `topes_combinacion` | `{triangulos, primitivas}`: lo que se **dibuja** de un avatar completo (cuerpo + la pieza más cara de cada tipo). Es el presupuesto que cuenta para el Quest (26b dibuja 3 a la vez); lo comprueba `comprueba.mjs` |
+| `paletas` | `piel` (10, índice = `tono`), `ropa` (10, índice = `arriba` / `abajo`), `pelo` (7-10, índice = `pelo_color`, con canoso y blanco): `{id, nombre, color}`. **Las mismas** que `Aspecto` del motor (`26_presencia.js`) y que la portada: de lejos y de cerca, el mismo color (C13). Lo vigila el guardián |
+| `cuerpos[]` | `id`, `nombre`, `descripcion?`, `edad` (`peque`\|`joven`\|`adulta`\|`mayor`), `complexion` (`delgada`\|`media`\|`ancha`), **`ofrecer`** (los peques, `false`: decisión 132; la portada no los enseña y el motor los trata como ausentes), `fichero`, `sha256`, `bytes`, `vrm_version`, `triangulos` y `primitivas` (del cuerpo solo), `materiales` y `texturas` (del fichero), `autor`, `licencia`, `fuente`, `piezas` (ids que trae dentro) y `mirada` (`huesos`\|`expresion`\|`ninguna`: si `VRMLookAt` mueve los ojos) |
+| `piezas[]` | `id`, `tipo` (`pelo`\|`vello`\|`ropa`\|`accesorio`), `nombre`, `malla` (nombre del nodo en el VRM: `pieza_<id>`), `materiales` (con qué se tiñe), `triangulos` (el máximo entre cuerpos), `cubre_ropa_base?` (con ella no se dibuja la ropa base del cuerpo, que va debajo), `sombrero?` (`paja`\|`gorra`: el del muñeco al que equivale), `color?` (fijo, para lo que no se tiñe con la receta), `edades?` (por talla, **nunca** por sexo: C5) |
+| `avatares[]?` | los cerrados de la v1 (provisionales, decisión 134), con `avatar.vrm` como siempre |
+
+**Sin campo de sexo ni de género** en ningún sitio (C8); los nombres y descripciones pasan la lista negra de C9 (guardián).
+
+**Tinte (motor, decisión 128).** Por nombre de material, sobre blanco y sin texturas: `piel` ← `paletas.piel[tono]`; `ropa_base` ← `paletas.ropa[arriba]`; `ropa_abajo` ← `paletas.ropa[abajo]`; `pelo` (pelo y vello) ← `paletas.pelo[pelo_color]`; `sombrero` ← el `color` de la pieza; `ojos`, como viene.
+
+**La receta** (en `avatar` de los metadatos de presencia; campos **opcionales** del contrato [presencia](presencia.md) v1; la api valida su forma y que el JSON de los campos de AV4 —`cuerpo`, `pelo`, `pelo_color`, `vello`, `ropa`, `acc`— no pase de **200 bytes** (400 `receta_larga`; la más larga del catálogo de hoy, ≈ 105); los de AV2 son listas cerradas, ≤ 100 bytes más; no conoce el catálogo):
+
+| Campo | Valores | Si falta o no está en el catálogo |
+|---|---|---|
+| `cuerpo` | id de `cuerpos[]` con `ofrecer: true` | sin cuerpo: manda `vrm` (v1) y, si tampoco, el muñeco |
+| `pelo`, `vello`, `ropa` | id de `piezas[]` de ese tipo | sin pieza (sin pelo, sin vello, la ropa base) |
+| `pelo_color` | 0-9 (índice de `paletas.pelo`) | el primero |
+| `acc` | lista de ≤ 3 ids de `piezas[]` de tipo `accesorio` | ninguno; el `sombrero` de siempre (`paja`/`gorra`) enseña la pieza con ese `sombrero` |
+| `tono`, `arriba`, `abajo`, `altura`, `complexion`, `movilidad` | los de AV2 ([presencia](presencia.md)) | los de AV2 |
+
+Con `cuerpo`, la `altura` escala el VRM (×0,93 / ×1 / ×1,07) y la `complexion` de la receta debe ser la del cuerpo (la portada la copia: el muñeco lejano se ensancha igual). Con `movilidad = silla`, el VRM va sentado (la postura del quad, con los brazos a las ruedas) y la silla del muñeco se dibuja con él.
+
+**Compatibilidad.** Un cliente con el lector v1 ve `v: 2` como «sin catálogo»: todos los avatares le salen como el muñeco (teñido con la receta, AV2). Un cliente v2 lee también un catálogo v1. Con `cuerpo` y `vrm` a la vez, manda `cuerpo` si se puede dibujar.
+
+**Qué no está probado (v2):** iPhone, Quest y una GPU de verdad (los costes son recuentos); el acabado de pelo, vello, ropa y sombreros lo revisa una persona con las capturas (decisión 130); que el VRM sentado encaje con la silla del muñeco de cerca.

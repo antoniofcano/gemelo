@@ -44,6 +44,43 @@ const PRECOMPRIMIDOS = [
 const COLOR_DEFECTO = { camisa: "#8a8a8a", piel: "#d9a47c", sombrero: "ninguno" };
 
 /**
+ * Un VRM de origen: licencia del meta, optimización y topes. Devuelve { motivos } si se rechaza, o { entrada, bytes, informe } (la entrada del catálogo,
+ * sin los campos de v1 que pone quien llama: colores_muneco). `base` = nombre del fichero sin .vrm; `extra` = su <x>.avatar.json
+ */
+export async function procesa(base, bytes, extra, { compresion = "cuantizacion", topes = TOPES, ids = new Set() } = {}) {
+  const motivos = [], id = extra.id || slug(base);
+  if (!/^[a-z0-9-]{1,32}$/.test(id)) motivos.push("id no válido: «" + id + "»");
+  if (ids.has(id)) motivos.push("id repetido: " + id);
+  const meta = leeMeta(leeGlb(bytes).json), ev = evaluaLicencia(meta);
+  motivos.push(...ev.motivos.map(m => "licencia: " + m));
+  const declarada = extra.licencia && extra.licencia.spdx, deMeta = spdxDeMeta(meta), spdx = declarada || deMeta;
+  if (!spdx) motivos.push("licencia: el VRM 1.0 no dice un identificador SPDX; hay que declararlo en " + base + ".avatar.json");
+  else if (declarada && deMeta && declarada !== deMeta) motivos.push("licencia: se declara " + declarada + " y el meta del VRM dice " + deMeta);
+  if (motivos.length) return { motivos };
+  const r = await optimiza(bytes, { compresion, topes });
+  if (r.problemas.length) return { motivos: r.problemas.map(p => "topes: " + p) };
+  const sha = crypto.createHash("sha256").update(r.bytes).digest("hex"), autor = (extra.autor || meta.autores.join(", "));
+  const obligatorio = meta.credito === "required" || /^CC-BY/.test(spdx);
+  const nombre = String(extra.nombre || meta.nombre).slice(0, 60);
+  const lic = extra.licencia || {};
+  const entrada = {
+    id, nombre, fichero: id + ".vrm", sha256: sha, bytes: r.bytes.length, vrm_version: meta.version, triangulos: r.informe.triangulos, primitivas: r.informe.primitivas,
+    materiales: r.informe.materiales, texturas: r.informe.texturas, autor,
+    licencia: { spdx, url: lic.url || meta.licenciaUrl || meta.otraLicenciaUrl || "https://creativecommons.org/publicdomain/zero/1.0/", credito_obligatorio: obligatorio, texto_credito: nombre + " — " + autor + " — " + spdx + (extra.fuente && extra.fuente.nombre ? " — " + extra.fuente.nombre : "") },
+    fuente: extra.fuente || { nombre: "origen sin declarar" }
+  };
+  if (extra.descripcion) entrada.descripcion = String(extra.descripcion).slice(0, 200);
+  if (r.informe.contornos_quitados) entrada.contornos_quitados = r.informe.contornos_quitados;
+  return { entrada, bytes: r.bytes, informe: r.informe };
+}
+
+/** <id>.vrm y sus precomprimidos (Caddy: file_server { precompressed br zstd gzip }: no depende de qué tipos comprime `encode` por defecto) */
+export function escribeVRM(s, id, bytes, escritos) {
+  fs.writeFileSync(path.join(s, id + ".vrm"), bytes); escritos.push(id + ".vrm");
+  for (const [ext, comprime] of PRECOMPRIMIDOS) { fs.writeFileSync(path.join(s, id + ".vrm." + ext), comprime(bytes)); escritos.push(id + ".vrm." + ext); }
+}
+
+/**
  * @returns {Promise<{catalogo:object, rechazados:{fichero:string,motivos:string[]}[], escritos:string[]}>}
  */
 export async function construye({ origen, salida, compresion = "cuantizacion", topes = {}, log = () => {} }) {
@@ -54,41 +91,20 @@ export async function construye({ origen, salida, compresion = "cuantizacion", t
   fs.mkdirSync(s, { recursive: true });
   const todosTopes = Object.assign({}, TOPES, topes), avatares = [], rechazados = [], escritos = [], ids = new Set();
   for (const f of archivos) {
-    const motivos = [], base = f.slice(0, -4), lado = path.join(o, base + ".avatar.json");
+    const base = f.slice(0, -4), lado = path.join(o, base + ".avatar.json");
     const extra = fs.existsSync(lado) ? JSON.parse(fs.readFileSync(lado, "utf8")) : {};
-    const id = extra.id || slug(base);
     try {
-      const bytes = fs.readFileSync(path.join(o, f));
-      if (!/^[a-z0-9-]{1,32}$/.test(id)) motivos.push("id no válido: «" + id + "»");
-      if (ids.has(id)) motivos.push("id repetido: " + id);
-      const meta = leeMeta(leeGlb(bytes).json), ev = evaluaLicencia(meta);
-      motivos.push(...ev.motivos.map(m => "licencia: " + m));
-      const declarada = extra.licencia && extra.licencia.spdx, deMeta = spdxDeMeta(meta), spdx = declarada || deMeta;
-      if (!spdx) motivos.push("licencia: el VRM 1.0 no dice un identificador SPDX; hay que declararlo en " + base + ".avatar.json");
-      else if (declarada && deMeta && declarada !== deMeta) motivos.push("licencia: se declara " + declarada + " y el meta del VRM dice " + deMeta);
-      if (motivos.length) { rechazados.push({ fichero: f, motivos }); log("RECHAZADO " + f + ": " + motivos.join("; ")); continue; }
-
-      const r = await optimiza(bytes, { compresion, topes: todosTopes });
-      if (r.problemas.length) { rechazados.push({ fichero: f, motivos: r.problemas.map(p => "topes: " + p) }); log("RECHAZADO " + f + ": " + r.problemas.join("; ")); continue; }
-      const sha = crypto.createHash("sha256").update(r.bytes).digest("hex"), autor = (extra.autor || meta.autores.join(", "));
-      const obligatorio = meta.credito === "required" || /^CC-BY/.test(spdx);
-      const nombre = String(extra.nombre || meta.nombre).slice(0, 60);
-      const lic = extra.licencia || {};
-      const entrada = {
-        id, nombre, fichero: id + ".vrm", sha256: sha, bytes: r.bytes.length, vrm_version: meta.version, triangulos: r.informe.triangulos, primitivas: r.informe.primitivas,
-        materiales: r.informe.materiales, texturas: r.informe.texturas, autor,
-        licencia: { spdx, url: lic.url || meta.licenciaUrl || meta.otraLicenciaUrl || "https://creativecommons.org/publicdomain/zero/1.0/", credito_obligatorio: obligatorio, texto_credito: nombre + " — " + autor + " — " + spdx + (extra.fuente && extra.fuente.nombre ? " — " + extra.fuente.nombre : "") },
-        fuente: extra.fuente || { nombre: "origen sin declarar" },
-        colores_muneco: Object.assign({}, COLOR_DEFECTO, extra.colores_muneco)
-      };
-      if (extra.descripcion) entrada.descripcion = String(extra.descripcion).slice(0, 200);
-      if (r.informe.contornos_quitados) entrada.contornos_quitados = r.informe.contornos_quitados;
-      ids.add(id);
-      fs.writeFileSync(path.join(s, id + ".vrm"), r.bytes); escritos.push(id + ".vrm");
-      // precomprimidos junto al fichero (Caddy: file_server { precompressed br zstd gzip }): no depende de qué tipos comprime `encode` por defecto
-      for (const [ext, comprime] of PRECOMPRIMIDOS) { fs.writeFileSync(path.join(s, id + ".vrm." + ext), comprime(r.bytes)); escritos.push(id + ".vrm." + ext); }
-      avatares.push(entrada);
-      log("ok " + f + " → " + id + ".vrm  " + entrada.triangulos + " tri, " + (r.bytes.length / 1024).toFixed(0) + " kB (" + (r.informe.transporte.gzip / 1024).toFixed(0) + " kB gzip), " + entrada.materiales + " mat, " + entrada.texturas + " tex");
+      const r = await procesa(base, fs.readFileSync(path.join(o, f)), extra, { compresion, topes: todosTopes, ids });
+      if (r.motivos) { rechazados.push({ fichero: f, motivos: r.motivos }); log("RECHAZADO " + f + ": " + r.motivos.join("; ")); continue; }
+      const entrada = r.entrada;
+      entrada.colores_muneco = Object.assign({}, COLOR_DEFECTO, extra.colores_muneco);
+      // el orden de las claves, el de siempre (el catálogo es determinista byte a byte)
+      const { descripcion, contornos_quitados, ...resto } = entrada; void descripcion; void contornos_quitados;
+      const fila = Object.assign(resto, entrada.descripcion ? { descripcion: entrada.descripcion } : {}, entrada.contornos_quitados ? { contornos_quitados: entrada.contornos_quitados } : {});
+      ids.add(entrada.id);
+      escribeVRM(s, entrada.id, r.bytes, escritos);
+      avatares.push(fila);
+      log("ok " + f + " → " + entrada.id + ".vrm  " + entrada.triangulos + " tri, " + (r.bytes.length / 1024).toFixed(0) + " kB (" + (r.informe.transporte.gzip / 1024).toFixed(0) + " kB gzip), " + entrada.materiales + " mat, " + entrada.texturas + " tex");
     } catch (e) {
       rechazados.push({ fichero: f, motivos: [e.message] }); log("RECHAZADO " + f + ": " + e.message);
     }

@@ -1,0 +1,5 @@
+# tuberia/contorno/contorno_finca.py (OF3b): unión de parcelas (shapely), CRS84 → EPSG:25830 (pyproj) y validación de la entrada
+# (jsonschema, la misma de tuberia/hazas). Versiones estables fijadas (PyPI, comprobadas el 2026-10-30 con Python 3.14).
+jsonschema==4.26.0
+shapely==2.1.2
+pyproj==3.7.2

@@ -1,3 +1,4 @@
+import polygonClipping from "polygon-clipping";
 // Cuentas puras del editor de hazas (OF3): sin DOM ni OpenLayers, para poder probarlas en Node (pruebas/guardianes/oficina_hazas.test.js).
 // Las coordenadas son las de un MultiPolygon de GeoJSON en EPSG:25830: [polígono][anillo][vértice] = [E, N] en metros, anillos cerrados
 // (el último vértice repite el primero). Lo que se cuenta aquí es ORIENTATIVO: el recuento, la superficie y los solapes que valen son
@@ -98,19 +99,46 @@ function cruzan(a, b, c, d) {
   const o = (p, q, r) => Math.sign((q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]));
   return o(a, b, c) * o(a, b, d) < 0 && o(c, d, a) * o(c, d, b) < 0;
 }
+const lados = c => c.flatMap(pol => pol.flatMap(an => an.slice(0, -1).map((q, i) => [q, an[i + 1]])));
+
 /**
- * ¿Se pisan dos hazas? Aviso orientativo: un vértice de una dentro de la otra a más de `tolerancia` m de su linde, o dos lados que se
- * cruzan. Compartir linde (vértices ajustados) no cuenta. El servidor mide el área pisada con ST_Intersection.
+ * Área (m²) que pisan dos hazas: la de su intersección (polygon-clipping, con aritmética robusta; sirve para lindes coincidentes,
+ * una haza dentro de otra, huecos y MultiPolygon). Es la misma magnitud que mide el servidor con ST_Area(ST_Intersection).
  */
-export function sePisan(a, b, tolerancia = 0.05) {
-  if (!cajasSeTocan(caja(a), caja(b), 0)) return false;
-  const verts = c => c.flatMap(pol => pol.flatMap(an => an.slice(0, -1)));
-  if (verts(a).some(([x, y]) => dentro(b, x, y) && distanciaALinde(b, x, y) > tolerancia)) return true;
-  if (verts(b).some(([x, y]) => dentro(a, x, y) && distanciaALinde(a, x, y) > tolerancia)) return true;
-  const lados = c => c.flatMap(pol => pol.flatMap(an => an.slice(0, -1).map((q, i) => [q, an[i + 1]])));
-  const lb = lados(b);
-  return lados(a).some(([p, q]) => lb.some(([r, s]) => cruzan(p, q, r, s) && distSeg(p[0], p[1], r, s) > tolerancia && distSeg(q[0], q[1], r, s) > tolerancia));
+export function areaPisada(a, b) {
+  if (!cajasSeTocan(caja(a), caja(b), 0)) return 0;
+  try { return area(polygonClipping.intersection(a, b)); } catch { return 0; }
 }
+/** Área (m²) por debajo de la cual el pisado se considera ruido del ajuste (la misma regla que SOLAPE_TOLERADO_M2 de apps/api/src/hazas/geometria.ts). */
+export const SOLAPE_TOLERADO_M2 = 0.5;
+/**
+ * ¿Se pisan dos hazas? Aviso orientativo con la regla del servidor: el área de la intersección supera `minM2` (0,5 m²). Compartir
+ * linde, o rozarse por un ajuste de centímetros, no cuenta; dos hazas iguales o una dentro de otra, sí. Simétrico por construcción:
+ * se calcula siempre en el mismo orden (el que fija `clave`, que no depende de cuál es la primera).
+ */
+export function sePisan(a, b, minM2 = SOLAPE_TOLERADO_M2) {
+  const clave = c => [...caja(c), area(c)];
+  const ka = clave(a), kb = clave(b);
+  let orden = 0;
+  for (let i = 0; i < ka.length && !orden; i++) orden = Math.sign(ka[i] - kb[i]);
+  return (orden <= 0 ? areaPisada(a, b) : areaPisada(b, a)) > minM2;
+}
+
+
+/**
+ * ¿Cabe la haza en el límite de la finca (OF3b: su contorno o, sin él, la caja de sus olivos + 150 m)? Todos sus vértices dentro del
+ * límite (o a menos de `holgura` m de su linde) y ninguno de sus lados lo cruza (un límite cóncavo puede dejar fuera un lado con los dos
+ * extremos dentro). Sin límite conocido (null), cabe: entonces decide solo el servidor, que es quien manda (ST_CoveredBy).
+ */
+export function cabeEn(c, limite, holgura = 0) {
+  if (!limite || !limite.length) return true;
+  const verts = c.flatMap(pol => pol.flatMap(an => an.slice(0, -1)));
+  if (!verts.every(([x, y]) => puntoEnLimite(limite, x, y, holgura))) return false;
+  const k = caja(c), ll = lados(limite).filter(([p, q]) => cajasSeTocan(k, [Math.min(p[0], q[0]), Math.min(p[1], q[1]), Math.max(p[0], q[0]), Math.max(p[1], q[1])], 0));
+  return !lados(c).some(([p, q]) => ll.some(([r, s]) => cruzan(p, q, r, s) && distSeg(p[0], p[1], r, s) > holgura && distSeg(q[0], q[1], r, s) > holgura));
+}
+/** ¿Cae el punto dentro del límite (o a menos de `holgura` m de su linde)? Sin límite, sí. */
+export const puntoEnLimite = (limite, x, y, holgura = 0) => !limite || !limite.length || dentro(limite, x, y) || distanciaALinde(limite, x, y) <= holgura;
 
 /** El vértice editable más cercano a (x, y) a menos de `max` m, o -1. */
 export function verticeCercano(c, x, y, max) {

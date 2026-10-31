@@ -7,6 +7,7 @@ import { OFICINA } from "../oficina/acceso.ts";
 import type { Contexto } from "../contexto.ts";
 import { sincroniza } from "../ot/sincronia.ts";
 import { rutasBandeja } from "./bandeja.ts";
+import { rutasContornoFinca } from "./contorno.ts";
 import { rutasFamilias } from "./familias.ts";
 import { rutasHazasOficina } from "./hazas.ts";
 import { rutasSistema } from "./sistema.ts";
@@ -20,6 +21,7 @@ export async function rutasAdmin(app: FastifyInstance, ctx: Contexto): Promise<v
   await rutasFamilias(app, ctx);
   await rutasBandeja(app, ctx);
   await rutasHazasOficina(app, ctx);
+  await rutasContornoFinca(app, ctx);
   await rutasSistema(app, ctx);
 
   app.post<{ Params: { id: number } }>("/api/admin/hogares/:id/revocar", { preHandler: soloAdmin, schema: { params: ID } }, async (req, rep) => {

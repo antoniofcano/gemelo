@@ -5,8 +5,9 @@ import { NOMBRE_COOKIE, OPCIONES_COOKIE, TEXTO_LIMITE_VINCULO } from "../auth/ru
 import { audita, esOficina, NORMAS_VERSION } from "../auth/servicio.ts";
 import { decideCodigo, PATRON_ENTRADA } from "../auth/vinculo.ts";
 import type { Contexto } from "../contexto.ts";
-import { type Aspecto, ASPECTO, limpiaAspecto } from "../presencia/livekit.ts";
+import { ACC_MAX, type Aspecto, ASPECTO, bytesReceta, limpiaAspecto, PATRON_PIEZA, RECETA_MAX_BYTES } from "../presencia/livekit.ts";
 import { borraFicheros, clavesDelHogar } from "../vida/medios.ts";
+import { datosDelHogar } from "./datos.ts";
 
 // 3–20 letras, números, espacios y guiones (doc/sistema/UX.md §4.6)
 const PATRON_ALIAS = "^[\\p{L}\\p{N}][\\p{L}\\p{N} -]{1,18}[\\p{L}\\p{N}]$";
@@ -84,6 +85,8 @@ export async function rutasYo(app: FastifyInstance, ctx: Contexto): Promise<void
   // siempre: son el muñeco lejano y la caída cuando el VRM no carga.
   // AV2 (decisión 131): `tono` (0-9), `arriba` y `abajo` (0-9, paleta de ropa), `altura`, `complexion` y `movilidad`: todos opcionales y de listas cerradas
   // (ASPECTO); un PUT sin ellos los borra (PUT reemplaza). `piel` (0-4) sigue siendo el tono «de antes» para los clientes que no conocen `tono`.
+  // AV4 (ADR-0025): la receta del creador por piezas (`cuerpo`, `pelo`, `pelo_color`, `vello`, `ropa`, `acc`): ids del catálogo v2 de forma válida (la api no conoce el
+  // catálogo) y como mucho RECETA_MAX_BYTES de JSON entre todo el aspecto; se guarda en la misma columna `aspecto` (jsonb): sin migración.
   app.put<{ Body: { camisa: number; sombrero: string; piel: number; vrm?: string | null } & Aspecto }>("/api/yo/avatar", {
     preHandler: requiereSesion,
     schema: {
@@ -95,11 +98,15 @@ export async function rutasYo(app: FastifyInstance, ctx: Contexto): Promise<void
           tono: { type: "integer", minimum: ASPECTO.tono.min, maximum: ASPECTO.tono.max }, arriba: { type: "integer", minimum: ASPECTO.arriba.min, maximum: ASPECTO.arriba.max },
           abajo: { type: "integer", minimum: ASPECTO.abajo.min, maximum: ASPECTO.abajo.max },
           altura: { type: "string", enum: [...ASPECTO.altura] }, complexion: { type: "string", enum: [...ASPECTO.complexion] }, movilidad: { type: "string", enum: [...ASPECTO.movilidad] },
+          cuerpo: { type: "string", pattern: PATRON_PIEZA }, pelo: { type: "string", pattern: PATRON_PIEZA }, vello: { type: "string", pattern: PATRON_PIEZA }, ropa: { type: "string", pattern: PATRON_PIEZA },
+          pelo_color: { type: "integer", minimum: ASPECTO.pelo_color.min, maximum: ASPECTO.pelo_color.max },
+          acc: { type: "array", maxItems: ACC_MAX, uniqueItems: true, items: { type: "string", pattern: PATRON_PIEZA } },
         },
       },
     },
   }, async (req, rep) => {
     const aspecto = limpiaAspecto(req.body);
+    if (bytesReceta(aspecto) > RECETA_MAX_BYTES) return rep.code(400).send({ error: "receta_larga", mensaje: "La elección del avatar es demasiado larga. Vuelve a elegirla." });
     await bd.query(
       `INSERT INTO avatares (hogar_id, camisa, sombrero, piel, vrm, aspecto) VALUES ($1, $2, $3, $4, $5, $6)
        ON CONFLICT (hogar_id) DO UPDATE SET camisa = $2, sombrero = $3, piel = $4, vrm = $5, aspecto = $6, actualizado_en = now()`,
@@ -110,33 +117,12 @@ export async function rutasYo(app: FastifyInstance, ctx: Contexto): Promise<void
   // Derecho de acceso y portabilidad: todo lo que se guarda del hogar, en JSON.
   app.get("/api/yo/datos", { preHandler: requiereSesion }, async (req, rep) => {
     const id = req.session.hogarId!;
-    const [h, av, hz, pr, vi, se, cv] = await Promise.all([
-      bd.query("SELECT correo, rol, alias, alias_visible, normas_version, normas_aceptadas_en, avisos_correo, creado_en FROM hogares WHERE id = $1", [id]),
-      bd.query("SELECT camisa, sombrero, piel, vrm, aspecto, actualizado_en FROM avatares WHERE hogar_id = $1", [id]),
-      bd.query("SELECT codigo, nombre FROM hazas WHERE hogar_id = $1 ORDER BY codigo", [id]),
-      bd.query("SELECT texto, creada_en, respuesta, respondida_en FROM preguntas WHERE hogar_id = $1 ORDER BY creada_en", [id]),
-      bd.query("SELECT v.titulo, v.empieza_en, a.personas, a.estado FROM visitas_asistentes a JOIN visitas v ON v.id = a.visita_id WHERE a.hogar_id = $1 ORDER BY v.empieza_en", [id]),
-      bd.query("SELECT creada_en, ultima_actividad_en, expira_en, revocada_en FROM sesiones WHERE hogar_id = $1 ORDER BY creada_en", [id]),
-      bd.query("SELECT creado_en, aprobado_en, usado_en FROM codigos_vinculo WHERE hogar_id = $1 ORDER BY creado_en", [id]),
-    ]);
-    // la vida (0004): lo que colgó, subió, denunció, sugirió, sus avisos, inscripciones y lotes
-    const [pe, me, de, su, avi, lo] = await Promise.all([
-      bd.query(`SELECT o.finca, o.copas_id, p.nombre, p.objeto_tipo, p.estado, p.creada_en, p.actualizada_en, p.retirada_en, p.motivo_retirada
-                  FROM personalizaciones p JOIN olivos o ON o.id = p.olivo_id WHERE p.hogar_id = $1 ORDER BY p.id`, [id]),
-      bd.query("SELECT '/api/medios/' || clave AS url, bytes, ancho, alto, aviso_version, aviso_aceptado_en, creado_en FROM medios WHERE hogar_id = $1 ORDER BY id", [id]),
-      bd.query("SELECT motivo, texto, creada_en, resolucion FROM denuncias WHERE hogar_id = $1 ORDER BY id", [id]),
-      bd.query("SELECT texto, estado, creada_en FROM bandeja WHERE hogar_id = $1 AND tipo = 'sugerencia' ORDER BY id", [id]),
-      bd.query("SELECT a.titulo, a.texto, a.creado_en, ah.leido_en FROM avisos_hogar ah JOIN avisos a ON a.id = ah.aviso_id WHERE ah.hogar_id = $1 ORDER BY a.id", [id]),
-      bd.query("SELECT l.codigo, l.campana FROM lote_hogar lh JOIN lotes l ON l.id = lh.lote_id WHERE lh.hogar_id = $1 ORDER BY l.codigo", [id]),
-    ]);
-    // los juegos (0009): sus partidas
-    const ju = await bd.query("SELECT juego, puntos, duracion_s, jugada_en FROM juegos_partidas WHERE hogar_id = $1 ORDER BY id", [id]);
+    // la misma lista que la exportación de la oficina (src/yo/datos.ts): una sola fuente
+    const datos = await datosDelHogar(bd, id);
+    if (!datos) return rep.code(404).send({ error: "no_existe" });
     await audita(bd, id, "yo.datos_descargados");
     rep.header("cache-control", "no-store").header("content-disposition", "attachment; filename=\"mis-datos-gemelo.json\"");
-    return {
-      hogar: h.rows[0], avatar: av.rows[0] ?? null, hazas: hz.rows, preguntas: pr.rows, visitas: vi.rows, sesiones: se.rows, aparatos_vinculados: cv.rows,
-      olivos_personalizados: pe.rows, fotos_subidas: me.rows, denuncias: de.rows, sugerencias: su.rows, avisos: avi.rows, lotes: lo.rows, partidas_de_juegos: ju.rows,
-    };
+    return datos;
   });
 
   // Derecho de supresión: se borra el hogar y, en cascada, todo lo suyo (migraciones/0001_inicial.sql).

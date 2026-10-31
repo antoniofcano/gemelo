@@ -3,10 +3,9 @@
 // Consume: 02_mundo (Mundo), 02b_cola (Cola), 02c_componentes (Pausa, Componentes), 02d_laminas (Laminas), 02e_entidades (Usables),
 //   03_escena (visor, renderer, scene, camera), 04b_escena3d (Escena3D), 04e_suelo_fondo (SueloFondo),
 //   05_nube (actualizaNubeTeselas, actualizaNube), 07b_arboles (Arboles), 08_marcadores (listo, aplica), 09_camara (objetivo, camara),
-//   12_paseo (paseando, actualizaPaseo), 13b_hazas (Hazas), 15_tiempo (actualizaTiempo, hace), 16_vida (quita, actualizaVida),
-//   17_minimapa (actualizaMinimapa), 18_paisaje (actualizaPaisaje), 19_balizas (actualizaBalizas), 21_suelo (recoloreaSuelo, actualizaSuelo),
-//   23_estacion (actualizaOlivo), 24_pantalla (transEntrada, transSalida), 26_presencia (Presencia), 28_depura (depuraCuadro),
-//   29_vr (VRX, vrActualiza, vrFin), 30_mide (Mide), 33_ajustes (Ajustes)
+//   12_paseo (paseando, actualizaPaseo), 15_tiempo (actualizaTiempo, hace), 16_vida (quita, actualizaVida), 17_minimapa (actualizaMinimapa),
+//   18_paisaje (actualizaPaisaje), 19_balizas (actualizaBalizas), 21_suelo (recoloreaSuelo, actualizaSuelo), 23_estacion (actualizaOlivo),
+//   24_pantalla (transEntrada, transSalida), 28_depura (depuraCuadro), 29_vr (VRX, vrActualiza, vrFin), 30_mide (Mide), 33_ajustes (Ajustes)
 // Nota: Arranque y bucle: Mundo.arranca, Componentes.arranca, cuadro() y requestAnimationFrame. Define el orden de las actualizaciones por fotograma: los módulos que aún no son componentes a mano y los componentes por fases (mundo, tarde, trasRender).
 // ===============================================================================
 
@@ -30,7 +29,7 @@
     Usables.actualiza(dt);   // la cercanía (02e_entidades.js): antes que las balizas, que la leen
     actualizaTiempo(dt, t); actualizaOlivo(dt); actualizaVida(dt); actualizaMinimapa(dt); actualizaPaisaje(dt); actualizaBalizas(dt); actualizaSuelo(dt); actualizaNube(dt);
     Componentes.actualiza("mundo", dt, t);
-    Arboles.actualiza(dt); actualizaCarga(dt); Presencia.actualiza(dt); Hazas.actualiza(dt);
+    Arboles.actualiza(dt); actualizaCarga(dt);
     Componentes.actualiza("tarde", dt, t); Laminas.revisa(dt);
     Cola.corre(Arboles.presupuesto()); SueloFondo.actualiza(); Escena3D.actualiza();
     renderer.render(scene, camera); Componentes.actualiza("trasRender", dt, t); depuraCuadro(t); if (VRX.on) vrFin(dt, performance.now() - t); if (Mide.on) Mide.cuadro(t);

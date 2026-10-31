@@ -191,6 +191,21 @@ test("el anillo: se crea al elegir algo que lo lleva, se esconde al soltar, no s
   void t;
 });
 
+test("complementa: un componente añade filas y acciones a la ficha de un tipo ajeno (P7f), se quita, y su fallo no tira la ficha", () => {
+  const m = mundo(), bajo = { olivo: { id: "olivo:cerro:7", s: 0.2 } }, t = tipos(m, bajo), usadas = [];
+  const quita = m.Entidades.complementa("olivo", (f, id, modo) => { f.filas.unshift({ k: "Nombre", v: "El abuelo (" + modo + ")" }); f.acciones = [{ id: "nombrar", txt: "Nombrar", fn: () => { usadas.push(id); } }]; });
+  m.Entidades.complementa("olivo", () => { throw new Error("falla a propósito"); });
+  const f = m.Entidades.ficha("olivo:cerro:7", "pantalla");
+  assert.deepStrictEqual(f.filas[0], { k: "Nombre", v: "El abuelo (pantalla)" }); assert.strictEqual(f.filas.length, 3); assert.strictEqual(m.reg.errores.length, 1, "el fallo se cuenta, no se propaga");
+  assert.strictEqual(m.Entidades.ficha("olivo:cerro:7", "vr").filas[0].v, "El abuelo (vr)", "recibe el modo");
+  assert.strictEqual(m.Entidades.ficha("baliza:p1").filas, undefined, "solo el tipo pedido");
+  m.Usables.toque(5, 5); const btn = m.ids.ficha.children.find(c => c.id === "fichaAcciones");
+  assert.deepStrictEqual(btn.children.map(b => b.textContent), ["Nombrar"], "su acción sale como botón de la ficha común");
+  assert.strictEqual(m.Usables.usa("olivo:cerro:7", "nombrar"), true); assert.deepStrictEqual(usadas, ["olivo:cerro:7"]);
+  quita(); const g = m.Entidades.ficha("olivo:cerro:7", "pantalla"); assert.strictEqual(g.acciones, undefined, "quitado el complemento, la ficha vuelve a ser la del tipo"); assert.strictEqual(g.filas[0].k, "Altura");
+  assert.strictEqual(typeof m.Entidades.complementa(7, 7), "function", "lo que no vale no hace nada"); void t;
+});
+
 test("presupuesto: lo que corre por fotograma (Usables.actualiza) no lanza rayos ni proyecta: solo la cercanía cada 0,1 s y el anillo", () => {
   const i = FUENTE.indexOf("    function actualiza(dt) {"), f = FUENTE.indexOf("\n    }\n", i), cuerpo = FUENTE.slice(i, f);
   assert.ok(i > 0 && f > i, "Usables.actualiza(dt)");

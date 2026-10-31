@@ -1,7 +1,7 @@
 # Contrato HTTP de la api del gemelo (fase F1a). Lo vigila apps/api/pruebas/unidad/app.test.ts: cada ruta registrada
 # está aquí y cada operación de aquí existe. La ficha de haza remite a haza.schema.json (lista blanca, ADR-0014);
 # la sesión, a sesion.md (ADR-0013); la vida de las hazas (olivos personalizados, fotos, denuncias, bandeja), a vida.md
-# y olivos-haza.schema.json. Todo POST/PUT/DELETE exige Origin del sitio (salvo /api/csp-informe).
+# y olivos-haza.schema.json. Todo POST/PUT/DELETE exige Origin del sitio (salvo /api/csp-informe y /api/avisos/baja, que se protege con la firma del enlace).
 openapi: 3.1.0
 info:
   title: Gemelo · api
@@ -34,6 +34,12 @@ components:
         altura: { enum: [baja, media, alta], description: "AV2 (opcional): escala el muñeco" }
         complexion: { enum: [delgada, media, ancha], description: "AV2 (opcional): ensancha o afina el muñeco" }
         movilidad: { enum: [pie, baston, andador, silla], description: "AV2 (opcional): apoyo que lleva; con `silla` el muñeco va sentado con sus ruedas. No es una pose: la calcula quien mira" }
+        cuerpo: { type: string, pattern: "^[a-z0-9-]{1,32}$", description: "AV4 (opcional, ADR-0025): id de un cuerpo del catálogo v2 (contratos/avatares.md §9)" }
+        pelo: { type: string, pattern: "^[a-z0-9-]{1,32}$", description: "AV4 (opcional): id de una pieza de pelo del catálogo v2" }
+        pelo_color: { type: integer, minimum: 0, maximum: 9, description: "AV4 (opcional): índice de paletas.pelo" }
+        vello: { type: string, pattern: "^[a-z0-9-]{1,32}$", description: "AV4 (opcional): id de una pieza de vello (para cualquier cuerpo)" }
+        ropa: { type: string, pattern: "^[a-z0-9-]{1,32}$", description: "AV4 (opcional): id de una pieza de ropa; sin ella, la ropa base" }
+        acc: { type: array, maxItems: 3, uniqueItems: true, items: { type: string, pattern: "^[a-z0-9-]{1,32}$" }, description: "AV4 (opcional): otros accesorios (el sombrero sigue en `sombrero`)" }
     RecordJuego:
       type: object
       additionalProperties: false
@@ -50,6 +56,24 @@ components:
             duracion_s: { type: integer }
             fecha: { type: string, format: date-time }
         partidas: { type: integer, minimum: 0 }
+    PuestoJuego:
+      type: object
+      additionalProperties: false
+      required: [puesto, alias, puntos, es_mia]
+      properties:
+        puesto: { type: integer, minimum: 1, description: "los empates comparten puesto" }
+        alias: { type: [string, "null"], description: "el alias del hogar SOLO si lo hizo visible; si no, null (la pantalla dice «Otra familia»). Nunca nombre real ni correo" }
+        puntos: { type: integer, minimum: 1 }
+        es_mia: { type: boolean, description: "la fila del hogar de quien pregunta (no hay ningún id)" }
+    ClasificacionJuego:
+      type: object
+      additionalProperties: false
+      required: [juego, total, puestos, mia]
+      properties:
+        juego: { type: string }
+        total: { type: integer, minimum: 0, description: "hogares activos con alguna partida de más de 0 puntos" }
+        puestos: { type: array, items: { $ref: "#/components/schemas/PuestoJuego" }, description: "los n primeros puestos (se cortan en n)" }
+        mia: { oneOf: [{ $ref: "#/components/schemas/PuestoJuego" }, { type: "null" }], description: "el puesto del propio hogar, esté o no en la tabla; null si no ha puntuado" }
     Error:
       type: object
       additionalProperties: false
@@ -59,6 +83,21 @@ components:
         mensaje: { type: string }
     GeometriaHaza:
       description: "Linde de una haza dibujada en la oficina: GeoJSON Polygon o MultiPolygon en EPSG:25830 (E, N en metros), anillos cerrados, como mucho 2000 vértices"
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [type, coordinates]
+          properties:
+            type: { type: string, enum: [Polygon] }
+            coordinates: { type: array, minItems: 1, items: { type: array, minItems: 4, items: { type: array, minItems: 2, maxItems: 2, items: { type: number } } } }
+        - type: object
+          additionalProperties: false
+          required: [type, coordinates]
+          properties:
+            type: { type: string, enum: [MultiPolygon] }
+            coordinates: { type: array, minItems: 1, items: { type: array, minItems: 1, items: { type: array, minItems: 4, items: { type: array, minItems: 2, maxItems: 2, items: { type: number } } } } }
+    ContornoFinca:
+      description: "Contorno de una finca (OF3b): la unión de sus parcelas SIGPAC o catastrales, GeoJSON Polygon o MultiPolygon en EPSG:25830, anillos cerrados, como mucho 50000 vértices"
       oneOf:
         - type: object
           additionalProperties: false
@@ -102,12 +141,22 @@ components:
                   nombre: { type: string }
                   finca: { type: string }
                   es_mia: { type: boolean }
+    RespuestaWebAuthn:
+      type: object
+      description: "La PublicKeyCredential del navegador en JSON (RegistrationResponseJSON o AuthenticationResponseJSON de WebAuthn, como la da @simplewebauthn/browser). La forma fina la comprueba @simplewebauthn/server"
+      required: [id, rawId, type, response]
+      additionalProperties: true
+      properties:
+        id: { type: string, pattern: "^[A-Za-z0-9_-]{16,1366}$" }
+        rawId: { type: string, pattern: "^[A-Za-z0-9_-]{16,1366}$" }
+        type: { enum: [public-key] }
+        response: { type: object, additionalProperties: true }
   responses:
     SinSesion:
       description: Sin sesión (o caducada o revocada)
       content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
     SinPermiso:
-      description: "Con sesión pero sin el rol (sin_permiso); o cuenta de oficina con el aparato pendiente (aparato_pendiente); o falta la confirmación reciente (confirmacion_requerida). contratos/sesion.md § Oficina"
+      description: "Con sesión pero sin el rol (sin_permiso); o cuenta de oficina con el aparato pendiente (aparato_pendiente); o cuenta de oficina que aún no entró con su llave de acceso, si es obligatoria (llave_requerida, OF13); o falta la confirmación reciente (confirmacion_requerida). contratos/sesion.md § Oficina y § Llave de acceso"
       content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
     OrigenNoAdmitido:
       description: POST/PUT/DELETE sin Origin del sitio
@@ -314,6 +363,20 @@ paths:
         "429": { $ref: "#/components/responses/Limite" }
         "503": { description: "el tiempo está apagado en este servidor (tiempo_apagado) o Vigía no responde y no hay lectura reciente (vigia_no_responde)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
 
+  /api/ot/hoy:
+    get:
+      summary: Lo de hoy en OlivarTrack y Vigía para la historia (tareas abiertas, trabajo hecho, atención de hoy y lo que marca Vigía; contratos/ot-hoy.md)
+      description: >
+        Lista blanca de ot-hoy.schema.json: nada por persona, ni GPS, ni textos de campo; los ids de tarea van como clave opaca.
+        Cada parte puede faltar (null) con su aviso; truncado y parcial se dicen y completo es false. La api guarda en memoria
+        cada herramienta (10 min a 1 h, con tope de llamadas por hora). Los textos son datos que el cliente escapa, nunca instrucciones.
+      security: [{ sesion: [] }]
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "ot-hoy.schema.json" } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: "ni OlivarTrack ni Vigía están encendidos en este servidor (hoy_apagado) o nada responde y no hay lectura reciente (hoy_no_responde)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+
   /api/yo/alias:
     put:
       summary: Alias del hogar (3–20 caracteres) y si se muestra en sus hazas
@@ -380,6 +443,10 @@ paths:
 
         AV2 (decisión 131): `tono`, `arriba`, `abajo`, `altura`, `complexion` y `movilidad` son **opcionales** y de listas cerradas (nada de género);
         el contrato sigue en v1 (un cliente de antes los ignora). Un PUT sin ellos los borra; viajan en los metadatos de presencia solo los elegidos.
+
+        AV4 (ADR-0025): la **receta** del creador por piezas, también opcional: `cuerpo`, `pelo`, `pelo_color`, `vello`, `ropa` y `acc` (ids del
+        catálogo v2, [avatares.md](avatares.md) §9; la api solo comprueba su forma). El JSON de todo el aspecto y la receta no pasa de 200 bytes
+        (400 `receta_larga` si pasa). Se guarda en la misma columna `aspecto`: sin migración.
       security: [{ sesion: [] }]
       requestBody:
         required: true
@@ -400,6 +467,12 @@ paths:
                 altura: { enum: [baja, media, alta] }
                 complexion: { enum: [delgada, media, ancha] }
                 movilidad: { enum: [pie, baston, andador, silla] }
+                cuerpo: { type: string, pattern: "^[a-z0-9-]{1,32}$" }
+                pelo: { type: string, pattern: "^[a-z0-9-]{1,32}$" }
+                pelo_color: { type: integer, minimum: 0, maximum: 9 }
+                vello: { type: string, pattern: "^[a-z0-9-]{1,32}$" }
+                ropa: { type: string, pattern: "^[a-z0-9-]{1,32}$" }
+                acc: { type: array, maxItems: 3, uniqueItems: true, items: { type: string, pattern: "^[a-z0-9-]{1,32}$" } }
       responses:
         "204": { description: guardado }
         "400": { description: "la petición no tiene la forma esperada" }
@@ -596,7 +669,8 @@ paths:
       summary: "Crea una haza dibujada en la oficina. Devuelve 201 { haza } con el recuento del servidor"
       description: >
         PostGIS valida: geometría legible y válida (ST_IsValid; 400 geometria_no_valida con motivo), al menos 10 m² (demasiado_pequena), dentro
-        de la finca = la caja de sus olivos medidos con 150 m de margen (fuera_de_finca; sin olivos de la finca, finca_desconocida) y sin pisar
+        de la finca = su contorno vigente con 1 m de holgura (ST_CoveredBy; 400 fuera_de_contorno con fuera_m2; OF3b) o, si no tiene contorno,
+        la caja de sus olivos medidos con 150 m de margen (fuera_de_finca; sin olivos ni contorno, finca_desconocida) y sin pisar
         otra haza de la finca en más de 0,5 m² (409 solape, con la lista). Nace sin familia y con su versión 1 (accion crear). Auditoría admin.haza_creada.
       security: [{ sesion: [] }]
       requestBody:
@@ -766,6 +840,60 @@ paths:
         "404": { description: "la haza o la versión no existen" }
         "409": { description: "pisa otra haza (solape), sin cambios u otra persona guardó antes" }
 
+  # ---------------------------------------------------------------- contorno de la finca (OF3b, decisión 140; migración 0011)
+  /api/admin/fincas/{finca}/limite:
+    get:
+      summary: "El límite de la finca para el editor de hazas: { finca, srs, tipo (contorno | caja | ninguno), holgura_m, margen_m, geometria (MultiPolygon o null), fuente, consultado_en, parcelas, superficie_ha, cargado_en, hazas_fuera [{ id, codigo, m2 }] }"
+      description: >
+        Con contorno vigente, tipo contorno (fuente sigpac o catastro, cuántas parcelas, fecha de consulta; hazas_fuera = las hazas de la finca que se
+        salen de él más de holgura_m). Sin él, tipo caja: la caja de los olivos medidos con margen_m (150 m), lo de OF3; sin olivos, tipo ninguno.
+      security: [{ sesion: [] }]
+      parameters:
+        - { name: finca, in: path, required: true, schema: { type: string, pattern: "^[a-z0-9_-]{1,32}$" } }
+      responses:
+        "200": { description: ok }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+
+  /api/admin/fincas/{finca}/contorno:
+    put:
+      summary: "Carga el contorno de la finca (sale de tuberia/contorno/contorno_finca.py) y retira el vigente. Devuelve 201 con el límite nuevo (como GET …/limite)"
+      description: >
+        Solo admin, con confirmación reciente (403 sin_permiso / confirmacion_requerida). PostGIS valida (400 contorno_no_valido). La historia no se
+        borra: el anterior queda retirado. No lleva las referencias de las parcelas, solo cuántas. Auditoría admin.contorno_cargado.
+      security: [{ sesion: [] }]
+      parameters:
+        - { name: finca, in: path, required: true, schema: { type: string, pattern: "^[a-z0-9_-]{1,32}$" } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [geometria, fuente, consultado_en, parcelas]
+              properties:
+                geometria: { $ref: "#/components/schemas/ContornoFinca" }
+                fuente: { type: string, enum: [sigpac, catastro] }
+                consultado_en: { type: string, format: date }
+                parcelas: { type: integer, minimum: 1, maximum: 100000 }
+      responses:
+        "201": { description: cargado }
+        "400": { description: "contorno no válido", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+    delete:
+      summary: Retira el contorno vigente; la finca vuelve a la caja de sus olivos + 150 m
+      description: Solo admin, con confirmación reciente. 404 sin_contorno si no tenía. Auditoría admin.contorno_retirado.
+      security: [{ sesion: [] }]
+      parameters:
+        - { name: finca, in: path, required: true, schema: { type: string, pattern: "^[a-z0-9_-]{1,32}$" } }
+      responses:
+        "204": { description: retirado }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: sin contorno }
+
   /api/admin/hogares/{id}/revocar:
     post:
       summary: Cierra todas las sesiones de un hogar
@@ -812,14 +940,26 @@ paths:
               schema:
                 type: object
                 additionalProperties: false
-                required: [rol, aparato, caduca_en, inactividad_min, confirmada_en, confirmacion_vigente]
+                required: [rol, llave, aparato, caduca_en, inactividad_min, confirmada_en, confirmacion_vigente]
                 properties:
                   rol: { enum: [oficina, admin] }
+                  llave:
+                    type: object
+                    additionalProperties: false
+                    required: [obligatoria, con_llave, requerida, activas, puede_alta, rehabilitada_hasta]
+                    description: "La llave de acceso (OF13). requerida: la sesión aún no se abrió con una llave y la oficina la pide (la página enseña el alta o la entrada)"
+                    properties:
+                      obligatoria: { type: boolean, description: "GEMELO_OFICINA_LLAVE (obligatoria por defecto; «no» solo fuera de producción)" }
+                      con_llave: { type: boolean, description: "esta sesión se abrió o se confirmó con una llave viva" }
+                      requerida: { type: boolean }
+                      activas: { type: integer, minimum: 0 }
+                      puede_alta: { type: boolean, description: "esta sesión puede dar de alta una llave (la primera vez, con llave o con el alta rehabilitada)" }
+                      rehabilitada_hasta: { type: [string, "null"], format: date-time }
                   aparato: { type: object, additionalProperties: false, required: [id, nombre, estado], properties: { id: { type: integer }, nombre: { type: string }, estado: { enum: [pendiente, aprobado] } } }
                   caduca_en: { type: [string, "null"], format: date-time, description: "caducidad absoluta (12 h desde que se entró, por defecto)" }
                   inactividad_min: { type: integer, description: "minutos sin actividad que cierran la sesión (120 por defecto)" }
                   confirmada_en: { type: [string, "null"], format: date-time }
-                  confirmacion_vigente: { type: boolean, description: "true si se entró con un enlace hace menos de GEMELO_OFICINA_CONFIRMACION_MIN (15 min)" }
+                  confirmacion_vigente: { type: boolean, description: "true si la sesión se confirmó hace menos de GEMELO_OFICINA_CONFIRMACION_MIN (15 min): con la llave obligatoria, una aserción WebAuthn; si no, también entrar con un enlace" }
                   ot_proponer: { enum: [manual, token], description: "cómo se pasa algo a OlivarTrack desde la bandeja (GEMELO_OFICINA_OT_PROPONER): manual = copiar el texto y apuntar el id de la propuesta; token queda reservado para el token de solo proponer (DO-7)" }
         "401": { $ref: "#/components/responses/SinSesion" }
         "403": { $ref: "#/components/responses/SinPermiso" }
@@ -833,7 +973,7 @@ paths:
 
   /api/oficina/confirmar:
     post:
-      summary: "Manda un enlace nuevo a la propia cuenta de oficina: entrar con él es la confirmación reciente (abre una sesión nueva)"
+      summary: "Manda un enlace nuevo a la propia cuenta de oficina: entrar con él es la confirmación reciente (abre una sesión nueva). Con la llave obligatoria (OF13), 409 usa_la_llave: la confirmación es POST /api/oficina/llaves/entrada"
       security: [{ sesion: [] }]
       requestBody:
         required: true
@@ -842,9 +982,131 @@ paths:
             schema: { type: object, additionalProperties: false, properties: {} }
       responses:
         "202": { description: enlace mandado }
+        "409": { description: "usa_la_llave: con la llave obligatoria la confirmación es una aserción WebAuthn" }
         "401": { $ref: "#/components/responses/SinSesion" }
         "403": { $ref: "#/components/responses/SinPermiso" }
         "429": { $ref: "#/components/responses/Limite" }
+
+  /api/oficina/llaves/alta/opciones:
+    post:
+      summary: "Llave de acceso (OF13): opciones para navigator.credentials.create() (PublicKeyCredentialCreationOptionsJSON de WebAuthn; verificación de la persona obligatoria, attestation none). Vale con la sesión de oficina aún sin llave (aparato aprobado): la primera vez, o si un admin rehabilitó el alta; si la cuenta ya tuvo llaves, solo desde una sesión abierta con llave. El reto vale 5 min y una vez"
+      security: [{ sesion: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, additionalProperties: false, properties: {} } } } }
+      responses:
+        "200": { description: "opciones (rp, user, challenge, pubKeyCredParams, excludeCredentials, authenticatorSelection, timeout)" }
+        "403": { description: "entra_con_llave: la cuenta ya tiene (o tuvo) llaves; también los de SinPermiso" }
+        "409": { description: "demasiadas_llaves (10 vivas por cuenta)" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/oficina/llaves/alta:
+    post:
+      summary: "Verifica la respuesta de navigator.credentials.create() con el reto de la sesión y guarda la llave (id de credencial, clave pública, contador, transports, nombre). La sesión queda abierta con ella (cuenta como confirmación reciente). Auditoría oficina.llave_alta / oficina.llave_fallida"
+      security: [{ sesion: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [respuesta]
+              properties:
+                nombre: { type: string, maxLength: 80, description: "nombre que le da la persona (se recorta a 40); si falta, el del aparato" }
+                respuesta: { $ref: "#/components/schemas/RespuestaWebAuthn" }
+      responses:
+        "201": { description: "guardada: { id, nombre }" }
+        "400": { description: "llave_no_valida (origen, RP ID, reto, firma o sin verificar a la persona); o entrada_no_valida" }
+        "403": { description: "entra_con_llave; también los de SinPermiso" }
+        "409": { description: "sin_reto (caducó o no se pidió), llave_repetida o demasiadas_llaves" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/oficina/llaves/entrada/opciones:
+    post:
+      summary: "Opciones para navigator.credentials.get() (PublicKeyCredentialRequestOptionsJSON) con las llaves vivas de la propia cuenta; verificación de la persona obligatoria. Vale con la sesión de oficina aún sin llave"
+      security: [{ sesion: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, additionalProperties: false, properties: {} } } } }
+      responses:
+        "200": { description: "opciones (rpId, challenge, allowCredentials, userVerification, timeout)" }
+        "409": { description: "sin_llave: la cuenta no tiene ninguna llave viva" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/oficina/llaves/entrada:
+    post:
+      summary: "Verifica la aserción (navigator.credentials.get()) de una llave viva DE LA PROPIA CUENTA: abre la sesión de oficina y es la confirmación reciente (sesiones.llave_id y confirmada_en). Un contador que no sube se rechaza. Auditoría oficina.llave_entrada / oficina.llave_fallida"
+      security: [{ sesion: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [respuesta], properties: { respuesta: { $ref: "#/components/schemas/RespuestaWebAuthn" } } }
+      responses:
+        "200": { description: "{ ok: true, confirmacion_min }" }
+        "400": { description: "llave_no_valida; o entrada_no_valida" }
+        "409": { description: "sin_reto" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/oficina/llaves:
+    get:
+      summary: "Las llaves de la propia cuenta (vivas y revocadas, las 50 últimas): nombre, transports, respaldada, creada, última vez, revocada; es_esta marca la de la sesión. Nunca la clave pública ni el id de credencial"
+      security: [{ sesion: [] }]
+      responses:
+        "200": { description: "{ obligatoria, llaves: [...] }" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+
+  /api/oficina/llaves/{id}/revocar:
+    post:
+      summary: "Revoca una llave propia y cierra las sesiones abiertas o confirmadas con ella; pide confirmación reciente; nunca la última (409 ultima_llave). Auditoría oficina.llave_revocada"
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "200": { description: "{ sesiones_cerradas, era_esta }" }
+        "404": { description: no es una llave viva de la cuenta }
+        "409": { description: "ultima_llave" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+
+  /api/admin/llaves:
+    get:
+      summary: "(admin) Las cuentas de oficina con sus llaves (sin clave pública ni id de credencial) y si tienen el alta rehabilitada"
+      security: [{ sesion: [] }]
+      responses:
+        "200": { description: "{ obligatoria, cuentas: [{ hogar_id, nombre (nombre interno o «Cuenta n.º id»; nunca el correo), rol, es_tuya, rehabilitada_hasta, llaves }] }" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+
+  /api/admin/llaves/{id}/revocar:
+    post:
+      summary: "(admin, confirmación reciente) Revoca la llave de cualquier cuenta de oficina y cierra sus sesiones. Auditoría oficina.llave_revocada"
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "200": { description: "{ sesiones_cerradas, era_esta }" }
+        "404": { description: no existe, ya estaba revocada o no es de una cuenta de oficina }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+
+  /api/admin/hogares/{id}/rehabilitar-llave:
+    post:
+      summary: "(admin, confirmación reciente) Camino de recuperación: durante 24 h la cuenta de oficina {id} puede dar de alta una llave con la sesión del enlace (y el aparato aprobado). Nunca la propia (403 no_a_ti_mismo: otro admin o la consola del servidor, RUNBOOK-VPS). Con revocar_llaves, revoca antes todas sus llaves vivas. Auditoría oficina.llave_rehabilitada"
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, properties: { revocar_llaves: { type: boolean } } }
+      responses:
+        "200": { description: "{ rehabilitada_hasta, llaves_revocadas, sesiones_cerradas }" }
+        "404": { description: no es una cuenta de oficina activa }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
 
   /api/admin/aparatos:
     get:
@@ -895,9 +1157,19 @@ paths:
                   correo: { type: object, required: [modo, ultima_prueba], properties: { modo: { enum: [smtp, buzon] }, ultima_prueba: { type: [object, "null"], properties: { cuando: { type: string, format: date-time }, ok: { type: boolean } } } } }
                   olivartrack: { type: object, required: [modo, puede_sincronizar, herramientas], properties: { modo: { enum: ["no", grabado, mcp] }, puede_sincronizar: { type: boolean }, herramientas: { type: array, items: { type: object, required: [herramienta, estado, intentada_en, consultado_en, recibidos, guardados, completa, aviso], properties: { estado: { enum: [ok, truncado, parcial, error] }, completa: { type: boolean, description: "false si vino truncada o parcial: no se sacan totales de ahí" } } } } } }
                   vigia: { type: object, required: [modo, conector, origen, herramientas] }
-                  hornero: { type: object, required: [conectado, salud, detalle, latido_en, fincas] }
+                  hornero: { type: object, required: [conectado, salud, detalle, latido_en, fincas, pedido, puede_rehornear] }
         "401": { $ref: "#/components/responses/SinSesion" }
         "403": { $ref: "#/components/responses/SinPermiso" }
+
+  /api/admin/hornero/rehornear:
+    post:
+      summary: "Pide al hornero una vuelta ya (OF9, solo admin con confirmación reciente, ADR-0024). La api deja un fichero `pedido-rehornear.json` en el volumen de la configuración publicada; el hornero lo recoge en su comprobación (hasta GEMELO_HORNERO_COMPRUEBA_S, 10 min) y lo anota como atendido en su latido. Auditoría hornero.rehornear. No fuerza regenerar: es una vuelta idempotente (lo que no cambió se reutiliza)"
+      security: [{ sesion: [] }]
+      responses:
+        "202": { description: "petición dejada: { id, pedido_en, estado: pendiente }; su estado después sale en /api/admin/sistema (hornero.pedido)" }
+        "403": { description: "sin permiso o sin confirmación reciente (confirmacion_requerida)" }
+        "409": { description: "ya_pedido: hay una petición esperando al hornero" }
+        "503": { description: "hornero_no_conectado (falta su estado o el volumen) o pedido_no_escrito" }
 
   /api/admin/auditoria:
     get:
@@ -931,14 +1203,21 @@ paths:
         Sala fija «hituelo-libre» (decisiones 39 y 60). La identidad es un id opaco, uno por sesión (aparato), con el
         hogar como prefijo: h_<22>_<8> (ni correo, ni id de la base, ni id de la sesión). El mismo hogar puede estar a la
         vez en varios aparatos; dos pestañas de la misma sesión comparten identidad. Permisos del rol según livekit-roles.json: en F2 solo datos (pose y chat), sin audio ni vídeo, sin
-        roomAdmin. Los metadatos (alias, avatar, rol, dispositivo) los pone la api y el cliente no puede cambiarlos.
+        roomAdmin. Los metadatos (alias, avatar, rol, dispositivo) los pone la api y el cliente no puede cambiarlos; la oficina (rol oficina o
+        admin) entra con el alias «Oficina», sin nombre propio (OF10, decisión 107).
         El token caduca a los 15 minutos (solo sirve para entrar). Nada de la sala se guarda.
       security: [{ sesion: [] }]
       requestBody:
         required: true
         content:
           application/json:
-            schema: { type: object, additionalProperties: false, required: [dispositivo], properties: { dispositivo: { enum: [escritorio, movil, quest] } } }
+            schema:
+              type: object
+              additionalProperties: false
+              required: [dispositivo]
+              properties:
+                dispositivo: { enum: [escritorio, movil, quest] }
+                sala: { enum: [general, visita], description: "OF10: la sala del mundo por su clave (livekit-roles.json v4). Sin ella, «general» (hituelo-libre); «visita» es hituelo-visita, a la que invita la oficina" }
       responses:
         "200":
           description: token firmado
@@ -950,19 +1229,19 @@ paths:
                 required: [url, sala, identidad, token, caduca_en]
                 properties:
                   url: { type: string, description: "a dónde se conecta el navegador: wss:// de LiveKit (ws:// solo fuera de producción) o una ruta del mismo origen (/rtc) que el cliente resuelve contra su página (https → wss)" }
-                  sala: { const: hituelo-libre }
+                  sala: { enum: [hituelo-libre, hituelo-visita] }
                   identidad: { type: string, pattern: "^h_[A-Za-z0-9_-]{22}_[A-Za-z0-9_-]{8}$" }
                   token: { type: string, description: JWT de LiveKit }
                   caduca_en: { type: string, format: date-time }
         "400": { $ref: "#/components/responses/EntradaNoValida" }
         "401": { $ref: "#/components/responses/SinSesion" }
-        "403": { description: "sin Origin del sitio (origen_no_admitido) o expulsado hace menos de 15 min (expulsado)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "403": { description: "sin Origin del sitio (origen_no_admitido), expulsado hace menos de 15 min (expulsado) o, OF10b, sala «visita» ligada a un evento de la agenda y tu hogar no está apuntado a él (visita_solo_inscritos: Esta visita es para las familias apuntadas.)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
         "429": { $ref: "#/components/responses/Limite" }
         "503": { description: la presencia está apagada en este servidor (falta GEMELO_LIVEKIT_URL) }
 
   /api/admin/presencia/expulsar:
     post:
-      summary: Saca a un hogar de la sala libre (moderación mínima de F2, decisión 42; solo la oficina)
+      summary: Saca a un hogar de las salas del mundo (la libre y, OF10, la de la visita; moderación mínima de F2, decisión 42; solo la oficina)
       description: >
         La api saca TODAS las conexiones del hogar (una por aparato: lista la sala con RoomService.ListParticipants y
         quita con RemoveParticipant las que llevan su prefijo; ningún token de cliente lleva roomAdmin), no le da token
@@ -992,6 +1271,372 @@ paths:
         "403": { $ref: "#/components/responses/SinPermiso" }
         "404": { description: el hogar no existe }
         "503": { description: la presencia está apagada en este servidor }
+
+  # ---------------------------------------------------------------- el mundo en modo oficina (OF10; OFICINA.md §6; presencia/oficina_mundo.ts)
+  /api/admin/presencia/anuncio:
+    post:
+      summary: Un aviso de texto de la oficina a una sala del mundo o a las dos (OF10, decisión 114)
+      description: >
+        Solo la oficina. La api lo manda con RoomService.sendData por el tema «anuncio» (fiable; JSON {v: 1, texto}): llega SIN participante y el
+        motor solo lo acepta así (LiveKit no deja restringir un tema por rol). El texto se limpia como el chat (sin control ni dirección, espacios
+        juntos, ≤ 280 caracteres). Queda en la auditoría (admin.presencia_anuncio: sala, a qué salas llegó y el texto). Si LiveKit falla, 500 y no
+        se apunta. Una sala sin nadie no es un error: no sale en «salas».
+      security: [{ sesion: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [texto, sala]
+              properties:
+                texto: { type: string, minLength: 1, maxLength: 280 }
+                sala: { enum: [general, visita, todas] }
+      responses:
+        "200":
+          description: mandado; salas = las de LiveKit en las que había alguien
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: false, required: [salas], properties: { salas: { type: array, items: { type: string } } } }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: la presencia está apagada en este servidor }
+
+  /api/admin/presencia/llevar:
+    post:
+      summary: Invita a quien está en una sala del mundo a pasar a la otra (OF10)
+      description: >
+        Solo la oficina. La api manda por el tema «sala» (fiable; JSON {v: 1, a}) a la sala «de»; cada uno ve la invitación y decide si va (nadie
+        cambia de sala sin pulsar). Queda en la auditoría (admin.presencia_llevar, con `evento` si lo hay). Llevar sin preguntar es una decisión pendiente de Antonio.
+        OF10b (decisión 154): con `evento` (id de un evento de la agenda, abierto o cerrado) y a = visita, la sala de la visita queda ligada a ese evento
+        durante 8 h (en memoria de la api): solo obtienen token de ella la oficina y los hogares apuntados (no en espera); los demás reciben 403
+        «visita_solo_inscritos» en POST /api/presencia/token. Invitar a la sala de la visita sin `evento` la deja abierta a quien invite la oficina.
+      security: [{ sesion: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [de, a], properties: { de: { enum: [general, visita] }, a: { enum: [general, visita] }, evento: { type: integer, minimum: 1, maximum: 2147483647, description: "OF10b: ligar la sala de la visita a este evento de la agenda (solo con a = visita)" } } }
+      responses:
+        "200":
+          description: enviado (false si en la sala «de» no había nadie)
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: false, required: [enviado], properties: { enviado: { type: boolean } } }
+        "400": { description: "entrada no válida, la misma sala (misma_sala) o un evento con una sala que no es la de la visita (evento_solo_visita)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: "el evento no existe (evento_no_existe)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "409": { description: "el evento está cancelado o sin abrir (evento_no_vigente)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: la presencia está apagada en este servidor }
+
+  # ---------------------------------------------------------------- la voz de las visitas guiadas (F3c; ADR-0026; presencia/voz.ts y voz_rutas.ts)
+  /api/presencia/guiadas/{evento}/token:
+    post:
+      summary: Token de la sala de voz de una visita guiada, `guiada-<evento>` (F3c; decisiones 39 y 157-162; livekit-roles.json v6)
+      description: >
+        Solo eventos de la agenda de tipo «guiada» o «directo», ni cancelados ni en borrador. Lo obtienen el guía del evento (visitas.guia_id, papel
+        «guia») y la oficina (rol oficina o admin con su aparato aprobado, papel «oficina»), los dos con micrófono (canPublish y canPublishSources
+        [microphone]); y las familias APUNTADAS (no en espera) y activas (papel «familia»), sin poder publicar pistas: la palabra se la da la api en vivo
+        (POST …/palabra). No hay papel de menor (no hay cuentas de menores, decisión 159). Ventana: las familias desde 15 min antes de empezar; el guía y la
+        oficina desde 60 min antes; todos hasta 30 min después del fin (sin fin, 3 h después de empezar). Identidad y metadatos como en
+        /api/presencia/token, más `papel` en los metadatos. Nada se graba (sin Egress, decisión 10).
+      security: [{ sesion: [] }]
+      parameters: [{ name: evento, in: path, required: true, schema: { type: integer, minimum: 1, maximum: 2147483647 } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [dispositivo], properties: { dispositivo: { enum: [escritorio, movil, quest] } } }
+      responses:
+        "200":
+          description: token firmado, con el papel
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [url, sala, identidad, token, caduca_en, papel]
+                properties:
+                  url: { type: string }
+                  sala: { type: string, pattern: "^guiada-[1-9][0-9]{0,9}$" }
+                  identidad: { type: string, pattern: "^h_[A-Za-z0-9_-]{22}_[A-Za-z0-9_-]{8}$" }
+                  token: { type: string, description: JWT de LiveKit }
+                  caduca_en: { type: string, format: date-time }
+                  papel: { enum: [guia, oficina, familia] }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: "sin Origin del sitio (origen_no_admitido); expulsado de las salas o de esta visita hace menos de 15 min (expulsado); o tu hogar no está apuntado, o está en espera (guiada_solo_inscritos: Esta visita es para las familias apuntadas.)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { description: "no hay un evento guiado con ese id (guiada_no_existe)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "409": { description: "cancelado o en borrador (guiada_no_vigente); aún no abre (guiada_aun_no, con abre_en); ya terminó (guiada_terminada)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: la presencia está apagada en este servidor }
+
+  /api/presencia/guiadas/{evento}/mano:
+    post:
+      summary: Una familia apuntada levanta la mano (F3c; la cola es del servidor, en orden de llegada)
+      description: >
+        Desde la conexión de esta sesión a la sala guiada (la identidad la calcula la api). La api pone el atributo `mano` (instante ISO) en su participante
+        de LiveKit para que el guía la vea, y la apunta en la auditoría (guiada.mano_levantada). Idempotente: si ya estaba levantada, devuelve su puesto.
+        No da ningún permiso por sí sola.
+      security: [{ sesion: [] }]
+      parameters: [{ name: evento, in: path, required: true, schema: { type: integer, minimum: 1, maximum: 2147483647 } }]
+      requestBody: { required: false, content: { application/json: { schema: { type: object, additionalProperties: false } } } }
+      responses:
+        "200": { description: "levantada; puesto en la cola (1 = la primera)", content: { application/json: { schema: { type: object, additionalProperties: false, required: [puesto], properties: { puesto: { type: integer, minimum: 1 } } } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: "sin Origin, o no apuntada (guiada_solo_inscritos)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { description: "guiada_no_existe" }
+        "409": { description: "fuera de su ventana o no vigente; eres el guía o la oficina (no_eres_familia); no estás en la sala (no_estas_en_la_sala); ya tienes la palabra (ya_tienes_la_palabra); cola llena (demasiadas_manos)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: la presencia está apagada en este servidor }
+    delete:
+      summary: La familia baja la mano (idempotente; auditoría guiada.mano_bajada si la tenía levantada)
+      security: [{ sesion: [] }]
+      parameters: [{ name: evento, in: path, required: true, schema: { type: integer, minimum: 1, maximum: 2147483647 } }]
+      responses:
+        "204": { description: bajada (o no estaba levantada) }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: "sin Origin, o no apuntada", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { description: "guiada_no_existe" }
+        "409": { description: "fuera de su ventana, no vigente o no_eres_familia" }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: la presencia está apagada en este servidor }
+
+  /api/presencia/guiadas/{evento}/palabra:
+    get:
+      summary: Quién tiene la palabra (y hasta cuándo) y las manos levantadas, en orden (el guía del evento o la oficina)
+      description: >
+        Estado EN MEMORIA de la api (una sola instancia; no sobrevive a un reinicio: al arrancar, la api quita en LiveKit las palabras que quedaran
+        dadas). La fuente de verdad del permiso es LiveKit. Solo identidades opacas; el alias de cada una lo tiene el panel por la sala.
+      security: [{ sesion: [] }]
+      parameters: [{ name: evento, in: path, required: true, schema: { type: integer, minimum: 1, maximum: 2147483647 } }]
+      responses:
+        "200":
+          description: estado de la palabra
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [evento, sala, turno, manos]
+                properties:
+                  evento: { type: integer }
+                  sala: { type: string }
+                  turno:
+                    oneOf:
+                      - { type: "null" }
+                      - { type: object, additionalProperties: false, required: [identidad, hasta, alargues], properties: { identidad: { type: string }, hasta: { type: string, format: date-time }, alargues: { type: integer, minimum: 0, maximum: 5 } } }
+                  manos: { type: array, items: { type: object, additionalProperties: false, required: [identidad, desde], properties: { identidad: { type: string }, desde: { type: string, format: date-time } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: "ni guía de esta visita ni oficina (sin_permiso)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { description: "guiada_no_existe" }
+        "503": { description: la presencia está apagada en este servidor }
+    post:
+      summary: Da la palabra a UNA familia durante 2 minutos (decisión 161; el guía del evento o la oficina)
+      description: >
+        `identidad` es la de una conexión de un hogar APUNTADO al evento (no el guía). La api le da en vivo el permiso de micrófono con
+        RoomService.UpdateParticipant (canPublish y canPublishSources [microphone]) y el atributo `palabra_hasta` (instante ISO de fin, para la cuenta
+        atrás), le baja la mano y lo apunta (guiada.palabra_dada: quién, a qué hogar, cuántos segundos). Al vencer, la api le quita el permiso
+        (al quitar canPublish, LiveKit despublica sus pistas) y lo apunta (guiada.palabra_quitada, motivo vencida). Una sola familia a la vez: si otra la
+        tiene, 409 palabra_ocupada (hay que quitársela antes). Sin desmute remoto: la api nunca abre el micrófono de nadie, solo deja publicarlo.
+      security: [{ sesion: [] }]
+      parameters: [{ name: evento, in: path, required: true, schema: { type: integer, minimum: 1, maximum: 2147483647 } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [identidad], properties: { identidad: { type: string, pattern: "^h_[A-Za-z0-9_-]{22}_[A-Za-z0-9_-]{8}$" } } }
+      responses:
+        "200": { description: "dada; hasta = cuándo acaba el turno", content: { application/json: { schema: { type: object, additionalProperties: false, required: [identidad, hasta], properties: { identidad: { type: string }, hasta: { type: string, format: date-time } } } } } }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: "sin Origin, o ni guía de esta visita ni oficina (sin_permiso)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { description: "guiada_no_existe" }
+        "409": { description: "no vigente (guiada_no_vigente); no es una familia apuntada (no_es_familia_apuntada); otra familia la tiene (palabra_ocupada); ya la tiene (ya_tiene_la_palabra); esa conexión ya no está en la sala (no_esta_en_la_sala)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: la presencia está apagada en este servidor }
+    delete:
+      summary: "Quita la palabra antes de tiempo (cortar; auditoría guiada.palabra_quitada, motivo cortada)"
+      security: [{ sesion: [] }]
+      parameters: [{ name: evento, in: path, required: true, schema: { type: integer, minimum: 1, maximum: 2147483647 } }]
+      responses:
+        "204": { description: quitada }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: "sin Origin, o sin_permiso", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { description: "guiada_no_existe" }
+        "409": { description: "nadie_tiene_la_palabra", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: la presencia está apagada en este servidor }
+
+  /api/presencia/guiadas/{evento}/palabra/alargar:
+    post:
+      summary: Alarga 1 minuto el turno en curso (hasta 5 veces; auditoría guiada.palabra_alargada)
+      security: [{ sesion: [] }]
+      parameters: [{ name: evento, in: path, required: true, schema: { type: integer, minimum: 1, maximum: 2147483647 } }]
+      requestBody: { required: false, content: { application/json: { schema: { type: object, additionalProperties: false } } } }
+      responses:
+        "200": { description: "alargado; hasta = el nuevo fin (también en el atributo palabra_hasta)", content: { application/json: { schema: { type: object, additionalProperties: false, required: [hasta], properties: { hasta: { type: string, format: date-time } } } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: "sin Origin, o sin_permiso", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { description: "guiada_no_existe" }
+        "409": { description: "nadie_tiene_la_palabra o tope_de_alargues", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: la presencia está apagada en este servidor }
+
+  /api/presencia/guiadas/{evento}/silenciar:
+    post:
+      summary: Silencia a todos menos al guía y a quien lo pide (RoomService.MutePublishedTrack) y quita la palabra si alguien la tenía
+      description: >
+        El guía del evento o la oficina. Silencia desde el servidor cada pista de micrófono publicada que no sea del guía ni de quien lo pide; nadie puede
+        quitar ese silencio desde fuera (sin desmute remoto). Auditoría guiada.silenciados (cuántas pistas y si había palabra).
+      security: [{ sesion: [] }]
+      parameters: [{ name: evento, in: path, required: true, schema: { type: integer, minimum: 1, maximum: 2147483647 } }]
+      requestBody: { required: false, content: { application/json: { schema: { type: object, additionalProperties: false } } } }
+      responses:
+        "200": { description: hecho, content: { application/json: { schema: { type: object, additionalProperties: false, required: [pistas, palabra_quitada], properties: { pistas: { type: integer, minimum: 0 }, palabra_quitada: { type: boolean } } } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: "sin Origin, o sin_permiso", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { description: "guiada_no_existe" }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: la presencia está apagada en este servidor }
+
+  /api/presencia/guiadas/{evento}/expulsar:
+    post:
+      summary: Saca de la sala guiada a todas las conexiones del hogar de esa identidad (RoomService.RemoveParticipant); 15 min sin volver a esa visita
+      description: >
+        El guía del evento o la oficina; solo a familias apuntadas (la oficina saca a cualquiera de todas las salas con POST /api/admin/presencia/expulsar).
+        Le quita la palabra si la tenía y saca sus manos de la cola. En memoria (no sobrevive a un reinicio). Auditoría guiada.expulsado (evento, hogar,
+        conexiones, motivo).
+      security: [{ sesion: [] }]
+      parameters: [{ name: evento, in: path, required: true, schema: { type: integer, minimum: 1, maximum: 2147483647 } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [identidad], properties: { identidad: { type: string, pattern: "^h_[A-Za-z0-9_-]{22}_[A-Za-z0-9_-]{8}$" }, motivo: { type: string, minLength: 1, maxLength: 200 } } }
+      responses:
+        "200": { description: "hecho; conexiones = cuántas se sacaron", content: { application/json: { schema: { type: object, additionalProperties: false, required: [conexiones], properties: { conexiones: { type: integer, minimum: 0 } } } } } }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: "sin Origin, o sin_permiso", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { description: "guiada_no_existe" }
+        "409": { description: "no_es_familia_apuntada", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: la presencia está apagada en este servidor }
+
+  /api/balizas-oficiales:
+    get:
+      summary: Las balizas oficiales vigentes de una finca (OF10)
+      description: >
+        Cualquiera con sesión. Las que puso la oficina, sin retirar y sin caducar (como mucho 20, de la más nueva a la más vieja), en EPSG:25830
+        al centímetro. Sin quién la puso. Los textos son de la oficina y se pintan como texto, nunca como HTML.
+      security: [{ sesion: [] }]
+      parameters:
+        - { name: finca, in: query, required: true, schema: { type: string, pattern: "^[a-z0-9_-]{1,32}$" } }
+      responses:
+        "200":
+          description: las vigentes
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [finca, srs, balizas]
+                properties:
+                  finca: { type: string }
+                  srs: { const: "EPSG:25830" }
+                  balizas:
+                    type: array
+                    maxItems: 20
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required: [id, finca, x, y, titulo, texto, hasta]
+                      properties:
+                        id: { type: integer, minimum: 1 }
+                        finca: { type: string }
+                        x: { type: number }
+                        y: { type: number }
+                        titulo: { type: string, minLength: 1, maxLength: 60 }
+                        texto: { type: [string, "null"], maxLength: 280 }
+                        hasta: { type: string, format: date-time }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+
+  /api/admin/balizas:
+    post:
+      summary: Pone una baliza oficial en el mundo (OF10)
+      description: >
+        Solo la oficina. Punto en EPSG:25830 dentro de la finca (su contorno vigente o la caja de sus olivos medidos + 150 m, como el editor de
+        hazas), título (≤ 60) y texto (≤ 280) limpios como el chat, y caducidad en horas (1-168; 8 por omisión). Como mucho 20 vigentes por finca.
+        Avisa a las salas por el tema «balizas» (si LiveKit falla, no pasa nada: el motor las repide). Auditoría: admin.baliza_puesta.
+      security: [{ sesion: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [finca, x, y, titulo]
+              properties:
+                finca: { type: string, pattern: "^[a-z0-9_-]{1,32}$" }
+                x: { type: number, minimum: 100000, maximum: 900000 }
+                y: { type: number, minimum: 3900000, maximum: 4900000 }
+                titulo: { type: string, minLength: 1, maxLength: 60 }
+                texto: { type: string, minLength: 1, maxLength: 280 }
+                horas: { type: integer, minimum: 1, maximum: 168 }
+      responses:
+        "201":
+          description: puesta
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: false, required: [id], properties: { id: { type: integer, minimum: 1 } } }
+        "400": { description: "entrada no válida, título vacío, finca_desconocida o fuera_de_finca", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "409": { description: "ya hay 20 vigentes en esa finca (demasiadas)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/admin/balizas/{id}:
+    put:
+      summary: Mueve una baliza oficial vigente (OF10)
+      description: Solo la oficina. El punto nuevo, dentro de la misma finca. El título y el texto no se cambian (se quita y se pone otra). Auditoría admin.baliza_movida.
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [x, y]
+              properties:
+                x: { type: number, minimum: 100000, maximum: 900000 }
+                y: { type: number, minimum: 3900000, maximum: 4900000 }
+      responses:
+        "200": { description: movida, content: { application/json: { schema: { type: object, additionalProperties: false, required: [id], properties: { id: { type: integer } } } } } }
+        "400": { description: "entrada no válida o fuera_de_finca", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: no existe, ya caducó o se quitó }
+    delete:
+      summary: Quita una baliza oficial (OF10)
+      description: Solo la oficina. Queda retirada (no se borra la fila). Auditoría admin.baliza_quitada.
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "204": { description: quitada }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: no existe o ya se quitó }
 
   # ---------------------------------------------------------------- vida de las hazas (decisiones 91-97; vida.md)
   /api/hazas/{id}/olivos:
@@ -1024,14 +1669,14 @@ paths:
             schema:
               type: object
               additionalProperties: false
-              required: [nombre, objeto]
+              minProperties: 1
               properties:
-                nombre: { type: [string, "null"], minLength: 1, maxLength: 40 }
+                nombre: { type: [string, "null"], minLength: 1, maxLength: 40, description: "omitido = se queda el que había; null = lo quita" }
                 objeto:
                   type: [object, "null"]
                   additionalProperties: false
                   required: [tipo, medio_id]
-                  properties: { tipo: { enum: [foto, pintura] }, medio_id: { type: integer, minimum: 1, description: "id devuelto por POST /api/medios (del propio hogar)" } }
+                  properties: { tipo: { enum: [foto, pintura] }, medio_id: { type: integer, minimum: 1, description: "id devuelto por POST /api/medios (del propio hogar); `objeto` omitido = se queda el que había (la lista blanca no da el medio_id); null = lo quita" } }
       responses:
         "200": { description: guardada, content: { application/json: { schema: { type: object, additionalProperties: false, required: [id], properties: { id: { type: integer } } } } } }
         "400": { description: "forma, nombre no válido (nombre_no_valido), vacío o foto ajena (medio_no_valido)" }
@@ -1511,4 +2156,299 @@ paths:
         "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/RecordJuego" } } } }
         "401": { $ref: "#/components/responses/SinSesion" }
         "404": { description: no existe ese juego }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/juegos/{id}/clasificacion:
+    get:
+      summary: La clasificación por alias de un juego entre las familias (C9c; decisión 137)
+      description: >
+        La mejor puntuación de cada hogar activo, ordenada. Devuelve los n primeros puestos (n de 1 a 20, 5 por defecto) y el del propio hogar. Del resto de
+        hogares solo salen el puesto, los puntos y su alias si lo hicieron visible (si no, null): nunca nombre real, correo ni id. Una sesión cualquiera del
+        hogar (también la de unas gafas). Límite: 30 por minuto por IP.
+      security: [{ sesion: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, pattern: "^[a-z][a-z0-9-]{1,31}$" } }
+        - { name: n, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 20, default: 5 } }
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/ClasificacionJuego" } } } }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "404": { description: no existe ese juego }
+
+  # ---------------------------------------------------------------- medidas de fluidez (PB9, contratos/medidas.md; migración 0017)
+  /api/medidas:
+    post:
+      summary: Guarda una medida de fluidez del aparato (el medidor `&mide=60`) que la persona decidió mandar a la oficina. Nada personal
+      description: >
+        Cualquier sesión (también unas gafas vinculadas). Esquema estricto (contratos/medidas.schema.json). 422 medida_no_creible si
+        mediana ≤ p95 ≤ peor no se cumple o la fecha es futura o de hace más de 7 días. Límite por IP (10 por minuto) y por hogar
+        (10 por día, en memoria: el hogar no se guarda, ni IP, ni el agente de usuario entero; no se audita).
+      security: [{ sesion: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "medidas.schema.json" }
+      responses:
+        "201": { description: "{ guardada: true }" }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/OrigenNoAdmitido" }
+        "422": { description: "medida_no_creible: cifras desordenadas o fecha que no es de ahora; no se guarda" }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/admin/medidas:
+    get:
+      summary: Las medidas de fluidez, agregadas por día, aparato y VR (oficina y admin); filtros por aparato y fechas
+      description: >
+        Filas { dia, aparato, vr, medidas, p95_mediano_ms, p95_peor_ms, mediana_ms, peor_ms, fotogramas, navegadores, versiones, objetivo_p95_ms, cumple }
+        y `objetivos_p95_ms` por aparato (Quest 13,9 ms, ADR-0015; escritorio y móvil, null: sin umbral escrito). Es MEDIDO por cada aparato de sí mismo.
+      security: [{ sesion: [] }]
+      parameters:
+        - { name: aparato, in: query, schema: { type: string, enum: [escritorio, movil, quest] } }
+        - { name: desde, in: query, schema: { type: string, pattern: "^\\d{4}-\\d{2}-\\d{2}$" } }
+        - { name: hasta, in: query, schema: { type: string, pattern: "^\\d{4}-\\d{2}-\\d{2}$" } }
+        - { name: limite, in: query, schema: { type: integer, minimum: 1, maximum: 500, default: 100 } }
+      responses:
+        "200": { description: "{ generado_en, objetivos_p95_ms, filas }" }
+        "400": { description: entrada no válida }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+
+  # ---------------------------------------------------------------- agenda (OF11, doc/sistema/OFICINA.md §7; migraciones 0004 y 0012)
+  # Eventos con aforo en PERSONAS, inscripción por hogar, lista de espera con promoción automática y avisos en la campana del gemelo.
+  # El CORREO de los avisos no sale hoy (no hay emisor de avisos por correo): avisos_hogar.correo_enviado_en queda en NULL.
+  /api/admin/eventos:
+    get:
+      summary: Los eventos de la agenda, con lo apuntado y la espera de cada uno (oficina)
+      security: [{ sesion: [] }]
+      parameters:
+        - { name: desde, in: query, required: false, schema: { type: string, description: "instante ISO 8601; solo los que empiezan desde ahí" } }
+        - { name: limite, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 500 } }
+      responses:
+        "200":
+          description: "ok: eventos[] { id, titulo, tipo (guiada|libre|evento|taller|recoleccion|cata|directo), descripcion, lugar, finca, haza {id, codigo}|null, presencial, empieza_en, termina_en, plazas|null, inscripcion_hasta, estado (borrador|abierta|cerrada|cancelada), apuntadas (personas), hogares, en_espera (hogares), personas_en_espera, plazas_libres|null }"
+          content: { application/json: { schema: { type: object, properties: { eventos: { type: array, items: { type: object } } } } } }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+    post:
+      summary: Crea un evento (empieza en el futuro; el plazo de inscripción no pasa del inicio)
+      security: [{ sesion: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [titulo, tipo, empieza_en]
+              properties:
+                titulo: { type: string, minLength: 1, maxLength: 120 }
+                tipo: { enum: [guiada, libre, evento, taller, recoleccion, cata, directo] }
+                descripcion: { type: [string, "null"], maxLength: 2000 }
+                lugar: { type: [string, "null"], maxLength: 120, description: "sitio dentro del mundo o de la finca, en texto" }
+                finca: { type: [string, "null"], pattern: "^[a-z0-9_-]{1,32}$" }
+                haza_id: { type: [integer, "null"], minimum: 1 }
+                presencial: { type: boolean, default: false }
+                empieza_en: { type: string, description: "instante ISO 8601 con zona" }
+                termina_en: { type: [string, "null"] }
+                plazas: { type: [integer, "null"], minimum: 1, maximum: 5000, description: "aforo en personas; null = sin aforo" }
+                inscripcion_hasta: { type: [string, "null"] }
+                estado: { enum: [borrador, abierta, cerrada], default: abierta }
+      responses:
+        "201": { description: "creado (auditoría admin.evento_creado)", content: { application/json: { schema: { type: object, properties: { id: { type: integer } } } } } }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/admin/eventos/{id}:
+    put:
+      summary: Edita un evento (los campos que se envían). Subir el aforo promueve a la espera; no se baja de lo apuntado
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              minProperties: 1
+              description: "los mismos campos que al crear, todos opcionales; estado solo borrador, abierta o cerrada (cancelar tiene su ruta)"
+      responses:
+        "200": { description: "editado (auditoría admin.evento_editado): promovidos (hogares que pasaron de la espera a apuntados), con_inscritos (hogares apuntados o en espera) y avisados (hogares a los que salió solo el aviso por cambio de fecha o lugar, en la misma transacción, como aviso de sistema que no cuenta para el tope semanal; 0 si no cambió ni fecha ni lugar; OF11b)", content: { application/json: { schema: { type: object, properties: { promovidos: { type: integer }, con_inscritos: { type: integer }, avisados: { type: integer } } } } } }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: no existe }
+        "409": { description: "cancelado, o plazas_menores_que_apuntadas" }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/admin/eventos/{id}/cancelar:
+    post:
+      summary: Cancela el evento y avisa (campana del gemelo) a apuntados y a la espera
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody: { required: false, content: { application/json: { schema: { type: object, additionalProperties: false } } } }
+      responses:
+        "204": { description: "cancelado (auditoría admin.evento_cancelado)" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: no existe }
+        "409": { description: ya_cancelado }
+
+  /api/admin/eventos/{id}/guia:
+    put:
+      summary: "El guía del evento (F3c): quién habla con micrófono abierto y modera la voz de su visita guiada"
+      description: >
+        Solo la oficina. Una cuenta activa de rol guia, oficina o admin, o null para quitarlo. Se guarda en visitas.guia_id (columna de la 0001).
+        Sin guía, la voz de la visita la lleva la oficina. Auditoría admin.evento_guia.
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [hogar_id], properties: { hogar_id: { type: [integer, "null"], minimum: 1, maximum: 2147483647 } } }
+      responses:
+        "200": { description: puesto, content: { application/json: { schema: { type: object, additionalProperties: false, required: [guia_id], properties: { guia_id: { type: [integer, "null"] } } } } } }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: "el evento no existe (no_existe) o la cuenta no existe o está de baja (guia_no_existe)" }
+        "409": { description: "evento cancelado (cancelado) o la cuenta no es de guía ni de la oficina (no_es_guia)" }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/admin/eventos/{id}/inscritos:
+    get:
+      summary: Quién está apuntado, en espera o se borró. Familia (alias, nombre interno, hazas) y personas; nunca el correo
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "200":
+          description: "evento { id, titulo, plazas, estado, apuntadas, plazas_libres, en_espera } e inscritos[] { hogar_id, alias, nombre_interno, de_baja, hazas[], personas, estado (apuntado|en_espera|anulado), apuntado_en, promovida_en, anulado_en }"
+          content: { application/json: { schema: { type: object, properties: { evento: { type: object }, inscritos: { type: array, items: { type: object } } } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: no existe }
+
+  /api/admin/eventos/{id}/avisar:
+    post:
+      summary: Avisa (campana del gemelo) a los apuntados, a la espera o a todos, con un tope de 3 avisos de la oficina por hogar y semana
+      description: >
+        Los hogares que ya llegaron al tope se omiten (omitidos_por_tope). El correo sale aparte, en segundo plano (OF11c): correo_pendiente
+        cuenta los hogares con avisos_correo a los que se les pone en cola (la petición no espera al SMTP; reintento acotado, ver
+        contratos/avisos-correo.md). Sin destinatarios, 200 con enviados 0 y sin crear aviso.
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [titulo]
+              properties:
+                titulo: { type: string, minLength: 1, maxLength: 120 }
+                texto: { type: string, minLength: 1, maxLength: 2000 }
+                a: { enum: [apuntados, espera, todos], default: todos }
+      responses:
+        "201": { description: "avisado (auditoría admin.evento_avisado)", content: { application/json: { schema: { type: object, properties: { aviso: { type: [integer, "null"] }, enviados: { type: integer }, omitidos_por_tope: { type: integer }, correo_pendiente: { type: integer } } } } } }
+        "200": { description: "nadie a quien avisar (todos al tope o sin inscritos)" }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: no existe }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/agenda:
+    get:
+      summary: Los próximos eventos (abiertos o cerrados, aún sin empezar) y la inscripción del PROPIO hogar
+      description: >
+        Cualquier sesión. No lleva guía, creador ni otros inscritos. puede_inscribirse es false en una sesión de gafas vinculadas
+        (solo el titular con su enlace apunta a la familia).
+      security: [{ sesion: [] }]
+      responses:
+        "200":
+          description: "ok: puede_inscribirse y eventos[] { id, titulo, tipo, descripcion, lugar, finca, haza (código)|null, presencial, empieza_en, termina_en, plazas|null, plazas_libres|null, inscripcion_hasta, inscripcion_abierta, mia {estado: apuntado|en_espera, personas}|null }"
+          content: { application/json: { schema: { type: object, properties: { puede_inscribirse: { type: boolean }, eventos: { type: array, items: { type: object } } } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/agenda/{id}/evento.ics:
+    get:
+      summary: La invitación de calendario (.ics) de un evento abierto o cerrado, con horas en Europe/Madrid
+      description: >
+        Cualquier sesión. text/calendar, METHOD:PUBLISH, UID estable (evento-<id>@<dominio>) y SEQUENCE que sube con cada edición. 404 si el
+        evento no existe, es un borrador o está cancelado. Los correos de inscripción y de cambio de fecha o lugar llevan este mismo .ics;
+        el de cancelación, METHOD:CANCEL.
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "200": { description: "el .ics (adjunto evento-<id>.ics)", content: { text/calendar: { schema: { type: string } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "404": { description: no existe (o es un borrador o está cancelado) }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/avisos/baja:
+    get:
+      summary: Página con el botón para dejar de recibir los avisos por correo (el enlace de cada correo lleva la firma t)
+      description: Sin sesión. No hace nada por sí sola (un escáner de correo que abra el enlace no da de baja a nadie). 400 si la firma no vale.
+      parameters: [{ name: t, in: query, required: true, schema: { type: string, pattern: "^[0-9]{1,15}[.][A-Za-z0-9_-]{32}$" } }]
+      responses:
+        "200": { description: la página, content: { text/html: { schema: { type: string } } } }
+        "400": { description: enlace no válido, content: { text/html: { schema: { type: string } } } }
+        "429": { $ref: "#/components/responses/Limite" }
+    post:
+      summary: Da de baja los avisos por correo del hogar de la firma (hogares.avisos_correo = false)
+      description: >
+        Sin sesión ni Origin (exenta de la comprobación de Origin: la protege la firma, que solo sirve para esto). Cuerpo de formulario con t
+        (el botón de la página) o, con la firma en la consulta, List-Unsubscribe=One-Click (RFC 8058, lo que manda el cliente de correo).
+        Idempotente. Auditoría avisos.baja_correo.
+      parameters: [{ name: t, in: query, required: false, schema: { type: string } }]
+      requestBody:
+        required: false
+        content:
+          application/x-www-form-urlencoded:
+            schema: { type: object, additionalProperties: false, properties: { t: { type: string }, List-Unsubscribe: { const: One-Click } } }
+      responses:
+        "200": { description: hecho, content: { text/html: { schema: { type: string } } } }
+        "400": { description: enlace no válido, content: { text/html: { schema: { type: string } } } }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/agenda/{id}/inscripcion:
+    post:
+      summary: Apunta al hogar (personas 1-10) o lo deja en la lista de espera si no cabe o ya hay familias esperando
+      description: >
+        Una inscripción por hogar. Solo la sesión de enlace del titular (403 solo_titular desde unas gafas). 409 inscripcion_cerrada
+        (cerrado, plazo vencido o ya empezado) o ya_inscrito; 422 supera_el_aforo si el grupo es mayor que el aforo. Límite por IP (20
+        por minuto) y por hogar (30 por hora). Auditoría agenda.inscripcion.
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [personas], properties: { personas: { type: integer, minimum: 1, maximum: 10 } } }
+      responses:
+        "201": { description: "hecho", content: { application/json: { schema: { type: object, properties: { estado: { enum: [apuntado, en_espera] }, personas: { type: integer }, plazas_libres: { type: [integer, "null"] } } } } } }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/OrigenNoAdmitido" }
+        "404": { description: no existe (o es un borrador o está cancelado) }
+        "409": { description: inscripcion_cerrada o ya_inscrito }
+        "422": { description: supera_el_aforo }
+        "429": { $ref: "#/components/responses/Limite" }
+    delete:
+      summary: Borra la inscripción del hogar; libera la plaza y promueve a la espera (con aviso)
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "204": { description: "borrado (auditoría agenda.baja)" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/OrigenNoAdmitido" }
+        "404": { description: el hogar no estaba apuntado }
         "429": { $ref: "#/components/responses/Limite" }

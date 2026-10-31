@@ -2,17 +2,41 @@
   "v": 1,
   "$comment": "Catálogo de eventos del Bus del motor (apps/web/motor/02c_componentes.js; contratos/eventos.md, ADR-0023). Forma: contratos/eventos.schema.json. Un evento nuevo, o un módulo que empieza a emitirlo o escucharlo, cambia este fichero en el mismo commit: lo comprueba pruebas/guardianes/componentes.test.js.",
   "eventos": {
+    "agenda:cambia": {
+      "descripcion": "La agenda de la finca (componente «agenda») acaba de cargarse o recargarse desde la api: cuántos eventos próximos hay y si esta sesión puede apuntar a la familia (false en las gafas vinculadas). Nadie lo atiende hoy; sirve a quien quiera enseñar un aviso de «hay una visita esta semana».",
+      "datos": { "type": "object", "required": ["proximos", "puede_inscribirse"], "properties": { "proximos": { "type": "integer", "minimum": 0 }, "puede_inscribirse": { "type": "boolean" } } },
+      "emiten": ["43_agenda"],
+      "escuchan": []
+    },
     "audio:desbloquea": {
       "descripcion": "Un gesto del usuario que deja arrancar el audio del navegador (pulsar «Entrar en VR»). Quien haga sonido lo atiende y reanuda su AudioContext; sin nadie, no pasa nada.",
       "datos": {},
       "emiten": ["29_vr"],
       "escuchan": ["20_sonido"]
     },
+    "chat:alterna": {
+      "descripcion": "El icono del chat de la barra (o del menú «Más»): si el chat de la visita compartida está minimizado (burbuja) se abre; si está abierto, se minimiza. Sin chat (sin presencia en red, o sin &chat=1 en la simulación) nadie lo atiende y no pasa nada.",
+      "datos": {},
+      "emiten": ["31_hud"],
+      "escuchan": ["38_presencia_compartida"]
+    },
     "componentes:cambia": {
       "descripcion": "Un componente se ha montado o liberado (al arrancar, por la configuración del servidor o a mano). Sirve para que la interfaz enseñe o esconda lo que depende de él.",
       "datos": { "type": "object", "required": ["id", "activo"], "properties": { "id": { "type": "string" }, "activo": { "type": "boolean" } } },
       "emiten": ["02c_componentes"],
       "escuchan": ["15_tiempo"]
+    },
+    "depura:lineas": {
+      "descripcion": "El contador de ?debug (cada 0,5 s) pide sus líneas a los componentes: quien tenga algo que decir añade una cadena a «lineas» (hoy, la presencia compartida y las lindes de las hazas). Se pintan en ese orden, tras la de VR.",
+      "datos": { "type": "object", "required": ["lineas"], "properties": { "lineas": { "type": "array", "items": { "type": "string" } } } },
+      "emiten": ["28_depura"],
+      "escuchan": ["38_presencia_compartida", "44_lindes"]
+    },
+    "hazas:cambia": {
+      "descripcion": "Han llegado (o se han soltado) las hazas de la api que se ven en este mundo (13b_hazas.js): cuántas y cuántas son tuyas. Quien las dibuja (el componente «lindes-hazas») vuelve a pedir Hazas.lindes() y rehace la linde; sin nadie, no pasa nada.",
+      "datos": { "type": "object", "required": ["n", "propias"], "properties": { "n": { "type": "integer", "minimum": 0 }, "propias": { "type": "integer", "minimum": 0 } } },
+      "emiten": ["13b_hazas"],
+      "escuchan": ["44_lindes"]
     },
     "juego:ofrece": {
       "descripcion": "Un juego casual (componente) se ofrece al anfitrión de juegos: { id, titulo, descripcion?, ayuda?, vr?, crea(ctx) → partida } (contrato en doc/sistema/JUEGOS.md). Lo emite al montarse y al oír «juego:pide».",
@@ -62,6 +86,30 @@
       "emiten": ["15_tiempo"],
       "escuchan": ["35_fichas_tiempo"]
     },
+    "oficina:anuncio": {
+      "descripcion": "OF10: ha llegado un anuncio de la oficina por la sala (tema «anuncio», mandado por la api sin participante; ya validado y limpio). Para quien quiera reaccionar (un sonido, un lector de pantalla); el aviso, la lámina en VR y la línea del chat ya los pone 39_oficina_mundo.",
+      "datos": { "type": "object", "required": ["texto"], "properties": { "texto": { "type": "string", "maxLength": 280 } } },
+      "emiten": ["39_oficina_mundo"],
+      "escuchan": []
+    },
+    "oficina:sala": {
+      "descripcion": "OF10: la oficina invita a pasar a otra sala del mundo (tema «sala»; a = «general» o «visita»). La pregunta («Ir» / «Quedarme») ya la hace 39_oficina_mundo; nadie cambia de sala sin pulsar.",
+      "datos": { "type": "object", "required": ["a"], "properties": { "a": { "enum": ["general", "visita"] } } },
+      "emiten": ["39_oficina_mundo"],
+      "escuchan": []
+    },
+    "personalizacion:resultado": {
+      "descripcion": "El resultado de una acción de la ficha de un olivo que no tiene recuadro propio (hoy, «Denunciar» en VR): texto llano para quien lo muestre. En pantalla los resultados salen en el recuadro de la acción y no pasan por aquí.",
+      "datos": { "type": "object", "required": ["texto"], "properties": { "texto": { "type": "string" } } },
+      "emiten": ["42_personalizacion"],
+      "escuchan": []
+    },
+    "red:estado": {
+      "descripcion": "Una sala de la red (37_red.js) cambia de estado: «conectando», «dentro», «reconectando» o «fuera» (con su motivo: «propio», «expulsado», «duplicado», «desconectado» o «error»). Quien está en la sala lo sigue por su sala (Red.sala(clave).al(\"estado\")); el evento es para lo demás (la oficina, ?debug).",
+      "datos": { "type": "object", "required": ["sala", "estado"], "properties": { "sala": { "type": "string" }, "estado": { "enum": ["fuera", "conectando", "dentro", "reconectando"] }, "motivo": { "type": "string" } } },
+      "emiten": ["37_red"],
+      "escuchan": []
+    },
     "sonido:baliza": {
       "descripcion": "Se ha llegado a una baliza de parcela: campanilla; con completa true (todas visitadas), un arpegio.",
       "datos": { "type": "object", "properties": { "completa": { "type": "boolean" } } },
@@ -96,13 +144,13 @@
       "descripcion": "Se ha elegido una entidad del mundo (un olivo, una baliza, una haza, una persona) con un toque o clic (como \"toque\"), el rayo y el gatillo de un mando (\"rayo\"), una tecla (\"tecla\") o desde el código; su ficha ya se está enseñando.",
       "datos": { "type": "object", "required": ["id", "tipo", "como"], "properties": { "id": { "type": "string" }, "tipo": { "type": "string" }, "como": { "type": "string" } } },
       "emiten": ["02e_entidades"],
-      "escuchan": []
+      "escuchan": ["42_personalizacion"]
     },
     "usable:suelta": {
       "descripcion": "Lo elegido deja de estarlo: motivo \"otra\" (se eligió otra cosa), \"nada\" (un toque sobre nada), \"cerrada\" (su × o su «Cerrar»), \"tiempo\" (la ficha de VR se apagó sola) o \"quitada\" (su tipo salió del registro).",
       "datos": { "type": "object", "required": ["id", "motivo"], "properties": { "id": { "type": "string" }, "motivo": { "type": "string" } } },
       "emiten": ["02e_entidades"],
-      "escuchan": []
+      "escuchan": ["42_personalizacion"]
     },
     "usable:usa": {
       "descripcion": "Se ha usado una acción de la ficha de una entidad («Ir a esta baliza», «Ir con»…) y se ha hecho.",
@@ -114,7 +162,7 @@
       "descripcion": "Empieza una sesión de realidad virtual (la cámara ya cuelga del rig y el panel está abierto).",
       "datos": {},
       "emiten": ["29_vr"],
-      "escuchan": ["40_juegos"]
+      "escuchan": ["40_juegos", "43_agenda"]
     },
     "vr:sale": {
       "descripcion": "Termina la sesión de realidad virtual (la cámara vuelve a la pantalla). Lo propio de VR se cierra.",

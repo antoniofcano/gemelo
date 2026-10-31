@@ -17,7 +17,7 @@
   //       los dos de 0 a 1; t = { x, y (px del lienzo), lam }. Devuelve false si no usa el toque (entonces el gatillo sigue con lo demás)
   //     alCierra(motivo): "cerrada" (a mano), "lejos", "sale-vr" o "reabierta" · cierraA: { vr: 40, pantalla: 60 } m de la cabeza · modo: "vr" | "pantalla"
   //       (por omisión, según VRX.on) · dist: m delante de la mirada ({ vr: 1.4, pantalla: 2.4 }) · bajo: m por debajo de los ojos ({ vr: 0.05, pantalla: 0.1 })
-  //       · sigue: false para que no se vuelva hacia quien la mira
+  //       · sigue: false para que no se vuelva hacia quien la mira · en: { x, y, z } (escena) para colgarla de un sitio del mundo en vez de ponerla delante de la mirada (se vuelve hacia quien la mira igual)
   //   Laminas.cierra(id, motivo?) → bool · Laminas.repinta(id, forzar?) → bool (¿pintó?) · Laminas.revisa(dt?) (el bucle la llama; sin dt, ahora mismo)
   //   Laminas.toca(rayo) → bool · Laminas.info(id) → { abierta, modo, pos, rumbo, pintadas, firma } · Laminas.hay(id) · Laminas.ids() · Laminas.cierraTodas(motivo)
   // Presupuesto (regla 6): por lámina abierta, UNA malla (una llamada de dibujo, 2 triángulos) y UNA textura w × h sin mipmaps (w·h·4 B); se crean al abrir y se
@@ -85,6 +85,7 @@
       var h = cabeza(vC), g = camera.getWorldDirection(vD); g.y = 0; if (g.lengthSq() < 1e-6) g.set(0, 0, -1); g.normalize();
       var dist = o.dist && o.dist[modo] != null ? o.dist[modo] : P.DIST[modo], bajo = o.bajo && o.bajo[modo] != null ? o.bajo[modo] : P.BAJO[modo];   // a la altura de los ojos y delante de la mirada; luego se queda ahí
       m.position.set(h.x + g.x * dist, h.y - bajo, h.z + g.z * dist);
+      if (o.en) m.position.set(o.en.x, o.en.y, o.en.z);   // colgada de un sitio del mundo (el olivo, P7f) en vez de delante de la mirada
       m.rotation.set(0, Math.atan2(h.x - m.position.x, h.z - m.position.z), 0); m.updateMatrixWorld();
       var l = { o: o, id: o.id, cv: cv, cx: cv.getContext("2d"), tex: tex, geo: geo, mat: mat, m: m, modo: modo, w: md.w, h: md.h, firma: "", fr: -1, t: performance.now(), girando: false, pintadas: 0 };
       l.lam = { id: o.id, modo: modo, ancho: o.ancho, alto: o.alto, w: md.w, h: md.h, rumbo: function () { return rumboDe(m); } };

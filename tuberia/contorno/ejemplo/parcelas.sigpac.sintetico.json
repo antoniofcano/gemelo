@@ -1,0 +1,10 @@
+{
+  "finca": "prueba",
+  "fuente": "sigpac",
+  "sintetico": true,
+  "parcelas": [
+    { "provincia": 99, "municipio": 999, "agregado": 0, "zona": 0, "poligono": 999, "parcela": 1 },
+    { "provincia": 99, "municipio": 999, "agregado": 0, "zona": 0, "poligono": 999, "parcela": 2 },
+    { "provincia": 99, "municipio": 999, "agregado": 0, "zona": 0, "poligono": 999, "parcela": 3 }
+  ]
+}

@@ -4,7 +4,7 @@
 // ni textos escritos en el campo (asuntos, observaciones). Las formas de entrada son las que se ESPERAN: [NO VERIFICADO].
 import { Ajv } from "ajv";
 import { huella } from "../seguridad/cripto.ts";
-import type { HerramientaLectura } from "./lector.ts";
+import type { HerramientaSincronia } from "./lector.ts";
 
 export type TipoEvento = "tratamiento" | "analitica" | "fenologia" | "avance";
 export interface Evento { parcela_ot: string; tipo: TipoEvento; fecha: string; clave: string; datos: Record<string, unknown> }
@@ -85,7 +85,7 @@ function cabeceraDe(r: Record<string, unknown>) {
 
 export class RespuestaNoValida extends Error {}
 
-export function mapea(herramienta: HerramientaLectura, respuesta: unknown): Lectura {
+export function mapea(herramienta: HerramientaSincronia, respuesta: unknown): Lectura {
   const vacia = { eventos: [] as Evento[], recibidos: 0, descartados: 0, hayMas: false, siguienteDesde: null as string | null };
   if (herramienta === "pases_del_periodo") {
     if (!vPases(respuesta)) throw new RespuestaNoValida("pases_del_periodo: forma inesperada");

@@ -252,7 +252,9 @@ test("el motor sin cada componente (genera_motor.mjs --sin) es JavaScript válid
     const r = ejecuta(process.execPath, ["--check", tmp]); fs.unlinkSync(tmp);
     assert.strictEqual(r.status, 0, "sin " + f + ": " + r.stderr);
     const nombres = [M[f].id].concat(M[f].expone);
-    for (const g of ficherosMotor().filter(x => x !== f)) {
+    // solo puede nombrarlo (su id para n.api y lo que expone) otro componente que lo declara en su consume (C5: la presencia consume la red; los avatares, la presencia)
+    const loConsume = g => !!M[g] && M[g].consume.some(x => M[f].expone.includes(x));
+    for (const g of ficherosMotor().filter(x => x !== f && !loConsume(x))) {
       const s = sinComentarios(sinCabecera(fs.readFileSync(path.join(MOTOR, g), "utf8")));
       for (const n of nombres) assert.ok(!new RegExp("(?<![\\w$.-])" + n + "(?![\\w$-])").test(s), g + " nombra a «" + n + "» (de " + f + ")");
     }

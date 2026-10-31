@@ -620,7 +620,10 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
       assert.strictEqual(await pg.inputValue("#alias"), yo.alias, "el alias que ya tenía, puesto");
       await pg.click("#fAlias button[type=submit]");
       await pg.waitForSelector("#t-avatar", { state: "visible" });
-      await pg.click("#mCamisa label:nth-child(3)");
+      // AV4: el avatar por piezas; el color de arriba (antes «camisa») está en «Ropa», que empieza plegada
+      await pg.click("details:has(#mArriba) > summary");
+      await pg.click("#mArriba label:nth-child(3)");
+      assert.strictEqual(await pg.$eval("#mArriba input:checked", e => e.value), "2", "el tercer color de arriba, elegido");
       await pg.click("#fAvatar button[type=submit]");
       await pg.waitForSelector("#btnSeguir", { state: "visible" });
       const l2 = await enLinea(pg); cspPortada.push(...l2.csp);
@@ -657,7 +660,8 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
       assert.ok(pedidas.some(x => /^200 \/teselas\/hituelo\/t\/\d+_\d+\.json$/.test(x)), "el motor no pidió teselas a /teselas/hituelo/t/: " + pedidas.join(", "));
       assert.deepStrictEqual(vistos, [], "la CSP (Report-Only) avisa de violaciones");
 
-      // 4a. A4: las lindes de las hazas dibujadas (LineSegments «linde de las hazas»), la propia con otro color que las ajenas;
+      // 4a. A4: las lindes de las hazas dibujadas (componente «lindes-hazas», 44_lindes.js: el grupo «linde de las hazas» con LineSegments2 de three),
+      //     la propia con otro color y otro ancho que las ajenas;
       //     A3: el tileset por Caddy (200 con sesión, 401 sin ella) y /finca/ (escena 3D Tiles) y ?olivos=gen sin errores ni avisos de CSP
       const finca = process.env.GEMELO_DEV_FINCA || "hituelo";
       const abre = async (ruta, esperaFn, c = ctx) => {
@@ -677,18 +681,18 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
       };
       r0 = reloj();
       {
-        const { q, errs, csp } = await abre("/finca/", () => { let n = 0; window.__g.scene.traverse(o => { if (o.name === "linde de las hazas") n++; }); return n > 0; });
+        const { q, errs, csp } = await abre("/finca/", () => !!window.__g.scene.getObjectByName("linde de las hazas"));
         const l = await q.evaluate(() => {
-          let o = null; window.__g.scene.traverse(x => { if (x.name === "linde de las hazas") o = x; });
-          const col = o.geometry.getAttribute("color").array, ds = new Set();
-          for (let i = 0; i < col.length; i += 3) ds.add(col[i].toFixed(2) + "," + col[i + 1].toFixed(2) + "," + col[i + 2].toFixed(2));
-          return { tipo: o.type, vertices: o.geometry.getAttribute("position").count, colores: ds.size, visible: o.visible };
+          const g = window.__g.scene.getObjectByName("linde de las hazas"), ls = g.children.map(o => ({ nombre: o.name, tipo: o.type, tramos: o.geometry.instanceCount, color: o.material.color.getHexString(), ancho: o.material.linewidth }));
+          return { ls, visible: g.visible, estado: window.__lindes ? window.__lindes() : null };
         });
         await q.close();
-        assert.strictEqual(l.tipo, "LineSegments"); assert.ok(l.vertices >= 8 && l.vertices % 2 === 0, "vértices de las lindes: " + l.vertices);
-        assert.ok(l.colores >= 2, "la linde propia debe verse distinta de las ajenas: " + l.colores + " color(es)"); assert.ok(l.visible);
+        const mia = l.ls.find(x => x.nombre === "lindes propias"), otras = l.ls.find(x => x.nombre === "lindes ajenas");
+        assert.ok(mia && mia.tipo === "LineSegments2" && mia.tramos > 0, "la linde propia: " + JSON.stringify(l.ls));
+        if (otras) assert.ok(otras.color !== mia.color && otras.ancho < mia.ancho, "la linde propia debe verse distinta de las ajenas: " + JSON.stringify(l.ls));
+        assert.ok(l.visible); assert.ok(l.estado && l.estado.llamadas === l.ls.length && l.estado.llamadas <= 2, JSON.stringify(l.estado));
         assert.deepStrictEqual(errs, [], "errores en /finca/ con las lindes"); assert.deepStrictEqual(csp, [], "CSP en /finca/");
-        t.diagnostic("lindes de las hazas: LineSegments con " + l.vertices + " vértices y " + l.colores + " colores, en " + r0().toFixed(1) + " s");
+        t.diagnostic("lindes de las hazas: " + l.ls.map(x => x.nombre + " " + x.tramos + " tramos").join(", ") + " (" + l.estado.triangulos + " triángulos), en " + r0().toFixed(1) + " s");
       }
       const turl = "/teselas/" + finca + "/tileset/tileset.json";
       if (tilesetMotivo) t.diagnostic("TILESET NO COMPROBADO: " + tilesetMotivo);
@@ -827,7 +831,8 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
         const codigo = await gq.textContent("#codigo");
         tiempos.codigo = r0();
         const altoBtn = await gq.evaluate(() => document.getElementById("btnPrefieroCorreo").getBoundingClientRect().height);
-        assert.ok(altoBtn >= 56, "en las Quest, botones de ≥ 56 px: " + altoBtn);
+        assert.ok(Math.round(altoBtn * 100) / 100 >= 56,   // redondeo a centésimas: el navegador da 55,99997 por la escala
+           "en las Quest, botones de ≥ 56 px: " + altoBtn);
         assert.match(await gq.textContent("#avVincularTxt"), /Esperando/);
         assert.strictEqual((await ctxG.cookies(base)).filter(x => x.name === COOKIE).length, 0, "las gafas aún no tienen sesión");
         // en el aparato con sesión: Mis dispositivos → Vincular
@@ -853,7 +858,7 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
         assert.deepStrictEqual([l4.estilos, l4.scripts], [0, 0], "la pantalla de las gafas no lleva estilos ni scripts en línea");
         await Promise.all([gq.waitForURL(base + "/finca/"), gq.click("#btnGafasFinca")]);
         const sg = JSON.parse((await pide("/api/sesion", { cookie: cg.value })).texto);
-        assert.deepStrictEqual({ rol: sg.rol, alias: sg.alias, primer_acceso: sg.primer_acceso }, { rol: "hogar", alias: yo.alias, primer_acceso: false }, "la sesión de las gafas es la del hogar que aprobó");
+        assert.deepStrictEqual({ rol: sg.rol, alias: sg.alias, primer_acceso: sg.primer_acceso, titular: sg.titular }, { rol: "hogar", alias: yo.alias, primer_acceso: false, titular: false }, "la sesión de las gafas es la del hogar que aprobó (y no es titular: nació del código corto)");
         t.diagnostic("gafas: código en pantalla en " + tiempos.codigo.toFixed(2) + " s; de «Aprobar» a la sesión en las gafas " + tiempos.aprobado.toFixed(2) + " s (sondeo cada 3 s)");
         // un solo uso: el mismo código ya no se aprueba otra vez
         const otraVez = await pide("/api/yo/dispositivos/vincular", { method: "POST", cookie: (await ctx.cookies(base)).find(x => x.name === COOKIE).value, body: JSON.stringify({ codigo, aprobar: true }), headers: { "content-type": "application/json", origin: base } });
@@ -893,7 +898,7 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
     const I = JSON.parse(ti.texto), [cx, cy] = I.centro_utm;
 
     const s = await json("/api/sesion", cookie);
-    assert.deepStrictEqual(s.cuerpo, { rol: "hogar", alias: yo.alias, alias_visible: true, primer_acceso: false }, "con el primer acceso hecho");
+    assert.deepStrictEqual(s.cuerpo, { rol: "hogar", alias: yo.alias, alias_visible: true, primer_acceso: false, titular: true }, "con el primer acceso hecho (y titular: la sesión nació del enlace mágico)");
 
     const g = await json("/api/hazas", cookie);
     assert.strictEqual(g.status, 200);

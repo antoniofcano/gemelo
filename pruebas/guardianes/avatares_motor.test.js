@@ -26,14 +26,14 @@ test("cupo: escritorio 6, móvil 3, Quest 3; con gafas según el nivel de VR_PER
   const vr = lee("apps/web/motor/29_vr.js"); assert.strictEqual((/var VR_PERFILES = \[(.*?)\];/.exec(vr)[1].match(/\{ n:/g) || []).length, AP.CUPO_VR.length, "un cupo por perfil de VR");
 });
 
-test("catálogo (contratos/avatares.md v1): lee id, fichero, sha256 y colores_muneco; descarta lo que no cuadra; sin catálogo u otra versión, null (el muñeco)", () => {
+test("catálogo (contratos/avatares.md v1): lee id, fichero, sha256 y colores_muneco; descarta lo que no cuadra; sin catálogo u otra versión (v3), null (el muñeco); la v2 la cubre avatares_piezas.test.js", () => {
   const sha = "a".repeat(64);
   const c = AP.leeCatalogo({ v: 1, avatares: [{ id: "pastora", fichero: "pastora.vrm", sha256: sha, bytes: 10, colores_muneco: { camisa: "#336699", piel: "#e0b090", sombrero: "paja" } },
     { id: "Malo", fichero: "x.vrm" }, { id: "sin-fichero" }, { id: "ruta", fichero: "../x.vrm" }, { id: "pastora", fichero: "otra.vrm" }, null, { id: "corto", fichero: "corto.vrm", sha256: "no" }] });
   assert.deepStrictEqual(c.todos.map(a => a.id), ["pastora", "sin-fichero", "corto"]);
   assert.strictEqual(c.porId.pastora.camisa, 0x336699); assert.strictEqual(c.porId.pastora.piel, 0xe0b090); assert.strictEqual(c.porId.pastora.sha256, sha);
   assert.strictEqual(c.porId["sin-fichero"].fichero, "sin-fichero.vrm"); assert.strictEqual(c.porId.corto.sha256, null);
-  for (const x of [null, undefined, {}, { v: 1, avatares: [] }, { v: 1, avatares: [{ id: "../a" }] }, { v: 2, avatares: [{ id: "a" }] }, [{ id: "a" }], "texto", 3]) assert.strictEqual(AP.leeCatalogo(x), null, JSON.stringify(x));
+  for (const x of [null, undefined, {}, { v: 1, avatares: [] }, { v: 1, avatares: [{ id: "../a" }] }, { v: 3, avatares: [{ id: "a" }] }, [{ id: "a" }], "texto", 3]) assert.strictEqual(AP.leeCatalogo(x), null, JSON.stringify(x));
   // el ejemplo del contrato se lee entero
   const ej = AP.leeCatalogo(JSON.parse(lee("contratos/avatares-ejemplo.json")));
   assert.deepStrictEqual(ej.todos.map(a => a.id), ["ejemplo-cc0", "ejemplo-cc-by"]); assert.strictEqual(ej.porId["ejemplo-cc0"].camisa, 0x3f7cc2);
@@ -199,7 +199,7 @@ test("varias personas con el mismo avatar: dos análisis del mismo búfer dan la
 });
 
 // ---------------------------------------------------------------- en Chrome (SwiftShader: recuentos y memoria, no fps), con dos VRM sintéticos de la tubería
-const { sirve, motivoSalto, lanza } = require("./_navegador");
+const { sirve, motivoSalto, lanza, VENTANA_CHICA, ventanaDe } = require("./_navegador");
 const { propia } = require("./_util");
 const { montaPagina, saltoPagina } = require("./_pagina");
 const crypto = require("crypto");
@@ -224,7 +224,7 @@ test.after(async () => { if (nav) await nav.close(); if (srv) srv.forEach(s => s
 
 // abre, deja la cámara en órbita baja a 14 m del punto de partida (donde pasea la mitad de los simulados) y espera a que el reparto se asiente
 async function abre(url, consulta, espera) {
-  const p = await nav.newPage({ viewport: { width: 900, height: 650 } }), errores = [];
+  const p = await nav.newPage({ viewport: ventanaDe(VENTANA_CHICA) }), errores = [];
   p.on("pageerror", e => errores.push("PAGEERROR " + String(e.stack || e).slice(0, 400)));
   p.on("console", m => { if (m.type() === "error" && !/404|Failed to load resource/.test(m.text())) errores.push("CONSOLE " + m.text().slice(0, 300)); });
   await p.goto(url + "?debug" + consulta);

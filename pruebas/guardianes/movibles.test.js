@@ -115,10 +115,11 @@ test("«Devolver a su sitio» borra lo guardado de las tres formas", () => {
 
 // ---------- lo que el chat y el minimapa guardan de siempre
 test("el chat usa Movibles, sigue con sus ids (#presenciaGente, «Volver a entrar», ol, input) y mete el texto con textContent", () => {
-  const P = lee("apps/web/motor/26_presencia.js");
+  const P = lee("apps/web/motor/38_presencia_compartida.js");   // C5: el chat es del componente de la presencia
   assert.match(P, /Movibles\.hazMovible\(raiz, asa, "chat"/); assert.match(P, /Movibles\.hazMovible\(burbuja, burbuja, "burbuja"/);
   assert.match(P, /id: "presenciaGente"/); assert.match(P, /"Volver a entrar"/); assert.match(P, /getElementById\("ventanaGente"\)/);
   assert.match(P, /"aria-live": "polite", "aria-label": "Chat de la visita"/); assert.match(P, /type: "text", maxLength: Chat\.MAX/);
+  assert.match(P, /n\.on\("chat:alterna"/, "el icono del chat de la barra le llega por el Bus (31_hud.js ya no toca sus botones)");
   assert.match(P, /function irCon\(id\)/); assert.match(P, /"Ir con " \+ m\.alias/); assert.match(P, /bloqueados\[x\.id\]/);
   assert.doesNotMatch(P, /innerHTML/);
 });
@@ -134,4 +135,31 @@ test("el módulo recorre solo lo que debe: Pointer Events, touch-action solo en 
   assert.match(FUENTE, /touchAction = "none"/); assert.match(FUENTE, /pointerdown/); assert.match(FUENTE, /setPointerCapture/);
   assert.match(FUENTE, /e\.detail === 0/); assert.match(FUENTE, /Hud\.zonasProhibidas/);
   assert.doesNotMatch(FUENTE, /fetch\(|innerHTML|import\(/);
+});
+
+// ---------- PB8: «¿se solapa con la cruceta o la barra?» y «¿cabe en el visor?» como funciones; movibles_chrome.test.js las usa y solo queda como humo del arrastre real
+test("tapaA: devuelve la primera zona que cruza (ignora las null) y null si está libre; tocarse por el borde no es cruzarse", () => {
+  const cruceta = { x: 12, y: 700, w: 150, h: 132 }, barra = { x: 220, y: 12, w: 160, h: 44 };
+  assert.strictEqual(M.tapaA({ x: 100, y: 650, w: 100, h: 100 }, [null, cruceta, barra]), cruceta);
+  assert.strictEqual(M.tapaA({ x: 300, y: 40, w: 50, h: 50 }, [cruceta, undefined, barra]), barra);
+  assert.strictEqual(M.tapaA({ x: 100, y: 300, w: 100, h: 100 }, [cruceta, barra, null]), null);
+  assert.strictEqual(M.tapaA({ x: 162, y: 700, w: 50, h: 50 }, [cruceta]), null, "pegada al borde derecho de la cruceta: no la tapa");
+  assert.strictEqual(M.tapaA({ x: 0, y: 0, w: 5, h: 5 }, []), null);
+  assert.strictEqual(M.tapaA({ x: 0, y: 0, w: 5, h: 5 }, [null]), null);
+});
+test("tapaA concuerda con libre(): lo que libre() devuelve como libre no tapa ninguna zona, y sobre una zona sí la tapaba (500 casos de semilla fija)", () => {
+  let s = 77; const r = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+  for (let i = 0; i < 500; i++) {
+    const t = { w: 60 + r() * 200, h: 40 + r() * 200 }, x = r() * W, y = r() * H, q = M.libre(t, x, y, ZONAS, W, H, MG0), rect = { x: q.x, y: q.y, w: t.w, h: t.h };
+    if (q.libre) { assert.strictEqual(M.tapaA(rect, ZONAS), null, "libre() la dejó tapando"); assert.ok(M.dentroDe(rect, { w: W, h: H }, 0.5)); }
+  }
+});
+test("dentroDe: dentro del visor con la tolerancia del redondeo (0,5 px) y no más", () => {
+  const V = { w: 390, h: 844 };
+  assert.ok(M.dentroDe({ x: 0, y: 0, w: 390, h: 844 }, V));
+  assert.ok(M.dentroDe({ x: -0.5, y: -0.5, w: 390.5, h: 844.5 }, V));
+  assert.ok(!M.dentroDe({ x: -0.6, y: 0, w: 100, h: 100 }, V));
+  assert.ok(!M.dentroDe({ x: 300, y: 0, w: 91, h: 100 }, V));
+  assert.ok(!M.dentroDe({ x: 0, y: 800, w: 100, h: 45 }, V));
+  assert.ok(M.dentroDe({ x: 0, y: 800, w: 100, h: 45 }, V, 1));
 });

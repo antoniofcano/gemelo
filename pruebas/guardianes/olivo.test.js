@@ -4,10 +4,11 @@
 //     (7 tipos × 7 épocas × 5 semillas) y 28 con semillas ≥ 2^31 (las de ids provisionales);
 //   - si cambia el código del núcleo (nucleo.js, tipos.js, azar.js) sin subir GEN_VERSION, falla «sube GEN_VERSION»;
 //   - montar la misma receta con three 0.128.0 y 0.186.1 da el mismo grupo (triángulos y huella de lo montado), en cada nivel;
-//   - niveles de detalle: centenario 3 pies, envero, semilla 7 → E0 102 978, E1 48 378, E2 19 366, E2-VR 14 618 triángulos; aclareo al 50 %;
+//   - niveles de detalle: centenario 3 pies, envero, semilla 7 → E0 102 978, E1 23 080, E2 = E2-VR 10 702 triángulos (tarjetas de racimo, O9b);
 //   - semillas, épocas y parámetros desde el registro; calibración de tuberia/parametros_copas.py con olivos generados (sintéticos);
 //   - el módulo del motor 07ab_generados.js en Node (pruebas/olivo/generados_motor.mjs): materiales con el parche del motor y el fundido;
-//   - la escalera (?olivos=escalera, 07ab + 07ac) en Node (pruebas/olivo/escalera_motor.mjs): reparto, histéresis y nunca un olivo sin dibujar;
+//   - la escalera (?olivos=escalera, y ?olivos=gen con variantes horneadas; 07ab + 07ac + 07b) en Node (pruebas/olivo/escalera_motor.mjs): reparto,
+//     histéresis, nunca un olivo sin dibujar y cuándo 07b pasa a la escalera y aparta el tileset (O8c);
 //   - en Chrome (si lo hay): el trabajador da la misma huella que el hilo principal, las rebanadas no pasan de 3 ms y el IIFE carga con r128.
 // Sin `cd apps/web/olivo && npm i` (three-gen 0.128.0, three-r186 0.186.1, vite) se SALTA con aviso.
 const test = require("node:test"), assert = require("node:assert");
@@ -68,12 +69,12 @@ test("montar la misma receta con three 0.128.0 y 0.186.1 da el mismo grupo en ca
   t.diagnostic(r.filas.map(f => f.tipo + " " + f.nivel + ": " + f.receta + " tri, " + f["0.128.0"].llamadas + " llamadas").join(" · "));
 });
 
-test("niveles de detalle: los recuentos de la maqueta y el aclareo al 50 %", { timeout: 300000 }, async t => {
+test("niveles de detalle: los recuentos y las tarjetas de racimo de E1/E2 (O9b)", { timeout: 300000 }, async t => {
   if (SALTO) return t.skip(SALTO);
   const r = json(await nodo([path.join("pruebas", "olivo", "niveles.mjs")]));
   assert.ok(!r.error, r.error);
   assert.deepStrictEqual(r.mal, []);
-  assert.deepStrictEqual(Object.fromEntries(Object.entries(r.niveles).map(([k, v]) => [k, v.triangulos])), { E0: 102978, E1: 48378, E2: 19366, E2VR: 14618 });
+  assert.deepStrictEqual(Object.fromEntries(Object.entries(r.niveles).map(([k, v]) => [k, v.triangulos])), { E0: 102978, E1: 23080, E2: 10702, E2VR: 10702 });
 });
 
 test("motor (07ab, ?olivos=gen) en Node: sin la bandera nada; materiales con nubes, escarcha y fundido; lote con fundido; huella intacta", { timeout: 300000 }, async t => {
@@ -84,7 +85,7 @@ test("motor (07ab, ?olivos=gen) en Node: sin la bandera nada; materiales con nub
   t.diagnostic("lote 1: " + JSON.stringify(r.diag.primero.info) + " · " + r.diag.ms + " ms");
 });
 
-test("escalera (ADR-0019, ?olivos=escalera) en Node: reparto por presupuesto (escritorio, móvil, gafas), histéresis y nunca un olivo sin dibujar", { timeout: 600000 }, async t => {
+test("escalera (ADR-0019, ?olivos=escalera y ?olivos=gen con variantes horneadas) en Node: reparto por presupuesto (escritorio, móvil, gafas), histéresis, nunca un olivo sin dibujar y el reparto de 07b (O8c)", { timeout: 600000 }, async t => {
   if (SALTO) return t.skip(SALTO);
   const r = json(await nodo([path.join("pruebas", "olivo", "escalera_motor.mjs")]));
   assert.ok(!r.error, r.error);
@@ -123,6 +124,14 @@ test("caché de recetas (O5): clave estable y distinta por época, semilla y ver
   assert.ok(!r.error, r.error);
   assert.deepStrictEqual(r.mal, []);
   t.diagnostic("clave: " + r.diag.clave);
+});
+
+test("caché de recetas (O5): expulsar libera, invalidación por versión, fallos del almacén y propiedades (fast-check)", { timeout: 120000 }, async t => {
+  if (SALTO) return t.skip(SALTO);
+  const r = json(await nodo([path.join("pruebas", "olivo", "cache_props.mjs")]));
+  assert.ok(!r.error, r.error);
+  assert.deepStrictEqual(r.mal, []);
+  t.diagnostic(JSON.stringify(r.diag));
 });
 
 test("semilla guardada (copas_semilla) y nombres de catálogo de los tipos", t => {

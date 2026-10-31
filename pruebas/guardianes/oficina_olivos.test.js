@@ -323,12 +323,55 @@ test("recorrido: deslizadores, validación, borrador, prueba, para todos, volver
     assert.strictEqual((await config()).config.escalera.maxVariantes, 32, "la sesión de oficina recibe lo que se prueba");
     await popup.close();
 
+    // 11b. Épocas (OF9): sin bloque, valen los de partida; editar crea la tabla propia; la comprobación de los 366 días corta lo que la api rechazaría
+    await pg.click("#t-epo");
+    assert.match(await pg.textContent("#eEstado"), /sin épocas en la configuración/);
+    assert.strictEqual(await pg.inputValue("#ep-flor-desde"), "05-10"); assert.strictEqual(await pg.inputValue("#ep-madura-hasta"), "01-15");
+    assert.strictEqual(await pg.textContent("#ep-flor-dias"), "31");
+    assert.match(await pg.textContent("#eMsgs"), /Cubre los 366 días/);
+    const ponEp = (id, v) => pg.fill("#ep-" + id, v);
+    await ponEp("flor-hasta", "06-01");
+    assert.match(await pg.textContent("#eMsgs"), /8 días sin época \(06-02, 06-03, 06-04…\)/);
+    assert.strictEqual((await est()).ep.comun.flor.hasta, "06-01");
+    for (const id of ["#oGuarda", "#oPrueba", "#oProbar", "#oPublica"]) assert.strictEqual(await pg.isDisabled(id), true, id + " deshabilitado con un calendario con huecos");
+    assert.match(await pg.textContent("#oMsgs"), /común: 8 días sin época/);
+    await ponEp("flor-hasta", "06-09"); await ponEp("verde-hasta", "09-14");
+    assert.match(await pg.textContent("#eMsgs"), /5 días con más de una época/);
+    await ponEp("envero-desde", "09-15");
+    assert.match(await pg.textContent("#eMsgs"), /Cubre los 366 días, una época cada día/); assert.deepStrictEqual((await est()).errores, []);
+    await ponEp("envero-desde", "02-30"); assert.match(await pg.textContent("#eMsgs"), /«02-30» no es una fecha MM-DD válida/); await ponEp("envero-desde", "09-15");
+    // una tabla propia para la finca: empieza como copia de la común y reemplaza a la común entera para esa finca
+    await pg.fill("#eNueva", "Mal Id"); await pg.click("#eAnade"); await aviso("El id de la finca son minúsculas");
+    await pg.fill("#eNueva", "hituelo"); await pg.click("#eAnade");
+    assert.strictEqual(await pg.inputValue("#eFinca"), "hituelo"); assert.deepStrictEqual(Object.keys((await est()).ep.fincas), ["hituelo"]);
+    await ponEp("madura-hasta", "01-20"); await ponEp("reposo-desde", "01-21");
+    assert.match(await pg.textContent("#eMsgs"), /Cubre los 366 días/);
+    await pg.selectOption("#eFinca", "comun"); assert.strictEqual(await pg.inputValue("#ep-madura-hasta"), "01-15", "la común no se tocó");
+    // por el mismo camino de versiones: en prueba y para todos (con lo que cambia dicho en la confirmación)
+    await pg.click("#oPrueba"); await aviso("v6 en prueba");
+    const cp = await config(); assert.strictEqual(cp.estado, "en_prueba");
+    assert.strictEqual(cp.config.epocas.comun.verde.hasta, "09-14"); assert.strictEqual(cp.config.epocas.fincas.hituelo.madura.hasta, "01-20");
+    assert.strictEqual(cp.config.escalera.maxVariantes, 32, "lo de la escalera sigue en la versión con épocas");
+    await pg.click("#oPublica"); await pg.waitForSelector("#dlgConfirma[open]");
+    const conf = await pg.textContent("#dlgConfTexto");
+    assert.match(conf, /Épocas, Verde: 07-10–09-09 → 07-10–09-14/); assert.match(conf, /tabla propia para la finca hituelo/); assert.match(conf, /el hornero re-hornea/);
+    await pg.click("#dlgConfSi"); await aviso("v6 publicada");
+    const cq = await config(); assert.strictEqual(cq.estado, "publicada"); assert.strictEqual(cq.config.epocas.fincas.hituelo.reposo.desde, "01-21");
+    assert.match(await pg.textContent("#eEstado"), /iguales a lo publicado/);
+    // el historial lo cuenta
+    await pg.click("#t-his"); await pg.waitForFunction(() => !document.querySelector("#oHis").textContent.includes("…"));
+    assert.match(await pg.textContent("#oHis tr:first-child"), /épocas 2 ventanas ajustadas \(tabla propia: hituelo\)/);
+    // quitar las épocas: el cuerpo vuelve a no llevarlas (vale el calendario del repo)
+    await pg.click("#t-epo"); await pg.click("#eRepo"); assert.strictEqual((await est()).ep, null);
+    assert.match(await pg.textContent("#eEstado"), /sin épocas en la configuración/);
+    await pg.click("#oDescarta"); assert.ok((await est()).ep, "descartar vuelve a lo publicado, con sus épocas");
+
     // 12. a 1280 y 1024: sin desbordes, con capturas
     const salidaCap = process.env.GEMELO_CAPTURAS || propia("oficina-olivos-capturas");
     fs.mkdirSync(salidaCap, { recursive: true });
     for (const ancho of [1280, 1024]) {
       await pg.setViewportSize({ width: ancho, height: 900 });
-      for (const [pest, tab] of [["esc", "#t-esc"], ["com", "#t-com"], ["his", "#t-his"]]) {
+      for (const [pest, tab] of [["esc", "#t-esc"], ["com", "#t-com"], ["epo", "#t-epo"], ["his", "#t-his"]]) {
         await pg.click(tab); await pg.waitForTimeout(250);
         assert.ok((await pg.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)) <= 0, "a " + ancho + " px hay desborde horizontal en " + pest);
         assert.ok((await pg.evaluate(() => { const m = document.querySelector("main"); return m.scrollWidth - m.clientWidth; })) <= 0, "a " + ancho + " px main desborda en " + pest);

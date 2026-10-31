@@ -458,6 +458,31 @@ Lecturas: (1) **el E0 ya no va detrás**: es el olivo que se ve a ≥ 700 px (×
 
 Las llamadas de olivos, 7-8 (tope 8); triángulos de olivos 19-231 k de 384 k; s = 1 en los tres (kPx = 590: la ventana del banco es pequeña, así que los olivos tienen pocos píxeles y no hace falta acercar fronteras); sin errores de sombreador (el código de banda compila en WebGL2) y las 4 variantes E2 calculadas en el trabajador. Las llamadas totales suben por la bandada de día de 16_vida (98 llamadas; ver «fixture»), no por los olivos. Los topes de `fixture_olivos_escalera` siguen valiendo y no se tocan.
 
+## Tarjetas de racimo (O9b, 2026-10-30, foto, no se mantiene)
+Chrome sin pantalla con SwiftShader, three 0.186.1, `node pruebas/olivo/o9b_tarjetas.mjs --antes <niveles.js de ede409a>`; recuentos en Node; masa: media de 8 vistas horizontales y la cenital frente al E0 del mismo olivo. Fracciones opacas medidas: ramita 0,182/0,191, celdas 0,24-0,27 (envero). Atlas 1024 × 512: 2,8 MB en GPU con mipmaps; dibujo 6-17 ms, mipmaps 53-235 ms una vez por época.
+
+| Olivo | Escalón | Triángulos | Brotli | Cobertura frente a E0 (512 px) | IoU 512 px | IoU 128 px |
+|---|---|---|---|---|---|---|
+| medido (h 3,8, copa 4,3) | E1 | 31.842 → 19.622 | 234 → 145 KB | −1,9 → +0,3 % | 0,998 → 0,946 | 0,977 → 0,931 |
+| medido | E2 | 11.678 → 7.634 | 209 → 135 KB | −3,5 → −0,1 % | 0,994 → 0,930 | 0,976 → 0,916 |
+| centenario3 semilla 7 | E1 | 48.378 → 23.080 | 364 → 188 KB | −0,5 → +0,4 % | 1,0 → 0,930 | 0,991 → 0,878 |
+| centenario3 semilla 7 | E2 | 19.366 → 10.702 | 322 → 178 KB | −0,6 → +0,5 % | 1,0 → 0,926 | 0,952 → 0,871 |
+| adulto1 | E1 / E2 | 19.082 / 8.954 → 7.776 / 5.016 | 161 / 143 → 77 / 71 KB | +1,4 / +0,9 % | 0,934 / 0,915 | 0,872 / 0,864 |
+
+Sin cumplir: E2 ≤ 10 k en centenario3 (10.702; pesan las ramas, 5.550) e IoU ≥ 0,9 a 128 px en los olivos tipo. A 128 px la cobertura queda +13/+27 % sobre el E0 (de lejos, más llena). Se pierde algo de contraste (E2 medido 0,59 → 0,42). No probado en aparatos.
+
+## Escalera horneada con `?olivos=gen` (O8c, 2026-10-31, foto, no se mantiene)
+Lo que cambia cuando el manifiesto trae variantes horneadas de la época: `?olivos=gen` dibuja la escalera (variantes E2 e impostores en lugar del nivel 0 de siempre y de los olivos del tileset; `Escalera.modoGen` de `07ab`). Página: el fixture de Hituelo con `node pruebas/olivo/horneado/pagina_banco.mjs --impostores` (16 variantes olivo-2, `CACHE_VERSION` 2, y los impostores de envero y madura re-horneados tras O9b en Chrome por el turno: 132 s; atlas WebP de 0,70-0,74 MB de color y 1,06 MB de normales por época). URL `?olivos=gen&olivosDir=olivos/&epoca=envero`. Banco: tres rondas, SwiftShader, ventana 900 × 650, de noche (sin la bandada de 16_vida), máquina cargada (`esc` 0,7 → presupuesto de olivos 385 k): **recuentos y memoria, no fps**. «ms de JS» = media del contador de `?debug` (`__g.depuraJs()`, nuevo) en la última media segunda, a 0,6-9 fps: indicativo, con mucho ruido.
+
+| Escenario | main (código de `main`, `?olivos=gen`) | antes (`&olivosEscalera=0`) | después (escalera horneada) | sin bandera |
+|---|---|---|---|---|
+| lejos | 27 / 18,5 k / 40 MB | 27 / 18,5 k / 51 MB · 3,4 ms | **27 / 15,4 k / 41 MB · 3,2 ms** · 140 impostores (280 tri, 1 llamada) | 27 / 18,5 k / 23 MB · 3,3 ms |
+| cerca | 40 / 281 k / 47 MB | 41 / 281 k / 48 MB · 5,1 ms | **29 / 154 k / 39 MB · 2,8 ms** · 5 E2 + 135 impostores; olivos 51 k tri / 5 llamadas | 54 / 174 k / 27 MB · 4,3 ms |
+| paseo | 75 / 280 k / 47 MB | 54 / 264 k / 45 MB · 6,9 ms | **60 / 280 k / 48 MB · 11,7 ms** · 1 E0 + 1 E1 + 10 E2 (3 en banda) + 131 impostores; olivos 221 k / 8 llamadas | 63 / 170 k / 27 MB · 4,1 ms |
+| paseoAnda | 69 / 245 k / 44 MB | 54 / 242 k / 41 MB · 7,3 ms | **60 / 279 k / 51 MB · 8,6 ms** · igual que paseo | 84 / 157 k / 23 MB · 5,8 ms |
+
+(llamadas / triángulos / heap JS; las celdas son de corridas distintas, ±3 MB de heap y unas llamadas de ruido entre ellas.) Lecturas: (1) «antes» con `&olivosEscalera=0` es `?olivos=gen` de `main` (mismos triángulos en lejos y cerca; las llamadas de paseo varían de una corrida a otra con las celdas de nivel 0 construidas). (2) Con la escalera, de lejos y de cerca **menos** triángulos y llamadas (cerca −45 % de triángulos); paseando, los mismos triángulos con más olivos en 3D (12 frente a 3) y sin nivel 0 de siempre. Llamadas de olivos ≤ 8 (tope de `fixture_olivos_escalera`); todo dentro de `fixture_olivos_gen` y de `fixture` de Hituelo. (3) Los atlas de impostores suman 26,7 MiB de GPU (lo calcula el motor; three no lo cuenta en el heap). (4) Los ms de JS de paseo suben (6,9 → 11,7 y 7,3 → 8,6) en una sola muestra a menos de 1 fps: **no se afirma nada** hasta medirlo en un aparato (O8d). Secuencia al cargar (Node, `escalera_motor.mjs` parte 5, y banco): mientras no hay capa de lejanos, como `?olivos=gen`; cuando la hay, 1 s con el tileset debajo mientras los impostores entran con su tramado, y luego el tileset sin olivos. **No probado** en móvil ni Quest (presupuestos de la configuración por aparato: escritorio y móvil en 07b, gafas en VR_PERFILES; ninguno medido en aparato).
+
 ## Límites conocidos
 - Las ortofotos decodificadas (2,4 MB por tesela de 768 px; 1 MB a 512 px) se sueltan a 900 m y, desde M4, por LRU con un tope (8 móvil/gafas, 20 escritorio; `?ortoMax=N`); el fixture (2 teselas) no llega al tope, así que su heap no cambia dentro del ruido de SwiftShader (±3 MB); el ahorro es ~2,4 MB por tesela soltada de las reales de 768 px, **no medido** en una finca grande ni en iPhone/Quest. M6 (suelo de fondo, `?sinFondo` lo quita), banco 2026-10-30, fixture de Hituelo: +1 llamada, +10 824 triángulos (82 × 66 celdas × 2), +1 geometría, 0 texturas nuevas, heap sin cambio medible; de lejos el vacío alrededor de la finca queda cubierto y de cerca no asoma.
 - Dentro de una tesela todo el relieve y la copa (258² + 256²) están siempre en memoria: 49 teselas ≈ 20 MB; la nube de las lejanas se libera a > 1,2× 2.300 m.

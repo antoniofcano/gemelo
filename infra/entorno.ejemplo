@@ -34,6 +34,12 @@ GEMELO_OFICINA_SESION_HORAS=12
 GEMELO_OFICINA_INACTIVIDAD_MIN=120
 GEMELO_OFICINA_CONFIRMACION_MIN=15
 GEMELO_OFICINA_SEGUNDO_ENLACE_MIN=5
+# llave de acceso (WebAuthn, passkey) de la oficina (OF13, contratos/sesion.md § Llave de acceso): «obligatoria» por defecto;
+# «no» solo fuera de producción (en producción la api no arranca con «no»). El RP ID y el origen salen de GEMELO_URL_PUBLICA;
+# solo se ponen si la oficina se sirve en otro origen (el RP ID es su dominio o uno de sus padres, nunca una IP).
+GEMELO_OFICINA_LLAVE=obligatoria
+# GEMELO_LLAVE_RP_ID=gemelo.canoydamas.es
+# GEMELO_LLAVE_ORIGEN=https://gemelo.canoydamas.es
 
 # --- correo del enlace mágico: SMTP de OVH (decisión 15) [NO VERIFICADO contra el buzón real]
 # Pasos y comprobaciones del dominio (MX, SPF, DKIM, DMARC): doc/operacion/RUNBOOK-VPS.md, «SMTP de OVH».
@@ -48,6 +54,10 @@ GEMELO_SMTP_TLS=si
 GEMELO_SMTP_USUARIO=buzon-del-gemelo@ejemplo.invalid
 # la MISMA dirección que el usuario [SUPUESTO: OVH rechaza o marca un remitente distinto del buzón autenticado]
 GEMELO_CORREO_REMITENTE=Gemelo del olivar <buzon-del-gemelo@ejemplo.invalid>
+# Avisos de la campana y .ics de la Agenda por correo a los hogares que lo pidieron (OF11c, contratos/avisos-correo.md): mismo buzón de arriba
+GEMELO_CORREO_AVISOS=si
+GEMELO_CORREO_REINTENTOS=5
+GEMELO_CORREO_AVISOS_CADA_SEG=60
 
 # --- OlivarTrack por MCP, solo lectura (contratos/olivartrack-sync.md). «no» hasta que exista el token propio
 # (decisión 17) y se hayan ajustado las formas de respuesta reales. El token NO va aquí: /etc/gemelo/secretos/ot_token.

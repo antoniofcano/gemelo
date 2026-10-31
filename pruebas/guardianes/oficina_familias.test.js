@@ -24,12 +24,12 @@ test("nada en línea ni de otro origen; el DOM se hace con textContent (un corre
   assert.ok(!/localStorage\.setItem\([^)]*(correo|sesion|token)/i.test(fuentes["oficina.js"]), "el navegador solo guarda el tema");
 });
 
-test("la barra lateral tiene las secciones de la maqueta; Inicio, Familias, Hazas (OF3), Bandeja (OF4), Olivos (OF7) y Sistema (OF5) están hechas", () => {
+test("la barra lateral tiene las secciones de la maqueta; Inicio, Familias, Hazas (OF3), Bandeja (OF4), Agenda (OF11), Olivos (OF7) y Sistema (OF5) están hechas", () => {
   const js = fuentes["oficina.js"];
   const ids = [...js.matchAll(/\["([a-z]+)", "[^"]+", "([^"]+)", (true|false)\]/g)].map(m => [m[1], m[3]]);
   assert.deepStrictEqual(ids.map(x => x[0]), ["inicio", "familias", "hazas", "bandeja", "agenda", "directos", "mundo", "olivos", "sistema"]);
   const hechas = ids.filter(x => x[1] === "true").map(x => x[0]);   // otras tareas (Sistema, OF5…) irán añadiendo las suyas
-  for (const id of ["inicio", "familias", "hazas", "bandeja", "olivos", "sistema"]) assert.ok(hechas.includes(id), id + " está hecha");
+  for (const id of ["inicio", "familias", "hazas", "bandeja", "agenda", "olivos", "sistema"]) assert.ok(hechas.includes(id), id + " está hecha");
   assert.match(html, /<a class="boton prim" href="\/finca\/"/, "«Entrar al mundo como oficina» siempre a mano");
   assert.match(js, /aria-current/); assert.match(js, /data-theme/); assert.match(js, /oficina-tema/);
   assert.match(html, /<nav class="lateral" aria-label=/);
@@ -40,7 +40,7 @@ test("accesibilidad: foco visible, zonas de 44 px, avisos en región viva, diál
   assert.match(css, /--toque: 44px/); assert.match(css, /\.boton \{ min-height: var\(--toque\)/);
   assert.match(css, /prefers-reduced-motion: reduce/); assert.match(css, /prefers-color-scheme: light/);
   assert.match(html, /id="avisos" aria-live="polite"/); assert.match(html, /id="anuncio" role="status" aria-live="polite"/);
-  assert.equal((html.match(/<dialog /g) || []).length, 4, "alta, confirmar, reconfirmar y la haza nueva (OF3)");
+  assert.equal((html.match(/<dialog /g) || []).length, 5, "alta, confirmar, reconfirmar, la haza nueva (OF3) y el evento (OF11)");
   for (const d of ["dlgAlta", "dlgConfirma", "dlgReconfirma"]) assert.match(html, new RegExp('<dialog id="' + d + '" aria-labelledby='));
   assert.match(html, /<label class="vh" for="fBusca">/); assert.match(html, /<th scope="col">/);
 });
@@ -69,7 +69,7 @@ test("el nombre interno (decisión 109) solo sale por las rutas de la oficina", 
       if (e.isDirectory()) recorre(f); else if (/\.ts$/.test(e.name) && /nombre_interno/.test(fs.readFileSync(f, "utf8"))) dentro.push(path.relative(api, f).replace(/\\/g, "/"));
     }
   })(api);
-  assert.deepStrictEqual(dentro.sort(), ["admin/familias.ts"], "el campo solo lo nombra la ruta de la oficina");
+  assert.deepStrictEqual(dentro.sort(), ["admin/familias.ts", "agenda/rutas.ts", "oficina/llaves_rutas.ts"], "el campo solo lo nombran rutas de la oficina (Familias; en los inscritos de un evento, la Agenda: GET /api/admin/eventos/:id/inscritos; y en las llaves de las cuentas de oficina, solo admin: GET /api/admin/llaves)");
   for (const esquema of ["contratos/haza.schema.json", "contratos/olivos-haza.schema.json"]) assert.ok(!/nombre_interno/.test(lee(esquema)), esquema);
   const mig = lee("apps/api/migraciones/0008_familias.sql");
   assert.match(mig, /ADD COLUMN nombre_interno text CHECK/); assert.match(mig, /ADD COLUMN baja_en\s+timestamptz/);
@@ -125,7 +125,7 @@ test("recorrido: buscar, alta, cerrar una sesión, asignar haza, baja y borrar (
     assert.strictEqual(await pg.textContent("#s-rol"), "admin");
     assert.strictEqual(await pg.locator("#nav button").count(), 9, "las nueve secciones de la maqueta");
     assert.strictEqual(await pg.locator("#nav .pronto").count(), (fuentes["oficina.js"].match(/", false\]/g) || []).length, "tantos «pronto» como secciones sin hacer");
-    await pg.click("#nav button[data-sec=agenda]");
+    await pg.click("#nav button[data-sec=directos]");
     assert.match(await pg.textContent("#s-proximamente"), /próximamente/i);
 
     // tema claro/oscuro

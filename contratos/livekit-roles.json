@@ -1,23 +1,27 @@
 {
-  "$comment": "Qué puede hacer cada rol en una sala de LiveKit en F2 (presencia compartida): SOLO datos (pose y chat), sin audio ni vídeo. La api firma el token con estos permisos; el cliente no los elige. Descripción y tabla de bytes de la pose: contratos/presencia.md. Lo comprueba pruebas/guardianes/presencia.test.js. Los nombres de los permisos son los del VideoGrant de livekit-server-sdk 2.19.2 (comprobado contra sus tipos; apps/api/src/presencia/livekit.ts los copia y apps/api/pruebas/unidad/presencia.test.ts compara las dos cosas y decodifica el token). Cómo los aplica el servidor (p. ej. canPublishSources vacío con canPublish false) NO se ha comprobado contra LiveKit real. Cambiar un permiso es cambiar este fichero, su versión y presencia.md en el mismo commit.",
+  "$comment": "Qué puede hacer cada rol en una sala de LiveKit. Salas fijas (F2, presencia compartida): SOLO datos (pose y chat), sin audio ni vídeo. Versión 6 (F3c, ADR-0026): la sala de voz de cada visita guiada, `guiada-<evento>`, con permisos por PAPEL (roles_guiada): el guía y la oficina con micrófono; las familias, sin publicar pistas hasta que la api les da la palabra en vivo. La api firma el token con estos permisos; el cliente no los elige. Descripción y tabla de bytes de la pose: contratos/presencia.md. Lo comprueban pruebas/guardianes/presencia.test.js y apps/api/pruebas/unidad/voz.test.ts. Los nombres de los permisos son los del VideoGrant de livekit-server-sdk 2.19.2 (comprobado contra sus tipos; apps/api/src/presencia/livekit.ts los copia y apps/api/pruebas/unidad/presencia.test.ts y voz.test.ts comparan las dos cosas y decodifican el token). Cómo los aplica el servidor (canPublishSources vacío con canPublish false: comprobado en P4 contra LiveKit 1.13.11; el cambio en vivo con UpdateParticipant y que al quitarlo se despubliquen las pistas: NO comprobado, F3g) se dice en cada caso. Cambiar un permiso es cambiar este fichero, su versión y presencia.md en el mismo commit.",
   "contrato": "livekit-roles",
-  "version": 3,
-  "fase": "F2",
+  "version": 6,
+  "fase": "F3",
   "salas": {
-    "visita_libre": { "nombre": "hituelo-libre", "fija": true, "nota": "decisiones 39 y 60: una sala fija de Hituelo para la visita libre, con este nombre" },
-    "guiada": { "nombre": "guiada-<id de la visita>", "fija": false, "nota": "una sala por visita guiada; llega con F3 (voz)" }
+    "visita_libre": { "nombre": "hituelo-libre", "clave": "general", "fija": true, "nota": "decisiones 39 y 60: una sala fija de Hituelo para la visita libre, con este nombre. Clave «general» en POST /api/presencia/token (sin sala, esta)" },
+    "visita_oficina": { "nombre": "hituelo-visita", "clave": "visita", "fija": true, "nota": "versión 4 (OF10): la sala a la que la oficina invita a la gente (p. ej. durante una visita en grupo). Versión 5 (OF10b, decisión 154): si la oficina invita a ella indicando un evento de la agenda (POST /api/admin/presencia/llevar con `evento`), solo obtienen token de esta sala la oficina (rol oficina o admin) y los hogares APUNTADOS (no en espera) a ese evento; los demás reciben 403 con error «visita_solo_inscritos» (Esta visita es para las familias apuntadas.). Sin evento, entra cualquiera con sesión, como en la general. A qué evento está ligada la sala se guarda en memoria en la api, con caducidad de 8 h, y lo fija cada invitación a la sala de la visita (sin evento la deja abierta); no sobrevive a un reinicio" },
+    "guiada": { "nombre": "guiada-<id del evento>", "patron": "^guiada-[1-9][0-9]{0,9}$", "fija": false, "token": "POST /api/presencia/guiadas/:evento/token", "eventos": ["guiada", "directo"], "quien_entra": "versión 6 (F3c; decisiones 39, 154 y 157): el guía del evento (visitas.guia_id, papel guia), la oficina (rol oficina o admin, papel oficina) y los hogares APUNTADOS (no en espera) y activos (papel familia). Ni eventos cancelados ni en borrador. La inscripción se comprueba contra la base al firmar (el evento va en el nombre de la sala): no depende de estado en memoria", "ventana": "familias desde 15 min antes de empezar; guía y oficina desde 60 min antes; todos hasta 30 min después del fin (sin fin, 3 h después de empezar). Fuera: 409 guiada_aun_no / guiada_terminada", "nota": "una sala por visita guiada (decisión 39). La voz solo existe aquí (decisión 157: nunca en la visita libre). Nada se graba: no hay Egress (decisión 10)" }
   },
   "identidad": {
     "identity": "id opaco, emitido por la api (ni correo, ni alias, ni id de la base, ni nada derivable de ellos), uno por sesión (aparato): h_<22: HMAC del hogar>_<8: HMAC de la sesión>",
     "formato": "^h_[A-Za-z0-9_-]{22}_[A-Za-z0-9_-]{8}$",
     "nota": "versión 2 (2026-10-29): antes era una por hogar y un segundo aparato del mismo hogar echaba al primero. El prefijo h_<22> es el del hogar: la api lo recalcula para expulsar a todas sus conexiones. Dos pestañas de la misma sesión comparten identidad (la segunda sustituye a la primera)",
-    "metadata": { "lo_pone": "la api, dentro del token", "campos": ["alias", "avatar", "rol", "dispositivo"], "el_cliente_puede_cambiarlo": false }
+    "metadata": { "lo_pone": "la api, dentro del token", "campos": ["alias", "avatar", "rol", "dispositivo", "papel"], "el_cliente_puede_cambiarlo": false, "nota": "versión 6: `papel` (guia, oficina o familia) solo en los tokens de la sala guiada" }
   },
   "temas_de_datos": {
     "pose": { "fiable": false, "formato": "binario, contratos/presencia.md", "tasa": "10 Hz a los cercanos (destinationIdentities) y 2 Hz a toda la sala", "se_guarda": false },
-    "chat": { "fiable": true, "formato": "texto UTF-8, como mucho 280 caracteres", "se_guarda": false, "nota": "decisión 40: el chat no se guarda; las preguntas sobre una haza van por la api, no por este canal" }
+    "chat": { "fiable": true, "formato": "texto UTF-8, como mucho 280 caracteres", "se_guarda": false, "nota": "decisión 40: el chat no se guarda; las preguntas sobre una haza van por la api, no por este canal" },
+    "anuncio": { "fiable": true, "lo_manda": "api", "formato": "JSON UTF-8 {v: 1, texto} (texto como el chat: ≤ 280 caracteres, sin control ni dirección)", "se_guarda": "solo en la auditoría (admin.presencia_anuncio)", "nota": "versión 4 (OF10, decisión 114): aviso de texto de la oficina. Lo manda POST /api/admin/presencia/anuncio con RoomService.sendData: llega SIN participante y el cliente lo descarta si trae uno (LiveKit no deja restringir un tema por rol: canPublishData es todo o nada)" },
+    "sala": { "fiable": true, "lo_manda": "api", "formato": "JSON UTF-8 {v: 1, a: <clave de sala>}", "se_guarda": "solo en la auditoría (admin.presencia_llevar, con el evento si lo hay)", "nota": "versión 4 (OF10): la oficina invita a quien está en esa sala a pasar a otra (POST /api/admin/presencia/llevar). Cada uno decide en su pantalla; nadie cambia de sala sin pulsar" },
+    "balizas": { "fiable": true, "lo_manda": "api", "formato": "JSON UTF-8 {v: 1, finca}", "se_guarda": false, "nota": "versión 4 (OF10): «las balizas oficiales de esta finca han cambiado»; el cliente vuelve a pedirlas (GET /api/balizas-oficiales). Las balizas sí se guardan en la base (migración 0014)" }
   },
-  "roles_nota": "versión 3 (2026-10-30, OF1, ADR-0024): se añade el rol «oficina» con los mismos permisos que los demás; la oficina nunca va oculta (hidden false, decisión 107). Su insignia y el tema «anuncio» llegan con OF10",
+  "roles_nota": "versión 3 (2026-10-30, OF1, ADR-0024): se añade el rol «oficina» con los mismos permisos que los demás; la oficina nunca va oculta (hidden false, decisión 107). Versión 4 (OF10): la oficina (rol oficina o admin) entra con el alias «Oficina» en sus metadatos (sin nombre propio) y el cliente la dibuja con chaleco e insignia; los permisos NO cambian (sus poderes van por la api)",
   "roles": {
     "hogar": { "roomJoin": true, "canSubscribe": true, "canPublish": false, "canPublishData": true, "canPublishSources": [], "canUpdateOwnMetadata": false, "hidden": false, "roomAdmin": false },
     "guia": { "roomJoin": true, "canSubscribe": true, "canPublish": false, "canPublishData": true, "canPublishSources": [], "canUpdateOwnMetadata": false, "hidden": false, "roomAdmin": false },
@@ -26,8 +30,35 @@
     "admin": { "roomJoin": true, "canSubscribe": true, "canPublish": false, "canPublishData": true, "canPublishSources": [], "canUpdateOwnMetadata": false, "hidden": false, "roomAdmin": false }
   },
   "moderacion": {
-    "expulsar": "solo la api, con su clave de servidor (RoomService.RemoveParticipant), y queda en la auditoría; ningún token de cliente lleva roomAdmin (decisión 42: moderación mínima en F2)",
-    "silenciar_y_bloquear": "cada cliente para sí (deja de dibujar y de mostrar el chat de esa identidad); no toca la sala"
+    "expulsar": "solo la api, con su clave de servidor (RoomService.RemoveParticipant), de TODAS las salas del mundo (la general, la de la visita y, versión 6, las guiadas abiertas), y queda en la auditoría; ningún token de cliente lleva roomAdmin (decisión 42: moderación mínima en F2)",
+    "anunciar_llevar_balizas": "solo la api (OF10), con RoomService.sendData y su auditoría; los temas anuncio, sala y balizas los acepta el cliente solo sin participante",
+    "silenciar_y_bloquear": "cada cliente para sí (deja de dibujar y de mostrar el chat de esa identidad); no toca la sala",
+    "voz": "versión 6 (F3c): el guía del evento o la oficina, solo por la api y con auditoría (guiada.palabra_dada, guiada.palabra_alargada, guiada.palabra_quitada, guiada.mano_levantada, guiada.mano_bajada, guiada.silenciados, guiada.expulsado): silenciar a todos menos al guía y a quien lo pide (RoomService.MutePublishedTrack; sin desmute remoto) y expulsar de la sala guiada a una familia apuntada (RemoveParticipant de todas sus conexiones; 15 min sin token de esa visita). La auditoría dice quién, a quién y cuándo; nunca audio ni texto de voz"
   },
-  "cuentas": "F2 solo con cuentas de prueba hasta la EIPD de F3 (decisión 41)"
+  "cuentas": "F2 solo con cuentas de prueba hasta la EIPD de F3 (decisión 41)",
+  "atributos": {
+    "$comment": "versión 6 (F3c): atributos de participante que pone SOLO la api (RoomService.UpdateParticipant) en la sala guiada; LiveKit los reparte a toda la sala. El cliente no puede cambiarlos (canUpdateOwnMetadata false). Cadena vacía o ausente = no hay",
+    "palabra_hasta": { "formato": "instante ISO 8601 (UTC)", "quien": "la familia que tiene la palabra", "nota": "cuándo acaba su turno: la cuenta atrás que ve todo el mundo. Lo pone la api al dar la palabra y al alargar; lo quita al quitarla o vencer" },
+    "mano": { "formato": "instante ISO 8601 (UTC)", "quien": "una familia con la mano levantada", "nota": "cuándo la levantó (la cola es del servidor: GET /api/presencia/guiadas/:evento/palabra la da en orden). Lo quita al bajarla o al darle la palabra" }
+  },
+  "roles_guiada": {
+    "$comment": "versión 6 (F3c, ADR-0026): permisos del token de la sala guiada por PAPEL (no por rol de la cuenta). Ningún papel lleva roomAdmin; no hay papel de menor (no hay cuentas de menores, decisiones 45 y 159)",
+    "guia": { "roomJoin": true, "canSubscribe": true, "canPublish": true, "canPublishData": true, "canPublishSources": ["microphone"], "canUpdateOwnMetadata": false, "hidden": false, "roomAdmin": false },
+    "oficina": { "roomJoin": true, "canSubscribe": true, "canPublish": true, "canPublishData": true, "canPublishSources": ["microphone"], "canUpdateOwnMetadata": false, "hidden": false, "roomAdmin": false },
+    "familia": { "roomJoin": true, "canSubscribe": true, "canPublish": false, "canPublishData": true, "canPublishSources": [], "canUpdateOwnMetadata": false, "hidden": false, "roomAdmin": false }
+  },
+  "palabra": {
+    "$comment": "versión 6 (F3c; decisiones 158, 160 y 161): la palabra la da en vivo la api, no el cliente",
+    "dar": "RoomService.UpdateParticipant con canPublish true y canPublishSources [microphone] (el resto de permisos iguales: se mandan todos) y el atributo palabra_hasta. POST /api/presencia/guiadas/:evento/palabra { identidad }: solo el guía del evento o la oficina, solo a una conexión de un hogar apuntado",
+    "quitar": "UpdateParticipant con canPublish false y canPublishSources []: según LiveKit, sus pistas se despublican solas [NO VERIFICADO contra la 1.13.11: F3g]",
+    "una_a_la_vez": true,
+    "duracion_s": 120,
+    "alargar_s": 60,
+    "alargues_max": 5,
+    "vence": "la api lleva el temporizador y quita el permiso al vencer (motivo «vencida» en la auditoría). El estado vive en memoria de la api (una instancia); al arrancar, la api quita el permiso a toda familia que lo tenga en una sala guiada",
+    "mano": "POST/DELETE /api/presencia/guiadas/:evento/mano (una familia apuntada desde su conexión): cola del servidor, en orden de llegada; no da permiso por sí sola",
+    "microfono_de_familias": "pulsar para abrir y cerrar (defecto) o mantener (ajuste); lo hace el cliente dentro del permiso (decisión 158, F3e)",
+    "desmute_remoto": false
+  },
+  "grabacion": "ninguna: no se despliega Egress y la api no tiene ruta de grabación (decisión 10, ADR-0026)"
 }

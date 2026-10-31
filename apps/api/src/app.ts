@@ -5,12 +5,16 @@ import fastifyRateLimit from "@fastify/rate-limit";
 import fastifySession from "@fastify/session";
 import Fastify, { type FastifyInstance } from "fastify";
 import { rutasAdmin } from "./admin/rutas.ts";
+import { rutasAgenda } from "./agenda/rutas.ts";
+import { rutasAvisos } from "./avisos/rutas.ts";
 import { AlmacenPg } from "./auth/almacen.ts";
 import { NOMBRE_COOKIE, rutasAuth, TEXTO_LIMITE, TEXTO_LIMITE_VINCULO } from "./auth/rutas.ts";
 import { rutasConfig } from "./config/rutas.ts";
 import type { Contexto } from "./contexto.ts";
 import { rutasHazas } from "./hazas/rutas.ts";
 import { rutasJuegos } from "./juegos/rutas.ts";
+import { rutasMedidas } from "./medidas/rutas.ts";
+import { rutasLlaves } from "./oficina/llaves_rutas.ts";
 import { rutasOficina } from "./oficina/rutas.ts";
 import { rutasPresencia } from "./presencia/rutas.ts";
 import { opcionesRegistro } from "./registro.ts";
@@ -18,6 +22,7 @@ import { rutasSalud } from "./salud/rutas.ts";
 import { rutasVida } from "./vida/rutas.ts";
 import { nuevoToken } from "./seguridad/cripto.ts";
 import { compruebaOrigen } from "./seguridad/origen.ts";
+import { rutasOtHoy } from "./ot/rutas-hoy.ts";
 import { rutasTiempo, rutasTiempoHistorico } from "./vigia/rutas.ts";
 import { rutasYo } from "./yo/rutas.ts";
 
@@ -65,11 +70,18 @@ export async function construyeApp(ctx: Contexto, o: OpcionesApp = {}): Promise<
     secret: config.sesion.secreto,
     cookieName: NOMBRE_COOKIE,
     cookie: { path: "/", httpOnly: true, secure: true, sameSite: "lax", maxAge: config.sesion.diasAbsolutos * 86_400_000 },
-    store: new AlmacenPg(ctx.bd, config.sesion.diasInactividad, config.oficina),
+    store: new AlmacenPg(ctx.bd, config.sesion.diasInactividad, { ...config.oficina, llaveObligatoria: config.llave.obligatoria }),
     saveUninitialized: false,
     rolling: false,
     idGenerator: () => nuevoToken(),
   });
+
+  // Tras una petición que cambió algo y salió bien, el repartidor mira si hay avisos por mandar. Va en onResponse (la respuesta ya se envió):
+  // el envío por correo nunca la hace esperar, ni aunque el SMTP esté caído (OF11c).
+  if (ctx.repartidor) {
+    const r = ctx.repartidor;
+    app.addHook("onResponse", async (req, rep) => { if (req.method !== "GET" && req.method !== "HEAD" && rep.statusCode < 400) r.despierta(); });
+  }
 
   app.addHook("onSend", async (_req, rep, cuerpo) => {
     if (!rep.hasHeader("cache-control")) rep.header("cache-control", "no-store");
@@ -93,11 +105,16 @@ export async function construyeApp(ctx: Contexto, o: OpcionesApp = {}): Promise<
   await rutasYo(app, ctx);
   await rutasAdmin(app, ctx);
   await rutasOficina(app, ctx);
+  await rutasLlaves(app, ctx);
   await rutasPresencia(app, ctx);
   await rutasTiempo(app, ctx);
   await rutasTiempoHistorico(app, ctx);
+  await rutasOtHoy(app, ctx);
   await rutasVida(app, ctx);
   await rutasConfig(app, ctx);
   await rutasJuegos(app, ctx);
+  await rutasMedidas(app, ctx);
+  await rutasAgenda(app, ctx);
+  await rutasAvisos(app, ctx);
   return app;
 }

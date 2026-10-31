@@ -1,7 +1,9 @@
 // Olivos (OF7): las cuentas de la sección, sin DOM ni red, para probarlas con node. Los parámetros de la escalera con sus límites (los de
 // contratos/config.schema.json y de ConfigPuro.LIMITES del motor: pruebas/guardianes/oficina_olivos.test.js comprueba que son los mismos,
 // porque el motor es una IIFE concatenada y la oficina no puede importarla), la validación IGUAL que la de la api (apps/api/src/config/valida.ts),
-// el paso entre los valores de la pantalla y el bloque «escalera» / «componentes» del contrato, y la vista previa SIMULADA (ilustrativa: no mide nada).
+// el paso entre los valores de la pantalla y el bloque «escalera» / «componentes» / «epocas» del contrato, la vista previa SIMULADA (ilustrativa: no mide nada) y,
+// desde OF9, las cuentas de la pestaña Épocas (7 ventanas MM-DD por tabla, común y por finca; comprobación de los 366 días con UNA época por día, la misma
+// regla que apps/web/olivo/epocas.js validaTabla y apps/api/src/config/valida.ts: pruebas/guardianes/oficina_epocas.test.js las contrasta con tablas al azar).
 
 /** Los tres escalones de gafas (perfiles VR 0 a 3): su máximo es el de hoy (VR_PERFILES[].tri de 29_vr.js); desde la oficina solo bajan. */
 export const GAFAS_MAX = [380000, 270000, 190000, 130000];
@@ -29,6 +31,94 @@ export const PARAMS = [
 ];
 export const GRUPOS = [["umbrales", "Cuándo cambia de escalón (alto del olivo en pantalla)"], ["presupuesto", "Cuántos y cuánto cuesta"], ["gafas", "Gafas (solo a la baja)"], ["forma", "Forma"]];
 export const PARAM = Object.fromEntries(PARAMS.map(p => [p.k, p]));
+
+// ------------------------------------------------------------------ épocas (OF9, decisiones 64, 68 y 112)
+/** Las siete épocas en el orden del ciclo (el de ORDEN_EPOCAS de apps/web/olivo/epocas.js): [id del contrato, nombre]. */
+export const EPOCAS = [["reposo", "Reposo"], ["boton", "Botón"], ["flor", "Flor"], ["cuajado", "Cuajado"], ["verde", "Verde"], ["envero", "Envero"], ["madura", "Madura"]];
+/** Los valores de partida (decisión 64: a mano, sin respaldo de campo; Antonio los ajusta): los de contratos/epocas-calendario.json (el guardián comprueba que son los mismos). */
+export const EPOCAS_PARTIDA = {
+  reposo: { desde: "01-16", hasta: "03-31" }, boton: { desde: "04-01", hasta: "05-09" }, flor: { desde: "05-10", hasta: "06-09" }, cuajado: { desde: "06-10", hasta: "07-09" },
+  verde: { desde: "07-10", hasta: "09-09" }, envero: { desde: "09-10", hasta: "10-31" }, madura: { desde: "11-01", hasta: "01-15" },
+};
+const DIAS_MES = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];   // 29 en febrero: el año de la comprobación es bisiesto
+const FINCA_ID = /^[a-z0-9_]+$/;
+export const copiaTabla = t => Object.fromEntries(EPOCAS.map(([e]) => [e, { desde: String((t[e] || {}).desde ?? ""), hasta: String((t[e] || {}).hasta ?? "") }]));
+export const tablaDePartida = () => copiaTabla(EPOCAS_PARTIDA);
+/** «MM-DD» real (mes 01-12 y día que existe en un año bisiesto). */
+export const fechaValida = f => { const m = /^(\d\d)-(\d\d)$/.exec(f); return !!m && +m[1] >= 1 && +m[1] <= 12 && +m[2] >= 1 && +m[2] <= DIAS_MES[+m[1] - 1]; };
+const dentro = (m, v) => (v.desde <= v.hasta ? m >= v.desde && m <= v.hasta : m >= v.desde || m <= v.hasta);
+const mmdd = d => String(d.getUTCMonth() + 1).padStart(2, "0") + "-" + String(d.getUTCDate()).padStart(2, "0");
+const DIAS_ANYO = Array.from({ length: 366 }, (_, d) => mmdd(new Date(Date.UTC(2024, 0, 1 + d))));
+
+/**
+ * Los días de un año bisiesto frente a una tabla: cuántos caen en cada época y cuáles quedan sin época o con varias. Las ventanas con una fecha que no es MM-DD
+ * real no cuentan (las señala `validaTabla`). Es la comprobación de la api (valida.ts) y la de `validaTabla` de apps/web/olivo/epocas.js.
+ */
+export function cobertura(tabla) {
+  const dias = Object.fromEntries(EPOCAS.map(([e]) => [e, 0])), sin = [], varias = [];
+  const ok = e => tabla[e] && fechaValida(tabla[e].desde) && fechaValida(tabla[e].hasta);
+  for (const m of DIAS_ANYO) {
+    const cuales = EPOCAS.map(x => x[0]).filter(e => ok(e) && dentro(m, tabla[e]));
+    for (const e of cuales) dias[e]++;
+    if (!cuales.length) sin.push(m); else if (cuales.length > 1) varias.push(m);
+  }
+  return { dias, sin, varias };
+}
+/** La comprobación de una tabla: [{ nivel: "mal" | "av", texto }]; sin ningún «mal» es que la api la aceptaría. */
+export function validaTabla(tabla, nombre) {
+  const pre = nombre ? nombre + ": " : "", m = [];
+  for (const [e, n] of EPOCAS) {
+    const v = tabla[e];
+    if (!v) { m.push({ nivel: "mal", texto: pre + "falta la época " + n }); continue; }
+    for (const c of ["desde", "hasta"]) {
+      if (!fechaValida(v[c])) m.push({ nivel: "mal", texto: pre + n + ": «" + v[c] + "» no es una fecha MM-DD válida (" + c + ")" });
+      else if (/^02-/.test(v[c])) m.push({ nivel: "av", texto: pre + n + ": un límite en febrero deja el 29 sin época en un año normal" });
+    }
+  }
+  if (m.some(x => x.nivel === "mal")) return m;
+  const c = cobertura(tabla), lista = f => f.slice(0, 3).join(", ") + (f.length > 3 ? "…" : "");
+  if (c.sin.length) m.push({ nivel: "mal", texto: pre + c.sin.length + (c.sin.length > 1 ? " días sin época" : " día sin época") + " (" + lista(c.sin) + ")" });
+  if (c.varias.length) m.push({ nivel: "mal", texto: pre + c.varias.length + (c.varias.length > 1 ? " días con más de una época" : " día con más de una época") + " (" + lista(c.varias) + ")" });
+  return m;
+}
+/** Un bloque «epocas» normalizado ({ comun, fincas } con las claves en orden fijo) o null si no hay bloque o no tiene forma. Lo que sobra se descarta; lo que falta queda vacío. */
+export function normEp(e) {
+  if (!esObj(e) || !esObj(e.comun)) return null;
+  const fincas = {};
+  if (esObj(e.fincas)) for (const id of Object.keys(e.fincas).sort()) if (FINCA_ID.test(id) && esObj(e.fincas[id])) fincas[id] = copiaTabla(e.fincas[id]);
+  return { comun: copiaTabla(e.comun), fincas };
+}
+export const mismasEp = (a, b) => JSON.stringify(normEp(a)) === JSON.stringify(normEp(b));
+/** Lo que impide guardar: toda tabla (común y de cada finca) tiene que cubrir los 366 días con una época por día. Con ep = null no hay nada que comprobar. */
+export function validaEp(ep) {
+  if (!ep) return [];
+  const m = validaTabla(ep.comun, "común");
+  for (const id of Object.keys(ep.fincas)) m.push(...validaTabla(ep.fincas[id], "finca " + id));
+  return m;
+}
+/** Qué ventanas de una tabla se apartan de `ref` (por defecto, de las de partida): lista de nombres de época. */
+export const ventanasCambiadas = (t, ref) => EPOCAS.filter(([e]) => (t[e] || {}).desde !== (ref || EPOCAS_PARTIDA)[e].desde || (t[e] || {}).hasta !== (ref || EPOCAS_PARTIDA)[e].hasta).map(x => x[1]);
+/** «Qué cambió» entre dos bloques de épocas, en líneas legibles (para confirmar la publicación). */
+export function cambiosEp(ep, ref) {
+  const a = normEp(ep), b0 = normEp(ref), out = [];
+  if (JSON.stringify(a) === JSON.stringify(b0)) return out;
+  // sin épocas publicadas vale el calendario del repo (los valores de partida): se compara con ese
+  const b = b0 || (a ? { comun: tablaDePartida(), fincas: {} } : null);
+  if (!a) return ["Épocas: se quitan las de la configuración (vuelve el calendario del repo)"];
+  const lin = (nombre, t, r) => EPOCAS.filter(([e]) => !r || r[e].desde !== t[e].desde || r[e].hasta !== t[e].hasta)
+    .map(([e, n]) => nombre + n + ": " + (r ? r[e].desde + "–" + r[e].hasta + " → " : "") + t[e].desde + "–" + t[e].hasta);
+  out.push(...lin("Épocas, ", a.comun, b && b.comun));
+  for (const id of Object.keys(a.fincas)) out.push(...(b && b.fincas[id] ? lin("Épocas de " + id + ", ", a.fincas[id], b.fincas[id]) : ["Épocas: tabla propia para la finca " + id]));
+  if (b) for (const id of Object.keys(b.fincas)) if (!a.fincas[id]) out.push("Épocas: la finca " + id + " vuelve a la tabla común");
+  if (!out.length) out.push("Épocas: se fijan en la configuración (iguales a los valores de partida)");
+  return out;
+}
+/** Resumen corto de las épocas de una versión (para el historial): «épocas de partida», «épocas 2 ventanas ajustadas», más las fincas con tabla propia. */
+export function resumenEp(ep) {
+  const e = normEp(ep); if (!e) return "";
+  const n = ventanasCambiadas(e.comun).length, ids = Object.keys(e.fincas);
+  return "épocas " + (n ? n + (n > 1 ? " ventanas ajustadas" : " ventana ajustada") : "de partida") + (ids.length ? " (tabla propia: " + ids.join(", ") + ")" : "");
+}
 
 /** Los interruptores de componentes que el motor conoce hoy (id de su manifiesto → nombre y qué hace). Un id de la configuración que no esté aquí se conserva tal cual. */
 export const COMPONENTES = [
@@ -59,14 +149,14 @@ export function desdeCuerpo(cuerpo) {
   }
   const c = cuerpo && cuerpo.componentes;
   if (esObj(c)) for (const [id, x] of Object.entries(c)) if (esObj(x) && typeof x.activo === "boolean") comp[id] = x.activo;
-  return { vals, comp };
+  return { vals, comp, ep: normEp(cuerpo && cuerpo.epocas) };
 }
 
 /**
  * El cuerpo del contrato para unos valores. Solo lleva lo que se aparta de hoy (lo que falta vale lo del código): los tres umbrales o ninguno,
  * los cuatro perfiles de gafas o ninguno. `base` es el cuerpo del que se parte: sus «épocas» (OF9) y los parámetros de los componentes se conservan.
  */
-export function aCuerpo(vals, comp, base) {
+export function aCuerpo(vals, comp, base, ep) {
   const out = { v: 1 }, esc = {}, b = base || {};
   const dif = k => vals[k] !== PARAM[k].def && vals[k] !== null && vals[k] !== undefined;
   if (["u0", "u1", "u2"].some(dif)) esc.umbralesPx = { e0: vals.u0, e1: vals.u1, e2: vals.u2 };
@@ -90,7 +180,9 @@ export function aCuerpo(vals, comp, base) {
   for (const [id, x] of Object.entries(bc)) if (!(id in (comp || {})) && esObj(x) && esObj(x.parametros) && x.activo !== undefined) cm[id] = x;   // un id que la pantalla no toca
   if (Object.keys(cm).length) out.componentes = cm;
   if (Object.keys(esc).length) out.escalera = esc;
-  if (esObj(b.epocas)) out.epocas = b.epocas;
+  // las épocas (OF9): con `ep` (la pantalla las edita) manda la pantalla, y null las quita; sin él (llamadas antiguas), se conservan las del cuerpo base
+  const e = ep === undefined ? normEp(b.epocas) : normEp(ep);
+  if (e) out.epocas = { comun: e.comun, fincas: e.fincas };
   return out;
 }
 
@@ -118,9 +210,10 @@ export function formatea(k, v) {
   return numero(v, dec) + (p.u ? " " + p.u : "");
 }
 /** «Qué cambió» de una versión respecto a lo de hoy, en una línea. */
-export function resumen(vals, comp) {
+export function resumen(vals, comp, ep) {
   const d = defectos(), t = PARAMS.filter(p => vals[p.k] !== d[p.k] && vals[p.k] !== null).map(p => p.n.toLowerCase() + " " + formatea(p.k, vals[p.k]));
   for (const id of Object.keys(comp || {}).sort()) t.push((COMPONENTES.find(c => c.id === id) || { n: id }).n.toLowerCase() + (comp[id] ? " encendido" : " apagado"));
+  if (ep) t.push(resumenEp(ep));
   return t.join(" · ") || "todo por defecto";
 }
 

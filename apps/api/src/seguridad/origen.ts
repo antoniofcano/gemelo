@@ -4,8 +4,11 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 
 const SEGUROS = new Set(["GET", "HEAD", "OPTIONS"]);
 
-/** Rutas que reciben peticiones sin Origin fiable y no cambian datos de nadie (informes CSP del navegador). */
-export const EXENTAS_DE_ORIGEN = new Set(["/api/csp-informe"]);
+/**
+ * Rutas que reciben peticiones sin Origin fiable y no cambian datos de nadie (informes CSP del navegador) o que se protegen con una firma que
+ * solo el destinatario tiene (la baja de avisos por correo con un clic, RFC 8058: la manda el cliente de correo, sin Origin; OF11c).
+ */
+export const EXENTAS_DE_ORIGEN = new Set(["/api/csp-informe", "/api/avisos/baja"]);
 
 export function compruebaOrigen(origenes: string[]) {
   const admitidos = new Set(origenes);

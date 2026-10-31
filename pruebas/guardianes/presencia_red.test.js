@@ -86,8 +86,9 @@ test("lo que no es del contrato o es viejo se descarta; quien vuelve tras un rat
 
 test("metadatos de la sala: se leen como datos (tipos y rangos), lo raro toma un valor neutro", () => {
   assert.deepStrictEqual(SalaPose.leeInfo(JSON.stringify({ alias: "Mirlo", avatar: { camisa: 2, sombrero: "gorra", piel: 3 }, rol: "guia", dispositivo: "quest" })),
-    { alias: "Mirlo", rol: "guia", dispositivo: "quest", camisa: 2, piel: 3, sombrero: 2, vrm: null,   // vrm (P7c): sin avatar del catálogo, null
-      aspecto: { tono: null, arriba: null, abajo: null, altura: "media", complexion: "media", movilidad: "pie" } });   // AV2: sin aspecto elegido, el neutro
+    { alias: "Mirlo", rol: "guia", oficial: false, dispositivo: "quest", camisa: 2, piel: 3, sombrero: 2, vrm: null,   // vrm (P7c): sin avatar del catálogo, null
+      aspecto: { tono: null, arriba: null, abajo: null, altura: "media", complexion: "media", movilidad: "pie",   // AV2: sin aspecto elegido, el neutro
+        cuerpo: null, pelo: null, peloColor: null, vello: null, ropa: null, acc: [] } });   // AV4 (receta v2): sin piezas elegidas, nada
   const malo = SalaPose.leeInfo(JSON.stringify({ alias: "<img src=x onerror=alert(1)>‮" + "x".repeat(50), avatar: { camisa: 99, sombrero: "corona", piel: -1 }, rol: "root", dispositivo: "nevera" }));
   assert.strictEqual(malo.rol, "hogar"); assert.strictEqual(malo.dispositivo, "escritorio");
   assert.strictEqual(malo.camisa, 0); assert.strictEqual(malo.piel, 1); assert.strictEqual(malo.sombrero, 1);
@@ -107,14 +108,21 @@ test("chat: UTF-8 de como mucho 280 caracteres, sin caracteres de control ni de 
   assert.strictEqual(Chat.decodifica(new Uint8Array(0)), null);
 });
 
-test("el motor solo pide livekit-client con ?presencia=red y la versión está fijada en apps/web/package.json", () => {
-  assert.match(FUENTE, /import\("livekit-client"\)/);
-  assert.match(FUENTE, /\[\?&\]presencia=\(sim\|red\)\\b/, "la bandera decide la variante");
-  assert.ok(FUENTE.lastIndexOf('import("livekit-client")') > FUENTE.indexOf("async function conecta"), "el import va dentro de conecta(), que solo llama iniciaRed()");
-  assert.match(FUENTE, /publishData\(e\.bytes, op\)/); assert.match(FUENTE, /reliable: false, topic: "pose"/); assert.match(FUENTE, /reliable: true, topic: "chat"/);
+test("el motor solo pide livekit-client cuando alguien se une a una sala (la presencia, con ?presencia=red) y la versión está fijada en apps/web/package.json", () => {
+  // C5: la conexión es del componente de la red (37_red.js, el único que nombra livekit-client); la presencia (38_presencia_compartida.js) solo usa su api
+  const RED = lee("apps/web/motor/37_red.js"), PRES = lee("apps/web/motor/38_presencia_compartida.js");
+  const motor = require("fs").readdirSync(require("path").join(__dirname, "..", "..", "apps", "web", "motor")).filter(f => f.endsWith(".js"));
+  assert.deepStrictEqual(motor.filter(f => /livekit-client"\)/.test(lee("apps/web/motor/" + f))), ["37_red.js"], "solo la red importa livekit-client");
+  assert.strictEqual((RED.replace(/^\s*\/\/.*$/gm, "").match(/import\("livekit-client"\)/g) || []).length, 1, "un solo import (fuera de los comentarios)");
+  assert.match(RED, /carga: function \(\) \{ return import\("livekit-client"\); \}/, "el import es el cargador de la red: se llama la primera vez que una sala se une (carga() dentro de une())");
+  assert.ok(RED.indexOf("return carga().then(") > RED.indexOf("function une(cred, opc)"), "carga() va dentro de une()");
+  assert.match(PRES, /\[\?&\]presencia=\(sim\|red\)\\b/, "la bandera decide la variante");
+  assert.ok(PRES.indexOf("SR.une(") > PRES.indexOf("async function conecta"), "la presencia solo se une en conecta(), que solo llama iniciaRed()");
+  assert.match(PRES, /sala\.publica\("pose", e\.bytes, op\)/); assert.match(PRES, /var op = \{ fiable: false \};/); assert.match(PRES, /sala\.publica\("chat", Chat\.codifica\(txt\), \{ fiable: true \}\)/);
+  assert.match(RED, /var op = \{ reliable: !!opc\.fiable, topic: tema \}; if \(opc\.destinos\) op\.destinationIdentities = opc\.destinos;/, "la red pasa fiable/tema/destinos a LiveKit tal cual");
   const p = JSON.parse(lee("apps/web/package.json"));
   assert.match(p.dependencies["livekit-client"], /^\d+\.\d+\.\d+$/, "versión exacta (regla 12)");
-  assert.ok(!/innerHTML/.test(FUENTE), "lo que llega de la sala nunca se pone como HTML");
+  assert.ok(!/innerHTML/.test(PRES) && !/innerHTML/.test(RED), "lo que llega de la sala nunca se pone como HTML");
 });
 
 test("I1: a quién se dibuja, sale en el minimapa y se puede ir: con pose reciente y sin bloquear; «en vista aérea» y bloqueados, no", () => {

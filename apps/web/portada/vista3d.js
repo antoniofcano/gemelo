@@ -37,7 +37,7 @@ function posa(vrm, t, quieto) {
 /**
  * Crea la vista sobre un <canvas>. Lanza si no hay WebGL.
  * `quieto`: sin giro ni paso solos (prefers-reduced-motion); se gira con los botones.
- * Devuelve { carga(url, sha256), quita(), gira(rad), pausa(bool), destruye() }.
+ * Devuelve { carga(url, sha256, { realista }), viste(v), quita(), gira(rad), pausa(bool), destruye() }.
  */
 export function creaVista(canvas, { quieto = false, alPerder = () => {} } = {}) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: "low-power" });
@@ -74,8 +74,9 @@ export function creaVista(canvas, { quieto = false, alPerder = () => {} } = {}) 
   const sueltaVrm = () => { if (vrm) { escena.remove(vrm.scene); VRMUtils.deepDispose(vrm.scene); vrm = null; sucio = true; } };
 
   return {
-    /** Baja el VRM (mismo origen), comprueba su huella y lo pone en escena. Rechaza si no coincide o si falla la carga. */
-    async carga(url, sha256) {
+    /** Baja el VRM (mismo origen), comprueba su huella y lo pone en escena. Rechaza si no coincide o si falla la carga. `realista` (los cuerpos del creador, AV4):
+     *  a su tamaño de verdad (cada edad con su altura), sin estirarlo a 1,6 m. */
+    async carga(url, sha256, { realista = false } = {}) {
       const mia = ++ficha;
       const r = await fetch(url, { credentials: "same-origin" });
       if (!r.ok) throw new Error("http " + r.status);
@@ -87,11 +88,31 @@ export function creaVista(canvas, { quieto = false, alPerder = () => {} } = {}) 
       if (!nuevo) throw new Error("no es un VRM");
       if (mia !== ficha || !activa) { libera(gltf.scene); return; }
       if (nuevo.meta?.metaVersion === "0") VRMUtils.rotateVRM0(nuevo);
-      const caja = new THREE.Box3().setFromObject(nuevo.scene), alto = caja.max.y - caja.min.y || 1, k = ALTURA_M / alto;
-      nuevo.scene.scale.multiplyScalar(k);
-      nuevo.scene.position.y -= caja.min.y * k;
+      if (!realista) {
+        const caja = new THREE.Box3().setFromObject(nuevo.scene), alto = caja.max.y - caja.min.y || 1, k = ALTURA_M / alto;
+        nuevo.scene.scale.multiplyScalar(k);
+        nuevo.scene.position.y -= caja.min.y * k;
+      }
       sueltaVrm();
       vrm = nuevo; escena.add(vrm.scene); posa(vrm, 0, true); sucio = true;
+    },
+    /** AV4: las piezas de la receta y sus colores, como el motor (26b_avatares.js): v = { mallas: {pieza_x: true}, cubre, colores: {piel, ropa_base, ropa_abajo, pelo, sombrero} }.
+     *  Las piezas se buscan por el nombre ORIGINAL del nodo (userData.name); lo oculto no se dibuja. */
+    viste(v) {
+      if (!vrm || !v) return;
+      const raiz = vrm.scene;
+      raiz.traverse(o => {
+        let pieza = null;
+        for (let p = o; p && p !== raiz; p = p.parent) { const n = p.userData?.name; if (n && /^pieza_/.test(n)) { pieza = p; break; } }
+        if (pieza === o) o.visible = !!v.mallas[o.userData.name];
+        if (!o.isMesh) return;
+        for (const m of [].concat(o.material)) {
+          const nombre = String(m.name || "").replace(/\.\d+$/, ""), c = v.colores[nombre];
+          if (c && m.color) m.color.set(c);
+          if (!pieza && /^ropa_/.test(nombre)) o.visible = !v.cubre;
+        }
+      });
+      sucio = true;
     },
     quita() { ficha++; sueltaVrm(); },
     /** Gira a mano (los botones «Girar»), en radianes. */

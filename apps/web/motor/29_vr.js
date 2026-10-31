@@ -1,5 +1,5 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: VRX, vrDebugExtra, vrFundido, vrAparece, panel, ficha, PanelVR, vrMideEmpieza, vrMideFin, vrActualiza, VR_PERFILES, vrFin
+// Expone: VRX, vrDebugExtra, vrFundido, vrAparece, panel, ficha, PanelVR, vrMideEmpieza, vrMideEnvio, vrMideFin, vrActualiza, VR_PERFILES, vrFin
 // Consume: 01_datos (D, $, fmt, VRP), 02_mundo (Mundo, suelo, orto, copas), 02c_componentes (Bus, Config), 02d_laminas (Laminas),
 //   02e_entidades (EntidadesPuro, Entidades, Usables), 03_escena (lienzo, visor, renderer, scene, camera, texColor, exag, modo, calidad),
 //   04b_escena3d (Escena3D), 05_nube (nube), 07b_arboles (Arboles), 09_camara (pon), 10_ndvi (NDV, ndviIdx),
@@ -204,7 +204,11 @@
   function vrBotones() {
     var B = [];
     function b(id, x, y, w, h, txt, fn, on) { B.push({ id: id, x: x, y: y, w: w, h: h, txt: txt, fn: fn, on: !!on }); }
-    if (VRX.mideTarjeta) { b("mideX", 372, 668, 280, 76, "Cerrar", function () { VRX.mideTarjeta = false; }); return B; }   // T7a: con la tarjeta de la medida abierta, solo «Cerrar»
+    if (VRX.mideTarjeta) {   // PB9: «Enviar esta medida a la oficina» (con permiso: solo si se pulsa) y «Cerrar»
+      var envia = Mide.puedeEnviar() || Mide.envio() !== "";
+      if (envia) b("mideEnvia", 40, 668, 600, 76, Mide.textoEnvio(), function () { Mide.envia(); }, Mide.envio() === "ok");
+      b("mideX", envia ? 664 : 372, 668, envia ? 320 : 280, 76, "Cerrar", function () { VRX.mideTarjeta = false; }); return B;
+    }   // T7a: con la tarjeta de la medida abierta, solo «Cerrar»
     var y = vrY0(), p = VRX.pestana;
     VR_PESTANAS.forEach(function (t, i) { b("t_" + t[0], 40 + i * 316, 104, 300, 64, t[1], function () { VRX.pestana = t[0]; VRX.hover = ""; }, p === t[0]); });
     PanelVR.visibles(p).forEach(function (f) { f.y = y; if (f.botones) { try { f.botones(b, y); } catch (e) { try { console.error("[PanelVR] " + f.id, e); } catch (e2) {} } } y += f.alto; });
@@ -276,7 +280,7 @@
   }
   function vrRumboPanel() { return ((-panel.m.rotation.y * 180 / Math.PI) % 360 + 360) % 360; }   // hacia dónde mira quien ve el panel de frente (PanelVR.rumbo)
   // ----- 3b) I5: la sección Gente del panel: una fila por persona que se ve (Entidades.lista("persona"): con pose, sin bloquear, no en vista aérea), las más
-  // cercanas arriba, con «Ir con» pulsable con el rayo y el gatillo. Ir es su acción «ir» (Usables.usa; en 26_presencia.js): fundido a negro y de pie a 2,5-4 m de
+  // cercanas arriba, con «Ir con» pulsable con el rayo y el gatillo. Ir es su acción «ir» (Usables.usa; en 38_presencia_compartida.js): fundido a negro y de pie a 2,5-4 m de
   // ella, mirándola (Llegada, 12b_llegada.js), nunca un vuelo de cámara; al llegar se cierra el panel (para verla) y Y lo vuelve a abrir.
   // [puro:inicio] (sin THREE ni DOM: lo evalúa en Node pruebas/guardianes/vr_gente.test.js)
   var VrGentePuro = (function () {
@@ -304,7 +308,7 @@
   })();
   // [puro:fin]
   var GENTE_FILAS = 4;   // filas que caben en la pestaña «Ir a»; la sección empieza donde le diga la pestaña (px del canvas del panel)
-  function vrGente() {   // C7: las personas son entidades (26_presencia registra el tipo persona); sin ese tipo (sin presencia), null
+  function vrGente() {   // C7: las personas son entidades (la presencia compartida, 38_presencia_compartida.js, registra el tipo persona); sin ese tipo (sin presencia), null
     var l = Entidades.lista("persona"), pts = l ? l.map(function (q) { return { id: q.ref, alias: q.alias, x: q.x, y: q.y, modo: q.modo }; }) : null;
     return VrGentePuro.filas(pts, { x: VRX.cab.x, y: -VRX.cab.z }, GENTE_FILAS);
   }
@@ -378,6 +382,7 @@
     cx.textAlign = "left"; panel.tex.needsUpdate = true; VRX.sucio = false; VRX.botones = B;
   }
   function vrMideEmpieza() { VRX.mideTarjeta = false; panel.m.visible = false; VRX.sucio = true; }   // a andar: el panel no tapa la vista durante la medida
+  function vrMideEnvio() { VRX.sucio = true; }   // PB9: cambió el estado del envío (enviando, enviada…): repinta la tarjeta
   function vrMideFin() { VRX.mideTarjeta = true; panel.m.visible = true; panel.ini = false; VRX.sucio = true; }
 
   // ----- 4) la persona en la escena: posición del rig (el espacio de referencia desplazado) y locomoción

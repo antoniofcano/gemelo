@@ -30,6 +30,11 @@ const ESCENARIOS_BORDE = {
   esquina: { az: -0.8, el: 0.3, dist: 150, ox: 256, oy: 0, modo: "gem" },
   bordeRaso: { az: -1.57, el: 0.1, dist: 25, ox: 240, oy: -128, modo: "gem" },
 };
+// Ventanas de las pruebas de navegador (PB1). VENTANA es la de siempre (900×650): la que usan las de PRESUPUESTO (carga, escena3d, olivo…), que no cambian.
+// VENTANA_CHICA es la mitad con la misma proporción (450×325): para las que comprueban lógica o estado y no recuentos de dibujo; SwiftShader pinta por CPU y cuesta ~ por píxel.
+const VENTANA = { width: 900, height: 650 }, VENTANA_CHICA = { width: 450, height: 325 };
+// GEMELO_VENTANA=grande|chica fuerza la ventana de las pruebas que usan ventanaDe() (para medir con las dos que sus recuentos no dependen de ella, PB2)
+const ventanaDe = porDefecto => process.env.GEMELO_VENTANA === "grande" ? VENTANA : process.env.GEMELO_VENTANA === "chica" ? VENTANA_CHICA : porDefecto;
 const TODOS_ESCENARIOS = Object.assign({}, ESCENARIOS, ESCENARIOS_PASEO, ESCENARIOS_BORDE);
 
 // La CSP de las pruebas es la de infra/Caddyfile (pacto de T8 fase 2, §4), en el mismo modo que la manda el Caddy de producción: solo informe
@@ -123,8 +128,8 @@ async function entraYMueve(p, c, queda) {
  *  csp: los avisos «[Report Only]» de la CSP de Caddy (lo que rompería al imponerla); no cuentan como errores.
  *  Con un tope (GEMELO_TOPE_MEDIDA, ms): si se pasa, devuelve lo medido hasta entonces con parcial = true (y no deja la página colgada).
  *  Con desglose: además, las llamadas de un fotograma por objeto (desgloseLlamadas) en cada escenario. */
-async function mide(navegador, url, { escenarios = ESCENARIOS, tope = TOPE_MEDIDA_MS, capturas = null, desglose = false } = {}) {   // capturas: carpeta para un PNG por escenario
-  const p = await navegador.newPage({ viewport: { width: 900, height: 650 } }), errores = [], fallos = [], csp = [], t0 = Date.now(), queda = () => Math.max(1000, tope - (Date.now() - t0));
+async function mide(navegador, url, { escenarios = ESCENARIOS, tope = TOPE_MEDIDA_MS, capturas = null, desglose = false, viewport = VENTANA } = {}) {   // capturas: carpeta para un PNG por escenario; viewport: VENTANA (por defecto) o VENTANA_CHICA
+  const p = await navegador.newPage({ viewport }), errores = [], fallos = [], csp = [], t0 = Date.now(), queda = () => Math.max(1000, tope - (Date.now() - t0));
   p.on("pageerror", e => errores.push("PAGEERROR " + String(e.stack || e).slice(0, 400)));
   p.on("console", m => { if (esCsp(m.text())) csp.push(m.text().slice(0, 300)); else if (m.type() === "error") errores.push("CONSOLE " + m.text().slice(0, 300)); });
   p.on("requestfailed", r => fallos.push(r.url()));
@@ -133,7 +138,10 @@ async function mide(navegador, url, { escenarios = ESCENARIOS, tope = TOPE_MEDID
   let parcial = false;
   try {
   await p.goto(url + (url.includes("?") ? "&" : "?") + "debug");
-  await p.waitForFunction(() => window.__g && window.__g.listo(), null, { timeout: Math.min(ESPERA_MS, queda()) });
+  await p.waitForFunction(() => window.__g && window.__g.listo(), null, { timeout: Math.min(ESPERA_MS, queda()) }).catch(e => {
+    // sin esto, el tiempo agotado se traga lo que dijo la página: se cuenta con el error
+    throw new Error(String(e.message).split("\n")[0] + " esperando a __g.listo() en " + url + "; errores: " + JSON.stringify(errores.slice(0, 8)) + "; fallos: " + JSON.stringify(fallos.slice(0, 8)));
+  });
   for (const [nombre, e] of Object.entries(escenarios)) {
     if (Date.now() - t0 > tope) { parcial = true; break; }
     if (e.paseo) await entraYMueve(p, e.paseo, queda); else await p.evaluate(() => window.__g.paseoSale && window.__g.paseoSale());
@@ -143,7 +151,7 @@ async function mide(navegador, url, { escenarios = ESCENARIOS, tope = TOPE_MEDID
     // y la escena 3D Tiles (la única desde T8 fase 2): que termine de bajar teselas; si no hay escena (estado «sin»), no se la espera
     const acabo = await p.waitForFunction(() => { const g = window.__g, E = g.Escena3D; return (g.pendientes ? g.pendientes() : g.Cola.pendientes()) === 0 && (!E || E.resumen().estado !== "activo" || E.listo()); }, null, { timeout: Math.min(conGen ? ESPERA_GEN_MS : ESPERA_MS, queda()), polling: 500 }).then(() => true, () => false);
     await p.waitForTimeout(1500);
-    medidas[nombre] = await p.evaluate(() => { const g = window.__g, r = g.renderer.info; return { llamadas: r.render.calls, triangulos: r.render.triangles, puntos: r.render.points, geometrias: r.memory.geometries, texturas: r.memory.textures, heapMB: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : -1, olivos: g.Arboles.resumen(), generados: window.__olivosGen ? window.__olivosGen() : undefined, paseo: g.paseoEstado && g.paseoEstado().paseando ? g.paseoEstado() : undefined, vrm: window.__presencia && window.__presencia().vrm || undefined, escena3d: g.Escena3D ? g.Escena3D.resumen().estado : undefined }; });   // vrm: avatares VRM (P7c), solo con presencia
+    medidas[nombre] = await p.evaluate(() => { const g = window.__g, r = g.renderer.info; return { llamadas: r.render.calls, triangulos: r.render.triangles, puntos: r.render.points, geometrias: r.memory.geometries, texturas: r.memory.textures, heapMB: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : -1, olivos: g.Arboles.resumen(), js: g.depuraJs ? g.depuraJs() : undefined, generados: window.__olivosGen ? window.__olivosGen() : undefined, paseo: g.paseoEstado && g.paseoEstado().paseando ? g.paseoEstado() : undefined, vrm: window.__presencia && window.__presencia().vrm || undefined, escena3d: g.Escena3D ? g.Escena3D.resumen().estado : undefined }; });   // vrm: avatares VRM (P7c), solo con presencia
     medidas[nombre].espera = { ms: Date.now() - t1, termino: acabo, pendientes: await p.evaluate(() => window.__g.pendientes ? window.__g.pendientes() : window.__g.Cola.pendientes()) };
     if (desglose) medidas[nombre].desglose = await p.evaluate(desgloseLlamadas);
     if (desglose) medidas[nombre].escena3d = await p.evaluate(() => window.__g.Escena3D ? window.__g.Escena3D.resumen() : null);
@@ -154,4 +162,4 @@ async function mide(navegador, url, { escenarios = ESCENARIOS, tope = TOPE_MEDID
   return { errores, fallos, medidas, parcial, csp };
 }
 
-module.exports = { ESCENARIOS, ESCENARIOS_PASEO, TODOS_ESCENARIOS, ARGS_CHROME, CSP, esCsp, sirve, motivoSalto, lanza, mide, desgloseLlamadas };
+module.exports = { VENTANA, VENTANA_CHICA, ventanaDe, ESCENARIOS, ESCENARIOS_PASEO, TODOS_ESCENARIOS, ARGS_CHROME, CSP, esCsp, sirve, motivoSalto, lanza, mide, desgloseLlamadas };
