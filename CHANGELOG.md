@@ -5,6 +5,8 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Voz (F3j): antes de hablar en una visita guiada, la familia ve un aviso (tu voz en directo para la sala; no se graba; puedes dejar de hablar cuando quieras) y acepta o no; se guarda por hogar y versión del texto, y se puede retirar en Configuración y en el panel de VR. El servidor no da la palabra a quien no ha aceptado. La auditoría de voz se borra pasada la campaña y un año más (migración 0018). El texto es un borrador pendiente de la asesoría.
+- Motor: la capa de vigor NDVI pasa a componente (`capa-ndvi`, `?capandvi=0`; C10, cuarta tanda), sin cambio visible; la nube y el sol se quedan en el núcleo (razones en COMPONENTES).
 - F3g: e2e de la voz de la visita guiada con tres Chrome y micrófono simulado contra LiveKit 1.13.11 y PostGIS (`voz_guiada_dev.test.js`); `voz_dev`, `guiada_dev`, `habla_chrome`, el caso OF11e y las integraciones de voz y avisos, ejecutadas por primera vez en verde. Audio real, Quest e iPhone, sin probar.
 - C10 (3.ª tanda): el medidor de fotogramas (`?medidor=0`), el suelo de fondo (`?fondo=0`) y los marcadores del LiDAR (`?marcadores=0`) pasan a componentes; `aplica()` y `capas()` avisan por el Bus y el bucle emite `cuadro:fin`. Sin cambio visible esperado; medido en Node, sin comprobar en Chrome ni en el Quest.
 - Despliegue (V2-prep): `doc/operacion/DESPLIEGUE-V2.md`, primer despliegue paso a paso con comprobación y vuelta atrás; ADR-0027, LiveKit en producción con el perfil presencia y solo 7881/tcp y 7882/udp. Nada ejecutado en el VPS.
