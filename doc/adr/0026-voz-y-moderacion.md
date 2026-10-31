@@ -1,6 +1,6 @@
 # ADR-0026 — Voz y moderación
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado (2026-10-31: decisiones 157-162 de Antonio, todas con la opción recomendada). Para abrir la voz a familias reales falta validar la EIPD ([EIPD-VOZ](../sistema/EIPD-VOZ.md), decisiones 163-165)
 - **Fecha:** 2026-10-31
 
 ## Contexto
