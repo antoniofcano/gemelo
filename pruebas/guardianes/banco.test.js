@@ -43,6 +43,23 @@ test("la puerta, el Chrome de las pruebas y la e2e de Docker pasan por el turno"
   assert.ok(JSON.parse(lee("package.json")).devDependencies["proper-lockfile"].match(/^\d+\.\d+\.\d+$/), "proper-lockfile con versión exacta");
 });
 
+test("la puerta rápida (GEMELO_SOLO_NODE=1) no pide el turno ni lanza Chrome; la normal sí lo pide (turno y pasada inyectados)", async () => {
+  const { principal } = require("../banco/puerta");
+  const antes = process.env.GEMELO_SOLO_NODE;
+  const llamadas = [];
+  const turno = async (que, fn) => { llamadas.push(["turno", que]); return 0; };   // no ejecuta fn: no hay Chrome que lanzar
+  const correPruebas = async (pruebas, servidor, enTurno) => { llamadas.push(["corre", servidor, enTurno]); return 0; };
+  try {
+    process.env.GEMELO_SOLO_NODE = "1";
+    assert.strictEqual(await principal({ pruebas: ["x.test.js"], turno, correPruebas }), 0);
+    assert.deepStrictEqual(llamadas, [["corre", null, false]], "con GEMELO_SOLO_NODE=1 no debe llamarse a conTurno");
+    llamadas.length = 0;
+    delete process.env.GEMELO_SOLO_NODE;
+    await principal({ pruebas: ["x.test.js"], turno, correPruebas });
+    assert.deepStrictEqual(llamadas, [["turno", "puerta"]], "sin la variable, la puerta pide el turno");
+  } finally { if (antes === undefined) delete process.env.GEMELO_SOLO_NODE; else process.env.GEMELO_SOLO_NODE = antes; }
+});
+
 test("[hituelo] el banco mide y captura el PASEO: ronda pequeña con paseo y paseoAnda sobre el fixture (pide el turno solo)", { timeout: 420000 }, async t => {
   const { motivoSalto, sirve, lanza, mide, TODOS_ESCENARIOS, VENTANA_CHICA } = require("./_navegador");
   const { montaPagina, saltoPagina } = require("./_pagina");
