@@ -6,7 +6,7 @@
 
 ## Publicado
 
-- **Nada desplegado ni publicado de forma estable** (el VPS no existe aún; el código está en GitHub, repo público). Existe un artefacto desechable de la prueba de plataforma (privado; su enlace no se guarda en el repo público). Hay que borrarlo cuando proceda (**pide confirmación**).
+- **Nada desplegado ni publicado de forma estable** (nada desplegado: el VPS existe, en Europa, con Oficultor, Vigía y Filo; el gemelo entrará como cuarto inquilino ([DESPLIEGUE-V2](operacion/DESPLIEGUE-V2.md)); el código está en GitHub, repo público). Existe un artefacto desechable de la prueba de plataforma (privado; su enlace no se guarda en el repo público). Hay que borrarlo cuando proceda (**pide confirmación**).
 - Un gemelo anterior (v20) vive como artefacto de claude.ai y no se ha tocado.
 
 ## Hecho

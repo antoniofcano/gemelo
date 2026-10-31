@@ -183,3 +183,4 @@ Decisiones que **no puede tomar un agente**: las cierra Antonio. Las técnicas s
 | 167 | **Olivos · `?olivos=gen` con variantes horneadas** | pasa solo a la escalera real (lo que hace O8c) / la escalera solo con `?olivos=escalera` | O8c | ✅ 2026-10-31: **pasa sola** a la escalera con variantes horneadas (lo que hace O8c) |
 | 168 | **Olivos · salto del nivel 0 al impostor al cargar** | vale así (una vez, a más de 30 m; los impostores entran con 1 s de tramado) / fundir también las celdas del nivel 0 | O8c | ✅ 2026-10-31: **así**; se revisa a ojo en el paseo real (O8d) |
 | 169 | **Olivos · color de los impostores** | se revisa a ojo de día junto con la decisión 70 (en capturas nocturnas salen más oscuros y uniformes) | O8c | ✅ 2026-10-31: **se revisa a ojo de día** en el paseo real, junto con la decisión 70 |
+| 170 | **VPS · swap** | añadir swap (fichero de 2-4 GiB) / sin swap, con los `mem_limit` del gemelo | V2 | 🟡 abierta (2026-10-31); recomendado: añadirla |
