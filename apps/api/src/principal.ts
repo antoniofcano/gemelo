@@ -18,6 +18,7 @@ import { LectorVigiaMcp } from "./vigia/lector-mcp.ts";
 import { ServicioTiempo } from "./vigia/servicio.ts";
 import { purgaMedios } from "./vida/medios.ts";
 import { purgaAuditoriaVoz } from "./presencia/consentimiento_voz.ts";
+import { purgaCampana } from "./vida/retencion.ts";
 import { audita } from "./auth/servicio.ts";
 import { ModeradorLiveKit } from "./presencia/livekit.ts";
 import { limpiaAlArrancar } from "./presencia/voz.ts";
@@ -61,6 +62,7 @@ relojes.push(setInterval(() => {
   purgaBajas(bd, config.medios.carpeta).catch(() => undefined);
   purgaMedios(bd, config.medios.carpeta, config.medios.retencionDias).catch(() => undefined);
   purgaAuditoriaVoz(bd).catch(() => undefined);   // F3j, decisión 164: la auditoría de voz, la campaña y un año más
+  purgaCampana(bd).catch(() => undefined);   // decisión 100: sugerencias, avisos, inscripciones y lotes por hogar, la campaña y un año más
 }, 6 * 3600_000));
 if (!config.medios.carpeta) app.log.warn("sin GEMELO_MEDIOS: las fotos de los hogares están apagadas (503)");
 
