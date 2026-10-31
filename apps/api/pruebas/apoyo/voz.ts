@@ -49,4 +49,13 @@ export class SalaFalsa implements ModeradorVoz {
   async silencia(sala: string, ids: string[]) { let n = 0; for (const i of ids) { const p = this.p(sala, i); if (p) { n += p.pistas.length; p.pistas = []; } } this.llamadas.push("silencia " + ids.length); return n; }
   async expulsaHogar(sala: string, prefijo: string) { let n = 0; for (const i of [...(this.salas.get(sala)?.keys() ?? [])]) if (i.startsWith(prefijo + "_")) { this.sale(sala, i); n++; } return n; }
   async salasGuiadas() { return [...this.salas.keys()].filter(s => PATRON_SALA_GUIADA.test(s)); }
+  /** F3f: lo que se manda a cada sala (tema y JSON) y las salas borradas */
+  readonly enviados: { sala: string; tema: string; datos: unknown }[] = [];
+  readonly borradas: string[] = [];
+  async envia(sala: string, tema: string, datos: Uint8Array) {
+    if (this.falla) throw new Error("LiveKit no responde");
+    if (!this.salas.has(sala)) return false;
+    this.enviados.push({ sala, tema, datos: JSON.parse(new TextDecoder().decode(datos)) }); return true;
+  }
+  async borraSala(sala: string) { this.llamadas.push("borra " + sala); const habia = this.salas.delete(sala); if (habia) this.borradas.push(sala); return habia; }
 }
