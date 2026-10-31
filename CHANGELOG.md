@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- C10 (3.ª tanda): el medidor de fotogramas (`?medidor=0`), el suelo de fondo (`?fondo=0`) y los marcadores del LiDAR (`?marcadores=0`) pasan a componentes; `aplica()` y `capas()` avisan por el Bus y el bucle emite `cuadro:fin`. Sin cambio visible esperado; medido en Node, sin comprobar en Chrome ni en el Quest.
 - Despliegue (V2-prep): `doc/operacion/DESPLIEGUE-V2.md`, primer despliegue paso a paso con comprobación y vuelta atrás; ADR-0027, LiveKit en producción con el perfil presencia y solo 7881/tcp y 7882/udp. Nada ejecutado en el VPS.
 - Avatares (AV5): el afro ya no hace picos en el borde bajo, el pelo largo cae también por delante, el sombrero de paja se asienta sobre el pelo y hay una pieza nueva «perilla» para cualquier cuerpo, en el creador y en la portada; de paso se arreglan las rayas claras de la coronilla en todos los peinados. Avatar completo ≤ 12.372 triángulos y 7 primitivas. El catálogo v2 espera el visto bueno de Antonio a las capturas.
 - C10 (2.ª tanda): los mandos y las manos de VR (`?mandos=0`) y las aves y los conejos (`?fauna=0`) pasan a ser componentes; `29_vr` monta los mandos por el Bus y los perros ya no leen la lista global de conejos. Sin cambio visible a propósito (los conejos del minimapa se pintan ahora sobre las balizas).
