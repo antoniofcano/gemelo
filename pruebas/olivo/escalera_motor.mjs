@@ -12,6 +12,8 @@
 //   - O8c: cuándo hay escalera con ?olivos=gen (Escalera.modoGen: «horneada» con variantes horneadas de la época, «gen» sin ellas o con
 //     ?olivosEscalera=0), cuándo reparte 07b con ella (dibuja: la horneada espera a la capa de lejanos), qué aparta del tileset (mascaraTiles) y
 //     el escalón de cada distancia (nivel y estado, frente a los píxeles); y con un manifiesto de prueba, que Generados y Lejanos siguen al modo.
+//   - O8c y PB8: el reparto de 07b_arboles.js con la escalera horneada (07ab/07ac reales; tileset, Cola y catálogo de mentira): antes de la capa
+//     de lejanos, como ?olivos=gen; mientras entra, el tileset solo aparta lo de 3D; luego todo, sin nivel 0 ni niveles 1-2. Con ?olivosEscalera=0, nunca.
 // Escribe una línea JSON {mal: [...], diag} (la lee pruebas/guardianes/olivo.test.js). GEMELO_SIN_FIXTURE=1 salta la parte 4 (la lenta, ~1,5 min).
 import fs from "node:fs";
 import path from "node:path";
@@ -45,7 +47,7 @@ const piezas = [extrae(T03, "var GLSL_LIN"), extrae(T03, "function colorVertSRGB
   extrae(T15, "var GLSL_SOMBRA"), extrae(T15, "function parcheTiempo")].join("\n");
 const G07 = lee("07ab_generados.js"), L07 = lee("07ac_lejanos.js");
 
-function contexto(busqueda, reloj) {
+function contexto(busqueda, reloj, mas) {
   const ctx = {
     THREE, console, performance: reloj || performance, Promise, Math, Object, Number, String, Error, Float32Array, Uint8Array,
     location: { search: busqueda }, window: { OlivoGen: O },
@@ -56,8 +58,9 @@ function contexto(busqueda, reloj) {
     suelo: () => 0, camera: { position: new THREE.Vector3(0, 10, 0) },
     Cola: { add: () => { throw new Error("los generados no deben usar la Cola compartida"); }, hay: () => false }
   };
+  if (mas) Object.assign(ctx, mas.glob);
   vm.createContext(ctx);
-  vm.runInContext(piezas + "\n" + G07 + "\n" + L07 + "\n;this.__G = Generados; this.__E = Escalera; this.__L = Lejanos;", ctx, { filename: "07ab+07ac" });
+  vm.runInContext(piezas + "\n" + G07 + "\n" + L07 + "\n" + (mas ? mas.codigo : "") + "\n;this.__G = Generados; this.__E = Escalera; this.__L = Lejanos;", ctx, { filename: "07ab+07ac" + (mas ? "+07b" : "") });
   return ctx;
 }
 const espera = () => new Promise(r => setTimeout(r, 0));
@@ -294,6 +297,72 @@ else {
   exige(sobre.length === 0, "escalera: triángulos de olivos por encima del presupuesto: " + sobre.slice(0, 4).join(", "));
   exige((st.info.arboles || 0) >= 1 && st.info.niveles && st.info.niveles.E0 + st.info.niveles.E1 + st.info.niveles.E2 >= 1, "escalera: al final no hay ningún olivo en 3D: " + JSON.stringify(st.info));
   exige(G.rotulo(ol.find(c => !P.listos()[c.i]).i).lejano === true, "escalera: el rótulo de un olivo que no está en 3D no dice «lejano»");
+}
+
+// ---- 5) O8c (y el resto de PB8): el reparto de 07b_arboles.js con la escalera horneada, en Node, con 07ab/07ac reales y el resto del motor de
+// mentira (tileset, Cola, catálogo). Con ?olivos=gen y un manifiesto con variantes de la época: mientras no hay capa de lejanos, 07b reparte como
+// ?olivos=gen (pide celdas de nivel 0 y el tileset solo aparta lo de cerca); con la capa, la escalera: sin nivel 0 ni niveles 1-2, y el tileset
+// aparta solo lo que está en 3D mientras la capa entra (su segundo de tramado, con sus triángulos en el presupuesto) y luego todos.
+// Con ?olivosEscalera=0, nunca la escalera.
+if (fs.existsSync(FX)) {
+  const I = JSON.parse(fs.readFileSync(FX, "utf8"));
+  const B07 = lee("07b_arboles.js");
+  const man = { v: 1, finca: "hituelo", formato: O.FORMATO_HORNEADO, gen_version: O.GEN_VERSION, cache_version: O.CACHE_VERSION, actual: "envero",
+    epocas: [{ epoca: "envero", desde: "09-01", hasta: "10-31" }],
+    variantes: [11, 23, 37, 51].map((s, k) => ({ tipo: "centenario3", semilla: s, nivel: "E2", epoca: "envero", huella: (k + "f".repeat(32)).slice(0, 32), bytes: 100 })) };
+  const prueba07b = async q => {
+    const copas = I.copas.map((c, i) => ({ i, id: -1, tipo: -1, x: c[0], y: c[1], h: c[2], perfil: c[3], oliv: !(c[2] > 8 || (c[2] > 6.5 && c[3].reduce((a, b) => a + b, 0) / 8 < 2.2)) }));
+    const tiles = { cerca: [], triPor: 24 }, cola = { add: [], cancela: 0 }, mat = () => [{ geo: new THREE.BufferGeometry(), mat: new THREE.MeshBasicMaterial() }, { geo: new THREE.BufferGeometry(), mat: new THREE.MeshBasicMaterial() }];
+    const glob = {
+      fetch: url => Promise.resolve(/manifiesto\.json$/.test(url) ? { ok: true, status: 200, json: () => Promise.resolve(man) } : { ok: false, status: 404 }),
+      copas, hash: x => x - Math.floor(x), copaAlta: () => 3, kcor: 1, tinte: 0, aviva: () => {}, ndviIdx: 0, modo: "gemelo", calidad: 1, ALTO_MAX: 12, nube: null,
+      tronco: null, arbolesG: function* () { return []; }, follajeG: function* () {}, construyeSombras: () => {}, objetivo: new THREE.Vector3(0, 0, 0), orb: { dist: 60 },
+      paseando: false, pp: { x: 0, y: 0 }, nivel: 0, esc: 1, hace: 0, mira: null, VR_PERFILES: [], Ajustes: { escalaArboles: () => null },
+      renderer: { info: { render: { triangles: 0 } }, shadowMap: { enabled: false }, xr: { isPresenting: false } },
+      Mundo: { cx: 0, cy: 0, tesela: () => ({ estado: 2, pts: null, key: "t" }), ortoGrueso: (x, y, c3) => { c3[0] = 0.3; c3[1] = 0.35; c3[2] = 0.2; }, aseguraOrto: function* () {} },
+      Catalogo: { SIN: -1, variantes: (t, n) => (n === 1 ? 4 : 2), geometria: () => mat(), alCambiar: () => {}, tipos: () => [], info: () => ({}) },
+      OlivosTiles: { dibuja: () => true, triangulos: () => (copas.length - tiles.cerca.length) * tiles.triPor, cerca: l => { tiles.cerca = l.slice(); }, resumen: () => ({ estado: "activo", dibujadas: 0 }) },
+      Cola: { add: k => { if (k.charAt(0) !== "C" && k.charAt(0) !== "B") throw new Error("los generados no deben usar la Cola compartida: " + k); cola.add.push(k); }, hay: () => false, cancela: () => { cola.cancela++; }, pendientes: () => 0 }
+    };
+    const reloj = { t: 0, now() { return (this.t += 0.6); } }, cx = contexto(q, reloj, { glob, codigo: B07 + "\n;this.__A = Arboles;" });
+    Object.assign(cx.D, { copas: I.copas, copas_id: I.copas_id, copas_param: I.copas_param, copas_semilla: I.copas_semilla, centro_utm: I.centro_utm });
+    for (let k = 0; k < 40 && cx.__G.estado() === "cargando"; k++) await espera();
+    cx.__L._prueba.sinGPU();
+    const A = cx.__A, G = cx.__G, L = cx.__L, olv = copas.filter(c => c.oliv);
+    A.inicia();
+    const x0 = olv.reduce((s, c) => s + c.x, 0) / olv.length, y0 = olv.reduce((s, c) => s + c.y, 0) / olv.length;
+    cx.objetivo.set(x0, 0, -y0); cx.camera.position.set(x0 + 25, 22, -y0 + 25);
+    const fases = [], r = { esperaConCeldas: 0, esperaMascaraTodos: 0, esperaEscalera: 0, conCapa: -1, mascara3d: 0, mascara3dTil: 0, mascaraTodos: 0, todosConCeldas: 0, todosN12: 0, malPres: 0 };
+    for (let k = 0; k < 500; k++) {
+      for (let f = 0; f < 6; f++) A.actualiza(1 / 30, f === 5);
+      const res = A.resumen(), e = res.escalera, nEn = Object.keys(A.celdas).filter(i => A.celdas[i].en).length, todos = tiles.cerca.length === olv.length;
+      if (!L.hayCapa()) {
+        if (nEn > 0) r.esperaConCeldas++;
+        if (todos) r.esperaMascaraTodos++;
+        if (e && e.activa) r.esperaEscalera++;
+      } else {
+        if (r.conCapa < 0) r.conCapa = k;
+        if (e && e.activa && e.mascaraTiles === "3d") { r.mascara3d++; if (!todos && tiles.cerca.length) r.mascara3dTil++; if (e.presupuesto > 550000 - L.triangulos() - (copas.length - tiles.cerca.length) * tiles.triPor + 1) r.malPres++; }
+        if (e && e.activa && e.mascaraTiles === "todos") { r.mascaraTodos++; if (nEn > 0) r.todosConCeldas++; if (e.instanciasN12 > 0) r.todosN12++; if (!todos) r.malPres++; }
+        if (r.mascaraTodos > 20) break;
+      }
+      fases.push(e ? (e.activa ? e.mascaraTiles : "espera") : "gen");
+      await espera();
+    }
+    r.modo = G.modoGen(); r.pasos = fases.length; r.colaCeldas = cola.add.filter(k => k.charAt(0) === "C").length;
+    r.secuencia = fases.filter((f, i) => i === 0 || fases[i - 1] !== f).join(" → ");
+    return r;
+  };
+  const h = await prueba07b("?olivos=gen&olivosDir=olivos/&epoca=envero&arbsc=1");
+  diag.arboles07b = { horneada: h };
+  exige(h.modo === "horneada", "07b: con variantes horneadas el modo no es «horneada» (" + h.modo + ")");
+  exige(h.conCapa > 0 && h.esperaConCeldas > 0 && h.esperaMascaraTodos === 0 && h.esperaEscalera === 0, "07b: antes de la capa de lejanos la horneada debe repartir como ?olivos=gen (celdas de nivel 0, tileset con lo de lejos): " + JSON.stringify(h));
+  exige(h.mascara3d >= 1 && h.mascara3dTil === h.mascara3d, "07b: mientras la capa de lejanos entra, el tileset debe seguir con lo que no está en 3D: " + JSON.stringify(h));
+  exige(h.mascaraTodos >= 1 && h.todosConCeldas === 0 && h.todosN12 === 0 && h.malPres === 0, "07b: con la capa entera, sin nivel 0 ni niveles 1-2 y el tileset sin ningún olivo: " + JSON.stringify(h));
+  exige(/^(gen → )?espera → 3d → todos$/.test(h.secuencia), "07b: la secuencia de la horneada no es espera → 3d → todos: " + h.secuencia);
+  const g0 = await prueba07b("?olivos=gen&olivosDir=olivos/&epoca=envero&arbsc=1&olivosEscalera=0");
+  diag.arboles07b.olivosEscalera0 = { modo: g0.modo, secuencia: g0.secuencia, conCapa: g0.conCapa, celdas: g0.colaCeldas };
+  exige(g0.modo === "gen" && g0.conCapa < 0 && g0.secuencia === "gen" && g0.esperaMascaraTodos === 0, "07b: con ?olivosEscalera=0 nunca debe haber escalera: " + JSON.stringify(g0));
 }
 
 console.log(JSON.stringify({ mal, diag }));
