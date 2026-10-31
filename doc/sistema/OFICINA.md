@@ -268,6 +268,7 @@ Una página de **estado** y unos pocos botones, no un panel de administración d
 | Auditoría | quién hizo qué y cuándo, con filtros por acción y fecha | exportar CSV (`admin`) | tabla `auditoria` |
 | Aparatos de oficina | los aparatos confiables | aprobar, revocar | `aparatos_oficina` |
 | Llaves de acceso (OF13) | las llaves propias (nombre, creada, última vez, sincronizada); `admin`: las de todas las cuentas de oficina | añadir otra, revocar (nunca la última propia); `admin`: revocar las de otros y rehabilitar el alta (24 h, nunca la propia) | `llaves_oficina` |
+| Fluidez en aparatos (PB9) | **medido**: por día, aparato (Quest / móvil / escritorio, con VR o sin) la mediana del p95 de las medidas que las personas mandaron, el peor p95, mediana, peor, navegadores y versiones; filtros por aparato y fechas; el p95 contra el objetivo (**Quest 13,9 ms**, ADR-0015; en escritorio y móvil no hay objetivo escrito: solo la cifra) | nada | tabla `medidas_fluidez` (migración 0017), `GET /api/admin/medidas`; sin hogar, posición ni IP ([contrato](../../contratos/medidas.md)) |
 | Roles | quién es `oficina`, `guia`, `corresponsal`, `admin` | cambiar (`admin`, confirmación reciente) | `hogares.rol` |
 
 **Rutas nuevas.** `GET /api/admin/salud`, `POST /api/admin/correo/prueba`, `GET /api/admin/hornero`, `POST /api/admin/hornero/rehornear`, `GET /api/admin/copias`, `GET /api/admin/auditoria`.

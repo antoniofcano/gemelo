@@ -2,7 +2,7 @@
 // OlivarTrack (con «Sincronizar ahora» para admin), Vigía, hornero (con «Re-hornear ahora» para admin, OF9), aparatos de oficina y auditoría.
 // Todo contra /api/admin/*; el DOM se hace con h() (texto, nunca HTML). La api manda una lista blanca (sin URLs ni rutas del servidor): aquí no se pide nada más.
 import { $, api, aviso, conConfirmacion, confirma, fecha, h, vacia } from "./comun.js";
-import { bytes, ESTADO_APARATO, ESTADO_OT, ESTADO_SALUD, hace, resumenSincronia, sobreQue } from "./sistema_puro.js";
+import { bytes, celdasFluidez, consultaMedidas, ESTADO_APARATO, ESTADO_OT, ESTADO_SALUD, hace, juicioFluidez, resumenSincronia, sobreQue } from "./sistema_puro.js";
 
 const PAGINA = 50;
 const pill = (tabla, k) => { const [c, t] = tabla[k] || ["p-info", String(k)]; return h("span", { class: "pill " + c }, t); };
@@ -86,7 +86,7 @@ export function iniciaSistema({ sesion }) {
   }
 
   // ---------------------------------------------------------------- acciones
-  $("#bSistemaRefresca").addEventListener("click", () => { cargaSistema(); cargaAparatos(); cargaAuditoria(false); });
+  $("#bSistemaRefresca").addEventListener("click", () => { cargaSistema(); cargaAparatos(); cargaFluidez(); cargaAuditoria(false); });
 
   $("#bCorreo").addEventListener("click", async () => {
     const b = $("#bCorreo"); b.disabled = true;
@@ -127,6 +127,25 @@ export function iniciaSistema({ sesion }) {
       },
     });
   });
+
+  // ---------------------------------------------------------------- fluidez en aparatos (PB9): medido por cada aparato, agregado por día y aparato
+  let cargasFlu = 0;
+  async function cargaFluidez() {
+    const n = ++cargasFlu;
+    const r = await api("GET", consultaMedidas({ aparato: $("#sFluAp").value, desde: $("#sFluDesde").value, hasta: $("#sFluHasta").value }));
+    if (n !== cargasFlu) return;
+    if (!r.ok) { aviso(r.mensaje, "mal"); return; }
+    const cuerpo = vacia($("#sFlu"));
+    for (const f of r.datos.filas) {
+      const c = celdasFluidez(f);
+      cuerpo.append(h("tr", { "data-dia": f.dia, "data-aparato": f.aparato },
+        h("td", null, c.dia), h("td", null, c.aparato), h("td", null, c.medidas), h("td", null, h("b", null, c.p95)), h("td", null, c.objetivo), h("td", null, pill({ x: juicioFluidez(f) }, "x")),
+        h("td", null, c.mediana), h("td", null, c.peor), h("td", { class: "nota" }, c.navegadores), h("td", { class: "nota" }, c.versiones)));
+    }
+    if (!r.datos.filas.length) cuerpo.append(h("tr", null, h("td", { colspan: "10", class: "nota" }, "Todavía no ha llegado ninguna medida (con estos filtros).")));
+    $("#sFluNota").textContent = r.datos.filas.length ? r.datos.filas.length + " fila" + (r.datos.filas.length > 1 ? "s" : "") + ", la más reciente primero." : "";
+  }
+  for (const id of ["#sFluAp", "#sFluDesde", "#sFluHasta"]) $(id).addEventListener("change", cargaFluidez);
 
   // ---------------------------------------------------------------- aparatos de oficina
   async function cargaAparatos() {
@@ -199,5 +218,5 @@ export function iniciaSistema({ sesion }) {
   $("#sAudF").addEventListener("change", () => cargaAuditoria(false));
   $("#sAudMas").addEventListener("click", () => cargaAuditoria(true));
 
-  return { abre() { cargaSistema(); cargaAparatos(); cargaAuditoria(false); }, estado: () => ({ ultima, filas: filas.length, siguiente }) };
+  return { abre() { cargaSistema(); cargaAparatos(); cargaFluidez(); cargaAuditoria(false); }, estado: () => ({ ultima, filas: filas.length, siguiente }) };
 }

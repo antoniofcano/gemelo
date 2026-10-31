@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "medidas.schema.json",
+  "title": "Medida de fluidez de un aparato (PB9)",
+  "description": "Cuerpo de POST /api/medidas. Lo mide el aparato de sí mismo (MEDIDO, regla 5) con el medidor de 30_mide.js y lo manda la persona con un botón. Nada personal: ni hogar, ni posición, ni IP, ni agente de usuario entero. Contrato en contratos/medidas.md; lo copia apps/api/src/medidas/rutas.ts (CUERPO_MEDIDA) y lo comprueba apps/api/pruebas/unidad/medidas.test.ts.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["aparato", "navegador", "nav_mayor", "perfil", "finca", "modo", "vr", "mediana_ms", "p95_ms", "peor_ms", "fotogramas", "duracion_s", "version", "medida_en"],
+  "properties": {
+    "aparato": { "type": "string", "enum": ["escritorio", "movil", "quest"] },
+    "navegador": { "type": "string", "pattern": "^[A-Za-z][A-Za-z ]{0,23}$", "description": "Solo el producto: Chrome, Firefox, Safari, Edge, Quest Browser…" },
+    "nav_mayor": { "type": "integer", "minimum": 0, "maximum": 999, "description": "Versión mayor del navegador" },
+    "perfil": { "type": "integer", "minimum": -1, "maximum": 9, "description": "Perfil de calidad (índice de VR_PERFILES al terminar; -1 si no es VR)" },
+    "finca": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,40}$", "description": "D.finca_id" },
+    "modo": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,24}$", "description": "Modo de dibujo (nube, gemelo, ortofoto…)" },
+    "vr": { "type": "boolean" },
+    "mediana_ms": { "type": "number", "minimum": 0, "maximum": 10000 },
+    "p95_ms": { "type": "number", "minimum": 0, "maximum": 10000 },
+    "peor_ms": { "type": "number", "minimum": 0, "maximum": 100000 },
+    "fotogramas": { "type": "integer", "minimum": 10, "maximum": 1000000 },
+    "duracion_s": { "type": "integer", "minimum": 1, "maximum": 600 },
+    "version": { "type": "string", "pattern": "^[0-9A-Za-z.+-]{1,24}$", "description": "Versión del gemelo (VERSION)" },
+    "medida_en": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$", "description": "Cuándo terminó la medida (UTC); la api la rechaza si es futura o de hace más de 7 días" }
+  }
+}

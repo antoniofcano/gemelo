@@ -13,6 +13,7 @@ import { rutasConfig } from "./config/rutas.ts";
 import type { Contexto } from "./contexto.ts";
 import { rutasHazas } from "./hazas/rutas.ts";
 import { rutasJuegos } from "./juegos/rutas.ts";
+import { rutasMedidas } from "./medidas/rutas.ts";
 import { rutasLlaves } from "./oficina/llaves_rutas.ts";
 import { rutasOficina } from "./oficina/rutas.ts";
 import { rutasPresencia } from "./presencia/rutas.ts";
@@ -110,6 +111,7 @@ export async function construyeApp(ctx: Contexto, o: OpcionesApp = {}): Promise<
   await rutasVida(app, ctx);
   await rutasConfig(app, ctx);
   await rutasJuegos(app, ctx);
+  await rutasMedidas(app, ctx);
   await rutasAgenda(app, ctx);
   await rutasAvisos(app, ctx);
   return app;

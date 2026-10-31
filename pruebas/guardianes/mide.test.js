@@ -65,6 +65,64 @@ test("el texto trae todo lo pedido y el resumen del navegador no lleva datos per
   assert.strictEqual(E.resumeUA(""), "n/d");
 });
 
+// PB9: el envío a la oficina. Cuerpo = contratos/medidas.schema.json (el mismo esquema que la api); nada personal; solo a petición del botón
+const UA_QUEST = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) OculusBrowser/38.0.0.5.52.675 SamsungBrowser/4.0 Chrome/126.0.6478.122 VR Mobile Safari/537.36 Quest 3";
+const UA_IPHONE = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1";
+const UA_PC = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+function medidaVR(modo, n, extra) {
+  const e = E.calcula(serie(Array.from({ length: n }, (_, i) => 10 + (i % 5)), 3, 0.05), 3, 60);
+  return Object.assign({ version: 1, fecha: "2026-10-31T10:00:00Z", aparato: { modo: modo, ua: "x" }, escena: "tiles", banderas: "", duracion: 60, calentamiento: 3, est: e, nivel: modo === "VR" ? { ini: 0, fin: 2, cambios: [] } : null, olivos: [1, 2, 3], avisos: [] }, extra || {});
+}
+test("PB9: el aparato y el navegador salen del agente de usuario sin guardarlo entero", () => {
+  assert.deepStrictEqual([E.aparatoDe(UA_QUEST), E.aparatoDe(UA_IPHONE), E.aparatoDe(UA_PC), E.aparatoDe("")], ["quest", "movil", "escritorio", "escritorio"]);
+  assert.deepStrictEqual(E.navegadorDe(UA_QUEST), { nombre: "Quest Browser", mayor: 38 });
+  assert.deepStrictEqual(E.navegadorDe(UA_IPHONE), { nombre: "Safari", mayor: 17 });
+  assert.deepStrictEqual(E.navegadorDe(UA_PC), { nombre: "Chrome", mayor: 131 });
+  assert.deepStrictEqual(E.navegadorDe(UA_PC + " Edg/131.0.0.0"), { nombre: "Edge", mayor: 131 });
+  assert.deepStrictEqual(E.navegadorDe("Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0"), { nombre: "Firefox", mayor: 128 });
+  assert.deepStrictEqual(E.navegadorDe("curl/8"), { nombre: "otro", mayor: 0 });
+});
+
+test("PB9: el cuerpo del envío cumple el esquema estricto del contrato y no lleva nada personal", () => {
+  const esquema = JSON.parse(lee("contratos/medidas.schema.json"));
+  const c = E.cuerpoEnvio(medidaVR("VR", 400), { ua: UA_QUEST, finca: "hituelo", modo: "nube", version: "0.2.0" });
+  assert.ok(c, "una medida buena da cuerpo");
+  assert.deepStrictEqual(Object.keys(c).sort(), Object.keys(esquema.properties).sort(), "ni un campo de más ni de menos");
+  for (const [k, p] of Object.entries(esquema.properties)) {
+    const v = c[k];
+    if (p.type === "string") { assert.strictEqual(typeof v, "string", k); if (p.enum) assert.ok(p.enum.includes(v), k); if (p.pattern) assert.ok(new RegExp(p.pattern).test(v), k + " = " + v); }
+    else if (p.type === "integer") { assert.ok(Number.isInteger(v), k); assert.ok(v >= p.minimum && v <= p.maximum, k + " = " + v); }
+    else if (p.type === "number") { assert.ok(Number.isFinite(v) && v >= p.minimum && v <= p.maximum, k); }
+    else if (p.type === "boolean") assert.strictEqual(typeof v, "boolean", k);
+  }
+  assert.deepStrictEqual([c.aparato, c.navegador, c.nav_mayor, c.vr, c.perfil, c.finca, c.modo, c.version, c.medida_en], ["quest", "Quest Browser", 38, true, 2, "hituelo", "nube", "0.2.0", "2026-10-31T10:00:00Z"]);
+  assert.ok(c.mediana_ms <= c.p95_ms && c.p95_ms <= c.peor_ms);
+  assert.ok(!/Mozilla|X11|Linux|Samsung|@/.test(JSON.stringify(c)), "ni el agente de usuario entero ni nada personal: " + JSON.stringify(c));
+  const p = E.cuerpoEnvio(medidaVR("pantalla", 400), { ua: UA_PC, finca: "cerro", modo: "ortofoto", version: "0.2.0" });
+  assert.deepStrictEqual([p.aparato, p.vr, p.perfil], ["escritorio", false, -1], "en pantalla no hay perfil de VR");
+});
+
+test("PB9: lo raro no sale: pocas muestras, valores que no cuadran con el patrón se sustituyen por «desconocid@» y nunca se cuelan campos", () => {
+  assert.strictEqual(E.cuerpoEnvio(medidaVR("VR", 5), { ua: UA_QUEST, finca: "f", modo: "m", version: "1" }), null, "menos de 10 fotogramas: no sirve");
+  assert.strictEqual(E.cuerpoEnvio(null, {}), null);
+  const c = E.cuerpoEnvio(medidaVR("VR", 400), { ua: UA_QUEST, finca: "../../ruta/de/disco", modo: "a b/c", version: "<script>" });
+  assert.deepStrictEqual([c.finca, c.modo, c.version], ["desconocida", "desconocido", "desconocida"], "una ruta o un texto raro nunca viaja");
+});
+
+test("PB9: el envío es SOLO a petición (el botón), al mismo origen, sin nada personal y sin cambiar el coste cero de no medir", () => {
+  const i = FUENTE.indexOf("function envia()"), f = FUENTE.indexOf("function textoEnvio()");
+  assert.ok(i > 0 && f > i, "30_mide.js tiene envia()");
+  const envia = FUENTE.slice(i, f);
+  assert.ok(/fetch\(pre \+ "medidas"/.test(envia) && /credentials: "same-origin"/.test(envia), "POST al prefijo de la api del mismo origen");
+  assert.ok(!/https?:\/\//.test(envia), "ningún otro host");
+  assert.ok(!/envia\(\)/.test(FUENTE.replace(/function envia\(\)/, "").replace(/api\.envia = envia/, "")) || /addEventListener\("click", envia\)/.test(FUENTE), "solo se llama desde el botón");
+  assert.ok(!/envia\(\)/.test(FUENTE.slice(FUENTE.indexOf("function termina()"), FUENTE.indexOf("function guarda()"))), "termina() no envía nada por su cuenta");
+  assert.ok(/Enviar esta medida a la oficina/.test(FUENTE), "el texto del botón");
+  const vr = lee("apps/web/motor/29_vr.js");
+  assert.ok(/b\("mideEnvia"[^;]*Mide\.envia\(\)/.test(vr), "el botón del panel de VR llama a Mide.envia() con el gatillo");
+  assert.ok(!/localStorage/.test(envia));
+});
+
 test("sin &mide el motor no hace nada: 90_final solo mira Mide.on, y 30_mide no registra nada hasta armarse", () => {
   assert.ok(/if \(Mide\.on\) Mide\.cuadro\(t\);/.test(lee("apps/web/motor/90_final.js")));
   const i = FUENTE.indexOf("var param = ");

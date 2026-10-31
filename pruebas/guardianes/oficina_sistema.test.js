@@ -63,6 +63,26 @@ test("piezas puras: hace cuánto, bytes, resumen de la sincronía y «sobre qué
   for (const e of ["ok", "aviso", "mal", "apagado"]) assert.ok(P.ESTADO_SALUD[e][1], "palabra para " + e + ": el color solo no cuenta");
 });
 
+test("PB9, «Fluidez en aparatos»: tarjeta con sus controles, ruta del contrato, dice que es medido y el p95 contra el objetivo (Quest 13,9 ms; sin objetivo escrito, solo la cifra)", async () => {
+  const sec = /<section id="s-sistema"[\s\S]*?<\/section>/.exec(html)[0];
+  for (const id of ["sFlu", "sFluAp", "sFluDesde", "sFluHasta", "sFluNota"]) assert.ok(sec.includes('id="' + id + '"'), id);
+  assert.match(sec, /<h3>Fluidez en aparatos<\/h3>/); assert.match(sec, /<label class="campo en-fila" for="sFluAp">/);
+  assert.match(sec, />medido</, "regla 5: la tarjeta dice que es medido"); assert.match(sec, /13,9 ms/); assert.match(sec, /no hay objetivo escrito/);
+  const openapi = lee("contratos/api.openapi.yaml");
+  assert.ok(openapi.includes("  /api/admin/medidas:") && openapi.includes("  /api/medidas:"));
+  assert.match(js, /api\("GET", consultaMedidas\(/);
+  const P = await import(pathToFileURL(path.join(RAIZ, "apps", "web", "oficina", "sistema_puro.js")).href);
+  assert.strictEqual(P.consultaMedidas(), "/api/admin/medidas");
+  assert.strictEqual(P.consultaMedidas({ aparato: "quest", desde: "2026-10-01", hasta: "" }), "/api/admin/medidas?aparato=quest&desde=2026-10-01");
+  const quest = { dia: "2026-10-31", aparato: "quest", vr: true, medidas: 3, p95_mediano_ms: 12.3, p95_peor_ms: 15.5, mediana_ms: 9.7, peor_ms: 41.3, navegadores: ["Quest Browser 38"], versiones: ["0.2.0"], objetivo_p95_ms: 13.9 };
+  assert.deepStrictEqual(P.juicioFluidez(quest), ["p-ok", "cumple"]);
+  assert.deepStrictEqual(P.juicioFluidez({ ...quest, p95_mediano_ms: 14.0 }), ["p-mal", "no cumple"]);
+  assert.deepStrictEqual(P.juicioFluidez({ ...quest, aparato: "movil", objetivo_p95_ms: null }), ["p-info", "sin objetivo escrito"]);
+  const c = P.celdasFluidez(quest);
+  assert.deepStrictEqual([c.aparato, c.p95, c.objetivo], ["Quest · VR", "12,3 ms (peor 15,5 ms)", "13,9 ms"]);
+  assert.strictEqual(P.celdasFluidez({ ...quest, aparato: "movil", vr: false, medidas: 1, objetivo_p95_ms: null }).objetivo, "—");
+});
+
 // ——— recorrido en Chrome (opcional) ———
 const SALTO = process.env.GEMELO_DOCKER !== "1" ? "recorrido de Docker + Chrome opcional (GEMELO_DOCKER=1): la sección Sistema de la oficina contra la api real NO se ha comprobado" : null;
 

@@ -159,6 +159,15 @@
     <div class="tarjeta"><h3>OlivarTrack</h3><p class="nota" id="sOtModo"></p><div class="tabla-env"><table aria-label="Última lectura de cada herramienta de OlivarTrack"><thead><tr><th scope="col">Herramienta</th><th scope="col">Estado</th><th scope="col">Dato</th></tr></thead><tbody id="sOt"></tbody></table></div><p><button class="boton" id="bSinc" type="button" hidden>Sincronizar ahora</button></p></div>
     <div class="tarjeta"><h3>Vigía</h3><div id="sVigia"></div></div>
     <div class="tarjeta"><h3>Hornero</h3><div id="sHornero"></div><div class="barra-h"><button class="boton" id="bRehornear" type="button" hidden>Re-hornear ahora</button><p class="nota" id="sPedido"></p></div></div>
+    <div class="tarjeta"><h3>Fluidez en aparatos</h3>
+      <p class="nota"><span class="pill p-info">medido</span> Lo que cada aparato midió de sí mismo en 60 s (<code>&amp;mide=60</code>) y la persona decidió mandar. Sin hogar, posición ni IP. El p95 del día se compara con el objetivo: <b>Quest 13,9 ms</b> (72 Hz, ADR-0015); en escritorio y móvil no hay objetivo escrito, solo la cifra. Un número de Chrome sin GPU no es fps de nada.</p>
+      <div class="barra-h">
+        <label class="campo en-fila" for="sFluAp">Aparato <select class="entrada" id="sFluAp"><option value="">Todos</option><option value="quest">Quest</option><option value="movil">Móvil</option><option value="escritorio">Escritorio</option></select></label>
+        <label class="campo en-fila" for="sFluDesde">Desde <input class="entrada" type="date" id="sFluDesde"></label>
+        <label class="campo en-fila" for="sFluHasta">Hasta <input class="entrada" type="date" id="sFluHasta"></label>
+      </div>
+      <div class="tabla-env"><table aria-describedby="sFluNota"><thead><tr><th scope="col">Día</th><th scope="col">Aparato</th><th scope="col">Medidas</th><th scope="col">p95 (mediano del día)</th><th scope="col">Objetivo</th><th scope="col">Contra el objetivo</th><th scope="col">Mediana</th><th scope="col">Peor</th><th scope="col">Navegadores</th><th scope="col">Versión</th></tr></thead><tbody id="sFlu"></tbody></table></div>
+      <p class="nota" id="sFluNota"></p></div>
     <div class="tarjeta"><h3>Aparatos de oficina</h3><ul class="lista" id="sAparatos"></ul></div>
     <div class="tarjeta"><h3>Llaves de acceso</h3><p class="nota" id="sLlavesNota"></p><ul class="lista" id="sLlaves"></ul>
       <form id="fLlaveOtra" class="barra-h" novalidate><label class="campo crece">Nombre de la llave nueva <input id="sLlaveNombre" maxlength="40" autocomplete="off" placeholder="Por ejemplo: teléfono"></label><button class="boton" id="bLlaveOtra" type="submit">Añadir otra llave</button></form>
