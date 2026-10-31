@@ -97,10 +97,9 @@ test("e2e F3g: guía y dos familias en tres Chrome (entrar desde la agenda, sin 
           pres: () => llama("__presencia"), gesto: () => pg.mouse.click(5, 5) };
       };
       const entraPorLaAgenda = async X => {   // el botón «Entrar en la visita» de la ventana de la agenda (OF11e)
-        await hasta(async () => { const a = await X.pg.evaluate(() => window.__agenda().datos); return a && a.eventos.some(e => e.id === ev && e.entrada) && a; }, 60000, "la guiada en la agenda con su ventana de entrada");
         const visible = await X.pg.evaluate(() => { const b = document.getElementById("hudIco-agenda"); return !!(b && b.offsetParent); });
         if (visible) await X.pg.click("#hudIco-agenda"); else { await X.pg.click("#bMas"); await X.pg.locator("#hudMas button", { hasText: "Agenda" }).click(); }
-        await X.pg.waitForSelector("#ventana-agenda [data-entra='" + ev + "']", { timeout: 15000 });
+        await X.pg.waitForSelector("#ventana-agenda [data-entra='" + ev + "']", { timeout: 60000 });   // la agenda se pide al abrir la ventana
         await X.pg.click("#ventana-agenda [data-entra='" + ev + "']");
       };
       const lista = async () => (await rs.listParticipants(SALA)).map(x => ({ identidad: x.identity, papel: JSON.parse(x.metadata || "{}").papel || "?", attr: Object.assign({}, x.attributes),
@@ -130,7 +129,7 @@ test("e2e F3g: guía y dos familias en tres Chrome (entrar desde la agenda, sin 
       await t.test("sin la palabra, las familias no publican aunque pulsen; el guía abre su micrófono y las dos lo oyen", async tt => {
         await A.gesto(); assert.strictEqual(await A.voz("abre"), false); assert.strictEqual((await A.voz()).motivo, "sin_permiso");
         await B.gesto(); assert.strictEqual(await B.voz("abre"), false); assert.strictEqual((await B.voz()).motivo, "sin_permiso");
-        await G.gesto(); assert.strictEqual(await G.voz("abre"), true);
+        await G.gesto(); const ab = await G.voz("abre"); assert.strictEqual(ab, true, "el guía abre su micrófono: " + JSON.stringify(await G.voz()));
         await hasta(async () => (await de("guia"))[0].sinSilenciar === 1, 20000, "la pista del guía en LiveKit");
         for (const X of [A, B]) await hasta(async () => (await X.voz()).voces === 1, 25000, "la familia recibe la voz del guía");
         for (const f of await de("familia")) assert.strictEqual(f.micros, 0, "ninguna pista de familia en LiveKit");
@@ -217,8 +216,9 @@ test("e2e F3g: guía y dos familias en tres Chrome (entrar desde la agenda, sin 
 
       await t.test("sin grabación y sin errores en las páginas", async () => {
         for (const s of await rs.listRooms()) assert.ok(!s.activeRecording, "la sala " + s.name + " no se graba");
-        // ruido esperable de livekit-client cuando el servidor cierra la sala (DeleteRoom) o expulsa (RemoveParticipant): canales de datos cerrados; ver guiada_dev.test.js
-        const ruido = /DataChannel error on (lossy|reliable): User-Initiated Abort|publisher data channel '[A-Z_]+' closed unexpectedly/;
+        // ruido esperable de livekit-client (nivel error en su logger) cuando el servidor cierra la sala (DeleteRoom), expulsa (RemoveParticipant) o quita canPublish
+        // (la pista desaparece mientras otro cliente la procesa: «could not find published track»); ver guiada_dev.test.js
+        const ruido = /DataChannel error on (lossy|reliable): User-Initiated Abort|publisher data channel '[A-Z_]+' closed unexpectedly|could not find published track/;
         assert.deepStrictEqual([...G.errores, ...A.errores, ...B.errores].filter(x => !ruido.test(x)), []);
       });
     } finally {
