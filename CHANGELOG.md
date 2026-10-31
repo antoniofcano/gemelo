@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Correo de los avisos de la agenda y de la oficina (OF11c), en segundo plano y con reintento acotado, y `.ics` de cada evento (inscripción, cambio de fecha o lugar y cancelación; `GET /api/agenda/:id/evento.ics`), con baja con un clic (enlace firmado). Migración 0016. Probado en Node; PostGIS, Mailpit y el buzón real sin probar.
 - Pruebas (PB4): `npm run puerta:afectadas` pasa solo las pruebas que tocan los ficheros cambiados frente a `main` (cabeceras Expone/Consume, rutas que lee cada guardián, reglas gruesas); un fichero desconocido elige todo; no autoriza a subir.
 - Pruebas (PB8): el coste de dibujo del grupo de presencia (`Cuenta`), la colocación de movibles (`tapaA`, `dentroDe`) y `__g.sinDibujo` se prueban en Node; las pruebas de Chrome de presencia y movibles quedan como humo y comparan con el valor puro, exacto.
 - Pruebas (PB2): `movibles_chrome` pasa de 263 s a 27 s sin dibujo 3D (es DOM; cargar la página cuesta 3,5 s, no era el coste); presencia y avatares_motor con ventana chica (recuentos iguales con las dos); la clasificación de juego_cosecha a DPR 1; presencia compara los triángulos de su grupo (el assert por diferencia de totales fallaba según la carga). Las 7 más largas: 878 s → 303 s.
