@@ -191,8 +191,10 @@ test("baja: sesiones cerradas, haza sin titular y contenido oculto al momento; r
   assert.match(antes, /El abuelo/, "visible para la comunidad");
   let r = await pide("POST", "/api/admin/hogares/" + ids[ANA] + "/baja", ofi.sesion, {});
   assert.equal(r.statusCode, 200, r.body);
-  const dias = (new Date(r.json().borrado_en).getTime() - Date.now()) / 86_400_000;
-  assert.ok(dias > 29.9 && dias <= 30, "borrado en 30 días");
+  // contra el reloj de la base, no el del anfitrión: el de la VM de Docker puede ir unos ms por delante y «≤ 30 días» fallaba al azar
+  const reloj = (await bd.dueno.query<{ baja: Date; ahora: Date }>("SELECT baja_en AS baja, now() AS ahora FROM hogares WHERE id = $1", [ids[ANA]])).rows[0]!;
+  assert.equal(new Date(r.json().borrado_en).getTime() - reloj.baja.getTime(), 30 * 86_400_000, "borrado justo 30 días después de la baja");
+  assert.ok(reloj.ahora.getTime() - reloj.baja.getTime() < 60_000, "la baja es de ahora");
   assert.equal((await pide("GET", "/api/sesion", ana.sesion)).statusCode, 401, "sesión cerrada");
   const fila = await delHogar(ofi.sesion, ANA);
   assert.equal(fila["estado"], "baja"); assert.deepEqual(fila["hazas"], []); assert.ok(fila["borrado_en"]);

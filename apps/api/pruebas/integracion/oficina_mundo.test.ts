@@ -115,7 +115,8 @@ test("OF10b: la sala de la visita ligada a un evento: 403 visita_solo_inscritos 
   const BETA = "beta-of10b@example.com", GAMMA = "gamma-of10b@example.com";
   for (const c of [BETA, GAMMA]) ids[c] = Number((await bd.dueno.query<{ id: number }>("INSERT INTO hogares (correo, rol) VALUES ($1, 'hogar') RETURNING id", [c])).rows[0]!.id);
   const evId = async (estado: string) => Number((await bd.dueno.query<{ id: number }>(
-    "INSERT INTO visitas (titulo, tipo, empieza_en, estado, plazas) VALUES ('Visita de prueba OF10b', 'guiada', now() + interval '1 day', $1, 5) RETURNING id", [estado])).rows[0]!.id);
+    // visitas_cancelada_coherente (0012): una cancelada lleva su cancelada_en
+    "INSERT INTO visitas (titulo, tipo, empieza_en, estado, plazas, cancelada_en) VALUES ('Visita de prueba OF10b', 'guiada', now() + interval '1 day', $1, 5, CASE WHEN $1 = 'cancelada' THEN now() END) RETURNING id", [estado])).rows[0]!.id);
   const ev = await evId("abierta");
   await bd.dueno.query("INSERT INTO visitas_asistentes (visita_id, hogar_id, estado, personas) VALUES ($1, $2, 'apuntado', 2), ($1, $3, 'en_espera', 1)", [ev, ids[ANA], ids[BETA]]);
   const beta = (await entra(BETA)).sesion, gamma = (await entra(GAMMA)).sesion;
@@ -145,7 +146,7 @@ test("OF10b: la sala de la visita ligada a un evento: 403 visita_solo_inscritos 
   await bd.dueno.query("UPDATE visitas_asistentes SET estado = 'apuntado' WHERE visita_id = $1 AND hogar_id = $2", [ev, ids[BETA]]);
   assert.equal((await token(ana)).statusCode, 403); assert.equal((await token(beta)).statusCode, 200);
   // cancelado el evento, solo la oficina
-  await bd.dueno.query("UPDATE visitas SET estado = 'cancelada' WHERE id = $1", [ev]);
+  await bd.dueno.query("UPDATE visitas SET estado = 'cancelada', cancelada_en = now() WHERE id = $1", [ev]);
   assert.equal((await token(beta)).statusCode, 403); assert.equal((await token(ofi)).statusCode, 200);
   // invitar a la sala de la visita sin evento la deja abierta otra vez
   assert.equal((await pide("POST", "/api/admin/presencia/llevar", ofi, { de: "general", a: "visita" })).statusCode, 200);

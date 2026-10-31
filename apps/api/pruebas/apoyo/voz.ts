@@ -5,9 +5,9 @@ import { PATRON_SALA_GUIADA } from "../../src/presencia/livekit.ts";
 import type { Reloj } from "../../src/presencia/voz.ts";
 
 export class RelojFalso implements Reloj {
-  t = 0; private n = 0; private readonly tareas = new Map<number, { en: number; fn: () => void }>();
+  t = 0; private n = 0; private readonly tareas = new Map<number, { en: number; fn: () => unknown }>();
   ahora() { return this.t; }
-  programa(ms: number, fn: () => void) { const id = ++this.n; this.tareas.set(id, { en: this.t + ms, fn }); return id; }
+  programa(ms: number, fn: () => unknown) { const id = ++this.n; this.tareas.set(id, { en: this.t + ms, fn }); return id; }
   cancela(h: unknown) { this.tareas.delete(h as number); }
   get pendientes() { return this.tareas.size; }
   async avanza(ms: number) {
@@ -15,7 +15,7 @@ export class RelojFalso implements Reloj {
     for (;;) {
       const [id, x] = [...this.tareas].filter(([, v]) => v.en <= fin).sort((a, b) => a[1].en - b[1].en)[0] ?? [];
       if (id === undefined || !x) break;
-      this.t = Math.max(this.t, x.en); this.tareas.delete(id); x.fn(); await vacia();
+      this.t = Math.max(this.t, x.en); this.tareas.delete(id); await x.fn(); await vacia();   // se espera lo que vence (su promesa), no solo unas vueltas del bucle
     }
     this.t = fin; await vacia();
   }

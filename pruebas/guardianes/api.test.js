@@ -185,7 +185,13 @@ test("apps/api: integración contra PostGIS en contenedor (opcional, GEMELO_DOCK
   const r = pruebas(["--test-concurrency=1", "--test-timeout=240000", "pruebas/integracion/*.test.ts"]);
   const resumen = r.stdout.split("\n").filter(l => /^(✖|ℹ (pass|fail|skipped))/.test(l)).join("\n");
   assert.strictEqual(r.status, 0, "integración:\n" + resumen);
-  assert.match(r.stdout, /ℹ skipped 0/, "alguna prueba de integración se saltó (¿Docker?):\n" + resumen);
+  // Con Docker no se salta nada por Docker. Las que piden un servicio de infra/dev (Mailpit, LiveKit de desarrollo: GEMELO_MAILPIT_URL,
+  // GEMELO_DEV_LIVEKIT_*) se saltan solas sin él y lo dicen; esas se cuentan aparte y se avisan, no tumban la puerta.
+  const saltadas = r.stdout.split("\n").filter(l => /^\s*﹣ /.test(l));
+  assert.strictEqual(saltadas.length, Number(/ℹ skipped (\d+)/.exec(r.stdout)?.[1] ?? -1), "no se ven todas las saltadas:\n" + resumen);
+  const porServicio = saltadas.filter(l => /# sin GEMELO_(MAILPIT_URL|DEV_LIVEKIT_)/.test(l));
+  assert.deepStrictEqual(saltadas.filter(l => !porServicio.includes(l)), [], "alguna prueba de integración se saltó (¿Docker?):\n" + resumen);
+  for (const l of porServicio) t.diagnostic("integración NO comprobada sin su servicio de infra/dev: " + l.trim());
 });
 
 test("infra/Caddyfile: cabeceras, sesión y registros (opcional, GEMELO_DOCKER=1)", { timeout: 300_000 }, t => {
