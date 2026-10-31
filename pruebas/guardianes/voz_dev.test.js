@@ -101,7 +101,12 @@ test("e2e: la voz de una visita guiada en dos Chrome con micrófono simulado (pe
         assert.strictEqual(ef.sala, SALA); assert.strictEqual(ef.papel, "familia"); assert.strictEqual(ef.puede, false);
       });
       await t.test("sin gesto no se abre ningún micrófono; con un clic, el del guía sí; la familia lo recibe y lo oye espacial; el guía oye plano", async tt => {
-        assert.strictEqual(await G.voz("abre"), false); assert.strictEqual((await G.voz()).motivo, "sin_gesto");
+        // OJO: page.evaluate de Playwright corre CON activación de usuario (userGesture), así que llamar a abre() desde evaluate cuenta como gesto; para probar «sin gesto»
+        // se programa la llamada desde un temporizador de la página, pasados los ~5 s que dura la activación transitoria, y se lee el resultado después
+        await G.pg.evaluate(() => { window.__sinGesto = null; setTimeout(() => { Promise.resolve(window.__voz("abre")).then(r => { window.__sinGesto = { r, ...window.__voz() }; }); }, 6500); });
+        await espera(8000);   // sin tocar la página: cada evaluate de Playwright renovaría la activación
+        const sg = await hasta(() => G.pg.evaluate(() => window.__sinGesto), 15000, "abre() sin gesto");
+        assert.strictEqual(sg.r, false); assert.strictEqual(sg.motivo, "sin_gesto");
         assert.strictEqual((await pistas()).guia.micro, 0, "LiveKit no tiene micrófono del guía");
         await G.gesto(); assert.strictEqual(await G.voz("abre"), true);
         await hasta(async () => (await pistas()).guia.micro === 1, 15000, "la pista del guía en LiveKit");

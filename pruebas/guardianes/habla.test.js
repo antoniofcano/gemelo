@@ -133,7 +133,7 @@ function montaHabla({ papel = "familia", puede = false, sala = "guiada-12", mano
   const Laminas = { abre: o => { laminas[o.id] = o; return true; }, cierra: id => { delete laminas[id]; return true; }, hay: id => !!laminas[id], repinta: () => true };
   const g = { window: ventana, document: { createElement: t => new El(t), createTextNode: t => ({ texto: t }), body: new El("body") }, visor, navigator: { userAgent: ua }, VRX, Ajustes, Teclas, PanelVR, Laminas,
     fetch: (u, o) => {
-      fetchs.push([o.method, u]);
+      fetchs.push([o.method, u]); if (o.method === "POST") { assert.strictEqual(o.body, "{}", "un POST a la api lleva cuerpo {} (si no, 400)"); assert.strictEqual(o.headers["content-type"], "application/json"); }
       const r = respuestas[o.method] || (o.method === "POST" ? { puesto: 2 } : {}), st = r.__status || (o.method === "DELETE" ? 204 : 200);
       return Promise.resolve({ ok: st < 300, status: st, json: () => Promise.resolve(r) });
     } };

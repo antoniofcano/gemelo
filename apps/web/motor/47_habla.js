@@ -128,7 +128,10 @@
     function pideMano(levantar) {
       var w = vista(), ev = w.e.evento; if (ev === null || pidiendo) return Promise.resolve(false);
       pidiendo = true; pinta();
-      return fetch("/api/presencia/guiadas/" + ev + "/mano", { method: levantar ? "POST" : "DELETE", credentials: "same-origin", headers: { accept: "application/json" } }).then(function (r) {
+      // el POST lleva cuerpo «{}» con su content-type: la api valida el cuerpo como objeto vacío y un POST sin cuerpo da 400 (hallado en F3g contra la api real)
+      var o = { method: levantar ? "POST" : "DELETE", credentials: "same-origin", headers: { accept: "application/json" } };
+      if (levantar) { o.headers["content-type"] = "application/json"; o.body = "{}"; }
+      return fetch("/api/presencia/guiadas/" + ev + "/mano", o).then(function (r) {
         if (r.status === 204) return null;
         return r.json().catch(function () { return null; }).then(function (j) {
           if (!r.ok) { var er = new Error(j && typeof j.mensaje === "string" && j.mensaje ? j.mensaje : "La api respondió " + r.status + "."); throw er; }

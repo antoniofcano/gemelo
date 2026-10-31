@@ -94,7 +94,8 @@ test("e2e: el panel del guía en dos Chrome (la presencia viaja a la guiada, man
         const v = await G.pg.evaluate(() => window.__voz()); assert.strictEqual(v.sala, SALA); assert.strictEqual(v.papel, "guia");
       });
       await t.test("el guía ve la ventana «Visita guiada» con las familias apuntadas; la familia no", async () => {
-        const e = await hasta(async () => { const x = await G.gui(); return x.ventana && x.inscritos && x; }, 20000, "la ventana del guía y la vista de la api");
+        // la vista de la api se sondea cada 5 s: la 1.ª puede ser anterior a que la familia entrase, así que se espera a la que ya la cuenta
+        const e = await hasta(async () => { const x = await G.gui(); return x.ventana && x.inscritos && x.inscritos.conectados === 1 && x; }, 20000, "la ventana del guía y la vista de la api con la familia dentro");
         assert.deepStrictEqual(e.inscritos, { apuntados: 1, conectados: 1 });
         assert.strictEqual((await F.gui()).ventana, false);
         await G.pg.click("#hudIco-guia"); await hasta(() => G.pg.evaluate(() => /1 de 1 familia apuntada está en la sala/.test(document.body.textContent)), 10000, "el texto de preparar");
@@ -125,7 +126,10 @@ test("e2e: el panel del guía en dos Chrome (la presencia viaja a la guiada, man
         assert.strictEqual(tf.status, 409); assert.strictEqual(JSON.parse(tf.texto).error, "guiada_cerrada");
         const tg = await pide("/api/presencia/guiadas/" + ev + "/token", { method: "POST", cookie: ses.guia, body: JSON.stringify({ dispositivo: "escritorio" }) });
         assert.strictEqual(tg.status, 200, "el guía sí");
-        assert.deepStrictEqual([...G.errores, ...F.errores], []);
+        // DeleteRoom cierra la sala desde el servidor: livekit-client escribe entonces, a nivel error, que sus canales de datos se cerraron («User-Initiated Abort»,
+        // «closed unexpectedly»). Es el ruido esperable de un cierre del servidor (no es código del gemelo); cualquier otro error sí falla la prueba
+        const ruido = /DataChannel error on (lossy|reliable): User-Initiated Abort|publisher data channel '[A-Z_]+' closed unexpectedly/;
+        assert.deepStrictEqual([...G.errores, ...F.errores].filter(x => !ruido.test(x)), []);
       });
     } finally {
       if (nav) await nav.close().catch(() => {});

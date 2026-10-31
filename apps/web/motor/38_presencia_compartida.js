@@ -572,6 +572,9 @@
         ui.movB = Movibles.hazMovible(burbuja, burbuja, "burbuja", function () { ponChat("abierto"); }, { defecto: function (d) { return { x: d.mg.l + 10, y: d.H * (d.tactil ? 0.42 : 0.7) }; } });
         ui.mov.menuLlevar(llevar);
         ponChat(ui.ventana, true);
+        // en móvil vertical la ventana es una hoja del 72 % de la altura y el chat (46 %) no cabe en ningún hueco: se recoge a su burbuja mientras haya ventana
+        // (si no, tapa sus botones; hallado por agenda_mundo_chrome en F3g). Al cerrar la ventana no se reabre solo: lo decide la persona.
+        if (visor && typeof MutationObserver !== "undefined") new MutationObserver(function () { if (ui && ui.raiz === raiz && ui.ventana === "abierto" && visor.classList.contains("con-hoja")) ponChat("minimo", true); }).observe(visor, { attributes: true, attributeFilter: ["class"] });
       });
     }
     function ponChat(s, sinFoco) {
