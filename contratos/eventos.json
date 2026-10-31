@@ -14,6 +14,12 @@
       "emiten": ["29_vr"],
       "escuchan": ["20_sonido", "45_voz"]
     },
+    "capas:cambia": {
+      "descripcion": "Cambió alguna casilla de capas del menú (Linde, Copas del LiDAR, Guardados en OlivarTrack, Desfase) o se aplicó el estado al cargar: quien dibuja una de esas capas lee su casilla y se enseña o se esconde. 08_marcadores.js se ocupa de la linde; el resto lo atiende el componente de los marcadores. Sin él (?marcadores=0), no pasa nada.",
+      "datos": {},
+      "emiten": ["08_marcadores"],
+      "escuchan": ["08b_marcadores_lidar"]
+    },
     "chat:alterna": {
       "descripcion": "El icono del chat de la barra (o del menú «Más»): si el chat de la visita compartida está minimizado (burbuja) se abre; si está abierto, se minimiza. Sin chat (sin presencia en red, o sin &chat=1 en la simulación) nadie lo atiende y no pasa nada.",
       "datos": {},
@@ -225,6 +231,12 @@
       "datos": { "type": "object", "properties": { "abre": { "type": "boolean" } } },
       "emiten": ["15_tiempo"],
       "escuchan": ["35_fichas_tiempo"]
+    },
+    "mundo:aplica": {
+      "descripcion": "El mundo se ha vuelto a aplicar (aplica() de 08_marcadores.js: cambió la exageración vertical, el modo o los datos de las teselas): lo que cuelga del terreno se recoloca. Hoy lo atiende el componente de los marcadores del LiDAR (copas, anillos y desfase); sin él (?marcadores=0), nadie.",
+      "datos": {},
+      "emiten": ["08_marcadores"],
+      "escuchan": ["08b_marcadores_lidar"]
     },
     "oficina:anuncio": {
       "descripcion": "OF10: ha llegado un anuncio de la oficina por la sala (tema «anuncio», mandado por la api sin participante; ya validado y limpio). Para quien quiera reaccionar (un sonido, un lector de pantalla); el aviso, la lámina en VR y la línea del chat ya los pone 39_oficina_mundo.",

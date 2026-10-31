@@ -165,3 +165,68 @@ test("suelo-fondo: sin escena activa no existe, y 90_final ya no lo nombra", () 
   assert.ok(!/SueloFondo|suelo-fondo/.test(sinComentarios(lee("apps/web/motor/90_final.js"))), "el bucle ya no lo llama");
   d.libera();
 });
+
+// ---------------------------------------------------------------- marcadores-lidar
+function mundoMarc(nCopas, nMarc, extra) {
+  const Bus = bus(), scene = new THREE.Scene(), cas = { cCopas: { checked: true }, cMarc: { checked: true }, cDesf: { checked: false }, cLinde: { checked: true } };
+  const copas = [], cIn = [], marc = [];
+  for (let i = 0; i < nCopas; i++) { const c = { x: -60 + (i % 20) * 6, y: -40 + Math.floor(i / 20) * 6, h: 4 }; copas.push(c); cIn.push(c); }
+  for (let i = 0; i < nMarc; i++) marc.push({ x: copas[i].x + 1, y: copas[i].y, par: i % 5 ? i : -1 });
+  const estado = { listo: false, exag: 1 };
+  const g = Object.assign({ THREE, scene, Bus, $: id => cas[id], colorCss: () => 0x58b6e8, cIn, marc, copas, suelo: () => 100, location: { search: "" } }, extra || {});
+  Object.defineProperty(g, "listo", { get: () => estado.listo }); Object.defineProperty(g, "exag", { get: () => estado.exag });
+  return { g, Bus, scene, cas, estado };
+}
+
+test("marcadores-lidar: manifiesto; mundo:aplica coloca copas, anillos y desfase; las casillas mandan; presupuesto medido (8·copas + 40·marcas); liberar suelta todo", () => {
+  const m = mundoMarc(140, 60), d = carga("08b_marcadores_lidar.js", m.g, []), n = contexto(m.Bus);
+  assert.strictEqual(d.id, "marcadores-lidar"); assert.strictEqual(d.bandera.url, "marcadores"); assert.strictEqual(JSON.stringify(d.fases), "{}");
+  assert.strictEqual(m.scene.children.length, 0, "antes de montar la escena está vacía");
+  const api = d.monta(n);
+  assert.deepStrictEqual(m.scene.children.map(c => c.name), ["copas", "marcas", "desfase"]);
+  assert.ok(m.Bus.hay("mundo:aplica") && m.Bus.hay("capas:cambia"));
+  assert.strictEqual(m.scene.children[2].visible, false, "el desfase empieza apagado, como su casilla");
+  // aplica(): coloca (y con la exageración, sube)
+  m.Bus.emite("mundo:aplica");
+  const mc = m.scene.children[0].children[0], mm = m.scene.children[1].children[0];
+  assert.ok(Math.abs(mc.instanceMatrix.array[13] - (100 + 4 + 1.4)) < 1e-4, "la copa a la altura del suelo + h + 1,4");
+  assert.ok(Math.abs(mm.instanceMatrix.array[13] - (100 + 0.35)) < 1e-4);
+  m.estado.exag = 2; m.Bus.emite("mundo:aplica"); assert.ok(Math.abs(mc.instanceMatrix.array[13] - (100 + 4 + 1.4) * 2) < 1e-4, "sigue la exageración");
+  assert.ok(m.scene.children[2].children[0].geometry.attributes.position.count > 0, "líneas de desfase");
+  // presupuesto: copas y anillos visibles (casillas por defecto) y, con «Desfase», las líneas
+  const dib = dibujo(m.scene); console.log("medido marcadores-lidar (140 copas, 60 marcas):", JSON.stringify(dib));
+  assert.strictEqual(dib.llamadas, 2); assert.strictEqual(dib.triangulos, 8 * 140 + 40 * 60);
+  m.cas.cDesf.checked = true; m.Bus.emite("capas:cambia"); assert.strictEqual(dibujo(m.scene).llamadas, 3, "con el desfase, la llamada de las líneas");
+  m.cas.cCopas.checked = false; m.cas.cMarc.checked = false; m.Bus.emite("capas:cambia"); assert.strictEqual(dibujo(m.scene).triangulos, 0, "sin copas ni anillos");
+  // techo del manifiesto: 10.000 copas y 10.000 marcas caben
+  assert.ok(8 * 10000 + 40 * 10000 <= d.presupuesto.triangulos && d.presupuesto.llamadas >= 3);
+  assert.ok(dib.llamadas <= d.presupuesto.llamadas && dib.triangulos <= d.presupuesto.triangulos);
+  assert.strictEqual(typeof api.coloca, "function");
+  const sp = espiaDispose();
+  try { d.libera(); n.suelta(); } finally { sp.quita(); }
+  assert.ok(sp.cuenta() >= 8, "dispose de mallas, geometrías y materiales: " + sp.cuenta());
+  assert.strictEqual(m.scene.children.length, 0, "la escena queda como estaba"); assert.ok(!m.Bus.hay("mundo:aplica") && !m.Bus.hay("capas:cambia"));
+  assert.doesNotThrow(() => d.libera(), "liberar dos veces no rompe");
+});
+
+test("marcadores-lidar: montado tarde (ya estaba listo) coloca al momento; sin montar, aplica() y capas() del núcleo no se rompen", () => {
+  const m = mundoMarc(40, 10); m.estado.listo = true;
+  const d = carga("08b_marcadores_lidar.js", m.g, []), api = d.monta(contexto(m.Bus));
+  const mc = m.scene.children[0].children[0]; assert.ok(Math.abs(mc.instanceMatrix.array[13] - 105.4) < 1e-4, "ya colocado al montar");
+  d.libera();
+  // el núcleo (08_marcadores.js) con la bandera apagada: aplica y capas emiten y nadie escucha
+  const Bus = bus(), gl = [], vistos = [];
+  for (const ev of ["mundo:aplica", "capas:cambia"]) Bus.on(ev, () => vistos.push(ev));
+  const g = { THREE, Bus, scene: new THREE.Scene(), D: { parcelas: [{}, {}] }, $: id => ({ cLinde: { checked: true }, notaModo: { textContent: "" }, cSolo: null }[id] || { checked: false, textContent: "" }),
+    colocaBarrera: k => gl.push(k), nube: {}, gArboles: {}, gFollaje: {}, gSombras: {}, Arboles: { refresca() {} }, pintaNube() {}, colocaPaisaje() {}, colocaBalizas() {}, recoloreaSuelo() {},
+    UN: { uExag: {}, uModoOrto: {} }, exag: 1, modo: "gem", avTipo: null, pintaAvance() {}, requestAnimationFrame: f => f() };
+  const nucleo = vm.runInContext("\"use strict\";\n" + lee("apps/web/motor/08_marcadores.js") + "\nlisto = true; aplica(); ({ gl: gLinde });", vm.createContext(g));
+  assert.ok(nucleo.gl.isGroup); assert.strictEqual(gl.join(), "0,1", "las barreras de las parcelas siguen siendo del núcleo");
+  assert.strictEqual(vistos.join(), "mundo:aplica,capas:cambia", "aplica avisa y nadie lo atiende: no se rompe");
+});
+
+test("marcadores-lidar: 08_marcadores.js ya no dibuja copas, anillos ni desfase; avisa por el Bus", () => {
+  const f = sinComentarios(lee("apps/web/motor/08_marcadores.js"));
+  assert.ok(!/mCopas|mMarc|desfGeo|gCopas|gMarc|gDesf|InstancedMesh/.test(f), "08_marcadores.js sigue dibujando los marcadores");
+  assert.match(f, /Bus\.emite\("mundo:aplica"\)/); assert.match(f, /Bus\.emite\("capas:cambia"\)/);
+});
