@@ -5,6 +5,8 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- VR: los botones `h−` y `h+` del panel mueven de verdad el reloj del mundo y cambian la luz (decisión 171). La hora es de cada visitante, no compartida. No probado en Quest.
+- Plazo de los datos por hogar (decisión 100): cada 6 h se borran las sugerencias ya decididas, las entregas de avisos caducados, las inscripciones a eventos y las asignaciones de lotes de campañas que ya cumplieron «la campaña y un año más»; queda una auditoría solo con los recuentos.
 - Voz (F3j): antes de hablar en una visita guiada, la familia ve un aviso (tu voz en directo para la sala; no se graba; puedes dejar de hablar cuando quieras) y acepta o no; se guarda por hogar y versión del texto, y se puede retirar en Configuración y en el panel de VR. El servidor no da la palabra a quien no ha aceptado. La auditoría de voz se borra pasada la campaña y un año más (migración 0018). El texto es un borrador pendiente de la asesoría.
 - Motor: la capa de vigor NDVI pasa a componente (`capa-ndvi`, `?capandvi=0`; C10, cuarta tanda), sin cambio visible; la nube y el sol se quedan en el núcleo (razones en COMPONENTES).
 - F3g: e2e de la voz de la visita guiada con tres Chrome y micrófono simulado contra LiveKit 1.13.11 y PostGIS (`voz_guiada_dev.test.js`); `voz_dev`, `guiada_dev`, `habla_chrome`, el caso OF11e y las integraciones de voz y avisos, ejecutadas por primera vez en verde. Audio real, Quest e iPhone, sin probar.
