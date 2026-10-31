@@ -11,7 +11,7 @@ import type { FastifyInstance, LightMyRequestResponse } from "fastify";
 import { RoomServiceClient, TokenVerifier } from "livekit-server-sdk";
 import { construyeApp } from "../../src/app.ts";
 import { ModeradorLiveKit, type ModeradorSala } from "../../src/presencia/livekit.ts";
-import { ATRIBUTOS, TURNO_S } from "../../src/presencia/voz.ts";
+import { ATRIBUTOS, AVISO_CIERRE_S, TURNO_S } from "../../src/presencia/voz.ts";
 import { hashToken } from "../../src/seguridad/cripto.ts";
 import { type BdDePrueba, hayDocker, levantaBd } from "../apoyo/bd.ts";
 import { configDePrueba, contexto, deLaWeb } from "../apoyo/contexto.ts";
@@ -159,6 +159,38 @@ test("silenciar a todos menos al guía, y expulsar: fuera de la sala, sin palabr
   assert.equal((await pide("POST", G() + "/token", ses[BETA]!, { dispositivo: "movil" })).json().error, "expulsado");
   for (const f of (await bd.dueno.query<{ detalle: unknown }>("SELECT detalle FROM auditoria WHERE accion LIKE 'guiada.%'")).rows)
     assert.ok(!/@|audio|texto/.test(JSON.stringify(f.detalle)), "la auditoría no lleva correos, audio ni texto");
+});
+
+test("F3f, preparar la visita: GET …/palabra dice cuántas familias apuntadas hay y cuántas están ya en la sala (solo números)", async t => {
+  if (salta(t)) return;
+  const e = (await pide("GET", G() + "/palabra", ses[GUIA]!)).json();
+  // apuntadas: Ana y Beta (Gamma se borró; el guía no cuenta); en la sala, Ana (Beta fue expulsada)
+  assert.deepEqual(e.inscritos, { apuntados: 2, conectados: 1 }); assert.equal(e.cierra_en, null);
+  assert.ok(!/@/.test(JSON.stringify(e)), "sin correos");
+});
+
+test("F3f, cerrar la sala (decisión 155): aviso por el tema «cierre» con el instante y la vuelta a la general; a los segundos, DeleteRoom; las familias ya no entran", async t => {
+  if (salta(t)) return;
+  assert.equal((await pide("POST", G() + "/cerrar", ses[ANA]!, {})).statusCode, 403, "una familia no cierra la sala");
+  assert.equal((await pide("POST", G() + "/cerrar", ses[GUIA]!, { segundos: 2 })).statusCode, 400, "menos de 5 s, no");
+  await pide("POST", G() + "/palabra", ses[GUIA]!, { identidad: ident[ANA] });
+  const t0 = reloj.ahora();
+  const r = await pide("POST", G() + "/cerrar", ses[GUIA]!, {});
+  assert.equal(r.statusCode, 200, r.body);
+  assert.deepEqual(r.json(), { cierra_en: new Date(t0 + AVISO_CIERRE_S * 1000).toISOString(), segundos: AVISO_CIERRE_S, avisados: true });
+  assert.deepEqual(sala.enviados.at(-1), { sala: SALA(), tema: "cierre", datos: { v: 1, en: r.json().cierra_en, a: "general" } });
+  assert.equal(sala.p(SALA(), ident[ANA]!)!.micro, false, "se le quita la palabra al cerrar");
+  assert.deepEqual((await auditoria("guiada.palabra_quitada"))!.detalle, { evento: ev, hogar: ids[ANA], motivo: "cierre" });
+  assert.deepEqual((await auditoria("guiada.cerrada"))!.detalle, { evento: ev, segundos: AVISO_CIERRE_S, palabra_quitada: true, avisados: true });
+  assert.equal((await pide("POST", G() + "/cerrar", ses[OFI]!, {})).json().error, "ya_cerrandose");
+  assert.equal((await pide("GET", G() + "/palabra", ses[OFI]!)).json().cierra_en, r.json().cierra_en);
+  // mientras se avisa y después, las familias no reciben token; el guía y la oficina sí
+  assert.equal((await pide("POST", G() + "/token", ses[ANA]!, { dispositivo: "escritorio" })).json().error, "guiada_cerrada");
+  assert.equal((await pide("POST", G() + "/token", ses[GUIA]!, { dispositivo: "escritorio" })).statusCode, 200);
+  assert.deepEqual(sala.borradas, []);
+  await reloj.avanza(AVISO_CIERRE_S * 1000);
+  assert.deepEqual(sala.borradas, [SALA()], "DeleteRoom a los segundos del aviso");
+  assert.equal((await pide("POST", G() + "/token", ses[ANA]!, { dispositivo: "escritorio" })).json().error, "guiada_cerrada");
 });
 
 // ---------------------------------------------------------------- contra un LiveKit de desarrollo, si lo hay

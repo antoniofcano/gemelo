@@ -46,7 +46,7 @@
     "$comment": "Lo que devuelve monta() de cada componente que otros consumen por n.api(id) (ADR-0023, C5). No hay global con ese nombre: el nombre de «expone» es el que va en el consume de quien lo usa. pruebas/guardianes/red.test.js monta cada uno en Node y comprueba que devuelve exactamente estos miembros (y, la red, los de cada sala).",
     "red-salas": { "modulo": "37_red.js", "expone": "Red", "miembros": ["sala", "salas", "info", "cierra", "cargada"],
       "sala": ["clave", "une", "sale", "publica", "escucha", "al", "estado", "motivo", "yo", "participantes", "info", "cierra", "nombre", "permisos", "atributos", "publicaciones", "suscribe", "microfono", "microAbierto"] },
-    "presencia-compartida": { "modulo": "38_presencia_compartida.js", "expone": "Presencia", "miembros": ["activo", "actualiza", "estado", "libera", "texto", "llegadas", "puntos", "irCon", "vrmPersonas", "miVrm", "miAvatar", "recolorea", "cambiaron", "enganchaVRM", "sala", "cambiaSala", "yo", "mensaje", "cabeza"] },
+    "presencia-compartida": { "modulo": "38_presencia_compartida.js", "expone": "Presencia", "miembros": ["activo", "actualiza", "estado", "libera", "texto", "llegadas", "puntos", "irCon", "vrmPersonas", "miVrm", "miAvatar", "recolorea", "cambiaron", "enganchaVRM", "sala", "cambiaSala", "entraGuiada", "evento", "nombreSala", "yo", "mensaje", "cabeza"] },
     "voz-guiada": { "modulo": "45_voz.js", "expone": "Voz", "miembros": ["entra", "usa", "sale", "abre", "cierra", "estado", "hablan", "auriculares", "actualiza", "libera"] }
   },
   "funciones_globales_del_motor": {

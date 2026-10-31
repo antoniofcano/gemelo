@@ -5,7 +5,7 @@
 //   12_paseo (paseando, persona, primera), 12b_llegada (Llegada), 14_historia (lista, aviso), 15_tiempo (rumbo, hace),
 //   16_vida (enQuad, quita, mira, quad, enDron, dron), 26_presencia (PoseCodec, BufferPose, Aspecto, SalaPose, Chat, Muneco, Encuentro, sitioJunto),
 //   29_vr (VRX, vrFundido, panel, ficha), 34_movibles (Movibles)
-// Nota: Componente «presencia-compartida» (ADR-0023, C5): solo se registra; consume la red (sala «visita») y expone «Presencia» (para los avatares VRM). Sin ?presencia=sim o ?presencia=red, montado no crea nada; con red, el panel Gente y el chat. Registra el tipo persona en Entidades (C7) y da su línea de ?debug por «depura:lineas». Publica window.__presencia y window.__presenciaChat (pruebas). Lo prueba en Node pruebas/guardianes/red.test.js.
+// Nota: Componente «presencia-compartida» (ADR-0023, C5): solo se registra; consume la red (sala «visita») y expone «Presencia» (para los avatares VRM). Sin ?presencia=sim o ?presencia=red, montado no crea nada; con red, el panel Gente y el chat; F3f: viaja a la sala de una visita guiada (Presencia.entraGuiada, token de F3c) y vuelve sola a la general si la sala se cierra o te sacan. Registra el tipo persona en Entidades (C7) y da su línea de ?debug por «depura:lineas». Publica window.__presencia y window.__presenciaChat (pruebas). Lo prueba en Node pruebas/guardianes/red.test.js.
 // ===============================================================================
   // ---------- presencia compartida (F2, contratos/presencia.md), componente «presencia-compartida» (C5, ADR-0023): los demás visitantes como muñecos instanciados,
   // su pose por el códec del contrato, su interpolación y, en la sala de verdad, el apartado Gente y el chat. La lógica pura (códec, búfer, SalaPose, chat,
@@ -328,6 +328,11 @@
     var SR = null, sala = null, SP = null, porId = Object.create(null), huecos = [], bloqueados = Object.create(null), yo = null, manoDe = ["", ""], quitaRed = [], quitaMandos = [];
     // OF10: la sala del mundo en la que estás, por su clave (contratos/livekit-roles.json v4): «general» (la de siempre) o «visita» (a la que invita la oficina)
     var SALAS_MUNDO = { general: "Visita libre", visita: "Sala de la visita" }, claveSala = "general";
+    // F3f: la sala de voz de una visita guiada (guiada-<evento>, F3c). La presencia VIAJA a ella (entraGuiada): misma sala de la red («visita»), token de
+    // POST /api/presencia/guiadas/:evento/token, y la voz (45_voz.js) se engancha a esta misma conexión (Voz.usa("visita")), así cada voz sale de su avatar.
+    // claveSala = "guiada" mientras dure; si la api no deja entrar (cerrada, fuera de hora, no apuntada) o la sala se cierra, de vuelta a la general con el aviso
+    var eventoGuiada = null, NOMBRE_GUIADA = "Visita guiada";
+    function nombreSala(c) { return c === "guiada" ? NOMBRE_GUIADA : SALAS_MUNDO[c]; }
     var ui = null, mensajes = [], tChat = 0, tGente = 0, claveGente = "", conectando = false, poseL = { tipo: 1, seq: 0, t: 0, cab: { p: [0, 0, 0], q: [0, 0, 0, 1] }, izq: null, der: null };
     var mDesc = null, vDesc = null, qDesc = null, sDesc = null;
     // medida de las pruebas (P4): con window.__presenciaMide puesto ANTES de cargar, se apunta cada pose que llega
@@ -366,10 +371,16 @@
       conectando = true; ponEstado("Entrando en la visita compartida…", false);
       try {
         // el token lo da la api con tu sesión (mismo origen); la identidad, el alias y el avatar los pone ella
-        var cuerpo = { dispositivo: dispositivo() }; if (claveSala !== "general") cuerpo.sala = claveSala;   // OF10: sin sala, la general (como siempre)
-        var r = await fetch("/api/presencia/token", { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify(cuerpo) });
+        var cuerpo = { dispositivo: dispositivo() }; if (claveSala !== "general" && claveSala !== "guiada") cuerpo.sala = claveSala;   // OF10: sin sala, la general (como siempre)
+        var ruta = claveSala === "guiada" ? "/api/presencia/guiadas/" + eventoGuiada + "/token" : "/api/presencia/token";   // F3f: la de la guiada (F3c)
+        var r = await fetch(ruta, { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify(cuerpo) });
         if (!r.ok) {
           var e = null; try { e = await r.json(); } catch (x) { e = null; }
+          // F3f: la guiada no te deja (cerrada, aún no abre, ya terminó, no apuntada, expulsado): su mensaje y de vuelta a la general
+          if (claveSala === "guiada") {
+            claveSala = "general"; eventoGuiada = null; volverGeneral = e && typeof e.mensaje === "string" && e.mensaje ? e.mensaje : "No se pudo entrar en la visita guiada.";
+            return;
+          }
           // OF10b: la sala de la visita ligada a un evento de la agenda es solo de las familias apuntadas (403 visita_solo_inscritos): mensaje amable y de vuelta a la general
           if (r.status === 403 && e && e.error === "visita_solo_inscritos" && claveSala !== "general") {
             claveSala = "general"; volverGeneral = typeof e.mensaje === "string" && e.mensaje ? e.mensaje : "Esta visita es para las familias apuntadas.";
@@ -402,6 +413,13 @@
       sala = null; yo = null;
       Object.keys(porId).forEach(saleOtro);
       if (!activo) return;
+      // F3f: al salir de una guiada sin pedirlo (el guía te sacó, la sala se cerró o se cortó), de vuelta a la visita libre con su aviso
+      if (claveSala === "guiada") {
+        claveSala = "general"; eventoGuiada = null; claveGente = "";
+        volverGeneral = motivo === "expulsado" ? "El guía te ha sacado de la visita guiada." : motivo === "duplicado" ? "Has abierto la visita guiada en otra pestaña: aquí se ha cerrado." : "La visita guiada ha terminado: estás en la visita libre.";
+        conecta();
+        return;
+      }
       ponEstado(motivo === "expulsado" ? "La oficina te ha sacado de la visita compartida." : motivo === "duplicado" ? "Has abierto la visita compartida en otra pestaña: aquí se ha cerrado." : "Te has desconectado de la visita compartida.", true);
     }
     // OF10: pasar a otra sala del mundo (la invitación de la oficina, 39_oficina_mundo.js, o la propia oficina). Se deja de ver a los de la sala de antes y se pide
@@ -410,10 +428,23 @@
     function cambiaSala(clave) {
       if (!SR || !Object.prototype.hasOwnProperty.call(SALAS_MUNDO, clave) || conectando) return Promise.resolve(false);
       if (clave === claveSala && sala) return Promise.resolve(false);
-      claveSala = clave; Object.keys(porId).forEach(saleOtro); sala = null; yo = null; claveGente = "";   // así el «fuera» de la sala vieja no avisa de nada
+      claveSala = clave; eventoGuiada = null; Object.keys(porId).forEach(saleOtro); sala = null; yo = null; claveGente = "";   // así el «fuera» de la sala vieja no avisa de nada
       return conecta().then(function () { pintaNota(); return !!sala && claveSala === clave; });
     }
-    function pintaNota() { if (ui && ui.nota) ui.nota.textContent = SALAS_MUNDO[claveSala] + ": sin voz. El chat no se guarda."; }
+    // F3f: viajar a la sala guiada de un evento (la pide la voz, Voz.entra, o el enlace ?guiada=<evento>). Promesa de true si quedas dentro de guiada-<evento>;
+    // si la api no te deja, vuelves a la general con su mensaje (y false). Solo con la presencia de verdad (?presencia=red)
+    function entraGuiada(ev) {
+      var id = typeof ev === "string" && /^[1-9][0-9]{0,9}$/.test(ev) ? Number(ev) : ev;
+      if (variante !== "red" || !SR || !Number.isInteger(id) || id < 1 || id > 2147483647) return Promise.resolve(false);
+      if (conectando) return esperaConexion().then(function (si) { return si ? entraGuiada(id) : false; });   // p. ej. ?guiada= al cargar, mientras entra en la general
+      if (claveSala === "guiada" && eventoGuiada === id && sala) return Promise.resolve(true);
+      claveSala = "guiada"; eventoGuiada = id; Object.keys(porId).forEach(saleOtro); sala = null; yo = null; claveGente = "";
+      return conecta().then(function () { pintaNota(); return !!sala && claveSala === "guiada" && eventoGuiada === id; });
+    }
+    function esperaConexion() {   // hasta que acabe de entrar (o salir) la sala en curso: como mucho 20 s, mirando cada 100 ms
+      return new Promise(function (ok) { var n = 0; (function vigila() { if (!conectando) return ok(true); if (++n > 200 || !activo) return ok(false); setTimeout(vigila, 100); })(); });
+    }
+    function pintaNota() { if (ui && ui.nota) ui.nota.textContent = claveSala === "guiada" ? NOMBRE_GUIADA + ": con voz del guía. Nada se graba; el chat no se guarda." : SALAS_MUNDO[claveSala] + ": sin voz. El chat no se guarda."; }
     // de = { identidad, metadatos } (37_red.js): los metadatos los pone la api en el token y se leen como DATOS (SalaPose.leeInfo)
     function entraOtro(de) {
       var id = de && de.identidad; if (!id || porId[id]) return porId[id] || null;
@@ -675,7 +706,7 @@
         bytesPorSegundo: est.bps, ms: Math.round(est.ms * 1000) / 1000, msMax: Math.round(est.msMax * 1000) / 1000, retardoP95ms: est.retP95, errorP95m: est.errP95, vistos: V.filter(function (a) { return a.visto; }).length,
         enQuad: est.quad || 0, conDron: est.dron || 0, vehiculos: !!(mQuad && mDron), idas: est.idas || 0, ultimaIda: est.ultimaIda || null, vrm: vrmG ? vrmG.estado() : null,
         aspecto: mSombrero ? { cajas: mSombrero.count, ruedas: mRuedas.count, sillas: personasTodas().filter(function (a) { return a.mov === "silla"; }).length, bastones: personasTodas().filter(function (a) { return a.mov === "baston"; }).length, andadores: personasTodas().filter(function (a) { return a.mov === "andador"; }).length } : null };
-      if (variante === "red") { e.sala = claveSala; e.oficina = !!(yo && yo.info.oficial); e.conectado = !!sala; e.identidad = yo ? yo.identidad : null; e.vistos = Object.keys(porId).filter(function (k) { return porId[k].visto; }).length; e.sinPlaza = est.sinPlaza || 0; e.enVistaAerea = !(sala && poseLocal(Math.round(performance.now()))); }
+      if (variante === "red") { e.sala = claveSala; e.evento = claveSala === "guiada" ? eventoGuiada : null; e.oficina = !!(yo && yo.info.oficial); e.conectado = !!sala; e.identidad = yo ? yo.identidad : null; e.vistos = Object.keys(porId).filter(function (k) { return porId[k].visto; }).length; e.sinPlaza = est.sinPlaza || 0; e.enVistaAerea = !(sala && poseLocal(Math.round(performance.now()))); }
       return e;
     }
     function libera() {   // libera todo lo de la GPU (y, en red, sale de la sala y retira el apartado) y deja la presencia como sin la bandera
@@ -727,7 +758,8 @@
     }
     var api = { activo: function () { return activo; }, actualiza: actualiza, estado: estado, libera: libera, texto: texto, llegadas: llegadas, puntos: puntos, irCon: irCon,
       vrmPersonas: vrmPersonas, miVrm: miVrm, miAvatar: miAvatar, recolorea: recolorea, cambiaron: cambiaron, enganchaVRM: enganchaVRM,
-      sala: function () { return claveSala; }, cambiaSala: cambiaSala, yo: miInfo, mensaje: mensaje, cabeza: cabeza };
+      sala: function () { return claveSala; }, cambiaSala: cambiaSala, entraGuiada: entraGuiada, evento: function () { return claveSala === "guiada" ? eventoGuiada : null; }, nombreSala: nombreSala,
+      yo: miInfo, mensaje: mensaje, cabeza: cabeza };
     window.__presenciaChat = function (txt) { anadeMensaje("Prueba", String(txt || "Hola"), false); };   // pruebas del chat movible (la ventana solo existe con ?presencia=red o &chat=1)
     // gancho de pruebas: estado; con "libera", apagar el componente (soltar todo; los avatares VRM se sueltan antes); con "llegadas", las poses apuntadas (P4);
     // con "puntos", quién sale en el minimapa; con "ir" e id, ir con esa persona (I1). Tras liberar sigue contestando (activo: false), como antes de C5

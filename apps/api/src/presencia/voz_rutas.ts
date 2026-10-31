@@ -13,6 +13,7 @@
 //   DELETE /api/presencia/guiadas/:evento/palabra                          quitarla (cortar)
 //   POST   /api/presencia/guiadas/:evento/silenciar      {}                silenciar a todos menos al guía (MutePublishedTrack) y quitar la palabra
 //   POST   /api/presencia/guiadas/:evento/expulsar       { identidad, motivo? }  sacar de la sala a todas las conexiones de ese hogar (RemoveParticipant), 15 min
+//   POST   /api/presencia/guiadas/:evento/cerrar         { segundos? }     F3f (decisión 155): aviso por el tema «cierre» y, a los segundos (15 por omisión), DeleteRoom
 //  La oficina:
 //   PUT    /api/admin/eventos/:id/guia                   { hogar_id | null }  el guía del evento (una cuenta activa de rol guia, oficina o admin)
 // Por qué /api/presencia/guiadas y no /api/admin/directos (OFICINA §8 lo esbozaba así): el guía no es la oficina, y las rutas /api/admin/* son solo suyas.
@@ -23,7 +24,7 @@ import type { Bd } from "../bd/pool.ts";
 import type { ConfigLiveKit } from "../config.ts";
 import { OFICINA } from "../oficina/acceso.ts";
 import { AVATAR_POR_DEFECTO, type Avatar, DISPOSITIVOS, type Dispositivo, Expulsados, firmaTokenGuiada, identidadOpaca, limpiaAspecto, type ModeradorVoz, prefijoHogar, SALA_GUIADA } from "./livekit.ts";
-import { type Auditor, decideGuiada, esGuiada, type EventoGuiada, Palabra, puedeModerar, type Rechazo, type Reloj, RELOJ_REAL } from "./voz.ts";
+import { AVISO_CIERRE_MAX_S, AVISO_CIERRE_MIN_S, AVISO_CIERRE_S, type Auditor, Cierres, cuerpoCierre, decideGuiada, esGuiada, type EventoGuiada, Palabra, puedeModerar, type Rechazo, type Reloj, RELOJ_REAL, TEMA_CIERRE, ventana } from "./voz.ts";
 
 const APAGADA = { error: "presencia_apagada", mensaje: "La visita compartida no está disponible en este servidor." } as const;
 const EVENTO = { type: "object", additionalProperties: false, required: ["evento"], properties: { evento: { type: "integer", minimum: 1, maximum: 2147483647 } } } as const;
@@ -43,6 +44,7 @@ const MENSAJES: Record<string, string> = {
   ya_tienes_la_palabra: "Ya tienes la palabra.",
   demasiadas_manos: "Hay demasiadas manos levantadas; espera un poco.",
   no_es_familia_apuntada: "Esa conexión no es de una familia apuntada a esta visita.",
+  ya_cerrandose: "La sala ya se está cerrando.",
 };
 const falla = (rep: FastifyReply, http: number, codigo: string) => rep.code(http).send({ error: codigo, mensaje: MENSAJES[codigo] ?? codigo });
 
@@ -80,7 +82,8 @@ export async function rutasVoz(app: FastifyInstance, bd: Bd, d: DepsVoz): Promis
   const auditor: Auditor = (actor, accion, detalle) => audita(bd, actor, accion, detalle);
   const palabra = voz ? new Palabra(voz, auditor, d.reloj ?? RELOJ_REAL, app.log) : null;
   const expulsadosGuiada = new ExpulsadosGuiada();
-  app.addHook("onClose", async () => { palabra?.cierra(); });
+  const reloj = d.reloj ?? RELOJ_REAL, cierres = new Cierres(), borrados = new Map<number, unknown>();
+  app.addHook("onClose", async () => { palabra?.cierra(); for (const h of borrados.values()) reloj.cancela(h); borrados.clear(); });
 
   const quien = async (req: FastifyRequest, evento: number) => {
     const hogarId = req.session.hogarId!, ofi = esOficina(req.session.rol);
@@ -107,6 +110,8 @@ export async function rutasVoz(app: FastifyInstance, bd: Bd, d: DepsVoz): Promis
     if (d.expulsados.esta(id) || expulsadosGuiada.esta(ev, id)) return rep.code(403).send({ error: "expulsado", mensaje: "Te han sacado de esta visita. Podrás volver a entrar más tarde." });
     const dec = decideGuiada(await cargaEvento(bd, ev), await quien(req, ev));
     if (!dec.ok) return rechaza(rep, dec);
+    // F3f: cerrada por el guía o la oficina (decisión 155): las familias ya no entran; el guía y la oficina sí
+    if (dec.papel === "familia" && cierres.cerrada(ev, reloj.ahora()) !== null) return rep.code(409).send({ error: "guiada_cerrada", mensaje: "La visita guiada ha terminado: el guía ha cerrado la sala." });
     const r = await bd.query<{ alias: string | null; camisa: number | null; sombrero: Avatar["sombrero"] | null; piel: number | null; vrm: string | null; aspecto: unknown }>(
       "SELECT g.alias, a.camisa, a.sombrero, a.piel, a.vrm, a.aspecto FROM hogares g LEFT JOIN avatares a ON a.hogar_id = g.id WHERE g.id = $1", [id]);
     const f = r.rows[0];
@@ -152,10 +157,17 @@ export async function rutasVoz(app: FastifyInstance, bd: Bd, d: DepsVoz): Promis
     preHandler: requiereSesion,
     schema: { params: EVENTO },
   }, async (req, rep) => {
-    if (!palabra) return rep.code(503).send(APAGADA);
-    if (!(await moderable(req, rep, req.params.evento))) return rep;
+    if (!lk || !voz || !palabra) return rep.code(503).send(APAGADA);
+    const e = await moderable(req, rep, req.params.evento);
+    if (!e) return rep;
     rep.header("cache-control", "no-store");
-    return { evento: req.params.evento, sala: SALA_GUIADA(req.params.evento), ...palabra.vista(req.params.evento) };
+    const ev = req.params.evento, sala = SALA_GUIADA(ev);
+    // F3f, preparar la visita: cuántas familias apuntadas hay y cuántas están ya en la sala (hogares con al menos una conexión). Solo números: los alias
+    // de quien está dentro los tiene el panel por la sala; de las que no han entrado no se dice nada más
+    const hogares = (await apuntados(bd, ev)).filter(h => h !== e.guia_id), dentro = (await voz.presentes(sala)).map(p => p.identidad);
+    const conectados = hogares.filter(h => { const pr = prefijoHogar(lk, h); return dentro.some(i => i.startsWith(pr + "_")); }).length;
+    const en = cierres.cerrandose(ev, reloj.ahora());
+    return { evento: ev, sala, ...palabra.vista(ev), inscritos: { apuntados: hogares.length, conectados }, cierra_en: en === null ? null : new Date(en).toISOString() };
   });
 
   app.post<{ Params: { evento: number }; Body: { identidad: string } }>("/api/presencia/guiadas/:evento/palabra", {
@@ -234,6 +246,35 @@ export async function rutasVoz(app: FastifyInstance, bd: Bd, d: DepsVoz): Promis
     const motivo = req.body.motivo?.trim().replace(/\s+/g, " ") || null;
     await audita(bd, req.session.hogarId!, "guiada.expulsado", { evento: ev, hogar, conexiones, ...(motivo ? { motivo } : {}) });
     return { conexiones };
+  });
+
+  // ---- cerrar la sala (F3f, decisión 155): aviso a todos por el tema «cierre» (sin participante: solo lo manda la api) con el instante del borrado y la sala a la
+  // que se vuelve («general»); se quita la palabra y se bajan las manos; a los `segundos`, DeleteRoom (LiveKit saca a quien siga dentro). Las familias no
+  // vuelven a recibir token de esa sala hasta que acabe la ventana del evento (Cierres, en memoria). Sin desmute remoto ni Egress: nada de eso cambia aquí
+  app.post<{ Params: { evento: number }; Body: { segundos?: number } }>("/api/presencia/guiadas/:evento/cerrar", {
+    preHandler: requiereSesion,
+    config: { rateLimit: { max: 10, timeWindow: 60_000 } },
+    schema: { params: EVENTO, body: { type: "object", additionalProperties: false, properties: { segundos: { type: "integer", minimum: AVISO_CIERRE_MIN_S, maximum: AVISO_CIERRE_MAX_S } } } },
+  }, async (req, rep) => {
+    if (!lk || !voz || !palabra) return rep.code(503).send(APAGADA);
+    const e = await moderable(req, rep, req.params.evento);
+    if (!e) return rep;
+    const ev = req.params.evento, sala = SALA_GUIADA(ev), ahora = reloj.ahora();
+    const ya = cierres.cerrandose(ev, ahora);
+    if (ya !== null) return rep.code(409).send({ error: "ya_cerrandose", mensaje: MENSAJES.ya_cerrandose, cierra_en: new Date(ya).toISOString() });
+    const segundos = req.body?.segundos ?? AVISO_CIERRE_S, en = ahora + segundos * 1000;
+    // primero se marca (ninguna familia entra mientras se avisa) y se quita la palabra; luego el aviso (si no hay nadie, LiveKit dice que no existe: se borra igual)
+    cierres.marca(ev, en, ventana(e, "familia").cierra);
+    const palabraQuitada = await palabra.cierraSala(ev, req.session.hogarId!);
+    const avisados = await voz.envia(sala, TEMA_CIERRE, cuerpoCierre(en));
+    const previo = borrados.get(ev); if (previo !== undefined) reloj.cancela(previo);
+    borrados.set(ev, reloj.programa(segundos * 1000, () => {
+      borrados.delete(ev);
+      palabra.olvidaSala(ev);
+      voz.borraSala(sala).catch(err => app.log.warn({ err: (err as Error).message, evento: ev }, "voz: no se pudo borrar la sala guiada al cerrarla"));
+    }));
+    await audita(bd, req.session.hogarId!, "guiada.cerrada", { evento: ev, segundos, palabra_quitada: palabraQuitada, avisados });
+    return { cierra_en: new Date(en).toISOString(), segundos, avisados };
   });
 
   // ---- el guía del evento (la oficina)

@@ -13,7 +13,7 @@ import { construyeApp } from "../../src/app.ts";
 import type { ConfigLiveKit } from "../../src/config.ts";
 import { firmaTokenGuiada, identidadOpaca, type ModeradorSala, type Papel, PATRON_SALA_GUIADA, PERMISOS_GUIADA, prefijoHogar, SALA_GUIADA } from "../../src/presencia/livekit.ts";
 import { expulsa } from "../../src/presencia/rutas.ts";
-import { ABRE_FAMILIAS_MIN, ABRE_MODERA_MIN, ALARGA_S, ALARGUES_MAX, ATRIBUTOS, type Auditor, CIERRA_MIN, decideGuiada, type EventoGuiada, limpiaAlArrancar, Palabra, papelDe, puedeModerar, TURNO_S } from "../../src/presencia/voz.ts";
+import { ABRE_FAMILIAS_MIN, ABRE_MODERA_MIN, ALARGA_S, ALARGUES_MAX, ATRIBUTOS, type Auditor, AVISO_CIERRE_MAX_S, AVISO_CIERRE_MIN_S, AVISO_CIERRE_S, CIERRA_MIN, Cierres, cuerpoCierre, decideGuiada, type EventoGuiada, limpiaAlArrancar, Palabra, papelDe, puedeModerar, TEMA_CIERRE, TURNO_S } from "../../src/presencia/voz.ts";
 import { ExpulsadosGuiada, hogarDeIdentidad } from "../../src/presencia/voz_rutas.ts";
 import { Expulsados } from "../../src/presencia/livekit.ts";
 import { configDePrueba, contexto, deLaWeb } from "../apoyo/contexto.ts";
@@ -318,6 +318,7 @@ test("rutas de la voz: sin Origin 403, forma mala 400, sin sesión 401 (antes de
       ["POST", "/api/presencia/guiadas/9/token", { dispositivo: "quest" }], ["POST", "/api/presencia/guiadas/9/mano", {}], ["DELETE", "/api/presencia/guiadas/9/mano", undefined],
       ["POST", "/api/presencia/guiadas/9/palabra", { identidad: I }], ["POST", "/api/presencia/guiadas/9/palabra/alargar", {}], ["DELETE", "/api/presencia/guiadas/9/palabra", undefined],
       ["POST", "/api/presencia/guiadas/9/silenciar", {}], ["POST", "/api/presencia/guiadas/9/expulsar", { identidad: I }], ["PUT", "/api/admin/eventos/9/guia", { hogar_id: 3 }],
+      ["POST", "/api/presencia/guiadas/9/cerrar", {}],
     ];
     for (const [method, url, payload] of rutas) {
       const conCuerpo = payload ? { payload } : {};
@@ -332,7 +333,42 @@ test("rutas de la voz: sin Origin 403, forma mala 400, sin sesión 401 (antes de
       ["POST", "/api/presencia/guiadas/9/palabra", { identidad: "correo@example.com" }], ["POST", "/api/presencia/guiadas/9/palabra", { identidad: I, segundos: 600 }],
       ["POST", "/api/presencia/guiadas/9/palabra/alargar", { minutos: 5 }], ["POST", "/api/presencia/guiadas/9/mano", { hogar: 2 }],
       ["POST", "/api/presencia/guiadas/9/expulsar", { identidad: I, motivo: "x".repeat(201) }], ["PUT", "/api/admin/eventos/9/guia", { hogar_id: 0 }], ["PUT", "/api/admin/eventos/9/guia", {}],
+      ["POST", "/api/presencia/guiadas/9/cerrar", { segundos: 4 }], ["POST", "/api/presencia/guiadas/9/cerrar", { segundos: 61 }], ["POST", "/api/presencia/guiadas/9/cerrar", { segundos: 10, a: "visita" }],
     ] as const) assert.equal((await app.inject({ method, url, headers: deLaWeb(), payload })).statusCode, 400, method + " " + url + " " + JSON.stringify(payload));
     assert.deepEqual(lk.llamadas, [], "no se ha tocado LiveKit");
   } finally { await app.close(); await pool.end(); }
+});
+
+// ---------------------------------------------------------------- F3f: cerrar la sala (decisión 155)
+
+test("F3f: el aviso de cierre (tema «cierre» del contrato, JSON v1 con el instante y la vuelta a la general) y su plazo (5-60 s, 15 por omisión)", () => {
+  const T = (ROLES as unknown as { temas_de_datos: Record<string, { lo_manda?: string; fiable?: boolean; formato?: string }> }).temas_de_datos;
+  assert.equal(TEMA_CIERRE, "cierre"); assert.equal(T.cierre?.lo_manda, "api"); assert.equal(T.cierre?.fiable, true);
+  assert.deepEqual([AVISO_CIERRE_MIN_S, AVISO_CIERRE_S, AVISO_CIERRE_MAX_S], [5, 15, 60]);
+  assert.deepEqual(JSON.parse(new TextDecoder().decode(cuerpoCierre(H))), { v: 1, en: new Date(H).toISOString(), a: "general" });
+});
+
+test("F3f: Cierres (en memoria): cerrándose mientras corre el aviso, cerrada hasta el fin de la ventana, y luego se olvida", () => {
+  const c = new Cierres();
+  assert.equal(c.cerrada(4, H), null); assert.equal(c.cerrandose(4, H), null);
+  c.marca(4, H + 15_000, H + 3600_000);
+  assert.equal(c.cerrandose(4, H), H + 15_000); assert.equal(c.cerrada(4, H), H + 15_000);
+  assert.equal(c.cerrandose(4, H + 15_000), null, "ya borrada"); assert.equal(c.cerrada(4, H + 20_000), H + 15_000, "sigue cerrada para las familias");
+  assert.equal(c.cerrada(5, H), null, "por evento");
+  assert.equal(c.cerrada(4, H + 3600_001), null, "pasada la ventana, se olvida");
+  c.marca(6, H + 15_000, H); assert.equal(c.cerrada(6, H + 10_000), H + 15_000, "hasta nunca antes del borrado");
+});
+
+test("F3f: cierraSala quita la palabra (motivo «cierre», por quien cierra) y baja TODAS las manos en LiveKit y en la cola", async () => {
+  const lk = new SalaFalsa(), reloj = new RelojFalso(), filas: [number | null, string, object][] = [];
+  const a: Auditor = async (actor, accion, detalle) => { filas.push([actor, accion, detalle]); };
+  const p = new Palabra(lk, a, reloj), S = SALA_GUIADA(3), A = identidadOpaca(LK, 1, "a"), B = identidadOpaca(LK, 2, "b"), C = identidadOpaca(LK, 4, "c");
+  for (const i of [A, B, C]) lk.entra(S, i);
+  await p.levanta(3, B, 2); await p.levanta(3, C, 4); await p.da(3, A, 1, 7);
+  assert.equal(await p.cierraSala(3, 7), true);
+  assert.deepEqual(p.vista(3), { turno: null, manos: [] });
+  assert.deepEqual([lk.p(S, A)!.micro, lk.p(S, A)!.atributos, lk.p(S, B)!.atributos, lk.p(S, C)!.atributos], [false, {}, {}, {}]);
+  assert.deepEqual(filas.at(-1), [7, "guiada.palabra_quitada", { evento: 3, hogar: 1, motivo: "cierre" }]);
+  assert.equal(reloj.pendientes, 0, "sin temporizador de turno");
+  assert.equal(await p.cierraSala(3, 7), false, "sin palabra: false (y no falla)");
 });

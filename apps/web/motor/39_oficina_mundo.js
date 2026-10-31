@@ -301,9 +301,9 @@
     }
     function pintaPanel() {
       if (!panelOf || !P) return;
-      var s = P.sala(), o = OP.otraSala(s);
-      panelOf.salaTxt.textContent = "Estás en la " + OP.SALAS[s] + ".";
-      panelOf.irOtra.textContent = "Ir a la " + OP.SALAS[o]; panelOf.invitar.textContent = "Invitar a todos a la " + OP.SALAS[o];
+      var s = P.sala(), o = OP.otraSala(s), guiada = !OP.SALAS[s];   // F3f: en la sala de una visita guiada se modera desde el panel del guía (46_guiada.js)
+      panelOf.salaTxt.textContent = "Estás en la " + (guiada ? (P.nombreSala ? P.nombreSala(s) : "visita guiada") : OP.SALAS[s]) + ".";
+      panelOf.irOtra.textContent = "Ir a la " + OP.SALAS[o]; panelOf.invitar.textContent = "Invitar a todos a la " + OP.SALAS[o]; panelOf.invitar.hidden = guiada;
     }
     function quitaPanel() { if (panelOf) { panelOf.quitaTemas(); panelOf = null; } }
 

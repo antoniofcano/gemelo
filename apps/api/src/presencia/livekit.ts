@@ -182,6 +182,10 @@ export interface ModeradorVoz {
   expulsaHogar(sala: string, prefijo: string): Promise<number>;
   /** Las salas guiadas que existen ahora en LiveKit (para quitar las palabras que quedaran dadas tras un reinicio, y para expulsar de todas). */
   salasGuiadas(): Promise<string[]>;
+  /** F3f: manda datos a toda la sala desde el servidor (sin participante), fiable y con su tema, como ModeradorSala.envia. false si la sala no existe. */
+  envia(sala: string, tema: string, datos: Uint8Array): Promise<boolean>;
+  /** F3f (decisión 155): borra la sala (RoomService.DeleteRoom; LiveKit desconecta a todos los que siguen dentro). false si ya no existía. */
+  borraSala(sala: string): Promise<boolean>;
 }
 
 const papelDe = (metadata: string): Papel | null => {
@@ -233,6 +237,8 @@ export class ModeradorLiveKit implements ModeradorSala, ModeradorVoz {
     return n;
   }
   async salasGuiadas(): Promise<string[]> { return (await this.rs.listRooms()).map(r => r.name).filter(n => PATRON_SALA_GUIADA.test(n)); }
+  // DeleteRoom pide el permiso roomCreate, que tiene la clave de servidor (ADR-0026 §2) [el 404 de una sala que no existe: NO VERIFICADO contra la 1.13.11]
+  async borraSala(sala: string): Promise<boolean> { try { await this.rs.deleteRoom(sala); return true; } catch (e) { if (esNoEncontrado(e)) return false; throw e; } }
 }
 
 /**

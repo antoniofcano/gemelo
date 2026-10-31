@@ -321,7 +321,7 @@ test("balizas (I4): ir a una baliza te deja a 4-5,5 m de la columna, fuera de co
 });
 test("contratos/livekit-roles.json: en las salas fijas ningún rol publica audio ni vídeo, todos publican datos, nadie lleva roomAdmin y la identidad es opaca", () => {
   const R = JSON.parse(lee("contratos/livekit-roles.json"));
-  assert.strictEqual(R.contrato, "livekit-roles"); assert.strictEqual(R.version, 6); assert.strictEqual(R.fase, "F3");
+  assert.strictEqual(R.contrato, "livekit-roles"); assert.strictEqual(R.version, 7); assert.strictEqual(R.fase, "F3");
   assert.deepStrictEqual(Object.keys(R.roles).sort(), ["admin", "corresponsal", "guia", "hogar", "oficina"], "los roles de contratos/sesion.md");
   assert.strictEqual(R.roles.oficina.hidden, false, "la oficina es siempre visible en el mundo (decisión 107)");
   for (const [rol, p] of Object.entries(R.roles)) {

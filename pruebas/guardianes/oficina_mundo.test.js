@@ -54,7 +54,7 @@ test("aspecto: la oficina lleva chaleco (el tronco) e insignia (una caja más, l
 // ---------- OficinaMundoPuro
 test("los temas de la oficina solo valen SIN participante, en JSON v1, validados; lo raro se descarta", () => {
   const L = (t, o, de) => OP.lee(t, o instanceof Uint8Array ? o : json(o), de, Chat.limpia);
-  assert.deepStrictEqual(OP.TEMAS.slice().sort(), Object.keys(ROLES.temas_de_datos).filter(t => ROLES.temas_de_datos[t].lo_manda === "api").sort(), "los del contrato");
+  assert.deepStrictEqual(OP.TEMAS.slice().sort(), Object.keys(ROLES.temas_de_datos).filter(t => ROLES.temas_de_datos[t].lo_manda === "api" && !ROLES.temas_de_datos[t].lo_escucha).sort(), "los del contrato (los de la oficina: «cierre» lo escucha 46_guiada)");
   assert.deepStrictEqual(L("anuncio", { v: 1, texto: "  Hoy   se recoge  " }, null), { tema: "anuncio", texto: "Hoy se recoge" });
   assert.strictEqual(L("anuncio", { v: 1, texto: "hola" }, { identidad: "h_x", metadatos: JSON.stringify({ rol: "oficina" }) }), null, "con participante, ni siendo «oficina»: solo la api");
   assert.strictEqual(Array.from(L("anuncio", { v: 1, texto: "ñ".repeat(300) }, null).texto).length, 280);

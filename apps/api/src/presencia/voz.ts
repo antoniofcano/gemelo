@@ -74,7 +74,7 @@ export const RELOJ_REAL: Reloj = {
 };
 /** Apunta en la auditoría (actor null = el sistema: un turno que vence, la limpieza al arrancar). Solo números, textos cortos y sí/no: nada de voz. */
 export type Auditor = (actor: number | null, accion: string, detalle: Record<string, string | number | boolean>) => Promise<void>;
-export type MotivoQuitar = "cortada" | "vencida" | "silencio" | "expulsion";
+export type MotivoQuitar = "cortada" | "vencida" | "silencio" | "expulsion" | "cierre";
 
 interface Turno { identidad: string; hogar: number; hasta: number; alargues: number; temporizador: unknown }
 interface Mano { identidad: string; hogar: number; desde: number }
@@ -195,6 +195,16 @@ export class Palabra {
     this.salas.delete(evento);
   }
   cierra(): void { for (const e of [...this.salas.keys()]) this.olvidaSala(e); }
+  /** F3f (decisión 155): al cerrar la sala, se quita la palabra (motivo «cierre») y se bajan TODAS las manos (en LiveKit y en la cola). Devuelve si alguien la tenía. */
+  cierraSala(evento: number, actor: number): Promise<boolean> {
+    return this.enOrden(evento, async s => {
+      const habia = !!s.turno;
+      if (s.turno) await this.quitaTurno(evento, s, actor, "cierre");
+      const manos = s.manos.splice(0);
+      for (const m of manos) { try { await this.mod.actualiza(SALA_GUIADA(evento), m.identidad, { atributos: { [ATRIBUTOS.mano]: "" } }); } catch { /* la sala se borra igual en unos segundos */ } }
+      return habia;
+    });
+  }
 
   private programa(evento: number, identidad: string, ms: number): unknown {
     return this.reloj.programa(Math.max(0, ms), () => { void this.vence(evento, identidad); });
@@ -237,4 +247,31 @@ export async function limpiaAlArrancar(mod: ModeradorVoz, audita: Auditor): Prom
     n += aqui;
   }
   return n;
+}
+
+// ---------------------------------------------------------------- cerrar la sala (F3f, decisión 155)
+
+/** El aviso antes de borrar la sala: por omisión 15 s; quien modera elige entre 5 y 60. [SUPUESTO del agente: lo bastante para leerlo y despedirse] */
+export const AVISO_CIERRE_S = 15, AVISO_CIERRE_MIN_S = 5, AVISO_CIERRE_MAX_S = 60;
+/** El tema de datos del aviso (contratos/livekit-roles.json, «temas_de_datos.cierre»): lo manda SOLO la api, sin participante. */
+export const TEMA_CIERRE = "cierre";
+/** El cuerpo del aviso: JSON {v: 1, en: instante ISO en que se borra la sala, a: «general», la sala a la que vuelve cada uno}. */
+export function cuerpoCierre(enMs: number): Uint8Array { return new TextEncoder().encode(JSON.stringify({ v: 1, en: iso(enMs), a: "general" })); }
+/**
+ * Las salas guiadas cerradas (en memoria, como la palabra): desde el aviso hasta que acaba la ventana del evento, las FAMILIAS no reciben token de esa sala
+ * (409 guiada_cerrada); el guía y la oficina sí (para comprobar que quedó vacía o volver a abrirla a mano otro rato). No sobrevive a un reinicio: tras uno,
+ * una familia apuntada podría volver a entrar mientras dure la ventana [SUPUESTO aceptable: la sala se vuelve a cerrar igual].
+ */
+export class Cierres {
+  private readonly porEvento = new Map<number, { en: number; hasta: number }>();
+  marca(evento: number, en: number, hasta: number): void { this.porEvento.set(evento, { en, hasta: Math.max(en, hasta) }); }
+  /** El instante del borrado si la sala está cerrada (o cerrándose) ahora; null si no. */
+  cerrada(evento: number, ahora: number): number | null {
+    const c = this.porEvento.get(evento);
+    if (!c) return null;
+    if (c.hasta < ahora) { this.porEvento.delete(evento); return null; }
+    return c.en;
+  }
+  /** ¿Se está cerrando ahora (el aviso corre y aún no se ha borrado)? */
+  cerrandose(evento: number, ahora: number): number | null { const en = this.cerrada(evento, ahora); return en !== null && en > ahora ? en : null; }
 }

@@ -1372,7 +1372,7 @@ paths:
         "401": { $ref: "#/components/responses/SinSesion" }
         "403": { description: "sin Origin del sitio (origen_no_admitido); expulsado de las salas o de esta visita hace menos de 15 min (expulsado); o tu hogar no está apuntado, o está en espera (guiada_solo_inscritos: Esta visita es para las familias apuntadas.)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
         "404": { description: "no hay un evento guiado con ese id (guiada_no_existe)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
-        "409": { description: "cancelado o en borrador (guiada_no_vigente); aún no abre (guiada_aun_no, con abre_en); ya terminó (guiada_terminada)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "409": { description: "cancelado o en borrador (guiada_no_vigente); aún no abre (guiada_aun_no, con abre_en); ya terminó (guiada_terminada); F3f: el guía o la oficina cerraron la sala y eres una familia (guiada_cerrada)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
         "429": { $ref: "#/components/responses/Limite" }
         "503": { description: la presencia está apagada en este servidor }
 
@@ -1423,10 +1423,17 @@ paths:
               schema:
                 type: object
                 additionalProperties: false
-                required: [evento, sala, turno, manos]
+                required: [evento, sala, turno, manos, inscritos, cierra_en]
                 properties:
                   evento: { type: integer }
                   sala: { type: string }
+                  inscritos:
+                    description: "F3f, preparar la visita: familias APUNTADAS (no en espera; sin contar al guía) y cuántas de ellas tienen ya alguna conexión en la sala. Solo números"
+                    type: object
+                    additionalProperties: false
+                    required: [apuntados, conectados]
+                    properties: { apuntados: { type: integer, minimum: 0 }, conectados: { type: integer, minimum: 0 } }
+                  cierra_en: { oneOf: [{ type: "null" }, { type: string, format: date-time }], description: "F3f: si la sala se está cerrando, cuándo se borra" }
                   turno:
                     oneOf:
                       - { type: "null" }
@@ -1526,6 +1533,32 @@ paths:
         "403": { description: "sin Origin, o sin_permiso", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
         "404": { description: "guiada_no_existe" }
         "409": { description: "no_es_familia_apuntada", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: la presencia está apagada en este servidor }
+
+  /api/presencia/guiadas/{evento}/cerrar:
+    post:
+      summary: Cierra la sala guiada con aviso de unos segundos y vuelta de todos a la visita libre (F3f, decisión 155)
+      description: >
+        El guía del evento o la oficina. Quita la palabra si alguien la tenía (guiada.palabra_quitada, motivo cierre) y baja todas las manos; manda a toda
+        la sala, sin participante, el tema «cierre» ({v: 1, en: instante del borrado, a: "general"}; livekit-roles.json v7); a los `segundos` (5-60, 15
+        por omisión) borra la sala (RoomService.DeleteRoom) y LiveKit desconecta a quien siga dentro. Desde el aviso hasta el fin de la ventana del evento,
+        las familias no reciben token de esa sala (409 guiada_cerrada); el guía y la oficina sí. En memoria (no sobrevive a un reinicio). Auditoría
+        guiada.cerrada (evento, segundos, si había palabra, si había alguien a quien avisar). Sin desmute remoto ni Egress.
+      security: [{ sesion: [] }]
+      parameters: [{ name: evento, in: path, required: true, schema: { type: integer, minimum: 1, maximum: 2147483647 } }]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, properties: { segundos: { type: integer, minimum: 5, maximum: 60, default: 15 } } }
+      responses:
+        "200": { description: "avisado; cierra_en = cuándo se borra la sala; avisados = si había alguien en ella", content: { application/json: { schema: { type: object, additionalProperties: false, required: [cierra_en, segundos, avisados], properties: { cierra_en: { type: string, format: date-time }, segundos: { type: integer, minimum: 5, maximum: 60 }, avisados: { type: boolean } } } } } }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: "sin Origin, o sin_permiso", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { description: "guiada_no_existe" }
+        "409": { description: "ya se está cerrando (ya_cerrandose, con cierra_en)", content: { application/json: { schema: { type: object, additionalProperties: false, required: [error], properties: { error: { type: string }, mensaje: { type: string }, cierra_en: { type: string, format: date-time } } } } } }
         "429": { $ref: "#/components/responses/Limite" }
         "503": { description: la presencia está apagada en este servidor }
 
