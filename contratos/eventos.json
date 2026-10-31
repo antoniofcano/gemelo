@@ -238,6 +238,12 @@
       "emiten": ["08_marcadores"],
       "escuchan": ["08b_marcadores_lidar"]
     },
+    "ndvi:cambia": {
+      "descripcion": "Cambió la fecha del campo o la escala relativa del NDVI (pintaNdvi() de 10_ndvi.js, que ya ha dejado la escala en el núcleo). Lo atiende el componente de la capa de vigor: rehace la textura, la leyenda y la gráfica. Sin él (?capandvi=0), nadie, y el tinte de los árboles sigue funcionando.",
+      "datos": { "type": "object", "required": ["lo", "hi"], "properties": { "lo": { "type": "number" }, "hi": { "type": "number" } } },
+      "emiten": ["10_ndvi"],
+      "escuchan": ["10b_capa_ndvi"]
+    },
     "oficina:anuncio": {
       "descripcion": "OF10: ha llegado un anuncio de la oficina por la sala (tema «anuncio», mandado por la api sin participante; ya validado y limpio). Para quien quiera reaccionar (un sonido, un lector de pantalla); el aviso, la lámina en VR y la línea del chat ya los pone 39_oficina_mundo.",
       "datos": { "type": "object", "required": ["texto"], "properties": { "texto": { "type": "string", "maxLength": 280 } } },

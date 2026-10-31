@@ -45,6 +45,7 @@ Los componentes del motor ([ADR-0023](../doc/adr/0023-componentes-del-mundo.md),
 | `medida:inicia` | `{ segundos? }` | `33_ajustes` («Medir 60 s» de Configuración → Avanzado) | `30_mide` |
 | `medida:muestra` | `{ on }` | `33_ajustes` (cambia «Contador de rendimiento») | `30_mide` (enseña o esconde su caja) |
 | `mundo:aplica` | (nada) | `08_marcadores` (`aplica()`: cambió la exageración, el modo o los datos de las teselas) | `08b_marcadores_lidar` (recoloca copas, anillos y desfase) |
+| `ndvi:cambia` | `{ lo, hi }` | `10_ndvi` (`pintaNdvi()`: cambió la fecha del campo o la escala relativa) | `10b_capa_ndvi` (rehace la textura, la leyenda y la gráfica) |
 | `mundo:pausa` | `{ activa }` | `02c_componentes` (`Pausa.pon` / `Pausa.quita`) | (nadie todavía) |
 | `voz:estado` | `{ sala, dentro, guiada, papel, puede, micro, turno, modo, auriculares, bloqueado, voces, hablan, motivo }` | `45_voz` (F3d: algo cambió en la voz de la guiada) | `46_guiada` (F3f: vuelve a leer la sala enseguida), `47_habla` (F3e: el indicador del micro, el botón Hablar, la háptica y la lámina de VR) |
 | `voz:habla` | `{ identidad, nivel, habla, yo }` | `45_voz` (F3d: alguien empieza a hablar, cambia de nivel en ≥ 0,1 o calla; ActiveSpeakers) | — (para la etiqueta del avatar y Gente: F3e) |

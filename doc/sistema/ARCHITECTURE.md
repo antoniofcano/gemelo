@@ -32,8 +32,9 @@ La página pide `t/<clave>.json|jpg` (`D.teselas` es el índice; `D.base` da el 
 | `08_marcadores.js` | `gLinde`, `aplica`, `capas`, `listo` | la linde y el reaplicado del mundo (avisa por el Bus: `mundo:aplica`, `capas:cambia`) |
 | `08b_marcadores_lidar.js` | componente `marcadores-lidar` (`?marcadores=0`) | copas del LiDAR, olivos guardados y desfase, instanciados |
 | `09_camara.js` | `orb`, `objetivo`, `camara()`; deslizador `#corr` (`kcor`) | órbita |
-| `10_ndvi.js` | `NDV` | u8 → Int16, escala relativa |
-| `11_sol.js` | `sol2()` | hora y fecha (Jaén) |
+| `10_ndvi.js` | `NDV`, `ndviIdx`, `rampa`, `pintaNdvi`, `ndviRel` | u8 → Int16, fecha del campo y escala relativa (avisa por el Bus: `ndvi:cambia`) |
+| `10b_capa_ndvi.js` | componente `capa-ndvi` (`?capandvi=0`) | la capa de vigor sobre el terreno (textura para `uNdviMap`), su leyenda y su gráfica |
+| `11_sol.js` | `sol2()` | el deslizador `#hora` de la reserva y su rótulo; la luz la pisa cada fotograma `actualizaTiempo` |
 | `12_paseo.js` | `paseando`, `actualizaPaseo` | primera persona |
 | `12b_llegada.js` | `LlegadaPuro`, `Llegada` | el anillo de llegada y el salto con fundido (de pie, fuera de troncos, andando): en VR desde el vuelo o el mirador (palanca derecha ↑ y soltar) y en pantalla con el Dron (clic o toque corto, «Aterrizar aquí», Intro o L); `aparece`/`ve` para aparecer en un punto desde otros módulos |
 | `13_parcelas.js` | selector fincas→parcelas | suelo por parcela (USDA) |
