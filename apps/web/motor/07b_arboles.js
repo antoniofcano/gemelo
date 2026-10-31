@@ -124,7 +124,8 @@
       var TIL = OlivosTiles.dibuja(), triTil = TIL ? OlivosTiles.triangulos() : 0;
       // el foco de los generados, paseando, es quien pasea (pp), no la cámara: la cámara va detrás y, al girar en el sitio, describe un círculo
       // que cambiaba el plan y rehacía el lote (Antonio, en el móvil: «si giras sin moverte llega a desaparecer»)
-      var GEN = Generados.actualiza(paseando ? pp.x : fx, paseando ? -pp.y : fz, Math.max(0, TOPE_TRI - triTil), olivos, esc);   // ?olivos=gen (07ab): dentro de su radio, el nivel 0 de siempre se apaga; sin la bandera, radio 0
+      // con la escalera horneada esperando a sus lejanos (Escalera.dibuja), lo generado ya va por la escalera pero con la parte de ?olivos=gen
+      var GEN = Generados.actualiza(paseando ? pp.x : fx, paseando ? -pp.y : fz, Math.max(0, TOPE_TRI - triTil) * (Generados.escalera() ? Escalera.FR_ESPERA : 1), olivos, esc);   // ?olivos=gen (07ab): dentro de su radio, el nivel 0 de siempre se apaga; sin la bandera, radio 0
       ajustaEscala();
       var tope0 = MAX0 * esc * (vrP ? vrP.n : 1);
       // 1) celdas de nivel 0 (las que se ven) y de precarga (las de alrededor y las de delante, que se construyen sin enseñarse)
@@ -199,25 +200,32 @@
     // de siempre, los niveles 1 y 2 y los olivos del tileset, apartados todos con la máscara de 04c. Si el constructor no arranca
     // (Generados «sin»), vuelve lo de siempre.
     var MOVIL = (function () { var nv = typeof navigator !== "undefined" ? navigator : {}; return /Mobi|Android|iPhone|iPad/i.test(nv.userAgent || "") || !!(nv.deviceMemory && nv.deviceMemory <= 4); })();
-    var tilApartados = false, presEsc = 0;
-    function escalera() { return Generados.escalera() && Generados.estado() !== "sin"; }
-    function apagaSiempre() {
+    var tilApartados = false, presEsc = 0, mascara = "";
+    // con ?olivos=escalera, siempre (si el constructor arranca); con ?olivos=gen y variantes horneadas (O8c), en cuanto está la capa de lejanos (07ab, Escalera.dibuja)
+    function escalera() { return Escalera.dibuja({ modoGen: Generados.modoGen(), estado: Generados.estado(), hayCapa: Lejanos.hayCapa() }); }
+    // todos: el tileset no dibuja ningún olivo (la máscara de 04c, con todos); si no, la máscara la pone reclasificaEscalera con los de 3D
+    function apagaSiempre(todos) {
       Object.keys(celdas).forEach(function (k) { var c = celdas[k]; Cola.cancela("C" + k); if (c.g) quitaCelda(c); c.en = c.pre = false; });
       var k;
       for (k = 0; k < NP1; k++) iCopa1[k].count = iTron1[k].count = 0;
       for (k = 0; k < NP2; k++) iCopa2[k].count = 0;
       for (k in extra) extra[k].m1.concat(extra[k].m2).forEach(function (m) { m.count = 0; });
-      if (!tilApartados) { tilApartados = true; OlivosTiles.cerca(olivos.map(function (c) { return c.i; })); }   // la máscara de 04c, con todos: el tileset no dibuja ninguno
+      if (todos && !tilApartados) { tilApartados = true; OlivosTiles.cerca(olivos.map(function (c) { return c.i; })); }   // la máscara de 04c, con todos: el tileset no dibuja ninguno
+      if (!todos) tilApartados = false;
     }
     function reclasificaEscalera() {
       var cam = camera.position, vis = gArboles.visible, fx = paseando ? cam.x : objetivo.x, fz = paseando ? cam.z : objetivo.z;
-      apagaSiempre();
+      // la máscara del tileset (O8c): con la horneada, mientras la capa de lejanos entra (1 s de tramado) el tileset sigue dibujando lo que no está en 3D,
+      // y sus triángulos cuentan en el presupuesto
+      var masc = Escalera.mascaraTiles({ modoGen: Generados.modoGen(), capaCompleta: Lejanos.capaCompleta() }), todos = masc === "todos", triTil = !todos && OlivosTiles.dibuja() ? OlivosTiles.triangulos() : 0;
+      apagaSiempre(todos);
       ajustaEscala();
-      presEsc = Escalera.tope({ base: TOPE_TRI, vr: vrP, movil: MOVIL, triMovil: TRI_MOVIL_CFG, escala: esc, triLejanos: Lejanos.triangulos() });
+      presEsc = Escalera.tope({ base: TOPE_TRI, vr: vrP, movil: MOVIL, triMovil: TRI_MOVIL_CFG, escala: esc, triLejanos: Lejanos.triangulos() + triTil });
       // el foco, paseando, es quien pasea (pp); retener: sin lejanos todavía, lo que sale del 3D se queda en él
       var GEN = Generados.actualiza(paseando ? pp.x : fx, paseando ? -pp.y : fz, presEsc, olivos, esc, !Lejanos.hayCapa());
       if (vis) Lejanos.reparte(cam, GEN);
-      nL0 = n1 = n2 = 0; faltan = 0; nPre = 0; triEst = GEN.tri + Lejanos.triangulos();
+      if (!todos && OlivosTiles.dibuja()) { var en3d = []; olivos.forEach(function (c) { if (GEN.tiene(c.i)) en3d.push(c.i); }); OlivosTiles.cerca(en3d); triTil = OlivosTiles.triangulos(); }
+      nL0 = n1 = n2 = 0; faltan = 0; nPre = 0; triEst = GEN.tri + Lejanos.triangulos() + triTil; mascara = masc;
       ultima.x = cam.x; ultima.y = cam.y; ultima.z = cam.z; ultima.exag = exag; ultima.k = tinte + "|" + ndviIdx + "|" + kcor; sucio = false;
     }
     function tileCargada(ts) {   // llegaron los datos de una tesela: la altura de sus olivos pasa del relieve grueso al fino
@@ -254,7 +262,7 @@
       var g = window.__olivosGen ? window.__olivosGen() : null, inf = g && g.info || {}, nv = inf.niveles || {}, L = Lejanos.resumen() || {};
       var inst1 = 0; for (var k = 0; k < NP1; k++) inst1 += iCopa1[k].count + iTron1[k].count; for (k = 0; k < NP2; k++) inst1 += iCopa2[k].count;
       var t = OlivosTiles.resumen();
-      return { activa: escalera(), estado: g ? g.estado : "", E0: nv.E0 || 0, E1: nv.E1 || 0, E2: (nv.E2 || 0) + (nv.E2VR || 0), vr: !!vrP, lejanos: L.dibujados || 0, lejanosModo: L.fuente, lejanosMiB: L.texturaMiB || 0,
+      return { activa: escalera(), modoGen: Generados.modoGen(), mascaraTiles: mascara, estado: g ? g.estado : "", E0: nv.E0 || 0, E1: nv.E1 || 0, E2: (nv.E2 || 0) + (nv.E2VR || 0), vr: !!vrP, lejanos: L.dibujados || 0, lejanosModo: L.fuente, lejanosMiB: L.texturaMiB || 0,
         triOlivos: (inf.triangulos || 0) + (L.triangulos || 0), llamadasOlivos: (inf.llamadas || 0) + (L.llamadas || 0), triSaliendo: inf.triSaliendo || 0, presupuesto: Math.round(presEsc), movil: MOVIL,
         reparto: g && g.escalera ? g.escalera.reparto : null, sombras: g && g.escalera ? g.escalera.sombras : null, sombraMap: !!(renderer.shadowMap && renderer.shadowMap.enabled),
         nivel0Mallas: Object.keys(celdas).filter(function (k) { return celdas[k].g && celdas[k].g.visible; }).length, instanciasN12: inst1, tilesetDibujados: t.estado === "activo" ? t.dibujadas : 0, lejanosDetalle: L };

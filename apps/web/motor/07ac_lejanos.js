@@ -2,7 +2,8 @@
 // Expone: Lejanos
 // Consume: 03_escena (renderer, exag), 06_arboles (gArboles), 07ab_generados (Generados)
 // ===============================================================================
-  // ---------- los olivos LEJANOS de la escalera (ADR-0019 §2, fase A, O8c), solo con ?olivos=escalera: sin la bandera no crea nada ni gasta nada.
+  // ---------- los olivos LEJANOS de la escalera (ADR-0019 §2, fase A, O8c), solo con ?olivos=escalera o con ?olivos=gen y variantes horneadas (modoGen
+  // de 07ab): sin ellas no crea nada ni gasta nada.
   // Todo olivo a menos de U2 m de la cámara que no está en 3D (07ab) se dibuja aquí, en UNA malla instanciada para toda la finca (1 llamada), con la
   // MISMA matriz que su variante E2 (copa y altura medidas) y la MISMA variante (índice de copa mod nº de variantes): el paso de E2 a lejano es el mismo
   // árbol visto de otra forma. Dos fuentes, por orden:
@@ -23,14 +24,16 @@
   // que SALE del 3D entra (código 1); así no hay huecos ni dobles durante los 0,6 s. En la banda E2|lejano (O9c, ADR-0022 §5), el lejano lleva el
   // código 2 con la ranura de su olivo (2 + 3 · ranura): el complementario de su E2, con el peso que 07ab pone cada fotograma según la distancia.
   var Lejanos = (function () {
-    var activo = Generados.escalera(), via = activo ? "esperando" : "apagado", motivo = "", U2 = 1600, CEL = 128, CAPA_S = 1;
+    // activo(): con ?olivos=escalera desde el principio; con ?olivos=gen y variantes horneadas (O8c), cuando Generados lo decide con el manifiesto
+    var activo = function () { return Generados.escalera(); }, via = activo() ? "esperando" : "apagado", motivo = "", U2 = 1600, CEL = 128, CAPA_S = 1, repartido = false;
     var olivos = null, malla = null, matrices = null, posDe = {}, exagM = -1, nv = 0, triPor = 0, texMiB = 0, rt = null, uCapa = { value: 0 }, tCapa = 0, avisoImp = false;
     var info = { dibujados: 0, entran: 0, salen: 0 }, sinGPU = false, cajas = null, ids = null;
     function inicia(ls) { olivos = ls; olivos.forEach(function (c, k) { posDe[c.i] = k; }); }
     function hayCapa() { return via === "sustituto" || via === "impostor"; }
     // cada fotograma (desde 07b): en cuanto están las variantes E2, se monta la capa; luego entra con su tramado. true si el reparto debe rehacerse
     function paso(dt) {
-      if (!activo) return false;
+      if (!activo()) return false;
+      if (via === "apagado") via = "esperando";
       if (via === "esperando") {
         if (Generados.estado() === "sin") { via = "sin"; motivo = "sin constructor"; return true; }
         if (!Generados.activo() || !olivos) return false;
@@ -38,7 +41,8 @@
         for (var j = 0; j < n; j++) { var r = G.variante(j); if (!r) return false; rs.push(r); }
         nv = n; monta(rs); return true;
       }
-      if (hayCapa() && uCapa.value < 1) { tCapa += Math.min(dt, 0.1); uCapa.value = Math.min(1, tCapa / CAPA_S); }
+      // al acabar de entrar, true: 07b reparte otra vez (con la escalera horneada, aparta entonces del tileset todos los olivos)
+      if (hayCapa() && repartido && uCapa.value < 1) { tCapa += Math.min(dt, 0.1); uCapa.value = Math.min(1, tCapa / CAPA_S); return uCapa.value >= 1; }
       return false;
     }
     function monta(rs) {
@@ -70,7 +74,7 @@
     }
     function impostores(f, rs) {
       return Promise.all([atlas(f.color, true), atlas(f.normales, false)]).then(function (tx) {
-        if (!activo || via !== "cargando impostores") { tx.forEach(function (t) { t.dispose(); }); return; }
+        if (!activo() || via !== "cargando impostores") { tx.forEach(function (t) { t.dispose(); }); return; }
         ponMalla(geoCuadro(), matImpostor(tx[0], tx[1], f), rs, null); malla.userData.sinEscala = true;
         triPor = 2; texMiB = (f.color.lado * f.color.lado + f.normales.lado * f.normales.lado) * 4 * 4 / 3 / 1048576; via = "impostor"; tCapa = 0; uCapa.value = 0;
       });
@@ -195,6 +199,7 @@
     /** El reparto de los lejanos (desde 07b): cada olivo a menos de U2 m de la cámara que no está del todo en 3D (GEN.fase de 07ab) */
     function reparte(cam, GEN) {
       if (!malla || !hayCapa()) return info;
+      repartido = true;   // el tramado de entrada de la capa (uCapa) empieza con el primer reparto, no al montarla
       if (exagM !== exag || !matrices) matricesDe();
       if (!ids) ids = new Int32Array(olivos.length);
       var A = malla.instanceMatrix.array, F = malla.geometry.attributes.aFun.array, V = malla.geometry.attributes.aVar.array, k = 0, en = 0, sa = 0;
@@ -210,9 +215,12 @@
       malla.count = k; malla.instanceMatrix.needsUpdate = true; malla.geometry.attributes.aFun.needsUpdate = true; malla.geometry.attributes.aVar.needsUpdate = true;
       info = { dibujados: k, entran: en, salen: sa }; return info;
     }
+    /** la capa ya entró entera (uCapa = 1): con la escalera horneada, 07b aparta entonces todos los olivos del tileset */
+    function capaCompleta() { return hayCapa() && uCapa.value >= 1; }
     function triangulos() { return malla && hayCapa() ? malla.count * triPor : 0; }
-    function pendientes() { return activo && (via === "esperando" || via === "cargando impostores") && Generados.activo() ? 1 : 0; }
-    function resumen() { return activo ? { fuente: via, motivo: motivo, aviso2: avisoImp || undefined, dibujados: info.dibujados, entran: info.entran, salen: info.salen, triangulos: triangulos(), llamadas: malla && hayCapa() && malla.count ? 1 : 0, capa: +uCapa.value.toFixed(2), texturaMiB: +texMiB.toFixed(2) } : null; }
-    return { inicia: inicia, paso: paso, hayCapa: hayCapa, reparte: reparte, triangulos: triangulos, pendientes: pendientes, resumen: resumen,
+    // también mientras la capa entra con su tramado (o va a entrar: hay capa y los olivos se ven): las pruebas miden con la capa entera
+    function pendientes() { return activo() && ((via === "esperando" || via === "cargando impostores") && Generados.activo() || hayCapa() && (repartido || gArboles.visible) && uCapa.value < 1) ? 1 : 0; }
+    function resumen() { return activo() ? { fuente: via, motivo: motivo, aviso2: avisoImp || undefined, dibujados: info.dibujados, entran: info.entran, salen: info.salen, triangulos: triangulos(), llamadas: malla && hayCapa() && malla.count ? 1 : 0, capa: +uCapa.value.toFixed(2), texturaMiB: +texMiB.toFixed(2) } : null; }
+    return { inicia: inicia, paso: paso, hayCapa: hayCapa, capaCompleta: capaCompleta, reparte: reparte, triangulos: triangulos, pendientes: pendientes, resumen: resumen,
       _prueba: { sinGPU: function () { sinGPU = true; }, malla: function () { return malla; }, cajas: function () { return cajas; }, ids: function () { return ids && malla ? Array.from(ids.subarray(0, malla.count)) : []; } } };
   })();

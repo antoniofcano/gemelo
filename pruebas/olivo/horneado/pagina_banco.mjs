@@ -4,6 +4,10 @@
 // Ojo: el servidor estático del banco (pruebas/guardianes/_navegador.js) no manda Content-Encoding: br, así que aquí cada <huella>.br guarda los
 // bytes SIN comprimir (lo que el navegador tendría tras deshacer el brotli). La huella y el manifiesto son los de siempre.
 // Escribe la orden del encargo al banco: variantes calc (?olivosHorneado=0) y horn, con ?olivosPropios=0 (todo lo cercano son variantes) y ?epoca=envero.
+// --impostores (O8c): además hornea los impostores de cada época (tuberia/olivos/impostores.mjs: Chrome sin pantalla DENTRO del turno del banco; hace
+// falta `npm ci` en tuberia/olivos) con las variantes E2 de aquí, y los deja en olivos/ (<huella>.webp) con su fila `impostores[]` en el manifiesto:
+// con ?olivos=gen, la escalera horneada (07ab, Escalera.modoGen) dibuja los lejanos con ellos. Se rehacen cuando cambian las variantes (GEN_VERSION,
+// CACHE_VERSION: O9b los dejó por re-hornear).
 import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
@@ -24,17 +28,28 @@ fs.rmSync(SAL, { recursive: true, force: true }); fs.cpSync(P.carpeta, SAL, { re
 fs.mkdirSync(path.join(SAL, "olivos"), { recursive: true });
 
 // las variantes que hornearía el hornero hoy: centenario3, las 4 semillas de SEM_VAR, E2 y E2VR, la época de partida y la siguiente
-const SEMS = [11, 23, 37, 51], NIVELES = ["E2", "E2VR"], EPOCAS = ["envero", "madura"], variantes = [];
+const SEMS = [11, 23, 37, 51], NIVELES = ["E2", "E2VR"], EPOCAS = ["envero", "madura"], variantes = [], IMPOSTORES = process.argv.includes("--impostores");
+const TMP = path.join(SAL, "olivos-br");   // con --impostores: los mismos objetos comprimidos de verdad, como los deja el hornero (impostores.mjs los lee así)
+if (IMPOSTORES) fs.mkdirSync(TMP, { recursive: true });
 for (const epoca of EPOCAS) for (const semilla of SEMS) {
   const e = { tipo: "centenario3", epoca, semilla }, r = O.receta(e);
   for (const nivel of NIVELES) {
     const o = await horneaObjeto(O.aNivel(r, nivel), { nivel, clave: O.claveReceta(e, nivel), gen_version: O.GEN_VERSION, cache_version: O.CACHE_VERSION }, 9);
     fs.writeFileSync(path.join(SAL, "olivos", o.huella + ".br"), o.crudo);   // sin comprimir: ver la cabecera
+    if (IMPOSTORES) fs.writeFileSync(path.join(TMP, o.huella + ".br"), o.br);
     variantes.push({ tipo: "centenario3", semilla, nivel, epoca, huella: o.huella, bytes: o.bytes, bytes_br: o.bytes_br });
   }
 }
 const m = { v: 1, finca: "hituelo", formato: O.FORMATO_HORNEADO, gen_version: O.GEN_VERSION, cache_version: O.CACHE_VERSION, horneado_en: new Date().toISOString().replace(/\.\d+Z$/, "Z"),
   brotli: 9, actual: "envero", epocas: EPOCAS.map(x => ({ epoca: x, desde: CAL[x].desde, hasta: CAL[x].hasta })), variantes, propios: { activos: false } };
+if (IMPOSTORES) {
+  const IM = await import(pathToFileURL(path.join(RAIZ, "tuberia", "olivos", "impostores.mjs")).href);
+  const r = await IM.horneaImpostores({ carpeta: TMP, manifiesto: m, anterior: null, log: t => console.error(t) });
+  for (const f of r.filas) for (const k of ["color", "normales"]) fs.copyFileSync(path.join(TMP, f[k].huella + ".webp"), path.join(SAL, "olivos", f[k].huella + ".webp"));
+  m.impostores = r.filas;
+  fs.rmSync(TMP, { recursive: true, force: true });
+  console.log(r.filas.length + " impostores (" + r.filas.map(f => f.epoca + ": color " + f.color.bytes + " B, normales " + f.normales.bytes + " B").join("; ") + ") en " + Math.round(r.ms / 1000) + " s, " + r.chrome);
+}
 fs.writeFileSync(path.join(SAL, "olivos", "manifiesto.json"), JSON.stringify(m, null, 2) + "\n");
 const q = "?olivos=gen&olivosDir=olivos/&olivosPropios=0&epoca=envero";
 console.log(variantes.length + " variantes horneadas en " + path.relative(RAIZ, SAL) + "/olivos/ (" + O.GEN_VERSION + ", c" + O.CACHE_VERSION + ")");
