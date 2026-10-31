@@ -232,8 +232,9 @@ export function cargaConfig(e: Entorno = process.env): Config {
   const origenes = (e["GEMELO_API_ORIGENES"]?.trim() ? e["GEMELO_API_ORIGENES"]!.split(",") : [urlPublica])
     .map(o => url("GEMELO_API_ORIGENES", o.trim(), produccion).origin);
 
-  const modoOt = texto(e, "GEMELO_OT", "no");
-  if (modoOt !== "mcp" && modoOt !== "grabado" && modoOt !== "no") throw new ErrorDeConfig("GEMELO_OT debe ser mcp, grabado o no");
+  // «fixture» es otro nombre de «grabado» (como GEMELO_VIGIA=fixture): las respuestas sintéticas de apps/api/pruebas/grabaciones/
+  const modoOt = texto(e, "GEMELO_OT", "no").replace(/^fixture$/, "grabado");
+  if (modoOt !== "mcp" && modoOt !== "grabado" && modoOt !== "no") throw new ErrorDeConfig("GEMELO_OT debe ser mcp, grabado (o fixture) o no");
   if (produccion && modoOt === "grabado") throw new ErrorDeConfig("en producción OlivarTrack no puede ser la grabación de pruebas");
   const cadaMin = entero(e, "GEMELO_OT_CADA_MIN", 60, 0, 1440);
   const ot: Config["ot"] = modoOt === "no" ? { modo: "no" }

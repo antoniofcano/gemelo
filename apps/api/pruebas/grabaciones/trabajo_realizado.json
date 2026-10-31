@@ -1,0 +1,18 @@
+{
+  "$comentario": "SINTÉTICO: no es una respuesta real de OlivarTrack. Forma esperada de trabajo_realizado [NO VERIFICADA]: la que leía la historia por el conector de claude.ai (tareas[].id, finca, parcela, tipo, titulo, completadaEn, estado, avance.pct/hecho/objetivo). Lleva a propósito horas por persona, quién la hizo y un parte con texto libre, que la lista blanca debe tirar; y un avance fuera de rango.",
+  "consultadoEn": "2026-10-28T09:00:00Z",
+  "desde": "2026-05-01",
+  "hasta": "2026-10-28",
+  "truncado": false,
+  "tareas": [
+    { "id": "t-sint-10", "finca": "Finca sintética", "parcela": "sintetica-1", "tipo": "varetas", "titulo": "Desvarete (sintético)", "completadaEn": "2026-07-02T16:00:00Z", "estado": "completado",
+      "avance": { "pct": 96, "hecho": 48, "objetivo": 50 }, "horas": { "fichadas": 12, "cuadrilla": 4, "declaradas": 0 },
+      "hechaPor": [{ "nombre": "PERSONA SINTETICA 2", "horas": 6 }], "parte": "TEXTO LIBRE DE CAMPO QUE NO DEBE SALIR" },
+    { "id": "t-sint-11", "finca": "Finca sintética", "parcela": null, "tipo": "varetas", "titulo": "Desvarete (sintético)", "completadaEn": "2026-07-05", "estado": "completado",
+      "avance": { "pct": 100, "hecho": 90, "objetivo": 90 } },
+    { "id": "t-sint-1", "finca": "Finca sintética", "parcela": null, "tipo": "riego", "titulo": "Sustituir goteros (sintético)", "completadaEn": null, "estado": "activo",
+      "avance": { "pct": 40, "hecho": 20, "objetivo": 50 } },
+    { "id": "t-sint-12", "finca": "Finca sintética", "parcela": "sintetica-2", "tipo": "riego", "titulo": "Sustituir goteros (sintético)", "completadaEn": "2026-06-10", "estado": "completado",
+      "avance": { "pct": 250, "hecho": -3, "objetivo": "muchos" } }
+  ]
+}

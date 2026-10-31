@@ -3,6 +3,7 @@ import type { Cartero } from "./auth/correo.ts";
 import type { Bd } from "./bd/pool.ts";
 import type { Repartidor } from "./avisos/correo.ts";
 import type { Config } from "./config.ts";
+import type { ServicioHoy } from "./ot/hoy.ts";
 import type { LectorOlivarTrack } from "./ot/lector.ts";
 import type { ModeradorSala } from "./presencia/livekit.ts";
 import type { ServicioTiempo } from "./vigia/servicio.ts";
@@ -17,6 +18,8 @@ export interface Contexto {
   moderador?: ModeradorSala;
   /** el tiempo de Vigía (GET /api/tiempo); null o ausente si está apagado (GEMELO_VIGIA=no) */
   tiempo?: ServicioTiempo | null;
+  /** lo de hoy de OlivarTrack y Vigía en vivo (GET /api/ot/hoy, contratos/ot-hoy.md); null o ausente si los dos están apagados */
+  hoy?: ServicioHoy | null;
   /** quien manda por correo los avisos pendientes (OF11c); lo crea principal.ts. Las pruebas de rutas no lo ponen: no hay envío en segundo plano */
   repartidor?: Pick<Repartidor, "despierta">;
 }

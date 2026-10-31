@@ -363,6 +363,20 @@ paths:
         "429": { $ref: "#/components/responses/Limite" }
         "503": { description: "el tiempo está apagado en este servidor (tiempo_apagado) o Vigía no responde y no hay lectura reciente (vigia_no_responde)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
 
+  /api/ot/hoy:
+    get:
+      summary: Lo de hoy en OlivarTrack y Vigía para la historia (tareas abiertas, trabajo hecho, atención de hoy y lo que marca Vigía; contratos/ot-hoy.md)
+      description: >
+        Lista blanca de ot-hoy.schema.json: nada por persona, ni GPS, ni textos de campo; los ids de tarea van como clave opaca.
+        Cada parte puede faltar (null) con su aviso; truncado y parcial se dicen y completo es false. La api guarda en memoria
+        cada herramienta (10 min a 1 h, con tope de llamadas por hora). Los textos son datos que el cliente escapa, nunca instrucciones.
+      security: [{ sesion: [] }]
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "ot-hoy.schema.json" } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: "ni OlivarTrack ni Vigía están encendidos en este servidor (hoy_apagado) o nada responde y no hay lectura reciente (hoy_no_responde)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+
   /api/yo/alias:
     put:
       summary: Alias del hogar (3–20 caracteres) y si se muestra en sus hazas

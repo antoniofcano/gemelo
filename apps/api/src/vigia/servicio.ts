@@ -5,6 +5,8 @@
 // Lo que viene de Vigía son DATOS: los textos se recortan y se mandan tal cual (el motor los escapa); nunca se interpretan.
 // `dentroDeUmbrales`, `impedimento` y `queSignificaDentroDeUmbrales` NO pasan: Vigía no autoriza tratamientos y el gemelo
 // no lo insinúa. Lo que Vigía no devuelve va a null: no se estima.
+import { entero, fecha, num, obj, texto } from "../vivo/lista-blanca.ts";
+import { hace, type Lectura, MemoriaDeLecturas, type Parte } from "../vivo/memoria.ts";
 import type { HerramientaTiempo, LectorVigia } from "./lector.ts";
 
 const MIN = 60_000;
@@ -28,30 +30,13 @@ export interface RespuestaTiempo {
   actual: Actual | null; prevision: Prevision | null; avisos: Aviso[];
 }
 
-// ---------- la lista blanca
-type Obj = Record<string, unknown>;
-const obj = (v: unknown): Obj | null => (v && typeof v === "object" && !Array.isArray(v) ? (v as Obj) : null);
-/** número finito dentro del rango; si no, null (no se recorta: un dato fuera de rango no se arregla, se descarta) */
-function num(v: unknown, min = -Infinity, max = Infinity): number | null {
-  return typeof v === "number" && Number.isFinite(v) && v >= min && v <= max ? v : null;
-}
-/** texto de Vigía: sin caracteres de control y recortado; el motor lo escapa al pintarlo */
-function texto(v: unknown, max: number): string | null {
-  if (typeof v !== "string") return null;
-  const s = v.replace(/[\u0000-\u001f\u007f\u2028\u2029]+/g, " ").trim();
-  return s ? s.slice(0, max) : null;
-}
-function fecha(v: unknown): string | null {
-  if (typeof v !== "string") return null;
-  const t = Date.parse(v);
-  return Number.isFinite(t) ? new Date(t).toISOString() : null;
-}
-function frescura(v: unknown): Frescura {
+// ---------- la lista blanca (las piezas, en vivo/lista-blanca.ts)
+export function frescura(v: unknown): Frescura {
   const f = obj(v) ?? {};
   return { generadoEn: fecha(f["generadoEn"]), horasDeAntiguedad: num(f["horasDeAntiguedad"], 0), datosDeMaqueta: typeof f["datosDeMaqueta"] === "boolean" ? f["datosDeMaqueta"] : null };
 }
 /** los avisos de antigüedad que Vigía mete en su frescura (si los trae), tal cual */
-function avisosDeFrescura(v: unknown): string[] {
+export function avisosDeFrescura(v: unknown): string[] {
   const f = obj(v) ?? {};
   return ["aviso", "advertencia", "avisoDeAntiguedad"].map(k => texto(f[k], 400)).filter((s): s is string => !!s);
 }
@@ -100,7 +85,6 @@ export interface RespuestaHistorico {
   version: 1; origen: "vigia" | "fixture"; consultadoEn: string; desde: string; hasta: string;
   fuentes: FuenteHistorico[]; frescura: Frescura; avisos: Aviso[];
 }
-const entero = (v: unknown, max: number): number | null => { const n = num(v, 0, max); return n !== null && Number.isInteger(n) ? n : null; };
 
 /** Lista blanca de historico_meteo: solo las fuentes con id (una por estación) y sus cifras de la semana; lo que falta, null. */
 export function normalizaHistorico(v: unknown): { fuentes: FuenteHistorico[]; frescura: Frescura } | null {
@@ -118,57 +102,29 @@ export function normalizaHistorico(v: unknown): { fuentes: FuenteHistorico[]; fr
   return { fuentes: fuentes.slice(0, 10), frescura: frescura(d["frescura"]) };
 }
 
-// ---------- la caché
-interface Lectura { crudo: unknown; leidoEn: number }
-interface Parte { lectura: Lectura | null; fallo: boolean }
-
+// ---------- la caché (vivo/memoria.ts, la misma pieza que las demás lecturas en vivo)
 export interface OpcionesServicio {
-  ttlActualMs?: number; ttlPrevisionMs?: number; esperaTrasFalloMs?: number; maxViejoMs?: number; reloj?: () => number;
+  ttlActualMs?: number; ttlPrevisionMs?: number; esperaTrasFalloMs?: number; maxViejoMs?: number; topePorHora?: number; reloj?: () => number;
 }
 
 export class ServicioTiempo {
   private readonly lector: LectorVigia;
-  private readonly ttl: Record<HerramientaTiempo, number>;
-  private readonly espera: number;
-  private readonly maxViejo: number;
   private readonly reloj: () => number;
-  private readonly cache = new Map<HerramientaTiempo, Lectura>();
-  private readonly enCurso = new Map<HerramientaTiempo, Promise<Parte>>();
-  private readonly falloEn = new Map<HerramientaTiempo, number>();
+  private readonly memoria: MemoriaDeLecturas;
+  private readonly memoriaHis: MemoriaDeLecturas;
 
   constructor(lector: LectorVigia, o: OpcionesServicio = {}) {
     this.lector = lector;
-    this.ttl = { tiempo_en_la_explotacion: o.ttlActualMs ?? 10 * MIN, prevision_72_horas: o.ttlPrevisionMs ?? 60 * MIN };
-    this.espera = o.esperaTrasFalloMs ?? MIN;
-    this.maxViejo = o.maxViejoMs ?? 24 * 60 * MIN;
+    const ttl: Record<string, number> = { tiempo_en_la_explotacion: o.ttlActualMs ?? 10 * MIN, prevision_72_horas: o.ttlPrevisionMs ?? 60 * MIN };
     this.reloj = o.reloj ?? Date.now;
+    const comun = { esperaTrasFalloMs: o.esperaTrasFalloMs ?? MIN, maxViejoMs: o.maxViejoMs ?? 24 * 60 * MIN, topePorHora: o.topePorHora ?? 30, reloj: this.reloj };
+    this.memoria = new MemoriaDeLecturas({ ...comun, ttlDe: k => ttl[k] ?? 10 * MIN });
+    this.memoriaHis = new MemoriaDeLecturas({ ...comun, ttlMs: ttl["prevision_72_horas"], maxClaves: 40 });
   }
 
   get origen() { return this.lector.origen; }
 
-  /** una herramienta: de la caché si está fresca; si no, una sola llamada a la vez; si falla, la última lectura (si no es muy vieja) */
-  private async parte(h: HerramientaTiempo): Promise<Parte> {
-    const ahora = this.reloj(), c = this.cache.get(h);
-    if (c && ahora - c.leidoEn < this.ttl[h]) return { lectura: c, fallo: false };
-    const viejo = (): Parte => ({ lectura: c && this.reloj() - c.leidoEn < this.maxViejo ? c : null, fallo: true });
-    const f = this.falloEn.get(h);
-    if (f !== undefined && ahora - f < this.espera) return viejo();
-    const ya = this.enCurso.get(h);
-    if (ya) return ya;
-    const p = (async (): Promise<Parte> => {
-      try {
-        const crudo = await this.lector.llama(h);
-        const l = { crudo, leidoEn: this.reloj() };
-        this.cache.set(h, l); this.falloEn.delete(h);
-        return { lectura: l, fallo: false };
-      } catch {
-        this.falloEn.set(h, this.reloj());
-        return viejo();
-      } finally { this.enCurso.delete(h); }
-    })();
-    this.enCurso.set(h, p);
-    return p;
-  }
+  private parte(h: HerramientaTiempo): Promise<Parte> { return this.memoria.lee(h, () => this.lector.llama(h)); }
 
   /** null si Vigía no ha respondido a ninguna de las dos y no hay lectura anterior que servir */
   async lee(): Promise<RespuestaTiempo | null> {
@@ -177,10 +133,9 @@ export class ServicioTiempo {
     const ahora = this.reloj(), avisos: Aviso[] = [];
     const actual = a.lectura ? normalizaActual(a.lectura.crudo) : null;
     const prevision = p.lectura ? normalizaPrevision(p.lectura.crudo) : null;
-    const hace = (l: Lectura) => { const m = Math.max(1, Math.round((ahora - l.leidoEn) / MIN)); return m < 90 ? m + " min" : Math.round(m / 60) + " h"; };
     for (const [parte, nombre, valor, crudo] of [[a, "La lectura de la estación", actual, a.lectura?.crudo], [p, "La previsión", prevision, p.lectura?.crudo]] as const) {
-      if (parte.fallo && parte.lectura) avisos.push({ de: "gemelo", texto: "Vigía no ha respondido ahora: " + nombre.toLowerCase() + " es la última que llegó, de hace " + hace(parte.lectura) + "." });
-      else if (parte.fallo) avisos.push({ de: "gemelo", texto: nombre + " no ha llegado de Vigía." });
+      if ((parte.fallo || parte.tope) && parte.lectura) avisos.push({ de: "gemelo", texto: (parte.tope ? "El servidor ya ha preguntado a Vigía muchas veces esta hora: " : "Vigía no ha respondido ahora: ") + nombre.toLowerCase() + " es la última que llegó, de hace " + hace(ahora, parte.lectura.leidoEn) + "." });
+      else if (parte.fallo || parte.tope) avisos.push({ de: "gemelo", texto: nombre + " no ha llegado de Vigía." });
       else if (!valor) avisos.push({ de: "gemelo", texto: nombre + ": Vigía no tiene dato ahora mismo." });
       const o = obj(crudo);
       if (o) for (const t of avisosDeFrescura(o["frescura"])) avisos.push({ de: "vigia", texto: t });
@@ -193,39 +148,18 @@ export class ServicioTiempo {
     };
   }
 
-  private readonly cacheHis = new Map<string, Lectura>();
-  private readonly enCursoHis = new Map<string, Promise<RespuestaHistorico | null>>();
-  private readonly falloHis = new Map<string, number>();
-
   /** El histórico entre dos días (caché 1 h por rango, una llamada a la vez, un minuto de espera tras un fallo). null si no hay dato que servir. */
   async historico(desde: string, hasta: string): Promise<RespuestaHistorico | null> {
-    const clave = desde + "|" + hasta, ahora = this.reloj(), c = this.cacheHis.get(clave);
-    const arma = (l: Lectura, viejo: boolean): RespuestaHistorico | null => {
-      const n = normalizaHistorico(l.crudo);
-      if (!n) return null;
-      const avisos: Aviso[] = [];
-      if (viejo) avisos.push({ de: "gemelo", texto: "Vigía no ha respondido ahora: el histórico es el último que llegó, de hace " + Math.max(1, Math.round((this.reloj() - l.leidoEn) / MIN)) + " min." });
-      for (const t of avisosDeFrescura(obj(l.crudo)?.["frescura"])) avisos.push({ de: "vigia", texto: t });
-      if (n.frescura.datosDeMaqueta) avisos.push({ de: "gemelo", texto: "El histórico: Vigía avisa de que son datos de maqueta." });
-      return { version: 1, origen: this.lector.origen, consultadoEn: new Date(l.leidoEn).toISOString(), desde, hasta, fuentes: n.fuentes, frescura: n.frescura, avisos: avisos.slice(0, 20) };
-    };
-    if (c && ahora - c.leidoEn < this.ttl["prevision_72_horas"]) return arma(c, false);
-    const viejo = () => (c && this.reloj() - c.leidoEn < this.maxViejo ? arma(c, true) : null);
-    const f = this.falloHis.get(clave);
-    if (f !== undefined && ahora - f < this.espera) return viejo();
-    const ya = this.enCursoHis.get(clave);
-    if (ya) return ya;
-    const p = (async (): Promise<RespuestaHistorico | null> => {
-      try {
-        const l = { crudo: await this.lector.historico(desde, hasta), leidoEn: this.reloj() };
-        this.cacheHis.set(clave, l); this.falloHis.delete(clave);
-        if (this.cacheHis.size > 40) this.cacheHis.delete(this.cacheHis.keys().next().value as string);
-        return arma(l, false);
-      } catch { this.falloHis.set(clave, this.reloj()); return viejo(); }
-      finally { this.enCursoHis.delete(clave); }
-    })();
-    this.enCursoHis.set(clave, p);
-    return p;
+    const p = await this.memoriaHis.lee(desde + "|" + hasta, () => this.lector.historico(desde, hasta));
+    const l = p.lectura;
+    if (!l) return null;
+    const n = normalizaHistorico(l.crudo);
+    if (!n) return null;
+    const avisos: Aviso[] = [];
+    if (p.fallo || p.tope) avisos.push({ de: "gemelo", texto: "Vigía no ha respondido ahora: el histórico es el último que llegó, de hace " + hace(this.reloj(), l.leidoEn) + "." });
+    for (const t of avisosDeFrescura(obj(l.crudo)?.["frescura"])) avisos.push({ de: "vigia", texto: t });
+    if (n.frescura.datosDeMaqueta) avisos.push({ de: "gemelo", texto: "El histórico: Vigía avisa de que son datos de maqueta." });
+    return { version: 1, origen: this.lector.origen, consultadoEn: new Date(l.leidoEn).toISOString(), desde, hasta, fuentes: n.fuentes, frescura: n.frescura, avisos: avisos.slice(0, 20) };
   }
 
   /** Solo lectura, para la oficina (Sistema): de cuándo es lo último que llegó de cada herramienta y si el último intento falló. No llama a Vigía. */
@@ -233,7 +167,7 @@ export class ServicioTiempo {
     const hs: HerramientaTiempo[] = ["tiempo_en_la_explotacion", "prevision_72_horas"];
     return {
       origen: this.lector.origen,
-      herramientas: hs.map(h => ({ herramienta: h, leidoEn: this.cache.has(h) ? new Date(this.cache.get(h)!.leidoEn).toISOString() : null, fallo: this.falloEn.has(h) })),
+      herramientas: hs.map(h => ({ herramienta: h, ...this.memoria.estado(h) })),
     };
   }
 

@@ -9,5 +9,6 @@
 !contratos/haza.schema.json
 !contratos/tiempo.schema.json
 !contratos/tiempo-historico.schema.json
+!contratos/ot-hoy.schema.json
 !contratos/olivos-haza.schema.json
 !contratos/config.schema.json
