@@ -1,10 +1,10 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos ($), 02c_componentes (Componentes), 03_escena (camera, modo), 09_camara (suelta, pon), 14_historia (lista, rango),
-//   15_tiempo (ahoraMs, nivel, hace), 16_vida (quita), 29_vr (VRX, panel), 33_ajustes (Ajustes)
+// Consume: 01_datos ($), 02c_componentes (Componentes), 03_escena (camera, modo), 15_tiempo (nivel), 29_vr (VRX)
+// Nota: Componente «voz-guiada» (F3d, ADR-0026; decisiones 157-162): la voz de las visitas guiadas, SOLO en una sala «guiada-<evento>» de la red (Voz.entra(evento) con el token de F3c, Voz.usa(clave) o ?guiada=<evento>). Consume la red y la presencia (Presencia.cabeza: de dónde sale cada voz). Pide las pistas de micrófono, cada una a un <audio> silenciado y de él a Web Audio (ganancia por distancia y PannerNode HRTF; la escucha, la cámara o la cabeza en VR); con tu micrófono abierto y sin auriculares, plano por los <audio> (cancelación de eco). Abre tu micrófono solo con permiso y tras un gesto (Voz.abre; lo dispara F3e). Emite «voz:habla» y «voz:estado»; escucha «audio:desbloquea» y «depura:lineas». Sin grabación. ?voz=0 lo apaga; ?voz=plano, sin espacializar. Publica window.__voz (pruebas). Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/voz.test.js.
 // ===============================================================================
   // ---------- la voz de las visitas guiadas (F3d; ADR-0026, decisiones 157-162; contratos/livekit-roles.json v6 y presencia.md «La voz de las visitas guiadas»).
-  // El componente «voz» consume la red (37_red.js, el único que habla con LiveKit) y la presencia (38_presencia_compartida.js, para saber dónde está cada avatar).
+  // El componente «voz-guiada» consume la red (37_red.js, el único que habla con LiveKit) y la presencia (38_presencia_compartida.js, para saber dónde está cada avatar).
   //  · SOLO actúa en una sala de LiveKit llamada «guiada-<evento>» (decisión 157: nunca en la visita libre). Voz.entra(evento) pide el token de esa sala
   //    (POST /api/presencia/guiadas/:evento/token, F3c) y se une a ella bajo la clave «guiada» de la red; Voz.usa(clave) se engancha a una sala de la red en
   //    la que ya se está (para cuando la presencia viaje a la sala guiada, F3f), si su nombre es de guiada. ?guiada=<evento> entra al montarse (pruebas, enlaces).
@@ -15,7 +15,7 @@
   //  · La escucha (AudioListener) es la cámara; con gafas, la CABEZA (VRX.cab con el giro del rig por el de la cámara, como la pose que publica la presencia).
   //    La voz de cada uno sale de la cabeza de su avatar (Presencia.cabeza); si no se le ve (no está en tu sala de presencia, en vista aérea o bloqueado),
   //    suena delante de ti a ganancia fija (DIST.sinSitio).
-  //  · Atenuación (DIST, abajo; la hace la GANANCIA, el panner solo pone la dirección: refDistance 1, rolloffFactor 0): ley inversa de Web Audio con
+  //  · Atenuación (DIST, abajo; la pone la GANANCIA, el panner solo pone la dirección: refDistance 1, rolloffFactor 0): ley inversa de Web Audio con
   //    refDistance 2 m (a menos, a tope; es la distancia de una conversación) y rolloff 1 (a 4 m, la mitad; a 10 m, una quinta parte). La voz del guía, de la
   //    oficina y de quien tiene la palabra NO baja de 0,25 (−12 dB): oírlos es el objeto de la visita (ADR-0026 §3). Cualquier otra (no debería haber: en la
   //    guiada solo publican ellos) se corta a más de 40 m.
@@ -25,9 +25,9 @@
   //    oye «plano» salvo con auriculares. Sin AudioContext (antes del primer gesto), también plano. ?voz=plano lo fuerza siempre; ?voz=espacial, nunca plano.
   //  · Hablar: Voz.abre() abre TU micrófono solo si estás en la guiada, el token (o la api en vivo, UpdateParticipant) te deja publicar micrófono y viene de un
   //    gesto (navigator.userActivation.isActive, o con gafas puestas: el mando no da «activación» por sondeo). Lo publica la red con echoCancellation,
-  //    noiseSuppression, autoGainControl y el preset «speech» con DTX. Voz.cierra() lo despublica y para la captura. Si la api quita el permiso, se cierra solo.
+  //    noiseSuppression, autoGainControl y el preset «speech» con DTX. Voz.cierra() lo despublica y para la captura. Si la api retira el permiso, se cierra solo.
   //  · Quién habla: «voz:habla» { identidad, nivel, habla, yo } al empezar, al cambiar el nivel en ≥ 0,1 y al callar (ActiveSpeakers de LiveKit; solo llegan
-  //    los de las pistas a las que estás suscrito y el tuyo). «voz:estado» con lo de Voz.estado() al cambiar algo (para el indicador del micro y el panel, F3e).
+  //    los de las pistas a las que estás suscrito y el tuyo). «voz:estado» con lo de Voz.estado() al cambiar algo (para el indicador del micro y la ventana Gente, F3e).
   //  · Sin grabación: ni Egress ni MediaRecorder; nada de audio se guarda ni sale de Web Audio salvo a los altavoces.
   // Coste: 0 llamadas de dibujo. CPU de audio [ESTIMADO, sin medir]: decodificar Opus de 1-3 voces y un panner HRTF por voz (una convolución corta por oído)
   // es del orden de 1-2 % de un núcleo de escritorio; en Quest y móvil, más [NO VERIFICADO: F3h]. Red: ~40 kbps de bajada por voz activa (ADR-0026 §4).
@@ -45,10 +45,10 @@
     // ¿estos permisos (los de la red: { publicar, fuentes }) dejan publicar el micrófono? Como LiveKit: publicar y, si hay fuentes, el micrófono entre ellas
     function puedeHablar(p) { return !!p && p.publicar === true && (!Array.isArray(p.fuentes) || !p.fuentes.length || p.fuentes.indexOf("microphone") >= 0); }
     // los segundos que le quedan a un turno de palabra (atributo palabra_hasta, ISO, que pone la api); 0 si venció; null si no hay
-    function turno(atr, ahoraMs) {
+    function turno(atr, tMs) {
       var h = atr && atr.palabra_hasta; if (typeof h !== "string" || !h) return null;
       var t = Date.parse(h); if (!isFinite(t)) return null;
-      return Math.max(0, Math.ceil((t - ahoraMs) / 1000));
+      return Math.max(0, Math.ceil((t - tMs) / 1000));
     }
     function prioritaria(papel, turnoS) { return papel === "guia" || papel === "oficina" || (typeof turnoS === "number" && turnoS > 0); }
     // la ganancia por distancia (m): ley inversa de Web Audio con ref y rolloff; las prioritarias no bajan de DIST.minimo, las demás se cortan a más de DIST.corte
@@ -71,10 +71,10 @@
       return o.micro && !o.auriculares ? "plano" : "espacial";
     }
     // a qué publicaciones suscribirse: las de micrófono, como mucho max, por prioridad (guía, palabra, oficina, el resto) y, a igualdad, en el orden dado.
-    // pubs = [{ identidad, sid, fuente }]; info(identidad) → { papel, turno }. Devuelve la lista de sid
+    // pubs = [{ identidad, sid, fuente }]; info(identidad) → { papel, turno }. Devuelve la ls de sid
     function aSuscribir(pubs, info, max) {
-      var rango = function (i) { return i.papel === "guia" ? 0 : typeof i.turno === "number" && i.turno > 0 ? 1 : i.papel === "oficina" ? 2 : 3; };
-      return (pubs || []).filter(function (p) { return p && p.fuente === "microphone" && p.sid; }).map(function (p, k) { return { sid: p.sid, r: rango(info(p.identidad) || {}), k: k }; })
+      var puesto = function (i) { return i.papel === "guia" ? 0 : typeof i.turno === "number" && i.turno > 0 ? 1 : i.papel === "oficina" ? 2 : 3; };
+      return (pubs || []).filter(function (p) { return p && p.fuente === "microphone" && p.sid; }).map(function (p, k) { return { sid: p.sid, r: puesto(info(p.identidad) || {}), k: k }; })
         .sort(function (a, b) { return a.r - b.r || a.k - b.k; }).slice(0, max === undefined ? MAX_VOCES : max).map(function (x) { return x.sid; });
     }
     // ¿se abre el micrófono? e = { dentro, guiada, micro: cerrado|abriendo|abierto, puede, gesto } → { abre, motivo }
@@ -82,10 +82,10 @@
       var m = !e.dentro ? "fuera" : !e.guiada ? "no_guiada" : e.micro !== "cerrado" ? "ya_abierto" : !e.puede ? "sin_permiso" : !e.gesto ? "sin_gesto" : "";
       return { abre: !m, motivo: m || "ok" };
     }
-    // quién habla: antes = { identidad: { nivel, yo } }, lista = [{ identidad, nivel, yo }] (ActiveSpeakers) → { ahora, eventos: [{ identidad, nivel, habla, yo }] }
-    function difHablan(antes, lista) {
+    // quién habla: antes = { identidad: { nivel, yo } }, ls = [{ identidad, nivel, yo }] (ActiveSpeakers) → { ahora, eventos: [{ identidad, nivel, habla, yo }] }
+    function difHablan(antes, ls) {
       var ahora = {}, ev = [];
-      (lista || []).forEach(function (h) {
+      (ls || []).forEach(function (h) {
         if (!h || typeof h.identidad !== "string" || !h.identidad || ahora[h.identidad]) return;
         var nv = Math.round(Math.max(0, Math.min(1, typeof h.nivel === "number" && isFinite(h.nivel) ? h.nivel : 0)) * 100) / 100, a = antes && antes[h.identidad];
         ahora[h.identidad] = { nivel: a && Math.abs(a.nivel - nv) < PASO_NIVEL ? a.nivel : nv, yo: !!h.yo };
@@ -106,7 +106,7 @@
   // [motor:inicio] — con DOM y Web Audio; pruebas/guardianes/voz.test.js lo monta en Node con una red, un DOM y un AudioContext de mentira
   function VozMotor(n, R, P) {
     var V = VozPuro, forzado = (/[?&]voz=(plano|espacial)(?:[&#]|$)/.exec(location.search) || [])[1] || "";
-    var sala = null, propia = false, quita = [], voces = Object.create(null), hablando = {}, info = Object.create(null);
+    var sala = null, propia = false, ganchos = [], voces = Object.create(null), hablando = {}, info = Object.create(null);
     var ctx = null, salida = null, micro = "cerrado", auric = false, motivo = "", ultimo = "", entrando = false, bloqueado = false, vivo = true;
     var qO = new THREE.Quaternion(), ejeY = new THREE.Vector3(0, 1, 0), vO = new THREE.Vector3();
     var est = { aperturas: 0, cierres: 0, suscripciones: 0, pistas: 0 };
@@ -115,21 +115,21 @@
     // ---- la sala
     function dentro() { return !!sala && (sala.estado() === "dentro" || sala.estado() === "reconectando"); }
     function engancha(s, suya) {
-      suelta();
+      desengancha();
       sala = s; propia = !!suya; motivo = "";
-      quita.push(s.al("publicada", revisa), s.al("despublicada", function (d) { quitaVoz(d.sid); revisa(); }), s.al("pista", montaVoz),
+      ganchos.push(s.al("publicada", revisa), s.al("despublicada", function (d) { quitaVoz(d.sid); revisa(); }), s.al("pista", montaVoz),
         s.al("pista-fuera", function (d) { quitaVoz(d.sid); }), s.al("hablan", alHablar), s.al("permisos", alPermiso),
         s.al("atributos", function () { leeInfo(); revisa(); emiteEstado(); }), s.al("entra", function () { leeInfo(); revisa(); }), s.al("sale", function () { leeInfo(); revisa(); }),
-        s.al("estado", function (d) { if (d.estado === "fuera") { motivo = d.motivo === "expulsado" ? "expulsado" : "fuera"; suelta(true); } else emiteEstado(); }));
+        s.al("estado", function (d) { if (d.estado === "fuera") { motivo = d.motivo === "expulsado" ? "expulsado" : "fuera"; desengancha(true); } else emiteEstado(); }));
       leeInfo(); revisa(); emiteEstado();
     }
-    // suelta la sala (sin salir de ella: eso lo hace sale()); con micrófono abierto, lo cierra antes
-    function suelta(yaFuera) {
+    // desengancha la sala (sin salir de ella: eso es sale()); con micrófono abierto, lo cierra antes
+    function desengancha(yaFuera) {
       if (!sala) return;
       var s = sala;
       if (micro !== "cerrado" && !yaFuera) { s.microfono(false).catch(function () {}); est.cierres++; }
       micro = "cerrado";
-      quita.splice(0).forEach(function (q) { try { q(); } catch (e) {} });
+      ganchos.splice(0).forEach(function (q) { try { q(); } catch (e) {} });
       Object.keys(voces).forEach(quitaVoz);
       alHablar([]);
       sala = null; info = Object.create(null);
@@ -189,7 +189,7 @@
     function aplicaModos() { Object.keys(voces).forEach(function (k) { aplicaModo(voces[k]); }); }
 
     // ---- el AudioContext: propio de la voz, y solo tras un gesto estando en la guiada. No se reusa el del sonido ambiente (20_sonido.js): ese no existe si
-    // el sonido está apagado en Ajustes (y la voz debe oírse igual), pasa por su volumen de ambiente y se cierra al liberar su componente
+    // el sonido está apagado en Configuración (y la voz debe oírse igual), pasa por su volumen de ambiente y se cierra al liberar su componente
     function desbloquea() {
       if (!sala || !vivo) return;
       var AC = window.AudioContext || window.webkitAudioContext;
@@ -210,10 +210,10 @@
       else { camera.getWorldPosition(vO); camera.getWorldQuaternion(qO); }
       return V.oyente([vO.x, vO.y, vO.z], [qO.x, qO.y, qO.z, qO.w]);
     }
-    function pon(param, v, t) { if (param.setTargetAtTime) param.setTargetAtTime(v, t, V.SUAVE); else param.value = v; }
+    function fija(param, v, t) { if (param.setTargetAtTime) param.setTargetAtTime(v, t, V.SUAVE); else param.value = v; }
     function colocaOyente(o) {
       var L = ctx.listener, t = ctx.currentTime;
-      if (L.positionX) { pon(L.positionX, o.p[0], t); pon(L.positionY, o.p[1], t); pon(L.positionZ, o.p[2], t); pon(L.forwardX, o.f[0], t); pon(L.forwardY, o.f[1], t); pon(L.forwardZ, o.f[2], t); pon(L.upX, o.u[0], t); pon(L.upY, o.u[1], t); pon(L.upZ, o.u[2], t); }
+      if (L.positionX) { fija(L.positionX, o.p[0], t); fija(L.positionY, o.p[1], t); fija(L.positionZ, o.p[2], t); fija(L.forwardX, o.f[0], t); fija(L.forwardY, o.f[1], t); fija(L.forwardZ, o.f[2], t); fija(L.upX, o.u[0], t); fija(L.upY, o.u[1], t); fija(L.upZ, o.u[2], t); }
       else { L.setPosition(o.p[0], o.p[1], o.p[2]); L.setOrientation(o.f[0], o.f[1], o.f[2], o.u[0], o.u[1], o.u[2]); }
     }
     function coloca(v, o) {
@@ -222,8 +222,8 @@
       v.gan = c ? V.ganancia(V.distancia(pos, o.p), V.prioritaria(i.papel, i.turno)) : V.DIST.sinSitio;
       if (v.modo !== "espacial" || !v.p) return;
       var t = ctx.currentTime, p = v.p;
-      if (p.positionX) { pon(p.positionX, pos[0], t); pon(p.positionY, pos[1], t); pon(p.positionZ, pos[2], t); } else p.setPosition(pos[0], pos[1], pos[2]);
-      pon(v.g.gain, v.gan, t);
+      if (p.positionX) { fija(p.positionX, pos[0], t); fija(p.positionY, pos[1], t); fija(p.positionZ, pos[2], t); } else p.setPosition(pos[0], pos[1], pos[2]);
+      fija(v.g.gain, v.gan, t);
     }
     function tarde() {
       if (!sala) return;
@@ -238,8 +238,8 @@
     }
 
     // ---- quién habla
-    function alHablar(lista) {
-      var r = V.difHablan(hablando, lista); hablando = r.ahora;
+    function alHablar(ls) {
+      var r = V.difHablan(hablando, ls); hablando = r.ahora;
       r.eventos.forEach(function (e) { n.emite("voz:habla", e); });
       if (r.eventos.length) emiteEstado();
     }
@@ -296,7 +296,7 @@
       if (s !== sala) engancha(s, false);
       return true;
     }
-    function sale() { var s = sala, suya = propia; suelta(); motivo = ""; if (s && suya) s.sale(); emiteEstado(); return Promise.resolve(); }
+    function sale() { var s = sala, suya = propia; desengancha(); motivo = ""; if (s && suya) s.sale(); emiteEstado(); return Promise.resolve(); }
     function auriculares(si) { if (si !== undefined) { auric = !!si; aplicaModos(); emiteEstado(); } return auric; }
     function hablan() { return Object.keys(hablando).map(function (id) { return { identidad: id, nivel: hablando[id].nivel, yo: hablando[id].yo }; }); }
 
@@ -343,7 +343,7 @@
   // el manifiesto (ADR-0023): lo lee el guardián pruebas/guardianes/componentes.test.js sin montar nada. ?voz=0 lo apaga. Montado no crea nada (ni AudioContext,
   // ni elementos, ni conexión) hasta Voz.entra(evento), Voz.usa(clave) o ?guiada=<evento>
   Componentes.registra({
-    id: "voz", version: 1,
+    id: "voz-guiada", version: 1,
     consume: ["Red", "Presencia", "VRX"],
     expone: ["Voz"],
     eventos: { escucha: ["audio:desbloquea", "depura:lineas"], emite: ["voz:habla", "voz:estado"] },

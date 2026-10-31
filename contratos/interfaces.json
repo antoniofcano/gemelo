@@ -14,7 +14,7 @@
     "Arboles": { "modulo": "07b_arboles.js", "miembros": ["perfil", "inicia", "tileCargada", "refresca", "actualiza", "presupuesto", "resumen", "celdas"] },
     "PoseCodec": { "modulo": "26_presencia.js", "miembros": ["VERSION", "ESCRITORIO", "QUEST", "BYTES", "PIE", "QUAD", "DRON", "codifica", "decodifica", "empaquetaQ", "desempaquetaQ"] },
     "BufferPose": { "modulo": "26_presencia.js", "miembros": ["MAX", "EXTRA", "crea", "recibe", "muestra", "salida"] },
-    "RedPuro": { "modulo": "37_red.js", "miembros": ["CLAVE", "TEMA", "EVENTOS", "SALA_LK", "CONEXION_LK", "urlWs", "motivo", "credencialesValidas", "crea"] },
+    "RedPuro": { "modulo": "37_red.js", "miembros": ["CLAVE", "TEMA", "EVENTOS", "FUENTES", "MICRO_CAPTURA", "MICRO_PUBLICA", "SALA_LK", "CONEXION_LK", "urlWs", "motivo", "credencialesValidas", "permisosDe", "crea"] },
     "HazasPuro": { "modulo": "13b_hazas.js", "miembros": ["validaColeccion", "aLocal", "anillosLocales", "enElMundo", "dentroPoligono", "hazaEn", "rayoSuelo", "fecha", "fichaFilas", "prefijoApi"] },
     "Hazas": { "modulo": "13b_hazas.js", "miembros": ["estado", "libera", "vistas", "enPunto", "lindes"] },
     "ComponentesPuro": { "modulo": "02c_componentes.js", "miembros": ["FASES", "valida", "orden", "valorUrl", "encendido", "validaConfig", "toca"] },
@@ -47,7 +47,7 @@
     "red-salas": { "modulo": "37_red.js", "expone": "Red", "miembros": ["sala", "salas", "info", "cierra", "cargada"],
       "sala": ["clave", "une", "sale", "publica", "escucha", "al", "estado", "motivo", "yo", "participantes", "info", "cierra", "nombre", "permisos", "atributos", "publicaciones", "suscribe", "microfono", "microAbierto"] },
     "presencia-compartida": { "modulo": "38_presencia_compartida.js", "expone": "Presencia", "miembros": ["activo", "actualiza", "estado", "libera", "texto", "llegadas", "puntos", "irCon", "vrmPersonas", "miVrm", "miAvatar", "recolorea", "cambiaron", "enganchaVRM", "sala", "cambiaSala", "yo", "mensaje", "cabeza"] },
-    "voz": { "modulo": "45_voz.js", "expone": "Voz", "miembros": ["entra", "usa", "sale", "abre", "cierra", "estado", "hablan", "auriculares", "actualiza", "libera"] }
+    "voz-guiada": { "modulo": "45_voz.js", "expone": "Voz", "miembros": ["entra", "usa", "sale", "abre", "cierra", "estado", "hablan", "auriculares", "actualiza", "libera"] }
   },
   "funciones_globales_del_motor": {
     "$comment": "Firmas heredadas que el resto del motor usa como si fueran globales (alias de Mundo en 02_mundo.js)",

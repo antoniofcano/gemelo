@@ -9,7 +9,7 @@
   // publican y reciben mensajes por TEMA (bytes; fiable o no; a todos o a unas identidades) y siguen el estado de la conexión y a quién hay.
   //  · Varias salas a la vez, cada una con su clave («visita» para la presencia; OF10, la oficina con salas, y OF12, los directos, tendrán las suyas): Red.sala(clave).
   //  · Cambiar de sala: une() en una sala que ya está dentro (o entrando) la deja antes y entra en la nueva con las credenciales nuevas, bajo la misma clave.
-  //  · Audio (F3d, ADR-0026; lo usa el componente «voz», 45_voz.js): la sala se sigue creando sin suscripción automática; quien quiera oír pide cada
+  //  · Audio (F3d, ADR-0026; lo usa el componente «voz-guiada», 45_voz.js): la sala se sigue creando sin suscripción automática; quien quiera oír pide cada
   //    publicación de audio (suscribe) y recibe su MediaStreamTrack en el evento «pista» (la red no la reproduce ni la adjunta a nada: eso lo hace la voz).
   //    También: quién habla («hablan», ActiveSpeakers de LiveKit, solo de las pistas a las que estás suscrito y de la tuya), tus permisos («permisos», los
   //    del token o los que la api cambia en vivo), los atributos de cada participante («atributos», los pone solo la api) y abrir o cerrar TU micrófono
