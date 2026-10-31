@@ -13,7 +13,7 @@
 //   5. el guía da la palabra a Beta y SILENCIA A TODOS: nadie (salvo el guía) tiene micrófono sin silenciar y Beta pierde el turno;
 //   6. UpdateParticipant sobre una identidad que no está responde 404 (twirp not_found) en LiveKit real;
 //   7. el guía EXPULSA a Beta: sale de la sala, no puede volver (token denegado) y las demás siguen;
-//   8. el guía CIERRA la sala con 5 s de aviso: el aviso (tema «cierre») llega ANTES de que LiveKit borre la sala (la sala sigue listada cuando el aviso se
+//   8. el guía CIERRA la sala con 20 s de aviso: el aviso (tema «cierre») llega ANTES de que LiveKit borre la sala (la sala sigue listada cuando el aviso se
 //      ve), todos vuelven a la visita libre, la sala desaparece y la familia no puede volver a entrar;
 //   9. sin grabación: ni Egress en los compose, ni sala con `activeRecording`; sin errores de consola en las páginas.
 // No prueba: el sonido real (el micrófono es un pitido; no se oye con altavoces ni auriculares), Quest, iPhone, la carga con muchas personas (F3h).
@@ -34,6 +34,8 @@ const SALTO = process.env.GEMELO_DOCKER !== "1" ? "e2e de la voz con tres Chrome
 const COOKIE = "__Host-gemelo";
 const ARGS_MICRO = ["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream"];
 const espera = ms => new Promise(ok => setTimeout(ok, ms));
+let timeoutsLk = 0;   // cuántas veces LiveKit REST no contestó a tiempo (el equipo con tres SwiftShader va justo): se cuentan y se dicen, no se tapan
+const lk = async fn => { for (let i = 0; ; i++) { try { return await fn(); } catch (e) { if (i < 4 && (e && (e.code === 23 || /timeout|aborted/i.test(String(e.message))))) { timeoutsLk++; await espera(1500); continue; } throw e; } } };
 const hasta = async (fn, ms, que) => { const t0 = Date.now(); let v; while (Date.now() - t0 < ms) { v = await fn(); if (v) return v; await espera(250); } throw new Error("no llegó a tiempo: " + que + " (último: " + JSON.stringify(v) + ")"); };
 
 test("e2e F3g: guía y dos familias en tres Chrome (entrar desde la agenda, sin la palabra no se publica, mano, palabra, vence sola, silenciar, expulsar, cerrar con aviso)", { timeout: 2400000 }, async t => {
@@ -85,7 +87,7 @@ test("e2e F3g: guía y dos familias en tres Chrome (entrar desde la agenda, sin 
 
       nav = await playwright().chromium.launch({ executablePath: chrome(), args: ARGS_CHROME.concat(ARGS_MICRO) });
       const abre = async cookie => {
-        const ctx = await nav.newContext({ viewport: { width: 640, height: 420 }, ignoreHTTPSErrors: true, permissions: ["microphone"] });
+        const ctx = await nav.newContext({ viewport: { width: 360, height: 240 }, ignoreHTTPSErrors: true, permissions: ["microphone"] });
         await ctx.addCookies([{ name: COOKIE, value: cookie, url: base, httpOnly: true, secure: true, sameSite: "Lax" }]);
         const pg = await ctx.newPage(), errores = [];
         pg.on("pageerror", e => errores.push(String(e).slice(0, 300)));
@@ -102,7 +104,7 @@ test("e2e F3g: guía y dos familias en tres Chrome (entrar desde la agenda, sin 
         await X.pg.waitForSelector("#ventana-agenda [data-entra='" + ev + "']", { timeout: 60000 });   // la agenda se pide al abrir la ventana
         await X.pg.click("#ventana-agenda [data-entra='" + ev + "']");
       };
-      const lista = async () => (await rs.listParticipants(SALA)).map(x => ({ identidad: x.identity, papel: JSON.parse(x.metadata || "{}").papel || "?", attr: Object.assign({}, x.attributes),
+      const lista = async () => (await lk(() => rs.listParticipants(SALA))).map(x => ({ identidad: x.identity, papel: JSON.parse(x.metadata || "{}").papel || "?", attr: Object.assign({}, x.attributes),
         puede: !!(x.permission && x.permission.canPublish), micros: (x.tracks || []).filter(tr => tr.source === 2 || tr.source === "MICROPHONE").length,
         sinSilenciar: (x.tracks || []).filter(tr => (tr.source === 2 || tr.source === "MICROPHONE") && !tr.muted).length }));
       const de = async papel => (await lista()).filter(x => x.papel === papel);
@@ -129,7 +131,9 @@ test("e2e F3g: guía y dos familias en tres Chrome (entrar desde la agenda, sin 
       await t.test("sin la palabra, las familias no publican aunque pulsen; el guía abre su micrófono y las dos lo oyen", async tt => {
         await A.gesto(); assert.strictEqual(await A.voz("abre"), false); assert.strictEqual((await A.voz()).motivo, "sin_permiso");
         await B.gesto(); assert.strictEqual(await B.voz("abre"), false); assert.strictEqual((await B.voz()).motivo, "sin_permiso");
-        await G.gesto(); const ab = await G.voz("abre"); assert.strictEqual(ab, true, "el guía abre su micrófono: " + JSON.stringify(await G.voz()));
+        await G.gesto();   // F3e: con el primer gesto el guía abre su micrófono SOLO (autoGuia de 47_habla.js); no se llama a abre() a mano
+        await hasta(async () => (await G.voz()).micro === "abierto", 20000, "el micrófono del guía se abre solo con su primer gesto");
+        assert.ok((await G.hab()).autos >= 1, "lo abrió la apertura automática del guía");
         await hasta(async () => (await de("guia"))[0].sinSilenciar === 1, 20000, "la pista del guía en LiveKit");
         for (const X of [A, B]) await hasta(async () => (await X.voz()).voces === 1, 25000, "la familia recibe la voz del guía");
         for (const f of await de("familia")) assert.strictEqual(f.micros, 0, "ninguna pista de familia en LiveKit");
@@ -151,7 +155,7 @@ test("e2e F3g: guía y dos familias en tres Chrome (entrar desde la agenda, sin 
         const e = await hasta(async () => { const x = await A.voz(); return x.puede && x; }, 15000, "el permiso en vivo en Ana");
         assert.ok(e.turno > 100 && e.turno <= 120, String(e.turno));
         for (const X of [A, G]) await hasta(async () => { const x = await X.gui(); return x.palabra && x.palabra.identidad === idA; }, 15000, "los dos ven el turno");
-        await A.gesto(); assert.strictEqual(await A.voz("abre"), true);
+        await A.gesto(); const ra = await A.voz("abre"); assert.strictEqual(ra, true, "Ana abre su micrófono con la palabra: " + JSON.stringify(await A.voz()));
         await hasta(async () => (await lista()).find(y => y.identidad === idA).sinSilenciar === 1, 15000, "la pista de Ana en LiveKit");
         await hasta(async () => (await B.voz()).voces === 2, 25000, "Beta recibe al guía y a Ana");
         await hasta(async () => (await G.voz()).voces === 1, 25000, "el guía recibe a Ana");
@@ -171,7 +175,7 @@ test("e2e F3g: guía y dos familias en tres Chrome (entrar desde la agenda, sin 
       });
 
       await t.test("el guía da la palabra a Beta y silencia a todos: nadie salvo el guía tiene micrófono sin silenciar y Beta pierde el turno", async tt => {
-        assert.ok(await G.gui("dar", idB));
+        await hasta(async () => G.gui("dar", idB), 30000, "el guía da la palabra a Beta (api)");
         await hasta(async () => (await B.voz()).puede, 15000, "el permiso en vivo en Beta");
         await B.gesto(); assert.strictEqual(await B.voz("abre"), true);
         await hasta(async () => (await lista()).find(y => y.identidad === idB).sinSilenciar === 1, 15000, "la pista de Beta en LiveKit");
@@ -185,7 +189,7 @@ test("e2e F3g: guía y dos familias en tres Chrome (entrar desde la agenda, sin 
 
       await t.test("UpdateParticipant sobre alguien que no está responde 404 en LiveKit real (la api lo lee como «no está»)", async tt => {
         let err = null;
-        try { await rs.updateParticipant(SALA, "no_existe_f3g", undefined, { canPublish: true, canSubscribe: true, canPublishData: true, canPublishSources: [2] }); } catch (e) { err = e; }
+        try { await lk(() => rs.updateParticipant(SALA, "no_existe_f3g", undefined, { canPublish: true, canSubscribe: true, canPublishData: true, canPublishSources: [2] })); } catch (e) { err = e; }
         assert.ok(err, "debía fallar"); tt.diagnostic("error de LiveKit: " + JSON.stringify({ status: err.status, code: err.code, message: String(err.message).slice(0, 120) }));
         assert.ok(err.status === 404 || err.code === "not_found", "404 / not_found: " + JSON.stringify({ status: err.status, code: err.code }));
       });
@@ -200,21 +204,22 @@ test("e2e F3g: guía y dos familias en tres Chrome (entrar desde la agenda, sin 
         assert.strictEqual((await lista()).length, 2, "quedan el guía y Ana");
       });
 
-      await t.test("cerrar con 5 s de aviso: el aviso llega ANTES del DeleteRoom, todos vuelven a la general, la sala desaparece y la familia no puede volver", async tt => {
-        const r = await pide("/api/presencia/guiadas/" + ev + "/cerrar", { method: "POST", cookie: ses.guia, body: JSON.stringify({ segundos: 5 }) }); assert.strictEqual(r.status, 200, r.texto);
+      await t.test("cerrar con 20 s de aviso: el aviso llega ANTES del DeleteRoom, todos vuelven a la general, la sala desaparece y la familia no puede volver", async tt => {
+        const r = await pide("/api/presencia/guiadas/" + ev + "/cerrar", { method: "POST", cookie: ses.guia, body: JSON.stringify({ segundos: 20 }) }); assert.strictEqual(r.status, 200, r.texto);
         const vistoEn = {};
-        for (const [k, X] of [["guia", G], ["ana", A]]) { await hasta(async () => (await X.gui()).cierre, 5000, "el aviso de cierre en " + k); vistoEn[k] = Date.now(); }
-        const salaSigue = (await rs.listRooms()).some(x => x.name === SALA);
+        await Promise.all([["guia", G], ["ana", A]].map(async ([k, X]) => { await hasta(async () => (await X.gui()).cierre, 15000, "el aviso de cierre en " + k); vistoEn[k] = Date.now(); }));   // 20 s de aviso: con tres SwiftShader, 5 s no alcanzan a leerlo en las tres páginas
+        const salaSigue = (await lk(() => rs.listRooms())).some(x => x.name === SALA);
         assert.ok(salaSigue, "cuando el aviso ya se ve, LiveKit aún tiene la sala (el aviso llega antes del DeleteRoom)");
         const t0 = Date.now();
-        for (const X of [G, A]) await hasta(async () => { const e = await X.pres(); return e.sala === "general" && e.conectado; }, 40000, "de vuelta a la visita libre");
-        tt.diagnostic("aviso visto → de vuelta en la general en " + (Date.now() - Math.min(vistoEn.guia, vistoEn.ana)) + " ms (aviso de 5 s); comprobación posterior " + (Date.now() - t0) + " ms");
-        await hasta(async () => !(await rs.listRooms()).some(x => x.name === SALA), 20000, "LiveKit sin la sala " + SALA);
+        for (const X of [G, A]) await hasta(async () => { const e = await X.pres(); return e.sala === "general" && e.conectado; }, 70000, "de vuelta a la visita libre");
+        tt.diagnostic("aviso visto → de vuelta en la general en " + (Date.now() - Math.min(vistoEn.guia, vistoEn.ana)) + " ms (aviso de 20 s); comprobación posterior " + (Date.now() - t0) + " ms");
+        await hasta(async () => !(await lk(() => rs.listRooms())).some(x => x.name === SALA), 20000, "LiveKit sin la sala " + SALA);
         const ta = await pide("/api/presencia/guiadas/" + ev + "/token", { method: "POST", cookie: ses.ana, body: JSON.stringify({ dispositivo: "escritorio" }) });
         assert.strictEqual(ta.status, 409); assert.strictEqual(JSON.parse(ta.texto).error, "guiada_cerrada");
       });
 
-      await t.test("sin grabación y sin errores en las páginas", async () => {
+      await t.test("sin grabación y sin errores en las páginas", async tt => {
+        tt.diagnostic("LiveKit REST sin contestar a tiempo (reintentado): " + timeoutsLk + " veces");
         for (const s of await rs.listRooms()) assert.ok(!s.activeRecording, "la sala " + s.name + " no se graba");
         // ruido esperable de livekit-client (nivel error en su logger) cuando el servidor cierra la sala (DeleteRoom), expulsa (RemoveParticipant) o quita canPublish
         // (la pista desaparece mientras otro cliente la procesa: «could not find published track»); ver guiada_dev.test.js
