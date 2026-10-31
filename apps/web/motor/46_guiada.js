@@ -164,7 +164,8 @@
     function vuelve() {
       cierre = null; est.vueltas++;
       if (Laminas.hay(LAM)) Laminas.cierra(LAM);
-      var r = P && P.sala && P.sala() === "guiada" ? P.cambiaSala("general") : Vz ? Vz.sale() : Promise.resolve(false);
+      // con la presencia, ella vuelve (si la sala ya se borró, ya volvió sola); sin ella, la voz sale de su conexión propia
+      var r = P && P.sala ? (P.sala() === "guiada" ? P.cambiaSala("general") : Promise.resolve(false)) : Vz ? Vz.sale() : Promise.resolve(false);
       desengancha(); pintaTira();
       return r;
     }
@@ -283,7 +284,7 @@
     // ---- fase «tarde» (cada 0,25 s): seguir a la sala, la cuenta atrás, el cierre y la ventana
     function tarde(dt) {
       var x = buscaSala();
-      if (x !== s) { if (x) engancha(x); else if (s) desengancha(); }
+      if (x !== s || (x && G.evento(x.nombre()) !== ev)) { if (x) engancha(x); else if (s) desengancha(); }   // otra sala, o la misma conexión en otra guiada
       var ahora = Date.now();
       if (s) {
         var y = s.yo(); papel = y ? G.papelDe(y.metadatos) : papel;
