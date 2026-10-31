@@ -127,3 +127,41 @@ test("medidor-fotogramas: ni 28_depura, ni 29_vr, ni 33_ajustes, ni 90_final nom
   assert.match(bruto("29_vr"), /Bus\.on\("medida:fin"/); assert.match(bruto("29_vr"), /Bus\.emite\("medida:estado", q\)/); assert.match(bruto("29_vr"), /Bus\.emite\("medida:envia"\)/);
   assert.match(bruto("33_ajustes"), /Bus\.emite\("medida:muestra"/); assert.match(bruto("33_ajustes"), /Bus\.emite\("medida:inicia"/);
 });
+
+// ---------------------------------------------------------------- suelo-fondo
+function mundoFondo(grueso) {
+  const scene = new THREE.Scene(), tex = new THREE.Texture(), est = { v: "activo" };
+  const g = { THREE, scene, D: { mosaico: { x0: 1000, yN: 4000, w: 2000, h: 1500, res: 1 }, grueso: grueso || { x0: 1000, yN: 4000, w: 32, h: 64, res: 8 } },
+    Mundo: { grueso: (x, y) => 100 + 0.01 * x + 0.02 * y }, UN: { uMos: { value: tex } }, matSuelo: new THREE.MeshLambertMaterial({}), Escena3D: { estado: () => est.v }, exag: 1, location: { search: "" } };
+  return { g, scene, tex, est };
+}
+
+test("suelo-fondo: manifiesto, con la caja del fixture dibuja 1 llamada y 10.824 triángulos (los de pruebas/presupuesto.json), cabe en su tope y libera sin tocar la textura", () => {
+  const m = mundoFondo(), d = carga("04e_suelo_fondo.js", m.g, []), n = contexto(bus());
+  assert.strictEqual(d.id, "suelo-fondo"); assert.strictEqual(d.bandera.url, "fondo"); assert.strictEqual(JSON.stringify(d.fases), "{\"tarde\":0}");
+  assert.strictEqual(m.scene.children.length, 0, "antes de montar la escena está vacía");
+  const api = d.monta(n);
+  assert.strictEqual(m.scene.children.length, 0, "montado, sin actualizar, tampoco dibuja");
+  d.actualiza.tarde(0.016, 0, api);
+  const dib = dibujo(m.scene); console.log("medido suelo-fondo (caja del fixture):", JSON.stringify(dib));
+  assert.strictEqual(dib.llamadas, 1); assert.strictEqual(dib.triangulos, 10824);
+  assert.ok(dib.llamadas <= d.presupuesto.llamadas && dib.triangulos <= d.presupuesto.triangulos);
+  // el tope del manifiesto es el de una finca enorme (128 × 128 celdas): no se pasa
+  const grande = mundoFondo({ x0: 0, yN: 10000, w: 5000, h: 5000, res: 8 }), d2 = carga("04e_suelo_fondo.js", grande.g, []);
+  assert.strictEqual(d2.presupuesto.triangulos, 128 * 128 * 2);
+  const api2 = d2.monta(contexto(bus())); api2.actualiza();
+  assert.ok(dibujo(grande.scene).triangulos <= d2.presupuesto.triangulos, "una finca enorme sigue dentro del tope");
+  d2.libera();
+  const sp = espiaDispose();
+  try { d.libera(); } finally { sp.quita(); }
+  assert.strictEqual(sp.cuenta(), 2, "dispose de la geometría y del material, y de nada más (la textura es de 04d)");
+  assert.strictEqual(m.scene.children.length, 0); assert.doesNotThrow(() => d.libera(), "liberar dos veces no rompe");
+});
+
+test("suelo-fondo: sin escena activa no existe, y 90_final ya no lo nombra", () => {
+  const m = mundoFondo(), d = carga("04e_suelo_fondo.js", m.g, []), api = d.monta(contexto(bus()));
+  m.est.v = "cargando"; api.actualiza(); assert.strictEqual(api.malla(), null);
+  m.est.v = "activo"; api.actualiza(); assert.ok(api.malla());
+  assert.ok(!/SueloFondo|suelo-fondo/.test(sinComentarios(lee("apps/web/motor/90_final.js"))), "el bucle ya no lo llama");
+  d.libera();
+});
