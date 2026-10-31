@@ -13,7 +13,7 @@ import { construyeApp } from "../../src/app.ts";
 import type { ConfigLiveKit } from "../../src/config.ts";
 import { firmaTokenGuiada, identidadOpaca, type ModeradorSala, type Papel, PATRON_SALA_GUIADA, PERMISOS_GUIADA, prefijoHogar, SALA_GUIADA } from "../../src/presencia/livekit.ts";
 import { expulsa } from "../../src/presencia/rutas.ts";
-import { ABRE_FAMILIAS_MIN, ABRE_MODERA_MIN, ALARGA_S, ALARGUES_MAX, ATRIBUTOS, type Auditor, AVISO_CIERRE_MAX_S, AVISO_CIERRE_MIN_S, AVISO_CIERRE_S, CIERRA_MIN, Cierres, cuerpoCierre, decideGuiada, type EventoGuiada, limpiaAlArrancar, Palabra, papelDe, puedeModerar, TEMA_CIERRE, TURNO_S } from "../../src/presencia/voz.ts";
+import { ABRE_FAMILIAS_MIN, ABRE_MODERA_MIN, ALARGA_S, ALARGUES_MAX, ATRIBUTOS, type Auditor, AVISO_CIERRE_MAX_S, AVISO_CIERRE_MIN_S, AVISO_CIERRE_S, CIERRA_MIN, Cierres, cuerpoCierre, decideGuiada, type EventoGuiada, limpiaAlArrancar, Palabra, papelDe, puedeModerar, TEMA_CIERRE, TURNO_S, ventanaEntrada } from "../../src/presencia/voz.ts";
 import { ExpulsadosGuiada, hogarDeIdentidad } from "../../src/presencia/voz_rutas.ts";
 import { Expulsados } from "../../src/presencia/livekit.ts";
 import { configDePrueba, contexto, deLaWeb } from "../apoyo/contexto.ts";
@@ -371,4 +371,21 @@ test("F3f: cierraSala quita la palabra (motivo «cierre», por quien cierra) y b
   assert.deepEqual(filas.at(-1), [7, "guiada.palabra_quitada", { evento: 3, hogar: 1, motivo: "cierre" }]);
   assert.equal(reloj.pendientes, 0, "sin temporizador de turno");
   assert.equal(await p.cierraSala(3, 7), false, "sin palabra: false (y no falla)");
+});
+
+// ---------------------------------------------------------------- OF11e: la ventana que enseña la agenda
+
+test("ventanaEntrada: la misma ventana que decideGuiada (familia 15 min antes, guía y oficina 60; todos hasta 30 min tras el fin); null sin papel o si no es guiada vigente", () => {
+  const fam = { hogarId: 3, esOficina: false, apuntado: true };
+  const f = ventanaEntrada(EV, fam)!, g = ventanaEntrada(EV, { hogarId: 7, esOficina: false, apuntado: false })!, o = ventanaEntrada(EV, { hogarId: 8, esOficina: true, apuntado: false })!;
+  assert.equal(Date.parse(f.desde), EV.empieza_en.getTime() - ABRE_FAMILIAS_MIN * MIN);
+  assert.equal(Date.parse(g.desde), EV.empieza_en.getTime() - ABRE_MODERA_MIN * MIN); assert.equal(g.desde, o.desde);
+  const fin = (EV.termina_en ?? new Date(EV.empieza_en.getTime() + 3 * 3600_000)).getTime() + CIERRA_MIN * MIN;
+  for (const w of [f, g, o]) assert.equal(Date.parse(w.hasta), fin);
+  assert.equal(ventanaEntrada(EV, { ...fam, apuntado: false }), null, "en espera o no apuntada");
+  assert.equal(ventanaEntrada({ ...EV, tipo: "cata" }, fam), null);
+  assert.equal(ventanaEntrada({ ...EV, estado: "cancelada" }, fam), null);
+  // coherencia con decideGuiada en los bordes
+  for (const t of [Date.parse(f.desde) - 1, Date.parse(f.desde), Date.parse(f.hasta), Date.parse(f.hasta) + 1])
+    assert.equal(decideGuiada(EV, fam, t).ok, t >= Date.parse(f.desde) && t <= Date.parse(f.hasta));
 });
