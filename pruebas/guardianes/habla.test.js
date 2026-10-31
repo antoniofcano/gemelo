@@ -108,12 +108,13 @@ class El {
   removeChild(c) { const i = this.children.indexOf(c); if (i >= 0) this.children.splice(i, 1); c.parentNode = null; return c; }
   setAttribute(k, v) { this.attrs[k] = String(v); } getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; }
   addEventListener(n, f) { (this.oy[n] = this.oy[n] || []).push(f); } removeEventListener() {}
+  focus() { this.enfocado = true; }
   dispara(n, e = {}) { const ev = Object.assign({ preventDefault() {}, stopPropagation() {}, target: this }, e); (this.oy[n] || []).slice().forEach(f => f(ev)); }
   todos(pred, out = []) { if (pred(this)) out.push(this); for (const c of this.children) if (c.todos) c.todos(pred, out); return out; }
 }
 const por = (raiz, id) => raiz.todos(e => (e.attrs.id || e.id) === id)[0];
 
-function montaHabla({ papel = "familia", puede = false, sala = "guiada-12", manos = [], yo = "h_yo", respuestas = {}, ua = "Node", modo = null } = {}) {
+function montaHabla({ papel = "familia", puede = false, sala = "guiada-12", manos = [], yo = "h_yo", respuestas = {}, ua = "Node", modo = null, consent = "si", fallaPut = null } = {}) {
   const voz = { s: { sala, dentro: true, guiada: /^guiada-/.test(sala), papel, puede, micro: "cerrado", auriculares: false, motivo: "" }, llamadas: [], retraso: 0 };
   const Vz = {
     estado: () => Object.assign({}, voz.s),
@@ -123,16 +124,28 @@ function montaHabla({ papel = "familia", puede = false, sala = "guiada-12", mano
   };
   const guiada = { evento: H.evento(sala), yo, manos };
   const Gd = { estado: () => Object.assign({}, guiada, { manos: guiada.manos.slice() }) };
-  const emitidos = [], limpias = [], fetchs = [], aplicas = [], filas = [], laminas = {}, teclas = {};
+  const emitidos = [], limpias = [], fetchs = [], aplicas = [], filas = [], laminas = {}, teclas = {}, consFetchs = [], ajustesPinta = [];
+  const cons = { aceptada: consent === "si", fallaPut };   // lo que sabe la api del consentimiento de voz (F3j)
   const n = { emite: (e, d) => { emitidos.push([e, d]); return 0; }, on: (e, f) => { (n.oy[e] = n.oy[e] || []).push(f); return f; }, oy: {}, limpia: f => { limpias.push(f); return f; } };
   const visor = new El("div"), ventana = { oy: {}, addEventListener(nm, f) { (this.oy[nm] = this.oy[nm] || []).push(f); }, removeEventListener(nm, f) { const l = this.oy[nm] || [], i = l.indexOf(f); if (i >= 0) l.splice(i, 1); } };
   const VRX = { on: false, voz: null };
-  const Ajustes = { registra: (pref, esq, pest, fn) => { aplicas.push({ pref, esq, pest, fn }); try { fn(pref + ".modo", modo || "pulsar"); } catch (e) {} return () => {}; } };
+  const Ajustes = { pinta: () => ajustesPinta.push(1), registra: (pref, esq, pest, fn) => { aplicas.push({ pref, esq, pest, fn }); try { fn(pref + ".modo", modo || "pulsar"); } catch (e) {} return () => {}; } };
   const Teclas = { registra: (c, fn, d) => { if (teclas[c]) return null; teclas[c] = { fn, d }; return () => { delete teclas[c]; }; } };
   const PanelVR = { filas: (p, d) => { filas.push([p, d]); return () => {}; }, repinta() {} };
   const Laminas = { abre: o => { laminas[o.id] = o; return true; }, cierra: id => { delete laminas[id]; return true; }, hay: id => !!laminas[id], repinta: () => true };
-  const g = { window: ventana, document: { createElement: t => new El(t), createTextNode: t => ({ texto: t }), body: new El("body") }, visor, navigator: { userAgent: ua }, VRX, Ajustes, Teclas, PanelVR, Laminas,
+  const g = { window: ventana, document: { createElement: t => new El(t), createTextNode: t => ({ texto: t }), body: new El("body"), activeElement: null }, visor, navigator: { userAgent: ua }, VRX, Ajustes, Teclas, PanelVR, Laminas,
     fetch: (u, o) => {
+      if (u === "/api/presencia/voz/consentimiento") {
+        consFetchs.push([o.method, o.body || null]);
+        const resp = (st, j) => Promise.resolve({ ok: st < 300, status: st, json: () => (j === null ? Promise.reject(new Error("sin cuerpo")) : Promise.resolve(j)) });
+        if (o.method === "GET") return resp(200, { version: 1, aceptada: cons.aceptada, version_aceptada: cons.aceptada ? 1 : null, aceptada_en: null });
+        if (o.method === "PUT") {
+          assert.strictEqual(o.body, JSON.stringify({ version: 1 }), "dice la versión del texto que enseñó"); assert.strictEqual(o.headers["content-type"], "application/json");
+          if (cons.fallaPut) return cons.fallaPut === "red" ? Promise.reject(new Error("sin red")) : resp(cons.fallaPut.status, cons.fallaPut.cuerpo);
+          cons.aceptada = true; return resp(200, { version: 1, aceptada: true, version_aceptada: 1, aceptada_en: "2026-11-01T10:00:00.000Z" });
+        }
+        cons.aceptada = false; return resp(204, null);
+      }
       fetchs.push([o.method, u]); if (o.method === "POST") { assert.strictEqual(o.body, "{}", "un POST a la api lleva cuerpo {} (si no, 400)"); assert.strictEqual(o.headers["content-type"], "application/json"); }
       const r = respuestas[o.method] || (o.method === "POST" ? { puesto: 2 } : {}), st = r.__status || (o.method === "DELETE" ? 204 : 200);
       return Promise.resolve({ ok: st < 300, status: st, json: () => Promise.resolve(r) });
@@ -140,18 +153,19 @@ function montaHabla({ papel = "familia", puede = false, sala = "guiada-12", mano
   const nombres = Object.keys(g);
   const HablaMotor = new Function(...nombres, "\"use strict\";\n" + PURO + MOTOR + "\nreturn HablaMotor;")(...nombres.map(k => g[k]));
   const api = HablaMotor(n, Vz, Gd);
-  return { api, voz, guiada, emitidos, limpias, fetchs, aplicas, filas, laminas, teclas, visor, ventana, VRX, n, tic: (dt = 0.25) => api.tarde(dt),
+  return { api, voz, guiada, emitidos, limpias, fetchs, consFetchs, cons, ajustesPinta, aplicas, filas, laminas, teclas, visor, ventana, VRX, n, tic: (dt = 0.25) => api.tarde(dt),
     caja: () => por(visor, "hablaCaja"), boton: () => por(visor, "hablaBoton"), silencio: () => por(visor, "hablaSilencio"), estado: () => por(visor, "hablaEstado"),
-    casilla: () => por(visor, "hablaAuric"), aviso: () => por(visor, "hablaAviso"), nuevoModo: m => aplicas[0].fn("habla.modo", m) };
+    casilla: () => por(visor, "hablaAuric"), aviso: () => por(visor, "hablaAviso"), dialogo: () => por(visor, "hablaConsent"), acepta: () => por(visor, "hablaConsentAcepta"), ahoraNo: () => por(visor, "hablaConsentNo"), nuevoModo: m => aplicas[0].fn("habla.modo", m) };
 }
 
 test("HablaMotor: fuera de una sala guiada no crea nada (ni caja ni fetch ni lámina), pero deja la tecla T y el enganche de VR preparados", async () => {
-  let m = montaHabla({ sala: "hituelo-libre" }); m.tic(); m.tic();
+  let m = montaHabla({ sala: "hituelo-libre", consent: "no" }); m.tic(); m.tic();
   assert.strictEqual(m.visor.children.length, 0); assert.deepStrictEqual(m.fetchs, []); assert.deepStrictEqual(Object.keys(m.laminas), []);
   assert.deepStrictEqual(m.aplicas, [], "la pestaña «Hablar» de Configuración no sale hasta estar en una visita guiada");
   assert.strictEqual(m.teclas.KeyT.d, "habla"); assert.strictEqual(m.teclas.KeyT.fn({}), false, "sin micro que abrir, la tecla no se come (devuelve false)");
   assert.strictEqual(m.VRX.voz.toma(), false, "en VR, el gatillo izquierdo sigue siendo el de siempre fuera de la guiada");
   m = montaHabla({ papel: "" }); m.tic(); assert.strictEqual(m.visor.children.length, 0, "sin papel, nada");
+  assert.deepStrictEqual(m.consFetchs.map(x => x[0]), ["GET"], "lo único que pide fuera de una guiada es mirar su consentimiento de voz, una vez");
 });
 
 test("HablaMotor: la familia sin palabra ve «Levantar la mano», la levanta por la api, ve su puesto y la baja; si la api dice que no, su mensaje", async () => {
@@ -266,7 +280,7 @@ test("HablaMotor en VR: el gatillo izquierdo es el micro (pulsar o mantener) con
   const fila = m.filas.find(x => x[0] === "ira" && x[1].id === "habla"); assert.ok(fila); assert.strictEqual(fila[1].visible(), true);
   m.nuevoModo("pulsar"); m.VRX.on = true;
   const bs = []; fila[1].botones((id, x, y, w, h, txt, fn, on) => bs.push({ id, w, h, txt, fn, on }), 0);
-  assert.deepStrictEqual(bs.map(x => x.id), ["hMic", "hAur"]); assert.ok(bs.every(x => x.h >= 64)); assert.strictEqual(bs[0].txt, "Hablar");
+  assert.deepStrictEqual(bs.map(x => x.id), ["hMic", "hAur", "hRet"], "y, con el permiso de voz dado, el de retirarlo (F3j)"); assert.ok(bs.every(x => x.h >= 64)); assert.strictEqual(bs[0].txt, "Hablar");
   bs[0].fn(); await espera(5); assert.strictEqual(m.voz.s.micro, "abierto", "el botón del panel alterna (con el rayo no se puede mantener)");
   bs[1].fn(); assert.strictEqual(m.voz.s.auriculares, true);
   const f1 = fila[1].firma(); m.voz.s.micro = "cerrado"; assert.notStrictEqual(f1, fila[1].firma(), "la firma cambia con el estado: el panel se repinta");
@@ -299,7 +313,7 @@ test("HablaMotor: la depuración dice el micro, el modo y la mano", () => {
 // ---------- el manifiesto, los eventos, la api «Guiada» y el enganche de 29_vr.js
 test("el manifiesto, los eventos del catálogo y la api de la guiada: «habla-guiada» con su bandera, presupuesto y eventos", () => {
   const m = /Componentes\.registra\(\{([\s\S]*?)\n  \}\);/.exec(HAB)[1];
-  assert.match(m, /id: "habla-guiada"/); assert.match(m, /bandera: \{ defecto: true, url: "habla" \}/); assert.match(m, /presupuesto: \{ llamadas: 1, triangulos: 2, texturasMB: 0\.4 \}/);
+  assert.match(m, /id: "habla-guiada"/); assert.match(m, /bandera: \{ defecto: true, url: "habla" \}/); assert.match(m, /presupuesto: \{ llamadas: 1, triangulos: 2, texturasMB: 4 \}/);
   assert.match(m, /consume: \["Voz", "Guiada"/);
   for (const e of ["habla:micro", "habla:mano"]) assert.deepStrictEqual(EVENTOS.eventos[e].emiten, ["47_habla"], e);
   for (const e of ["voz:estado", "guiada:palabra", "depura:lineas"]) assert.ok(EVENTOS.eventos[e].escuchan.includes("47_habla"), e);
@@ -327,5 +341,143 @@ test("T está libre en Teclas (nadie la tiene reservada ni registrada) y el comp
   const quien = fs.readdirSync(dir).filter(f => /\.js$/.test(f) && /KeyT/.test(fs.readFileSync(path.join(dir, f), "utf8"))); assert.deepStrictEqual(quien, ["47_habla.js"], "solo 47_habla toca KeyT");
   const src = sinCabecera(HAB).replace(/\/\/.*$/gm, "");
   assert.ok(!/innerHTML|insertAdjacentHTML|outerHTML/.test(src)); assert.ok(!/MediaRecorder|Egress|captureStream|getUserMedia/.test(src), "no toca el micrófono: lo abre Voz");
-  for (const u of src.match(/fetch\(([^,]+)/g) || []) assert.match(u, /"\/api\/presencia\/guiadas\/"/, "solo su api, del mismo origen");
+  for (const u of src.match(/fetch\(([^,]+)/g) || []) assert.match(u, /"\/api\/presencia\/guiadas\/"|H\.URL_CONSENTIMIENTO/, "solo su api, del mismo origen");
+});
+
+// ---------- F3j: el consentimiento de voz (decisión 163; contratos/voz-consentimiento.md)
+test("HablaPuro F3j: quién necesita el aviso y cuándo (solo familias; abrir el micro con «aún no se sabe» no frena), lo que dice la api, el error al aceptar y el partir en líneas", () => {
+  const pedir = ["levantar", "micro"];
+  for (const papel of ["guia", "oficina", "", "otro"]) for (const a of [...pedir, "baja", "x"]) for (const c of ["si", "no", "?"]) assert.strictEqual(H.requiere(papel, a, c), "nada", papel + " " + a + " " + c);
+  for (const a of ["baja", "x", null]) for (const c of ["si", "no", "?"]) assert.strictEqual(H.requiere("familia", a, c), "nada", "familia " + a);
+  for (const a of pedir) { assert.strictEqual(H.requiere("familia", a, "si"), "nada"); assert.strictEqual(H.requiere("familia", a, "no"), "aviso"); }
+  assert.strictEqual(H.requiere("familia", "levantar", "?"), "comprobar"); assert.strictEqual(H.requiere("familia", "micro", "?"), "nada", "para tener la palabra la api ya comprobó");
+  // lo que dice la api: solo vale la versión de ESTE texto, aceptada
+  assert.strictEqual(H.consentimiento({ version: H.AVISO_VERSION, aceptada: true }), "si");
+  for (const j of [null, undefined, {}, "si", { version: H.AVISO_VERSION, aceptada: false }, { version: H.AVISO_VERSION + 1, aceptada: true }, { version: String(H.AVISO_VERSION), aceptada: true }, { aceptada: true }]) assert.strictEqual(H.consentimiento(j), "no", JSON.stringify(j));
+  assert.match(H.errorAceptar(409, { error: "version_distinta" }), /recarga la página/); assert.strictEqual(H.errorAceptar(500, { mensaje: "Algo falló." }), "Algo falló."); assert.match(H.errorAceptar(0, null), /No se pudo guardar/);
+  // el texto: borrador, sin grabación, dejar de hablar, retirarlo, enlace a la privacidad; una versión entera
+  const A = H.AVISO; assert.ok(Number.isInteger(A.version) && A.version >= 1); assert.strictEqual(A.version, H.AVISO_VERSION); assert.strictEqual(A.borrador, true); assert.match(A.nota, /pendiente de revisión por la asesoría/);
+  const todo = A.puntos.join(" "); for (const re of [/en directo/, /No se graba ni se transcribe/, /dejar de hablar cuando quieras/, /Configuración/, /menores/]) assert.match(todo, re);
+  assert.strictEqual(A.aceptar, "Aceptar"); assert.strictEqual(A.ahoraNo, "Ahora no"); assert.match(A.enlace.href, /^\/#privacidad$/); assert.match(A.enlaceVR, /Tu privacidad/);
+  // partir en líneas con una medida de mentira (1 carácter = 10 px)
+  const med = t => t.length * 10;
+  assert.deepStrictEqual(H.lineas("uno dos tres cuatro", 80, med), ["uno dos", "tres", "cuatro"]); assert.deepStrictEqual(H.lineas("", 80, med), []); assert.deepStrictEqual(H.lineas("palabralarguísima ok", 50, med), ["palabralarguísima", "ok"]);
+  fc.assert(fc.property(fc.string({ maxLength: 200 }), fc.integer({ min: 20, max: 300 }), (t, w) => {
+    const ls = H.lineas(t, w, med);
+    assert.strictEqual(ls.join(" "), t.split(/\s+/).filter(Boolean).join(" "), "no se pierde ni se inventa nada");
+    for (const l of ls) assert.ok(med(l) <= w || !l.includes(" "), "solo se pasa una palabra sola más larga que la línea");
+  }), { numRuns: 200 });
+});
+
+test("HablaMotor F3j: una familia sin permiso de voz ve el aviso al levantar la mano; «Aceptar» lo guarda en la api y entonces sí levanta; el aviso es accesible y todo es texto", async () => {
+  const m = montaHabla({ consent: "no" }); m.tic(); await espera();
+  assert.deepStrictEqual(m.consFetchs.map(x => x[0]), ["GET"]); assert.strictEqual(m.api.estado().consentimiento, "no");
+  m.boton().dispara("click"); await espera();
+  const d = m.dialogo(); assert.ok(d, "sale el aviso"); assert.deepStrictEqual(m.fetchs, [], "y todavía no se pidió la palabra");
+  assert.strictEqual(d.attrs.role, "dialog"); assert.strictEqual(d.attrs["aria-modal"], "true"); assert.strictEqual(d.attrs["aria-labelledby"], "hablaConsentT"); assert.match(por(m.visor, "hablaConsentT").textContent, /^Antes de hablar/);
+  const txt = d.textContent; for (const re of [/en directo/, /No se graba/, /dejar de hablar cuando quieras/, /Configuración/, /provisional/]) assert.match(txt, re);
+  const enl = por(m.visor, "hablaConsentEnlace"); assert.strictEqual(enl.attrs.href, "/#privacidad"); assert.strictEqual(enl.attrs.target, "_blank"); assert.match(enl.attrs.rel, /noopener/);
+  assert.strictEqual(m.acepta().textContent, "Aceptar"); assert.strictEqual(m.ahoraNo().textContent, "Ahora no"); assert.strictEqual(m.ahoraNo().enfocado, true, "el foco empieza en «Ahora no»: aceptar es siempre expreso");
+  for (const b of [m.acepta(), m.ahoraNo()]) assert.match(b.style.cssText, /min-height:44px;min-width:44px/);
+  assert.strictEqual(por(m.visor, "hablaConsentError").hidden, true);
+  // Aceptar: PUT con la versión, luego la mano
+  m.acepta().dispara("click"); await espera(); m.tic();
+  assert.deepStrictEqual(m.consFetchs.map(x => x[0]), ["GET", "PUT"]); assert.strictEqual(m.dialogo(), undefined, "el aviso se cierra");
+  assert.deepStrictEqual(m.fetchs.at(-1), ["POST", "/api/presencia/guiadas/12/mano"], "y ahora sí levanta la mano");
+  assert.strictEqual(m.api.estado().consentimiento, "si"); assert.strictEqual(m.cons.aceptada, true);
+  assert.deepStrictEqual(m.emitidos.filter(e => e[0] === "habla:consentimiento").map(e => e[1]), [{ accion: "acepta", ok: true, version: 1 }]);
+  assert.strictEqual(m.aplicas.length, 1, "y ya hay pestaña «Hablar» con su botón de retirar");
+  // no se vuelve a pedir; bajar la mano nunca lo pide
+  m.boton().dispara("click"); await espera(); assert.strictEqual(m.dialogo(), undefined); assert.strictEqual(m.api.estado().avisos, 1);
+});
+
+test("HablaMotor F3j: «Ahora no», Esc y cerrar no guardan nada, no piden la palabra y lo dicen; un fallo de la api deja el aviso abierto con su error", async () => {
+  let m = montaHabla({ consent: "no" }); m.tic(); await espera(); m.boton().dispara("click"); await espera();
+  m.ahoraNo().dispara("click"); await espera(); m.tic();
+  assert.strictEqual(m.dialogo(), undefined); assert.deepStrictEqual(m.consFetchs.map(x => x[0]), ["GET"]); assert.deepStrictEqual(m.fetchs, []); assert.strictEqual(m.cons.aceptada, false);
+  assert.match(m.estado().textContent, /no hablarás hasta que aceptes el aviso de voz/); assert.strictEqual(m.boton().textContent, "Levantar la mano");
+  assert.deepStrictEqual(m.emitidos.filter(e => e[0] === "habla:consentimiento").map(e => e[1].accion), ["rechaza"]);
+  // Esc
+  m = montaHabla({ consent: "no" }); m.tic(); await espera(); m.boton().dispara("click"); await espera();
+  m.dialogo().dispara("keydown", { key: "Escape" }); await espera(); assert.strictEqual(m.dialogo(), undefined); assert.deepStrictEqual(m.fetchs, []);
+  // la api rechaza (otra versión): el aviso sigue, con el error y los botones libres; reintentar funciona
+  m = montaHabla({ consent: "no", fallaPut: { status: 409, cuerpo: { error: "version_distinta", mensaje: "El aviso ha cambiado: léelo de nuevo." } } }); m.tic(); await espera(); m.boton().dispara("click"); await espera();
+  m.acepta().dispara("click"); await espera();
+  assert.ok(m.dialogo(), "sigue abierto"); assert.strictEqual(por(m.visor, "hablaConsentError").hidden, false); assert.match(por(m.visor, "hablaConsentError").textContent, /recarga la página/); assert.strictEqual(por(m.visor, "hablaConsentError").attrs.role, "alert");
+  assert.strictEqual(m.acepta().disabled, false); assert.deepStrictEqual(m.fetchs, []); assert.strictEqual(m.api.estado().consentimiento, "no");
+  m.cons.fallaPut = "red"; m.acepta().dispara("click"); await espera(); assert.match(por(m.visor, "hablaConsentError").textContent, /No se pudo guardar/);
+  m.cons.fallaPut = null; m.acepta().dispara("click"); await espera(); assert.strictEqual(m.dialogo(), undefined); assert.deepStrictEqual(m.fetchs.at(-1), ["POST", "/api/presencia/guiadas/12/mano"]);
+  assert.deepStrictEqual(m.emitidos.filter(e => e[0] === "habla:consentimiento").map(e => [e[1].accion, e[1].ok]), [["acepta", false], ["acepta", false], ["acepta", true]]);
+  // dos clics seguidos en «Aceptar» mandan un solo PUT
+  m = montaHabla({ consent: "no" }); m.tic(); await espera(); m.boton().dispara("click"); await espera(); m.acepta().dispara("click"); m.acepta().dispara("click"); await espera();
+  assert.strictEqual(m.consFetchs.filter(x => x[0] === "PUT").length, 1);
+  // Tab no se escapa del aviso
+  m = montaHabla({ consent: "no" }); m.tic(); await espera(); m.boton().dispara("click"); await espera();
+  const caja = m.dialogo(), enlace = por(m.visor, "hablaConsentEnlace"); let evitado = 0;
+  m.ahoraNo().enfocado = false; enlace.enfocado = false;
+  caja.dispara("keydown", { key: "Tab", shiftKey: true, preventDefault() { evitado++; } }); assert.strictEqual(evitado, 1, "Mayús+Tab desde fuera cae dentro");
+});
+
+test("HablaMotor F3j: el guía y la oficina no ven el aviso; con la palabra y el permiso retirado (otra versión) el botón Hablar no abre el micro hasta aceptar; «aún no se sabe» no frena al micro", async () => {
+  for (const papel of ["guia", "oficina"]) { const g = montaHabla({ papel, puede: true, consent: "no" }); g.tic(); await espera(); g.boton().dispara("click"); await espera(5); assert.strictEqual(g.dialogo(), undefined, papel); assert.strictEqual(g.voz.s.micro, "abierto", papel); }
+  const m = montaHabla({ puede: true, consent: "no" }); m.tic(); await espera();
+  m.boton().dispara("click"); await espera(); assert.ok(m.dialogo()); assert.deepStrictEqual(m.voz.llamadas, [], "el micro no se abre");
+  m.acepta().dispara("click"); await espera(); m.tic();
+  assert.strictEqual(m.dialogo(), undefined); assert.deepStrictEqual(m.voz.llamadas, [], "aceptar es un gesto; abrir el micro, otro"); assert.match(m.estado().textContent, /Pulsa Hablar para abrir el micrófono/);
+  m.boton().dispara("click"); await espera(5); assert.deepStrictEqual(m.voz.llamadas, ["abre"]);
+  // sin haber llegado aún el estado (cons «?»), el micro con la palabra no se frena
+  const u = montaHabla({ puede: true }); u.tic(); u.boton().dispara("click"); await espera(5); assert.deepStrictEqual(u.voz.llamadas, ["abre"]);
+});
+
+test("HablaMotor F3j: retirar el permiso (Configuración): botón con su estado, DELETE a la api, cierra el micro, vuelve a pedirse el aviso; también desde el panel de VR", async () => {
+  const m = montaHabla({ puede: true, consent: "si" }); m.tic(); await espera(); m.tic();
+  assert.strictEqual(m.aplicas.length, 1, "con el permiso dado la pestaña sale aunque se esté fuera de una visita"); const campo = m.aplicas[0].pest.campos.find(c => c.id === "ajVozRetira");
+  assert.ok(campo && campo.boton && typeof campo.alClic === "function"); assert.strictEqual(campo.activo(), true); assert.strictEqual(campo.texto(), "Retirar mi permiso de voz"); assert.match(campo.nota, /se te quita/);
+  m.boton().dispara("click"); await espera(5); assert.strictEqual(m.voz.s.micro, "abierto");
+  campo.alClic(); await espera(); m.tic();
+  assert.deepStrictEqual(m.consFetchs.map(x => x[0]), ["GET", "DELETE"]); assert.strictEqual(m.cons.aceptada, false); assert.strictEqual(m.api.estado().consentimiento, "no");
+  assert.strictEqual(m.voz.s.micro, "cerrado", "se cierra el micro al momento (la api, además, quita el permiso)"); assert.strictEqual(campo.activo(), false); assert.strictEqual(campo.texto(), "Permiso de voz: no dado");
+  assert.ok(m.ajustesPinta.length >= 1, "Configuración se repinta"); assert.match(m.estado().textContent, /Has retirado tu permiso de voz/);
+  assert.deepStrictEqual(m.emitidos.filter(e => e[0] === "habla:consentimiento").map(e => [e[1].accion, e[1].ok]), [["retira", true]]);
+  // retirarlo sin tenerlo no hace nada; y con el permiso retirado, pedir la mano vuelve a sacar el aviso
+  campo.alClic(); await espera(); assert.strictEqual(m.consFetchs.filter(x => x[0] === "DELETE").length, 1);
+  m.voz.s.puede = false; m.tic(); m.boton().dispara("click"); await espera(); assert.ok(m.dialogo(), "se vuelve a pedir");
+  // desde el panel de VR: el botón «Retirar mi permiso de voz» solo con el permiso dado
+  const v = montaHabla({ consent: "si" }); v.tic(); await espera(); const fila = v.filas.find(x => x[1].id === "habla")[1]; const bs = [];
+  fila.botones((id, x, y, w, h, t, fn) => bs.push({ id, t, fn }), 0); const ret = bs.find(b => b.id === "hRet"); assert.ok(ret); assert.strictEqual(ret.t, "Retirar mi permiso de voz");
+  const firma = fila.firma(); ret.fn(); await espera(); assert.strictEqual(v.cons.aceptada, false); assert.notStrictEqual(fila.firma(), firma, "el panel se repinta");
+  const bs2 = []; fila.botones((id, x, y, w, h, t, fn) => bs2.push(id), 0); assert.ok(!bs2.includes("hRet"), "ya no hay nada que retirar");
+});
+
+test("HablaMotor F3j en VR: el aviso es una lámina con dos zonas (izquierda «Ahora no», derecha «Aceptar»); aceptar guarda y levanta la mano; al salir de VR cuenta como «Ahora no»; se pinta sin romper", async () => {
+  const m = montaHabla({ consent: "no" }); m.tic(); await espera(); m.VRX.on = true; m.tic();
+  const hab = m.ventana.__habla; hab("mano", true); await espera();
+  const lam = m.laminas["habla-consent"]; assert.ok(lam, "la lámina del aviso"); assert.strictEqual(m.dialogo(), undefined, "y no el diálogo de pantalla"); assert.deepStrictEqual(m.fetchs, []);
+  // se pinta con un lienzo de mentira, con el texto, el enlace de VR y los dos botones; sin lanzar
+  const textos = [], cx = { fillText: (t) => textos.push(t), fillRect() {}, strokeRect() {}, measureText: t => ({ width: t.length * 14 }), set font(v) {}, set fillStyle(v) {}, set strokeStyle(v) {}, set lineWidth(v) {}, set textBaseline(v) {}, set textAlign(v) {} };
+  lam.pinta(cx, 1100, 860); const junto = textos.join(" ");
+  for (const re of [/Antes de hablar/, /en directo/, /No se graba/, /Tu privacidad/, /provisional/, /Ahora no/, /Aceptar/]) assert.match(junto, re);
+  assert.ok(lam.firma() !== undefined);
+  // tocar arriba no hace nada; la zona de abajo a la izquierda es «Ahora no»
+  assert.strictEqual(lam.alTocar(0.7, 0.3), true); assert.strictEqual(m.consFetchs.filter(x => x[0] === "PUT").length, 0);
+  lam.alTocar(0.2, 0.9); await espera(); assert.strictEqual(m.laminas["habla-consent"], undefined, "se cierra"); assert.deepStrictEqual(m.fetchs, []); assert.strictEqual(m.cons.aceptada, false);
+  // otra vez, y esta vez a la derecha: guarda y levanta la mano
+  hab("mano", true); await espera(); const l2 = m.laminas["habla-consent"]; assert.ok(l2); l2.alTocar(0.8, 0.92); await espera();
+  assert.strictEqual(m.cons.aceptada, true); assert.strictEqual(m.laminas["habla-consent"], undefined); assert.deepStrictEqual(m.fetchs.at(-1), ["POST", "/api/presencia/guiadas/12/mano"]);
+  // se aleja con el aviso abierto (alCierra «lejos») o se sale de VR: cuenta como «Ahora no»
+  m.cons.aceptada = false; m.api.estado(); const n2 = montaHabla({ consent: "no" }); n2.tic(); await espera(); n2.VRX.on = true; n2.tic(); n2.ventana.__habla("mano", true); await espera();
+  n2.laminas["habla-consent"].alCierra("lejos"); await espera(); assert.strictEqual(n2.api.estado().aviso, false); assert.deepStrictEqual(n2.fetchs, []);
+  const n3 = montaHabla({ consent: "no" }); n3.tic(); await espera(); n3.VRX.on = true; n3.tic(); n3.ventana.__habla("mano", true); await espera(); assert.ok(n3.laminas["habla-consent"]);
+  n3.VRX.on = false; n3.tic(); await espera(); assert.strictEqual(n3.api.estado().aviso, false, "al salir de VR el aviso se cierra"); assert.strictEqual(n3.laminas["habla-consent"], undefined);
+  // libera con el aviso abierto no deja nada
+  const n4 = montaHabla({ consent: "no" }); n4.tic(); await espera(); n4.boton().dispara("click"); await espera(); assert.ok(n4.dialogo()); n4.api.libera(); assert.strictEqual(n4.dialogo(), undefined);
+});
+
+test("F3j: el motor no habla con nada más que con su api, no lleva la versión por su cuenta (es la de la api) y el manifiesto declara el evento nuevo", () => {
+  const m = /Componentes\.registra\(\{([\s\S]*?)\n  \}\);/.exec(HAB)[1];
+  assert.match(m, /emite: \["habla:micro", "habla:mano", "habla:consentimiento"\]/); assert.deepStrictEqual(EVENTOS.eventos["habla:consentimiento"].emiten, ["47_habla"]);
+  assert.deepStrictEqual(EVENTOS.eventos["habla:consentimiento"].datos.properties.accion.enum, ["acepta", "rechaza", "retira"]);
+  assert.strictEqual(H.URL_CONSENTIMIENTO, "/api/presencia/voz/consentimiento");
+  const ajustes = lee("apps/web/motor/33_ajustes.js"); assert.match(ajustes, /c\.alClic \|\| ACCIONES\[c\.id\]/);
+  const api = lee("contratos/api.openapi.yaml"); assert.ok(api.includes("  /api/presencia/voz/consentimiento:"));
 });

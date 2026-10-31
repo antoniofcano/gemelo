@@ -25,8 +25,10 @@ export async function datosDelHogar(bd: Bd, id: number): Promise<Record<string, 
   ]);
   // los juegos (0009): sus partidas
   const ju = await bd.query("SELECT juego, puntos, duracion_s, jugada_en FROM juegos_partidas WHERE hogar_id = $1 ORDER BY id", [id]);
+  // el consentimiento de voz (0018, F3j): qué versión del aviso aceptó y cuándo (o nada)
+  const vz = await bd.query("SELECT version, aceptado_en FROM voz_consentimientos WHERE hogar_id = $1", [id]);
   return {
     hogar: h.rows[0], avatar: av.rows[0] ?? null, hazas: hz.rows, preguntas: pr.rows, visitas: vi.rows, sesiones: se.rows, aparatos_vinculados: cv.rows,
-    olivos_personalizados: pe.rows, fotos_subidas: me.rows, denuncias: de.rows, sugerencias: su.rows, avisos: avi.rows, lotes: lo.rows, partidas_de_juegos: ju.rows,
+    olivos_personalizados: pe.rows, fotos_subidas: me.rows, denuncias: de.rows, sugerencias: su.rows, avisos: avi.rows, lotes: lo.rows, partidas_de_juegos: ju.rows, voz_consentimiento: vz.rows[0] ?? null,
   };
 }

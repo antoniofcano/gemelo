@@ -112,6 +112,12 @@
       "emiten": ["46_guiada"],
       "escuchan": ["47_habla"]
     },
+    "habla:consentimiento": {
+      "descripcion": "F3j (decisión 163): el aviso de voz y el consentimiento de esta sesión. accion = acepta (se pulsó «Aceptar» y se guardó en la api: ok = si salió bien) | rechaza («Ahora no» o cerrar el aviso) | retira (se retiró el permiso desde Configuración o el panel de VR; ok = si la api lo borró); version = la versión del texto del aviso (HablaPuro.AVISO_VERSION). El estado de verdad es de la api (GET /api/presencia/voz/consentimiento); esto es para quien quiera reaccionar (un sonido, un lector de pantalla). Nada de la voz.",
+      "datos": { "type": "object", "required": ["accion", "ok", "version"], "properties": { "accion": { "enum": ["acepta", "rechaza", "retira"] }, "ok": { "type": "boolean" }, "version": { "type": "integer", "minimum": 1 } } },
+      "emiten": ["47_habla"],
+      "escuchan": []
+    },
     "habla:mano": {
       "descripcion": "F3e: esta sesión pidió a la api levantar o bajar la mano (POST o DELETE /api/presencia/guiadas/:evento/mano). accion = levanta | baja; ok = si la api lo aceptó; puesto = el puesto en la cola que dio la api al levantar (1 = la siguiente) o null. El estado verdadero de la mano es el atributo «mano» de la sala (lo lee 46_guiada); esto es para quien quiera reaccionar (un sonido, la háptica).",
       "datos": { "type": "object", "required": ["accion", "ok", "puesto"], "properties": { "accion": { "enum": ["levanta", "baja"] }, "ok": { "type": "boolean" }, "puesto": { "type": ["integer", "null"], "minimum": 1 } } },

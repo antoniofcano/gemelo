@@ -201,7 +201,7 @@
     function pintaCampo(c, panel) {
       var d = el("div", "aj-op");
       if (c.boton) {
-        var b = el("button", "aj-boton", c.boton); b.type = "button"; b.id = c.id; b.addEventListener("click", ACCIONES[c.id]); d.appendChild(b); hojas[c.id] = { boton: b, solo: c.solo };
+        var b = el("button", "aj-boton", c.boton); b.type = "button"; b.id = c.id; b.addEventListener("click", c.alClic || ACCIONES[c.id]); d.appendChild(b); hojas[c.id] = { boton: b, solo: c.solo, activo: c.activo, texto: c.texto };
       } else if (c.ops) {
         var f = el("fieldset"), lg = el("legend", null, c.t); f.appendChild(lg); hojas[c.k] = { radios: [] };
         c.ops.forEach(function (o) {
@@ -228,6 +228,8 @@
         if (h.casilla) { h.casilla.checked = !!v; h.casilla.disabled = forz; }
         if (h.rango) { h.rango.value = String(v); h.valor.textContent = h.fmt ? h.fmt(v) : String(v); }
         if (h.urlNota) h.urlNota.hidden = !forz;
+        if (h.boton && h.texto) { try { h.boton.textContent = h.texto(); } catch (e) {} }   // un componente (47_habla: retirar el permiso de voz) pone el texto y el estado de su botón
+        if (h.boton && h.activo) { try { h.boton.disabled = !h.activo(); } catch (e) {} }
         if (h.boton && h.solo === "contador") { var on = !!api.lee("avanzado.contador") || /[?&]mide\b/.test(location.search); h.boton.disabled = !on; }
       });
     }
@@ -273,7 +275,7 @@
     api.claves().forEach(aplica);
     api.pinta = function () { construye(); pinta(); };   // por si el menú se crea después
     // punto de extensión (ADR-0023, C2): Ajustes.registra(prefijo, esquema, pestaña, aplica?) añade los ajustes de un componente (AjustesPuro.fusiona) y su
-    // pestaña en Configuración, antes de «Avanzado»: pestaña = { id?, t, nota?, campos: [{ k (sin prefijo), t, ops?, fmt?, nota? }] }. aplica(clave, valor), si
+    // pestaña en Configuración, antes de «Avanzado»: pestaña = { id?, t, nota?, campos: [{ k (sin prefijo), t, ops?, fmt?, nota? } | { boton, id, alClic, activo?(), texto?(), nota? }] }. aplica(clave, valor), si
     // se da, se llama al registrarse y en cada cambio de sus claves, como los aplicaPor de aquí. Devuelve quita (saca la pestaña y las claves; lo guardado
     // se queda para la próxima vez), o null si el esquema no vale (lo dice en la consola).
     api.registra = function (prefijo, esquema, pestana, aplicaFn) {
@@ -281,7 +283,7 @@
       if (e.length) { try { console.error("[Ajustes] " + prefijo + ": " + e.join("; ")); } catch (er) {} return null; }
       var p = null, quitaOy = null;
       if (pestana) {
-        p = { id: pestana.id || prefijo, t: pestana.t || prefijo, nota: pestana.nota, campos: (pestana.campos || []).map(function (c) { return Object.assign({}, c, { k: prefijo + "." + c.k }); }) };
+        p = { id: pestana.id || prefijo, t: pestana.t || prefijo, nota: pestana.nota, campos: (pestana.campos || []).map(function (c) { return c.boton ? Object.assign({}, c) : Object.assign({}, c, { k: prefijo + "." + c.k }); }) };
         PESTANAS.splice(Math.max(0, PESTANAS.length - 1), 0, p);
         if (cont) { construyePestana(p); var av = document.getElementById("aj-t-avanzado"), tp = document.getElementById("aj-t-" + p.id); if (av && tp) lista.insertBefore(tp, av); pinta(); }
       }
@@ -295,7 +297,7 @@
           var i = PESTANAS.indexOf(p), sel = document.getElementById("aj-t-" + p.id), eraSel = !!(sel && sel.getAttribute("aria-selected") === "true");
           if (i >= 0) PESTANAS.splice(i, 1);
           ["aj-t-", "aj-p-"].forEach(function (x) { var n = document.getElementById(x + p.id); if (n && n.parentNode) n.parentNode.removeChild(n); });
-          p.campos.forEach(function (c) { delete hojas[c.k]; });
+          p.campos.forEach(function (c) { delete hojas[c.boton ? c.id : c.k]; });
           if (cont && eraSel) seleccionaPestana(PESTANAS[0].id, false);
         }
         AjustesPuro.retira(prefijo);
