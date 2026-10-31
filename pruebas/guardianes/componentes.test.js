@@ -391,7 +391,7 @@ test("C9a en Node: anfitrión y juego se encuentran por el Bus en cualquier orde
   assert.doesNotThrow(() => r.Componentes.actualiza("pausa", 0.016, 0));
   r.Componentes.configura({ juegos: { activo: false } });
   const fin = sinComentarios(lee("apps/web/motor/90_final.js"));
-  assert.ok(fin.includes('if (Pausa.activa() && !VRX.on) { Componentes.actualiza("pausa", dt, t); depuraCuadro(t); if (Mide.on) Mide.cuadro(t); return; }'), "en pausa, el bucle solo corre la fase «pausa» (ni render, ni Cola, ni módulos)");
+  assert.ok(fin.includes('if (Pausa.activa() && !VRX.on) { Componentes.actualiza("pausa", dt, t); depuraCuadro(t); Bus.emite("cuadro:fin", FIN); return; }'), "en pausa, el bucle solo corre la fase «pausa» (ni render, ni Cola, ni módulos)");
   assert.ok(fin.indexOf("Pausa.activa()") < fin.indexOf("actualizaTiempo("), "y lo mira antes que nada del mundo");
   // ?cosecha=0: el anfitrión sin juegos; ?juegos=0: sin anfitrión; sin el fichero del juego: anfitrión vacío
   let q = arranca("?cosecha=0", H + "\n" + J); assert.deepStrictEqual(q.ventana.__juegos().juegos, []); q.Componentes.configura({ juegos: { activo: false } });

@@ -1,11 +1,11 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: VRX, vrDebugExtra, vrFundido, vrAparece, panel, ficha, PanelVR, vrMideEmpieza, vrMideEnvio, vrMideFin, vrActualiza, VR_PERFILES, vrFin
+// Expone: VRX, vrDebugExtra, vrFundido, vrAparece, panel, ficha, PanelVR, vrActualiza, VR_PERFILES, vrFin
 // Consume: 01_datos (D, $, fmt, VRP), 02_mundo (Mundo, suelo, orto, copas), 02c_componentes (Bus, Config), 02d_laminas (Laminas),
 //   02e_entidades (EntidadesPuro, Entidades, Usables), 03_escena (lienzo, visor, renderer, scene, camera, texColor, exag, modo, calidad),
 //   04b_escena3d (Escena3D), 05_nube (nube), 07b_arboles (Arboles), 09_camara (pon), 10_ndvi (NDV, ndviIdx),
 //   12_paseo (paseando, persona, teclas, primera, entraPaseo, salePaseo, actualizaPaseo), 12b_llegada (Llegada), 13_parcelas (parcelas, fincas),
 //   14_historia (lista, aviso), 15_tiempo (calma, nivel, rumbo, hace), 16_vida (quita, mira, quad, dron), 22_huellas (pendFactor),
-//   24_pantalla (suave), 30_mide (MideEst, Mide), 33_ajustes (Ajustes), 90_final (tamano, cuadro, bucle)
+//   24_pantalla (suave), 33_ajustes (Ajustes), 90_final (tamano, cuadro, bucle)
 // Nota: Publica además window.__vrDebug, __vrOlivo, __vrBotones, __vrVuelo y VR_ESTADO (depuración y pruebas VR).
 // ===============================================================================
   // ---------- modo VR inmersivo (WebXR, Meta Quest Browser): el paseo en primera persona con mandos, un panel flotante y un perfil de rendimiento propio
@@ -157,7 +157,7 @@
   // ----- 3a) el panel en tres pestañas (U8, decisiones 83-90): Mundo (modo, hora, fecha y lo que añadan los componentes, como el tiempo) · Ir a (parcelas y gente con «Ir con») · Comodidad (viñeta, giro, relieve y lo que añadan los componentes, como el sonido; «Medir 60 s» solo con ?debug).
   // «Salir de VR» y las ayudas de los mandos quedan abajo en todas. Botones de 64 px en 1.024 px por metro (6,25 cm a 1 m). Los ajustes de comodidad se leen de Configuración (Ajustes.lee("vr.*"))
   // si ese módulo existe; si no, valen los de siempre (viñeta sí, giro de 30°).
-  var VR_PESTANAS = [["mundo", "Mundo"], ["ira", "Ir a"], ["comodidad", "Comodidad"]], VR_GIROS = [15, 30, 45, 60], VR_DEBUG = /[?&]debug\b/.test(location.search);
+  var VR_PESTANAS = [["mundo", "Mundo"], ["ira", "Ir a"], ["comodidad", "Comodidad"]], VR_GIROS = [15, 30, 45, 60];
   function vrAj(clave, def) { try { if (typeof Ajustes !== "undefined" && Ajustes && Ajustes.lee) { var v = Ajustes.lee(clave); if (v !== undefined && v !== null) return v; } } catch (e) {} return def; }
   function vrAjPon(clave, v) { try { if (typeof Ajustes !== "undefined" && Ajustes && Ajustes.pon) Ajustes.pon(clave, v); } catch (e) {} }
   // AV2 (decisión 133): «Altura de la vista» (Configuración, vista.altura). Sentado baja la vista VR_SENTADO m respecto a la que dan las gafas (se SUMA al suelo de la sesión: si el visor ya da la
@@ -205,8 +205,8 @@
     var B = [];
     function b(id, x, y, w, h, txt, fn, on) { B.push({ id: id, x: x, y: y, w: w, h: h, txt: txt, fn: fn, on: !!on }); }
     if (VRX.mideTarjeta) {   // PB9: «Enviar esta medida a la oficina» (con permiso: solo si se pulsa) y «Cerrar»
-      var envia = Mide.puedeEnviar() || Mide.envio() !== "";
-      if (envia) b("mideEnvia", 40, 668, 600, 76, Mide.textoEnvio(), function () { Mide.envia(); }, Mide.envio() === "ok");
+      var M = vrMedida(), envia = M.puedeEnviar || M.envio !== "";
+      if (envia) b("mideEnvia", 40, 668, 600, 76, M.textoEnvio, function () { Bus.emite("medida:envia"); }, M.envio === "ok");
       b("mideX", envia ? 664 : 372, 668, envia ? 320 : 280, 76, "Cerrar", function () { VRX.mideTarjeta = false; }); return B;
     }   // T7a: con la tarjeta de la medida abierta, solo «Cerrar»
     var y = vrY0(), p = VRX.pestana;
@@ -235,8 +235,6 @@
     botones: function (b, y) { b("giro", 420, y, 470, 64, "Giro por saltos de " + VRX.giro + "°", function () { var i = VR_GIROS.indexOf(VRX.giro); VRX.giro = VR_GIROS[(i + 1) % VR_GIROS.length]; vrAjPon("vr.giro", String(VRX.giro)); VRX.sucio = true; }, false); } });
   PanelVR.filas("comodidad", { id: "relieve", orden: 40, alto: 88, pinta: function (cx, y, W, h) { h.fila("Relieve", y, h.valores.exag); },
     botones: function (b, y) { b("e-", 420, y, 90, 64, "−", function () { vrSlider("exag", -1); }); b("e+", 800, y, 90, 64, "+", function () { vrSlider("exag", 1); }); } });
-  PanelVR.filas("comodidad", { id: "mide", orden: 50, alto: 88, visible: function () { return VR_DEBUG; }, pinta: function (cx, y, W, h) { h.fila("Medida", y); },
-    botones: function (b, y) { b("mide", 420, y, 470, 64, "Medir " + Mide.segundos() + " s", function () { Mide.inicia(); }, Mide.estado() === "midiendo"); } });
   function vrValores() {
     var h = Number($("hora").value), hh = Math.floor(h), mm = h % 1 ? "30" : "00", pr = parcelas[VRX.parcSel] || parcelas[0], fn = fincas.length > 1 && fincas[pr.finca] ? fincas[pr.finca].nombre + " · " : "";
     return { hora: hh + ":" + mm, fecha: NDV ? dd2(NDV.fechas[ndviIdx]) : "–", exag: fmt(exag, exag % 1 ? 2 : 0) + "×", parcela: fn + pr.nombre };
@@ -375,16 +373,18 @@
   function vrParcela(d) { VRX.parcSel = (VRX.parcSel + d + parcelas.length) % parcelas.length; var p = parcelas[VRX.parcSel]; vrIrA(p.centro[0], p.centro[1] - 6); VRX.sucio = true; }
   // T7a: la tarjeta de la medida (30_mide.js) sobre el panel: texto a 29 px en un panel de 1 m (letra de ≈ 2,8 cm, legible a 1 m) y «Cerrar» pulsable con el gatillo
   function vrPintaMide(B) {
-    var cx = panel.cx, W = panel.W, H = panel.H, r = Mide.resultado();
+    var cx = panel.cx, W = panel.W, H = panel.H, M = vrMedida(), r = M.resultado;
     cx.clearRect(0, 0, W, H); cx.fillStyle = "rgba(14,18,22,0.96)"; vrRect(cx, 0, 0, W, H, 30); cx.fill(); cx.textBaseline = "middle"; cx.textAlign = "left";
-    if (r) MideEst.lineas(r, true).forEach(function (l, i) { cx.fillStyle = i === 0 ? "#7fe3ff" : i === 4 ? "#ffffff" : "#dbe6ec"; cx.font = (i === 4 ? "bold " : "") + "29px system-ui, sans-serif"; cx.fillText(l, 36, 44 + i * 46, W - 72); });
+    if (r) M.lineas.forEach(function (l, i) { cx.fillStyle = i === 0 ? "#7fe3ff" : i === 4 ? "#ffffff" : "#dbe6ec"; cx.font = (i === 4 ? "bold " : "") + "29px system-ui, sans-serif"; cx.fillText(l, 36, 44 + i * 46, W - 72); });
     else { cx.fillStyle = "#dbe6ec"; cx.font = "30px system-ui, sans-serif"; cx.fillText("Sin medida todavía", 36, 60); }
     B.forEach(function (q) { cx.fillStyle = VRX.hover === q.id ? "#4a5866" : "#2e7d3a"; vrRect(cx, q.x, q.y, q.w, q.h, 14); cx.fill(); cx.fillStyle = "#ffffff"; cx.font = "bold 32px system-ui, sans-serif"; cx.textAlign = "center"; cx.fillText(q.txt, q.x + q.w / 2, q.y + q.h / 2 + 1); });
     cx.textAlign = "left"; panel.tex.needsUpdate = true; VRX.sucio = false; VRX.botones = B;
   }
-  function vrMideEmpieza() { VRX.mideTarjeta = false; panel.m.visible = false; VRX.sucio = true; }   // a andar: el panel no tapa la vista durante la medida
-  function vrMideEnvio() { VRX.sucio = true; }   // PB9: cambió el estado del envío (enviando, enviada…): repinta la tarjeta
-  function vrMideFin() { VRX.mideTarjeta = true; panel.m.visible = true; panel.ini = false; VRX.sucio = true; }
+  // lo que dice el medidor de fotogramas (30_mide.js, componente) por el Bus: sin él (?medidor=0) la tarjeta no se abre nunca
+  function vrMedida() { var q = { res: null }; Bus.emite("medida:estado", q); return q.res || { resultado: null, lineas: [], puedeEnviar: false, envio: "", textoEnvio: "" }; }
+  Bus.on("medida:empieza", function () { VRX.mideTarjeta = false; panel.m.visible = false; VRX.sucio = true; });   // a andar: el panel no tapa la vista durante la medida
+  Bus.on("medida:envio", function () { VRX.sucio = true; });   // PB9: cambió el estado del envío (enviando, enviada…): repinta la tarjeta
+  Bus.on("medida:fin", function () { VRX.mideTarjeta = true; panel.m.visible = true; panel.ini = false; VRX.sucio = true; });
 
   // ----- 4) la persona en la escena: posición del rig (el espacio de referencia desplazado) y locomoción
   function vrAplicaRig() {
