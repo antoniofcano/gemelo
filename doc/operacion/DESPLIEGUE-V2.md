@@ -14,7 +14,7 @@ Inspección de solo lectura de Antonio, 2026-10-31. Una foto: la fase 0 la repit
 | Entrada web | `oficultor_caddy` (`caddy:2-alpine`) es el único que publica 80 y 443 en todas las interfaces. Los paneles de los vecinos, solo en `127.0.0.1` |
 | Redes | `borde` (bridge, ya existe) y `oficultor_default` |
 | Cortafuegos | `ufw` activo y solo permite OpenSSH; los 80/443 funcionan porque Docker se lo salta. El cortafuegos de red de OVH: **no se sabe** si está activo |
-| Recursos | 4 núcleos, 7,8 GiB de RAM (5,8 disponibles), **sin swap**, 33 GB libres de 74. VPS en Europa, sin región concreta |
+| Recursos | 4 núcleos, 7,8 GiB de RAM (5,8 disponibles), 4 GiB de swap (desde el 2026-10-31), 33 GB libres de 74. VPS en Europa, sin región concreta |
 
 El gemelo no toca ningún contenedor vecino. Lo único compartido que cambia es añadir un bloque al Caddy de borde (fase 6), y eso lo hace o autoriza quien lleva Oficultor.
 
@@ -33,7 +33,6 @@ El gemelo no toca ningún contenedor vecino. Lo único compartido que cambia es 
 | **Token de Vigía** (solo lectura) y su URL del MCP | fase 12, opcional | el tiempo, apagado (`GEMELO_VIGIA=no`) |
 | **Token de OlivarTrack** (solo lectura), su URL y grabar respuestas reales ([RUNBOOK-VPS](RUNBOOK-VPS.md#token-propio-de-olivartrack-solo-lectura-decisión-17)) | fase 12, opcional | sin datos en vivo (`GEMELO_OT=no`); se puede desplegar igual |
 | **Mirar el cortafuegos de red de OVH** en el área de clientes | fase 13 | la voz puede no llegar, o los puertos quedar sin filtro externo |
-| **Swap, sí o no** ([Memoria](#memoria-y-el-vps-sin-swap)) | antes de la fase 5 | se sigue con los topes |
 
 **Se puede automatizar** (un agente lo prepara y Antonio lo ejecuta o lo aprueba): la puerta, construir imágenes y web, empaquetar lo publicado, `infra/comprobar-despliegue.sh`, `infra/respaldo.sh`, `infra/ensayar-restauracion.sh`. **No se automatiza:** secretos, DNS, borde, aprobar el despliegue. El CI actual no despliega: `puerta.yml` solo pasa pruebas y además está parado por la facturación (G1); este primer despliegue es a mano.
 
@@ -81,9 +80,9 @@ El resto de la lista previa, en [RUNBOOK-VPS](RUNBOOK-VPS.md#lista-de-comprobaci
 
 **`autoheal`.** Comprobado el 2026-10-31: `AUTOHEAL_CONTAINER_LABEL=autoheal`, así que solo actúa sobre los contenedores con la etiqueta `autoheal=true`. El compose del gemelo **no pone esa etiqueta** y no le afecta: un reinicio en mitad de una migración o de un horneado no conviene. Tampoco se añade la etiqueta por iniciativa propia: el gemelo se recupera con `restart: unless-stopped` y su fallo se ve en Kuma (fase 11).
 
-## Memoria y el VPS sin swap
+## Memoria
 
-Sin swap, si la máquina se queda sin memoria el OOM killer puede matar a un vecino. Por eso **todos** los servicios llevan `mem_limit` en el compose (lo vigila `api.test.js`): quien se pase muere él solo.
+Si la máquina se queda sin memoria, el OOM killer puede matar a un vecino; el swap de 4 GiB lo retrasa, pero no lo evita. Por eso **todos** los servicios llevan `mem_limit` en el compose (lo vigila `api.test.js`): quien se pase muere él solo.
 
 | Servicio | Tope **[SUPUESTO]** hasta medir | Nota |
 |---|---|---|
@@ -98,7 +97,7 @@ En el peor caso suman unos 3 GiB frente a 5,8 disponibles. Se miden con `docker 
 
 **Lo que más memoria gasta no es servir, es construir.** `npm ci` y `tsc` no tienen tope en un `docker build`. Por eso las imágenes se construyen **fuera del VPS** (fase 3).
 
-**Swap: recomiendo un fichero pequeño, de unos 2 GiB y con `vm.swappiness` bajo, pero es decisión de Antonio** porque afecta a toda la máquina. Evita que un pico ajeno, cuyos topes no conocemos, acabe en una muerte súbita. No sustituye a los topes: y con swap, cada contenedor podrá usar además otro tanto de swap salvo que se fije `memswap_limit`. No es condición para desplegar.
+**Swap:** 4 GiB en `/swapfile`, con `vm.swappiness=10`, hecho por Antonio el 2026-10-31 (decisión 170).
 
 ## Fase 1: preparar fuera del servidor
 
