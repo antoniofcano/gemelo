@@ -1,9 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Minimapa, actualizaMinimapa
 // Consume: 01_datos (D, $, ANCHO, ALTO), 02_mundo (Mundo, cIn), 02e_entidades (Entidades, Usables), 03_escena (modo), 08_marcadores (capas),
-//   12_paseo (paseando, persona), 13_parcelas (parcelas), 14_historia (aviso), 15_tiempo (esc),
-//   16_vida (enQuad, quita, mira, conejos, quad, enDron, dron), 19_balizas (avisoBaliza, dibujaBalizasMini), 29_vr (panel, ficha),
-//   34_movibles (Movibles), 90_final (cuadro)
+//   12_paseo (paseando, persona), 13_parcelas (parcelas), 14_historia (aviso), 15_tiempo (esc), 16_vida (enQuad, quita, mira, quad, enDron, dron),
+//   19_balizas (avisoBaliza, dibujaBalizasMini), 29_vr (panel, ficha), 34_movibles (Movibles), 90_final (cuadro)
 // ===============================================================================
   // ---------- el minimapa del paseo: la ortofoto vista desde arriba con tú, tu rastro, el dron y los conejos (M o un toque cambia el zoom)
   var mini = { cv: $("mapita"), cerca: false, oculto: false, rastro: [], t: 0, pts: [], bal: [], sel: null }, MW = 240, MH = Math.round(MW * ALTO / ANCHO);
@@ -91,8 +90,7 @@
     if (mini.cerca) { c.fillStyle = "rgba(140,190,90,0.9)"; cIn.forEach(function (o) { var px = X(o.x), py = Y(o.y); if (px > -3 && px < MW + 3 && py > -3 && py < MH + 3) { c.beginPath(); c.arc(px, py, 1.6, 0, 6.283); c.fill(); } }); }
     // tu rastro
     c.lineWidth = 2; c.strokeStyle = "rgba(255,154,46,0.9)"; c.beginPath(); mini.rastro.forEach(function (q, i) { if (i) c.lineTo(X(q[0]), Y(q[1])); else c.moveTo(X(q[0]), Y(q[1])); }); c.stroke();
-    // conejos
-    c.fillStyle = "#f2dcb8"; conejos.forEach(function (co) { if (!co.visible) return; c.beginPath(); c.arc(X(co.userData.x), Y(co.userData.y), 2.2, 0, 6.283); c.fill(); });
+    // (los conejos los pinta su componente, fauna-olivar, con Minimapa.capa)
     dibujaBalizasMini(c, X, Y, mini.bal); Minimapa.pinta(c, X, Y, { cerca: mini.cerca, MW: MW, MH: MH });
     // los demás (solo con la presencia compartida): violeta con borde blanco, distinto de tu flecha naranja; en vista cercana, con su alias al lado
     mini.pts.length = 0;

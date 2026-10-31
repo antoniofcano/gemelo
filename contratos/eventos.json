@@ -32,6 +32,12 @@
       "emiten": ["28_depura"],
       "escuchan": ["38_presencia_compartida", "44_lindes", "45_voz", "46_guiada"]
     },
+    "fauna:conejo-cerca": {
+      "descripcion": "Una pregunta con respuesta en el mismo objeto: un perro en { x, y } busca, en un radio (m), el conejo visible más cercano; la fauna rellena res con ese conejo (el grupo de three, con su estado en userData) o lo deja en null. Sin fauna (?fauna=0), res queda en null y los perros no persiguen a nadie.",
+      "datos": { "type": "object", "required": ["x", "y", "radio"], "properties": { "x": { "type": "number" }, "y": { "type": "number" }, "radio": { "type": "number" }, "res": { "type": ["object", "null"] } } },
+      "emiten": ["25_perros"],
+      "escuchan": ["16b_fauna"]
+    },
     "guiada:cierre": {
       "descripcion": "F3f (decisión 155): ha llegado el aviso de que el guía o la oficina cierran la sala guiada (tema «cierre», mandado por la api sin participante; ya validado). en = cuándo se borra la sala; segundos = cuánto falta. La cuenta atrás, la lámina en VR y la vuelta a la visita libre ya las pone 46_guiada; es para quien quiera reaccionar (un sonido, un lector de pantalla).",
       "datos": { "type": "object", "required": ["en", "segundos"], "properties": { "en": { "type": "string" }, "segundos": { "type": "integer", "minimum": 0 } } },
@@ -74,10 +80,22 @@
       "emiten": ["02c_componentes"],
       "escuchan": []
     },
+    "paseo:entra": {
+      "descripcion": "El muñequito empieza a pasear (entraPaseo, ya con la cámara en el paseo): lo que vive solo mientras se pasea (la fauna) se coloca entre los olivos.",
+      "datos": {},
+      "emiten": ["16_vida"],
+      "escuchan": ["16b_fauna"]
+    },
+    "paseo:sale": {
+      "descripcion": "El muñequito deja de pasear: lo que vive solo mientras se pasea (la fauna) se esconde.",
+      "datos": {},
+      "emiten": ["16_vida"],
+      "escuchan": ["16b_fauna"]
+    },
     "perros:amenaza": {
       "descripcion": "Una pregunta con respuesta en el mismo objeto: la fauna (un conejo en { x, y }) pregunta si hay algo de lo que huir; los perros, si están, rellenan res con { x, y } de quien corre cerca (el muñequito, en quad desde más lejos, o un perro a la carrera). Sin perros, res queda en null.",
       "datos": { "type": "object", "required": ["x", "y"], "properties": { "x": { "type": "number" }, "y": { "type": "number" }, "res": { "type": ["object", "null"] } } },
-      "emiten": ["16_vida"],
+      "emiten": ["16b_fauna"],
       "escuchan": ["25_perros"]
     },
     "perros:llegan": {

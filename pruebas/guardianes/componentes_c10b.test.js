@@ -58,6 +58,56 @@ function espiaDispose() {
   return { cuenta: () => n, quita: () => { THREE.EventDispatcher.prototype.dispatchEvent = orig; } };
 }
 
+test("fauna-olivar: manifiesto, montaje, paseo:entra coloca aves y conejos, presupuesto medido, fauna:conejo-cerca, minimapa y liberar suelta todo", () => {
+  const m = mundo(), d = carga("16b_fauna.js", m), n = contexto(m);
+  assert.strictEqual(d.id, "fauna-olivar"); assert.strictEqual(d.bandera.url, "fauna"); assert.strictEqual(JSON.stringify(d.fases), "{\"mundo\":0}");
+  assert.strictEqual(m.gFauna.children.length, 0, "antes de montar la fauna no tiene nada");
+  const api = d.monta(n);
+  assert.ok(m.gFauna.children.length >= 8, "dos mallas de aves y seis conejos");
+  assert.strictEqual(m.capas.length, 1, "su capa del minimapa");
+  for (const ev of ["paseo:entra", "paseo:sale", "fauna:conejo-cerca"]) assert.ok(m.Bus.hay(ev), ev);
+  // de día y sin pasear solo vuelan las dos bandadas (14 aves = 2 llamadas); los conejos no están
+  m.E.paseando = false; api.actualiza(0.05);
+  assert.strictEqual(api.conejos().filter(c => c.visible).length, 0);
+  assert.strictEqual(dibujo(m.gFauna).llamadas, 2, "cuerpos y alas de la bandada, instanciados");
+  // paseo:entra: los seis conejos y las ocho aves posadas
+  m.E.paseando = true; m.Bus.emite("paseo:entra");
+  for (let i = 0; i < 20; i++) { m.E.tVida += 0.05; api.actualiza(0.05); }
+  const dib = dibujo(m.gFauna); console.log("medido fauna-olivar (paseando, todo a la vista):", JSON.stringify(dib));
+  assert.ok(api.conejos().filter(c => c.visible).length >= 4, "los conejos salen");
+  assert.ok(dib.llamadas <= d.presupuesto.llamadas && dib.triangulos <= d.presupuesto.triangulos, JSON.stringify(dib) + " frente a " + JSON.stringify(d.presupuesto));
+  // fauna:conejo-cerca
+  const c0 = api.conejos().find(c => c.visible), q = { x: c0.userData.x, y: c0.userData.y, radio: 5, res: null };
+  m.Bus.emite("fauna:conejo-cerca", q); assert.strictEqual(q.res, c0);
+  const q2 = { x: 9999, y: 9999, radio: 5, res: null }; m.Bus.emite("fauna:conejo-cerca", q2); assert.strictEqual(q2.res, null);
+  // huyen si alguien les amenaza (perros:amenaza)
+  let preguntas = 0; m.Bus.on("perros:amenaza", x => { preguntas++; x.res = { x: x.x - 1, y: x.y }; });
+  m.E.tVida += 0.05; api.actualiza(0.05); assert.ok(preguntas >= 4, "cada conejo pregunta si hay algo de lo que huir");
+  assert.ok(api.conejos().some(c => c.userData.est === "huye"), "y huye");
+  // la capa del minimapa pinta sin romper
+  const c2d = new Proxy({}, { get: () => () => {}, set: () => true });
+  assert.doesNotThrow(() => m.capas[0].fn(c2d, x => x, y => y, {}));
+  // paseo:sale esconde
+  m.Bus.emite("paseo:sale"); assert.strictEqual(api.conejos().filter(c => c.visible).length, 0);
+  // de noche las aves no vuelan
+  m.g.nivel = () => ({ d: 0 }); m.E.paseando = false; api.actualiza(0.05); assert.strictEqual(dibujo(m.gFauna).llamadas, 0, "de noche, ni bandada");
+  const sp = espiaDispose();
+  try { d.libera(); n.suelta(); } finally { sp.quita(); }
+  assert.ok(sp.cuenta() >= 10, "dispose de geometrías y materiales: " + sp.cuenta());
+  assert.strictEqual(m.gFauna.children.length, 0, "la fauna queda como estaba");
+  assert.strictEqual(m.capas.length, 0); assert.ok(!m.Bus.hay("paseo:entra") && !m.Bus.hay("fauna:conejo-cerca"));
+  assert.doesNotThrow(() => d.libera(), "liberar dos veces no rompe");
+});
+
+test("fauna-olivar: sin montar nadie responde (los perros no persiguen a nadie) y 16_vida ya no la nombra", () => {
+  const m = mundo(); carga("16b_fauna.js", m);
+  const q = { x: 0, y: 0, radio: 9, res: null }; assert.strictEqual(m.Bus.emite("fauna:conejo-cerca", q), 0); assert.strictEqual(q.res, null);
+  const v = lee("apps/web/motor/16_vida.js").replace(/\/\/.*$/gm, "");
+  assert.ok(!/\b(conejos|bandada|posadas|empacaAves)\b/.test(v), "16_vida.js sigue nombrando la fauna");
+  assert.match(v, /Bus\.emite\("paseo:entra"\)/); assert.match(v, /Bus\.emite\("paseo:sale"\)/);
+  assert.ok(!/\bconejos\b/.test(lee("apps/web/motor/17_minimapa.js").replace(/^\s*\/\/.*$/gm, "")), "17_minimapa.js sigue nombrando los conejos");
+});
+
 /** dos mandos con grip y mano de three, sin WebXR */
 function xr() {
   const grips = [new THREE.Group(), new THREE.Group()], manos = [new THREE.Group(), new THREE.Group()];

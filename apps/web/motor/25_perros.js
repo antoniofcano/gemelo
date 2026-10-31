@@ -1,9 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
 // Consume: 01_datos (D), 02_mundo (copas), 02c_componentes (Componentes), 03_escena (scene, camera, texColor), 04d_sombreado_tiles (hash),
-//   07_follaje (matSombra, geoSombra), 12_paseo (paseando), 15_tiempo (esc),
-//   16_vida (tVida, enQuad, gFauna, altSuelo, mira, conejos, quad, enDron, dron), 17_minimapa (Minimapa), 22_huellas (pendienteRumbo, sueloSeco),
-//   24_pantalla (aterriza)
+//   07_follaje (matSombra, geoSombra), 12_paseo (paseando), 15_tiempo (esc), 16_vida (tVida, enQuad, gFauna, altSuelo, mira, quad, enDron, dron),
+//   17_minimapa (Minimapa), 22_huellas (pendienteRumbo, sueloSeco), 24_pantalla (aterriza)
 // Nota: Publica además window.__perrosDebug (depuración).
 // ===============================================================================
   // ---------- los perros del paseo: una dálmata adulta y un cruce de dálmata y mastín (rubio y sin manchas). Te siguen, exploran, persiguen conejos y vuelven a tu lado.
@@ -53,8 +52,8 @@
       PERROS.forEach(function (d, i) { var a = (i ? 2.4 : 0.7) + Math.random() * 0.8; d.x = pp.x + Math.cos(a) * 24; d.y = pp.y + Math.sin(a) * 24; d.ang = Math.atan2(pp.y - d.y, pp.x - d.x); d.v = 0; d.est = "viene"; d.t = 0; d.obj = null; d.malla.visible = true; });
       if (tLlega) clearTimeout(tLlega); tLlega = setTimeout(function () { tLlega = 0; if (paseando && PERROS[0].est === "viene") ladrido(PERROS[0]); }, 900);
     }
-    function conejoCerca(d, radio) {
-      var mejor = null, md = radio; conejos.forEach(function (c) { if (!c.visible || c.userData.est === "fuera") return; var u = c.userData, q = Math.hypot(u.x - d.x, u.y - d.y); if (q < md) { md = q; mejor = c; } }); return mejor;
+    function conejoCerca(d, radio) {   // el conejo más cercano, si la fauna está encendida y responde (fauna:conejo-cerca); si no, nadie a quien perseguir
+      var q = { x: d.x, y: d.y, radio: radio, res: null }; n.emite("fauna:conejo-cerca", q); return q.res;
     }
     function amenazaConejo(x, y) {   // un conejo huye de ti (más lejos si vas en quad) y de los perros que van deprisa
       var dj = Math.hypot(x - pp.x, y - pp.y); if (dj < (enQuad ? 17 : 8.5)) return { x: pp.x, y: pp.y };
@@ -138,9 +137,9 @@
   }
   Componentes.registra({
     id: "perros-paseo", version: 1,
-    consume: ["D", "copas", "scene", "camera", "texColor", "hash", "matSombra", "geoSombra", "paseando", "pp", "esc", "tVida", "enQuad", "gFauna", "altSuelo", "conejos", "enDron", "pendienteRumbo", "sueloSeco", "Minimapa"],
+    consume: ["D", "copas", "scene", "camera", "texColor", "hash", "matSombra", "geoSombra", "paseando", "pp", "esc", "tVida", "enQuad", "gFauna", "altSuelo", "enDron", "pendienteRumbo", "sueloSeco", "Minimapa"],
     expone: [],
-    eventos: { escucha: ["perros:llegan", "perros:amenaza"], emite: ["sonido:ladrido", "polvo:emite"] },
+    eventos: { escucha: ["perros:llegan", "perros:amenaza"], emite: ["sonido:ladrido", "polvo:emite", "fauna:conejo-cerca"] },
     bandera: { defecto: true, url: "perros" },
     presupuesto: { llamadas: 42, triangulos: 480, texturasMB: 0.2 },   // medido en Node con el three de verdad (huellas_perros.test.js): 42 llamadas (cajas, sombras y rótulos de los dos perros a la vista) y 464 triángulos; el pelaje es una textura de 256 x 128
     fases: { mundo: 0 },
