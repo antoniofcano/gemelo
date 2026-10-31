@@ -150,6 +150,7 @@ function montaHabla({ papel = "familia", puede = false, sala = "guiada-12", mano
       const r = respuestas[o.method] || (o.method === "POST" ? { puesto: 2 } : {}), st = r.__status || (o.method === "DELETE" ? 204 : 200);
       return Promise.resolve({ ok: st < 300, status: st, json: () => Promise.resolve(r) });
     } };
+  Object.assign(g, { ConfigPuro: { prefijoApi: () => "/api" }, D: {}, location: { search: "" } });   // con servidor: sin él, el consentimiento no se pregunta
   const nombres = Object.keys(g);
   const HablaMotor = new Function(...nombres, "\"use strict\";\n" + PURO + MOTOR + "\nreturn HablaMotor;")(...nombres.map(k => g[k]));
   const api = HablaMotor(n, Vz, Gd);
