@@ -27,10 +27,16 @@
       "escuchan": ["15_tiempo"]
     },
     "depura:lineas": {
-      "descripcion": "El contador de ?debug (cada 0,5 s) pide sus líneas a los componentes: quien tenga algo que decir añade una cadena a «lineas» (hoy, la presencia compartida). Se pintan en ese orden, tras la de VR.",
+      "descripcion": "El contador de ?debug (cada 0,5 s) pide sus líneas a los componentes: quien tenga algo que decir añade una cadena a «lineas» (hoy, la presencia compartida y las lindes de las hazas). Se pintan en ese orden, tras la de VR.",
       "datos": { "type": "object", "required": ["lineas"], "properties": { "lineas": { "type": "array", "items": { "type": "string" } } } },
       "emiten": ["28_depura"],
-      "escuchan": ["38_presencia_compartida"]
+      "escuchan": ["38_presencia_compartida", "44_lindes"]
+    },
+    "hazas:cambia": {
+      "descripcion": "Han llegado (o se han soltado) las hazas de la api que se ven en este mundo (13b_hazas.js): cuántas y cuántas son tuyas. Quien las dibuja (el componente «lindes-hazas») vuelve a pedir Hazas.lindes() y rehace la linde; sin nadie, no pasa nada.",
+      "datos": { "type": "object", "required": ["n", "propias"], "properties": { "n": { "type": "integer", "minimum": 0 }, "propias": { "type": "integer", "minimum": 0 } } },
+      "emiten": ["13b_hazas"],
+      "escuchan": ["44_lindes"]
     },
     "juego:ofrece": {
       "descripcion": "Un juego casual (componente) se ofrece al anfitrión de juegos: { id, titulo, descripcion?, ayuda?, vr?, crea(ctx) → partida } (contrato en doc/sistema/JUEGOS.md). Lo emite al montarse y al oír «juego:pide».",

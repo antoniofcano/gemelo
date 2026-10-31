@@ -660,7 +660,8 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
       assert.ok(pedidas.some(x => /^200 \/teselas\/hituelo\/t\/\d+_\d+\.json$/.test(x)), "el motor no pidió teselas a /teselas/hituelo/t/: " + pedidas.join(", "));
       assert.deepStrictEqual(vistos, [], "la CSP (Report-Only) avisa de violaciones");
 
-      // 4a. A4: las lindes de las hazas dibujadas (LineSegments «linde de las hazas»), la propia con otro color que las ajenas;
+      // 4a. A4: las lindes de las hazas dibujadas (componente «lindes-hazas», 44_lindes.js: el grupo «linde de las hazas» con LineSegments2 de three),
+      //     la propia con otro color y otro ancho que las ajenas;
       //     A3: el tileset por Caddy (200 con sesión, 401 sin ella) y /finca/ (escena 3D Tiles) y ?olivos=gen sin errores ni avisos de CSP
       const finca = process.env.GEMELO_DEV_FINCA || "hituelo";
       const abre = async (ruta, esperaFn, c = ctx) => {
@@ -680,18 +681,18 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
       };
       r0 = reloj();
       {
-        const { q, errs, csp } = await abre("/finca/", () => { let n = 0; window.__g.scene.traverse(o => { if (o.name === "linde de las hazas") n++; }); return n > 0; });
+        const { q, errs, csp } = await abre("/finca/", () => !!window.__g.scene.getObjectByName("linde de las hazas"));
         const l = await q.evaluate(() => {
-          let o = null; window.__g.scene.traverse(x => { if (x.name === "linde de las hazas") o = x; });
-          const col = o.geometry.getAttribute("color").array, ds = new Set();
-          for (let i = 0; i < col.length; i += 3) ds.add(col[i].toFixed(2) + "," + col[i + 1].toFixed(2) + "," + col[i + 2].toFixed(2));
-          return { tipo: o.type, vertices: o.geometry.getAttribute("position").count, colores: ds.size, visible: o.visible };
+          const g = window.__g.scene.getObjectByName("linde de las hazas"), ls = g.children.map(o => ({ nombre: o.name, tipo: o.type, tramos: o.geometry.instanceCount, color: o.material.color.getHexString(), ancho: o.material.linewidth }));
+          return { ls, visible: g.visible, estado: window.__lindes ? window.__lindes() : null };
         });
         await q.close();
-        assert.strictEqual(l.tipo, "LineSegments"); assert.ok(l.vertices >= 8 && l.vertices % 2 === 0, "vértices de las lindes: " + l.vertices);
-        assert.ok(l.colores >= 2, "la linde propia debe verse distinta de las ajenas: " + l.colores + " color(es)"); assert.ok(l.visible);
+        const mia = l.ls.find(x => x.nombre === "lindes propias"), otras = l.ls.find(x => x.nombre === "lindes ajenas");
+        assert.ok(mia && mia.tipo === "LineSegments2" && mia.tramos > 0, "la linde propia: " + JSON.stringify(l.ls));
+        if (otras) assert.ok(otras.color !== mia.color && otras.ancho < mia.ancho, "la linde propia debe verse distinta de las ajenas: " + JSON.stringify(l.ls));
+        assert.ok(l.visible); assert.ok(l.estado && l.estado.llamadas === l.ls.length && l.estado.llamadas <= 2, JSON.stringify(l.estado));
         assert.deepStrictEqual(errs, [], "errores en /finca/ con las lindes"); assert.deepStrictEqual(csp, [], "CSP en /finca/");
-        t.diagnostic("lindes de las hazas: LineSegments con " + l.vertices + " vértices y " + l.colores + " colores, en " + r0().toFixed(1) + " s");
+        t.diagnostic("lindes de las hazas: " + l.ls.map(x => x.nombre + " " + x.tramos + " tramos").join(", ") + " (" + l.estado.triangulos + " triángulos), en " + r0().toFixed(1) + " s");
       }
       const turl = "/teselas/" + finca + "/tileset/tileset.json";
       if (tilesetMotivo) t.diagnostic("TILESET NO COMPROBADO: " + tilesetMotivo);
