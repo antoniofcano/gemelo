@@ -38,6 +38,56 @@
       "emiten": ["46_guiada"],
       "escuchan": []
     },
+    "guiada:entrada": {
+      "descripcion": "OF11e: resultado de guiada:entrar. ok = quedó dentro de la sala guiada; si no, mensaje es la frase que dio la api (403 guiada_solo_inscritos, 409 guiada_cerrada, aún no abre, terminada…) o vacío. La agenda la pinta como texto.",
+      "datos": {
+        "type": "object",
+        "required": [
+          "evento",
+          "ok",
+          "mensaje"
+        ],
+        "properties": {
+          "evento": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "ok": {
+            "type": "boolean"
+          },
+          "mensaje": {
+            "type": "string"
+          }
+        }
+      },
+      "emiten": [
+        "38_presencia_compartida"
+      ],
+      "escuchan": [
+        "43_agenda"
+      ]
+    },
+    "guiada:entrar": {
+      "descripcion": "OF11e: la agenda del mundo (43_agenda) pide entrar en la sala de la visita guiada de un evento (pulsó «Entrar en la visita»). Solo lo atiende la presencia de verdad (?presencia=red), que viaja a la sala (Presencia.entraGuiada) y contesta con guiada:entrada; sin nadie que escuche, la agenda no enseña el botón (Bus.hay).",
+      "datos": {
+        "type": "object",
+        "required": [
+          "evento"
+        ],
+        "properties": {
+          "evento": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "emiten": [
+        "43_agenda"
+      ],
+      "escuchan": [
+        "38_presencia_compartida"
+      ]
+    },
     "guiada:palabra": {
       "descripcion": "F3f: en la sala guiada cambia quién tiene la palabra (leído del atributo palabra_hasta que pone la api): identidad (\"\" si ya nadie), los segundos que le quedan al empezar y si eres tú. La tira, la cuenta atrás y los avisos ya los pone 46_guiada; es para quien quiera reaccionar (F3e: el botón Hablar, la háptica).",
       "datos": { "type": "object", "required": ["identidad", "segundos", "yo"], "properties": { "identidad": { "type": "string" }, "segundos": { "type": "integer", "minimum": 0 }, "yo": { "type": "boolean" } } },

@@ -84,8 +84,12 @@ function monta({ prefijo = "/api/", respuestas, conPanel = true, P = null }) {
     document: { createElement: tag => new Nodo(tag) },
     Ventanas: { registra: (id, d) => { ventanas[id] = d; const c = new Nodo("div"); d.construye(c); ventanas[id].cuerpo = c; return nada; } },
     Hud: { icono: d => { iconos.push(d); return nada; } }, PanelVR: conPanel ? { filas: (p, d) => { filas.push({ p, d }); return nada; }, repinta: nada } : undefined };
-  const n = { api: id => (id === "presencia-compartida" ? P : null), on: (e, fn) => { bus[e] = fn; }, emite: (e, d) => emitidos.push([e, d]), limpia: nada };
-  const api = new Function("AgendaPuro", "n", "g", "\"use strict\";\nvar D = g.D, ConfigPuro = g.ConfigPuro, location = g.location, window = g.window, document = g.document, Ventanas = g.Ventanas, Hud = g.Hud, PanelVR = g.PanelVR;\n" + CUERPO + "\nreturn AgendaMotor(n, n.api(\"presencia-compartida\"));")(AP, n, g);
+  // la presencia de verdad, por el Bus (OF11e): solo si hay `P` en ?presencia=red escucha guiada:entrar (Bus.hay) y contesta con guiada:entrada
+  const hayPresencia = !!(P && P.estado().variante === "red");
+  g.Bus = { hay: ev => ev === "guiada:entrar" && hayPresencia };
+  const n = { on: (e, fn) => { bus[e] = fn; }, limpia: nada,
+    emite: (e, d) => { emitidos.push([e, d]); if (e === "guiada:entrar" && hayPresencia) Promise.resolve(P.entraGuiada(d.evento)).then(ok => bus["guiada:entrada"]({ evento: d.evento, ok: !!ok, mensaje: ok ? "" : P.avisoGuiada() })); } };
+  const api = new Function("AgendaPuro", "n", "g", "\"use strict\";\nvar D = g.D, ConfigPuro = g.ConfigPuro, location = g.location, window = g.window, document = g.document, Ventanas = g.Ventanas, Hud = g.Hud, Bus = g.Bus, PanelVR = g.PanelVR;\n" + CUERPO + "\nreturn AgendaMotor(n);")(AP, n, g);
   return { api, llamadas, bus, emitidos, filas, ventanas, iconos, win, restaura: () => { globalThis.fetch = fetchAnt; } };
 }
 const J = (status, cuerpo) => ({ status, cuerpo });
@@ -202,7 +206,7 @@ test("OF11e puro (propiedad): puedeEntrar es exactamente desde <= ahora <= hasta
   }), { numRuns: 300 });
 });
 
-test("OF11e: la ventana enseña el botón solo dentro de la ventana, llama a Presencia.entraGuiada y dice que ya estáis; la guiada en curso sigue en la lista", async () => {
+test("OF11e: la ventana enseña el botón solo dentro de la ventana, pide entrar por el Bus (la presencia llama a entraGuiada) y dice que ya estáis; la guiada en curso sigue en la lista", async () => {
   const llamadas = []; let dentro = null;
   const P = { estado: () => ({ variante: "red" }), entraGuiada: id => { llamadas.push(id); dentro = id; return Promise.resolve(true); }, evento: () => dentro, avisoGuiada: () => "" };
   const agenda = { puede_inscribirse: true, eventos: [conEntrada(guiada(1, -20 * MIN), -35 * MIN, 100 * MIN), conEntrada(guiada(2, 3 * 3600000), 3 * 3600000 - 15 * MIN, 5 * 3600000), guiada(3, 5 * MIN, { tipo: "cata" })] };

@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos (D, $), 02_mundo (Mundo), 02c_componentes (ConfigPuro, Componentes), 03_escena (lienzo, modo), 12_paseo (persona),
+// Consume: 01_datos (D, $), 02_mundo (Mundo), 02c_componentes (Bus, ConfigPuro, Componentes), 03_escena (lienzo, modo), 12_paseo (persona),
 //   14_historia (lista), 29_vr (panel, PanelVR), 31_hud (Hud), 32_ventanas (Ventanas)
 // Nota: Componente «agenda» (OF11d, ADR-0023; decisiones 145-148): la agenda de la finca dentro del mundo. Solo se registra; nadie lo nombra. Montado (solo con servidor): icono y ventana «Agenda» con los próximos eventos, plazas libres, tu estado (apuntados / en espera) y, solo si la api dice puede_inscribirse, apuntarse o borrarse con el número de personas (1-10); en VR, una fila en la pestaña Mundo del panel que lista los próximos y dice «Apúntate desde el móvil o el ordenador» (nadie se apunta desde las gafas). Todo lo de la api es dato: lista blanca y textContent / fillText. Publica window.__agenda (pruebas). El trozo [puro:…] lo evalúa en Node pruebas/guardianes/agenda_mundo.test.js.
 // ===============================================================================
@@ -109,10 +109,10 @@
   })();
   // [puro:fin]
 
-  function AgendaMotor(n, Presencia) {
+  function AgendaMotor(n) {
     var AP = AgendaPuro, prefijo = ConfigPuro.prefijoApi(location.search, D && D.base);
     if (!prefijo || typeof fetch !== "function") return null;   // sin servidor no hay agenda: ni icono ni ventana
-    var datos = null, estado = "sin-pedir", cuerpo = null, nota = "", pidiendo = null, hechas = 0, enVuelo = false, entrando = false;
+    var datos = null, estado = "sin-pedir", cuerpo = null, nota = "", pidiendo = null, hechas = 0, enVuelo = false, entrando = false, dentro = null;
 
     function el(tag, css, txt) { var x = document.createElement(tag); if (css) x.style.cssText = css; if (txt != null) x.textContent = txt; return x; }
     var BOTON = "min-height:44px;min-width:44px;padding:0 14px;border-radius:10px;border:1px solid currentColor;background:rgba(255,255,255,0.12);color:inherit;font:600 15px system-ui,sans-serif;cursor:pointer";
@@ -148,18 +148,28 @@
         .then(function (ok) { enVuelo = false; return carga().then(function () { return ok; }); });
     }
 
-    // OF11e: entrar en la visita guiada = Presencia.entraGuiada(evento): la presencia viaja a la sala guiada y la voz se engancha sola (F3f). Solo con la presencia de
-    // verdad (?presencia=red); sin ella no hay botón. Si la api no deja entrar (403 guiada_solo_inscritos, 409 guiada_cerrada…), la presencia guarda su frase.
-    function viaje() { return !!(Presencia && Presencia.entraGuiada && Presencia.estado && Presencia.estado().variante === "red"); }
-    function enLaVisita(id) { return !!(Presencia && Presencia.evento && Presencia.evento() === id); }
+    // OF11e: entrar en la visita guiada, por el Bus y sin nombrar a nadie (la agenda no depende de la presencia): la agenda emite guiada:entrar {evento}; la presencia de
+    // verdad (?presencia=red, F3f) escucha, viaja a la sala guiada (la voz se engancha sola) y contesta con guiada:entrada {evento, ok, mensaje}, donde mensaje es la frase
+    // de la api si no dejó entrar (403 guiada_solo_inscritos, 409 guiada_cerrada…). Sin nadie que escuche guiada:entrar no hay botón.
+    function viaje() { return Bus.hay("guiada:entrar"); }
+    function enLaVisita(id) { return dentro === id; }
+    var esperando = null;
     function entra(e) {
       if (!viaje() || entrando) return Promise.resolve(false);
       entrando = true; nota = "Entrando en la visita…"; pinta();
-      return Promise.resolve(Presencia.entraGuiada(e.id)).then(function (ok) {
-        nota = ok ? "Estáis en la visita guiada «" + e.titulo + "»." : (Presencia.avisoGuiada && Presencia.avisoGuiada()) || AP.TEXTO_NO_ENTRA;
-        return !!ok;
-      }, function () { nota = AP.TEXTO_NO_ENTRA; return false; }).then(function (ok) { entrando = false; pinta(); if (typeof PanelVR !== "undefined") PanelVR.repinta(); return ok; });
+      return new Promise(function (fin) {
+        var t = setTimeout(function () { esperando = null; fin(null); }, 30000);
+        esperando = { id: e.id, titulo: e.titulo, fin: function (r) { clearTimeout(t); esperando = null; fin(r); } };
+        n.emite("guiada:entrar", { evento: e.id });
+      }).then(function (r) {
+        if (r === null) { nota = AP.TEXTO_NO_ENTRA; return false; }
+        dentro = r.ok ? e.id : null;
+        nota = r.ok ? "Estáis en la visita guiada «" + e.titulo + "»." : r.mensaje || AP.TEXTO_NO_ENTRA;
+        return !!r.ok;
+      }).then(function (ok) { entrando = false; pinta(); if (typeof PanelVR !== "undefined") PanelVR.repinta(); return ok; });
     }
+    n.on("guiada:entrada", function (d) { if (esperando && d && d.evento === esperando.id) esperando.fin({ ok: d.ok === true, mensaje: typeof d.mensaje === "string" ? corta(d.mensaje, 240) : "" }); });
+    function corta(s, max) { var c = Array.from(String(s)); return c.length > max ? c.slice(0, max - 1).join("").trim() + "…" : String(s); }
 
     // --- la ventana «Agenda»
     function tarjeta(e, puede) {
@@ -253,12 +263,12 @@
   // el manifiesto (ADR-0023): lo lee el guardián pruebas/guardianes/componentes.test.js sin montar nada. ?agenda=0 lo apaga; ?agenda=1 lo enciende.
   Componentes.registra({
     id: "agenda", version: 1,
-    consume: ["Hud", "Ventanas", "PanelVR", "Presencia"],   // OF11e: Presencia.entraGuiada (solo con ?presencia=red hay botón)
+    consume: ["Hud", "Ventanas", "PanelVR"],
     expone: [],
-    eventos: { escucha: ["vr:entra"], emite: ["agenda:cambia"] },
+    eventos: { escucha: ["vr:entra", "guiada:entrada"], emite: ["agenda:cambia", "guiada:entrar"] },
     bandera: { defecto: true, url: "agenda" },
     presupuesto: { llamadas: 0, triangulos: 0 },   // DOM y una fila de texto en el panel VR (su lienzo ya existe): nada en la escena 3D
     fases: {},
-    monta: function (n) { return AgendaMotor(n, n.api("presencia-compartida")); },
+    monta: function (n) { return AgendaMotor(n); },
     libera: function (api) {}
   });

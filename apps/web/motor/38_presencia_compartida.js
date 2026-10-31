@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos (D, $), 02_mundo (suelo), 02c_componentes (Componentes), 02e_entidades (Entidades),
+// Consume: 01_datos (D, $), 02_mundo (suelo), 02c_componentes (Bus, Componentes), 02e_entidades (Entidades),
 //   03_escena (visor, renderer, scene, camera, texColor, exag, modo), 06_arboles (tronco), 09_camara (objetivo, suelta, elige),
 //   12_paseo (paseando, persona, primera), 12b_llegada (Llegada), 14_historia (lista, aviso), 15_tiempo (rumbo, hace),
 //   16_vida (enQuad, quita, mira, quad, enDron, dron), 26_presencia (PoseCodec, BufferPose, Aspecto, SalaPose, Chat, Muneco, Encuentro, sitioJunto),
@@ -357,6 +357,12 @@
       if (SR) quitaRed.push(SR.escucha("pose", function (datos, de) { recibeDatos(datos, de, "pose"); }), SR.escucha("chat", function (datos, de) { recibeDatos(datos, de, "chat"); }),
         SR.al("entra", function (de) { entraOtro(de); }), SR.al("sale", function (id) { saleOtro(id); }), SR.al("estado", alEstado));
       montaPanel();
+      // OF11e: la agenda (43) pide entrar en una visita guiada por el Bus (guiada:entrar); solo con la presencia de verdad hay quien escuche, y por eso la agenda
+      // enseña o no su botón. La respuesta vuelve por guiada:entrada: ok, o la frase de la api (403/409) para enseñarla
+      n.on("guiada:entrar", function (d) {
+        var ev = d && d.evento; if (!SR) return;
+        entraGuiada(ev).then(function (ok) { n.emite("guiada:entrada", { evento: ev, ok: !!ok, mensaje: ok ? "" : avisoGuiada }); });
+      });
       if (SR) conecta(); else ponEstado("La visita compartida no está disponible en esta página.", false);
     }
     function dispositivo() { var ua = navigator.userAgent || ""; return /OculusBrowser|Quest/i.test(ua) ? "quest" : /Mobi|Android|iPhone|iPad/i.test(ua) ? "movil" : "escritorio"; }
@@ -781,7 +787,7 @@
     consume: ["Red", "PoseCodec", "BufferPose", "Aspecto", "SalaPose", "Chat", "Muneco", "Encuentro", "sitioJunto", "Llegada", "Movibles", "VRX", "TR",
       "paseando", "pp", "enQuad", "enDron", "quad", "dron", "objetivo", "texColor"],
     expone: ["Presencia"],
-    eventos: { escucha: ["chat:alterna", "depura:lineas"], emite: [] },
+    eventos: { escucha: ["chat:alterna", "depura:lineas", "guiada:entrar"], emite: ["guiada:entrada"] },
     bandera: { defecto: true, url: "presencia" },
     // muñecos instanciados (cuerpo, cabeza, sombrero y apoyo, manos, nombres, ruedas de la silla) + quad y dron de los demás: 8 llamadas tengas los que tengas;
     // ≈ 234 triángulos por persona como mucho (98 medidos sin accesorios, MEDIDAS) × 49 plazas + los vehículos [estimado, sin medir con vehículos]; el atlas de nombres (1024 × 624)
