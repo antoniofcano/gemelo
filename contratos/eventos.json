@@ -12,7 +12,7 @@
       "descripcion": "Un gesto del usuario que deja arrancar el audio del navegador (pulsar «Entrar en VR»). Quien haga sonido lo atiende y reanuda su AudioContext; sin nadie, no pasa nada.",
       "datos": {},
       "emiten": ["29_vr"],
-      "escuchan": ["20_sonido"]
+      "escuchan": ["20_sonido", "45_voz"]
     },
     "chat:alterna": {
       "descripcion": "El icono del chat de la barra (o del menú «Más»): si el chat de la visita compartida está minimizado (burbuja) se abre; si está abierto, se minimiza. Sin chat (sin presencia en red, o sin &chat=1 en la simulación) nadie lo atiende y no pasa nada.",
@@ -30,7 +30,7 @@
       "descripcion": "El contador de ?debug (cada 0,5 s) pide sus líneas a los componentes: quien tenga algo que decir añade una cadena a «lineas» (hoy, la presencia compartida y las lindes de las hazas). Se pintan en ese orden, tras la de VR.",
       "datos": { "type": "object", "required": ["lineas"], "properties": { "lineas": { "type": "array", "items": { "type": "string" } } } },
       "emiten": ["28_depura"],
-      "escuchan": ["38_presencia_compartida", "44_lindes"]
+      "escuchan": ["38_presencia_compartida", "44_lindes", "45_voz"]
     },
     "hazas:cambia": {
       "descripcion": "Han llegado (o se han soltado) las hazas de la api que se ven en este mundo (13b_hazas.js): cuántas y cuántas son tuyas. Quien las dibuja (el componente «lindes-hazas») vuelve a pedir Hazas.lindes() y rehace la linde; sin nadie, no pasa nada.",
@@ -169,6 +169,18 @@
       "datos": {},
       "emiten": ["29_vr"],
       "escuchan": ["02d_laminas", "40_juegos"]
+    },
+    "voz:estado": {
+      "descripcion": "F3d: algo ha cambiado en la voz de la visita guiada (componente «voz»): si estás en una sala guiada-<evento>, tu papel, si el permiso te deja hablar, el estado de tu micrófono (cerrado, abriendo, abierto), los segundos de tu turno (palabra_hasta), si las voces suenan espaciales o planas (micrófono abierto sin auriculares: con cancelación de eco), si el navegador bloqueó el audio por falta de gesto, cuántas voces y el motivo del último rechazo. Para el indicador «Tu micro está abierto», el botón Hablar y el panel (F3e, F3f). Lo mismo que Voz.estado().",
+      "datos": { "type": "object", "required": ["sala", "dentro", "guiada", "papel", "puede", "micro", "modo", "voces", "motivo"], "properties": { "sala": { "type": "string" }, "dentro": { "type": "boolean" }, "guiada": { "type": "boolean" }, "entrando": { "type": "boolean" }, "papel": { "enum": ["", "guia", "oficina", "familia"] }, "puede": { "type": "boolean" }, "micro": { "enum": ["cerrado", "abriendo", "abierto"] }, "turno": { "type": ["integer", "null"], "minimum": 0 }, "modo": { "enum": ["plano", "espacial"] }, "auriculares": { "type": "boolean" }, "bloqueado": { "type": "boolean" }, "voces": { "type": "integer", "minimum": 0 }, "hablan": { "type": "integer", "minimum": 0 }, "motivo": { "type": "string" } } },
+      "emiten": ["45_voz"],
+      "escuchan": []
+    },
+    "voz:habla": {
+      "descripcion": "F3d: alguien de la sala guiada empieza a hablar (habla true), su nivel cambia en 0,1 o más, o calla (habla false, nivel 0). Sale de ActiveSpeakers de LiveKit: solo de las voces que se oyen (suscritas) y de la tuya (yo true). La identidad es la opaca de la sala (la del avatar en la presencia): para la etiqueta del avatar y la lista de Gente (F3e). Sin nadie que lo escuche, no pasa nada.",
+      "datos": { "type": "object", "required": ["identidad", "nivel", "habla", "yo"], "properties": { "identidad": { "type": "string", "minLength": 1 }, "nivel": { "type": "number", "minimum": 0, "maximum": 1 }, "habla": { "type": "boolean" }, "yo": { "type": "boolean" } } },
+      "emiten": ["45_voz"],
+      "escuchan": []
     }
   }
 }

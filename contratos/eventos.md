@@ -20,9 +20,9 @@ Los componentes del motor ([ADR-0023](../doc/adr/0023-componentes-del-mundo.md),
 | Evento | Datos | Emite | Escucha |
 |---|---|---|---|
 | `chat:alterna` | — | `31_hud` (el icono del chat de la barra o del menú «Más») | `38_presencia_compartida` (abre el chat minimizado o lo minimiza; sin chat, nada) |
-| `audio:desbloquea` | — | `29_vr` (al pulsar «Entrar en VR»: el gesto que deja arrancar el audio) | `20_sonido` |
+| `audio:desbloquea` | — | `29_vr` (al pulsar «Entrar en VR»: el gesto que deja arrancar el audio) | `20_sonido`, `45_voz` (arranca el AudioContext de la voz si estás en una guiada) |
 | `componentes:cambia` | `{ id, activo }` | `02c_componentes` (al montar o liberar un componente) | `15_tiempo` (esconde «Ver la previsión en el mundo» si nadie la atiende) |
-| `depura:lineas` | `{ lineas: [texto] }` | `28_depura` (el contador de `?debug`, cada 0,5 s) | `38_presencia_compartida` (añade su línea si está activa), `44_lindes` (llamadas, tramos, triángulos y paso de la linde) |
+| `depura:lineas` | `{ lineas: [texto] }` | `28_depura` (el contador de `?debug`, cada 0,5 s) | `38_presencia_compartida` (añade su línea si está activa), `44_lindes` (llamadas, tramos, triángulos y paso de la linde), `45_voz` (sala, voces, micro y modo, si está en una guiada) |
 | `hazas:cambia` | `{ n, propias }` | `13b_hazas` (llegaron las hazas de la api, o se soltaron) | `44_lindes` (vuelve a pedir `Hazas.lindes()` y rehace la linde) |
 | `oficina:anuncio` | `{ texto }` (≤ 280, limpio) | `39_oficina_mundo` (OF10: llegó un anuncio de la oficina por la sala) | — (para un sonido o un lector de pantalla; el aviso, la lámina en VR y el chat ya los pone él) |
 | `oficina:sala` | `{ a }` (`general` \| `visita`) | `39_oficina_mundo` (OF10: la oficina invita a pasar a otra sala) | — (la pregunta «Ir» / «Quedarme» ya la hace él) |
@@ -30,6 +30,8 @@ Los componentes del motor ([ADR-0023](../doc/adr/0023-componentes-del-mundo.md),
 | `juego:pide` | — | `40_juegos` (al montarse) | `41_cae_la_cosecha` |
 | `juego:retira` | `{ id }` | `41_cae_la_cosecha` (al liberarse) | `40_juegos` (lo quita y, si estaba abierto, lo cierra) |
 | `mundo:pausa` | `{ activa }` | `02c_componentes` (`Pausa.pon` / `Pausa.quita`) | (nadie todavía) |
+| `voz:estado` | `{ sala, dentro, guiada, papel, puede, micro, turno, modo, auriculares, bloqueado, voces, hablan, motivo }` | `45_voz` (F3d: algo cambió en la voz de la guiada) | — (para el indicador del micro y el botón Hablar: F3e) |
+| `voz:habla` | `{ identidad, nivel, habla, yo }` | `45_voz` (F3d: alguien empieza a hablar, cambia de nivel en ≥ 0,1 o calla; ActiveSpeakers) | — (para la etiqueta del avatar y Gente: F3e) |
 | `prevision:alterna` | `{ abre? }` | `15_tiempo` (botón de la ventana Tiempo) | `35_fichas_tiempo` (la lámina de la previsión) |
 | `red:estado` | `{ sala, estado, motivo? }` | `37_red` (una sala cambia de estado: `conectando`, `dentro`, `reconectando`, `fuera` con su motivo) | (nadie todavía: quien está en la sala lo sigue con `sala.al("estado")`) |
 | `sonido:baliza` | `{ completa? }` | `19_balizas` (al llegar a una baliza) | `20_sonido` (campanilla o arpegio) |
