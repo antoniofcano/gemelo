@@ -6,6 +6,7 @@ import fastifySession from "@fastify/session";
 import Fastify, { type FastifyInstance } from "fastify";
 import { rutasAdmin } from "./admin/rutas.ts";
 import { rutasAgenda } from "./agenda/rutas.ts";
+import { rutasAvisos } from "./avisos/rutas.ts";
 import { AlmacenPg } from "./auth/almacen.ts";
 import { NOMBRE_COOKIE, rutasAuth, TEXTO_LIMITE, TEXTO_LIMITE_VINCULO } from "./auth/rutas.ts";
 import { rutasConfig } from "./config/rutas.ts";
@@ -73,6 +74,13 @@ export async function construyeApp(ctx: Contexto, o: OpcionesApp = {}): Promise<
     idGenerator: () => nuevoToken(),
   });
 
+  // Tras una petición que cambió algo y salió bien, el repartidor mira si hay avisos por mandar. Va en onResponse (la respuesta ya se envió):
+  // el envío por correo nunca la hace esperar, ni aunque el SMTP esté caído (OF11c).
+  if (ctx.repartidor) {
+    const r = ctx.repartidor;
+    app.addHook("onResponse", async (req, rep) => { if (req.method !== "GET" && req.method !== "HEAD" && rep.statusCode < 400) r.despierta(); });
+  }
+
   app.addHook("onSend", async (_req, rep, cuerpo) => {
     if (!rep.hasHeader("cache-control")) rep.header("cache-control", "no-store");
     rep.header("x-content-type-options", "nosniff");
@@ -103,5 +111,6 @@ export async function construyeApp(ctx: Contexto, o: OpcionesApp = {}): Promise<
   await rutasConfig(app, ctx);
   await rutasJuegos(app, ctx);
   await rutasAgenda(app, ctx);
+  await rutasAvisos(app, ctx);
   return app;
 }

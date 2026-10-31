@@ -2,7 +2,13 @@
 // pruebas. El correo es solo texto: sin imágenes remotas ni seguimiento (doc/sistema/UX.md §4.3).
 import nodemailer, { type Transporter } from "nodemailer";
 
-export interface Mensaje { para: string; asunto: string; texto: string }
+/** `html` (opcional, sencillo y sin imágenes remotas), `ics` (invitación de calendario del evento) y `cabeceras` (p. ej. List-Unsubscribe) son de los avisos (OF11c). */
+export interface Mensaje {
+  para: string; asunto: string; texto: string;
+  html?: string;
+  ics?: { metodo: "PUBLISH" | "CANCEL"; contenido: string };
+  cabeceras?: Record<string, string>;
+}
 
 export interface Cartero {
   envia(m: Mensaje): Promise<void>;
@@ -50,7 +56,12 @@ export class CarteroSmtp implements Cartero {
     });
   }
   async envia(m: Mensaje): Promise<void> {
-    await this.t.sendMail({ from: this.remitente, to: m.para, subject: m.asunto, text: m.texto });
+    await this.t.sendMail({
+      from: this.remitente, to: m.para, subject: m.asunto, text: m.texto,
+      ...(m.html ? { html: m.html } : {}),
+      ...(m.ics ? { icalEvent: { method: m.ics.metodo, filename: "evento.ics", content: m.ics.contenido } } : {}),
+      ...(m.cabeceras ? { headers: m.cabeceras } : {}),
+    });
   }
   async cierra(): Promise<void> { this.t.close(); }
 }
