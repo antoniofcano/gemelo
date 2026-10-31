@@ -8,7 +8,10 @@
 //   - con el fixture de Hituelo y recetas de verdad, paseando 160 m y en una órbita de 230 a 30 m: en cada paso, todo olivo a menos de U2 está en
 //     3D o en lejanos (nunca en ninguno, salvo antes de que haya capa de lejanos); fuera de un fundido, en uno solo; las llamadas de olivos ≤ 8 y los
 //     triángulos de olivos ≤ presupuesto (+10 % de lo que sale durante el fundido);
-//   - sin la bandera: ni capa de lejanos ni trabajo; con ?olivos=gen, la escalera tampoco actúa.
+//   - sin la bandera: ni capa de lejanos ni trabajo; con ?olivos=gen sin manifiesto, la escalera tampoco actúa;
+//   - O8c: cuándo hay escalera con ?olivos=gen (Escalera.modoGen: «horneada» con variantes horneadas de la época, «gen» sin ellas o con
+//     ?olivosEscalera=0), cuándo reparte 07b con ella (dibuja: la horneada espera a la capa de lejanos), qué aparta del tileset (mascaraTiles) y
+//     el escalón de cada distancia (nivel y estado, frente a los píxeles); y con un manifiesto de prueba, que Generados y Lejanos siguen al modo.
 // Escribe una línea JSON {mal: [...], diag} (la lee pruebas/guardianes/olivo.test.js). GEMELO_SIN_FIXTURE=1 salta la parte 4 (la lenta, ~1,5 min).
 import fs from "node:fs";
 import path from "node:path";
@@ -48,6 +51,7 @@ function contexto(busqueda, reloj) {
     location: { search: busqueda }, window: { OlivoGen: O },
     gArboles: new THREE.Group(), D: { copas: [], centro_utm: [0, 0] }, VRP: { on: false }, FACTOR_R8: 0.5, FACTOR_R8_GEN: 1, exag: 1,
     // la configuración del servidor (02c Config) sin servidor: todo vale lo del código
+    fetch: undefined,   // sin servidor: no hay manifiesto (3b pone uno de prueba)
     Config: { listo: Promise.resolve(null), al: f => f(null), param: (r, c, u) => (u !== undefined && u !== null ? u : c), umbrales: (c, u) => u || c, tablaEpocas: () => null, epocaDeFecha: () => null }, factorCopaDeConfig: () => 1,
     suelo: () => 0, camera: { position: new THREE.Vector3(0, 10, 0) },
     Cola: { add: () => { throw new Error("los generados no deben usar la Cola compartida"); }, hay: () => false }
@@ -164,6 +168,54 @@ for (const q of ["?debug", "?olivos=gen"]) {
   exige(!c.__G.escalera(), q + ": Generados dice escalera");
   c.__L.inicia([{ i: 0, x: 0, y: 0, h: 4, perfil: [2, 2, 2, 2, 2, 2, 2, 2], gz: 0 }]);
   exige(c.__L.paso(0.016) === false && c.__L.pendientes() === 0 && c.__L.triangulos() === 0 && c.__L.resumen() === null && c.gArboles.children.length === (q === "?olivos=gen" ? 1 : 0), q + ": Lejanos hace algo");
+}
+
+// ---- 3b) O8c: la escalera con ?olivos=gen cuando hay variantes horneadas (Escalera.modoGen, dibuja, mascaraTiles, nivel: puras) y su montaje
+{
+  const M = (b, man, v, sin) => E.modoGen({ bandera: b, manifiesto: man, variantes: v, sinEscalera: sin });
+  const tabla = [[M("escalera", false, 0), "forzada"], [M("escalera", true, 4, true), "forzada"], [M(null, true, 4), "apagado"], [M("gen", false, 0), "gen"],
+    [M("gen", true, 0), "gen"], [M("gen", true, 4), "horneada"], [M("gen", true, 4, true), "gen"], [M("gen", false, 4), "gen"]];
+  tabla.forEach(([a, b], k) => exige(a === b, "modoGen, caso " + k + ": " + a + " y debe " + b));
+  const D_ = (m, e, c) => E.dibuja({ modoGen: m, estado: e, hayCapa: c });
+  exige(D_("forzada", "cargando", false) && D_("forzada", "activo", false) && !D_("forzada", "sin", true), "dibuja: la forzada reparte con la escalera desde el principio (y no sin constructor)");
+  exige(!D_("horneada", "activo", false) && D_("horneada", "activo", true) && !D_("horneada", "sin", true) && !D_("gen", "activo", true) && !D_("apagado", "activo", true), "dibuja: la horneada solo con la capa de lejanos; gen y apagado, nunca");
+  exige(E.mascaraTiles({ modoGen: "forzada", capaCompleta: false }) === "todos" && E.mascaraTiles({ modoGen: "horneada", capaCompleta: false }) === "3d" && E.mascaraTiles({ modoGen: "horneada", capaCompleta: true }) === "todos", "mascaraTiles: la forzada aparta todos; la horneada, solo los de 3D hasta que la capa de lejanos está entera");
+  // nivel(d, F) = el escalón de sus píxeles, y fuera de toda banda estado() da ese mismo escalón; con ±10 % de distancia, como mucho uno de diferencia
+  let malN = 0;
+  for (const kPx of [E.K_PX, KVR]) for (const h of [2.5, 4, 6]) for (const s of [1, 1.7, 3.2]) {
+    const F = E.fronteras(h, kPx, E.UMBRALES, s, E.BANDA);
+    for (let d = 0.5; d < 120; d += 0.37) {
+      const n = E.nivel(d, F), px = h * kPx / d / s, quiere = px >= E.UMBRALES[0] ? 0 : px >= E.UMBRALES[1] ? 1 : px >= E.UMBRALES[2] ? 2 : 3;
+      if (Math.abs(px - E.UMBRALES[Math.min(n, quiere)]) > 1e-6 * px && n !== quiere) malN++;
+      const st = E.estado(d, F, null, E.HIST); if (st.n !== undefined && st.n !== n) malN++;
+      if (st.k !== undefined && (st.k > n || st.k < n - 1)) malN++;
+    }
+  }
+  exige(malN === 0, "nivel/estado: " + malN + " distancias con el escalón distinto del de sus píxeles");
+  // montaje: un manifiesto válido con variantes de la época (con ?olivosDir= y un fetch de prueba) pasa a «horneada»; sin ellas o con
+  // ?olivosEscalera=0, «gen». Las variantes no se descargan (404): se calculan (el plan B de O7e) y la escalera sigue
+  const man = (ep, n) => ({ v: 1, finca: "hituelo", formato: O.FORMATO_HORNEADO, gen_version: O.GEN_VERSION, cache_version: O.CACHE_VERSION, actual: "envero",
+    epocas: [{ epoca: "envero", desde: "09-01", hasta: "10-31" }, { epoca: "madura", desde: "11-01", hasta: "12-31" }],
+    variantes: Array.from({ length: n }, (_, k) => ({ tipo: "centenario3", semilla: 11 + k, nivel: "E2", epoca: ep, huella: (k.toString(16) + "0".repeat(32)).slice(0, 32), bytes: 100 })) });
+  const conFetch = (q, m) => {
+    const c = contexto(q);
+    c.fetch = url => Promise.resolve(/manifiesto\.json$/.test(url) ? { ok: true, status: 200, json: () => Promise.resolve(m) } : { ok: false, status: 404 });
+    return c;
+  };
+  diag.modoGen = {};
+  for (const [q, m, quiere] of [["?olivos=gen&olivosDir=olivos/&epoca=envero", man("envero", 4), "horneada"], ["?olivos=gen&olivosDir=olivos/&epoca=envero", man("madura", 4), "gen"],
+    ["?olivos=gen&olivosDir=olivos/&epoca=envero&olivosEscalera=0", man("envero", 4), "gen"], ["?olivos=gen&epoca=envero", man("envero", 4), "gen"]]) {
+    // (la última: sin ?olivosDir= ni página del servidor no se pide manifiesto)
+    const c = conFetch(q, m);
+    for (let k = 0; k < 40 && c.__G.estado() === "cargando"; k++) await espera();
+    const G = c.__G, st = c.window.__olivosGen();
+    diag.modoGen[q + " · " + m.variantes[0].epoca] = { modo: G.modoGen(), escalera: G.escalera(), horneado: st.horneado.estado };
+    exige(G.estado() === "activo" && G.modoGen() === quiere && G.escalera() === (quiere === "horneada"), q + " con variantes de " + m.variantes[0].epoca + ": modo " + G.modoGen() + " (escalera " + G.escalera() + ") y debe " + quiere);
+    c.__L.inicia([{ i: 0, x: 0, y: 0, h: 4, perfil: [2, 2, 2, 2, 2, 2, 2, 2], gz: 0 }]);
+    c.__L.paso(0.016);
+    exige(quiere === "horneada" ? c.__L.resumen() && c.__L.resumen().fuente === "esperando" && c.__L.pendientes() === 1 : c.__L.resumen() === null && c.__L.pendientes() === 0,
+      q + ": los lejanos no siguen al modo " + quiere + ": " + JSON.stringify(c.__L.resumen()));
+  }
 }
 
 // ---- 4) con el fixture de Hituelo y recetas de verdad: nunca un olivo sin dibujar, llamadas y triángulos dentro
