@@ -15,7 +15,7 @@
   // ordenador»: en VR no se apunta nadie, ni siquiera la titular (el panel no tiene teclado ni selector cómodo, y el enlace de gafas no es el de la titular).
   // [puro:inicio] (sin DOM ni THREE: lo evalúa en Node pruebas/guardianes/agenda_mundo.test.js)
   var AgendaPuro = (function () {
-    var MAX_EVENTOS = 50, MAX_PERSONAS = 10, TEXTO_VR = "Apúntate desde el móvil o el ordenador";
+    var MAX_EVENTOS = 50, MAX_PERSONAS = 10, TEXTO_VR = "Apúntate desde el móvil o el ordenador", TEXTO_NO_ENTRA = "No se ha podido entrar en la visita. Prueba otra vez en un rato.";
     var DIAS = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
     var TIPOS = { guiada: "Visita guiada", libre: "Visita libre", recoleccion: "Cosecha abierta", cata: "Cata", taller: "Taller", directo: "Directo", evento: "Evento" };
     function dos(n) { return ("0" + n).slice(-2); }
@@ -24,6 +24,11 @@
     function rutaInscripcion(prefijo, id) { return prefijo && Number.isInteger(id) && id >= 1 ? prefijo + "agenda/" + id + "/inscripcion" : null; }
     // número de personas del selector: entero de 1 a 10, o null
     function personas(v) { var n = /^\d{1,2}$/.test(String(v)) ? Number(v) : NaN; return Number.isInteger(n) && n >= 1 && n <= MAX_PERSONAS ? n : null; }
+    // OF11e: la ventana de entrada que da la api ({ desde, hasta } en ISO) o null; lo que no cuadra, null
+    function entradaDe(x) {
+      if (!x || typeof x !== "object" || typeof x.desde !== "string" || typeof x.hasta !== "string") return null;
+      var d = Date.parse(x.desde), h = Date.parse(x.hasta); return isFinite(d) && isFinite(h) && h > d ? { desde: d, hasta: h } : null;
+    }
     // la respuesta de GET /api/agenda con lista blanca → { puede, eventos: [{ id, titulo, tipo, lugar, haza, descripcion, presencial, empieza (ms), plazas, libres,
     // abierta, mia: { estado, personas } | null }] } o null si no es lo esperado. Lo que no cuadra, fuera; lo de más (guía, creador…) no pasa.
     function valida(j) {
@@ -38,17 +43,31 @@
         if (plazas === undefined || libres === undefined) continue;
         var mia = null;
         if (e.mia) { if ((e.mia.estado !== "apuntado" && e.mia.estado !== "en_espera") || personas(e.mia.personas) === null) continue; mia = { estado: e.mia.estado, personas: e.mia.personas }; }
+        var tf = typeof e.termina_en === "string" ? Date.parse(e.termina_en) : NaN;
         vistos[e.id] = true;
         ev.push({ id: e.id, titulo: corta(e.titulo.trim(), 120), tipo: Object.prototype.hasOwnProperty.call(TIPOS, e.tipo) ? e.tipo : "evento",
           lugar: typeof e.lugar === "string" && e.lugar.trim() ? corta(e.lugar.trim(), 120) : null, haza: typeof e.haza === "string" ? corta(e.haza, 20) : null,
           descripcion: typeof e.descripcion === "string" && e.descripcion.trim() ? corta(e.descripcion.trim(), 600) : null, presencial: e.presencial === true,
-          empieza: t, plazas: plazas, libres: libres, abierta: e.inscripcion_abierta === true, mia: mia });
+          empieza: t, termina: isFinite(tf) ? tf : null, entrada: entradaDe(e.entrada), plazas: plazas, libres: libres, abierta: e.inscripcion_abierta === true, mia: mia });
       }
       ev.sort(function (a, b) { return a.empieza - b.empieza || a.id - b.id; });
       return { puede: j.puede_inscribirse, eventos: ev };
     }
     // los que aún no han empezado (la lista puede haber envejecido desde que se pidió)
     function proximos(eventos, ahora) { return eventos.filter(function (e) { return e.empieza > ahora; }); }
+    // OF11e: entrar en la visita. Solo guiadas y directos. La ventana es la que da la api (`entrada`: la de ESTA sesión, igual que el token: familia apuntada 15 min
+    // antes, guía y oficina 60, todos hasta 30 min después del fin); una api sin ese campo no deja ver el botón salvo a la familia apuntada, con la del contrato
+    // (ABRE_FAMILIAS_MIN 15, CIERRA_MIN 30, sin fin 3 h). Nunca se adivina para quien no esté apuntado.
+    var ABRE_FAMILIAS_MS = 15 * 60000, CIERRA_MS = 30 * 60000, SIN_FIN_MS = 3 * 3600000;
+    function ventanaEntrada(e) {
+      if (!e || (e.tipo !== "guiada" && e.tipo !== "directo")) return null;
+      if (e.entrada) return e.entrada;
+      if (e.mia && e.mia.estado === "apuntado") return { desde: e.empieza - ABRE_FAMILIAS_MS, hasta: (e.termina !== null && e.termina !== undefined ? e.termina : e.empieza + SIN_FIN_MS) + CIERRA_MS };
+      return null;
+    }
+    function puedeEntrar(e, ahora) { var w = ventanaEntrada(e); return !!w && ahora >= w.desde && ahora <= w.hasta; }
+    // lo que se enseña: lo que no ha empezado y lo que está en curso con la sala aún abierta (la api lo sigue dando hasta que cierra)
+    function visibles(eventos, ahora) { return eventos.filter(function (e) { var w = ventanaEntrada(e); return e.empieza > ahora || (!!w && ahora <= w.hasta); }); }
     // «sáb 02/11, 18:30» en la hora del aparato
     function cuando(ms) { var d = new Date(ms); return DIAS[d.getDay()] + " " + dos(d.getDate()) + "/" + dos(d.getMonth() + 1) + ", " + dos(d.getHours()) + ":" + dos(d.getMinutes()); }
     function textoTipo(e) { return TIPOS[e.tipo] + (e.presencial ? " · presencial" : " · en el mundo"); }
@@ -76,22 +95,24 @@
       return "No se ha podido hacer. Prueba otra vez en un rato.";
     }
     // lo que se pinta en la lámina del panel VR: como mucho `max` próximos, con su fecha, título y plazas; nada de botones
+    // OF11e: si hay una visita a la que se puede entrar ya, `entrar` (id y título) y una fila menos (el botón va debajo)
     function filasVR(datos, ahora, max) {
       if (!datos) return null;
-      var l = proximos(datos.eventos, ahora).slice(0, max).map(function (e) {
+      var vis = visibles(datos.eventos, ahora), en = vis.filter(function (e) { return puedeEntrar(e, ahora); })[0] || null;
+      var l = vis.slice(0, en ? Math.min(max, 2) : max).map(function (e) {
         return { t: cuando(e.empieza) + " · " + e.titulo, s: textoPlazas(e) + (e.mia ? " · " + textoMia(e.mia) : "") };
       });
-      return { filas: l, vacia: !l.length, nota: TEXTO_VR };
+      return { filas: l, vacia: !l.length, nota: TEXTO_VR, entrar: en ? { id: en.id, titulo: en.titulo } : null };
     }
     return { MAX_PERSONAS: MAX_PERSONAS, TEXTO_VR: TEXTO_VR, rutaAgenda: rutaAgenda, rutaInscripcion: rutaInscripcion, personas: personas, valida: valida, proximos: proximos, cuando: cuando,
-      textoTipo: textoTipo, textoPlazas: textoPlazas, textoMia: textoMia, ofrece: ofrece, textoError: textoError, filasVR: filasVR };
+      ventanaEntrada: ventanaEntrada, puedeEntrar: puedeEntrar, visibles: visibles, TEXTO_NO_ENTRA: TEXTO_NO_ENTRA, textoTipo: textoTipo, textoPlazas: textoPlazas, textoMia: textoMia, ofrece: ofrece, textoError: textoError, filasVR: filasVR };
   })();
   // [puro:fin]
 
-  function AgendaMotor(n) {
+  function AgendaMotor(n, Presencia) {
     var AP = AgendaPuro, prefijo = ConfigPuro.prefijoApi(location.search, D && D.base);
     if (!prefijo || typeof fetch !== "function") return null;   // sin servidor no hay agenda: ni icono ni ventana
-    var datos = null, estado = "sin-pedir", cuerpo = null, nota = "", pidiendo = null, hechas = 0, enVuelo = false;
+    var datos = null, estado = "sin-pedir", cuerpo = null, nota = "", pidiendo = null, hechas = 0, enVuelo = false, entrando = false;
 
     function el(tag, css, txt) { var x = document.createElement(tag); if (css) x.style.cssText = css; if (txt != null) x.textContent = txt; return x; }
     var BOTON = "min-height:44px;min-width:44px;padding:0 14px;border-radius:10px;border:1px solid currentColor;background:rgba(255,255,255,0.12);color:inherit;font:600 15px system-ui,sans-serif;cursor:pointer";
@@ -127,6 +148,19 @@
         .then(function (ok) { enVuelo = false; return carga().then(function () { return ok; }); });
     }
 
+    // OF11e: entrar en la visita guiada = Presencia.entraGuiada(evento): la presencia viaja a la sala guiada y la voz se engancha sola (F3f). Solo con la presencia de
+    // verdad (?presencia=red); sin ella no hay botón. Si la api no deja entrar (403 guiada_solo_inscritos, 409 guiada_cerrada…), la presencia guarda su frase.
+    function viaje() { return !!(Presencia && Presencia.entraGuiada && Presencia.estado && Presencia.estado().variante === "red"); }
+    function enLaVisita(id) { return !!(Presencia && Presencia.evento && Presencia.evento() === id); }
+    function entra(e) {
+      if (!viaje() || entrando) return Promise.resolve(false);
+      entrando = true; nota = "Entrando en la visita…"; pinta();
+      return Promise.resolve(Presencia.entraGuiada(e.id)).then(function (ok) {
+        nota = ok ? "Estáis en la visita guiada «" + e.titulo + "»." : (Presencia.avisoGuiada && Presencia.avisoGuiada()) || AP.TEXTO_NO_ENTRA;
+        return !!ok;
+      }, function () { nota = AP.TEXTO_NO_ENTRA; return false; }).then(function (ok) { entrando = false; pinta(); if (typeof PanelVR !== "undefined") PanelVR.repinta(); return ok; });
+    }
+
     // --- la ventana «Agenda»
     function tarjeta(e, puede) {
       var t = el("div", "padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.15)"), o = AP.ofrece(e, puede);
@@ -146,6 +180,13 @@
         b.addEventListener("click", function () { var p = AP.personas(sel.value); if (p === null) { nota = "Elige entre 1 y 10 personas."; pinta(); return; } manda(e, p); });
         fila.appendChild(etq); fila.appendChild(sel); fila.appendChild(b); t.appendChild(fila);
       }
+      if (AP.puedeEntrar(e, Date.now())) {
+        if (enLaVisita(e.id)) { var ya = el("p", "margin:8px 0 0;font-size:15px;font-weight:700;color:#ffe9a8", "Estáis en la visita"); ya.setAttribute("data-en-visita", ""); t.appendChild(ya); }
+        else if (viaje()) {
+          var be = el("button", BOTON + ";margin-top:8px", "Entrar en la visita"); be.type = "button"; be.setAttribute("data-entra", String(e.id)); if (entrando) be.disabled = true;
+          be.addEventListener("click", function () { entra(e); }); t.appendChild(be);
+        }
+      }
       if (o.borrar) {
         var bb = el("button", BOTON + ";margin-top:8px", "Borrarnos"); bb.type = "button"; bb.setAttribute("data-borra", String(e.id));
         bb.addEventListener("click", function () { manda(e, null); }); t.appendChild(bb);
@@ -157,7 +198,7 @@
       cuerpo.textContent = "";
       if (estado === "sin-sesion") { cuerpo.appendChild(el("p", "margin:8px 0", "Entra con tu enlace para ver la agenda.")); return; }
       if (!datos) { cuerpo.appendChild(el("p", "margin:8px 0", estado === "error" ? "No se ha podido cargar la agenda. Vuelve a abrirla en un rato." : "Cargando la agenda…")); return; }
-      var l = AP.proximos(datos.eventos, Date.now());
+      var l = AP.visibles(datos.eventos, Date.now());
       if (!l.length) cuerpo.appendChild(el("p", "margin:8px 0", "No hay eventos próximos."));
       else l.forEach(function (e) { cuerpo.appendChild(tarjeta(e, datos.puede)); });
       if (nota) { var a = el("p", "margin:10px 0 0;font-size:15px;font-weight:600", nota); a.setAttribute("role", "status"); a.setAttribute("aria-live", "polite"); a.setAttribute("data-nota", ""); cuerpo.appendChild(a); }
@@ -169,6 +210,11 @@
     function vistaVR() { return datos ? AP.filasVR(datos, Date.now(), 3) : null; }
     if (typeof PanelVR !== "undefined") {
       n.limpia(PanelVR.filas("mundo", { id: "agenda", orden: 70, alto: 290, visible: function () { return !!datos; },
+        botones: function (b, y) {   // OF11e: «Entrar en la visita» solo si hay una a la que se puede entrar ya y hay por dónde (presencia o voz)
+          var v = vistaVR(); if (!v || !v.entrar || !viaje()) return;
+          var e = datos.eventos.filter(function (x) { return x.id === v.entrar.id; })[0];
+          if (e) b("ag_entra", 40, y + 170, 360, 64, "Entrar en la visita", function () { entra(e); });
+        },
         pinta: function (cx, y, W, h) {
           var v = vistaVR(); h.fila("Agenda", y); if (!v) return;
           cx.textAlign = "left"; cx.textBaseline = "alphabetic";
@@ -179,9 +225,10 @@
             cx.fillStyle = "#ffffff"; cx.font = "700 24px system-ui, sans-serif"; cx.fillText(ajusta(f.t, 590), 420, yy);
             cx.fillStyle = "#cfdccb"; cx.font = "600 21px system-ui, sans-serif"; cx.fillText(ajusta(f.s, 590), 420, yy + 28); yy += 62;
           });
+          if (v.entrar) { cx.fillStyle = "#ffffff"; cx.font = "600 21px system-ui, sans-serif"; cx.fillText(ajusta("Abierta: " + v.entrar.titulo, 560), 420, y + 210); }
           cx.fillStyle = "#ffe9a8"; cx.font = "700 24px system-ui, sans-serif"; cx.fillText(v.nota, 40, y + 270);
         },
-        firma: function () { var v = vistaVR(); return v ? v.filas.map(function (f) { return f.t + "|" + f.s; }).join("/") + "|" + v.vacia : ""; },
+        firma: function () { var v = vistaVR(); return v ? v.filas.map(function (f) { return f.t + "|" + f.s; }).join("/") + "|" + v.vacia + "|" + (v.entrar ? v.entrar.id : "") + (entrando ? "!" : "") : ""; },
         debug: function () { return { agenda: vistaVR() }; } }));
       n.on("vr:entra", function () { carga(); });   // al ponerse las gafas se refresca (no hay otro momento: el panel no tiene botón de recargar)
     }
@@ -190,24 +237,28 @@
       var mo = new MutationObserver(function () { if (!cuerpo.parentNode.hidden) carga(); });
       mo.observe(cuerpo.parentNode, { attributes: true, attributeFilter: ["hidden"] }); n.limpia(function () { mo.disconnect(); });
     }
+    // OF11e: el botón aparece y desaparece con el reloj aunque nadie toque nada: cada 20 s se repinta lo que hay (sin pedir nada a la api)
+    var reloj = typeof setInterval === "function" ? setInterval(function () { if (cuerpo && datos && cuerpo.parentNode && !cuerpo.parentNode.hidden) pinta(); if (typeof PanelVR !== "undefined") PanelVR.repinta(); }, 20000) : null;
+    if (reloj && reloj.unref) reloj.unref();
+    n.limpia(function () { if (reloj) clearInterval(reloj); });
     n.limpia(Hud.icono({ id: "agenda", ico: "📅", txt: "Agenda", prio: 2, ventana: "agenda" }));
     n.limpia(function () { cuerpo = null; });
     window.__agenda = function () {
-      return { estado: estado, datos: datos, prefijo: prefijo, hechas: hechas, nota: nota, vr: vistaVR(), carga: carga, manda: function (id, p) { var e = datos && datos.eventos.filter(function (x) { return x.id === id; })[0]; return e ? manda(e, p) : Promise.resolve(false); } };
+      return { estado: estado, datos: datos, prefijo: prefijo, hechas: hechas, nota: nota, vr: vistaVR(), carga: carga, entra: function (id) { var e = datos && datos.eventos.filter(function (x) { return x.id === id; })[0]; return e ? entra(e) : Promise.resolve(false); }, manda: function (id, p) { var e = datos && datos.eventos.filter(function (x) { return x.id === id; })[0]; return e ? manda(e, p) : Promise.resolve(false); } };
     };
     n.limpia(function () { try { delete window.__agenda; } catch (e) { window.__agenda = undefined; } });
-    return { carga: carga, manda: manda, datos: function () { return datos; } };
+    return { carga: carga, manda: manda, entra: entra, datos: function () { return datos; } };
   }
 
   // el manifiesto (ADR-0023): lo lee el guardián pruebas/guardianes/componentes.test.js sin montar nada. ?agenda=0 lo apaga; ?agenda=1 lo enciende.
   Componentes.registra({
     id: "agenda", version: 1,
-    consume: ["Hud", "Ventanas", "PanelVR"],
+    consume: ["Hud", "Ventanas", "PanelVR", "Presencia"],   // OF11e: Presencia.entraGuiada (solo con ?presencia=red hay botón)
     expone: [],
     eventos: { escucha: ["vr:entra"], emite: ["agenda:cambia"] },
     bandera: { defecto: true, url: "agenda" },
     presupuesto: { llamadas: 0, triangulos: 0 },   // DOM y una fila de texto en el panel VR (su lienzo ya existe): nada en la escena 3D
     fases: {},
-    monta: function (n) { return AgendaMotor(n); },
+    monta: function (n) { return AgendaMotor(n, n.api("presencia-compartida")); },
     libera: function (api) {}
   });

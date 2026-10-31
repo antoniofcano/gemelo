@@ -29,7 +29,7 @@ test("valida: lista blanca (lo de más no pasa), lo que no cuadra se descarta, o
   const j = AGENDA(); j.eventos[0].guia = "Ana"; j.eventos[0].creado_por = 9; j.hogar_id = 3;
   const d = AP.valida(j);
   assert.strictEqual(d.puede, true); assert.deepStrictEqual(d.eventos.map(e => e.id), [1, 2, 3, 4]);
-  assert.deepStrictEqual(Object.keys(d.eventos[0]).sort(), ["abierta", "descripcion", "empieza", "haza", "id", "libres", "lugar", "mia", "plazas", "presencial", "tipo", "titulo"]);
+  assert.deepStrictEqual(Object.keys(d.eventos[0]).sort(), ["abierta", "descripcion", "empieza", "entrada", "haza", "id", "libres", "lugar", "mia", "plazas", "presencial", "termina", "tipo", "titulo"]);
   assert.deepStrictEqual(d.eventos[1].mia, { estado: "apuntado", personas: 2 });
   const sucia = { puede_inscribirse: false, eventos: [ev(9), ev(9), ev(5, { titulo: "  " }), ev(6, { empieza_en: "mañana" }), ev(7, { plazas: -2 }), ev(8, { mia: { estado: "anulado", personas: 2 } }), ev(10, { mia: { estado: "apuntado", personas: 11 } }), null, 5, ev(11, { tipo: "otro-raro" }), ev(12, { id: 1.5 })] };
   const s = AP.valida(sucia); assert.deepStrictEqual(s.eventos.map(e => e.id), [9, 11]); assert.strictEqual(s.eventos[1].tipo, "evento"); assert.strictEqual(s.puede, false);
@@ -71,7 +71,7 @@ class Nodo {
   busca(f, out) { out = out || []; if (f(this)) out.push(this); this.hijos.forEach(h => h.busca(f, out)); return out; }
   clic() { (this.oyentes.click || []).forEach(fn => fn({})); }
 }
-function monta({ prefijo = "/api/", respuestas, conPanel = true }) {
+function monta({ prefijo = "/api/", respuestas, conPanel = true, P = null }) {
   const llamadas = [], bus = {}, emitidos = [], filas = [], ventanas = {}, iconos = [];
   const fetchAnt = globalThis.fetch;
   globalThis.fetch = (url, o) => {
@@ -84,8 +84,8 @@ function monta({ prefijo = "/api/", respuestas, conPanel = true }) {
     document: { createElement: tag => new Nodo(tag) },
     Ventanas: { registra: (id, d) => { ventanas[id] = d; const c = new Nodo("div"); d.construye(c); ventanas[id].cuerpo = c; return nada; } },
     Hud: { icono: d => { iconos.push(d); return nada; } }, PanelVR: conPanel ? { filas: (p, d) => { filas.push({ p, d }); return nada; }, repinta: nada } : undefined };
-  const n = { on: (e, fn) => { bus[e] = fn; }, emite: (e, d) => emitidos.push([e, d]), limpia: nada };
-  const api = new Function("AgendaPuro", "n", "g", "\"use strict\";\nvar D = g.D, ConfigPuro = g.ConfigPuro, location = g.location, window = g.window, document = g.document, Ventanas = g.Ventanas, Hud = g.Hud, PanelVR = g.PanelVR;\n" + CUERPO + "\nreturn AgendaMotor(n);")(AP, n, g);
+  const n = { api: id => (id === "presencia-compartida" ? P : null), on: (e, fn) => { bus[e] = fn; }, emite: (e, d) => emitidos.push([e, d]), limpia: nada };
+  const api = new Function("AgendaPuro", "n", "g", "\"use strict\";\nvar D = g.D, ConfigPuro = g.ConfigPuro, location = g.location, window = g.window, document = g.document, Ventanas = g.Ventanas, Hud = g.Hud, PanelVR = g.PanelVR;\n" + CUERPO + "\nreturn AgendaMotor(n, n.api(\"presencia-compartida\"));")(AP, n, g);
   return { api, llamadas, bus, emitidos, filas, ventanas, iconos, win, restaura: () => { globalThis.fetch = fetchAnt; } };
 }
 const J = (status, cuerpo) => ({ status, cuerpo });
@@ -157,7 +157,7 @@ test("el título que llega de la api es un dato: texto, nunca HTML", async () =>
 test("la fila del panel VR (pestaña Mundo): visible con datos, lista los próximos y dice dónde apuntarse; sin botones; se refresca al entrar en VR", async () => {
   const m = monta({ respuestas: () => J(200, AGENDA()) });
   try {
-    const f = m.filas.find(x => x.p === "mundo" && x.d.id === "agenda"); assert.ok(f, "la fila existe"); assert.strictEqual(f.d.visible(), false, "sin datos, escondida"); assert.strictEqual(f.d.botones, undefined, "nada que pulsar en VR (decisión 146)");
+    const f = m.filas.find(x => x.p === "mundo" && x.d.id === "agenda"); assert.ok(f, "la fila existe"); assert.strictEqual(f.d.visible(), false, "sin datos, escondida"); const pulsables = []; f.d.botones((id, x, y, w, h, t) => pulsables.push(t), 0); assert.deepStrictEqual(pulsables, [], "sin visita abierta, nada que pulsar en VR (decisión 146)");
     assert.ok(f.d.alto > 0 && f.d.alto <= 300, "cabe en el panel: " + f.d.alto);
     assert.strictEqual(m.llamadas.length, 0); m.bus["vr:entra"](); await new Promise(r => setTimeout(r, 20)); assert.strictEqual(m.llamadas.length, 1, "al entrar en VR pide la agenda");
     assert.strictEqual(f.d.visible(), true);
@@ -170,4 +170,91 @@ test("la fila del panel VR (pestaña Mundo): visible con datos, lista los próxi
   } finally { m.restaura(); }
   const sinPanel = monta({ respuestas: () => J(200, AGENDA()), conPanel: false });
   try { assert.ok(sinPanel.api, "sin panel VR (fuera de VR) la ventana sigue funcionando"); } finally { sinPanel.restaura(); }
+});
+
+// ---------- OF11e: «Entrar en la visita»
+const MIN = 60000;
+const guiada = (id, ini, extra) => ev(id, Object.assign({ empieza_en: iso(AHORA + ini), mia: { estado: "apuntado", personas: 2 } }, extra || {}));
+const conEntrada = (e, d, h) => Object.assign(e, { entrada: { desde: iso(AHORA + d), hasta: iso(AHORA + h) } });
+
+test("OF11e puro: solo guiada o directo y dentro de la ventana de la api; sin ella, la del contrato solo para la familia apuntada; nunca para la que está en espera", () => {
+  const w = (e, ahora) => AP.puedeEntrar(AP.valida({ puede_inscribirse: true, eventos: [e] }).eventos[0], ahora);
+  const c = conEntrada(guiada(1, 30 * MIN), -45 * MIN, 120 * MIN);    // la de la api manda (guía u oficina: 60 min antes)
+  assert.strictEqual(w(c, AHORA), true); assert.strictEqual(w(c, AHORA - 46 * MIN), false); assert.strictEqual(w(c, AHORA + 121 * MIN), false);
+  assert.strictEqual(w(conEntrada(guiada(1, 30 * MIN, { tipo: "cata" }), -45 * MIN, 120 * MIN), AHORA), false, "una cata no tiene sala");
+  assert.strictEqual(w(conEntrada(guiada(1, 30 * MIN, { tipo: "directo" }), -45 * MIN, 120 * MIN), AHORA), true);
+  const sin = guiada(2, 20 * MIN);   // api antigua, sin `entrada`: contrato, 15 min antes
+  assert.strictEqual(w(sin, AHORA), false); assert.strictEqual(w(sin, AHORA + 5 * MIN), true, "a menos de 15 min");
+  assert.strictEqual(w(Object.assign(guiada(2, 20 * MIN), { termina_en: iso(AHORA + 80 * MIN) }), AHORA + 109 * MIN), true, "hasta 30 min tras el fin");
+  assert.strictEqual(w(Object.assign(guiada(2, 20 * MIN), { termina_en: iso(AHORA + 80 * MIN) }), AHORA + 111 * MIN), false);
+  assert.strictEqual(w(guiada(2, -10 * MIN, { termina_en: null }), AHORA + 3 * 3600000 - 10 * MIN + 29 * MIN), true, "sin fin: 3 h + 30 min");
+  assert.strictEqual(w(guiada(3, 5 * MIN, { mia: { estado: "en_espera", personas: 2 } }), AHORA), false, "en espera: nada");
+  assert.strictEqual(w(guiada(3, 5 * MIN, { mia: null }), AHORA), false, "sin apuntar y sin ventana de la api: nada");
+  assert.strictEqual(AP.valida({ puede_inscribirse: true, eventos: [ev(1, { entrada: { desde: "x", hasta: "y" } }), ev(2, { entrada: { desde: iso(AHORA), hasta: iso(AHORA - MIN) } })] }).eventos.every(e => e.entrada === null), true, "ventanas raras, fuera");
+});
+
+test("OF11e puro (propiedad): puedeEntrar es exactamente desde <= ahora <= hasta, y una guiada en curso sigue visible mientras la sala esté abierta", () => {
+  const fc = require("fast-check");
+  fc.assert(fc.property(fc.integer({ min: -600, max: 600 }), fc.integer({ min: 1, max: 600 }), fc.integer({ min: -900, max: 900 }), (d, largo, ahora) => {
+    const e = AP.valida({ puede_inscribirse: true, eventos: [conEntrada(guiada(1, d * MIN + 15 * MIN), d * MIN, (d + largo) * MIN)] }).eventos[0], t = AHORA + ahora * MIN;
+    const dentro = t >= AHORA + d * MIN && t <= AHORA + (d + largo) * MIN;
+    return AP.puedeEntrar(e, t) === dentro && (!dentro || AP.visibles([e], t).length === 1);
+  }), { numRuns: 300 });
+});
+
+test("OF11e: la ventana enseña el botón solo dentro de la ventana, llama a Presencia.entraGuiada y dice que ya estáis; la guiada en curso sigue en la lista", async () => {
+  const llamadas = []; let dentro = null;
+  const P = { estado: () => ({ variante: "red" }), entraGuiada: id => { llamadas.push(id); dentro = id; return Promise.resolve(true); }, evento: () => dentro, avisoGuiada: () => "" };
+  const agenda = { puede_inscribirse: true, eventos: [conEntrada(guiada(1, -20 * MIN), -35 * MIN, 100 * MIN), conEntrada(guiada(2, 3 * 3600000), 3 * 3600000 - 15 * MIN, 5 * 3600000), guiada(3, 5 * MIN, { tipo: "cata" })] };
+  const m = monta({ respuestas: () => J(200, agenda), P });
+  try {
+    await m.api.carga(); const cu = m.ventanas.agenda.cuerpo;
+    assert.ok(cu.textContent.includes("Visita 1"), "ya empezó pero la sala sigue abierta: se ve");
+    assert.deepStrictEqual(cu.busca(x => "data-entra" in x.attrs).map(b => b.attrs["data-entra"]), ["1"], "solo la abierta, no la de dentro de 3 h ni la cata");
+    assert.ok(cu.busca(x => x.tag === "button" && x.textContent === "Entrar en la visita").length === 1);
+    cu.busca(x => "data-entra" in x.attrs)[0].clic(); await new Promise(r => setTimeout(r, 20));
+    assert.deepStrictEqual(llamadas, [1]); assert.ok(m.ventanas.agenda.cuerpo.textContent.includes("Estáis en la visita guiada «Visita 1»."));
+    assert.strictEqual(m.ventanas.agenda.cuerpo.busca(x => "data-entra" in x.attrs).length, 0, "ya dentro: sin botón"); assert.strictEqual(m.ventanas.agenda.cuerpo.busca(x => "data-en-visita" in x.attrs).length, 1);
+  } finally { m.restaura(); }
+});
+
+test("OF11e: si la api no deja entrar (403 guiada_solo_inscritos, 409 guiada_cerrada) se enseña su frase, tal cual y como texto", async () => {
+  for (const frase of ["Esta visita es para las familias apuntadas.", "La visita guiada ha terminado: el guía ha cerrado la sala. <b>x</b>"]) {
+    const P = { estado: () => ({ variante: "red" }), entraGuiada: () => Promise.resolve(false), evento: () => null, avisoGuiada: () => frase };
+    const m = monta({ respuestas: () => J(200, { puede_inscribirse: true, eventos: [conEntrada(guiada(1, 5 * MIN), -10 * MIN, 100 * MIN)] }), P });
+    try {
+      await m.api.carga(); m.ventanas.agenda.cuerpo.busca(x => "data-entra" in x.attrs)[0].clic(); await new Promise(r => setTimeout(r, 20));
+      assert.strictEqual(m.ventanas.agenda.cuerpo.busca(x => "data-nota" in x.attrs)[0].textContent, frase);
+      assert.strictEqual(m.ventanas.agenda.cuerpo.busca(x => "data-entra" in x.attrs).length, 1, "puede volver a intentarlo");
+      assert.strictEqual(m.api.datos().eventos.length, 1);
+    } finally { m.restaura(); }
+  }
+});
+
+test("OF11e: sin la presencia de verdad (?presencia=red) no hay botón, ni en pantalla ni en VR; la api sin `entrada` y sin apuntarse tampoco da ventana", async () => {
+  const agenda = { puede_inscribirse: true, eventos: [conEntrada(guiada(1, 5 * MIN), -10 * MIN, 100 * MIN)] };
+  for (const P of [null, { estado: () => ({ variante: "sim" }), entraGuiada: () => { throw new Error("no debe"); }, evento: () => null }]) {
+    const m = monta({ respuestas: () => J(200, agenda), P });
+    try {
+      await m.api.carga(); assert.strictEqual(m.ventanas.agenda.cuerpo.busca(x => "data-entra" in x.attrs).length, 0);
+      const f = m.filas.find(x => x.d.id === "agenda"), b = []; f.d.botones((id, x, y, w, h, t) => b.push(t), 0); assert.deepStrictEqual(b, []);
+    } finally { m.restaura(); }
+  }
+});
+
+test("OF11e VR: la fila del panel tiene su botón «Entrar en la visita» solo con una visita abierta, llama a entraGuiada, y deja sitio (2 filas) y firma que cambia", async () => {
+  const llamadas = [], P = { estado: () => ({ variante: "red" }), entraGuiada: id => { llamadas.push(id); return Promise.resolve(true); }, evento: () => null, avisoGuiada: () => "" };
+  const abierta = { puede_inscribirse: true, eventos: [conEntrada(guiada(1, -5 * MIN), -20 * MIN, 100 * MIN), guiada(2, DIA), guiada(3, 2 * DIA)] };
+  const m = monta({ respuestas: () => J(200, abierta), P });
+  try {
+    const f = m.filas.find(x => x.d.id === "agenda"); const firmaAntes = f.d.firma();
+    m.bus["vr:entra"](); await new Promise(r => setTimeout(r, 20));
+    assert.notStrictEqual(f.d.firma(), firmaAntes);
+    const bs = []; f.d.botones((id, x, y, w, h, t, fn) => bs.push({ id, x, y, w, h, t, fn }), 100);
+    assert.strictEqual(bs.length, 1); assert.strictEqual(bs[0].t, "Entrar en la visita"); assert.ok(bs[0].h >= 64 && bs[0].y + bs[0].h <= 100 + f.d.alto, "cabe en la fila");
+    assert.strictEqual(f.d.debug().agenda.filas.length, 2, "una fila menos para el botón"); assert.deepStrictEqual(f.d.debug().agenda.entrar, { id: 1, titulo: "Visita 1" });
+    bs[0].fn(); await new Promise(r => setTimeout(r, 20)); assert.deepStrictEqual(llamadas, [1]);
+    const ops = [], cx = { measureText: s => ({ width: String(s).length * 12 }), fillText: s => ops.push(s) }; f.d.pinta(cx, 100, 1024, { fila: s => ops.push(s) });
+    assert.ok(ops.some(s => /^Abierta: Visita 1/.test(s)));
+  } finally { m.restaura(); }
 });

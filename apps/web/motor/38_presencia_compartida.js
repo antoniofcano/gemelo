@@ -331,7 +331,7 @@
     // F3f: la sala de voz de una visita guiada (guiada-<evento>, F3c). La presencia VIAJA a ella (entraGuiada): misma sala de la red («visita»), token de
     // POST /api/presencia/guiadas/:evento/token, y la voz (45_voz.js) se engancha a esta misma conexión (Voz.usa("visita")), así cada voz sale de su avatar.
     // claveSala = "guiada" mientras dure; si la api no deja entrar (cerrada, fuera de hora, no apuntada) o la sala se cierra, de vuelta a la general con el aviso
-    var eventoGuiada = null, NOMBRE_GUIADA = "Visita guiada";
+    var eventoGuiada = null, NOMBRE_GUIADA = "Visita guiada", avisoGuiada = "";   // avisoGuiada (OF11e): la frase de la api del último intento fallido de entrar (la lee la agenda)
     function nombreSala(c) { return c === "guiada" ? NOMBRE_GUIADA : SALAS_MUNDO[c]; }
     var ui = null, mensajes = [], tChat = 0, tGente = 0, claveGente = "", conectando = false, poseL = { tipo: 1, seq: 0, t: 0, cab: { p: [0, 0, 0], q: [0, 0, 0, 1] }, izq: null, der: null };
     var mDesc = null, vDesc = null, qDesc = null, sDesc = null;
@@ -378,7 +378,7 @@
           var e = null; try { e = await r.json(); } catch (x) { e = null; }
           // F3f: la guiada no te deja (cerrada, aún no abre, ya terminó, no apuntada, expulsado): su mensaje y de vuelta a la general
           if (claveSala === "guiada") {
-            claveSala = "general"; eventoGuiada = null; volverGeneral = e && typeof e.mensaje === "string" && e.mensaje ? e.mensaje : "No se pudo entrar en la visita guiada.";
+            claveSala = "general"; eventoGuiada = null; volverGeneral = avisoGuiada = e && typeof e.mensaje === "string" && e.mensaje ? e.mensaje : "No se pudo entrar en la visita guiada.";
             return;
           }
           // OF10b: la sala de la visita ligada a un evento de la agenda es solo de las familias apuntadas (403 visita_solo_inscritos): mensaje amable y de vuelta a la general
@@ -438,7 +438,7 @@
       if (variante !== "red" || !SR || !Number.isInteger(id) || id < 1 || id > 2147483647) return Promise.resolve(false);
       if (conectando) return esperaConexion().then(function (si) { return si ? entraGuiada(id) : false; });   // p. ej. ?guiada= al cargar, mientras entra en la general
       if (claveSala === "guiada" && eventoGuiada === id && sala) return Promise.resolve(true);
-      claveSala = "guiada"; eventoGuiada = id; Object.keys(porId).forEach(saleOtro); sala = null; yo = null; claveGente = "";
+      avisoGuiada = ""; claveSala = "guiada"; eventoGuiada = id; Object.keys(porId).forEach(saleOtro); sala = null; yo = null; claveGente = "";
       return conecta().then(function () { pintaNota(); return !!sala && claveSala === "guiada" && eventoGuiada === id; });
     }
     function esperaConexion() {   // hasta que acabe de entrar (o salir) la sala en curso: como mucho 20 s, mirando cada 100 ms
@@ -758,7 +758,7 @@
     }
     var api = { activo: function () { return activo; }, actualiza: actualiza, estado: estado, libera: libera, texto: texto, llegadas: llegadas, puntos: puntos, irCon: irCon,
       vrmPersonas: vrmPersonas, miVrm: miVrm, miAvatar: miAvatar, recolorea: recolorea, cambiaron: cambiaron, enganchaVRM: enganchaVRM,
-      sala: function () { return claveSala; }, cambiaSala: cambiaSala, entraGuiada: entraGuiada, evento: function () { return claveSala === "guiada" ? eventoGuiada : null; }, nombreSala: nombreSala,
+      sala: function () { return claveSala; }, cambiaSala: cambiaSala, entraGuiada: entraGuiada, avisoGuiada: function () { return avisoGuiada; }, evento: function () { return claveSala === "guiada" ? eventoGuiada : null; }, nombreSala: nombreSala,
       yo: miInfo, mensaje: mensaje, cabeza: cabeza };
     window.__presenciaChat = function (txt) { anadeMensaje("Prueba", String(txt || "Hola"), false); };   // pruebas del chat movible (la ventana solo existe con ?presencia=red o &chat=1)
     // gancho de pruebas: estado; con "libera", apagar el componente (soltar todo; los avatares VRM se sueltan antes); con "llegadas", las poses apuntadas (P4);

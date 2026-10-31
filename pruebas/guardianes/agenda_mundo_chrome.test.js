@@ -85,6 +85,31 @@ describe("en el navegador", () => {
     } finally { await p.close(); }
   });
 
+  test("OF11e: con ?presencia=red una guiada en curso lleva «Entrar en la visita»; al pulsar pide el token de la guiada y, si la api dice 403, se enseña su frase; sin presencia de verdad no hay botón", { timeout: 300000 }, async t => {
+    if (SALTO) return t.skip(SALTO);
+    const p = await nav.newPage({ viewport: { width: 390, height: 780 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 }), errores = [], pedidas = [];
+    p.on("pageerror", e => errores.push("PAGEERROR " + String(e.stack || e).slice(0, 300)));
+    p.on("console", m => { if (m.type() === "error" && !/favicon|404|403|401|Failed to load resource/.test(m.text())) errores.push("CONSOLE " + m.text().slice(0, 300)); });
+    const MIN = 60000, FRASE = "Esta visita es para las familias apuntadas.";
+    const enCurso = { puede_inscribirse: true, eventos: [ev(1, { empieza_en: iso(Date.now() - 10 * MIN), mia: { estado: "apuntado", personas: 2 }, entrada: { desde: iso(Date.now() - 25 * MIN), hasta: iso(Date.now() + 90 * MIN) } }), ev(2, { tipo: "cata", empieza_en: iso(Date.now() + 5 * MIN) })] };
+    await p.route("**/api/agenda**", r => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(enCurso) }));
+    await p.route("**/api/presencia/**", r => { const q = r.request(); pedidas.push(q.method() + " " + q.url().replace(/^.*\/api\//, ""));
+      r.fulfill({ status: /guiadas/.test(q.url()) ? 403 : 401, contentType: "application/json", body: JSON.stringify(/guiadas/.test(q.url()) ? { error: "guiada_solo_inscritos", mensaje: FRASE } : { error: "sin_sesion" }) }); });
+    try {
+      await p.goto(url + "?debug&hora=12:00&api=/api/&presencia=red"); await abre(p, true);
+      assert.ok((await p.locator("#ventana-agenda").innerText()).includes("Visita 1"), "la guiada en curso sigue en la lista");
+      assert.strictEqual(await p.locator("#ventana-agenda [data-entra]").count(), 1, "solo la guiada abierta, no la cata");
+      const r = await p.evaluate(() => { const b = document.querySelector("#ventana-agenda [data-entra]").getBoundingClientRect(); return [b.width, b.height]; }); assert.ok(r[0] >= 44 && r[1] >= 44, "botón táctil: " + r);
+      await p.locator("#ventana-agenda [data-entra]").tap();
+      await p.waitForFunction(f => document.getElementById("ventana-agenda").innerText.includes(f), FRASE, { timeout: 15000 });
+      assert.ok(pedidas.some(x => /^POST presencia\/guiadas\/1\/token$/.test(x)), pedidas.join(" | "));
+      await p.screenshot({ path: path.join(CAPS, "agenda_entrar_403.png") });
+      await p.goto(url + "?debug&hora=12:00&api=/api/"); await abre(p, true);
+      assert.strictEqual(await p.locator("#ventana-agenda [data-entra]").count(), 0, "sin ?presencia=red no hay botón");
+      assert.deepStrictEqual(errores, []);
+    } finally { await p.close(); }
+  });
+
   test("VR simulada: la fila «Agenda» del panel (pestaña Mundo) lista los próximos y dice dónde apuntarse; sin botones; el presupuesto no sube", { timeout: 400000 }, async t => {
     if (SALTO) return t.skip(SALTO);
     if (!process.env.GEMELO_VR) return t.skip("opcional: define GEMELO_VR=1 para la fila en el panel VR con el WebXR simulado (inestable con SwiftShader, como vr.test.js)");

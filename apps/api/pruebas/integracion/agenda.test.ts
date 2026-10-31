@@ -198,3 +198,22 @@ test("OF11b: cambiar fecha o lugar avisa solo a apuntados y espera, sin contar p
   const aud = await q<{ detalle: { avisados?: number } }>("SELECT detalle FROM auditoria WHERE accion = 'admin.evento_editado' ORDER BY id DESC LIMIT 1");
   assert.equal(aud[0]!.detalle.avisados, 2);
 });
+
+test("OF11e: una guiada en curso sigue en la agenda hasta que cierra su sala y lleva su ventana de entrada solo a quien puede entrar (familia apuntada, oficina); una cata ya empezada, no", async t => {
+  if (salta(t)) return;
+  const ana = (await entra(ANA)).sesion, luis = (await entra(LUIS)).sesion;
+  const g = await crea({ titulo: "Guiada en curso", tipo: "guiada", plazas: 5 }), c = await crea({ titulo: "Cata ya empezada", tipo: "cata" });
+  assert.equal((await pide("POST", "/api/agenda/" + g + "/inscripcion", ana, { personas: 2 })).statusCode, 201);
+  const pasada = async (id: number, min: number) => q("UPDATE visitas SET empieza_en = now() - make_interval(mins => $2) WHERE id = $1", [id, min]);
+  await pasada(g, 10); await pasada(c, 10);
+  const de = async (s: string) => ((await pide("GET", "/api/agenda", s)).json().eventos as { id: number; entrada: { desde: string; hasta: string } | null }[]);
+  const a = await de(ana), l = await de(luis), o = await de(ofi);
+  assert.ok(a.some(e => e.id === g) && !a.some(e => e.id === c), "la guiada en curso sigue, la cata empezada no");
+  const ea = a.find(e => e.id === g)!;
+  assert.ok(ea.entrada && Date.parse(ea.entrada.desde) < Date.now() && Date.parse(ea.entrada.hasta) > Date.now(), "apuntada: ventana abierta ahora");
+  assert.equal(l.find(e => e.id === g)!.entrada, null, "no apuntada: sin ventana");
+  const eo = o.find(e => e.id === g)!;
+  assert.ok(eo.entrada && Date.parse(ea.entrada!.desde) - Date.parse(eo.entrada.desde) === 45 * 60_000, "la oficina entra 60 min antes del inicio, las familias 15");
+  await pasada(g, 3 * 60 + 40);   // sin fin: empieza + 3 h + 30 min de gracia ya pasados
+  assert.ok(!(await de(ana)).some(e => e.id === g), "cerrada la ventana, sale de la lista");
+});
