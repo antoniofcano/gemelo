@@ -483,6 +483,28 @@ Lo que cambia cuando el manifiesto trae variantes horneadas de la época: `?oliv
 
 (llamadas / triángulos / heap JS; las celdas son de corridas distintas, ±3 MB de heap y unas llamadas de ruido entre ellas.) Lecturas: (1) «antes» con `&olivosEscalera=0` es `?olivos=gen` de `main` (mismos triángulos en lejos y cerca; las llamadas de paseo varían de una corrida a otra con las celdas de nivel 0 construidas). (2) Con la escalera, de lejos y de cerca **menos** triángulos y llamadas (cerca −45 % de triángulos); paseando, los mismos triángulos con más olivos en 3D (12 frente a 3) y sin nivel 0 de siempre. Llamadas de olivos ≤ 8 (tope de `fixture_olivos_escalera`); todo dentro de `fixture_olivos_gen` y de `fixture` de Hituelo. (3) Los atlas de impostores suman 26,7 MiB de GPU (lo calcula el motor; three no lo cuenta en el heap). (4) Los ms de JS de paseo suben (6,9 → 11,7 y 7,3 → 8,6) en una sola muestra a menos de 1 fps: **no se afirma nada** hasta medirlo en un aparato (O8d). Secuencia al cargar (Node, `escalera_motor.mjs` parte 5, y banco): mientras no hay capa de lejanos, como `?olivos=gen`; cuando la hay, 1 s con el tileset debajo mientras los impostores entran con su tramado, y luego el tileset sin olivos. **No probado** en móvil ni Quest (presupuestos de la configuración por aparato: escritorio y móvil en 07b, gafas en VR_PERFILES; ninguno medido en aparato).
 
+## Hituelo real horneado con dos épocas (O7h, 2026-10-31, foto, no se mantiene)
+Hornero (`tuberia/olivos/hornero.mjs --impostores`, `CACHE_VERSION` 2, `olivo-2`, brotli 9) sobre la exportación real de Hituelo v3 (`GEMELO_DATOS`, fuera del repo; 5.882 copas, 46 teselas), fecha 2026-10-31: época actual `envero`, siguiente `madura` (calendario de `contratos/epocas-calendario.json`, de partida). Equipo: i5-1035G1, 4 núcleos, máquina compartida con otros agentes (memoria libre ~1,5 GB); una sola corrida de cada cosa. Procedimiento: [DATOS.md](../operacion/DATOS.md#hornear-hituelo-real-y-medir-un-paseo-o7h).
+
+| Qué | Cifra |
+|---|---|
+| Tiempo de horneado total (variantes + impostores, Chrome incluido) | **88,5 s** (< 1 h: no hizo falta parar tras la primera época); impostores 85,3 s (2 épocas, 4 variantes × 64 vistas cada una: ≈ 43 s por época), variantes ≈ 3 s las 16 |
+| Objetos | 16 variantes `.br` (por época: 4 semillas × E2 y E2VR = 8) + 4 atlas `.webp` (por época: color 2048 px y normales 1024 px) |
+| Bytes por época | variantes 1,37 MB (brotli; 2,40 MB sin comprimir) + impostor 0,70-0,74 MB (color) + 1,06 MB (normales) = **≈ 3,1-3,2 MB** |
+| Total en disco | 6,1 MB (16 `.br` 2,74 MB + 4 `.webp` 3,56 MB + manifiesto 11,9 KB) |
+| Manifiesto | 11.899 bytes (1.743 con gzip) |
+| Tipos | el hornero hornea **un** tipo (`centenario3`) × 4 semillas: las variantes no dependen de los olivos de la finca, así que el tamaño y el tiempo de Hituelo real son los mismos que con el fixture |
+
+**Descarga de un paseo** (Chrome sin pantalla + SwiftShader, 900 × 650, `?debug&olivos=gen&olivosDir=olivos/&tileset=…`, servidor estático local que imita al Caddy de `infra/dev`: `Content-Encoding: br` en los `.br` y gzip 6 en js/html/json; sin latencia ni zstd). Entrada = página lista + escena + 20 s; paseo = 120 s andando de frente desde una copa cercana a la mediana de la finca.
+
+| Fase | Peticiones | Bytes en la red | De ellos, lo horneado |
+|---|---|---|---|
+| Entrada (~25 s) | 91 | **30,0 MB** | manifiesto 1,7 KB + 4 variantes E2 (684 KB) + 2 atlas de envero (1,76 MB) = **2,45 MB** |
+| Paseo (120 s) | 56 | **18,7 MB** | 0 (ya estaba todo) |
+| Total | 148 | **48,8 MB** | 2,45 MB (5 %) |
+
+Lo demás es lo de siempre: teselas `t/` 35,1 MB (92 peticiones, json + jpg), tileset 7,7 MB (38 glb), web 3,6 MB. Al final del paseo: 4 variantes horneadas, 0 calculadas, 0 fallos, escalera `horneada` con 17 E2 + 4 E1 (253 k tri, 4 llamadas de olivos). Solo se bajan las E2 (las `E2VR` no, fuera de VR) y solo los atlas de la época actual (`madura` se baja al cambiar). Una primera corrida sin `olivosDir` (página sin servidor) no baja nada horneado (2,45 MB menos) y calcula las variantes en el aparato (3 en esa corrida). Dudas: la 404 de la consola es la del favicon; **el móvil no está probado (👤)**: ni descarga real por 4G, ni el tiempo de decodificar los atlas, ni fps.
+
 ## Límites conocidos
 - Las ortofotos decodificadas (2,4 MB por tesela de 768 px; 1 MB a 512 px) se sueltan a 900 m y, desde M4, por LRU con un tope (8 móvil/gafas, 20 escritorio; `?ortoMax=N`); el fixture (2 teselas) no llega al tope, así que su heap no cambia dentro del ruido de SwiftShader (±3 MB); el ahorro es ~2,4 MB por tesela soltada de las reales de 768 px, **no medido** en una finca grande ni en iPhone/Quest. M6 (suelo de fondo, `?sinFondo` lo quita), banco 2026-10-30, fixture de Hituelo: +1 llamada, +10 824 triángulos (82 × 66 celdas × 2), +1 geometría, 0 texturas nuevas, heap sin cambio medible; de lejos el vacío alrededor de la finca queda cubierto y de cerca no asoma.
 - Dentro de una tesela todo el relieve y la copa (258² + 256²) están siempre en memoria: 49 teselas ≈ 20 MB; la nube de las lejanas se libera a > 1,2× 2.300 m.
