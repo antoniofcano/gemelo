@@ -32,7 +32,7 @@
       "bytes": 1000000, "vrm_version": "1.0", "triangulos": 10500, "primitivas": 4, "materiales": 6, "texturas": 0, "autor": "Autor de ejemplo",
       "licencia": { "spdx": "CC0-1.0", "url": "https://creativecommons.org/publicdomain/zero/1.0/", "credito_obligatorio": false, "texto_credito": "Ejemplo — Autor de ejemplo — CC0-1.0" },
       "fuente": { "nombre": "Ejemplo inventado" },
-      "piezas": ["pelo-corto", "pelo-afro", "vello-barba", "ropa-faena", "sombrero-paja"], "mirada": "ninguna"
+      "piezas": ["pelo-corto", "pelo-afro", "vello-barba", "vello-perilla", "ropa-faena", "sombrero-paja"], "mirada": "ninguna"
     },
     {
       "id": "cuerpo-ejemplo-peque", "nombre": "Peque, complexión media", "edad": "peque", "complexion": "media", "ofrecer": false,
@@ -47,6 +47,7 @@
     { "id": "pelo-corto", "tipo": "pelo", "nombre": "Corto", "malla": "pieza_pelo-corto", "materiales": ["pelo"], "triangulos": 850 },
     { "id": "pelo-afro", "tipo": "pelo", "nombre": "Afro o rizado", "malla": "pieza_pelo-afro", "materiales": ["pelo"], "triangulos": 850 },
     { "id": "vello-barba", "tipo": "vello", "nombre": "Barba corta", "malla": "pieza_vello-barba", "materiales": ["pelo"], "triangulos": 540, "edades": ["joven", "adulta", "mayor"] },
+    { "id": "vello-perilla", "tipo": "vello", "nombre": "Perilla", "malla": "pieza_vello-perilla", "materiales": ["pelo"], "triangulos": 160, "edades": ["joven", "adulta", "mayor"] },
     { "id": "ropa-faena", "tipo": "ropa", "nombre": "Ropa de faena", "malla": "pieza_ropa-faena", "materiales": ["ropa_base", "ropa_abajo"], "triangulos": 2030, "cubre_ropa_base": true },
     { "id": "sombrero-paja", "tipo": "accesorio", "nombre": "Sombrero de paja", "malla": "pieza_sombrero-paja", "materiales": ["sombrero"], "triangulos": 140, "sombrero": "paja", "color": "#d9bf6a" }
   ],

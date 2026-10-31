@@ -18,9 +18,10 @@
 #   6. Materiales lisos SIN textura, para teñirse en el motor (decisión 128): «piel», «ropa_base» (arriba) y «ropa_abajo» en blanco (el motor multiplica
 #      por el color elegido) y «ojos» oscuro. La ropa base (camiseta y pantalón corto) es para que ningún cuerpo vaya desnudo; el cuello, por un plano
 #      inclinado (más bajo delante que detrás) que da un borde redondo y limpio (decisión 141: la costura en escalera del cuello de AV3).
-#   7. Las PIEZAS (AV4, PIEZAS): pelo (de la ayuda «helper-hair» de MakeHuman, recortada, pegada o hinchada), vello (copia de la piel de la barbilla o
-#      del labio, separada unos mm), ropa de faena (de la ayuda «helper-tights», hasta muñecas y tobillos) y sombreros (rígidos, al hueso head). Cada
-#      una, un objeto «pieza_<id>» con los pesos de su esqueleto; el motor enseña las de la receta y tiñe «pelo» y «sombrero».
+#   7. Las PIEZAS (AV4 y AV5, PIEZAS): pelo (de la ayuda «helper-hair» de MakeHuman, recortada, pegada o hinchada; el largo, con dos mechones por delante),
+#      vello (copia de la piel de la barbilla o del labio, separada unos mm; la perilla, cortada por planos y con cuerpo), ropa de faena (de la ayuda
+#      «helper-tights», hasta muñecas y tobillos) y sombreros (rígidos, al hueso head; la paja, asentada sobre el pelo corto). Cada una, un objeto
+#      «pieza_<id>» con los pesos de su esqueleto; el motor enseña las de la receta y tiñe «pelo» y «sombrero».
 #   8. VRM 1.0 con el VRM Add-on: huesos humanoides (mapa explícito), expresiones blink/aa, meta CC0 con uso corporativo, redistribución y modificación.
 # Determinista: mismos complementos y mismos valores → misma malla (la reducción «collapse» no usa azar).
 import bpy
@@ -98,11 +99,21 @@ PIEZAS = {
     "pelo-largo":     {"tipo": "pelo",  "nombre": "Largo"},
     "vello-barba":    {"tipo": "vello", "nombre": "Barba corta"},
     "vello-bigote":   {"tipo": "vello", "nombre": "Bigote"},
+    "vello-perilla":  {"tipo": "vello", "nombre": "Perilla"},                                                          # AV5: vello de la barbilla
     "ropa-faena":     {"tipo": "ropa",  "nombre": "Ropa de faena (camisa de manga larga y pantalón largo)", "cubre_ropa_base": True},
     "sombrero-paja":  {"tipo": "accesorio", "nombre": "Sombrero de paja", "sombrero": "paja", "color": "#d9bf6a"},    # colores del sombrero del muñeco
     "sombrero-gorra": {"tipo": "accesorio", "nombre": "Gorra", "sombrero": "gorra", "color": "#2e5d34"},
 }
-SEPARA = {"rapado": 0.0025, "corto": 0.008, "afro": 0.075, "vello": 0.003, "faena": 0.006}   # cuánto se separa cada capa de lo que tapa (m)
+SEPARA = {"rapado": 0.0025, "corto": 0.008, "afro": 0.075, "vello": 0.003, "perilla": 0.004, "faena": 0.006}   # cuánto se separa cada capa de lo que tapa (m)
+# AV5 (repaso tras la revisión de Antonio, opción B): el afro sube desde el borde en AFRO_CAIDA metros (antes, en dos aristas: los picos del borde bajo); el largo
+# lleva MECHONES por delante (dos tiras que caen de las sienes al pecho, con grosor); el sombrero de paja se ASIENTA: su copa es la elipse más justa que contiene
+# pelo corto y cabeza a la altura del ala (antes, un cilindro fijo 5,5 cm bajo la coronilla, que flotaba).
+AFRO_CAIDA = 0.06
+MECHONES = {"columnas": 5, "filas": 15, "grosor": 0.005, "separa": 0.012}
+# la perilla (m, para un cuerpo de 1,66 m: se escala con la altura): de bajo el labio a bajo la barbilla, estrecha arriba y ancha abajo, y más gruesa en la punta
+PERILLA = {"bajo_labio": 0.016, "hasta": 0.07, "arriba": 0.016, "abajo": 0.042, "atras": 0.02, "punta": 0.006}
+# el sombrero de paja: el ala a ALA_SOBRE_OJOS de la distancia de lo alto de los ojos a la coronilla; holgura de la copa y cuánto más ancha es el ala
+PAJA = {"ala_sobre_ojos": 0.38, "holgura": 0.003, "ala": 1.9, "sobre_pelo": 0.02, "estrecha": 0.12}
 TRI_FAENA = 2400   # la ayuda de mallas ajustadas tiene ≈ 5.300 triángulos; se reduce
 # Expresiones (targets de MPFB, CC0): blink = los dos párpados; aa = boca abierta. Se promedian las tres variantes que trae MPFB.
 EXPRESIONES = {"blink": ["eye-left-closure", "eye-right-closure"], "aa": ["mouth-open"]}
@@ -310,6 +321,15 @@ def referencias(cuerpo, esqueleto):
     }
 
 
+def orienta_caras(bm, fuera):
+    """AV5: cada cara hacia fuera por su cuenta (la ayuda de pelo son varias tiras: orienta() vota para todas juntas y alguna quedaba del revés, y el
+    motor no dibuja las caras de espaldas: se veían rayas claras en la coronilla)"""
+    bm.normal_update()
+    malas = [f for f in bm.faces if not fuera(f.calc_center_median(), f.normal)]
+    if malas: bmesh.ops.reverse_faces(bm, faces=malas)
+    bm.normal_update()
+
+
 def bajo_cuello(M, p, sube=0.0):
     """Vestido: por debajo de alguno de los tres planos del escote (subidos `sube` metros)"""
     return any((p - co - Vector((0, 0, sube))).dot(no) < 0 for co, no in M["escote"])
@@ -428,12 +448,88 @@ def con_bm(obj, fn):
     bm = bmesh.new(); bm.from_mesh(obj.data); fn(bm); bm.to_mesh(obj.data); bm.free(); obj.data.update()
 
 
-def piezas_pelo(ayuda, cuerpo, esqueleto, M):
+def suave(t):
+    """smoothstep de 0 a 1 (t fuera de 0-1, recortado)"""
+    t = max(0.0, min(1.0, t)); return t * t * (3 - 2 * t)
+
+
+def fuera_de(bvh, p, d):
+    """Saca el punto p de la piel hasta quedar a d metros por fuera (por la normal de la cara más cercana); si ya lo está, igual"""
+    for _ in range(4):
+        loc, n, _i, _dist = bvh.find_nearest(p)
+        if loc is None: return p
+        s = (p - loc).dot(n)
+        if s >= d - 1e-5: return p
+        p = p + n * (d - s)
+    return p
+
+
+def junta(destino, otro):
+    """Une la malla de `otro` a `destino` (mismo objeto, mismo material)"""
+    activa(destino); otro.select_set(True); bpy.ops.object.join()
+
+
+def mechones(cuerpo, M, boca, coleccion):
+    """AV5: el pelo largo, también por delante. Dos tiras que caen de las sienes, junto a la cara y por delante del cuello, hasta el pecho: cada fila
+    de la tira va de la sien (y del centro de la cabeza) a la piel de delante (rayo desde −Y) según baja de la barbilla a la base del cuello, y cada
+    punto se saca de la piel (más pegado arriba, bajo el casquete, y a MECHONES["separa"] abajo). Grosor con Solidify hacia dentro (por las dos caras)"""
+    from mathutils.bvhtree import BVHTree
+    bvh = BVHTree.FromObject(cuerpo, bpy.context.evaluated_depsgraph_get())
+    lo, hi, c = M["cabeza_lo"], M["cabeza_hi"], M["cabeza_c"]
+    k, mw = M["alto"] / 1.66, (hi.x - lo.x) / 2   # escala del cuerpo y medio ancho de la cabeza
+    z0, z1 = hi.z - 0.075 * k, M["cuello_co"].z - 0.13 * k      # de bajo el casquete (sien) a media altura del pecho
+    zb, zh = boca.z - 0.04 * k, M["cuello_co"].z                 # de la barbilla a la base del cuello pasa del lado de la cabeza a delante
+    NU, NV = MECHONES["columnas"], MECHONES["filas"]
+    me = bpy.data.meshes.new("mechones"); o = bpy.data.objects.new("mechones", me); coleccion.objects.link(o)
+    bm = bmesh.new()
+    afuera = hacia_fuera(cuerpo)
+    for sx in (1, -1):
+        filas = []
+        for j in range(NV):
+            v = j / (NV - 1); z = z0 + (z1 - z0) * v
+            arriba = suave(v / 0.35)   # arriba, pegados a la cabeza y bajo el casquete (en la prueba asomaba el canto de arriba en la sien)
+            xi = c.x + sx * (0.55 + (0.5 - 0.55) * v) * mw
+            xo = c.x + sx * ((0.9 * mw) + (1.3 * mw - 0.9 * mw) * arriba)
+            punta = 1 - 0.65 * suave((v - 0.6) / 0.4)   # las puntas se estrechan (no acaban en un corte recto)
+            xm = (xi + xo) / 2; xi, xo = xm + (xi - xm) * punta, xm + (xo - xm) * punta
+            b = suave((zb - z) / (zb - zh))
+            d = 0.003 + (MECHONES["separa"] - 0.003) * suave(v / 0.3)
+            fila = []
+            for i in range(NU):
+                x = xi + (xo - xi) * i / (NU - 1)
+                y_lado = c.y - 0.012 * k
+                golpe = bvh.ray_cast(Vector((x, lo.y - 0.5, z)), Vector((0, 1, 0)))
+                y_del = (golpe[0].y if golpe[0] is not None else y_lado) - d
+                fila.append(bm.verts.new(fuera_de(bvh, Vector((x, y_lado + (y_del - y_lado) * b, z)), d)))
+            filas.append(fila)
+        caras = [bm.faces.new((filas[j][i], filas[j][i + 1], filas[j + 1][i + 1], filas[j + 1][i])) for j in range(NV - 1) for i in range(NU - 1)]
+        bm.normal_update()
+        if sum(1 if afuera(f.calc_center_median(), f.normal) else -1 for f in caras) < 0: bmesh.ops.reverse_faces(bm, faces=caras)
+    bm.normal_update(); bm.to_mesh(me); bm.free(); me.update()
+    activa(o)
+    s = o.modifiers.new("grosor", "SOLIDIFY"); s.thickness = MECHONES["grosor"]; s.offset = -1.0; s.use_rim = True; s.use_even_offset = True
+    bpy.ops.object.modifier_apply(modifier="grosor")
+    return o
+
+
+def piezas_pelo(ayuda, cuerpo, esqueleto, M, boca):
     """Cinco peinados de la ayuda de pelo de MakeHuman (un casquete que baja por la espalda hasta media espalda)"""
     hecho = {}
     cz, c = M["cabeza_z"], M["cabeza_c"]
     afuera = hacia_fuera(cuerpo)
     con_bm(ayuda, lambda bm: orienta(bm, afuera))
+    # AV5: la ayuda trae agujeros en la coronilla (se veía un punto claro arriba en todos los peinados): se tapan los que quedan enteros por encima del
+    # centro de la cabeza (el borde de fuera baja a la nuca, así que no se toca)
+    def tapa(bm):
+        bmesh.ops.remove_doubles(bm, verts=bm.verts[:], dist=0.002)   # tiras sueltas de la ayuda: se cosen (al hinchar el afro se abrían en grietas)
+        # y las rajas que deja la ayuda por arriba (bordes abiertos con los dos labios a unos mm): se cosen sus bordes, sin tocar el borde de abajo
+        bmesh.ops.remove_doubles(bm, verts=[v for v in bm.verts if v.is_boundary and v.co.z > c.z + 0.02], dist=0.009)
+        bordes = [e for e in bm.edges if e.is_boundary and min(v.co.z for v in e.verts) > c.z]
+        if bordes:
+            r = bmesh.ops.holes_fill(bm, edges=bordes, sides=0)
+            bmesh.ops.triangulate(bm, faces=[f for f in r["faces"] if len(f.verts) > 4])
+        orienta_caras(bm, afuera)
+    con_bm(ayuda, tapa)
     # la frente: la ayuda baja hasta las cejas (un flequillo que tapa los ojos). Un plano que sube hacia delante (z > F + 0,9·(c.y − y)) despeja la frente
     # y las sienes; solo en la mitad de delante, para no tocar lo que cuelga por la espalda
     fco, fno = Vector((0, c.y, M["cabeza_hi"].z - 0.11)), Vector((0, 0.9, 1)).normalized()
@@ -445,6 +541,7 @@ def piezas_pelo(ayuda, cuerpo, esqueleto, M):
     # LARGO: la ayuda entera, suavizada; lo que cuelga, a cuello y pecho alto
     largo = copia(ayuda, "largo"); subdivide(largo)
     con_bm(largo, lambda bm: normales_fuera(bm, 0.004))
+    junta(largo, mechones(cuerpo, M, boca, largo.users_collection[0]))   # AV5: que caiga también por delante
     pesos_pelo(largo, M); hecho["pelo-largo"] = largo
     # CORTO: el casquete por encima de la nuca (un plano algo más bajo detrás que delante)
     co, no = Vector((0, c.y, cz + 0.005)), Vector((0, 0.35, 1)).normalized()
@@ -461,16 +558,35 @@ def piezas_pelo(ayuda, cuerpo, esqueleto, M):
         sal = saltos_desde_borde(bm); bm.verts.ensure_lookup_table()
         for v in bm.verts: v.co += (v.co - c).normalized() * d * min(1.0, sal[v.index] / 2.0)
     con_bm(corto, lambda bm: volumen(bm, 0.012)); hecho["pelo-corto"] = corto
-    # AFRO: el casquete hinchado por su normal (menos delante y nada en el borde, para no tapar la frente ni dejar el borde al aire) y con rizos
-    afro = copia(casco, "afro"); subdivide(afro); envuelve(afro, cuerpo, SEPARA["corto"])
+    # AFRO: el casquete hinchado hacia fuera desde el centro de la cabeza (menos delante, para no tapar la frente) y con rizos leves. AV5: el volumen sube
+    # desde el borde con la DISTANCIA en metros al borde (AFRO_CAIDA, curva suave), no con las aristas (en AV4, dos aristas: el borde bajo salía en dientes),
+    # lo de delante baja con una curva (no un escalón en y) y se alisa el interior sin mover el borde
+    afro = copia(casco, "afro")
+    def frente_afro(bm):   # AV5: la raya de la frente, 1,5 cm más arriba y recta (la de la ayuda tiene una muesca que, hinchada, se abría en un hueco)
+        co2 = fco + Vector((0, 0, 0.015))
+        corta(bm, [(co2, fno)], lados=4)
+        bmesh.ops.delete(bm, geom=[f for f in bm.faces if f.calc_center_median().y < c.y + 0.01 and (f.calc_center_median() - co2).dot(fno) < 0], context="FACES")
+        bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")
+    con_bm(afro, frente_afro)
+    subdivide(afro); envuelve(afro, cuerpo, SEPARA["corto"])
     def hincha(bm):
-        orienta(bm, afuera)
-        sal = saltos_desde_borde(bm); bm.verts.ensure_lookup_table()
+        orienta_caras(bm, afuera)
+        bm.verts.ensure_lookup_table()
+        borde = [v.co.copy() for v in bm.verts if v.is_boundary and v.co.z < c.z + 0.5 * (M["cabeza_hi"].z - c.z)]   # el borde de abajo
+        arbol = kdtree.KDTree(max(1, len(borde)))
+        for i, p in enumerate(borde): arbol.insert(p, i)
+        arbol.balance()
+        nuevo = []
         for v in bm.verts:
-            borde = min(1.0, sal[v.index] / 2.0)
-            frente = 0.45 if v.co.y < c.y - 0.035 else 1.0
-            r = 0.9 + 0.1 * math.sin(v.co.x * 160) * math.sin(v.co.y * 150) * math.sin(v.co.z * 170)   # rizos: un relieve leve y determinista
-            v.co += (v.co - c).normalized() * SEPARA["afro"] * borde * frente * r   # hacia fuera desde el centro de la cabeza: redondo, sin picos en los bordes
+            w = suave(arbol.find(v.co)[2] / AFRO_CAIDA) if borde else 1.0
+            frente = 0.45 + 0.55 * suave((v.co.y - (c.y - 0.075)) / 0.06)
+            r = 1.0 + 0.04 * math.sin(v.co.x * 90) * math.sin(v.co.y * 80) * math.sin(v.co.z * 95)   # rizos: un relieve leve, ancho y determinista
+            d = v.co - c; d.z *= 0.7   # más hacia los lados que hacia arriba: redondo, no una torre
+            nuevo.append(v.co + d.normalized() * SEPARA["afro"] * w * frente * r)
+        for v, p in zip(bm.verts, nuevo): v.co = p
+        dentro = [v for v in bm.verts if not v.is_boundary]
+        for _ in range(4): bmesh.ops.smooth_vert(bm, verts=dentro, factor=0.5, use_axis_x=True, use_axis_y=True, use_axis_z=True)
+        bm.normal_update()
     con_bm(afro, hincha); hecho["pelo-afro"] = afro
     # RECOGIDO: el corto algo más pegado y un moño atrás y arriba
     recogido = copia(corto, "recogido"); envuelve(recogido, cuerpo, 0.004)
@@ -509,7 +625,33 @@ def piezas_vello(cuerpo, esqueleto, boca, M):
             normales_fuera(bm, SEPARA["vello"])
         con_bm(o, filtra)
         hecho[ident] = pieza(o, ident, "pelo", esqueleto)
+    hecho["vello-perilla"] = pieza(perilla(cuerpo, boca, M), "vello-perilla", "pelo", esqueleto)
     return hecho
+
+
+def perilla(cuerpo, boca, M):
+    """AV5: la perilla (vello de la barbilla), copia de la piel de la barbilla como la barba, pero con bordes limpios (la piel se corta por planos, como
+    el cuello de la ropa, en vez de quedarse con los triángulos enteros de la malla reducida) y con cuerpo: más gruesa abajo, en la punta de la barbilla.
+    Una franja bajo el labio de abajo (PERILLA["arriba"] de ancho) que se abre hasta la barbilla (PERILLA["abajo"]); sin bigote (eso es «vello-bigote»)"""
+    k = M["alto"] / 1.66
+    zt, zb = boca.z - PERILLA["bajo_labio"] * k, boca.z - PERILLA["hasta"] * k
+    wt, wb = PERILLA["arriba"] * k / 2, PERILLA["abajo"] * k / 2
+    yb = boca.y + PERILLA["atras"] * k
+    pend = (wb - wt) / (zt - zb)
+    planos = [((0, 0, zt), (0, 0, -1)), ((0, 0, zb), (0, 0, 1)), ((0, yb, 0), (0, -1, 0))] + [((sx * wt, 0, zt), (-sx, 0, -pend)) for sx in (1, -1)]
+    o = copia(cuerpo, "vello-perilla")
+    def recorta(bm):
+        corta(bm, [(Vector(co), Vector(no).normalized()) for co, no in planos])
+        dentro = lambda p: all((p - Vector(co)).dot(Vector(no)) > -1e-6 for co, no in planos) and p.y < M["cabeza_c"].y
+        bmesh.ops.delete(bm, geom=[f for f in bm.faces if not dentro(f.calc_center_median())], context="FACES")
+        bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")
+        bmesh.ops.dissolve_degenerate(bm, edges=bm.edges[:], dist=0.0008)   # los cortes dejan astillas: fuera, para no gastar triángulos
+        bmesh.ops.triangulate(bm, faces=bm.faces[:])
+        bm.normal_update()
+        for v in bm.verts:   # más cuerpo en la punta de la barbilla que bajo el labio
+            v.co += v.normal * (SEPARA["perilla"] + PERILLA["punta"] * suave((zt - v.co.z) / (zt - zb)))
+    con_bm(o, recorta)
+    return o
 
 
 def hacia_fuera(cuerpo):
@@ -546,8 +688,26 @@ def pieza_faena(ayuda, cuerpo, esqueleto, M):
     return {"ropa-faena": o}
 
 
-def piezas_sombrero(esqueleto, M, coleccion):
-    """Sombrero de paja y gorra, rígidos al hueso head, sobre el pelo corto (con el afro o el moño se cruzan: a revisar a ojo)"""
+def asiento_paja(cuerpo, ojos, corto, M):
+    """AV5: dónde va el sombrero de paja para que se ASIENTE sobre el pelo corto: el ala a PAJA["ala_sobre_ojos"] de lo alto de los ojos a la coronilla;
+    la copa, la elipse más justa que contiene (con su estrechamiento hacia arriba) la cabeza y el pelo corto por encima del ala, más la holgura; su
+    techo, sobre lo más alto del pelo. Devuelve (centro x, centro y, z del ala, z del techo, semieje x, semieje y)"""
+    hi, c = M["cabeza_hi"], M["cabeza_c"]
+    zo = max((ojos.matrix_world @ v.co).z for v in ojos.data.vertices)
+    base = zo + PAJA["ala_sobre_ojos"] * (hi.z - zo)
+    pts = [corto.matrix_world @ v.co for v in corto.data.vertices] + [cuerpo.matrix_world @ v.co for v in cuerpo.data.vertices]
+    pts = [p for p in pts if p.z >= base - 0.003]
+    techo = max(p.z for p in pts) + PAJA["sobre_pelo"]
+    banda = [p for p in pts if p.z < base + 0.012]
+    yc = (min(p.y for p in banda) + max(p.y for p in banda)) / 2
+    a = max(abs(p.x - c.x) for p in banda); b = (max(p.y for p in banda) - min(p.y for p in banda)) / 2
+    f = lambda z: 1 - PAJA["estrecha"] * (z - base) / (techo - base)
+    s = max(math.sqrt(((p.x - c.x) / a) ** 2 + ((p.y - yc) / b) ** 2) / f(p.z) for p in pts)
+    return c.x, yc, base, techo, a * s / math.cos(math.pi / 16) + PAJA["holgura"], b * s / math.cos(math.pi / 16) + PAJA["holgura"]   # el polígono de 16 lados, por fuera de la elipse
+
+
+def piezas_sombrero(esqueleto, M, coleccion, asiento):
+    """Sombrero de paja y gorra, rígidos al hueso head. La paja, asentada sobre el pelo corto (asiento_paja; con el afro o el moño se cruzan); la gorra, como en AV4"""
     lo, hi, c = M["cabeza_lo"], M["cabeza_hi"], M["cabeza_c"]
     r = max(hi.x - lo.x, hi.y - lo.y) / 2 + 0.012
     hecho = {}
@@ -556,10 +716,11 @@ def piezas_sombrero(esqueleto, M, coleccion):
         bm = bmesh.new()
         base = hi.z - 0.055
         if forma == "paja":
-            copa = bmesh.ops.create_cone(bm, cap_ends=True, segments=16, radius1=r * 0.98, radius2=r * 0.86, depth=0.1)
-            for v in copa["verts"]: v.co += Vector((c.x, c.y, base + 0.05))
-            ala = bmesh.ops.create_cone(bm, cap_ends=True, segments=20, radius1=r * 2.05, radius2=r * 2.05, depth=0.008)
-            for v in ala["verts"]: v.co += Vector((c.x, c.y, base))
+            cx, cy, zb, zt, ax, ay = asiento
+            copa = bmesh.ops.create_cone(bm, cap_ends=True, segments=16, radius1=1.0, radius2=1.0 - PAJA["estrecha"], depth=zt - zb)
+            for v in copa["verts"]: v.co = Vector((cx + v.co.x * ax, cy + v.co.y * ay, (zb + zt) / 2 + v.co.z))
+            ala = bmesh.ops.create_cone(bm, cap_ends=True, segments=20, radius1=1.0, radius2=1.0, depth=0.008)
+            for v in ala["verts"]: v.co = Vector((cx + v.co.x * ax * PAJA["ala"], cy + v.co.y * ay * PAJA["ala"], zb + v.co.z))
         else:
             cas = bmesh.ops.create_uvsphere(bm, u_segments=16, v_segments=8, radius=r * 1.02)
             bmesh.ops.delete(bm, geom=[v for v in cas["verts"] if v.co.z < -1e-4], context="VERTS")
@@ -581,7 +742,7 @@ def configura_vrm(vrm_mod, esqueleto, cuerpo, ident, nombre, cfg):
     v1 = ext.vrm1
     meta = v1.meta
     meta.vrm_name = nombre
-    meta.version = "AV4"
+    meta.version = "AV5"
     while len(meta.authors): meta.authors.remove(0)
     meta.authors.add().value = AUTOR
     meta.copyright_information = "CC0-1.0. Cuerpo base de MakeHuman/MPFB " + VERSION_MPFB + " (malla y targets del núcleo, CC0)."
@@ -655,9 +816,10 @@ def genera(mpfb, edad, complexion, opc):
     piezas.update(piezas_vello(malla, esqueleto, boca, M))   # de la piel ya reducida, antes de los cortes de la ropa
     tri = pon_materiales(malla, ojos, esqueleto, M)
     pon_expresiones(malla, reposo, deltas, solo_cuerpo)
-    piezas.update(piezas_pelo(ayuda_pelo, malla, esqueleto, M))
+    piezas.update(piezas_pelo(ayuda_pelo, malla, esqueleto, M, boca))
     piezas.update(pieza_faena(ayuda_ropa, malla, esqueleto, M))
-    piezas.update(piezas_sombrero(esqueleto, M, malla.users_collection[0]))
+    asiento = asiento_paja(malla, ojos, piezas["pelo-corto"], M)
+    piezas.update(piezas_sombrero(esqueleto, M, malla.users_collection[0], asiento))
     for o in (ayuda_pelo, ayuda_ropa): bpy.data.objects.remove(o, do_unlink=True)
     for o in [malla, ojos] + list(piezas.values()):
         o.parent = esqueleto
@@ -685,6 +847,7 @@ def genera(mpfb, edad, complexion, opc):
     with open(os.path.join(opc["salida"], ident + ".avatar.json"), "w", encoding="utf-8") as f: json.dump(lado, f, ensure_ascii=False, indent=2); f.write("\n")
     medida = {"id": ident, "triangulos_malla_entera": tri_entera, "triangulos_cuerpo": tri, "triangulos_ojos": triangulos(ojos),
               "piezas": {k: triangulos(o) for k, o in sorted(piezas.items())}, "postura": postura,
+              "paja": {"ala_z": round(asiento[2], 3), "techo_z": round(asiento[3], 3), "semiejes": [round(asiento[4], 3), round(asiento[5], 3)]},
               "altura_m": round(altura, 3), "bytes": os.path.getsize(fichero), **cfg}
     print("cuerpos: " + json.dumps(medida, ensure_ascii=False), flush=True)
     return medida

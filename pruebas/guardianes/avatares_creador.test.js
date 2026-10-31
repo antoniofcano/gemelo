@@ -59,6 +59,21 @@ test("cuerpos.py (AV4): piezas mínimas para que nadie quede calvo ni igual — 
   const mayor = /"mayor":\s*\{"age": ([\d.]+)/.exec(bloque("EDADES")); assert.ok(Number(mayor[1]) > 0.9, "más edad que en AV3 (0,88)");
 });
 
+test("cuerpos.py (AV5, opción B): perilla nueva (vello); afro sin picos (volumen por distancia al borde, sin escalones); largo con mechones por delante; paja asentada", () => {
+  const piezas = [...bloque("PIEZAS").matchAll(/"([a-z0-9-]+)":\s*\{"tipo": "(\w+)", "nombre": "([^"]+)"/g)];
+  assert.deepStrictEqual(piezas.filter(m => m[2] === "vello").map(m => m[1]), ["vello-barba", "vello-bigote", "vello-perilla"]);
+  assert.strictEqual(piezas.find(m => m[1] === "vello-perilla")[3], "Perilla");
+  assert.match(PY, /hecho\["vello-perilla"\] = pieza\(perilla\(cuerpo, boca, M\), "vello-perilla", "pelo", esqueleto\)/, "la perilla se tiñe con el material «pelo»");
+  assert.match(bloque("PERILLA"), /"bajo_labio":.*"hasta":.*"arriba":.*"abajo":/);
+  // afro: ni el escalón de AV4 (frente 0,45 o 1 según y) ni el volumen por aristas (sal/2, los dientes del borde)
+  const afro = PY.slice(PY.indexOf("# AFRO:"), PY.indexOf("con_bm(afro, hincha)"));
+  assert.ok(!/frente = 0\.45 if/.test(afro) && !/sal\[v\.index\] \/ 2/.test(afro), "sin el escalón ni el volumen por aristas de AV4");
+  assert.match(afro, /suave\(arbol\.find\(v\.co\)\[2\] \/ AFRO_CAIDA\)/); assert.match(afro, /smooth_vert\(bm, verts=dentro/);
+  assert.match(PY, /junta\(largo, mechones\(cuerpo, M, boca, largo\.users_collection\[0\]\)\)/, "el largo lleva los mechones de delante");
+  assert.match(PY, /"SOLIDIFY"/, "los mechones con grosor (se ven por las dos caras)");
+  assert.match(PY, /asiento = asiento_paja\(malla, ojos, piezas\["pelo-corto"\], M\)/, "la paja se asienta sobre el pelo corto");
+});
+
 test("catalogo.mjs (AV4): el avatar completo más caro (cuerpo + la pieza más cara de cada tipo; la ropa que cubre quita la base) y sus topes", async () => {
   const { pathToFileURL } = require("url"), { peorCombinacion, TOPES_COMBINACION, TOPES_CUERPO } = await import(pathToFileURL(path.join(RAIZ, "tuberia", "avatares", "creador", "catalogo.mjs")).href);
   const nodos = { cuerpo: { primitivas: 3, triangulos: 9000, porMaterial: { piel: 6000, ropa_base: 2000, ropa_abajo: 1000 } }, ojos: { primitivas: 1, triangulos: 300 },

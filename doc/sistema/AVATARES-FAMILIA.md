@@ -320,3 +320,36 @@ node tuberia/avatares/creador/catalogo.mjs --origen <la misma> --salida <GEMELO_
 ### Lo que no está probado (AV4)
 - **El acabado no lo ha revisado una persona** (decisión 130): pelo, vello, ropa y sombreros, con las capturas.
 - Nada en iPhone, Quest ni una GPU de verdad; el cuerpo sentado en la silla del muñeco solo se ha visto en recuento (no a ojo de cerca); el vello no sigue la boca al abrirse (`aa`); la portada con el VRM real, solo en Chrome sin pantalla.
+
+## 15. Fase AV5: repaso de las piezas tras la revisión de Antonio (opción B)
+**2026-10-31.** Sobre las capturas de AV4, Antonio eligió la opción B: arreglar tres piezas y añadir una; **corto, rapado y la barba con la boca se quedan como están**. Todo en `tuberia/avatares/creador/cuerpos.py` (los 12 cuerpos se regeneran enteros).
+
+### Qué cambió
+- **Afro sin picos en el borde bajo.** En AV4 el volumen subía desde el borde en dos aristas (`sal/2`) y delante había un escalón en `y`: el borde bajo salía en dientes. Ahora sube con la **distancia en metros** al borde de abajo (`AFRO_CAIDA` = 6 cm, curva suave), lo de delante baja con una curva, se hincha más hacia los lados que hacia arriba y el interior se alisa sin mover el borde. La raya de la frente del afro va 1,5 cm más arriba y recta (la de la ayuda tenía una muesca que, hinchada, se abría en hueco).
+- **Ayuda de pelo cosida** (todos los peinados): las tiras sueltas y las rajas de la coronilla se cosen (`remove_doubles`) y cada cara se orienta por su cuenta hacia fuera (`orienta_caras`). Era el punto y las rayas claras que se veían arriba en todos los peinados de AV4 (caras del revés, que el motor no dibuja).
+- **Largo que cae también por delante.** Dos **mechones** (`mechones()`): tiras que bajan de las sienes, pegadas a la cabeza bajo el casquete, junto a la cara y por delante del cuello hasta media altura del pecho, con las puntas estrechadas y 5 mm de grosor (Solidify: se ven por las dos caras). Cada fila pasa del lado de la cabeza a la piel de delante (un rayo desde −Y) según baja de la barbilla a la base del cuello, y cada punto se saca de la piel. Pesos como el resto del largo: cabeza, cuello y pecho alto.
+- **Sombrero de paja asentado.** En AV4 era un cilindro fijo 5,5 cm bajo la coronilla y flotaba. Ahora (`asiento_paja()`) el ala va al 38 % de lo alto de los ojos a la coronilla y la copa es **la elipse más justa** que contiene la cabeza y el pelo corto por encima del ala (con su estrechamiento hacia arriba) más 3 mm; su techo, 2 cm sobre lo más alto del pelo. Con el corto toca la frente y los lados; con el rapado queda algo de holgura a los lados; con el largo encaja; con el **afro o el moño se sigue cruzando** (no era de esta tarea). La gorra, como en AV4.
+- **Pieza nueva «perilla»** (`vello-perilla`, tipo `vello`, material `pelo`): copia de la piel de la barbilla (CC0, como la barba), **cortada por planos** (bajo el labio, bajo la barbilla, detrás y dos laterales que se abren hacia abajo) para que el borde sea limpio, y con más cuerpo en la punta (4 + 6 mm). Para cualquier cuerpo (C4, C5). Contrato: no hay lista cerrada de piezas (los ids son datos del catálogo, `^[a-z0-9-]{1,32}$`, y `tipo: vello` ya existía), así que entra sin cambiar el esquema; el ejemplo `contratos/avatares-v2-ejemplo.json` la lleva. Motor (26b): se enseña y se tiñe con el color de pelo como cualquier vello, sin código nuevo. Portada: aparece en «Vello en la cara» y en la descripción en texto («…, perilla, …»). Un vello por receta (barba **o** perilla).
+
+### Cifras (medidas el 2026-10-31; `comprueba.mjs`, tubería v2 con cuantización + three-vrm 3.5.5 en Node; antes = los cuerpos de AV4)
+Los doce pasan la tubería y three-vrm los carga.
+
+| | Antes (AV4) | Después (AV5) |
+|---|---|---|
+| Avatar completo, peor caso (cuerpo + la pieza más cara de cada tipo) | 11.422-11.782 triángulos, 7 primitivas | **12.010-12.372 triángulos, 7 primitivas** (tope: 15.000 y 7) |
+| Cuerpo solo | 10.098-10.406 / 4 | igual |
+| Fichero / tras gzip | 633-652 kB / 259-268 kB | 660-683 kB / 267-281 kB |
+| pelo-afro / corto / rapado | 932 | 1.090 / 930 / 930 |
+| pelo-largo | 1.420 | 2.008 (con los mechones) |
+| pelo-recogido | 1.100 | 1.098 |
+| vello-perilla | — | 282 |
+| sombrero-paja | 136 | 136 |
+
+**Chrome por el banco** (SwiftShader, recuentos y no fps; `avatares_piezas.test.js` con `GEMELO_AVATARES_CUERPOS`): `?presencia=sim&n=20&vrm=1&yo=no`, 6 VRM: **61 llamadas y 140.128 triángulos** en toda la escena (AV4: 61 y 140.052); por avatar, 6-7 llamadas y 10.543-11.403 triángulos. La portada elige la perilla, la describe y guarda una receta de 110 bytes que la api acepta.
+
+### Capturas (no se versionan)
+En `pruebas/salida/capturas-avatares-cuerpos/`: `frente.png` (los 12, con recetas que enseñan afro, largo, paja y perilla), `cabezas.png`, `tres-cuartos-cabezas.png` y `lados.png` (13 cabezas de adulta media, **cada una sola** en su toma: rapado, corto, afro, recogido, largo, barba, bigote, perilla, perilla canosa, faena, paja con corto, paja con largo, gorra) y sus sueltas `cabeza-`/`tc-`/`lado-<pieza>.png`; además las de AV4 (`peinados*.png`, `cuello*.png`, `mayor-adulta*.png`, `cara-*.png`). `capturas.py` sale con `os._exit(0)` al acabar: al cerrar, Blender caía a veces en el controlador de la GPU de Intel con las capturas ya hechas.
+
+### Lo que no está probado (AV5)
+- **El acabado lo tiene que ver Antonio** con las capturas (decisión 130); hasta su visto bueno **no se publica el catálogo v2**.
+- Nada en iPhone, Quest ni una GPU de verdad (recuentos). Los mechones con el cuerpo en movimiento (andar, brazos del Quest) **no se han visto animados**: van pesados a cabeza, cuello y pecho alto, y con el brazo muy levantado pueden cruzarse con el hombro. La perilla no sigue la boca al abrirse (`aa`), como la barba. El bigote sigue retenido (`RETENIDAS`).

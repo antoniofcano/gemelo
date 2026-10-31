@@ -5,6 +5,8 @@
 # Render con Workbench (sin GPU dedicada; luz de estudio, colores del material; los tonos oscuros salen algo más apagados que en el motor):
 #   frente.png y tres-cuartos.png  los 12 en fila (peque → mayor; delgada, media, ancha), cada uno con una receta distinta
 #   peinados.png                   adulta media con cada peinado, el vello, la ropa de faena y los sombreros
+#   cabezas.png, lados.png, tres-cuartos-cabezas.png   (AV5) esas cabezas de cerca, de frente, de lado y de tres cuartos, cada una SOLA en la toma
+#                                  (las de al lado, ocultas), en un mosaico; y cabeza-/lado-/tc-<pieza>.png sueltas
 #   cuello.png                     el cuello de cerca, de frente y de tres cuartos (decisión 141: la costura)
 #   mayor-adulta.png               perfil de adulta y mayor (media), con la misma ropa (decisión 141: que se distingan)
 #   cara-<edad>.png                las caras, de complexión media, con pelo
@@ -22,11 +24,12 @@ SOMBRERO = {"sombrero-paja": "#d9bf6a", "sombrero-gorra": "#2e5d34"}
 EDADES, COMPLEXIONES = ["peque", "joven", "adulta", "mayor"], ["delgada", "media", "ancha"]
 PASO = 1.8   # más que la envergadura en T de un adulto (≈ 1,66 m): las manos no tapan al de al lado
 # una receta por cuerpo en la fila (tono, arriba, abajo, pelo, color de pelo, vello, ropa, sombrero): variadas a propósito, sin ligar nada al cuerpo
+# AV5: la fila enseña las piezas tocadas (afro, largo por delante, paja asentada y la perilla nueva) en varios cuerpos
 RECETAS = [
-    (2, 5, 8, "pelo-corto", 2, None, None, None), (8, 4, 1, "pelo-afro", 0, None, None, None), (5, 6, 2, "pelo-recogido", 5, None, None, "sombrero-paja"),
-    (0, 0, 2, "pelo-largo", 4, None, "ropa-faena", None), (9, 3, 8, "pelo-rapado", 0, "vello-barba", None, None), (4, 7, 1, "pelo-afro", 1, None, "ropa-faena", "sombrero-gorra"),
-    (6, 2, 9, "pelo-largo", 0, None, None, None), (1, 9, 4, "pelo-rapado", 1, "vello-bigote", "ropa-faena", None), (7, 0, 8, "pelo-recogido", 0, None, None, None),
-    (3, 8, 2, "pelo-corto", 6, None, "ropa-faena", "sombrero-paja"), (8, 5, 1, "pelo-recogido", 7, None, None, None), (2, 3, 1, "pelo-rapado", 7, "vello-barba", "ropa-faena", "sombrero-gorra"),
+    (2, 5, 8, "pelo-corto", 2, None, None, "sombrero-paja"), (8, 4, 1, "pelo-afro", 0, None, None, None), (5, 6, 2, "pelo-largo", 5, None, None, None),
+    (0, 0, 2, "pelo-largo", 4, None, "ropa-faena", "sombrero-paja"), (9, 3, 8, "pelo-rapado", 0, "vello-perilla", None, None), (4, 7, 1, "pelo-afro", 1, None, "ropa-faena", None),
+    (6, 2, 9, "pelo-largo", 0, None, None, None), (1, 9, 4, "pelo-corto", 1, "vello-perilla", "ropa-faena", "sombrero-paja"), (7, 0, 8, "pelo-afro", 0, None, None, None),
+    (3, 8, 2, "pelo-corto", 6, None, "ropa-faena", "sombrero-paja"), (8, 5, 1, "pelo-recogido", 7, "vello-perilla", None, None), (2, 3, 1, "pelo-rapado", 7, "vello-barba", "ropa-faena", "sombrero-gorra"),
 ]
 
 
@@ -114,6 +117,36 @@ def foto(esc, cam, ruta, rx, ry):
     esc.render.engine = antes
 
 
+def solo(grupos, i):
+    """Oculta en el render a todos menos al grupo i (una lista de objetos); devuelve cómo estaban, para restaura()"""
+    antes = {ob.name: ob.hide_render for g in grupos for ob in g}
+    for j, g in enumerate(grupos):
+        if j != i:
+            for ob in g: ob.hide_render = True
+    return antes
+
+
+def restaura(grupos, antes):
+    for g in grupos:
+        for ob in g: ob.hide_render = antes[ob.name]
+
+
+def mosaico(rutas, columnas, salida):
+    """Las capturas sueltas (mismo tamaño) en una sola imagen, por filas (para enviarlas de una vez)"""
+    import numpy as np
+    ims = [bpy.data.images.load(r) for r in rutas]
+    w, h = ims[0].size
+    filas = (len(ims) + columnas - 1) // columnas
+    lienzo = np.ones((filas * h, columnas * w, 4), dtype=np.float32)
+    for k, im in enumerate(ims):
+        px = np.empty(w * h * 4, dtype=np.float32); im.pixels.foreach_get(px)
+        f, c = divmod(k, columnas); f = filas - 1 - f   # las imágenes de Blender empiezan abajo
+        lienzo[f * h:(f + 1) * h, c * w:(c + 1) * w] = px.reshape(h, w, 4)
+    out = bpy.data.images.new("mosaico", columnas * w, filas * h, alpha=True)
+    out.pixels.foreach_set(lienzo.ravel()); out.filepath_raw = salida; out.file_format = "PNG"; out.save()
+    for im in ims + [out]: bpy.data.images.remove(im)
+
+
 def vacia():
     for ob in list(bpy.data.objects): bpy.data.objects.remove(ob, do_unlink=True)
 
@@ -176,18 +209,28 @@ def detalle(o, fich, esc):
     PIEZA = [("rapado", (4, 0, 8, "pelo-rapado", 0, None, None, None)), ("corto", (2, 5, 8, "pelo-corto", 2, None, None, None)),
              ("afro o rizado", (8, 4, 1, "pelo-afro", 0, None, None, None)), ("recogido", (5, 6, 2, "pelo-recogido", 6, None, None, None)),
              ("largo", (1, 9, 4, "pelo-largo", 4, None, None, None)), ("barba", (6, 3, 8, "pelo-corto", 7, "vello-barba", None, None)),
-             ("bigote", (3, 7, 1, "pelo-rapado", 1, "vello-bigote", None, None)), ("faena", (7, 0, 2, "pelo-corto", 0, None, "ropa-faena", None)),
-             ("paja", (0, 7, 2, "pelo-corto", 3, None, "ropa-faena", "sombrero-paja")), ("gorra", (9, 4, 8, "pelo-rapado", 0, None, None, "sombrero-gorra"))]
+             ("bigote", (3, 7, 1, "pelo-rapado", 1, "vello-bigote", None, None)), ("perilla", (5, 5, 8, "pelo-corto", 1, "vello-perilla", None, None)),
+             ("perilla-canosa", (1, 3, 2, "pelo-rapado", 6, "vello-perilla", None, None)), ("faena", (7, 0, 2, "pelo-corto", 0, None, "ropa-faena", None)),
+             ("paja", (0, 7, 2, "pelo-corto", 3, None, "ropa-faena", "sombrero-paja")), ("paja-largo", (3, 4, 2, "pelo-largo", 2, None, None, "sombrero-paja")),
+             ("gorra", (9, 4, 8, "pelo-rapado", 0, None, None, "sombrero-gorra"))]
+    grupos = []
     for i, (rot, rec) in enumerate(PIEZA):
         x = (i - (len(PIEZA) - 1) / 2) * PASO
-        viste(importa(fich("adulta", "media"), x), rec); rotulo(rot, x, -0.16, 0.13)
+        g = importa(fich("adulta", "media"), x); viste(g, rec); grupos.append(g); rotulo(rot, x, -0.16, 0.13)
     suelo(len(PIEZA) * PASO)
     foto(esc, camara("piezas", (0, -12, 0.8), (math.pi / 2, 0, 0), orto=len(PIEZA) * PASO + 0.4), os.path.join(o["salida"], "peinados.png"), 3200, 560)
     foto(esc, camara("piezas-cabeza", (0, -6, 1.52), (math.pi / 2, 0, 0), orto=len(PIEZA) * PASO + 0.2), os.path.join(o["salida"], "peinados-cabeza.png"), 3600, 420)
-    for i, (rot, rec) in enumerate(PIEZA):   # las cabezas de cerca, de frente y de lado
+    tomas = {"cabeza": [], "lado": [], "tc": []}
+    for i, (rot, rec) in enumerate(PIEZA):   # las cabezas de cerca, de frente, de lado y de tres cuartos, cada una sola (AV5: en AV4 se colaban las de al lado)
         x = (i - (len(PIEZA) - 1) / 2) * PASO
-        foto(esc, camara("cab-" + rot, (x, -1.5, 1.5), (math.pi / 2, 0, 0), orto=0.6), os.path.join(o["salida"], "cabeza-" + rot.split(" ")[0] + ".png"), 420, 420)
-        foto(esc, camara("lado-" + rot, (x + 1.5, 0, 1.45), (math.pi / 2, 0, math.pi / 2), orto=0.75), os.path.join(o["salida"], "lado-" + rot.split(" ")[0] + ".png"), 420, 420)
+        antes = solo(grupos, i); n = rot.split(" ")[0]
+        for clave, pos, rot_cam, orto in (("cabeza", (x, -1.5, 1.45), (math.pi / 2, 0, 0), 0.6), ("lado", (x + 1.5, 0, 1.45), (math.pi / 2, 0, math.pi / 2), 0.75),
+                                          ("tc", (x + 0.96, -1.15, 1.45), (math.pi / 2, 0, math.radians(40)), 0.65)):
+            ruta = os.path.join(o["salida"], clave + "-" + n + ".png"); tomas[clave].append(ruta)
+            foto(esc, camara(clave + "-" + n, pos, rot_cam, orto=orto), ruta, 420, 420)
+        restaura(grupos, antes)
+    for clave, nombre in (("cabeza", "cabezas.png"), ("lado", "lados.png"), ("tc", "tres-cuartos-cabezas.png")):
+        mosaico(tomas[clave], 7, os.path.join(o["salida"], nombre))
     foto(esc, camara("piezas-detras", (0, 12, 0.8), (math.pi / 2, 0, math.pi), orto=len(PIEZA) * PASO + 0.4), os.path.join(o["salida"], "peinados-detras.png"), 3200, 560)
     # 3. el cuello de cerca (sin pelo), de frente y de tres cuartos, en piel clara y oscura
     vacia()
@@ -207,6 +250,8 @@ def detalle(o, fich, esc):
 if __name__ == "__main__":
     try:
         main()
+        sys.stdout.flush(); sys.stderr.flush()
+        os._exit(0)   # AV5: al cerrar, Blender caía a veces en el controlador de la GPU de Intel (ig11icd64.dll) con las capturas ya hechas
     except SystemExit as e:
         print(str(e), file=sys.stderr); sys.exit(1)
     except Exception:
