@@ -57,5 +57,21 @@ export class LectorVigiaFixture implements LectorVigia {
     catch { throw new ErrorDeVigia("historico_meteo: no se puede leer el fixture"); }
   }
 
+  /** el estado del olivar sintético (<carpeta>/estado_del_olivar_hoy.json), generado «hace 20 min»; en pruebas, `sustituyeOlivar` (o un Error) */
+  sustituyeOlivar: unknown = undefined;
+  llamadasOlivar = 0;
+  async olivarHoy(): Promise<unknown> {
+    this.llamadasOlivar++;
+    const s = this.sustituyeOlivar;
+    if (s instanceof Error) throw s;
+    if (s !== undefined) return structuredClone(s);
+    let d: Record<string, unknown>;
+    try { d = JSON.parse(await readFile(join(this.carpeta, "estado_del_olivar_hoy.json"), "utf8")) as Record<string, unknown>; }
+    catch { throw new ErrorDeVigia("estado_del_olivar_hoy: no se puede leer el fixture"); }
+    const f = d["frescura"] as Record<string, unknown> | undefined;
+    if (f && typeof f === "object") { f["generadoEn"] = new Date(this.reloj() - 20 * 60_000).toISOString(); f["horasDeAntiguedad"] = 0.3; }
+    return d;
+  }
+
   async cierra(): Promise<void> { /* nada */ }
 }

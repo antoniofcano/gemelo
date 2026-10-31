@@ -5,6 +5,7 @@
 // Lo que viene de Vigía son DATOS: los textos se recortan y se mandan tal cual (el motor los escapa); nunca se interpretan.
 // `dentroDeUmbrales`, `impedimento` y `queSignificaDentroDeUmbrales` NO pasan: Vigía no autoriza tratamientos y el gemelo
 // no lo insinúa. Lo que Vigía no devuelve va a null: no se estima.
+import { entero, fecha, num, obj, texto } from "../vivo/lista-blanca.ts";
 import { hace, type Lectura, MemoriaDeLecturas, type Parte } from "../vivo/memoria.ts";
 import type { HerramientaTiempo, LectorVigia } from "./lector.ts";
 
@@ -29,30 +30,13 @@ export interface RespuestaTiempo {
   actual: Actual | null; prevision: Prevision | null; avisos: Aviso[];
 }
 
-// ---------- la lista blanca
-type Obj = Record<string, unknown>;
-const obj = (v: unknown): Obj | null => (v && typeof v === "object" && !Array.isArray(v) ? (v as Obj) : null);
-/** número finito dentro del rango; si no, null (no se recorta: un dato fuera de rango no se arregla, se descarta) */
-function num(v: unknown, min = -Infinity, max = Infinity): number | null {
-  return typeof v === "number" && Number.isFinite(v) && v >= min && v <= max ? v : null;
-}
-/** texto de Vigía: sin caracteres de control y recortado; el motor lo escapa al pintarlo */
-function texto(v: unknown, max: number): string | null {
-  if (typeof v !== "string") return null;
-  const s = v.replace(/[\u0000-\u001f\u007f\u2028\u2029]+/g, " ").trim();
-  return s ? s.slice(0, max) : null;
-}
-function fecha(v: unknown): string | null {
-  if (typeof v !== "string") return null;
-  const t = Date.parse(v);
-  return Number.isFinite(t) ? new Date(t).toISOString() : null;
-}
-function frescura(v: unknown): Frescura {
+// ---------- la lista blanca (las piezas, en vivo/lista-blanca.ts)
+export function frescura(v: unknown): Frescura {
   const f = obj(v) ?? {};
   return { generadoEn: fecha(f["generadoEn"]), horasDeAntiguedad: num(f["horasDeAntiguedad"], 0), datosDeMaqueta: typeof f["datosDeMaqueta"] === "boolean" ? f["datosDeMaqueta"] : null };
 }
 /** los avisos de antigüedad que Vigía mete en su frescura (si los trae), tal cual */
-function avisosDeFrescura(v: unknown): string[] {
+export function avisosDeFrescura(v: unknown): string[] {
   const f = obj(v) ?? {};
   return ["aviso", "advertencia", "avisoDeAntiguedad"].map(k => texto(f[k], 400)).filter((s): s is string => !!s);
 }
@@ -101,7 +85,6 @@ export interface RespuestaHistorico {
   version: 1; origen: "vigia" | "fixture"; consultadoEn: string; desde: string; hasta: string;
   fuentes: FuenteHistorico[]; frescura: Frescura; avisos: Aviso[];
 }
-const entero = (v: unknown, max: number): number | null => { const n = num(v, 0, max); return n !== null && Number.isInteger(n) ? n : null; };
 
 /** Lista blanca de historico_meteo: solo las fuentes con id (una por estación) y sus cifras de la semana; lo que falta, null. */
 export function normalizaHistorico(v: unknown): { fuentes: FuenteHistorico[]; frescura: Frescura } | null {
