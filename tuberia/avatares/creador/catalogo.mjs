@@ -27,7 +27,12 @@ export const PALETAS = {
 };
 const EDADES = ["peque", "joven", "adulta", "mayor"];
 /** Piezas que el guion genera pero que, vistas las capturas, no salen bien todavía: van dentro del VRM (no se dibujan) pero NO se ofrecen (no entran en el catálogo) */
-export const RETENIDAS = { "vello-bigote": "AV4: 18-82 triángulos sobre el labio; en las capturas apenas se ve (a rehacer)" };
+export const RETENIDAS = {
+  "vello-bigote": "AV4: 18-82 triángulos sobre el labio; en las capturas apenas se ve (a rehacer)",
+  "vello-perilla": "AV5: sin visto bueno de Antonio, irreal (AV6)",
+  "sombrero-paja": "AV5: sin visto bueno de Antonio, tosco (AV6)",
+  "sombrero-gorra": "AV5: sin visto bueno de Antonio, tosca (AV6)",
+};
 const ROPA_BASE = ["ropa_base", "ropa_abajo"];
 
 /** Por nodo con malla: { nombre: { primitivas, triangulos, materiales: [nombres] } } (del VRM optimizado) */
