@@ -300,7 +300,7 @@
     n.on("voz:estado", function () { if (vivo) tarde(0); });
     n.on("depura:lineas", function (d) { if (s && d && d.lineas) d.lineas.push("guiada " + ev + " · " + (papel || "?") + " · " + (pal ? "palabra " + G.mmss(pal.segundos) : "sin palabra") + " · manos " + G.cola(g, Date.now()).length + (cierre ? " · cerrándose" : "")); });
     function estado() {
-      return { evento: ev, papel: papel, palabra: pal ? { identidad: pal.identidad, alias: pal.alias, segundos: pal.segundos } : null, manos: G.cola(g, Date.now()).map(function (x) { return x.identidad; }),
+      return { evento: ev, yo: yoId, papel: papel, palabra: pal ? { identidad: pal.identidad, alias: pal.alias, segundos: pal.segundos } : null, manos: G.cola(g, Date.now()).map(function (x) { return x.identidad; }),
         familias: G.familias(g).map(function (x) { return x.identidad; }), ventana: !!vg, tira: tira && !tira.hidden ? tira.textContent : "", cierre: cierre ? new Date(cierre.en).toISOString() : null,
         inscritos: vista && vista.inscritos ? vista.inscritos : null, cierres: est.cierres, descartados: est.descartados, acciones: est.acciones, vueltas: est.vueltas, error: est.error };
     }
@@ -326,7 +326,7 @@
   Componentes.registra({
     id: "visita-guiada", version: 1,
     consume: ["Red", "Presencia", "Voz", "SalaPose", "Ventanas", "Hud", "Laminas", "PanelVR", "VRX"],
-    expone: [],
+    expone: ["Guiada"],   // F3e: 47_habla.js lee de aquí quién eres (yo), el evento y la cola de manos (estado())
     eventos: { escucha: ["voz:estado", "depura:lineas"], emite: ["guiada:palabra", "guiada:cierre"] },
     bandera: { defecto: true, url: "guia" },
     // la lámina del cierre en VR (1 llamada, 2 triángulos, una textura de 880 × 288 sin mipmaps: ≈ 1 MB, solo mientras se ve); la fila de PanelVR pinta sobre lo
