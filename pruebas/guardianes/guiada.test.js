@@ -376,3 +376,17 @@ test("el manifiesto, los eventos y la api de la presencia: «visita-guiada» con
   assert.ok(EVENTOS.eventos["red:estado"].escuchan.includes("45_voz"), "la voz se engancha sola a la sala que entra en una guiada");
   for (const k of ["entraGuiada", "evento", "nombreSala"]) assert.ok(IFACES.apis_de_componentes["presencia-compartida"].miembros.includes(k), k);
 });
+
+test("OF11e en Node: la agenda pide entrar por el Bus (guiada:entrar) y la presencia real contesta (guiada:entrada) con éxito o con la frase de la api; sin ?presencia=red nadie escucha", async () => {
+  let r = motor(); await espera(10);
+  assert.strictEqual(r.Bus.hay("guiada:entrar"), true, "con la presencia de verdad hay quien escuche");
+  const resp = []; r.Bus.on("guiada:entrada", d => resp.push(d));
+  r.Bus.emite("guiada:entrar", { evento: 12 }); await espera(30);
+  assert.deepStrictEqual(resp, [{ evento: 12, ok: true, mensaje: "" }]); assert.strictEqual(r.ventana.__presencia().sala, "guiada");
+  r = motor({ guiadaEstado: 409 }); await espera(10);
+  const resp2 = []; r.Bus.on("guiada:entrada", d => resp2.push(d));
+  r.Bus.emite("guiada:entrar", { evento: 7 }); await espera(30);
+  assert.strictEqual(resp2.length, 1); assert.strictEqual(resp2[0].ok, false); assert.match(resp2[0].mensaje, /el guía ha cerrado la sala/);
+  r = motor({ busqueda: "?presencia=sim" }); await espera(10);
+  assert.strictEqual(r.Bus.hay("guiada:entrar"), false, "sin presencia de verdad no hay quien escuche: la agenda no enseña el botón");
+});

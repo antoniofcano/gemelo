@@ -18,7 +18,8 @@
 //   GET    /api/agenda/:id/evento.ics       la invitación de calendario del evento (OF11c)
 // Los textos que escribe la oficina salen tal cual como datos; la web los pinta con textContent.
 import type { FastifyInstance, FastifyRequest } from "fastify";
-import { audita } from "../auth/servicio.ts";
+import { audita, esOficina } from "../auth/servicio.ts";
+import { ventanaEntrada } from "../presencia/voz.ts";
 import type { TipoIcs } from "../avisos/correo.ts";
 import { requiereSesion } from "../auth/roles.ts";
 import type { Cliente } from "../bd/pool.ts";
@@ -48,7 +49,7 @@ const CAMPOS_EVENTO = {
 
 interface Evento {
   id: number; titulo: string; tipo: string; descripcion: string | null; lugar: string | null; finca: string | null; haza_id: number | null; presencial: boolean;
-  empieza_en: Date; termina_en: Date | null; plazas: number | null; inscripcion_hasta: Date | null; estado: string;
+  empieza_en: Date; termina_en: Date | null; plazas: number | null; inscripcion_hasta: Date | null; estado: string; guia_id?: number | null;
 }
 type CuerpoEvento = Partial<Record<Exclude<keyof typeof CAMPOS_EVENTO, never>, unknown>>;
 
@@ -292,8 +293,11 @@ export async function rutasAgenda(app: FastifyInstance, ctx: Contexto): Promise<
               mi.estado AS mi_estado, mi.personas AS mis_personas
          FROM visitas v LEFT JOIN hazas hz ON hz.id = v.haza_id
          LEFT JOIN visitas_asistentes mi ON mi.visita_id = v.id AND mi.hogar_id = $1 AND mi.estado <> 'anulado'
-        WHERE v.estado IN ('abierta', 'cerrada') AND v.empieza_en > now() ORDER BY v.empieza_en, v.id LIMIT 50`, [req.session.hogarId]);
+        WHERE v.estado IN ('abierta', 'cerrada') AND (v.empieza_en > now()
+              OR (v.tipo IN ('guiada', 'directo') AND coalesce(v.termina_en, v.empieza_en + interval '3 hours') + interval '30 minutes' > now()))   -- OF11e: la guiada en curso sigue en la lista hasta que cierra su sala
+        ORDER BY v.empieza_en, v.id LIMIT 50`, [req.session.hogarId]);
     rep.header("cache-control", "private, no-cache");
+    const ofi = esOficina(req.session.rol), hogar = req.session.hogarId!;
     return {
       puede_inscribirse: req.session.origen !== "vinculo",
       eventos: r.rows.map(f => ({
@@ -301,6 +305,7 @@ export async function rutasAgenda(app: FastifyInstance, ctx: Contexto): Promise<
         empieza_en: f.empieza_en, termina_en: f.termina_en, plazas: f.plazas, plazas_libres: libres(f.plazas, f.apuntadas), inscripcion_hasta: f.inscripcion_hasta,
         inscripcion_abierta: f.estado === "abierta" && (!f.inscripcion_hasta || f.inscripcion_hasta.getTime() > Date.now()),
         mia: f.mi_estado ? { estado: f.mi_estado, personas: f.mis_personas } : null,
+        entrada: ventanaEntrada({ ...f, guia_id: f.guia_id ?? null }, { hogarId: hogar, esOficina: ofi, apuntado: f.mi_estado === "apuntado" }),   // OF11e: desde/hasta cuándo puede entrar en la sala guiada (null si no)
       })),
     };
   });

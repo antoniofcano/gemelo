@@ -51,6 +51,14 @@ export function ventana(e: Pick<EventoGuiada, "empieza_en" | "termina_en">, pape
   return { abre: ini - (papel === "familia" ? ABRE_FAMILIAS_MIN : ABRE_MODERA_MIN) * 60_000, cierra: fin + CIERRA_MIN * 60_000 };
 }
 
+/** F3g (OF11e): la ventana de entrada que enseña la agenda a quien puede entrar (ISO), o null si no es una guiada/directo vigente o no tiene papel (no apuntada, en espera). Es la MISMA de decideGuiada. */
+export function ventanaEntrada(e: EventoGuiada, q: Quien): { desde: string; hasta: string } | null {
+  if (!esGuiada(e) || e.estado === "cancelada" || e.estado === "borrador") return null;
+  const papel = papelDe(e, q); if (!papel) return null;
+  const v = ventana(e, papel);
+  return { desde: new Date(v.abre).toISOString(), hasta: new Date(v.cierra).toISOString() };
+}
+
 /** ¿Puede esta sesión pedir el token de la sala guiada de ese evento, y con qué papel? (la base ya consultada; aquí nada de E/S) */
 export function decideGuiada(e: EventoGuiada | null | undefined, q: Quien, ahora = Date.now()): DecisionGuiada {
   if (!esGuiada(e)) return NO_EXISTE;
