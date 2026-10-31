@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- F3g: e2e de la voz de la visita guiada con tres Chrome y micrófono simulado contra LiveKit 1.13.11 y PostGIS (`voz_guiada_dev.test.js`); `voz_dev`, `guiada_dev`, `habla_chrome`, el caso OF11e y las integraciones de voz y avisos, ejecutadas por primera vez en verde. Audio real, Quest e iPhone, sin probar.
 - C10 (3.ª tanda): el medidor de fotogramas (`?medidor=0`), el suelo de fondo (`?fondo=0`) y los marcadores del LiDAR (`?marcadores=0`) pasan a componentes; `aplica()` y `capas()` avisan por el Bus y el bucle emite `cuadro:fin`. Sin cambio visible esperado; medido en Node, sin comprobar en Chrome ni en el Quest.
 - Despliegue (V2-prep): `doc/operacion/DESPLIEGUE-V2.md`, primer despliegue paso a paso con comprobación y vuelta atrás; ADR-0027, LiveKit en producción con el perfil presencia y solo 7881/tcp y 7882/udp. Nada ejecutado en el VPS.
 - Avatares (AV5): el afro ya no hace picos en el borde bajo, el pelo largo cae también por delante, el sombrero de paja se asienta sobre el pelo y hay una pieza nueva «perilla» para cualquier cuerpo, en el creador y en la portada; de paso se arreglan las rayas claras de la coronilla en todos los peinados. Avatar completo ≤ 12.372 triángulos y 7 primitivas. El catálogo v2 espera el visto bueno de Antonio a las capturas.
@@ -186,6 +187,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 - `doc/ESTADO.md` reescrito como único sitio de «dónde estamos»; se retira el id y el enlace del artefacto privado (el repo es público).
 
 ### Arreglado
+- Levantar la mano mandaba el POST sin cuerpo y la api daba 400: la mano nunca llegaba al guía (ahora lleva `{}`). En móvil vertical el chat se recoge a su burbuja mientras haya una ventana en hoja (tapaba «Entrar en la visita»).
 - Producción corregida antes de desplegar: el micrófono ya no se niega, `/rtc` y el token de Vigía en el compose, `access_token` redactado en los registros, contorno hasta 5 MB, 404 sin caché inmutable, `mem_limit` en todos los servicios y `respaldo.sh` que aguanta el entorno real. `probar-caddy.sh` y `compose config`, pendientes de ejecutar con Docker.
 - Pruebas: la integración de la api contra PostGIS vuelve a verde (OF11b, OF11c, OF10b, OF2, F3c/F3f): eran fallos de las pruebas, no del SQL ni de las migraciones; el reloj de mentira de la voz espera lo que vence; el guardián de la api acepta las saltadas por Mailpit o LiveKit de desarrollo y las avisa.
 - Oficina: las llaves de acceso identifican cada cuenta por su nombre interno (o «Cuenta n.º id») y no por el correo; rehabilitar el alta se confirma escribiendo ese nombre.

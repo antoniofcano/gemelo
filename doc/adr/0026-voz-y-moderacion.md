@@ -98,3 +98,7 @@ La decisión 115 ya dice **mano levantada y la oficina da la palabra**. Queda po
 - **Este ADR es solo documento:** no cambia código ni contratos. Lo vigilan los guardianes `documentacion` (índice y estado) e `higiene`.
 - **Comprobado al escribirlo:** los nombres de los permisos y de `RoomService` contra la documentación de LiveKit (enlaces de arriba, 2026-10-31); los valores por defecto de captura y publicación y el camino de Web Audio contra `livekit-client` 2.22.4 instalado; los botones libres de VR leyendo `29_vr.js`.
 - **No comprobado:** que `UpdateParticipant` despublique de verdad en LiveKit 1.13.11 autoalojado (F3g); el estado actual de Chromium 933677 y 687574; la cancelación de eco en el navegador de Quest y en Safari de iPhone; el coste del panner HRTF en Quest y móvil; la CPU de LiveKit con 10 y 40 personas con audio (**no medible en este equipo**: F3h); las cifras de ancho de banda (estimadas). Nada probado en iPhone ni en Quest.
+
+## Verificado el 2026-10-31 (F3g)
+
+Contra LiveKit 1.13.11 autoalojado: quitar `canPublish` despublica las pistas solas (70-411 ms al cortar; al vencer el turno a los 2 min, igual); los atributos `mano` y `palabra_hasta` llegan a la sala; `UpdateParticipant` sobre una identidad ausente da 404 `not_found`; el aviso de cierre llega antes del `DeleteRoom`. `silenciar` no ejerce `MutePublishedTrack` con una pista real por la api, porque la palabra se quita antes. Sigue sin comprobar: eco en Quest e iPhone, HRTF en Quest y móvil, CPU con 10 y 40 personas (F3h).
