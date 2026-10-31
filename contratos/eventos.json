@@ -62,6 +62,24 @@
       "emiten": ["02c_componentes"],
       "escuchan": []
     },
+    "perros:amenaza": {
+      "descripcion": "Una pregunta con respuesta en el mismo objeto: la fauna (un conejo en { x, y }) pregunta si hay algo de lo que huir; los perros, si están, rellenan res con { x, y } de quien corre cerca (el muñequito, en quad desde más lejos, o un perro a la carrera). Sin perros, res queda en null.",
+      "datos": { "type": "object", "required": ["x", "y"], "properties": { "x": { "type": "number" }, "y": { "type": "number" }, "res": { "type": ["object", "null"] } } },
+      "emiten": ["16_vida"],
+      "escuchan": ["25_perros"]
+    },
+    "perros:llegan": {
+      "descripcion": "El muñequito acaba de aterrizar (o se entra en VR sin haber paseado): los perros salen de entre los olivos corriendo hacia él. Sin perros, no pasa nada.",
+      "datos": {},
+      "emiten": ["24_pantalla", "29_vr"],
+      "escuchan": ["25_perros"]
+    },
+    "polvo:emite": {
+      "descripcion": "Una bocanada de polvo en { x (este), y (norte) } en metros del mundo, a altura h, con velocidad (vx, vy, vz), tamaño y vida en segundos. La dibuja quien lleve el polvo (huellas y polvo); sin él, no se ve.",
+      "datos": { "type": "object", "required": ["x", "y", "h"], "properties": { "x": { "type": "number" }, "y": { "type": "number" }, "h": { "type": "number" }, "vx": { "type": "number" }, "vy": { "type": "number" }, "vz": { "type": "number" }, "tam": { "type": "number" }, "vida": { "type": "number" } } },
+      "emiten": ["24_pantalla", "25_perros"],
+      "escuchan": ["22b_huellas_polvo"]
+    },
     "prevision:alterna": {
       "descripcion": "Abrir o cerrar la lámina de la previsión del tiempo en el mundo (el botón «Ver la previsión en el mundo» de la ventana Tiempo). Sin datos alterna; con abre true o false, abre o cierra.",
       "datos": { "type": "object", "properties": { "abre": { "type": "boolean" } } },

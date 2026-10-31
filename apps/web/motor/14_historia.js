@@ -3,8 +3,7 @@
 // Consume: 01_datos (D, $, fmt), 02_mundo (suelo, orto, copas, cIn, marc, med), 03_escena (scene, exag), 05_nube (nube),
 //   08_marcadores (aplica, pendiente), 09_camara (objetivo, orb, pon), 10_ndvi (NDV, ndviIdx, pintaNdvi),
 //   12_paseo (paseando, persona, primera, salePaseo), 13_parcelas (parcelas, fincas, claseUsda, elegirParcela, elegirFinca), 13b_hazas (HazasPuro),
-//   15_tiempo (ins, esc, hace), 16_vida (esfera, mira), 18_paisaje (postes, cable), 21_suelo (cubierta), 22_huellas (hSig), 29_vr (panel),
-//   90_final (cuadro)
+//   15_tiempo (ins, esc, hace), 16_vida (esfera, mira), 18_paisaje (postes, cable), 21_suelo (cubierta), 29_vr (panel), 90_final (cuadro)
 // ===============================================================================
   // ---------- la historia: un recorrido guiado que cruza el gemelo con lo que sabe OlivarTrack
   // Los datos de OlivarTrack: la instantánea que trae el índice (D.ot) y, en Cerro y si la página la sirve el servidor (o ?api=), lo de hoy

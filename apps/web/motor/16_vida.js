@@ -1,10 +1,9 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: tVida, enQuad, vq, gFauna, esfera, altSuelo, quita, mira, bandada, conejos, quad, temaEstela, velPaseo, giroPaseo, ponQuad, vidaPaseo,
 //   enDron, dr, dron, ponDron, cicloVista, dronMando, camaraDron, vidaEntra, vidaSale, actualizaVida
-// Consume: 01_datos (D, $), 02_mundo (suelo, copaAlta, copas, cIn), 03_escena (scene, camera, exag, modo), 07_follaje (matSombra, geoSombra),
-//   12_paseo (paseando, persona, teclas, primera, camPos), 12b_llegada (Llegada),
-//   15_tiempo (calma, texBrillo, cur, meta, ins, nivel, temaBarrera, num1, rumbo), 22_huellas (pendFactor, quadInc, inclinaQuad),
-//   25_perros (amenazaConejo)
+// Consume: 01_datos (D, $), 02_mundo (suelo, copaAlta, copas, cIn), 02c_componentes (Bus), 03_escena (scene, camera, exag, modo),
+//   07_follaje (matSombra, geoSombra), 12_paseo (paseando, persona, teclas, primera, camPos), 12b_llegada (Llegada),
+//   15_tiempo (calma, texBrillo, cur, meta, ins, nivel, temaBarrera, num1, rumbo), 22_huellas (pendFactor, quadInc, inclinaQuad)
 // ===============================================================================
   // ---------- la vida del olivar: pájaros, conejos y un quad con estela de luz (Tron) para el paseo
   var tVida = 0, enQuad = false, vq = 0, gFauna = new THREE.Group(); gFauna.name = "fauna"; scene.add(gFauna);
@@ -292,7 +291,7 @@
       if (u.est === "fuera") { if (!naceConejo(co)) return; }
       var d = Math.hypot(u.x - pp.x, u.y - pp.y);
       if (d > 120) { u.est = "fuera"; co.visible = false; return; }
-      var am = amenazaConejo(u.x, u.y); if (u.est !== "huye" && am) { u.est = "huye"; u.t = 2 + Math.random() * 1.6; u.dir = Math.atan2(u.y - am.y, u.x - am.x) + (Math.random() - 0.5) * 1.0; }
+      var amq = { x: u.x, y: u.y, res: null }; Bus.emite("perros:amenaza", amq); var am = amq.res; if (u.est !== "huye" && am) { u.est = "huye"; u.t = 2 + Math.random() * 1.6; u.dir = Math.atan2(u.y - am.y, u.x - am.x) + (Math.random() - 0.5) * 1.0; }
       var vel = 0;
       if (u.est === "huye") { vel = 6.5; u.t -= dt; if (u.t <= 0) { u.est = "pasta"; u.t = 1.5 + Math.random() * 2; } }
       else { u.t -= dt; if (u.t <= 0) { u.dir = Math.random() * 6.28; u.t = 1.2 + Math.random() * 2.4; u.salta = Math.random() < 0.55; } vel = u.salta ? 0.9 : 0; }

@@ -5,8 +5,7 @@
 //   04b_escena3d (Escena3D), 05_nube (nube), 07b_arboles (Arboles), 09_camara (pon), 10_ndvi (NDV, ndviIdx),
 //   12_paseo (paseando, persona, teclas, primera, entraPaseo, salePaseo, actualizaPaseo), 12b_llegada (Llegada), 13_parcelas (parcelas, fincas),
 //   14_historia (lista, aviso), 15_tiempo (calma, nivel, rumbo, hace), 16_vida (quita, mira, quad, dron), 22_huellas (pendFactor),
-//   24_pantalla (suave), 25_perros (perrosLlegan), 30_mide (MideEst, Mide), 33_ajustes (Ajustes), 36_mandos (Mandos),
-//   90_final (tamano, cuadro, bucle)
+//   24_pantalla (suave), 30_mide (MideEst, Mide), 33_ajustes (Ajustes), 36_mandos (Mandos), 90_final (tamano, cuadro, bucle)
 // Nota: Publica además window.__vrDebug, __vrOlivo, __vrBotones, __vrVuelo y VR_ESTADO (depuración y pruebas VR).
 // ===============================================================================
   // ---------- modo VR inmersivo (WebXR, Meta Quest Browser): el paseo en primera persona con mandos, un panel flotante y un perfil de rendimiento propio
@@ -534,7 +533,7 @@
     if (modo !== "gem") pon("gem"); calidad = 0; camera.near = 0.3; camera.far = 6000;
     scene.add(vrRig); vrRig.add(camera); camera.add(vrVineta); camera.position.set(0, VRX.ojo ? 0 : 1.6, 0); camera.quaternion.identity(); VRC.forEach(function (o) { vrRig.add(o.c); vrRig.add(o.g); }); Mandos.monta(renderer, vrRig); scene.add(arco); scene.add(arcoMarca); scene.add(panel.m); scene.add(ficha.m); scene.add(fichaB.m); vrVueloEntra();
     VRP.on = true; vrPerfil(0); VRX.emaDt = 13.9; VRX.emaJs = 6; VRX.tNivel = 0;
-    if (!paseando) entraPaseo(); primera = true; TR.act = false; persona.visible = false; try { perrosLlegan(); } catch (e) {}
+    if (!paseando) entraPaseo(); primera = true; TR.act = false; persona.visible = false; Bus.emite("perros:llegan");
     var r = VRX.rig; r.x = pp.x; r.z = -pp.y; r.yaw = 0; r.y = suelo(pp.x, pp.y) * exag + vrBaseY(); VRX.vuelo = false; VRX.mirador = false; VRX.prev = {}; VRX.giroOk = true; VRX.sucio = true; panel.m.visible = true; panel.ini = false; ficha.m.visible = false; fichaB.m.visible = false; VRX.fichaId = ""; VRX.balFirma = "";
     vrAplicaRig(); vrRig.updateMatrixWorld(true); VRX.on = true; VRX.entrando = false; vrEstado("sesión VR en marcha"); Bus.emite("vr:entra");
   }
