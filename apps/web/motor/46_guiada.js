@@ -58,8 +58,8 @@
         .sort(function (a, b) { return a.mano - b.mano || (a.identidad < b.identidad ? -1 : 1); });
     }
     function familias(g) { return (g || []).filter(function (x) { return x.papel === "familia"; }).sort(function (a, b) { return a.alias.localeCompare(b.alias, "es") || (a.identidad < b.identidad ? -1 : 1); }); }
-    // ¿cruza la cuenta atrás un umbral que se di (30 s, 10 s)? antes y ahora en s; el umbral o null
-    function umbral(antes, ahora) { for (var i = 0; i < AVISOS.length; i++) if (antes > AVISOS[i] && ahora <= AVISOS[i] && ahora > 0) return AVISOS[i]; return null; }
+    // ¿cruza la cuenta atrás un umbral que se dice en voz alta (30 s, 10 s)? antes y ahora en s; el umbral o null (si cruza dos de golpe, el más cercano a ahora)
+    function umbral(antes, ahora) { for (var i = AVISOS.length - 1; i >= 0; i--) if (antes > AVISOS[i] && ahora <= AVISOS[i] && ahora > 0) return AVISOS[i]; return null; }
     // lo que avisa del cierre, por el tema «cierre»: solo de la api (SIN participante), en JSON v1 { en, a: "general" } → { en (ms), a }, o null
     function leeCierre(bytes, de) {
       if (de || !bytes || typeof bytes.byteLength !== "number" || !bytes.byteLength || bytes.byteLength > CIERRE_MAX_BYTES || !dec) return null;

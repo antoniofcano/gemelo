@@ -442,7 +442,7 @@
       return conecta().then(function () { pintaNota(); return !!sala && claveSala === "guiada" && eventoGuiada === id; });
     }
     function esperaConexion() {   // hasta que acabe de entrar (o salir) la sala en curso: como mucho 20 s, mirando cada 100 ms
-      return new Promise(function (ok) { var n = 0; (function mira() { if (!conectando) return ok(true); if (++n > 200 || !activo) return ok(false); setTimeout(mira, 100); })(); });
+      return new Promise(function (ok) { var n = 0; (function vigila() { if (!conectando) return ok(true); if (++n > 200 || !activo) return ok(false); setTimeout(vigila, 100); })(); });
     }
     function pintaNota() { if (ui && ui.nota) ui.nota.textContent = claveSala === "guiada" ? NOMBRE_GUIADA + ": con voz del guía. Nada se graba; el chat no se guarda." : SALAS_MUNDO[claveSala] + ": sin voz. El chat no se guarda."; }
     // de = { identidad, metadatos } (37_red.js): los metadatos los pone la api en el token y se leen como DATOS (SalaPose.leeInfo)
