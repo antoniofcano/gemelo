@@ -6,7 +6,7 @@
 
 ## 2. Primer vistazo
 1. Lee [CLAUDE.md](../../CLAUDE.md) (reglas de oro) y [ESTADO.md](../ESTADO.md).
-2. `npm run fixture` genera (si falta) el fixture sintético; `npm run puerta` debe salir en verde. Hay dos atajos ([TESTING](TESTING.md#estrategia-de-pruebas-desde-el-2026-10-30)): `npm run puerta:rapida` (solo Node, tras cada fusión) y `npm run puerta:pesada` (completa con Chrome y Docker; la única que autoriza a subir `main`).
+2. `npm run fixture` genera (si falta) el fixture sintético; `npm run puerta` debe salir en verde. Hay dos atajos ([TESTING](TESTING.md#estrategia-de-pruebas-desde-el-2026-10-30)): `npm run puerta:rapida` (solo Node, tras cada fusión) y `npm run puerta:pesada` (completa con Chrome y Docker; la única que autoriza a subir `main`). Mientras trabajas, `npm run puerta:afectadas` pasa solo las pruebas que tocan tus cambios (no autoriza a subir).
 3. Mira una página montada: levanta el entorno local con el fixture (`npm run dev:arriba`, [DESARROLLO-LOCAL](DESARROLLO-LOCAL.md)) o construye la web contra `pruebas/salida/fixture/cerro/indice.json` (`GEMELO_DATOS=… npm run build` en `apps/web`) y ábrela con `?debug`. La escena necesita el tileset del fixture; no se abre con `file://`. Las pruebas montan sus páginas con `montaPagina` de [`pruebas/guardianes/_pagina.js`](../../pruebas/guardianes/_pagina.js) (motor generado + Vite contra el índice de la finca, con caché por huella en `pruebas/salida/paginas/`).
 
 ## 3. La puerta

@@ -1,0 +1,15 @@
+{
+  "nota": "Datos del selector `npm run puerta:afectadas` (afectadas.js, PB4). Lo estático (rutas y require/import que cada guardián nombra en su código, y las cabeceras Expone/Consume del motor) se deduce solo; aquí va lo que no se puede deducir. Si no se puede decidir con seguridad, la prueba entra (más vale de más).",
+  "baratos": ["sintaxis", "higiene", "secretos", "documentacion", "contratos"],
+  "todo_nombres": ["package.json", "package-lock.json"],
+  "reglas": [
+    { "desde": "contratos/", "pruebas": ["contratos", "api"], "porque": "regla gruesa: un contrato cambia la api y el exportador" },
+    { "desde": "apps/api/", "pruebas": ["api"], "porque": "regla gruesa: cambio en la api" },
+    { "desde": "doc/", "pruebas": ["documentacion"], "porque": "regla gruesa: cambio en la documentación" }
+  ],
+  "ignora": ["CHANGELOG.md", "README.md", "LICENSE", ".gitignore", ".gitattributes"],
+  "mapa": {
+    "carga": ["apps/web/motor/", "apps/web/plantilla.html"],
+    "build": ["apps/web/herramientas/"]
+  }
+}
