@@ -41,7 +41,8 @@
         for (var j = 0; j < n; j++) { var r = G.variante(j); if (!r) return false; rs.push(r); }
         nv = n; monta(rs); return true;
       }
-      if (hayCapa() && repartido && uCapa.value < 1) { tCapa += Math.min(dt, 0.1); uCapa.value = Math.min(1, tCapa / CAPA_S); }
+      // al acabar de entrar, true: 07b reparte otra vez (con la escalera horneada, aparta entonces del tileset todos los olivos)
+      if (hayCapa() && repartido && uCapa.value < 1) { tCapa += Math.min(dt, 0.1); uCapa.value = Math.min(1, tCapa / CAPA_S); return uCapa.value >= 1; }
       return false;
     }
     function monta(rs) {
@@ -217,7 +218,8 @@
     /** la capa ya entró entera (uCapa = 1): con la escalera horneada, 07b aparta entonces todos los olivos del tileset */
     function capaCompleta() { return hayCapa() && uCapa.value >= 1; }
     function triangulos() { return malla && hayCapa() ? malla.count * triPor : 0; }
-    function pendientes() { return activo() && (via === "esperando" || via === "cargando impostores") && Generados.activo() ? 1 : 0; }
+    // también mientras la capa entra con su tramado (una vez repartida): las pruebas miden con la capa entera
+    function pendientes() { return activo() && ((via === "esperando" || via === "cargando impostores") && Generados.activo() || hayCapa() && repartido && uCapa.value < 1) ? 1 : 0; }
     function resumen() { return activo() ? { fuente: via, motivo: motivo, aviso2: avisoImp || undefined, dibujados: info.dibujados, entran: info.entran, salen: info.salen, triangulos: triangulos(), llamadas: malla && hayCapa() && malla.count ? 1 : 0, capa: +uCapa.value.toFixed(2), texturaMiB: +texMiB.toFixed(2) } : null; }
     return { inicia: inicia, paso: paso, hayCapa: hayCapa, capaCompleta: capaCompleta, reparte: reparte, triangulos: triangulos, pendientes: pendientes, resumen: resumen,
       _prueba: { sinGPU: function () { sinGPU = true; }, malla: function () { return malla; }, cajas: function () { return cajas; }, ids: function () { return ids && malla ? Array.from(ids.subarray(0, malla.count)) : []; } } };
