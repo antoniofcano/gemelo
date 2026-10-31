@@ -22,6 +22,7 @@ import { rutasSalud } from "./salud/rutas.ts";
 import { rutasVida } from "./vida/rutas.ts";
 import { nuevoToken } from "./seguridad/cripto.ts";
 import { compruebaOrigen } from "./seguridad/origen.ts";
+import { rutasOtHoy } from "./ot/rutas-hoy.ts";
 import { rutasTiempo, rutasTiempoHistorico } from "./vigia/rutas.ts";
 import { rutasYo } from "./yo/rutas.ts";
 
@@ -108,6 +109,7 @@ export async function construyeApp(ctx: Contexto, o: OpcionesApp = {}): Promise<
   await rutasPresencia(app, ctx);
   await rutasTiempo(app, ctx);
   await rutasTiempoHistorico(app, ctx);
+  await rutasOtHoy(app, ctx);
   await rutasVida(app, ctx);
   await rutasConfig(app, ctx);
   await rutasJuegos(app, ctx);

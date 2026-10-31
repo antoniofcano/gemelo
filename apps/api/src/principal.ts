@@ -11,6 +11,7 @@ import { cargaConfig } from "./config.ts";
 import { LectorGrabado } from "./ot/lector-grabado.ts";
 import { LectorMcp } from "./ot/lector-mcp.ts";
 import type { LectorOlivarTrack } from "./ot/lector.ts";
+import { ServicioHoy } from "./ot/hoy.ts";
 import { sincroniza } from "./ot/sincronia.ts";
 import { LectorVigiaFixture } from "./vigia/lector-fixture.ts";
 import { LectorVigiaMcp } from "./vigia/lector-mcp.ts";
@@ -23,14 +24,17 @@ const cartero: Cartero = config.correo.modo === "smtp" ? new CarteroSmtp(config.
 const lector: LectorOlivarTrack | null = config.ot.modo === "mcp" ? new LectorMcp(config.ot.url, config.ot.token)
   : config.ot.modo === "grabado" ? new LectorGrabado(config.ot.carpeta) : null;
 
-const tiempo = config.vigia.modo === "mcp" ? new ServicioTiempo(new LectorVigiaMcp(config.vigia.url, config.vigia.token))
-  : config.vigia.modo === "fixture" ? new ServicioTiempo(new LectorVigiaFixture(config.vigia.carpeta)) : null;
+const lectorVigia = config.vigia.modo === "mcp" ? new LectorVigiaMcp(config.vigia.url, config.vigia.token)
+  : config.vigia.modo === "fixture" ? new LectorVigiaFixture(config.vigia.carpeta) : null;
+const tiempo = lectorVigia ? new ServicioTiempo(lectorVigia) : null;
+// lo de hoy en vivo (GET /api/ot/hoy): el mismo lector de OlivarTrack que la sincronía y el mismo de Vigía que el tiempo, con su propia memoria
+const hoy = lector || lectorVigia ? new ServicioHoy(lector && config.ot.modo !== "no" ? { lector, origen: config.ot.modo === "mcp" ? "olivartrack" : "grabado" } : null, lectorVigia) : null;
 
 // el correo de los avisos y los .ics (OF11c): en segundo plano, con el mismo cartero; en modo buzón de pruebas no se manda nada (ni se marca como enviado)
 const repartidor = config.avisosCorreo.activo && config.correo.modo === "smtp"
   ? new Repartidor(bd, cartero, { urlPublica: config.urlPublica, secreto: config.sesion.secreto, remitente: config.correo.remitente, reintentos: config.avisosCorreo.reintentos, cadaSeg: config.avisosCorreo.cadaSeg, log: { warn: (o, m) => app.log.warn(o, m), info: (o, m) => app.log.info(o, m) } })
   : undefined;
-const app = await construyeApp({ config, bd, cartero, lector, tiempo, ...(repartidor ? { repartidor } : {}) });
+const app = await construyeApp({ config, bd, cartero, lector, tiempo, hoy, ...(repartidor ? { repartidor } : {}) });
 repartidor?.inicia();
 if (config.vigia.modo === "fixture") app.log.warn("el tiempo es el fixture SINTÉTICO de pruebas (GEMELO_VIGIA=fixture), no Vigía");
 if (config.correo.modo === "buzon") app.log.warn("correo en modo buzón de pruebas: los enlaces NO se mandan");

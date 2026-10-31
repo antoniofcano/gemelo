@@ -70,6 +70,7 @@ export class LectorVigiaFixture implements LectorVigia {
     catch { throw new ErrorDeVigia("estado_del_olivar_hoy: no se puede leer el fixture"); }
     const f = d["frescura"] as Record<string, unknown> | undefined;
     if (f && typeof f === "object") { f["generadoEn"] = new Date(this.reloj() - 20 * 60_000).toISOString(); f["horasDeAntiguedad"] = 0.3; }
+    if (typeof d["fecha"] === "string") d["fecha"] = new Date(this.reloj()).toISOString().slice(0, 10);
     return d;
   }
 
