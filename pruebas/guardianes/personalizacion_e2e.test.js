@@ -59,7 +59,9 @@ test("personalización de punta a punta: nombrar, colgar una imagen, verla, denu
       pg.on("pageerror", e => errores.push(correo + " PAGEERROR " + String(e)));
       pg.on("console", m => { if (m.type() === "error" && !/Failed to load resource.*(401|403|404|409)|style-src|inline style|fonts\.googleapis/.test(m.text())) errores.push(correo + " " + m.text()); });
       const { url } = await get("/__prueba/enlace?para=" + encodeURIComponent(correo));
-      await pg.goto(url); await pg.click("button[type=submit], input[type=submit]"); await pg.waitForLoadState("load");
+      await pg.goto(url);
+      // esperar a que aterrice la navegación del formulario (waitForLoadState a secas responde con la página de antes): si no, el goto de después compite con el 303
+      await Promise.all([pg.waitForURL(u => u.pathname === "/" || u.pathname === "/finca/", { timeout: 60_000 }), pg.click("button[type=submit], input[type=submit]")]);
       return { ctx, pg };
     }
     async function abreMundo(pg, esperaPers) {

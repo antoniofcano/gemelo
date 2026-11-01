@@ -112,7 +112,7 @@
   function AgendaMotor(n) {
     var AP = AgendaPuro, prefijo = ConfigPuro.prefijoApi(location.search, D && D.base);
     if (!prefijo || typeof fetch !== "function") return null;   // sin servidor no hay agenda: ni icono ni ventana
-    var datos = null, estado = "sin-pedir", cuerpo = null, nota = "", pidiendo = null, hechas = 0, enVuelo = false, entrando = false, dentro = null;
+    var datos = null, estado = "sin-pedir", cuerpo = null, nota = "", pidiendo = null, hechas = 0, enVuelo = false, entrando = false, dentro = null, elegidas = {}, pintado = "";   // elegidas: las personas escogidas por evento (sobreviven a un repintado); pintado: la firma de lo que depende del reloj
 
     function el(tag, css, txt) { var x = document.createElement(tag); if (css) x.style.cssText = css; if (txt != null) x.textContent = txt; return x; }
     var BOTON = "min-height:44px;min-width:44px;padding:0 14px;border-radius:10px;border:1px solid currentColor;background:rgba(255,255,255,0.12);color:inherit;font:600 15px system-ui,sans-serif;cursor:pointer";
@@ -186,7 +186,7 @@
         var etq = el("label", "font-size:15px", "Personas"), sel = el("select", "min-height:44px;font:inherit;padding:0 8px;border-radius:8px"), b = el("button", BOTON, e.libres === 0 ? "Ponernos en la lista de espera" : "Apuntarnos");
         sel.id = "agenda-personas-" + e.id; etq.htmlFor = sel.id;
         for (var i = 1; i <= AP.MAX_PERSONAS; i++) { var op = el("option", null, String(i)); op.value = String(i); sel.appendChild(op); }
-        sel.value = "2"; b.type = "button"; b.setAttribute("data-apunta", String(e.id));
+        sel.value = elegidas[e.id] || "2"; sel.addEventListener("change", function () { elegidas[e.id] = sel.value; }); b.type = "button"; b.setAttribute("data-apunta", String(e.id));
         b.addEventListener("click", function () { var p = AP.personas(sel.value); if (p === null) { nota = "Elige entre 1 y 10 personas."; pinta(); return; } manda(e, p); });
         fila.appendChild(etq); fila.appendChild(sel); fila.appendChild(b); t.appendChild(fila);
       }
@@ -203,9 +203,11 @@
       }
       return t;
     }
+    // lo que cambia solo con el reloj: qué eventos se ven y a cuáles se puede entrar ya
+    function firmaReloj() { var t = Date.now(); return datos ? AP.visibles(datos.eventos, t).map(function (e) { return e.id + (AP.puedeEntrar(e, t) ? "+" : ""); }).join(",") : ""; }
     function pinta() {
       if (!cuerpo) return;
-      cuerpo.textContent = "";
+      cuerpo.textContent = ""; pintado = firmaReloj();
       if (estado === "sin-sesion") { cuerpo.appendChild(el("p", "margin:8px 0", "Entra con tu enlace para ver la agenda.")); return; }
       if (!datos) { cuerpo.appendChild(el("p", "margin:8px 0", estado === "error" ? "No se ha podido cargar la agenda. Vuelve a abrirla en un rato." : "Cargando la agenda…")); return; }
       var l = AP.visibles(datos.eventos, Date.now());
@@ -247,8 +249,9 @@
       var mo = new MutationObserver(function () { if (!cuerpo.parentNode.hidden) carga(); });
       mo.observe(cuerpo.parentNode, { attributes: true, attributeFilter: ["hidden"] }); n.limpia(function () { mo.disconnect(); });
     }
-    // OF11e: el botón aparece y desaparece con el reloj aunque nadie toque nada: cada 20 s se repinta lo que hay (sin pedir nada a la api)
-    var reloj = typeof setInterval === "function" ? setInterval(function () { if (cuerpo && datos && cuerpo.parentNode && !cuerpo.parentNode.hidden) pinta(); if (typeof PanelVR !== "undefined") PanelVR.repinta(); }, 20000) : null;
+    // OF11e: el botón aparece y desaparece con el reloj aunque nadie toque nada: cada 20 s se repinta lo que hay (sin pedir nada a la api), y SOLO si cambió: repintar a ciegas
+    // cerraba el desplegable y quitaba el foco a quien estaba eligiendo las personas
+    var reloj = typeof setInterval === "function" ? setInterval(function () { if (cuerpo && datos && cuerpo.parentNode && !cuerpo.parentNode.hidden && firmaReloj() !== pintado) pinta(); if (typeof PanelVR !== "undefined") PanelVR.repinta(); }, 20000) : null;
     if (reloj && reloj.unref) reloj.unref();
     n.limpia(function () { if (reloj) clearInterval(reloj); });
     n.limpia(Hud.icono({ id: "agenda", ico: "📅", txt: "Agenda", prio: 2, ventana: "agenda" }));
