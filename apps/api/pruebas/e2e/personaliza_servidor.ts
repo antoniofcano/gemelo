@@ -115,6 +115,9 @@ servidor.on("request", (req, res) => {
       res.writeHead(200, { "content-type": TIPOS[extname(f)] ?? "application/octet-stream", "content-security-policy": csp, "cache-control": "no-store" });
       return void res.end(readFileSync(f));
     }
+    // adonde lleva «Entrar» (303 de /api/auth/entrar; en producción, la portada y el mundo). Un 404 vacío haría que Chrome pintara su página de error, y esa navegación
+    // tardía interrumpía el goto siguiente de la prueba (is interrupted by another navigation to chrome-error://chromewebdata/)
+    if (ruta === "/" || ruta === "/finca/") { res.writeHead(200, { "content-type": "text/html; charset=utf-8" }); return void res.end("<!doctype html><title>destino</title><p>destino</p>"); }
     res.writeHead(404); res.end();
   })().catch(e => { console.error(e); res.writeHead(500); res.end(); });
 });
