@@ -1,6 +1,6 @@
 "use strict";
-// F3j en Chrome sin pantalla (SwiftShader: vale para recuentos, no para fps; regla 6), por el turno del banco (npm run banco:encarga; NO la ejecuta quien la escribe;
-// ESCRITA, SIN EJECUTAR). Con la api de mentira (page.route sobre /api/presencia/voz/consentimiento), en la página estática de siempre:
+// F3j en Chrome sin pantalla (SwiftShader: vale para recuentos, no para fps; regla 6), por el turno del banco. Con la api de mentira (page.route sobre
+// /api/presencia/voz/consentimiento) en la página estática con ?api=/api/ (como agenda_mundo_chrome): sin servidor no se pregunta nada (lo comprueba la tercera prueba):
 //   · fuera de una visita guiada, el componente «habla-guiada» mira UNA vez el consentimiento de voz (GET); si ya está dado, la pestaña «Hablar» de Configuración
 //     existe y trae el botón «Retirar mi permiso de voz» activo; pulsarlo manda DELETE, deja el botón desactivado con «Permiso de voz: no dado» y no hay errores;
 //   · si no está dado, no hay pestaña (no se ensucia la Configuración de quien nunca habla);
@@ -42,7 +42,7 @@ async function abre(consulta, estado) {
 const dibujo = p => p.evaluate(() => { const g = window.__g; g.renderer.render(g.scene, g.camera); return { llamadas: g.renderer.info.render.calls, triangulos: g.renderer.info.render.triangles }; });
 
 test("en Chrome: con el permiso de voz dado hay pestaña «Hablar» con «Retirar mi permiso de voz»; retirarlo manda DELETE y lo desactiva; el dibujo no cambia", { skip: SALTO || false, timeout: 300000 }, async () => {
-  const estado = { aceptada: true }, { p, errores, visto } = await abre("?debug", estado);
+  const estado = { aceptada: true }, { p, errores, visto } = await abre("?debug&api=/api/", estado);
   try {
     assert.deepStrictEqual(visto, ["GET"], "mira su consentimiento una sola vez");
     await p.waitForFunction(() => !!document.getElementById("aj-t-habla"), null, { timeout: 20000 });
@@ -54,7 +54,7 @@ test("en Chrome: con el permiso de voz dado hay pestaña «Hablar» con «Retira
     const despues = await p.evaluate(() => document.getElementById("ajVozRetira").textContent);
     assert.strictEqual(despues, "Permiso de voz: no dado"); assert.deepStrictEqual(visto, ["GET", "DELETE"]); assert.strictEqual(estado.aceptada, false);
     assert.deepStrictEqual(errores, []);
-    const q = await abre("?debug&habla=0", { aceptada: true });
+    const q = await abre("?debug&api=/api/&habla=0", { aceptada: true });
     try {
       const sin = await dibujo(q.p);
       assert.deepStrictEqual(con, sin, "el DOM no dibuja: " + JSON.stringify({ con, sin }));
@@ -66,10 +66,19 @@ test("en Chrome: con el permiso de voz dado hay pestaña «Hablar» con «Retira
 });
 
 test("en Chrome: sin permiso de voz dado no hay pestaña «Hablar» ni petición de más", { skip: SALTO || false, timeout: 300000 }, async () => {
-  const { p, errores, visto } = await abre("?debug", { aceptada: false });
+  const { p, errores, visto } = await abre("?debug&api=/api/", { aceptada: false });
   try {
     assert.deepStrictEqual(visto, ["GET"]);
     assert.strictEqual(await p.evaluate(() => !!document.getElementById("aj-t-habla") || !!document.getElementById("ajVozRetira")), false);
+    assert.deepStrictEqual(errores, []);
+  } finally { await p.close(); }
+});
+
+test("en Chrome: sin servidor (ni D.base ni ?api=) no se pregunta el consentimiento ni hay pestaña «Hablar»", { skip: SALTO || false, timeout: 300000 }, async () => {
+  const { p, errores, visto } = await abre("?debug", { aceptada: true });
+  try {
+    assert.deepStrictEqual(visto, [], "sin servidor no hay a quién preguntar");
+    assert.strictEqual(await p.evaluate(() => !!document.getElementById("aj-t-habla")), false);
     assert.deepStrictEqual(errores, []);
   } finally { await p.close(); }
 });
