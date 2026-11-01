@@ -191,6 +191,8 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 - `doc/ESTADO.md` reescrito como único sitio de «dónde estamos»; se retira el id y el enlace del artefacto privado (el repo es público).
 
 ### Arreglado
+- En la ventana «Agenda», el número de personas elegido ya no vuelve a 2 al repintarse, y el reloj de 20 s solo repinta si cambió algo, así que deja de cerrar el desplegable y quitar el foco.
+- Web en producción: `NET_BIND_SERVICE` en el compose (sin ella Caddy no arrancaba).
 - Levantar la mano mandaba el POST sin cuerpo y la api daba 400: la mano nunca llegaba al guía (ahora lleva `{}`). En móvil vertical el chat se recoge a su burbuja mientras haya una ventana en hoja (tapaba «Entrar en la visita»).
 - Producción corregida antes de desplegar: el micrófono ya no se niega, `/rtc` y el token de Vigía en el compose, `access_token` redactado en los registros, contorno hasta 5 MB, 404 sin caché inmutable, `mem_limit` en todos los servicios y `respaldo.sh` que aguanta el entorno real. `probar-caddy.sh` y `compose config`, pendientes de ejecutar con Docker.
 - Pruebas: la integración de la api contra PostGIS vuelve a verde (OF11b, OF11c, OF10b, OF2, F3c/F3f): eran fallos de las pruebas, no del SQL ni de las migraciones; el reloj de mentira de la voz espera lo que vence; el guardián de la api acepta las saltadas por Mailpit o LiveKit de desarrollo y las avisa.
