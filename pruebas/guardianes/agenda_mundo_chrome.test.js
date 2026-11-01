@@ -55,6 +55,7 @@ describe("en el navegador", () => {
       assert.strictEqual(await p.locator("#ventana-agenda [data-apunta]").count(), 2); assert.strictEqual(await p.locator("#ventana-agenda [data-borra]").count(), 1);
       await p.screenshot({ path: path.join(CAPS, "agenda_" + modo + ".png") });
       await p.locator("#ventana-agenda select").first().selectOption("3");
+      await p.evaluate(() => window.__agenda().carga());   // una recarga con la ventana abierta repinta: lo elegido no se pierde (fallaba en la puerta pesada: se apuntaban 2)
       await (tactil ? p.locator("[data-apunta='1']").tap() : p.locator("[data-apunta='1']").click());
       await p.waitForFunction(() => /Estáis apuntados \(3 personas\)/.test(document.getElementById("ventana-agenda").innerText), null, { timeout: 10000 });
       assert.ok(pedidas.some(x => /^POST agenda\/1\/inscripcion \{"personas":3\}$/.test(x)), pedidas.join(" | "));

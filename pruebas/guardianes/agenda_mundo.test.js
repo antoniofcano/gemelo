@@ -125,6 +125,23 @@ test("la ventana «Agenda»: próximos con plazas y tu estado; apuntar con N per
   } finally { m.restaura(); }
 });
 
+test("repintar no pierde lo elegido, y el reloj de 20 s solo repinta si cambió algo (repintar a ciegas cierra el desplegable y quita el foco)", async () => {
+  const sI = globalThis.setInterval, cI = globalThis.clearInterval, ahora = Date.now; let tic = null, t = AHORA;
+  globalThis.setInterval = fn => { tic = fn; return 1; }; globalThis.clearInterval = () => {};
+  const m = monta({ respuestas: () => J(200, AGENDA()) });
+  try {
+    await m.api.carga(); Date.now = () => t;
+    const cu = m.ventanas.agenda.cuerpo; cu.parentNode = { hidden: false };
+    const sel = cu.busca(x => x.tag === "select")[0]; assert.strictEqual(sel.value, "2", "por defecto, dos");
+    sel.value = "3"; sel.oyentes.change.forEach(fn => fn({}));
+    tic(); assert.strictEqual(cu.busca(x => x.tag === "select")[0], sel, "sin cambios, el reloj no toca la ventana");
+    await m.api.carga();
+    const nuevo = cu.busca(x => x.tag === "select")[0]; assert.notStrictEqual(nuevo, sel, "una recarga sí repinta"); assert.strictEqual(nuevo.value, "3", "y lo elegido sigue");
+    t = AHORA + 1.5 * DIA; tic();
+    assert.ok(!cu.textContent.includes("Visita 1"), "lo que ya empezó sale de la lista con el reloj");
+  } finally { Date.now = ahora; globalThis.setInterval = sI; globalThis.clearInterval = cI; m.restaura(); }
+});
+
 test("sin puede_inscribirse (gafas vinculadas): se ve todo, no hay un solo botón y dice dónde apuntarse; un error de la api se cuenta", async () => {
   const m = monta({ respuestas: () => J(200, { ...AGENDA(), puede_inscribirse: false }) });
   try {
