@@ -40,28 +40,6 @@ test("puro: el catálogo es el de contratos/decoraciones.json (ids, nombres, ép
   assert.strictEqual(P.MAX_TRI, 40); assert.strictEqual(P.pieza("luces").nombre, "Luces"); assert.strictEqual(P.pieza("cohete"), null); assert.strictEqual(P.pieza("hasOwnProperty"), null);
 });
 
-test("puro (P7g D4): la época es la de la api (apps/api/src/vida/decoraciones.ts) en los días límite y en hora de Madrid; las piezas de cada época son las del catálogo", () => {
-  const e = iso => P.epocaDeLaFecha(new Date(iso));
-  // las mismas fechas que apps/api/pruebas/unidad/decoraciones.test.ts (época: estaciones astronómicas con sus días límite, en hora de Madrid)
-  const CASOS = [["2026-03-20T12:00:00+01:00", "invierno"], ["2026-03-21T12:00:00+01:00", "primavera"], ["2026-06-20T12:00:00+02:00", "primavera"], ["2026-06-21T12:00:00+02:00", "verano"],
-    ["2026-09-22T12:00:00+02:00", "verano"], ["2026-09-23T12:00:00+02:00", "otono"], ["2026-12-20T12:00:00+01:00", "otono"], ["2026-12-21T12:00:00+01:00", "invierno"],
-    ["2027-01-15T12:00:00+01:00", "invierno"], ["2026-11-02T10:00:00+01:00", "otono"],
-    ["2026-03-20T23:30:00Z", "primavera"], ["2026-06-20T22:30:00Z", "verano"], ["2026-12-20T23:30:00Z", "invierno"], ["2028-02-29T12:00:00+01:00", "invierno"]];
-  CASOS.forEach(c => assert.strictEqual(e(c[0]), c[1], c[0]));
-  // y el código de la api dice los mismos límites (si alguien los cambia en un lado, este guardián salta)
-  const api = lee("apps/api/src/vida/decoraciones.ts"), lim = [...api.matchAll(/mmdd >= (\d+) && mmdd <= (\d+)\) return "(\w+)"/g)].map(m => [+m[1], +m[2], m[3]]);
-  assert.deepStrictEqual(lim, [[321, 620, "primavera"], [621, 922, "verano"], [923, 1220, "otono"]], "la api: tres tramos y el resto es invierno");
-  assert.ok(/mmdd >= 321 && mmdd <= 620\) return "primavera"/.test(FUENTE) && /mmdd >= 621 && mmdd <= 922\) return "verano"/.test(FUENTE) && /mmdd >= 923 && mmdd <= 1220\) return "otono"/.test(FUENTE), "el motor: los mismos límites");
-  assert.ok(/ZONA = "Europe\/Madrid"/.test(api) && /timeZone: "Europe\/Madrid"/.test(FUENTE), "la misma zona horaria");
-  // cada día del año, mes a mes: nunca una época que no exista y el orden de las estaciones es el natural
-  const vistas = []; for (let d = 0; d < 366; d++) { const x = P.epocaDeLaFecha(new Date(Date.UTC(2028, 0, 1 + d, 12))); if (vistas[vistas.length - 1] !== x) vistas.push(x); }
-  assert.deepStrictEqual(vistas, ["invierno", "primavera", "verano", "otono", "invierno"], "las cuatro épocas, en orden, a lo largo del año");
-  // las piezas de cada época: dos en otoño e invierno, una en primavera y en verano
-  assert.deepStrictEqual(P.piezasDeLaEpoca("primavera").map(p => p.id), ["flores"]); assert.deepStrictEqual(P.piezasDeLaEpoca("verano").map(p => p.id), ["cinta"]);
-  assert.deepStrictEqual(P.piezasDeLaEpoca("otono").map(p => p.id), ["farolillo", "cosecha"]); assert.deepStrictEqual(P.piezasDeLaEpoca("invierno").map(p => p.id), ["luces", "lazo"]);
-  assert.deepStrictEqual(P.piezasDeLaEpoca("nunca"), []);
-});
-
 test("puro: la lista entra por su lista blanca; un código desconocido o malformado se ignora; un olivo, una vez; orden estable", () => {
   const l = [
     { finca: "hituelo", copas_id: 20, pieza: "luces", mia: true },

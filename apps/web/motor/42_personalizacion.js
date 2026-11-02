@@ -2,7 +2,7 @@
 // Expone: (nada al resto de módulos)
 // Consume: 01_datos (D, $), 02_mundo (copas), 02c_componentes (Bus, Componentes), 02d_laminas (Laminas), 02e_entidades (Entidades, Usables),
 //   03_escena (lienzo, camera, exag, modo), 09_camara (suelta, elige), 12_paseo (persona), 13b_hazas (HazasPuro, Hazas), 14_historia (lista),
-//   15_tiempo (hace), 16_vida (quita, mira), 29_vr (VRX, ficha), 50_decoraciones (DecoracionesPuro)
+//   15_tiempo (hace), 16_vida (quita, mira), 29_vr (VRX, ficha)
 // Nota: Componente «personalizacion» (P7f, decisiones 91-96 y 99-102): nombrar, colgar una foto o un dibujo, verlo y denunciarlo en los olivos de las hazas. Solo se registra; nadie lo nombra. Sin servidor (sin D.base /teselas/… ni ?api=) no pide ni crea nada. Complementa la ficha común del olivo (Entidades.complementa), reduce la imagen en el aparato, pide el aviso con casilla y habla con /api/sesion, /api/hazas/{id}/olivos, /api/medios, /api/olivos, /api/personalizaciones/{id}/denuncias y /api/hazas/{id}/sugerencias. Publica las decoraciones de la lista (P7g D3) por el Bus («decoraciones:cambian»). Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/personalizacion.test.js.
 // ===============================================================================
 
@@ -23,9 +23,9 @@
   //  - P7g (D3): de la misma lista saca las decoraciones de cada olivo («decoracion») y las publica por el Bus («decoraciones:cambian», y otra vez a quien
   //    pregunte con «decoraciones:pide»); las dibuja el componente de las decoraciones (50_decoraciones.js).
   //  - P7g (D4): el titular, en un olivo de SU haza y fuera de VR, ve «Decorar» (o «Cambiar decoración») y, si tiene una, «Quitar decoración»: un recuadro con SOLO las
-  //    piezas de la época actual (DecoracionesPuro.epocaDeLaFecha, la misma regla que la api) y la leyenda «ilustrativa». PUT/DELETE /api/olivos/{finca}/{copas_id}/decoracion;
+  //    piezas de la época actual (PersonalizaPuro.epocaDeLaFecha, la misma regla que la api) y la leyenda «ilustrativa». PUT/DELETE /api/olivos/{finca}/{copas_id}/decoracion;
   //    la api vuelve a comprobar titular, haza y época (el 422 fuera_de_epoca se enseña tal cual). Al éxito se refresca la lista de la haza y D3 repinta sin recargar.
-  //    Sin 50_decoraciones.js (?decoraciones=0) no se ofrece: nadie la dibujaría.
+  //    Sin 50_decoraciones.js (?decoraciones=0; nadie escucha «decoraciones:cambian») no se ofrece: nadie la dibujaría.
   // Decisión 102: hasta la EIPD solo suben las cuentas de prueba. La api no distingue cuentas: si la subida está apagada responde 503 (subidas_apagadas) y la
   // pantalla lo explica; aquí no se inventa ningún permiso. Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/personalizacion.test.js.
   // [puro:inicio] (sin DOM ni THREE: lo evalúa en Node pruebas/guardianes/personalizacion.test.js)
@@ -40,6 +40,26 @@
     // P7g D4: cómo se llama cada época en pantalla (el catálogo las llama primavera, verano, otono, invierno) y la leyenda de honestidad (regla 5)
     var EPOCAS = { primavera: "la primavera", verano: "el verano", otono: "el otoño", invierno: "el invierno" };
     var DECO_ILUSTRATIVA = "Ilustrativa: la decoración la elige tu familia; no la mide el gemelo.";
+    // P7g D4: del catálogo de contratos/decoraciones.json, lo que hace falta para ofrecer (id, nombre y época; el guardián comprueba que es el mismo). Un componente no
+    // consume de otro: el dibujo (triángulos, formas) vive en 50_decoraciones.js y esto es solo la lista que se le ofrece a la familia
+    var PIEZAS = [
+      { id: "flores", nombre: "Flores", epoca: "primavera" }, { id: "cinta", nombre: "Cinta de color", epoca: "verano" }, { id: "farolillo", nombre: "Farolillo", epoca: "otono" },
+      { id: "cosecha", nombre: "Cosecha", epoca: "otono" }, { id: "luces", nombre: "Luces", epoca: "invierno" }, { id: "lazo", nombre: "Lazo", epoca: "invierno" }];
+    // la época de la fiesta, la MISMA regla que epocaDeLaFecha de la api (apps/api/src/vida/decoraciones.ts): la estación astronómica del día en hora de Madrid, con fechas
+    // fijas (primavera 21-mar a 20-jun; verano 21-jun a 22-sep; otoño 23-sep a 20-dic; invierno 21-dic a 20-mar). No es la fenología del olivo. Quien manda es la api
+    // (422 fuera_de_epoca); esto solo decide qué se ofrece. El guardián la compara con la de la api en los días límite
+    var PARTES_MADRID = typeof Intl !== "undefined" ? new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid", month: "numeric", day: "numeric" }) : null;
+    function epocaDeLaFecha(fecha) {
+      var mes = 0, dia = 0;
+      PARTES_MADRID.formatToParts(fecha).forEach(function (x) { if (x.type === "month") mes = Number(x.value); else if (x.type === "day") dia = Number(x.value); });
+      var mmdd = mes * 100 + dia;
+      if (mmdd >= 321 && mmdd <= 620) return "primavera";
+      if (mmdd >= 621 && mmdd <= 922) return "verano";
+      if (mmdd >= 923 && mmdd <= 1220) return "otono";
+      return "invierno";
+    }
+    function piezasDeLaEpoca(epoca) { return PIEZAS.filter(function (p) { return p.epoca === epoca; }); }
+    function piezaPorId(id) { for (var i = 0; i < PIEZAS.length; i++) if (PIEZAS[i].id === id) return PIEZAS[i]; return null; }
 
     // «olivo:<finca>:<copas_id>» → { finca, copas_id } o null (el id provisional «olivo:<finca>:i<n>» no se puede personalizar: no es estable, decisión 92)
     function idOlivo(id) {
@@ -203,13 +223,13 @@
     }
     return { CERCA_M: CERCA_M, MAX_ROTULOS: MAX_ROTULOS, REFRESCO_S: REFRESCO_S, MAX_PX: MAX_PX, MAX_BYTES: MAX_BYTES, MAX_FOTO_PX: MAX_FOTO_PX, TIPOS: TIPOS, MOTIVOS: MOTIVOS, AVISO: AVISO, AVISO_PRUEBAS: AVISO_PRUEBAS,
       idOlivo: idOlivo, clave: clave, indexa: indexa, decoraciones: decoraciones, validaNombre: validaNombre, validaFichero: validaFichero, reduce: reduce, mensajeError: mensajeError, ofrece: ofrece,
-      cercanos: cercanos, textoDecorar: textoDecorar, DECO_ILUSTRATIVA: DECO_ILUSTRATIVA, cuerpoOlivo: cuerpoOlivo, Cliente: Cliente, cuelgaImagen: cuelgaImagen };
+      cercanos: cercanos, PIEZAS: PIEZAS, epocaDeLaFecha: epocaDeLaFecha, piezasDeLaEpoca: piezasDeLaEpoca, piezaPorId: piezaPorId, textoDecorar: textoDecorar, DECO_ILUSTRATIVA: DECO_ILUSTRATIVA, cuerpoOlivo: cuerpoOlivo, Cliente: Cliente, cuelgaImagen: cuelgaImagen };
   })();
   // [puro:fin]
 
   // [motor:inicio] (lo evalúa también en Node pruebas/guardianes/personalizacion.test.js con un DOM, un Entidades y un Laminas de mentira)
   function PersonalizaMotor(n) {
-    var P = PersonalizaPuro, DP = typeof DecoracionesPuro !== "undefined" ? DecoracionesPuro : null, API = HazasPuro.prefijoApi(location.search, D.base);
+    var P = PersonalizaPuro, API = HazasPuro.prefijoApi(location.search, D.base);
     if (!API) return { actualiza: function () {}, libera: function () {}, estado: function () { return { api: false }; } };   // sin servidor: ni pide ni crea nada
     var cli = P.Cliente(API, function (u, o) { return fetch(u, o); });
     var titular = null, mapa = {}, decos = {}, rotulosDe = [], cargadas = 0, hazasVistas = {}, tRefresco = 0, tarde = 0, vivo = true, pidiendo = 0;
@@ -250,11 +270,12 @@
     }
     // P7g D4: la pieza que ya tiene el olivo (de la lista de su haza) y las de la época actual (sin el componente de las decoraciones, no se ofrece decorar)
     function decoDe(c) { var l = c.haza ? decos[String(c.haza.id)] || [] : []; for (var k = 0; k < l.length; k++) if (l[k].finca === c.i.finca && l[k].copas_id === c.i.copas_id) return l[k].pieza; return null; }
-    function nombreDe(pieza) { var p = DP && DP.pieza(pieza); return p ? p.nombre : null; }
-    function epocaAhora() { return DP ? DP.epocaDeLaFecha(new Date()) : null; }
+    function nombreDe(pieza) { var p = P.piezaPorId(pieza); return p ? p.nombre : null; }
+    function hayQuienDibuje() { return Bus.hay("decoraciones:cambian"); }   // el componente 50_decoraciones.js escucha ese evento; sin él (?decoraciones=0) nadie la dibujaría
+    function epocaAhora() { return P.epocaDeLaFecha(new Date()); }
     function complementa(f, id, modo) {
       var c = contexto(id); if (!c.i) return;
-      var of = P.ofrece({ titular: titular, mia: c.mia, dato: c.dato, vr: modo === "vr", estable: true, decora: DP ? DP.piezasDeLaEpoca(epocaAhora()) : undefined, deco: DP ? decoDe(c) : null });
+      var of = P.ofrece({ titular: titular, mia: c.mia, dato: c.dato, vr: modo === "vr", estable: true, decora: hayQuienDibuje() ? P.piezasDeLaEpoca(epocaAhora()) : undefined, deco: hayQuienDibuje() ? decoDe(c) : null });
       var filas = [];
       if (c.dato && c.dato.nombre) filas.push({ k: "Nombre", v: c.dato.nombre, de: c.mia ? "puesto por tu familia" : "puesto por la familia de esa haza" });
       if (c.dato && c.dato.objeto) filas.push({ k: c.dato.objeto.tipo === "pintura" ? "Pintura" : "Foto", v: modo === "vr" ? "colgada junto al árbol" : "colgada junto al árbol al elegirlo", de: "subida por la familia; no la mide el gemelo" });
@@ -318,8 +339,8 @@
           ocupado(true, "Reduciendo y subiendo…");
           P.cuelgaImagen(cli, reduceImagen, f, c.i, tipo.value).then(function (r) { if (r.ok) contador.subidas++; fin(r); });
         });
-      } else if (que === "decorar" && DP) {
-        var epoca = epocaAhora(), piezas = DP.piezasDeLaEpoca(epoca), actual = decoDe(c), botones = [];
+      } else if (que === "decorar") {
+        var epoca = epocaAhora(), piezas = P.piezasDeLaEpoca(epoca), actual = decoDe(c), botones = [];
         caja.appendChild(el("p", "margin:0 0 8px", P.textoDecorar(epoca, piezas, actual && nombreDe(actual))));
         piezas.forEach(function (pz) {
           var b = el("button", ESTILO_BOTON + ";display:block;width:100%;text-align:left;margin:6px 0", pz.nombre + (pz.id === actual ? " (la que tiene ahora)" : ""));
