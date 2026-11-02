@@ -77,6 +77,7 @@ Una decoración es una pieza de un **catálogo cerrado de seis piezas de tempora
 - **Datos personales**: ninguno nuevo. Sin texto libre ni imagen, no hay denuncia ni entrada en la bandeja; la decoración va en el derecho de acceso (`GET /api/yo/datos`, campo `decoracion`) y se borra con el hogar como el resto de la fila. Auditoría: `vida.decoracion`, `vida.decoracion_quitada`, `admin.decoracion_retirada`.
 - **Quitar**: el titular quita la suya (`DELETE …/decoracion`); si la fila no tenía nombre ni foto queda retirada entera (conserva el código, para que «restaurar» de la oficina la pueda devolver); si los tenía, solo pierde la decoración. Retirar la decoración desde la oficina hace lo mismo. «Quitar todo» (`DELETE /api/olivos/…`) retira la fila con decoración incluida.
 - **Código**: `apps/api/src/vida/decoraciones.ts` (catálogo, época, operaciones sobre la base) y las rutas en `vida/rutas.ts`.
+- **En el mundo (D3)**: la personalización (`42_personalizacion.js`) saca las decoraciones de la lista blanca de cada haza y las publica por el Bus (`decoraciones:cambian`); las dibuja el componente `decoraciones-olivo` (`50_decoraciones.js`), ilustrativas y rotuladas así en la ficha del olivo ([COMPONENTES](COMPONENTES.md#p7g-d3--las-decoraciones-de-los-olivos-decoraciones-olivo)). Un olivo con solo decoración no lleva rótulo de nombre ni «Denunciar». Aún no hay acción «Decorar» en la ficha (D4).
 
 ## Qué está probado y qué no
 
