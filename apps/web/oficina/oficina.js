@@ -65,7 +65,7 @@ function ir(sec, foco, param = null) {
   if (sec === "bandeja") bandeja.abre();
   if (sec === "agenda") agenda.abre();
   if (sec === "sistema") { sistema.abre(); llaves.abre(); }
-  if (sec === "mundo") mundo.abre();
+  if (sec === "mundo") mundo.abre(); else if (mundo) mundo.sale();   // OF14: el refresco de «Quién está en el mundo» para al cambiar de sección
   if (sec === "olivos") olivos.abre(); else if (olivos) olivos.sale();   // OF8b: el visor 3D no se queda con la GPU fuera de Olivos
   // OF15b: «#olivos/<finca>/<copas_id>» (desde la ficha del olivo) abre «Olivo real» con ese olivo ya buscado
   if (sec === "olivos" && param) { const [finca, id] = param.split("/"); olivos.ve("real", false); olivos.real.busca(finca, id); }

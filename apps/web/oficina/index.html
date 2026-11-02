@@ -286,6 +286,23 @@
 
 <section id="s-mundo" hidden>
   <div class="tarjeta">
+    <h2>Quién está en el mundo</h2>
+    <p class="nota">Quien está conectado ahora, por sala, con su alias del mundo (nunca el correo). La haza que mira y la vista aérea <b>aún no se saben</b>: el servidor no ve la posición de nadie, así que esas columnas salen vacías. Se actualiza solo cada 10 segundos mientras esta pantalla se ve.</p>
+    <div class="barra-h">
+      <button class="boton suave" id="mQuienRef" type="button">↻ Actualizar</button>
+      <p class="nota" id="mQuienCuenta" role="status" aria-live="polite"></p>
+    </div>
+    <div class="tabla-env" id="mQuienEnv" hidden>
+      <table aria-describedby="mQuienCuenta">
+        <caption class="vh">Personas conectadas al mundo</caption>
+        <thead><tr><th scope="col">Sala</th><th scope="col">Alias</th><th scope="col">Rol</th><th scope="col">Aparato</th><th scope="col">Conectado</th><th scope="col">Haza que mira</th><th scope="col">Acciones</th></tr></thead>
+        <tbody id="mQuienCuerpo"></tbody>
+      </table>
+    </div>
+    <p class="error" id="mQuienError" role="alert"></p>
+  </div>
+
+  <div class="tarjeta">
     <h2>Anunciar a toda la sala</h2>
     <p class="nota">Sale arriba, unos segundos, a quien esté en el mundo, y queda en su chat como «Oficina». Lo manda la api; no lleva tu nombre.</p>
     <form id="mAnuncioF" class="mundo-form" novalidate>
@@ -331,7 +348,7 @@
     </form>
     <p class="nota" id="mBalizaM" role="status" aria-live="polite"></p>
   </div>
-  <p class="nota">Quién está conectado y a qué haza mira (escalón 2) y abrir, cerrar y silenciar salas (escalón 3) no están todavía.</p>
+  <p class="nota">Abrir, cerrar y silenciar salas (escalón 3) no están todavía.</p>
 </section>
 
 <dialog id="dlgBalizaMover" aria-labelledby="dlgBalizaMoverT"><form id="fBalizaMover" novalidate>
