@@ -126,11 +126,11 @@
       return out;
     }
     // pinta la lista (las ajenas debajo, la tuya encima); vista = { MW, MH }: lo que cae fuera del mapa se salta. Devuelve cuántas dibujó (pruebas)
-    function pintaMini(c, X, Y, vista, lista) {
+    function pintaMini(c, X, Y, vista, hs) {
       var hechas = 0, MW = (vista && vista.MW) || 0, MH = (vista && vista.MH) || 0;
       [false, true].forEach(function (mia) {
         var e = mia ? MINI.propia : MINI.ajena;
-        lista.forEach(function (h) {
+        hs.forEach(function (h) {
           if (h.es_mia !== mia) return;
           var ax = X(h.bb[0]), bx = X(h.bb[2]), ay = Y(h.bb[3]), by = Y(h.bb[1]);   // Y crece hacia el sur: el norte (bb[3]) queda arriba
           if (bx < 0 || ax > MW || by < 0 || ay > MH) return;
@@ -226,9 +226,9 @@
     if (!lindesHazasAviso.puesto) { lindesHazasAviso.puesto = true; Mundo.alCargar(function () { if (lindesHazasAviso.fn) lindesHazasAviso.fn(); }); }
     // el minimapa (A4b): la misma linde en 2D con Minimapa.capa (punto de extensión C10); la lista se rehace al oír «hazas:cambia» y la casilla «Linde» (gLinde.visible)
     // la apaga igual que apaga el dibujo 3D. Va bajo los conejos y los perros (orden −30) y sobre las parcelas. No necesita las líneas de three.
-    var lista = P.miniLista(Hazas.lindes());
-    n.limpia(Minimapa.capa(function (c, X, Y, info) { if (gLinde.visible) st.mini = P.pintaMini(c, X, Y, info, lista); }, -30));
-    n.on("hazas:cambia", function () { lista = P.miniLista(Hazas.lindes()); if (L) construye(); else st.hazas = Hazas.lindes().length; });
+    var miniHazas = P.miniLista(Hazas.lindes());
+    n.limpia(Minimapa.capa(function (c, X, Y, info) { if (gLinde.visible) st.mini = P.pintaMini(c, X, Y, info, miniHazas); }, -30));
+    n.on("hazas:cambia", function () { miniHazas = P.miniLista(Hazas.lindes()); if (L) construye(); else st.hazas = Hazas.lindes().length; });
     n.on("depura:lineas", function (d) {
       if (d && d.lineas && st.llamadas) d.lineas.push("Lindes: " + st.llamadas + " llamadas · " + (st.tramos.propia + st.tramos.ajena) + " tramos · " + st.triangulos + " triángulos · paso " + st.paso.toFixed(1) + " m" + (st.recortado ? " · RECORTADAS" : ""));
     });
