@@ -129,6 +129,7 @@
         <button class="boton suave" id="bDescartar" type="button">Descartar</button>
         <button class="boton prim empuja" id="bGuarda" type="button">Guardar versión</button>
       </div>
+      <section class="tarjeta" id="hOlivo" aria-labelledby="hOlivoT" aria-live="polite" hidden></section>
       <p class="nota" id="mAyuda">Ratón: arrastra un vértice, o un lado para crear uno; Alt+clic quita un vértice; clic en una haza para elegirla. Teclado, con el mapa enfocado: Tab y Mayús+Tab eligen vértice, las flechas lo mueven 0,5 m (con Mayús, 5 m), Supr lo quita, Insert añade otro detrás, Ctrl+Z deshace y Esc suelta; sin vértice elegido, las flechas mueven el mapa y + y − acercan y alejan. No se puede dibujar ni guardar una haza fuera del límite de la finca (línea blanca discontinua).</p>
       <p class="leyenda nota"><span>Copas: vuelo LiDAR 2024 <span class="pill p-ok">medido</span></span><span>Ortofoto: PNOA © IGN (CC BY 4.0); puede ir desplazada respecto a las copas (ADR-0006): dibuja sobre las copas</span><span>Parcelas: lindes del índice de la finca</span><span id="mLimite">Límite de la finca: cargando…</span><span>ETRS89 / UTM 30N (EPSG:25830)</span><span id="mCoord"></span></p>
     </div>
@@ -341,6 +342,10 @@
   <p class="error" id="mMoverError" role="alert"></p>
   <div class="barra-h"><button class="boton suave" id="mMoverNo" type="button">Cancelar</button><button class="boton prim empuja" type="submit">Mover</button></div>
 </form></dialog>
+
+<section id="s-olivo" hidden>
+  <div class="tarjeta ficha-olivo" id="oFicha" aria-live="polite" aria-busy="false"></div>
+</section>
 
 <section id="s-proximamente" hidden>
   <div class="tarjeta">

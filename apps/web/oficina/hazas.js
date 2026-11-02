@@ -31,6 +31,7 @@ import { get as proyeccion } from "ol/proj.js";
 import proj4 from "proj4";
 import { $, api, aviso, conConfirmacion, confirma, fecha, h, vacia } from "./comun.js";
 import { construyeHash } from "./enlaces_puro.js";
+import { copaEn, filasResumen, resumenDeCopa } from "./olivo_ficha_puro.js";
 import { area, cabeEn, codigoLibre, cuenta, inserta, mueve, num, puntoEnLimite, quita, redondea, sePisan, verticeCercano, vertices } from "./hazas_puro.js";
 
 // ETRS89 / UTM 30N, la de la base, el motor y la api (EPSG:25830)
@@ -218,6 +219,7 @@ export function iniciaHazas({ sesion }) {
 
   async function cargaFinca() {
     estadoMapa("Cargando la ortofoto y las copas de " + finca + "…");
+    $("#hOlivo").hidden = true;   // OF15b: el panel del olivo es de la finca anterior
     await cargaLimite();
     const base = "/teselas/" + encodeURIComponent(finca) + "/";
     let d = null;
@@ -305,6 +307,24 @@ export function iniciaHazas({ sesion }) {
     }
     const f = mapa.forEachFeatureAtPixel(e.pixel, x => x, { layerFilter: l => l === capaHazas, hitTolerance: 3 });
     if (f && f !== sel) cambiaA(f.getId(), false);
+    panelOlivo(e.coordinate);
+  }
+
+  /** OF15b: el clic sobre una copa medida abre un panel breve con lo que ya traen las copas del mapa y el enlace «Ver la ficha» (la completa se pide a la api al abrirla). */
+  function panelOlivo(coord) {
+    const sitio = $("#hOlivo"), res = mapa.getView().getResolution();
+    if (!indice || !$("#cCopas").checked || res > 4) return;   // con la capa de copas apagada o demasiado lejos (no se dibujan) no hay olivo que pulsar
+    const c = copaEn(indice, coord[0], coord[1], res * 6);
+    if (!c) { sitio.hidden = true; return; }
+    const r = resumenDeCopa(indice, finca, c.i);
+    vacia(sitio).append(h("h3", { id: "hOlivoT" }, "Olivo " + r.numero + " de la ficha"),
+      h("dl", { class: "datos" }, ...filasResumen(r).slice(1).flatMap(([k, v]) => [h("dt", null, k), h("dd", null, v)])),
+      h("p", { class: "nota" }, h("span", { class: "pill p-ok" }, "medido (LiDAR 2024)")),
+      h("div", { class: "enlaces" },
+        r.hash ? h("a", { class: "boton", href: r.hash, "data-enlace": "olivo" }, "Ver la ficha") : h("p", { class: "nota" }, "Este índice no trae el id del olivo: no hay ficha que abrir."),
+        h("button", { class: "boton suave", type: "button", onclick: () => { sitio.hidden = true; } }, "Cerrar")));
+    sitio.hidden = false;
+    estadoMapa("Olivo " + r.numero + " de la ficha: ver el panel bajo el mapa.");
   }
 
   // ---------------------------------------------------------------- edición

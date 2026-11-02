@@ -6,6 +6,7 @@ import { iniciaFamilias } from "./familias.js";
 import { cuentaPendientes, iniciaBandeja } from "./bandeja.js";
 import { iniciaSistema } from "./sistema.js";
 import { iniciaOlivos } from "./olivos.js";
+import { iniciaFichaOlivo } from "./olivo_ficha.js";
 import { iniciaAgenda } from "./agenda.js";
 import { iniciaMundo } from "./mundo.js";
 import { construyeHash, parseaHash } from "./enlaces_puro.js";
@@ -17,7 +18,7 @@ const SECCIONES = [
 ];
 const sesion = { rol: "oficina", cargada: false };
 let actual = "inicio";
-let familias = null, hazas = null, bandeja = null, sistema = null, olivos = null, agenda = null, mundo = null, llaves = null;
+let familias = null, hazas = null, bandeja = null, sistema = null, olivos = null, agenda = null, mundo = null, llaves = null, fichaOlivo = null;
 
 // ------------------------------------------------------------------ tema
 $("#bTema").addEventListener("click", () => {
@@ -45,23 +46,29 @@ document.addEventListener("click", e => {
 
 /** Va a una sección; `param` es el del hash («#hazas/H-01»: código de la haza; «#familias/12»: id del hogar), solo para las que lo admiten. */
 function ir(sec, foco, param = null) {
+  // OF15b: «#olivo/<finca>/<copas_id>» es la ficha de un olivo, una vista dentro de Hazas (sin botón propio en la barra); sin parámetro válido, Hazas a secas
+  const vista = sec === "olivo" && param ? "olivo" : null;
+  if (sec === "olivo") sec = "hazas";   // en la barra, la ficha cuelga de Hazas
   if (!SECCIONES.some(s => s[0] === sec)) sec = "inicio";
-  actual = sec;
-  const [, , nombre, hecha] = SECCIONES.find(s => s[0] === sec);
-  for (const id of ["inicio", "familias", "hazas", "bandeja", "agenda", "mundo", "olivos", "sistema", "proximamente"]) $("#s-" + id).hidden = id !== (hecha ? sec : "proximamente");
+  actual = vista || sec;
+  const [, , nombre0, hecha] = SECCIONES.find(s => s[0] === sec), nombre = vista ? "Ficha del olivo" : nombre0;
+  for (const id of ["inicio", "familias", "hazas", "bandeja", "agenda", "mundo", "olivos", "sistema", "olivo", "proximamente"]) $("#s-" + id).hidden = id !== (vista || (hecha ? sec : "proximamente"));
   if (!hecha) $("#proxTitulo").textContent = nombre + ": próximamente";
   for (const b of nav.querySelectorAll("button")) { if (b.dataset.sec === sec) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); }
   $("#titulo").textContent = nombre;
   document.title = nombre + " · Oficina · Cuarenta hazas";
-  const hash = construyeHash(sec, param);
+  const hash = vista ? construyeHash("olivo", param) : construyeHash(sec, param);
   if (location.hash !== hash) history.replaceState(null, "", hash);
   if (sec === "familias") familias.abre(param ? Number(param) : null);
-  if (sec === "hazas") abreHazas(param);
+  if (vista) fichaOlivo.abre(param);
+  else if (sec === "hazas") abreHazas(param);
   if (sec === "bandeja") bandeja.abre();
   if (sec === "agenda") agenda.abre();
   if (sec === "sistema") { sistema.abre(); llaves.abre(); }
   if (sec === "mundo") mundo.abre();
   if (sec === "olivos") olivos.abre(); else if (olivos) olivos.sale();   // OF8b: el visor 3D no se queda con la GPU fuera de Olivos
+  // OF15b: «#olivos/<finca>/<copas_id>» (desde la ficha del olivo) abre «Olivo real» con ese olivo ya buscado
+  if (sec === "olivos" && param) { const [finca, id] = param.split("/"); olivos.ve("real", false); olivos.real.busca(finca, id); }
   if (sec === "inicio") { cuentaFamilias(); cuentaPendientes(); }
   if (foco) $("#titulo").focus();
 }
@@ -113,6 +120,7 @@ familias = iniciaFamilias({ sesion });
 bandeja = iniciaBandeja({ sesion });
 sistema = iniciaSistema({ sesion });
 olivos = iniciaOlivos({ sesion });
+fichaOlivo = iniciaFichaOlivo();
 agenda = iniciaAgenda({ sesion });
 mundo = iniciaMundo({ sesion });
 if (new URLSearchParams(location.search).has("prueba")) window.__bandeja = () => bandeja.estado();   // solo lectura, para la prueba de Chrome
