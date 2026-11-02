@@ -10,6 +10,7 @@ import { rutasBandeja } from "./bandeja.ts";
 import { rutasContornoFinca } from "./contorno.ts";
 import { rutasFamilias } from "./familias.ts";
 import { rutasHazasOficina } from "./hazas.ts";
+import { rutasOlivosOficina } from "./olivos.ts";
 import { rutasSistema } from "./sistema.ts";
 
 const ID = { type: "object", additionalProperties: false, required: ["id"], properties: { id: { type: "integer", minimum: 1, maximum: 2147483647 } } } as const;
@@ -21,6 +22,7 @@ export async function rutasAdmin(app: FastifyInstance, ctx: Contexto): Promise<v
   await rutasFamilias(app, ctx);
   await rutasBandeja(app, ctx);
   await rutasHazasOficina(app, ctx);
+  await rutasOlivosOficina(app, ctx);
   await rutasContornoFinca(app, ctx);
   await rutasSistema(app, ctx);
 

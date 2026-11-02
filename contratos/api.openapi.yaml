@@ -2078,6 +2078,66 @@ paths:
         "403": { $ref: "#/components/responses/SinPermiso" }
         "404": { description: "no existe o no tiene decoración visible (no_existe)" }
 
+  /api/admin/olivos/{finca}/{copas_id}:
+    get:
+      summary: "La ficha de un olivo para la oficina (OF15b): lo medido, su haza y titular, y lo que la familia le ha puesto"
+      description: >
+        Solo oficina y admin, solo lectura, sin caché. Lo MEDIDO (posicion UTM 30N, altura_m del LiDAR, tipo) va aparte de lo que PUSO LA FAMILIA
+        (`personalizacion`: ilustrativo, no un dato de la explotación). La haza es la que contiene el olivo (ST_Intersects, la de menor id, como en
+        vida/rutas.ts) y `titular` es solo el id del hogar (nunca correo ni nombre); `personalizacion` es la del titular ACTUAL de esa haza (la visible,
+        y si no hay, la última retirada), o null. Las fotos (EIPD pendiente, decisión 165): `objeto` es solo {tipo, medio_id}, sin url ni imagen; la
+        imagen para moderar sale únicamente por la bandeja. `decoracion.nombre` y `epoca` salen del catálogo (decoraciones.json) y son null si la pieza
+        ya no está en él. 404 olivo_no_existe si no hay ese olivo vivo en esa finca.
+      security: [{ sesion: [] }]
+      parameters:
+        - { name: finca, in: path, required: true, schema: { type: string, pattern: "^[a-z0-9_-]{1,32}$" } }
+        - { name: copas_id, in: path, required: true, schema: { type: integer, minimum: 0, maximum: 4294967295 } }
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [finca, copas_id, posicion, altura_m, tipo, haza, personalizacion]
+                properties:
+                  finca: { type: string }
+                  copas_id: { type: integer }
+                  posicion: { type: object, additionalProperties: false, required: [e, n], properties: { e: { type: number, description: "UTM 30N (EPSG:25830), m" }, n: { type: number } } }
+                  altura_m: { type: [number, "null"], description: "medido (LiDAR)" }
+                  tipo: { type: integer, description: "-1 = sin tipo" }
+                  haza:
+                    type: [object, "null"]
+                    additionalProperties: false
+                    required: [id, codigo, titular]
+                    properties:
+                      id: { type: integer }
+                      codigo: { type: string }
+                      titular: { type: [object, "null"], additionalProperties: false, required: [hogar_id], properties: { hogar_id: { type: integer } } }
+                  personalizacion:
+                    type: [object, "null"]
+                    additionalProperties: false
+                    required: [personalizacion_id, estado, nombre, decoracion, objeto]
+                    properties:
+                      personalizacion_id: { type: integer }
+                      estado: { enum: [visible, retirado] }
+                      nombre: { type: [string, "null"] }
+                      decoracion:
+                        type: [object, "null"]
+                        additionalProperties: false
+                        required: [id, nombre, epoca]
+                        properties: { id: { type: string }, nombre: { type: [string, "null"] }, epoca: { type: [string, "null"] } }
+                      objeto:
+                        type: [object, "null"]
+                        additionalProperties: false
+                        required: [tipo, medio_id]
+                        properties: { tipo: { enum: [foto, pintura] }, medio_id: { type: integer } }
+        "400": { description: finca o copas_id con forma no válida }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: olivo_no_existe }
+
   /api/admin/bandeja/resumen:
     get:
       summary: Lo pendiente de la bandeja (para el contador de la barra lateral de la oficina)
