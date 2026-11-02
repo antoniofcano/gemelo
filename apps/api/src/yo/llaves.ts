@@ -2,6 +2,8 @@
 // Configuración → Mis dispositivos, la baja de una llave y el correo de aviso. Las reglas de quién puede dar de alta y la ceremonia son de
 // ../oficina/llaves.ts (OF13b-3); aquí solo lo que se lee y se quita. Cada función lleva el id del hogar de la SESIÓN: no hay forma de nombrar
 // la llave de otra cuenta (una ajena y una inexistente son la misma respuesta).
+import type { FastifyRequest } from "fastify";
+import { type Cartero, mensajeDeLlaveAnadida, mensajeDeLlaveQuitada } from "../auth/correo.ts";
 import { audita, esOficina, type Rol } from "../auth/servicio.ts";
 import { type Bd, enTransaccion } from "../bd/pool.ts";
 import { estadoLlaves, MAX_LLAVES, revocaLlave } from "../oficina/llaves.ts";
@@ -63,5 +65,18 @@ export async function quitaLlave(bd: Bd, hogarId: number, llaveId: number, sesio
     if (n === null) return { ok: false, error: "no_existe" };
     await audita(t, hogarId, "llave.quitada", { llave: llaveId, sesiones: n, quedan: e.activas - 1, tipo });
     return { ok: true, nombre: l.rows[0].nombre, sesiones: n, eraEsta, quedan: e.activas - 1, tipo };
+  });
+}
+
+/**
+ * El aviso de seguridad por correo (decisión 187) a la cuenta `hogar`: se busca su correo, se manda en SEGUNDO PLANO y un fallo (la búsqueda, el SMTP) se
+ * registra sin la dirección ni el texto del error y NO tumba la petición ni deshace el cambio. Lo usan las rutas de `/api/yo/llaves` y las de la oficina.
+ */
+export async function avisaLlave(req: FastifyRequest, bd: Bd, cartero: Cartero, tipo: "anadida" | "quitada", hogar: number, nombre: string): Promise<void> {
+  const correo = await correoDeLaCuenta(bd, hogar).catch(() => null);
+  if (!correo) return;
+  const evento = tipo === "anadida" ? "correo_llave_anadida_fallido" : "correo_llave_quitada_fallido";
+  Promise.resolve().then(() => cartero.envia((tipo === "anadida" ? mensajeDeLlaveAnadida : mensajeDeLlaveQuitada)(correo, nombre))).catch((e: unknown) => {
+    req.log.error({ evento, hogar, error: e instanceof Error ? e.name : "?" }, "no se pudo mandar el aviso de la llave");
   });
 }

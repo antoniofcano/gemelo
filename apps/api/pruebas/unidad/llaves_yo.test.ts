@@ -483,6 +483,25 @@ test("cuenta de oficina: no se quita la última por esta ruta (409), ni sin conf
   } finally { await m.app.close(); }
 });
 
+test("las rutas de la oficina de OF13 también avisan por correo: alta propia y revocación propia (decisión 187)", async () => {
+  const m = await monta({ hogar: 2, confirmada: true });
+  try {
+    const a = new AutenticadorFalso(ORIGEN);
+    const op = await llama(m, "POST", "/api/oficina/llaves/alta/opciones", {});
+    assert.equal(op.statusCode, 200, op.body);
+    const alta = await llama(m, "POST", "/api/oficina/llaves/alta", { nombre: "Llave de la oficina", respuesta: a.alta(op.json()) });
+    assert.equal(alta.statusCode, 201, alta.body);
+    await asentada();
+    assert.deepEqual(m.cartero.mensajes.map(x => [x.para, x.asunto]), [["ofi.llaves@example.com", "Se ha añadido una llave de acceso a tu cuenta"]]);
+    const otra = llaveFalsa(m.b, 2, 9);
+    const rev = await llama(m, "POST", "/api/oficina/llaves/" + otra.id + "/revocar", {});
+    assert.equal(rev.statusCode, 200, rev.body);
+    await asentada();
+    assert.deepEqual(m.cartero.mensajes.map(x => x.asunto), ["Se ha añadido una llave de acceso a tu cuenta", "Se ha quitado una llave de acceso de tu cuenta"]);
+    assert.ok(m.cartero.mensajes[1]!.texto.includes("Llave 9"));
+  } finally { await m.app.close(); }
+});
+
 // ---------------------------------------------------------------- los avisos y los datos
 test("los dos avisos: texto llano, el correo solo en el destinatario, sin enlaces, con cómo quitarla y que el enlace sigue siendo la entrada", () => {
   const ahora = new Date("2026-11-02T17:04:00Z");

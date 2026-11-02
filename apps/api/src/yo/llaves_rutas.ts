@@ -9,7 +9,6 @@
 // El hogar sale SIEMPRE de la sesión. Nunca desde unas gafas vinculadas (`origen = 'vinculo'`).
 import type { RegistrationResponseJSON } from "@simplewebauthn/server";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { type Cartero, type Mensaje, mensajeDeLlaveAnadida, mensajeDeLlaveQuitada } from "../auth/correo.ts";
 import { audita, esOficina } from "../auth/servicio.ts";
 import type { Contexto } from "../contexto.ts";
 import { CONFIRMACION_REQUERIDA, requiereSesion, SIN_SESION } from "../oficina/acceso.ts";
@@ -18,7 +17,7 @@ import {
   estadoLlaves, gastaReto, guardaReto, llavesVivas, MAX_LLAVES, nombreDeLlave, opcionesDeAlta, permisoAlta, registraLlave, type SesionDeAlta,
   usuarioDeLlave, verificaAlta,
 } from "../oficina/llaves.ts";
-import { correoDeLaCuenta, llavesDeLaCuenta, quitaLlave } from "./llaves.ts";
+import { avisaLlave, llavesDeLaCuenta, quitaLlave } from "./llaves.ts";
 
 export const TEXTO_SOLO_TITULAR_LLAVES = "Las llaves se gestionan desde tu móvil u ordenador con tu enlace, no desde unas gafas ya vinculadas.";
 export const TEXTO_LIMITE_LLAVES = "Demasiados intentos con las llaves. Espera unos minutos y vuelve a probarlo.";
@@ -39,13 +38,6 @@ const RESPUESTA = {
     response: { type: "object", additionalProperties: true },
   },
 } as const;
-
-/** Los avisos de seguridad no se esperan ni tumban la petición: un fallo del correo se registra (sin la dirección ni el texto del error) y la llave queda como está. */
-function manda(req: FastifyRequest, cartero: Cartero, evento: string, hogar: number, mensaje: () => Mensaje): void {
-  Promise.resolve().then(() => cartero.envia(mensaje())).catch((e: unknown) => {
-    req.log.error({ evento, hogar, error: e instanceof Error ? e.name : "?" }, "no se pudo mandar el aviso de la llave");
-  });
-}
 
 export async function rutasYoLlaves(app: FastifyInstance, ctx: Contexto): Promise<void> {
   const { bd, config, cartero } = ctx;
@@ -124,10 +116,7 @@ export async function rutasYoLlaves(app: FastifyInstance, ctx: Contexto): Promis
       const no = niega(r.error);
       return rep.code(no!.codigo).send(no!.cuerpo);
     }
-    if (r.avisar) {
-      const correo = await correoDeLaCuenta(bd, hogar).catch(() => null);
-      if (correo) manda(req, cartero, "correo_llave_anadida_fallido", hogar, () => mensajeDeLlaveAnadida(correo, nombre));
-    }
+    if (r.avisar) await avisaLlave(req, bd, cartero, "anadida", hogar, nombre);
     return rep.code(201).send({ id: r.id, nombre });
   });
 
@@ -143,8 +132,7 @@ export async function rutasYoLlaves(app: FastifyInstance, ctx: Contexto): Promis
       if (q.error === "ultima_llave") return rep.code(409).send({ error: "ultima_llave", mensaje: "Es la única llave de la cuenta de la oficina: añade otra antes de quitar esta (o pide a un admin que lo haga)." });
       return rep.code(404).send({ error: "no_existe" });
     }
-    const correo = await correoDeLaCuenta(bd, hogar).catch(() => null);
-    if (correo) manda(req, cartero, "correo_llave_quitada_fallido", hogar, () => mensajeDeLlaveQuitada(correo, q.nombre));
+    await avisaLlave(req, bd, cartero, "quitada", hogar, q.nombre);
     return { sesiones_cerradas: q.sesiones, era_esta: q.eraEsta, quedan: q.quedan };
   });
 }
