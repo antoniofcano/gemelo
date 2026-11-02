@@ -187,6 +187,38 @@ test("baja con un clic: el POST sin Origin con la firma apaga los avisos por cor
   assert.equal(de(ANA).length, 0, "sin avisos_correo, solo la campana");
 });
 
+// ---------------------------------------------------------------- el interruptor (OF11f)
+test("interruptor: cada hogar lee y cambia SOLO el suyo, auditado sin el correo, y la oficina lo ve en la ficha; después sí le llegan los avisos", async t => {
+  if (salta(t)) return;
+  const marta = (await entra(MARTA)).sesion, luis = (await entra(LUIS)).sesion;
+  assert.deepEqual((await pide("GET", "/api/yo/avisos", marta)).json(), { avisos_correo: false }, "una cuenta creada a mano parte en «no»");
+  assert.equal((await pide("PUT", "/api/yo/avisos", marta, { avisos_correo: "si" })).statusCode, 400);
+  assert.equal((await pide("PUT", "/api/yo/avisos", marta, { avisos_correo: 1 })).statusCode, 400, "solo un booleano de verdad");
+  assert.equal((await pide("PUT", "/api/yo/avisos", marta, { avisos_correo: true, hogar_id: ids[LUIS] })).statusCode, 400, "no se puede nombrar otro hogar");
+  const luisAntes = (await q<{ avisos_correo: boolean }>("SELECT avisos_correo FROM hogares WHERE id = $1", [ids[LUIS]]))[0]!.avisos_correo;
+  const ok = await pide("PUT", "/api/yo/avisos", marta, { avisos_correo: true });
+  assert.equal(ok.statusCode, 200);
+  assert.deepEqual(ok.json(), { avisos_correo: true });
+  assert.equal((await q<{ avisos_correo: boolean }>("SELECT avisos_correo FROM hogares WHERE id = $1", [ids[MARTA]]))[0]!.avisos_correo, true);
+  assert.equal((await q<{ avisos_correo: boolean }>("SELECT avisos_correo FROM hogares WHERE id = $1", [ids[LUIS]]))[0]!.avisos_correo, luisAntes, "el de otro hogar no se toca");
+  assert.deepEqual((await pide("GET", "/api/yo/avisos", luis)).json(), { avisos_correo: luisAntes });
+  const aud = await q<{ detalle: unknown }>("SELECT detalle FROM auditoria WHERE accion = 'hogar.avisos_correo' AND hogar_id = $1", [ids[MARTA]]);
+  assert.equal(aud.length, 1);
+  assert.ok(!JSON.stringify(aud[0]!.detalle).includes("@"), "la auditoría no guarda el correo");
+  assert.equal((await app.inject({ method: "GET", url: "/api/yo/avisos", headers: deLaWeb() })).statusCode, 401);
+  // la oficina lo ve (solo lectura) en la lista de familias
+  const lista = await pide("GET", "/api/admin/hogares?q=" + encodeURIComponent(MARTA), ofi);
+  assert.equal(lista.statusCode, 200);
+  assert.equal(lista.json().hogares.find((h: { correo: string }) => h.correo === MARTA).avisos_correo, true);
+  // y al apuntarse ya recibe el correo
+  const id = await crea();
+  vacia();
+  assert.equal((await pide("POST", `/api/agenda/${id}/inscripcion`, marta, { personas: 1 })).statusCode, 201);
+  await rep.reparte();
+  assert.equal(de(MARTA).length, 1, "con el interruptor en «sí», le llega la confirmación");
+  assert.deepEqual((await pide("PUT", "/api/yo/avisos", marta, { avisos_correo: false })).json(), { avisos_correo: false });
+});
+
 // ---------------------------------------------------------------- Mailpit (SMTP real de infra/dev)
 const MAILPIT = process.env["GEMELO_MAILPIT_URL"]?.replace(/\/$/, "");
 test("Mailpit: el cartero real manda el aviso de cancelación con el .ics (METHOD:CANCEL) y la baja en las cabeceras", { skip: MAILPIT ? false : "sin GEMELO_MAILPIT_URL: el envío por SMTP NO se ha comprobado" }, async () => {
