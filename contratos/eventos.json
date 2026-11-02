@@ -125,8 +125,39 @@
         "44_lindes",
         "45_voz",
         "46_guiada",
-        "47_habla"
+        "47_habla",
+        "50_decoraciones"
       ]
+    },
+    "decoraciones:cambian": {
+      "descripcion": "P7g (D3): las decoraciones de los olivos de las hazas que se ven, sacadas de la lista blanca (GET /api/hazas/{id}/olivos, campo «decoracion») por 42_personalizacion cada vez que la trae (al arrancar, cada 2 minutos y tras un cambio propio) y al oír «decoraciones:pide». La lista entera, no un parche: quien dibuja (50_decoraciones) la sustituye. «pieza» es un slug; si no está en el catálogo (contratos/decoraciones.json), quien dibuja la ignora. Ilustrativas (regla 5).",
+      "datos": {
+        "type": "object",
+        "required": ["lista"],
+        "properties": {
+          "lista": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["finca", "copas_id", "pieza", "mia"],
+              "properties": {
+                "finca": { "type": "string", "pattern": "^[a-z0-9_-]{1,32}$" },
+                "copas_id": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+                "pieza": { "type": "string", "pattern": "^[a-z]{1,16}$" },
+                "mia": { "type": "boolean" }
+              }
+            }
+          }
+        }
+      },
+      "emiten": ["42_personalizacion"],
+      "escuchan": ["50_decoraciones"]
+    },
+    "decoraciones:pide": {
+      "descripcion": "P7g (D3): quien dibuja las decoraciones (50_decoraciones), al montarse, pide la última lista; quien la tiene (42_personalizacion) responde con «decoraciones:cambian». Sin nadie que la tenga, no pasa nada (llegará cuando se traiga).",
+      "datos": { "type": "object" },
+      "emiten": ["50_decoraciones"],
+      "escuchan": ["42_personalizacion"]
     },
     "fauna:conejo-cerca": {
       "descripcion": "Una pregunta con respuesta en el mismo objeto: un perro en { x, y } busca, en un radio (m), el conejo visible más cercano; la fauna rellena res con ese conejo (el grupo de three, con su estado en userData) o lo deja en null. Sin fauna (?fauna=0), res queda en null y los perros no persiguen a nadie.",

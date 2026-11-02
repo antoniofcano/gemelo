@@ -3,7 +3,7 @@
 // Consume: 01_datos (D, $), 02_mundo (copas), 02c_componentes (Bus, Componentes), 02d_laminas (Laminas), 02e_entidades (Entidades, Usables),
 //   03_escena (lienzo, camera, exag, modo), 09_camara (suelta, elige), 12_paseo (persona), 13b_hazas (HazasPuro, Hazas), 14_historia (lista),
 //   15_tiempo (hace), 16_vida (quita, mira), 29_vr (VRX, ficha)
-// Nota: Componente «personalizacion» (P7f, decisiones 91-96 y 99-102): nombrar, colgar una foto o un dibujo, verlo y denunciarlo en los olivos de las hazas. Solo se registra; nadie lo nombra. Sin servidor (sin D.base /teselas/… ni ?api=) no pide ni crea nada. Complementa la ficha común del olivo (Entidades.complementa), reduce la imagen en el aparato, pide el aviso con casilla y habla con /api/sesion, /api/hazas/{id}/olivos, /api/medios, /api/olivos, /api/personalizaciones/{id}/denuncias y /api/hazas/{id}/sugerencias. Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/personalizacion.test.js.
+// Nota: Componente «personalizacion» (P7f, decisiones 91-96 y 99-102): nombrar, colgar una foto o un dibujo, verlo y denunciarlo en los olivos de las hazas. Solo se registra; nadie lo nombra. Sin servidor (sin D.base /teselas/… ni ?api=) no pide ni crea nada. Complementa la ficha común del olivo (Entidades.complementa), reduce la imagen en el aparato, pide el aviso con casilla y habla con /api/sesion, /api/hazas/{id}/olivos, /api/medios, /api/olivos, /api/personalizaciones/{id}/denuncias y /api/hazas/{id}/sugerencias. Publica las decoraciones de la lista (P7g D3) por el Bus («decoraciones:cambian»). Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/personalizacion.test.js.
 // ===============================================================================
 
   // ---------- «personalización» (P7f; decisiones 91-96, 99-102; doc/sistema/VIDA.md y contratos/vida.md): los árboles de la haza con nombre y con una foto o pintura.
@@ -20,6 +20,8 @@
   //    ni GPS), con el AVISO obligatorio con casilla («sin caras de menores ni datos personales»), POST /api/medios?acepto=true y luego PUT /api/olivos/…;
   //  - en el mundo: el nombre sobre el olivo al acercarse (a menos de 45 m, los 12 más cercanos, en el DOM: 0 llamadas y 0 triángulos; solo se calcula si hay
   //    algo con nombre cerca) y, al elegir un olivo con imagen, una lámina pequeña colgada de él (Laminas: 1 llamada y 1 textura de 512 px, liberadas al soltar).
+  //  - P7g (D3): de la misma lista saca las decoraciones de cada olivo («decoracion») y las publica por el Bus («decoraciones:cambian», y otra vez a quien
+  //    pregunte con «decoraciones:pide»); las dibuja el componente de las decoraciones (50_decoraciones.js). Aquí no se dibujan ni se ofrecen todavía (D4).
   // Decisión 102: hasta la EIPD solo suben las cuentas de prueba. La api no distingue cuentas: si la subida está apagada responde 503 (subidas_apagadas) y la
   // pantalla lo explica; aquí no se inventa ningún permiso. Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/personalizacion.test.js.
   // [puro:inicio] (sin DOM ni THREE: lo evalúa en Node pruebas/guardianes/personalizacion.test.js)
@@ -52,6 +54,17 @@
         mapa[clave(o.finca, o.copas_id)] = { id: o.id, nombre: nombre, objeto: obj, haza: resp.haza_id, mia: mia }; n++;
       });
       return n;
+    }
+    // P7g (D3): las decoraciones de la misma respuesta: [{ finca, copas_id, pieza, mia }] de los olivos con «decoracion» (un slug; si la pieza existe en el
+    // catálogo lo decide quien la dibuja, 50_decoraciones.js). Un olivo con solo decoración no entra en el mapa de indexa (no tiene nombre ni imagen que denunciar)
+    function decoraciones(resp) {
+      if (!resp || typeof resp !== "object" || !Array.isArray(resp.olivos)) return [];
+      var out = [], mia = resp.es_mia === true;
+      resp.olivos.forEach(function (o) {
+        if (!o || typeof o !== "object" || !RE_FINCA.test(o.finca) || !(Number.isInteger(o.copas_id) && o.copas_id >= 0 && o.copas_id <= 4294967295)) return;
+        if (typeof o.decoracion === "string" && /^[a-z]{1,16}$/.test(o.decoracion)) out.push({ finca: o.finca, copas_id: o.copas_id, pieza: o.decoracion, mia: mia });
+      });
+      return out;
     }
     // el nombre como lo manda el cliente: espacios normalizados, 1-40 caracteres de los que admite la api. { ok, nombre } o { ok: false, error }
     function validaNombre(txt) {
@@ -169,7 +182,7 @@
       });
     }
     return { CERCA_M: CERCA_M, MAX_ROTULOS: MAX_ROTULOS, REFRESCO_S: REFRESCO_S, MAX_PX: MAX_PX, MAX_BYTES: MAX_BYTES, MAX_FOTO_PX: MAX_FOTO_PX, TIPOS: TIPOS, MOTIVOS: MOTIVOS, AVISO: AVISO, AVISO_PRUEBAS: AVISO_PRUEBAS,
-      idOlivo: idOlivo, clave: clave, indexa: indexa, validaNombre: validaNombre, validaFichero: validaFichero, reduce: reduce, mensajeError: mensajeError, ofrece: ofrece,
+      idOlivo: idOlivo, clave: clave, indexa: indexa, decoraciones: decoraciones, validaNombre: validaNombre, validaFichero: validaFichero, reduce: reduce, mensajeError: mensajeError, ofrece: ofrece,
       cercanos: cercanos, cuerpoOlivo: cuerpoOlivo, Cliente: Cliente, cuelgaImagen: cuelgaImagen };
   })();
   // [puro:fin]
@@ -179,7 +192,7 @@
     var P = PersonalizaPuro, API = HazasPuro.prefijoApi(location.search, D.base);
     if (!API) return { actualiza: function () {}, libera: function () {}, estado: function () { return { api: false }; } };   // sin servidor: ni pide ni crea nada
     var cli = P.Cliente(API, function (u, o) { return fetch(u, o); });
-    var titular = null, mapa = {}, rotulosDe = [], cargadas = 0, hazasVistas = {}, tRefresco = 0, tarde = 0, vivo = true, pidiendo = 0;
+    var titular = null, mapa = {}, decos = {}, rotulosDe = [], cargadas = 0, hazasVistas = {}, tRefresco = 0, tarde = 0, vivo = true, pidiendo = 0;
     var recuadro = null, caja = null, pool = [], rect = null, vec = new THREE.Vector3(), imagen = null, laminaDe = "", quitaCompl = null, contador = { rotulos: 0, laminas: 0, subidas: 0 };
     var ESTILO_BOTON = "font:inherit;color:inherit;min-height:44px;min-width:44px;padding:6px 12px;border-radius:8px;cursor:pointer;background:rgba(64,240,255,0.16);border:1px solid rgba(64,240,255,0.55)";
 
@@ -197,10 +210,16 @@
       return cli.olivosDeHaza(h.id).then(function (r) {
         pidiendo--;
         if (!vivo) return;
-        if (r.ok && r.cuerpo) { var viejas = Object.keys(mapa).filter(function (k) { return String(mapa[k].haza) === String(h.id); }); viejas.forEach(function (k) { delete mapa[k]; }); r.cuerpo.es_mia = h.es_mia; r.cuerpo.haza_id = h.id; P.indexa(mapa, r.cuerpo); cargadas++; }
+        if (r.ok && r.cuerpo) {
+          var viejas = Object.keys(mapa).filter(function (k) { return String(mapa[k].haza) === String(h.id); }); viejas.forEach(function (k) { delete mapa[k]; }); r.cuerpo.es_mia = h.es_mia; r.cuerpo.haza_id = h.id; P.indexa(mapa, r.cuerpo); cargadas++;
+          decos[String(h.id)] = P.decoraciones(r.cuerpo); emiteDecos();
+        }
         indexaTodo();
       });
     }
+    // P7g (D3): las decoraciones de todas las hazas vistas, para quien las dibuje (50_decoraciones.js; si no está, nadie escucha y no pasa nada)
+    function listaDecos() { var l = []; Object.keys(decos).forEach(function (k) { l = l.concat(decos[k]); }); return l; }
+    function emiteDecos() { Bus.emite("decoraciones:cambian", { lista: listaDecos() }); }
     function refrescaTodo() { var l = Hazas.vistas(); l.forEach(function (h) { hazasVistas[h.id] = true; }); return Promise.all(l.map(traeHaza)); }
     function refrescaUna(idHaza) { var l = Hazas.vistas().filter(function (h) { return String(h.id) === String(idHaza); }); return Promise.all(l.map(traeHaza)); }
 
@@ -392,6 +411,7 @@
     quitaCompl = Entidades.complementa("olivo", complementa);
     n.on("usable:elige", function (e) { if (e && P.idOlivo(e.id)) abreLamina(e.id); else cierraLamina(); });
     n.on("usable:suelta", function () { cierraLamina(); });
+    n.on("decoraciones:pide", function () { emiteDecos(); });
     cli.sesion().then(function (r) { if (r.ok && r.cuerpo && typeof r.cuerpo.titular === "boolean") titular = r.cuerpo.titular; });
     function actualiza(fase, dt) {
       if (!vivo) return;
@@ -401,11 +421,12 @@
       else if (tRefresco >= P.REFRESCO_S && !pidiendo && !laminaDe && !recuadro) { tRefresco = 0; refrescaTodo(); }
       eligeCerca();
     }
-    function estado() { return { api: true, titular: titular, hazas: Object.keys(hazasVistas).length, cargadas: cargadas, conNombre: rotulosDe.length, personalizados: Object.keys(mapa).length, rotulos: contador.rotulos, laminas: contador.laminas, lamina: laminaDe, recuadro: !!recuadro, resultado: lastAviso }; }
+    function estado() { return { api: true, titular: titular, hazas: Object.keys(hazasVistas).length, cargadas: cargadas, conNombre: rotulosDe.length, personalizados: Object.keys(mapa).length, decoraciones: listaDecos().length, rotulos: contador.rotulos, laminas: contador.laminas, lamina: laminaDe, recuadro: !!recuadro, resultado: lastAviso }; }
     function libera() {
       vivo = false; cierraPanel(); cierraLamina();
       if (quitaCompl) { quitaCompl(); quitaCompl = null; }
       if (capa && capa.parentNode) capa.parentNode.removeChild(capa); capa = null; pool = []; cerca = []; mapa = {}; rotulosDe = [];
+      if (Object.keys(decos).length) { decos = {}; emiteDecos(); }   // sin personalización no quedan decoraciones que dibujar
     }
     window.__personaliza = function () { return estado(); };
     return { actualiza: actualiza, libera: libera, estado: estado };
@@ -416,7 +437,7 @@
     id: "personalizacion", version: 1,
     consume: ["Entidades", "Usables", "Laminas", "Hazas", "HazasPuro", "VRX"],
     expone: [],
-    eventos: { escucha: ["usable:elige", "usable:suelta"], emite: ["personalizacion:resultado"] },
+    eventos: { escucha: ["usable:elige", "usable:suelta", "decoraciones:pide"], emite: ["personalizacion:resultado", "decoraciones:cambian"] },
     bandera: { defecto: true, url: "personaliza" },
     // nada en la escena 3D salvo la lámina del olivo elegido (1 llamada, 2 triángulos, una textura de 512 px, liberada al soltar); los nombres son DOM
     presupuesto: { llamadas: 1, triangulos: 2, texturasMB: 1 },
