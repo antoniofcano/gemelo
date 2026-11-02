@@ -38,7 +38,7 @@ export async function rutasOficina(app: FastifyInstance, ctx: Contexto): Promise
       // OF13: si la llave es obligatoria y esta sesión aún no se abrió con ella, la página enseña el alta o la entrada
       llave: {
         obligatoria: config.llave.obligatoria, con_llave: conLlave, requerida: s.llaveRequerida === true, activas: e.activas,
-        puede_alta: permisoAlta(conLlave, e) === "si",
+        puede_alta: permisoAlta({ origen: s.origen ?? "enlace", conLlave, aparatoAprobado: s.aparatoAprobado === true }, e).permiso === "si",
         rehabilitada_hasta: e.rehabilitadaHasta && e.rehabilitadaHasta > new Date() ? e.rehabilitadaHasta.toISOString() : null,
       },
       aparato: { id: s.aparatoId, nombre: a.rows[0]?.nombre ?? "Aparato", estado: s.aparatoAprobado ? "aprobado" : "pendiente" },

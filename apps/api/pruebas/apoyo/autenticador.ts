@@ -1,4 +1,4 @@
-// Un autenticador WebAuthn de mentira para las pruebas de la llave de acceso (OF13): una clave ES256 (P-256) en memoria que
+// Un autenticador WebAuthn de mentira para las pruebas de la llave de acceso (OF13, OF13b): una clave ES256 (P-256) en memoria que
 // responde como lo haría un navegador (RegistrationResponseJSON y AuthenticationResponseJSON, attestation «none»). Sirve
 // para probar la api de punta a punta con la verificación REAL de @simplewebauthn/server, sin navegador ni aparato.
 // No es un autenticador de verdad: no hay biometría, ni almacenamiento seguro, ni attestation de fabricante.
@@ -37,6 +37,12 @@ export interface OpcionesFalsas {
   contador?: number;
   /** firmar con otra clave (para probar que se rechaza) */
   claveAjena?: boolean;
+  /** entrada: el userHandle que devuelve (por defecto, el user.id que recibió en el alta; null: ninguno) */
+  userHandle?: string | null;
+  /** alta: lo que devuelve la extensión credProps (por defecto, { rk: true }; null: no la devuelve) */
+  credProps?: { rk?: boolean } | null;
+  /** banderas de respaldo (BE y BS): una llave sincronizada (iCloud, Google) */
+  respaldada?: boolean;
 }
 
 export class AutenticadorFalso {
@@ -44,6 +50,8 @@ export class AutenticadorFalso {
   private readonly privada: KeyObject;
   private readonly publica: KeyObject;
   contador = 0;
+  /** el user handle que guarda la credencial residente (el user.id de las opciones del alta) */
+  usuario: string | null = null;
   private readonly origenPorDefecto: string;
   constructor(origenPorDefecto: string) {
     this.origenPorDefecto = origenPorDefecto;
@@ -52,13 +60,14 @@ export class AutenticadorFalso {
   }
   get id(): string { return b64u(this.credencial); }
 
-  private flags(o: OpcionesFalsas, extra = 0): number { return 0x01 | (o.verifica === false ? 0 : 0x04) | extra; }
+  private flags(o: OpcionesFalsas, extra = 0): number { return 0x01 | (o.verifica === false ? 0 : 0x04) | (o.respaldada ? 0x18 : 0) | extra; }
   private clienteJSON(tipo: string, reto: string, o: OpcionesFalsas): Buffer {
     return Buffer.from(JSON.stringify({ type: tipo, challenge: o.reto ?? reto, origin: o.origen ?? this.origenPorDefecto, crossOrigin: false }), "utf8");
   }
 
   /** Respuesta a navigator.credentials.create() con las opciones que dio la api. */
-  alta(opciones: { challenge: string; rp: { id?: string } }, o: OpcionesFalsas = {}) {
+  alta(opciones: { challenge: string; rp: { id?: string }; user?: { id: string } }, o: OpcionesFalsas = {}) {
+    this.usuario = opciones.user?.id ?? null;
     const jwk = this.publica.export({ format: "jwk" });
     const cose = cbor(new Map<Cbor, Cbor>([[1, 2], [3, -7], [-1, 1], [-2, Buffer.from(jwk.x!, "base64url")], [-3, Buffer.from(jwk.y!, "base64url")]]));
     const largo = Buffer.alloc(2); largo.writeUInt16BE(this.credencial.length);
@@ -66,7 +75,8 @@ export class AutenticadorFalso {
     const authData = Buffer.concat([sha256(o.rpId ?? opciones.rp.id ?? ""), Buffer.from([this.flags(o, 0x40)]), cuenta, Buffer.alloc(16), largo, this.credencial, cose]);
     const cliente = this.clienteJSON("webauthn.create", opciones.challenge, o);
     return {
-      id: this.id, rawId: this.id, type: "public-key" as const, clientExtensionResults: {}, authenticatorAttachment: "platform" as const,
+      id: this.id, rawId: this.id, type: "public-key" as const, authenticatorAttachment: "platform" as const,
+      clientExtensionResults: o.credProps === null ? {} : { credProps: o.credProps ?? { rk: true } },
       response: { clientDataJSON: b64u(cliente), attestationObject: b64u(cbor({ fmt: "none", attStmt: {}, authData })), transports: ["internal", "hybrid"] as ("internal" | "hybrid")[] },
     };
   }
@@ -79,9 +89,10 @@ export class AutenticadorFalso {
     const cliente = this.clienteJSON("webauthn.get", opciones.challenge, o);
     const clave = o.claveAjena ? generateKeyPairSync("ec", { namedCurve: "P-256" }).privateKey : this.privada;
     const firma = sign("sha256", Buffer.concat([authData, sha256(cliente)]), clave);   // DER, como lo da un autenticador ES256
+    const uh = o.userHandle === undefined ? this.usuario : o.userHandle;   // no va firmado: lo dice el autenticador, sin más
     return {
       id: this.id, rawId: this.id, type: "public-key" as const, clientExtensionResults: {},
-      response: { clientDataJSON: b64u(cliente), authenticatorData: b64u(authData), signature: b64u(firma) },
+      response: { clientDataJSON: b64u(cliente), authenticatorData: b64u(authData), signature: b64u(firma), ...(uh ? { userHandle: uh } : {}) },
     };
   }
 }

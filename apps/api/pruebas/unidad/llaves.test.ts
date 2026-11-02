@@ -12,14 +12,16 @@ import pg from "pg";
 import { construyeApp } from "../../src/app.ts";
 import { cargaConfig } from "../../src/config.ts";
 import { esSesionDeOficina, llaveRequerida, requiereConfirmacionReciente, requiereOficinaSinLlave, requiereRol, requiereSesion } from "../../src/oficina/acceso.ts";
+import type { Rol } from "../../src/auth/servicio.ts";
 import {
-  limpiaTransports, MAX_LLAVES, nombreDeLlave, opcionesDeAlta, opcionesDeEntrada, permisoAlta, verificaAlta, verificaEntrada, type LlaveGuardada,
+  type EstadoLlaves, limpiaTransports, MAX_LLAVES, mismoUsuario, nombreDeLlave, opcionesDeAlta, opcionesDeEntrada, permisoAlta,
+  type SesionDeAlta, tipoDeCuenta, verificaAlta, verificaEntrada, type LlaveGuardada,
 } from "../../src/oficina/llaves.ts";
 import { AutenticadorFalso } from "../apoyo/autenticador.ts";
 import { configDePrueba, contexto, deLaWeb, ORIGEN } from "../apoyo/contexto.ts";
 
 const CFG = configDePrueba({ GEMELO_OFICINA_LLAVE: "obligatoria" }).llave;
-const CUENTA = { usuario: new Uint8Array(32).fill(7), correo: "ofi@example.com" };
+const CUENTA = { usuario: new Uint8Array(32).fill(7), correo: "ofi@example.com", rol: "oficina" as Rol };
 
 // ---------------------------------------------------------------- configuración
 test("configuración: obligatoria por defecto, también en producción; «no» solo fuera de producción y con la variable", () => {
@@ -39,10 +41,10 @@ test("configuración: obligatoria por defecto, también en producción; «no» s
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
-test("configuración: el RP ID es el dominio del origen o uno de sus padres, nunca una IP ni con esquema", () => {
-  assert.equal(configDePrueba({ GEMELO_OFICINA_LLAVE: "obligatoria", GEMELO_LLAVE_RP_ID: "example.com" }).llave.rpId, "example.com");
+test("configuración: el RP ID es exactamente el host del origen (nunca un dominio padre), nunca una IP ni con esquema", () => {
+  assert.throws(() => configDePrueba({ GEMELO_OFICINA_LLAVE: "obligatoria", GEMELO_LLAVE_RP_ID: "example.com" }), /exactamente el host/, "el dominio padre no: A12");
   assert.equal(configDePrueba({ GEMELO_OFICINA_LLAVE: "obligatoria", GEMELO_LLAVE_RP_ID: "GEMELO.example.com" }).llave.rpId, "gemelo.example.com");
-  assert.throws(() => configDePrueba({ GEMELO_OFICINA_LLAVE: "obligatoria", GEMELO_LLAVE_RP_ID: "otro.example.org" }), /uno de sus padres/);
+  assert.throws(() => configDePrueba({ GEMELO_OFICINA_LLAVE: "obligatoria", GEMELO_LLAVE_RP_ID: "otro.example.org" }), /exactamente el host/);
   assert.throws(() => configDePrueba({ GEMELO_OFICINA_LLAVE: "obligatoria", GEMELO_LLAVE_RP_ID: "https://gemelo.example.com" }), /nombre de dominio/);
   assert.throws(() => configDePrueba({ GEMELO_OFICINA_LLAVE: "obligatoria", GEMELO_URL_PUBLICA: "https://192.168.1.10:8743" }), /nombre de dominio/, "una IP no vale como RP ID (WebAuthn no lo admite)");
   assert.equal(configDePrueba({ GEMELO_OFICINA_LLAVE: "obligatoria", GEMELO_URL_PUBLICA: "https://localhost:8743" }).llave.rpId, "localhost", "dev: https://localhost vale");
@@ -51,17 +53,69 @@ test("configuración: el RP ID es el dominio del origen o uno de sus padres, nun
   assert.equal(configDePrueba({ GEMELO_OFICINA_LLAVE: "no", GEMELO_URL_PUBLICA: "https://192.168.1.10:8743" }).llave.obligatoria, false, "relajada y desde una IP: la api arranca (la llave no funcionará ahí)");
 });
 
-// ---------------------------------------------------------------- reglas de alta
-test("alta: la primera vez con el enlace; después, solo con llave o rehabilitada; nunca más de " + MAX_LLAVES, () => {
+// ---------------------------------------------------------------- reglas de alta (tabla de casos por tipo de cuenta)
+test("alta de la oficina: la primera vez con el enlace; después, solo con llave o rehabilitada; nunca más de " + MAX_LLAVES, () => {
   const ahora = new Date("2026-10-30T12:00:00Z");
-  const e = (activas: number, algunaVez: number, rehabilitadaHasta: Date | null = null) => ({ activas, algunaVez, rehabilitadaHasta });
-  assert.equal(permisoAlta(false, e(0, 0), ahora), "si", "la cuenta nunca tuvo llave: la primera vez con el enlace");
-  assert.equal(permisoAlta(false, e(1, 1), ahora), "entra_con_llave", "ya tiene llave: hay que entrar con ella");
-  assert.equal(permisoAlta(false, e(0, 2), ahora), "entra_con_llave", "las perdió (revocadas): no vuelve sola a «la primera vez»");
-  assert.equal(permisoAlta(true, e(1, 1), ahora), "si", "desde una sesión con llave, otra más");
-  assert.equal(permisoAlta(false, e(0, 2, new Date("2026-10-30T13:00:00Z")), ahora), "si", "rehabilitada y vigente");
-  assert.equal(permisoAlta(false, e(0, 2, new Date("2026-10-30T11:00:00Z")), ahora), "entra_con_llave", "rehabilitación caducada");
-  assert.equal(permisoAlta(true, e(MAX_LLAVES, MAX_LLAVES), ahora), "maximo");
+  const e = (activas: number, algunaVez: number, rehabilitadaHasta: Date | null = null, rol: Rol | null = "oficina"): EstadoLlaves => ({ activas, algunaVez, rehabilitadaHasta, rol });
+  const enlace: SesionDeAlta = { origen: "enlace", conLlave: false, aparatoAprobado: true };
+  const conLlave: SesionDeAlta = { origen: "enlace", conLlave: true, aparatoAprobado: true };
+  const p = (s: SesionDeAlta, x: EstadoLlaves) => permisoAlta(s, x, ahora).permiso;
+  const casos: [SesionDeAlta, EstadoLlaves, string, string][] = [
+    [enlace, e(0, 0), "si", "la cuenta nunca tuvo llave: la primera vez con el enlace"],
+    [enlace, e(1, 1), "entra_con_llave", "ya tiene llave: hay que entrar con ella (el buzón solo no añade)"],
+    [enlace, e(0, 2), "entra_con_llave", "las perdió (revocadas): no vuelve sola a «la primera vez»"],
+    [conLlave, e(1, 1), "si", "desde una sesión con llave, otra más"],
+    [{ ...conLlave, origen: "llave" }, e(1, 1), "si", "sesión abierta con llave (OF13b-5), otra más"],
+    [enlace, e(0, 2, new Date("2026-10-30T13:00:00Z")), "si", "rehabilitada y vigente"],
+    [enlace, e(0, 2, new Date("2026-10-30T11:00:00Z")), "entra_con_llave", "rehabilitación caducada"],
+    [conLlave, e(MAX_LLAVES, MAX_LLAVES), "maximo", "tope"],
+    [{ ...enlace, aparatoAprobado: false }, e(0, 0), "aparato_pendiente", "aparato sin aprobar: ni la primera vez"],
+    [{ ...conLlave, origen: "llave", aparatoAprobado: false }, e(1, 1), "aparato_pendiente", "una llave válida no aprueba un aparato nuevo (decisión 184)"],
+    [{ ...enlace, origen: "vinculo" }, e(0, 0), "no_titular", "las gafas de una cuenta de oficina (rol efectivo hogar) nunca dan de alta"],
+    [conLlave, e(0, 0, null, "admin"), "si", "admin, igual que oficina"],
+    [enlace, e(1, 1, null, "admin"), "entra_con_llave", "admin con llave: el buzón solo no añade"],
+    [conLlave, e(0, 0, null, null), "sin_cuenta", "cuenta de baja o inexistente"],
+  ];
+  for (const [s, x, esperado, por] of casos) assert.equal(p(s, x), esperado, por);
+  const d = permisoAlta(enlace, e(0, 0), ahora);
+  assert.deepEqual(d, { permiso: "si", tipo: "oficina", avisar: true, yaTenia: 0 });
+});
+
+test("alta de una familia: con cualquier sesión titular, también si ya tiene llaves (decisión 183), y siempre con aviso", () => {
+  const e = (activas: number, algunaVez = activas, rol: Rol | null = "hogar"): EstadoLlaves => ({ activas, algunaVez, rehabilitadaHasta: null, rol });
+  const enlace: SesionDeAlta = { origen: "enlace", conLlave: false, aparatoAprobado: false };
+  const casos: [SesionDeAlta, EstadoLlaves, string, boolean, string][] = [
+    [enlace, e(0), "si", true, "primera llave con el enlace"],
+    [enlace, e(3), "si", true, "ya tiene llaves: el enlace añade otra (es la recuperación) y se avisa"],
+    [enlace, e(0, 4), "si", true, "las perdió todas: el enlace basta (sin rehabilitar)"],
+    [{ ...enlace, origen: "llave", conLlave: true }, e(1), "si", true, "desde una sesión con llave"],
+    [enlace, e(MAX_LLAVES), "maximo", false, "tope de " + MAX_LLAVES],
+    [{ ...enlace, origen: "vinculo" }, e(0), "no_titular", false, "las gafas (código corto) no dan de alta"],
+    [enlace, e(0, 0, null), "sin_cuenta", false, "cuenta de baja"],
+    [enlace, e(0, 0, "guia"), "si", true, "guía y corresponsal: reglas de familia (el buzón es la raíz)"],
+    [enlace, e(0, 0, "corresponsal"), "si", true, "corresponsal"],
+  ];
+  for (const [s, x, permiso, avisar, por] of casos) {
+    const d = permisoAlta(s, x);
+    assert.equal(d.permiso, permiso, por);
+    assert.equal(d.avisar, avisar, por + " (aviso)");
+    assert.equal(d.yaTenia, x.activas, por + " (yaTenia)");
+  }
+  assert.equal(permisoAlta(enlace, e(0)).tipo, "familia");
+  assert.equal(tipoDeCuenta("hogar"), "familia"); assert.equal(tipoDeCuenta("oficina"), "oficina"); assert.equal(tipoDeCuenta("admin"), "oficina");
+});
+
+test("userHandle: solo el de la cuenta, exacto, en base64url canónico", () => {
+  const u = new Uint8Array(32).fill(9), otro = new Uint8Array(32).fill(8);
+  const b = Buffer.from(u).toString("base64url");
+  assert.equal(mismoUsuario(b, u), true);
+  assert.equal(mismoUsuario(Buffer.from(otro).toString("base64url"), u), false, "otra cuenta");
+  assert.equal(mismoUsuario(undefined, u), false, "sin userHandle");
+  assert.equal(mismoUsuario(b, null), false, "cuenta sin user handle");
+  assert.equal(mismoUsuario(b + "=", u), false, "con relleno");
+  assert.equal(mismoUsuario(b.slice(0, -1) + (b.endsWith("Q") ? "R" : "Q"), u), false, "otros bits de cola (no canónico)");
+  assert.equal(mismoUsuario(Buffer.from(u.subarray(0, 31)).toString("base64url"), u), false, "más corto");
+  assert.equal(mismoUsuario(3, u), false);
 });
 
 test("nombre de la llave y transports: recortados y solo lo que define WebAuthn", () => {
@@ -121,6 +175,10 @@ test("opciones: RP ID y nombre de la configuración, verificación de la persona
   assert.equal(op.rp.name, "Cuarenta hazas · Oficina");
   assert.equal(op.user.name, "ofi@example.com");
   assert.equal(op.authenticatorSelection?.userVerification, "required");
+  assert.equal(op.authenticatorSelection?.residentKey, "required", "residente obligatoria (OF13b-3): entrar sin escribir el correo");
+  assert.equal(op.authenticatorSelection?.requireResidentKey, true);
+  assert.equal(op.extensions?.credProps, true, "credProps: saber si quedó residente");
+  assert.equal(op.user.id, Buffer.from(CUENTA.usuario).toString("base64url"), "user handle = hogares.llave_usuario");
   assert.equal(op.attestation, "none");
   assert.deepEqual(op.excludeCredentials?.map(c => c.id), ["AAAAAAAAAAAAAAAAAAAAAA"]);
   assert.match(op.challenge, /^[A-Za-z0-9_-]{32,128}$/, "el reto cabe en la columna de la 0013");
