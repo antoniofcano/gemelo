@@ -192,3 +192,4 @@ Decisiones que **no puede tomar un agente**: las cierra Antonio. Las técnicas s
 | 176 | **Decorar olivos · cuántas por olivo** | una / hasta tres | P7g | ✅ 2026-11-02: **una sola** por olivo y hogar; la nueva sustituye a la anterior |
 | 177 | **Decorar olivos · quién decide la temporada** | la familia elige entre las de la época / automático por calendario | P7g | ✅ 2026-11-02: **la familia elige**; el catálogo se ofrece por época y lo ya puesto se queda |
 | 178 | **Decorar olivos · la oficina** | solo ve y retira / pone decoraciones oficiales | P7g | ✅ 2026-11-02: **solo las familias**; la oficina ve y retira |
+| 179 | **Decorar olivos · piezas del catálogo (D1)** | las seis de partida / cuatro / lista de Antonio | P7g | ✅ 2026-11-02: **las seis de partida**: primavera, flores; verano, cinta de color; otoño, farolillo y cosecha; invierno, luces y lazo |

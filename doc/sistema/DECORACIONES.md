@@ -41,5 +41,5 @@ D2 y D3 se pueden preparar en paralelo con un contrato de por medio; el primer e
 3. **La familia elige** entre las piezas de la época actual; lo ya puesto se queda hasta que lo cambie. Nada cambia solo.
 4. **La oficina solo ve y retira**; no pone decoraciones oficiales.
 
-## Lo que falta decidir
-- **D1: la lista concreta de piezas por época.** Propuesta de partida para ajustar: primavera (flores), verano (cinta de color), otoño (farolillo, cosecha), invierno (luces, lazo). Cada pieza, una malla pequeña instanciada y rotulada como ilustrativa.
+## Piezas del catálogo (decisión 179, 2026-11-02)
+Primavera: **flores**. Verano: **cinta de color**. Otoño: **farolillo** y **cosecha**. Invierno: **luces** y **lazo**. Seis piezas, cada una una malla pequeña instanciada y rotulada como ilustrativa; ampliar es añadir una línea al catálogo. Ya no queda nada por decidir para empezar D2.
