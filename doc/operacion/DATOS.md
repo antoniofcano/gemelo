@@ -12,6 +12,7 @@
 | NDVI | Sentinel-2 (48 fechas), Planetary Computer | Copernicus |
 | Suelo | SoilGrids | ISRIC, CC BY 4.0 |
 | three.js 0.186.1 | npm (empaquetado por Vite) | MIT |
+| Tipografías: Fraunces (500, 600) e Instrument Sans (400, 500, 600), subconjunto latino, woff2 | npm `@fontsource/fraunces` y `@fontsource/instrument-sans` 5.3.0 (versión fijada en `apps/web/package.json`), empaquetadas por Vite desde `apps/web/plantilla.css` y servidas del mismo origen (sin Google Fonts: la CSP solo admite `'self'` y ningún visitante envía su IP a un tercero) | SIL Open Font License 1.1 (Fraunces: © The Fraunces Project Authors; Instrument Sans: © The Instrument Sans Project Authors); la licencia va en cada paquete |
 | Parcelas, marcas de olivos, datos de la explotación | OlivarTrack | **privado**, no se versiona |
 | Contorno de la finca (OF3c), por defecto | Parcelas de OlivarTrack que ya usa el gemelo (`GEMELO_PARCELAS`): polígono con límite SIGPAC | Dato de OlivarTrack, con origen SIGPAC © FEGA, CC BY 4.0 (atribución «© FEGA») |
 | Contorno de la finca (OF3b), respaldo A | Recintos SIGPAC, FEGA (OGC API Features `sigpac-hubcloud.es/ogcapi`, colección `recintos`) | © FEGA, CC BY 4.0 (ficha del servicio en datos.gob.es) |

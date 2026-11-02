@@ -15,7 +15,7 @@ async function mantenEjes(mano, x, y, n) { await pg.evaluate(a => window.__mockX
   // I6: peticiones a otro origen (los modelos de los mandos NO deben ir a jsDelivr). Las tipografías de Google las pide plantilla.html (no el motor;
   // la CSP de dev las permite): se apartan aquí, no son de esta pieza
   const fuera = [];
-  p.on("request", r => { try { const o = new URL(r.url()); if (/^https?:/.test(o.protocol) && o.origin !== new URL(url).origin && !/^fonts\.(googleapis|gstatic)\.com$/.test(o.hostname)) fuera.push(r.url()); } catch (e) {} });
+  p.on("request", r => { try { const o = new URL(r.url()); if (/^https?:/.test(o.protocol) && o.origin !== new URL(url).origin) fuera.push(r.url()); } catch (e) {} });
   p.on("pageerror", e => err.push("PAGEERROR " + String(e))); p.on("console", m => { if (m.type() === "error" && !/favicon|404/.test(m.text())) err.push("CONSOLE " + m.text()); });
   if (!sinxr) await p.addInitScript({ content: fs.readFileSync(path.join(__dirname, "mock_xr.js"), "utf8") });
   await p.goto(url + (url.includes("?") ? "&" : "?") + "debug", { waitUntil: "load" });

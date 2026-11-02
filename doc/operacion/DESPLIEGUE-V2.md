@@ -321,7 +321,7 @@ Además de todo lo anterior:
 - [ ] **EIPD validada** por Antonio o su asesoría, con la decisión 165 cerrada: responsable y canal de derechos, región del VPS y contrato de encargado con OVH, TURN, personas trabajadoras. Hoy [EIPD-VOZ](../sistema/EIPD-VOZ.md) es un borrador sin valor legal.
 - [ ] **Consentimiento de voz y plazo de la auditoría** escritos en código (decisiones 163-164, cerradas; tarea F3j) y las pruebas F3g y F3h (10 personas con audio).
 - [ ] **Fotos** abiertas solo con esa EIPD (decisión 102).
-- [ ] **Fuentes de Google fuera:** `apps/web/plantilla.html` las pide a `fonts.googleapis.com`, así que cada familia enviaría su IP a Google sin aviso. Hay que servirlas desde el mismo origen: es además la regla del repo (el motor no pide a otros hosts) y la excepción que `web.test.js` deja anotada.
+- [x] **Fuentes de Google fuera** (V12): las tipografías salen del mismo origen (`@fontsource/fraunces` e `@fontsource/instrument-sans`, OFL-1.1, empaquetadas por Vite con hash) y `web.test.js` ya no admite ninguna excepción. Falta comprobarlo en un navegador (aspecto, parpadeo de fuente al cargar).
 - [ ] **CSP impuesta**: de Report-Only a obligatoria, tras quitar las fuentes externas y los estilos en línea de esa plantilla (`style-src 'self'` los rechazaría) y unas semanas sin informes.
 - [ ] **Quest y móvil probados de verdad** en Hituelo real (P7e, O8d): fps, comodidad y mareo.
 - [ ] **Carga real:** 40 visitantes sin medir (con 40 clientes se satura el i5 de desarrollo). Medir en el VPS, mirando a los vecinos.
