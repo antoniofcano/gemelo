@@ -29,7 +29,9 @@ before(async () => {
   for (const [c, rol] of [[ANTONIO, "admin"], [OFI, "oficina"], [ANA, "hogar"]] as const) {
     ids[c] = Number((await bd.dueno.query<{ id: number }>("INSERT INTO hogares (correo, rol, alias) VALUES ($1, $2, $3) RETURNING id", [c, rol, "Alias" + rol])).rows[0]!.id);
   }
-  ctx = contexto(bd.app, configDePrueba({ GEMELO_ENLACE_POR_CORREO: "100", GEMELO_ENLACE_POR_IP: "1000", ...LK_ENV }));
+  // la cuenta de la oficina aprueba seis códigos en este fichero: el límite por hogar de producción (5 en 15 min) se sube aquí, como en
+  // api.test.ts; el propio límite lo vigila api.test.ts con su app aparte.
+  ctx = contexto(bd.app, configDePrueba({ GEMELO_ENLACE_POR_CORREO: "100", GEMELO_ENLACE_POR_IP: "1000", GEMELO_VINCULO_INTENTOS_POR_HOGAR: "100", ...LK_ENV }));
   app = await construyeApp(ctx);
   await app.ready();
 }, { timeout: 240_000 });
