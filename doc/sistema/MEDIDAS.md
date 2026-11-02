@@ -6,6 +6,13 @@
 >
 > **Hallazgo de C: las llamadas dependen de la hora.** De las 124 de «lejos», 98 son la bandada de `16_vida.js` (una malla por ave), que solo se dibuja de día y sin lluvia, con el reloj de la máquina: la misma medida a otra hora da otras cifras.
 
+## Cómo anotar una medida en el casco con sus perillas (Q0b)
+
+Una medida de VR sin las perillas con las que se hizo no se puede comparar con otra (regla 7). El informe de `?mide` (tarjeta, texto de «Copiar» y `window.__mide().texto`) trae una línea `VR: fov 1 · escala 0,9 · 72 Hz · MSAA sí · nivel auto` (con `ignorado: …` si una perilla se descartó o se recortó). Al anotar una medida en este fichero:
+1. Copia el texto entero del informe (incluye esa línea) y la URL con la que se hizo (`?debug&mide=60&xr…`), sin datos personales.
+2. Una perilla de cada vez respecto a la referencia (sin `xr…`), tres repeticiones por el mismo camino ([protocolo](VR.md#medir-con-el-medidor)); con `xrnivel` fijo el nivel no cambia durante la medida y el campo «Nivel VR_PERFILES» del informe lo confirma.
+3. Escribe el aparato (Quest 3, versión del navegador) y marca lo no probado como **no probado**. Las advertencias de comodidad de las perillas están en [VR.md](VR.md#perillas-de-rendimiento-por-url).
+
 ## Cerro Velasco, antes y después (mismas cámaras; banco de entonces `prueba.js`, no versionado: hoy `pruebas/prueba3.js`)
 
 | Vista | Llamadas | Triángulos | Puntos | Heap JS |

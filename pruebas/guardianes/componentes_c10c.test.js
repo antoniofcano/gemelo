@@ -61,7 +61,7 @@ function mundoMide(busqueda, extra) {
     document: { hidden: false, createElement: () => el(), addEventListener: (t, f) => (docL[t] = f), removeEventListener: t => delete docL[t] },
     renderer: { xr: { isPresenting: false } }, modo: "nube", D: { finca_id: "cerro", base: "t/" }, DEPURA: false, ConfigPuro: { prefijoApi: () => null },
     Ajustes: { lee: () => false }, Arboles: { resumen: () => ({ nivel0: 3, nivel1: 5, nivel2: 7 }) }, Escena3D: { resumen: () => ({ estado: "activo" }) },
-    VRX: { on: false, nivel: null, soporta: false, entrando: false },
+    XrPerillas: { linea: () => "VR: fov 1 · escala 0,9 · 72 Hz · MSAA sí · nivel auto" }, VRX: { on: false, nivel: null, soporta: false, entrando: false },
     PanelVR: { filas: (p, d) => { filas.push({ p, d }); return () => { const i = filas.findIndex(f => f.d === d); if (i >= 0) filas.splice(i, 1); }; } },
     localStorage: (() => { const m = {}; return { getItem: k => (k in m ? m[k] : null), setItem: (k, v) => { m[k] = v; } }; })(),
     performance, Date, Math, JSON, Number, Array, Object, Promise, Error, console, setTimeout, clearTimeout, String, isFinite, isNaN, parseInt, RegExp
