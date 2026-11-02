@@ -2,11 +2,11 @@
 
 Único sitio de «dónde estamos y qué falta». Se toca solo cuando el estado cambia (no en cada commit). Lo hecho se cuenta en el [CHANGELOG](../CHANGELOG.md); el rumbo, en [PLAN](rumbo/PLAN.md).
 
-**Versión: v0.2.0** · **Al día a: 2026-11-02** · **Prototipo**: funciona en Chrome con renderizado por software y sin errores de consola; el rendimiento en iPhone y Quest **no está medido**. Puerta pesada del 2026-11-02: 858 pruebas en verde y 2 fallos que se corrigieron y repitieron (uno, `presencia_dev`, sigue con una prueba de transporte que falló por un error de conexión al arrancar y no se repitió). `main` subido a GitHub (c6b19a2); el CI de Actions sigue sin correr por la facturación (G1).
+**Versión: v0.2.0** · **Al día a: 2026-11-02** · **Prototipo**: funciona en Chrome con renderizado por software y sin errores de consola; el rendimiento en iPhone y Quest **no está medido**. Puerta pesada del 2026-11-02: 934 pruebas en verde y 6 fallos que eran de las pruebas, ya corregidos y repetidos en verde; puerta rápida final 874 en verde (solo Node). `main` subido a GitHub (c6b19a2); el CI de Actions sigue sin correr por la facturación (G1).
 
 ## Publicado
 
-- **Desplegado en el VPS de OVH** (el gemelo, cuarto inquilino junto a Oficultor, Vigía y Filo, [DESPLIEGUE-V2](operacion/DESPLIEGUE-V2.md)): api, base de datos, web, LiveKit y hornero; la versión de producción es la de **c6b19a2** (2026-11-02), con su vuelta atrás (`*.previo` y las imágenes `previo-baf1328`). Sin copias de seguridad automáticas todavía (V2b) y sin medir en aparatos. Existe un artefacto desechable de la prueba de plataforma (privado; su enlace no se guarda en el repo público). Hay que borrarlo cuando proceda (**pide confirmación**).
+- **Desplegado en el VPS de OVH** (el gemelo, cuarto inquilino junto a Oficultor, Vigía y Filo, [DESPLIEGUE-V2](operacion/DESPLIEGUE-V2.md)): api, base de datos, web, LiveKit y hornero. La versión de producción es la de **89f63e7** (2026-11-02, segunda subida: migraciones 0019 y 0020, presencia y olivos generados por defecto, decoraciones, avisos de evento en el mundo, vista simple para familias, gafas desde la oficina, fuentes propias); la primera fue c6b19a2. Vuelta atrás: carpetas `*.previo` y las imágenes `previo-c6b19a2` y `previo-baf1328`. Sin copias de seguridad automáticas todavía (V2b), solo las manuales previas a cada subida, y **sin medir en aparatos**. Existe un artefacto desechable de la prueba de plataforma (privado; su enlace no se guarda en el repo público). Hay que borrarlo cuando proceda (**pide confirmación**).
 - Un gemelo anterior (v20) vive como artefacto de claude.ai y no se ha tocado.
 
 ## Hecho
