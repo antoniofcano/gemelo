@@ -2,7 +2,9 @@
 // Los escalones los calcula el CONSTRUCTOR (apps/web/olivo, receta() y aNivel()), no esta pantalla; llega con import() perezoso, solo al pulsar «Ver escalones»
 // (lleva dentro su three 0.128, el del constructor: la oficina no importa three ni el motor). Las cuentas, en olivo_real_puro.js. Todo el DOM va con textContent.
 // Es la forma ILUSTRATIVA del árbol con las medidas del LiDAR (copa y altura medidas; asimetría y falda, deducidas; tronco y ramas, ilustrativos).
+// OF8b: con las recetas ya calculadas, el visor 3D (visor_olivo.js) las dibuja lado a lado; su three llega aparte, solo al abrirlo.
 import { $, aviso, h, vacia } from "./comun.js";
+import { creaVisorOlivo } from "./visor_olivo.js";
 import { EPOCAS, EPOCA_POR_DEFECTO, ESCALONES, buscaOlivo, entradaDeOlivo, fichaDeOlivo, filasEscalones, miles, pct } from "./olivo_real_puro.js";
 
 const FINCA_POR_DEFECTO = "hituelo";
@@ -15,6 +17,8 @@ export function iniciaOlivoReal() {
   sFinca.append(h("option", { value: FINCA_POR_DEFECTO }, FINCA_POR_DEFECTO));
   for (const e of EPOCAS) sEpoca.append(h("option", { value: e, selected: e === EPOCA_POR_DEFECTO }, e));
   $("#rBusca").addEventListener("submit", e => { e.preventDefault(); ve(); });
+  const visor = creaVisorOlivo($("#rVisorSitio"));
+  sEpoca.addEventListener("change", () => { if (ultimo) ve(); });   // la época cambia aceitunas y flor: se recalcula (y el visor, si está abierto, se redibuja)
 
   async function cargaIndice(finca) {
     if (indice && fincaCargada === finca) return indice;
@@ -39,18 +43,20 @@ export function iniciaOlivoReal() {
     ocupado = true; $("#rVer").disabled = true; mensaje("Leyendo el índice de " + finca + "…");
     try {
       const d = await cargaIndice(finca), q = buscaOlivo(d, $("#rId").value, finca);
-      if (q.error) { mensaje(q.error, true); vacia($("#rSalida")); ultimo = null; return; }
+      if (q.error) { mensaje(q.error, true); vacia($("#rSalida")); ultimo = null; visor.cierra(); visor.muestra(null); return; }
       const O = await traeGenerador(), entrada = entradaDeOlivo(d, q.i, epoca), ficha = fichaDeOlivo(d, q.i);
       mensaje("Calculando los escalones con el constructor…");
       await new Promise(r => setTimeout(r, 0));   // deja pintar el aviso antes de la cuenta síncrona
-      const t0 = performance.now(), r0 = O.receta(entrada), tReceta = performance.now() - t0, medidas = {};
+      const t0 = performance.now(), r0 = O.receta(entrada), tReceta = performance.now() - t0, medidas = {}, recetas = {};
       for (const [k] of ESCALONES) {
         const t = performance.now(), rk = O.aNivel(r0, k);
         medidas[k] = { triangulos: O.triangulosNivel(rk), mallas: O.llamadasNivel(rk), ms: (k === "E0" ? tReceta : 0) + performance.now() - t };
+        recetas[k] = rk;   // para el visor 3D (OF8b): las mismas recetas que se cuentan
       }
-      ultimo = { finca, i: q.i, id: q.id, entrada, ficha, medidas, filas: filasEscalones(medidas), alto: r0.medidas.altura_m, copa: r0.medidas.copa_m };
+      ultimo = { finca, i: q.i, id: q.id, entrada, ficha, medidas, recetas, filas: filasEscalones(medidas), alto: r0.medidas.altura_m, copa: r0.medidas.copa_m };
       pinta(ultimo);
       mensaje(q.nota || "");
+      await visor.muestra(ultimo);
     } catch (e) {
       mensaje(e && e.message ? e.message : "No se pudo calcular el olivo.", true); aviso("No se pudo calcular el olivo", "mal");
     } finally { ocupado = false; $("#rVer").disabled = false; }
@@ -72,7 +78,7 @@ export function iniciaOlivoReal() {
         h("meter", { min: 0, max: 1, value: Math.min(1, x.parteDeE0), "aria-label": x.nombre + ": " + pct(x.parteDeE0) + " de los triángulos de E0" }),
         h("small", null, pct(x.parteDeE0) + " de E0 · " + Math.round(x.ms) + " ms"), h("p", { class: "nota" }, x.nota)))),
       h("p", { class: "nota" }, "Triángulos contados por el constructor sobre la receta de ese olivo (los puntos no cuentan). El impostor del escalón lejano es un cartel, no una malla de olivo, y no entra en la cuenta. " +
-        "Solo cifras: la vista 3D de cada escalón sigue en la herramienta del constructor (apps/web/olivo/herramienta), no en la oficina."),
+        "Para verlos dibujados, «Ver el árbol en 3D» (arriba): las mismas recetas, lado a lado."),
       h("span", { class: "pill p-ilustrativo" }, "ilustrativo: la forma del árbol; medidas del LiDAR 2024"));
     vacia($("#rSalida")).append(cabecera, tabla);
   }
@@ -81,5 +87,10 @@ export function iniciaOlivoReal() {
     abre() { if (!$("#rId").value) $("#rId").focus(); },
     /** Solo lectura, para la prueba de Chrome. */
     estado() { return ultimo && { finca: ultimo.finca, i: ultimo.i, id: ultimo.id, entrada: ultimo.entrada, medidas: ultimo.medidas, filas: ultimo.filas.map(x => x.k) }; },
+    /** Al salir de la pestaña: el visor suelta la GPU */
+    sale() { visor.cierra(); },
+    /** Solo lectura, para la prueba de Chrome (OF8b) */
+    visor: () => visor.estado(),
+    muestreo: () => visor.muestreo(),
   };
 }

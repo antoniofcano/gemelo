@@ -103,7 +103,7 @@ export function iniciaOlivos({ sesion }) {
     if (id === "esc") pintaPrevia();
     if (id === "epo") pintaEpocas();
     if (id === "his") pintaHistorial();
-    if (id === "real") real.abre();
+    if (id === "real") real.abre(); else real.sale();   // OF8b: fuera de «Olivo real», el visor 3D suelta la GPU
   }
 
   // ---------------------------------------------------------------- estado: carga y reinicio
@@ -364,6 +364,10 @@ export function iniciaOlivos({ sesion }) {
   ve("esc", false);
   return {
     abre() { return refresca(!cargado); },
+    /** Al salir de la sección (OF8b): el visor 3D de «Olivo real» suelta la GPU */
+    sale() { real.sale(); },
+    /** «Olivo real», para la prueba de Chrome (OF8b: el estado del visor y su muestreo de píxeles) */
+    real,
     ve,
     /** Solo lectura, para la prueba de Chrome. */
     estado() {
