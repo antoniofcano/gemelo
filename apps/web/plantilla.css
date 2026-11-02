@@ -280,7 +280,7 @@ kbd { font-family: ui-monospace, Menlo, monospace; font-size: 12px; border: 1px 
 .sin-escena span { color: var(--muted); }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 
-/* V12: lo que antes eran atributos style="…" en la plantilla (la CSP estricta no los deja) */
+/* V12: lo que antes eran atributos style en la plantilla (la CSP estricta no los deja) */
 .sep8 { margin-top: 8px; }
 .sep6 { margin-top: 6px; }
 .capa .pt-linde { background: #40f0ff; border: 2px solid var(--lidar); }
@@ -298,3 +298,8 @@ kbd { font-family: ui-monospace, Menlo, monospace; font-size: 12px; border: 1px 
 /* #ajustesBase siempre fue visible (su style en línea ganaba a la regla de arriba, que lo ocultaba al estar «listo»); se conserva ese aspecto */
 #menuAjustes #ajustesBase.sigue { display: grid; gap: 14px; }
 #historia[data-sin] { display: none !important; }   /* genera_motor.mjs: finca sin historia */
+/* V12: colores y anchos que el motor ponía con un atributo style en el HTML que arma (el dato variable va en data-fondo / data-ancho y lo pasa tinta(), de 01_datos.js) */
+.c-arena { background: var(--arena); } .c-limo { background: var(--limo); } .c-arcilla { background: var(--arcilla); }
+.h-bola.b-andado { background: #2e8b3d; } .h-bola.b-fuera { background: #d23a2a; } .h-bola.b-sinmarca { background: #8e5bc4; }
+.t-leyenda .l-temp { background: var(--guardado); } .t-leyenda .l-nubes { background: var(--muted); opacity: .4; } .t-leyenda .l-lluvia { background: var(--lidar); } .t-leyenda .l-viento { background: var(--fg); }
+.t-baliza .b-pill.e-alerta, .t-baliza .b-pill.e-abierta { --c: var(--guardado); } .t-baliza .b-pill.e-hecha { --c: var(--olivo); } .t-baliza .b-pill.e-nada { --c: var(--muted); }

@@ -23,6 +23,16 @@ test("V12: la plantilla cumple la CSP estricta: sin style=\"…\" ni <style> en 
   assert.match(css, /@fontsource\/instrument-sans\/latin-500\.css/);
 });
 
+test("V12: el HTML que arma el motor no lleva atributos style (la CSP los rechaza); lo variable va en data-fondo / data-ancho y lo pasa tinta()", () => {
+  const fs = require("node:fs"), dir = path.join(RAIZ, "apps", "web", "motor");
+  for (const f of fs.readdirSync(dir).filter(x => x.endsWith(".js"))) {
+    const t = fs.readFileSync(path.join(dir, f), "utf8");
+    assert.ok(!/\sstyle\s*=\s*[\\"']/.test(t), f + " escribe un atributo style en un HTML: usa una clase de plantilla.css o data-fondo / data-ancho + tinta()");
+    assert.ok(!/setAttribute\(\s*["']style["']/.test(t), f + " pone el atributo style con setAttribute: usa .style.propiedad o classList (CSSOM sí vale)");
+    if (/data-(fondo|ancho)=/.test(t)) assert.ok(/tinta\(/.test(t), f + " usa data-fondo / data-ancho y no llama a tinta()");
+  }
+});
+
 test("el visor ocupa toda la ventana y la página no se desplaza", () => {
   assert.match(css, /html, body \{[^}]*height: 100%[^}]*overflow: hidden/, "html y body: alto completo y sin desplazamiento");
   assert.match(css, /\.visor \{ position: fixed; inset: 0;[^}]*overflow: hidden/, "el visor, fijo a toda la ventana");

@@ -49,8 +49,8 @@
   var BBCH_TXT = { 7: "desarrollo del fruto", 8: "maduración del fruto", 6: "floración", 5: "aparición de la inflorescencia", 1: "desarrollo de las hojas", 0: "reposo y brotación", 9: "senescencia y reposo" };
   function fichaBal(k) {
     var d = datosBal(k), pr = d.pr, h = '<button type="button" class="cerrar-baliza" aria-label="Cerrar la ficha de la parcela">×</button>';
-    var pill = [PILL_TXT[d.estado], { alerta: "var(--guardado)", abierta: "var(--guardado)", hecha: "var(--olivo)", nada: "var(--muted)" }[d.estado]];
-    h += '<div class="b-cab"><strong>' + esc(pr.nombre) + '</strong><span class="b-pill" style="--c:' + pill[1] + '">' + pill[0] + "</span></div>";
+    var pill = [PILL_TXT[d.estado], d.estado];
+    h += '<div class="b-cab"><strong>' + esc(pr.nombre) + '</strong><span class="b-pill e-' + pill[1] + '">' + pill[0] + "</span></div>";
     h += '<p class="b-sub">' + num1(pr.ha, 1) + " ha</p>";
     if (d.vg) h += '<p class="b-aviso">Vigía marca esta parcela hoy (' + esc(d.vg.gravedad || "pide una mirada") + "). Es relativo y sin calibrar: sirve para decidir dónde mirar, no para decir que algo está enfermo.</p>";
     if (d.abiertas.length) h += "<h4>Abiertas</h4><ul>" + d.abiertas.slice(0, 3).map(function (t) { return "<li>" + esc(t.titulo) + ' <span class="b-n">' + (t.avance != null ? num1(t.avance, 0) + " %" : t.estado) + "</span></li>"; }).join("") + "</ul>";
