@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Las hazas salen en el minimapa: la tuya en ámbar, las ajenas en blanco roto, con su código si cabe; la casilla «Linde» las apaga con la linde 3D (A4b). Probado en Node; no probado en Chrome, iPhone ni Quest.
 - VR: los botones `h−` y `h+` del panel mueven de verdad el reloj del mundo y cambian la luz (decisión 171). La hora es de cada visitante, no compartida. No probado en Quest.
 - Plazo de los datos por hogar (decisión 100): cada 6 h se borran las sugerencias ya decididas, las entregas de avisos caducados, las inscripciones a eventos y las asignaciones de lotes de campañas que ya cumplieron «la campaña y un año más»; queda una auditoría solo con los recuentos.
 - Voz (F3j): antes de hablar en una visita guiada, la familia ve un aviso (tu voz en directo para la sala; no se graba; puedes dejar de hablar cuando quieras) y acepta o no; se guarda por hogar y versión del texto, y se puede retirar en Configuración y en el panel de VR. El servidor no da la palabra a quien no ha aceptado. La auditoría de voz se borra pasada la campaña y un año más (migración 0018). El texto es un borrador pendiente de la asesoría.
