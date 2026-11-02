@@ -39,3 +39,6 @@ Lo demás de §12 de OFICINA.md queda como lo cerró Antonio: baja con contenido
 
 ## Enmienda 2026-11-02
 La regla «una cuenta de oficina no vincula aparatos con el código corto» se modifica en parte: desde [ADR-0028](0028-gafas-vinculadas-desde-la-oficina-entran-como-visitante.md) la oficina puede vincular gafas, pero la sesión que nace es la de un visitante de familia, nunca de oficina. El resto del ADR sigue vigente.
+
+## Enmienda 2026-11-02 (llaves para todos)
+[ADR-0029](0029-llaves-de-acceso-para-todos.md) (Propuesto, decisión 174) propone que la oficina entre con su llave **sin pedir enlace** en un aparato ya aprobado, y que la tabla `llaves_oficina` pase a ser `llaves_acceso`, común a todas las cuentas. No cambia el aparato confiable (un aparato nuevo sigue pendiente: decisión 152), ni la confirmación reciente por llave, ni la regla de que el buzón solo no añade una llave a una cuenta de oficina que ya tuvo una. Mientras no se acepte, este ADR sigue vigente entero.
