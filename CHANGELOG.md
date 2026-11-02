@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- La presencia en red arranca sola: sin `?presencia=` y con servidor, el gemelo pregunta una vez `GET /api/presencia` (nueva, con sesión y sin secretos: `{ red }`) y, si el servidor tiene LiveKit, muestra a los demás visitantes y abre «Gente y chat» como con `?presencia=red`. Casilla «Ver a los demás y chatear» en Ajustes (marcada por defecto, recordada por visitante); `?presencia=0` la apaga siempre. Sin servidor o si la pregunta falla, todo queda como antes (F2b). No probado en Chrome, iPhone ni Quest.
 - Las hazas salen en el minimapa: la tuya en ámbar, las ajenas en blanco roto, con su código si cabe; la casilla «Linde» las apaga con la linde 3D (A4b). Probado en Node; no probado en Chrome, iPhone ni Quest.
 - VR: los botones `h−` y `h+` del panel mueven de verdad el reloj del mundo y cambian la luz (decisión 171). La hora es de cada visitante, no compartida. No probado en Quest.
 - Plazo de los datos por hogar (decisión 100): cada 6 h se borran las sugerencias ya decididas, las entregas de avisos caducados, las inscripciones a eventos y las asignaciones de lotes de campañas que ya cumplieron «la campaña y un año más»; queda una auditoría solo con los recuentos.
