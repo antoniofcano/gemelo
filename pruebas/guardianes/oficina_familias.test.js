@@ -75,6 +75,14 @@ test("el nombre interno (decisión 109) solo sale por las rutas de la oficina", 
   assert.match(mig, /ADD COLUMN nombre_interno text CHECK/); assert.match(mig, /ADD COLUMN baja_en\s+timestamptz/);
 });
 
+test("OF11f: la ficha de la familia enseña «Avisos por correo» (sí/no) solo en lectura, y el campo viene de la lista de la api", () => {
+  const ficha = fuentes["familias.js"].slice(fuentes["familias.js"].indexOf("function pintaFicha"), fuentes["familias.js"].indexOf("function fichaNombre"));
+  assert.match(ficha, /h\("dt", null, "Avisos por correo"\), h\("dd", null, f\.avisos_correo \? "sí" : "no"\)/);
+  assert.doesNotMatch(ficha.slice(ficha.indexOf("Avisos por correo"), ficha.indexOf("Alta")), /input|checkbox|api\(/, "es de solo lectura: lo cambia la propia familia (PUT /api/yo/avisos)");
+  assert.match(lee("apps/api/src/admin/familias.ts"), /g\.avisos_correo/);
+  assert.match(lee("contratos/api.openapi.yaml"), /\/api\/yo\/avisos:/);
+});
+
 // ——— recorrido en Chrome (opcional) ———
 const SALTO = process.env.GEMELO_DOCKER !== "1" ? "recorrido de Docker + Chrome opcional (GEMELO_DOCKER=1): la sección Familias de la oficina contra la api real NO se ha comprobado" : null;
 

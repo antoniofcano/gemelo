@@ -1,5 +1,5 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: PoseCodec, BufferPose, Aspecto, SalaPose, Chat, Muneco, Encuentro, AutoPresencia, sitioJunto
+// Expone: PoseCodec, BufferPose, Aspecto, SalaPose, Chat, Muneco, Encuentro, Cuenta, AutoPresencia, sitioJunto
 // Consume: 01_datos (D, $), 02_mundo (suelo, copas), 02c_componentes (ConfigPuro), 02e_entidades (Entidades), 03_escena (exag, modo),
 //   04d_sombreado_tiles (hash), 06_arboles (tronco), 12_paseo (paseando, persona, primera), 12b_llegada (Llegada), 13b_hazas (HazasPuro),
 //   14_historia (lista), 15_tiempo (rumbo, hace), 16_vida (quad, vidaPaseo, dron), 33_ajustes (Ajustes)

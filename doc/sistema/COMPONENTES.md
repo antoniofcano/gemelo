@@ -354,6 +354,14 @@ Componente `vista-familia` (`48_vista_familia.js`, bandera `?vista=0`; `?vista=c
 - **Presupuesto (regla 6):** 0 llamadas, 0 triángulos (solo DOM).
 - **Nota de comodidad (regla 11):** quita opciones, no añade gestos; los botones que quedan no cambian de tamaño. Probado solo en Node (lógica pura y componente con DOM de mentira: `vista_familia.test.js`); la prueba de Chrome está escrita (`vista_familia_chrome.test.js`) y **no ejecutada**. **No probado:** Chrome real, iPhone, Quest; la visita «Historia» (`14_historia.js`) todavía puede cambiar el modo y las capas ocultas por su cuenta.
 
+### OF11f · el interruptor «Avisos por correo» (`avisos-correo`)
+
+Componente `avisos-correo` (`49_avisos_correo.js`, bandera `?avisos=0`, consume `HazasPuro` y `Ajustes`). Petición de Antonio (2026-11-02): el hogar solo elegía los avisos por correo en el primer acceso y no podía cambiarlo. Con servidor y sesión pregunta `GET /api/yo/avisos`; si responde, añade a Configuración la pestaña «Cuenta» con la casilla «Avisarme por correo de los eventos» (`Ajustes.registra`, clave `avisos.correo`). Al marcarla o desmarcarla manda `PUT /api/yo/avisos` (en fila, en el orden en que se hicieron) y, si la api falla o responde otra cosa, la devuelve a lo que había. Sin servidor, sin sesión o con error, no se muestra.
+
+- **La api manda:** lo guardado en el aparato (localStorage) es solo una copia, reescrita con lo que dice la api en cada carga. **Aviso:** «Restablecer» de Configuración devuelve la casilla a «no» y, por tanto, también lo manda a la api.
+- **Presupuesto (regla 6):** 1 petición al montar, 0 triángulos (solo DOM de Configuración, por `textContent`).
+- **Nota de comodidad (regla 11):** una casilla más en la lista de Configuración, con el mismo control que las demás; no cambia ningún gesto. Probado solo en Node (`pruebas/guardianes/avisos_correo.test.js`, con `Ajustes` y `fetch` de mentira); **no probado** en Chrome real, iPhone ni Quest. La integración con PostGIS (`apps/api/pruebas/integracion/avisos_correo.test.ts`) está escrita y **no ejecutada**.
+
 ### F3d · la voz de las visitas guiadas (`voz-guiada`)
 
 Componente `voz-guiada` (`45_voz.js`, consume `Red` y `Presencia`, expone **`Voz`**, bandera `?voz=0`; decisiones y técnica en [ADR-0026](../adr/0026-voz-y-moderacion.md); permisos y atributos de la api en [presencia.md](../../contratos/presencia.md#la-voz-de-las-visitas-guiadas-f3c-livekit-roles-v6)). **Solo actúa en una sala `guiada-<evento>`** (decisión 157): `Voz.entra(evento)` pide el token de F3c (`POST /api/presencia/guiadas/:evento/token`) y entra con la clave `guiada` de la red; `Voz.usa(clave)` se engancha a una sala en la que ya se está (para cuando la presencia viaje a la guiada, F3f); `?guiada=<evento>` entra al montarse. Montado y sin eso, no crea nada (ni AudioContext, ni elementos, ni conexión).

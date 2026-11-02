@@ -7,6 +7,7 @@ import { decideCodigo, PATRON_ENTRADA } from "../auth/vinculo.ts";
 import type { Contexto } from "../contexto.ts";
 import { ACC_MAX, type Aspecto, ASPECTO, bytesReceta, limpiaAspecto, PATRON_PIEZA, RECETA_MAX_BYTES } from "../presencia/livekit.ts";
 import { borraFicheros, clavesDelHogar } from "../vida/medios.ts";
+import { fijaAvisosCorreo, leeAvisosCorreo } from "./avisos.ts";
 import { datosDelHogar } from "./datos.ts";
 
 // 3–20 letras, números, espacios y guiones (doc/sistema/UX.md §4.6)
@@ -36,6 +37,25 @@ export async function rutasYo(app: FastifyInstance, ctx: Contexto): Promise<void
       [NORMAS_VERSION, req.body.avisos_correo, req.session.hogarId]);
     await audita(bd, req.session.hogarId!, "yo.normas", { version: NORMAS_VERSION, avisos_correo: req.body.avisos_correo });
     return rep.code(204).send();
+  });
+
+  // OF11f: el interruptor «Avisos por correo» de Configuración (antes solo se elegía en el primer acceso). Cada hogar lee y cambia SOLO el suyo:
+  // el id sale de la sesión, nunca de la petición. Contrato: contratos/avisos-correo.md § El interruptor.
+  app.get("/api/yo/avisos", { preHandler: requiereSesion }, async (req, rep) => {
+    const v = await leeAvisosCorreo(bd, req.session.hogarId!);
+    if (v === null) return rep.code(404).send({ error: "no_existe" });
+    return rep.header("cache-control", "no-store").send({ avisos_correo: v });
+  });
+
+  app.put<{ Body: { avisos_correo: boolean } }>("/api/yo/avisos", {
+    // el validador de Fastify convierte tipos (1 → true): aquí solo vale un booleano de verdad, antes de la conversión
+    preValidation: async (req, rep) => { if (typeof (req.body as { avisos_correo?: unknown } | null)?.avisos_correo !== "boolean") return rep.code(400).send({ error: "cuerpo_no_valido", mensaje: "avisos_correo debe ser true o false." }); },
+    preHandler: requiereSesion,
+    schema: { body: { type: "object", additionalProperties: false, required: ["avisos_correo"], properties: { avisos_correo: { type: "boolean" } } } },
+  }, async (req, rep) => {
+    const v = await fijaAvisosCorreo(bd, req.session.hogarId!, req.body.avisos_correo);
+    if (v === null) return rep.code(404).send({ error: "no_existe" });
+    return rep.header("cache-control", "no-store").send({ avisos_correo: v });
   });
 
   // Configuración → Mis dispositivos → Vincular (contratos/sesion.md § Código corto): aprobar o rechazar el código de unas gafas.

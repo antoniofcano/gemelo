@@ -7,6 +7,7 @@ import { construyeApp } from "../../src/app.ts";
 import { icsDeEvento, partesDeRemitente, uidDeEvento, type EventoIcs } from "../../src/agenda/ics.ts";
 import { BuzonDePruebas } from "../../src/auth/correo.ts";
 import { hogarDeBaja, mensajeDeAviso, Repartidor, tokenDeBaja, urlDeBaja } from "../../src/avisos/correo.ts";
+import { fijaAvisosCorreo, leeAvisosCorreo } from "../../src/yo/avisos.ts";
 import { contexto, deLaWeb, ORIGEN } from "../apoyo/contexto.ts";
 
 const SECRETO = "secreto-de-prueba-secreto-de-prueba-0123456789";
@@ -216,4 +217,28 @@ test("app: tras una petición que cambia algo y sale bien se despierta al repart
     assert.equal(despertadas, antes);
     assert.equal((await app.inject({ method: "GET", url: "/api/agenda/1/evento.ics", headers: deLaWeb() })).statusCode, 401, "el .ics pide sesión");
   } finally { await app.close(); }
+});
+
+// ---------------------------------------------------------------- el interruptor (OF11f)
+test("interruptor: lee el del hogar que se le da y el cambio solo toca ese hogar, auditado sin el correo", async () => {
+  const consultas: Consulta[] = [];
+  const bd = { async query(sql: string, params: unknown[] = []) {
+    consultas.push({ sql, params });
+    if (sql.startsWith("SELECT avisos_correo")) return { rows: params[0] === 5 ? [{ avisos_correo: true }] : [], rowCount: params[0] === 5 ? 1 : 0 };
+    if (sql.startsWith("UPDATE hogares")) return { rows: [], rowCount: params[1] === 5 ? 1 : 0 };
+    return { rows: [], rowCount: 1 };
+  } } as unknown as pg.Pool;
+  assert.equal(await leeAvisosCorreo(bd, 5), true);
+  assert.equal(await leeAvisosCorreo(bd, 6), null, "un hogar que no existe");
+  assert.equal(await fijaAvisosCorreo(bd, 5, false), false);
+  const u = consultas.find(c => c.sql.startsWith("UPDATE hogares"))!;
+  assert.match(u.sql, /WHERE id = \$2$/);
+  assert.deepEqual(u.params, [false, 5]);
+  const a = consultas.find(c => c.sql.includes("INSERT INTO auditoria"))!;
+  assert.equal(a.params[0], 5);
+  assert.equal(a.params[1], "hogar.avisos_correo");
+  assert.ok(!JSON.stringify(a.params).includes("@"), "la auditoría no guarda correos");
+  const antes = consultas.length;
+  assert.equal(await fijaAvisosCorreo(bd, 6, true), null);
+  assert.ok(!consultas.slice(antes).some(c => c.sql.includes("INSERT INTO auditoria")), "sin hogar no se audita");
 });
