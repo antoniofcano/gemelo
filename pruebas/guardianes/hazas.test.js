@@ -220,6 +220,7 @@ test("con api y datos: pide /api/hazas?srs=25830&finca=… con la cookie del mis
   assert.deepStrictEqual(reg.eventos, [["hazas:cambia", { n: 2, propias: 1 }]]);
   const l = Hazas.lindes();
   assert.deepStrictEqual(l.map(h => [h.id, h.es_mia, h.anillos.length]), [[1, true, 2], [2, false, 2]], "anillo exterior y agujero; dos polígonos");
+  assert.ok(l.every(h => typeof h.codigo === "string" && h.codigo), "con el código (el minimapa lo rotula)");
   assert.deepStrictEqual(l[0].anillos[0][1], [100, 0], "en locales (relativas a centro_utm)");
   l[0].anillos[0][1][0] = 999; assert.deepStrictEqual(Hazas.lindes()[0].anillos[0][1], [100, 0], "una copia: quien la recibe no toca las de Hazas");
   assert.strictEqual(reg.consola.length, 0);

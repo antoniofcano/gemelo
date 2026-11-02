@@ -236,8 +236,8 @@
     // vistas() las hazas que se ven { id, es_mia } y enPunto(x este, y norte, locales) la que lo contiene o null (P7f: ¿este olivo es de mi haza?)
     function vistas() { return hz.map(function (h) { return { id: h.id, es_mia: !!h.es_mia }; }); }
     function enPunto(x, y) { var k = P.hazaEn(x, y, hz); return k >= 0 ? { id: hz[k].id, es_mia: !!hz[k].es_mia } : null; }
-    // lindes() la geometría de la linde de cada haza vista, para quien la dibuje (44_lindes.js): [{ id, es_mia, anillos: [[[x este, y norte] locales…]…] }].
+    // lindes() la geometría de la linde de cada haza vista, para quien la dibuje (44_lindes.js): [{ id, codigo, es_mia, anillos: [[[x este, y norte] locales…]…] }].
     // Son las del contrato tal cual (la oficina las dibuja; aquí no se simplifican ni se mueven): una copia, que nadie toca las de Hazas.
-    function lindes() { return hz.map(function (h) { return { id: h.id, es_mia: !!h.es_mia, anillos: h.anillos.map(function (an) { return an.map(function (q) { return [q[0], q[1]]; }); }) }; }); }
+    function lindes() { return hz.map(function (h) { return { id: h.id, codigo: h.codigo, es_mia: !!h.es_mia, anillos: h.anillos.map(function (an) { return an.map(function (q) { return [q[0], q[1]]; }); }) }; }); }
     return { estado: estado, libera: libera, vistas: vistas, enPunto: enPunto, lindes: lindes };
   })();
