@@ -48,6 +48,24 @@
           <a class="btn" href="#dispositivos">Vincular unas gafas</a>
         </div>
         <p class="pista" id="pistaPortada">Para entrar necesitas una cuenta de hogar. Sin contraseña: te mandamos un enlace al correo.</p>
+        <!-- OF13b-7: tras entrar con un enlace en un aparato sin llave. Lo muestra portada.js solo si toca (llave_puro.js: debeOfrecer) -->
+        <div class="tarjeta pila separada" id="ofertaLlave" aria-labelledby="tOferta" hidden>
+          <h2 id="tOferta">¿Crear una llave en este aparato?</h2>
+          <p>La próxima vez entrarás con tu huella, tu cara o el PIN de este aparato, sin esperar a ningún correo.</p>
+          <div class="aviso"><p><strong>Cualquiera que pueda desbloquear este aparato podrá entrar con tu cuenta.</strong> Si no es solo tuyo, no la crees.</p><p>Te avisaremos por correo cuando se añada o se quite una llave de tu cuenta.</p></div>
+          <div class="campo" id="campoOferta">
+            <label for="llaveNombre">Nombre de la llave</label>
+            <input id="llaveNombre" type="text" maxlength="40" autocomplete="off" aria-describedby="pLlaveNombre">
+            <p class="pista" id="pLlaveNombre">Para reconocerla luego en «Mis dispositivos».</p>
+          </div>
+          <div class="aviso aviso-err" id="avOferta" role="alert" tabindex="-1" hidden><p id="avOfertaTxt"></p></div>
+          <div class="aviso aviso-ok" id="okOferta" role="status" tabindex="-1" hidden><p id="okOfertaTxt"></p></div>
+          <div class="fila" id="botonesOferta">
+            <button type="button" class="btn btn-prim btn-grande" id="ofertaSi">Sí, crear la llave</button>
+            <button type="button" class="btn" id="ofertaAhoraNo">Ahora no</button>
+            <button type="button" class="btn btn-txt" id="ofertaNunca">Este aparato no es mío</button>
+          </div>
+        </div>
       </div>
       <svg class="ilus" viewBox="0 0 400 260" role="img" aria-label="Ilustración: hazas de olivar vistas desde arriba, con un avatar de bloque en una de ellas">
         <defs><pattern id="olivosP" width="20" height="20" patternUnits="userSpaceOnUse"><circle class="i-copa" cx="10" cy="10" r="6"/><circle class="i-copa2" cx="8.5" cy="8.5" r="2.5"/></pattern></defs>
@@ -61,7 +79,7 @@
     </div>
     <h2 id="comoFunciona">Cómo funciona</h2>
     <ol class="como">
-      <li><strong>Entra con tu correo.</strong> Te llega un enlace que vale 15 minutos y sirve una vez. En unas gafas Meta Quest, con un código corto.</li>
+      <li><strong>Entra con tu correo.</strong> Te llega un enlace que vale 15 minutos y sirve una vez. Después, si quieres, con la huella, la cara o el PIN de tu aparato. En unas gafas Meta Quest, con un código corto.</li>
       <li><strong>Elige alias y avatar.</strong> Es lo único tuyo que ven los demás.</li>
       <li><strong>Visita la finca.</strong> En el ordenador, en el móvil o con unas Meta Quest.</li>
       <li><strong>Sigue tu haza.</strong> Qué se le hizo, cómo va de vigor y qué hay en su suelo, diciendo siempre de dónde sale cada dato.</li>
@@ -80,12 +98,20 @@
   <!-- 4.2 ENTRAR CON TU CORREO -->
   <section class="pant estrecha centrada" id="p-entrar" aria-labelledby="t-entrar" hidden>
     <a class="btn btn-txt" href="#portada">← Volver a la portada</a>
-    <h1 id="t-entrar" tabindex="-1">Entrar con tu correo</h1>
-    <p>Escribe el correo de tu hogar. Te mandamos un enlace para entrar: no hay contraseña que recordar.</p>
+    <h1 id="t-entrar" tabindex="-1">Entrar</h1>
+    <!-- OF13b-7: la llave de acceso, primero. Solo se enseña si el navegador admite llaves; sin JS o sin soporte queda el enlace por correo -->
+    <div class="tarjeta pila" id="bloqueLlave" hidden>
+      <h2 id="tLlave">Entrar con mi llave</h2>
+      <p>Con la huella, la cara o el PIN de este aparato, sin escribir nada. Funciona si ya creaste una llave en este aparato o en tu móvil.</p>
+      <div class="fila"><button type="button" class="btn btn-prim btn-grande" id="btnLlave">Entrar con mi llave</button></div>
+      <div class="aviso aviso-err" id="avLlave" role="alert" tabindex="-1" hidden><p id="avLlaveTxt"></p></div>
+    </div>
+    <h2 id="tEnlace" class="separada">Recibir un enlace por correo</h2>
+    <p>Escribe el correo de tu hogar. Te mandamos un enlace para entrar: no hay contraseña que recordar. Es la forma de entrar la primera vez y si no tienes tu llave a mano.</p>
     <form id="fEntrar" class="pila" method="post" action="/api/auth/enlace" novalidate>
       <div class="campo">
         <label for="correo">Correo electrónico</label>
-        <input id="correo" type="email" name="correo" autocomplete="email" inputmode="email" required maxlength="254" aria-describedby="pCorreo eCorreo">
+        <input id="correo" type="email" name="correo" autocomplete="email webauthn" inputmode="email" required maxlength="254" aria-describedby="pCorreo eCorreo">
         <p class="pista" id="pCorreo">El que dio tu hogar a la explotación.</p>
         <p class="err" id="eCorreo" hidden></p>
       </div>
@@ -275,6 +301,26 @@
         <div class="fila"><button type="submit" class="btn btn-prim btn-grande" id="btnAprobar">Aprobar</button><button type="button" class="btn btn-peligro" id="btnRechazar">No son mis gafas: rechazar</button></div>
       </form>
     </div>
+    <!-- OF13b-7: Mis llaves. Solo con sesión titular (no desde unas gafas); la rellena portada.js -->
+    <div class="tarjeta pila separada" id="misLlaves" aria-labelledby="tMisLlaves" hidden>
+      <h2 id="tMisLlaves">Mis llaves de acceso</h2>
+      <p>Con una llave entras con la huella, la cara o el PIN de un aparato, sin esperar al correo. Si ya no tienes un aparato, quita su llave.</p>
+      <p class="pista" id="llavesVacio" hidden>Todavía no tienes ninguna llave. Entras con el enlace que te mandamos al correo.</p>
+      <ul class="lista-llaves" id="listaLlaves"></ul>
+      <div class="aviso aviso-err" id="avLlaves" role="alert" tabindex="-1" hidden><p id="avLlavesTxt"></p></div>
+      <div class="aviso aviso-ok" id="okLlaves" role="status" tabindex="-1" hidden><p id="okLlavesTxt"></p></div>
+      <div class="campo" id="campoOtraLlave" hidden>
+        <label for="llaveNombreOtra">Nombre de la nueva llave</label>
+        <input id="llaveNombreOtra" type="text" maxlength="40" autocomplete="off">
+      </div>
+      <div class="fila"><button type="button" class="btn" id="btnOtraLlave" hidden>Añadir otra llave</button></div>
+      <p class="pista">Cerrar la sesión en todos los aparatos no quita las llaves: quítalas aquí. Cualquiera que pueda desbloquear un aparato con tu llave podrá entrar con tu cuenta.</p>
+    </div>
+    <dialog id="dlgQuitar" aria-labelledby="dlgQuitarT">
+      <h2 id="dlgQuitarT">Quitar una llave</h2>
+      <p id="dlgQuitarTxt"></p>
+      <div class="fila"><button type="button" class="btn btn-peligro" id="dlgQuitarSi">Sí, quitarla</button><button type="button" class="btn" id="dlgQuitarNo">No, dejarla</button></div>
+    </dialog>
     <div class="tarjeta pila separada">
       <h2>¿Has perdido un aparato?</h2>
       <p>Cierra la sesión en todos los aparatos donde hayas entrado, también en este. Para volver, pide otro enlace.</p>

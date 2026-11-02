@@ -1,6 +1,6 @@
 // Build de la portada y las pantallas de entrada (apps/web/portada/, UX.md §4; decisión 56: la portada vive en apps/web).
 // Sale a apps/web/dist-portada/, que se sirve en «/» (infra/Caddyfile: root /srv/portada; en dev, infra/dev/compose.yml).
-// Sin dependencias: Vite solo pone hash a los nombres (assets/ con caché inmutable) y deja el JS y el CSS en ficheros
+// Una sola dependencia, @simplewebauthn/browser (OF13b-7, regla 12), que se pide con import() al abrir «Entrar» y no pesa en el arranque. Vite pone hash a los nombres (assets/ con caché inmutable) y deja el JS y el CSS en ficheros
 // propios, sin nada en línea (CSP estricta: script-src 'self'; style-src 'self').
 import { defineConfig } from "vite";
 import path from "node:path";
