@@ -4,7 +4,8 @@
 //   03_escena (renderer, camera, colorVertSRGB, exag), 06_arboles (gArboles), 08_marcadores (aplica), 12_paseo (paseando, primera),
 //   14_historia (hist, lista), 15_tiempo (parcheTiempo, nivel, hace), 16_vida (esfera), 29_vr (VR_PERFILES)
 // ===============================================================================
-  // ---------- olivos GENERADOS cerca (ADR-0017, decisiones 26-28, 34 y 52), solo con ?olivos=gen: sin la bandera no no actúa y el motor dibuja lo de siempre.
+  // ---------- olivos GENERADOS cerca (ADR-0017, decisiones 26-28, 34 y 52), POR DEFECTO (O10a, Antonio 2026-11-02): sin ?olivos=, si la finca trae copas_param y copas_id (y el aparato puede), se comporta como con ?olivos=gen;
+  // ?olivos=0 (o =no) lo apaga y el motor dibuja lo de siempre. La decisión es UNA función pura (GeneradosPuro.activo, abajo); si el constructor no está en el build o falla al cargar, lo de siempre sin avisar en consola (se dice en ?debug).
   // El árbol lo da el constructor de olivos (apps/web/olivo/, three 0.128 dentro): window.OlivoGen (el IIFE de la salida artefacto) o, en el cliente
   // web, import("gemelo-olivo") (Vite). Su forma es la de olivo-2 (forma ILUSTRATIVA con medidas del LiDAR: altura, copa y orientación de copas/copas_param).
   // Presupuesto: el 45 % del tope de triángulos del aparato, contando también la pasada de sombras (550 k en escritorio; el del perfil VR en gafas). El más cercano en E0, el resto en E1
@@ -145,12 +146,31 @@
     return { tope: tope, planifica: planifica, fronteras: fronteras, peso: peso, estado: estadoDe, nivel: nivel, modoGen: modoGen, dibuja: dibuja, mascaraTiles: mascaraTiles,
       MAX_PROPIOS: MAX_PROPIOS, MAX_VAR: MAX_VAR, TRI_MOVIL: TRI_MOVIL, UMBRALES: UMBRALES, BANDA: BANDA, HIST: HIST, FR_E0_VR: FR_E0_VR, K_PX: K_PX, FR_ESPERA: 0.45 };
   })();
+  // O10a: ¿se piden los olivos generados? Una sola decisión, sin THREE ni DOM (la evalúa pruebas/guardianes/olivos_defecto.test.js). Entra la búsqueda de la URL,
+  // los datos de la finca (copas, copas_param, copas_id del índice) y las capacidades del aparato y del build ({constructor, batched: THREE.BatchedMesh,
+  // webgl2}; solo un false explícito las niega: lo que no se sabe de forma síncrona, lo dice después la carga del constructor, que cae a lo de siempre).
+  // Devuelve {bandera: "escalera" | "gen" | null, defecto: viene del valor por defecto, motivo: por qué NO, si bandera es null}
+  var GeneradosPuro = (function () {
+    function sinDato(d) { return !d || !d.copas || !d.copas.length ? "la finca no trae olivos medidos (copas)" : !d.copas_param || !d.copas_param.length ? "la finca no trae copas_param" : !d.copas_id || !d.copas_id.length ? "la finca no trae copas_id" : ""; }
+    function activo(busqueda, datos, cap) {
+      var m = /[?&]olivos=([^&#]*)/.exec(String(busqueda || "")), v = m ? m[1] : null;
+      if (v === "escalera" || v === "gen") return { bandera: v, defecto: false, motivo: "" };
+      if (v === "0" || v === "no") return { bandera: null, defecto: false, motivo: "apagados a mano (?olivos=" + v + ")" };
+      cap = cap || {};
+      if (cap.constructor === false) return { bandera: null, defecto: true, motivo: "este build no trae el constructor" };
+      if (cap.batched === false) return { bandera: null, defecto: true, motivo: "este three no tiene BatchedMesh" };
+      if (cap.webgl2 === false) return { bandera: null, defecto: true, motivo: "el aparato no tiene WebGL2" };
+      var no = sinDato(datos); if (no) return { bandera: null, defecto: true, motivo: no };
+      return { bandera: "gen", defecto: true, motivo: "" };
+    }
+    return { activo: activo };
+  })();
   // [puro:fin]
 
   var Generados = (function () {
     // O8c: con ?olivos=gen, «gen» u «horneada» (Escalera.modoGen) se decide con el manifiesto, antes de que Generados quede activo; ESCALERA
     // (reparte con la escalera: forzada u horneada) ya no cambia después
-    var BANDERA = /[?&]olivos=escalera\b/.test(location.search) ? "escalera" : /[?&]olivos=gen\b/.test(location.search) ? "gen" : null;
+    var DECISION = GeneradosPuro.activo(location.search, D, { batched: !!THREE.BatchedMesh }), BANDERA = DECISION.bandera, POR_DEFECTO = DECISION.defecto && !!BANDERA;
     var MODO = Escalera.modoGen({ bandera: BANDERA }), ESCALERA = MODO === "forzada", SIN_ESCALERA = /[?&]olivosEscalera=0\b/.test(location.search);
     var pedido = !!BANDERA, estado = pedido ? "cargando" : "apagado", motivo = "", M = null, mats = null, fabrica = null;
     var fr = /[?&]olivosTri=([0-9.]+)/.exec(location.search), FRACCION = fr && !ESCALERA ? Math.min(0.9, Number(fr[1])) : ESCALERA ? 1 : 0.45;
@@ -185,7 +205,7 @@
         prof = { corteza: profundidad(), muerta: profundidad() };   // la sombra de las mallas por lotes, con el mismo fundido
         var f = M.creaFabrica({ trabajador: true }); if (f.modo === "trabajador") fabrica = f; else f.cierra();
         estado = "activo";
-      }).catch(function (e) { estado = "sin"; motivo = String(e && e.message || e); console.warn("olivos generados: " + motivo); });
+      }).catch(function (e) { estado = "sin"; motivo = String(e && e.message || e); if (!POR_DEFECTO) console.warn("olivos generados: " + motivo); });   // por defecto, sin avisar: se dibuja lo de siempre y ?debug lo dice
     }
     // ---- el manifiesto de las variantes horneadas: solo con la página del servidor; si no vale, se ignora entero y todo se calcula (sin avisar en consola)
     // la carpeta de lo horneado: ?olivosDir= (solo una ruta relativa del mismo origen acabada en «/», como ?api= de 13b) o, con la página del servidor
@@ -597,7 +617,7 @@
       lote.userData.salen = null; info.saliendo = 0; info.triSaliendo = 0; saliendo = {};
     }
     function* seguro(gen) {   // si algo falla al montar el lote, Generados se apaga (y lo dice) sin parar el fotograma del motor
-      try { return yield* gen; } catch (e) { estado = "sin"; motivo = String(e && e.message || e); console.warn("olivos generados: " + motivo); return null; }
+      try { return yield* gen; } catch (e) { estado = "sin"; motivo = String(e && e.message || e); if (!POR_DEFECTO) console.warn("olivos generados: " + motivo); return null; }
     }
     function colocaLote(g, sel, items, cl) {
       if (lote) { grupo.remove(lote); libera(lote); }   // lo que sale del lote anterior ya va dentro del nuevo
@@ -728,7 +748,7 @@
     }
     window.__olivosGen = function () {
       var k0 = Object.keys(listos)[0], p0 = k0 !== undefined ? listos[k0].c : null;   // un olivo generado ya dibujado
-      return { primero: p0 ? { x: p0.x, y: p0.y, h: p0.h } : null, estado: estado, motivo: motivo, via: fabrica ? "trabajador" : "rebanadas", plan: plan.length, recetas: Object.keys(recetas).length, pidiendo: nPidiendo, trabajos: trabajos.length, radio: R, info: info,
+      return { defecto: POR_DEFECTO, apagadoPor: DECISION.motivo, primero: p0 ? { x: p0.x, y: p0.y, h: p0.h } : null, estado: estado, motivo: motivo, via: fabrica ? "trabajador" : "rebanadas", plan: plan.length, recetas: Object.keys(recetas).length, pidiendo: nPidiendo, trabajos: trabajos.length, radio: R, info: info,
         cache: cache ? cache.estado() : null,
         modoGen: MODO, escalera: ESCALERA ? { reparto: reparto, sombras: sombras(), variantes: nVar() } : undefined,
         horneado: { estado: horn.estado, motivo: horn.motivo, epoca: M && mats ? epoca() : null, variantes: (varSem || SEM_VAR).length, horneadas: horn.horneadas, calculadas: horn.calculadas,

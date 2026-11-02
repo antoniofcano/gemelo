@@ -25,7 +25,7 @@ test.after(async () => { if (navegador) await navegador.close(); for (const s of
 for (const finca of FINCAS) {
   test("[" + finca + "] carga sin errores con la escena 3D Tiles y cada escenario cabe en el presupuesto de dibujo", { timeout: 300000 }, async t => {
     if (SALTO) return t.skip(SALTO);
-    const { errores, fallos, medidas, csp } = await mide(navegador, "http://127.0.0.1:" + srv[finca].address().port + "/index.html");
+    const { errores, fallos, medidas, csp } = await mide(navegador, "http://127.0.0.1:" + srv[finca].address().port + "/index.html?olivos=0");   // la copa de siempre (O10a: sin la bandera, Hituelo dibujaría los olivos generados; los topes de «fixture» son los de la copa de siempre)
     if (MIDE) console.log("MEDIDO " + finca + " " + JSON.stringify(medidas));
     if (csp.length) t.diagnostic("CSP de Caddy (solo informe), lo que rompería al imponerla: " + [...new Set(csp)].join(" | "));
     assert.deepStrictEqual(errores, [], "errores de consola o de página");
