@@ -1,7 +1,7 @@
 "use strict";
 // P7g D4 en Chrome sin pantalla (SwiftShader: vale para recuentos, no para fps; regla 6), por el turno del banco (npm run banco:encarga; NO la ejecuta quien la
 // escribe: escrita el 2026-11-02 sin ejecutar). La acción «Decorar» de la ficha del olivo con la api simulada (?api=/api/ y page.route; nada es real):
-//   · la sesión es de titular y la primera haza (H-P1) es tuya; GET /api/hazas/1/olivos devuelve lo que se ha ido poniendo (el servidor simulado guarda la pieza);
+//   · la sesión es de titular y la primera haza (H-P1, la mitad oeste de la primera parcela del fixture) es tuya; GET /api/hazas/1/olivos devuelve lo que se ha ido poniendo (el servidor simulado guarda la pieza);
 //   · se elige con un clic un olivo de esa haza: la ficha ofrece «Decorar» (sin «Cambiar decoración» ni «Quitar decoración» todavía);
 //   · el recuadro ofrece SOLO las piezas de la época de hoy (1 en primavera y verano; 2 en otoño e invierno) y dice «Ilustrativa: …»;
 //   · al tocar una pieza sale el PUT /api/olivos/{finca}/{copas_id}/decoracion con { pieza }, el recuadro se cierra, la ficha pasa a «Cambiar decoración» y
@@ -28,14 +28,22 @@ test.before(async () => {
 });
 test.after(async () => { if (navegador) await navegador.close(); if (srv) srv.close(); });
 
-/** 4 hazas de prueba (como las da GET /api/hazas) alrededor del centro de la finca; la primera es tuya. */
+/** las cajas (coordenadas locales) de las 4 hazas de prueba, sacadas de las parcelas del fixture como en personalizacion_e2e.test.js: la mitad oeste y la
+ *  este de las dos primeras parcelas (en el fixture de hituelo los olivos están en las parcelas, no en el centro de la finca). La primera (H-P1) es tuya. */
+function cajas() {
+  const out = [];
+  indice.parcelas.slice(0, 2).forEach(p => {
+    const xs = p.linde.map(q => q[0]), ys = p.linde.map(q => q[1]), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys), xm = (x0 + x1) / 2;
+    out.push([x0, y0, xm, y1], [xm, y0, x1, y1]);
+  });
+  return out;
+}
+/** las 4 hazas de prueba como las da GET /api/hazas (EPSG:25830). Nada de esto es real. */
 function hazas() {
   const [cx, cy] = indice.centro_utm, f = indice.finca_id;
   const q = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]];
-  return { type: "FeatureCollection", srs: "EPSG:25830", features: Array.from({ length: 4 }, (_, i) => {
-    const x0 = cx - 90 + 90 * (i % 2), y0 = cy - 70 + 70 * Math.floor(i / 2);
-    return { type: "Feature", id: i + 1, geometry: { type: "MultiPolygon", coordinates: [[q(x0, y0, x0 + 90, y0 + 70)]] }, properties: { codigo: "H-P" + (i + 1), nombre: "Haza de prueba " + (i + 1), finca: f, es_mia: i === 0 } };
-  }) };
+  return { type: "FeatureCollection", srs: "EPSG:25830", features: cajas().map(([x0, y0, x1, y1], i) =>
+    ({ type: "Feature", id: i + 1, geometry: { type: "MultiPolygon", coordinates: [[q(cx + x0, cy + y0, cx + x1, cy + y1)]] }, properties: { codigo: "H-P" + (i + 1), nombre: "Haza de prueba " + (i + 1), finca: f, es_mia: i === 0 } })) };
 }
 
 /** la página con la api simulada; `servidor.pieza` es lo que hay puesto; `servidor.rechazaPrimero` hace que el primer PUT dé 422 fuera_de_epoca */
@@ -67,10 +75,11 @@ async function abre(consulta, servidor) {
   await p.waitForFunction(() => window.__g.Cola.pendientes() === 0, null, { timeout: 60000, polling: 500 }).catch(() => {});
   return { p, errores };
 }
-// un olivo de la haza 1 (la de H-P1: x en [-90, 0], y en [-70, 0] respecto del centro), mirado desde 25 m y clicado de verdad (como personalizacion_e2e.test.js)
+// un olivo de la haza 1 (H-P1: la mitad oeste de la primera parcela, con margen de los bordes), mirado desde 25 m y clicado de verdad (como personalizacion_e2e.test.js)
 async function eligeOlivoMio(p) {
-  const id = await p.evaluate(() => { const c = window.__g.copas.filter(q => q.oliv && q.id >= 0 && q.x > -80 && q.x < -10 && q.y > -60 && q.y < -10)[0]; return c ? c.id : null; });
-  assert.ok(id !== null, "el fixture trae un olivo en H-P1");
+  const [x0, y0, x1, y1] = cajas()[0];
+  const id = await p.evaluate(([x0, y0, x1, y1]) => { const c = window.__g.copas.filter(q => q.oliv && q.id >= 0 && q.x > x0 + 2 && q.x < x1 - 3 && q.y > y0 + 2 && q.y < y1 - 2)[0]; return c ? c.id : null; }, [x0, y0, x1, y1]);
+  assert.ok(id !== null, "el fixture trae un olivo en H-P1 " + JSON.stringify(cajas()[0]));
   await p.evaluate(id => { const g = window.__g, c = g.copas.find(q => q.id === id); g.orb.az = 0.4; g.orb.el = 0.45; g.orb.dist = 25; g.objetivo.x = c.x; g.objetivo.z = -c.y; g.objetivo.y = g.suelo(c.x, c.y) + 4; g.pon("gem"); }, id);
   await p.waitForTimeout(1200);
   const pos = await p.evaluate(id => {
