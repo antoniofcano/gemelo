@@ -430,6 +430,7 @@ async function pintaCreditos() {
 }
 
 // ---------- configuración → mis dispositivos → vincular (en el aparato con sesión)
+const TEXTO_GAFAS_OFICINA = "Aprobado. Las gafas entrarán en unos segundos como visitante, sin las herramientas de la oficina, y valdrán 12 horas.";
 async function decide(aprobar) {
   const i = $("codigoTecleado"), v = i.value.trim(), limpio = v.replace(/[\s-]/g, "").toUpperCase();
   aviso($("okVincular"), $("okVincularTxt"), null);
@@ -439,7 +440,10 @@ async function decide(aprobar) {
   let r; try { r = await pide("POST", "/api/yo/dispositivos/vincular", { codigo: v, aprobar }); } catch { r = { status: 0 }; }
   if (r.status === 204) {
     errorCampo(i, $("eCodigo"), null); i.value = "";
-    aviso($("okVincular"), $("okVincularTxt"), aprobar ? "Aprobado. Las gafas entrarán con tu cuenta en unos segundos." : "Rechazado. Esas gafas no entrarán.");
+    // ADR-0028: las gafas que aprueba una cuenta de la oficina entran como visitante (sin la oficina) y valen 12 horas
+    const deOficina = S.sesion && (S.sesion.rol === "oficina" || S.sesion.rol === "admin");
+    aviso($("okVincular"), $("okVincularTxt"), !aprobar ? "Rechazado. Esas gafas no entrarán."
+      : deOficina ? TEXTO_GAFAS_OFICINA : "Aprobado. Las gafas entrarán con tu cuenta en unos segundos.");
     anuncia($("okVincularTxt").textContent); return;
   }
   if (r.status === 401) { await leeSesion(); ir("portada"); return; }

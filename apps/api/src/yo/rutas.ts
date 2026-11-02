@@ -64,11 +64,11 @@ export async function rutasYo(app: FastifyInstance, ctx: Contexto): Promise<void
     config: { rateLimit: { max: config.vinculo.intentosPorIp, timeWindow: ventanaVinculo } },
     schema: { body: { type: "object", additionalProperties: false, required: ["codigo", "aprobar"], properties: { codigo: { type: "string", pattern: PATRON_ENTRADA }, aprobar: { type: "boolean" } } } },
   }, async (req, rep) => {
-    // la oficina no vincula gafas con el código corto: su sesión exige un aparato confiable y el enlace (ADR-0024)
-    if (esOficina(req.session.rol)) return rep.code(403).send({ error: "sin_permiso", mensaje: "Las cuentas de la oficina no vinculan aparatos con el código corto." });
+    // ADR-0028: una cuenta de oficina también aprueba el código de unas gafas (con su sesión de oficina válida: aparato aprobado, enlace y,
+    // si es obligatoria, la llave; lo para requiereSesion), pero las gafas entran como VISITANTE (rol efectivo hogar, auth/almacen.ts)
     const lim = await porHogar(req);
     if (!lim.isAllowed && lim.isExceeded) return rep.code(429).send({ error: "demasiadas_peticiones", mensaje: TEXTO_LIMITE_VINCULO });
-    const ok = await decideCodigo(bd, config.sesion.secreto, req.session.hogarId!, req.body.codigo, req.body.aprobar);
+    const ok = await decideCodigo(bd, config.sesion.secreto, req.session.hogarId!, req.body.codigo, req.body.aprobar, esOficina(req.session.rol));
     // la misma respuesta si no existe, si caducó o si ya se decidió: no se puede averiguar qué códigos hay
     if (!ok) return rep.code(404).send({ error: "codigo_no_valido", mensaje: TEXTO_CODIGO_MALO });
     return rep.code(204).send();
