@@ -103,3 +103,43 @@ export function mensajeDePrueba(para: string): Mensaje {
     texto: "Hola:\n\nEste es un correo de prueba mandado desde Sistema, en la oficina del gemelo. Si lo lees, el envío funciona.\n\nNo hace falta hacer nada.\n",
   };
 }
+
+/** El nombre de una llave dentro de un texto de correo: una sola línea, sin caracteres de control, tal como lo escribió la persona (nunca el agente entero). */
+const nombreEnCorreo = (n: string): string => n.replace(/[\u0000-\u001f\u007f\u2028\u2029]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 40) || "Llave";
+/** Fecha y hora en la zona del olivar, sin segundos: «2 de noviembre de 2026, 18:04» (solo para que la persona reconozca el momento). */
+function cuando(d: Date): string {
+  return new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(d);
+}
+
+/**
+ * Aviso de seguridad (decisión 187, OF13b-4): se ha añadido una llave de acceso a la cuenta. Sin enlaces, sin el correo en el cuerpo y sin datos del
+ * aparato más que el nombre que lleva la llave («Android · Chrome» o lo que escribió la persona). Es seguridad, no un aviso de la campana: no
+ * depende de `avisos_correo` (contratos/avisos-correo.md § Avisos de seguridad).
+ */
+export function mensajeDeLlaveAnadida(para: string, nombre: string, ahora: Date = new Date()): Mensaje {
+  return {
+    para,
+    asunto: "Se ha añadido una llave de acceso a tu cuenta",
+    texto:
+      "Hola:\n\n" +
+      "Se ha añadido una llave de acceso a tu cuenta del gemelo del olivar: «" + nombreEnCorreo(nombre) + "», el " + cuando(ahora) + ".\n\n" +
+      "Con ella se puede entrar sin esperar un correo. Si has sido tú, no tienes que hacer nada.\n\n" +
+      "Si no has sido tú: entra con un enlace desde la portada (pídelo con este mismo correo), abre Configuración, Mis dispositivos y quita esa llave. " +
+      "También puedes avisar a la oficina.\n",
+  };
+}
+
+/** Aviso de seguridad (decisión 187): se ha quitado una llave de acceso. Dice que el enlace del correo sigue siendo la forma de entrar de siempre. */
+export function mensajeDeLlaveQuitada(para: string, nombre: string, ahora: Date = new Date()): Mensaje {
+  return {
+    para,
+    asunto: "Se ha quitado una llave de acceso de tu cuenta",
+    texto:
+      "Hola:\n\n" +
+      "Se ha quitado una llave de acceso de tu cuenta del gemelo del olivar: «" + nombreEnCorreo(nombre) + "», el " + cuando(ahora) + ". " +
+      "Esa llave ya no sirve para entrar y se han cerrado las sesiones que se abrieron con ella.\n\n" +
+      "No te quedas fuera: el enlace que te mandamos a este correo sigue funcionando para entrar. Si has sido tú, no tienes que hacer nada.\n\n" +
+      "Si no has sido tú: entra con un enlace desde la portada (pídelo con este mismo correo), revisa en Configuración, Mis dispositivos las llaves que quedan " +
+      "y avisa a la oficina.\n",
+  };
+}

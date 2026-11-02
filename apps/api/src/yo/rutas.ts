@@ -9,6 +9,7 @@ import { ACC_MAX, type Aspecto, ASPECTO, bytesReceta, limpiaAspecto, PATRON_PIEZ
 import { borraFicheros, clavesDelHogar } from "../vida/medios.ts";
 import { fijaAvisosCorreo, leeAvisosCorreo } from "./avisos.ts";
 import { datosDelHogar } from "./datos.ts";
+import { rutasYoLlaves } from "./llaves_rutas.ts";
 
 // 3–20 letras, números, espacios y guiones (doc/sistema/UX.md §4.6)
 const PATRON_ALIAS = "^[\\p{L}\\p{N}][\\p{L}\\p{N} -]{1,18}[\\p{L}\\p{N}]$";
@@ -157,4 +158,7 @@ export async function rutasYo(app: FastifyInstance, ctx: Contexto): Promise<void
     req.session = null as never;
     return rep.clearCookie(NOMBRE_COOKIE, OPCIONES_COOKIE).code(204).send();
   });
+
+  // Mis llaves de acceso (OF13b-4): lista, alta en dos pasos y baja, para cualquier cuenta (src/yo/llaves_rutas.ts)
+  await rutasYoLlaves(app, ctx);
 }
