@@ -30,6 +30,7 @@ import { register } from "ol/proj/proj4.js";
 import { get as proyeccion } from "ol/proj.js";
 import proj4 from "proj4";
 import { $, api, aviso, conConfirmacion, confirma, fecha, h, vacia } from "./comun.js";
+import { construyeHash } from "./enlaces_puro.js";
 import { area, cabeEn, codigoLibre, cuenta, inserta, mueve, num, puntoEnLimite, quita, redondea, sePisan, verticeCercano, vertices } from "./hazas_puro.js";
 
 // ETRS89 / UTM 30N, la de la base, el motor y la api (EPSG:25830)
@@ -177,9 +178,11 @@ export function iniciaHazas({ sesion }) {
   }
 
   // ---------------------------------------------------------------- carga
-  async function abre() {
+  /** `codigo` (OF15a, «#hazas/H-01»): deja esa haza elegida y el mapa centrado en ella en cuanto las hazas están cargadas. */
+  async function abre(codigo) {
+    if (codigo) pendiente = codigo;
     if (!mapa) creaMapa();
-    if (sucia()) { setTimeout(() => mapa.updateSize(), 0); return; }   // volver a la sección no pierde una linde a medio editar
+    if (sucia()) { setTimeout(() => mapa.updateSize(), 0); eligeCodigo(); return; }   // volver a la sección no pierde una linde a medio editar
     const n = ++cargando;
     const [rh, rf] = await Promise.all([api("GET", "/api/admin/hazas?geometria=true"), api("GET", "/api/admin/hogares?limite=200")]);
     if (n !== cargando) return;
@@ -195,6 +198,22 @@ export function iniciaHazas({ sesion }) {
     if (!indice || indice.__finca !== finca) await cargaFinca();
     pintaHazas();
     setTimeout(() => mapa.updateSize(), 0);
+    await eligeCodigo();
+  }
+
+  let pendiente = null;
+  async function eligeCodigo() {
+    const codigo = pendiente; pendiente = null;
+    if (!codigo || !hazas.length) return;
+    const z = hazas.find(x => x.codigo === codigo);
+    if (!z) { aviso("No hay ninguna haza con el código " + codigo + ".", "mal"); return; }
+    if (z.finca !== finca) {   // la haza es de otra finca: se cambia a ella antes de elegirla
+      if (sucia()) { aviso("Guarda o descarta antes los cambios de la linde.", "mal"); return; }
+      finca = z.finca; sel = null; $("#hFinca").value = finca;
+      await cargaFinca(); pintaHazas();
+    }
+    if (sel && sel.getId() === z.id) mapa.getView().fit(sel.getGeometry().getExtent(), { padding: [60, 60, 60, 60], maxZoom: 22, duration: 250 });
+    else await cambiaA(z.id, true);
   }
 
   async function cargaFinca() {
@@ -563,6 +582,7 @@ export function iniciaHazas({ sesion }) {
       error ? h("p", { class: "error", role: "alert" }, error) : null,
       h("p", { class: "nota" }, "Parcelas de OlivarTrack: " + (z.parcelas.length ? z.parcelas.map(p => p.id).join(", ") : "ninguna")),
       selectorFamilia(z),
+      z.hogar_id ? h("p", null, h("a", { class: "boton peq", href: construyeHash("familias", z.hogar_id), "data-enlace": "familia", "aria-label": "Ver la familia de " + z.codigo + ": " + (z.hogar_correo || "titular") }, "Ver la familia")) : null,
       h("h3", null, "Historial"),
       versiones.length ? h("ul", { class: "historial" }, versiones.map(v => h("li", { class: "aparato" },
         h("span", null, "v" + v.version + " · " + (ACCIONES[v.accion] || v.accion) + (v.desde_version ? " (a la v" + v.desde_version + ")" : ""), h("br"),

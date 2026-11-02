@@ -7,6 +7,7 @@ import { cuentaPendientes, iniciaBandeja } from "./bandeja.js";
 import { iniciaSistema } from "./sistema.js";
 import { iniciaOlivos } from "./olivos.js";
 import { iniciaAgenda } from "./agenda.js";
+import { construyeHash, parseaHash } from "./enlaces_puro.js";
 
 const SECCIONES = [
   ["inicio", "🏠", "Inicio", true], ["familias", "👪", "Familias", true], ["hazas", "🗺️", "Hazas", true], ["bandeja", "📥", "Bandeja", true],
@@ -34,9 +35,15 @@ for (const [id, ico, nombre, hecha] of SECCIONES) {
 }
 nav.addEventListener("click", e => { const b = e.target.closest("button[data-sec]"); if (b) ir(b.dataset.sec, true); });
 document.addEventListener("click", e => { const b = e.target.closest("[data-ir]"); if (b) ir(b.dataset.ir, true); });
-window.addEventListener("hashchange", () => ir(location.hash.slice(1), false));
+window.addEventListener("hashchange", () => { const { sec, param } = parseaHash(location.hash); ir(sec, !!param, param); });
+// OF15a: un enlace «#hazas/H-01» a la dirección en la que ya está no dispara hashchange (la haza pudo cambiarse desde el desplegable): se lleva a mano
+document.addEventListener("click", e => {
+  const a = e.target.closest("a[data-enlace]");
+  if (a && a.getAttribute("href") === location.hash) { e.preventDefault(); const { sec, param } = parseaHash(location.hash); ir(sec, true, param); }
+});
 
-function ir(sec, foco) {
+/** Va a una sección; `param` es el del hash («#hazas/H-01»: código de la haza; «#familias/12»: id del hogar), solo para las que lo admiten. */
+function ir(sec, foco, param = null) {
   if (!SECCIONES.some(s => s[0] === sec)) sec = "inicio";
   actual = sec;
   const [, , nombre, hecha] = SECCIONES.find(s => s[0] === sec);
@@ -45,9 +52,10 @@ function ir(sec, foco) {
   for (const b of nav.querySelectorAll("button")) { if (b.dataset.sec === sec) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); }
   $("#titulo").textContent = nombre;
   document.title = nombre + " · Oficina · Cuarenta hazas";
-  if (location.hash !== "#" + sec) history.replaceState(null, "", "#" + sec);
-  if (sec === "familias") familias.abre();
-  if (sec === "hazas") abreHazas();
+  const hash = construyeHash(sec, param);
+  if (location.hash !== hash) history.replaceState(null, "", hash);
+  if (sec === "familias") familias.abre(param ? Number(param) : null);
+  if (sec === "hazas") abreHazas(param);
   if (sec === "bandeja") bandeja.abre();
   if (sec === "agenda") agenda.abre();
   if (sec === "sistema") { sistema.abre(); llaves.abre(); }
@@ -85,13 +93,13 @@ async function cuentaFamilias() {
 }
 
 // Hazas trae OpenLayers y proj4 (≈ 0,5 MB): se cargan la primera vez que se entra en la sección, no con la oficina.
-async function abreHazas() {
+async function abreHazas(codigo) {
   if (!hazas) {
     const { iniciaHazas } = await import("./hazas.js");
     hazas = hazas || iniciaHazas({ sesion });
     if (new URLSearchParams(location.search).has("prueba")) window.__hazas = hazas.estado;   // solo lectura, para la prueba de Chrome
   }
-  if (actual === "hazas") hazas.abre();
+  if (actual === "hazas") hazas.abre(codigo);
 }
 
 $("#salir").addEventListener("click", async () => {
@@ -112,5 +120,6 @@ cargaSesion().then(abierta => {
   if (!abierta) return;
   marcaOficinaAbierta();
   cuentaPendientes(); setInterval(cuentaPendientes, 60_000);
-  ir(location.hash.slice(1) || "inicio", false);
+  const { sec, param } = parseaHash(location.hash);
+  ir(sec || "inicio", false, param);
 }).catch(() => { $("#anuncio").textContent = "No se pudo leer la sesión."; });
