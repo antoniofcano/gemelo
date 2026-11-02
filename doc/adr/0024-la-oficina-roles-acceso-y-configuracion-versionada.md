@@ -36,3 +36,6 @@ Lo demás de §12 de OFICINA.md queda como lo cerró Antonio: baja con contenido
 
 ## Comprobación
 `apps/api/pruebas/integracion/oficina.test.ts` (contra PostGIS en contenedor, por el turno del banco): un hogar no entra en `/oficina` ni en `/api/admin`; la oficina con aparato aprobado sí; con aparato pendiente no; el segundo enlace antes de 5 min no aprueba y después sí; aprobar desde otro aparato confiable; caducidad absoluta y por inactividad; confirmación reciente; revocar un aparato cierra sus sesiones. Guardianes de texto de los dos Caddyfile (`/oficina` tras `forward_auth` con `para=oficina`) e `infra/probar-caddy.sh` (Caddy real de producción con una api simulada: sin sesión 303, hogar 403, oficina 200; comprobado el 2026-10-30). **No probado:** el Caddyfile de dev levantado entero con la api real, el envío real del segundo enlace por el SMTP de OVH, la llave de acceso (OF13, no existe aún), la página de la oficina en una tableta (decisión 116: solo ordenador).
+
+## Enmienda 2026-11-02
+La regla «una cuenta de oficina no vincula aparatos con el código corto» se modifica en parte: desde [ADR-0028](0028-gafas-vinculadas-desde-la-oficina-entran-como-visitante.md) la oficina puede vincular gafas, pero la sesión que nace es la de un visitante de familia, nunca de oficina. El resto del ADR sigue vigente.
