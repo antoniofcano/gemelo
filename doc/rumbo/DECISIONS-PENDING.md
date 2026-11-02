@@ -202,3 +202,4 @@ Decisiones que **no puede tomar un agente**: las cierra Antonio. Las técnicas s
 | 186 | **Login · enlaces por correo en 15 min** | 5 (la recomendada) / 3 como hoy | OF13b-1 | ✅ 2026-11-02: **5 cada 15 minutos** (y 10 por IP) |
 | 187 | **Login · avisos de seguridad por correo** | al añadir y quitar llaves (la recomendada) / también en cada entrada desde un aparato nuevo | OF13b-4 | ✅ 2026-11-02: **solo al añadir y al quitar una llave** |
 | 188 | **Oficina · en qué haza está cada persona** | que el motor diga a la api la haza (la lista de la oficina la enseña; se acerca a seguir a una persona) / no (la columna queda vacía; decisión 40) | OF14 | ⬜ |
+| 189 | **Oficina · silenciar a una sola persona** | ruta nueva `POST /api/admin/presencia/silenciar { hogar_id, sala }`, solo salas guiadas, auditada y sin desmute remoto / no (hoy solo «silenciar a todos») | OF14 | ⬜ |

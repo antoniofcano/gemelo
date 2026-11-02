@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Oficina, Mundo (OF14 escalón 3): bloque «Salas» con las salas y su recuento, y en las visitas guiadas «Silenciar a todos» y «Cerrar la sala» con aviso previo configurable (5-60 s) y vuelta a la sala general. Sin rutas nuevas: usa las de F3f, que ya admitían a la oficina. Sin «Silenciar» por persona (la api no lo tiene). Probado solo en Node; Chrome, LiveKit real y gente, sin probar.
 - API: el enlace por correo admite 5 peticiones cada 15 minutos (antes 3), y pedirlo responde «Si ese correo tiene cuenta, te llegará un enlace» igual exista o no la cuenta (OF13b-1). Probado solo en Node; PostGIS, Chrome e iPhone sin probar.
 - Portada: «Revisa tu correo» enseña el correo escrito, con «¿No es ese? Cambiarlo» y «Si no lo ves, mira en el spam» (OF13b-1). Sin nombrar el remitente. Probado solo en Node; Chrome real, iPhone y lector de pantalla sin probar.
 - La pestaña Mundo de la oficina enseña «Quién está en el mundo» (OF14, escalón 2): una tabla con la sala, el alias, el rol, el aparato y cuánto hace que está conectado cada persona, con atajos a «Expulsar» y «Ver la familia», que se refresca sola cada 10 s mientras se ve. Ruta nueva de solo lectura `GET /api/admin/presencia/participantes` (solo oficina; sin correos; máximo 200; caché de 4 s). La haza que mira y la vista aérea no se saben todavía (la api no ve la pose). Hecho en Node; sin probar con LiveKit real ni en Chrome.
