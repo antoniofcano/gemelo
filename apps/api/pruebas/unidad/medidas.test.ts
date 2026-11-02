@@ -52,7 +52,7 @@ test("v2 (Q0e): rangos y forma de los campos nuevos; campos extra y perillas con
   assert.equal(ok({ js_mediana_ms: 6.8, js_p95_ms: 11.2, nivel_ini: 3, nivel_fin: 3, perillas: "fov 1 · escala 0,9 · 72 Hz · MSAA sí · nivel auto", olivos_gen: true, llamadas_med: 212, triangulos_med: 410000, personas: 0 }), true);
   assert.equal(ok({ perillas: "fov 3 · escala 1 · Hz sin cambiar · MSAA no · nivel 2 fijo · ignorado: fov=9 (fuera de rango)" }), false, "más de 80 caracteres");
   assert.equal(ok({ perillas: "x".repeat(80) }), true); assert.equal(ok({ perillas: "x".repeat(81) }), false); assert.equal(ok({ perillas: "" }), false);
-  for (const p of ["<script>alert(1)</script>", "C:\\Users\\x", "/etc/passwd", "http://x.example", "a@b.es", "hola\nmundo", "\u202e"]) assert.equal(ok({ perillas: p }), false, p);
+  for (const p of ["<script>alert(1)</script>", "D:\\carpeta\\x", "/etc/passwd", "http://x.example", "a@b.example", "hola\nmundo", "\u202e"]) assert.equal(ok({ perillas: p }), false, p);
   for (const [k, v] of [["js_mediana_ms", -1], ["js_mediana_ms", 10001], ["js_p95_ms", "rapido"], ["nivel_ini", 10], ["nivel_fin", -2], ["nivel_fin", 1.5], ["olivos_gen", "si"], ["llamadas_med", -1], ["llamadas_med", 100001],
     ["triangulos_med", 1e9], ["personas", 501], ["personas", -1], ["personas", 2.5]] as const) assert.equal(ok({ [k]: v }), false, k + "=" + String(v));
   for (const campo of ["hogar", "ip", "posicion", "lat", "ua", "identidad", "nombres"]) assert.equal(ok({ [campo]: "x" }), false, "campo extra " + campo);

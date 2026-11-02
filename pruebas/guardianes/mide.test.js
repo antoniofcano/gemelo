@@ -140,7 +140,7 @@ test("Q0e: en pantalla no hay nivel ni perillas; lo que no se midió no viaja (u
 });
 test("Q0e: las perillas se sanean (sin HTML, rutas ni exceso de largo) y nunca pasan de 80 caracteres", () => {
   assert.strictEqual(E.perillasLimpias("VR: fov 1 · escala 1 · 72 Hz · MSAA sí · nivel 2 fijo"), "fov 1 · escala 1 · 72 Hz · MSAA sí · nivel 2 fijo");
-  const sucio = E.perillasLimpias("VR: <script>alert(1)</script> /etc/passwd http://x.example a@b.es");
+  const sucio = E.perillasLimpias("VR: <script>alert(1)</script> /etc/passwd http://x.example a@b.example");
   assert.ok(!/[<>/@]/.test(sucio), sucio);
   const largo = E.perillasLimpias("VR: " + "fov 1 · ".repeat(40));
   assert.ok(largo.length <= 80 && largo.length > 0, String(largo.length));
