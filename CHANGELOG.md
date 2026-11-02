@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Olivo real (OF8c): la oficina encuentra el olivo por el número que enseña la ficha («posición 2005», «olivo 2005» o «#2005») y dice a qué id corresponde; la ficha del olivo del mundo enseña siempre su Id real (provisional o del censo) y la posición que acepta la oficina. Solo texto de interfaz; probado solo en Node.
 - Tubería de hazas: `carga_hazas.py --olivos-indice <indice.json>` carga en la base los olivos medidos de una finca con su `finca` y `copas_id` (identidad del censo de OlivarTrack, posición y altura del LiDAR), idempotente; sin `copas_id` falla. Con ellos el editor de hazas cuenta los olivos y las familias pueden personalizar «su» olivo (OF3e). Probado en Node y Python; la carga a PostGIS está escrita y sin ejecutar.
 - La presencia en red arranca sola: sin `?presencia=` y con servidor, el gemelo pregunta una vez `GET /api/presencia` (nueva, con sesión y sin secretos: `{ red }`) y, si el servidor tiene LiveKit, muestra a los demás visitantes y abre «Gente y chat» como con `?presencia=red`. Casilla «Ver a los demás y chatear» en Ajustes (marcada por defecto, recordada por visitante); `?presencia=0` la apaga siempre. Sin servidor o si la pregunta falla, todo queda como antes (F2b). No probado en Chrome, iPhone ni Quest.
 - Las hazas salen en el minimapa: la tuya en ámbar, las ajenas en blanco roto, con su código si cabe; la casilla «Linde» las apaga con la linde 3D (A4b). Probado en Node; no probado en Chrome, iPhone ni Quest.
