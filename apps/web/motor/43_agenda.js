@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
 // Consume: 01_datos (D, $), 02_mundo (Mundo), 02c_componentes (Bus, ConfigPuro, Componentes), 03_escena (lienzo, modo), 12_paseo (persona),
-//   14_historia (lista), 29_vr (panel, PanelVR), 31_hud (Hud), 32_ventanas (Ventanas)
+//   14_historia (marca, lista, aviso), 29_vr (panel, ficha, PanelVR), 31_hud (Hud), 32_ventanas (Ventanas)
 // Nota: Componente «agenda» (OF11d, ADR-0023; decisiones 145-148): la agenda de la finca dentro del mundo. Solo se registra; nadie lo nombra. Montado (solo con servidor): icono y ventana «Agenda» con los próximos eventos, plazas libres, tu estado (apuntados / en espera) y, solo si la api dice puede_inscribirse, apuntarse o borrarse con el número de personas (1-10); en VR, una fila en la pestaña Mundo del panel que lista los próximos y dice «Apúntate desde el móvil o el ordenador» (nadie se apunta desde las gafas). Todo lo de la api es dato: lista blanca y textContent / fillText. Publica window.__agenda (pruebas). El trozo [puro:…] lo evalúa en Node pruebas/guardianes/agenda_mundo.test.js.
 // ===============================================================================
   // ---------- la agenda dentro del mundo (OF11d; decisiones 145-148, doc/sistema/OFICINA.md §7): los próximos eventos de la finca, con sus plazas, tu estado
@@ -104,7 +104,38 @@
       });
       return { filas: l, vacia: !l.length, nota: TEXTO_VR, entrar: en ? { id: en.id, titulo: en.titulo } : null };
     }
-    return { MAX_PERSONAS: MAX_PERSONAS, TEXTO_VR: TEXTO_VR, rutaAgenda: rutaAgenda, rutaInscripcion: rutaInscripcion, personas: personas, valida: valida, proximos: proximos, cuando: cuando,
+    // OF11g: los avisos de eventos de ESTE hogar (GET /api/avisos) con lista blanca → { avisos: [{ id, evento_id, evento, titulo, texto, fecha (ms), leido }], sin_leer } o null
+    var MAX_AVISOS = 50;
+    function rutaAvisos(prefijo) { return prefijo ? prefijo + "avisos" : null; }
+    function rutaLeido(prefijo, id) { return prefijo && Number.isInteger(id) && id >= 1 ? prefijo + "avisos/" + id + "/leido" : null; }
+    function validaAvisos(j) {
+      if (!j || typeof j !== "object" || !Array.isArray(j.avisos)) return null;
+      var av = [], vistos = {};
+      for (var i = 0; i < j.avisos.length && av.length < MAX_AVISOS; i++) {
+        var a = j.avisos[i]; if (!a || typeof a !== "object") continue;
+        var t = typeof a.fecha === "string" ? Date.parse(a.fecha) : NaN;
+        if (!Number.isInteger(a.id) || a.id < 1 || vistos[a.id] || !Number.isInteger(a.evento_id) || a.evento_id < 1 || typeof a.titulo !== "string" || !a.titulo.trim() || !isFinite(t) || typeof a.leido !== "boolean") continue;
+        vistos[a.id] = true;
+        av.push({ id: a.id, evento_id: a.evento_id, evento: typeof a.evento === "string" ? corta(a.evento.trim(), 120) : "", titulo: corta(a.titulo.trim(), 120),
+          texto: typeof a.texto === "string" ? corta(a.texto.trim(), 600) : "", fecha: t, leido: a.leido });
+      }
+      av.sort(function (x, y) { return y.fecha - x.fecha || y.id - x.id; });
+      return { avisos: av, sin_leer: av.filter(function (x) { return !x.leido; }).length };
+    }
+    function avisosDe(avisos, eventoId) { return avisos ? avisos.filter(function (a) { return a.evento_id === eventoId; }) : []; }
+    // los que no cuelgan de ningún evento visible (p. ej. «se cancela…»: el evento cancelado ya no sale en la agenda): los más nuevos, como mucho `max`
+    function avisosSueltos(avisos, eventos, max) {
+      var ids = {}; eventos.forEach(function (e) { ids[e.id] = true; });
+      return (avisos || []).filter(function (a) { return !ids[a.evento_id]; }).slice(0, max);
+    }
+    function textoSinLeer(n) { return n === 1 ? "1 aviso sin leer" : n + " avisos sin leer"; }
+    // la fila del panel VR: solo si hay algo sin leer; el último es el más nuevo de los no leídos
+    function filaAvisosVR(av) {
+      if (!av || !av.sin_leer) return null;
+      var u = av.avisos.filter(function (a) { return !a.leido; })[0];
+      return { n: av.sin_leer, cuenta: textoSinLeer(av.sin_leer), ultimo: u ? u.titulo : "", evento: u ? u.evento : "", nota: "Léelos en la ventana Agenda" };
+    }
+    return { MAX_PERSONAS: MAX_PERSONAS, rutaAvisos: rutaAvisos, rutaLeido: rutaLeido, validaAvisos: validaAvisos, avisosDe: avisosDe, avisosSueltos: avisosSueltos, textoSinLeer: textoSinLeer, filaAvisosVR: filaAvisosVR, TEXTO_VR: TEXTO_VR, rutaAgenda: rutaAgenda, rutaInscripcion: rutaInscripcion, personas: personas, valida: valida, proximos: proximos, cuando: cuando,
       ventanaEntrada: ventanaEntrada, puedeEntrar: puedeEntrar, visibles: visibles, TEXTO_NO_ENTRA: TEXTO_NO_ENTRA, textoTipo: textoTipo, textoPlazas: textoPlazas, textoMia: textoMia, ofrece: ofrece, textoError: textoError, filasVR: filasVR };
   })();
   // [puro:fin]
@@ -112,7 +143,7 @@
   function AgendaMotor(n) {
     var AP = AgendaPuro, prefijo = ConfigPuro.prefijoApi(location.search, D && D.base);
     if (!prefijo || typeof fetch !== "function") return null;   // sin servidor no hay agenda: ni icono ni ventana
-    var datos = null, estado = "sin-pedir", cuerpo = null, nota = "", pidiendo = null, hechas = 0, enVuelo = false, entrando = false, dentro = null, elegidas = {}, pintado = "";   // elegidas: las personas escogidas por evento (sobreviven a un repintado); pintado: la firma de lo que depende del reloj
+    var datos = null, avisos = null, estado = "sin-pedir", cuerpo = null, nota = "", pidiendo = null, hechas = 0, enVuelo = false, entrando = false, dentro = null, elegidas = {}, pintado = "";   // elegidas: las personas escogidas por evento (sobreviven a un repintado); pintado: la firma de lo que depende del reloj
 
     function el(tag, css, txt) { var x = document.createElement(tag); if (css) x.style.cssText = css; if (txt != null) x.textContent = txt; return x; }
     var BOTON = "min-height:44px;min-width:44px;padding:0 14px;border-radius:10px;border:1px solid currentColor;background:rgba(255,255,255,0.12);color:inherit;font:600 15px system-ui,sans-serif;cursor:pointer";
@@ -128,9 +159,40 @@
           if (j === null) { if (estado === "cargando") estado = "error"; return; }
           var d = AP.valida(j); if (!d) { estado = "error"; return; }
           datos = d; estado = "ok"; hechas++; n.emite("agenda:cambia", { proximos: AP.proximos(d.eventos, Date.now()).length, puede_inscribirse: d.puede });
+          return cargaAvisos();
         }).catch(function () { estado = datos ? "ok" : "error"; })
         .then(function () { pidiendo = null; pinta(); if (typeof PanelVR !== "undefined") PanelVR.repinta(); });
       return pidiendo;
+    }
+
+    // OF11g: los avisos de los eventos de ESTA familia, después de la agenda; si falla o la respuesta es rara, no hay avisos y la agenda sigue entera
+    function cargaAvisos() {
+      var url = AP.rutaAvisos(prefijo); if (!url) return Promise.resolve();
+      return fetch(url, { credentials: "same-origin", cache: "no-cache", headers: { accept: "application/json" } })
+        .then(function (r) { return r.status === 200 ? parse(r) : null; })
+        .then(function (j) { avisos = j ? AP.validaAvisos(j) : null; }, function () {});
+    }
+    // marcar un aviso como leído (solo el de esta familia: la api lo comprueba); al volver 204 se apaga la marca y se repinta
+    function leido(a) {
+      var url = AP.rutaLeido(prefijo, a.id); if (!url || a.leido || !avisos) return Promise.resolve(false);
+      return fetch(url, { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json", accept: "application/json" }, body: "{}" })
+        .then(function (r) {
+          if (r.status !== 204) { nota = "No se ha podido marcar el aviso. Prueba otra vez en un rato."; return false; }
+          a.leido = true; avisos.sin_leer = avisos.avisos.filter(function (x) { return !x.leido; }).length; return true;
+        }).catch(function () { nota = "No se ha podido marcar el aviso. Prueba otra vez en un rato."; return false; })
+        .then(function (ok) { pinta(); if (typeof PanelVR !== "undefined") PanelVR.repinta(); return ok; });
+    }
+    // un aviso en la ficha: punto de «sin leer», título, texto y su fecha, todo como texto; «Marcar como leído» solo si no lo está
+    function bloqueAviso(a, conEvento) {
+      var d = el("div", "margin:6px 0 0;padding:6px 8px;border-radius:8px;background:rgba(255,233,168,0.10)");
+      d.setAttribute("data-aviso", String(a.id));
+      var c = el("p", "margin:0;font-size:15px;font-weight:700");
+      if (!a.leido) { var pt = el("span", "color:#ffe9a8", "● "); pt.setAttribute("data-sin-leer", ""); pt.setAttribute("aria-label", "sin leer"); c.appendChild(pt); }
+      c.appendChild(el("span", null, a.titulo)); d.appendChild(c);
+      d.appendChild(el("p", "margin:2px 0 0;font-size:13px;opacity:.75", AP.cuando(a.fecha) + (conEvento && a.evento ? " · " + a.evento : "")));
+      if (a.texto) d.appendChild(el("p", "margin:2px 0 0;font-size:14px;line-height:1.35;opacity:.9", a.texto));
+      if (!a.leido) { var b = el("button", BOTON + ";margin-top:6px", "Marcar como leído"); b.type = "button"; b.setAttribute("data-leido", String(a.id)); b.addEventListener("click", function () { leido(a); }); d.appendChild(b); }
+      return d;
     }
 
     // apuntarse (personas) o borrarse (null): una sola petición a la vez; al acabar, recarga la lista (la verdad es la del servidor)
@@ -181,6 +243,11 @@
       if (e.descripcion) t.appendChild(el("p", "margin:4px 0 0;font-size:14px;line-height:1.35;opacity:.85", e.descripcion));
       var pl = el("p", "margin:4px 0 0;font-size:15px;font-weight:600", AP.textoPlazas(e) + (e.abierta ? "" : " · inscripción cerrada")); pl.setAttribute("data-plazas", ""); t.appendChild(pl);
       if (e.mia) { var m = el("p", "margin:2px 0 0;font-size:15px;font-weight:700;color:#ffe9a8", AP.textoMia(e.mia)); m.setAttribute("data-mia", ""); t.appendChild(m); }
+      var misAvisos = AP.avisosDe(avisos && avisos.avisos, e.id);
+      if (misAvisos.length) {
+        var cab = el("p", "margin:8px 0 0;font-size:14px;font-weight:700", "Avisos de la oficina"); cab.setAttribute("data-avisos", String(e.id)); t.appendChild(cab);
+        misAvisos.forEach(function (a) { t.appendChild(bloqueAviso(a, false)); });
+      }
       if (o.apuntar) {
         var fila = el("div", "display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px");
         var etq = el("label", "font-size:15px", "Personas"), sel = el("select", "min-height:44px;font:inherit;padding:0 8px;border-radius:8px"), b = el("button", BOTON, e.libres === 0 ? "Ponernos en la lista de espera" : "Apuntarnos");
@@ -213,6 +280,11 @@
       var l = AP.visibles(datos.eventos, Date.now());
       if (!l.length) cuerpo.appendChild(el("p", "margin:8px 0", "No hay eventos próximos."));
       else l.forEach(function (e) { cuerpo.appendChild(tarjeta(e, datos.puede)); });
+      var sueltos = AP.avisosSueltos(avisos && avisos.avisos, l, 5);
+      if (sueltos.length) {   // avisos de eventos que ya no están en la lista (p. ej. uno cancelado)
+        var cs = el("div", "padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.15)"); cs.setAttribute("data-avisos-otros", "");
+        cs.appendChild(el("h3", "margin:0 0 2px;font-size:17px", "Otros avisos")); sueltos.forEach(function (a) { cs.appendChild(bloqueAviso(a, true)); }); cuerpo.appendChild(cs);
+      }
       if (nota) { var a = el("p", "margin:10px 0 0;font-size:15px;font-weight:600", nota); a.setAttribute("role", "status"); a.setAttribute("aria-live", "polite"); a.setAttribute("data-nota", ""); cuerpo.appendChild(a); }
       if (!datos.puede) cuerpo.appendChild(el("p", "margin:10px 0 0;font-size:14px;opacity:.8", AP.TEXTO_VR + ": solo la titular, con su enlace, apunta a la familia."));
       else cuerpo.appendChild(el("p", "margin:10px 0 0;font-size:14px;opacity:.75", "Podéis cambiar el número de personas borrándoos y volviendo a apuntaros. Si no cabéis, quedáis en la lista de espera."));
@@ -242,6 +314,18 @@
         },
         firma: function () { var v = vistaVR(); return v ? v.filas.map(function (f) { return f.t + "|" + f.s; }).join("/") + "|" + v.vacia + "|" + (v.entrar ? v.entrar.id : "") + (entrando ? "!" : "") : ""; },
         debug: function () { return { agenda: vistaVR() }; } }));
+      // OF11g: cuántos avisos sin leer hay y el último; sin nada sin leer, la fila no sale. Leerlos, en la ventana (el panel no tiene teclado ni lista cómoda)
+      n.limpia(PanelVR.filas("mundo", { id: "agenda_avisos", orden: 71, alto: 130, visible: function () { return !!AP.filaAvisosVR(avisos); },
+        pinta: function (cx, y, W, h) {
+          var v = AP.filaAvisosVR(avisos); h.fila("Avisos", y); if (!v) return;
+          cx.textAlign = "left"; cx.textBaseline = "alphabetic";
+          function ajusta(txt, ancho) { var s = txt; while (cx.measureText(s).width > ancho && s.length > 6) s = s.slice(0, -2); return s === txt ? s : s.trim() + "…"; }
+          cx.fillStyle = "#ffe9a8"; cx.font = "700 26px system-ui, sans-serif"; cx.fillText("● " + v.cuenta, 420, y + 26);
+          cx.fillStyle = "#ffffff"; cx.font = "700 24px system-ui, sans-serif"; cx.fillText(ajusta("Último: " + v.ultimo, 590), 420, y + 62);
+          cx.fillStyle = "#cfdccb"; cx.font = "600 21px system-ui, sans-serif"; cx.fillText(ajusta((v.evento ? v.evento + " · " : "") + v.nota, 590), 420, y + 92);
+        },
+        firma: function () { var v = AP.filaAvisosVR(avisos); return v ? v.n + "|" + v.ultimo + "|" + v.evento : ""; },
+        debug: function () { return { avisos: AP.filaAvisosVR(avisos) }; } }));
       n.on("vr:entra", function () { carga(); });   // al ponerse las gafas se refresca (no hay otro momento: el panel no tiene botón de recargar)
     }
     n.limpia(Ventanas.registra("agenda", { titulo: "Agenda", construye: function (cu) { cuerpo = cu; pinta(); } }));
@@ -257,10 +341,10 @@
     n.limpia(Hud.icono({ id: "agenda", ico: "📅", txt: "Agenda", prio: 2, ventana: "agenda" }));
     n.limpia(function () { cuerpo = null; });
     window.__agenda = function () {
-      return { estado: estado, datos: datos, prefijo: prefijo, hechas: hechas, nota: nota, vr: vistaVR(), carga: carga, entra: function (id) { var e = datos && datos.eventos.filter(function (x) { return x.id === id; })[0]; return e ? entra(e) : Promise.resolve(false); }, manda: function (id, p) { var e = datos && datos.eventos.filter(function (x) { return x.id === id; })[0]; return e ? manda(e, p) : Promise.resolve(false); } };
+      return { estado: estado, datos: datos, prefijo: prefijo, hechas: hechas, nota: nota, vr: vistaVR(), avisos: avisos, vrAvisos: AP.filaAvisosVR(avisos), carga: carga, leido: function (id) { var a = avisos && avisos.avisos.filter(function (x) { return x.id === id; })[0]; return a ? leido(a) : Promise.resolve(false); }, entra: function (id) { var e = datos && datos.eventos.filter(function (x) { return x.id === id; })[0]; return e ? entra(e) : Promise.resolve(false); }, manda: function (id, p) { var e = datos && datos.eventos.filter(function (x) { return x.id === id; })[0]; return e ? manda(e, p) : Promise.resolve(false); } };
     };
     n.limpia(function () { try { delete window.__agenda; } catch (e) { window.__agenda = undefined; } });
-    return { carga: carga, manda: manda, entra: entra, datos: function () { return datos; } };
+    return { carga: carga, manda: manda, entra: entra, leido: leido, datos: function () { return datos; }, avisos: function () { return avisos; } };
   }
 
   // el manifiesto (ADR-0023): lo lee el guardián pruebas/guardianes/componentes.test.js sin montar nada. ?agenda=0 lo apaga; ?agenda=1 lo enciende.
