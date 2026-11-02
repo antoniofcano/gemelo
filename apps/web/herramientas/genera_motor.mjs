@@ -33,10 +33,10 @@ export function textosFinca(cab, T) {
   cab = cab.replace(/<h1>[\s\S]*?<\/h1>/, () => "<h1>" + n + ", en 3D</h1>");
   cab = cab.replace(/(<h1>[\s\S]*?<\/h1>\s*)<p>[\s\S]*?<\/p>/, (m, a) => a + "<p>Gemelo de las " + nf + " fincas de " + n + ", con sus " + npar + " parcelas y " + fh(T.ha) + " ha: la forma sale de los puntos del vuelo LiDAR de 2024 y el color, de la ortofoto del PNOA corregida por la altura de cada copa. Cada tesela de 256 m se carga y se dibuja con más o menos detalle según lo cerca que la mires.</p>");
   cab = cab.replace("Vista 3D de la parcela Cerro Velasco;", () => "Vista 3D de las fincas de " + n + ";");
-  cab = cab.replace(/<p class="nota" id="notaDesfase" style="margin-top:8px">Los puntos guardados[\s\S]*?<\/p>/, () => '<p class="nota" id="notaDesfase" style="margin-top:8px">Los puntos guardados en OlivarTrack se marcaron sobre la ortofoto, que muestra las copas desplazadas hacia el este según su altura (' + (T.desfase_txt || "unos 1,5 m, medido en Cerro Velasco") + '); el LiDAR está bien georreferenciado.</p>');
+  cab = cab.replace(/<p class="nota sep8" id="notaDesfase">Los puntos guardados[\s\S]*?<\/p>/, () => '<p class="nota sep8" id="notaDesfase">Los puntos guardados en OlivarTrack se marcaron sobre la ortofoto, que muestra las copas desplazadas hacia el este según su altura (' + (T.desfase_txt || "unos 1,5 m, medido en Cerro Velasco") + '); el LiDAR está bien georreferenciado.</p>');
   cab = cab.replace(/<p class="pie">[\s\S]*?<\/p>/, () => '<p class="pie">Gemelo de las ' + nf + " fincas de " + n + " (" + npar + " parcelas, " + fh(T.ha) + " ha, " + nol + " olivos detectados). La copa de cada olivo es medida del LiDAR; sus troncos y ramas son una forma ilustrativa con los 2 o 3 pies habituales, no una medición. Nube PNOA-LiDAR 2024 (3.ª cobertura, unos 6,5 puntos por m²), MDT de 0,5 m del CNIG y ortofoto PNOA del IGN, licencia CC-BY 4.0. La corrección de la ortofoto es un ajuste medido en Cerro Velasco, no una ortorrectificación. El tendido, los cauces y el último tramo de cada cable están deducidos de la geometría, no medidos. Es un modelo de trabajo, no una medición topográfica.</p>");
   if (T.intro_historia) cab = cab.replace(/(<p class="nota" id="hIntro">)[\s\S]*?(<\/p>)/, (m, a, b) => a + T.intro_historia + b);
-  if (T.sin_historia) cab = cab.replace("</style>", () => "#historia { display: none !important; }\n</style>");
+  if (T.sin_historia) cab = cab.replace('id="historia"', () => 'id="historia" data-sin');   // plantilla.css: #historia[data-sin] { display: none !important }
   return cab;
 }
 
@@ -44,7 +44,9 @@ export function genera(datos, dest, sin = []) {
   const D = fs.readFileSync(datos, "utf8");
   const J = JSON.parse(D);                                                     // falla aquí, y no en el navegador, si el JSON está roto
   fs.mkdirSync(path.join(dest, "entrada"), { recursive: true });
-  fs.writeFileSync(path.join(dest, "entrada", "motor.generado.js"), 'import * as THREE from "three";\n' + concatenaMotor(sin));
+  // V12: los estilos van en un .css del mismo origen (la CSP no deja <style> ni style="…" en línea) y las tipografías @fontsource entran por su @import
+  fs.copyFileSync(path.join(WEB, "plantilla.css"), path.join(dest, "entrada", "plantilla.css"));
+  fs.writeFileSync(path.join(dest, "entrada", "motor.generado.js"), 'import * as THREE from "three";\nimport "./plantilla.css";\n' + concatenaMotor(sin));
   let plantilla = fs.readFileSync(path.join(WEB, "plantilla.html"), "utf8");
   if (J.textos) plantilla = textosFinca(plantilla, J.textos);
   const html = '<!doctype html>\n<html lang="es">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n</head>\n<body>\n' +

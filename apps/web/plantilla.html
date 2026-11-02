@@ -8,285 +8,6 @@
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icono.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./icono-apple-180.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Instrument+Sans:wght@400;500;600&display=swap">
-<style>
-/* La página ES el visor (decisión 83, doc/sistema/UX-FINCA-JUEGO.md): el mundo a toda la ventana, un HUD mínimo en las esquinas y lo demás en
-   ventanas que se abren cuando se piden. HUD, ventanas y menú en «cristal oscuro»: se leen igual sobre cielo claro que sobre el olivar.
-   Paleta: tierra (suelo), verde olivo (copas), turquesa (lo que mide el LiDAR), ámbar (lo guardado en OlivarTrack). */
-:root {
-  --bg: #f3f1ea; --panel: #fbfaf6; --fg: #23261f; --muted: #686b5e; --line: #dcd9cc;
-  --olivo: #4d6b2f; --lidar: #0e8f86; --guardado: #b87a10; --sky: #e6ebe4;
-  --arena: #d9c08a; --limo: #b9a57a; --arcilla: #9a5a3a;
-  --display: "Fraunces", Georgia, serif; --body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --hud: rgba(16, 20, 24, 0.80); --hud-fuerte: rgba(16, 20, 24, 0.94); --hud-borde: rgba(255, 255, 255, 0.22); --hud-txt: #f2f4ec; --hud-suave: #c3c8b8;
-  --sobre-olivo: #14180f; --deducido: #c9a6ff; --ilustrativo: #e6e1d3; --modelo: #8fb6ff; --foco: #ffd166;
-  --toque: 44px; --pad: 52px;
-  --sa-t: env(safe-area-inset-top, 0px); --sa-b: env(safe-area-inset-bottom, 0px); --sa-l: env(safe-area-inset-left, 0px); --sa-r: env(safe-area-inset-right, 0px);
-}
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg: #161a14; --panel: #1e2319; --fg: #e9ebe0; --muted: #a2a794; --line: #323a2a;
-  --olivo: #9dc16a; --lidar: #3ccfc2; --guardado: #f0b13f; --sky: #232b20; color-scheme: dark; } }
-:root[data-theme="dark"] {
-  --bg: #161a14; --panel: #1e2319; --fg: #e9ebe0; --muted: #a2a794; --line: #323a2a;
-  --olivo: #9dc16a; --lidar: #3ccfc2; --guardado: #f0b13f; --sky: #232b20; color-scheme: dark; }
-* { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; }
-body { background: #0b0d0a; color: var(--fg); font-family: var(--body); font-size: 14px; line-height: 1.45; }
-[hidden] { display: none !important; }
-:focus-visible { outline: 3px solid var(--foco); outline-offset: 2px; }
-.vh { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-
-/* ---------- el visor: toda la ventana (100 % del alto visible), sin desplazar la página */
-.visor { position: fixed; inset: 0; overflow: hidden; background: var(--sky); touch-action: none; }
-.visor canvas#lienzo { display: block; width: 100%; height: 100%; cursor: grab; }
-.visor canvas#lienzo:active { cursor: grabbing; }
-.visor.paseo canvas#lienzo { cursor: default; outline: none; }
-.lienzo-pie, .visor canvas#lienzo { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
-
-/* el HUD, las ventanas, las fichas y el menú usan siempre el cristal oscuro: aquí se redefinen los colores de los bloques de antes */
-.hud, .ventana, .ficha, .t-baliza, .tarjeta-rec, #menu, .sin-escena {
-  --bg: rgba(255, 255, 255, 0.06); --panel: rgba(16, 20, 24, 0.94); --fg: var(--hud-txt); --muted: var(--hud-suave); --line: var(--hud-borde);
-  --olivo: #9dc16a; --lidar: #3ccfc2; --guardado: #f0b13f; color-scheme: dark; color: var(--fg); }
-.cristal { background: var(--hud); border: 1px solid var(--hud-borde); border-radius: 12px; color: var(--hud-txt); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
-.boton { min-width: var(--toque); min-height: var(--toque); display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--hud-borde); background: var(--hud); color: var(--hud-txt); font: inherit; cursor: pointer; touch-action: manipulation; }
-.boton:hover { background: var(--hud-fuerte); }
-.boton[aria-pressed="true"], .boton[aria-expanded="true"] { background: var(--olivo); color: var(--sobre-olivo); border-color: var(--olivo); }
-.boton.prim { background: var(--olivo); color: var(--sobre-olivo); border-color: var(--olivo); font-weight: 600; }
-.icono { width: var(--toque); padding: 0; font-size: 19px; position: relative; }
-.pill { display: inline-block; font-size: 11px; padding: 0 7px; border-radius: 99px; border: 1px solid currentColor; white-space: nowrap; font-weight: 500; line-height: 1.5; }
-.p-medido { color: var(--lidar); } .p-deducido { color: var(--deducido); } .p-ilustrativo { color: var(--ilustrativo); } .p-modelo { color: var(--modelo); } .p-guardado { color: var(--guardado); }
-.hud { position: absolute; inset: 0; pointer-events: none; z-index: 20; font-size: 14px; }
-.hud > * { pointer-events: auto; }
-
-/* arriba a la izquierda: estado (brújula, cómo te mueves, el tiempo) */
-.hud-estado { position: absolute; top: calc(var(--sa-t) + 10px); left: calc(var(--sa-l) + 10px); display: flex; flex-direction: column; gap: 6px; align-items: flex-start; max-width: calc(100% - 20px); }
-.hud-fila { display: flex; gap: 6px; align-items: center; position: relative; flex-wrap: wrap; }
-.norte { width: var(--toque); height: var(--toque); border-radius: 50%; display: grid; place-items: center; padding: 0; font-family: var(--display); font-weight: 700; font-size: 13px; line-height: 1; cursor: pointer; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
-.norte span { display: block; transition: transform .15s; }
-.norte[aria-pressed="false"] { opacity: 0.75; }
-.hud-modo-menu { position: absolute; top: 100%; left: 0; margin-top: 6px; padding: 6px; display: grid; gap: 4px; min-width: 230px; z-index: 40; }
-.hud-modo-menu .boton { justify-content: flex-start; width: 100%; }
-.hud-modo-menu .sub { color: var(--hud-suave); font-size: 12px; margin-left: auto; }
-.hud-modo-menu [aria-checked="true"] { border-color: var(--olivo); }
-.t-ins { min-height: var(--toque); display: inline-flex; align-items: center; gap: 7px; max-width: min(340px, calc(100vw - 20px)); padding: 0 11px; font-size: 13px; font-variant-numeric: tabular-nums; cursor: pointer; text-align: left; }
-.t-ins span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.t-flecha { display: inline-block; font-weight: 700; transition: transform .3s; color: var(--lidar); }
-
-/* arriba a la derecha: la barra de iconos (el «inventario» de ventanas) */
-.hud-barra { position: absolute; top: calc(var(--sa-t) + 10px); right: calc(var(--sa-r) + 10px); display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; max-width: calc(100% - 140px); }
-.hud-barra .insignia { position: absolute; top: -4px; right: -4px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: #e5484d; color: #fff; font-size: 12px; font-weight: 700; line-height: 20px; text-align: center; }
-#bMas { display: none; }
-.hud-mas { position: absolute; top: calc(100% + 6px); right: 0; padding: 6px; display: grid; grid-template-columns: repeat(3, auto); gap: 6px; z-index: 40; }
-.hud-mas .boton { flex-direction: column; min-width: 84px; min-height: 64px; font-size: 12px; padding: 6px; }
-.hud-mas .boton b { font-size: 20px; font-weight: 400; }
-@media (max-width: 560px), (max-height: 460px) {
-  .hud-barra [data-prio="2"] { display: none; }
-  #bMas { display: inline-flex; }
-  #hudModoTxt { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }   /* el selector se queda en su icono; el nombre sigue para el lector */
-}
-
-/* centro arriba: avisos, telemetría del dron y la tarjeta del recorrido */
-.hud-avisos { position: absolute; top: calc(var(--sa-t) + 64px); left: 50%; transform: translateX(-50%); display: grid; gap: 6px; width: min(440px, calc(100% - 20px)); pointer-events: none; z-index: 35; }
-.hud-aviso { padding: 8px 12px; font-size: 14px; text-align: center; animation: entra .2s ease-out; }
-@keyframes entra { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
-.t-dron { position: absolute; left: 50%; top: calc(var(--sa-t) + 10px); transform: translateX(-50%); max-width: calc(100% - 300px); text-align: center; font-size: 12.5px; font-variant-numeric: tabular-nums; padding: 6px 12px; pointer-events: none; }
-@media (max-width: 760px) { .t-dron { top: calc(var(--sa-t) + 112px); max-width: calc(100% - 20px); } }
-.tarjeta-rec { position: absolute; z-index: 26; left: 50%; transform: translateX(-50%); top: calc(var(--sa-t) + 64px); width: min(560px, calc(100% - 20px)); max-height: min(46vh, 420px); overflow: auto; padding: 10px 12px; pointer-events: auto; }
-.tarjeta-rec .cerrar-rec { position: absolute; top: 2px; right: 2px; min-width: var(--toque); min-height: var(--toque); border: 0; background: none; color: var(--hud-suave); font-size: 22px; cursor: pointer; }
-
-/* abajo en el centro: la acción principal (Pasear, Aterrizar) y la línea de atribución */
-.hud-abajo { position: absolute; left: 50%; bottom: calc(var(--sa-b) + 8px); transform: translateX(-50%); display: grid; justify-items: center; gap: 6px; width: max-content; max-width: calc(100% - 20px); pointer-events: none; }
-.hud-abajo > * { pointer-events: auto; }
-.b-pasear { display: flex; gap: 8px; }
-.pasear { min-height: 48px; padding: 0 20px; font-size: 16px; border-radius: 24px; }
-.visor.paseo #btnPaseo { display: none; }
-.hud-atrib { font-size: 11px; color: var(--hud-suave); background: rgba(16, 20, 24, .55); padding: 2px 8px; border-radius: 6px; border: 0; cursor: pointer; min-height: 24px; font-family: inherit; }
-.ndvi-hud { display: grid; grid-template-columns: auto 110px auto; gap: 6px; align-items: center; font-size: 11.5px; padding: 4px 10px; }
-.ndvi-hud i { height: 9px; border-radius: 3px; background: linear-gradient(90deg, #8c4a2f, #d8c75a, #2f7d32); }
-.ndvi-hud small { grid-column: 1 / -1; color: var(--hud-suave); text-align: center; }
-/* los textos de ayuda fijos (decisión 89: se quedan, reubicados y discretos): abajo a la izquierda, pequeños y semitransparentes */
-.ayuda { position: absolute; left: calc(var(--sa-l) + 10px); bottom: calc(var(--sa-b) + 8px); max-width: min(46ch, calc(50% - 110px)); font-size: 11.5px; line-height: 1.35; color: var(--hud-suave); background: rgba(16, 20, 24, .45); padding: 3px 8px; border-radius: 6px; pointer-events: none; }
-[data-tactil="si"] .visor.paseo .ayuda-paseo { display: none; }   /* en táctil el texto del teclado no sirve y su sitio es de la cruceta */
-
-/* pulgares (solo táctil y fuera de la vista aérea): cruceta a la izquierda, acciones a la derecha; al revés con «mano zurda» */
-.pad-mov, .pad-acc { position: absolute; bottom: calc(var(--sa-b) + 14px); display: none; gap: 6px; }
-.pad-mov { left: calc(var(--sa-l) + 14px); grid-template-columns: repeat(3, var(--pad)); grid-template-rows: repeat(3, var(--pad)); }
-.pad-acc { right: calc(var(--sa-r) + 14px); grid-template-columns: repeat(2, var(--pad)); grid-auto-rows: var(--pad); align-content: end; }
-[data-mano="zurda"] .pad-mov { left: auto; right: calc(var(--sa-r) + 14px); }
-[data-mano="zurda"] .pad-acc { right: auto; left: calc(var(--sa-l) + 14px); }
-[data-tactil="si"] .visor.paseo .pad-mov, [data-tactil="si"] .visor.paseo .pad-acc { display: grid; }
-.visor.con-hoja .pad-mov, .visor.con-hoja .pad-acc, .visor.con-lateral .pad-acc { display: none !important; }
-.pad-mov button, .pad-acc button { border-radius: 14px; border: 1px solid var(--hud-borde); background: var(--hud); color: var(--hud-txt); font: inherit; font-size: 18px; cursor: pointer; touch-action: none; padding: 0; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
-.pad-acc button { font-size: 12.5px; }
-.pad-mov button[aria-pressed="true"], .pad-acc button[aria-pressed="true"] { background: var(--olivo); color: var(--sobre-olivo); }
-#pad-up { grid-column: 2; grid-row: 1; } #pad-left { grid-column: 1; grid-row: 2; } #pad-right { grid-column: 3; grid-row: 2; } #pad-down { grid-column: 2; grid-row: 3; }
-[data-tactil="si"] .visor.paseo .ayuda { bottom: calc(var(--sa-b) + 14px + 3 * var(--pad) + 22px); }
-[data-tactil="si"] .visor:not(.paseo) .hud-atrib, [data-tactil="si"] .visor.paseo .hud-atrib { display: none; }   /* en táctil la atribución vive en el menú y en el mapa; el sitio es de los pulgares */
-
-/* la ficha contextual (olivo, haza, baliza): bajo la barra en escritorio y bajo el estado en táctil */
-.ficha { position: absolute; z-index: 30; right: calc(var(--sa-r) + 10px); top: calc(var(--sa-t) + 64px); width: min(300px, calc(100% - 20px)); max-height: calc(100% - 140px); overflow: auto; background: var(--hud-fuerte); border: 1px solid var(--hud-borde); border-radius: 12px; padding: 10px 12px; box-shadow: 0 6px 24px rgba(0,0,0,.28); }
-.visor.con-ventana .ficha { right: calc(var(--sa-r) + 400px); }
-[data-tactil="si"] .ficha, .visor.con-hoja .ficha { right: auto; left: calc(var(--sa-l) + 10px); top: calc(var(--sa-t) + 112px); }
-.ficha h3 { margin: 0 0 4px; padding-right: 36px; font-family: var(--display); font-size: 16px; font-weight: 600; }
-.ficha dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin: 0; font-variant-numeric: tabular-nums; }
-.ficha dt { color: var(--muted); } .ficha dd { margin: 0; text-align: right; }
-.ficha > button { position: absolute; top: 2px; right: 2px; min-width: 44px; min-height: 44px; border: 0; background: none; color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; }   /* la × con sitio para el dedo */
-
-/* ventanas: una grande a la vez (decisión 87). Lateral bajo la barra en escritorio; hoja inferior en móvil vertical; lateral alto en horizontal */
-.ventana { position: absolute; z-index: 25; top: calc(var(--sa-t) + 64px); right: calc(var(--sa-r) + 10px); width: min(380px, calc(100% - 20px)); max-height: calc(100% - var(--sa-t) - var(--sa-b) - 84px); display: flex; flex-direction: column; background: var(--hud-fuerte); border: 1px solid var(--hud-borde); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.35); font-size: 13.5px; }
-.ventana > header { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 14px; border-bottom: 1px solid var(--hud-borde); position: relative; }
-.ventana > header h2 { font-family: var(--display); font-size: 18px; font-weight: 600; margin: 0; flex: 1; }
-.ventana > header h2:focus { outline: none; }
-.ventana .cerrar { min-width: var(--toque); min-height: var(--toque); border: 0; background: none; font-size: 22px; cursor: pointer; color: var(--hud-suave); }
-.ventana .cuerpo { overflow: auto; padding: 12px 14px 14px; display: grid; gap: 12px; align-content: start; overscroll-behavior: contain; }
-.ventana .cuerpo > h3, .ventana .cuerpo .sub-t { margin: 0; font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--hud-suave); font-weight: 600; }
-.visor.forma-hoja .ventana { top: auto; right: 0; left: 0; bottom: 0; width: 100%; max-height: 72%; border-radius: 18px 18px 0 0; padding-bottom: var(--sa-b); }
-.visor.forma-hoja .ventana > header { padding-top: 14px; }
-.visor.forma-hoja .ventana > header::before { content: ""; position: absolute; left: 50%; top: 5px; width: 40px; height: 4px; margin-left: -20px; border-radius: 2px; background: var(--hud-borde); }
-.visor.forma-alto .ventana { top: 0; bottom: 0; right: 0; max-height: none; width: min(380px, 48%); border-radius: 18px 0 0 18px; padding-right: var(--sa-r); }
-.pestanas { display: flex; gap: 4px; overflow-x: auto; }
-.pestanas [role="tab"] { min-height: 40px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--hud-borde); background: transparent; color: inherit; font: inherit; cursor: pointer; white-space: nowrap; }
-.pestanas [role="tab"][aria-selected="true"] { background: var(--olivo); color: var(--sobre-olivo); border-color: var(--olivo); }
-[role="tabpanel"] { display: grid; gap: 10px; align-content: start; min-width: 0; }
-details > summary { min-height: var(--toque); display: flex; align-items: center; cursor: pointer; color: var(--muted); }
-kbd { font-family: ui-monospace, Menlo, monospace; font-size: 12px; border: 1px solid var(--hud-borde); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; }
-.atajos { width: 100%; border-collapse: collapse; font-size: 13px; }
-.atajos th { text-align: left; font-weight: 600; padding: 5px 8px 5px 0; white-space: nowrap; vertical-align: top; border-top: 1px solid rgba(255,255,255,.08); }
-.atajos td { padding: 5px 0; color: var(--hud-suave); border-top: 1px solid rgba(255,255,255,.08); }
-/* la ventana Gente: si el panel de la presencia (26_presencia.js) se mete dentro, deja de flotar */
-#ventanaGente #presenciaGente { position: static !important; width: auto !important; max-height: none !important; background: transparent !important; padding: 0 !important; }
-
-/* menú (pausa) y configuración: diálogo modal nativo (atrapa el foco y Esc lo cierra) */
-#menu { padding: 0; border: 1px solid var(--hud-borde); border-radius: 16px; background: #141813; width: min(760px, calc(100vw - 24px)); height: min(580px, calc(100dvh - 24px)); max-height: calc(100dvh - 24px); font-size: 14px; }
-#menuAjustes[data-ajustes="listo"] #ajustesBase { display: none; }   /* 33_ajustes.js pinta los suyos y los mantiene sincronizados con #exag, #corr y #calidad */
-:root[data-brujula="no"] #norte { display: none; }
-#menu::backdrop { background: rgba(0, 0, 0, .55); }
-.menu-rejilla { display: grid; grid-template-columns: 210px 1fr; height: 100%; }
-.menu-nav { border-right: 1px solid var(--hud-borde); padding: 12px; display: flex; flex-direction: column; gap: 4px; overflow: auto; }
-.menu-nav h2 { font-family: var(--display); margin: 0 0 6px; font-size: 20px; }
-.menu-nav [role="tab"] { text-align: left; min-height: var(--toque); border-radius: 8px; border: 0; background: none; color: inherit; font: inherit; padding: 0 10px; cursor: pointer; }
-.menu-nav [role="tab"][aria-selected="true"] { background: var(--olivo); color: var(--sobre-olivo); }
-.menu-nav .boton { justify-content: flex-start; margin-bottom: 4px; }
-.menu-cuerpo { overflow: auto; padding: 16px 18px; }
-.menu-cuerpo [role="tabpanel"] { gap: 14px; }
-.menu-cuerpo h3 { margin: 0; font-family: var(--display); font-size: 19px; font-weight: 600; }
-.menu-cuerpo h1 { font-family: var(--display); font-weight: 600; font-size: clamp(22px, 3.4vw, 30px); letter-spacing: -0.01em; margin: 0; text-wrap: balance; }
-.menu-cuerpo p { margin: 0; }
-@media (max-width: 600px) {
-  .menu-rejilla { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
-  .menu-nav { flex-direction: row; border-right: 0; border-bottom: 1px solid var(--hud-borde); overflow-x: auto; align-items: center; }
-  .menu-nav h2 { display: none; }
-  .menu-nav [role="tab"], .menu-nav .boton { white-space: nowrap; margin: 0; }
-}
-
-/* ---------- bloques de contenido (los de antes, ahora dentro de las ventanas y del menú) */
-.modo { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.modo.tres { grid-template-columns: 1fr 1fr 1fr; }
-.modo button { border: 1px solid var(--line); background: var(--bg); color: var(--fg); min-height: 40px; padding: 6px; border-radius: 8px; font: inherit; cursor: pointer; }
-.modo button[aria-pressed="true"] { background: var(--olivo); border-color: var(--olivo); color: var(--sobre-olivo); }
-.capa { display: flex; align-items: center; gap: 9px; min-height: var(--toque); cursor: pointer; border-bottom: 1px solid rgba(255,255,255,.07); }
-.capa input { accent-color: var(--olivo); width: 18px; height: 18px; margin: 0; flex: none; }
-.capa .punto { width: 11px; height: 11px; border-radius: 50%; flex: none; }
-.capa small { color: var(--muted); font-variant-numeric: tabular-nums; }
-.capa .pill { margin-left: auto; }
-.rango { display: grid; gap: 4px; }
-.rango input, .rango select { width: 100%; accent-color: var(--olivo); }
-.rango select { padding: 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); font: inherit; }
-.cifras { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; margin: 0; }
-.cifras div dt { color: var(--muted); font-size: 12px; } .cifras div dd { margin: 0; font-family: var(--display); font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.nota { color: var(--muted); font-size: 12.5px; margin: 0; }
-.pie { color: var(--muted); font-size: 13px; max-width: 90ch; margin: 0; }
-.reiniciar { width: 100%; min-height: var(--toque); border: 1px solid var(--line); background: var(--bg); color: var(--fg); padding: 7px; border-radius: 8px; font: inherit; cursor: pointer; }
-.chispa svg { width: 100%; height: auto; display: block; } .chispa { margin: 2px 0 4px; }
-.ndvi-leyenda { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; font-size: 11.5px; color: var(--muted); margin-top: 6px; }
-.ndvi-leyenda i { display: block; height: 9px; border-radius: 3px; background: linear-gradient(90deg, #8c4a2f, #d8c75a, #2f7d32); }
-.h-ctl { display: flex; gap: 8px; flex-wrap: wrap; }
-.h-estado { margin: 0; font-size: 12.5px; color: var(--muted); }
-.h-estado:empty { display: none; }
-.h-estado[data-t="vivo"] { color: var(--olivo); font-weight: 500; }
-.h-estado[data-t="parcial"] { color: var(--guardado); }
-.h-estado[data-t="error"] { color: #f08a7e; }
-.h-bola { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
-.h-aviso-t { background: color-mix(in srgb, var(--guardado) 16%, transparent); padding: 8px 10px; border-radius: 8px; }
-.h-texto code { font-size: 12px; background: var(--bg); padding: 0 4px; border-radius: 4px; }
-.h-btn { border: 1px solid var(--line); background: var(--bg); color: var(--fg); min-height: 40px; padding: 7px 13px; border-radius: 8px; font: inherit; cursor: pointer; }
-.h-btn:disabled { opacity: .45; cursor: default; }
-.h-btn-prim, .h-btn[aria-pressed="true"] { background: var(--olivo); border-color: var(--olivo); color: var(--sobre-olivo); }
-.h-puntos { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; padding-right: 40px; }
-.h-punto { width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--muted); background: transparent; padding: 0; cursor: pointer; }
-.h-punto[aria-current="true"] { background: var(--olivo); border-color: var(--olivo); transform: scale(1.25); }
-#hTitulo { font-family: var(--display); font-size: 18px; font-weight: 600; margin: 2px 40px 6px 0; text-wrap: balance; }
-.h-texto p { margin: 0 0 8px; max-width: 74ch; } .h-texto h4 { margin: 10px 0 4px; font-size: 13px; }
-.h-texto ul, .h-texto ol { margin: 0 0 8px; padding-left: 18px; }
-.h-nota { color: var(--muted); font-size: 12.5px; }
-.h-decision { background: color-mix(in srgb, var(--olivo) 14%, transparent); padding: 8px 10px; border-radius: 8px; }
-.h-fuente { font-size: 12.5px; color: var(--muted); margin: 6px 0 10px; }
-.h-pill { display: inline-block; background: color-mix(in srgb, var(--guardado) 22%, transparent); color: var(--fg); border-radius: 99px; padding: 1px 9px; font-size: 11.5px; margin-right: 4px; }
-.h-nav { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.h-nav .nota { margin-left: auto; margin-right: auto; }
-.h-tabla { width: 100%; border-collapse: collapse; margin: 6px 0 10px; font-size: 13px; font-variant-numeric: tabular-nums; }
-.h-tabla th { text-align: left; color: var(--muted); font-weight: 500; border-bottom: 1px solid var(--line); padding: 3px 6px; }
-.h-tabla td { padding: 3px 6px; border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
-.h-tabla .n { text-align: right; } .h-tabla tr.h-aviso td { background: color-mix(in srgb, var(--guardado) 16%, transparent); }
-.h-sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 7px; }
-.h-pase { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin: 6px 0 8px; background: var(--bg); }
-.h-pase-cab { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
-.h-dos { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; } @media (max-width: 640px) { .h-dos { grid-template-columns: 1fr; } }
-.chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.chip { border: 1px solid var(--line); background: var(--bg); color: var(--fg); min-height: 40px; padding: 6px 12px; border-radius: 99px; font: inherit; font-size: 13px; cursor: pointer; }
-.chip[aria-pressed="true"] { background: var(--olivo); border-color: var(--olivo); color: var(--sobre-olivo); }
-.sg-clase { margin: 0 0 6px; } .sg-leyenda { display: flex; gap: 10px; flex-wrap: wrap; font-size: 11.5px; color: var(--muted); margin-bottom: 6px; }
-.sg-leyenda i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 4px; }
-.sg-fila { display: grid; grid-template-columns: 52px 1fr 40px; align-items: center; gap: 6px; padding: 2px 0; font-variant-numeric: tabular-nums; }
-.sg-prof { color: var(--muted); font-size: 12px; } .sg-num { text-align: right; font-size: 12px; }
-.sg-barra { display: flex; height: 12px; border-radius: 3px; overflow: hidden; background: var(--line); } .sg-barra i { display: block; height: 100%; }
-.sg-tabla { width: 100%; border-collapse: collapse; margin: 8px 0 6px; font-size: 12.5px; font-variant-numeric: tabular-nums; }
-.sg-tabla th { text-align: left; color: var(--muted); font-weight: 500; border-bottom: 1px solid var(--line); padding: 2px 4px; } .sg-tabla td { padding: 2px 4px; }
-.t-control { display: grid; gap: 6px; }
-.t-fila { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; } .t-fila label { color: var(--muted); font-size: 12px; } .t-fila strong { font-variant-numeric: tabular-nums; text-align: right; }
-.t-botones { display: flex; gap: 6px; flex-wrap: wrap; }
-.t-demo { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; } .t-demo label { color: var(--muted); font-size: 12px; }
-.t-demo select { min-height: 40px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); font: inherit; }
-.t-card { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--bg); min-width: 0; }
-.t-card h3 { margin: 0 0 2px; font-family: var(--display); font-size: 16px; font-weight: 600; } .t-card h4 { margin: 10px 0 2px; font-size: 12px; color: var(--muted); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
-.t-pill { font-family: var(--body); font-size: 11px; font-weight: 500; padding: 1px 8px; border-radius: 99px; background: color-mix(in srgb, var(--olivo) 22%, transparent); vertical-align: 2px; }
-.t-pill-m { background: color-mix(in srgb, var(--guardado) 24%, transparent); }
-.t-sub { margin: 2px 0 6px; color: var(--muted); font-size: 12.5px; }
-.t-grande { display: flex; align-items: baseline; gap: 4px; } .t-grande span { font-family: var(--display); font-size: 36px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.1; } .t-grande small { color: var(--muted); font-size: 16px; }
-.t-cifras { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 10px; margin: 6px 0; } .t-cifras dt { color: var(--muted); font-size: 11.5px; } .t-cifras dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: 500; } .t-cifras small { color: var(--muted); font-weight: 400; }
-@media (max-width: 420px) { .t-cifras { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.t-aviso { margin: 6px 0; padding: 7px 9px; border-radius: 8px; font-size: 12px; color: var(--fg); background: color-mix(in srgb, var(--guardado) 18%, transparent); }
-.t-avisos { margin: 4px 0 6px; padding-left: 18px; font-size: 12px; color: var(--muted); } .t-avisos li { margin: 2px 0; }
-.t-graf { width: 100%; height: auto; display: block; margin: 4px 0; }
-.t-leyenda { margin: 2px 0 8px; font-size: 11.5px; color: var(--muted); } .t-leyenda i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin: 0 4px 0 8px; vertical-align: -1px; } .t-leyenda i:first-child { margin-left: 0; }
-.t-tabla { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; } .t-tabla th { text-align: left; font-weight: 600; padding: 3px 6px 3px 0; white-space: nowrap; border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent); } .t-tabla td { padding: 3px 6px; color: var(--muted); border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
-.t-ancho { grid-column: 1 / -1; }
-/* el minimapa del paseo (17_minimapa.js lo dibuja; el chat y el minimapa los coloca 34_movibles.js dentro de #capaFlotantes) */
-.capa-flotantes { position: absolute; inset: 0; pointer-events: none; z-index: 22; }
-.capa-flotantes > * { pointer-events: auto; }
-.mapita { position: absolute; left: calc(var(--sa-l) + 10px); top: calc(var(--sa-t) + 116px); border-radius: 10px; border: 1.5px solid rgba(255,255,255,.35); box-shadow: 0 4px 16px rgba(0,0,0,.28); cursor: pointer; touch-action: manipulation; max-width: calc(100% - 20px); }
-.visor .mapita[hidden] { display: none !important; }
-@media (max-width: 520px) { .mapita { width: 170px !important; height: auto !important; } }
-/* la ficha de una baliza (19_balizas.js) */
-.t-baliza { position: absolute; left: calc(var(--sa-l) + 10px); bottom: calc(var(--sa-b) + 44px); z-index: 30; width: min(310px, calc(100% - 20px)); font-size: 12.5px; background: var(--hud-fuerte); border: 1px solid var(--hud-borde); border-radius: 12px; padding: 9px 12px; box-shadow: 0 6px 22px rgba(0,0,0,.25); pointer-events: none; }
-[data-tactil="si"] .visor.paseo .t-baliza { bottom: auto; top: calc(var(--sa-t) + 112px); }
-.t-baliza button, .t-baliza a { pointer-events: auto; }   /* la tarjeta no se come los toques del mundo: solo sus botones (la × e «Ir a esta baliza») */
-.t-baliza .cerrar-baliza { position: absolute; top: 2px; right: 2px; min-width: 44px; min-height: 44px; border: 0; background: none; color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; }
-.t-baliza .b-cab { padding-right: 36px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; } .t-baliza strong { font-family: var(--display); font-size: 15px; }
-.t-baliza .b-pill { font-size: 11px; padding: 1px 8px; border-radius: 99px; background: color-mix(in srgb, var(--c) 24%, transparent); }
-.t-baliza h4 { margin: 8px 0 2px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
-.t-baliza ul { margin: 0; padding-left: 16px; } .t-baliza li { margin: 1px 0; } .t-baliza .b-n { color: var(--muted); font-variant-numeric: tabular-nums; margin-left: 4px; }
-.t-baliza .b-sub { margin: 2px 0; color: var(--muted); } .t-baliza .b-pie { margin: 8px 0 0; font-size: 11px; color: var(--muted); }
-.t-baliza .b-aviso { margin: 6px 0; padding: 6px 8px; border-radius: 7px; background: color-mix(in srgb, var(--guardado) 18%, transparent); }
-.t-baliza .ir-baliza { margin: 8px 0 0; min-height: 44px; padding: 6px 14px; border-radius: 8px; border: 1px solid var(--line); background: color-mix(in srgb, var(--olivo) 24%, transparent); color: var(--fg); font: inherit; cursor: pointer; }
-/* sin escena (04b_escena3d.js: sin tileset o si falla): un letrero en el centro del visor que no se come los toques */
-.sin-escena { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(340px, calc(100% - 32px)); text-align: center; font-size: 14px; background: var(--hud-fuerte); border: 1px solid var(--hud-borde); border-left: 4px solid var(--guardado); border-radius: 10px; padding: 12px 16px; box-shadow: 0 6px 22px rgba(0,0,0,.25); pointer-events: none; z-index: 15; }
-.sin-escena strong { font-family: var(--display); font-size: 16px; display: block; margin-bottom: 2px; }
-.sin-escena span { color: var(--muted); }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
-</style>
 
 <div class="visor" id="visor">
   <canvas id="lienzo" aria-label="Vista 3D de la parcela Cerro Velasco; arrastra para girar, rueda para acercar"></canvas>
@@ -382,7 +103,7 @@ kbd { font-family: ui-monospace, Menlo, monospace; font-size: 12px; border: 1px 
           <div><dt>Altura mediana</dt><dd id="kAlt">–</dd></div>
           <div><dt>Desfase medio</dt><dd id="kDes">–</dd></div>
         </dl>
-        <p class="nota" id="notaDesfase" style="margin-top:8px">Los puntos guardados caen entre 1,5 y 2 m al este de las copas del LiDAR en las cinco parcelas, porque se marcaron sobre la ortofoto, que muestra las copas desplazadas según su altura. El LiDAR está bien georreferenciado.</p>
+        <p class="nota sep8" id="notaDesfase">Los puntos guardados caen entre 1,5 y 2 m al este de las copas del LiDAR en las cinco parcelas, porque se marcaron sobre la ortofoto, que muestra las copas desplazadas según su altura. El LiDAR está bien georreferenciado.</p>
         <h3 id="suelo">Suelo · SoilGrids <span class="pill p-modelo">modelo</span></h3>
         <div id="sueloCuerpo"></div>
       </div>
@@ -400,26 +121,26 @@ kbd { font-family: ui-monospace, Menlo, monospace; font-size: 12px; border: 1px 
         <p class="nota" id="notaModo"></p>
         <h3>Datos</h3>
         <div>
-          <label class="capa"><input type="checkbox" id="cLinde" checked><span class="punto" style="background:#40f0ff;border:2px solid var(--lidar)"></span>Linde (barrera de luz) <span class="pill p-medido">medido</span></label>
-          <label class="capa"><input type="checkbox" id="cCopas" checked><span class="punto" style="background:var(--lidar)"></span>Copas del LiDAR <small id="nCopas"></small> <span class="pill p-medido">medido</span></label>
-          <label class="capa"><input type="checkbox" id="cMarc" checked><span class="punto" style="background:var(--guardado)"></span>Guardados en OlivarTrack <small id="nMarc"></small> <span class="pill p-guardado">guardado</span></label>
-          <label class="capa"><input type="checkbox" id="cDesf"><span class="punto" style="background:linear-gradient(90deg,var(--guardado),var(--lidar))"></span>Desfase entre ambos <span class="pill p-medido">medido</span></label>
-          <label class="capa"><input type="checkbox" id="cNdvi"><span class="punto" style="background:linear-gradient(90deg,#8c4a2f,#d8c75a,#2f7d32)"></span>Vigor (NDVI Sentinel-2) <span class="pill p-deducido">deducido</span></label>
-          <label class="capa"><input type="checkbox" id="cTinte"><span class="punto" style="background:linear-gradient(90deg,#8c4a2f,#2f7d32)"></span>Copas coloreadas por NDVI <span class="pill p-deducido">deducido</span></label>
+          <label class="capa"><input type="checkbox" id="cLinde" checked><span class="punto pt-linde"></span>Linde (barrera de luz) <span class="pill p-medido">medido</span></label>
+          <label class="capa"><input type="checkbox" id="cCopas" checked><span class="punto pt-copas"></span>Copas del LiDAR <small id="nCopas"></small> <span class="pill p-medido">medido</span></label>
+          <label class="capa"><input type="checkbox" id="cMarc" checked><span class="punto pt-guardado"></span>Guardados en OlivarTrack <small id="nMarc"></small> <span class="pill p-guardado">guardado</span></label>
+          <label class="capa"><input type="checkbox" id="cDesf"><span class="punto pt-desfase"></span>Desfase entre ambos <span class="pill p-medido">medido</span></label>
+          <label class="capa"><input type="checkbox" id="cNdvi"><span class="punto pt-ndvi"></span>Vigor (NDVI Sentinel-2) <span class="pill p-deducido">deducido</span></label>
+          <label class="capa"><input type="checkbox" id="cTinte"><span class="punto pt-tinte"></span>Copas coloreadas por NDVI <span class="pill p-deducido">deducido</span></label>
         </div>
         <div id="bNdvi" hidden>
           <p class="sg-clase"><strong id="ndviFecha">–</strong> <span class="nota" id="ndviRango"></span></p>
           <div id="chispa" class="chispa"></div>
           <div class="ndvi-leyenda"><span>menos vigor</span><i></i><span>más vigor</span></div>
-          <p class="nota" style="margin-top:8px">Sentinel-2 (10 m): cada cuadro de 10 × 10 m cubre varios árboles. El color es relativo dentro de esta parcela y de cada fecha: no se compara entre fechas ni con otras parcelas, como en Vigía. Modelo sin calibrar con observación de campo. La fecha es la del campo: se cambia en <button type="button" class="h-btn" data-abre="tiempo" data-pestana="olivo">Tiempo → El olivo</button>.</p>
+          <p class="nota sep8">Sentinel-2 (10 m): cada cuadro de 10 × 10 m cubre varios árboles. El color es relativo dentro de esta parcela y de cada fecha: no se compara entre fechas ni con otras parcelas, como en Vigía. Modelo sin calibrar con observación de campo. La fecha es la del campo: se cambia en <button type="button" class="h-btn" data-abre="tiempo" data-pestana="olivo">Tiempo → El olivo</button>.</p>
         </div>
         <h3>Ambiente</h3>
         <div>
-          <label class="capa"><input type="checkbox" id="cPaisaje" checked><span class="punto" style="background:#b9a57a"></span>Naves, tendido, arroyo y otros árboles <span class="pill p-deducido">deducido</span></label>
-          <label class="capa"><input type="checkbox" id="cHierba" checked><span class="punto" style="background:#7a9a3c"></span>Hierba y piedras (según el NDVI) <span class="pill p-ilustrativo">ilustrativo</span></label>
-          <label class="capa"><input type="checkbox" id="cFauna" checked><span class="punto" style="background:#8b755a"></span>Pájaros, conejos y tus perros <span class="pill p-ilustrativo">ilustrativo</span></label>
-          <label class="capa"><input type="checkbox" id="cSolo"><span class="punto" style="background:var(--line);border:1px solid var(--muted)"></span>Ocultar los árboles</label>
-          <label class="capa"><input type="checkbox" id="cSonido" checked><span class="punto" style="background:var(--lidar)"></span>Sonido ambiente</label>
+          <label class="capa"><input type="checkbox" id="cPaisaje" checked><span class="punto pt-paisaje"></span>Naves, tendido, arroyo y otros árboles <span class="pill p-deducido">deducido</span></label>
+          <label class="capa"><input type="checkbox" id="cHierba" checked><span class="punto pt-hierba"></span>Hierba y piedras (según el NDVI) <span class="pill p-ilustrativo">ilustrativo</span></label>
+          <label class="capa"><input type="checkbox" id="cFauna" checked><span class="punto pt-fauna"></span>Pájaros, conejos y tus perros <span class="pill p-ilustrativo">ilustrativo</span></label>
+          <label class="capa"><input type="checkbox" id="cSolo"><span class="punto pt-solo"></span>Ocultar los árboles</label>
+          <label class="capa"><input type="checkbox" id="cSonido" checked><span class="punto pt-copas"></span>Sonido ambiente</label>
         </div>
         <p class="nota">Relieve exagerado, corrección de la ortofoto y calidad, en el menú (☰ o Esc) → Configuración.</p>
       </div>
@@ -438,7 +159,7 @@ kbd { font-family: ui-monospace, Menlo, monospace; font-size: 12px; border: 1px 
         <div role="tabpanel" id="tPanAhora" aria-labelledby="tPestAhora">
           <div id="tControl" class="t-control" hidden>
             <div class="t-fila"><label for="tMomento">Momento que ves</label><strong id="tMomentoV"></strong></div>
-            <input type="range" id="tMomento" min="0" max="71" step="1" value="0" style="width:100%;accent-color:var(--olivo)">
+            <input type="range" id="tMomento" class="rango-olivo" min="0" max="71" step="1" value="0">
             <div class="t-botones">
               <button type="button" id="tAhora" class="h-btn" aria-pressed="true">Ahora</button>
               <button type="button" id="tPlay" class="h-btn" aria-pressed="false">Reproducir</button>
@@ -541,7 +262,7 @@ kbd { font-family: ui-monospace, Menlo, monospace; font-size: 12px; border: 1px 
         <h2 id="menuTitulo">Menú</h2>
         <button type="button" class="boton prim" id="menuVolver">▶ Volver a la finca</button>
         <button type="button" class="boton" id="menuAereo">🛰 Vista aérea</button>
-        <div role="tablist" aria-orientation="vertical" aria-label="Secciones del menú" id="menuPestanas" style="display:contents">
+        <div role="tablist" aria-orientation="vertical" aria-label="Secciones del menú" id="menuPestanas" class="contenido">
           <button type="button" role="tab" id="menuPestAjustes" aria-controls="menuAjustes" aria-selected="true">Configuración</button>
           <button type="button" role="tab" id="menuPestCreditos" aria-controls="menuCreditos" aria-selected="false" tabindex="-1">Créditos y fuentes</button>
           <button type="button" role="tab" id="menuPestFinca" aria-controls="menuFinca" aria-selected="false" tabindex="-1">Acerca de la finca</button>
@@ -549,7 +270,7 @@ kbd { font-family: ui-monospace, Menlo, monospace; font-size: 12px; border: 1px 
       </div>
       <div class="menu-cuerpo">
         <div role="tabpanel" id="menuAjustes" aria-labelledby="menuPestAjustes">
-          <div id="ajustesBase" style="display:grid;gap:14px">
+          <div id="ajustesBase" class="sigue">
             <h3>Vista</h3>
             <div class="rango">
               <label for="exag">Relieve exagerado: <strong id="exagV">1×</strong></label>

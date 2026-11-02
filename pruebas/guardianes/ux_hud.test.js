@@ -12,7 +12,7 @@ function puro(nombre) {
   return new Function("\"use strict\";\n" + FUENTE.slice(i, f) + "\nreturn " + nombre + ";")();
 }
 const P = puro("HudPuro");
-const css = PL.slice(PL.indexOf("<style>"), PL.indexOf("</style>"));
+const css = lee("apps/web/plantilla.css");   // V12: los estilos salieron del <style> de la plantilla
 const hud = PL.slice(PL.indexOf('<div class="hud" id="hud">'), PL.indexOf('<section class="ventana"'));
 
 test("el modo sale de los indicadores del motor", () => {

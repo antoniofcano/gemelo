@@ -54,6 +54,8 @@ export default defineConfig({
       { find: /^three$/, replacement: path.join(WEB, "node_modules", "three", "build", "three.module.js") },
       { find: /^three\/addons\//, replacement: path.join(WEB, "node_modules", "three", "examples", "jsm") + "/" },
       { find: /^gemelo-olivo$/, replacement: OLIVO },
+      // V12: las tipografías del mismo origen (@fontsource, OFL-1.1) que entran por el @import de plantilla.css, que puede estar fuera de apps/web
+      { find: /^@fontsource\//, replacement: path.join(WEB, "node_modules", "@fontsource") + "/" },
       { find: /^3d-tiles-renderer$/, replacement: TILES },
       // livekit-client (F2, ?presencia=red): el motor lo pide con import() solo con esa bandera; sin ella no se descarga
       { find: /^livekit-client$/, replacement: path.join(WEB, "node_modules", "livekit-client", "dist", "livekit-client.esm.mjs") },

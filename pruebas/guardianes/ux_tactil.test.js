@@ -11,7 +11,7 @@ const P = (() => {
   const i = FUENTE.indexOf("// [puro:inicio]"), f = FUENTE.indexOf("// [puro:fin]");
   return new Function("\"use strict\";\n" + FUENTE.slice(i, f) + "\nreturn HudPuro;")();
 })();
-const css = PL.slice(PL.indexOf("<style>"), PL.indexOf("</style>"));
+const css = lee("apps/web/plantilla.css");   // V12: los estilos salieron del <style> de la plantilla
 const grupo = id => { const i = PL.indexOf('id="' + id + '"'); return PL.slice(i, PL.indexOf("</div>", i)); };
 
 test("táctil: el ajuste manda y, en automático, la pantalla con dedo", () => {

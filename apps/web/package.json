@@ -13,6 +13,8 @@
     "build:oficina": "vite build --config vite.oficina.config.js"
   },
   "dependencies": {
+    "@fontsource/fraunces": "5.3.0",
+    "@fontsource/instrument-sans": "5.3.0",
     "@pixiv/three-vrm": "3.5.5",
     "@simplewebauthn/browser": "14.0.0",
     "3d-tiles-renderer": "0.5.3",
