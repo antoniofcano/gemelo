@@ -51,7 +51,9 @@ test("personalización de punta a punta: nombrar, colgar una imagen, verla, denu
     const base = info.url, get = async r => (await fetch(base + r)).json();
     const errores = [];
 
-    // una familia en su navegador: entra con su enlace mágico y abre el mundo con ?api=/api/ (la página de prueba no lleva D.base)
+    // una familia en su navegador: entra con su enlace mágico y abre el mundo con ?api=/api/ (la página de prueba no lleva D.base) y ?olivos=0: desde O10a
+    // los olivos generados son el valor por defecto y, con dos páginas abiertas en SwiftShader (Ruiz y Olid), la de Olid se quedaba a 0 fps (202 k triángulos,
+    // la cola llena) y los clics de Playwright agotaban sus 30 s; esta prueba es de la personalización, no de la copa (como carga, escena3d y olivos.test.js)
     async function familia(correo, vp) {
       const ctx = await nav.newContext({ viewport: vp || { width: 1100, height: 760 }, locale: "es-ES", ignoreHTTPSErrors: true, permissions: [] });
       await ctx.addInitScript(() => { window.__csp = []; document.addEventListener("securitypolicyviolation", e => window.__csp.push(e.violatedDirective + " " + e.blockedURI)); });
@@ -65,7 +67,7 @@ test("personalización de punta a punta: nombrar, colgar una imagen, verla, denu
       return { ctx, pg };
     }
     async function abreMundo(pg, esperaPers) {
-      await pg.goto(base + "/mundo/index.html?api=/api/&debug", { waitUntil: "commit", timeout: 120_000 });
+      await pg.goto(base + "/mundo/index.html?api=/api/&debug&olivos=0", { waitUntil: "commit", timeout: 120_000 });
       await pg.waitForFunction(() => window.__g && window.__g.listo() && window.__personaliza, null, { timeout: 180_000 });
       await pg.waitForFunction(() => { const e = window.__personaliza(); return e.titular !== null && e.hazas >= 4 && e.cargadas >= 4; }, null, { timeout: 60_000 });
       if (esperaPers !== undefined) await pg.waitForFunction(n => window.__personaliza().personalizados === n, esperaPers, { timeout: 30_000 });
@@ -199,7 +201,7 @@ test("personalización de punta a punta: nombrar, colgar una imagen, verla, denu
     // 8. unas gafas vinculadas de Ruiz: ven (y el nombre sale), no escriben (la ficha lo dice y la api lo niega)
     const gaf = await familia("ruiz@example.com"); const gctx = gaf.ctx, gp = gaf.pg;   // otra sesión de Ruiz, que pasa a ser la de unas gafas vinculadas
     await get("/__prueba/vinculo?para=ruiz@example.com");
-    await gp.goto(base + "/mundo/index.html?api=/api/&debug", { waitUntil: "commit", timeout: 120_000 });
+    await gp.goto(base + "/mundo/index.html?api=/api/&debug&olivos=0", { waitUntil: "commit", timeout: 120_000 });
     await gp.waitForFunction(() => window.__g && window.__g.listo() && window.__personaliza, null, { timeout: 180_000 });
     await gp.waitForFunction(() => { const e = window.__personaliza(); return e.titular === false && e.cargadas >= 4; }, null, { timeout: 60_000 });
     await miraYClica(gp, B);
