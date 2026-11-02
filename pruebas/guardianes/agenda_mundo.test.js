@@ -180,7 +180,7 @@ test("la fila del panel VR (pestaña Mundo): visible con datos, lista los próxi
   try {
     const f = m.filas.find(x => x.p === "mundo" && x.d.id === "agenda"); assert.ok(f, "la fila existe"); assert.strictEqual(f.d.visible(), false, "sin datos, escondida"); const pulsables = []; f.d.botones((id, x, y, w, h, t) => pulsables.push(t), 0); assert.deepStrictEqual(pulsables, [], "sin visita abierta, nada que pulsar en VR (decisión 146)");
     assert.ok(f.d.alto > 0 && f.d.alto <= 300, "cabe en el panel: " + f.d.alto);
-    assert.strictEqual(m.llamadas.length, 0); m.bus["vr:entra"](); await new Promise(r => setTimeout(r, 20)); assert.strictEqual(m.llamadas.length, 1, "al entrar en VR pide la agenda");
+    assert.strictEqual(m.llamadas.length, 0); m.bus["vr:entra"](); await new Promise(r => setTimeout(r, 20)); assert.strictEqual(m.llamadas.filter(c => c.url === "/api/agenda").length, 1, "al entrar en VR pide la agenda");
     assert.strictEqual(f.d.visible(), true);
     const ops = [], cx = { measureText: s => ({ width: String(s).length * 12 }), fillText: (s, x, y) => ops.push(s) }, h = { fila: s => ops.push(s) };
     f.d.pinta(cx, 100, 1024, h); const todo = ops.join(" | ");
@@ -278,4 +278,71 @@ test("OF11e VR: la fila del panel tiene su botón «Entrar en la visita» solo c
     const ops = [], cx = { measureText: s => ({ width: String(s).length * 12 }), fillText: s => ops.push(s) }; f.d.pinta(cx, 100, 1024, { fila: s => ops.push(s) });
     assert.ok(ops.some(s => /^Abierta: Visita 1/.test(s)));
   } finally { m.restaura(); }
+});
+
+// ---------- OF11g: los avisos del evento, también en el mundo
+const av = (id, evento_id, extra) => Object.assign({ id, evento_id, evento: "Visita " + evento_id, titulo: "Traed gorra " + id, texto: "Hará sol", fecha: iso(AHORA - id * MIN), leido: false }, extra || {});
+const rutas = (agenda, avisos, post) => (met, url, o) => url === "/api/avisos" ? avisos() : (met === "POST" && /\/leido$/.test(url) ? (post ? post(url, o) : J(204, undefined)) : J(200, agenda));
+const cuerpoAvisos = lista => ({ avisos: lista, sin_leer: lista.filter(a => !a.leido).length });
+
+test("OF11g puro: rutas, lista blanca (lo de más no pasa), más nuevos primero, sueltos y la fila de VR solo con algo sin leer", () => {
+  assert.strictEqual(AP.rutaAvisos("/api/"), "/api/avisos"); assert.strictEqual(AP.rutaAvisos(null), null);
+  assert.strictEqual(AP.rutaLeido("/api/", 7), "/api/avisos/7/leido"); assert.strictEqual(AP.rutaLeido("/api/", "7/../x"), null); assert.strictEqual(AP.rutaLeido(null, 7), null); assert.strictEqual(AP.rutaLeido("/api/", 0), null);
+  const j = cuerpoAvisos([av(1, 1, { autor_id: 9, correo: "otra@example.com" }), av(2, 1, { leido: true }), av(3, 2)]);
+  const v = AP.validaAvisos(j);
+  assert.deepStrictEqual(v.avisos.map(a => a.id), [1, 2, 3], "más nuevos primero"); assert.strictEqual(v.sin_leer, 2);
+  assert.deepStrictEqual(Object.keys(v.avisos[0]).sort(), ["evento", "evento_id", "fecha", "id", "leido", "texto", "titulo"], "lo de más no pasa");
+  const sucia = { avisos: [av(5, 1, { titulo: "  " }), av(6, 1, { fecha: "ayer" }), av(7, 1, { leido: "no" }), av(8, 0), av(9, 1), av(9, 1), null, 4, av(1.5, 1), av(10, 1, { titulo: "x".repeat(400), texto: "y".repeat(900) })] };
+  const s = AP.validaAvisos(sucia); assert.deepStrictEqual(s.avisos.map(a => a.id).sort((a, b) => a - b), [9, 10]); assert.ok(s.avisos.every(a => a.titulo.length <= 120 && a.texto.length <= 600));
+  for (const mal of [null, 3, {}, { avisos: "x" }]) assert.strictEqual(AP.validaAvisos(mal), null, JSON.stringify(mal));
+  assert.strictEqual(AP.validaAvisos({ avisos: Array.from({ length: 80 }, (_, i) => av(i + 1, 1)) }).avisos.length, 50);
+  assert.deepStrictEqual(AP.avisosDe(v.avisos, 1).map(a => a.id), [1, 2]); assert.deepStrictEqual(AP.avisosDe(null, 1), []);
+  assert.deepStrictEqual(AP.avisosSueltos(v.avisos, [{ id: 1 }], 5).map(a => a.id), [3], "los de eventos que ya no salen"); assert.strictEqual(AP.avisosSueltos(v.avisos, [], 2).length, 2);
+  assert.strictEqual(AP.textoSinLeer(1), "1 aviso sin leer"); assert.strictEqual(AP.textoSinLeer(3), "3 avisos sin leer");
+  const f = AP.filaAvisosVR(v); assert.deepStrictEqual([f.n, f.ultimo, f.evento], [2, "Traed gorra 1", "Visita 1"], "el último sin leer es el más nuevo");
+  assert.strictEqual(AP.filaAvisosVR(AP.validaAvisos(cuerpoAvisos([av(1, 1, { leido: true })]))), null, "todo leído: nada"); assert.strictEqual(AP.filaAvisosVR(AP.validaAvisos(cuerpoAvisos([]))), null); assert.strictEqual(AP.filaAvisosVR(null), null);
+});
+
+test("OF11g: la ficha del evento enseña SUS avisos con la marca de sin leer, como texto; «Marcar como leído» llama a la api, apaga la marca y la fila de VR; sin avisos no sale nada", async () => {
+  const malo = "<img src=x onerror=alert(1)><b>";
+  const lista = [av(1, 1, { titulo: malo, texto: "<script>x</script>" }), av(2, 1, { leido: true }), av(3, 2)];
+  const m = monta({ respuestas: rutas(AGENDA(), () => J(200, cuerpoAvisos(lista))) });
+  try {
+    await m.api.carga(); const cu = m.ventanas.agenda.cuerpo;
+    assert.deepStrictEqual(m.llamadas.map(c => c.url), ["/api/agenda", "/api/avisos"], "primero la agenda y luego los avisos");
+    const t1 = cu.busca(x => x.attrs["data-evento"] === "1")[0], t2 = cu.busca(x => x.attrs["data-evento"] === "2")[0], t4 = cu.busca(x => x.attrs["data-evento"] === "4")[0];
+    assert.deepStrictEqual(t1.busca(x => "data-aviso" in x.attrs).map(x => x.attrs["data-aviso"]), ["1", "2"], "cada evento, los suyos"); assert.deepStrictEqual(t2.busca(x => "data-aviso" in x.attrs).map(x => x.attrs["data-aviso"]), ["3"]);
+    assert.strictEqual(t4.busca(x => "data-aviso" in x.attrs).length, 0, "sin avisos, nada"); assert.strictEqual(t4.busca(x => "data-avisos" in x.attrs).length, 0);
+    assert.strictEqual(t1.busca(x => "data-sin-leer" in x.attrs).length, 1, "solo el no leído lleva punto"); assert.deepStrictEqual(t1.busca(x => "data-leido" in x.attrs).map(b => b.attrs["data-leido"]), ["1"]);
+    assert.ok(t1.textContent.includes(malo) && t1.textContent.includes("<script>x</script>"), "texto tal cual"); assert.strictEqual(cu.busca(x => x.tag === "img" || x.tag === "script").length, 0);
+    const f = m.filas.find(x => x.d.id === "agenda_avisos"); assert.ok(f, "la fila de VR existe"); assert.strictEqual(f.p, "mundo"); assert.strictEqual(f.d.visible(), true);
+    const ops = [], cx = { measureText: s => ({ width: String(s).length * 12 }), fillText: s => ops.push(s) }; f.d.pinta(cx, 100, 1024, { fila: s => ops.push(s) });
+    assert.ok(ops.includes("Avisos") && ops.some(s => /2 avisos sin leer/.test(s)) && ops.some(s => /^Último: /.test(s)), ops.join(" | ")); const firma = f.d.firma();
+    cu.busca(x => x.attrs["data-leido"] === "1")[0].clic(); await new Promise(r => setTimeout(r, 20));
+    const post = m.llamadas.find(c => c.m === "POST"); assert.strictEqual(post.url, "/api/avisos/1/leido"); assert.deepStrictEqual(post.cuerpo, {});
+    assert.strictEqual(m.ventanas.agenda.cuerpo.busca(x => x.attrs["data-evento"] === "1")[0].busca(x => "data-sin-leer" in x.attrs).length, 0, "la marca se apaga");
+    assert.notStrictEqual(f.d.firma(), firma); assert.ok(f.d.debug().avisos.n === 1);
+    await m.api.leido(m.api.avisos().avisos.filter(a => a.id === 3)[0]); assert.strictEqual(f.d.visible(), false, "todo leído: la fila se esconde"); assert.strictEqual(f.d.debug().avisos, null);
+  } finally { m.restaura(); }
+});
+
+test("OF11g: un fallo al marcar se cuenta y deja la marca; los avisos de un evento que ya no sale (cancelado) aparecen en «Otros avisos»; sin avisos o con la api rara, nada y sin errores", async () => {
+  const lista = [av(1, 99, { evento: "Cata cancelada", titulo: "Se cancela un evento al que estabas apuntado" })];
+  const m = monta({ respuestas: rutas(AGENDA(), () => J(200, cuerpoAvisos(lista)), () => J(500, {})) });
+  try {
+    await m.api.carga(); const cu = m.ventanas.agenda.cuerpo, otros = cu.busca(x => "data-avisos-otros" in x.attrs);
+    assert.strictEqual(otros.length, 1); assert.ok(otros[0].textContent.includes("Se cancela un evento") && otros[0].textContent.includes("Cata cancelada"));
+    cu.busca(x => "data-leido" in x.attrs)[0].clic(); await new Promise(r => setTimeout(r, 20));
+    assert.ok(m.ventanas.agenda.cuerpo.busca(x => "data-nota" in x.attrs)[0].textContent.includes("No se ha podido marcar")); assert.strictEqual(m.ventanas.agenda.cuerpo.busca(x => "data-sin-leer" in x.attrs).length, 1);
+  } finally { m.restaura(); }
+  for (const r of [() => J(200, cuerpoAvisos([])), () => J(401, {}), () => J(500, {}), () => J(200, { avisos: 3 }), () => { throw new Error("red"); }]) {
+    const q = monta({ respuestas: rutas(AGENDA(), r) });
+    try {
+      await q.api.carga(); const cu = q.ventanas.agenda.cuerpo;
+      assert.strictEqual(cu.busca(x => "data-aviso" in x.attrs || "data-avisos-otros" in x.attrs).length, 0); assert.ok(cu.textContent.includes("Visita 1"), "la agenda sigue entera");
+      assert.strictEqual(q.filas.find(x => x.d.id === "agenda_avisos").d.visible(), false);
+    } finally { q.restaura(); }
+  }
+  const sin = monta({ prefijo: null, respuestas: () => { throw new Error("no debe pedir nada"); } });
+  try { assert.strictEqual(sin.api, null); assert.strictEqual(sin.filas.length, 0); } finally { sin.restaura(); }
 });

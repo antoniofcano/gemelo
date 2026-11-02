@@ -98,10 +98,17 @@ export function resumenPlazas(e) {
   return e.apuntadas + " de " + e.plazas + " plazas (personas) · " + e.hogares + (e.hogares === 1 ? " familia" : " familias") + espera + (e.plazas_libres === 0 ? " · completo" : "");
 }
 
-/** El aviso que sale tras avisar: cuántos, cuántos omitidos por el tope semanal y cuántos correos quedan pendientes (hoy no salen). */
+/** El aviso que sale tras avisar: cuántos, cuántos omitidos por el tope semanal y cuántos correos van (solo a las familias que los tienen activados). */
 export function textoDeAviso(r) {
   if (!r.enviados && !r.omitidos_por_tope) return "No hay a quién avisar: nadie está apuntado o en espera.";
   if (!r.enviados) return "Nadie recibió el aviso: " + r.omitidos_por_tope + " familia" + (r.omitidos_por_tope === 1 ? "" : "s") + " ya ha llegado al tope de avisos de esta semana.";
   return "Aviso enviado a " + r.enviados + " familia" + (r.enviados === 1 ? "" : "s") + " en el gemelo" + (r.omitidos_por_tope ? " (" + r.omitidos_por_tope + " omitida" + (r.omitidos_por_tope === 1 ? "" : "s") + " por el tope semanal)" : "")
-    + (r.correo_pendiente ? ". El correo todavía no sale: " + r.correo_pendiente + " familia" + (r.correo_pendiente === 1 ? " lo" : "s lo") + " pidió y queda registrado." : ".");
+    + (r.correo_pendiente ? ", y por correo a " + r.correo_pendiente + " que " + (r.correo_pendiente === 1 ? "lo tiene" : "lo tienen") + " activado." : ". Por correo no sale a nadie: ninguna lo tiene activado.");
+}
+
+/** OF11g: una línea del historial de avisos del evento: título, cuándo, a cuántas familias, cuántas lo han visto en el gemelo y cuántos correos salieron. */
+export function resumenAviso(a, fecha) {
+  const f = (n, uno, varios) => n + " " + (n === 1 ? uno : varios);
+  return a.titulo + " · " + fecha(a.fecha) + " · " + (a.manual ? "de la oficina" : "del sistema") + " · a " + f(a.destinatarios, "familia", "familias") + ", " + a.leidos + " de " + a.destinatarios
+    + " lo han visto en el gemelo · " + f(a.correos_enviados, "correo enviado", "correos enviados");
 }

@@ -2528,7 +2528,7 @@ paths:
       description: >
         Los hogares que ya llegaron al tope se omiten (omitidos_por_tope). El correo sale aparte, en segundo plano (OF11c): correo_pendiente
         cuenta los hogares con avisos_correo a los que se les pone en cola (la petición no espera al SMTP; reintento acotado, ver
-        contratos/avisos-correo.md). Sin destinatarios, 200 con enviados 0 y sin crear aviso.
+        contratos/avisos-correo.md). El aviso queda siempre ligado a su evento (avisos.evento_id) y se ve en el mundo (GET /api/avisos, OF11g) aunque el hogar no tenga el correo activado. Sin destinatarios, 200 con enviados 0 y sin crear aviso.
       security: [{ sesion: [] }]
       parameters: [{ $ref: "#/components/parameters/Id" }]
       requestBody:
@@ -2551,6 +2551,21 @@ paths:
         "403": { $ref: "#/components/responses/SinPermiso" }
         "404": { description: no existe }
         "429": { $ref: "#/components/responses/Limite" }
+
+  /api/admin/eventos/{id}/avisos:
+    get:
+      summary: "El historial de avisos de un evento (oficina, OF11g): qué se mandó, cuándo, a cuántas familias y cuántas lo han visto"
+      description: >
+        Solo agregados (destinatarios, leídos, correos enviados): nunca qué familia lo leyó. Más nuevos primero, como mucho 50.
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "200":
+          description: "avisos[] { id, titulo, texto, fecha, manual (lo mandó la oficina; false = del sistema), destinatarios, leidos, correos_enviados }"
+          content: { application/json: { schema: { type: object, properties: { avisos: { type: array, items: { type: object } } } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: no existe }
 
   /api/agenda:
     get:
@@ -2607,6 +2622,39 @@ paths:
       responses:
         "200": { description: hecho, content: { text/html: { schema: { type: string } } } }
         "400": { description: enlace no válido, content: { text/html: { schema: { type: string } } } }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/avisos:
+    get:
+      summary: Los avisos de eventos que le han llegado al PROPIO hogar (OF11g; se ven en el mundo, en la ficha del evento de la Agenda)
+      description: >
+        Cualquier sesión; el hogar sale de la sesión, nunca de un parámetro. Solo los avisos ligados a un evento que aún existe y que se entregaron a este hogar
+        (los de la oficina con «Avisar…», la promoción de la espera, el cambio de fecha o lugar, la cancelación y la confirmación de inscripción), los más nuevos
+        primero, como mucho 50 (sin paginar). `texto` es texto llano (el cliente lo pinta con textContent). Nada del autor ni de otras familias.
+      security: [{ sesion: [] }]
+      responses:
+        "200":
+          description: "avisos[] { id, evento_id, evento (título del evento), titulo, texto, fecha (ISO), leido } y sin_leer (cuántos no ha visto aún)"
+          content: { application/json: { schema: { type: object, properties: { avisos: { type: array, items: { type: object } }, sin_leer: { type: integer } } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/avisos/{id}/leido:
+    post:
+      summary: Marca como leído un aviso del PROPIO hogar (avisos_hogar.leido_en)
+      description: >
+        Cualquier sesión, con Origin. Cuerpo vacío o `{}` (cualquier otro campo, 400). Idempotente: a la segunda, 204 sin cambiar nada. 404 si el aviso no es de
+        este hogar o no existe (no se distingue). Auditoría avisos.leido (solo la primera vez). No manda ningún correo.
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody:
+        required: false
+        content: { application/json: { schema: { type: object, additionalProperties: false, properties: {} } } }
+      responses:
+        "204": { description: leído }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "404": { description: no es de este hogar o no existe }
         "429": { $ref: "#/components/responses/Limite" }
 
   /api/agenda/{id}/inscripcion:

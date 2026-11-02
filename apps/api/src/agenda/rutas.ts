@@ -68,9 +68,9 @@ async function cuentas(c: Pick<Cliente, "query">, id: number): Promise<{ apuntad
 
 /**
  * Inserta un aviso de evento y lo entrega a esos hogares. `autor` null = lo genera el sistema (promoción, cancelación): no cuenta para el tope.
- * `ics`: el aviso viene de ese evento y su correo (si el hogar lo pidió) lleva la invitación de calendario (OF11c; la manda el repartidor, no esta petición).
+ * `ics`: el aviso viene de ese evento (`evento`: queda ligado a él y se ve en su ficha del gemelo, OF11g; sin `tipo`, el correo no lleva invitación) y su correo (si el hogar lo pidió) lleva la invitación de calendario (OF11c; la manda el repartidor, no esta petición).
  */
-async function avisaA(c: Cliente, hogares: number[], titulo: string, texto: string, autor: number | null, ics?: { evento: number; tipo: TipoIcs }): Promise<number | null> {
+async function avisaA(c: Cliente, hogares: number[], titulo: string, texto: string, autor: number | null, ics?: { evento: number; tipo?: TipoIcs }): Promise<number | null> {
   if (!hogares.length) return null;
   const id = (await c.query<{ id: number }>("INSERT INTO avisos (tipo, titulo, texto, autor_id, evento_id, ics) VALUES ('evento', $1, $2, $3, $4, $5) RETURNING id",
     [titulo, texto, autor, ics?.evento ?? null, ics?.tipo ?? null])).rows[0]!.id;
@@ -278,11 +278,22 @@ export async function rutasAgenda(app: FastifyInstance, ctx: Contexto): Promise<
                   WHERE ah.hogar_id = g.id AND av.tipo = 'evento' AND av.autor_id IS NOT NULL AND av.creado_en > now() - interval '7 days') AS recientes
            FROM visitas_asistentes a JOIN hogares g ON g.id = a.hogar_id AND g.activo WHERE a.visita_id = $1 AND a.estado = ANY($2::text[])`, [e.id, estados])).rows;
       const van = dest.filter(f => f.recientes < TOPE_AVISOS_SEMANA);
-      const id = await avisaA(c, van.map(f => f.hogar_id), titulo, texto ?? descripcionDe(e), req.session.hogarId!);
+      const id = await avisaA(c, van.map(f => f.hogar_id), titulo, texto ?? descripcionDe(e), req.session.hogarId!, { evento: e.id });
       await audita(c, req.session.hogarId!, "admin.evento_avisado", { evento: e.id, aviso: id, enviados: van.length, omitidos_por_tope: dest.length - van.length });
       return { aviso: id === null ? null : Number(id), enviados: van.length, omitidos_por_tope: dest.length - van.length, correo_pendiente: van.filter(f => f.avisos_correo).length };
     });
     return r === null ? rep.code(404).send({ error: "no_existe" }) : rep.code(r.enviados ? 201 : 200).send(r);
+  });
+
+  // OF11g: el historial de avisos de un evento para la ficha de la oficina. Solo agregados: nunca qué familia lo leyó ni su correo.
+  app.get<{ Params: { id: number } }>("/api/admin/eventos/:id/avisos", { preHandler: OFICINA, config: { rateLimit: { max: 60, timeWindow: 60_000 } }, schema: { params: ID } }, async (req, rep) => {
+    if (!(await bd.query("SELECT 1 FROM visitas WHERE id = $1", [req.params.id])).rowCount) return rep.code(404).send({ error: "no_existe" });
+    const r = await bd.query<{ id: string; titulo: string; texto: string | null; creado_en: Date; manual: boolean; destinatarios: number; leidos: number; correos_enviados: number }>(
+      `SELECT a.id, a.titulo, a.texto, a.creado_en, (a.autor_id IS NOT NULL) AS manual, count(ah.hogar_id)::int AS destinatarios,
+              (count(ah.hogar_id) FILTER (WHERE ah.leido_en IS NOT NULL))::int AS leidos, (count(ah.hogar_id) FILTER (WHERE ah.correo_enviado_en IS NOT NULL))::int AS correos_enviados
+         FROM avisos a LEFT JOIN avisos_hogar ah ON ah.aviso_id = a.id
+        WHERE a.evento_id = $1 AND a.tipo = 'evento' GROUP BY a.id ORDER BY a.creado_en DESC, a.id DESC LIMIT 50`, [req.params.id]);
+    return { avisos: r.rows.map(f => ({ id: Number(f.id), titulo: f.titulo, texto: f.texto ?? "", fecha: new Date(f.creado_en).toISOString(), manual: f.manual, destinatarios: f.destinatarios, leidos: f.leidos, correos_enviados: f.correos_enviados })) };
   });
 
   // ================================================================ hogar
