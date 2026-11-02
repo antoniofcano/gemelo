@@ -12,13 +12,12 @@
 //              la ruta pone en la cookie `__Host-gemelo-reto`; la credencial se busca en todas las cuentas y su `userHandle` tiene
 //              que ser el de la cuenta dueña. Un fallo es siempre el mismo, sin decir por qué (no se enumera nada).
 // Las rutas son de OF13b-4 (`/api/yo/llaves`) y OF13b-5 (`/api/auth/llave`); este módulo no abre ni toca sesiones de acceso.
-import { generateKeyPairSync, randomBytes, timingSafeEqual } from "node:crypto";
+import { randomBytes, timingSafeEqual } from "node:crypto";
 import {
   type AuthenticationResponseJSON, generateAuthenticationOptions, generateRegistrationOptions,
   type PublicKeyCredentialCreationOptionsJSON, type PublicKeyCredentialRequestOptionsJSON, type RegistrationResponseJSON,
   verifyAuthenticationResponse, verifyRegistrationResponse,
 } from "@simplewebauthn/server";
-import { isoCBOR } from "@simplewebauthn/server/helpers";
 import { audita, esOficina, type Rol } from "../auth/servicio.ts";
 import { type Bd, type Cliente, enTransaccion } from "../bd/pool.ts";
 import type { ConfigLlave } from "../config.ts";
@@ -272,6 +271,14 @@ export type AltaHecha = { ok: true; id: number; tipo: TipoCuenta; avisar: boolea
  * credencial ni el correo). Si `avisar`, la ruta manda el correo de aviso.
  */
 export async function registraLlave(bd: Bd, p: AltaPedida): Promise<AltaHecha> {
+  try { return await registraLlaveEnTransaccion(bd, p); }
+  catch (e) {
+    // la misma credencial dada de alta a la vez en dos cuentas (cada una bloquea solo la suya): la base la para (UNIQUE)
+    if ((e as { code?: string; constraint?: string }).code === "23505" && /credencial/.test((e as { constraint?: string }).constraint ?? "")) return { ok: false, error: "repetida" };
+    throw e;
+  }
+}
+function registraLlaveEnTransaccion(bd: Bd, p: AltaPedida): Promise<AltaHecha> {
   return enTransaccion(bd, async t => {
     await t.query("SELECT id FROM hogares WHERE id = $1 FOR UPDATE", [p.hogarId]);
     const d = permisoAlta(p.sesion, await estadoLlaves(t, p.hogarId));
@@ -321,15 +328,11 @@ export type AccesoConLlave = { ok: true; hogarId: number; rol: Rol; llaveId: num
 /** El único fallo que sale de aquí: no dice si la llave no existe, está revocada, es de una cuenta de baja o la firma es mala. */
 export const FALLO_ACCESO: { ok: false } = Object.freeze({ ok: false as const });
 
-/** Una clave pública de señuelo (COSE, P-256) para verificar igual cuando la credencial no es de nadie: el tiempo no lo delata. */
-let senuelo: Uint8Array | null = null;
-function claveSenuelo(): Uint8Array {
-  if (!senuelo) {
-    const jwk = generateKeyPairSync("ec", { namedCurve: "P-256" }).publicKey.export({ format: "jwk" });
-    senuelo = isoCBOR.encode(new Map<number, number | Uint8Array>([[1, 2], [3, -7], [-1, 1], [-2, Buffer.from(jwk.x!, "base64url")], [-3, Buffer.from(jwk.y!, "base64url")]]));
-  }
-  return senuelo;
-}
+/**
+ * Una clave pública de señuelo (COSE, ES256/P-256) para verificar igual cuando la credencial no es de nadie: el tiempo no lo
+ * delata. Se generó una vez y su clave privada se tiró: no hay firma que la cumpla. Es pública y no es un secreto (regla 4).
+ */
+const CLAVE_SENUELO = new Uint8Array(Buffer.from("pQECAyYgASFYIDnOy7qgTQkkXa21uUjAADQtJK3bRB4zGZaf-lQ1V7V5IlggDmge0OdnRo2WUZh2qXCDpF3_VU8EZJ99Kino9upuqVg", "base64url"));
 
 /**
  * Entrada con llave SIN sesión ni correo. Gasta el reto de este navegador (siempre, también si luego falla), busca la credencial
@@ -351,7 +354,7 @@ export async function entraConLlave(bd: Bd, c: ConfigLlave, claveEnClaro: unknow
   const f = r.rows[0];
   const llave: LlaveGuardada = f
     ? { id: Number(f.id), credencialId: f.credencial_id, clavePublica: new Uint8Array(f.clave_publica), contador: Number(f.contador), transports: f.transports ?? [] }
-    : { id: 0, credencialId: credencialId || "AAAAAAAAAAAAAAAAAAAAAA", clavePublica: claveSenuelo(), contador: 0, transports: [] };
+    : { id: 0, credencialId: credencialId || "AAAAAAAAAAAAAAAAAAAAAA", clavePublica: CLAVE_SENUELO, contador: 0, transports: [] };
   const v = await verificaEntrada(c, respuesta, reto, llave);
   const usuarioOk = mismoUsuario(respuesta?.response?.userHandle, f?.llave_usuario ? new Uint8Array(f.llave_usuario) : null);
   const hogarId = f ? Number(f.hogar_id) : null;

@@ -37,10 +37,12 @@ test("api: obligatoria por defecto (y en producción), verificación de la perso
   assert.match(cfg, /"GEMELO_LLAVE_RP_ID"/); assert.match(cfg, /"GEMELO_LLAVE_ORIGEN"/);
   const vps = JSON.parse(lee("contratos/publicacion-vps.json"));
   for (const v of ["GEMELO_OFICINA_LLAVE", "GEMELO_LLAVE_RP_ID", "GEMELO_LLAVE_ORIGEN"]) assert.ok(vps.variables_api.includes(v), v + " declarada");
-  assert.strictEqual((ll.match(/userVerification: "required"/g) || []).length, 2, "alta y entrada piden verificar a la persona");
+  assert.strictEqual((ll.match(/userVerification: "required"/g) || []).length, 3, "alta, entrada y acceso sin sesión (OF13b-3) piden verificar a la persona");
+  assert.match(ll, /residentKey: "required"/, "llaves residentes (OF13b-3): entrar sin escribir el correo");
   assert.strictEqual((ll.match(/requireUserVerification: true/g) || []).length, 2);
   assert.match(ll, /attestationType: "none"/);
-  assert.match(ll, /if \(e\.algunaVez === 0\) return "si"/, "sin llave, el alta solo la primera vez…");
+  assert.match(ll, /if \(e\.algunaVez === 0\) return decide\("si"\)/, "sin llave, el alta de oficina solo la primera vez…");
+  assert.match(ll, /if \(!s\.aparatoAprobado\) return decide\("aparato_pendiente"\)/, "…con el aparato aprobado (decisión 184)…");
   assert.match(ll, /rehabilitadaHasta\.getTime\(\) > ahora\.getTime\(\)/, "…o rehabilitada y sin caducar");
   assert.match(rutas, /req\.params\.id === yo\) return rep\.code\(403\)/, "nadie rehabilita su propia llave");
   assert.match(rutas, /ultima_llave/, "nunca la última propia");
