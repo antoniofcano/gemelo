@@ -218,3 +218,11 @@ td.acciones .boton { margin-right: 4px; }
 /* ---------- mundo (OF14): formularios de la sección */
 .mundo-form { display: grid; gap: 10px; max-width: 640px; }
 .mundo-form textarea { width: 100%; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--borde); background: var(--fondo); resize: vertical; }
+
+/* OF15b: la ficha del olivo (y el panel breve del mapa de Hazas) */
+.ficha-olivo { display: grid; gap: 14px; }
+.ficha-olivo h2:focus { outline: none; }
+.ficha-olivo h3 { margin: 0; font-size: 1rem; }
+.ficha-olivo .bloque { display: grid; gap: 8px; }
+.ficha-olivo .enlaces, #hOlivo .enlaces { display: flex; flex-wrap: wrap; gap: 8px; }
+#hOlivo h3 { margin: 0 0 6px; font-size: 1rem; }

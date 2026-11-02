@@ -85,6 +85,12 @@ export function iniciaOlivoReal() {
 
   return {
     abre() { if (!$("#rId").value) $("#rId").focus(); },
+    /** OF15b: «Ver el árbol en 3D» de la ficha del olivo (#olivos/<finca>/<copas_id>): pone la finca y el id y busca, como si se hubiera escrito. */
+    busca(finca, id) {
+      if (![...sFinca.options].some(o => o.value === finca)) sFinca.append(h("option", { value: finca }, finca));
+      sFinca.value = finca; $("#rId").value = String(id);
+      return ve();
+    },
     /** Solo lectura, para la prueba de Chrome. */
     estado() { return ultimo && { finca: ultimo.finca, i: ultimo.i, id: ultimo.id, entrada: ultimo.entrada, medidas: ultimo.medidas, filas: ultimo.filas.map(x => x.k) }; },
     /** Al salir de la pestaña: el visor suelta la GPU */
