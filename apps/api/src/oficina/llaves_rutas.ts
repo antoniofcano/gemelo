@@ -11,7 +11,7 @@
 //                                               con el enlace durante 24 h: el camino de recuperación, sin puerta trasera
 // Las cuatro de la ceremonia valen con la sesión de oficina aún sin llave (requiereOficinaSinLlave); el resto, con la sesión entera.
 import type { AuthenticationResponseJSON, RegistrationResponseJSON } from "@simplewebauthn/server";
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import { audita, esOficina, type Rol } from "../auth/servicio.ts";
 import { enTransaccion } from "../bd/pool.ts";
 import type { Contexto } from "../contexto.ts";
@@ -19,7 +19,7 @@ import { requiereConfirmacionReciente, requiereOficinaSinLlave, requiereRol, SIN
 import { nombreDeAparato } from "./aparatos.ts";
 import {
   estadoLlaves, gastaReto, guardaReto, HORAS_REHABILITADA, llavesVivas, marcaSesionConLlave, MAX_LLAVES, nombreDeLlave,
-  opcionesDeAlta, opcionesDeEntrada, permisoAlta, revocaLlave, usuarioDeLlave, verificaAlta, verificaEntrada,
+  opcionesDeAlta, opcionesDeEntrada, permisoAlta, registraLlave, revocaLlave, type SesionDeAlta, usuarioDeLlave, verificaAlta, verificaEntrada,
 } from "./llaves.ts";
 
 const NO_GUARDAR = "no-store";
@@ -45,6 +45,8 @@ export async function rutasLlaves(app: FastifyInstance, ctx: Contexto): Promise<
   const { bd, config } = ctx;
   const c = config.llave;
   const sesionId = (req: { session: { idBd?: number } }) => req.session.idBd;
+  const sesionDeAlta = (req: FastifyRequest): SesionDeAlta =>
+    ({ origen: req.session.origen ?? "enlace", conLlave: typeof req.session.llaveId === "number", aparatoAprobado: req.session.aparatoAprobado === true });
 
   // ---------------------------------------------------------------- alta
   app.post<{ Body: Record<string, never> }>("/api/oficina/llaves/alta/opciones", {
@@ -53,7 +55,7 @@ export async function rutasLlaves(app: FastifyInstance, ctx: Contexto): Promise<
     rep.header("cache-control", NO_GUARDAR);
     const sid = sesionId(req), hogar = req.session.hogarId!;
     if (typeof sid !== "number") return rep.code(401).send(SIN_SESION);
-    const permiso = permisoAlta(typeof req.session.llaveId === "number", await estadoLlaves(bd, hogar));
+    const { permiso } = permisoAlta(sesionDeAlta(req), await estadoLlaves(bd, hogar));
     if (permiso === "maximo") return rep.code(409).send({ error: "demasiadas_llaves", mensaje: "Ya tienes " + MAX_LLAVES + " llaves. Revoca alguna antes de añadir otra." });
     if (permiso !== "si") return rep.code(403).send({ error: "entra_con_llave", mensaje: TEXTO_ENTRA_CON_LLAVE });
     const cuenta = await usuarioDeLlave(bd, hogar);
@@ -79,23 +81,8 @@ export async function rutasLlaves(app: FastifyInstance, ctx: Contexto): Promise<
     }
     const nombre = nombreDeLlave(req.body.nombre, nombreDeAparato(req.headers["user-agent"]));
     // en una transacción y con la cuenta bloqueada: el permiso se vuelve a mirar (dos altas a la vez no se cuelan)
-    const r = await enTransaccion(bd, async t => {
-      await t.query("SELECT id FROM hogares WHERE id = $1 FOR UPDATE", [hogar]);
-      const permiso = permisoAlta(typeof req.session.llaveId === "number", await estadoLlaves(t, hogar));
-      if (permiso !== "si") return { error: permiso } as const;
-      const ya = await t.query("SELECT 1 FROM llaves_acceso WHERE credencial_id = $1", [v.llave.credencialId]);
-      if (ya.rowCount) return { error: "repetida" } as const;
-      const i = await t.query<{ id: string }>(
-        `INSERT INTO llaves_acceso (hogar_id, credencial_id, clave_publica, contador, transports, nombre, respaldada, aparato_id, ultima_vez_en)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now()) RETURNING id`,
-        [hogar, v.llave.credencialId, Buffer.from(v.llave.clavePublica), v.llave.contador, v.llave.transports, nombre, v.llave.respaldada, req.session.aparatoId ?? null]);
-      const id = Number(i.rows[0]!.id);
-      await t.query("UPDATE hogares SET llave_rehabilitada_hasta = NULL WHERE id = $1", [hogar]);
-      await marcaSesionConLlave(t, sid, hogar, id);
-      await audita(t, hogar, "oficina.llave_alta", { llave: id, aparato: req.session.aparatoId ?? null, respaldada: v.llave.respaldada });
-      return { id } as const;
-    });
-    if ("error" in r) {
+    const r = await registraLlave(bd, { hogarId: hogar, sesionId: sid, sesion: sesionDeAlta(req), llave: v.llave, nombre, aparatoId: req.session.aparatoId ?? null });
+    if (!r.ok) {
       if (r.error === "repetida") return rep.code(409).send({ error: "llave_repetida", mensaje: "Esa llave ya está dada de alta." });
       if (r.error === "maximo") return rep.code(409).send({ error: "demasiadas_llaves", mensaje: "Ya tienes " + MAX_LLAVES + " llaves." });
       return rep.code(403).send({ error: "entra_con_llave", mensaje: TEXTO_ENTRA_CON_LLAVE });

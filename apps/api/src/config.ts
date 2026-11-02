@@ -203,7 +203,9 @@ function cargaVigia(e: Entorno, produccion: boolean): Config["vigia"] {
 
 /**
  * Llave de acceso de la oficina (OF13). Obligatoria por defecto en todas partes; relajarla («no») pide la variable explícita y
- * no se admite en producción. El RP ID es un dominio (sin esquema ni puerto) que tiene que ser el del origen o uno de sus padres.
+ * no se admite en producción. El RP ID es un dominio (sin esquema ni puerto) que tiene que ser EXACTAMENTE el host del origen:
+ * nunca un dominio padre, que dejaría a cualquier subdominio hermano del mismo VPS pedir aserciones de las llaves del gemelo
+ * (LLAVES-DE-ACCESO §4, A12; ADR-0029).
  */
 function cargaLlave(e: Entorno, produccion: boolean, urlPublica: string): ConfigLlave {
   const modo = texto(e, "GEMELO_OFICINA_LLAVE", "obligatoria");
@@ -222,7 +224,7 @@ function compruebaLlave(e: Entorno, produccion: boolean, modo: string, origen: U
   if (produccion && origen.protocol !== "https:") throw new ErrorDeConfig("GEMELO_LLAVE_ORIGEN debe ser https en producción");
   const rpId = texto(e, "GEMELO_LLAVE_RP_ID", origen.hostname).toLowerCase();
   if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/.test(rpId) || /^\d+(\.\d+){3}$/.test(rpId)) throw new ErrorDeConfig("GEMELO_LLAVE_RP_ID debe ser un nombre de dominio (sin https:// ni puerto, y no una IP)");
-  if (origen.hostname !== rpId && !origen.hostname.endsWith("." + rpId)) throw new ErrorDeConfig("GEMELO_LLAVE_RP_ID (" + rpId + ") debe ser el dominio de GEMELO_LLAVE_ORIGEN o uno de sus padres");
+  if (origen.hostname !== rpId) throw new ErrorDeConfig("GEMELO_LLAVE_RP_ID (" + rpId + ") debe ser exactamente el host de GEMELO_LLAVE_ORIGEN (nunca un dominio padre)");
   return { obligatoria: modo === "obligatoria", rpId, origen: origen.origin, rpNombre: "Cuarenta hazas · Oficina" };
 }
 

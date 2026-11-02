@@ -38,7 +38,7 @@ GEMELO_OFICINA_CONFIRMACION_MIN=15
 GEMELO_OFICINA_SEGUNDO_ENLACE_MIN=5
 # llave de acceso (WebAuthn, passkey) de la oficina (OF13, contratos/sesion.md § Llave de acceso): «obligatoria» por defecto;
 # «no» solo fuera de producción (en producción la api no arranca con «no»). El RP ID y el origen salen de GEMELO_URL_PUBLICA;
-# solo se ponen si la oficina se sirve en otro origen (el RP ID es su dominio o uno de sus padres, nunca una IP).
+# solo se ponen si la oficina se sirve en otro origen (el RP ID es exactamente su host: nunca un dominio padre ni una IP).
 GEMELO_OFICINA_LLAVE=obligatoria
 # GEMELO_LLAVE_RP_ID=gemelo.canoydamas.es
 # GEMELO_LLAVE_ORIGEN=https://gemelo.canoydamas.es
