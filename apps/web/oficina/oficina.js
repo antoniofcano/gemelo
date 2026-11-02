@@ -7,15 +7,16 @@ import { cuentaPendientes, iniciaBandeja } from "./bandeja.js";
 import { iniciaSistema } from "./sistema.js";
 import { iniciaOlivos } from "./olivos.js";
 import { iniciaAgenda } from "./agenda.js";
+import { iniciaMundo } from "./mundo.js";
 
 const SECCIONES = [
   ["inicio", "🏠", "Inicio", true], ["familias", "👪", "Familias", true], ["hazas", "🗺️", "Hazas", true], ["bandeja", "📥", "Bandeja", true],
-  ["agenda", "📅", "Agenda", true], ["directos", "🎙️", "Directos", false], ["mundo", "🌳", "Mundo", false], ["olivos", "🫒", "Olivos", true],
+  ["agenda", "📅", "Agenda", true], ["directos", "🎙️", "Directos", false], ["mundo", "🌳", "Mundo", true], ["olivos", "🫒", "Olivos", true],
   ["sistema", "⚙️", "Sistema", true],
 ];
 const sesion = { rol: "oficina", cargada: false };
 let actual = "inicio";
-let familias = null, hazas = null, bandeja = null, sistema = null, olivos = null, agenda = null, llaves = null;
+let familias = null, hazas = null, bandeja = null, sistema = null, olivos = null, agenda = null, mundo = null, llaves = null;
 
 // ------------------------------------------------------------------ tema
 $("#bTema").addEventListener("click", () => {
@@ -40,7 +41,7 @@ function ir(sec, foco) {
   if (!SECCIONES.some(s => s[0] === sec)) sec = "inicio";
   actual = sec;
   const [, , nombre, hecha] = SECCIONES.find(s => s[0] === sec);
-  for (const id of ["inicio", "familias", "hazas", "bandeja", "agenda", "olivos", "sistema", "proximamente"]) $("#s-" + id).hidden = id !== (hecha ? sec : "proximamente");
+  for (const id of ["inicio", "familias", "hazas", "bandeja", "agenda", "mundo", "olivos", "sistema", "proximamente"]) $("#s-" + id).hidden = id !== (hecha ? sec : "proximamente");
   if (!hecha) $("#proxTitulo").textContent = nombre + ": próximamente";
   for (const b of nav.querySelectorAll("button")) { if (b.dataset.sec === sec) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); }
   $("#titulo").textContent = nombre;
@@ -51,6 +52,7 @@ function ir(sec, foco) {
   if (sec === "bandeja") bandeja.abre();
   if (sec === "agenda") agenda.abre();
   if (sec === "sistema") { sistema.abre(); llaves.abre(); }
+  if (sec === "mundo") mundo.abre();
   if (sec === "olivos") olivos.abre();
   if (sec === "inicio") { cuentaFamilias(); cuentaPendientes(); }
   if (foco) $("#titulo").focus();
@@ -104,6 +106,7 @@ bandeja = iniciaBandeja({ sesion });
 sistema = iniciaSistema({ sesion });
 olivos = iniciaOlivos({ sesion });
 agenda = iniciaAgenda({ sesion });
+mundo = iniciaMundo({ sesion });
 if (new URLSearchParams(location.search).has("prueba")) window.__bandeja = () => bandeja.estado();   // solo lectura, para la prueba de Chrome
 if (new URLSearchParams(location.search).has("prueba")) window.__olivos = () => olivos.estado();   // ídem (OF7)
 llaves = iniciaLlavesSistema({ sesion });

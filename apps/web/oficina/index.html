@@ -74,7 +74,7 @@
       <p><button class="boton peq" type="button" data-ir="bandeja">Abrir la bandeja</button></p>
     </div>
   </div>
-  <p class="nota">El resto de secciones (Directos y Mundo) llegan en las siguientes tareas de la oficina.</p>
+  <p class="nota">La sección Directos llega en una tarea siguiente de la oficina.</p>
 </section>
 
 <section id="s-familias" hidden>
@@ -281,6 +281,65 @@
   <ul class="lista" id="aLista"></ul>
   <p class="nota">El aforo cuenta <b>personas</b>; cada familia se apunta una vez, con las personas que van. Si no caben, queda en la lista de espera y pasa a apuntada sola, por orden, cuando alguien se borra o se sube el aforo. Los avisos llegan a la campana del gemelo (tope de 3 por familia y semana); <b>el correo todavía no sale</b> y la exportación a calendario (.ics) llega más adelante.</p>
 </section>
+
+<section id="s-mundo" hidden>
+  <div class="tarjeta">
+    <h2>Anunciar a toda la sala</h2>
+    <p class="nota">Sale arriba, unos segundos, a quien esté en el mundo, y queda en su chat como «Oficina». Lo manda la api; no lleva tu nombre.</p>
+    <form id="mAnuncioF" class="mundo-form" novalidate>
+      <label class="campo">Anuncio <textarea id="mAnuncioT" rows="3" autocomplete="off" aria-describedby="mAnuncioN"></textarea></label>
+      <p class="nota" id="mAnuncioN">0 / 280</p>
+      <label class="campo">A qué sala <select id="mAnuncioS"></select></label>
+      <div class="barra-h"><button class="boton prim" id="mAnuncioB" type="submit">Anunciar a toda la sala</button></div>
+    </form>
+    <p class="nota" id="mAnuncioM" role="status" aria-live="polite"></p>
+  </div>
+
+  <div class="tarjeta">
+    <h2>Expulsar a una familia</h2>
+    <p class="nota">La saca de las salas y no recibe tokens nuevos 15 minutos (decisión 42). Queda en la auditoría.</p>
+    <form id="mExpulsaF" class="mundo-form" novalidate>
+      <label class="campo">Buscar la familia <input id="mExpulsaQ" type="search" autocomplete="off" placeholder="Correo, alias o nombre interno"></label>
+      <label class="campo">Familia <select id="mExpulsaS"></select></label>
+      <label class="campo">Motivo (opcional, solo para la auditoría) <input id="mExpulsaMot" maxlength="200" autocomplete="off"></label>
+      <div class="barra-h"><button class="boton peligro" id="mExpulsaB" type="submit">Expulsar…</button></div>
+    </form>
+    <p class="nota" id="mExpulsaM" role="status" aria-live="polite"></p>
+  </div>
+
+  <div class="tarjeta">
+    <h2>Balizas oficiales</h2>
+    <p class="nota">Una bandera verde oliva con título y texto, visible para todos y con caducidad. Aquí se pone con coordenadas UTM (EPSG:25830) dentro de la finca; ponerla pinchando en el mapa llega en un escalón siguiente (en el mundo, la oficina ya puede ponerla «aquí»).</p>
+    <div class="barra-h">
+      <label class="campo en-fila">Finca <select id="mBalizaFinca"></select></label>
+      <button class="boton suave" id="mBalizaRef" type="button">Actualizar</button>
+    </div>
+    <p class="nota" id="mBalizaCuenta" aria-live="polite"></p>
+    <ul class="lista" id="mBalizaLista"></ul>
+    <form id="mBalizaF" class="mundo-form" novalidate>
+      <h3>Poner una baliza</h3>
+      <label class="campo">Título <input id="mBalizaT" maxlength="60" autocomplete="off"></label>
+      <label class="campo">Texto (opcional) <textarea id="mBalizaX" rows="2" maxlength="280" autocomplete="off"></textarea></label>
+      <div class="barra-h">
+        <label class="campo">x (UTM, m) <input id="mBalizaPx" inputmode="decimal" autocomplete="off"></label>
+        <label class="campo">y (UTM, m) <input id="mBalizaPy" inputmode="decimal" autocomplete="off"></label>
+        <label class="campo">Caduca en <select id="mBalizaH"></select></label>
+      </div>
+      <div class="barra-h"><button class="boton prim" id="mBalizaB" type="submit">Poner la baliza</button></div>
+    </form>
+    <p class="nota" id="mBalizaM" role="status" aria-live="polite"></p>
+  </div>
+  <p class="nota">Quién está conectado y a qué haza mira (escalón 2) y abrir, cerrar y silenciar salas (escalón 3) no están todavía.</p>
+</section>
+
+<dialog id="dlgBalizaMover" aria-labelledby="dlgBalizaMoverT"><form id="fBalizaMover" novalidate>
+  <h2 id="dlgBalizaMoverT">Mover la baliza</h2>
+  <p class="nota" id="mMoverNombre"></p>
+  <label class="campo">x (UTM, m) <input id="mMoverX" inputmode="decimal" autocomplete="off"></label>
+  <label class="campo">y (UTM, m) <input id="mMoverY" inputmode="decimal" autocomplete="off"></label>
+  <p class="error" id="mMoverError" role="alert"></p>
+  <div class="barra-h"><button class="boton suave" id="mMoverNo" type="button">Cancelar</button><button class="boton prim empuja" type="submit">Mover</button></div>
+</form></dialog>
 
 <section id="s-proximamente" hidden>
   <div class="tarjeta">
