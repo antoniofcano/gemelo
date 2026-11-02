@@ -1,5 +1,5 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: sitioJunto
+// Expone: PoseCodec, BufferPose, Aspecto, SalaPose, Chat, Muneco, Encuentro, AutoPresencia, sitioJunto
 // Consume: 01_datos (D, $), 02_mundo (suelo, copas), 02c_componentes (ConfigPuro), 02e_entidades (Entidades), 03_escena (exag, modo),
 //   04d_sombreado_tiles (hash), 06_arboles (tronco), 12_paseo (paseando, persona, primera), 12b_llegada (Llegada), 13b_hazas (HazasPuro),
 //   14_historia (lista), 15_tiempo (rumbo, hace), 16_vida (quad, vidaPaseo, dron), 33_ajustes (Ajustes)
@@ -410,7 +410,7 @@
   // Y cuando la api contesta, decideRed(respuesta) dice si arranca: solo con { red: true } exacto; cualquier otra cosa (error, 401, forma rara) = no.
   var AutoPresencia = (function () {
     function decide(busqueda, prefijo, ajuste) {
-      var m = /[?&]presencia=([^&#]*)/.exec(busqueda || "");
+      var m = /[?&]presencia=([^&]*)/.exec(busqueda || "");
       if (m) return m[1] === "sim" ? "sim" : m[1] === "red" ? "red" : m[1] === "0" ? "0" : "";   // otro valor (p. ej. 1): como hasta ahora, sin nada
       return prefijo && ajuste !== false ? "pregunta" : "";
     }

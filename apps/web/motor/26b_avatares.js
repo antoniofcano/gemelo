@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
 // Consume: 01_datos ($), 02_mundo (suelo), 02c_componentes (Componentes), 03_escena (renderer, scene, camera, exag),
-//   12_paseo (paseando, persona, primera), 16_vida (enQuad, quad, enDron, dron), 29_vr (VRX)
+//   12_paseo (paseando, persona, primera), 16_vida (enQuad, quad, enDron, dron), 26_presencia (Aspecto, Muneco), 29_vr (VRX)
 // Nota: Componente «avatares-vrm» (ADR-0023, C5): solo se registra; consume la presencia (n.api) y se engancha a ella con enganchaVRM. Sin presencia activa no crea nada; con ella, pide /avatares/catalogo.json solo si alguien lleva avatar (o con &vrm=1 en la simulación) e import("@pixiv/three-vrm") solo entonces. El trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/avatares_motor.test.js.
 // ===============================================================================
   // ---------- avatares VRM (P7c, ADR-0020), componente «avatares-vrm» (C5, ADR-0023, consume la presencia): los N más cercanos que caben en el presupuesto del aparato llevan su VRM del catálogo; el resto, el muñeco
@@ -493,7 +493,7 @@
     id: "avatares-vrm", version: 1,
     consume: ["Presencia", "Aspecto", "VRX", "paseando", "persona", "primera", "enQuad", "enDron", "pp"],
     expone: [],
-    eventos: { escucha: [], emite: [] },
+    eventos: { escucha: ["presencia:activada"], emite: [] },
     bandera: { defecto: true, url: "avatares" },
     // escritorio: 6 VRM a la vez (cupo; 3 en móvil y Quest) × ≤ 4 primitivas y ≤ 20.000 triángulos cada uno (topes de la tubería, ADR-0020 §2: ESTIMADO, sin medir);
     // texturas: ≤ 3 de 1024 px por avatar (≈ 16 MB cada uno con mipmaps, ADR-0020: 50-100 MB estimados)
@@ -501,7 +501,11 @@
     fases: {},
     monta: function (n) {
       var P = n.api("presencia-compartida");
-      if (!P || !P.activo()) return { estado: function () { return null; }, libera: function () {} };   // sin presencia activa, como antes: nada
+      if (!P) return { estado: function () { return null; }, libera: function () {} };
+      if (!P.activo()) {   // sin presencia activa, como antes: nada. F2b: si la presencia arranca sola más tarde (presencia:activada), este componente se remonta ya con ella
+        n.on("presencia:activada", function () { if (P.activo()) { Componentes.enciende("avatares-vrm", false); Componentes.enciende("avatares-vrm", true); } });
+        return { estado: function () { return null; }, libera: function () {} };
+      }
       return AvataresMotor(n, P);
     },
     actualiza: {},

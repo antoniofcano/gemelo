@@ -3,8 +3,9 @@
 // Consume: 01_datos (D, $), 02_mundo (suelo), 02c_componentes (Bus, ConfigPuro, Componentes), 02e_entidades (Entidades),
 //   03_escena (visor, renderer, scene, camera, texColor, exag, modo), 06_arboles (tronco), 09_camara (objetivo, suelta, elige),
 //   12_paseo (paseando, persona, primera), 12b_llegada (Llegada), 14_historia (lista, aviso), 15_tiempo (rumbo, hace),
-//   16_vida (enQuad, quita, mira, quad, enDron, dron), 26_presencia (sitioJunto), 29_vr (VRX, vrFundido, panel, ficha), 33_ajustes (Ajustes),
-//   34_movibles (Movibles)
+//   16_vida (enQuad, quita, mira, quad, enDron, dron),
+//   26_presencia (PoseCodec, BufferPose, Aspecto, SalaPose, Chat, Muneco, Encuentro, AutoPresencia, sitioJunto),
+//   29_vr (VRX, vrFundido, panel, ficha), 33_ajustes (Ajustes), 34_movibles (Movibles)
 // Nota: Componente «presencia-compartida» (ADR-0023, C5): solo se registra; consume la red (sala «visita») y expone «Presencia» (para los avatares VRM). Sin ?presencia=sim o ?presencia=red, montado no crea nada; con red, el panel Gente y el chat; F3f: viaja a la sala de una visita guiada (Presencia.entraGuiada, token de F3c) y vuelve sola a la general si la sala se cierra o te sacan. Registra el tipo persona en Entidades (C7) y da su línea de ?debug por «depura:lineas». Publica window.__presencia y window.__presenciaChat (pruebas). Lo prueba en Node pruebas/guardianes/red.test.js.
 // ===============================================================================
 
@@ -746,7 +747,7 @@
       fetch(PREFIJO_API + "presencia", { credentials: "same-origin", headers: { accept: "application/json" } }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
         if (variante || quitaPersona || grupo || !AutoPresencia.decideRed(j) || AutoPresencia.decide(location.search, PREFIJO_API, verAjuste()) !== "pregunta") { auto = false; return; }   // ya hay presencia, no hay red o la apagaron mientras
         variante = "red"; activo = true; registraPersona(); iniciaRed();
-        if (typeof Componentes !== "undefined" && Componentes.enciende && Componentes.activo("avatares-vrm")) { Componentes.enciende("avatares-vrm", false); Componentes.enciende("avatares-vrm", true); }   // los VRM miran la presencia al montarse (y se montaron vacíos): se remontan ahora que está activa
+        n.emite("presencia:activada", { variante: "red" });   // los avatares VRM miran la presencia al montarse (y se montaron vacíos): al oírlo se remontan
       }).catch(function () { auto = false; });
     }
     function verAjuste() { try { return typeof Ajustes !== "undefined" && Ajustes.lee ? Ajustes.lee("presencia.ver") : true; } catch (e) { return true; } }
@@ -816,7 +817,7 @@
     consume: ["Red", "Ajustes", "AutoPresencia", "PoseCodec", "BufferPose", "Aspecto", "SalaPose", "Chat", "Muneco", "Encuentro", "sitioJunto", "Llegada", "Movibles", "VRX", "TR",
       "paseando", "pp", "enQuad", "enDron", "quad", "dron", "objetivo", "texColor"],
     expone: ["Presencia"],
-    eventos: { escucha: ["chat:alterna", "depura:lineas", "guiada:entrar"], emite: ["guiada:entrada"] },
+    eventos: { escucha: ["chat:alterna", "depura:lineas", "guiada:entrar"], emite: ["guiada:entrada", "presencia:activada"] },
     bandera: { defecto: true, url: "presencia" },
     // muñecos instanciados (cuerpo, cabeza, sombrero y apoyo, manos, nombres, ruedas de la silla) + quad y dron de los demás: 8 llamadas tengas los que tengas;
     // ≈ 234 triángulos por persona como mucho (98 medidos sin accesorios, MEDIDAS) × 49 plazas + los vehículos [estimado, sin medir con vehículos]; el atlas de nombres (1024 × 624)

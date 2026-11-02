@@ -286,7 +286,8 @@ test("ir con alguien y minimapa: en la página, solo con la bandera; con ella, s
   // C5: el minimapa no nombra a la presencia: pinta las entidades «persona» (las registra la presencia solo con su bandera) e «Ir con» es su acción «ir»
   assert.match(M, /var gente = Entidades\.lista\("persona"\);[^\n]*\n\s*if \(gente\) \{/, "el minimapa solo pinta a los demás si hay tipo «persona» (presencia activa)");
   assert.match(M, /Usables\.usa\(mejor\.id, "ir"\)/, "el segundo toque va con esa persona por su acción «ir»");
-  assert.match(F, /if \(variante\) quitaPersona = Entidades\.registra\(\{ tipo: "persona"/, "el tipo «persona» solo con ?presencia=sim|red");
+  assert.match(F, /function registraPersona\(\) \{ quitaPersona = Entidades\.registra\(\{ tipo: "persona"/);
+  assert.match(F, /if \(variante\) registraPersona\(\);/, "el tipo «persona» solo con presencia activa: ?presencia=sim|red, o el arranque solo de F2b, que lo registra al activarse");
   assert.match(F, /function seVe\(a, tMs\) \{ return !!a && a\.visto && \(variante !== "red" \|\| SalaPose\.seVe\(SP, a\.id, tMs, bloqueados\)\); \}/);
   assert.match(F, /function irCon\(id\) \{\s*if \(!activo\) return false;\s*var a = busca\(id\); if \(!seVe\(a, performance\.now\(\)\)\) return false;/, "irCon solo va con quien se ve");
   assert.match(F, /if \(x\.enMundo && !bl\) \{/, "el botón «Ir con» solo para quien está en el olivar y no está bloqueado");
