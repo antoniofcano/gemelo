@@ -105,3 +105,40 @@ test("la oficina lee el agregado por día, aparato y VR con filtros; un hogar no
   assert.equal((await pide("GET", "/api/admin/medidas?hasta=2000-01-01", ofi)).json().filas.length, 0);
   assert.equal((await pide("GET", "/api/admin/medidas?desde=2026-02-30", ofi)).statusCode, 400, "fecha que no existe");
 });
+
+// Q0e (migración 0022, contrato v2): ESCRITA SIN LANZAR (sin Docker en esta tarea). Usa el aparato «escritorio» para no mover el p95 del Quest que miran las pruebas de arriba.
+test("0022 / Q0e: guarda los campos nuevos, acepta el cuerpo antiguo, rechaza lo raro y el agregado trae la mediana de cada uno", async t => {
+  if (salta(t)) return;
+  const cols = (await bd.dueno.query<{ column_name: string; is_nullable: string }>("SELECT column_name, is_nullable FROM information_schema.columns WHERE table_name = 'medidas_fluidez'")).rows;
+  for (const c of ["js_mediana_ms", "js_p95_ms", "nivel_ini", "nivel_fin", "perillas", "olivos_gen", "llamadas_med", "triangulos_med", "personas"]) {
+    const col = cols.find(x => x.column_name === c);
+    assert.ok(col && col.is_nullable === "YES", c + " existe y admite NULL (las medidas de antes siguen valiendo)");
+  }
+  const priv = (await bd.dueno.query<{ p: string }>("SELECT privilege_type AS p FROM information_schema.role_table_grants WHERE grantee = 'gemelo_api' AND table_name = 'medidas_fluidez' ORDER BY 1")).rows.map(r => r.p);
+  assert.deepEqual(priv, ["INSERT", "SELECT"], "los permisos no cambian con la 0022");
+  const pc = { aparato: "escritorio" as const, navegador: "Chrome", nav_mayor: 131, vr: false, perfil: -1, modo: "ortofoto", finca: "cerro" };
+  const nuevos = { js_mediana_ms: 6, js_p95_ms: 12, nivel_ini: 3, nivel_fin: 3, perillas: "fov 1 · escala 0,9 · 72 Hz · MSAA sí · nivel auto", olivos_gen: true, llamadas_med: 200, triangulos_med: 400000, personas: 2 };
+  const ana = await entra(ANA);
+  const cuerpos = [{ ...pc, ...nuevos }, { ...pc, ...nuevos, js_mediana_ms: 8, js_p95_ms: 14, llamadas_med: 300, personas: 4 }, { ...pc, ...nuevos, js_mediana_ms: 10, js_p95_ms: 16, olivos_gen: false, llamadas_med: 400, personas: 6 }, { ...pc }];
+  for (const [i, extra] of cuerpos.entries()) {
+    const r = await pide("POST", "/api/medidas", ana, medida({ ...extra, medida_en: new Date(Date.now() - 120_000 - i).toISOString() }));
+    assert.equal(r.statusCode, 201, r.body);   // las tres con campos nuevos y la antigua (sin ellos)
+  }
+  const ultima = (await bd.dueno.query("SELECT * FROM medidas_fluidez WHERE aparato = 'escritorio' AND js_mediana_ms IS NULL ORDER BY id DESC LIMIT 1")).rows[0];
+  assert.ok(ultima && ultima.perillas === null && ultima.olivos_gen === null && ultima.personas === null, "el cuerpo antiguo deja NULL en lo nuevo");
+  assert.ok(!/Mozilla|Linux|198\.51\.100|ana-medidas/.test(JSON.stringify(ultima)), "ni IP, ni agente de usuario, ni correo");
+  for (const mala of [{ js_p95_ms: 5, js_mediana_ms: 9 }, { personas: 501 }, { perillas: "<b>x</b>" }, { perillas: "x".repeat(81) }, { nivel_fin: 10 }, { hogar: 1 }]) {
+    const r = await pide("POST", "/api/medidas", ana, medida({ ...pc, ...mala } as Partial<CuerpoMedida>));
+    assert.ok(r.statusCode === 400 || r.statusCode === 422, JSON.stringify(mala) + " -> " + r.statusCode);
+  }
+  await assert.rejects(bd.dueno.query("INSERT INTO medidas_fluidez (medida_en, aparato, navegador, nav_mayor, perfil, finca, modo, vr, mediana_ms, p95_ms, peor_ms, fotogramas, duracion_s, version, perillas) VALUES (now(), 'movil', 'X', 1, 0, 'f', 'm', false, 1, 1, 1, 10, 60, '1', '<script>')"), /check|restricci/i, "la base también sanea perillas");
+  const ofi = await entra(OFI);
+  const j = (await pide("GET", "/api/admin/medidas?aparato=escritorio", ofi)).json();
+  const f = j.filas.find((x: { aparato: string }) => x.aparato === "escritorio");
+  assert.ok(f, JSON.stringify(j));
+  assert.equal(f.js_mediana_ms, 8, "mediana de 6, 8 y 10"); assert.equal(f.js_p95_ms, 14); assert.equal(f.nivel_ini, 3); assert.equal(f.nivel_fin, 3);
+  assert.equal(f.llamadas_med, 300); assert.equal(f.triangulos_med, 400000); assert.equal(f.personas, 4);
+  assert.equal(f.perillas, "fov 1 · escala 0,9 · 72 Hz · MSAA sí · nivel auto");
+  assert.deepEqual([f.olivos_gen_si, f.olivos_gen_de], [2, 3], "dos de las tres con dato traían los olivos generados");
+  assert.ok(!/hogar|ana-medidas|"id"/.test(JSON.stringify(j)));
+});
