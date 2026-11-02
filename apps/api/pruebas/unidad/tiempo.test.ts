@@ -157,6 +157,54 @@ test("error sin lectura anterior: null si fallan las dos; si falla una, la otra 
   assert.equal(await s3.lee(), null);
 });
 
+test("V13: Vigía sin previsión (hayPrevision:false) no apaga la última válida: se sirve con su edad, sin martillear", async () => {
+  const vacia = { hayPrevision: false, porQue: "No hay previsión ingerida (sintético)" };
+  const r = reloj(), l = new LectorVigiaFixture(FIXTURE, r.fn), s = new ServicioTiempo(l, { reloj: r.fn });
+  const bien = await s.lee();
+  assert.ok(bien?.prevision);
+  const horas = bien.prevision.horas.length;
+  r.t += 61 * MIN; l.sustituye.set("prevision_72_horas", vacia);
+  const n0 = l.llamadas.length;
+  const v = await s.lee();
+  assert.ok(v && valida(v), errores());
+  assert.equal(v.prevision?.horas.length, horas, "las horas de la última previsión real, ni más ni menos");
+  assert.equal(v.prevision?.naturaleza, "modelado");
+  assert.ok(v.avisos.some(a => a.de === "gemelo" && /no tiene previsión ahora mismo: es la última que llegó, de hace 61 min/.test(a.texto)), JSON.stringify(v.avisos));
+  assert.ok(!v.avisos.some(a => /no ha respondido/.test(a.texto)), "no es un fallo de red");
+  assert.equal(v.prevision?.frescura.generadoEn, bien.prevision.frescura.generadoEn, "la frescura es la de esa lectura");
+  assert.equal(l.llamadas.slice(n0).filter(h => h === "prevision_72_horas").length, 1);
+  r.t += 30_000; await s.lee();
+  assert.equal(l.llamadas.slice(n0).filter(h => h === "prevision_72_horas").length, 1, "dentro del minuto no se vuelve a llamar");
+  r.t += 31_000; l.sustituye.clear(); const otra = await s.lee();
+  assert.ok(otra?.prevision && otra.avisos.every(a => !/no tiene previsión/.test(a.texto)), "al volver la previsión, se sirve la nueva sin aviso");
+  // una caída de red tras una respuesta vacía vuelve al aviso de fallo
+  r.t += 61 * MIN; l.sustituye.set("prevision_72_horas", vacia); await s.lee();
+  r.t += 61_000; l.sustituye.set("prevision_72_horas", new ErrorDeVigia("caída"));
+  const caida = await s.lee();
+  assert.ok(caida?.prevision && caida.avisos.some(a => /no ha respondido/.test(a.texto)), JSON.stringify(caida?.avisos));
+});
+
+test("V13: sin previsión anterior, con una que ya no cubre horas futuras o de más de 24 h: «no tiene dato ahora mismo» como antes", async () => {
+  const vacia = { hayPrevision: false, porQue: "x" };
+  const r = reloj(), l = new LectorVigiaFixture(FIXTURE, r.fn), s = new ServicioTiempo(l, { reloj: r.fn });
+  l.sustituye.set("prevision_72_horas", vacia);
+  const sola = await s.lee();
+  assert.equal(sola?.prevision, null);
+  assert.ok(sola?.avisos.some(a => /La previsión: Vigía no tiene dato ahora mismo/.test(a.texto)));
+  // una anterior que ya no cubre ninguna hora futura (con tope de antigüedad holgado para aislar la causa)
+  const r2 = reloj(), l2 = new LectorVigiaFixture(FIXTURE, r2.fn), s2 = new ServicioTiempo(l2, { reloj: r2.fn, maxViejoMs: 200 * 60 * MIN });
+  await s2.lee(); r2.t += 73 * 60 * MIN; l2.sustituye.set("prevision_72_horas", vacia);
+  const pasada = await s2.lee();
+  assert.equal(pasada?.prevision, null);
+  assert.ok(pasada?.avisos.some(a => /La previsión: Vigía no tiene dato ahora mismo/.test(a.texto)), JSON.stringify(pasada?.avisos));
+  // más de 24 h, aunque cubriera horas
+  const r3 = reloj(), l3 = new LectorVigiaFixture(FIXTURE, r3.fn), s3 = new ServicioTiempo(l3, { reloj: r3.fn });
+  await s3.lee(); r3.t += 25 * 60 * MIN; l3.sustituye.set("prevision_72_horas", vacia);
+  const vieja = await s3.lee();
+  assert.equal(vieja?.prevision, null);
+  assert.ok(vieja?.avisos.some(a => /La previsión: Vigía no tiene dato ahora mismo/.test(a.texto)), JSON.stringify(vieja?.avisos));
+});
+
 test("datos de maqueta y avisos de antigüedad de Vigía se repiten (como datos)", async () => {
   const r = reloj(), l = new LectorVigiaFixture(FIXTURE, r.fn), s = new ServicioTiempo(l, { reloj: r.fn });
   const a = crudo("tiempo_en_la_explotacion");
