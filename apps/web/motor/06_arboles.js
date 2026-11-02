@@ -115,7 +115,10 @@
     function rotuloGenerado(i, filas) {   // decisión 34: si el olivo se dibuja generado (?olivos=gen), se dice que su forma es ilustrativa y si su id es provisional
       var r = Generados.rotulo(i); if (!r) return;
       filas.push({ k: "Forma", v: "ilustrativa con medidas del LiDAR" + (r.lejano ? " (lejano)" : r.variante ? " (variante)" : r.niv && Generados.escalera() ? " (propio)" : "") });
-      if (r.provisional) filas.push({ k: "Id", v: "provisional (aún no viene del censo)" });
+    }
+    function filaId(c) {   // OF8c: el id real, para pegarlo en la pestaña «Olivo real» de la oficina (texto de la ficha: se selecciona y se copia); provisional desde 2^31 (tuberia/ids_copas.py)
+      return c.id >= 0 ? { k: "Id", v: c.id + (c.id >= 2147483648 ? " (provisional, aún no viene del censo)" : " (del censo)") + " · en la oficina, «posición " + (c.i + 1) + "»" }
+        : { k: "Id", v: "sin id estable · en la oficina, «posición " + (c.i + 1) + "»" };
     }
     function fichaOlivo(id) {
       var b = copaDe(id); if (!b) return null;
@@ -123,7 +126,7 @@
       f.push({ k: "Parcela", v: b.dentro ? parcelas[b.parc].nombre : "fuera de las parcelas" }, { k: "Altura", v: fmt(b.h, 1) + " m" }, { k: "Radio de copa", v: fmt(rm(b), 1) + " m" },
         { k: "Guardado en OlivarTrack", v: b.dentro ? (m ? "sí" : "no") : "fuera de esta parcela" });
       if (m) f.push({ k: "Desfase", v: fmt(Math.hypot(m.x - b.x, m.y - b.y), 1) + " m" });
-      f.push({ k: "Pies del olivo", v: "2–3, lo habitual (no medido)" }); rotuloGenerado(b.i, f);
+      f.push({ k: "Pies del olivo", v: "2–3, lo habitual (no medido)" }); rotuloGenerado(b.i, f); f.push(filaId(b));
       f.push({ k: "UTM 30 (ETRS89)", v: fmt(D.centro_utm[0] + b.x) + ", " + fmt(D.centro_utm[1] + b.y) });
       return { titulo: "Olivo " + (b.i + 1), filas: f };
     }

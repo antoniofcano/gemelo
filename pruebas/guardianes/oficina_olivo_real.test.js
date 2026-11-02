@@ -60,6 +60,27 @@ test("buscar un olivo: por copas_id, por «olivo:<finca>:<id>», por posición (
   assert.match(P.buscaOlivo({ copas: [] }, "1").error, /no trae olivos/);
 });
 
+test("OF8c: el número de la ficha («Olivo 2») es la posición + 1: «posición N», «olivo N» o «#N» devuelven el id estable (Hituelo: ids ≥ 2^31)", async () => {
+  const P = await importa("olivo_real_puro.js");
+  for (const t of ["posición 3", "posicion 3", "Olivo 3", "#3", "# 3", "  POSICIÓN   3 "]) {
+    const q = P.buscaOlivo(INDICE, t, "hituelo");
+    assert.deepStrictEqual([q.i, q.id], [2, 2147483700], t);
+    assert.match(q.nota, /Olivo 3 de la ficha = id 2147483700 \(provisional\)/);
+  }
+  assert.match(P.buscaOlivo(INDICE, "posición 2", "hituelo").nota, /id 102 \(del censo\)/);
+  assert.match(P.buscaOlivo({ centro_utm: INDICE.centro_utm, copas: INDICE.copas }, "#2", "hituelo").nota, /posición 1 \(sin id estable\)/);
+  for (const t of ["posición 0", "posición 4", "#99"]) assert.match(P.buscaOlivo(INDICE, t, "hituelo").error, /tiene 3 olivos: .* de 1 a 3/, t);
+  assert.match(P.buscaOlivo(INDICE, "2005", "hituelo").error, /Si es el número de la ficha, escribe: posición 2005/);
+  assert.deepStrictEqual(P.buscaOlivo(INDICE, "102", "hituelo"), { i: 1, id: 102 }, "el id sigue valiendo y no lleva nota");
+});
+
+test("OF8c: la ficha del olivo del motor enseña el id real y la posición que acepta la oficina", () => {
+  const f = lee("apps/web/motor/06_arboles.js");
+  assert.match(f, /function filaId\(c\)/);
+  assert.match(f, /f\.push\(filaId\(b\)\)/, "la fila Id va siempre en la ficha, no solo con ?olivos=gen");
+  assert.match(f, /2147483648/, "provisional desde 2^31, como tuberia/ids_copas.py");
+});
+
 test("la entrada del generador es la del motor: mismo semillaDeCopa, mismo parametrosDeCopa, mismo factor y mismo tipo", async () => {
   const P = await importa("olivo_real_puro.js"), C = await importa("../olivo/copas.js");
   const factor = /FACTOR_R8 = 0\.5, FACTOR_R8_GEN = (\d+(?:\.\d+)?)/.exec(lee("apps/web/motor/01_datos.js"));
