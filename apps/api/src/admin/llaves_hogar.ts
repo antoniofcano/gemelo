@@ -22,10 +22,17 @@ const IDS = {
   properties: { id: { type: "integer", minimum: 1, maximum: 2147483647 }, llaveId: { type: "integer", minimum: 1, maximum: 2147483647 } },
 } as const;
 /** Motivo opcional de quien actúa: una línea, sin caracteres de control, para la auditoría (no sale a la familia). */
-const CUERPO = {
-  type: "object", additionalProperties: false,
-  properties: { motivo: { type: "string", maxLength: 200, pattern: "^[^\\u0000-\\u001f\\u007f]*$" } },
-} as const;
+const MOTIVO = /^[^\u0000-\u001f\u007f]{0,200}$/;
+const FORMA_MALA = { error: "entrada_no_valida", mensaje: "La petición no tiene la forma esperada." } as const;
+/** El cuerpo de la baja es opcional (un DELETE sin cuerpo vale): vacío, o `{ motivo? }` y nada más. Devuelve el motivo limpio, o `false` si la forma es mala. */
+function motivoDe(cuerpo: unknown): string | null | false {
+  if (cuerpo === undefined || cuerpo === null) return null;
+  if (typeof cuerpo !== "object" || Array.isArray(cuerpo)) return false;
+  const c = cuerpo as Record<string, unknown>;
+  if (Object.keys(c).some(k => k !== "motivo")) return false;
+  if (c["motivo"] === undefined) return null;
+  return typeof c["motivo"] === "string" && MOTIVO.test(c["motivo"]) ? c["motivo"].trim() || null : false;
+}
 
 export async function rutasLlavesDeHogar(app: FastifyInstance, ctx: Contexto): Promise<void> {
   const { bd, cartero } = ctx;
@@ -65,12 +72,13 @@ export async function rutasLlavesDeHogar(app: FastifyInstance, ctx: Contexto): P
   });
 
   // ---------------------------------------------------------------- quitar una
-  app.delete<{ Params: { id: number; llaveId: number }; Body?: { motivo?: string } }>("/api/admin/hogares/:id/llaves/:llaveId", {
-    preHandler: OFICINA_CONFIRMADA, schema: { params: IDS, body: CUERPO },
+  app.delete<{ Params: { id: number; llaveId: number }; Body?: unknown }>("/api/admin/hogares/:id/llaves/:llaveId", {
+    preHandler: OFICINA_CONFIRMADA, schema: { params: IDS },
   }, async (req, rep) => {
     rep.header("cache-control", "no-store");
     if (!await pasaLimite(req, rep)) return;
-    const yo = req.session.hogarId!, motivo = req.body?.motivo?.trim() || null;
+    const yo = req.session.hogarId!, motivo = motivoDe(req.body);
+    if (motivo === false) return rep.code(400).send(FORMA_MALA);
     if (!await familia(req.params.id)) return rep.code(404).send(NO_EXISTE);
     // con la cuenta bloqueada y la llave buscada POR LA CUENTA de la ruta: la llave de otra familia y la inexistente son la misma respuesta
     const r = await enTransaccion(bd, async t => {
@@ -89,12 +97,13 @@ export async function rutasLlavesDeHogar(app: FastifyInstance, ctx: Contexto): P
   });
 
   // ---------------------------------------------------------------- quitar todas
-  app.delete<{ Params: { id: number }; Body?: { motivo?: string } }>("/api/admin/hogares/:id/llaves", {
-    preHandler: OFICINA_CONFIRMADA, schema: { params: ID, body: CUERPO },
+  app.delete<{ Params: { id: number }; Body?: unknown }>("/api/admin/hogares/:id/llaves", {
+    preHandler: OFICINA_CONFIRMADA, schema: { params: ID },
   }, async (req, rep) => {
     rep.header("cache-control", "no-store");
     if (!await pasaLimite(req, rep)) return;
-    const yo = req.session.hogarId!, motivo = req.body?.motivo?.trim() || null;
+    const yo = req.session.hogarId!, motivo = motivoDe(req.body);
+    if (motivo === false) return rep.code(400).send(FORMA_MALA);
     if (!await familia(req.params.id)) return rep.code(404).send(NO_EXISTE);
     const r = await enTransaccion(bd, async t => {
       await t.query("SELECT id FROM hogares WHERE id = $1 FOR UPDATE", [req.params.id]);
