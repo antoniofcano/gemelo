@@ -303,6 +303,14 @@
   </div>
 
   <div class="tarjeta">
+    <h2>Salas</h2>
+    <p class="nota">Las salas con gente, de la misma lista de arriba. En las <b>visitas guiadas</b> puedes <b>silenciar a todos</b> (menos el guía) y <b>cerrar la sala</b>: se avisa a todos unos segundos antes y vuelven a la sala general. La sala general y la de la visita no tienen voz: ahí solo se anuncia y se expulsa. Silenciar a una sola persona no existe todavía.</p>
+    <p class="nota" id="mSalasCuenta" role="status" aria-live="polite">Consultando las salas…</p>
+    <ul class="lista" id="mSalasLista"></ul>
+    <p class="nota" id="mSalasM" role="status" aria-live="polite"></p>
+  </div>
+
+  <div class="tarjeta">
     <h2>Anunciar a toda la sala</h2>
     <p class="nota">Sale arriba, unos segundos, a quien esté en el mundo, y queda en su chat como «Oficina». Lo manda la api; no lleva tu nombre.</p>
     <form id="mAnuncioF" class="mundo-form" novalidate>
