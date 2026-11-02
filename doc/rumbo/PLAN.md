@@ -220,7 +220,7 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | OF13b-5 | Entrada sin sesión `/api/auth/llave{,/opciones}`: cookie de reto, límites, rotación, origen `llave`; oficina con aparato aprobado o pendiente; `almacen.ts` | OF13b-3 | ligera · **opus** | ✅ 2026-11-02 en Node (317 de unidad en verde): cookie de reto, rotación, oficina con aparato pendiente, enlace con una sola consulta; falta PostGIS (OF13b-9); revisar varias pestañas en OF13b-7 |
 | OF13b-6 | Oficina: quitar llaves de una familia desde su ficha, exportación con llaves, llaves de oficina no descubribles | OF13b-4 | ligera · sonnet | ⬜ |
 | OF13b-7 | Portada: «Entrar con mi llave» + autorrelleno + «Recibir un enlace», oferta tras el enlace, Mis dispositivos con llaves; nota de comodidad | OF13b-4, OF13b-5 | ligera · sonnet | ⬜ |
-| OF13b-8 | Oficina `llave.js`: la entrada con llave llega ya dentro | OF13b-5 | ligera · sonnet | ⬜ |
+| OF13b-8 | Oficina `llave.js`: la entrada con llave llega ya dentro | OF13b-5 | ligera · sonnet | ✅ 2026-11-02 en Node; Chrome con autenticador virtual escrito (OF13b-10); la puerta real es la portada: Caddy no sirve `/oficina/` sin sesión |
 | OF13b-9 | Integración con PostGIS por el banco (enumerado, retos, userHandle, revocación, oficina) | OF13b-4…6 | **pesada** · sonnet | ⬜ |
 | OF13b-10 | Recorrido en Chrome con autenticador virtual CDP por el banco | OF13b-7, OF13b-8 | **pesada** · sonnet | ⬜ |
 | OF13b-11 | EIPD, UX §4, OFICINA §2; ADR-0029 a Aceptado | OF13b-9 | ligera · sonnet | ⬜ |
