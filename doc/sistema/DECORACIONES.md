@@ -1,6 +1,6 @@
 # Decorar un olivo (P7g)
 
-Propuesta de diseño, **sin implementar**. Pedida por Antonio el 2026-11-02: además de nombrar un olivo y colgarle una foto o una pintura ([VIDA](VIDA.md), P7f), que la familia pueda **decorarlo**. Las decisiones abiertas están al final; hasta tomarlas, nada de esto es contrato.
+Diseño con la parte de **datos y api hecha (D2, 2026-11-02)**; el motor (D3), la ficha (D4) y la oficina (D5) siguen sin hacer. Pedida por Antonio el 2026-11-02: además de nombrar un olivo y colgarle una foto o una pintura ([VIDA](VIDA.md), P7f), que la familia pueda **decorarlo**. Las decisiones están al final; el contrato vigente es [contratos/decoraciones.md](../../contratos/decoraciones.md) (api, catálogo y lista blanca; resumen en [VIDA](VIDA.md#decoraciones-p7g-d2)).
 
 ## Qué es y qué no es
 - Una decoración es una pieza **de un catálogo cerrado** que se cuelga del olivo (cinta, farolillo, cartel sin texto, campanilla…). La familia **elige**, no sube nada.
@@ -22,7 +22,7 @@ Lo mismo que P7f ([decisión 96](../rumbo/DECISIONS-PENDING.md)): solo el titula
 | # | Tarea | Peso | Depende de |
 |---|---|---|---|
 | D1 | Decidir el catálogo inicial (👤 Antonio) | — | — |
-| D2 | Contrato del catálogo, migración y ruta de la api, con sus pruebas | media · sonnet | OF3e, D1 |
+| D2 | **Hecha (2026-11-02).** Contrato del catálogo (`contratos/decoraciones.json`), migración `0019`, rutas `PUT`/`DELETE …/decoracion` y retirada de la oficina, con pruebas de Node; la integración con PostGIS está escrita y **sin ejecutar** | media · sonnet | OF3e, D1 |
 | D3 | Componente del motor: dibujo instanciado cerca, presupuesto medido en el banco | media · **opus** | D2 |
 | D4 | Acción «Decorar» en la ficha y su lista | ligera · sonnet | D2, D3 |
 | D5 | Vista y retirada en la oficina | ligera · sonnet | D2 |
@@ -42,4 +42,4 @@ D2 y D3 se pueden preparar en paralelo con un contrato de por medio; el primer e
 4. **La oficina solo ve y retira**; no pone decoraciones oficiales.
 
 ## Piezas del catálogo (decisión 179, 2026-11-02)
-Primavera: **flores**. Verano: **cinta de color**. Otoño: **farolillo** y **cosecha**. Invierno: **luces** y **lazo**. Seis piezas, cada una una malla pequeña instanciada y rotulada como ilustrativa; ampliar es añadir una línea al catálogo. Ya no queda nada por decidir para empezar D2.
+Primavera: **flores**. Verano: **cinta de color**. Otoño: **farolillo** y **cosecha**. Invierno: **luces** y **lazo**. Seis piezas, cada una una malla pequeña instanciada y rotulada como ilustrativa; ampliar es añadir una línea al catálogo. Ya no queda nada por decidir. **Qué queda**: D3 (el motor dibuja la pieza instanciada cerca de la cámara, con presupuesto medido; lee `decoracion` de la lista blanca y el catálogo), D4 (acción «Decorar» en la ficha: ofrecer solo las piezas de la época actual, con la misma función de fechas que la api), D5 (vista y retirada en el panel de la oficina) y D6 (prueba en aparatos, 👤).
