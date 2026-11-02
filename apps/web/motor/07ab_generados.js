@@ -726,6 +726,27 @@
       var id = D.copas_id ? D.copas_id[i] : -1, prov = !(id >= 0 && id < 2147483648);
       return p ? { forma: "ilustrativa con medidas del LiDAR", provisional: prov, niv: p.niv, variante: !p.propio } : { forma: "ilustrativa con medidas del LiDAR", provisional: prov, niv: "lejano", variante: true, lejano: true };
     }
+    /** O2 (medida, no dibuja): qué cuesta cada pieza del lote que se está dibujando. Por malla fundida (gen-corteza, gen-olivas, gen-tarjeta…): tipo, instancias visibles,
+     *  triángulos de UNA pasada (los de la pasada de sombras se suman aparte si la malla proyecta: sombra) y llamadas (1, más 1 si proyecta sombra); y por escalón
+     *  (E0/E1/E2/E2VR) cuántos olivos y los triángulos de sus recetas. Lo pide pruebas/guardianes/_navegador.js con el desglose; sin lote, null. */
+    function piezas() {
+      if (!lote) return null;
+      var out = [], tipoDe = function (o) { return o.isBatchedMesh ? "BatchedMesh" : o.isInstancedMesh ? "InstancedMesh" : o.isPoints ? "Points" : o.type; };
+      lote.children.forEach(function (o) {
+        var inst = 0, tri = 0, pts = 0;
+        if (o.isBatchedMesh) {
+          var r = {};
+          for (var id = 0; id < o.maxInstanceCount; id++) {
+            try { if (!o.getVisibleAt(id)) continue; inst++; tri += o.getGeometryRangeAt(o.getGeometryIdAt(id), r).indexCount / 3; } catch (e) { /* instancia sin usar */ }
+          }
+        } else if (o.isInstancedMesh) { inst = o.count; var g = o.geometry; tri = o.count * (g.index ? g.index.count : g.attributes.position.count) / 3; }
+        else if (o.isPoints) { var dr = o.geometry.drawRange, tot = o.geometry.attributes.position.count; pts = Math.min(tot, isFinite(dr.count) ? dr.count : tot); inst = pts; }
+        out.push({ pieza: o.name, tipo: tipoDe(o), instancias: inst, triangulos: Math.round(tri), puntos: pts, llamadas: 1 + (o.castShadow ? 1 : 0), sombra: !!o.castShadow });
+      });
+      var niveles = {};
+      selLote.forEach(function (p) { var n = niveles[p.niv] = niveles[p.niv] || { olivos: 0, triangulos: 0 }; n.olivos++; n.triangulos += tri(recetas[p.clave]) || 0; });
+      return { piezas: out, niveles: niveles, info: info };
+    }
     window.__olivosGen = function () {
       var k0 = Object.keys(listos)[0], p0 = k0 !== undefined ? listos[k0].c : null;   // un olivo generado ya dibujado
       return { primero: p0 ? { x: p0.x, y: p0.y, h: p0.h } : null, estado: estado, motivo: motivo, via: fabrica ? "trabajador" : "rebanadas", plan: plan.length, recetas: Object.keys(recetas).length, pidiendo: nPidiendo, trabajos: trabajos.length, radio: R, info: info,
@@ -755,7 +776,7 @@
       });
       return no.length ? { motivo: no.join("; ").slice(0, 120) } : f;
     }
-    return { escalera: function () { return ESCALERA; }, modoGen: function () { return MODO; }, lejanos: paraLejanos, activo: function () { return estado === "activo"; }, actualiza: actualiza, paso: paso, gastado: function () { return gastado; }, pendientes: pendientes, rotulo: rotulo, estado: function () { return estado; },
+    return { escalera: function () { return ESCALERA; }, modoGen: function () { return MODO; }, lejanos: paraLejanos, activo: function () { return estado === "activo"; }, actualiza: actualiza, paso: paso, gastado: function () { return gastado; }, pendientes: pendientes, rotulo: rotulo, piezas: piezas, estado: function () { return estado; },
       _prueba: { fecha: function (f) { fechaPrueba = f; }, mats: function () { return mats; }, prof: function () { return prof; }, uFun: uFun, lote: function () { return lote; }, tiene: tiene, fase: fase, listos: function () { return listos; }, saliendo: function () { return saliendo; }, recetas: function () { return recetas; },
         uBanda: uBanda, bandas: function () { return bandas; }, lejRanura: function () { return lejRanura; }, enLote: function () { return enLote; }, selLote: function () { return selLote; } } };
   })();

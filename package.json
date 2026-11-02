@@ -14,6 +14,7 @@
     "puerta:rapida": "node pruebas/banco/puerta_rapida.js",
     "puerta:pesada": "node pruebas/banco/puerta_pesada.js",
     "puerta:afectadas": "node pruebas/banco/afectadas.js",
+    "medida:componentes": "node pruebas/medida_componentes.js",
     "banco:ronda": "node pruebas/banco/ronda.js",
     "banco:encarga": "node pruebas/banco/encarga.js",
     "banco:quien": "node -e \"console.log(require('./pruebas/banco/turno').quien() || 'turno libre')\"",
