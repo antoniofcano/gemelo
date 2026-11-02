@@ -95,7 +95,7 @@ test("el almacén: el SQL tiene la rama de las gafas de oficina (12 h desde crea
   for (const k of ["aparatoId", "aparatoAprobado", "confirmadaEn", "confirmacionVigente", "llaveId", "llaveRequerida"]) assert.equal(k in s, false, "nada de oficina: " + k);
   const sql = pedidas[0]!.replace(/\s+/g, " ");
   assert.match(sql, /CASE WHEN h\.rol::text IN \('oficina', 'admin'\) AND s\.origen = 'vinculo' THEN s\.creada_en > now\(\) - make_interval\(hours => \$3\) AND s\.ultima_actividad_en > now\(\) - LEAST\(make_interval\(mins => \$4\), make_interval\(days => \$2\)\)/);
-  assert.match(sql, /WHEN h\.rol::text IN \('oficina', 'admin'\) THEN a\.id IS NOT NULL AND s\.origen = 'enlace'/, "la sesión de oficina de verdad no cambia");
+  assert.match(sql, /WHEN h\.rol::text IN \('oficina', 'admin'\) THEN a\.id IS NOT NULL AND \(s\.origen = 'enlace' OR \(s\.origen = 'llave' AND l\.id IS NOT NULL\)\)/, "la sesión de oficina sigue exigiendo su aparato (también la de llave, OF13b-5)");
 });
 
 test("el almacén: la sesión de oficina por enlace con su aparato sigue cargando lo de oficina", async () => {

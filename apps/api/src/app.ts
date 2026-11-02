@@ -26,8 +26,8 @@ import { rutasOtHoy } from "./ot/rutas-hoy.ts";
 import { rutasTiempo, rutasTiempoHistorico } from "./vigia/rutas.ts";
 import { rutasYo } from "./yo/rutas.ts";
 
-/** El código corto de las gafas tiene su propio texto de límite (el del enlace habla de enlaces). */
-const esVinculo = (url: string) => url.startsWith("/api/auth/vincula") || url.startsWith("/api/yo/dispositivos/");
+/** El código corto de las gafas y la entrada con llave (OF13b-5) tienen su propio texto de límite (el del enlace habla de enlaces). */
+const esVinculo = (url: string) => url.startsWith("/api/auth/vincula") || url.startsWith("/api/yo/dispositivos/") || url.startsWith("/api/auth/llave");
 
 export interface OpcionesApp {
   destinoRegistro?: NodeJS.WritableStream;

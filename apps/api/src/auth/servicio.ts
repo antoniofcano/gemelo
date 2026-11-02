@@ -29,20 +29,25 @@ export async function audita(bd: Bd | Cliente, hogarId: number | null, accion: s
   await bd.query("INSERT INTO auditoria (hogar_id, accion, detalle) VALUES ($1, $2, $3)", [hogarId, accion, JSON.stringify(detalle)]);
 }
 
+/** Una sola sentencia para pedir un enlace: busca la cuenta y, solo si la hay, guarda el token y lo audita (OF13b-5). */
+export const SQL_CREA_ENLACE =
+  `WITH h AS (SELECT id FROM hogares WHERE correo = $1 AND activo),
+        t AS (INSERT INTO tokens_acceso (hogar_id, hash, expira_en) SELECT id, $2, now() + make_interval(mins => $3) FROM h RETURNING hogar_id),
+        a AS (INSERT INTO auditoria (hogar_id, accion, detalle) SELECT hogar_id, 'enlace.pedido', '{}'::jsonb FROM t)
+   SELECT hogar_id FROM t`;
+
 /**
  * Crea un enlace de un solo uso si el correo es de un hogar activo y devuelve el token (para mandarlo), o null.
- * Quien llama responde IGUAL en los dos casos: no se revela quién tiene cuenta.
+ * Quien llama responde IGUAL en los dos casos: no se revela quién tiene cuenta. Para que el tiempo tampoco lo diga, exista o no
+ * la cuenta se hace LO MISMO: un token al azar y UNA sola sentencia (buscar, guardar el hash y auditar van juntos en un CTE; sin
+ * cuenta no inserta nada). Antes eran una consulta sin cuenta y tres con ella (OF13b-1, OF13b-5). Queda la diferencia de dentro de
+ * la base (dos filas y el volcado del WAL al confirmar), sin medir en tiempo real (contratos/sesion.md § Enlace).
  */
 export async function creaEnlace(bd: Bd, correo: string, minutos: number): Promise<{ token: string; hogarId: number } | null> {
-  const h = await bd.query<{ id: number }>("SELECT id FROM hogares WHERE correo = $1 AND activo", [correo]);
-  const fila = h.rows[0];
-  if (!fila) return null;
   const token = nuevoToken();
-  await bd.query(
-    "INSERT INTO tokens_acceso (hogar_id, hash, expira_en) VALUES ($1, $2, now() + make_interval(mins => $3))",
-    [fila.id, hashToken(token), minutos]);
-  await audita(bd, fila.id, "enlace.pedido");
-  return { token, hogarId: fila.id };
+  const r = await bd.query<{ hogar_id: number | string }>(SQL_CREA_ENLACE, [correo, hashToken(token), minutos]);
+  const fila = r.rows[0];
+  return fila ? { token, hogarId: Number(fila.hogar_id) } : null;
 }
 
 export type MotivoEnlace = "caducado" | "usado" | "no_valido";

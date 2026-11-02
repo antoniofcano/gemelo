@@ -12,18 +12,19 @@ import { configDePrueba, contexto } from "../apoyo/contexto.ts";
 const CON_CUENTA = "ana.cuenta@example.com";
 const SIN_CUENTA = "nadie.aqui@example.com";
 
-/** Una base de mentira: solo responde a la consulta de hogares (con o sin cuenta) y acepta las escrituras del enlace. */
-function bdDeMentira(): pg.Pool {
+/** Una base de mentira: solo responde a la consulta de hogares (con o sin cuenta) y acepta las escrituras del enlace. Cuenta las consultas. */
+function bdDeMentira(consultas: string[] = []): pg.Pool {
   return {
     async query(texto: string, valores: unknown[] = []) {
-      if (/FROM hogares WHERE correo/.test(texto)) return { rows: valores[0] === CON_CUENTA ? [{ id: 1 }] : [] };
+      consultas.push(texto);
+      if (/FROM hogares WHERE correo/.test(texto)) return { rows: valores[0] === CON_CUENTA ? [{ hogar_id: 1 }] : [] };
       return { rows: [] };
     },
   } as unknown as pg.Pool;
 }
 
-async function montaApp() {
-  const ctx = contexto(bdDeMentira());
+async function montaApp(consultas: string[] = []) {
+  const ctx = contexto(bdDeMentira(consultas));
   const app = await construyeApp(ctx);
   await app.ready();
   return { app, cartero: ctx.cartero };
@@ -98,5 +99,24 @@ test("un correo mal formado sigue siendo 400 sin mirar la base ni contar para el
     const r = await pideEnlace(app, "no-es-un-correo", ipDe(200));
     assert.equal(r.statusCode, 400);
     assert.equal(r.json().error, "correo_no_valido");
+  } finally { await app.close(); }
+});
+
+test("pedir un enlace: con cuenta y sin ella, la base recibe LO MISMO antes del 202 (una sola sentencia, el mismo SQL)", async () => {
+  // OF13b-1 halló que con cuenta se hacían dos escrituras más (token y auditoría) antes de responder: el tiempo podía delatar la
+  // cuenta. Aquí se cuentan las consultas (no tiempos reales): las dos ramas hacen una y la misma sentencia (el CTE de creaEnlace).
+  const consultas: string[] = [];
+  const { app } = await montaApp(consultas);
+  try {
+    const cuenta = async (correo: string, ip: string) => {
+      consultas.length = 0;
+      assert.equal((await pideEnlace(app, correo, ip)).statusCode, 202);
+      return [...consultas];
+    };
+    const con = await cuenta(CON_CUENTA, ipDe(150)), sin = await cuenta(SIN_CUENTA, ipDe(151));
+    assert.equal(con.length, 1, "con cuenta: una sola sentencia");
+    assert.deepEqual(sin, con, "sin cuenta: la misma sentencia, ni una más ni una menos");
+    assert.match(con[0]!, /INSERT INTO tokens_acceso/);
+    assert.match(con[0]!, /INSERT INTO auditoria/);
   } finally { await app.close(); }
 });

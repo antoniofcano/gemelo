@@ -198,7 +198,7 @@ Todos son volúmenes con nombre de Docker del proyecto `gemelo` (`docker volume 
 
 | Quiero… | Cómo |
 |---|---|
-| Ver registros | `docker compose -f infra/compose.yml logs -f api web` (JSON, sin tokens, cookies, correos ni IP completa) |
+| Ver registros | `docker compose -f infra/compose.yml logs -f api web` (JSON, sin tokens, cookies —ninguna: tampoco `__Host-gemelo-aparato` ni la del reto de la llave, `__Host-gemelo-reto`; el Caddy borra `Cookie` y `Set-Cookie` enteras—, correos ni IP completa) |
 | Sincronizar OlivarTrack ya | panel (`POST /api/admin/sincronia`) o `docker compose -f infra/compose.yml exec api node dist/src/ot/sincroniza-cli.js` |
 | Echar a alguien | panel: revocar sesiones o borrar el hogar (borrado en cascada, RGPD) |
 | Actualizar la api | `infra/respaldo.sh` antes; `git fetch` y `git checkout <tag>`; `docker compose -f infra/compose.yml up -d --build` (las migraciones nuevas las aplica `migra`); `bash infra/comprobar-despliegue.sh --en-vps` |
