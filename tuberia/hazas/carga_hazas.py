@@ -9,10 +9,16 @@ Entrada (EPSG:25830, la misma que el motor):
           codigo, nombre, finca, parcelas_ot [{id, ha}], olivos_declarados, olivos_declarados_fuente,
           ndvi_relativo, ndvi_fecha, ndvi_fuente (los cuatro últimos pueden ser null). Nada más: no hay sitio
           para el titular ni para datos de personas (additionalProperties: false).
+  olivos-indice (OF3e): el `indice.json` publicado de la finca. Cada copa medida (`copas[i]`: x, y, altura, LiDAR) se carga con su
+          `copas_id[i]` (identidad del censo de OlivarTrack) como id_estable «finca:copas_id»; sin `copas_id` falla (no se
+          inventan ids). Posición = centro_utm + coordenadas relativas, en EPSG:25830. Upsert por id_estable: recargar no duplica
+          ni cambia ids (la base los congela). A qué haza pertenece cada olivo NO se guarda: lo da la geometría (ST_Intersects
+          con la haza), igual que en el recuento de la oficina y en «es tu haza» de la vida.
   olivos: FeatureCollection de Point con properties id_estable, fuente (lidar|dron|campo), tipo (-1 = sin tipo), altura_m.
 
 Uso:
   python tuberia/hazas/carga_hazas.py --hazas hazas.geojson [--olivos olivos.geojson] --salida hazas.sql
+  python tuberia/hazas/carga_hazas.py --olivos-indice <indice.json> --salida olivos.sql      (OF3e: solo los olivos medidos)
   psql -v ON_ERROR_STOP=1 -f hazas.sql        (con el usuario de la api o el dueño)
 
 Los datos reales NO van al repo (CLAUDE.md regla 4): el ejemplo de tuberia/hazas/ejemplo/ es sintético.
@@ -20,6 +26,7 @@ Los datos reales NO van al repo (CLAUDE.md regla 4): el ejemplo de tuberia/hazas
 import argparse
 import json
 import os
+import re
 import sys
 
 from jsonschema import Draft7Validator
@@ -176,8 +183,10 @@ ON CONFLICT (haza_id, parcela_ot) DO UPDATE SET ha_compartidas = EXCLUDED.ha_com
 
 SQL_OLIVOS = """
 WITH f AS (SELECT jsonb_array_elements({datos} -> 'features') AS f)
-INSERT INTO olivos (id_estable, geom, tipo, fuente, altura_m)
+INSERT INTO olivos (id_estable, finca, copas_id, geom, tipo, fuente, altura_m)
 SELECT f -> 'properties' ->> 'id_estable',
+       (regexp_match(f -> 'properties' ->> 'id_estable', '^([a-z0-9_-]{{1,32}}):([0-9]{{1,10}})$'))[1],
+       (regexp_match(f -> 'properties' ->> 'id_estable', '^([a-z0-9_-]{{1,32}}):([0-9]{{1,10}})$'))[2]::bigint,
        ST_SetSRID(ST_MakePoint((f -> 'geometry' -> 'coordinates' ->> 0)::float8, (f -> 'geometry' -> 'coordinates' ->> 1)::float8), 25830),
        coalesce((f -> 'properties' ->> 'tipo')::smallint, -1), f -> 'properties' ->> 'fuente', (f -> 'properties' ->> 'altura_m')::numeric
   FROM f
@@ -185,9 +194,53 @@ ON CONFLICT (id_estable) DO UPDATE SET geom = EXCLUDED.geom, tipo = EXCLUDED.tip
 """
 
 
+_FINCA = re.compile(r"^[a-z0-9_-]{1,32}$")
+
+
+def olivos_desde_indice(indice, exige_ids=True):
+    """Los olivos medidos de un `indice.json` como FeatureCollection de EPSG:25830 (la entrada de SQL_OLIVOS).
+
+    Identidad = `copas_id` (censo de OlivarTrack); posición y altura = LiDAR. `exige_ids=False` solo para el fixture sintético,
+    que a veces no lleva `copas_id` y usa el índice de la copa. Con datos reales, sin `copas_id` falla.
+    """
+    for k in ("finca_id", "centro_utm", "copas"):
+        if k not in indice:
+            raise ErrorDeEntrada("el índice no tiene «" + k + "»: ¿es un indice.json de finca?")
+    finca = indice["finca_id"]
+    if not isinstance(finca, str) or not _FINCA.match(finca):
+        raise ErrorDeEntrada("finca_id no válido: " + repr(finca))
+    copas = indice["copas"]
+    ids = indice.get("copas_id")
+    if ids is None:
+        if exige_ids:
+            raise ErrorDeEntrada("el índice de «" + finca + "» no tiene copas_id: sin el id estable (ADR-0012, CONTRATOS §1.1) no se carga nada; "
+                                 "regenerarlo con la tubería (tuberia/ids_copas.py)")
+        ids = list(range(len(copas)))
+    if len(ids) != len(copas):
+        raise ErrorDeEntrada("copas_id (%d) y copas (%d) no tienen la misma longitud" % (len(ids), len(copas)))
+    if any(isinstance(k, bool) or not isinstance(k, int) or not 0 <= k < 2 ** 32 for k in ids):
+        raise ErrorDeEntrada("copas_id fuera de [0, 2^32) o no entero")
+    if len(set(ids)) != len(ids):
+        raise ErrorDeEntrada("copas_id repetidos en la finca")
+    tipos = indice.get("copas_tipo") or [-1] * len(copas)
+    if len(tipos) != len(copas):
+        raise ErrorDeEntrada("copas_tipo y copas no tienen la misma longitud")
+    cx, cy = indice["centro_utm"]
+    feats = []
+    for i, c in enumerate(copas):
+        feats.append({
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [round(cx + c[0], 2), round(cy + c[1], 2)]},
+            "properties": {"id_estable": "%s:%d" % (finca, ids[i]), "fuente": "lidar", "tipo": int(tipos[i]), "altura_m": round(c[2], 2)},
+        })
+    return {"type": "FeatureCollection", "srs": SRS, "features": feats}
+
+
 def genera_sql(hazas, olivos=None):
-    comprueba_unicos(hazas["features"], "codigo", "hazas")
-    partes = ["-- generado por tuberia/hazas/carga_hazas.py; idempotente", "BEGIN;", SQL_HAZAS.format(datos=literal(hazas))]
+    partes = ["-- generado por tuberia/hazas/carga_hazas.py; idempotente", "BEGIN;"]
+    if hazas is not None:
+        comprueba_unicos(hazas["features"], "codigo", "hazas")
+        partes.append(SQL_HAZAS.format(datos=literal(hazas)))
     if olivos is not None:
         comprueba_unicos(olivos["features"], "id_estable", "olivos")
         if olivos["features"]:
@@ -198,13 +251,25 @@ def genera_sql(hazas, olivos=None):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("--hazas", required=True, help="GeoJSON de hazas en EPSG:25830")
+    ap.add_argument("--hazas", help="GeoJSON de hazas en EPSG:25830")
     ap.add_argument("--olivos", help="GeoJSON de olivos (puntos) en EPSG:25830")
+    ap.add_argument("--olivos-indice", help="indice.json de la finca: carga sus olivos medidos con finca y copas_id (OF3e)")
     ap.add_argument("--salida", required=True, help="fichero .sql de salida")
     a = ap.parse_args(argv)
+    if a.olivos and a.olivos_indice:
+        ap.error("--olivos y --olivos-indice son excluyentes")
+    if not a.hazas and not a.olivos_indice:
+        ap.error("falta --hazas (o, para cargar solo olivos desde el índice, --olivos-indice)")
     try:
-        hazas = lee_y_valida(a.hazas, ESQUEMA_HAZAS, "hazas")
-        olivos = lee_y_valida(a.olivos, ESQUEMA_OLIVOS, "olivos") if a.olivos else None
+        hazas = lee_y_valida(a.hazas, ESQUEMA_HAZAS, "hazas") if a.hazas else None
+        if a.olivos_indice:
+            with open(a.olivos_indice, encoding="utf-8") as f:
+                olivos = olivos_desde_indice(json.load(f))
+            errores = list(Draft7Validator(ESQUEMA_OLIVOS).iter_errors(olivos))
+            if errores:
+                raise ErrorDeEntrada("olivos del índice no cumplen el esquema: " + "; ".join("/".join(str(p) for p in e.absolute_path) + ": " + e.message for e in errores[:5]))
+        else:
+            olivos = lee_y_valida(a.olivos, ESQUEMA_OLIVOS, "olivos") if a.olivos else None
         sql = genera_sql(hazas, olivos)
     except (ErrorDeEntrada, OSError, json.JSONDecodeError) as e:
         print("error: " + str(e), file=sys.stderr)
@@ -214,7 +279,7 @@ def main(argv=None):
     with open(a.salida, "w", encoding="utf-8", newline="\n") as f:
         f.write(sql)
     n_ol = len(olivos["features"]) if olivos else 0
-    print(json.dumps({"hazas": len(hazas["features"]), "olivos": n_ol, "salida": os.path.basename(a.salida)}))
+    print(json.dumps({"hazas": len(hazas["features"]) if hazas else 0, "olivos": n_ol, "salida": os.path.basename(a.salida)}))
     return 0
 
 
