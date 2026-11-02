@@ -28,6 +28,10 @@ Plan vivo, sin cifras de aparatos reales todavía (**no probado en hardware**: r
 | **Q0c** | Calibrar `VR_PERFILES` y los umbrales del controlador con los datos de Q0a y Q0b |
 | **Q0d** | Palancas estructurales una a una: paneles en capas de cuarto de pantalla (`XRQuadLayer`), texturas KTX2, geometría meshopt, menos llamadas, menos basura |
 
+## Primera medida real (2026-11-02, Meta Quest 3)
+Quest Browser 154, Hituelo, modo gemelo, VR, versión 0.2.0, perfil final **3** (el más bajo): 3.986 fotogramas en 60 s (unos 66 fps de media), mediana 14,3 ms, **p95 20,7 ms**, peor 47,7 ms, frente al objetivo de 13,9 ms (72 Hz). **No cumple.** Es una sola sesión (n = 1): no dice si manda la CPU o la GPU ni si los olivos generados estaban activos (por eso Q0e amplía la telemetría). Lo que sí indica: el controlador ya está en el nivel de menos triángulos y no llega, así que **el límite probablemente no es solo el número de triángulos**.
+**[SUPUESTO] Hipótesis a contrastar:** en WebXR cada llamada de dibujo se paga dos veces (un ojo cada vez) y el coste de JavaScript por llamada, no la geometría, puede mandar; revisar el número de llamadas y de teselas 3D Tiles visibles, y si el casco corre a 72 Hz o a otra frecuencia. Herramienta decisiva: la depuración remota por USB (`chrome://inspect`) con un perfil de rendimiento del Quest Browser, que dice qué funciones cuestan.
+
 ## Protocolo de medida (Q0a)
 1. **Anotar el aparato:** modelo de Quest (la 2 y la 3 rinden muy distinto), versión del navegador y firmware.
 2. **Escenarios, siempre los mismos:** Hituelo en vista lejos, de cerca y paseando 5 minutos por el mismo recorrido; con `?olivos=0` y con el valor por defecto; sola la persona y con otras conectadas; con y sin `?decoraciones=0`.
