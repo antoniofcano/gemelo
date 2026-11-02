@@ -100,15 +100,16 @@
     <p class="nota separada">¿No tienes cuenta? Las cuentas de hogar las da la explotación.</p>
   </section>
 
-  <!-- 4.3 REVISA TU CORREO -->
+  <!-- 4.3 REVISA TU CORREO (OF13b-1): el correo escrito a la vista, «¿No es ese? Cambiarlo» y dónde mirar. El texto de aceptado es el de la api -->
   <section class="pant estrecha centrada" id="p-revisa" aria-labelledby="t-revisa" hidden>
     <h1 id="t-revisa" tabindex="-1">Revisa tu correo</h1>
-    <p>Si <strong id="correoEco">ese correo</strong> puede entrar, te acabamos de mandar un enlace. Caduca en <strong>15 minutos</strong> y sirve <strong>una sola vez</strong>.</p>
-    <p class="pista">Si no llega en un par de minutos, mira en «Correo no deseado». Ábrelo en este mismo dispositivo.</p>
+    <p>Si <strong id="correoEco">ese correo</strong> tiene cuenta, te llegará un enlace. Caduca en <strong>15 minutos</strong> y sirve <strong>una sola vez</strong>.</p>
+    <!-- el remitente no se nombra: la portada no lo conoce (la api no lo publica; GEMELO_CORREO_REMITENTE es del servidor) -->
+    <p class="pista" id="spamTxt">Si no lo ves, mira en el spam.</p>
+    <p><a class="btn btn-txt" href="#entrar" id="lnkCambiar">¿No es ese? Cambiarlo</a></p>
     <div class="aviso aviso-err" id="avRevisa" role="alert" hidden><p id="avRevisaTxt"></p></div>
     <div class="fila separada">
       <button type="button" class="btn" id="btnReenviar" disabled>Reenviar el enlace</button>
-      <a class="btn btn-txt" href="#entrar">Usar otro correo</a>
     </div>
     <p class="pista" id="cuentaReenvio" aria-live="off"></p>
   </section>
