@@ -14,7 +14,8 @@ import { datosDelHogar } from "./datos.ts";
 const PATRON_ALIAS = "^[\\p{L}\\p{N}][\\p{L}\\p{N} -]{1,18}[\\p{L}\\p{N}]$";
 const RESERVADOS = /^(guia|guía|admin|administracion|administración|oficina|corresponsal|olivartrack)$/i;
 
-export const TEXTO_CODIGO_MALO = "Ese código no sirve: puede que haya caducado o que tenga un error. Escribe el que enseñan ahora las gafas.";
+export const TEXTO_VINCULO_DESDE_GAFAS = "Un código solo se aprueba con el enlace de tu correo, no desde unas gafas ya vinculadas.";
+const TEXTO_CODIGO_MALO = "Ese código no sirve: puede que haya caducado o que tenga un error. Escribe el que enseñan ahora las gafas.";
 
 export async function rutasYo(app: FastifyInstance, ctx: Contexto): Promise<void> {
   const { bd, config } = ctx;
@@ -66,6 +67,8 @@ export async function rutasYo(app: FastifyInstance, ctx: Contexto): Promise<void
   }, async (req, rep) => {
     // ADR-0028: una cuenta de oficina también aprueba el código de unas gafas (con su sesión de oficina válida: aparato aprobado, enlace y,
     // si es obligatoria, la llave; lo para requiereSesion), pero las gafas entran como VISITANTE (rol efectivo hogar, auth/almacen.ts)
+    // unas gafas vinculadas no aprueban el código de otras: así la vida de una sesión de vínculo (12 h en la oficina) no se renueva encadenando gafas
+    if (req.session.origen === "vinculo") return rep.code(403).send({ error: "solo_titular", mensaje: TEXTO_VINCULO_DESDE_GAFAS });
     const lim = await porHogar(req);
     if (!lim.isAllowed && lim.isExceeded) return rep.code(429).send({ error: "demasiadas_peticiones", mensaje: TEXTO_LIMITE_VINCULO });
     const ok = await decideCodigo(bd, config.sesion.secreto, req.session.hogarId!, req.body.codigo, req.body.aprobar, esOficina(req.session.rol));

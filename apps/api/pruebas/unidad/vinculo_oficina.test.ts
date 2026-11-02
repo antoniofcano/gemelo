@@ -123,6 +123,17 @@ test("la oficina aprueba el código de unas gafas: 204, la auditoría dice «com
   assert.doesNotMatch(todo, /K7Q|k7q|4M2|@/i, "ni el código ni un correo en la auditoría");
 });
 
+test("unas gafas vinculadas (de oficina o de familia) no aprueban el código de otras: 403 solo_titular y no se toca el código", async () => {
+  for (const rol of ["oficina", "hogar"]) {
+    filaSesion = fila({ ...GAFAS_OFICINA, rol });
+    consultas.length = 0;
+    const r = await pide("POST", "/api/yo/dispositivos/vincular", { codigo: "K7Q-4M2", aprobar: true });
+    assert.equal(r.statusCode, 403, rol + ": " + r.body);
+    assert.equal(r.json().error, "solo_titular");
+    assert.ok(!consultas.some(c => /UPDATE codigos_vinculo/.test(c.sql)), rol + ": no toca el código");
+  }
+});
+
 test("una sesión de oficina con el aparato pendiente sigue sin poder aprobar (403 aparato_pendiente)", async () => {
   filaSesion = fila({ ...PC_OFICINA, aparato_aprobado: false });
   const r = await pide("POST", "/api/yo/dispositivos/vincular", { codigo: "K7Q-4M2", aprobar: true });

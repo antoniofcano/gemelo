@@ -449,7 +449,7 @@ paths:
       responses:
         "204": { description: "aprobado (las gafas entran en su próximo sondeo; si aprobó una cuenta de oficina, como visitante y por 12 h) o rechazado" }
         "401": { $ref: "#/components/responses/SinSesion" }
-        "403": { description: "Origin no admitido, o una sesión de oficina que aún no sirve (aparato_pendiente, llave_requerida). Nunca por ser una cuenta de oficina", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "403": { description: "Origin no admitido, una sesión de oficina que aún no sirve (aparato_pendiente, llave_requerida) o unas gafas ya vinculadas (solo_titular: no aprueban el código de otras). Nunca por ser una cuenta de oficina", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
         "404": { description: "el código no sirve: la MISMA respuesta si no existe, caducó o ya se decidió (no enumerable)" }
         "429": { $ref: "#/components/responses/Limite" }
 
