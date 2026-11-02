@@ -269,7 +269,7 @@ export function cargaConfig(e: Entorno = process.env): Config {
     enlace: {
       minutos: 15,
       porIp: entero(e, "GEMELO_ENLACE_POR_IP", 10, 1, 1000),
-      porCorreo: entero(e, "GEMELO_ENLACE_POR_CORREO", 3, 1, 100),
+      porCorreo: entero(e, "GEMELO_ENLACE_POR_CORREO", 5, 1, 100),
       ventanaMin: entero(e, "GEMELO_ENLACE_VENTANA_MIN", 15, 1, 1440),
     },
     vinculo: {
