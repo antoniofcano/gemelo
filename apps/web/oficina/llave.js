@@ -4,9 +4,9 @@
 //   - usaLlave(), que comun.js usa como «confirmación reciente» cuando la llave es obligatoria;
 //   - la tarjeta «Llaves de acceso» de Sistema: las propias (añadir otra, revocar) y, para admin, las de todas las cuentas.
 // DOM con h() (texto, nunca HTML); nada en línea; solo el mismo origen.
-import { browserSupportsWebAuthn, startAuthentication, startRegistration } from "@simplewebauthn/browser";
+import { browserSupportsWebAuthn, startAuthentication, startRegistration, WebAuthnAbortService } from "@simplewebauthn/browser";
 import { $, api, aviso, conConfirmacion, confirma, h, vacia } from "./comun.js";
-import { nombrePropuesto, pantallaLlave, resumenLlave, textoErrorLlave } from "./llave_puro.js";
+import { avisoAlta, entraConLlave, nombrePropuesto, pantallaLlave, resumenLlave, textoErrorLlave } from "./llave_puro.js";
 import { hace } from "./sistema_puro.js";
 
 const SIN_WEBAUTHN = { ok: false, error: "sin_webauthn", mensaje: "Este navegador no admite llaves de acceso. Abre la oficina en un Chrome, Edge, Safari o Firefox al día." };
@@ -29,6 +29,53 @@ export async function usaLlave() {
   let respuesta;
   try { respuesta = await startAuthentication({ optionsJSON: o.datos }); } catch (e) { return { ok: false, error: "navegador", mensaje: textoErrorLlave(e) }; }
   return api("POST", "/api/oficina/llaves/entrada", { respuesta });
+}
+
+// ------------------------------------------------------------------ OF13b-8: entrar con la llave, sin enlace y sin sesión
+/** GET/POST que NUNCA redirige (api() de comun.js manda a la portada en un 401, y aquí un 401 es «esa llave no sirve» o «no hay sesión»). */
+async function llama(metodo, ruta, cuerpo) {
+  const init = { method: metodo, credentials: "same-origin", headers: { accept: "application/json" } };
+  if (cuerpo !== undefined) { init.body = JSON.stringify(cuerpo); init.headers["content-type"] = "application/json"; }
+  let r;
+  try { r = await fetch(ruta, init); } catch { return { ok: false, estado: 0, mensaje: "No se pudo contactar con el servidor. Comprueba la conexión." }; }
+  let datos = null;
+  try { datos = await r.json(); } catch { /* sin cuerpo */ }
+  return { ok: r.ok, estado: r.status, datos, mensaje: datos && typeof datos.mensaje === "string" ? datos.mensaje : "" };
+}
+
+/** La sesión de oficina sin redirigir: oficina.js decide qué enseñar con un 401 (la pantalla de entrada). */
+export const leeSesionOficina = () => llama("GET", "/api/oficina/sesion");
+
+/** Entrar con una llave del aparato, sin correo: misma ceremonia que la portada (`/api/auth/llave/opciones` → `/api/auth/llave`). */
+export const entraSinCorreo = () => entraConLlave({
+  soporta: browserSupportsWebAuthn,
+  cancela: () => WebAuthnAbortService.cancelCeremony(),
+  post: llama,
+  firma: optionsJSON => startAuthentication({ optionsJSON }),
+});
+
+/** Sin sesión de oficina: «Entrar con mi llave» y, debajo, «Recibir un enlace» (alta y recuperación, en la portada). */
+export function muestraPantallaEntrada(entra = entraSinCorreo) {
+  $("#app").hidden = true; $("#pLlave").hidden = true;
+  $("#pEntra").hidden = false;
+  const estado = $("#entraEstado"), boton = $("#entraB");
+  if (!browserSupportsWebAuthn()) {
+    $("#entraP").hidden = true;
+    $("#entraTexto").textContent = "Este navegador no admite llaves de acceso. Recibe un enlace por correo, o abre la oficina en un Chrome, Edge, Safari o Firefox al día.";
+  }
+  boton.onclick = async () => {
+    boton.disabled = true; estado.textContent = "Esperando a tu llave…";
+    const r = await entra();
+    boton.disabled = false;
+    if (r.ok) {
+      estado.textContent = r.aparato === "pendiente" ? "Llave reconocida. Este aparato aún está pendiente de aprobar…" : "Entrando en la oficina…";
+      location.assign(r.destino);
+      return;
+    }
+    estado.textContent = r.mensaje;
+    boton.focus();
+  };
+  $("#entraT").focus();
 }
 
 // ------------------------------------------------------------------ la pantalla de la llave
@@ -82,7 +129,8 @@ export function iniciaLlavesSistema({ sesion }) {
 
   const fila = (l, propia, cuenta) => h("li", { class: "aparato", "data-llave": l.id, "data-nombre": l.nombre, "data-esta": l.es_esta ? "1" : "0" },
     h("span", null, l.nombre, l.es_esta ? " (la de esta sesión)" : "", h("br"), h("span", { class: "nota" }, resumenLlave(l, hace) + " "),
-      l.revocada_en ? h("span", { class: "pill p-mal" }, "revocada") : h("span", { class: "pill p-ok" }, "viva")),
+      l.revocada_en ? h("span", { class: "pill p-mal" }, "revocada") : h("span", { class: "pill p-ok" }, "viva"),
+      !l.revocada_en && l.descubrible === false ? [" ", h("span", { class: "pill p-aviso" }, "no sirve sin correo")] : null),
     l.revocada_en ? null : h("span", { class: "en-linea" },
       h("button", { class: "boton peq", type: "button", "data-revoca": l.id, "data-propia": propia ? "1" : "0", "data-cuenta": cuenta || "",
         "aria-label": "Revocar la llave " + l.nombre + (cuenta ? " de " + cuenta : "") }, "Revocar")));
@@ -119,11 +167,15 @@ export function iniciaLlavesSistema({ sesion }) {
   $("#fLlaveOtra").addEventListener("submit", async e => {
     e.preventDefault();
     const b = $("#bLlaveOtra");
-    b.disabled = true;
+    b.disabled = true; $("#sLlaveAltaEstado").textContent = "Sigue las indicaciones de tu aparato…";
     const r = await creaLlave($("#sLlaveNombre").value.trim());
     b.disabled = false;
-    if (!r.ok) { aviso(r.mensaje, "mal"); return; }
-    aviso("Llave añadida: " + r.datos.nombre); $("#sLlaveNombre").value = ""; cargaPropias(); cargaTodas();
+    if (!r.ok) { aviso(r.mensaje, "mal"); $("#sLlaveAltaEstado").textContent = r.mensaje; return; }
+    const a = avisoAlta(r.datos.nombre, r.datos.descubrible);
+    aviso(a.texto, a.tipo === "mal" ? "mal" : undefined);
+    $("#sLlaveAltaEstado").textContent = a.texto;   // se queda a la vista (el aviso se va solo) y lo lee el lector de pantalla
+    $("#bLlaveOtra").textContent = a.repetir ? "Repetir el alta" : "Añadir otra llave";
+    $("#sLlaveNombre").value = ""; cargaPropias(); cargaTodas();
   });
 
   $("#s-sistema").addEventListener("click", e => {

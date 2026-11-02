@@ -83,7 +83,7 @@ test("página: nada en línea ni de otro origen, DOM con h(), rutas del contrato
   const openapi = lee("contratos/api.openapi.yaml");
   // las rutas que nombra la página (con su id pegado detrás, las de revocar y rehabilitar), todas de la lista de abajo
   const conocidas = new Set(["/api/oficina/llaves/alta/opciones", "/api/oficina/llaves/alta", "/api/oficina/llaves/entrada/opciones", "/api/oficina/llaves/entrada",
-    "/api/oficina/llaves", "/api/oficina/llaves/", "/api/admin/llaves", "/api/admin/llaves/", "/api/admin/hogares/", "/api/sesion/salir"]);
+    "/api/oficina/llaves", "/api/oficina/llaves/", "/api/admin/llaves", "/api/admin/llaves/", "/api/admin/hogares/", "/api/sesion/salir", "/api/oficina/sesion"]);
   const usadas = [...js.matchAll(/"(\/api\/[a-z/-]+)"/g)].map(m => m[1]);
   assert.ok(usadas.length >= 8, "la página llama a la api: " + usadas.join(", "));
   for (const r of usadas) assert.ok(conocidas.has(r), r + ": ruta que no está en el contrato");
