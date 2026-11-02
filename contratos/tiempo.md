@@ -11,6 +11,7 @@ El tiempo de la explotación que el motor pinta (sol, nubes, lluvia, viento, chi
 
 - Varias peticiones a la vez hacen **una** llamada a Vigía. Tras un fallo no se vuelve a llamar en 1 minuto.
 - Si Vigía falla y hay una lectura anterior de menos de 24 h, se sirve esa con un aviso `de: "gemelo"` que dice de cuándo es.
+- Si Vigía **responde** pero sin previsión (`hayPrevision:false` o sin horas válidas; su ingesta falló o caducó) y hay una previsión válida anterior de menos de 24 h que aún cubre alguna hora futura, se sirve esa (solo sus horas reales, `modelado`, con su `frescura` original) con el aviso «Vigía no tiene previsión ahora mismo: es la última que llegó, de hace N h.»; la vacía no pisa a la buena en la caché y se espera un minuto antes de volver a preguntar. Si no hay anterior, no cubre ninguna hora futura o pasa de 24 h: «Vigía no tiene dato ahora mismo», sin previsión. La causa (que Vigía no ingiera) es de Vigía, no del gemelo.
 - `consultadoEn`: cuándo leyó la api la parte más antigua de las dos. `frescura` (de cada parte): lo que dice Vigía (`generadoEn`, `horasDeAntiguedad`, `datosDeMaqueta`).
 
 ## Reglas (de Vigía y del gemelo)

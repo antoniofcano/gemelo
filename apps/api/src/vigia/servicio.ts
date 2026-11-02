@@ -124,7 +124,10 @@ export class ServicioTiempo {
 
   get origen() { return this.lector.origen; }
 
-  private parte(h: HerramientaTiempo): Promise<Parte> { return this.memoria.lee(h, () => this.lector.llama(h)); }
+  private parte(h: HerramientaTiempo): Promise<Parte> {
+    // la previsión «vacía» (hayPrevision:false o sin horas válidas) no pisa a la última válida (V13)
+    return this.memoria.lee(h, () => this.lector.llama(h), h === "prevision_72_horas" ? c => normalizaPrevision(c) !== null : undefined);
+  }
 
   /** null si Vigía no ha respondido a ninguna de las dos y no hay lectura anterior que servir */
   async lee(): Promise<RespuestaTiempo | null> {
@@ -132,13 +135,18 @@ export class ServicioTiempo {
     if (!a.lectura && !p.lectura) return null;
     const ahora = this.reloj(), avisos: Aviso[] = [];
     const actual = a.lectura ? normalizaActual(a.lectura.crudo) : null;
-    const prevision = p.lectura ? normalizaPrevision(p.lectura.crudo) : null;
+    let prevision = p.lectura ? normalizaPrevision(p.lectura.crudo) : null;
+    // Vigía respondió «sin previsión»: se sirve la última válida solo si aún cubre alguna hora futura (la memoria ya aplica las 24 h)
+    const previsionVacia = !!(p.vacio && prevision && prevision.horas.some(h => Date.parse(h.instante) > ahora));
+    if (p.vacio && !previsionVacia) prevision = null;
     for (const [parte, nombre, valor, crudo] of [[a, "La lectura de la estación", actual, a.lectura?.crudo], [p, "La previsión", prevision, p.lectura?.crudo]] as const) {
-      if ((parte.fallo || parte.tope) && parte.lectura) avisos.push({ de: "gemelo", texto: (parte.tope ? "El servidor ya ha preguntado a Vigía muchas veces esta hora: " : "Vigía no ha respondido ahora: ") + nombre.toLowerCase() + " es la última que llegó, de hace " + hace(ahora, parte.lectura.leidoEn) + "." });
+      if (parte === p && previsionVacia && p.lectura) avisos.push({ de: "gemelo", texto: "Vigía no tiene previsión ahora mismo: es la última que llegó, de hace " + hace(ahora, p.lectura.leidoEn) + "." });
+      else if (parte === p && p.vacio) avisos.push({ de: "gemelo", texto: nombre + ": Vigía no tiene dato ahora mismo." });
+      else if ((parte.fallo || parte.tope) && parte.lectura) avisos.push({ de: "gemelo", texto: (parte.tope ? "El servidor ya ha preguntado a Vigía muchas veces esta hora: " : "Vigía no ha respondido ahora: ") + nombre.toLowerCase() + " es la última que llegó, de hace " + hace(ahora, parte.lectura.leidoEn) + "." });
       else if (parte.fallo || parte.tope) avisos.push({ de: "gemelo", texto: nombre + " no ha llegado de Vigía." });
       else if (!valor) avisos.push({ de: "gemelo", texto: nombre + ": Vigía no tiene dato ahora mismo." });
       const o = obj(crudo);
-      if (o) for (const t of avisosDeFrescura(o["frescura"])) avisos.push({ de: "vigia", texto: t });
+      if (o && !(parte === p && p.vacio && !previsionVacia)) for (const t of avisosDeFrescura(o["frescura"])) avisos.push({ de: "vigia", texto: t });
       if (valor?.frescura.datosDeMaqueta) avisos.push({ de: "gemelo", texto: nombre + ": Vigía avisa de que son datos de maqueta." });
     }
     const leidos = [a.lectura, p.lectura].filter((l): l is Lectura => !!l).map(l => l.leidoEn);
