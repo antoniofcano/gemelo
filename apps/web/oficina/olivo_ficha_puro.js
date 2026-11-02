@@ -75,3 +75,58 @@ export function filasFicha(f, indice) {
   familia.push(["Estado", p.estado === "retirado" ? "retirado por la oficina" : "visible para las familias"]);
   return { medido, familia, nota: "" };
 }
+
+// ——— Ver y retirar decoraciones (D5, decisión 178: la oficina solo ve y retira, no pone) ———
+/** Motivos de la lista corta del diálogo de retirar (la api pide un motivo de 1 a 200 caracteres; la familia lo lee en su aviso). */
+export const MOTIVOS_DECORACION = [
+  ["familia", "A petición de la familia"],
+  ["error", "Puesta por error o de prueba"],
+  ["catalogo", "Cambio en el catálogo de decoraciones"],
+  ["otro", "Otro motivo"],
+];
+export const MAX_MOTIVO = 200;
+
+/**
+ * Qué se ofrece en la ficha (solo la oficina llega aquí): «retirar» si la decoración se ve (personalización visible con pieza);
+ * «restaurar» si está retirada entera y todavía tiene su pieza (la ruta de la bandeja la devuelve a la vista, y con ella lo demás que tuviera esa fila).
+ * `personalizacion_id` es el id que piden las dos rutas. Sin personalización o sin decoración: nada.
+ */
+export function accionesDecoracion(f) {
+  const p = f && f.personalizacion;
+  if (!p || !p.decoracion || !Number.isInteger(p.personalizacion_id) || p.personalizacion_id < 1) return { retirar: null, restaurar: null };
+  const base = "/api/admin/personalizaciones/" + p.personalizacion_id;
+  if (p.estado === "visible") return { retirar: { id: p.personalizacion_id, ruta: base + "/decoracion/retirar" }, restaurar: null };
+  if (p.estado === "retirado") return { retirar: null, restaurar: { id: p.personalizacion_id, ruta: base + "/restaurar" } };
+  return { retirar: null, restaurar: null };
+}
+
+/** El cuerpo de la petición de retirar: { motivo } = la etiqueta del motivo elegido (+ «: » y la nota, si la hay), recortado a 200. Un motivo desconocido cae en «otro». */
+export function cuerpoRetirar(clave, nota) {
+  const m = MOTIVOS_DECORACION.find(x => x[0] === clave) || MOTIVOS_DECORACION[MOTIVOS_DECORACION.length - 1];
+  const n = String(nota || "").replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim();
+  return { motivo: (n ? m[1] + ": " + n : m[1]).slice(0, MAX_MOTIVO) };
+}
+
+/** Los textos del bloque, el diálogo y los avisos (en un sitio, para la prueba). */
+export function textosDecoracion(f) {
+  const p = f.personalizacion, nombre = p && p.decoracion ? (p.decoracion.nombre || p.decoracion.id) : "";
+  return {
+    titulo: "Decoración de este olivo",
+    retirar: "Retirar la decoración",
+    restaurar: "Restaurar lo retirado",
+    dialogoTitulo: "¿Retirar la decoración «" + nombre + "»?",
+    dialogoCuerpo: "Dejará de verse en el mundo y la familia recibirá un aviso con el motivo. Si el olivo tiene nombre o foto, esos se quedan.",
+    dialogoSi: "Retirar la decoración",
+    notaRestaurar: "Está retirada por la oficina. Restaurar la devuelve a la vista (y con ella lo demás que tuviera esta personalización) y la familia recibe un aviso.",
+    hechoRetirar: "Decoración retirada: ya no se ve y la familia lo sabe.",
+    hechoRestaurar: "Vuelve a verse en el mundo.",
+  };
+}
+
+/** El mensaje de un fallo de la api al retirar o restaurar (403 y 404 con su explicación; el resto, el de la api). */
+export function mensajeFallo(r, accion) {
+  const verbo = accion === "restaurar" ? "restaurar" : "retirar";
+  if (r.estado === 403) return "No tienes permiso para " + verbo + " (hace falta ser oficina o admin).";
+  if (r.estado === 404) return accion === "restaurar" ? "Eso ya no está retirado: puede que alguien lo haya restaurado. Se vuelve a leer la ficha." : "Esa decoración ya no se ve (la ha quitado la familia o ya está retirada). Se vuelve a leer la ficha.";
+  return r.mensaje || "No se pudo completar.";
+}
