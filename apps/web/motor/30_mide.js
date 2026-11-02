@@ -1,8 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos (D, $, DEPURA), 02c_componentes (Bus, ConfigPuro, Componentes), 03_escena (visor, renderer, modo, calidad),
-//   04b_escena3d (Escena3D), 07b_arboles (Arboles), 08_marcadores (listo), 12_paseo (persona), 14_historia (lista, rango), 15_tiempo (nivel, hace),
-//   29_vr (VRX, panel, PanelVR, VR_PERFILES), 33_ajustes (Ajustes), 90_final (cuadro, bucle)
+// Consume: 01_datos (D, $, DEPURA), 02c_componentes (Bus, ConfigPuro, Componentes), 02f_xr_perillas (XrPerillas),
+//   03_escena (visor, renderer, modo, calidad), 04b_escena3d (Escena3D), 07b_arboles (Arboles), 08_marcadores (listo), 12_paseo (persona),
+//   14_historia (lista, rango), 15_tiempo (nivel, hace), 29_vr (VRX, panel, PanelVR, VR_PERFILES), 33_ajustes (Ajustes), 90_final (cuadro, bucle)
 // ===============================================================================
 
   // ---------- medidor de fotogramas para la prueba en el aparato (T7a, doc/sistema/VR.md#medir-con-el-medidor). Componente «medidor-fotogramas» (ADR-0023, C10 tercera tanda; ?medidor=0 lo apaga). Sin &mide ni botón pulsado no hace nada: no escucha «cuadro:fin» y el bucle no paga nada.
@@ -44,6 +44,7 @@
         L.push("Nivel VR_PERFILES: al empezar " + r.nivel.ini + " · al terminar " + r.nivel.fin + " · cambios " + r.nivel.cambios.length);
         if (!corto) r.nivel.cambios.forEach(function (c) { L.push("  a los " + f1(c.t) + " s: " + c.de + " → " + c.a); });
       }
+      if (r.perillas) L.push(r.perillas);   // Q0b: con qué perillas se midió (regla 7)
       if (r.olivos) L.push("Olivos al terminar: N0 " + r.olivos[0] + " · N1 " + r.olivos[1] + " · N2 " + r.olivos[2]);
       if (vr && e.n) L.push("p95 ≤ 13,9 ms (criterio 5 de ADR-0015): " + (e.ms.p95 <= 13.9 ? "sí" : "no"));
       if (e.descartados.ocultos) L.push("Descartados por pestaña oculta: " + e.descartados.ocultos);
@@ -135,7 +136,7 @@
       res = {
         version: 1, fecha: new Date().toISOString().slice(0, 19) + "Z", aparato: { modo: modoIni, ua: MideEst.resumeUA(navigator.userAgent) },
         escena: Escena3D.resumen().estado === "sin" ? "sin" : "tiles", banderas: banderas(), duracion: N, calentamiento: MideEst.CALENTAMIENTO, est: e,
-        nivel: modoIni === "VR" ? { ini: nivIni === null ? -1 : nivIni, fin: nv === null ? -1 : nv, cambios: cambios } : null, olivos: [a.nivel0, a.nivel1, a.nivel2], avisos: avisos
+        nivel: modoIni === "VR" ? { ini: nivIni === null ? -1 : nivIni, fin: nv === null ? -1 : nv, cambios: cambios } : null, olivos: [a.nivel0, a.nivel1, a.nivel2], avisos: avisos, perillas: modoIni === "VR" ? XrPerillas.linea() : ""
       };
       estado = "listo"; api.on = false; desengancha(); prev = -1;
       if (huboVisib) { document.removeEventListener("visibilitychange", alVisibilidad); huboVisib = false; }

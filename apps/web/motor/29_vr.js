@@ -1,11 +1,12 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: VRX, vrDebugExtra, vrFundido, vrAparece, panel, ficha, PanelVR, vrActualiza, VR_PERFILES, vrFin
 // Consume: 01_datos (D, $, fmt, VRP), 02_mundo (Mundo, suelo, orto, copas), 02c_componentes (Bus, Config), 02d_laminas (Laminas),
-//   02e_entidades (EntidadesPuro, Entidades, Usables), 03_escena (lienzo, visor, renderer, scene, camera, sol, texColor, exag, modo, calidad),
-//   04b_escena3d (Escena3D), 05_nube (nube), 07b_arboles (Arboles), 09_camara (pon), 10_ndvi (NDV, ndviIdx),
+//   02e_entidades (EntidadesPuro, Entidades, Usables), 02f_xr_perillas (XrPerillas),
+//   03_escena (lienzo, visor, renderer, scene, camera, sol, texColor, exag, modo, calidad), 04b_escena3d (Escena3D), 05_nube (nube),
+//   07b_arboles (Arboles), 09_camara (pon), 10_ndvi (NDV, ndviIdx),
 //   12_paseo (paseando, persona, teclas, primera, entraPaseo, salePaseo, actualizaPaseo), 12b_llegada (Llegada), 13_parcelas (parcelas, fincas),
-//   14_historia (lista, aviso), 15_tiempo (calma, meta, nivel, rumbo, hace, pasoHoraMundo, horaMundoTexto), 16_vida (quita, mira, quad, dron),
-//   22_huellas (pendFactor), 24_pantalla (suave), 33_ajustes (Ajustes), 90_final (tamano, cuadro, bucle)
+//   14_historia (lista, aviso), 15_tiempo (calma, meta, nivel, rumbo, hace, pasoHoraMundo, horaMundoTexto, anuncia),
+//   16_vida (quita, mira, quad, dron), 22_huellas (pendFactor), 24_pantalla (suave), 33_ajustes (Ajustes), 90_final (tamano, cuadro, bucle)
 // Nota: Publica además window.__vrDebug, __vrOlivo, __vrBotones, __vrVuelo y VR_ESTADO (depuración y pruebas VR).
 // ===============================================================================
   // ---------- modo VR inmersivo (WebXR, Meta Quest Browser): el paseo en primera persona con mandos, un panel flotante y un perfil de rendimiento propio
@@ -506,6 +507,7 @@
   function vrPerfil(n) { n = Math.max(0, Math.min(VR_PERFILES.length - 1, n)); VRX.nivel = n; var p = VR_PERFILES[n]; VRP.hierba = p.h; UN.uBumpK.value = p.b; Arboles.perfil(p); Escena3D.perfil(p); }
   function vrAdapta(dtMs, jsMs, dt) {   // por encima de 13 ms de trabajo (o con fotogramas perdidos) baja de nivel; tras un rato holgado, sube
     VRX.emaDt += (dtMs - VRX.emaDt) * 0.05; VRX.emaJs += (jsMs - VRX.emaJs) * 0.05; VRX.tNivel += dt;
+    if (XrPerillas.fijo()) return;   // nivel fijado por la URL: sin controlador (Q0b, 02f)
     if (VRX.tNivel < 4) return;
     if ((VRX.emaJs > 13 || VRX.emaDt > 15.2) && VRX.nivel < VR_PERFILES.length - 1) { VRX.tNivel = 0; VRX.nBaj++; vrPerfil(VRX.nivel + 1); }
     else if (VRX.emaJs < 7 && VRX.emaDt < 14.4 && VRX.nivel > 0 && VRX.tNivel > 25) { VRX.tNivel = 0; VRX.nAlt++; vrPerfil(VRX.nivel - 1); }
@@ -518,7 +520,7 @@
     Bus.emite("audio:desbloquea", {});   // el gesto de pulsar el botón es lo que deja arrancar el audio (quien haga sonido lo atiende)
     var ses = null;
     try {
-      renderer.xr.enabled = true; renderer.xr.setReferenceSpaceType("local-floor"); renderer.xr.setFramebufferScaleFactor(0.9);
+      renderer.xr.enabled = true; renderer.xr.setReferenceSpaceType("local-floor"); renderer.xr.setFramebufferScaleFactor(XrPerillas.efectivas.escala); XrPerillas.antes(renderer);   // Q0b: escala 0,9 y foveación 1 salvo las perillas xr de la URL (02f)
       ses = await navigator.xr.requestSession("immersive-vr", { optionalFeatures: ["local-floor", "bounded-floor", "hand-tracking"] });   // manos: 36_mandos
       VRX.ojo = 0;
       try { await ses.requestReferenceSpace("local-floor"); } catch (e) { renderer.xr.setReferenceSpaceType("local"); VRX.ojo = 1.6; }
@@ -528,14 +530,13 @@
       VRX.entrando = false; renderer.setAnimationLoop(null); renderer.xr.enabled = false; vrEstado("no se pudo entrar: " + (e && (e.name + " " + e.message) || e)); try { if (ses) ses.end(); } catch (e2) {} return;
     }
     VRX.sesion = ses; VRX.base = renderer.xr.getReferenceSpace(); VRX.sesionesN++;
-    try { var capa = ses.renderState && ses.renderState.baseLayer; if (capa && "fixedFoveation" in capa) capa.fixedFoveation = 1; } catch (e) {}
-    try { if (ses.supportedFrameRates && ses.updateTargetFrameRate && Array.prototype.indexOf.call(ses.supportedFrameRates, 72) >= 0) ses.updateTargetFrameRate(72); } catch (e) {}
+    XrPerillas.despues(ses);   // Q0b: foveación de la capa y frecuencia, con lo que anuncia el casco (72 Hz si no se pide otra)
     ses.addEventListener("end", vrSale);
     vrSuscribe(); vrLeeAjustes(); VRX.pestana = "mundo";
     VRX.modoPrev = modo; VRX.calPrev = calidad; VRX.nearPrev = camera.near; VRX.farPrev = camera.far;
     if (modo !== "gem") pon("gem"); calidad = 0; camera.near = 0.3; camera.far = 6000;
     scene.add(vrRig); vrRig.add(camera); camera.add(vrVineta); camera.position.set(0, VRX.ojo ? 0 : 1.6, 0); camera.quaternion.identity(); VRC.forEach(function (o) { vrRig.add(o.c); vrRig.add(o.g); }); Bus.emite("vr:rig-monta", { rig: vrRig }); scene.add(arco); scene.add(arcoMarca); scene.add(panel.m); scene.add(ficha.m); scene.add(fichaB.m); vrVueloEntra();
-    VRP.on = true; vrPerfil(0); VRX.emaDt = 13.9; VRX.emaJs = 6; VRX.tNivel = 0;
+    VRP.on = true; vrPerfil(XrPerillas.fijo() ? XrPerillas.efectivas.nivel : 0); VRX.emaDt = 13.9; VRX.emaJs = 6; VRX.tNivel = 0;
     if (!paseando) entraPaseo(); primera = true; TR.act = false; persona.visible = false; Bus.emite("perros:llegan");
     var r = VRX.rig; r.x = pp.x; r.z = -pp.y; r.yaw = 0; r.y = suelo(pp.x, pp.y) * exag + vrBaseY(); VRX.vuelo = false; VRX.mirador = false; VRX.prev = {}; VRX.giroOk = true; VRX.sucio = true; panel.m.visible = true; panel.ini = false; ficha.m.visible = false; fichaB.m.visible = false; VRX.fichaId = ""; VRX.balFirma = "";
     vrAplicaRig(); vrRig.updateMatrixWorld(true); VRX.on = true; VRX.entrando = false; vrEstado("sesión VR en marcha"); Bus.emite("vr:entra");
@@ -550,7 +551,7 @@
     if (paseando) salePaseo();
     VRX.vuelo = false; VRX.mirador = false; vrEstado("soportado (sesión terminada)"); Bus.emite("vr:sale"); tamano(); requestAnimationFrame(bucle);
   }
-  window.__vrDebug = function () { return Object.assign({ on: VRX.on, estado: VRX.estado, nivel: VRX.nivel, rig: JSON.parse(JSON.stringify(VRX.rig)), cabeza: [VRX.cab.x, VRX.cab.y, VRX.cab.z], pp: [pp.x, pp.y], vuelo: VRX.vuelo, panel: panel.m.visible, ficha: ficha.m.visible, hover: VRX.hover, pestana: VRX.pestana, giro: VRX.giro, sinEscena: VRX.sinPint, vinetaOn: VRX.vineta, vineta: vrVineta.material.uniforms.uK.value, sesionesN: VRX.sesionesN, paseando: paseando, primera: primera, modo: modo, exag: exag, hora: horaMundoTexto(), horaMs: meta.ms, solY: sol.position.y, solI: sol.intensity, ndvi: ndviIdx, parcSel: VRX.parcSel, panelPos: panel.m.position.toArray(), fichaPos: ficha.m.position.toArray(), frames: renderer.info.render.frame, nivelArb: Arboles.resumen(), hierba: VRP.hierba, bump: UN.uBumpK.value, perfiles: VR_PERFILES.length, near: camera.near, far: camera.far,
+  window.__vrDebug = function () { return Object.assign({ on: VRX.on, estado: VRX.estado, nivel: VRX.nivel, rig: JSON.parse(JSON.stringify(VRX.rig)), cabeza: [VRX.cab.x, VRX.cab.y, VRX.cab.z], pp: [pp.x, pp.y], vuelo: VRX.vuelo, panel: panel.m.visible, ficha: ficha.m.visible, hover: VRX.hover, pestana: VRX.pestana, giro: VRX.giro, sinEscena: VRX.sinPint, vinetaOn: VRX.vineta, vineta: vrVineta.material.uniforms.uK.value, sesionesN: VRX.sesionesN, paseando: paseando, primera: primera, modo: modo, exag: exag, hora: horaMundoTexto(), horaMs: meta.ms, solY: sol.position.y, solI: sol.intensity, ndvi: ndviIdx, parcSel: VRX.parcSel, panelPos: panel.m.position.toArray(), fichaPos: ficha.m.position.toArray(), frames: renderer.info.render.frame, nivelArb: Arboles.resumen(), hierba: VRP.hierba, bump: UN.uBumpK.value, perfiles: VR_PERFILES.length, xr: { fov: XrPerillas.efectivas.fov, escala: XrPerillas.efectivas.escala, hz: XrPerillas.efectivas.hz, aa: XrPerillas.aa, nivelFijo: XrPerillas.efectivas.nivel, adaptativo: XrPerillas.efectivas.nivel == null, ignorados: XrPerillas.efectivas.ignorados, linea: XrPerillas.linea() }, near: camera.near, far: camera.far,
     panelTam: [panel.W, panel.H, panel.pw, panel.ph], fichaB: fichaB.m.visible, fichaBPos: fichaB.m.position.toArray(), fichaBTam: [fichaB.W, fichaB.H, fichaB.pw, fichaB.ph], fichaId: VRX.fichaId, hoverB: VRX.hoverB, fichaGente: VRX.balInfo && VRX.fichaId ? VRX.balInfo.gente : null,
     tiempo: null, fichaTiempo: null,   // los pone la fila del componente fichas-tiempo (35_fichas_tiempo.js) por PanelVR.debug(), si está
     gente: VRX.gente ? { activo: VRX.gente.activo, n: VRX.gente.n, filas: VRX.gente.filas.map(function (f) { return { id: f.id, alias: f.alias, modo: f.modo, dist: f.dist }; }) } : null }, PanelVR.debug()); };
