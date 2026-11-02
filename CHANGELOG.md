@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- La oficina ve y retira decoraciones (D5, P7g): en la ficha del olivo, «Retirar la decoración» (diálogo con motivo; la familia recibe el aviso) y «Restaurar lo retirado». La oficina no pone decoraciones (decisión 178). Probado solo en Node; la prueba de Chrome está escrita y sin ejecutar.
 - Tiempo (V13): si Vigía responde sin previsión (`hayPrevision:false`), la ventana Clima sigue mostrando la última previsión válida (de menos de 24 h y con alguna hora futura) con el aviso «es la última que llegó, de hace N h», en vez de «Vigía no tiene dato ahora mismo». La causa, que Vigía no la ingiera, es de Vigía. Probado solo en Node.
 - La oficina puede vincular unas gafas con el código corto (Configuración → Mis dispositivos → Vincular): entran como visitante, con rol de hogar, sin la oficina, sin etiqueta ni chaleco y sin papel de guía, y valen 12 horas (ADR-0028, decisiones 181-182; OF16). No probado en unas Quest reales; la integración con PostGIS está escrita y sin ejecutar.
 - La ficha de una familia en la oficina ya no repite «(código corto)» en las gafas.
