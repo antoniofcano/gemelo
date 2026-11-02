@@ -212,15 +212,18 @@ function mundoMotor(o) {
   const Hazas = { vistas: () => hazas, enPunto: x => (x < 20 ? { id: 1, es_mia: true } : x < 100 ? { id: 2, es_mia: false } : null) };
   const Usables = { refresca: id => reg.refresca.push(id) };
   const Laminas = { abre: l => { reg.abre.push(l); return true; }, cierra: (id, m) => { reg.cierra.push([id, m]); return true; }, repinta: () => true };
-  const Bus = { emite: (ev, d) => { reg.eventos.push([ev, d]); return 0; } };
+  const Bus = { emite: (ev, d) => { reg.eventos.push([ev, d]); return 0; }, hay: ev => ev === "decoraciones:cambian" && !o.sinDeco };   // hay: quien dibuja las decoraciones (50_decoraciones.js) escucha ese evento
   class V3 { set(x, y, z) { this.x = x; this.y = y; this.z = z; return this; } project() { this.x = (this.x - 10) / 50; this.y = 0.2; this.z = 0.5; return this; } }
   class Imagen { set src(v) { this._s = v; } get src() { return this._s; } }
   const camera = { position: { x: 12, y: 2, z: -10 } }, lienzo = { getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 600 }) }, VRX = { on: false };
-  const f = new Function("D", "location", "fetch", "document", "window", "THREE", "Entidades", "Usables", "Laminas", "Hazas", "HazasPuro", "Bus", "camera", "lienzo", "exag", "VRX", "Image", "createImageBitmap", "console",
+  // P7g D4: la fecha de «hoy» del motor (por defecto, otoño: 2-nov-2026)
+  const AHORA = o.ahora || "2026-11-02T10:00:00+01:00";
+  class FechaFalsa extends Date { constructor(...a) { super(...(a.length ? a : [AHORA])); } }
+  const f = new Function("D", "location", "fetch", "document", "window", "THREE", "Entidades", "Usables", "Laminas", "Hazas", "HazasPuro", "Bus", "camera", "lienzo", "exag", "VRX", "Image", "createImageBitmap", "console", "Date",
     "\"use strict\";\n" + trozo("// [puro:inicio]", "// [puro:fin]") + trozo("// [motor:inicio]", "// [motor:fin]") + "\nreturn PersonalizaMotor;");
   const HazasPuro = { prefijoApi: () => (o.sinApi ? null : "/api/") };
   const motor = f({ base: "/teselas/hituelo/", finca_id: "hituelo" }, { search: "" }, fetchFalso, documento, {}, { Vector3: V3 }, Entidades, Usables, Laminas, Hazas, HazasPuro, Bus, camera, lienzo, 1, VRX, Imagen, undefined,
-    { error: (...a) => reg.errores.push(a.join(" ")) });
+    { error: (...a) => reg.errores.push(a.join(" ")) }, FechaFalsa);
   const on = {}, n = { on: (ev, fn) => { on[ev] = fn; return () => {}; } };
   return { motor, n, on, reg, body, Entidades, VRX, camera, listo: () => new Promise(r => setTimeout(r, 5)) };
 }
@@ -239,10 +242,10 @@ test("motor: con api pide la sesión y los olivos de cada haza, y complementa la
   assert.strictEqual(w.reg.complementos.length, 1, "UN complemento de la ficha del olivo: no hay ficha propia");
   const mia = w.Entidades.ficha("olivo:hituelo:100", "pantalla");
   assert.deepStrictEqual(mia.filas[0], { k: "Nombre", v: "La Parra", de: "puesto por tu familia" });
-  assert.deepStrictEqual(mia.acciones.map(a => a.txt), ["Cambiar nombre", "Cambiar foto o dibujo", "Quitar", "Sugerir a la oficina"]);
+  assert.deepStrictEqual(mia.acciones.map(a => a.txt), ["Cambiar nombre", "Cambiar foto o dibujo", "Decorar", "Quitar", "Sugerir a la oficina"]);
   const ajeno = w.Entidades.ficha("olivo:hituelo:200", "pantalla");
   assert.strictEqual(ajeno.filas[0].v, "El Abuelo"); assert.match(ajeno.filas[0].de, /esa haza/); assert.deepStrictEqual(ajeno.acciones.map(a => a.txt), ["Denunciar"]);
-  assert.strictEqual(w.Entidades.ficha("olivo:hituelo:300", "pantalla").acciones.map(a => a.txt).join(), "Nombrar,Colgar foto o dibujo,Sugerir a la oficina", "lo mío sin nada: nombrar y colgar (sin Quitar)");
+  assert.strictEqual(w.Entidades.ficha("olivo:hituelo:300", "pantalla").acciones.map(a => a.txt).join(), "Nombrar,Colgar foto o dibujo,Decorar,Sugerir a la oficina", "lo mío sin nada: nombrar, colgar y decorar (sin Quitar)");
   assert.strictEqual(w.Entidades.ficha("olivo:hituelo:i5", "pantalla").acciones, undefined, "id provisional: nada");
   const vr = w.Entidades.ficha("olivo:hituelo:100", "vr"); assert.strictEqual(vr.acciones, undefined, "en VR lo mío no se escribe"); assert.ok(vr.filas.some(q => /no en VR/.test(q.v)));
   assert.deepStrictEqual(w.Entidades.ficha("olivo:hituelo:200", "vr").acciones.map(a => a.txt), ["Denunciar"], "en VR se denuncia");
@@ -258,10 +261,148 @@ test("motor (P7g D3): publica las decoraciones de todas las hazas por el Bus al 
   assert.ok(ult(), "«decoraciones:cambian» emitido");
   assert.deepStrictEqual(ult()[1].lista.slice().sort((a, b) => a.copas_id - b.copas_id), [{ finca: "hituelo", copas_id: 100, pieza: "luces", mia: true }, { finca: "hituelo", copas_id: 200, pieza: "lazo", mia: false }]);
   assert.strictEqual(m.estado().decoraciones, 2); assert.strictEqual(m.estado().personalizados, 1, "la de solo decoración no es «personalizada» (nombre o imagen)");
-  assert.deepStrictEqual(w.Entidades.ficha("olivo:hituelo:100", "pantalla").acciones.map(a => a.txt), ["Nombrar", "Colgar foto o dibujo", "Sugerir a la oficina"], "sin «Quitar»: la decoración tiene su propia ruta (D4)");
+  assert.deepStrictEqual(w.Entidades.ficha("olivo:hituelo:100", "pantalla").acciones.map(a => a.txt), ["Nombrar", "Colgar foto o dibujo", "Cambiar decoración", "Quitar decoración", "Sugerir a la oficina"], "sin «Quitar» (nombre e imagen): la decoración tiene el suyo (D4)");
   const n0 = w.reg.eventos.length; assert.strictEqual(typeof w.on["decoraciones:pide"], "function"); w.on["decoraciones:pide"]({});
   assert.strictEqual(w.reg.eventos.length, n0 + 1); assert.strictEqual(ult()[1].lista.length, 2, "responde con la última");
   m.libera(); assert.deepStrictEqual(ult()[1].lista, [], "liberado, ya no hay decoraciones que dibujar");
+});
+
+// ---------- P7g D4: la acción «Decorar» en la ficha del olivo
+test("puro (P7g D4): qué se ofrece de decorar (solo el titular en lo suyo y fuera de VR; sin catálogo, nada) y los textos", () => {
+  const ids = r => r.acciones.map(a => a.id), txt = r => r.acciones.map(a => a.txt), otono = P.piezasDeLaEpoca("otono");
+  const base = { titular: true, mia: true, dato: null, vr: false, estable: true };
+  assert.deepStrictEqual(ids(P.ofrece(base)), ["nombrar", "foto", "sugerir"], "sin catálogo de decoraciones (?decoraciones=0), no se ofrece decorar");
+  assert.deepStrictEqual(ids(P.ofrece(Object.assign({}, base, { decora: otono, deco: null }))), ["nombrar", "foto", "decorar", "sugerir"]);
+  assert.deepStrictEqual(txt(P.ofrece(Object.assign({}, base, { decora: otono, deco: null }))).filter(t => /ecora/.test(t)), ["Decorar"]);
+  const con = P.ofrece(Object.assign({}, base, { decora: otono, deco: "luces" }));
+  assert.deepStrictEqual(ids(con), ["nombrar", "foto", "decorar", "quitardeco", "sugerir"]); assert.deepStrictEqual(txt(con).filter(t => /ecora/.test(t)), ["Cambiar decoración", "Quitar decoración"]);
+  assert.deepStrictEqual(ids(P.ofrece(Object.assign({}, base, { decora: otono, deco: "luces", dato: { id: 1, nombre: "A" } }))), ["nombrar", "foto", "decorar", "quitardeco", "quitar", "sugerir"], "«Quitar» (nombre e imagen) y «Quitar decoración» son dos cosas");
+  // nada de decorar: ajeno, gafas vinculadas, sin saber quién es, VR, id provisional
+  for (const m of [{ mia: false }, { titular: false }, { titular: null }, { vr: true }, { estable: false }]) assert.ok(!ids(P.ofrece(Object.assign({}, base, { decora: otono, deco: "luces" }, m))).some(i => /deco/.test(i)), JSON.stringify(m));
+  // el rótulo del diálogo: la época, las piezas de esa época y la leyenda de honestidad
+  const t = P.textoDecorar("otono", otono, "Luces");
+  assert.match(t, /Ahora toca el otoño: farolillo o cosecha/); assert.match(t, /nueva sustituye a la anterior/); assert.match(t, /Ahora tiene: luces/); assert.ok(t.endsWith("Ilustrativa: la decoración la elige tu familia; no la mide el gemelo."));
+  assert.match(P.textoDecorar("primavera", P.piezasDeLaEpoca("primavera"), null), /Ahora toca la primavera: flores\./); assert.ok(!/Ahora tiene/.test(P.textoDecorar("verano", P.piezasDeLaEpoca("verano"), null)));
+  // los errores se explican; fuera_de_epoca, tal cual la api
+  const fuera = "Esa decoración no es de esta época del año. Ahora toca: farolillo y cosecha.";
+  assert.strictEqual(P.mensajeError(422, { error: "fuera_de_epoca", mensaje: fuera }, "deco"), fuera);
+  assert.match(P.mensajeError(403, { error: "solo_titular" }, "deco"), /titular/); assert.match(P.mensajeError(403, { error: "no_es_tu_haza" }, "deco"), /no está en tu haza/);
+  assert.match(P.mensajeError(409, { error: "a_la_vez" }, "deco"), /se ha cruzado/); assert.match(P.mensajeError(429, { error: "demasiadas_peticiones" }, "deco"), /límite/);
+  assert.match(P.mensajeError(401, null, "deco"), /sesión ha caducado/); assert.match(P.mensajeError(0, null, "deco"), /conexión/);
+  assert.strictEqual(P.mensajeError(400, { error: "pieza_no_existe", mensaje: "Esa decoración no existe." }, "deco"), "Esa decoración no existe.");
+  assert.strictEqual(P.mensajeError(404, { error: "no_existe" }, "deco"), "Este olivo ya no tenía decoración.");
+});
+
+test("puro (P7g D4): el catálogo que se ofrece es el de contratos/decoraciones.json y la época es la de la api (apps/api/src/vida/decoraciones.ts) en los días límite, en hora de Madrid", () => {
+  const CAT = JSON.parse(lee("contratos/decoraciones.json"));
+  assert.deepStrictEqual(P.PIEZAS, CAT.piezas.map(p => ({ id: p.id, nombre: p.nombre, epoca: p.epoca })), "lo que se ofrece y el contrato dicen lo mismo");
+  const e = iso => P.epocaDeLaFecha(new Date(iso));
+  // las mismas fechas que apps/api/pruebas/unidad/decoraciones.test.ts (época: estaciones astronómicas con sus días límite, en hora de Madrid)
+  const CASOS = [["2026-03-20T12:00:00+01:00", "invierno"], ["2026-03-21T12:00:00+01:00", "primavera"], ["2026-06-20T12:00:00+02:00", "primavera"], ["2026-06-21T12:00:00+02:00", "verano"],
+    ["2026-09-22T12:00:00+02:00", "verano"], ["2026-09-23T12:00:00+02:00", "otono"], ["2026-12-20T12:00:00+01:00", "otono"], ["2026-12-21T12:00:00+01:00", "invierno"],
+    ["2027-01-15T12:00:00+01:00", "invierno"], ["2026-11-02T10:00:00+01:00", "otono"],
+    ["2026-03-20T23:30:00Z", "primavera"], ["2026-06-20T22:30:00Z", "verano"], ["2026-12-20T23:30:00Z", "invierno"], ["2028-02-29T12:00:00+01:00", "invierno"]];
+  CASOS.forEach(c => assert.strictEqual(e(c[0]), c[1], c[0]));
+  // y el código de la api dice los mismos límites y la misma zona (si alguien los cambia en un lado, este guardián salta)
+  const api = lee("apps/api/src/vida/decoraciones.ts"), lim = [...api.matchAll(/mmdd >= (\d+) && mmdd <= (\d+)\) return "(\w+)"/g)].map(m => [+m[1], +m[2], m[3]]);
+  assert.deepStrictEqual(lim, [[321, 620, "primavera"], [621, 922, "verano"], [923, 1220, "otono"]], "la api: tres tramos y el resto es invierno");
+  assert.ok(/mmdd >= 321 && mmdd <= 620\) return "primavera"/.test(FUENTE) && /mmdd >= 621 && mmdd <= 922\) return "verano"/.test(FUENTE) && /mmdd >= 923 && mmdd <= 1220\) return "otono"/.test(FUENTE), "el motor: los mismos límites");
+  assert.ok(/ZONA = "Europe\/Madrid"/.test(api) && /timeZone: "Europe\/Madrid"/.test(FUENTE), "la misma zona horaria");
+  // a lo largo del año: las cuatro épocas, en orden
+  const vistas = []; for (let d = 0; d < 366; d++) { const x = P.epocaDeLaFecha(new Date(Date.UTC(2028, 0, 1 + d, 12))); if (vistas[vistas.length - 1] !== x) vistas.push(x); }
+  assert.deepStrictEqual(vistas, ["invierno", "primavera", "verano", "otono", "invierno"]);
+  // las piezas de cada época: una en primavera y verano, dos en otoño e invierno
+  assert.deepStrictEqual(P.piezasDeLaEpoca("primavera").map(p => p.id), ["flores"]); assert.deepStrictEqual(P.piezasDeLaEpoca("verano").map(p => p.id), ["cinta"]);
+  assert.deepStrictEqual(P.piezasDeLaEpoca("otono").map(p => p.id), ["farolillo", "cosecha"]); assert.deepStrictEqual(P.piezasDeLaEpoca("invierno").map(p => p.id), ["luces", "lazo"]); assert.deepStrictEqual(P.piezasDeLaEpoca("nunca"), []);
+  assert.strictEqual(P.piezaPorId("luces").nombre, "Luces"); assert.strictEqual(P.piezaPorId("cohete"), null);
+});
+
+test("cliente (P7g D4): PUT y DELETE de /api/olivos/{finca}/{copas_id}/decoracion, con el cuerpo { pieza } y el mismo origen", async () => {
+  const a = apiFalsa(() => ({ estado: 200, cuerpo: { id: 1, pieza: "luces" } }));
+  await a.cli.ponDeco("hituelo", 900001, "luces"); await a.cli.quitaDeco("hituelo", 900001);
+  assert.deepStrictEqual(a.llamadas.map(l => l.metodo + " " + l.url), ["PUT /api/olivos/hituelo/900001/decoracion", "DELETE /api/olivos/hituelo/900001/decoracion"]);
+  assert.deepStrictEqual(JSON.parse(a.llamadas[0].cuerpo), { pieza: "luces" }); assert.ok(a.llamadas.every(l => l.cred === "same-origin"));
+  assert.deepStrictEqual(await apiFalsa(() => "red").cli.ponDeco("a", 1, "lazo"), { ok: false, estado: 0, cuerpo: null }, "nunca lanza");
+});
+
+const botonesPieza = body => body.buscaPor(x => x.tagName === "button" && x.attrs["data-pieza"]);
+const DECO = { "/api/hazas/1/olivos": { estado: 200, cuerpo: { haza_id: 1, es_mia: true, olivos: [{ id: 11, finca: "hituelo", copas_id: 100, nombre: null, decoracion: "luces", objeto: null }] } } };
+
+test("motor (P7g D4): «Decorar» ofrece SOLO las piezas de la época, con la leyenda ilustrativa; elegir una hace el PUT, cierra, refresca la lista y D3 la recibe por el Bus", async () => {
+  const w = mundoMotor({ respuestas: { "/api/olivos/hituelo/300/decoracion": { estado: 200, cuerpo: { id: 5, pieza: "cosecha" } } } }), m = w.motor(w.n); m.actualiza("tarde", 0.4); await w.listo();
+  const a = w.Entidades.ficha("olivo:hituelo:300", "pantalla").acciones.find(q => q.id === "decorar"); assert.strictEqual(a.txt, "Decorar"); assert.strictEqual(a.fn(), true);
+  assert.strictEqual(w.body.children[0].attrs.role, "dialog", "el mismo recuadro modal que las otras");
+  assert.match(w.body.buscaPor(x => x.tagName === "h2")[0].textContent, /Decorar este olivo/);
+  const bs = botonesPieza(w.body); assert.deepStrictEqual(bs.map(b => b.attrs["data-pieza"]), ["farolillo", "cosecha"], "otoño: dos piezas, ni una más");
+  assert.deepStrictEqual(bs.map(b => b.textContent), ["Farolillo", "Cosecha"]); assert.ok(bs.every(b => /min-height:44px/.test(b.style.cssText) && /min-width:44px/.test(b.style.cssText)), "zonas ≥ 44 px");
+  const txt = w.body.textContent; assert.ok(txt.includes("Ilustrativa: la decoración la elige tu familia; no la mide el gemelo.")); assert.ok(txt.includes("Ahora toca el otoño"));
+  assert.ok(buscaBoton(w.body, "Cancelar"), "con «Cancelar»"); assert.ok(!buscaBoton(w.body, "Guardar"), "sin «Guardar»: tocar la pieza la cuelga");
+  assert.ok(!w.reg.fetch.some(f => f[0] === "PUT"), "abrir no escribe");
+  w.reg.eventos.length = 0; w.reg.fetch.length = 0;
+  bs[1].dispara("click"); await w.listo();
+  const put = w.reg.fetch.find(f => f[0] === "PUT"); assert.strictEqual(put[1], "/api/olivos/hituelo/300/decoracion"); assert.deepStrictEqual(JSON.parse(put[2]), { pieza: "cosecha" });
+  assert.strictEqual(w.body.children.length, 0, "el recuadro se cierra"); assert.deepStrictEqual(w.reg.refresca, ["olivo:hituelo:300"], "la ficha se repinta");
+  assert.ok(w.reg.fetch.some(f => f[0] === "GET" && f[1] === "/api/hazas/1/olivos"), "se vuelve a pedir la lista de la haza");
+  assert.ok(w.reg.eventos.some(e => e[0] === "decoraciones:cambian"), "y se publica para que D3 repinte sin recargar");
+  m.libera();
+});
+
+test("motor (P7g D4): con una decoración puesta se ofrece «Cambiar decoración» (la actual, marcada y sin poder re-elegirse) y «Quitar decoración»; la época cambia las piezas ofrecidas", async () => {
+  const w = mundoMotor({ respuestas: DECO }), m = w.motor(w.n); m.actualiza("tarde", 0.4); await w.listo();
+  const f = w.Entidades.ficha("olivo:hituelo:100", "pantalla"); assert.deepStrictEqual(f.acciones.map(q => q.txt).filter(t => /ecora/.test(t)), ["Cambiar decoración", "Quitar decoración"]);
+  m.libera();
+  // invierno: la que tiene (luces) está entre las dos de la época y sale marcada
+  const inv = mundoMotor({ respuestas: DECO, ahora: "2026-12-21T09:00:00+01:00" }), mi = inv.motor(inv.n); mi.actualiza("tarde", 0.4); await inv.listo();
+  inv.Entidades.ficha("olivo:hituelo:100", "pantalla").acciones.find(q => q.id === "decorar").fn();
+  const bs = botonesPieza(inv.body); assert.deepStrictEqual(bs.map(b => b.attrs["data-pieza"]), ["luces", "lazo"]); assert.strictEqual(bs[0].textContent, "Luces (la que tiene ahora)"); assert.strictEqual(bs[0].disabled, true); assert.strictEqual(bs[1].disabled, false);
+  assert.match(inv.body.textContent, /Ahora toca el invierno: luces o lazo/); assert.match(inv.body.textContent, /Ahora tiene: luces/);
+  mi.libera();
+  // primavera y verano: una sola pieza
+  for (const [ahora, ids] of [["2027-03-21T09:00:00+01:00", ["flores"]], ["2027-06-21T09:00:00+02:00", ["cinta"]]]) {
+    const x = mundoMotor({ ahora }), mx = x.motor(x.n); mx.actualiza("tarde", 0.4); await x.listo();
+    x.Entidades.ficha("olivo:hituelo:300", "pantalla").acciones.find(q => q.id === "decorar").fn(); assert.deepStrictEqual(botonesPieza(x.body).map(b => b.attrs["data-pieza"]), ids, ahora); mx.libera();
+  }
+});
+
+test("motor (P7g D4): «Quitar decoración» hace el DELETE de la decoración (no el del nombre y la imagen) y repinta; un 404 se explica", async () => {
+  const w = mundoMotor({ respuestas: DECO }), m = w.motor(w.n); m.actualiza("tarde", 0.4); await w.listo();
+  w.Entidades.ficha("olivo:hituelo:100", "pantalla").acciones.find(q => q.id === "quitardeco").fn();
+  assert.match(w.body.textContent, /Se quita la decoración de este olivo/); w.reg.fetch.length = 0;
+  buscaBoton(w.body, "Quitar decoración").dispara("click"); await w.listo();
+  const d = w.reg.fetch.find(f => f[0] === "DELETE"); assert.strictEqual(d[1], "/api/olivos/hituelo/100/decoracion"); assert.strictEqual(w.body.children.length, 0); assert.deepStrictEqual(w.reg.refresca, ["olivo:hituelo:100"]);
+  m.libera();
+  const x = mundoMotor({ respuestas: Object.assign({ "/api/olivos/hituelo/100/decoracion": { estado: 404, cuerpo: { error: "no_existe" } } }, DECO) }), mx = x.motor(x.n); mx.actualiza("tarde", 0.4); await x.listo();
+  x.Entidades.ficha("olivo:hituelo:100", "pantalla").acciones.find(q => q.id === "quitardeco").fn(); buscaBoton(x.body, "Quitar decoración").dispara("click"); await x.listo();
+  assert.match(x.body.buscaPor(e => e.attrs["data-msg"])[0].textContent, /ya no tenía decoración/); assert.strictEqual(x.body.children.length, 1, "el recuadro sigue abierto con el motivo");
+  mx.libera();
+});
+
+test("motor (P7g D4): los errores de la api se ven en el recuadro sin cerrarlo y se puede probar otra vez (fuera_de_epoca tal cual, solo_titular, a_la_vez, 429, 401); Esc cierra", async () => {
+  const casos = [[422, { error: "fuera_de_epoca", mensaje: "Esa decoración no es de esta época del año. Ahora toca: farolillo y cosecha." }, /no es de esta época del año\. Ahora toca: farolillo y cosecha\./], [403, { error: "solo_titular" }, /titular/], [403, { error: "no_es_tu_haza" }, /no está en tu haza/],
+    [409, { error: "a_la_vez" }, /se ha cruzado/], [429, { error: "demasiadas_peticiones" }, /límite/], [401, { error: "no_autenticado" }, /sesión ha caducado/]];
+  for (const [estado, cuerpo, re] of casos) {
+    const w = mundoMotor({ respuestas: { "/api/olivos/hituelo/300/decoracion": { estado, cuerpo } } }), m = w.motor(w.n); m.actualiza("tarde", 0.4); await w.listo();
+    w.Entidades.ficha("olivo:hituelo:300", "pantalla").acciones.find(q => q.id === "decorar").fn();
+    botonesPieza(w.body)[0].dispara("click"); await w.listo();
+    assert.match(w.body.buscaPor(e => e.attrs["data-msg"])[0].textContent, re, String(estado)); assert.strictEqual(w.body.children.length, 1, "el recuadro sigue abierto");
+    assert.ok(botonesPieza(w.body).every(b => !b.disabled), "se puede elegir otra vez"); assert.deepStrictEqual(w.reg.refresca, [], "no se repinta nada si no se guardó");
+    m.libera();
+  }
+  const w = mundoMotor(), m = w.motor(w.n); m.actualiza("tarde", 0.4); await w.listo();
+  w.Entidades.ficha("olivo:hituelo:300", "pantalla").acciones.find(q => q.id === "decorar").fn(); w.body.children[0].dispara("keydown", { key: "Escape", stopPropagation() {} });
+  assert.strictEqual(w.body.children.length, 0, "Esc cierra"); m.libera();
+});
+
+test("motor (P7g D4): no se ofrece en VR, a un ajeno, a las gafas vinculadas ni sin el componente de las decoraciones (sin quien las dibuje)", async () => {
+  const w = mundoMotor({ respuestas: DECO }), m = w.motor(w.n); m.actualiza("tarde", 0.4); await w.listo();
+  const vr = w.Entidades.ficha("olivo:hituelo:100", "vr"); assert.strictEqual(vr.acciones, undefined, "en VR, solo lectura"); assert.ok(vr.filas.some(q => /no en VR/.test(q.v)));
+  assert.ok(!w.Entidades.ficha("olivo:hituelo:200", "pantalla").acciones.some(q => /ecora/.test(q.txt)), "un olivo ajeno: solo denunciar");
+  assert.ok(w.Entidades.ficha("olivo:hituelo:100", "vr").filas.length >= 1);
+  m.libera();
+  const g = mundoMotor({ titular: false, respuestas: DECO }), mg = g.motor(g.n); mg.actualiza("tarde", 0.4); await g.listo();
+  assert.strictEqual(g.Entidades.ficha("olivo:hituelo:300", "pantalla").acciones, undefined, "gafas vinculadas: nada de escribir"); mg.libera();
+  const s = mundoMotor({ sinDeco: true, respuestas: DECO }), ms = s.motor(s.n); ms.actualiza("tarde", 0.4); await s.listo();
+  assert.ok(!s.Entidades.ficha("olivo:hituelo:300", "pantalla").acciones.some(q => /ecora/.test(q.txt)), "sin quien las dibuje (50_decoraciones.js fuera) no se ofrece"); ms.libera();
 });
 
 test("motor: una sesión de gafas vinculadas no escribe (lo dice) pero sí ve y denuncia", async () => {
