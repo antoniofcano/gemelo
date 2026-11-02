@@ -196,8 +196,8 @@ Decisiones que **no puede tomar un agente**: las cierra Antonio. Las técnicas s
 | 180 | **Voz libre por cercanía (F3k)** | no por ahora / solo entre titulares / para cualquier visitante | F3k | ✅ 2026-11-02: **no por ahora**; la voz sigue solo en las visitas guiadas. Se reabre con gente real usando el chat de texto y la EIPD validada |
 | 181 | **Gafas vinculadas desde una cuenta de oficina** | familia de pruebas / la oficina vincula gafas como visitante / dejarlo | OF16 ([ADR-0028](../adr/0028-gafas-vinculadas-desde-la-oficina-entran-como-visitante.md)) | ✅ 2026-11-02: **la oficina vincula gafas, que entran como visitante** (rol de hogar, solo lectura, sin poderes); modifica en parte el ADR-0024 |
 | 182 | **Duración de las gafas vinculadas desde oficina** | la de las familias (30 d / 7 d) / 12 horas | OF16 | ✅ 2026-11-02: **12 horas** |
-| 183 | **Login · el enlace añade llave a una familia que ya tiene** | sí, con aviso por correo (la recomendada) / solo la oficina restablece | OF13b ([ADR-0029](../adr/0029-llaves-de-acceso-para-todos.md)) | ⬜ |
-| 184 | **Login · una llave aprueba un aparato nuevo de oficina** | no, se mantiene la 152 (la recomendada) / sí | OF13b | ⬜ |
-| 185 | **Login · nombre de cuenta en la llave** | el correo (la recomendada) / el alias / «Hogar del gemelo» | OF13b | ⬜ |
-| 186 | **Login · enlaces por correo en 15 min** | 5 (la recomendada) / 3 como hoy | OF13b-1 | ⬜ |
-| 187 | **Login · avisos de seguridad por correo** | al añadir y quitar llaves (la recomendada) / también en cada entrada desde un aparato nuevo | OF13b-4 | ⬜ |
+| 183 | **Login · el enlace añade llave a una familia que ya tiene** | sí, con aviso por correo (la recomendada) / solo la oficina restablece | OF13b ([ADR-0029](../adr/0029-llaves-de-acceso-para-todos.md)) | ✅ 2026-11-02: **sí**, el enlace del correo basta y avisa por correo; la llave no sube la seguridad de una familia por encima de su buzón |
+| 184 | **Login · una llave aprueba un aparato nuevo de oficina** | no, se mantiene la 152 (la recomendada) / sí | OF13b | ✅ 2026-11-02: **no**, se mantiene la 152: un aparato nuevo de la oficina sigue esperando aprobación |
+| 185 | **Login · nombre de cuenta en la llave** | el correo (la recomendada) / el alias / «Hogar del gemelo» | OF13b | ✅ 2026-11-02: **el correo** |
+| 186 | **Login · enlaces por correo en 15 min** | 5 (la recomendada) / 3 como hoy | OF13b-1 | ✅ 2026-11-02: **5 cada 15 minutos** (y 10 por IP) |
+| 187 | **Login · avisos de seguridad por correo** | al añadir y quitar llaves (la recomendada) / también en cada entrada desde un aparato nuevo | OF13b-4 | ✅ 2026-11-02: **solo al añadir y al quitar una llave** |
