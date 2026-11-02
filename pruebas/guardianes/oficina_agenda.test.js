@@ -18,7 +18,7 @@ test("nada en línea ni de otro origen; los textos se pintan con textContent y s
   }
   assert.ok(!/<style|\sstyle\s*=|\son[a-z]+\s*=/i.test(html));
   const openapi = lee("contratos/api.openapi.yaml");
-  for (const r of ["/api/admin/eventos", "/api/admin/eventos/{id}", "/api/admin/eventos/{id}/cancelar", "/api/admin/eventos/{id}/inscritos", "/api/admin/eventos/{id}/avisar", "/api/agenda", "/api/agenda/{id}/inscripcion"])
+  for (const r of ["/api/admin/eventos", "/api/admin/eventos/{id}", "/api/admin/eventos/{id}/cancelar", "/api/admin/eventos/{id}/inscritos", "/api/admin/eventos/{id}/avisar", "/api/admin/eventos/{id}/avisos", "/api/avisos", "/api/avisos/{id}/leido", "/api/agenda", "/api/agenda/{id}/inscripcion"])
     assert.ok(openapi.includes("  " + r + ":"), r + " está en api.openapi.yaml");
   for (const m of fuentes["agenda.js"].matchAll(/api\("([A-Z]+)", "(\/api\/[^"?]*)/g)) assert.match(m[2], /^\/api\/admin\/eventos/, "la oficina solo usa sus rutas: " + m[2]);
 });
@@ -26,7 +26,7 @@ test("nada en línea ni de otro origen; los textos se pintan con textContent y s
 test("la api: las rutas de oficina con su guarda, las de hogar con la de sesión, y el aforo y la promoción se hacen con el evento bloqueado", () => {
   const ts = lee("apps/api/src/agenda/rutas.ts");
   const admin = [...ts.matchAll(/app\.(get|post|put)(?:<[^\n]*?>)?\("\/api\/admin\/eventos[^"]*", \{\s*preHandler: ([A-Z_a-z]+)/g)];
-  assert.strictEqual(admin.length, 6, "seis rutas de oficina");
+  assert.strictEqual(admin.length, 7, "siete rutas de oficina (la séptima, el historial de avisos de OF11g)");
   for (const m of admin) assert.strictEqual(m[2], "OFICINA", "ruta de oficina sin la guarda: " + m[0]);
   const hogar = [...ts.matchAll(/app\.(get|post|delete)(?:<[^\n]*?>)?\("\/api\/agenda[^"]*", \{?\s*(?:preHandler: )?([A-Z_a-z]+)/g)];
   assert.strictEqual(hogar.length, 4, "cuatro rutas de hogar (la cuarta, el .ics del evento: OF11c)");
@@ -48,7 +48,8 @@ test("la sección está en la barra lateral, hecha, con su formulario accesible 
   for (const id of ["s-agenda", "aFiltros", "aLista", "aResumen", "bEventoNuevo", "dlgEvento", "fEvento", "evTitulo", "evTipo", "evEmpieza", "evPlazas", "evEstado", "evError"]) assert.match(html, new RegExp('id="' + id + '"'));
   assert.match(html, /role="group" aria-label="Filtrar los eventos"/);
   assert.match(html, /<dialog id="dlgEvento" aria-labelledby="dlgEventoT">/);
-  assert.match(html, /el correo todavía no sale/);
+  assert.match(html, /también le llegan por correo/);
+  assert.doesNotMatch(html + fuentes["agenda.js"], /todavía no sale/, "el correo ya sale (OF11c): no se dice lo contrario");
   assert.match(fuentes["agenda.js"], /h\("td", null, i\.nombre_interno \|\| i\.alias/, "los inscritos salen por familia, sin correo");
 });
 
@@ -86,5 +87,8 @@ test("cuentas puras: del formulario a la api y vuelta, filtros, meses y textos",
   assert.match(P.resumenPlazas({ plazas: null, apuntadas: 1, hogares: 1, en_espera: 0 }), /sin aforo · 1 familia \(1 persona\)/);
   assert.match(P.textoDeAviso({ enviados: 0, omitidos_por_tope: 0 }), /No hay a quién avisar/);
   assert.match(P.textoDeAviso({ enviados: 0, omitidos_por_tope: 2 }), /tope/);
-  assert.match(P.textoDeAviso({ enviados: 3, omitidos_por_tope: 1, correo_pendiente: 2 }), /3 familias en el gemelo.*1 omitida por el tope.*correo todavía no sale: 2 familias lo pidió/);
+  assert.match(P.textoDeAviso({ enviados: 3, omitidos_por_tope: 1, correo_pendiente: 2 }), /3 familias en el gemelo.*1 omitida por el tope.*por correo a 2 que lo tienen activado/);
+  assert.match(P.textoDeAviso({ enviados: 1, omitidos_por_tope: 0, correo_pendiente: 0 }), /Por correo no sale a nadie/);
+  const fe = iso => iso.slice(0, 10);
+  assert.strictEqual(P.resumenAviso({ titulo: "Traed gorra", fecha: "2026-11-02T10:00:00Z", manual: true, destinatarios: 3, leidos: 1, correos_enviados: 1 }, fe), "Traed gorra · 2026-11-02 · de la oficina · a 3 familias, 1 de 3 lo han visto en el gemelo · 1 correo enviado");
 });

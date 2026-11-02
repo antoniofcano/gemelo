@@ -1,15 +1,15 @@
 // Agenda (OF11, doc/sistema/OFICINA.md §7): los eventos con aforo (visitas, cosechas abiertas, catas, talleres, directos), sus inscripciones por familia,
 // la lista de espera y los avisos. Contra la api real: GET/POST/PUT /api/admin/eventos, /cancelar, /inscritos y /avisar. El aforo cuenta PERSONAS; la
 // espera pasa a apuntados sola cuando se libera una plaza (lo hace la api). Los textos del evento los escribe la oficina; los alias de las familias son
-// DATOS: todo se pinta con textContent. Hoy NO sale correo: los avisos llegan a la campana del gemelo (la api dice cuántos correos quedan pendientes).
+// DATOS: todo se pinta con textContent. Un aviso se guarda siempre y se ve en el gemelo, en la ficha de su evento (OF11g); el correo sale además a las familias que lo tienen activado.
 import { $, api, aviso, confirma, fecha, h, vacia } from "./comun.js";
-import { ESTADOS, ETIQUETA_INSCRITO, FILTROS, TIPOS, agrupaPorMes, aCampoLocal, cuentaPorFiltro, cuerpoDeFormulario, filtra, resumenPlazas, textoDeAviso } from "./agenda_puro.js";
+import { ESTADOS, ETIQUETA_INSCRITO, FILTROS, TIPOS, agrupaPorMes, aCampoLocal, cuentaPorFiltro, cuerpoDeFormulario, filtra, resumenAviso, resumenPlazas, textoDeAviso } from "./agenda_puro.js";
 
 const ICONO = { guiada: "🚶", libre: "🌿", recoleccion: "🫒", cata: "🥄", taller: "🛠️", directo: "🎙️", evento: "📅" };
 const PILL = { borrador: "p-suave", abierta: "p-ok", cerrada: "p-aviso", cancelada: "p-mal" };
 
 export function iniciaAgenda({ sesion }) {
-  let lista = [], filtro = "proximos", cargas = 0, panel = null;   // panel: { id, modo: "inscritos" | "avisar", datos? }
+  let lista = [], filtro = "proximos", cargas = 0, panel = null;   // panel: { id, modo: "inscritos" | "avisar" | "avisos", datos? }
   const porId = id => lista.find(e => e.id === id);
 
   // ---------------------------------------------------------------- carga
@@ -45,7 +45,7 @@ export function iniciaAgenda({ sesion }) {
     if (e.descripcion) cuerpo.append(h("p", { class: "nota" }, e.descripcion));
     cuerpo.append(h("p", { class: "nota" }, resumenPlazas(e) + (e.inscripcion_hasta ? " · inscripción hasta " + fecha(e.inscripcion_hasta) : "")));
     cuerpo.append(acciones(e, cancelado, pasado));
-    if (panel && panel.id === e.id) cuerpo.append(panel.modo === "inscritos" ? panelInscritos(e) : panelAvisar(e));
+    if (panel && panel.id === e.id) cuerpo.append(panel.modo === "inscritos" ? panelInscritos(e) : panel.modo === "avisos" ? panelAvisos(e) : panelAvisar(e));
     return h("li", { class: "item" + (cancelado ? " retirado" : ""), "data-evento": e.id }, h("div", { class: "miniatura", "aria-hidden": "true" }, ICONO[e.tipo] || "📅"), cuerpo);
   }
 
@@ -53,6 +53,7 @@ export function iniciaAgenda({ sesion }) {
     const b = (texto, accion, extra) => h("button", { class: "boton peq" + (extra ? " " + extra : ""), type: "button", onclick: accion }, texto);
     const fila = h("div", { class: "barra-h" });
     fila.append(b("Ver inscritos", () => abre(e, "inscritos")));
+    fila.append(b("Avisos enviados", () => abre(e, "avisos")));
     if (!cancelado) {
       if (!pasado) fila.append(b("Avisar…", () => abre(e, "avisar")));
       fila.append(b("Editar", () => formulario(e)));
@@ -65,8 +66,8 @@ export function iniciaAgenda({ sesion }) {
   async function abre(e, modo) {
     if (panel && panel.id === e.id && panel.modo === modo) { panel = null; pinta(); return; }
     panel = { id: e.id, modo, datos: null };
-    if (modo === "inscritos") {
-      const r = await api("GET", "/api/admin/eventos/" + e.id + "/inscritos");
+    if (modo === "inscritos" || modo === "avisos") {
+      const r = await api("GET", "/api/admin/eventos/" + e.id + (modo === "avisos" ? "/avisos" : "/inscritos"));
       if (!r.ok) { aviso(r.mensaje, "mal"); panel = null; return; }
       panel.datos = r.datos;
     }
@@ -92,13 +93,22 @@ export function iniciaAgenda({ sesion }) {
     return cuerpo;
   }
 
+  // ---------------------------------------------------------------- avisos enviados (OF11g): lo que se mandó a este evento, con agregados; nunca qué familia lo vio
+  function panelAvisos(e) {
+    const d = panel.datos, cuerpo = h("div", { class: "panel", "data-historial-avisos": String(e.id) });
+    if (!d || !d.avisos.length) { cuerpo.append(h("p", { class: "nota" }, "Todavía no se ha mandado ningún aviso de este evento.")); return cuerpo; }
+    cuerpo.append(h("ul", { class: "lista-avisos" }, d.avisos.map(a => h("li", null, h("span", null, resumenAviso(a, fecha)), a.texto ? h("p", { class: "nota" }, a.texto) : null))));
+    cuerpo.append(h("p", { class: "nota" }, "Cada familia lo ve en la ficha del evento dentro del gemelo, lo tenga o no activado el correo. Aquí solo salen cuentas, nunca quién lo ha leído."));
+    return cuerpo;
+  }
+
   // ---------------------------------------------------------------- avisar
   function panelAvisar(e) {
     const titulo = h("input", { class: "entrada", maxlength: "120", id: "avt-" + e.id, value: "Sobre «" + e.titulo.slice(0, 80) + "»", autocomplete: "off" });
     const texto = h("textarea", { maxlength: "2000", rows: "3", id: "avx-" + e.id });
     const a = h("select", { class: "entrada", id: "ava-" + e.id }, h("option", { value: "todos" }, "Apuntados y en espera"), h("option", { value: "apuntados" }, "Solo apuntados"), h("option", { value: "espera" }, "Solo la lista de espera"));
     const f = h("form", { class: "panel", novalidate: true },
-      h("p", { class: "nota" }, "Le llega a cada familia como un aviso en el gemelo. Tope: 3 avisos de la oficina por familia y semana. El correo todavía no sale (queda registrado quién lo pidió)."),
+      h("p", { class: "nota" }, "Le llega a cada familia como un aviso en el gemelo. Tope: 3 avisos de la oficina por familia y semana. Se ve en la ficha del evento dentro del gemelo y, si la familia tiene activado el correo, también le llega por correo."),
       h("label", { class: "campo", for: "ava-" + e.id }, "A quién"), a,
       h("label", { class: "campo", for: "avt-" + e.id }, "Título"), titulo,
       h("label", { class: "campo", for: "avx-" + e.id }, "Texto (opcional; si lo dejas vacío va la fecha del evento)"), texto,
@@ -112,7 +122,7 @@ export function iniciaAgenda({ sesion }) {
       if (texto.value.trim()) cuerpo.texto = texto.value.trim();
       const r = await api("POST", "/api/admin/eventos/" + e.id + "/avisar", cuerpo);
       if (!r.ok) { aviso(r.mensaje || "No se pudo avisar.", "mal"); return; }
-      panel = null; aviso(textoDeAviso(r.datos)); pinta();
+      aviso(textoDeAviso(r.datos)); abre(e, "avisos");   // y se enseña el historial, con el aviso recién mandado
     });
     return f;
   }
