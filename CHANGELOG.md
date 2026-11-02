@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Llaves de acceso de cada cuenta en la API: `/api/yo/llaves` (lista, alta y baja) para cualquier familia o cuenta de oficina, con aviso por correo al añadir y al quitar una llave; la descarga de mis datos incluye mis llaves (sin material criptográfico). Todavía sin pantalla (OF13b-7). Probado solo en Node.
 - Oficina, Mundo (OF14 escalón 3): bloque «Salas» con las salas y su recuento, y en las visitas guiadas «Silenciar a todos» y «Cerrar la sala» con aviso previo configurable (5-60 s) y vuelta a la sala general. Sin rutas nuevas: usa las de F3f, que ya admitían a la oficina. Sin «Silenciar» por persona (la api no lo tiene). Probado solo en Node; Chrome, LiveKit real y gente, sin probar.
 - API: el enlace por correo admite 5 peticiones cada 15 minutos (antes 3), y pedirlo responde «Si ese correo tiene cuenta, te llegará un enlace» igual exista o no la cuenta (OF13b-1). Probado solo en Node; PostGIS, Chrome e iPhone sin probar.
 - Portada: «Revisa tu correo» enseña el correo escrito, con «¿No es ese? Cambiarlo» y «Si no lo ves, mira en el spam» (OF13b-1). Sin nombrar el remitente. Probado solo en Node; Chrome real, iPhone y lector de pantalla sin probar.
