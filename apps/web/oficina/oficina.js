@@ -1,7 +1,7 @@
 // La oficina (OF2): el esqueleto (navegación por secciones, cabecera con la sesión, tema), la sección Familias, (OF3) la de Hazas, (OF4) la Bandeja, (OF5) la de Sistema y (OF11) la Agenda.
 // Mismo origen; nada en línea (CSP estricta). Las secciones hechas son funcionales; las demás dicen «próximamente».
 import { $, api, fecha, fijaConfirmador, h, marcaOficinaAbierta, vacia } from "./comun.js";
-import { iniciaLlavesSistema, muestraPantallaLlave, usaLlave } from "./llave.js";
+import { iniciaLlavesSistema, leeSesionOficina, muestraPantallaEntrada, muestraPantallaLlave, usaLlave } from "./llave.js";
 import { iniciaFamilias } from "./familias.js";
 import { cuentaPendientes, iniciaBandeja } from "./bandeja.js";
 import { iniciaSistema } from "./sistema.js";
@@ -76,9 +76,12 @@ function ir(sec, foco, param = null) {
 // ------------------------------------------------------------------ sesión
 /** Lee la sesión; devuelve false si la oficina no se puede abrir todavía (OF13: falta entrar con la llave, y se enseña su pantalla). */
 async function cargaSesion() {
-  const r = await api("GET", "/api/oficina/sesion");
+  const r = await leeSesionOficina();
+  if (r.estado === 401) { muestraPantallaEntrada(); return false; }   // OF13b-8: sin sesión, «Entrar con mi llave» / «Recibir un enlace»
   if (!r.ok) { $("#pieSesion").textContent = "No se pudo leer la sesión (" + r.estado + ")."; return true; }
   const s = r.datos;
+  // OF13b-8: entrar con la llave NO aprueba un aparato nuevo (decisión 184): su página explica cómo se aprueba
+  if (s.aparato && s.aparato.estado === "pendiente") { location.replace("/api/oficina/pendiente"); return false; }
   if (muestraPantallaLlave(s.llave)) return false;
   // con la llave obligatoria, lo delicado se confirma con ella (no con un enlace por correo)
   const conLlave = !!(s.llave && s.llave.obligatoria);

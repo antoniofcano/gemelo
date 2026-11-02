@@ -168,6 +168,13 @@ servidor.on("request", (req, res) => {
       res.writeHead(200, { "content-type": TIPOS[extname(f)] ?? "application/octet-stream", "cache-control": "no-store" });
       return void res.end(readFileSync(f));
     }
+    if (ruta.startsWith("/__prueba/sin-guarda/")) {   // OF13b-8: la oficina SIN la guarda del Caddy, para ver su pantalla de entrada (no existe en producción)
+      const rel = normalize(ruta.slice("/__prueba/sin-guarda/".length) || "index.html");
+      const f = join(dist, rel.endsWith("/") ? rel + "index.html" : rel);
+      if (rel.startsWith("..") || !existsSync(f) || !statSync(f).isFile()) { res.writeHead(404); return void res.end(); }
+      res.writeHead(200, { "content-type": TIPOS[extname(f)] ?? "application/octet-stream", "content-security-policy": csp, "cache-control": "no-store" });
+      return void res.end(readFileSync(f));
+    }
     if (ruta === "/oficina") { res.writeHead(301, { location: "/oficina/" }); return void res.end(); }
     if (ruta.startsWith("/oficina/")) {
       // la guarda del Caddy: forward_auth a la api con la cookie de la petición

@@ -17,6 +17,17 @@
 </head>
 <body>
 <p class="vh" id="anuncio" role="status" aria-live="polite"></p>
+<!-- OF13b-8: sin sesión de oficina (p. ej. la sesión caducó con la página abierta): «Entrar con mi llave» y «Recibir un enlace» (llave.js) -->
+<div class="pantalla-llave" id="pEntra" hidden>
+  <main class="tarjeta" aria-labelledby="entraT">
+    <h1 id="entraT" tabindex="-1">🔑 Entrar en la oficina</h1>
+    <p id="entraTexto">Entra con la huella, la cara o el PIN de este aparato, tu teléfono o tu llave física. No hace falta escribir tu correo.</p>
+    <p id="entraP"><button class="boton prim" type="button" id="entraB">Entrar con mi llave</button></p>
+    <p class="nota" id="entraEstado" role="status" aria-live="polite"></p>
+    <p class="nota">¿Primera vez en este aparato, o no tienes llave? Recibe un enlace en tu correo.</p>
+    <p><a class="boton suave" id="entraEnlace" href="/">Recibir un enlace</a></p>
+  </main>
+</div>
 <!-- OF13: la llave de acceso. Si la sesión aún no se abrió con ella (y es obligatoria), esto es lo único que se ve (llave.js) -->
 <div class="pantalla-llave" id="pLlave" hidden>
   <main class="tarjeta" aria-labelledby="llaveT">
@@ -172,6 +183,8 @@
     <div class="tarjeta"><h3>Aparatos de oficina</h3><ul class="lista" id="sAparatos"></ul></div>
     <div class="tarjeta"><h3>Llaves de acceso</h3><p class="nota" id="sLlavesNota"></p><ul class="lista" id="sLlaves"></ul>
       <form id="fLlaveOtra" class="barra-h" novalidate><label class="campo crece">Nombre de la llave nueva <input id="sLlaveNombre" maxlength="40" autocomplete="off" placeholder="Por ejemplo: teléfono"></label><button class="boton" id="bLlaveOtra" type="submit">Añadir otra llave</button></form>
+      <p class="nota">Se crea con la huella, la cara o el PIN de este aparato (o con tu teléfono o una llave física). Para entrar sin pedir un enlace, la llave tiene que quedar guardada en el aparato: si no es así, aquí te lo diremos y podrás repetir el alta.</p>
+      <p class="nota" id="sLlaveAltaEstado" role="status" aria-live="polite"></p>
       <div id="sLlavesAdmin" hidden><h4>Todas las cuentas de oficina (admin)</h4><ul class="lista" id="sLlavesTodas"></ul></div></div>
   </div>
   <div class="tarjeta"><div class="barra-h"><h3>Auditoría</h3>

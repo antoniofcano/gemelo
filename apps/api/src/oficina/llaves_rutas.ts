@@ -90,7 +90,7 @@ export async function rutasLlaves(app: FastifyInstance, ctx: Contexto): Promise<
     }
     // aviso de seguridad por correo (decisión 187, OF13b-4): en segundo plano; un fallo del correo no tumba el alta
     if (r.avisar) await avisaLlave(req, bd, cartero, "anadida", hogar, nombre);
-    return rep.code(201).send({ id: r.id, nombre });
+    return rep.code(201).send({ id: r.id, nombre, descubrible: v.llave.descubrible });
   });
 
   // ---------------------------------------------------------------- entrada (y confirmación reciente)
@@ -131,10 +131,10 @@ export async function rutasLlaves(app: FastifyInstance, ctx: Contexto): Promise<
 
   // ---------------------------------------------------------------- gestión de las propias
   const OFICINA = [requiereRol("oficina", "admin")];
-  const listaSql = `SELECT id, hogar_id, nombre, transports, respaldada, creada_en, ultima_vez_en, revocada_en, aparato_id
+  const listaSql = `SELECT id, hogar_id, nombre, transports, respaldada, descubrible, creada_en, ultima_vez_en, revocada_en, aparato_id
                       FROM llaves_acceso WHERE hogar_id = $1 ORDER BY revocada_en IS NOT NULL, id DESC LIMIT 50`;
   const fila = (f: Record<string, unknown>, esta?: number) => ({
-    id: Number(f["id"]), nombre: f["nombre"], transports: f["transports"] ?? [], respaldada: f["respaldada"] === true,
+    id: Number(f["id"]), nombre: f["nombre"], transports: f["transports"] ?? [], respaldada: f["respaldada"] === true, descubrible: f["descubrible"] === true,
     creada_en: f["creada_en"], ultima_vez_en: f["ultima_vez_en"], revocada_en: f["revocada_en"], es_esta: esta !== undefined && Number(f["id"]) === esta,
   });
 
@@ -174,7 +174,7 @@ export async function rutasLlaves(app: FastifyInstance, ctx: Contexto): Promise<
     const cuentas = await bd.query<{ id: string; nombre_interno: string | null; rol: Rol; llave_rehabilitada_hasta: Date | null }>(
       "SELECT id, nombre_interno, rol, llave_rehabilitada_hasta FROM hogares WHERE rol::text IN ('oficina', 'admin') AND activo ORDER BY id LIMIT 100");
     const llaves = await bd.query(
-      `SELECT id, hogar_id, nombre, transports, respaldada, creada_en, ultima_vez_en, revocada_en FROM llaves_acceso
+      `SELECT id, hogar_id, nombre, transports, respaldada, descubrible, creada_en, ultima_vez_en, revocada_en FROM llaves_acceso
         WHERE hogar_id = ANY($1::bigint[]) ORDER BY revocada_en IS NOT NULL, id DESC`, [cuentas.rows.map(f => f.id)]);
     return {
       obligatoria: c.obligatoria,

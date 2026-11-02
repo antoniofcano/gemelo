@@ -1191,7 +1191,7 @@ paths:
                 nombre: { type: string, maxLength: 80, description: "nombre que le da la persona (se recorta a 40); si falta, el del aparato" }
                 respuesta: { $ref: "#/components/schemas/RespuestaWebAuthn" }
       responses:
-        "201": { description: "guardada: { id, nombre }" }
+        "201": { description: "guardada: { id, nombre, descubrible } (descubrible: sirve para entrar sin correo; false si el aparato dijo expresamente que no la dejó residente)" }
         "400": { description: "llave_no_valida (origen, RP ID, reto, firma o sin verificar a la persona); o entrada_no_valida" }
         "403": { description: "entra_con_llave; también los de SinPermiso" }
         "409": { description: "sin_reto (caducó o no se pidió), llave_repetida o demasiadas_llaves" }
@@ -1229,7 +1229,7 @@ paths:
 
   /api/oficina/llaves:
     get:
-      summary: "Las llaves de la propia cuenta (vivas y revocadas, las 50 últimas): nombre, transports, respaldada, creada, última vez, revocada; es_esta marca la de la sesión. Nunca la clave pública ni el id de credencial"
+      summary: "Las llaves de la propia cuenta (vivas y revocadas, las 50 últimas): nombre, transports, respaldada, descubrible, creada, última vez, revocada; es_esta marca la de la sesión. Nunca la clave pública ni el id de credencial"
       security: [{ sesion: [] }]
       responses:
         "200": { description: "{ obligatoria, llaves: [...] }" }
