@@ -80,7 +80,7 @@ test("lista blanca: el ejemplo del contrato valida; olivoPublico no deja pasar n
   assert.ok(valida(ejemplo), JSON.stringify(valida.errors));
   const fila = { id: 3, finca: "hituelo", copas_id: 12, nombre: "X", objeto_tipo: "foto" as const, clave: "a".repeat(32) + ".webp", ancho: 10, alto: 20, hogar_id: 99, sesion_id: 5, creada_en: new Date() };
   const pub = olivoPublico(fila);
-  assert.deepEqual(Object.keys(pub).sort(), ["copas_id", "finca", "id", "nombre", "objeto"]);
+  assert.deepEqual(Object.keys(pub).sort(), ["copas_id", "decoracion", "finca", "id", "nombre", "objeto"]);
   assert.deepEqual(pub.objeto, { tipo: "foto", url: "/api/medios/" + "a".repeat(32) + ".webp", ancho: 10, alto: 20 });
   assert.ok(valida({ haza_id: 1, es_mia: true, olivos: [pub] }));
   assert.ok(!valida({ haza_id: 1, es_mia: true, olivos: [{ ...pub, hogar_id: 99 }] }), "un campo de más no cabe en el contrato");
