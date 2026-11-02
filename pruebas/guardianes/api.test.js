@@ -215,6 +215,16 @@ test("tuberia/hazas: el ejemplo sintético se convierte a SQL idempotente", t =>
   assert.ok(!/hogar_id/.test(sql.split("INSERT INTO haza_parcela")[0].split("INSERT INTO hazas")[1] || ""), "el cargador no debe tocar hogar_id");
 });
 
+test("tuberia/hazas: los olivos medidos se cargan desde el indice.json con finca y copas_id (OF3e)", t => {
+  const py = python();
+  if (!py) return t.skip("sin Python 3: la carga de olivos desde el índice NO se ha comprobado");
+  const dep = spawnSync(py, ["-c", "import jsonschema"], { encoding: "utf8" });
+  if (dep.status !== 0) return t.skip("sin jsonschema (pip install -r tuberia/hazas/requirements.txt): NO comprobado");
+  const r = ejecuta(py, ["-P", "-E", "tuberia/hazas/prueba_olivos_indice.py"]);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /ok\s*$/);
+});
+
 test("apps/api: tipos y pruebas unitarias (sin base de datos)", { timeout: 600_000 }, t => {
   if (!HAY_DEPS) return t.skip(SIN_DEPS + ": tipos y unitarias de la api NO comprobados");
   const tsc = spawnSync(process.execPath, [path.join(API, "node_modules", "typescript", "bin", "tsc"), "--noEmit", "-p", "tsconfig.json"], { cwd: API, encoding: "utf8" });

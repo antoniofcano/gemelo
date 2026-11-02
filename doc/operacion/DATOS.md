@@ -81,6 +81,32 @@ Todo fuera del repo; las rutas van por variables, nunca escritas. Cifras de un d
 3. Montar el mundo servible: `node tuberia/tiles3d/genera.mjs --entrada <indice.json> --salida <mundo>/tileset`; `node apps/web/herramientas/genera_motor.mjs --datos <indice.json> --dest <web>` y `GEMELO_WEB_RAIZ=<web> npx vite build --outDir <mundo> --emptyOutDir false` desde `apps/web`; copiar `t/` de la exportación y la carpeta `olivos/` a `<mundo>/`.
 4. Servir `<mundo>` con un servidor estático que ponga `Content-Encoding: br` a `olivos/<huella>.br` (el de `_navegador.js` no lo hace) y abrir `index.html?olivos=gen&olivosDir=olivos/&tileset=tileset/tileset.json`; sin `olivosDir` la página no pide el manifiesto (solo lo hace con `D.base` = `/teselas/<finca>/`). Contar los bytes por petición en una entrada y un recorrido fijo.
 
+## Olivos medidos en la base, con su `copas_id` (OF3e)
+
+La personalización de las familias (`PUT /api/olivos/:finca/:copas_id`), el recuento por haza de la oficina y «Olivo real» necesitan que cada
+olivo medido esté en la tabla `olivos` con `finca` y `copas_id`. El identificador estable vive en el `indice.json` publicado de la finca
+(columna paralela `copas_id[]` de `copas[]`, [CONTRATOS §1.1](../sistema/CONTRATOS.md)); `carga_hazas.py --olivos-indice` lo lleva a la base:
+
+```
+pip install -r tuberia/hazas/requirements.txt
+python tuberia/hazas/carga_hazas.py --olivos-indice <indice.json de la finca> --salida <olivos.sql>
+psql -v ON_ERROR_STOP=1 -f <olivos.sql>        # con el dueño; en el VPS, como el paso 9 de RUNBOOK-VPS
+```
+
+- **Qué carga:** una fila por copa: `id_estable` = `finca:copas_id` (con `finca` y `copas_id` en sus columnas), posición = `centro_utm` + la
+  copa relativa (EPSG:25830), `altura_m`, `tipo` (`copas_tipo`, −1 si no hay) y `fuente = 'lidar'`. **Identidad: censo de OlivarTrack;
+  posición y altura: LiDAR (medido).** No se deduce ni se rellena nada más.
+- **Idempotente:** upsert por `id_estable`; recargar no duplica y la base congela el id (migración 0004). Un índice **sin `copas_id`** falla con
+  mensaje claro (no se inventan ids): hay que regenerarlo con la tubería (`tuberia/ids_copas.py`). También falla con ids repetidos, fuera de
+  [0, 2³²) o con otra longitud que `copas`.
+- **Haza de cada olivo:** no se guarda; la da la geometría (`ST_Intersects` con la haza), la misma regla del recuento de la oficina
+  (`apps/api/src/admin/hazas.ts`) y de «es tu haza» (`vida/rutas.ts`). Cargar las hazas (`--hazas`) y los olivos son pasos independientes y de
+  cualquier orden; `--olivos-indice` no se combina con `--olivos`.
+- **Comprobado:** `python -P -E tuberia/hazas/prueba_olivos_indice.py` (guardián `api`): parseo, idempotencia del SQL y errores, sobre un índice
+  mínimo y el fixture sintético. La carga contra PostGIS (`apps/api/pruebas/integracion/olivos_indice.test.ts`) está escrita y **no se ha ejecutado**
+  (necesita Docker). **No ejecutado con datos reales ni contra el VPS.**
+- **Contra el VPS, solo con la OK de Antonio** (regla 9 de CLAUDE.md); el `.sql` contiene datos de la explotación: fuera del repo y `shred -u` al acabar.
+
 ## Contorno de la finca (OF3b y OF3c, decisiones 140 y 143)
 
 El contorno de una finca es la **unión de sus parcelas** y limita el editor de hazas de la oficina (migración 0011, tabla `fincas_contorno`;

@@ -52,13 +52,7 @@ def hazas_y_olivos(indice):
                     "ndvi_fuente": "Sentinel-2 (Copernicus), sintético",
                 },
             })
-    ids = indice.get("copas_id") or list(range(len(indice["copas"])))
-    tipos = indice.get("copas_tipo") or [-1] * len(indice["copas"])
-    olivos = [{
-        "type": "Feature",
-        "geometry": {"type": "Point", "coordinates": [round(cx + c[0], 2), round(cy + c[1], 2)]},
-        "properties": {"id_estable": "%s:%s" % (finca, ids[i]), "fuente": "lidar", "tipo": int(tipos[i]), "altura_m": c[2]},
-    } for i, c in enumerate(indice["copas"])]
+    olivos = carga_hazas.olivos_desde_indice(indice, exige_ids=False)["features"]
     col = lambda fs: {"type": "FeatureCollection", "srs": carga_hazas.SRS, "sintetico": True, "features": fs}  # noqa: E731
     return col(hazas), col(olivos)
 
