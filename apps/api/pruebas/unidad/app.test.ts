@@ -23,7 +23,7 @@ after(async () => { await app.close(); await bd.end(); });
 
 test("todo POST/PUT/DELETE sin Origin o con otro Origin se rechaza (403), antes de leer el cuerpo", async () => {
   for (const [method, url] of [["POST", "/api/auth/enlace"], ["POST", "/api/sesion/salir"], ["PUT", "/api/yo/alias"], ["DELETE", "/api/yo"], ["POST", "/api/admin/hogares"],
-    ["POST", "/api/auth/vincula"], ["POST", "/api/auth/vincula/sondeo"], ["POST", "/api/yo/dispositivos/vincular"], ["PUT", "/api/yo/normas"]] as const) {
+    ["POST", "/api/auth/vincula"], ["POST", "/api/auth/vincula/sondeo"], ["POST", "/api/yo/dispositivos/vincular"], ["PUT", "/api/yo/normas"], ["PUT", "/api/yo/avisos"]] as const) {
     const sin = await app.inject({ method, url, headers: { "x-forwarded-proto": "https" }, payload: {} });
     assert.equal(sin.statusCode, 403, method + " " + url + " sin Origin");
     const otro = await app.inject({ method, url, headers: deLaWeb({ origin: "https://malo.example.net" }), payload: {} });
@@ -79,6 +79,15 @@ test("código corto: aprobar y aceptar normas piden sesión; un sondeo mal forma
   }
   const mas = await app.inject({ method: "POST", url: "/api/auth/vincula", headers: deLaWeb(), payload: { hogar: 1 } });
   assert.equal(mas.statusCode, 400, "pedir un código no admite campos");
+});
+
+test("OF11f: el interruptor de avisos pide sesión y su cuerpo es estricto (400 antes de tocar la base)", async () => {
+  assert.equal((await app.inject({ method: "GET", url: "/api/yo/avisos", headers: deLaWeb() })).statusCode, 401);
+  assert.equal((await app.inject({ method: "PUT", url: "/api/yo/avisos", headers: deLaWeb(), payload: { avisos_correo: true } })).statusCode, 401);
+  for (const payload of [{}, { avisos_correo: "si" }, { avisos_correo: 1 }, { avisos_correo: null }, { avisos_correo: true, hogar: 2 }]) {
+    const r = await app.inject({ method: "PUT", url: "/api/yo/avisos", headers: deLaWeb(), payload });
+    assert.equal(r.statusCode, 400, JSON.stringify(payload));
+  }
 });
 
 test("una cookie de sesión con firma falsa no abre nada", async () => {

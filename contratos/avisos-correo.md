@@ -27,6 +27,13 @@ Asunto = título del aviso. Cuerpo = título, texto y enlace al gemelo (los del 
 recibirlos. Texto llano y HTML sencillo, sin imágenes remotas ni seguimiento. **Nunca datos de otras familias**: el mensaje solo se construye con el aviso y el
 correo del propio destinatario.
 
+## El interruptor (OF11f)
+
+`hogares.avisos_correo` ya no se elige solo en el primer acceso: `GET /api/yo/avisos` → `{ avisos_correo: boolean }` y `PUT /api/yo/avisos { avisos_correo: boolean }`
+(cuerpo estricto; responde `200` con el valor guardado). Piden sesión (la de cualquier hogar, también la de un aparato vinculado); el hogar sale de la sesión, no
+de la petición, así que nadie cambia el de otro. Auditoría `hogar.avisos_correo { avisos_correo }` (sin el correo). El gemelo lo enseña como casilla «Avisarme por
+correo de los eventos» en Configuración y la oficina lo ve, de solo lectura, en la ficha de la familia (`GET /api/admin/hogares`).
+
 ## Baja con un clic
 
 Enlace firmado `…/api/avisos/baja?t=<hogar>.<hmac>` (HMAC-SHA256 del id con el secreto de sesión, 32 caracteres base64url; no caduca y solo sirve para esto) y

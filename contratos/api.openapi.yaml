@@ -414,6 +414,28 @@ paths:
         "401": { $ref: "#/components/responses/SinSesion" }
         "409": { description: "la versión no es la vigente (las normas cambiaron mientras se leían)" }
 
+  /api/yo/avisos:
+    get:
+      summary: "OF11f: si el hogar de la sesión quiere avisos por correo (hogares.avisos_correo)"
+      security: [{ sesion: [] }]
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { type: object, additionalProperties: false, required: [avisos_correo], properties: { avisos_correo: { type: boolean } } } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "404": { description: el hogar ya no existe }
+    put:
+      summary: "OF11f: el hogar de la sesión activa o desactiva los avisos por correo (solo el suyo; auditoría hogar.avisos_correo sin el correo)"
+      security: [{ sesion: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [avisos_correo], properties: { avisos_correo: { type: boolean } } }
+      responses:
+        "200": { description: "guardado; devuelve el valor", content: { application/json: { schema: { type: object, additionalProperties: false, required: [avisos_correo], properties: { avisos_correo: { type: boolean } } } } } }
+        "400": { description: "el cuerpo no es { avisos_correo: boolean }" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "404": { description: el hogar ya no existe }
+
   /api/yo/dispositivos/vincular:
     post:
       summary: "Configuración → Mis dispositivos → Vincular: aprueba (o rechaza) el código que enseñan unas gafas"
