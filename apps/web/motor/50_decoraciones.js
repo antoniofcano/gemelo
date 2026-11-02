@@ -1,5 +1,5 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: (nada al resto de módulos)
+// Expone: DecoracionesPuro
 // Consume: 01_datos (D, $, ALTO, FACTOR_R8, FACTOR_R8_GEN), 02_mundo (suelo, copas), 02b_cola (Cola),
 //   02c_componentes (Bus, ConfigPuro, Componentes), 02e_entidades (Entidades), 03_escena (scene, camera, exag), 06_arboles (radioEn),
 //   07ab_generados (Generados), 09_camara (objetivo, camara, suelta, elige), 12_paseo (paseando, primera), 14_historia (lista), 15_tiempo (hace),
@@ -64,6 +64,20 @@
         { g: "Octahedron", a: [0.04, 0], p: [0.03, -0.1, 0], color: "#9e0b22" }] }
     };
     function pieza(id) { return typeof id === "string" && POR_ID.hasOwnProperty(id) ? POR_ID[id] : null; }
+    // P7g D4: la época de la fiesta, la MISMA regla que epocaDeLaFecha de la api (apps/api/src/vida/decoraciones.ts): la estación astronómica del día en hora de
+    // Madrid, con fechas fijas (primavera 21-mar a 20-jun; verano 21-jun a 22-sep; otoño 23-sep a 20-dic; invierno 21-dic a 20-mar). Es la época del catálogo, no la
+    // fenología del olivo. Pura: el guardián la compara con la de la api en los días límite. Quien manda es la api (fuera_de_epoca); esto solo decide qué se ofrece.
+    var PARTES_MADRID = typeof Intl !== "undefined" ? new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid", month: "numeric", day: "numeric" }) : null;
+    function epocaDeLaFecha(fecha) {
+      var p = PARTES_MADRID.formatToParts(fecha), mes = 0, dia = 0;
+      p.forEach(function (x) { if (x.type === "month") mes = Number(x.value); else if (x.type === "day") dia = Number(x.value); });
+      var mmdd = mes * 100 + dia;
+      if (mmdd >= 321 && mmdd <= 620) return "primavera";
+      if (mmdd >= 621 && mmdd <= 922) return "verano";
+      if (mmdd >= 923 && mmdd <= 1220) return "otono";
+      return "invierno";
+    }
+    function piezasDeLaEpoca(epoca) { return CATALOGO.filter(function (p) { return p.epoca === epoca; }); }
     function clave(finca, copas) { return finca + ":" + copas; }
     // la lista que publica la personalización ([{ finca, copas_id, pieza, mia }]) → solo lo que vale y se conoce, sin repetir olivo (gana el primero), en orden
     // de clave (estable: la misma lista da siempre el mismo orden). Un código que no está en el catálogo se ignora (contratos/olivos-haza.schema.json).
@@ -126,7 +140,7 @@
       return { k: "Decoración", v: p.nombre, de: "ilustrativa: la eligió " + (item.mia ? "tu familia" : "la familia de esa haza") + "; no la mide el gemelo" };
     }
     return { MAX: MAX, CERCA_M: CERCA_M, REESCRIBE_S: REESCRIBE_S, MUEVE_M: MUEVE_M, MAX_TRI: MAX_TRI, CATALOGO: CATALOGO, FORMAS: FORMAS,
-      pieza: pieza, clave: clave, indexa: indexa, azar: azar, coloca: coloca, foco: foco, eligeCercanas: eligeCercanas, reparte: reparte, seMovio: seMovio, coste: coste, fila: fila };
+      pieza: pieza, epocaDeLaFecha: epocaDeLaFecha, piezasDeLaEpoca: piezasDeLaEpoca, clave: clave, indexa: indexa, azar: azar, coloca: coloca, foco: foco, eligeCercanas: eligeCercanas, reparte: reparte, seMovio: seMovio, coste: coste, fila: fila };
   })();
   // [puro:fin]
 
