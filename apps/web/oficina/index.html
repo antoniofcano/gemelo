@@ -178,8 +178,9 @@
         <label class="campo en-fila" for="sFluDesde">Desde <input class="entrada" type="date" id="sFluDesde"></label>
         <label class="campo en-fila" for="sFluHasta">Hasta <input class="entrada" type="date" id="sFluHasta"></label>
       </div>
-      <div class="tabla-env"><table aria-describedby="sFluNota"><thead><tr><th scope="col">Día</th><th scope="col">Aparato</th><th scope="col">Medidas</th><th scope="col">p95 (mediano del día)</th><th scope="col">Objetivo</th><th scope="col">Contra el objetivo</th><th scope="col">Mediana</th><th scope="col">Peor</th><th scope="col">Navegadores</th><th scope="col">Versión</th></tr></thead><tbody id="sFlu"></tbody></table></div>
-      <p class="nota" id="sFluNota"></p></div>
+      <div class="tabla-env"><table aria-describedby="sFluNota"><thead><tr><th scope="col">Día</th><th scope="col">Aparato</th><th scope="col">Medidas</th><th scope="col">p95 (mediano del día)</th><th scope="col">Objetivo</th><th scope="col">Contra el objetivo</th><th scope="col">Mediana</th><th scope="col">Peor</th><th scope="col">JS (mediana / p95)</th><th scope="col">Nivel (ini → fin)</th><th scope="col">Perillas</th><th scope="col">Olivos generados</th><th scope="col">Navegadores</th><th scope="col">Versión</th></tr></thead><tbody id="sFlu"></tbody></table></div>
+      <p class="nota" id="sFluNota"></p>
+      <p class="nota" id="sFluLectura"></p></div>
     <div class="tarjeta"><h3>Aparatos de oficina</h3><ul class="lista" id="sAparatos"></ul></div>
     <div class="tarjeta"><h3>Llaves de acceso</h3><p class="nota" id="sLlavesNota"></p><ul class="lista" id="sLlaves"></ul>
       <form id="fLlaveOtra" class="barra-h" novalidate><label class="campo crece">Nombre de la llave nueva <input id="sLlaveNombre" maxlength="40" autocomplete="off" placeholder="Por ejemplo: teléfono"></label><button class="boton" id="bLlaveOtra" type="submit">Añadir otra llave</button></form>

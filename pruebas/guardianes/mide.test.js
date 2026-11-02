@@ -87,9 +87,9 @@ test("PB9: el cuerpo del envío cumple el esquema estricto del contrato y no lle
   const esquema = JSON.parse(lee("contratos/medidas.schema.json"));
   const c = E.cuerpoEnvio(medidaVR("VR", 400), { ua: UA_QUEST, finca: "hituelo", modo: "nube", version: "0.2.0" });
   assert.ok(c, "una medida buena da cuerpo");
-  assert.deepStrictEqual(Object.keys(c).sort(), Object.keys(esquema.properties).sort(), "ni un campo de más ni de menos");
+  assert.ok(esquema.required.every(k => k in c) && Object.keys(c).every(k => k in esquema.properties), "los obligatorios, y ningún campo fuera del contrato");
   for (const [k, p] of Object.entries(esquema.properties)) {
-    const v = c[k];
+    const v = c[k]; if (v === undefined && !esquema.required.includes(k)) continue;   // Q0e: los opcionales que no se midieron no viajan
     if (p.type === "string") { assert.strictEqual(typeof v, "string", k); if (p.enum) assert.ok(p.enum.includes(v), k); if (p.pattern) assert.ok(new RegExp(p.pattern).test(v), k + " = " + v); }
     else if (p.type === "integer") { assert.ok(Number.isInteger(v), k); assert.ok(v >= p.minimum && v <= p.maximum, k + " = " + v); }
     else if (p.type === "number") { assert.ok(Number.isFinite(v) && v >= p.minimum && v <= p.maximum, k); }
@@ -100,6 +100,67 @@ test("PB9: el cuerpo del envío cumple el esquema estricto del contrato y no lle
   assert.ok(!/Mozilla|X11|Linux|Samsung|@/.test(JSON.stringify(c)), "ni el agente de usuario entero ni nada personal: " + JSON.stringify(c));
   const p = E.cuerpoEnvio(medidaVR("pantalla", 400), { ua: UA_PC, finca: "cerro", modo: "ortofoto", version: "0.2.0" });
   assert.deepStrictEqual([p.aparato, p.vr, p.perfil], ["escritorio", false, -1], "en pantalla no hay perfil de VR");
+});
+
+// Q0e: por qué va como va (contrato v2, contratos/medidas.md): ms de JS, niveles, perillas, olivos generados, llamadas, triángulos y personas; todo opcional
+function conDibujo(modo, n, extra) {   // como medidaVR pero con las series de llamadas y triángulos por fotograma
+  const m = serie(Array.from({ length: n }, (_, i) => 10 + (i % 5)), 3, 0.05);
+  m.ll = m.ms.map((_, i) => 200 + (i % 3)); m.tr = m.ms.map((_, i) => 400000 + 1000 * (i % 3));
+  return medidaVR(modo, n, Object.assign({ est: E.calcula(m, 3, 60), perillas: "VR: fov 1 · escala 0,9 · 72 Hz · MSAA sí · nivel auto", olivosGen: true, personas: 3 }, extra || {}));
+}
+test("Q0e: el cuerpo lleva ms de JS (mediana y p95), niveles, perillas, olivos generados, llamadas, triángulos y personas, y cumple el esquema", () => {
+  const esquema = JSON.parse(lee("contratos/medidas.schema.json"));
+  const med = conDibujo("VR", 400);
+  const c = E.cuerpoEnvio(med, { ua: UA_QUEST, finca: "hituelo", modo: "gemelo", version: "0.2.0" });
+  assert.deepStrictEqual([c.js_mediana_ms, c.js_p95_ms], [Math.round(med.est.js.mediana * 100) / 100, Math.round(med.est.js.p95 * 100) / 100], "el mismo método que el intervalo (serie: mediana y p95 por rango más próximo)");
+  assert.ok(c.js_mediana_ms > 0 && c.js_mediana_ms <= c.js_p95_ms);
+  assert.deepStrictEqual([c.nivel_ini, c.nivel_fin, c.perfil], [0, 2, 2], "perfil = el nivel final");
+  assert.strictEqual(c.perillas, "fov 1 · escala 0,9 · 72 Hz · MSAA sí · nivel auto", "sin el prefijo «VR: »");
+  assert.deepStrictEqual([c.olivos_gen, c.llamadas_med, c.triangulos_med, c.personas], [true, 201, 401000, 3]);
+  for (const [k, p] of Object.entries(esquema.properties)) {
+    const v = c[k];
+    if (v === undefined) { assert.ok(!esquema.required.includes(k), k + " falta"); continue; }
+    if (p.type === "string" && p.pattern) assert.ok(new RegExp(p.pattern).test(v), k + " = " + v);
+    if (p.type === "integer") assert.ok(Number.isInteger(v) && v >= p.minimum && v <= p.maximum, k + " = " + v);
+    if (p.type === "number") assert.ok(Number.isFinite(v) && v >= p.minimum && v <= p.maximum, k);
+    if (p.type === "boolean") assert.strictEqual(typeof v, "boolean", k);
+  }
+  assert.deepStrictEqual(Object.keys(c).filter(k => !(k in esquema.properties)), [], "ningún campo fuera del contrato");
+});
+test("Q0e: en pantalla no hay nivel ni perillas; lo que no se midió no viaja (una medida de antes sigue dando el cuerpo de la v1)", () => {
+  const p = E.cuerpoEnvio(conDibujo("pantalla", 400), { ua: UA_PC, finca: "cerro", modo: "ortofoto", version: "0.2.0" });
+  for (const k of ["nivel_ini", "nivel_fin", "perillas"]) assert.ok(!(k in p), k + " solo en VR");
+  assert.deepStrictEqual([p.olivos_gen, p.personas, p.llamadas_med > 0, p.js_p95_ms > 0], [true, 3, true, true]);
+  const viejo = medidaVR("VR", 400);   // sin ll, tr, olivosGen, personas, perillas
+  const v1 = E.cuerpoEnvio(viejo, { ua: UA_QUEST, finca: "hituelo", modo: "nube", version: "0.2.0" });
+  for (const k of ["llamadas_med", "triangulos_med", "olivos_gen", "personas", "perillas"]) assert.ok(!(k in v1), k + " no se inventa");
+  assert.ok("js_mediana_ms" in v1 && "nivel_fin" in v1, "el JS y los niveles sí estaban");
+  assert.strictEqual(E.cuerpoEnvio(conDibujo("VR", 400, { personas: 9999 }), { ua: UA_QUEST, finca: "f", modo: "m", version: "1" }).personas, 500, "acotado");
+  assert.strictEqual(E.cuerpoEnvio(conDibujo("VR", 400, { personas: 0 }), { ua: UA_QUEST, finca: "f", modo: "m", version: "1" }).personas, 0, "0 si no hay presencia");
+});
+test("Q0e: las perillas se sanean (sin HTML, rutas ni exceso de largo) y nunca pasan de 80 caracteres", () => {
+  assert.strictEqual(E.perillasLimpias("VR: fov 1 · escala 1 · 72 Hz · MSAA sí · nivel 2 fijo"), "fov 1 · escala 1 · 72 Hz · MSAA sí · nivel 2 fijo");
+  const sucio = E.perillasLimpias("VR: <script>alert(1)</script> /etc/passwd http://x.example a@b.es");
+  assert.ok(!/[<>/@]/.test(sucio), sucio);
+  const largo = E.perillasLimpias("VR: " + "fov 1 · ".repeat(40));
+  assert.ok(largo.length <= 80 && largo.length > 0, String(largo.length));
+  assert.strictEqual(E.perillasLimpias(""), null); assert.strictEqual(E.perillasLimpias("<>"), null); assert.strictEqual(E.perillasLimpias(null), null);
+  assert.strictEqual(E.perillasLimpias("VR: ignorado: fov=9 (fuera de rango)"), "ignorado: fov=9 (fuera de rango)");
+});
+test("Q0e: el informe de ?mide muestra JS, llamadas, triángulos, olivos generados y personas, y la tarjeta de VR sigue cabiendo", () => {
+  const r = conDibujo("VR", 400);
+  const tx = E.texto(r);
+  for (const s of ["JS por fotograma (ms): mediana", "Por fotograma (mediana): 201 llamadas · 401000 triángulos · olivos generados sí · personas 3", "VR: fov 1"]) assert.ok(tx.includes(s), "falta «" + s + "» en:\n" + tx);
+  assert.ok(E.lineas(r, true).length <= 14, "la tarjeta de VR debe caber en el panel: " + E.lineas(r, true).length);
+  assert.ok(!E.texto(medidaVR("VR", 400)).includes("Por fotograma (mediana)"), "una medida de antes no inventa la línea");
+  assert.strictEqual(E.calcula({ t: [3, 3.1], ms: [10, 10], js: [1, 2] }, 3, 10).ll, null, "sin ll ni tr no hay serie");
+});
+test("Q0e: el medidor recoge llamadas y triángulos de renderer.info.render y el botón enseña lo que se manda; de la presencia solo sale un número", () => {
+  assert.ok(/renderer\.info\.render/.test(FUENTE) && /m\.ll\.push\(/.test(FUENTE) && /m\.tr\.push\(/.test(FUENTE));
+  assert.ok(/window\.__olivosGen/.test(FUENTE) && /window\.__presencia/.test(FUENTE));
+  assert.ok(/b3\.title = "Manda a la oficina solo cifras[^"]*olivos generados[^"]*personas[^"]*Nada de tu hogar, tu posición ni tu IP\."/.test(FUENTE), "el texto del botón enseña lo que se manda y lo que no");
+  const i = FUENTE.indexOf("function personasVisibles");
+  assert.ok(!/identidad|alias|\.id\b/.test(FUENTE.slice(i, i + 260)), "de la presencia solo sale un número");
 });
 
 test("PB9: lo raro no sale: pocas muestras, valores que no cuadran con el patrón se sustituyen por «desconocid@» y nunca se cuelan campos", () => {

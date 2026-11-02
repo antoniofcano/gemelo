@@ -83,6 +83,30 @@ test("PB9, «Fluidez en aparatos»: tarjeta con sus controles, ruta del contrato
   assert.strictEqual(P.celdasFluidez({ ...quest, aparato: "movil", vr: false, medidas: 1, objetivo_p95_ms: null }).objetivo, "—");
 });
 
+test("Q0e, «Fluidez en aparatos» dice por qué: columnas JS, Nivel, Perillas y Olivos generados; celdas con campos nuevos y ausentes; frase de lectura; todo con textContent", async () => {
+  const sec = /<section id="s-sistema"[\s\S]*?<\/section>/.exec(html)[0];
+  for (const th of ["JS (mediana / p95)", "Nivel (ini → fin)", "Perillas", "Olivos generados"]) assert.ok(sec.includes('<th scope="col">' + th + "</th>"), th);
+  assert.ok(sec.includes('id="sFluLectura"'));
+  const P = await import(pathToFileURL(path.join(RAIZ, "apps", "web", "oficina", "sistema_puro.js")).href);
+  assert.strictEqual(P.LECTURA_FLUIDEZ, "Si el JS pasa de 13 ms, manda la CPU; si no, mira la GPU (resolución, triángulos, teselas).");
+  assert.match(js, /\$\("#sFluLectura"\)\.textContent = LECTURA_FLUIDEZ/);
+  assert.ok(!/innerHTML|insertAdjacentHTML/.test(js.slice(js.indexOf("async function cargaFluidez"), js.indexOf("// ---------------------------------------------------------------- aparatos de oficina"))), "la tabla se pinta con h() y textContent, sin HTML a mano");
+  const nueva = { dia: "2026-11-02", aparato: "quest", vr: true, medidas: 3, p95_mediano_ms: 20.7, p95_peor_ms: 22, mediana_ms: 14.3, peor_ms: 47.7, navegadores: ["Quest Browser 154"], versiones: ["0.2.0"], objetivo_p95_ms: 13.9,
+    js_mediana_ms: 6.8, js_p95_ms: 11.2, nivel_ini: 3, nivel_fin: 3, perillas: "fov 1 · escala 0,9 · 72 Hz · MSAA sí · nivel auto", olivos_gen_si: 3, olivos_gen_de: 3, llamadas_med: 212, triangulos_med: 410000, personas: 0 };
+  const c = P.celdasFluidez(nueva);
+  assert.deepStrictEqual([c.js, c.nivel, c.perillas, c.olivosGen], ["6,8 / 11,2 ms", "3 → 3", "fov 1 · escala 0,9 · 72 Hz · MSAA sí · nivel auto", "sí"]);
+  assert.strictEqual(P.mandaLaCpu(nueva), false, "11,2 ms de JS: no manda la CPU, mira la GPU"); assert.strictEqual(P.mandaLaCpu({ js_p95_ms: 13.4 }), true); assert.strictEqual(P.mandaLaCpu({}), null);
+  assert.strictEqual(P.textoOlivosGen({ olivos_gen_si: 0, olivos_gen_de: 2 }), "no"); assert.strictEqual(P.textoOlivosGen({ olivos_gen_si: 2, olivos_gen_de: 3 }), "mixto (2 de 3)");
+  assert.strictEqual(P.textoNivel({ nivel_ini: -1, nivel_fin: -1 }), "— → —", "-1 = no es VR");
+  // una fila de antes (sin nada de lo nuevo, o con nulls de la api) sigue pintándose
+  for (const vieja of [{ ...nueva, js_mediana_ms: undefined, js_p95_ms: undefined, nivel_ini: undefined, nivel_fin: undefined, perillas: undefined, olivos_gen_si: undefined, olivos_gen_de: undefined },
+    { ...nueva, js_mediana_ms: null, js_p95_ms: null, nivel_ini: null, nivel_fin: null, perillas: null, olivos_gen_si: 0, olivos_gen_de: 0 }]) {
+    const v = P.celdasFluidez(vieja);
+    assert.deepStrictEqual([v.js, v.nivel, v.perillas, v.olivosGen], ["—", "—", "—", "—"]);
+  }
+  assert.strictEqual(P.celdasFluidez({ ...nueva, perillas: "<b>x</b>" }).perillas, "<b>x</b>", "la celda trae el texto tal cual y se pinta con textContent: no se interpreta como HTML");
+});
+
 // ——— recorrido en Chrome (opcional) ———
 const SALTO = process.env.GEMELO_DOCKER !== "1" ? "recorrido de Docker + Chrome opcional (GEMELO_DOCKER=1): la sección Sistema de la oficina contra la api real NO se ha comprobado" : null;
 
