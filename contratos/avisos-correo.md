@@ -1,13 +1,26 @@
 # Correo de los avisos y `.ics` de la Agenda (OF11c)
 
 Contrato entre la api, la base y el cartero. Código: `apps/api/src/avisos/correo.ts` (repartidor, mensaje, baja), `apps/api/src/agenda/ics.ts` (invitación),
-`apps/api/src/auth/correo.ts` (el cartero, el mismo del enlace mágico: nodemailer; en local, Mailpit). Migración `0016_correo_avisos.sql`.
+`apps/api/src/auth/correo.ts` (el cartero, el mismo del enlace mágico: nodemailer; en local, Mailpit). Migraciones `0016_correo_avisos.sql` y `0019_avisos_de_evento_en_el_mundo.sql`.
 
 ## Qué sale por correo
 
 Cada fila de `avisos_hogar` (la campana del gemelo) de un hogar activo con `hogares.avisos_correo` y `correo_enviado_en` NULL. Salen: los avisos de la oficina
 (`/api/admin/eventos/:id/avisar`, la bandeja), los del sistema de la Agenda (promoción desde la espera, cambio de fecha o lugar, cancelación) y la
 confirmación de inscripción (solo si el hogar quedó **apuntado** y pidió los avisos). Los hogares sin `avisos_correo` solo los ven en la campana.
+
+## El aviso también se ve en el mundo (OF11g)
+
+El correo es una vía; la otra es el propio gemelo. El aviso **se guarda siempre**, aunque el hogar tenga `avisos_correo` en «no», y queda **ligado a su evento**
+(`avisos.evento_id`; los de «Avisar…» de la oficina lo llevan desde la 0019, que además rescata los anteriores con la auditoría `admin.evento_avisado`; `ics` queda
+NULL: ese aviso no lleva invitación). La lectura por hogar es `avisos_hogar.leido_en`.
+
+- `GET /api/avisos` (sesión): los avisos de eventos **entregados a este hogar** (el hogar sale de la sesión), más nuevos primero, máx. 50:
+  `{ avisos: [{ id, evento_id, evento (título), titulo, texto, fecha, leido }], sin_leer }`. Texto llano; el cliente lo pinta con `textContent`.
+- `POST /api/avisos/:id/leido` (sesión, con Origin, cuerpo vacío o `{}`): marca como leído solo lo suyo; idempotente (204); 404 si no es de ese hogar o no existe;
+  auditoría `avisos.leido` la primera vez. No manda correo.
+- `GET /api/admin/eventos/:id/avisos` (oficina): historial del evento con agregados (`destinatarios`, `leidos`, `correos_enviados`); nunca qué familia lo leyó.
+- Código: `apps/api/src/avisos/rutas.ts`, `apps/api/src/agenda/rutas.ts` (`avisaA`). Mundo: componente `agenda` (`apps/web/motor/43_agenda.js`).
 
 ## Cómo sale
 
