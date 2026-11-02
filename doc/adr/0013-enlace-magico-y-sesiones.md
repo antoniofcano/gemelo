@@ -23,3 +23,6 @@ Se entra con un **enlace mágico** de un solo uso (token de 256 bits guardado co
 
 ## Comprobación
 `apps/api/pruebas/integracion/api.test.ts` (contra PostGIS en contenedor): hash en base, un solo uso y canje concurrente, caducidad, rotación, revocación, límites con el mismo texto, cookie con sus atributos, registros sin tokens, cookies ni correos. Guardián `api.test.js` (integración con `GEMELO_DOCKER=1`). **No probado:** el envío real por el SMTP de OVH, el comportamiento de escáneres de correo reales, el borde real.
+
+## Enmienda 2026-11-02
+[ADR-0029](0029-llaves-de-acceso-para-todos.md) (Propuesto, decisión 174) propone que todas las cuentas entren con una llave de acceso y que el enlace mágico quede para el alta y la recuperación; el texto de pedir enlace pasaría a «Si ese correo tiene cuenta, te llegará un enlace». Mientras no se acepte, este ADR sigue vigente entero; si se acepta, sigue vigente todo lo del enlace (token, página intermedia, límites, misma respuesta exista o no la cuenta) y la sesión, con un origen más (`llave`).
