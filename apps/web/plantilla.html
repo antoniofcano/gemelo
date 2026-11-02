@@ -382,7 +382,7 @@ kbd { font-family: ui-monospace, Menlo, monospace; font-size: 12px; border: 1px 
           <div><dt>Altura mediana</dt><dd id="kAlt">–</dd></div>
           <div><dt>Desfase medio</dt><dd id="kDes">–</dd></div>
         </dl>
-        <p class="nota" style="margin-top:8px">Los puntos guardados caen entre 1,5 y 2 m al este de las copas del LiDAR en las cinco parcelas, porque se marcaron sobre la ortofoto, que muestra las copas desplazadas según su altura. El LiDAR está bien georreferenciado.</p>
+        <p class="nota" id="notaDesfase" style="margin-top:8px">Los puntos guardados caen entre 1,5 y 2 m al este de las copas del LiDAR en las cinco parcelas, porque se marcaron sobre la ortofoto, que muestra las copas desplazadas según su altura. El LiDAR está bien georreferenciado.</p>
         <h3 id="suelo">Suelo · SoilGrids <span class="pill p-modelo">modelo</span></h3>
         <div id="sueloCuerpo"></div>
       </div>
@@ -391,7 +391,7 @@ kbd { font-family: ui-monospace, Menlo, monospace; font-size: 12px; border: 1px 
     <section class="ventana" id="ventanaCapas" role="dialog" aria-modal="false" aria-labelledby="ventanaCapasT" hidden>
       <header><h2 id="ventanaCapasT" tabindex="-1">Capas y vista</h2><button type="button" class="cerrar" data-cierra aria-label="Cerrar">×</button></header>
       <div class="cuerpo">
-        <h3>Cómo se dibuja</h3>
+        <h3 id="tModo">Cómo se dibuja</h3>
         <div class="modo tres" role="group" aria-label="Modo de vista">
           <button type="button" id="mNube" aria-pressed="true">Nube LiDAR</button>
           <button type="button" id="mGem" aria-pressed="false">Gemelo</button>
