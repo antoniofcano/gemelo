@@ -151,6 +151,10 @@ tiene "$r" "^HTTP/1.1 404" && ok "/api/interno cerrado desde fuera" || mal "/api
 r=$(pide "/api/auth/entrar?t=SECRETO-DEL-ENLACE" -H "Cookie: __Host-gemelo=SECRETO-DE-COOKIE" -H "Authorization: Bearer SECRETO-DE-CABECERA")
 tiene "$r" "^HTTP/1.1 200" && ok "/api pasa a la api" || mal "/api no llega a la api: $(head -1 <<<"$r")"
 
+# la cookie del reto de la llave (OF13b-5) y la del aparato tampoco llegan al registro (el filtro borra la cabecera Cookie entera)
+r=$(pide /api/auth/llave -H "Cookie: __Host-gemelo-reto=SECRETO-DEL-RETO; __Host-gemelo-aparato=SECRETO-DEL-APARATO")
+tiene "$r" "^HTTP/1.1 200" && ok "/api/auth/llave llega a la api" || mal "/api/auth/llave no llega a la api: $(head -1 <<<"$r")"
+
 r=$(pide "/api/avisos/baja?t=SECRETO-DE-BAJA")
 tiene "$r" "^HTTP/1.1 200" && ok "/api/avisos/baja llega a la api sin sesión" || mal "/api/avisos/baja sin sesión: $(head -1 <<<"$r")"
 # LiveKit no existe aquí: 502, y lo que se mira es que el token de la URL no llegue al registro
@@ -179,7 +183,7 @@ c=$(sube "$BORDE:8081" /api/sesion 0.9); [ "$c" = 200 ] && ok "borde: 0,9 MB al 
 echo "== registros sin credenciales"
 sleep 1
 registro=$(docker logs "$WEB" 2>&1)
-for s in SECRETO-DEL-ENLACE SECRETO-DE-BAJA SECRETO-DE-LIVEKIT SECRETO-DE-COOKIE SECRETO-DE-CABECERA SECRETO-DE-RESPUESTA; do
+for s in SECRETO-DEL-ENLACE SECRETO-DE-BAJA SECRETO-DE-LIVEKIT SECRETO-DE-COOKIE SECRETO-DE-CABECERA SECRETO-DE-RESPUESTA SECRETO-DEL-RETO SECRETO-DEL-APARATO; do
   grep -q "$s" <<<"$registro" && mal "el registro contiene $s" || ok "el registro no contiene $s"
 done
 grep -q '"uri":"/api/auth/entrar?t=REDACTADO"' <<<"$registro" && ok "el token del enlace sale como REDACTADO" || mal "no veo la URI con el token redactado"

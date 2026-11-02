@@ -14,6 +14,9 @@
 //    oficina o admin) valen, pero como VISITANTE: rol efectivo `hogar`, sin nada de oficina (ni aparato, ni llave, ni confirmación),
 //    con la vida de una sesión de oficina (12 h desde que nació) y la inactividad más corta de las dos (hoy, la de la oficina). El rol
 //    de la cuenta NUNCA sale de aquí para esa sesión: las guardas y el token de LiveKit leen `req.session.rol`, que ya es el efectivo.
+//  - OF13b-5 (ADR-0029): una sesión abierta con una LLAVE sin correo (`origen = 'llave'`) es de titular, como la del enlace, y solo vale
+//    mientras esa llave siga viva (`llave_id` de una llave no revocada de la misma cuenta). Para la oficina cuenta como la del enlace
+//    (12 h / 2 h) y SIGUE exigiendo su aparato: si no está aprobado, queda «aparato pendiente» (decisión 184: una llave no aprueba un aparato).
 import type { SessionStore } from "@fastify/session";
 import type { Session } from "fastify";
 import type { Bd } from "../bd/pool.ts";
@@ -28,8 +31,9 @@ declare module "fastify" {
     aliasVisible?: boolean;
     /** versión de las normas que aceptó el hogar (null: aún no; primer acceso, contratos/sesion.md) */
     normasVersion?: number | null;
-    /** de dónde nació (decisión 96): «enlace» = el adulto titular con el enlace mágico; «vinculo» = un aparato vinculado */
-    origen?: "enlace" | "vinculo";
+    /** de dónde nació (decisión 96): «enlace» = el titular con el enlace mágico; «llave» = el titular con su llave, sin correo
+     *  (OF13b-5); «vinculo» = un aparato vinculado con el código corto (no titular) */
+    origen?: OrigenSesion;
     /** id de la fila en `sesiones` (para apuntar desde qué sesión se subió algo); falta en la petición que la crea */
     idBd?: number;
     /** solo en cuentas de oficina: el aparato desde el que se entró y si ya está aprobado (contratos/sesion.md § Oficina) */
@@ -40,20 +44,28 @@ declare module "fastify" {
     /** solo en cuentas de oficina: cuándo se confirmó por última vez (entrar con un enlace) y si eso fue hace poco */
     confirmadaEn?: Date;
     confirmacionVigente?: boolean;
-    /** solo en cuentas de oficina (OF13): la llave viva con la que se abrió o se confirmó la sesión (sesiones.llave_id) */
+    /** la llave viva con la que se abrió (OF13b-5, cualquier cuenta) o se confirmó (OF13, oficina) la sesión (sesiones.llave_id) */
     llaveId?: number;
     /** solo en cuentas de oficina con la llave obligatoria: true si la sesión aún no se abrió con una llave (las guardas la paran) */
     llaveRequerida?: boolean;
   }
 }
 
+export type OrigenSesion = "enlace" | "vinculo" | "llave";
+/** Cómo entró la sesión, para la interfaz (GET /api/sesion): «codigo» es el código corto de las gafas. */
+export const entradaDe = (origen: OrigenSesion | undefined): "enlace" | "llave" | "codigo" =>
+  origen === "vinculo" ? "codigo" : origen === "llave" ? "llave" : "enlace";
+
 /**
  * El rol con el que cuenta una sesión (ADR-0028): el de la cuenta, salvo unas gafas vinculadas con el código corto desde una cuenta
  * de oficina o admin, que cuentan como `hogar` (visitante). Es la única traducción; el SQL de `lee()` aplica la misma regla a la caducidad.
  */
-export function rolEfectivo(rolCuenta: Rol, origen: "enlace" | "vinculo"): Rol {
+export function rolEfectivo(rolCuenta: Rol, origen: OrigenSesion): Rol {
   return origen === "vinculo" && esOficina(rolCuenta) ? "hogar" : rolCuenta;
 }
+
+/** Lo que se guarda en sesiones.origen: lo que no sea «vinculo» ni «llave» es «enlace» (como hasta ahora). */
+const origenAGuardar = (o: OrigenSesion | undefined): OrigenSesion => (o === "vinculo" || o === "llave" ? o : "enlace");
 
 type Cb = (err?: unknown) => void;
 type CbSesion = (err: unknown, sesion?: Session | null) => void;
@@ -83,9 +95,11 @@ export class AlmacenPg implements SessionStore {
   private async lee(id: string): Promise<Session | null> {
     const o = this.oficina;
     // la caducidad, por ramas: (1) ADR-0028, gafas (vinculo) de una cuenta de oficina o admin, como visitante: 12 h desde que nacieron
-    // y la inactividad más corta de las dos (oficina o familia); (2) la oficina de siempre: aparato suyo, enlace, 12 h y su inactividad;
-    // (3) el resto: la inactividad de las familias. `h.rol` es el rol de la CUENTA; el de la sesión es rolEfectivo() de abajo.
-    const r = await this.bd.query<{ sid: number; hogar_id: number; rol: Rol; alias: string | null; alias_visible: boolean; normas_version: number | null; origen: "enlace" | "vinculo"; expira_en: Date; refrescar: boolean;
+    // y la inactividad más corta de las dos (oficina o familia); (2) la oficina de siempre: aparato suyo (aprobado o no: eso lo marca
+    // aparato_aprobado), enlace o llave (OF13b-5), 12 h y su inactividad; (3) el resto: la inactividad de las familias. En las ramas
+    // (2) y (3), una sesión de origen `llave` solo vale con su llave viva (`l.id`). `h.rol` es el rol de la CUENTA; el de la sesión
+    // es rolEfectivo() de abajo.
+    const r = await this.bd.query<{ sid: number; hogar_id: number; rol: Rol; alias: string | null; alias_visible: boolean; normas_version: number | null; origen: OrigenSesion; expira_en: Date; refrescar: boolean;
       aparato_id: number | null; aparato_aprobado: boolean; confirmada_en: Date | null; confirmacion_vigente: boolean; llave_id: number | null }>(
       `SELECT s.id AS sid, s.origen, h.id AS hogar_id, h.rol, h.alias, h.alias_visible, h.normas_version, s.expira_en,
               s.ultima_actividad_en < now() - interval '5 minutes' AS refrescar,
@@ -99,10 +113,11 @@ export class AlmacenPg implements SessionStore {
                    THEN s.creada_en > now() - make_interval(hours => $3)
                         AND s.ultima_actividad_en > now() - LEAST(make_interval(mins => $4), make_interval(days => $2))
                    WHEN h.rol::text IN ('oficina', 'admin')
-                   THEN a.id IS NOT NULL AND s.origen = 'enlace'
+                   THEN a.id IS NOT NULL AND (s.origen = 'enlace' OR (s.origen = 'llave' AND l.id IS NOT NULL))
                         AND s.creada_en > now() - make_interval(hours => $3)
                         AND s.ultima_actividad_en > now() - make_interval(mins => $4)
-                   ELSE s.ultima_actividad_en > now() - make_interval(days => $2) END`,
+                   ELSE s.ultima_actividad_en > now() - make_interval(days => $2)
+                        AND (s.origen <> 'llave' OR l.id IS NOT NULL) END`,
       [hashToken(id), this.diasInactividad, o.horasSesion, o.minInactividad, o.minConfirmacion]);
     const f = r.rows[0];
     if (!f) return null;
@@ -114,11 +129,12 @@ export class AlmacenPg implements SessionStore {
     // rol EFECTIVO (ADR-0028): unas gafas vinculadas desde una cuenta de oficina son `hogar` y no cargan nada de oficina
     const rol = rolEfectivo(f.rol, f.origen);
     const s = { hogarId: f.hogar_id, rol, alias: f.alias, aliasVisible: f.alias_visible, normasVersion: f.normas_version, origen: f.origen, idBd: f.sid, cookie: { expires: f.expira_en } } as unknown as Session;
+    // la llave viva de la sesión, en cualquier cuenta (una familia que entró con su llave: «es esta» en Mis dispositivos); las gafas, nunca
+    if (f.llave_id !== null && f.origen !== "vinculo") s.llaveId = Number(f.llave_id);
     if (esOficina(rol)) {
       s.aparatoId = f.aparato_id!;
       s.aparatoAprobado = f.aparato_aprobado;
       if (f.confirmada_en) s.confirmadaEn = f.confirmada_en;
-      if (f.llave_id !== null) s.llaveId = Number(f.llave_id);
       const conLlave = f.llave_id !== null;
       s.llaveRequerida = o.llaveObligatoria === true && !conLlave;
       // con la llave obligatoria, la confirmación reciente solo la da una aserción WebAuthn (y en una sesión con llave viva)
@@ -131,8 +147,10 @@ export class AlmacenPg implements SessionStore {
     if (typeof s.hogarId !== "number") return;
     const expira = s.cookie?.expires instanceof Date ? s.cookie.expires : new Date(Date.now() + 86_400_000);
     await this.bd.query(
-      `INSERT INTO sesiones (hogar_id, hash, expira_en, origen, aparato_id, confirmada_en, aparato_nombre) VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO sesiones (hogar_id, hash, expira_en, origen, aparato_id, confirmada_en, aparato_nombre, llave_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        ON CONFLICT (hash) DO UPDATE SET ultima_actividad_en = now() WHERE sesiones.revocada_en IS NULL`,
-      [s.hogarId, hashToken(id), expira, s.origen === "vinculo" ? "vinculo" : "enlace", s.aparatoId ?? null, s.confirmadaEn ?? null, s.aparatoNombre ?? null]);
+      // llave_id solo cuenta al NACER la sesión (entrar con llave, OF13b-5); después lo pone marcaSesionConLlave (oficina/llaves.ts)
+      [s.hogarId, hashToken(id), expira, origenAGuardar(s.origen), s.aparatoId ?? null, s.confirmadaEn ?? null, s.aparatoNombre ?? null,
+        s.origen === "llave" ? s.llaveId ?? null : null]);
   }
 }

@@ -1,11 +1,14 @@
-// Rutas del enlace mágico y de la sesión (contratos/sesion.md, contratos/api.openapi.yaml).
+// Rutas del enlace mágico, de la entrada con llave sin correo (OF13b-5) y de la sesión (contratos/sesion.md, contratos/api.openapi.yaml).
+import type { AuthenticationResponseJSON } from "@simplewebauthn/server";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Contexto } from "../contexto.ts";
 import { huella, PATRON_TOKEN } from "../seguridad/cripto.ts";
+import { entradaDe } from "./almacen.ts";
 import { mensajeDeEnlace } from "./correo.ts";
 import { paginaEnlaceMalo, paginaEntrar, POLITICA_REFERENTE } from "./paginas.ts";
 import { aparatoPendiente, llaveRequerida } from "../oficina/acceso.ts";
 import { aparatoAlEntrar, COOKIE_APARATO, nombreDeAparato, OPCIONES_COOKIE_APARATO } from "../oficina/aparatos.ts";
+import { entraConLlave, gastaRetoDeAcceso, MIN_RETO, opcionesDeAcceso } from "../oficina/llaves.ts";
 import { requiereSesion } from "./roles.ts";
 import { audita, consumeEnlace, creaEnlace, esOficina, estadoEnlace, normalizaCorreo, primerAcceso, revocaTodas } from "./servicio.ts";
 import { creaCodigo, SONDEO_S, sondea } from "./vinculo.ts";
@@ -21,6 +24,28 @@ export const DESTINO_MUNDO = "/finca/";
 /** Adónde va una cuenta de oficina (ADR-0024): a la oficina si el aparato está aprobado; si no, a la página de «aparato pendiente». */
 export const DESTINO_OFICINA = "/oficina/";
 export const DESTINO_APARATO_PENDIENTE = "/api/oficina/pendiente";
+
+/**
+ * Entrar con una llave sin sesión ni correo (OF13b-5, ADR-0029, contratos/sesion.md § Entrar con llave): la cookie que ata el reto
+ * a ESTE navegador (32 bytes al azar; en la base, solo su SHA-256). Strict: solo viaja en peticiones del propio sitio. 5 minutos,
+ * lo que vive el reto.
+ */
+export const COOKIE_RETO = "__Host-gemelo-reto";
+export const OPCIONES_COOKIE_RETO = { path: "/", secure: true, httpOnly: true, sameSite: "strict", maxAge: MIN_RETO * 60 } as const;
+const BORRA_COOKIE_RETO = { path: "/", secure: true, httpOnly: true, sameSite: "strict" } as const;
+/** El ÚNICO fallo de la entrada con llave, sea cual sea la causa (no dice si la llave existe: LLAVES-DE-ACCESO §10). */
+export const TEXTO_LLAVE_FALLO = "Esa llave no sirve aquí o no se pudo comprobar. Vuelve a intentarlo o entra con un enlace por correo.";
+export const FALLO_LLAVE = { error: "llave_no_valida", mensaje: TEXTO_LLAVE_FALLO } as const;
+/** La respuesta del navegador (PublicKeyCredential en JSON). La forma fina la comprueba @simplewebauthn/server; aquí, tamaños. */
+const RESPUESTA_LLAVE = {
+  type: "object", required: ["id", "rawId", "type", "response"], additionalProperties: true,
+  properties: {
+    id: { type: "string", pattern: "^[A-Za-z0-9_-]{16,1366}$" },
+    rawId: { type: "string", pattern: "^[A-Za-z0-9_-]{16,1366}$" },
+    type: { type: "string", enum: ["public-key"] },
+    response: { type: "object", additionalProperties: true },
+  },
+} as const;
 
 const NO_GUARDAR = "no-store";
 
@@ -104,6 +129,59 @@ export async function rutasAuth(app: FastifyInstance, ctx: Contexto): Promise<vo
       : rep.send({ ok: true, primer_acceso: r.primerAcceso });
   });
 
+  // ---- entrar con una llave SIN sesión ni correo (OF13b-5; contratos/sesion.md § Entrar con llave). Las dos, sin sesión.
+  const ventanaLlave = config.accesoLlave.ventanaMin * 60_000;
+
+  // las opciones no dependen de ninguna cuenta (sin allowCredentials): la misma forma para cualquiera
+  app.post<{ Body: Record<string, never> }>("/api/auth/llave/opciones", {
+    config: { rateLimit: { max: config.accesoLlave.opcionesPorIp, timeWindow: ventanaLlave } },
+    schema: { body: { type: "object", additionalProperties: false, properties: {} } },
+  }, async (_req, rep) => {
+    rep.header("cache-control", NO_GUARDAR);
+    const { opciones, claveEnClaro } = await opcionesDeAcceso(bd, config.llave);
+    rep.setCookie(COOKIE_RETO, claveEnClaro, OPCIONES_COOKIE_RETO);
+    return opciones;
+  });
+
+  app.post<{ Body: { respuesta: AuthenticationResponseJSON } }>("/api/auth/llave", {
+    config: { rateLimit: { max: config.accesoLlave.entradasPorIp, timeWindow: ventanaLlave } },
+    schema: { body: { type: "object", additionalProperties: false, required: ["respuesta"], properties: { respuesta: RESPUESTA_LLAVE } } },
+    // una respuesta mal formada da el MISMO fallo que una llave que no sirve (y gasta el reto igual)
+    attachValidation: true,
+  }, async (req, rep) => {
+    rep.header("cache-control", NO_GUARDAR);
+    const clave = req.cookies[COOKIE_RETO];
+    // el reto es de un solo uso: la cookie se borra pase lo que pase
+    rep.clearCookie(COOKIE_RETO, BORRA_COOKIE_RETO);
+    if (req.validationError) { await gastaRetoDeAcceso(bd, clave); return rep.code(401).send(FALLO_LLAVE); }
+    const r = await entraConLlave(bd, config.llave, clave, req.body.respuesta);
+    if (!r.ok) return rep.code(401).send(FALLO_LLAVE);
+    const agente = req.headers["user-agent"];
+    // cuenta de oficina: el aparato decide, como con el enlace, pero una llave NUNCA aprueba un aparato pendiente (decisiones 152 y 184):
+    // aparato nuevo o pendiente → la sesión nace «aparato pendiente» y se aprueba como siempre (otro aparato, segundo enlace, consola)
+    const aparato = esOficina(r.rol)
+      ? await aparatoAlEntrar(bd, r.hogarId, req.cookies[COOKIE_APARATO], agente, config.oficina.minSegundoEnlace, false)
+      : null;
+    const normas = await bd.query<{ normas_version: number | null }>("SELECT normas_version FROM hogares WHERE id = $1", [r.hogarId]);
+    // rotación: la sesión que trajera el navegador se destruye y nace otra con id nuevo (contra la fijación de sesión)
+    await req.session.regenerate();
+    req.session.hogarId = r.hogarId;
+    req.session.origen = "llave";
+    req.session.llaveId = r.llaveId;
+    req.session.aparatoNombre = nombreDeAparato(agente);
+    if (aparato) {
+      req.session.aparatoId = aparato.id;
+      // la llave (con verificación de la persona) es la confirmación reciente (LLAVES-DE-ACCESO §3.4), solo con el aparato aprobado
+      if (aparato.estado === "aprobado") req.session.confirmadaEn = new Date();
+      req.session.cookie.maxAge = config.oficina.horasSesion * 3_600_000;   // 12 h, no 30 días
+      if (aparato.secretoNuevo) rep.setCookie(COOKIE_APARATO, aparato.secretoNuevo, OPCIONES_COOKIE_APARATO);
+    }
+    await audita(bd, r.hogarId, "sesion.entrada_llave", { llave: r.llaveId, tipo: aparato ? "oficina" : "familia", aparato: aparato?.estado ?? null });
+    const primer = !aparato && primerAcceso(normas.rows[0]?.normas_version);
+    const destino = aparato ? (aparato.estado === "aprobado" ? DESTINO_OFICINA : DESTINO_APARATO_PENDIENTE) : primer ? DESTINO_PRIMER_ACCESO : DESTINO_MUNDO;
+    return { ok: true, destino, primer_acceso: primer, ...(aparato ? { aparato: aparato.estado } : {}) };
+  });
+
   // ---- código corto para las gafas (contratos/sesion.md § Código corto). Sin sesión: lo piden unas gafas que aún no la tienen.
   app.post<{ Body: Record<string, never> }>("/api/auth/vincula", {
     config: { rateLimit: { max: config.vinculo.porIp, timeWindow: config.vinculo.ventanaMin * 60_000 } },
@@ -134,7 +212,7 @@ export async function rutasAuth(app: FastifyInstance, ctx: Contexto): Promise<vo
 
   app.get("/api/sesion", { preHandler: requiereSesion }, async (req, rep) => {
     rep.header("cache-control", NO_GUARDAR);
-    return { rol: req.session.rol, alias: req.session.alias ?? null, alias_visible: req.session.aliasVisible ?? false, primer_acceso: primerAcceso(req.session.normasVersion), titular: req.session.origen !== "vinculo" };
+    return { rol: req.session.rol, alias: req.session.alias ?? null, alias_visible: req.session.aliasVisible ?? false, primer_acceso: primerAcceso(req.session.normasVersion), titular: req.session.origen !== "vinculo", entrada: entradaDe(req.session.origen) };
   });
 
   app.post("/api/sesion/salir", async (req, rep) => {

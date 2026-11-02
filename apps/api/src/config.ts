@@ -31,6 +31,8 @@ export interface Config {
   /** llave de acceso (WebAuthn, passkey) de la oficina (OF13, contratos/sesion.md § Llave de acceso): obligatoria salvo GEMELO_OFICINA_LLAVE=no fuera de producción */
   llave: ConfigLlave;
   enlace: { minutos: number; porIp: number; porCorreo: number; ventanaMin: number };
+  /** entrar con una llave SIN sesión ni correo (OF13b-5, ADR-0029; contratos/sesion.md § Entrar con llave): opciones y entradas por IP en la ventana */
+  accesoLlave: { opcionesPorIp: number; entradasPorIp: number; ventanaMin: number };
   /** código corto de las gafas (contratos/sesion.md § Código corto): códigos pedidos por IP, intentos de aprobar por hogar y por IP */
   vinculo: { porIp: number; intentosPorHogar: number; intentosPorIp: number; sondeosPorMin: number; ventanaMin: number };
   correo: { modo: "buzon" } | ConfigSmtp;
@@ -273,6 +275,12 @@ export function cargaConfig(e: Entorno = process.env): Config {
       porIp: entero(e, "GEMELO_ENLACE_POR_IP", 10, 1, 1000),
       porCorreo: entero(e, "GEMELO_ENLACE_POR_CORREO", 5, 1, 100),
       ventanaMin: entero(e, "GEMELO_ENLACE_VENTANA_MIN", 15, 1, 1440),
+    },
+    // valores de partida del estudio (LLAVES-DE-ACCESO §4, A11): 30 opciones y 20 entradas por IP cada 15 min
+    accesoLlave: {
+      opcionesPorIp: entero(e, "GEMELO_LLAVE_OPCIONES_POR_IP", 30, 1, 1000),
+      entradasPorIp: entero(e, "GEMELO_LLAVE_ENTRADAS_POR_IP", 20, 1, 1000),
+      ventanaMin: entero(e, "GEMELO_LLAVE_VENTANA_MIN", 15, 1, 1440),
     },
     vinculo: {
       porIp: entero(e, "GEMELO_VINCULO_POR_IP", 10, 1, 1000),

@@ -42,6 +42,10 @@ GEMELO_OFICINA_SEGUNDO_ENLACE_MIN=5
 GEMELO_OFICINA_LLAVE=obligatoria
 # GEMELO_LLAVE_RP_ID=gemelo.canoydamas.es
 # GEMELO_LLAVE_ORIGEN=https://gemelo.canoydamas.es
+# entrar con la llave sin sesión ni correo (OF13b-5, contratos/sesion.md § Entrar con llave): opciones y entradas por IP en la ventana
+GEMELO_LLAVE_OPCIONES_POR_IP=30
+GEMELO_LLAVE_ENTRADAS_POR_IP=20
+GEMELO_LLAVE_VENTANA_MIN=15
 
 # --- correo del enlace mágico: SMTP de OVH (decisión 15) [NO VERIFICADO contra el buzón real]
 # Pasos y comprobaciones del dominio (MX, SPF, DKIM, DMARC): doc/operacion/RUNBOOK-VPS.md, «SMTP de OVH».

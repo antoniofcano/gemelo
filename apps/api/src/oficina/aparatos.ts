@@ -19,11 +19,13 @@ export interface AparatoAlEntrar {
 }
 
 /**
- * Al entrar con un enlace una cuenta de oficina: reconoce el aparato por su cookie o crea uno pendiente.
- * Si el aparato ya estaba pendiente, es de la misma cuenta y tiene entre `minSegundoEnlace` minutos y 24 h, este segundo
- * enlace lo aprueba (aprobado_como = 'segundo_enlace'). Una cookie de otra cuenta, revocada o desconocida no sirve: aparato nuevo.
+ * Al entrar una cuenta de oficina (con un enlace o con una llave): reconoce el aparato por su cookie o crea uno pendiente.
+ * Si el aparato ya estaba pendiente, es de la misma cuenta y tiene entre `minSegundoEnlace` minutos y 24 h, un segundo ENLACE lo
+ * aprueba (aprobado_como = 'segundo_enlace'). Con `porEnlace = false` (la entrada con llave, OF13b-5) eso no pasa nunca: una llave
+ * no aprueba un aparato (decisiones 152 y 184); el pendiente sigue pendiente y se aprueba como siempre (otro aparato, segundo
+ * enlace o consola). Una cookie de otra cuenta, revocada o desconocida no sirve: aparato nuevo.
  */
-export async function aparatoAlEntrar(bd: Bd, hogarId: number, cookie: string | undefined, agente: string | undefined, minSegundoEnlace: number): Promise<AparatoAlEntrar> {
+export async function aparatoAlEntrar(bd: Bd, hogarId: number, cookie: string | undefined, agente: string | undefined, minSegundoEnlace: number, porEnlace = true): Promise<AparatoAlEntrar> {
   if (pareceToken(cookie)) {
     const r = await bd.query<{ id: number; hogar_id: number; aprobado: boolean; revocado: boolean; maduro: boolean; vigente: boolean }>(
       `SELECT id, hogar_id, aprobado_en IS NOT NULL AS aprobado, revocado_en IS NOT NULL AS revocado,
@@ -36,7 +38,7 @@ export async function aparatoAlEntrar(bd: Bd, hogarId: number, cookie: string | 
         await bd.query("UPDATE aparatos_oficina SET ultimo_uso_en = now() WHERE id = $1", [id]);
         return { id, estado: "aprobado" };
       }
-      if (a.vigente && a.maduro) {
+      if (porEnlace && a.vigente && a.maduro) {
         const ok = await bd.query(
           `UPDATE aparatos_oficina SET aprobado_en = now(), aprobado_como = 'segundo_enlace', aprobado_por = $2, ultimo_uso_en = now()
             WHERE id = $1 AND aprobado_en IS NULL AND revocado_en IS NULL`, [id, hogarId]);
