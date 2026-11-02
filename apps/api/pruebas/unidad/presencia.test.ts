@@ -106,6 +106,15 @@ test("POST /api/presencia/token: sin Origin 403, cuerpo de más o dispositivo ra
   } finally { await app.close(); await bd.end(); }
 });
 
+test("GET /api/presencia (F2b): sin sesión 401 (el motor se queda sin presencia)", async () => {
+  const bd = new pg.Pool({ host: "127.0.0.1", port: 1, user: "nadie", database: "nada", connectionTimeoutMillis: 300 });
+  const app = await construyeApp(contexto(bd, configDePrueba({ ...lkDevSinBase })));
+  try {
+    const r = await app.inject({ method: "GET", url: "/api/presencia", headers: deLaWeb() });
+    assert.equal(r.statusCode, 401);
+  } finally { await app.close(); await bd.end(); }
+});
+
 // ---------------------------------------------------------------- configuración
 const dir = mkdtempSync(join(tmpdir(), "gemelo-lk-"));
 const base = { GEMELO_URL_PUBLICA: "https://gemelo.example.com", GEMELO_DB_URL: "postgresql://gemelo_api@db:5432/gemelo" };

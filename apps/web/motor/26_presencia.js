@@ -1,10 +1,11 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: PoseCodec, BufferPose, Aspecto, SalaPose, Chat, Muneco, Encuentro, sitioJunto
-// Consume: 01_datos (D, $), 02_mundo (suelo, copas), 02e_entidades (Entidades), 03_escena (exag, modo), 04d_sombreado_tiles (hash),
-//   06_arboles (tronco), 12_paseo (paseando, persona, primera), 12b_llegada (Llegada), 13b_hazas (HazasPuro), 14_historia (lista),
-//   15_tiempo (rumbo, hace), 16_vida (quad, vidaPaseo, dron)
+// Expone: PoseCodec, BufferPose, Aspecto, SalaPose, Chat, Muneco, Encuentro, AutoPresencia, sitioJunto
+// Consume: 01_datos (D, $), 02_mundo (suelo, copas), 02c_componentes (ConfigPuro), 02e_entidades (Entidades), 03_escena (exag, modo),
+//   04d_sombreado_tiles (hash), 06_arboles (tronco), 12_paseo (paseando, persona, primera), 12b_llegada (Llegada), 13b_hazas (HazasPuro),
+//   14_historia (lista), 15_tiempo (rumbo, hace), 16_vida (quad, vidaPaseo, dron), 33_ajustes (Ajustes)
 // Nota: No es un componente ni monta nada: el protocolo y la lógica pura de la presencia compartida (PoseCodec, BufferPose, Aspecto, SalaPose, Chat, Muneco, Encuentro) y sitioJunto. La presencia que los usa es el componente de 38_presencia_compartida.js (C5). El trozo entre [puro:inicio] y [puro:fin] lo evalúan en Node pruebas/guardianes/presencia.test.js, presencia_red.test.js y muneco_aspecto.test.js.
 // ===============================================================================
+
   // ---------- presencia compartida (F2, contratos/presencia.md): el protocolo y la lógica pura que comparten la presencia y quien la usa. Este fichero NO es un
   // componente ni monta nada: define el códec de la pose, el búfer de interpolación, la lógica de la sala (SalaPose), el chat, el aspecto y el muñeco, el sitio
   // donde dejarte junto a alguien o a una baliza (Encuentro, sitioJunto: también los usa 19_balizas.js) y nada más. La presencia que los usa es el componente
@@ -402,6 +403,19 @@
     }
     // el muñeco del paseante a pie sin accesorios (60 + 20 + 2 = 82) y con sombrero (94); con gafas, +24 de las manos: lo que dicen CLAUDE/MEDIDAS
     return { TRI: TRI, instancias: instancias, grupo: grupo };
+  })();
+  // F2b: ¿arranca sola la presencia en red? Función pura. busqueda = location.search; prefijo = ConfigPuro.prefijoApi(...) (null sin api: file://, fixture, banco);
+  // ajuste = la casilla «Ver a los demás y chatear» de Ajustes (true por defecto). Devuelve "sim"|"red" si la URL lo manda (como siempre), "0" si la URL la apaga,
+  // "pregunta" si hay que preguntar a la api (sin ?presencia=, con api y con la casilla marcada) y "" si no se hace nada (como antes de F2b).
+  // Y cuando la api contesta, decideRed(respuesta) dice si arranca: solo con { red: true } exacto; cualquier otra cosa (error, 401, forma rara) = no.
+  var AutoPresencia = (function () {
+    function decide(busqueda, prefijo, ajuste) {
+      var m = /[?&]presencia=([^&]*)/.exec(busqueda || "");
+      if (m) return m[1] === "sim" ? "sim" : m[1] === "red" ? "red" : m[1] === "0" ? "0" : "";   // otro valor (p. ej. 1): como hasta ahora, sin nada
+      return prefijo && ajuste !== false ? "pregunta" : "";
+    }
+    function decideRed(j) { return !!j && typeof j === "object" && j.red === true; }
+    return { decide: decide, decideRed: decideRed };
   })();
   // [puro:fin]
 

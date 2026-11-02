@@ -493,7 +493,7 @@
     id: "avatares-vrm", version: 1,
     consume: ["Presencia", "Aspecto", "VRX", "paseando", "persona", "primera", "enQuad", "enDron", "pp"],
     expone: [],
-    eventos: { escucha: [], emite: [] },
+    eventos: { escucha: ["presencia:activada"], emite: [] },
     bandera: { defecto: true, url: "avatares" },
     // escritorio: 6 VRM a la vez (cupo; 3 en móvil y Quest) × ≤ 4 primitivas y ≤ 20.000 triángulos cada uno (topes de la tubería, ADR-0020 §2: ESTIMADO, sin medir);
     // texturas: ≤ 3 de 1024 px por avatar (≈ 16 MB cada uno con mipmaps, ADR-0020: 50-100 MB estimados)
@@ -501,7 +501,11 @@
     fases: {},
     monta: function (n) {
       var P = n.api("presencia-compartida");
-      if (!P || !P.activo()) return { estado: function () { return null; }, libera: function () {} };   // sin presencia activa, como antes: nada
+      if (!P) return { estado: function () { return null; }, libera: function () {} };
+      if (!P.activo()) {   // sin presencia activa, como antes: nada. F2b: si la presencia arranca sola más tarde (presencia:activada), este componente se remonta ya con ella
+        n.on("presencia:activada", function () { if (P.activo()) { Componentes.enciende("avatares-vrm", false); Componentes.enciende("avatares-vrm", true); } });
+        return { estado: function () { return null; }, libera: function () {} };
+      }
       return AvataresMotor(n, P);
     },
     actualiza: {},

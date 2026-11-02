@@ -175,7 +175,7 @@ class El {
   busca(tag) { if (this.tagName === tag) return this; for (const c of this.children) { const r = c.busca && c.busca(tag); if (r) return r; } return null; }
 }
 /** el registro (02c entero) con la lógica pura de la presencia (26_presencia.js) y los componentes que se pidan; lo demás, de mentira */
-function motor({ busqueda = "", ficheros = ["red", "presencia", "avatares"], token = { url: "/rtc", token: "tk" }, tokenEstado = 200 } = {}) {
+function motor({ busqueda = "", ficheros = ["red", "presencia", "avatares"], token = { url: "/rtc", token: "tk" }, tokenEstado = 200, base = "", hay = null } = {}) {
   const LK = lkFalso(), errores = [], avisos = [], cuenta = { mallas: 0, mallasLibres: 0, escena: 0, tipos: [], quitados: 0, fetch: [] };
   const fuentes = { red: sinCabecera(RED).replace('import("livekit-client")', "Promise.resolve(LK_FALSO)"),
     presencia: sinCabecera(PRES).replace('import("three/addons/utils/BufferGeometryUtils.js")', "Promise.reject(new Error(\"sin addons en Node\"))"),
@@ -184,12 +184,17 @@ function motor({ busqueda = "", ficheros = ["red", "presencia", "avatares"], tok
   const documento = { getElementById: () => null, createElement: t => new El(t), createTextNode: t => ({ texto: t }), body: new El("body") };
   const consola = { error: (...a) => errores.push(a.map(String).join(" ")), warn: (...a) => { const t = a.map(String).join(" "); if (/sin quad ni dron/.test(t)) avisos.push(t); else errores.push(t); }, log() {} };
   const g = {
-    THREE: threeFalso(cuenta), LK_FALSO: LK, D: { ext: [0, 200, 200, 0], base: "" }, suelo: () => 10, copas: [], exag: 1, texColor: x => x,
+    THREE: threeFalso(cuenta), LK_FALSO: LK, D: { ext: [0, 200, 200, 0], base }, suelo: () => 10, copas: [], exag: 1, texColor: x => x,
     scene: { add: () => { cuenta.escena++; }, remove: () => { cuenta.escena--; } }, camera: { position: new V3(0, 20, 0), quaternion: new Q() }, renderer: cualquiera(), visor,
     Entidades: { registra: d => { cuenta.tipos.push(d.tipo); return () => { cuenta.quitados++; }; } }, Llegada: { funde: fn => { fn(); return true; }, aparece() {} }, TR: {},
     Movibles: { hazMovible: () => ({ menuLlevar() {}, coloca() {} }) }, VRX: { on: false, cab: new V3(), rig: { yaw: 0 } }, paseando: true, pp: { x: 50, y: 50, ang: 0 },
     enQuad: false, enDron: false, quad: cualquiera(), dron: cualquiera(), objetivo: new V3(50, 0, -50), persona: null, primera: false, navigator: { userAgent: "Node" },
-    fetch: (u, o) => { cuenta.fetch.push([u, o && o.method]); return Promise.resolve({ ok: tokenEstado === 200, status: tokenEstado, json: () => Promise.resolve(tokenEstado === 200 ? token : { mensaje: "no" }) }); }
+    fetch: (u, o) => { cuenta.fetch.push([u, o && o.method]);
+      if (/\/api\/presencia$/.test(u)) {   // F2b: GET /api/presencia → { red }; hay: true | false | 401 | "falla" (el fetch se cae) | "rara" (otra forma)
+        if (hay === "falla") return Promise.reject(new Error("sin red"));
+        return Promise.resolve({ ok: hay !== 401, status: hay === 401 ? 401 : 200, json: () => Promise.resolve(hay === "rara" ? { red: "si" } : { red: hay === true }) });
+      }
+      return Promise.resolve({ ok: tokenEstado === 200, status: tokenEstado, json: () => Promise.resolve(tokenEstado === 200 ? token : { mensaje: "no" }) }); }
   };
   const nombres = Object.keys(g), codigo = sinCabecera(LIB) + "\n" + ficheros.map(f => fuentes[f]).join("\n");
   const f = new Function(...["window", "location", "document", "console"].concat(nombres), "\"use strict\";\n" + sinCabecera(NUCLEO) + "\n" + codigo + "\nreturn { Componentes, Bus };");
@@ -306,4 +311,47 @@ test("la api de la presencia (lo que consumen los avatares) es la del contrato (
   assert.ok(api); assert.deepStrictEqual(Object.keys(api).sort(), C.miembros.slice().sort());
   assert.strictEqual(C.modulo, "38_presencia_compartida.js"); assert.strictEqual(IFACES.apis_de_componentes["red-salas"].modulo, "37_red.js");
   await espera(10); r.ventana.__presencia("libera");
+});
+
+test("F2b: sin ?presencia= y con api, pregunta GET /api/presencia una vez; con {red:true} arranca sola como ?presencia=red (sala, muñecos, VRM); ?presencia=0 y todo lo demás, no", async () => {
+  const API = "/teselas/hituelo/", llamadas = r => r.cuenta.fetch.map(f => f[0]).filter(u => u !== "/api/config");   // /api/config lo pide el núcleo (ConfigPuro) aparte
+  let r = motor({ base: API, hay: true }); await espera(20);
+  assert.deepStrictEqual(llamadas(r), ["/api/presencia", "/api/presencia/token"], "primero la pregunta, luego el token de siempre");
+  assert.strictEqual(r.cuenta.fetch.find(f => f[0] === "/api/presencia")[1], undefined, "un GET");
+  assert.strictEqual(r.LK.salas.length, 1, "entra en la sala «visita»");
+  const e = r.ventana.__presencia(); assert.strictEqual(e.activo, true); assert.strictEqual(e.variante, "red"); assert.strictEqual(e.conectado, true);
+  assert.deepStrictEqual(r.cuenta.tipos, ["persona"]); assert.ok(r.cuenta.mallas >= 6); assert.ok(e.vrm, "los avatares VRM se montan al activarse la presencia");
+  assert.deepStrictEqual(ACTIVOS(r), ["avatares-vrm", "presencia-compartida", "red-salas"]);
+  r.ventana.__presencia("libera"); assert.deepStrictEqual(r.errores, []);
+  // el servidor sin LiveKit, sin sesión, con el fetch caído o con una respuesta rara: como antes de F2b, sin nada y sin errores en consola
+  for (const hay of [false, 401, "falla", "rara"]) {
+    r = motor({ base: API, hay }); await espera(20);
+    assert.deepStrictEqual(llamadas(r), ["/api/presencia"], "solo la pregunta (hay=" + hay + ")");
+    assert.strictEqual(r.LK.salas.length, 0); assert.strictEqual(r.cuenta.mallas, 0); assert.deepStrictEqual(r.cuenta.tipos, []);
+    assert.strictEqual(r.ventana.__presencia().activo, false); assert.deepStrictEqual(r.errores, [], "hay=" + hay);
+  }
+  // ?presencia=0 la apaga siempre (ni pregunta); ?presencia=sim no la usa; sin api (file://, fixture, banco) no hace ni el fetch
+  r = motor({ base: API, hay: true, busqueda: "?presencia=0" }); await espera(20);
+  assert.deepStrictEqual(llamadas(r), []); assert.strictEqual(r.LK.salas.length, 0);
+  r = motor({ base: API, hay: true, busqueda: "?presencia=sim&n=2", ficheros: ["presencia"] }); await espera(20);
+  assert.deepStrictEqual(llamadas(r), []); assert.strictEqual(r.ventana.__presencia().variante, "sim");
+  r = motor({ hay: true }); await espera(20);
+  assert.deepStrictEqual(r.cuenta.fetch, [], "sin api no hay ni pregunta"); assert.strictEqual(r.LK.salas.length, 0); assert.deepStrictEqual(r.errores, []);
+  // ?api=<prefijo> (pruebas) cuenta como api; ?presencia=red explícita se comporta como siempre (ni pregunta)
+  r = motor({ hay: true, busqueda: "?api=/api/" }); await espera(20); assert.strictEqual(r.LK.salas.length, 1);
+  r = motor({ base: API, hay: true, busqueda: "?presencia=red" }); await espera(20);
+  assert.deepStrictEqual(llamadas(r), ["/api/presencia/token"]);
+});
+
+test("F2b: AutoPresencia.decide es una función pura: la URL manda, la casilla de Ajustes apaga, sin api no se pregunta", () => {
+  const A = new Function("\"use strict\";\n" + trozo(LIB, "// [puro:inicio]", "// [puro:fin]") + "\nreturn AutoPresencia;")();
+  assert.strictEqual(A.decide("", "/api/", true), "pregunta");
+  assert.strictEqual(A.decide("?x=1", "/api/", undefined), "pregunta", "sin ajuste legible, el defecto (marcada)");
+  assert.strictEqual(A.decide("", "/api/", false), "", "casilla desmarcada");
+  assert.strictEqual(A.decide("", null, true), "", "sin api");
+  assert.strictEqual(A.decide("?presencia=0", "/api/", true), "0");
+  assert.strictEqual(A.decide("?presencia=red", null, false), "red"); assert.strictEqual(A.decide("?a=1&presencia=sim&n=3", "/api/", false), "sim");
+  assert.strictEqual(A.decide("?presencia=1", "/api/", true), "", "otro valor: como hasta ahora, nada");
+  assert.strictEqual(A.decideRed({ red: true }), true);
+  for (const j of [null, undefined, {}, { red: false }, { red: "true" }, { red: 1 }, [], "x"]) assert.strictEqual(A.decideRed(j), false, JSON.stringify(j));
 });

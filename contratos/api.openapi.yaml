@@ -1205,6 +1205,28 @@ paths:
         "401": { $ref: "#/components/responses/SinSesion" }
         "403": { $ref: "#/components/responses/SinPermiso" }
 
+  /api/presencia:
+    get:
+      summary: ¿Está disponible la presencia en red en este servidor? (F2b)
+      description: >
+        Comprobación barata y sin secretos: `red` es true si el servidor tiene LiveKit configurado (GEMELO_LIVEKIT_URL), es decir, si
+        `POST /api/presencia/token` dará token en vez de 503. El motor la pregunta una vez, al cargar, para activar solo la presencia
+        (los muñecos y «Gente y chat») sin necesidad de `?presencia=red`. Con sesión; sin ella, 401 y el motor se queda sin presencia.
+      security: [{ sesion: [] }]
+      responses:
+        "200":
+          description: si hay presencia en red
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [red]
+                properties:
+                  red: { type: boolean }
+              example: { red: true }
+        "401": { $ref: "#/components/responses/SinSesion" }
+
   /api/presencia/token:
     post:
       summary: Token para entrar a la sala libre de LiveKit (F2, presencia compartida; contratos/livekit-roles.json y presencia.md)

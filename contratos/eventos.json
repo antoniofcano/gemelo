@@ -4,56 +4,185 @@
   "eventos": {
     "agenda:cambia": {
       "descripcion": "La agenda de la finca (componente «agenda») acaba de cargarse o recargarse desde la api: cuántos eventos próximos hay y si esta sesión puede apuntar a la familia (false en las gafas vinculadas). Nadie lo atiende hoy; sirve a quien quiera enseñar un aviso de «hay una visita esta semana».",
-      "datos": { "type": "object", "required": ["proximos", "puede_inscribirse"], "properties": { "proximos": { "type": "integer", "minimum": 0 }, "puede_inscribirse": { "type": "boolean" } } },
-      "emiten": ["43_agenda"],
+      "datos": {
+        "type": "object",
+        "required": [
+          "proximos",
+          "puede_inscribirse"
+        ],
+        "properties": {
+          "proximos": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "puede_inscribirse": {
+            "type": "boolean"
+          }
+        }
+      },
+      "emiten": [
+        "43_agenda"
+      ],
       "escuchan": []
     },
     "audio:desbloquea": {
       "descripcion": "Un gesto del usuario que deja arrancar el audio del navegador (pulsar «Entrar en VR»). Quien haga sonido lo atiende y reanuda su AudioContext; sin nadie, no pasa nada.",
       "datos": {},
-      "emiten": ["29_vr"],
-      "escuchan": ["20_sonido", "45_voz"]
+      "emiten": [
+        "29_vr"
+      ],
+      "escuchan": [
+        "20_sonido",
+        "45_voz"
+      ]
     },
     "capas:cambia": {
       "descripcion": "Cambió alguna casilla de capas del menú (Linde, Copas del LiDAR, Guardados en OlivarTrack, Desfase) o se aplicó el estado al cargar: quien dibuja una de esas capas lee su casilla y se enseña o se esconde. 08_marcadores.js se ocupa de la linde; el resto lo atiende el componente de los marcadores. Sin él (?marcadores=0), no pasa nada.",
       "datos": {},
-      "emiten": ["08_marcadores"],
-      "escuchan": ["08b_marcadores_lidar"]
+      "emiten": [
+        "08_marcadores"
+      ],
+      "escuchan": [
+        "08b_marcadores_lidar"
+      ]
     },
     "chat:alterna": {
       "descripcion": "El icono del chat de la barra (o del menú «Más»): si el chat de la visita compartida está minimizado (burbuja) se abre; si está abierto, se minimiza. Sin chat (sin presencia en red, o sin &chat=1 en la simulación) nadie lo atiende y no pasa nada.",
       "datos": {},
-      "emiten": ["31_hud"],
-      "escuchan": ["38_presencia_compartida"]
+      "emiten": [
+        "31_hud"
+      ],
+      "escuchan": [
+        "38_presencia_compartida"
+      ]
     },
     "componentes:cambia": {
       "descripcion": "Un componente se ha montado o liberado (al arrancar, por la configuración del servidor o a mano). Sirve para que la interfaz enseñe o esconda lo que depende de él.",
-      "datos": { "type": "object", "required": ["id", "activo"], "properties": { "id": { "type": "string" }, "activo": { "type": "boolean" } } },
-      "emiten": ["02c_componentes"],
-      "escuchan": ["15_tiempo"]
+      "datos": {
+        "type": "object",
+        "required": [
+          "id",
+          "activo"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "activo": {
+            "type": "boolean"
+          }
+        }
+      },
+      "emiten": [
+        "02c_componentes"
+      ],
+      "escuchan": [
+        "15_tiempo"
+      ]
     },
     "cuadro:fin": {
       "descripcion": "El fotograma acaba (después de pintar y del contador de ?debug), también en pausa. Lo emite 90_final.js con el mismo objeto cada vez ({ t }: la hora del fotograma, la de requestAnimationFrame). Solo lo escucha el medidor de fotogramas, y solo mientras está armado o midiendo; sin él, nadie lo atiende y no cuesta nada.",
-      "datos": { "type": "object", "required": ["t"], "properties": { "t": { "type": "number" } } },
-      "emiten": ["90_final"],
-      "escuchan": ["30_mide"]
+      "datos": {
+        "type": "object",
+        "required": [
+          "t"
+        ],
+        "properties": {
+          "t": {
+            "type": "number"
+          }
+        }
+      },
+      "emiten": [
+        "90_final"
+      ],
+      "escuchan": [
+        "30_mide"
+      ]
     },
     "depura:lineas": {
       "descripcion": "El contador de ?debug (cada 0,5 s) pide sus líneas a los componentes: quien tenga algo que decir añade una cadena a «lineas» (hoy, la presencia compartida y las lindes de las hazas). Se pintan en ese orden, tras la de VR.",
-      "datos": { "type": "object", "required": ["lineas"], "properties": { "lineas": { "type": "array", "items": { "type": "string" } } } },
-      "emiten": ["28_depura"],
-      "escuchan": ["30_mide", "38_presencia_compartida", "44_lindes", "45_voz", "46_guiada", "47_habla"]
+      "datos": {
+        "type": "object",
+        "required": [
+          "lineas"
+        ],
+        "properties": {
+          "lineas": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "emiten": [
+        "28_depura"
+      ],
+      "escuchan": [
+        "30_mide",
+        "38_presencia_compartida",
+        "44_lindes",
+        "45_voz",
+        "46_guiada",
+        "47_habla"
+      ]
     },
     "fauna:conejo-cerca": {
       "descripcion": "Una pregunta con respuesta en el mismo objeto: un perro en { x, y } busca, en un radio (m), el conejo visible más cercano; la fauna rellena res con ese conejo (el grupo de three, con su estado en userData) o lo deja en null. Sin fauna (?fauna=0), res queda en null y los perros no persiguen a nadie.",
-      "datos": { "type": "object", "required": ["x", "y", "radio"], "properties": { "x": { "type": "number" }, "y": { "type": "number" }, "radio": { "type": "number" }, "res": { "type": ["object", "null"] } } },
-      "emiten": ["25_perros"],
-      "escuchan": ["16b_fauna"]
+      "datos": {
+        "type": "object",
+        "required": [
+          "x",
+          "y",
+          "radio"
+        ],
+        "properties": {
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          },
+          "radio": {
+            "type": "number"
+          },
+          "res": {
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        }
+      },
+      "emiten": [
+        "25_perros"
+      ],
+      "escuchan": [
+        "16b_fauna"
+      ]
     },
     "guiada:cierre": {
       "descripcion": "F3f (decisión 155): ha llegado el aviso de que el guía o la oficina cierran la sala guiada (tema «cierre», mandado por la api sin participante; ya validado). en = cuándo se borra la sala; segundos = cuánto falta. La cuenta atrás, la lámina en VR y la vuelta a la visita libre ya las pone 46_guiada; es para quien quiera reaccionar (un sonido, un lector de pantalla).",
-      "datos": { "type": "object", "required": ["en", "segundos"], "properties": { "en": { "type": "string" }, "segundos": { "type": "integer", "minimum": 0 } } },
-      "emiten": ["46_guiada"],
+      "datos": {
+        "type": "object",
+        "required": [
+          "en",
+          "segundos"
+        ],
+        "properties": {
+          "en": {
+            "type": "string"
+          },
+          "segundos": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "emiten": [
+        "46_guiada"
+      ],
       "escuchan": []
     },
     "guiada:entrada": {
@@ -108,9 +237,32 @@
     },
     "guiada:palabra": {
       "descripcion": "F3f: en la sala guiada cambia quién tiene la palabra (leído del atributo palabra_hasta que pone la api): identidad (\"\" si ya nadie), los segundos que le quedan al empezar y si eres tú. La tira, la cuenta atrás y los avisos ya los pone 46_guiada; es para quien quiera reaccionar (F3e: el botón Hablar, la háptica).",
-      "datos": { "type": "object", "required": ["identidad", "segundos", "yo"], "properties": { "identidad": { "type": "string" }, "segundos": { "type": "integer", "minimum": 0 }, "yo": { "type": "boolean" } } },
-      "emiten": ["46_guiada"],
-      "escuchan": ["47_habla"]
+      "datos": {
+        "type": "object",
+        "required": [
+          "identidad",
+          "segundos",
+          "yo"
+        ],
+        "properties": {
+          "identidad": {
+            "type": "string"
+          },
+          "segundos": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "yo": {
+            "type": "boolean"
+          }
+        }
+      },
+      "emiten": [
+        "46_guiada"
+      ],
+      "escuchan": [
+        "47_habla"
+      ]
     },
     "habla:consentimiento": {
       "descripcion": "F3j (decisión 163): el aviso de voz y el consentimiento de esta sesión. accion = acepta (se pulsó «Aceptar» y se guardó en la api: ok = si salió bien) | rechaza («Ahora no» o cerrar el aviso) | retira (se retiró el permiso desde Configuración o el panel de VR; ok = si la api lo borró); version = la versión del texto del aviso (HablaPuro.AVISO_VERSION). El estado de verdad es de la api (GET /api/presencia/voz/consentimiento); esto es para quien quiera reaccionar (un sonido, un lector de pantalla). Nada de la voz.",
@@ -120,105 +272,381 @@
     },
     "habla:mano": {
       "descripcion": "F3e: esta sesión pidió a la api levantar o bajar la mano (POST o DELETE /api/presencia/guiadas/:evento/mano). accion = levanta | baja; ok = si la api lo aceptó; puesto = el puesto en la cola que dio la api al levantar (1 = la siguiente) o null. El estado verdadero de la mano es el atributo «mano» de la sala (lo lee 46_guiada); esto es para quien quiera reaccionar (un sonido, la háptica).",
-      "datos": { "type": "object", "required": ["accion", "ok", "puesto"], "properties": { "accion": { "enum": ["levanta", "baja"] }, "ok": { "type": "boolean" }, "puesto": { "type": ["integer", "null"], "minimum": 1 } } },
-      "emiten": ["47_habla"],
+      "datos": {
+        "type": "object",
+        "required": [
+          "accion",
+          "ok",
+          "puesto"
+        ],
+        "properties": {
+          "accion": {
+            "enum": [
+              "levanta",
+              "baja"
+            ]
+          },
+          "ok": {
+            "type": "boolean"
+          },
+          "puesto": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          }
+        }
+      },
+      "emiten": [
+        "47_habla"
+      ],
       "escuchan": []
     },
     "habla:micro": {
       "descripcion": "F3e: esta sesión pidió abrir o cerrar su micrófono (Voz.abre / Voz.cierra, que exige permiso y gesto: el estado de verdad llega por voz:estado). accion = abre | cierra; fuente = boton | tecla | gatillo | panel | auto (el guía, con el primer gesto de la sala); modo = pulsar | mantener (el ajuste «Hablar»).",
-      "datos": { "type": "object", "required": ["accion", "fuente", "modo"], "properties": { "accion": { "enum": ["abre", "cierra"] }, "fuente": { "enum": ["boton", "tecla", "gatillo", "panel", "auto"] }, "modo": { "enum": ["pulsar", "mantener"] } } },
-      "emiten": ["47_habla"],
+      "datos": {
+        "type": "object",
+        "required": [
+          "accion",
+          "fuente",
+          "modo"
+        ],
+        "properties": {
+          "accion": {
+            "enum": [
+              "abre",
+              "cierra"
+            ]
+          },
+          "fuente": {
+            "enum": [
+              "boton",
+              "tecla",
+              "gatillo",
+              "panel",
+              "auto"
+            ]
+          },
+          "modo": {
+            "enum": [
+              "pulsar",
+              "mantener"
+            ]
+          }
+        }
+      },
+      "emiten": [
+        "47_habla"
+      ],
       "escuchan": []
     },
     "hazas:cambia": {
       "descripcion": "Han llegado (o se han soltado) las hazas de la api que se ven en este mundo (13b_hazas.js): cuántas y cuántas son tuyas. Quien las dibuja (el componente «lindes-hazas») vuelve a pedir Hazas.lindes() y rehace la linde; sin nadie, no pasa nada.",
-      "datos": { "type": "object", "required": ["n", "propias"], "properties": { "n": { "type": "integer", "minimum": 0 }, "propias": { "type": "integer", "minimum": 0 } } },
-      "emiten": ["13b_hazas"],
-      "escuchan": ["44_lindes"]
+      "datos": {
+        "type": "object",
+        "required": [
+          "n",
+          "propias"
+        ],
+        "properties": {
+          "n": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "propias": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "emiten": [
+        "13b_hazas"
+      ],
+      "escuchan": [
+        "44_lindes"
+      ]
     },
     "juego:ofrece": {
       "descripcion": "Un juego casual (componente) se ofrece al anfitrión de juegos: { id, titulo, descripcion?, ayuda?, vr?, crea(ctx) → partida } (contrato en doc/sistema/JUEGOS.md). Lo emite al montarse y al oír «juego:pide».",
-      "datos": { "type": "object", "required": ["id", "titulo"], "properties": { "id": { "type": "string" }, "titulo": { "type": "string" }, "descripcion": { "type": "string" }, "ayuda": { "type": "string" }, "version": { "type": "integer" }, "vr": { "type": "object" } } },
-      "emiten": ["41_cae_la_cosecha"],
-      "escuchan": ["40_juegos"]
+      "datos": {
+        "type": "object",
+        "required": [
+          "id",
+          "titulo"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "titulo": {
+            "type": "string"
+          },
+          "descripcion": {
+            "type": "string"
+          },
+          "ayuda": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "vr": {
+            "type": "object"
+          }
+        }
+      },
+      "emiten": [
+        "41_cae_la_cosecha"
+      ],
+      "escuchan": [
+        "40_juegos"
+      ]
     },
     "juego:pide": {
       "descripcion": "El anfitrión de juegos acaba de montarse y pregunta qué juegos hay: cada juego encendido responde con «juego:ofrece».",
       "datos": {},
-      "emiten": ["40_juegos"],
-      "escuchan": ["41_cae_la_cosecha"]
+      "emiten": [
+        "40_juegos"
+      ],
+      "escuchan": [
+        "41_cae_la_cosecha"
+      ]
     },
     "juego:retira": {
       "descripcion": "Un juego se apaga (se libera su componente): el anfitrión lo quita de la lista y, si estaba abierto, lo cierra y quita la pausa del mundo.",
-      "datos": { "type": "object", "required": ["id"], "properties": { "id": { "type": "string" } } },
-      "emiten": ["41_cae_la_cosecha"],
-      "escuchan": ["40_juegos"]
+      "datos": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        }
+      },
+      "emiten": [
+        "41_cae_la_cosecha"
+      ],
+      "escuchan": [
+        "40_juegos"
+      ]
     },
     "medida:empieza": {
       "descripcion": "El medidor de fotogramas empieza a medir dentro de una sesión de VR: el panel de VR se esconde para no tapar la vista durante la medida.",
       "datos": {},
-      "emiten": ["30_mide"],
-      "escuchan": ["29_vr"]
+      "emiten": [
+        "30_mide"
+      ],
+      "escuchan": [
+        "29_vr"
+      ]
     },
     "medida:envia": {
       "descripcion": "El botón «Enviar esta medida a la oficina» del panel de VR (con el gatillo): el medidor manda la medida a la api del mismo origen. Sin medidor (?medidor=0) nadie lo atiende.",
       "datos": {},
-      "emiten": ["29_vr"],
-      "escuchan": ["30_mide"]
+      "emiten": [
+        "29_vr"
+      ],
+      "escuchan": [
+        "30_mide"
+      ]
     },
     "medida:envio": {
       "descripcion": "Cambió el estado del envío de la medida a la oficina (enviando, enviada, límite, mal): el panel de VR repinta su tarjeta.",
       "datos": {},
-      "emiten": ["30_mide"],
-      "escuchan": ["29_vr"]
+      "emiten": [
+        "30_mide"
+      ],
+      "escuchan": [
+        "29_vr"
+      ]
     },
     "medida:estado": {
       "descripcion": "Una pregunta con respuesta en el mismo objeto: el panel de VR pide lo que pinta en la tarjeta de la medida; el medidor rellena res con { resultado, lineas, puedeEnviar, envio, textoEnvio }. Sin medidor, res queda en null y la tarjeta no se abre (nunca llega «medida:fin»).",
-      "datos": { "type": "object", "properties": { "res": { "type": ["object", "null"] } } },
-      "emiten": ["29_vr"],
-      "escuchan": ["30_mide"]
+      "datos": {
+        "type": "object",
+        "properties": {
+          "res": {
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        }
+      },
+      "emiten": [
+        "29_vr"
+      ],
+      "escuchan": [
+        "30_mide"
+      ]
     },
     "medida:fin": {
       "descripcion": "El medidor de fotogramas termina una medida dentro de una sesión de VR: el panel vuelve a verse con la tarjeta del resultado.",
       "datos": {},
-      "emiten": ["30_mide"],
-      "escuchan": ["29_vr"]
+      "emiten": [
+        "30_mide"
+      ],
+      "escuchan": [
+        "29_vr"
+      ]
     },
     "medida:inicia": {
       "descripcion": "Configuración → Avanzado → «Medir 60 s»: el medidor empieza a medir ya, en el modo en que se esté. Sin medidor (?medidor=0) nadie lo atiende.",
-      "datos": { "type": "object", "properties": { "segundos": { "type": "number" } } },
-      "emiten": ["33_ajustes"],
-      "escuchan": ["30_mide"]
+      "datos": {
+        "type": "object",
+        "properties": {
+          "segundos": {
+            "type": "number"
+          }
+        }
+      },
+      "emiten": [
+        "33_ajustes"
+      ],
+      "escuchan": [
+        "30_mide"
+      ]
     },
     "medida:muestra": {
       "descripcion": "El ajuste «Contador de rendimiento» de Configuración → Avanzado cambia: el medidor enseña o esconde su caja junto al contador.",
-      "datos": { "type": "object", "required": ["on"], "properties": { "on": { "type": "boolean" } } },
-      "emiten": ["33_ajustes"],
-      "escuchan": ["30_mide"]
+      "datos": {
+        "type": "object",
+        "required": [
+          "on"
+        ],
+        "properties": {
+          "on": {
+            "type": "boolean"
+          }
+        }
+      },
+      "emiten": [
+        "33_ajustes"
+      ],
+      "escuchan": [
+        "30_mide"
+      ]
+    },
+    "mundo:aplica": {
+      "descripcion": "El mundo se ha vuelto a aplicar (aplica() de 08_marcadores.js: cambió la exageración vertical, el modo o los datos de las teselas): lo que cuelga del terreno se recoloca. Hoy lo atiende el componente de los marcadores del LiDAR (copas, anillos y desfase); sin él (?marcadores=0), nadie.",
+      "datos": {},
+      "emiten": [
+        "08_marcadores"
+      ],
+      "escuchan": [
+        "08b_marcadores_lidar"
+      ]
     },
     "mundo:pausa": {
       "descripcion": "El mundo entra en pausa (activa true: alguien llamó a Pausa.pon, p. ej. un juego a pantalla completa) o sale de ella (activa false). En pausa el bucle no avanza ni pinta el mundo: solo corre la fase «pausa».",
-      "datos": { "type": "object", "required": ["activa"], "properties": { "activa": { "type": "boolean" } } },
-      "emiten": ["02c_componentes"],
+      "datos": {
+        "type": "object",
+        "required": [
+          "activa"
+        ],
+        "properties": {
+          "activa": {
+            "type": "boolean"
+          }
+        }
+      },
+      "emiten": [
+        "02c_componentes"
+      ],
+      "escuchan": []
+    },
+    "oficina:anuncio": {
+      "descripcion": "OF10: ha llegado un anuncio de la oficina por la sala (tema «anuncio», mandado por la api sin participante; ya validado y limpio). Para quien quiera reaccionar (un sonido, un lector de pantalla); el aviso, la lámina en VR y la línea del chat ya los pone 39_oficina_mundo.",
+      "datos": {
+        "type": "object",
+        "required": [
+          "texto"
+        ],
+        "properties": {
+          "texto": {
+            "type": "string",
+            "maxLength": 280
+          }
+        }
+      },
+      "emiten": [
+        "39_oficina_mundo"
+      ],
+      "escuchan": []
+    },
+    "oficina:sala": {
+      "descripcion": "OF10: la oficina invita a pasar a otra sala del mundo (tema «sala»; a = «general» o «visita»). La pregunta («Ir» / «Quedarme») ya la hace 39_oficina_mundo; nadie cambia de sala sin pulsar.",
+      "datos": {
+        "type": "object",
+        "required": [
+          "a"
+        ],
+        "properties": {
+          "a": {
+            "enum": [
+              "general",
+              "visita"
+            ]
+          }
+        }
+      },
+      "emiten": [
+        "39_oficina_mundo"
+      ],
       "escuchan": []
     },
     "paseo:entra": {
       "descripcion": "El muñequito empieza a pasear (entraPaseo, ya con la cámara en el paseo): lo que vive solo mientras se pasea (la fauna) se coloca entre los olivos.",
       "datos": {},
-      "emiten": ["16_vida"],
-      "escuchan": ["16b_fauna"]
+      "emiten": [
+        "16_vida"
+      ],
+      "escuchan": [
+        "16b_fauna"
+      ]
     },
     "paseo:sale": {
       "descripcion": "El muñequito deja de pasear: lo que vive solo mientras se pasea (la fauna) se esconde.",
       "datos": {},
-      "emiten": ["16_vida"],
-      "escuchan": ["16b_fauna"]
+      "emiten": [
+        "16_vida"
+      ],
+      "escuchan": [
+        "16b_fauna"
+      ]
     },
     "perros:amenaza": {
       "descripcion": "Una pregunta con respuesta en el mismo objeto: la fauna (un conejo en { x, y }) pregunta si hay algo de lo que huir; los perros, si están, rellenan res con { x, y } de quien corre cerca (el muñequito, en quad desde más lejos, o un perro a la carrera). Sin perros, res queda en null.",
-      "datos": { "type": "object", "required": ["x", "y"], "properties": { "x": { "type": "number" }, "y": { "type": "number" }, "res": { "type": ["object", "null"] } } },
-      "emiten": ["16b_fauna"],
-      "escuchan": ["25_perros"]
+      "datos": {
+        "type": "object",
+        "required": [
+          "x",
+          "y"
+        ],
+        "properties": {
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          },
+          "res": {
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        }
+      },
+      "emiten": [
+        "16b_fauna"
+      ],
+      "escuchan": [
+        "25_perros"
+      ]
     },
     "perros:llegan": {
       "descripcion": "El muñequito acaba de aterrizar (o se entra en VR sin haber paseado): los perros salen de entre los olivos corriendo hacia él. Sin perros, no pasa nada.",
@@ -264,99 +692,474 @@
     },
     "personalizacion:resultado": {
       "descripcion": "El resultado de una acción de la ficha de un olivo que no tiene recuadro propio (hoy, «Denunciar» en VR): texto llano para quien lo muestre. En pantalla los resultados salen en el recuadro de la acción y no pasan por aquí.",
-      "datos": { "type": "object", "required": ["texto"], "properties": { "texto": { "type": "string" } } },
-      "emiten": ["42_personalizacion"],
+      "datos": {
+        "type": "object",
+        "required": [
+          "texto"
+        ],
+        "properties": {
+          "texto": {
+            "type": "string"
+          }
+        }
+      },
+      "emiten": [
+        "42_personalizacion"
+      ],
       "escuchan": []
+    },
+    "polvo:emite": {
+      "descripcion": "Una bocanada de polvo en { x (este), y (norte) } en metros del mundo, a altura h, con velocidad (vx, vy, vz), tamaño y vida en segundos. La dibuja quien lleve el polvo (huellas y polvo); sin él, no se ve.",
+      "datos": {
+        "type": "object",
+        "required": [
+          "x",
+          "y",
+          "h"
+        ],
+        "properties": {
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          },
+          "h": {
+            "type": "number"
+          },
+          "vx": {
+            "type": "number"
+          },
+          "vy": {
+            "type": "number"
+          },
+          "vz": {
+            "type": "number"
+          },
+          "tam": {
+            "type": "number"
+          },
+          "vida": {
+            "type": "number"
+          }
+        }
+      },
+      "emiten": [
+        "24_pantalla",
+        "25_perros"
+      ],
+      "escuchan": [
+        "22b_huellas_polvo"
+      ]
+    },
+    "presencia:activada": {
+      "descripcion": "F2b: la presencia compartida arrancó sola en la variante «red» (sin ?presencia=, con api: GET /api/presencia dijo { red: true } y la casilla «Ver a los demás y chatear» estaba marcada), ya con la página montada. Los avatares VRM, que se montaron vacíos por no haber presencia activa, se remontan al oírlo. Con ?presencia=sim|red desde la URL no se emite (la presencia ya está activa al montarse los avatares).",
+      "datos": {
+        "type": "object",
+        "required": [
+          "variante"
+        ],
+        "properties": {
+          "variante": {
+            "const": "red"
+          }
+        }
+      },
+      "emiten": [
+        "38_presencia_compartida"
+      ],
+      "escuchan": [
+        "26b_avatares"
+      ]
+    },
+    "prevision:alterna": {
+      "descripcion": "Abrir o cerrar la lámina de la previsión del tiempo en el mundo (el botón «Ver la previsión en el mundo» de la ventana Tiempo). Sin datos alterna; con abre true o false, abre o cierra.",
+      "datos": {
+        "type": "object",
+        "properties": {
+          "abre": {
+            "type": "boolean"
+          }
+        }
+      },
+      "emiten": [
+        "15_tiempo"
+      ],
+      "escuchan": [
+        "35_fichas_tiempo"
+      ]
     },
     "red:estado": {
       "descripcion": "Una sala de la red (37_red.js) cambia de estado: «conectando», «dentro», «reconectando» o «fuera» (con su motivo: «propio», «expulsado», «duplicado», «desconectado» o «error»). Quien está en la sala lo sigue por su sala (Red.sala(clave).al(\"estado\")); el evento es para lo demás (la oficina, ?debug).",
-      "datos": { "type": "object", "required": ["sala", "estado"], "properties": { "sala": { "type": "string" }, "estado": { "enum": ["fuera", "conectando", "dentro", "reconectando"] }, "motivo": { "type": "string" } } },
-      "emiten": ["37_red"],
-      "escuchan": ["45_voz"]
+      "datos": {
+        "type": "object",
+        "required": [
+          "sala",
+          "estado"
+        ],
+        "properties": {
+          "sala": {
+            "type": "string"
+          },
+          "estado": {
+            "enum": [
+              "fuera",
+              "conectando",
+              "dentro",
+              "reconectando"
+            ]
+          },
+          "motivo": {
+            "type": "string"
+          }
+        }
+      },
+      "emiten": [
+        "37_red"
+      ],
+      "escuchan": [
+        "45_voz"
+      ]
     },
     "sonido:baliza": {
       "descripcion": "Se ha llegado a una baliza de parcela: campanilla; con completa true (todas visitadas), un arpegio.",
-      "datos": { "type": "object", "properties": { "completa": { "type": "boolean" } } },
-      "emiten": ["19_balizas"],
-      "escuchan": ["20_sonido"]
+      "datos": {
+        "type": "object",
+        "properties": {
+          "completa": {
+            "type": "boolean"
+          }
+        }
+      },
+      "emiten": [
+        "19_balizas"
+      ],
+      "escuchan": [
+        "20_sonido"
+      ]
     },
     "sonido:golpe": {
       "descripcion": "El muñequito aterriza tras la caída del paseo: un golpe sordo y su rebote.",
       "datos": {},
-      "emiten": ["24_pantalla"],
-      "escuchan": ["20_sonido"]
+      "emiten": [
+        "24_pantalla"
+      ],
+      "escuchan": [
+        "20_sonido"
+      ]
     },
     "sonido:juego": {
       "descripcion": "Un sonido corto de un juego casual: que mueve, gira, asienta, grupo (con cadena: más agudo cuanto más larga) o fin. Sigue el interruptor y el volumen del sonido; sin el componente de sonido, no suena nada.",
-      "datos": { "type": "object", "required": ["que"], "properties": { "que": { "enum": ["mueve", "gira", "asienta", "grupo", "fin"] }, "cadena": { "type": "integer", "minimum": 1 } } },
-      "emiten": ["41_cae_la_cosecha"],
-      "escuchan": ["20_sonido"]
+      "datos": {
+        "type": "object",
+        "required": [
+          "que"
+        ],
+        "properties": {
+          "que": {
+            "enum": [
+              "mueve",
+              "gira",
+              "asienta",
+              "grupo",
+              "fin"
+            ]
+          },
+          "cadena": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "emiten": [
+        "41_cae_la_cosecha"
+      ],
+      "escuchan": [
+        "20_sonido"
+      ]
     },
     "sonido:ladrido": {
       "descripcion": "Un perro ladra (guau-guau, dos veces); grave true para el perro grande.",
-      "datos": { "type": "object", "properties": { "grave": { "type": "boolean" } } },
-      "emiten": ["25_perros"],
-      "escuchan": ["20_sonido"]
+      "datos": {
+        "type": "object",
+        "properties": {
+          "grave": {
+            "type": "boolean"
+          }
+        }
+      },
+      "emiten": [
+        "25_perros"
+      ],
+      "escuchan": [
+        "20_sonido"
+      ]
     },
     "usable:cerca": {
       "descripcion": "Al pasear (a pie, en quad, con el dron o en VR), lo más cercano de los tipos con cercanía ha cambiado (hoy, una baliza a menos de 17 m de quien pasea); id null si ya no hay nada cerca. Usables.cercano() lo dice en cualquier momento.",
-      "datos": { "type": "object", "required": ["id"], "properties": { "id": { "type": ["string", "null"] } } },
-      "emiten": ["02e_entidades"],
+      "datos": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "emiten": [
+        "02e_entidades"
+      ],
       "escuchan": []
     },
     "usable:elige": {
       "descripcion": "Se ha elegido una entidad del mundo (un olivo, una baliza, una haza, una persona) con un toque o clic (como \"toque\"), el rayo y el gatillo de un mando (\"rayo\"), una tecla (\"tecla\") o desde el código; su ficha ya se está enseñando.",
-      "datos": { "type": "object", "required": ["id", "tipo", "como"], "properties": { "id": { "type": "string" }, "tipo": { "type": "string" }, "como": { "type": "string" } } },
-      "emiten": ["02e_entidades"],
-      "escuchan": ["42_personalizacion"]
+      "datos": {
+        "type": "object",
+        "required": [
+          "id",
+          "tipo",
+          "como"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "tipo": {
+            "type": "string"
+          },
+          "como": {
+            "type": "string"
+          }
+        }
+      },
+      "emiten": [
+        "02e_entidades"
+      ],
+      "escuchan": [
+        "42_personalizacion"
+      ]
     },
     "usable:suelta": {
       "descripcion": "Lo elegido deja de estarlo: motivo \"otra\" (se eligió otra cosa), \"nada\" (un toque sobre nada), \"cerrada\" (su × o su «Cerrar»), \"tiempo\" (la ficha de VR se apagó sola) o \"quitada\" (su tipo salió del registro).",
-      "datos": { "type": "object", "required": ["id", "motivo"], "properties": { "id": { "type": "string" }, "motivo": { "type": "string" } } },
-      "emiten": ["02e_entidades"],
-      "escuchan": ["42_personalizacion"]
+      "datos": {
+        "type": "object",
+        "required": [
+          "id",
+          "motivo"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "motivo": {
+            "type": "string"
+          }
+        }
+      },
+      "emiten": [
+        "02e_entidades"
+      ],
+      "escuchan": [
+        "42_personalizacion"
+      ]
     },
     "usable:usa": {
       "descripcion": "Se ha usado una acción de la ficha de una entidad («Ir a esta baliza», «Ir con»…) y se ha hecho.",
-      "datos": { "type": "object", "required": ["id", "accion"], "properties": { "id": { "type": "string" }, "accion": { "type": "string" } } },
-      "emiten": ["02e_entidades"],
+      "datos": {
+        "type": "object",
+        "required": [
+          "id",
+          "accion"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "accion": {
+            "type": "string"
+          }
+        }
+      },
+      "emiten": [
+        "02e_entidades"
+      ],
+      "escuchan": []
+    },
+    "voz:estado": {
+      "descripcion": "F3d: algo ha cambiado en la voz de la visita guiada (componente «voz»): si estás en una sala guiada-<evento>, tu papel, si el permiso te deja hablar, el estado de tu micrófono (cerrado, abriendo, abierto), los segundos de tu turno (palabra_hasta), si las voces suenan espaciales o planas (micrófono abierto sin auriculares: con cancelación de eco), si el navegador bloqueó el audio por falta de gesto, cuántas voces y el motivo del último rechazo. Para el indicador «Tu micro está abierto», el botón Hablar y el panel (F3e, F3f). Lo mismo que Voz.estado().",
+      "datos": {
+        "type": "object",
+        "required": [
+          "sala",
+          "dentro",
+          "guiada",
+          "papel",
+          "puede",
+          "micro",
+          "modo",
+          "voces",
+          "motivo"
+        ],
+        "properties": {
+          "sala": {
+            "type": "string"
+          },
+          "dentro": {
+            "type": "boolean"
+          },
+          "guiada": {
+            "type": "boolean"
+          },
+          "entrando": {
+            "type": "boolean"
+          },
+          "papel": {
+            "enum": [
+              "",
+              "guia",
+              "oficina",
+              "familia"
+            ]
+          },
+          "puede": {
+            "type": "boolean"
+          },
+          "micro": {
+            "enum": [
+              "cerrado",
+              "abriendo",
+              "abierto"
+            ]
+          },
+          "turno": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "modo": {
+            "enum": [
+              "plano",
+              "espacial"
+            ]
+          },
+          "auriculares": {
+            "type": "boolean"
+          },
+          "bloqueado": {
+            "type": "boolean"
+          },
+          "voces": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "hablan": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "motivo": {
+            "type": "string"
+          }
+        }
+      },
+      "emiten": [
+        "45_voz"
+      ],
+      "escuchan": [
+        "46_guiada",
+        "47_habla"
+      ]
+    },
+    "voz:habla": {
+      "descripcion": "F3d: alguien de la sala guiada empieza a hablar (habla true), su nivel cambia en 0,1 o más, o calla (habla false, nivel 0). Sale de ActiveSpeakers de LiveKit: solo de las voces que se oyen (suscritas) y de la tuya (yo true). La identidad es la opaca de la sala (la del avatar en la presencia): para la etiqueta del avatar y la lista de Gente (F3e). Sin nadie que lo escuche, no pasa nada.",
+      "datos": {
+        "type": "object",
+        "required": [
+          "identidad",
+          "nivel",
+          "habla",
+          "yo"
+        ],
+        "properties": {
+          "identidad": {
+            "type": "string",
+            "minLength": 1
+          },
+          "nivel": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "habla": {
+            "type": "boolean"
+          },
+          "yo": {
+            "type": "boolean"
+          }
+        }
+      },
+      "emiten": [
+        "45_voz"
+      ],
       "escuchan": []
     },
     "vr:entra": {
       "descripcion": "Empieza una sesión de realidad virtual (la cámara ya cuelga del rig y el panel está abierto).",
       "datos": {},
-      "emiten": ["29_vr"],
-      "escuchan": ["40_juegos", "43_agenda"]
+      "emiten": [
+        "29_vr"
+      ],
+      "escuchan": [
+        "40_juegos",
+        "43_agenda"
+      ]
     },
     "vr:rig-libera": {
       "descripcion": "La sesión de realidad virtual termina y el rig se deshace: quien dibuje los mandos y las manos suelta sus modelos y sus recursos de GPU.",
       "datos": {},
-      "emiten": ["29_vr"],
-      "escuchan": ["36_mandos"]
+      "emiten": [
+        "29_vr"
+      ],
+      "escuchan": [
+        "36_mandos"
+      ]
     },
     "vr:rig-monta": {
       "descripcion": "La sesión de realidad virtual empieza y el rig (el grupo que lleva la cámara, los mandos y las manos) ya está en la escena: quien dibuje los mandos y las manos les pone su modelo.",
-      "datos": { "type": "object", "required": ["rig"], "properties": { "rig": { "type": "object" } } },
-      "emiten": ["29_vr"],
-      "escuchan": ["36_mandos"]
+      "datos": {
+        "type": "object",
+        "required": [
+          "rig"
+        ],
+        "properties": {
+          "rig": {
+            "type": "object"
+          }
+        }
+      },
+      "emiten": [
+        "29_vr"
+      ],
+      "escuchan": [
+        "36_mandos"
+      ]
     },
     "vr:sale": {
       "descripcion": "Termina la sesión de realidad virtual (la cámara vuelve a la pantalla). Lo propio de VR se cierra.",
       "datos": {},
-      "emiten": ["29_vr"],
-      "escuchan": ["02d_laminas", "40_juegos"]
-    },
-    "voz:estado": {
-      "descripcion": "F3d: algo ha cambiado en la voz de la visita guiada (componente «voz»): si estás en una sala guiada-<evento>, tu papel, si el permiso te deja hablar, el estado de tu micrófono (cerrado, abriendo, abierto), los segundos de tu turno (palabra_hasta), si las voces suenan espaciales o planas (micrófono abierto sin auriculares: con cancelación de eco), si el navegador bloqueó el audio por falta de gesto, cuántas voces y el motivo del último rechazo. Para el indicador «Tu micro está abierto», el botón Hablar y el panel (F3e, F3f). Lo mismo que Voz.estado().",
-      "datos": { "type": "object", "required": ["sala", "dentro", "guiada", "papel", "puede", "micro", "modo", "voces", "motivo"], "properties": { "sala": { "type": "string" }, "dentro": { "type": "boolean" }, "guiada": { "type": "boolean" }, "entrando": { "type": "boolean" }, "papel": { "enum": ["", "guia", "oficina", "familia"] }, "puede": { "type": "boolean" }, "micro": { "enum": ["cerrado", "abriendo", "abierto"] }, "turno": { "type": ["integer", "null"], "minimum": 0 }, "modo": { "enum": ["plano", "espacial"] }, "auriculares": { "type": "boolean" }, "bloqueado": { "type": "boolean" }, "voces": { "type": "integer", "minimum": 0 }, "hablan": { "type": "integer", "minimum": 0 }, "motivo": { "type": "string" } } },
-      "emiten": ["45_voz"],
-      "escuchan": ["46_guiada", "47_habla"]
-    },
-    "voz:habla": {
-      "descripcion": "F3d: alguien de la sala guiada empieza a hablar (habla true), su nivel cambia en 0,1 o más, o calla (habla false, nivel 0). Sale de ActiveSpeakers de LiveKit: solo de las voces que se oyen (suscritas) y de la tuya (yo true). La identidad es la opaca de la sala (la del avatar en la presencia): para la etiqueta del avatar y la lista de Gente (F3e). Sin nadie que lo escuche, no pasa nada.",
-      "datos": { "type": "object", "required": ["identidad", "nivel", "habla", "yo"], "properties": { "identidad": { "type": "string", "minLength": 1 }, "nivel": { "type": "number", "minimum": 0, "maximum": 1 }, "habla": { "type": "boolean" }, "yo": { "type": "boolean" } } },
-      "emiten": ["45_voz"],
-      "escuchan": []
+      "emiten": [
+        "29_vr"
+      ],
+      "escuchan": [
+        "02d_laminas",
+        "40_juegos"
+      ]
     }
   }
 }
