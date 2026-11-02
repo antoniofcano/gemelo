@@ -5,7 +5,7 @@
 // restricciones, la cascada de verdad): pruebas/integracion/llaves_yo.test.ts (escrita, se ejecuta por el banco).
 // NO probado con ningún navegador ni autenticador real, ni con un SMTP real.
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { test } from "node:test";
 import type { FastifyInstance } from "fastify";
 import type pg from "pg";
@@ -546,8 +546,10 @@ test("/api/yo/datos incluye las llaves (nombre, fechas, banderas) y nunca el id 
   assert.match(sql, /SELECT nombre, creada_en, ultima_vez_en, revocada_en, respaldada AS sincronizada, descubrible FROM llaves_acceso/);
 });
 
-test("al borrar la cuenta las llaves se borran con ella: la clave ajena de llaves_acceso.hogar_id es ON DELETE CASCADE (migración 0013, renombrada por la 0021)", () => {
-  const m13 = readFileSync(new URL("../../migraciones/0013_llaves_oficina.sql", import.meta.url), "utf8");
+test("al borrar la cuenta las llaves se borran con ella: la clave ajena de llaves_acceso.hogar_id es ON DELETE CASCADE (migración 0013, con el nombre cambiado por la 0021)", () => {
+  const dir = new URL("../../migraciones/", import.meta.url);
+  const f13 = readdirSync(dir).find(f => f.startsWith("0013_"))!;
+  const m13 = readFileSync(new URL(f13, dir), "utf8");
   assert.match(m13, /hogar_id\s+bigint NOT NULL REFERENCES hogares \(id\) ON DELETE CASCADE/);
   const m21 = readFileSync(new URL("../../migraciones/0021_llaves_acceso.sql", import.meta.url), "utf8");
   assert.ok(!/DROP CONSTRAINT[^;]*hogar_id_fkey/.test(m21), "la 0021 solo le cambia el nombre a esa clave ajena, no la quita");
