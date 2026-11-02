@@ -1,8 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
 // Consume: 01_datos (D, $), 02_mundo (copas), 02c_componentes (Bus, Componentes), 02d_laminas (Laminas), 02e_entidades (Entidades, Usables),
-//   03_escena (lienzo, camera, exag, modo), 09_camara (suelta, elige), 12_paseo (persona), 13b_hazas (HazasPuro, Hazas), 14_historia (lista),
-//   15_tiempo (hace), 16_vida (quita, mira), 29_vr (VRX, ficha)
+//   03_escena (lienzo, camera, exag, modo), 09_camara (suelta, elige), 12_paseo (persona, primera), 13b_hazas (HazasPuro, Hazas),
+//   14_historia (lista), 15_tiempo (hace), 16_vida (quita, mira), 29_vr (VRX, ficha)
 // Nota: Componente «personalizacion» (P7f, decisiones 91-96 y 99-102): nombrar, colgar una foto o un dibujo, verlo y denunciarlo en los olivos de las hazas. Solo se registra; nadie lo nombra. Sin servidor (sin D.base /teselas/… ni ?api=) no pide ni crea nada. Complementa la ficha común del olivo (Entidades.complementa), reduce la imagen en el aparato, pide el aviso con casilla y habla con /api/sesion, /api/hazas/{id}/olivos, /api/medios, /api/olivos, /api/personalizaciones/{id}/denuncias y /api/hazas/{id}/sugerencias. Publica las decoraciones de la lista (P7g D3) por el Bus («decoraciones:cambian»). Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/personalizacion.test.js.
 // ===============================================================================
 
@@ -354,6 +354,7 @@
           });
           caja.appendChild(b);
         });
+        campo = botones.filter(function (x) { return !x.disabled; })[0] || null;   // el foco, en la primera pieza que se puede elegir
         ok = null;   // sin «Guardar»: tocar una pieza la cuelga (las piezas y «Cancelar»: dos o tres botones)
       } else if (que === "quitardeco") {
         caja.appendChild(el("p", "margin:0 0 8px", "Se quita la decoración de este olivo (el nombre y la imagen, si los tiene, se quedan). ¿Seguro?"));
