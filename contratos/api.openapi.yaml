@@ -1388,6 +1388,54 @@ paths:
         "429": { $ref: "#/components/responses/Limite" }
         "503": { description: la presencia está apagada en este servidor }
 
+  /api/admin/presencia/participantes:
+    get:
+      summary: Quién está conectado ahora en el mundo y en qué sala (OF14 escalón 2; solo la oficina; solo lectura)
+      description: >
+        Solo sesión de oficina de verdad (rol oficina o admin con su aparato aprobado): unas gafas vinculadas desde una cuenta de oficina cuentan como visitante y
+        reciben 403 (ADR-0028). La api pregunta a LiveKit (RoomService.ListParticipants) por la sala general, la de la visita y las guiadas abiertas, y devuelve una
+        fila por conexión: sala (`general`, `visita` o `guiada-<evento>`), alias (el que el hogar eligió y puso en sus metadatos; «Oficina» para la oficina; «Hogar N» si
+        no tiene; «Visitante» si no se sabe de qué hogar es), rol, aparato (`escritorio`, `movil`, `quest`; null si no consta), desde cuándo está conectado (ISO; null si
+        LiveKit no lo dijo) y `hogar_id` (el id de la base, solo para que la oficina abra la familia o la expulse; null si la identidad opaca no es de ningún hogar).
+        NUNCA lleva correos ni datos personales. `haza` y `vista` salen de atributos del participante que solo podría poner la api: HOY EL MOTOR NO LOS PUBLICA, así que
+        van null (la api no ve la pose, decisión 40); el campo queda para cuando haya un canal. Metadatos y atributos se tratan como datos. Orden: la oficina primero,
+        luego por sala y por antigüedad. Máximo 200 filas (`truncado` y el `total` real). Caché de 4 s compartida (varias pestañas de oficina no martillean a LiveKit)
+        y 30 peticiones por minuto. Sin auditoría: es lectura. No probado contra LiveKit real.
+      security: [{ sesion: [] }]
+      responses:
+        "200":
+          description: lista (puede estar vacía)
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [consultado_en, total, truncado, participantes]
+                properties:
+                  consultado_en: { type: string, format: date-time }
+                  total: { type: integer, minimum: 0, description: "conexiones que había, antes de recortar" }
+                  truncado: { type: boolean }
+                  participantes:
+                    type: array
+                    maxItems: 200
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required: [sala, alias, rol, aparato, conectado_desde, hogar_id, haza, vista]
+                      properties:
+                        sala: { type: string, pattern: "^(general|visita|guiada-[1-9][0-9]{0,9})$" }
+                        alias: { type: string, maxLength: 24 }
+                        rol: { enum: [hogar, guia, corresponsal, oficina] }
+                        aparato: { enum: [escritorio, movil, quest, null], nullable: true }
+                        conectado_desde: { type: string, format: date-time, nullable: true }
+                        hogar_id: { type: integer, minimum: 1, nullable: true }
+                        haza: { type: string, pattern: "^[a-z0-9_-]{1,40}$", nullable: true }
+                        vista: { enum: [aerea, suelo, null], nullable: true }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: "la presencia está apagada en este servidor (presencia_apagada) o LiveKit no responde (livekit_no_responde)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+
   # ---------------------------------------------------------------- la voz de las visitas guiadas (F3c; ADR-0026; presencia/voz.ts y voz_rutas.ts)
   /api/presencia/guiadas/{evento}/token:
     post:
