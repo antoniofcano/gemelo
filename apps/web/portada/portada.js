@@ -43,6 +43,7 @@ function ir(nombre, { foco = true } = {}) {
   const d = destino(nombre);
   if (S.pantalla === "vincular" && d !== "vincular") paraVinculo();
   if (S.pantalla === "avatar" && d !== "avatar") paraVista();
+  if (S.pantalla === "entrar" && d !== "entrar") llavesListas?.L.paraEntrada();
   for (const s of document.querySelectorAll(".pant")) s.hidden = s.id !== "p-" + d;
   const cambia = S.pantalla !== d;
   S.pantalla = d;
@@ -52,11 +53,13 @@ function ir(nombre, { foco = true } = {}) {
   al[d]?.();
 }
 const al = {
+  portada: () => revisaOferta(),
+  entrar: () => pantallaEntrar(),
   vincular: () => { if (!S.vinculo) empiezaVinculo(); },
   alias: () => { const i = $("alias"); if (!i.value && S.sesion?.alias) i.value = S.sesion.alias; $("cVisible").checked = !!S.sesion?.alias_visible; },
   avatar: () => entraAvatar(),
   creditos: () => pintaCreditos(),
-  dispositivos: () => { $("okVincular").hidden = true; },
+  dispositivos: () => { $("okVincular").hidden = true; pintaMisLlaves(); },
 };
 window.addEventListener("hashchange", () => ir(location.hash.slice(1) || "portada"));
 
@@ -459,6 +462,176 @@ async function decide(aprobar) {
 }
 $("fVincular").addEventListener("submit", e => { e.preventDefault(); decide(true); });
 $("btnRechazar").addEventListener("click", () => decide(false));
+
+// ---------- llaves de acceso (OF13b-7, ADR-0029; doc/sistema/LLAVES-DE-ACCESO.md §3 y UX.md §4.2b). La librería (@simplewebauthn/browser) y la lógica
+// (llave_flujo.js, llave_puro.js) se piden con import() al abrir «Entrar», la portada con sesión o «Mis dispositivos»: el arranque no importa nada.
+// Cualquier fallo al cargarlas deja la portada como estaba (solo el enlace por correo).
+let llavesListas = null, llavesCarga = null;
+function cargaLlaves() {
+  llavesCarga ||= (async () => {
+    const [web, flujo, P] = await Promise.all([import("@simplewebauthn/browser"), import("./llave_flujo.js"), import("./llave_puro.js")]);
+    const L = flujo.creaLlaves({
+      pide,
+      lib: {
+        browserSupportsWebAuthn: web.browserSupportsWebAuthn, browserSupportsWebAuthnAutofill: web.browserSupportsWebAuthnAutofill,
+        platformAuthenticatorIsAvailable: web.platformAuthenticatorIsAvailable, startAuthentication: web.startAuthentication, startRegistration: web.startRegistration,
+        cancelCeremony: () => web.WebAuthnAbortService.cancelCeremony(),
+      },
+      memoria: {
+        lee: () => { try { return localStorage.getItem(P.CLAVE_RECUERDO); } catch { return null; } },
+        guarda: b => { try { localStorage.setItem(P.CLAVE_RECUERDO, b); } catch { /* solo comodidad */ } },
+      },
+      ahora: () => Date.now(), agente: navigator.userAgent,
+    });
+    return (llavesListas = { L, P });
+  })().catch(() => { llavesCarga = null; return null; });
+  return llavesCarga;
+}
+/** Un aviso con role=alert o status: el texto, visible y con el foco (UX §7: el cambio de estado se anuncia y se alcanza). */
+function avisaLlave(caja, txt, texto, { foco = true } = {}) {
+  if (!texto) { caja.hidden = true; return; }
+  txt.textContent = texto; caja.hidden = false;
+  if (foco) caja.focus();
+}
+
+// -- entrar con la llave (UX §4.2): botón grande y autorrelleno del campo del correo
+async function trasEntrarConLlave(r) {
+  const { P } = llavesListas;
+  if (r.obsoleta || r.silencioso) return;
+  if (!r.ok) { avisaLlave($("avLlave"), $("avLlaveTxt"), r.texto); armaAutorrelleno(); return; }
+  const ancla = P.anclaDeDestino(r.destino);
+  if (ancla) { await leeSesion(); ir(ancla); return; }   // «/#bienvenida»: primer acceso o normas nuevas, dentro de la misma portada
+  location.assign(r.destino);
+}
+async function armaAutorrelleno() {
+  const { L } = llavesListas;
+  if (S.pantalla !== "entrar" || !(await L.admiteAutorrelleno()) || S.pantalla !== "entrar") return;
+  trasEntrarConLlave(await L.entra({ condicional: true }));
+}
+async function pantallaEntrar() {
+  avisaLlave($("avLlave"), $("avLlaveTxt"), null);
+  const ll = await cargaLlaves();
+  if (!ll || S.pantalla !== "entrar") { $("bloqueLlave").hidden = true; return; }
+  const hay = ll.L.soporte();
+  $("bloqueLlave").hidden = !hay;   // sin soporte de WebAuthn solo se ofrece el enlace, sin errores
+  if (hay) armaAutorrelleno();
+}
+$("btnLlave").addEventListener("click", async () => {
+  const b = $("btnLlave"), ll = await cargaLlaves();
+  if (!ll) return;
+  avisaLlave($("avLlave"), $("avLlaveTxt"), null);
+  b.disabled = true;
+  try { await trasEntrarConLlave(await ll.L.entra({ condicional: false })); } finally { b.disabled = false; }
+});
+
+// -- la oferta tras el primer enlace (LLAVES-DE-ACCESO §3.1): solo si toca
+let ofertaTok = 0;
+async function revisaOferta() {
+  const tok = ++ofertaTok, caja = $("ofertaLlave");
+  caja.hidden = true;
+  const s = S.sesion;
+  if (!s || s.primer_acceso || s.entrada !== "enlace") return;   // lo barato primero: sin esto no se carga nada
+  const ll = await cargaLlaves();
+  if (!ll) return;
+  const r = await ll.L.evalua(s);
+  if (tok !== ofertaTok || S.pantalla !== "portada" || !r.ofrecer) return;
+  $("llaveNombre").value = ll.L.nombrePropuesto();
+  $("campoOferta").hidden = false; $("botonesOferta").hidden = false;
+  avisaLlave($("avOferta"), $("avOfertaTxt"), null); avisaLlave($("okOferta"), $("okOfertaTxt"), null);
+  caja.hidden = false;
+}
+function cierraOferta(texto) {
+  $("ofertaLlave").hidden = true;
+  anuncia(texto); $("btnSeguir").focus();
+}
+$("ofertaAhoraNo").addEventListener("click", () => { llavesListas?.L.responde("ahora_no"); cierraOferta("Vale. No te lo volveremos a preguntar en 30 días."); });
+$("ofertaNunca").addEventListener("click", () => { llavesListas?.L.responde("nunca"); cierraOferta("Vale. No te lo volveremos a preguntar en este navegador."); });
+$("ofertaSi").addEventListener("click", async () => {
+  const b = $("ofertaSi"), ll = llavesListas;
+  if (!ll) return;
+  avisaLlave($("avOferta"), $("avOfertaTxt"), null);
+  b.disabled = true;
+  const r = await ll.L.crea($("llaveNombre").value.trim());
+  b.disabled = false;
+  // un fallo del alta no rompe la entrada: la persona ya está dentro, solo se le dice y puede volver a probar o seguir
+  if (!r.ok) { avisaLlave($("avOferta"), $("avOfertaTxt"), r.texto); return; }
+  $("campoOferta").hidden = true; $("botonesOferta").hidden = true;
+  avisaLlave($("okOferta"), $("okOfertaTxt"), "Listo: se ha guardado la llave «" + r.nombre + "». La próxima vez podrás entrar con ella. También intentamos avisarte por correo de este cambio.");
+});
+
+// -- Mis llaves, en Mis dispositivos (UX §4.11): lista, añadir otra y quitar con confirmación
+let quitando = null;
+async function pintaMisLlaves() {
+  const c = $("misLlaves");
+  c.hidden = true;
+  const s = S.sesion;
+  if (!s || s.titular !== true || s.entrada === "codigo") return;   // nunca desde unas gafas
+  const ll = await cargaLlaves();
+  if (!ll) return;
+  const r = await ll.L.lista();
+  if (S.pantalla !== "dispositivos") return;
+  if (!r.ok) { if (r.status === 401) { await leeSesion(); ir("portada"); } return; }   // sin lista no se enseña una vacía que engañaría
+  c.hidden = false;
+  repintaLlaves(ll, r);
+}
+function repintaLlaves(ll, r) {
+  const ul = $("listaLlaves"), ahora = Date.now();
+  ul.replaceChildren();
+  for (const l of r.llaves) {
+    const li = document.createElement("li"), datos = document.createElement("div"), n = document.createElement("p"), nom = document.createElement("strong"), p = document.createElement("p"), q = document.createElement("button");
+    datos.className = "datos"; nom.textContent = l.nombre; n.appendChild(nom);
+    if (l.es_esta) { const e = document.createElement("span"); e.className = "pill"; e.textContent = "esta"; n.append(" ", e); }
+    p.className = "pista"; p.textContent = ll.P.resumenMiLlave(l, ahora);
+    q.type = "button"; q.className = "btn btn-peligro"; q.textContent = "Quitar"; q.setAttribute("aria-label", "Quitar la llave «" + l.nombre + "»");
+    q.addEventListener("click", () => pideQuitar(ll, l, r.llaves.length, q));
+    datos.append(n, p); li.append(datos, q); ul.appendChild(li);
+  }
+  $("llavesVacio").hidden = r.llaves.length > 0;
+  const puede = r.puede_anadir && ll.L.soporte();
+  $("btnOtraLlave").hidden = !puede; $("campoOtraLlave").hidden = true;
+  $("btnOtraLlave").textContent = r.llaves.length ? "Añadir otra llave" : "Crear una llave en este aparato";
+}
+async function recargaLlaves(ll, aviso) {
+  const r = await ll.L.lista();
+  if (r.ok) repintaLlaves(ll, r);
+  if (aviso) avisaLlave($("okLlaves"), $("okLlavesTxt"), aviso);
+}
+function pideQuitar(ll, l, total, boton) {
+  quitando = { ll, l, total, boton };
+  $("dlgQuitarTxt").textContent = ll.P.textoQuitar(l, total);
+  const d = $("dlgQuitar");
+  if (typeof d.showModal === "function") { d.showModal(); $("dlgQuitarNo").focus(); }
+  else if (confirm($("dlgQuitarTxt").textContent)) confirmaQuitar();   // navegador sin <dialog>: la confirmación nativa de siempre
+}
+async function confirmaQuitar() {
+  const q = quitando; quitando = null;
+  const d = $("dlgQuitar");
+  if (d.open) d.close();
+  if (!q) return;
+  avisaLlave($("avLlaves"), $("avLlavesTxt"), null); avisaLlave($("okLlaves"), $("okLlavesTxt"), null);
+  const r = await q.ll.L.quita(q.l.id);
+  if (!r.ok && !r.yaNoEsta) { avisaLlave($("avLlaves"), $("avLlavesTxt"), r.texto); return; }
+  if (r.ok && r.era_esta) {   // con esa llave se había abierto esta sesión: la api la cerró
+    await leeSesion(); ir("portada"); anuncia("Has quitado la llave con la que entraste. Vuelve a entrar con un enlace o con otra llave."); return;
+  }
+  const aviso = !r.ok ? r.texto : r.quedan === 0 ? "Llave quitada. " + q.ll.P.TEXTO_ULTIMA_LLAVE :"Llave quitada.";
+  await recargaLlaves(q.ll, aviso);
+  const b = $("btnOtraLlave"); (b.hidden ? $("okLlaves") : b).focus();
+}
+$("dlgQuitarSi").addEventListener("click", confirmaQuitar);
+$("dlgQuitarNo").addEventListener("click", () => { quitando = null; $("dlgQuitar").close(); });
+$("dlgQuitar").addEventListener("cancel", () => { quitando = null; });
+$("btnOtraLlave").addEventListener("click", async () => {
+  const ll = llavesListas, campo = $("campoOtraLlave"), nombre = $("llaveNombreOtra");
+  if (!ll) return;
+  avisaLlave($("avLlaves"), $("avLlavesTxt"), null); avisaLlave($("okLlaves"), $("okLlavesTxt"), null);
+  if (campo.hidden) { nombre.value = ll.L.nombrePropuesto(); campo.hidden = false; nombre.focus(); nombre.select(); return; }   // primer toque: pide el nombre
+  const b = $("btnOtraLlave"); b.disabled = true;
+  const r = await ll.L.crea(nombre.value.trim());
+  b.disabled = false;
+  if (!r.ok) { avisaLlave($("avLlaves"), $("avLlavesTxt"), r.texto); return; }
+  await recargaLlaves(ll, "Listo: se ha guardado la llave «" + r.nombre + "». También intentamos avisarte por correo de este cambio.");
+});
 
 // ---------- salir
 async function salir(todas) {

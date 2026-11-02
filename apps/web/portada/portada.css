@@ -153,3 +153,11 @@ details.pieza > summary:focus-visible { outline: 3px solid var(--foco); outline-
 .lista-cred { list-style: none; padding: 0; display: grid; gap: 10px; }
 .lista-cred li { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; }
 .lista-cred p { margin: 0 0 4px; }
+
+/* llaves de acceso (OF13b-7): la lista de «Mis llaves» y la confirmación de quitar (<dialog> nativo) */
+.lista-llaves { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.lista-llaves li { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: space-between; background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 14px; }
+.lista-llaves .datos { min-width: 0; flex: 1 1 220px; }
+.lista-llaves .datos p { margin: 0; }
+dialog { background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: var(--r); padding: 18px 20px; max-width: min(92vw, 460px); }
+dialog::backdrop { background: rgba(0, 0, 0, .5); }
