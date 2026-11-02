@@ -41,6 +41,16 @@ test("puro: la lista de la api entra por su lista blanca (el ejemplo del contrat
   assert.strictEqual(P.indexa({}, null), 0); assert.strictEqual(P.indexa({}, { olivos: "no" }), 0);
 });
 
+test("puro (P7g D3): las decoraciones de la lista salen aparte, con su haza (mía o no); un olivo con solo decoración no entra en el mapa de nombres e imágenes", () => {
+  const d = P.decoraciones(Object.assign({}, EJEMPLO, { es_mia: true }));
+  assert.deepStrictEqual(d, [{ finca: "hituelo", copas_id: 900001, pieza: "luces", mia: true }, { finca: "hituelo", copas_id: 900004, pieza: "lazo", mia: true }, { finca: "hituelo", copas_id: 900005, pieza: "cinta", mia: true }]);
+  assert.ok(!("hituelo:900005" in (m => (P.indexa(m, EJEMPLO), m))({})), "solo decoración: ni rótulo ni «Denunciar» (no hay texto ni imagen)");
+  const sucio = { es_mia: false, olivos: [{ finca: "x", copas_id: 1, decoracion: "LUCES" }, { finca: "x", copas_id: 2, decoracion: "a".repeat(17) }, { finca: "x", copas_id: 3, decoracion: 7 },
+    { finca: "X!", copas_id: 4, decoracion: "lazo" }, { finca: "x", copas_id: -1, decoracion: "lazo" }, null, { finca: "x", copas_id: 5, decoracion: "cohete" }] };
+  assert.deepStrictEqual(P.decoraciones(sucio), [{ finca: "x", copas_id: 5, pieza: "cohete", mia: false }], "la forma de slug; si la pieza existe lo decide quien dibuja");
+  assert.deepStrictEqual(P.decoraciones(null), []); assert.deepStrictEqual(P.decoraciones({ olivos: 1 }), []);
+});
+
 test("puro: el nombre (1-40, los caracteres de la api) y el fichero (JPEG, PNG o WebP)", () => {
   assert.deepStrictEqual(P.validaNombre("  El   abuelo  "), { ok: true, nombre: "El abuelo" });
   assert.strictEqual(P.validaNombre("Olivo de Lucía (2026)").ok, true);
@@ -237,6 +247,21 @@ test("motor: con api pide la sesión y los olivos de cada haza, y complementa la
   const vr = w.Entidades.ficha("olivo:hituelo:100", "vr"); assert.strictEqual(vr.acciones, undefined, "en VR lo mío no se escribe"); assert.ok(vr.filas.some(q => /no en VR/.test(q.v)));
   assert.deepStrictEqual(w.Entidades.ficha("olivo:hituelo:200", "vr").acciones.map(a => a.txt), ["Denunciar"], "en VR se denuncia");
   m.libera(); assert.strictEqual(w.reg.quitados, 1, "libera quita el complemento"); assert.strictEqual(w.reg.complementos.length, 0);
+});
+
+test("motor (P7g D3): publica las decoraciones de todas las hazas por el Bus al traerlas y a quien las pida; al liberar, la lista vacía", async () => {
+  const w = mundoMotor({ respuestas: {
+    "/api/hazas/1/olivos": { estado: 200, cuerpo: { haza_id: 1, es_mia: true, olivos: [{ id: 11, finca: "hituelo", copas_id: 100, nombre: null, decoracion: "luces", objeto: null }] } },
+    "/api/hazas/2/olivos": { estado: 200, cuerpo: { haza_id: 2, es_mia: false, olivos: [{ id: 22, finca: "hituelo", copas_id: 200, nombre: "El Abuelo", decoracion: "lazo", objeto: null }] } } } });
+  const m = w.motor(w.n); m.actualiza("tarde", 0.4); await w.listo();
+  const ult = () => w.reg.eventos.filter(e => e[0] === "decoraciones:cambian").pop();
+  assert.ok(ult(), "«decoraciones:cambian» emitido");
+  assert.deepStrictEqual(ult()[1].lista.slice().sort((a, b) => a.copas_id - b.copas_id), [{ finca: "hituelo", copas_id: 100, pieza: "luces", mia: true }, { finca: "hituelo", copas_id: 200, pieza: "lazo", mia: false }]);
+  assert.strictEqual(m.estado().decoraciones, 2); assert.strictEqual(m.estado().personalizados, 1, "la de solo decoración no es «personalizada» (nombre o imagen)");
+  assert.deepStrictEqual(w.Entidades.ficha("olivo:hituelo:100", "pantalla").acciones.map(a => a.txt), ["Nombrar", "Colgar foto o dibujo", "Sugerir a la oficina"], "sin «Quitar»: la decoración tiene su propia ruta (D4)");
+  const n0 = w.reg.eventos.length; assert.strictEqual(typeof w.on["decoraciones:pide"], "function"); w.on["decoraciones:pide"]({});
+  assert.strictEqual(w.reg.eventos.length, n0 + 1); assert.strictEqual(ult()[1].lista.length, 2, "responde con la última");
+  m.libera(); assert.deepStrictEqual(ult()[1].lista, [], "liberado, ya no hay decoraciones que dibujar");
 });
 
 test("motor: una sesión de gafas vinculadas no escribe (lo dice) pero sí ve y denuncia", async () => {
