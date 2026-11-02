@@ -156,7 +156,7 @@
       nvPrev = nv;
       var oculto = document.hidden && !renderer.xr.isPresenting;
       if (prev >= 0 || oculto) {
-        var rr = renderer.info.render;   // Q0e: lo que costó dibujar este fotograma (el último render(): en VR three dibuja los dos ojos en uno)
+        var rr = (renderer.info && renderer.info.render) || {};   // Q0e: lo que costó dibujar este fotograma (el último render(): en VR three dibuja los dos ojos en uno)
         m.t.push(t); m.ms.push(prev >= 0 ? tIni - prev : 0); m.js.push(js); m.oc.push(oculto ? 1 : 0); m.ll.push(rr.calls | 0); m.tr.push(rr.triangles | 0);
       }
       prev = oculto ? -1 : tIni;
