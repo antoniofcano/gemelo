@@ -10,6 +10,7 @@ import { rutasBandeja } from "./bandeja.ts";
 import { rutasContornoFinca } from "./contorno.ts";
 import { rutasFamilias } from "./familias.ts";
 import { rutasHazasOficina } from "./hazas.ts";
+import { rutasLlavesDeHogar } from "./llaves_hogar.ts";
 import { rutasOlivosOficina } from "./olivos.ts";
 import { rutasSistema } from "./sistema.ts";
 
@@ -20,6 +21,7 @@ export async function rutasAdmin(app: FastifyInstance, ctx: Contexto): Promise<v
   const soloAdmin = OFICINA;
 
   await rutasFamilias(app, ctx);
+  await rutasLlavesDeHogar(app, ctx);
   await rutasBandeja(app, ctx);
   await rutasHazasOficina(app, ctx);
   await rutasOlivosOficina(app, ctx);

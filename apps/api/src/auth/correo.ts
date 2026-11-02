@@ -143,3 +143,32 @@ export function mensajeDeLlaveQuitada(para: string, nombre: string, ahora: Date 
       "y avisa a la oficina.\n",
   };
 }
+
+/**
+ * Aviso de seguridad (decisión 187, OF13b-6): la OFICINA ha quitado una o varias llaves de acceso de la cuenta (la familia llamó porque perdió el aparato,
+ * o la oficina rehabilita el alta de una cuenta). Dice «la oficina», nunca el nombre de nadie; sin enlaces ni el correo en el cuerpo; el enlace del correo
+ * sigue sirviendo para entrar. Los nombres van saneados (una línea, 40 caracteres) y como mucho cinco; del resto solo se dice cuántas son.
+ */
+export function mensajeDeLlavesQuitadasPorLaOficina(para: string, nombres: string[], ahora: Date = new Date()): Mensaje {
+  const varias = nombres.length > 1;
+  const lista = nombres.slice(0, 5).map(n => "«" + nombreEnCorreo(n) + "»").join(", ") + (nombres.length > 5 ? " y " + (nombres.length - 5) + " más" : "");
+  return {
+    para,
+    asunto: varias ? "La oficina ha quitado llaves de acceso de tu cuenta" : "La oficina ha quitado una llave de acceso de tu cuenta",
+    texto:
+      "Hola:
+
+" +
+      "La oficina del gemelo del olivar ha quitado " + (varias ? "estas llaves de acceso" : "una llave de acceso") + " de tu cuenta: " + lista + ", el " + cuando(ahora) + ". " +
+      (varias ? "Esas llaves ya no sirven" : "Esa llave ya no sirve") + " para entrar y se han cerrado las sesiones que se abrieron con ellas.
+
+" +
+      "No te quedas fuera: el enlace que te mandamos a este correo sigue funcionando para entrar, y desde Configuración, Mis dispositivos puedes crear una llave nueva. " +
+      "Si lo pediste tú a la oficina, no tienes que hacer nada.
+
+" +
+      "Si no lo pediste: entra con un enlace desde la portada (pídelo con este mismo correo), revisa en Configuración, Mis dispositivos las llaves que quedan " +
+      "y avisa a la oficina.
+",
+  };
+}
