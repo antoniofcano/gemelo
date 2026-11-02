@@ -35,8 +35,11 @@ D2 y D3 se pueden preparar en paralelo con un contrato de por medio; el primer e
 - **Quest y móvil.** No probado en hardware real: se dirá «no probado».
 - **Lo que ven los demás.** Una decoración es visible para todos los hogares; el catálogo cerrado lo hace seguro por construcción.
 
-## Decisiones para Antonio
-1. **¿Qué piezas tiene el catálogo inicial?**
-2. **¿Una decoración por olivo o varias?** (varias pide una tabla; una, una columna).
-3. **¿Cambian con la estación o las elige la familia siempre?**
-4. **¿Puede la oficina poner decoraciones oficiales** (p. ej. un lazo en los olivos de un evento)?
+## Decisiones tomadas (2026-11-02, [175-178](../rumbo/DECISIONS-PENDING.md))
+1. **Catálogo de temporada**: piezas que cambian con la época (flores, luces…). Qué piezas concretas lleva cada época queda por escribir (D1).
+2. **Una sola decoración por olivo y hogar**: la nueva sustituye a la anterior. Basta una columna, no una tabla.
+3. **La familia elige** entre las piezas de la época actual; lo ya puesto se queda hasta que lo cambie. Nada cambia solo.
+4. **La oficina solo ve y retira**; no pone decoraciones oficiales.
+
+## Lo que falta decidir
+- **D1: la lista concreta de piezas por época.** Propuesta de partida para ajustar: primavera (flores), verano (cinta de color), otoño (farolillo, cosecha), invierno (luces, lazo). Cada pieza, una malla pequeña instanciada y rotulada como ilustrativa.
