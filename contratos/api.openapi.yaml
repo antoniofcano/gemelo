@@ -2616,14 +2616,15 @@ paths:
         "401": { $ref: "#/components/responses/SinSesion" }
         "404": { description: no existe ese juego }
 
-  # ---------------------------------------------------------------- medidas de fluidez (PB9, contratos/medidas.md; migración 0017)
+  # ---------------------------------------------------------------- medidas de fluidez (PB9 y Q0e, contratos/medidas.md; migraciones 0017 y 0022)
   /api/medidas:
     post:
       summary: Guarda una medida de fluidez del aparato (el medidor `&mide=60`) que la persona decidió mandar a la oficina. Nada personal
       description: >
         Cualquier sesión (también unas gafas vinculadas). Esquema estricto (contratos/medidas.schema.json). 422 medida_no_creible si
-        mediana ≤ p95 ≤ peor no se cumple o la fecha es futura o de hace más de 7 días. Límite por IP (10 por minuto) y por hogar
-        (10 por día, en memoria: el hogar no se guarda, ni IP, ni el agente de usuario entero; no se audita).
+        mediana ≤ p95 ≤ peor (o js_mediana_ms ≤ js_p95_ms) no se cumple o la fecha es futura o de hace más de 7 días. Límite por IP (10 por minuto) y por hogar
+        (10 por día, en memoria: el hogar no se guarda, ni IP, ni el agente de usuario entero; no se audita). Contrato v2 (Q0e): nueve campos OPCIONALES
+        (js_mediana_ms, js_p95_ms, nivel_ini, nivel_fin, perillas, olivos_gen, llamadas_med, triangulos_med, personas); el cuerpo de la v1 sigue valiendo.
       security: [{ sesion: [] }]
       requestBody:
         required: true
@@ -2642,8 +2643,8 @@ paths:
     get:
       summary: Las medidas de fluidez, agregadas por día, aparato y VR (oficina y admin); filtros por aparato y fechas
       description: >
-        Filas { dia, aparato, vr, medidas, p95_mediano_ms, p95_peor_ms, mediana_ms, peor_ms, fotogramas, navegadores, versiones, objetivo_p95_ms, cumple }
-        y `objetivos_p95_ms` por aparato (Quest 13,9 ms, ADR-0015; escritorio y móvil, null: sin umbral escrito). Es MEDIDO por cada aparato de sí mismo.
+        Filas { dia, aparato, vr, medidas, p95_mediano_ms, p95_peor_ms, mediana_ms, peor_ms, fotogramas, navegadores, versiones, objetivo_p95_ms, cumple, js_mediana_ms, js_p95_ms, nivel_ini, nivel_fin, perillas, olivos_gen_si, olivos_gen_de, llamadas_med, triangulos_med, personas }
+        (lo de Q0e es la mediana del día; null si ninguna medida lo traía) y `objetivos_p95_ms` por aparato (Quest 13,9 ms, ADR-0015; escritorio y móvil, null: sin umbral escrito). Es MEDIDO por cada aparato de sí mismo.
       security: [{ sesion: [] }]
       parameters:
         - { name: aparato, in: query, schema: { type: string, enum: [escritorio, movil, quest] } }

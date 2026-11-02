@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "medidas.schema.json",
-  "title": "Medida de fluidez de un aparato (PB9)",
-  "description": "Cuerpo de POST /api/medidas. Lo mide el aparato de sí mismo (MEDIDO, regla 5) con el medidor de 30_mide.js y lo manda la persona con un botón. Nada personal: ni hogar, ni posición, ni IP, ni agente de usuario entero. Contrato en contratos/medidas.md; lo copia apps/api/src/medidas/rutas.ts (CUERPO_MEDIDA) y lo comprueba apps/api/pruebas/unidad/medidas.test.ts.",
+  "title": "Medida de fluidez de un aparato (PB9; v2 = Q0e)",
+  "description": "Cuerpo de POST /api/medidas. Lo mide el aparato de sí mismo (MEDIDO, regla 5) con el medidor de 30_mide.js y lo manda la persona con un botón. Nada personal: ni hogar, ni posición, ni IP, ni agente de usuario entero. Contrato en contratos/medidas.md. v2 (Q0e): nueve campos OPCIONALES más que dicen por qué va como va; un cliente de v1 que no los manda sigue valiendo; lo copia apps/api/src/medidas/rutas.ts (CUERPO_MEDIDA) y lo comprueba apps/api/pruebas/unidad/medidas.test.ts.",
   "type": "object",
   "additionalProperties": false,
   "required": ["aparato", "navegador", "nav_mayor", "perfil", "finca", "modo", "vr", "mediana_ms", "p95_ms", "peor_ms", "fotogramas", "duracion_s", "version", "medida_en"],
@@ -20,6 +20,15 @@
     "fotogramas": { "type": "integer", "minimum": 10, "maximum": 1000000 },
     "duracion_s": { "type": "integer", "minimum": 1, "maximum": 600 },
     "version": { "type": "string", "pattern": "^[0-9A-Za-z.+-]{1,24}$", "description": "Versión del gemelo (VERSION)" },
-    "medida_en": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$", "description": "Cuándo terminó la medida (UTC); la api la rechaza si es futura o de hace más de 7 días" }
+    "medida_en": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$", "description": "Cuándo terminó la medida (UTC); la api la rechaza si es futura o de hace más de 7 días" },
+    "js_mediana_ms": { "type": "number", "minimum": 0, "maximum": 10000, "description": "Q0e (opcional): mediana de los ms de JavaScript por fotograma (lo que tarda el bucle en su parte de JS, no el intervalo)" },
+    "js_p95_ms": { "type": "number", "minimum": 0, "maximum": 10000, "description": "Q0e (opcional): p95 de los ms de JavaScript por fotograma; js_mediana_ms <= js_p95_ms" },
+    "nivel_ini": { "type": "integer", "minimum": -1, "maximum": 9, "description": "Q0e (opcional): nivel de VR_PERFILES al empezar la medida (-1 si no es VR)" },
+    "nivel_fin": { "type": "integer", "minimum": -1, "maximum": 9, "description": "Q0e (opcional): nivel de VR_PERFILES al terminar (el mismo valor que perfil)" },
+    "perillas": { "type": "string", "pattern": "^[0-9A-Za-z\\u00c1\\u00c9\\u00cd\\u00d3\\u00da\\u00dc\\u00d1\\u00e1\\u00e9\\u00ed\\u00f3\\u00fa\\u00fc\\u00f1 ,.:;=()+_%\\u00b7-]{1,80}$", "description": "Q0e (opcional): las perillas de VR con que se midió (XrPerillas.linea() sin el prefijo «VR: »), saneado y de 80 caracteres como mucho; p. ej. «fov 1 · escala 0,9 · 72 Hz · MSAA sí · nivel auto»" },
+    "olivos_gen": { "type": "boolean", "description": "Q0e (opcional): si los olivos generados estaban activos durante la medida" },
+    "llamadas_med": { "type": "integer", "minimum": 0, "maximum": 100000, "description": "Q0e (opcional): mediana por fotograma de renderer.info.render.calls" },
+    "triangulos_med": { "type": "integer", "minimum": 0, "maximum": 100000000, "description": "Q0e (opcional): mediana por fotograma de renderer.info.render.triangles" },
+    "personas": { "type": "integer", "minimum": 0, "maximum": 500, "description": "Q0e (opcional): personas visibles de la presencia al terminar (0 si no hay presencia); solo un número, ninguna identidad" }
   }
 }
