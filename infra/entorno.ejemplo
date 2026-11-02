@@ -21,7 +21,7 @@ GEMELO_API_REGISTRO=info
 GEMELO_SESION_DIAS=30
 GEMELO_SESION_INACTIVIDAD_DIAS=7
 GEMELO_ENLACE_POR_IP=10
-GEMELO_ENLACE_POR_CORREO=3
+GEMELO_ENLACE_POR_CORREO=5
 GEMELO_ENLACE_VENTANA_MIN=15
 # código corto de las gafas (contratos/sesion.md § Código corto): códigos por IP, intentos de aprobar por hogar y por IP
 # (en la ventana), y sondeos por minuto y por IP

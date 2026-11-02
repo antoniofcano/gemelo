@@ -12,7 +12,7 @@ import { creaCodigo, SONDEO_S, sondea } from "./vinculo.ts";
 
 export const NOMBRE_COOKIE = "__Host-gemelo";
 export const OPCIONES_COOKIE = { path: "/", secure: true, httpOnly: true, sameSite: "lax" } as const;
-export const TEXTO_ACEPTADO = "Si ese correo puede entrar, te acabamos de mandar un enlace. Caduca en 15 minutos y sirve una sola vez.";
+export const TEXTO_ACEPTADO = "Si ese correo tiene cuenta, te llegará un enlace. Caduca en 15 minutos y sirve una sola vez.";
 export const TEXTO_LIMITE = "Has pedido varios enlaces seguidos. Por seguridad, espera unos minutos antes de pedir otro. Si ya te ha llegado uno, úsalo.";
 export const TEXTO_LIMITE_VINCULO = "Demasiados intentos seguidos. Por seguridad, espera unos minutos y vuelve a probar.";
 /** Adónde va quien acaba de entrar: la primera vez (o si cambiaron las normas), al primer acceso de la portada; si no, al mundo. */

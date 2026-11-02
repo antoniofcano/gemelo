@@ -111,6 +111,14 @@ function cuentaAtras() {
   pinta();
   reloj = setInterval(() => { n--; pinta(); if (n <= 0) clearInterval(reloj); }, 1000);
 }
+// «¿No es ese? Cambiarlo»: vuelve al campo con el correo escrito y el foco va al campo (no al título)
+$("lnkCambiar").addEventListener("click", e => {
+  e.preventDefault();
+  const i = $("correo");
+  i.value = S.correo;
+  ir("entrar", { foco: false });
+  i.focus();
+});
 $("btnReenviar").addEventListener("click", async () => {
   if (!S.correo) return ir("entrar");
   const r = await mandaEnlace(S.correo);

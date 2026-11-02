@@ -210,7 +210,7 @@ paths:
           application/json:
             schema: { type: object, additionalProperties: false, required: [correo], properties: { correo: { type: string, maxLength: 254 } } }
       responses:
-        "202": { description: aceptado (se haya mandado o no), content: { application/json: { schema: { type: object, properties: { mensaje: { type: string } } } } } }
+        "202": { description: aceptado con el mismo texto exista o no la cuenta (el enlace solo se manda si la hay), content: { application/json: { schema: { type: object, properties: { mensaje: { type: string } } } } } }
         "400": { description: correo mal formado }
         "403": { $ref: "#/components/responses/OrigenNoAdmitido" }
         "429": { $ref: "#/components/responses/Limite" }

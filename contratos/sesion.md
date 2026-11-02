@@ -10,8 +10,8 @@ Decisión y alternativas: [ADR-0013](../doc/adr/0013-enlace-magico-y-sesiones.md
 | Se guarda | solo su SHA-256 (`tokens_acceso.hash`); en claro existe únicamente en el correo |
 | Caduca | 15 minutos |
 | Usos | uno; el canje es atómico (`UPDATE … WHERE usado_en IS NULL RETURNING`): dos canjes a la vez → entra uno |
-| Pedirlo | `POST /api/auth/enlace {correo}` → **202 con el mismo texto** exista o no la cuenta (no se puede sondear quién tiene acceso) |
-| Límites | por IP (por defecto 10) y por correo (3) en 15 min; el 429 lleva el mismo texto para cualquier correo |
+| Pedirlo | `POST /api/auth/enlace {correo}` → **202 con el mismo texto** («Si ese correo tiene cuenta, te llegará un enlace…») exista o no la cuenta: misma forma y mismo estado (no se puede sondear quién tiene acceso; el tiempo de respuesta no está medido) |
+| Límites | por IP (por defecto 10) y por correo (5) en 15 min (`GEMELO_ENLACE_POR_IP`, `GEMELO_ENLACE_POR_CORREO`); el 429 lleva la misma forma y el mismo texto para cualquier correo, exista o no |
 | Abrirlo | `GET /api/auth/entrar?t=…` muestra una página con un botón; **no gasta** el enlace (un escáner de correo que lo abra no lo consume) |
 | Gastarlo | `POST /api/auth/entrar` (formulario o JSON) |
 | Correo | solo texto, sin imágenes ni seguimiento; las cuentas las da la oficina (no hay alta abierta) |
