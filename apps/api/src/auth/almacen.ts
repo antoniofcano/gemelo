@@ -6,15 +6,19 @@
 //  - solo se guarda una sesión con hogar: las anónimas no tocan la base;
 //  - una cuenta de OFICINA (rol oficina o admin, ADR-0024) tiene su propia caducidad (12 h absolutas, 2 h sin actividad, por
 //    defecto) y su sesión solo vale si viene de un aparato de oficina suyo y no revocado; si está pendiente de aprobar, la
-//    sesión existe pero marcada (las guardas de oficina/acceso.ts la paran). Las de antes de la 0005 o de unas gafas, sin aparato: no valen.
+//    sesión existe pero marcada (las guardas de oficina/acceso.ts la paran). Las de antes de la 0005, sin aparato: no valen.
 //  - con la llave de acceso obligatoria (OF13), una sesión de oficina que no se abrió ni se confirmó con una llave viva queda
 //    marcada `llaveRequerida` (solo sirve para dar de alta la llave o entrar con ella) y su «confirmación reciente» es la última
 //    aserción WebAuthn (confirmada_en solo la pone la llave).
+//  - ADR-0028 (OF16): unas GAFAS vinculadas con el código corto desde una cuenta de oficina (`origen = 'vinculo'` de un hogar con rol
+//    oficina o admin) valen, pero como VISITANTE: rol efectivo `hogar`, sin nada de oficina (ni aparato, ni llave, ni confirmación),
+//    con la vida de una sesión de oficina (12 h desde que nació) y la inactividad más corta de las dos (hoy, la de la oficina). El rol
+//    de la cuenta NUNCA sale de aquí para esa sesión: las guardas y el token de LiveKit leen `req.session.rol`, que ya es el efectivo.
 import type { SessionStore } from "@fastify/session";
 import type { Session } from "fastify";
 import type { Bd } from "../bd/pool.ts";
 import { hashToken } from "../seguridad/cripto.ts";
-import type { Rol } from "./servicio.ts";
+import { esOficina, type Rol } from "./servicio.ts";
 
 declare module "fastify" {
   interface Session {
@@ -41,6 +45,14 @@ declare module "fastify" {
     /** solo en cuentas de oficina con la llave obligatoria: true si la sesión aún no se abrió con una llave (las guardas la paran) */
     llaveRequerida?: boolean;
   }
+}
+
+/**
+ * El rol con el que cuenta una sesión (ADR-0028): el de la cuenta, salvo unas gafas vinculadas con el código corto desde una cuenta
+ * de oficina o admin, que cuentan como `hogar` (visitante). Es la única traducción; el SQL de `lee()` aplica la misma regla a la caducidad.
+ */
+export function rolEfectivo(rolCuenta: Rol, origen: "enlace" | "vinculo"): Rol {
+  return origen === "vinculo" && esOficina(rolCuenta) ? "hogar" : rolCuenta;
 }
 
 type Cb = (err?: unknown) => void;
@@ -70,17 +82,23 @@ export class AlmacenPg implements SessionStore {
 
   private async lee(id: string): Promise<Session | null> {
     const o = this.oficina;
+    // la caducidad, por ramas: (1) ADR-0028, gafas (vinculo) de una cuenta de oficina o admin, como visitante: 12 h desde que nacieron
+    // y la inactividad más corta de las dos (oficina o familia); (2) la oficina de siempre: aparato suyo, enlace, 12 h y su inactividad;
+    // (3) el resto: la inactividad de las familias. `h.rol` es el rol de la CUENTA; el de la sesión es rolEfectivo() de abajo.
     const r = await this.bd.query<{ sid: number; hogar_id: number; rol: Rol; alias: string | null; alias_visible: boolean; normas_version: number | null; origen: "enlace" | "vinculo"; expira_en: Date; refrescar: boolean;
-      de_oficina: boolean; aparato_id: number | null; aparato_aprobado: boolean; confirmada_en: Date | null; confirmacion_vigente: boolean; llave_id: number | null }>(
+      aparato_id: number | null; aparato_aprobado: boolean; confirmada_en: Date | null; confirmacion_vigente: boolean; llave_id: number | null }>(
       `SELECT s.id AS sid, s.origen, h.id AS hogar_id, h.rol, h.alias, h.alias_visible, h.normas_version, s.expira_en,
               s.ultima_actividad_en < now() - interval '5 minutes' AS refrescar,
-              h.rol::text IN ('oficina', 'admin') AS de_oficina, a.id AS aparato_id, a.aprobado_en IS NOT NULL AS aparato_aprobado,
+              a.id AS aparato_id, a.aprobado_en IS NOT NULL AS aparato_aprobado,
               s.confirmada_en, coalesce(s.confirmada_en > now() - make_interval(mins => $5), false) AS confirmacion_vigente, l.id AS llave_id
          FROM sesiones s JOIN hogares h ON h.id = s.hogar_id
          LEFT JOIN aparatos_oficina a ON a.id = s.aparato_id AND a.hogar_id = s.hogar_id AND a.revocado_en IS NULL
          LEFT JOIN llaves_oficina l ON l.id = s.llave_id AND l.hogar_id = s.hogar_id AND l.revocada_en IS NULL
         WHERE s.hash = $1 AND s.revocada_en IS NULL AND s.expira_en > now() AND h.activo
-          AND CASE WHEN h.rol::text IN ('oficina', 'admin')
+          AND CASE WHEN h.rol::text IN ('oficina', 'admin') AND s.origen = 'vinculo'
+                   THEN s.creada_en > now() - make_interval(hours => $3)
+                        AND s.ultima_actividad_en > now() - LEAST(make_interval(mins => $4), make_interval(days => $2))
+                   WHEN h.rol::text IN ('oficina', 'admin')
                    THEN a.id IS NOT NULL AND s.origen = 'enlace'
                         AND s.creada_en > now() - make_interval(hours => $3)
                         AND s.ultima_actividad_en > now() - make_interval(mins => $4)
@@ -93,8 +111,10 @@ export class AlmacenPg implements SessionStore {
       if (f.aparato_id !== null && f.aparato_aprobado) await this.bd.query("UPDATE aparatos_oficina SET ultimo_uso_en = now() WHERE id = $1", [f.aparato_id]);
     }
     // la cookie se reconstruye con la caducidad absoluta guardada (no se alarga al usarla)
-    const s = { hogarId: f.hogar_id, rol: f.rol, alias: f.alias, aliasVisible: f.alias_visible, normasVersion: f.normas_version, origen: f.origen, idBd: f.sid, cookie: { expires: f.expira_en } } as unknown as Session;
-    if (f.de_oficina) {
+    // rol EFECTIVO (ADR-0028): unas gafas vinculadas desde una cuenta de oficina son `hogar` y no cargan nada de oficina
+    const rol = rolEfectivo(f.rol, f.origen);
+    const s = { hogarId: f.hogar_id, rol, alias: f.alias, aliasVisible: f.alias_visible, normasVersion: f.normas_version, origen: f.origen, idBd: f.sid, cookie: { expires: f.expira_en } } as unknown as Session;
+    if (esOficina(rol)) {
       s.aparatoId = f.aparato_id!;
       s.aparatoAprobado = f.aparato_aprobado;
       if (f.confirmada_en) s.confirmadaEn = f.confirmada_en;

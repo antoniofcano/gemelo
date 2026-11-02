@@ -147,7 +147,8 @@ export function iniciaFamilias({ sesion }) {
     if (!ss.length) caja.append(h("p", { class: "nota" }, "Ninguna sesión abierta."));
     for (const s of ss) {
       caja.append(h("div", { class: "aparato" },
-        h("span", null, s.aparato + (s.por_codigo_corto ? " (código corto)" : ""), h("br"), h("span", { class: "nota" }, "último uso: " + fecha(s.ultima_actividad_en))),
+        // unas gafas ya se llaman «Gafas (código corto)» (sesiones.aparato_nombre): no se repite la coletilla
+        h("span", null, s.aparato + (s.por_codigo_corto && !/código corto/.test(s.aparato) ? " (código corto)" : ""), h("br"), h("span", { class: "nota" }, "último uso: " + fecha(s.ultima_actividad_en))),
         h("button", { class: "boton peq", type: "button", "aria-label": "Cerrar la sesión de " + s.aparato, onclick: () => cierraSesion(f, s) }, "Cerrar")));
     }
     for (const a of sesiones.aparatos_oficina) {

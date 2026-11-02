@@ -126,6 +126,9 @@ export async function rutasAuth(app: FastifyInstance, ctx: Contexto): Promise<vo
     req.session.hogarId = e.hogarId;
     req.session.origen = "vinculo";
     req.session.aparatoNombre = "Gafas (código corto)";
+    // ADR-0028 (decisión 182): las gafas aprobadas desde una cuenta de oficina viven 12 h, como una sesión de oficina, y entran como
+    // visitante (el rol efectivo `hogar` lo pone el almacén al leerla; aquí no se fija ningún rol)
+    if (esOficina(e.rol)) req.session.cookie.maxAge = config.oficina.horasSesion * 3_600_000;
     return { estado: "aprobado", primer_acceso: primerAcceso(e.normasVersion) };
   });
 

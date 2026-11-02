@@ -244,10 +244,10 @@ test("revocar un aparato cierra sus sesiones; el siguiente enlace desde él empi
   assert.equal(aud.rows[0].detalle.aparato, id); assert.equal(aud.rows[0].detalle.sesiones, 2);
 });
 
-test("la oficina no vincula gafas con el código corto (su sesión exige aparato y enlace)", async t => {
+test("ADR-0028: la oficina aprueba el código corto de unas gafas (204); que entren como visitante lo comprueba vinculo_oficina.test.ts", async t => {
   if (salta(t)) return;
   const ofi = await oficinaAprobada(OFI);
   const p = (await app.inject({ method: "POST", url: "/api/auth/vincula", headers: deLaWeb({ "x-forwarded-for": ip() }), payload: {} })).json();
   const r = await pide("POST", "/api/yo/dispositivos/vincular", ofi.sesion, { codigo: p.codigo, aprobar: true });
-  assert.equal(r.statusCode, 403);
+  assert.equal(r.statusCode, 204, r.body);
 });

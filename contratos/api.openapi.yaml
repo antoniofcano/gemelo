@@ -292,7 +292,7 @@ paths:
       summary: Quién soy (rol, alias y si me toca el primer acceso)
       security: [{ sesion: [] }]
       responses:
-        "200": { description: ok, content: { application/json: { schema: { type: object, additionalProperties: false, required: [rol, alias, alias_visible, primer_acceso, titular], properties: { rol: { enum: [hogar, guia, corresponsal, oficina, admin] }, alias: { type: [string, "null"] }, alias_visible: { type: boolean }, primer_acceso: { type: boolean, description: "true si no ha aceptado la versión vigente de las normas (PUT /api/yo/normas)" }, titular: { type: boolean, description: "true si la sesión nació del enlace mágico (el adulto titular); false en un aparato vinculado con el código corto. Solo el titular cuelga contenido (decisión 96, vida.md)" } } } } } }
+        "200": { description: ok, content: { application/json: { schema: { type: object, additionalProperties: false, required: [rol, alias, alias_visible, primer_acceso, titular], properties: { rol: { enum: [hogar, guia, corresponsal, oficina, admin], description: "rol EFECTIVO de la sesión: unas gafas vinculadas con el código corto desde una cuenta de oficina o admin dan hogar (ADR-0028)" }, alias: { type: [string, "null"] }, alias_visible: { type: boolean }, primer_acceso: { type: boolean, description: "true si no ha aceptado la versión vigente de las normas (PUT /api/yo/normas)" }, titular: { type: boolean, description: "true si la sesión nació del enlace mágico (el adulto titular); false en un aparato vinculado con el código corto. Solo el titular cuelga contenido (decisión 96, vida.md)" } } } } } }
         "401": { $ref: "#/components/responses/SinSesion" }
 
   /api/sesion/salir:
@@ -439,6 +439,7 @@ paths:
   /api/yo/dispositivos/vincular:
     post:
       summary: "Configuración → Mis dispositivos → Vincular: aprueba (o rechaza) el código que enseñan unas gafas"
+      description: "Cualquier sesión válida, también la de una cuenta de oficina o admin (ADR-0028: ya no hay 403 por rol). Las gafas que aprueba una cuenta de oficina entran como VISITANTE: su sesión tiene rol efectivo hogar, titular false, 12 h de vida y ningún poder de oficina (contratos/sesion.md § Código corto). Una sesión de oficina con el aparato pendiente o sin su llave sigue dando 403 (aparato_pendiente / llave_requerida), como en el resto de rutas con sesión."
       security: [{ sesion: [] }]
       requestBody:
         required: true
@@ -446,9 +447,9 @@ paths:
           application/json:
             schema: { type: object, additionalProperties: false, required: [codigo, aprobar], properties: { codigo: { type: string, pattern: "^[ A-Za-z0-9-]{6,12}$", description: "con o sin guion; se normaliza a mayúsculas" }, aprobar: { type: boolean } } }
       responses:
-        "204": { description: "aprobado (las gafas entran en su próximo sondeo) o rechazado" }
+        "204": { description: "aprobado (las gafas entran en su próximo sondeo; si aprobó una cuenta de oficina, como visitante y por 12 h) o rechazado" }
         "401": { $ref: "#/components/responses/SinSesion" }
-        "403": { $ref: "#/components/responses/OrigenNoAdmitido" }
+        "403": { description: "Origin no admitido, o una sesión de oficina que aún no sirve (aparato_pendiente, llave_requerida). Nunca por ser una cuenta de oficina", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
         "404": { description: "el código no sirve: la MISMA respuesta si no existe, caducó o ya se decidió (no enumerable)" }
         "429": { $ref: "#/components/responses/Limite" }
 

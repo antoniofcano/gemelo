@@ -9,7 +9,7 @@
 import { createHmac, randomInt } from "node:crypto";
 import type { Bd } from "../bd/pool.ts";
 import { hashToken, nuevoToken } from "../seguridad/cripto.ts";
-import { audita } from "./servicio.ts";
+import { audita, type Rol } from "./servicio.ts";
 
 /** Sin caracteres que se confundan al leerlos en las gafas o al teclearlos: ni 0/O, ni 1/I/L. 31 símbolos. */
 export const ALFABETO = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
@@ -60,21 +60,25 @@ export async function creaCodigo(bd: Bd, secreto: string): Promise<CodigoNuevo> 
 /**
  * El hogar de la sesión aprueba (o rechaza) el código que ve en sus gafas. Solo un código vivo, sin decidir: si no, false,
  * y quien llama responde lo MISMO tanto si no existe como si caducó o ya se decidió (no se puede sondear qué códigos hay).
+ * `deOficina` (ADR-0028): lo decide una cuenta de oficina o admin; la auditoría lo dice (`como: "visitante"`: las gafas entrarán como
+ * visitante), sin el código ni el correo.
  */
-export async function decideCodigo(bd: Bd, secreto: string, hogarId: number, tecleado: string, aprobar: boolean): Promise<boolean> {
+export async function decideCodigo(bd: Bd, secreto: string, hogarId: number, tecleado: string, aprobar: boolean, deOficina = false): Promise<boolean> {
+  const detalle: Record<string, string> = deOficina ? { como: "visitante" } : {};
   const n = normalizaCodigo(tecleado);
-  if (!n) { await audita(bd, hogarId, "vinculo.fallido"); return false; }
+  if (!n) { await audita(bd, hogarId, "vinculo.fallido", detalle); return false; }
   const vivo = "codigo_hash = $1 AND aprobado_en IS NULL AND rechazado_en IS NULL AND expira_en > now()";
   const h = hashCodigo(n, secreto);
   const r = aprobar
     ? await bd.query("UPDATE codigos_vinculo SET hogar_id = $2, aprobado_en = now() WHERE " + vivo, [h, hogarId])
     : await bd.query("UPDATE codigos_vinculo SET rechazado_en = now() WHERE " + vivo, [h]);
   const ok = (r.rowCount ?? 0) === 1;
-  await audita(bd, hogarId, ok ? (aprobar ? "vinculo.aprobado" : "vinculo.rechazado") : "vinculo.fallido");
+  await audita(bd, hogarId, ok ? (aprobar ? "vinculo.aprobado" : "vinculo.rechazado") : "vinculo.fallido", detalle);
   return ok;
 }
 
-export type EstadoSondeo = { estado: "esperando" | "rechazado" | "caducado" } | { estado: "aprobado"; hogarId: number; normasVersion: number | null };
+/** `rol` es el de la CUENTA que aprobó: solo para fijar la vida de la cookie (ADR-0028: 12 h si es de oficina); el rol de la sesión lo da el almacén. */
+export type EstadoSondeo = { estado: "esperando" | "rechazado" | "caducado" } | { estado: "aprobado"; hogarId: number; normasVersion: number | null; rol: Rol };
 
 /**
  * Lo que ven las gafas al sondear. Si está aprobado, lo GASTA de forma atómica (dos sondeos a la vez: entra uno) y
@@ -82,13 +86,13 @@ export type EstadoSondeo = { estado: "esperando" | "rechazado" | "caducado" } | 
  */
 export async function sondea(bd: Bd, sondeo: string): Promise<EstadoSondeo> {
   const h = hashToken(sondeo);
-  const g = await bd.query<{ hogar_id: number; normas_version: number | null }>(
+  const g = await bd.query<{ hogar_id: number; normas_version: number | null; rol: Rol }>(
     `UPDATE codigos_vinculo c SET usado_en = now() FROM hogares h
       WHERE c.sondeo_hash = $1 AND c.aprobado_en IS NOT NULL AND c.usado_en IS NULL AND c.expira_en > now()
         AND h.id = c.hogar_id AND h.activo
-      RETURNING c.hogar_id, h.normas_version`, [h]);
+      RETURNING c.hogar_id, h.normas_version, h.rol`, [h]);
   const f = g.rows[0];
-  if (f) { await audita(bd, f.hogar_id, "vinculo.usado"); return { estado: "aprobado", hogarId: f.hogar_id, normasVersion: f.normas_version }; }
+  if (f) { await audita(bd, f.hogar_id, "vinculo.usado"); return { estado: "aprobado", hogarId: f.hogar_id, normasVersion: f.normas_version, rol: f.rol }; }
   const r = await bd.query<{ rechazado: boolean; vivo: boolean; esperando: boolean }>(
     `SELECT rechazado_en IS NOT NULL AS rechazado, expira_en > now() AS vivo, aprobado_en IS NULL AND rechazado_en IS NULL AS esperando
        FROM codigos_vinculo WHERE sondeo_hash = $1`, [h]);
