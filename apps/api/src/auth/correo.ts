@@ -156,19 +156,12 @@ export function mensajeDeLlavesQuitadasPorLaOficina(para: string, nombres: strin
     para,
     asunto: varias ? "La oficina ha quitado llaves de acceso de tu cuenta" : "La oficina ha quitado una llave de acceso de tu cuenta",
     texto:
-      "Hola:
-
-" +
+      "Hola:\n\n" +
       "La oficina del gemelo del olivar ha quitado " + (varias ? "estas llaves de acceso" : "una llave de acceso") + " de tu cuenta: " + lista + ", el " + cuando(ahora) + ". " +
-      (varias ? "Esas llaves ya no sirven" : "Esa llave ya no sirve") + " para entrar y se han cerrado las sesiones que se abrieron con ellas.
-
-" +
+      (varias ? "Esas llaves ya no sirven" : "Esa llave ya no sirve") + " para entrar y se han cerrado las sesiones que se abrieron con ellas.\n\n" +
       "No te quedas fuera: el enlace que te mandamos a este correo sigue funcionando para entrar, y desde Configuración, Mis dispositivos puedes crear una llave nueva. " +
-      "Si lo pediste tú a la oficina, no tienes que hacer nada.
-
-" +
+      "Si lo pediste tú a la oficina, no tienes que hacer nada.\n\n" +
       "Si no lo pediste: entra con un enlace desde la portada (pídelo con este mismo correo), revisa en Configuración, Mis dispositivos las llaves que quedan " +
-      "y avisa a la oficina.
-",
+      "y avisa a la oficina.\n",
   };
 }
