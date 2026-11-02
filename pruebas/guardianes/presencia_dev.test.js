@@ -7,8 +7,8 @@
 //  2. El motor: dos contextos con dos hogares entran en /finca/?presencia=red: en vista aérea no publican pose; paseando se
 //     ven (cada una recibe la pose de la otra y dibuja su avatar; su retardo con SwiftShader va al ritmo de los fotogramas y
 //     solo se informa) y se escriben por el chat. Un segundo aparato del MISMO hogar (otra sesión) entra sin echar al primero.
-//     La oficina expulsa al hogar: salen sus dos conexiones, el vecino sigue y no hay token nuevo. Con ?presencia=sim y sin
-//     bandera, todo sigue igual (ni token ni panel).
+//     La oficina expulsa al hogar: salen sus dos conexiones, el vecino sigue y no hay token nuevo. Sin bandera y con LiveKit en el
+//     servidor la presencia en red arranca sola (F2b: token y panel); ?presencia=0 la apaga y ?presencia=sim sigue siendo la simulación (ni token ni panel).
 //  3. Lo que P1-P3 dejaron sin verificar contra un LiveKit real: los permisos del token (canPublish false con
 //     canPublishSources vacío: un micrófono no se publica; los datos sí), RemoveParticipant de quien no está, y si Chrome abre
 //     ws://localhost:7880 desde https://localhost:8743 (y wss://localhost:8743/rtc, por Caddy).
@@ -316,15 +316,39 @@ test("e2e: presencia con LiveKit real (dos Chrome, mismo hogar en dos aparatos, 
         });
         for (const c of ctxs.splice(0)) await c.close();
 
-        await t.test("sin bandera y con ?presencia=sim todo sigue igual: ni token, ni panel, ni sala", async () => {
-          const s0 = await abre(ses.vecino, "/finca/"), e0 = await s0.est();
-          assert.strictEqual(e0.activo, false); assert.strictEqual(await s0.pg.$("#presenciaGente"), null); assert.deepStrictEqual(s0.tokens, []);
-          const s1 = await abre(ses.vecino, "/finca/?presencia=sim");
+        // F2b: sin ?presencia= y con el servidor con LiveKit (GET /api/presencia → { red: true }) la presencia en red arranca sola; ?presencia=0 la apaga; ?presencia=sim sigue siendo la simulación
+        await t.test("arranque solo (F2b): sin bandera y con LiveKit arranca la variante «red» (token y panel «Gente y chat»); ?presencia=0 la apaga (ni token, ni panel, ni petición a /api/presencia); ?presencia=sim sigue siendo la simulación (ni token, ni panel)", async () => {
+          const estado = s => s.pg.evaluate(() => typeof window.__presencia === "function" ? window.__presencia() : { activo: false, sinGancho: true });
+          const pregunta = s => { s.preguntas = []; s.pg.on("request", r => { if (/\/api\/presencia(\?|$)/.test(r.url())) s.preguntas.push(r.url()); }); };
+          // (a) sin bandera: arranca sola. Se atiende la pregunta antes de que cargue, así que se mira la espera de «conectado»
+          const s0 = await abre(ses.vecino, null); pregunta(s0);
+          await s0.pg.goto(base + "/finca/");
+          await s0.pg.waitForFunction(() => window.__g && window.__g.listo(), null, { timeout: 300000, polling: 1000 });
+          await s0.pg.waitForFunction(() => window.__presencia && window.__presencia().conectado, null, { timeout: 120000, polling: 1000 });
+          const e0 = await estado(s0);
+          assert.strictEqual(e0.activo, true); assert.strictEqual(e0.variante, "red"); assert.strictEqual(e0.conectado, true);
+          assert.ok(s0.preguntas.length >= 1, "pregunta a /api/presencia: " + s0.preguntas.length);
+          assert.ok(s0.tokens.length >= 1, "pide su token a la api");
+          assert.notStrictEqual(await s0.pg.$("#presenciaGente"), null, "el panel «Gente y chat» está");
+          await cierra(s0); await espera(1500);
+          // (b) ?presencia=0: apagada del todo
+          const s2 = await abre(ses.vecino, null); pregunta(s2);
+          await s2.pg.goto(base + "/finca/?presencia=0");
+          await s2.pg.waitForFunction(() => window.__g && window.__g.listo(), null, { timeout: 300000, polling: 1000 });
           await espera(2000);
-          const e1 = await s1.est();
+          const e2 = await estado(s2);
+          assert.strictEqual(e2.activo, false); assert.strictEqual(await s2.pg.$("#presenciaGente"), null); assert.deepStrictEqual(s2.tokens, []);
+          assert.deepStrictEqual(s2.preguntas, [], "con ?presencia=0 ni siquiera pregunta a /api/presencia");
+          // (c) ?presencia=sim: la simulación de siempre, sin red
+          const s1 = await abre(ses.vecino, null); pregunta(s1);
+          await s1.pg.goto(base + "/finca/?presencia=sim");
+          await s1.pg.waitForFunction(() => window.__g && window.__g.listo(), null, { timeout: 300000, polling: 1000 });
+          await espera(2000);
+          const e1 = await estado(s1);
           assert.strictEqual(e1.activo, true); assert.strictEqual(e1.variante, "sim"); assert.strictEqual(e1.n, 10);
           assert.strictEqual(await s1.pg.$("#presenciaGente"), null); assert.deepStrictEqual(s1.tokens, []);
-          assert.deepStrictEqual([...s0.errores, ...s1.errores], []);
+          assert.deepStrictEqual(s1.preguntas, [], "con ?presencia=sim no pregunta");
+          assert.deepStrictEqual([...s0.errores, ...s2.errores, ...s1.errores], []);
           for (const c of ctxs.splice(0)) await c.close();
         });
       } } finally {

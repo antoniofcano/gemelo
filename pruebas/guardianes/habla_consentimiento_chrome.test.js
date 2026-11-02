@@ -40,15 +40,29 @@ async function abre(consulta, estado) {
   return { p, errores, visto };
 }
 const dibujo = p => p.evaluate(() => { const g = window.__g; g.renderer.render(g.scene, g.camera); return { llamadas: g.renderer.info.render.calls, triangulos: g.renderer.info.render.triangles }; });
+// PB10: «cola vacía y Escena3D lista» no basta: las teselas y sus niveles de detalle siguen entrando fotograma a fotograma, y dos páginas medidas en etapas distintas
+// de esa carga (28/21.374 frente a 27/9.530) no son comparables. Se mide cuando el dibujo está QUIETO de verdad: lo mismo en `n` lecturas seguidas, separadas por
+// `cadaMs`, con la cola aún vacía. Si no se aquieta en `maxMs`, falla con las lecturas (no se compara lo que aún se mueve).
+async function dibujoQuieto(p, { n = 4, cadaMs = 800, maxMs = 90000 } = {}) {
+  const t0 = Date.now(), lecturas = [];
+  for (;;) {
+    const pend = await p.evaluate(() => window.__g.pendientes()), d = await dibujo(p);
+    lecturas.push(pend === 0 ? d : null);
+    const u = lecturas.slice(-n);
+    if (u.length === n && u.every(x => x && x.llamadas === u[0].llamadas && x.triangulos === u[0].triangulos)) return u[0];
+    if (Date.now() - t0 > maxMs) throw new Error("el dibujo no se aquieta en " + maxMs + " ms: " + JSON.stringify(lecturas.slice(-8)));
+    await p.waitForTimeout(cadaMs);
+  }
+}
 
-test("en Chrome: con el permiso de voz dado hay pestaña «Hablar» con «Retirar mi permiso de voz»; retirarlo manda DELETE y lo desactiva; el dibujo no cambia", { skip: SALTO || false, timeout: 300000 }, async () => {
+test("en Chrome: con el permiso de voz dado hay pestaña «Hablar» con «Retirar mi permiso de voz»; retirarlo manda DELETE y lo desactiva; el dibujo no cambia", { skip: SALTO || false, timeout: 420000 }, async () => {
   const estado = { aceptada: true }, { p, errores, visto } = await abre("?debug&api=/api/", estado);
   try {
     assert.deepStrictEqual(visto, ["GET"], "mira su consentimiento una sola vez");
     await p.waitForFunction(() => !!document.getElementById("aj-t-habla"), null, { timeout: 20000 });
     const antes = await p.evaluate(() => { const b = document.getElementById("ajVozRetira"); return { texto: b && b.textContent, off: b && b.disabled, tab: document.getElementById("aj-t-habla").textContent }; });
     assert.deepStrictEqual(antes, { texto: "Retirar mi permiso de voz", off: false, tab: "Hablar" });
-    const con = await dibujo(p);
+    const con = await dibujoQuieto(p);
     await p.evaluate(() => document.getElementById("ajVozRetira").click());
     await p.waitForFunction(() => document.getElementById("ajVozRetira").disabled === true, null, { timeout: 10000 });
     const despues = await p.evaluate(() => document.getElementById("ajVozRetira").textContent);
@@ -56,7 +70,7 @@ test("en Chrome: con el permiso de voz dado hay pestaña «Hablar» con «Retira
     assert.deepStrictEqual(errores, []);
     const q = await abre("?debug&api=/api/&habla=0", { aceptada: true });
     try {
-      const sin = await dibujo(q.p);
+      const sin = await dibujoQuieto(q.p);
       assert.deepStrictEqual(con, sin, "el DOM no dibuja: " + JSON.stringify({ con, sin }));
       assert.deepStrictEqual(q.visto, [], "apagado, ni mira el consentimiento"); assert.strictEqual(await q.p.evaluate(() => !!document.getElementById("aj-t-habla")), false);
       if (MIDE) console.log("MEDIDO habla-consentimiento " + JSON.stringify({ con, sin }));
