@@ -98,9 +98,13 @@ test("personalización de punta a punta: nombrar, colgar una imagen, verla, denu
     assert.ok(deH1.length >= 2 && deH2.length >= 1, "el fixture trae olivos en las dos mitades: " + deH1.length + " / " + deH2.length);
     const A = deH1[0].id, B = deH1[deH1.length - 1].id;
 
-    // 1. un olivo mío sin nada: la ficha común ofrece nombrar y colgar (no quitar), y sugerir
+    // 1. un olivo mío sin nada: la ficha común ofrece nombrar y colgar (no quitar), decorar (P7g D4) y sugerir, en el orden de PersonalizaPuro.ofrece
+    //    (42_personalizacion.js). «Decorar» sale con el componente de las decoraciones encendido (por defecto) si la época de hoy trae alguna pieza; el
+    //    catálogo trae piezas para las cuatro épocas, así que sale cualquier día del año (se comprueba aquí, contra contratos/decoraciones.json).
+    const epocas = new Set(JSON.parse(fs.readFileSync(path.join(RAIZ, "contratos", "decoraciones.json"), "utf8")).piezas.map(p => p.epoca));
+    assert.deepStrictEqual([...epocas].sort(), ["invierno", "otono", "primavera", "verano"], "cada época trae su pieza: «Decorar» no depende del día");
     await miraYClica(ruiz.pg, A);
-    assert.deepStrictEqual(await botonesFicha(ruiz.pg), ["Nombrar", "Colgar foto o dibujo", "Sugerir a la oficina"]);
+    assert.deepStrictEqual(await botonesFicha(ruiz.pg), ["Nombrar", "Colgar foto o dibujo", "Decorar", "Sugerir a la oficina"]);
 
     // 2. nombrar (con un nombre mal puesto primero: se queda en el recuadro con su motivo; luego uno bueno)
     await ruiz.pg.click("#fichaAcciones button:has-text('Nombrar')");
@@ -112,7 +116,7 @@ test("personalización de punta a punta: nombrar, colgar una imagen, verla, denu
     await ruiz.pg.waitForSelector("#personalizaPanel", { state: "detached", timeout: 15_000 });
     await ruiz.pg.waitForFunction(() => [...document.querySelectorAll("#fichaDatos dt")].some(d => d.textContent === "Nombre"), null, { timeout: 15_000 });
     assert.ok((await filasFicha(ruiz.pg)).includes("Nombre=El Abuelo | puesto por tu familia"), (await filasFicha(ruiz.pg)).join(" | "));
-    assert.deepStrictEqual(await botonesFicha(ruiz.pg), ["Cambiar nombre", "Colgar foto o dibujo", "Quitar", "Sugerir a la oficina"]);
+    assert.deepStrictEqual(await botonesFicha(ruiz.pg), ["Cambiar nombre", "Colgar foto o dibujo", "Decorar", "Quitar", "Sugerir a la oficina"]);
     let bd = await estadoBd(); assert.strictEqual(bd.personalizaciones.length, 1); assert.strictEqual(bd.personalizaciones[0].nombre, "El Abuelo"); assert.strictEqual(bd.personalizaciones[0].id_estable, "hituelo:" + A);
 
     // 3. el nombre sobre el olivo, en el DOM (sin coste de dibujo)
@@ -210,7 +214,7 @@ test("personalización de punta a punta: nombrar, colgar una imagen, verla, denu
     assert.match(await ruiz.pg.textContent("#personalizaPanel"), /¿Seguro\?/); await ruiz.pg.click("#personalizaPanel button[data-ok]");
     await ruiz.pg.waitForSelector("#personalizaPanel", { state: "detached", timeout: 15_000 });
     await ruiz.pg.waitForFunction(() => window.__personaliza().personalizados === 0, null, { timeout: 15_000 });
-    assert.deepStrictEqual(await botonesFicha(ruiz.pg), ["Nombrar", "Colgar foto o dibujo", "Sugerir a la oficina"]);
+    assert.deepStrictEqual(await botonesFicha(ruiz.pg), ["Nombrar", "Colgar foto o dibujo", "Decorar", "Sugerir a la oficina"]);
     assert.strictEqual(await olid.pg.evaluate(() => fetch("/api/hazas/1/olivos").then(r => r.json()).then(j => j.olivos.length)), 0, "Olid ya no lo ve");
     // sugerir a la oficina (con enlace: la api lo rechaza; sin él, entra en la bandeja)
     await ruiz.pg.click("#fichaAcciones button:has-text('Sugerir a la oficina')");
