@@ -329,6 +329,9 @@ test("avatar: el hogar elige uno del catálogo, lo lee de vuelta, viaja en los m
   assert.equal(g.statusCode, 200);
   assert.deepEqual(g.json(), { camisa: 1, sombrero: "paja", piel: 3, vrm: "robert" });
   assert.equal(g.headers["cache-control"], "no-store");
+  const hay = await con("GET", "/api/presencia", ana2);   // F2b: con LiveKit configurado, la presencia en red está disponible
+  assert.equal(hay.statusCode, 200);
+  assert.deepEqual(hay.json(), { red: true });
   const tk = await con("POST", "/api/presencia/token", ana2, { dispositivo: "escritorio" });
   const c = await new TokenVerifier(LIVEKIT.GEMELO_LIVEKIT_CLAVE, LIVEKIT.GEMELO_LIVEKIT_SECRETO).verify(tk.json().token);
   assert.deepEqual(JSON.parse(c.metadata!).avatar, { camisa: 1, sombrero: "paja", piel: 3, vrm: "robert" });

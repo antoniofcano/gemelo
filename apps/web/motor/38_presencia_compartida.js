@@ -1,12 +1,13 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos (D, $), 02_mundo (suelo), 02c_componentes (Bus, Componentes), 02e_entidades (Entidades),
+// Consume: 01_datos (D, $), 02_mundo (suelo), 02c_componentes (Bus, ConfigPuro, Componentes), 02e_entidades (Entidades),
 //   03_escena (visor, renderer, scene, camera, texColor, exag, modo), 06_arboles (tronco), 09_camara (objetivo, suelta, elige),
 //   12_paseo (paseando, persona, primera), 12b_llegada (Llegada), 14_historia (lista, aviso), 15_tiempo (rumbo, hace),
-//   16_vida (enQuad, quita, mira, quad, enDron, dron), 26_presencia (PoseCodec, BufferPose, Aspecto, SalaPose, Chat, Muneco, Encuentro, sitioJunto),
-//   29_vr (VRX, vrFundido, panel, ficha), 34_movibles (Movibles)
+//   16_vida (enQuad, quita, mira, quad, enDron, dron), 26_presencia (sitioJunto), 29_vr (VRX, vrFundido, panel, ficha), 33_ajustes (Ajustes),
+//   34_movibles (Movibles)
 // Nota: Componente «presencia-compartida» (ADR-0023, C5): solo se registra; consume la red (sala «visita») y expone «Presencia» (para los avatares VRM). Sin ?presencia=sim o ?presencia=red, montado no crea nada; con red, el panel Gente y el chat; F3f: viaja a la sala de una visita guiada (Presencia.entraGuiada, token de F3c) y vuelve sola a la general si la sala se cierra o te sacan. Registra el tipo persona en Entidades (C7) y da su línea de ?debug por «depura:lineas». Publica window.__presencia y window.__presenciaChat (pruebas). Lo prueba en Node pruebas/guardianes/red.test.js.
 // ===============================================================================
+
   // ---------- presencia compartida (F2, contratos/presencia.md), componente «presencia-compartida» (C5, ADR-0023): los demás visitantes como muñecos instanciados,
   // su pose por el códec del contrato, su interpolación y, en la sala de verdad, el apartado Gente y el chat. La lógica pura (códec, búfer, SalaPose, chat,
   // aspecto, muñeco, Encuentro) vive en 26_presencia.js; la conexión, en el componente de la red (37_red.js): esta pieza no sabe nada de LiveKit.
@@ -16,11 +17,14 @@
   //  · ?presencia=red: la sala de verdad, la sala «visita» de la red. Pide el token a la api (POST /api/presencia/token), publica su pose (no fiable, tema
   //    «pose», 10 Hz a los cercanos y 2 Hz a todos) mientras pasea o va con gafas; en vista aérea no la publica y sale en Gente «en vista aérea»
   //    (decisión 60). Panel Gente con bloquear (solo para ti) y chat por el canal fiable (tema «chat», no se guarda; decisión 40).
-  // Sin ninguna de las dos, montada no crea nada ni añade nada a la escena ni a la página (salvo los ganchos de pruebas): el motor dibuja lo mismo que sin ella.
+  // F2b: sin ?presencia= y con api (D.base /teselas/… o ?api=), la variante «red» arranca sola si GET /api/presencia dice { red: true } (el servidor tiene LiveKit); ?presencia=0 la apaga.
+  // Sin ninguna de las dos ni api, montada no crea nada ni añade nada a la escena ni a la página (salvo los ganchos de pruebas): el motor dibuja lo mismo que sin ella.
   // Los avatares VRM (26b_avatares.js) son otro componente que consume este: se enganchan con enganchaVRM y la presencia les pasa cada persona que dibuja.
   function PresenciaMotor(n, R) {
     var vrmG = null;   // el gancho de los avatares VRM (26b_avatares.js), si están montados
     var variante = (/[?&]presencia=(sim|red)\b/.exec(location.search) || [])[1] || "", activo = !!variante, N = 0;
+    // F2b: sin ?presencia= y con api, la presencia en red arranca sola si el servidor tiene LiveKit (GET /api/presencia -> { red: true }) y la casilla de Ajustes está marcada
+    var PREFIJO_API = (function () { try { return ConfigPuro.prefijoApi(location.search, D && D.base); } catch (e) { return null; } })(), auto = false;
     var CERCA_ENTRA = 55, CERCA_SALE = 65, TICK = 0.1, CADA_LEJOS = 5, RET_CERCA = 150, RET_LEJOS = 650, ALTO_OJOS = 1.6;   // contratos/presencia.md
     var MAXV = 49;   // red: plazas de avatar (la sala admite 50 personas, infra/dev/livekit.yaml: tú y 49 más)
     var grupo = null, mCuerpo = null, mCabeza = null, mSombrero = null, mManos = null, mNombres = null, texNombres = null, cxNom = null, geos = [], mats = [];
@@ -680,11 +684,12 @@
       return { titulo: al, filas: [{ k: "Va", v: m }, { k: "Está", v: "a " + dm + " m de ti" }], lineas: [m + " · a " + dm + " m de ti"],
         acciones: [{ id: "ir", txt: modoF === "vr" ? "Ir con" : "Ir con " + al, fn: function () { return irCon(idDe(a)); } }] };
     }
-    if (variante) quitaPersona = Entidades.registra({ tipo: "persona", dueno: "38_presencia_compartida", prioridad: 30, pantalla: personaEnPantalla, rayo: personaEnRayo, ficha: fichaPersona,
+    function registraPersona() { quitaPersona = Entidades.registra({ tipo: "persona", dueno: "38_presencia_compartida", prioridad: 30, pantalla: personaEnPantalla, rayo: personaEnRayo, ficha: fichaPersona,
       existe: function (id) { return !!personaDe(id); },
       lista: function () { return puntos().map(function (q) { return { id: "persona:" + q.id, ref: q.id, alias: q.alias, x: q.x, y: q.y, modo: q.modo }; }); },
       pos: function (id) { var a = personaDe(id), c = a && a.out.cab.p; return c ? { x: c[0], y: suelo(c[0], -c[2]) * exag, z: c[2] } : null; },
-      radio: function () { return 0.7; } });
+      radio: function () { return 0.7; } }); }
+    if (variante) registraPersona();
 
     function actualiza(dt) {
       if (!activo) return;
@@ -733,6 +738,27 @@
     function texto() { return activo ? "presencia (" + variante + ") " + est.n + " · cerca " + est.cerca + " · " + est.bps + " B/s · JS " + est.ms.toFixed(2) + " ms" + (variante === "sim" ? " · retardo p95 " + est.retP95 + " ms" : sala ? "" : " · sin conexión") : ""; }
     if (variante === "sim") { inicia(); if (/[?&]chat=1(&|$)/.test(location.search)) montaPanel(); }   // &chat=1 (solo pruebas): la ventana del chat también en la simulación, sin sala
     else if (variante === "red") iniciaRed();
+    // F2b: el arranque solo. Pregunta UNA vez a la api; con { red: true } arranca como con ?presencia=red. Sin api (file://, fixture, banco), sin sesión, con error
+    // de red o con otra respuesta, no hace nada y calla (la guarda es el prefijo: sin él no se hace ni el fetch). Nada de esto es medido: es una función de red.
+    function arrancaAuto() {
+      if (variante || auto || !PREFIJO_API || typeof fetch !== "function") return;
+      auto = true;
+      fetch(PREFIJO_API + "presencia", { credentials: "same-origin", headers: { accept: "application/json" } }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+        if (variante || quitaPersona || grupo || !AutoPresencia.decideRed(j) || AutoPresencia.decide(location.search, PREFIJO_API, verAjuste()) !== "pregunta") { auto = false; return; }   // ya hay presencia, no hay red o la apagaron mientras
+        variante = "red"; activo = true; registraPersona(); iniciaRed();
+        if (typeof Componentes !== "undefined" && Componentes.enciende && Componentes.activo("avatares-vrm")) { Componentes.enciende("avatares-vrm", false); Componentes.enciende("avatares-vrm", true); }   // los VRM miran la presencia al montarse (y se montaron vacíos): se remontan ahora que está activa
+      }).catch(function () { auto = false; });
+    }
+    function verAjuste() { try { return typeof Ajustes !== "undefined" && Ajustes.lee ? Ajustes.lee("presencia.ver") : true; } catch (e) { return true; } }
+    // la casilla «Ver a los demás y chatear» (marcada por defecto; Ajustes la recuerda por visitante en localStorage, con try/catch). Solo cuando hay api y la URL no manda
+    // (?presencia=…): desmarcarla apaga ya la presencia que arrancó sola; volver a marcarla la arranca de nuevo al recargar la página
+    if (!variante && PREFIJO_API && !/[?&]presencia=/.test(location.search) && typeof Ajustes !== "undefined" && Ajustes.registra) {
+      Ajustes.registra("presencia", { ver: { tipo: "bool", def: true } },
+        { id: "presencia", t: "Gente", nota: "Ver a los demás visitantes y chatear con ellos cuando el servidor lo ofrece. Si la vuelves a marcar, se activa al recargar la página.",
+          campos: [{ k: "ver", t: "Ver a los demás y chatear" }] },
+        function (k, v) { if (k === "presencia.ver" && v === false && auto && activo) Componentes.libera("presencia-compartida"); });   // la pestaña se queda (no se suelta con el componente) para poder volver a marcarla
+    }
+    if (!variante && AutoPresencia.decide(location.search, PREFIJO_API, verAjuste()) === "pregunta") arrancaAuto();
     function llegadas() { return { origen: performance.timeOrigin, l: medLlegadas ? medLlegadas.splice(0) : null }; }
     // para los avatares VRM (26b_avatares.js): las personas (todas, o solo las que se dibujan), tu id de avatar (de tus metadatos), recolorear el muñeco
     // lejano con los colores de su avatar y si ha entrado alguien desde la última vez que se preguntó; enganchaVRM(g) pone (o quita, con null) su gancho:
@@ -787,7 +813,7 @@
   // Consume la red (37_red.js, expone «Red»): sin ella (?red=0, apagada en el servidor o fuera del motor) la presencia no se monta, tampoco la simulada.
   Componentes.registra({
     id: "presencia-compartida", version: 1,
-    consume: ["Red", "PoseCodec", "BufferPose", "Aspecto", "SalaPose", "Chat", "Muneco", "Encuentro", "sitioJunto", "Llegada", "Movibles", "VRX", "TR",
+    consume: ["Red", "Ajustes", "AutoPresencia", "PoseCodec", "BufferPose", "Aspecto", "SalaPose", "Chat", "Muneco", "Encuentro", "sitioJunto", "Llegada", "Movibles", "VRX", "TR",
       "paseando", "pp", "enQuad", "enDron", "quad", "dron", "objetivo", "texColor"],
     expone: ["Presencia"],
     eventos: { escucha: ["chat:alterna", "depura:lineas", "guiada:entrar"], emite: ["guiada:entrada"] },

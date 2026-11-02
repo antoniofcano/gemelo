@@ -50,6 +50,10 @@ export async function rutasPresencia(app: FastifyInstance, ctx: Contexto): Promi
   // F3c: con un moderador de mentira (pruebas) y sin uno de voz, la voz queda apagada (503) en vez de llamar a un LiveKit que no existe
   const voz = ctx.moderadorVoz ?? (ctx.moderador ? null : real);
 
+  // F2b: ¿hay presencia en red en este servidor? Barato y sin secretos (solo si LiveKit está configurado); con sesión, como el resto. El motor lo
+  // pregunta una vez para activarse solo, sin ?presencia=red
+  app.get("/api/presencia", { preHandler: requiereSesion }, async () => ({ red: !!lk }));
+
   // OF10: `sala` (opcional) elige la sala del mundo: «general» (la de siempre, por omisión) o «visita» (a la que invita la oficina)
   app.post<{ Body: { dispositivo: Dispositivo; sala?: ClaveSala } }>("/api/presencia/token", {
     preHandler: requiereSesion,
