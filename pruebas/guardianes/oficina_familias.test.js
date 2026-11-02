@@ -40,7 +40,7 @@ test("accesibilidad: foco visible, zonas de 44 px, avisos en región viva, diál
   assert.match(css, /--toque: 44px/); assert.match(css, /\.boton \{ min-height: var\(--toque\)/);
   assert.match(css, /prefers-reduced-motion: reduce/); assert.match(css, /prefers-color-scheme: light/);
   assert.match(html, /id="avisos" aria-live="polite"/); assert.match(html, /id="anuncio" role="status" aria-live="polite"/);
-  assert.equal((html.match(/<dialog /g) || []).length, 5, "alta, confirmar, reconfirmar, la haza nueva (OF3) y el evento (OF11)");
+  assert.equal((html.match(/<dialog /g) || []).length, 6, "alta, confirmar, reconfirmar, la haza nueva (OF3), el evento (OF11) y mover una baliza (OF14)");
   for (const d of ["dlgAlta", "dlgConfirma", "dlgReconfirma"]) assert.match(html, new RegExp('<dialog id="' + d + '" aria-labelledby='));
   assert.match(html, /<label class="vh" for="fBusca">/); assert.match(html, /<th scope="col">/);
 });
