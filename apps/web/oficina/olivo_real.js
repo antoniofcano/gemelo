@@ -50,7 +50,7 @@ export function iniciaOlivoReal() {
       }
       ultimo = { finca, i: q.i, id: q.id, entrada, ficha, medidas, filas: filasEscalones(medidas), alto: r0.medidas.altura_m, copa: r0.medidas.copa_m };
       pinta(ultimo);
-      mensaje("");
+      mensaje(q.nota || "");
     } catch (e) {
       mensaje(e && e.message ? e.message : "No se pudo calcular el olivo.", true); aviso("No se pudo calcular el olivo", "mal");
     } finally { ocupado = false; $("#rVer").disabled = false; }

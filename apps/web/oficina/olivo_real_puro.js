@@ -9,6 +9,8 @@ import { ESTADOS } from "../olivo/tipos.js";
 export const FACTOR_R8_GEN = 1;
 /** El tipo que el motor da a todos sus olivos generados (07ab: parametrosDe) */
 export const TIPO_MOTOR = "centenario3";
+/** Desde aquí un copas_id es provisional (tuberia/ids_copas.py: PROV = 2^31); por debajo, del censo */
+export const ID_PROVISIONAL = 2 ** 31;
 export const EPOCA_POR_DEFECTO = "envero";
 export const EPOCAS = Object.keys(ESTADOS);
 
@@ -21,13 +23,21 @@ export const ESCALONES = [
 ];
 
 /**
- * Qué se ha escrito → { i, id } o { error }. Acepta «1234», «olivo:hituelo:1234» (la entidad del mundo, ADR-0012/ADR-0023) y «i56» (el índice de la fila,
+ * Qué se ha escrito → { i, id } o { error }. Acepta «posición 2005» (también «olivo 2005» o «#2005»: el número de la ficha, desde 1), «1234», «olivo:hituelo:1234» (la entidad del mundo, ADR-0012/ADR-0023) y «i56» (el índice de la fila,
  * solo para un índice sin copas_id: es lo que el motor llama id provisional de posición, y NO es estable entre exportaciones).
  */
 export function buscaOlivo(indice, texto, finca) {
   const t = String(texto || "").trim();
-  if (!t) return { error: "Escribe el id de un olivo." };
+  if (!t) return { error: "Escribe el id de un olivo (o «posición N», el número que enseña la ficha)." };
   if (!indice || !Array.isArray(indice.copas) || !indice.copas.length) return { error: "La finca no trae olivos medidos en su índice." };
+  // El número de la ficha del mundo («Olivo 2005») es la posición en indice.copas más uno: «posición 2005», «olivo 2005» o «#2005» (OF8c)
+  const pos = /^(?:posici[oó]n|olivo|#)\s*#?\s*(\d+)$/i.exec(t);
+  if (pos) {
+    const n = Number(pos[1]), total = indice.copas.length;
+    if (n < 1 || n > total) return { error: "La finca tiene " + total + " olivos: el número de la ficha va de 1 a " + total + "." };
+    const i = n - 1, id = Array.isArray(indice.copas_id) ? indice.copas_id[i] : -1;
+    return { i, id, nota: "Olivo " + n + " de la ficha = " + (id >= 0 ? "id " + id + (id >= ID_PROVISIONAL ? " (provisional)" : " (del censo)") : "posición " + i + " (sin id estable)") };
+  }
   const m = /^olivo:([^:\s]+):(i?\d+)$/.exec(t);
   let cuerpo = t;
   if (m) {
@@ -42,7 +52,7 @@ export function buscaOlivo(indice, texto, finca) {
   if (!/^\d+$/.test(cuerpo)) return { error: "El id es un número entero (por ejemplo 1234) o «olivo:" + (finca || "finca") + ":1234»." };
   if (!Array.isArray(indice.copas_id)) return { error: "El índice de esta finca no trae copas_id: busca por posición con «i" + cuerpo + "»." };
   const id = Number(cuerpo), i = indice.copas_id.indexOf(id);
-  return i < 0 ? { error: "No hay ningún olivo con el id " + id + " en esta finca." } : { i, id };
+  return i < 0 ? { error: "No hay ningún olivo con el id " + id + " en esta finca. Si es el número de la ficha, escribe: posición " + id + "." } : { i, id };
 }
 
 /** Lo que el índice MEDIDO dice del olivo i (altura y copa del LiDAR) y lo DEDUCIDO de ello (origen por campo, de parametrosDeCopa). Para la ficha. */
