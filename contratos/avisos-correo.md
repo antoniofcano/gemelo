@@ -26,8 +26,15 @@ destino), sin IP ni modelo del aparato ni el id de credencial; el nombre de la l
 y el nombre del error (nunca la dirección ni su texto) y la llave queda como está. **No hay reintento** (a diferencia de los avisos): el aviso de seguridad que no sale
 no se reenvía más tarde, porque una alerta tardía confunde; la auditoría (`llave.alta`, `llave.quitada`) es el rastro. Avisan también las rutas de la oficina de OF13: el alta
 (`POST /api/oficina/llaves/alta`), la revocación propia (`POST /api/oficina/llaves/{id}/revocar`) y la de un `admin` a otra cuenta
-(`POST /api/admin/llaves/{id}/revocar`, al correo de la cuenta afectada). No avisa `POST /api/admin/hogares/{id}/rehabilitar-llave` con `revocar_llaves` (revoca
-varias llaves de golpe; hueco anotado).
+(`POST /api/admin/llaves/{id}/revocar`, al correo de la cuenta afectada).
+
+**Cuando quita la oficina (OF13b-6, `mensajeDeLlavesQuitadasPorLaOficina`):** un tercer texto, el mismo para una o varias llaves, que sale en `DELETE /api/admin/hogares/{id}/llaves/{llaveId}`
+(una), `DELETE /api/admin/hogares/{id}/llaves` (todas, **un solo correo** con hasta cinco nombres y «y N más») y `POST /api/admin/hogares/{id}/rehabilitar-llave` con
+`revocar_llaves` (el hueco que dejó OF13b-4: revocaba varias llaves de golpe sin avisar a la cuenta; ahora avisa si revocó alguna). Asunto «La oficina ha quitado una llave de
+acceso de tu cuenta» (o «…llaves de acceso…»). Dice **«la oficina»**, nunca el nombre ni el correo de quien actúa, ni el motivo que escribió; cuáles y cuándo; que ya no sirven y se cerraron
+sus sesiones; **que el enlace del correo sigue funcionando** y que se puede crear una llave nueva en Configuración, Mis dispositivos; y, si no lo pidió, qué hacer. Sin enlaces ni HTML.
+Aquí **se espera al envío** (a diferencia de los avisos de la propia persona): quien actúa es de la oficina y la respuesta le dice `aviso_enviado`; un fallo del correo (la búsqueda, el SMTP)
+**no tumba la operación**, se registra `correo_llaves_quitadas_oficina_fallido` (hogar y nombre del error, nunca la dirección) y queda `admin.llave_aviso_fallido` en la auditoría. Tampoco hay reintento.
 
 ## El aviso también se ve en el mundo (OF11g)
 

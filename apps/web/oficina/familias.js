@@ -2,6 +2,7 @@
 // sesiones, reenviar enlace, baja y reactivación, exportar y borrar). Todo contra /api/admin/*; el DOM se construye con h() (texto, nunca HTML).
 import { $, api, aviso, conConfirmacion, confirma, dia, fecha, h, vacia } from "./comun.js";
 import { construyeHash } from "./enlaces_puro.js";
+import { construyeLlaves, TEXTO_SIN_LLAVES_OFICINA, textoTrasQuitar } from "./ficha_llaves.js";
 
 const PAGINA = 100;
 const ETIQUETA = { activa: ["p-ok", "activa"], pendiente: ["p-aviso", "sin primer acceso"], baja: ["p-mal", "de baja"] };
@@ -10,7 +11,7 @@ const esOficina = rol => rol === "oficina" || rol === "admin";
 const pill = estado => h("span", { class: "pill " + ETIQUETA[estado][0] }, ETIQUETA[estado][1]);
 
 export function iniciaFamilias({ sesion }) {
-  let lista = [], total = 0, hazas = [], seleccion = null, sesiones = null, temporizador = 0, cargas = 0;
+  let lista = [], total = 0, hazas = [], seleccion = null, sesiones = null, llaves = null, temporizador = 0, cargas = 0;
   const esAdmin = () => sesion.rol === "admin";
 
   // ---------------------------------------------------------------- lista
@@ -70,8 +71,22 @@ export function iniciaFamilias({ sesion }) {
     const r = await api("GET", "/api/admin/hogares/" + id + "/sesiones");
     if (seleccion !== id) return;
     sesiones = r.ok ? r.datos : { sesiones: [], aparatos_oficina: [] };
+    llaves = await cargaLlaves(fila);
+    if (seleccion !== id) return;
     pintaFicha();
     if (foco) $("#fFicha h2").focus();
+  }
+
+  /** OF13b-6: las llaves de la cuenta. Una familia, por su ruta; una cuenta de oficina (solo la ve un admin), de la lista de Sistema. null si no se pudo. */
+  async function cargaLlaves(fila) {
+    if (esOficina(fila.rol)) {
+      if (!esAdmin()) return null;
+      const r = await api("GET", "/api/admin/llaves");
+      const c = r.ok ? r.datos.cuentas.find(x => x.hogar_id === fila.id) : null;
+      return c ? c.llaves : null;
+    }
+    const r = await api("GET", "/api/admin/hogares/" + fila.id + "/llaves");
+    return r.ok ? r.datos.llaves : null;
   }
 
   function pintaFicha() {
@@ -90,6 +105,7 @@ export function iniciaFamilias({ sesion }) {
     el.append(fichaNombre(f));
     el.append(fichaHaza(f));
     el.append(fichaSesiones(f));
+    if (llaves) el.append(fichaLlaves(f));
     el.append(fichaAcciones(f));
   }
 
@@ -156,6 +172,31 @@ export function iniciaFamilias({ sesion }) {
     }
     if (ss.length) caja.append(h("p", null, h("button", { class: "boton", type: "button", onclick: () => cierraTodas(f) }, "Cerrar todas las sesiones")));
     return caja;
+  }
+
+  // OF13b-6: las llaves de acceso. De una familia, la oficina quita una o todas (llamó porque perdió el aparato); las de una cuenta de oficina, solo se ven
+  // (se gestionan en Sistema → Llaves, con confirmación reciente y sin quitar la última).
+  function fichaLlaves(f) {
+    const deOficina = esOficina(f.rol);
+    return construyeLlaves(h, {
+      llaves, fecha, dia, puedeQuitar: !deOficina, sinLlaves: deOficina ? TEXTO_SIN_LLAVES_OFICINA : undefined,
+      alQuitar: l => pideQuitar(f, l), alQuitarTodas: () => pideQuitar(f, null),
+    });
+  }
+  /** `l` null: todas. El motivo es opcional, va a la auditoría y no sale a la familia. */
+  function pideQuitar(f, l) {
+    const motivo = h("input", { class: "entrada", id: "fMotivoLlave", maxlength: "200", autocomplete: "off" });
+    confirma({ titulo: l ? "Quitar la llave «" + l.nombre + "»" : "Quitar todas las llaves", si: l ? "Quitar esta llave" : "Quitar todas",
+      cuerpo: [
+        h("p", null, (l ? "Esa llave" : "Esas llaves") + " dejará" + (l ? "" : "n") + " de servir y se cerrarán las sesiones abiertas con " + (l ? "ella" : "ellas") + ". " + f.correo + " recibirá un correo que lo cuenta, y podrá seguir entrando con el enlace de su correo."),
+        h("div", { class: "campo" }, h("label", { for: "fMotivoLlave" }, "Motivo (opcional; queda en la auditoría, sin datos personales)"), motivo)],
+      hecho: async () => {
+        const cuerpo = motivo.value.trim() ? { motivo: motivo.value.trim() } : {};
+        const r = await conConfirmacion(() => api("DELETE", "/api/admin/hogares/" + f.id + "/llaves" + (l ? "/" + l.id : ""), cuerpo));
+        if (!r.ok) return r.mensaje;
+        aviso(textoTrasQuitar(f.correo, l ? 1 : r.datos.llaves_quitadas, r.datos.aviso_enviado), r.datos.aviso_enviado ? undefined : "mal");
+        await refresca();
+      } });
   }
 
   async function cierraSesion(f, s) {
