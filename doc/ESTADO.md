@@ -2,11 +2,11 @@
 
 Único sitio de «dónde estamos y qué falta». Se toca solo cuando el estado cambia (no en cada commit). Lo hecho se cuenta en el [CHANGELOG](../CHANGELOG.md); el rumbo, en [PLAN](rumbo/PLAN.md).
 
-**Versión: v0.2.0** · **Al día a: 2026-10-31** · **Prototipo**: funciona en Chrome con renderizado por software y sin errores de consola; el rendimiento en iPhone y Quest **no está medido**. Puerta pesada en verde el 2026-10-31 (800 pruebas: 786 pasan, 0 fallan, 14 saltadas) y `main` subido a GitHub (el CI de Actions sigue sin correr por la facturación, G1).
+**Versión: v0.2.0** · **Al día a: 2026-11-02** · **Prototipo**: funciona en Chrome con renderizado por software y sin errores de consola; el rendimiento en iPhone y Quest **no está medido**. Puerta pesada del 2026-11-02: 858 pruebas en verde y 2 fallos que se corrigieron y repitieron (uno, `presencia_dev`, sigue con una prueba de transporte que falló por un error de conexión al arrancar y no se repitió). `main` subido a GitHub (c6b19a2); el CI de Actions sigue sin correr por la facturación (G1).
 
 ## Publicado
 
-- **Nada desplegado ni publicado de forma estable** (nada desplegado: el VPS existe, en Europa, con Oficultor, Vigía y Filo; el gemelo entrará como cuarto inquilino ([DESPLIEGUE-V2](operacion/DESPLIEGUE-V2.md)); el código está en GitHub, repo público). Existe un artefacto desechable de la prueba de plataforma (privado; su enlace no se guarda en el repo público). Hay que borrarlo cuando proceda (**pide confirmación**).
+- **Desplegado en el VPS de OVH** (el gemelo, cuarto inquilino junto a Oficultor, Vigía y Filo, [DESPLIEGUE-V2](operacion/DESPLIEGUE-V2.md)): api, base de datos, web, LiveKit y hornero; la versión de producción es la de **c6b19a2** (2026-11-02), con su vuelta atrás (`*.previo` y las imágenes `previo-baf1328`). Sin copias de seguridad automáticas todavía (V2b) y sin medir en aparatos. Existe un artefacto desechable de la prueba de plataforma (privado; su enlace no se guarda en el repo público). Hay que borrarlo cuando proceda (**pide confirmación**).
 - Un gemelo anterior (v20) vive como artefacto de claude.ai y no se ha tocado.
 
 ## Hecho
@@ -63,7 +63,7 @@ Fuentes: LiDAR PNOA 3.ª cobertura (vuelo 2024), MDT 0,5 m, ortofoto PNOA 2022 (
 
 - **Aparatos reales**: fps, comodidad y mareo en iPhone, Android y Quest (avatares VRM, voz, panel VR, mandos, escalera de olivos, juego en VR); Firefox y Safari.
 - **Servicios reales**: Vigía y OlivarTrack sin tokens (todo con grabaciones y datos sintéticos; [contratos/mcp.md](../contratos/mcp.md)), correo real de OVH (solo Mailpit), llaves de acceso físicas, LiveKit fuera del equipo.
-- **VPS sin desplegar**: ni el borde real, ni `age`/`rclone` reales, ni el RUNBOOK ensayado fuera de local.
+- **VPS sin copias automáticas ni `age`/`rclone` reales** (V2b), ni el RUNBOOK ensayado fuera de local.
 - **Carga**: con 40 clientes se satura el i5 de desarrollo; la carga de 40 visitantes reales no está medida.
 - Rodadas del suelo a 0,5 m/px (salen suaves); generadores y `fetch` de ficheros en Safari iOS.
 
