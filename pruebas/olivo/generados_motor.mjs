@@ -74,6 +74,26 @@ const espera = () => new Promise(r => setTimeout(r, 0));
   const g = c.__G.actualiza(0, 0, 550000, []); exige(g.radio === 0 && !g.tiene(0), "sin la bandera, actualiza() reparte");
 }
 
+// ---- 1b) O10a, por defecto: sin bandera y con la finca completa (copas, copas_param, copas_id), como ?olivos=gen; con ?olivos=0, sin datos o sin constructor, lo de siempre y SIN avisar
+{
+  const D = { copas: [[0, 0, 5, [1, 1, 1, 1, 1, 1, 1, 1]]], copas_param: [null], copas_id: [7], centro_utm: [0, 0] };
+  const aviso = []; const consola = { log() {}, error: m => aviso.push("error " + m), warn: m => aviso.push("warn " + m) };
+  const d = contexto("?debug", null, { D, console: consola });
+  for (let k = 0; k < 20 && d.__G.estado() === "cargando"; k++) await espera();
+  exige(d.__G.estado() === "activo" && d.window.__olivosGen().defecto === true, "por defecto con la finca completa: " + d.__G.estado());
+  exige(d.gArboles.children.length === 1, "por defecto, Generados no añade su grupo");
+  const o = contexto("?olivos=0", null, { D }); await espera();
+  exige(o.__G.estado() === "apagado" && o.gArboles.children.length === 0 && /a mano/.test(o.window.__olivosGen().apagadoPor), "?olivos=0 no apaga: " + o.__G.estado());
+  const n = contexto("?debug", null, { D: { copas: D.copas, centro_utm: [0, 0] } }); await espera();
+  exige(n.__G.estado() === "apagado" && /copas_param/.test(n.window.__olivosGen().apagadoPor), "sin copas_param, por defecto no apaga: " + n.__G.estado());
+  const sc = contexto("?debug", null, { D, console: consola, window: { OlivoGen: { sinConstructor: true } } });   // el sustituto del build sin constructor: lo de siempre, sin avisar
+  for (let k = 0; k < 20 && sc.__G.estado() === "cargando"; k++) await espera();
+  exige(sc.__G.estado() === "sin" && !aviso.some(x => /olivos generados/.test(x)), "sin constructor por defecto: " + sc.__G.estado() + " " + aviso.join("|"));
+  const ex = contexto("?olivos=gen", null, { D, console: consola, window: { OlivoGen: { sinConstructor: true } } });   // con la bandera explícita sí avisa
+  for (let k = 0; k < 20 && ex.__G.estado() === "cargando"; k++) await espera();
+  exige(aviso.some(x => /olivos generados/.test(x)), "con ?olivos=gen explícito y sin constructor, no avisa");
+}
+
 // ---- 2) con la bandera: materiales
 const c = contexto("?olivos=gen");
 for (let k = 0; k < 20 && c.__G.estado() === "cargando"; k++) await espera();

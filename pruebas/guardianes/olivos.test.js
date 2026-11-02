@@ -123,7 +123,7 @@ test("[hituelo] Catalogo en la página: vacío no cambia nada; instalado con un 
   p.on("pageerror", e => errores.push("PAGEERROR " + String(e.stack || e).slice(0, 400)));
   p.on("console", m => { if (m.type() === "error") errores.push("CONSOLE " + m.text().slice(0, 300)); });
   try {
-    await p.goto("http://127.0.0.1:" + srv.address().port + "/hituelo/index.html?debug&arbsc=1");   // escala de distancia fija: la adaptativa (07b) cambiaría los recuentos entre «antes» y «retirado»
+    await p.goto("http://127.0.0.1:" + srv.address().port + "/hituelo/index.html?debug&arbsc=1&olivos=0");   // escala de distancia fija: la adaptativa (07b) cambiaría los recuentos entre «antes» y «retirado»
     await p.waitForFunction(() => window.__g && window.__g.listo(), null, { timeout: 45000 });
     const proc = await p.evaluate(() => { const C = window.__g.Catalogo; return { tipos: C.tipos(), l1: [0, 1, 2, 3].map(v => C.triangulos(-1, 1, v)), l2: [0, 1].map(v => C.triangulos(-1, 2, v)), l0: C.geometria(-1, 0, 0).length }; });
     assert.deepStrictEqual(proc.tipos, [-1], "sin catálogo instalado solo existe el tipo −1");

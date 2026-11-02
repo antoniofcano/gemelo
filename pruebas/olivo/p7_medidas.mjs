@@ -19,7 +19,7 @@ const ESPERA = Number(process.env.GEMELO_ESPERA || 180000), RAPIDO = process.arg
 const s = await sirve(path.dirname(PAG)), nav = await lanza(), base = "http://127.0.0.1:" + s.address().port + "/" + path.basename(PAG);
 const salida = { sin: {}, con: {}, errores: {} };
 try {
-  for (const [k, q] of (RAPIDO ? [] : [["sin", "?debug&arbsc=1"]]).concat([["con", "?debug&arbsc=1&olivos=gen"]])) {
+  for (const [k, q] of (RAPIDO ? [] : [["sin", "?debug&arbsc=1&olivos=0"]]).concat([["con", "?debug&arbsc=1&olivos=gen"]])) {
     const p = await nav.newPage({ viewport: { width: 900, height: 650 } }), errores = [];
     p.on("pageerror", e => errores.push(String(e).slice(0, 300))); p.on("console", m => { if (m.type() === "error") errores.push(m.text().slice(0, 300)); });
     await p.goto(base + q);

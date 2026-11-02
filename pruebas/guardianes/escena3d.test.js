@@ -237,7 +237,7 @@ async function abre(q, mockXR, k = "con") {
   p.on("pageerror", e => errores.push("PAGEERROR " + String(e.stack || e).slice(0, 300)));
   p.on("console", x => { const s = x.text(); if (esCsp(s)) csp.push(s.slice(0, 300)); else if (x.type() === "error") errores.push("CONSOLE " + s.slice(0, 300)); else if (x.type() === "warning" && !CONOCIDOS.some(re => re.test(s))) avisos.push(s.slice(0, 300)); });
   p.on("response", r => { if (r.status() >= 400) errores.push(r.status() + " " + r.url()); });
-  await p.goto(base[k] + "index.html?debug" + q);
+  await p.goto(base[k] + "index.html?debug&olivos=0" + q);   // la copa de siempre: O10a pone los olivos generados por defecto y estas pruebas miden el tileset y el presupuesto «fixture»
   await p.waitForFunction(() => window.__g && window.__g.listo() && (window.__g.Escena3D.resumen().estado === "sin" || window.__g.Escena3D.listo()), null, { timeout: 90000, polling: 500 });
   return { p, errores, avisos, csp };
 }
