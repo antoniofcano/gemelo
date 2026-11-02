@@ -57,7 +57,7 @@ function ir(sec, foco, param = null) {
   for (const b of nav.querySelectorAll("button")) { if (b.dataset.sec === sec) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); }
   $("#titulo").textContent = nombre;
   document.title = nombre + " · Oficina · Cuarenta hazas";
-  const hash = construyeHash(vista || sec, param);
+  const hash = vista ? construyeHash("olivo", param) : construyeHash(sec, param);
   if (location.hash !== hash) history.replaceState(null, "", hash);
   if (sec === "familias") familias.abre(param ? Number(param) : null);
   if (vista) fichaOlivo.abre(param);
@@ -66,11 +66,9 @@ function ir(sec, foco, param = null) {
   if (sec === "agenda") agenda.abre();
   if (sec === "sistema") { sistema.abre(); llaves.abre(); }
   if (sec === "mundo") mundo.abre();
-  if (sec === "olivos") {
-    olivos.abre();
-    // OF15b: «#olivos/<finca>/<copas_id>» (desde la ficha del olivo) abre «Olivo real» con ese olivo ya buscado
-    if (param) { const [finca, id] = param.split("/"); olivos.ve("real", false); olivos.real.busca(finca, id); }
-  } else if (olivos) olivos.sale();   // OF8b: el visor 3D no se queda con la GPU fuera de Olivos
+  if (sec === "olivos") olivos.abre(); else if (olivos) olivos.sale();   // OF8b: el visor 3D no se queda con la GPU fuera de Olivos
+  // OF15b: «#olivos/<finca>/<copas_id>» (desde la ficha del olivo) abre «Olivo real» con ese olivo ya buscado
+  if (sec === "olivos" && param) { const [finca, id] = param.split("/"); olivos.ve("real", false); olivos.real.busca(finca, id); }
   if (sec === "inicio") { cuentaFamilias(); cuentaPendientes(); }
   if (foco) $("#titulo").focus();
 }
