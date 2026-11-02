@@ -11,7 +11,27 @@ const PL = lee("apps/web/plantilla.html");
 const ids = s => [...s.matchAll(/\bid="([^"]+)"/g)].map(m => m[1]);
 const IDS = ids(PL);
 const MOTOR = ficheros().filter(f => /^apps\/web\/motor\/[^/]+\.js$/.test(f)).sort().map(lee).join("\n");
-const css = PL.slice(PL.indexOf("<style>"), PL.indexOf("</style>"));
+const css = lee("apps/web/plantilla.css");   // V12: los estilos salieron del <style> de la plantilla
+
+test("V12: la plantilla cumple la CSP estricta: sin style=\"…\" ni <style> en línea, sin Google Fonts ni otro origen en sus <link>", () => {
+  assert.ok(!/\sstyle\s*=/i.test(PL), "la plantilla lleva un atributo style (style-src 'self' lo rechaza): usa una clase de plantilla.css");
+  assert.ok(!/<style/i.test(PL), "la plantilla lleva un <style> en línea: va en apps/web/plantilla.css");
+  assert.ok(!/fonts\.(googleapis|gstatic)\.com/.test(PL + css), "las tipografías salen del mismo origen (@fontsource), no de Google");
+  for (const m of PL.matchAll(/<link\b[^>]*\bhref="([^"]*)"/g)) assert.ok(!/^(https?:)?\/\//.test(m[1]), "un <link> a otro origen: " + m[1]);
+  for (const m of css.matchAll(/@import\s+"([^"]+)"/g)) assert.ok(/^@fontsource\//.test(m[1]), "@import inesperado en plantilla.css: " + m[1]);
+  assert.match(css, /@fontsource\/fraunces\/latin-600\.css/);
+  assert.match(css, /@fontsource\/instrument-sans\/latin-500\.css/);
+});
+
+test("V12: el HTML que arma el motor no lleva atributos style (la CSP los rechaza); lo variable va en data-fondo / data-ancho y lo pasa tinta()", () => {
+  const fs = require("node:fs"), dir = path.join(RAIZ, "apps", "web", "motor");
+  for (const f of fs.readdirSync(dir).filter(x => x.endsWith(".js"))) {
+    const t = fs.readFileSync(path.join(dir, f), "utf8");
+    assert.ok(!/\sstyle\s*=\s*[\\"']/.test(t), f + " escribe un atributo style en un HTML: usa una clase de plantilla.css o data-fondo / data-ancho + tinta()");
+    assert.ok(!/setAttribute\(\s*["']style["']/.test(t), f + " pone el atributo style con setAttribute: usa .style.propiedad o classList (CSSOM sí vale)");
+    if (/data-(fondo|ancho)=/.test(t)) assert.ok(/tinta\(/.test(t), f + " usa data-fondo / data-ancho y no llama a tinta()");
+  }
+});
 
 test("el visor ocupa toda la ventana y la página no se desplaza", () => {
   assert.match(css, /html, body \{[^}]*height: 100%[^}]*overflow: hidden/, "html y body: alto completo y sin desplazamiento");
@@ -73,5 +93,6 @@ test("genera_motor.mjs sigue cambiando los textos de la finca en la plantilla nu
   assert.match(out, /Vista 3D de las fincas de Hituelo;/);
   assert.match(out, /Los puntos guardados en OlivarTrack se marcaron sobre la ortofoto/);
   assert.match(out, /id="hIntro">Intro de prueba</);
-  assert.match(out, /#historia \{ display: none !important; \}/);
+  assert.match(out, /id="historia" data-sin/);
+  assert.match(css, /#historia\[data-sin\] \{ display: none !important; \}/, "plantilla.css oculta la historia de las fincas que no la tienen");
 });

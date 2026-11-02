@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: OT, hist, VIVO, FINCA, marca, dd, tabla, lista, nMarc, sw, avTipo, pintaAvance, rango, aviso
-// Consume: 01_datos (D, $, fmt), 02_mundo (suelo, orto, copas, cIn, marc, med), 03_escena (scene, exag), 05_nube (nube),
+// Consume: 01_datos (D, $, tinta, fmt), 02_mundo (suelo, orto, copas, cIn, marc, med), 03_escena (scene, exag), 05_nube (nube),
 //   08_marcadores (aplica, pendiente), 09_camara (objetivo, orb, pon), 10_ndvi (NDV, ndviIdx, pintaNdvi),
 //   12_paseo (paseando, persona, primera, salePaseo), 13_parcelas (parcelas, fincas, claseUsda, elegirParcela, elegirFinca), 13b_hazas (HazasPuro),
 //   15_tiempo (ins, esc, hace), 16_vida (esfera, mira), 18_paisaje (postes, cable), 21_suelo (cubierta), 29_vr (panel), 90_final (cuadro)
@@ -120,7 +120,7 @@
   var nMarc = function (k) { return marc.filter(function (m) { return m.parc === k; }).length; };
   var nLidar = function (k) { return cIn.filter(function (c) { return c.parc === k; }).length; };
   var nAnd = function (k) { var t = hechasDe(k, "varetas")[0]; return t && t.andados != null ? t.andados : null; };
-  var sw = function (k) { return '<i class="h-sw" style="background:#' + PALETA[k].toString(16).padStart(6, "0") + '"></i>'; };
+  var sw = function (k) { return '<i class="h-sw" data-fondo="#' + PALETA[k].toString(16).padStart(6, "0") + '"></i>'; };
   var volCopa = function (c) { var rm = c.perfil.reduce(function (a, b) { return a + b; }, 0) / 8; return (2 / 3) * Math.PI * rm * rm * Math.max(c.h - 1.2, 0.5); };
   var minMax = function (a) { var s = a.slice().sort(); return [s[0], s[s.length - 1]]; };
   function resumenConteo() { // la lectura sale de los datos, no de un texto fijo
@@ -223,7 +223,7 @@
         var d = cuentaAv(2, "varetas");
         var txtFuera = fuera.length ? fuera.map(function (x) { return "<strong>" + parcelas[x.k].nombre + "</strong>: " + x.nf + " marcas fuera de la zona, " + (x.conCopa === 0 ? "ninguna con copa en el LiDAR" : x.conCopa + " con copa en el LiDAR"); }).join("; ") + "." : "Todas las marcas están dentro de la zona recorrida.";
         return "<p>Hoy OlivarTrack da el avance de una tarea como una cifra. Si cada olivo tuviera un identificador, se podría pintar <strong>cuál sí y cuál no</strong>. Aquí cada olivo recibe el estado de la tarea según si su marca cae dentro de la zona recorrida que se guardó al validar el parte: la misma regla con la que OlivarTrack cuenta los olivos andados.</p>" +
-          "<p><span class='h-bola' style='background:#2e8b3d'></span>andado · <span class='h-bola' style='background:#d23a2a'></span>fuera de la zona (con baliza roja) · <span class='h-bola' style='background:#8e5bc4'></span>copa del LiDAR sin una marca a menos de 3 m</p>" +
+          "<p><span class='h-bola b-andado'></span>andado · <span class='h-bola b-fuera'></span>fuera de la zona (con baliza roja) · <span class='h-bola b-sinmarca'></span>copa del LiDAR sin una marca a menos de 3 m</p>" +
           "<p>Tarea: <button type='button' class='h-btn' data-av='goteros'>Sustituir goteros</button> <button type='button' class='h-btn' data-av='ninguno'>Quitar</button></p>" +
           tabla(["Parcela", "Marcas", "En zona", "Fuera", "Copas sin marca"], filas) +
           "<p>" + txtFuera + " Es decir: <strong>los olivos que faltan en Nave podrían ser marcas sin árbol</strong>; hay que mirarlo en el campo, no darlo por hecho.</p>" +
@@ -286,8 +286,8 @@
   var esH = D.finca_id === "hituelo";
   var PALF = [0x2e8b3d, 0xd98c2b, 0x3b82c4, 0x8e5bc4], COL_CANC = 0xc4504a;
   var colF = function (k) { return PALF[parcelas[k].finca % PALF.length]; };
-  var swH = function (k) { return '<i class="h-sw" style="background:#' + colF(k).toString(16).padStart(6, "0") + '"></i>'; };
-  var swFinca = function (f) { return '<i class="h-sw" style="background:#' + PALF[f % PALF.length].toString(16).padStart(6, "0") + '"></i>'; };
+  var swH = function (k) { return '<i class="h-sw" data-fondo="#' + colF(k).toString(16).padStart(6, "0") + '"></i>'; };
+  var swFinca = function (f) { return '<i class="h-sw" data-fondo="#' + PALF[f % PALF.length].toString(16).padStart(6, "0") + '"></i>'; };
   var pct = function (a, b) { return b ? Math.round((a - b) / b * 100) : null; };
   var conSigno = function (d) { return (d > 0 ? "+" : "") + d + " %"; };
   var rango = function (a, d) { var lo = Math.min.apply(null, a), hi = Math.max.apply(null, a); return fmt(lo, d) === fmt(hi, d) ? fmt(lo, d) : fmt(lo, d) + "–" + fmt(hi, d); };
@@ -449,7 +449,7 @@
   // ---------- el aviso de la ventana
   function aviso(txt, tipo) { var e = $("hEstado"); e.textContent = txt; e.setAttribute("data-t", tipo || ""); }
   function pintaEscena() {
-    var e = ESCENAS[hist]; $("hTitulo").textContent = (hist + 1) + ". " + e.t; $("hTexto").innerHTML = e.html();
+    var e = ESCENAS[hist]; $("hTitulo").textContent = (hist + 1) + ". " + e.t; $("hTexto").innerHTML = e.html(); tinta($("hTexto"));
     if (e.alMostrar) e.alMostrar();
     $("hFuente").innerHTML = "<span class=\"h-pill\">Conecta con OlivarTrack</span> " + e.fuente; $("hCont").textContent = (hist + 1) + " de " + ESCENAS.length;
     var pts = $("hPuntos").children; for (var i = 0; i < pts.length; i++) pts[i].setAttribute("aria-current", String(i === hist));

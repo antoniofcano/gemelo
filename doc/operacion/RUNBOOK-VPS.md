@@ -205,7 +205,7 @@ Todos son volúmenes con nombre de Docker del proyecto `gemelo` (`docker volume 
 | Volver a la versión anterior | `git checkout <tag anterior>` y `up -d --build`. Las migraciones **no** se deshacen: si la nueva cambió el esquema, restaurar la copia de justo antes ([Copias](#copias)) |
 | Cambiar una imagen | en `infra/compose.yml`, `infra/dev/compose.yml` y `contratos/publicacion-vps.json` a la vez (lo vigila `api.test.js`), versión exacta + digest, estable |
 | Cambiar un secreto o el entorno | reescribir el fichero y `docker compose -f infra/compose.yml up -d --no-deps --force-recreate api` |
-| Pasar la CSP a obligatoria | tras unas semanas sin informes en `logs api | grep '"evento":"csp"'`, cambiar `Content-Security-Policy-Report-Only` por `Content-Security-Policy` en `infra/Caddyfile` |
+| Pasar la CSP a obligatoria | **decide Antonio** (regla 9). Criterio: **0 informes `csp` durante N días seguidos** (propuesta: 14, con visitas reales de escritorio, iPhone y Quest, y las tres páginas: portada, finca y oficina) en `logs api | grep '"evento":"csp"'`; con la web de V12 (fuentes del mismo origen, sin `<style>` ni `style="…"`, `style-src 'self'` sin `'unsafe-inline'`) no debería salir ninguno. Si sale, el informe dice la directiva y el origen: se arregla en el código (una clase en `apps/web/plantilla.css` o `.style.propiedad` por CSSOM, que sí vale), nunca ampliando la lista blanca. Entonces: cambiar `Content-Security-Policy-Report-Only` por `Content-Security-Policy` en `infra/Caddyfile` (y en `infra/bloque-borde.txt` si lo repite), desplegar y vigilar las mismas consolas; para deshacerlo, volver a la cabecera de solo informe |
 
 ## Copias
 

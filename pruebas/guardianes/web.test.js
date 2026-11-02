@@ -1,7 +1,7 @@
 "use strict";
 // Cliente web con Vite (ADR-0010): la versión de three es una y exacta, los trozos de sombreador que parchea el motor existen en ella y la página
 // empaquetada (pruebas/guardianes/_pagina.js) carga sin errores pidiendo solo a su mismo origen, como la sirve Caddy (decisión 79: ya no hay
-// salida artefacto con la que compararla; T8 fase 2). Las fuentes de Google de la plantilla son la única excepción conocida, y se dice.
+// salida artefacto con la que compararla; T8 fase 2). Sin excepciones: las tipografías salen del mismo origen (@fontsource, V12).
 // Sin Vite instalado (cd apps/web && npm ci) se SALTA con aviso.
 const test = require("node:test"), assert = require("node:assert");
 const { RAIZ, fs, path } = require("./_util");
@@ -36,7 +36,7 @@ test("cada `#include <trozo>` que el motor parchea o usa existe en los sombreado
   for (const fn of ["sRGBTransferEOTF", "sRGBTransferOETF"]) assert.ok(cs.includes(fn), fn + " ya no existe en colorspace_pars_fragment");
 });
 
-test("la página empaquetada carga sin errores, lleva la three de apps/web y solo pide a su mismo origen (salvo las fuentes de Google de la plantilla)", { timeout: 300000 }, async t => {
+test("la página empaquetada carga sin errores, lleva la three de apps/web y solo pide a su mismo origen", { timeout: 300000 }, async t => {
   if (SALTO_NAV) return t.skip(SALTO_NAV);
   const P = montaPagina({ finca: "hituelo" }), s = await sirve(P.carpeta, { csp: true }), nav = await lanza(), origen = "http://127.0.0.1:" + s.address().port;
   const p = await nav.newPage({ viewport: VENTANA_CHICA }), errores = [], fuera = new Set();
@@ -49,8 +49,6 @@ test("la página empaquetada carga sin errores, lleva la three de apps/web y sol
     await p.waitForTimeout(1500);
     assert.deepStrictEqual(errores, []);
     assert.strictEqual(await p.evaluate(() => window.__THREE__), VERSION_THREE.split(".")[1], "la three empaquetada no es la de apps/web/package.json");
-    const ajenos = [...fuera].filter(h => !/^fonts\.(googleapis|gstatic)\.com$/.test(h));
-    if (fuera.size > ajenos.length) t.diagnostic("fuentes de Google pedidas por la plantilla: " + [...fuera].join(", ") + " (la CSP de Caddy, al imponerse, las bloquearía)");
-    assert.deepStrictEqual(ajenos, [], "la página pide a otros hosts (el motor solo pide a su mismo origen)");
+    assert.deepStrictEqual([...fuera], [], "la página pide a otros hosts (el motor solo pide a su mismo origen)");
   } finally { await p.close(); await nav.close(); s.close(); }
 });

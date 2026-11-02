@@ -2,7 +2,7 @@
 // Expone: TiempoPuro, ahoraMs, TM, calma, texBrillo, lluvia, uViento, uSombra, GLSL_SOMBRA, parcheTiempo, cur, meta, tMundo, ins, nivel,
 //   actualizaTiempo, temaBarrera, colocaBarrera, pintaFondoTiempo, fmtHora, fmtClaveDia, num1, rumbo, esc, hace, objetivoMundoBase, pasoHoraMundo,
 //   horaMundoTexto, aplicaMundo, anuncia, TiempoVivo, lindes
-// Consume: 01_datos (D, $, FOG0, FOG1), 02_mundo (suelo, copas), 02c_componentes (Bus, Pausa),
+// Consume: 01_datos (D, $, tinta, FOG0, FOG1), 02_mundo (suelo, copas), 02c_componentes (Bus, Pausa),
 //   03_escena (visor, scene, camera, SRGB, LUZ_SOL, LUZ_CIELO, hemi, sol, texColor, colorVertSRGB, colorCss, exag, modo),
 //   04d_sombreado_tiles (hash, matSuelo, matOrto), 05_nube (nube), 07_follaje (matHojaG, matHojaP, matCorteza), 08_marcadores (gLinde),
 //   09_camara (objetivo), 13b_hazas (HazasPuro), 14_historia (marca, tabla, aviso), 16_vida (mira, quad, temaEstela, dron),
@@ -486,7 +486,7 @@
       return "<tr><th scope=\"row\">" + esc(nom) + "</th><td>" + num1(tn, 0) + " – " + num1(tx, 0) + " °C</td><td>" + num1(nm, 0) + " % nubes</td><td>" + (d.ll > 0 ? num1(d.ll, 1) + " mm (" + num1(d.pr, 0) + " %)" : "sin lluvia") + "</td><td>racha " + num1(d.rf, 1) + " m/s</td></tr>";
     }).join("");
     c.innerHTML = '<h3>Previsión · 72 horas <span class="t-pill t-pill-m">modelado</span></h3><p class="t-sub">Una por finca, de una rejilla de ~5 km' + (f.generadoEn ? " · " + hace(f.generadoEn) : "") + "." + (f.datosDeMaqueta ? " <strong>Datos de maqueta.</strong>" : "") + (TM.origen === "fixture" ? " <strong>Datos de prueba sintéticos: no son de Vigía.</strong>" : "") + "</p>" + svg +
-      '<p class="t-leyenda"><i style="background:var(--guardado)"></i>temperatura <i style="background:var(--muted);opacity:.4"></i>nubosidad <i style="background:var(--lidar)"></i>lluvia (mm/h) <i style="background:var(--fg)"></i>viento (punteado: racha). Toca o pasa por encima de una hora para ver sus cifras.</p>' +
+      '<p class="t-leyenda"><i class="l-temp"></i>temperatura <i class="l-nubes"></i>nubosidad <i class="l-lluvia"></i>lluvia (mm/h) <i class="l-viento"></i>viento (punteado: racha). Toca o pasa por encima de una hora para ver sus cifras.</p>' +
       lineaHelada(hs) + '<table class="t-tabla"><tbody>' + filas + "</tbody></table>";
     marcaMomento();
   }

@@ -1,5 +1,5 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: D, $, fmt, b64, i16, RES, x0, yN, ANCHO, ALTO, EXT, FOG0, FOG1, DIST_MAX, DIST_INI, DEPURA, VRP, FACTOR_R8, FACTOR_R8_GEN,
+// Expone: D, $, tinta, fmt, b64, i16, RES, x0, yN, ANCHO, ALTO, EXT, FOG0, FOG1, DIST_MAX, DIST_INI, DEPURA, VRP, FACTOR_R8, FACTOR_R8_GEN,
 //   factorCopaDeConfig, ESC_R8
 // Consume: 02_mundo (Mundo, suelo), 02c_componentes (Config), 05_nube (nube), 15_tiempo (nivel)
 // Nota: Abre la IIFE que cierra 99_cierre.js y activa "use strict". Primer módulo: define D (los datos de la finca) y las utilidades.
@@ -9,6 +9,9 @@
   "use strict";
   var D = JSON.parse(document.getElementById("datos").textContent);
   var $ = function (id) { return document.getElementById(id); };
+  // CSP (V12): el HTML que arma el motor no lleva atributos style (style-src 'self' lo rechaza). Lo que depende de un dato (un color, un ancho) va en
+  // data-fondo="#rrggbb" y data-ancho="12.3" (en %), y esto lo pasa a CSSOM, que la CSP sí admite. Se llama tras cada innerHTML que los lleve.
+  function tinta(raiz) { var l = raiz.querySelectorAll("[data-fondo],[data-ancho]"), i, e; for (i = 0; i < l.length; i++) { e = l[i]; if (e.dataset.fondo) e.style.background = e.dataset.fondo; if (e.dataset.ancho) e.style.width = e.dataset.ancho + "%"; } }
   var fmt = function (n, d) { return Number(n).toLocaleString("es-ES", { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 }); };
   function b64(s) { var bin = atob(s), u = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; }
   function i16(s) { var u = b64(s); return new Int16Array(u.buffer, 0, u.length >> 1); }

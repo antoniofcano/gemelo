@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: parcelas, fincas, fincaSel, parcelaSel, claseUsda, elegirParcela, elegirFinca
-// Consume: 01_datos (D, $, fmt, DIST_INI), 02_mundo (suelo, copas, cIn, marc, med), 03_escena (exag, modo, calidad), 08_marcadores (aplicaLuego),
-//   09_camara (objetivo, orb), 14_historia (tabla, nMarc), 33_ajustes (Ajustes)
+// Consume: 01_datos (D, $, tinta, fmt, DIST_INI), 02_mundo (suelo, copas, cIn, marc, med), 03_escena (exag, modo, calidad),
+//   08_marcadores (aplicaLuego), 09_camara (objetivo, orb), 14_historia (tabla, nMarc), 33_ajustes (Ajustes)
 // ===============================================================================
   // ---------- parcelas: selector, cifras y suelo de cada una
   var parcelas = D.parcelas, fincas = D.fincas || [], fincaSel = -1, parcelaSel = -1, vistaIni = { x: 0, y: 12, z: 0, dist: DIST_INI };
@@ -20,15 +20,15 @@
     if (!pr.suelo) { cu.innerHTML = '<p class="nota">Sin datos de SoilGrids para esta parcela.</p>'; return; }
     var f = pr.suelo, clases = {}; f.forEach(function (r) { clases[claseUsda(r.a, r.l, r.c)] = 1; });
     var h = '<p class="sg-clase">' + pr.nombre + ' · textura <strong>' + Object.keys(clases).join(" / ") + '</strong></p>' +
-      '<div class="sg-leyenda"><span><i style="background:var(--arena)"></i>arena</span><span><i style="background:var(--limo)"></i>limo</span><span><i style="background:var(--arcilla)"></i>arcilla (%)</span></div>';
+      '<div class="sg-leyenda"><span><i class="c-arena"></i>arena</span><span><i class="c-limo"></i>limo</span><span><i class="c-arcilla"></i>arcilla (%)</span></div>';
     f.forEach(function (r) {
-      h += '<div class="sg-fila"><span class="sg-prof">' + r.p + ' cm</span><span class="sg-barra" role="img" aria-label="arena ' + fmt(r.a) + ' %, limo ' + fmt(r.l) + ' %, arcilla ' + fmt(r.c) + ' %"><i style="width:' + r.a.toFixed(1) + '%;background:var(--arena)"></i><i style="width:' + r.l.toFixed(1) + '%;background:var(--limo)"></i><i style="width:' + r.c.toFixed(1) + '%;background:var(--arcilla)"></i></span><span class="sg-num">' + fmt(r.c) + ' %</span></div>';
+      h += '<div class="sg-fila"><span class="sg-prof">' + r.p + ' cm</span><span class="sg-barra" role="img" aria-label="arena ' + fmt(r.a) + ' %, limo ' + fmt(r.l) + ' %, arcilla ' + fmt(r.c) + ' %"><i class="c-arena" data-ancho="' + r.a.toFixed(1) + '"></i><i class="c-limo" data-ancho="' + r.l.toFixed(1) + '"></i><i class="c-arcilla" data-ancho="' + r.c.toFixed(1) + '"></i></span><span class="sg-num">' + fmt(r.c) + ' %</span></div>';
     });
     h += '<table class="sg-tabla"><thead><tr><th>cm</th><th>pH</th><th>MO %</th><th>CIC</th></tr></thead><tbody>';
     f.forEach(function (r) { h += '<tr><td>' + r.p + '</td><td>' + fmt(r.ph, 1) + '</td><td>' + fmt(r.mo, 1) + '</td><td>' + fmt(r.cec) + '</td></tr>'; });
     h += '</tbody></table><p class="nota">Densidad ' + fmt(f[1].dens, 2) + ' kg/dm³ y ' + fmt(f[1].pedr) + ' % de elementos gruesos a 5-15 cm. CIC en cmol(c)/kg. MO = carbono orgánico × 1,724.</p>' +
-      '<p class="nota" style="margin-top:6px">Modelo del ISRIC a 250 m, consultado el 25-oct-2026: un valor por parcela, no un mapa dentro de ella. Las parcelas cercanas pueden compartir celda y por tanto valores casi iguales. No hay analítica de suelo propia con la que contrastarlo.</p>';
-    cu.innerHTML = h;
+      '<p class="nota sep6">Modelo del ISRIC a 250 m, consultado el 25-oct-2026: un valor por parcela, no un mapa dentro de ella. Las parcelas cercanas pueden compartir celda y por tanto valores casi iguales. No hay analítica de suelo propia con la que contrastarlo.</p>';
+    cu.innerHTML = h; tinta(cu);
   }
   function estadisticas(k) {
     var enF = function (p) { return fincaSel < 0 || (parcelas[p] && parcelas[p].finca === fincaSel); };

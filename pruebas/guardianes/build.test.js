@@ -14,8 +14,14 @@ for (const finca of ["cerro", "hituelo"]) {
     if (SALTO) return t.skip(SALTO);
     const P = montaPagina({ finca });
     const js = SRC.map(f => fs.readFileSync(path.join(RAIZ, f), "utf8")).join("");   // lo que concatena genera_motor.mjs: orden alfabético, sin huecos
-    assert.strictEqual(fs.readFileSync(path.join(P.raiz, "entrada", "motor.generado.js"), "utf8"), 'import * as THREE from "three";\n' + js);
+    assert.strictEqual(fs.readFileSync(path.join(P.raiz, "entrada", "motor.generado.js"), "utf8"), 'import * as THREE from "three";\nimport "./plantilla.css";\n' + js);
     const html = fs.readFileSync(path.join(P.carpeta, P.url), "utf8");
+    // V12: estilos y tipografías del mismo origen (la CSP no deja <style>, style="…" ni Google Fonts)
+    assert.match(html, /<link rel="stylesheet"[^>]*href="\.\/assets\/[^"]+\.css"/, "la página no enlaza su hoja de estilos empaquetada");
+    assert.ok(!/<style|\sstyle=|fonts\.(googleapis|gstatic)\.com/.test(html), "la página lleva estilos en línea o fuentes de Google");
+    const assets = fs.readdirSync(path.join(P.carpeta, "assets")), css = fs.readFileSync(path.join(P.carpeta, "assets", assets.find(f => f.endsWith(".css"))), "utf8");
+    assert.ok(assets.filter(f => /^(fraunces|instrument-sans)-latin-\d+-normal-.+\.woff2$/.test(f)).length === 5, "faltan los 5 .woff2 de las tipografías (Fraunces 500/600, Instrument Sans 400/500/600)");
+    assert.ok(!/https?:\/\//.test(css.replace(/\/\*[\s\S]*?\*\//g, "")), "la hoja de estilos pide algo a otro origen");
     assert.match(html, /<script type="module"[^>]*src="\.\/assets\/[^"]+\.js"/, "la página no carga el motor empaquetado de assets/");
     assert.ok(!/cdn\.jsdelivr\.net|<script type="importmap">/.test(html), "queda un importmap o una carga de jsDelivr (la salida artefacto ya no existe)");
     const D = datosDe(P.carpeta);
