@@ -93,7 +93,7 @@ export class AlmacenPg implements SessionStore {
               s.confirmada_en, coalesce(s.confirmada_en > now() - make_interval(mins => $5), false) AS confirmacion_vigente, l.id AS llave_id
          FROM sesiones s JOIN hogares h ON h.id = s.hogar_id
          LEFT JOIN aparatos_oficina a ON a.id = s.aparato_id AND a.hogar_id = s.hogar_id AND a.revocado_en IS NULL
-         LEFT JOIN llaves_oficina l ON l.id = s.llave_id AND l.hogar_id = s.hogar_id AND l.revocada_en IS NULL
+         LEFT JOIN llaves_acceso l ON l.id = s.llave_id AND l.hogar_id = s.hogar_id AND l.revocada_en IS NULL
         WHERE s.hash = $1 AND s.revocada_en IS NULL AND s.expira_en > now() AND h.activo
           AND CASE WHEN h.rol::text IN ('oficina', 'admin') AND s.origen = 'vinculo'
                    THEN s.creada_en > now() - make_interval(hours => $3)

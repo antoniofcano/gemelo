@@ -83,10 +83,10 @@ export async function rutasLlaves(app: FastifyInstance, ctx: Contexto): Promise<
       await t.query("SELECT id FROM hogares WHERE id = $1 FOR UPDATE", [hogar]);
       const permiso = permisoAlta(typeof req.session.llaveId === "number", await estadoLlaves(t, hogar));
       if (permiso !== "si") return { error: permiso } as const;
-      const ya = await t.query("SELECT 1 FROM llaves_oficina WHERE credencial_id = $1", [v.llave.credencialId]);
+      const ya = await t.query("SELECT 1 FROM llaves_acceso WHERE credencial_id = $1", [v.llave.credencialId]);
       if (ya.rowCount) return { error: "repetida" } as const;
       const i = await t.query<{ id: string }>(
-        `INSERT INTO llaves_oficina (hogar_id, credencial_id, clave_publica, contador, transports, nombre, respaldada, aparato_id, ultima_vez_en)
+        `INSERT INTO llaves_acceso (hogar_id, credencial_id, clave_publica, contador, transports, nombre, respaldada, aparato_id, ultima_vez_en)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now()) RETURNING id`,
         [hogar, v.llave.credencialId, Buffer.from(v.llave.clavePublica), v.llave.contador, v.llave.transports, nombre, v.llave.respaldada, req.session.aparatoId ?? null]);
       const id = Number(i.rows[0]!.id);
@@ -133,7 +133,7 @@ export async function rutasLlaves(app: FastifyInstance, ctx: Contexto): Promise<
       await audita(bd, hogar, "oficina.llave_fallida", { ceremonia: "entrada", motivo: v.ok ? "otra_llave" : v.motivo, llave: llave?.id ?? null });
       return rep.code(400).send({ error: "llave_no_valida", mensaje: TEXTO_FALLO });
     }
-    await bd.query("UPDATE llaves_oficina SET contador = $2, ultima_vez_en = now() WHERE id = $1", [llave.id, v.contador]);
+    await bd.query("UPDATE llaves_acceso SET contador = $2, ultima_vez_en = now() WHERE id = $1", [llave.id, v.contador]);
     await marcaSesionConLlave(bd, sid, hogar, llave.id);
     await audita(bd, hogar, "oficina.llave_entrada", { llave: llave.id, aparato: req.session.aparatoId ?? null, ya_tenia: typeof req.session.llaveId === "number" });
     return { ok: true, confirmacion_min: config.oficina.minConfirmacion };
@@ -142,7 +142,7 @@ export async function rutasLlaves(app: FastifyInstance, ctx: Contexto): Promise<
   // ---------------------------------------------------------------- gestión de las propias
   const OFICINA = [requiereRol("oficina", "admin")];
   const listaSql = `SELECT id, hogar_id, nombre, transports, respaldada, creada_en, ultima_vez_en, revocada_en, aparato_id
-                      FROM llaves_oficina WHERE hogar_id = $1 ORDER BY revocada_en IS NOT NULL, id DESC LIMIT 50`;
+                      FROM llaves_acceso WHERE hogar_id = $1 ORDER BY revocada_en IS NOT NULL, id DESC LIMIT 50`;
   const fila = (f: Record<string, unknown>, esta?: number) => ({
     id: Number(f["id"]), nombre: f["nombre"], transports: f["transports"] ?? [], respaldada: f["respaldada"] === true,
     creada_en: f["creada_en"], ultima_vez_en: f["ultima_vez_en"], revocada_en: f["revocada_en"], es_esta: esta !== undefined && Number(f["id"]) === esta,
@@ -160,7 +160,7 @@ export async function rutasLlaves(app: FastifyInstance, ctx: Contexto): Promise<
     const hogar = req.session.hogarId!;
     const r = await enTransaccion(bd, async t => {
       await t.query("SELECT id FROM hogares WHERE id = $1 FOR UPDATE", [hogar]);
-      const l = await t.query("SELECT 1 FROM llaves_oficina WHERE id = $1 AND hogar_id = $2 AND revocada_en IS NULL", [req.params.id, hogar]);
+      const l = await t.query("SELECT 1 FROM llaves_acceso WHERE id = $1 AND hogar_id = $2 AND revocada_en IS NULL", [req.params.id, hogar]);
       if (!l.rowCount) return { error: "no_existe" } as const;
       // nunca la última propia: dejaría la cuenta fuera hasta que un admin la rehabilite
       if ((await estadoLlaves(t, hogar)).activas <= 1) return { error: "ultima_llave" } as const;
@@ -183,7 +183,7 @@ export async function rutasLlaves(app: FastifyInstance, ctx: Contexto): Promise<
     const cuentas = await bd.query<{ id: string; nombre_interno: string | null; rol: Rol; llave_rehabilitada_hasta: Date | null }>(
       "SELECT id, nombre_interno, rol, llave_rehabilitada_hasta FROM hogares WHERE rol::text IN ('oficina', 'admin') AND activo ORDER BY id LIMIT 100");
     const llaves = await bd.query(
-      `SELECT id, hogar_id, nombre, transports, respaldada, creada_en, ultima_vez_en, revocada_en FROM llaves_oficina
+      `SELECT id, hogar_id, nombre, transports, respaldada, creada_en, ultima_vez_en, revocada_en FROM llaves_acceso
         WHERE hogar_id = ANY($1::bigint[]) ORDER BY revocada_en IS NOT NULL, id DESC`, [cuentas.rows.map(f => f.id)]);
     return {
       obligatoria: c.obligatoria,
@@ -197,7 +197,7 @@ export async function rutasLlaves(app: FastifyInstance, ctx: Contexto): Promise<
 
   app.post<{ Params: { id: number } }>("/api/admin/llaves/:id/revocar", { preHandler: ADMIN_CONFIRMADO, schema: { params: ID } }, async (req, rep) => {
     const l = await bd.query<{ hogar_id: string; rol: Rol }>(
-      "SELECT l.hogar_id, h.rol FROM llaves_oficina l JOIN hogares h ON h.id = l.hogar_id WHERE l.id = $1 AND l.revocada_en IS NULL", [req.params.id]);
+      "SELECT l.hogar_id, h.rol FROM llaves_acceso l JOIN hogares h ON h.id = l.hogar_id WHERE l.id = $1 AND l.revocada_en IS NULL", [req.params.id]);
     const f = l.rows[0];
     if (!f || !esOficina(f.rol)) return rep.code(404).send({ error: "no_existe" });
     const n = await revocaLlave(bd, req.params.id, req.session.hogarId!);

@@ -96,7 +96,7 @@ test("e2e: presencia con LiveKit real (dos Chrome, mismo hogar en dos aparatos, 
         await bd.query("INSERT INTO aparatos_oficina (hogar_id, nombre, hash, aprobado_en, aprobado_como) SELECT id, 'e2e presencia', $2, now(), 'consola' FROM hogares WHERE correo = $1",
           [OFICINA, cripto.createHash("sha256").update(aparato, "utf8").digest()]);
         const ses = { yo1: await sesion(yo.correo), yo2: await sesion(yo.correo), vecino: await sesion(vecino.correo), mirlo: await sesion(mirlo.correo), oficina: await sesion(OFICINA, { cookie: "__Host-gemelo-aparato=" + aparato }) };
-        const llave = (await bd.query(`INSERT INTO llaves_oficina (hogar_id, credencial_id, clave_publica, nombre) SELECT id, $2, $3, 'e2e presencia' FROM hogares WHERE correo = $1 RETURNING id`,
+        const llave = (await bd.query(`INSERT INTO llaves_acceso (hogar_id, credencial_id, clave_publica, nombre) SELECT id, $2, $3, 'e2e presencia' FROM hogares WHERE correo = $1 RETURNING id`,
           [OFICINA, cripto.randomBytes(24).toString("base64url"), cripto.randomBytes(64)])).rows[0].id;
         await bd.query("UPDATE sesiones SET llave_id = $2, confirmada_en = now() WHERE hogar_id = (SELECT id FROM hogares WHERE correo = $1) AND revocada_en IS NULL", [OFICINA, llave]);
         const token = async (cookie, dispositivo = "escritorio") => { const r = await pide("/api/presencia/token", { method: "POST", cookie, body: JSON.stringify({ dispositivo }) }); return { status: r.status, cuerpo: JSON.parse(r.texto) }; };
