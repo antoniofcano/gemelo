@@ -1,15 +1,61 @@
-// Mundo (OF14, escalón 1; doc/sistema/OFICINA.md §6): anunciar a toda la sala, expulsar a una familia y balizas oficiales, con las rutas que ya
+// Mundo (OF14, escalones 1 y 2; doc/sistema/OFICINA.md §6): quién está conectado (GET /api/admin/presencia/participantes, refresco cada 10 s solo con la sección
+// a la vista), anunciar a toda la sala, expulsar a una familia y balizas oficiales, con las rutas que ya
 // existen (POST /api/admin/presencia/anuncio y /expulsar; GET /api/balizas-oficiales y POST/PUT/DELETE /api/admin/balizas). Todo el DOM con h()
 // (texto, nunca HTML). La api vuelve a validar; aquí solo se ahorra la ida y vuelta (mundo_puro.js) y se enseña su error en claro.
 import { $, api, aviso, confirma, h, vacia } from "./comun.js";
-import { ANUNCIO_MAX, CADUCIDADES, HORAS, SALAS, cuerpoAnuncio, cuerpoBaliza, cuerpoExpulsion, cuerpoMover, etiquetaFamilia, textoCaduca, textoConfirmaExpulsion, textoCuenta } from "./mundo_puro.js";
+import { construyeHash } from "./enlaces_puro.js";
+import { ANUNCIO_MAX, CADUCIDADES, HORAS, REFRESCO_MS, SALAS, cuerpoAnuncio, cuerpoBaliza, cuerpoExpulsion, cuerpoMover, debeRefrescar, etiquetaFamilia, filasMundo, textoCaduca, textoConfirmaExpulsion, textoCuenta, textoPersonas } from "./mundo_puro.js";
 
 const FINCA_POR_DEFECTO = "hituelo";
 
 export function iniciaMundo({ sesion }) {
-  let preparado = false, familias = [], balizas = [], finca = FINCA_POR_DEFECTO, buscando = 0, cargandoBalizas = 0, moviendo = null;
+  let preparado = false, activo = false, temporizador = 0, leyendoQuien = 0, quienFilas = [], familias = [], balizas = [], finca = FINCA_POR_DEFECTO, buscando = 0, cargandoBalizas = 0, moviendo = null;
   void sesion;
   const estado = (id, texto, mal) => { const p = $(id); p.textContent = texto; p.classList.toggle("error", !!mal); };
+
+  // ---------------------------------------------------------------- quién está en el mundo (escalón 2)
+  async function cargaQuien() {
+    const n = ++leyendoQuien;
+    const r = await api("GET", "/api/admin/presencia/participantes");
+    if (n !== leyendoQuien || !activo) return;   // llegó tarde (otra lectura, o ya no se ve la sección)
+    const err = $("#mQuienError");
+    if (!r.ok) { err.textContent = r.mensaje || "No se pudo consultar el mundo."; return; }   // se deja lo último que se sabía, con su aviso
+    err.textContent = "";
+    quienFilas = filasMundo(r.datos, Date.now());
+    pintaQuien(r.datos);
+  }
+
+  function pintaQuien(datos) {
+    const cuerpo = $("#mQuienCuerpo"), enfocado = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.quien : null;
+    const frase = textoPersonas(datos);
+    if ($("#mQuienCuenta").textContent !== frase) $("#mQuienCuenta").textContent = frase;
+    $("#mQuienEnv").hidden = quienFilas.length === 0;
+    vacia(cuerpo);
+    quienFilas.forEach((f, i) => {
+      cuerpo.append(h("tr", null,
+        h("td", null, f.sala), h("td", null, h("b", null, f.alias)), h("td", null, f.rol), h("td", null, f.aparato), h("td", null, f.hace), h("td", null, f.mira),
+        h("td", null, h("div", { class: "barra-h" },
+          f.puedeExpulsar ? h("button", { class: "boton peq peligro-suave", type: "button", "data-quien": i + "-e", "aria-label": "Expulsar a " + f.alias, onclick: () => preparaExpulsion(f) }, "Expulsar") : null,
+          f.hogarId ? h("a", { class: "boton peq", href: construyeHash("familias", f.hogarId), "data-enlace": "familia", "data-quien": i + "-f", "aria-label": "Ver la familia de " + f.alias }, "Ver la familia") : null))));
+    });
+    if (enfocado) { const otra = cuerpo.querySelector('[data-quien="' + enfocado + '"]'); if (otra) otra.focus(); }   // el refresco no roba el foco
+  }
+
+  /** «Expulsar» desde una fila: rellena el formulario de expulsar (no expulsa: sigue pidiendo confirmar). */
+  function preparaExpulsion(f) {
+    const s = $("#mExpulsaS");
+    if (!familias.some(x => x.id === f.hogarId)) {   // la familia puede no estar en las 50 que trajo la búsqueda: se añade con el alias del mundo
+      familias.push({ id: f.hogarId, alias: f.alias });
+      s.append(h("option", { value: String(f.hogarId) }, etiquetaFamilia({ alias: f.alias })));
+    }
+    s.value = String(f.hogarId);
+    estado("#mExpulsaM", "Preparada: «" + f.alias + "». Revisa el motivo y pulsa «Expulsar…».");
+    $("#mExpulsaF").scrollIntoView({ block: "center" });
+    $("#mExpulsaMot").focus();
+  }
+
+  const arranca = () => { clearInterval(temporizador); temporizador = setInterval(() => { if (debeRefrescar(activo, !document.hidden)) cargaQuien(); }, REFRESCO_MS); };
+  const para = () => { clearInterval(temporizador); temporizador = 0; };
 
   // ---------------------------------------------------------------- anunciar
   async function anuncia(e) {
@@ -153,17 +199,22 @@ export function iniciaMundo({ sesion }) {
     $("#mExpulsaQ").addEventListener("input", () => { clearTimeout(t); t = setTimeout(buscaFamilias, 250); });
     $("#mBalizaF").addEventListener("submit", ponBaliza);
     $("#mBalizaRef").addEventListener("click", cargaBalizas);
+    $("#mQuienRef").addEventListener("click", cargaQuien);
+    document.addEventListener("visibilitychange", () => { if (debeRefrescar(activo, !document.hidden)) cargaQuien(); });
     $("#mBalizaFinca").addEventListener("change", e => { finca = e.target.value; cargaBalizas(); });
     $("#fBalizaMover").addEventListener("submit", mueve);
     $("#mMoverNo").addEventListener("click", () => $("#dlgBalizaMover").close());
     cuentaAnuncio();
   }
 
+  function sale() { activo = false; leyendoQuien++; para(); }
+
   async function abre() {
     prepara();
+    activo = true; arranca(); cargaQuien();
     await Promise.all([cargaFincas(), buscaFamilias()]);
     await cargaBalizas();
   }
 
-  return { abre, estado: () => ({ finca, balizas: balizas.map(b => ({ id: b.id, titulo: b.titulo })), familias: familias.length }) };
+  return { abre, sale, estado: () => ({ activo, quien: quienFilas.length, finca, balizas: balizas.map(b => ({ id: b.id, titulo: b.titulo })), familias: familias.length }) };
 }

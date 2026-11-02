@@ -99,7 +99,7 @@ export async function rutasPresencia(app: FastifyInstance, ctx: Contexto): Promi
   });
 
   // OF10: el mundo en modo oficina (anunciar, llevar a otra sala, balizas oficiales): src/presencia/oficina_mundo.ts
-  await rutasOficinaMundo(app, ctx, moderador, ligadura);
+  await rutasOficinaMundo(app, ctx, moderador, ligadura, voz ? () => voz.salasGuiadas() : undefined);
   // F3c: la voz de las visitas guiadas (sala `guiada-<evento>`, la palabra, silenciar, expulsar): src/presencia/voz_rutas.ts
   await rutasVoz(app, bd, { lk: lk ?? null, voz, expulsados, ...(ctx.relojVoz ? { reloj: ctx.relojVoz } : {}) });
 }

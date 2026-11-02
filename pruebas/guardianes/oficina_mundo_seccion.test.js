@@ -22,10 +22,10 @@ test("nada en línea ni de otro origen; el DOM se hace con h() (un título de ba
   const sec = /<section id="s-mundo"[\s\S]*?<\/section>/.exec(html)[0];
   assert.ok(!/\sstyle\s*=|\son[a-z]+\s*=|<script/i.test(sec), "la sección no lleva estilos ni manejadores en línea");
   for (const id of ["mAnuncioF", "mAnuncioT", "mAnuncioN", "mAnuncioS", "mAnuncioB", "mAnuncioM", "mExpulsaF", "mExpulsaQ", "mExpulsaS", "mExpulsaB", "mExpulsaM",
-    "mBalizaFinca", "mBalizaLista", "mBalizaCuenta", "mBalizaF", "mBalizaT", "mBalizaPx", "mBalizaPy", "mBalizaH", "mBalizaB", "mBalizaM"]) assert.ok(sec.includes('id="' + id + '"'), id);
+    "mQuienRef", "mQuienCuenta", "mQuienEnv", "mQuienCuerpo", "mQuienError", "mBalizaFinca", "mBalizaLista", "mBalizaCuenta", "mBalizaF", "mBalizaT", "mBalizaPx", "mBalizaPy", "mBalizaH", "mBalizaB", "mBalizaM"]) assert.ok(sec.includes('id="' + id + '"'), id);
   // cada campo tiene su etiqueta (envuelto en <label>) y los avisos van en una región viva
   assert.strictEqual((sec.match(/<(input|select|textarea)\b/g) || []).length, (sec.match(/<label class="campo/g) || []).length, "todo campo va dentro de su <label>");
-  for (const id of ["mAnuncioM", "mExpulsaM", "mBalizaM", "mBalizaCuenta"]) assert.match(sec, new RegExp('id="' + id + '"[^>]*aria-live="polite"'), id + " es una región viva");
+  for (const id of ["mAnuncioM", "mExpulsaM", "mBalizaM", "mBalizaCuenta", "mQuienCuenta"]) assert.match(sec, new RegExp('id="' + id + '"[^>]*aria-live="polite"'), id + " es una región viva");
   assert.match(html, /<dialog id="dlgBalizaMover" aria-labelledby="dlgBalizaMoverT">/, "mover una baliza usa un <dialog> nativo");
   assert.match(js, /\.showModal\(\)/); assert.match(js, /confirma\(\{[\s\S]*Expulsar 15 minutos/, "expulsar pide confirmación en un <dialog> nativo (confirma de comun.js)");
   assert.ok(!/Directos y Mundo/.test(html), "el marcador «Directos y Mundo llegan…» ya no está");
@@ -37,8 +37,8 @@ test("la sección está montada en oficina.js y las rutas que usa están en el c
   assert.match(oficina, /import \{ iniciaMundo \} from "\.\/mundo\.js"/); assert.match(oficina, /sec === "mundo"\) mundo\.abre\(\)/);
   assert.match(oficina, /"agenda", "mundo", "olivos"/, "la sección se muestra y se oculta con las demás");
   const openapi = lee("contratos/api.openapi.yaml");
-  for (const r of ["/api/admin/presencia/anuncio", "/api/admin/presencia/expulsar", "/api/balizas-oficiales", "/api/admin/balizas", "/api/admin/balizas/{id}", "/api/admin/hogares"]) assert.ok(openapi.includes("  " + r + ":"), r + " está en api.openapi.yaml");
-  for (const m of ['api("POST", "/api/admin/presencia/anuncio"', 'api("POST", "/api/admin/presencia/expulsar"', 'api("GET", "/api/balizas-oficiales?finca="',
+  for (const r of ["/api/admin/presencia/anuncio", "/api/admin/presencia/expulsar", "/api/admin/presencia/participantes", "/api/balizas-oficiales", "/api/admin/balizas", "/api/admin/balizas/{id}", "/api/admin/hogares"]) assert.ok(openapi.includes("  " + r + ":"), r + " está en api.openapi.yaml");
+  for (const m of ['api("POST", "/api/admin/presencia/anuncio"', 'api("POST", "/api/admin/presencia/expulsar"', 'api("GET", "/api/admin/presencia/participantes"', 'api("GET", "/api/balizas-oficiales?finca="',
     'api("POST", "/api/admin/balizas"', 'api("PUT", "/api/admin/balizas/"', 'api("DELETE", "/api/admin/balizas/"']) assert.ok(js.includes(m), m);
   assert.ok(!/\/api\/admin\/balizas\?/.test(js) && !/api\("GET", "\/api\/admin\/balizas/.test(js), "no existe GET /api/admin/balizas: la lista sale de /api/balizas-oficiales");
 });
@@ -87,6 +87,41 @@ test("piezas puras: anunciar, expulsar y balizas con los límites de la api", as
   assert.ok(P.CADUCIDADES.some(([h]) => h === P.HORAS.defecto), "la caducidad por defecto está entre las del selector");
 });
 
+test("OF14 escalón 2: la tabla «Quién está en el mundo» (estática: cabeceras, vivo, vacío, foco, parada al salir) y sus piezas puras", async () => {
+  const sec = /<section id="s-mundo"[\s\S]*?<\/section>/.exec(html)[0], tabla = /<table[\s\S]*?<\/table>/.exec(sec)[0];
+  assert.strictEqual((tabla.match(/<th scope="col">/g) || []).length, 7, "siete cabeceras de columna con scope");
+  assert.match(tabla, /<caption class="vh">/); assert.match(sec, /id="mQuienError"[^>]*role="alert"/);
+  assert.match(sec, /id="mQuienEnv" hidden/, "sin gente no hay tabla vacía: solo la frase");
+  assert.ok(!/correo/i.test(js.slice(js.indexOf("async function cargaQuien"), js.indexOf("// ---------------------------------------------------------------- anunciar"))), "la tabla no toca correos");
+  assert.match(js, /construyeHash\("familias", f\.hogarId\)/, "«Ver la familia» va a #familias/<id>");
+  assert.match(js, /document\.hidden/, "no refresca con la pestaña oculta"); assert.match(js, /clearInterval\(temporizador\)/, "el refresco se para");
+  assert.match(oficina, /mundo\.abre\(\); else if \(mundo\) mundo\.sale\(\)/, "al cambiar de sección, Mundo para su refresco");
+
+  const P = await importa(), A = Date.parse("2026-11-02T12:00:00Z");
+  assert.strictEqual(P.REFRESCO_MS, 10_000);
+  assert.deepStrictEqual(["general", "visita", "guiada-7", "rara"].map(P.etiquetaSala), ["Sala general", "Sala de la visita", "Visita guiada 7", "rara"]);
+  assert.strictEqual(P.textoHace("2026-11-02T11:59:50Z", A), "hace un momento"); assert.strictEqual(P.textoHace("2026-11-02T11:55:00Z", A), "hace 5 min");
+  assert.strictEqual(P.textoHace("2026-11-02T10:30:00Z", A), "hace 1 h 30 min"); assert.strictEqual(P.textoHace("2026-10-30T12:00:00Z", A), "hace 3 días");
+  assert.strictEqual(P.textoHace(null, A), "—"); assert.strictEqual(P.textoHace("x", A), "—");
+  assert.strictEqual(P.textoPersonas({ total: 0, truncado: false, participantes: [] }), "Ahora no hay nadie en el mundo.");
+  assert.strictEqual(P.textoPersonas({ total: 1, truncado: false, participantes: [{}] }), "1 persona conectada.");
+  assert.strictEqual(P.textoPersonas({ total: 3, truncado: false, participantes: [{}, {}, {}] }), "3 personas conectadas.");
+  assert.match(P.textoPersonas({ total: 250, truncado: true, participantes: new Array(200) }), /250 personas conectadas \(se enseñan las primeras 200\)/);
+  assert.strictEqual(P.textoMira({ haza: null, vista: null }), "—"); assert.strictEqual(P.textoMira({ haza: "H-01", vista: null }), "H-01");
+  assert.strictEqual(P.textoMira({ haza: null, vista: "aerea" }), "Vista aérea");
+  const r = { total: 3, truncado: false, participantes: [
+    { sala: "general", alias: "Oficina", rol: "oficina", aparato: "escritorio", conectado_desde: "2026-11-02T11:00:00Z", hogar_id: 5, haza: null, vista: null },
+    { sala: "visita", alias: "Pardal <b>", rol: "hogar", aparato: "quest", conectado_desde: "2026-11-02T11:55:00Z", hogar_id: 9, haza: "H-12", vista: null },
+    { sala: "general", alias: "Visitante", rol: "hogar", aparato: null, conectado_desde: null, hogar_id: null, haza: null, vista: null }] };
+  const f = P.filasMundo(r, A);
+  assert.deepStrictEqual(f.map(x => [x.alias, x.rol, x.aparato, x.puedeExpulsar, x.hogarId]), [["Oficina", "Oficina", "Ordenador", false, 5], ["Pardal <b>", "Familia", "Gafas", true, 9], ["Visitante", "Familia", "—", false, null]],
+    "a la oficina no se la expulsa; sin hogar conocido, ni expulsar ni ver la familia");
+  assert.strictEqual(f[1].mira, "H-12"); assert.strictEqual(f[1].sala, "Sala de la visita");
+  assert.deepStrictEqual(P.filasMundo(null, A), []);
+  assert.ok(P.debeRefrescar(true, true) && !P.debeRefrescar(true, false) && !P.debeRefrescar(false, true));
+  assert.strictEqual(P.etiquetaFamilia({ alias: "Pardal" }), "Pardal", "sin correo no queda «· undefined»");
+});
+
 // ——— recorrido en Chrome (opcional; escrito, NO ejecutado: va por el banco, un Chrome a la vez) ———
 const SALTO = process.env.GEMELO_BANCO !== "1" ? "recorrido en Chrome por el banco (GEMELO_BANCO=1): la sección Mundo de la oficina en un navegador NO se ha comprobado" : null;
 
@@ -103,6 +138,9 @@ test("recorrido: anunciar, expulsar con su diálogo y balizas (listar, poner, mo
     const pg = await nav.newPage({ viewport: { width: 1280, height: 800 }, locale: "es-ES" }), errores = [], llamadas = [];
     pg.on("pageerror", e => errores.push(String(e)));
     let balizas = [{ id: 1, finca: "hituelo", x: 431000, y: 4300000, titulo: "Aquí se recoge hoy <b>", texto: "Traed cajas", hasta: "2030-01-01T10:00:00Z" }];
+    let quien = { consultado_en: "2026-11-02T12:00:00Z", total: 2, truncado: false, participantes: [
+      { sala: "general", alias: "Oficina", rol: "oficina", aparato: "escritorio", conectado_desde: "2026-11-02T11:00:00Z", hogar_id: 1, haza: null, vista: null },
+      { sala: "visita", alias: "Pardal <b>", rol: "hogar", aparato: "movil", conectado_desde: "2026-11-02T11:50:00Z", hogar_id: 7, haza: null, vista: null }] };
     const json = (r, estado, cuerpo) => r.fulfill({ status: estado, contentType: "application/json", body: cuerpo === undefined ? "" : JSON.stringify(cuerpo) });
     await pg.route("**/api/**", async r => {
       const u = new URL(r.request().url()), m = r.request().method(), ruta = u.pathname, cuerpo = r.request().postData();
@@ -110,6 +148,7 @@ test("recorrido: anunciar, expulsar con su diálogo y balizas (listar, poner, mo
       if (ruta === "/api/oficina/sesion") return json(r, 200, { rol: "oficina", aparato: { nombre: "Prueba", estado: "aprobado" }, caduca_en: "2030-01-01T00:00:00Z", inactividad_min: 60, confirmacion_vigente: true });
       if (ruta === "/api/admin/hazas") return json(r, 200, { hazas: [{ finca: "hituelo" }] });
       if (ruta === "/api/admin/hogares") return json(r, 200, { total: 1, hogares: [{ id: 7, rol: "hogar", activo: true, correo: "ana@example.com", alias: "Ana", nombre_interno: null }] });
+      if (ruta === "/api/admin/presencia/participantes") return json(r, 200, quien);
       if (ruta === "/api/admin/presencia/anuncio") return json(r, 200, { salas: ["hituelo-libre"] });
       if (ruta === "/api/admin/presencia/expulsar") return json(r, 200, { estaba_en_sala: true, conexiones: 1 });
       if (ruta === "/api/balizas-oficiales") return json(r, 200, { finca: "hituelo", srs: "EPSG:25830", balizas });
@@ -123,6 +162,21 @@ test("recorrido: anunciar, expulsar con su diálogo y balizas (listar, poner, mo
     await pg.waitForSelector("#mBalizaLista li");
     assert.strictEqual(await pg.locator("#mBalizaLista li b").first().textContent(), "Aquí se recoge hoy <b>", "el título llega como texto, no como HTML");
     assert.strictEqual(await pg.locator("#mBalizaLista li b b").count(), 0);
+
+    // quién está en el mundo: tabla con su texto (nunca HTML), atajos, refresco manual y vacío
+    await pg.waitForSelector("#mQuienCuerpo tr");
+    assert.match(await pg.textContent("#mQuienCuenta"), /2 personas conectadas/);
+    assert.strictEqual(await pg.locator("#mQuienCuerpo tr").count(), 2); assert.strictEqual(await pg.locator("#mQuienCuerpo b b").count(), 0);
+    assert.strictEqual(await pg.locator("#mQuienCuerpo tr").nth(0).getByRole("button", { name: /Expulsar/ }).count(), 0, "a la oficina no se la expulsa");
+    assert.match(await pg.locator("#mQuienCuerpo a").nth(1).getAttribute("href"), /#familias\/7$/);
+    for (const sel of ["#mQuienRef", "#mQuienCuerpo a", "#mQuienCuerpo button"]) assert.ok((await pg.locator(sel).first().boundingBox()).height >= 44, sel + " mide al menos 44 px");
+    await pg.getByRole("button", { name: "Expulsar a Pardal <b>" }).click();
+    assert.strictEqual(await pg.inputValue("#mExpulsaS"), "7", "el atajo rellena el formulario de expulsar");
+    assert.ok(!llamadas.some(l => l.includes("/expulsar")), "el atajo no expulsa: pide confirmar");
+    quien = { consultado_en: "2026-11-02T12:00:10Z", total: 0, truncado: false, participantes: [] };
+    await pg.click("#mQuienRef");
+    await pg.waitForFunction(() => /nadie en el mundo/.test(document.querySelector("#mQuienCuenta").textContent));
+    assert.ok(await pg.locator("#mQuienEnv").isHidden());
 
     // anunciar
     await pg.fill("#mAnuncioT", "Hoy se recoge en la 3");

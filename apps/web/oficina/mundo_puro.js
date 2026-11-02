@@ -92,4 +92,46 @@ export function textoCaduca(hastaIso, ahora) {
 export const textoConfirmaExpulsion = etiqueta => "Vas a sacar de la visita a «" + etiqueta + "». " + TEXTO_EXPULSION;
 
 /** Etiqueta de una familia en la lista de elegir: alias o nombre interno, y el correo. */
-export function etiquetaFamilia(f) { return (f.alias || f.nombre_interno || "sin alias") + " · " + f.correo; }
+export function etiquetaFamilia(f) { return (f.alias || f.nombre_interno || "sin alias") + (f.correo ? " · " + f.correo : ""); }
+
+// ---------------------------------------------------------------- OF14, escalón 2: quién está en el mundo (GET /api/admin/presencia/participantes)
+/** Cada cuánto se vuelve a preguntar mientras la sección se ve (la api, además, cachea 4 s). */
+export const REFRESCO_MS = 10_000;
+export const ROLES = { hogar: "Familia", guia: "Guía", corresponsal: "Corresponsal", oficina: "Oficina" };
+export const APARATOS = { escritorio: "Ordenador", movil: "Móvil", quest: "Gafas" };
+
+/** `general`, `visita` o `guiada-<evento>` → texto. Lo desconocido se enseña tal cual (es un dato). */
+export function etiquetaSala(sala) {
+  const g = /^guiada-([1-9][0-9]{0,9})$/.exec(String(sala));
+  if (g) return "Visita guiada " + g[1];
+  return sala === "general" ? "Sala general" : sala === "visita" ? "Sala de la visita" : String(sala);
+}
+/** «hace 5 min» a partir del ISO que da la api; `ahora` (ms) se pasa para poder probarlo. Sin fecha: «—». */
+export function textoHace(iso, ahora) {
+  const t = Date.parse(iso);
+  if (!iso || Number.isNaN(t)) return "—";
+  const min = Math.floor((ahora - t) / 60000);
+  if (min < 1) return "hace un momento";
+  if (min < 60) return "hace " + min + " min";
+  const h = Math.floor(min / 60);
+  return h < 48 ? "hace " + h + " h" + (min % 60 ? " " + (min % 60) + " min" : "") : "hace " + Math.floor(h / 24) + " días";
+}
+/** La frase viva del recuento («aria-live»). */
+export function textoPersonas(r) {
+  const n = r.total;
+  if (!n) return "Ahora no hay nadie en el mundo.";
+  const base = n === 1 ? "1 persona conectada" : n + " personas conectadas";
+  return r.truncado ? base + " (se enseñan las primeras " + r.participantes.length + ")." : base + ".";
+}
+/** Qué mira: la haza (si la api la sabe) o «vista aérea»; hoy el motor no publica ninguna de las dos, así que casi siempre «—». */
+export function textoMira(f) { return f.haza ? f.haza + (f.vista === "aerea" ? " (vista aérea)" : "") : f.vista === "aerea" ? "Vista aérea" : "—"; }
+/** La respuesta de la api → filas de la tabla, ya con textos. «Expulsar» y «Ver la familia» solo si se sabe de qué hogar es y no es la oficina. */
+export function filasMundo(r, ahora) {
+  return (r && Array.isArray(r.participantes) ? r.participantes : []).map(f => ({
+    sala: etiquetaSala(f.sala), alias: f.alias, rol: ROLES[f.rol] || "Familia", aparato: APARATOS[f.aparato] || "—", hace: textoHace(f.conectado_desde, ahora), mira: textoMira(f),
+    hogarId: Number.isInteger(f.hogar_id) && f.hogar_id > 0 ? f.hogar_id : null, esOficina: f.rol === "oficina",
+    puedeExpulsar: Number.isInteger(f.hogar_id) && f.hogar_id > 0 && f.rol !== "oficina",
+  }));
+}
+/** ¿Se refresca solo? Solo con la sección Mundo a la vista y la pestaña visible. */
+export const debeRefrescar = (seccionVisible, pestanaVisible) => seccionVisible === true && pestanaVisible === true;

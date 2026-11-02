@@ -166,7 +166,12 @@ export interface ModeradorSala {
   /** OF10: manda datos a la sala desde el servidor (sin participante: el cliente sabe así que viene de la api), fiable y con su tema; a toda la sala o a
    *  unas identidades. Una sala sin nadie no es un error: devuelve false (no había a quién). */
   envia(sala: string, tema: string, datos: Uint8Array, destinos?: string[]): Promise<boolean>;
+  /** OF14 (escalón 2): quién está ahora en la sala, solo lectura (RoomService.ListParticipants); vacío si la sala no existe. Opcional: un moderador sin él = «no se puede mirar». */
+  participantes?(sala: string): Promise<ParticipanteSala[]>;
 }
+
+/** OF14: lo que la api lee de un participante de LiveKit para la lista de la oficina (metadatos y atributos son DATOS, nunca órdenes). */
+export interface ParticipanteSala { sala: string; identidad: string; metadata: string; atributos: Record<string, string>; conectadoEn: number | null; publicaPista: boolean }
 
 /** F3c: quien está en una sala guiada, con lo que la api necesita para moderar la voz (sin audio ni nada de lo que dice). */
 export interface PresenteVoz { identidad: string; papel: Papel | null; micro: boolean; pistasMicro: string[] }
@@ -211,6 +216,14 @@ export class ModeradorLiveKit implements ModeradorSala, ModeradorVoz {
   async envia(sala: string, tema: string, datos: Uint8Array, destinos?: string[]): Promise<boolean> {
     try { await this.rs.sendData(sala, datos, DataPacket_Kind.RELIABLE, { topic: tema, ...(destinos?.length ? { destinationIdentities: destinos } : {}) }); return true; }
     catch (e) { if (esNoEncontrado(e)) return false; throw e; }   // la sala no existe (nadie dentro) [comportamiento de sendData sin sala: NO VERIFICADO contra LiveKit real]
+  }
+  async participantes(sala: string): Promise<ParticipanteSala[]> {
+    try {
+      return (await this.rs.listParticipants(sala)).map(p => {
+        const ms = p.joinedAtMs > 0n ? Number(p.joinedAtMs) : p.joinedAt > 0n ? Number(p.joinedAt) * 1000 : null;
+        return { sala, identidad: p.identity, metadata: p.metadata, atributos: { ...p.attributes }, conectadoEn: ms, publicaPista: p.tracks.length > 0 };
+      });
+    } catch (e) { if (esNoEncontrado(e)) return []; throw e; }
   }
   // ---- F3c: la voz de las guiadas
   async actualiza(sala: string, identidad: string, c: { micro?: boolean; atributos?: Record<string, string> }): Promise<boolean> {
