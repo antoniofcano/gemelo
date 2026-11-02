@@ -69,6 +69,15 @@ Derechos: **acceso y portabilidad** (`GET /api/yo/datos` ya incluye olivos perso
 
 Riesgos que la EIPD debe mirar: fotos con menores o terceros (mitigado por aviso obligatorio, denuncia y retirada en un clic, **no** por revisión previa: decisión 93); visibilidad de lo colgado a toda la comunidad (lista blanca sin autor); quién en el hogar sube (solo la sesión del titular adulto).
 
+## Decoraciones (P7g, D2)
+
+Una decoración es una pieza de un **catálogo cerrado de seis piezas de temporada** ([contratos/decoraciones.md](../../contratos/decoraciones.md)): flores (primavera), cinta de color (verano), farolillo y cosecha (otoño), luces y lazo (invierno). **Ilustrativa** (regla 5). Se guarda en la columna `personalizaciones.decoracion` (migración `0019_decoracion.sql`): una sola por olivo y hogar, que puede ir sola o con nombre y foto; el `CHECK` solo exige la forma de slug y es la api quien valida contra el catálogo, para ampliarlo sin migrar. La fila visible «tiene algo» si lleva nombre, foto **o** decoración.
+
+- **Quién**: el titular de la haza, en un olivo de SU haza (mismos guardianes de P7f: 403 `solo_titular`, 403 `no_es_tu_haza`). Solo una pieza de la **época actual** (estación astronómica en hora de Madrid, fechas fijas; no el calendario fenológico del olivo): 422 `fuera_de_epoca`. Lo ya puesto se queda hasta que se cambie o se quite. La oficina **solo ve y retira** (`POST /api/admin/personalizaciones/{id}/decoracion/retirar`, con motivo, aviso al hogar y auditoría); no pone.
+- **Datos personales**: ninguno nuevo. Sin texto libre ni imagen, no hay denuncia ni entrada en la bandeja; la decoración va en el derecho de acceso (`GET /api/yo/datos`, campo `decoracion`) y se borra con el hogar como el resto de la fila. Auditoría: `vida.decoracion`, `vida.decoracion_quitada`, `admin.decoracion_retirada`.
+- **Quitar**: el titular quita la suya (`DELETE …/decoracion`); si la fila no tenía nombre ni foto queda retirada entera (conserva el código, para que «restaurar» de la oficina la pueda devolver); si los tenía, solo pierde la decoración. Retirar la decoración desde la oficina hace lo mismo. «Quitar todo» (`DELETE /api/olivos/…`) retira la fila con decoración incluida.
+- **Código**: `apps/api/src/vida/decoraciones.ts` (catálogo, época, operaciones sobre la base) y las rutas en `vida/rutas.ts`.
+
 ## Qué está probado y qué no
 
 - **Probado** (Node 24, Windows, sin Docker): tipos; filtro del nombre; la re-codificación de sharp (tipos por contenido, GIF/SVG/PNG disfrazado → 415, bomba de 50 MP → 413, EXIF con GPS y autor → WebP sin metadatos, enderezado y ≤ 1600 px); la lista blanca contra su contrato y su ejemplo; Origin, sesión y forma de cada ruta sin tocar la base; cada ruta está en el OpenAPI.

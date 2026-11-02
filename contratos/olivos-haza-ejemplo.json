@@ -7,6 +7,7 @@
       "finca": "hituelo",
       "copas_id": 900001,
       "nombre": "El abuelo",
+      "decoracion": "luces",
       "objeto": { "tipo": "foto", "url": "/api/medios/0123456789abcdef0123456789abcdef.webp", "ancho": 800, "alto": 1600 }
     },
     {
@@ -14,6 +15,7 @@
       "finca": "hituelo",
       "copas_id": 900002,
       "nombre": "La niña",
+      "decoracion": null,
       "objeto": null
     },
     {
@@ -21,7 +23,16 @@
       "finca": "hituelo",
       "copas_id": 900004,
       "nombre": null,
+      "decoracion": "lazo",
       "objeto": { "tipo": "pintura", "url": "/api/medios/fedcba9876543210fedcba9876543210.webp", "ancho": 1600, "alto": 1200 }
+    },
+    {
+      "id": 10,
+      "finca": "hituelo",
+      "copas_id": 900005,
+      "nombre": null,
+      "decoracion": "cinta",
+      "objeto": null
     }
   ]
 }

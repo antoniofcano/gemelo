@@ -15,6 +15,7 @@ import { audita, esOficina } from "../auth/servicio.ts";
 import { enTransaccion } from "../bd/pool.ts";
 import type { Contexto } from "../contexto.ts";
 import { esquemaContrato } from "../hazas/rutas.ts";
+import { ponDecoracion, quitaDecoracion, retiraDecoracionOficina, validaPieza, type Respuesta } from "./decoraciones.ts";
 import { limpia, revisaNombre, revisaTexto } from "./filtro.ts";
 import { AVISO_VERSION, guardaFichero, borraFicheros, ImagenNoValida, procesaImagen, TIPOS_ADMITIDOS } from "./medios.ts";
 
@@ -34,12 +35,12 @@ const PARAM_OLIVO = {
 export const MOTIVOS_DENUNCIA = ["menores", "datos_personales", "ofensivo", "no_es_del_olivar", "otro"] as const;
 const url = (clave: string) => "/api/medios/" + clave;
 
-interface FilaPublica { id: number; finca: string; copas_id: number; nombre: string | null; objeto_tipo: "foto" | "pintura" | null; clave: string | null; ancho: number | null; alto: number | null }
+interface FilaPublica { id: number; finca: string; copas_id: number; nombre: string | null; objeto_tipo: "foto" | "pintura" | null; clave: string | null; ancho: number | null; alto: number | null; decoracion?: string | null }
 
 /** Lista blanca de lo que ve cualquier hogar de un olivo personalizado (contratos/olivos-haza.schema.json). */
 export function olivoPublico(f: FilaPublica) {
   return {
-    id: f.id, finca: f.finca, copas_id: f.copas_id, nombre: f.nombre,
+    id: f.id, finca: f.finca, copas_id: f.copas_id, nombre: f.nombre, decoracion: f.decoracion ?? null,
     objeto: f.objeto_tipo && f.clave && f.ancho && f.alto ? { tipo: f.objeto_tipo, url: url(f.clave), ancho: f.ancho, alto: f.alto } : null,
   };
 }
@@ -51,7 +52,6 @@ export async function soloTitular(req: FastifyRequest, rep: FastifyReply): Promi
   if (req.session.origen === "vinculo") await rep.code(403).send({ error: "solo_titular", mensaje: TEXTO_SOLO_TITULAR });
 }
 
-type Respuesta = { codigo: number; cuerpo?: unknown };
 const falla = (codigo: number, error: string, mensaje?: string): Respuesta => ({ codigo, cuerpo: mensaje ? { error, mensaje } : { error } });
 
 export async function rutasVida(app: FastifyInstance, ctx: Contexto): Promise<void> {
@@ -76,7 +76,7 @@ export async function rutasVida(app: FastifyInstance, ctx: Contexto): Promise<vo
     if (!h.rows[0]) return rep.code(404).send({ error: "no_existe" });
     // solo lo del titular ACTUAL de la haza: si la oficina la reasigna, lo del anterior deja de verse
     const r = await bd.query<FilaPublica>(
-      `SELECT p.id, o.finca, o.copas_id, p.nombre, p.objeto_tipo, m.clave, m.ancho, m.alto
+      `SELECT p.id, o.finca, o.copas_id, p.nombre, p.decoracion, p.objeto_tipo, m.clave, m.ancho, m.alto
          FROM personalizaciones p JOIN hazas h ON h.id = p.haza_id JOIN olivos o ON o.id = p.olivo_id
          LEFT JOIN medios m ON m.id = p.medio_id
         WHERE p.haza_id = $1 AND p.estado = 'visible' AND p.hogar_id = h.hogar_id AND o.retirado_en IS NULL
@@ -176,12 +176,12 @@ export async function rutasVida(app: FastifyInstance, ctx: Contexto): Promise<vo
         const m = await c.query("SELECT 1 FROM medios WHERE id = $1 AND hogar_id = $2", [req.body.objeto.medio_id, yo]);
         if (!m.rowCount) return falla(400, "medio_no_valido", "Esa foto no es tuya o ya no existe.");
       }
-      const previa = (await c.query<{ id: number; nombre: string | null; objeto_tipo: "foto" | "pintura" | null; medio_id: number | null }>(
-        "SELECT id, nombre, objeto_tipo, medio_id FROM personalizaciones WHERE olivo_id = $1 AND hogar_id = $2 AND estado = 'visible' FOR UPDATE", [o.id, yo])).rows[0];
+      const previa = (await c.query<{ id: number; nombre: string | null; objeto_tipo: "foto" | "pintura" | null; medio_id: number | null; decoracion: string | null }>(
+        "SELECT id, nombre, objeto_tipo, medio_id, decoracion FROM personalizaciones WHERE olivo_id = $1 AND hogar_id = $2 AND estado = 'visible' FOR UPDATE", [o.id, yo])).rows[0];
       const nombre = nombreNuevo === undefined ? previa?.nombre ?? null : nombreNuevo;
       const tipo = req.body.objeto === undefined ? previa?.objeto_tipo ?? null : req.body.objeto?.tipo ?? null;
       const medio = req.body.objeto === undefined ? previa?.medio_id ?? null : req.body.objeto?.medio_id ?? null;
-      if (nombre === null && medio === null) return falla(400, "vacio", "Para quitarlo todo, borra la personalización.");
+      if (nombre === null && medio === null && !previa?.decoracion) return falla(400, "vacio", "Para quitarlo todo, borra la personalización.");
       let id: number;
       if (previa) {
         await c.query("UPDATE personalizaciones SET nombre = $2, objeto_tipo = $3, medio_id = $4, haza_id = $5, sesion_id = $6, actualizada_en = now() WHERE id = $1",
@@ -216,6 +216,31 @@ export async function rutasVida(app: FastifyInstance, ctx: Contexto): Promise<vo
     await audita(bd, req.session.hogarId!, "vida.personalizacion_quitada", { personalizacion: r.rows[0].id });
     return rep.code(204).send();
   });
+
+  // ---------------------------------------------------------------- decorar un olivo (titular, en su haza; P7g, decisiones 175-179)
+  // Catálogo cerrado de temporada (contratos/decoraciones.json): una sola pieza por olivo y hogar, solo de la época actual
+  // (la nueva sustituye a la anterior; lo ya puesto se queda hasta que se cambie o se quite). Sin texto ni imagen: no pasa
+  // por la bandeja ni por denuncia; la oficina solo la retira (más abajo).
+  const PIEZA = { type: "string", pattern: "^[a-z]{1,16}$" } as const;
+  app.put<{ Params: { finca: string; copas_id: number }; Body: { pieza: string } }>("/api/olivos/:finca/:copas_id/decoracion", {
+    preHandler: soloTitular,
+    config: { rateLimit: { max: 60, timeWindow: 60_000 } },
+    schema: { params: PARAM_OLIVO, body: { type: "object", additionalProperties: false, required: ["pieza"], properties: { pieza: PIEZA } } },
+  }, async (req, rep) => {
+    if (!(await pasaLimite(limEscrituras, req, rep))) return rep;
+    const v = validaPieza(req.body.pieza, new Date());   // antes de tocar la base
+    if (!v.ok) return responde(rep, v.respuesta);
+    const r = await enTransaccion(bd, c => ponDecoracion(c, {
+      finca: req.params.finca, copasId: req.params.copas_id, hogarId: req.session.hogarId!, sesionId: req.session.idBd ?? null, pieza: v.pieza.id,
+    })).catch((e: { code?: string }) => { if (e.code === "23505") return falla(409, "a_la_vez", "Otro cambio en el mismo olivo se ha cruzado con este. Vuelve a probar."); throw e; });
+    return responde(rep, r);
+  });
+
+  app.delete<{ Params: { finca: string; copas_id: number } }>("/api/olivos/:finca/:copas_id/decoracion", {
+    preHandler: soloTitular,
+    config: { rateLimit: { max: 60, timeWindow: 60_000 } },
+    schema: { params: PARAM_OLIVO },
+  }, async (req, rep) => responde(rep, await quitaDecoracion(bd, { finca: req.params.finca, copasId: req.params.copas_id, hogarId: req.session.hogarId! })));
 
   // ---------------------------------------------------------------- denunciar (cualquier sesión) y sugerir (titular)
   app.post<{ Params: { id: number }; Body: { motivo: (typeof MOTIVOS_DENUNCIA)[number]; texto?: string } }>("/api/personalizaciones/:id/denuncias", {
@@ -366,4 +391,11 @@ export async function rutasVida(app: FastifyInstance, ctx: Contexto): Promise<vo
     });
     return responde(rep, r);
   });
+
+  // La oficina solo ve y retira decoraciones (decisión 178): quita la decoración de una personalización visible; lo demás
+  // (nombre, foto) se queda. Avisa al hogar y queda en la auditoría.
+  app.post<{ Params: { id: number }; Body: { motivo: string } }>("/api/admin/personalizaciones/:id/decoracion/retirar", {
+    preHandler: soloAdmin,
+    schema: { params: PARAM_ID, body: { type: "object", additionalProperties: false, required: ["motivo"], properties: { motivo: { type: "string", minLength: 1, maxLength: 200 } } } },
+  }, async (req, rep) => responde(rep, await enTransaccion(bd, c => retiraDecoracionOficina(c, { personalizacion: req.params.id, oficinaId: req.session.hogarId!, motivo: req.body.motivo }))));
 }

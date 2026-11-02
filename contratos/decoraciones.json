@@ -1,0 +1,12 @@
+{
+  "v": 1,
+  "$comment": "Catálogo cerrado de decoraciones de temporada de un olivo (P7g, decisión 179). Lo comparten la api (valida la pieza y la época) y el motor (dibuja). ILUSTRATIVO (regla 5): ninguna pieza mide nada. Ampliar es añadir una línea; el id es un slug estable que se guarda en personalizaciones.decoracion.",
+  "piezas": [
+    { "id": "flores", "nombre": "Flores", "epoca": "primavera", "triangulos": 32, "ilustrativa": true },
+    { "id": "cinta", "nombre": "Cinta de color", "epoca": "verano", "triangulos": 24, "ilustrativa": true },
+    { "id": "farolillo", "nombre": "Farolillo", "epoca": "otono", "triangulos": 36, "ilustrativa": true },
+    { "id": "cosecha", "nombre": "Cosecha", "epoca": "otono", "triangulos": 40, "ilustrativa": true },
+    { "id": "luces", "nombre": "Luces", "epoca": "invierno", "triangulos": 40, "ilustrativa": true },
+    { "id": "lazo", "nombre": "Lazo", "epoca": "invierno", "triangulos": 24, "ilustrativa": true }
+  ]
+}

@@ -189,7 +189,7 @@ test("ver: un hogar ajeno ve la lista blanca (sin quién ni cuándo) y la foto c
   assert.ok(valida(cuerpo), JSON.stringify(valida.errors));
   assert.equal(cuerpo.es_mia, false);
   assert.deepEqual(cuerpo.olivos.map((o: { copas_id: number; nombre: string }) => [o.copas_id, o.nombre]), [[900001, "El abuelo"], [900002, "La niña"]]);
-  for (const o of cuerpo.olivos) assert.deepEqual(Object.keys(o).sort(), ["copas_id", "finca", "id", "nombre", "objeto"], "ni hogar, ni sesión, ni fechas");
+  for (const o of cuerpo.olivos) assert.deepEqual(Object.keys(o).sort(), ["copas_id", "decoracion", "finca", "id", "nombre", "objeto"], "ni hogar, ni sesión, ni fechas");
   assert.ok(!JSON.stringify(cuerpo).includes("example.com"));
   const foto = cuerpo.olivos[0].objeto;
   assert.equal(foto.tipo, "foto");
