@@ -13,6 +13,7 @@
 //   POST   /api/admin/balizas             { finca, x, y, titulo, texto?, horas? }  pone una baliza oficial (EPSG:25830)
 //   PUT    /api/admin/balizas/:id         { x, y }                                 la mueve
 //   DELETE /api/admin/balizas/:id                                                  la quita (queda retirada, no se borra)
+//   GET    /api/admin/presencia/participantes                                      OF14 (escalón 2): quién está conectado, por sala (solo lectura, caché de 4 s)
 //  Cualquiera con sesión:
 //   GET    /api/balizas-oficiales?finca=…                                          las vigentes de esa finca
 import type { FastifyInstance } from "fastify";
@@ -23,7 +24,7 @@ import type { Contexto } from "../contexto.ts";
 import { CONTORNO_HOLGURA_M, MARGEN_FINCA_M } from "../hazas/geometria.ts";
 import { OFICINA } from "../oficina/acceso.ts";
 import { LigaduraVisita } from "./acceso_visita.ts";
-import { type ClaveSala, CLAVES_SALA, type ModeradorSala, SALAS, TEMAS_OFICINA } from "./livekit.ts";
+import { ALIAS_OFICINA, type ClaveSala, CLAVES_SALA, DISPOSITIVOS, type ModeradorSala, type ParticipanteSala, prefijoHogar, SALAS, TEMAS_OFICINA } from "./livekit.ts";
 
 /** El mismo límite que el chat (contratos/presencia.md; Chat de apps/web/motor/26_presencia.js): 280 caracteres. */
 export const ANUNCIO_MAX = 280;
@@ -48,6 +49,40 @@ export const mensaje = {
 };
 /** «todas» o una clave → los nombres de sala de LiveKit */
 export const salasDe = (s: ClaveSala | "todas"): string[] => (s === "todas" ? CLAVES_SALA.map(k => SALAS[k]) : [SALAS[s]]);
+
+// ---- OF14 (escalón 2): quién está conectado. Solo lectura; nada de esto se guarda (decisión 40) ni lleva correo ni datos personales.
+export const PARTICIPANTES_MAX = 200, PARTICIPANTES_CACHE_MS = 4000, ALIAS_MAX = 24;
+export type VistaMundo = "aerea" | "suelo";
+export interface FilaParticipante {
+  /** `general`, `visita` o `guiada-<evento>` */ sala: string;
+  alias: string; rol: "hogar" | "guia" | "corresponsal" | "oficina";
+  aparato: (typeof DISPOSITIVOS)[number] | null;
+  /** ISO; null si LiveKit no lo dijo */ conectado_desde: string | null;
+  /** id del hogar de la oficina (para «Ver la familia» y «Expulsar»); null si la identidad no es de ningún hogar conocido */ hogar_id: number | null;
+  /** código de la haza que mira, solo si un atributo del participante puesto por la api lo trae [hoy el motor no lo publica: siempre null] */ haza: string | null;
+  vista: VistaMundo | null;
+}
+const PATRON_HAZA = /^[a-z0-9_-]{1,40}$/;
+const claveDeSala = (nombre: string): string => (Object.entries(SALAS).find(([, n]) => n === nombre)?.[0]) ?? nombre;
+/** Un participante de LiveKit → una fila para la oficina. Metadatos y atributos se tratan como DATOS: lo que no encaja se descarta. `hogares` = prefijo opaco → id. */
+export function filaDeParticipante(p: ParticipanteSala, hogares: ReadonlyMap<string, number>): FilaParticipante {
+  let m: Record<string, unknown> = {};
+  try { const j = JSON.parse(p.metadata); if (j && typeof j === "object" && !Array.isArray(j)) m = j as Record<string, unknown>; } catch { /* sin metadatos legibles */ }
+  const rolMeta = typeof m.rol === "string" ? m.rol : "hogar";
+  const rol: FilaParticipante["rol"] = rolMeta === "oficina" || rolMeta === "admin" ? "oficina" : rolMeta === "guia" || rolMeta === "corresponsal" ? rolMeta : "hogar";
+  const hogarId = hogares.get(p.identidad.slice(0, 24)) ?? null;
+  const alias = rol === "oficina" ? ALIAS_OFICINA : limpiaTexto(m.alias, ALIAS_MAX) ?? (hogarId !== null ? "Hogar " + hogarId : "Visitante");
+  const aparato = (DISPOSITIVOS as readonly unknown[]).includes(m.dispositivo) ? m.dispositivo as FilaParticipante["aparato"] : null;
+  const haza = typeof p.atributos.haza === "string" && PATRON_HAZA.test(p.atributos.haza) ? p.atributos.haza : null;
+  const vista = p.atributos.vista === "aerea" || p.atributos.vista === "suelo" ? p.atributos.vista : null;
+  return { sala: claveDeSala(p.sala), alias, rol, aparato, conectado_desde: p.conectadoEn !== null ? new Date(p.conectadoEn).toISOString() : null, hogar_id: hogarId, haza, vista };
+}
+export interface RespuestaParticipantes { consultado_en: string; total: number; truncado: boolean; participantes: FilaParticipante[] }
+/** La oficina primero, luego por sala y por quien lleva más tiempo; recorta a `max` y dice si cortó. */
+export function ordenaYRecorta(filas: FilaParticipante[], max: number): { filas: FilaParticipante[]; truncado: boolean } {
+  const orden = [...filas].sort((a, b) => Number(b.rol === "oficina") - Number(a.rol === "oficina") || a.sala.localeCompare(b.sala) || (a.conectado_desde ?? "~").localeCompare(b.conectado_desde ?? "~"));
+  return { filas: orden.slice(0, max), truncado: orden.length > max };
+}
 
 const APAGADA = { error: "presencia_apagada", mensaje: "La visita compartida no está disponible en este servidor." } as const;
 const FINCA = { type: "string", pattern: "^[a-z0-9_-]{1,32}$" } as const;
@@ -87,7 +122,7 @@ async function avisaBalizas(moderador: ModeradorSala | null, finca: string, log:
   }
 }
 
-export async function rutasOficinaMundo(app: FastifyInstance, ctx: Contexto, moderador: ModeradorSala | null, ligadura = new LigaduraVisita()): Promise<void> {
+export async function rutasOficinaMundo(app: FastifyInstance, ctx: Contexto, moderador: ModeradorSala | null, ligadura = new LigaduraVisita(), guiadas?: () => Promise<string[]>): Promise<void> {
   const { bd } = ctx;
   const lk = ctx.config.livekit;
 
@@ -127,6 +162,36 @@ export async function rutasOficinaMundo(app: FastifyInstance, ctx: Contexto, mod
     if (req.body.a === "visita") ligadura.liga(evento);
     await audita(bd, req.session.hogarId!, "admin.presencia_llevar", { de: req.body.de, a: req.body.a, habia_sala: llego, ...(evento !== null ? { evento } : {}) });
     return { enviado: llego };
+  });
+
+  // ---- OF14 (escalón 2): quién está en el mundo. Solo oficina de verdad (las gafas vinculadas cuentan como hogar: 403), sin auditoría (es lectura), caché corta compartida
+  let cache: { hasta: number; valor: RespuestaParticipantes } | null = null, enCurso: Promise<RespuestaParticipantes> | null = null;
+  const reloj = () => (ctx.relojVoz ? ctx.relojVoz.ahora() : Date.now());
+  async function lee(): Promise<RespuestaParticipantes> {
+    const salas = [...CLAVES_SALA.map(k => SALAS[k]), ...(guiadas ? await guiadas() : [])];
+    const todos: ParticipanteSala[] = [];
+    for (const s of salas) todos.push(...await moderador!.participantes!(s));
+    const hogares = new Map<string, number>();
+    if (todos.length && lk) for (const f of (await bd.query<{ id: string | number }>("SELECT id FROM hogares")).rows) hogares.set(prefijoHogar(lk, Number(f.id)), Number(f.id));
+    const { filas, truncado } = ordenaYRecorta(todos.map(p => filaDeParticipante(p, hogares)), PARTICIPANTES_MAX);
+    return { consultado_en: new Date().toISOString(), total: todos.length, truncado, participantes: filas };
+  }
+  app.get("/api/admin/presencia/participantes", {
+    preHandler: OFICINA,
+    config: { rateLimit: { max: 30, timeWindow: 60_000 } },
+  }, async (req, rep) => {
+    if (!lk || !moderador?.participantes) return rep.code(503).send(APAGADA);
+    const t = reloj();
+    if (cache && cache.hasta > t) return cache.valor;
+    try {
+      enCurso ??= lee().finally(() => { enCurso = null; });
+      const valor = await enCurso;
+      cache = { hasta: t + PARTICIPANTES_CACHE_MS, valor };
+      return valor;
+    } catch (e) {
+      req.log.warn({ err: (e as Error).message }, "participantes: LiveKit no responde");
+      return rep.code(503).send({ error: "livekit_no_responde", mensaje: "No se puede consultar el mundo ahora mismo. Vuelve a intentarlo en unos segundos." });
+    }
   });
 
   // ---- balizas oficiales (OFICINA.md §6: título y texto, visibles para todos y con caducidad)
