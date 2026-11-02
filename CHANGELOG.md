@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Tiempo (V13): si Vigía responde sin previsión (`hayPrevision:false`), la ventana Clima sigue mostrando la última previsión válida (de menos de 24 h y con alguna hora futura) con el aviso «es la última que llegó, de hace N h», en vez de «Vigía no tiene dato ahora mismo». La causa, que Vigía no la ingiera, es de Vigía. Probado solo en Node.
 - La oficina puede vincular unas gafas con el código corto (Configuración → Mis dispositivos → Vincular): entran como visitante, con rol de hogar, sin la oficina, sin etiqueta ni chaleco y sin papel de guía, y valen 12 horas (ADR-0028, decisiones 181-182; OF16). No probado en unas Quest reales; la integración con PostGIS está escrita y sin ejecutar.
 - La ficha de una familia en la oficina ya no repite «(código corto)» en las gafas.
 - Decorar un olivo desde la ficha (P7g D4): el titular, en un olivo de su haza, pone, cambia y quita la decoración eligiendo entre las piezas de la época (flores, cinta, farolillo y cosecha, luces y lazo; una por olivo, ilustrativa); la pieza se ve en el olivo sin recargar. En VR solo se lee. Probado solo en Node; Chrome, iPhone y Quest, no.
