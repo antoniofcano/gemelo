@@ -1,4 +1,4 @@
--- 0019_avisos_de_evento_en_el_mundo.sql — los avisos de un evento se ven también en el gemelo (OF11g, doc/sistema/OFICINA.md §7).
+-- 0020_avisos_de_evento_en_el_mundo.sql — los avisos de un evento se ven también en el gemelo (OF11g, doc/sistema/OFICINA.md §7).
 -- `avisos.evento_id` (0016) ya existe, pero hasta aquí solo lo rellenaban los avisos del sistema (inscripción, cambio, cancelación): el que la oficina
 -- manda con «Avisar…» quedaba sin evento y no se podía mostrar junto a él. La api lo guarda ya desde ahora; esto rescata los de antes con la auditoría
 -- (`admin.evento_avisado` guarda { evento, aviso }). La lectura por hogar es `avisos_hogar.leido_en` (0004), sin columna nueva. Sin datos de personas.

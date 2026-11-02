@@ -1,7 +1,7 @@
 # Correo de los avisos y `.ics` de la Agenda (OF11c)
 
 Contrato entre la api, la base y el cartero. Código: `apps/api/src/avisos/correo.ts` (repartidor, mensaje, baja), `apps/api/src/agenda/ics.ts` (invitación),
-`apps/api/src/auth/correo.ts` (el cartero, el mismo del enlace mágico: nodemailer; en local, Mailpit). Migraciones `0016_correo_avisos.sql` y `0019_avisos_de_evento_en_el_mundo.sql`.
+`apps/api/src/auth/correo.ts` (el cartero, el mismo del enlace mágico: nodemailer; en local, Mailpit). Migraciones `0016_correo_avisos.sql` y `0020_avisos_de_evento_en_el_mundo.sql`.
 
 ## Qué sale por correo
 
@@ -12,7 +12,7 @@ confirmación de inscripción (solo si el hogar quedó **apuntado** y pidió los
 ## El aviso también se ve en el mundo (OF11g)
 
 El correo es una vía; la otra es el propio gemelo. El aviso **se guarda siempre**, aunque el hogar tenga `avisos_correo` en «no», y queda **ligado a su evento**
-(`avisos.evento_id`; los de «Avisar…» de la oficina lo llevan desde la 0019, que además rescata los anteriores con la auditoría `admin.evento_avisado`; `ics` queda
+(`avisos.evento_id`; los de «Avisar…» de la oficina lo llevan desde la 0020, que además rescata los anteriores con la auditoría `admin.evento_avisado`; `ics` queda
 NULL: ese aviso no lleva invitación). La lectura por hogar es `avisos_hogar.leido_en`.
 
 - `GET /api/avisos` (sesión): los avisos de eventos **entregados a este hogar** (el hogar sale de la sesión), más nuevos primero, máx. 50:

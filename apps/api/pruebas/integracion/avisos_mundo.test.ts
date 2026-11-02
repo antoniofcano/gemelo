@@ -1,4 +1,4 @@
-// Integración de los avisos de un evento en el mundo (OF11g, migración 0019; contratos/avisos-correo.md): «Avisar…» deja el aviso ligado a su evento aunque el hogar
+// Integración de los avisos de un evento en el mundo (OF11g, migración 0020; contratos/avisos-correo.md): «Avisar…» deja el aviso ligado a su evento aunque el hogar
 // no tenga el correo activo, cada hogar solo ve los suyos en GET /api/avisos, marcar leído es suyo, idempotente y auditado, y el historial de la oficina
 // trae solo agregados. Contra PostGIS en un contenedor (Docker); se SALTA sin Docker. Datos SINTÉTICOS (correos @example.com). Escrita, NO lanzada en el encargo que la creó.
 import assert from "node:assert/strict";
