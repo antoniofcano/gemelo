@@ -1,6 +1,7 @@
 // Familias (OF2, doc/sistema/OFICINA.md §3): lista con búsqueda y filtro, alta, y la ficha de cada una (nombre interno, alias, haza,
 // sesiones, reenviar enlace, baja y reactivación, exportar y borrar). Todo contra /api/admin/*; el DOM se construye con h() (texto, nunca HTML).
 import { $, api, aviso, conConfirmacion, confirma, dia, fecha, h, vacia } from "./comun.js";
+import { construyeHash } from "./enlaces_puro.js";
 
 const PAGINA = 100;
 const ETIQUETA = { activa: ["p-ok", "activa"], pendiente: ["p-aviso", "sin primer acceso"], baja: ["p-mal", "de baja"] };
@@ -35,7 +36,7 @@ export function iniciaFamilias({ sesion }) {
   function pintaLista() {
     const cuerpo = vacia($("#fTabla"));
     for (const f of lista) {
-      cuerpo.append(h("tr", { "aria-selected": String(f.id === seleccion), "data-fila": f.id },
+      cuerpo.append(h("tr", { "aria-selected": String(f.id === seleccion), "aria-current": f.id === seleccion ? "true" : null, "data-fila": f.id },
         h("td", { class: "correo" }, f.correo, f.rol !== "hogar" ? [" ", h("span", { class: "pill p-info" }, f.rol)] : null, f.nombre_interno ? h("span", { class: "interno" }, f.nombre_interno) : null),
         h("td", null, f.alias || h("span", { class: "nota" }, "—")),
         h("td", null, f.hazas.length ? f.hazas.join(", ") : "—"),
@@ -59,7 +60,11 @@ export function iniciaFamilias({ sesion }) {
   // ---------------------------------------------------------------- ficha
   async function abreFicha(id, foco) {
     seleccion = id;
-    for (const tr of $("#fTabla").querySelectorAll("tr[data-fila]")) tr.setAttribute("aria-selected", String(Number(tr.dataset.fila) === id));
+    for (const tr of $("#fTabla").querySelectorAll("tr[data-fila]")) {
+      const es = Number(tr.dataset.fila) === id;
+      tr.setAttribute("aria-selected", String(es));
+      if (es) tr.setAttribute("aria-current", "true"); else tr.removeAttribute("aria-current");
+    }
     const fila = lista.find(f => f.id === id);
     if (!fila) { seleccion = null; pintaFicha(); return; }
     const r = await api("GET", "/api/admin/hogares/" + id + "/sesiones");
@@ -115,7 +120,10 @@ export function iniciaFamilias({ sesion }) {
       h("option", { value: "" }, "Sin haza"),
       hazas.map(z => h("option", { value: z.id, selected: f.hazas.includes(z.codigo) }, z.codigo + " · " + z.nombre + (z.hogar_id && z.hogar_id !== f.id ? " (de otra familia)" : ""))));
     sel.addEventListener("change", () => asignaHaza(f, sel));
-    return h("div", { class: "campo" }, h("label", { for: "fHaza" }, "Haza"), sel, f.estado === "baja" ? h("span", { class: "nota" }, "De baja: reactívala para asignarle una haza.") : null);
+    // OF15a: de cada haza de la familia, un enlace de verdad (<a>) a la sección Hazas con ESA haza elegida y el mapa centrado en ella
+    const enlaces = f.hazas.map(c => h("a", { class: "boton peq", href: construyeHash("hazas", c), "data-enlace": "haza" }, "Ver la haza " + c));
+    return h("div", { class: "campo" }, h("label", { for: "fHaza" }, "Haza"), sel, enlaces.length ? h("span", { class: "en-linea" }, enlaces) : null,
+      f.estado === "baja" ? h("span", { class: "nota" }, "De baja: reactívala para asignarle una haza.") : null);
   }
 
   async function asignaHaza(f, sel) {
@@ -244,12 +252,27 @@ export function iniciaFamilias({ sesion }) {
     await abreFicha(r.datos.id, true);
   });
 
+  /** OF15a («#familias/12», o «Ver la familia» desde Hazas): deja la ficha de esa familia abierta y su fila a la vista (aria-current).
+   *  Si la lista (paginada, filtrada) no la trae, quita los filtros y sigue pidiendo páginas hasta dar con ella. */
+  async function muestra(id) {
+    const busca = async () => { while (!lista.some(f => f.id === id) && lista.length < total) await carga(true); return lista.some(f => f.id === id); };
+    if (!(await busca()) && ($("#fBusca").value || $("#fFiltro").value)) {
+      $("#fBusca").value = ""; $("#fFiltro").value = "";
+      await carga(false); await busca();
+    }
+    if (!lista.some(f => f.id === id)) { aviso("No hay ninguna familia con ese número.", "mal"); return; }
+    await abreFicha(id, true);
+    const tr = $("#fTabla").querySelector('tr[data-fila="' + id + '"]');
+    if (tr && tr.scrollIntoView) tr.scrollIntoView({ block: "nearest" });
+  }
+
   let iniciada = false;
   return {
     /** Al entrar en la sección: carga la lista y las hazas (la primera vez, también la ficha vacía). */
-    async abre() {
+    async abre(id) {
       if (!iniciada) { iniciada = true; pintaFicha(); }
       await Promise.all([carga(false), cargaHazas()]);
+      if (id) await muestra(id);
     },
   };
 }
