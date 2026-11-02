@@ -11,6 +11,7 @@
 //  · Lo que ven los clientes: los atributos del participante que pone la api (`palabra_hasta`: instante ISO en que acaba su turno; `mano`: instante en que la
 //    levantó), que LiveKit reparte a toda la sala; ningún cliente puede tocarlos (canUpdateOwnMetadata false).
 //  · Auditoría: quién, a quién (el hogar) y cuándo; nunca audio ni texto de voz (no hay ni lo uno ni lo otro en la api). Nada se graba (sin Egress, decisión 10).
+import type { Rol } from "../auth/servicio.ts";
 import type { ModeradorVoz, Papel } from "./livekit.ts";
 import { SALA_GUIADA } from "./livekit.ts";
 
@@ -28,7 +29,18 @@ export const ATRIBUTOS = { palabra: "palabra_hasta", mano: "mano" } as const;
 
 export interface EventoGuiada { tipo: string; estado: string; empieza_en: Date; termina_en: Date | null; guia_id: number | null }
 /** Quién pide: su hogar, si es de la oficina (rol oficina o admin con su aparato aprobado) y si su hogar está APUNTADO (no en espera) y activo. */
-export interface Quien { hogarId: number; esOficina: boolean; apuntado: boolean }
+export interface Quien {
+  hogarId: number; esOficina: boolean; apuntado: boolean;
+  /**
+   * ¿Puede esta SESIÓN ser el guía del evento? false con rol efectivo `hogar` (puedeGuiar): un hogar nunca guía (voz_rutas: el guía es
+   * guia, oficina o admin) y unas gafas vinculadas desde una cuenta de oficina, que son `hogar` (ADR-0028), no heredan el papel de guía
+   * de esa cuenta. Sin el campo, como antes (true).
+   */
+  puedeGuiar?: boolean;
+}
+/** ADR-0028: el papel de guía solo lo tiene una sesión cuyo rol efectivo no es `hogar`. */
+export const puedeGuiar = (rol: Rol | undefined): boolean => rol !== undefined && rol !== "hogar";
+const esElGuia = (e: Pick<EventoGuiada, "guia_id">, q: Pick<Quien, "hogarId" | "puedeGuiar">): boolean => e.guia_id === q.hogarId && q.puedeGuiar !== false;
 export type Rechazo = { ok: false; http: 403 | 404 | 409; codigo: string; mensaje: string; abre_en?: string };
 export type DecisionGuiada = { ok: true; papel: Papel } | Rechazo;
 
@@ -38,10 +50,10 @@ export const TEXTO_SOLO_INSCRITOS_GUIADA = "Esta visita es para las familias apu
 
 export const esGuiada = (e: Pick<EventoGuiada, "tipo"> | null | undefined): e is EventoGuiada => !!e && TIPOS_GUIADA.includes(e.tipo);
 /** ¿Puede moderar la voz de ese evento? El guía asignado (visitas.guia_id) o la oficina. */
-export const puedeModerar = (e: Pick<EventoGuiada, "guia_id">, q: Pick<Quien, "hogarId" | "esOficina">): boolean => e.guia_id === q.hogarId || q.esOficina;
+export const puedeModerar = (e: Pick<EventoGuiada, "guia_id">, q: Pick<Quien, "hogarId" | "esOficina" | "puedeGuiar">): boolean => esElGuia(e, q) || q.esOficina;
 /** El papel en la sala: el guía gana a la oficina (si la oficina es la guía, entra como guía); una familia solo si está apuntada. */
 export function papelDe(e: Pick<EventoGuiada, "guia_id">, q: Quien): Papel | null {
-  if (e.guia_id === q.hogarId) return "guia";
+  if (esElGuia(e, q)) return "guia";
   if (q.esOficina) return "oficina";
   return q.apuntado ? "familia" : null;
 }

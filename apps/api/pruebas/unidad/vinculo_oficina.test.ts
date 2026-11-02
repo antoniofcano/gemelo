@@ -12,6 +12,7 @@ import { construyeApp } from "../../src/app.ts";
 import { AlmacenPg, rolEfectivo } from "../../src/auth/almacen.ts";
 import { ROLES } from "../../src/auth/servicio.ts";
 import { ALIAS_OFICINA } from "../../src/presencia/livekit.ts";
+import { papelDe, puedeGuiar, puedeModerar } from "../../src/presencia/voz.ts";
 import { configDePrueba, contexto, deLaWeb } from "../apoyo/contexto.ts";
 
 const LK_ENV = { GEMELO_LIVEKIT_URL: "http://127.0.0.1:1", GEMELO_LIVEKIT_URL_PUBLICA: "ws://localhost:7880", GEMELO_LIVEKIT_CLAVE: "devprueba16", GEMELO_LIVEKIT_SECRETO: "v".repeat(32) };
@@ -209,6 +210,24 @@ test("la sesión de oficina de siempre (enlace + aparato) sigue igual: rol ofici
   assert.deepEqual({ rol: s.json().rol, titular: s.json().titular }, { rol: "oficina", titular: true });
   const auto = await app.inject({ method: "GET", url: "/api/interno/autoriza?para=oficina", headers: { cookie, "x-forwarded-proto": "https" } });
   assert.equal(auto.statusCode, 204);
+});
+
+test("voz: las gafas de la cuenta de oficina que GUÍA un evento no heredan el papel de guía ni moderan; la cuenta en su PC, sí", () => {
+  const e = { guia_id: 5 };
+  // las gafas: rol efectivo hogar → ni guía ni oficina; sin apuntarse, ni siquiera entran
+  const gafas = { hogarId: 5, esOficina: false, apuntado: false, puedeGuiar: puedeGuiar("hogar") };
+  assert.equal(papelDe(e, gafas), null);
+  assert.equal(puedeModerar(e, gafas), false);
+  assert.equal(papelDe(e, { ...gafas, apuntado: true }), "familia", "apuntada, como cualquier familia");
+  // la misma cuenta desde su PC (rol oficina) o una cuenta de guía (también sus gafas: rol guia), como siempre
+  for (const rol of ["oficina", "admin", "guia"] as const) {
+    const q = { hogarId: 5, esOficina: rol !== "guia", apuntado: false, puedeGuiar: puedeGuiar(rol) };
+    assert.equal(papelDe(e, q), "guia", rol);
+    assert.equal(puedeModerar(e, q), true, rol);
+  }
+  // sin el campo (llamadas de antes), igual que siempre
+  assert.equal(papelDe(e, { hogarId: 5, esOficina: false, apuntado: false }), "guia");
+  assert.equal(puedeGuiar(undefined), false);
 });
 
 test("las gafas de una familia no cambian: rol de la cuenta, titular false", async () => {

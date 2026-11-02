@@ -29,7 +29,7 @@ import type { ConfigLiveKit } from "../config.ts";
 import { OFICINA } from "../oficina/acceso.ts";
 import { aceptaVoz, consiente, estadoConsentimiento, retiraVoz, VOZ_AVISO_VERSION } from "./consentimiento_voz.ts";
 import { AVATAR_POR_DEFECTO, type Avatar, DISPOSITIVOS, type Dispositivo, Expulsados, firmaTokenGuiada, identidadOpaca, limpiaAspecto, type ModeradorVoz, prefijoHogar, SALA_GUIADA } from "./livekit.ts";
-import { AVISO_CIERRE_MAX_S, AVISO_CIERRE_MIN_S, AVISO_CIERRE_S, type Auditor, Cierres, cuerpoCierre, decideGuiada, esGuiada, type EventoGuiada, Palabra, puedeModerar, type Rechazo, type Reloj, RELOJ_REAL, TEMA_CIERRE, ventana } from "./voz.ts";
+import { AVISO_CIERRE_MAX_S, AVISO_CIERRE_MIN_S, AVISO_CIERRE_S, type Auditor, Cierres, cuerpoCierre, decideGuiada, esGuiada, type EventoGuiada, Palabra, puedeGuiar, puedeModerar, type Rechazo, type Reloj, RELOJ_REAL, TEMA_CIERRE, ventana } from "./voz.ts";
 
 const APAGADA = { error: "presencia_apagada", mensaje: "La visita compartida no está disponible en este servidor." } as const;
 const EVENTO = { type: "object", additionalProperties: false, required: ["evento"], properties: { evento: { type: "integer", minimum: 1, maximum: 2147483647 } } } as const;
@@ -94,13 +94,14 @@ export async function rutasVoz(app: FastifyInstance, bd: Bd, d: DepsVoz): Promis
   const quien = async (req: FastifyRequest, evento: number) => {
     const hogarId = req.session.hogarId!, ofi = esOficina(req.session.rol);
     const apuntado = ofi ? false : (await apuntados(bd, evento)).includes(hogarId);
-    return { hogarId, esOficina: ofi, apuntado };
+    // ADR-0028: con rol efectivo hogar (unas gafas vinculadas desde la cuenta de oficina que guía) no se hereda el papel de guía
+    return { hogarId, esOficina: ofi, apuntado, puedeGuiar: puedeGuiar(req.session.rol) };
   };
   /** Para las rutas de quien modera: el evento (guiada o directo) y que quien pide sea su guía o la oficina. null si ya respondió. */
   const moderable = async (req: FastifyRequest, rep: FastifyReply, evento: number): Promise<EventoGuiada | null> => {
     const e = await cargaEvento(bd, evento);
     if (!esGuiada(e)) { await rep.code(404).send({ error: "guiada_no_existe", mensaje: "Esa visita guiada no existe." }); return null; }
-    if (!puedeModerar(e, { hogarId: req.session.hogarId!, esOficina: esOficina(req.session.rol) })) { await rep.code(403).send(SIN_PERMISO); return null; }
+    if (!puedeModerar(e, { hogarId: req.session.hogarId!, esOficina: esOficina(req.session.rol), puedeGuiar: puedeGuiar(req.session.rol) })) { await rep.code(403).send(SIN_PERMISO); return null; }
     return e;
   };
   const rechaza = (rep: FastifyReply, r: Rechazo) => rep.code(r.http).send({ error: r.codigo, mensaje: r.mensaje, ...(r.abre_en ? { abre_en: r.abre_en } : {}) });

@@ -19,7 +19,7 @@
 // Los textos que escribe la oficina salen tal cual como datos; la web los pinta con textContent.
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { audita, esOficina } from "../auth/servicio.ts";
-import { ventanaEntrada } from "../presencia/voz.ts";
+import { puedeGuiar, ventanaEntrada } from "../presencia/voz.ts";
 import type { TipoIcs } from "../avisos/correo.ts";
 import { requiereSesion } from "../auth/roles.ts";
 import type { Cliente } from "../bd/pool.ts";
@@ -316,7 +316,7 @@ export async function rutasAgenda(app: FastifyInstance, ctx: Contexto): Promise<
         empieza_en: f.empieza_en, termina_en: f.termina_en, plazas: f.plazas, plazas_libres: libres(f.plazas, f.apuntadas), inscripcion_hasta: f.inscripcion_hasta,
         inscripcion_abierta: f.estado === "abierta" && (!f.inscripcion_hasta || f.inscripcion_hasta.getTime() > Date.now()),
         mia: f.mi_estado ? { estado: f.mi_estado, personas: f.mis_personas } : null,
-        entrada: ventanaEntrada({ ...f, guia_id: f.guia_id ?? null }, { hogarId: hogar, esOficina: ofi, apuntado: f.mi_estado === "apuntado" }),   // OF11e: desde/hasta cuándo puede entrar en la sala guiada (null si no)
+        entrada: ventanaEntrada({ ...f, guia_id: f.guia_id ?? null }, { hogarId: hogar, esOficina: ofi, apuntado: f.mi_estado === "apuntado", puedeGuiar: puedeGuiar(req.session.rol) }),   // OF11e: desde/hasta cuándo puede entrar en la sala guiada (null si no)
       })),
     };
   });
