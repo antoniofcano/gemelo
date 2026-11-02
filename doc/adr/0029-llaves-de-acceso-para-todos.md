@@ -1,6 +1,6 @@
 # ADR-0029 — Llaves de acceso para todos; el enlace por correo queda para el alta y la recuperación
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado
 - **Fecha:** 2026-11-02
 
 ## Contexto
@@ -45,3 +45,6 @@ El texto de pedir enlace pasa a «Si ese correo tiene cuenta, te llegará un enl
 
 ## Comprobación
 Cuando se implemente: unidad (reglas de `permisoAlta` por cuenta, respuestas simuladas contra la verificación real de `@simplewebauthn/server`), integración contra PostGIS por el banco (alta y entrada sin sesión, credencial de otra cuenta, `userHandle` cambiado, reto gastado o sin cookie, mismo 202 y 429 exista o no el correo, quitar una llave cierra sus sesiones, oficina con aparato aprobado y pendiente, el enlace de oficina no añade llave) y el recorrido en Chrome con el autenticador virtual de CDP. **No probado** (ni lo será sin aparatos): Windows Hello en Edge y en Chrome, los gestores de Google y Microsoft, iPhone y Mac con iCloud, Android, el teléfono por QR, llaves físicas, Firefox, gestores de terceros (1Password, Bitwarden), la mediación condicional en cada navegador, el navegador de las Quest y los lectores de pantalla. Este ADR pasa a **Aceptado** con el OK de Antonio a sus preguntas ([LLAVES-DE-ACCESO §8](../sistema/LLAVES-DE-ACCESO.md#8-preguntas-abiertas-para-antonio)).
+
+## Enmienda 2026-11-02
+Aceptado por Antonio el 2026-11-02 («cerramos login»), con las preguntas P1-P5 resueltas como recomendaba el estudio (decisiones 183-187). La implementación sigue el plan OF13b-2 a OF13b-12.

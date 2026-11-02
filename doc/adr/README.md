@@ -41,4 +41,4 @@ Cada decisión con alternativas reales se escribe una vez, con su porqué y su c
 | [0026](0026-voz-y-moderacion.md) | Voz y moderación | Aceptado |
 | [0027](0027-livekit-en-produccion-puertos-publicados.md) | LiveKit en producción: red de Docker y dos puertos publicados | Aceptado |
 | [0028](0028-gafas-vinculadas-desde-la-oficina-entran-como-visitante.md) | Las gafas vinculadas desde una cuenta de oficina entran como visitante | Aceptado |
-| [0029](0029-llaves-de-acceso-para-todos.md) | Llaves de acceso para todos; el enlace por correo queda para el alta y la recuperación | Propuesto |
+| [0029](0029-llaves-de-acceso-para-todos.md) | Llaves de acceso para todos; el enlace por correo queda para el alta y la recuperación | Aceptado |
