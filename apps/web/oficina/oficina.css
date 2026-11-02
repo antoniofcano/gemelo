@@ -193,6 +193,20 @@ td.acciones .boton { margin-right: 4px; }
 .escalon h4 { margin: 0 0 4px; } .escalon .cifra { font-size: 26px; margin: 0; } .escalon meter { width: 100%; display: block; margin: 6px 0; }
 #rMsg.mal { color: var(--peligro); }
 @media (max-width: 900px) { .escalones { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* OF8b: el visor 3D (visor_olivo.js). Un lienzo bajo la cuadrícula de celdas; las columnas, por clase (columnas() de visor_olivo_puro.js).
+   El fondo de la escena es claro en los dos temas (el de la referencia), así que los rótulos llevan su propio fondo claro. */
+.visor-olivo { margin-bottom: 16px; display: grid; gap: 10px; }
+.visor-host { position: relative; border-radius: var(--r); overflow: hidden; }
+.visor-host canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; z-index: 0; cursor: grab; }
+.visor-host canvas:active { cursor: grabbing; }
+.visor-celdas { position: relative; z-index: 1; display: grid; gap: 8px; pointer-events: none; }
+.visor-celdas.cols-1 { grid-template-columns: minmax(0, 1fr); } .visor-celdas.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.visor-celdas.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } .visor-celdas.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.visor-celda { aspect-ratio: 4 / 5; max-height: 70vh; border: 1px solid var(--borde); border-radius: var(--r); }
+.visor-celdas.cols-1 .visor-celda { aspect-ratio: 1 / 1; }
+.visor-rotulo { display: inline-grid; margin: 6px; padding: 4px 8px; border-radius: 6px; background: rgba(251, 250, 246, 0.88); color: #22241e; line-height: 1.3; }
+.visor-rotulo small { color: #3f4337; }
+#rVisorMsg.mal { color: var(--peligro); }
 /* Agenda (OF11): el título del mes encabeza a sus eventos */
 .lista .mes h3 { margin: 12px 0 0; font-size: 15px; text-transform: capitalize; color: var(--suave); }
 /* OF13: la pantalla de la llave de acceso (llave.js), antes de la oficina */

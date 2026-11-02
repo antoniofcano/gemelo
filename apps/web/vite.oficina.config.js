@@ -12,12 +12,18 @@ const WEB = path.dirname(fileURLToPath(import.meta.url));
 // OF8 (Olivos > Olivo real): el constructor de olivos (ADR-0017), pedido con import("gemelo-olivo") solo al pulsar «Ver escalones» (un trozo aparte, con su three 0.128
 // propio). Igual que el build del mundo: sin apps/web/olivo instalado (cd apps/web/olivo && npm ci), un sustituto vacío y la pestaña lo dice en vez de fallar el build.
 const OLIVO = fs.existsSync(path.join(WEB, "olivo", "node_modules", "three-gen", "package.json")) ? path.join(WEB, "olivo", "index.js") : path.join(WEB, "olivo", "sin_olivo.js");
+// OF8b (Olivo real > «Ver en 3D»): el visor de los escalones (apps/web/olivo/visor.js), otro import() perezoso: solo al abrir el visor. Dibuja con el three 0.128 del
+// constructor («three-gen»), así que el OrbitControls de three-gen (que importa «three» a secas) se resuelve a ese mismo three y no al 0.186 de apps/web:
+// un solo three en la oficina, y solo en los trozos perezosos (la oficina no importa three: guardianes dev.test.js y oficina_visor_olivo.test.js).
+const CON_OLIVO = OLIVO.endsWith("index.js");
+const VISOR = CON_OLIVO ? path.join(WEB, "olivo", "visor.js") : path.join(WEB, "olivo", "sin_olivo.js");
+const THREE_GEN = path.join(WEB, "olivo", "node_modules", "three-gen", "build", "three.module.js");
 
 export default defineConfig({
   root: path.join(WEB, "oficina"),
   base: "/oficina/",
   logLevel: "warn",
-  resolve: { alias: [{ find: /^gemelo-olivo$/, replacement: OLIVO }] },
+  resolve: { alias: [{ find: /^gemelo-olivo$/, replacement: OLIVO }, { find: /^gemelo-olivo-visor$/, replacement: VISOR }].concat(CON_OLIVO ? [{ find: /^three$/, replacement: THREE_GEN }] : []) },
   worker: { format: "es" },
   build: {
     outDir: process.env.GEMELO_OFICINA_SALIDA || path.join(WEB, "dist-oficina"),

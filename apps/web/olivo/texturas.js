@@ -17,7 +17,8 @@ export function lienzo(w, h) {
 }
 
 /**
- * Carga las fotos desde `base` (URL del mismo origen, acabada en «/»). Devuelve { corteza, musgo, muerta: ImageBitmap | null, avisos: [] }.
+ * Carga las fotos desde `base` (URL del mismo origen, acabada en «/»; o un objeto { corteza, musgo, muerta } con la URL de cada una, para un build que
+ * les pone hash al nombre: el visor de la oficina, visor.js). Devuelve { corteza, musgo, muerta: ImageBitmap | null, avisos: [] }.
  * Las fotos se voltean al decodificarlas (imageOrientation "flipY"), porque three no voltea un ImageBitmap: quien haga la textura pone flipY = false.
  */
 export async function cargaFotos(base) {
@@ -25,7 +26,9 @@ export async function cargaFotos(base) {
   await Promise.all(FOTOS.map(async n => {
     r[n] = null;
     try {
-      const resp = await fetch(base + n + ".jpg");
+      const url = typeof base === "string" ? base + n + ".jpg" : base && base[n];
+      if (!url) throw new Error("sin URL");
+      const resp = await fetch(url);
       if (!resp.ok) throw new Error("HTTP " + resp.status);
       r[n] = await createImageBitmap(await resp.blob(), { imageOrientation: "flipY" });
     } catch (e) {

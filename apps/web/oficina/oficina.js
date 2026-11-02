@@ -61,7 +61,7 @@ function ir(sec, foco, param = null) {
   if (sec === "agenda") agenda.abre();
   if (sec === "sistema") { sistema.abre(); llaves.abre(); }
   if (sec === "mundo") mundo.abre();
-  if (sec === "olivos") olivos.abre();
+  if (sec === "olivos") olivos.abre(); else if (olivos) olivos.sale();   // OF8b: el visor 3D no se queda con la GPU fuera de Olivos
   if (sec === "inicio") { cuentaFamilias(); cuentaPendientes(); }
   if (foco) $("#titulo").focus();
 }
@@ -117,6 +117,7 @@ agenda = iniciaAgenda({ sesion });
 mundo = iniciaMundo({ sesion });
 if (new URLSearchParams(location.search).has("prueba")) window.__bandeja = () => bandeja.estado();   // solo lectura, para la prueba de Chrome
 if (new URLSearchParams(location.search).has("prueba")) window.__olivos = () => olivos.estado();   // ídem (OF7)
+if (new URLSearchParams(location.search).has("prueba")) window.__visorOlivo = { estado: () => olivos.real.visor(), muestreo: () => olivos.real.muestreo() };   // OF8b: el visor 3D de «Olivo real», solo lectura
 llaves = iniciaLlavesSistema({ sesion });
 // OF13: si la sesión aún tiene que abrirse con la llave, solo se ve su pantalla y no se pide nada más a la api
 cargaSesion().then(abierta => {
