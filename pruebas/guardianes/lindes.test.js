@@ -155,7 +155,7 @@ test("estilo (regla 5 y UX): la propia destacada (más ancha, opaca, ámbar) y l
 
 // ---------- el componente con un THREE y unas líneas de mentira ----------
 function entorno({ hazas = [], falla = false } = {}) {
-  const reg = { añadidos: [], quitados: [], dispose: [], oyentes: {}, cargas: [], libera: [], consola: [] };
+  const reg = { capas: [], añadidos: [], quitados: [], dispose: [], oyentes: {}, cargas: [], libera: [], consola: [] };
   class V4 { constructor() { this.x = 0; this.y = 0; this.z = 0; this.w = 0; } set(x, y, z, w) { Object.assign(this, { x, y, z, w }); return this; } }
   class V2 { constructor() { this.x = 0; this.y = 0; } set(x, y) { this.x = x; this.y = y; return this; } }
   const THREE = { Vector4: V4, Group: class { constructor() { this.children = []; } add(o) { this.children.push(o); } } };
@@ -170,8 +170,9 @@ function entorno({ hazas = [], falla = false } = {}) {
   let resuelve; const lib = new Promise((ok, ko) => { resuelve = () => (falla ? ko(new Error("sin red")) : ok(L)); });
   const env = {
     THREE, Mundo: { TS, cx: 430000, cy: 4180000, alCargar: fn => { reg.cargas.push(fn); } }, suelo: () => 10, exag: 1,
-    gLinde: { add: o => reg.añadidos.push(o), remove: o => reg.quitados.push(o) },
-    Hazas: { lindes: () => hazas.map(h => ({ id: h.id, es_mia: h.es_mia, anillos: h.anillos })) },
+    gLinde: { visible: true, add: o => reg.añadidos.push(o), remove: o => reg.quitados.push(o) },
+    Minimapa: { capa: (fn, orden) => { reg.capas.push({ fn, orden }); return () => { reg.capas.length = 0; }; } },
+    Hazas: { lindes: () => hazas.map(h => ({ id: h.id, codigo: h.codigo, es_mia: h.es_mia, anillos: h.anillos })) },
     Componentes: { libera: id => reg.libera.push(id) }, window: {}, console: { log: (...a) => reg.consola.push(a), warn: (...a) => reg.consola.push(a), error: (...a) => reg.consola.push(a) },
   };
   const nombres = Object.keys(env);
@@ -250,4 +251,45 @@ test("componente: «hazas:cambia» rehace (y suelta lo anterior); relieve nuevo 
 test("componente: si se libera antes de que lleguen las líneas, no crea nada al llegar", async () => {
   const e = entorno({ hazas: HAZAS }); e.api.libera(); await e.carga();
   assert.strictEqual(e.reg.añadidos.length, 0); assert.strictEqual(e.api.estado().lib, "pidiendo");
+});
+
+// ---------- el minimapa (A4b): Minimapa.capa con los polígonos finos de las hazas ----------
+// un contexto 2D de mentira que apunta las llamadas; el texto mide 6 px por letra
+function ctx2d() {
+  const l = []; const c = { l, font: "", measureText: t => ({ width: 6 * t.length }) };
+  ["beginPath", "moveTo", "lineTo", "closePath", "fill", "stroke", "strokeText", "fillText"].forEach(m => { c[m] = (...a) => l.push([m, ...a, c.strokeStyle, c.fillStyle]); });
+  return c;
+}
+const X = x => x, Y = y => 100 - y;   // 1 m = 1 px; el norte arriba
+test("minimapa: miniLista da la caja y el centro (por área) de cada haza; sin anillos válidos no hay entrada", () => {
+  const l = P.miniLista([{ id: 1, codigo: "H-01", es_mia: true, anillos: [cuadro(0, 0, 40, 20)] }, { id: 2, anillos: [[[0, 0], [1, 1]]] }, { id: 3, es_mia: false, anillos: [cuadro(100, 0, 140, 20)] }]);
+  assert.strictEqual(l.length, 2, "la de dos puntos no es un polígono");
+  assert.deepStrictEqual(l[0].bb, [0, 0, 40, 20]); assert.ok(Math.abs(l[0].cen[0] - 20) < 1e-9 && Math.abs(l[0].cen[1] - 10) < 1e-9);
+  assert.strictEqual(l[1].codigo, "", "sin código, ninguno"); assert.deepStrictEqual(P.miniLista(null), []);
+});
+test("minimapa: la propia en ámbar y relleno, las ajenas finas y al 60 %, debajo; el código solo si cabe; lo que cae fuera del mapa se salta", () => {
+  const lista = P.miniLista([
+    { id: 2, codigo: "H-02", es_mia: false, anillos: [cuadro(50, 0, 90, 30)] },
+    { id: 1, codigo: "H-01", es_mia: true, anillos: [cuadro(0, 0, 40, 30)] },
+    { id: 3, codigo: "H-03", es_mia: false, anillos: [cuadro(500, 0, 540, 30)] },     // fuera de la vista
+    { id: 4, codigo: "H-0004-LARGO", es_mia: false, anillos: [cuadro(0, 50, 20, 60)] }   // el código no cabe
+  ]);
+  const c = ctx2d(), n = P.pintaMini(c, X, Y, { MW: 240, MH: 160 }, lista);
+  assert.strictEqual(n, 3, "tres dibujadas, una fuera");
+  const trazos = c.l.filter(a => a[0] === "stroke"), textos = c.l.filter(a => a[0] === "fillText").map(a => a[1]);
+  assert.deepStrictEqual(trazos.map(a => a[1]), [P.MINI.ajena.trazo, P.MINI.ajena.trazo, P.MINI.propia.trazo], "las ajenas primero, la propia encima");
+  assert.strictEqual(P.MINI.propia.trazo, "#ffb020"); assert.match(P.MINI.ajena.trazo, /232,236,240,0\.6/);
+  assert.strictEqual(c.l.filter(a => a[0] === "fill").length, 1, "solo la propia lleva relleno");
+  assert.deepStrictEqual(textos, ["H-02", "H-01"], "H-0004-LARGO no cabe en 20 px");
+});
+test("minimapa: el componente registra su capa (orden −30), la casilla «Linde» (gLinde.visible) la apaga, «hazas:cambia» la rehace y limpia() la quita", () => {
+  const hz = [];
+  const e = entorno({ hazas: hz });
+  assert.strictEqual(e.reg.capas.length, 1); assert.strictEqual(e.reg.capas[0].orden, -30);
+  const pinta = () => { const c = ctx2d(); e.reg.capas[0].fn(c, X, Y, { MW: 240, MH: 160 }); return c.l.length; };
+  assert.strictEqual(pinta(), 0, "sin hazas, nada");
+  hz.push({ id: 1, codigo: "H-01", es_mia: true, anillos: [cuadro(0, 0, 40, 30)] }, { id: 2, codigo: "H-02", es_mia: false, anillos: [cuadro(50, 0, 90, 30)] }); e.emite("hazas:cambia", { n: 2, propias: 1 });
+  assert.ok(pinta() > 0 && e.api.estado().mini === 2);
+  e.env.gLinde.visible = false; assert.strictEqual(pinta(), 0, "casilla «Linde» apagada: nada en el minimapa");
+  e.env.gLinde.visible = true; e.limpia.forEach(fn => fn()); assert.strictEqual(e.reg.capas.length, 0, "al limpiar, la capa fuera");
 });

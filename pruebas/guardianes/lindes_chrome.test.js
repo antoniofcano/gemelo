@@ -125,3 +125,35 @@ test("en Chrome: ?lindes=0 deja las hazas sin dibujo; sin hazas, nada; libera() 
     } finally { await p.close(); }
   }
 });
+
+test("en Chrome (A4b): con el paseo el minimapa pinta las hazas (ámbar la tuya, blanco roto las ajenas), la casilla «Linde» las apaga y en la vista aérea la linde 3D se ve", { skip: SALTO || false, timeout: 600000 }, async () => {
+  const { p, errores } = await abre("?api=/api/&debug", 4);
+  try {
+    await p.waitForFunction(() => window.__lindes && window.__lindes().llamadas > 0, null, { timeout: 30000, polling: 250 });
+    // vista aérea (la de arranque): no hay minimapa, pero la linde 3D está en la escena, visible y con tramos; captura para Antonio
+    const aerea = await p.evaluate(() => { const g = window.__g, o = g.scene.getObjectByName("lindes"); return { visible: o.visible, hijos: o.children.length, camara: g.camera.position.length(), lejos: g.camera.far, e: window.__lindes() }; });
+    assert.ok(aerea.visible && aerea.hijos >= 1 && aerea.e.tramos.propia > 0 && aerea.lejos > aerea.camara, JSON.stringify(aerea));
+    await p.screenshot({ path: path.join(CAPS, "aerea-con-hazas.png") });
+    // con el paseo, el minimapa: cuenta los píxeles ámbar y blanco roto del lienzo #mapita (la capa pinta cada 80 ms)
+    await p.evaluate(() => document.getElementById("btnPaseo").click());
+    await p.waitForFunction(() => window.__lindes().mini > 0, null, { timeout: 15000, polling: 250 });
+    const cuenta = () => p.evaluate(() => {
+      const cv = document.getElementById("mapita"), d = cv.getContext("2d").getImageData(0, 0, cv.width, cv.height).data; let ambar = 0, blanco = 0;
+      for (let i = 0; i < d.length; i += 4) { const r = d[i], gg = d[i + 1], b = d[i + 2]; if (r > 235 && gg > 150 && gg < 200 && b < 80) ambar++; else if (r > 150 && gg > 150 && b > 150 && Math.abs(r - gg) < 12 && Math.abs(gg - b) < 18) blanco++; }
+      return { ambar, blanco, mini: window.__lindes().mini };
+    });
+    const con = await cuenta(); if (MIDE) console.log("minimapa con Linde:", JSON.stringify(con));
+    assert.ok(con.ambar > 20, "la haza tuya, en ámbar en el minimapa: " + JSON.stringify(con));
+    await p.screenshot({ path: path.join(CAPS, "minimapa-con-hazas.png") });
+    // la casilla «Linde» apagada: la capa no pinta y desaparece el ámbar
+    await p.evaluate(() => { const c = document.getElementById("cLinde"); c.checked = false; c.dispatchEvent(new Event("change")); });
+    await p.waitForTimeout(600);
+    const sin = await cuenta(); assert.ok(sin.ambar < con.ambar / 4, "apagada la casilla, sin hazas en el minimapa: " + JSON.stringify(sin));
+    // el dron (la «vista de vuelo» de quien pasea): el minimapa sigue y la linde 3D vuelve con la casilla
+    await p.evaluate(() => { const c = document.getElementById("cLinde"); c.checked = true; c.dispatchEvent(new Event("change")); document.getElementById("btnDron").click(); });
+    await p.waitForTimeout(1500);
+    const dron = await cuenta(); assert.ok(dron.ambar > 20, "con el dron, las hazas siguen en el minimapa: " + JSON.stringify(dron));
+    await p.screenshot({ path: path.join(CAPS, "dron-con-hazas.png") });
+    assert.deepStrictEqual(errores, []);
+  } finally { await p.close(); }
+});

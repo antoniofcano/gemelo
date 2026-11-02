@@ -1,15 +1,15 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
 // Consume: 02_mundo (Mundo, suelo), 02c_componentes (Componentes), 03_escena (lienzo, exag), 08_marcadores (gLinde), 09_camara (elige),
-//   13b_hazas (Hazas), 14_historia (lista), 15_tiempo (hace, lindes), 29_vr (ficha)
-// Nota: Componente «lindes-hazas» (A4, ADR-0023; decisiones 12, 13, 95 y 139): la linde de las hazas pegada al relieve, la tuya destacada y las ajenas discretas, con LineSegments2/LineMaterial de three (import() al montarse; 2 llamadas, 6 triángulos por tramo, tope de 8.000 tramos). Solo se registra; nadie lo nombra. ?lindes=0 lo apaga. Lee Hazas.lindes() al oír «hazas:cambia»; da su línea de ?debug por «depura:lineas». Publica window.__lindes (pruebas). Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/lindes.test.js.
+//   13_parcelas (parcelas), 13b_hazas (Hazas), 14_historia (lista), 15_tiempo (hace, lindes), 17_minimapa (mini, Minimapa), 29_vr (ficha)
+// Nota: Componente «lindes-hazas» (A4, ADR-0023; decisiones 12, 13, 95 y 139): la linde de las hazas pegada al relieve, la tuya destacada y las ajenas discretas, con LineSegments2/LineMaterial de three (import() al montarse; 2 llamadas, 6 triángulos por tramo, tope de 8.000 tramos). Solo se registra; nadie lo nombra. También pinta las hazas en el minimapa (A4b, Minimapa.capa, la casilla «Linde» las apaga). ?lindes=0 lo apaga todo. Lee Hazas.lindes() al oír «hazas:cambia»; da su línea de ?debug por «depura:lineas». Publica window.__lindes (pruebas). Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/lindes.test.js.
 // ===============================================================================
   // ---------- la linde de las hazas en el mundo (A4, el «3c»; ADR-0014, decisiones 12, 13, 95 y 139): la de las tuyas destacada (ámbar, gruesa, opaca), las de
   // los demás hogares discretas (blanco roto, fina, medio transparente), pegadas al relieve. La linde es un DATO DIBUJADO POR LA OFICINA (decisión 12): un
   // límite de gestión, no un deslinde ni una medida; la ficha de la haza (13b_hazas.js) lo dice. Las hazas las trae 13b_hazas.js de la api (Hazas.lindes()
   // y el evento «hazas:cambia»); sin servidor o sin hazas, este componente no crea nada.
   // Es un COMPONENTE (ADR-0023): se registra y nadie lo nombra. ?lindes=0 (o la configuración del servidor) lo apaga: las hazas siguen (ficha, H, minimapa),
-  // sin dibujo en el mundo. La casilla «Linde» del menú lo enciende y apaga a la vista (cuelga de gLinde).
+  // sin dibujo en el mundo ni en el minimapa. La casilla «Linde» del menú lo enciende y apaga a la vista (cuelga de gLinde).
   //
   // Técnica (regla 12: la de three): LineSegments2 + LineSegmentsGeometry + LineMaterial de three 0.186.1 (three/addons/lines), pedidos con import() al
   // montarse. Cada tramo es una instancia de 6 triángulos dibujada en espacio de pantalla con el ancho en píxeles: igual de legible de cerca que de lejos, en
@@ -100,6 +100,56 @@
       return { pos: pos, n: n };
     }
     function triangulos(n) { return TRI_SEG * n; }
+    // ---- el minimapa (A4b): las mismas hazas como polígonos finos sobre el mapa 2D. Sin DOM: pintaMini recibe el contexto 2D (c) y las funciones X(este), Y(norte)
+    var MINI = {
+      propia: { trazo: "#ffb020", relleno: "rgba(255,176,32,0.12)", ancho: 2, texto: "#ffb020" },
+      ajena: { trazo: "rgba(232,236,240,0.6)", relleno: null, ancho: 1, texto: "rgba(232,236,240,0.6)" }
+    };
+    // el centro para el código: el centroide (por área) del anillo exterior más grande; la caja de todos los anillos, para saltar lo que cae fuera de la vista
+    function miniLista(hs) {
+      var out = [];
+      (hs || []).forEach(function (h) {
+        var anillos = (h.anillos || []).filter(function (an) { return an && an.length >= 3; });
+        if (!anillos.length) return;
+        var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, mejor = null, ma = -1;
+        anillos.forEach(function (an) {
+          var A = 0, cx = 0, cy = 0, n = an.length;
+          for (var i = 0; i < n; i++) {
+            var p = an[i], q = an[(i + 1) % n], w = p[0] * q[1] - q[0] * p[1];
+            A += w; cx += (p[0] + q[0]) * w; cy += (p[1] + q[1]) * w;
+            if (p[0] < x0) x0 = p[0]; if (p[0] > x1) x1 = p[0]; if (p[1] < y0) y0 = p[1]; if (p[1] > y1) y1 = p[1];
+          }
+          if (Math.abs(A) > ma) { ma = Math.abs(A); mejor = Math.abs(A) > 1e-9 ? [cx / (3 * A), cy / (3 * A)] : [an[0][0], an[0][1]]; }
+        });
+        out.push({ id: h.id, es_mia: !!h.es_mia, codigo: typeof h.codigo === "string" ? h.codigo : "", anillos: anillos, bb: [x0, y0, x1, y1], cen: mejor });
+      });
+      return out;
+    }
+    // pinta la lista (las ajenas debajo, la tuya encima); vista = { MW, MH }: lo que cae fuera del mapa se salta. Devuelve cuántas dibujó (pruebas)
+    function pintaMini(c, X, Y, vista, lista) {
+      var hechas = 0, MW = (vista && vista.MW) || 0, MH = (vista && vista.MH) || 0;
+      [false, true].forEach(function (mia) {
+        var e = mia ? MINI.propia : MINI.ajena;
+        lista.forEach(function (h) {
+          if (h.es_mia !== mia) return;
+          var ax = X(h.bb[0]), bx = X(h.bb[2]), ay = Y(h.bb[3]), by = Y(h.bb[1]);   // Y crece hacia el sur: el norte (bb[3]) queda arriba
+          if (bx < 0 || ax > MW || by < 0 || ay > MH) return;
+          c.beginPath();
+          h.anillos.forEach(function (an) { an.forEach(function (q, i) { if (i) c.lineTo(X(q[0]), Y(q[1])); else c.moveTo(X(q[0]), Y(q[1])); }); c.closePath(); });
+          if (e.relleno) { c.fillStyle = e.relleno; c.fill("evenodd"); }
+          c.lineWidth = e.ancho; c.strokeStyle = e.trazo; c.lineJoin = "round"; c.stroke();
+          hechas++;
+          if (h.codigo) {   // el código en el centro, solo si cabe en la caja de la haza en el mapa
+            c.font = "600 9px system-ui, sans-serif"; c.textAlign = "center"; c.textBaseline = "middle";
+            if (c.measureText(h.codigo).width + 6 < bx - ax && 12 < by - ay) {
+              var tx = X(h.cen[0]), ty = Y(h.cen[1]);
+              c.lineWidth = 2.5; c.strokeStyle = "rgba(10,14,8,0.7)"; c.strokeText(h.codigo, tx, ty); c.fillStyle = e.texto; c.fillText(h.codigo, tx, ty);
+            }
+          }
+        });
+      });
+      return hechas;
+    }
     // el ancho en píxeles y la resolución con que lo mide LineMaterial: en VR, el viewport de cada ojo (píxeles del ojo) y el ancho × VR_ANCHO
     function ancho(base, vr) { return vr ? base * VR_ANCHO : base; }
     // el acercamiento de profundidad en el sombreador de LineMaterial: tras las posiciones de cámara de los dos extremos del tramo, se escalan hacia el ojo.
@@ -111,7 +161,7 @@
       return vs.replace("uniform float linewidth;", "uniform float linewidth;\nuniform float uAcerca;").replace(ANCLA, ANCLA + "\n\t\t\tstart.xyz *= uAcerca; end.xyz *= uAcerca;");
     }
     return { TRI_SEG: TRI_SEG, PASO_MIN: PASO_MIN, MAX_SEG: MAX_SEG, ALTURA: ALTURA, VR_ANCHO: VR_ANCHO, ESTILO: ESTILO, ANCLA: ANCLA,
-      clave: clave, lados: lados, cortes: cortes, tramos: tramos, longitud: longitud, plan: plan, escribe: escribe, triangulos: triangulos, ancho: ancho, conAcercamiento: conAcercamiento };
+      MINI: MINI, miniLista: miniLista, pintaMini: pintaMini, clave: clave, lados: lados, cortes: cortes, tramos: tramos, longitud: longitud, plan: plan, escribe: escribe, triangulos: triangulos, ancho: ancho, conAcercamiento: conAcercamiento };
   })();
   // [puro:fin]
 
@@ -119,7 +169,7 @@
   var lindesHazasAviso = { fn: null, puesto: false };   // Mundo.alCargar no tiene «quitar»: se engancha UNA vez y llama al montaje vivo, si lo hay
   function LindesMotor(n, cargaLib) {
     var P = LindesPuro, TS = Mundo.TS, OX = Mundo.cx, OY = Mundo.cy, vivo = true, L = null, grupo = null, mallas = {}, pl = null, sucio = false, exagHecha = -1;
-    var st = { lib: "pidiendo", hazas: 0, tramos: { propia: 0, ajena: 0 }, triangulos: 0, llamadas: 0, paso: 0, longitud: 0, recortado: false, repegadas: 0, acerca: false };
+    var st = { lib: "pidiendo", hazas: 0, tramos: { propia: 0, ajena: 0 }, triangulos: 0, llamadas: 0, paso: 0, longitud: 0, recortado: false, repegadas: 0, acerca: false, mini: 0 };
     var vp = new THREE.Vector4();
     function vaciaLindes() {
       if (grupo) gLinde.remove(grupo);
@@ -174,7 +224,11 @@
     function tarde() { if (pl && (sucio || exag !== exagHecha)) repega(); }
     lindesHazasAviso.fn = function () { sucio = true; };
     if (!lindesHazasAviso.puesto) { lindesHazasAviso.puesto = true; Mundo.alCargar(function () { if (lindesHazasAviso.fn) lindesHazasAviso.fn(); }); }
-    n.on("hazas:cambia", function () { if (L) construye(); else st.hazas = Hazas.lindes().length; });
+    // el minimapa (A4b): la misma linde en 2D con Minimapa.capa (punto de extensión C10); la lista se rehace al oír «hazas:cambia» y la casilla «Linde» (gLinde.visible)
+    // la apaga igual que apaga el dibujo 3D. Va bajo los conejos y los perros (orden −30) y sobre las parcelas. No necesita las líneas de three.
+    var lista = P.miniLista(Hazas.lindes());
+    n.limpia(Minimapa.capa(function (c, X, Y, info) { if (gLinde.visible) st.mini = P.pintaMini(c, X, Y, info, lista); }, -30));
+    n.on("hazas:cambia", function () { lista = P.miniLista(Hazas.lindes()); if (L) construye(); else st.hazas = Hazas.lindes().length; });
     n.on("depura:lineas", function (d) {
       if (d && d.lineas && st.llamadas) d.lineas.push("Lindes: " + st.llamadas + " llamadas · " + (st.tramos.propia + st.tramos.ajena) + " tramos · " + st.triangulos + " triángulos · paso " + st.paso.toFixed(1) + " m" + (st.recortado ? " · RECORTADAS" : ""));
     });
@@ -190,9 +244,9 @@
   // el manifiesto (ADR-0023): lo lee el guardián pruebas/guardianes/componentes.test.js sin montar nada. ?lindes=0 lo apaga; ?lindes=1 lo enciende.
   Componentes.registra({
     id: "lindes-hazas", version: 1,
-    consume: ["Hazas", "gLinde"],
+    consume: ["Hazas", "gLinde", "Minimapa"],
     expone: [],
-    eventos: { escucha: ["hazas:cambia", "depura:lineas"], emite: [] },
+    eventos: { escucha: ["hazas:cambia", "depura:lineas"], emite: [] },   // el minimapa no emite ni escucha nada más: pinta con Minimapa.capa
     bandera: { defecto: true, url: "lindes" },
     // 2 llamadas (propias y ajenas, cada una una malla instanciada de three) y como mucho MAX_SEG tramos de 6 triángulos: 48.000 (con la linde de una
     // finca normal, unas decenas de miles menos: 3 por metro). Sin texturas.
