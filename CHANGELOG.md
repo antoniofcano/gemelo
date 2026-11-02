@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Medida por componente «con y sin» (C11) y por objeto de los olivos generados (O2): `npm run medida:componentes` genera los encargos del banco y escribe la tabla (con − sin contra el presupuesto declarado de cada manifiesto; piezas y escalones del lote); `Generados.piezas()` es el gancho de lectura (sin cambiar el dibujo). Probada con resultados sintéticos; sin cifras todavía.
 - Las tipografías (Fraunces e Instrument Sans) salen del mismo origen con `@fontsource` (OFL-1.1, solo woff2 latino, 88 kB) en vez de Google Fonts: ya no se envía la IP de nadie a un tercero. La página de la finca ya no lleva `<style>` ni `style="…"` en línea (hoja `apps/web/plantilla.css`; lo que depende de un dato, `tinta()` por CSSOM), lista para pasar la CSP a obligatoria (V12). La CSP sigue en solo informe. No probado en navegador, iPhone ni Quest.
 - Las gafas ya vinculadas no pueden aprobar el código de otras (403 `solo_titular`): las 12 h de las gafas de la oficina no se renuevan encadenando gafas (ADR-0028). Probado en Node.
 - La oficina ve y retira decoraciones (D5, P7g): en la ficha del olivo, «Retirar la decoración» (diálogo con motivo; la familia recibe el aviso) y «Restaurar lo retirado». La oficina no pone decoraciones (decisión 178). Probado solo en Node; la prueba de Chrome está escrita y sin ejecutar.
