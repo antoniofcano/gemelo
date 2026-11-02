@@ -1,0 +1,16 @@
+{
+  "aparato": "escritorio",
+  "navegador": "Chrome",
+  "nav_mayor": 131,
+  "perfil": -1,
+  "finca": "cerro",
+  "modo": "ortofoto",
+  "vr": false,
+  "mediana_ms": 8.3,
+  "p95_ms": 9.1,
+  "peor_ms": 22.4,
+  "fotogramas": 7100,
+  "duracion_s": 60,
+  "version": "0.2.0",
+  "medida_en": "2026-11-02T10:00:00Z"
+}

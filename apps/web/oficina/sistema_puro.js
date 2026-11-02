@@ -64,7 +64,35 @@ export function celdasFluidez(f) {
     p95: ms1(f.p95_mediano_ms) + " ms" + (f.medidas > 1 ? " (peor " + ms1(f.p95_peor_ms) + " ms)" : ""),
     objetivo: f.objetivo_p95_ms === null || f.objetivo_p95_ms === undefined ? "—" : ms1(f.objetivo_p95_ms) + " ms",
     mediana: ms1(f.mediana_ms) + " ms", peor: ms1(f.peor_ms) + " ms", navegadores: (f.navegadores || []).join(", ") || "—", versiones: (f.versiones || []).join(", ") || "—",
+    // Q0e: por qué va como va (todo puede faltar: una medida de antes, o de un cliente antiguo, no lo trae)
+    js: textoJs(f), nivel: textoNivel(f), perillas: typeof f.perillas === "string" && f.perillas ? f.perillas : "—", olivosGen: textoOlivosGen(f),
   };
+}
+
+/** Si el JS pasa de este valor (ms por fotograma), manda la CPU; si no, se mira la GPU (resolución, triángulos, teselas). Q0e. */
+export const UMBRAL_JS_MS = 13;
+/** La frase de lectura bajo la tabla «Fluidez en aparatos». */
+export const LECTURA_FLUIDEZ = "Si el JS pasa de 13 ms, manda la CPU; si no, mira la GPU (resolución, triángulos, teselas).";
+
+const num = v => typeof v === "number" && Number.isFinite(v);
+/** «6,8 / 11,2 ms» (mediana / p95 del JS por fotograma); «—» si no llegó. */
+export function textoJs(f) {
+  if (!num(f.js_mediana_ms) && !num(f.js_p95_ms)) return "—";
+  return ms1(f.js_mediana_ms) + " / " + ms1(f.js_p95_ms) + " ms";
+}
+/** ¿Manda la CPU? true si el p95 del JS pasa de 13 ms, false si no, null si no hay dato. */
+export function mandaLaCpu(f) { return num(f.js_p95_ms) ? f.js_p95_ms > UMBRAL_JS_MS : null; }
+/** «3 → 3» (nivel de VR_PERFILES al empezar y al terminar; -1 = no es VR, se enseña «—»). */
+export function textoNivel(f) {
+  const n = v => (num(v) && v >= 0 ? String(v) : "—");
+  if (!num(f.nivel_ini) && !num(f.nivel_fin)) return "—";
+  return n(f.nivel_ini) + " → " + n(f.nivel_fin);
+}
+/** «sí» / «no» / «mixto (2 de 3)» / «—» según cuántas medidas con dato traían los olivos generados activos. */
+export function textoOlivosGen(f) {
+  const de = Number(f.olivos_gen_de) || 0, si = Number(f.olivos_gen_si) || 0;
+  if (!de) return "—";
+  return si === de ? "sí" : si === 0 ? "no" : "mixto (" + si + " de " + de + ")";
 }
 
 /** La consulta de GET /api/admin/medidas con los filtros que no están vacíos. */

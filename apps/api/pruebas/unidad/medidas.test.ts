@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { after, before, test } from "node:test";
 import type { FastifyInstance } from "fastify";
+import { Ajv2020 as Ajv } from "ajv/dist/2020.js";
 import pg from "pg";
 import { construyeApp } from "../../src/app.ts";
 import { CUERPO_MEDIDA, fechaValida, formaFilas, motivoNoCreible, OBJETIVO_P95_MS, type CuerpoMedida } from "../../src/medidas/rutas.ts";
@@ -30,7 +31,48 @@ test("el esquema de la api es el del contrato (contratos/medidas.schema.json): m
   assert.deepEqual(c.required, [...CUERPO_MEDIDA.required]);
   const quita = (o: Record<string, Record<string, unknown>>) => Object.fromEntries(Object.entries(o).map(([k, v]) => { const { description: _d, ...resto } = v; return [k, resto]; }));
   assert.deepEqual(quita(c.properties), quita(CUERPO_MEDIDA.properties as unknown as Record<string, Record<string, unknown>>));
-  assert.deepEqual(Object.keys(c.properties).sort(), [...CUERPO_MEDIDA.required].sort(), "todo campo es obligatorio: no hay opcionales por los que colar nada");
+  const NUEVOS = ["js_mediana_ms", "js_p95_ms", "nivel_ini", "nivel_fin", "perillas", "olivos_gen", "llamadas_med", "triangulos_med", "personas"];
+  assert.deepEqual(Object.keys(c.properties).sort(), [...CUERPO_MEDIDA.required, ...NUEVOS].sort(), "los obligatorios de la v1 más los nueve opcionales de la v2 (Q0e), ninguno más");
+  for (const k of NUEVOS) assert.ok(!c.required.includes(k), k + " es opcional: un cliente de la v1 sigue valiendo");
+});
+
+test("v2 (Q0e): el ejemplo de la v1 y el de la v2 son válidos y compatibles; la v2 acepta los campos nuevos, la api no inventa ninguno", () => {
+  const v1 = JSON.parse(lee("contratos/medidas-v1-ejemplo.json")), v2 = JSON.parse(lee("contratos/medidas-ejemplo.json"));
+  const ajv = new Ajv({ allErrors: true, strict: false }), valida = ajv.compile(CUERPO_MEDIDA as unknown as object);
+  assert.equal(valida(v1), true, "el cuerpo de la v1 sigue valiendo: " + JSON.stringify(valida.errors));
+  assert.equal(valida(v2), true, JSON.stringify(valida.errors));
+  assert.equal(Object.keys(v2).filter(k => !(k in v1)).length, 9);
+  const contrato = ajv.compile(JSON.parse(lee("contratos/medidas.schema.json")));
+  assert.equal(contrato(v1) && contrato(v2), true, "y el esquema del contrato (el mismo) también");
+});
+
+test("v2 (Q0e): rangos y forma de los campos nuevos; campos extra y perillas con HTML, rutas o más de 80 caracteres, rechazados", () => {
+  const valida = new Ajv({ allErrors: true, strict: false }).compile(CUERPO_MEDIDA as unknown as object);
+  const ok = (extra: Record<string, unknown>) => valida({ ...medida(), ...extra });
+  assert.equal(ok({ js_mediana_ms: 6.8, js_p95_ms: 11.2, nivel_ini: 3, nivel_fin: 3, perillas: "fov 1 · escala 0,9 · 72 Hz · MSAA sí · nivel auto", olivos_gen: true, llamadas_med: 212, triangulos_med: 410000, personas: 0 }), true);
+  assert.equal(ok({ perillas: "fov 3 · escala 1 · Hz sin cambiar · MSAA no · nivel 2 fijo · ignorado: fov=9 (fuera de rango)" }), false, "más de 80 caracteres");
+  assert.equal(ok({ perillas: "x".repeat(80) }), true); assert.equal(ok({ perillas: "x".repeat(81) }), false); assert.equal(ok({ perillas: "" }), false);
+  for (const p of ["<script>alert(1)</script>", "D:\\carpeta\\x", "/etc/passwd", "http://x.example", "a@b.example", "hola\nmundo", "\u202e"]) assert.equal(ok({ perillas: p }), false, p);
+  for (const [k, v] of [["js_mediana_ms", -1], ["js_mediana_ms", 10001], ["js_p95_ms", "rapido"], ["nivel_ini", 10], ["nivel_fin", -2], ["nivel_fin", 1.5], ["olivos_gen", "si"], ["llamadas_med", -1], ["llamadas_med", 100001],
+    ["triangulos_med", 1e9], ["personas", 501], ["personas", -1], ["personas", 2.5]] as const) assert.equal(ok({ [k]: v }), false, k + "=" + String(v));
+  for (const campo of ["hogar", "ip", "posicion", "lat", "ua", "identidad", "nombres"]) assert.equal(ok({ [campo]: "x" }), false, "campo extra " + campo);
+});
+
+test("v2 (Q0e): js_mediana_ms ≤ js_p95_ms, o no es creíble; sin JS (cliente de la v1) no se mira", () => {
+  assert.equal(motivoNoCreible(medida({ js_mediana_ms: 7, js_p95_ms: 11 }), AHORA), null);
+  assert.equal(motivoNoCreible(medida({ js_mediana_ms: 12, js_p95_ms: 11 }), AHORA), "orden");
+  assert.equal(motivoNoCreible(medida({ js_mediana_ms: 12 }), AHORA), null, "uno solo no se compara");
+  assert.equal(motivoNoCreible(medida(), AHORA), null);
+});
+
+test("v2 (Q0e): nada personal en los campos nuevos ni en la migración 0022 (solo ADD COLUMN nulas, nada destructivo)", () => {
+  const sql = lee("apps/api/migraciones/0022_medidas_fluidez_porque.sql").split("\n").filter(l => !l.trim().startsWith("--")).join("\n");
+  assert.ok(!/DROP|DELETE|UPDATE|TRUNCATE|NOT NULL|ALTER COLUMN|RENAME/i.test(sql), "solo se añaden columnas nulas");
+  assert.equal((sql.match(/ADD COLUMN/g) ?? []).length, 9);
+  assert.ok(!/hogar|correo|email|\bip\b|user.?agent|posici|\blat\b|\blon\b|cookie|identidad|nombre/i.test(sql), "ni personas ni posición");
+  const insert = /INSERT INTO medidas_fluidez[\s\S]*?\]\);/.exec(lee("apps/api/src/medidas/rutas.ts"))![0];
+  for (const c of ["js_mediana_ms", "js_p95_ms", "nivel_ini", "nivel_fin", "perillas", "olivos_gen", "llamadas_med", "triangulos_med", "personas"]) assert.ok(insert.includes(c) && sql.includes(c), c);
+  assert.ok(!/req\.(session|ip|headers|cookies|raw|id)|hogarId/.test(insert));
 });
 
 test("nada personal: ni hogar, ni IP, ni agente de usuario entero, ni posición en el esquema, en la tabla ni en lo que se escribe", () => {
@@ -61,13 +103,17 @@ test("lo que el esquema no dice: mediana ≤ p95 ≤ peor y fecha de ahora (no f
 
 test("el agregado: redondea a 0,1 ms y juzga el p95 mediano contra el objetivo (Quest 13,9 ms); sin objetivo escrito no se juzga", () => {
   assert.deepEqual(OBJETIVO_P95_MS, { escritorio: null, movil: null, quest: 13.9 });
-  const fila = (aparato: "quest" | "movil" | "escritorio", p95: number) => ({ dia: new Date("2026-10-31T00:00:00Z"), aparato, vr: aparato === "quest", n: "3", p95_mediano: p95, p95_peor: p95 + 4.04, mediana_mediana: 9.66, peor: 41.25, fotogramas: "12900", navegadores: ["Quest Browser 38"], versiones: ["0.2.0"] });
+  const fila = (aparato: "quest" | "movil" | "escritorio", p95: number) => ({ dia: new Date("2026-10-31T00:00:00Z"), aparato, vr: aparato === "quest", n: "3", p95_mediano: p95, p95_peor: p95 + 4.04, mediana_mediana: 9.66, peor: 41.25, fotogramas: "12900", navegadores: ["Quest Browser 38"], versiones: ["0.2.0"], js_mediana: null, js_p95: null, nivel_ini: null, nivel_fin: null, perillas: null, olivos_si: 0, olivos_de: 0, llamadas: null, triangulos: null, personas: null });
   const [q1, q2, q3, m, e] = formaFilas([fila("quest", 13.9), fila("quest", 13.94), fila("quest", 18.04), fila("movil", 40), fila("escritorio", 8)]);
   assert.equal(q1!.cumple, true, "13,9 ≤ 13,9");
   assert.equal(q2!.p95_mediano_ms, 13.9); assert.equal(q2!.cumple, true, "se juzga lo redondeado que se enseña");
   assert.equal(q3!.cumple, false); assert.equal(q3!.objetivo_p95_ms, 13.9);
   assert.deepEqual([m!.objetivo_p95_ms, m!.cumple, e!.objetivo_p95_ms, e!.cumple], [null, null, null, null]);
-  assert.deepEqual(q1, { dia: "2026-10-31", aparato: "quest", vr: true, medidas: 3, p95_mediano_ms: 13.9, p95_peor_ms: 17.9, mediana_ms: 9.7, peor_ms: 41.3, fotogramas: 12900, navegadores: ["Quest Browser 38"], versiones: ["0.2.0"], objetivo_p95_ms: 13.9, cumple: true });
+  assert.deepEqual(q1, { dia: "2026-10-31", aparato: "quest", vr: true, medidas: 3, p95_mediano_ms: 13.9, p95_peor_ms: 17.9, mediana_ms: 9.7, peor_ms: 41.3, fotogramas: 12900, navegadores: ["Quest Browser 38"], versiones: ["0.2.0"], objetivo_p95_ms: 13.9, cumple: true,
+    js_mediana_ms: null, js_p95_ms: null, nivel_ini: null, nivel_fin: null, perillas: null, olivos_gen_si: 0, olivos_gen_de: 0, llamadas_med: null, triangulos_med: null, personas: null });
+  // Q0e: la mediana de lo nuevo, redondeada (las cifras llegan de Postgres como texto o número)
+  const [n] = formaFilas([{ ...fila("quest", 20.7), js_mediana: "6.84", js_p95: 11.25, nivel_ini: "3", nivel_fin: 2.4, perillas: "fov 1 · nivel auto", olivos_si: "2", olivos_de: "3", llamadas: "212.5", triangulos: 410000.4, personas: "0" }]);
+  assert.deepEqual([n!.js_mediana_ms, n!.js_p95_ms, n!.nivel_ini, n!.nivel_fin, n!.perillas, n!.olivos_gen_si, n!.olivos_gen_de, n!.llamadas_med, n!.triangulos_med, n!.personas], [6.8, 11.3, 3, 2, "fov 1 · nivel auto", 2, 3, 213, 410000, 0]);
   assert.ok(!/hogar|"id"|@/.test(JSON.stringify(q1)));
 });
 

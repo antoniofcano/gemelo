@@ -16,18 +16,20 @@
     function mediana(o) { var n = o.length; if (!n) return 0; return n % 2 ? o[(n - 1) / 2] : (o[n / 2 - 1] + o[n / 2]) / 2; }
     function percentil(o, p) { var n = o.length; if (!n) return 0; return o[Math.min(n - 1, Math.max(0, Math.ceil(p / 100 * n) - 1))]; }   // rango más próximo
     function serie(v) { var o = ordena(v); return { mediana: mediana(o), p95: percentil(o, 95), p99: percentil(o, 99), peor: o.length ? o[o.length - 1] : 0 }; }
-    // m = { t: [s desde que se armó], ms: [intervalo con el fotograma anterior], js: [ms de JS], oc: [1 si la pestaña estaba oculta] }
+    // m = { t: [s desde que se armó], ms: [intervalo con el fotograma anterior], js: [ms de JS], oc: [1 si la pestaña estaba oculta], ll?: [llamadas de dibujo], tr?: [triángulos] }
+    // (Q0e: ll y tr son opcionales; una medida guardada de antes no los trae)
     function calcula(m, calent, dur, umbral) {
       calent = calent == null ? CALENTAMIENTO : calent; umbral = umbral == null ? UMBRAL : umbral;
-      var ms = [], js = [], desc = { calentamiento: 0, ocultos: 0, despues: 0 }, i;
+      var ms = [], js = [], ll = [], tr = [], desc = { calentamiento: 0, ocultos: 0, despues: 0 }, i;
       for (i = 0; i < m.t.length; i++) {
         if (m.t[i] < calent) { desc.calentamiento++; continue; }
         if (dur != null && m.t[i] >= calent + dur) { desc.despues++; continue; }
         if (m.oc && m.oc[i]) { desc.ocultos++; continue; }
         ms.push(m.ms[i]); js.push(m.js[i]);
+        if (m.ll) ll.push(m.ll[i]); if (m.tr) tr.push(m.tr[i]);
       }
       var sobre = 0; for (i = 0; i < ms.length; i++) if (ms[i] > umbral) sobre++;
-      return { n: ms.length, ms: serie(ms), js: serie(js), sobre: sobre, pctSobre: ms.length ? 100 * sobre / ms.length : 0, umbral: umbral, descartados: desc };
+      return { n: ms.length, ms: serie(ms), js: serie(js), ll: ll.length ? serie(ll) : null, tr: tr.length ? serie(tr) : null, sobre: sobre, pctSobre: ms.length ? 100 * sobre / ms.length : 0, umbral: umbral, descartados: desc };
     }
     function f1(v) { return (Math.round(v * 10) / 10).toFixed(1); }
     // las líneas de la tarjeta (corto) o del texto para copiar (largo)
@@ -46,6 +48,12 @@
       }
       if (r.perillas) L.push(r.perillas);   // Q0b: con qué perillas se midió (regla 7)
       if (r.olivos) L.push("Olivos al terminar: N0 " + r.olivos[0] + " · N1 " + r.olivos[1] + " · N2 " + r.olivos[2]);
+      if (e.ll || e.tr || typeof r.olivosGen === "boolean" || r.personas != null) {   // Q0e: con qué se dibujó (para decir si manda la CPU o la GPU)
+        var d = [];
+        if (e.ll) d.push(Math.round(e.ll.mediana) + " llamadas"); if (e.tr) d.push(Math.round(e.tr.mediana) + " triángulos");
+        if (typeof r.olivosGen === "boolean") d.push("olivos generados " + (r.olivosGen ? "sí" : "no")); if (r.personas != null) d.push("personas " + r.personas);
+        L.push("Por fotograma (mediana): " + d.join(" · "));
+      }
       if (vr && e.n) L.push("p95 ≤ 13,9 ms (criterio 5 de ADR-0015): " + (e.ms.p95 <= 13.9 ? "sí" : "no"));
       if (e.descartados.ocultos) L.push("Descartados por pestaña oculta: " + e.descartados.ocultos);
       if (r.avisos && r.avisos.length) r.avisos.forEach(function (a) { L.push("Aviso: " + a); });
@@ -68,6 +76,12 @@
     }
     function limpia(v, patron, por) { v = String(v == null ? "" : v); return patron.test(v) ? v : por; }
     function r2(v) { return Math.round(v * 100) / 100; }
+    function entero(v, min, max) { v = Math.round(Number(v)); return isFinite(v) ? Math.max(min, Math.min(max, v)) : null; }
+    // Q0e: el texto de las perillas sin el prefijo «VR: », solo con los caracteres que admite la api (el mismo patrón que contratos/medidas.schema.json) y de 80 como mucho; null si queda vacío
+    function perillasLimpias(t) {
+      t = String(t == null ? "" : t).replace(/^VR:\s*/, "").replace(/[^0-9A-Za-zÁÉÍÓÚÜÑáéíóúüñ ,.:;=()+_%·-]/g, "").replace(/\s+/g, " ").trim().slice(0, 80).trim();
+      return t || null;
+    }
     // x = { ua, finca, modo, version }; null si la medida no sirve (pocos fotogramas, cifras que no cuadran)
     function cuerpoEnvio(r, x) {
       if (!r || !r.est || !(r.est.n >= 10)) return null;
@@ -79,9 +93,22 @@
         version: limpia(x.version, /^[0-9A-Za-z.+-]{1,24}$/, "desconocida"), medida_en: r.fecha
       };
       if (!(c.mediana_ms <= c.p95_ms && c.p95_ms <= c.peor_ms) || c.peor_ms > 100000 || c.p95_ms > 10000 || c.duracion_s < 1 || c.duracion_s > 600) return null;
+      // Q0e (contrato v2, todo opcional): por qué va como va. Lo que no se pudo medir no se manda. Nada que identifique a nadie: solo cifras, el texto de las perillas y un sí/no.
+      var js = r.est.js;
+      if (js && js.mediana >= 0 && js.mediana <= js.p95 && js.p95 <= 10000) { c.js_mediana_ms = r2(js.mediana); c.js_p95_ms = r2(js.p95); }
+      if (vr && r.nivel) {
+        var ni = entero(r.nivel.ini, -1, 9), nf = entero(r.nivel.fin, -1, 9);
+        if (ni !== null) c.nivel_ini = ni; if (nf !== null) c.nivel_fin = nf;
+        var pe = perillasLimpias(r.perillas); if (pe) c.perillas = pe;
+      }
+      if (typeof r.olivosGen === "boolean") c.olivos_gen = r.olivosGen;
+      var ll = r.est.ll, tr = r.est.tr;
+      if (ll) { var l = entero(ll.mediana, 0, 100000); if (l !== null) c.llamadas_med = l; }
+      if (tr) { var t = entero(tr.mediana, 0, 100000000); if (t !== null) c.triangulos_med = t; }
+      if (r.personas != null) { var pn = entero(r.personas, 0, 500); if (pn !== null) c.personas = pn; }
       return c;
     }
-    return { UMBRAL: UMBRAL, CALENTAMIENTO: CALENTAMIENTO, calcula: calcula, serie: serie, percentil: percentil, mediana: mediana, lineas: lineas, texto: texto, resumeUA: resumeUA, aparatoDe: aparatoDe, navegadorDe: navegadorDe, cuerpoEnvio: cuerpoEnvio };
+    return { UMBRAL: UMBRAL, CALENTAMIENTO: CALENTAMIENTO, calcula: calcula, serie: serie, percentil: percentil, mediana: mediana, lineas: lineas, texto: texto, resumeUA: resumeUA, aparatoDe: aparatoDe, navegadorDe: navegadorDe, cuerpoEnvio: cuerpoEnvio, perillasLimpias: perillasLimpias };
   })();
   // [puro:fin]
 
@@ -93,6 +120,9 @@
     function contador() { return typeof Ajustes !== "undefined" && Ajustes ? Ajustes.lee("avanzado.contador") : DEPURA; }   // 33_ajustes.js se monta después: al cargar, solo ?debug
     function modoAhora() { return VRX.on ? "VR" : "pantalla"; }
     function nivelAhora() { return VRX.on ? VRX.nivel : null; }
+    // Q0e: ganchos de pruebas del propio motor, sin dependencia nueva: __olivosGen() (07ab) y __presencia() (38). Solo un sí/no y un número; ninguna identidad.
+    function olivosGenActivos() { try { var g = window.__olivosGen ? window.__olivosGen() : null; return g ? g.estado === "activo" : undefined; } catch (e) { return undefined; } }
+    function personasVisibles() { try { var p = window.__presencia ? window.__presencia() : null; return p && p.activo ? Math.max(0, Math.min(500, Math.round(Number(p.vistos) || 0))) : 0; } catch (e) { return 0; } }
     function banderas() {
       var out = [], r = /[?&]([\w-]+)(?:=([\w.-]*))?/g, x;
       while ((x = r.exec(location.search))) if (/^(escena|olivos?|arbsc|tiles?|lod|calidad)$/.test(x[1])) out.push(x[1] + (x[2] != null ? "=" + x[2] : ""));
@@ -104,7 +134,7 @@
       empieza(performance.now());
     }
     function empieza(tIni) {
-      t0 = tIni; m = { t: [], ms: [], js: [], oc: [] }; prev = -1; nvPrev = -2; nivIni = null; cambios = []; modoIni = modoAhora(); res = null; envio = ""; estado = "midiendo"; api.on = true; engancha();
+      t0 = tIni; m = { t: [], ms: [], js: [], oc: [], ll: [], tr: [] }; prev = -1; nvPrev = -2; nivIni = null; cambios = []; modoIni = modoAhora(); res = null; envio = ""; estado = "midiendo"; api.on = true; engancha();
       if (!huboVisib) { document.addEventListener("visibilitychange", alVisibilidad); huboVisib = true; }
       ui(); pinta();
       if (VRX.on) n.emite("medida:empieza");   // 29_vr.js: el panel no tapa la vista durante la medida
@@ -125,7 +155,10 @@
       if (nvPrev !== -2 && nv !== nvPrev && t >= MideEst.CALENTAMIENTO) cambios.push({ t: t - MideEst.CALENTAMIENTO, de: nvPrev === null ? -1 : nvPrev, a: nv === null ? -1 : nv });
       nvPrev = nv;
       var oculto = document.hidden && !renderer.xr.isPresenting;
-      if (prev >= 0 || oculto) { m.t.push(t); m.ms.push(prev >= 0 ? tIni - prev : 0); m.js.push(js); m.oc.push(oculto ? 1 : 0); }
+      if (prev >= 0 || oculto) {
+        var rr = renderer.info.render;   // Q0e: lo que costó dibujar este fotograma (el último render(): en VR three dibuja los dos ojos en uno)
+        m.t.push(t); m.ms.push(prev >= 0 ? tIni - prev : 0); m.js.push(js); m.oc.push(oculto ? 1 : 0); m.ll.push(rr.calls | 0); m.tr.push(rr.triangles | 0);
+      }
       prev = oculto ? -1 : tIni;
       if (t >= MideEst.CALENTAMIENTO + N) termina(); else if (UI && ahora - tPinta > 500) { tPinta = ahora; pinta(); }
     }
@@ -136,7 +169,8 @@
       res = {
         version: 1, fecha: new Date().toISOString().slice(0, 19) + "Z", aparato: { modo: modoIni, ua: MideEst.resumeUA(navigator.userAgent) },
         escena: Escena3D.resumen().estado === "sin" ? "sin" : "tiles", banderas: banderas(), duracion: N, calentamiento: MideEst.CALENTAMIENTO, est: e,
-        nivel: modoIni === "VR" ? { ini: nivIni === null ? -1 : nivIni, fin: nv === null ? -1 : nv, cambios: cambios } : null, olivos: [a.nivel0, a.nivel1, a.nivel2], avisos: avisos, perillas: modoIni === "VR" ? XrPerillas.linea() : ""
+        nivel: modoIni === "VR" ? { ini: nivIni === null ? -1 : nivIni, fin: nv === null ? -1 : nv, cambios: cambios } : null, olivos: [a.nivel0, a.nivel1, a.nivel2], avisos: avisos, perillas: modoIni === "VR" ? XrPerillas.linea() : "",
+        olivosGen: olivosGenActivos(), personas: personasVisibles()   // Q0e: con qué se dibujó (si los olivos generados estaban y cuánta gente se veía)
       };
       estado = "listo"; api.on = false; desengancha(); prev = -1;
       if (huboVisib) { document.removeEventListener("visibilitychange", alVisibilidad); huboVisib = false; }
@@ -191,6 +225,7 @@
       b1.type = b2.type = b3.type = "button"; b1.id = "mideMide"; b2.id = "mideCopia"; b3.id = "mideEnvia";
       [b1, b2, b3].forEach(function (b) { b.style.cssText = "font:inherit;margin-right:6px;padding:3px 8px;border-radius:4px;border:1px solid #5a8a62;background:#1d2b20;color:#d6ffdc;cursor:pointer"; });
       b1.addEventListener("click", function () { inicia(); }); b2.addEventListener("click", copia); b3.addEventListener("click", envia); b3.hidden = true;
+      b3.title = "Manda a la oficina solo cifras de esta medida: aparato y navegador, perfil, perillas de VR, milisegundos, llamadas y triángulos, si había olivos generados y cuántas personas se veían. Nada de tu hogar, tu posición ni tu IP.";
       pre.style.cssText = "margin:5px 0 0;white-space:pre-wrap;font:inherit"; pre.id = "mideTexto";
       UI.appendChild(b1); UI.appendChild(b2); UI.appendChild(b3); UI.appendChild(pre); visor.appendChild(UI); UI.b1 = b1; UI.b2 = b2; UI.b3 = b3; UI.pre = pre;
     }
