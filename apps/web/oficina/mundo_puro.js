@@ -128,10 +128,52 @@ export function textoMira(f) { return f.haza ? f.haza + (f.vista === "aerea" ? "
 /** La respuesta de la api → filas de la tabla, ya con textos. «Expulsar» y «Ver la familia» solo si se sabe de qué hogar es y no es la oficina. */
 export function filasMundo(r, ahora) {
   return (r && Array.isArray(r.participantes) ? r.participantes : []).map(f => ({
-    sala: etiquetaSala(f.sala), alias: f.alias, rol: ROLES[f.rol] || "Familia", aparato: APARATOS[f.aparato] || "—", hace: textoHace(f.conectado_desde, ahora), mira: textoMira(f),
+    salaClave: String(f.sala), sala: etiquetaSala(f.sala), alias: f.alias, rol: ROLES[f.rol] || "Familia", aparato: APARATOS[f.aparato] || "—", hace: textoHace(f.conectado_desde, ahora), mira: textoMira(f),
     hogarId: Number.isInteger(f.hogar_id) && f.hogar_id > 0 ? f.hogar_id : null, esOficina: f.rol === "oficina",
     puedeExpulsar: Number.isInteger(f.hogar_id) && f.hogar_id > 0 && f.rol !== "oficina",
   }));
 }
 /** ¿Se refresca solo? Solo con la sección Mundo a la vista y la pestaña visible. */
 export const debeRefrescar = (seccionVisible, pestanaVisible) => seccionVisible === true && pestanaVisible === true;
+
+// ---------------------------------------------------------------- OF14, escalón 3: salas (cerrar con aviso y silenciar)
+// Solo lo que la api YA admite con la sesión de oficina (apps/api/src/presencia/voz_rutas.ts, puedeModerar = guía del evento o oficina; livekit-roles v7):
+//   POST /api/presencia/guiadas/:evento/cerrar     { segundos? 5-60, 15 por omisión }   aviso, vuelta a la sala general y DeleteRoom
+//   POST /api/presencia/guiadas/:evento/silenciar  {}                                    silencia a todos menos al guía (MutePublishedTrack)
+// NO hay silenciar a UNA persona (la api solo silencia a todos y ni siquiera da a la oficina la identidad de LiveKit de cada conexión) ni cerrar las salas
+// general y visita (no tienen voz ni evento; para sacar a alguien de ellas está «Expulsar»). Sin esas rutas aquí no se ofrece nada de eso.
+export const AVISO_CIERRE = { min: 5, max: 60, defecto: 15 };
+const CLAVE_GUIADA = /^guiada-([1-9][0-9]{0,9})$/;
+/** `guiada-<n>` → n (número, como el evento de la agenda); cualquier otra sala → null. */
+export function eventoDeSala(sala) { const g = CLAVE_GUIADA.exec(String(sala)); return g ? Number(g[1]) : null; }
+/** Qué botones tiene una sala según lo que la api admite: solo las guiadas, y solo con gente dentro (sin gente la sala ni existe en LiveKit). */
+export function accionesDeSala(sala, personas) {
+  const evento = eventoDeSala(sala), hay = Number.isInteger(personas) && personas > 0;
+  return { evento, voz: evento !== null, cerrar: evento !== null && hay, silenciar: evento !== null && hay };
+}
+/** Las filas de la tabla → las salas con su recuento. La general y la de la visita salen siempre (aunque estén a 0); las guiadas, solo si hay alguien. */
+export function salasDeFilas(filas) {
+  const cuenta = new Map([["general", 0], ["visita", 0]]);
+  for (const f of filas || []) cuenta.set(f.salaClave, (cuenta.get(f.salaClave) || 0) + 1);
+  const rango = c => (c === "general" ? -2 : c === "visita" ? -1 : eventoDeSala(c) ?? Number.MAX_SAFE_INTEGER);
+  return [...cuenta].sort((a, b) => rango(a[0]) - rango(b[0]) || a[0].localeCompare(b[0])).map(([clave, personas]) => ({ clave, nombre: etiquetaSala(clave), personas, ...accionesDeSala(clave, personas) }));
+}
+/** «3 personas», «1 persona», «nadie». */
+export const textoGente = n => (n === 1 ? "1 persona" : n > 1 ? n + " personas" : "nadie");
+/** El aviso previo del cierre: entero entre 5 y 60 s; vacío = 15 s. Cuerpo de POST …/cerrar. */
+export function cuerpoCierre(valor) {
+  const t = String(valor == null ? "" : valor).trim();
+  if (t === "") return { ok: true, cuerpo: { segundos: AVISO_CIERRE.defecto } };
+  const n = /^[0-9]{1,3}$/.test(t) ? Number(t) : NaN;
+  if (!Number.isInteger(n) || n < AVISO_CIERRE.min || n > AVISO_CIERRE.max) return { ok: false, error: "El aviso previo va de " + AVISO_CIERRE.min + " a " + AVISO_CIERRE.max + " segundos, en números enteros." };
+  return { ok: true, cuerpo: { segundos: n } };
+}
+/** Lo que dice el diálogo de cerrar (decisión 155: se avisa y se vuelve a la sala general). */
+export const textoCierre = personas => "Se avisará a " + (personas === 1 ? "la 1 persona" : "las " + personas + " personas") + " y volverán a la sala general. Las familias no podrán volver a entrar a esta visita hasta que acabe su horario; el guía y la oficina sí.";
+export const textoSilencio = personas => "Se silenciará el micrófono de todos menos el del guía (" + textoGente(personas) + " en la sala). Nadie puede reactivarlo desde fuera: cada persona decide si lo vuelve a abrir.";
+/** La respuesta de /cerrar o /silenciar → frase para el estado vivo. */
+export function resultadoCierre(d, nombre) { return d && d.avisados === false ? nombre + ": cerrada; no había nadie a quien avisar." : nombre + ": avisadas las personas, se cierra en " + (d && d.segundos ? d.segundos : AVISO_CIERRE.defecto) + " segundos."; }
+export function resultadoSilencio(d, nombre) {
+  const n = d && Number.isInteger(d.pistas) ? d.pistas : 0;
+  return nombre + ": " + (n === 0 ? "no había ningún micrófono abierto." : n === 1 ? "1 micrófono silenciado." : n + " micrófonos silenciados.") + (d && d.palabra_quitada ? " Se quitó la palabra." : "");
+}

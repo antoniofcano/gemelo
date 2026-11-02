@@ -1,15 +1,15 @@
-// Mundo (OF14, escalones 1 y 2; doc/sistema/OFICINA.md §6): quién está conectado (GET /api/admin/presencia/participantes, refresco cada 10 s solo con la sección
+// Mundo (OF14, escalones 1, 2 y 3 (salas: cerrar con aviso y silenciar a todos, con POST /api/presencia/guiadas/:evento/cerrar y /silenciar, que ya admiten a la oficina); doc/sistema/OFICINA.md §6): quién está conectado (GET /api/admin/presencia/participantes, refresco cada 10 s solo con la sección
 // a la vista), anunciar a toda la sala, expulsar a una familia y balizas oficiales, con las rutas que ya
 // existen (POST /api/admin/presencia/anuncio y /expulsar; GET /api/balizas-oficiales y POST/PUT/DELETE /api/admin/balizas). Todo el DOM con h()
 // (texto, nunca HTML). La api vuelve a validar; aquí solo se ahorra la ida y vuelta (mundo_puro.js) y se enseña su error en claro.
 import { $, api, aviso, confirma, h, vacia } from "./comun.js";
 import { construyeHash } from "./enlaces_puro.js";
-import { ANUNCIO_MAX, CADUCIDADES, HORAS, REFRESCO_MS, SALAS, cuerpoAnuncio, cuerpoBaliza, cuerpoExpulsion, cuerpoMover, debeRefrescar, etiquetaFamilia, filasMundo, textoCaduca, textoConfirmaExpulsion, textoCuenta, textoPersonas } from "./mundo_puro.js";
+import { ANUNCIO_MAX, AVISO_CIERRE, CADUCIDADES, HORAS, REFRESCO_MS, SALAS, cuerpoAnuncio, cuerpoBaliza, cuerpoExpulsion, cuerpoCierre, cuerpoMover, debeRefrescar, etiquetaFamilia, filasMundo, resultadoCierre, resultadoSilencio, salasDeFilas, textoCaduca, textoCierre, textoConfirmaExpulsion, textoCuenta, textoGente, textoPersonas, textoSilencio } from "./mundo_puro.js";
 
 const FINCA_POR_DEFECTO = "hituelo";
 
 export function iniciaMundo({ sesion }) {
-  let preparado = false, activo = false, temporizador = 0, leyendoQuien = 0, quienFilas = [], familias = [], balizas = [], finca = FINCA_POR_DEFECTO, buscando = 0, cargandoBalizas = 0, moviendo = null;
+  let preparado = false, activo = false, temporizador = 0, leyendoQuien = 0, quienFilas = [], familias = [], balizas = [], finca = FINCA_POR_DEFECTO, buscando = 0, cargandoBalizas = 0, moviendo = null, salas = [];
   void sesion;
   const estado = (id, texto, mal) => { const p = $(id); p.textContent = texto; p.classList.toggle("error", !!mal); };
 
@@ -23,6 +23,7 @@ export function iniciaMundo({ sesion }) {
     err.textContent = "";
     quienFilas = filasMundo(r.datos, Date.now());
     pintaQuien(r.datos);
+    pintaSalas();
   }
 
   function pintaQuien(datos) {
@@ -52,6 +53,62 @@ export function iniciaMundo({ sesion }) {
     estado("#mExpulsaM", "Preparada: «" + f.alias + "». Revisa el motivo y pulsa «Expulsar…».");
     $("#mExpulsaF").scrollIntoView({ block: "center" });
     $("#mExpulsaMot").focus();
+  }
+
+  // ---------------------------------------------------------------- salas (escalón 3): lo que sale de la misma lista, sin pedirla otra vez
+  function pintaSalas() {
+    const ul = $("#mSalasLista"), enfocado = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.sala : null;
+    salas = salasDeFilas(quienFilas);
+    const guiadas = salas.filter(x => x.voz).length;
+    const frase = guiadas ? salas.length + " salas; " + guiadas + (guiadas === 1 ? " visita guiada abierta." : " visitas guiadas abiertas.") : "Ahora no hay ninguna visita guiada con gente.";
+    if ($("#mSalasCuenta").textContent !== frase) $("#mSalasCuenta").textContent = frase;
+    vacia(ul);
+    for (const x of salas) {
+      ul.append(h("li", { class: "item", "data-sala-fila": x.clave },
+        h("div", { class: "cuerpo" },
+          h("div", { class: "cab" }, h("b", null, x.nombre), h("span", { class: "pill p-info" }, textoGente(x.personas))),
+          x.voz ? null : h("p", { class: "nota" }, "Sin voz ni visita guiada: aquí no se cierra ni se silencia. Para sacar a alguien está «Expulsar»."),
+          x.voz ? h("div", { class: "barra-h" },
+            h("button", { class: "boton peq", type: "button", disabled: !x.silenciar, "data-sala": x.clave + "-s", "aria-label": "Silenciar a todos en " + x.nombre, onclick: () => pideSilenciar(x) }, "Silenciar a todos"),
+            h("button", { class: "boton peq peligro-suave", type: "button", disabled: !x.cerrar, "data-sala": x.clave + "-c", "aria-label": "Cerrar " + x.nombre, onclick: () => pideCerrar(x) }, "Cerrar la sala")) : null)));
+    }
+    if (enfocado) { const otra = ul.querySelector('[data-sala="' + enfocado + '"]'); if (otra) otra.focus(); }   // el refresco no roba el foco
+  }
+  /** Al cerrar el diálogo (con Sí, No o Esc) el foco vuelve al botón que lo abrió, aunque el refresco lo haya vuelto a dibujar. */
+  function devuelveFoco(marca) {
+    $("#dlgConfirma").addEventListener("close", () => { const b = $('[data-sala="' + marca + '"]'); if (b && !b.disabled) b.focus(); }, { once: true });
+  }
+  function pideCerrar(x) {
+    devuelveFoco(x.clave + "-c");
+    const entrada = h("input", { id: "mCierreS", inputmode: "numeric", autocomplete: "off", placeholder: String(AVISO_CIERRE.defecto) });
+    confirma({
+      titulo: "¿Cerrar " + x.nombre.toLowerCase() + "?", si: "Cerrar la sala",
+      cuerpo: [h("p", null, textoCierre(x.personas)),
+        h("label", { class: "campo" }, "Aviso previo, en segundos (de " + AVISO_CIERRE.min + " a " + AVISO_CIERRE.max + "; vacío = " + AVISO_CIERRE.defecto + ")", entrada)],
+      hecho: async () => {
+        const c = cuerpoCierre(entrada.value);
+        if (!c.ok) return c.error;
+        const r = await api("POST", "/api/presencia/guiadas/" + x.evento + "/cerrar", c.cuerpo);
+        if (!r.ok) return r.mensaje;
+        estado("#mSalasM", resultadoCierre(r.datos, x.nombre));
+        aviso("Sala cerrada con aviso.");
+        cargaQuien();
+        return undefined;
+      },
+    });
+  }
+  function pideSilenciar(x) {
+    devuelveFoco(x.clave + "-s");
+    confirma({
+      titulo: "¿Silenciar a todos?", si: "Silenciar a todos", cuerpo: [h("p", null, textoSilencio(x.personas))],
+      hecho: async () => {
+        const r = await api("POST", "/api/presencia/guiadas/" + x.evento + "/silenciar", {});
+        if (!r.ok) return r.mensaje;
+        estado("#mSalasM", resultadoSilencio(r.datos, x.nombre));
+        aviso("Micrófonos silenciados.");
+        return undefined;
+      },
+    });
   }
 
   const arranca = () => { clearInterval(temporizador); temporizador = setInterval(() => { if (debeRefrescar(activo, !document.hidden)) cargaQuien(); }, REFRESCO_MS); };
@@ -216,5 +273,5 @@ export function iniciaMundo({ sesion }) {
     await cargaBalizas();
   }
 
-  return { abre, sale, estado: () => ({ activo, quien: quienFilas.length, finca, balizas: balizas.map(b => ({ id: b.id, titulo: b.titulo })), familias: familias.length }) };
+  return { abre, sale, estado: () => ({ activo, quien: quienFilas.length, salas: salas.map(x => ({ clave: x.clave, personas: x.personas })), finca, balizas: balizas.map(b => ({ id: b.id, titulo: b.titulo })), familias: familias.length }) };
 }
