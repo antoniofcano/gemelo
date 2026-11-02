@@ -15,6 +15,7 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import { audita, esOficina, type Rol } from "../auth/servicio.ts";
 import { enTransaccion } from "../bd/pool.ts";
 import type { Contexto } from "../contexto.ts";
+import { avisaLlave } from "../yo/llaves.ts";
 import { requiereConfirmacionReciente, requiereOficinaSinLlave, requiereRol, SIN_SESION } from "./acceso.ts";
 import { nombreDeAparato } from "./aparatos.ts";
 import {
@@ -42,7 +43,7 @@ export const TEXTO_FALLO = "La llave no se pudo comprobar. Vuelve a intentarlo; 
 export const TEXTO_SIN_RETO = "Ha pasado demasiado tiempo o se abrió otra petición. Vuelve a pulsar el botón.";
 
 export async function rutasLlaves(app: FastifyInstance, ctx: Contexto): Promise<void> {
-  const { bd, config } = ctx;
+  const { bd, config, cartero } = ctx;
   const c = config.llave;
   const sesionId = (req: { session: { idBd?: number } }) => req.session.idBd;
   const sesionDeAlta = (req: FastifyRequest): SesionDeAlta =>
@@ -87,6 +88,8 @@ export async function rutasLlaves(app: FastifyInstance, ctx: Contexto): Promise<
       if (r.error === "maximo") return rep.code(409).send({ error: "demasiadas_llaves", mensaje: "Ya tienes " + MAX_LLAVES + " llaves." });
       return rep.code(403).send({ error: "entra_con_llave", mensaje: TEXTO_ENTRA_CON_LLAVE });
     }
+    // aviso de seguridad por correo (decisión 187, OF13b-4): en segundo plano; un fallo del correo no tumba el alta
+    if (r.avisar) await avisaLlave(req, bd, cartero, "anadida", hogar, nombre);
     return rep.code(201).send({ id: r.id, nombre });
   });
 
@@ -147,18 +150,19 @@ export async function rutasLlaves(app: FastifyInstance, ctx: Contexto): Promise<
     const hogar = req.session.hogarId!;
     const r = await enTransaccion(bd, async t => {
       await t.query("SELECT id FROM hogares WHERE id = $1 FOR UPDATE", [hogar]);
-      const l = await t.query("SELECT 1 FROM llaves_acceso WHERE id = $1 AND hogar_id = $2 AND revocada_en IS NULL", [req.params.id, hogar]);
-      if (!l.rowCount) return { error: "no_existe" } as const;
+      const l = await t.query<{ nombre: string }>("SELECT nombre FROM llaves_acceso WHERE id = $1 AND hogar_id = $2 AND revocada_en IS NULL", [req.params.id, hogar]);
+      if (!l.rows[0]) return { error: "no_existe" } as const;
       // nunca la última propia: dejaría la cuenta fuera hasta que un admin la rehabilite
       if ((await estadoLlaves(t, hogar)).activas <= 1) return { error: "ultima_llave" } as const;
       const n = await revocaLlave(t, req.params.id, hogar);
       await audita(t, hogar, "oficina.llave_revocada", { llave: req.params.id, hogar, sesiones: n ?? 0 });
-      return { sesiones: n ?? 0 } as const;
+      return { sesiones: n ?? 0, nombre: l.rows[0].nombre } as const;
     });
     if ("error" in r) {
       if (r.error === "ultima_llave") return rep.code(409).send({ error: "ultima_llave", mensaje: "Es tu única llave: añade otra antes de revocar esta (o pide a un admin que lo haga)." });
       return rep.code(404).send({ error: "no_existe" });
     }
+    await avisaLlave(req, bd, cartero, "quitada", hogar, r.nombre);
     return { sesiones_cerradas: r.sesiones, era_esta: req.session.llaveId === req.params.id };
   });
 
@@ -183,13 +187,15 @@ export async function rutasLlaves(app: FastifyInstance, ctx: Contexto): Promise<
   });
 
   app.post<{ Params: { id: number } }>("/api/admin/llaves/:id/revocar", { preHandler: ADMIN_CONFIRMADO, schema: { params: ID } }, async (req, rep) => {
-    const l = await bd.query<{ hogar_id: string; rol: Rol }>(
-      "SELECT l.hogar_id, h.rol FROM llaves_acceso l JOIN hogares h ON h.id = l.hogar_id WHERE l.id = $1 AND l.revocada_en IS NULL", [req.params.id]);
+    const l = await bd.query<{ hogar_id: string; rol: Rol; nombre: string }>(
+      "SELECT l.hogar_id, l.nombre, h.rol FROM llaves_acceso l JOIN hogares h ON h.id = l.hogar_id WHERE l.id = $1 AND l.revocada_en IS NULL", [req.params.id]);
     const f = l.rows[0];
     if (!f || !esOficina(f.rol)) return rep.code(404).send({ error: "no_existe" });
     const n = await revocaLlave(bd, req.params.id, req.session.hogarId!);
     if (n === null) return rep.code(404).send({ error: "no_existe" });
     await audita(bd, req.session.hogarId!, "oficina.llave_revocada", { llave: req.params.id, hogar: Number(f.hogar_id), sesiones: n });
+    // la cuenta afectada se entera por correo (decisión 187), aunque la quite un admin
+    await avisaLlave(req, bd, cartero, "quitada", Number(f.hogar_id), f.nombre);
     return { sesiones_cerradas: n, era_esta: req.session.llaveId === req.params.id };
   });
 

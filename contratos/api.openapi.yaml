@@ -453,6 +453,96 @@ paths:
         "404": { description: "el código no sirve: la MISMA respuesta si no existe, caducó o ya se decidió (no enumerable)" }
         "429": { $ref: "#/components/responses/Limite" }
 
+  /api/yo/llaves:
+    get:
+      summary: "Mis llaves de acceso (OF13b-4, ADR-0029): las llaves vivas de la propia cuenta, para cualquier sesión (también la de unas gafas vinculadas, que solo las ven)"
+      description: "El hogar sale de la sesión, nunca de un parámetro. Solo las vivas (las revocadas quedan en la base para la auditoría). Por llave: id (el de esta cuenta; el de otra cuenta es un 404 en la baja), nombre, creada_en, ultima_vez_en, descubrible (sirve para «Entrar con mi llave» sin escribir el correo; las anteriores a OF13b, no), sincronizada (respaldada en el gestor de la persona: iCloud, Google…) y es_esta (con ella se abrió o se confirmó la sesión de la petición). NUNCA el id de credencial, la clave pública ni el contador. puede_anadir es lo que permitiría hoy el alta (falso desde unas gafas, con el tope de MAX_LLAVES vivas, o en una cuenta de oficina que debe entrar con su llave). Sin caché"
+      security: [{ sesion: [] }]
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [llaves, maximo, puede_anadir]
+                properties:
+                  llaves:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required: [id, nombre, creada_en, ultima_vez_en, descubrible, sincronizada, es_esta]
+                      properties:
+                        id: { type: integer }
+                        nombre: { type: string, maxLength: 40 }
+                        creada_en: { type: string, format: date-time }
+                        ultima_vez_en: { type: [string, "null"], format: date-time }
+                        descubrible: { type: boolean }
+                        sincronizada: { type: boolean }
+                        es_esta: { type: boolean }
+                  maximo: { type: integer, description: "10: llaves vivas por cuenta" }
+                  puede_anadir: { type: boolean }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "429": { $ref: "#/components/responses/Limite" }
+    post:
+      summary: "Mis llaves de acceso, alta paso 2: verifica la respuesta de navigator.credentials.create() con el reto de la sesión y guarda la llave; avisa por correo a la cuenta (decisión 187)"
+      description: "Cualquier cuenta con una sesión titular (enlace o llave), aunque ya tenga llaves (decisión 183: el buzón es la raíz). Nunca desde unas gafas vinculadas (403 solo_titular, antes de gastar el reto). La cuenta de oficina sigue las reglas de OF13 (aparato aprobado; sin llave en la sesión, solo la primera vez o con el alta rehabilitada). El permiso se vuelve a mirar al guardar, con la cuenta bloqueada. La sesión queda abierta con la llave nueva. Tras guardar, correo de aviso «Se ha añadido una llave de acceso a tu cuenta» (contratos/avisos-correo.md § Avisos de seguridad); un fallo del correo se registra y NO tumba el alta. Auditoría llave.alta (oficina.llave_alta para la oficina) y llave.alta_fallida. Sin caché. Límite: 20 por cuenta y 20 por IP en 15 min, comunes a las tres rutas de alta y baja"
+      security: [{ sesion: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [respuesta]
+              properties:
+                nombre: { type: string, maxLength: 80, description: "nombre que le da la persona (se recorta a 40); si falta, el del aparato («Windows · Chrome»)" }
+                respuesta: { $ref: "#/components/schemas/RespuestaWebAuthn" }
+      responses:
+        "201":
+          description: guardada
+          content: { application/json: { schema: { type: object, additionalProperties: false, required: [id, nombre], properties: { id: { type: integer }, nombre: { type: string } } } } }
+        "400": { description: "llave_no_valida (origen, RP ID, reto, firma o sin verificar a la persona: el mismo texto para todos) o entrada_no_valida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: "solo_titular (unas gafas vinculadas), entra_con_llave / aparato_pendiente (cuenta de oficina), o los de SinPermiso", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "409": { description: "sin_reto (caducó, se gastó o no se pidió), llave_repetida (esa credencial ya está en alguna cuenta) o demasiadas_llaves (10 vivas)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/yo/llaves/opciones:
+    post:
+      summary: "Mis llaves de acceso, alta paso 1: opciones para navigator.credentials.create() (PublicKeyCredentialCreationOptionsJSON) y reto de un uso y 5 min atado a la sesión"
+      description: "Llave residente y verificación de la persona obligatorias, attestation none, el user handle de la cuenta y, como nombre de la cuenta en el aparato, el correo (decisión 185); excluye las llaves vivas de la cuenta. Mismos permisos que POST /api/yo/llaves. Sin caché"
+      security: [{ sesion: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, additionalProperties: false, properties: {} } } } }
+      responses:
+        "200": { description: "opciones (rp, user, challenge, pubKeyCredParams, excludeCredentials, authenticatorSelection, timeout, extensions)" }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: "solo_titular (unas gafas vinculadas), entra_con_llave / aparato_pendiente (cuenta de oficina), o los de SinPermiso", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "409": { description: "demasiadas_llaves (10 vivas por cuenta)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/yo/llaves/{id}:
+    delete:
+      summary: "Quita (revoca) una llave de la propia cuenta, cierra en el acto las sesiones abiertas o confirmadas con ella y avisa por correo (decisión 187)"
+      description: "Cualquier sesión titular; unas gafas vinculadas no (403 solo_titular). Una familia puede quitar hasta la última: el enlace del correo sigue siendo la entrada y la recuperación (el correo de aviso lo dice). Una cuenta de OFICINA pide la confirmación reciente (403 confirmacion_requerida) y no se queda sin su última llave por aquí (409 ultima_llave: igual que POST /api/oficina/llaves/{id}/revocar, que se mantiene para su pantalla). La llave de otra cuenta, una ya revocada y una que no existe dan el MISMO 404. Auditoría llave.quitada (la llave, las sesiones cerradas y cuántas quedan; nunca el id de credencial). El correo «Se ha quitado una llave de acceso de tu cuenta» no depende de avisos_correo; un fallo del correo no deshace la baja. Sin caché"
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "200":
+          description: quitada
+          content: { application/json: { schema: { type: object, additionalProperties: false, required: [sesiones_cerradas, era_esta, quedan], properties: { sesiones_cerradas: { type: integer }, era_esta: { type: boolean, description: "true si la sesión de esta petición también se cerró (se abrió o se confirmó con esa llave)" }, quedan: { type: integer, description: "llaves vivas que le quedan a la cuenta" } } } } }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: "solo_titular (unas gafas vinculadas), confirmacion_requerida (cuenta de oficina) o los de SinPermiso", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { description: "no es una llave viva de la cuenta (la misma respuesta si es de otra, está revocada o no existe)" }
+        "409": { description: "ultima_llave (solo cuentas de oficina)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/Limite" }
+
   /api/yo/avatar:
     get:
       summary: Lo que el hogar tiene elegido (la portada lo lee de vuelta)
@@ -513,6 +603,7 @@ paths:
   /api/yo/datos:
     get:
       summary: Todo lo que se guarda del hogar (derecho de acceso y portabilidad, RGPD)
+      description: "Incluye `llaves_de_acceso` (OF13b-4): por llave, nombre, creada_en, ultima_vez_en, revocada_en, sincronizada y descubrible (las vivas y las revocadas, que se guardan para la auditoría hasta borrar la cuenta). Nunca el id de credencial, la clave pública ni el contador. La exportación de la oficina (GET /api/admin/hogares/{id}/exportar) usa la misma lista"
       security: [{ sesion: [] }]
       responses:
         "200": { description: JSON para descargar }

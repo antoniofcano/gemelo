@@ -9,6 +9,26 @@ Cada fila de `avisos_hogar` (la campana del gemelo) de un hogar activo con `hoga
 (`/api/admin/eventos/:id/avisar`, la bandeja), los del sistema de la Agenda (promoción desde la espera, cambio de fecha o lugar, cancelación) y la
 confirmación de inscripción (solo si el hogar quedó **apuntado** y pidió los avisos). Los hogares sin `avisos_correo` solo los ven en la campana.
 
+## Avisos de seguridad de las llaves de acceso (OF13b-4, decisión 187)
+
+Dos correos que **no son avisos de la campana** y por eso no pasan por el repartidor ni dependen de `hogares.avisos_correo` (ni del `GEMELO_CORREO_AVISOS`): son
+seguridad de la cuenta. Salen por el mismo cartero que el enlace mágico (`apps/api/src/auth/correo.ts`: `mensajeDeLlaveAnadida`, `mensajeDeLlaveQuitada`), al
+**correo de la propia cuenta** y solo cuando la ruta cambia algo (nunca en cada entrada: decisión 187).
+
+| Cuándo | Asunto | Cuerpo |
+|---|---|---|
+| `POST /api/yo/llaves` guarda una llave (`avisar` de `registraLlave`) | Se ha añadido una llave de acceso a tu cuenta | cuál («Windows · Chrome» o el nombre que le dio la persona, en una línea), cuándo (hora de Madrid), «Si has sido tú, no tienes que hacer nada» y, si no, cómo quitarla (entrar con un enlace, Configuración → Mis dispositivos) o avisar a la oficina |
+| `DELETE /api/yo/llaves/{id}` quita una llave | Se ha quitado una llave de acceso de tu cuenta | cuál y cuándo; que esa llave ya no sirve y se cerraron sus sesiones; **«No te quedas fuera: el enlace que te mandamos a este correo sigue funcionando»**; si no has sido tú, pedir un enlace, revisar las llaves que quedan y avisar a la oficina |
+
+Texto llano (sin HTML, sin `.ics`, sin cabeceras de baja). **Sin enlaces** (nada que suplantar: se dice qué pantalla abrir), **sin el correo en el cuerpo** (solo en el
+destino), sin IP ni modelo del aparato ni el id de credencial; el nombre de la llave va saneado (sin saltos de línea ni caracteres de control, 40 caracteres).
+**El correo nunca tumba la ruta:** se manda en segundo plano; si falla, se registra `correo_llave_anadida_fallido` / `correo_llave_quitada_fallido` con el hogar
+y el nombre del error (nunca la dirección ni su texto) y la llave queda como está. **No hay reintento** (a diferencia de los avisos): el aviso de seguridad que no sale
+no se reenvía más tarde, porque una alerta tardía confunde; la auditoría (`llave.alta`, `llave.quitada`) es el rastro. Avisan también las rutas de la oficina de OF13: el alta
+(`POST /api/oficina/llaves/alta`), la revocación propia (`POST /api/oficina/llaves/{id}/revocar`) y la de un `admin` a otra cuenta
+(`POST /api/admin/llaves/{id}/revocar`, al correo de la cuenta afectada). No avisa `POST /api/admin/hogares/{id}/rehabilitar-llave` con `revocar_llaves` (revoca
+varias llaves de golpe; hueco anotado).
+
 ## El aviso también se ve en el mundo (OF11g)
 
 El correo es una vía; la otra es el propio gemelo. El aviso **se guarda siempre**, aunque el hogar tenga `avisos_correo` en «no», y queda **ligado a su evento**
