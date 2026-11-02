@@ -43,6 +43,7 @@ const RUTAS: [string, string, object?][] = [
   ["PATCH", "/api/admin/hogares/1", { quitar_alias: true }], ["POST", "/api/admin/hogares/1/enlace", {}], ["GET", "/api/admin/hogares/1/sesiones"],
   ["DELETE", "/api/admin/sesiones/1"], ["PUT", "/api/admin/hogares/1/haza", { haza_id: null }], ["POST", "/api/admin/hogares/1/baja", {}],
   ["POST", "/api/admin/hogares/1/reactivar", {}], ["GET", "/api/admin/hogares/1/exportar"], ["DELETE", "/api/admin/hogares/1", { correo: "a@example.com" }],
+  ["GET", "/api/admin/hogares/1/llaves"], ["DELETE", "/api/admin/hogares/1/llaves"], ["DELETE", "/api/admin/hogares/1/llaves/1", { motivo: "x" }],
 ];
 
 test("sin sesión, ninguna ruta de familias responde (401) ni toca la base", async () => {

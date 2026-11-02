@@ -4,7 +4,7 @@
 // el almacén la lee con la fila que pone cada prueba. Lo que decide PostgreSQL (bloqueos, la cascada de verdad): pruebas/integracion/llaves_hogar.test.ts
 // (escrita, se ejecuta por el banco). NO probado con un SMTP real.
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { test } from "node:test";
 import type { FastifyInstance } from "fastify";
 import type pg from "pg";
@@ -314,7 +314,8 @@ test("la exportación de la oficina lleva las llaves como la de /api/yo/datos (m
 });
 
 test("borrar la cuenta borra sus llaves, sus retos y suelta el llave_id de las sesiones (la cascada de las migraciones)", () => {
-  const m13 = readFileSync(new URL("../../migraciones/0013_llaves_oficina.sql", import.meta.url), "utf8");
+  const f13 = readdirSync(new URL("../../migraciones/", import.meta.url)).find(f => f.startsWith("0013_"))!;   // la que crea la tabla de llaves
+  const m13 = readFileSync(new URL("../../migraciones/" + f13, import.meta.url), "utf8");
   assert.match(m13, /hogar_id\s+bigint NOT NULL REFERENCES hogares \(id\) ON DELETE CASCADE/, "llaves_acceso.hogar_id en cascada");
   assert.match(m13, /sesion_id\s+bigint NOT NULL REFERENCES sesiones \(id\) ON DELETE CASCADE/, "llaves_retos.sesion_id en cascada");
   // la de verdad (con PostGIS) está en pruebas/integracion/llaves_yo.test.ts y llaves_hogar.test.ts

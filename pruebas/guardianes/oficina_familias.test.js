@@ -11,7 +11,7 @@ const { spawn, spawnSync } = require("child_process");
 const { RAIZ, lee, propia, chrome, playwright, fs, path } = require("./_util");
 
 const html = lee("apps/web/oficina/index.html"), css = lee("apps/web/oficina/oficina.css");
-const fuentes = { "oficina.js": lee("apps/web/oficina/oficina.js"), "familias.js": lee("apps/web/oficina/familias.js"), "comun.js": lee("apps/web/oficina/comun.js") };
+const fuentes = { "oficina.js": lee("apps/web/oficina/oficina.js"), "familias.js": lee("apps/web/oficina/familias.js"), "comun.js": lee("apps/web/oficina/comun.js"), "ficha_llaves.js": lee("apps/web/oficina/ficha_llaves.js") };
 
 test("nada en línea ni de otro origen; el DOM se hace con textContent (un correo o un nombre nunca se interpretan como HTML)", () => {
   assert.ok(!/<style|\sstyle\s*=|\son[a-z]+\s*=|<script(?![^>]*\ssrc=)/i.test(html), "index.html: ni <style>, ni style=, ni onclick=, ni <script> en línea");

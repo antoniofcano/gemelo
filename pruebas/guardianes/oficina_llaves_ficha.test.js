@@ -79,7 +79,8 @@ test("estática: familias.js usa solo rutas del contrato, la baja de llaves pasa
   assert.match(js, /api\("GET", "\/api\/admin\/llaves"\)/);
   assert.match(js, /conConfirmacion\(\(\) => api\("DELETE", "\/api\/admin\/hogares\/" \+ f\.id \+ "\/llaves"/);
   for (const r of ["/api/admin/hogares/{id}/llaves", "/api/admin/hogares/{id}/llaves/{llaveId}", "/api/admin/llaves"]) assert.ok(openapi.includes("  " + r + ":"), r + " está en api.openapi.yaml");
-  assert.ok(!/credencial|clave_publica|contador/.test(mod + js.slice(js.indexOf("function fichaLlaves"), js.indexOf("async function cierraSesion"))), "la página no maneja material criptográfico");
+  const sinComentarios = c => c.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  assert.ok(!/credencial|clave_publica|contador/.test(sinComentarios(mod) + sinComentarios(js.slice(js.indexOf("function fichaLlaves"), js.indexOf("async function cierraSesion")))), "la página no maneja material criptográfico");
 });
 
 // ——— recorrido en Chrome con la api simulada (escrito, sin ejecutar) ———
