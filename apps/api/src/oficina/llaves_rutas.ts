@@ -15,7 +15,7 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import { audita, esOficina, type Rol } from "../auth/servicio.ts";
 import { enTransaccion } from "../bd/pool.ts";
 import type { Contexto } from "../contexto.ts";
-import { avisaLlave } from "../yo/llaves.ts";
+import { avisaLlave, avisaLlavesQuitadasPorLaOficina, revocaTodasLasLlaves } from "../yo/llaves.ts";
 import { requiereConfirmacionReciente, requiereOficinaSinLlave, requiereRol, SIN_SESION } from "./acceso.ts";
 import { nombreDeAparato } from "./aparatos.ts";
 import {
@@ -134,6 +134,7 @@ export async function rutasLlaves(app: FastifyInstance, ctx: Contexto): Promise<
   const listaSql = `SELECT id, hogar_id, nombre, transports, respaldada, descubrible, creada_en, ultima_vez_en, revocada_en, aparato_id
                       FROM llaves_acceso WHERE hogar_id = $1 ORDER BY revocada_en IS NOT NULL, id DESC LIMIT 50`;
   const fila = (f: Record<string, unknown>, esta?: number) => ({
+    // las llaves anteriores a OF13b no se guardaron en el aparato (descubrible = false): no sirven para «Entrar con mi llave» sin correo
     id: Number(f["id"]), nombre: f["nombre"], transports: f["transports"] ?? [], respaldada: f["respaldada"] === true, descubrible: f["descubrible"] === true,
     creada_en: f["creada_en"], ultima_vez_en: f["ultima_vez_en"], revocada_en: f["revocada_en"], es_esta: esta !== undefined && Number(f["id"]) === esta,
   });
@@ -209,18 +210,16 @@ export async function rutasLlaves(app: FastifyInstance, ctx: Contexto): Promise<
     const h = await bd.query<{ rol: Rol }>("SELECT rol FROM hogares WHERE id = $1 AND activo", [req.params.id]);
     if (!h.rows[0] || !esOficina(h.rows[0].rol)) return rep.code(404).send({ error: "no_existe" });
     const r = await enTransaccion(bd, async t => {
-      let revocadas = 0, sesiones = 0;
-      if (req.body?.revocar_llaves) {
-        for (const l of await llavesVivas(t, req.params.id)) {
-          const n = await revocaLlave(t, l.id, yo);
-          if (n !== null) { revocadas++; sesiones += n; }
-        }
-      }
+      let nombres: string[] = [], sesiones = 0;
+      if (req.body?.revocar_llaves) ({ nombres, sesiones } = await revocaTodasLasLlaves(t, req.params.id, yo));
+      const revocadas = nombres.length;
       const u = await t.query<{ hasta: Date }>(
         "UPDATE hogares SET llave_rehabilitada_hasta = now() + make_interval(hours => $2) WHERE id = $1 RETURNING llave_rehabilitada_hasta AS hasta", [req.params.id, HORAS_REHABILITADA]);
       await audita(t, yo, "oficina.llave_rehabilitada", { hogar: req.params.id, llaves_revocadas: revocadas, sesiones });
-      return { hasta: u.rows[0]!.hasta, revocadas, sesiones };
+      return { hasta: u.rows[0]!.hasta, revocadas, sesiones, nombres };
     });
+    // la cuenta se entera por correo (decisión 187, OF13b-6); un fallo del correo no tumba la rehabilitación y deja su rastro en la auditoría
+    if ((await avisaLlavesQuitadasPorLaOficina(req, bd, cartero, req.params.id, r.nombres)) === "fallido") await audita(bd, yo, "oficina.llave_aviso_fallido", { hogar: req.params.id });
     return { rehabilitada_hasta: r.hasta, llaves_revocadas: r.revocadas, sesiones_cerradas: r.sesiones };
   });
 }

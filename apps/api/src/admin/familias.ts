@@ -10,6 +10,7 @@
 //   POST   /api/admin/hogares/:id/reactivar    devuelve la cuenta y sus hazas (si siguen libres)
 //   GET    /api/admin/hogares/:id/exportar     todos sus datos en JSON (RGPD)
 //   DELETE /api/admin/hogares/:id              borra ya (RGPD): confirmación reciente y el correo escrito en el cuerpo
+//   (las llaves de acceso de la familia, GET/DELETE /api/admin/hogares/:id/llaves, viven en llaves_hogar.ts)
 //   (GET /api/admin/hazas, las hazas con su titular para elegir, vive en hazas.ts: es la misma lista que usa la sección Hazas)
 // El nombre interno (decisión 109) no sale por ninguna ruta de los hogares. Todo queda en la auditoría, sin correos en el detalle.
 import type { FastifyInstance, FastifyRequest } from "fastify";

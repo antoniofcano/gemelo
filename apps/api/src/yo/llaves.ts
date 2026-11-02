@@ -3,9 +3,9 @@
 // ../oficina/llaves.ts (OF13b-3); aquí solo lo que se lee y se quita. Cada función lleva el id del hogar de la SESIÓN: no hay forma de nombrar
 // la llave de otra cuenta (una ajena y una inexistente son la misma respuesta).
 import type { FastifyRequest } from "fastify";
-import { type Cartero, mensajeDeLlaveAnadida, mensajeDeLlaveQuitada } from "../auth/correo.ts";
+import { type Cartero, mensajeDeLlaveAnadida, mensajeDeLlaveQuitada, mensajeDeLlavesQuitadasPorLaOficina } from "../auth/correo.ts";
 import { audita, esOficina, type Rol } from "../auth/servicio.ts";
-import { type Bd, enTransaccion } from "../bd/pool.ts";
+import { type Bd, type Cliente, enTransaccion } from "../bd/pool.ts";
 import { estadoLlaves, MAX_LLAVES, revocaLlave } from "../oficina/llaves.ts";
 
 /** Lo que se enseña de una llave: nunca el id de credencial ni la clave pública ni el contador. */
@@ -79,4 +79,37 @@ export async function avisaLlave(req: FastifyRequest, bd: Bd, cartero: Cartero, 
   Promise.resolve().then(() => cartero.envia((tipo === "anadida" ? mensajeDeLlaveAnadida : mensajeDeLlaveQuitada)(correo, nombre))).catch((e: unknown) => {
     req.log.error({ evento, hogar, error: e instanceof Error ? e.name : "?" }, "no se pudo mandar el aviso de la llave");
   });
+}
+
+/**
+ * Revoca TODAS las llaves vivas de la cuenta (dentro de la transacción `t` de quien llama) y cierra las sesiones abiertas con ellas. Devuelve los nombres
+ * (para el aviso) y cuántas sesiones se cerraron. Lo usan la ficha de la familia en la oficina (OF13b-6) y la rehabilitación del alta (`revocar_llaves`).
+ */
+export async function revocaTodasLasLlaves(t: Bd | Cliente, hogarId: number, por: number): Promise<{ nombres: string[]; sesiones: number }> {
+  const vivas = await t.query<{ id: string; nombre: string }>("SELECT id, nombre FROM llaves_acceso WHERE hogar_id = $1 AND revocada_en IS NULL ORDER BY id", [hogarId]);
+  const nombres: string[] = [];
+  let sesiones = 0;
+  for (const l of vivas.rows) {
+    const n = await revocaLlave(t, Number(l.id), por);
+    if (n !== null) { nombres.push(l.nombre); sesiones += n; }
+  }
+  return { nombres, sesiones };
+}
+
+/**
+ * El aviso de seguridad cuando la OFICINA quita llaves de una cuenta (decisión 187): se AGUARDA el envío (quien actúa es una persona de la oficina y
+ * se entera de si salió), pero un fallo (la búsqueda del correo, el SMTP) no tumba la operación ni deshace nada: se registra sin la dirección ni el texto
+ * del error y se devuelve `"fallido"` (la ruta deja el rastro en la auditoría). `"sin_correo"`: la cuenta ya no existe o no hay nada que avisar.
+ */
+export async function avisaLlavesQuitadasPorLaOficina(req: FastifyRequest, bd: Bd, cartero: Cartero, hogar: number, nombres: string[]): Promise<"enviado" | "fallido" | "sin_correo"> {
+  if (!nombres.length) return "sin_correo";
+  try {
+    const correo = await correoDeLaCuenta(bd, hogar);
+    if (!correo) return "sin_correo";
+    await cartero.envia(mensajeDeLlavesQuitadasPorLaOficina(correo, nombres));
+    return "enviado";
+  } catch (e) {
+    req.log.error({ evento: "correo_llaves_quitadas_oficina_fallido", hogar, error: e instanceof Error ? e.name : "?" }, "no se pudo mandar el aviso de las llaves quitadas por la oficina");
+    return "fallido";
+  }
 }
