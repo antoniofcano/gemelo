@@ -15,12 +15,13 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "finca", "copas_id", "nombre", "objeto"],
+        "required": ["id", "finca", "copas_id", "nombre", "decoracion", "objeto"],
         "properties": {
           "id": { "type": "integer", "minimum": 1, "$comment": "id de la personalización: el que se usa para denunciarla" },
           "finca": { "type": "string", "pattern": "^[a-z0-9_-]{1,32}$" },
           "copas_id": { "type": "integer", "minimum": 0, "maximum": 4294967295, "$comment": "id congelado del olivo (decisión 92): el copas_id del índice del motor" },
           "nombre": { "type": ["string", "null"], "minLength": 1, "maxLength": 40 },
+          "decoracion": { "type": ["string", "null"], "pattern": "^[a-z]{1,16}$", "$comment": "P7g (decisión 175-179, contratos/decoraciones.md): id de la pieza del catálogo (contratos/decoraciones.json) o null. Ilustrativa; el motor ignora una pieza que no conozca" },
           "objeto": {
             "oneOf": [
               { "type": "null" },

@@ -7,7 +7,7 @@ import { requiereSesion } from "../auth/roles.ts";
 import type { Contexto } from "../contexto.ts";
 import { construyeFicha, type FilaEvento, type FilaHaza, type FilaParcela, type FilaSincronia, HERRAMIENTAS_FICHA } from "./ficha.ts";
 
-const CONTRATOS = process.env["GEMELO_CONTRATOS"] ?? fileURLToPath(new URL("../../../../contratos/", import.meta.url));
+export const CONTRATOS = process.env["GEMELO_CONTRATOS"] ?? fileURLToPath(new URL("../../../../contratos/", import.meta.url));
 /** Un esquema de contratos/ (la única fuente): la api lo lee del repo (o de la imagen, GEMELO_CONTRATOS). */
 export function esquemaContrato(fichero: string): Record<string, unknown> {
   const e = JSON.parse(readFileSync(CONTRATOS.replace(/[\\/]?$/, "/") + fichero, "utf8")) as Record<string, unknown>;

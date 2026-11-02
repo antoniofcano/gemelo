@@ -15,7 +15,7 @@ export async function datosDelHogar(bd: Bd, id: number): Promise<Record<string, 
   ]);
   if (!h.rows[0]) return null;
   const [pe, me, de, su, avi, lo] = await Promise.all([
-    bd.query(`SELECT o.finca, o.copas_id, p.nombre, p.objeto_tipo, p.estado, p.creada_en, p.actualizada_en, p.retirada_en, p.motivo_retirada
+    bd.query(`SELECT o.finca, o.copas_id, p.nombre, p.decoracion, p.objeto_tipo, p.estado, p.creada_en, p.actualizada_en, p.retirada_en, p.motivo_retirada
                 FROM personalizaciones p JOIN olivos o ON o.id = p.olivo_id WHERE p.hogar_id = $1 ORDER BY p.id`, [id]),
     bd.query("SELECT '/api/medios/' || clave AS url, bytes, ancho, alto, aviso_version, aviso_aceptado_en, creado_en FROM medios WHERE hogar_id = $1 ORDER BY id", [id]),
     bd.query("SELECT motivo, texto, creada_en, resolucion FROM denuncias WHERE hogar_id = $1 ORDER BY id", [id]),

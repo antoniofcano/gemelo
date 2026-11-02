@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://gemelo.canoydamas.es/contratos/decoraciones.schema.json",
+  "title": "Catálogo de decoraciones de temporada de un olivo (contratos/decoraciones.json)",
+  "$comment": "Contrato compartido por la api y el motor (regla 3). Cambiar un campo es cambiar este esquema, el catálogo y contratos/decoraciones.md en el mismo commit.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["v", "piezas"],
+  "properties": {
+    "v": { "const": 1 },
+    "$comment": { "type": "string" },
+    "piezas": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "nombre", "epoca", "triangulos", "ilustrativa"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z]{1,16}$", "$comment": "slug estable; es el valor de personalizaciones.decoracion" },
+          "nombre": { "type": "string", "minLength": 1, "maxLength": 40 },
+          "epoca": { "enum": ["primavera", "verano", "otono", "invierno"] },
+          "triangulos": { "type": "integer", "minimum": 1, "maximum": 40, "$comment": "tope de triángulos de la malla (presupuesto, regla 6)" },
+          "ilustrativa": { "const": true, "$comment": "regla 5: nunca es un dato medido" }
+        }
+      }
+    }
+  }
+}

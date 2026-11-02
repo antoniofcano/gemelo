@@ -1798,6 +1798,47 @@ paths:
         "403": { description: "sin Origin o aparato vinculado (solo_titular)" }
         "404": { description: no tenía nada en ese olivo }
 
+  /api/olivos/{finca}/{copas_id}/decoracion:
+    parameters:
+      - { name: finca, in: path, required: true, schema: { type: string, pattern: "^[a-z0-9_-]{1,32}$" } }
+      - { name: copas_id, in: path, required: true, schema: { type: integer, minimum: 0, maximum: 4294967295 }, description: "id congelado del olivo (decisión 92)" }
+    put:
+      summary: Decora un olivo de MI haza con una pieza de temporada (sustituye a la anterior)
+      description: >
+        P7g (decisiones 175-179; contratos/decoraciones.md y decoraciones.json). Catálogo cerrado de seis piezas ilustrativas;
+        solo se admite una pieza de la ÉPOCA ACTUAL (estación astronómica en hora de Madrid; 422 fuera_de_epoca, con el mensaje
+        de lo que toca ahora). Lo ya puesto se queda hasta que se cambie o se quite. Una sola decoración por olivo y hogar. Mismo
+        guardián que PUT /api/olivos/{finca}/{copas_id}: sesión de titular (403 solo_titular) y olivo de su haza (403
+        no_es_tu_haza). Puede ir sola o con nombre/foto. No entra en la bandeja (sin texto ni imagen). Auditoría vida.decoracion.
+      security: [{ sesion: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [pieza]
+              properties:
+                pieza: { type: string, pattern: "^[a-z]{1,16}$", description: "id de decoraciones.json (flores, cinta, farolillo, cosecha, luces, lazo)" }
+      responses:
+        "200": { description: puesta, content: { application/json: { schema: { type: object, additionalProperties: false, required: [id, pieza], properties: { id: { type: integer, description: "id de la personalización" }, pieza: { type: string } } } } } }
+        "400": { description: "forma, o una pieza que no está en el catálogo (pieza_no_existe)" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: "sin Origin, aparato vinculado (solo_titular) u olivo fuera de su haza (no_es_tu_haza)" }
+        "404": { description: "no hay olivo con ese id (olivo_no_existe)" }
+        "409": { description: "dos cambios a la vez en el mismo olivo (a_la_vez)" }
+        "422": { description: "la pieza existe pero no es de la época actual (fuera_de_epoca)" }
+        "429": { $ref: "#/components/responses/Limite" }
+    delete:
+      summary: Quita mi decoración de ese olivo (el nombre y la foto, si los hay, se quedan)
+      security: [{ sesion: [] }]
+      responses:
+        "204": { description: quitada }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: "sin Origin o aparato vinculado (solo_titular)" }
+        "404": { description: "no tenía decoración en ese olivo (no_existe)" }
+
   /api/medios:
     post:
       summary: Sube una foto o pintura (la imagen tal cual en el cuerpo; se re-codifica sin EXIF ni GPS)
@@ -1993,6 +2034,27 @@ paths:
         "401": { $ref: "#/components/responses/SinSesion" }
         "403": { $ref: "#/components/responses/SinPermiso" }
         "404": { description: "no existe o ya estaba retirado" }
+
+  /api/admin/personalizaciones/{id}/decoracion/retirar:
+    post:
+      summary: Retira solo la decoración de un olivo (la oficina ve y retira; no pone)
+      description: >
+        Decisión 178. Quita la decoración de una personalización visible; el nombre y la foto, si los hay, se quedan. Si la fila
+        solo tenía decoración, queda retirada entera (y «restaurar» la devuelve). Manda un aviso al hogar y lo apunta en la
+        auditoría (admin.decoracion_retirada, con el motivo). El `id` es el de la lista blanca de la haza.
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [motivo], properties: { motivo: { type: string, minLength: 1, maxLength: 200 } } }
+      responses:
+        "204": { description: retirada }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: "no existe o no tiene decoración visible (no_existe)" }
 
   /api/admin/bandeja/resumen:
     get:
