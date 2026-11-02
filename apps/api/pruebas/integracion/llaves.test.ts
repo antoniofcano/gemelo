@@ -105,7 +105,7 @@ test("alta la primera vez con el enlace: la sesión queda abierta con la llave y
   const r = await daDeAlta(s, a, "  Portátil   de la oficina ");
   assert.equal(r.statusCode, 201, r.body);
   assert.equal(r.json().nombre, "Portátil de la oficina");
-  const f = (await bd.dueno.query("SELECT credencial_id, contador, transports, aparato_id, revocada_en FROM llaves_oficina WHERE hogar_id = $1", [ids[OFI]])).rows;
+  const f = (await bd.dueno.query("SELECT credencial_id, contador, transports, aparato_id, revocada_en FROM llaves_acceso WHERE hogar_id = $1", [ids[OFI]])).rows;
   assert.equal(f.length, 1); assert.equal(f[0].credencial_id, a.id); assert.deepEqual(f[0].transports, ["internal", "hybrid"]); assert.ok(f[0].aparato_id);
   assert.equal((await pide("GET", "/api/admin/hogares", s)).statusCode, 200, "ya entra en la oficina");
   const ses = (await pide("GET", "/api/oficina/sesion", s)).json();

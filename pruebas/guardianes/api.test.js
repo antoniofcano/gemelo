@@ -312,3 +312,32 @@ test("infra/comprobar-despliegue.sh contra un servidor falso que imita al Caddy 
     for (const s of ["falta Referrer-Policy", "/api/salud responde", "/api/interno accesible desde fuera", "/api/avisos/baja sin sesión"]) assert.ok(r.out.includes(s), "no detecta: " + s + "\n" + r.out);
   } finally { malo.close(); }
 });
+
+test("migración 0021 (OF13b-2): llaves_oficina pasa a llaves_acceso, es posterior a la 0020 y ninguna fuente nombra ya el nombre viejo (salvo la vista, su prueba y el contrato que la cuenta)", () => {
+  const dir = path.join(API, "migraciones");
+  const mig = fs.readdirSync(dir).filter(x => x.endsWith(".sql")).sort();
+  const m = mig.find(f => /^\d{4}_llaves_acceso\.sql$/.test(f));
+  assert.ok(m, "existe la migración de llaves_acceso");
+  assert.ok(Number(m.slice(0, 4)) > 20, "posterior a la 0020");
+  assert.strictEqual(new Set(mig.map(f => f.slice(0, 4))).size, mig.length, "números de migración repetidos");
+  const s = lee("apps/api/migraciones/" + m).split("\n").filter(l => !/^\s*--/.test(l)).join("\n");
+  assert.match(s, /ALTER TABLE llaves_oficina RENAME TO llaves_acceso/);
+  assert.match(s, /ADD COLUMN descubrible boolean NOT NULL DEFAULT false/);
+  assert.match(s, /ALTER COLUMN sesion_id DROP NOT NULL/); assert.match(s, /clave bytea UNIQUE/);
+  assert.match(s, /tipo IN \('alta', 'entrada', 'acceso'\)/);
+  assert.match(s, /origen IN \('enlace', 'vinculo', 'llave'\)/);
+  assert.match(s, /CREATE VIEW llaves_oficina AS[\s\S]*FROM llaves_acceso/, "vista de compatibilidad para volver una versión");
+  assert.match(s, /GRANT SELECT, INSERT, UPDATE, DELETE ON llaves_acceso, llaves_retos TO gemelo_api/);
+  assert.ok(!/DROP TABLE|DELETE FROM|TRUNCATE/i.test(s), "la llave existente no se pierde");
+  // ninguna fuente nombra ya la tabla vieja (salvo las migraciones, que no se editan, y los guardianes que las leen)
+  const malas = [];
+  const recorre = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+    if (["node_modules", "dist", "salida"].includes(e.name)) continue;
+    const f = path.join(d, e.name);
+    if (e.isDirectory()) recorre(f);
+    else if (/\.(ts|js|mjs|md|yaml|yml|json|sql)$/.test(e.name) && !/[\\/]migraciones[\\/]/.test(f) && !/(guardianes[\\/](api|oficina_llave)\.test\.js|migracion_llaves_acceso\.test\.ts|contratos[\\/]sesion\.md)$/.test(f) && /llaves_oficina\b/.test(fs.readFileSync(f, "utf8"))) malas.push(path.relative(RAIZ, f));
+  } };
+  for (const d of ["apps", "pruebas", "contratos"]) recorre(path.join(RAIZ, d));
+  for (const f of ["doc/operacion/RUNBOOK-VPS.md", "doc/sistema/OFICINA.md"]) if (/llaves_oficina\b/.test(lee(f))) malas.push(f);
+  assert.deepStrictEqual(malas, [], "fuentes que aún nombran llaves_oficina");
+});

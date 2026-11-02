@@ -126,8 +126,8 @@ function motivoDe(e: unknown): string {
 
 export async function estadoLlaves(bd: Bd | Cliente, hogarId: number): Promise<EstadoLlaves> {
   const r = await bd.query<{ activas: string; alguna_vez: string; rehabilitada_hasta: Date | null }>(
-    `SELECT (SELECT count(*) FROM llaves_oficina WHERE hogar_id = h.id AND revocada_en IS NULL) AS activas,
-            (SELECT count(*) FROM llaves_oficina WHERE hogar_id = h.id) AS alguna_vez, h.llave_rehabilitada_hasta AS rehabilitada_hasta
+    `SELECT (SELECT count(*) FROM llaves_acceso WHERE hogar_id = h.id AND revocada_en IS NULL) AS activas,
+            (SELECT count(*) FROM llaves_acceso WHERE hogar_id = h.id) AS alguna_vez, h.llave_rehabilitada_hasta AS rehabilitada_hasta
        FROM hogares h WHERE h.id = $1`, [hogarId]);
   const f = r.rows[0];
   return { activas: Number(f?.activas ?? 0), algunaVez: Number(f?.alguna_vez ?? 0), rehabilitadaHasta: f?.rehabilitada_hasta ?? null };
@@ -136,7 +136,7 @@ export async function estadoLlaves(bd: Bd | Cliente, hogarId: number): Promise<E
 /** Las llaves vivas de una cuenta (para excluirlas al dar de alta y para permitirlas al entrar). */
 export async function llavesVivas(bd: Bd | Cliente, hogarId: number): Promise<LlaveGuardada[]> {
   const r = await bd.query<{ id: string; credencial_id: string; clave_publica: Buffer; contador: string; transports: string[] }>(
-    "SELECT id, credencial_id, clave_publica, contador, transports FROM llaves_oficina WHERE hogar_id = $1 AND revocada_en IS NULL ORDER BY id", [hogarId]);
+    "SELECT id, credencial_id, clave_publica, contador, transports FROM llaves_acceso WHERE hogar_id = $1 AND revocada_en IS NULL ORDER BY id", [hogarId]);
   return r.rows.map(f => ({ id: Number(f.id), credencialId: f.credencial_id, clavePublica: new Uint8Array(f.clave_publica), contador: Number(f.contador), transports: f.transports ?? [] }));
 }
 
@@ -170,7 +170,7 @@ export async function marcaSesionConLlave(bd: Bd | Cliente, sesionId: number, ho
 
 /** Revoca una llave y cierra en el acto las sesiones que se abrieron o confirmaron con ella. null si no existía o ya estaba revocada. */
 export async function revocaLlave(bd: Bd | Cliente, id: number, por: number): Promise<number | null> {
-  const r = await bd.query("UPDATE llaves_oficina SET revocada_en = now(), revocada_por = $2 WHERE id = $1 AND revocada_en IS NULL", [id, por]);
+  const r = await bd.query("UPDATE llaves_acceso SET revocada_en = now(), revocada_por = $2 WHERE id = $1 AND revocada_en IS NULL", [id, por]);
   if (!r.rowCount) return null;
   const s = await bd.query("UPDATE sesiones SET revocada_en = now() WHERE llave_id = $1 AND revocada_en IS NULL", [id]);
   return s.rowCount ?? 0;
