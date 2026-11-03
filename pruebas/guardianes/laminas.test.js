@@ -142,3 +142,28 @@ test("en el código: sin setInterval ni setTimeout ni escuchas propias (su reloj
   assert.match(lee("apps/web/motor/90_final.js"), /Laminas\.revisa\(dt\)/);
   assert.match(lee("apps/web/motor/29_vr.js"), /if \(Laminas\.toca\(rr\)\)/);
 });
+
+test("EV2-A1: «encima» pinta por encima de todo (sin profundidad, transparente, renderOrder 998); sin ella, el material de siempre", () => {
+  const { L, reg } = mundo();
+  L.abre(def({ id: "a" })); L.abre(def({ id: "b", encima: true }));
+  const mats = reg.creadas.filter(x => x.tipo === "material").map(x => x.a);
+  assert.deepStrictEqual(Object.keys(mats[0]).sort(), ["alphaTest", "fog", "map", "toneMapped"], "la de siempre no cambia");
+  assert.ok(mats[1].depthTest === false && mats[1].depthWrite === false && mats[1].transparent === true && !("alphaTest" in mats[1]));
+  assert.deepStrictEqual([...reg.escena].map(m => m.renderOrder), [10, 998]);
+});
+
+test("EV2-A1: apunta(rayo) da (u, v, t) a la más cercana con alApuntar, y null una sola vez a la que deja de apuntarse", () => {
+  const { L } = mundo(), vistos = [];
+  const rayo = (...hits) => ({ intersectObject: o => { const h = hits.find(q => q.id === o.name.slice(7)); return h ? [h.ix] : []; } });
+  L.abre(def({ id: "a", alApuntar: (u, v, t) => vistos.push(["a", u, v, t && t.x]) }));
+  L.abre(def({ id: "b", alApuntar: (u, v, t) => vistos.push(["b", u, v]) }));
+  L.abre(def({ id: "c" }));
+  assert.strictEqual(L.apunta(rayo()), null); assert.deepStrictEqual(vistos, [], "nadie apuntado: nadie avisado");
+  assert.strictEqual(L.apunta(rayo({ id: "a", ix: { distance: 2, uv: { x: 0.5, y: 0.5 } } }, { id: "b", ix: { distance: 3, uv: { x: 0.5, y: 0.5 } } })), "a");
+  assert.deepStrictEqual(vistos, [["a", 0.5, 0.5, 400]]);
+  assert.strictEqual(L.apunta(rayo({ id: "c", ix: { distance: 1, uv: { x: 0.5, y: 0.5 } } })), null, "c no tiene alApuntar");
+  assert.deepStrictEqual(vistos.pop(), ["a", null, null, null]);
+  L.apunta(rayo()); assert.strictEqual(vistos.length, 1, "el null solo una vez");
+  assert.strictEqual(L.apunta(null), null);
+  assert.deepStrictEqual(P.valida({ id: "a", ancho: 1, alto: 1, pinta() {}, alApuntar: 1 }), ["alApuntar: función"]);
+});
