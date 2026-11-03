@@ -162,6 +162,22 @@ test("muestraPantallaEntrada: foco en el título, estado anunciado, destino tras
   } finally { d.resto(); }
 });
 
+// el recorrido de Chrome lo destapó: entraSinCorreo pasaba llama(metodo, ruta, cuerpo) como post(ruta, cuerpo), y fetch recibía la ruta como
+// método («'/api/auth/llave/opciones' is not a valid HTTP method»): el botón nunca llegaba a la api. Aquí, el entraSinCorreo de verdad con un fetch de mentira
+test("entraSinCorreo: pide las opciones con POST a /api/auth/llave/opciones y el cuerpo en JSON (el post real, no uno de mentira)", { skip: !hayLibreria() && "falta apps/web/node_modules (npm ci)" }, async () => {
+  const g = globalThis, antes = { window: g.window, fetch: g.fetch, PublicKeyCredential: g.PublicKeyCredential }, pedidas = [];
+  g.window = g; g.PublicKeyCredential = function PublicKeyCredential() {};
+  g.fetch = async (ruta, init) => { pedidas.push({ ruta, metodo: init.method, cuerpo: init.body, tipo: init.headers["content-type"] }); return { ok: false, status: 500, json: async () => ({}) }; };
+  try {
+    const L = await importa("llave.js"), P = await importa("llave_puro.js");
+    const r = await L.entraSinCorreo();
+    assert.deepStrictEqual(pedidas, [{ ruta: "/api/auth/llave/opciones", metodo: "POST", cuerpo: "{}", tipo: "application/json" }]);
+    assert.deepStrictEqual([r.ok, r.mensaje], [false, P.TEXTO_ENTRADA_FALLIDA], "un 500 de las opciones, el texto genérico");
+  } finally {
+    for (const k of Object.keys(antes)) { if (antes[k] === undefined) delete g[k]; else g[k] = antes[k]; }
+  }
+});
+
 test("muestraPantallaEntrada: sin WebAuthn se esconde el botón y se ofrece el enlace", { skip: !hayLibreria() && "falta apps/web/node_modules (npm ci)" }, async () => {
   const d = dom(false);
   try {
@@ -226,8 +242,11 @@ test("recorrido: entrar con la llave en /oficina/ con el aparato aprobado (direc
     await pg.goto(SIN_GUARDA);
     await pg.waitForSelector("#pEntra:not([hidden]) #entraB");
     assert.strictEqual(await pg.isHidden("#app"), true);
+    // si no navega, que diga por qué: el texto de la pantalla y lo que respondió la api
+    const api = []; pg.on("response", x => { if (/\/api\/auth\/llave/.test(x.url())) api.push(x.status() + " " + new URL(x.url()).pathname); });
+    const porQue = async e => { throw new Error(e.message + " · #entraEstado: " + JSON.stringify(await pg.textContent("#entraEstado").catch(() => null)) + " · api: " + api.join(", ")); };
     await pg.click("#entraB");
-    await pg.waitForURL(/\/oficina\//, { timeout: 20_000 });
+    await pg.waitForURL(/\/oficina\//, { timeout: 20_000 }).catch(porQue);
     await pg.waitForFunction(() => document.querySelector("#s-rol").textContent !== "—", null, { timeout: 20_000 });
     assert.strictEqual(await pg.isHidden("#pLlave"), true, "no vuelve a pedir la llave");
     assert.match(await pg.textContent("#s-confirmacion"), /sí \(usaste tu llave hace poco\)/);
@@ -239,7 +258,7 @@ test("recorrido: entrar con la llave en /oficina/ con el aparato aprobado (direc
     await pg.goto(SIN_GUARDA);
     await pg.waitForSelector("#pEntra:not([hidden]) #entraB");
     await pg.click("#entraB");
-    await pg.waitForURL(/\/api\/oficina\/pendiente/, { timeout: 20_000 });
+    await pg.waitForURL(/\/api\/oficina\/pendiente/, { timeout: 20_000 }).catch(porQue);
     assert.match(await pg.textContent("body"), /pendiente/i);
     // con el aparato pendiente, la oficina de verdad no se abre
     await pg.goto(base + "/oficina/");
