@@ -16,13 +16,13 @@ const SALTO = hayDocker() ? null : "Docker no disponible: las llaves de /api/yo 
 let bd: BdDePrueba, app: FastifyInstance, ctx: ReturnType<typeof contexto>;
 const ids: Record<string, number> = {};
 let ipN = 0;
-const ANA = "ana-yo-llaves@example.com", LUIS = "luis-yo-llaves@example.com", BORRA = "borra-yo-llaves@example.com";
+const ANA = "ana-yo-llaves@example.com", LUIS = "luis-yo-llaves@example.com", BORRA = "borra-yo-llaves@example.com", TODOS = "todos-yo-llaves@example.com";
 const CHROME = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
 before(async () => {
   if (SALTO) return;
   bd = await levantaBd();
-  for (const c of [ANA, LUIS, BORRA]) ids[c] = Number((await bd.dueno.query<{ id: number }>("INSERT INTO hogares (correo, rol) VALUES ($1, 'hogar') RETURNING id", [c])).rows[0]!.id);
+  for (const c of [ANA, LUIS, BORRA, TODOS]) ids[c] = Number((await bd.dueno.query<{ id: number }>("INSERT INTO hogares (correo, rol) VALUES ($1, 'hogar') RETURNING id", [c])).rows[0]!.id);
   ctx = contexto(bd.app, configDePrueba({ GEMELO_ENLACE_POR_CORREO: "100", GEMELO_ENLACE_POR_IP: "1000" }));
   app = await construyeApp(ctx);
   await app.ready();
@@ -114,4 +114,34 @@ test("/api/yo/datos trae las llaves sin material criptográfico, y borrar la cue
   assert.equal(await cuenta("SELECT count(*) AS n FROM llaves_retos WHERE sesion_id IN (SELECT id FROM sesiones WHERE hogar_id = $1)", [id]), 0);
   assert.equal(await cuenta("SELECT count(*) AS n FROM sesiones WHERE hogar_id = $1", [id]), 0);
   assert.equal(await cuenta("SELECT count(*) AS n FROM llaves_acceso WHERE credencial_id = $1", [a.id]), 0, "y la credencial vuelve a quedar libre");
+});
+
+test("salir de todos y quitar las llaves (OF13b-8b): todo en una transacción, un solo correo, y la cuenta vuelve a entrar por enlace y a crear una llave", async t => {
+  if (salta(t)) return;
+  const id = ids[TODOS]!;
+  const s1 = await entra(TODOS), s2 = await entra(TODOS);   // dos aparatos con sesión
+  const a1 = new AutenticadorFalso(ORIGEN), a2 = new AutenticadorFalso(ORIGEN);
+  assert.equal((await daDeAlta(s1, a1, "Móvil de Luz")).statusCode, 201);
+  assert.equal((await daDeAlta(s1, a2, "Portátil")).statusCode, 201);
+  await new Promise(r => setImmediate(r));
+  const antes = ctx.cartero.mensajes.length;
+  // la forma estricta: nada cambia
+  for (const cuerpo of [{}, { confirmar: false }, { confirmar: true, x: 1 }]) assert.equal((await pide("POST", "/api/yo/llaves/quitar-todas", s1, cuerpo)).statusCode, 400);
+  assert.equal(await cuenta("SELECT count(*) AS n FROM llaves_acceso WHERE hogar_id = $1 AND revocada_en IS NULL", [id]), 2);
+  const r = await pide("POST", "/api/yo/llaves/quitar-todas", s1, { confirmar: true });
+  assert.equal(r.statusCode, 200, r.body);
+  assert.deepEqual(r.json(), { sesiones_cerradas: 2, llaves_quitadas: 2 });
+  assert.equal(await cuenta("SELECT count(*) AS n FROM llaves_acceso WHERE hogar_id = $1 AND revocada_en IS NULL", [id]), 0, "ninguna llave viva");
+  assert.equal(await cuenta("SELECT count(*) AS n FROM sesiones WHERE hogar_id = $1 AND revocada_en IS NULL", [id]), 0, "ninguna sesión viva");
+  assert.equal((await pide("GET", "/api/yo/llaves", s1)).statusCode, 401, "este aparato salió");
+  assert.equal((await pide("GET", "/api/yo/llaves", s2)).statusCode, 401, "y el otro también");
+  await new Promise(r2 => setImmediate(r2));
+  assert.equal(ctx.cartero.mensajes.length - antes, 1, "UN solo correo");
+  assert.equal(ctx.cartero.mensajes.at(-1)!.asunto, "Se han cerrado tus sesiones y quitado tus llaves de acceso");
+  assert.equal(await cuenta("SELECT count(*) AS n FROM auditoria WHERE hogar_id = $1 AND accion IN ('llave.quitadas_todas', 'sesion.todas_cerradas')", [id]), 2);
+  assert.equal(await cuenta("SELECT count(*) AS n FROM auditoria WHERE hogar_id = $1 AND (detalle::text LIKE '%' || $2 || '%' OR detalle::text LIKE '%@%')", [id, a1.id]), 0, "ni credencial ni correo en la auditoría");
+  // la cuenta sigue viva: entra por enlace y crea otra llave
+  const s3 = await entra(TODOS);
+  assert.equal((await daDeAlta(s3, new AutenticadorFalso(ORIGEN), "Nueva")).statusCode, 201);
+  assert.equal((await pide("GET", "/api/yo/llaves", s3)).json().llaves.length, 1);
 });
