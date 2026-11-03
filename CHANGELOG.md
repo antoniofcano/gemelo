@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Documentación del login con llave de acceso (OF13b-11): borrador de EIPD-LLAVES, pantallas y textos reales en UX §4 y OFICINA §2, estado de implementación y huecos en LLAVES-DE-ACCESO, y guía de recuperación para la oficina.
 - Documentación: estudio Q2 del Immersive Web SDK de Meta (`doc/sistema/IWSDK.md`): no se adopta; cómo medir en el Quest desde un agente (adb, CDP) y la prueba de una hora.
 - La medida de fluidez que se manda a la oficina dice ahora por qué va como va (Q0e, contrato v2 de medidas, compatible hacia atrás): ms de JavaScript por fotograma (mediana y p95), nivel de `VR_PERFILES` al empezar y al terminar, perillas de VR, si los olivos generados estaban activos, llamadas y triángulos medianos y personas visibles. Sigue sin hogar, posición ni IP. Migración 0022 (solo columnas nulas); la tabla «Fluidez en aparatos» de la oficina gana JS, nivel, perillas y olivos generados con su frase de lectura. No probado en un casco.
 - La ficha de una familia en la oficina enseña sus llaves de acceso (nombre, fechas, si sirve para entrar sin correo) y permite quitar una o todas, con confirmación reciente, motivo opcional y aviso por correo a la familia (OF13b-6). `rehabilitar-llave` con `revocar_llaves` ya avisa por correo a la cuenta afectada, y la lista de llaves de las cuentas de oficina marca las que no se guardaron en el aparato. Probado solo en Node.

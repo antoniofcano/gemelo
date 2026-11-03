@@ -230,7 +230,8 @@ Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** pr
 | OF13b-8 | Oficina `llave.js`: la entrada con llave llega ya dentro | OF13b-5 | ligera · sonnet | ✅ 2026-11-02 en Node; Chrome con autenticador virtual escrito (OF13b-10); la puerta real es la portada: Caddy no sirve `/oficina/` sin sesión |
 | OF13b-9 | Integración con PostGIS por el banco (enumerado, retos, userHandle, revocación, oficina) | OF13b-4…6 | **pesada** · sonnet | ⬜ |
 | OF13b-10 | Recorrido en Chrome con autenticador virtual CDP por el banco | OF13b-7, OF13b-8 | **pesada** · sonnet | ⬜ |
-| OF13b-11 | EIPD, UX §4, OFICINA §2; ADR-0029 a Aceptado | OF13b-9 | ligera · sonnet | ⬜ |
+| OF13b-11 | EIPD, UX §4, OFICINA §2; ADR-0029 a Aceptado | OF13b-9 | ligera · sonnet | ✅ 2026-11-03 documentación: EIPD-LLAVES (borrador, base [PROPUESTA], revocadas sin purga), UX §4, OFICINA §2, estado en LLAVES-DE-ACCESO y guía LLAVES-RECUPERACION; falta que la asesoría valide la EIPD |
+| OF13b-13 | 👤 **Plazo de las llaves revocadas y de su auditoría**; ¿borrado físico a petición? ([EIPD-LLAVES](../sistema/EIPD-LLAVES.md) §7 y §9: hoy «quitar» marca la fila como revocada y no la borra) | OF13b-11 | decisión de Antonio y la asesoría | ⬜ |
 | OF13b-12 | 👤 Aparatos reales: Windows Hello en Edge y Chrome, gestor de Google, iPhone, Android, QR, llave física, Firefox, Quest, lector de pantalla | OF13b-10 y despliegue | 👤 Antonio | ⬜ |
 | C1 | Componentes: núcleo (`Componentes`, `Bus` con catálogo, bucle por fases, encendido URL > configuración > defecto) y guardián | — | media · **opus** | ✅ 2026-10-30 |
 | C2 | Componentes: puntos de extensión (HUD, ventanas, teclas, ajustes, panel VR por filas, minimapa, capas) | C1 | media · **opus** | ✅ 2026-10-30 |
