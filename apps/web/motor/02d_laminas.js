@@ -48,7 +48,28 @@
       ["firma", "alTocar", "alCierra"].forEach(function (k) { if (o[k] !== undefined && typeof o[k] !== "function") e.push(k + ": función"); });
       return e;
     }
-    return { LEJOS: LEJOS, DIST: DIST, BAJO: BAJO, PX_M: PX_M, toque: toque, giro: giro, medidas: medidas, valida: valida };
+    // EV2-A0: los topes angulares de lo que se lee y se pulsa en una lámina VR (doc/sistema/VIABILIDAD-INTERACCION.md §A.2). Son CIFRAS PROPIAS DEL GEMELO,
+    // no verificadas en la guía de Meta ni en la de Apple ni en un casco: texto ≥ 1,5° por línea (el interlineado, no la altura de la x), objetivos ≥ 2,5°
+    // por su lado menor y ≥ 12 mm entre botones vistos a 1 m (12 mm a 1 m = 0,69°). grados(mm, m): ángulo que ocupa un tamaño a una distancia.
+    var TOPES = { textoGrados: 1.5, objetivoGrados: 2.5, huecoMmA1m: 12 };
+    function grados(mm, dist) { return 2 * Math.atan(mm / 2000 / dist) * 180 / Math.PI; }
+    function hueco(a, b) {   // px entre dos rectángulos { x, y, w, h } (0 si se tocan o se pisan)
+      var dx = Math.max(0, Math.max(a.x, b.x) - Math.min(a.x + a.w, b.x + b.w)), dy = Math.max(0, Math.max(a.y, b.y) - Math.min(a.y + a.h, b.y + b.h));
+      return Math.hypot(dx, dy);
+    }
+    // p = { mmPorPx, dist (m de la cabeza), lineas: { nombre: px de interlineado }, botones: [{ x, y, w, h }] px } → { texto: { nombre: ° }, textoMin, objetivoMin,
+    // huecoMin (mm equivalentes a 1 m; null con menos de dos botones), fallos: [texto] } contra TOPES (o los topes que se pasen)
+    function legible(p, topes) {
+      var T = topes || TOPES, r = { texto: {}, textoMin: null, objetivoMin: null, huecoMin: null, fallos: [] }, L = p.lineas || {}, B = p.botones || [];
+      Object.keys(L).forEach(function (k) { var g = grados(L[k] * p.mmPorPx, p.dist); r.texto[k] = g; if (r.textoMin === null || g < r.textoMin) r.textoMin = g; if (g < T.textoGrados) r.fallos.push("texto «" + k + "» " + g.toFixed(2) + "° < " + T.textoGrados + "°"); });
+      B.forEach(function (b, i) {
+        var g = grados(Math.min(b.w, b.h) * p.mmPorPx, p.dist); if (r.objetivoMin === null || g < r.objetivoMin) r.objetivoMin = g;
+        if (g < T.objetivoGrados) r.fallos.push("botón " + (b.id || i) + " " + g.toFixed(2) + "° < " + T.objetivoGrados + "°");
+        for (var j = i + 1; j < B.length; j++) { var mm = hueco(b, B[j]) * p.mmPorPx / p.dist; if (r.huecoMin === null || mm < r.huecoMin) r.huecoMin = mm; if (mm < T.huecoMmA1m) r.fallos.push("hueco " + (b.id || i) + "–" + (B[j].id || j) + " " + mm.toFixed(1) + " mm a 1 m < " + T.huecoMmA1m); }
+      });
+      return r;
+    }
+    return { LEJOS: LEJOS, DIST: DIST, BAJO: BAJO, PX_M: PX_M, TOPES: TOPES, toque: toque, giro: giro, medidas: medidas, valida: valida, grados: grados, hueco: hueco, legible: legible };
   })();
   // [puro:fin]
 

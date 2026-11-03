@@ -3,7 +3,7 @@
 // Consume: 01_datos (D, $, fmt, VRP), 02_mundo (Mundo, suelo, orto, copas), 02c_componentes (Bus, Config), 02d_laminas (Laminas),
 //   02e_entidades (EntidadesPuro, Entidades, Usables), 02f_xr_perillas (XrPerillas),
 //   03_escena (lienzo, visor, renderer, scene, camera, sol, texColor, exag, modo, calidad), 04b_escena3d (Escena3D), 05_nube (nube),
-//   07b_arboles (Arboles), 09_camara (pon), 10_ndvi (NDV, ndviIdx),
+//   07b_arboles (Arboles), 08_marcadores (capas), 09_camara (pon), 10_ndvi (NDV, ndviIdx),
 //   12_paseo (paseando, persona, teclas, primera, entraPaseo, salePaseo, actualizaPaseo), 12b_llegada (Llegada), 13_parcelas (parcelas, fincas),
 //   14_historia (lista, aviso), 15_tiempo (calma, meta, nivel, rumbo, hace, pasoHoraMundo, horaMundoTexto, anuncia),
 //   16_vida (quita, mira, quad, dron), 22_huellas (pendFactor), 24_pantalla (suave), 33_ajustes (Ajustes), 90_final (tamano, cuadro, bucle)
@@ -120,6 +120,29 @@
   function vrVueloSale() { camera.remove(vrNegro); scene.remove(vtLin); vrVueloOculta(); vrFun.fase = 0; vrFun.fn = null; vrNegro.visible = false; }
   window.__vrVuelo = function () { return { apuntando: VT.act, linea: vtLin.visible, fundido: vrFun.fase, negro: vrNegro.material.opacity }; };
 
+  // [puro:fichas:inicio] (sin THREE ni DOM: lo evalúa en Node pruebas/guardianes/topes_vr.test.js)
+  // EV2-A0: las medidas de las tres láminas que siguen a la cabeza (las de siempre, sin ?ui=capas), en UN sitio: de aquí las crea creaLamina, las coloca
+  // vrSigue y las comprueba en Node pruebas/guardianes/topes_vr.test.js contra los topes de 02d_laminas.js. W × H px del lienzo, pw × ph m, dist y bajo (m, delante
+  // y por debajo de los ojos: la distancia de verdad es la hipotenusa) y el interlineado (px) de cada clase de texto. botonesB(acciones, W, H): dónde caen
+  // los botones de la ficha de la baliza (las acciones a la izquierda, en 470 px, y «Cerrar» a la derecha); HUECO_B = 16 px (12,9 mm a 0,8 mm/px; antes 12 px
+  // = 9,7 mm, por debajo de los 12 mm del tope).
+  var VrFichaPuro = (function () {
+    var MEDIDAS = {
+      panel: { W: 1024, H: 1088, pw: 1.0, ph: 1.0625, dist: 1.05, bajo: -0.2 },
+      ficha: { W: 768, H: 256, pw: 0.62, ph: 0.206, dist: 0.95, bajo: -0.38, lineas: { cuerpo: 32 } },
+      fichaB: { W: 768, H: 480, pw: 0.62, ph: 0.3875, dist: 0.95, bajo: -0.42, lineas: { destacado: 32, cuerpo: 30, pie: 22 } }
+    }, HUECO_B = 16;
+    function botonesB(acciones, W, H) {
+      var ac = acciones || [], n = Math.max(1, ac.length), wa = (470 - (n - 1) * HUECO_B) / n, B = [];
+      ac.forEach(function (a, k) { B.push({ id: a.id, x: 26 + k * (wa + HUECO_B), y: H - 92, w: wa, h: 72, txt: a.txt, prim: k === 0 }); });
+      B.push({ id: "bce", x: 516, y: H - 92, w: 226, h: 72, txt: "Cerrar", cerrar: true });
+      return B;
+    }
+    function distancia(m) { return Math.hypot(m.dist, m.bajo); }
+    function mmPorPx(m) { return m.pw * 1000 / m.W; }
+    return { MEDIDAS: MEDIDAS, HUECO_B: HUECO_B, botonesB: botonesB, distancia: distancia, mmPorPx: mmPorPx };
+  })();
+  // [puro:fichas:fin]
   // ----- 3) láminas flotantes (el panel y la ficha): un canvas en un plano que sigue a la cabeza con calma
   function creaLamina(W, H, pw, ph) {
     var cv = document.createElement("canvas"); cv.width = W; cv.height = H;
@@ -129,7 +152,9 @@
     return { cv: cv, cx: cv.getContext("2d"), tex: tex, m: m, W: W, H: H, pw: pw, ph: ph, ini: false };
   }
   // el panel (1 × 1,06 m; 1.024 px por metro), la ficha de un olivo y la de una baliza (I5: con «Ir a esta baliza» pulsable; 1.239 px por metro)
-  var panel = creaLamina(1024, 1088, 1.0, 1.0625), ficha = creaLamina(768, 256, 0.62, 0.206), fichaB = creaLamina(768, 480, 0.62, 0.3875);
+  var vrMed = VrFichaPuro.MEDIDAS;
+  function creaDe(q) { return creaLamina(q.W, q.H, q.pw, q.ph); }
+  var panel = creaDe(vrMed.panel), ficha = creaDe(vrMed.ficha), fichaB = creaDe(vrMed.fichaB);
   function vrBajoRayo(l, B, rr) {   // ¿qué botón de la lámina l hay bajo el rayo? null si el rayo no toca la lámina; false si la toca fuera de los botones
     var ix = rr.intersectObject(l.m, false)[0]; if (!ix || !ix.uv) return null;
     var x = ix.uv.x * l.W, y = (1 - ix.uv.y) * l.H; B = B || [];
@@ -275,7 +300,7 @@
     cx.clearRect(0, 0, W, H); cx.fillStyle = "rgba(14,18,22,0.92)"; vrRect(cx, 0, 0, W, H, 22); cx.fill(); cx.textBaseline = "top";
     cx.fillStyle = "#ffffff"; cx.font = "bold 34px system-ui, sans-serif"; cx.fillText(titulo, 26, 18);
     cx.fillStyle = "#cfd9df"; cx.font = "25px system-ui, sans-serif"; var y = 66;
-    lineas.forEach(function (l) { y += vrTexto(cx, l, 26, y, W - 52, 40, 32, 3) * 32; });
+    var LC = vrMed.ficha.lineas.cuerpo; lineas.forEach(function (l) { y += vrTexto(cx, l, 26, y, W - 52, 40, LC, 3) * LC; });
     ficha.tex.needsUpdate = true; ficha.m.visible = true; ficha.ini = false; VRX.fichaT = 14;
   }
   function vrRumboPanel() { return ((-panel.m.rotation.y * 180 / Math.PI) % 360 + 360) % 360; }   // hacia dónde mira quien ve el panel de frente (PanelVR.rumbo)
@@ -360,13 +385,15 @@
     cx.clearRect(0, 0, W, H); cx.fillStyle = "rgba(14,18,22,0.93)"; vrRect(cx, 0, 0, W, H, 22); cx.fill(); cx.textBaseline = "top"; cx.textAlign = "left";
     if (b.color != null) { cx.fillStyle = "#" + ("000000" + (b.color || 0).toString(16)).slice(-6); vrRect(cx, 0, 22, 10, H - 44, 4); cx.fill(); }   // el color de su estado, como la columna
     cx.fillStyle = "#ffffff"; cx.font = "bold 34px system-ui, sans-serif"; vrTexto(cx, b.titulo || "", 26, 18, W - 52, 0, 40, 1);
-    if (b.destacado) { cx.fillStyle = "#7fe3ff"; cx.font = "bold 26px system-ui, sans-serif"; y += vrTexto(cx, b.destacado, 26, y, W - 52, 0, 32, 2) * 32 + 8; }
+    var LB = vrMed.fichaB.lineas;
+    if (b.destacado) { cx.fillStyle = "#7fe3ff"; cx.font = "bold 26px system-ui, sans-serif"; y += vrTexto(cx, b.destacado, 26, y, W - 52, 0, LB.destacado, 2) * LB.destacado + 8; }
     cx.fillStyle = "#cfd9df"; cx.font = "24px system-ui, sans-serif";
-    for (var i = 0; i < lineas.length && y < H - 160; i++) if (lineas[i]) y += vrTexto(cx, lineas[i], 26, y, W - 52, 0, 30, 2) * 30 + 4;
-    if (b.pie) { cx.fillStyle = "#6f808c"; cx.font = "18px system-ui, sans-serif"; vrTexto(cx, b.pie, 26, H - 120, W - 52, 0, 22, 1); }
-    var n = Math.max(1, ac.length), wa = (470 - (n - 1) * 12) / n;
-    ac.forEach(function (a, k) { B.push({ id: a.id, x: 26 + k * (wa + 12), y: H - 92, w: wa, h: 72, txt: a.txt, prim: k === 0, fn: function () { Usables.usa(id, a.id); } }); });
-    B.push({ id: "bce", x: 516, y: H - 92, w: 226, h: 72, txt: "Cerrar", fn: function () { Usables.cierra(id, "cerrada"); fichaB.m.visible = false; VRX.fichaId = ""; VRX.balFirma = ""; } });
+    for (var i = 0; i < lineas.length && y < H - 160; i++) if (lineas[i]) y += vrTexto(cx, lineas[i], 26, y, W - 52, 0, LB.cuerpo, 2) * LB.cuerpo + 4;
+    if (b.pie) { cx.fillStyle = "#6f808c"; cx.font = "18px system-ui, sans-serif"; vrTexto(cx, b.pie, 26, H - 120, W - 52, 0, LB.pie, 1); }
+    VrFichaPuro.botonesB(ac, W, H).forEach(function (q) {   // EV2-A0: las posiciones, del trozo puro (16 px entre acciones: 12,9 mm)
+      q.fn = q.cerrar ? function () { Usables.cierra(id, "cerrada"); fichaB.m.visible = false; VRX.fichaId = ""; VRX.balFirma = ""; } : function () { Usables.usa(id, q.id); };
+      B.push(q);
+    });
     cx.textBaseline = "middle"; cx.textAlign = "center"; cx.font = "bold 30px system-ui, sans-serif";
     B.forEach(function (q) { cx.fillStyle = VRX.hoverB === q.id ? "#4a5866" : q.prim ? "#1d5f6b" : "#2a3139"; vrRect(cx, q.x, q.y, q.w, q.h, 14); cx.fill(); cx.fillStyle = "#ffffff"; cx.fillText(q.txt, q.x + q.w / 2, q.y + q.h / 2 + 1); });
     cx.textAlign = "left"; fichaB.tex.needsUpdate = true; VRX.botonesB = B;
@@ -452,15 +479,15 @@
     // láminas
     var rr = vrRayoDe(R), hv = "";
     if (panel.m.visible) {
-      vrSigue(panel, dt, 1.05, -0.2); vrGenteTic(dt);
+      vrSigue(panel, dt, vrMed.panel.dist, vrMed.panel.bajo); vrGenteTic(dt);
       var q = vrBajoRayo(panel, VRX.botones, rr); hv = q ? q.id : "";
       if (hv !== VRX.hover) { VRX.hover = hv; VRX.sucio = true; }
       if (VRX.sucio) vrPintaPanel();
     }
-    if (ficha.m.visible) { vrSigue(ficha, dt, 0.95, -0.38); VRX.fichaT -= dt; if (VRX.fichaT <= 0) { ficha.m.visible = false; if (VRX.fichaDe) Usables.cierra(VRX.fichaDe, "tiempo"); VRX.fichaDe = ""; } }
+    if (ficha.m.visible) { vrSigue(ficha, dt, vrMed.ficha.dist, vrMed.ficha.bajo); VRX.fichaT -= dt; if (VRX.fichaT <= 0) { ficha.m.visible = false; if (VRX.fichaDe) Usables.cierra(VRX.fichaDe, "tiempo"); VRX.fichaDe = ""; } }
     vrFichaTic(dt);
     if (fichaB.m.visible) {
-      vrSigue(fichaB, dt, 0.95, -0.42);
+      vrSigue(fichaB, dt, vrMed.fichaB.dist, vrMed.fichaB.bajo);
       var qb = vrBajoRayo(fichaB, VRX.botonesB, rr), hb = qb ? qb.id : "";
       if (hb !== VRX.hoverB) { VRX.hoverB = hb; if (VRX.balInfo) vrPintaAcciones(VRX.balInfo); }
     }
