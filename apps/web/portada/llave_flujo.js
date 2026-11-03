@@ -2,7 +2,7 @@
 // primer enlace, «Mis llaves». Sin DOM y sin importar la librería: todo lo de fuera entra por `creaLlaves()` (portada.js le pasa fetch,
 // @simplewebauthn/browser y localStorage; las pruebas, de mentira: pruebas/guardianes/portada_llave.test.js). Devuelve resultados, nunca
 // toca la pantalla. La ceremonia la hace @simplewebauthn/browser (regla 12).
-import { TEXTO_ERROR_ENTRADA, debeOfrecer, destinoSeguro, leeRecuerdo, nombrePropuesto, recuerdoDe, textoErrorLlave, textoFalloAlta } from "./llave_puro.js";
+import { TEXTO_ERROR_ENTRADA, TEXTO_ERROR_LISTA, TEXTO_LISTA_LIMITE, debeOfrecer, destinoSeguro, leeRecuerdo, nombrePropuesto, recuerdoDe, textoErrorLlave, textoFalloAlta, textoFalloSalidaTotal } from "./llave_puro.js";
 
 /**
  * @param {object} d
@@ -57,7 +57,7 @@ export function creaLlaves({ pide, lib, memoria, ahora, agente }) {
   /** Las llaves de la cuenta: { ok, llaves, maximo, puede_anadir } | { ok: false, texto }. */
   async function lista() {
     const r = await llama("GET", "/api/yo/llaves");
-    if (r.status !== 200 || !r.json || !Array.isArray(r.json.llaves)) return { ok: false, status: r.status, texto: "No hemos podido ver tus llaves ahora mismo. Vuelve a probar en un rato." };
+    if (r.status !== 200 || !r.json || !Array.isArray(r.json.llaves)) return { ok: false, status: r.status, texto: r.status === 429 ? TEXTO_LISTA_LIMITE : TEXTO_ERROR_LISTA };
     return { ok: true, llaves: r.json.llaves, maximo: r.json.maximo, puede_anadir: r.json.puede_anadir === true };
   }
 
@@ -104,5 +104,19 @@ export function creaLlaves({ pide, lib, memoria, ahora, agente }) {
     return { ok: false, texto: textoFalloAlta(r).replace("guardar", "quitar") };
   }
 
-  return { soporte, admiteAutorrelleno, entra, paraEntrada, lista, evalua, responde, crea, quita, nombrePropuesto: () => nombrePropuesto(agente) };
+  /**
+   * «Salir de todos y quitar las llaves»: un solo POST con `{ confirmar: true }`. Se invalida cualquier ceremonia en vuelo (ya no hay con qué entrar).
+   * { ok: true, sesiones, llaves } | { ok: false, status, texto } (la sesión sigue abierta). Si el recuerdo de este navegador era «hecha» (ya tenía una
+   * llave aquí), se borra: la llave ya no existe y se podrá volver a ofrecer; «nunca» (este aparato no es mío) se respeta.
+   */
+  async function quitaTodas() {
+    ++ceremonia;
+    aborta();
+    const r = await llama("POST", "/api/yo/llaves/quitar-todas", { confirmar: true });
+    if (r.status !== 200 || !r.json) return { ok: false, status: r.status, texto: textoFalloSalidaTotal(r) };
+    try { if (leeRecuerdo(memoria.lee(), ahora()).tipo === "hecha") memoria.guarda(""); } catch { /* sin almacenamiento: solo comodidad */ }
+    return { ok: true, sesiones: Number(r.json.sesiones_cerradas) || 0, llaves: Number(r.json.llaves_quitadas) || 0 };
+  }
+
+  return { soporte, admiteAutorrelleno, entra, paraEntrada, lista, evalua, responde, crea, quita, quitaTodas, nombrePropuesto: () => nombrePropuesto(agente) };
 }

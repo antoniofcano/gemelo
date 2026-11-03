@@ -59,7 +59,7 @@ const al = {
   alias: () => { const i = $("alias"); if (!i.value && S.sesion?.alias) i.value = S.sesion.alias; $("cVisible").checked = !!S.sesion?.alias_visible; },
   avatar: () => entraAvatar(),
   creditos: () => pintaCreditos(),
-  dispositivos: () => { $("okVincular").hidden = true; pintaMisLlaves(); },
+  dispositivos: () => { $("okVincular").hidden = true; avisaLlave($("avSalidaTotal"), $("avSalidaTotalTxt"), null); pintaSalidaTotal(); pintaMisLlaves(); },
 };
 window.addEventListener("hashchange", () => ir(location.hash.slice(1) || "portada"));
 
@@ -570,10 +570,25 @@ async function pintaMisLlaves() {
   if (!ll) return;
   const r = await ll.L.lista();
   if (S.pantalla !== "dispositivos") return;
-  if (!r.ok) { if (r.status === 401) { await leeSesion(); ir("portada"); } return; }   // sin lista no se enseña una vacía que engañaría
+  if (!r.ok) {
+    if (r.status === 401) { await leeSesion(); ir("portada"); return; }
+    // sin lista no se enseña una vacía que engañaría: el aviso y «Probar otra vez» (el resto de «Mis dispositivos» sigue igual)
+    c.hidden = false; $("listaLlaves").replaceChildren(); $("llavesVacio").hidden = true; $("btnOtraLlave").hidden = true; $("campoOtraLlave").hidden = true;
+    $("btnReintentaLlaves").hidden = false;
+    avisaLlave($("okLlaves"), $("okLlavesTxt"), null);
+    avisaLlave($("avLlaves"), $("avLlavesTxt"), r.texto, { foco: false });
+    return;
+  }
+  $("btnReintentaLlaves").hidden = true; avisaLlave($("avLlaves"), $("avLlavesTxt"), null);
   c.hidden = false;
   repintaLlaves(ll, r);
 }
+$("btnReintentaLlaves").addEventListener("click", async () => {
+  const b = $("btnReintentaLlaves"); b.disabled = true;
+  await pintaMisLlaves();
+  b.disabled = false;
+  if (!$("btnReintentaLlaves").hidden) b.focus();
+});
 function repintaLlaves(ll, r) {
   const ul = $("listaLlaves"), ahora = Date.now();
   ul.replaceChildren();
@@ -632,6 +647,35 @@ $("btnOtraLlave").addEventListener("click", async () => {
   if (!r.ok) { avisaLlave($("avLlaves"), $("avLlavesTxt"), r.texto); return; }
   await recargaLlaves(ll, "Listo: se ha guardado la llave «" + r.nombre + "». También intentamos avisarte por correo de este cambio.");
 });
+
+// -- «Salir de todos y quitar las llaves» (LLAVES-DE-ACCESO §5.4): <dialog> de confirmación y un solo paso en la api
+function pintaSalidaTotal() {
+  $("salidaTotal").hidden = true;   // sin las piezas de las llaves (no cargan) o sin ser titular de una familia, no se ofrece
+  cargaLlaves().then(ll => { if (ll && S.pantalla === "dispositivos") $("salidaTotal").hidden = !ll.P.muestraSalidaTotal(S.sesion); });
+}
+$("btnSalirYQuitar").addEventListener("click", async () => {
+  avisaLlave($("avSalidaTotal"), $("avSalidaTotalTxt"), null);
+  const ll = await cargaLlaves();
+  if (!ll) { avisaLlave($("avSalidaTotal"), $("avSalidaTotalTxt"), TEXTO_RED); return; }
+  $("dlgSalirTodoTxt").textContent = ll.P.TEXTO_SALIDA_TOTAL;
+  const d = $("dlgSalirTodo");
+  if (typeof d.showModal === "function") { d.showModal(); $("dlgSalirTodoNo").focus(); }
+  else if (confirm($("dlgSalirTodoTxt").textContent)) confirmaSalidaTotal();
+});
+async function confirmaSalidaTotal() {
+  const d = $("dlgSalirTodo");
+  if (d.open) d.close();
+  const ll = llavesListas, b = $("btnSalirYQuitar");
+  if (!ll) return;
+  b.disabled = true;
+  const r = await ll.L.quitaTodas();
+  b.disabled = false;
+  if (!r.ok && r.status === 401) { await leeSesion(); ir("portada"); return; }   // la sesión ya no estaba
+  if (!r.ok) { avisaLlave($("avSalidaTotal"), $("avSalidaTotalTxt"), r.texto); return; }   // sigue la sesión: se dice y se puede reintentar
+  S.sesion = null; pintaSesion(); ir("portada"); anuncia(ll.P.TEXTO_SALIDA_TOTAL_HECHA);
+}
+$("dlgSalirTodoSi").addEventListener("click", confirmaSalidaTotal);
+$("dlgSalirTodoNo").addEventListener("click", () => { $("dlgSalirTodo").close(); $("btnSalirYQuitar").focus(); });
 
 // ---------- salir
 async function salir(todas) {

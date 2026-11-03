@@ -313,18 +313,28 @@
         <label for="llaveNombreOtra">Nombre de la nueva llave</label>
         <input id="llaveNombreOtra" type="text" maxlength="40" autocomplete="off">
       </div>
-      <div class="fila"><button type="button" class="btn" id="btnOtraLlave" hidden>Añadir otra llave</button></div>
-      <p class="pista">Cerrar la sesión en todos los aparatos no quita las llaves: quítalas aquí. Cualquiera que pueda desbloquear un aparato con tu llave podrá entrar con tu cuenta.</p>
+      <div class="fila"><button type="button" class="btn" id="btnOtraLlave" hidden>Añadir otra llave</button><button type="button" class="btn" id="btnReintentaLlaves" hidden>Probar otra vez</button></div>
+      <p class="pista">Cerrar la sesión en todos los aparatos no quita las llaves: quítalas aquí, o usa «Salir de todos y quitar las llaves» más abajo. Cualquiera que pueda desbloquear un aparato con tu llave podrá entrar con tu cuenta.</p>
     </div>
     <dialog id="dlgQuitar" aria-labelledby="dlgQuitarT">
       <h2 id="dlgQuitarT">Quitar una llave</h2>
       <p id="dlgQuitarTxt"></p>
       <div class="fila"><button type="button" class="btn btn-peligro" id="dlgQuitarSi">Sí, quitarla</button><button type="button" class="btn" id="dlgQuitarNo">No, dejarla</button></div>
     </dialog>
+    <dialog id="dlgSalirTodo" aria-labelledby="dlgSalirTodoT">
+      <h2 id="dlgSalirTodoT">Salir de todos y quitar las llaves</h2>
+      <p id="dlgSalirTodoTxt"></p>
+      <div class="fila"><button type="button" class="btn btn-peligro" id="dlgSalirTodoSi">Sí, salir de todo y quitar las llaves</button><button type="button" class="btn" id="dlgSalirTodoNo">No, volver</button></div>
+    </dialog>
     <div class="tarjeta pila separada">
       <h2>¿Has perdido un aparato?</h2>
-      <p>Cierra la sesión en todos los aparatos donde hayas entrado, también en este. Para volver, pide otro enlace.</p>
+      <p>Cierra la sesión en todos los aparatos donde hayas entrado, también en este. Para volver, pide otro enlace. Esto no quita las llaves de acceso.</p>
       <div class="fila"><button type="button" class="btn btn-peligro" data-accion="salirTodas">Cerrar sesión en todos mis aparatos</button></div>
+      <div id="salidaTotal" class="pila" hidden>
+        <p>Si te han robado el aparato o has perdido uno con tu llave, cierra todo y quita también las llaves. Podrás volver a entrar con el enlace del correo y crear una llave nueva.</p>
+        <div class="aviso aviso-err" id="avSalidaTotal" role="alert" tabindex="-1" hidden><p id="avSalidaTotalTxt"></p></div>
+        <div class="fila"><button type="button" class="btn btn-peligro" id="btnSalirYQuitar">Salir de todos y quitar las llaves</button></div>
+      </div>
     </div>
   </section>
 
