@@ -554,10 +554,17 @@ test("recorrido: primer enlace → oferta → crear llave → salir → entrar c
     assert.strictEqual((await ctx.request.get(base + "/api/sesion")).status(), 401, "la sesión de este aparato también se cerró");
     const correos = await (await fetch(buzon + "/api/v1/search?query=" + encodeURIComponent("to:" + yo.correo + " subject:quitado"))).json();
     assert.strictEqual(correos.messages_count >= 1, true, "llegó el aviso de la salida total");
+    // con la llave ya quitada del sitio, entrar con ella debe fallar con el texto único. Ojo: el autenticador virtual contesta AL INSTANTE a la
+    // entrada condicional, y portada.js la vuelve a armar tras cada fallo (con una persona, solo se resuelve si elige la llave): aquí eso da
+    // un 401 tras otro hasta el límite por IP de la api (20 cada 15 min), que corta con 429. Esos 429 de /api/auth/llave se cuentan aparte
+    const antesDe429 = errores.length;
     await pg.goto(base + "/#entrar"); await pg.waitForSelector("#bloqueLlave:not([hidden])");
-    await pg.click("#btnLlave");   // con la llave ya quitada del sitio, entrar con ella debe fallar con el texto único
+    await pg.click("#btnLlave");
     await pg.waitForSelector("#avLlave:not([hidden])");
     await entraPorEnlace();   // y el enlace del correo sigue siendo la entrada
+    const tramo = errores.splice(antesDe429), es429 = e => /status of 429 .*\/api\/auth\/llave\)$/.test(e);
+    errores.push(...tramo.filter(e => !es429(e)));   // cualquier otro error sigue contando
+    t.diagnostic("tras quitar las llaves, 429 de /api/auth/llave por el autorrelleno del autenticador virtual: " + tramo.filter(es429).length);
     assert.strictEqual((await (await ctx.request.get(base + "/api/sesion")).json()).titular, true);
 
     // 6. TODO: la entrada condicional (autorrelleno) con una llave creada de nuevo — depende de que el autenticador virtual la admita; ajustar al ejecutarlo
