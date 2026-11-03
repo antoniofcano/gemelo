@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- VR: el plano cercano baja de 0,3 a 0,1 m (las ramas a menos de 30 cm ya no se cortan; perilla `?xrnear=`) y el controlador adaptativo de las gafas baja de nivel con 8 ms de JS por fotograma (antes 13; configurable con `escalera.vrJsMs` y `?xrjs=`): se espera que baje de nivel antes, con menos tirones y una imagen algo más sencilla. `far` no cambia. No probado en un Quest (AG-2.3).
 - Mis dispositivos → ¿Has perdido un aparato?: nuevo «Salir de todos y quitar las llaves» (`POST /api/yo/llaves/quitar-todas`, `<dialog>` de confirmación): cierra todas las sesiones, también la de este aparato, y quita todas las llaves en un paso, con un solo aviso por correo; el enlace del correo sigue siendo la entrada. Si falla la lista de «Mis llaves» ahora lo dice y deja «Probar otra vez»; el 429 de esa lista tiene texto propio (OF13b-8b). Probado solo en Node.
 - Estudio de viabilidad EV-2 (`doc/sistema/VIABILIDAD-INTERACCION.md`): interfaz espacial en tres capas y palanca táctil del móvil, con tareas EV2-A0 a A6 y EV2-B1 a B3.
 - Estudio de viabilidad EV-1 del realismo del suelo y la biodiversidad (`doc/sistema/VIABILIDAD-REALISMO.md`): versiones mínimas, política por aparato, coste de texturas y audio, licencias de GBIF, xeno-canto y BirdNET, y la CSP sin `'wasm-unsafe-eval'` para KTX2.
