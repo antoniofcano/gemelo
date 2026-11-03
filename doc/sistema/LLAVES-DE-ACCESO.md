@@ -195,7 +195,7 @@ Foto del 2026-11-03 (tercera subida pendiente). «Hecha» = código, contrato y 
 | OF13b-8 | Oficina: entrada con llave llega dentro; aparato pendiente; aviso de llaves no descubribles | hecha | `apps/web/oficina/llave.js`, `llave_puro.js`; `pruebas/guardianes/oficina_llave_entrada.test.js` |
 | OF13b-9 | Integración contra PostGIS por el banco | **pendiente** (pruebas escritas sin ejecutar salvo la migración) | `apps/api/pruebas/integracion/` |
 | OF13b-10 | Recorrido en Chrome con autenticador virtual CDP por el banco | **pendiente** (escrito, sin ejecutar) | `pruebas/guardianes/portada_llave.test.js`, `oficina_llave*.test.js` (`GEMELO_DOCKER=1`) |
-| OF13b-11 | EIPD, UX §4, OFICINA §2, esta sección, guía de recuperación | hecha (borrador; lo legal lo valida la asesoría) | [EIPD-LLAVES](EIPD-LLAVES.md), [UX §4](UX.md#42b-entrar-con-una-llave-la-oferta-de-crearla-y-mis-llaves-of13b-7-adr-0029), [OFICINA §2](OFICINA.md#2-acceso-y-seguridad), [LLAVES-RECUPERACION](../operacion/LLAVES-RECUPERACION.md) |
+| OF13b-11 | EIPD, UX §4, OFICINA §2, esta sección, guía de recuperación | hecha (borrador; lo legal lo valida la asesoría) | [EIPD-LLAVES](EIPD-LLAVES.md), [UX §4](UX.md#4-pantallas-de-acceso-y-configuración), [OFICINA §2](OFICINA.md#2-acceso-y-seguridad), [LLAVES-RECUPERACION](../operacion/LLAVES-RECUPERACION.md) |
 | OF13b-12 | 👤 Aparatos reales | **pendiente** (Antonio, tras el despliegue) | lista abajo |
 
 ### Huecos conocidos (no son fallos corregidos: son lo que se sabe que falta o es débil)

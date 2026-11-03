@@ -88,7 +88,7 @@ Para cada pantalla: objetivo · contenido · acciones · estados · textos clave
 - **[DECIDE ANTONIO]** si hay una vista previa abierta sin cuenta (plan, decisión 5 «¿mundo tras sesión o abierto?»). El diseño funciona en ambos casos: con vista previa, un segundo botón «Echar un vistazo sin entrar» (sin chat ni voz).
 
 ### 4.2 Entrar con tu correo (enlace mágico)
-- **Objetivo:** pedir el enlace sin contraseña. Desde OF13b es **la segunda opción** de la pantalla «Entrar» (la primera, si el navegador admite llaves, es [«Entrar con mi llave»](#42b-entrar-con-una-llave-la-oferta-de-crearla-y-mis-llaves-of13b-7-adr-0029)): el enlace es el alta, la recuperación y lo que queda sin llave a mano. El texto del formulario: «Escribe el correo de tu hogar. Te mandamos un enlace para entrar: no hay contraseña que recordar. Es la forma de entrar la primera vez y si no tienes tu llave a mano.»
+- **Objetivo:** pedir el enlace sin contraseña. Desde OF13b es **la segunda opción** de la pantalla «Entrar» (la primera, si el navegador admite llaves, es [«Entrar con mi llave»](#4-pantallas-de-acceso-y-configuración)): el enlace es el alta, la recuperación y lo que queda sin llave a mano. El texto del formulario: «Escribe el correo de tu hogar. Te mandamos un enlace para entrar: no hay contraseña que recordar. Es la forma de entrar la primera vez y si no tienes tu llave a mano.»
 - **Contenido:** campo de correo (`type=email`, `autocomplete="email webauthn"`), pista, botón «Mandarme el enlace»; en Quest, tarjeta «¿Estás en las gafas? Vincular con otro dispositivo».
 - **Estados:**
   - *Vacío o mal formado:* error junto al campo, con `aria-invalid` y foco devuelto: «Ese correo no parece completo. Revisa que tenga @ y un dominio.»
