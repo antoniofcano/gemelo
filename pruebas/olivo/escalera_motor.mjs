@@ -45,7 +45,7 @@ function extrae(src, inicio) {   // como en generados_motor.mjs: una función o 
 const T15 = lee("15_tiempo.js"), T03 = lee("03_escena.js");
 const piezas = [extrae(T03, "var GLSL_LIN"), extrae(T03, "function colorVertSRGB"), extrae(T15, "var uViento"), extrae(T15, "var uSombra"),
   extrae(T15, "var GLSL_SOMBRA"), extrae(T15, "function parcheTiempo")].join("\n");
-const G07 = lee("07ab_generados.js"), L07 = lee("07ac_lejanos.js");
+const A01 = lee("01a_aparato.js"), G07 = lee("07ab_generados.js"), L07 = lee("07ac_lejanos.js");   // 01a: el Aparato real (AG-0.3)
 
 function contexto(busqueda, reloj, mas) {
   const ctx = {
@@ -60,7 +60,7 @@ function contexto(busqueda, reloj, mas) {
   };
   if (mas) Object.assign(ctx, mas.glob);
   vm.createContext(ctx);
-  vm.runInContext(piezas + "\n" + G07 + "\n" + L07 + "\n" + (mas ? mas.codigo : "") + "\n;this.__G = Generados; this.__E = Escalera; this.__L = Lejanos;", ctx, { filename: "07ab+07ac" + (mas ? "+07b" : "") });
+  vm.runInContext(piezas + "\n" + A01 + "\n" + G07 + "\n" + L07 + "\n" + (mas ? mas.codigo : "") + "\n;this.__G = Generados; this.__E = Escalera; this.__L = Lejanos;", ctx, { filename: "07ab+07ac" + (mas ? "+07b" : "") });
   return ctx;
 }
 const espera = () => new Promise(r => setTimeout(r, 0));

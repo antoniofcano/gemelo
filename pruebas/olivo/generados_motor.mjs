@@ -43,7 +43,7 @@ function extrae(src, inicio) {
 const T15 = lee("15_tiempo.js"), T03 = lee("03_escena.js");
 const piezas = [extrae(T03, "var GLSL_LIN"), extrae(T03, "function colorVertSRGB"), extrae(T15, "var uViento"), extrae(T15, "var uSombra"),
   extrae(T15, "var GLSL_SOMBRA"), extrae(T15, "function parcheTiempo")].join("\n");
-const G07 = lee("07ab_generados.js");
+const A01 = lee("01a_aparato.js"), G07 = lee("07ab_generados.js");   // 01a: el Aparato real (AG-0.3), que 07ab consulta
 
 // extra: lo que se añade o sustituye en el contexto (D.base, fetch, console, window.OlivoGen) para las variantes horneadas (sección 6)
 function contexto(busqueda, reloj, extra) {
@@ -58,7 +58,7 @@ function contexto(busqueda, reloj, extra) {
     Cola: { add: () => { throw new Error("los generados no deben usar la Cola compartida"); }, hay: () => false }, cola
   }, extra || {});
   vm.createContext(ctx);
-  vm.runInContext(piezas + "\n" + G07 + "\n;this.__G = Generados; this.__uSombra = uSombra;", ctx, { filename: "07ab_generados.js" });
+  vm.runInContext(piezas + "\n" + A01 + "\n" + G07 + "\n;this.__G = Generados; this.__uSombra = uSombra;", ctx, { filename: "07ab_generados.js" });
   return ctx;
 }
 const espera = () => new Promise(r => setTimeout(r, 0));
