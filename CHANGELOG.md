@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Motor: cero reservas por fotograma en la vida (quad, dron, fauna) y en la presencia compartida (AG-1.4): temporales de módulo en vez de objetos, arrays y cierres creados en cada fotograma; guardián `pruebas/guardianes/sin_reservas.test.js`. Efecto en el casco: no probado.
 - VR: la ficha de la baliza separa sus botones 16 px (12,9 mm) en vez de 12 px (9,7 mm), y un guardián vigila los topes angulares de las láminas (texto ≥ 1,5° por línea, objetivos ≥ 2,5°, ≥ 12 mm entre botones; cifras propias, sin verificar) (EV2-A0).
 - VR experimental tras `?ui=capas` (apagado por defecto): las fichas de olivo y baliza se cuelgan junto a lo que describen, como mucho 3, y el panel nace delante y se queda en el mundo (gira contigo y renace tras un teletransporte) (EV2-A1, EV2-A2). Solo probado en Node; no probado en una Quest.
 - Una sola detección del aparato (`Aparato`, `01a_aparato.js`): clase (escritorio, móvil, Quest), modelo de Quest si el agente lo declara y capacidades medidas (WebGL2, MSAA, ASTC…); `?debug` muestra «Aparato: Quest 3 · VR · MSAA 4 · ASTC sí» y `window.__aparato()` lo ofrece sin el agente completo. Las Quest, fuera de VR, usan ya el presupuesto de olivos de móvil (antes cargaban el de escritorio). Un guardián vigila que nadie más lea `userAgent`. No probado en un Quest ni un iPhone reales (AG-0.3).
