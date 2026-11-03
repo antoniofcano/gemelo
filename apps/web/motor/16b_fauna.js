@@ -71,6 +71,7 @@
       g.userData = { cab: cab, orejas: orejas, est: "fuera", t: 0, x: 0, y: 0, dir: 0, fase: Math.random() * 6 }; g.visible = false; gFauna.add(g); return g;
     }
     var conejos = []; for (var ic = 0; ic < 6; ic++) conejos.push(creaConejo());
+    var amq = { x: 0, y: 0, res: null };   // la pregunta «perros:amenaza» de cada conejo, el mismo objeto cada vez (AG-1.4)
     function arbolCerca(rmin, rmax) { for (var k = 0; k < 50; k++) { var c = cIn[(Math.random() * cIn.length) | 0], d = Math.hypot(c.x - pp.x, c.y - pp.y); if (d >= rmin && d <= rmax) return c; } return null; }
     function nacePosada(av) {
       var c = arbolCerca(26, 70); if (!c) return false;
@@ -85,18 +86,18 @@
       function actualizaFauna(dt) {
         var lv = nivel(cur.ms), dia = lv.d, lluviosa = cur.lluvia > 1.5, vuelan = dia > 0.12 && !lluviosa;
       // la bandada da vueltas sobre la finca, a la altura del terreno y con más prisa si hay viento
-      bandada.forEach(function (g) {
-        var u = g.userData, b = BANDADAS[u.b]; g.visible = vuelan;
-        if (!vuelan) return;
+      for (var ib = 0; ib < bandada.length; ib++) {
+        var g = bandada[ib], u = g.userData, b = BANDADAS[u.b]; g.visible = vuelan;
+        if (!vuelan) continue;
         var th = b.ph + b.w * tVida * (1 + cur.viento * 0.05), x = Math.cos(th) * b.a + u.of[0], y = Math.sin(th) * b.b + u.of[2], hx = -Math.sin(th) * b.a * b.w, hy = Math.cos(th) * b.b * b.w;
         var alt = altSuelo(x, y) + b.h + u.of[1] + Math.sin(tVida * 0.9 * u.fx + u.fase) * 2.5;
         g.position.set(x, alt, -y); mira(g, hx, -hy); g.rotation.z = Math.sign(b.w) * -0.25; aleteo(g, false, false); escalaVista(g, 1);
-      });
+      }
       if (!paseando) { empacaAves(); return; }
       var dq = enQuad ? 16 : 9;
       // aves posadas: salen volando si te acercas, suben y se alejan; luego otra ocupa su sitio
-      posadas.forEach(function (a) {
-        var u = a.userData;
+      for (var ip2 = 0; ip2 < posadas.length; ip2++) {
+        var a = posadas[ip2]; u = a.userData;
         if (u.est === "posada") {
           var d = Math.hypot(u.cx - pp.x, u.cy - pp.y); a.visible = vuelan || dia > 0.02; aleteo(a, true);
           if (d < dq) { u.est = "vuela"; u.t = 9; u.h = Math.atan2(u.cy - pp.y, u.cx - pp.x) + (Math.random() - 0.5) * 1.2; u.vy = 0; u.px = u.cx; u.py = u.cy; u.pz = a.position.y; }
@@ -106,14 +107,16 @@
           a.position.set(u.px, u.pz, -u.py); mira(a, Math.cos(u.h), -Math.sin(u.h)); a.rotation.x = -0.25; aleteo(a, false, true); a.scale.setScalar(1);
           if (u.t <= 0) { a.visible = false; a.rotation.x = 0; u.est = "fuera"; u.t = 2 + Math.random() * 4; }
         } else { u.t -= dt; if (u.t <= 0) nacePosada(a); }
-      });
+      }
       // conejos: pastan y dan saltitos entre los olivos; si te acercas, huyen
-      conejos.forEach(function (co) {
-        var u = co.userData;
-        if (u.est === "fuera") { if (!naceConejo(co)) return; }
+      for (var ic2 = 0; ic2 < conejos.length; ic2++) {
+        var co = conejos[ic2]; u = co.userData;
+        if (u.est === "fuera") { if (!naceConejo(co)) continue; }
         var d = Math.hypot(u.x - pp.x, u.y - pp.y);
-        if (d > 120) { u.est = "fuera"; co.visible = false; return; }
-        var amq = { x: u.x, y: u.y, res: null }; n.emite("perros:amenaza", amq); var am = amq.res; if (u.est !== "huye" && am) { u.est = "huye"; u.t = 2 + Math.random() * 1.6; u.dir = Math.atan2(u.y - am.y, u.x - am.x) + (Math.random() - 0.5) * 1.0; }
+        if (d > 120) { u.est = "fuera"; co.visible = false; continue; }
+        // la pregunta a los perros solo si aún no huye (si ya huye, su respuesta no se usaba): un solo objeto de pregunta reutilizado, no uno por conejo y fotograma
+        var am = null; if (u.est !== "huye") { amq.x = u.x; amq.y = u.y; amq.res = null; n.emite("perros:amenaza", amq); am = amq.res; }
+        if (am) { u.est = "huye"; u.t = 2 + Math.random() * 1.6; u.dir = Math.atan2(u.y - am.y, u.x - am.x) + (Math.random() - 0.5) * 1.0; }
         var vel = 0;
         if (u.est === "huye") { vel = 6.5; u.t -= dt; if (u.t <= 0) { u.est = "pasta"; u.t = 1.5 + Math.random() * 2; } }
         else { u.t -= dt; if (u.t <= 0) { u.dir = Math.random() * 6.28; u.t = 1.2 + Math.random() * 2.4; u.salta = Math.random() < 0.55; } vel = u.salta ? 0.9 : 0; }
@@ -124,9 +127,9 @@
         var salto = vel > 0 ? Math.abs(Math.sin(u.fase)) * (vel > 3 ? 0.3 : 0.1) : 0;
         co.position.set(u.x, altSuelo(u.x, u.y) + salto, -u.y); co.rotation.y = Math.atan2(-Math.cos(u.dir), Math.sin(u.dir)); co.rotation.x = vel > 3 ? -Math.sin(u.fase) * 0.2 : 0;
         u.cab.position.y = 0.32 + (vel > 0 ? 0 : -Math.abs(Math.sin(u.fase * 1.3)) * 0.07); u.cab.rotation.x = vel > 0 ? 0 : 0.5 * Math.abs(Math.sin(u.fase * 1.3));
-        u.orejas.forEach(function (o, k) { o.rotation.x = vel > 3 ? 0.9 : (u.est === "huye" ? 0.5 : 0.05 * Math.sin(u.fase * 0.7 + k)); });
+        for (var k = 0; k < u.orejas.length; k++) u.orejas[k].rotation.x = vel > 3 ? 0.9 : (u.est === "huye" ? 0.5 : 0.05 * Math.sin(u.fase * 0.7 + k));
         co.visible = true;
-      });
+      }
       empacaAves();
       }
 
