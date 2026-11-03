@@ -27,6 +27,7 @@ export const PARAMS = [
   ...GAFAS_MAX.map((m, i) => ({ k: "triG" + i, entero: true, ruta: "escalera.triangulos.gafas." + i, n: "Presupuesto gafas, perfil " + i, u: "tri", def: m, min: GAFAS_MIN, max: m, paso: 10000, g: "gafas",
     ayuda: i === 0 ? "solo puede BAJAR: el máximo es el de hoy; subirlo exige medirlo en el casco (O9d) y un cambio de código" : "solo puede bajar; el máximo es el de hoy" })),
   { k: "frE0", ruta: "escalera.fraccionE0Gafas", n: "Parte de E0 en gafas", u: "", def: 0.4, min: 0, max: 0.5, paso: 0.05, g: "gafas", ayuda: "fracción del presupuesto de las gafas que puede llevarse el E0" },
+  { k: "vrJs", ruta: "escalera.vrJsMs", n: "Umbral de JS en gafas", u: "ms", def: 8, min: 4, max: 16, paso: 0.5, g: "gafas", ayuda: "ms de JS por fotograma con que las gafas bajan de nivel; menos = baja antes (AG-2.3; sin medir en un casco real)" },
   { k: "factor", ruta: "escalera.factorCopa", n: "Factor de copa", u: "× r8", def: 1, min: 0.5, max: 1.5, paso: 0.05, g: "forma", ayuda: "copa = 2 × r8 × factor, solo en los olivos del constructor (decisiones 48 y 81)" },
 ];
 export const GRUPOS = [["umbrales", "Cuándo cambia de escalón (alto del olivo en pantalla)"], ["presupuesto", "Cuántos y cuánto cuesta"], ["gafas", "Gafas (solo a la baja)"], ["forma", "Forma"]];
@@ -171,6 +172,7 @@ export function aCuerpo(vals, comp, base, ep) {
   if (GAFAS_MAX.some((_, i) => dif("triG" + i))) tri.gafas = GAFAS_MAX.map((_, i) => vals["triG" + i]);
   if (Object.keys(tri).length) esc.triangulos = tri;
   if (dif("frE0")) esc.fraccionE0Gafas = vals.frE0;
+  if (dif("vrJs")) esc.vrJsMs = vals.vrJs;
   if (dif("factor")) esc.factorCopa = vals.factor;
   const cm = {}, bc = esObj(b.componentes) ? b.componentes : {};
   for (const [id, activo] of Object.entries(comp || {})) {

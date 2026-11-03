@@ -166,6 +166,7 @@ Lo que el servidor le dice al motor al arrancar (C6 de [ADR-0023](../adr/0023-co
 | `escalera.triangulos.escritorio` / `movil` | presupuesto (550.000 / 270.000 sin medir) | 300.000-700.000 / 120.000-300.000 | 07b (`TOPE_TRI`, `Escalera.tope`) |
 | `escalera.triangulos.gafas` | uno por perfil VR (380 / 270 / 190 / 130 k) | **solo a la baja**: máximo = `VR_PERFILES[].tri` del código, mínimo 50.000 | 29_vr (`VR_PERFILES`); la escala adaptativa sigue bajando de perfil |
 | `escalera.fraccionE0Gafas` | parte del presupuesto de gafas para el E0 (0,4) | 0-0,5 | 07ab |
+| `escalera.vrJsMs` | ms de JS por fotograma con que el controlador adaptativo de las gafas baja de nivel (8; antes 13) | 4-16 | 29_vr (`XrPerillas.js()`); `?xrjs=` manda |
 | `escalera.factorCopa` | copa de los olivos del constructor = 2 × r8 × factor (1) | 0,5-1,5 | 01_datos (`FACTOR_R8_GEN`, solo el del constructor); `?factorR8=` manda |
 | `epocas` | `{ comun, fincas? }` con la forma de [`epocas-calendario.json`](../../contratos/epocas-calendario.json) (decisión 112) | cada tabla cubre los **366 días con una sola época** | 07ab (la época que dibuja, si el hornero la tiene horneada); el hornero, como sello (`GEMELO_HORNERO_CONFIG`) |
 

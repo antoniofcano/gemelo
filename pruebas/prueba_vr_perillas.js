@@ -7,8 +7,10 @@ const { chromium } = require(process.env.PLAYWRIGHT_CORE || "playwright-core");
 const url = process.argv[2] || process.env.GEMELO_URL;
 const dormir = ms => new Promise(r => setTimeout(r, ms));
 const casos = [
-  { q: "", esperado: { fov: 1, escala: 0.9, hz: 72, aa: true, nivelFijo: null, adaptativo: true }, registro: "fps 72" },
+  { q: "", esperado: { fov: 1, escala: 0.9, hz: 72, aa: true, nivelFijo: null, adaptativo: true, near: 0.1, topeJs: 8 }, registro: "fps 72", nearCam: 0.1 },
   { q: "xrfov=0.5&xrescala=1.1&xrhz=90&xraa=0&xrnivel=2", esperado: { fov: 0.5, escala: 1.1, hz: 90, aa: false, nivelFijo: 2, adaptativo: false }, registro: "fps 90", nivel: 2 },
+  { q: "xrnear=0.05&xrjs=6", esperado: { near: 0.05, topeJs: 6, adaptativo: true }, registro: "fps 72", nearCam: 0.05 },   // AG-2.3
+  { q: "xrnear=0.9&xrjs=1", esperado: { near: 0.3, topeJs: 4 }, registro: "fps 72", nearCam: 0.3, ignorados: ["xrnear", "xrjs"] },
   { q: "xrhz=120&xrfov=7", esperado: { fov: 1, escala: 0.9, hz: 72, aa: true, nivelFijo: null, adaptativo: true }, registro: "fps 72", ignorados: ["xrhz", "xrfov"] }   // el mock anuncia [72, 90]: 120 no está
 ];
 (async () => {
@@ -29,6 +31,7 @@ const casos = [
     Object.keys(c.esperado).forEach(k => ok(tag + "xr." + k, x[k] === c.esperado[k], { tiene: x[k], quiere: c.esperado[k] }));
     ok(tag + "el mock recibió la frecuencia " + c.registro, reg.indexOf(c.registro) >= 0, reg.filter(r => /^fps/.test(r)));
     if (c.ignorados) ok(tag + "lo ignorado queda anotado", c.ignorados.every(k => (x.ignorados || []).some(i => i.param === k)), x.ignorados);
+    if (c.nearCam != null) ok(tag + "camera.near efectivo en VR (AG-2.3)", Math.abs(d.near - c.nearCam) < 1e-9 && d.far === 6000, { near: d.near, far: d.far });
     ok(tag + "la línea del panel y del informe", /^VR: fov /.test(x.linea || ""), x.linea);
     if (c.nivel != null) {
       await dormir(30000);   // el controlador adaptativo tardaría 4 s en bajar: con nivel fijo no se mueve
