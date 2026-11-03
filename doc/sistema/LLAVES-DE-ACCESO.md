@@ -1,6 +1,6 @@
 # Llaves de acceso para todos — diseño y estudio de seguridad (OF13b)
 
-**Aceptado, en implementación** (plan del §7; lo que difiere de este estudio al implementarlo, en el §10: OF13b-3, OF13b-5 y OF13b-8). Decisión: [ADR-0029](../adr/0029-llaves-de-acceso-para-todos.md) (aceptado por Antonio el 2026-11-02, decisiones 183-187). Pedida por Antonio el 2026-11-02 (decisión 174) tras su primera entrada real en el servidor: «el login me parece horrible». Parte de lo que ya existe: el enlace mágico y la sesión ([ADR-0013](../adr/0013-enlace-magico-y-sesiones.md), [contratos/sesion.md](../../contratos/sesion.md)), la oficina con aparato confiable ([ADR-0024](../adr/0024-la-oficina-roles-acceso-y-configuracion-versionada.md)), su llave obligatoria (OF13, [sesion.md § Llave de acceso](../../contratos/sesion.md#llave-de-acceso-of13)) y las gafas con código corto ([ADR-0028](../adr/0028-gafas-vinculadas-desde-la-oficina-entran-como-visitante.md)).
+**Aceptado; implementado en Node en OF13b-1 a 8 (falta «Salir de todos y quitar las llaves» en la portada); sin probar en aparatos ni en navegador.** Lo que difiere de este estudio al implementarlo, en el [§10](#10-lo-que-difiere-al-implementarlo); qué está hecho y qué falta, en el [«Estado de implementación»](#estado-de-implementación). El texto de arriba del §1 al §9 es el **estudio** y se conserva como razón de las decisiones: donde el §10 lo contradice, manda el §10 y el código. Decisión: [ADR-0029](../adr/0029-llaves-de-acceso-para-todos.md) (aceptado por Antonio el 2026-11-02, decisiones 183-187). Pedida por Antonio el 2026-11-02 (decisión 174) tras su primera entrada real en el servidor: «el login me parece horrible». Parte de lo que ya existe: el enlace mágico y la sesión ([ADR-0013](../adr/0013-enlace-magico-y-sesiones.md), [contratos/sesion.md](../../contratos/sesion.md)), la oficina con aparato confiable ([ADR-0024](../adr/0024-la-oficina-roles-acceso-y-configuracion-versionada.md)), su llave obligatoria (OF13, [sesion.md § Llave de acceso](../../contratos/sesion.md#llave-de-acceso-of13)) y las gafas con código corto ([ADR-0028](../adr/0028-gafas-vinculadas-desde-la-oficina-entran-como-visitante.md)).
 
 Distingue, como pide la regla 5: lo que está **en el código** (leído en `apps/api/src/auth/`, `apps/api/src/oficina/llaves*.ts`, migraciones 0013 y 0015, `apps/web/oficina/llave.js`), lo que **se propone** y lo **[SUPUESTO]** (comportamiento de navegadores no probado aquí).
 
@@ -114,7 +114,7 @@ Más cambios de la misma migración:
 ### 5.2 Qué guarda la llave y qué no (RGPD)
 - **En la base:** id de credencial, clave **pública**, contador, transports, nombre que le da la persona (o «Windows · Edge»), si es sincronizada, si es descubrible, creada, última vez, revocada y por quién. En `hogares`, `llave_usuario` (32 bytes al azar). Nada de biometría, ni clave privada, ni modelo del aparato, ni IP.
 - **En el aparato o el gestor de la persona:** la clave privada, el `user handle` (los 32 bytes al azar, nunca el id ni el correo) y el **nombre de la cuenta que se enseña al elegir la llave**: hoy, el correo (`userName` en `opcionesDeAlta`). Para una familia en un aparato compartido, el correo lo ve quien use ese aparato (pregunta P3).
-- **Datos del hogar:** `GET /api/yo/datos` y la exportación de la oficina incluyen las llaves (nombre, fechas, sincronizada; sin id ni clave). Borrar la cuenta las borra (cascada, ya en la 0013). Las revocadas se guardan hasta el borrado de la cuenta, para la auditoría. La EIPD debe añadir el tratamiento (autenticación; base: la misma de la cuenta; sin datos biométricos en el servidor).
+- **Datos del hogar:** `GET /api/yo/datos` y la exportación de la oficina incluyen las llaves (nombre, fechas, sincronizada; sin id ni clave). Borrar la cuenta las borra (cascada, ya en la 0013). Las revocadas se guardan hasta el borrado de la cuenta, para la auditoría. La EIPD del tratamiento (borrador, con base jurídica propuesta, plazos y riesgos) es [EIPD-LLAVES](EIPD-LLAVES.md): sin datos biométricos en el servidor; **las revocadas se conservan hasta el borrado de la cuenta y hoy no hay purga propia** (marcado como [PROPUESTA] para la asesoría).
 - **Menores:** no tienen cuenta (el titular es el adulto); la llave no guarda nada del menor que use el aparato.
 
 ### 5.3 Avisos al hogar
@@ -176,6 +176,42 @@ Orden por dependencias y por lo que abarata el banco (CLAUDE.md §6). Peso: **li
 
 ## 9. Qué no está probado
 Nada de esto existe aún. De OF13 (lo que se reusa) solo hay pruebas de Node con respuestas simuladas contra la verificación real; el recorrido de la oficina con el autenticador virtual está escrito sin lanzar. **No probado con ninguna llave real:** Windows Hello en Edge ni en Chrome, el gestor de Google en Chrome o el de Microsoft en Edge, iPhone y Mac (iCloud), Android (Google), el teléfono por QR (híbrido), llaves físicas, Firefox, gestores de terceros (1Password, Bitwarden), la mediación condicional en cada navegador, la API de señales, el navegador de las Quest y los lectores de pantalla en la pantalla de la llave.
+
+---
+
+## Estado de implementación
+
+Foto del 2026-11-03 (tercera subida pendiente). «Hecha» = código, contrato y pruebas de **Node**; ninguna fila está probada en un aparato ni desplegada con esto.
+
+| Id | Qué | Estado | Dónde está |
+|---|---|---|---|
+| OF13b-1 | Textos del login (202, 429, «Revisa tu correo», «Cambiarlo»), límite 5 por correo y 10 por IP | hecha | `apps/api/src/auth/rutas.ts`, `config.ts`; `apps/web/portada/` ; `apps/api/pruebas/unidad/enlace.test.ts` |
+| OF13b-2 | Migración 0021 `llaves_acceso` (+`descubrible`), retos sin sesión, `origen = 'llave'` | hecha (aplicada contra PostGIS en su prueba) | `apps/api/migraciones/0021_llaves_acceso.sql`; `migracion_llaves_acceso.test.ts` |
+| OF13b-3 | Lógica general: permiso de alta por rol, `residentKey: required`, entrada sin `allowCredentials`, búsqueda global con `userHandle`, RP ID = host exacto | hecha | `apps/api/src/oficina/llaves.ts`; `llaves_acceso.test.ts`, `llaves.test.ts` |
+| OF13b-4 | `/api/yo/llaves` (lista, alta, quitar), avisos por correo, `/api/yo/datos` con llaves | hecha | `apps/api/src/yo/llaves*.ts`, `auth/correo.ts`, `yo/datos.ts`; `llaves_yo.test.ts`; [avisos-correo.md](../../contratos/avisos-correo.md) |
+| OF13b-5 | Entrada sin sesión `/api/auth/llave{,/opciones}` (cookie de reto, rotación, oficina con aparato aprobado o pendiente) | hecha | `apps/api/src/auth/rutas.ts`, `almacen.ts`; `entrada_llave.test.ts`; [sesion.md § Entrar con llave](../../contratos/sesion.md#entrar-con-llave) |
+| OF13b-6 | La oficina quita las llaves de una familia desde su ficha; `rehabilitar-llave` avisa | hecha | `apps/api/src/admin/llaves_hogar.ts`, `apps/web/oficina/ficha_llaves.js`, `familias.js`; `llaves_hogar.test.ts` |
+| OF13b-7 | Portada: entrar con llave, autorrelleno, oferta, «Mis llaves» | **parcial**: falta «Salir de todos y quitar las llaves» (tarea aparte en curso) | `apps/web/portada/llave_puro.js`, `llave_flujo.js`, `portada.js`; `pruebas/guardianes/portada_llave.test.js` |
+| OF13b-8 | Oficina: entrada con llave llega dentro; aparato pendiente; aviso de llaves no descubribles | hecha | `apps/web/oficina/llave.js`, `llave_puro.js`; `pruebas/guardianes/oficina_llave_entrada.test.js` |
+| OF13b-9 | Integración contra PostGIS por el banco | **pendiente** (pruebas escritas sin ejecutar salvo la migración) | `apps/api/pruebas/integracion/` |
+| OF13b-10 | Recorrido en Chrome con autenticador virtual CDP por el banco | **pendiente** (escrito, sin ejecutar) | `pruebas/guardianes/portada_llave.test.js`, `oficina_llave*.test.js` (`GEMELO_DOCKER=1`) |
+| OF13b-11 | EIPD, UX §4, OFICINA §2, esta sección, guía de recuperación | hecha (borrador; lo legal lo valida la asesoría) | [EIPD-LLAVES](EIPD-LLAVES.md), [UX §4](UX.md#42b-entrar-con-una-llave-la-oferta-de-crearla-y-mis-llaves-of13b-7-adr-0029), [OFICINA §2](OFICINA.md#2-acceso-y-seguridad), [LLAVES-RECUPERACION](../operacion/LLAVES-RECUPERACION.md) |
+| OF13b-12 | 👤 Aparatos reales | **pendiente** (Antonio, tras el despliegue) | lista abajo |
+
+### Huecos conocidos (no son fallos corregidos: son lo que se sabe que falta o es débil)
+- **Varias pestañas:** la cookie del reto es una sola por navegador; dos ceremonias a la vez (otra pestaña, otro intento) se pisan y la antigua falla. El código aborta la ceremonia previa antes de pedir otras opciones, pero eso solo ayuda dentro de la misma pestaña. Sin probar con dos pestañas reales.
+- **Límites por proceso:** `@fastify/rate-limit` usa memoria del proceso: se pierden al reiniciar y no se comparten entre réplicas (hoy hay una).
+- **`userHandle` sin firma:** WebAuthn no lo firma; la comprobación es de coherencia, no una barrera criptográfica (§10, OF13b-3).
+- **`descubrible` sin firmar:** lo dice el cliente (`credProps`); se enseña, no decide permisos.
+- **`signalUnknownCredential`:** sin decidir y no usado; la entrada devuelve un único fallo que no distingue «llave desconocida». Una llave quitada sigue apareciendo en el gestor del aparato hasta que la persona la borre.
+- **Caddy no sirve `/oficina/` sin sesión:** la puerta de entrada de la oficina es la portada; la pantalla `#pEntra` solo sale si la página llega sin sesión.
+- **El 429 de pedir enlace** no remite a la llave (§2 lo proponía); hoy repite el texto de siempre.
+- **Aviso por correo sin reintento** y con el SMTP de OVH sin verificar: puede no llegar.
+- **Llaves revocadas sin purga** (ver la EIPD).
+- **Integración con PostGIS y recorrido en Chrome sin ejecutar** (OF13b-9 y 10).
+
+### Qué hay que probar en aparatos (OF13b-12, 👤 Antonio, con el servidor desplegado y confirmando antes)
+Windows Hello en **Edge** y en **Chrome**; el gestor de Google en Chrome y el de Microsoft en Edge (¿se ve la llave desde el otro navegador?); **iPhone** (Safari, iCloud); **Android** (Chrome, Google); el **teléfono por QR** desde el PC (Bluetooth); una **llave física con PIN**; **Firefox**; las **Quest** (no ofrece llave y el código corto sigue); un **lector de pantalla** en la portada y en «Mis llaves»; la entrada condicional (autorrelleno) en cada navegador; y, con el correo real, que **el aviso de añadir y quitar llega** (y no cae en spam). Para cada una: qué se hizo, dónde, y qué no se probó (regla 11).
 
 ---
 
