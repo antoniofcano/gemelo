@@ -166,15 +166,25 @@
       botonesPantalla(caja, f.acciones);
       caja.hidden = false;
     }
-    // presentador(modo, fn): quién pinta la ficha en ese modo (29_vr registra el de "vr"); fn(ficha). Devuelve la función que lo quita
-    function presentador(m, fn) { if (typeof fn !== "function") return function () {}; presentadores[m] = fn; return function () { if (presentadores[m] === fn) delete presentadores[m]; }; }
+    // presentador(modo, fn): quién pinta la ficha en ese modo (29_vr registra el de "vr"); fn(ficha). Devuelve la función que lo quita. Se encadenan
+    // (EV2-A1): el último que se registra va primero y, si devuelve false («no es mía»), la ficha pasa al de antes; quitarlo deja al de antes como estaba
+    function presentador(m, fn) {
+      if (typeof fn !== "function") return function () {};
+      (presentadores[m] = presentadores[m] || []).push(fn);
+      return function () { var l = presentadores[m], i = l ? l.indexOf(fn) : -1; if (i >= 0) l.splice(i, 1); };
+    }
+    function presenta(m, f) {
+      var l = (presentadores[m] || []).slice();
+      for (var i = l.length - 1; i >= 0; i--) { var r; try { r = l[i](f); } catch (e) { try { console.error("[Usables] presentador " + m, e); } catch (e2) {} r = undefined; } if (r !== false) return true; }
+      return false;
+    }
     function muestra(x, repinta) {   // repinta: la ficha ya estaba a la vista y solo ha cambiado (no se vuelve a avisar al tipo)
       var d = Entidades.de(x), m = modoVista(), propio = false; if (!d) return false;
       if (d.muestra && !repinta) { try { propio = d.muestra(x, m) === true; } catch (e) { try { console.error("[Usables] " + x, e); } catch (e2) {} } }
       if (propio) { conAcciones = false; return true; }   // la enseña él (la baliza, en su propio recuadro)
       var f = Entidades.ficha(x, m); if (!f) return false;
       conAcciones = !!(f.acciones && f.acciones.length);
-      if (m === "vr") { if (presentadores.vr) presentadores.vr(f); }
+      if (m === "vr") presenta("vr", f);
       else { enFicha = x; pintaPantalla(f); }
       return true;
     }

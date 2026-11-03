@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: VRX, vrDebugExtra, vrFundido, vrAparece, panel, ficha, PanelVR, vrActualiza, VR_PERFILES, vrFin
-// Consume: 01_datos (D, $, fmt, VRP), 02_mundo (Mundo, suelo, orto, copas), 02c_componentes (Bus, Config), 02d_laminas (Laminas),
+// Expone: VRX, vrDebugExtra, vrFundido, vrAparece, panel, ficha, fichaB, PanelVR, vrActualiza, VR_PERFILES, vrFin
+// Consume: 01_datos (D, $, fmt, VRP), 02_mundo (Mundo, suelo, orto, copas), 02c_componentes (ComponentesPuro, Bus, Config), 02d_laminas (Laminas),
 //   02e_entidades (EntidadesPuro, Entidades, Usables), 02f_xr_perillas (XrPerillas),
 //   03_escena (lienzo, visor, renderer, scene, camera, sol, texColor, exag, modo, calidad), 04b_escena3d (Escena3D), 05_nube (nube),
 //   07b_arboles (Arboles), 08_marcadores (capas), 09_camara (pon), 10_ndvi (NDV, ndviIdx),
@@ -153,6 +153,9 @@
   }
   // el panel (1 × 1,06 m; 1.024 px por metro), la ficha de un olivo y la de una baliza (I5: con «Ir a esta baliza» pulsable; 1.239 px por metro)
   var vrMed = VrFichaPuro.MEDIDAS;
+  // EV2 (doc/sistema/VIABILIDAD-INTERACCION.md §A.5): la interfaz espacial en capas, solo con ?ui=capas (apagada por defecto). Aquí: el rayo ilumina los
+  // botones de las láminas del mundo que lo piden (Laminas.apunta; las fichas en el mundo, EV2-A1) y el panel nace y se queda (EV2-A2). Sin la bandera, lo de siempre.
+  var VR_CAPAS = ComponentesPuro.valorUrl(typeof location !== "undefined" ? location.search : "", "ui", "capas") === true;
   function creaDe(q) { return creaLamina(q.W, q.H, q.pw, q.ph); }
   var panel = creaDe(vrMed.panel), ficha = creaDe(vrMed.ficha), fichaB = creaDe(vrMed.fichaB);
   function vrBajoRayo(l, B, rr) {   // ¿qué botón de la lámina l hay bajo el rayo? null si el rayo no toca la lámina; false si la toca fuera de los botones
@@ -478,6 +481,7 @@
     vrVineta.visible = VRX.vineta; vrVineta.material.uniforms.uK.value += ((mueve ? 0.55 : 0) - vrVineta.material.uniforms.uK.value) * Math.min(1, dt * 8);
     // láminas
     var rr = vrRayoDe(R), hv = "";
+    if (VR_CAPAS) Laminas.apunta(rr);   // EV2-A1: el resalte de los botones de las fichas en el mundo (sin la bandera, ni un rayo de más)
     if (panel.m.visible) {
       vrSigue(panel, dt, vrMed.panel.dist, vrMed.panel.bajo); vrGenteTic(dt);
       var q = vrBajoRayo(panel, VRX.botones, rr); hv = q ? q.id : "";
@@ -579,7 +583,7 @@
     if (paseando) salePaseo();
     VRX.vuelo = false; VRX.mirador = false; vrEstado("soportado (sesión terminada)"); Bus.emite("vr:sale"); tamano(); requestAnimationFrame(bucle);
   }
-  window.__vrDebug = function () { return Object.assign({ on: VRX.on, estado: VRX.estado, nivel: VRX.nivel, rig: JSON.parse(JSON.stringify(VRX.rig)), cabeza: [VRX.cab.x, VRX.cab.y, VRX.cab.z], pp: [pp.x, pp.y], vuelo: VRX.vuelo, panel: panel.m.visible, ficha: ficha.m.visible, hover: VRX.hover, pestana: VRX.pestana, giro: VRX.giro, sinEscena: VRX.sinPint, vinetaOn: VRX.vineta, vineta: vrVineta.material.uniforms.uK.value, sesionesN: VRX.sesionesN, paseando: paseando, primera: primera, modo: modo, exag: exag, hora: horaMundoTexto(), horaMs: meta.ms, solY: sol.position.y, solI: sol.intensity, ndvi: ndviIdx, parcSel: VRX.parcSel, panelPos: panel.m.position.toArray(), fichaPos: ficha.m.position.toArray(), frames: renderer.info.render.frame, nivelArb: Arboles.resumen(), hierba: VRP.hierba, bump: UN.uBumpK.value, perfiles: VR_PERFILES.length, xr: { near: XrPerillas.efectivas.near, topeJs: XrPerillas.js(), fov: XrPerillas.efectivas.fov, escala: XrPerillas.efectivas.escala, hz: XrPerillas.efectivas.hz, aa: XrPerillas.aa, nivelFijo: XrPerillas.efectivas.nivel, adaptativo: XrPerillas.efectivas.nivel == null, ignorados: XrPerillas.efectivas.ignorados, linea: XrPerillas.linea() }, near: camera.near, far: camera.far,
+  window.__vrDebug = function () { return Object.assign({ on: VRX.on, estado: VRX.estado, capas: VR_CAPAS, nivel: VRX.nivel, rig: JSON.parse(JSON.stringify(VRX.rig)), cabeza: [VRX.cab.x, VRX.cab.y, VRX.cab.z], pp: [pp.x, pp.y], vuelo: VRX.vuelo, panel: panel.m.visible, ficha: ficha.m.visible, hover: VRX.hover, pestana: VRX.pestana, giro: VRX.giro, sinEscena: VRX.sinPint, vinetaOn: VRX.vineta, vineta: vrVineta.material.uniforms.uK.value, sesionesN: VRX.sesionesN, paseando: paseando, primera: primera, modo: modo, exag: exag, hora: horaMundoTexto(), horaMs: meta.ms, solY: sol.position.y, solI: sol.intensity, ndvi: ndviIdx, parcSel: VRX.parcSel, panelPos: panel.m.position.toArray(), fichaPos: ficha.m.position.toArray(), frames: renderer.info.render.frame, nivelArb: Arboles.resumen(), hierba: VRP.hierba, bump: UN.uBumpK.value, perfiles: VR_PERFILES.length, xr: { near: XrPerillas.efectivas.near, topeJs: XrPerillas.js(), fov: XrPerillas.efectivas.fov, escala: XrPerillas.efectivas.escala, hz: XrPerillas.efectivas.hz, aa: XrPerillas.aa, nivelFijo: XrPerillas.efectivas.nivel, adaptativo: XrPerillas.efectivas.nivel == null, ignorados: XrPerillas.efectivas.ignorados, linea: XrPerillas.linea() }, near: camera.near, far: camera.far,
     panelTam: [panel.W, panel.H, panel.pw, panel.ph], fichaB: fichaB.m.visible, fichaBPos: fichaB.m.position.toArray(), fichaBTam: [fichaB.W, fichaB.H, fichaB.pw, fichaB.ph], fichaId: VRX.fichaId, hoverB: VRX.hoverB, fichaGente: VRX.balInfo && VRX.fichaId ? VRX.balInfo.gente : null,
     tiempo: null, fichaTiempo: null,   // los pone la fila del componente fichas-tiempo (35_fichas_tiempo.js) por PanelVR.debug(), si está
     gente: VRX.gente ? { activo: VRX.gente.activo, n: VRX.gente.n, filas: VRX.gente.filas.map(function (f) { return { id: f.id, alias: f.alias, modo: f.modo, dist: f.dist }; }) } : null }, PanelVR.debug()); };

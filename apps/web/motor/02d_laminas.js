@@ -1,14 +1,14 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Laminas
-// Consume: 02c_componentes (Bus), 03_escena (lienzo, renderer, scene, camera, texColor, modo), 15_tiempo (rumbo, hace), 16_vida (mira),
-//   24_pantalla (suave), 29_vr (VRX), 90_final (bucle)
+// Consume: 02c_componentes (Bus), 03_escena (lienzo, renderer, scene, camera, texColor, modo), 08_marcadores (capas), 15_tiempo (rumbo, hace),
+//   16_vida (mira), 24_pantalla (suave), 29_vr (VRX, panel), 90_final (bucle)
 // Nota: Servicio del núcleo (ADR-0023, C8): LaminasPuro y Laminas (un lienzo 2D como textura de un cartel en el mundo: colocación delante a la altura de los ojos, giro suave, cierre por distancia o al salir de VR, repintado solo si cambia la firma, liberado entero y alTocar(u, v) para el rayo y el gatillo). Sin reloj propio: lo mueve 90_final (Laminas.revisa) y 29_vr (Laminas.toca). Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/laminas.test.js.
 // ===============================================================================
   // ---------- las láminas (ADR-0023, C8; doc/sistema/COMPONENTES.md): un lienzo 2D como textura de un cartel en el mundo, anclado al mundo (no a la cabeza), a la
   // altura de los ojos y delante de la mirada, que se vuelve despacio hacia quien lo mira, se repinta SOLO si cambia lo que se ve, se cierra solo si te alejas
   // o sales de VR y se libera entero al cerrarlo. Es lo que antes era la lámina de la previsión del tiempo (35_fichas_tiempo.js), sacado como servicio del
   // núcleo para el siguiente (el juego en VR, las fichas de entidades). Quien la usa no crea mallas ni texturas: da el lienzo y qué pintar.
-  //   Laminas.abre({ id, ancho, alto, pinta(cx, w, h, lam), firma?(lam), alTocar?(u, v, t), alCierra?(motivo), nombre?, w?, h?, pxPorM?, modo?, dist?, bajo?, cierraA?, sigue? })
+  //   Laminas.abre({ id, ancho, alto, pinta(cx, w, h, lam), firma?(lam), alTocar?(u, v, t), alApuntar?(u, v, t), alCierra?(motivo), nombre?, w?, h?, pxPorM?, modo?, dist?, bajo?, cierraA?, sigue?, en?, encima? })
   //     ancho, alto: metros del cartel · w, h: píxeles del lienzo (por defecto ancho·pxPorM, con pxPorM = 800)
   //     pinta: dibuja el lienzo entero (cx = contexto 2D, w × h px; lam = { id, modo, ancho, alto, w, h, rumbo() }, rumbo() = hacia dónde mira quien lo ve de
   //       frente, 0 = norte y 90 = este)
@@ -18,8 +18,10 @@
   //     alCierra(motivo): "cerrada" (a mano), "lejos", "sale-vr" o "reabierta" · cierraA: { vr: 40, pantalla: 60 } m de la cabeza · modo: "vr" | "pantalla"
   //       (por omisión, según VRX.on) · dist: m delante de la mirada ({ vr: 1.4, pantalla: 2.4 }) · bajo: m por debajo de los ojos ({ vr: 0.05, pantalla: 0.1 })
   //       · sigue: false para que no se vuelva hacia quien la mira · en: { x, y, z } (escena) para colgarla de un sitio del mundo en vez de ponerla delante de la mirada (se vuelve hacia quien la mira igual)
+  //       · encima: true para pintarla por encima de todo (sin prueba de profundidad, transparente y con renderOrder 998, como el panel VR): las hojas de una copa no la tapan
+  //     alApuntar(u, v, t): el rayo de un mando pasa por ella (29_vr.js llama a Laminas.apunta(rayo) cada fotograma, solo con ?ui=capas); t = null cuando deja de pasar
   //   Laminas.cierra(id, motivo?) → bool · Laminas.repinta(id, forzar?) → bool (¿pintó?) · Laminas.revisa(dt?) (el bucle la llama; sin dt, ahora mismo)
-  //   Laminas.toca(rayo) → bool · Laminas.info(id) → { abierta, modo, pos, rumbo, pintadas, firma } · Laminas.hay(id) · Laminas.ids() · Laminas.cierraTodas(motivo)
+  //   Laminas.toca(rayo) → bool · Laminas.apunta(rayo) → id apuntado o null · Laminas.info(id) → { abierta, modo, pos, rumbo, pintadas, firma } · Laminas.hay(id) · Laminas.ids() · Laminas.cierraTodas(motivo)
   // Presupuesto (regla 6): por lámina abierta, UNA malla (una llamada de dibujo, 2 triángulos) y UNA textura w × h sin mipmaps (w·h·4 B); se crean al abrir y se
   // liberan (geometría, material, textura y lienzo) al cerrar. El lienzo solo se sube a la GPU si la firma cambia. Sin reloj propio: lo mueve el bucle (90_final).
   // [puro:inicio] (sin THREE ni DOM: lo evalúa en Node pruebas/guardianes/laminas.test.js)
@@ -45,7 +47,7 @@
       if (typeof o.id !== "string" || !o.id) e.push("id: texto");
       if (!(o.ancho > 0) || !(o.alto > 0)) e.push("ancho y alto: metros > 0");
       if (typeof o.pinta !== "function") e.push("pinta: función");
-      ["firma", "alTocar", "alCierra"].forEach(function (k) { if (o[k] !== undefined && typeof o[k] !== "function") e.push(k + ": función"); });
+      ["firma", "alTocar", "alApuntar", "alCierra"].forEach(function (k) { if (o[k] !== undefined && typeof o[k] !== "function") e.push(k + ": función"); });
       return e;
     }
     // EV2-A0: los topes angulares de lo que se lee y se pulsa en una lámina VR (doc/sistema/VIABILIDAD-INTERACCION.md §A.2). Son CIFRAS PROPIAS DEL GEMELO,
@@ -101,8 +103,8 @@
       var modo = o.modo === "vr" || o.modo === "pantalla" ? o.modo : enVR() ? "vr" : "pantalla", md = P.medidas(o);
       var cv = document.createElement("canvas"); cv.width = md.w; cv.height = md.h;
       var tex = texColor(new THREE.CanvasTexture(cv)); tex.minFilter = THREE.LinearFilter; tex.generateMipmaps = false;
-      var geo = new THREE.PlaneGeometry(o.ancho, o.alto), mat = new THREE.MeshBasicMaterial({ map: tex, alphaTest: 0.5, fog: false, toneMapped: false });
-      var m = new THREE.Mesh(geo, mat); m.name = o.nombre || "lamina:" + o.id; m.renderOrder = 10;
+      var geo = new THREE.PlaneGeometry(o.ancho, o.alto), mat = new THREE.MeshBasicMaterial(o.encima ? { map: tex, transparent: true, depthTest: false, depthWrite: false, fog: false, toneMapped: false } : { map: tex, alphaTest: 0.5, fog: false, toneMapped: false });
+      var m = new THREE.Mesh(geo, mat); m.name = o.nombre || "lamina:" + o.id; m.renderOrder = o.encima ? 998 : 10;
       var h = cabeza(vC), g = camera.getWorldDirection(vD); g.y = 0; if (g.lengthSq() < 1e-6) g.set(0, 0, -1); g.normalize();
       var dist = o.dist && o.dist[modo] != null ? o.dist[modo] : P.DIST[modo], bajo = o.bajo && o.bajo[modo] != null ? o.bajo[modo] : P.BAJO[modo];   // a la altura de los ojos y delante de la mirada; luego se queda ahí
       m.position.set(h.x + g.x * dist, h.y - bajo, h.z + g.z * dist);
@@ -148,12 +150,30 @@
       var t = P.toque(mejor.uv, mejor.l.w, mejor.l.h); t.lam = mejor.l.lam;
       try { return mejor.l.o.alTocar(t.u, t.v, t) !== false; } catch (e) { try { console.error("[Laminas] alTocar " + mejor.l.id, e); } catch (e2) {} return true; }
     }
+    // el rayo de un mando cada fotograma (29_vr.js, solo con ?ui=capas): la lámina con alApuntar más cercana que toca recibe (u, v, t); la que deja de
+    // tocar recibe una vez alApuntar(null, null, null). Solo mira las que tienen alApuntar (sin ellas, no lanza ningún rayo)
+    function apunta(rr) {
+      var mejor = null, ids = Object.keys(LS);
+      ids.forEach(function (id) {
+        var l = LS[id]; if (!l.o.alApuntar || !rr) return;
+        var ix = rr.intersectObject(l.m, false)[0]; if (!ix || !ix.uv) return;
+        if (!mejor || ix.distance < mejor.d) mejor = { d: ix.distance, l: l, uv: ix.uv };
+      });
+      ids.forEach(function (id) {
+        var l = LS[id]; if (!l || !l.o.alApuntar) return;
+        var t = null;
+        if (mejor && mejor.l === l) { t = P.toque(mejor.uv, l.w, l.h); t.lam = l.lam; l.apuntada = true; }
+        else if (l.apuntada) l.apuntada = false; else return;
+        try { if (t) l.o.alApuntar(t.u, t.v, t); else l.o.alApuntar(null, null, null); } catch (e) { try { console.error("[Laminas] alApuntar " + id, e); } catch (e2) {} }
+      });
+      return mejor ? mejor.l.id : null;
+    }
     function info(id) {
       var l = LS[id]; if (!l) return { abierta: false, modo: "", pos: null, rumbo: null, pintadas: 0, firma: "" };
       return { abierta: true, modo: l.modo, pos: [l.m.position.x, l.m.position.y, l.m.position.z], rumbo: rumboDe(l.m), pintadas: l.pintadas, firma: l.firma, w: l.w, h: l.h };
     }
     Bus.on("vr:sale", function () { Object.keys(LS).forEach(function (id) { if (LS[id] && LS[id].modo === "vr") cierra(id, "sale-vr"); }); });
-    return { abre: abre, cierra: cierra, cierraTodas: cierraTodas, repinta: repinta, revisa: revisa, toca: toca, info: info, hay: function (id) { return !!LS[id]; }, ids: function () { return Object.keys(LS); },
+    return { abre: abre, cierra: cierra, cierraTodas: cierraTodas, repinta: repinta, revisa: revisa, toca: toca, apunta: apunta, info: info, hay: function (id) { return !!LS[id]; }, ids: function () { return Object.keys(LS); },
       cuenta: function () { return { abiertas: cuenta.abiertas, cerradas: cuenta.cerradas, pintadas: cuenta.pintadas, vivas: Object.keys(LS).length }; } };
   })();
   // [motor:fin]

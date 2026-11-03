@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: Bus, Pausa, ConfigPuro, Teclas, Componentes, Config
-// Consume: 01_datos (D, $), 02b_cola (Cola), 08_marcadores (listo, aplica), 09_camara (suelta, pon), 12_paseo (teclas), 14_historia (tabla, lista),
-//   15_tiempo (nivel, hace), 16_vida (quita), 28_depura (dep), 90_final (bucle)
+// Expone: ComponentesPuro, Bus, Pausa, ConfigPuro, Teclas, Componentes, Config
+// Consume: 01_datos (D, $), 02b_cola (Cola), 08_marcadores (listo, aplica, capas), 09_camara (suelta, pon), 12_paseo (teclas),
+//   14_historia (tabla, lista), 15_tiempo (nivel, hace), 16_vida (quita), 28_depura (dep), 90_final (bucle)
 // Nota: Núcleo de componentes (ADR-0023): ComponentesPuro, Bus (catálogo en contratos/eventos.json), Teclas, Componentes (registro, encendido URL > servidor > defecto, fases del bucle) y Config (GET /api/config del mismo origen al cargar, solo con D.base /teselas/… o ?api=; caída al código; contratos/config.schema.json). Publica además window.__componentes y window.__config (pruebas y ?debug). El trozo [puro:…] lo evalúa en Node pruebas/guardianes/componentes.test.js.
 // ===============================================================================
   // ---------- núcleo de componentes (ADR-0023, doc/sistema/COMPONENTES.md §3): el registro, el bus de eventos y las teclas.
@@ -33,6 +33,7 @@
       var b = d.bandera;
       if (!b || typeof b !== "object" || typeof b.defecto !== "boolean") e.push("bandera: { defecto: true|false, url?: nombre }");
       else if (b.url !== undefined && (typeof b.url !== "string" || !URLN.test(b.url))) e.push("bandera.url: minúsculas y cifras");
+      else if (b.valor !== undefined && (typeof b.valor !== "string" || !URLN.test(b.valor) || !b.url)) e.push("bandera.valor: minúsculas y cifras (con bandera.url)");
       var p = d.presupuesto;
       if (!p || typeof p !== "object" || !num(p.llamadas) || !num(p.triangulos) || (p.texturasMB !== undefined && !num(p.texturasMB))) e.push("presupuesto: { llamadas, triangulos, texturasMB? } ≥ 0 (regla 6)");
       var f = d.fases || {}, a = d.actualiza || {};
@@ -61,16 +62,18 @@
       ids.forEach(function (id) { visita(id, []); });
       return { orden: out, ciclos: ciclos, depende: dep };
     }
-    // ?<nombre>=0|no|false|off apaga; =1|si|sí|true|on (o sin valor) enciende; si no está, undefined
-    function valorUrl(busqueda, nombre) {
+    // ?<nombre>=0|no|false|off apaga; =1|si|sí|true|on (o sin valor) enciende; si no está, undefined. Con valor (EV2: ?ui=capas), enciende si el
+    // parámetro lo nombra (?ui=capas o ?ui=capas,otra), apaga con 0|no|false|off y, si nombra otra cosa o va sin valor, undefined
+    function valorUrl(busqueda, nombre, valor) {
       if (!nombre) return undefined;
       var m = new RegExp("[?&]" + nombre + "(?:=([^&#]*))?(?:[&#]|$)").exec(busqueda || ""); if (!m) return undefined;
       var v = decodeURIComponent(m[1] || "").toLowerCase();
+      if (valor) return v.split(",").indexOf(valor) >= 0 ? true : v === "0" || v === "no" || v === "false" || v === "off" ? false : undefined;
       return v === "" || v === "1" || v === "si" || v === "sí" || v === "true" || v === "on" ? true : v === "0" || v === "no" || v === "false" || v === "off" ? false : undefined;
     }
     // ¿encendido? precedencia: URL > servidor (bloque «componentes» de la configuración) > defecto del manifiesto
     function encendido(d, busqueda, servidor) {
-      var u = valorUrl(busqueda, d.bandera && d.bandera.url);
+      var u = valorUrl(busqueda, d.bandera && d.bandera.url, d.bandera && d.bandera.valor);
       if (u !== undefined) return { activo: u, origen: "url" };
       var s = servidor && servidor[d.id];
       if (s && typeof s.activo === "boolean") return { activo: s.activo, origen: "servidor" };

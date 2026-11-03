@@ -164,6 +164,19 @@ test("VR: el presentador pinta las fichas sin acciones; abierta() da la elegida 
   quita(); m.Usables.elige("olivo:cerro:3"); assert.strictEqual(pintadas.length, 1, "sin presentador no se pinta nada");
 });
 
+test("EV2-A1: los presentadores se encadenan: el último primero; false pasa la ficha al de antes; quitarlo deja al de antes", () => {
+  const m = mundo(), t = tipos(m, {}), viejo = [], nuevo = [];
+  m.VRX.on = true;
+  m.Entidades.registra({ tipo: "persona", dueno: "26_presencia", prioridad: 30, lista: () => [], ficha: () => ({ titulo: "Ana" }) });
+  const q1 = m.Usables.presentador("vr", f => { viejo.push(f.id); });
+  const q2 = m.Usables.presentador("vr", f => { if (f.tipo !== "olivo") return false; nuevo.push(f.id); });
+  m.Usables.elige("olivo:cerro:1"); m.Usables.elige("persona:a1");
+  assert.deepStrictEqual(nuevo, ["olivo:cerro:1"]); assert.deepStrictEqual(viejo, ["persona:a1"]);
+  q2(); m.Usables.elige("olivo:cerro:2"); assert.deepStrictEqual(viejo, ["persona:a1", "olivo:cerro:2"], "quitado el nuevo, vuelve el de antes");
+  q1(); m.Usables.elige("olivo:cerro:3"); assert.strictEqual(viejo.length, 2);
+  t.quitas.forEach(q => q && q());
+});
+
 test("cercanía: solo paseando, dentro del radio, cada 0,1 s, con usable:cerca al cambiar", () => {
   const m = mundo(), t = tipos(m, {});
   m.pp.x = 0; m.Usables.actualiza(0.2); assert.strictEqual(m.Usables.cercano(), null, "en la órbita, nada");

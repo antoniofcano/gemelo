@@ -63,6 +63,14 @@ test("encendido: URL > servidor > defecto del manifiesto", () => {
   assert.deepStrictEqual(P.encendido(d, "?fichas=0", null), { activo: false, origen: "url" });
   for (const [q, v] of [["?fichas", true], ["?fichas=no", false], ["?fichas=sí", true], ["?x=1&fichas=off#a", false], ["?fichasx=0", undefined], ["?fichas=quizá", undefined]]) assert.strictEqual(P.valorUrl(q, "fichas"), v, q);
   assert.deepStrictEqual(P.encendido(manifiesto({ bandera: { defecto: false } }), "?x=1", {}), { activo: false, origen: "defecto" });
+  // EV2: bandera con valor (?ui=capas): enciende si el parámetro lo nombra, apaga con 0/no/off; con otra cosa mandan el servidor o el defecto
+  const c = manifiesto({ id: "fichas-mundo", bandera: { defecto: false, url: "ui", valor: "capas" } });
+  for (const [q, v] of [["?ui=capas", true], ["?ui=otra,capas", true], ["?ui=CAPAS", true], ["?ui=0", false], ["?ui=off", false], ["?ui", undefined], ["?ui=1", undefined], ["?ui=capasx", undefined], ["", undefined]]) assert.strictEqual(P.valorUrl(q, "ui", "capas"), v, q);
+  assert.deepStrictEqual(P.encendido(c, "?ui=capas", null), { activo: true, origen: "url" });
+  assert.deepStrictEqual(P.encendido(c, "?ui=otra", { "fichas-mundo": { activo: true } }), { activo: true, origen: "servidor" });
+  assert.deepStrictEqual(P.encendido(c, "", null), { activo: false, origen: "defecto" });
+  assert.strictEqual(P.valida(manifiesto({ bandera: { defecto: false, valor: "capas" } })).filter(e => /valor/.test(e)).length, 1, "valor sin url, no");
+  assert.strictEqual(P.valida(manifiesto({ bandera: { defecto: false, url: "ui", valor: "Capas!" } })).filter(e => /valor/.test(e)).length, 1);
 });
 
 test("la configuración del servidor: contratos/config.schema.json y validaConfig del motor dicen lo mismo; el ejemplo vale", () => {
