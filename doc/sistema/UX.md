@@ -88,13 +88,13 @@ Para cada pantalla: objetivo · contenido · acciones · estados · textos clave
 - **[DECIDE ANTONIO]** si hay una vista previa abierta sin cuenta (plan, decisión 5 «¿mundo tras sesión o abierto?»). El diseño funciona en ambos casos: con vista previa, un segundo botón «Echar un vistazo sin entrar» (sin chat ni voz).
 
 ### 4.2 Entrar con tu correo (enlace mágico)
-- **Objetivo:** pedir el enlace sin contraseña.
-- **Contenido:** campo de correo (`type=email`, `autocomplete=email`), pista, botón «Mandarme el enlace»; en Quest, tarjeta «¿Estás en las gafas? Vincular con otro dispositivo».
+- **Objetivo:** pedir el enlace sin contraseña. Desde OF13b es **la segunda opción** de la pantalla «Entrar» (la primera, si el navegador admite llaves, es [«Entrar con mi llave»](#42b-entrar-con-una-llave-la-oferta-de-crearla-y-mis-llaves-of13b-7-adr-0029)): el enlace es el alta, la recuperación y lo que queda sin llave a mano. El texto del formulario: «Escribe el correo de tu hogar. Te mandamos un enlace para entrar: no hay contraseña que recordar. Es la forma de entrar la primera vez y si no tienes tu llave a mano.»
+- **Contenido:** campo de correo (`type=email`, `autocomplete="email webauthn"`), pista, botón «Mandarme el enlace»; en Quest, tarjeta «¿Estás en las gafas? Vincular con otro dispositivo».
 - **Estados:**
-  - *Vacío o mal formado:* error junto al campo, con `aria-invalid` y foco devuelto: «Ese correo no parece completo. Revisa que tenga @ y un dominio».
+  - *Vacío o mal formado:* error junto al campo, con `aria-invalid` y foco devuelto: «Ese correo no parece completo. Revisa que tenga @ y un dominio.»
   - *Enviando:* botón deshabilitado con «Mandando…».
-  - *Aceptado:* pasa a «Revisa tu correo». **La respuesta es idéntica exista o no el correo** (no se revela quién tiene cuenta).
-  - *Límite de peticiones:* «Has pedido varios enlaces seguidos. Por seguridad, espera unos minutos antes de pedir otro. Si ya te ha llegado uno, úsalo». Mismo texto para cualquier correo. Límite propuesto: por IP y por correo (cifras en ADR-0013).
+  - *Aceptado (202):* pasa a «Revisa tu correo» (4.3). **La respuesta es idéntica exista o no el correo** (no se revela quién tiene cuenta): «Si ese correo tiene cuenta, te llegará un enlace. Caduca en 15 minutos y sirve una sola vez.»
+  - *Límite de peticiones (429):* «Has pedido varios enlaces seguidos. Por seguridad, espera unos minutos antes de pedir otro. Si ya te ha llegado uno, úsalo.» Mismo texto para cualquier correo. Límites en el código: **5 por correo y 10 por IP cada 15 min** (`GEMELO_ENLACE_POR_CORREO`, `GEMELO_ENLACE_POR_IP`; ADR-0013 y ADR-0029). **Pendiente:** que el 429 remita a la llave («entra con tu llave si la tienes») no está hecho: hoy el texto no la nombra.
   - *Error de red:* «No hemos podido conectar. Comprueba la conexión y vuelve a probar».
 - **Texto bajo el formulario:** «¿No tienes cuenta? Las cuentas de hogar las da la explotación».
 
