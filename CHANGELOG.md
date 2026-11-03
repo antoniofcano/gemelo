@@ -218,6 +218,10 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 - ADR-0010 (monorepo y Vite) y ADR-0011 (alojamiento en el VPS de OVH como inquilino del borde); ADR-0008 enmendado (solo salida artefacto).
 - Andamio: `VERSION`, `package.json`, `Makefile`, `.editorconfig`, `.nvmrc`, `requirements.txt`, `CONTRIBUTING.md`, plantillas de issue y PR.
 
+
+### Corregido
+- La Configuración del visor (pestañas, alto contraste, brújula, texto mayor, movimiento reducido) ya no depende de un `<style>` creado por el motor, que la CSP estricta bloquearía al imponerla; sus reglas viven en `plantilla.css`.
+- «Entrar con mi llave» de la pantalla de entrada de la oficina no llegaba a la api (decía «Esa llave no sirve aquí» sin intentarlo); ahora hace la ceremonia. Probado solo en Chrome sin pantalla con autenticador virtual: no probado en iPhone, Quest, Windows Hello, Android ni con lector de pantalla.
 ### Cambiado
 - Las nubes del cielo (230 manchas) se dibujan en una sola llamada en vez de una por mancha: en Hituelo, la vista de lejos pasa de 164 a 98 llamadas con `?escena=tiles` y de 176 a 108 sin ella (SwiftShader). Aspecto pendiente de aprobar.
 - Olivos detallados más lejos en aparatos holgados (petición de Antonio tras verlo en el móvil): la escala adaptativa del nivel 0 sube hasta ×2,5 (antes ×1,6) cuando el fotograma va por debajo de 16 ms (radio en órbita hasta ~330 m, hasta ~1.100 olivos), y los generados aparecen desde más lejos en la misma proporción (hasta ~240 m). Un aparato justo se queda como estaba; en las gafas sigue mandando el perfil VR. Medido solo en Node.
