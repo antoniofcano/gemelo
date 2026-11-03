@@ -38,7 +38,7 @@ En gafas **cada llamada de dibujo se paga dos veces** (sin multiview): todo lo q
 |---|---|---|
 | AG-2.1 | Transparencias a `alphaToCoverage` (hierba, follaje, ramitas, impostores) | AG-2.1 |
 | AG-2.2 | Cartulinas recortadas a la silueta (tubería) | AG-2.2 |
-| AG-2.3 | **VR: `near` de 0,3 a 0,05-0,1 y umbral de JS del controlador de 13 a 7-8 ms** midiendo entre fotogramas XR | AG-2.3 |
+| AG-2.3 | **VR: `near` de 0,3 a 0,05-0,1 y umbral de JS del controlador de 13 a 7-8 ms** midiendo entre fotogramas XR | AG-2.3 — **hecho en Node** (near 0,1 con `?xrnear=`; umbral 8 ms con `escalera.vrJsMs` y `?xrjs=`); no probado en un Quest, el efecto es una hipótesis hasta medir con y sin cambio ([VR.md](../sistema/VR.md#perillas-de-rendimiento-por-url)) |
 | AG-2.4 | Confort: fundido a negro de 150-250 ms en mirador y teletransporte, viñeta por defecto, topes de vuelo más bajos | AG-2.4 |
 | AG-2.5 | Tone mapping: probar AgX y ACES | AG-2.5 |
 | AG-2.6 | Capa quad de WebXR para el panel | dentro de Q0d |

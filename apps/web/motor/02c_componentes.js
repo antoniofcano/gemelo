@@ -136,7 +136,7 @@
       "escalera.maxPropios": [1, 8, true], "escalera.maxPropiosGafas": [1, 4, true], "escalera.maxVariantes": [0, 64, true],
       "escalera.triangulos.escritorio": [300000, 700000, true], "escalera.triangulos.movil": [120000, 300000, true],
       "escalera.triangulos.gafas": [50000, 380000, true, true],
-      "escalera.fraccionE0Gafas": [0, 0.5], "escalera.factorCopa": [0.5, 1.5]
+      "escalera.fraccionE0Gafas": [0, 0.5], "escalera.factorCopa": [0.5, 1.5], "escalera.vrJsMs": [4, 16]
     };
     var EPOCAS = ["reposo", "boton", "flor", "cuajado", "verde", "envero", "madura"];
     function esObj(v) { return !!v && typeof v === "object" && !Array.isArray(v); }

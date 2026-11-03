@@ -66,6 +66,7 @@
           }
         },
         "fraccionE0Gafas": { "type": "number", "minimum": 0, "maximum": 0.5, "$comment": "parte del presupuesto de las gafas que puede llevarse el E0 (0,4)" },
+        "vrJsMs": { "type": "number", "minimum": 4, "maximum": 16, "$comment": "umbral de ms de JS por fotograma con que el controlador adaptativo de las gafas baja de nivel (8; XrPerillasPuro.DEF.js de 02f_xr_perillas.js, AG-2.3). ?xrjs= manda." },
         "factorCopa": { "type": "number", "minimum": 0.5, "maximum": 1.5, "$comment": "copa de los olivos del constructor = 2 × r8 × factor (1; FACTOR_R8_GEN de 01_datos.js). El nivel de siempre (0,5) no cambia desde aquí. ?factorR8= manda." }
       }
     },
