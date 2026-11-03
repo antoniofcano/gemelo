@@ -36,6 +36,8 @@
     var ALIAS = ["Mirlo", "Abubilla", "Jilguero", "Carbonero", "Alcaraván", "Verdecillo", "Golondrina", "Perdiz", "Abejaruco", "Cogujada", "Encina", "Lentisco", "Retama", "Acebuche", "Coscoja", "Romero", "Tomillo", "Jara", "Algarrobo", "Almendro"];
     var CAMISAS = Aspecto.CAMISAS, PIELES = Aspecto.PIELES, SOMBREROS = [null, { c: 0xd9bf6a, w: 0.46, h: 0.07, d: 0.46, z: 0 }, { c: 0x2e5d34, w: 0.3, h: 0.09, d: 0.36, z: -0.04 }];
     var m4 = null, m4b = null, q1 = null, v1 = null, v2 = null, vS = null, ejeY = null, cNom = 4, fNom = 1, matSombreroLocal = [];
+    var mallasInst = [];
+    var girosT = [0, 0, 0, 0, 0];   // los giros de las cinco piezas del muñeco en este avatar (reutilizado por avatar y fotograma; AG-1.4)
     var NP = Muneco.PIEZAS.length, PANTALON = Aspecto.PANTALON, mBase = null, mPieza = null, ejeX = null, outMu = {};   // pantalón: el del paseante, si la persona no eligió otro
     // AV2 (decisión 131): los accesorios (sombrero y apoyo: asiento y respaldo de la silla, bastón, andador) son más instancias de la MISMA caja unidad del sombrero (0 llamadas nuevas) y las
     // ruedas de la silla, una malla instanciada más (1 llamada, y solo si alguien lleva silla). Cada persona toma las cajas y ruedas que necesita de una reserva; la malla dibuja hasta la última en uso
@@ -96,7 +98,8 @@
       });
       mats.push(matN);
       mNombres = new THREE.InstancedMesh(gNom, matN, nCuerpos); mNombres.renderOrder = 5;
-      [mCuerpo, mCabeza, mSombrero, mManos, mNombres, mRuedas].forEach(function (m) { m.frustumCulled = false; m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); grupo.add(m); });   // se mueven cada fotograma: el volumen envolvente de una InstancedMesh se calcula una vez (r151)
+      mallasInst = [mCuerpo, mCabeza, mSombrero, mManos, mNombres, mRuedas];   // las que se marcan cada fotograma, ya en su lista (AG-1.4)
+      mallasInst.forEach(function (m) { m.frustumCulled = false; m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); grupo.add(m); });   // se mueven cada fotograma: el volumen envolvente de una InstancedMesh se calcula una vez (r151)
       vEsc = new THREE.Vector3(DRON_ESC, DRON_ESC, DRON_ESC);
       cargaVehiculos(nCuerpos);
     }
@@ -192,7 +195,7 @@
           pelo: vest.pelo, receta: vest.receta,
           sombrero: sombrero, iSom: -1, iMano: quest ? (nQuest++) * 2 : -1,
           // emisor simulado: dónde está de verdad, adónde va, su reloj (u32, algunos a punto de dar la vuelta) y su secuencia
-          home: home, x: home.x + (azar() - 0.5) * 20, y: home.y + (azar() - 0.5) * 20, dest: null, vel: 1.1 + azar() * 0.5, rum: 0, fase: azar() * 6.28,
+          home: home, x: home.x + (azar() - 0.5) * 20, y: home.y + (azar() - 0.5) * 20, dest: { x: 0, y: 0, ok: false }, vel: 1.1 + azar() * 0.5, rum: 0, fase: azar() * 6.28,
           reloj: k % 4 === 0 ? 4294967296 - 3000 - k * 1000 - Math.round(performance.now()) : Math.floor(azar() * 1e9), seq: Math.floor(azar() * 65536), tTick: azar() * TICK, nTick: 0, cerca: false,
           buf: BufferPose.crea(), out: BufferPose.salida(), visto: false, vrm: null, modo: veh === "quad" ? 1 : veh === "dron" ? 2 : veh === "mixto" ? k % 3 : 0
         });
@@ -206,10 +209,12 @@
     }
 
     // ---- el emisor simulado: anda hacia un destino cerca de su «casa» y manda su pose por la red de mentira
+    var oyenteT = { x: 0, y: 0 };   // el mismo objeto cada vez (AG-1.4: nadie lo guarda; se lee al momento)
     function oyente() {   // dónde está quien observa (en metros este/norte): la cabeza en VR, el paseante, el punto de la órbita
-      if (VRX.on) return { x: VRX.cab.x, y: -VRX.cab.z };
-      if (paseando) return { x: pp.x, y: pp.y };
-      return { x: objetivo.x, y: -objetivo.z };
+      if (VRX.on) { oyenteT.x = VRX.cab.x; oyenteT.y = -VRX.cab.z; }
+      else if (paseando) { oyenteT.x = pp.x; oyenteT.y = pp.y; }
+      else { oyenteT.x = objetivo.x; oyenteT.y = -objetivo.z; }
+      return oyenteT;
     }
     function poseVerdad(a, tMs, o) {   // la pose del visitante simulado en este instante, en el sistema del contrato (cota sin exagerar)
       var s = suelo(a.x, a.y), cab = ALTO_OJOS + Math.sin(a.fase * 2) * 0.03, cab0 = Math.sin(a.fase * 0.37) * 0.35, cab1 = Math.sin(a.fase * 0.23) * 0.15;
@@ -225,8 +230,8 @@
       return o;
     }
     function anda(a, dt) {
-      if (!a.dest || Math.hypot(a.dest.x - a.x, a.dest.y - a.y) < 1.5) {
-        var e = D.ext; a.dest = { x: Math.max(e[0] + 5, Math.min(e[2] - 5, a.home.x + (azar() - 0.5) * 120)), y: Math.max(e[3] + 5, Math.min(e[1] - 5, a.home.y + (azar() - 0.5) * 120)) };
+      if (!a.dest.ok || Math.hypot(a.dest.x - a.x, a.dest.y - a.y) < 1.5) {
+        var e = D.ext; a.dest.x = Math.max(e[0] + 5, Math.min(e[2] - 5, a.home.x + (azar() - 0.5) * 120)); a.dest.y = Math.max(e[3] + 5, Math.min(e[1] - 5, a.home.y + (azar() - 0.5) * 120)); a.dest.ok = true;   // el mismo destino reescrito (AG-1.4); x antes que y, como el azar de siempre
       }
       var dx = a.dest.x - a.x, dy = a.dest.y - a.y, d = Math.hypot(dx, dy) || 1, obj = Math.atan2(-dx, dy), dif = Math.atan2(Math.sin(obj - a.rum), Math.cos(obj - a.rum));
       a.rum += Math.max(-dt * 2, Math.min(dt * 2, dif)); a.x += dx / d * a.vel * dt; a.y += dy / d * a.vel * dt; a.fase += dt * a.vel * 3.2;
@@ -236,15 +241,22 @@
       a.tTick += dt; if (a.tTick < TICK) return; a.tTick -= TICK; if (a.tTick > TICK) a.tTick = 0; a.nTick++;
       if (!(a.cerca || a.nTick % CADA_LEJOS === 0)) return;
       a.seq = (a.seq + 1) & 0xffff;
+      mandaSim(a, tMs);
+    }
+    function mandaSim(a, tMs) {   // lo que pasa en cada tic (10 Hz), no en cada fotograma: codifica la pose y la mete en la red de mentira
       var b = PoseCodec.codifica(poseVerdad(a, tMs, {})); est.enviados++; bytesVentana += b.byteLength; est.bytes += b.byteLength;
       if (azar() < 0.01) { est.perdidos++; return; }
       redSim.push({ en: tMs + 30 + azar() * 60, k: a.k, b: b });
     }
+    var listosT = [];   // los mensajes de la red de mentira que ya tocan (reutilizado cada fotograma)
     function entrega(tMs) {
-      var listos = redSim.filter(function (m) { return m.en <= tMs; }); if (!listos.length) return;
-      redSim = redSim.filter(function (m) { return m.en > tMs; }); listos.sort(function (x, y) { return x.en - y.en; });
-      for (var i = 0; i < listos.length; i++) {
-        var m = listos[i], p = PoseCodec.decodifica(m.b), a = V[m.k];
+      var i, j, m, resto = 0; listosT.length = 0;
+      for (i = 0; i < redSim.length; i++) { m = redSim[i]; if (m.en <= tMs) listosT.push(m); else redSim[resto++] = m; }
+      if (!listosT.length) return;
+      redSim.length = resto;
+      for (i = 1; i < listosT.length; i++) { m = listosT[i]; for (j = i - 1; j >= 0 && listosT[j].en > m.en; j--) listosT[j + 1] = listosT[j]; listosT[j + 1] = m; }   // por llegada, estable (inserción: son pocos)
+      for (i = 0; i < listosT.length; i++) {
+        m = listosT[i]; var p = PoseCodec.decodifica(m.b), a = V[m.k];
         if (!p) continue;
         // el instante de llegada se pasa en el reloj del RECEPTOR; el desfase con el del emisor lo estima el búfer
         if (BufferPose.recibe(a.buf, p, tMs)) est.recibidos++; else est.viejos++;
@@ -281,10 +293,10 @@
       var yv = mu.yPies + (mu.yCab - mu.yPies) * fa;
       var cx = c[0] + Math.sin(mu.yaw) * mu.atras, cz = c[2] + Math.cos(mu.yaw) * mu.atras;   // en quad, el cuerpo 0,2 m detrás del centro del quad (16_vida.js)
       mBase.compose(v1.set(cx, mu.yPies, cz), q1.setFromAxisAngle(ejeY, mu.yaw), vF.set(fa, fa, fa));
-      var giros = [0, mu.piernaI, mu.piernaD, mu.brazoI, mu.brazoD];
+      girosT[1] = mu.piernaI; girosT[2] = mu.piernaD; girosT[3] = mu.brazoI; girosT[4] = mu.brazoD;   // girosT[0] = 0 (el tronco no gira)
       for (var j = 0; j < NP; j++) {
         var P = Muneco.PIEZAS[j], largo = P[5] ? Math.max(0.2, P[1] - mu.agacho) : P[1];   // agachado: baja el cuerpo y encogen las piernas
-        mPieza.compose(v1.set(P[3] * fc, P[4] - mu.agacho, 0), q1.setFromAxisAngle(ejeX, giros[j]), v2.set(P[0] * fc, largo, P[2] * fc));
+        mPieza.compose(v1.set(P[3] * fc, P[4] - mu.agacho, 0), q1.setFromAxisAngle(ejeX, girosT[j]), v2.set(P[0] * fc, largo, P[2] * fc));
         mCuerpo.setMatrixAt(a.k * NP + j, m4.multiplyMatrices(mBase, mPieza));
       }
       // la cabeza encima del muñeco, girada como la de verdad (apunta donde apunta)
@@ -294,12 +306,12 @@
       if (a.cajas && a.cajas.length > a.iApoyo) apoyo(a, mu, fc);
       if (a.iIns >= 0) caja(a.iIns, -0.11 * fc, 1.33 - mu.agacho, -0.125 * fc - 0.016, 0.12, 0.09, 0.03);   // OF10: la insignia, en el pecho (delante es −z), a la izquierda
       if (a.iMano >= 0) {
-        [o.izq, o.der].forEach(function (h, i) {
-          var hay = i === 0 ? o.hayIzq : o.hayDer;
-          if (!hay) { mManos.setMatrixAt(a.iMano + i, m4.makeScale(0, 0, 0)); return; }
-          var sh = suelo(h.p[0], -h.p[2]); q1.set(h.q[0], h.q[1], h.q[2], h.q[3]);
-          mManos.setMatrixAt(a.iMano + i, m4.compose(v1.set(h.p[0], sh * exag + (h.p[1] - sh), h.p[2]), q1, vS));
-        });
+        for (var im = 0; im < 2; im++) {   // 0 = izquierda, 1 = derecha
+          var hm = im === 0 ? o.izq : o.der, hay = im === 0 ? o.hayIzq : o.hayDer;
+          if (!hay) { mManos.setMatrixAt(a.iMano + im, m4.makeScale(0, 0, 0)); continue; }
+          var sh = suelo(hm.p[0], -hm.p[2]); q1.set(hm.q[0], hm.q[1], hm.q[2], hm.q[3]);
+          mManos.setMatrixAt(a.iMano + im, m4.compose(v1.set(hm.p[0], sh * exag + (hm.p[1] - sh), hm.p[2]), q1, vS));
+        }
       }
       // P7c: si lleva su VRM y ya se ve entero, el muñeco no se dibuja (escala 0); el nombre y el vehículo, sí
       if (vrmG && vrmG.coloca(a, mu, o, yawCab, cx, cz, dt)) {
@@ -339,7 +351,7 @@
     var eventoGuiada = null, NOMBRE_GUIADA = "Visita guiada", avisoGuiada = "";   // avisoGuiada (OF11e): la frase de la api del último intento fallido de entrar (la lee la agenda)
     function nombreSala(c) { return c === "guiada" ? NOMBRE_GUIADA : SALAS_MUNDO[c]; }
     var ui = null, mensajes = [], tChat = 0, tGente = 0, claveGente = "", conectando = false, poseL = { tipo: 1, seq: 0, t: 0, cab: { p: [0, 0, 0], q: [0, 0, 0, 1] }, izq: null, der: null };
-    var mDesc = null, vDesc = null, qDesc = null, sDesc = null;
+    var mDesc = null, vDesc = null, qDesc = null, sDesc = null, manoR0 = { p: [0, 0, 0], q: [0, 0, 0, 1] }, manoR1 = { p: [0, 0, 0], q: [0, 0, 0, 1] };   // las dos manos de la pose propia, reescritas cada fotograma (AG-1.4)
     // medida de las pruebas (P4): con window.__presenciaMide puesto ANTES de cargar, se apunta cada pose que llega
     // [identidad, reloj del emisor (bytes 4-7), llegada en performance.now()]; se lee y vacía con __presencia("llegadas")
     var medLlegadas = null;
@@ -508,24 +520,27 @@
       var i = manoDe[0] === lado ? 0 : manoDe[1] === lado ? 1 : -1; if (i < 0) return null;
       var g = renderer.xr.getControllerGrip(i); if (!g || !g.parent || !g.visible) return null;
       mDesc.copy(g.matrixWorld).decompose(vDesc, qDesc, sDesc);
-      var s = suelo(vDesc.x, -vDesc.z);
-      return { p: [vDesc.x, vDesc.y - s * exag + s, vDesc.z], q: [qDesc.x, qDesc.y, qDesc.z, qDesc.w] };
+      var s = suelo(vDesc.x, -vDesc.z), r = i === 0 ? manoR0 : manoR1;   // la misma mano cada vez (por mando): el contrato la lee al momento, no la guarda
+      r.p[0] = vDesc.x; r.p[1] = vDesc.y - s * exag + s; r.p[2] = vDesc.z; r.q[0] = qDesc.x; r.q[1] = qDesc.y; r.q[2] = qDesc.z; r.q[3] = qDesc.w;
+      return r;
+    }
+    function perdidaPose() { est.perdidos++; }
+    function publicaPose(e) {   // solo en el tic de la red (10 Hz), no en cada fotograma: la publicación guarda sus opciones, así que lleva las suyas
+      var op = { fiable: false }; if (e.destinos) op.destinos = e.destinos;   // tema «pose», no fiable (contratos/presencia.md)
+      sala.publica("pose", e.bytes, op).catch(perdidaPose);
+      est.enviados++; est.bytes += e.bytes.byteLength; bytesVentana += e.bytes.byteLength;
     }
     function actualizaRed(dt, tMs) {
       var envios = SalaPose.tic(SP, tMs, sala ? poseLocal(tMs) : null);
-      if (envios && sala) envios.forEach(function (e) {
-        var op = { fiable: false }; if (e.destinos) op.destinos = e.destinos;   // tema «pose», no fiable (contratos/presencia.md)
-        sala.publica("pose", e.bytes, op).catch(function () { est.perdidos++; });
-        est.enviados++; est.bytes += e.bytes.byteLength; bytesVentana += e.bytes.byteLength;
-      });
-      var nc = 0, id, a;
+      if (envios && sala) for (var ie = 0; ie < envios.length; ie++) publicaPose(envios[ie]);   // el tic (10 Hz) devuelve algo; el resto de fotogramas, null
+      var nc = 0, np = 0, id, a;
       for (id in porId) {
-        a = porId[id];
+        a = porId[id]; np++;
         if (!SalaPose.seVe(SP, id, tMs, bloqueados)) { if (a.visto) oculta(a); continue; }   // bloqueado o en vista aérea: no se dibuja
         a.buf = a.o.buf; coloca(a, tMs, dt, SalaPose.retardo(a.o));   // (el búfer se rehace si vuelve tras un rato sin pose)
         if (a.o.cerca) nc++;
       }
-      est.cerca = nc; est.n = Object.keys(porId).length;
+      est.cerca = nc; est.n = np;
       tGente += dt; if (tGente >= 0.5) { tGente = 0; pintaGente(tMs); }
     }
 
@@ -705,15 +720,16 @@
         est.cerca = nc;
       }
       if (vrmG) vrmG.actualiza(dt);
-      [mCuerpo, mCabeza, mSombrero, mManos, mNombres, mRuedas].forEach(function (m) { m.instanceMatrix.needsUpdate = true; });
+      for (i = 0; i < mallasInst.length; i++) mallasInst[i].instanceMatrix.needsUpdate = true;
       if (mQuad) { mQuad.visible = nVehQ > 0; mQuad.instanceMatrix.needsUpdate = true; } if (mDron) { mDron.visible = nVehD > 0; mDron.instanceMatrix.needsUpdate = true; }
       est.quad = nVehQ; est.dron = nVehD;
       var ms = performance.now() - t0; msVentana = Math.max(msVentana, ms); est.ms = est.ms ? est.ms * 0.95 + ms * 0.05 : ms;
       tEst += dt;
-      if (tEst >= 1) {
-        est.bps = Math.round(bytesVentana / tEst); est.msMax = msVentana; est.retP95 = Math.round(p95(muestrasRet)); est.errP95 = Math.round(p95(muestrasErr) * 100) / 100;
-        bytesVentana = 0; msVentana = 0; tEst = 0; if (muestrasRet.length > 4000) { muestrasRet = muestrasRet.slice(-2000); muestrasErr = muestrasErr.slice(-2000); }
-      }
+      if (tEst >= 1) cierraVentana();
+    }
+    function cierraVentana() {   // una vez por segundo (medida de la presencia: ?debug y las pruebas), no en cada fotograma
+      est.bps = Math.round(bytesVentana / tEst); est.msMax = msVentana; est.retP95 = Math.round(p95(muestrasRet)); est.errP95 = Math.round(p95(muestrasErr) * 100) / 100;
+      bytesVentana = 0; msVentana = 0; tEst = 0; if (muestrasRet.length > 4000) { muestrasRet = muestrasRet.slice(-2000); muestrasErr = muestrasErr.slice(-2000); }
     }
     function personasTodas() { return variante === "red" ? Object.keys(porId).map(function (k) { return porId[k]; }) : V; }
     function estado() {
@@ -734,7 +750,7 @@
       if (ui) { ui.raiz.remove(); ui.burbuja.remove(); ui.gSeccion.remove(); ui = null; }
       scene.remove(grupo); [mCuerpo, mCabeza, mSombrero, mManos, mNombres, mRuedas, mQuad, mDron].forEach(function (m) { if (m) m.dispose(); }); mQuad = null; mDron = null;
       geos.forEach(function (g) { g.dispose(); }); mats.forEach(function (m) { m.dispose(); }); if (texNombres) texNombres.dispose();
-      grupo = null; V = []; redSim = []; porId = Object.create(null); mensajes = [];
+      grupo = null; mallasInst = []; V = []; redSim = []; porId = Object.create(null); mensajes = [];
     }
     function texto() { return activo ? "presencia (" + variante + ") " + est.n + " · cerca " + est.cerca + " · " + est.bps + " B/s · JS " + est.ms.toFixed(2) + " ms" + (variante === "sim" ? " · retardo p95 " + est.retP95 + " ms" : sala ? "" : " · sin conexión") : ""; }
     if (variante === "sim") { inicia(); if (/[?&]chat=1(&|$)/.test(location.search)) montaPanel(); }   // &chat=1 (solo pruebas): la ventana del chat también en la simulación, sin sala
