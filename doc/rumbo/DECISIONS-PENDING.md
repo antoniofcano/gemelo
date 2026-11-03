@@ -209,3 +209,7 @@ Decisiones que **no puede tomar un agente**: las cierra Antonio. Las técnicas s
 | 193 | **F4 · retención de los clips** | pendiente 30 días, rechazado en el acto, aprobado la campaña y un año más, borrado a petición (la recomendada) / otro | F4-5a | ⬜ |
 | 194 | **F4 · aviso y base jurídica para las personas trabajadoras en plano** | interés legítimo, hoja anual, aviso previo y verbal, chaleco y «no me grabes» = pausa (la recomendada) / consentimiento por persona / lo que diga la asesoría | F4-1b (con la 165) | ⬜ |
 | 195 | **F4 · orden** | F4-0 y F4-1b ya; F4-2 tras F3h y F3i; vídeo solo con la EIPD validada; clips antes que directo si F4-0 no da subida (la recomendada) / otro | PLAN F4 | ⬜ |
+| 196 | **Suelo realista · probar con una textura CC0 antes de salir al campo** | sí, a ver si el detalle se nota a la altura de los ojos (la recomendada) / salir directamente | EV-1a | ⬜ |
+| 197 | **Fotos de suelo y plantas · licencia** | como las de la corteza, © Cano & Damas, todos los derechos reservados (decisión 30, la recomendada) / CC BY 4.0 | EV-1b | ⬜ |
+| 198 | **Datos abiertos con CC BY-NC (GBIF, xeno-canto) · ¿el gemelo cuenta como no comercial?** | no darlo por hecho: solo CC0, BY y BY-SA (la recomendada) / consultar | EV-1g, EV-1h | ⬜ |
+| 199 | **Grabador de cantos en la finca** | aplazarlo (la recomendada) / AudioMoth con ciclo corto y sin audio crudo / BirdNET-Pi (licencia no comercial y voces: EIPD) | EV-1j | ⬜ |
