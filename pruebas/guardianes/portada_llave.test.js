@@ -496,7 +496,9 @@ test("recorrido: primer enlace → oferta → crear llave → salir → entrar c
     assert.strictEqual(await pg.isHidden("#ofertaLlave"), true);
 
     // 4. salir y entrar con la llave, sin escribir el correo
-    await pg.click("[data-accion=salir]");
+    // salir es asíncrono (POST y luego S.sesion = null): hasta que no sale «Entrar», #entrar con la sesión aún viva cae en la portada
+    // (destino() de portada.js), y el cambio de ancla no recarga la página
+    await pg.click("[data-accion=salir]"); await pg.waitForSelector("#accionesSin:not([hidden]) #btnEntrar");
     await pg.goto(base + "/#entrar"); await pg.waitForSelector("#bloqueLlave:not([hidden])");
     await Promise.all([pg.waitForURL(base + "/finca/", { timeout: 30_000 }), pg.click("#btnLlave")]);
     const sesion = await (await ctx.request.get(base + "/api/sesion")).json();
