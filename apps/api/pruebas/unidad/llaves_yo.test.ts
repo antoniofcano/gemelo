@@ -10,9 +10,9 @@ import { test } from "node:test";
 import type { FastifyInstance } from "fastify";
 import type pg from "pg";
 import { construyeApp } from "../../src/app.ts";
-import { mensajeDeLlaveAnadida, mensajeDeLlaveQuitada } from "../../src/auth/correo.ts";
+import { mensajeDeLlaveAnadida, mensajeDeLlaveQuitada, mensajeDeSalidaTotal } from "../../src/auth/correo.ts";
 import { MAX_LLAVES } from "../../src/oficina/llaves.ts";
-import { TEXTO_LIMITE_LLAVES, TEXTO_SOLO_TITULAR_LLAVES } from "../../src/yo/llaves_rutas.ts";
+import { TEXTO_LIMITE_LISTA_LLAVES, TEXTO_LIMITE_LLAVES, TEXTO_SALIDA_TOTAL_OFICINA, TEXTO_SOLO_TITULAR_LLAVES } from "../../src/yo/llaves_rutas.ts";
 import { datosDelHogar } from "../../src/yo/datos.ts";
 import { AutenticadorFalso, type OpcionesFalsas } from "../apoyo/autenticador.ts";
 import { configDePrueba, contexto, deLaWeb, ORIGEN } from "../apoyo/contexto.ts";
@@ -43,6 +43,13 @@ class BdYo extends BdDeLlaves {
         es_esta: ses?.llave_id === l.id,
       })));
     }
+    if (q === "UPDATE sesiones SET revocada_en = now() WHERE hogar_id = $1 AND revocada_en IS NULL") {
+      const ss = this.sesiones.filter(x => x.hogar_id === p[0] && !x.revocada_en);
+      for (const x of ss) x.revocada_en = new Date();
+      return r([], ss.length);
+    }
+    if (q.startsWith("SELECT id, nombre FROM llaves_acceso WHERE hogar_id = $1 AND revocada_en IS NULL ORDER BY id"))
+      return r(this.llaves.filter(l => l.hogar_id === p[0] && !l.revocada_en).sort((a, b) => a.id - b.id).map(l => ({ id: String(l.id), nombre: l.nombre })));
     if (q === "SELECT correo FROM hogares WHERE id = $1 AND activo") return r(this.hogares.filter(h => h.id === p[0] && h.activo).map(h => ({ correo: h.correo })));
     if (q.startsWith("SELECT nombre FROM llaves_acceso WHERE id = $1 AND hogar_id = $2 AND revocada_en IS NULL"))
       return r(this.llaves.filter(l => l.id === p[0] && l.hogar_id === p[1] && !l.revocada_en).map(l => ({ nombre: l.nombre })));
@@ -556,4 +563,144 @@ test("al borrar la cuenta las llaves se borran con ella: la clave ajena de llave
   // la ruta de borrar la cuenta (DELETE /api/yo) no borra llaves a mano: cuenta con la cascada, y un test de integración lo comprueba contra PostgreSQL
   const rutas = readFileSync(new URL("../../src/yo/rutas.ts", import.meta.url), "utf8");
   assert.match(rutas, /DELETE FROM hogares WHERE id = \$1/);
+});
+
+
+// ---------------------------------------------------------------- salir de todos y quitar las llaves (OF13b-8b)
+const QT = "/api/yo/llaves/quitar-todas";
+
+test("quitar-todas: sin sesión 401, sin Origin 403, desde gafas 403 solo_titular; nada cambia ni se manda un correo", async () => {
+  const sin = await monta({ sinSesion: true });
+  try { const r = await llama(sin, "POST", QT, { confirmar: true }); assert.equal(r.statusCode, 401); assert.equal(r.json().error, "sin_sesion"); } finally { await sin.app.close(); }
+  const m = await monta();
+  try {
+    const l = llaveFalsa(m.b, 1, 1);
+    const r = await sinOrigen(m, "POST", QT, { confirmar: true });
+    assert.equal(r.statusCode, 403); assert.equal(r.json().error, "origen_no_admitido");
+    assert.equal(l.revocada_en, null);
+  } finally { await m.app.close(); }
+  const g = await monta({ origen: "vinculo" });
+  try {
+    const l = llaveFalsa(g.b, 1, 1);
+    const r = await llama(g, "POST", QT, { confirmar: true });
+    assert.equal(r.statusCode, 403); assert.deepEqual(r.json(), { error: "solo_titular", mensaje: TEXTO_SOLO_TITULAR_LLAVES });
+    assert.equal(l.revocada_en, null); assert.equal(g.b.sesiones[0]!.revocada_en, null);
+    await asentada(); assert.equal(g.cartero.mensajes.length, 0);
+  } finally { await g.app.close(); }
+});
+
+test("quitar-todas: forma estricta (sin cuerpo, confirmar falso o como texto, campos de más) da 400 y no cierra nada", async () => {
+  const m = await monta();
+  try {
+    const l = llaveFalsa(m.b, 1, 1);
+    for (const cuerpo of [undefined, {}, { confirmar: false }, { confirmar: "true" }, { confirmar: 1 }, { confirmar: true, extra: 1 }]) {
+      const r = await llama(m, "POST", QT, cuerpo);
+      assert.equal(r.statusCode, 400, JSON.stringify(cuerpo));
+    }
+    assert.equal(l.revocada_en, null); assert.ok(m.b.sesiones.every(s => !s.revocada_en));
+    assert.equal(m.b.auditoria.length, 0);
+  } finally { await m.app.close(); }
+});
+
+test("quitar-todas: cierra TODAS las sesiones y revoca TODAS las llaves, con un único correo, auditoría limpia y la cookie borrada; la cuenta sigue viva", async () => {
+  const m = await monta();
+  try {
+    const l1 = llaveFalsa(m.b, 1, 1), l2 = llaveFalsa(m.b, 1, 2), ajena = llaveFalsa(m.b, 2, 3);
+    m.b.sesiones[0]!.llave_id = l1.id;
+    m.b.sesiones.push({ id: 51, hogar_id: 1, llave_id: l2.id, revocada_en: null }, { id: 52, hogar_id: 1, llave_id: null, revocada_en: null });
+    const r = await llama(m, "POST", QT, { confirmar: true });
+    assert.equal(r.statusCode, 200, r.body);
+    assert.equal(r.headers["cache-control"], "no-store");
+    assert.deepEqual(r.json(), { sesiones_cerradas: 3, llaves_quitadas: 2 });
+    assert.ok(l1.revocada_en && l2.revocada_en, "las dos llaves, revocadas");
+    assert.equal(ajena.revocada_en, null, "la llave de otra cuenta no se toca");
+    assert.deepEqual(m.b.sesiones.filter(s => s.hogar_id === 1).map(s => !!s.revocada_en), [true, true, true], "todas las sesiones de la cuenta");
+    assert.equal(m.b.sesiones.find(s => s.hogar_id === 2)!.revocada_en, null, "la sesión de otra cuenta, no");
+    assert.ok(([] as string[]).concat(r.headers["set-cookie"] ?? []).some(c => /^__Host-gemelo=;/.test(c)), "este aparato también sale: la cookie se borra");
+    assert.deepEqual(m.b.auditoria.map(a => a.accion), ["llave.quitadas_todas", "sesion.todas_cerradas"]);
+    const txt = JSON.stringify(m.b.auditoria);
+    assert.ok(!txt.includes(l1.credencial_id) && !txt.includes("@") && !txt.includes("Llave 1"), "sin credencial, correo ni nombres");
+    await asentada();
+    assert.equal(m.cartero.mensajes.length, 1, "UN solo aviso");
+    const c = m.cartero.mensajes[0]!;
+    assert.equal(c.para, CORREO);
+    assert.equal(c.asunto, "Se han cerrado tus sesiones y quitado tus llaves de acceso");
+    assert.match(c.texto, /«Llave 1», «Llave 2»/); assert.match(c.texto, /el enlace que te mandamos a este correo sigue funcionando/);
+    assert.ok(m.b.hogares.find(h => h.id === 1)!.activo, "la cuenta sigue activa");
+  } finally { await m.app.close(); }
+});
+
+test("quitar-todas: sin llaves también cierra las sesiones y avisa; la cuenta vuelve a entrar por enlace y puede crear otra llave", async () => {
+  const m = await monta();
+  try {
+    const r = await llama(m, "POST", QT, { confirmar: true });
+    assert.equal(r.statusCode, 200, r.body);
+    assert.deepEqual(r.json(), { sesiones_cerradas: 1, llaves_quitadas: 0 });
+    await asentada();
+    assert.equal(m.cartero.mensajes.length, 1); assert.match(m.cartero.mensajes[0]!.texto, /no tenías ninguna llave/);
+    // el enlace del correo sigue siendo la entrada: la cuenta existe y su correo es el mismo; una sesión nueva por enlace puede dar de alta una llave
+    assert.equal(m.b.hogares[0]!.correo, CORREO);
+    m.b.sesiones[0]!.revocada_en = null;   // la sesión nueva que daría el enlace (el almacén de mentira reusa la fila 50)
+    const a = new AutenticadorFalso(ORIGEN);
+    const { res } = await altaPorRutas(m, a);
+    assert.equal(res.statusCode, 201, res.body);
+    assert.equal(m.b.llaves.filter(l => !l.revocada_en).length, 1);
+  } finally { await m.app.close(); }
+});
+
+test("quitar-todas: una cuenta de la oficina no se quita las llaves por aquí (403); nada cambia", async () => {
+  const m = await monta({ hogar: 2, confirmada: true });
+  try {
+    const l = llaveFalsa(m.b, 2, 1);
+    const r = await llama(m, "POST", QT, { confirmar: true });
+    assert.equal(r.statusCode, 403, r.body);
+    assert.deepEqual(r.json(), { error: "cuenta_de_oficina", mensaje: TEXTO_SALIDA_TOTAL_OFICINA });
+    assert.equal(l.revocada_en, null); assert.equal(m.b.sesiones.find(s => s.id === 60)!.revocada_en, null);
+    await asentada(); assert.equal(m.cartero.mensajes.length, 0);
+  } finally { await m.app.close(); }
+});
+
+test("quitar-todas: el correo falla y no deshace nada (200, llaves y sesiones cerradas)", async () => {
+  const m = await monta();
+  try {
+    llaveFalsa(m.b, 1, 1);
+    m.cartero.falla = true;
+    const r = await llama(m, "POST", QT, { confirmar: true });
+    assert.equal(r.statusCode, 200);
+    await asentada();
+    assert.ok(m.b.llaves.every(l => l.revocada_en) && m.b.sesiones.filter(s => s.hogar_id === 1).every(s => s.revocada_en));
+  } finally { await m.app.close(); }
+});
+
+test("quitar-todas: comparte el límite de 20 por cuenta con el resto de las llaves (429 con el texto de las llaves)", async () => {
+  const m = await monta();
+  try {
+    for (let i = 0; i < 20; i++) await llama(m, "POST", "/api/yo/llaves/opciones", {});
+    const r = await llama(m, "POST", QT, { confirmar: true });
+    assert.equal(r.statusCode, 429);
+    assert.deepEqual(r.json(), { error: "demasiadas_peticiones", mensaje: TEXTO_LIMITE_LLAVES });
+    assert.equal(m.b.sesiones[0]!.revocada_en, null);
+  } finally { await m.app.close(); }
+});
+
+test("la lista: pasado su límite por IP responde 429 con un texto propio y neutro (no el de los enlaces)", async () => {
+  const m = await monta();
+  try {
+    const mismaIp = { ...deLaWeb({ "x-forwarded-for": "203.0.113.9", "user-agent": UA }), cookie: m.cookie };
+    let ultimo = 0, cuerpo: { error?: string; mensaje?: string } = {};
+    for (let i = 0; i < 61; i++) { const r = await m.app.inject({ method: "GET", url: "/api/yo/llaves", headers: mismaIp }); ultimo = r.statusCode; if (r.statusCode === 429) cuerpo = r.json(); }
+    assert.equal(ultimo, 429);
+    assert.deepEqual(cuerpo, { error: "demasiadas_peticiones", mensaje: TEXTO_LIMITE_LISTA_LLAVES });
+    assert.ok(!/enlace/i.test(TEXTO_LIMITE_LISTA_LLAVES), "no habla de enlaces");
+  } finally { await m.app.close(); }
+});
+
+test("el aviso de la salida total: texto llano, sin el correo ni enlaces, con los nombres saneados y que el enlace sigue siendo la entrada", () => {
+  const ahora = new Date("2026-11-02T17:04:00Z");
+  const m = mensajeDeSalidaTotal("destino@example.com", ["Móvil", "a\r\nBcc: x\u2028y", "C", "D", "E", "F", "G"], ahora);
+  assert.equal(m.para, "destino@example.com");
+  assert.ok(!m.texto.includes("destino@example.com") && !/https?:/.test(m.texto) && !/[\r\u2028]/.test(m.texto));
+  assert.match(m.texto, /y 2 más/); assert.match(m.texto, /2 de noviembre de 2026/);
+  assert.match(m.texto, /crear una llave nueva/); assert.match(m.texto, /Si no has sido tú/);
+  assert.ok(!m.asunto.includes("\n"));
 });
