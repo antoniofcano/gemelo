@@ -18,7 +18,7 @@
     on: false, entrando: false, sesion: null, base: null, soporta: false, estado: "comprobando…", ojo: 0, frame: null,
     rig: { x: 0, y: 0, z: 0, yaw: 0 }, vuelo: false, mirador: false, correr: false, vineta: true, nivel: 0,
     modoPrev: "nube", calPrev: 1, nearPrev: 0.5, farPrev: 5000, prev: {}, giroOk: true, parcSel: 0, emaDt: 13.9, emaJs: 6, nBaj: 0, nAlt: 0, tNivel: 0,
-    tp: null, hover: "", tFicha: 0, fichaT: 0, fichaDe: "", sucio: true, hapt: 0, hMov: 0, sesionesN: 0, cab: new THREE.Vector3(),
+    tp: null, salto: false, hover: "", tFicha: 0, fichaT: 0, fichaDe: "", sucio: true, hapt: 0, hMov: 0, sesionesN: 0, cab: new THREE.Vector3(),
     captura: null, voz: null, gente: null, genteFirma: "", tGente: 0, pestana: "mundo", giro: 30, sinPint: false, fichaId: "", balFirma: "", balInfo: null, hoverB: "", botonesB: []
   };
   var vrRig = new THREE.Group();
@@ -140,7 +140,15 @@
     }
     function distancia(m) { return Math.hypot(m.dist, m.bajo); }
     function mmPorPx(m) { return m.pw * 1000 / m.W; }
-    return { MEDIDAS: MEDIDAS, HUECO_B: HUECO_B, botonesB: botonesB, distancia: distancia, mmPorPx: mmPorPx };
+    // EV2-A2 (?ui=capas): el panel nace delante y se queda en el mundo. queda({ ini, salto, d, quieto }) → "nace" (ponerlo delante otra vez) | "queda" |
+    // "espera" (hubo un salto en este fotograma: la cabeza del mundo aún es la de antes, así que nace en el siguiente).
+    // Nace al abrirlo (Y), tras un salto (teletransporte, parcela, llegar junto a alguien, mirador) y si te has alejado más de ALCANCE m (el rayo
+    // apunta bien entre 0,8 y 3 m: guía de Meta) y ya estás quieto; mientras andas, no se mueve. gira(px, pz, hx, hz, a): el panel girado a radianes en
+    // torno a la cabeza, como gira el rig en un giro por saltos (así el giro no lo deja atrás).
+    var ALCANCE = 2.5;
+    function queda(o) { return o.salto ? "espera" : !o.ini || (o.d > ALCANCE && o.quieto) ? "nace" : "queda"; }
+    function gira(px, pz, hx, hz, a) { var x = px - hx, z = pz - hz, c = Math.cos(a), s = Math.sin(a); return { x: hx + x * c + z * s, z: hz - x * s + z * c }; }
+    return { MEDIDAS: MEDIDAS, HUECO_B: HUECO_B, ALCANCE: ALCANCE, botonesB: botonesB, distancia: distancia, mmPorPx: mmPorPx, queda: queda, gira: gira };
   })();
   // [puro:fichas:fin]
   // ----- 3) láminas flotantes (el panel y la ficha): un canvas en un plano que sigue a la cabeza con calma
@@ -170,6 +178,16 @@
     var ang = Math.abs(Math.atan2(l.m.position.x - h.x, l.m.position.z - h.z) - Math.atan2(g.x, g.z)); ang = Math.min(ang, 6.283 - ang);
     if (!l.ini) { l.m.position.set(tx, ty, tz); l.ini = true; }
     else if (d > 0.9 || ang > 1.2 || Math.abs(l.m.position.y - ty) > 0.6) { var k = Math.min(1, dt * 3); l.m.position.x += (tx - l.m.position.x) * k; l.m.position.y += (ty - l.m.position.y) * k; l.m.position.z += (tz - l.m.position.z) * k; }
+    l.m.rotation.set(0, Math.atan2(h.x - l.m.position.x, h.z - l.m.position.z), 0);
+  }
+  function vrQueda(l, dist, bajo, quieto) {   // EV2-A2 (?ui=capas): nace delante y se queda en el mundo; mirando siempre a la cabeza (solo gira, no se desplaza)
+    var h = VRX.cab, d = Math.hypot(l.m.position.x - h.x, l.m.position.y - h.y, l.m.position.z - h.z);
+    var q = VrFichaPuro.queda({ ini: l.ini, salto: VRX.salto, d: d, quieto: quieto });
+    if (q === "espera") l.ini = false;
+    else if (q === "nace") {
+      var g = camera.getWorldDirection(vrV3); g.y = 0; if (g.lengthSq() < 1e-4) g.set(0, 0, -1); g.normalize();
+      l.m.position.set(h.x + g.x * dist, h.y + bajo, h.z + g.z * dist); l.ini = true;
+    }
     l.m.rotation.set(0, Math.atan2(h.x - l.m.position.x, h.z - l.m.position.z), 0);
   }
   function vrTexto(cx, txt, x, y, ancho, alto, linea, max) {   // texto con saltos de línea; devuelve cuántas líneas pintó
@@ -425,7 +443,7 @@
     var r = VRX.rig; VRX.cab.copy(camera.position).applyAxisAngle(vrEjeY, r.yaw); VRX.cab.x += r.x; VRX.cab.y += r.y; VRX.cab.z += r.z; return VRX.cab;
   }
   function vrIrA(px, py) {   // lleva la cabeza a (px, py) del mundo (py hacia el norte), sin cambiar la dirección de la mirada
-    var h = vrCabeza(); VRX.rig.x += px - h.x; VRX.rig.z += -py - h.z; VRX.rig.y = suelo(px, py) * exag + vrBaseY();
+    var h = vrCabeza(); VRX.rig.x += px - h.x; VRX.rig.z += -py - h.z; VRX.rig.y = suelo(px, py) * exag + vrBaseY(); VRX.salto = true;   // salto: con ?ui=capas el panel nace delante (EV2-A2)
   }
   function vrEjes(src) { var g = src && src.gamepad; if (!g || !g.axes) return { x: 0, y: 0, ok: false }; var a = g.axes, i = a.length >= 4 ? 2 : 0; return { x: a[i] || 0, y: a[i + 1] || 0, ok: true }; }
   function vrBoton(src, k) { var g = src && src.gamepad, b = g && g.buttons && g.buttons[k]; return !!(b && b.pressed); }
@@ -449,7 +467,9 @@
     var gx = vrDz(de.x), gy = vrDz(de.y), mueveStick = 0;
     if (VRX.captura) { VRX.captura.palanca(de.x, de.y, dt); gx = gy = 0; }   // C9b: la palanca derecha es del juego en lámina (ni giro ni teletransporte)
     if (Math.abs(gx) > 0.7 && Math.abs(gx) > Math.abs(gy)) {
-      if (VRX.giroOk) { VRX.giroOk = false; var d = -Math.sign(gx) * VRX.giro * Math.PI / 180; vrV2.set(r.x - h.x, 0, r.z - h.z).applyAxisAngle(vrEjeY, d); r.x = h.x + vrV2.x; r.z = h.z + vrV2.z; r.yaw += d; VRX.hMov = 0.25; vrPulso(R, 0.1, 10); }
+      if (VRX.giroOk) { VRX.giroOk = false; var d = -Math.sign(gx) * VRX.giro * Math.PI / 180; vrV2.set(r.x - h.x, 0, r.z - h.z).applyAxisAngle(vrEjeY, d); r.x = h.x + vrV2.x; r.z = h.z + vrV2.z; r.yaw += d; VRX.hMov = 0.25; vrPulso(R, 0.1, 10);
+        if (VR_CAPAS && panel.ini) { var pg = VrFichaPuro.gira(panel.m.position.x, panel.m.position.z, h.x, h.z, d); panel.m.position.x = pg.x; panel.m.position.z = pg.z; }   // EV2-A2: el panel gira contigo
+      }
     } else if (Math.abs(gx) < 0.35) VRX.giroOk = true;
     if (VRX.vuelo || VT.act) vrVueloTp(R, gy < -0.6 && Math.abs(gx) < 0.5);   // desde el aire: rayo recto y anillo (2b)
     else if (gy < -0.6 && Math.abs(gx) < 0.5) { VRX.tp = vrArco(R); arco.visible = true; arcoMarca.visible = !!VRX.tp; if (VRX.tp) arcoMarca.position.set(VRX.tp.x, suelo(VRX.tp.x, -VRX.tp.z) * exag + 0.08, VRX.tp.z); VRX.tpAct = true; }
@@ -483,13 +503,14 @@
     var rr = vrRayoDe(R), hv = "";
     if (VR_CAPAS) Laminas.apunta(rr);   // EV2-A1: el resalte de los botones de las fichas en el mundo (sin la bandera, ni un rayo de más)
     if (panel.m.visible) {
-      vrSigue(panel, dt, vrMed.panel.dist, vrMed.panel.bajo); vrGenteTic(dt);
+      if (VR_CAPAS) vrQueda(panel, vrMed.panel.dist, vrMed.panel.bajo, !mueve); else vrSigue(panel, dt, vrMed.panel.dist, vrMed.panel.bajo);
+      vrGenteTic(dt);
       var q = vrBajoRayo(panel, VRX.botones, rr); hv = q ? q.id : "";
       if (hv !== VRX.hover) { VRX.hover = hv; VRX.sucio = true; }
       if (VRX.sucio) vrPintaPanel();
     }
     if (ficha.m.visible) { vrSigue(ficha, dt, vrMed.ficha.dist, vrMed.ficha.bajo); VRX.fichaT -= dt; if (VRX.fichaT <= 0) { ficha.m.visible = false; if (VRX.fichaDe) Usables.cierra(VRX.fichaDe, "tiempo"); VRX.fichaDe = ""; } }
-    vrFichaTic(dt);
+    vrFichaTic(dt); VRX.salto = false;
     if (fichaB.m.visible) {
       vrSigue(fichaB, dt, vrMed.fichaB.dist, vrMed.fichaB.bajo);
       var qb = vrBajoRayo(fichaB, VRX.botonesB, rr), hb = qb ? qb.id : "";
@@ -499,6 +520,7 @@
   function vrMirador(on) {
     VRX.mirador = on; VRX.vuelo = on; VRX.sucio = true; var h = vrCabeza();
     if (on) { VRX.rig.y = suelo(h.x, -h.z) * exag + 230; } else { VRX.rig.y = suelo(h.x, -h.z) * exag + vrBaseY(); }
+    VRX.salto = true;
   }
   // el gatillo: sobre el panel pulsa un botón; sobre un olivo, abre su ficha
   function vrGatillo(o) {

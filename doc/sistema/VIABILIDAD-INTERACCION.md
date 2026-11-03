@@ -66,6 +66,8 @@ Lo que se ve en el código de cada una (no medido): **uikit** agrupa paneles y g
 
 Coste honesto: A0 ligera; A1, A2, A3 medias (A1 y A3 piden opus por diseño); A4 ligera; A6 media; A5 media. **De Antonio:** una sesión de 20-30 min con la Quest 3 por cada tanda (A1+A2 juntas; A3 aparte), leyendo las fichas a 1 m y a 3 m, el menú de muñeca de pie y sentado, y la escala de mareo; y la decisión de la pregunta 1.
 
+**EV2-A1 y EV2-A2, hechos tras `?ui=capas` (2026-11-03).** A1: componente `fichas-mundo` (`51_fichas_mundo.js`, [COMPONENTES](COMPONENTES.md)); la ficha se coloca en el borde de lo descrito hacia quien mira, con escala = distancia / 1,5 m (0,9-4,5 m; fuera de eso, delante en su dirección), `Laminas` con `encima` (las hojas no la tapan), como mucho 3 vivas; sustituye a `ficha`/`fichaB` para olivo y baliza. A2: el panel nace delante y se queda (`VrFichaPuro.queda`/`gira` en `29_vr.js`): gira contigo en el giro por saltos, renace delante tras cualquier salto y si te alejas más de 2,5 m y te paras. Probado solo en Node; la prueba con WebXR simulado (`pruebas/prueba_vr_capas.js`) está escrita y sin ejecutar; **nada en unas Quest**.
+
 ### A.6 Riesgos y lo NO probado
 - **Nada probado en unas Quest**: ni la legibilidad de hoy ni la propuesta. Las cifras angulares son cálculo.
 - Fichas ancladas a un olivo **dentro de la copa**: la lámina se tapa con hojas si no se pinta por encima (`depthTest: false` como hoy) o se separa del tronco hacia quien mira.
