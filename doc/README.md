@@ -31,7 +31,11 @@
 - [sistema/DECORACIONES.md](sistema/DECORACIONES.md) — propuesta (P7g, sin implementar): decorar un olivo con piezas de un catálogo cerrado; permisos como P7f, escalones D1-D6 y decisiones abiertas.
 - [sistema/OPTIMIZACION.md](sistema/OPTIMIZACION.md) — plan para mejorar el paseo por el campo en Quest, móvil y escritorio: qué hay, sospechosos, protocolo de medida, cómo decidir y tareas Q0a-Q0d.
 - [rumbo/MEJORAS-TECNICAS.md](rumbo/MEJORAS-TECNICAS.md) — hoja de ruta técnica de rendimiento del agroverso (fases 0 a 3: medición, mejoras sin y con cambio de aspecto, renderizador nuevo), contrastada con el código; tareas `AG-` del plan.
+<<<<<<< HEAD
 - [sistema/VIABILIDAD-REALISMO.md](sistema/VIABILIDAD-REALISMO.md) — estudio EV-1 (no se implementa): suelo con fotos propias (texturas repetibles, KTX2, fundido con la ortofoto, hierba con recortes, unión suelo-olivo) y biodiversidad con datos abiertos (GBIF, xeno-canto, MITECO…) y grabador propio; coste, política por aparato, licencias, honestidad, versiones mínimas, tareas y preguntas.
+=======
+- [sistema/VIABILIDAD-INTERACCION.md](sistema/VIABILIDAD-INTERACCION.md) — estudio EV-2: interfaz espacial en tres capas (fichas en el mundo, muñeca, panel pequeño; uikit y troika frente al lienzo) y palanca táctil del móvil (nipplejs, toque para ir); viabilidad, coste, riesgos y tareas.
+>>>>>>> worktree-agent-aa1f19dd2adf099cf
 - [sistema/IWSDK.md](sistema/IWSDK.md) — estudio Q2: el Immersive Web SDK de Meta (no se adopta), cómo medir en el Quest desde un agente con `adb`, CDP y `sessiongranted`, IWER frente a `mock_xr.js`, mirar y pellizcar, licencias y telemetría, y la prueba de una hora.
 - [sistema/OFICINA.md](sistema/OFICINA.md) — propuesta: `/oficina`, la herramienta de la oficina (familias, hazas, bandeja, mundo en modo oficina, agenda, directos, constructor y parámetros de la escalera versionados, sistema), con plan OF0-OF13 y decisiones; maqueta en [../prototipos/oficina/](../prototipos/oficina/).
 - [sistema/LLAVES-DE-ACCESO.md](sistema/LLAVES-DE-ACCESO.md) — diseño aceptado y estado de implementación (OF13b, ADR-0029): llaves de acceso para todas las cuentas; recorridos, amenazas y mitigaciones, qué se guarda, recuperación, plan y preguntas para Antonio.

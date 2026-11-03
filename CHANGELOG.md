@@ -5,6 +5,8 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Mis dispositivos → ¿Has perdido un aparato?: nuevo «Salir de todos y quitar las llaves» (`POST /api/yo/llaves/quitar-todas`, `<dialog>` de confirmación): cierra todas las sesiones, también la de este aparato, y quita todas las llaves en un paso, con un solo aviso por correo; el enlace del correo sigue siendo la entrada. Si falla la lista de «Mis llaves» ahora lo dice y deja «Probar otra vez»; el 429 de esa lista tiene texto propio (OF13b-8b). Probado solo en Node.
+- Estudio de viabilidad EV-2 (`doc/sistema/VIABILIDAD-INTERACCION.md`): interfaz espacial en tres capas y palanca táctil del móvil, con tareas EV2-A0 a A6 y EV2-B1 a B3.
 - Estudio de viabilidad EV-1 del realismo del suelo y la biodiversidad (`doc/sistema/VIABILIDAD-REALISMO.md`): versiones mínimas, política por aparato, coste de texturas y audio, licencias de GBIF, xeno-canto y BirdNET, y la CSP sin `'wasm-unsafe-eval'` para KTX2.
 - Documentación del login con llave de acceso (OF13b-11): borrador de EIPD-LLAVES, pantallas y textos reales en UX §4 y OFICINA §2, estado de implementación y huecos en LLAVES-DE-ACCESO, y guía de recuperación para la oficina.
 - Documentación: estudio Q2 del Immersive Web SDK de Meta (`doc/sistema/IWSDK.md`): no se adopta; cómo medir en el Quest desde un agente (adb, CDP) y la prueba de una hora.

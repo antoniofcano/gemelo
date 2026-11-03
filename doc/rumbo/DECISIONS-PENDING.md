@@ -213,3 +213,7 @@ Decisiones que **no puede tomar un agente**: las cierra Antonio. Las técnicas s
 | 197 | **Fotos de suelo y plantas · licencia** | como las de la corteza, © Cano & Damas, todos los derechos reservados (decisión 30, la recomendada) / CC BY 4.0 | EV-1b | ⬜ |
 | 198 | **Datos abiertos con CC BY-NC (GBIF, xeno-canto) · ¿el gemelo cuenta como no comercial?** | no darlo por hecho: solo CC0, BY y BY-SA (la recomendada) / consultar | EV-1g, EV-1h | ⬜ |
 | 199 | **Grabador de cantos en la finca** | aplazarlo (la recomendada) / AudioMoth con ciclo corto y sin audio crudo / BirdNET-Pi (licencia no comercial y voces: EIPD) | EV-1j | ⬜ |
+| 200 | **Interfaz espacial · texto con librería o con lo que hay** | con lo que hay, láminas de lienzo; decidir `uikit` solo tras la prueba EV2-A5 (la recomendada) / `uikit` ya | EV2-A1 | ⬜ |
+| 201 | **CSP · ¿admite `'wasm-unsafe-eval'`?** (KTX2, meshopt y `uikit` la necesitan) | decidirlo una sola vez, en Q0d (la recomendada) / por separado | Q0d, EV-1f | ⬜ |
+| 202 | **Móvil · toque corto en el suelo** | ir andando, y la ficha de la haza desde su cartel y «tu haza» (la recomendada) / abrir la ficha de la haza como hoy | EV2-B3 | ⬜ |
+| 203 | **Móvil · palanca o cruceta por defecto** | cruceta por defecto hasta que Antonio pruebe la palanca (la recomendada) / palanca ya | EV2-B2 | ⬜ |
