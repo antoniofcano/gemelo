@@ -1,11 +1,12 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: lienzo, visor, renderer, scene, camera, SRGB, LUZ_SOL, LUZ_CIELO, hemi, sol, texColor, colorVertSRGB, colorCss, exag, modo, calidad
-// Consume: 01_datos ($, EXT, FOG0, FOG1), 02f_xr_perillas (XrPerillas), 05_nube (nube), 15_tiempo (pintaFondoTiempo)
+// Consume: 01_datos ($, EXT, FOG0, FOG1), 01a_aparato (Aparato), 02f_xr_perillas (XrPerillas), 05_nube (nube), 15_tiempo (pintaFondoTiempo)
 // ===============================================================================
   // ---- escena
   var lienzo = $("lienzo"), visor = $("visor");
   var renderer = new THREE.WebGLRenderer({ canvas: lienzo, antialias: XrPerillas.aa });   // el MSAA lo decide la perilla de pruebas VR (02f)
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  Aparato.enlaza({ vr: function () { return renderer.xr.isPresenting; }, gl: function () { return renderer.getContext(); }, sesion: function () { return renderer.xr.getSession(); } });   // AG-0.3: el aparato mide en este contexto
   var scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(42, 1, 0.5, Math.max(5000, EXT * 4));
   // Color y luz modernos (three r152 y r155, ADR-0016): el motor calcula la luz en sRGB lineal y la salida se codifica en sRGB (outputColorSpace).
   // Convenio del motor: los colores escritos a mano en JS o en GLSL (por vértice, por instancia, literales de los sombreadores, multiplicadores de color)

@@ -1,6 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Mundo, suelo, copaAlta, orto, kcor, desp, tinte, ndLo, ndHi, aviva, colorEn, copas, cIn, marc, med
-// Consume: 01_datos (D, b64, i16, RES), 05_nube (nube), 09_camara (suelta), 10_ndvi (rampa, ndviRel), 14_historia (marca, lista), 16_vida (mira)
+// Consume: 01_datos (D, b64, i16, RES), 01a_aparato (Aparato), 05_nube (nube), 09_camara (suelta), 10_ndvi (rampa, ndviRel),
+//   14_historia (marca, lista), 16_vida (mira)
 // ===============================================================================
   // ---------- el mundo: teselas de 256 m con relieve, copa, color del suelo, nube y ortofoto. Todo lo demás pregunta aquí (suelo, copaAlta, colorSuelo, orto).
   // Una tesela (kx, ky) cubre en UTM [kx·256, kx·256+256) × [ky·256, ky·256+256). Las filas de cada rejilla van de sur a norte; el relieve y el color del suelo llevan una celda de margen
@@ -53,8 +54,7 @@
     var ORTO_GRACIA = 8000, nDec = 0, nDes = 0, foco = null;
     var ORTO_MAX = (function () {
       var q = typeof location !== "undefined" ? location.search : "", m = /[?&]ortoMax=(\d+)/.exec(q); if (m && +m[1] >= 1) return +m[1];
-      var nv = typeof navigator !== "undefined" ? navigator : {}, movil = /Mobi|Android|iPhone|iPad|OculusBrowser|Quest/i.test(nv.userAgent || "") || !!(nv.deviceMemory && nv.deviceMemory <= 4);
-      return movil ? 8 : 20;
+      return Aparato.politica().ortoMax;   // AG-0.3: 8 en móvil, gafas o poca memoria; 20 en escritorio (01a_aparato.js)
     })();
     function desalojaOrto() {
       var vivas = lista.filter(function (t) { return t.ortPix; }); if (vivas.length <= ORTO_MAX) return;

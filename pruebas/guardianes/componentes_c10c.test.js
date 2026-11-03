@@ -4,6 +4,7 @@
 // los eventos del Bus, se cuentan llamadas y triángulos (los números de su presupuesto), y al liberar la escena queda como estaba y los recursos de GPU se
 // sueltan (dispose). Lo de Chrome (que se vea igual, el panel de VR en el Quest) va por el banco; lo no probado en Quest ni iPhone sigue sin probar.
 const test = require("node:test"), assert = require("node:assert"), vm = require("vm"), path = require("path"), { pathToFileURL } = require("url");
+const { aparatoDe } = require("./_aparato");
 const { lee, RAIZ } = require("./_util");
 
 let THREE;
@@ -57,7 +58,7 @@ function el() {
 function mundoMide(busqueda, extra) {
   const Bus = bus(), visor = el(), ventana = {}, filas = [], docL = {};
   const g = Object.assign({
-    Bus, visor, window: ventana, location: { search: busqueda || "" }, navigator: { userAgent: "Mozilla/5.0 (Windows NT 10.0) Chrome/131.0.0.0 Safari/537.36" },
+    Bus, visor, window: ventana, location: { search: busqueda || "" }, Aparato: aparatoDe({ userAgent: "Mozilla/5.0 (Windows NT 10.0) Chrome/131.0.0.0 Safari/537.36" }), navigator: { userAgent: "Mozilla/5.0 (Windows NT 10.0) Chrome/131.0.0.0 Safari/537.36" },
     document: { hidden: false, createElement: () => el(), addEventListener: (t, f) => (docL[t] = f), removeEventListener: t => delete docL[t] },
     renderer: { xr: { isPresenting: false } }, modo: "nube", D: { finca_id: "cerro", base: "t/" }, DEPURA: false, ConfigPuro: { prefijoApi: () => null },
     Ajustes: { lee: () => false }, Arboles: { resumen: () => ({ nivel0: 3, nivel1: 5, nivel2: 7 }) }, Escena3D: { resumen: () => ({ estado: "activo" }) },

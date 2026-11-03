@@ -8,6 +8,7 @@
 //   · el manifiesto, los eventos del catálogo, la api «Guiada» y el enganche de 29_vr.js (el gatillo izquierdo).
 // Lo de Chrome (cómo se ve, foco, tamaño real de los botones) está en pruebas/guardianes/habla_chrome.test.js, por el banco.
 const test = require("node:test"), assert = require("node:assert");
+const { aparatoDe } = require("./_aparato");
 const fc = require("fast-check");
 const { lee, path } = require("./_util");
 const contratoModulos = require(path.join(__dirname, "..", "contrato_modulos.js"));
@@ -133,7 +134,7 @@ function montaHabla({ papel = "familia", puede = false, sala = "guiada-12", mano
   const Teclas = { registra: (c, fn, d) => { if (teclas[c]) return null; teclas[c] = { fn, d }; return () => { delete teclas[c]; }; } };
   const PanelVR = { filas: (p, d) => { filas.push([p, d]); return () => {}; }, repinta() {} };
   const Laminas = { abre: o => { laminas[o.id] = o; return true; }, cierra: id => { delete laminas[id]; return true; }, hay: id => !!laminas[id], repinta: () => true };
-  const g = { window: ventana, document: { createElement: t => new El(t), createTextNode: t => ({ texto: t }), body: new El("body"), activeElement: null }, visor, navigator: { userAgent: ua }, VRX, Ajustes, Teclas, PanelVR, Laminas,
+  const g = { window: ventana, document: { createElement: t => new El(t), createTextNode: t => ({ texto: t }), body: new El("body"), activeElement: null }, visor, Aparato: aparatoDe({ userAgent: ua }), navigator: { userAgent: ua }, VRX, Ajustes, Teclas, PanelVR, Laminas,
     fetch: (u, o) => {
       if (u === "/api/presencia/voz/consentimiento") {
         consFetchs.push([o.method, o.body || null]);
@@ -315,7 +316,7 @@ test("HablaMotor: la depuración dice el micro, el modo y la mano", () => {
 test("el manifiesto, los eventos del catálogo y la api de la guiada: «habla-guiada» con su bandera, presupuesto y eventos", () => {
   const m = /Componentes\.registra\(\{([\s\S]*?)\n  \}\);/.exec(HAB)[1];
   assert.match(m, /id: "habla-guiada"/); assert.match(m, /bandera: \{ defecto: true, url: "habla" \}/); assert.match(m, /presupuesto: \{ llamadas: 1, triangulos: 2, texturasMB: 4 \}/);
-  assert.match(m, /consume: \["Voz", "Guiada"/);
+  assert.match(m, /consume: \["Aparato", "Voz", "Guiada"/);
   for (const e of ["habla:micro", "habla:mano"]) assert.deepStrictEqual(EVENTOS.eventos[e].emiten, ["47_habla"], e);
   for (const e of ["voz:estado", "guiada:palabra", "depura:lineas"]) assert.ok(EVENTOS.eventos[e].escuchan.includes("47_habla"), e);
   assert.deepStrictEqual(EVENTOS.eventos["habla:micro"].datos.properties.fuente.enum, ["boton", "tecla", "gatillo", "panel", "auto"]);

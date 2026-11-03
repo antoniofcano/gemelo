@@ -10,6 +10,7 @@
 //     permiso y gesto, se cierra solo si la api quita el permiso, «voz:habla», salir suelta todo, libera cierra el AudioContext; y que no hay grabación.
 // Lo de Chrome con micrófono simulado y LiveKit real es pruebas/guardianes/voz_dev.test.js (opcional, GEMELO_DOCKER=1, por el banco).
 const test = require("node:test"), assert = require("node:assert");
+const { aparatoDe } = require("./_aparato");
 const fc = require("fast-check");
 const { lee, path } = require("./_util");
 const contratoModulos = require(path.join(__dirname, "..", "contrato_modulos.js"));
@@ -279,7 +280,7 @@ function montaVoz({ busqueda = "", nombre = "guiada-7", token = { url: "/rtc", t
   const camara = { pos: new V3(0, 1.6, 0), q: new Q(), quaternion: new Q(), getWorldPosition(v) { return v.copy(this.pos); }, getWorldQuaternion(q) { return q.copy(this.q); } };
   const VRX = { on: false, cab: new V3(), rig: { yaw: 0 } };
   const n = { emite: (e, d) => { emitidos.push([e, d]); return 0; }, on: (e, f) => { (n.oy[e] = n.oy[e] || []).push(f); return f; }, oy: {}, limpia: f => { limpias.push(f); return f; } };
-  const g = { window: ventana, location: { search: busqueda }, document: documento, navigator: { userAgent: "Node", userActivation: gesto }, console: { warn() {}, error() {}, log() {} },
+  const g = { window: ventana, location: { search: busqueda }, document: documento, Aparato: aparatoDe({ userAgent: "Node" }), navigator: { userAgent: "Node", userActivation: gesto }, console: { warn() {}, error() {}, log() {} },
     fetch: (u, o) => { cuenta.fetch.push([u, o.method, JSON.parse(o.body)]); return Promise.resolve({ ok: estadoToken === 200, status: estadoToken, json: () => Promise.resolve(estadoToken === 200 ? token : { error: "guiada_solo_inscritos", mensaje: "Esta visita es para las familias apuntadas." }) }); },
     MediaStream: function (pistas) { this.pistas = pistas; }, PannerNode, THREE: { Quaternion: Q, Vector3: V3 }, camera: camara, VRX };
   const nombres = Object.keys(g);
@@ -415,6 +416,6 @@ test("VozMotor: quién habla (voz:habla), salir suelta todo y libera cierra el A
 
 test("el manifiesto de la voz: 0 llamadas de dibujo, consume la red y la presencia, bandera ?voz", () => {
   const m = /Componentes\.registra\(\{([\s\S]*?)\n  \}\);/.exec(VOZ)[1];
-  assert.match(m, /id: "voz-guiada"/); assert.match(m, /presupuesto: \{ llamadas: 0, triangulos: 0 \}/); assert.match(m, /consume: \["Red", "Presencia", "VRX"\]/);
+  assert.match(m, /id: "voz-guiada"/); assert.match(m, /presupuesto: \{ llamadas: 0, triangulos: 0 \}/); assert.match(m, /consume: \["Aparato", "Red", "Presencia", "VRX"\]/);
   assert.match(m, /bandera: \{ defecto: true, url: "voz" \}/); assert.match(m, /emite: \["voz:habla", "voz:estado"\]/);
 });

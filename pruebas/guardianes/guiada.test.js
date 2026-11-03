@@ -9,6 +9,7 @@
 //     sala guiada (Voz.entra con ?presencia=red) y la voz usa su misma conexión; el cierre y la sala borrada devuelven a la visita libre; ?guia=0.
 // Lo de Chrome (cómo se ve, foco, lector de pantalla, cuánto cuesta) está en pruebas/guardianes/guiada_chrome.test.js, por el banco.
 const test = require("node:test"), assert = require("node:assert");
+const { aparatoDe } = require("./_aparato");
 const fc = require("fast-check");
 const { lee, path } = require("./_util");
 const contratoModulos = require(path.join(__dirname, "..", "contrato_modulos.js"));
@@ -308,7 +309,7 @@ function motor({ busqueda = "?presencia=red", ficheros = ["red", "presencia", "v
     scene: { add() {}, remove() {} }, camera: cualquiera(), renderer: cualquiera(), visor,
     Entidades: { registra: () => () => {} }, Llegada: { funde: fn => { fn(); return true; }, aparece() {} }, TR: {},
     Movibles: { hazMovible: () => ({ menuLlevar() {}, coloca() {} }) }, VRX: { on: false, cab: {}, rig: { yaw: 0 } }, paseando: true, pp: { x: 50, y: 50, ang: 0 },
-    enQuad: false, enDron: false, quad: cualquiera(), dron: cualquiera(), objetivo: { x: 50, y: 0, z: -50 }, navigator: { userAgent: "Node" },
+    enQuad: false, enDron: false, quad: cualquiera(), dron: cualquiera(), objetivo: { x: 50, y: 0, z: -50 }, Aparato: aparatoDe({ userAgent: "Node" }), navigator: { userAgent: "Node" },
     Ventanas: { registra: (id, d) => { d.construye(new El("section")); return () => {}; } }, Hud: { icono: () => () => {} }, Laminas: { abre() { return true; }, cierra() { return true; }, hay() { return false; }, repinta() {} },
     PanelVR: { filas: () => () => {} },
     fetch: (u, o) => {

@@ -8,6 +8,7 @@
 //     «libera» suelta los avatares primero y sale de la sala; sin la red (?red=0) ni presencia ni avatares; la simulación no necesita sala.
 // Lo de Chrome (presencia, presencia_dev, vr_gente, avatares_motor, movibles_chrome, ux_hud) va por el banco: aquí no se abre ningún navegador.
 const test = require("node:test"), assert = require("node:assert");
+const { aparatoDe } = require("./_aparato");
 const { lee, path } = require("./_util");
 const contratoModulos = require(path.join(__dirname, "..", "contrato_modulos.js"));
 
@@ -188,7 +189,7 @@ function motor({ busqueda = "", ficheros = ["red", "presencia", "avatares"], tok
     scene: { add: () => { cuenta.escena++; }, remove: () => { cuenta.escena--; } }, camera: { position: new V3(0, 20, 0), quaternion: new Q() }, renderer: cualquiera(), visor,
     Entidades: { registra: d => { cuenta.tipos.push(d.tipo); return () => { cuenta.quitados++; }; } }, Llegada: { funde: fn => { fn(); return true; }, aparece() {} }, TR: {},
     Movibles: { hazMovible: () => ({ menuLlevar() {}, coloca() {} }) }, VRX: { on: false, cab: new V3(), rig: { yaw: 0 } }, paseando: true, pp: { x: 50, y: 50, ang: 0 },
-    enQuad: false, enDron: false, quad: cualquiera(), dron: cualquiera(), objetivo: new V3(50, 0, -50), persona: null, primera: false, navigator: { userAgent: "Node" },
+    enQuad: false, enDron: false, quad: cualquiera(), dron: cualquiera(), objetivo: new V3(50, 0, -50), persona: null, primera: false, Aparato: aparatoDe({ userAgent: "Node" }), navigator: { userAgent: "Node" },
     fetch: (u, o) => { cuenta.fetch.push([u, o && o.method]);
       if (/\/api\/presencia$/.test(u)) {   // F2b: GET /api/presencia → { red }; hay: true | false | 401 | "falla" (el fetch se cae) | "rara" (otra forma)
         if (hay === "falla") return Promise.reject(new Error("sin red"));

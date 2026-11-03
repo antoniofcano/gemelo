@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Escalera, Generados
-// Consume: 01_datos (D, VRP, FACTOR_R8_GEN, factorCopaDeConfig), 02_mundo (suelo, copas), 02c_componentes (Config),
+// Consume: 01_datos (D, VRP, FACTOR_R8_GEN, factorCopaDeConfig), 01a_aparato (Aparato), 02_mundo (suelo, copas), 02c_componentes (Config),
 //   03_escena (renderer, camera, colorVertSRGB, exag), 06_arboles (gArboles), 08_marcadores (aplica), 12_paseo (paseando, primera),
 //   14_historia (hist, lista), 15_tiempo (parcheTiempo, nivel, hace), 16_vida (esfera), 29_vr (VR_PERFILES)
 // ===============================================================================
@@ -318,8 +318,7 @@
       c.pgen = { f: FACTOR_R8_GEN, p: p }; return p;
     }
     function topeCacheMem() {
-      var nv = typeof navigator !== "undefined" ? navigator : {}, movil = /Mobi|Android|iPhone|iPad|OculusBrowser|Quest/i.test(nv.userAgent || "");
-      return VRP.on || movil || (nv.deviceMemory && nv.deviceMemory <= 4) ? 60 : 150;
+      var p = Aparato.politica(); return VRP.on ? p.cacheMemVrMB : p.cacheMemMB;   // AG-0.3: 60 en VR, móvil, gafas o poca memoria; 150 en escritorio
     }
     // una receta: de la caché si está (memoria al instante; disco, sin bloquear) y, si no, se calcula (trabajador o cola propia) y se guarda en ella
     // (una variante que está en el manifiesto, antes de calcularse, se descarga horneada; si la descarga falla en algo, se calcula y se cuenta el fallo)

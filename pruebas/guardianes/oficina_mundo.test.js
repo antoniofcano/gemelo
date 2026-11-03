@@ -10,6 +10,7 @@
 //     ficha (Quitar solo para la oficina) y se sueltan; ?oficina=0, ?red=0 y sin servidor.
 // Lo de Chrome (cómo se ve y cuánto cuesta dibujarlo) está en pruebas/guardianes/oficina_mundo_chrome.test.js, por el banco.
 const test = require("node:test"), assert = require("node:assert");
+const { aparatoDe } = require("./_aparato");
 const { lee, path } = require("./_util");
 const contratoModulos = require(path.join(__dirname, "..", "contrato_modulos.js"));
 
@@ -163,7 +164,7 @@ function motor({ busqueda = "?presencia=red", rol = "oficina", base = "/teselas/
     Entidades: { registra: d => { const e = EntidadesPuro.valida(d); if (e.length) throw new Error(d.tipo + ": " + e.join("; ")); cuenta.tipos[d.tipo] = d; return () => { cuenta.quitados.push(d.tipo); delete cuenta.tipos[d.tipo]; }; } },
     Llegada: { funde: fn => { fn(); return true; }, aparece() {}, ve: (x, y) => { cuenta.ida = [x, y]; return true; } }, TR: {},
     Movibles: { hazMovible: () => ({ menuLlevar() {}, coloca() {} }) }, VRX: { on: false, cab: new V3(), rig: { yaw: 0 } }, paseando: true, pp: { x: 50, y: 60, ang: 0 },
-    enQuad: false, enDron: false, quad: cualquiera(), dron: cualquiera(), objetivo: new V3(50, 0, -50), persona: null, primera: false, navigator: { userAgent: "Node" },
+    enQuad: false, enDron: false, quad: cualquiera(), dron: cualquiera(), objetivo: new V3(50, 0, -50), persona: null, primera: false, Aparato: aparatoDe({ userAgent: "Node" }), navigator: { userAgent: "Node" },
     HazasPuro: { prefijoApi: (s, b) => /^\/teselas\//.test(b || "") ? "/api/" : null },
     Laminas: { abre: d => { cuenta.laminas.push(d.id); return true; }, cierra: () => true, hay: () => false },
     Ventanas: { registra: (id, def) => { const cu = new El("div"); cuenta.ventanas[id] = cu; def.construye(cu); return () => { delete cuenta.ventanas[id]; }; } },
