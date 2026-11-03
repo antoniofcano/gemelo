@@ -99,25 +99,7 @@
     api.esquema = E;
 
     // ----- aplicar: lo que no tiene otro dueño
-    var estilo = null;
-    function css() {
-      if (estilo) return; estilo = document.createElement("style"); estilo.id = "ajustesEstilo";
-      estilo.textContent =
-        ":root[data-movimiento=\"reducido\"] *, :root[data-movimiento=\"reducido\"] *::before, :root[data-movimiento=\"reducido\"] *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }\n" +
-        ":root[data-contraste=\"alto\"] { --fg: #000; --muted: #1a1a1a; --line: #000; }\n" +
-        ":root[data-contraste=\"alto\"] :is(#hud, #hudBarra, #hudEstado) :is(button, a, .chip) { background: #000 !important; color: #fff !important; border: 2px solid #fff !important; }\n" +
-        ":root[data-contraste=\"alto\"] :is(#hud, #hudBarra, #hudEstado) { text-shadow: none; }\n" +
-        ":root[data-brujula=\"no\"] :is(#bBrujula, #hudBrujula) { display: none !important; }\n" +
-        ":root[data-texto=\"mayor\"] body { font-size: calc(14px * var(--escala-texto, 1)); }\n" +
-        ".ajustes .aj-pestanas { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 12px; }\n" +
-        ".ajustes .aj-pestanas [role=\"tab\"] { min-height: 44px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: inherit; font: inherit; cursor: pointer; }\n" +
-        ".ajustes .aj-pestanas [aria-selected=\"true\"] { background: var(--olivo); color: #fff; border-color: var(--olivo); }\n" +
-        ".ajustes .aj-op { margin: 0 0 14px; } .ajustes fieldset { border: 0; padding: 0; margin: 0; } .ajustes legend { font-weight: 600; padding: 0; margin-bottom: 4px; }\n" +
-        ".ajustes label.aj-fila { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; } .ajustes label.aj-fila input { width: 20px; height: 20px; accent-color: var(--olivo); flex: none; }\n" +
-        ".ajustes .aj-rango { display: grid; gap: 4px; } .ajustes .aj-rango input[type=range] { width: 100%; min-height: 32px; accent-color: var(--olivo); }\n" +
-        ".ajustes .aj-nota { margin: 4px 0 0; font-size: .86em; color: var(--muted); } .ajustes button.aj-boton { min-height: 44px; padding: 6px 14px; margin: 0 8px 8px 0; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: inherit; font: inherit; cursor: pointer; } .ajustes button.aj-boton:disabled { opacity: .5; cursor: default; }\n";
-      document.head.appendChild(estilo);
-    }
+    // las reglas de Configuración (data-* de <html> y la clase .ajustes) viven en plantilla.css: un <style> creado aquí lo rechaza la CSP (style-src 'self'; V12)
     function ligaControl(id, clave, evento) {   // un control que ya existe en la página (relieve, corrección) y el ajuste se mantienen iguales en las dos direcciones
       var el = $(id); if (!el) return;
       el.addEventListener(evento, function () { if (Number(el.value) !== api.lee(clave)) api.pon(clave, Number(el.value)); });
@@ -257,7 +239,7 @@
     function construye() {
       var host = document.getElementById("menuAjustes");
       if (!host) { var dlg = document.getElementById("menu"); if (!dlg || dlg.tagName !== "DIALOG") return; host = document.createElement("section"); host.id = "menuAjustes"; host.setAttribute("aria-label", "Configuración"); dlg.appendChild(host); }
-      if (host.getAttribute("data-ajustes") === "listo") return; host.setAttribute("data-ajustes", "listo"); host.classList.add("ajustes"); cont = host; css();
+      if (host.getAttribute("data-ajustes") === "listo") return; host.setAttribute("data-ajustes", "listo"); host.classList.add("ajustes"); cont = host;
       lista = el("div", "aj-pestanas"); lista.setAttribute("role", "tablist"); lista.setAttribute("aria-label", "Configuración");
       host.appendChild(lista);
       PESTANAS.forEach(construyePestana);

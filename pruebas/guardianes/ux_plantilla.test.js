@@ -29,6 +29,8 @@ test("V12: el HTML que arma el motor no lleva atributos style (la CSP los rechaz
     const t = fs.readFileSync(path.join(dir, f), "utf8");
     assert.ok(!/\sstyle\s*=\s*[\\"']/.test(t), f + " escribe un atributo style en un HTML: usa una clase de plantilla.css o data-fondo / data-ancho + tinta()");
     assert.ok(!/setAttribute\(\s*["']style["']/.test(t), f + " pone el atributo style con setAttribute: usa .style.propiedad o classList (CSSOM sí vale)");
+    // un <style> creado por JS también es estilo en línea para la CSP (style-src-elem): 33_ajustes lo hacía y la CSP de dev lo denunciaba en /finca/
+    assert.ok(!/createElement\(\s*["']style["']\s*\)/.test(t), f + " crea un <style> (la CSP style-src 'self' lo rechaza): sus reglas van en apps/web/plantilla.css");
     if (/data-(fondo|ancho)=/.test(t)) assert.ok(/tinta\(/.test(t), f + " usa data-fondo / data-ancho y no llama a tinta()");
   }
 });
