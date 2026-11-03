@@ -539,7 +539,7 @@ paths:
                   puede_anadir: { type: boolean }
         "401": { $ref: "#/components/responses/SinSesion" }
         "403": { $ref: "#/components/responses/SinPermiso" }
-        "429": { $ref: "#/components/responses/Limite" }
+        "429": { description: "demasiadas peticiones de la lista desde esta IP (60 por minuto): texto propio y neutro, no el de los enlaces", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
     post:
       summary: "Mis llaves de acceso, alta paso 2: verifica la respuesta de navigator.credentials.create() con el reto de la sesión y guarda la llave; avisa por correo a la cuenta (decisión 187)"
       description: "Cualquier cuenta con una sesión titular (enlace o llave), aunque ya tenga llaves (decisión 183: el buzón es la raíz). Nunca desde unas gafas vinculadas (403 solo_titular, antes de gastar el reto). La cuenta de oficina sigue las reglas de OF13 (aparato aprobado; sin llave en la sesión, solo la primera vez o con el alta rehabilitada). El permiso se vuelve a mirar al guardar, con la cuenta bloqueada. La sesión queda abierta con la llave nueva. Tras guardar, correo de aviso «Se ha añadido una llave de acceso a tu cuenta» (contratos/avisos-correo.md § Avisos de seguridad); un fallo del correo se registra y NO tumba el alta. Auditoría llave.alta (oficina.llave_alta para la oficina) y llave.alta_fallida. Sin caché. Límite: 20 por cuenta y 20 por IP en 15 min, comunes a las tres rutas de alta y baja"
@@ -577,6 +577,23 @@ paths:
         "401": { $ref: "#/components/responses/SinSesion" }
         "403": { description: "solo_titular (unas gafas vinculadas), entra_con_llave / aparato_pendiente (cuenta de oficina), o los de SinPermiso", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
         "409": { description: "demasiadas_llaves (10 vivas por cuenta)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/yo/llaves/quitar-todas:
+    post:
+      summary: "Salir de todos y quitar las llaves (OF13b-8b): cierra TODAS las sesiones de la cuenta, esta incluida, y revoca TODAS sus llaves, en un solo paso"
+      description: "Para quien ha perdido o le han robado un aparato (LLAVES-DE-ACCESO §5.4). Cuerpo estricto { confirmar: true } (cualquier otra cosa, 400). Solo cuentas de familia con sesión titular: unas gafas vinculadas, 403 solo_titular; una cuenta de oficina, 403 cuenta_de_oficina (no se queda sin llaves por aquí: un admin la rehabilita). En una transacción y con la cuenta bloqueada; borra la cookie de este aparato. Auditoría llave.quitadas_todas (cuántas) y sesion.todas_cerradas (cuántas; con_llaves), nunca credencial, correo ni nombres. UN solo correo de aviso («Se han cerrado tus sesiones y quitado tus llaves de acceso»; no depende de avisos_correo; un fallo no deshace nada). El enlace del correo sigue siendo la entrada y se puede crear una llave nueva. Mismo límite que el resto de las llaves (20 por cuenta y 20 por IP cada 15 min). Sin caché. POST /api/sesion/salir-todas se mantiene y NO quita las llaves"
+      security: [{ sesion: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, additionalProperties: false, required: [confirmar], properties: { confirmar: { type: boolean, enum: [true] } } } } }
+      responses:
+        "200":
+          description: cerradas y quitadas (la cookie de este aparato se borra)
+          content: { application/json: { schema: { type: object, additionalProperties: false, required: [sesiones_cerradas, llaves_quitadas], properties: { sesiones_cerradas: { type: integer }, llaves_quitadas: { type: integer } } } } }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: "Origin no admitido, solo_titular (unas gafas vinculadas) o cuenta_de_oficina", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
         "429": { $ref: "#/components/responses/Limite" }
 
   /api/yo/llaves/{id}:

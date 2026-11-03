@@ -3,8 +3,8 @@
 // ../oficina/llaves.ts (OF13b-3); aquí solo lo que se lee y se quita. Cada función lleva el id del hogar de la SESIÓN: no hay forma de nombrar
 // la llave de otra cuenta (una ajena y una inexistente son la misma respuesta).
 import type { FastifyRequest } from "fastify";
-import { type Cartero, mensajeDeLlaveAnadida, mensajeDeLlaveQuitada, mensajeDeLlavesQuitadasPorLaOficina } from "../auth/correo.ts";
-import { audita, esOficina, type Rol } from "../auth/servicio.ts";
+import { type Cartero, mensajeDeLlaveAnadida, mensajeDeLlaveQuitada, mensajeDeLlavesQuitadasPorLaOficina, mensajeDeSalidaTotal } from "../auth/correo.ts";
+import { audita, esOficina, revocaTodas, type Rol } from "../auth/servicio.ts";
 import { type Bd, type Cliente, enTransaccion } from "../bd/pool.ts";
 import { estadoLlaves, MAX_LLAVES, revocaLlave } from "../oficina/llaves.ts";
 
@@ -112,4 +112,36 @@ export async function avisaLlavesQuitadasPorLaOficina(req: FastifyRequest, bd: B
     req.log.error({ evento: "correo_llaves_quitadas_oficina_fallido", hogar, error: e instanceof Error ? e.name : "?" }, "no se pudo mandar el aviso de las llaves quitadas por la oficina");
     return "fallido";
   }
+}
+
+export type SalidaTotal =
+  | { ok: true; nombres: string[]; sesiones: number }
+  | { ok: false; error: "cuenta_de_oficina" | "sin_cuenta" };
+
+/**
+ * «Salir de todos y quitar las llaves» (OF13b-8b, LLAVES-DE-ACCESO §5.4): en UNA transacción y con la cuenta bloqueada cierra TODAS las sesiones de la
+ * cuenta (la de quien pulsa incluida) y revoca TODAS sus llaves. Solo cuentas de familia: una cuenta de la oficina no se queda sin llaves por aquí (la
+ * rehabilitación la hace un admin, ADR-0024). Auditoría `llave.quitadas_todas` y `sesion.todas_cerradas` (cuántas; nunca credencial ni correo).
+ */
+export async function saleDeTodosYQuitaLlaves(bd: Bd, hogarId: number): Promise<SalidaTotal> {
+  return enTransaccion(bd, async (t): Promise<SalidaTotal> => {
+    await t.query("SELECT id FROM hogares WHERE id = $1 FOR UPDATE", [hogarId]);
+    const e = await estadoLlaves(t, hogarId);
+    if (e.rol === null) return { ok: false, error: "sin_cuenta" };
+    if (esOficina(e.rol as Rol)) return { ok: false, error: "cuenta_de_oficina" };
+    const sesiones = await revocaTodas(t, hogarId);
+    const { nombres } = await revocaTodasLasLlaves(t, hogarId, hogarId);
+    await audita(t, hogarId, "llave.quitadas_todas", { llaves: nombres.length });
+    await audita(t, hogarId, "sesion.todas_cerradas", { sesiones, con_llaves: true });
+    return { ok: true, nombres, sesiones };
+  });
+}
+
+/** El UNICO aviso de la salida total (segundo plano; un fallo se registra sin dirección ni texto y no deshace nada). */
+export async function avisaSalidaTotal(req: FastifyRequest, bd: Bd, cartero: Cartero, hogar: number, nombres: string[]): Promise<void> {
+  const correo = await correoDeLaCuenta(bd, hogar).catch(() => null);
+  if (!correo) return;
+  Promise.resolve().then(() => cartero.envia(mensajeDeSalidaTotal(correo, nombres))).catch((e: unknown) => {
+    req.log.error({ evento: "correo_salida_total_fallido", hogar, error: e instanceof Error ? e.name : "?" }, "no se pudo mandar el aviso de la salida total");
+  });
 }

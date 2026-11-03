@@ -36,6 +36,12 @@ sus sesiones; **que el enlace del correo sigue funcionando** y que se puede crea
 Aquí **se espera al envío** (a diferencia de los avisos de la propia persona): quien actúa es de la oficina y la respuesta le dice `aviso_enviado`; un fallo del correo (la búsqueda, el SMTP)
 **no tumba la operación**, se registra `correo_llaves_quitadas_oficina_fallido` (hogar y nombre del error, nunca la dirección) y queda `admin.llave_aviso_fallido` en la auditoría. Tampoco hay reintento.
 
+**Cuando la propia persona sale de todos y quita las llaves (OF13b-8b, `mensajeDeSalidaTotal`):** un cuarto texto, **un solo correo**, que sale en `POST /api/yo/llaves/quitar-todas`. Asunto
+«Se han cerrado tus sesiones y quitado tus llaves de acceso». Dice cuándo, que se cerraron las sesiones de todos los aparatos, cuáles llaves se quitaron (hasta cinco nombres y «y N más»; si no había
+ninguna, que no tenía), **que el enlace del correo sigue funcionando** y que se puede crear una llave nueva en Configuración, Mis dispositivos, y, si no fue ella, qué hacer. Sin enlaces, sin
+HTML y sin el correo en el cuerpo. No depende de `avisos_correo`. Va en segundo plano como los de la propia persona: un fallo se registra `correo_salida_total_fallido` (hogar y nombre del error,
+nunca la dirección) y no deshace la salida; no hay reintento.
+
 ## El aviso también se ve en el mundo (OF11g)
 
 El correo es una vía; la otra es el propio gemelo. El aviso **se guarda siempre**, aunque el hogar tenga `avisos_correo` en «no», y queda **ligado a su evento**

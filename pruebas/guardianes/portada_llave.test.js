@@ -105,7 +105,7 @@ function banco({ soporte = true, autorrelleno = true, plataforma = true, respues
     platformAuthenticatorIsAvailable: async () => plataforma,
     startAuthentication: async o => { eventos.push("startAuthentication" + (o.useBrowserAutofill ? "(condicional)" : "")); return (respuestas.__auth || (async () => ({ id: "cred", response: {} })))(o); },
     startRegistration: async o => { eventos.push("startRegistration"); return (respuestas.__reg || (async () => ({ id: "nueva", response: {} })))(o); },
-    cancelCeremony: () => eventos.push("cancelCeremony"),
+    cancelCeremony: () => { eventos.push("cancelCeremony"); respuestas.__cancela?.(); },
   };
   const memoria = { lee: () => guardado.v, guarda: b => { guardado.v = b; } };
   return { eventos, llamadas, guardado, hechos: async () => (await import(pathToFileURL(path.join(RAIZ, "apps", "web", "portada", "llave_flujo.js")).href)).creaLlaves({ pide, lib, memoria, ahora: () => ahora, agente }) };
@@ -260,6 +260,70 @@ test("flujo: quitar una llave con DELETE sin cuerpo; la última deja el enlace; 
   assert.strictEqual((await (await banco({ respuestas: { "GET /api/yo/llaves": { status: 401, json: null } } }).hechos()).lista()).ok, false);
 });
 
+test("flujo: «Salir de todos y quitar las llaves» es un solo POST con { confirmar: true }; borra el recuerdo «hecha» (no «nunca») y un fallo deja la sesión abierta", async () => {
+  const P = await carga("llave_puro.js"), T0 = Date.UTC(2026, 10, 2);
+  const ok = { "POST /api/yo/llaves/quitar-todas": { status: 200, json: { sesiones_cerradas: 3, llaves_quitadas: 2 } } };
+  const b = banco({ respuestas: ok }), L = await b.hechos();
+  L.responde("hecha");
+  assert.strictEqual(P.leeRecuerdo(b.guardado.v, T0).tipo, "hecha");
+  assert.deepStrictEqual(await L.quitaTodas(), { ok: true, sesiones: 3, llaves: 2 });
+  assert.deepStrictEqual(b.llamadas, [{ metodo: "POST", ruta: "/api/yo/llaves/quitar-todas", cuerpo: { confirmar: true } }]);
+  assert.strictEqual(P.leeRecuerdo(b.guardado.v, T0).tipo, "nada", "la llave de este aparato ya no existe: se podrá volver a ofrecer");
+  assert.ok(b.eventos.includes("cancelCeremony"), "se invalida cualquier ceremonia en vuelo");
+  const n = banco({ respuestas: ok }), Ln = await n.hechos(); Ln.responde("nunca"); await Ln.quitaTodas();
+  assert.strictEqual(P.leeRecuerdo(n.guardado.v, T0).tipo, "nunca", "«Este aparato no es mío» se respeta");
+  for (const [que, r, re] of [["error del servidor", { status: 500, json: null }, /Tu sesión sigue abierta; prueba otra vez/], ["sin red", new Error("red"), /Tu sesión sigue abierta\. Comprueba la conexión/],
+    ["límite", { status: 429, json: null }, /Demasiados intentos/], ["oficina", { status: 403, json: { error: "cuenta_de_oficina" } }, /oficina[\s\S]*administrador/], ["gafas", { status: 403, json: { error: "solo_titular" } }, /Desde unas gafas/]]) {
+    const f = banco({ respuestas: { "POST /api/yo/llaves/quitar-todas": r }, memoria0: P.recuerdoDe("hecha", T0) }), x = await (await f.hechos()).quitaTodas();
+    assert.strictEqual(x.ok, false, que); assert.match(x.texto, re, que);
+    assert.strictEqual(P.leeRecuerdo(f.guardado.v, T0).tipo, "hecha", que + ": si falla no se toca el recuerdo");
+  }
+  assert.strictEqual((await (await banco({ respuestas: { "POST /api/yo/llaves/quitar-todas": { status: 401, json: null } } }).hechos()).quitaTodas()).status, 401);
+  assert.strictEqual(P.muestraSalidaTotal({ titular: true, entrada: "enlace", rol: "hogar" }), true);
+  assert.strictEqual(P.muestraSalidaTotal({ titular: true, entrada: "llave", rol: "hogar" }), true);
+  for (const mala of [{ titular: false, entrada: "codigo", rol: "hogar" }, { titular: true, entrada: "enlace", rol: "oficina" }, { titular: true, entrada: "llave", rol: "admin" }, null]) assert.strictEqual(P.muestraSalidaTotal(mala), false, JSON.stringify(mala));
+  assert.ok(!/passkey|WebAuthn|FIDO|credencial|autenticador|biom/i.test(P.TEXTO_SALIDA_TOTAL + P.TEXTO_SALIDA_TOTAL_HECHA + P.TEXTO_ERROR_LISTA + P.TEXTO_LISTA_LIMITE), "sin jerga");
+});
+
+test("flujo: la lista que falla dice cuándo es el 429 y nunca devuelve una lista vacía que engañe", async () => {
+  const P = await carga("llave_puro.js");
+  const f = await (await banco({ respuestas: { "GET /api/yo/llaves": { status: 500, json: null } } }).hechos()).lista();
+  assert.deepStrictEqual(f, { ok: false, status: 500, texto: P.TEXTO_ERROR_LISTA });
+  assert.strictEqual(P.TEXTO_ERROR_LISTA, "No hemos podido leer tus llaves. Prueba otra vez.");
+  const l = await (await banco({ respuestas: { "GET /api/yo/llaves": { status: 429, json: { error: "demasiadas_peticiones", mensaje: "otro" } } } }).hechos()).lista();
+  assert.strictEqual(l.status, 429); assert.strictEqual(l.texto, P.TEXTO_LISTA_LIMITE); assert.ok(!/enlace/i.test(l.texto));
+  const red = await (await banco({ respuestas: { "GET /api/yo/llaves": new Error("red") } }).hechos()).lista();
+  assert.strictEqual(red.ok, false); assert.strictEqual(red.status, 0);
+});
+
+test("flujo: «Entrar con mi llave» una y otra vez, con el autorrelleno en marcha, no deja ceremonias colgadas (navigator.credentials de mentira)", async () => {
+  // cada startAuthentication es una ceremonia viva hasta que se aborta (cancelCeremony, como WebAuthnAbortService) o la persona toca el sensor
+  let vivas = 0, max = 0, aborta = null, tocaSensor = false;
+  const b = banco({ respuestas: {
+    __cancela: () => aborta?.(),
+    __auth: () => new Promise((ok, mal) => {
+      vivas++; max = Math.max(max, vivas);
+      aborta = () => { vivas--; aborta = null; mal(Object.assign(new Error("abortada"), { name: "AbortError", code: "ERROR_CEREMONY_ABORTED" })); };
+      if (tocaSensor) setImmediate(() => { vivas--; aborta = null; ok({ id: "cred", response: {} }); });
+    }),
+  } });
+  const L = await b.hechos();
+  const cond = L.entra({ condicional: true });
+  await new Promise(ok => setImmediate(ok));
+  assert.strictEqual(vivas, 1, "el autorrelleno espera");
+  const a = L.entra(); await new Promise(ok => setImmediate(ok));
+  const c = L.entra(); await new Promise(ok => setImmediate(ok));
+  assert.strictEqual(vivas, 1, "dos pulsaciones, una sola ceremonia viva");
+  tocaSensor = true;
+  const d = L.entra();
+  const rs = await Promise.all([cond, a, c, d]);
+  assert.strictEqual(max, 1, "nunca dos a la vez");
+  for (const r of rs.slice(0, 3)) assert.deepStrictEqual(r, { ok: false, obsoleta: true });
+  assert.strictEqual(rs[3].ok, true, "solo la última pulsación entra");
+  assert.strictEqual(b.eventos.filter(x => x === "POST /api/auth/llave").length, 1, "una sola entrada contra la api");
+  assert.strictEqual(vivas, 0, "ninguna ceremonia colgada");
+});
+
 // ——— estática ———
 test("regla 12 y CSP: @simplewebauthn/browser, sin navigator.credentials a mano, carga perezosa, nada en línea ni de otro origen, DOM por textContent", () => {
   assert.match(js, /import\("@simplewebauthn\/browser"\)/);
@@ -284,6 +348,8 @@ test("rutas: solo las del contrato (api.openapi.yaml), con el método que dice",
   for (const r of [...usadas, "/api/yo/llaves/{id}", "/api/sesion"]) assert.ok(openapi.includes("  " + r + ":"), r + " en el contrato");
   assert.match(flujoSrc, /llama\("DELETE", "\/api\/yo\/llaves\/" \+ encodeURIComponent\(String\(id\)\)\)/, "la baja, sin cuerpo");
   assert.ok(!/DELETE[^;]*\{\}/.test(flujoSrc), "DELETE sin cuerpo");
+  assert.match(flujoSrc, /llama\("POST", "\/api\/yo\/llaves\/quitar-todas", \{ confirmar: true \}\)/, "la salida total, con el cuerpo estricto");
+  assert.ok(openapi.includes("  /api/yo/llaves/quitar-todas:"), "la salida total, en el contrato");
   assert.match(js, /if \(cuerpo !== undefined\) \{ o\.headers\["content-type"\] = "application\/json"/, "sin cuerpo no se manda content-type JSON");
 });
 
@@ -329,12 +395,28 @@ test("Mis llaves en Mis dispositivos: lista, añadir otra y quitar con <dialog>;
   assert.match(html, /<dialog id="dlgQuitar" aria-labelledby="dlgQuitarT">/, "confirmación nativa");
   assert.match(sinEtiquetas(s), /Cerrar la sesión en todos los aparatos no quita las llaves/);
   assert.match(js, /s\.titular !== true \|\| s\.entrada === "codigo"\) return;\s*\/\/ nunca desde unas gafas/);
-  assert.match(js, /dispositivos: \(\) => \{ \$\("okVincular"\)\.hidden = true; pintaMisLlaves\(\); \}/);
+  assert.match(js, /dispositivos: \(\) => \{ \$\("okVincular"\)\.hidden = true;[^}]*pintaSalidaTotal\(\); pintaMisLlaves\(\); \}/);
   assert.match(js, /showModal/); assert.match(js, /\$\("dlgQuitarNo"\)\.focus\(\)/, "el foco empieza en la salida segura");
   assert.match(js, /e\.className = "pill"; e\.textContent = "esta"/, "marca la llave de esta sesión");
   assert.match(js, /TEXTO_ULTIMA_LLAVE/);
   assert.match(js, /q\.setAttribute\("aria-label", "Quitar la llave «"/, "cada botón dice a qué llave se refiere");
   assert.match(js, /textContent = l\.nombre/, "el nombre de una llave es texto, nunca HTML");
+});
+
+test("Salir de todos y quitar las llaves: <dialog> nativo, aviso en vivo, el botón peligroso separado del de solo cerrar sesión y textos sencillos", () => {
+  const s = seccion("p-dispositivos"), t = sinEtiquetas(s);
+  assert.match(s, /<dialog id="dlgSalirTodo" aria-labelledby="dlgSalirTodoT">/, "confirmación nativa");
+  for (const id of ["dlgSalirTodoTxt", "dlgSalirTodoSi", "dlgSalirTodoNo", "btnSalirYQuitar", "salidaTotal", "avSalidaTotal", "btnReintentaLlaves"]) assert.ok(html.includes('id="' + id + '"'), id);
+  assert.match(s, /<div id="salidaTotal" class="pila" hidden>/, "oculto hasta saber que es una familia titular");
+  assert.match(s, /id="avSalidaTotal" role="alert" tabindex="-1" hidden/, "el fallo se anuncia y se puede enfocar");
+  assert.match(s, /<button type="button" class="btn btn-peligro" id="btnSalirYQuitar">Salir de todos y quitar las llaves<\/button>/);
+  assert.match(s, /<button type="button" class="btn btn-peligro" data-accion="salirTodas">Cerrar sesión en todos mis aparatos<\/button>/, "el de solo cerrar sesión sigue");
+  assert.match(t, /Esto no quita las llaves de acceso/, "la pantalla dice lo que NO hace el de siempre");
+  assert.match(t, /Podrás volver a entrar con el enlace del correo y crear una llave nueva/);
+  assert.match(s, /<button type="button" class="btn" id="btnReintentaLlaves" hidden>Probar otra vez<\/button>/);
+  assert.match(js, /\$\("dlgSalirTodoNo"\)\.focus\(\)/, "el foco empieza en la salida segura");
+  assert.match(js, /ll\.L\.quitaTodas\(\)/); assert.match(js, /anuncia\(ll\.P\.TEXTO_SALIDA_TOTAL_HECHA\)/, "se anuncia al terminar");
+  assert.match(js, /if \(!r\.ok\) \{ avisaLlave\(\$\("avSalidaTotal"\)/, "si falla, la sesión sigue y se dice");
 });
 
 test("comodidad: botones de 44 px o más, [hidden] manda, <dialog> con colores del tema y nada que dependa solo del color", () => {
@@ -427,6 +509,42 @@ test("recorrido: primer enlace → oferta → crear llave → salir → entrar c
     await pg.click("#dlgQuitarSi");
     await pg.waitForSelector("#btnEntrar");   // la sesión se cerró: portada con «Entrar»
     assert.strictEqual((await cdp.send("WebAuthn.getCredentials", { authenticatorId })).credentials.length, 1, "la llave sigue en el autenticador: solo se quitó del sitio");
+
+
+    // 7. «Salir de todos y quitar las llaves» (OF13b-8b, ESCRITO SIN EJECUTAR): volver a entrar con el enlace, crear la llave, y salir de todo en un paso
+    const entraPorEnlace = async () => {
+      const n0 = (await (await fetch(buzon + "/api/v1/search?query=" + encodeURIComponent("to:" + yo.correo))).json()).messages_count;
+      await pg.goto(base + "/#entrar"); await pg.waitForSelector("html[data-listo]");
+      await pg.fill("#correo", yo.correo); await pg.click("#btnMandar"); await pg.waitForSelector("#p-revisa:not([hidden])");
+      let m2 = null;
+      for (let i = 0; i < 100 && !m2; i++) {
+        const b2 = await (await fetch(buzon + "/api/v1/search?query=" + encodeURIComponent("to:" + yo.correo))).json();
+        if (b2.messages_count > n0) m2 = b2.messages[0]; else await new Promise(ok => setTimeout(ok, 200));
+      }
+      assert.ok(m2, "el segundo enlace no llegó al buzón");
+      await pg.goto((/(https:\/\/localhost:\d+\/api\/auth\/entrar\?t=[A-Za-z0-9_-]{43})/.exec((await (await fetch(buzon + "/api/v1/message/" + m2.ID)).json()).Text) || [])[1]);
+      await pg.click("button[type=submit]"); await pg.waitForURL(u => String(u).startsWith(base + "/"));
+    };
+    await entraPorEnlace();
+    await pg.goto(base + "/#dispositivos"); await pg.waitForSelector("#misLlaves:not([hidden])");
+    await pg.click("#btnOtraLlave"); await pg.click("#btnOtraLlave");   // el primer toque pide el nombre; el segundo crea la llave
+    await pg.waitForSelector("#listaLlaves li", { timeout: 20_000 });
+    await pg.waitForSelector("#salidaTotal:not([hidden])");
+    assert.ok((await pg.locator("#btnSalirYQuitar").boundingBox()).height >= 44, "≥ 44 px");
+    await pg.click("#btnSalirYQuitar"); await pg.waitForSelector("#dlgSalirTodo[open]");
+    assert.strictEqual(await pg.evaluate(() => document.activeElement.id), "dlgSalirTodoNo", "el foco, en la salida segura");
+    await pg.click("#dlgSalirTodoNo");
+    assert.strictEqual((await (await ctx.request.get(base + "/api/sesion")).json()).titular, true, "«No, volver» no cierra nada");
+    await pg.click("#btnSalirYQuitar"); await pg.waitForSelector("#dlgSalirTodo[open]"); await pg.click("#dlgSalirTodoSi");
+    await pg.waitForSelector("#btnEntrar");
+    assert.strictEqual((await ctx.request.get(base + "/api/sesion")).status(), 401, "la sesión de este aparato también se cerró");
+    const correos = await (await fetch(buzon + "/api/v1/search?query=" + encodeURIComponent("to:" + yo.correo + " subject:quitado"))).json();
+    assert.strictEqual(correos.messages_count >= 1, true, "llegó el aviso de la salida total");
+    await pg.goto(base + "/#entrar"); await pg.waitForSelector("#bloqueLlave:not([hidden])");
+    await pg.click("#btnLlave");   // con la llave ya quitada del sitio, entrar con ella debe fallar con el texto único
+    await pg.waitForSelector("#avLlave:not([hidden])");
+    await entraPorEnlace();   // y el enlace del correo sigue siendo la entrada
+    assert.strictEqual((await (await ctx.request.get(base + "/api/sesion")).json()).titular, true);
 
     // 6. TODO: la entrada condicional (autorrelleno) con una llave creada de nuevo — depende de que el autenticador virtual la admita; ajustar al ejecutarlo
 

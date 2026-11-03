@@ -99,3 +99,27 @@ export function textoFalloAlta(r) {
   if (r && r.status === 429) return "Demasiados intentos seguidos. Espera unos minutos.";
   return "No hemos podido guardar la llave. Prueba otra vez.";
 }
+
+/** Si falla la lista de «Mis llaves» (OF13b-8b): el aviso con su botón «Probar otra vez»; no se enseña una lista vacía que engañaría. */
+export const TEXTO_ERROR_LISTA = "No hemos podido leer tus llaves. Prueba otra vez.";
+export const TEXTO_LISTA_LIMITE = "Has pedido la lista muchas veces seguidas. Espera un momento y prueba otra vez.";
+
+/** «Salir de todos y quitar las llaves» (LLAVES-DE-ACCESO §5.4): lo que dice la confirmación y lo que se anuncia al terminar. */
+export const TEXTO_SALIDA_TOTAL = "Vamos a cerrar tu sesión en todos los aparatos, también en este, y a quitar todas tus llaves de acceso. " +
+  "Úsalo si has perdido un aparato o te lo han robado. Para volver a entrar usarás el enlace que te mandamos al correo, y después podrás crear una llave nueva. " +
+  "Te avisaremos por correo.";
+export const TEXTO_SALIDA_TOTAL_HECHA = "Hecho: hemos cerrado tu sesión en todos los aparatos y quitado tus llaves. Para volver a entrar, pide un enlace al correo; luego podrás crear una llave nueva.";
+
+/** ¿Se ofrece «Salir de todos y quitar las llaves»? Solo con sesión titular (no desde unas gafas) y en una cuenta de familia (la oficina tiene su camino). */
+export function muestraSalidaTotal(sesion) {
+  return muestraMisLlaves(sesion) && sesion.rol !== "oficina" && sesion.rol !== "admin";
+}
+
+/** Texto para un fallo de la salida total. `r` es { status, json }. La sesión sigue abierta si falla. */
+export function textoFalloSalidaTotal(r) {
+  if (r && r.status === 0) return "No hemos podido conectar. Tu sesión sigue abierta. Comprueba la conexión y vuelve a probar.";
+  if (r && r.status === 429) return "Demasiados intentos seguidos. Espera unos minutos y vuelve a probar.";
+  if (r && r.status === 403 && r.json && r.json.error === "cuenta_de_oficina") return "Una cuenta de la oficina no puede hacerlo por aquí. Pide a un administrador que te rehabilite el alta.";
+  if (r && r.status === 403 && r.json && r.json.error === "solo_titular") return "Desde unas gafas no se puede. Hazlo desde tu móvil u ordenador.";
+  return "No hemos podido hacerlo. Tu sesión sigue abierta; prueba otra vez.";
+}

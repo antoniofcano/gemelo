@@ -165,3 +165,25 @@ export function mensajeDeLlavesQuitadasPorLaOficina(para: string, nombres: strin
       "y avisa a la oficina.\n",
   };
 }
+
+/**
+ * Aviso de seguridad (decisión 187, OF13b-8b): la propia persona ha cerrado las sesiones de TODOS sus aparatos y quitado TODAS sus llaves en un solo paso
+ * («Salir de todos y quitar las llaves»). UN solo correo. Sin enlaces ni el correo en el cuerpo; los nombres van saneados y como mucho cinco. El enlace
+ * del correo sigue siendo la entrada y se puede crear una llave nueva.
+ */
+export function mensajeDeSalidaTotal(para: string, nombres: string[], ahora: Date = new Date()): Mensaje {
+  const lista = nombres.length
+    ? nombres.slice(0, 5).map(n => "«" + nombreEnCorreo(n) + "»").join(", ") + (nombres.length > 5 ? " y " + (nombres.length - 5) + " más" : "")
+    : "";
+  return {
+    para,
+    asunto: "Se han cerrado tus sesiones y quitado tus llaves de acceso",
+    texto:
+      "Hola:\n\n" +
+      "Se han cerrado las sesiones de tu cuenta del gemelo del olivar en todos tus aparatos" +
+      (lista ? " y se han quitado tus llaves de acceso: " + lista : " (no tenías ninguna llave de acceso)") + ", el " + cuando(ahora) + ".\n\n" +
+      "No te quedas fuera: el enlace que te mandamos a este correo sigue funcionando para entrar, y desde Configuración, Mis dispositivos puedes crear una llave nueva. " +
+      "Si has sido tú, no tienes que hacer nada.\n\n" +
+      "Si no has sido tú: entra con un enlace desde la portada (pídelo con este mismo correo), revisa en Configuración, Mis dispositivos y avisa a la oficina.\n",
+  };
+}

@@ -3,12 +3,14 @@
 //   POST   /api/yo/llaves/opciones   opciones para crear una llave (WebAuthn), con el reto atado a esta sesión
 //   POST   /api/yo/llaves            verifica la respuesta, guarda la llave y avisa por correo (decisión 187)
 //   DELETE /api/yo/llaves/:id        quita una llave propia, cierra sus sesiones y avisa por correo (decisión 187)
+//   POST   /api/yo/llaves/quitar-todas  cierra TODAS las sesiones y quita TODAS las llaves de una familia, con UN aviso (OF13b-8b)
 // La ceremonia y la regla de quién puede dar de alta son las de OF13b-3 (`oficina/llaves.ts`: permisoAlta, opcionesDeAlta, verificaAlta,
 // registraLlave); las rutas de la oficina de OF13 (`/api/oficina/llaves…`) se mantienen para su pantalla (la primera llave con la sesión
 // «sin llave» de la oficina, la entrada con llave y las de admin: con la llave obligatoria, esta sesión aún no pasa `requiereSesion`).
 // El hogar sale SIEMPRE de la sesión. Nunca desde unas gafas vinculadas (`origen = 'vinculo'`).
 import type { RegistrationResponseJSON } from "@simplewebauthn/server";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { NOMBRE_COOKIE, OPCIONES_COOKIE } from "../auth/rutas.ts";
 import { audita, esOficina } from "../auth/servicio.ts";
 import type { Contexto } from "../contexto.ts";
 import { CONFIRMACION_REQUERIDA, requiereSesion, SIN_SESION } from "../oficina/acceso.ts";
@@ -17,10 +19,12 @@ import {
   estadoLlaves, gastaReto, guardaReto, llavesVivas, MAX_LLAVES, nombreDeLlave, opcionesDeAlta, permisoAlta, registraLlave, type SesionDeAlta,
   usuarioDeLlave, verificaAlta,
 } from "../oficina/llaves.ts";
-import { avisaLlave, llavesDeLaCuenta, quitaLlave } from "./llaves.ts";
+import { avisaLlave, avisaSalidaTotal, llavesDeLaCuenta, quitaLlave, saleDeTodosYQuitaLlaves } from "./llaves.ts";
 
 export const TEXTO_SOLO_TITULAR_LLAVES = "Las llaves se gestionan desde tu móvil u ordenador con tu enlace, no desde unas gafas ya vinculadas.";
 export const TEXTO_LIMITE_LLAVES = "Demasiados intentos con las llaves. Espera unos minutos y vuelve a probarlo.";
+export const TEXTO_LIMITE_LISTA_LLAVES = "Has pedido la lista de llaves muchas veces seguidas. Espera un momento y vuelve a probarlo.";
+export const TEXTO_SALIDA_TOTAL_OFICINA = "Una cuenta de la oficina no puede quitarse todas las llaves de una vez. Pide a un admin que te rehabilite el alta.";
 export const TEXTO_FALLO_ALTA = "La llave no se pudo comprobar. Vuelve a intentarlo; si sigue fallando, prueba con otra o pide ayuda a la oficina.";
 export const TEXTO_SIN_RETO_ALTA = "Ha pasado demasiado tiempo o se abrió otra petición. Vuelve a pulsar el botón.";
 const TEXTO_ENTRA_CON_LLAVE = "Esta cuenta ya tiene una llave de acceso. Entra con ella para añadir otra; si las has perdido todas, pide a un admin que te rehabilite el alta.";
@@ -51,6 +55,8 @@ export async function rutasYoLlaves(app: FastifyInstance, ctx: Contexto): Promis
     }
     return true;
   };
+  // la lista: el límite por IP (60 por minuto) con su texto propio y neutro, no el de los enlaces
+  const listaPorIp = app.createRateLimit({ max: 60, timeWindow: 60_000, keyGenerator: (req: FastifyRequest) => "yo-llaves-lista-ip:" + req.ip });
   const sesionDeAlta = (req: FastifyRequest): SesionDeAlta =>
     ({ origen: req.session.origen ?? "enlace", conLlave: typeof req.session.llaveId === "number", aparatoAprobado: req.session.aparatoAprobado === true });
   /** el permiso se traduce a su respuesta; null si puede */
@@ -66,8 +72,10 @@ export async function rutasYoLlaves(app: FastifyInstance, ctx: Contexto): Promis
   };
 
   // ---------------------------------------------------------------- lista
-  app.get("/api/yo/llaves", { preHandler: requiereSesion, config: { rateLimit: { max: 60, timeWindow: 60_000 } } }, async (req, rep) => {
+  app.get("/api/yo/llaves", { preHandler: requiereSesion }, async (req, rep) => {
     rep.header("cache-control", NO_GUARDAR);
+    const lim = await listaPorIp(req);
+    if (!lim.isAllowed && lim.isExceeded) return rep.code(429).send({ error: "demasiadas_peticiones", mensaje: TEXTO_LIMITE_LISTA_LLAVES });
     const hogar = req.session.hogarId!;
     const [llaves, estado] = await Promise.all([llavesDeLaCuenta(bd, hogar, req.session.idBd), estadoLlaves(bd, hogar)]);
     if (estado.rol === null) return rep.code(401).send(SIN_SESION);
@@ -134,5 +142,27 @@ export async function rutasYoLlaves(app: FastifyInstance, ctx: Contexto): Promis
     }
     await avisaLlave(req, bd, cartero, "quitada", hogar, q.nombre);
     return { sesiones_cerradas: q.sesiones, era_esta: q.eraEsta, quedan: q.quedan };
+  });
+
+  // ---------------------------------------------------------------- salir de todos y quitar todas las llaves (OF13b-8b)
+  app.post<{ Body: { confirmar: true } }>("/api/yo/llaves/quitar-todas", {
+    preHandler: requiereSesion,
+    // forma estricta: solo `confirmar: true` (un POST vacío o con otra cosa no cierra nada). El validador convierte tipos: se mira antes.
+    preValidation: async (req, rep) => { if ((req.body as { confirmar?: unknown } | null)?.confirmar !== true) return rep.code(400).send({ error: "cuerpo_no_valido", mensaje: "Falta confirmar: true." }); },
+    schema: { body: { type: "object", additionalProperties: false, required: ["confirmar"], properties: { confirmar: { type: "boolean", enum: [true] } } } },
+  }, async (req, rep) => {
+    rep.header("cache-control", NO_GUARDAR);
+    const hogar = req.session.hogarId!;
+    // desde unas gafas vinculadas, nunca (como el resto de las llaves)
+    if (req.session.origen === "vinculo") return rep.code(403).send({ error: "solo_titular", mensaje: TEXTO_SOLO_TITULAR_LLAVES });
+    if (!await pasaLimite(req, rep)) return;
+    const s = await saleDeTodosYQuitaLlaves(bd, hogar);
+    if (!s.ok) {
+      if (s.error === "cuenta_de_oficina") return rep.code(403).send({ error: "cuenta_de_oficina", mensaje: TEXTO_SALIDA_TOTAL_OFICINA });
+      return rep.code(401).send({ ...SIN_SESION });
+    }
+    await avisaSalidaTotal(req, bd, cartero, hogar, s.nombres);
+    req.session = null as never;   // la sesión de quien pulsa ya está cerrada en la base: también sale este aparato
+    return rep.clearCookie(NOMBRE_COOKIE, OPCIONES_COOKIE).send({ sesiones_cerradas: s.sesiones, llaves_quitadas: s.nombres.length });
   });
 }
