@@ -4,7 +4,8 @@
 // no puede: el CASE de validez de `lee()` (origen 'llave' en familia y oficina, aparato pendiente, llave revocada), la restricción
 // `sesiones_origen_check` de la 0021 con 'llave', `llave_id` y `confirmada_en` guardados, la rotación (la sesión vieja revocada en la
 // base) y que el enlace pide UNA sola sentencia exista o no la cuenta (el CTE de creaEnlace contra la base de verdad).
-// Sin Docker se SALTA con aviso. ESCRITA SIN EJECUTAR al hacer OF13b-5 (agente solo Node): queda por lanzar por el banco.
+// Sin Docker se SALTA con aviso. Escrita a ciegas en OF13b-5; ejecutada por el banco el 2026-11-03 (la preparación
+// insertaba normas_version sin normas_aceptadas_en, que la 0002 no admite).
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
 import { after, before, test } from "node:test";
@@ -33,7 +34,7 @@ before(async () => {
   if (SALTO) return;
   bd = await levantaBd();
   for (const [c, rol] of [[FAM, "hogar"], [OFI, "oficina"]] as const) {
-    const id = Number((await bd.dueno.query<{ id: number }>("INSERT INTO hogares (correo, rol, normas_version) VALUES ($1, $2, 1) RETURNING id", [c, rol])).rows[0]!.id);
+    const id = Number((await bd.dueno.query<{ id: number }>("INSERT INTO hogares (correo, rol, normas_version, normas_aceptadas_en) VALUES ($1, $2, 1, now()) RETURNING id", [c, rol])).rows[0]!.id);
     ids[c] = id;
     sesionDeAlta[c] = Number((await bd.dueno.query<{ id: number }>(
       "INSERT INTO sesiones (hogar_id, hash, expira_en, origen) VALUES ($1, $2, now() + interval '1 day', 'enlace') RETURNING id", [id, randomBytes(32)])).rows[0]!.id);
@@ -43,7 +44,7 @@ before(async () => {
   await app.ready();
 }, { timeout: 240_000 });
 
-after(async () => { if (!SALTO) { await app.close(); await bd.cierra(); } });
+after(async () => { if (!SALTO) { await app?.close(); await bd?.cierra(); } });   // si before cayó a medias, no se tapa su error con otro
 
 const salta = (t: { skip: (m: string) => void }) => { if (SALTO) { t.skip(SALTO); return true; } return false; };
 const galleta = (r: LightMyRequestResponse, nombre: string) => ([] as string[]).concat(r.headers["set-cookie"] ?? []).find(c => c.startsWith(nombre + "="));

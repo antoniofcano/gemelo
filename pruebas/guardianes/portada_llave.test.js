@@ -445,8 +445,11 @@ test("recorrido: primer enlace → oferta → crear llave → salir → entrar c
     const ctx = await nav.newContext({ viewport: { width: 1280, height: 800 }, locale: "es-ES", ignoreHTTPSErrors: true });
     await ctx.addInitScript(() => { window.__csp = []; document.addEventListener("securitypolicyviolation", e => window.__csp.push(e.violatedDirective + " " + e.blockedURI)); });
     const pg = await ctx.newPage(), errores = [];
-    pg.on("pageerror", e => errores.push(String(e)));
-    pg.on("console", m => { if (m.type() === "error" && !/Failed to load resource.*(401|403|404|409)/.test(m.text())) errores.push(m.text()); });
+    // lo que se mira es la portada: /finca/ solo se cruza al entrar y se deja enseguida, con el motor aún pidiendo teselas (esas peticiones
+    // cortadas al salir las anota 02_mundo con console.error; el mundo con su consola limpia lo mira dev.test.js, esperando a que esté listo)
+    const enFinca = () => /\/finca\//.test(pg.url());
+    pg.on("pageerror", e => { if (!enFinca()) errores.push(String(e)); });
+    pg.on("console", m => { if (m.type() === "error" && !enFinca() && !/\/finca\//.test(m.location().url || "") && !/Failed to load resource.*(401|403|404|409)/.test(m.text())) errores.push(m.text() + " (" + (m.location().url || "?") + ")"); });
     // el autenticador virtual: de plataforma, con llave residente y verificación de la persona (como Windows Hello o Touch ID)
     const cdp = await ctx.newCDPSession(pg);
     await cdp.send("WebAuthn.enable");
@@ -496,16 +499,27 @@ test("recorrido: primer enlace → oferta → crear llave → salir → entrar c
     assert.strictEqual(await pg.isHidden("#ofertaLlave"), true);
 
     // 4. salir y entrar con la llave, sin escribir el correo
-    await pg.click("[data-accion=salir]");
+    // salir es asíncrono (POST y luego S.sesion = null): hasta que no sale «Entrar», #entrar con la sesión aún viva cae en la portada
+    // (destino() de portada.js), y el cambio de ancla no recarga la página
+    await pg.click("[data-accion=salir]"); await pg.waitForSelector("#accionesSin:not([hidden]) #btnEntrar");
     await pg.goto(base + "/#entrar"); await pg.waitForSelector("#bloqueLlave:not([hidden])");
-    await Promise.all([pg.waitForURL(base + "/finca/", { timeout: 30_000 }), pg.click("#btnLlave")]);
+    // el autenticador virtual (automaticPresenceSimulation) contesta solo a la entrada condicional que arma #entrar (autorrelleno): a veces
+    // entra antes de que el botón esté quieto. Las dos son entrar con la llave; vale cualquiera, y se dice cuál fue
+    const llega = pg.waitForURL(base + "/finca/", { timeout: 30_000 });
+    const porBoton = await pg.click("#btnLlave", { timeout: 10_000 }).then(() => true, e => { if (/\/finca\//.test(pg.url())) return false; throw e; });
+    await llega;
+    t.diagnostic("entró con la llave por " + (porBoton ? "el botón" : "el autorrelleno (entrada condicional)"));
     const sesion = await (await ctx.request.get(base + "/api/sesion")).json();
     assert.strictEqual(sesion.entrada, "llave"); assert.strictEqual(sesion.titular, true);
 
     // 5. quitar la llave (la de esta sesión): la sesión se cierra y el enlace sigue sirviendo
     await pg.goto(base + "/#dispositivos"); await pg.waitForSelector("#listaLlaves li button");
-    await pg.click("#listaLlaves li button"); await pg.waitForSelector("#dlgQuitar[open]");
-    assert.match(await pg.textContent("#dlgQuitarTxt"), /el enlace que te mandamos al correo/);
+    // la base de infra/dev persiste entre pasadas: la cuenta sembrada puede traer llaves de otra vez. Se quita la de ESTA sesión («esta»);
+    // el aviso de que queda el enlace del correo solo sale si es la última (textoQuitar de llave_puro.js)
+    const cuantas = await pg.locator("#listaLlaves li").count();
+    await pg.click("#listaLlaves li:has(.pill:text-is(\"esta\")) button"); await pg.waitForSelector("#dlgQuitar[open]");
+    if (cuantas === 1) assert.match(await pg.textContent("#dlgQuitarTxt"), /el enlace que te mandamos al correo/);
+    else { assert.doesNotMatch(await pg.textContent("#dlgQuitarTxt"), /el enlace que te mandamos al correo/, "con más llaves no es la última"); t.diagnostic("la cuenta sembrada traía " + cuantas + " llaves (de pasadas anteriores)"); }
     await pg.click("#dlgQuitarSi");
     await pg.waitForSelector("#btnEntrar");   // la sesión se cerró: portada con «Entrar»
     assert.strictEqual((await cdp.send("WebAuthn.getCredentials", { authenticatorId })).credentials.length, 1, "la llave sigue en el autenticador: solo se quitó del sitio");
@@ -540,10 +554,17 @@ test("recorrido: primer enlace → oferta → crear llave → salir → entrar c
     assert.strictEqual((await ctx.request.get(base + "/api/sesion")).status(), 401, "la sesión de este aparato también se cerró");
     const correos = await (await fetch(buzon + "/api/v1/search?query=" + encodeURIComponent("to:" + yo.correo + " subject:quitado"))).json();
     assert.strictEqual(correos.messages_count >= 1, true, "llegó el aviso de la salida total");
+    // con la llave ya quitada del sitio, entrar con ella debe fallar con el texto único. Ojo: el autenticador virtual contesta AL INSTANTE a la
+    // entrada condicional, y portada.js la vuelve a armar tras cada fallo (con una persona, solo se resuelve si elige la llave): aquí eso da
+    // un 401 tras otro hasta el límite por IP de la api (20 cada 15 min), que corta con 429. Esos 429 de /api/auth/llave se cuentan aparte
+    const antesDe429 = errores.length;
     await pg.goto(base + "/#entrar"); await pg.waitForSelector("#bloqueLlave:not([hidden])");
-    await pg.click("#btnLlave");   // con la llave ya quitada del sitio, entrar con ella debe fallar con el texto único
+    await pg.click("#btnLlave");
     await pg.waitForSelector("#avLlave:not([hidden])");
     await entraPorEnlace();   // y el enlace del correo sigue siendo la entrada
+    const tramo = errores.splice(antesDe429), es429 = e => /status of 429 .*\/api\/auth\/llave\)$/.test(e);
+    errores.push(...tramo.filter(e => !es429(e)));   // cualquier otro error sigue contando
+    t.diagnostic("tras quitar las llaves, 429 de /api/auth/llave por el autorrelleno del autenticador virtual: " + tramo.filter(es429).length);
     assert.strictEqual((await (await ctx.request.get(base + "/api/sesion")).json()).titular, true);
 
     // 6. TODO: la entrada condicional (autorrelleno) con una llave creada de nuevo — depende de que el autenticador virtual la admita; ajustar al ejecutarlo

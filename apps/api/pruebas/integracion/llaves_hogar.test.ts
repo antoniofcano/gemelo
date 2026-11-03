@@ -1,7 +1,8 @@
 // Integración de las llaves de una familia desde la oficina (OF13b-6, ADR-0029) contra PostGIS en un contenedor: la lista sin material criptográfico, quitar una y
 // todas con el aviso por correo, el cierre de las sesiones de esas llaves (y solo esas), el 404 idéntico para la llave ajena, la auditoría limpia, `rehabilitar-llave`
 // con `revocar_llaves` avisando, la exportación con llaves y la CASCADA al borrar la cuenta. Sin Docker se SALTA con aviso.
-// ESCRITA SIN EJECUTAR al hacer OF13b-6 (agente solo Node): queda por lanzar por el banco.
+// Escrita a ciegas en OF13b-6; ejecutada por el banco el 2026-11-03 (esperaba que «quitar todas» no cerrase la sesión del alta, que
+// por contrato queda marcada con la última llave dada de alta).
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 import type { FastifyInstance, LightMyRequestResponse } from "fastify";
@@ -30,7 +31,7 @@ before(async () => {
   app = await construyeApp(ctx);
   await app.ready();
 }, { timeout: 240_000 });
-after(async () => { if (!SALTO) { await app.close(); await bd.cierra(); } });
+after(async () => { if (!SALTO) { await app?.close(); await bd?.cierra(); } });   // si before cayó a medias, no se tapa su error con otro
 
 const ip = () => "198.51.100." + (++ipN % 250);
 const salta = (t: { skip: (m: string) => void }) => { if (SALTO) { t.skip(SALTO); return true; } return false; };
@@ -85,7 +86,9 @@ test("la ficha de la oficina: lista sin material criptográfico, quitar una y to
   assert.equal(inex.statusCode, 404);
   // una cuenta de oficina por esta ruta: 404 (sus llaves se gestionan en /api/admin/llaves)
   assert.equal((await pide("GET", "/api/admin/hogares/" + ids[OFI2] + "/llaves", sOfi)).statusCode, 404);
-  // quitar una: la sesión abierta con ELLA se cierra (la de Ana se abrió con el enlace, no con la llave: sigue)
+  // quitar una: la sesión abierta o confirmada con ELLA se cierra. La de Ana nació del enlace y cada alta la deja marcada con la llave
+  // nueva (contratos/sesion.md: «La sesión del alta queda abierta con la llave nueva»), así que lleva la última, «Portátil»: quitar la
+  // del móvil no la cierra
   const q = await pide("DELETE", "/api/admin/hogares/" + ids[ANA] + "/llaves/" + id1, sOfi, { motivo: "Perdió el móvil" });
   assert.equal(q.statusCode, 200, q.body);
   assert.deepEqual(q.json(), { sesiones_cerradas: 0, aviso_enviado: true });
@@ -93,9 +96,10 @@ test("la ficha de la oficina: lista sin material criptográfico, quitar una y to
   const aviso = ctx.cartero.mensajes.filter(m => m.para === ANA && m.asunto.startsWith("La oficina ha quitado"));
   assert.equal(aviso.length, 1);
   assert.doesNotMatch(aviso[0]!.texto, /Perdió el móvil|ofi-llaves-hogar|https?:/);
-  // quitar todas (queda la de «Portátil»): un solo aviso más
+  // quitar todas (queda la de «Portátil»): un solo aviso más, y ahora sí se cierra la sesión de Ana (marcada con «Portátil»)
   const todas = await pide("DELETE", "/api/admin/hogares/" + ids[ANA] + "/llaves", sOfi);
-  assert.deepEqual(todas.json(), { llaves_quitadas: 1, sesiones_cerradas: 0, aviso_enviado: true });
+  assert.deepEqual(todas.json(), { llaves_quitadas: 1, sesiones_cerradas: 1, aviso_enviado: true });
+  assert.equal((await pide("GET", "/api/yo/llaves", sAna)).statusCode, 401, "la sesión de Ana, marcada con la llave quitada, se cierra");
   assert.equal(ctx.cartero.mensajes.filter(m => m.para === ANA && m.asunto.startsWith("La oficina ha quitado")).length, 2);
   assert.equal((await pide("GET", "/api/yo/llaves", sLuis)).json().llaves.length, 1, "las de Luis, intactas");
   assert.equal(await cuenta("SELECT count(*) AS n FROM llaves_acceso WHERE hogar_id = $1 AND revocada_en IS NULL", [ids[ANA]!]), 0);

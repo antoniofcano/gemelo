@@ -173,6 +173,10 @@ servidor.on("request", (req, res) => {
       const f = join(dist, rel.endsWith("/") ? rel + "index.html" : rel);
       if (rel.startsWith("..") || !existsSync(f) || !statSync(f).isFile()) { res.writeHead(404); return void res.end(); }
       res.writeHead(200, { "content-type": TIPOS[extname(f)] ?? "application/octet-stream", "content-security-policy": csp, "cache-control": "no-store" });
+      // el build lleva base /oficina/: su <script> y su <link> apuntan a /oficina/assets/, que está tras la guarda y, sin sesión, da 303.
+      // Aquí se sirven desde esta misma ruta sin guarda; si no, la página llega sin su JS y #pEntra no sale nunca (solo el HTML; las
+      // navegaciones a /oficina/ que hace el JS no se tocan)
+      if (extname(f) === ".html") return void res.end(readFileSync(f, "utf8").replaceAll("\"/oficina/assets/", "\"/__prueba/sin-guarda/assets/"));
       return void res.end(readFileSync(f));
     }
     if (ruta === "/oficina") { res.writeHead(301, { location: "/oficina/" }); return void res.end(); }

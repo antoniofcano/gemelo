@@ -50,7 +50,7 @@ export const leeSesionOficina = () => llama("GET", "/api/oficina/sesion");
 export const entraSinCorreo = () => entraConLlave({
   soporta: browserSupportsWebAuthn,
   cancela: () => WebAuthnAbortService.cancelCeremony(),
-  post: llama,
+  post: (ruta, cuerpo) => llama("POST", ruta, cuerpo),   // entraConLlave llama post(ruta, cuerpo); llama() empieza por el método
   firma: optionsJSON => startAuthentication({ optionsJSON }),
 });
 
