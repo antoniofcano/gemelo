@@ -78,7 +78,7 @@ export async function consumeEnlace(bd: Bd, token: string): Promise<{ ok: true; 
 }
 
 /** Cierra todas las sesiones de un hogar («salir de todos los dispositivos», o la oficina ante un robo). */
-export async function revocaTodas(bd: Bd, hogarId: number): Promise<number> {
+export async function revocaTodas(bd: Bd | Cliente, hogarId: number): Promise<number> {
   const r = await bd.query("UPDATE sesiones SET revocada_en = now() WHERE hogar_id = $1 AND revocada_en IS NULL", [hogarId]);
   return r.rowCount ?? 0;
 }
