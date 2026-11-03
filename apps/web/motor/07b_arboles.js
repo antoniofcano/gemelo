@@ -1,10 +1,10 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Arboles
-// Consume: 01_datos (FACTOR_R8), 02_mundo (Mundo, suelo, copaAlta, kcor, tinte, aviva, copas), 02b_cola (Cola), 02c_componentes (Config),
-//   03_escena (renderer, camera, exag, modo, calidad), 04c_olivos_tiles (OlivosTiles), 04d_sombreado_tiles (hash), 05_nube (ALTO_MAX, nube),
-//   06_arboles (gArboles, tronco, arbolesG), 07_follaje (follajeG, construyeSombras), 07a_catalogo (Catalogo), 07ab_generados (Escalera, Generados),
-//   07ac_lejanos (Lejanos), 09_camara (objetivo, orb), 10_ndvi (ndviIdx), 12_paseo (paseando), 15_tiempo (nivel, esc, hace), 16_vida (mira),
-//   29_vr (VR_PERFILES), 33_ajustes (Ajustes)
+// Consume: 01_datos (FACTOR_R8), 01a_aparato (Aparato), 02_mundo (Mundo, suelo, copaAlta, kcor, tinte, aviva, copas), 02b_cola (Cola),
+//   02c_componentes (Config), 03_escena (renderer, camera, exag, modo, calidad), 04c_olivos_tiles (OlivosTiles), 04d_sombreado_tiles (hash),
+//   05_nube (ALTO_MAX, nube), 06_arboles (gArboles, tronco, arbolesG), 07_follaje (follajeG, construyeSombras), 07a_catalogo (Catalogo),
+//   07ab_generados (Escalera, Generados), 07ac_lejanos (Lejanos), 09_camara (objetivo, orb), 10_ndvi (ndviIdx), 12_paseo (paseando),
+//   15_tiempo (nivel, esc, hace), 16_vida (mira), 29_vr (VR_PERFILES), 33_ajustes (Ajustes)
 // ===============================================================================
   // ---------- los olivos del modo Gemelo con tres niveles de detalle: el coste de dibujo no crece con la superficie de la finca
   // Nivel 0: celdas de 64 m con el modelo completo (copa medida, troncos, hojas, flores y aceitunas) alrededor de lo que se mira (o de quien pasea), hasta MAX0 olivos.
@@ -199,7 +199,7 @@
     // presupuesto del aparato (Escalera.tope: escritorio TOPE_TRI × esc, móvil 270 k sin medir con esc ≤ 1, gafas el tri del perfil); fuera el nivel 0
     // de siempre, los niveles 1 y 2 y los olivos del tileset, apartados todos con la máscara de 04c. Si el constructor no arranca
     // (Generados «sin»), vuelve lo de siempre.
-    var MOVIL = (function () { var nv = typeof navigator !== "undefined" ? navigator : {}; return /Mobi|Android|iPhone|iPad/i.test(nv.userAgent || "") || !!(nv.deviceMemory && nv.deviceMemory <= 4); })();
+    var MOVIL = Aparato.politica().olivosLigero;   // AG-0.3: ahora también las gafas Quest fuera de VR (antes no las reconocía y cargaba el presupuesto de escritorio)
     var tilApartados = false, presEsc = 0, mascara = "";
     // con ?olivos=escalera, siempre (si el constructor arranca); con ?olivos=gen y variantes horneadas (O8c), en cuanto está la capa de lejanos (07ab, Escalera.dibuja)
     function escalera() { return Escalera.dibuja({ modoGen: Generados.modoGen(), estado: Generados.estado(), hayCapa: Lejanos.hayCapa() }); }

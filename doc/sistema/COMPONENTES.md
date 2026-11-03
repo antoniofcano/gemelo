@@ -441,3 +441,21 @@ Decisiones 163 y 164, [contrato](../../contratos/voz-consentimiento.md), [EIPD-V
 - **Presupuesto (regla 6):** en pantalla, DOM (0 llamadas); en VR, la lámina del aviso suma 1 llamada y 2 triángulos mientras está abierta (nunca a la vez que la de 3 s del micro: el aviso va antes de que se abra). **Sin medir en Chrome.**
 - **Pruebas:** Node, `habla.test.js` (aviso, aceptar, rechazar, error de la api, retirar, VR) y, en la api, `voz_consentimiento.test.ts`; Chrome, `habla_consentimiento_chrome.test.js` (escrita, **sin ejecutar**); integración con PostGIS, `voz_consentimiento.test.ts` (escrita, **sin ejecutar**).
 - **Nota de comodidad (regla 11):** el aviso **no se acepta por accidente**: el foco empieza en «Ahora no», aceptar es un botón expreso y, en VR, una zona grande (la mitad de abajo de la lámina, a un lado u otro), no un gesto del mando sin más; no se lee solo con el color (todo con texto); Esc y «Ahora no» lo cierran sin consecuencias y no se vuelve a abrir hasta que se pida otra vez la palabra. **Probado:** su lógica y el recorrido completo en Node con DOM, api y láminas de mentira. **No probado:** Chrome real (escrita, por el banco), **Quest** (si la lámina se lee con comodidad con las gafas puestas y si el rayo acierta a «Aceptar» sin rozar «Ahora no»; el texto largo en 1100 × 860 px) e **iPhone** (el diálogo con el teclado y la barra del navegador), ni con un lector de pantalla real.
+
+### Aparato (AG-0.3): una sola detección del aparato
+
+`apps/web/motor/01a_aparato.js` (monta justo tras `01_datos.js`, antes de todo lo que lo consume) expone **`Aparato`**; es el **único** fichero del motor que lee `navigator.userAgent`, `deviceMemory`, `hardwareConcurrency` y `maxTouchPoints` (lo vigila `pruebas/guardianes/aparato.test.js`). Antes lo hacían ocho ficheros con reglas distintas y `07b_arboles` no reconocía las Quest.
+
+| Llamada | Qué da |
+|---|---|
+| `Aparato.clase()` | `"escritorio"`, `"movil"` o `"quest"` (por el agente; un iPad que se anuncia como Mac cuenta como móvil por el táctil) |
+| `Aparato.modelo()` | `"quest-2"`, `"quest-3"`, `"quest-3s"`, `"quest-pro"` si el agente lo declara; `""` si no (no se inventa) |
+| `Aparato.vr()` | ¿sesión inmersiva ahora? (`renderer.xr.isPresenting`, enlazado por `03_escena`) |
+| `Aparato.capacidades()` | lo **medido** aquí: `webgl2`, `msaa` máximo, `maxTextura`, `astc`/`etc`/`s3tc`/`multiview`, `memoria`, `nucleos`, `tactil`; `null` = no medido; dentro de VR añade `vr: { frecuencia, mezcla, msaaContexto }` |
+| `Aparato.politica()` | el cuadro por clase: `ortoMax` (20 / 8), `cacheMemMB` (150 / 60), `olivosLigero` (presupuesto «de móvil» fuera de VR), `perfilOlivos`; y, **previstos para AG-2.x y hoy sin consumidor**, `postprocesado`, `sombras`, `relieveFino`, `alphaToCoverage`, `toneMapping`. «Ligero» = móvil, gafas o ≤ 4 GB de memoria (la regla que ya tenía el motor) |
+| `Aparato.linea()` | la línea de `?debug`: «Aparato: Quest 3 · VR · MSAA 4 · ASTC sí» |
+| `window.__aparato()` | estado para la telemetría: clase, modelo, vr, capacidades y política; **nunca el agente completo** |
+| `Aparato.agente()` | el agente en bruto, solo para la medida que la persona decide enviar (`30_mide`); no sirve para decidir nada |
+| `Aparato.pon(clase, { modelo, memoria, vr })` | **solo para pruebas**: fuerza la clase; `Aparato.pon(null)` lo deshace. Las pruebas que evalúan un fichero suelto lo reciben con `pruebas/guardianes/_aparato.js` (`aparatoDe(navigator)`) |
+
+La lógica pura (`AparatoPuro.clasifica(agente, tactil, memoria)`, `politica`, `capacidadesDe`, `linea`) va en el trozo `[puro:…]` y se prueba en Node con una tabla de agentes; tolera agentes vacíos o raros (clase por omisión: escritorio, sin lanzar). **Cambio de comportamiento (el defecto que motivó la tarea):** `07b_arboles` ahora trata las Quest fuera de VR con el presupuesto «de móvil» (`Escalera.TRI_MOVIL`), no el de escritorio de 550 k; el resto de lecturas conserva sus valores. Las lecturas de `matchMedia("(pointer: coarse)")` (HUD, ajustes, movibles) son del puntero, no del aparato, y siguen donde están. **No probado en un Quest ni un iPhone reales** (los agentes de la prueba están reconstruidos del formato conocido; el Vision Pro, sin confirmar). **Nota de comodidad (regla 11):** sin interfaz nueva (solo una línea más en `?debug`).

@@ -5,6 +5,7 @@
 // (5) el corte de 900 m sigue. El heap real de un paseo y de un vuelo lo da el banco.
 const test = require("node:test"), assert = require("node:assert");
 const { RAIZ, fs, path } = require("./_util");
+const { aparatoDe } = require("./_aparato");
 
 const FUENTE = fs.readFileSync(path.join(RAIZ, "apps", "web", "motor", "02_mundo.js"), "utf8");
 const TS = 256;
@@ -17,8 +18,8 @@ function monta({ query = "", ua = "", mem, n = 5 } = {}) {   // una fila de n×1
   const lienzo = () => ({ width: 4, height: 4, getContext: () => ({ drawImage() {}, getImageData: () => ({ data: new Uint8ClampedArray(64) }) }) });
   const document = { createElement: lienzo };
   const navigator = { userAgent: ua, deviceMemory: mem };
-  const Mundo = Function("D", "b64", "i16", "RES", "document", "performance", "location", "navigator", "fetch", "ndviRel", "rampa", FUENTE + "\nreturn Mundo;")(
-    D, () => new Uint8Array(0), () => new Int16Array(32 * 32), 1, document, performance, { search: query }, navigator, () => new Promise(() => {}), () => 0, () => [0, 0, 0]);
+  const Mundo = Function("Aparato", "D", "b64", "i16", "RES", "document", "performance", "location", "navigator", "fetch", "ndviRel", "rampa", FUENTE + "\nreturn Mundo;")(
+    aparatoDe(navigator), D, () => new Uint8Array(0), () => new Int16Array(32 * 32), 1, document, performance, { search: query }, navigator, () => new Promise(() => {}), () => 0, () => [0, 0, 0]);
   Mundo.lista.forEach(tt => { tt.ortImg = { complete: true, naturalWidth: 4, width: 4 }; });
   return { Mundo, avanza: ms => { t += ms; } };
 }

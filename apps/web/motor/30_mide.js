@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos (D, $, DEPURA), 02c_componentes (Bus, ConfigPuro, Componentes), 02f_xr_perillas (XrPerillas),
+// Consume: 01_datos (D, $, DEPURA), 01a_aparato (Aparato), 02c_componentes (Bus, ConfigPuro, Componentes), 02f_xr_perillas (XrPerillas),
 //   03_escena (visor, renderer, modo, calidad), 04b_escena3d (Escena3D), 07b_arboles (Arboles), 08_marcadores (listo), 12_paseo (persona),
 //   14_historia (lista, rango), 15_tiempo (nivel, hace), 29_vr (VRX, panel, PanelVR, VR_PERFILES), 33_ajustes (Ajustes), 90_final (cuadro, bucle)
 // ===============================================================================
@@ -167,7 +167,7 @@
       if (modoIni !== modoAhora()) avisos.push("cambió de " + modoIni + " a " + modoAhora() + " durante la medida");
       if (e.n < 10) avisos.push("muy pocos fotogramas: la medida no sirve");
       res = {
-        version: 1, fecha: new Date().toISOString().slice(0, 19) + "Z", aparato: { modo: modoIni, ua: MideEst.resumeUA(navigator.userAgent) },
+        version: 1, fecha: new Date().toISOString().slice(0, 19) + "Z", aparato: { modo: modoIni, ua: MideEst.resumeUA(Aparato.agente()) },
         escena: Escena3D.resumen().estado === "sin" ? "sin" : "tiles", banderas: banderas(), duracion: N, calentamiento: MideEst.CALENTAMIENTO, est: e,
         nivel: modoIni === "VR" ? { ini: nivIni === null ? -1 : nivIni, fin: nv === null ? -1 : nv, cambios: cambios } : null, olivos: [a.nivel0, a.nivel1, a.nivel2], avisos: avisos, perillas: modoIni === "VR" ? XrPerillas.linea() : "",
         olivosGen: olivosGenActivos(), personas: personasVisibles()   // Q0e: con qué se dibujó (si los olivos generados estaban y cuánta gente se veía)
@@ -195,7 +195,7 @@
     function puedeEnviar() { return estado === "listo" && !!res && !!prefijo() && typeof fetch === "function" && envio !== "ok" && envio !== "enviando" && !!cuerpo(); }
     function cuerpo() {
       var ver = typeof __GEMELO_VERSION__ !== "undefined" ? __GEMELO_VERSION__ : "dev";   // lo inyecta Vite (apps/web/vite.config.js) desde VERSION
-      return MideEst.cuerpoEnvio(res, { ua: navigator.userAgent, finca: D && D.finca_id, modo: modo, version: ver });
+      return MideEst.cuerpoEnvio(res, { ua: Aparato.agente(), finca: D && D.finca_id, modo: modo, version: ver });
     }
     function envia() {
       var c = puedeEnviar() ? cuerpo() : null, pre = prefijo();
@@ -264,7 +264,7 @@
   }
   Componentes.registra({
     id: "medidor-fotogramas", version: 1,
-    consume: ["visor", "renderer", "modo", "D", "DEPURA", "ConfigPuro", "Ajustes", "Arboles", "Escena3D", "VRX", "PanelVR", "XrPerillas"],
+    consume: ["Aparato", "visor", "renderer", "modo", "D", "DEPURA", "ConfigPuro", "Ajustes", "Arboles", "Escena3D", "VRX", "PanelVR", "XrPerillas"],
     expone: [],
     eventos: { escucha: ["cuadro:fin", "depura:lineas", "medida:estado", "medida:envia", "medida:inicia", "medida:muestra"], emite: ["medida:empieza", "medida:envio", "medida:fin"] },
     bandera: { defecto: true, url: "medidor" },

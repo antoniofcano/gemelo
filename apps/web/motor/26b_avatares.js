@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos ($), 02_mundo (suelo), 02c_componentes (Componentes), 03_escena (renderer, scene, camera, exag),
+// Consume: 01_datos ($), 01a_aparato (Aparato), 02_mundo (suelo), 02c_componentes (Componentes), 03_escena (renderer, scene, camera, exag),
 //   12_paseo (paseando, persona, primera), 16_vida (enQuad, quad, enDron, dron), 26_presencia (Aspecto, Muneco), 29_vr (VRX)
 // Nota: Componente «avatares-vrm» (ADR-0023, C5): solo se registra; consume la presencia (n.api) y se engancha a ella con enganchaVRM. Sin presencia activa no crea nada; con ella, pide /avatares/catalogo.json solo si alguien lleva avatar (o con &vrm=1 en la simulación) e import("@pixiv/three-vrm") solo entonces. El trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/avatares_motor.test.js.
 // ===============================================================================
@@ -168,7 +168,7 @@
   function AvataresMotor(n, Presencia) {
     var BASE = "/avatares/", FUNDIDO = 0.6, REPOSO = 5, TICK = 0.5, CERCA_MIRA = 8, COS_MIRA = Math.cos(70 * Math.PI / 180);
     var simVrm = /[?&]vrm=1\b/.test(location.search), comparte = !/[?&]vrmcomparte=no\b/.test(location.search), sinPropio = /[?&]yo=no\b/.test(location.search);
-    var ua = navigator.userAgent || "", disp = /OculusBrowser|Quest/i.test(ua) ? "quest" : /Mobi|Android|iPhone|iPad/i.test(ua) ? "movil" : "escritorio";
+    var disp = Aparato.clase();
     var LIB = null, pideLib = null, cat = null, pideCat = null, bufs = Object.create(null), vivos = Object.create(null), falla = Object.create(null);
     var regs = new Map(), mio = null, gVrm = null, tTic = TICK, asignado = false, semilla = 7, est = { catalogo: -1, cargas: 0, fallos: 0, instancias: 0, msParse: 0 };
     var v1 = new THREE.Vector3(), v2 = new THREE.Vector3(), v3 = new THREE.Vector3(), q1 = new THREE.Quaternion(), q2 = new THREE.Quaternion(), e1 = new THREE.Euler(), angs = {};
@@ -491,7 +491,7 @@
   // Consume la presencia: sin ella no se monta; con ella pero sin ?presencia=sim|red, montado no crea nada.
   Componentes.registra({
     id: "avatares-vrm", version: 1,
-    consume: ["Presencia", "Aspecto", "VRX", "paseando", "persona", "primera", "enQuad", "enDron", "pp"],
+    consume: ["Aparato", "Presencia", "Aspecto", "VRX", "paseando", "persona", "primera", "enQuad", "enDron", "pp"],
     expone: [],
     eventos: { escucha: ["presencia:activada"], emite: [] },
     bandera: { defecto: true, url: "avatares" },

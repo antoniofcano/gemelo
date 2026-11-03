@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos (D, $), 02_mundo (suelo), 02c_componentes (Bus, ConfigPuro, Componentes), 02e_entidades (Entidades),
+// Consume: 01_datos (D, $), 01a_aparato (Aparato), 02_mundo (suelo), 02c_componentes (Bus, ConfigPuro, Componentes), 02e_entidades (Entidades),
 //   03_escena (visor, renderer, scene, camera, texColor, exag, modo), 06_arboles (tronco), 09_camara (objetivo, suelta, elige),
 //   12_paseo (paseando, persona, primera), 12b_llegada (Llegada), 14_historia (lista, aviso), 15_tiempo (rumbo, hace),
 //   16_vida (enQuad, quita, mira, quad, enDron, dron),
@@ -370,7 +370,7 @@
       });
       if (SR) conecta(); else ponEstado("La visita compartida no está disponible en esta página.", false);
     }
-    function dispositivo() { var ua = navigator.userAgent || ""; return /OculusBrowser|Quest/i.test(ua) ? "quest" : /Mobi|Android|iPhone|iPad/i.test(ua) ? "movil" : "escritorio"; }
+    function dispositivo() { return Aparato.clase(); }
     var volverGeneral = "";   // OF10b: el aviso de que no te dejaron entrar en la sala de la visita; tras él se vuelve a la general
     // OF10b: entra en la sala de claveSala; si la api la niega por ser de un evento (403 visita_solo_inscritos), avisa con amabilidad y vuelve a la general
     async function conecta() {
@@ -814,7 +814,7 @@
   // Consume la red (37_red.js, expone «Red»): sin ella (?red=0, apagada en el servidor o fuera del motor) la presencia no se monta, tampoco la simulada.
   Componentes.registra({
     id: "presencia-compartida", version: 1,
-    consume: ["Red", "Ajustes", "AutoPresencia", "PoseCodec", "BufferPose", "Aspecto", "SalaPose", "Chat", "Muneco", "Encuentro", "sitioJunto", "Llegada", "Movibles", "VRX", "TR",
+    consume: ["Aparato", "Red", "Ajustes", "AutoPresencia", "PoseCodec", "BufferPose", "Aspecto", "SalaPose", "Chat", "Muneco", "Encuentro", "sitioJunto", "Llegada", "Movibles", "VRX", "TR",
       "paseando", "pp", "enQuad", "enDron", "quad", "dron", "objetivo", "texColor"],
     expone: ["Presencia"],
     eventos: { escucha: ["chat:alterna", "depura:lineas", "guiada:entrar"], emite: ["guiada:entrada", "presencia:activada"] },

@@ -117,6 +117,17 @@ Para probar en el Quest sin recompilar (Q0b), el perfil de arriba se puede tocar
 - Sin `bounded-floor` ni guardián propio: el guardián del Quest manda.
 - Si el casco no ofrece `local-floor`, se usa `local` con 1,6 m de altura de ojos.
 
+## Qué clase ve cada aparato
+Una sola detección (`Aparato`, [COMPONENTES](COMPONENTES.md#aparato-ag-03-una-sola-detección-del-aparato), `01a_aparato.js`). Fuera de VR, el navegador 2D de las Quest **también** es la clase `quest` y usa el presupuesto «de móvil» de olivos (antes `07b_arboles` lo trataba como escritorio); en VR manda el perfil de `VR_PERFILES`.
+
+| Aparato | Clase | Modelo | Presupuesto de olivos fuera de VR | ortofotos / caché |
+|---|---|---|---|---|
+| Quest 2, 3, 3S, Pro (OculusBrowser) | `quest` | el del agente, `""` si no lo dice (Quest 1) | de móvil | 8 / 60 MB |
+| iPhone, iPad, Android | `movil` | — | de móvil | 8 / 60 MB |
+| Chrome, Firefox, Safari de escritorio, Mac, Vision Pro | `escritorio` | — | 550 k | 20 / 150 MB (8 / 60 con ≤ 4 GB de memoria) |
+
+`?debug` muestra «Aparato: Quest 3 · VR · MSAA 4 · ASTC sí» y `window.__aparato()` devuelve el estado (sin el agente completo). **No probado** en un Quest ni en un iPhone reales: la tabla sale de agentes reconstruidos; el Vision Pro se asume escritorio sin confirmar.
+
 ## Dónde está en el código
 Todo vive ya en `apps/web/motor/` (integrado en el repo): `29_vr.js` (el modo VR completo), `30_mide.js` (el medidor de fotogramas), `90_final.js` (bucle `cuadro()` compartido), `07b_arboles.js` (`Arboles.perfil`), `21_suelo.js` (radio de la hierba en VR), `02e_entidades.js` (`Usables`: el rayo y las fichas, C7), `28_depura.js` (línea `WebXR: …`), `01_datos.js` (`VRP`). Contrato: [CONTRATOS.md](CONTRATOS.md#vr-29_vrjs); decisión: [ADR-0005](../adr/0005-webxr-perfil-propio.md).
 

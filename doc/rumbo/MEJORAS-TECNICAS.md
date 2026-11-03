@@ -16,7 +16,7 @@ Origen: análisis de Antonio del 2026-11-03 («Agroverso: mejoras pendientes»),
 |---|---|---|---|
 | AG-0.1 | Prueba en las Quest por USB | `adb reverse` + `chrome://inspect`; ya estudiado en [IWSDK](../sistema/IWSDK.md) | Q2a, Q2b |
 | AG-0.2 | Telemetría de aparato | Hecha en Node (contrato v2 de medidas) | Q0e |
-| AG-0.3 | **Módulo único `Aparato`** | Una sola detección (escritorio, móvil, Quest, modelo), capacidades medidas y tabla de política por clase; guardián: nadie más lee `userAgent`. Hoy hay 9 lecturas en 8 ficheros y `07b_arboles` no reconoce las Quest | AG-0.3 |
+| AG-0.3 | **Módulo único `Aparato`** ✅ hecho en Node (`01a_aparato.js`; las Quest ya usan el presupuesto de móvil fuera de VR; pendiente probarlo en un Quest) | Una sola detección (escritorio, móvil, Quest, modelo), capacidades medidas y tabla de política por clase; guardián: nadie más lee `userAgent`. Hoy hay 9 lecturas en 8 ficheros y `07b_arboles` no reconoce las Quest | AG-0.3 |
 | AG-0.4 | three 0.187 y 3d-tiles-renderer 0.5.4 | Subida con capturas; revisar `xr.getCamera()` en `04b_escena3d` (en 0.187 devuelve el ojo izquierdo, según el análisis, **sin verificar**). Hoy: three 0.186.1, 3d-tiles-renderer 0.5.3 | AG-0.4 |
 
 Política por clase (de partida): postprocesado solo en escritorio; sombras cortas en móvil y gafas; `alphaToCoverage` con MSAA; presupuesto de olivos 550 k en escritorio y por perfil VR en gafas.

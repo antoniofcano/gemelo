@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos ($), 02c_componentes (Componentes), 03_escena (camera, modo), 15_tiempo (nivel), 29_vr (VRX)
+// Consume: 01_datos ($), 01a_aparato (Aparato), 02c_componentes (Componentes), 03_escena (camera, modo), 15_tiempo (nivel), 29_vr (VRX)
 // Nota: Componente «voz-guiada» (F3d, ADR-0026; decisiones 157-162): la voz de las visitas guiadas, SOLO en una sala «guiada-<evento>» de la red (Voz.entra(evento) con el token de F3c, Voz.usa(clave) o ?guiada=<evento>; F3f: con ?presencia=red viaja la presencia y la voz usa su conexión, y se engancha sola a una sala de la red que entra en una guiada, «red:estado»). Consume la red y la presencia (Presencia.cabeza: de dónde sale cada voz). Pide las pistas de micrófono, cada una a un <audio> silenciado y de él a Web Audio (ganancia por distancia y PannerNode HRTF; la escucha, la cámara o la cabeza en VR); con tu micrófono abierto y sin auriculares, plano por los <audio> (cancelación de eco). Abre tu micrófono solo con permiso y tras un gesto (Voz.abre; lo dispara F3e). Emite «voz:habla» y «voz:estado»; escucha «audio:desbloquea», «depura:lineas» y «red:estado». Sin grabación. ?voz=0 lo apaga; ?voz=plano, sin espacializar. Publica window.__voz (pruebas). Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/voz.test.js.
 // ===============================================================================
   // ---------- la voz de las visitas guiadas (F3d; ADR-0026, decisiones 157-162; contratos/livekit-roles.json v6 y presencia.md «La voz de las visitas guiadas»).
@@ -94,12 +94,11 @@
       Object.keys(antes || {}).forEach(function (id) { if (!ahora[id]) ev.push({ identidad: id, nivel: 0, habla: false, yo: !!antes[id].yo }); });
       return { ahora: ahora, eventos: ev };
     }
-    function dispositivo(ua) { ua = ua || ""; return /OculusBrowser|Quest/i.test(ua) ? "quest" : /Mobi|Android|iPhone|iPad/i.test(ua) ? "movil" : "escritorio"; }
     // el motivo de un error al abrir el micrófono (getUserMedia o LiveKit) en palabras del motor
     function motivoMicro(e) { var n = e && e.name; return n === "NotAllowedError" || n === "SecurityError" ? "micro_denegado" : n === "NotFoundError" || n === "OverconstrainedError" ? "sin_micro" : "error_micro"; }
     return { SALA: SALA, DIST: DIST, PANNER: PANNER, SUAVE: SUAVE, MAX_VOCES: MAX_VOCES, PASO_NIVEL: PASO_NIVEL, esGuiada: esGuiada, evento: evento, papelDe: papelDe,
       puedeHablar: puedeHablar, turno: turno, prioritaria: prioritaria, ganancia: ganancia, rota: rota, oyente: oyente, distancia: distancia, modo: modo,
-      aSuscribir: aSuscribir, decideAbrir: decideAbrir, difHablan: difHablan, dispositivo: dispositivo, motivoMicro: motivoMicro };
+      aSuscribir: aSuscribir, decideAbrir: decideAbrir, difHablan: difHablan, motivoMicro: motivoMicro };
   })();
   // [puro:fin]
 
@@ -288,7 +287,7 @@
       entrando = true; motivo = ""; emiteEstado();
       try {
         var r = await fetch("/api/presencia/guiadas/" + id + "/token", { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" },
-          body: JSON.stringify({ dispositivo: V.dispositivo(navigator.userAgent) }) });
+          body: JSON.stringify({ dispositivo: Aparato.clase() }) });
         if (!r.ok) { var e = null; try { e = await r.json(); } catch (x) {} motivo = e && typeof e.error === "string" ? e.error : "http_" + r.status; return false; }
         var t = await r.json(); if (!vivo) return false;
         var s = R.sala("guiada");
@@ -359,7 +358,7 @@
   // ni elementos, ni conexión) hasta Voz.entra(evento), Voz.usa(clave) o ?guiada=<evento>
   Componentes.registra({
     id: "voz-guiada", version: 1,
-    consume: ["Red", "Presencia", "VRX"],
+    consume: ["Aparato", "Red", "Presencia", "VRX"],
     expone: ["Voz"],
     eventos: { escucha: ["audio:desbloquea", "depura:lineas", "red:estado"], emite: ["voz:habla", "voz:estado"] },
     bandera: { defecto: true, url: "voz" },
