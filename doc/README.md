@@ -32,7 +32,8 @@
 - [sistema/OPTIMIZACION.md](sistema/OPTIMIZACION.md) — plan para mejorar el paseo por el campo en Quest, móvil y escritorio: qué hay, sospechosos, protocolo de medida, cómo decidir y tareas Q0a-Q0d.
 - [sistema/IWSDK.md](sistema/IWSDK.md) — estudio Q2: el Immersive Web SDK de Meta (no se adopta), cómo medir en el Quest desde un agente con `adb`, CDP y `sessiongranted`, IWER frente a `mock_xr.js`, mirar y pellizcar, licencias y telemetría, y la prueba de una hora.
 - [sistema/OFICINA.md](sistema/OFICINA.md) — propuesta: `/oficina`, la herramienta de la oficina (familias, hazas, bandeja, mundo en modo oficina, agenda, directos, constructor y parámetros de la escalera versionados, sistema), con plan OF0-OF13 y decisiones; maqueta en [../prototipos/oficina/](../prototipos/oficina/).
-- [sistema/LLAVES-DE-ACCESO.md](sistema/LLAVES-DE-ACCESO.md) — propuesta (OF13b, ADR-0029): llaves de acceso para todas las cuentas; recorridos, amenazas y mitigaciones, qué se guarda, recuperación, plan y preguntas para Antonio.
+- [sistema/LLAVES-DE-ACCESO.md](sistema/LLAVES-DE-ACCESO.md) — diseño aceptado y estado de implementación (OF13b, ADR-0029): llaves de acceso para todas las cuentas; recorridos, amenazas y mitigaciones, qué se guarda, recuperación, plan y preguntas para Antonio.
+- [sistema/EIPD-LLAVES.md](sistema/EIPD-LLAVES.md) — BORRADOR sin valor legal del tratamiento «llaves de acceso» (OF13b-11): qué se guarda, base propuesta, plazos, derechos, riesgos.
 - [sistema/EIPD-VOZ.md](sistema/EIPD-VOZ.md) — BORRADOR sin valor legal de la ampliación de la EIPD a la voz en directo de F3 (finalidad, base, datos, riesgos, medidas, derechos y lo abierto para Antonio)
 - [sistema/EIPD-CAMPO.md](sistema/EIPD-CAMPO.md) — BORRADOR sin valor legal de la ampliación de la EIPD al corresponsal de campo de F4 (vídeo con trabajadores en plano, posición, clips; base, aviso, plazos y lo abierto)
 - [sistema/CORRESPONSAL.md](sistema/CORRESPONSAL.md) — propuesta (F4-1, ADR-0030): el corresponsal de campo como PWA en primer plano; sesión, permisos del móvil, GPS a escena, pose v2, vídeo por LiveKit, clips diferidos, batería y plan F4-0 a F4-7
@@ -48,6 +49,7 @@
 - [operacion/DATOS.md](operacion/DATOS.md) — fuentes, hojas LiDAR/MDT por finca, cómo regenerar, licencias.
 - [operacion/DESARROLLO-LOCAL.md](operacion/DESARROLLO-LOCAL.md) — el mundo y los servicios base (Caddy, PostGIS, LiveKit, buzón) en local con Docker: `npm run dev:arriba`.
 - [operacion/RUNBOOK-VPS.md](operacion/RUNBOOK-VPS.md) — servidor F1a en el VPS: puesta en marcha, operación, copias cifradas y ensayo de restauración (aún sin ejecutar en el VPS).
+- [operacion/LLAVES-RECUPERACION.md](operacion/LLAVES-RECUPERACION.md) — guía corta para la oficina: una familia pierde el móvil, la oficina pierde su llave, qué decir por teléfono (OF13b-11).
 - [operacion/DESPLIEGUE-V2.md](operacion/DESPLIEGUE-V2.md) — **el primer despliegue en el VPS, paso a paso**: qué hace Antonio, comprobación y vuelta atrás de cada paso, y qué bloquea enseñarlo o abrirlo a familias.
 - [operacion/TESTING.md](operacion/TESTING.md) — qué prueba cada cosa y qué significa cada rojo.
 
