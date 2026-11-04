@@ -27,6 +27,13 @@
         </div>
       </div>
       <button type="button" class="cristal t-ins" id="tIns" aria-label="El tiempo ahora; abre la ventana del tiempo" title="El tiempo · 3"><span class="t-flecha" id="tFlecha" aria-hidden="true">↑</span><span id="tInsT">Cielo despejado</span></button>
+      <!-- lo tuyo en pantalla (EV2-A4): hora · tu haza · hablar · volver; lo rellena 31b_hud_personal.js -->
+      <div class="hud-personal" id="hudPersonal" role="group" aria-label="Lo tuyo: hora, tu haza, hablar y volver">
+        <button type="button" class="boton hp-btn" id="hpHora" aria-label="Hora del mundo; abre el tiempo" title="Hora del mundo · 3"><b aria-hidden="true">🕐</b><span class="hp-txt" id="hpHoraT">--:--</span></button>
+        <button type="button" class="boton hp-btn" id="hpHaza" aria-label="Tu haza: ficha de la haza donde estás" title="Tu haza · H" hidden><b aria-hidden="true">🌱</b><span class="hp-txt" id="hpHazaT">Haza</span></button>
+        <button type="button" class="boton hp-btn" id="hpHablar" aria-label="Hablar: abrir el micrófono" aria-pressed="false" title="Hablar · T" hidden><b aria-hidden="true">🎤</b><span class="hp-txt" id="hpHablarT">Hablar</span></button>
+        <button type="button" class="boton hp-btn" id="hpVolver" aria-label="Volver a la vista aérea" title="Volver · Inicio"><b aria-hidden="true">🏠</b><span class="hp-txt">Volver</span></button>
+      </div>
     </div>
 
     <!-- arriba a la derecha: barra de iconos -->

@@ -160,9 +160,9 @@
       return Vz.cierra();
     }
     // un gesto (botón, tecla, gatillo, panel): pasa por la lógica pura, que decide si abre, cierra o nada
-    function gesto(tipo, fuente) {
+    function gesto(tipo, fuente, modo) {   // modo: forzarlo (el botón del HUD, EV2-A4, siempre alterna: «pulsar»)
       var w = vista(); if (!H.activo(w.v)) return false;
-      var r = H.entrada({ modo: modoAj, papel: w.e.papel, tipo: tipo, micro: w.e.micro, sosten: sosten === fuente });
+      var r = H.entrada({ modo: modo || modoAj, papel: w.e.papel, tipo: tipo, micro: w.e.micro, sosten: sosten === fuente });
       // F3j (decisión 163): una familia sin consentimiento vigente no abre el micro: se le enseña el aviso (la api tampoco le habría dado la palabra). Aceptar es
       // su propio gesto; para abrir el micro, otro (así el navegador ve un gesto claro)
       if (r.accion === "abre" && H.requiere(w.e.papel, "micro", cons) !== "nada") { sosten = ""; asegura("micro").then(function (q) { if (q !== "no") msg("Pulsa Hablar para abrir el micrófono."); }); }
@@ -450,6 +450,7 @@
       if (q) { quitaAj = q; n.limpia(q); }
     }
     n.on("voz:estado", function () { if (vivo) alVoz(); });
+    n.on("habla:alterna", function () { if (vivo) gesto("baja", "boton", "pulsar"); });   // el botón «Hablar» del HUD (31b_hud_personal.js): abre o cierra, como el botón de la caja en modo «pulsar»
     n.on("guiada:palabra", function () { if (vivo) pinta(); });
     n.on("depura:lineas", function (d) { if (v && v.v.visible && d && d.lineas) d.lineas.push("habla · micro " + v.e.micro + " · modo " + modoAj + (v.e.mano ? " · mano" + (v.e.puesto ? " " + v.e.puesto : "") : "")); });
     function alVoz() {
@@ -506,7 +507,7 @@
     id: "habla-guiada", version: 1,
     consume: ["Aparato", "Voz", "Guiada", "Ajustes", "Teclas", "PanelVR", "VRX", "Laminas"],
     expone: [],
-    eventos: { escucha: ["voz:estado", "guiada:palabra", "depura:lineas"], emite: ["habla:micro", "habla:mano", "habla:consentimiento"] },
+    eventos: { escucha: ["voz:estado", "guiada:palabra", "depura:lineas", "habla:alterna"], emite: ["habla:micro", "habla:mano", "habla:consentimiento"] },
     bandera: { defecto: true, url: "habla" },
     // DOM en pantalla (0 llamadas); en VR, la lámina de 3 s al abrir o cerrar el micro (640 × 160 sin mipmaps: ≈ 0,4 MB) o, antes, la del aviso de voz (F3j: 1100 × 860 sin mipmaps: ≈ 3,8 MB); nunca las dos a la vez, solo mientras se ven: 1 llamada, 2 triángulos
     presupuesto: { llamadas: 1, triangulos: 2, texturasMB: 4 },
