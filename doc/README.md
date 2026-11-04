@@ -23,6 +23,7 @@
 - [sistema/CONTRATOS.md](sistema/CONTRATOS.md) — datos exportador→motor, interfaces del motor, MCP, publicación (esquemas en [../contratos/](../contratos/)).
 - [sistema/GLOSARIO.md](sistema/GLOSARIO.md) — tesela, nivel, copa, r8, foco, MDS/MDT/CHM…
 - [sistema/MEDIDAS.md](sistema/MEDIDAS.md) — cifras medidas de dibujo y memoria.
+- [sistema/ESCALA-NO-UNIFORME.md](sistema/ESCALA-NO-UNIFORME.md) — AG-1.11: qué hace 3DTilesRendererJS con la exageración vertical (escala no uniforme del grupo), cómo sesga la selección de teselas, coste y alternativas.
 - [sistema/TILES3D.md](sistema/TILES3D.md) — prototipo F1d: la escena en 3D Tiles 1.1 (formato, marco de coordenadas, cómo regenerar, medidas).
 - [sistema/VR.md](sistema/VR.md) — modo VR (Meta Quest): controles, perfiles, qué se probó y qué no.
 - [sistema/UX.md](sistema/UX.md) — propuesta de UX: acceso, configuración e interacción (pendiente de revisión); maqueta en [../prototipos/ux/](../prototipos/ux/).
