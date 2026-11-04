@@ -8,7 +8,7 @@
   // ---------- el HUD (doc/sistema/UX-FINCA-JUEGO.md §4.3): estado arriba a la izquierda (brújula, cómo te mueves, el tiempo), barra de iconos arriba a la
   // derecha, avisos arriba en el centro, «Pasear» y la atribución abajo en el centro. Es HTML y CSS: no toca triángulos ni llamadas de dibujo.
   // El selector de modo llama a lo que ya existía (btnPaseo, ponQuad, ponDron); el botón de VR (29_vr.js lo crea junto a #btnPantalla) se muda junto al selector.
-  // Expone Hud.aviso(texto, ms), Hud.zonasProhibidas() (para 34_movibles.js) y Hud.modo().
+  // Expone Hud.aviso(texto, ms), Hud.zonasProhibidas() (para 34_movibles.js), Hud.modo() y Hud.alInicio() (volver a la vista aérea o al inicio de la órbita).
   // [puro:inicio] (sin THREE ni DOM: lo evalúa en Node pruebas/guardianes/ux_hud.test.js)
   var HudPuro = (function () {
     var MODOS = {
@@ -181,6 +181,7 @@
       else if (q === "recorrido") $("hFin").click();
       else if (typeof Menu !== "undefined" && Menu) Menu.abre();
     }
+    function alInicio() { if (paseando) $("btnPaseo").click(); else $("reiniciar").click(); }   // Inicio o 0, y «Volver» de lo tuyo (31b_hud_personal.js)
     window.addEventListener("keydown", function (e) {
       if (VRX.on || (typeof Menu !== "undefined" && Menu && Menu.abierto())) return;   // el menú es un <dialog>: Esc lo cierra él solo
       var el = e.target, t = el && el.tagName;
@@ -191,7 +192,7 @@
       if (a === "esc") esc();
       else if (a.indexOf("v:") === 0) alterna(a.slice(2), null);
       else if (a === "pantalla") $("btnPantalla").click();
-      else if (a === "aereo") { if (paseando) $("btnPaseo").click(); else $("reiniciar").click(); }
+      else if (a === "aereo") alInicio();
       else if (a === "pasear") $("btnPaseo").click();
     });
 
@@ -210,6 +211,6 @@
     }
 
     setInterval(refresca, 250); setInterval(refrescaBrujula, 100); refresca(); mudaVR();
-    return { aviso: aviso, zonasProhibidas: zonasProhibidas, modo: function () { return modoAct; }, cierraDesplegable: cierraDesplegable, alterna: alterna, ponModo: ponModo, icono: icono };
+    return { aviso: aviso, zonasProhibidas: zonasProhibidas, modo: function () { return modoAct; }, cierraDesplegable: cierraDesplegable, alterna: alterna, ponModo: ponModo, icono: icono, alInicio: alInicio };
   })();
 

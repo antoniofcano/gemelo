@@ -295,6 +295,16 @@
         "47_habla"
       ]
     },
+    "habla:alterna": {
+      "descripcion": "EV2-A4: el botón «Hablar» de lo tuyo en pantalla (HUD): abre o cierra el micrófono de esta sesión, como el botón de la caja de la visita guiada en modo «pulsar» (con su aviso de voz si falta el consentimiento). Fuera de una visita guiada, o sin la palabra, nadie hace nada.",
+      "datos": {},
+      "emiten": [
+        "31b_hud_personal"
+      ],
+      "escuchan": [
+        "47_habla"
+      ]
+    },
     "habla:consentimiento": {
       "descripcion": "F3j (decisión 163): el aviso de voz y el consentimiento de esta sesión. accion = acepta (se pulsó «Aceptar» y se guardó en la api: ok = si salió bien) | rechaza («Ahora no» o cerrar el aviso) | retira (se retiró el permiso desde Configuración o el panel de VR; ok = si la api lo borró); version = la versión del texto del aviso (HablaPuro.AVISO_VERSION). El estado de verdad es de la api (GET /api/presencia/voz/consentimiento); esto es para quien quiera reaccionar (un sonido, un lector de pantalla). Nada de la voz.",
       "datos": { "type": "object", "required": ["accion", "ok", "version"], "properties": { "accion": { "enum": ["acepta", "rechaza", "retira"] }, "ok": { "type": "boolean" }, "version": { "type": "integer", "minimum": 1 } } },
@@ -1103,6 +1113,7 @@
         "45_voz"
       ],
       "escuchan": [
+        "31b_hud_personal",
         "46_guiada",
         "47_habla"
       ]

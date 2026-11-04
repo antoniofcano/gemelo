@@ -23,7 +23,7 @@
     "Teclas": { "modulo": "02c_componentes.js", "miembros": ["registra", "dueno", "RESERVADAS"] },
     "Minimapa": { "modulo": "17_minimapa.js", "miembros": ["capa", "pinta", "cuantas"] },
     "PanelVR": { "modulo": "29_vr.js", "miembros": ["filas", "visibles", "tapa", "tapado", "debug", "cierra", "repinta", "rumbo", "enVR"] },
-    "Hud": { "modulo": "31_hud.js", "miembros": ["aviso", "zonasProhibidas", "modo", "cierraDesplegable", "alterna", "ponModo", "icono"] },
+    "Hud": { "modulo": "31_hud.js", "miembros": ["aviso", "zonasProhibidas", "modo", "cierraDesplegable", "alterna", "ponModo", "icono", "alInicio"] },
     "Ventanas": { "modulo": "32_ventanas.js", "miembros": ["abre", "cierra", "abierta", "pestana", "recorrido", "registra"] },
     "CapasPuro": { "modulo": "32b_capas.js", "miembros": ["PROC", "GRUPOS", "valida"] },
     "Capas": { "modulo": "32b_capas.js", "miembros": ["registra", "lista"] }

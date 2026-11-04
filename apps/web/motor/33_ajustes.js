@@ -20,7 +20,7 @@
     function opc(def, ops) { return { tipo: "opc", def: def, ops: ops }; }
     var ESQUEMA = {
       "graficos.calidad": opc("auto", ["auto", "0", "1", "2"]), "graficos.ahorro": bool(false),
-      "vista.exag": num(1, 1, 3, 0.25), "vista.corr": num(1, 0, 1.5, 0.25), "vista.brujula": bool(true), "vista.unidades": opc("ha", ["ha", "m2"]), "vista.altura": opc("pie", ["pie", "sentado"]),
+      "vista.exag": num(1, 1, 3, 0.25), "vista.corr": num(1, 0, 1.5, 0.25), "vista.brujula": bool(true), "vista.personal": bool(true), "vista.unidades": opc("ha", ["ha", "m2"]), "vista.altura": opc("pie", ["pie", "sentado"]),
       "controles.tactil": opc("auto", ["auto", "si", "no"]), "controles.mano": opc("diestra", ["diestra", "zurda"]), "controles.sens": num(1, 0.4, 2, 0.2), "controles.invertir": bool(false),
       "vr.giro": opc("30", ["15", "30", "45", "60"]), "vr.vineta": opc("suave", ["suave", "fuerte", "no"]), "vr.vuelo": bool(false),
       "acc.texto": num(100, 100, 200, 25), "acc.contraste": bool(false), "acc.movimiento": opc("sistema", ["sistema", "reducido", "normal"]),
@@ -120,6 +120,7 @@
       "vista.exag": function (v) { empujaControl("exag", v, "input"); },
       "vista.corr": function (v) { empujaControl("corr", v, "input"); },
       "vista.brujula": function (v) { raiz.setAttribute("data-brujula", v ? "si" : "no"); },
+      "vista.personal": function (v) { raiz.setAttribute("data-personal", v ? "si" : "no"); },
       "vista.unidades": function (v) { raiz.setAttribute("data-unidades", v); },
       "controles.tactil": function () { raiz.setAttribute("data-tactil", tactil() ? "si" : "no"); },
       "controles.mano": function (v) { raiz.setAttribute("data-mano", v); },
@@ -140,6 +141,7 @@
         { k: "vista.exag", t: "Relieve exagerado", fmt: function (v) { return fmt(v, v % 1 ? 2 : 0) + "×"; } },
         { k: "vista.corr", t: "Corrección de la ortofoto", fmt: function (v) { return fmt(v, v % 1 ? 2 : 0) + "×"; }, nota: "Ajuste medido en la finca (las copas se ven desplazadas al este según su altura); no es una ortorrectificación." },
         { k: "vista.brujula", t: "Mostrar la brújula" },
+        { k: "vista.personal", t: "Mostrar hora, tu haza, hablar y volver" },
         { k: "vista.unidades", t: "Superficie en", ops: [["ha", "hectáreas"], ["m2", "metros cuadrados"]] },
         { k: "vista.altura", t: "Altura de la vista", ops: [["pie", "De pie (ojos a 1,62 m)"], ["sentado", "Sentado (ojos a 1,20 m)"]], nota: "Al pasear y en las gafas VR. No depende de tu avatar. En las gafas se suma a la altura que dé el visor: si juegas sentado y el visor ya sabe dónde está el suelo, déjalo en «De pie»." } ] },
       { id: "controles", t: "Controles", campos: [
@@ -192,7 +194,7 @@
         });
         d.appendChild(f);
       } else if (E[c.k].tipo === "bool") {
-        var l2 = el("label", "aj-fila"), i2 = el("input"); i2.type = "checkbox"; i2.setAttribute("data-aj", c.k); l2.appendChild(i2); l2.appendChild(document.createTextNode(c.t)); d.appendChild(l2); hojas[c.k] = { casilla: i2 };
+        var l2 = el("label", "aj-fila"), i2 = el("input"); i2.type = "checkbox"; i2.id = "aj-c-" + c.k; i2.name = i2.id; i2.setAttribute("data-aj", c.k); l2.appendChild(i2); l2.appendChild(document.createTextNode(c.t)); d.appendChild(l2); hojas[c.k] = { casilla: i2 };
       } else {
         var w = el("div", "aj-rango"), fila = el("div"), lb = el("label", null, c.t), sp = el("strong"), r = el("input");
         r.type = "range"; r.min = E[c.k].min; r.max = E[c.k].max; r.step = E[c.k].paso; r.id = "aj-r-" + c.k; r.setAttribute("data-aj", c.k); lb.htmlFor = r.id; fila.style.cssText = "display:flex;justify-content:space-between;gap:8px";
