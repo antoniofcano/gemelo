@@ -87,6 +87,98 @@ for (const [nombre, ini] of [["de la tarde a la noche", Date.UTC(2026, 5, 21, 15
   });
 }
 
+// ---------- 4 · Bus.emite (02c_componentes.js): sin cierre ni copia por emisión, con la misma semántica ----------
+// La foto del Bus de antes: emitir copiaba los oyentes (slice) y recorría la copia con un forEach de cierre.
+const BUS_ANTES = `var Bus = (function () {
+    var oy = {};
+    function on(ev, fn) {
+      if (typeof fn !== "function") return function () {};
+      (oy[ev] = oy[ev] || []).push(fn);
+      return function () { var l = oy[ev], i = l ? l.indexOf(fn) : -1; if (i >= 0) l.splice(i, 1); };
+    }
+    function emite(ev, datos) {
+      var l = oy[ev]; if (!l || !l.length) return 0;
+      l.slice().forEach(function (fn) { try { fn(datos); } catch (e) { try { console.error("[Bus] " + ev, e); } catch (e2) {} } });
+      return l.length;
+    }
+    function hay(ev) { return !!(oy[ev] && oy[ev].length); }
+    return { on: on, emite: emite, hay: hay };
+  })();`;
+function creaBus(codigo, consola) { return new Function("console", codigo + "\nreturn Bus;")(consola); }
+const busNuevo = (consola) => creaBus(trozo("02c_componentes.js", "var Bus = (function () {", "\n\n  // el mundo en pausa") , consola);
+const busAntes = (consola) => creaBus(BUS_ANTES, consola);
+const ambos = (fn) => { for (const [nombre, mk] of [["antes", busAntes], ["ahora", busNuevo]]) { const log = [], errores = []; fn(mk({ error: (...a) => errores.push(a) }), log, errores, nombre); } };
+
+test("Bus: orden de los oyentes, valor devuelto, hay(), oyente que no es función y evento sin oyentes", () => {
+  ambos((Bus, log) => {
+    assert.strictEqual(Bus.emite("x", 1), 0); assert.strictEqual(Bus.hay("x"), false);
+    const q1 = Bus.on("x", (d) => log.push("a" + d)); Bus.on("x", (d) => log.push("b" + d)); Bus.on("x", (d) => log.push("c" + d));
+    const q0 = Bus.on("x", null); assert.strictEqual(typeof q0, "function"); q0(); assert.strictEqual(Bus.hay("x"), true);
+    assert.strictEqual(Bus.emite("x", 7), 3); assert.deepStrictEqual(log, ["a7", "b7", "c7"]);
+    q1(); log.length = 0; assert.strictEqual(Bus.emite("x", 8), 2); assert.deepStrictEqual(log, ["b8", "c8"]);
+    q1(); assert.strictEqual(Bus.emite("x", 9), 2, "quitar dos veces el mismo oyente no quita otro");
+    assert.strictEqual(Bus.emite("y"), 0); assert.strictEqual(Bus.hay("y"), false);
+  });
+});
+test("Bus: quien se da de baja durante la emisión sigue recibiéndola; quien se alta durante la emisión no la recibe hasta la siguiente", () => {
+  ambos((Bus, log) => {
+    let quitaC = null;
+    Bus.on("e", () => { log.push("a"); quitaC(); Bus.on("e", () => log.push("nuevo")); });
+    Bus.on("e", () => log.push("b"));
+    quitaC = Bus.on("e", () => log.push("c"));
+    const n1 = Bus.emite("e"); assert.deepStrictEqual(log, ["a", "b", "c"], "c se quitó durante la emisión pero la recibe"); assert.strictEqual(n1, 3, "devuelve cuántos hay al terminar: a, b y el nuevo");
+    log.length = 0; const n2 = Bus.emite("e"); assert.deepStrictEqual(log, ["a", "b", "nuevo"], "c ya no; el nuevo sí (y el que a vuelve a dar de alta, no hasta la siguiente)"); assert.strictEqual(n2, 4);
+  });
+});
+test("Bus: un oyente que falla no impide a los demás, se anota «[Bus] evento» y, si hasta console.error falla, se traga", () => {
+  ambos((Bus, log, errores) => {
+    Bus.on("f", () => log.push(1)); Bus.on("f", () => { throw new Error("rota"); }); Bus.on("f", () => log.push(3));
+    assert.strictEqual(Bus.emite("f"), 3); assert.deepStrictEqual(log, [1, 3]); assert.strictEqual(errores.length, 1); assert.strictEqual(errores[0][0], "[Bus] f"); assert.strictEqual(errores[0][1].message, "rota");
+  });
+  const mal = { error() { throw new Error("la consola también falla"); } };
+  for (const mk of [busAntes, busNuevo]) { const Bus = mk(mal), log = []; Bus.on("g", () => { throw 1; }); Bus.on("g", () => log.push("ok")); assert.strictEqual(Bus.emite("g"), 2); assert.deepStrictEqual(log, ["ok"]); }
+});
+test("Bus: la misma función dos veces, auto-baja (una vez) y emisiones anidadas del mismo evento", () => {
+  ambos((Bus, log) => {
+    Bus.on("t", function () { log.push("this " + typeof this); }); Bus.emite("t"); assert.deepStrictEqual(log, ["this undefined"], "el oyente se llama suelto, sin «this» (no la lista)"); log.length = 0;
+    const f = () => log.push("f"); const q1 = Bus.on("d", f), q2 = Bus.on("d", f); Bus.emite("d"); assert.deepStrictEqual(log, ["f", "f"]);
+    q1(); log.length = 0; Bus.emite("d"); assert.deepStrictEqual(log, ["f"]); q2(); q2(); log.length = 0; assert.strictEqual(Bus.emite("d"), 0);
+    let quita; quita = Bus.on("o", () => { log.push("una vez"); quita(); }); Bus.emite("o"); Bus.emite("o"); assert.deepStrictEqual(log, ["una vez"]);
+    log.length = 0; let prof = 0; Bus.on("n", (d) => { log.push("n" + d); if (d < 3) Bus.emite("n", d + 1); }); Bus.on("n", (d) => log.push("m" + d)); Bus.emite("n", 1);
+    assert.deepStrictEqual(log, ["n1", "n2", "n3", "m3", "m2", "m1"]); void prof;
+  });
+});
+test("Bus: miles de operaciones al azar (alta, baja, emisión anidada, fallos) dan exactamente el mismo registro que el Bus de antes", () => {
+  const corre = (mk, sem) => {
+    const r = azar(sem), log = [], Bus = mk({ error: (a, e) => log.push("ERR " + a + " " + (e && e.message)) }), quitas = [], evs = ["a", "b", "c"];
+    let id = 0, prof = 0;
+    const oyente = () => {
+      const mi = id++, plan = [r(), r(), r(), r()];
+      return (d) => {
+        log.push("L" + mi + ":" + d);
+        if (plan[0] < 0.15 && quitas.length) quitas[Math.floor(plan[1] * quitas.length)]();
+        if (plan[2] < 0.15 && id < 150) quitas.push(Bus.on(evs[Math.floor(plan[3] * 3)], oyente()));
+        if (plan[0] > 0.97 && prof < 2) { prof++; log.push("n=" + Bus.emite(evs[Math.floor(plan[1] * 3)], d + "'")); prof--; }
+        if (plan[3] > 0.96) throw new Error("fallo" + mi);
+      };
+    };
+    for (let i = 0; i < 4000; i++) {
+      const q = r();
+      if (q < 0.3 && id < 150) quitas.push(Bus.on(evs[Math.floor(r() * 3)], oyente()));
+      else if (q < 0.4 && quitas.length) quitas[Math.floor(r() * quitas.length)]();
+      else if (q < 0.45) Bus.on(evs[Math.floor(r() * 3)], 5);
+      else log.push("n=" + Bus.emite(evs[Math.floor(r() * 3)], i) + " hay=" + Bus.hay(evs[Math.floor(r() * 3)]));
+      if (quitas.length > 60) quitas.splice(0, 20);
+    }
+    return log;
+  };
+  for (let sem = 1; sem <= 8; sem++) { const a = corre(busAntes, sem), b = corre(busNuevo, sem); assert.ok(a.length > 3000, "hay actividad"); assert.deepStrictEqual(b, a, "semilla " + sem); }
+});
+test("Bus.emite no reserva por emisión: sin cierre, sin slice ni forEach", () => {
+  const cu = R.cuerpo(trozo("02c_componentes.js", "var Bus = (function () {", "\n\n  // el mundo en pausa"), "function emite(");
+  assert.deepStrictEqual(R.reservas("function emite(ev, datos) {" + cu + "}", "emite", "function emite(").map(x => x.que), [], "emite no debe reservar (el error va en un try aparte, solo si falla)");
+});
+
 // ---------- 3 · los llamadores por fotograma del nivel del sol piden nivelEn (sin objeto nuevo); el valor es el mismo (nivelEn == nivel, ver fauna_equivalencia.test.js) ----------
 test("actualizaPaisaje, actualizaSonido y actualizaHuellas piden el nivel del sol con nivelEn y un temporal del módulo, no con nivel()", () => {
   for (const [mod, ini, tmp] of [["18_paisaje.js", "function actualizaPaisaje(", "lvAgua"], ["20_sonido.js", "function actualizaSonido(", "lvSonido"], ["22b_huellas_polvo.js", "function actualizaHuellas(", "lvHuellas"]]) {

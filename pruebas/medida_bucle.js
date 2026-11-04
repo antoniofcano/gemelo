@@ -49,6 +49,15 @@ function compara(titulo, n, hazAntes, hazAhora) {
     compara("2 actualizaTiempo + pintaNubes (incluye el cuerpo de la prueba: cámara, avance del reloj)", 3000, mk(false), mk(true));
   }
 
+  // ---- 4 · Bus.emite con 6 oyentes (lo que hace un evento de fotograma: «mundo:...», «perros:amenaza»…)
+  {
+    const src = lee("apps/web/motor/02c_componentes.js"), a = src.indexOf("var Bus = (function () {"), b = src.indexOf("\n\n  // el mundo en pausa"), nuevoSrc = src.slice(a, b);
+    const antesSrc = require("fs").readFileSync(require("path").join(__dirname, "guardianes", "bucle_equivalencia.test.js"), "utf8");
+    const i0 = antesSrc.indexOf("const BUS_ANTES = `") + "const BUS_ANTES = `".length, i1 = antesSrc.indexOf("`;", i0), viejoSrc = antesSrc.slice(i0, i1);
+    const mk = (codigo) => () => { const Bus = new Function("console", codigo + "\nreturn Bus;")(console); let acum = 0; for (let k = 0; k < 6; k++) Bus.on("f", (d) => { acum += d; }); return (i) => Bus.emite("f", i & 7); };
+    compara("4 Bus.emite, 6 oyentes", 300000, mk(viejoSrc), mk(nuevoSrc));
+  }
+
   // ---- 3 · el nivel del sol que piden paisaje, sonido y huellas cada fotograma (3 llamadas con el mismo ms): nivel(ms).d contra nivelEn(ms, temporal).d
   {
     const N = new Function('"use strict"; var LAT = 37.73, LON = -4.006;\n' + F.nivelNuevo() + "\nreturn { nivel: nivel, nivelEn: nivelEn };")();
