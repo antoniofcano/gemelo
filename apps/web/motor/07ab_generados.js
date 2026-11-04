@@ -716,7 +716,24 @@
         var im = new THREE.InstancedMesh(g, mats[mk], inst[k]); im.name = "gen-" + k; im.castShadow = true; im.receiveShadow = true; im.customDepthMaterial = mats[mk + "_sombra"];
         im.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(inst[k] * 3), 3); I[k] = im; out.add(im);
       });
-      function idGeo(b, gk, atrib, indice) { var k = b + gk; if (geoId[k] === undefined) geoId[k] = B[b].addGeometry(geoLote(atrib, indice, b === "corteza")); return geoId[k]; }
+      yield;   // AG-1.5a: reservar las mallas (MB de búfer) y copiar las geometrías del primer árbol, en tramos distintos
+      // obra: vértices + índices copiados a las mallas por lotes (addGeometry) desde el último yield. Antes de una pieza cuya geometría nueva haría pasar
+      // de OBRA_GEO lo ya copiado, se cede: así una geometría grande (la corteza de un E0, ~40 k vértices y ~120 k índices) va sola en su tramo, que
+      // three no puede partir (addGeometry es atómico), y las pequeñas no se le suman (pruebas/olivo/lote_tramos.mjs lo mide y lo vigila)
+      // La primera geometría de cada malla por lotes, además, reserva y rellena sus búferes enteros (cap: los vértices e índices de todo el lote) y cuenta como tal.
+      var obra = 0, OBRA_GEO = 60000, iniciada = {};
+      function tamGeo(atrib, indice) { return atrib.position.length / 3 + (indice ? indice.length : 0); }
+      function costeGeo(b, atrib, indice) { return tamGeo(atrib, indice) + (iniciada[b] ? 0 : cap[b].v + cap[b].x); }
+      function idGeo(b, gk, atrib, indice) {
+        var k = b + gk;
+        if (geoId[k] === undefined) { obra += costeGeo(b, atrib, indice); iniciada[b] = true; geoId[k] = B[b].addGeometry(geoLote(atrib, indice, b === "corteza")); }
+        return geoId[k];
+      }
+      function nuevaGeo(z, gk) {   // lo que costaría la pieza z si su geometría aún no está en su malla por lotes (0 si ya está o no va por lotes)
+        var b = z.clase === "malla" ? (BARK[z.mat] ? "corteza" : z.mat === "muerta" ? "muerta" : null) : z.clase === "instancias" ? (z.geo === "tocon" ? "corteza" : z.geo === "corte" ? "muerta" : (z.geo === "oliva" || z.geo === "octa") ? "olivas" : null) : null;
+        if (!b || geoId[b + gk] !== undefined) return 0;
+        return z.clase === "malla" ? costeGeo(b, z.atrib, z.indice) : costeGeo(b, G[z.geo].atrib, G[z.geo].indice);
+      }
       function ponBatch(b, gid, m, rgb) {
         var id = B[b].addInstance(gid); B[b].setMatrixAt(id, m); col.set(rgb[0], rgb[1], rgb[2], 1 - cod / 2); B[b].setColorAt(id, col);
         if (cod === 2) (salen.B[b] || (salen.B[b] = { m: B[b], ids: [] })).ids.push(id);
@@ -729,6 +746,7 @@
         }
         for (var iz = 0; iz < r.piezas.length; iz++) {
           var z = r.piezas[iz], gk = z.geo === "propia" ? p.clave + "#" + iz : z.geo;
+          if (obra > 0 && obra + nuevaGeo(z, gk) > OBRA_GEO) { obra = 0; yield; }
           mp.compose(v.fromArray(z.pos), q.fromArray(z.rot), s3.fromArray(z.esc)); m4.multiplyMatrices(T, mp);
           if (z.clase === "malla" && (BARK[z.mat] || z.mat === "muerta")) { var b = BARK[z.mat] ? "corteza" : "muerta"; ponBatch(b, idGeo(b, gk, z.atrib, z.indice), m4, TINTE[z.mat] || [1, 1, 1]); continue; }
           if (z.clase === "puntos") { for (var k2 = 0; k2 < z.n; k2++) { v.fromArray(z.posiciones, k2 * 3).applyMatrix4(m4); pts.p.set([v.x, v.y, v.z], pts.n * 3); pts.c.set(z.colores.subarray(k2 * 3, k2 * 3 + 3), pts.n * 3); pts.f[pts.n] = cod; pts.n++; } continue; }
@@ -743,11 +761,13 @@
             if (k3 % 512 === 511) yield;
           }
         }
-        yield;
+        obra = 0; yield;
       }
-      Object.keys(I).forEach(function (k) { I[k].instanceMatrix.needsUpdate = true; I[k].instanceColor.needsUpdate = true; I[k].geometry.attributes.aFun.needsUpdate = true; I[k].computeBoundingSphere(); I[k].computeBoundingBox(); });
-      // el recorte por frustum de las mallas por lotes: su esfera y su caja con TODAS las instancias ya puestas (no la de la primera geometría)
-      Object.keys(B).forEach(function (b) { B[b].computeBoundingBox(); B[b].computeBoundingSphere(); });
+      // las cajas y esferas de recorte, con TODAS las instancias ya puestas (en las mallas por lotes, no la de la primera geometría). Cada cálculo de
+      // three recorre todas las instancias de su malla y no se puede partir: uno por tramo (AG-1.5a; juntos, ~3-4 ms de Node con lotes del fixture)
+      var kI = Object.keys(I), kB = Object.keys(B), j;
+      for (j = 0; j < kI.length; j++) { var Ik = I[kI[j]]; Ik.instanceMatrix.needsUpdate = true; Ik.instanceColor.needsUpdate = true; Ik.geometry.attributes.aFun.needsUpdate = true; Ik.computeBoundingSphere(); yield; Ik.computeBoundingBox(); yield; }
+      for (j = 0; j < kB.length; j++) { B[kB[j]].computeBoundingBox(); yield; B[kB[j]].computeBoundingSphere(); yield; }
       if (pts && pts.n) {
         var gp = new THREE.BufferGeometry(); gp.setAttribute("position", new THREE.BufferAttribute(pts.p, 3)); gp.setAttribute("color", new THREE.BufferAttribute(pts.c, 3)); gp.setAttribute("aFun", new THREE.BufferAttribute(pts.f, 1)); gp.computeBoundingSphere();
         var pm = new THREE.Points(gp, mats.puntos); pm.name = "gen-puntos"; out.add(pm);   // las olivas en puntos (E2), con su esfera de recorte de las posiciones ya en el lote (generados_motor.mjs comprueba que cubre todo)
@@ -814,5 +834,6 @@
     }
     return { escalera: function () { return ESCALERA; }, modoGen: function () { return MODO; }, lejanos: paraLejanos, activo: function () { return estado === "activo"; }, actualiza: actualiza, paso: paso, gastado: function () { return gastado; }, pendientes: pendientes, rotulo: rotulo, piezas: piezas, estado: function () { return estado; },
       _prueba: { fecha: function (f) { fechaPrueba = f; }, mats: function () { return mats; }, prof: function () { return prof; }, uFun: uFun, lote: function () { return lote; }, tiene: tiene, fase: fase, listos: function () { return listos; }, saliendo: function () { return saliendo; }, recetas: function () { return recetas; },
-        uBanda: uBanda, bandas: function () { return bandas; }, lejRanura: function () { return lejRanura; }, enLote: function () { return enLote; }, selLote: function () { return selLote; } } };
+        uBanda: uBanda, bandas: function () { return bandas; }, lejRanura: function () { return lejRanura; }, enLote: function () { return enLote; }, selLote: function () { return selLote; },
+        construye: function (items) { return construyeG(items); }, elementos: function (fija) { return elementos(fija); } } };   // AG-1.5a: pruebas/olivo/lote_tramos.mjs mide los tramos entre yield
   })();
