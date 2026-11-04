@@ -93,13 +93,16 @@
       if (!dentro((ia + i2 + 0.5) * PA, (jb - j2 - 0.5) * PA)) continue;
       var a = j2 * nx + i2, b = a + 1, c = a + nx, d = c + 1; arr.push(a, c, b, b, c, d);
     }
-    var g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(pos, 3)); g.setIndex(new THREE.BufferAttribute(Uint32Array.from(arr), 1)); g.boundingSphere = new THREE.Sphere(new THREE.Vector3((minx + maxx) / 2, 40, -(miny + maxy) / 2), Math.hypot(maxx - minx, maxy - miny) / 2 + 400);
+    var g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(pos, 3)); g.setIndex(new THREE.BufferAttribute(Uint32Array.from(arr), 1));
+    // la esfera, de la caja de los vértices con la y de 1 a 3 veces (el sombreador la multiplica por uExag; el deslizador #exag va de 1 a 3): se recorta sin perderla
+    var caja = new THREE.Box3().setFromBufferAttribute(g.attributes.position), y0 = caja.min.y, y1 = caja.max.y;
+    caja.min.y = Math.min(y0, y0 * 3); caja.max.y = Math.max(y1, y1 * 3); g.boundingSphere = caja.getBoundingSphere(new THREE.Sphere());
     var m = overlays[k]; m.geometry.dispose(); m.geometry = g; m.userData.listo = true;
   }
   parcelas.forEach(function (pr, k) {   // una malla vacía por parcela; la geometría llega al resaltarla. Sigue la exageración vertical con el mismo uniforme del terreno
     var mat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.42, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
     mat.onBeforeCompile = function (sh) { sh.uniforms.uExag = UN.uExag; sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nuniform float uExag;").replace("#include <begin_vertex>", "#include <begin_vertex>\n transformed.y *= uExag;"); };
-    var m = new THREE.Mesh(new THREE.BufferGeometry(), mat); m.frustumCulled = false; m.renderOrder = 3; m.visible = false; scene.add(m); overlays.push(m);
+    var m = new THREE.Mesh(new THREE.BufferGeometry(), mat); m.renderOrder = 3; m.visible = false; scene.add(m); overlays.push(m);
   });
   function resalta(mapa) { overlays.forEach(function (m, k) { if (mapa && mapa[k] !== undefined) { if (!m.userData.listo) creaOverlay(k); m.material.color.setHex(mapa[k]); m.visible = true; } else m.visible = false; }); }
   function marca(id, v) { var e = $(id); if (e.checked !== v) { e.checked = v; e.dispatchEvent(new Event("change")); } }
