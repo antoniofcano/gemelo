@@ -115,7 +115,11 @@ function montaPagina({ finca = "hituelo", conTileset = true, tileset, olivos = f
   for (const f of ["plantilla.html", "plantilla.css", "vite.config.js", "package-lock.json", path.join("herramientas", "genera_motor.mjs"), path.join("herramientas", "builds.mjs"), path.join("herramientas", "sin_tiles3d.js")]) {
     const p = path.join(WEB, f); if (fs.existsSync(p)) { h.update(f + "\0"); h.update(fs.readFileSync(p)); }
   }
+  // F2a: la build (GEMELO_BUILD=vr cambia three por super-three, apps/web/herramientas/builds.mjs) también cambia la página: sin esto, una prueba con la
+  // build de VR reutilizaría la página de pantalla de la caché (o al revés). La de pantalla conserva la huella de antes (no invalida la caché del banco)
   h.update(JSON.stringify({ finca, indice, olivo: OLIVO_INSTALADO() }));
+  const build = (process.env.GEMELO_BUILD || "pantalla").trim();
+  if (build !== "pantalla") h.update(JSON.stringify({ build, superThree: process.env.GEMELO_SUPER_THREE || "" }));
   hashFicheros(h, path.join(dirFinca, "t"), "t");
   if (conTs && typeof tileset !== "string") hashFicheros(h, path.join(dirFinca, "tileset"), "tileset");
   const huella = h.digest("hex").slice(0, 16), dest = path.join(CACHE, finca + "-" + huella), cerrojo = dest + ".cerrojo";

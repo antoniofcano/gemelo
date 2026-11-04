@@ -623,7 +623,9 @@
     var ses = null;
     try {
       renderer.xr.enabled = true; renderer.xr.setReferenceSpaceType("local-floor"); renderer.xr.setFramebufferScaleFactor(XrPerillas.efectivas.escala); XrPerillas.antes(renderer);   // Q0b: escala 0,9 y foveación 1 salvo las perillas xr de la URL (02f)
-      ses = await navigator.xr.requestSession("immersive-vr", { optionalFeatures: ["local-floor", "bounded-floor", "hand-tracking"] });   // manos: 36_mandos
+      // F2a: con el multiview pedido (build de VR, 02f) se pide también «layers»: super-three solo lo enciende sobre una capa de proyección (XRWebGLBinding,
+      // textureType «texture-array»), y la API de capas de WebXR la exige entre las funciones de la sesión. Sin multiview, la sesión de siempre
+      ses = await navigator.xr.requestSession("immersive-vr", { optionalFeatures: ["local-floor", "bounded-floor", "hand-tracking"].concat(XrPerillas.mv && XrPerillas.mv.activo ? ["layers"] : []) });   // manos: 36_mandos
       VRX.ojo = 0;
       try { await ses.requestReferenceSpace("local-floor"); } catch (e) { renderer.xr.setReferenceSpaceType("local"); VRX.ojo = 1.6; }
       renderer.setAnimationLoop(vrAnimacion);   // antes de setSession: así el bucle de la ventana se para al empezar la sesión
@@ -633,6 +635,7 @@
     }
     VRX.sesion = ses; VRX.base = renderer.xr.getReferenceSpace(); VRX.sesionesN++;
     XrPerillas.despues(ses);   // Q0b: foveación de la capa y frecuencia, con lo que anuncia el casco (72 Hz si no se pide otra)
+    XrPerillas.mvEnUso(renderer);   // F2a: ¿encendió super-three el multiview en esta sesión? (la línea «VR: …» y la sonda de 30_mide lo dicen)
     ses.addEventListener("end", vrSale);
     vrSuscribe(); vrLeeAjustes(); VRX.pestana = "mundo";
     VRX.modoPrev = modo; VRX.calPrev = calidad; VRX.nearPrev = camera.near; VRX.farPrev = camera.far;
@@ -674,7 +677,7 @@
       });
     });
   }
-  window.__vrDebug = function () { return Object.assign({ on: VRX.on, estado: VRX.estado, capas: VR_CAPAS, nivel: VRX.nivel, rig: JSON.parse(JSON.stringify(VRX.rig)), cabeza: [VRX.cab.x, VRX.cab.y, VRX.cab.z], pp: [pp.x, pp.y], vuelo: VRX.vuelo, panel: panel.m.visible, ficha: ficha.m.visible, hover: VRX.hover, pestana: VRX.pestana, giro: VRX.giro, sinEscena: VRX.sinPint, vinetaOn: VRX.vineta, vineta: vrVineta.material.uniforms.uK.value, sesionesN: VRX.sesionesN, paseando: paseando, primera: primera, modo: modo, exag: exag, hora: horaMundoTexto(), horaMs: meta.ms, solY: sol.position.y, solI: sol.intensity, ndvi: ndviIdx, parcSel: VRX.parcSel, panelPos: panel.m.position.toArray(), fichaPos: ficha.m.position.toArray(), mira: [VRX.mira.x, VRX.mira.z], agarre: vrAg ? (vrAg.l ? vrAg.l.nombre : "lamina:" + vrAg.id) : "", panelPuesto: !!panel.puesta, frames: InfoDibujo.fotograma(renderer), nivelArb: Arboles.resumen(), hierba: VRP.hierba, bump: UN.uBumpK.value, perfiles: VR_PERFILES.length, xr: { near: XrPerillas.efectivas.near, topeJs: XrPerillas.js(), fov: XrPerillas.efectivas.fov, escala: XrPerillas.efectivas.escala, hz: XrPerillas.efectivas.hz, aa: XrPerillas.aa, nivelFijo: XrPerillas.efectivas.nivel, adaptativo: XrPerillas.efectivas.nivel == null, ignorados: XrPerillas.efectivas.ignorados, linea: XrPerillas.linea() }, near: camera.near, far: camera.far,
+  window.__vrDebug = function () { return Object.assign({ on: VRX.on, estado: VRX.estado, capas: VR_CAPAS, nivel: VRX.nivel, rig: JSON.parse(JSON.stringify(VRX.rig)), cabeza: [VRX.cab.x, VRX.cab.y, VRX.cab.z], pp: [pp.x, pp.y], vuelo: VRX.vuelo, panel: panel.m.visible, ficha: ficha.m.visible, hover: VRX.hover, pestana: VRX.pestana, giro: VRX.giro, sinEscena: VRX.sinPint, vinetaOn: VRX.vineta, vineta: vrVineta.material.uniforms.uK.value, sesionesN: VRX.sesionesN, paseando: paseando, primera: primera, modo: modo, exag: exag, hora: horaMundoTexto(), horaMs: meta.ms, solY: sol.position.y, solI: sol.intensity, ndvi: ndviIdx, parcSel: VRX.parcSel, panelPos: panel.m.position.toArray(), fichaPos: ficha.m.position.toArray(), mira: [VRX.mira.x, VRX.mira.z], agarre: vrAg ? (vrAg.l ? vrAg.l.nombre : "lamina:" + vrAg.id) : "", panelPuesto: !!panel.puesta, frames: InfoDibujo.fotograma(renderer), nivelArb: Arboles.resumen(), hierba: VRP.hierba, bump: UN.uBumpK.value, perfiles: VR_PERFILES.length, xr: { near: XrPerillas.efectivas.near, topeJs: XrPerillas.js(), fov: XrPerillas.efectivas.fov, escala: XrPerillas.efectivas.escala, hz: XrPerillas.efectivas.hz, aa: XrPerillas.aa, mv: XrPerillas.mv ? { existe: XrPerillas.mv.existe, activo: XrPerillas.mv.activo, enUso: XrPerillas.mv.enUso == null ? null : XrPerillas.mv.enUso } : null, nivelFijo: XrPerillas.efectivas.nivel, adaptativo: XrPerillas.efectivas.nivel == null, ignorados: XrPerillas.efectivas.ignorados, linea: XrPerillas.linea() }, near: camera.near, far: camera.far,
     panelTam: [panel.W, panel.H, panel.pw, panel.ph], fichaB: fichaB.m.visible, fichaBPos: fichaB.m.position.toArray(), fichaBTam: [fichaB.W, fichaB.H, fichaB.pw, fichaB.ph], fichaId: VRX.fichaId, hoverB: VRX.hoverB, fichaGente: VRX.balInfo && VRX.fichaId ? VRX.balInfo.gente : null,
     tiempo: null, fichaTiempo: null,   // los pone la fila del componente fichas-tiempo (35_fichas_tiempo.js) por PanelVR.debug(), si está
     gente: VRX.gente ? { activo: VRX.gente.activo, n: VRX.gente.n, filas: VRX.gente.filas.map(function (f) { return { id: f.id, alias: f.alias, modo: f.modo, dist: f.dist }; }) } : null }, PanelVR.debug()); };

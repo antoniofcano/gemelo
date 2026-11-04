@@ -6,6 +6,8 @@
   //   ?xrfov=0..1 (foveación; defecto 1) · ?xrescala=0.5..1.5 (framebufferScaleFactor; defecto 0,9) · ?xrhz=72|80|90|120 (frecuencia pedida; defecto 72, solo si el casco la anuncia)
   //   ?xraa=0|1 (MSAA del lienzo; defecto 1; se lee antes de crear el renderer) · ?xrnivel=0..3 (fija un VR_PERFILES y APAGA el controlador adaptativo)
   //   ?xrnear=0.05..0.3 (plano cercano de la cámara en VR; defecto 0,1) · ?xrjs=4..16 (umbral de ms de JS por fotograma con que el controlador adaptativo baja de nivel; defecto 8, AG-2.3)
+  //   ?xrmv=0|1 (F2a, doc/sistema/MULTIVIEW.md: multiview de super-three, `multiviewStereo`; SOLO existe en la build de VR, con defecto 1; en la de pantalla
+  //   se ignora y se dice; se lee antes de crear el renderer, como xraa)
   // Sin ninguna, nada cambia. Es el ÚNICO sitio que lee estas banderas de la URL. Presupuesto (regla 6): no dibuja ni reserva nada.
   // [puro:inicio] (sin THREE ni DOM: lo evalúa en Node pruebas/guardianes/xr_perillas.test.js)
   var XrPerillasPuro = (function () {
@@ -42,14 +44,30 @@
       return { fov: p.fov != null ? p.fov : DEF.fov, escala: p.escala != null ? p.escala : DEF.escala, hz: hz, aa: p.aa != null ? p.aa : DEF.aa,
         nivel: p.nivel, near: p.near != null ? p.near : DEF.near, js: p.js != null ? p.js : DEF.js, tocadas: ["fov", "escala", "hz", "aa", "nivel", "near", "js"].filter(function (k) { return p[k] != null; }), ignorados: p.ignorados.slice() };
     }
+    // F2a: ?xrmv=0|1. build: «pantalla» o «vr» (la de 02h_render). Solo la build «vr» (super-three) tiene multiview; en la de pantalla no existe y la perilla se ignora.
+    // → { existe, activo (¿se pide multiviewStereo al crear el renderer?), pedido ("0" | "1" | null), ignorado: { param, valor, motivo } | null }
+    function multiview(busqueda, build) {
+      var t = cruda(String(busqueda || ""), "xrmv"), existe = build === "vr", r = { existe: existe, activo: existe, pedido: null, ignorado: null };
+      if (t === null) return r;
+      if (!existe) { r.ignorado = { param: "xrmv", valor: t, motivo: "solo existe en la build de VR (esta es «" + (build || "pantalla") + "»)" }; return r; }
+      if (t !== "0" && t !== "1") { r.ignorado = { param: "xrmv", valor: t, motivo: "solo vale 0 o 1" }; return r; }
+      r.pedido = t; r.activo = t === "1"; return r;
+    }
     function coma(v) { return String(v).replace(".", ","); }
+    // e.mv (F2a): solo en la build de VR: «multiview sí» (pedido y en uso), «multiview pedido, no en uso» (el casco no dio OCULUS_multiview o la capa de proyección),
+    // «multiview pedido» (aún sin sesión) o «multiview no (xrmv=0)». En la de pantalla e.mv no existe y la línea es la de siempre.
+    function textoMv(mv) {
+      if (!mv || !mv.existe) return "";
+      if (!mv.activo) return " · multiview no (xrmv=0)";
+      return " · multiview " + (mv.enUso === true ? "sí" : mv.enUso === false ? "pedido, no en uso" : "pedido");
+    }
     // «VR: fov 1 · escala 0,9 · 72 Hz · MSAA sí · nivel auto · near 0,1 · umbral JS 8 ms» (y «ignorado: …» por cada perilla descartada o recortada)
     function linea(e) {
-      var s = "VR: fov " + coma(e.fov) + " · escala " + coma(e.escala) + " · " + (e.hz != null ? e.hz + " Hz" : "Hz sin cambiar") + " · MSAA " + (e.aa ? "sí" : "no") + " · nivel " + (e.nivel != null ? e.nivel + " fijo" : "auto") + " · near " + coma(e.near != null ? e.near : DEF.near) + " · umbral JS " + coma(e.js != null ? e.js : DEF.js) + " ms";
+      var s = "VR: fov " + coma(e.fov) + " · escala " + coma(e.escala) + " · " + (e.hz != null ? e.hz + " Hz" : "Hz sin cambiar") + " · MSAA " + (e.aa ? "sí" : "no") + textoMv(e.mv) + " · nivel " + (e.nivel != null ? e.nivel + " fijo" : "auto") + " · near " + coma(e.near != null ? e.near : DEF.near) + " · umbral JS " + coma(e.js != null ? e.js : DEF.js) + " ms";
       if (e.ignorados && e.ignorados.length) s += " · ignorado: " + e.ignorados.map(function (i) { return i.param + "=" + i.valor + " (" + i.motivo + ")"; }).join("; ");
       return s;
     }
-    return { lee: lee, plan: plan, linea: linea, LIM: LIM, HZ: HZ, DEF: DEF };
+    return { lee: lee, plan: plan, linea: linea, multiview: multiview, LIM: LIM, HZ: HZ, DEF: DEF };
   })();
   // [puro:fin]
 
@@ -60,6 +78,10 @@
     var X = { pedidas: p, aa: p.aa != null ? p.aa : XrPerillasPuro.DEF.aa, efectivas: XrPerillasPuro.plan(p, null), entro: false };
     X.defJs = XrPerillasPuro.DEF.js; X.configJs = null;   // 29_vr deja en configJs el de la configuración (escalera.vrJsMs) cuando llega
     X.js = function () { return p.js != null ? p.js : (X.configJs != null ? X.configJs : X.defJs); };   // el umbral del controlador adaptativo: URL (?xrjs=) > configuración > 8 ms del código
+    // F2a: el multiview, decidido UNA vez con la build (03_escena lo pide antes de crear el renderer: multiviewStereo va en el constructor). Sin llamar, null
+    X.mv = null;
+    X.multiview = function (build) { if (!X.mv) X.mv = XrPerillasPuro.multiview(q, build); return X.mv; };
+    X.mvEnUso = function (renderer) { if (X.mv && X.mv.existe) X.mv.enUso = !!(renderer && renderer.xr && renderer.xr.isMultiview); };   // 29_vr, con la sesión ya puesta (super-three: xr.isMultiview)
     X.fijo = function () { return X.efectivas.nivel != null; };   // ?xrnivel=: el controlador adaptativo no actúa
     X.antes = function (renderer) { renderer.xr.setFoveation(X.efectivas.fov); };   // antes de setSession: three la aplica a la capa al crearla (proyección o base)
     X.despues = function (ses) {   // con la sesión ya abierta se conocen las frecuencias del casco: el plan real sustituye al previo
@@ -67,7 +89,7 @@
       try { var capa = ses && ses.renderState && ses.renderState.baseLayer; if (capa && "fixedFoveation" in capa) capa.fixedFoveation = X.efectivas.fov; } catch (e) {}
       try { if (X.efectivas.hz != null && ses && ses.updateTargetFrameRate) ses.updateTargetFrameRate(X.efectivas.hz); } catch (e) {}
     };
-    X.linea = function () { var e = X.efectivas; return XrPerillasPuro.linea({ fov: e.fov, escala: e.escala, hz: e.hz, aa: X.aa, nivel: e.nivel, near: e.near, js: X.js(), ignorados: e.ignorados }); };
+    X.linea = function () { var e = X.efectivas, ig = X.mv && X.mv.ignorado ? e.ignorados.concat([X.mv.ignorado]) : e.ignorados; return XrPerillasPuro.linea({ fov: e.fov, escala: e.escala, hz: e.hz, aa: X.aa, mv: X.mv, nivel: e.nivel, near: e.near, js: X.js(), ignorados: ig }); };
     return X;
   })();
   // [motor:fin]

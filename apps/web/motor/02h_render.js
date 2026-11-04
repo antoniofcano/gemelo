@@ -5,7 +5,8 @@
   // ---------- AG-3a / F1 (doc/sistema/MULTIVIEW.md §4, ADR-0031): qué renderizador y qué build, y la lectura de lo dibujado con la misma forma para los dos.
   // Hoy NO cambia nada: siempre el WebGLRenderer clásico (03_escena) y la build de pantalla (three 0.186.1). Lo que prepara:
   //   Render.pedido / Render.tipo   ?render=nuevo queda RESERVADO para el WebGPURenderer (F2-F5): se apunta y se avisa de que aún no existe; tipo sigue «clasico»
-  //   Render.build                  «pantalla» (three) o «vr» (super-three, la build del Quest: apps/web/herramientas/builds.mjs); lo inyecta Vite (__GEMELO_BUILD__)
+  //   Render.build                  «pantalla» (three) o «vr» (super-three, la build del Quest: apps/web/herramientas/builds.mjs); lo inyecta Vite (__GEMELO_BUILD__).
+  //                                 Con «vr», 03_escena pide el multiview de super-three (F2a; la perilla xrmv vive en 02f_xr_perillas)
   //   Render.arranca(rd, fn)        el primer fotograma, tolerante a un `await rd.init()` futuro: el clásico no tiene init() y fn corre ya, como siempre
   //   InfoDibujo.lee(rd, o?)        { renderizador, fotograma, llamadas, triangulos, puntos, lineas, geometrias, texturas, programas } del clásico
   //                                 (info.render.calls, info.render.frame, info.programs = array) y del nuevo (info.render.drawCalls, info.frame,

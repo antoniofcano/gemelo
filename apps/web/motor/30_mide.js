@@ -1,9 +1,9 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
 // Consume: 01_datos (D, $, DEPURA), 01a_aparato (Aparato), 02b_cola (Cola), 02c_componentes (Bus, ConfigPuro, Componentes),
-//   02f_xr_perillas (XrPerillas), 03_escena (visor, renderer, modo, calidad), 04b_escena3d (Escena3D), 07ab_generados (Generados),
-//   07b_arboles (Arboles), 08_marcadores (listo, capas), 12_paseo (persona), 14_historia (lista, rango), 15_tiempo (nivel, hace),
-//   29_vr (VRX, panel, PanelVR, VR_PERFILES), 33_ajustes (Ajustes), 90_final (cuadro, bucle)
+//   02f_xr_perillas (XrPerillas), 02h_render (Render), 03_escena (visor, renderer, modo, calidad), 04b_escena3d (Escena3D),
+//   07ab_generados (Generados), 07b_arboles (Arboles), 08_marcadores (listo, capas), 12_paseo (persona), 14_historia (lista, rango),
+//   15_tiempo (nivel, hace), 29_vr (VRX, panel, PanelVR, VR_PERFILES), 33_ajustes (Ajustes), 90_final (cuadro, bucle)
 // ===============================================================================
 
   // ---------- medidor de fotogramas para la prueba en el aparato (T7a, doc/sistema/VR.md#medir-con-el-medidor). Componente «medidor-fotogramas» (ADR-0023, C10 tercera tanda; ?medidor=0 lo apaga). Sin &mide ni botón pulsado no hace nada: no escucha «cuadro:fin» y el bucle no paga nada.
@@ -214,6 +214,10 @@
         try { var capa = new XRWebGLBinding(ses, gl).createProjectionLayer({ textureType: "texture-array", colorFormat: gl.RGBA8, depthFormat: gl.DEPTH_COMPONENT24 }); ta = capa && capa.textureArrayLength != null ? "sí (" + capa.textureArrayLength + " capas)" : "sí"; } catch (e) { ta = "no (" + String(e && e.name || e).slice(0, 24) + ")"; }
         p.push("texture-array " + ta);
       } else p.push("texture-array: sin sesión VR");
+      // F2a: en la build de VR (super-three), si se pidió (perilla xrmv, 02f) y si la sesión lo tiene encendido de verdad (renderer.xr.isMultiview); en la de pantalla, «build pantalla»
+      var mv = XrPerillas.mv;
+      if (!mv || !mv.existe) p.push("build " + Render.build + " (sin multiview)");
+      else p.push("build vr · pedido " + (mv.activo ? "sí" : "no") + (ses ? " · en uso " + (renderer.xr && renderer.xr.isMultiview ? "sí" : "no") : ""));
       sondaConSesion = !!ses;
       sonda = "multiview: " + (ext || e2 ? "sí" : "no") + " · " + p.join(" · ");
       return sonda;
@@ -347,7 +351,7 @@
     n.on("medida:inicia", function (d) { inicia(d && d.segundos); });
     n.on("medida:muestra", function (d) { api.muestra(!!(d && d.on)); });
     // la fila «Medida» de la pestaña Comodidad del panel de VR (solo con ?debug), que 29_vr.js ya no conoce
-    n.limpia(PanelVR.filas("comodidad", { id: "multiview", orden: 55, alto: 88, visible: function () { return DEPURA; }, pinta: function (cx, y, W, h) { h.fila(sondaMultiview().replace(/^multiview: (sí|no).*$/, "Multiview: $1"), y); } }));   // F0: sí/no; el detalle va en el contador y en el informe
+    n.limpia(PanelVR.filas("comodidad", { id: "multiview", orden: 55, alto: 88, visible: function () { return DEPURA; }, pinta: function (cx, y, W, h) { h.fila(sondaMultiview().replace(/^multiview: (sí|no).*?(?:en uso (sí|no))?$/, function (t, a, u) { return "Multiview: " + a + (u ? " · en uso " + u : ""); }), y); } }));   // F0: sí/no; el detalle va en el contador y en el informe
     n.limpia(PanelVR.filas("comodidad", { id: "mide", orden: 50, alto: 88, visible: function () { return DEPURA; }, pinta: function (cx, y, W, h) { h.fila("Medida", y); },
       botones: function (b, y) { b("mide", 420, y, 470, 64, "Medir " + N + " s", function () { inicia(); }, estado === "midiendo"); } }));
     var param = /[?&]mide(?:=(\d+))?(?=&|$)/.exec(location.search);

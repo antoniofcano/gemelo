@@ -1,10 +1,17 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: lienzo, visor, renderer, scene, camera, SRGB, LUZ_SOL, LUZ_CIELO, hemi, sol, texColor, colorVertSRGB, colorCss, exag, modo, calidad
-// Consume: 01_datos ($, EXT, FOG0, FOG1), 01a_aparato (Aparato), 02f_xr_perillas (XrPerillas), 05_nube (nube), 15_tiempo (pintaFondoTiempo)
+// Consume: 01_datos ($, EXT, FOG0, FOG1), 01a_aparato (Aparato), 02f_xr_perillas (XrPerillas), 02h_render (Render), 05_nube (nube),
+//   08_marcadores (capas), 15_tiempo (pintaFondoTiempo)
 // ===============================================================================
   // ---- escena
   var lienzo = $("lienzo"), visor = $("visor");
-  var renderer = new THREE.WebGLRenderer({ canvas: lienzo, antialias: XrPerillas.aa });   // el MSAA lo decide la perilla de pruebas VR (02f)
+  // F2a (doc/sistema/MULTIVIEW.md, ADR-0031): en la build de VR (super-three) se pide el multiview del WebGLRenderer clásico, `multiviewStereo`, salvo con la perilla xrmv a 0 (02f);
+  // super-three solo lo enciende en una sesión XR con capas de proyección y OCULUS_multiview (29_vr pide «layers»). En la build de pantalla no se pasa nada:
+  // el renderer se crea exactamente como siempre
+  var opcionesRd = { canvas: lienzo, antialias: XrPerillas.aa }, MV = XrPerillas.multiview(Render.build);   // el MSAA lo decide la perilla de pruebas VR (02f)
+  if (MV.activo) opcionesRd.multiviewStereo = true;
+  if (MV.ignorado) console.warn("VR: ?" + MV.ignorado.param + "=" + MV.ignorado.valor + " ignorado: " + MV.ignorado.motivo);
+  var renderer = new THREE.WebGLRenderer(opcionesRd);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   Aparato.enlaza({ vr: function () { return renderer.xr.isPresenting; }, gl: function () { return renderer.getContext(); }, sesion: function () { return renderer.xr.getSession(); } });   // AG-0.3: el aparato mide en este contexto
   var scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(42, 1, 0.5, Math.max(5000, EXT * 4));
