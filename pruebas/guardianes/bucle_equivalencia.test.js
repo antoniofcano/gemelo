@@ -58,3 +58,31 @@ test("distArroyo: sin eje devuelve 1e9; con un punto, su distancia", () => {
   assert.strictEqual(distArroyoAhora([[0, 0]])(3, 4), 5);
   assert.strictEqual(distArroyoAhora([[0, 0], [100, 100]])(100, 100), distArroyoAntes([[0, 0], [100, 100]])(100, 100), "el punto impar no cuenta (heredado del i += 2)");
 });
+
+// ---------- 2 · actualizaTiempo y pintaNubes (15_tiempo.js): temporales de módulo y bucles en vez de reservas por fotograma ----------
+const F = require("./_fauna_mundo");
+let THREE;
+test.before(async () => { THREE = await F.cargaThree(); });
+
+const { mundoTiempo, fotoTiempo } = require("./_tiempo_mundo");
+for (const [nombre, ini] of [["de la tarde a la noche", Date.UTC(2026, 5, 21, 15, 0)], ["de la noche al amanecer", Date.UTC(2026, 5, 21, 2, 30)], ["en invierno, con el sol bajo y helada", Date.UTC(2026, 11, 21, 14, 0)]]) {
+  test("actualizaTiempo + pintaNubes == su copia anterior, fotograma a fotograma, " + nombre, () => {
+    const a = mundoTiempo(THREE, false), b = mundoTiempo(THREE, true), r = F.semilla(4242);
+    for (const m of [a, b]) { m.W.cur.ms = m.W.meta.ms = ini; }
+    let vistas = 0, oscuro = 0;
+    for (let f = 0; f < 1600; f++) {
+      // cada ~200 fotogramas el tiempo previsto cambia (nubes, lluvia, viento, helada, niebla) y la cámara y la calma también
+      if (f % 200 === 0) {
+        const q = { nub: r() * 100, viento: r() * 9, dir: r() * 360, lluvia: r() < 0.4 ? r() * 5 : 0, hr: 40 + r() * 60, temp: -3 + r() * 30 };
+        for (const m of [a, b]) Object.assign(m.W.meta, q, { ms: m.W.meta.ms + (f % 600 === 0 ? 3600000 : 0) });
+      }
+      const dt = 0.004 + r() * 0.06, cam = [(r() - 0.5) * 900, 5 + r() * 300, (r() - 0.5) * 900], calma = f % 500 > 420;
+      for (const m of [a, b]) { m.W.camera.position.set(cam[0], cam[1], cam[2]); m.W.camera.lookAt(0, 0, 0); m.W.camera.updateMatrixWorld(true); m.api.calma(calma); m.W.cur.ms += 15000; m.W.meta.ms += 15000; }
+      a.api.act(dt); b.api.act(dt);
+      const fa = fotoTiempo(a), fb = fotoTiempo(b);
+      assert.deepStrictEqual(fb, fa, "fotograma " + f + ": el tiempo de ahora difiere del de antes");
+      if (fa.draw[1] > 0) vistas++; if (fa.sol[2] < 0.2) oscuro++;
+    }
+    assert.ok(vistas > 300, "la prueba pinta nubes en bastantes fotogramas (" + vistas + ")");
+  });
+}

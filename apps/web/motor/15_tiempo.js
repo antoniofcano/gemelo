@@ -205,16 +205,23 @@
     var me = new THREE.Mesh(g, m); me.name = "nubes"; me.frustumCulled = false; me.renderOrder = -1; gCielo.add(me);
     return me;
   })();
-  var nubesOrden = [], vTmp = new THREE.Vector3();
+  // AG-1.4c: las manchas son un banco de NSP entradas reutilizadas (antes, un objeto nuevo por mancha y fotograma), el orden es el mismo (sort estable, mismo comparador)
+  var nubesOrden = [], vTmp = new THREE.Vector3(), nubesBanco = [];
+  (function () { for (var i = 0; i < NSP; i++) nubesBanco.push({ s: null, gr: null, x: 0, y: 0, z: 0, d: 0 }); })();
+  function cmpNubes(a, b) { return b.d - a.d; }
   function pintaNubes() {   // las manchas con opacidad, de la más lejana a la más cercana a la cámara, en los buffers de la malla
-    var G = nubesMalla.geometry, P = G.attributes.position.array, T = G.attributes.tam.array, A = G.attributes.alfa.array, n = 0;
+    var G = nubesMalla.geometry, P = G.attributes.position.array, T = G.attributes.tam.array, A = G.attributes.alfa.array, n = 0, i, j, v, k, gr, sp, q;
     nubesOrden.length = 0;
-    NUBES.forEach(function (gr) { if (gr.o > 0) gr.sp.forEach(function (s) { vTmp.copy(gr.position).add(s.p); nubesOrden.push({ s: s, gr: gr, x: vTmp.x, y: vTmp.y, z: vTmp.z, d: vTmp.distanceToSquared(camera.position) }); }); });
-    nubesOrden.sort(function (a, b) { return b.d - a.d; });
-    nubesOrden.forEach(function (q) {
-      for (var v = 0; v < 4; v++) { var k = n * 4 + v; P[k * 3] = q.x; P[k * 3 + 1] = q.y; P[k * 3 + 2] = q.z; T[k * 2] = q.s.sx; T[k * 2 + 1] = q.s.sy; A[k] = q.gr.o; }
+    for (i = 0; i < NUBES.length; i++) {
+      gr = NUBES[i]; if (!(gr.o > 0)) continue; sp = gr.sp;
+      for (j = 0; j < sp.length; j++) { vTmp.copy(gr.position).add(sp[j].p); q = nubesBanco[nubesOrden.length]; q.s = sp[j]; q.gr = gr; q.x = vTmp.x; q.y = vTmp.y; q.z = vTmp.z; q.d = vTmp.distanceToSquared(camera.position); nubesOrden.push(q); }
+    }
+    nubesOrden.sort(cmpNubes);   // reserva-ok: el sort interno de V8 (sin cierre ni objetos nuevos por nuestra parte); es estable, como antes
+    for (i = 0; i < nubesOrden.length; i++) {
+      q = nubesOrden[i];
+      for (v = 0; v < 4; v++) { k = n * 4 + v; P[k * 3] = q.x; P[k * 3 + 1] = q.y; P[k * 3 + 2] = q.z; T[k * 2] = q.s.sx; T[k * 2 + 1] = q.s.sy; A[k] = q.gr.o; }
       n++;
-    });
+    }
     G.attributes.position.needsUpdate = G.attributes.tam.needsUpdate = G.attributes.alfa.needsUpdate = true;
     G.setDrawRange(0, n * 6); nubesMalla.visible = n > 0;
   }
@@ -273,33 +280,51 @@
   var tMundo = 0, lluviaVis = 0, ins = { t: 1, txt: "" }, vFlecha = new THREE.Vector3();
   function nivel(ms) { return nivelEn(ms, { s: { alt: 0, az: 0 }, d: 0 }); }   // la de siempre (reserva el resultado); lo que corre por fotograma usa nivelEn
   var lvT = { s: { alt: 0, az: 0 }, d: 0 };   // el nivel del sol de actualizaTiempo, el mismo objeto cada fotograma (AG-1.4b)
+  // AG-1.4c: los temporales de actualizaTiempo (antes, un Vector3 y ocho Color nuevos por fotograma). scene.background pasa a ser siempre cCielo (se reescribe entero cada fotograma).
+  var vDirS = new THREE.Vector3(), cDia = new THREE.Color(), cNoche = new THREE.Color(0x070b18), cOcaso = new THREE.Color(0xc77b4e), cGris = new THREE.Color(), cCielo = new THREE.Color();
+  var cTinta = new THREE.Color(), cTintaGris = new THREE.Color(0x6e747b), cLuz = new THREE.Color(), CLAVES_TIEMPO = ["nub", "viento", "lluvia", "hr", "temp"];
   function lerpN(a, b, t) { return a + (b - a) * t; }
   function angDif(a, b) { var d = ((b - a + 540) % 360) - 180; return d; }
+  // la chapita del visor, a 4 Hz como mucho (no por fotograma; AG-1.4c la saca de actualizaTiempo, que queda sin reservas)
+  function chapitaTiempo(vxS, vzS) {
+      // la flecha apunta a DE DÓNDE VIENE el viento (como lo da Vigía y como las fichas del tiempo), respecto a hacia dónde mira la cámara
+    // (vale en la vista aérea, a pie, en quad y en dron: se mira la cámara, no la órbita)
+    ins.t = 0; camera.getWorldDirection(vFlecha); var lf = Math.hypot(vFlecha.x, vFlecha.z) || 1, fw = [vFlecha.x / lf, vFlecha.z / lf], rg = [-fw[1], fw[0]];
+    var ang = Math.atan2(-vxS * rg[0] - vzS * rg[1], -vxS * fw[0] - vzS * fw[1]) * 180 / Math.PI;
+    $("tFlecha").style.transform = "rotate(" + ang.toFixed(0) + "deg)"; $("tFlecha").style.opacity = cur.viento < 0.3 ? 0.25 : 1;
+    // temperatura, cielo (deducido) y viento del momento que ves; «simulado» si no hay datos de Vigía (los efectos de ejemplo ya lo dicen en la ventana)
+    var cie = TiempoPuro.cielo(meta.nub, meta.lluvia, meta.hr) || "cielo sin dato";
+    var txt = fmtHora.format(new Date(cur.ms)) + " · " + num1(cur.temp, 0) + " °C · " + (cur.temp <= 0 ? "helada · " : "") + cie + " · " + (cur.viento < 0.3 ? "calma" : "viento del " + rumbo(cur.dir) + " " + num1(cur.viento, 1) + " m/s") +
+      (TM.demo ? " · ejemplo" : TM.origen === "simulado" ? " · simulado" : TM.origen === "fixture" ? " · prueba" : "");
+    if (txt !== ins.txt) {
+      ins.txt = txt; $("tInsT").textContent = txt;
+      $("tIns").setAttribute("aria-label", "El tiempo: " + txt + ". Abre la ventana del tiempo");
+    }
+  }
   function actualizaTiempo(dt, tms) {
     var k = Math.min(1, dt * 3.2);
     if (Math.abs(meta.ms - cur.ms) > 2 * 86400000) cur.ms = meta.ms;   // un cambio de fecha (la estación) es un salto, no un viaje en el tiempo
     cur.ms += (meta.ms - cur.ms) * Math.min(1, dt * 4); if (Math.abs(meta.ms - cur.ms) < 2000) cur.ms = meta.ms;
-    ["nub", "viento", "lluvia", "hr", "temp"].forEach(function (c) { cur[c] += (meta[c] - cur[c]) * k; });
+    for (var ci = 0; ci < CLAVES_TIEMPO.length; ci++) { var cl = CLAVES_TIEMPO[ci]; cur[cl] += (meta[cl] - cur[cl]) * k; }
     cur.dir = (cur.dir + angDif(cur.dir, meta.dir) * k + 360) % 360;
     tMundo += calma ? 0 : dt;
     var lv = nivelEn(cur.ms, lvT), alt = lv.s.alt, d = lv.d, nub = cur.nub / 100, oc = 1 - 0.55 * nub - 0.2 * Math.min(1, cur.lluvia / 3);
     // sol: dirección y color
-    var dirS = new THREE.Vector3(Math.sin(lv.s.az) * Math.cos(alt), Math.sin(alt), -Math.cos(lv.s.az) * Math.cos(alt));
+    var dirS = vDirS.set(Math.sin(lv.s.az) * Math.cos(alt), Math.sin(alt), -Math.cos(lv.s.az) * Math.cos(alt));
     sol.position.copy(dirS).multiplyScalar(300); if (alt < 0.02) sol.position.y = 6;
     var bajo = Math.max(0, Math.min(1, 1 - Math.sin(alt) / 0.35)), noc = 1 - d;   // bajo: 1 = sol rasante · noc: 1 = noche cerrada
     sol.color.setRGB(1, 0.94 - 0.38 * bajo, 0.82 - 0.58 * bajo, SRGB);
     sol.intensity = (0.08 + 0.85 * d * (1 - 0.8 * nub)) * LUZ_SOL;
     hemi.intensity = (0.2 + 0.7 * d * (0.55 + 0.45 * oc)) * LUZ_CIELO;
     // cielo y niebla
-    var dia = cieloBase.clone(), noche = new THREE.Color(0x070b18), ocaso = new THREE.Color(0xc77b4e), gris = new THREE.Color(0x8a8f94);
-    var c = noche.clone().lerp(dia, d); if (bajo > 0 && d > 0.02) c.lerp(ocaso, 0.8 * bajo * Math.min(1, d * 2.5) * (1 - 0.7 * nub)); c.lerp(gris.multiplyScalar(0.25 + 0.75 * d), 0.55 * nub);
+    var c = cCielo.copy(cNoche).lerp(cDia.copy(cieloBase), d); if (bajo > 0 && d > 0.02) c.lerp(cOcaso, 0.8 * bajo * Math.min(1, d * 2.5) * (1 - 0.7 * nub)); c.lerp(cGris.setHex(0x8a8f94).multiplyScalar(0.25 + 0.75 * d), 0.55 * nub);
     scene.background = c; if (scene.fog) {
       scene.fog.color.copy(c); var h = Math.max(0, Math.min(1, (cur.hr - 70) / 30));
       scene.fog.near = lerpN(FOG0, 15, h * h); scene.fog.far = lerpN(FOG1, 260, h) * (1 - 0.35 * Math.min(1, cur.lluvia / 4));
     }
     // luz de lo que no se ilumina (follaje en puntos, nube de puntos, ortofoto): el mismo ciclo de día y noche
     var f = 0.2 + 0.8 * d * (0.7 + 0.3 * oc), r = Math.min(1, f * (1 + 0.1 * bajo - 0.22 * noc)), gc = f * (1 - 0.1 * bajo - 0.1 * noc), bc = Math.min(1, f * (1 - 0.3 * bajo + 0.28 * noc));
-    [matHojaG, matHojaP, matCorteza, nube.material, matOrto].forEach(function (m) { m.color.setRGB(r, gc, bc, SRGB); });
+    matHojaG.color.setRGB(r, gc, bc, SRGB); matHojaP.color.setRGB(r, gc, bc, SRGB); matCorteza.color.setRGB(r, gc, bc, SRGB); nube.material.color.setRGB(r, gc, bc, SRGB); matOrto.color.setRGB(r, gc, bc, SRGB);
     matSuelo.color.setRGB(1 - 0.18 * Math.min(1, cur.lluvia / 2), 1 - 0.14 * Math.min(1, cur.lluvia / 2), 1 - 0.1 * Math.min(1, cur.lluvia / 2), SRGB);
     // sombras de las nubes: avanzan con el viento y se ven desde arriba, que es desde donde se mira el gemelo
     var rad0 = Math.PI / 180, vxS = -Math.sin(cur.dir * rad0), vzS = Math.cos(cur.dir * rad0), velS = calma ? 0 : 3 + cur.viento * 5;
@@ -313,14 +338,15 @@
     estrellas.position.copy(camera.position); estrellas.material.opacity = Math.max(0, Math.min(1, (-Math.sin(alt) - 0.02) * 8)) * (1 - nub);
     // nubes: tantas como diga la nubosidad; derivan hacia donde sopla el viento (más deprisa de lo real, para que se vea)
     var rad = Math.PI / 180, vx = -Math.sin(cur.dir * rad), vz = Math.cos(cur.dir * rad), vel = calma ? 0 : 3 + cur.viento * 5;
-    var tinta = new THREE.Color(1, 1, 1).lerp(new THREE.Color(0x6e747b), Math.min(1, cur.lluvia / 2.5) * 0.9 + 0.1 * nub);
-    var luz = new THREE.Color().setRGB(r * (0.55 + 0.6 * d), gc * (0.55 + 0.6 * d), bc * (0.55 + 0.6 * d), SRGB);
-    NUBES.forEach(function (g) {
+    var tinta = cTinta.setRGB(1, 1, 1).lerp(cTintaGris, Math.min(1, cur.lluvia / 2.5) * 0.9 + 0.1 * nub);
+    var luz = cLuz.setRGB(r * (0.55 + 0.6 * d), gc * (0.55 + 0.6 * d), bc * (0.55 + 0.6 * d), SRGB);
+    for (var gi = 0; gi < NUBES.length; gi++) {
+      var g = NUBES[gi];
       g.position.x += vx * vel * dt; g.position.z += vz * vel * dt;
       if (g.position.x > 1300) g.position.x -= 2600; else if (g.position.x < -1300) g.position.x += 2600;
       if (g.position.z > 1100) g.position.z -= 2200; else if (g.position.z < -1100) g.position.z += 2200;
       g.o = nub > g.umbral ? Math.min(1, (nub - g.umbral) * 14) * (0.35 + 0.55 * nub) : 0;
-    });
+    }
     nubesMalla.material.uniforms.diffuse.value.copy(tinta).multiply(luz); pintaNubes();
     // viento sobre el follaje
     var amp = calma ? 0 : Math.min(0.5, 0.03 + 0.1 * cur.viento);
@@ -330,21 +356,7 @@
     lluvia.visible = lluviaVis > 0.02 && inten > 0.02; lluvia.position.set(objetivo.x, objetivo.y - 20, objetivo.z);
     uLluvia.uT.value = tMundo; uLluvia.uInt.value = inten * lluviaVis; uLluvia.uViento.value.set(vx * Math.min(1, cur.viento / 6), vz * Math.min(1, cur.viento / 6)); uLluvia.uColor.value.setRGB(0.4 + 0.5 * d, 0.5 + 0.45 * d, 0.6 + 0.35 * d, SRGB);
     // la chapita del visor: hora, temperatura, nubes y viento, con la flecha de dónde viene el viento respecto a cómo miras
-    ins.t += dt; if (ins.t > 0.25) {
-      // la flecha apunta a DE DÓNDE VIENE el viento (como lo da Vigía y como las fichas del tiempo), respecto a hacia dónde mira la cámara
-      // (vale en la vista aérea, a pie, en quad y en dron: se mira la cámara, no la órbita)
-      ins.t = 0; camera.getWorldDirection(vFlecha); var lf = Math.hypot(vFlecha.x, vFlecha.z) || 1, fw = [vFlecha.x / lf, vFlecha.z / lf], rg = [-fw[1], fw[0]];
-      var ang = Math.atan2(-vxS * rg[0] - vzS * rg[1], -vxS * fw[0] - vzS * fw[1]) * 180 / Math.PI;
-      $("tFlecha").style.transform = "rotate(" + ang.toFixed(0) + "deg)"; $("tFlecha").style.opacity = cur.viento < 0.3 ? 0.25 : 1;
-      // temperatura, cielo (deducido) y viento del momento que ves; «simulado» si no hay datos de Vigía (los efectos de ejemplo ya lo dicen en la ventana)
-      var cie = TiempoPuro.cielo(meta.nub, meta.lluvia, meta.hr) || "cielo sin dato";
-      var txt = fmtHora.format(new Date(cur.ms)) + " · " + num1(cur.temp, 0) + " °C · " + (cur.temp <= 0 ? "helada · " : "") + cie + " · " + (cur.viento < 0.3 ? "calma" : "viento del " + rumbo(cur.dir) + " " + num1(cur.viento, 1) + " m/s") +
-        (TM.demo ? " · ejemplo" : TM.origen === "simulado" ? " · simulado" : TM.origen === "fixture" ? " · prueba" : "");
-      if (txt !== ins.txt) {
-        ins.txt = txt; $("tInsT").textContent = txt;
-        $("tIns").setAttribute("aria-label", "El tiempo: " + txt + ". Abre la ventana del tiempo");
-      }
-    }
+    ins.t += dt; if (ins.t > 0.25) chapitaTiempo(vxS, vzS);
     // la barrera de la linde (Tron) late
     uBarrera.uT.value = tMundo;
   }
