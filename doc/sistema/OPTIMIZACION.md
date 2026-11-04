@@ -41,6 +41,16 @@ Quest Browser 154, Hituelo, modo gemelo, VR, versión 0.2.0, perfil final **3** 
 5. **Diagnóstico:** si la GPU va saturada y la CPU holgada, se actúa sobre resolución, foveación, triángulos y tilesets; si manda el JS, sobre los componentes por fotograma y la basura.
 6. **Una sola variable por prueba**, al menos tres repeticiones, y se anota el ruido.
 
+### Guía de bolsillo para la sesión en el Quest (Q0a, 👤)
+Unos 25 minutos, con el casco cargado y sin otras pestañas. `<URL>` es la dirección del gemelo en el servidor; los resultados se pegan en MEDIDAS sin datos personales.
+1. **Anota el aparato** (Quest 2 o 3, versión del navegador y del firmware) y abre el OVR Metrics Tool si lo tienes.
+2. **Serie A, valor por defecto:** `<URL>/finca/?debug&mide=60`. Entra en VR, ponte en el mismo punto de partida y quédate 60 s quieto mirando al campo (escenario «lejos»); copia el informe de `?mide`. Repite en tres.
+3. **Serie B, sin olivos generados:** `<URL>/finca/?debug&mide=60&olivos=0`, mismo punto y mismos 60 s. Es la que separa lo que cuestan los olivos generados.
+4. **Paseo:** repite A paseando 5 minutos por el mismo recorrido (elige uno y anótalo); el informe de `?mide` cubre 60 s, así que lánzalo al empezar el tramo central.
+5. **Apunta con cada medida** la línea «VR: …» del informe (perillas y nivel de `VR_PERFILES`), la hora y si había otras personas conectadas. Sin esa línea la medida no se compara.
+6. **Una sola variable por vez.** Si una prueba sale rara (tirón, alerta de temperatura), repítela antes de sacar conclusiones.
+7. **Comodidad:** anota si marea o se ve borroso con cada serie. Lo que no probaste se queda como «no probado».
+
 ## Cómo decidir
 | Si la medida dice… | Se prueba primero… |
 |---|---|
