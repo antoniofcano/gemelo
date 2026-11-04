@@ -223,6 +223,8 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 
 
 ### Corregido
+- El aviso «Non uniform scale used for tile» de 3DTilesRendererJS (exageración vertical, unos 78 por segundo en consola) sale ahora una sola vez; el resto de `console.warn` no cambia y la escena se dibuja igual. Con exageración distinta de 1 la librería avisa de que el error de pantalla que usa para elegir teselas es aproximado: cuánto afecta **no está medido**.
+- Accesibilidad: los campos de formulario que creaba el motor sin `id` ni `name` (ajustes, chat de la visita, personalización, sala guiada) ya llevan uno, y un guardián impide los nuevos. Pendiente: el panel de la oficina (`39_oficina_mundo.js`). No probado con lector de pantalla ni con el autorrelleno de Chrome.
 - La Configuración del visor (pestañas, alto contraste, brújula, texto mayor, movimiento reducido) ya no depende de un `<style>` creado por el motor, que la CSP estricta bloquearía al imponerla; sus reglas viven en `plantilla.css`.
 - «Entrar con mi llave» de la pantalla de entrada de la oficina no llegaba a la api (decía «Esa llave no sirve aquí» sin intentarlo); ahora hace la ceremonia. Probado en Chrome sin pantalla con autenticador virtual y, ya desplegado, en un iPhone 17 Pro (entró con una llave que ya tenía; el alta de una llave nueva en iPhone no se probó, 2026-11-04); no probado en Quest, Windows Hello, Android ni con lector de pantalla.
 ### Cambiado
