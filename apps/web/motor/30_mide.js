@@ -150,6 +150,8 @@
         if (VRX.on || (!VRX.soporta && !VRX.entrando && ahora - tArma > 4000)) empieza(tIni); else return;
       }
       if (estado !== "midiendo") return;
+      // Q0f: si cambia de pantalla a VR (o al revés) a mitad, vuelve a empezar en el modo nuevo; así «Medir» en el mapa y luego entrar en VR da una medida de VR entera
+      if (modoIni !== modoAhora()) { empieza(tIni); return; }
       var t = (tIni - t0) / 1000, nv = nivelAhora();
       if (t >= MideEst.CALENTAMIENTO && nivIni === null) nivIni = nv === null ? -1 : nv;
       if (nvPrev !== -2 && nv !== nvPrev && t >= MideEst.CALENTAMIENTO) cambios.push({ t: t - MideEst.CALENTAMIENTO, de: nvPrev === null ? -1 : nvPrev, a: nv === null ? -1 : nv });

@@ -258,3 +258,11 @@ test("en Chrome con WebXR simulado (opcional, GEMELO_VR=1): &mide=5 empieza al e
   assert.ok(r.d.panel, "al terminar el panel vuelve con la tarjeta");
   await c.p.close();
 });
+
+test("Q0f: si la medida cambia de pantalla a VR (o al revés) a mitad, vuelve a empezar en el modo nuevo (nunca una medida mixta)", () => {
+  // visto el 2026-11-04: «Medir» en el mapa y luego entrar en VR daba una medida de «pantalla» sin nivel ni perillas (medidas 13 y 14)
+  const F = lee("apps/web/motor/30_mide.js"), i = F.indexOf("function fotograma(tIni)"), cuerpo = F.slice(i, F.indexOf("function termina()", i));
+  assert.match(cuerpo, /if \(estado !== "midiendo"\) return;\s*\/\/ Q0f[^\n]*\n\s*if \(modoIni !== modoAhora\(\)\) \{ empieza\(tIni\); return; \}/, "antes de contar el fotograma, el cambio de modo reinicia");
+  assert.match(F, /function empieza\(tIni\) \{\s*t0 = tIni; m = \{ t: \[\], ms: \[\], js: \[\]/, "empezar vacía la serie");
+  assert.match(F, /modoIni = modoAhora\(\)/, "y apunta el modo nuevo");
+});
