@@ -814,5 +814,6 @@
     }
     return { escalera: function () { return ESCALERA; }, modoGen: function () { return MODO; }, lejanos: paraLejanos, activo: function () { return estado === "activo"; }, actualiza: actualiza, paso: paso, gastado: function () { return gastado; }, pendientes: pendientes, rotulo: rotulo, piezas: piezas, estado: function () { return estado; },
       _prueba: { fecha: function (f) { fechaPrueba = f; }, mats: function () { return mats; }, prof: function () { return prof; }, uFun: uFun, lote: function () { return lote; }, tiene: tiene, fase: fase, listos: function () { return listos; }, saliendo: function () { return saliendo; }, recetas: function () { return recetas; },
-        uBanda: uBanda, bandas: function () { return bandas; }, lejRanura: function () { return lejRanura; }, enLote: function () { return enLote; }, selLote: function () { return selLote; } } };
+        uBanda: uBanda, bandas: function () { return bandas; }, lejRanura: function () { return lejRanura; }, enLote: function () { return enLote; }, selLote: function () { return selLote; },
+        construye: function (items) { return construyeG(items); }, elementos: function (fija) { return elementos(fija); } } };   // AG-1.5a: pruebas/olivo/lote_tramos.mjs mide los tramos entre yield
   })();
