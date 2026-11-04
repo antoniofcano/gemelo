@@ -111,9 +111,15 @@
       }
       p2.needsUpdate = true;
     });
-    // las esferas, DESPUÉS de escribir vértices e instancias con la exageración puesta (three solo las calcula si valen null): se recortan sin perder nada
-    geoCable.computeBoundingSphere(); cablesDer.forEach(function (c) { c.g.computeBoundingSphere(); });
-    iTronco.computeBoundingSphere(); iBlob.forEach(function (m) { m.computeBoundingSphere(); }); arroyos.forEach(function (ar) { ar.geo.computeBoundingSphere(); });
+    // las esferas, DESPUÉS de escribir vértices e instancias con la exageración puesta (three solo las calcula si valen null): se recortan sin perder nada.
+    // Una geometría con vértices no finitos (un cauce sin anchura, como el del fixture) no se recorta, como antes: three avisaría con un error por cada cálculo
+    function esferaSegura(g) {
+      var a = g.attributes.position.array, ok = true, q;
+      for (q = 0; q < a.length; q++) if (!isFinite(a[q])) { ok = false; break; }
+      if (ok) g.computeBoundingSphere(); else g.boundingSphere = new THREE.Sphere(new THREE.Vector3(), Infinity);
+    }
+    esferaSegura(geoCable); cablesDer.forEach(function (c) { esferaSegura(c.g); });
+    iTronco.computeBoundingSphere(); iBlob.forEach(function (m) { m.computeBoundingSphere(); }); arroyos.forEach(function (ar) { esferaSegura(ar.geo); });
     sombrasSol(true);
   }
 

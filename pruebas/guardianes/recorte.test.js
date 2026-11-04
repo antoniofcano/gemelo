@@ -57,7 +57,7 @@ const PAISAJE = {
   arroyo: { ejes: [[[-50, -80, 0, 3], [-20, -60, 0, 4], [10, -40, 0, 3], [40, -10, 0, 2]], [[200, 200, 0, 2], [210, 230, 0, 2], [205, 260, 0, 3]]] },
   arboles: [{ x: 30, y: -30, h: 8, r: 3, tipo: "encina" }, { x: -60, y: 70, h: 3, r: 2, tipo: "arbusto" }, { x: 150, y: -120, h: 10, r: 4, tipo: "frutal" }]
 };
-function mundoPaisaje() {
+function mundoPaisaje(ejesExtra) {
   const sol = { alt: 0.8, az: 0.4 };
   const g = {
     THREE, D: { paisaje: JSON.parse(JSON.stringify(PAISAJE)) }, $: () => ({ checked: true, addEventListener() {} }), ESC_R8: 1,
@@ -66,6 +66,7 @@ function mundoPaisaje() {
     pon() {}, lista: [], lluvia: null, cur: { ms: 0, nub: 0, lluvia: 0, dir: 0, viento: 0 }, tMundo: 0, nivel: () => ({ s: { alt: sol.alt, az: sol.az }, d: 1 }), esfera: null, EST: { activa: false }
   };
   g.scene.add(g.gSombras);
+  if (ejesExtra) g.D.paisaje.arroyo.ejes.push(...ejesExtra);
   vm.runInContext("\"use strict\";\n" + lee("apps/web/motor/18_paisaje.js"), vm.createContext(g), { filename: "18_paisaje.js" });
   return { g, sol };
 }
@@ -90,6 +91,20 @@ test("18_paisaje: cables, árboles que no son olivos, cauces y sombras se recort
     contiene(sombra, "sombras con el sol bajo (exag " + e + ")");
     sol.alt = 0.8; sol.az = 0.4;
   }
+});
+
+test("18_paisaje: un cauce sin anchura (puntos [x, y], como el del fixture) no da una esfera NaN ni el error de three: no se recorta, como antes", () => {
+  const errores = [], antes = console.error; console.error = (...a) => errores.push(a.join(" "));
+  try {
+    const { g } = mundoPaisaje([[[0, 0], [10, 10], [20, 5]]]);   // el mundo de siempre, con un tercer cauce sin anchura
+    g.colocaPaisaje();
+    const cauces = []; g.scene.getObjectByName("paisaje").traverse(o => { if (o.material && o.material.isShaderMaterial && o.geometry.attributes.aV) cauces.push(o); });
+    const sinAncho = cauces.filter(o => !Number.isFinite(o.geometry.attributes.position.array[0]));
+    assert.ok(sinAncho.length >= 1, "el cauce sin anchura existe y tiene vértices no finitos");
+    for (const o of sinAncho) assert.strictEqual(o.geometry.boundingSphere.radius, Infinity, "su esfera es infinita: nunca se recorta");
+    for (const o of cauces.filter(c => !sinAncho.includes(c))) assert.ok(Number.isFinite(o.geometry.boundingSphere.radius), "los cauces con anchura siguen con su esfera ajustada");
+    assert.deepStrictEqual(errores, [], "three no emite 'Computed radius is NaN'");
+  } finally { console.error = antes; }
 });
 
 // ---------------------------------------------------------------- 39_oficina_mundo: las balizas oficiales (columna y bandera instanciadas)
