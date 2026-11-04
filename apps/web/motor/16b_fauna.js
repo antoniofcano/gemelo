@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
 // Consume: 01_datos (D), 02_mundo (copas, cIn), 02c_componentes (Componentes), 03_escena (scene, camera, exag), 07_follaje (matSombra, geoSombra),
-//   12_paseo (paseando), 15_tiempo (cur, nivel), 16_vida (tVida, enQuad, gFauna, esfera, altSuelo, mira, actualizaVida), 17_minimapa (Minimapa)
+//   12_paseo (paseando), 15_tiempo (nivelEn, cur), 16_vida (tVida, enQuad, gFauna, esfera, altSuelo, mira, actualizaVida), 17_minimapa (Minimapa)
 // ===============================================================================
   // ---------- la fauna del olivar (componente «fauna-olivar», ADR-0023, C10 segunda tanda): las aves (dos bandadas que dan vueltas de día, ocho posadas que se
   // espantan) y los seis conejos que pastan y huyen. Antes vivían en 16_vida.js y actualizaVida() las movía; ahora solo se registra (fase «mundo»). Se enteran de
@@ -38,25 +38,33 @@
     [mallaAveCuerpo, mallaAveAlas].forEach(function (im) { im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); im.frustumCulled = false; im.count = 0; im.visible = false; gFauna.add(im); });
     mallaAveCuerpo.name = "aves"; mallaAveAlas.name = "aves-alas";
     var aves = [], tmpAlaM = new THREE.Matrix4(), tmpAlaA = new THREE.Matrix4(), tmpAlaQ = new THREE.Quaternion(), tmpAlaP = new THREE.Vector3(), tmpAlaS = new THREE.Vector3(), EJE_Z = new THREE.Vector3(0, 0, 1);
-    function creaAve() { var g = new THREE.Group(); g.userData = { ang: 0, fase: Math.random() * 6.28 }; aves.push(g); return g; }
+    // sl = la casilla (instancia) que ocupó la última vez que se empacó y cpx…can = lo que se empacó entonces: si no cambia, la matriz que ya está en la malla vale (AG-1.4b)
+    function creaAve() { var g = new THREE.Group(); g.userData = { ang: 0, fase: Math.random() * 6.28, sl: -1, cpx: 0, cpy: 0, cpz: 0, crx: 0, cry: 0, crz: 0, csx: 0, csy: 0, csz: 0, can: 0 }; aves.push(g); return g; }
     function aleteo(g, quieta, rapido) { var u = g.userData; u.ang = quieta ? 0.05 : Math.sin(tVida * (rapido ? 22 : 15) + u.fase) * 0.85; }
+    var empN = -1;   // cuántas aves se empacaron la vez anterior
     function empacaAves() {   // las aves visibles, juntas en las dos mallas (una vez por fotograma)
-      var n = 0;
+      var n = 0, sucio = false;
       for (var i = 0; i < aves.length; i++) {
-        var g = aves[i]; if (!g.visible) continue;
-        g.updateMatrix(); mallaAveCuerpo.setMatrixAt(n, g.matrix);
-        for (var l = -1; l <= 1; l += 2) {   // l = -1 izquierda (espejo), 1 derecha; la bisagra gira l·(-ang) como antes (ai = +a, ad = -a)
-          tmpAlaQ.setFromAxisAngle(EJE_Z, -l * g.userData.ang); tmpAlaP.set(l * 0.05, 0.02, -0.02); tmpAlaS.set(l, 1, 1);
-          tmpAlaA.compose(tmpAlaP, tmpAlaQ, tmpAlaS); tmpAlaM.multiplyMatrices(g.matrix, tmpAlaA); mallaAveAlas.setMatrixAt(n * 2 + (l < 0 ? 0 : 1), tmpAlaM);
+        var g = aves[i], u = g.userData; if (!g.visible) { u.sl = -1; continue; }   // la que no se ve no se calcula, y pierde su casilla
+        var p = g.position, r = g.rotation, sc = g.scale;
+        // solo se recalcula la matriz del ave (y las de sus alas) si cambió algo desde la última vez que se empacó en esta misma casilla: las posadas, quietas, no cambian
+        if (u.sl !== n || u.cpx !== p.x || u.cpy !== p.y || u.cpz !== p.z || u.crx !== r.x || u.cry !== r.y || u.crz !== r.z || u.csx !== sc.x || u.csy !== sc.y || u.csz !== sc.z || u.can !== u.ang) {
+          u.sl = n; u.cpx = p.x; u.cpy = p.y; u.cpz = p.z; u.crx = r.x; u.cry = r.y; u.crz = r.z; u.csx = sc.x; u.csy = sc.y; u.csz = sc.z; u.can = u.ang; sucio = true;
+          g.updateMatrix(); mallaAveCuerpo.setMatrixAt(n, g.matrix);
+          for (var l = -1; l <= 1; l += 2) {   // l = -1 izquierda (espejo), 1 derecha; la bisagra gira l·(-ang) como antes (ai = +a, ad = -a)
+            tmpAlaQ.setFromAxisAngle(EJE_Z, -l * u.ang); tmpAlaP.set(l * 0.05, 0.02, -0.02); tmpAlaS.set(l, 1, 1);
+            tmpAlaA.compose(tmpAlaP, tmpAlaQ, tmpAlaS); tmpAlaM.multiplyMatrices(g.matrix, tmpAlaA); mallaAveAlas.setMatrixAt(n * 2 + (l < 0 ? 0 : 1), tmpAlaM);
+          }
         }
         n++;
       }
+      if (n !== empN) { empN = n; sucio = true; }
       mallaAveCuerpo.count = n; mallaAveAlas.count = n * 2; mallaAveCuerpo.visible = mallaAveAlas.visible = n > 0;   // vacía no se dibuja (three cuenta la llamada aunque no haya instancias)
-      mallaAveCuerpo.instanceMatrix.needsUpdate = true; mallaAveAlas.instanceMatrix.needsUpdate = true;
+      if (sucio) { mallaAveCuerpo.instanceMatrix.needsUpdate = true; mallaAveAlas.instanceMatrix.needsUpdate = true; }   // sin cambios, no se vuelve a subir el búfer
     }
     function disposaAves() { geoAveCuerpo.dispose(); geoAla.dispose(); matAveInst.dispose(); matAla.dispose(); mallaAveCuerpo.dispose(); mallaAveAlas.dispose(); gFauna.remove(mallaAveCuerpo); gFauna.remove(mallaAveAlas); }
     function escalaVista(g, base) { var d = camera.position.distanceTo(g.position); g.scale.setScalar(base * Math.max(1, Math.min(9, d / 60))); }
-    var bandada = [], BANDADAS = [{ a: 320, b: 150, w: 0.11, h: 38, ph: 0 }, { a: 210, b: 260, w: -0.085, h: 55, ph: 2.4 }];
+    var bandada = [], bC = [0, 0], bS = [0, 0], bHx = [0, 0], bHy = [0, 0], bRz = [0, 0], BANDADAS = [{ a: 320, b: 150, w: 0.11, h: 38, ph: 0 }, { a: 210, b: 260, w: -0.085, h: 55, ph: 2.4 }];
     BANDADAS.forEach(function (b, k) { for (var i = 0; i < 7; i++) { var g = creaAve(); g.userData.b = k; g.userData.of = [(Math.random() - 0.5) * 26, (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 26]; g.userData.fx = 0.5 + Math.random(); bandada.push(g); } });
     var posadas = [];
     for (var ip = 0; ip < 8; ip++) { var av0 = creaAve(); av0.visible = false; av0.userData.est = "fuera"; av0.userData.t = 0; posadas.push(av0); }
@@ -68,9 +76,29 @@
       esfera(0.05, matConejoB, 1, 1, 1, 0, 0.23, 0.27, g);
       var orejas = [-1, 1].map(function (l) { var o = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.2, 0.02), matOreja); o.position.set(l * 0.045, 0.52, -0.25); g.add(o); return o; });
       var sb = new THREE.Mesh(geoSombra, matSombra); sb.scale.set(0.8, 1, 0.8); sb.position.y = 0.03; g.add(sb);
-      g.userData = { cab: cab, orejas: orejas, est: "fuera", t: 0, x: 0, y: 0, dir: 0, fase: Math.random() * 6 }; g.visible = false; gFauna.add(g); return g;
+      g.userData = { cab: cab, orejas: orejas, est: "fuera", t: 0, x: 0, y: 0, dir: 0, fase: Math.random() * 6, ax: 1e30, ay: 1e30, cerca: [] }; g.visible = false; gFauna.add(g); return g;
     }
     var conejos = []; for (var ic = 0; ic < 6; ic++) conejos.push(creaConejo());
+    // ¿la distancia (dx, dy) supera / no llega a r? Igual que Math.hypot(dx, dy) > r, pero sin hypot (lento) salvo en el filo del umbral, donde sí lo usa
+    function mayorQue(dx, dy, r) { var s = dx * dx + dy * dy, r2 = r * r; if (s > r2 * 1.000001) return true; if (s < r2 * 0.999999) return false; return Math.hypot(dx, dy) > r; }
+    function menorQue(dx, dy, r) { var s = dx * dx + dy * dy, r2 = r * r; if (s > r2 * 1.000001) return false; if (s < r2 * 0.999999) return true; return Math.hypot(dx, dy) < r; }
+    // Los olivos contra los que choca un conejo. Antes se recorrían todas las copas por conejo y fotograma; ahora cada conejo guarda los olivos (en el orden de
+    // siempre) que pueden empujarlo mientras no se aleje CERCA_M m del punto donde se hizo el recuento: los que están a CERCA_M + 0,5 m de ese punto, más, por
+    // cadena, los que están a 1 m o menos de uno ya incluido (un empujón deja al conejo a 0,5 m de ese olivo; el siguiente que lo empuje está a ≤ 1 m del primero).
+    // Con eso el resultado es idéntico al de recorrerlos todos.
+    var CERCA_M = 4, olivas = copas.filter(function (c) { return c.oliv; }), incluido = new Uint8Array(olivas.length), pend = new Int32Array(olivas.length);
+    function reconstruyeCerca(u, ax, ay) {
+      var no = olivas.length, nc = 0, i, j, q, c, r = CERCA_M + 0.5 + 1e-6, L = u.cerca;
+      incluido.fill(0);
+      for (i = 0; i < no; i++) { c = olivas[i]; if (Math.abs(c.x - ax) <= r && Math.abs(c.y - ay) <= r) { incluido[i] = 1; pend[nc++] = i; } }
+      for (q = 0; q < nc; q++) {
+        var cq = olivas[pend[q]];
+        for (j = 0; j < no; j++) { if (incluido[j]) continue; c = olivas[j]; if (Math.abs(c.x - cq.x) <= 1.000001 && Math.abs(c.y - cq.y) <= 1.000001) { incluido[j] = 1; pend[nc++] = j; } }
+      }
+      L.length = 0; for (i = 0; i < no; i++) if (incluido[i]) L.push(olivas[i]);
+      u.ax = ax; u.ay = ay;
+    }
+    var lvFauna = { s: { alt: 0, az: 0 }, d: 0 };   // la altura del astro en actualizaFauna, el mismo objeto cada fotograma
     var amq = { x: 0, y: 0, res: null };   // la pregunta «perros:amenaza» de cada conejo, el mismo objeto cada vez (AG-1.4)
     function arbolCerca(rmin, rmax) { for (var k = 0; k < 50; k++) { var c = cIn[(Math.random() * cIn.length) | 0], d = Math.hypot(c.x - pp.x, c.y - pp.y); if (d >= rmin && d <= rmax) return c; } return null; }
     function nacePosada(av) {
@@ -84,14 +112,20 @@
     }
 
       function actualizaFauna(dt) {
-        var lv = nivel(cur.ms), dia = lv.d, lluviosa = cur.lluvia > 1.5, vuelan = dia > 0.12 && !lluviosa;
+        var lv = nivelEn(cur.ms, lvFauna), dia = lv.d, lluviosa = cur.lluvia > 1.5, vuelan = dia > 0.12 && !lluviosa;
       // la bandada da vueltas sobre la finca, a la altura del terreno y con más prisa si hay viento
+      if (vuelan) {   // lo que es igual para todas las aves de una bandada (el ángulo, su coseno y su seno, la orientación y la inclinación) se calcula una vez por bandada
+        for (var kb = 0; kb < BANDADAS.length; kb++) {
+          var bb = BANDADAS[kb], th = bb.ph + bb.w * tVida * (1 + cur.viento * 0.05);
+          bC[kb] = Math.cos(th); bS[kb] = Math.sin(th); bHx[kb] = -bS[kb] * bb.a * bb.w; bHy[kb] = bC[kb] * bb.b * bb.w; bRz[kb] = Math.sign(bb.w) * -0.25;
+        }
+      }
       for (var ib = 0; ib < bandada.length; ib++) {
         var g = bandada[ib], u = g.userData, b = BANDADAS[u.b]; g.visible = vuelan;
         if (!vuelan) continue;
-        var th = b.ph + b.w * tVida * (1 + cur.viento * 0.05), x = Math.cos(th) * b.a + u.of[0], y = Math.sin(th) * b.b + u.of[2], hx = -Math.sin(th) * b.a * b.w, hy = Math.cos(th) * b.b * b.w;
+        var x = bC[u.b] * b.a + u.of[0], y = bS[u.b] * b.b + u.of[2];
         var alt = altSuelo(x, y) + b.h + u.of[1] + Math.sin(tVida * 0.9 * u.fx + u.fase) * 2.5;
-        g.position.set(x, alt, -y); mira(g, hx, -hy); g.rotation.z = Math.sign(b.w) * -0.25; aleteo(g, false, false); escalaVista(g, 1);
+        g.position.set(x, alt, -y); mira(g, bHx[u.b], -bHy[u.b]); g.rotation.z = bRz[u.b]; aleteo(g, false, false); escalaVista(g, 1);
       }
       if (!paseando) { empacaAves(); return; }
       var dq = enQuad ? 16 : 9;
@@ -99,9 +133,9 @@
       for (var ip2 = 0; ip2 < posadas.length; ip2++) {
         var a = posadas[ip2]; u = a.userData;
         if (u.est === "posada") {
-          var d = Math.hypot(u.cx - pp.x, u.cy - pp.y); a.visible = vuelan || dia > 0.02; aleteo(a, true);
-          if (d < dq) { u.est = "vuela"; u.t = 9; u.h = Math.atan2(u.cy - pp.y, u.cx - pp.x) + (Math.random() - 0.5) * 1.2; u.vy = 0; u.px = u.cx; u.py = u.cy; u.pz = a.position.y; }
-          else if (d > 120) nacePosada(a);
+          var dpx = u.cx - pp.x, dpy = u.cy - pp.y; a.visible = vuelan || dia > 0.02; aleteo(a, true);
+          if (menorQue(dpx, dpy, dq)) { u.est = "vuela"; u.t = 9; u.h = Math.atan2(u.cy - pp.y, u.cx - pp.x) + (Math.random() - 0.5) * 1.2; u.vy = 0; u.px = u.cx; u.py = u.cy; u.pz = a.position.y; }
+          else if (mayorQue(dpx, dpy, 120)) nacePosada(a);
         } else if (u.est === "vuela") {
           u.t -= dt; u.px += Math.cos(u.h) * 8 * dt; u.py += Math.sin(u.h) * 8 * dt; u.pz += Math.min(3.2, 7 - (u.pz - altSuelo(u.px, u.py))) * dt * 0.8;
           a.position.set(u.px, u.pz, -u.py); mira(a, Math.cos(u.h), -Math.sin(u.h)); a.rotation.x = -0.25; aleteo(a, false, true); a.scale.setScalar(1);
@@ -112,8 +146,7 @@
       for (var ic2 = 0; ic2 < conejos.length; ic2++) {
         var co = conejos[ic2]; u = co.userData;
         if (u.est === "fuera") { if (!naceConejo(co)) continue; }
-        var d = Math.hypot(u.x - pp.x, u.y - pp.y);
-        if (d > 120) { u.est = "fuera"; co.visible = false; continue; }
+        if (mayorQue(u.x - pp.x, u.y - pp.y, 120)) { u.est = "fuera"; co.visible = false; continue; }
         // la pregunta a los perros solo si aún no huye (si ya huye, su respuesta no se usaba): un solo objeto de pregunta reutilizado, no uno por conejo y fotograma
         var am = null; if (u.est !== "huye") { amq.x = u.x; amq.y = u.y; amq.res = null; n.emite("perros:amenaza", amq); am = amq.res; }
         if (am) { u.est = "huye"; u.t = 2 + Math.random() * 1.6; u.dir = Math.atan2(u.y - am.y, u.x - am.x) + (Math.random() - 0.5) * 1.0; }
@@ -121,12 +154,15 @@
         if (u.est === "huye") { vel = 6.5; u.t -= dt; if (u.t <= 0) { u.est = "pasta"; u.t = 1.5 + Math.random() * 2; } }
         else { u.t -= dt; if (u.t <= 0) { u.dir = Math.random() * 6.28; u.t = 1.2 + Math.random() * 2.4; u.salta = Math.random() < 0.55; } vel = u.salta ? 0.9 : 0; }
         var nx = u.x + Math.cos(u.dir) * vel * dt, ny = u.y + Math.sin(u.dir) * vel * dt;
-        for (var i = 0; i < copas.length; i++) { var c = copas[i]; if (!c.oliv) continue; var ex = nx - c.x, ey = ny - c.y; if (ex * ex + ey * ey < 0.5 * 0.5) { var dd = Math.sqrt(ex * ex + ey * ey) || 0.001; nx = c.x + ex / dd * 0.5; ny = c.y + ey / dd * 0.5; } }
+        // los olivos que lo empujan: solo los olivos de cerca (los de alrededor de donde estaba un rato antes), en el orden de siempre
+        if (Math.abs(nx - u.ax) > CERCA_M || Math.abs(ny - u.ay) > CERCA_M) reconstruyeCerca(u, nx, ny);
+        var cer = u.cerca;
+        for (var i = 0; i < cer.length; i++) { var c = cer[i]; var ex = nx - c.x, ey = ny - c.y; if (ex * ex + ey * ey < 0.5 * 0.5) { var dd = Math.sqrt(ex * ex + ey * ey) || 0.001; nx = c.x + ex / dd * 0.5; ny = c.y + ey / dd * 0.5; } }
         var e = D.ext; u.x = Math.max(e[0] + 3, Math.min(e[2] - 3, nx)); u.y = Math.max(e[3] + 3, Math.min(e[1] - 3, ny));
         u.fase += dt * (vel > 3 ? 15 : vel > 0 ? 8 : 2);
-        var salto = vel > 0 ? Math.abs(Math.sin(u.fase)) * (vel > 3 ? 0.3 : 0.1) : 0;
+        var salto = vel > 0 ? Math.abs(Math.sin(u.fase)) * (vel > 3 ? 0.3 : 0.1) : 0, sf13 = Math.abs(Math.sin(u.fase * 1.3));
         co.position.set(u.x, altSuelo(u.x, u.y) + salto, -u.y); co.rotation.y = Math.atan2(-Math.cos(u.dir), Math.sin(u.dir)); co.rotation.x = vel > 3 ? -Math.sin(u.fase) * 0.2 : 0;
-        u.cab.position.y = 0.32 + (vel > 0 ? 0 : -Math.abs(Math.sin(u.fase * 1.3)) * 0.07); u.cab.rotation.x = vel > 0 ? 0 : 0.5 * Math.abs(Math.sin(u.fase * 1.3));
+        u.cab.position.y = 0.32 + (vel > 0 ? 0 : -sf13 * 0.07); u.cab.rotation.x = vel > 0 ? 0 : 0.5 * sf13;
         for (var k = 0; k < u.orejas.length; k++) u.orejas[k].rotation.x = vel > 3 ? 0.9 : (u.est === "huye" ? 0.5 : 0.05 * Math.sin(u.fase * 0.7 + k));
         co.visible = true;
       }
@@ -162,7 +198,7 @@
   }
   Componentes.registra({
     id: "fauna-olivar", version: 1,
-    consume: ["scene", "camera", "D", "copas", "cIn", "geoSombra", "matSombra", "paseando", "pp", "cur", "nivel", "tVida", "enQuad", "gFauna", "altSuelo", "esfera", "mira", "exag", "Minimapa"],
+    consume: ["scene", "camera", "D", "copas", "cIn", "geoSombra", "matSombra", "paseando", "pp", "cur", "nivelEn", "tVida", "enQuad", "gFauna", "altSuelo", "esfera", "mira", "exag", "Minimapa"],
     expone: [],
     eventos: { escucha: ["paseo:entra", "paseo:sale", "fauna:conejo-cerca"], emite: ["perros:amenaza"] },
     bandera: { defecto: true, url: "fauna" },
