@@ -365,7 +365,7 @@
   }
   Componentes.registra({
     id: "medidor-fotogramas", version: 1,
-    consume: ["Aparato", "Cola", "Generados", "visor", "renderer", "modo", "D", "DEPURA", "ConfigPuro", "Ajustes", "Arboles", "Escena3D", "VRX", "PanelVR", "XrPerillas"],
+    consume: ["Aparato", "Cola", "Generados", "visor", "renderer", "modo", "D", "DEPURA", "ConfigPuro", "Ajustes", "Arboles", "Escena3D", "VRX", "PanelVR", "XrPerillas", "Render"],
     expone: [],
     eventos: { escucha: ["cuadro:fin", "depura:lineas", "medida:estado", "medida:envia", "medida:inicia", "medida:muestra"], emite: ["medida:empieza", "medida:envio", "medida:fin"] },
     bandera: { defecto: true, url: "medidor" },
