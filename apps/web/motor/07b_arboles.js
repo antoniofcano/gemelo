@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Arboles
-// Consume: 01_datos (FACTOR_R8), 01a_aparato (Aparato), 02_mundo (Mundo, suelo, copaAlta, kcor, tinte, aviva, copas), 02b_cola (Cola),
+// Consume: 01_datos (FACTOR_R8), 01a_aparato (Aparato), 02_mundo (Mundo, suelo, copaAlta, kcor, tinte, aviva, copas), 02b_cola (CargaPuro, Cola),
 //   02c_componentes (Config), 03_escena (renderer, camera, exag, modo, calidad), 04c_olivos_tiles (OlivosTiles), 04d_sombreado_tiles (hash),
 //   05_nube (ALTO_MAX, nube), 06_arboles (gArboles, tronco, arbolesG), 07_follaje (follajeG, construyeSombras), 07a_catalogo (Catalogo),
 //   07ab_generados (Escalera, Generados), 07ac_lejanos (Lejanos), 09_camara (objetivo, orb), 10_ndvi (ndviIdx), 12_paseo (paseando),
@@ -250,9 +250,11 @@
       if (forzar || sucio || ultima.exag !== exag || ultima.k !== k || (mueve && t > 0.25) || t > (paseando ? 0.7 : 1.5)) { t = 0; reclasifica(); }
     }
     function presupuesto() { return Math.max(0.5, presupuestoBase() - Generados.gastado()); }   // lo que ya gastaron los generados este fotograma, se descuenta
-    function presupuestoBase() {   // ms por fotograma para la cola: más si faltan olivos de nivel 0 en lo que se ve y el aparato va holgado
-      var justo = emaDt > 0.034; if (faltan > 0 && !justo) return paseando ? 8 : 12; return justo ? (paseando ? 3 : 4.5) : (paseando ? 3.5 : 6);
-    }
+    // AG-1.5: el reloj de carga es UNO por fotograma: lo de siempre (más si faltan olivos de nivel 0 y el aparato va holgado), recortado por el tope del
+    // aparato (Aparato.politica: cargaMs, y cargaMsVr dentro de una sesión inmersiva) y menos lo que el tileset gastó en el motor desde la última
+    // Cola.corre (Cola.deuda). De él salen la parte de los generados (Generados.paso) y el resto para la Cola. La regla, en CargaPuro.base (02b_cola: se prueba en Node)
+    var POL = Aparato.politica(), oBase = { emaDt: 0, faltan: 0, paseando: false, vr: false, pol: POL, deuda: 0 };   // oBase: el mismo objeto cada vez (sin basura por fotograma)
+    function presupuestoBase() { oBase.emaDt = emaDt; oBase.faltan = faltan; oBase.paseando = paseando; oBase.vr = Aparato.vr(); oBase.deuda = Cola.deuda(); return CargaPuro.base(oBase); }
     function perfil(p) { vrP = p || null; TOPE_TRI = p ? p.tri : TOPE_TRI0; sucio = true; }
     function resumen() {
       var r = { olivos: olivos.length, nivel0: nL0, nivel1: n1, nivel2: n2, celdas: Object.keys(celdas).length, construidas: Object.keys(celdas).filter(function (k) { return celdas[k].g; }).length, faltan: faltan, precarga: nPre, esc: +esc.toFixed(2), triEst: triEst, tiles: OlivosTiles.dibuja(), emaMs: +(emaDt * 1000).toFixed(1) };
