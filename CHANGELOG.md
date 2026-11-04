@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- La CSP (en Report-Only) admite WebAssembly con `'wasm-unsafe-eval'` en `script-src` de los dos Caddyfile, para el transcodificador Basis (KTX2) y meshopt; con su comprobación en `infra/probar-caddy.sh` y el guardián `csp_wasm.test.js` (EV-1f; sin desplegar).
 - El medidor de fotogramas reparte el JS del fotograma por bloque (cámara, tiempo, vida, suelo, Cola, escena 3D, componentes…): mediana y p95 de cada uno, ordenados por p95, más la suma, `render()` y «otros», en el informe de `?mide` y en una línea de la tarjeta de VR. Sin medir, el bucle no lee el reloj. Sin probar todavía en el Quest. (Q0h)
 - Multiview (ADR-0031, propuesto): **dos builds del mismo código**. La de VR usa super-three 0.185.0 con el multiview del renderizador clásico (`GEMELO_BUILD=vr` → `dist-vr/`, perilla `?xrmv=0|1`, por defecto 1); la de pantalla sigue con three 0.186.1. Un cargador externo elige build al abrir la página (el Quest, la de VR si está publicada; `?build=pantalla|vr` la fuerza; si la de VR falla, cae a la de pantalla) y `npm run build:publica` compone `finca/` y `finca/vr/assets/` con su `builds.json`. No probado en el Quest (F2a, F2c).
 - Multiview F1: fábrica única de materiales (`02i_materiales.js`, 22 materiales ya pasan por ella) con su guardián de trinquete, `InfoDibujo` que lee `renderer.info` igual en los dos renderizadores, arranque tolerante a `init()` y `?render=nuevo` reservado. Sin cambio visible; solo Node.
