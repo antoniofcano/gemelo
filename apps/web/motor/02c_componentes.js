@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: ComponentesPuro, Bus, Pausa, ConfigPuro, Teclas, Componentes, Config
-// Consume: 01_datos (D, $), 02b_cola (Cola), 08_marcadores (listo, aplica, capas), 09_camara (suelta, pon), 12_paseo (teclas),
-//   14_historia (tabla, lista), 15_tiempo (nivel, hace), 16_vida (quita), 28_depura (dep), 90_final (bucle)
+// Expone: ComponentesPuro, Reparto, Bus, Pausa, ConfigPuro, Teclas, Componentes, Config
+// Consume: 01_datos (D, $), 02b_cola (Cola), 08_marcadores (listo, aplica, capas), 09_camara (suelta, pon), 12_paseo (teclas, primera),
+//   14_historia (marca, tabla, lista), 15_tiempo (nivel, hace), 16_vida (quita), 28_depura (dep), 90_final (bucle)
 // Nota: Núcleo de componentes (ADR-0023): ComponentesPuro, Bus (catálogo en contratos/eventos.json), Teclas, Componentes (registro, encendido URL > servidor > defecto, fases del bucle) y Config (GET /api/config del mismo origen al cargar, solo con D.base /teselas/… o ?api=; caída al código; contratos/config.schema.json). Publica además window.__componentes y window.__config (pruebas y ?debug). El trozo [puro:…] lo evalúa en Node pruebas/guardianes/componentes.test.js.
 // ===============================================================================
   // ---------- núcleo de componentes (ADR-0023, doc/sistema/COMPONENTES.md §3): el registro, el bus de eventos y las teclas.
@@ -95,6 +95,16 @@
     // cuándo toca una fase con periodo: acumula dt; devuelve el dt acumulado si toca (y lo pone a cero) o −1
     function toca(est, periodo, dt) { est.acum += dt; if (est.acum < periodo) return -1; var a = est.acum; est.acum = 0; return a; }
     return { FASES: FASES, valida: valida, orden: orden, valorUrl: valorUrl, encendido: encendido, validaConfig: validaConfig, toca: toca };
+  })();
+
+  // Q0h: el reparto del JS por bloque dentro del fotograma. Sin medir (Reparto.on falso) el bucle no lee el reloj ni toca nada: cada medición es «if (rp) q = Reparto.pasa(bloque, q)» con rp leído una vez por fotograma.
+  // Midiendo (30_mide.js lo enciende), pasa() suma al bloque los ms desde la marca anterior en un Float64Array preasignado (sin reservas por fotograma). Los bloques se dan de alta una vez (reg) al montar o la primera vez que se miden.
+  var Reparto = (function () {
+    var MAX = 64, ms = new Float64Array(MAX), nom = [], r = { on: false, t: -1, ms: ms, nom: nom, n: 0, MAX: MAX, reg: reg, ini: ini, pasa: pasa };
+    function reg(nombre) { var i = nom.indexOf(nombre); if (i >= 0) return i; if (nom.length >= MAX) return MAX - 1; nom.push(nombre); r.n = nom.length; return nom.length - 1; }
+    function ini(t) { for (var i = 0; i < MAX; i++) ms[i] = 0; r.t = t; return performance.now(); }
+    function pasa(i, q) { var a = performance.now(); ms[i] += a - q; return a; }
+    return r;
   })();
 
   // el bus de eventos: Bus.on(evento, fn) → quita; Bus.emite(evento, datos); Bus.hay(evento) (¿alguien escucha?). Nombres «dominio:accion», todos en contratos/eventos.json
@@ -346,6 +356,7 @@
         var fn = c.def.actualiza && c.def.actualiza[fase]; if (!fn) continue;
         var per = c.def.fases[fase], d = dt;
         if (per > 0) { d = P.toca(c.est[fase], per, dt); if (d < 0) continue; }
+        if (Reparto.on) { if (c.rp === undefined) c.rp = Reparto.reg("c:" + c.def.id); var q = performance.now(); try { fn(d, t, c.api); } catch (e) { try { console.error("[Componentes] " + c.def.id + " en «" + fase + "»", e); } catch (e2) {} libera(c.def.id, "error en «" + fase + "»: " + (e && e.message || e)); } Reparto.pasa(c.rp, q); continue; }
         try { fn(d, t, c.api); } catch (e) { try { console.error("[Componentes] " + c.def.id + " en «" + fase + "»", e); } catch (e2) {} libera(c.def.id, "error en «" + fase + "»: " + (e && e.message || e)); }
       }
     }

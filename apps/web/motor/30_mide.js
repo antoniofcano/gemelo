@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos (D, $, DEPURA), 01a_aparato (Aparato), 02b_cola (Cola), 02c_componentes (Bus, ConfigPuro, Componentes),
+// Consume: 01_datos (D, $, DEPURA), 01a_aparato (Aparato), 02b_cola (Cola), 02c_componentes (Reparto, Bus, ConfigPuro, Componentes),
 //   02f_xr_perillas (XrPerillas), 02h_render (Render), 03_escena (visor, renderer, modo, calidad), 04b_escena3d (Escena3D),
 //   07ab_generados (Generados), 07b_arboles (Arboles), 08_marcadores (listo, capas), 12_paseo (persona), 14_historia (lista, rango),
 //   15_tiempo (nivel, hace), 29_vr (VRX, panel, PanelVR, VR_PERFILES), 33_ajustes (Ajustes), 90_final (cuadro, bucle)
@@ -21,17 +21,28 @@
     // (F0: rd = ms de renderer.render() dentro de js, opcional. Q0e: ll y tr son opcionales; una medida guardada de antes no los trae. Q0g: cz = bits de causa por fotograma, cq = ms de Cola y teselas; tambien opcionales)
     function calcula(m, calent, dur, umbral) {
       calent = calent == null ? CALENTAMIENTO : calent; umbral = umbral == null ? UMBRAL : umbral;
-      var ms = [], js = [], rd = [], rs = [], ll = [], tr = [], cz = [], cq = [], desc = { calentamiento: 0, ocultos: 0, despues: 0 }, i;
+      var ms = [], js = [], rd = [], rs = [], ll = [], tr = [], cz = [], cq = [], bl = [], suma = [], otr = [], desc = { calentamiento: 0, ocultos: 0, despues: 0 }, i;
       for (i = 0; i < m.t.length; i++) {
         if (m.t[i] < calent) { desc.calentamiento++; continue; }
         if (dur != null && m.t[i] >= calent + dur) { desc.despues++; continue; }
         if (m.oc && m.oc[i]) { desc.ocultos++; continue; }
         ms.push(m.ms[i]); js.push(m.js[i]);
         if (m.rd) { rd.push(m.rd[i]); rs.push(Math.max(0, m.js[i] - m.rd[i])); }   // F0: de los ms de JS, los de renderer.render() y el resto
+        if (m.bl && m.bl.length) {   // Q0h: el reparto del JS por bloque; la suma de bloques + render() + «otros» cuadra con el JS de cada fotograma
+          var sm = 0, k; for (k = 0; k < m.bl.length; k++) { var v = m.bl[k][i] || 0; (bl[k] || (bl[k] = [])).push(v); sm += v; }
+          suma.push(sm); otr.push(Math.max(0, m.js[i] - (m.rd ? m.rd[i] : 0) - sm));
+        }
         if (m.ll) ll.push(m.ll[i]); if (m.tr) tr.push(m.tr[i]); if (m.cz) { cz.push(m.cz[i]); cq.push(m.cq ? m.cq[i] : 0); }
       }
       var sobre = 0; for (i = 0; i < ms.length; i++) if (ms[i] > umbral) sobre++;
-      return { n: ms.length, ms: serie(ms), js: serie(js), rd: rd.length ? serie(rd) : null, resto: rs.length ? serie(rs) : null, ll: ll.length ? serie(ll) : null, tr: tr.length ? serie(tr) : null, causas: resumenCausas(ms, cz, cq, umbral), sobre: sobre, pctSobre: ms.length ? 100 * sobre / ms.length : 0, umbral: umbral, descartados: desc };
+      return { n: ms.length, ms: serie(ms), js: serie(js), rd: rd.length ? serie(rd) : null, resto: rs.length ? serie(rs) : null, ll: ll.length ? serie(ll) : null, tr: tr.length ? serie(tr) : null, causas: resumenCausas(ms, cz, cq, umbral), reparto: resumenReparto(m.bn, bl, suma, otr), sobre: sobre, pctSobre: ms.length ? 100 * sobre / ms.length : 0, umbral: umbral, descartados: desc };
+    }
+    // ---- Q0h: bl[k] = ms del bloque k en cada fotograma (ya filtrados como los demás); bn[k] su nombre. Los bloques salen ordenados por p95 (de mayor a menor); suma y otros, la suma de bloques y lo que sobra del JS
+    function resumenReparto(bn, bl, suma, otr) {
+      if (!bn || !bl.length || !suma.length) return null;
+      var b = [], k; for (k = 0; k < bl.length; k++) { var s = serie(bl[k]); b.push({ nom: bn[k] || ("bloque " + k), mediana: s.mediana, p95: s.p95 }); }
+      b.sort(function (x, y) { return y.p95 - x.p95 || y.mediana - x.mediana; });
+      return { bloques: b, suma: serie(suma), otros: serie(otr) };
     }
     // ---- Q0g: la autopsia de los fotogramas lentos. Por fotograma se apunta UN entero (cz) con los bits de lo que se movio; el resumen cuenta, de los lentos, cuantos coinciden con cada causa.
     var BIT = { cola: 1, tesela: 2, lote: 4, tarea: 8, compila: 16, textura: 32 }, CAUSAS = ["cola", "tesela", "lote", "tarea", "compila", "textura"], UMBRAL_COLA = 1;   // la Cola cuenta si trabajo 1 ms o mas en el fotograma (sin contar la deuda «T» de las teselas, que va aparte)
@@ -88,6 +99,15 @@
       if (e.rd && e.resto) {   // F0: el techo del multiview (doc/sistema/MULTIVIEW.md): cuánto del JS es renderer.render() y cuánto el resto del fotograma
         if (corto) L[L.length - 1] += " · render() " + f1(e.rd.mediana) + "/" + f1(e.rd.p95) + " · resto " + f1(e.resto.mediana) + "/" + f1(e.resto.p95);
         else { L.push("  de ellos, renderer.render() (ms): mediana " + f1(e.rd.mediana) + " · p95 " + f1(e.rd.p95) + " · peor " + f1(e.rd.peor)); L.push("  de ellos, el resto del JS (ms): mediana " + f1(e.resto.mediana) + " · p95 " + f1(e.resto.p95) + " · peor " + f1(e.resto.peor)); }
+      }
+      var rr = e.reparto;   // Q0h: de qué es el JS, por bloque
+      if (rr && rr.bloques.length) {
+        if (corto) { var t4 = [], j; for (j = 0; j < rr.bloques.length && j < 3; j++) t4.push(rr.bloques[j].nom.slice(0, 16) + " " + f1(rr.bloques[j].p95)); t4.push("otros " + f1(rr.otros.p95)); L.push("JS p95 por bloque: " + t4.join(" · ")); }
+        else {
+          L.push("Reparto del JS por bloque (ms, mediana / p95; de mayor a menor p95):");
+          rr.bloques.forEach(function (b, j) { if (j < 16 && (b.p95 >= 0.05 || j < 6)) L.push("  " + b.nom + ": " + f1(b.mediana) + " / " + f1(b.p95)); });
+          L.push("  suma de los bloques: " + f1(rr.suma.mediana) + " / " + f1(rr.suma.p95) + (e.rd ? " · renderer.render(): " + f1(e.rd.mediana) + " / " + f1(e.rd.p95) : "") + " · otros (lo que no cuadra con el JS total): " + f1(rr.otros.mediana) + " / " + f1(rr.otros.p95));
+        }
       }
       if (r.multiview) L.push(r.multiview);   // F0: la sonda («multiview: sí/no …»)
       if (r.nivel) {
@@ -157,7 +177,7 @@
       if (r.personas != null) { var pn = entero(r.personas, 0, 500); if (pn !== null) c.personas = pn; }
       return c;
     }
-    return { BIT: BIT, bits: bits, marcaLargas: marcaLargas, resumenCausas: resumenCausas, lineaCausas: lineaCausas, UMBRAL: UMBRAL, CALENTAMIENTO: CALENTAMIENTO, calcula: calcula, serie: serie, percentil: percentil, mediana: mediana, lineas: lineas, texto: texto, resumeUA: resumeUA, aparatoDe: aparatoDe, navegadorDe: navegadorDe, cuerpoEnvio: cuerpoEnvio, perillasLimpias: perillasLimpias };
+    return { resumenReparto: resumenReparto, BIT: BIT, bits: bits, marcaLargas: marcaLargas, resumenCausas: resumenCausas, lineaCausas: lineaCausas, UMBRAL: UMBRAL, CALENTAMIENTO: CALENTAMIENTO, calcula: calcula, serie: serie, percentil: percentil, mediana: mediana, lineas: lineas, texto: texto, resumeUA: resumeUA, aparatoDe: aparatoDe, navegadorDe: navegadorDe, cuerpoEnvio: cuerpoEnvio, perillasLimpias: perillasLimpias };
   })();
   // [puro:fin]
 
@@ -183,7 +203,7 @@
       empieza(performance.now());
     }
     function empieza(tIni) {
-      t0 = tIni; m = { t: [], ms: [], js: [], rd: [], oc: [], ll: [], tr: [], cz: [], cq: [] }; hayPrev = false; desobservaLargas(); largas = { fin: [], dur: [] }; observaLargas(); prev = -1; nvPrev = -2; nivIni = null; cambios = []; modoIni = modoAhora(); res = null; envio = ""; estado = "midiendo"; api.on = true; engancha();
+      t0 = tIni; m = { t: [], ms: [], js: [], rd: [], oc: [], ll: [], tr: [], cz: [], cq: [], bl: [], bn: [] }; Reparto.on = true; hayPrev = false; desobservaLargas(); largas = { fin: [], dur: [] }; observaLargas(); prev = -1; nvPrev = -2; nivIni = null; cambios = []; modoIni = modoAhora(); res = null; envio = ""; estado = "midiendo"; api.on = true; engancha();
       if (!huboVisib) { document.addEventListener("visibilitychange", alVisibilidad); huboVisib = true; }
       ui(); pinta();
       if (VRX.on) n.emite("medida:empieza");   // 29_vr.js: el panel no tapa la vista durante la medida
@@ -237,7 +257,7 @@
       var oculto = document.hidden && !renderer.xr.isPresenting, cz = causasDelFotograma();
       if (prev >= 0 || oculto) {
         var rr = (renderer.info && renderer.info.render) || {};   // Q0e: lo que costó dibujar este fotograma (el último render(): en VR three dibuja los dos ojos en uno)
-        m.t.push(t); m.ms.push(prev >= 0 ? tIni - prev : 0); m.js.push(js); m.rd.push(msRender); m.oc.push(oculto ? 1 : 0); m.ll.push(rr.calls | 0); m.tr.push(rr.triangles | 0); m.cz.push(cz); m.cq.push(uCq);
+        m.t.push(t); m.ms.push(prev >= 0 ? tIni - prev : 0); m.js.push(js); m.rd.push(msRender); m.oc.push(oculto ? 1 : 0); m.ll.push(rr.calls | 0); m.tr.push(rr.triangles | 0); m.cz.push(cz); m.cq.push(uCq); apuntaReparto(tIni);
       }
       prev = oculto ? -1 : tIni;
       if (t >= MideEst.CALENTAMIENTO + N) termina(); else if (UI && ahora - tPinta > 500) { tPinta = ahora; pinta(); }
@@ -261,7 +281,17 @@
       pCola = msC; pMsT = msT; pNT = nT; pLo = nl; pProg = pg; pTex = tx; hayPrev = true;
       return b;
     }
+    // Q0h: los ms de cada bloque de este fotograma (Reparto, 02c; los llena cuadro() de 90_final.js solo mientras se mide). Un bloque que aparece tarde se rellena con ceros hacia atrás
+    function apuntaReparto(tIni) {
+      var R = Reparto, hay = R.t === tIni, k, a;
+      for (k = 0; k < R.n; k++) {
+        a = m.bl[k]; if (!a) { a = m.bl[k] = []; /* reserva-ok */ while (a.length < m.t.length - 1) a.push(0); m.bn[k] = R.nom[k]; }
+        a.push(hay ? R.ms[k] : 0);
+      }
+      for (; k < m.bl.length; k++) m.bl[k].push(0);
+    }
     function termina() {
+      Reparto.on = false;
       desobservaLargas();
       var largasR = largas ? MideEst.marcaLargas(m, t0, largas, MideEst.CALENTAMIENTO, N) : null, e = MideEst.calcula(m, MideEst.CALENTAMIENTO, N), a = Arboles.resumen(), nv = nivelAhora(), avisos = [];
       if (modoIni !== modoAhora()) avisos.push("cambió de " + modoIni + " a " + modoAhora() + " durante la medida");
@@ -357,7 +387,7 @@
     var param = /[?&]mide(?:=(\d+))?(?=&|$)/.exec(location.search);
     if (param) arma(param[1] ? Number(param[1]) : 60); else if (contador()) ui();
     medSuelta = function () {   // libera: la caja del DOM, la escucha de la pestaña, el gancho de pruebas y lo que estaba midiendo
-      desengancha(); desobservaLargas(); if (huboVisib) { document.removeEventListener("visibilitychange", alVisibilidad); huboVisib = false; }
+      Reparto.on = false; desengancha(); desobservaLargas(); if (huboVisib) { document.removeEventListener("visibilitychange", alVisibilidad); huboVisib = false; }
       if (UI && UI.parentNode) UI.parentNode.removeChild(UI);
       UI = null; api.on = false; estado = "inactivo"; res = null; m = null; try { delete window.__mide; } catch (e) { window.__mide = undefined; }
     };
@@ -365,7 +395,7 @@
   }
   Componentes.registra({
     id: "medidor-fotogramas", version: 1,
-    consume: ["Aparato", "Cola", "Generados", "visor", "renderer", "modo", "D", "DEPURA", "ConfigPuro", "Ajustes", "Arboles", "Escena3D", "VRX", "PanelVR", "XrPerillas", "Render"],
+    consume: ["Aparato", "Cola", "Generados", "visor", "renderer", "modo", "D", "DEPURA", "ConfigPuro", "Ajustes", "Arboles", "Escena3D", "VRX", "PanelVR", "XrPerillas", "Render", "Reparto"],
     expone: [],
     eventos: { escucha: ["cuadro:fin", "depura:lineas", "medida:estado", "medida:envia", "medida:inicia", "medida:muestra"], emite: ["medida:empieza", "medida:envio", "medida:fin"] },
     bandera: { defecto: true, url: "medidor" },
