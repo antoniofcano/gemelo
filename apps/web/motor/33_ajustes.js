@@ -21,7 +21,7 @@
     var ESQUEMA = {
       "graficos.calidad": opc("auto", ["auto", "0", "1", "2"]), "graficos.ahorro": bool(false),
       "vista.exag": num(1, 1, 3, 0.25), "vista.corr": num(1, 0, 1.5, 0.25), "vista.brujula": bool(true), "vista.personal": bool(true), "vista.unidades": opc("ha", ["ha", "m2"]), "vista.altura": opc("pie", ["pie", "sentado"]),
-      "controles.tactil": opc("auto", ["auto", "si", "no"]), "controles.mano": opc("diestra", ["diestra", "zurda"]), "controles.sens": num(1, 0.4, 2, 0.2), "controles.invertir": bool(false),
+      "controles.tactil": opc("auto", ["auto", "si", "no"]), "controles.mano": opc("diestra", ["diestra", "zurda"]), "controles.sens": num(1, 0.4, 2, 0.2), "controles.invertir": bool(false), "controles.palanca": bool(true),
       "vr.giro": opc("30", ["15", "30", "45", "60"]), "vr.vineta": opc("suave", ["suave", "fuerte", "no"]), "vr.vuelo": bool(false),
       "acc.texto": num(100, 100, 200, 25), "acc.contraste": bool(false), "acc.movimiento": opc("sistema", ["sistema", "reducido", "normal"]),
       "avanzado.contador": bool(false)
@@ -148,7 +148,8 @@
         { k: "controles.tactil", t: "Controles táctiles", ops: [["auto", "Automático"], ["si", "Siempre"], ["no", "Nunca"]], nota: "Automático: solo con pantalla táctil." },
         { k: "controles.mano", t: "Mano", ops: [["diestra", "Diestra (cruceta a la izquierda)"], ["zurda", "Zurda (cruceta a la derecha)"]] },
         { k: "controles.sens", t: "Sensibilidad al mirar", fmt: function (v) { return fmt(v, 1) + "×"; } },
-        { k: "controles.invertir", t: "Invertir el eje vertical al mirar" } ] },
+        { k: "controles.invertir", t: "Invertir el eje vertical al mirar" },
+        { k: "controles.palanca", t: "Palanca para andar", nota: "En pantalla táctil: apóyala con el pulgar donde quieras. Apagada, vuelve la cruceta. En la dirección, ?palanca=0 la apaga." } ] },
       { id: "vr", t: "Comodidad VR", nota: "Se aplica en las gafas. Nada de esto está probado en unas Quest.", campos: [
         { k: "vr.giro", t: "Giro", ops: [["15", "A saltos de 15°"], ["30", "A saltos de 30°"], ["45", "A saltos de 45°"], ["60", "A saltos de 60°"]] },
         { k: "vr.vineta", t: "Viñeta", ops: [["suave", "Suave"], ["fuerte", "Fuerte"], ["no", "Apagada"]] },

@@ -1,10 +1,11 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: paseando, persona, teclas, primera, pp, camPos, entraPaseo, salePaseo, actualizaPaseo
+// Expone: paseando, persona, teclas, primera, pp, camPos, PalancaPuro, ponPalanca, giraPalanca, entraPaseo, salePaseo, actualizaPaseo
 // Consume: 01_datos (D, $), 02_mundo (suelo, copaAlta, copas), 03_escena (lienzo, visor, scene, camera, exag, modo), 06_arboles (tronco),
-//   08_marcadores (aplica), 09_camara (sensMirar), 13_parcelas (fincas, fincaSel, parcelaSel),
-//   16_vida (enQuad, velPaseo, giroPaseo, ponQuad, vidaPaseo, enDron, ponDron, cicloVista, dronMando, camaraDron, vidaEntra, vidaSale),
+//   08_marcadores (aplica, pendiente), 09_camara (sensMirar), 13_parcelas (fincas, fincaSel, parcelaSel),
+//   16_vida (enQuad, mira, quad, velPaseo, giroPaseo, ponQuad, vidaPaseo, enDron, dron, ponDron, cicloVista, dronMando, camaraDron, vidaEntra, vidaSale),
 //   24_pantalla (iniciaTransicion, iniciaSalida), 29_vr (ficha), 33_ajustes (Ajustes)
 // ===============================================================================
+
   // ---------- paseo: una persona que camina por el olivar (flechas o WASD; Mayús corre; V cambia de cámara)
   var paseando = false, persona = null, teclas = {}, primera = false, pp = { x: 0, y: 0, ang: 0, paso: 0 }, camPos = new THREE.Vector3();
   // AV2 (decisión 133): «Altura de la vista» en Configuración (vista.altura): de pie (ojos a 1,62 m, como siempre) o sentado (1,20 m); independiente del avatar. Sin Configuración, de pie.
@@ -22,6 +23,38 @@
     g.userData = { pi: miembro(0.17, 0.86, 0.2, pant, -0.12, 0.86, 0), pd: miembro(0.17, 0.86, 0.2, pant, 0.12, 0.86, 0), bi: miembro(0.11, 0.58, 0.12, camisa, -0.3, 1.46, 0), bd: miembro(0.11, 0.58, 0.12, camisa, 0.3, 1.46, 0) };
     return g;
   }
+  // ---------- la palanca (EV2-B1, doc/sistema/VIABILIDAD-INTERACCION.md §B): lo puro para andar con un pulgar, sin THREE ni DOM (lo evalúa en Node pruebas/guardianes/palanca.test.js).
+  // Una palanca da un vector (x a la derecha, y hacia delante, de −1 a 1 sobre su radio). Aquí se vuelve «cuánto avanzo, cuánto me desplazo de lado»:
+  // zona muerta del 15 % (el pulgar tiembla), después velocidad proporcional al desplazamiento (0 en el borde de la zona muerta, 1 al saturar el radio)
+  // y la dirección es la del dedo relativa a la cámara de seguimiento, que va siempre detrás del paseante (mira hacia pp.ang).
+  // [puro:inicio]
+  var PalancaPuro = (function () {
+    var ZONA_MUERTA = 0.15;
+    // x, y: vector de la palanca (y > 0 = empujar hacia delante). Devuelve { fuerza 0..1, av −1..1 (avance), lat −1..1 (a la derecha) }
+    function lee(x, y) {
+      x = +x || 0; y = +y || 0;
+      var m = Math.sqrt(x * x + y * y); if (!(m > ZONA_MUERTA)) return { fuerza: 0, av: 0, lat: 0 };
+      var f = Math.min(1, (m - ZONA_MUERTA) / (1 - ZONA_MUERTA));   // proporcional: continuo en el borde de la zona muerta y saturado en 1
+      return { fuerza: f, av: y / m * f, lat: x / m * f };
+    }
+    // el paso en el mundo (x al este, y al norte) mirando hacia ang (rad; 0 = norte, crece hacia el este): av al frente, lat a la derecha
+    function mundo(av, lat, ang) { var s = Math.sin(ang), c = Math.cos(ang); return { x: av * s + lat * c, y: av * c - lat * s }; }
+    // giro al arrastrar la otra mitad: píxeles → radianes, con la sensibilidad de Configuración (la de la órbita: 0,006 rad/px)
+    function giro(dxPx, sens) { return (+dxPx || 0) * 0.006 * (+sens > 0 ? +sens : 1); }
+    // ¿se enciende la palanca? tactil: ¿pantalla táctil? (Ajustes.tactil); ajuste: «controles.palanca»; busqueda: location.search.
+    // Encendida por defecto en táctil; ?palanca=0 la apaga y ?palanca=1 la fuerza (para probar con ratón); en escritorio sin táctil, nada.
+    function activa(tactil, ajuste, busqueda) {
+      var m = /[?&]palanca=([01])(?![0-9A-Za-z])/.exec(busqueda || "");
+      if (m) return m[1] === "1";
+      return !!tactil && ajuste !== false;
+    }
+    return { ZONA_MUERTA: ZONA_MUERTA, lee: lee, mundo: mundo, giro: giro, activa: activa };
+  })();
+  // [puro:fin]
+  // lo que la palanca (34b_palanca.js) deja y actualizaPaseo lee: mandoPalanca.av / mandoPalanca.lat (−1..1) y el giro pendiente (rad). Sin palanca, todo a 0 y el paseo no cambia.
+  var mandoPalanca = { av: 0, lat: 0, giro: 0 };
+  function ponPalanca(av, lat) { mandoPalanca.av = +av || 0; mandoPalanca.lat = +lat || 0; }
+  function giraPalanca(rad) { mandoPalanca.giro += +rad || 0; }
   persona = creaPersona(); persona.visible = false; scene.add(persona);
   function entraPaseo() {
     paseando = true; primera = false;
@@ -31,7 +64,7 @@
     camPos.set(pp.x, 5, -pp.y + 5); vidaEntra(); iniciaTransicion();
   }
   function salePaseo() {
-    paseando = false; persona.visible = false; teclas = {}; vidaSale(); iniciaSalida(); $("btnPaseo").setAttribute("aria-pressed", "false");
+    paseando = false; persona.visible = false; teclas = {}; ponPalanca(0, 0); mandoPalanca.giro = 0; vidaSale(); iniciaSalida(); $("btnPaseo").setAttribute("aria-pressed", "false");
     visor.classList.remove("paseo"); $("ayudaPaseo").hidden = true; $("ayuda").hidden = false;
   }
   $("btnPaseo").addEventListener("click", function () { if (paseando) salePaseo(); else entraPaseo(); });
@@ -56,18 +89,22 @@
     b.addEventListener("selectstart", function (e) { e.preventDefault(); });
   });
   // si la página pierde el foco (otra app, otra pestaña, una llamada) se sueltan todas las teclas y botones
-  function sueltaTodo() { ["up", "down", "left", "right"].forEach(function (d) { teclas[d] = false; }); }
+  function sueltaTodo() { ["up", "down", "left", "right"].forEach(function (d) { teclas[d] = false; }); ponPalanca(0, 0); }
   window.addEventListener("blur", sueltaTodo);
   document.addEventListener("visibilitychange", function () { if (document.hidden) sueltaTodo(); });
   $("padRun").addEventListener("click", function () { teclas.run = !teclas.run; $("padRun").setAttribute("aria-pressed", String(!!teclas.run)); });
   $("padCam").addEventListener("click", function () { cicloVista(); });
   function actualizaPaseo(dt) {
     var av = (teclas.up ? 1 : 0) - (teclas.down ? 1 : 0), gi = (teclas.right ? 1 : 0) - (teclas.left ? 1 : 0);
-    if (TR.act && TR.t < TR.tCae + 0.25) { av = 0; gi = 0; }   // quieto mientras cae
+    var lat = 0;   // paso lateral de la palanca (solo a pie; en quad y dron el lado de la palanca gira, como la cruceta)
+    if (mandoPalanca.av || mandoPalanca.lat) { av = Math.max(-1, Math.min(1, av + mandoPalanca.av)); if (enQuad || enDron) gi = Math.max(-1, Math.min(1, gi + mandoPalanca.lat)); else lat = mandoPalanca.lat; }
+    if (mandoPalanca.giro) { pp.ang += mandoPalanca.giro; mandoPalanca.giro = 0; }   // arrastrar la otra mitad: mirar
+    if (TR.act && TR.t < TR.tCae + 0.25) { av = 0; gi = 0; lat = 0; }   // quieto mientras cae
     if (enDron) { dronMando(av, gi, dt); av = 0; gi = 0; }
     var vel = velPaseo(av, dt);
     pp.ang += gi * dt * giroPaseo(vel) * sensMirar().k;   // la sensibilidad de Configuración → Controles también gira al paseante (09_camara.js); el eje vertical no aplica
     var nx = pp.x + Math.sin(pp.ang) * vel * dt, ny = pp.y + Math.cos(pp.ang) * vel * dt;
+    if (lat) { var pl = PalancaPuro.mundo(0, lat * (teclas.run ? 4.3 : 1.7) * 0.8, pp.ang); nx += pl.x * dt; ny += pl.y * dt; }
     // los troncos no se atraviesan: se empuja fuera del círculo de cada tronco
     var RC = enQuad ? 1.05 : 0.55;
     for (var i = 0; i < copas.length; i++) {
