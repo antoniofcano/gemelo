@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Materiales
-// Consume: 02h_render (Render)
+// Consume: 02f_xr_perillas (XrPerillas), 02h_render (Render), 15_tiempo (hace), 16_vida (quita)
 // ===============================================================================
   // ---------- AG-3a / F1 (doc/sistema/MULTIVIEW.md §4, ADR-0031): la fábrica ÚNICA de los materiales propios del motor.
   // Todo sombreador propio pasa por aquí: los ShaderMaterial y los materiales de three con su parche (onBeforeCompile). Hoy devuelve EXACTAMENTE lo de siempre
@@ -12,6 +12,11 @@
   //   Materiales.sombreador(nombre, opciones)                new THREE.ShaderMaterial(opciones)
   //   Materiales.nuevo(nombre, fabrica)                      (F4) registra la versión TSL: fabrica(mat | opciones) → NodeMaterial; solo se usa con Render.tipo «nuevo»
   //   Materiales.inventario()                                { nombre: { tipo, n } } de lo que ha pasado por aquí (pruebas y ?debug)
+  //   Materiales.recorte(mat)                                AG-2.1: un material de recorte alfa (alphaTest > 0, cara de color; NUNCA los de sombra) pasa a alphaToCoverage si ?a2c lo deja y hay MSAA; devuelve mat
+  //   Materiales.recortes(activo)                            enciende o apaga el alphaToCoverage de todos los que pasaron por recorte() (07ac lo apaga mientras hornea en un blanco sin MSAA)
+  //   Materiales.a2c / Materiales.eligeA2c(busqueda, msaa)   el estado { pedido, activo, msaa, motivo, advertencia, n } y su parte pura (lo prueba pruebas/guardianes/a2c.test.js)
+  //   ?a2c=0|1 (defecto 1): 1 = alphaToCoverage donde hay MSAA (XrPerillas.aa; ?xraa=0 lo quita); 0 = el alphaTest de siempre. Se conserva el umbral original del alphaTest (el
+  //   recorte no se mueve: three suaviza con smoothstep(alphaTest, alphaTest + fwidth(a), a) y descarta lo del todo transparente, así que sigue sin escribirse profundidad ahí)
   // El guardián pruebas/guardianes/materiales_f1.test.js cuenta los onBeforeCompile y new THREE.ShaderMaterial que quedan FUERA de este módulo y solo deja que bajen.
   // Presupuesto (regla 6): no dibuja ni reserva nada; cada material lo libera quien lo pidió, como siempre.
   var Materiales = (function () {
@@ -47,7 +52,28 @@
       var n = version(nombre); if (n) return n(opciones);
       return new THREE.ShaderMaterial(opciones);
     }
+    // ---- AG-2.1: alphaToCoverage para los recortes alfa (doc/sistema/ALPHA-A-COBERTURA.md)
+    function eligeA2c(busqueda, msaa) {
+      var q = typeof busqueda === "string" ? busqueda : "", m = /[?&]a2c=([^&#]*)/.exec(q), r = { pedido: "", activo: true, msaa: msaa !== false, motivo: "", advertencia: "" };
+      if (m) { var v = decodeURIComponent(m[1]); r.pedido = v; if (v === "0") r.activo = false; else if (v !== "1") r.advertencia = "?a2c=" + v + " solo vale 0 o 1: se usa 1"; }
+      if (r.activo && !r.msaa) { r.activo = false; r.motivo = "sin MSAA (?xraa=0): alphaToCoverage no hace nada y se deja el alphaTest"; }
+      else if (!r.activo) r.motivo = "?a2c=0: el alphaTest de siempre";
+      return r;
+    }
+    var a2c = eligeA2c(typeof location !== "undefined" && location ? location.search : "", typeof XrPerillas !== "undefined" && XrPerillas ? XrPerillas.aa : true), recortados = [];
+    a2c.n = 0;
+    if (a2c.advertencia && typeof console !== "undefined") console.warn("a2c: " + a2c.advertencia);
+    function recorte(mat) {
+      if (!mat || !(mat.alphaTest > 0) || mat.isMeshDepthMaterial || mat.isMeshDistanceMaterial) return mat;   // las sombras no tienen MSAA: siguen con alphaTest
+      recortados.push(mat); a2c.n = recortados.length;
+      if (a2c.activo) mat.alphaToCoverage = true;
+      return mat;
+    }
+    function recortes(activo) {
+      var on = !!activo && a2c.activo;
+      recortados.forEach(function (m) { if (m.alphaToCoverage !== on) { m.alphaToCoverage = on; m.needsUpdate = true; } });
+    }
     function nuevo(nombre, fabrica) { nuevos[nombre] = fabrica; }
     function inventario() { var o = {}; Object.keys(usados).forEach(function (k) { o[k] = { tipo: usados[k].tipo, n: usados[k].n }; }); return o; }
-    return { parchea: parchea, encadena: encadena, sombreador: sombreador, nuevo: nuevo, inventario: inventario };
+    return { parchea: parchea, encadena: encadena, sombreador: sombreador, nuevo: nuevo, inventario: inventario, a2c: a2c, eligeA2c: eligeA2c, recorte: recorte, recortes: recortes };
   })();
