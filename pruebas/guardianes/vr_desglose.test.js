@@ -4,7 +4,7 @@
 // cámara en renderer.xr.getCamera().cameras). Es una MEDIDA (recuentos de SwiftShader, que valen; no fps): imprime la tabla y solo afirma lo que no depende del aparato
 // (hay dos ojos, el total del espía coincide con renderer.info.render.calls y no hay errores). Opcional (GEMELO_VR=1), por el banco, un Chrome a la vez:
 //   GEMELO_VR=1 node --test pruebas/guardianes/vr_desglose.test.js
-// Con GEMELO_VR_FINCA=hituelo|cerro (cerro por defecto). No probado en un Quest.
+// Con GEMELO_VR_FINCA=hituelo|cerro (cerro por defecto) y GEMELO_VR_CONSULTA=&xrnivel=0 (escalón fijo). No probado en un Quest.
 const test = require("node:test"), { describe, before } = test, assert = require("node:assert");
 const { lee } = require("./_util");
 const { sirve, motivoSalto, lanza } = require("./_navegador");
@@ -58,7 +58,7 @@ describe("desglose de llamadas en VR (WebXR simulado)", () => {
     p.on("pageerror", e => errores.push("PAGEERROR " + String(e.stack || e).slice(0, 300)));
     p.on("console", m => { if (m.type() === "error" && !/favicon/.test(m.text())) errores.push("CONSOLE " + m.text().slice(0, 300)); });
     try {
-      await p.goto(url + "?debug&hora=12:00");
+      await p.goto(url + "?debug&hora=12:00" + (process.env.GEMELO_VR_CONSULTA || ""));   // GEMELO_VR_CONSULTA=&xrnivel=0 fija el escalón del presupuesto VR (si no, se adapta y dos medidas no son comparables)
       await p.waitForFunction(() => window.__g && window.__g.listo() && window.__vrDebug, null, { timeout: 120000, polling: 500 });
       await p.waitForFunction(() => window.__g.pendientes() === 0, null, { timeout: 120000, polling: 500 }).catch(() => {});
       await p.waitForTimeout(8000);   // las teselas y los generados siguen llegando un rato

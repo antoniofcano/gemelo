@@ -1,8 +1,9 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
 // Consume: 01_datos (D), 02_mundo (copas, cIn), 02c_componentes (Componentes), 03_escena (scene, camera, exag), 07_follaje (matSombra, geoSombra),
-//   12_paseo (paseando), 15_tiempo (nivelEn, cur), 16_vida (tVida, enQuad, gFauna, esfera, altSuelo, mira, actualizaVida), 17_minimapa (Minimapa)
+//   12_paseo (paseando), 15_tiempo (nivelEn, cur), 16_vida (tVida, enQuad, gFauna, altSuelo, mira, actualizaVida), 17_minimapa (Minimapa)
 // ===============================================================================
+
   // ---------- la fauna del olivar (componente «fauna-olivar», ADR-0023, C10 segunda tanda): las aves (dos bandadas que dan vueltas de día, ocho posadas que se
   // espantan) y los seis conejos que pastan y huyen. Antes vivían en 16_vida.js y actualizaVida() las movía; ahora solo se registra (fase «mundo»). Se enteran de
   // que empieza o acaba el paseo por «paseo:entra» / «paseo:sale» (los emite 16_vida.js al entrar y salir del paseo), preguntan si hay algo de lo que huir con
@@ -11,16 +12,12 @@
   var faunaSuelta = null;   // lo que libera el componente montado
   function FaunaMotor(n) {
     var matAla = new THREE.MeshLambertMaterial({ color: 0x302b2a, side: THREE.DoubleSide });
-    var matConejo = new THREE.MeshLambertMaterial({ color: 0x8b755a }), matConejoB = new THREE.MeshLambertMaterial({ color: 0xece4d4 }), matOreja = new THREE.MeshLambertMaterial({ color: 0xa88f78 });
+    var matConejoInst = new THREE.MeshLambertMaterial({ vertexColors: true });   // los conejos: una sola material, con el color por vértice (pelo, panza clara, orejas)
     // --- pájaros: el ave mira hacia -z. Cada ave es un Group SIN hijos (solo lleva la posición, el giro y la fase); se dibujan todas juntas
     // con dos mallas instanciadas (2 llamadas, antes 7 por ave): el cuerpo (una geometría fusionada con el color por vértice) y las alas
     // (2 por ave, con la bisagra del aleteo calculada por matriz cada fotograma, igual que giraba el pivote antes).
-    var NAVES = 22, geoAveCuerpo = (function () {   // cuerpo, vientre, cabeza, pico y cola en una sola geometría
-      var partes = [], m4 = new THREE.Matrix4(), q0 = new THREE.Quaternion();
-      function parte(geo, hex, sx, sy, sz, x, y, z, rx) { m4.compose(new THREE.Vector3(x, y, z), rx ? q0.setFromAxisAngle(new THREE.Vector3(1, 0, 0), rx) : q0.identity(), new THREE.Vector3(sx, sy, sz)); geo.applyMatrix4(m4); partes.push([geo, new THREE.Color(hex)]); }
-      parte(new THREE.SphereGeometry(0.1, 10, 8), 0x4a3f33, 0.85, 0.8, 1.8, 0, 0, 0); parte(new THREE.SphereGeometry(0.1, 10, 8), 0xd9cdb4, 0.7, 0.45, 1.2, 0, -0.035, 0.02);
-      parte(new THREE.SphereGeometry(0.065, 10, 8), 0x4a3f33, 1, 1, 1, 0, 0.03, -0.2); parte(new THREE.ConeGeometry(0.022, 0.08, 5), 0xd49a30, 1, 1, 1, 0, 0.025, -0.3, -Math.PI / 2);
-      parte(new THREE.BoxGeometry(0.07, 0.012, 0.2), 0x4a3f33, 1, 1, 1, 0, 0.01, 0.27);
+    // varias geometrías indexadas en una, con su color por vértice (partes = [[geometría, THREE.Color], …]); las libera. Sirve a las aves y a los conejos.
+    function fusiona(partes) {
       var nv = 0, ni = 0; partes.forEach(function (p) { nv += p[0].attributes.position.count; ni += p[0].index.count; });
       var pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3), col = new Float32Array(nv * 3), idx = new Uint16Array(ni), o = 0, oi = 0;
       partes.forEach(function (p) {
@@ -31,6 +28,14 @@
       });
       var geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.BufferAttribute(pos, 3)); geo.setAttribute("normal", new THREE.BufferAttribute(nor, 3)); geo.setAttribute("color", new THREE.BufferAttribute(col, 3)); geo.setIndex(new THREE.BufferAttribute(idx, 1));
       return geo;
+    }
+    var NAVES = 22, geoAveCuerpo = (function () {   // cuerpo, vientre, cabeza, pico y cola en una sola geometría
+      var partes = [], m4 = new THREE.Matrix4(), q0 = new THREE.Quaternion();
+      function parte(geo, hex, sx, sy, sz, x, y, z, rx) { m4.compose(new THREE.Vector3(x, y, z), rx ? q0.setFromAxisAngle(new THREE.Vector3(1, 0, 0), rx) : q0.identity(), new THREE.Vector3(sx, sy, sz)); geo.applyMatrix4(m4); partes.push([geo, new THREE.Color(hex)]); }
+      parte(new THREE.SphereGeometry(0.1, 10, 8), 0x4a3f33, 0.85, 0.8, 1.8, 0, 0, 0); parte(new THREE.SphereGeometry(0.1, 10, 8), 0xd9cdb4, 0.7, 0.45, 1.2, 0, -0.035, 0.02);
+      parte(new THREE.SphereGeometry(0.065, 10, 8), 0x4a3f33, 1, 1, 1, 0, 0.03, -0.2); parte(new THREE.ConeGeometry(0.022, 0.08, 5), 0xd49a30, 1, 1, 1, 0, 0.025, -0.3, -Math.PI / 2);
+      parte(new THREE.BoxGeometry(0.07, 0.012, 0.2), 0x4a3f33, 1, 1, 1, 0, 0.01, 0.27);
+      return fusiona(partes);
     })();
     var geoAla = (function () { var g = new THREE.PlaneGeometry(0.44, 0.2); g.rotateX(-Math.PI / 2); g.translate(0.22, 0, 0); return g; })();   // el ala derecha; la izquierda es su espejo
     var matAveInst = new THREE.MeshLambertMaterial({ vertexColors: true });
@@ -62,6 +67,21 @@
       mallaAveCuerpo.count = n; mallaAveAlas.count = n * 2; mallaAveCuerpo.visible = mallaAveAlas.visible = n > 0;   // vacía no se dibuja (three cuenta la llamada aunque no haya instancias)
       if (sucio) { mallaAveCuerpo.instanceMatrix.needsUpdate = true; mallaAveAlas.instanceMatrix.needsUpdate = true; }   // sin cambios, no se vuelve a subir el búfer
     }
+    function empacaConejos() {   // los conejos visibles, juntos en las cuatro mallas (una vez por fotograma)
+      var n = 0;
+      for (var i = 0; i < conejos.length; i++) {
+        var g = conejos[i]; if (!g.visible) continue;
+        var u = g.userData, cab = u.cab, o0 = u.orejas[0], o1 = u.orejas[1];
+        g.updateMatrix(); mallaConCuerpo.setMatrixAt(n, g.matrix); mallaConSombra.setMatrixAt(n, tmpConM.multiplyMatrices(g.matrix, matSombraCon));
+        cab.updateMatrix(); mallaConCabeza.setMatrixAt(n, tmpConM.multiplyMatrices(g.matrix, cab.matrix));
+        o0.updateMatrix(); mallaConOrejas.setMatrixAt(n * 2, tmpConM.multiplyMatrices(g.matrix, o0.matrix));
+        o1.updateMatrix(); mallaConOrejas.setMatrixAt(n * 2 + 1, tmpConM.multiplyMatrices(g.matrix, o1.matrix));
+        n++;
+      }
+      mallaConCuerpo.count = mallaConCabeza.count = mallaConSombra.count = n; mallaConOrejas.count = n * 2;
+      for (var k = 0; k < mallasCon.length; k++) { mallasCon[k].visible = n > 0; mallasCon[k].instanceMatrix.needsUpdate = true; }   // vacías no se dibujan
+    }
+    function disposaConejos() { mallasCon.forEach(function (im) { im.dispose(); gFauna.remove(im); }); geoConCuerpo.dispose(); geoConCabeza.dispose(); geoConOreja.dispose(); matConejoInst.dispose(); }
     function disposaAves() { geoAveCuerpo.dispose(); geoAla.dispose(); matAveInst.dispose(); matAla.dispose(); mallaAveCuerpo.dispose(); mallaAveAlas.dispose(); gFauna.remove(mallaAveCuerpo); gFauna.remove(mallaAveAlas); }
     function escalaVista(g, base) { var d = camera.position.distanceTo(g.position); g.scale.setScalar(base * Math.max(1, Math.min(9, d / 60))); }
     var bandada = [], bC = [0, 0], bS = [0, 0], bHx = [0, 0], bHy = [0, 0], bRz = [0, 0], BANDADAS = [{ a: 320, b: 150, w: 0.11, h: 38, ph: 0 }, { a: 210, b: 260, w: -0.085, h: 55, ph: 2.4 }];
@@ -69,16 +89,26 @@
     var posadas = [];
     for (var ip = 0; ip < 8; ip++) { var av0 = creaAve(); av0.visible = false; av0.userData.est = "fuera"; av0.userData.t = 0; posadas.push(av0); }
 
-    // --- conejos
+    // --- conejos: cada conejo es un Group SIN hijos (solo lleva la posición y el giro) y su cabeza y sus dos orejas son Object3D sueltos (no cuelgan de
+    // nada: solo llevan su pose local). Se dibujan los seis juntos con cuatro mallas instanciadas (4 llamadas, antes 6 por conejo): el cuerpo con la cola
+    // (geometría fusionada con el color por vértice), la cabeza, las orejas (2 por conejo) y la sombra. La matriz de cada pieza es la del conejo por la suya local.
+    var NCON = 6, CON_CAB_Y = 0.32;
+    function esfCol(r, hex, sx, sy, sz, x, y, z) { var g = new THREE.SphereGeometry(r, 10, 8); g.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion(), new THREE.Vector3(sx, sy, sz))); return [g, new THREE.Color(hex)]; }
+    var geoConCuerpo = fusiona([esfCol(0.2, 0x8b755a, 0.78, 0.74, 1.25, 0, 0.2, 0), esfCol(0.05, 0xece4d4, 1, 1, 1, 0, 0.23, 0.27)]);   // cuerpo y cola
+    var geoConCabeza = fusiona([[new THREE.SphereGeometry(0.12, 10, 8), new THREE.Color(0x8b755a)]]);   // la escala (0,9, 0,9, 1) va en la matriz de la cabeza
+    var geoConOreja = fusiona([[new THREE.BoxGeometry(0.035, 0.2, 0.02), new THREE.Color(0xa88f78)]]);
+    var mallaConCuerpo = new THREE.InstancedMesh(geoConCuerpo, matConejoInst, NCON), mallaConCabeza = new THREE.InstancedMesh(geoConCabeza, matConejoInst, NCON),
+      mallaConOrejas = new THREE.InstancedMesh(geoConOreja, matConejoInst, NCON * 2), mallaConSombra = new THREE.InstancedMesh(geoSombra, matSombra, NCON);
+    var mallasCon = [mallaConCuerpo, mallaConCabeza, mallaConOrejas, mallaConSombra];
+    mallaConCuerpo.name = "conejos"; mallaConCabeza.name = "conejos-cabeza"; mallaConOrejas.name = "conejos-orejas"; mallaConSombra.name = "conejos-sombra";
+    mallasCon.forEach(function (im) { im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); im.frustumCulled = false; im.count = 0; im.visible = false; gFauna.add(im); });
+    var matSombraCon = new THREE.Matrix4().compose(new THREE.Vector3(0, 0.03, 0), new THREE.Quaternion(), new THREE.Vector3(0.8, 1, 0.8)), tmpConM = new THREE.Matrix4();
     function creaConejo() {
-      var g = new THREE.Group();
-      esfera(0.2, matConejo, 0.78, 0.74, 1.25, 0, 0.2, 0, g); var cab = esfera(0.12, matConejo, 0.9, 0.9, 1, 0, 0.32, -0.25, g);
-      esfera(0.05, matConejoB, 1, 1, 1, 0, 0.23, 0.27, g);
-      var orejas = [-1, 1].map(function (l) { var o = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.2, 0.02), matOreja); o.position.set(l * 0.045, 0.52, -0.25); g.add(o); return o; });
-      var sb = new THREE.Mesh(geoSombra, matSombra); sb.scale.set(0.8, 1, 0.8); sb.position.y = 0.03; g.add(sb);
-      g.userData = { cab: cab, orejas: orejas, est: "fuera", t: 0, x: 0, y: 0, dir: 0, fase: Math.random() * 6, ax: 1e30, ay: 1e30, cerca: [] }; g.visible = false; gFauna.add(g); return g;
+      var g = new THREE.Group(), cab = new THREE.Object3D(); cab.position.set(0, CON_CAB_Y, -0.25); cab.scale.set(0.9, 0.9, 1);
+      var orejas = [-1, 1].map(function (l) { var o = new THREE.Object3D(); o.position.set(l * 0.045, 0.52, -0.25); return o; });
+      g.userData = { cab: cab, orejas: orejas, est: "fuera", t: 0, x: 0, y: 0, dir: 0, fase: Math.random() * 6, ax: 1e30, ay: 1e30, cerca: [] }; g.visible = false; return g;
     }
-    var conejos = []; for (var ic = 0; ic < 6; ic++) conejos.push(creaConejo());
+    var conejos = []; for (var ic = 0; ic < NCON; ic++) conejos.push(creaConejo());
     // ¿la distancia (dx, dy) supera / no llega a r? Igual que Math.hypot(dx, dy) > r, pero sin hypot (lento) salvo en el filo del umbral, donde sí lo usa
     function mayorQue(dx, dy, r) { var s = dx * dx + dy * dy, r2 = r * r; if (s > r2 * 1.000001) return true; if (s < r2 * 0.999999) return false; return Math.hypot(dx, dy) > r; }
     function menorQue(dx, dy, r) { var s = dx * dx + dy * dy, r2 = r * r; if (s > r2 * 1.000001) return false; if (s < r2 * 0.999999) return true; return Math.hypot(dx, dy) < r; }
@@ -127,7 +157,7 @@
         var alt = altSuelo(x, y) + b.h + u.of[1] + Math.sin(tVida * 0.9 * u.fx + u.fase) * 2.5;
         g.position.set(x, alt, -y); mira(g, bHx[u.b], -bHy[u.b]); g.rotation.z = bRz[u.b]; aleteo(g, false, false); escalaVista(g, 1);
       }
-      if (!paseando) { empacaAves(); return; }
+      if (!paseando) { empacaAves(); empacaConejos(); return; }
       var dq = enQuad ? 16 : 9;
       // aves posadas: salen volando si te acercas, suben y se alejan; luego otra ocupa su sitio
       for (var ip2 = 0; ip2 < posadas.length; ip2++) {
@@ -166,18 +196,14 @@
         for (var k = 0; k < u.orejas.length; k++) u.orejas[k].rotation.x = vel > 3 ? 0.9 : (u.est === "huye" ? 0.5 : 0.05 * Math.sin(u.fase * 0.7 + k));
         co.visible = true;
       }
-      empacaAves();
+      empacaAves(); empacaConejos();
       }
 
     var disp = false;
     function liberaFauna() {
       if (disp) return; disp = true;
       disposaAves();
-      conejos.forEach(function (c) {
-        gFauna.remove(c);
-        c.traverse(function (o) { if (o.isMesh && o.geometry !== geoSombra) o.geometry.dispose(); });
-      });
-      [matConejo, matConejoB, matOreja].forEach(function (m) { m.dispose(); });
+      disposaConejos();
     }
     faunaSuelta = liberaFauna;
     n.on("paseo:entra", function () {
@@ -198,11 +224,11 @@
   }
   Componentes.registra({
     id: "fauna-olivar", version: 1,
-    consume: ["scene", "camera", "D", "copas", "cIn", "geoSombra", "matSombra", "paseando", "pp", "cur", "nivelEn", "tVida", "enQuad", "gFauna", "altSuelo", "esfera", "mira", "exag", "Minimapa"],
+    consume: ["scene", "camera", "D", "copas", "cIn", "geoSombra", "matSombra", "paseando", "pp", "cur", "nivelEn", "tVida", "enQuad", "gFauna", "altSuelo", "mira", "exag", "Minimapa"],
     expone: [],
     eventos: { escucha: ["paseo:entra", "paseo:sale", "fauna:conejo-cerca"], emite: ["perros:amenaza"] },
     bandera: { defecto: true, url: "fauna" },
-    presupuesto: { llamadas: 40, triangulos: 13000 },   // medido en Node (componentes_c10b.test.js) con todo a la vista: 38 llamadas (2 de aves instanciadas, 6 conejos de 5 mallas y sombra) y 12.488 triángulos
+    presupuesto: { llamadas: 8, triangulos: 13000 },   // medido en Node (componentes_c10b.test.js) con todo a la vista: 6 llamadas (2 de aves y 4 de conejos, todo instanciado; antes 38) y 12.488 triángulos
     fases: { mundo: 0 },
     monta: function (n) { return FaunaMotor(n); },
     actualiza: { mundo: function (dt, t, api) { api.actualiza(dt); } },
