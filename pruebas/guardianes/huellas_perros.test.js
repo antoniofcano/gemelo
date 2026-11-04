@@ -84,6 +84,20 @@ test("huellas-polvo: manifiesto, montaje con su presupuesto, el polvo por el Bus
   assert.doesNotThrow(() => d.libera(), "liberar dos veces no rompe");
 });
 
+test("huellas-polvo (AG-1.3): sin huellas ni polvo vivos no hay pasada; cada uno se dibuja mientras le queda vida y se apaga al cumplirla", () => {
+  const m = mundo(), d = carga("22b_huellas_polvo.js", m), n = contexto(m), api = d.monta(n);
+  const iH = m.scene.children.find(o => o.isInstancedMesh), pv = m.scene.children.find(o => o.isPoints);
+  assert.ok(iH && pv); m.E.paseando = false;
+  assert.deepStrictEqual([iH.visible, pv.visible, dibujo(m.scene).llamadas], [false, false, 0], "recién montado no se dibuja nada (antes: dos pasadas vacías)");
+  api.emiteHuella(0, 0, 0, 0.13, 0.3, 1, 75); m.Bus.emite("polvo:emite", { x: 0, y: 0, h: 0, vida: 0.9 });
+  assert.deepStrictEqual([iH.visible, pv.visible], [true, true], "al emitir, se dibujan");
+  m.E.tVida = 0.5; api.actualiza(0.016); assert.deepStrictEqual([iH.visible, pv.visible], [true, true], "a media vida, siguen");
+  m.E.tVida = 1; api.actualiza(0.016); assert.deepStrictEqual([iH.visible, pv.visible], [true, false], "el polvo (0,9 s) ya se apagó; la huella (75 s), no");
+  m.Bus.emite("polvo:emite", { x: 0, y: 0, h: 0, vida: 2 }); assert.strictEqual(pv.visible, true, "otra bocanada lo vuelve a encender");
+  m.E.tVida = 76; api.actualiza(0.016); assert.deepStrictEqual([iH.visible, pv.visible, dibujo(m.scene).llamadas], [false, false, 0], "todo apagado: ninguna pasada");
+  d.libera(); n.suelta();
+});
+
 test("huellas-polvo: las bocanadas con el suelo mojado no salen y apagado (sin montar) nada se dibuja", () => {
   const m = mundo(), d = carga("22b_huellas_polvo.js", m);
   assert.strictEqual(dibujo(m.scene).llamadas, 0);

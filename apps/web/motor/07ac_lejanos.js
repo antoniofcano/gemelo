@@ -180,7 +180,7 @@
       var n = olivos.length;
       geo.setAttribute("aFun", new THREE.InstancedBufferAttribute(new Float32Array(n), 1));
       geo.setAttribute("aVar", new THREE.InstancedBufferAttribute(new Float32Array(n), 1));
-      malla = new THREE.InstancedMesh(geo, mat, Math.max(1, n)); malla.name = "olivos-lejanos"; malla.frustumCulled = false; malla.count = 0;
+      malla = new THREE.InstancedMesh(geo, mat, Math.max(1, n)); malla.name = "olivos-lejanos"; malla.frustumCulled = false; malla.count = 0; malla.visible = false;   // vacía no se dibuja (con count 0 three paga igual la pasada)
       malla.userData.rs = rs; malla.userData.cajas = cj;
       gArboles.add(malla); exagM = -1;
     }
@@ -212,7 +212,7 @@
         if (f === 2) sa++; else if (f === 3) en++;
         k++;
       }
-      malla.count = k; malla.instanceMatrix.needsUpdate = true; malla.geometry.attributes.aFun.needsUpdate = true; malla.geometry.attributes.aVar.needsUpdate = true;
+      malla.count = k; malla.visible = k > 0; malla.instanceMatrix.needsUpdate = true; malla.geometry.attributes.aFun.needsUpdate = true; malla.geometry.attributes.aVar.needsUpdate = true;
       info = { dibujados: k, entran: en, salen: sa }; return info;
     }
     /** la capa ya entró entera (uCapa = 1): con la escalera horneada, 07b aparta entonces todos los olivos del tileset */
