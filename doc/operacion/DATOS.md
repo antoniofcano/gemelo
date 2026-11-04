@@ -13,6 +13,7 @@
 | Suelo | SoilGrids | ISRIC, CC BY 4.0 |
 | three.js 0.186.1 | npm (empaquetado por Vite) | MIT |
 | Tipografías: Fraunces (500, 600) e Instrument Sans (400, 500, 600), subconjunto latino, woff2 | npm `@fontsource/fraunces` y `@fontsource/instrument-sans` 5.3.0 (versión fijada en `apps/web/package.json`), empaquetadas por Vite desde `apps/web/plantilla.css` y servidas del mismo origen (sin Google Fonts: la CSP solo admite `'self'` y ningún visitante envía su IP a un tercero) | SIL Open Font License 1.1 (Fraunces: © The Fraunces Project Authors; Instrument Sans: © The Instrument Sans Project Authors); la licencia va en cada paquete |
+| Texturas de suelo de cerca (`apps/web/public/suelo/`, EV-1s) y paleta del atardecer (`tuberia/suelo/paleta_cielo.json`) | fotos de campo de Antonio en una finca de Cano & Damas (2026-11-04), procesadas por `tuberia/suelo/` | © Cano & Damas Oleicultores, autor Antonio; uso en el gemelo ([LICENCIA](../../apps/web/public/suelo/LICENCIA.md)). Las fotos originales no se versionan |
 | Parcelas, marcas de olivos, datos de la explotación | OlivarTrack | **privado**, no se versiona |
 | Contorno de la finca (OF3c), por defecto | Parcelas de OlivarTrack que ya usa el gemelo (`GEMELO_PARCELAS`): polígono con límite SIGPAC | Dato de OlivarTrack, con origen SIGPAC © FEGA, CC BY 4.0 (atribución «© FEGA») |
 | Contorno de la finca (OF3b), respaldo A | Recintos SIGPAC, FEGA (OGC API Features `sigpac-hubcloud.es/ogcapi`, colección `recintos`) | © FEGA, CC BY 4.0 (ficha del servicio en datos.gob.es) |
@@ -153,6 +154,23 @@ GEMELO_CONTORNO_PARCELAS=<parcelas.json> GEMELO_CONTORNO=<contorno.geojson> pyth
 
 En los dos casos el contorno vive solo en la base (oficina, tras sesión); no se publica en el gemelo ni se versiona. La oficina lo muestra
 con su atribución bajo el mapa.
+
+## Texturas de suelo y paleta del cielo (EV-1s)
+Las fotos de campo (suelo: 27 jpg y `ficha.json` con la clase de cada una; cielo: 4 jpg y su ficha) viven **fuera del repo**, en una carpeta local que no se versiona; nunca entran las originales, ni en el historial. De ellas sale lo que sí se versiona, por decisión de Antonio del 2026-11-04: siete texturas repetibles en 1024 y 512 px con su relieve, el manifiesto `suelo.json` (huellas sha256) y la paleta del atardecer.
+
+```bash
+cd tuberia/suelo && npm ci && cd ../..                # sharp 0.35.5, fijado en tuberia/suelo/package.json
+GEMELO_SUELO_FOTOS=<carpeta de las fotos de suelo> \
+GEMELO_CIELO_FOTOS=<carpeta de las fotos de cielo> \
+node tuberia/suelo/construye.mjs                      # escribe apps/web/public/suelo/ y tuberia/suelo/paleta_cielo.json (≈ 20 s)
+```
+
+- **Qué foto va a cada clase, qué recorte y qué escala** se decide en `tuberia/suelo/recetas.json`, no en el código. El orden de las clases es el de los niveles de la textura del motor (`SueloFotosPuro.CLASES` en `04f_suelo_fotos.js`; lo comprueba `suelo_tuberia.test.js`).
+- **Pasos:** recorte cuadrado cenital, girado según el EXIF; luz aplanada (cada canal dividido por su desenfoque fuerte); color normalizado alrededor de 1, con el contraste y la saturación de la receta y las piedras sueltas comprimidas; repetible sin costuras (desplazamiento de medio lado y mezcla que conserva la varianza, en x y luego en y); relieve deducido (paso alto de la claridad); de 1024 a 512 px por medias de 2×2, que conservan la periodicidad; WebP de calidad 78. Sin metadatos, porque sharp no copia el EXIF.
+- **Es determinista:** la misma entrada da los mismos bytes. Se comprobó dos veces el 2026-11-04 con las fotos de verdad (28 de 28 ficheros iguales). Si se regenera, el manifiesto cambia con las texturas y `suelo_tuberia.test.js` comprueba que lo versionado es lo del manifiesto.
+- **Escala [SUPUESTO]:** las fotos no llevan referencia (solo las botas de la 08). Los metros de cada textura son una estimación. En la próxima sesión de fotos conviene poner un A4 o un metro en el suelo.
+- **Formato:** WebP. El motor no tiene cargador KTX2/Basis y la CSP del Caddy aún no deja WebAssembly ([EV-1f](../rumbo/PLAN.md)). Por eso KTX2 se propone aparte: bajaría la memoria de la tarjeta gráfica de 37,3 a ≈ 9 MB a 1024 px.
+- **Qué es cada cosa** (medido, deducido o ilustrativo), la bandera y el presupuesto: [SUELO-FOTOS](../sistema/SUELO-FOTOS.md).
 
 ## Medido y deducido
 Copas y relieve: medidos. Tendido, postes, cauces y clasificación de árboles no olivo: **deducidos** de la geometría. Troncos y ramas: ilustrativos. Frutales sin marcar en Hituelo: el LiDAR no los distingue.

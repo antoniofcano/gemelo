@@ -1,0 +1,64 @@
+# Suelo de fotos y paleta del atardecer (EV-1s)
+
+El suelo de cerca puede llevar texturas sacadas de fotos de una finca de Cano & Damas. Las fotos las tomó Antonio el 2026-11-04. La paleta del atardecer sale de 4 fotos de cielo de esa misma tarde. Todo va detrás de la bandera **`?suelo=fotos`**, que está **apagada por defecto**. Cubre las tareas EV-1a, EV-1b, EV-1c y parte de EV-1e de [PLAN](../rumbo/PLAN.md), sobre el estudio [VIABILIDAD-REALISMO](VIABILIDAD-REALISMO.md). Cómo regenerar las texturas: [DATOS](../operacion/DATOS.md#texturas-de-suelo-y-paleta-del-cielo-ev-1s).
+
+## Medido, deducido e ilustrativo (regla 5)
+| Qué | Naturaleza | De dónde |
+|---|---|---|
+| Color del suelo | **medido** | la ortofoto PNOA, como siempre. La textura solo lo **modula** alrededor de 1 (byte / 127,5) y no lo sustituye |
+| Aspecto de cerca (hojas, grava, grietas, líquenes) | **ilustrativo** | fotos reales de la finca, pero no de ese punto. Se repiten de forma estocástica |
+| Clase de cada punto (calle, hojarasca, ruedo…) | **deducida** | reglas simples (abajo). No hay un mapa medido de clases de suelo |
+| Relieve fino (normales) | **deducido** | paso alto de la claridad de la foto: lo claro sube y lo oscuro baja |
+| Piedras sueltas | **ilustrativas** | calcomanías por celdas de 0,9 m con la textura de caliza. No son las piedras de verdad |
+| Escala de cada textura | **[SUPUESTO]** | las fotos no llevan referencia de tamaño (solo las botas de la 08); ver `tuberia/suelo/recetas.json` |
+| Cielo y nubes | **ilustrativos** | simulados por la hora y el tiempo, como siempre. Las fotos solo calibran sus colores al atardecer y no son el fondo |
+
+## Clases y fotos
+| Nivel | Clase | Foto (cenital salvo aviso) | Lado supuesto | Dónde se pinta (regla deducida) |
+|---|---|---|---|---|
+| 0 | calle con picado | 02 (la 05 y la 01, solo color) | 1,4 m | el resto: la entrecalle |
+| 1 | hojarasca seca (densa) | 15 (la 06 y la 08, solo color) | 1,3 m | anillo en el borde de la copa y manchas dentro del ruedo; menos en los caminos |
+| 2 | tierra con grava | 07 (recorte sin la piedra grande) | 0,9 m | el suelo desnudo de la ortofoto que no es camino |
+| 3 | compost / materia orgánica | 03 (recorte sin el trozo blanco) | 0,85 m | suelo abierto **más oscuro** que su entorno en la ortofoto. Es la regla más débil: no se sabe dónde se aporta |
+| 4 | ruedo rojizo | 04, la mitad derecha (la 11, en perspectiva, solo color) | 0,6 m | dentro de la copa: radio medio de los 8 medidos × 1,15 + 0,5 m [SUPUESTO], con un campo de distancias por tesela |
+| 5 | camino / rodada | 27, oblicua cercana, fuera de las rodadas (la 25, la 26 y la 10, solo color) | 0,5 m | el «camino» que ya deduce `04d` de la ortofoto (suelo desnudo claro); las rodadas siguen siendo las sintéticas de `04d` |
+| 6 | caliza porosa con líquenes | 23 (la 20, la 21, la 19 y la 22, solo color) | 0,35 m | las piedras sueltas, más en la tierra, el ruedo y el camino |
+
+**Compost y tierra con grava se separan** por el grano: la 03 es más fina, oscura y con restos negros; la 07 tiene más grava y piedrecitas. El color de las dos lo pone la ortofoto. **Hojarasca y calle se separan** igual: la 15 son hojas sueltas y alargadas con aceitunas; la 02 es picado sobre tierra parda.
+
+## Cómo entra en el motor
+- `apps/web/motor/04f_suelo_fotos.js` carga las 14 imágenes (mismo origen: `suelo/<clase>_<px>[_relieve].webp`, copiadas por Vite desde `apps/web/public/`). Las decodifica en la Cola, con la prioridad más baja y media clase por rebanada, y las junta en **una `DataArrayTexture`** RGBA: el color en RGB y el relieve en A. Añade un solo muestreador al relieve, más el del campo del ruedo.
+- `04d_sombreado_tiles.js` añade su GLSL **solo con la bandera**, por tres anclas que comprueban `sombreado_tiles.test.js` y `suelo_fotos.test.js`. Usa otro programa (`terreno-3dtiles-fotos`). Sin la bandera, el sombreador es el mismo de antes, letra por letra.
+- **Repetición estocástica:** técnica 3 de Quilez («texture variation»), con el índice de un ruido procedimental en vez de otra textura, y mezcla que conserva la varianza. Se mezclan **solo las 2 clases que más pesan** en cada píxel.
+- **Fundido por distancia:** entero hasta 12 m y nada desde 40 m. Más allá no se lee ninguna textura, y la gravilla procedimental de `04d` cede ante la foto en esa franja.
+- **VR:** apagado aunque esté la bandera (`uFotK = 0` mientras `Aparato.vr()`), salvo `?sueloVR=1`, hasta medirlo en el Quest.
+- **Tamaño:** 1024 px en escritorio y 512 px en móvil y gafas. `?sueloPx=512` lo fuerza.
+
+## Presupuesto (regla 6), declarado y no medido en un aparato
+| | Escritorio (1024) | Móvil / VR (512) |
+|---|---|---|
+| Memoria de la tarjeta gráfica (7 niveles RGBA8 con mipmaps) | 37,3 MB | 9,3 MB |
+| Campo del ruedo | 16 KB por tesela (128 × 128, 1 byte) | igual |
+| Memoria de la CPU (montaje) | 28 MB pasajeros: se sueltan en cuanto la textura sube a la tarjeta gráfica (`onUpdate`) | 7 MB pasajeros |
+| Descarga (WebP) | 2,8 MB | 1,0 MB |
+| Lecturas de textura por píxel del suelo cercano | típico 3, máximo 6 (1 del ruedo, 2 × 2 clases, 1 de piedra); más allá de 40 m, 0 | igual |
+| Llamadas de dibujo / triángulos | +0 / +0 | +0 / +0 |
+
+Son **cálculos** (ancho × alto × 4 × 7 × 4/3), no medidas. La medida la da el banco (abajo) y, en fps, solo un aparato real.
+
+## Paleta del atardecer
+De `tuberia/suelo/paleta_cielo.json`. El horizonte y el cenit salen de la foto 03 (el degradado completo) y las nubes, de las 4 fotos; lo oscuro (siluetas) se descarta. Horizonte `#b18a70`, cenit `#616f83`, nube iluminada `#dab192` y nube en sombra `#77757a`. Con `?suelo=fotos`, `15_tiempo.js` cambia dos cosas. El color de ocaso del fondo pasa a ser el del horizonte con un 25 % del cenit; el fondo es un color liso, así que el degradado no se puede pintar. Y las nubes, a la puesta, van de la cara iluminada (abajo) a la de sombra (arriba). Lo comprueba `suelo_fotos.test.js`, que también mira que la paleta del motor sea la del json.
+
+## Qué no está probado
+- **Nada se ha visto en un navegador todavía:** ni que el GLSL compile en todos los aparatos, ni el aspecto. La prueba de capturas está preparada, sin ejecutar:
+  ```bash
+  npm run fixture                                   # si falta pruebas/salida/fixture/
+  node pruebas/suelo_fotos_capturas.js              # monta la página de Hituelo con Vite y deja el encargo (no abre Chrome); --dry solo lo imprime
+  npm run banco:ronda                               # el único Chrome, en su turno
+  ```
+  Las variantes son `base`, `fotos` (`?suelo=fotos`), `fotos512`, `ocaso` (`?hora=18:45`) y `ocasoFotos`, en los escenarios `cerca`, `paseo` y `paseoE`, con capturas y desglose.
+  Las capturas `cerca`, `paseo` y `paseoE` de `base` frente a `fotos` deben dar las mismas llamadas y los mismos triángulos y 0 errores. `ocaso` frente a `ocasoFotos` enseña la paleta. SwiftShader no da fps.
+- **iPhone y Quest:** no probados. En VR sigue apagado.
+- **La escala** de cada textura es un supuesto.
+- **Las reglas de clase** son deducidas, y la del compost es la más débil.
+- **Posible defecto anterior, sin comprobar:** `04d` lee `uGnd`, el color ancho de la tesela de 256 m, con las coordenadas de la caja del glb (`uvO`). Si las hojas del tileset son de 128 m, esa lectura no casaría en escala, y la v crece hacia el norte en `uvO` y hacia el sur en `uGnd`. El campo del ruedo no lo hereda: se lee con las coordenadas de la tesela del Mundo (`lc / 256`).

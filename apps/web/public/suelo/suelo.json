@@ -1,0 +1,290 @@
+{
+ "version": 1,
+ "naturaleza": "ilustrativo: textura de fotos de la finca; el color lo pone la ortofoto (medido); la clase de cada punto es deducida; el relieve, deducido de la claridad",
+ "fotos_de": "2026-11-04",
+ "autor": "Antonio (Cano & Damas Oleicultores)",
+ "licencia": "LICENCIA.md",
+ "sharp": "0.35.5",
+ "tamanos": [
+  1024,
+  512
+ ],
+ "codificacion": {
+  "color": "factor = byte / 127,5 (1 = no cambia el color del suelo)",
+  "relieve": "0,5 = plano; deducido, no medido"
+ },
+ "clases": [
+  {
+   "id": "calle",
+   "capa": 0,
+   "nombre": "calle con picado (entrecalle)",
+   "metros": 1.4,
+   "metros_naturaleza": "supuesto (sin referencia de escala)",
+   "fuente": {
+    "foto": "02",
+    "clase_en_ficha": "calle",
+    "recorte_px": {
+     "left": 0,
+     "top": 515,
+     "width": 1932,
+     "height": 1932
+    }
+   },
+   "color_referencia": "#93857a",
+   "costura": {
+    "512": 0.977,
+    "1024": 1.01
+   }
+  },
+  {
+   "id": "hojarasca",
+   "capa": 1,
+   "nombre": "hojarasca seca de olivo (densa)",
+   "metros": 1.3,
+   "metros_naturaleza": "supuesto (sin referencia de escala)",
+   "fuente": {
+    "foto": "15",
+    "clase_en_ficha": "calle",
+    "recorte_px": {
+     "left": 0,
+     "top": 644,
+     "width": 1932,
+     "height": 1932
+    }
+   },
+   "color_referencia": "#8b8077",
+   "costura": {
+    "512": 0.922,
+    "1024": 0.908
+   }
+  },
+  {
+   "id": "tierra_grava",
+   "capa": 2,
+   "nombre": "tierra parda con grava",
+   "metros": 0.9,
+   "metros_naturaleza": "supuesto (sin referencia de escala)",
+   "fuente": {
+    "foto": "07",
+    "clase_en_ficha": "tierra_grava",
+    "recorte_px": {
+     "left": 676,
+     "top": 1291,
+     "width": 1256,
+     "height": 1256
+    }
+   },
+   "color_referencia": "#998679",
+   "costura": {
+    "512": 1.157,
+    "1024": 1.146
+   }
+  },
+  {
+   "id": "compost",
+   "capa": 3,
+   "nombre": "compost / materia orgánica",
+   "metros": 0.85,
+   "metros_naturaleza": "supuesto (sin referencia de escala)",
+   "fuente": {
+    "foto": "03",
+    "clase_en_ficha": "tierra_grava",
+    "recorte_px": {
+     "left": 0,
+     "top": 258,
+     "width": 1159,
+     "height": 1159
+    }
+   },
+   "color_referencia": "#8b8279",
+   "costura": {
+    "512": 0.963,
+    "1024": 0.942
+   }
+  },
+  {
+   "id": "ruedo",
+   "capa": 4,
+   "nombre": "ruedo rojizo bajo la copa",
+   "metros": 0.6,
+   "metros_naturaleza": "supuesto (sin referencia de escala)",
+   "fuente": {
+    "foto": "04",
+    "clase_en_ficha": "transicion",
+    "recorte_px": {
+     "left": 1082,
+     "top": 927,
+     "width": 850,
+     "height": 850
+    }
+   },
+   "color_referencia": "#908176",
+   "costura": {
+    "512": 0.922,
+    "1024": 0.873
+   }
+  },
+  {
+   "id": "camino",
+   "capa": 5,
+   "nombre": "camino / rodada",
+   "metros": 0.5,
+   "metros_naturaleza": "supuesto (sin referencia de escala)",
+   "fuente": {
+    "foto": "27",
+    "clase_en_ficha": "rodada",
+    "recorte_px": {
+     "left": 1597,
+     "top": 1159,
+     "width": 773,
+     "height": 773
+    }
+   },
+   "color_referencia": "#a98c7f",
+   "costura": {
+    "512": 0.821,
+    "1024": 0.891
+   }
+  },
+  {
+   "id": "piedra",
+   "capa": 6,
+   "nombre": "caliza porosa con líquenes",
+   "metros": 0.35,
+   "metros_naturaleza": "supuesto (sin referencia de escala)",
+   "fuente": {
+    "foto": "23",
+    "clase_en_ficha": "piedra_textura",
+    "recorte_px": {
+     "left": 322,
+     "top": 0,
+     "width": 1932,
+     "height": 1932
+    }
+   },
+   "color_referencia": "#8f8175",
+   "costura": {
+    "512": 1.066,
+    "1024": 1.1
+   }
+  }
+ ],
+ "ficheros": {
+  "calle_1024.webp": {
+   "bytes": 302744,
+   "sha256": "311d2106a8e6d11babdf28efb1cf738f1ef23c513b54f9ff9cea0277fc2483f9"
+  },
+  "calle_1024_relieve.webp": {
+   "bytes": 228476,
+   "sha256": "b5a781e6c64ccc4c19986b948ac3048a2dca3d19b3b98bfaa4852d4a5f815b43"
+  },
+  "calle_512.webp": {
+   "bytes": 73722,
+   "sha256": "517f91a5d20495755990f5000f97375de465af97323012a7cf7504a5d8e42aef"
+  },
+  "calle_512_relieve.webp": {
+   "bytes": 104082,
+   "sha256": "ce6010ee9dd6705569c002258f28ad562c020c06dcc52d3372ee0401080f02fa"
+  },
+  "hojarasca_1024.webp": {
+   "bytes": 289720,
+   "sha256": "5572a086d26dc12c82bc2acfd3475b9895bab97ad55b953a0a3caa6efb2ae132"
+  },
+  "hojarasca_1024_relieve.webp": {
+   "bytes": 163648,
+   "sha256": "1b647b7c14e3a0f8ff50472f38b2d96a3799c8384336d711deb3ae469f3f47d3"
+  },
+  "hojarasca_512.webp": {
+   "bytes": 77764,
+   "sha256": "019585c46a17f72036ca8c03dcbe8dc091e936e281f5b5a615a577aa902f8916"
+  },
+  "hojarasca_512_relieve.webp": {
+   "bytes": 78722,
+   "sha256": "f31fe0db69363ec3bc20abc6c022a7bf5fb5ab2dcb95ec97c319887c7e175299"
+  },
+  "tierra_grava_1024.webp": {
+   "bytes": 251446,
+   "sha256": "fb71fad10ecf28a85535e6328159c93297c12e97e2c2d38c55144253bdfc1484"
+  },
+  "tierra_grava_1024_relieve.webp": {
+   "bytes": 192368,
+   "sha256": "defd6307114f5e7363ca3aa1682ac0617d539fba397af223d40353985642970b"
+  },
+  "tierra_grava_512.webp": {
+   "bytes": 70710,
+   "sha256": "3ae22e1ed2b6cd2ee8e032273ccd72efcb02a20c8b750b3ed524f6cc400d2aab"
+  },
+  "tierra_grava_512_relieve.webp": {
+   "bytes": 90322,
+   "sha256": "415ad345660f4e9a68dbb0c1762532c4bd31c0ca228f1878afb32c10cb7c1e41"
+  },
+  "compost_1024.webp": {
+   "bytes": 236820,
+   "sha256": "a1176d2075688ecfbe4c534ecb2e209d073e70e9d65a5277107429e603728249"
+  },
+  "compost_1024_relieve.webp": {
+   "bytes": 210982,
+   "sha256": "34ef7f7052b06fb33197f275ac5482c13dd10b802075b00ab7375f4d23238003"
+  },
+  "compost_512.webp": {
+   "bytes": 67690,
+   "sha256": "02e442021d7bd5eacfabef1c7a55be4d5a67fa85dcdea42701f60a8068ea9c74"
+  },
+  "compost_512_relieve.webp": {
+   "bytes": 96074,
+   "sha256": "3bacd831ebc599c1260b1f0557f2f96cc208f3df7ac975d2970af8b6b46eb1d3"
+  },
+  "ruedo_1024.webp": {
+   "bytes": 137240,
+   "sha256": "a27e7d9e144d9675a25da2b8a30c88bb04cd1482606774e59bfc9415628211bc"
+  },
+  "ruedo_1024_relieve.webp": {
+   "bytes": 198620,
+   "sha256": "4266a8258617ee95f9181a0959b4a16c427084128837b699a42b5e1664b3ca1c"
+  },
+  "ruedo_512.webp": {
+   "bytes": 53810,
+   "sha256": "00f4afcaf1397354fa2999ce2b704caa788a0e6ee3c411ce1726f1e7d5d2b213"
+  },
+  "ruedo_512_relieve.webp": {
+   "bytes": 93226,
+   "sha256": "608584c1987edac56d9a069ea6eaa833bbf691b0487b121c997aad87a96c485f"
+  },
+  "camino_1024.webp": {
+   "bytes": 88670,
+   "sha256": "d174ec95e39952d8e7a6c05ec59f75c273dce6d3df03faa1aea2c88df417bb34"
+  },
+  "camino_1024_relieve.webp": {
+   "bytes": 162498,
+   "sha256": "52137cedcc4c0e06ad48619bc4fad3b791ebb679ef940fc994fa2af3800133b9"
+  },
+  "camino_512.webp": {
+   "bytes": 33454,
+   "sha256": "381a9db8dcdbec0e9d841c1f9f15cc70119bd1d1d527ccdeb2faaaea1180e13f"
+  },
+  "camino_512_relieve.webp": {
+   "bytes": 77174,
+   "sha256": "2fe92bc35f1fe2d77cbbee459fe199512b163bfe00ab00de0547c6e34bba168e"
+  },
+  "piedra_1024.webp": {
+   "bytes": 318470,
+   "sha256": "ffda78ef3f9cb39ecf132e4bd742a490434619aa4d98fe3287b53de1f9a815b4"
+  },
+  "piedra_1024_relieve.webp": {
+   "bytes": 156314,
+   "sha256": "d5dd2164ae4df2fea10defb30b5e771f9836627afda5b30ec2ad4ff40ddbafef"
+  },
+  "piedra_512.webp": {
+   "bytes": 78154,
+   "sha256": "4dce3cdeae42520fb860360deae8e29bd84342cb3d256a3cb98dfc08e981b163"
+  },
+  "piedra_512_relieve.webp": {
+   "bytes": 75024,
+   "sha256": "b071066436bc7b710e6f4d6407c0b722d1480c48ca9924597635168cc5a1849f"
+  }
+ },
+ "memoria_gpu_mb": {
+  "512": 9.3,
+  "1024": 37.3
+ }
+}

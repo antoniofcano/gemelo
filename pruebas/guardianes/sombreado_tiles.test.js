@@ -13,10 +13,19 @@ const WEB = path.join(RAIZ, "apps", "web"), MOTOR = path.join(WEB, "motor"), THR
 const SALTO = fs.existsSync(THREE_JS) ? null : "three no instalado (cd apps/web && npm ci): el sombreado del tileset NO se ha comprobado";
 const lee = f => fs.readFileSync(path.join(MOTOR, f), "utf8");
 
-let THREE, M;   // M: lo que devuelve el motor evaluado
+let THREE, M, MF;   // M: lo que devuelve el motor evaluado; MF: lo mismo con ?suelo=fotos (EV-1s, 04f_suelo_fotos.js)
+// el trozo puro de 04f y una maqueta de SueloFotos (sin cargar texturas): apagado, como sin la bandera, o encendido
+function sueloFotos(activo) {
+  const f = lee("04f_suelo_fotos.js"), P = new Function("\"use strict\";\n" + f.slice(f.indexOf("// [puro:inicio]"), f.indexOf("// [puro:fin]")) + "\nreturn SueloFotosPuro;")();
+  const neutro = new THREE.DataTexture(new Uint8Array(4), 1, 1), campos = [];
+  return { P, S: { activo, U: { uFot: { value: null }, uFotK: { value: 0 } }, rueNeutro: () => neutro, campo: () => { const t = new THREE.DataTexture(new Uint8Array(4), 1, 1); campos.push(t); return t; }, actualiza() {}, libera() {}, campos } };
+}
 test.before(async () => {
   if (SALTO) return;
   THREE = await import(pathToFileURL(THREE_JS).href);
+  M = evalua(false); MF = evalua(true);
+});
+function evalua(conFotos) {
   const tie = lee("15_tiempo.js");
   const sombra = /  var uSombra = [\s\S]*?\n(?=  function conTiempo)/.exec(tie), pt = /  function parcheTiempo\(sh, viento\) \{[\s\S]*?\n  \}\n/.exec(tie);
   assert.ok(sombra && pt, "no encuentro uSombra/GLSL_SOMBRA o parcheTiempo en 15_tiempo.js");
@@ -29,10 +38,12 @@ test.before(async () => {
     dist: () => 0
   };
   const D = { ts: TS, orto_px: 512, mosaico: { x0: 0, yN: 0, w: 1, h: 1, res: 1 } }, cola = [];
-  const f = Function("THREE", "D", "RES", "ANCHO", "ALTO", "Mundo", "Cola", "scene", "camera", "x0", "yN", "suelo", "vn2", cuerpo);
-  M = f(THREE, D, 1, 1000, 1000, Mundo, { add: (k) => cola.push(k) }, new THREE.Scene(), new THREE.PerspectiveCamera(), 0, 0, () => 0, () => 0);
-  M.Mundo = Mundo; M.cola = cola;
-});
+  const sf = sueloFotos(conFotos);
+  const f = Function("THREE", "D", "RES", "ANCHO", "ALTO", "Mundo", "Cola", "scene", "camera", "x0", "yN", "suelo", "vn2", "SueloFotosPuro", "SueloFotos", cuerpo);
+  const m = f(THREE, D, 1, 1000, 1000, Mundo, { add: (k) => cola.push(k) }, new THREE.Scene(), new THREE.PerspectiveCamera(), 0, 0, () => 0, () => 0, sf.P, sf.S);
+  m.Mundo = Mundo; m.cola = cola; m.SF = sf.S;
+  return m;
+}
 
 const lambert = () => ({ vertexShader: THREE.ShaderLib.lambert.vertexShader, fragmentShader: THREE.ShaderLib.lambert.fragmentShader, uniforms: {} });
 function glb(lado, x0, y0) {   // un modelo como el que entrega 3DTilesRendererJS: la malla del terreno con su ortofoto y un nodo de olivos instanciado
@@ -91,6 +102,23 @@ test("modelo(): solo la malla con ortofoto cambia de material; los olivos no se 
   let liberado = false; g1.ter.material.addEventListener("dispose", () => { liberado = true; });
   const antes = M.SombreadoTiles.resumen().glb; M.SombreadoTiles.suelta(g1.raiz);
   assert.ok(liberado, "suelta() libera el material"); assert.strictEqual(M.SombreadoTiles.resumen().glb, antes - 1);
+});
+
+test("con ?suelo=fotos (EV-1s): el GLSL de 04f entra por sus anclas, con sus uniformes, el campo del ruedo de la tesela y un programa aparte", t => {
+  if (SALTO) return t.skip(SALTO);
+  const g = glb(128, 0, 0); MF.SombreadoTiles.modelo(g.raiz, g.tile);
+  const { sh, susts } = compila(g.ter.material);
+  assert.deepStrictEqual(susts.filter(s => !s.hallado).map(s => s.trozo), [], "sustituciones que no encuentran su trozo");
+  for (const s of ["uniform highp sampler2DArray uFot;", "float fotA = uFotK", "cercaM * (1.0 - fotA);", "if (fotA > 0.003)", "vec4 fotVar("]) assert.ok(sh.fragmentShader.includes(s), "fragmento sin «" + s + "»");
+  assert.ok(sh.fragmentShader.indexOf("vec4 fotVar(") > sh.fragmentShader.indexOf("float dn(vec2 p)"), "fotVar usa dn: va después");
+  assert.ok(sh.fragmentShader.indexOf("if (fotA > 0.003)") < sh.fragmentShader.indexOf("diffuseColor.rgb *= sRGBTransferEOTF("), "la foto modula antes de pasar a lineal");
+  assert.strictEqual(sh.uniforms.uFot, MF.SF.U.uFot); assert.strictEqual(sh.uniforms.uFotK, MF.SF.U.uFotK);
+  assert.strictEqual(sh.uniforms.uRue, MF.Mundo.tesela(64, 64).uni.uRue, "el campo del ruedo es el de la tesela del Mundo");
+  assert.strictEqual(MF.SF.campos.length, 1, "un campo por tesela");
+  assert.strictEqual(g.ter.material.customProgramCacheKey(), "terreno-3dtiles-fotos");
+  // y sin la bandera, nada de eso
+  const g0 = glb(128, 0, 0); M.SombreadoTiles.modelo(g0.raiz, g0.tile); const { sh: s0 } = compila(g0.ter.material);
+  assert.ok(!/fotA|uFot|uRue/.test(s0.fragmentShader) && !("uFot" in s0.uniforms) && !("uRue" in s0.uniforms)); assert.strictEqual(g0.ter.material.customProgramCacheKey(), "terreno-3dtiles");
 });
 
 test("04b_escena3d.js engancha SombreadoTiles en load-model, dispose-model, actualiza y al liberar o fallar", () => {

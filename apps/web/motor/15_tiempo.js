@@ -4,9 +4,9 @@
 //   horaMundoTexto, aplicaMundo, anuncia, TiempoVivo, lindes
 // Consume: 01_datos (D, $, tinta, FOG0, FOG1), 02_mundo (suelo, copas), 02c_componentes (Bus, Pausa),
 //   03_escena (visor, scene, camera, SRGB, LUZ_SOL, LUZ_CIELO, hemi, sol, texColor, colorVertSRGB, colorCss, exag, modo),
-//   04d_sombreado_tiles (hash, matSuelo, matOrto), 05_nube (nube), 07_follaje (matHojaG, matHojaP, matCorteza), 08_marcadores (gLinde),
-//   09_camara (objetivo), 13b_hazas (HazasPuro), 14_historia (marca, tabla, aviso), 16_vida (esfera, mira, quad, temaEstela, dron),
-//   23_estacion (objetivoMundo), 24_pantalla (suave)
+//   04d_sombreado_tiles (hash, matSuelo, matOrto), 04f_suelo_fotos (SueloFotos), 05_nube (nube), 07_follaje (matHojaG, matHojaP, matCorteza),
+//   08_marcadores (gLinde), 09_camara (objetivo), 13b_hazas (HazasPuro), 14_historia (marca, tabla, aviso),
+//   16_vida (esfera, mira, quad, temaEstela, dron), 23_estacion (objetivoMundo), 24_pantalla (suave)
 // Nota: Lee /api/tiempo (mismo origen) solo con D.base /teselas/… o ?api=; si no, el conector de claude.ai; si no, el tiempo simulado, dicho. Expone TiempoVivo (contratos/interfaces.json). El trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/tiempo_motor.test.js.
 // ===============================================================================
   // ---------- el tiempo: el mundo del gemelo simula el que publica Vigía
@@ -186,6 +186,13 @@
       NUBES.push(gr);
     }
   })();
+  // EV-1s (?suelo=fotos, la misma bandera que el suelo de fotos): la paleta del atardecer sacada de 4 fotos de cielo de la finca (2026-11-04) por
+  // tuberia/suelo/construye.mjs (tuberia/suelo/paleta_cielo.json; lo comprueba pruebas/guardianes/suelo_fotos.test.js). Solo calibra COLORES: el
+  // cielo sigue siendo simulado por la hora y el tiempo (ilustrativo), sin foto de fondo. El fondo es un color liso: va el del horizonte con un
+  // poco del cenit; las nubes, a la puesta, de la cara iluminada (abajo, el sol rasante) a la de sombra (arriba). Sin la bandera, nada cambia.
+  var PALETA_OCASO = { horizonte: 0xb18a70, cenit: 0x616f83, nubeLuz: 0xdab192, nubeSombra: 0x77757a };
+  var OCASO_FOTOS = typeof SueloFotos !== "undefined" && SueloFotos.activo;
+  var uOcasoN = { uNubLuz: { value: new THREE.Color(PALETA_OCASO.nubeLuz) }, uNubSom: { value: new THREE.Color(PALETA_OCASO.nubeSombra) }, uOcaso: { value: 0 } };
   var nubesMalla = (function () {
     var g = new THREE.BufferGeometry(), E = [-0.5, -0.5, 0.5, -0.5, 0.5, 0.5, -0.5, 0.5], UV = [0, 0, 1, 0, 1, 1, 0, 1];
     var esq = new Float32Array(NSP * 8), uv = new Float32Array(NSP * 8), idx = new Uint16Array(NSP * 6);
@@ -195,12 +202,16 @@
     g.setAttribute("tam", new THREE.BufferAttribute(new Float32Array(NSP * 8), 2).setUsage(THREE.DynamicDrawUsage));
     g.setAttribute("alfa", new THREE.BufferAttribute(new Float32Array(NSP * 4), 1).setUsage(THREE.DynamicDrawUsage));
     g.setIndex(new THREE.BufferAttribute(idx, 1)); g.setDrawRange(0, 0);
+    var un = { map: { value: texN }, diffuse: { value: new THREE.Color(1, 1, 1) } }; if (OCASO_FOTOS) Object.assign(un, uOcasoN);
     var m = new THREE.ShaderMaterial({
-      uniforms: { map: { value: texN }, diffuse: { value: new THREE.Color(1, 1, 1) } }, transparent: true, depthWrite: false, fog: false,
+      uniforms: un, transparent: true, depthWrite: false, fog: false,
       vertexShader: "attribute vec2 esquina; attribute vec2 tam; attribute float alfa; varying vec2 vUv; varying float vA;\n" +
         "void main() { vec4 mv = modelViewMatrix * vec4(position, 1.0); mv.xy += esquina * tam; gl_Position = projectionMatrix * mv; vUv = uv; vA = alfa; }",
-      fragmentShader: "uniform sampler2D map; uniform vec3 diffuse; varying vec2 vUv; varying float vA;\n" +
-        "void main() { vec4 c = vec4(diffuse, vA) * texture2D(map, vUv); gl_FragColor = c;\n#include <tonemapping_fragment>\n#include <colorspace_fragment>\n}"
+      fragmentShader: OCASO_FOTOS
+        ? "uniform sampler2D map; uniform vec3 diffuse; uniform vec3 uNubLuz; uniform vec3 uNubSom; uniform float uOcaso; varying vec2 vUv; varying float vA;\n" +
+          "void main() { vec3 d = mix(diffuse, mix(uNubLuz, uNubSom, smoothstep(0.3, 0.7, vUv.y)), uOcaso); vec4 c = vec4(d, vA) * texture2D(map, vUv); gl_FragColor = c;\n#include <tonemapping_fragment>\n#include <colorspace_fragment>\n}"
+        : "uniform sampler2D map; uniform vec3 diffuse; varying vec2 vUv; varying float vA;\n" +
+          "void main() { vec4 c = vec4(diffuse, vA) * texture2D(map, vUv); gl_FragColor = c;\n#include <tonemapping_fragment>\n#include <colorspace_fragment>\n}"
     });
     var me = new THREE.Mesh(g, m); me.name = "nubes"; me.frustumCulled = false; me.renderOrder = -1; gCielo.add(me);
     return me;
@@ -281,7 +292,7 @@
   function nivel(ms) { return nivelEn(ms, { s: { alt: 0, az: 0 }, d: 0 }); }   // la de siempre (reserva el resultado); lo que corre por fotograma usa nivelEn
   var lvT = { s: { alt: 0, az: 0 }, d: 0 };   // el nivel del sol de actualizaTiempo, el mismo objeto cada fotograma (AG-1.4b)
   // AG-1.4c: los temporales de actualizaTiempo (antes, un Vector3 y ocho Color nuevos por fotograma). scene.background pasa a ser siempre cCielo (se reescribe entero cada fotograma).
-  var vDirS = new THREE.Vector3(), cDia = new THREE.Color(), cNoche = new THREE.Color(0x070b18), cOcaso = new THREE.Color(0xc77b4e), cGris = new THREE.Color(), cCielo = new THREE.Color();
+  var vDirS = new THREE.Vector3(), cDia = new THREE.Color(), cNoche = new THREE.Color(0x070b18), cOcaso = OCASO_FOTOS ? new THREE.Color(PALETA_OCASO.horizonte).lerp(new THREE.Color(PALETA_OCASO.cenit), 0.25) : new THREE.Color(0xc77b4e), cGris = new THREE.Color(), cCielo = new THREE.Color();
   var cTinta = new THREE.Color(), cTintaGris = new THREE.Color(0x6e747b), cLuz = new THREE.Color(), CLAVES_TIEMPO = ["nub", "viento", "lluvia", "hr", "temp"];
   function lerpN(a, b, t) { return a + (b - a) * t; }
   function angDif(a, b) { var d = ((b - a + 540) % 360) - 180; return d; }
@@ -348,7 +359,7 @@
       if (g.position.z > 1100) g.position.z -= 2200; else if (g.position.z < -1100) g.position.z += 2200;
       g.o = nub > g.umbral ? Math.min(1, (nub - g.umbral) * 14) * (0.35 + 0.55 * nub) : 0;
     }
-    nubesMalla.material.uniforms.diffuse.value.copy(tinta).multiply(luz); pintaNubes();
+    nubesMalla.material.uniforms.diffuse.value.copy(tinta).multiply(luz); if (OCASO_FOTOS) uOcasoN.uOcaso.value = 0.85 * bajo * Math.min(1, d * 2.5) * (1 - 0.6 * Math.min(1, cur.lluvia / 2)); pintaNubes();
     // viento sobre el follaje
     var amp = calma ? 0 : Math.min(0.5, 0.03 + 0.1 * cur.viento);
     uViento.uT.value = tMundo; uViento.uAmp.value = amp; uViento.uDir.value.set(vx, vz);

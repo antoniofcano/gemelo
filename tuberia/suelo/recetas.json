@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "nota": "Recetas de la tubería de suelo (EV-1s). Cada clase sale de UNA foto cenital de la sesión del 2026-11-04 (las fotos, fuera del repo: GEMELO_SUELO_FOTOS); 'recorte' es [x, y, ancho, alto] en fracciones de la foto ya girada según su EXIF y se ajusta a un cuadrado; 'metros' es el lado en el suelo que se le supone al recorte [SUPUESTO: sin referencia de escala salvo las botas de la 08, ≈ 28-30 cm; pedir un A4 en la próxima sesión]; 'contraste' es la desviación típica de la claridad que se deja (la textura MODULA el color de la ortofoto alrededor de 1; no lo sustituye); 'saturacion' reduce la desviación de color respecto a la claridad (1 = la de la foto); 'color' son las fotos (en perspectiva u otras de la clase) de las que solo se toma el color medio de referencia para el informe, no la textura. El orden de 'clases' ES el orden de las capas del motor (04f_suelo_fotos.js).",
+  "lado_trabajo": 1024,
+  "tamanos": [1024, 512],
+  "calidad_webp": 78,
+  "clases": [
+    { "id": "calle", "nombre": "calle con picado (entrecalle)", "fuente": "02", "recorte": [0, 0.2, 1, 0.75], "metros": 1.4, "contraste": 0.16, "saturacion": 0.7, "color": ["05", "01"], "por_que": "cenital, la entrecalle típica: picado y hojarasca suelta sobre tierra parda; la 05 es igual pero con más gradiente de luz" },
+    { "id": "hojarasca", "nombre": "hojarasca seca de olivo (densa)", "fuente": "15", "recorte": [0, 0.25, 1, 0.75], "metros": 1.3, "contraste": 0.22, "saturacion": 0.75, "color": ["06", "08"], "por_que": "cenital, hojas secas alargadas con aceitunas caídas y piedrecitas, la más densa y uniforme; la 08 lleva las botas abajo y la 06 tiene menos hojas" },
+    { "id": "tierra_grava", "nombre": "tierra parda con grava", "fuente": "07", "recorte": [0.35, 0.5, 0.65, 0.49], "metros": 0.9, "contraste": 0.17, "saturacion": 0.7, "color": ["09"], "por_que": "cenital, tierra parda con grava, piedrecitas y restos: más piedra y menos materia oscura que la 03; el recorte evita la piedra grande del centro, que se vería repetida" },
+    { "id": "compost", "nombre": "compost / materia orgánica", "fuente": "03", "recorte": [0, 0.1, 0.6, 0.45], "metros": 0.85, "contraste": 0.15, "saturacion": 0.65, "color": [], "por_que": "cenital, tierra parda oscura con grava fina y restos negros; se separa de la 07 por el grano más fino y las motas negras (el color lo pone la ortofoto); el recorte evita el trozo blanco de la derecha" },
+    { "id": "ruedo", "nombre": "ruedo rojizo bajo la copa", "fuente": "04", "recorte": [0.56, 0.36, 0.44, 0.33], "metros": 0.6, "contraste": 0.13, "saturacion": 0.7, "color": ["11", "01"], "por_que": "la única cenital de ruedo: la mitad derecha de la 04 (tierra rojiza agrietada); la 11 (ruedo bajo un olivo) está en perspectiva y solo da color" },
+    { "id": "camino", "nombre": "camino / rodada", "fuente": "27", "recorte": [0.62, 0.6, 0.3, 0.4], "metros": 0.5, "contraste": 0.12, "saturacion": 0.7, "color": ["25", "26", "10"], "por_que": "oblicua cercana: el trozo de abajo a la derecha, fuera de las rodadas (tierra rojiza compactada con grava fina); las rodadas las dibuja el motor orientadas con el camino; la 26 y la 10 en perspectiva solo dan color" },
+    { "id": "piedra", "nombre": "caliza porosa con líquenes", "fuente": "23", "recorte": [0.125, 0, 0.75, 1], "metros": 0.35, "contraste": 0.24, "saturacion": 0.8, "color": ["20", "21", "19", "22"], "por_que": "primer plano de caliza con líquenes grises y negros, la más uniforme de las de roca; la 21 (alveolos) tiene huecos muy grandes para repetirse" }
+  ],
+  "cielo": {
+    "nota": "Paleta del atardecer de las 4 fotos de cielo (GEMELO_CIELO_FOTOS). Horizonte y cenit, de la 03 (el degradado completo); las nubes, de las 4. Se descarta lo oscuro (siluetas de olivos y sierra).",
+    "degradado": "03",
+    "nubes": ["01", "02", "03", "04"]
+  }
+}

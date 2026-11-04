@@ -39,12 +39,21 @@ test("sin ficheros de datos, credenciales ni binarios pesados", () => {
 const TEXTURAS_OLIVO = ["apps/web/olivo/texturas/corteza.jpg", "apps/web/olivo/texturas/musgo.jpg", "apps/web/olivo/texturas/muerta.jpg"];
 
 // Excepción acotada (decisión 98): los iconos de la aplicación (manifiesto web y apple-touch-icon), PNG generados con sharp desde
-// apps/web/public/icono.svg por apps/web/herramientas/iconos.mjs. Icono provisional hasta la marca (decisión 44); nada más en public/.
+// apps/web/public/icono.svg por apps/web/herramientas/iconos.mjs. Icono provisional hasta la marca (decisión 44); en public/ no hay más imágenes que estas y las texturas de suelo (abajo).
 const ICONOS_APP = /^apps\/web\/public\/icono-[a-z0-9-]+\.png$/;
 
-test("sólo hay imágenes del fixture sintético (ninguna ortofoto real) y las texturas de campo del olivo", () => {
+// Excepción acotada (decisión de Antonio del 2026-11-04, EV-1s): las texturas de suelo que salen de fotos de campo de la finca (las fotos
+// originales nunca entran), generadas por tuberia/suelo/construye.mjs: solo las clases del manifiesto, 1024 o 512 px, hasta 340 KB cada una y
+// 4,5 MB en total, con su LICENCIA.md al lado.
+const TEXTURAS_SUELO = /^apps\/web\/public\/suelo\/(calle|hojarasca|tierra_grava|compost|ruedo|camino|piedra)_(1024|512)(_relieve)?\.webp$/;
+
+test("sólo hay imágenes del fixture sintético (ninguna ortofoto real) y las texturas de campo del olivo y del suelo", () => {
   const img = TODOS.filter(f => /\.(jpe?g|png|webp|gif)$/i.test(f));
-  assert.deepStrictEqual(img.filter(f => !f.startsWith("pruebas/fixture/") && !TEXTURAS_OLIVO.includes(f) && !ICONOS_APP.test(f)), [], "imágenes fuera de pruebas/fixture/: ¿ortofotos reales?");
+  assert.deepStrictEqual(img.filter(f => !f.startsWith("pruebas/fixture/") && !TEXTURAS_OLIVO.includes(f) && !ICONOS_APP.test(f) && !TEXTURAS_SUELO.test(f)), [], "imágenes fuera de pruebas/fixture/: ¿ortofotos reales?");
+  const suelo = img.filter(f => TEXTURAS_SUELO.test(f));
+  suelo.forEach(f => assert.ok(fs.statSync(path.join(RAIZ, f)).size <= 340 * 1024, f + ": una textura de suelo no debe pasar de 340 KB"));
+  assert.ok(suelo.reduce((s, f) => s + fs.statSync(path.join(RAIZ, f)).size, 0) <= 4.5 * 1024 * 1024, "las texturas de suelo no deben pasar de 4,5 MB en total");
+  if (suelo.length) assert.ok(fs.existsSync(path.join(RAIZ, "apps", "web", "public", "suelo", "LICENCIA.md")), "las texturas de suelo van con su LICENCIA.md");
   img.filter(f => TEXTURAS_OLIVO.includes(f)).forEach(f => assert.ok(fs.statSync(path.join(RAIZ, f)).size <= 160 * 1024, f + ": una textura del olivo no debe pasar de 160 KB"));
   if (img.some(f => TEXTURAS_OLIVO.includes(f))) assert.ok(fs.existsSync(path.join(RAIZ, "apps", "web", "olivo", "texturas", "LICENCIA.txt")), "las texturas del olivo van con su LICENCIA.txt");
   img.filter(f => ICONOS_APP.test(f)).forEach(f => assert.ok(fs.statSync(path.join(RAIZ, f)).size <= 30 * 1024, f + ": un icono no debe pasar de 30 KB"));

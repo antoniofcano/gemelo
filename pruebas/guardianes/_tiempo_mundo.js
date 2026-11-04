@@ -35,7 +35,8 @@ function mundoTiempo(THREE, nuevo) {
     objetivo: new THREE.Vector3(10, 5, -20), $: (id) => els[id], TiempoPuro: { cielo: (nub, ll, hr) => (ll > 0.05 ? "lluvia" : nub > 60 ? "cubierto" : "despejado") },
     fmtHora: { format: (d) => d.toISOString().slice(11, 16) }, num1: (v, d) => v.toFixed(d == null ? 1 : d), rumbo: (gr) => ["N", "NE", "E", "SE", "S", "SO", "O", "NO"][Math.round(((gr % 360) + 360) % 360 / 45) % 8],
     TM: { demo: false, origen: "simulado" }, cur: { ms: Date.UTC(2026, 5, 21, 10), nub: 0, viento: 0, dir: 0, lluvia: 0, hr: 40, temp: 18 }, meta: { ms: Date.UTC(2026, 5, 21, 10), nub: 0, viento: 0, dir: 0, lluvia: 0, hr: 40, temp: 18 },
-    ahoraMs: () => Date.UTC(2026, 5, 21, 10), els
+    ahoraMs: () => Date.UTC(2026, 5, 21, 10), els,
+    OCASO_FOTOS: false, PALETA_OCASO: {}, uOcasoN: { uOcaso: { value: 0 } }   // EV-1s: sin ?suelo=fotos, como la foto de antes
   };
   W.lluvia.visible = false; W.estrellas.material.transparent = true;
   const nombres = Object.keys(W), valores = nombres.map(k => W[k]);

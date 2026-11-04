@@ -27,6 +27,8 @@ jobs:
         working-directory: apps/web
       - run: npm ci
         working-directory: tuberia/tiles3d
+      - run: npm ci
+        working-directory: tuberia/suelo
       - name: Puerta
         env:
           CHROME: /usr/bin/google-chrome
