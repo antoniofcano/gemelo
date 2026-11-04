@@ -1,8 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Escena3D
-// Consume: 01_datos (D), 01a_aparato (Aparato), 02_mundo (Mundo, suelo), 02b_cola (CargaPuro, Cola),
+// Consume: 01_datos (D, $), 01a_aparato (Aparato), 02_mundo (Mundo, suelo), 02b_cola (CargaPuro, Cola),
 //   03_escena (visor, renderer, scene, camera, exag), 04d_sombreado_tiles (SombreadoTiles), 05_nube (nube), 08_marcadores (listo, aplica),
-//   09_camara (objetivo), 14_historia (aviso), 16_vida (mira), 29_vr (panel)
+//   09_camara (objetivo, suelta, pon), 14_historia (aviso), 16_vida (quita, mira), 29_vr (panel)
 // ===============================================================================
   // ---------- la escena en 3D Tiles 1.1 (ADR-0015, aceptado; formato en doc/sistema/TILES3D.md): la ÚNICA escena (T8 fase 2, decisión 79). El relieve
   // con su ortofoto lo dibuja 3DTilesRendererJS (versión fijada en apps/web/package.json) desde un tileset.json de tuberia/tiles3d/, con el sombreado
@@ -15,12 +15,50 @@
   // Tileset: ?tileset=<ruta relativa> (pruebas), si no D.tileset (el índice); nunca otro host (§5 de CLAUDE.md: solo el mismo origen).
   // Marco: la raíz lleva LOCAL → ECEF; el grupo lo deshace y pasa de z arriba a y arriba, como la página de prueba de tuberia/tiles3d/, y
   // aplica la exageración vertical en la misma matriz.
+  // [puro:inicio]
+  // AG-1.6: BVH (three-mesh-bvh, versión fijada en apps/web/package.json) para los rayos CONTRA MALLAS del relieve de las teselas. Solo los gasta relieveEn/sondea
+  // (pruebas y depuración): el toque, el rayo de los mandos y el teletransporte no lanzan rayo contra mallas (los olivos, las balizas y las personas se eligen
+  // en analítico; el suelo, con Mundo.suelo). Por eso es opt-in (?bvh): sin él, ni se descarga la librería ni se construye nada. `lib` se inyecta ({ MeshBVH,
+  // acceleratedRaycast }) para poder probarlo en Node. indirect: true deja intacta la geometría (no reordena su índice) y no toca lo que ve la GPU.
+  var RayosPuro = (function () {
+    var MIN_TRIANGULOS = 2000;   // por debajo, el recorrido lineal de three ya es barato y el árbol no compensa
+    function nada() {}
+    function triangulos(g) { var i = g.index; return i ? i.count / 3 : (g.attributes.position ? g.attributes.position.count / 3 : 0); }
+    function candidata(m, min) {
+      return !!(m && m.isMesh && !m.isInstancedMesh && !m.isSkinnedMesh && !m.isBatchedMesh && m.geometry && m.geometry.attributes && m.geometry.attributes.position &&
+        !m.geometry.boundsTree && triangulos(m.geometry) >= (min == null ? MIN_TRIANGULOS : min));
+    }
+    // pone el BVH a las mallas grandes de `raiz` (una tesela) y apaga el raycast de sus InstancedMesh (los olivos del glb: el relieve ya los filtra y cada
+    // rayo los recorría todos). Devuelve cuántas mallas con árbol y cuántos triángulos cubre. Idempotente.
+    function pon(raiz, lib, min) {
+      var n = 0, tri = 0;
+      raiz.traverse(function (o) {
+        if (o.isInstancedMesh) { if (o.raycast !== nada) { o.raycast = nada; o.userData.bvhRaycast = 1; } return; }
+        if (!candidata(o, min)) return;
+        o.geometry.boundsTree = new lib.MeshBVH(o.geometry, { indirect: true }); o.raycast = lib.acceleratedRaycast; o.userData.bvhRaycast = 1; n++; tri += triangulos(o.geometry);
+      });
+      return { mallas: n, triangulos: tri };
+    }
+    // lo deshace (dispose-model, apagar): suelta el árbol y devuelve el raycast de three. Idempotente
+    function quita(raiz) {
+      var n = 0;
+      raiz.traverse(function (o) {
+        if (o.userData && o.userData.bvhRaycast) { delete o.raycast; delete o.userData.bvhRaycast; }
+        if (o.geometry && o.geometry.boundsTree) { o.geometry.boundsTree = null; n++; }
+      });
+      return n;
+    }
+    function cuenta(raiz) { var n = 0; raiz.traverse(function (o) { if (o.geometry && o.geometry.boundsTree) n++; }); return n; }
+    return { pon: pon, quita: quita, cuenta: cuenta, candidata: candidata, triangulos: triangulos, MIN_TRIANGULOS: MIN_TRIANGULOS };
+  })();
+  // [puro:fin]
   var Escena3D = (function () {
     var pedida = /[?&]tileset=[^&#]/.test(location.search) || (typeof D.tileset === "string" && D.tileset.length > 0);
     var estado = pedida ? "cargando" : "apagado", motivo = "", tiles = null, Sched = null, raizT = null, exagPuesta = NaN, sesion = null, errores = 0;
     var ERROR_ESCRITORIO = (function () { var m = /[?&]tilesError=([0-9.]+)/.exec(location.search), v = m ? Number(m[1]) : 16; return v > 0 && v <= 256 ? v : 16; })();
     var errorPerfil = null;   // el del perfil VR (29_vr.js, campo e de cada perfil); null = el de escritorio
     var tam = new THREE.Vector2();
+    var BVH = /[?&]bvh(=1|=true)?(&|#|$)/.test(location.search), bvhLib = null, bvhN = { mallas: 0, triangulos: 0 };   // AG-1.6 (opt-in): ver RayosPuro
     var POL = Aparato.politica();   // AG-1.5: tilesParse / tilesParseVr (cuántas teselas analiza la librería a la vez)
     // AG-1.5: prioridad de red alta a lo cercano. Un complemento de 3DTilesRendererJS: preprocessURL (que recibe la tesela) apunta de qué tesela es cada
     // dirección y fetchData pide la descarga a la propia librería (tiles.fetchData: el fetch de siempre, al mismo origen) con RequestInit.priority
@@ -110,6 +148,11 @@
         tiles.addEventListener("load-model", Cola.cobra("T", function (e) { if (!(ganchos.alModelo && ganchos.alModelo(e.scene, e.tile))) quitaOlivos(e.scene); e.scene.userData.tesela = { uri: e.tile.content && e.tile.content.uri, lado: e.tile.boundingVolume && e.tile.boundingVolume.box ? 2 * e.tile.boundingVolume.box[3] : null, error: e.tile.geometricError }; }));
         tiles.addEventListener("load-model", Cola.cobra("T", function (e) { SombreadoTiles.modelo(e.scene, e.tile); }));   // el relieve, con su sombreado (04d)
         tiles.addEventListener("dispose-model", function (e) { SombreadoTiles.suelta(e.scene); });
+        if (BVH) {   // AG-1.6: el BVH de cada tesela al llegar (en la deuda «T») y fuera al soltarla; la librería se pide aparte y, al llegar, cubre las ya cargadas
+          tiles.addEventListener("load-model", Cola.cobra("T", function (e) { if (bvhLib) sumaBVH(RayosPuro.pon(e.scene, bvhLib)); }));
+          tiles.addEventListener("dispose-model", function (e) { RayosPuro.quita(e.scene); });
+          import("three-mesh-bvh").then(function (m) { bvhLib = m; if (tiles) sumaBVH(RayosPuro.pon(tiles.group, m)); }).catch(function (er) { console.warn("sin three-mesh-bvh: los rayos siguen sin BVH", er); });
+        }
         tiles.addEventListener("dispose-model", function (e) { if (ganchos.alSoltar) ganchos.alSoltar(e.scene); });   // los olivos (04c)
         tiles.addEventListener("load-error", function (e) {
           errores++; console.error("escena 3D Tiles: tesela con fallo " + (e.url || "") + " " + (e.error && e.error.message || ""));
@@ -141,14 +184,16 @@
       SombreadoTiles.actualiza();
       if (ganchos.fotograma) ganchos.fotograma();
     }
+    function sumaBVH(r) { bvhN.mallas += r.mallas; bvhN.triangulos += r.triangulos; }
     function resumen() {
       var vis = 0; if (tiles) tiles.visibleTiles.forEach(function (t) { if (t.content && t.content.uri) vis++; });
-      return { estado: estado, motivo: motivo, errores: errores, visibles: vis, errorTarget: tiles ? tiles.errorTarget : null, stats: tiles ? JSON.parse(JSON.stringify(tiles.stats)) : null };
+      return { estado: estado, motivo: motivo, errores: errores, visibles: vis, bvh: BVH ? { activo: !!bvhLib, mallas: tiles ? RayosPuro.cuenta(tiles.group) : 0, construidas: bvhN.mallas, triangulos: bvhN.triangulos } : null, errorTarget: tiles ? tiles.errorTarget : null, stats: tiles ? JSON.parse(JSON.stringify(tiles.stats)) : null };
     }
     // altura del relieve DIBUJADO en (x, y) del marco local (rayo vertical contra las teselas visibles: la librería saca de tiles.group las que no
     // se dibujan), sin exageración; null si no hay tesela. relieveEn dice además qué glb lo dibuja (uri, lado y geometricError de su tesela).
     // Solo para pruebas y depuración: la física usa la altura de la CPU (decisión 38)
     var rayo = new THREE.Raycaster(), abajo = new THREE.Vector3(0, -1, 0);
+    rayo.firstHitOnly = true;   // la propiedad que lee acceleratedRaycast (three la ignora): solo el impacto más cercano de cada malla
     function teselaDe(o) { for (var p = o; p; p = p.parent) if (p.userData && p.userData.tesela) return p.userData.tesela; return null; }
     function relieveEn(x, y) {
       if (!tiles || !raizT) return null;
@@ -200,7 +245,7 @@
       var s = tiles && tiles.stats;
       return estado === "activo" && tiles.loadProgress === 1 && s.queued + s.downloading + s.parsing === 0;
     }
-    function libera() { if (!tiles) return; SombreadoTiles.libera(); if (ganchos.alApagar) ganchos.alApagar("liberada"); if (Sched) Sched.setXRSession(null); scene.remove(tiles.group); tiles.dispose(); tiles = null; estado = "apagado"; }
+    function libera() { if (!tiles) return; if (BVH) RayosPuro.quita(tiles.group); SombreadoTiles.libera(); if (ganchos.alApagar) ganchos.alApagar("liberada"); if (Sched) Sched.setXRSession(null); scene.remove(tiles.group); tiles.dispose(); tiles = null; estado = "apagado"; }
     function engancha(g) { for (var k in g) ganchos[k] = g[k]; if (estado === "sin" && ganchos.alApagar) ganchos.alApagar(motivo); }
     if (pedida) arranca(); else falla(new Error("falta el tileset"));
     return { actualiza: actualiza, estado: function () { return estado; }, perfil: perfil, resumen: resumen, libera: libera, listo: cargada, alturaEn: alturaEn, relieveEn: relieveEn, sondea: sondea, engancha: engancha, grupo: function () { return tiles && tiles.group; } };
