@@ -167,3 +167,18 @@ test("EV2-A1: apunta(rayo) da (u, v, t) a la más cercana con alApuntar, y null 
   assert.strictEqual(L.apunta(null), null);
   assert.deepStrictEqual(P.valida({ id: "a", ancho: 1, alto: 1, pinta() {}, alApuntar: 1 }), ["alApuntar: función"]);
 });
+
+test("AG-P1: diez sesiones VR seguidas (entrar, abrir láminas, salir) no dejan nada vivo: cada geometría, material y textura creada se libera y la escena queda vacía", () => {
+  const { L, reg, VRX, lienzos } = mundo();
+  for (let s = 0; s < 10; s++) {
+    VRX.on = true;
+    ["a", "b", "c"].forEach(id => assert.strictEqual(L.abre(def({ id })), true));
+    assert.strictEqual(reg.escena.size, 3, "sesión " + s + ": tres mallas");
+    VRX.on = false; reg.bus["vr:sale"][0]();   // 29_vr emite vr:sale al terminar la sesión
+    assert.strictEqual(reg.escena.size, 0, "sesión " + s + ": la escena queda vacía");
+    assert.deepStrictEqual(L.ids(), []);
+  }
+  assert.strictEqual(reg.creadas.length, 90);
+  assert.strictEqual(reg.liberadas.length, reg.creadas.length, "cada recurso creado se liberó");
+  assert.ok(lienzos.every(c => c.width === 0), "y todos los lienzos se sueltan");
+});
