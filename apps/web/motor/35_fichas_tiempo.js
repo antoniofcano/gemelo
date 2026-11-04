@@ -325,7 +325,7 @@
     // ¿está la lámina a menos de 4 m y a menos de 45° de la mirada? Entonces la ficha de la baliza (que se pinta encima) espera
     n.limpia(PanelVR.tapa(function () {
       var i = Laminas.info(ID); if (!i.abierta || !enVR()) return false;
-      var p = i.pos, h = VRX.cab, g = camera.getWorldDirection(vD), dx = p[0] - h.x, dz = p[2] - h.z, d = Math.hypot(dx, dz), gl = Math.hypot(g.x, g.z) || 1;
+      var p = i.pos, h = VRX.cab, g = VRX.mira || camera.getWorldDirection(vD), dx = p[0] - h.x, dz = p[2] - h.z, d = Math.hypot(dx, dz), gl = Math.hypot(g.x, g.z) || 1;
       return d < 4 && (dx * g.x + dz * g.z) / (d * gl || 1) > 0.707;
     }));
 

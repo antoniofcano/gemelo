@@ -75,7 +75,32 @@ async function mantenEjes(mano, x, y, n) { await pg.evaluate(a => window.__mockX
       const pp = dd.panelPos, hc = dd.cabeza, ang = Math.atan2(hc[0] - pp[0], hc[2] - pp[2]), wx = pp[0] + l[0] * Math.cos(ang), wz = pp[2] - l[0] * Math.sin(ang), wy = pp[1] + l[1];
       const f = await fisica([wx, wy, wz]); await p.evaluate(v => window.__mockXR.apunta("right", v), f); await fot(2); const h = await p.evaluate(() => window.__vrDebug().hover); if (h === id) break; if (i === 9) console.log("   (el rayo no llegó a resaltar " + id + ": " + h + ")"); }
   }
-  await aPanel("m_orto"); let dh = await p.evaluate(() => window.__vrDebug()); ok("el rayo del mando resalta el botón bajo él", dh.hover === "m_orto", { hover: dh.hover });
+  // 4a) VR-L1: con la cabeza girada (hacia el este y algo abajo; el rig ya viene girado del paso 2), Y cierra y abre el panel y nace CENTRADO en la mirada;
+  // luego el grip derecho lo agarra, lo sube 30 cm y al soltarlo se queda. Al acabar, la cabeza vuelve al norte y el panel vuelve a nacer delante.
+  {
+    const angDe = (a, b) => { let x = Math.atan2(a[0], -a[1]) - Math.atan2(b[0], -b[1]); x = Math.atan2(Math.sin(x), Math.cos(x)); return Math.abs(x) * 180 / Math.PI; };
+    await p.evaluate(() => { window.__mockXR.dirCabeza = [0.8, -0.15, -0.58]; }); await fot(3);
+    await pulsa("left", 5); await pulsa("left", 5);
+    const dc = await p.evaluate(() => window.__vrDebug()), yr = dc.rig.yaw;
+    const esperada = [0.8 * Math.cos(yr) - 0.58 * Math.sin(yr), -0.8 * Math.sin(yr) - 0.58 * Math.cos(yr)];   // la mirada física, girada por el rig
+    const alPanel = [dc.panelPos[0] - dc.cabeza[0], dc.panelPos[2] - dc.cabeza[2]], dPanel = Math.hypot(alPanel[0], alPanel[1]);
+    ok("VR-L1: la mirada que usa el motor (VRX.mira) es la de la cabeza, girada por el rig", angDe(dc.mira, esperada) < 3, { mira: dc.mira.map(v => +v.toFixed(3)), esperada: esperada.map(v => +v.toFixed(3)) });
+    ok("VR-L1: al pulsar Y con la cabeza girada, el panel nace centrado en la mirada (< 5°) y a ~1,05 m", dc.panel && angDe(alPanel, dc.mira) < 5 && Math.abs(dPanel - 1.05) < 0.15, { grados: +angDe(alPanel, dc.mira).toFixed(1), m: +dPanel.toFixed(2) });
+    const f0 = await fisica(dc.panelPos); await p.evaluate(v => window.__mockXR.apunta("right", v), f0); await fot(3);
+    await p.evaluate(() => window.__mockXR.boton("right", 1, true)); await fot(3);
+    const da = await p.evaluate(() => window.__vrDebug()); ok("VR-L1: el grip derecho apuntando al panel lo agarra", da.agarre === "panel", { agarre: da.agarre });
+    await p.evaluate(v => window.__mockXR.apunta("right", [v[0], v[1] + 0.3, v[2]]), f0); await fot(25);
+    const dm2 = await p.evaluate(() => window.__vrDebug()), subio = dm2.panelPos[1] - dc.panelPos[1], dh2 = Math.hypot(dm2.panelPos[0] - dm2.cabeza[0], dm2.panelPos[2] - dm2.cabeza[2]);
+    ok("VR-L1: mientras se aprieta, el panel sigue al mando (sube) sin cambiar de golpe la distancia", subio > 0.15 && Math.abs(dh2 - dPanel) < 0.25, { subio: +subio.toFixed(2), m: +dh2.toFixed(2) });
+    await p.evaluate(() => window.__mockXR.boton("right", 1, false)); await fot(3);
+    const ds = await p.evaluate(() => window.__vrDebug()); await fot(20); const ds2 = await p.evaluate(() => window.__vrDebug());
+    const quieto = Math.hypot(ds2.panelPos[0] - ds.panelPos[0], ds2.panelPos[1] - ds.panelPos[1], ds2.panelPos[2] - ds.panelPos[2]);
+    ok("VR-L1: al soltar el grip el panel se queda donde lo dejaste", ds.agarre === "" && ds.panelPuesto && quieto < 0.02, { agarre: ds.agarre, puesto: ds.panelPuesto, m: +quieto.toFixed(3) });
+    await p.evaluate(() => { window.__mockXR.dirCabeza = [0, 0, -1]; }); await fot(3);
+    await pulsa("left", 5); await pulsa("left", 5);   // cerrar y abrir: vuelve a nacer delante (deja de estar «puesto»)
+    const dr = await p.evaluate(() => window.__vrDebug()); ok("VR-L1: cerrarlo y abrirlo con Y lo vuelve a poner delante", dr.panel && !dr.panelPuesto, { puesto: dr.panelPuesto });
+  }
+  await aPanel("m_orto"); let dh =await p.evaluate(() => window.__vrDebug()); ok("el rayo del mando resalta el botón bajo él", dh.hover === "m_orto", { hover: dh.hover });
   await p.screenshot({ path: pre + "_2_panel.png", timeout: 120000 });
   await p.evaluate(() => window.__mockXR.gatillo("right")); await fot(3); let dm = await p.evaluate(() => window.__vrDebug()); ok("gatillo sobre «Ortofoto» cambia el modo", dm.modo === "orto", { modo: dm.modo });
   await aPanel("m_gem"); await p.evaluate(() => window.__mockXR.gatillo("right")); await fot(3); dm = await p.evaluate(() => window.__vrDebug()); ok("gatillo sobre «Gemelo» lo restablece", dm.modo === "gem");

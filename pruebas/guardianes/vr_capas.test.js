@@ -31,10 +31,10 @@ test("gira: el panel gira en torno a la cabeza igual que el rig en un giro por s
   }
 });
 
-test("en el código: la bandera es ?ui=capas; sin ella el panel sigue a la cabeza (vrSigue) y no se gira ni se recoloca de otra forma", () => {
+test("en el código: la bandera es ?ui=capas; sin ella el panel sigue a la cabeza (vrSigue); el giro por saltos gira las láminas con y sin ella (VR-L1)", () => {
   assert.match(VR, /var VR_CAPAS = ComponentesPuro\.valorUrl\([^)]*"ui", "capas"\) === true;/);
   assert.match(VR, /if \(VR_CAPAS\) vrQueda\(panel, vrMed\.panel\.dist, vrMed\.panel\.bajo, !mueve\); else vrSigue\(panel, dt, vrMed\.panel\.dist, vrMed\.panel\.bajo\);/);
-  assert.match(VR, /if \(VR_CAPAS && panel\.ini\) \{ var pg = VrFichaPuro\.gira\(/, "el giro del panel, solo con la bandera");
+  assert.match(VR, /\[panel, ficha, fichaB\]\.forEach\(function \(l\) \{ if \(!l\.ini \|\| !l\.m\.visible\) return; var pg = VrFichaPuro\.gira\(/, "VR-L1: el giro por saltos gira las tres láminas (antes, solo el panel con la bandera: sin ella quedaba 30° de lado)");
   assert.match(VR, /if \(VR_CAPAS\) Laminas\.apunta\(rr\);/, "el rayo de más, solo con la bandera");
   // VRX.salto solo lo lee vrQueda (con la bandera): sin ella es un campo que nadie mira
   const lee_ = [...VR.matchAll(/VRX\.salto(?!\s*=)/g)].length; assert.strictEqual(lee_, 1, "VRX.salto se lee en un solo sitio (vrQueda)");

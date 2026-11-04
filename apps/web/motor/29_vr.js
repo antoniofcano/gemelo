@@ -1,9 +1,9 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: VRX, vrDebugExtra, vrFundido, vrAparece, panel, ficha, fichaB, PanelVR, vrActualiza, VR_PERFILES, vrFin
-// Consume: 01_datos (D, $, fmt, VRP), 02_mundo (Mundo, suelo, orto, copas), 02c_componentes (ComponentesPuro, Bus, Config), 02d_laminas (Laminas),
-//   02e_entidades (EntidadesPuro, Entidades, Usables), 02f_xr_perillas (XrPerillas), 02g_vr_presupuesto (VrPresupuesto),
-//   03_escena (lienzo, visor, renderer, scene, camera, sol, texColor, exag, modo, calidad), 04b_escena3d (Escena3D), 05_nube (nube),
-//   07b_arboles (Arboles), 08_marcadores (capas), 09_camara (pon), 10_ndvi (NDV, ndviIdx),
+// Consume: 01_datos (D, $, fmt, VRP), 02_mundo (Mundo, suelo, orto, copas), 02c_componentes (ComponentesPuro, Bus, Config),
+//   02d_laminas (LaminasPuro, Laminas), 02e_entidades (EntidadesPuro, Entidades, Usables), 02f_xr_perillas (XrPerillas),
+//   02g_vr_presupuesto (VrPresupuesto), 03_escena (lienzo, visor, renderer, scene, camera, sol, texColor, exag, modo, calidad),
+//   04b_escena3d (Escena3D), 05_nube (nube), 07b_arboles (Arboles), 08_marcadores (capas), 09_camara (pon), 10_ndvi (NDV, ndviIdx),
 //   12_paseo (paseando, persona, teclas, primera, entraPaseo, salePaseo, actualizaPaseo), 12b_llegada (Llegada), 13_parcelas (parcelas, fincas),
 //   14_historia (lista, aviso), 15_tiempo (calma, meta, nivel, rumbo, hace, pasoHoraMundo, horaMundoTexto, anuncia),
 //   16_vida (quita, mira, quad, dron), 22_huellas (pendFactor), 24_pantalla (suave), 33_ajustes (Ajustes), 90_final (tamano, cuadro, bucle)
@@ -18,7 +18,7 @@
     on: false, entrando: false, sesion: null, base: null, soporta: false, estado: "comprobando…", ojo: 0, frame: null,
     rig: { x: 0, y: 0, z: 0, yaw: 0 }, vuelo: false, mirador: false, correr: false, vineta: true, nivel: 0,
     modoPrev: "nube", calPrev: 1, nearPrev: 0.5, farPrev: 5000, prev: {}, giroOk: true, parcSel: 0, emaDt: 13.9, emaJs: 6, nBaj: 0, nAlt: 0, tNivel: 0,
-    tp: null, salto: false, hover: "", tFicha: 0, fichaT: 0, fichaDe: "", sucio: true, hapt: 0, hMov: 0, sesionesN: 0, cab: new THREE.Vector3(),
+    tp: null, salto: false, hover: "", tFicha: 0, fichaT: 0, fichaDe: "", sucio: true, hapt: 0, hMov: 0, sesionesN: 0, cab: new THREE.Vector3(), mira: { x: 0, z: -1 },
     captura: null, voz: null, gente: null, genteFirma: "", tGente: 0, pestana: "mundo", giro: 30, sinPint: false, fichaId: "", balFirma: "", balInfo: null, hoverB: "", botonesB: []
   };
   var vrRig = new THREE.Group();
@@ -111,7 +111,7 @@
   function vrAparece(px, py, ang) {
     VRX.vuelo = false; VRX.mirador = false; vrIrA(px, py);
     if (ang !== undefined && ang !== null) {
-      var h = vrCabeza(), g = camera.getWorldDirection(vrV3), d = Math.atan2(g.x, -g.z) - ang, r = VRX.rig;
+      var h = vrCabeza(), g = VRX.mira, d = Math.atan2(g.x, -g.z) - ang, r = VRX.rig;
       vrV2.set(r.x - h.x, 0, r.z - h.z).applyAxisAngle(vrEjeY, d); r.x = h.x + vrV2.x; r.z = h.z + vrV2.z; r.yaw += d;
     }
     vrAplicaRig(); VRX.hMov = 0.35; VRX.sucio = true; panel.ini = false; ficha.ini = false; fichaB.ini = false;   // las láminas, ya delante al aclarar (sin cruzar el mundo)
@@ -166,29 +166,66 @@
   var VR_CAPAS = ComponentesPuro.valorUrl(typeof location !== "undefined" ? location.search : "", "ui", "capas") === true;
   function creaDe(q) { return creaLamina(q.W, q.H, q.pw, q.ph); }
   var panel = creaDe(vrMed.panel), ficha = creaDe(vrMed.ficha), fichaB = creaDe(vrMed.fichaB);
+  panel.nombre = "panel"; ficha.nombre = "ficha"; fichaB.nombre = "fichaB";
   function vrBajoRayo(l, B, rr) {   // ¿qué botón de la lámina l hay bajo el rayo? null si el rayo no toca la lámina; false si la toca fuera de los botones
     var ix = rr.intersectObject(l.m, false)[0]; if (!ix || !ix.uv) return null;
     var x = ix.uv.x * l.W, y = (1 - ix.uv.y) * l.H; B = B || [];
     for (var k = 0; k < B.length; k++) if (x >= B[k].x && x <= B[k].x + B[k].w && y >= B[k].y && y <= B[k].y + B[k].h) return B[k];
     return false;
   }
+  // VR-L1: dónde nace y cómo sigue cada lámina. La mirada es VRX.mira (la pose de la cabeza, vrCabeza), NUNCA camera.getWorldDirection: tras actualizaPaseo()
+  // la cámara lleva la posición del mundo como si fuera local al rig y su lookAt apunta hacia el centro de la finca (era la causa de que el panel naciera de lado).
+  // Todas nacen por LaminasPuro.nace (02d), el mismo punto que las láminas del mundo. l.agarrada: la mueve el grip (vrArrastra); l.puesta: la dejó la mano
+  // en otro sitio y se queda ahí hasta que se cierra y se abre, hay un salto o te alejas más de VrFichaPuro.ALCANCE m.
+  function vrNace(l, dist, bajo) { var n = LaminasPuro.nace(VRX.cab, VRX.mira, dist, bajo); l.m.position.set(n.x, n.y, n.z); l.m.rotation.set(0, n.rotY, 0); l.ini = true; l.puesta = false; }
+  function vrMiraCab(l) { l.m.rotation.set(0, LaminasPuro.mirando(VRX.cab, l.m.position), 0); }
   function vrSigue(l, dt, dist, bajo) {   // la lámina se queda delante de la cabeza, mirándola; solo se recoloca si te alejas o giras mucho
-    var h = VRX.cab, g = camera.getWorldDirection(vrV3); g.y = 0; if (g.lengthSq() < 1e-4) g.set(0, 0, -1); g.normalize();
-    var tx = h.x + g.x * dist, tz = h.z + g.z * dist, ty = h.y + bajo, d = Math.hypot(l.m.position.x - tx, l.m.position.z - tz);
-    var ang = Math.abs(Math.atan2(l.m.position.x - h.x, l.m.position.z - h.z) - Math.atan2(g.x, g.z)); ang = Math.min(ang, 6.283 - ang);
-    if (!l.ini) { l.m.position.set(tx, ty, tz); l.ini = true; }
-    else if (d > 0.9 || ang > 1.2 || Math.abs(l.m.position.y - ty) > 0.6) { var k = Math.min(1, dt * 3); l.m.position.x += (tx - l.m.position.x) * k; l.m.position.y += (ty - l.m.position.y) * k; l.m.position.z += (tz - l.m.position.z) * k; }
-    l.m.rotation.set(0, Math.atan2(h.x - l.m.position.x, h.z - l.m.position.z), 0);
+    if (!l.ini) { vrNace(l, dist, bajo); return; }
+    if (l.agarrada) return;
+    var h = VRX.cab, p = l.m.position;
+    if (l.puesta) { if (Math.hypot(p.x - h.x, p.z - h.z) <= VrFichaPuro.ALCANCE) { vrMiraCab(l); return; } l.puesta = false; }
+    var t = LaminasPuro.nace(h, VRX.mira, dist, bajo), d = Math.hypot(p.x - t.x, p.z - t.z), ang = LaminasPuro.desvio(h, p, VRX.mira);
+    if (d > 0.9 || ang > 1.2 || Math.abs(p.y - t.y) > 0.6) { var k = Math.min(1, dt * 3); p.x += (t.x - p.x) * k; p.y += (t.y - p.y) * k; p.z += (t.z - p.z) * k; }
+    vrMiraCab(l);
   }
   function vrQueda(l, dist, bajo, quieto) {   // EV2-A2 (?ui=capas): nace delante y se queda en el mundo; mirando siempre a la cabeza (solo gira, no se desplaza)
+    if (l.agarrada) return;
     var h = VRX.cab, d = Math.hypot(l.m.position.x - h.x, l.m.position.y - h.y, l.m.position.z - h.z);
     var q = VrFichaPuro.queda({ ini: l.ini, salto: VRX.salto, d: d, quieto: quieto });
     if (q === "espera") l.ini = false;
-    else if (q === "nace") {
-      var g = camera.getWorldDirection(vrV3); g.y = 0; if (g.lengthSq() < 1e-4) g.set(0, 0, -1); g.normalize();
-      l.m.position.set(h.x + g.x * dist, h.y + bajo, h.z + g.z * dist); l.ini = true;
-    }
-    l.m.rotation.set(0, Math.atan2(h.x - l.m.position.x, h.z - l.m.position.z), 0);
+    else if (q === "nace") vrNace(l, dist, bajo);
+    vrMiraCab(l);
+  }
+  // ----- 3'') VR-L1: agarrar una lámina con el GRIP del mando que la apunta y llevarla a otro sitio. Mientras se aprieta, el punto agarrado sigue al rayo a la
+  // misma distancia del mando y la lámina mira a la cabeza (LaminasPuro.agarra/arrastra); al soltar se queda ahí. Vale para el panel, las fichas de olivo y de
+  // baliza y las láminas del mundo (Laminas: la previsión, el juego, las fichas en el mundo). El grip izquierdo sigue siendo «correr»: solo agarra si al
+  // APRETARLO el rayo izquierdo toca una lámina (y mientras agarra, no corre); si ya lo tenías apretado para correr, pasar el rayo por una lámina no la coge.
+  var vrAg = null;   // { o (el mando), l (panel, ficha o fichaB) | id (de Laminas), a (LaminasPuro.agarra) }
+  function vrAgarra(o) {
+    var rr = vrRayoDe(o), mejor = null;
+    [panel, ficha, fichaB].forEach(function (l) {
+      if (!l.m.visible) return; var ix = rr.intersectObject(l.m, false)[0];
+      if (ix && (!mejor || ix.distance < mejor.d)) mejor = { d: ix.distance, l: l, c: { x: l.m.position.x, y: l.m.position.y, z: l.m.position.z }, rotY: l.m.rotation.y };
+    });
+    var lw = Laminas.bajoRayo(rr);
+    if (lw && (!mejor || lw.distancia < mejor.d)) mejor = { d: lw.distancia, id: lw.id, c: { x: lw.pos[0], y: lw.pos[1], z: lw.pos[2] }, rotY: lw.rotY };
+    if (!mejor) return false;
+    vrAg = { o: o, l: mejor.l || null, id: mejor.id || "", a: LaminasPuro.agarra(rr.ray.origin, rr.ray.direction, mejor.d, mejor.c, mejor.rotY, VRX.cab) };
+    if (vrAg.l) vrAg.l.agarrada = true;
+    vrPulso(o, 0.3, 20); return true;
+  }
+  function vrSuelta() { if (!vrAg) return; if (vrAg.l) { vrAg.l.agarrada = false; vrAg.l.puesta = true; } vrPulso(vrAg.o, 0.15, 15); vrAg = null; }
+  function vrArrastra(dt) {
+    if (!vrAg) return;
+    var o = vrAg.o, l = vrAg.l, info = l ? null : Laminas.info(vrAg.id);
+    if (!o.src || !vrBoton(o.src, 1) || (l && !l.m.visible) || (info && !info.abierta)) { vrSuelta(); return; }
+    var rr = vrRayoDe(o), prev = l ? l.m.position : { x: info.pos[0], y: info.pos[1], z: info.pos[2] };
+    var n = LaminasPuro.arrastra(vrAg.a, rr.ray.origin, rr.ray.direction, VRX.cab, prev, dt);
+    if (l) { l.m.position.set(n.x, n.y, n.z); l.m.rotation.set(0, n.rotY, 0); } else Laminas.mueve(vrAg.id, n.x, n.y, n.z, n.rotY);
+  }
+  function vrAgarreTic(dt) {   // cada fotograma: el flanco del grip de cada mando (de todos y siempre, para no perder ninguno) y el arrastre
+    VRC.forEach(function (o) { if (vrFlanco("G" + o.i, !!o.src && vrBoton(o.src, 1)) && !vrAg) vrAgarra(o); });
+    vrArrastra(dt);
   }
   function vrTexto(cx, txt, x, y, ancho, alto, linea, max) {   // texto con saltos de línea; devuelve cuántas líneas pintó
     var palabras = String(txt).split(/\s+/), l = "", n = 0;
@@ -309,7 +346,7 @@
       cx.fillStyle = "#ffffff"; cx.font = "bold 28px system-ui, sans-serif"; cx.textAlign = "center"; cx.textBaseline = "middle"; cx.fillText(q.txt, q.x + q.w / 2, q.y + q.h / 2 + 1);
     });
     cx.textAlign = "left"; cx.font = "22px system-ui, sans-serif"; cx.fillStyle = "#9fb1bd";
-    cx.fillText("Mandos: izq. palanca = andar · grip = correr · X = viñeta · Y = panel", 40, 890);
+    cx.fillText("Mandos: izq. palanca = andar · grip = correr · X = viñeta · Y = panel · grip sobre una ficha = moverla", 40, 890);
     cx.fillText("der. palanca ←→ = girar " + VRX.giro + "° · ↑ = teletransporte · A = volar · B = mirador", 40, 920);
     cx.fillStyle = "#7fe3ff"; cx.fillText(VRX.vuelo ? "Volando: izq. avanza · der. ↑ apunta al suelo; al soltar, bajas allí" : "Caminando por el olivar", 40, 950);
     if (VRX.voz && VRX.voz.toma()) { cx.fillStyle = "#ffd58a"; cx.fillText("Gatillo izquierdo = tu micrófono de la visita guiada (la derecha sigue pulsando el panel)", 40, 990); }
@@ -439,8 +476,16 @@
   function vrAplicaRig() {
     var r = VRX.rig; vrRig.position.set(r.x, r.y, r.z); vrRig.rotation.set(0, r.yaw, 0);
   }
+  var vrQCab = new THREE.Quaternion(), vrM4Cab = new THREE.Matrix4();
   function vrCabeza() {   // la cabeza en el mundo: la pose local que dejó three al pintar, girada y trasladada por el rig
-    var r = VRX.rig; VRX.cab.copy(camera.position).applyAxisAngle(vrEjeY, r.yaw); VRX.cab.x += r.x; VRX.cab.y += r.y; VRX.cab.z += r.z; return VRX.cab;
+    var r = VRX.rig; VRX.cab.copy(camera.position).applyAxisAngle(vrEjeY, r.yaw); VRX.cab.x += r.x; VRX.cab.y += r.y; VRX.cab.z += r.z;
+    // VR-L1: y hacia dónde mira (VRX.mira, horizontal y en el mundo): la orientación de la pose del XRFrame de ESTE fotograma (en el espacio del rig; en el
+    // primer fotograma la cámara aún no la tiene) o, fuera del fotograma (eventos de los mandos), la que dejó three al pintar
+    var q = camera.quaternion, vp = null;
+    try { vp = VRX.frame && VRX.base ? VRX.frame.getViewerPose(VRX.base) : null; } catch (e) { vp = null; }
+    if (vp && vp.transform) { if (vp.transform.orientation) q = vp.transform.orientation; else if (vp.transform.matrix) q = vrQCab.setFromRotationMatrix(vrM4Cab.fromArray(vp.transform.matrix)); }
+    VRX.mira = LaminasPuro.miradaH(q, r.yaw);
+    return VRX.cab;
   }
   function vrIrA(px, py) {   // lleva la cabeza a (px, py) del mundo (py hacia el norte), sin cambiar la dirección de la mirada
     var h = vrCabeza(); VRX.rig.x += px - h.x; VRX.rig.z += -py - h.z; VRX.rig.y = suelo(px, py) * exag + vrBaseY(); VRX.salto = true;   // salto: con ?ui=capas el panel nace delante (EV2-A2)
@@ -461,14 +506,15 @@
     var fB = vrFlanco("B", vrBoton(R.src, 5)), fP = vrFlanco("RS", vrBoton(R.src, 3));
     if (VRX.captura && (fB || fP)) { if (VRX.captura.boton(fB ? "B" : "palanca")) vrPulso(R, 0.3, 25); }   // C9b: con un juego en lámina, B pausa y pulsar la palanca sale
     else if (fB) { vrMirador(!VRX.mirador); vrPulso(R, 0.3, 25); }
-    VRX.correr = vrBoton(L.src, 1);
+    vrAgarreTic(dt);   // VR-L1: el grip de cada mando agarra la lámina que apunta (antes que correr: el izquierdo no corre mientras agarra)
+    VRX.correr = vrBoton(L.src, 1) && !(vrAg && vrAg.o === L);
     if (VRX.voz) VRX.voz.mando(vrBoton(L.src, 0), vrPulsoIzq);   // F3e: el gatillo izquierdo (botón 0) y el pulso del mando, cada fotograma
     // giro a saltos (palanca derecha ← →) y teletransporte (palanca derecha ↑: arco; al soltar, salta)
     var gx = vrDz(de.x), gy = vrDz(de.y), mueveStick = 0;
     if (VRX.captura) { VRX.captura.palanca(de.x, de.y, dt); gx = gy = 0; }   // C9b: la palanca derecha es del juego en lámina (ni giro ni teletransporte)
     if (Math.abs(gx) > 0.7 && Math.abs(gx) > Math.abs(gy)) {
       if (VRX.giroOk) { VRX.giroOk = false; var d = -Math.sign(gx) * VRX.giro * Math.PI / 180; vrV2.set(r.x - h.x, 0, r.z - h.z).applyAxisAngle(vrEjeY, d); r.x = h.x + vrV2.x; r.z = h.z + vrV2.z; r.yaw += d; VRX.hMov = 0.25; vrPulso(R, 0.1, 10);
-        if (VR_CAPAS && panel.ini) { var pg = VrFichaPuro.gira(panel.m.position.x, panel.m.position.z, h.x, h.z, d); panel.m.position.x = pg.x; panel.m.position.z = pg.z; }   // EV2-A2: el panel gira contigo
+        [panel, ficha, fichaB].forEach(function (l) { if (!l.ini || !l.m.visible) return; var pg = VrFichaPuro.gira(l.m.position.x, l.m.position.z, h.x, h.z, d); l.m.position.x = pg.x; l.m.position.z = pg.z; });   // EV2-A2 y VR-L1: las láminas giran contigo (el giro no las deja de lado)
       }
     } else if (Math.abs(gx) < 0.35) VRX.giroOk = true;
     if (VRX.vuelo || VT.act) vrVueloTp(R, gy < -0.6 && Math.abs(gx) < 0.5);   // desde el aire: rayo recto y anillo (2b)
@@ -510,7 +556,7 @@
       if (hv !== VRX.hover) { VRX.hover = hv; VRX.sucio = true; }
       if (VRX.sucio) vrPintaPanel();
     }
-    if (ficha.m.visible) { vrSigue(ficha, dt, vrMed.ficha.dist, vrMed.ficha.bajo); VRX.fichaT -= dt; if (VRX.fichaT <= 0) { ficha.m.visible = false; if (VRX.fichaDe) Usables.cierra(VRX.fichaDe, "tiempo"); VRX.fichaDe = ""; } }
+    if (ficha.m.visible) { vrSigue(ficha, dt, vrMed.ficha.dist, vrMed.ficha.bajo); if (!ficha.agarrada) VRX.fichaT -= dt; if (VRX.fichaT <= 0) { ficha.m.visible = false; if (VRX.fichaDe) Usables.cierra(VRX.fichaDe, "tiempo"); VRX.fichaDe = ""; } }
     vrFichaTic(dt); VRX.salto = false;
     if (fichaB.m.visible) {
       vrSigue(fichaB, dt, vrMed.fichaB.dist, vrMed.fichaB.bajo);
@@ -599,6 +645,7 @@
   function vrAnimacion(t, frame) { if (!frame || !VRX.on) return; VRX.frame = frame; cuadro(performance.now()); }
   function vrSale() {
     if (!VRX.on && !VRX.sesion) return;
+    vrSuelta();
     VRX.on = false; VRP.on = false; VRX.sesion = null; renderer.setAnimationLoop(null); renderer.xr.enabled = false;
     vrRig.remove(camera); camera.remove(vrVineta); scene.remove(vrRig); VRC.forEach(function (o) { vrRig.remove(o.c); vrRig.remove(o.g); }); Bus.emite("vr:rig-libera"); scene.remove(arco); scene.remove(arcoMarca); scene.remove(panel.m); scene.remove(ficha.m); scene.remove(fichaB.m); vrVueloSale();
     Arboles.perfil(null); Escena3D.perfil(null); VrPresupuesto.ponEscalon(null); UN.uBumpK.value = 1; calidad = VRX.calPrev; camera.near = VRX.nearPrev; camera.far = VRX.farPrev; camera.updateProjectionMatrix(); if (modo !== VRX.modoPrev) pon(VRX.modoPrev);
@@ -626,7 +673,7 @@
       });
     });
   }
-  window.__vrDebug = function () { return Object.assign({ on: VRX.on, estado: VRX.estado, capas: VR_CAPAS, nivel: VRX.nivel, rig: JSON.parse(JSON.stringify(VRX.rig)), cabeza: [VRX.cab.x, VRX.cab.y, VRX.cab.z], pp: [pp.x, pp.y], vuelo: VRX.vuelo, panel: panel.m.visible, ficha: ficha.m.visible, hover: VRX.hover, pestana: VRX.pestana, giro: VRX.giro, sinEscena: VRX.sinPint, vinetaOn: VRX.vineta, vineta: vrVineta.material.uniforms.uK.value, sesionesN: VRX.sesionesN, paseando: paseando, primera: primera, modo: modo, exag: exag, hora: horaMundoTexto(), horaMs: meta.ms, solY: sol.position.y, solI: sol.intensity, ndvi: ndviIdx, parcSel: VRX.parcSel, panelPos: panel.m.position.toArray(), fichaPos: ficha.m.position.toArray(), frames: renderer.info.render.frame, nivelArb: Arboles.resumen(), hierba: VRP.hierba, bump: UN.uBumpK.value, perfiles: VR_PERFILES.length, xr: { near: XrPerillas.efectivas.near, topeJs: XrPerillas.js(), fov: XrPerillas.efectivas.fov, escala: XrPerillas.efectivas.escala, hz: XrPerillas.efectivas.hz, aa: XrPerillas.aa, nivelFijo: XrPerillas.efectivas.nivel, adaptativo: XrPerillas.efectivas.nivel == null, ignorados: XrPerillas.efectivas.ignorados, linea: XrPerillas.linea() }, near: camera.near, far: camera.far,
+  window.__vrDebug = function () { return Object.assign({ on: VRX.on, estado: VRX.estado, capas: VR_CAPAS, nivel: VRX.nivel, rig: JSON.parse(JSON.stringify(VRX.rig)), cabeza: [VRX.cab.x, VRX.cab.y, VRX.cab.z], pp: [pp.x, pp.y], vuelo: VRX.vuelo, panel: panel.m.visible, ficha: ficha.m.visible, hover: VRX.hover, pestana: VRX.pestana, giro: VRX.giro, sinEscena: VRX.sinPint, vinetaOn: VRX.vineta, vineta: vrVineta.material.uniforms.uK.value, sesionesN: VRX.sesionesN, paseando: paseando, primera: primera, modo: modo, exag: exag, hora: horaMundoTexto(), horaMs: meta.ms, solY: sol.position.y, solI: sol.intensity, ndvi: ndviIdx, parcSel: VRX.parcSel, panelPos: panel.m.position.toArray(), fichaPos: ficha.m.position.toArray(), mira: [VRX.mira.x, VRX.mira.z], agarre: vrAg ? (vrAg.l ? vrAg.l.nombre : "lamina:" + vrAg.id) : "", panelPuesto: !!panel.puesta, frames: renderer.info.render.frame, nivelArb: Arboles.resumen(), hierba: VRP.hierba, bump: UN.uBumpK.value, perfiles: VR_PERFILES.length, xr: { near: XrPerillas.efectivas.near, topeJs: XrPerillas.js(), fov: XrPerillas.efectivas.fov, escala: XrPerillas.efectivas.escala, hz: XrPerillas.efectivas.hz, aa: XrPerillas.aa, nivelFijo: XrPerillas.efectivas.nivel, adaptativo: XrPerillas.efectivas.nivel == null, ignorados: XrPerillas.efectivas.ignorados, linea: XrPerillas.linea() }, near: camera.near, far: camera.far,
     panelTam: [panel.W, panel.H, panel.pw, panel.ph], fichaB: fichaB.m.visible, fichaBPos: fichaB.m.position.toArray(), fichaBTam: [fichaB.W, fichaB.H, fichaB.pw, fichaB.ph], fichaId: VRX.fichaId, hoverB: VRX.hoverB, fichaGente: VRX.balInfo && VRX.fichaId ? VRX.balInfo.gente : null,
     tiempo: null, fichaTiempo: null,   // los pone la fila del componente fichas-tiempo (35_fichas_tiempo.js) por PanelVR.debug(), si está
     gente: VRX.gente ? { activo: VRX.gente.activo, n: VRX.gente.n, filas: VRX.gente.filas.map(function (f) { return { id: f.id, alias: f.alias, modo: f.modo, dist: f.dist }; }) } : null }, PanelVR.debug()); };
