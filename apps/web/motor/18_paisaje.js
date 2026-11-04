@@ -1,8 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: PA, matTronco, postes, cable, colocaPaisaje, instSombra, sombrasSol, aguaNivel, actualizaPaisaje, ejeArroyo, distArroyo
-// Consume: 01_datos (D, $, ESC_R8), 02_mundo (suelo, desp, copas), 02g_vr_presupuesto (VrPresupuesto), 03_escena (scene, SRGB, sol, exag, modo),
-//   04d_sombreado_tiles (hash), 06_arboles (gSombras, tronco), 07_follaje (matSombra, geoSombra), 09_camara (pon), 14_historia (lista),
-//   15_tiempo (nivelEn, lluvia, cur, tMundo, nivel), 16_vida (esfera), 23_estacion (EST), 90_final (bucle)
+// Consume: 01_datos (D, $, ESC_R8), 02_mundo (suelo, desp, copas), 02g_vr_presupuesto (VrPresupuesto), 02i_materiales (Materiales),
+//   03_escena (scene, SRGB, sol, exag, modo), 04d_sombreado_tiles (hash), 06_arboles (gSombras, tronco), 07_follaje (matSombra, geoSombra),
+//   09_camara (pon), 14_historia (lista), 15_tiempo (nivelEn, lluvia, cur, tMundo, nivel), 16_vida (esfera), 23_estacion (EST), 90_final (bucle)
 // ===============================================================================
   // ---------- el paisaje que sale del LiDAR: edificios (clase 6), el tendido y sus postes, el arroyo y los árboles que no son olivos
   // Lo que el LiDAR clasifica de verdad son los edificios. El tendido, los postes, el cauce y las copas se deducen de la geometría (alturas, alineación, relieve) y se rotulan así.
@@ -66,7 +66,7 @@
 
   // --- el arroyo: un cauce seco que sigue el fondo del terreno y que solo corre con agua cuando llueve
   var uArroyo = { uT: { value: 0 }, uAgua: { value: 0 }, uLuz: { value: 1 }, uArena: { value: new THREE.Color(0xa8977a) } };
-  var matArroyo = new THREE.ShaderMaterial({
+  var matArroyo = Materiales.sombreador("arroyo", {
     uniforms: uArroyo, transparent: true, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3,
     vertexShader: "attribute float aV; attribute float aU; varying float vV; varying float vU; void main(){ vV = aV; vU = aU; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
     fragmentShader: "uniform float uT; uniform float uAgua; uniform float uLuz; uniform vec3 uArena; varying float vV; varying float vU;\n" +

@@ -1,9 +1,9 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
 // Consume: 01_datos (D, $), 01a_aparato (Aparato), 02_mundo (suelo), 02c_componentes (Bus, ConfigPuro, Componentes), 02e_entidades (Entidades),
-//   03_escena (visor, renderer, scene, camera, texColor, exag, modo), 06_arboles (tronco), 09_camara (objetivo, suelta, elige),
-//   12_paseo (paseando, persona, primera), 12b_llegada (Llegada), 14_historia (lista, aviso), 15_tiempo (rumbo, hace),
-//   16_vida (enQuad, quita, mira, quad, enDron, dron),
+//   02i_materiales (Materiales), 03_escena (visor, renderer, scene, camera, texColor, exag, modo), 06_arboles (tronco),
+//   09_camara (objetivo, suelta, elige), 12_paseo (paseando, persona, primera), 12b_llegada (Llegada), 14_historia (lista, aviso),
+//   15_tiempo (rumbo, hace), 16_vida (enQuad, quita, mira, quad, enDron, dron),
 //   26_presencia (PoseCodec, BufferPose, Aspecto, SalaPose, Chat, Muneco, Encuentro, AutoPresencia, sitioJunto),
 //   29_vr (VRX, vrFundido, panel, ficha), 33_ajustes (Ajustes), 34_movibles (Movibles)
 // Nota: Componente «presencia-compartida» (ADR-0023, C5): solo se registra; consume la red (sala «visita») y expone «Presencia» (para los avatares VRM). Sin ?presencia=sim o ?presencia=red, montado no crea nada; con red, el panel Gente y el chat; F3f: viaja a la sala de una visita guiada (Presencia.entraGuiada, token de F3c) y vuelve sola a la general si la sala se cierra o te sacan. Registra el tipo persona en Entidades (C7) y da su línea de ?debug por «depura:lineas». Publica window.__presencia y window.__presenciaChat (pruebas). Lo prueba en Node pruebas/guardianes/red.test.js.
@@ -104,7 +104,7 @@
       texNombres = texColor(new THREE.CanvasTexture(cv)); texNombres.minFilter = THREE.LinearFilter; texNombres.generateMipmaps = false;
       var celda = new Float32Array(nCuerpos); for (var q = 0; q < nCuerpos; q++) celda[q] = q;
       gNom.setAttribute("aCelda", new THREE.InstancedBufferAttribute(celda, 1));
-      var matN = new THREE.ShaderMaterial({
+      var matN = Materiales.sombreador("nombres-presencia", {
         uniforms: { uMapa: { value: texNombres }, uRej: { value: new THREE.Vector2(cNom, fNom) } }, transparent: true, depthWrite: false, fog: false,
         vertexShader: "attribute float aCelda; uniform vec2 uRej; varying vec2 vUv;\n" +
           "void main(){ vec4 c = modelViewMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0); float e = length(instanceMatrix[0].xyz); c.xy += position.xy * e; gl_Position = projectionMatrix * c;\n" +
@@ -846,7 +846,7 @@
   // Consume la red (37_red.js, expone «Red»): sin ella (?red=0, apagada en el servidor o fuera del motor) la presencia no se monta, tampoco la simulada.
   Componentes.registra({
     id: "presencia-compartida", version: 1,
-    consume: ["Aparato", "Red", "Ajustes", "AutoPresencia", "PoseCodec", "BufferPose", "Aspecto", "SalaPose", "Chat", "Muneco", "Encuentro", "sitioJunto", "Llegada", "Movibles", "VRX", "TR",
+    consume: ["Materiales", "Aparato", "Red", "Ajustes", "AutoPresencia", "PoseCodec", "BufferPose", "Aspecto", "SalaPose", "Chat", "Muneco", "Encuentro", "sitioJunto", "Llegada", "Movibles", "VRX", "TR",
       "paseando", "pp", "enQuad", "enDron", "quad", "dron", "objetivo", "texColor"],
     expone: ["Presencia"],
     eventos: { escucha: ["chat:alterna", "depura:lineas", "guiada:entrar"], emite: ["guiada:entrada", "presencia:activada"] },

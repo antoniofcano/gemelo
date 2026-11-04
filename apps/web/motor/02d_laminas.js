@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: LaminasPuro, Laminas
-// Consume: 02c_componentes (Bus), 03_escena (lienzo, renderer, scene, camera, texColor, modo), 08_marcadores (capas), 15_tiempo (rumbo, hace),
-//   16_vida (mira), 24_pantalla (suave), 29_vr (VRX, panel), 90_final (bucle)
+// Consume: 02c_componentes (Bus), 02h_render (InfoDibujo), 03_escena (lienzo, renderer, scene, camera, texColor, modo), 08_marcadores (capas),
+//   15_tiempo (rumbo, hace), 16_vida (mira), 24_pantalla (suave), 29_vr (VRX, panel), 90_final (bucle)
 // Nota: Servicio del núcleo (ADR-0023, C8): LaminasPuro y Laminas (un lienzo 2D como textura de un cartel en el mundo: colocación delante a la altura de los ojos, giro suave, cierre por distancia o al salir de VR, repintado solo si cambia la firma, liberado entero y alTocar(u, v) para el rayo y el gatillo). Sin reloj propio: lo mueve 90_final (Laminas.revisa) y 29_vr (Laminas.toca). Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/laminas.test.js.
 // ===============================================================================
   // ---------- las láminas (ADR-0023, C8; doc/sistema/COMPONENTES.md): un lienzo 2D como textura de un cartel en el mundo, anclado al mundo (no a la cabeza), a la
@@ -132,7 +132,7 @@
     function rumboDe(m) { return ((-m.rotation.y * 180 / Math.PI) % 360 + 360) % 360; }
     // se vuelve hacia la cabeza solo si se ha desviado más de 8°, a lo sumo a 60°/s y amortiguado: un cartel que se gira despacio, nunca la vista
     function gira(l) {
-      var f = renderer.info.render.frame; if (f === l.fr) return; l.fr = f;   // una vez por fotograma (en VR se dibuja un ojo y luego el otro)
+      var f = InfoDibujo.fotograma(renderer); if (f === l.fr) return; l.fr = f;   // una vez por fotograma (en VR se dibuja un ojo y luego el otro)
       var t = performance.now(), dt = Math.min(0.1, (t - l.t) / 1000); l.t = t;
       var h = cabeza(vC), m = l.m, obj = Math.atan2(h.x - m.position.x, h.z - m.position.z), d = obj - m.rotation.y;
       d = Math.atan2(Math.sin(d), Math.cos(d));

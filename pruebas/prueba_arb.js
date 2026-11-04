@@ -29,7 +29,7 @@ const MIME = { ".html": "text/html", ".json": "application/json", ".jpg": "image
       if ((quer.length > 0 && listas.length === quer.length) || t - t0 > tope) { const e = g.Cola.est.C || { n: 0, ms: 0, max: 0 }; res({ ms: Math.round(t - t0), tope: t - t0 > tope, quieren: quer.length, listas: listas.length, fotogramas: fr, msPorFotograma: Math.round((t - t0) / fr), fotogramaMax: Math.round(mx), rebanadasC: e.n - est0.n, msTrabajoC: Math.round(e.ms - est0.ms), rebMaxC: Math.round(e.max), n0: r.nivel0, n1: r.nivel1, n2: r.nivel2 }); return; }
       requestAnimationFrame(tic); })();
   }), tope);
-  const estado = () => p.evaluate(() => { const g = window.__g, r = g.renderer.info; return { calls: r.render.calls, tri: r.render.triangles, pts: r.render.points, geos: r.memory.geometries, heapMB: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : -1, arb: g.Arboles.resumen() }; });
+  const estado = () => p.evaluate(() => { const g = window.__g, r = g.infoDibujo(); return { calls: r.llamadas, tri: r.triangulos, pts: r.puntos, geos: r.geometrias, heapMB: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : -1, arb: g.Arboles.resumen() }; });
   const cap = async (n) => { await p.locator("#visor").screenshot({ path: path.join(ROOT, pref + "_" + n + ".png"), timeout: 180000 }); };
   const queSi = n => !SOLO.length || SOLO.includes(n);
   const R = {};

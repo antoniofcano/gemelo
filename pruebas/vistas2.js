@@ -12,7 +12,7 @@ const url = process.argv[2], pref = process.argv[3], E = JSON.parse(process.argv
     await p.evaluate((e) => { const g = window.__g, M = g.Mundo, x = e.e - M.cx, y = e.n - M.cy; g.orb.az = e.az; g.orb.el = e.el; g.orb.dist = e.dist; g.objetivo.x = x; g.objetivo.z = -y; g.objetivo.y = g.suelo(x, y) + 1; g.pon(e.modo || "gem"); }, e);
     await p.waitForFunction(() => window.__g.Cola.pendientes() <= 4 && (window.__g.Escena3D.resumen().estado !== "activo" || window.__g.Escena3D.listo()), null, { timeout: 500000, polling: 4000 }).catch(() => {});
     await p.waitForTimeout(e.espera || 25000);
-    const info = await p.evaluate(() => { const i = window.__g.renderer.info; return { calls: i.render.calls, tri: i.render.triangles, geos: i.memory.geometries, tex: i.memory.textures }; });
+    const info = await p.evaluate(() => { const i = window.__g.infoDibujo(); return { calls: i.llamadas, tri: i.triangulos, geos: i.geometrias, tex: i.texturas }; });
     await p.locator("#visor").screenshot({ path: pref + "_" + n + ".png", timeout: 400000 }); console.log("captura", n, JSON.stringify(info));
   }
   console.log("errores:", err.length, err.slice(0, 5)); await b.close();

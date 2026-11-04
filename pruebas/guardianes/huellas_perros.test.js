@@ -5,6 +5,7 @@
 // como estaba y todos los recursos de GPU se han soltado (dispose). Lo de Chrome (que se vea igual) va por el banco; lo no probado en Quest ni iPhone sigue sin probar.
 const test = require("node:test"), assert = require("node:assert"), vm = require("vm"), path = require("path"), { pathToFileURL } = require("url");
 const { lee, RAIZ } = require("./_util");
+const { conFabrica } = require("./_materiales");   // Materiales e InfoDibujo (02h/02i, F1) en el contexto del módulo
 
 let THREE;
 test.before(async () => { THREE = await import(pathToFileURL(path.join(RAIZ, "apps/web/node_modules/three/build/three.module.js")).href); });
@@ -29,7 +30,7 @@ function mundo(extra) {
   return { E, g, defs, log, capas, scene, gFauna, Bus };
 }
 function carga(fichero, m) {
-  const ctx = vm.createContext(m.g);
+  const ctx = vm.createContext(conFabrica(m.g));
   vm.runInContext("\"use strict\";\n" + lee("apps/web/motor/" + fichero), ctx, { filename: fichero });
   assert.strictEqual(m.defs.length, 1, "un componente por fichero");
   return m.defs[0];

@@ -12,6 +12,7 @@
 const test = require("node:test"), assert = require("node:assert");
 const { aparatoDe } = require("./_aparato");
 const { lee, path } = require("./_util");
+const { conFabrica } = require("./_materiales");   // Materiales e InfoDibujo (02h/02i, F1) en el contexto del módulo
 const contratoModulos = require(path.join(__dirname, "..", "contrato_modulos.js"));
 
 const sinCabecera = s => s.startsWith(contratoModulos.MARCA_I) ? s.slice(s.indexOf(contratoModulos.MARCA_F) + contratoModulos.MARCA_F.length + 1) : s;
@@ -182,6 +183,7 @@ function motor({ busqueda = "?presencia=red", rol = "oficina", base = "/teselas/
       return r(404, { mensaje: "no" });
     }
   };
+  conFabrica(g);
   const nombres = Object.keys(g), codigo = sinCabecera(LIB) + "\n" + ficheros.map(f => fuentes[f]).join("\n");
   const f = new Function(...["window", "location", "document", "console"].concat(nombres), "\"use strict\";\n" + sinCabecera(NUCLEO) + "\n" + codigo + "\nreturn { Componentes, Bus };");
   const r = f(...[ventana, { search: busqueda, href: "https://gemelo.test/finca/index.html" + busqueda }, documento, consola].concat(nombres.map(n => g[n])));

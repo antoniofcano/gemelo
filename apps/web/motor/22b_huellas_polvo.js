@@ -1,7 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 02_mundo (suelo), 02c_componentes (Bus, Componentes), 03_escena (scene, sol, exag), 12_paseo (paseando, teclas),
-//   15_tiempo (nivelEn, cur, nivel), 16_vida (tVida, enQuad, altSuelo, enDron), 22_huellas (sueloSeco), 90_final (bucle)
+// Consume: 02_mundo (suelo), 02c_componentes (Bus, Componentes), 02i_materiales (Materiales), 03_escena (scene, sol, exag),
+//   12_paseo (paseando, teclas), 15_tiempo (nivelEn, cur, nivel), 16_vida (tVida, enQuad, altSuelo, enDron), 22_huellas (sueloSeco),
+//   90_final (bucle)
 // ===============================================================================
   // ---------- huellas y polvo (componente «huellas-polvo», ADR-0023, C10): las pisadas y rodadas que se desvanecen y las bocanadas de polvo del suelo seco.
   // Antes vivían en 22_huellas.js y las nombraba el bucle; ahora solo se registra. Quien levanta polvo (el aterrizaje del muñequito, los perros) lo pide por el Bus
@@ -14,7 +15,7 @@
     var geoH = new THREE.PlaneGeometry(1, 1); geoH.rotateX(-Math.PI / 2);
     geoH.setAttribute("aBorn", new THREE.InstancedBufferAttribute(hBorn, 1)); geoH.setAttribute("aVida", new THREE.InstancedBufferAttribute(hVida, 1)); geoH.setAttribute("aTipo", new THREE.InstancedBufferAttribute(hTipo, 1));
     var uHuella = { uNow: { value: 0 }, uColor: { value: new THREE.Color(0x2c2218) } };
-    var matHuella = new THREE.ShaderMaterial({
+    var matHuella = Materiales.sombreador("huella", {
       uniforms: uHuella, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4,
       vertexShader: "attribute float aBorn; attribute float aVida; attribute float aTipo; uniform float uNow; varying vec2 vUv; varying float vAge; varying float vTipo;\n" +
         "void main(){ vUv = uv; vTipo = aTipo; vAge = clamp((uNow - aBorn) / aVida, 0.0, 1.0); gl_Position = projectionMatrix * viewMatrix * modelMatrix * instanceMatrix * vec4(position, 1.0); }",
@@ -36,7 +37,7 @@
     var NPV = 200, pvPos = new Float32Array(NPV * 3), pvVel = new Float32Array(NPV * 3), pvBorn = new Float32Array(NPV).fill(-1e4), pvVida = new Float32Array(NPV).fill(1), pvTam = new Float32Array(NPV), pvSig = 0;
     var geoPv = new THREE.BufferGeometry(); geoPv.setAttribute("position", new THREE.BufferAttribute(pvPos, 3)); geoPv.setAttribute("aBorn", new THREE.BufferAttribute(pvBorn, 1)); geoPv.setAttribute("aVida", new THREE.BufferAttribute(pvVida, 1)); geoPv.setAttribute("aTam", new THREE.BufferAttribute(pvTam, 1));
     var uPolvo = { uNow: { value: 0 }, uColor: { value: new THREE.Color(0xb89e74) }, uLuz: { value: 1 } };
-    var matPolvo = new THREE.ShaderMaterial({
+    var matPolvo = Materiales.sombreador("polvo", {
       uniforms: uPolvo, transparent: true, depthWrite: false,
       vertexShader: "attribute float aBorn; attribute float aVida; attribute float aTam; uniform float uNow; varying float vA;\n" +
         "void main(){ float e = clamp((uNow - aBorn) / aVida, 0.0, 1.0); vA = (1.0 - e) * (1.0 - e); vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = aTam * (1.0 + 2.4 * e) * (520.0 / max(1.0, -mv.z)); gl_Position = projectionMatrix * mv; }",
@@ -86,7 +87,7 @@
   }
   Componentes.registra({
     id: "huellas-polvo", version: 1,
-    consume: ["scene", "suelo", "exag", "pp", "paseando", "teclas", "cur", "nivelEn", "tVida", "enQuad", "vq", "enDron", "dr", "altSuelo", "sueloSeco"],
+    consume: ["Materiales", "scene", "suelo", "exag", "pp", "paseando", "teclas", "cur", "nivelEn", "tVida", "enQuad", "vq", "enDron", "dr", "altSuelo", "sueloSeco"],
     expone: [],
     eventos: { escucha: ["polvo:emite"], emite: [] },
     bandera: { defecto: true, url: "huellas" },

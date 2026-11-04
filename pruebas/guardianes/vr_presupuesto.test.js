@@ -9,6 +9,7 @@
 // Lo que NO dice: fps ni triángulos en un casco (eso, el banco con la VR simulada y el Quest con ?debug&mide=60&xrnivel=N). No probado en Quest.
 const test = require("node:test"), assert = require("node:assert"), vm = require("vm"), path = require("path"), { pathToFileURL } = require("url");
 const { lee, RAIZ } = require("./_util");
+const { conFabrica } = require("./_materiales");   // Materiales e InfoDibujo (02h/02i, F1) en el contexto del módulo
 
 let THREE;
 test.before(async () => { THREE = await import(pathToFileURL(path.join(RAIZ, "apps/web/node_modules/three/build/three.module.js")).href); });
@@ -146,7 +147,7 @@ test("entrar en VR con una fuente apuntada más tarde: recibe ya su escalón", (
 });
 
 // ---------------------------------------------------------------- los módulos de verdad
-function ctx(extra) { const g = Object.assign({ THREE, location: { search: "" } }, extra); const c = vm.createContext(g); vm.runInContext(FUENTE, c, { filename: "02g_vr_presupuesto.js" }); return c; }
+function ctx(extra) { const g = Object.assign({ THREE, location: { search: "" } }, extra); const c = vm.createContext(conFabrica(g)); vm.runInContext(FUENTE, c, { filename: "02g_vr_presupuesto.js" }); return c; }
 const corre = (c, f) => vm.runInContext("\"use strict\";\n" + lee("apps/web/motor/" + f), c, { filename: f });
 
 test("18_paisaje: los árboles que no son olivo se apuntan y el escalón los recorta (tronco y las tres masas a la vez); al salir, todos", () => {

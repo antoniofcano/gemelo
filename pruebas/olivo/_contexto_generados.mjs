@@ -5,10 +5,12 @@ import fs from "node:fs";
 import path from "node:path";
 import vm from "node:vm";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { createRequire } from "node:module";
 
 export const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 export const OLIVO = path.join(RAIZ, "apps", "web", "olivo");
 const MOTOR = path.join(RAIZ, "apps", "web", "motor");
+const { conFabrica } = createRequire(import.meta.url)("../guardianes/_materiales.js");   // Materiales (02i, F1)
 export const THREE = await import(pathToFileURL(path.join(OLIVO, "node_modules", "three-r186", "build", "three.module.js")).href);
 export const O = await import(pathToFileURL(path.join(OLIVO, "index.js")).href);
 export const lee = f => fs.readFileSync(path.join(MOTOR, f), "utf8");
@@ -45,7 +47,7 @@ export function contexto(busqueda, reloj, extra) {
     suelo: () => 0, camera: { position: new THREE.Vector3(0, 10, 0) },
     Cola: { add: () => { throw new Error("los generados no deben usar la Cola compartida"); }, hay: () => false }, cola
   }, extra || {});
-  vm.createContext(ctx);
+  vm.createContext(conFabrica(ctx));   // Materiales (02i, F1): 07ab encadena sus parches por la fábrica
   vm.runInContext(piezas + "\n" + A01 + "\n" + G07 + "\n;this.__G = Generados; this.__uSombra = uSombra;", ctx, { filename: "07ab_generados.js" });
   return ctx;
 }

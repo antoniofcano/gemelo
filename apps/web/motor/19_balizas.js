@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: colocaBalizas, avisoBaliza, dibujaBalizasMini, actualizaBalizas
-// Consume: 01_datos (D, $), 02_mundo (suelo, copas), 02c_componentes (Bus), 02e_entidades (Entidades, Usables),
+// Consume: 01_datos (D, $), 02_mundo (suelo, copas), 02c_componentes (Bus), 02e_entidades (Entidades, Usables), 02i_materiales (Materiales),
 //   03_escena (visor, scene, camera, exag), 09_camara (objetivo, suelta, elige), 12_paseo (paseando, persona, teclas), 12b_llegada (Llegada),
 //   13_parcelas (parcelas), 13b_hazas (HazasPuro), 14_historia (VIVO, marca, aviso), 15_tiempo (num1, esc, hace),
 //   16_vida (tVida, enQuad, quad, dron), 26_presencia (Encuentro, sitioJunto), 29_vr (VRX, ficha)
@@ -13,7 +13,7 @@
   var uBaliza = { uT: { value: 0 } };
   var BAL = parcelas.map(function (pr, k) {
     var col = new THREE.Color(COLB.nada), g = new THREE.Group();
-    var mat = new THREE.ShaderMaterial({
+    var mat = Materiales.sombreador("baliza", {
       uniforms: { uT: uBaliza.uT, uColor: { value: col }, uPulso: { value: 0 } }, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false,
       vertexShader: "varying float vY; void main(){ vY = position.y; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
       fragmentShader: "uniform float uT; uniform vec3 uColor; uniform float uPulso; varying float vY;\n" +

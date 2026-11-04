@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: OT, hist, VIVO, FINCA, marca, dd, tabla, lista, nMarc, sw, avTipo, pintaAvance, rango, aviso
-// Consume: 01_datos (D, $, tinta, fmt), 02_mundo (suelo, orto, copas, cIn, marc, med), 03_escena (scene, exag), 05_nube (nube),
-//   08_marcadores (aplica, pendiente), 09_camara (objetivo, orb, pon), 10_ndvi (NDV, ndviIdx, pintaNdvi),
+// Consume: 01_datos (D, $, tinta, fmt), 02_mundo (suelo, orto, copas, cIn, marc, med), 02i_materiales (Materiales), 03_escena (scene, exag),
+//   05_nube (nube), 08_marcadores (aplica, pendiente), 09_camara (objetivo, orb, pon), 10_ndvi (NDV, ndviIdx, pintaNdvi),
 //   12_paseo (paseando, persona, primera, salePaseo), 13_parcelas (parcelas, fincas, claseUsda, elegirParcela, elegirFinca), 13b_hazas (HazasPuro),
 //   15_tiempo (ins, esc, hace), 16_vida (esfera, mira), 18_paisaje (postes, cable), 21_suelo (cubierta), 29_vr (panel), 90_final (cuadro)
 // ===============================================================================
@@ -101,7 +101,7 @@
   }
   parcelas.forEach(function (pr, k) {   // una malla vacía por parcela; la geometría llega al resaltarla. Sigue la exageración vertical con el mismo uniforme del terreno
     var mat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.42, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
-    mat.onBeforeCompile = function (sh) { sh.uniforms.uExag = UN.uExag; sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nuniform float uExag;").replace("#include <begin_vertex>", "#include <begin_vertex>\n transformed.y *= uExag;"); };
+    Materiales.parchea(mat, "resalte-parcela", function (sh) { sh.uniforms.uExag = UN.uExag; sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nuniform float uExag;").replace("#include <begin_vertex>", "#include <begin_vertex>\n transformed.y *= uExag;"); });
     var m = new THREE.Mesh(new THREE.BufferGeometry(), mat); m.renderOrder = 3; m.visible = false; scene.add(m); overlays.push(m);
   });
   function resalta(mapa) { overlays.forEach(function (m, k) { if (mapa && mapa[k] !== undefined) { if (!m.userData.listo) creaOverlay(k); m.material.color.setHex(mapa[k]); m.visible = true; } else m.visible = false; }); }

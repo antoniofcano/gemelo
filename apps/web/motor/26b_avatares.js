@@ -1,7 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos ($), 01a_aparato (Aparato), 02_mundo (suelo), 02c_componentes (Componentes), 03_escena (renderer, scene, camera, exag),
-//   12_paseo (paseando, persona, primera), 16_vida (enQuad, quad, enDron, dron), 26_presencia (Aspecto, Muneco), 29_vr (VRX)
+// Consume: 01_datos ($), 01a_aparato (Aparato), 02_mundo (suelo), 02c_componentes (Componentes), 02i_materiales (Materiales),
+//   03_escena (renderer, scene, camera, exag), 12_paseo (paseando, persona, primera), 16_vida (enQuad, quad, enDron, dron),
+//   26_presencia (Aspecto, Muneco), 29_vr (VRX)
 // Nota: Componente «avatares-vrm» (ADR-0023, C5): solo se registra; consume la presencia (n.api) y se engancha a ella con enganchaVRM. Sin presencia activa no crea nada; con ella, pide /avatares/catalogo.json solo si alguien lleva avatar (o con &vrm=1 en la simulación) e import("@pixiv/three-vrm") solo entonces. El trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/avatares_motor.test.js.
 // ===============================================================================
   // ---------- avatares VRM (P7c, ADR-0020), componente «avatares-vrm» (C5, ADR-0023, consume la presencia): los N más cercanos que caben en el presupuesto del aparato llevan su VRM del catálogo; el resto, el muñeco
@@ -231,13 +232,11 @@
     function parcheFundido(m, uni) {   // tramado de pantalla (ruido de gradiente entrelazado, como O1): descarta el fragmento si su ruido ≥ uFunVrm
       if (m.userData.vrmFundido) return;   // un material compartido por varias mallas (o el del contorno de MToon) se parchea una vez
       m.userData.vrmFundido = true;
-      var antes = m.onBeforeCompile, clave = m.customProgramCacheKey;
-      m.onBeforeCompile = function (sh, r) {
-        if (antes) antes.call(this, sh, r);
+      // tras el parche que ya traiga MToon, con la clave de programa combinada (la de antes + «|vrm-fundido»): Materiales.encadena (02i)
+      Materiales.encadena(m, "vrm-fundido", function (sh) {
         sh.uniforms.uFunVrm = uni;
         if (sh.fragmentShader.indexOf("uFunVrm") < 0) sh.fragmentShader = sh.fragmentShader.replace("void main() {", "uniform float uFunVrm;\nfloat vrm_ign(vec2 p) { return fract(52.9829189 * fract(dot(p, vec2(0.06711056, 0.00583715)))); }\nvoid main() {\n if (vrm_ign(gl_FragCoord.xy) >= uFunVrm) discard;");
-      };
-      m.customProgramCacheKey = function () { return (clave ? clave.call(this) : "") + "|vrm-fundido"; };
+      }, "vrm-fundido");
       m.needsUpdate = true;
     }
     function monta(e, vrm, compartida) {
@@ -491,7 +490,7 @@
   // Consume la presencia: sin ella no se monta; con ella pero sin ?presencia=sim|red, montado no crea nada.
   Componentes.registra({
     id: "avatares-vrm", version: 1,
-    consume: ["Aparato", "Presencia", "Aspecto", "VRX", "paseando", "persona", "primera", "enQuad", "enDron", "pp"],
+    consume: ["Materiales", "Aparato", "Presencia", "Aspecto", "VRX", "paseando", "persona", "primera", "enQuad", "enDron", "pp"],
     expone: [],
     eventos: { escucha: ["presencia:activada"], emite: [] },
     bandera: { defecto: true, url: "avatares" },

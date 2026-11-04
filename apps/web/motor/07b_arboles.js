@@ -1,10 +1,10 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Arboles
 // Consume: 01_datos (FACTOR_R8), 01a_aparato (Aparato), 02_mundo (Mundo, suelo, copaAlta, kcor, tinte, aviva, copas), 02b_cola (CargaPuro, Cola),
-//   02c_componentes (Config), 03_escena (renderer, camera, exag, modo, calidad), 04c_olivos_tiles (OlivosTiles), 04d_sombreado_tiles (hash),
-//   05_nube (ALTO_MAX, nube), 06_arboles (gArboles, tronco, arbolesG), 07_follaje (follajeG, construyeSombras), 07a_catalogo (Catalogo),
-//   07ab_generados (Escalera, Generados), 07ac_lejanos (Lejanos), 09_camara (objetivo, orb), 10_ndvi (ndviIdx), 12_paseo (paseando),
-//   15_tiempo (nivel, esc, hace), 16_vida (mira), 29_vr (VR_PERFILES), 33_ajustes (Ajustes)
+//   02c_componentes (Config), 02h_render (InfoDibujo), 03_escena (renderer, camera, exag, modo, calidad), 04c_olivos_tiles (OlivosTiles),
+//   04d_sombreado_tiles (hash), 05_nube (ALTO_MAX, nube), 06_arboles (gArboles, tronco, arbolesG), 07_follaje (follajeG, construyeSombras),
+//   07a_catalogo (Catalogo), 07ab_generados (Escalera, Generados), 07ac_lejanos (Lejanos), 09_camara (objetivo, orb), 10_ndvi (ndviIdx),
+//   12_paseo (paseando), 15_tiempo (nivel, esc, hace), 16_vida (mira), 29_vr (VR_PERFILES), 33_ajustes (Ajustes)
 // ===============================================================================
   // ---------- los olivos del modo Gemelo con tres niveles de detalle: el coste de dibujo no crece con la superficie de la finca
   // Nivel 0: celdas de 64 m con el modelo completo (copa medida, troncos, hojas, flores y aceitunas) alrededor de lo que se mira (o de quien pasea), hasta MAX0 olivos.
@@ -191,7 +191,7 @@
       var fq = typeof Ajustes !== "undefined" && Ajustes.escalaArboles ? Ajustes.escalaArboles() : null;
       if (fq != null) { esc = fq; return; }
       // por encima de 1,6 solo si además el fotograma va por debajo de 1,4 M triángulos; si pasa del techo de diseño (1,7 M, ADR-0002), baja
-      var triFot = renderer.info.render.triangles, techo = emaDt < 0.016 && triFot < 1400000 ? 2.5 : 1.6;
+      var triFot = InfoDibujo.triangulos(renderer), techo = emaDt < 0.016 && triFot < 1400000 ? 2.5 : 1.6;
       if (triFot > 1700000 && esc > 1.6) esc = Math.max(1.6, esc - 0.10);
       else if (emaDt < 0.020) esc = Math.min(Math.max(techo, esc > 1.6 ? esc : 0), esc + 0.05);
       else if (emaDt > 0.030) esc = Math.max(0.7, esc - 0.10);

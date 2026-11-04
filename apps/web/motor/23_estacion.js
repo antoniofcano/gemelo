@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: EST, construyeFrutosLista, objetivoMundo, actualizaOlivo
-// Consume: 01_datos ($), 02_mundo (suelo, copas), 03_escena (renderer, SRGB, sol, modo), 04d_sombreado_tiles (hash), 06_arboles (gFollaje),
-//   07_follaje (matHojaG, matHojaP), 10_ndvi (NDV, ndviIdx), 13_parcelas (parcelas), 14_historia (hist, aviso),
+// Consume: 01_datos ($), 02_mundo (suelo, copas), 02i_materiales (Materiales), 03_escena (renderer, SRGB, sol, modo), 04d_sombreado_tiles (hash),
+//   06_arboles (gFollaje), 07_follaje (matHojaG, matHojaP), 10_ndvi (NDV, ndviIdx), 13_parcelas (parcelas), 14_historia (hist, aviso),
 //   15_tiempo (TiempoPuro, lluvia, fmtHora, fmtClaveDia, num1, esc, objetivoMundoBase, aplicaMundo)
 // Nota: Publica además window.__otDebug (depuración del olivo estacional).
 // ===============================================================================
@@ -36,7 +36,7 @@
 
   // --- flores y aceitunas: puntos sobre las copas que cambian con el BBCH (cada uno madura a su ritmo)
   var uFruto = { uBBCH: { value: 0 }, uEsc: { value: 1000 }, uLuz: { value: new THREE.Color(1, 1, 1) } };
-  var matFruto = new THREE.ShaderMaterial({
+  var matFruto = Materiales.sombreador("fruto-flor", {
     uniforms: uFruto,
     vertexShader: "attribute float aR; attribute float aS; uniform float uBBCH; uniform float uEsc; varying vec3 vCol;\n" +
       "void main(){ float b = uBBCH + (aR - 0.5) * 7.0; float tam = 0.0; vec3 col = vec3(1.0);\n" +

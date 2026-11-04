@@ -1,8 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
 // Consume: 01_datos (D), 02_mundo (Mundo, suelo), 02b_cola (Cola), 02c_componentes (Componentes),
-//   02g_vr_presupuesto (VrPresupuestoPuro, VrPresupuesto), 03_escena (scene, exag), 04b_escena3d (Escena3D), 04d_sombreado_tiles (matSuelo),
-//   15_tiempo (lluvia), 90_final (bucle)
+//   02g_vr_presupuesto (VrPresupuestoPuro, VrPresupuesto), 02i_materiales (Materiales), 03_escena (scene, exag), 04b_escena3d (Escena3D),
+//   04d_sombreado_tiles (matSuelo), 15_tiempo (lluvia), 90_final (bucle)
 // ===============================================================================
   // ---------- M6: el suelo de fondo. El mundo es un mosaico de teselas; donde falta una (bordes, esquinas, teselas sin datos) se veía el vacío. Esta malla cubre la caja
   // de la finca más un margen con el relieve GRUESO del índice (8 m, el mismo medido, con menos detalle: regla 5) y el mosaico de 1 m como textura, POR DEBAJO del tileset:
@@ -36,7 +36,7 @@
       var m = new THREE.MeshLambertMaterial({ map: UN.uMos.value, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2 });
       m.color = matSuelo.color;
       // la textura del mosaico se comparte con 04d, que la usa tal cual (ADR-0016: sin convertir): aquí se pasa a lineal al leerla
-      m.onBeforeCompile = function (sh) { sh.fragmentShader = sh.fragmentShader.replace("#include <map_fragment>", "vec4 sampledDiffuseColor = sRGBTransferEOTF(texture2D(map, vMapUv));\n diffuseColor *= sampledDiffuseColor;"); };
+      Materiales.parchea(m, "suelo-fondo", function (sh) { sh.fragmentShader = sh.fragmentShader.replace("#include <map_fragment>", "vec4 sampledDiffuseColor = sRGBTransferEOTF(texture2D(map, vMapUv));\n diffuseColor *= sampledDiffuseColor;"); });
       m.customProgramCacheKey = function () { return "suelo-fondo"; };
       malla = new THREE.Mesh(g, m); malla.name = "sueloFondo"; malla.matrixAutoUpdate = false; malla.renderOrder = -1; expPuesta = NaN;
       scene.add(malla);
@@ -60,7 +60,7 @@
   }
   Componentes.registra({
     id: "suelo-fondo", version: 1,
-    consume: ["D", "Mundo", "UN", "matSuelo", "Escena3D", "scene", "exag", "VrPresupuesto", "VrPresupuestoPuro"],
+    consume: ["Materiales", "D", "Mundo", "UN", "matSuelo", "Escena3D", "scene", "exag", "VrPresupuesto", "VrPresupuestoPuro"],
     expone: [],
     eventos: { escucha: [], emite: [] },
     bandera: { defecto: true, url: "fondo" },

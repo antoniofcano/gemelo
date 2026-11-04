@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Lejanos
-// Consume: 03_escena (renderer, exag), 06_arboles (gArboles), 07ab_generados (Generados)
+// Consume: 02i_materiales (Materiales), 03_escena (renderer, exag), 06_arboles (gArboles), 07ab_generados (Generados)
 // ===============================================================================
   // ---------- los olivos LEJANOS de la escalera (ADR-0019 §2, fase A, O8c), solo con ?olivos=escalera o con ?olivos=gen y variantes horneadas (modoGen
   // de 07ab): sin ellas no crea nada ni gasta nada.
@@ -104,7 +104,7 @@
       var C = [], S = [];
       for (var k = 0; k < 4; k++) { var v = f.variantes[Math.min(k, f.variantes.length - 1)]; C.push(new THREE.Vector3().fromArray(v.centro)); S.push(v.semilado); }
       var m = new THREE.MeshLambertMaterial({ map: tCol, alphaTest: 0.5 }), U = { uCentro: { value: C }, uSemi: { value: S }, tNorm: { value: tNor } };
-      m.onBeforeCompile = function (sh) {
+      Materiales.parchea(m, "impostor-lejano", function (sh) {
         sh.uniforms.uCentro = U.uCentro; sh.uniforms.uSemi = U.uSemi; sh.uniforms.tNorm = U.tNorm; sh.uniforms.uCapa = uCapa;
         Generados.lejanos.parcheLuz(sh); Generados.lejanos.parcheFundido(sh);
         // después de los parches: así el cuadrado ya está colocado cuando la sombra de nubes lee «transformed»
@@ -112,7 +112,7 @@
           .replace("#include <begin_vertex>", "#include <begin_vertex>\n" + GLSL_IMP_V + "\n#ifdef USE_MAP\n vMapUv = vOtUV;\n#endif\n");   // uv_vertex va antes que begin_vertex: el mapa se reescribe aquí
         sh.fragmentShader = sh.fragmentShader.replace("void main() {", "uniform float uCapa; uniform sampler2D tNorm; varying vec2 vOtQ; varying vec2 vOtUV; varying vec3 vOtN0, vOtN1, vOtN2;\nvoid main() {\n if (abs(vOtQ.x) > 1.0 || abs(vOtQ.y) > 1.0 || ot_ign(gl_FragCoord.xy + vec2(17.0, 31.0)) >= uCapa) discard;")
           .replace("#include <normal_fragment_maps>", "#include <normal_fragment_maps>\n normal = normalize((viewMatrix * vec4(normalize(mat3(vOtN0, vOtN1, vOtN2) * (texture2D(tNorm, vOtUV).xyz * 2.0 - 1.0)), 0.0)).xyz);");
-      };
+      });
       m.customProgramCacheKey = function () { return "lejanos-impostor-1"; };
       return m;
     }
@@ -166,13 +166,13 @@
     }
     function matSustituto(tex) {
       var m = new THREE.MeshLambertMaterial({ map: tex, alphaTest: 0.5, side: THREE.DoubleSide }), uNV = { value: nv };
-      m.onBeforeCompile = function (sh) {
+      Materiales.parchea(m, "impostor-sustituto", function (sh) {
         sh.uniforms.uNVar = uNV; sh.uniforms.uCapa = uCapa;
         sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nattribute float aVar; attribute float aVista; uniform float uNVar;")
           .replace("#include <uv_vertex>", "#include <uv_vertex>\n#ifdef USE_MAP\n vMapUv = (vec2(aVista, aVar) + uv) / vec2(2.0, uNVar);\n#endif");
         sh.fragmentShader = sh.fragmentShader.replace("void main() {", "uniform float uCapa;\nvoid main() {\n if (ot_ign(gl_FragCoord.xy + vec2(17.0, 31.0)) >= uCapa) discard;");
         Generados.lejanos.parcheLuz(sh); Generados.lejanos.parcheFundido(sh);
-      };
+      });
       m.customProgramCacheKey = function () { return "lejanos-sustituto"; };
       return m;
     }
