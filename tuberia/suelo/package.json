@@ -1,0 +1,13 @@
+{
+  "name": "gemelo-suelo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Tubería de texturas de suelo (EV-1s): de las fotos de campo (GEMELO_SUELO_FOTOS, fuera del repo) a texturas repetibles WebP de 1024 y 512 px para el detalle de cerca del suelo, y la paleta del cielo de atardecer (GEMELO_CIELO_FOTOS). Ver doc/operacion/DATOS.md",
+  "scripts": {
+    "construye": "node construye.mjs"
+  },
+  "dependencies": {
+    "sharp": "0.35.5"
+  }
+}

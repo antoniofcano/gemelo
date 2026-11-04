@@ -1,0 +1,17 @@
+{
+ "version": 1,
+ "naturaleza": "referencia de color de fotos de la finca (2026-11-04, atardecer); el cielo del gemelo es simulado (ilustrativo)",
+ "fotos": {
+  "degradado": "03",
+  "nubes": [
+   "01",
+   "02",
+   "03",
+   "04"
+  ]
+ },
+ "horizonte": "#b18a70",
+ "cenit": "#616f83",
+ "nube_luz": "#dab192",
+ "nube_sombra": "#77757a"
+}

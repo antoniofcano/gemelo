@@ -1,8 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: hash, matSuelo, matOrto, UN, SombreadoTiles
-// Consume: 01_datos (D, RES, ANCHO, ALTO), 02_mundo (Mundo, suelo, tinte, copas), 02b_cola (Cola), 03_escena (camera), 08_marcadores (aplica),
-//   09_camara (suelta), 12_paseo (primera), 13_parcelas (parcelas), 14_historia (hist), 15_tiempo (lluvia, uSombra, parcheTiempo, hace),
-//   21_suelo (vn2, cubierta), 24_pantalla (suave)
+// Consume: 01_datos (D, RES, ANCHO, ALTO), 02_mundo (Mundo, suelo, tinte, copas), 02b_cola (Cola), 03_escena (camera),
+//   04f_suelo_fotos (SueloFotosPuro, SueloFotos), 08_marcadores (aplica), 09_camara (suelta), 12_paseo (primera), 13_parcelas (parcelas),
+//   14_historia (hist), 15_tiempo (lluvia, uSombra, parcheTiempo, hace), 21_suelo (vn2, cubierta), 24_pantalla (suave)
 // ===============================================================================
   // ---------- el sombreado del relieve (F1d, T5; T8 fase 2: la única escena es la 3D Tiles)
   // Cada glb del tileset trae su terreno con un material PBR y la ortofoto como baseColorTexture. Al cargarse (evento load-model de 04b_escena3d.js)
@@ -32,6 +32,7 @@
     function ruidoNeutro() { if (!RUI0) { var d = new Uint8Array([143, 128, 128, 255]); RUI0 = new THREE.DataTexture(d, 1, 1, THREE.RGBAFormat, THREE.UnsignedByteType); RUI0.needsUpdate = true; } return RUI0; }
     function texturas(t) {
       t.uni = { uTile: { value: new THREE.Vector2(t.ox, t.oy) }, uSue: { value: null }, uRui: { value: ruidoNeutro() }, uGnd: { value: ruidoNeutro() }, uTiene: { value: 0 } };
+      if (SueloFotos.activo) t.uni.uRue = { value: SueloFotos.campo(t) };   // EV-1s (?suelo=fotos): el campo del ruedo de la tesela, de las copas (04f)
       if (t.suel) texturasReales(t);
     }
     function texturasReales(t) {   // el color del suelo de la tesela es inmediato; el ruido estático (66.000 evaluaciones) se calcula a rebanadas en la cola
@@ -125,6 +126,7 @@
     function parche(sh, uni) {
       parcheTiempo(sh, false);   // sombra de nubes y escarcha (bloque del tiempo)
       var u = sh.uniforms; Object.keys(UN).forEach(function (k) { u[k] = UN[k]; }); Object.keys(uni).forEach(function (k) { u[k] = uni[k]; });
+      if (SueloFotos.activo) { u.uFot = SueloFotos.U.uFot; u.uFotK = SueloFotos.U.uFotK; }
       var vs = sh.vertexShader.replace("#include <common>", "#include <common>\nuniform float uExag; varying vec3 vWP; varying vec3 vVPz;")
         .replace("#include <begin_vertex>", "#include <begin_vertex>\n vWP = (modelMatrix * vec4(transformed, 1.0)).xyz; vWP.y /= uExag;").replace("ot_sombra(position.xz)", "ot_sombra(vWP.xz)");
       sh.vertexShader = vs.replace("#include <project_vertex>", "#include <project_vertex>\n vVPz = -mvPosition.xyz;");
@@ -167,6 +169,7 @@
         "suelo = mix(suelo, vec3(0.30, 0.25, 0.18) * (0.72 + 0.55 * dn(vWP.xz * 5.0)) * (0.82 + 0.36 * nm), lit * 0.5 * (0.5 + 0.5 * cerca));\n" +
         "hSuelo = -0.055 * ruts + 0.014 * (nf - 0.5) * cerca + 0.007 * (nu - 0.5) * cercaM + 0.004 * grano * cercaM + 0.03 * (rodada - 1.0) * camino * cercaR;\n" +
         "diffuseColor.rgb *= sRGBTransferEOTF(vec4(max(suelo, vec3(0.0)), 1.0)).rgb;\n";   // todo lo de arriba son colores «como se ven» (las texturas van sin convertir): a lineal al entrar en la luz
+      if (SueloFotos.activo) { var pf = SueloFotosPuro.parcheGlsl(cab, color, TS); cab = pf.cab; color = pf.color; }   // EV-1s: solo con ?suelo=fotos
       var fin =
         "vec2 un = vec2((vWP.x - uGBox.x) / uGBox.z, 1.0 - (uGBox.y + vWP.z) / uGBox.w);\n" +
         "vec4 nd = texture2D(uNdviMap, un); float dentro = step(0.0, un.x) * step(un.x, 1.0) * step(0.0, un.y) * step(un.y, 1.0);\n" +
@@ -186,7 +189,7 @@
     function material(u) {
       var m = new THREE.MeshLambertMaterial({}); m.color = matSuelo.color;   // el color (lluvia, luz) es uno solo para todo el relieve
       m.onBeforeCompile = function (sh) { parche(sh, u); };
-      m.customProgramCacheKey = function () { return "terreno-3dtiles"; };   // un solo programa para todos los glb
+      m.customProgramCacheKey = function () { return SueloFotos.activo ? "terreno-3dtiles-fotos" : "terreno-3dtiles"; };   // un solo programa para todos los glb
       return m;
     }
     // un modelo recién cargado: su malla de terreno (la que lleva ortofoto; los olivos instanciados no se tocan) pasa a este sombreado
@@ -203,6 +206,7 @@
           uGnd: uni ? uni.uGnd : { value: ruidoNeutro() }, uTiene: uni ? uni.uTiene : { value: 0 },
           uOrt: { value: map }, uDet: { value: 0 }, uBias2: { value: Math.log(2 / (L / w)) / Math.LN2 }, uCua: { value: new THREE.Vector4(x0, y0, L, 0) }
         };
+        if (SueloFotos.activo) u.uRue = uni ? uni.uRue : { value: SueloFotos.rueNeutro() };
         o.material = material(u);   // el material del glb (sin compilar) y su textura los libera la librería al soltar la tesela; este, suelta()
         vivos.push({ raiz: raiz, m: o.material, u: u, mt: mt });
       });
@@ -211,6 +215,7 @@
     // cada 0,2 s: las texturas de la tesela del Mundo cuando llegan sus datos y el detalle del suelo abierto según la distancia (con histéresis del 50 %)
     function actualiza() {
       var ahora = performance.now(); if (ahora - tUlt < 200 || !vivos.length) return; tUlt = ahora;
+      if (SueloFotos.activo) SueloFotos.actualiza();
       mosaico();
       var p = camera.position, dist = {};
       vivos.forEach(function (v) {
@@ -221,6 +226,7 @@
     }
     function libera() {   // si la escena 3D Tiles se apaga o falla
       vivos.forEach(function (v) { v.m.dispose(); }); vivos = [];
+      if (SueloFotos.activo) SueloFotos.libera();
       if (mos) { if (UN.uMos.value === mos) UN.uMos.value = null; mos.dispose(); mos = null; }
     }
     function resumen() { return { glb: vivos.length, conTesela: vivos.filter(function (v) { return v.mt; }).length, conDetalle: vivos.filter(function (v) { return v.u.uDet.value; }).length }; }
