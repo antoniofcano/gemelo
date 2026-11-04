@@ -1,8 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Escalera, Generados
 // Consume: 01_datos (D, VRP, FACTOR_R8_GEN, factorCopaDeConfig), 01a_aparato (Aparato), 02_mundo (suelo, copas), 02c_componentes (Config),
-//   03_escena (renderer, camera, colorVertSRGB, exag), 06_arboles (gArboles), 08_marcadores (aplica), 12_paseo (paseando, primera),
-//   14_historia (hist, lista), 15_tiempo (parcheTiempo, nivel, hace), 16_vida (esfera), 29_vr (VR_PERFILES)
+//   03_escena (renderer, camera, colorVertSRGB, exag), 06_arboles (gArboles), 08_marcadores (aplica), 09_camara (suelta),
+//   12_paseo (paseando, primera), 14_historia (hist, lista), 15_tiempo (parcheTiempo, nivel, hace), 16_vida (esfera), 29_vr (VR_PERFILES)
 // ===============================================================================
   // ---------- olivos GENERADOS cerca (ADR-0017, decisiones 26-28, 34 y 52), POR DEFECTO (O10a, Antonio 2026-11-02): sin ?olivos=, si la finca trae copas_param y copas_id (y el aparato puede), se comporta como con ?olivos=gen;
   // ?olivos=0 (o =no) lo apaga y el motor dibuja lo de siempre. La decisión es UNA función pura (GeneradosPuro.activo, abajo); si el constructor no está en el build o falla al cargar, lo de siempre sin avisar en consola (se dice en ?debug).
@@ -657,6 +657,23 @@
       if (indice) g.setIndex(new THREE.BufferAttribute(indice, 1));
       return g;
     }
+    /** Caja y esfera de una geometría de origen, calculadas UNA vez (EV-perf) con los mismos vértices y la misma cuenta que el cálculo perezoso de BatchedMesh
+     *  (getBoundingBoxAt/getBoundingSphereAt: los vértices que referencia el índice; la esfera, centrada en la caja): así addGeometry las copia y no hay recorrido de
+     *  vértices por lote. Clave débil: la propia `atrib` (la de G[gk] es la misma en todos los lotes); al soltarse la receta o la finca, se suelta con ella. */
+    var limitesDe = (function () {
+      var cache = new WeakMap();
+      return function (atrib, indice) {
+        var c = cache.get(atrib); if (c && c.indice === indice) return c;
+        var P = atrib.position, n = indice ? indice.length : P.length / 3, i, x, y, z, k;
+        var mn = [Infinity, Infinity, Infinity], mx = [-Infinity, -Infinity, -Infinity];
+        for (i = 0; i < n; i++) { k = (indice ? indice[i] : i) * 3; x = P[k]; y = P[k + 1]; z = P[k + 2]; if (x < mn[0]) mn[0] = x; if (x > mx[0]) mx[0] = x; if (y < mn[1]) mn[1] = y; if (y > mx[1]) mx[1] = y; if (z < mn[2]) mn[2] = z; if (z > mx[2]) mx[2] = z; }
+        var caja = new THREE.Box3(new THREE.Vector3(mn[0], mn[1], mn[2]), new THREE.Vector3(mx[0], mx[1], mx[2])), centro = caja.getCenter(new THREE.Vector3()), r2 = 0, d;
+        for (i = 0; i < n; i++) { k = (indice ? indice[i] : i) * 3; x = P[k] - centro.x; y = P[k + 1] - centro.y; z = P[k + 2] - centro.z; d = x * x + y * y + z * z; if (d > r2) r2 = d; }
+        c = { indice: indice, caja: caja, esfera: new THREE.Sphere(centro, Math.sqrt(r2)) }; cache.set(atrib, c); return c;
+      };
+    })();
+    /** La geometría de un lote con sus límites ya puestos (clones: setGeometryAt los vuelve a clonar al guardarlos, así que la geometría puede soltarse sin más) */
+    function geoLote(atrib, indice, marcas) { var g = geoDe(atrib, indice, marcas), l = limitesDe(atrib, indice); g.boundingBox = l.caja.clone(); g.boundingSphere = l.esfera.clone(); return g; }
     // las mallas instanciadas de hoja: por material, salvo las dos tarjetas de E1/E2 (O9b), que comparten material y cambian de geometría
     var GEO_INST = { ramita0: "ramita", ramita1: "ramita", relleno: "relleno", tarjeta: "tarjeta", tarjetaO: "tarjetaO" };
     function claveInst(z) { return z.geo === "tarjeta" || z.geo === "tarjetaO" ? z.geo : z.mat; }
@@ -699,7 +716,7 @@
         var im = new THREE.InstancedMesh(g, mats[mk], inst[k]); im.name = "gen-" + k; im.castShadow = true; im.receiveShadow = true; im.customDepthMaterial = mats[mk + "_sombra"];
         im.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(inst[k] * 3), 3); I[k] = im; out.add(im);
       });
-      function idGeo(b, gk, atrib, indice) { var k = b + gk; if (geoId[k] === undefined) geoId[k] = B[b].addGeometry(geoDe(atrib, indice, b === "corteza")); return geoId[k]; }
+      function idGeo(b, gk, atrib, indice) { var k = b + gk; if (geoId[k] === undefined) geoId[k] = B[b].addGeometry(geoLote(atrib, indice, b === "corteza")); return geoId[k]; }
       function ponBatch(b, gid, m, rgb) {
         var id = B[b].addInstance(gid); B[b].setMatrixAt(id, m); col.set(rgb[0], rgb[1], rgb[2], 1 - cod / 2); B[b].setColorAt(id, col);
         if (cod === 2) (salen.B[b] || (salen.B[b] = { m: B[b], ids: [] })).ids.push(id);
