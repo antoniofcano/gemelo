@@ -68,9 +68,14 @@ function reservas(src, fn, inicio) {
 
 /** Las funciones del bucle, por módulo. «inicio» localiza la función (debe ser único en el fichero). Solo lo que corre a cada fotograma. */
 const BUCLE = {
+  "17_minimapa.js": [["actualizaRastro", "function actualizaRastro("]],
+  "19_balizas.js": [["firmaCambia", "function firmaCambia("]],
+  "25_perros.js": [["amenazaEn", "function amenazaEn("], ["actualizaPerros", "function actualizaPerros("]],
+  "02c_componentes.js": [["Bus.emite", "function emite(ev, datos)"]],
+  "18_paisaje.js": [["distArroyo", "function distArroyo("], ["celdaArroyoDist", "function celdaArroyoDist("]],
   "16_vida.js": [["velPaseo", "function velPaseo("], ["giroPaseo", "function giroPaseo("], ["vidaPaseo", "function vidaPaseo("], ["dronMando", "function dronMando("],
     ["camaraDron", "function camaraDron("], ["vidaDron", "function vidaDron("], ["actualizaVida", "function actualizaVida("], ["emiteEstela", "e.emite = function"], ["angDifRad", "function angDifRad("]],
-  "15_tiempo.js": [["posSolEn", "function posSolEn("], ["nivelEn", "function nivelEn("]],   // `nivel(ms)` sí reserva su resultado (es la de siempre, para lo que no corre por fotograma): no está en la lista
+  "15_tiempo.js": [["posSolEn", "function posSolEn("], ["nivelEn", "function nivelEn("], ["pintaNubes", "function pintaNubes("], ["actualizaTiempo", "function actualizaTiempo("]],   // `nivel(ms)` sí reserva su resultado (es la de siempre, para lo que no corre por fotograma): no está en la lista
   "16b_fauna.js": [["aleteo", "function aleteo("], ["empacaAves", "function empacaAves("], ["escalaVista", "function escalaVista("], ["actualizaFauna", "function actualizaFauna("],
     ["mayorQue", "function mayorQue("], ["menorQue", "function menorQue("], ["reconstruyeCerca", "function reconstruyeCerca("]],
   "38_presencia_compartida.js": [["oyente", "function oyente("], ["anda", "function anda("], ["emite", "function emite(a, dt"], ["entrega", "function entrega("], ["caja", "function caja("], ["apoyo", "function apoyo("],

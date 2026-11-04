@@ -274,7 +274,7 @@ test("en Node: el núcleo con la pieza de las fichas del tiempo de verdad arranc
   class V3 { constructor() { this.x = this.y = this.z = 0; } set(x, y, z) { this.x = x; this.y = y; this.z = z; return this; } copy(v) { return this.set(v.x, v.y, v.z); } }
   const filas = [], tapas = [];
   const globales = { THREE: { Vector3: V3 }, PanelVR: { filas: (p, f) => { filas.push(f); return () => filas.splice(filas.indexOf(f), 1); }, tapa: fn => { tapas.push(fn); return () => tapas.splice(tapas.indexOf(fn), 1); }, repinta() {}, cierra() {}, rumbo: () => 0 },
-    TiempoVivo: { lee: () => null, alCambiar: () => () => {} }, VRX: { on: false }, paseando: false, Hud: { aviso() {} }, ahoraMs: () => Date.parse("2026-10-30T12:00:00Z"), nivel: () => ({ d: 1 }),
+    TiempoVivo: { lee: () => null, alCambiar: () => () => {} }, VRX: { on: false }, paseando: false, Hud: { aviso() {} }, ahoraMs: () => Date.parse("2026-10-30T12:00:00Z"), nivelEn: () => ({ d: 1 }),
     Laminas: { abre: () => true, cierra: () => false, hay: () => false, repinta: () => false, revisa() {}, info: () => ({ abierta: false }) } };
   const arranca = (busqueda, extra) => { const r = nucleo({ busqueda, extra, globales }); r.Componentes.arranca(); for (let i = 0; i < 40; i++) ["mundo", "tarde", "trasRender"].forEach(fa => r.Componentes.actualiza(fa, 0.05, i)); return r; };
   let r = arranca("", fuente);
@@ -306,7 +306,7 @@ test("C4 en Node: el sonido se monta con su pestaña de Configuración y su fila
   const filas = [], ajustes = [], quitados = { ajustes: 0 };
   const mundo = () => ({ PanelVR: { filas: (p, f) => { filas.push([p, f]); return () => filas.splice(filas.findIndex(x => x[1] === f), 1); } }, VRX: { sucio: false },
     Ajustes: { lee: k => ({ "sonido.activo": true, "sonido.volumen": 80 })[k], pon() {}, registra: (pre, esq, pes, ap) => { ajustes.push({ pre, esq, pes }); ap && ap("sonido.activo", true); return () => { quitados.ajustes++; }; } },
-    paseando: true, teclas: { run: false }, cur: { ms: 0, viento: 3, lluvia: 0, temp: 20 }, nivel: () => ({ d: 1 }), tVida: 0, enQuad: false, quad: {}, vq: 0, enDron: false, dr: { x: 0, y: 0, vf: 0, vh: 0 },
+    paseando: true, teclas: { run: false }, cur: { ms: 0, viento: 3, lluvia: 0, temp: 20 }, nivelEn: () => ({ d: 1 }), tVida: 0, enQuad: false, quad: {}, vq: 0, enDron: false, dr: { x: 0, y: 0, vf: 0, vh: 0 },
     pp: { x: 0, y: 0, paso: 0 }, aguaNivel: 0, distArroyo: () => 50 });
   const arranca = (busqueda, extra, g) => { const r = nucleo({ busqueda, extra, globales: g }); r.Componentes.arranca(); for (let i = 0; i < 30; i++) ["mundo", "tarde", "trasRender"].forEach(fa => r.Componentes.actualiza(fa, 0.05, i)); return r; };
   const A = audioFalso(); let g = mundo(); g = Object.assign(g, {});

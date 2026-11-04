@@ -99,16 +99,20 @@
 
   // el bus de eventos: Bus.on(evento, fn) → quita; Bus.emite(evento, datos); Bus.hay(evento) (¿alguien escucha?). Nombres «dominio:accion», todos en contratos/eventos.json
   var Bus = (function () {
+    // AG-1.4c: la lista de oyentes de un evento es INMUTABLE: dar de alta o de baja (raro) crea una lista nueva; emitir (a cada fotograma, a veces) recorre la lista que
+    // había al empezar sin copiarla ni crear cierres. Es la misma semántica de antes (copia al emitir): quien se da de baja durante la emisión la recibe aún; quien se
+    // da de alta durante ella, no hasta la siguiente; un oyente que falla no impide a los demás.
     var oy = {};
     function on(ev, fn) {
       if (typeof fn !== "function") return function () {};
-      (oy[ev] = oy[ev] || []).push(fn);
-      return function () { var l = oy[ev], i = l ? l.indexOf(fn) : -1; if (i >= 0) l.splice(i, 1); };
+      var n = (oy[ev] || []).slice(); n.push(fn); oy[ev] = n;
+      return function () { var l = oy[ev], i = l ? l.indexOf(fn) : -1; if (i >= 0) { var m = l.slice(); m.splice(i, 1); oy[ev] = m; } };
     }
+    function avisaFallo(ev, e) { try { console.error("[Bus] " + ev, e); } catch (e2) {} }
     function emite(ev, datos) {
       var l = oy[ev]; if (!l || !l.length) return 0;
-      l.slice().forEach(function (fn) { try { fn(datos); } catch (e) { try { console.error("[Bus] " + ev, e); } catch (e2) {} } });
-      return l.length;
+      for (var i = 0, fn; i < l.length; i++) { fn = l[i]; try { fn(datos); } catch (e) { avisaFallo(ev, e); } }   // fn suelta: sin «this» (como el forEach de antes)
+      return oy[ev].length;   // los que hay al terminar (la lista es la de ahora, no la de antes de emitir)
     }
     function hay(ev) { return !!(oy[ev] && oy[ev].length); }
     return { on: on, emite: emite, hay: hay };

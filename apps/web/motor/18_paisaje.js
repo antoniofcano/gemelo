@@ -1,8 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: PA, matTronco, postes, cable, colocaPaisaje, instSombra, sombrasSol, aguaNivel, actualizaPaisaje, ejeArroyo, distArroyo
-// Consume: 01_datos (D, $, ESC_R8), 02_mundo (suelo, desp, copas), 03_escena (scene, SRGB, sol, exag), 04d_sombreado_tiles (hash),
-//   06_arboles (gSombras, tronco), 07_follaje (matSombra, geoSombra), 09_camara (pon), 14_historia (lista), 15_tiempo (lluvia, cur, tMundo, nivel),
-//   16_vida (esfera), 23_estacion (EST)
+// Consume: 01_datos (D, $, ESC_R8), 02_mundo (suelo, desp, copas), 03_escena (scene, SRGB, sol, exag, modo), 04d_sombreado_tiles (hash),
+//   06_arboles (gSombras, tronco), 07_follaje (matSombra, geoSombra), 09_camara (pon), 14_historia (lista),
+//   15_tiempo (nivelEn, lluvia, cur, tMundo, nivel), 16_vida (esfera), 23_estacion (EST), 90_final (bucle)
 // ===============================================================================
   // ---------- el paisaje que sale del LiDAR: edificios (clase 6), el tendido y sus postes, el arroyo y los árboles que no son olivos
   // Lo que el LiDAR clasifica de verdad son los edificios. El tendido, los postes, el cauce y las copas se deducen de la geometría (alturas, alineación, relieve) y se rotulan así.
@@ -137,15 +137,45 @@
   }
 
   // --- el agua del arroyo sube con la lluvia y baja despacio
-  var aguaNivel = 0, tSombra = 0;
+  var aguaNivel = 0, tSombra = 0, lvAgua = { s: { alt: 0, az: 0 }, d: 0 };   // lvAgua: el nivel del sol de actualizaPaisaje, el mismo objeto cada fotograma (AG-1.4c)
   function actualizaPaisaje(dt) {
     var llueve = cur.lluvia > 0.3 || (EST.activa && EST.clima && EST.clima.lluvia >= 12);   // o una semana lluviosa en la estación elegida
     aguaNivel += llueve ? (1 - aguaNivel) * Math.min(1, dt * 0.18) : -aguaNivel * Math.min(1, dt * 0.03);
-    uArroyo.uAgua.value = aguaNivel < 0.02 ? 0 : aguaNivel; uArroyo.uT.value = tMundo; uArroyo.uLuz.value = 0.22 + 0.78 * nivel(cur.ms).d;
+    uArroyo.uAgua.value = aguaNivel < 0.02 ? 0 : aguaNivel; uArroyo.uT.value = tMundo; uArroyo.uLuz.value = 0.22 + 0.78 * nivelEn(cur.ms, lvAgua).d;
     gPaisaje.visible = $("cPaisaje").checked;
     tSombra += dt; if (tSombra > 0.4) { tSombra = 0; sombrasSol(false); }
   }
   (function () { var c = $("cPaisaje"); if (c) c.addEventListener("change", function () { gPaisaje.visible = c.checked; }); })();
   // los puntos de los cauces en una lista plana y la distancia al más cercano (los usan el suelo, 21, y el sonido del agua; vivían en 20_sonido)
   var ejeArroyo = []; EJES.forEach(function (E) { E.forEach(function (e) { ejeArroyo.push([e[0], e[1]]); }); });
-  function distArroyo(x, y) { var m = 1e9; for (var i = 0; i < ejeArroyo.length; i += 2) { var d = Math.hypot(ejeArroyo[i][0] - x, ejeArroyo[i][1] - y); if (d < m) m = d; } return m; }
+  // La distancia al cauce más cercano, por una rejilla de 64 m (AG-1.4c): mismo resultado que recorrer el eje entero con Math.hypot, sin recorrerlo entero.
+  // OJO, heredado y conservado: el bucle original avanzaba `i += 2` sobre la lista de pares [x, y], de modo que solo cuentan los puntos de índice par (la mitad del eje).
+  // Si es un defecto o una decimación a propósito no consta en el repo: no se corrige aquí (cambiaría las cifras); queda anotado en el informe de AG-1.4c.
+  var ejeCel = 64, ejePX = new Float64Array(Math.ceil(ejeArroyo.length / 2)), ejePY = new Float64Array(ejePX.length), ejeNX = 1, ejeNY = 1, ejeX0 = 0, ejeY0 = 0, ejeIni = null, ejePts = null;
+  function celdaArroyo(x, y) { var cx = Math.floor((x - ejeX0) / ejeCel), cy = Math.floor((y - ejeY0) / ejeCel); if (cx < 0) cx = 0; else if (cx >= ejeNX) cx = ejeNX - 1; if (cy < 0) cy = 0; else if (cy >= ejeNY) cy = ejeNY - 1; return cy * ejeNX + cx; }
+  (function () {
+    var n = ejePX.length, i, c, x1 = -1e18, y1 = -1e18; if (!n) return;
+    ejeX0 = 1e18; ejeY0 = 1e18;
+    for (i = 0; i < n; i++) { ejePX[i] = ejeArroyo[i * 2][0]; ejePY[i] = ejeArroyo[i * 2][1]; if (ejePX[i] < ejeX0) ejeX0 = ejePX[i]; if (ejePY[i] < ejeY0) ejeY0 = ejePY[i]; if (ejePX[i] > x1) x1 = ejePX[i]; if (ejePY[i] > y1) y1 = ejePY[i]; }
+    ejeNX = Math.floor((x1 - ejeX0) / ejeCel) + 1; ejeNY = Math.floor((y1 - ejeY0) / ejeCel) + 1;
+    ejeIni = new Int32Array(ejeNX * ejeNY + 1); ejePts = new Int32Array(n);
+    for (i = 0; i < n; i++) ejeIni[celdaArroyo(ejePX[i], ejePY[i]) + 1]++;
+    for (c = 0; c < ejeNX * ejeNY; c++) ejeIni[c + 1] += ejeIni[c];
+    var pos = ejeIni.slice(0, ejeNX * ejeNY);
+    for (i = 0; i < n; i++) ejePts[pos[celdaArroyo(ejePX[i], ejePY[i])]++] = i;
+  })();
+  function celdaArroyoDist(c, x, y, m) { for (var k = ejeIni[c], f = ejeIni[c + 1]; k < f; k++) { var p = ejePts[k], d = Math.hypot(ejePX[p] - x, ejePY[p] - y); if (d < m) m = d; } return m; }
+  function distArroyo(x, y) {
+    var m = 1e9; if (!ejePX.length) return m;
+    var cx = Math.floor((x - ejeX0) / ejeCel), cy = Math.floor((y - ejeY0) / ejeCel); if (cx < 0) cx = 0; else if (cx >= ejeNX) cx = ejeNX - 1; if (cy < 0) cy = 0; else if (cy >= ejeNY) cy = ejeNY - 1;
+    var rMax = Math.max(ejeNX, ejeNY);
+    for (var r = 0; r <= rMax; r++) {
+      if (r > 1 && m < (r - 1) * ejeCel - 1e-6) break;   // lo no visitado (anillos ≥ r) está a ≥ (r-1)·64 m, también si el punto cae fuera de la rejilla
+      var ya = cy - r, yb = cy + r, xa = cx - r, xb = cx + r, xx, yy;
+      for (yy = ya < 0 ? 0 : ya; yy <= yb && yy < ejeNY; yy++) {
+        if (yy === ya || yy === yb) { for (xx = xa < 0 ? 0 : xa; xx <= xb && xx < ejeNX; xx++) m = celdaArroyoDist(yy * ejeNX + xx, x, y, m); }
+        else { if (xa >= 0) m = celdaArroyoDist(yy * ejeNX + xa, x, y, m); if (xb < ejeNX && xb !== xa) m = celdaArroyoDist(yy * ejeNX + xb, x, y, m); }
+      }
+    }
+    return m;
+  }

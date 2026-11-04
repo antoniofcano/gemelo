@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 02_mundo (suelo), 02c_componentes (Bus, Componentes), 03_escena (scene, exag), 12_paseo (paseando, teclas), 15_tiempo (cur, nivel),
-//   16_vida (tVida, enQuad, altSuelo, enDron), 22_huellas (sueloSeco), 90_final (bucle)
+// Consume: 02_mundo (suelo), 02c_componentes (Bus, Componentes), 03_escena (scene, sol, exag), 12_paseo (paseando, teclas),
+//   15_tiempo (nivelEn, cur, nivel), 16_vida (tVida, enQuad, altSuelo, enDron), 22_huellas (sueloSeco), 90_final (bucle)
 // ===============================================================================
   // ---------- huellas y polvo (componente «huellas-polvo», ADR-0023, C10): las pisadas y rodadas que se desvanecen y las bocanadas de polvo del suelo seco.
   // Antes vivían en 22_huellas.js y las nombraba el bucle; ahora solo se registra. Quien levanta polvo (el aterrizaje del muñequito, los perros) lo pide por el Bus
@@ -47,9 +47,9 @@
       var i = pvSig++ % NPV; pvPos[i * 3] = x; pvPos[i * 3 + 1] = h; pvPos[i * 3 + 2] = -y; pvVel[i * 3] = vx; pvVel[i * 3 + 1] = vy; pvVel[i * 3 + 2] = -vz; pvBorn[i] = tVida; pvVida[i] = vida; pvTam[i] = tam;
       pvFin = Math.max(pvFin, tVida + vida); puntosPolvo.visible = true;
     }
-    var hAcPol = 0;
+    var hAcPol = 0, lvHuellas = { s: { alt: 0, az: 0 }, d: 0 };   // lvHuellas: el nivel del sol de actualizaHuellas, el mismo objeto cada fotograma (AG-1.4c)
     function actualizaHuellas(dt) {
-      uHuella.uNow.value = tVida; uPolvo.uNow.value = tVida; uPolvo.uLuz.value = 0.22 + 0.78 * nivel(cur.ms).d;
+      uHuella.uNow.value = tVida; uPolvo.uNow.value = tVida; uPolvo.uLuz.value = 0.22 + 0.78 * nivelEn(cur.ms, lvHuellas).d;
       var fx = Math.sin(pp.ang), fy = Math.cos(pp.ang), rx = Math.cos(pp.ang), ry = -Math.sin(pp.ang);
       if (paseando && !enDron && !enQuad) {   // pisadas: una por zancada, alternando pie
         var z = Math.floor(pp.paso / Math.PI);
@@ -86,7 +86,7 @@
   }
   Componentes.registra({
     id: "huellas-polvo", version: 1,
-    consume: ["scene", "suelo", "exag", "pp", "paseando", "teclas", "cur", "nivel", "tVida", "enQuad", "vq", "enDron", "dr", "altSuelo", "sueloSeco"],
+    consume: ["scene", "suelo", "exag", "pp", "paseando", "teclas", "cur", "nivelEn", "tVida", "enQuad", "vq", "enDron", "dr", "altSuelo", "sueloSeco"],
     expone: [],
     eventos: { escucha: ["polvo:emite"], emite: [] },
     bandera: { defecto: true, url: "huellas" },
