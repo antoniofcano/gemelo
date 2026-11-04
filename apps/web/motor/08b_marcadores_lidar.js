@@ -1,8 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
 // Consume: 01_datos ($), 02_mundo (suelo, copas, cIn, marc), 02c_componentes (Componentes), 02g_vr_presupuesto (VrPresupuesto),
-//   03_escena (scene, colorCss, exag, modo), 05_nube (nube), 08_marcadores (gLinde, marcadores, listo, aplica, capas), 09_camara (suelta),
-//   13_parcelas (parcelas), 16_vida (esfera)
+//   02j_estaticos (Estaticos), 03_escena (scene, colorCss, exag, modo), 05_nube (nube), 08_marcadores (gLinde, marcadores, listo, aplica, capas),
+//   09_camara (suelta), 13_parcelas (parcelas), 16_vida (esfera)
 // ===============================================================================
 
   // ---------- los marcadores de la nube LiDAR (componente «marcadores-lidar», ADR-0023, C10 tercera tanda): las copas detectadas (octaedros), los olivos guardados en
@@ -14,7 +14,7 @@
   function MarcadoresLidarMotor(n) {
     var gCopas = new THREE.Group(), gMarc = new THREE.Group(), gDesf = new THREE.Group();
     gCopas.name = "copas"; gMarc.name = "marcas"; gDesf.name = "desfase";   // los nombres los usa el desglose de llamadas de las pruebas
-    [gCopas, gMarc, gDesf].forEach(function (g) { scene.add(g); });
+    [gCopas, gMarc, gDesf].forEach(function (g) { scene.add(g); });   // AG-1.15: sus mallas se congelan abajo; las instancias llevan su propia matriz y las recoloca coloca()
     var geoCopa = new THREE.OctahedronGeometry(0.38), matOcta = new THREE.MeshBasicMaterial({ color: colorCss("--lidar") });
     var mCopas = new THREE.InstancedMesh(geoCopa, matOcta, cIn.length); mCopas.frustumCulled = false; gCopas.add(mCopas);   // r151: la esfera de una InstancedMesh se calcula una vez con sus instancias; estas se recolocan con la exageración
     var ani = new THREE.RingGeometry(0.55, 0.95, 8); ani.rotateX(-Math.PI / 2);
@@ -25,6 +25,7 @@
     if (vrPres) { vrPres.instancias("marcasOT", [mMarc]); vrPres.instancias("copasLidar", [mCopas]); }
     var desfGeo = new THREE.BufferGeometry(), matDesf = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 });
     gDesf.add(new THREE.LineSegments(desfGeo, matDesf));
+    [gCopas, gMarc, gDesf].forEach(function (g) { Estaticos.congela(g); });   // AG-1.15: nada de esto se mueve como objeto (la exageración va en las matrices de instancia y en los vértices)
     var tmpMarc = new THREE.Object3D();
     function coloca() {
       cIn.forEach(function (c, i) { tmpMarc.position.set(c.x, (suelo(c.x, c.y) + c.h + 1.4) * exag, -c.y); tmpMarc.updateMatrix(); mCopas.setMatrixAt(i, tmpMarc.matrix); }); mCopas.instanceMatrix.needsUpdate = true;
@@ -55,7 +56,7 @@
   }
   Componentes.registra({
     id: "marcadores-lidar", version: 1,
-    consume: ["scene", "colorCss", "cIn", "marc", "copas", "suelo", "exag", "listo", "VrPresupuesto"],
+    consume: ["Estaticos", "scene", "colorCss", "cIn", "marc", "copas", "suelo", "exag", "listo", "VrPresupuesto"],
     expone: [],
     eventos: { escucha: ["mundo:aplica", "capas:cambia"], emite: [] },
     bandera: { defecto: true, url: "marcadores" },

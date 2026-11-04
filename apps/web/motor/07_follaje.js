@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: matHojaG, matHojaP, matCorteza, matSombra, geoSombra, follajeG, construyeSombras
-// Consume: 01_datos (ESC_R8), 02_mundo (suelo, copaAlta, aviva, colorEn, copas), 02g_vr_presupuesto (VrPresupuesto),
+// Consume: 01_datos (ESC_R8), 02_mundo (suelo, copaAlta, aviva, colorEn, copas), 02g_vr_presupuesto (VrPresupuesto), 02j_estaticos (Estaticos),
 //   03_escena (texColor, exag, calidad), 04d_sombreado_tiles (hash), 06_arboles (gSombras, radioEn), 14_historia (lista), 16_vida (esfera),
 //   18_paisaje (instSombra, sombrasSol), 23_estacion (construyeFrutosLista)
 // ===============================================================================
@@ -78,5 +78,5 @@
     while (gSombras.children.length) { gSombras.children.pop(); }
     var inst = new THREE.InstancedMesh(geoSombra, matSombra, copas.length + 1), tm = new THREE.Object3D(), n2 = 0; inst.frustumCulled = false;   // r151: la esfera de una InstancedMesh abarca sus instancias y se calcula una vez; estas se recolocan
     copas.forEach(function (t) { if (!t.oliv) return; var rm = t.perfil.reduce(function (a, b) { return a + b; }, 0) / 8; tm.position.set(t.x + 0.4, (suelo(t.x, t.y) + 0.06) * exag, -t.y - 0.1); tm.scale.set(rm * 2.5 * ESC_R8, 1, rm * 2.5 * ESC_R8); tm.updateMatrix(); inst.setMatrixAt(n2++, tm.matrix); });
-    inst.count = n2; inst.instanceMatrix.needsUpdate = true; gSombras.add(inst); instSombra = inst; sombrasSol(true);
+    inst.count = n2; inst.instanceMatrix.needsUpdate = true; Estaticos.congela(inst); gSombras.add(inst); instSombra = inst; sombrasSol(true);
   }

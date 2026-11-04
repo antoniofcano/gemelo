@@ -13,6 +13,7 @@
 const test = require("node:test"), assert = require("node:assert"), vm = require("vm"), path = require("path"), { pathToFileURL } = require("url");
 const fc = require("fast-check");
 const { RAIZ, fs, lee } = require("./_util");
+const { conFabrica } = require("./_materiales");   // Estaticos (02j) en el contexto del módulo
 
 const FICHERO = "apps/web/motor/50_decoraciones.js", FUENTE = lee(FICHERO);
 const trozo = (ini, fin) => { const i = FUENTE.indexOf(ini), f = FUENTE.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas " + ini); return FUENTE.slice(i, f); };
@@ -156,7 +157,7 @@ function mundo({ sinApi = false, falla = false } = {}) {
   const fuente = FUENTE.replace(IMPORTA, "(pedidoUtiles(), " + (falla ? "Promise.reject(new Error(\"sin red\"))" : "Promise.resolve(UTILES)") + ")");
   assert.notStrictEqual(fuente, FUENTE, "el import() de mergeGeometries está donde se espera");
   g.UTILES = U; g.pedidoUtiles = () => { pedido++; };
-  const ctx = vm.createContext(g);
+  const ctx = vm.createContext(conFabrica(g));
   vm.runInContext("\"use strict\";\n" + fuente, ctx, { filename: FICHERO });
   assert.strictEqual(defs.length, 1);
   const sueltas = [], n = { on: (ev, fn) => (sueltas.push(Bus.on(ev, fn)), fn), emite: (ev, d) => Bus.emite(ev, d), limpia: fn => (sueltas.push(fn), fn), api: () => null, parametros: {} };

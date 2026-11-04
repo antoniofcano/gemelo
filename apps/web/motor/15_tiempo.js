@@ -2,7 +2,7 @@
 // Expone: TiempoPuro, ahoraMs, TM, calma, nivelEn, texBrillo, lluvia, uViento, uSombra, GLSL_SOMBRA, parcheTiempo, cur, meta, tMundo, ins, nivel,
 //   actualizaTiempo, temaBarrera, colocaBarrera, pintaFondoTiempo, fmtHora, fmtClaveDia, num1, rumbo, esc, hace, objetivoMundoBase, pasoHoraMundo,
 //   horaMundoTexto, aplicaMundo, anuncia, TiempoVivo, lindes
-// Consume: 01_datos (D, $, tinta, FOG0, FOG1), 02_mundo (suelo, copas), 02c_componentes (Bus, Pausa),
+// Consume: 01_datos (D, $, tinta, FOG0, FOG1), 02_mundo (suelo, copas), 02c_componentes (Bus, Pausa), 02j_estaticos (Estaticos),
 //   03_escena (visor, scene, camera, SRGB, LUZ_SOL, LUZ_CIELO, hemi, sol, texColor, colorVertSRGB, colorCss, exag, modo),
 //   04d_sombreado_tiles (hash, matSuelo, matOrto), 04f_suelo_fotos (SueloFotos), 05_nube (nube), 07_follaje (matHojaG, matHojaP, matCorteza),
 //   08_marcadores (gLinde), 09_camara (objetivo), 13b_hazas (HazasPuro), 14_historia (marca, tabla, aviso),
@@ -405,7 +405,7 @@
     for (var q = 0; q < N; q++) { if (q) acc += Math.hypot(pts[q][0] - pts[q - 1][0], pts[q][1] - pts[q - 1][1]); d[q * 2] = d[q * 2 + 1] = acc; v[q * 2] = 0; v[q * 2 + 1] = 1; if (q < N - 1) { var a0 = q * 2; idx.push(a0, a0 + 2, a0 + 1, a0 + 1, a0 + 2, a0 + 3); } }
     var g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(N * 2 * 3), 3)); g.setAttribute("aV", new THREE.BufferAttribute(v, 1)); g.setAttribute("aD", new THREE.BufferAttribute(d, 1)); g.setIndex(idx);
     // AG-1.3: con recorte; la esfera la fija colocaBarrera tras escribir los vértices (el sombreador no los mueve)
-    var m = new THREE.Mesh(g, matBarrera); m.renderOrder = 5; gLinde.add(m); BARRERAS.push({ pts: pts, geo: g });
+    var m = new THREE.Mesh(g, matBarrera); m.renderOrder = 5; Estaticos.congela(m); gLinde.add(m); BARRERAS.push({ pts: pts, geo: g });
     return g;
   }
   function colocaBarrera(k) {

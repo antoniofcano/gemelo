@@ -1,9 +1,9 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
 // Consume: 01_datos (D, $, ALTO, FACTOR_R8, FACTOR_R8_GEN), 02_mundo (suelo, copas), 02b_cola (Cola),
-//   02c_componentes (Bus, ConfigPuro, Componentes), 02e_entidades (Entidades), 03_escena (scene, camera, exag), 06_arboles (radioEn),
-//   07ab_generados (Generados), 09_camara (objetivo, camara, suelta, elige), 12_paseo (paseando, primera), 14_historia (lista), 15_tiempo (hace),
-//   16_vida (quita, mira), 29_vr (VRX, ficha)
+//   02c_componentes (Bus, ConfigPuro, Componentes), 02e_entidades (Entidades), 02j_estaticos (Estaticos), 03_escena (scene, camera, exag),
+//   06_arboles (radioEn), 07ab_generados (Generados), 09_camara (objetivo, camara, suelta, elige), 12_paseo (paseando, primera),
+//   14_historia (lista), 15_tiempo (hace), 16_vida (quita, mira), 29_vr (VRX, ficha)
 // Nota: Componente «decoraciones-olivo» (P7g D3, decisiones 175-179): la pieza de temporada colgada de los olivos cercanos al foco (flores, cinta, farolillo, cosecha, luces, lazo), ILUSTRATIVA, una InstancedMesh por pieza con mergeGeometries de three (import() al montarse; ≤ 6 llamadas y ≤ 64 piezas). Solo se registra; nadie lo nombra. Sin servidor no crea nada; no habla con la api: la lista le llega por el Bus («decoraciones:cambian», la pide con «decoraciones:pide»). Complementa la ficha del olivo con la fila «Decoración». Publica window.__decoraciones (pruebas). Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/decoraciones.test.js.
 // ===============================================================================
   // ---------- las decoraciones de los olivos (P7g D3; decisiones 175-179; doc/sistema/DECORACIONES.md y contratos/decoraciones.md): la pieza del catálogo de
@@ -199,14 +199,14 @@
     function malla(id) {
       if (mallas[id]) return mallas[id];
       var geo = decoracionesGeometria(id, U); if (!geo) return null;
-      if (!grupo) { grupo = new THREE.Group(); grupo.name = "decoraciones de los olivos"; scene.add(grupo); }
+      if (!grupo) { grupo = new THREE.Group(); grupo.name = "decoraciones de los olivos"; Estaticos.congela(grupo); scene.add(grupo); }
       var forma = P.FORMAS[id], mat;
       if (forma.brilla) mat = matBrillo || (matBrillo = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide }));
       else mat = matLuz || (matLuz = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide }));
       var im = new THREE.InstancedMesh(geo, mat, P.MAX);
       im.name = "decoración " + id; im.count = 0; im.visible = false; im.castShadow = im.receiveShadow = false;
       im.raycast = function () {};   // el olivo se elige por su copa (06_arboles), no por su pieza
-      grupo.add(im); mallas[id] = im; triDe[id] = geo.getAttribute("position").count / 3;
+      Estaticos.congela(im); grupo.add(im); mallas[id] = im; triDe[id] = geo.getAttribute("position").count / 3;
       return im;
     }
     function escribe(por) {
@@ -255,7 +255,7 @@
   // el manifiesto (ADR-0023): lo lee el guardián pruebas/guardianes/componentes.test.js sin montar nada. ?decoraciones=0 lo apaga; ?decoraciones=1 lo enciende.
   Componentes.registra({
     id: "decoraciones-olivo", version: 1,
-    consume: ["copas", "radioEn", "Generados", "objetivo", "paseando", "VRX"],
+    consume: ["Estaticos", "copas", "radioEn", "Generados", "objetivo", "paseando", "VRX"],
     expone: [],
     eventos: { escucha: ["decoraciones:cambian", "depura:lineas"], emite: ["decoraciones:pide"] },
     bandera: { defecto: true, url: "decoraciones" },

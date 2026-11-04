@@ -223,7 +223,7 @@ test("marcadores-lidar: montado tarde (ya estaba listo) coloca al momento; sin m
   const g = { THREE, Bus, scene: new THREE.Scene(), D: { parcelas: [{}, {}] }, $: id => ({ cLinde: { checked: true }, notaModo: { textContent: "" }, cSolo: null }[id] || { checked: false, textContent: "" }),
     colocaBarrera: k => gl.push(k), nube: {}, gArboles: {}, gFollaje: {}, gSombras: {}, Arboles: { refresca() {} }, pintaNube() {}, colocaPaisaje() {}, colocaBalizas() {}, recoloreaSuelo() {},
     UN: { uExag: {}, uModoOrto: {} }, exag: 1, modo: "gem", avTipo: null, pintaAvance() {}, requestAnimationFrame: f => f() };
-  const nucleo = vm.runInContext("\"use strict\";\n" + lee("apps/web/motor/08_marcadores.js") + "\nlisto = true; aplica(); ({ gl: gLinde });", vm.createContext(g));
+  const nucleo = vm.runInContext("\"use strict\";\n" + lee("apps/web/motor/08_marcadores.js") + "\nlisto = true; aplica(); ({ gl: gLinde });", vm.createContext(conFabrica(g)));
   assert.ok(nucleo.gl.isGroup); assert.strictEqual(gl.join(), "0,1", "las barreras de las parcelas siguen siendo del núcleo");
   assert.strictEqual(vistos.join(), "mundo:aplica,capas:cambia", "aplica avisa y nadie lo atiende: no se rompe");
 });

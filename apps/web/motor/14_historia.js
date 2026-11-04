@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: OT, hist, VIVO, FINCA, marca, dd, tabla, lista, nMarc, sw, avTipo, pintaAvance, rango, aviso
-// Consume: 01_datos (D, $, tinta, fmt), 02_mundo (suelo, orto, copas, cIn, marc, med), 02i_materiales (Materiales), 03_escena (scene, exag),
-//   05_nube (nube), 08_marcadores (aplica, pendiente), 09_camara (objetivo, orb, pon), 10_ndvi (NDV, ndviIdx, pintaNdvi),
+// Consume: 01_datos (D, $, tinta, fmt), 02_mundo (suelo, orto, copas, cIn, marc, med), 02i_materiales (Materiales), 02j_estaticos (Estaticos),
+//   03_escena (scene, exag), 05_nube (nube), 08_marcadores (aplica, pendiente), 09_camara (objetivo, orb, pon), 10_ndvi (NDV, ndviIdx, pintaNdvi),
 //   12_paseo (paseando, persona, primera, salePaseo), 13_parcelas (parcelas, fincas, claseUsda, elegirParcela, elegirFinca), 13b_hazas (HazasPuro),
 //   15_tiempo (ins, esc, hace), 16_vida (esfera, mira), 18_paisaje (postes, cable), 21_suelo (cubierta), 29_vr (panel), 90_final (cuadro)
 // ===============================================================================
@@ -102,7 +102,7 @@
   parcelas.forEach(function (pr, k) {   // una malla vacía por parcela; la geometría llega al resaltarla. Sigue la exageración vertical con el mismo uniforme del terreno
     var mat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.42, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
     Materiales.parchea(mat, "resalte-parcela", function (sh) { sh.uniforms.uExag = UN.uExag; sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nuniform float uExag;").replace("#include <begin_vertex>", "#include <begin_vertex>\n transformed.y *= uExag;"); });
-    var m = new THREE.Mesh(new THREE.BufferGeometry(), mat); m.renderOrder = 3; m.visible = false; scene.add(m); overlays.push(m);
+    var m = new THREE.Mesh(new THREE.BufferGeometry(), mat); m.renderOrder = 3; m.visible = false; Estaticos.congela(m); scene.add(m); overlays.push(m);   // AG-1.15: sigue la exageración por el uniforme, no por la matriz
   });
   function resalta(mapa) { overlays.forEach(function (m, k) { if (mapa && mapa[k] !== undefined) { if (!m.userData.listo) creaOverlay(k); m.material.color.setHex(mapa[k]); m.visible = true; } else m.visible = false; }); }
   function marca(id, v) { var e = $(id); if (e.checked !== v) { e.checked = v; e.dispatchEvent(new Event("change")); } }
@@ -148,7 +148,7 @@
   var mAvAnillo = new THREE.InstancedMesh(anilloAv, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }), marc.length + 1);
   var mAvBaliza = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.13, 0.13, 8, 6), new THREE.MeshBasicMaterial({ color: 0xd23a2a }), marc.length + 1);
   var mAvSin = new THREE.InstancedMesh(new THREE.OctahedronGeometry(0.55), new THREE.MeshBasicMaterial({ color: 0x8e5bc4 }), copas.length + 1);
-  [mAvAnillo, mAvBaliza, mAvSin].forEach(function (m) { m.frustumCulled = false; gAvance.add(m); });   // r151: la esfera de una InstancedMesh se calcula una vez; estas se rehacen al cambiar de tarea
+  [mAvAnillo, mAvBaliza, mAvSin].forEach(function (m) { m.frustumCulled = false; gAvance.add(m); }); Estaticos.congela(gAvance);   // AG-1.15: sus marcas van en las matrices de instancia   // r151: la esfera de una InstancedMesh se calcula una vez; estas se rehacen al cambiar de tarea
   function pintaAvance(tipo) {
     avTipo = tipo; if (!tipo || !AV) { gAvance.visible = false; return; }
     var ms = AV.marcas[tipo], cs = AV.copas[tipo], na = 0, nb = 0, ns = 0, o = new THREE.Object3D();

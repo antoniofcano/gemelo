@@ -1,8 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: colocaBalizas, avisoBaliza, dibujaBalizasMini, actualizaBalizas
 // Consume: 01_datos (D, $), 02_mundo (suelo, copas), 02c_componentes (Bus), 02e_entidades (Entidades, Usables), 02i_materiales (Materiales),
-//   03_escena (visor, scene, camera, exag), 09_camara (objetivo, suelta, elige), 12_paseo (paseando, persona, teclas), 12b_llegada (Llegada),
-//   13_parcelas (parcelas), 13b_hazas (HazasPuro), 14_historia (VIVO, marca, aviso), 15_tiempo (num1, esc, hace),
+//   02j_estaticos (Estaticos), 03_escena (visor, scene, camera, exag), 09_camara (objetivo, suelta, elige), 12_paseo (paseando, persona, teclas),
+//   12b_llegada (Llegada), 13_parcelas (parcelas), 13b_hazas (HazasPuro), 14_historia (VIVO, marca, aviso), 15_tiempo (num1, esc, hace),
 //   16_vida (tVida, enQuad, quad, dron), 26_presencia (Encuentro, sitioJunto), 29_vr (VRX, ficha)
 // Nota: Registra el tipo baliza en Entidades (C7). Publica además window.__vrBalizas (pruebas VR: el pie de cada columna de luz).
 // ===============================================================================
@@ -43,7 +43,9 @@
       var u = g.userData, d = datosBal(u.k); u.estado = d.estado; u.col.setHex(COLB[d.estado]); u.rombo.material.color.setHex(COLB[d.estado]); u.anillo.material.color.setHex(COLB[d.estado]); u.mat.uniforms.uPulso.value = d.estado === "alerta" ? 1 : 0;
     });
   }
-  function colocaBalizas() { BAL.forEach(function (g) { var pr = parcelas[g.userData.k]; g.position.set(pr.centro[0], suelo(pr.centro[0], pr.centro[1]) * exag, -pr.centro[1]); }); refrescaBalizas(); }
+  function colocaBalizas() { BAL.forEach(function (g) { var pr = parcelas[g.userData.k]; g.position.set(pr.centro[0], suelo(pr.centro[0], pr.centro[1]) * exag, -pr.centro[1]); }); congelaBalizas(); refrescaBalizas(); }
+  // AG-1.15: la baliza (grupo y columna) queda quieta tras colocarla; el rombo (gira y sube y baja) y el anillo (late) se mueven cada fotograma y siguen en automático
+  function congelaBalizas() { var mov = []; BAL.forEach(function (g) { mov.push(g.userData.rombo, g.userData.anillo); }); Estaticos.congela(gBal, mov); }
   var PILL_TXT = { alerta: "Vigía pide una mirada", abierta: "Hay tareas abiertas", hecha: "Sin tareas abiertas", nada: "Sin datos de tareas" };
   function fuenteBal() { var fch = OT && OT.fecha_consulta ? String(OT.fecha_consulta).slice(8, 10) + "/" + String(OT.fecha_consulta).slice(5, 7) : "?"; return OT && OT.fuente === "vivo" ? "OlivarTrack, leído en vivo el " + fch : "OlivarTrack, instantánea del " + fch; }
   var BBCH_TXT = { 7: "desarrollo del fruto", 8: "maduración del fruto", 6: "floración", 5: "aparición de la inflorescencia", 1: "desarrollo de las hojas", 0: "reposo y brotación", 9: "senescencia y reposo" };

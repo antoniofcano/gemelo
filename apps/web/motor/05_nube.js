@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: ALTO_MAX, nube, pintaNube, actualizaNubeTeselas, actualizaNube
-// Consume: 02_mundo (Mundo, suelo, copaAlta, kcor, tinte, aviva, colorEn), 02b_cola (Cola), 02i_materiales (Materiales),
+// Consume: 02_mundo (Mundo, suelo, copaAlta, kcor, tinte, aviva, colorEn), 02b_cola (Cola), 02i_materiales (Materiales), 02j_estaticos (Estaticos),
 //   03_escena (scene, camera, exag), 04d_sombreado_tiles (hash), 06_arboles (tronco), 08_marcadores (aplica), 10_ndvi (ndviIdx), 12_paseo (primera),
 //   15_tiempo (parcheTiempo, nivel, hace)
 // ===============================================================================
@@ -13,7 +13,7 @@
   var nubeMat = new THREE.PointsMaterial({ size: 0.6, sizeAttenuation: true, vertexColors: true });   // «maestro»: el ciclo del día le pone el color; los niveles comparten ese color
   var matsNube = NIV_NUBE.map(function (nv) { var m = new THREE.PointsMaterial({ size: Math.min(3, 0.6 / Math.sqrt(nv.f)), sizeAttenuation: true, vertexColors: true }); m.color = nubeMat.color; Materiales.parchea(m, "nube-lidar", function (sh) { parcheTiempo(sh, false); }); m.needsUpdate = true; return m; });
   var nube = { material: nubeMat, g: new THREE.Group(), set visible(v) { this.g.visible = !!v; }, get visible() { return this.g.visible; } };
-  scene.add(nube.g);
+  Estaticos.congela(nube.g); scene.add(nube.g);   // AG-1.15: el grupo no se mueve; cada tesela se congela al crearla
   var claveColorNube = "";
   function colorPunto(x, y, h, bajo, i, out) {   // el color de un punto: tronco bajo la copa, o la ortofoto corregida por altura
     if (bajo) { var t = 0.30 + 0.12 * hash(i); out[0] = 0.40 * t * 2; out[1] = 0.31 * t * 2; out[2] = 0.22 * t * 2; return; }
@@ -44,13 +44,13 @@
     var Q = new Int16Array(n * 3), C = new Uint8Array(n * 3);
     for (var i = 0; i < n; i++) { Q[i * 3] = Math.round((X[i] - cxm) / hx * 32767); Q[i * 3 + 1] = Math.round((Z[i] - zc) / hz * 32767); Q[i * 3 + 2] = Math.round((-Y[i] + cym) / hx * 32767); if (i % 40000 === 39999) yield; }
     var g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(Q, 3, true)); g.setAttribute("color", new THREE.BufferAttribute(C, 3, true));
-    var m = new THREE.Points(g, matsNube[0]); m.userData = { zc: zc, hz: hz }; m.position.set(cxm, zc * exag, -cym); m.scale.set(hx, hz * exag, hx); m.visible = false;
+    var m = new THREE.Points(g, matsNube[0]); m.userData = { zc: zc, hz: hz }; m.position.set(cxm, zc * exag, -cym); m.scale.set(hx, hz * exag, hx); m.visible = false; Estaticos.congela(m);   // AG-1.15: se recoloca en exagNube()
     t.nubeX = X.subarray(0, n); t.nubeY = Y.subarray(0, n); t.nubeH = H.subarray(0, n); t.nubeB = B.subarray(0, n); t.nubeCol = C; t.nubeN = n; t.nubeMalla = m; t.nubeNivel = -1;
     yield* pintaTeselaNubeG(t);
     return m;
   }
   function liberaNube(t) { Cola.cancela("N" + t.key); Cola.cancela("NP" + t.key); if (t.nubeMalla) { nube.g.remove(t.nubeMalla); t.nubeMalla.geometry.dispose(); } t.nubeMalla = null; t.nubeX = t.nubeY = t.nubeH = t.nubeB = t.nubeCol = null; t.nubeN = 0; t.nubeEst = 0; }
-  function exagNube() { Mundo.lista.forEach(function (t) { var m = t.nubeMalla; if (m) { m.position.y = m.userData.zc * exag; m.scale.y = m.userData.hz * exag; } }); }
+  function exagNube() { Mundo.lista.forEach(function (t) { var m = t.nubeMalla; if (m) { m.position.y = m.userData.zc * exag; m.scale.y = m.userData.hz * exag; Estaticos.congela(m); } }); }
   function pintaNube() {   // se llama desde aplica(): solo repinta si cambió lo que influye en el color (corrección de la ortofoto, tinte NDVI y su fecha)
     exagNube();
     var clave = kcor + "|" + tinte + "|" + (tinte ? ndviIdx : 0);
