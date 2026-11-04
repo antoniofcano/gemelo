@@ -23,7 +23,8 @@
     "ol": "10.11.0",
     "polygon-clipping": "0.15.7",
     "proj4": "2.22.0",
-    "three": "0.186.1"
+    "three": "0.186.1",
+    "three-mesh-bvh": "0.9.18"
   },
   "devDependencies": {
     "@webxr-input-profiles/assets": "1.0.20",
