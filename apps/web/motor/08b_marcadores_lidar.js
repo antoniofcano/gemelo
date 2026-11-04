@@ -16,7 +16,7 @@
     [gCopas, gMarc, gDesf].forEach(function (g) { scene.add(g); });
     var geoCopa = new THREE.OctahedronGeometry(0.38), matOcta = new THREE.MeshBasicMaterial({ color: colorCss("--lidar") });
     var mCopas = new THREE.InstancedMesh(geoCopa, matOcta, cIn.length); mCopas.frustumCulled = false; gCopas.add(mCopas);   // r151: la esfera de una InstancedMesh se calcula una vez con sus instancias; estas se recolocan con la exageración
-    var ani = new THREE.RingGeometry(0.55, 0.95, 20); ani.rotateX(-Math.PI / 2);
+    var ani = new THREE.RingGeometry(0.55, 0.95, 8); ani.rotateX(-Math.PI / 2);
     var matMarc = new THREE.MeshBasicMaterial({ color: colorCss("--guardado"), side: THREE.DoubleSide });
     var mMarc = new THREE.InstancedMesh(ani, matMarc, marc.length); mMarc.frustumCulled = false; gMarc.add(mMarc);
     var desfGeo = new THREE.BufferGeometry(), matDesf = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 });
@@ -53,7 +53,7 @@
     expone: [],
     eventos: { escucha: ["mundo:aplica", "capas:cambia"], emite: [] },
     bandera: { defecto: true, url: "marcadores" },
-    presupuesto: { llamadas: 3, triangulos: 480000 },   // [SUPUESTO] techo para 10.000 copas (octaedro de 8 triángulos) y 10.000 marcas (anillo de 40) = 8·N + 40·M; Hituelo tiene 5.882 copas. Una maqueta de 140 copas y 60 marcas mide 2 llamadas y 3.520 triángulos (componentes_c10c.test.js); con «Desfase» encendida suma la llamada de las líneas
+    presupuesto: { llamadas: 3, triangulos: 240000 },   // [SUPUESTO] techo para 10.000 copas (octaedro de 8 triángulos) y 10.000 marcas (anillo de 8 lados = 16 triángulos, antes 20 lados = 40) = 8·N + 16·M; Hituelo tiene 5.882 copas. Una maqueta de 140 copas y 60 marcas mide 2 llamadas y 3.520 triángulos (componentes_c10c.test.js); con «Desfase» encendida suma la llamada de las líneas
     fases: {},
     monta: function (n) { return MarcadoresLidarMotor(n); },
     actualiza: {},
