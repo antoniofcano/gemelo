@@ -308,7 +308,7 @@ const SIN_RECORTE = {
   "14_historia.js": [1, "el avance de tareas: instancias por toda la finca, rehechas al cambiar de tarea"],
   "15_tiempo.js": [3, "nubes, estrellas y lluvia van con la cámara (las estrellas, además, no se dibujan de día: visible = opacity > 0)"],
   "16_vida.js": [1, "las estelas: se reescriben cada fotograma; vacías no se dibujan"],
-  "16b_fauna.js": [1, "las aves: se mueven cada fotograma; vacías no se dibujan"],
+  "16b_fauna.js": [2, "las aves y los conejos (seis como mucho, a menos de 120 m): se mueven cada fotograma; vacías no se dibujan"],
   "21_suelo.js": [3, "matas, piedras y contornos: instancias alrededor de quien mira, rehechas al moverse"],
   "22b_huellas_polvo.js": [2, "huellas y polvo alrededor de quien pasea, escritas sueltas en un anillo; sin nada vivo no se dibujan (visible)"],
   "26b_avatares.js": [1, "mallas con esqueleto (VRM): three calcula su volumen una vez, con la pose de reposo, y los huesos se animan cada fotograma; rehacerlo por avatar costaría más de lo que ahorra (AG-1.3b: se queda)"],

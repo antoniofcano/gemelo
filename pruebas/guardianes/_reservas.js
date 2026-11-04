@@ -78,7 +78,7 @@ const BUCLE = {
   "16_vida.js": [["velPaseo", "function velPaseo("], ["giroPaseo", "function giroPaseo("], ["vidaPaseo", "function vidaPaseo("], ["dronMando", "function dronMando("],
     ["camaraDron", "function camaraDron("], ["vidaDron", "function vidaDron("], ["actualizaVida", "function actualizaVida("], ["emiteEstela", "e.emite = function"], ["angDifRad", "function angDifRad("]],
   "15_tiempo.js": [["posSolEn", "function posSolEn("], ["nivelEn", "function nivelEn("], ["pintaNubes", "function pintaNubes("], ["actualizaTiempo", "function actualizaTiempo("]],   // `nivel(ms)` sí reserva su resultado (es la de siempre, para lo que no corre por fotograma): no está en la lista
-  "16b_fauna.js": [["aleteo", "function aleteo("], ["empacaAves", "function empacaAves("], ["escalaVista", "function escalaVista("], ["actualizaFauna", "function actualizaFauna("],
+  "16b_fauna.js": [["aleteo", "function aleteo("], ["empacaAves", "function empacaAves("], ["empacaConejos", "function empacaConejos("], ["escalaVista", "function escalaVista("], ["actualizaFauna", "function actualizaFauna("],
     ["mayorQue", "function mayorQue("], ["menorQue", "function menorQue("], ["reconstruyeCerca", "function reconstruyeCerca("]],
   "38_presencia_compartida.js": [["oyente", "function oyente("], ["anda", "function anda("], ["emite", "function emite(a, dt"], ["entrega", "function entrega("], ["caja", "function caja("], ["apoyo", "function apoyo("],
     ["coloca", "function coloca("], ["manoLocal", "function manoLocal("], ["poseLocal", "function poseLocal("], ["actualizaRed", "function actualizaRed("], ["actualiza", "function actualiza(dt)"]]

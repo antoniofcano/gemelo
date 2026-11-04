@@ -63,7 +63,7 @@ test("fauna-olivar: manifiesto, montaje, paseo:entra coloca aves y conejos, pres
   assert.strictEqual(d.id, "fauna-olivar"); assert.strictEqual(d.bandera.url, "fauna"); assert.strictEqual(JSON.stringify(d.fases), "{\"mundo\":0}");
   assert.strictEqual(m.gFauna.children.length, 0, "antes de montar la fauna no tiene nada");
   const api = d.monta(n);
-  assert.ok(m.gFauna.children.length >= 8, "dos mallas de aves y seis conejos");
+  assert.strictEqual(m.gFauna.children.length, 6, "dos mallas de aves y cuatro de conejos (AG-1.13)");
   assert.strictEqual(m.capas.length, 1, "su capa del minimapa");
   for (const ev of ["paseo:entra", "paseo:sale", "fauna:conejo-cerca"]) assert.ok(m.Bus.hay(ev), ev);
   // de día y sin pasear solo vuelan las dos bandadas (14 aves = 2 llamadas); los conejos no están
