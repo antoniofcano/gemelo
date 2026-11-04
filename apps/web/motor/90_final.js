@@ -21,7 +21,7 @@
   // Los componentes registrados (02c_componentes.js, ADR-0023) van por fases sin nombrarlos: «mundo» tras la cámara, «tarde» antes de la Cola y «trasRender»;
   // con el mundo en pausa (Pausa), solo «pausa».
   // Los módulos que aún no son componentes siguen llamándose aquí a mano (migración incremental: cada uno que se convierte quita su llamada).
-  var FIN = { t: 0 };   // «cuadro:fin»: el fotograma acabó (lo escucha el medidor de fotogramas solo mientras mide); el mismo objeto cada vez, sin crear nada
+  var FIN = { t: 0, r: 0 };   // «cuadro:fin»: el fotograma acabó (lo escucha el medidor de fotogramas solo mientras mide); el mismo objeto cada vez, sin crear nada
   function cuadro(t) {
     FIN.t = t;
     var dt = Math.min(0.1, (t - tAnt) / 1000); tAnt = t;
@@ -34,7 +34,8 @@
     Arboles.actualiza(dt); actualizaCarga(dt);
     Componentes.actualiza("tarde", dt, t); Laminas.revisa(dt);
     Cola.corre(Arboles.presupuesto()); Escena3D.actualiza();
-    renderer.render(scene, camera); Componentes.actualiza("trasRender", dt, t); depuraCuadro(t); if (VRX.on) vrFin(dt, performance.now() - t); Bus.emite("cuadro:fin", FIN);
+    var tR = performance.now(); renderer.render(scene, camera); FIN.r = performance.now() - tR;   // F0: ms de renderer.render() (lo lee el medidor)
+    Componentes.actualiza("trasRender", dt, t); depuraCuadro(t); if (VRX.on) vrFin(dt, performance.now() - t); Bus.emite("cuadro:fin", FIN);
   }
   var tAhorro = 0;   // Configuración → Gráficos → Ahorro de batería: salta los fotogramas que llegan antes de ~25 ms (unos 30 por segundo)
   function bucle() { if (VRX.on) return; var ahora = performance.now(); if (Ajustes.lee("graficos.ahorro") && ahora - tAhorro < 25) { requestAnimationFrame(bucle); return; } tAhorro = ahora; cuadro(ahora); requestAnimationFrame(bucle); }
