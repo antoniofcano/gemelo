@@ -530,7 +530,7 @@ Lo que dicen (y lo que no):
 - Para el después: repetir las dos medidas en las mismas condiciones, tres veces cada una, con la guía de [OPTIMIZACION](OPTIMIZACION.md#guía-de-bolsillo-para-la-sesión-en-el-quest-q0a-).
 
 ## Quest tras la quinta subida (2026-11-04, foto, no se mantiene)
-Telemetría del medidor (`&mide=60`), Quest Browser 154, fuera de VR, modo gemelo, código de la quinta subida (08273de: AG-1.12, AG-1.5, Q0c-a). Una medida por fila; había otra sesión conectada («personas: 1»).
+Telemetría del medidor (`&mide=60`), Quest Browser 154, modo gemelo, código de la quinta subida (08273de: AG-1.12, AG-1.5, Q0c-a). Una medida por fila; había otra sesión conectada («personas: 1»). **Ojo: Antonio las hizo para VR, pero la base las tiene como «pantalla», sin nivel ni perillas: la medida empezó fuera de VR y acabó dentro (el medidor anota el modo del arranque). Son mixtas: valen para comparar con y sin olivos entre sí, no como medida de VR.**
 
 | | 11 · antes (4ª subida), con olivos generados | 13 · después, con olivos generados | 14 · después, `&olivos=0` |
 |---|---|---|---|
@@ -545,7 +545,7 @@ Telemetría del medidor (`&mide=60`), Quest Browser 154, fuera de VR, modo gemel
 - **Los olivos generados, la palanca mayor ahora:** sin ellos, p95 16,8 ms (−4,2 ms) y JS −2 ms en mediana y p95.
 - **La mediana está en el vsync** (72 Hz = 13,9 ms): fuera de VR el casco va a ritmo completo casi siempre; lo que no cumple es el p95 (tirones).
 - **El peor fotograma sube** (206 y 145 ms frente a 72): sin repeticiones no se sabe si es la carga con el presupuesto de AG-1.5 o el arranque. Por medir.
-- **En VR, sin medida tras la subida.**
+- **En VR, sin medida limpia tras la subida**: hay que entrar primero en VR y medir desde el panel (Comodidad → «Medir 60 s»). Tarea: que una medida que cambia de modo a mitad se marque como mixta.
 
 ## Triángulos por objeto con Hituelo real (2026-11-04, foto, no se mantiene)
 Banco (SwiftShader: recuentos, no fps), página de `main` tras la cuarta subida con los datos reales de Hituelo servidos en local, 12:00, `--desglose` (llamadas y, desde hoy, triángulos por objeto). Los olivos generados no llegaron a dibujarse en estos escenarios (0 triángulos), así que esta foto no dice lo que cuestan. Los triángulos son de una vista; en VR se pagan dos veces.
