@@ -152,3 +152,19 @@ test("admin (mientras se depura): sin tope diario, pasadas " + MEDIDAS_POR_DIA +
     assert.equal(r.statusCode, 201, "medida " + (i + 1) + ": " + r.body);
   }
 });
+
+test("admin (mientras se depura): unas gafas vinculadas desde la cuenta de admin (visitante, ADR-0028) tampoco tienen tope; las de un hogar, sí", async t => {
+  if (salta(t)) return;
+  const gafasDe = async (sesion: string) => {
+    const p = (await app.inject({ method: "POST", url: "/api/auth/vincula", headers: deLaWeb({ "x-forwarded-for": ip() }), payload: {} })).json();
+    assert.equal((await pide("POST", "/api/yo/dispositivos/vincular", sesion, { codigo: p.codigo, aprobar: true })).statusCode, 204);
+    const s = await app.inject({ method: "POST", url: "/api/auth/vincula/sondeo", headers: deLaWeb({ "x-forwarded-for": ip() }), payload: { sondeo: p.sondeo } });
+    return galleta(s, "__Host-gemelo")!;
+  };
+  const gafasAdm = await gafasDe(await entra(ADM));
+  for (let i = 0; i <= MEDIDAS_POR_DIA + 2; i++) assert.equal((await pide("POST", "/api/medidas", gafasAdm, medida({ p95_ms: 15 + i * 0.1 }))).statusCode, 201, "gafas de admin, medida " + (i + 1));
+  const gafasAna = await gafasDe(await entra(ANA));
+  let ultimo: LightMyRequestResponse | undefined;
+  for (let i = 0; i <= MEDIDAS_POR_DIA; i++) ultimo = await pide("POST", "/api/medidas", gafasAna, medida({ p95_ms: 16 + i * 0.1 }));
+  assert.equal(ultimo!.statusCode, 429, "las gafas de un hogar siguen con el tope");
+});
