@@ -1,8 +1,9 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos (D, $, DEPURA), 01a_aparato (Aparato), 02c_componentes (Bus, ConfigPuro, Componentes), 02f_xr_perillas (XrPerillas),
-//   03_escena (visor, renderer, modo, calidad), 04b_escena3d (Escena3D), 07b_arboles (Arboles), 08_marcadores (listo), 12_paseo (persona),
-//   14_historia (lista, rango), 15_tiempo (nivel, hace), 29_vr (VRX, panel, PanelVR, VR_PERFILES), 33_ajustes (Ajustes), 90_final (cuadro, bucle)
+// Consume: 01_datos (D, $, DEPURA), 01a_aparato (Aparato), 02b_cola (Cola), 02c_componentes (Bus, ConfigPuro, Componentes),
+//   02f_xr_perillas (XrPerillas), 03_escena (visor, renderer, modo, calidad), 04b_escena3d (Escena3D), 07ab_generados (Generados),
+//   07b_arboles (Arboles), 08_marcadores (listo), 12_paseo (persona), 14_historia (lista, rango), 15_tiempo (nivel, hace),
+//   29_vr (VRX, panel, PanelVR, VR_PERFILES), 33_ajustes (Ajustes), 90_final (cuadro, bucle)
 // ===============================================================================
 
   // ---------- medidor de fotogramas para la prueba en el aparato (T7a, doc/sistema/VR.md#medir-con-el-medidor). Componente «medidor-fotogramas» (ADR-0023, C10 tercera tanda; ?medidor=0 lo apaga). Sin &mide ni botón pulsado no hace nada: no escucha «cuadro:fin» y el bucle no paga nada.
@@ -17,19 +18,59 @@
     function percentil(o, p) { var n = o.length; if (!n) return 0; return o[Math.min(n - 1, Math.max(0, Math.ceil(p / 100 * n) - 1))]; }   // rango más próximo
     function serie(v) { var o = ordena(v); return { mediana: mediana(o), p95: percentil(o, 95), p99: percentil(o, 99), peor: o.length ? o[o.length - 1] : 0 }; }
     // m = { t: [s desde que se armó], ms: [intervalo con el fotograma anterior], js: [ms de JS], oc: [1 si la pestaña estaba oculta], ll?: [llamadas de dibujo], tr?: [triángulos] }
-    // (Q0e: ll y tr son opcionales; una medida guardada de antes no los trae)
+    // (Q0e: ll y tr son opcionales; una medida guardada de antes no los trae. Q0g: cz = bits de causa por fotograma, cq = ms de Cola y teselas; tambien opcionales)
     function calcula(m, calent, dur, umbral) {
       calent = calent == null ? CALENTAMIENTO : calent; umbral = umbral == null ? UMBRAL : umbral;
-      var ms = [], js = [], ll = [], tr = [], desc = { calentamiento: 0, ocultos: 0, despues: 0 }, i;
+      var ms = [], js = [], ll = [], tr = [], cz = [], cq = [], desc = { calentamiento: 0, ocultos: 0, despues: 0 }, i;
       for (i = 0; i < m.t.length; i++) {
         if (m.t[i] < calent) { desc.calentamiento++; continue; }
         if (dur != null && m.t[i] >= calent + dur) { desc.despues++; continue; }
         if (m.oc && m.oc[i]) { desc.ocultos++; continue; }
         ms.push(m.ms[i]); js.push(m.js[i]);
-        if (m.ll) ll.push(m.ll[i]); if (m.tr) tr.push(m.tr[i]);
+        if (m.ll) ll.push(m.ll[i]); if (m.tr) tr.push(m.tr[i]); if (m.cz) { cz.push(m.cz[i]); cq.push(m.cq ? m.cq[i] : 0); }
       }
       var sobre = 0; for (i = 0; i < ms.length; i++) if (ms[i] > umbral) sobre++;
-      return { n: ms.length, ms: serie(ms), js: serie(js), ll: ll.length ? serie(ll) : null, tr: tr.length ? serie(tr) : null, sobre: sobre, pctSobre: ms.length ? 100 * sobre / ms.length : 0, umbral: umbral, descartados: desc };
+      return { n: ms.length, ms: serie(ms), js: serie(js), ll: ll.length ? serie(ll) : null, tr: tr.length ? serie(tr) : null, causas: resumenCausas(ms, cz, cq, umbral), sobre: sobre, pctSobre: ms.length ? 100 * sobre / ms.length : 0, umbral: umbral, descartados: desc };
+    }
+    // ---- Q0g: la autopsia de los fotogramas lentos. Por fotograma se apunta UN entero (cz) con los bits de lo que se movio; el resumen cuenta, de los lentos, cuantos coinciden con cada causa.
+    var BIT = { cola: 1, tesela: 2, lote: 4, tarea: 8, compila: 16, textura: 32 }, CAUSAS = ["cola", "tesela", "lote", "tarea", "compila", "textura"], UMBRAL_COLA = 1;   // la Cola cuenta si trabajo 1 ms o mas en el fotograma (sin contar la deuda «T» de las teselas, que va aparte)
+    // dCola: ms de rebanadas de la Cola (sin «T»); dTesela: teselas que llegaron (load-model); dLote: lotes de olivos generados montados; dProg/dTex: programas compilados y texturas subidas
+    function bits(dCola, dTesela, dLote, dProg, dTex) {
+      return (dCola >= UMBRAL_COLA ? 1 : 0) | (dTesela > 0 ? 2 : 0) | (dLote > 0 ? 4 : 0) | (dProg > 0 ? 16 : 0) | (dTex > 0 ? 32 : 0);
+    }
+    // largas: tareas largas del navegador (longtask) como { fin: [ms, performance.now()], dur: [ms] }, en orden. Cada una se asigna al fotograma en cuyo intervalo (el que lo separa del anterior) acaba.
+    // Pone el bit «tarea» en m.cz y devuelve cuantas cayeron en la ventana medida y cuanto sumaron. t0: performance.now() en el que m.t vale 0.
+    function marcaLargas(m, t0, largas, calent, dur) {
+      var r = { n: 0, ms: 0 }, i, k = 0, a = largas.fin, ini = t0 + (calent == null ? CALENTAMIENTO : calent) * 1000, fin = dur == null ? Infinity : ini + dur * 1000;
+      for (i = 0; i < a.length; i++) if (a[i] >= ini && a[i] < fin) { r.n++; r.ms += largas.dur[i]; }
+      if (!m.cz) return r;
+      for (i = 0; i < m.t.length; i++) {
+        var hasta = t0 + m.t[i] * 1000, desde = hasta - (m.ms[i] > 0 ? m.ms[i] : 0);
+        while (k < a.length && a[k] <= desde) k++;
+        if (m.ms[i] > 0 && k < a.length && a[k] <= hasta) m.cz[i] |= 8;
+      }
+      return r;
+    }
+    // ms, cz y cq (ms de Cola+teselas del fotograma) ya filtrados como los de calcula. null si la medida no trae causas (una de antes)
+    function resumenCausas(ms, cz, cq, umbral) {
+      if (!cz || !cz.length) return null;
+      var r = { lentos: 0, cola: 0, tesela: 0, lote: 0, tarea: 0, compila: 0, textura: 0, sin: 0, colaMs: 0 }, i, j, cs = [];
+      for (i = 0; i < ms.length; i++) {
+        if (!(ms[i] > umbral)) continue;
+        r.lentos++; if (!cz[i]) r.sin++;
+        for (j = 0; j < 6; j++) if (cz[i] & (1 << j)) r[CAUSAS[j]]++;
+        if (cq && cq[i] > 0) cs.push(cq[i]);
+      }
+      r.colaMs = cs.length ? mediana(ordena(cs)) : 0;   // mediana de lo que trabajaron Cola y teselas en los lentos en que trabajaron
+      return r;
+    }
+    function lineaCausas(c, corto) {
+      if (!c) return null;
+      if (!c.lentos) return "Fotogramas lentos: ninguno";
+      var d = [], et = corto ? ["cola", "tesela", "lote", "tarea", "prog", "tex"] : ["Cola", "teselas", "lote de olivos", "tarea larga", "programa nuevo", "textura nueva"];
+      CAUSAS.forEach(function (k, i) { if (c[k]) d.push(et[i] + " " + c[k]); });
+      d.push("sin causa " + c.sin);
+      return (corto ? "Lentos " : "Fotogramas lentos ") + c.lentos + (corto ? ": " : " (pueden solaparse): ") + d.join(" · ") + (!corto && c.cola ? " · la Cola gastó " + f1(c.colaMs) + " ms (mediana)" : "");
     }
     function f1(v) { return (Math.round(v * 10) / 10).toFixed(1); }
     // las líneas de la tarjeta (corto) o del texto para copiar (largo)
@@ -41,6 +82,7 @@
       L.push(e.n + " fotogramas en " + r.duracion + " s (tras " + r.calentamiento + " s de calentamiento)");
       L.push("Intervalo (ms): mediana " + f1(e.ms.mediana) + " · p95 " + f1(e.ms.p95) + " · p99 " + f1(e.ms.p99) + " · peor " + f1(e.ms.peor));
       L.push("Por encima de " + String(e.umbral).replace(".", ",") + " ms: " + e.sobre + " (" + f1(e.pctSobre) + " %)");
+      var lc = lineaCausas(e.causas, corto); if (lc) L.push(lc);   // Q0g: que se movio en los fotogramas lentos
       L.push("JS por fotograma (ms): mediana " + f1(e.js.mediana) + " · p95 " + f1(e.js.p95) + " · peor " + f1(e.js.peor));
       if (r.nivel) {
         L.push("Nivel VR_PERFILES: al empezar " + r.nivel.ini + " · al terminar " + r.nivel.fin + " · cambios " + r.nivel.cambios.length);
@@ -54,6 +96,7 @@
         if (typeof r.olivosGen === "boolean") d.push("olivos generados " + (r.olivosGen ? "sí" : "no")); if (r.personas != null) d.push("personas " + r.personas);
         L.push("Por fotograma (mediana): " + d.join(" · "));
       }
+      if (!corto && r.largas) L.push("Tareas largas del navegador (≥ 50 ms) durante la medida: " + r.largas.n + (r.largas.n ? " (suman " + Math.round(r.largas.ms) + " ms)" : ""));
       if (vr && e.n) L.push("p95 ≤ 13,9 ms (criterio 5 de ADR-0015): " + (e.ms.p95 <= 13.9 ? "sí" : "no"));
       if (e.descartados.ocultos) L.push("Descartados por pestaña oculta: " + e.descartados.ocultos);
       if (r.avisos && r.avisos.length) r.avisos.forEach(function (a) { L.push("Aviso: " + a); });
@@ -108,13 +151,13 @@
       if (r.personas != null) { var pn = entero(r.personas, 0, 500); if (pn !== null) c.personas = pn; }
       return c;
     }
-    return { UMBRAL: UMBRAL, CALENTAMIENTO: CALENTAMIENTO, calcula: calcula, serie: serie, percentil: percentil, mediana: mediana, lineas: lineas, texto: texto, resumeUA: resumeUA, aparatoDe: aparatoDe, navegadorDe: navegadorDe, cuerpoEnvio: cuerpoEnvio, perillasLimpias: perillasLimpias };
+    return { BIT: BIT, bits: bits, marcaLargas: marcaLargas, resumenCausas: resumenCausas, lineaCausas: lineaCausas, UMBRAL: UMBRAL, CALENTAMIENTO: CALENTAMIENTO, calcula: calcula, serie: serie, percentil: percentil, mediana: mediana, lineas: lineas, texto: texto, resumeUA: resumeUA, aparatoDe: aparatoDe, navegadorDe: navegadorDe, cuerpoEnvio: cuerpoEnvio, perillasLimpias: perillasLimpias };
   })();
   // [puro:fin]
 
   var medSuelta = null;   // lo que libera el componente montado
   function MedidorMotor(n) {
-    var N = 60, estado = "inactivo", tArma = 0, t0 = 0, m = null, prev = -1, nvPrev = -2, nivIni = null, cambios = [], modoIni = "", res = null, huboVisib = false, UI = null, copiado = 0, tPinta = 0, envio = "";   // envio: "" | "enviando" | "ok" | "limite" | "mal"
+    var N = 60, estado = "inactivo", tArma = 0, t0 = 0, m = null, prev = -1, nvPrev = -2, nivIni = null, cambios = [], modoIni = "", res = null, huboVisib = false, UI = null, pCola = 0, pMsT = 0, pNT = 0, pLo = 0, pProg = 0, pTex = 0, hayPrev = false, uCq = 0, largas = null, obsLargas = null, copiado = 0, tPinta = 0, envio = "";   // envio: "" | "enviando" | "ok" | "limite" | "mal"
     var CLAVE = "gemelo_mide";
     var api = { on: false, alTerminar: null };
     function contador() { return typeof Ajustes !== "undefined" && Ajustes ? Ajustes.lee("avanzado.contador") : DEPURA; }   // 33_ajustes.js se monta después: al cargar, solo ?debug
@@ -134,7 +177,7 @@
       empieza(performance.now());
     }
     function empieza(tIni) {
-      t0 = tIni; m = { t: [], ms: [], js: [], oc: [], ll: [], tr: [] }; prev = -1; nvPrev = -2; nivIni = null; cambios = []; modoIni = modoAhora(); res = null; envio = ""; estado = "midiendo"; api.on = true; engancha();
+      t0 = tIni; m = { t: [], ms: [], js: [], oc: [], ll: [], tr: [], cz: [], cq: [] }; hayPrev = false; desobservaLargas(); largas = { fin: [], dur: [] }; observaLargas(); prev = -1; nvPrev = -2; nivIni = null; cambios = []; modoIni = modoAhora(); res = null; envio = ""; estado = "midiendo"; api.on = true; engancha();
       if (!huboVisib) { document.addEventListener("visibilitychange", alVisibilidad); huboVisib = true; }
       ui(); pinta();
       if (VRX.on) n.emite("medida:empieza");   // 29_vr.js: el panel no tapa la vista durante la medida
@@ -156,25 +199,45 @@
       if (t >= MideEst.CALENTAMIENTO && nivIni === null) nivIni = nv === null ? -1 : nv;
       if (nvPrev !== -2 && nv !== nvPrev && t >= MideEst.CALENTAMIENTO) cambios.push({ t: t - MideEst.CALENTAMIENTO, de: nvPrev === null ? -1 : nvPrev, a: nv === null ? -1 : nv });
       nvPrev = nv;
-      var oculto = document.hidden && !renderer.xr.isPresenting;
+      var oculto = document.hidden && !renderer.xr.isPresenting, cz = causasDelFotograma();
       if (prev >= 0 || oculto) {
         var rr = (renderer.info && renderer.info.render) || {};   // Q0e: lo que costó dibujar este fotograma (el último render(): en VR three dibuja los dos ojos en uno)
-        m.t.push(t); m.ms.push(prev >= 0 ? tIni - prev : 0); m.js.push(js); m.oc.push(oculto ? 1 : 0); m.ll.push(rr.calls | 0); m.tr.push(rr.triangles | 0);
+        m.t.push(t); m.ms.push(prev >= 0 ? tIni - prev : 0); m.js.push(js); m.oc.push(oculto ? 1 : 0); m.ll.push(rr.calls | 0); m.tr.push(rr.triangles | 0); m.cz.push(cz); m.cq.push(uCq);
       }
       prev = oculto ? -1 : tIni;
       if (t >= MideEst.CALENTAMIENTO + N) termina(); else if (UI && ahora - tPinta > 500) { tPinta = ahora; pinta(); }
     }
+    // Q0g: tareas largas del navegador (PerformanceObserver «longtask», Chromium: tambien el Quest Browser). Las entrega el navegador a su ritmo; se asignan a los fotogramas al terminar la medida
+    function observaLargas() {
+      desobservaLargas();
+      try {
+        if (typeof PerformanceObserver !== "function" || !PerformanceObserver.supportedEntryTypes || PerformanceObserver.supportedEntryTypes.indexOf("longtask") < 0) return;
+        obsLargas = new PerformanceObserver(function (l) { guardaLargas(l.getEntries()); });
+        obsLargas.observe({ entryTypes: ["longtask"] });
+      } catch (e) { obsLargas = null; }
+    }
+    function guardaLargas(a) { if (!largas) return; for (var i = 0; i < a.length; i++) { largas.fin.push(a[i].startTime + a[i].duration); largas.dur.push(a[i].duration); } }
+    function desobservaLargas() { if (obsLargas) { try { guardaLargas(obsLargas.takeRecords()); obsLargas.disconnect(); } catch (e) {} obsLargas = null; } }
+    // Q0g: lo que se movio en este fotograma, como un entero de bits (MideEst.bits) y SIN reservar: lee contadores (Cola.tot, Cola.est.T, Generados.lotes, renderer.info) y los resta de los de la ultima vez
+    function causasDelFotograma() {
+      var eT = Cola.est.T, msT = eT ? eT.ms : 0, nT = eT ? eT.n : 0, msC = Cola.tot.ms - msT, nl = Generados.lotes(), inf = renderer.info, pg = inf.programs ? inf.programs.length : 0, tx = inf.memory ? inf.memory.textures : 0, b = 0;
+      uCq = 0;
+      if (hayPrev) { b = MideEst.bits(msC - pCola, nT - pNT, nl - pLo, pg - pProg, tx - pTex); uCq = msC - pCola + (msT - pMsT); if (!(uCq > 0)) uCq = 0; }
+      pCola = msC; pMsT = msT; pNT = nT; pLo = nl; pProg = pg; pTex = tx; hayPrev = true;
+      return b;
+    }
     function termina() {
-      var e = MideEst.calcula(m, MideEst.CALENTAMIENTO, N), a = Arboles.resumen(), nv = nivelAhora(), avisos = [];
+      desobservaLargas();
+      var largasR = largas ? MideEst.marcaLargas(m, t0, largas, MideEst.CALENTAMIENTO, N) : null, e = MideEst.calcula(m, MideEst.CALENTAMIENTO, N), a = Arboles.resumen(), nv = nivelAhora(), avisos = [];
       if (modoIni !== modoAhora()) avisos.push("cambió de " + modoIni + " a " + modoAhora() + " durante la medida");
       if (e.n < 10) avisos.push("muy pocos fotogramas: la medida no sirve");
       res = {
         version: 1, fecha: new Date().toISOString().slice(0, 19) + "Z", aparato: { modo: modoIni, ua: MideEst.resumeUA(Aparato.agente()) },
-        escena: Escena3D.resumen().estado === "sin" ? "sin" : "tiles", banderas: banderas(), duracion: N, calentamiento: MideEst.CALENTAMIENTO, est: e,
+        escena: Escena3D.resumen().estado === "sin" ? "sin" : "tiles", banderas: banderas(), duracion: N, calentamiento: MideEst.CALENTAMIENTO, est: e, largas: largasR,
         nivel: modoIni === "VR" ? { ini: nivIni === null ? -1 : nivIni, fin: nv === null ? -1 : nv, cambios: cambios } : null, olivos: [a.nivel0, a.nivel1, a.nivel2], avisos: avisos, perillas: modoIni === "VR" ? XrPerillas.linea() : "",
         olivosGen: olivosGenActivos(), personas: personasVisibles()   // Q0e: con qué se dibujó (si los olivos generados estaban y cuánta gente se veía)
       };
-      estado = "listo"; api.on = false; desengancha(); prev = -1;
+      estado = "listo"; api.on = false; largas = null; desengancha(); prev = -1;
       if (huboVisib) { document.removeEventListener("visibilitychange", alVisibilidad); huboVisib = false; }
       guarda(); ui(); pinta();
       if (VRX.on) n.emite("medida:fin");   // 29_vr.js: la tarjeta con el resultado sobre el panel
@@ -258,7 +321,7 @@
     var param = /[?&]mide(?:=(\d+))?(?=&|$)/.exec(location.search);
     if (param) arma(param[1] ? Number(param[1]) : 60); else if (contador()) ui();
     medSuelta = function () {   // libera: la caja del DOM, la escucha de la pestaña, el gancho de pruebas y lo que estaba midiendo
-      desengancha(); if (huboVisib) { document.removeEventListener("visibilitychange", alVisibilidad); huboVisib = false; }
+      desengancha(); desobservaLargas(); if (huboVisib) { document.removeEventListener("visibilitychange", alVisibilidad); huboVisib = false; }
       if (UI && UI.parentNode) UI.parentNode.removeChild(UI);
       UI = null; api.on = false; estado = "inactivo"; res = null; m = null; try { delete window.__mide; } catch (e) { window.__mide = undefined; }
     };
@@ -266,7 +329,7 @@
   }
   Componentes.registra({
     id: "medidor-fotogramas", version: 1,
-    consume: ["Aparato", "visor", "renderer", "modo", "D", "DEPURA", "ConfigPuro", "Ajustes", "Arboles", "Escena3D", "VRX", "PanelVR", "XrPerillas"],
+    consume: ["Aparato", "Cola", "Generados", "visor", "renderer", "modo", "D", "DEPURA", "ConfigPuro", "Ajustes", "Arboles", "Escena3D", "VRX", "PanelVR", "XrPerillas"],
     expone: [],
     eventos: { escucha: ["cuadro:fin", "depura:lineas", "medida:estado", "medida:envia", "medida:inicia", "medida:muestra"], emite: ["medida:empieza", "medida:envio", "medida:fin"] },
     bandera: { defecto: true, url: "medidor" },

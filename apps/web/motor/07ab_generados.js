@@ -2,7 +2,7 @@
 // Expone: Escalera, Generados
 // Consume: 01_datos (D, VRP, FACTOR_R8_GEN, factorCopaDeConfig), 01a_aparato (Aparato), 02_mundo (suelo, copas), 02c_componentes (Config),
 //   03_escena (renderer, scene, camera, colorVertSRGB, exag), 06_arboles (gArboles), 08_marcadores (aplica), 09_camara (suelta),
-//   12_paseo (paseando, primera), 14_historia (hist, lista), 15_tiempo (parcheTiempo, nivel, hace), 16_vida (esfera), 29_vr (VR_PERFILES)
+//   12_paseo (paseando, primera), 14_historia (hist, lista), 15_tiempo (parcheTiempo, nivel, hace), 16_vida (esfera, mira), 29_vr (VR_PERFILES)
 // ===============================================================================
   // ---------- olivos GENERADOS cerca (ADR-0017, decisiones 26-28, 34 y 52), POR DEFECTO (O10a, Antonio 2026-11-02): sin ?olivos=, si la finca trae copas_param y copas_id (y el aparato puede), se comporta como con ?olivos=gen;
   // ?olivos=0 (o =no) lo apaga y el motor dibuja lo de siempre. La decisión es UNA función pura (GeneradosPuro.activo, abajo); si el constructor no está en el build o falla al cargar, lo de siempre sin avisar en consola (se dice en ?debug).
@@ -176,7 +176,7 @@
     var fr = /[?&]olivosTri=([0-9.]+)/.exec(location.search), FRACCION = fr && !ESCALERA ? Math.min(0.9, Number(fr[1])) : ESCALERA ? 1 : 0.45;
     var mpr = /[?&]olivosPropios=([0-6])\b/.exec(location.search), MAX_PROPIOS_VR = null;   // MAX_PROPIOS_VR: el de las gafas, si la configuración lo da
     var ESTIM = { E0: 160000, E1: 80000, E2: 38000, E2VR: 28000 }, SEM_VAR = [11, 23, 37, 51], MAX_PROPIOS = mpr ? Number(mpr[1]) : 6, MAX_VAR = 48, RADIO_CAND = 160, MARGEN = 12;
-    var recetas = {}, pidiendo = {}, nPidiendo = 0, plan = [], listos = {}, enLote = {}, lote = null, claveLote = "", nuevo = null, R = 0, triGen = 0, costoGen = 0, info = { llamadas: 0, triangulos: 0 };
+    var nLotes = 0, recetas = {}, pidiendo = {}, nPidiendo = 0, plan = [], listos = {}, enLote = {}, lote = null, claveLote = "", nuevo = null, R = 0, triGen = 0, costoGen = 0, info = { llamadas: 0, triangulos: 0 };
     var ff = /[?&]olivosFundido=([0-9.]+)/.exec(location.search), FUNDIDO = ff ? Math.min(3, Number(ff[1])) : 0.6;
     var HORNEADO = !/[?&]olivosHorneado=0\b/.test(location.search), manif = null, varSem = null, epocaManif = null, fechaPrueba = null;
     var horn = { estado: "no", motivo: "", horneadas: 0, calculadas: 0, fallos: 0, cache: 0, propios: 0, ultimoFallo: "" };
@@ -635,6 +635,7 @@
       try { return yield* gen; } catch (e) { estado = "sin"; motivo = String(e && e.message || e); if (!POR_DEFECTO) console.warn("olivos generados: " + motivo); return null; }
     }
     function colocaLote(g, sel, items, cl) {
+      nLotes++;   // lotes montados desde el arranque: el medidor de fotogramas (30_mide, Q0g) mira si cambió en un fotograma lento
       if (lote) { grupo.remove(lote); libera(lote); }   // lo que sale del lote anterior ya va dentro del nuevo
       var viejos = {}, Rviejo = R, entran = 0, salen = 0, triSalen = 0;
       selLote.forEach(function (p) { viejos[p.c.i] = true; });
@@ -848,7 +849,7 @@
       });
       return no.length ? { motivo: no.join("; ").slice(0, 120) } : f;
     }
-    return { escalera: function () { return ESCALERA; }, modoGen: function () { return MODO; }, lejanos: paraLejanos, activo: function () { return estado === "activo"; }, actualiza: actualiza, paso: paso, gastado: function () { return gastado; }, pendientes: pendientes, rotulo: rotulo, piezas: piezas, estado: function () { return estado; },
+    return { lotes: function () { return nLotes; }, escalera: function () { return ESCALERA; }, modoGen: function () { return MODO; }, lejanos: paraLejanos, activo: function () { return estado === "activo"; }, actualiza: actualiza, paso: paso, gastado: function () { return gastado; }, pendientes: pendientes, rotulo: rotulo, piezas: piezas, estado: function () { return estado; },
       _prueba: { fecha: function (f) { fechaPrueba = f; }, mats: function () { return mats; }, prof: function () { return prof; }, uFun: uFun, lote: function () { return lote; }, tiene: tiene, fase: fase, listos: function () { return listos; }, saliendo: function () { return saliendo; }, recetas: function () { return recetas; },
         uBanda: uBanda, bandas: function () { return bandas; }, lejRanura: function () { return lejRanura; }, enLote: function () { return enLote; }, selLote: function () { return selLote; },
         construye: function (items) { return construyeG(items); }, elementos: function (fija) { return elementos(fija); } } };   // AG-1.5a: pruebas/olivo/lote_tramos.mjs mide los tramos entre yield

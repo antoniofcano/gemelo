@@ -266,3 +266,82 @@ test("Q0f: si la medida cambia de pantalla a VR (o al revés) a mitad, vuelve a 
   assert.match(F, /function empieza\(tIni\) \{\s*t0 = tIni; m = \{ t: \[\], ms: \[\], js: \[\]/, "empezar vacía la serie");
   assert.match(F, /modoIni = modoAhora\(\)/, "y apunta el modo nuevo");
 });
+
+// ---------- Q0g: la autopsia de los fotogramas lentos ----------
+test("Q0g: bits() marca cada causa por separado y no marca nada si nada se movió", () => {
+  assert.strictEqual(E.bits(0, 0, 0, 0, 0), 0);
+  assert.strictEqual(E.bits(0.9, 0, 0, 0, 0), 0, "la Cola por debajo de 1 ms no cuenta");
+  assert.strictEqual(E.bits(1, 0, 0, 0, 0), E.BIT.cola);
+  assert.strictEqual(E.bits(0, 2, 0, 0, 0), E.BIT.tesela);
+  assert.strictEqual(E.bits(0, 0, 1, 0, 0), E.BIT.lote);
+  assert.strictEqual(E.bits(0, 0, 0, 1, 0), E.BIT.compila);
+  assert.strictEqual(E.bits(0, 0, 0, 0, 3), E.BIT.textura);
+  assert.strictEqual(E.bits(5, 1, 1, 1, 1), E.BIT.cola | E.BIT.tesela | E.BIT.lote | E.BIT.compila | E.BIT.textura);
+  assert.strictEqual(E.bits(0, 0, 0, -1, -1), 0, "bajar el número de programas o texturas (liberar) no es una causa");
+});
+test("Q0g: el resumen de causas cuenta solo los lentos, deja que se solapen y cuenta los sin causa", () => {
+  // 10 fotogramas: lentos (> 13,9) los índices 1, 3, 5, 7, 8
+  const ms = [12, 20, 12, 25, 12, 30, 12, 18, 40, 12];
+  const cz = [0, E.BIT.cola, E.BIT.cola, E.BIT.cola | E.BIT.tesela, 0, 0, E.BIT.lote, E.BIT.compila | E.BIT.textura, E.BIT.tarea | E.BIT.cola, 0];
+  const cq = [0, 3, 2, 4, 0, 0, 0, 0, 8, 0];
+  const r = E.resumenCausas(ms, cz, cq, 13.9);
+  assert.deepStrictEqual({ l: r.lentos, c: r.cola, t: r.tesela, lo: r.lote, ta: r.tarea, co: r.compila, tx: r.textura, s: r.sin }, { l: 5, c: 3, t: 1, lo: 0, ta: 1, co: 1, tx: 1, s: 1 });
+  assert.strictEqual(r.colaMs, 4, "mediana de lo que gastó la Cola en los lentos donde trabajó (3, 4, 8)");
+  assert.strictEqual(E.resumenCausas([20], null, null, 13.9), null, "una medida de antes no trae causas");
+  const ninguno = E.resumenCausas([10, 11], [0, 0], [0, 0], 13.9);
+  assert.strictEqual(ninguno.lentos, 0); assert.strictEqual(E.lineaCausas(ninguno, true), "Fotogramas lentos: ninguno");
+});
+test("Q0g: calcula() filtra la causa igual que los intervalos (calentamiento, ocultos) y la deja en est.causas", () => {
+  const m = serie([30, 12, 30, 30, 12, 30], 2, 1, [0, 0, 0, 1, 0, 0]);   // t = 2, 3, 4, 5, 6, 7 (el 2 es calentamiento; el 5 está oculto)
+  m.cz = [E.BIT.cola, 0, E.BIT.tesela, E.BIT.lote, 0, 0]; m.cq = [9, 0, 5, 5, 0, 0];
+  const e = E.calcula(m, 3, 60);
+  assert.strictEqual(e.n, 4);
+  assert.deepStrictEqual({ l: e.causas.lentos, c: e.causas.cola, t: e.causas.tesela, lo: e.causas.lote, s: e.causas.sin }, { l: 2, c: 0, t: 1, lo: 0, s: 1 });
+  assert.strictEqual(E.calcula(serie([30, 12], 3, 1), 3, 60).causas, null, "sin cz no hay causas");
+});
+test("Q0g: las tareas largas se asignan al fotograma en cuyo intervalo acaban, y solo cuentan las de la ventana medida", () => {
+  // t0 = 1000 ms; fotogramas en 4000, 4020, 4090 y 4110 (intervalos de 20, 20, 70 y 20 ms): cada uno cubre (llegada - intervalo, llegada]
+  const t0 = 1000, m = { t: [3, 3.02, 3.09, 3.11], ms: [20, 20, 70, 20], js: [1, 1, 1, 1], cz: [0, 0, 0, 0], cq: [0, 0, 0, 0] };
+  const r = E.marcaLargas(m, t0, { fin: [500, 4010, 4025, 4080, 4100, 70000], dur: [60, 55, 52, 80, 70, 90] }, 3, 60);
+  assert.deepStrictEqual(m.cz, [0, 8, 8, 8]);
+  assert.deepStrictEqual(r, { n: 4, ms: 257 }, "la de antes del calentamiento y la de después de la ventana no cuentan");
+  assert.deepStrictEqual(E.marcaLargas({ t: [3], ms: [20], js: [1] }, 0, { fin: [], dur: [] }, 3, 60), { n: 0, ms: 0 }, "sin cz (medida de antes) no revienta");
+});
+test("Q0g: el informe largo y la tarjeta de VR muestran las causas; la tarjeta sigue cabiendo en 14 líneas", () => {
+  const m = serie(Array.from({ length: 400 }, (_, i) => (i % 20 === 0 ? 22 : 11)), 3, 0.05);
+  m.ll = m.ms.map(() => 200); m.tr = m.ms.map(() => 400000);
+  m.cz = m.ms.map((v, i) => (i % 40 === 0 ? E.BIT.cola : 0)); m.cq = m.ms.map((v, i) => (i % 40 === 0 ? 3 : 0));
+  const r = medidaVR("VR", 400, { est: E.calcula(m, 3, 60), perillas: "VR: fov 1 · escala 0,9 · 72 Hz · MSAA sí · nivel auto", olivosGen: true, personas: 3, largas: { n: 2, ms: 130 },
+    nivel: { ini: 0, fin: 2, cambios: [{ t: 1, de: 0, a: 1 }, { t: 2, de: 1, a: 2 }] } });
+  assert.strictEqual(r.est.causas.lentos, 20); assert.strictEqual(r.est.causas.cola, 10); assert.strictEqual(r.est.causas.sin, 10);
+  const tx = E.texto(r);
+  for (const s of ["Fotogramas lentos 20 (pueden solaparse): Cola 10 · sin causa 10 · la Cola gastó 3.0 ms (mediana)", "Tareas largas del navegador (≥ 50 ms) durante la medida: 2 (suman 130 ms)"]) assert.ok(tx.includes(s), "falta «" + s + "» en:\n" + tx);
+  const c = E.lineas(r, true);
+  assert.ok(c.includes("Lentos 20: cola 10 · sin causa 10"), c.join("\n"));
+  assert.ok(c.length <= 14, "la tarjeta de VR debe caber en el panel: " + c.length);
+  assert.ok(!/tarea larga|Tareas largas/i.test(c.join("\n")), "las tareas largas van solo en el informe largo");
+});
+test("Q0g: lo que viaja a la api no cambia (el contrato no admite campos nuevos): el cuerpo no trae nada de la autopsia", () => {
+  const r = conDibujo("VR", 400);
+  const m = serie(Array.from({ length: 400 }, (_, i) => 10 + (i % 5) + (i % 50 === 0 ? 20 : 0)), 3, 0.05); m.cz = m.ms.map(() => 1); m.cq = m.ms.map(() => 2);
+  r.est = E.calcula(m, 3, 60); r.largas = { n: 1, ms: 60 };
+  const c = E.cuerpoEnvio(r, { ua: UA_QUEST, finca: "hituelo", modo: "gemelo", version: "0.2.0" });
+  assert.ok(c && !/causa|lentos|larga|cz|cq/i.test(JSON.stringify(c)), JSON.stringify(c));
+  const esquema = JSON.parse(lee("contratos/medidas.schema.json"));
+  assert.deepStrictEqual(Object.keys(c).filter(k => !(k in esquema.properties)), [], "solo campos del esquema");
+});
+test("Q0g: la autopsia solo se paga midiendo: sin &mide ni botón no hay observador, ni «cuadro:fin» escuchado, y el fotograma no reserva", () => {
+  const R = require("./_reservas");
+  // el observador de tareas largas nace solo en empieza() y se suelta en termina() y al liberar
+  assert.strictEqual((FUENTE.match(/\bobservaLargas\(\)/g) || []).length, 2, "observaLargas() se llama solo en su definición y desde empieza()");
+  assert.ok(/desobservaLargas\(\); largas = \{ fin: \[\], dur: \[\] \}; observaLargas\(\);/.test(FUENTE), "empieza() arma el observador");
+  assert.ok(/if \(api\.on\) fotograma\(d\.t\)/.test(FUENTE), "el fotograma solo se procesa con la medida armada");
+  assert.ok(/function termina\(\) \{\s*desobservaLargas\(\)/.test(FUENTE) && /desengancha\(\); desobservaLargas\(\);/.test(FUENTE), "se suelta al terminar y al liberar");
+  const rs = R.recuenta()["30_mide.js"];
+  assert.deepStrictEqual(rs.faltan, []); assert.strictEqual(rs.total, 0, JSON.stringify(rs.detalle));
+  assert.deepStrictEqual(Object.keys(rs.porFn).sort(), ["bits", "causasDelFotograma"]);
+  // lo que lee causasDelFotograma existe: Cola.tot (02b), Generados.lotes (07ab)
+  const cola = lee("apps/web/motor/02b_cola.js"), gen = lee("apps/web/motor/07ab_generados.js");
+  assert.ok(/tot: tot/.test(cola) && /function apunta\(e, dm\) \{ tot\.n\+\+; tot\.ms \+= dm;/.test(cola));
+  assert.ok(/lotes: function \(\) \{ return nLotes; \}/.test(gen) && /nLotes\+\+;/.test(gen));
+});
