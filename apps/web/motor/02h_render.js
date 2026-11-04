@@ -7,6 +7,7 @@
   //   Render.pedido / Render.tipo   ?render=nuevo queda RESERVADO para el WebGPURenderer (F2-F5): se apunta y se avisa de que aún no existe; tipo sigue «clasico»
   //   Render.build                  «pantalla» (three) o «vr» (super-three, la build del Quest: apps/web/herramientas/builds.mjs); lo inyecta Vite (__GEMELO_BUILD__).
   //                                 Con «vr», 03_escena pide el multiview de super-three (F2a; la perilla xrmv vive en 02f_xr_perillas)
+  //   Render.tono                   AG-2.5: { tono, constante, expo, pedido, advertencia } de ?tono=neutro|agx|aces|neutral y ?expo=; 03_escena lo fija en el dibujo (neutro = no toca nada)
   //   Render.arranca(rd, fn)        el primer fotograma, tolerante a un `await rd.init()` futuro: el clásico no tiene init() y fn corre ya, como siempre
   //   InfoDibujo.lee(rd, o?)        { renderizador, fotograma, llamadas, triangulos, puntos, lineas, geometrias, texturas, programas } del clásico
   //                                 (info.render.calls, info.render.frame, info.programs = array) y del nuevo (info.render.drawCalls, info.frame,
@@ -24,6 +25,23 @@
       if (TIPOS.indexOf(p) < 0) return { pedido: p, tipo: "clasico", advertencia: "?render=" + p + " no existe (clasico | nuevo): se usa el clásico" };
       if (p === "nuevo" && !hayNuevo) return { pedido: p, tipo: "clasico", advertencia: "?render=nuevo está reservado para el WebGPURenderer (ADR-0031, F2), que aún no existe en el motor: se usa el clásico" };
       return { pedido: p, tipo: p, advertencia: "" };
+    }
+    // AG-2.5: ?tono=neutro|agx|aces|neutral (+ ?expo=0.1..4). «neutro» = NoToneMapping, lo de siempre (por defecto y ante cualquier valor desconocido o ausente).
+    // Devuelve { pedido, tono, constante, expo, advertencia }; constante es el NOMBRE de la constante de three (THREE[constante]), para no depender de THREE aquí.
+    var TONOS = { neutro: "NoToneMapping", agx: "AgXToneMapping", aces: "ACESFilmicToneMapping", neutral: "NeutralToneMapping" };
+    function eligeTono(busqueda) {
+      var q = typeof busqueda === "string" ? busqueda : "", mt = /[?&]tono=([^&#]*)/.exec(q), me = /[?&]expo=([^&#]*)/.exec(q);
+      var r = { pedido: "", tono: "neutro", constante: TONOS.neutro, expo: 1, advertencia: "" };
+      if (mt) {
+        var p = decodeURIComponent(mt[1]).toLowerCase(); r.pedido = p;
+        if (p && Object.prototype.hasOwnProperty.call(TONOS, p)) { r.tono = p; r.constante = TONOS[p]; }
+        else if (p) r.advertencia = "?tono=" + p + " no existe (neutro | agx | aces | neutral): se usa neutro";
+      }
+      if (me && r.tono !== "neutro") {
+        var v = Number(decodeURIComponent(me[1]).replace(",", "."));
+        if (isFinite(v) && me[1] !== "") r.expo = Math.min(4, Math.max(0.1, v)); else r.advertencia = (r.advertencia ? r.advertencia + "; " : "") + "?expo=" + me[1] + " no es un número: se usa 1";
+      }
+      return r;
     }
     function buildDe(b) { return BUILDS.indexOf(b) >= 0 ? b : "pantalla"; }
     function esNuevo(info) { return !!(info && info.render && typeof info.render.drawCalls === "number"); }
@@ -47,7 +65,7 @@
       if (!rd || typeof rd.init !== "function") { fn(); return null; }
       return Promise.resolve(rd.init()).then(function () { fn(); }, function (e) { if (alFallar) alFallar(e); else throw e; });
     }
-    return { TIPOS: TIPOS, BUILDS: BUILDS, eligeTipo: eligeTipo, buildDe: buildDe, esNuevo: esNuevo, fotograma: fotograma, llamadas: llamadas, triangulos: triangulos, lee: lee, arranca: arranca };
+    return { TIPOS: TIPOS, BUILDS: BUILDS, eligeTipo: eligeTipo, TONOS: TONOS, eligeTono: eligeTono, buildDe: buildDe, esNuevo: esNuevo, fotograma: fotograma, llamadas: llamadas, triangulos: triangulos, lee: lee, arranca: arranca };
   })();
   // [puro:fin]
 
@@ -55,8 +73,10 @@
     var e = RenderPuro.eligeTipo(typeof location !== "undefined" && location ? location.search : "", false);
     if (e.advertencia && typeof console !== "undefined") console.warn("render: " + e.advertencia);
     var b = RenderPuro.buildDe(typeof __GEMELO_BUILD__ !== "undefined" ? __GEMELO_BUILD__ : "pantalla");   // lo inyecta Vite (apps/web/vite.config.js)
+    var t = RenderPuro.eligeTono(typeof location !== "undefined" && location ? location.search : "");   // AG-2.5
+    if (t.advertencia && typeof console !== "undefined") console.warn("tono: " + t.advertencia);
     return {
-      pedido: e.pedido, tipo: e.tipo, advertencia: e.advertencia, build: b,
+      pedido: e.pedido, tipo: e.tipo, advertencia: e.advertencia, build: b, tono: t,
       arranca: function (rd, fn) { return RenderPuro.arranca(rd, fn, function (err) { console.error("render: init() falló", err); }); }
     };
   })();
