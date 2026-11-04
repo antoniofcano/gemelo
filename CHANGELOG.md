@@ -237,6 +237,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 
 
 ### Corregido
+- Palanca táctil: el paseante no andaba (solo se podía girar). El manejador de nipplejs 1.0 leía los datos como en la 0.x (`(e, datos)` en vez de `e.data`), y además la palanca solo nacía al pulsar «Pasear» (no al ir andando a un punto ni desde el selector de modo); si nipplejs no carga, vuelve la cruceta. Comprobado en Chrome con táctil simulado (`palanca_chrome.test.js`: 0 m antes, 3,2 m después); no probado en iPhone ni Android.
 - Las líneas de desfase entre las copas del LiDAR y los olivos guardados (`08b_marcadores_lidar.js`) recalculan su esfera de recorte al colocarse y ya no se recortan mal con la exageración vertical cambiada (AG-1.10).
 - El aviso «Non uniform scale used for tile» de 3DTilesRendererJS (exageración vertical, unos 78 por segundo en consola) sale ahora una sola vez; el resto de `console.warn` no cambia y la escena se dibuja igual. Con exageración distinta de 1 la librería avisa de que el error de pantalla que usa para elegir teselas es aproximado: cuánto afecta **no está medido**.
 - Accesibilidad: los campos de formulario que creaba el motor sin `id` ni `name` (ajustes, chat de la visita, personalización, sala guiada) ya llevan uno, y un guardián impide los nuevos. También el panel de la oficina. No probado con lector de pantalla ni con el autorrelleno de Chrome.

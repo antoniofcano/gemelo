@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos ($), 03_escena (lienzo, modo), 08_marcadores (aplica), 09_camara (sensMirar),
+// Consume: 01_datos ($), 03_escena (lienzo, visor, modo), 08_marcadores (aplica), 09_camara (sensMirar),
 //   12_paseo (paseando, primera, PalancaPuro, ponPalanca, giraPalanca, actualizaPaseo), 15_tiempo (hace), 16_vida (quad, dron), 33_ajustes (Ajustes)
 // ===============================================================================
   // ---------- la palanca flotante (EV2-B2, doc/sistema/VIABILIDAD-INTERACCION.md §B): andar con el pulgar, encendida por defecto en pantalla táctil.
@@ -24,9 +24,9 @@
       import("nipplejs").then(function (m) {
         pidiendo = false; if (joy || !quiere()) return;
         var nip = m.default || m; joy = nip.create({ zone: zona, mode: "dynamic", multitouch: false, size: 120, color: "#ffffff", restOpacity: 0.55, fadeTime: 120, threshold: 0.05 });
-        joy.on("move", function (e, d) { var v = d && d.vector ? PalancaPuro.lee(d.vector.x, d.vector.y) : null; if (v) ponPalanca(v.av, v.lat); });
+        joy.on("move", function (e) { var d = e && e.data, v = d && d.vector ? PalancaPuro.lee(d.vector.x, d.vector.y) : null; if (v) ponPalanca(v.av, v.lat); });   // nipplejs 1.0: un solo argumento, los datos en e.data (en 0.x eran (e, datos))
         joy.on("end", function () { ponPalanca(0, 0); });
-      }).catch(function () { pidiendo = false; });
+      }).catch(function () { pidiendo = false; raiz.setAttribute("data-palanca", "no"); });   // si no carga, vuelve la cruceta: nunca sin mando
     }
     function aplica() {
       var q = quiere(); raiz.setAttribute("data-palanca", q ? "si" : "no");
@@ -35,7 +35,10 @@
     aplica();
     try { Ajustes.alCambiar(function (c) { if (c === "controles.palanca" || c === "controles.tactil") aplica(); }); } catch (e) {}
     try { matchMedia("(pointer: coarse)").addEventListener("change", aplica); } catch (e) {}
-    $("btnPaseo").addEventListener("click", function () { setTimeout(function () { if (paseando) { if (quiere()) enciende(); } else ponPalanca(0, 0); }, 0); });
+    // al empezar o dejar de pasear, venga de donde venga (el botón, ir andando a un punto, entrar en VR, el selector de modo): el visor cambia su clase «paseo»
+    function alPasear() { if (paseando) { if (quiere()) enciende(); } else ponPalanca(0, 0); }
+    if (typeof MutationObserver !== "undefined" && typeof visor !== "undefined" && visor) new MutationObserver(alPasear).observe(visor, { attributes: true, attributeFilter: ["class"] });
+    $("btnPaseo").addEventListener("click", function () { setTimeout(alPasear, 0); });
     // mirar: arrastrar el dedo por la otra mitad (la que no es de la palanca); el toque corto sigue eligiendo lo que haya debajo (09_camara.js)
     function esMitadDelGiro(x) { var r = lienzo.getBoundingClientRect(), izq = x < r.left + r.width / 2; return raiz.getAttribute("data-mano") === "zurda" ? izq : !izq; }
     lienzo.addEventListener("pointerdown", function (e) {

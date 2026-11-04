@@ -86,3 +86,21 @@ test("el paseo la suma por el camino que ya hay (sin duplicar la física) y el a
   assert.match(PASEO, /ponPalanca\(0, 0\)/, "se suelta al salir del paseo y al perder el foco");
   assert.match(lee("apps/web/motor/33_ajustes.js"), /"controles\.palanca": bool\(true\)/, "el ajuste vale sí por defecto");
 });
+
+test("la palanca nace venga de donde venga el paseo (no solo el botón «Pasear»), y si nipplejs no carga vuelve la cruceta", () => {
+  // fallo visto en un móvil el 2026-11-04: al entrar a pasear yendo andando a un punto (12b_llegada.js, entraPaseo() sin pulsar el botón)
+  // la cruceta se ocultaba y la palanca no nacía: solo se podía girar
+  assert.match(MOD, /new MutationObserver\(alPasear\)\.observe\(visor, \{ attributes: true, attributeFilter: \["class"\] \}\)/, "mira la clase «paseo» del visor");
+  assert.match(MOD, /function alPasear\(\) \{ if \(paseando\) \{ if \(quiere\(\)\) enciende\(\); \}/);
+  assert.match(MOD, /\.catch\(function \(\) \{ pidiendo = false; raiz\.setAttribute\("data-palanca", "no"\); \}\)/, "si no carga, data-palanca=no: vuelve la cruceta");
+  assert.match(PASEO, /visor\.classList\.add\("paseo"\)/, "entraPaseo pone la clase que mira la palanca");
+  assert.match(css, /\[data-palanca="si"\] \.visor\.paseo \.pad-mov \{ display: none; \}/, "la cruceta solo se oculta con data-palanca=si");
+});
+
+test("nipplejs 1.0: el manejador de «move» lee los datos de e.data (en 0.x eran un segundo argumento)", () => {
+  // fallo visto en un móvil el 2026-11-04: con function (e, d) el vector nunca llegaba y el paseante no andaba (palanca_chrome.test.js lo comprueba en Chrome)
+  assert.match(MOD, /joy\.on\("move", function \(e\) \{ var d = e && e\.data,/);
+  assert.ok(!/joy\.on\("move", function \(e, d\)/.test(MOD), "sin la firma de 0.x");
+  const d = lee("apps/web/node_modules/nipplejs/dist/index.mjs");
+  assert.match(d, /e\.call\(this,\{type:t,target:this,data:i\}\)/, "nipplejs llama a los manejadores con { type, target, data }: si cambia, revisar 34b_palanca.js");
+});
