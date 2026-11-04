@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Rendimiento (AG-1.12): las marcas de olivos guardados pasan de 40 a 16 triángulos (anillo octogonal con los mismos radios) y los árboles que no son olivos de 268 a 80 (copas de icosaedro de 20 caras con normales suaves y tronco de 5 lados, con la misma caja): en Hituelo, unos 288.000 triángulos menos por vista (≈446.000 → ≈158.000; el doble en VR). Cambia algo el aspecto de cerca. No probado en iPhone ni Quest.
 - Rendimiento (AG-1.3b): los avatares instanciados de la presencia (cuerpo, cabeza, sombrero, manos, nombres, ruedas, quad y dron) dejan de dibujarse fuera del campo de visión; su esfera se rehace cada fotograma sin contar a los ocultos. Los VRM con esqueleto siguen sin recorte. Sin medir en el banco ni en Quest/iPhone.
 - Pruebas: el desglose del banco (`--desglose`) da también los triángulos por objeto, no solo las llamadas.
 - Documentación (AG-1.11): [ESCALA-NO-UNIFORME](doc/sistema/ESCALA-NO-UNIFORME.md), qué hace 3d-tiles-renderer con la exageración vertical en la matriz del grupo (pide más detalle del necesario desde arriba; coste nulo desde AG-1.9), con modelo en Node y alternativas.
