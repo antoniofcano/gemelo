@@ -261,7 +261,7 @@ test("en Chrome con WebXR simulado (opcional, GEMELO_VR=1): &mide=5 empieza al e
 
 test("Q0f: si la medida cambia de pantalla a VR (o al revés) a mitad, vuelve a empezar en el modo nuevo (nunca una medida mixta)", () => {
   // visto el 2026-11-04: «Medir» en el mapa y luego entrar en VR daba una medida de «pantalla» sin nivel ni perillas (medidas 13 y 14)
-  const F = lee("apps/web/motor/30_mide.js"), i = F.indexOf("function fotograma(tIni)"), cuerpo = F.slice(i, F.indexOf("function termina()", i));
+  const F = lee("apps/web/motor/30_mide.js"), i = F.indexOf("function fotograma(tIni, d)"), cuerpo = F.slice(i, F.indexOf("function termina()", i));
   assert.match(cuerpo, /if \(estado !== "midiendo"\) return;\s*\/\/ Q0f[^\n]*\n\s*if \(modoIni !== modoAhora\(\)\) \{ empieza\(tIni\); return; \}/, "antes de contar el fotograma, el cambio de modo reinicia");
   assert.match(F, /function empieza\(tIni\) \{\s*t0 = tIni; m = \{ t: \[\], ms: \[\], js: \[\]/, "empezar vacía la serie");
   assert.match(F, /modoIni = modoAhora\(\)/, "y apunta el modo nuevo");
@@ -335,7 +335,7 @@ test("Q0g: la autopsia solo se paga midiendo: sin &mide ni botón no hay observa
   // el observador de tareas largas nace solo en empieza() y se suelta en termina() y al liberar
   assert.strictEqual((FUENTE.match(/\bobservaLargas\(\)/g) || []).length, 2, "observaLargas() se llama solo en su definición y desde empieza()");
   assert.ok(/desobservaLargas\(\); largas = \{ fin: \[\], dur: \[\] \}; observaLargas\(\);/.test(FUENTE), "empieza() arma el observador");
-  assert.ok(/if \(api\.on\) fotograma\(d\.t\)/.test(FUENTE), "el fotograma solo se procesa con la medida armada");
+  assert.ok(/if \(api\.on\) fotograma\(d\.t, d\)/.test(FUENTE), "el fotograma solo se procesa con la medida armada");
   assert.ok(/function termina\(\) \{\s*desobservaLargas\(\)/.test(FUENTE) && /desengancha\(\); desobservaLargas\(\);/.test(FUENTE), "se suelta al terminar y al liberar");
   const rs = R.recuenta()["30_mide.js"];
   assert.deepStrictEqual(rs.faltan, []); assert.strictEqual(rs.total, 0, JSON.stringify(rs.detalle));
@@ -344,4 +344,22 @@ test("Q0g: la autopsia solo se paga midiendo: sin &mide ni botón no hay observa
   const cola = lee("apps/web/motor/02b_cola.js"), gen = lee("apps/web/motor/07ab_generados.js");
   assert.ok(/tot: tot/.test(cola) && /function apunta\(e, dm\) \{ tot\.n\+\+; tot\.ms \+= dm;/.test(cola));
   assert.ok(/lotes: function \(\) \{ return nLotes; \}/.test(gen) && /nLotes\+\+;/.test(gen));
+});
+
+// F0 (doc/sistema/MULTIVIEW.md): el techo del multiview. Cuánto del JS es renderer.render() y cuánto el resto; y la sonda del multiview
+test("F0: el informe separa los ms de renderer.render() del resto del JS, y la tarjeta de VR sigue cabiendo", () => {
+  const m = serie(Array.from({ length: 400 }, (_, i) => 10 + (i % 5)), 3, 0.05);
+  m.js = m.ms.map(() => 6); m.rd = m.ms.map((_, i) => 2 + (i % 3));   // js 6 ms de los que render() 2-4 ms
+  const e = E.calcula(m, 3, 60);
+  assert.deepStrictEqual([e.rd.mediana, e.resto.mediana], [3, 3], "resto = js - render()");
+  assert.ok(e.rd.p95 <= 4 && e.resto.p95 <= 4 && e.rd.p95 >= e.rd.mediana);
+  const r = medidaVR("VR", 400, { est: e, multiview: "multiview: sí · OVR_multiview2 sí · OCULUS_multiview sí · texture-array sí" });
+  const tx = E.texto(r);
+  for (const s of ["renderer.render() (ms): mediana 3.0", "el resto del JS (ms): mediana 3.0", "multiview: sí · OVR_multiview2 sí"]) assert.ok(tx.includes(s), "falta «" + s + "» en:\n" + tx);
+  const c = E.lineas(r, true);
+  assert.ok(c.length <= 14, "la tarjeta de VR debe caber en el panel: " + c.length);
+  assert.ok(c.some((l) => /render\(\) 3\.0\//.test(l)) && c.some((l) => /^multiview: sí/.test(l)));
+  const v = E.texto(conDibujo("VR", 400));
+  assert.ok(!v.includes("renderer.render()") && !v.includes("multiview:"), "una medida de antes no inventa las líneas");
+  assert.strictEqual(E.calcula({ t: [3, 3.1], ms: [10, 10], js: [1, 2] }, 3, 10).rd, null);
 });
