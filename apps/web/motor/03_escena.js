@@ -20,6 +20,8 @@
   // son números «tal como se ven», en sRGB, y se pasan a lineal donde entran en la luz: Color.setRGB(r, g, b, SRGB), texColor(), ot_lin() o sRGBTransferEOTF().
   // Lo que se toca DESPUÉS de colorspace_fragment (sombra de nubes, escarcha, capa NDVI, modo Ortofoto) ya está en sRGB y se deja como está.
   renderer.outputColorSpace = THREE.SRGBColorSpace;
+  // AG-2.5: ?tono=agx|aces|neutral (doc/sistema/TONE-MAPPING.md). Sin la perilla (o «neutro») no se toca nada: three deja NoToneMapping, como siempre. Igual en las dos builds (three y super-three tienen las cuatro constantes)
+  if (Render.tono.tono !== "neutro" && THREE[Render.tono.constante] !== undefined) { renderer.toneMapping = THREE[Render.tono.constante]; renderer.toneMappingExposure = Render.tono.expo; }
   var SRGB = THREE.SRGBColorSpace;
   // Luces físicas (r155): la intensidad ya no lleva el factor π implícito de r128, que aquí se devuelve. Encima, la calibración a ojo con capturas (ADR-0016):
   // con la luz en lineal, la misma intensidad aclara las sombras y apaga lo soleado; el sol sube un 50 % y el cielo un 10 % para que la tierra al sol
