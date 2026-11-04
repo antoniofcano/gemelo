@@ -1,8 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: PA, matTronco, postes, cable, colocaPaisaje, instSombra, sombrasSol, aguaNivel, actualizaPaisaje, ejeArroyo, distArroyo
 // Consume: 01_datos (D, $, ESC_R8), 02_mundo (suelo, desp, copas), 03_escena (scene, SRGB, sol, exag, modo), 04d_sombreado_tiles (hash),
-//   06_arboles (gSombras, tronco), 07_follaje (matSombra, geoSombra), 09_camara (pon), 14_historia (lista), 15_tiempo (lluvia, cur, tMundo, nivel),
-//   16_vida (esfera), 23_estacion (EST), 90_final (bucle)
+//   06_arboles (gSombras, tronco), 07_follaje (matSombra, geoSombra), 09_camara (pon), 14_historia (lista),
+//   15_tiempo (nivelEn, lluvia, cur, tMundo, nivel), 16_vida (esfera), 23_estacion (EST), 90_final (bucle)
 // ===============================================================================
   // ---------- el paisaje que sale del LiDAR: edificios (clase 6), el tendido y sus postes, el arroyo y los árboles que no son olivos
   // Lo que el LiDAR clasifica de verdad son los edificios. El tendido, los postes, el cauce y las copas se deducen de la geometría (alturas, alineación, relieve) y se rotulan así.
@@ -134,11 +134,11 @@
   }
 
   // --- el agua del arroyo sube con la lluvia y baja despacio
-  var aguaNivel = 0, tSombra = 0;
+  var aguaNivel = 0, tSombra = 0, lvAgua = { s: { alt: 0, az: 0 }, d: 0 };   // lvAgua: el nivel del sol de actualizaPaisaje, el mismo objeto cada fotograma (AG-1.4c)
   function actualizaPaisaje(dt) {
     var llueve = cur.lluvia > 0.3 || (EST.activa && EST.clima && EST.clima.lluvia >= 12);   // o una semana lluviosa en la estación elegida
     aguaNivel += llueve ? (1 - aguaNivel) * Math.min(1, dt * 0.18) : -aguaNivel * Math.min(1, dt * 0.03);
-    uArroyo.uAgua.value = aguaNivel < 0.02 ? 0 : aguaNivel; uArroyo.uT.value = tMundo; uArroyo.uLuz.value = 0.22 + 0.78 * nivel(cur.ms).d;
+    uArroyo.uAgua.value = aguaNivel < 0.02 ? 0 : aguaNivel; uArroyo.uT.value = tMundo; uArroyo.uLuz.value = 0.22 + 0.78 * nivelEn(cur.ms, lvAgua).d;
     gPaisaje.visible = $("cPaisaje").checked;
     tSombra += dt; if (tSombra > 0.4) { tSombra = 0; sombrasSol(false); }
   }

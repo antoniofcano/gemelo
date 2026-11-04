@@ -86,3 +86,13 @@ for (const [nombre, ini] of [["de la tarde a la noche", Date.UTC(2026, 5, 21, 15
     assert.ok(vistas > 300, "la prueba pinta nubes en bastantes fotogramas (" + vistas + ")");
   });
 }
+
+// ---------- 3 · los llamadores por fotograma del nivel del sol piden nivelEn (sin objeto nuevo); el valor es el mismo (nivelEn == nivel, ver fauna_equivalencia.test.js) ----------
+test("actualizaPaisaje, actualizaSonido y actualizaHuellas piden el nivel del sol con nivelEn y un temporal del módulo, no con nivel()", () => {
+  for (const [mod, ini, tmp] of [["18_paisaje.js", "function actualizaPaisaje(", "lvAgua"], ["20_sonido.js", "function actualizaSonido(", "lvSonido"], ["22b_huellas_polvo.js", "function actualizaHuellas(", "lvHuellas"]]) {
+    const cu = R.cuerpo(lee("apps/web/motor/" + mod), ini);
+    assert.ok(cu !== null, mod + ": " + ini);
+    assert.ok(!/\bnivel\(/.test(cu), mod + ": " + ini + " no debe llamar a nivel() (reserva un objeto por fotograma)");
+    assert.ok(new RegExp("nivelEn\\(cur\\.ms, " + tmp + "\\)").test(cu), mod + ": " + ini + " pide nivelEn(cur.ms, " + tmp + ")");
+  }
+});

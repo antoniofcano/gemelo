@@ -1,7 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos (fmt), 02c_componentes (Bus, Componentes), 09_camara (suelta), 12_paseo (paseando, teclas), 15_tiempo (lluvia, cur, nivel),
-//   16_vida (tVida, enQuad, quad, enDron, dron), 18_paisaje (aguaNivel, distArroyo), 29_vr (VRX, panel, PanelVR), 33_ajustes (Ajustes)
+// Consume: 01_datos (fmt), 02c_componentes (Bus, Componentes), 03_escena (sol), 09_camara (suelta), 12_paseo (paseando, teclas),
+//   15_tiempo (nivelEn, lluvia, cur, nivel), 16_vida (tVida, enQuad, quad, enDron, dron), 18_paisaje (aguaNivel, distArroyo),
+//   29_vr (VRX, panel, PanelVR), 33_ajustes (Ajustes)
 // ===============================================================================
   // ---------- el sonido del olivar: todo sintetizado en el navegador (no hay ficheros de audio) y atado al tiempo del mundo
   var snd = { ctx: null, master: null, t: 0, ave: 1.5, grillo: 0.5, pasoAnt: 0 };
@@ -53,11 +54,12 @@
     if (!snd.ctx || snd.ctx.state !== "running") return; var c = snd.ctx, t = c.currentTime, notas = completa ? [660, 880, 1100, 1320] : [880, 1320];
     notas.forEach(function (f, i) { var o = c.createOscillator(), g = c.createGain(), ini = t + i * 0.11; o.type = "sine"; o.frequency.value = f; g.gain.setValueAtTime(0.0001, ini); g.gain.exponentialRampToValueAtTime(0.16, ini + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, ini + 0.9); o.connect(g); g.connect(snd.master); o.start(ini); o.stop(ini + 1); });
   }
+  var lvSonido = { s: { alt: 0, az: 0 }, d: 0 };   // el nivel del sol de actualizaSonido, el mismo objeto cada fotograma (AG-1.4c)
   function actualizaSonido(dt) {
     var quiere = sAjuste("activo") && !document.hidden;   // un solo interruptor (Configuración → Sonido, decisión 89)
     if (!snd.ctx) return; if (snd.ctx.state !== "running") { if (quiere) snd.ctx.resume(); return; }
     sSuave(snd.master.gain, quiere ? 0.9 * sAjuste("volumen") / 100 : 0, 0.3);
-    var d = nivel(cur.ms).d, v = Math.min(1, cur.viento / 9), rafaga = 0.78 + 0.22 * Math.sin(tVida * 0.7 + Math.sin(tVida * 0.23) * 2);
+    var d = nivelEn(cur.ms, lvSonido).d, v = Math.min(1, cur.viento / 9), rafaga = 0.78 + 0.22 * Math.sin(tVida * 0.7 + Math.sin(tVida * 0.23) * 2);
     sSuave(snd.viento.g.gain, (0.012 + 0.11 * v * v) * rafaga, 0.4); sSuave(snd.viento.f.frequency, 260 + 750 * v, 0.4);
     sSuave(snd.silbo.g.gain, 0.012 * Math.pow(Math.min(1, cur.viento / 6), 1.6), 0.4); sSuave(snd.silbo.f.frequency, 700 + 900 * v + 200 * Math.sin(tVida * 0.9), 0.3);
     sSuave(snd.lluvia.g.gain, cur.lluvia > 0.05 ? Math.min(0.13, 0.014 + cur.lluvia * 0.03) : 0, 0.5);
@@ -137,7 +139,7 @@
   // el manifiesto (ADR-0023): lo lee el guardián pruebas/guardianes/componentes.test.js sin montar nada. ?sonido=0 lo apaga; ?sonido=1 lo enciende.
   Componentes.registra({
     id: "sonido-ambiente", version: 1,
-    consume: ["Ajustes", "PanelVR", "VRX", "paseando", "teclas", "cur", "nivel", "tVida", "enQuad", "quad", "vq", "enDron", "dr", "pp", "aguaNivel", "distArroyo"],
+    consume: ["Ajustes", "PanelVR", "VRX", "paseando", "teclas", "cur", "nivelEn", "tVida", "enQuad", "quad", "vq", "enDron", "dr", "pp", "aguaNivel", "distArroyo"],
     expone: [],
     eventos: { escucha: ["audio:desbloquea", "sonido:baliza", "sonido:golpe", "sonido:juego", "sonido:ladrido"], emite: [] },
     bandera: { defecto: true, url: "sonido" },
