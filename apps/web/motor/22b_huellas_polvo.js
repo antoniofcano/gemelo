@@ -10,6 +10,7 @@
   function HuellasPolvoMotor(n) {
     // --- huellas: pisadas y rodadas que se desvanecen (un anillo de decals instanciados que siguen el terreno)
     var NH = 900, hBorn = new Float32Array(NH).fill(-1e4), hVida = new Float32Array(NH).fill(1), hTipo = new Float32Array(NH), hSig = 0, hPasoAnt = 0, hUlt = null;
+    var hFin = -1e4, pvFin = -1e4;   // cuándo se apaga la última huella y la última bocanada: sin nada vivo no se dibujan (sin ellas three paga igual la pasada, transparente del todo)
     var geoH = new THREE.PlaneGeometry(1, 1); geoH.rotateX(-Math.PI / 2);
     geoH.setAttribute("aBorn", new THREE.InstancedBufferAttribute(hBorn, 1)); geoH.setAttribute("aVida", new THREE.InstancedBufferAttribute(hVida, 1)); geoH.setAttribute("aTipo", new THREE.InstancedBufferAttribute(hTipo, 1));
     var uHuella = { uNow: { value: 0 }, uColor: { value: new THREE.Color(0x2c2218) } };
@@ -23,11 +24,11 @@
         "else { float planta = smoothstep(1.0, 0.7, length(vec2(p.x / 0.3, (p.y + 0.14) / 0.32))); float punta = smoothstep(1.0, 0.7, length(vec2(p.x / 0.36, (p.y - 0.30) / 0.16))); a = max(planta, punta * 0.9) * 0.55; }\n" +
         "a *= 1.0 - smoothstep(0.55, 1.0, vAge); gl_FragColor = vec4(uColor, a);\n#include <colorspace_fragment>\n}"
     });
-    var iHuella = new THREE.InstancedMesh(geoH, matHuella, NH); iHuella.frustumCulled = false; iHuella.count = 0; iHuella.renderOrder = 2; scene.add(iHuella);
+    var iHuella = new THREE.InstancedMesh(geoH, matHuella, NH); iHuella.frustumCulled = false; iHuella.count = 0; iHuella.visible = false; iHuella.renderOrder = 2; scene.add(iHuella);
     var tmpH = new THREE.Object3D();
     function emiteHuella(x, y, ang, w, l, tipo, vida) {
       var i = hSig++ % NH; tmpH.position.set(x, suelo(x, y) * exag + 0.07, -y); tmpH.rotation.set(0, -ang, 0); tmpH.scale.set(w, 1, l); tmpH.updateMatrix(); iHuella.setMatrixAt(i, tmpH.matrix);
-      hBorn[i] = tVida; hVida[i] = vida; hTipo[i] = tipo; iHuella.count = Math.min(hSig, NH);
+      hBorn[i] = tVida; hVida[i] = vida; hTipo[i] = tipo; iHuella.count = Math.min(hSig, NH); hFin = Math.max(hFin, tVida + vida); iHuella.visible = true;
       iHuella.instanceMatrix.needsUpdate = true; ["aBorn", "aVida", "aTipo"].forEach(function (k) { geoH.attributes[k].needsUpdate = true; });
     }
 
@@ -41,9 +42,10 @@
         "void main(){ float e = clamp((uNow - aBorn) / aVida, 0.0, 1.0); vA = (1.0 - e) * (1.0 - e); vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = aTam * (1.0 + 2.4 * e) * (520.0 / max(1.0, -mv.z)); gl_Position = projectionMatrix * mv; }",
       fragmentShader: "uniform vec3 uColor; uniform float uLuz; varying float vA; void main(){ float d = length(gl_PointCoord - 0.5) * 2.0; gl_FragColor = vec4(uColor * uLuz, smoothstep(1.0, 0.1, d) * vA * 0.62);\n#include <colorspace_fragment>\n}"
     });
-    var puntosPolvo = new THREE.Points(geoPv, matPolvo); puntosPolvo.frustumCulled = false; puntosPolvo.renderOrder = 7; scene.add(puntosPolvo);
+    var puntosPolvo = new THREE.Points(geoPv, matPolvo); puntosPolvo.frustumCulled = false; puntosPolvo.visible = false; puntosPolvo.renderOrder = 7; scene.add(puntosPolvo);
     function emitePolvo(x, y, h, vx, vy, vz, tam, vida) {
       var i = pvSig++ % NPV; pvPos[i * 3] = x; pvPos[i * 3 + 1] = h; pvPos[i * 3 + 2] = -y; pvVel[i * 3] = vx; pvVel[i * 3 + 1] = vy; pvVel[i * 3 + 2] = -vz; pvBorn[i] = tVida; pvVida[i] = vida; pvTam[i] = tam;
+      pvFin = Math.max(pvFin, tVida + vida); puntosPolvo.visible = true;
     }
     var hAcPol = 0;
     function actualizaHuellas(dt) {
@@ -70,6 +72,7 @@
         pvVel[i * 3] = pvVel[i * 3] * dra + wx * dt; pvVel[i * 3 + 1] = pvVel[i * 3 + 1] * dra + 0.15 * dt; pvVel[i * 3 + 2] = pvVel[i * 3 + 2] * dra + wz * dt;
         pvPos[i * 3] += pvVel[i * 3] * dt; pvPos[i * 3 + 1] += pvVel[i * 3 + 1] * dt; pvPos[i * 3 + 2] += pvVel[i * 3 + 2] * dt;
       }
+      iHuella.visible = tVida < hFin; puntosPolvo.visible = tVida < pvFin;   // el sombreador las lleva a alfa 0 al cumplir su vida
       geoPv.attributes.position.needsUpdate = true; geoPv.attributes.aBorn.needsUpdate = true; geoPv.attributes.aVida.needsUpdate = true; geoPv.attributes.aTam.needsUpdate = true;
     }
     var disp = false;

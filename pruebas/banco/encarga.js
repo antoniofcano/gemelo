@@ -1,7 +1,7 @@
 "use strict";
 // Encargar una medida al banco en vez de lanzar un Chrome propio (TESTING.md §«Banco de pruebas»). El encargo queda en la cola común
 // (<banco>/encargos/<id>.json) y lo hace la siguiente ronda (`node pruebas/banco/ronda.js`), que abre UN Chrome para todos los encargos.
-//   node pruebas/banco/encarga.js --raiz <carpeta servida> [--pagina index.html] [--variante nombre=?consulta]… [--escenarios lejos,cerca,paseo,paseoAnda,paseoGira]
+//   node pruebas/banco/encarga.js --raiz <carpeta servida> [--pagina index.html] [--variante nombre=?consulta]… [--escenarios lejos,cerca,paseo,paseoAnda,paseoGira,paseoE,paseoS,paseoO]
 //                                 [--capturas] [--desglose] [--de <quién>] [--tope 240] [--espera]
 // --desglose: además, las llamadas de dibujo de un fotograma por objeto en cada escenario (desgloseLlamadas de _navegador.js).
 // Sin --variante se mide la página tal cual («base»). Con --espera no termina hasta que la ronda deja el resultado, y lo imprime.

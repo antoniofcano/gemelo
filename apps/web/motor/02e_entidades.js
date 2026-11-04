@@ -274,7 +274,7 @@
       if (!anillo) {
         var g = new THREE.RingGeometry(0.86, 1, 40); g.rotateX(-Math.PI / 2);
         anillo = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: 0x40f0ff, transparent: true, opacity: 0.85, depthWrite: false, fog: false, forceSinglePass: true }));
-        anillo.name = "resaltado"; anillo.renderOrder = 5; anillo.frustumCulled = false; scene.add(anillo);
+        anillo.name = "resaltado"; anillo.renderOrder = 5; scene.add(anillo);   // se recorta: la geometría es fija (solo se escala y se mueve)
       }
       colocaAnillo();
     }

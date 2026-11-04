@@ -156,7 +156,7 @@
     var cv = document.createElement("canvas"); cv.width = W; cv.height = H;
     var tex = texColor(new THREE.CanvasTexture(cv)); tex.minFilter = THREE.LinearFilter; tex.generateMipmaps = false;
     var m = new THREE.Mesh(new THREE.PlaneGeometry(pw, ph), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthTest: false, fog: false }));
-    m.renderOrder = 998; m.visible = false; m.frustumCulled = false;
+    m.renderOrder = 998; m.visible = false;   // se recorta: el plano es fijo (solo se mueve y gira), así que el volumen que calcula three vale siempre
     return { cv: cv, cx: cv.getContext("2d"), tex: tex, m: m, W: W, H: H, pw: pw, ph: ph, ini: false };
   }
   // el panel (1 × 1,06 m; 1.024 px por metro), la ficha de un olivo y la de una baliza (I5: con «Ir a esta baliza» pulsable; 1.239 px por metro)

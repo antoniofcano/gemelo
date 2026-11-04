@@ -46,11 +46,16 @@
       "if (tam <= 0.0) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); gl_PointSize = 0.0; } else { gl_Position = projectionMatrix * mv; gl_PointSize = tam * uEsc / max(0.5, -mv.z); } }",
     fragmentShader: "uniform vec3 uLuz; varying vec3 vCol; void main(){ vec2 d = gl_PointCoord - 0.5; float r2 = dot(d, d); if (r2 > 0.25) discard; float brillo = smoothstep(0.07, 0.0, length(d - vec2(-0.12, 0.12))); gl_FragColor = vec4(sRGBTransferEOTF(vec4(vCol, 1.0)).rgb * uLuz * (0.82 + 0.4 * (0.25 - r2)) + brillo * 0.3 * uLuz, 1.0);\n#include <colorspace_fragment>\n}"
   });
+  // fuera de lo que pinta el sombreador (b = uBBCH ± 3,5; flores con 58 < b < 70,5 y aceitunas con 70,5 ≤ b < 91) ningún punto tiene tamaño:
+  // el material no se dibuja y no hay pasada vacía (reposo, brotación y crecimiento de los brotes, de febrero a mayo en el calendario típico)
+  function frutosVisibles(b) { return b > 54.5 && b < 94.5; }
+  matFruto.visible = false;   // hasta que actualizaOlivo dé un BBCH con frutos (sin NDV se queda en 0: nada)
   function construyeFrutosLista(grupo) {   // las flores y aceitunas de un grupo de olivos (una de cada cuatro hojas)
     var pos = [], aR = [], aS = [], k = 0;
     grupo.children.filter(function (o) { return o.material === matHojaG || o.material === matHojaP; }).forEach(function (o) { var a = o.geometry.attributes.position.array; for (var i = 0; i < a.length; i += 12) { pos.push(a[i], a[i + 1], a[i + 2]); aR.push(hash(k * 7.13)); aS.push(hash(k * 3.71 + 9)); k++; } });
     var g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("aR", new THREE.Float32BufferAttribute(aR, 1)); g.setAttribute("aS", new THREE.Float32BufferAttribute(aS, 1)); g.computeBoundingSphere();
-    var p = new THREE.Points(g, matFruto); p.frustumCulled = false; grupo.add(p);
+    g.boundingSphere.radius += 1;   // el sombreador acerca cada punto 1 m a la cámara (mv.z += 1.0): con ese margen se recorta sin perder ninguno
+    var p = new THREE.Points(g, matFruto); grupo.add(p);
   }
 
   // --- la fecha manda: sol, clima y fenología
@@ -103,7 +108,7 @@
     var vig = 0.9 + 0.2 * v;   // copa apagada: más pardo y más oscura; vigorosa: más verde
     tonoO.setRGB((1.06 - 0.1 * v) * (1 + 0.04 * brote) * (1 - reposo), vig * (1 + 0.12 * brote) * (1 - reposo), (0.96 + 0.06 * v) * (1 - 0.12 * brote) * (1 - reposo), SRGB);
     matHojaG.color.multiply(tonoO); matHojaP.color.multiply(tonoO);
-    uFruto.uBBCH.value = bb; uFruto.uEsc.value = renderer.domElement.height * 0.5; uFruto.uLuz.value.copy(matHojaG.color);
+    uFruto.uBBCH.value = bb; matFruto.visible = frutosVisibles(bb); uFruto.uEsc.value = renderer.domElement.height * 0.5; uFruto.uLuz.value.copy(matHojaG.color);
   }
   window.__otDebug = function () { var o = gFollaje.children.length ? gFollaje.children[gFollaje.children.length - 1].children.slice(-1)[0] : null; return { hijos: gFollaje.children.length, puntos: o && o.geometry && o.geometry.attributes.position ? o.geometry.attributes.position.count : -1, bbch: uFruto.uBBCH.value, esc: uFruto.uEsc.value, visible: gFollaje.visible, tipo: o && o.type }; };
   calibraFenologia();

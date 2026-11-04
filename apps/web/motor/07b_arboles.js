@@ -30,7 +30,9 @@
     function claveActual() { return exag + "|" + calidad + "|" + kcor + "|" + tinte + "|" + ndviIdx; }   // lo que está pegado a la geometría de una celda de nivel 0: si cambia, la celda se rehace
 
     // ----- las formas de los niveles 1 y 2 las da el catálogo (07a_catalogo.js): el tipo −1 son las de siempre, 4 variantes en L1 (copa + tronco) y 2 en L2
-    function instancias(geo, mat, cap, color) { var m = new THREE.InstancedMesh(geo, mat, cap); if (color) m.setColorAt(0, new THREE.Color(1, 1, 1)); m.frustumCulled = false; m.count = 0; gArboles.add(m); return m; }
+    function instancias(geo, mat, cap, color) { var m = new THREE.InstancedMesh(geo, mat, cap); if (color) m.setColorAt(0, new THREE.Color(1, 1, 1)); m.frustumCulled = false; cuenta(m, 0); gArboles.add(m); return m; }
+    // vacía no se dibuja: con count 0 three paga igual la pasada (programa, uniformes y VAO) sin dibujar nada; con el tileset de olivos, L1 y L2 van vacías siempre
+    function cuenta(m, n) { m.count = n; m.visible = n > 0; }
     var iCopa1 = [], iTron1 = [], iCopa2 = [], p, pz;
     for (p = 0; p < NP1; p++) { pz = Catalogo.geometria(Catalogo.SIN, 1, p); iCopa1.push(instancias(pz[0].geo, pz[0].mat, MAX1, true)); iTron1.push(instancias(pz[1].geo, pz[1].mat, MAX1, false)); }
     for (p = 0; p < NP2; p++) { pz = Catalogo.geometria(Catalogo.SIN, 2, p); iCopa2.push(instancias(pz[0].geo, pz[0].mat, MAX2, true)); }
@@ -175,9 +177,9 @@
           e[0] = cs; e[2] = -sn; e[5] = (cb + 0.35) * exag; e[8] = sn; e[10] = cs; iTron1[q].setMatrixAt(n, mm);
         } else { var q2 = c.pr % NP2, n2b = cnt2[q2]++; a2++; iCopa2[q2].setMatrixAt(n2b, mm); iCopa2[q2].setColorAt(n2b, tc); }
       }
-      for (k = 0; k < NP1; k++) { iCopa1[k].count = iTron1[k].count = cnt1[k]; iCopa1[k].instanceMatrix.needsUpdate = iTron1[k].instanceMatrix.needsUpdate = true; if (iCopa1[k].instanceColor) iCopa1[k].instanceColor.needsUpdate = true; }
-      for (k = 0; k < NP2; k++) { iCopa2[k].count = cnt2[k]; iCopa2[k].instanceMatrix.needsUpdate = true; if (iCopa2[k].instanceColor) iCopa2[k].instanceColor.needsUpdate = true; }
-      for (k in extra) [[extra[k].m1, extra[k].n1], [extra[k].m2, extra[k].n2]].forEach(function (mn) { mn[0].forEach(function (m) { m.count = mn[1]; m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; }); });
+      for (k = 0; k < NP1; k++) { cuenta(iCopa1[k], cnt1[k]); cuenta(iTron1[k], cnt1[k]); iCopa1[k].instanceMatrix.needsUpdate = iTron1[k].instanceMatrix.needsUpdate = true; if (iCopa1[k].instanceColor) iCopa1[k].instanceColor.needsUpdate = true; }
+      for (k = 0; k < NP2; k++) { cuenta(iCopa2[k], cnt2[k]); iCopa2[k].instanceMatrix.needsUpdate = true; if (iCopa2[k].instanceColor) iCopa2[k].instanceColor.needsUpdate = true; }
+      for (k in extra) [[extra[k].m1, extra[k].n1], [extra[k].m2, extra[k].n2]].forEach(function (mn) { mn[0].forEach(function (m) { cuenta(m, mn[1]); m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; }); });
       n1 = a1; n2 = a2; triEst = tri0 + a1 * TRI1 + a2 * TRI2 + triTil;
       ultima.x = cam.x; ultima.y = cam.y; ultima.z = cam.z; ultima.exag = exag; ultima.k = tinte + "|" + ndviIdx + "|" + kcor; sucio = false;
     }
@@ -207,9 +209,9 @@
     function apagaSiempre(todos) {
       Object.keys(celdas).forEach(function (k) { var c = celdas[k]; Cola.cancela("C" + k); if (c.g) quitaCelda(c); c.en = c.pre = false; });
       var k;
-      for (k = 0; k < NP1; k++) iCopa1[k].count = iTron1[k].count = 0;
-      for (k = 0; k < NP2; k++) iCopa2[k].count = 0;
-      for (k in extra) extra[k].m1.concat(extra[k].m2).forEach(function (m) { m.count = 0; });
+      for (k = 0; k < NP1; k++) { cuenta(iCopa1[k], 0); cuenta(iTron1[k], 0); }
+      for (k = 0; k < NP2; k++) cuenta(iCopa2[k], 0);
+      for (k in extra) extra[k].m1.concat(extra[k].m2).forEach(function (m) { cuenta(m, 0); });
       if (todos && !tilApartados) { tilApartados = true; OlivosTiles.cerca(olivos.map(function (c) { return c.i; })); }   // la máscara de 04c, con todos: el tileset no dibuja ninguno
       if (!todos) tilApartados = false;
     }
