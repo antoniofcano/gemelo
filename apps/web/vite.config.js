@@ -61,6 +61,8 @@ export default defineConfig({
       { find: /^livekit-client$/, replacement: path.join(WEB, "node_modules", "livekit-client", "dist", "livekit-client.esm.mjs") },
       // nipplejs (EV2-B2, palanca táctil): el motor lo pide con import() solo con la palanca encendida (táctil, o ?palanca=1); apagada, no se descarga
       { find: /^nipplejs$/, replacement: path.join(WEB, "node_modules", "nipplejs", "dist", "index.mjs") },
+      // three-mesh-bvh (AG-1.6): el motor lo pide con import() solo con ?bvh; sin alias, la raíz generada fuera de apps/web no lo encuentra
+      { find: /^three-mesh-bvh$/, replacement: path.join(WEB, "node_modules", "three-mesh-bvh", "build", "index.module.js") },
       // @pixiv/three-vrm (P7c, avatares VRM): import() solo con presencia y alguien con avatar del catálogo; su build ES solo importa «three»
       { find: /^@pixiv\/three-vrm$/, replacement: path.join(WEB, "node_modules", "@pixiv", "three-vrm", "lib", "three-vrm.module.js") },
     ],
