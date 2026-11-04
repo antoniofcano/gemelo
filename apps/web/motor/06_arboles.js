@@ -1,13 +1,13 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: gArboles, gFollaje, gSombras, tronco, matTronco, radioEn, arbolesG
 // Consume: 01_datos (D, fmt, FACTOR_R8, ESC_R8), 02_mundo (suelo, aviva, colorEn, copas, marc), 02e_entidades (Entidades, Usables),
-//   03_escena (scene, camera, colorVertSRGB, exag, modo), 04d_sombreado_tiles (hash), 07ab_generados (Generados), 07b_arboles (Arboles),
-//   09_camara (elige), 13_parcelas (parcelas), 14_historia (FINCA, lista), 15_tiempo (nivel), 29_vr (ficha)
+//   02i_materiales (Materiales), 03_escena (scene, camera, colorVertSRGB, exag, modo), 04d_sombreado_tiles (hash), 07ab_generados (Generados),
+//   07b_arboles (Arboles), 09_camara (elige), 13_parcelas (parcelas), 14_historia (FINCA, lista), 15_tiempo (nivel), 29_vr (ficha)
 // ===============================================================================
   // ---------- los olivos del modo Gemelo: copa con la forma real medida (8 radios) y tronco debajo (nivel 0, por celdas de 64 m; ver Arboles)
   var gArboles = new THREE.Group(), gFollaje = gArboles, gSombras = new THREE.Group(); gArboles.name = "arboles"; gSombras.name = "sombras-olivos"; scene.add(gArboles); scene.add(gSombras);   // gFollaje es el mismo grupo: las celdas de nivel 0 llevan copa, tronco, hojas y frutos
   var matCopa = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }), matTronco = new THREE.MeshLambertMaterial({ vertexColors: true });
-  matCopa.onBeforeCompile = matTronco.onBeforeCompile = colorVertSRGB;   // el color por vértice está escrito en sRGB (03_escena)
+  Materiales.parchea(matCopa, "copa-l0", colorVertSRGB); Materiales.parchea(matTronco, "tronco-l0", colorVertSRGB);   // el color por vértice está escrito en sRGB (03_escena)
   var KSEG = 20, RING = 9;
   function radioEn(perfil, ang) { // ang en rad (0 = este, antihorario); interpolación circular
     var f = ((ang % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI) / (2 * Math.PI) * 8, i0 = Math.floor(f) % 8, i1 = (i0 + 1) % 8, t = f - Math.floor(f);

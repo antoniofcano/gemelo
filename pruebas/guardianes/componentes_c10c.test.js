@@ -6,6 +6,7 @@
 const test = require("node:test"), assert = require("node:assert"), vm = require("vm"), path = require("path"), { pathToFileURL } = require("url");
 const { aparatoDe } = require("./_aparato");
 const { lee, RAIZ } = require("./_util");
+const { conFabrica } = require("./_materiales");   // Materiales e InfoDibujo (02h/02i, F1) en el contexto del módulo
 
 let THREE;
 test.before(async () => { THREE = await import(pathToFileURL(path.join(RAIZ, "apps/web/node_modules/three/build/three.module.js")).href); });
@@ -23,7 +24,7 @@ function contexto(Bus) {
 }
 function carga(fichero, g, defs) {
   g.Componentes = { registra: d => { defs.push(d); return true; } };
-  vm.runInContext("\"use strict\";\n" + lee("apps/web/motor/" + fichero), vm.createContext(g), { filename: fichero });
+  vm.runInContext("\"use strict\";\n" + lee("apps/web/motor/" + fichero), vm.createContext(conFabrica(g)), { filename: fichero });
   assert.strictEqual(defs.length, 1, "un componente por fichero");
   return defs[0];
 }

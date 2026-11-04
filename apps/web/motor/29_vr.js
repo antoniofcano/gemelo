@@ -2,8 +2,9 @@
 // Expone: VRX, vrDebugExtra, vrFundido, vrAparece, panel, ficha, fichaB, PanelVR, vrActualiza, VR_PERFILES, vrFin
 // Consume: 01_datos (D, $, fmt, VRP), 02_mundo (Mundo, suelo, orto, copas), 02c_componentes (ComponentesPuro, Bus, Config),
 //   02d_laminas (LaminasPuro, Laminas), 02e_entidades (EntidadesPuro, Entidades, Usables), 02f_xr_perillas (XrPerillas),
-//   02g_vr_presupuesto (VrPresupuesto), 03_escena (lienzo, visor, renderer, scene, camera, sol, texColor, exag, modo, calidad),
-//   04b_escena3d (Escena3D), 05_nube (nube), 07b_arboles (Arboles), 08_marcadores (capas), 09_camara (pon), 10_ndvi (NDV, ndviIdx),
+//   02g_vr_presupuesto (VrPresupuesto), 02h_render (InfoDibujo), 02i_materiales (Materiales),
+//   03_escena (lienzo, visor, renderer, scene, camera, sol, texColor, exag, modo, calidad), 04b_escena3d (Escena3D), 05_nube (nube),
+//   07b_arboles (Arboles), 08_marcadores (capas), 09_camara (pon), 10_ndvi (NDV, ndviIdx),
 //   12_paseo (paseando, persona, teclas, primera, entraPaseo, salePaseo, actualizaPaseo), 12b_llegada (Llegada), 13_parcelas (parcelas, fincas),
 //   14_historia (lista, aviso), 15_tiempo (calma, meta, nivel, rumbo, hace, pasoHoraMundo, horaMundoTexto, anuncia),
 //   16_vida (quita, mira, quad, dron), 22_huellas (pendFactor), 24_pantalla (suave), 33_ajustes (Ajustes), 90_final (tamano, cuadro, bucle)
@@ -592,7 +593,7 @@
   });
 
   // ----- 5) la viñeta de confort (un velo con el centro transparente, pegado a la cabeza)
-  var vrVineta = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.4), new THREE.ShaderMaterial({
+  var vrVineta = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.4), Materiales.sombreador("vineta-vr", {
     uniforms: { uK: { value: 0 } }, transparent: true, depthTest: false, depthWrite: false,
     vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
     fragmentShader: "uniform float uK; varying vec2 vUv; void main(){ float r = length(vUv - 0.5) * 2.0; float a = smoothstep(0.28, 0.62, r) * uK; gl_FragColor = vec4(0.0, 0.0, 0.0, a); }"
@@ -673,7 +674,7 @@
       });
     });
   }
-  window.__vrDebug = function () { return Object.assign({ on: VRX.on, estado: VRX.estado, capas: VR_CAPAS, nivel: VRX.nivel, rig: JSON.parse(JSON.stringify(VRX.rig)), cabeza: [VRX.cab.x, VRX.cab.y, VRX.cab.z], pp: [pp.x, pp.y], vuelo: VRX.vuelo, panel: panel.m.visible, ficha: ficha.m.visible, hover: VRX.hover, pestana: VRX.pestana, giro: VRX.giro, sinEscena: VRX.sinPint, vinetaOn: VRX.vineta, vineta: vrVineta.material.uniforms.uK.value, sesionesN: VRX.sesionesN, paseando: paseando, primera: primera, modo: modo, exag: exag, hora: horaMundoTexto(), horaMs: meta.ms, solY: sol.position.y, solI: sol.intensity, ndvi: ndviIdx, parcSel: VRX.parcSel, panelPos: panel.m.position.toArray(), fichaPos: ficha.m.position.toArray(), mira: [VRX.mira.x, VRX.mira.z], agarre: vrAg ? (vrAg.l ? vrAg.l.nombre : "lamina:" + vrAg.id) : "", panelPuesto: !!panel.puesta, frames: renderer.info.render.frame, nivelArb: Arboles.resumen(), hierba: VRP.hierba, bump: UN.uBumpK.value, perfiles: VR_PERFILES.length, xr: { near: XrPerillas.efectivas.near, topeJs: XrPerillas.js(), fov: XrPerillas.efectivas.fov, escala: XrPerillas.efectivas.escala, hz: XrPerillas.efectivas.hz, aa: XrPerillas.aa, nivelFijo: XrPerillas.efectivas.nivel, adaptativo: XrPerillas.efectivas.nivel == null, ignorados: XrPerillas.efectivas.ignorados, linea: XrPerillas.linea() }, near: camera.near, far: camera.far,
+  window.__vrDebug = function () { return Object.assign({ on: VRX.on, estado: VRX.estado, capas: VR_CAPAS, nivel: VRX.nivel, rig: JSON.parse(JSON.stringify(VRX.rig)), cabeza: [VRX.cab.x, VRX.cab.y, VRX.cab.z], pp: [pp.x, pp.y], vuelo: VRX.vuelo, panel: panel.m.visible, ficha: ficha.m.visible, hover: VRX.hover, pestana: VRX.pestana, giro: VRX.giro, sinEscena: VRX.sinPint, vinetaOn: VRX.vineta, vineta: vrVineta.material.uniforms.uK.value, sesionesN: VRX.sesionesN, paseando: paseando, primera: primera, modo: modo, exag: exag, hora: horaMundoTexto(), horaMs: meta.ms, solY: sol.position.y, solI: sol.intensity, ndvi: ndviIdx, parcSel: VRX.parcSel, panelPos: panel.m.position.toArray(), fichaPos: ficha.m.position.toArray(), mira: [VRX.mira.x, VRX.mira.z], agarre: vrAg ? (vrAg.l ? vrAg.l.nombre : "lamina:" + vrAg.id) : "", panelPuesto: !!panel.puesta, frames: InfoDibujo.fotograma(renderer), nivelArb: Arboles.resumen(), hierba: VRP.hierba, bump: UN.uBumpK.value, perfiles: VR_PERFILES.length, xr: { near: XrPerillas.efectivas.near, topeJs: XrPerillas.js(), fov: XrPerillas.efectivas.fov, escala: XrPerillas.efectivas.escala, hz: XrPerillas.efectivas.hz, aa: XrPerillas.aa, nivelFijo: XrPerillas.efectivas.nivel, adaptativo: XrPerillas.efectivas.nivel == null, ignorados: XrPerillas.efectivas.ignorados, linea: XrPerillas.linea() }, near: camera.near, far: camera.far,
     panelTam: [panel.W, panel.H, panel.pw, panel.ph], fichaB: fichaB.m.visible, fichaBPos: fichaB.m.position.toArray(), fichaBTam: [fichaB.W, fichaB.H, fichaB.pw, fichaB.ph], fichaId: VRX.fichaId, hoverB: VRX.hoverB, fichaGente: VRX.balInfo && VRX.fichaId ? VRX.balInfo.gente : null,
     tiempo: null, fichaTiempo: null,   // los pone la fila del componente fichas-tiempo (35_fichas_tiempo.js) por PanelVR.debug(), si está
     gente: VRX.gente ? { activo: VRX.gente.activo, n: VRX.gente.n, filas: VRX.gente.filas.map(function (f) { return { id: f.id, alias: f.alias, modo: f.modo, dist: f.dist }; }) } : null }, PanelVR.debug()); };

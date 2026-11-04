@@ -1,8 +1,9 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Escalera, Generados
 // Consume: 01_datos (D, VRP, FACTOR_R8_GEN, factorCopaDeConfig), 01a_aparato (Aparato), 02_mundo (suelo, copas), 02c_componentes (Config),
-//   03_escena (renderer, scene, camera, colorVertSRGB, exag), 06_arboles (gArboles), 08_marcadores (aplica), 09_camara (suelta),
-//   12_paseo (paseando, primera), 14_historia (hist, lista), 15_tiempo (parcheTiempo, nivel, hace), 16_vida (esfera, mira), 29_vr (VR_PERFILES)
+//   02i_materiales (Materiales), 03_escena (renderer, scene, camera, colorVertSRGB, exag), 06_arboles (gArboles), 08_marcadores (aplica),
+//   09_camara (suelta), 12_paseo (paseando, primera), 14_historia (hist, lista), 15_tiempo (parcheTiempo, nivel, hace), 16_vida (esfera, mira),
+//   29_vr (VR_PERFILES)
 // ===============================================================================
   // ---------- olivos GENERADOS cerca (ADR-0017, decisiones 26-28, 34 y 52), POR DEFECTO (O10a, Antonio 2026-11-02): sin ?olivos=, si la finca trae copas_param y copas_id (y el aparato puede), se comporta como con ?olivos=gen;
   // ?olivos=0 (o =no) lo apaga y el motor dibuja lo de siempre. La decisión es UNA función pura (GeneradosPuro.activo, abajo); si el constructor no está en el build o falla al cargar, lo de siempre sin avisar en consola (se dice en ?debug).
@@ -297,11 +298,11 @@
         .replace("#include <color_vertex>", "#include <color_vertex>\n#if defined( USE_BATCHING_COLOR ) && ! defined( USE_COLOR ) && ! defined( USE_INSTANCING_COLOR )\n vColor.rgb = ot_lin(vColor.rgb);\n#endif");
     }
     function parcheGen(m) {
-      if (m.isMeshDepthMaterial) { M.encadena(m, parcheFundido, "gen-fundido"); return; }
+      if (m.isMeshDepthMaterial) { Materiales.encadena(m, "gen-profundidad", parcheFundido, "gen-fundido", M.encadena); return; }
       if (m.color) m.color.convertSRGBToLinear();   // el número de la referencia es un color «tal como se ve» (sRGB): el convenio del motor
-      M.encadena(m, function (sh) { parcheLuz(sh); parcheFundido(sh); }, "gen-luz-fundido");
+      Materiales.encadena(m, "gen-olivo", function (sh) { parcheLuz(sh); parcheFundido(sh); }, "gen-luz-fundido", M.encadena);
     }
-    function profundidad() { var d = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking }); M.encadena(d, parcheFundido, "gen-fundido"); return d; }
+    function profundidad() { var d = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking }); Materiales.encadena(d, "gen-profundidad", parcheFundido, "gen-fundido", M.encadena); return d; }
     // la entrada del generador para un olivo del registro: semilla guardada o su id; parámetros medidos (copas_param) o h y r8 × FACTOR_R8_GEN
     function entrada(c) {
       var raw = D.copas[c.i], id = D.copas_id ? D.copas_id[c.i] : -1;

@@ -14,7 +14,7 @@ const url = process.argv[2], pref = process.argv[3] || "cap/p";
   for (const [n, e] of E) {
     if (e) await p.evaluate((e) => { const g = window.__g; g.orb.az = e.az; g.orb.el = e.el; g.orb.dist = e.dist; g.objetivo.x = e.ox; g.objetivo.z = -e.oy; g.objetivo.y = g.suelo(e.ox, e.oy) + 4; g.pon(e.modo); }, e);
     await p.waitForTimeout(Number(process.env.ESPERA || 7000));
-    const s = await p.evaluate(() => { const g = window.__g, r = g.renderer.info; return { calls: r.render.calls, tri: r.render.triangles, pts: r.render.points, geos: r.memory.geometries, tex: r.memory.textures, heapMB: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : -1, arb: g.Arboles.resumen(), cargadas: g.Mundo.lista.filter(t => t.estado === 2).length, tot: g.Mundo.lista.length, panel: (document.querySelector("#visor > div[style*=monospace]") || {}).textContent }; });
+    const s = await p.evaluate(() => { const g = window.__g, r = g.infoDibujo(); return { calls: r.llamadas, tri: r.triangulos, pts: r.puntos, geos: r.geometrias, tex: r.texturas, heapMB: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : -1, arb: g.Arboles.resumen(), cargadas: g.Mundo.lista.filter(t => t.estado === 2).length, tot: g.Mundo.lista.length, panel: (document.querySelector("#visor > div[style*=monospace]") || {}).textContent }; });
     console.log(n, JSON.stringify(s)); const bb = await p.locator("#visor").boundingBox(); await p.screenshot({ path: pref + "_" + n + ".png", clip: bb });
   }
   console.log("peticiones de teselas:", pet.length, "· errores:", err.length, err.slice(0, 5)); await b.close();

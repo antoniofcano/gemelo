@@ -18,6 +18,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import vm from "node:vm";
+import { createRequire } from "node:module";
+const { conFabrica } = createRequire(import.meta.url)("../guardianes/_materiales.js");
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -61,7 +63,7 @@ function contexto(busqueda, reloj, mas) {
     Cola: { add: () => { throw new Error("los generados no deben usar la Cola compartida"); }, hay: () => false }
   };
   if (mas) Object.assign(ctx, mas.glob);
-  vm.createContext(ctx);
+  vm.createContext(conFabrica(ctx));   // Materiales (02i, F1): 07ab y 07ac pasan sus parches por la fábrica
   vm.runInContext(piezas + "\n" + A01 + "\n" + G07 + "\n" + L07 + "\n" + (mas ? mas.codigo : "") + "\n;this.__G = Generados; this.__E = Escalera; this.__L = Lejanos;", ctx, { filename: "07ab+07ac" + (mas ? "+07b" : "") });
   return ctx;
 }

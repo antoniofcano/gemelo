@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Catalogo
-// Consume: 04d_sombreado_tiles (hash), 06_arboles (tronco), 08_marcadores (tmp), 15_tiempo (parcheTiempo, nivel)
+// Consume: 02i_materiales (Materiales), 04d_sombreado_tiles (hash), 06_arboles (tronco), 08_marcadores (tmp), 15_tiempo (parcheTiempo, nivel)
 // ===============================================================================
   // ---------- el catálogo de olivos-tipo (ADR-0012; contrato de entrada en contratos/olivos-tipo.md): de dónde sacan los niveles 1 y 2 su geometría
   // Hoy solo hay el tipo −1 («sin asignar»): las formas por procedimiento de siempre (4 variantes de copa en vaso con su tronco en L1 y 2 masas en L2), las
@@ -58,7 +58,7 @@
         .replace("#include <color_fragment>", "#include <color_fragment>\n float nz = ot_h3(floor(vLoc * 7.0 + vSeed * 31.0)); float nz2 = ot_h3(floor(vLoc * 15.0 + vSeed * 17.0));\n if (nz < (vRim - 0.72) * 2.8) discard;\n diffuseColor.rgb *= 0.74 + 0.50 * nz2;\n diffuseColor.rgb = mix(diffuseColor.rgb, sRGBTransferEOTF(vec4(0.64, 0.70, 0.56, 1.0)).rgb,smoothstep(0.45, 1.0, vRim) * 0.40 * (0.45 + nz));");
     }
     var matCopaI = new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: true }), matTroncoI = new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: true });
-    matCopaI.onBeforeCompile = parcheCopa; matTroncoI.onBeforeCompile = parcheInst; matCopaI.needsUpdate = true; matTroncoI.needsUpdate = true;
+    Materiales.parchea(matCopaI, "copa-l1", parcheCopa); Materiales.parchea(matTroncoI, "tronco-l1", parcheInst); matCopaI.needsUpdate = true; matTroncoI.needsUpdate = true;
 
     // las piezas por procedimiento, creadas al pedirlas y guardadas (07b_arboles.js las pide al montarse, en el orden de antes)
     function procedural(nivel, v) {

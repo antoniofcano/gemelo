@@ -11,6 +11,7 @@
 const test = require("node:test"), assert = require("node:assert");
 const fc = require("fast-check");
 const { RAIZ, fs, path, lee } = require("./_util");
+const { conFabrica } = require("./_materiales");   // Materiales e InfoDibujo (02h/02i, F1) en el contexto del módulo
 
 const FUENTE = lee("apps/web/motor/44_lindes.js");
 const trozo = (ini, fin) => { const i = FUENTE.indexOf(ini), f = FUENTE.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas " + ini); return FUENTE.slice(i, f); };
@@ -175,6 +176,7 @@ function entorno({ hazas = [], falla = false } = {}) {
     Hazas: { lindes: () => hazas.map(h => ({ id: h.id, codigo: h.codigo, es_mia: h.es_mia, anillos: h.anillos })) },
     Componentes: { libera: id => reg.libera.push(id) }, window: {}, console: { log: (...a) => reg.consola.push(a), warn: (...a) => reg.consola.push(a), error: (...a) => reg.consola.push(a) },
   };
+  conFabrica(env);
   const nombres = Object.keys(env);
   const crea = new Function(...nombres, "\"use strict\";\n" + PURO + MOTOR + "\nreturn { LindesMotor: LindesMotor, pon: function (k, v) { eval(k + ' = v'); } };");
   // exag es una variable del motor que cambia el deslizador: se simula con un getter sobre un objeto mutable

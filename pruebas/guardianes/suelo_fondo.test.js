@@ -7,6 +7,7 @@
 const test = require("node:test"), assert = require("node:assert");
 const { pathToFileURL } = require("url");
 const { RAIZ, fs, path } = require("./_util");
+const { conFabrica } = require("./_materiales");   // Materiales e InfoDibujo (02h/02i, F1) en el contexto del módulo
 
 const WEB = path.join(RAIZ, "apps", "web"), THREE_JS = path.join(WEB, "node_modules", "three", "build", "three.module.js");
 const SALTO = fs.existsSync(THREE_JS) ? null : "three no instalado (cd apps/web && npm ci): el suelo de fondo NO se ha comprobado";
@@ -22,8 +23,8 @@ function monta(estado = "activo", exag = 1) {
   const UN = { uMos: { value: tex } }, matSuelo = new THREE.MeshLambertMaterial({}), Mundo = { grueso }, Escena3D = { estado: () => est.v };
   // exag es una variable del motor que cambia: en la maqueta se lee con una función
   // desde C10 (tercera tanda) es un componente: se registra y se monta con un contexto de mentira; lo que devuelve monta() es el api de siempre
-  const defs = [], src = FUENTE.replace(/\bexag\b/g, "exag()"), g = Function("THREE", "D", "Mundo", "UN", "matSuelo", "Escena3D", "scene", "exag", "Componentes", src + "\nreturn null;");
-  g(THREE, D, Mundo, UN, matSuelo, Escena3D, scene, () => ex.v, { registra: d => (defs.push(d), true) });
+  const defs = [], src = FUENTE.replace(/\bexag\b/g, "exag()"), g = Function("THREE", "D", "Mundo", "UN", "matSuelo", "Escena3D", "scene", "exag", "Componentes", "Materiales", src + "\nreturn null;");
+  g(THREE, D, Mundo, UN, matSuelo, Escena3D, scene, () => ex.v, { registra: d => (defs.push(d), true) }, conFabrica({ THREE }).Materiales);
   assert.strictEqual(defs.length, 1);
   return { SF: defs[0].monta({ on() {}, emite() {}, limpia() {} }), def: defs[0], scene, tex, est, ex, D, matSuelo };
 }

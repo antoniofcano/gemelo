@@ -8,6 +8,7 @@
 // No mide llamadas ni fps: eso lo hace el banco (escenarios paseo, paseoE, paseoS, paseoO, en Chrome). Ni Quest ni iPhone: no probado.
 const test = require("node:test"), assert = require("node:assert"), vm = require("vm"), path = require("path"), { pathToFileURL } = require("url");
 const { lee, RAIZ, fs } = require("./_util");
+const { conFabrica } = require("./_materiales");   // Materiales e InfoDibujo (02h/02i, F1) en el contexto del módulo
 
 let THREE;
 test.before(async () => { THREE = await import(pathToFileURL(path.join(RAIZ, "apps/web/node_modules/three/build/three.module.js")).href); });
@@ -67,7 +68,7 @@ function mundoPaisaje(ejesExtra) {
   };
   g.scene.add(g.gSombras);
   if (ejesExtra) g.D.paisaje.arroyo.ejes.push(...ejesExtra);
-  vm.runInContext("\"use strict\";\n" + lee("apps/web/motor/18_paisaje.js"), vm.createContext(g), { filename: "18_paisaje.js" });
+  vm.runInContext("\"use strict\";\n" + lee("apps/web/motor/18_paisaje.js"), vm.createContext(conFabrica(g)), { filename: "18_paisaje.js" });
   return { g, sol };
 }
 const recortados = raiz => { const l = []; raiz.traverse(o => { if ((o.isMesh || o.isLine || o.isPoints) && o.frustumCulled) l.push(o); }); return l; };
@@ -180,7 +181,7 @@ function mundoEstacion(fechas) {
     SRGB: THREE.SRGBColorSpace, gFollaje: new THREE.Group(), window: {}, setTimeout, clearTimeout, fmtClaveDia: { format: () => "2026-11-04" }, fmtHora: { format: () => "12:00" },
     TM: {}, TiempoPuro: {}, esc: s => s, num1: x => String(x), objetivoMundoBase: () => ({}), aplicaMundo: null, lluvia: null, modo: "gem", Event: function () {}
   };
-  vm.runInContext("\"use strict\";\n" + lee("apps/web/motor/23_estacion.js"), vm.createContext(g), { filename: "23_estacion.js" });
+  vm.runInContext("\"use strict\";\n" + lee("apps/web/motor/23_estacion.js"), vm.createContext(conFabrica(g)), { filename: "23_estacion.js" });
   return g;
 }
 test("23_estacion: las flores y aceitunas se recortan con su esfera (1 m más por lo que las acerca el sombreador) y la contiene", () => {

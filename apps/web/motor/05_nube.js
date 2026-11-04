@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: ALTO_MAX, nube, pintaNube, actualizaNubeTeselas, actualizaNube
-// Consume: 02_mundo (Mundo, suelo, copaAlta, kcor, tinte, aviva, colorEn), 02b_cola (Cola), 03_escena (scene, camera, exag),
-//   04d_sombreado_tiles (hash), 06_arboles (tronco), 08_marcadores (aplica), 10_ndvi (ndviIdx), 12_paseo (primera),
+// Consume: 02_mundo (Mundo, suelo, copaAlta, kcor, tinte, aviva, colorEn), 02b_cola (Cola), 02i_materiales (Materiales),
+//   03_escena (scene, camera, exag), 04d_sombreado_tiles (hash), 06_arboles (tronco), 08_marcadores (aplica), 10_ndvi (ndviIdx), 12_paseo (primera),
 //   15_tiempo (parcheTiempo, nivel, hace)
 // ===============================================================================
   // ---------- nube de puntos LiDAR: una malla por tesela, con las posiciones cuantizadas a 16 bits y el color a 8, y nivel de detalle por distancia
@@ -11,7 +11,7 @@
   var ALTO_MAX = 7.5;   // por encima de 7,5 m no hay olivo: cipreses, pinos o ruido
   var NIV_NUBE = [{ d: 300, f: 1 }, { d: 700, f: 0.5 }, { d: 1300, f: 0.18 }, { d: 2300, f: 0.045 }], PRESUPUESTO_NUBE = 1400000;   // puntos dibujados como máximo; si se pasa, lo lejano se aclara
   var nubeMat = new THREE.PointsMaterial({ size: 0.6, sizeAttenuation: true, vertexColors: true });   // «maestro»: el ciclo del día le pone el color; los niveles comparten ese color
-  var matsNube = NIV_NUBE.map(function (nv) { var m = new THREE.PointsMaterial({ size: Math.min(3, 0.6 / Math.sqrt(nv.f)), sizeAttenuation: true, vertexColors: true }); m.color = nubeMat.color; m.onBeforeCompile = function (sh) { parcheTiempo(sh, false); }; m.needsUpdate = true; return m; });
+  var matsNube = NIV_NUBE.map(function (nv) { var m = new THREE.PointsMaterial({ size: Math.min(3, 0.6 / Math.sqrt(nv.f)), sizeAttenuation: true, vertexColors: true }); m.color = nubeMat.color; Materiales.parchea(m, "nube-lidar", function (sh) { parcheTiempo(sh, false); }); m.needsUpdate = true; return m; });
   var nube = { material: nubeMat, g: new THREE.Group(), set visible(v) { this.g.visible = !!v; }, get visible() { return this.g.visible; } };
   scene.add(nube.g);
   var claveColorNube = "";
