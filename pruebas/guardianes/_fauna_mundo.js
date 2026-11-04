@@ -63,7 +63,8 @@ function construye(THREE, fichero, copas, sem) {
     cur: { lluvia: 0, viento: 1, dir: 0, ms: Date.UTC(2026, 5, 21, 15, 0, 0) }, camera: new THREE.PerspectiveCamera(),
     matSombra: new THREE.MeshBasicMaterial(), geoSombra: new THREE.PlaneGeometry(1, 1),
     esfera(r, m, sx, sy, sz, x, y, z, padre) { const me = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 8), m); me.scale.set(sx, sy, sz); me.position.set(x, y, z); padre.add(me); return me; },
-    mira(o, hx, hz) { o.rotation.y = Math.atan2(-hx, -hz); }
+    mira(o, hx, hz) { o.rotation.y = Math.atan2(-hx, -hz); },
+    fusionaGeometrias: require("./_materiales").fabrica(THREE).fusionaGeometrias   // 02k_fusiona.js (AG-1.13b)
   };
   // El código se evalúa como en el motor: dentro de una función, con lo que consume como variables de esa función (no como globales de un contexto vm, que son
   // mucho más lentas de leer y falsearían los tiempos), y con paseando / enQuad / tVida como variables que se cambian por fuera con __pon.

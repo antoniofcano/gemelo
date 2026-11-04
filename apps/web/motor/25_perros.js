@@ -1,8 +1,9 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos (D), 02_mundo (copas), 02c_componentes (Componentes), 03_escena (scene, camera, texColor), 04d_sombreado_tiles (hash),
-//   07_follaje (matSombra, geoSombra), 12_paseo (paseando), 15_tiempo (esc), 16_vida (tVida, enQuad, gFauna, altSuelo, mira, quad, enDron, dron),
-//   17_minimapa (Minimapa), 22_huellas (pendienteRumbo, sueloSeco), 24_pantalla (aterriza)
+// Consume: 01_datos (D), 02_mundo (copas), 02c_componentes (Componentes), 02k_fusiona (fusionaGeometrias), 03_escena (scene, camera, texColor),
+//   04d_sombreado_tiles (hash), 07_follaje (matSombra, geoSombra), 12_paseo (paseando), 15_tiempo (esc),
+//   16_vida (tVida, enQuad, gFauna, altSuelo, mira, quad, enDron, dron), 17_minimapa (Minimapa), 22_huellas (pendienteRumbo, sueloSeco),
+//   24_pantalla (aterriza)
 // Nota: Publica además window.__perrosDebug (depuración).
 // ===============================================================================
   // ---------- los perros del paseo: una dálmata adulta y un cruce de dálmata y mastín (rubio y sin manchas). Te siguen, exploran, persiguen conejos y vuelven a tu lado.
@@ -17,23 +18,35 @@
       for (var i = 0; i < 95; i++) { var r = 2.5 + 7 * hash(i * 3.7), px = 256 * hash(i * 5.1 + 2), py = 128 * hash(i * 9.3 + 7); x.fillStyle = hash(i * 1.9) < 0.12 ? "#5a3b2a" : "#1d1b1c"; x.beginPath(); x.ellipse(px, py, r, r * (0.7 + 0.5 * hash(i * 2.2)), hash(i) * 3, 0, 6.283); x.fill(); }
       var t = texColor(new THREE.CanvasTexture(cv)); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
     }
-    var texD = texDalmata(), matNegroP = new THREE.MeshLambertMaterial({ color: 0x17151a });
+    var texD = texDalmata();
+    // Cada perro es un Group SIN dibujo (g: posición, giro y escala) con su jerarquía de poses en Object3D sueltos (cuerpo, cab, cola y las cuatro patas, que cuelgan de g como antes).
+    // Se dibujan con InstancedMesh de geometría fusionada y color por vértice (AG-1.13b; antes, 9 o 10 cajas sueltas por perro): el cuerpo (torso, grupa y cuello), la cabeza (cráneo, hocico,
+    // nariz, orejas y ojos), la cola, las patas (una geometría, cuatro casillas) y la sombra (una sola malla para los dos). Cada pieza lleva la matriz de su Object3D por la de sus padres;
+    // se escribe una vez por fotograma (empacaPerros). Con el pelaje de la dálmata (textura) las partes claras llevan vértice blanco y la nariz y los ojos, el negro de siempre por la textura.
+    var matNegroP = 0x17151a, tmpEu = new THREE.Euler(), tmpQu = new THREE.Quaternion(), tmpPo = new THREE.Vector3(), tmpEs = new THREE.Vector3(1, 1, 1), tmpMa = new THREE.Matrix4();
+    var tmpMg = new THREE.Matrix4(), tmpMc = new THREE.Matrix4(), tmpMp = new THREE.Matrix4();
+    function cajaCol(w, h, d, col, x, y, z, rx, rz) {   // una caja con su pose local ya aplicada a los vértices: [geometría, color]
+      var ge = new THREE.BoxGeometry(w, h, d); tmpEu.set(rx || 0, 0, rz || 0); ge.applyMatrix4(tmpMa.compose(tmpPo.set(x, y, z), tmpQu.setFromEuler(tmpEu), tmpEs)); return [ge, new THREE.Color(col)];
+    }
+    var mallaSombraP = new THREE.InstancedMesh(geoSombra, matSombra, 2);   // la sombra de los dos perros (una llamada)
+    mallaSombraP.name = "perros-sombra"; mallaSombraP.instanceMatrix.setUsage(THREE.DynamicDrawUsage); mallaSombraP.frustumCulled = false; mallaSombraP.count = 0; mallaSombraP.visible = false; gPerros.add(mallaSombraP);
     function creaPerro(tipo) {
-      var dal = tipo === "dalmata", esc = dal ? 1 : 1.22, g = new THREE.Group(), cuerpo = new THREE.Group(); g.add(cuerpo);
-      var mp = dal ? new THREE.MeshLambertMaterial({ map: texD }) : new THREE.MeshLambertMaterial({ color: 0xd9ac5c }), mo = dal ? new THREE.MeshLambertMaterial({ map: texD }) : new THREE.MeshLambertMaterial({ color: 0xb98a47 });
-      function caja(w, h, d, m, x, y, z, padre) { var me = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); me.position.set(x, y, z); (padre || cuerpo).add(me); return me; }
-      var anch = dal ? 1 : 1.18;
-      caja(0.27 * anch, 0.29, 0.62, mp, 0, 0.55, 0.02); caja(0.29 * anch, 0.33, 0.27, mp, 0, 0.56, -0.2);
-      var cuello = caja(0.15 * anch, 0.22, 0.2, mp, 0, 0.7, -0.38); cuello.rotation.x = -0.55;
-      var cab = new THREE.Group(); cab.position.set(0, 0.79, -0.43); cuerpo.add(cab);
-      caja(0.17 * anch, 0.16, 0.2, mp, 0, 0, -0.09, cab); caja((dal ? 0.1 : 0.13) * anch, dal ? 0.09 : 0.11, dal ? 0.15 : 0.13, mp, 0, -0.04, -0.24, cab); caja(0.05, 0.04, 0.04, matNegroP, 0, -0.01, -0.31, cab);
-      [-1, 1].forEach(function (s) { var o = caja(0.045, dal ? 0.12 : 0.15, 0.09, mo, s * 0.09 * anch, 0.0, -0.05, cab); o.rotation.z = s * 0.35; caja(0.03, 0.03, 0.02, matNegroP, s * 0.05, 0.035, -0.19, cab); });
-      var cola = new THREE.Group(); cola.position.set(0, 0.64, 0.32); cuerpo.add(cola); var c1 = caja(0.045, 0.045, 0.36, mp, 0, 0.1, 0.15, cola); c1.rotation.x = 0.75;
-      var patas = [[-1, -0.2], [1, -0.2], [-1, 0.22], [1, 0.22]].map(function (q) {
-        var pv = new THREE.Group(); pv.position.set(q[0] * 0.1 * anch, 0.45, q[1]); cuerpo.add(pv); caja(0.07, 0.46, 0.07, mp, 0, -0.23, 0, pv); caja(0.08, 0.05, 0.11, mp, 0, -0.46, -0.02, pv); return pv;
-      });
-      var sb = new THREE.Mesh(geoSombra, matSombra); sb.scale.set(0.9 * esc, 1, 1.4 * esc); sb.position.y = 0.03; g.add(sb);
-      g.scale.setScalar(esc); g.visible = false; g.userData = { cuerpo: cuerpo, cab: cab, cola: cola, patas: patas }; gPerros.add(g); return g;
+      var dal = tipo === "dalmata", esc = dal ? 1 : 1.22, g = new THREE.Group(), cuerpo = new THREE.Object3D(), cab = new THREE.Object3D(), cola = new THREE.Object3D();
+      var mp = dal ? 0xffffff : 0xd9ac5c, mo = dal ? 0xffffff : 0xb98a47, anch = dal ? 1 : 1.18;
+      var mat = new THREE.MeshLambertMaterial(dal ? { map: texD, vertexColors: true } : { vertexColors: true });
+      var geoCuerpo = fusionaGeometrias([cajaCol(0.27 * anch, 0.29, 0.62, mp, 0, 0.55, 0.02), cajaCol(0.29 * anch, 0.33, 0.27, mp, 0, 0.56, -0.2), cajaCol(0.15 * anch, 0.22, 0.2, mp, 0, 0.7, -0.38, -0.55)], dal);
+      cab.position.set(0, 0.79, -0.43);
+      var pcab = [cajaCol(0.17 * anch, 0.16, 0.2, mp, 0, 0, -0.09), cajaCol((dal ? 0.1 : 0.13) * anch, dal ? 0.09 : 0.11, dal ? 0.15 : 0.13, mp, 0, -0.04, -0.24), cajaCol(0.05, 0.04, 0.04, matNegroP, 0, -0.01, -0.31)];
+      [-1, 1].forEach(function (s) { pcab.push(cajaCol(0.045, dal ? 0.12 : 0.15, 0.09, mo, s * 0.09 * anch, 0.0, -0.05, 0, s * 0.35), cajaCol(0.03, 0.03, 0.02, matNegroP, s * 0.05, 0.035, -0.19)); });
+      var geoCab = fusionaGeometrias(pcab, dal);
+      cola.position.set(0, 0.64, 0.32); var geoCola = fusionaGeometrias([cajaCol(0.045, 0.045, 0.36, mp, 0, 0.1, 0.15, 0.75)], dal);
+      var geoPata = fusionaGeometrias([cajaCol(0.07, 0.46, 0.07, mp, 0, -0.23, 0), cajaCol(0.08, 0.05, 0.11, mp, 0, -0.46, -0.02)], dal);
+      var patas = [[-1, -0.2], [1, -0.2], [-1, 0.22], [1, 0.22]].map(function (q) { var pv = new THREE.Object3D(); pv.position.set(q[0] * 0.1 * anch, 0.45, q[1]); return pv; });
+      var piezas = [new THREE.InstancedMesh(geoCuerpo, mat, 1), new THREE.InstancedMesh(geoCab, mat, 1), new THREE.InstancedMesh(geoCola, mat, 1), new THREE.InstancedMesh(geoPata, mat, 4)];
+      piezas.forEach(function (im, i) { im.name = "perro-" + tipo + "-" + ["cuerpo", "cabeza", "cola", "patas"][i]; im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); im.frustumCulled = false; im.count = 0; im.visible = false; gPerros.add(im); });
+      g.scale.setScalar(esc); g.visible = false;
+      g.userData = { cuerpo: cuerpo, cab: cab, cola: cola, patas: patas, piezas: piezas, mat: mat, matSombra: new THREE.Matrix4().compose(new THREE.Vector3(0, 0.03, 0), new THREE.Quaternion(), new THREE.Vector3(0.9 * esc, 1, 1.4 * esc)) };
+      return g;
     }
     var PERROS = [
       { malla: creaPerro("dalmata"), nombre: "Olivia", vmax: 7.6, trote: 3.4, lado: 1, ladra: 0.28, color: "#f4f1ea" },
@@ -65,7 +78,7 @@
     var resAmenaza = { x: 0, y: 0 };
     function amenazaConejo(x, y) { return amenazaEn(x, y, { x: 0, y: 0 }); }   // la de siempre (objeto nuevo); lo que corre por fotograma usa amenazaEn
     function actualizaPerros(dt) {
-      if (!paseando) { for (var j = 0; j < PERROS.length; j++) { PERROS[j].malla.visible = false; PERROS[j].tag.visible = false; PERROS[j].est = "fuera"; } jugHay = false; return; }
+      if (!paseando) { for (var j = 0; j < PERROS.length; j++) { PERROS[j].malla.visible = false; PERROS[j].tag.visible = false; PERROS[j].est = "fuera"; } jugHay = false; empacaPerros(); return; }
       var vj = jugHay ? Math.hypot(pp.x - jugAx, pp.y - jugAy) / Math.max(dt, 1e-3) : 0; jugAx = pp.x; jugAy = pp.y; jugHay = true; jugador.v += (vj - jugador.v) * Math.min(1, dt * 5); jugador.quieto = jugador.v < 0.25 ? jugador.quieto + dt : 0;
       var fx = Math.sin(pp.ang), fy = Math.cos(pp.ang), rx = Math.cos(pp.ang), ry = -Math.sin(pp.ang), e = D.ext, rad = Math.PI / 180;
       for (var k = 0, d; k < PERROS.length; k++) {
@@ -117,6 +130,22 @@
         if (d.v > 5 && sueloSeco(d.x, d.y) && Math.random() < dt * 9) n.emite("polvo:emite", { x: d.x - Math.cos(d.ang) * 0.5, y: d.y - Math.sin(d.ang) * 0.5, h: gy + 0.1, vx: -Math.cos(d.ang) * 0.6, vy: 0.5, vz: -Math.sin(d.ang) * 0.6, tam: 0.35, vida: 0.8 });   // reserva-ok: una bocanada al arrancar fuerte (~9 por segundo como mucho, no por fotograma)
         if (d.est === "mira" && d.ult <= 0 && Math.random() < dt * 0.25) { d.ult = 4; ladrido(d); }
       }
+      empacaPerros();
+    }
+    function empacaPerros() {   // los perros visibles, con sus piezas escritas en las mallas instanciadas (una vez por fotograma, sin reservas); vacías no se dibujan
+      var ns = 0, i, k, u, p, im;
+      for (i = 0; i < PERROS.length; i++) {
+        var g = PERROS[i].malla; u = g.userData; p = u.piezas;
+        if (!g.visible) { for (k = 0; k < 4; k++) { p[k].count = 0; p[k].visible = false; } continue; }
+        g.updateMatrix(); mallaSombraP.setMatrixAt(ns++, tmpMg.multiplyMatrices(g.matrix, u.matSombra));
+        u.cuerpo.updateMatrix(); tmpMc.multiplyMatrices(g.matrix, u.cuerpo.matrix); p[0].setMatrixAt(0, tmpMc);
+        u.cab.updateMatrix(); p[1].setMatrixAt(0, tmpMp.multiplyMatrices(tmpMc, u.cab.matrix));
+        u.cola.updateMatrix(); p[2].setMatrixAt(0, tmpMp.multiplyMatrices(tmpMc, u.cola.matrix));
+        for (k = 0; k < 4; k++) { u.patas[k].updateMatrix(); p[3].setMatrixAt(k, tmpMp.multiplyMatrices(tmpMc, u.patas[k].matrix)); }
+        p[0].count = p[1].count = p[2].count = 1; p[3].count = 4;
+        for (k = 0; k < 4; k++) { im = p[k]; im.visible = true; im.instanceMatrix.needsUpdate = true; }
+      }
+      mallaSombraP.count = ns; mallaSombraP.visible = ns > 0; mallaSombraP.instanceMatrix.needsUpdate = true;
     }
     function dibujaPerrosMini(c, X, Y) {
       PERROS.forEach(function (d) { if (!d.malla.visible || d.est === "fuera") return; c.fillStyle = d.color; c.strokeStyle = "#101418"; c.lineWidth = 1.4; c.beginPath(); c.arc(X(d.x), Y(d.y), 3.3, 0, 6.283); c.fill(); c.stroke(); });
@@ -125,6 +154,7 @@
       if (tLlega) { clearTimeout(tLlega); tLlega = 0; }
       gFauna.remove(gPerros);
       gPerros.traverse(function (o) {
+        if (o.isInstancedMesh) o.dispose();   // el búfer de matrices
         if (o.geometry && o.geometry !== geoSombra && !o.isSprite) o.geometry.dispose();
         var ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
         ms.forEach(function (m) { if (m.map && m.map !== texD) m.map.dispose(); if (m !== matSombra) m.dispose(); });
@@ -141,11 +171,11 @@
   }
   Componentes.registra({
     id: "perros-paseo", version: 1,
-    consume: ["D", "copas", "scene", "camera", "texColor", "hash", "matSombra", "geoSombra", "paseando", "pp", "esc", "tVida", "enQuad", "gFauna", "altSuelo", "enDron", "pendienteRumbo", "sueloSeco", "Minimapa"],
+    consume: ["D", "copas", "scene", "camera", "texColor", "hash", "matSombra", "geoSombra", "paseando", "pp", "esc", "tVida", "enQuad", "gFauna", "altSuelo", "enDron", "pendienteRumbo", "sueloSeco", "Minimapa", "fusionaGeometrias"],
     expone: [],
     eventos: { escucha: ["perros:llegan", "perros:amenaza"], emite: ["sonido:ladrido", "polvo:emite", "fauna:conejo-cerca"] },
     bandera: { defecto: true, url: "perros" },
-    presupuesto: { llamadas: 42, triangulos: 480, texturasMB: 0.2 },   // medido en Node con el three de verdad (huellas_perros.test.js): 42 llamadas (cajas, sombras y rótulos de los dos perros a la vista) y 464 triángulos; el pelaje es una textura de 256 x 128
+    presupuesto: { llamadas: 12, triangulos: 480, texturasMB: 0.2 },   // medido en Node con el three de verdad (huellas_perros.test.js): 11 llamadas (por perro, cuerpo, cabeza, cola y patas instanciados; una de sombras y dos rótulos; antes 42, cajas sueltas) y 464 triángulos; el pelaje es una textura de 256 x 128
     fases: { mundo: 0 },
     monta: function (n) { return PerrosMotor(n); },
     actualiza: { mundo: function (dt, t, api) { api.actualiza(dt); } },

@@ -1,7 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos (D), 02_mundo (copas, cIn), 02c_componentes (Componentes), 03_escena (scene, camera, exag), 07_follaje (matSombra, geoSombra),
-//   12_paseo (paseando), 15_tiempo (nivelEn, cur), 16_vida (tVida, enQuad, gFauna, altSuelo, mira, actualizaVida), 17_minimapa (Minimapa)
+// Consume: 01_datos (D), 02_mundo (copas, cIn), 02c_componentes (Componentes), 02k_fusiona (fusionaGeometrias), 03_escena (scene, camera, exag),
+//   07_follaje (matSombra, geoSombra), 12_paseo (paseando), 15_tiempo (nivelEn, cur),
+//   16_vida (tVida, enQuad, gFauna, altSuelo, mira, actualizaVida), 17_minimapa (Minimapa)
 // ===============================================================================
 
   // ---------- la fauna del olivar (componente «fauna-olivar», ADR-0023, C10 segunda tanda): las aves (dos bandadas que dan vueltas de día, ocho posadas que se
@@ -16,26 +17,13 @@
     // --- pájaros: el ave mira hacia -z. Cada ave es un Group SIN hijos (solo lleva la posición, el giro y la fase); se dibujan todas juntas
     // con dos mallas instanciadas (2 llamadas, antes 7 por ave): el cuerpo (una geometría fusionada con el color por vértice) y las alas
     // (2 por ave, con la bisagra del aleteo calculada por matriz cada fotograma, igual que giraba el pivote antes).
-    // varias geometrías indexadas en una, con su color por vértice (partes = [[geometría, THREE.Color], …]); las libera. Sirve a las aves y a los conejos.
-    function fusiona(partes) {
-      var nv = 0, ni = 0; partes.forEach(function (p) { nv += p[0].attributes.position.count; ni += p[0].index.count; });
-      var pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3), col = new Float32Array(nv * 3), idx = new Uint16Array(ni), o = 0, oi = 0;
-      partes.forEach(function (p) {
-        var g = p[0], n = g.attributes.position.count, c = p[1]; pos.set(g.attributes.position.array, o * 3); nor.set(g.attributes.normal.array, o * 3);
-        for (var k = 0; k < n; k++) { col[(o + k) * 3] = c.r; col[(o + k) * 3 + 1] = c.g; col[(o + k) * 3 + 2] = c.b; }
-        for (var t = 0; t < g.index.count; t++) idx[oi + t] = g.index.array[t] + o;
-        o += n; oi += g.index.count; g.dispose();
-      });
-      var geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.BufferAttribute(pos, 3)); geo.setAttribute("normal", new THREE.BufferAttribute(nor, 3)); geo.setAttribute("color", new THREE.BufferAttribute(col, 3)); geo.setIndex(new THREE.BufferAttribute(idx, 1));
-      return geo;
-    }
     var NAVES = 22, geoAveCuerpo = (function () {   // cuerpo, vientre, cabeza, pico y cola en una sola geometría
       var partes = [], m4 = new THREE.Matrix4(), q0 = new THREE.Quaternion();
       function parte(geo, hex, sx, sy, sz, x, y, z, rx) { m4.compose(new THREE.Vector3(x, y, z), rx ? q0.setFromAxisAngle(new THREE.Vector3(1, 0, 0), rx) : q0.identity(), new THREE.Vector3(sx, sy, sz)); geo.applyMatrix4(m4); partes.push([geo, new THREE.Color(hex)]); }
       parte(new THREE.SphereGeometry(0.1, 10, 8), 0x4a3f33, 0.85, 0.8, 1.8, 0, 0, 0); parte(new THREE.SphereGeometry(0.1, 10, 8), 0xd9cdb4, 0.7, 0.45, 1.2, 0, -0.035, 0.02);
       parte(new THREE.SphereGeometry(0.065, 10, 8), 0x4a3f33, 1, 1, 1, 0, 0.03, -0.2); parte(new THREE.ConeGeometry(0.022, 0.08, 5), 0xd49a30, 1, 1, 1, 0, 0.025, -0.3, -Math.PI / 2);
       parte(new THREE.BoxGeometry(0.07, 0.012, 0.2), 0x4a3f33, 1, 1, 1, 0, 0.01, 0.27);
-      return fusiona(partes);
+      return fusionaGeometrias(partes);
     })();
     var geoAla = (function () { var g = new THREE.PlaneGeometry(0.44, 0.2); g.rotateX(-Math.PI / 2); g.translate(0.22, 0, 0); return g; })();   // el ala derecha; la izquierda es su espejo
     var matAveInst = new THREE.MeshLambertMaterial({ vertexColors: true });
@@ -94,9 +82,9 @@
     // (geometría fusionada con el color por vértice), la cabeza, las orejas (2 por conejo) y la sombra. La matriz de cada pieza es la del conejo por la suya local.
     var NCON = 6, CON_CAB_Y = 0.32;
     function esfCol(r, hex, sx, sy, sz, x, y, z) { var g = new THREE.SphereGeometry(r, 10, 8); g.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion(), new THREE.Vector3(sx, sy, sz))); return [g, new THREE.Color(hex)]; }
-    var geoConCuerpo = fusiona([esfCol(0.2, 0x8b755a, 0.78, 0.74, 1.25, 0, 0.2, 0), esfCol(0.05, 0xece4d4, 1, 1, 1, 0, 0.23, 0.27)]);   // cuerpo y cola
-    var geoConCabeza = fusiona([[new THREE.SphereGeometry(0.12, 10, 8), new THREE.Color(0x8b755a)]]);   // la escala (0,9, 0,9, 1) va en la matriz de la cabeza
-    var geoConOreja = fusiona([[new THREE.BoxGeometry(0.035, 0.2, 0.02), new THREE.Color(0xa88f78)]]);
+    var geoConCuerpo = fusionaGeometrias([esfCol(0.2, 0x8b755a, 0.78, 0.74, 1.25, 0, 0.2, 0), esfCol(0.05, 0xece4d4, 1, 1, 1, 0, 0.23, 0.27)]);   // cuerpo y cola
+    var geoConCabeza = fusionaGeometrias([[new THREE.SphereGeometry(0.12, 10, 8), new THREE.Color(0x8b755a)]]);   // la escala (0,9, 0,9, 1) va en la matriz de la cabeza
+    var geoConOreja = fusionaGeometrias([[new THREE.BoxGeometry(0.035, 0.2, 0.02), new THREE.Color(0xa88f78)]]);
     var mallaConCuerpo = new THREE.InstancedMesh(geoConCuerpo, matConejoInst, NCON), mallaConCabeza = new THREE.InstancedMesh(geoConCabeza, matConejoInst, NCON),
       mallaConOrejas = new THREE.InstancedMesh(geoConOreja, matConejoInst, NCON * 2), mallaConSombra = new THREE.InstancedMesh(geoSombra, matSombra, NCON);
     var mallasCon = [mallaConCuerpo, mallaConCabeza, mallaConOrejas, mallaConSombra];
@@ -224,7 +212,7 @@
   }
   Componentes.registra({
     id: "fauna-olivar", version: 1,
-    consume: ["scene", "camera", "D", "copas", "cIn", "geoSombra", "matSombra", "paseando", "pp", "cur", "nivelEn", "tVida", "enQuad", "gFauna", "altSuelo", "mira", "exag", "Minimapa"],
+    consume: ["scene", "camera", "D", "copas", "cIn", "geoSombra", "matSombra", "paseando", "pp", "cur", "nivelEn", "tVida", "enQuad", "gFauna", "altSuelo", "mira", "exag", "Minimapa", "fusionaGeometrias"],
     expone: [],
     eventos: { escucha: ["paseo:entra", "paseo:sale", "fauna:conejo-cerca"], emite: ["perros:amenaza"] },
     bandera: { defecto: true, url: "fauna" },
