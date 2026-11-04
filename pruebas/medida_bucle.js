@@ -58,6 +58,17 @@ function compara(titulo, n, hazAntes, hazAhora) {
     compara("4 Bus.emite, 6 oyentes", 300000, mk(viejoSrc), mk(nuevoSrc));
   }
 
+  // ---- 5a · actualizaPerros: dos perros paseando contigo (con conejos y olivos de mentira), más 3 preguntas «perros:amenaza» por fotograma
+  {
+    const P = require("./guardianes/_perros_mundo");
+    const mk = (fichero) => () => {
+      const m = P.mundoPerros(THREE, fichero, 77); m.api.llegan(); const qs = [{ x: 0, y: 0, res: null }, { x: 0, y: 0, res: null }, { x: 0, y: 0, res: null }];
+      return (i) => { m.E.tVida += 0.016; m.g.pp.x = 10 + 40 * Math.sin(i * 0.004); m.g.pp.y = 10 + 30 * Math.cos(i * 0.0053); m.g.pp.ang = i * 0.01; m.g.camera.position.set(m.g.pp.x + 5, 6, -m.g.pp.y + 8); m.api.actualiza(0.016);
+        for (let k = 0; k < 3; k++) { qs[k].x = m.g.pp.x + k * 6; qs[k].y = m.g.pp.y; qs[k].res = null; m.g.Bus.emite("perros:amenaza", qs[k]); } };
+    };
+    compara("5a actualizaPerros + 3 preguntas de amenaza", 4000, mk("pruebas/guardianes/referencias/25_perros_antes.js"), mk("apps/web/motor/25_perros.js"));
+  }
+
   // ---- 3 · el nivel del sol que piden paisaje, sonido y huellas cada fotograma (3 llamadas con el mismo ms): nivel(ms).d contra nivelEn(ms, temporal).d
   {
     const N = new Function('"use strict"; var LAT = 37.73, LON = -4.006;\n' + F.nivelNuevo() + "\nreturn { nivel: nivel, nivelEn: nivelEn };")();

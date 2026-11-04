@@ -46,7 +46,7 @@
     }
     PERROS.forEach(function (d) { d.tag = etiquetaNombre(d.nombre); d.alto = d.nombre === "Olivia" ? 1.3 : 1.55; });
     PERROS.forEach(function (d, i) { d.x = 0; d.y = 0; d.ang = 0; d.v = 0; d.est = "fuera"; d.t = 0; d.fase = Math.random() * 6; d.obj = null; d.pit = 0; d.rol = 0; d.sentado = 0; d.ult = 0; d.idx = i; d.parado = 0; d.excit = 0; });
-    var jugador = { x: 0, y: 0, v: 0, quieto: 0 }, jugAnt = null;
+    var jugador = { x: 0, y: 0, v: 0, quieto: 0 }, jugAx = 0, jugAy = 0, jugHay = false;   // jugAx/jugAy/jugHay: dónde estabas el fotograma anterior (antes, un array nuevo por fotograma; AG-1.4c)
     function ladrido(d) { n.emite("sonido:ladrido", { grave: d.idx === 1 }); }   // guau-guau: lo sintetiza quien atienda el evento (el sonido); sin él, calla
     function perrosLlegan() {   // cuando el muñequito aterriza, los perros salen de entre los olivos corriendo hacia él
       PERROS.forEach(function (d, i) { var a = (i ? 2.4 : 0.7) + Math.random() * 0.8; d.x = pp.x + Math.cos(a) * 24; d.y = pp.y + Math.sin(a) * 24; d.ang = Math.atan2(pp.y - d.y, pp.x - d.x); d.v = 0; d.est = "viene"; d.t = 0; d.obj = null; d.malla.visible = true; });
@@ -55,17 +55,21 @@
     function conejoCerca(d, radio) {   // el conejo más cercano, si la fauna está encendida y responde (fauna:conejo-cerca); si no, nadie a quien perseguir
       var q = { x: d.x, y: d.y, radio: radio, res: null }; n.emite("fauna:conejo-cerca", q); return q.res;
     }
-    function amenazaConejo(x, y) {   // un conejo huye de ti (más lejos si vas en quad) y de los perros que van deprisa
-      var dj = Math.hypot(x - pp.x, y - pp.y); if (dj < (enQuad ? 17 : 8.5)) return { x: pp.x, y: pp.y };
-      for (var i = 0; i < PERROS.length; i++) { var d = PERROS[i]; if (!d.malla.visible) continue; var q = Math.hypot(x - d.x, y - d.y); if (q < (d.v > 2.5 ? 9 : 3.5)) return { x: d.x, y: d.y }; }
+    // un conejo huye de ti (más lejos si vas en quad) y de los perros que van deprisa. Escribe el punto del que huir en `salida` y la devuelve, o devuelve null (AG-1.4c:
+    // sin objeto nuevo; la pregunta «perros:amenaza» le pasa un temporal y la fauna lee el resultado al instante; la API pública `amenaza` sigue dando un objeto nuevo)
+    function amenazaEn(x, y, salida) {
+      var dj = Math.hypot(x - pp.x, y - pp.y); if (dj < (enQuad ? 17 : 8.5)) { salida.x = pp.x; salida.y = pp.y; return salida; }
+      for (var i = 0; i < PERROS.length; i++) { var d = PERROS[i]; if (!d.malla.visible) continue; var q = Math.hypot(x - d.x, y - d.y); if (q < (d.v > 2.5 ? 9 : 3.5)) { salida.x = d.x; salida.y = d.y; return salida; } }
       return null;
     }
+    var resAmenaza = { x: 0, y: 0 };
+    function amenazaConejo(x, y) { return amenazaEn(x, y, { x: 0, y: 0 }); }   // la de siempre (objeto nuevo); lo que corre por fotograma usa amenazaEn
     function actualizaPerros(dt) {
-      if (!paseando) { PERROS.forEach(function (d) { d.malla.visible = false; d.tag.visible = false; d.est = "fuera"; }); jugAnt = null; return; }
-      var vj = jugAnt ? Math.hypot(pp.x - jugAnt[0], pp.y - jugAnt[1]) / Math.max(dt, 1e-3) : 0; jugAnt = [pp.x, pp.y]; jugador.v += (vj - jugador.v) * Math.min(1, dt * 5); jugador.quieto = jugador.v < 0.25 ? jugador.quieto + dt : 0;
+      if (!paseando) { for (var j = 0; j < PERROS.length; j++) { PERROS[j].malla.visible = false; PERROS[j].tag.visible = false; PERROS[j].est = "fuera"; } jugHay = false; return; }
+      var vj = jugHay ? Math.hypot(pp.x - jugAx, pp.y - jugAy) / Math.max(dt, 1e-3) : 0; jugAx = pp.x; jugAy = pp.y; jugHay = true; jugador.v += (vj - jugador.v) * Math.min(1, dt * 5); jugador.quieto = jugador.v < 0.25 ? jugador.quieto + dt : 0;
       var fx = Math.sin(pp.ang), fy = Math.cos(pp.ang), rx = Math.cos(pp.ang), ry = -Math.sin(pp.ang), e = D.ext, rad = Math.PI / 180;
-      PERROS.forEach(function (d, k) {
-        if (d.est === "fuera") return;
+      for (var k = 0, d; k < PERROS.length; k++) {
+        d = PERROS[k]; if (d.est === "fuera") continue;
         d.t -= dt; d.ult -= dt; var dj = Math.hypot(pp.x - d.x, pp.y - d.y), vmax = d.vmax * (enQuad ? 1.25 : 1), destX = pp.x, destY = pp.y, vel = 0, atento = false;
         // las decisiones
         if (enDron && d.est !== "viene" && dj < 14) { d.est = "mira"; d.t = 1; }
@@ -73,7 +77,7 @@
         else if (d.est === "sigue") {
           if (dj > 17) d.est = "viene";
           else if (jugador.quieto > 5 && dj < 5) { d.est = "descansa"; d.t = 6 + Math.random() * 8; }
-          else if (d.t <= 0) { var cj = conejoCerca(d, 26); if (cj && Math.random() < 0.65) { d.est = "persigue"; d.obj = cj; d.t = 6.5; if (Math.random() < d.ladra * 3) ladrido(d); } else { var a = Math.random() * 6.283, r = 5 + Math.random() * 6; d.obj = { x: pp.x + Math.cos(a) * r, y: pp.y + Math.sin(a) * r }; d.est = "explora"; d.t = 7; } }
+          else if (d.t <= 0) { var cj = conejoCerca(d, 26); if (cj && Math.random() < 0.65) { d.est = "persigue"; d.obj = cj; d.t = 6.5; if (Math.random() < d.ladra * 3) ladrido(d); } else { var a = Math.random() * 6.283, r = 5 + Math.random() * 6; d.obj = { x: pp.x + Math.cos(a) * r, y: pp.y + Math.sin(a) * r }; d.est = "explora"; d.t = 7; } }   // reserva-ok: el destino de explorar, una vez cada varios segundos (no por fotograma)
         } else if (d.est === "explora") { if (dj > 22 || d.t <= 0) d.est = "viene"; else if (Math.hypot(d.obj.x - d.x, d.obj.y - d.y) < 1.2) { d.est = "olfatea"; d.t = 1.6 + Math.random(); } }
         else if (d.est === "olfatea") { if (d.t <= 0) { d.est = "sigue"; d.t = 3 + Math.random() * 5; } }
         else if (d.est === "persigue") {
@@ -110,9 +114,9 @@
         d.tag.position.set(d.x, gy + d.alto, -d.y); var dc = camera.position.distanceTo(d.tag.position), es = Math.max(1, dc / 8); d.tag.scale.set(1.45 * es, 0.41 * es, 1); d.tag.material.opacity = Math.max(0, Math.min(1, (28 - dc) / 8)); d.tag.visible = m.visible && dc < 28;
         m.position.set(d.x, gy + 0.02, -d.y); m.rotation.set(d.pit, d.ang - Math.PI / 2, d.rol, "YXZ");
         // polvo al arrancar fuerte y al ladrar cuando mira el dron
-        if (d.v > 5 && sueloSeco(d.x, d.y) && Math.random() < dt * 9) n.emite("polvo:emite", { x: d.x - Math.cos(d.ang) * 0.5, y: d.y - Math.sin(d.ang) * 0.5, h: gy + 0.1, vx: -Math.cos(d.ang) * 0.6, vy: 0.5, vz: -Math.sin(d.ang) * 0.6, tam: 0.35, vida: 0.8 });
+        if (d.v > 5 && sueloSeco(d.x, d.y) && Math.random() < dt * 9) n.emite("polvo:emite", { x: d.x - Math.cos(d.ang) * 0.5, y: d.y - Math.sin(d.ang) * 0.5, h: gy + 0.1, vx: -Math.cos(d.ang) * 0.6, vy: 0.5, vz: -Math.sin(d.ang) * 0.6, tam: 0.35, vida: 0.8 });   // reserva-ok: una bocanada al arrancar fuerte (~9 por segundo como mucho, no por fotograma)
         if (d.est === "mira" && d.ult <= 0 && Math.random() < dt * 0.25) { d.ult = 4; ladrido(d); }
-      });
+      }
     }
     function dibujaPerrosMini(c, X, Y) {
       PERROS.forEach(function (d) { if (!d.malla.visible || d.est === "fuera") return; c.fillStyle = d.color; c.strokeStyle = "#101418"; c.lineWidth = 1.4; c.beginPath(); c.arc(X(d.x), Y(d.y), 3.3, 0, 6.283); c.fill(); c.stroke(); });
@@ -129,7 +133,7 @@
     }
     prSuelta = liberaPerros;
     n.on("perros:llegan", perrosLlegan);
-    n.on("perros:amenaza", function (q) { if (q) q.res = amenazaConejo(q.x, q.y); });
+    n.on("perros:amenaza", function (q) { if (q) q.res = amenazaEn(q.x, q.y, resAmenaza); });   // resAmenaza: el mismo objeto cada vez (la fauna lo lee al instante)
     n.limpia(Minimapa.capa(function (c, X, Y) { dibujaPerrosMini(c, X, Y); }, -10));
     window.__perrosDebug = function () { return PERROS.map(function (d) { return { n: d.nombre, est: d.est, v: +d.v.toFixed(1), dj: +Math.hypot(pp.x - d.x, pp.y - d.y).toFixed(1), vis: d.malla.visible }; }); };
     n.limpia(function () { delete window.__perrosDebug; });
