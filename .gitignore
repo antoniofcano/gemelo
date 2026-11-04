@@ -52,3 +52,5 @@ apps/web/dist-oficina/
 
 # Ajustes locales del editor (llevan rutas y datos de cada equipo)
 .vscode/
+apps/web/dist-vr/
+apps/web/dist-publicar/

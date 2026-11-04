@@ -144,7 +144,7 @@ Se prepara todo en una carpeta del equipo de trabajo, **fuera del repo**, con la
 |---|---|
 | `portada/` | `cd apps/web && npm run build:portada` → `dist-portada/` |
 | `oficina/` | `npm run build:oficina` → `dist-oficina/` |
-| `finca/` | `GEMELO_DATOS=<indice publicado> npm run build` → `dist/` |
+| `finca/` | `GEMELO_DATOS=<indice publicado> npm run build` → `dist/`; con la build de VR activada, además `npm run build:publica` y se sube `dist-publicar/` ([PUBLICACION](PUBLICACION.md#las-dos-builds-adr-0031-f2c)) |
 | `teselas/hituelo/` | `indice.json`, `t/` de la exportación y `tileset/` de `tuberia/tiles3d/genera.mjs` ([DATOS](DATOS.md)) |
 | `teselas/hituelo/olivos/` | horneado en el equipo de trabajo, **con impostores** ([O7h](DATOS.md#hornear-hituelo-real-y-medir-un-paseo-o7h)): `manifiesto.json`, `.br` y `.webp`. Se copian los objetos primero y el manifiesto el último. La carpeta debe ser del uid 1000 |
 | `avatares/` | `descarga.mjs` y `construye.mjs` ([DESARROLLO-LOCAL](DESARROLLO-LOCAL.md#los-avatares-vrm-p7b)): `catalogo.json`, cada `.vrm` y sus `.br`/`.zst`/`.gz` |

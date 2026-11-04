@@ -9,6 +9,7 @@
   "scripts": {
     "fixture": "python pruebas/genera_fixture.py",
     "montar": "npm --prefix apps/web run build",
+    "build:publica": "node apps/web/herramientas/publica_builds.mjs",
     "guardianes": "node --test \"pruebas/guardianes/*.test.js\"",
     "puerta": "node pruebas/banco/puerta.js",
     "puerta:rapida": "node pruebas/banco/puerta_rapida.js",
