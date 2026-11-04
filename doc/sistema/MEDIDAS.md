@@ -529,6 +529,21 @@ Lo que dicen (y lo que no):
 - No sabemos cuánto es GPU: el medidor no la ve (Q0a, con OVR Metrics Tool).
 - Para el después: repetir las dos medidas en las mismas condiciones, tres veces cada una, con la guía de [OPTIMIZACION](OPTIMIZACION.md#guía-de-bolsillo-para-la-sesión-en-el-quest-q0a-).
 
+## Multiview en el Quest 3 con la página de humo (2026-11-04, foto, no se mantiene)
+Página de humo F2b (`prototipos/multiview/`, escena sintética, sin datos de la finca), servida en `/finca/pruebas/multiview/`; Quest 3, Quest Browser 154, 72 Hz; super-three 0.185.0 (`multiviewStereo`), n = 200 llamadas por ojo, 200 k triángulos por ojo, MSAA, escala 0,9, foveación 1; 60 s tras 3 s. Una medida por caso.
+
+| | con multiview | sin multiview (`&mv=0`) |
+|---|---|---|
+| Sesión XR | multiview activo sí (capa con `textureArrayLength` 2) | no (1) |
+| Llamadas / triángulos (los dos ojos) | 201 / 200 k | 402 / 400 k |
+| `render()` mediana / p95 / peor | 1,1 / 1,3 / 2,1 ms | 2,0 / 2,7 / 4,3 ms |
+| Fotograma mediana / p95 / p99 / peor | 13,9 / 14,3 / 14,5 / 27,0 ms | 13,9 / 14,5 / 14,9 / 16,5 ms |
+
+- **El Quest Browser 154 ofrece el multiview sin banderas** (`OVR_multiview2` y `OCULUS_multiview`, con MSAA; `MAX_VIEWS_OVR` 6): queda descartado el criterio de abandono de F2.
+- **El multiview hace lo que promete**: la mitad de llamadas y −45 % (mediana) / −52 % (p95) de `render()`; se cumple el criterio del 30 % de F2.
+- **El p95 del fotograma casi no cambia** (−0,2 ms): la escena es ligera y va al vsync en los dos casos; el criterio de 1 ms queda «ambiguo» y, según el plan, se repite con la escena real (la build de VR del gemelo con `?xrmv=0|1`).
+- **Coste por llamada ~5 µs** (0,9 ms / 201 llamadas), por debajo del supuesto del estudio (10-25 µs): en el gemelo (166-300 llamadas en VR) el ahorro sería del orden de 0,5-1,5 ms, según cuánto pese `render()` en su fotograma (lo dirá el medidor de F0 en el Quest).
+
 ## Quest en VR tras la quinta subida y sus arreglos (2026-11-04, foto, no se mantiene)
 Telemetría del medidor, Quest Browser 154, **dentro de VR** (Comodidad → «Medir 60 s», con nivel y perillas: fov 1 · escala 0,9 · 72 Hz · MSAA · nivel auto · near 0,1 · umbral JS 8 ms), web de efb6f17. Dos medidas por caso; la línea base es la 10 (VR, cuarta subida).
 
