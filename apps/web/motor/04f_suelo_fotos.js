@@ -146,7 +146,8 @@
       if (!cfg.activo || pedido) return; pedido = true;
       var L = P.ficheros(cfg.px), srcs = []; L.forEach(function (f) { srcs.push(f.color, f.relieve); });
       Promise.all(srcs.map(img)).then(function (ims) {
-        Cola.add("SF", 1e9, juntaG(L, ims), function (t) { tex = t; U.uFot.value = t; hecho = true; });
+        // prioridad 60 (como algo a 60 m): con 1e9 nunca le llegaba el turno, porque la Cola siempre corre la menor y al moverse siempre hay teselas, olivos o detalle pendientes
+        Cola.add("SF", 60, juntaG(L, ims), function (t) { tex = t; U.uFot.value = t; hecho = true; });
       }, function (e) { console.warn("suelo=fotos: " + e.message + "; el suelo sigue como siempre"); });
     }
     // cada 0,2 s (desde 04d): encendido si ya cargó y, en VR, solo con ?sueloVR=1 (hasta medir en el Quest)
