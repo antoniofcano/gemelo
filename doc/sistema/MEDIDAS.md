@@ -527,6 +527,20 @@ Lo que dicen (y lo que no):
 - No sabemos cuánto es GPU: el medidor no la ve (Q0a, con OVR Metrics Tool).
 - Para el después: repetir las dos medidas en las mismas condiciones, tres veces cada una, con la guía de [OPTIMIZACION](OPTIMIZACION.md#guía-de-bolsillo-para-la-sesión-en-el-quest-q0a-).
 
+## Triángulos por objeto con Hituelo real (2026-11-04, foto, no se mantiene)
+Banco (SwiftShader: recuentos, no fps), página de `main` tras la cuarta subida con los datos reales de Hituelo servidos en local, 12:00, `--desglose` (llamadas y, desde hoy, triángulos por objeto). Los olivos generados no llegaron a dibujarse en estos escenarios (0 triángulos), así que esta foto no dice lo que cuestan. Los triángulos son de una vista; en VR se pagan dos veces.
+
+| Escenario | Llamadas | Triángulos | `marcas` | `paisaje` | Terreno (3D Tiles) | `#49` | `copas` | `sueloFondo` |
+|---|---|---|---|---|---|---|---|---|
+| lejos | 80 | 626 k | 238 k | 206 k | 64 k | — | 47 k | 33 k |
+| cerca | 41 | 729 k | 238 k | 205 k | 44 k | 107 k | 47 k | 33 k |
+| paseo | 48 | 776 k | 238 k | 205 k | 106 k | 107 k | 47 k | 33 k |
+| paseoE | 54 | 737 k | 238 k | 206 k | 40 k | 107 k | 47 k | 33 k |
+
+- `marcas` (anillos de olivos guardados, 40 triángulos cada uno, `08b_marcadores_lidar.js`) y `paisaje` (árboles que no son olivos, tres icosaedros de 80 y un tronco, `18_paisaje.js`) son **el 57-71 % de cada vista** y no cambian con la distancia: se dibujan enteros desde cualquier punto. El terreno pone mucho menos (25-106 k). Es lo que ataca AG-1.12.
+- Sin `?olivos=0` y con él salen casi iguales: los olivos generados no entraban en estas vistas; el «olivo lejano» del tileset (10-132 k) solo aparece sin ellos.
+- `#49` es una malla Lambert de 107 k sin nombre que solo aparece de cerca: por identificar.
+
 ## Medida por componente (C11) y por objeto (O2)
 
 **Pendiente: sin fecha, sin cifras.** La herramienta está escrita y probada solo con resultados sintéticos (`pruebas/medida_componentes.js`, guardián `medida_componentes.test.js`); nadie la ha ejecutado contra el banco. Para O10 (que el mundo se parezca al catálogo «Olivos tipo») hace falta saber qué cuesta cada componente y cada pieza de un olivo generado, y hoy no se sabe: los presupuestos declarados en los manifiestos son techos o medidas de Node, no esto.

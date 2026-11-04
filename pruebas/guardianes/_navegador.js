@@ -98,20 +98,24 @@ async function lanza() {
  *  3D Tiles o el de los árboles; el resto, por su posición en scene.children (el orden de montaje de apps/web/motor/).
  *  Devuelve { total, info, filas: [[clave, llamadas]] } (info = renderer.info.render.calls del mismo fotograma, para contrastar). */
 function desgloseLlamadas() {
-  const g = window.__g, R = g.renderer, S = g.scene, orig = R.renderBufferDirect, cuenta = {};
+  const g = window.__g, R = g.renderer, S = g.scene, orig = R.renderBufferDirect, cuenta = {}, tri = {};
   const tiles = g.Escena3D && g.Escena3D.grupo ? g.Escena3D.grupo() : null, pista = t => t === tiles ? " [3dtiles]" : g.Arboles && g.Arboles.grupo === t ? " [arboles]" : "";
   const arriba = o => { let p = o; while (p.parent && p.parent !== S) p = p.parent; return p; };
   const nombre = o => (o.name ? o.name + ":" : "") + o.type;
   const espia = function (cam, sc, geo, mat, obj) {
     const t = arriba(obj), k = (sc === null ? "sombra" : "principal") + " · #" + S.children.indexOf(t) + " " + nombre(t) + pista(t) + (t === obj ? "" : " › " + nombre(obj)) + " · " + (mat && mat.type);
     cuenta[k] = (cuenta[k] || 0) + 1;
-    return orig.apply(this, arguments);
+    // los triángulos de esta llamada: lo que suma three a renderer.info dentro de ella (con las instancias y el drawRange ya contados)
+    const t0 = R.info.render.triangles, r = orig.apply(this, arguments);
+    tri[k] = (tri[k] || 0) + (R.info.render.triangles - t0);
+    return r;
   };
   // se pone en un requestAnimationFrame (detrás del del motor, que ya ha dibujado ese fotograma) y se quita en el siguiente: un fotograma justo
   return new Promise(ok => requestAnimationFrame(() => { R.renderBufferDirect = espia; requestAnimationFrame(() => {
     R.renderBufferDirect = orig;
     const filas = Object.entries(cuenta).sort((a, b) => b[1] - a[1]);
-    ok({ total: filas.reduce((s, f) => s + f[1], 0), info: R.info.render.calls, filas });
+    const triangulos = Object.entries(tri).sort((a, b) => b[1] - a[1]);
+    ok({ total: filas.reduce((s, f) => s + f[1], 0), info: R.info.render.calls, filas, triangulos, triInfo: R.info.render.triangles });
   }); }));
 }
 

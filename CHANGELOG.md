@@ -5,6 +5,9 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Rendimiento (AG-1.3b): los avatares instanciados de la presencia (cuerpo, cabeza, sombrero, manos, nombres, ruedas, quad y dron) dejan de dibujarse fuera del campo de visión; su esfera se rehace cada fotograma sin contar a los ocultos. Los VRM con esqueleto siguen sin recorte. Sin medir en el banco ni en Quest/iPhone.
+- Pruebas: el desglose del banco (`--desglose`) da también los triángulos por objeto, no solo las llamadas.
+- Documentación (AG-1.11): [ESCALA-NO-UNIFORME](doc/sistema/ESCALA-NO-UNIFORME.md), qué hace 3d-tiles-renderer con la exageración vertical en la matriz del grupo (pide más detalle del necesario desde arriba; coste nulo desde AG-1.9), con modelo en Node y alternativas.
 - Rendimiento (AG-1.4c): `distArroyo` por rejilla de 64 m en vez de recorrer el eje con `Math.hypot`; `actualizaTiempo` y `pintaNubes`, `Bus.emite`, `actualizaPerros`, el rastro del minimapa y la firma de las balizas sin reservas por fotograma; el paisaje, el sonido y las huellas piden el nivel del sol con `nivelEn`. Mismo resultado probado en Node contra el código anterior (fotograma a fotograma, bit a bit donde aplica); en Node, `distArroyo` 9,6 → 1,1 µs y la firma de las balizas 0,25 → 0,016 µs (indicador relativo). **Sin medir en Chrome ni en Quest.**
 - Rendimiento (AG-1.3, tanda 2): las barreras de luz de las lindes se recortan por el campo de visión (esfera calculada tras colocarlas; en Hituelo son hasta 27 mallas) y las estrellas no pasan por el dibujo de día (`visible = opacity > 0`). Probado en Node con exageración 1, 1,5 y 3. Llamadas **sin medir todavía**.
 - HUD: «lo tuyo» en pantalla (EV2-A4): hora del mundo, tu haza, hablar (solo en visita guiada con permiso) y volver, juntos bajo el chip del tiempo, con nombres accesibles y botones de 44 px; se oculta en Configuración → Vista («Mostrar hora, tu haza, hablar y volver», por defecto sí). Es DOM: sin llamadas de dibujo. En pantallas de menos de 480 px de alto (un móvil en horizontal) no se pinta, para no quitar sitio al chat, la burbuja y el mapa (`movibles_chrome` lo detectó a 844 × 390). Probado en Chrome sin pantalla (390 × 844 y 844 × 390); no probado en iPhone, Quest ni con lector de pantalla.
@@ -227,6 +230,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 
 
 ### Corregido
+- Las líneas de desfase entre las copas del LiDAR y los olivos guardados (`08b_marcadores_lidar.js`) recalculan su esfera de recorte al colocarse y ya no se recortan mal con la exageración vertical cambiada (AG-1.10).
 - El aviso «Non uniform scale used for tile» de 3DTilesRendererJS (exageración vertical, unos 78 por segundo en consola) sale ahora una sola vez; el resto de `console.warn` no cambia y la escena se dibuja igual. Con exageración distinta de 1 la librería avisa de que el error de pantalla que usa para elegir teselas es aproximado: cuánto afecta **no está medido**.
 - Accesibilidad: los campos de formulario que creaba el motor sin `id` ni `name` (ajustes, chat de la visita, personalización, sala guiada) ya llevan uno, y un guardián impide los nuevos. También el panel de la oficina. No probado con lector de pantalla ni con el autorrelleno de Chrome.
 - La Configuración del visor (pestañas, alto contraste, brújula, texto mayor, movimiento reducido) ya no depende de un `<style>` creado por el motor, que la CSP estricta bloquearía al imponerla; sus reglas viven en `plantilla.css`.
