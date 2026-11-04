@@ -104,7 +104,7 @@ test("accesibilidad: todo <input>, <select> y <textarea> lleva id o name (DevToo
   const sin = [];
   for (const m of PL.matchAll(/<(input|select|textarea)\b[^>]*>/gi)) if (!/\b(id|name)\s*=/.test(m[0])) sin.push("plantilla.html: " + m[0].slice(0, 80));
   // los campos que crea el motor: la sentencia (la línea y las 3 siguientes) debe poner id o name. 39_oficina_mundo.js lo arregla otro encargo: pendiente anotado
-  const PENDIENTES = ["39_oficina_mundo.js"];
+  const PENDIENTES = [];
   for (const f of fs.readdirSync(dir).filter(x => x.endsWith(".js") && !PENDIENTES.includes(x))) {
     const texto = fs.readFileSync(path.join(dir, f), "utf8"), l = texto.split("\n");
     l.forEach((t, i) => {

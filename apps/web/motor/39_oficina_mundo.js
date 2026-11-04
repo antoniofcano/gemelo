@@ -268,12 +268,12 @@
       var css = "font:inherit;color:inherit;border-radius:8px;padding:6px 12px;min-height:44px;cursor:pointer;background:rgba(163,178,54,0.2);border:1px solid rgba(163,178,54,0.75)";
       var campo = "font:inherit;width:100%;box-sizing:border-box;min-height:44px;padding:6px 8px;border-radius:8px;margin:4px 0";
       var salaTxt = el("p", { style: "margin:0 0 6px" }), irOtra = el("button", { type: "button", style: css }), invitar = el("button", { type: "button", style: css + ";margin-left:8px" });
-      var aTxt = el("textarea", { maxLength: OP.ANUNCIO_MAX, rows: 3, style: campo, "aria-label": "Texto del anuncio (hasta " + OP.ANUNCIO_MAX + " caracteres)" }), aCuenta = el("span", { style: "opacity:0.7;font-size:12px" }, ["0 / " + OP.ANUNCIO_MAX]);
-      var aSala = el("select", { style: campo, "aria-label": "A quién se anuncia" }, [el("option", { value: "todas" }, ["A las dos salas"]), el("option", { value: "general" }, ["A la Visita libre"]), el("option", { value: "visita" }, ["A la Sala de la visita"])]);
+      var aTxt = el("textarea", { name: "of-anuncio-texto", maxLength: OP.ANUNCIO_MAX, rows: 3, style: campo, "aria-label": "Texto del anuncio (hasta " + OP.ANUNCIO_MAX + " caracteres)" }), aCuenta = el("span", { style: "opacity:0.7;font-size:12px" }, ["0 / " + OP.ANUNCIO_MAX]);
+      var aSala = el("select", { name: "of-anuncio-sala", style: campo, "aria-label": "A quién se anuncia" }, [el("option", { value: "todas" }, ["A las dos salas"]), el("option", { value: "general" }, ["A la Visita libre"]), el("option", { value: "visita" }, ["A la Sala de la visita"])]);
       var aBtn = el("button", { type: "button", style: css }, ["Anunciar"]);
-      var bTit = el("input", { type: "text", maxLength: OP.TITULO_MAX, style: campo, "aria-label": "Título de la baliza (hasta " + OP.TITULO_MAX + ")", placeholder: "Aquí se recoge hoy" });
-      var bTxt = el("textarea", { maxLength: OP.TEXTO_MAX, rows: 2, style: campo, "aria-label": "Texto de la baliza (opcional)" });
-      var bHoras = el("select", { style: campo, "aria-label": "Cuánto dura la baliza" }, OP.HORAS.map(function (h) { return el("option", { value: String(h) }, [h < 24 ? h + " h" : h / 24 + (h === 24 ? " día" : " días")]); }));
+      var bTit = el("input", { type: "text", name: "of-baliza-titulo", maxLength: OP.TITULO_MAX, style: campo, "aria-label": "Título de la baliza (hasta " + OP.TITULO_MAX + ")", placeholder: "Aquí se recoge hoy" });
+      var bTxt = el("textarea", { name: "of-baliza-texto", maxLength: OP.TEXTO_MAX, rows: 2, style: campo, "aria-label": "Texto de la baliza (opcional)" });
+      var bHoras = el("select", { name: "of-baliza-horas", style: campo, "aria-label": "Cuánto dura la baliza" }, OP.HORAS.map(function (h) { return el("option", { value: String(h) }, [h < 24 ? h + " h" : h / 24 + (h === 24 ? " día" : " días")]); }));
       bHoras.value = "8";
       var bBtn = el("button", { type: "button", style: css }, ["Poner aquí"]), estado = el("p", { role: "status", "aria-live": "polite", style: "margin:8px 0 0;min-height:1.4em" });
       var h3 = function (t) { return el("h3", { style: "margin:12px 0 4px;font-size:14px" }, [t]); };
