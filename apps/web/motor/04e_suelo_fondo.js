@@ -1,7 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos (D), 02_mundo (Mundo, suelo), 02b_cola (Cola), 02c_componentes (Componentes), 03_escena (scene, exag), 04b_escena3d (Escena3D),
-//   04d_sombreado_tiles (matSuelo), 15_tiempo (lluvia), 90_final (bucle)
+// Consume: 01_datos (D), 02_mundo (Mundo, suelo), 02b_cola (Cola), 02c_componentes (Componentes),
+//   02g_vr_presupuesto (VrPresupuestoPuro, VrPresupuesto), 03_escena (scene, exag), 04b_escena3d (Escena3D), 04d_sombreado_tiles (matSuelo),
+//   15_tiempo (lluvia), 90_final (bucle)
 // ===============================================================================
   // ---------- M6: el suelo de fondo. El mundo es un mosaico de teselas; donde falta una (bordes, esquinas, teselas sin datos) se veía el vacío. Esta malla cubre la caja
   // de la finca más un margen con el relieve GRUESO del índice (8 m, el mismo medido, con menos detalle: regla 5) y el mosaico de 1 m como textura, POR DEBAJO del tileset:
@@ -13,16 +14,17 @@
   var fondoSuelta = null;   // lo que libera el componente montado
   function SueloFondoMotor(n) {
     var MARGEN = 400, BAJA = 1.5, CELDAS_MAX = 128, malla = null, expPuesta = NaN;
+    var celdas = CELDAS_MAX, baja = BAJA;   // Q0c-a: en VR, el escalón 3 pide menos celdas y baja más (02g_vr_presupuesto); fuera de VR, los de siempre
     var APAGADO = typeof location !== "undefined" && /[?&]sinFondo/.test(location.search);   // ?sinFondo: sin el suelo de fondo (para comparar y medir)
     function construye() {
       var M = D.mosaico, GR = D.grueso, ax = GR.w * GR.res, ay = GR.h * GR.res;
       var xa = GR.x0 - MARGEN, xb = GR.x0 + ax + MARGEN, yb = GR.yN + MARGEN, ya = GR.yN - ay - MARGEN;   // la caja del relieve grueso (= la de la finca) y un margen
-      var nx = Math.min(CELDAS_MAX, Math.ceil((xb - xa) / 16)), ny = Math.min(CELDAS_MAX, Math.ceil((yb - ya) / 16)), nv = (nx + 1) * (ny + 1);
+      var nx = Math.min(celdas, Math.ceil((xb - xa) / 16)), ny = Math.min(celdas, Math.ceil((yb - ya) / 16)), nv = (nx + 1) * (ny + 1);
       var pos = new Float32Array(nv * 3), uv = new Float32Array(nv * 2), idx = new (nv > 65535 ? Uint32Array : Uint16Array)(nx * ny * 6), i, j, k = 0;
       var mw = M.w * M.res, mh = M.h * M.res;
       for (j = 0; j <= ny; j++) for (i = 0; i <= nx; i++) {
         var x = xa + (xb - xa) * i / nx, y = yb - (yb - ya) * j / ny, o = j * (nx + 1) + i;
-        pos[o * 3] = x; pos[o * 3 + 1] = Mundo.grueso(x, y) - BAJA; pos[o * 3 + 2] = -y;   // mundo: x al este, z = −norte
+        pos[o * 3] = x; pos[o * 3 + 1] = Mundo.grueso(x, y) - baja; pos[o * 3 + 2] = -y;   // mundo: x al este, z = −norte
         uv[o * 2] = (x - M.x0) / mw; uv[o * 2 + 1] = (y - (M.yN - mh)) / mh;
       }
       for (j = 0; j < ny; j++) for (i = 0; i < nx; i++) {
@@ -47,8 +49,14 @@
       if (!malla) construye();
       if (exag !== expPuesta) { malla.matrix.makeScale(1, exag, 1); malla.matrixWorldNeedsUpdate = true; malla.updateMatrixWorld(true); expPuesta = exag; }
     }
-    fondoSuelta = libera;
-    return { actualiza: actualiza, libera: libera, malla: function () { return malla; }, BAJA: BAJA, MARGEN: MARGEN, CELDAS_MAX: CELDAS_MAX };
+    // la fuente del presupuesto VR: con otras celdas se libera y el siguiente fotograma (actualiza) la rehace; se apunta al montar y se olvida al liberar
+    var vrPres = typeof VrPresupuesto !== "undefined" ? VrPresupuesto : null;
+    if (vrPres) vrPres.fuente("sueloFondo", function (c) {
+      var n2 = Math.max(16, Math.min(CELDAS_MAX, Math.round(c) || CELDAS_MAX)); if (n2 === celdas) return;
+      celdas = n2; baja = VrPresupuestoPuro.hundimiento(celdas, CELDAS_MAX, BAJA); libera();
+    });
+    fondoSuelta = function () { libera(); if (vrPres) vrPres.olvida("sueloFondo"); };
+    return { actualiza: actualiza, libera: libera, malla: function () { return malla; }, celdas: function () { return celdas; }, baja: function () { return baja; }, BAJA: BAJA, MARGEN: MARGEN, CELDAS_MAX: CELDAS_MAX };
   }
   Componentes.registra({
     id: "suelo-fondo", version: 1,

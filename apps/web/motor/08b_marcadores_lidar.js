@@ -1,7 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos ($), 02_mundo (suelo, copas, cIn, marc), 02c_componentes (Componentes), 03_escena (scene, colorCss, exag, modo), 05_nube (nube),
-//   08_marcadores (gLinde, marcadores, listo, aplica, capas), 13_parcelas (parcelas), 16_vida (esfera)
+// Consume: 01_datos ($), 02_mundo (suelo, copas, cIn, marc), 02c_componentes (Componentes), 02g_vr_presupuesto (VrPresupuesto),
+//   03_escena (scene, colorCss, exag, modo), 05_nube (nube), 08_marcadores (gLinde, marcadores, listo, aplica, capas), 09_camara (suelta),
+//   13_parcelas (parcelas), 16_vida (esfera)
 // ===============================================================================
 
   // ---------- los marcadores de la nube LiDAR (componente «marcadores-lidar», ADR-0023, C10 tercera tanda): las copas detectadas (octaedros), los olivos guardados en
@@ -19,6 +20,9 @@
     var ani = new THREE.RingGeometry(0.55, 0.95, 8); ani.rotateX(-Math.PI / 2);
     var matMarc = new THREE.MeshBasicMaterial({ color: colorCss("--guardado"), side: THREE.DoubleSide });
     var mMarc = new THREE.InstancedMesh(ani, matMarc, marc.length); mMarc.frustumCulled = false; gMarc.add(mMarc);
+    // Q0c-a: en VR, el escalón decide hasta qué distancia se dibujan anillos y octaedros (02g_vr_presupuesto); suelto en las pruebas no está
+    var vrPres = typeof VrPresupuesto !== "undefined" ? VrPresupuesto : null;
+    if (vrPres) { vrPres.instancias("marcasOT", [mMarc]); vrPres.instancias("copasLidar", [mCopas]); }
     var desfGeo = new THREE.BufferGeometry(), matDesf = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 });
     gDesf.add(new THREE.LineSegments(desfGeo, matDesf));
     var tmpMarc = new THREE.Object3D();
@@ -32,6 +36,7 @@
       desfGeo.setAttribute("position", new THREE.Float32BufferAttribute(seg, 3));
       // la esfera de recorte se calcula tras escribir las posiciones (three la calcula una sola vez, con lo que hubiera en el primer fotograma, y la exageración las mueve en y); con un vértice no finito, sin recorte
       if (seg.every(isFinite)) desfGeo.computeBoundingSphere(); else desfGeo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), Infinity);
+      if (typeof VrPresupuesto !== "undefined") { VrPresupuesto.renueva("marcasOT"); VrPresupuesto.renueva("copasLidar"); }   // Q0c-a (las pruebas sacan coloca() suelta)
     }
     function ponCapas() { gCopas.visible = $("cCopas").checked; gMarc.visible = $("cMarc").checked; gDesf.visible = $("cDesf").checked; }
     n.on("mundo:aplica", coloca);
@@ -42,6 +47,7 @@
     var disp = false;
     marcSuelta = function () {
       if (disp) return; disp = true;
+      if (vrPres) { vrPres.olvida("marcasOT"); vrPres.olvida("copasLidar"); }
       [gCopas, gMarc, gDesf].forEach(function (g) { scene.remove(g); });
       mCopas.dispose(); mMarc.dispose(); geoCopa.dispose(); matOcta.dispose(); ani.dispose(); matMarc.dispose(); desfGeo.dispose(); matDesf.dispose();
     };
