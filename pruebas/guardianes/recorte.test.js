@@ -229,6 +229,22 @@ test("02e_entidades y 29_vr: el anillo de resaltado y las láminas VR se recorta
   const a = new THREE.Mesh(new THREE.RingGeometry(0.86, 1, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial()); a.position.set(-40, 120, 33); a.scale.setScalar(2.4); primerFotograma(a); contiene(a, "anillo");
 });
 
+// ---------------------------------------------------------------- 08b_marcadores_lidar: las líneas de desfase (se reescriben con cada «mundo:aplica»)
+test("08b_marcadores_lidar: las líneas de desfase se recortan y su esfera las contiene tras coloca(), aunque three la calculara antes o con otra exageración", () => {
+  const F = lee("apps/web/motor/08b_marcadores_lidar.js"), T = trozo(F, "    var tmpMarc = new THREE.Object3D();", "    function ponCapas()");
+  const cIn = [], copas = [], marc = [];
+  for (let i = 0; i < 12; i++) { copas.push({ x: -100 + 19 * i, y: 80 - 13 * i, h: 4 }); cIn.push(copas[i]); marc.push({ x: -95 + 19 * i, y: 78 - 13 * i, par: i % 4 ? i : -1 }); }
+  const mCopas = { setMatrixAt() {}, instanceMatrix: {} }, mMarc = { setMatrixAt() {}, instanceMatrix: {} };
+  const desfGeo = new THREE.BufferGeometry(), linea = new THREE.LineSegments(desfGeo, new THREE.LineBasicMaterial());
+  const f = new Function("THREE", "cIn", "copas", "marc", "suelo", "mCopas", "mMarc", "desfGeo",
+    "\"use strict\";\nvar exag = 1;\n" + T + "\nreturn { coloca: coloca, pon: function (e) { exag = e; } };");
+  const M = f(THREE, cIn, copas, marc, (x, y) => 60 + 0.3 * x - 0.2 * y, mCopas, mMarc, desfGeo);
+  assert.strictEqual(linea.frustumCulled, true, "las líneas de desfase se recortan");
+  primerFotograma(linea);   // antes de colocar: la geometría está vacía
+  for (const e of [1, 3, 1.5]) { M.pon(e); M.coloca(); contiene(linea, "desfase (exag " + e + ")"); }
+  M.pon(3); M.coloca(); primerFotograma(linea); M.pon(1); M.coloca(); contiene(linea, "desfase tras volver a exag 1");
+});
+
 // ---------------------------------------------------------------- el inventario de los frustumCulled = false que quedan
 // Cada uno, con su motivo. La clase C (MEJORAS-TECNICAS, AG-1.3): su esfera abarca la finca o la cabeza (la cámara está dentro y three la daría siempre por visible:
 // recortar no ahorra nada) o se mueve cada fotograma. «tanda 2»: pendientes de otra tanda con sus pruebas de bandera. Un `frustumCulled = false` nuevo, o más de
