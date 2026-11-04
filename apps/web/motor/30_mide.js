@@ -91,9 +91,10 @@
       L.push("Medida del gemelo · " + r.fecha);
       L.push("Aparato: " + r.aparato.modo + (corto ? "" : " · " + r.aparato.ua));
       L.push("Escena: " + r.escena + (r.banderas ? " · " + r.banderas : ""));
-      L.push(e.n + " fotogramas en " + r.duracion + " s (tras " + r.calentamiento + " s de calentamiento)");
+      var sobreTx = "Por encima de " + String(e.umbral).replace(".", ",") + " ms: " + e.sobre + " (" + f1(e.pctSobre) + " %)";
+      L.push(corto ? e.n + " fotogramas en " + r.duracion + " s · " + e.sobre + " sobre " + String(e.umbral).replace(".", ",") + " ms (" + f1(e.pctSobre) + " %)" : e.n + " fotogramas en " + r.duracion + " s (tras " + r.calentamiento + " s de calentamiento)");
       L.push("Intervalo (ms): mediana " + f1(e.ms.mediana) + " · p95 " + f1(e.ms.p95) + " · p99 " + f1(e.ms.p99) + " · peor " + f1(e.ms.peor));
-      L.push("Por encima de " + String(e.umbral).replace(".", ",") + " ms: " + e.sobre + " (" + f1(e.pctSobre) + " %)");
+      if (!corto) L.push(sobreTx);   // en la tarjeta de VR va en la línea de los fotogramas (cabe en 14 líneas)
       var lc = lineaCausas(e.causas, corto); if (lc) L.push(lc);   // Q0g: que se movio en los fotogramas lentos
       L.push("JS por fotograma (ms): mediana " + f1(e.js.mediana) + " · p95 " + f1(e.js.p95) + " · peor " + f1(e.js.peor));
       if (e.rd && e.resto) {   // F0: el techo del multiview (doc/sistema/MULTIVIEW.md): cuánto del JS es renderer.render() y cuánto el resto del fotograma
@@ -102,7 +103,7 @@
       }
       var rr = e.reparto;   // Q0h: de qué es el JS, por bloque
       if (rr && rr.bloques.length) {
-        if (corto) { var t4 = [], j; for (j = 0; j < rr.bloques.length && j < 3; j++) t4.push(rr.bloques[j].nom.slice(0, 16) + " " + f1(rr.bloques[j].p95)); t4.push("otros " + f1(rr.otros.p95)); L.push("JS p95 por bloque: " + t4.join(" · ")); }
+        if (corto) { var t4 = [], j; for (j = 0; j < rr.bloques.length && j < 3; j++) t4.push(rr.bloques[j].nom.slice(0, 14) + " " + f1(rr.bloques[j].p95)); t4.push("otros " + f1(rr.otros.p95)); L.push("JS p95: " + t4.join(" · ")); }
         else {
           L.push("Reparto del JS por bloque (ms, mediana / p95; de mayor a menor p95):");
           rr.bloques.forEach(function (b, j) { if (j < 16 && (b.p95 >= 0.05 || j < 6)) L.push("  " + b.nom + ": " + f1(b.mediana) + " / " + f1(b.p95)); });

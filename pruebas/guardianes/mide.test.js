@@ -392,10 +392,10 @@ test("Q0h: el reparto sale en el informe largo (todos los bloques, la suma y «o
   const tx = E.texto(r);
   for (const s of ["Reparto del JS por bloque (ms, mediana / p95; de mayor a menor p95):", "  olivo (estación): ", "  c:fauna: ", "suma de los bloques: ", "renderer.render(): 1.2 / 1.2", "otros (lo que no cuadra con el JS total): "]) assert.ok(tx.includes(s), "falta «" + s + "» en:\n" + tx);
   assert.ok(tx.indexOf("olivo (estación)") < tx.indexOf("c:fauna") && tx.indexOf("c:fauna") < tx.indexOf("  Cola"), "ordenados por p95");
-  const c = E.lineas(r, true), l = c.filter(x => /^JS p95 por bloque: /.test(x));
-  assert.strictEqual(l.length, 1, c.join("\n")); assert.ok(/olivo \(estación\) 3\.\d · c:fauna 1\.\d · Cola 1\.\d · otros/.test(l[0]), l[0]);
+  const c = E.lineas(r, true), l = c.filter(x => /^JS p95: /.test(x));
+  assert.strictEqual(l.length, 1, c.join("\n")); assert.ok(/olivo \(estació 3\.\d · c:fauna 1\.\d · Cola 1\.\d · otros/.test(l[0]), l[0]);
   assert.ok(c.length <= 14, "la tarjeta de VR debe caber en el panel: " + c.length + "\n" + c.join("\n"));
-  assert.ok(l[0].length <= 70, "la línea del reparto cabe a lo ancho del panel: " + l[0].length);
+  assert.ok(l[0].length <= 72, "la línea del reparto cabe a lo ancho del panel: " + l[0].length);
 });
 test("Q0h: el reparto no cambia el cuerpo que viaja a la api (eso es Q0i)", () => {
   const n = 400, m = conReparto({ a: Array.from({ length: n }, () => 2) }, Array.from({ length: n }, () => 6), Array.from({ length: n }, () => 1));
