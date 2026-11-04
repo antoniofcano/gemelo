@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- El lote de olivos generados se monta en tramos más cortos entre fotogramas: reservar las mallas, cada geometría grande y cada cálculo de caja o esfera de recorte van por separado. El lote dibujado es idéntico (misma huella en los 30 lotes del fixture). En Node, el tramo más largo baja de ~4,9 a ~2,0 ms (indicador relativo; **no medido** en Chrome ni en Quest). Nuevo guardián `lote_tramos` con topes deterministas por tramo (AG-1.5a).
 - Rendimiento: la caja y la esfera de cada geometría de origen de los olivos generados se calculan una vez (caché débil) y se asignan antes de `addGeometry`, así que los lotes ya no recorren los vértices de cada geometría en cada lote. En Node, con 7 lotes del fixture: de 2.126.988 a 0 vértices recorridos, con cajas y esferas idénticas a las de three. Sin cambio visible; el efecto en fps y ms **no está medido** (se medirá con el mismo perfil de Chrome).
 - Motor: cero reservas por fotograma en la vida (quad, dron, fauna) y en la presencia compartida (AG-1.4): temporales de módulo en vez de objetos, arrays y cierres creados en cada fotograma; guardián `pruebas/guardianes/sin_reservas.test.js`. Efecto en el casco: no probado.
 - VR: la ficha de la baliza separa sus botones 16 px (12,9 mm) en vez de 12 px (9,7 mm), y un guardián vigila los topes angulares de las láminas (texto ≥ 1,5° por línea, objetivos ≥ 2,5°, ≥ 12 mm entre botones; cifras propias, sin verificar) (EV2-A0).
