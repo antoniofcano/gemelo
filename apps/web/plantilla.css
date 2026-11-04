@@ -66,6 +66,13 @@ body { background: #0b0d0a; color: var(--fg); font-family: var(--body); font-siz
 .t-ins { min-height: var(--toque); display: inline-flex; align-items: center; gap: 7px; max-width: min(340px, calc(100vw - 20px)); padding: 0 11px; font-size: 13px; font-variant-numeric: tabular-nums; cursor: pointer; text-align: left; }
 .t-ins span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .t-flecha { display: inline-block; font-weight: 700; transition: transform .3s; color: var(--lidar); }
+/* lo tuyo en pantalla (EV2-A4): hora · tu haza · hablar · volver, bajo el tiempo; en pantallas estrechas, solo el icono (el nombre sigue para el lector) */
+.hud-personal { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.hud-personal .hp-btn { padding: 0 10px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.hud-personal .hp-btn b { font-size: 18px; font-weight: 400; line-height: 1; }
+.hud-personal .hp-btn[hidden] { display: none; }
+.hud-personal .hp-txt { max-width: 11ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:root[data-personal="no"] #hudPersonal { display: none; }
 
 /* arriba a la derecha: la barra de iconos (el «inventario» de ventanas) */
 .hud-barra { position: absolute; top: calc(var(--sa-t) + 10px); right: calc(var(--sa-r) + 10px); display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; max-width: calc(100% - 140px); }
@@ -78,6 +85,7 @@ body { background: #0b0d0a; color: var(--fg); font-family: var(--body); font-siz
   .hud-barra [data-prio="2"] { display: none; }
   #bMas { display: inline-flex; }
   #hudModoTxt { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }   /* el selector se queda en su icono; el nombre sigue para el lector */
+  .hud-personal .hp-btn:not(#hpHora) .hp-txt { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 }
 
 /* centro arriba: avisos, telemetría del dron y la tarjeta del recorrido */
