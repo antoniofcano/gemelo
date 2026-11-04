@@ -213,7 +213,7 @@
       try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(tx).then(function () { notifica(true); }, function () { alt(); }); return; } } catch (e) {}
       alt();
       function alt() {
-        try { var ta = document.createElement("textarea"); ta.value = tx; ta.style.cssText = "position:fixed;left:-9999px"; document.body.appendChild(ta); ta.select(); var ok = document.execCommand("copy"); document.body.removeChild(ta); notifica(ok); } catch (e) { notifica(false); }
+        try { var ta = document.createElement("textarea"); ta.value = tx; ta.style.cssText = "position:fixed;left:-9999px"; document.body.appendChild(ta); ta.name = "copia-portapapeles"; ta.select(); var ok = document.execCommand("copy"); document.body.removeChild(ta); notifica(ok); } catch (e) { notifica(false); }
       }
     }
     // la caja de pantalla: junto al contador de ?debug (o sola si se arma con &mide sin ?debug)

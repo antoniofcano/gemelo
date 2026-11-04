@@ -314,7 +314,7 @@
       }
       var campo = null;
       if (que === "nombrar") {
-        campo = el("input", "width:100%;box-sizing:border-box;font:inherit;padding:10px;border-radius:8px;border:1px solid #6b7;background:#0c120e;color:inherit"); campo.type = "text"; campo.maxLength = 40; campo.value = c.dato && c.dato.nombre || "";
+        campo = el("input", "width:100%;box-sizing:border-box;font:inherit;padding:10px;border-radius:8px;border:1px solid #6b7;background:#0c120e;color:inherit"); campo.type = "text"; campo.name = "nombre-olivo"; campo.maxLength = 40; campo.value = c.dato && c.dato.nombre || "";
         campo.setAttribute("aria-label", "Nombre del olivo"); campo.setAttribute("autocomplete", "off");
         caja.appendChild(el("p", "margin:0 0 8px", "Hasta 40 letras. Lo verán las demás familias; la oficina puede retirarlo. Sin enlaces, teléfonos ni datos personales."));
         caja.appendChild(campo);
@@ -324,11 +324,11 @@
           cli.cuelga(c.i.finca, c.i.copas_id, P.cuerpoOlivo({ nombre: v.nombre })).then(function (r) { fin({ ok: r.ok, estado: r.estado, cuerpo: r.cuerpo }); });
         });
       } else if (que === "foto") {
-        var arch = el("input", "width:100%;box-sizing:border-box;font:inherit;margin:6px 0"); arch.type = "file"; arch.accept = P.TIPOS.join(","); arch.setAttribute("aria-label", "Foto o dibujo");
-        var tipo = el("select", "font:inherit;padding:8px;border-radius:8px;margin:6px 0;background:#0c120e;color:inherit"); tipo.setAttribute("aria-label", "Qué es");
+        var arch = el("input", "width:100%;box-sizing:border-box;font:inherit;margin:6px 0"); arch.type = "file"; arch.name = "archivo-olivo"; arch.accept = P.TIPOS.join(","); arch.setAttribute("aria-label", "Foto o dibujo");
+        var tipo = el("select", "font:inherit;padding:8px;border-radius:8px;margin:6px 0;background:#0c120e;color:inherit"); tipo.name = "tipo-olivo"; tipo.setAttribute("aria-label", "Qué es");
         [["foto", "Es una foto"], ["pintura", "Es un dibujo o una pintura"]].forEach(function (o) { var op = el("option", "", o[1]); op.value = o[0]; tipo.appendChild(op); });
         var av = el("label", "display:flex;gap:10px;align-items:flex-start;margin:10px 0;padding:10px;border-radius:8px;background:rgba(255,210,122,0.12);border:1px solid rgba(255,210,122,0.5)");
-        var chk = el("input", "min-width:24px;min-height:24px;margin-top:2px"); chk.type = "checkbox"; chk.setAttribute("data-acepta", "1");
+        var chk = el("input", "min-width:24px;min-height:24px;margin-top:2px"); chk.type = "checkbox"; chk.name = "acepta-olivo"; chk.setAttribute("data-acepta", "1");
         av.appendChild(chk); av.appendChild(el("span", "", P.AVISO + " Marco que lo he leído y que lo cumplo."));
         caja.appendChild(arch); caja.appendChild(tipo); caja.appendChild(av); caja.appendChild(el("p", "margin:4px 0;font-size:14px;opacity:.85", P.AVISO_PRUEBAS + " La foto se reduce en tu aparato antes de subirla y el servidor le quita la ubicación y los datos de la cámara."));
         ok.textContent = "Subir y colgar"; ok.disabled = true;
@@ -366,14 +366,14 @@
         ok.addEventListener("click", function () { ocupado(true, "Quitando…"); cli.quita(c.i.finca, c.i.copas_id).then(function (r) { fin({ ok: r.ok, estado: r.estado, cuerpo: r.cuerpo }); }); });
       } else if (que === "denunciar") {
         caja.appendChild(el("p", "margin:0 0 8px", "Lo mirará la oficina. Mientras tanto se sigue viendo."));
-        campo = el("select", "font:inherit;padding:8px;border-radius:8px;width:100%;margin:6px 0;background:#0c120e;color:inherit"); campo.setAttribute("aria-label", "Motivo");
+        campo = el("select", "font:inherit;padding:8px;border-radius:8px;width:100%;margin:6px 0;background:#0c120e;color:inherit"); campo.name = "motivo-denuncia"; campo.setAttribute("aria-label", "Motivo");
         P.MOTIVOS.forEach(function (m) { var op = el("option", "", m[1]); op.value = m[0]; campo.appendChild(op); });
-        var tx = el("textarea", "width:100%;box-sizing:border-box;font:inherit;padding:8px;border-radius:8px;min-height:70px;background:#0c120e;color:inherit"); tx.maxLength = 500; tx.setAttribute("aria-label", "Qué ocurre (opcional)");
+        var tx = el("textarea", "width:100%;box-sizing:border-box;font:inherit;padding:8px;border-radius:8px;min-height:70px;background:#0c120e;color:inherit"); tx.name = "texto-denuncia"; tx.maxLength = 500; tx.setAttribute("aria-label", "Qué ocurre (opcional)");
         caja.appendChild(campo); caja.appendChild(tx); ok.textContent = "Enviar denuncia";
         ok.addEventListener("click", function () { ocupado(true, "Enviando…"); enviaDenuncia(id, c, campo.value, tx.value.trim(), fin); });
       } else if (que === "sugerir") {
         caja.appendChild(el("p", "margin:0 0 8px", "Un recado para la oficina sobre este olivo o tu haza (una rama partida, un nombre que cambiar…). Sin enlaces ni teléfonos."));
-        campo = el("textarea", "width:100%;box-sizing:border-box;font:inherit;padding:8px;border-radius:8px;min-height:90px;background:#0c120e;color:inherit"); campo.maxLength = 1000; campo.setAttribute("aria-label", "Sugerencia");
+        campo = el("textarea", "width:100%;box-sizing:border-box;font:inherit;padding:8px;border-radius:8px;min-height:90px;background:#0c120e;color:inherit"); campo.name = "sugerencia-olivo"; campo.maxLength = 1000; campo.setAttribute("aria-label", "Sugerencia");
         caja.appendChild(campo); ok.textContent = "Enviar";
         ok.addEventListener("click", function () {
           var t = campo.value.trim(); if (!t) { msg.textContent = "Escribe qué quieres decir."; return; }

@@ -423,3 +423,27 @@ test("VR simulada con la escena por defecto (3D Tiles): entra, anda, cada perfil
     assert.deepStrictEqual(errores, [], "errores de consola, de página o de CSP");
   } finally { await p.close(); }
 });
+
+test("el aviso de escala no uniforme de 3DTilesRendererJS (la exageración vertical) sale como mucho UNA vez; cualquier otro console.warn pasa y restaura() devuelve el original", () => {
+  const m = lee(path.join(MOTOR, "04b_escena3d.js")), t0 = m.indexOf(">>> limitaAviso"), t1 = m.indexOf("// <<< limitaAviso");
+  assert.ok(t0 > 0 && t1 > t0, "04b_escena3d.js perdió los marcadores de limitaAviso");
+  assert.match(m, /limitaAviso\(console, "Non uniform scale used for tile"\)/, "arranca() debe instalar el filtro con el texto de la librería");
+  assert.match(m, /avisoEscala\.restaura\(\)/, "falla() debe restaurar console.warn");
+  const limitaAviso = new Function(m.slice(m.indexOf("function limitaAviso", t0), t1).replace(/\/\/ *$/, "") + "\nreturn limitaAviso;")();
+  const dichos = [], consola = { warn: function () { dichos.push([].slice.call(arguments)); } }, original = consola.warn;
+  const AVISO = "ThreeTilesRenderer : Non uniform scale used for tile which may cause issues when calculating screen space error.";
+  const f = limitaAviso(consola, "Non uniform scale used for tile");
+  for (let i = 0; i < 1000; i++) consola.warn(AVISO);
+  assert.strictEqual(dichos.length, 1, "el aviso de escala debe salir una sola vez, salieron " + dichos.length);
+  consola.warn("TilesRenderer: no cameras defined. Cannot update 3d tiles."); consola.warn("otro", 42); consola.warn({ objeto: 1 });
+  assert.strictEqual(dichos.length, 4, "los demás avisos pasan todos");
+  assert.deepStrictEqual(dichos[2], ["otro", 42], "con sus argumentos");
+  f.restaura();
+  assert.strictEqual(consola.warn, original, "restaura() devuelve el console.warn de antes");
+  consola.warn(AVISO); assert.strictEqual(dichos.length, 5, "restaurado, el aviso vuelve a pasar");
+  // si otro envolvió console.warn después, restaura() no lo pisa y el nuestro queda inerte
+  const g = limitaAviso(consola, "Non uniform"), ajeno = consola.warn;
+  const envuelto = function () { return ajeno.apply(consola, arguments); }; consola.warn = envuelto;
+  g.restaura(); assert.strictEqual(consola.warn, envuelto, "no pisa un envoltorio posterior");
+  consola.warn(AVISO); consola.warn(AVISO); assert.strictEqual(dichos.length, 7, "inerte tras restaurar: deja pasar todo");
+});

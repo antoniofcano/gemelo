@@ -564,7 +564,7 @@
       var listaG = el("ul", { style: "list-style:none;margin:4px 0;padding:0;max-height:22vh;overflow:auto" });
       var gSeccion = el("div", { id: "presenciaListaGente" }, [gTitulo, listaG]);
       var chat = el("ol", { style: "list-style:none;margin:6px 0;padding:0", "aria-live": "polite", "aria-label": "Chat de la visita" });
-      var entrada = el("input", { type: "text", maxLength: Chat.MAX, autocomplete: "off", placeholder: "Escribe a la visita", "aria-label": "Mensaje para la visita (no se guarda)", style: "flex:1;min-width:0;font:inherit;min-height:44px;padding:0 8px;border-radius:8px;border:1px solid rgba(255,255,255,0.3);background:rgba(0,0,0,0.3);color:inherit" });
+      var entrada = el("input", { type: "text", maxLength: Chat.MAX, name: "chat-visita", autocomplete: "off", placeholder: "Escribe a la visita", "aria-label": "Mensaje para la visita (no se guarda)", style: "flex:1;min-width:0;font:inherit;min-height:44px;padding:0 8px;border-radius:8px;border:1px solid rgba(255,255,255,0.3);background:rgba(0,0,0,0.3);color:inherit" });
       var forma = el("form", { style: "display:flex;gap:6px;padding:6px 8px 0" }, [entrada, el("button", { type: "submit", style: boton }, ["Enviar"])]);
       var nota = el("p", { style: "margin:4px 0;padding:0 8px;opacity:0.7;font-size:11px" }, ["Visita libre: sin voz. El chat no se guarda."]);
       var ventanaG = document.getElementById("ventanaGente");

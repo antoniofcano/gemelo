@@ -26,9 +26,24 @@
       if (/^[a-z][a-z0-9+.-]*:|^\/\//i.test(u)) throw new Error("tileset fuera del mismo origen: " + u);   // ni http(s):, ni data:, ni //host
       return u;
     }
+    // Aviso de 3DTilesRendererJS por la escala no uniforme del grupo (la exageración vertical, colocaGrupo): lo da prepareForTraversal en CADA fotograma
+    // con exag ≠ 1 (unos 78/s en una sesión real de Chrome con ?debug&mide=60). Se deja pasar UNA vez y se descarta el resto del
+    // mismo texto; cualquier otro console.warn pasa intacto. Se restaura con restaura() (en falla()). >>> limitaAviso
+    function limitaAviso(consola, texto) {
+      var orig = consola.warn, visto = false, activo = true;
+      function filtro() {
+        var m = arguments[0];
+        if (activo && typeof m === "string" && m.indexOf(texto) >= 0) { if (visto) return; visto = true; }
+        return orig.apply(consola, arguments);
+      }
+      consola.warn = filtro;
+      return { restaura: function () { activo = false; if (consola.warn === filtro) consola.warn = orig; } };   // si otro lo envolvió después, el nuestro queda inerte y deja pasar todo
+    }
+    // <<< limitaAviso
+    var avisoEscala = null;
     function falla(e) {
       if (estado === "sin") return;
-      estado = "sin"; motivo = String(e && e.message || e); console.error("escena 3D Tiles: " + motivo + " (esta finca se queda sin escena)");
+      estado = "sin"; if (avisoEscala) { avisoEscala.restaura(); avisoEscala = null; } motivo = String(e && e.message || e); console.error("escena 3D Tiles: " + motivo + " (esta finca se queda sin escena)");
       if (tiles) { try { scene.remove(tiles.group); tiles.dispose(); } catch (e2) {} tiles = null; }
       // falla() puede llegar mientras se monta el motor (sin tileset, o un ?tileset= de otro host, falla al definir este módulo): 04d y 04c
       // vienen después y aún no existen; a 04c se le avisa al engancharse (engancha)
@@ -60,6 +75,7 @@
         if (estado !== "cargando") return;
         Sched = m.Scheduler || null;
         tiles = new m.TilesRenderer(u);
+        if (!avisoEscala && typeof console !== "undefined") avisoEscala = limitaAviso(console, "Non uniform scale used for tile");
         tiles.errorTarget = ERROR_ESCRITORIO;
         tiles.setCamera(camera); tiles.setResolutionFromRenderer(camera, renderer);
         tiles.addEventListener("load-root-tileset", function (e) {

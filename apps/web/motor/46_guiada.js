@@ -221,7 +221,7 @@
       var turno = el("p", { style: "margin:0 0 4px" }), mas = el("button", { type: "button", style: css }, ["+1 min"]), cor = el("button", { type: "button", style: css }, ["Cortar"]);
       var manos = el("ol", { style: "margin:4px 0;padding-left:22px", "aria-label": "Manos levantadas, en orden" }), sinManos = el("p", { style: "margin:0;opacity:0.7" }, ["Nadie ha levantado la mano."]);
       var sil = el("button", { type: "button", style: css }, ["Silenciar a todos"]);
-      var seg = el("select", { style: "font:inherit;min-height:44px;border-radius:8px;margin:2px 6px 2px 0", "aria-label": "Segundos hasta cerrar la sala" }, G.SEGUNDOS_CIERRE.map(function (x) { return el("option", { value: String(x) }, [x + " s antes de cerrar"]); }));
+      var seg = el("select", { name: "segundos-cierre-sala", style: "font:inherit;min-height:44px;border-radius:8px;margin:2px 6px 2px 0", "aria-label": "Segundos hasta cerrar la sala" }, G.SEGUNDOS_CIERRE.map(function (x) { return el("option", { value: String(x) }, [x + " s antes de cerrar"]); }));
       seg.value = String(G.DEFECTO_CIERRE);
       var cie = el("button", { type: "button", style: cssPeligro }, ["Cerrar la sala"]);
       var estado = el("p", { role: "status", "aria-live": "polite", style: "margin:8px 0 0;min-height:1.4em" });
