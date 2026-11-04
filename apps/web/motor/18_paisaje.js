@@ -49,8 +49,11 @@
 
   // --- los árboles que no son olivos: tronco y 2-3 masas de copa, con el tamaño medido
   var arb = PA.arboles, nA = arb.length;
-  var iTronco = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.16, 0.26, 1, 7), matTronco, Math.max(1, nA));
-  var geoBlob = new THREE.IcosahedronGeometry(1, 1), iBlob = [0, 1, 2].map(function () { return new THREE.InstancedMesh(geoBlob, matCopaArb, Math.max(1, nA)); });
+  var iTronco = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.16, 0.26, 1, 5), matTronco, Math.max(1, nA));
+  // AG-1.12: masa de copa de 20 triángulos (antes 80; icosaedro de detalle 0). Normales de esfera (suaves, sin facetado) y escala 1/0,851 para que
+  // sus puntas lleguen a 1 sobre los ejes, como el de detalle 1 (misma caja); forma ILUSTRATIVA
+  var geoBlob = new THREE.IcosahedronGeometry(1, 0); (function () { var p = geoBlob.attributes.position, n = geoBlob.attributes.normal, v = new THREE.Vector3(); for (var q = 0; q < p.count; q++) { v.fromBufferAttribute(p, q).normalize(); n.setXYZ(q, v.x, v.y, v.z); } n.needsUpdate = true; geoBlob.scale(1.1756, 1.1756, 1.1756); })();
+  var iBlob = [0, 1, 2].map(function () { return new THREE.InstancedMesh(geoBlob, matCopaArb, Math.max(1, nA)); });
   [iTronco].concat(iBlob).forEach(function (m) { gPaisaje.add(m); });   // r151: three calcula la esfera de una InstancedMesh una vez; colocaPaisaje la rehace al recolocarlas
   var tmpA = new THREE.Object3D(), colA = new THREE.Color();
   arb.forEach(function (a, i) {

@@ -179,7 +179,7 @@ function mundoMarc(nCopas, nMarc, extra) {
   return { g, Bus, scene, cas, estado };
 }
 
-test("marcadores-lidar: manifiesto; mundo:aplica coloca copas, anillos y desfase; las casillas mandan; presupuesto medido (8·copas + 40·marcas); liberar suelta todo", () => {
+test("marcadores-lidar: manifiesto; mundo:aplica coloca copas, anillos y desfase; las casillas mandan; presupuesto medido (8·copas + 16·marcas); liberar suelta todo", () => {
   const m = mundoMarc(140, 60), d = carga("08b_marcadores_lidar.js", m.g, []), n = contexto(m.Bus);
   assert.strictEqual(d.id, "marcadores-lidar"); assert.strictEqual(d.bandera.url, "marcadores"); assert.strictEqual(JSON.stringify(d.fases), "{}");
   assert.strictEqual(m.scene.children.length, 0, "antes de montar la escena está vacía");
@@ -196,11 +196,11 @@ test("marcadores-lidar: manifiesto; mundo:aplica coloca copas, anillos y desfase
   assert.ok(m.scene.children[2].children[0].geometry.attributes.position.count > 0, "líneas de desfase");
   // presupuesto: copas y anillos visibles (casillas por defecto) y, con «Desfase», las líneas
   const dib = dibujo(m.scene); console.log("medido marcadores-lidar (140 copas, 60 marcas):", JSON.stringify(dib));
-  assert.strictEqual(dib.llamadas, 2); assert.strictEqual(dib.triangulos, 8 * 140 + 40 * 60);
+  assert.strictEqual(dib.llamadas, 2); assert.strictEqual(dib.triangulos, 8 * 140 + 16 * 60);
   m.cas.cDesf.checked = true; m.Bus.emite("capas:cambia"); assert.strictEqual(dibujo(m.scene).llamadas, 3, "con el desfase, la llamada de las líneas");
   m.cas.cCopas.checked = false; m.cas.cMarc.checked = false; m.Bus.emite("capas:cambia"); assert.strictEqual(dibujo(m.scene).triangulos, 0, "sin copas ni anillos");
   // techo del manifiesto: 10.000 copas y 10.000 marcas caben
-  assert.ok(8 * 10000 + 40 * 10000 <= d.presupuesto.triangulos && d.presupuesto.llamadas >= 3);
+  assert.ok(8 * 10000 + 16 * 10000 <= d.presupuesto.triangulos && d.presupuesto.llamadas >= 3);
   assert.ok(dib.llamadas <= d.presupuesto.llamadas && dib.triangulos <= d.presupuesto.triangulos);
   assert.strictEqual(typeof api.coloca, "function");
   const sp = espiaDispose();
