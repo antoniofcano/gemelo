@@ -46,6 +46,14 @@
         ortoMax: ligero ? 8 : 20,              // 02_mundo: ortofotos decodificadas a la vez
         cacheMemMB: ligero ? 60 : 150,         // 07ab_generados: caché de recetas en memoria fuera de VR
         cacheMemVrMB: 60,                      // ... y en VR
+        // AG-1.5: tope de ms por fotograma para TODO lo que carga a rebanadas (la cola de trabajos de 02b, los olivos generados y lo que el tileset gastó
+        // en el motor el fotograma anterior, la «deuda»). 07b_arboles recorta con él su presupuesto de siempre (3-12 ms según falten olivos y vaya holgado): escritorio
+        // 12 = sin recorte (el máximo que ya daba); ligero 6 (60 Hz: ~1/3 de 16,7 ms); en VR 3 (72 Hz: ~1/5 de 13,9 ms, con la mediana de JS medida
+        // en un Quest de 6,9-7,5 ms). [SUPUESTO] valores de partida sin medir en un aparato: se ajustan con ?debug&mide=60 en el Quest (doc del encargo)
+        cargaMs: ligero ? 6 : 12, cargaMsVr: 3,
+        // AG-1.5: teselas del tileset que la librería de 3D Tiles analiza a la vez (parseQueue.maxJobs; la librería trae 5): menos en móvil y en VR para que
+        // no lleguen varias juntas al mismo fotograma (cada una dispara load-model y su subida a la GPU). [SUPUESTO] sin medir en un aparato
+        tilesParse: ligero ? 3 : 5, tilesParseVr: 2,
         postprocesado: deEsc,                    // (previsto) solo escritorio
         sombras: deEsc ? "normales" : "cortas",  // (previsto) cortas en móvil y gafas
         relieveFino: clase !== "quest",        // (previsto) las gafas ya lo bajan por perfil

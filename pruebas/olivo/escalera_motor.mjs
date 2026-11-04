@@ -46,6 +46,8 @@ const T15 = lee("15_tiempo.js"), T03 = lee("03_escena.js");
 const piezas = [extrae(T03, "var GLSL_LIN"), extrae(T03, "function colorVertSRGB"), extrae(T15, "var uViento"), extrae(T15, "var uSombra"),
   extrae(T15, "var GLSL_SOMBRA"), extrae(T15, "function parcheTiempo")].join("\n");
 const A01 = lee("01a_aparato.js"), G07 = lee("07ab_generados.js"), L07 = lee("07ac_lejanos.js");   // 01a: el Aparato real (AG-0.3)
+// AG-1.5: CargaPuro (la regla del presupuesto de carga que usa 07b_arboles), del trozo puro de 02b_cola.js
+const C02 = lee("02b_cola.js"), CargaPuro = new Function(C02.slice(C02.indexOf("// [puro:inicio]"), C02.indexOf("// [puro:fin]")) + "\nreturn CargaPuro;")();
 
 function contexto(busqueda, reloj, mas) {
   const ctx = {
@@ -322,7 +324,8 @@ if (fs.existsSync(FX)) {
       Mundo: { cx: 0, cy: 0, tesela: () => ({ estado: 2, pts: null, key: "t" }), ortoGrueso: (x, y, c3) => { c3[0] = 0.3; c3[1] = 0.35; c3[2] = 0.2; }, aseguraOrto: function* () {} },
       Catalogo: { SIN: -1, variantes: (t, n) => (n === 1 ? 4 : 2), geometria: () => mat(), alCambiar: () => {}, tipos: () => [], info: () => ({}) },
       OlivosTiles: { dibuja: () => true, triangulos: () => (copas.length - tiles.cerca.length) * tiles.triPor, cerca: l => { tiles.cerca = l.slice(); }, resumen: () => ({ estado: "activo", dibujadas: 0 }) },
-      Cola: { add: k => { if (k.charAt(0) !== "C" && k.charAt(0) !== "B") throw new Error("los generados no deben usar la Cola compartida: " + k); cola.add.push(k); }, hay: () => false, cancela: () => { cola.cancela++; }, pendientes: () => 0 }
+      Cola: { add: k => { if (k.charAt(0) !== "C" && k.charAt(0) !== "B") throw new Error("los generados no deben usar la Cola compartida: " + k); cola.add.push(k); }, hay: () => false, cancela: () => { cola.cancela++; }, pendientes: () => 0, deuda: () => 0 },
+      CargaPuro   // AG-1.5: la regla real del presupuesto de carga (02b_cola.js, trozo puro)
     };
     const reloj = { t: 0, now() { return (this.t += 0.6); } }, cx = contexto(q, reloj, { glob, codigo: B07 + "\n;this.__A = Arboles;" });
     Object.assign(cx.D, { copas: I.copas, copas_id: I.copas_id, copas_param: I.copas_param, copas_semilla: I.copas_semilla, centro_utm: I.centro_utm });
