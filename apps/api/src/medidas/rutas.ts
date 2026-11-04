@@ -14,6 +14,8 @@ import { OFICINA } from "../oficina/acceso.ts";
 export const APARATOS = ["escritorio", "movil", "quest"] as const;
 export type Aparato = (typeof APARATOS)[number];
 export const MEDIDAS_POR_DIA = 10;
+/** Mientras se depura (Antonio, 2026-11-04), una sesión de admin no tiene tope diario: mide cuanto haga falta. El freno por minuto sigue. En producción se decidirá si se capa. */
+export const sinTopeDiario = (rol: string | undefined): boolean => rol === "admin";
 /** Objetivo de p95 por aparato (ms). Quest: 13,9 ms = 72 Hz (ADR-0015, criterio 5). Escritorio y móvil: no hay umbral escrito (VR.md: «no hay umbral decidido»): solo la cifra. */
 export const OBJETIVO_P95_MS: Record<Aparato, number | null> = { escritorio: null, movil: null, quest: 13.9 };
 export const LIMITE_FILAS = { porDefecto: 100, max: 500 } as const;
@@ -128,8 +130,10 @@ export async function rutasMedidas(app: FastifyInstance, ctx: Contexto): Promise
   }, async (req, rep) => {
     const m = req.body;
     if (motivoNoCreible(m)) return rep.code(422).send({ error: "medida_no_creible", mensaje: "Esa medida no cuadra (cifras desordenadas o fecha que no es de ahora) y no se ha guardado." });
-    const lim = await porHogarYDia(req);
-    if (!lim.isAllowed && lim.isExceeded) return rep.code(429).send({ error: "demasiadas_peticiones", mensaje: TEXTO_LIMITE });
+    if (!sinTopeDiario(req.session?.rol)) {
+      const lim = await porHogarYDia(req);
+      if (!lim.isAllowed && lim.isExceeded) return rep.code(429).send({ error: "demasiadas_peticiones", mensaje: TEXTO_LIMITE });
+    }
     // ni hogar ni IP ni cabeceras: solo el cuerpo ya validado
     await bd.query(
       `INSERT INTO medidas_fluidez (medida_en, aparato, navegador, nav_mayor, perfil, finca, modo, vr, mediana_ms, p95_ms, peor_ms, fotogramas, duracion_s, version,

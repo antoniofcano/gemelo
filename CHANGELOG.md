@@ -4,6 +4,9 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 
 ## [No publicado]
 
+### Cambiado
+- Api: las medidas de fluidez de una sesión de admin no tienen tope diario mientras se depura (antes, 10 por hogar y día también para admin: dos medidas del Quest del 2026-11-04 se rechazaron con 429); el resto de hogares sigue con 10 al día y todos con el freno de 10 por minuto.
+
 ### Añadido
 - VR (Q2c): con `?mide` o `?debug` el gemelo entra en VR por sí solo al recibir `sessiongranted` del Quest Browser (arranque por adb para medir); sin esas opciones no cambia nada. Probado en Node con el WebXR simulado; no probado en un Quest.
 - Rayos (AG-1.6): BVH opcional con `?bvh` (three-mesh-bvh 0.9.18) para los rayos contra el relieve de las teselas, que solo usan las pruebas y la depuración: tocar, los mandos y el teletransporte ya eran analíticos, así que en producción no cambia nada. En Node, de ~17 ms a ~5 µs por rayo sobre 131.072 triángulos.

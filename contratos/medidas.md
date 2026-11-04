@@ -16,7 +16,7 @@ Esquema: [medidas.schema.json](medidas.schema.json). Rutas: [api.openapi.yaml](a
   - `llamadas_med`, `triangulos_med`: mediana por fotograma de `renderer.info.render.calls` y `.triangles` (el último `render()` del fotograma).
   - `personas`: número de personas visibles de la presencia (`__presencia().vistos`) al terminar, 0 si no hay presencia. Solo el número; ninguna identidad.
   - **Sigue sin llevar hogar, posición, IP ni identidad.** El texto del botón de enviar enseña lo que se manda.
-- **Qué no lleva ni guarda**: hogar, correo, posición, IP, cookies, el agente de usuario completo. La api usa el hogar solo como clave del límite (10 por hogar y día, en memoria); la tabla no tiene `hogar_id` ni se audita el envío (la auditoría guarda el hogar y enlazaría la medida con una familia).
+- **Qué no lleva ni guarda**: hogar, correo, posición, IP, cookies, el agente de usuario completo. La api usa el hogar solo como clave del límite (10 por hogar y día, en memoria; una sesión de admin no tiene tope diario mientras se depura, decisión de Antonio del 2026-11-04, y el freno de 10 por minuto sigue para todos); la tabla no tiene `hogar_id` ni se audita el envío (la auditoría guarda el hogar y enlazaría la medida con una familia).
 - **Esquema estricto**: campos de más, tipos mal o valores fuera de rango, 400. Además la api devuelve 422 `medida_no_creible` si no se cumple `mediana ≤ p95 ≤ peor` o si la fecha es futura o de hace más de 7 días.
 
 ## Lectura de la oficina

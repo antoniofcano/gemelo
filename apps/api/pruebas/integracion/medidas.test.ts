@@ -14,12 +14,12 @@ import { configDePrueba, contexto, deLaWeb } from "../apoyo/contexto.ts";
 const SALTO = hayDocker() ? null : "Docker no disponible: la integración de las medidas de fluidez con PostGIS NO se ha comprobado";
 let bd: BdDePrueba, app: FastifyInstance, ctx: ReturnType<typeof contexto>;
 let ipN = 0;
-const ANA = "ana-medidas@example.com", LUIS = "luis-medidas@example.com", OFI = "ofi-medidas@example.com";
+const ANA = "ana-medidas@example.com", LUIS = "luis-medidas@example.com", OFI = "ofi-medidas@example.com", ADM = "adm-medidas@example.com";
 
 before(async () => {
   if (SALTO) return;
   bd = await levantaBd();
-  for (const [c, rol] of [[ANA, "hogar"], [LUIS, "hogar"], [OFI, "oficina"]] as const) await bd.dueno.query("INSERT INTO hogares (correo, rol) VALUES ($1, $2)", [c, rol]);
+  for (const [c, rol] of [[ANA, "hogar"], [LUIS, "hogar"], [OFI, "oficina"], [ADM, "admin"]] as const) await bd.dueno.query("INSERT INTO hogares (correo, rol) VALUES ($1, $2)", [c, rol]);
   ctx = contexto(bd.app, configDePrueba({ GEMELO_ENLACE_POR_CORREO: "100", GEMELO_ENLACE_POR_IP: "1000" }));
   app = await construyeApp(ctx);
   await app.ready();
@@ -141,4 +141,14 @@ test("0022 / Q0e: guarda los campos nuevos, acepta el cuerpo antiguo, rechaza lo
   assert.equal(f.perillas, "fov 1 · escala 0,9 · 72 Hz · MSAA sí · nivel auto");
   assert.deepEqual([f.olivos_gen_si, f.olivos_gen_de], [2, 3], "dos de las tres con dato traían los olivos generados");
   assert.ok(!/hogar|ana-medidas|"id"/.test(JSON.stringify(j)));
+});
+
+// al final: sus medidas de más no deben cambiar los agregados que comprueban las de arriba
+test("admin (mientras se depura): sin tope diario, pasadas " + MEDIDAS_POR_DIA + " medidas sigue guardando", async t => {
+  if (salta(t)) return;
+  const adm = await entra(ADM);
+  for (let i = 0; i <= MEDIDAS_POR_DIA + 2; i++) {
+    const r = await pide("POST", "/api/medidas", adm, medida({ p95_ms: 14 + i * 0.1 }));
+    assert.equal(r.statusCode, 201, "medida " + (i + 1) + ": " + r.body);
+  }
 });
