@@ -459,7 +459,8 @@ test("en Chrome: sin ?presencia no se añade nada; con ?presencia=sim, 10 y 40 v
   const esperado = r => Cuenta.grupo({ plazas: r.pres.n, cuerpo: r.pres.n * 5, cabeza: r.pres.n, nombres: r.pres.n, cajas: r.pres.aspecto.cajas, manos: 2 * r.pres.quest, ruedas: r.pres.aspecto.ruedas });
   for (const n of [10, 40]) {
     const e = esperado({ pres: res[n].pres }), real = { llamadas: res[n].presLlamadas - res[0].presLlamadas, triangulos: res[n].presTri };
-    assert.deepStrictEqual(real, e, n + " visitantes: lo dibujado debe ser lo que dice Cuenta (llamadas, triángulos) " + JSON.stringify(real) + " vs " + JSON.stringify(e));
+    // desde AG-1.3b una malla sin instancias vivas (p. ej. las manos sin nadie con Quest) se recorta y no paga su llamada vacía: como mucho las de Cuenta, y los mismos triángulos
+    assert.ok(real.llamadas <= e.llamadas && real.llamadas >= e.llamadas - 2 && real.triangulos === e.triangulos, n + " visitantes: lo dibujado debe ser lo que dice Cuenta (llamadas como mucho, triángulos iguales) " + JSON.stringify(real) + " vs " + JSON.stringify(e));
   }
   assert.ok(res[40].presLlamadas === res[10].presLlamadas || Math.abs(res[40].presLlamadas - res[10].presLlamadas) <= 2, "10 y 40 visitantes cuestan casi las mismas llamadas (instanciado)");
 });

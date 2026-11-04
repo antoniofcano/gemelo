@@ -178,7 +178,9 @@ test("tileset: teselas analizadas a la vez por aparato y VR, prioridad de red al
   assert.match(B04, /tiles\.parseQueue\.maxJobs = CargaPuro\.parseTiles\(POL, !!s\)/, "al entrar y salir de VR");
   assert.match(B04, /tiles\.registerPlugin\(prioridadRed\(\)\)/);
   assert.match(B04, /return tiles\.fetchData\(u, /, "la descarga la sigue haciendo la librería (mismo origen)");
-  assert.strictEqual((B04.match(/addEventListener\("load-model", Cola\.cobra\("T", /g) || []).length, 2, "lo que el motor hace en load-model se cobra como deuda");
+  // todas las escuchas de load-model (el relieve, el sombreado y, con ?bvh, el árbol de rayos de AG-1.6) se cobran como deuda
+  const escuchas = (B04.match(/addEventListener\("load-model", /g) || []).length, cobradas = (B04.match(/addEventListener\("load-model", Cola\.cobra\("T", /g) || []).length;
+  assert.ok(escuchas >= 2 && cobradas === escuchas, "lo que el motor hace en load-model se cobra como deuda: " + cobradas + " de " + escuchas);
 });
 
 test("el complemento de red de 04b: apunta la tesela de cada dirección, pide con su prioridad y suelta lo apuntado", async () => {

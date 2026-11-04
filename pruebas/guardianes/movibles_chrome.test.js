@@ -32,7 +32,8 @@ async function abre(ancho, alto) {
   return p;
 }
 async function entra(p) {
-  await p.goto(base + "?presencia=sim&chat=1&n=3");
+  // palanca=0: esta prueba es de la cruceta (.pad-mov); con la palanca táctil, encendida por defecto en táctil desde EV2-B2, la cruceta no se ve
+  await p.goto(base + "?presencia=sim&chat=1&n=3&palanca=0");
   await p.waitForFunction(() => window.__g && window.__g.listo(), null, { timeout: 90000 });
   await p.evaluate(() => document.getElementById("btnPaseo").click());   // paseo: aparece la cruceta
   await p.waitForFunction(() => document.getElementById("visor").classList.contains("paseo"), null, { timeout: 30000 });
