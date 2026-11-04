@@ -72,6 +72,7 @@ const BUCLE = {
   "19_balizas.js": [["firmaCambia", "function firmaCambia("]],
   "25_perros.js": [["amenazaEn", "function amenazaEn("], ["actualizaPerros", "function actualizaPerros("]],
   "02c_componentes.js": [["Bus.emite", "function emite(ev, datos)"]],
+  "02g_vr_presupuesto.js": [["VrPresupuesto.mueve", "function mueve("]],   // Q0c-a: cada fotograma en VR
   "18_paisaje.js": [["distArroyo", "function distArroyo("], ["celdaArroyoDist", "function celdaArroyoDist("]],
   "16_vida.js": [["velPaseo", "function velPaseo("], ["giroPaseo", "function giroPaseo("], ["vidaPaseo", "function vidaPaseo("], ["dronMando", "function dronMando("],
     ["camaraDron", "function camaraDron("], ["vidaDron", "function vidaDron("], ["actualizaVida", "function actualizaVida("], ["emiteEstela", "e.emite = function"], ["angDifRad", "function angDifRad("]],

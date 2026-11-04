@@ -1,7 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: matHojaG, matHojaP, matCorteza, matSombra, geoSombra, follajeG, construyeSombras
-// Consume: 01_datos (ESC_R8), 02_mundo (suelo, copaAlta, aviva, colorEn, copas), 03_escena (texColor, exag, calidad), 04d_sombreado_tiles (hash),
-//   06_arboles (gSombras, radioEn), 14_historia (lista), 16_vida (esfera), 18_paisaje (instSombra, sombrasSol), 23_estacion (construyeFrutosLista)
+// Consume: 01_datos (ESC_R8), 02_mundo (suelo, copaAlta, aviva, colorEn, copas), 02g_vr_presupuesto (VrPresupuesto),
+//   03_escena (texColor, exag, calidad), 04d_sombreado_tiles (hash), 06_arboles (gSombras, radioEn), 14_historia (lista), 16_vida (esfera),
+//   18_paisaje (instSombra, sombrasSol), 23_estacion (construyeFrutosLista)
 // ===============================================================================
 
   // follaje: cada punto LiDAR de copa es un montoncito de hojas plateadas (sprites con textura propia)
@@ -35,6 +36,8 @@
   }
   var matSombra = new THREE.MeshBasicMaterial({ map: texturaSombra(), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
   var geoSombra = new THREE.PlaneGeometry(1, 1); geoSombra.rotateX(-Math.PI / 2);
+  // Q0c-a: en VR, desde el escalón 2 las manchas de sombra (ilustrativas) no se dibujan (02g_vr_presupuesto); sombrasSol sigue poniendo su opacidad
+  if (typeof VrPresupuesto !== "undefined") VrPresupuesto.fuente("sombras", function (v) { matSombra.visible = v !== false; });
   function* follajeG(arr, P, grupo) {   // hojas, relleno y frutos de una lista de olivos y de los puntos LiDAR que caen en ellos (P: x, y, z, h, b, n)
     var gp = [], gc = [], pp = [], pc = [], bp = [], bc = [], c3 = [0, 0, 0], r = 1;
     function azar() { r = (r * 16807) % 2147483647; return r / 2147483647 - 0.5; }

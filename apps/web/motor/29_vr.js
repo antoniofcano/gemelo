@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: VRX, vrDebugExtra, vrFundido, vrAparece, panel, ficha, fichaB, PanelVR, vrActualiza, VR_PERFILES, vrFin
 // Consume: 01_datos (D, $, fmt, VRP), 02_mundo (Mundo, suelo, orto, copas), 02c_componentes (ComponentesPuro, Bus, Config), 02d_laminas (Laminas),
-//   02e_entidades (EntidadesPuro, Entidades, Usables), 02f_xr_perillas (XrPerillas),
+//   02e_entidades (EntidadesPuro, Entidades, Usables), 02f_xr_perillas (XrPerillas), 02g_vr_presupuesto (VrPresupuesto),
 //   03_escena (lienzo, visor, renderer, scene, camera, sol, texColor, exag, modo, calidad), 04b_escena3d (Escena3D), 05_nube (nube),
 //   07b_arboles (Arboles), 08_marcadores (capas), 09_camara (pon), 10_ndvi (NDV, ndviIdx),
 //   12_paseo (paseando, persona, teclas, primera, entraPaseo, salePaseo, actualizaPaseo), 12b_llegada (Llegada), 13_parcelas (parcelas, fincas),
@@ -497,6 +497,7 @@
     teclas.up = teclas.down = teclas.left = teclas.right = false;
     actualizaPaseo(dt); primera = true; persona.visible = false;
     vrAplicaRig();
+    VrPresupuesto.mueve(nx, nz);   // Q0c-a (02g): recorta por distancia solo tras moverse 15-75 m; sin reservas
     // viñeta de confort mientras te mueves
     vrVineta.visible = VRX.vineta; vrVineta.material.uniforms.uK.value += ((mueve ? 0.55 : 0) - vrVineta.material.uniforms.uK.value) * Math.min(1, dt * 8);
     // láminas
@@ -558,7 +559,7 @@
   // LA BAJA respecto a estos (Config.param, 02c, lo recorta); la escala adaptativa sigue bajando de perfil si el fotograma se alarga
   Config.al(function () { VR_PERFILES.forEach(function (p, i) { p.tri = Config.param("escalera.triangulos.gafas." + i, p.tri); }); });
   Config.al(function () { XrPerillas.configJs = Config.param("escalera.vrJsMs", XrPerillas.defJs); });   // AG-2.3: tope de JS por fotograma con que baja de nivel (8 ms); la perilla xrjs manda sobre esto (XrPerillas.js)
-  function vrPerfil(n) { n = Math.max(0, Math.min(VR_PERFILES.length - 1, n)); VRX.nivel = n; var p = VR_PERFILES[n]; VRP.hierba = p.h; UN.uBumpK.value = p.b; Arboles.perfil(p); Escena3D.perfil(p); }
+  function vrPerfil(n) { n = Math.max(0, Math.min(VR_PERFILES.length - 1, n)); VRX.nivel = n; var p = VR_PERFILES[n]; VRP.hierba = p.h; UN.uBumpK.value = p.b; Arboles.perfil(p); Escena3D.perfil(p); VrPresupuesto.ponEscalon(n); }   // Q0c-a: el resto del presupuesto (paisaje, marcas, copas, sombras, suelo de fondo), en 02g
   function vrAdapta(dtMs, jsMs, dt) {   // por encima del tope de JS (XrPerillas.js(), 8 ms; antes 13) o de 15,2 ms de fotograma baja de nivel; tras un rato holgado, sube
     VRX.emaDt += (dtMs - VRX.emaDt) * 0.05; VRX.emaJs += (jsMs - VRX.emaJs) * 0.05; VRX.tNivel += dt;
     if (XrPerillas.fijo()) return;   // nivel fijado por la URL: sin controlador (Q0b, 02f)
@@ -600,7 +601,7 @@
     if (!VRX.on && !VRX.sesion) return;
     VRX.on = false; VRP.on = false; VRX.sesion = null; renderer.setAnimationLoop(null); renderer.xr.enabled = false;
     vrRig.remove(camera); camera.remove(vrVineta); scene.remove(vrRig); VRC.forEach(function (o) { vrRig.remove(o.c); vrRig.remove(o.g); }); Bus.emite("vr:rig-libera"); scene.remove(arco); scene.remove(arcoMarca); scene.remove(panel.m); scene.remove(ficha.m); scene.remove(fichaB.m); vrVueloSale();
-    Arboles.perfil(null); Escena3D.perfil(null); UN.uBumpK.value = 1; calidad = VRX.calPrev; camera.near = VRX.nearPrev; camera.far = VRX.farPrev; camera.updateProjectionMatrix(); if (modo !== VRX.modoPrev) pon(VRX.modoPrev);
+    Arboles.perfil(null); Escena3D.perfil(null); VrPresupuesto.ponEscalon(null); UN.uBumpK.value = 1; calidad = VRX.calPrev; camera.near = VRX.nearPrev; camera.far = VRX.farPrev; camera.updateProjectionMatrix(); if (modo !== VRX.modoPrev) pon(VRX.modoPrev);
     camera.position.set(0, 0, 0); camera.quaternion.identity(); camera.scale.set(1, 1, 1);
     if (paseando) salePaseo();
     VRX.vuelo = false; VRX.mirador = false; vrEstado("soportado (sesión terminada)"); Bus.emite("vr:sale"); tamano(); requestAnimationFrame(bucle);

@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: PA, matTronco, postes, cable, colocaPaisaje, instSombra, sombrasSol, aguaNivel, actualizaPaisaje, ejeArroyo, distArroyo
-// Consume: 01_datos (D, $, ESC_R8), 02_mundo (suelo, desp, copas), 03_escena (scene, SRGB, sol, exag, modo), 04d_sombreado_tiles (hash),
-//   06_arboles (gSombras, tronco), 07_follaje (matSombra, geoSombra), 09_camara (pon), 14_historia (lista),
+// Consume: 01_datos (D, $, ESC_R8), 02_mundo (suelo, desp, copas), 02g_vr_presupuesto (VrPresupuesto), 03_escena (scene, SRGB, sol, exag, modo),
+//   04d_sombreado_tiles (hash), 06_arboles (gSombras, tronco), 07_follaje (matSombra, geoSombra), 09_camara (pon), 14_historia (lista),
 //   15_tiempo (nivelEn, lluvia, cur, tMundo, nivel), 16_vida (esfera), 23_estacion (EST), 90_final (bucle)
 // ===============================================================================
   // ---------- el paisaje que sale del LiDAR: edificios (clase 6), el tendido y sus postes, el arroyo y los árboles que no son olivos
@@ -61,6 +61,8 @@
     iBlob.forEach(function (m, k) { m.setColorAt(i, c.clone().offsetHSL(0, 0, (k - 1) * 0.03)); });
   });
   iBlob.forEach(function (m) { if (m.instanceColor) m.instanceColor.needsUpdate = true; });
+  // Q0c-a: en VR, el escalón decide hasta qué distancia se dibujan (02g_vr_presupuesto; tronco y masas comparten índice). Las pruebas que cargan el módulo suelto no lo traen
+  if (typeof VrPresupuesto !== "undefined") VrPresupuesto.instancias("arbolesPaisaje", [iTronco].concat(iBlob));
 
   // --- el arroyo: un cauce seco que sigue el fondo del terreno y que solo corre con agua cuando llueve
   var uArroyo = { uT: { value: 0 }, uAgua: { value: 0 }, uLuz: { value: 1 }, uArena: { value: new THREE.Color(0xa8977a) } };
@@ -123,6 +125,7 @@
     }
     esferaSegura(geoCable); cablesDer.forEach(function (c) { esferaSegura(c.g); });
     iTronco.computeBoundingSphere(); iBlob.forEach(function (m) { m.computeBoundingSphere(); }); arroyos.forEach(function (ar) { esferaSegura(ar.geo); });
+    if (typeof VrPresupuesto !== "undefined") VrPresupuesto.renueva("arbolesPaisaje");   // Q0c-a: la copia nueva (y, en VR, el recorte otra vez)
     sombrasSol(true);
   }
 
