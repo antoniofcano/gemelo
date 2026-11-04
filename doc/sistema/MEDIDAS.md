@@ -4,6 +4,8 @@
 
 > **Invalidadas el 2026-10-30 (T8 fase 2, [ADR-0021](../adr/0021-se-retira-la-salida-artefacto-y-la-escena-de-siempre.md)).** Todas las cifras medidas con la **escena de siempre** (`Terreno`, `?escena=clasica`, topes `fixture` de `pruebas/presupuesto.json`) o con la **salida artefacto / modo embebido** ya no se pueden reproducir: se conservan como historia, no como referencia. Son las de «Cerro Velasco, antes y después», «Escala», «three 0.128.0 → 0.186.1», «Presencia simulada», «Hituelo real con `?olivos=gen`» y las comparaciones «escena de siempre frente a 3D Tiles» de «Criterios 2, 3 y 4 del ADR-0015». Las cifras de la escena 3D Tiles (secciones de Hituelo en 3D Tiles) siguen siendo las de la única escena, pero el banco debe volver a medir con la página de Vite antes de afirmar nada nuevo Topes nuevos en `pruebas/presupuesto.json` (`fixture.cerro` y `fixture.hituelo`, SwiftShader): lejos 124 llamadas medidas / tope 155, cerca 54 / 70, nube 73-80 / 100; la puerta tarda ≈ 11-12 min (683 y 740 s).
 >
+> **Ya no es así** (banco, 2026-11-04): las aves son hoy dos mallas instanciadas de `16b_fauna.js` («aves» y «aves-alas»), 2 llamadas; lo de abajo es la foto del 2026-10-30.
+>
 > **Hallazgo de C: las llamadas dependen de la hora.** De las 124 de «lejos», 98 son la bandada de `16_vida.js` (una malla por ave), que solo se dibuja de día y sin lluvia, con el reloj de la máquina: la misma medida a otra hora da otras cifras.
 
 ## Cómo anotar una medida en el casco con sus perillas (Q0b)
