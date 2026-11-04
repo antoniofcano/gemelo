@@ -512,6 +512,21 @@ Hornero (`tuberia/olivos/hornero.mjs --impostores`, `CACHE_VERSION` 2, `olivo-2`
 
 Lo demás es lo de siempre: teselas `t/` 35,1 MB (92 peticiones, json + jpg), tileset 7,7 MB (38 glb), web 3,6 MB. Al final del paseo: 4 variantes horneadas, 0 calculadas, 0 fallos, escalera `horneada` con 17 E2 + 4 E1 (253 k tri, 4 llamadas de olivos). Solo se bajan las E2 (las `E2VR` no, fuera de VR) y solo los atlas de la época actual (`madura` se baja al cambiar). Una primera corrida sin `olivosDir` (página sin servidor) no baja nada horneado (2,45 MB menos) y calcula las variantes en el aparato (3 en esa corrida). Dudas: la 404 de la consola es la del favicon; **el móvil no está probado (👤)**: ni descarga real por 4G, ni el tiempo de decodificar los atlas, ni fps.
 
+## Quest antes de la cuarta subida (2026-11-04, foto, no se mantiene)
+Telemetría de fluidez del medidor (`&mide=60`) tal como la enseña la oficina, **antes** de subir AG-1.8, AG-1.5a, AG-1.4b/c, AG-1.3 y EV2-A4 (el código es el de la tercera subida). Una medida por fila (n = 1, sin repeticiones); el modelo de Quest no se anotó, solo «Quest Browser 154» y versión 0.2.0. Objetivo de p95: 13,9 ms (72 Hz). Medido por Antonio en el casco; el repo no lo reproduce.
+
+| Aparato | p95 | Mediana | Peor | JS (mediana / p95) | Nivel | Perillas | Olivos generados |
+|---|---|---|---|---|---|---|---|
+| Quest (fuera de VR) | 23,8 ms | 14,0 ms | 71,7 ms | 6,9 / 12,9 ms | — | — | sí |
+| Quest · VR | 23,0 ms | 14,2 ms | 342,2 ms | 7,5 / 13,5 ms | 0 → 3 | fov 1 · escala 0,9 · 72 Hz · MSAA sí · nivel auto · near 0,1 · umbral JS 8 ms | sí |
+
+Lo que dicen (y lo que no):
+- Ninguna de las dos cumple el objetivo: el p95 es de 23 a 24 ms frente a 13,9 ms, y la mediana (14,0 y 14,2 ms) ya está en el límite del presupuesto de 72 Hz.
+- El JS ocupa la mitad del presupuesto en la mediana (6,9 y 7,5 ms) y casi todo en el p95 (12,9 y 13,5 ms): por encima del umbral de 8 ms del controlador, que en VR bajó del nivel 0 al 3 (el más sencillo) y aun así no llega. Un nivel más bajo no basta.
+- El peor fotograma en VR (342 ms) es un tirón largo, no una carga sostenida; es el que AG-1.8 y AG-1.5a atacan (cajas de lotes, tramos más cortos). Que lo arreglen **no está medido**.
+- No sabemos cuánto es GPU: el medidor no la ve (Q0a, con OVR Metrics Tool).
+- Para el después: repetir las dos medidas en las mismas condiciones, tres veces cada una, con la guía de [OPTIMIZACION](OPTIMIZACION.md#guía-de-bolsillo-para-la-sesión-en-el-quest-q0a-).
+
 ## Medida por componente (C11) y por objeto (O2)
 
 **Pendiente: sin fecha, sin cifras.** La herramienta está escrita y probada solo con resultados sintéticos (`pruebas/medida_componentes.js`, guardián `medida_componentes.test.js`); nadie la ha ejecutado contra el banco. Para O10 (que el mundo se parezca al catálogo «Olivos tipo») hace falta saber qué cuesta cada componente y cada pieza de un olivo generado, y hoy no se sabe: los presupuestos declarados en los manifiestos son techos o medidas de Node, no esto.
