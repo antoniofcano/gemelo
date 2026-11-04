@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Suelo (EV-1s): texturas de cerca sacadas de fotos de la finca (calle, hojarasca seca, tierra con grava, compost, ruedo, camino y piedra caliza) que modulan el color de la ortofoto, y paleta del atardecer de 4 fotos de cielo, tras `?suelo=fotos` (apagado por defecto y en VR; la clase de cada punto es deducida; la textura es ilustrativa; 0 llamadas; 37,3 / 9,3 MB de GPU declarados, sin medir). Fotos originales fuera del repo; texturas con su licencia en `apps/web/public/suelo/`.
 - Medidor (Q0g): autopsia de los fotogramas lentos. En el informe de `?mide` y en la tarjeta de VR, de los fotogramas de más de 13,9 ms dice cuántos coinciden con trabajo de la Cola, llegada de teselas, lote de olivos generados, tarea larga del navegador, programa nuevo o textura nueva, y cuántos sin causa. No se envía a la api; no probado en Quest.
 - VR (Q2c): con `?mide` o `?debug` el gemelo entra en VR por sí solo al recibir `sessiongranted` del Quest Browser (arranque por adb para medir); sin esas opciones no cambia nada. Probado en Node con el WebXR simulado; no probado en un Quest.
 - Rayos (AG-1.6): BVH opcional con `?bvh` (three-mesh-bvh 0.9.18) para los rayos contra el relieve de las teselas, que solo usan las pruebas y la depuración: tocar, los mandos y el teletransporte ya eran analíticos, así que en producción no cambia nada. En Node, de ~17 ms a ~5 µs por rayo sobre 131.072 triángulos.
