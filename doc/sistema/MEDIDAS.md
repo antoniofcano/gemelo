@@ -546,7 +546,8 @@ Telemetría del medidor, Quest Browser 154, **dentro de VR** (Comodidad → «Me
 - **p95**: 23 → ~20 ms con olivos generados; **16-17 ms sin ellos**, a 2-3 ms del objetivo (13,9 ms).
 - **Los olivos generados**, la palanca mayor que queda en VR: ~4 ms de p95 y 1,5-2,5 ms de JS.
 - **El controlador baja a nivel 3 en todas** (umbral de 8 ms de JS; el p95 de JS es 8-11 ms).
-- La autopsia (Q0g) no viaja a la api: solo se vio en el casco.
+- La autopsia (Q0g) no viaja a la api; Antonio copió la de la medida 18 (Quest 3, con olivos generados): 2323 de 4136 fotogramas por encima de 13,9 ms (56,2 %), de ellos **sin causa 2170 (93 %)**, Cola 121, lote de olivos 29, textura nueva 12, teselas 5, programa nuevo 3; 0 tareas largas (≥ 50 ms); p99 26,4 ms; JS peor 30,6 ms; el nivel VR oscila (0→1→2→3→2→3, 5 cambios).
+- Lectura: la carga ya no manda (< 7 % de los lentos). Con la mediana en 14,0 ms y el umbral estricto de 13,9, buena parte de los «lentos» son ruido del reloj alrededor del vsync; los lentos de verdad son el p95-p99 (19,7-26,4 ms). «Sin causa» = coste fijo por fotograma (GPU o envío de los dos ojos): se separa midiendo con `&xrescala=0.8`. El umbral de 8 ms de JS del controlador es bajo para el p95 de JS del Quest 3 (9,8 ms) y lo hace oscilar.
 
 ## Quest tras la quinta subida (2026-11-04, foto, no se mantiene)
 Telemetría del medidor (`&mide=60`), Quest Browser 154, modo gemelo, código de la quinta subida (08273de: AG-1.12, AG-1.5, Q0c-a). Una medida por fila; había otra sesión conectada («personas: 1»). **Ojo: Antonio las hizo para VR, pero la base las tiene como «pantalla», sin nivel ni perillas: la medida empezó fuera de VR y acabó dentro (el medidor anota el modo del arranque). Son mixtas: valen para comparar con y sin olivos entre sí, no como medida de VR.**
