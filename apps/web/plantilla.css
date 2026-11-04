@@ -73,6 +73,7 @@ body { background: #0b0d0a; color: var(--fg); font-family: var(--body); font-siz
 .hud-personal .hp-btn[hidden] { display: none; }
 .hud-personal .hp-txt { max-width: 11ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 :root[data-personal="no"] #hudPersonal { display: none; }
+@media (max-height: 480px) { #hudPersonal { display: none; } }   /* un móvil en horizontal: el estado se come 44 px de ~390 y al chat, la burbuja y el mapa no les queda sitio */
 
 /* arriba a la derecha: la barra de iconos (el «inventario» de ventanas) */
 .hud-barra { position: absolute; top: calc(var(--sa-t) + 10px); right: calc(var(--sa-r) + 10px); display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; max-width: calc(100% - 140px); }
