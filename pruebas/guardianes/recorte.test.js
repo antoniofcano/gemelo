@@ -111,6 +111,35 @@ test("39_oficina_mundo: las balizas oficiales se recortan y su esfera las contie
   }
 });
 
+// ---------------------------------------------------------------- 15_tiempo: las barreras de luz de las lindes (nacen con los vértices a cero; el sombreador no los mueve)
+function barreras() {
+  const F = lee("apps/web/motor/15_tiempo.js"), T = trozo(F, "  function creaBarrera(pr)", "  function pintaFondoTiempo()");
+  const f = new Function("THREE", "suelo", "matBarrera", "gLinde",
+    "\"use strict\";\nvar BARRERA_ALTO = 5.5, BARRERAS = [], exag = 1;\n" + T +
+    "\nreturn { crea: creaBarrera, coloca: colocaBarrera, pon: function (e) { exag = e; }, mallas: function () { return gLinde.children; }, n: function () { return BARRERAS.length; } };");
+  return f(THREE, (x, y) => 60 + 0.3 * x - 0.2 * y, new THREE.MeshBasicMaterial(), new THREE.Group());
+}
+test("15_tiempo: la barrera de luz de cada linde se recorta y su esfera la contiene tras colocaBarrera, aunque three la calculara con los vértices a cero", () => {
+  const B = barreras();
+  B.crea({ linde: [[-120, -80], [140, -60], [150, 110], [-90, 130]] });
+  B.crea({ linde: [[300, 300], [380, 310], [360, 400]] });
+  const ms = B.mallas(); assert.strictEqual(ms.length, 2);
+  for (const m of ms) assert.strictEqual(m.frustumCulled, true, "la barrera se recorta");
+  ms.forEach(primerFotograma);   // el primer fotograma ANTES de colocar: la esfera de three sale de los ceros
+  for (const e of [1, 3, 1.5]) {
+    B.pon(e); for (let k = 0; k < B.n(); k++) B.coloca(k);
+    ms.forEach((m, k) => contiene(m, "barrera " + k + " (exag " + e + ")"));
+  }
+  // y con el relieve movido (la exageración sube y luego baja): la esfera sigue a los vértices, no se queda con la vieja
+  B.pon(3); B.coloca(0); B.pon(1); B.coloca(0);
+  contiene(ms[0], "barrera 0 tras volver a exag 1");
+});
+test("15_tiempo: las estrellas no pasan por el dibujo de día (visible = opacity > 0) y siguen a la cámara", () => {
+  const F = sinComentarios(lee("apps/web/motor/15_tiempo.js"));
+  assert.match(F, /estrellas\.visible\s*=\s*estrellas\.material\.opacity\s*>\s*0/, "estrellas.visible depende de su opacidad");
+  assert.match(F, /estrellas\.position\.copy\(camera\.position\)/, "las estrellas siguen a la cámara");
+});
+
 // ---------------------------------------------------------------- 14_historia: la capa de una parcela (el sombreador multiplica la y por uExag)
 test("14_historia: la capa de la parcela se recorta y su esfera la contiene con uExag 1 y 3 (el sombreador escala la y)", () => {
   const F = lee("apps/web/motor/14_historia.js");
@@ -195,7 +224,7 @@ const SIN_RECORTE = {
   "07b_arboles.js": [1, "niveles 1 y 2: instancias por toda la finca que se rehacen al moverse; vacías no se dibujan (visible = count > 0)"],
   "08b_marcadores_lidar.js": [2, "copas y marcadores LiDAR: instancias por toda la finca"],
   "14_historia.js": [1, "el avance de tareas: instancias por toda la finca, rehechas al cambiar de tarea"],
-  "15_tiempo.js": [4, "nubes, estrellas y lluvia van con la cámara; las barreras de luz, en otra tanda"],
+  "15_tiempo.js": [3, "nubes, estrellas y lluvia van con la cámara (las estrellas, además, no se dibujan de día: visible = opacity > 0)"],
   "16_vida.js": [1, "las estelas: se reescriben cada fotograma; vacías no se dibujan"],
   "16b_fauna.js": [1, "las aves: se mueven cada fotograma; vacías no se dibujan"],
   "21_suelo.js": [3, "matas, piedras y contornos: instancias alrededor de quien mira, rehechas al moverse"],
