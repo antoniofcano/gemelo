@@ -1,5 +1,5 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: TiempoPuro, ahoraMs, TM, calma, texBrillo, lluvia, uViento, uSombra, GLSL_SOMBRA, parcheTiempo, cur, meta, tMundo, ins, nivel,
+// Expone: TiempoPuro, ahoraMs, TM, calma, nivelEn, texBrillo, lluvia, uViento, uSombra, GLSL_SOMBRA, parcheTiempo, cur, meta, tMundo, ins, nivel,
 //   actualizaTiempo, temaBarrera, colocaBarrera, pintaFondoTiempo, fmtHora, fmtClaveDia, num1, rumbo, esc, hace, objetivoMundoBase, pasoHoraMundo,
 //   horaMundoTexto, aplicaMundo, anuncia, TiempoVivo, lindes
 // Consume: 01_datos (D, $, tinta, FOG0, FOG1), 02_mundo (suelo, copas), 02c_componentes (Bus, Pausa),
@@ -135,7 +135,12 @@
   var cieloBase = colorCss("--sky");
 
   // --- posición del sol (algoritmo astronómico simple, suficiente para dibujarlo)
-  function posSol(ms) {
+  // [nivel:inicio] (sin THREE ni DOM: lo evalúa en Node pruebas/guardianes/fauna_equivalencia.test.js, junto a la copia del código anterior)
+  // posSolEn escribe en `s` ({ alt, az }) la posición del sol (antes posSol la devolvía en un objeto nuevo). nivelEn(ms, salida) es nivel(ms) sin reservar: `salida` es un
+  // objeto { s: { alt, az }, d } que pone el llamador una sola vez (AG-1.4b). Varios módulos piden el nivel con el mismo cur.ms en el mismo fotograma
+  // (el tiempo, la fauna, el quad o el dron, el paisaje, el sonido, las huellas): se recuerda la última posición del sol, así la trigonometría se hace una vez
+  // por valor de ms y no una por llamada (el resultado es el mismo, bit a bit: se copia lo que ya se calculó).
+  function posSolEn(ms, s) {
     var rad = Math.PI / 180, n = ms / 86400000 + 2440587.5 - 2451545.0;
     var L = (280.46 + 0.9856474 * n) % 360, g = ((357.528 + 0.9856003 * n) % 360) * rad;
     var lam = (L + 1.915 * Math.sin(g) + 0.02 * Math.sin(2 * g)) * rad, eps = (23.439 - 0.0000004 * n) * rad;
@@ -143,8 +148,14 @@
     var gmst = (280.46061837 + 360.98564736629 * n) % 360, Hh = (gmst + LON) * rad - ra, fi = LAT * rad;
     var alt = Math.asin(Math.sin(fi) * Math.sin(de) + Math.cos(fi) * Math.cos(de) * Math.cos(Hh));
     var az = Math.atan2(Math.sin(Hh), Math.cos(Hh) * Math.sin(fi) - Math.tan(de) * Math.cos(fi)) + Math.PI;
-    return { alt: alt, az: az };
+    s.alt = alt; s.az = az; return s;
   }
+  var nvMs = NaN, nvAlt = 0, nvAz = 0, nvD = 0, nvSol = { alt: 0, az: 0 };
+  function nivelEn(ms, salida) {
+    if (ms !== nvMs) { posSolEn(ms, nvSol); nvAlt = nvSol.alt; nvAz = nvSol.az; nvD = Math.max(0, Math.min(1, (Math.sin(nvAlt) + 0.1) / 0.45)); nvMs = ms; }
+    salida.s.alt = nvAlt; salida.s.az = nvAz; salida.d = nvD; return salida;
+  }
+  // [nivel:fin]
 
   // --- el cielo: nubes que derivan con el viento, disco del sol y estrellas
   function texNube() {
@@ -260,7 +271,8 @@
   // --- el estado del mundo avanza hacia el objetivo con suavidad
   var cur = { ms: ahoraMs(), nub: 0, viento: 0, dir: 0, lluvia: 0, hr: 40, temp: 18 }, meta = { ms: ahoraMs(), nub: 0, viento: 0, dir: 0, lluvia: 0, hr: 40, temp: 18 };
   var tMundo = 0, lluviaVis = 0, ins = { t: 1, txt: "" }, vFlecha = new THREE.Vector3();
-  function nivel(ms) { var s = posSol(ms), d = Math.max(0, Math.min(1, (Math.sin(s.alt) + 0.1) / 0.45)); return { s: s, d: d }; }
+  function nivel(ms) { return nivelEn(ms, { s: { alt: 0, az: 0 }, d: 0 }); }   // la de siempre (reserva el resultado); lo que corre por fotograma usa nivelEn
+  var lvT = { s: { alt: 0, az: 0 }, d: 0 };   // el nivel del sol de actualizaTiempo, el mismo objeto cada fotograma (AG-1.4b)
   function lerpN(a, b, t) { return a + (b - a) * t; }
   function angDif(a, b) { var d = ((b - a + 540) % 360) - 180; return d; }
   function actualizaTiempo(dt, tms) {
@@ -270,7 +282,7 @@
     ["nub", "viento", "lluvia", "hr", "temp"].forEach(function (c) { cur[c] += (meta[c] - cur[c]) * k; });
     cur.dir = (cur.dir + angDif(cur.dir, meta.dir) * k + 360) % 360;
     tMundo += calma ? 0 : dt;
-    var lv = nivel(cur.ms), alt = lv.s.alt, d = lv.d, nub = cur.nub / 100, oc = 1 - 0.55 * nub - 0.2 * Math.min(1, cur.lluvia / 3);
+    var lv = nivelEn(cur.ms, lvT), alt = lv.s.alt, d = lv.d, nub = cur.nub / 100, oc = 1 - 0.55 * nub - 0.2 * Math.min(1, cur.lluvia / 3);
     // sol: dirección y color
     var dirS = new THREE.Vector3(Math.sin(lv.s.az) * Math.cos(alt), Math.sin(alt), -Math.cos(lv.s.az) * Math.cos(alt));
     sol.position.copy(dirS).multiplyScalar(300); if (alt < 0.02) sol.position.y = 6;

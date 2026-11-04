@@ -13,55 +13,11 @@
 // Escribe una línea JSON {mal: [...], ...} (la lee pruebas/guardianes/olivo.test.js).
 import fs from "node:fs";
 import path from "node:path";
-import vm from "node:vm";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { pathToFileURL } from "node:url";
+import { RAIZ, OLIVO, THREE, O, lee, contexto, espera } from "./_contexto_generados.mjs";   // el contexto vm (D.base, fetch, console, window.OlivoGen por extra)
 
-const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const OLIVO = path.join(RAIZ, "apps", "web", "olivo");
-const MOTOR = path.join(RAIZ, "apps", "web", "motor");
-const THREE = await import(pathToFileURL(path.join(OLIVO, "node_modules", "three-r186", "build", "three.module.js")).href);
-const O = await import(pathToFileURL(path.join(OLIVO, "index.js")).href);
-const lee = f => fs.readFileSync(path.join(MOTOR, f), "utf8");
 const mal = [], diag = {};
 const exige = (c, m) => { if (!c) mal.push(m); };
-
-// un trozo de código fuente desde `inicio`: hasta la llave que cierra (función) o el «;» de primer nivel (var), saltando cadenas y comentarios
-function extrae(src, inicio) {
-  const a = src.indexOf(inicio); if (a < 0) throw new Error("no está: " + inicio);
-  const fn = inicio.startsWith("function"); let d = 0, i = a, visto = false;
-  for (; i < src.length; i++) {
-    const c = src[i];
-    if (c === '"' || c === "'" || c === "`") { const q = c; for (i++; i < src.length && src[i] !== q; i++) if (src[i] === "\\") i++; continue; }
-    if (c === "/" && src[i + 1] === "/") { i = src.indexOf("\n", i); continue; }
-    if (c === "/" && src[i + 1] === "*") { i = src.indexOf("*/", i) + 1; continue; }
-    if ("([{".includes(c)) { d++; if (c === "{") visto = true; }
-    else if (")]}".includes(c)) { d--; if (fn && visto && d === 0) return src.slice(a, i + 1); }
-    else if (!fn && c === ";" && d === 0) return src.slice(a, i + 1);
-  }
-  throw new Error("sin cierre: " + inicio);
-}
-const T15 = lee("15_tiempo.js"), T03 = lee("03_escena.js");
-const piezas = [extrae(T03, "var GLSL_LIN"), extrae(T03, "function colorVertSRGB"), extrae(T15, "var uViento"), extrae(T15, "var uSombra"),
-  extrae(T15, "var GLSL_SOMBRA"), extrae(T15, "function parcheTiempo")].join("\n");
-const A01 = lee("01a_aparato.js"), G07 = lee("07ab_generados.js");   // 01a: el Aparato real (AG-0.3), que 07ab consulta
-
-// extra: lo que se añade o sustituye en el contexto (D.base, fetch, console, window.OlivoGen) para las variantes horneadas (sección 6)
-function contexto(busqueda, reloj, extra) {
-  const cola = [];
-  const ctx = Object.assign({
-    THREE, console, performance: reloj || performance, Promise, Math, Object, Number, String, Error, Float32Array, Uint8Array,   // los del módulo del olivo (instanceof entre contextos vm)
-    location: { search: busqueda }, window: { OlivoGen: O },
-    gArboles: new THREE.Group(), D: { copas: [], centro_utm: [0, 0] }, VRP: { on: false }, FACTOR_R8: 0.5, FACTOR_R8_GEN: 1, exag: 1,
-    // la configuración del servidor (02c Config) sin servidor: todo vale lo del código
-    Config: { listo: Promise.resolve(null), al: f => f(null), param: (r, c, u) => (u !== undefined && u !== null ? u : c), umbrales: (c, u) => u || c, tablaEpocas: () => null, epocaDeFecha: () => null }, factorCopaDeConfig: () => 1,
-    suelo: () => 0, camera: { position: new THREE.Vector3(0, 10, 0) },
-    Cola: { add: () => { throw new Error("los generados no deben usar la Cola compartida"); }, hay: () => false }, cola
-  }, extra || {});
-  vm.createContext(ctx);
-  vm.runInContext(piezas + "\n" + A01 + "\n" + G07 + "\n;this.__G = Generados; this.__uSombra = uSombra;", ctx, { filename: "07ab_generados.js" });
-  return ctx;
-}
-const espera = () => new Promise(r => setTimeout(r, 0));
 
 // ---- 1) sin la bandera
 {
@@ -384,6 +340,62 @@ exige(/Generados\.actualiza\(paseando \? pp\.x : fx, paseando \? -pp\.y : fz,/.t
   const E = await escenario("fixture_sintetico", "?olivos=gen&epoca=madura", sirve(EJEMPLO));
   exige(E.horneado.estado === "ignorado" && /gen_version/.test(E.horneado.motivo) && E.pedidas.length === 1 && E.horneado.horneadas === 0, "con el manifiesto sintético del fixture, no se ignora: " + JSON.stringify(E.horneado));
   exige(E.horneado.epoca === "madura", "con ?epoca=madura, la época no es la pedida: " + E.horneado.epoca);
+}
+
+// ---- 7) EV-perf: los límites (caja y esfera) de cada geometría de origen se calculan UNA vez, no en cada lote. Se cuentan los vértices que three recorre
+// (Vector3.fromBufferAttribute sobre la posición de un BatchedMesh: getBoundingBoxAt/getBoundingSphereAt perezosos) al construir varios lotes, y se compara
+// lo asignado con el cálculo perezoso de three (que recorre solo los vértices que referencia el índice): tiene que ser idéntico, nunca menor.
+{
+  const registro = new WeakSet(); let recorridos = 0;
+  const addOrig = THREE.BatchedMesh.prototype.addGeometry, fbaOrig = THREE.Vector3.prototype.fromBufferAttribute;
+  THREE.BatchedMesh.prototype.addGeometry = function (...a) { const r = addOrig.apply(this, a); registro.add(this.geometry.attributes.position); return r; };
+  THREE.Vector3.prototype.fromBufferAttribute = function (at, i) { if (registro.has(at)) recorridos++; return fbaOrig.call(this, at, i); };
+  try {
+    const c7 = contexto("?olivos=gen"); await espera();
+    c7.D.copas = [[0, 0, 4.5, perfil, 1], [9, 0, 4, perfil, 1], [0, 30, 4, perfil, 1]];
+    const ol7 = c7.D.copas.map((q, i) => ({ i, x: q[0], y: q[1], h: q[2], perfil: q[3] }));
+    const lotes = new Set(), TOPE7 = 160000 / 0.45 * 1.05;
+    const acaba = () => { for (let k = 0; k < 100 && c7.window.__olivosGen().fundido.activo; k++) c7.__G.paso(0.1, 1); };
+    const hasta = (fx, fz) => {   // reparte con el foco en (fx, fz) hasta que el lote de ese foco esté puesto y su fundido, acabado
+      for (let r = 0; r < 60; r++) {
+        c7.__G.actualiza(fx, fz, TOPE7, ol7);
+        for (let k = 0; k < 200000 && c7.window.__olivosGen().trabajos > 0; k++) c7.__G.paso(0.00001, 50);
+        const l = c7.__G._prueba.lote(); if (l) lotes.add(l);
+        acaba(); if (c7.__G.pendientes() === 0) return;
+      }
+      mal.push("límites: no se llegó al estado buscado con el foco en " + fx + "," + fz);
+    };
+    hasta(0, 0); hasta(0, -30); hasta(0, 0); hasta(0, -30);
+    const lote = c7.__G._prueba.lote(); lotes.add(lote);
+    const bms = lote.children.filter(o => o.isBatchedMesh);
+    // la caja y la esfera de cada geometría del lote contra el cálculo perezoso de three: la copia sin límites vuelve a recorrer los vértices
+    let comparadas = 0, difCaja = 0, difEsfera = 0, menor = 0;
+    const antes = recorridos;
+    for (const bm of bms) {
+      const info = bm._geometryInfo;
+      for (let gid = 0; gid < info.length; gid++) {
+        const dado = info[gid], caja = dado.boundingBox, esfera = dado.boundingSphere;
+        exige(caja !== null && esfera !== null, "límites: " + bm.name + " geometría " + gid + " sin caja o sin esfera asignadas antes de addGeometry");
+        if (!caja || !esfera) continue;
+        const pc = caja.clone(), pe = esfera.clone();
+        dado.boundingBox = null; dado.boundingSphere = null;
+        const cp = bm.getBoundingBoxAt(gid, new THREE.Box3()).clone(), ep = bm.getBoundingSphereAt(gid, new THREE.Sphere()).clone();
+        dado.boundingBox = pc; dado.boundingSphere = pe;
+        comparadas++;
+        if (!cp.equals(pc)) difCaja++;
+        if (!ep.equals(pe)) difEsfera++;
+        if (pe.radius < ep.radius || !pc.containsBox(cp)) menor++;
+      }
+    }
+    const reconstruccion = recorridos - antes;   // lo que costó la comprobación (a propósito, perezosa), NO el motor
+    const motor = antes;
+    diag.limites = { lotes: lotes.size, mallas: bms.length, geometrias: comparadas, verticesRecorridosPorElMotor: motor, verticesDeLaComprobacion: reconstruccion, difCaja, difEsfera, menor };
+    exige(lotes.size >= 3, "límites: se esperaban al menos 3 lotes distintos y hay " + lotes.size);
+    exige(comparadas > 0, "límites: no hay geometrías que comparar");
+    exige(difCaja === 0 && difEsfera === 0, "límites: las cajas/esferas asignadas no coinciden con el cálculo de three (" + difCaja + " cajas, " + difEsfera + " esferas)");
+    exige(menor === 0, "límites: alguna caja o esfera es MENOR que la de three");
+    exige(motor === 0, "límites: el motor recorre vértices de los lotes (" + motor + ") al construirlos: deben traerse calculados una vez por geometría de origen");
+  } finally { THREE.BatchedMesh.prototype.addGeometry = addOrig; THREE.Vector3.prototype.fromBufferAttribute = fbaOrig; }
 }
 
 console.log(JSON.stringify({ mal, diag }));

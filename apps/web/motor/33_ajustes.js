@@ -192,10 +192,10 @@
         });
         d.appendChild(f);
       } else if (E[c.k].tipo === "bool") {
-        var l2 = el("label", "aj-fila"), i2 = el("input"); i2.type = "checkbox"; i2.setAttribute("data-aj", c.k); l2.appendChild(i2); l2.appendChild(document.createTextNode(c.t)); d.appendChild(l2); hojas[c.k] = { casilla: i2 };
+        var l2 = el("label", "aj-fila"), i2 = el("input"); i2.type = "checkbox"; i2.id = "aj-c-" + c.k; i2.name = "aj-" + c.k; i2.setAttribute("data-aj", c.k); l2.appendChild(i2); l2.appendChild(document.createTextNode(c.t)); d.appendChild(l2); hojas[c.k] = { casilla: i2 };
       } else {
         var w = el("div", "aj-rango"), fila = el("div"), lb = el("label", null, c.t), sp = el("strong"), r = el("input");
-        r.type = "range"; r.min = E[c.k].min; r.max = E[c.k].max; r.step = E[c.k].paso; r.id = "aj-r-" + c.k; r.setAttribute("data-aj", c.k); lb.htmlFor = r.id; fila.style.cssText = "display:flex;justify-content:space-between;gap:8px";
+        r.type = "range"; r.min = E[c.k].min; r.max = E[c.k].max; r.step = E[c.k].paso; r.id = "aj-r-" + c.k; r.name = "aj-" + c.k; r.setAttribute("data-aj", c.k); lb.htmlFor = r.id; fila.style.cssText = "display:flex;justify-content:space-between;gap:8px";
         sp.style.marginLeft = "auto"; fila.appendChild(lb); fila.appendChild(sp); w.appendChild(fila); w.appendChild(r); d.appendChild(w); hojas[c.k] = { rango: r, valor: sp, fmt: c.fmt };
       }
       if (c.nota) d.appendChild(el("p", "aj-nota", c.nota));
