@@ -1,14 +1,15 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: tVida, enQuad, vq, gFauna, esfera, altSuelo, quita, mira, quad, temaEstela, velPaseo, giroPaseo, ponQuad, vidaPaseo, enDron, dr, dron,
 //   ponDron, cicloVista, dronMando, camaraDron, vidaEntra, vidaSale, actualizaVida
-// Consume: 01_datos (D, $), 02_mundo (suelo, copaAlta, copas), 02c_componentes (Bus), 03_escena (scene, camera, exag, modo),
+// Consume: 01_datos (D, $), 02_mundo (suelo, copaAlta, copas), 02c_componentes (Bus), 03_escena (scene, camera, sol, exag, modo),
 //   07_follaje (matSombra, geoSombra), 12_paseo (paseando, persona, teclas, primera, camPos), 12b_llegada (Llegada),
-//   15_tiempo (calma, texBrillo, cur, meta, ins, nivel, temaBarrera, num1, rumbo), 22_huellas (pendFactor, quadInc, inclinaQuad)
+//   15_tiempo (calma, nivelEn, texBrillo, cur, meta, ins, nivel, temaBarrera, num1, rumbo), 22_huellas (pendFactor, quadInc, inclinaQuad)
 // ===============================================================================
   // ---------- la vida del olivar: el quad con estela de luz (Tron) y el dron para el paseo (los pájaros y los conejos son el componente «fauna-olivar», 16b_fauna.js)
   var tVida = 0, enQuad = false, vq = 0, gFauna = new THREE.Group(); gFauna.name = "fauna"; scene.add(gFauna);
   function esfera(r, m, sx, sy, sz, x, y, z, padre) { var me = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 8), m); me.scale.set(sx, sy, sz); me.position.set(x, y, z); padre.add(me); return me; }
   function altSuelo(x, y) { return suelo(x, y) * exag; }
+  var lvVida = { s: { alt: 0, az: 0 }, d: 0 };   // el nivel del sol del quad y del dron, el mismo objeto cada fotograma (AG-1.4b)
   function quita(a, o) { var i = a.indexOf(o); if (i >= 0) a.splice(i, 1); }
 
   function mira(g, hx, hz) { g.rotation.y = Math.atan2(-hx, -hz); }
@@ -87,7 +88,7 @@
     var rueds = quad.userData.ruedas; for (var ir = 0; ir < rueds.length; ir++) rueds[ir].rotation.x -= vel * dt / 0.3;
     persona.position.set(pp.x - fx * 0.2, gy - 0.02, -pp.y - fz * 0.2); persona.rotation.set(quadInc.pit * 0.9, -pp.ang, quadInc.rol * 0.9, "YXZ");
     u.pi.rotation.x = u.pd.rotation.x = 1.15; u.bi.rotation.x = u.bd.rotation.x = 1.05;
-    var noche = 1 - nivel(cur.ms).d; quad.userData.glow.material.opacity = 0.2 + 0.7 * noche;
+    var noche = 1 - nivelEn(cur.ms, lvVida).d; quad.userData.glow.material.opacity = 0.2 + 0.7 * noche;
     if (Math.abs(vel) > 0.8) estelaQuad.emite(pp.x - fx * 1.0, pp.y - Math.cos(pp.ang) * 1.0, gy + 0.06);
   }
 
@@ -165,7 +166,7 @@
     dron.position.set(dr.x, dr.h + Math.sin(tVida * 2.2) * 0.04, -dr.y); dron.rotation.set(dr.pit, -dr.yaw, dr.rol, "YXZ");
     for (var ih = 0; ih < u.props.length; ih++) u.props[ih].g.rotation.y += u.props[ih].s * dt * 70;
     var parp = Math.floor(tVida * 2.2) % 2 === 0; for (var il = 0; il < u.leds.length; il++) u.leds[il].visible = il < 2 ? parp : true;
-    u.glow.material.opacity = 0.15 + 0.5 * (1 - nivel(cur.ms).d);
+    u.glow.material.opacity = 0.15 + 0.5 * (1 - nivelEn(cur.ms, lvVida).d);
     Llegada.porFotograma();
     var alt = dr.h - suel; anilloDron.visible = true; anilloDron.position.set(dr.x, suel + 0.15, -dr.y); anilloDron.scale.setScalar(1.6 + alt * 0.28);
     anilloDron.material.opacity = Math.max(0.15, 0.7 - alt * 0.008) * (0.8 + 0.2 * Math.sin(tVida * 4));

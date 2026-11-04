@@ -1,6 +1,6 @@
 "use strict";
 // AG-1.4 · cero reservas por fotograma: en Node, sin navegador. Dos cosas:
-//  1. Las funciones del bucle que lista _reservas.js (16_vida, 16b_fauna, 38_presencia_compartida) no reservan memoria: ni `new`, ni cierres,
+//  1. Las funciones del bucle que lista _reservas.js (15_tiempo: nivelEn; 16_vida; 16b_fauna; 38_presencia_compartida) no reservan memoria: ni `new`, ni cierres,
 //     ni literales de objeto o de array, ni .map/.filter/.slice…, ni cadenas concatenadas. Lo reutilizable va en temporales del módulo.
 //  2. El texto del HUD y el de ?debug se refrescan a 4 Hz como mucho (no cada fotograma).
 // Esto cuenta lo que SE RESERVA, no lo que cuesta: los milisegundos y los tirones solo los da un dispositivo real (?debug), y en el casco, no probado.
@@ -72,4 +72,18 @@ test("el contador de ?debug refresca su texto cada 500 ms como mucho (28_depura.
   const cu = R.cuerpo(lee("apps/web/motor/28_depura.js"), "function depuraCuadro(");
   const i = cu.indexOf("if (ahora - dep.t0 < 500) return;"), j = cu.indexOf(".textContent");
   assert.ok(i > 0 && j > i, "el texto del contador debe escribirse después de la puerta de 500 ms");
+});
+
+// ---------- el nivel del sol y los llamadores de 16_vida (AG-1.4b) ----------
+test("16_vida.js pide el nivel del sol por fotograma con nivelEn (un temporal del módulo), no con nivel(), que reserva", () => {
+  const v = lee("apps/web/motor/16_vida.js");
+  assert.ok(!/nivel\(/.test(v), "16_vida.js no debe llamar a nivel(ms) (reserva dos objetos por llamada): usa nivelEn(ms, lvVida)");
+  assert.ok(/nivelEn\(cur\.ms, lvVida\)/.test(v));
+  assert.ok(!/nivel\(/.test(lee("apps/web/motor/16b_fauna.js")), "16b_fauna.js tampoco");
+});
+
+test("nivel(ms) reserva (es la de siempre) y nivelEn no: el analizador lo ve en las dos", () => {
+  const src = lee("apps/web/motor/15_tiempo.js");
+  assert.ok(R.reservas(src, "nivel", "function nivel(").length > 0, "nivel(ms) devuelve objetos nuevos");
+  assert.deepStrictEqual(R.reservas(src, "nivelEn", "function nivelEn("), []);
 });
