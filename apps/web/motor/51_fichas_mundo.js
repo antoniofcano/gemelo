@@ -101,7 +101,7 @@
       if (!medidor) { var c = document.createElement("canvas"); c.width = c.height = 1; medidor = c.getContext("2d"); }   // solo para medir texto: 1 × 1 px, sin GPU
       medidor.font = (negrita ? "bold " : "") + px + "px system-ui, sans-serif"; return medidor.measureText(t).width;
     }
-    function miradaH() { var e = camera.matrixWorld.elements; return { x: -e[8], z: -e[10] }; }   // hacia dónde mira la cámara, en horizontal
+    function miradaH() { if (VRX.on && VRX.mira) return { x: VRX.mira.x, z: VRX.mira.z }; var e = camera.matrixWorld.elements; return { x: -e[8], z: -e[10] }; }   // hacia dónde mira la cabeza, en horizontal (VR-L1: en VR, VRX.mira; la cámara, tras mover el paseo, no mira donde la cabeza)
     function datos(f) { return { titulo: f.titulo, destacado: f.destacado, lineas: EntidadesPuro.lineas(f), pie: f.pie, color: f.color, acciones: f.acciones }; }
     function radioDe(id) { var d = Entidades.de(id), r = 1; try { if (d && d.radio) r = +d.radio(id) || 1; } catch (e) {} return r; }
     function rr(cx, x, y, w, h, r) { cx.beginPath(); if (cx.roundRect) cx.roundRect(x, y, w, h, r); else cx.rect(x, y, w, h); }
