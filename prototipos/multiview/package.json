@@ -1,0 +1,21 @@
+{
+  "name": "gemelo-humo-multiview",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "F2b: página de humo desechable para medir el multiview en el Quest 3 (sin datos de la finca)",
+  "scripts": {
+    "build": "node construye.mjs",
+    "build:clasico": "node construye.mjs clasico",
+    "build:super": "node construye.mjs super",
+    "build:nuevo": "node construye.mjs nuevo",
+    "sirve": "vite preview --outDir dist --port 4173 --strictPort"
+  },
+  "dependencies": {
+    "super-three": "0.185.0",
+    "three": "0.186.1"
+  },
+  "devDependencies": {
+    "vite": "6.4.5"
+  }
+}

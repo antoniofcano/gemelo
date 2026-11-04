@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Humo multiview</title>
+<style>
+  :root { color-scheme: dark; --fondo: #12140f; --texto: #e8e6dc; --suave: #a9a796; --acento: #c9b458; }
+  html, body { margin: 0; height: 100%; background: var(--fondo); color: var(--texto); font: 15px/1.4 system-ui, sans-serif; }
+  canvas { display: block; }
+  #ficha { position: fixed; left: 12px; top: 12px; right: 12px; max-width: 640px; background: rgba(18, 20, 15, .88); border: 1px solid #3a3d30; border-radius: 8px; padding: 12px 14px; }
+  #ficha h1 { font-size: 17px; margin: 0 0 4px; }
+  #ficha p { margin: 4px 0; color: var(--suave); }
+  #ficha a { color: var(--acento); }
+  #resultado { white-space: pre-wrap; font: 12px/1.35 ui-monospace, monospace; color: var(--texto); max-height: 45vh; overflow: auto; margin: 8px 0 0; }
+  #ficha button { font: inherit; padding: 8px 14px; margin: 8px 8px 0 0; border-radius: 6px; border: 1px solid var(--acento); background: transparent; color: var(--texto); }
+  #ficha button[hidden] { display: none; }
+</style>
+</head>
+<body>
+<div id="ficha">
+  <h1>Humo multiview</h1>
+  <p id="estado">Cargando…</p>
+  <p>Casos: <a href="?modo=clasico">clásico</a> · <a href="?modo=super">super-three</a> · <a href="?modo=nuevo">nuevo</a> · <a href="?modo=nuevo&amp;mv=0">nuevo sin multiview</a> — y <code>&amp;n=100|200|400</code>, <code>&amp;msaa=0|1</code>.</p>
+  <button id="medir" type="button" hidden>Medir en pantalla</button>
+  <button id="copiar" type="button" hidden>Copiar</button>
+  <pre id="resultado"></pre>
+</div>
+<script type="module" src="./elige.js"></script>
+</body>
+</html>
