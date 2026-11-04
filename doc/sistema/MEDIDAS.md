@@ -529,6 +529,24 @@ Lo que dicen (y lo que no):
 - No sabemos cuánto es GPU: el medidor no la ve (Q0a, con OVR Metrics Tool).
 - Para el después: repetir las dos medidas en las mismas condiciones, tres veces cada una, con la guía de [OPTIMIZACION](OPTIMIZACION.md#guía-de-bolsillo-para-la-sesión-en-el-quest-q0a-).
 
+## Quest tras la quinta subida (2026-11-04, foto, no se mantiene)
+Telemetría del medidor (`&mide=60`), Quest Browser 154, fuera de VR, modo gemelo, código de la quinta subida (08273de: AG-1.12, AG-1.5, Q0c-a). Una medida por fila; había otra sesión conectada («personas: 1»).
+
+| | 11 · antes (4ª subida), con olivos generados | 13 · después, con olivos generados | 14 · después, `&olivos=0` |
+|---|---|---|---|
+| p95 | 23,8 ms | 21,0 ms | 16,8 ms |
+| Mediana | 14,0 ms | 14,4 ms | 13,9 ms |
+| Peor | 71,7 ms | 206,4 ms | 145,4 ms |
+| JS (mediana / p95) | 6,9 / 12,9 ms | 7,8 / 11,8 ms | 5,7 / 9,8 ms |
+| Triángulos / llamadas | 1,30 M / 198 | 416 k / 260 | 687 k / 266 |
+
+- **AG-1.12 se nota en el casco:** −68 % de triángulos (1,30 M → 416 k). Sin olivos generados salen más (687 k) porque entra el «olivo lejano» del tileset.
+- **Los triángulos no eran el cuello fuera de VR:** el p95 solo baja de 23,8 a 21 ms.
+- **Los olivos generados, la palanca mayor ahora:** sin ellos, p95 16,8 ms (−4,2 ms) y JS −2 ms en mediana y p95.
+- **La mediana está en el vsync** (72 Hz = 13,9 ms): fuera de VR el casco va a ritmo completo casi siempre; lo que no cumple es el p95 (tirones).
+- **El peor fotograma sube** (206 y 145 ms frente a 72): sin repeticiones no se sabe si es la carga con el presupuesto de AG-1.5 o el arranque. Por medir.
+- **En VR, sin medida tras la subida.**
+
 ## Triángulos por objeto con Hituelo real (2026-11-04, foto, no se mantiene)
 Banco (SwiftShader: recuentos, no fps), página de `main` tras la cuarta subida con los datos reales de Hituelo servidos en local, 12:00, `--desglose` (llamadas y, desde hoy, triángulos por objeto). Los olivos generados no llegaron a dibujarse en estos escenarios (0 triángulos), así que esta foto no dice lo que cuestan. Los triángulos son de una vista; en VR se pagan dos veces.
 
