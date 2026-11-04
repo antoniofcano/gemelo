@@ -9,24 +9,26 @@ const { lee } = require("./_util");
 const F04F = lee("apps/web/motor/04f_suelo_fotos.js"), F04D = lee("apps/web/motor/04d_sombreado_tiles.js"), F15 = lee("apps/web/motor/15_tiempo.js");
 const P = (() => { const i = F04F.indexOf("// [puro:inicio]"), f = F04F.indexOf("// [puro:fin]"); assert.ok(i >= 0 && f > i); return new Function("\"use strict\";\n" + F04F.slice(i, f) + "\nreturn SueloFotosPuro;")(); })();
 
-test("la bandera: apagado por defecto; ?suelo=fotos lo enciende; 1024 en escritorio y 512 en móvil y gafas; en VR solo con ?sueloVR=1", () => {
+test("la bandera: apagado por defecto; ?suelo=fotos lo enciende; 768 en escritorio y 384 en móvil y gafas; en VR solo con ?sueloVR=1", () => {
   assert.strictEqual(P.decide("", "escritorio").activo, false);
   assert.strictEqual(P.decide("?debug", "escritorio").activo, false);
   assert.strictEqual(P.decide("?suelo=fotosx", "escritorio").activo, false);
   assert.strictEqual(P.decide("?suelo=foto", "escritorio").activo, false);
-  const e = P.decide("?suelo=fotos", "escritorio"); assert.deepStrictEqual(e, { activo: true, px: 1024, vr: false });
-  assert.strictEqual(P.decide("?a=1&suelo=fotos#x", "movil").px, 512);
-  assert.strictEqual(P.decide("?suelo=fotos", "quest").px, 512);
-  assert.strictEqual(P.decide("?suelo=fotos&sueloPx=512", "escritorio").px, 512);
-  assert.strictEqual(P.decide("?suelo=fotos&sueloPx=2048", "escritorio").px, 1024, "solo 512 o 1024");
+  const e = P.decide("?suelo=fotos", "escritorio"); assert.deepStrictEqual(e, { activo: true, px: 768, vr: false });
+  assert.strictEqual(P.decide("?a=1&suelo=fotos#x", "movil").px, 384);
+  assert.strictEqual(P.decide("?suelo=fotos", "quest").px, 384);
+  assert.strictEqual(P.decide("?suelo=fotos&sueloPx=384", "escritorio").px, 384);
+  assert.strictEqual(P.decide("?suelo=fotos&sueloPx=1024", "escritorio").px, 768, "solo 384 o 768 (los tamaños que hay)");
   assert.strictEqual(P.decide("?suelo=fotos&sueloVR=1", "quest").vr, true);
   assert.match(F04F, /U\.uFotK\.value = hecho && \(cfg\.vr \|\| !Aparato\.vr\(\)\) \? 1 : 0/, "en VR se apaga salvo ?sueloVR=1");
 });
 
-test("presupuesto declarado: 7 niveles RGBA8 con mipmaps (37,3 MB a 1024, 9,3 MB a 512), 2 muestreadores, ≤ 6 lecturas por píxel, 0 llamadas y 0 triángulos", () => {
-  assert.strictEqual(P.CLASES.length, 7);
-  const a = P.presupuesto(1024), b = P.presupuesto(512);
-  assert.strictEqual(a.texturaMB, 37.3); assert.strictEqual(b.texturaMB, 9.3);
+test("presupuesto declarado: 7 clases en 13 niveles RGBA8 con mipmaps (39,0 MB a 768, 9,8 MB a 384; tope 41 y 10,5), 2 muestreadores, ≤ 6 lecturas por píxel, 0 llamadas y 0 triángulos", () => {
+  assert.strictEqual(P.CLASES.length, 7); assert.strictEqual(P.CAPAS, 13);
+  const a = P.presupuesto(768), b = P.presupuesto(384);
+  assert.strictEqual(a.texturaMB, 39); assert.strictEqual(b.texturaMB, 9.8); assert.strictEqual(a.cpuMB, 29.3); assert.strictEqual(b.cpuMB, 7.3);
+  // el límite que se declara con las variantes (SUELO-FOTOS.md): casi lo de antes (37,3 y 9,3 MB con 7 niveles a 1024 y 512)
+  assert.ok(a.texturaMB <= 41 && b.texturaMB <= 10.5, "las variantes no deben subir la memoria de la tarjeta gráfica de 41 MB (escritorio) ni de 10,5 MB (móvil y gafas)");
   assert.strictEqual(a.llamadas, 0); assert.strictEqual(a.triangulos, 0); assert.strictEqual(a.muestreadores, 2);
   assert.deepStrictEqual(a.muestreos, { lejos: 0, tipico: 3, maximo: 6 });
   // las lecturas que hay de verdad en el GLSL: 1 del ruedo, 2 por fotVar (2 llamadas a fotCapa como mucho) y 1 de la piedra
@@ -36,6 +38,28 @@ test("presupuesto declarado: 7 niveles RGBA8 con mipmaps (37,3 MB a 1024, 9,3 MB
   assert.deepStrictEqual(P.FUNDIDO, [12, 40]);
   assert.ok(!/\bnew THREE\.(Mesh|InstancedMesh|Points|Line)/.test(F04F), "sin mallas nuevas: 0 llamadas de dibujo de más");
   assert.match(F04F, /tex\.dispose\(\)/); assert.match(F04F, /campos\.forEach\(function \(t\) \{ t\.dispose\(\); \}\)/);
+});
+
+test("variantes: 2-3 fotos por clase donde las hay, niveles seguidos; cada celda de la repetición estocástica lee una variante y sus vecinas, otra", () => {
+  assert.deepStrictEqual(P.VARIANTES, [2, 3, 1, 1, 1, 2, 3], "calle 02 y 05; hojarasca 15, 06 y 08; camino 27 y 25; piedra 23, 20 y 21; las demás, una");
+  assert.deepStrictEqual(P.BASE, [0, 2, 5, 6, 7, 8, 10]);
+  const L = P.ficheros(768);
+  assert.deepStrictEqual(L.map(f => f.capa), [...Array(13).keys()], "un fichero por nivel, en orden");
+  assert.deepStrictEqual(L.slice(2, 5).map(f => f.color), ["suelo/hojarasca_768.webp", "suelo/hojarasca_v1_768.webp", "suelo/hojarasca_v2_768.webp"]);
+  assert.strictEqual(L[12].relieve, "suelo/piedra_v2_768_relieve.webp");
+  const g = P.glsl(256);
+  assert.ok(g.cab.includes("const float FOT_B[7] = float[7](" + P.BASE.map(v => v.toFixed(1)).join(", ") + ");"));
+  assert.ok(g.cab.includes("const float FOT_N[7] = float[7](" + P.VARIANTES.map(v => v.toFixed(1)).join(", ") + ");"));
+  assert.ok(g.cab.includes("return FOT_B[c] + mod(i, FOT_N[c]);"), "la variante sale de la celda, sin hash (no depende de la precisión de la tarjeta)");
+  assert.ok(g.cab.includes("float na = fotNiv(c, i), nb = fotNiv(c, i + 1.0);") && g.cab.includes("vec3(p + oa, na)") && g.cab.includes("vec3(p + ob, nb)"), "las 2 lecturas de la repetición estocástica, cada una en la variante de su celda");
+  assert.ok(g.color.includes("fotNiv(6, floor(dh(ce + 2.9) * 6.0))"), "cada piedra suelta, una variante de la caliza");
+  // fotNiv, en JS: dentro de su clase; con más de una variante, la celda i y la i + 1 nunca leen la misma, y entre las 6 celdas salen todas
+  const niv = (c, i) => P.BASE[c] + (i % P.VARIANTES[c]);
+  P.VARIANTES.forEach((n, c) => {
+    const usados = new Set();
+    for (let i = 0; i < 6; i++) { const a = niv(c, i), b = niv(c, i + 1); usados.add(a); assert.ok(a >= P.BASE[c] && a < P.BASE[c] + n); if (n > 1) assert.notStrictEqual(a, b); }
+    assert.strictEqual(usados.size, n, P.CLASES[c] + ": todas sus variantes salen");
+  });
 });
 
 test("campo del ruedo: cerca de un olivo, distancia negativa; lejos, 255; lo que no es olivo no cuenta", () => {

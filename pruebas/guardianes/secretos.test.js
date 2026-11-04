@@ -43,9 +43,9 @@ const TEXTURAS_OLIVO = ["apps/web/olivo/texturas/corteza.jpg", "apps/web/olivo/t
 const ICONOS_APP = /^apps\/web\/public\/icono-[a-z0-9-]+\.png$/;
 
 // Excepción acotada (decisión de Antonio del 2026-11-04, EV-1s): las texturas de suelo que salen de fotos de campo de la finca (las fotos
-// originales nunca entran), generadas por tuberia/suelo/construye.mjs: solo las clases del manifiesto, 1024 o 512 px, hasta 340 KB cada una y
-// 4,5 MB en total, con su LICENCIA.md al lado.
-const TEXTURAS_SUELO = /^apps\/web\/public\/suelo\/(calle|hojarasca|tierra_grava|compost|ruedo|camino|piedra)_(1024|512)(_relieve)?\.webp$/;
+// originales nunca entran), generadas por tuberia/suelo/construye.mjs: solo las clases del manifiesto, con hasta 2 variantes más (_v1, _v2),
+// 768 o 384 px, hasta 340 KB cada una y 4,5 MB en total, con su LICENCIA.md al lado. Con las variantes (13 niveles) son 4,2 MB: los topes no cambian.
+const TEXTURAS_SUELO = /^apps\/web\/public\/suelo\/(calle|hojarasca|tierra_grava|compost|ruedo|camino|piedra)(_v[12])?_(768|384)(_relieve)?\.webp$/;
 
 test("sólo hay imágenes del fixture sintético (ninguna ortofoto real) y las texturas de campo del olivo y del suelo", () => {
   const img = TODOS.filter(f => /\.(jpe?g|png|webp|gif)$/i.test(f));

@@ -1,7 +1,8 @@
 // Tubería de texturas de suelo y paleta del cielo (EV-1s). De las fotos de campo (FUERA del repo) a:
-//   apps/web/public/suelo/<clase>_<px>.webp           color de detalle repetible, alrededor de 1 (byte/127,5 = factor que MODULA el color del suelo)
-//   apps/web/public/suelo/<clase>_<px>_relieve.webp   relieve aproximado (deducido de la claridad), 0,5 = plano
-//   apps/web/public/suelo/suelo.json                  manifiesto: clases y su orden de capa, metros supuestos, fotos de origen, huellas sha256
+//   apps/web/public/suelo/<clase>[_v<k>]_<px>.webp           color de detalle repetible, alrededor de 1 (byte/127,5 = factor que MODULA el color
+//                                                           del suelo); _v1, _v2: las variantes de la clase (otras fotos de la misma clase)
+//   apps/web/public/suelo/<clase>[_v<k>]_<px>_relieve.webp   relieve aproximado (deducido de la claridad), 0,5 = plano
+//   apps/web/public/suelo/suelo.json                  manifiesto: clases, su primera capa y cuántas (variantes), metros supuestos, fotos, huellas sha256
 //   tuberia/suelo/paleta_cielo.json                   paleta del atardecer (horizonte, cenit, nube iluminada, nube en sombra)
 // Uso:  GEMELO_SUELO_FOTOS=<carpeta con NN.jpg y ficha.json> [GEMELO_CIELO_FOTOS=<carpeta>] node tuberia/suelo/construye.mjs [--salida <dir>]
 // Nunca se escriben rutas ni metadatos de las fotos (sharp no copia el EXIF salvo que se le pida). Determinista: misma entrada → mismos bytes.
@@ -35,7 +36,12 @@ async function webp(buf, w, h, c, calidad) {
   return sharp(buf, { raw: { width: w, height: h, channels: c } }).webp({ quality: calidad, effort: 6, smartSubsample: c === 3 }).toBuffer();
 }
 
-/** una clase: recorte → aplanar la luz → normalizar → sin costuras → relieve → 1024 y 512 */
+/** las fotos de una clase: la principal y sus variantes, cada una con su recorte y el contraste y la saturación de la clase */
+export const fotosDe = cl => [{ fuente: cl.fuente, recorte: cl.recorte }].concat((cl.variantes || []).map(v => ({ fuente: v.fuente, recorte: v.recorte })));
+/** nombre del fichero de la variante k (0 = la principal) */
+export const nombreDe = (id, k, px, suf = "") => id + (k ? "_v" + k : "") + "_" + px + suf + ".webp";
+
+/** una foto de una clase: recorte → aplanar la luz → normalizar → sin costuras → relieve → los tamaños (768 y 384) */
 export async function construyeClase(fotos, cl, opc = {}) {
   const N = opc.lado || RECETAS.lado_trabajo, tamanos = opc.tamanos || RECETAS.tamanos, calidad = opc.calidad || RECETAS.calidad_webp;
   const { im, recorte, foto } = await leeRecorte(path.join(fotos, cl.fuente + ".jpg"), cl.recorte, N);
@@ -79,18 +85,26 @@ export async function construye({ fotos, salida, cielo, opc = {} }) {
   const man = { version: 1, naturaleza: "ilustrativo: textura de fotos de la finca; el color lo pone la ortofoto (medido); la clase de cada punto es deducida; el relieve, deducido de la claridad",
     fotos_de: ficha ? ficha.fecha : null, autor: "Antonio (Cano & Damas Oleicultores)", licencia: "LICENCIA.md", sharp: sharp.versions.sharp, tamanos,
     codificacion: { color: "factor = byte / 127,5 (1 = no cambia el color del suelo)", relieve: "0,5 = plano; deducido, no medido" }, clases: [], ficheros: {} };
-  for (let capa = 0; capa < clases.length; capa++) {
-    const cl = clases[capa], r = await construyeClase(fotos, cl, opc);
-    const etiqueta = ficha && ficha.fotos && ficha.fotos[cl.fuente] ? ficha.fotos[cl.fuente][0] : null;
-    man.clases.push({ id: cl.id, capa, nombre: cl.nombre, metros: cl.metros, metros_naturaleza: "supuesto (sin referencia de escala)", fuente: { foto: cl.fuente, clase_en_ficha: etiqueta, recorte_px: r.recorte },
-      color_referencia: await colorReferencia(fotos, [cl.fuente].concat(cl.color || [])), costura: Object.fromEntries(r.salidas.map(s => [s.px, Number(s.costura.toFixed(3))])) });
-    for (const s of r.salidas) {
-      for (const [suf, buf] of [["", s.color], ["_relieve", s.relieve]]) {
-        const nom = cl.id + "_" + s.px + suf + ".webp"; fs.writeFileSync(path.join(salida, nom), buf); man.ficheros[nom] = { bytes: buf.length, sha256: sha(buf) };
+  const etiqueta = id => ficha && ficha.fotos && ficha.fotos[id] ? ficha.fotos[id][0] : null, costuras = r => Object.fromEntries(r.salidas.map(s => [s.px, Number(s.costura.toFixed(3))]));
+  let capa = 0;
+  for (const cl of clases) {
+    const fs1 = fotosDe(cl), rs = [];
+    for (const f of fs1) rs.push(await construyeClase(fotos, { ...cl, fuente: f.fuente, recorte: f.recorte }, opc));
+    man.clases.push({ id: cl.id, capa, capas: fs1.length, nombre: cl.nombre, metros: cl.metros, metros_naturaleza: "supuesto (sin referencia de escala)",
+      fuente: { foto: cl.fuente, clase_en_ficha: etiqueta(cl.fuente), recorte_px: rs[0].recorte },
+      variantes: fs1.slice(1).map((f, k) => ({ capa: capa + k + 1, foto: f.fuente, clase_en_ficha: etiqueta(f.fuente), recorte_px: rs[k + 1].recorte, costura: costuras(rs[k + 1]) })),
+      color_referencia: await colorReferencia(fotos, fs1.map(f => f.fuente).concat(cl.color || [])), costura: costuras(rs[0]) });
+    rs.forEach((r, k) => {
+      for (const s of r.salidas) for (const [suf, buf] of [["", s.color], ["_relieve", s.relieve]]) {
+        const nom = nombreDe(cl.id, k, s.px, suf); fs.writeFileSync(path.join(salida, nom), buf); man.ficheros[nom] = { bytes: buf.length, sha256: sha(buf) };
       }
-    }
+    });
+    capa += fs1.length;
   }
-  man.memoria_gpu_mb = Object.fromEntries(tamanos.map(px => [px, Number((px * px * 4 * clases.length * 4 / 3 / 1048576).toFixed(1))]));   // RGBA8 en una textura de capas, con mipmaps
+  man.capas = capa;
+  // lo que quede de una versión anterior (otros tamaños, variantes que ya no están) sobra: el manifiesto dice qué hay
+  for (const f of fs.readdirSync(salida)) if (f.endsWith(".webp") && !man.ficheros[f]) fs.rmSync(path.join(salida, f));
+  man.memoria_gpu_mb = Object.fromEntries(tamanos.map(px => [px, Number((px * px * 4 * capa * 4 / 3 / 1048576).toFixed(1))]));   // RGBA8 en una textura de capas, con mipmaps
   fs.writeFileSync(path.join(salida, "suelo.json"), JSON.stringify(man, null, 1) + "\n");
   let paleta = null;
   if (cielo && fs.existsSync(cielo)) { paleta = await paletaCielo(cielo); fs.writeFileSync(opc.paleta || path.join(AQUI, "paleta_cielo.json"), JSON.stringify(paleta, null, 1) + "\n"); }
@@ -103,8 +117,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const t0 = Date.now();
   construye({ fotos: process.env.GEMELO_SUELO_FOTOS, cielo: process.env.GEMELO_CIELO_FOTOS, salida }).then(({ manifiesto, paleta }) => {
     const tot = Object.values(manifiesto.ficheros).reduce((s, f) => s + f.bytes, 0);
-    for (const c of manifiesto.clases) console.log(c.id.padEnd(13), "foto", c.fuente.foto, "costura", JSON.stringify(c.costura), "color ref", c.color_referencia);
-    console.log("ficheros:", Object.keys(manifiesto.ficheros).length, "·", (tot / 1024).toFixed(0), "KiB · GPU (MB):", JSON.stringify(manifiesto.memoria_gpu_mb), "·", ((Date.now() - t0) / 1000).toFixed(1), "s");
+    for (const c of manifiesto.clases) console.log(c.id.padEnd(13), "fotos", [c.fuente.foto].concat(c.variantes.map(v => v.foto)).join(" "), "costura", JSON.stringify(c.costura), "variantes", JSON.stringify(c.variantes.map(v => v.costura)), "color ref", c.color_referencia);
+    console.log("capas:", manifiesto.capas, "· ficheros:", Object.keys(manifiesto.ficheros).length, "·", (tot / 1024).toFixed(0), "KiB · GPU (MB):", JSON.stringify(manifiesto.memoria_gpu_mb), "·", ((Date.now() - t0) / 1000).toFixed(1), "s");
     if (paleta) console.log("cielo:", JSON.stringify(paleta));
   }).catch(e => { console.error(e.message); process.exit(1); });
 }

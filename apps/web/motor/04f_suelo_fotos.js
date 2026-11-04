@@ -3,8 +3,9 @@
 // Consume: 01a_aparato (Aparato), 02_mundo (Mundo, suelo, copas), 02b_cola (Cola)
 // ===============================================================================
   // ---------- EV-1s: el suelo de cerca con texturas de fotos de la finca (?suelo=fotos; APAGADO por defecto y, en VR, apagado salvo ?sueloVR=1)
-  // Siete texturas repetibles (tuberia/suelo/construye.mjs; apps/web/public/suelo/, con su LICENCIA.md) en UNA textura en array (DataArrayTexture:
-  // un solo muestreador más en el sombreado del relieve): calle con picado, hojarasca seca, tierra con grava, compost, ruedo, camino y piedra.
+  // Siete clases de textura repetible (tuberia/suelo/construye.mjs; apps/web/public/suelo/, con su LICENCIA.md) en UNA textura en array (DataArrayTexture:
+  // un solo muestreador más en el sombreado del relieve): calle con picado, hojarasca seca, tierra con grava, compost, ruedo, camino y piedra. Donde
+  // hay varias fotos de una clase, 2-3 variantes (13 niveles en total): la repetición estocástica escoge variante por celda, sin lecturas de más.
   // Naturaleza (regla 5): el COLOR sigue saliendo de la ortofoto (medido); la textura solo lo MODULA alrededor de 1 (byte/127,5) y es ILUSTRATIVA;
   // la CLASE de cada punto es DEDUCIDA con reglas simples, porque no hay un mapa medido de dónde hay calle, hojarasca o compost:
   //   - ruedo: dentro del radio de la copa (radio medio de los 8 medidos × 1,15 + 0,5 m [SUPUESTO]), por un campo de distancias por tesela (uRue);
@@ -14,25 +15,37 @@
   //   - compost: suelo abierto más OSCURO que su entorno en la ortofoto (no se sabe dónde se aporta: es la regla más débil, dicha);
   //   - calle: el resto; piedras sueltas: calcomanías por celdas de 0,9 m, más en la tierra, el ruedo y el camino.
   // Repetición estocástica (técnica 3 de Quilez, «texture variation», con el índice sacado de un ruido procedimental en vez de otra textura) y
-  // mezcla que conserva la varianza; fundido por distancia de 12 a 40 m (más allá, ni una lectura: lo de siempre). Presupuesto: SueloFotosPuro.presupuesto().
+  // mezcla que conserva la varianza; cada lectura toma la variante de su celda; fundido por distancia de 12 a 40 m (más allá, ni una lectura: lo de siempre). Presupuesto: SueloFotosPuro.presupuesto().
   // Sin la bandera este módulo no carga nada, no crea texturas y 04d no cambia ni una letra de su sombreador.
   // [puro:inicio] (sin THREE ni DOM: lo evalúa en Node pruebas/guardianes/suelo_fotos.test.js)
   var SueloFotosPuro = (function () {
     var CLASES = ["calle", "hojarasca", "tierra_grava", "compost", "ruedo", "camino", "piedra"];   // el orden ES el de los niveles del array (y el de tuberia/suelo/recetas.json)
     var METROS = [1.4, 1.3, 0.9, 0.85, 0.6, 0.5, 0.35];   // lado en el suelo de cada textura [SUPUESTO: las fotos no llevan referencia de escala]
+    var VARIANTES = [2, 3, 1, 1, 1, 2, 3];   // fotos por clase (la principal y sus variantes de tuberia/suelo/recetas.json): niveles seguidos en el array
+    var BASE = [], CAPAS = 0; for (var c0 = 0; c0 < CLASES.length; c0++) { BASE.push(CAPAS); CAPAS += VARIANTES[c0]; }
+    // 768 px en escritorio y 384 en móvil y gafas (no 1024 y 512): con las variantes, 13 niveles en casi la memoria de los 7 de antes (presupuesto())
+    var PX = [768, 384];
     var FUNDIDO = [12, 40], RUE_M = 6, RUE_GN = 128;   // fundido (m); el campo del ruedo guarda la distancia al borde de la copa en ±6 m, a 2 m por celda
     // ajuste: el guardado de Configuración → Vista («vista.suelo», true/false) o undefined; la URL manda (?suelo=fotos enciende, ?suelo=0 apaga)
     function decide(busqueda, clase, ajuste) {
-      var q = busqueda || "", mp = /[?&]sueloPx=(512|1024)(?![^&#])/.exec(q);
+      var q = busqueda || "", mp = /[?&]sueloPx=(384|768)(?![^&#])/.exec(q);
       var url = /[?&]suelo=fotos(?![^&#])/.test(q) ? true : /[?&]suelo=(0|no)(?![^&#])/.test(q) ? false : undefined;
-      return { activo: url !== undefined ? url : ajuste === true, px: mp ? Number(mp[1]) : clase === "escritorio" ? 1024 : 512, vr: /[?&]sueloVR=1(?![^&#])/.test(q) };
+      return { activo: url !== undefined ? url : ajuste === true, px: mp ? Number(mp[1]) : clase === "escritorio" ? PX[0] : PX[1], vr: /[?&]sueloVR=1(?![^&#])/.test(q) };
     }
-    function ficheros(px) { var o = []; for (var i = 0; i < CLASES.length; i++) o.push({ clase: CLASES[i], color: "suelo/" + CLASES[i] + "_" + px + ".webp", relieve: "suelo/" + CLASES[i] + "_" + px + "_relieve.webp" }); return o; }
-    // memoria en la tarjeta gráfica: RGBA8 × niveles, con mipmaps (×4/3); y el campo del ruedo: 1 byte por celda y tesela
+    // un elemento por lámina del array, en su orden: las variantes de cada clase, seguidas (la 0, la principal, <clase>_<px>; las demás, <clase>_v<k>_<px>)
+    function ficheros(px) {
+      var o = []; for (var i = 0; i < CLASES.length; i++) for (var k = 0; k < VARIANTES[i]; k++) {
+        var n = "suelo/" + CLASES[i] + (k ? "_v" + k : "") + "_" + px; o.push({ clase: CLASES[i], variante: k, capa: BASE[i] + k, color: n + ".webp", relieve: n + "_relieve.webp" });
+      }
+      return o;
+    }
+    // memoria en la tarjeta gráfica: RGBA8 × niveles, con mipmaps (×4/3); la copia pasajera de la CPU (sin mipmaps); y el campo del ruedo: 1 byte por celda y tesela
     function presupuesto(px) {
-      var bytesTex = px * px * 4 * CLASES.length * 4 / 3;
-      return { texturaBytes: bytesTex, texturaMB: Math.round(bytesTex / 1048576 * 10) / 10, ruedoBytesPorTesela: RUE_GN * RUE_GN, muestreadores: 2, llamadas: 0, triangulos: 0,
+      var bytesTex = px * px * 4 * CAPAS * 4 / 3;
+      return { niveles: CAPAS, texturaBytes: bytesTex, texturaMB: Math.round(bytesTex / 1048576 * 10) / 10, cpuMB: Math.round(px * px * 4 * CAPAS / 1048576 * 10) / 10,
+        ruedoBytesPorTesela: RUE_GN * RUE_GN, muestreadores: 2, llamadas: 0, triangulos: 0,
         // lecturas de textura por píxel del suelo: 1 del campo del ruedo + 2 por clase (repetición estocástica) × las 2 clases que más pesan + 1 si cae en una piedra
+        // (las variantes no añaden ninguna: cada lectura va a la lámina de la variante de su celda)
         muestreos: { lejos: 0, tipico: 3, maximo: 6 } };
     }
     // el campo del ruedo de una tesela (pura): GN×GN bytes, fila 0 al sur; valor = (distancia al borde de la copa + 6 m) / 12 m · 255 (255 = lejos)
@@ -55,11 +68,16 @@
     function glsl(TS) {
       var cab = "uniform highp sampler2DArray uFot; uniform float uFotK; uniform sampler2D uRue;\n" +
         "const float FOT_M[" + CLASES.length + "] = float[" + CLASES.length + "](" + METROS.map(f1).join(", ") + ");\n" +
+        "const float FOT_B[" + CLASES.length + "] = float[" + CLASES.length + "](" + BASE.map(f1).join(", ") + ");\n" +   // lámina inicial de cada clase
+        "const float FOT_N[" + CLASES.length + "] = float[" + CLASES.length + "](" + VARIANTES.map(f1).join(", ") + ");\n" +   // y cuántas variantes tiene
+        "float fotNiv(int c, float i){ return FOT_B[c] + mod(i, FOT_N[c]); }\n" +   // la lámina de la variante de la celda i (entera, ≥ 0): se turnan, ninguna sobra
         // repetición estocástica: dos lecturas con desplazamientos que cambian a saltos según un ruido; el salto cae donde la mezcla ya pasó del todo
-        // a la otra lectura, así que no se ve; las derivadas se dan a mano (textureGrad) para que el desplazamiento no rompa los mipmaps
-        "vec4 fotVar(float capa, vec2 p, vec2 gx, vec2 gy){ float k = dn(p * 0.37 + capa * 3.7) * 6.0, i = floor(k), f = fract(k);\n" +
+        // a la otra lectura, así que no se ve; las derivadas se dan a mano (textureGrad) para que el desplazamiento no rompa los mipmaps. Cada celda
+        // del ruido (i) escoge también la variante (otra foto de la clase; la de i y la de i + 1, siempre distintas), que salta donde salta el desplazamiento
+        "vec4 fotVar(float capa, vec2 p, vec2 gx, vec2 gy){ float k = dn(p * 0.37 + capa * 3.7) * 6.0, i = floor(k), f = fract(k); int c = int(capa + 0.5);\n" +
         "  vec2 oa = fract(sin(vec2(3.1, 7.7) * (i + capa)) * 43.7), ob = fract(sin(vec2(3.1, 7.7) * (i + 1.0 + capa)) * 43.7);\n" +
-        "  vec4 a = textureGrad(uFot, vec3(p + oa, capa), gx, gy), b = textureGrad(uFot, vec3(p + ob, capa), gx, gy); float t = smoothstep(0.2, 0.8, f);\n" +
+        "  float na = fotNiv(c, i), nb = fotNiv(c, i + 1.0);\n" +
+        "  vec4 a = textureGrad(uFot, vec3(p + oa, na), gx, gy), b = textureGrad(uFot, vec3(p + ob, nb), gx, gy); float t = smoothstep(0.2, 0.8, f);\n" +
         "  return 0.5 + (mix(a, b, t) - 0.5) / sqrt(t * t + (1.0 - t) * (1.0 - t)); }\n" +
         "vec4 fotCapa(float capa, vec2 pw, vec2 dx, vec2 dy){ float m = FOT_M[int(capa + 0.5)]; return fotVar(capa, pw / m, dx / m, dy / m); }\n";
       var pre = "float fotA = uFotK * (1.0 - smoothstep(" + f1(FUNDIDO[0]) + ", " + f1(FUNDIDO[1]) + ", dc)); vec2 fdx = dFdx(vWP.xz) * vec2(1.0, -1.0), fdy = dFdy(vWP.xz) * vec2(1.0, -1.0);\n";
@@ -80,7 +98,7 @@
         "  vec2 ce = floor(pw / 0.9), fr = pw - ce * 0.9; float pr = 0.03 + 0.12 * (wTie + wCam + w[4]);\n" +
         "  if (dh(ce + 17.3) < pr) { vec2 c0 = (vec2(dh(ce + 3.1), dh(ce + 8.9)) * 0.5 + 0.25) * 0.9; float rr = 0.06 + 0.18 * dh(ce + 5.5), an = dh(ce + 1.1) * 6.2832; vec2 dd = fr - c0; dd = vec2(cos(an) * dd.x - sin(an) * dd.y, sin(an) * dd.x + cos(an) * dd.y); dd.y *= 1.6;\n" +
         "    float esP = 1.0 - smoothstep(0.8, 1.0, length(dd) / rr + 0.35 * (dn(pw * 9.0) - 0.5));\n" +
-        "    if (esP > 0.0) { vec4 tp = textureGrad(uFot, vec3(pw / FOT_M[6] + ce * 0.37, 6.0), fdx / FOT_M[6], fdy / FOT_M[6]); suelo = mix(suelo, mix(suelo, vec3(0.70, 0.66, 0.60), 0.55) * tp.rgb * 2.0, esP * fotA); hSuelo += fotA * esP * (0.02 + 0.015 * (tp.a - 0.5)); } }\n" +
+        "    if (esP > 0.0) { vec4 tp = textureGrad(uFot, vec3(pw / FOT_M[6] + ce * 0.37, fotNiv(6, floor(dh(ce + 2.9) * 6.0))), fdx / FOT_M[6], fdy / FOT_M[6]); suelo = mix(suelo, mix(suelo, vec3(0.70, 0.66, 0.60), 0.55) * tp.rgb * 2.0, esP * fotA); hSuelo += fotA * esP * (0.02 + 0.015 * (tp.a - 0.5)); } }\n" +
         "}\n";
       return { cab: cab, pre: pre, color: color };
     }
@@ -91,7 +109,7 @@
       Object.keys(ANCLAS).forEach(function (k) { if (color.split(ANCLAS[k]).length !== 2) throw new Error("04f_suelo_fotos: el ancla «" + ANCLAS[k] + "» no está una vez en el sombreado de 04d"); });
       return { cab: cab + g.cab, color: color.replace(ANCLAS.pre, g.pre + ANCLAS.pre).replace(ANCLAS.grano, "(1.0 - m) * 0.3, 0.0, 1.0) * cercaM * (1.0 - fotA);").replace(ANCLAS.color, g.color + ANCLAS.color) };
     }
-    return { CLASES: CLASES, METROS: METROS, FUNDIDO: FUNDIDO, RUE_GN: RUE_GN, decide: decide, ficheros: ficheros, presupuesto: presupuesto, campoRuedo: campoRuedo, glsl: glsl, parcheGlsl: parcheGlsl };
+    return { CLASES: CLASES, METROS: METROS, VARIANTES: VARIANTES, BASE: BASE, CAPAS: CAPAS, PX: PX, FUNDIDO: FUNDIDO, RUE_GN: RUE_GN, decide: decide, ficheros: ficheros, presupuesto: presupuesto, campoRuedo: campoRuedo, glsl: glsl, parcheGlsl: parcheGlsl };
   })();
   // [puro:fin]
   var SueloFotos = (function () {
@@ -105,8 +123,8 @@
       var GN = P.RUE_GN, d = P.campoRuedo(copas, t.ox, t.oy, Mundo.TS, GN), tx = new THREE.DataTexture(d, GN, GN, THREE.RedFormat, THREE.UnsignedByteType);
       tx.magFilter = tx.minFilter = THREE.LinearFilter; tx.generateMipmaps = false; tx.needsUpdate = true; campos.push(tx); return tx;
     }
-    // las 7 parejas color + relieve: se piden todas (mismo origen) y, cuando han llegado, se decodifican a píxeles y se juntan en una textura en array
-    // en la cola, una media clase por rebanada y con la prioridad más baja (después de las teselas)
+    // las 13 parejas color + relieve (una por lámina): se piden todas (mismo origen) y, cuando han llegado, se decodifican a píxeles y se juntan en una
+    // textura en array en la cola, media lámina por rebanada y con la prioridad más baja (después de las teselas)
     function img(src) { return new Promise(function (ok, mal) { var im = new Image(); im.decoding = "async"; im.onload = function () { ok(im); }; im.onerror = function () { mal(new Error("no se pudo leer " + src)); }; im.src = src; }); }
     function* juntaG(L, ims) {
       var px = cfg.px, datos = new Uint8Array(px * px * 4 * L.length), cv = document.createElement("canvas"); cv.width = cv.height = px;
@@ -120,7 +138,7 @@
       var t = new THREE.DataArrayTexture(datos, px, px, L.length);   // valores tal cual (factores, no colores): sin espacio de color
       t.format = THREE.RGBAFormat; t.type = THREE.UnsignedByteType; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter;
       t.generateMipmaps = true; t.anisotropy = 4; t.needsUpdate = true;
-      t.onUpdate = function () { t.image.data = null; };   // ya en la tarjeta gráfica: fuera la copia de la CPU (28 MB a 1024, 7 MB a 512)
+      t.onUpdate = function () { t.image.data = null; };   // ya en la tarjeta gráfica: fuera la copia de la CPU (29,3 MB a 768, 7,3 MB a 384: presupuesto().cpuMB)
       return t;
     }
     var pedido = false;

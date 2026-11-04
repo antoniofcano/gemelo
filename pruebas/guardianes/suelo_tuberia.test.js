@@ -48,7 +48,7 @@ test("sin costura: el borde izquierdo continúa en el derecho (y el de arriba en
   const h = N.relieve(sc, 1, 6); assert.ok(N.costura(h.d, 128, 128, 1).cociente < 1.3, "el relieve también");
 });
 
-test("la tubería entera sobre fotos sintéticas: determinista, repetible, sin EXIF, 2 tamaños por clase", { skip: sinSharp }, async () => {
+test("la tubería entera sobre fotos sintéticas: determinista, repetible, sin EXIF, 2 tamaños por clase y sus variantes, capas seguidas", { skip: sinSharp }, async () => {
   const sharp = require("node:module").createRequire(path.join(SU, "package.json"))("sharp");
   const T = await imp("construye.mjs"), dir = fs.mkdtempSync(path.join(os.tmpdir(), "suelo-"));
   try {
@@ -58,12 +58,18 @@ test("la tubería entera sobre fotos sintéticas: determinista, repetible, sin E
       for (let y = 0; y < 240; y++) for (let x = 0; x < 320; x++) for (let c = 0; c < 3; c++) { const i = (y * 320 + x) * 3 + c; b[i] = Math.round(255 * Math.min(1, (0.3 + 0.4 * im.d[i]) * (0.5 + 0.5 * x / 319) + (c === 0 ? 0.1 : 0))); }
       await sharp(b, { raw: { width: 320, height: 240, channels: 3 } }).withExif({ IFD0: { Copyright: "prueba", Artist: "nadie" } }).jpeg({ quality: 90 }).toFile(path.join(fotos, id + ".jpg"));
     }
-    const clases = [{ id: "calle", nombre: "a", fuente: "01", recorte: [0, 0, 1, 1], metros: 1, contraste: 0.16, saturacion: 0.7, color: ["02"] },
+    const clases = [{ id: "calle", nombre: "a", fuente: "01", recorte: [0, 0, 1, 1], metros: 1, contraste: 0.16, saturacion: 0.7, color: ["02"], variantes: [{ fuente: "02", recorte: [0, 0, 0.5, 1] }] },
       { id: "ruedo", nombre: "b", fuente: "02", recorte: [0.2, 0, 0.6, 1], metros: 1, contraste: 0.13, saturacion: 0.7, color: [] }];
     const opc = { clases, tamanos: [128, 64], lado: 128, calidad: 80 };
     const r1 = await T.construye({ fotos, salida: path.join(dir, "s1"), opc }), r2 = await T.construye({ fotos, salida: path.join(dir, "s2"), opc });
-    assert.deepStrictEqual(Object.keys(r1.manifiesto.ficheros).sort(), ["calle_128.webp", "calle_128_relieve.webp", "calle_64.webp", "calle_64_relieve.webp", "ruedo_128.webp", "ruedo_128_relieve.webp", "ruedo_64.webp", "ruedo_64_relieve.webp"]);
+    assert.deepStrictEqual(Object.keys(r1.manifiesto.ficheros).sort(), ["calle_128.webp", "calle_128_relieve.webp", "calle_64.webp", "calle_64_relieve.webp", "calle_v1_128.webp", "calle_v1_128_relieve.webp", "calle_v1_64.webp", "calle_v1_64_relieve.webp", "ruedo_128.webp", "ruedo_128_relieve.webp", "ruedo_64.webp", "ruedo_64_relieve.webp"]);
     assert.deepStrictEqual(r1.manifiesto.ficheros, r2.manifiesto.ficheros, "misma entrada → mismos bytes");
+    assert.deepStrictEqual(r1.manifiesto.clases.map(c => [c.id, c.capa, c.capas]), [["calle", 0, 2], ["ruedo", 2, 1]], "las variantes de una clase, en niveles seguidos");
+    assert.strictEqual(r1.manifiesto.capas, 3); assert.strictEqual(r1.manifiesto.clases[0].variantes[0].foto, "02");
+    assert.notStrictEqual(r1.manifiesto.ficheros["calle_128.webp"].sha256, r1.manifiesto.ficheros["calle_v1_128.webp"].sha256, "la variante es otra foto");
+    // lo que sobra de una versión anterior (otro tamaño) se borra: en la carpeta queda lo del manifiesto
+    fs.writeFileSync(path.join(dir, "s1", "calle_1024.webp"), "viejo"); await T.construye({ fotos, salida: path.join(dir, "s1"), opc });
+    assert.deepStrictEqual(fs.readdirSync(path.join(dir, "s1")).filter(f => f.endsWith(".webp")).sort(), Object.keys(r1.manifiesto.ficheros).sort());
     for (const f of Object.keys(r1.manifiesto.ficheros)) {
       const p = path.join(dir, "s1", f), m = await sharp(p).metadata(), px = f.includes("_128") ? 128 : 64;
       assert.strictEqual(sha(fs.readFileSync(p)), r1.manifiesto.ficheros[f].sha256);
@@ -85,12 +91,15 @@ test("lo versionado en apps/web/public/suelo/ es lo del manifiesto: clases y met
   assert.deepStrictEqual(man.clases.map(c => c.id), RECETAS.clases.map(c => c.id));
   assert.deepStrictEqual(P.CLASES, RECETAS.clases.map(c => c.id), "el orden de los niveles del motor es el de las recetas");
   assert.deepStrictEqual(P.METROS, RECETAS.clases.map(c => c.metros), "los metros del motor son los de las recetas");
-  man.clases.forEach((c, k) => assert.strictEqual(c.capa, k));
-  const esperados = []; for (const c of RECETAS.clases) for (const px of RECETAS.tamanos) esperados.push(c.id + "_" + px + ".webp", c.id + "_" + px + "_relieve.webp");
+  assert.deepStrictEqual(P.VARIANTES, RECETAS.clases.map(c => 1 + (c.variantes || []).length), "las variantes del motor son las de las recetas");
+  assert.deepStrictEqual(man.clases.map(c => [c.capa, c.capas]), P.BASE.map((b, k) => [b, P.VARIANTES[k]]), "primer nivel y cuántos, como el motor");
+  assert.strictEqual(man.capas, P.CAPAS); assert.deepStrictEqual(RECETAS.tamanos, P.PX, "los tamaños de la tubería son los que pide el motor");
+  const esperados = []; for (const c of RECETAS.clases) for (let k = 0; k <= (c.variantes || []).length; k++) for (const px of RECETAS.tamanos) { const n = c.id + (k ? "_v" + k : "") + "_" + px; esperados.push(n + ".webp", n + "_relieve.webp"); }
+  assert.deepStrictEqual(P.ficheros(RECETAS.tamanos[0]).map(f => f.color.replace("suelo/", "")), esperados.filter(f => f.endsWith("_" + RECETAS.tamanos[0] + ".webp")), "el motor pide los ficheros que hay, en el orden de los niveles");
   assert.deepStrictEqual(Object.keys(man.ficheros).sort(), esperados.sort());
   for (const [nom, d] of Object.entries(man.ficheros)) {
     const b = fs.readFileSync(path.join(dir, nom)); assert.strictEqual(b.length, d.bytes, nom); assert.strictEqual(sha(b), d.sha256, nom + ": no es el del manifiesto (¿se regeneró sin escribir suelo.json?)");
   }
   assert.ok(fs.existsSync(path.join(dir, "LICENCIA.md")));
-  const presu = P.presupuesto(1024); assert.strictEqual(presu.texturaMB, man.memoria_gpu_mb["1024"]); assert.strictEqual(P.presupuesto(512).texturaMB, man.memoria_gpu_mb["512"]);
+  for (const px of RECETAS.tamanos) assert.strictEqual(P.presupuesto(px).texturaMB, man.memoria_gpu_mb[px], "memoria a " + px + " px");
 });
