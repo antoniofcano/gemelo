@@ -176,7 +176,7 @@
       var mC = new THREE.MeshBasicMaterial({ color: COLOR, transparent: true, opacity: 0.42, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }), mF = new THREE.MeshBasicMaterial({ color: CLARO, fog: false });
       geos = [gC, gF]; mats = [mC, mF];
       mCol = new THREE.InstancedMesh(gC, mC, OP.BALIZAS_MAX); mBan = new THREE.InstancedMesh(gF, mF, OP.BALIZAS_MAX);
-      [mCol, mBan].forEach(function (m) { m.count = 0; m.frustumCulled = false; gB.add(m); });
+      [mCol, mBan].forEach(function (m) { m.count = 0; gB.add(m); });   // se recortan: coloca() les calcula el volumen envolvente
     }
     function coloca() {
       if (!balizas.length && !gB) return;
@@ -186,6 +186,7 @@
         m4.compose(v1.set(b.pos.x, b.pos.y, b.pos.z), q0, vS); mCol.setMatrixAt(i, m4); mBan.setMatrixAt(i, m4);
       });
       mCol.count = mBan.count = balizas.length; mCol.instanceMatrix.needsUpdate = true; mBan.instanceMatrix.needsUpdate = true;
+      if (balizas.length) { mCol.computeBoundingSphere(); mBan.computeBoundingSphere(); }   // después de escribir las matrices: la que three calculara con 0 instancias quedaría vacía
       gB.visible = balizas.length > 0;
     }
     function refresca() {

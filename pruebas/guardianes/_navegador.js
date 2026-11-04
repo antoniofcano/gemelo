@@ -22,6 +22,10 @@ const ESCENARIOS_PASEO = {
   paseo: { paseo: { x: -130, y: -125, ang: 0 } },
   paseoAnda: { paseo: { x: -130, y: -125, ang: 0, anda: 6 } },
   paseoGira: { paseo: { x: -130, y: -125, ang: 0, gira: true } },
+  // el mismo sitio mirando a otro lado (AG-1.3: las llamadas con el recorte por el campo de visión, desde cuatro rumbos; ang 0 es el norte y crece hacia el este)
+  paseoE: { paseo: { x: -130, y: -125, ang: Math.PI / 2 } },
+  paseoS: { paseo: { x: -130, y: -125, ang: Math.PI } },
+  paseoO: { paseo: { x: -130, y: -125, ang: 3 * Math.PI / 2 } },
 };
 // Escenarios de BORDE (opcionales, M6): miran desde dentro de la caja del fixture hacia fuera, donde no hay tesela (se ve el suelo de fondo o, sin él, ?sinFondo, el vacío).
 // borde: la cara este desde el oeste; esquina: la esquina NE desde el suroeste; bordeRaso: casi a ras del suelo junto al borde este (el fondo no debe asomar por encima de las teselas).

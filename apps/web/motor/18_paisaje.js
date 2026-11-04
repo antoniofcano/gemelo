@@ -42,16 +42,16 @@
       m.userData = { p: p, alto: alto }; gPaisaje.add(m); postes.push(m);
     });
     var g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(d.linea.length * 3), 3));
-    var l = new THREE.Line(g, matCable); l.frustumCulled = false; gPaisaje.add(l); cablesDer.push({ g: g, linea: d.linea });
+    var l = new THREE.Line(g, matCable); gPaisaje.add(l); cablesDer.push({ g: g, linea: d.linea });
   });
   var geoCable = new THREE.BufferGeometry(); geoCable.setAttribute("position", new THREE.BufferAttribute(new Float32Array(Math.max(1, PA.tendido.linea.length) * 3), 3));
-  var cable = new THREE.Line(geoCable, matCable); cable.frustumCulled = false; gPaisaje.add(cable);
+  var cable = new THREE.Line(geoCable, matCable); gPaisaje.add(cable);   // los hilos, los árboles y los cauces se recortan: colocaPaisaje les calcula la esfera
 
   // --- los árboles que no son olivos: tronco y 2-3 masas de copa, con el tamaño medido
   var arb = PA.arboles, nA = arb.length;
   var iTronco = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.16, 0.26, 1, 7), matTronco, Math.max(1, nA));
   var geoBlob = new THREE.IcosahedronGeometry(1, 1), iBlob = [0, 1, 2].map(function () { return new THREE.InstancedMesh(geoBlob, matCopaArb, Math.max(1, nA)); });
-  [iTronco].concat(iBlob).forEach(function (m) { m.frustumCulled = false; gPaisaje.add(m); });   // r151: la esfera de una InstancedMesh se calcula una vez; estas se recolocan con la exageración
+  [iTronco].concat(iBlob).forEach(function (m) { gPaisaje.add(m); });   // r151: three calcula la esfera de una InstancedMesh una vez; colocaPaisaje la rehace al recolocarlas
   var tmpA = new THREE.Object3D(), colA = new THREE.Color();
   arb.forEach(function (a, i) {
     var t = hash(i * 7.3), c = a.tipo === "frutal" ? colA.setHSL(0.22 + 0.02 * t, 0.5, 0.36 + 0.06 * hash(i * 3.1)) : a.tipo === "arbusto" ? colA.setHSL(0.24 + 0.05 * t, 0.42, 0.34 + 0.1 * hash(i * 3.1)) : colA.setHSL(0.27 + 0.05 * t, 0.38, 0.2 + 0.09 * hash(i * 3.1));
@@ -80,7 +80,7 @@
       if (i < E.length - 1) { var a0 = i * 2; idx.push(a0, a0 + 2, a0 + 1, a0 + 1, a0 + 2, a0 + 3); }
     }
     var geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.BufferAttribute(pos, 3)); geo.setAttribute("aV", new THREE.BufferAttribute(aV, 1)); geo.setAttribute("aU", new THREE.BufferAttribute(aU, 1)); geo.setIndex(idx);
-    var malla = new THREE.Mesh(geo, matArroyo); malla.frustumCulled = false; malla.renderOrder = 3; gPaisaje.add(malla); arroyos.push({ geo: geo, E: E });
+    var malla = new THREE.Mesh(geo, matArroyo); malla.renderOrder = 3; gPaisaje.add(malla); arroyos.push({ geo: geo, E: E });
   });
 
   // --- se coloca todo sobre el terreno (y se vuelve a colocar al cambiar la exageración vertical)
@@ -111,6 +111,9 @@
       }
       p2.needsUpdate = true;
     });
+    // las esferas, DESPUÉS de escribir vértices e instancias con la exageración puesta (three solo las calcula si valen null): se recortan sin perder nada
+    geoCable.computeBoundingSphere(); cablesDer.forEach(function (c) { c.g.computeBoundingSphere(); });
+    iTronco.computeBoundingSphere(); iBlob.forEach(function (m) { m.computeBoundingSphere(); }); arroyos.forEach(function (ar) { ar.geo.computeBoundingSphere(); });
     sombrasSol(true);
   }
 
@@ -128,9 +131,9 @@
       tmpS.position.set(x + dx * desp, (suelo(x, y) + 0.06) * exag, -y + dz * desp); tmpS.rotation.set(0, th, 0); tmpS.scale.set(r * 2.3, 1, largo); tmpS.updateMatrix(); inst.setMatrixAt(i, tmpS.matrix);
     }
     if (instSombra) { olivasS.forEach(function (t, i) { if (i >= instSombra.count) return; var rm = t.perfil.reduce(function (a, b) { return a + b; }, 0) / 8 * ESC_R8; pon(instSombra, i, t.x, t.y, rm, t.h); }); instSombra.instanceMatrix.needsUpdate = true; }
-    if (!instSombraPA) { instSombraPA = new THREE.InstancedMesh(geoSombra, matSombra, nA + edifs.length + 1); instSombraPA.frustumCulled = false; gSombras.add(instSombraPA); }
+    if (!instSombraPA) { instSombraPA = new THREE.InstancedMesh(geoSombra, matSombra, nA + edifs.length + 1); gSombras.add(instSombraPA); }
     var n = 0; arb.forEach(function (a) { pon(instSombraPA, n++, a.x, a.y, a.r, a.h); }); edifs.forEach(function (g) { var e = g.userData.e; pon(instSombraPA, n++, e.x, e.y, Math.max(e.largo, e.ancho) * 0.55, e.hCumbrera); });
-    instSombraPA.count = n; instSombraPA.instanceMatrix.needsUpdate = true;
+    instSombraPA.count = n; instSombraPA.instanceMatrix.needsUpdate = true; instSombraPA.computeBoundingSphere();   // la esfera tras recolocarlas: se recortan
   }
 
   // --- el agua del arroyo sube con la lluvia y baja despacio

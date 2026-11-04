@@ -59,7 +59,7 @@ test("en Chrome: las balizas oficiales cuestan 2 llamadas tengas 2 o 20 y 32 tri
       const c = await coste(p, "balizas-oficiales");
       if (n === 0) assert.strictEqual(c, null, "sin balizas, ni el grupo"); else {
         assert.deepStrictEqual(e.mallas, [n, n]);
-        // con la cámara de arranque se ven todas o casi (frustumCulled está apagado en las instanciadas): 2 llamadas
+        // con la cámara de arranque, que mira al centro de la finca, se ven (se recortan con la esfera de todas las instancias, AG-1.3): 2 llamadas
         assert.strictEqual(c.llamadas, 2, JSON.stringify(c)); assert.strictEqual(c.triangulos, 32 * n, JSON.stringify(c));
       }
       res[n] = c;
