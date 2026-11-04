@@ -4,9 +4,6 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 
 ## [No publicado]
 
-### Cambiado
-- Api: las medidas de fluidez de una sesión de admin no tienen tope diario mientras se depura (antes, 10 por hogar y día también para admin: dos medidas del Quest del 2026-11-04 se rechazaron con 429); el resto de hogares sigue con 10 al día y todos con el freno de 10 por minuto.
-
 ### Añadido
 - VR (Q2c): con `?mide` o `?debug` el gemelo entra en VR por sí solo al recibir `sessiongranted` del Quest Browser (arranque por adb para medir); sin esas opciones no cambia nada. Probado en Node con el WebXR simulado; no probado en un Quest.
 - Rayos (AG-1.6): BVH opcional con `?bvh` (three-mesh-bvh 0.9.18) para los rayos contra el relieve de las teselas, que solo usan las pruebas y la depuración: tocar, los mandos y el teletransporte ya eran analíticos, así que en producción no cambia nada. En Node, de ~17 ms a ~5 µs por rayo sobre 131.072 triángulos.
@@ -246,6 +243,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 - La Configuración del visor (pestañas, alto contraste, brújula, texto mayor, movimiento reducido) ya no depende de un `<style>` creado por el motor, que la CSP estricta bloquearía al imponerla; sus reglas viven en `plantilla.css`.
 - «Entrar con mi llave» de la pantalla de entrada de la oficina no llegaba a la api (decía «Esa llave no sirve aquí» sin intentarlo); ahora hace la ceremonia. Probado en Chrome sin pantalla con autenticador virtual y, ya desplegado, en un iPhone 17 Pro (entró con una llave que ya tenía; el alta de una llave nueva en iPhone no se probó, 2026-11-04); no probado en Quest, Windows Hello, Android ni con lector de pantalla.
 ### Cambiado
+- Api: las medidas de fluidez de una sesión de admin no tienen tope diario mientras se depura (antes, 10 por hogar y día también para admin: dos medidas del Quest del 2026-11-04 se rechazaron con 429); el resto de hogares sigue con 10 al día y todos con el freno de 10 por minuto.
 - Las nubes del cielo (230 manchas) se dibujan en una sola llamada en vez de una por mancha: en Hituelo, la vista de lejos pasa de 164 a 98 llamadas con `?escena=tiles` y de 176 a 108 sin ella (SwiftShader). Aspecto pendiente de aprobar.
 - Olivos detallados más lejos en aparatos holgados (petición de Antonio tras verlo en el móvil): la escala adaptativa del nivel 0 sube hasta ×2,5 (antes ×1,6) cuando el fotograma va por debajo de 16 ms (radio en órbita hasta ~330 m, hasta ~1.100 olivos), y los generados aparecen desde más lejos en la misma proporción (hasta ~240 m). Un aparato justo se queda como estaba; en las gafas sigue mandando el perfil VR. Medido solo en Node.
 - `migra` corre con un tope de 10 min por sentencia (la 0001 crea PostGIS; en disco lento pasaba de los 15 s de la api). Afecta también a producción.
