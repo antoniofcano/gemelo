@@ -1,10 +1,11 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Arboles
 // Consume: 01_datos (FACTOR_R8), 01a_aparato (Aparato), 02_mundo (Mundo, suelo, copaAlta, kcor, tinte, aviva, copas), 02b_cola (CargaPuro, Cola),
-//   02c_componentes (Config), 02h_render (InfoDibujo), 03_escena (renderer, camera, exag, modo, calidad), 04c_olivos_tiles (OlivosTiles),
-//   04d_sombreado_tiles (hash), 05_nube (ALTO_MAX, nube), 06_arboles (gArboles, tronco, arbolesG), 07_follaje (follajeG, construyeSombras),
-//   07a_catalogo (Catalogo), 07ab_generados (Escalera, Generados), 07ac_lejanos (Lejanos), 09_camara (objetivo, orb), 10_ndvi (ndviIdx),
-//   12_paseo (paseando), 15_tiempo (nivel, esc, hace), 16_vida (mira), 29_vr (VR_PERFILES), 33_ajustes (Ajustes)
+//   02c_componentes (Config), 02h_render (InfoDibujo), 02j_estaticos (Estaticos), 03_escena (renderer, camera, exag, modo, calidad),
+//   04c_olivos_tiles (OlivosTiles), 04d_sombreado_tiles (hash), 05_nube (ALTO_MAX, nube), 06_arboles (gArboles, tronco, arbolesG),
+//   07_follaje (follajeG, construyeSombras), 07a_catalogo (Catalogo), 07ab_generados (Escalera, Generados), 07ac_lejanos (Lejanos),
+//   09_camara (objetivo, orb), 10_ndvi (ndviIdx), 12_paseo (paseando), 15_tiempo (nivel, esc, hace), 16_vida (mira), 29_vr (VR_PERFILES),
+//   33_ajustes (Ajustes)
 // ===============================================================================
   // ---------- los olivos del modo Gemelo con tres niveles de detalle: el coste de dibujo no crece con la superficie de la finca
   // Nivel 0: celdas de 64 m con el modelo completo (copa medida, troncos, hojas, flores y aceitunas) alrededor de lo que se mira (o de quien pasea), hasta MAX0 olivos.
@@ -30,7 +31,7 @@
     function claveActual() { return exag + "|" + calidad + "|" + kcor + "|" + tinte + "|" + ndviIdx; }   // lo que está pegado a la geometría de una celda de nivel 0: si cambia, la celda se rehace
 
     // ----- las formas de los niveles 1 y 2 las da el catálogo (07a_catalogo.js): el tipo −1 son las de siempre, 4 variantes en L1 (copa + tronco) y 2 en L2
-    function instancias(geo, mat, cap, color) { var m = new THREE.InstancedMesh(geo, mat, cap); if (color) m.setColorAt(0, new THREE.Color(1, 1, 1)); m.frustumCulled = false; cuenta(m, 0); gArboles.add(m); return m; }
+    function instancias(geo, mat, cap, color) { var m = new THREE.InstancedMesh(geo, mat, cap); if (color) m.setColorAt(0, new THREE.Color(1, 1, 1)); m.frustumCulled = false; cuenta(m, 0); Estaticos.congela(m); gArboles.add(m); return m; }
     // vacía no se dibuja: con count 0 three paga igual la pasada (programa, uniformes y VAO) sin dibujar nada; con el tileset de olivos, L1 y L2 van vacías siempre
     function cuenta(m, n) { m.count = n; m.visible = n > 0; }
     var iCopa1 = [], iTron1 = [], iCopa2 = [], p, pz;
@@ -103,6 +104,7 @@
       var kd = claveActual();
       Cola.add("C" + cel.k, cel.prio, celdaG(cel), function (g) {
         if (cel.g) { gArboles.remove(cel.g); libera(cel.g); }
+        Estaticos.congela(g);   // AG-1.15: la celda no se mueve (todo en sus vértices e instancias)
         cel.g = g; g.visible = false; gArboles.add(g); cel.kd = kd; cel.sucia = kd !== claveActual(); sucio = true;
       });
     }

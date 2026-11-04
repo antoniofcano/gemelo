@@ -1,8 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: SN, S0, V0, vn2, cubierta, recoloreaSuelo, actualizaSuelo
-// Consume: 01_datos (D, $, i16, ANCHO, ALTO, VRP), 02_mundo (suelo), 03_escena (scene, texColor, colorVertSRGB, exag), 04d_sombreado_tiles (hash),
-//   05_nube (nube), 09_camara (objetivo, orb), 10_ndvi (NDV, ndviIdx), 12_paseo (paseando), 15_tiempo (uViento, uSombra, GLSL_SOMBRA, nivel, num1),
-//   16_vida (esfera, enDron), 18_paisaje (ejeArroyo, distArroyo)
+// Consume: 01_datos (D, $, i16, ANCHO, ALTO, VRP), 02_mundo (suelo), 02j_estaticos (Estaticos), 03_escena (scene, texColor, colorVertSRGB, exag),
+//   04d_sombreado_tiles (hash), 05_nube (nube), 09_camara (objetivo, orb), 10_ndvi (NDV, ndviIdx), 12_paseo (paseando),
+//   15_tiempo (uViento, uSombra, GLSL_SOMBRA, nivel, num1), 16_vida (esfera, enDron), 18_paisaje (ejeArroyo, distArroyo)
 // ===============================================================================
   // ---------- el suelo según el NDVI: dónde hay tierra desnuda y dónde hierba, y cómo de vigorosa
   // El NDVI de 10 m mezcla copa y suelo. Con la fracción de copa de cada celda (LiDAR) se resta la copa: g = NDVI − b·f. De g sale la cubierta (0 = desnudo, 1 = hierba tupida) y su vigor.
@@ -98,7 +98,7 @@
   var matCont = new THREE.MeshBasicMaterial({ map: texContacto(), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), iCont = new THREE.InstancedMesh(geoCont, matCont, NSTONE);
   iMata.geometry.setAttribute("aTile", tileMata);
   iMata.setColorAt(0, new THREE.Color(1, 1, 1)); iPiedra.setColorAt(0, new THREE.Color(1, 1, 1));   // el color por instancia tiene que existir antes del primer dibujo
-  iMata.frustumCulled = false; iPiedra.frustumCulled = false; iCont.frustumCulled = false; iMata.count = 0; iPiedra.count = 0; iCont.count = 0; iCont.renderOrder = 2; scene.add(iMata); scene.add(iPiedra); scene.add(iCont);
+  iMata.frustumCulled = false; iPiedra.frustumCulled = false; iCont.frustumCulled = false; iMata.count = 0; iPiedra.count = 0; iCont.count = 0; iCont.renderOrder = 2; [iMata, iPiedra, iCont].forEach(function (m) { Estaticos.congela(m); }); scene.add(iMata); scene.add(iPiedra);   // AG-1.15: matas, piedras y contactos solo viven en sus matrices de instancia scene.add(iCont);
   (function () {   // el viento mueve las matas (más arriba, más), y comparten sombra de nubes y escarcha con el resto
     matMata.onBeforeCompile = function (sh) {
       colorVertSRGB(sh);   // el color por instancia está escrito en sRGB (03_escena)

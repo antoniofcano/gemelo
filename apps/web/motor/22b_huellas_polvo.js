@@ -1,8 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 02_mundo (suelo), 02c_componentes (Bus, Componentes), 02i_materiales (Materiales), 03_escena (scene, sol, exag),
-//   12_paseo (paseando, teclas), 15_tiempo (nivelEn, cur, nivel), 16_vida (tVida, enQuad, altSuelo, enDron), 22_huellas (sueloSeco),
-//   90_final (bucle)
+// Consume: 02_mundo (suelo), 02c_componentes (Bus, Componentes), 02i_materiales (Materiales), 02j_estaticos (Estaticos),
+//   03_escena (scene, sol, exag), 12_paseo (paseando, teclas), 15_tiempo (nivelEn, cur, nivel), 16_vida (tVida, enQuad, altSuelo, enDron),
+//   22_huellas (sueloSeco), 90_final (bucle)
 // ===============================================================================
   // ---------- huellas y polvo (componente «huellas-polvo», ADR-0023, C10): las pisadas y rodadas que se desvanecen y las bocanadas de polvo del suelo seco.
   // Antes vivían en 22_huellas.js y las nombraba el bucle; ahora solo se registra. Quien levanta polvo (el aterrizaje del muñequito, los perros) lo pide por el Bus
@@ -25,7 +25,7 @@
         "else { float planta = smoothstep(1.0, 0.7, length(vec2(p.x / 0.3, (p.y + 0.14) / 0.32))); float punta = smoothstep(1.0, 0.7, length(vec2(p.x / 0.36, (p.y - 0.30) / 0.16))); a = max(planta, punta * 0.9) * 0.55; }\n" +
         "a *= 1.0 - smoothstep(0.55, 1.0, vAge); gl_FragColor = vec4(uColor, a);\n#include <colorspace_fragment>\n}"
     });
-    var iHuella = new THREE.InstancedMesh(geoH, matHuella, NH); iHuella.frustumCulled = false; iHuella.count = 0; iHuella.visible = false; iHuella.renderOrder = 2; scene.add(iHuella);
+    var iHuella = new THREE.InstancedMesh(geoH, matHuella, NH); iHuella.frustumCulled = false; iHuella.count = 0; iHuella.visible = false; iHuella.renderOrder = 2; Estaticos.congela(iHuella); scene.add(iHuella);   // AG-1.15: las huellas viven en sus matrices de instancia
     var tmpH = new THREE.Object3D();
     function emiteHuella(x, y, ang, w, l, tipo, vida) {
       var i = hSig++ % NH; tmpH.position.set(x, suelo(x, y) * exag + 0.07, -y); tmpH.rotation.set(0, -ang, 0); tmpH.scale.set(w, 1, l); tmpH.updateMatrix(); iHuella.setMatrixAt(i, tmpH.matrix);
@@ -87,7 +87,7 @@
   }
   Componentes.registra({
     id: "huellas-polvo", version: 1,
-    consume: ["Materiales", "scene", "suelo", "exag", "pp", "paseando", "teclas", "cur", "nivelEn", "tVida", "enQuad", "vq", "enDron", "dr", "altSuelo", "sueloSeco"],
+    consume: ["Materiales", "Estaticos", "scene", "suelo", "exag", "pp", "paseando", "teclas", "cur", "nivelEn", "tVida", "enQuad", "vq", "enDron", "dr", "altSuelo", "sueloSeco"],
     expone: [],
     eventos: { escucha: ["polvo:emite"], emite: [] },
     bandera: { defecto: true, url: "huellas" },

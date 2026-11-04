@@ -1,13 +1,14 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: gLinde, tmp, marcadores, listo, aplica, capas, pendiente, aplicaLuego
-// Consume: 01_datos (D, $), 02_mundo (orto, copas), 02c_componentes (Bus), 03_escena (scene, exag, modo), 05_nube (nube, pintaNube),
-//   06_arboles (gArboles, gFollaje, gSombras, tronco), 07b_arboles (Arboles), 14_historia (avTipo, pintaAvance), 15_tiempo (colocaBarrera, lindes),
-//   18_paisaje (colocaPaisaje), 19_balizas (colocaBalizas), 21_suelo (recoloreaSuelo)
+// Consume: 01_datos (D, $), 02_mundo (orto, copas), 02c_componentes (Bus), 02j_estaticos (Estaticos), 03_escena (scene, exag, modo),
+//   05_nube (nube, pintaNube), 06_arboles (gArboles, gFollaje, gSombras, tronco), 07b_arboles (Arboles), 14_historia (avTipo, pintaAvance),
+//   15_tiempo (colocaBarrera, lindes), 18_paisaje (colocaPaisaje), 19_balizas (colocaBalizas), 21_suelo (recoloreaSuelo)
 // ===============================================================================
 
   // la linde y lo que cuelga del terreno al aplicar. Las copas del LiDAR, los anillos de OlivarTrack y el desfase son el componente «marcadores-lidar»
   // (08b_marcadores_lidar.js): aplica() les avisa con «mundo:aplica» y capas() con «capas:cambia»; sin él (?marcadores=0) esas tres casillas no hacen nada.
   var gLinde = new THREE.Group();
+  Estaticos.congela(gLinde);   // AG-1.15: las barreras (15_tiempo) y la linde (44_lindes) cuelgan de aquí y se congelan al crearlas
   gLinde.name = "lindes"; scene.add(gLinde);   // el nombre lo usa el desglose de llamadas de las pruebas
   // (las lindes son ahora una barrera de luz: ver el bloque del tiempo)
   var tmp = new THREE.Object3D();

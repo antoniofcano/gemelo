@@ -1,8 +1,9 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: PA, matTronco, postes, cable, colocaPaisaje, instSombra, sombrasSol, aguaNivel, actualizaPaisaje, ejeArroyo, distArroyo
 // Consume: 01_datos (D, $, ESC_R8), 02_mundo (suelo, desp, copas), 02g_vr_presupuesto (VrPresupuesto), 02i_materiales (Materiales),
-//   03_escena (scene, SRGB, sol, exag, modo), 04d_sombreado_tiles (hash), 06_arboles (gSombras, tronco), 07_follaje (matSombra, geoSombra),
-//   09_camara (pon), 14_historia (lista), 15_tiempo (nivelEn, lluvia, cur, tMundo, nivel), 16_vida (esfera), 23_estacion (EST), 90_final (bucle)
+//   02j_estaticos (Estaticos), 03_escena (scene, SRGB, sol, exag, modo), 04d_sombreado_tiles (hash), 06_arboles (gSombras, tronco),
+//   07_follaje (matSombra, geoSombra), 09_camara (pon), 14_historia (lista), 15_tiempo (nivelEn, lluvia, cur, tMundo, nivel), 16_vida (esfera),
+//   23_estacion (EST), 90_final (bucle)
 // ===============================================================================
   // ---------- el paisaje que sale del LiDAR: edificios (clase 6), el tendido y sus postes, el arroyo y los árboles que no son olivos
   // Lo que el LiDAR clasifica de verdad son los edificios. El tendido, los postes, el cauce y las copas se deducen de la geometría (alturas, alineación, relieve) y se rotulan así.
@@ -125,6 +126,7 @@
     }
     esferaSegura(geoCable); cablesDer.forEach(function (c) { esferaSegura(c.g); });
     iTronco.computeBoundingSphere(); iBlob.forEach(function (m) { m.computeBoundingSphere(); }); arroyos.forEach(function (ar) { esferaSegura(ar.geo); });
+    Estaticos.congela(gPaisaje);   // AG-1.15: edificios, postes, hilos, cauces y árboles ya están en su sitio: sin recomponer la matriz en cada render()
     if (typeof VrPresupuesto !== "undefined") VrPresupuesto.renueva("arbolesPaisaje");   // Q0c-a: la copia nueva (y, en VR, el recorte otra vez)
     sombrasSol(true);
   }
@@ -143,7 +145,7 @@
       tmpS.position.set(x + dx * desp, (suelo(x, y) + 0.06) * exag, -y + dz * desp); tmpS.rotation.set(0, th, 0); tmpS.scale.set(r * 2.3, 1, largo); tmpS.updateMatrix(); inst.setMatrixAt(i, tmpS.matrix);
     }
     if (instSombra) { olivasS.forEach(function (t, i) { if (i >= instSombra.count) return; var rm = t.perfil.reduce(function (a, b) { return a + b; }, 0) / 8 * ESC_R8; pon(instSombra, i, t.x, t.y, rm, t.h); }); instSombra.instanceMatrix.needsUpdate = true; }
-    if (!instSombraPA) { instSombraPA = new THREE.InstancedMesh(geoSombra, matSombra, nA + edifs.length + 1); gSombras.add(instSombraPA); }
+    if (!instSombraPA) { instSombraPA = new THREE.InstancedMesh(geoSombra, matSombra, nA + edifs.length + 1); gSombras.add(instSombraPA); Estaticos.congela(instSombraPA); }
     var n = 0; arb.forEach(function (a) { pon(instSombraPA, n++, a.x, a.y, a.r, a.h); }); edifs.forEach(function (g) { var e = g.userData.e; pon(instSombraPA, n++, e.x, e.y, Math.max(e.largo, e.ancho) * 0.55, e.hCumbrera); });
     instSombraPA.count = n; instSombraPA.instanceMatrix.needsUpdate = true; instSombraPA.computeBoundingSphere();   // la esfera tras recolocarlas: se recortan
   }

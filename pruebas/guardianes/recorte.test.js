@@ -46,6 +46,7 @@ function contiene(o, que, m, escalaY) {
   for (const p of ps) peor = Math.max(peor, p.distanceTo(s.center) + (m || 0) - s.radius);
   assert.ok(peor <= tol, que + ": un punto queda " + peor.toFixed(3) + " m fuera de la esfera (radio " + s.radius.toFixed(2) + ")");
 }
+const estaticos = () => conFabrica({ THREE }).Estaticos;   // 02j_estaticos.js, el de verdad
 const hash = n => { const s = Math.sin(n * 127.1) * 43758.5453; return s - Math.floor(s); };   // el de 04d_sombreado_tiles.js
 const trozo = (fuente, ini, fin) => { const i = fuente.indexOf(ini), f = fuente.indexOf(fin, i + 1); assert.ok(i >= 0 && f > i, "faltan las marcas " + ini + " … " + fin); return fuente.slice(i, f); };
 const sinComentarios = s => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
@@ -111,10 +112,10 @@ test("18_paisaje: un cauce sin anchura (puntos [x, y], como el del fixture) no d
 // ---------------------------------------------------------------- 39_oficina_mundo: las balizas oficiales (columna y bandera instanciadas)
 function balizasOficiales() {
   const F = lee("apps/web/motor/39_oficina_mundo.js"), T = trozo(F, "    function montaGrafica()", "    function refresca()");
-  const f = new Function("THREE", "scene", "suelo", "OP", "ALTO", "COLOR", "CLARO",
+  const f = new Function("THREE", "Estaticos", "scene", "suelo", "OP", "ALTO", "COLOR", "CLARO",
     "\"use strict\";\nvar gB = null, mCol = null, mBan = null, geos = [], mats = [], m4 = null, v1 = null, v2 = null, q0 = null, vS = null, w0 = null, balizas = [], exag = 1;\n" + T +
     "\nreturn { coloca: coloca, monta: montaGrafica, pon: function (b, e) { balizas = b; exag = e; }, mallas: function () { return [mCol, mBan]; } };");
-  return f(THREE, new THREE.Scene(), (x, y) => 60 + 0.3 * x - 0.2 * y, { BALIZAS_MAX: 20 }, 18, 0xffcc00, 0xffffff);
+  return f(THREE, estaticos(), new THREE.Scene(), (x, y) => 60 + 0.3 * x - 0.2 * y, { BALIZAS_MAX: 20 }, 18, 0xffcc00, 0xffffff);
 }
 test("39_oficina_mundo: las balizas oficiales se recortan y su esfera las contiene tras coloca(), aunque three la calculara con 0 instancias", () => {
   const B = balizasOficiales();
@@ -130,10 +131,10 @@ test("39_oficina_mundo: las balizas oficiales se recortan y su esfera las contie
 // ---------------------------------------------------------------- 15_tiempo: las barreras de luz de las lindes (nacen con los vértices a cero; el sombreador no los mueve)
 function barreras() {
   const F = lee("apps/web/motor/15_tiempo.js"), T = trozo(F, "  function creaBarrera(pr)", "  function pintaFondoTiempo()");
-  const f = new Function("THREE", "suelo", "matBarrera", "gLinde",
+  const f = new Function("THREE", "Estaticos", "suelo", "matBarrera", "gLinde",
     "\"use strict\";\nvar BARRERA_ALTO = 5.5, BARRERAS = [], exag = 1;\n" + T +
     "\nreturn { crea: creaBarrera, coloca: colocaBarrera, pon: function (e) { exag = e; }, mallas: function () { return gLinde.children; }, n: function () { return BARRERAS.length; } };");
-  return f(THREE, (x, y) => 60 + 0.3 * x - 0.2 * y, new THREE.MeshBasicMaterial(), new THREE.Group());
+  return f(THREE, estaticos(), (x, y) => 60 + 0.3 * x - 0.2 * y, new THREE.MeshBasicMaterial(), new THREE.Group());
 }
 test("15_tiempo: la barrera de luz de cada linde se recorta y su esfera la contiene tras colocaBarrera, aunque three la calculara con los vértices a cero", () => {
   const B = barreras();
