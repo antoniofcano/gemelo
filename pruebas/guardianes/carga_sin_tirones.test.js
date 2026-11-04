@@ -164,3 +164,33 @@ test("generados: sin renderer (Node) el lote sale en el mismo next(); con compil
   assert.strictEqual(sale, lote);
   assert.strictEqual((G07.match(/seguro\(compiladoG\(construyeG\(items\)\)\)/g) || []).length, 2, "los dos sitios que montan el lote pasan por compiladoG");
 });
+
+test("tileset: teselas analizadas a la vez por aparato y VR, prioridad de red alta a lo cercano, y 04b los usa", () => {
+  const esc = AparatoPuro.politica("escritorio", false), mov = AparatoPuro.politica("movil", false), q = AparatoPuro.politica("quest", false);
+  assert.deepStrictEqual([CargaPuro.parseTiles(esc, false), CargaPuro.parseTiles(mov, false), CargaPuro.parseTiles(q, false), CargaPuro.parseTiles(q, true), CargaPuro.parseTiles(null, false)], [5, 3, 3, 2, 5]);
+  const tr = (inFrustum, distanceFromCamera) => ({ traversal: { inFrustum, distanceFromCamera } });
+  assert.strictEqual(CargaPuro.prioridadRed(tr(true, 0)), "high");
+  assert.strictEqual(CargaPuro.prioridadRed(tr(true, CargaPuro.CERCA - 1)), "high");
+  assert.strictEqual(CargaPuro.prioridadRed(tr(true, CargaPuro.CERCA)), "auto");
+  assert.strictEqual(CargaPuro.prioridadRed(tr(false, 10)), "low", "fuera del encuadre, baja aunque esté cerca");
+  for (const t of [undefined, null, {}, { traversal: {} }]) assert.strictEqual(CargaPuro.prioridadRed(t), "auto", "lo que no se sabe: auto");
+  assert.match(B04, /tiles\.parseQueue\.maxJobs = CargaPuro\.parseTiles\(POL, false\)/);
+  assert.match(B04, /tiles\.parseQueue\.maxJobs = CargaPuro\.parseTiles\(POL, !!s\)/, "al entrar y salir de VR");
+  assert.match(B04, /tiles\.registerPlugin\(prioridadRed\(\)\)/);
+  assert.match(B04, /return tiles\.fetchData\(u, /, "la descarga la sigue haciendo la librería (mismo origen)");
+  assert.strictEqual((B04.match(/addEventListener\("load-model", Cola\.cobra\("T", /g) || []).length, 2, "lo que el motor hace en load-model se cobra como deuda");
+});
+
+test("el complemento de red de 04b: apunta la tesela de cada dirección, pide con su prioridad y suelta lo apuntado", async () => {
+  const a = B04.indexOf("    function prioridadRed() {"), b = B04.indexOf("\n    }\n", a);
+  const pedidas = [], tiles = { fetchData: (u, op) => { pedidas.push([u, op]); return Promise.resolve("ok"); } };
+  const P = new Function("CargaPuro", "tiles", "\"use strict\";\n" + B04.slice(a, b + 6) + "\nreturn prioridadRed();")(CargaPuro, tiles);
+  assert.ok(!("priority" in P), "«priority» es el orden de los complementos en la librería: no se usa");
+  const cerca = { traversal: { inFrustum: true, distanceFromCamera: 10 } }, fuera = { traversal: { inFrustum: false, distanceFromCamera: 10 } };
+  assert.strictEqual(P.preprocessURL("a.glb", cerca), "a.glb"); assert.strictEqual(P.preprocessURL("b.glb", fuera), "b.glb");
+  const op = { signal: "s" };
+  await P.fetchData("a.glb", op); await P.fetchData("b.glb", op); await P.fetchData("tileset.json", op); await P.fetchData("a.glb", op);
+  assert.deepStrictEqual(pedidas.map(p => p[1].priority), ["high", "low", undefined, undefined], "la raíz y lo ya pedido van con lo de la librería");
+  assert.strictEqual(pedidas[0][1].signal, "s", "conserva las opciones de la librería (signal)"); assert.strictEqual(pedidas[2][1], op);
+  assert.ok(!/(^|[^.\w])fetch\(/.test(B04), "04b no hace fetch propio");
+});

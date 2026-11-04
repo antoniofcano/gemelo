@@ -1,7 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Escena3D
-// Consume: 01_datos (D), 02_mundo (Mundo, suelo), 03_escena (visor, renderer, scene, camera, exag), 04d_sombreado_tiles (SombreadoTiles),
-//   05_nube (nube), 08_marcadores (listo, aplica), 09_camara (objetivo), 14_historia (aviso), 16_vida (mira), 29_vr (panel)
+// Consume: 01_datos (D), 01a_aparato (Aparato), 02_mundo (Mundo, suelo), 02b_cola (CargaPuro, Cola),
+//   03_escena (visor, renderer, scene, camera, exag), 04d_sombreado_tiles (SombreadoTiles), 05_nube (nube), 08_marcadores (listo, aplica),
+//   09_camara (objetivo), 14_historia (aviso), 16_vida (mira), 29_vr (panel)
 // ===============================================================================
   // ---------- la escena en 3D Tiles 1.1 (ADR-0015, aceptado; formato en doc/sistema/TILES3D.md): la ÚNICA escena (T8 fase 2, decisión 79). El relieve
   // con su ortofoto lo dibuja 3DTilesRendererJS (versión fijada en apps/web/package.json) desde un tileset.json de tuberia/tiles3d/, con el sombreado
@@ -20,6 +21,23 @@
     var ERROR_ESCRITORIO = (function () { var m = /[?&]tilesError=([0-9.]+)/.exec(location.search), v = m ? Number(m[1]) : 16; return v > 0 && v <= 256 ? v : 16; })();
     var errorPerfil = null;   // el del perfil VR (29_vr.js, campo e de cada perfil); null = el de escritorio
     var tam = new THREE.Vector2();
+    var POL = Aparato.politica();   // AG-1.5: tilesParse / tilesParseVr (cuántas teselas analiza la librería a la vez)
+    // AG-1.5: prioridad de red alta a lo cercano. Un complemento de 3DTilesRendererJS: preprocessURL (que recibe la tesela) apunta de qué tesela es cada
+    // dirección y fetchData pide la descarga a la propia librería (tiles.fetchData: el fetch de siempre, al mismo origen) con RequestInit.priority
+    // de CargaPuro.prioridadRed: "high" lo que se ve a menos de 200 m, "low" lo que está fuera del encuadre. Es una pista para el navegador
+    // (Chrome la atiende; otros la ignoran): no cambia qué se descarga ni el orden de la cola de la librería, que ya va por error y distancia.
+    function prioridadRed() {
+      var deTesela = new Map();
+      return {
+        name: "GEMELO_PRIORIDAD_RED",
+        preprocessURL: function (u, tile) { if (tile) deTesela.set(String(u), tile); return u; },
+        fetchData: function (u, op) {
+          var k = String(u), t = deTesela.get(k), pr = CargaPuro.prioridadRed(t); deTesela.delete(k);
+          return tiles.fetchData(u, pr === "auto" ? op : Object.assign({}, op, { priority: pr }));
+        },
+        dispose: function () { deTesela.clear(); }
+      };
+    }
     var ganchos = {};   // los pone 04c_olivos_tiles.js con engancha(): alRaiz(tileset), alModelo(scene, tile) → true si se queda con sus olivos, alSoltar(scene), alApagar(motivo), fotograma()
     function url() {
       var m = /[?&]tileset=([^&#]+)/.exec(location.search), u = m ? decodeURIComponent(m[1]) : D.tileset;
@@ -77,6 +95,8 @@
         tiles = new m.TilesRenderer(u);
         if (!avisoEscala && typeof console !== "undefined") avisoEscala = limitaAviso(console, "Non uniform scale used for tile");
         tiles.errorTarget = ERROR_ESCRITORIO;
+        tiles.parseQueue.maxJobs = CargaPuro.parseTiles(POL, false);   // AG-1.5: menos teselas analizadas a la vez en móvil y gafas (y en VR, en actualiza)
+        tiles.registerPlugin(prioridadRed());
         tiles.setCamera(camera); tiles.setResolutionFromRenderer(camera, renderer);
         tiles.addEventListener("load-root-tileset", function (e) {
           var r = e.tileset && e.tileset.root, G = e.tileset && e.tileset.extras && e.tileset.extras.gemelo;
@@ -85,8 +105,10 @@
           raizT = new THREE.Matrix4().fromArray(r.transform); colocaGrupo(); estado = "activo";
           if (ganchos.alRaiz) ganchos.alRaiz(e.tileset);
         });
-        tiles.addEventListener("load-model", function (e) { if (!(ganchos.alModelo && ganchos.alModelo(e.scene, e.tile))) quitaOlivos(e.scene); e.scene.userData.tesela = { uri: e.tile.content && e.tile.content.uri, lado: e.tile.boundingVolume && e.tile.boundingVolume.box ? 2 * e.tile.boundingVolume.box[3] : null, error: e.tile.geometricError }; });
-        tiles.addEventListener("load-model", function (e) { SombreadoTiles.modelo(e.scene, e.tile); });   // el relieve, con su sombreado (04d)
+        // AG-1.5: lo que el motor ejecuta al llegar una tesela (olivos de 04c, sombreado de 04d) corre fuera de la Cola, cuando la librería acaba de
+        // analizarla; Cola.cobra lo apunta como deuda («T» en ?debug) y el fotograma siguiente carga menos (07b_arboles, CargaPuro.base)
+        tiles.addEventListener("load-model", Cola.cobra("T", function (e) { if (!(ganchos.alModelo && ganchos.alModelo(e.scene, e.tile))) quitaOlivos(e.scene); e.scene.userData.tesela = { uri: e.tile.content && e.tile.content.uri, lado: e.tile.boundingVolume && e.tile.boundingVolume.box ? 2 * e.tile.boundingVolume.box[3] : null, error: e.tile.geometricError }; }));
+        tiles.addEventListener("load-model", Cola.cobra("T", function (e) { SombreadoTiles.modelo(e.scene, e.tile); }));   // el relieve, con su sombreado (04d)
         tiles.addEventListener("dispose-model", function (e) { SombreadoTiles.suelta(e.scene); });
         tiles.addEventListener("dispose-model", function (e) { if (ganchos.alSoltar) ganchos.alSoltar(e.scene); });   // los olivos (04c)
         tiles.addEventListener("load-error", function (e) {
@@ -104,7 +126,7 @@
     function actualiza() {
       if (!tiles) return;
       var xr = renderer.xr, enXR = !!(xr && xr.isPresenting), s = enXR ? xr.getSession() : null;
-      if (Sched && s !== sesion) { Sched.setXRSession(s); sesion = s; }
+      if (Sched && s !== sesion) { Sched.setXRSession(s); sesion = s; tiles.parseQueue.maxJobs = CargaPuro.parseTiles(POL, !!s); }
       if (enXR) {
         if (tiles.hasCamera(camera)) tiles.deleteCamera(camera);
         var cx = xr.getCamera(); tiles.setCamera(cx);

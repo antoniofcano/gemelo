@@ -95,7 +95,8 @@ test("modelo(): solo la malla con ortofoto cambia de material; los olivos no se 
 
 test("04b_escena3d.js engancha SombreadoTiles en load-model, dispose-model, actualiza y al liberar o fallar", () => {
   const m = lee("04b_escena3d.js");
-  assert.match(m, /addEventListener\("load-model", function \(e\) \{ SombreadoTiles\.modelo\(e\.scene, e\.tile\); \}\)/);
+  // AG-1.5: envuelto en Cola.cobra (lo que tarda se apunta como deuda del reloj de carga)
+  assert.match(m, /addEventListener\("load-model", (Cola\.cobra\("T", )?function \(e\) \{ SombreadoTiles\.modelo\(e\.scene, e\.tile\); \}\)/);
   assert.match(m, /addEventListener\("dispose-model", function \(e\) \{ SombreadoTiles\.suelta\(e\.scene\); \}\)/);
   assert.match(m, /tiles\.update\(\);\s*\n\s*SombreadoTiles\.actualiza\(\);/);
   assert.ok((m.match(/SombreadoTiles\.libera\(\)/g) || []).length >= 2, "libera() en falla() y en libera()");
