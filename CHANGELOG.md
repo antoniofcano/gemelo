@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Pruebas (AG-P1): guardianes de la memoria al entrar y salir de VR (diez sesiones de láminas no dejan recursos vivos; `entraVR`/`vrSale` no crean recursos por sesión; los mandos lo liberan todo) y una medida en Chrome con el WebXR simulado (`renderer.info.memory` y heap tras N sesiones, opcional con `GEMELO_VR=1`). Leyendo el código no se halló ninguna fuga; la medida en Chrome queda por pasar y en el Quest no está probado.
 - Rendimiento (AG-1.12): las marcas de olivos guardados pasan de 40 a 16 triángulos (anillo octogonal con los mismos radios) y los árboles que no son olivos de 268 a 80 (copas de icosaedro de 20 caras con normales suaves y tronco de 5 lados, con la misma caja): en Hituelo, unos 288.000 triángulos menos por vista (≈446.000 → ≈158.000; el doble en VR). Cambia algo el aspecto de cerca. No probado en iPhone ni Quest.
 - Rendimiento (AG-1.3b): los avatares instanciados de la presencia (cuerpo, cabeza, sombrero, manos, nombres, ruedas, quad y dron) dejan de dibujarse fuera del campo de visión; su esfera se rehace cada fotograma sin contar a los ocultos. Los VRM con esqueleto siguen sin recorte. Sin medir en el banco ni en Quest/iPhone.
 - Pruebas: el desglose del banco (`--desglose`) da también los triángulos por objeto, no solo las llamadas.
