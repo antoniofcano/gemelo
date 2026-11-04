@@ -606,6 +606,26 @@
     if (paseando) salePaseo();
     VRX.vuelo = false; VRX.mirador = false; vrEstado("soportado (sesión terminada)"); Bus.emite("vr:sale"); tamano(); requestAnimationFrame(bucle);
   }
+  // ----- 8) Q2c: entrar en VR sin pulsar, SOLO con ?mide o ?debug (medidas automáticas desde adb, doc/sistema/IWSDK.md §2.2-B): el Quest Browser emite «sessiongranted» en navigator.xr cuando la página
+  // se abre ya dentro de una sesión inmersiva (arranque por adb) y entonces deja pedir la sesión sin gesto. Entra por el MISMO camino que el botón (entraVR). En una visita normal no escucha nada.
+  // [puro:inicio] (sin THREE ni DOM: lo evalúa en Node pruebas/guardianes/vr_sessiongranted.test.js)
+  var VrConcedidaPuro = (function () {
+    function pideMedir(busqueda) { return /[?&](mide|debug)\b/.test(String(busqueda || "")); }   // ?mide, ?mide=60, ?debug (o varios)
+    // e = { busqueda, xr (¿hay navigator.xr?), on (¿sesión abierta?), entrando, soporta (¿ofrece immersive-vr?) } → ¿hay que pedir la sesión ya?
+    function decide(e) { return !!(e && e.xr && e.soporta && pideMedir(e.busqueda) && !e.on && !e.entrando); }
+    return { pideMedir: pideMedir, decide: decide };
+  })();
+  // [puro:fin]
+  var vrDeteccion = null;
+  function vrConcedida() {
+    if (!VrConcedidaPuro.pideMedir(location.search) || !navigator.xr || !navigator.xr.addEventListener) return;   // sin ?mide/?debug ni siquiera se escucha
+    navigator.xr.addEventListener("sessiongranted", function () {
+      Promise.resolve(vrDeteccion).then(function () {   // el evento puede llegar antes de saber si hay soporte: se espera a vrDetecta
+        if (!VrConcedidaPuro.decide({ busqueda: location.search, xr: !!navigator.xr, on: VRX.on, entrando: VRX.entrando, soporta: VRX.soporta })) return;
+        vrEstado("sessiongranted: se entra en VR sin pulsar (?mide/?debug)"); entraVR();
+      });
+    });
+  }
   window.__vrDebug = function () { return Object.assign({ on: VRX.on, estado: VRX.estado, capas: VR_CAPAS, nivel: VRX.nivel, rig: JSON.parse(JSON.stringify(VRX.rig)), cabeza: [VRX.cab.x, VRX.cab.y, VRX.cab.z], pp: [pp.x, pp.y], vuelo: VRX.vuelo, panel: panel.m.visible, ficha: ficha.m.visible, hover: VRX.hover, pestana: VRX.pestana, giro: VRX.giro, sinEscena: VRX.sinPint, vinetaOn: VRX.vineta, vineta: vrVineta.material.uniforms.uK.value, sesionesN: VRX.sesionesN, paseando: paseando, primera: primera, modo: modo, exag: exag, hora: horaMundoTexto(), horaMs: meta.ms, solY: sol.position.y, solI: sol.intensity, ndvi: ndviIdx, parcSel: VRX.parcSel, panelPos: panel.m.position.toArray(), fichaPos: ficha.m.position.toArray(), frames: renderer.info.render.frame, nivelArb: Arboles.resumen(), hierba: VRP.hierba, bump: UN.uBumpK.value, perfiles: VR_PERFILES.length, xr: { near: XrPerillas.efectivas.near, topeJs: XrPerillas.js(), fov: XrPerillas.efectivas.fov, escala: XrPerillas.efectivas.escala, hz: XrPerillas.efectivas.hz, aa: XrPerillas.aa, nivelFijo: XrPerillas.efectivas.nivel, adaptativo: XrPerillas.efectivas.nivel == null, ignorados: XrPerillas.efectivas.ignorados, linea: XrPerillas.linea() }, near: camera.near, far: camera.far,
     panelTam: [panel.W, panel.H, panel.pw, panel.ph], fichaB: fichaB.m.visible, fichaBPos: fichaB.m.position.toArray(), fichaBTam: [fichaB.W, fichaB.H, fichaB.pw, fichaB.ph], fichaId: VRX.fichaId, hoverB: VRX.hoverB, fichaGente: VRX.balInfo && VRX.fichaId ? VRX.balInfo.gente : null,
     tiempo: null, fichaTiempo: null,   // los pone la fila del componente fichas-tiempo (35_fichas_tiempo.js) por PanelVR.debug(), si está
@@ -613,4 +633,4 @@
   window.__vrPerfil = function (n) { vrPerfil(n); VRX.tNivel = 0; };   // fuerza un perfil (pruebas): el adaptador espera 4 s antes de volver a decidir
   window.__vrOlivo = function () { var h = VRX.cab, b = null, bd = 1e9; copas.forEach(function (c) { if (!c.oliv) return; var d = Math.hypot(c.x - h.x, -c.y - h.z); if (d > 6 && d < bd) { bd = d; b = c; } }); return b ? [b.x, (suelo(b.x, b.y) + b.h * 0.6) * exag, -b.y] : null; };
   window.__vrBotones = function (cual) { return ((cual === "baliza" ? VRX.botonesB : VRX.botones) || []).map(function (b) { return { id: b.id, x: b.x, y: b.y, w: b.w, h: b.h }; }); };
-  vrDetecta();
+  vrConcedida(); vrDeteccion = vrDetecta();
