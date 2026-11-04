@@ -529,6 +529,25 @@ Lo que dicen (y lo que no):
 - No sabemos cuánto es GPU: el medidor no la ve (Q0a, con OVR Metrics Tool).
 - Para el después: repetir las dos medidas en las mismas condiciones, tres veces cada una, con la guía de [OPTIMIZACION](OPTIMIZACION.md#guía-de-bolsillo-para-la-sesión-en-el-quest-q0a-).
 
+## Quest en VR tras la quinta subida y sus arreglos (2026-11-04, foto, no se mantiene)
+Telemetría del medidor, Quest Browser 154, **dentro de VR** (Comodidad → «Medir 60 s», con nivel y perillas: fov 1 · escala 0,9 · 72 Hz · MSAA · nivel auto · near 0,1 · umbral JS 8 ms), web de efb6f17. Dos medidas por caso; la línea base es la 10 (VR, cuarta subida).
+
+| | 10 · antes, con olivos generados | 17 / 18 · con olivos generados | 15 / 16 · `&olivos=0` |
+|---|---|---|---|
+| p95 | 23,0 ms | 20,5 / 19,7 ms | 16,0 / 17,0 ms |
+| Mediana | 14,2 ms | 14,3 / 14,0 ms | 13,9 / 13,9 ms |
+| Peor | 342,2 ms | 50,0 / 40,5 ms | 65,6 / 71,3 ms |
+| JS (mediana / p95) | 7,5 / 13,5 ms | 7,4 / 11,1 · 6,6 / 9,8 ms | 5,9 / 7,9 · 6,0 / 8,6 ms |
+| Triángulos (dos ojos) / llamadas | 1,43 M / 250 | 394 k / 214 · 291 k / 166 | 546 k / 278 · 648 k / 300 |
+| Nivel VR | 0 → 3 | 0 → 3 | 0 → 3 |
+
+- **El peor fotograma, −85 %** (342 → 40-50 ms): los tirones de carga grandes desaparecen (AG-1.5, AG-1.8).
+- **Triángulos en VR, −72 a −80 %** (AG-1.12, Q0c-a).
+- **p95**: 23 → ~20 ms con olivos generados; **16-17 ms sin ellos**, a 2-3 ms del objetivo (13,9 ms).
+- **Los olivos generados**, la palanca mayor que queda en VR: ~4 ms de p95 y 1,5-2,5 ms de JS.
+- **El controlador baja a nivel 3 en todas** (umbral de 8 ms de JS; el p95 de JS es 8-11 ms).
+- La autopsia (Q0g) no viaja a la api: solo se vio en el casco.
+
 ## Quest tras la quinta subida (2026-11-04, foto, no se mantiene)
 Telemetría del medidor (`&mide=60`), Quest Browser 154, modo gemelo, código de la quinta subida (08273de: AG-1.12, AG-1.5, Q0c-a). Una medida por fila; había otra sesión conectada («personas: 1»). **Ojo: Antonio las hizo para VR, pero la base las tiene como «pantalla», sin nivel ni perillas: la medida empezó fuera de VR y acabó dentro (el medidor anota el modo del arranque). Son mixtas: valen para comparar con y sin olivos entre sí, no como medida de VR.**
 
