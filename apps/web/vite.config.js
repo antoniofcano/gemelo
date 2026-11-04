@@ -5,8 +5,12 @@ import { viteStaticCopy } from "vite-plugin-static-copy";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import fs from "node:fs";
+import { buildPedida, aliasThree, salida } from "./herramientas/builds.mjs";
 
 const WEB = path.dirname(fileURLToPath(import.meta.url));
+// ADR-0031 (enmienda 2026-11-04): dos builds del mismo motor. Sin GEMELO_BUILD, la de pantalla, exactamente la de siempre (three de package.json, dist/);
+// GEMELO_BUILD=vr cambia «three» por super-three (preparada, no activada: herramientas/builds.mjs y pruebas/guardianes/builds_f1.test.js)
+const BUILD = buildPedida(process.env);
 // el constructor de olivos (ADR-0017), que el motor pide con import("gemelo-olivo") solo con ?olivos=gen; si apps/web/olivo no está instalado
 // (cd apps/web/olivo && npm i), un sustituto vacío: el build no falla y el motor dibuja lo de siempre
 const OLIVO = fs.existsSync(path.join(WEB, "olivo", "node_modules", "three-gen", "package.json")) ? path.join(WEB, "olivo", "index.js") : path.join(WEB, "olivo", "sin_olivo.js");
@@ -41,7 +45,7 @@ function perfilesXrSinCdn() {
 const VERSION = (() => { try { return fs.readFileSync(path.join(WEB, "..", "..", "VERSION"), "utf8").trim(); } catch { return "dev"; } })();
 
 export default defineConfig({
-  define: { __GEMELO_VERSION__: JSON.stringify(VERSION) },
+  define: { __GEMELO_VERSION__: JSON.stringify(VERSION), __GEMELO_BUILD__: JSON.stringify(BUILD) },   // __GEMELO_BUILD__: Render.build (02h_render)
   root: process.env.GEMELO_WEB_RAIZ || path.join(WEB, ".generado"),
   base: "./",
   // el manifiesto de aplicación web y su icono (decisión 90: en el iPhone, «Añadir a pantalla de inicio» abre la finca sin las barras de Safari);
@@ -49,10 +53,10 @@ export default defineConfig({
   publicDir: path.join(WEB, "public"),
   logLevel: "warn",
   // la raíz puede estar fuera de apps/web (las pruebas la generan en pruebas/salida/): «three» se resuelve siempre al de apps/web/node_modules
+  // (en la build vr, a super-three: aliasThree de herramientas/builds.mjs; en la de pantalla, los dos alias de siempre)
   resolve: {
     alias: [
-      { find: /^three$/, replacement: path.join(WEB, "node_modules", "three", "build", "three.module.js") },
-      { find: /^three\/addons\//, replacement: path.join(WEB, "node_modules", "three", "examples", "jsm") + "/" },
+      ...aliasThree(BUILD, WEB, process.env),
       { find: /^gemelo-olivo$/, replacement: OLIVO },
       // V12: las tipografías del mismo origen (@fontsource, OFL-1.1) que entran por el @import de plantilla.css, que puede estar fuera de apps/web
       { find: /^@fontsource\//, replacement: path.join(WEB, "node_modules", "@fontsource") + "/" },
@@ -81,7 +85,7 @@ export default defineConfig({
   ],
   worker: { format: "es" },
   build: {
-    outDir: process.env.GEMELO_WEB_SALIDA || path.join(WEB, "dist"),
+    outDir: salida(BUILD, WEB, process.env),   // dist/ (pantalla) o dist-vr/ (vr); GEMELO_WEB_SALIDA manda
     emptyOutDir: true,
     target: "es2019",
     sourcemap: false,
