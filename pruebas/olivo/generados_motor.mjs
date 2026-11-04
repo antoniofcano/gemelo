@@ -386,4 +386,60 @@ exige(/Generados\.actualiza\(paseando \? pp\.x : fx, paseando \? -pp\.y : fz,/.t
   exige(E.horneado.epoca === "madura", "con ?epoca=madura, la época no es la pedida: " + E.horneado.epoca);
 }
 
+// ---- 7) EV-perf: los límites (caja y esfera) de cada geometría de origen se calculan UNA vez, no en cada lote. Se cuentan los vértices que three recorre
+// (Vector3.fromBufferAttribute sobre la posición de un BatchedMesh: getBoundingBoxAt/getBoundingSphereAt perezosos) al construir varios lotes, y se compara
+// lo asignado con el cálculo perezoso de three (que recorre solo los vértices que referencia el índice): tiene que ser idéntico, nunca menor.
+{
+  const registro = new WeakSet(); let recorridos = 0;
+  const addOrig = THREE.BatchedMesh.prototype.addGeometry, fbaOrig = THREE.Vector3.prototype.fromBufferAttribute;
+  THREE.BatchedMesh.prototype.addGeometry = function (...a) { const r = addOrig.apply(this, a); registro.add(this.geometry.attributes.position); return r; };
+  THREE.Vector3.prototype.fromBufferAttribute = function (at, i) { if (registro.has(at)) recorridos++; return fbaOrig.call(this, at, i); };
+  try {
+    const c7 = contexto("?olivos=gen"); await espera();
+    c7.D.copas = [[0, 0, 4.5, perfil, 1], [9, 0, 4, perfil, 1], [0, 30, 4, perfil, 1]];
+    const ol7 = c7.D.copas.map((q, i) => ({ i, x: q[0], y: q[1], h: q[2], perfil: q[3] }));
+    const lotes = new Set(), TOPE7 = 160000 / 0.45 * 1.05;
+    const acaba = () => { for (let k = 0; k < 100 && c7.window.__olivosGen().fundido.activo; k++) c7.__G.paso(0.1, 1); };
+    const hasta = (fx, fz) => {   // reparte con el foco en (fx, fz) hasta que el lote de ese foco esté puesto y su fundido, acabado
+      for (let r = 0; r < 60; r++) {
+        c7.__G.actualiza(fx, fz, TOPE7, ol7);
+        for (let k = 0; k < 200000 && c7.window.__olivosGen().trabajos > 0; k++) c7.__G.paso(0.00001, 50);
+        const l = c7.__G._prueba.lote(); if (l) lotes.add(l);
+        acaba(); if (c7.__G.pendientes() === 0) return;
+      }
+      mal.push("límites: no se llegó al estado buscado con el foco en " + fx + "," + fz);
+    };
+    hasta(0, 0); hasta(0, -30); hasta(0, 0); hasta(0, -30);
+    const lote = c7.__G._prueba.lote(); lotes.add(lote);
+    const bms = lote.children.filter(o => o.isBatchedMesh);
+    // la caja y la esfera de cada geometría del lote contra el cálculo perezoso de three: la copia sin límites vuelve a recorrer los vértices
+    let comparadas = 0, difCaja = 0, difEsfera = 0, menor = 0;
+    const antes = recorridos;
+    for (const bm of bms) {
+      const info = bm._geometryInfo;
+      for (let gid = 0; gid < info.length; gid++) {
+        const dado = info[gid], caja = dado.boundingBox, esfera = dado.boundingSphere;
+        exige(caja !== null && esfera !== null, "límites: " + bm.name + " geometría " + gid + " sin caja o sin esfera asignadas antes de addGeometry");
+        if (!caja || !esfera) continue;
+        const pc = caja.clone(), pe = esfera.clone();
+        dado.boundingBox = null; dado.boundingSphere = null;
+        const cp = bm.getBoundingBoxAt(gid, new THREE.Box3()).clone(), ep = bm.getBoundingSphereAt(gid, new THREE.Sphere()).clone();
+        dado.boundingBox = pc; dado.boundingSphere = pe;
+        comparadas++;
+        if (!cp.equals(pc)) difCaja++;
+        if (!ep.equals(pe)) difEsfera++;
+        if (pe.radius < ep.radius || !pc.containsBox(cp)) menor++;
+      }
+    }
+    const reconstruccion = recorridos - antes;   // lo que costó la comprobación (a propósito, perezosa), NO el motor
+    const motor = antes;
+    diag.limites = { lotes: lotes.size, mallas: bms.length, geometrias: comparadas, verticesRecorridosPorElMotor: motor, verticesDeLaComprobacion: reconstruccion, difCaja, difEsfera, menor };
+    exige(lotes.size >= 3, "límites: se esperaban al menos 3 lotes distintos y hay " + lotes.size);
+    exige(comparadas > 0, "límites: no hay geometrías que comparar");
+    exige(difCaja === 0 && difEsfera === 0, "límites: las cajas/esferas asignadas no coinciden con el cálculo de three (" + difCaja + " cajas, " + difEsfera + " esferas)");
+    exige(menor === 0, "límites: alguna caja o esfera es MENOR que la de three");
+    exige(motor === 0, "límites: el motor recorre vértices de los lotes (" + motor + ") al construirlos: deben traerse calculados una vez por geometría de origen");
+  } finally { THREE.BatchedMesh.prototype.addGeometry = addOrig; THREE.Vector3.prototype.fromBufferAttribute = fbaOrig; }
+}
+
 console.log(JSON.stringify({ mal, diag }));
