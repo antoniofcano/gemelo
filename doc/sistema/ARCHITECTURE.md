@@ -23,7 +23,7 @@ La página pide `t/<clave>.json|jpg` (`D.teselas` es el índice; `D.base` da el 
 | `04c_olivos_tiles.js` | `OlivosTiles` | los olivos instanciados del tileset (media y larga distancia), resueltos por huella; aparta los que dibuja el motor de cerca |
 | `04d_sombreado_tiles.js` | `SombreadoTiles` | el relieve del tileset con su sombreado (NDVI, escarcha, nubes, suelo abierto) y lo compartido que dejó `Terreno`: `hash`, `matSuelo`, `matOrto` y `UN` en el primer nivel; `SombreadoTiles` expone texturas, texturasReales, ruidoG, detalleG, pideDetalle, prepara, U1, parche y OP |
 | `04e_suelo_fondo.js` | componente `suelo-fondo` (`?fondo=0`) | M6: el suelo de fondo bajo el tileset (relieve grueso + mosaico de 1 m); 1 malla, 1 llamada; solo con la escena 3D Tiles activa |
-| `04f_suelo_fotos.js` | `SueloFotos`, `SueloFotosPuro` | EV-1s, `?suelo=fotos` (apagado por defecto y en VR): el suelo de cerca con texturas de fotos de la finca (7 clases en una textura de niveles) que modulan la ortofoto; clase deducida; 0 llamadas ([SUELO-FOTOS](SUELO-FOTOS.md)) |
+| `04f_suelo_fotos.js` | `SueloFotos`, `SueloFotosPuro` | EV-1s, `?suelo=fotos` (apagado por defecto y en VR): el suelo de cerca con texturas de fotos de la finca (7 clases, 13 niveles con sus variantes, en una textura de niveles) que modulan la ortofoto; clase deducida; 0 llamadas ([SUELO-FOTOS](SUELO-FOTOS.md)) |
 | `05_nube.js` | `actualizaNubeTeselas` | un `Points` por tesela |
 | `06_arboles.js`, `07_follaje.js` | copa, tronco, hojas | piezas del nivel 0 |
 | `07a_catalogo.js` | `Catalogo` (`tipos`, `geometria`, `instala`, `retira`…) | formas de L1/L2 por olivo-tipo; tipo −1 = las de siempre (ADR-0012) |

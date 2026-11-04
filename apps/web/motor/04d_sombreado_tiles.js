@@ -122,7 +122,9 @@
 
     // ---- el parche del sombreador (Lambert). La posición en el mundo sale de modelMatrix (la exageración la trae la matriz del grupo: aquí se
     // deshace para muestrear) y la ortofoto, con las coordenadas de la caja del glb (uCua)
-    var OP = { cab: "uniform vec4 uCua;\n", uvO: "vec2((vWP.x - uCua.x) / uCua.z, 1.0 - (-vWP.z - uCua.y) / uCua.z)", dg: "3.0 / uCua.z", dy: "vec2(0.0, -dg)" };
+    // uvO: la ortofoto del glb (su caja; el norte arriba de la imagen). uvG: lo que es de la tesela del Mundo (256 m, filas de sur a norte), como el
+    // color ancho uGnd: con las coordenadas de la tesela (lc), nunca con las del glb (en una hoja de 128 m no casaría la escala y el norte iría al revés)
+    var OP = { cab: "uniform vec4 uCua;\n", uvO: "vec2((vWP.x - uCua.x) / uCua.z, 1.0 - (-vWP.z - uCua.y) / uCua.z)", uvG: "lc / " + TS.toFixed(1), dg: "3.0 / uCua.z", dy: "vec2(0.0, -dg)" };
     function parche(sh, uni) {
       parcheTiempo(sh, false);   // sombra de nubes y escarcha (bloque del tiempo)
       var u = sh.uniforms; Object.keys(UN).forEach(function (k) { u[k] = UN[k]; }); Object.keys(uni).forEach(function (k) { u[k] = uni[k]; });
@@ -141,7 +143,7 @@
         // detalle de la ortofoto: cociente de claridad entre la ortofoto «nítida» y dos referencias (ella misma a ~2 m y el color ancho del suelo abierto, sin copas), solo donde el suelo está abierto
         "float abierto = 0.0, rodada = 1.0, tono = 1.0, desnudo = 0.0, camino = 0.0, coh = 0.0; vec2 dirT = vec2(1.0, 0.0);\n" +
         "float dc = length(vViewPosition), cerca = 1.0 - smoothstep(12.0, 60.0, dc), cercaM = 1.0 - smoothstep(3.0, 18.0, dc), cercaR = 1.0 - smoothstep(30.0, 110.0, dc);\n" +
-        "if (uDet > 0.5) { vec2 uvO = " + OP.uvO + "; vec3 o0 = texture2D(uOrt, uvO).rgb, o2 = texture2D(uOrt, uvO, uBias2).rgb, o4 = texture2D(uOrt, uvO, uBias2 + 1.0).rgb, gw = texture2D(uGnd, uvO).rgb; vec3 LM = vec3(0.299, 0.587, 0.114); sc = mix(sc, gw, 0.85);\n" +
+        "if (uDet > 0.5) { vec2 uvO = " + OP.uvO + "; vec3 o0 = texture2D(uOrt, uvO).rgb, o2 = texture2D(uOrt, uvO, uBias2).rgb, o4 = texture2D(uOrt, uvO, uBias2 + 1.0).rgb, gw = texture2D(uGnd, " + OP.uvG + ").rgb; vec3 LM = vec3(0.299, 0.587, 0.114); sc = mix(sc, gw, 0.85);\n" +
         "  float l0 = dot(o0, LM) + 0.03, l2 = dot(o2, LM) + 0.03, l4 = dot(o4, LM) + 0.03, lw = dot(gw, LM) + 0.03; abierto = min(min(smoothstep(0.72, 0.86, l0 / lw), smoothstep(0.80, 0.93, l2 / lw)), smoothstep(0.86, 0.97, l4 / lw)) * uDetK;\n" +
         "  rodada = clamp(l0 / l2, 0.7, 1.5); tono = clamp(l2 / lw, 0.8, 1.8); desnudo = smoothstep(1.05, 1.3, tono) * abierto;\n" +
         // camino: suelo desnudo claro; su dirección sale del gradiente de claridad a ~4 m (4 muestras), solo donde hace falta

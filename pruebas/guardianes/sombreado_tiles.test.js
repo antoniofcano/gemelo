@@ -40,7 +40,7 @@ function evalua(conFotos) {
   const D = { ts: TS, orto_px: 512, mosaico: { x0: 0, yN: 0, w: 1, h: 1, res: 1 } }, cola = [];
   const sf = sueloFotos(conFotos);
   const f = Function("THREE", "D", "RES", "ANCHO", "ALTO", "Mundo", "Cola", "scene", "camera", "x0", "yN", "suelo", "vn2", "SueloFotosPuro", "SueloFotos", cuerpo);
-  const m = f(THREE, D, 1, 1000, 1000, Mundo, { add: (k) => cola.push(k) }, new THREE.Scene(), new THREE.PerspectiveCamera(), 0, 0, () => 0, () => 0, sf.P, sf.S);
+  const m = f(THREE, D, 1, 1000, 1000, Mundo, { add: (k, prio, gen, alAcabar) => cola.push({ k, gen, alAcabar }) }, new THREE.Scene(), new THREE.PerspectiveCamera(), 0, 0, () => 0, () => 0, sf.P, sf.S);
   m.Mundo = Mundo; m.cola = cola; m.SF = sf.S;
   return m;
 }
@@ -119,6 +119,62 @@ test("con ?suelo=fotos (EV-1s): el GLSL de 04f entra por sus anclas, con sus uni
   // y sin la bandera, nada de eso
   const g0 = glb(128, 0, 0); M.SombreadoTiles.modelo(g0.raiz, g0.tile); const { sh: s0 } = compila(g0.ter.material);
   assert.ok(!/fotA|uFot|uRue/.test(s0.fragmentShader) && !("uFot" in s0.uniforms) && !("uRue" in s0.uniforms)); assert.strictEqual(g0.ter.material.customProgramCacheKey(), "terreno-3dtiles");
+});
+
+// ---- un punto del mundo y su «color ancho» (uGnd): ¿cae en el mismo texel por los dos caminos?
+// Camino 1 (CPU): detalleG() de 04d reparte la ortofoto de la tesela del Mundo (256 m, la fila 0 de la imagen al NORTE) en celdas de 2 m;
+// la DataTexture que sale tiene la fila 0 al SUR (flipY = false: la fila 0 de los datos es v = 0). Camino 2 (GPU): la coordenada con la que
+// el GLSL del glb lee uGnd, sacada del propio sombreador y evaluada aquí con una calculadora de expresiones vec2 mínima.
+// La ortofoto sintética lleva escrita su posición: R = 80 + 150·x/256, G = 80 + 150·y/256 (x, y en metros dentro de la tesela).
+function evaluaGlsl(expr, entorno, defs) {
+  const tk = expr.match(/\d+\.?\d*(?:e-?\d+)?|[A-Za-z_]\w*|[-+*/(),.]/g); let i = 0;
+  const op = (a, b, f) => { const n = Math.max(a.length, b.length); return Array.from({ length: n }, (_, k) => f(a.length === 1 ? a[0] : a[k], b.length === 1 ? b[0] : b[k])); };
+  const SW = { x: 0, y: 1, z: 2, w: 3 };
+  function prim() {
+    const t = tk[i++];
+    if (t === "(") { const v = suma(); i++; return v; }
+    if (/^\d/.test(t)) return [Number(t)];
+    if (tk[i] === "(") { i++; const args = []; while (tk[i] !== ")") { args.push(suma()); if (tk[i] === ",") i++; } i++; if (!/^vec[234]$/.test(t)) throw new Error("función GLSL no prevista: " + t); return [].concat(...args); }
+    if (t in entorno) return entorno[t];
+    if (defs[t]) return evaluaGlsl(defs[t], entorno, defs);
+    throw new Error("identificador GLSL sin valor: " + t);
+  }
+  function post() { let v = prim(); while (tk[i] === ".") { i++; const sw = tk[i++]; v = [...sw].map(c => v[SW[c]]); } return v; }
+  function un() { if (tk[i] === "-") { i++; return un().map(x => -x); } return post(); }
+  function prod() { let v = un(); while (tk[i] === "*" || tk[i] === "/") { const o = tk[i++], w = un(); v = op(v, w, o === "*" ? (a, b) => a * b : (a, b) => a / b); } return v; }
+  function suma() { let v = prod(); while (tk[i] === "+" || tk[i] === "-") { const o = tk[i++], w = prod(); v = op(v, w, o === "+" ? (a, b) => a + b : (a, b) => a - b); } return v; }
+  const r = suma(); if (i !== tk.length) throw new Error("expresión GLSL sin leer entera: " + expr); return r;
+}
+function argumento(src, inicio) {   // el texto desde «inicio» hasta su paréntesis, coma o punto y coma de cierre, al mismo nivel
+  let k = src.indexOf(inicio); assert.ok(k >= 0, "no está «" + inicio + "» en el sombreador"); k += inicio.length; let n = 0, a = k;
+  for (; a < src.length; a++) { const c = src[a]; if (c === "(") n++; else if (c === ")") { if (n === 0) break; n--; } else if ((c === ";" || c === ",") && n === 0) break; }
+  return src.slice(k, a).trim();
+}
+test("el color ancho del suelo abierto (uGnd) se lee en el texel del mismo punto del mundo, en hojas de 128 m y de 256 m (norte arriba)", t => {
+  if (SALTO) return t.skip(SALTO);
+  const Mx = evalua(false), TS = 256, W = 512, t0 = Mx.Mundo.tesela(1, 1), px = new Uint8Array(W * W * 4);
+  for (let row = 0; row < W; row++) for (let col = 0; col < W; col++) {
+    const x = (col + 0.5) / W * TS, y = TS - (row + 0.5) / W * TS, o = (row * W + col) * 4;
+    px[o] = Math.round(80 + 150 * x / TS); px[o + 1] = Math.round(80 + 150 * y / TS); px[o + 2] = 255; px[o + 3] = 255;
+  }
+  Object.assign(t0, { suel: new Uint8Array(Mx.Mundo.NS2 * Mx.Mundo.NS2 * 3), ortImg: { naturalWidth: W }, ortPix: px, ortW: W, ortH: W });
+  const hojas = [glb(128, 128, 0), glb(256, 0, 0), glb(128, 0, 128)];
+  for (const g of hojas) Mx.SombreadoTiles.modelo(g.raiz, g.tile);
+  Mx.SombreadoTiles.actualiza();
+  const tarea = Mx.cola.find(c => c.k === "D" + t0.key); assert.ok(tarea, "actualiza() no pidió el color ancho de la tesela");
+  let s; while (!(s = tarea.gen.next()).done); tarea.alAcabar(s.value);
+  const tg = t0.uni.uGnd.value, GN = tg.image.width, dat = tg.image.data;
+  assert.strictEqual(tg.flipY, false, "la DataTexture no se voltea: la fila 0 de los datos es v = 0");
+  const casos = [[hojas[0], 200, 40], [hojas[0], 150, 110], [hojas[1], 30, 220], [hojas[1], 230, 15], [hojas[2], 60, 200]];
+  for (const [g, x, y] of casos) {
+    const { sh } = compila(g.ter.material), f = sh.fragmentShader, defs = {};
+    for (const nom of ["lc", "uvO"]) { const d = "vec2 " + nom + " = "; if (f.includes(d)) defs[nom] = argumento(f, d); }
+    const uni = sh.uniforms, entorno = { vWP: [x, 0, -y], uTile: uni.uTile.value.toArray(), uCua: uni.uCua.value.toArray() };
+    const uv = evaluaGlsl(argumento(f, "texture2D(uGnd, "), entorno, defs);
+    const i = Math.min(GN - 1, Math.max(0, Math.floor(uv[0] * GN))), j = Math.min(GN - 1, Math.max(0, Math.floor(uv[1] * GN))), o = (j * GN + i) * 4;
+    const xg = (dat[o] - 80) / 150 * TS, yg = (dat[o + 1] - 80) / 150 * TS;
+    assert.ok(Math.abs(xg - x) < 4 && Math.abs(yg - y) < 4, "hoja de " + g.tile.boundingVolume.box[3] * 2 + " m: el punto (" + x + ", " + y + ") lee el color ancho de (" + xg.toFixed(1) + ", " + yg.toFixed(1) + ")");
+  }
 });
 
 test("04b_escena3d.js engancha SombreadoTiles en load-model, dispose-model, actualiza y al liberar o fallar", () => {
