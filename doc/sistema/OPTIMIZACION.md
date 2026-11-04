@@ -50,6 +50,18 @@ Unos 25 minutos, con el casco cargado y sin otras pestañas. `<URL>` es la direc
 5. **Apunta con cada medida** la línea «VR: …» del informe (perillas y nivel de `VR_PERFILES`), la hora y si había otras personas conectadas. Sin esa línea la medida no se compara.
 6. **Una sola variable por vez.** Si una prueba sale rara (tirón, alerta de temperatura), repítela antes de sacar conclusiones.
 7. **Comodidad:** anota si marea o se ve borroso con cada serie. Lo que no probaste se queda como «no probado».
+8. **Serie C, interfaz espacial (opcional):** `<URL>/finca/?debug&mide=60&ui=capas`. Con `ui=capas` las fichas de olivo y de baliza se cuelgan junto a lo que describen y el panel nace delante y se queda ([VR.md](VR.md)); está apagada por defecto. Compárala con la serie A en el mismo punto: el informe dirá si cuesta llamadas o ms de JS.
+
+**Opciones de la URL que se usan aquí** (todas opcionales; sin ellas nada cambia):
+
+| Opción | Qué hace |
+|---|---|
+| `?debug` | Enseña en pantalla y en el panel de VR el registro de la medida: fps, ms de JS, llamadas, triángulos, puntos, teselas, olivos por nivel, aparato y el nivel de `VR_PERFILES` |
+| `&mide=60` | Mide 60 s y deja el informe (mediana, p95, peor, ms de JS y la línea «VR: …» con las perillas); se guarda en el aparato y, con permiso, en la telemetría |
+| `&olivos=0` | Sin olivos generados: separa lo que cuestan |
+| `&ui=capas` | Interfaz espacial: fichas en el mundo y panel que se queda |
+| `&xrfov=` `&xrescala=` `&xrhz=` `&xraa=` `&xrnear=` `&xrjs=` `&xrnivel=` | Perillas de rendimiento de VR (Q0b); rangos y efectos en [VR.md](VR.md). Cambia **una** por prueba |
+| `&hora=2026-06-15T12:00` | Fija la hora del mundo (para comparar de día y de noche) |
 
 ## Cómo decidir
 | Si la medida dice… | Se prueba primero… |
