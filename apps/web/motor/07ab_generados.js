@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Escalera, Generados
 // Consume: 01_datos (D, VRP, FACTOR_R8_GEN, factorCopaDeConfig), 01a_aparato (Aparato), 02_mundo (suelo, copas), 02c_componentes (Config),
-//   03_escena (renderer, camera, colorVertSRGB, exag), 06_arboles (gArboles), 08_marcadores (aplica), 09_camara (suelta),
+//   03_escena (renderer, scene, camera, colorVertSRGB, exag), 06_arboles (gArboles), 08_marcadores (aplica), 09_camara (suelta),
 //   12_paseo (paseando, primera), 14_historia (hist, lista), 15_tiempo (parcheTiempo, nivel, hace), 16_vida (esfera), 29_vr (VR_PERFILES)
 // ===============================================================================
   // ---------- olivos GENERADOS cerca (ADR-0017, decisiones 26-28, 34 y 52), POR DEFECTO (O10a, Antonio 2026-11-02): sin ?olivos=, si la finca trae copas_param y copas_id (y el aparato puede), se comporta como con ?olivos=gen;
@@ -422,7 +422,7 @@
       var cl = exag + "|" + listosAhora.map(function (p) { return p.c.i + "=" + p.clave; }).join(",");
       if (cl !== claveLote && !hay("Glote") && !fundido) {
         var fija = listosAhora.slice(), items = elementos(fija);
-        encola("Glote", -1, seguro(construyeG(items)), function (g) { if (g) colocaLote(g, fija, items, cl); });
+        encola("Glote", -1, seguro(compiladoG(construyeG(items))), function (g) { if (g) colocaLote(g, fija, items, cl); });
       }
       return { radio: fundido ? Math.min(R, fundido.Rviejo) : R, tri: triGen, tiene: tiene };
     }
@@ -523,7 +523,7 @@
       var cl = exag + "|" + listosAhora.map(function (p) { return p.c.i + "=" + p.clave + ":" + (p.rol || 0) + ":" + (p.ranura || 0); }).join(",");
       if (cl !== claveLote && !hay("Glote") && !fundido) {
         var fija = listosAhora.slice(), items = elementos(fija);
-        encola("Glote", -1, seguro(construyeG(items)), function (g) { if (g) colocaLote(g, fija, items, cl); });
+        encola("Glote", -1, seguro(compiladoG(construyeG(items))), function (g) { if (g) colocaLote(g, fija, items, cl); });
       }
       return { radio: fundido ? Math.min(R, fundido.Rviejo) : R, tri: triGen, tiene: tiene, fase: fase, ranura: ranuraLej };
     }
@@ -578,14 +578,30 @@
       plan.forEach(function (p) { if (!recetas[p.clave] || !enLote[p.c.i] || !enLote[p.c.i][p.clave]) n++; });
       return n;
     }
+    // AG-1.5: un trabajo que cede { espera: f } queda dormido mientras f() sea cierto (compiladoG, esperando a la GPU): no se le da rebanada ni gasta
+    // el presupuesto en vueltas vacías; los demás siguen por su prioridad
     function corre(ms) {
       var t0 = performance.now();
       while (trabajos.length && performance.now() - t0 < ms) {
-        var bi = 0; for (var i = 1; i < trabajos.length; i++) if (trabajos[i].prio < trabajos[bi].prio) bi = i;
+        var bi = -1; for (var i = 0; i < trabajos.length; i++) { var ti = trabajos[i]; if (ti.espera) { if (ti.espera()) continue; ti.espera = null; } if (bi < 0 || ti.prio < trabajos[bi].prio) bi = i; }
+        if (bi < 0) break;   // todos esperan
         var j = trabajos[bi], r = j.gen.next();
-        if (r.done) { trabajos.splice(bi, 1); if (j.fin) j.fin(r.value); }
+        if (r.done) { trabajos.splice(bi, 1); if (j.fin) j.fin(r.value); } else if (r.value && typeof r.value.espera === "function") j.espera = r.value.espera;
       }
       gastado = performance.now() - t0;
+    }
+    // AG-1.5: el lote acabado se compila (renderer.compileAsync de three: con KHR_parallel_shader_compile, el enlace de los sombreadores va en paralelo)
+    // ANTES de entrar en la escena, para que el fotograma en que aparece no compile. El trabajo «Glote» sigue en la cola mientras tanto (no se monta
+    // otro lote a la vez y pendientes() lo cuenta); si la compilación falla, el lote entra igual (compilará al dibujarse, como antes). Sin renderer
+    // (Node) o sin compileAsync, el lote sale tal cual: lo montado es el mismo. [SUPUESTO] en VR el programa con multivista puede no ser el que se
+    // compila aquí (depende del destino de dibujo de la sesión): no probado en un Quest
+    function* compiladoG(gen) {
+      var g = yield* gen;
+      if (!g || typeof renderer === "undefined" || !renderer || typeof renderer.compileAsync !== "function" || typeof scene === "undefined") return g;
+      var compilado = false, hecho = function () { compilado = true; };
+      try { renderer.compileAsync(g, camera, scene).then(hecho, hecho); } catch (e) { compilado = true; }
+      if (!compilado) yield { espera: function () { return !compilado; } };
+      return g;
     }
     // cada fotograma (lo llama 07b_arboles.actualiza con su parte de ms): avanza la cola propia y el fundido; true cuando el reparto de niveles debe
     // rehacerse (lote nuevo o fin del fundido)

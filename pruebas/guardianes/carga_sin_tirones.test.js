@@ -122,3 +122,45 @@ test("Cola: deuda (debe, cobra, deuda) que se salda en corre, y est por fuente p
   assert.throws(() => g()); assert.strictEqual(Cola.deuda(), 7.5, "lo que tardó se cobra aunque falle");
   Cola.corre(3); assert.strictEqual(Cola.deuda(), 0, "corre salda la deuda (ya se descontó del presupuesto de este fotograma)");
 });
+
+// ---- la cola propia de los generados: corre y compiladoG sacados de 07ab tal cual
+function trozoFun(src, ini) { const a = src.indexOf(ini); assert.ok(a >= 0, "no está " + ini); const b = src.indexOf("\n    }\n", a); return src.slice(a, b + 6); }
+function colaGenerados(reloj, renderer) {
+  const cuerpo = "var trabajos = [], gastado = 0;\n" + trozoFun(G07, "    function corre(ms) {") + "\n" + trozoFun(G07, "    function* compiladoG(gen) {") +
+    "\nfunction encola(clave, prio, gen, fin) { trabajos.push({ clave: clave, prio: prio, gen: gen, fin: fin }); }" +
+    "\nreturn { corre: corre, compiladoG: compiladoG, encola: encola, trabajos: trabajos, gastado: function () { return gastado; } };";
+  return new Function("performance", "renderer", "camera", "scene", "\"use strict\";\n" + cuerpo)(reloj, renderer, {}, {});
+}
+function* construye(reloj, g, n) { for (let i = 0; i < n; i++) { reloj.t += 1; yield; } return g; }
+
+test("generados: sin renderer (Node) el lote sale en el mismo next(); con compileAsync, duerme sin gastar y sale el MISMO lote", async () => {
+  const reloj = { t: 0, now() { return this.t; } }, lote = { nombre: "lote" };
+  // sin compileAsync: igual que construyeG solo (mismo número de rebanadas, mismo lote)
+  let G = colaGenerados(reloj, undefined), sale = null;
+  G.encola("Glote", -1, G.compiladoG(construye(reloj, lote, 5)), v => { sale = v; });
+  let vueltas = 0; while (G.trabajos.length && vueltas < 100) { G.corre(1); vueltas++; }
+  assert.strictEqual(sale, lote); assert.strictEqual(vueltas, 6, "5 yield + la vuelta final, como sin compiladoG");
+  // con un compileAsync que no acaba hasta que se le dice
+  let suelta, llamadas = [];
+  const renderer = { compileAsync(o, c, s) { llamadas.push(o); return new Promise(r => { suelta = r; }); } };
+  G = colaGenerados(reloj, renderer); sale = null; const otros = [];
+  G.encola("Glote", -1, G.compiladoG(construye(reloj, lote, 3)), v => { sale = v; });
+  G.encola("Gp1", 5, construye(reloj, "receta", 40), v => otros.push(v));
+  for (let f = 0; f < 4; f++) G.corre(2);
+  assert.deepStrictEqual(llamadas, [lote], "el lote acabado se compila una vez, antes de entrar en la escena");
+  assert.strictEqual(sale, null, "mientras compila, el lote no se coloca");
+  const t0 = reloj.t; G.corre(2); assert.ok(reloj.t - t0 > 0, "los demás trabajos siguen mientras el lote espera");
+  // solo el lote esperando: corre no da vueltas vacías (el reloj no se mueve y vuelve enseguida)
+  while (G.trabajos.length > 1) G.corre(50);
+  const t1 = reloj.t; G.corre(5); assert.strictEqual(reloj.t, t1); assert.strictEqual(G.gastado(), 0, "esperar no gasta presupuesto");
+  suelta(); await new Promise(r => setTimeout(r, 0));
+  G.corre(2); assert.strictEqual(sale, lote, "acabada la compilación, sale el mismo lote"); assert.strictEqual(G.trabajos.length, 0);
+  // si compileAsync falla (o lanza), el lote entra igual
+  G = colaGenerados(reloj, { compileAsync() { throw new Error("sin contexto"); } }); sale = null;
+  G.encola("Glote", -1, G.compiladoG(construye(reloj, lote, 1)), v => { sale = v; }); for (let f = 0; f < 4; f++) G.corre(5);
+  assert.strictEqual(sale, lote);
+  G = colaGenerados(reloj, { compileAsync() { return Promise.reject(new Error("no")); } }); sale = null;
+  G.encola("Glote", -1, G.compiladoG(construye(reloj, lote, 1)), v => { sale = v; }); G.corre(5); await new Promise(r => setTimeout(r, 0)); G.corre(5);
+  assert.strictEqual(sale, lote);
+  assert.strictEqual((G07.match(/seguro\(compiladoG\(construyeG\(items\)\)\)/g) || []).length, 2, "los dos sitios que montan el lote pasan por compiladoG");
+});
