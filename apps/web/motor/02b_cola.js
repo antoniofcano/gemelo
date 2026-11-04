@@ -40,9 +40,9 @@
   //     tesela, 04b_escena3d): es una DEUDA que 07b_arboles descuenta del presupuesto del fotograma siguiente (Cola.deuda()); Cola.corre la salda.
   //     Cola.cobra(fuente, f) envuelve una función para que lo que tarde se apunte así. est[fuente] lo enseña ?debug (28_depura) como las demás.
   var Cola = (function () {
-    var jobs = [], activos = {}, est = {}, deuda = 0;   // est: por tipo de trabajo, nº de rebanadas, ms totales, la más larga (lo que se nota como tirón) y la media (prom)
+    var jobs = [], activos = {}, est = {}, deuda = 0, tot = { n: 0, ms: 0 };   // tot: lo de todos los tipos sumado (n rebanadas, ms), para la autopsia de fotogramas lentos del medidor (30_mide, Q0g)   // est: por tipo de trabajo, nº de rebanadas, ms totales, la más larga (lo que se nota como tirón) y la media (prom)
     function tipo(k) { return est[k] || (est[k] = { n: 0, ms: 0, max: 0, prom: 0 }); }
-    function apunta(e, dm) { e.n++; e.ms += dm; if (dm > e.max) e.max = dm; e.prom = e.n === 1 ? dm : e.prom + (dm - e.prom) * 0.2; }
+    function apunta(e, dm) { tot.n++; tot.ms += dm; e.n++; e.ms += dm; if (dm > e.max) e.max = dm; e.prom = e.n === 1 ? dm : e.prom + (dm - e.prom) * 0.2; }
     function add(clave, prio, gen, fin) {
       var j = activos[clave]; if (j) { j.prio = prio; return false; }   // la prioridad es la última pedida (la distancia a la cámara cambia)
       j = { clave: clave, prio: prio, gen: gen, fin: fin }; jobs.push(j); activos[clave] = j; return true;
@@ -66,5 +66,5 @@
     function vacia(ms) { var t0 = performance.now(); while (jobs.length && performance.now() - t0 < ms) corre(50); }   // para el arranque: termina todo lo pendiente
     function debe(ms, fuente) { if (!(ms > 0)) return; deuda += ms; apunta(tipo(fuente || "fuera"), ms); }
     function cobra(fuente, f) { return function () { var t = performance.now(); try { return f.apply(this, arguments); } finally { debe(performance.now() - t, fuente); } }; }
-    return { est: est, add: add, cancela: cancela, hay: hay, corre: corre, vacia: vacia, debe: debe, cobra: cobra, deuda: function () { return deuda; }, pendientes: function () { return jobs.length; } };
+    return { est: est, tot: tot, add: add, cancela: cancela, hay: hay, corre: corre, vacia: vacia, debe: debe, cobra: cobra, deuda: function () { return deuda; }, pendientes: function () { return jobs.length; } };
   })();

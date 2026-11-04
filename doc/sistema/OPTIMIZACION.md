@@ -63,6 +63,24 @@ Unos 25 minutos, con el casco cargado y sin otras pestañas. `<URL>` es la direc
 | `&xrfov=` `&xrescala=` `&xrhz=` `&xraa=` `&xrnear=` `&xrjs=` `&xrnivel=` | Perillas de rendimiento de VR (Q0b); rangos y efectos en [VR.md](VR.md). Cambia **una** por prueba |
 | `&hora=2026-06-15T12:00` | Fija la hora del mundo (para comparar de día y de noche) |
 
+### Leer la autopsia de los fotogramas lentos (Q0g)
+
+El informe de `?mide` (y la tarjeta de VR) trae una línea **«Fotogramas lentos N (pueden solaparse): …»**. Es el desglose del 5 % de fotogramas que pasan de 13,9 ms: de esos N, cuántos coinciden con cada causa. Una causa es *coincidencia en el mismo fotograma*, no demostración de culpa; una misma medida puede sumar más que N porque las causas se solapan.
+
+| Causa (informe largo / tarjeta) | Qué se anotó en ese fotograma | Si manda |
+|---|---|---|
+| `Cola` / `cola` | la `Cola` (02b) trabajó 1 ms o más (rebanadas de recetas, celdas, olivos; sin contar las teselas) | bajar el presupuesto de la Cola en VR o repartir mejor las rebanadas |
+| `teselas` / `tesela` | llegó una tesela (`load-model`, la deuda «T» de la Cola) | la carga de teselas tira del fotograma: menos teselas a la vez (`tilesParseVr`) |
+| `lote de olivos` / `lote` | los olivos generados (07ab) montaron un lote nuevo | el cambio de lote cuesta: compáralo con la serie B (`&olivos=0`) |
+| `tarea larga` | el navegador contó una tarea de ≥ 50 ms (`longtask`) que acabó en el intervalo de ese fotograma | algo bloquea el hilo fuera del bucle (descodificar, GC grande). Solo ve ≥ 50 ms: un fotograma de 21 ms no la tendrá |
+| `programa nuevo` / `prog` | subió `renderer.info.programs`: se compiló un sombreador | calentar el programa antes (compilación previa) |
+| `textura nueva` / `tex` | subió `renderer.info.memory.textures` | subida de textura (teselas, láminas, ortofotos) |
+| `sin causa` | ninguna de las de arriba | el fotograma fue lento por su propio coste (dibujo, GPU o JS del bucle): mira llamadas, triángulos y JS p95 |
+
+Cómo leerlo: si `sin causa` es la mayoría, el 5 % lento no es un suceso (carga o compilación) sino el coste normal del fotograma: se arregla bajando dibujo o JS, no la carga. Si manda una causa concreta, se ataca esa. El informe largo añade, si hubo, la mediana de ms que gastaron Cola y teselas en los lentos, y cuántas tareas largas hubo en toda la medida y cuánto sumaron. Una medida guardada antes de Q0g no trae la línea.
+
+Qué **no** da: el reparto por componente (no existe medida de ms por componente en el bucle; para eso, C11 «con y sin») ni la causa en sí: un tirón de GC o de la GPU aparece como «sin causa». La autopsia **no viaja a la api** (el contrato de `medidas` no admite campos nuevos): vive en el informe, en `localStorage` (`gemelo_mide`) y se copia con «Copiar». Sin `&mide` ni botón, no se recoge nada.
+
 ## Cómo decidir
 | Si la medida dice… | Se prueba primero… |
 |---|---|

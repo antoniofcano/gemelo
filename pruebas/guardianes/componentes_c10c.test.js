@@ -60,7 +60,7 @@ function mundoMide(busqueda, extra) {
   const g = Object.assign({
     Bus, visor, window: ventana, location: { search: busqueda || "" }, Aparato: aparatoDe({ userAgent: "Mozilla/5.0 (Windows NT 10.0) Chrome/131.0.0.0 Safari/537.36" }), navigator: { userAgent: "Mozilla/5.0 (Windows NT 10.0) Chrome/131.0.0.0 Safari/537.36" },
     document: { hidden: false, createElement: () => el(), addEventListener: (t, f) => (docL[t] = f), removeEventListener: t => delete docL[t] },
-    renderer: { xr: { isPresenting: false } }, modo: "nube", D: { finca_id: "cerro", base: "t/" }, DEPURA: false, ConfigPuro: { prefijoApi: () => null },
+    renderer: { xr: { isPresenting: false }, info: { render: {}, programs: [], memory: { textures: 0 } } }, Cola: { est: {}, tot: { n: 0, ms: 0 } }, Generados: { lotes: () => 0 }, modo: "nube", D: { finca_id: "cerro", base: "t/" }, DEPURA: false, ConfigPuro: { prefijoApi: () => null },
     Ajustes: { lee: () => false }, Arboles: { resumen: () => ({ nivel0: 3, nivel1: 5, nivel2: 7 }) }, Escena3D: { resumen: () => ({ estado: "activo" }) },
     XrPerillas: { linea: () => "VR: fov 1 · escala 0,9 · 72 Hz · MSAA sí · nivel auto" }, VRX: { on: false, nivel: null, soporta: false, entrando: false },
     PanelVR: { filas: (p, d) => { filas.push({ p, d }); return () => { const i = filas.findIndex(f => f.d === d); if (i >= 0) filas.splice(i, 1); }; } },
@@ -103,7 +103,7 @@ test("medidor-fotogramas: medida:inicia mide con «cuadro:fin», termina, la tar
   const t0 = performance.now(), FIN = { t: 0 };
   for (let i = 0; i < 80 && m.ventana.__mide().estado === "midiendo"; i++) { FIN.t = t0 + i * 100; m.Bus.emite("cuadro:fin", FIN); }   // 100 ms por fotograma: pasa de 3 s + 2 s
   const r = m.ventana.__mide(); assert.strictEqual(r.estado, "listo"); assert.ok(r.resultado.est.n >= 10, "fotogramas medidos: " + r.resultado.est.n);
-  assert.strictEqual(r.resultado.duracion, 2); assert.strictEqual(r.resultado.olivos.join(), "3,5,7"); assert.strictEqual(r.resultado.escena, "tiles");
+  assert.ok(r.resultado.est.causas && r.resultado.est.causas.lentos > 0 && r.resultado.est.causas.sin === r.resultado.est.causas.lentos, "Q0g: con 100 ms por fotograma todos son lentos y ninguno tiene causa"); assert.strictEqual(r.resultado.duracion, 2); assert.strictEqual(r.resultado.olivos.join(), "3,5,7"); assert.strictEqual(r.resultado.escena, "tiles");
   assert.ok(!m.Bus.hay("cuadro:fin"), "al terminar deja de escuchar el fotograma");
   const q = { res: null }; m.Bus.emite("medida:estado", q);
   assert.ok(q.res.resultado && q.res.lineas.length >= 5 && /Intervalo/.test(q.res.lineas.join("\n")), "la tarjeta de VR recibe las líneas");
