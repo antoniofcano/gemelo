@@ -58,7 +58,7 @@ test("el motor: 04b_escena3d.js es la única escena (sin ESC3D ni ?escena=), arr
   assert.ok(perfiles.every(p => p.e > 0), "cada perfil VR necesita e (errorTarget en px)");
   assert.ok(perfiles.every((p, i) => i === 0 || p.e > perfiles[i - 1].e), "el errorTarget debe crecer al bajar de perfil");
   assert.match(vr, /Escena3D\.perfil\(p\)/); assert.match(vr, /Escena3D\.perfil\(null\)/);
-  assert.match(fin, /Escena3D\.actualiza\(\);\s*\n\s*(var tR = performance\.now\(\); )?renderer\.render/, "Escena3D.actualiza() va justo antes de dibujar (F0 solo pone en medio el cronómetro de render())");
+  assert.match(fin, /Escena3D\.actualiza\(\);( if \(rp\) q = Reparto\.pasa\(BL\.escena3d, q\);)?\s*\n\s*(var tR = performance\.now\(\); )?renderer\.render/, "Escena3D.actualiza() va justo antes de dibujar (F0 solo pone en medio el cronómetro de render())");
 });
 
 // ---------------------------------------------------------------- los olivos del tileset (04c_olivos_tiles.js), sin navegador

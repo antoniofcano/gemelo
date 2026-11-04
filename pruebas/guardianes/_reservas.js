@@ -68,11 +68,11 @@ function reservas(src, fn, inicio) {
 
 /** Las funciones del bucle, por módulo. «inicio» localiza la función (debe ser único en el fichero). Solo lo que corre a cada fotograma. */
 const BUCLE = {
-  "30_mide.js": [["causasDelFotograma", "function causasDelFotograma("], ["bits", "function bits("]],   // Q0g: la autopsia de los fotogramas lentos, cada fotograma medido
+  "30_mide.js": [["causasDelFotograma", "function causasDelFotograma("], ["bits", "function bits("], ["apuntaReparto", "function apuntaReparto("]],   // Q0g: la autopsia de los fotogramas lentos, cada fotograma medido
   "17_minimapa.js": [["actualizaRastro", "function actualizaRastro("]],
   "19_balizas.js": [["firmaCambia", "function firmaCambia("]],
   "25_perros.js": [["amenazaEn", "function amenazaEn("], ["actualizaPerros", "function actualizaPerros("]],
-  "02c_componentes.js": [["Bus.emite", "function emite(ev, datos)"]],
+  "02c_componentes.js": [["Bus.emite", "function emite(ev, datos)"], ["Reparto.pasa", "function pasa(i, q)"], ["Reparto.ini", "function ini(t)"]],   // Q0h: el reparto del JS por bloque, cada fotograma medido
   "02g_vr_presupuesto.js": [["VrPresupuesto.mueve", "function mueve("]],   // Q0c-a: cada fotograma en VR
   "18_paisaje.js": [["distArroyo", "function distArroyo("], ["celdaArroyoDist", "function celdaArroyoDist("]],
   "16_vida.js": [["velPaseo", "function velPaseo("], ["giroPaseo", "function giroPaseo("], ["vidaPaseo", "function vidaPaseo("], ["dronMando", "function dronMando("],

@@ -336,10 +336,10 @@ test("Q0g: la autopsia solo se paga midiendo: sin &mide ni botón no hay observa
   assert.strictEqual((FUENTE.match(/\bobservaLargas\(\)/g) || []).length, 2, "observaLargas() se llama solo en su definición y desde empieza()");
   assert.ok(/desobservaLargas\(\); largas = \{ fin: \[\], dur: \[\] \}; observaLargas\(\);/.test(FUENTE), "empieza() arma el observador");
   assert.ok(/if \(api\.on\) fotograma\(d\.t, d\)/.test(FUENTE), "el fotograma solo se procesa con la medida armada");
-  assert.ok(/function termina\(\) \{\s*desobservaLargas\(\)/.test(FUENTE) && /desengancha\(\); desobservaLargas\(\);/.test(FUENTE), "se suelta al terminar y al liberar");
+  assert.ok(/function termina\(\) \{\s*Reparto\.on = false;\s*desobservaLargas\(\)/.test(FUENTE) && /desengancha\(\); desobservaLargas\(\);/.test(FUENTE), "se suelta al terminar y al liberar");
   const rs = R.recuenta()["30_mide.js"];
   assert.deepStrictEqual(rs.faltan, []); assert.strictEqual(rs.total, 0, JSON.stringify(rs.detalle));
-  assert.deepStrictEqual(Object.keys(rs.porFn).sort(), ["bits", "causasDelFotograma"]);
+  assert.deepStrictEqual(Object.keys(rs.porFn).sort(), ["apuntaReparto", "bits", "causasDelFotograma"]);
   // lo que lee causasDelFotograma existe: Cola.tot (02b), Generados.lotes (07ab)
   const cola = lee("apps/web/motor/02b_cola.js"), gen = lee("apps/web/motor/07ab_generados.js");
   assert.ok(/tot: tot/.test(cola) && /function apunta\(e, dm\) \{ tot\.n\+\+; tot\.ms \+= dm;/.test(cola));
@@ -362,4 +362,60 @@ test("F0: el informe separa los ms de renderer.render() del resto del JS, y la t
   const v = E.texto(conDibujo("VR", 400));
   assert.ok(!v.includes("renderer.render()") && !v.includes("multiview:"), "una medida de antes no inventa las líneas");
   assert.strictEqual(E.calcula({ t: [3, 3.1], ms: [10, 10], js: [1, 2] }, 3, 10).rd, null);
+});
+
+// ---------- Q0h: el reparto del JS por bloque ----------
+// bloques: { nombre: [ms por fotograma] }; js y rd por fotograma. Devuelve la medida (m) con el formato del medidor.
+function conReparto(bloques, js, rd) {
+  const n = js.length, m = serie(Array.from({ length: n }, () => 12), 3, 0.05);
+  m.js = js.slice(); m.rd = rd.slice(); m.bn = Object.keys(bloques); m.bl = m.bn.map(k => bloques[k]);
+  return m;
+}
+test("Q0h: el reparto da mediana y p95 por bloque, ordenado por p95, y suma de bloques + render() + otros cuadra con el JS de cada fotograma", () => {
+  const n = 200, gran = Array.from({ length: n }, (_, i) => 2 + (i % 10) * 0.2), peq = Array.from({ length: n }, () => 0.5), mid = Array.from({ length: n }, (_, i) => 1 + (i % 5) * 0.5);
+  const js = Array.from({ length: n }, (_, i) => gran[i] + peq[i] + mid[i] + 1.5 + 1), rd = Array.from({ length: n }, () => 1.5);   // 1 ms de «otros» en cada fotograma
+  const e = E.calcula(conReparto({ "peq": peq, "gran": gran, "mid": mid }, js, rd), 3, 60), r = e.reparto;
+  assert.deepStrictEqual(r.bloques.map(b => b.nom), ["gran", "mid", "peq"], "por p95, de mayor a menor");
+  assert.strictEqual(r.bloques[2].mediana, 0.5); assert.ok(r.bloques[0].p95 >= r.bloques[0].mediana);
+  assert.ok(Math.abs(r.otros.mediana - 1) < 1e-9 && Math.abs(r.otros.p95 - 1) < 1e-9, "lo que no cuadra va a «otros»: " + JSON.stringify(r.otros));
+  for (let i = 0; i < n; i++) { /* por fotograma */ }
+  assert.ok(Math.abs((r.suma.mediana + e.rd.mediana + r.otros.mediana) - e.js.mediana) < 0.35, "la suma de medianas ronda el JS total");
+  assert.strictEqual(E.calcula(serie([12, 12], 3, 1), 3, 60).reparto, null, "una medida sin reparto (de antes) no lo trae");
+});
+test("Q0h: el reparto sale en el informe largo (todos los bloques, la suma y «otros») y en una sola línea de la tarjeta de VR, que sigue cabiendo en 14", () => {
+  const n = 400, B = { "olivo (estación)": 3.1, "c:fauna": 1.4, "Cola": 0.9, "minimapa": 0.3, "tiempo": 0.02 }, bl = {};
+  Object.keys(B).forEach(k => { bl[k] = Array.from({ length: n }, (_, i) => B[k] * (0.8 + (i % 5) * 0.1)); });
+  const m = conReparto(bl, Array.from({ length: n }, () => 8), Array.from({ length: n }, () => 1.2));
+  m.ll = m.ms.map(() => 200); m.tr = m.ms.map(() => 400000); m.cz = m.ms.map(() => 0); m.cq = m.ms.map(() => 0);
+  const r = medidaVR("VR", n, { est: E.calcula(m, 3, 60), perillas: "VR: fov 1 · escala 0,9 · 72 Hz · MSAA sí · nivel auto", olivosGen: true, personas: 3, largas: { n: 2, ms: 130 }, multiview: "multiview: sí · OVR_multiview2 sí · OCULUS_multiview sí · texture-array sí",
+    nivel: { ini: 0, fin: 2, cambios: [{ t: 1, de: 0, a: 1 }, { t: 2, de: 1, a: 2 }] } });
+  const tx = E.texto(r);
+  for (const s of ["Reparto del JS por bloque (ms, mediana / p95; de mayor a menor p95):", "  olivo (estación): ", "  c:fauna: ", "suma de los bloques: ", "renderer.render(): 1.2 / 1.2", "otros (lo que no cuadra con el JS total): "]) assert.ok(tx.includes(s), "falta «" + s + "» en:\n" + tx);
+  assert.ok(tx.indexOf("olivo (estación)") < tx.indexOf("c:fauna") && tx.indexOf("c:fauna") < tx.indexOf("  Cola"), "ordenados por p95");
+  const c = E.lineas(r, true), l = c.filter(x => /^JS p95: /.test(x));
+  assert.strictEqual(l.length, 1, c.join("\n")); assert.ok(/olivo \(estació 3\.\d · c:fauna 1\.\d · Cola 1\.\d · otros/.test(l[0]), l[0]);
+  assert.ok(c.length <= 14, "la tarjeta de VR debe caber en el panel: " + c.length + "\n" + c.join("\n"));
+  assert.ok(l[0].length <= 72, "la línea del reparto cabe a lo ancho del panel: " + l[0].length);
+});
+test("Q0h: el reparto no cambia el cuerpo que viaja a la api (eso es Q0i)", () => {
+  const n = 400, m = conReparto({ a: Array.from({ length: n }, () => 2) }, Array.from({ length: n }, () => 6), Array.from({ length: n }, () => 1));
+  const c = E.cuerpoEnvio(medidaVR("VR", n, { est: E.calcula(m, 3, 60) }), { ua: UA_QUEST, finca: "hituelo", modo: "gemelo", version: "0.2.0" });
+  assert.ok(c && !/reparto|bloque|otros/i.test(JSON.stringify(c)), JSON.stringify(c));
+});
+test("Q0h: coste cero sin medir: ni una lectura de reloj nueva en el bucle fuera de lo guardado por «rp», y cero reservas en lo que corre midiendo", () => {
+  const fin = lee("apps/web/motor/90_final.js"), cuerpo = fin.slice(fin.indexOf("function cuadro(t)"), fin.indexOf("var tAhorro"));
+  // las únicas lecturas de reloj sin guarda son las dos de siempre: el ms de renderer.render() y vrFin
+  const sinGuarda = cuerpo.split("\n").map(l => l.replace(/if \(rp\) [^;]*;?/g, "").replace(/var q = rp \? [^;]*;/, "")).filter(l => /performance\.now\(\)/.test(l));
+  assert.strictEqual(sinGuarda.length, 2, sinGuarda.join("\n"));
+  assert.ok(sinGuarda.some(l => /renderer\.render/.test(l)) && sinGuarda.some(l => /vrFin/.test(l)));
+  assert.ok(/var rp = Reparto\.on, q = rp \? Reparto\.ini\(t\) : 0;/.test(cuerpo), "rp se lee una vez por fotograma");
+  const c2 = lee("apps/web/motor/02c_componentes.js"), act = c2.slice(c2.indexOf("function actualiza(fase, dt, t)"), c2.indexOf("function api(id)"));
+  assert.ok(/if \(Reparto\.on\) \{[^\n]*performance\.now\(\)[^\n]*Reparto\.pasa\(c\.rp, q\); continue; \}/.test(act), "cada componente se mide solo si Reparto.on");
+  assert.strictEqual((act.match(/performance\.now\(\)/g) || []).length, 1, "una sola lectura de reloj en Componentes.actualiza, dentro de la rama de medir");
+  // las funciones del reparto no reservan
+  const R = require("./_reservas"), rs = R.recuenta()["02c_componentes.js"];
+  assert.deepStrictEqual(rs.faltan, []); assert.strictEqual(rs.total, 0, JSON.stringify(rs.detalle));
+  assert.ok(Object.keys(rs.porFn).includes("Reparto.pasa") && Object.keys(rs.porFn).includes("Reparto.ini"));
+  // y el medidor lo apaga al terminar y al liberar
+  assert.ok(/Reparto\.on = true/.test(FUENTE) && (FUENTE.match(/Reparto\.on = false/g) || []).length === 2);
 });

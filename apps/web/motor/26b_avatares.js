@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos ($), 01a_aparato (Aparato), 02_mundo (suelo), 02c_componentes (Componentes), 02i_materiales (Materiales),
+// Consume: 01_datos ($), 01a_aparato (Aparato), 02_mundo (suelo), 02c_componentes (Reparto, Componentes), 02i_materiales (Materiales),
 //   03_escena (renderer, scene, camera, exag), 12_paseo (paseando, persona, primera), 16_vida (enQuad, quad, enDron, dron),
 //   26_presencia (Aspecto, Muneco), 29_vr (VRX)
 // Nota: Componente «avatares-vrm» (ADR-0023, C5): solo se registra; consume la presencia (n.api) y se engancha a ella con enganchaVRM. Sin presencia activa no crea nada; con ella, pide /avatares/catalogo.json solo si alguien lleva avatar (o con &vrm=1 en la simulación) e import("@pixiv/three-vrm") solo entonces. El trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/avatares_motor.test.js.

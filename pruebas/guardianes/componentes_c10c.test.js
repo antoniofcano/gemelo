@@ -59,7 +59,7 @@ function el() {
 function mundoMide(busqueda, extra) {
   const Bus = bus(), visor = el(), ventana = {}, filas = [], docL = {};
   const g = Object.assign({
-    Bus, visor, window: ventana, location: { search: busqueda || "" }, Aparato: aparatoDe({ userAgent: "Mozilla/5.0 (Windows NT 10.0) Chrome/131.0.0.0 Safari/537.36" }), navigator: { userAgent: "Mozilla/5.0 (Windows NT 10.0) Chrome/131.0.0.0 Safari/537.36" },
+    Bus, visor, Reparto: { on: false, t: -1, ms: new Float64Array(64), nom: [], n: 0 }, window: ventana, location: { search: busqueda || "" }, Aparato: aparatoDe({ userAgent: "Mozilla/5.0 (Windows NT 10.0) Chrome/131.0.0.0 Safari/537.36" }), navigator: { userAgent: "Mozilla/5.0 (Windows NT 10.0) Chrome/131.0.0.0 Safari/537.36" },
     document: { hidden: false, createElement: () => el(), addEventListener: (t, f) => (docL[t] = f), removeEventListener: t => delete docL[t] },
     renderer: { xr: { isPresenting: false }, info: { render: {}, programs: [], memory: { textures: 0 } } }, Cola: { est: {}, tot: { n: 0, ms: 0 } }, Generados: { lotes: () => 0 }, modo: "nube", D: { finca_id: "cerro", base: "t/" }, DEPURA: false, ConfigPuro: { prefijoApi: () => null },
     Ajustes: { lee: () => false }, Arboles: { resumen: () => ({ nivel0: 3, nivel1: 5, nivel2: 7 }) }, Escena3D: { resumen: () => ({ estado: "activo" }) },
