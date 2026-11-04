@@ -21,9 +21,11 @@
     var CLASES = ["calle", "hojarasca", "tierra_grava", "compost", "ruedo", "camino", "piedra"];   // el orden ES el de los niveles del array (y el de tuberia/suelo/recetas.json)
     var METROS = [1.4, 1.3, 0.9, 0.85, 0.6, 0.5, 0.35];   // lado en el suelo de cada textura [SUPUESTO: las fotos no llevan referencia de escala]
     var FUNDIDO = [12, 40], RUE_M = 6, RUE_GN = 128;   // fundido (m); el campo del ruedo guarda la distancia al borde de la copa en ±6 m, a 2 m por celda
-    function decide(busqueda, clase) {
+    // ajuste: el guardado de Configuración → Vista («vista.suelo», true/false) o undefined; la URL manda (?suelo=fotos enciende, ?suelo=0 apaga)
+    function decide(busqueda, clase, ajuste) {
       var q = busqueda || "", mp = /[?&]sueloPx=(512|1024)(?![^&#])/.exec(q);
-      return { activo: /[?&]suelo=fotos(?![^&#])/.test(q), px: mp ? Number(mp[1]) : clase === "escritorio" ? 1024 : 512, vr: /[?&]sueloVR=1(?![^&#])/.test(q) };
+      var url = /[?&]suelo=fotos(?![^&#])/.test(q) ? true : /[?&]suelo=(0|no)(?![^&#])/.test(q) ? false : undefined;
+      return { activo: url !== undefined ? url : ajuste === true, px: mp ? Number(mp[1]) : clase === "escritorio" ? 1024 : 512, vr: /[?&]sueloVR=1(?![^&#])/.test(q) };
     }
     function ficheros(px) { var o = []; for (var i = 0; i < CLASES.length; i++) o.push({ clase: CLASES[i], color: "suelo/" + CLASES[i] + "_" + px + ".webp", relieve: "suelo/" + CLASES[i] + "_" + px + "_relieve.webp" }); return o; }
     // memoria en la tarjeta gráfica: RGBA8 × niveles, con mipmaps (×4/3); y el campo del ruedo: 1 byte por celda y tesela
@@ -93,7 +95,7 @@
   })();
   // [puro:fin]
   var SueloFotos = (function () {
-    var P = SueloFotosPuro, cfg = P.decide(typeof location !== "undefined" ? location.search : "", Aparato.clase()), U = { uFot: { value: null }, uFotK: { value: 0 } };
+    var P = SueloFotosPuro, cfg = P.decide(typeof location !== "undefined" ? location.search : "", Aparato.clase(), (function () { try { var s = window.localStorage.getItem("gemelo.ajustes.vista.suelo"); return s == null ? undefined : JSON.parse(s); } catch (e) { return undefined; } })()), U = { uFot: { value: null }, uFotK: { value: 0 } };
     var tex = null, hecho = false, neutro = null, campos = [];
     function rueNeutro() {   // sin tesela del Mundo (o antes de calcular su campo): lejos de toda copa
       if (!neutro) { neutro = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1, THREE.RedFormat, THREE.UnsignedByteType); neutro.needsUpdate = true; }

@@ -71,3 +71,13 @@ test("la paleta del atardecer del motor es la que sacó la tubería de las fotos
   assert.ok(m, "15_tiempo declara PALETA_OCASO");
   assert.deepStrictEqual(["#" + m[1], "#" + m[2], "#" + m[3], "#" + m[4]], [pal.horizonte, pal.cenit, pal.nube_luz, pal.nube_sombra]);
 });
+
+test("la casilla «Suelo con texturas de la finca» (vista.suelo) lo enciende; la URL manda sobre ella (?suelo=fotos enciende, ?suelo=0 apaga)", () => {
+  const F = require("fs").readFileSync(require("path").join(__dirname, "..", "..", "apps", "web", "motor", "04f_suelo_fotos.js"), "utf8"), i = F.indexOf("// [puro:inicio]"), f = F.indexOf("// [puro:fin]");
+  const P = new Function("\"use strict\";\n" + F.slice(i, f) + "\nreturn SueloFotosPuro;")();
+  assert.strictEqual(P.decide("", "escritorio", undefined).activo, false, "sin ajuste ni URL, apagado");
+  assert.strictEqual(P.decide("", "escritorio", true).activo, true, "con la casilla, encendido");
+  assert.strictEqual(P.decide("?suelo=0", "escritorio", true).activo, false, "?suelo=0 manda sobre la casilla");
+  assert.strictEqual(P.decide("?suelo=fotos", "escritorio", false).activo, true, "?suelo=fotos manda sobre la casilla");
+  assert.ok(F.includes('localStorage.getItem("gemelo.ajustes.vista.suelo")'), "lee el ajuste guardado con el prefijo de 33_ajustes");
+});

@@ -20,7 +20,7 @@
     function opc(def, ops) { return { tipo: "opc", def: def, ops: ops }; }
     var ESQUEMA = {
       "graficos.calidad": opc("auto", ["auto", "0", "1", "2"]), "graficos.ahorro": bool(false),
-      "vista.exag": num(1, 1, 3, 0.25), "vista.corr": num(1, 0, 1.5, 0.25), "vista.brujula": bool(true), "vista.personal": bool(true), "vista.unidades": opc("ha", ["ha", "m2"]), "vista.altura": opc("pie", ["pie", "sentado"]),
+      "vista.exag": num(1, 1, 3, 0.25), "vista.corr": num(1, 0, 1.5, 0.25), "vista.brujula": bool(true), "vista.personal": bool(true), "vista.suelo": bool(false), "vista.unidades": opc("ha", ["ha", "m2"]), "vista.altura": opc("pie", ["pie", "sentado"]),
       "controles.tactil": opc("auto", ["auto", "si", "no"]), "controles.mano": opc("diestra", ["diestra", "zurda"]), "controles.sens": num(1, 0.4, 2, 0.2), "controles.invertir": bool(false), "controles.palanca": bool(true),
       "vr.giro": opc("30", ["15", "30", "45", "60"]), "vr.vineta": opc("suave", ["suave", "fuerte", "no"]), "vr.vuelo": bool(false),
       "acc.texto": num(100, 100, 200, 25), "acc.contraste": bool(false), "acc.movimiento": opc("sistema", ["sistema", "reducido", "normal"]),
@@ -142,6 +142,7 @@
         { k: "vista.corr", t: "Corrección de la ortofoto", fmt: function (v) { return fmt(v, v % 1 ? 2 : 0) + "×"; }, nota: "Ajuste medido en la finca (las copas se ven desplazadas al este según su altura); no es una ortorrectificación." },
         { k: "vista.brujula", t: "Mostrar la brújula" },
         { k: "vista.personal", t: "Mostrar hora, tu haza, hablar y volver" },
+        { k: "vista.suelo", t: "Suelo con texturas de la finca", nota: "Hojarasca, compost, ruedo, camino y piedras de cerca, sacados de fotos de la finca; el color sigue siendo el de la ortofoto. Se aplica al recargar la página. En las gafas sigue apagado hasta medirlo." },
         { k: "vista.unidades", t: "Superficie en", ops: [["ha", "hectáreas"], ["m2", "metros cuadrados"]] },
         { k: "vista.altura", t: "Altura de la vista", ops: [["pie", "De pie (ojos a 1,62 m)"], ["sentado", "Sentado (ojos a 1,20 m)"]], nota: "Al pasear y en las gafas VR. No depende de tu avatar. En las gafas se suma a la altura que dé el visor: si juegas sentado y el visor ya sabe dónde está el suelo, déjalo en «De pie»." } ] },
       { id: "controles", t: "Controles", campos: [
