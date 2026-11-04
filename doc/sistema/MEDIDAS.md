@@ -539,6 +539,7 @@ Página de humo F2b (`prototipos/multiview/`, escena sintética, sin datos de la
 | `render()` mediana / p95 / peor | 1,1 / 1,3 / 2,1 ms | 2,0 / 2,7 / 4,3 ms |
 | Fotograma mediana / p95 / p99 / peor | 13,9 / 14,3 / 14,5 / 27,0 ms | 13,9 / 14,5 / 14,9 / 16,5 ms |
 
+- **Referencia, three 0.186.1 clásico** (`?modo=clasico`, mismo caso): 402 llamadas, `render()` 2,0 / 2,6 / 3,8 ms, fotograma 13,9 / 14,5 / 14,9 / 26,7 ms: **igual que super-three sin multiview**; super-three no cuesta nada frente al three de hoy y toda la diferencia es el multiview.
 - **El Quest Browser 154 ofrece el multiview sin banderas** (`OVR_multiview2` y `OCULUS_multiview`, con MSAA; `MAX_VIEWS_OVR` 6): queda descartado el criterio de abandono de F2.
 - **El multiview hace lo que promete**: la mitad de llamadas y −45 % (mediana) / −52 % (p95) de `render()`; se cumple el criterio del 30 % de F2.
 - **El p95 del fotograma casi no cambia** (−0,2 ms): la escena es ligera y va al vsync en los dos casos; el criterio de 1 ms queda «ambiguo» y, según el plan, se repite con la escena real (la build de VR del gemelo con `?xrmv=0|1`).
