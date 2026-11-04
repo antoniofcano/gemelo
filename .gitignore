@@ -44,6 +44,7 @@ graphify-out/
 # cliente web (Vite): entrada generada y build
 apps/web/.generado/
 apps/web/dist/
+apps/web/dist-vr/
 apps/web/dist-portada/
 apps/web/dist-oficina/
 

@@ -114,7 +114,7 @@ test("cableado: 29_vr usa XrPerillas en un solo sitio, 03_escena el MSAA, y el i
   assert.match(mide, /perillas: modoIni === "VR" \? XrPerillas\.linea\(\)/); assert.match(mide, /r\.perillas/);
   // las banderas xr* solo se leen en 02f
   const otros = require("fs").readdirSync(require("path").join(__dirname, "..", "..", "apps/web/motor")).filter(f => f.endsWith(".js") && f !== "02f_xr_perillas.js");
-  for (const f of otros) assert.doesNotMatch(lee("apps/web/motor/" + f), /xr(fov|escala|hz|aa|nivel|near|js)=/, f + " no debe leer las perillas por su cuenta");
+  for (const f of otros) assert.doesNotMatch(lee("apps/web/motor/" + f), /xr(fov|escala|hz|aa|nivel|near|js|mv)=/, f + " no debe leer las perillas por su cuenta");
 });
 
 // ---------- AG-2.3: near de 0,1 en VR y umbral de JS del controlador adaptativo
@@ -171,4 +171,51 @@ test("29_vr: near efectivo al entrar y restaurado al salir; el controlador baja 
   assert.doesNotMatch(vr, /camera\.near = 0\.3/);
   assert.match(vr, /Config\.param\("escalera\.vrJsMs", XrPerillas\.defJs\)/);
   assert.match(vr, /xr: \{ near: XrPerillas\.efectivas\.near, topeJs: XrPerillas\.js\(\)/);
+});
+
+// ---------- F2a (doc/sistema/MULTIVIEW.md): ?xrmv=0|1, el multiview de super-three, SOLO en la build de VR (defecto 1); en la de pantalla no existe
+test("xrmv: en la build de VR, por defecto sí, 0 lo apaga, 1 lo pide y otro valor se ignora con motivo; en la de pantalla no existe y se dice", () => {
+  assert.deepStrictEqual(P.multiview("", "vr"), { existe: true, activo: true, pedido: null, ignorado: null });
+  assert.deepStrictEqual(P.multiview("?debug&xrmv=0", "vr"), { existe: true, activo: false, pedido: "0", ignorado: null });
+  assert.deepStrictEqual(P.multiview("?xrmv=1&mide=60", "vr"), { existe: true, activo: true, pedido: "1", ignorado: null });
+  const raro = P.multiview("?xrmv=si", "vr"); assert.strictEqual(raro.activo, true, "un valor raro deja el de siempre"); assert.match(raro.ignorado.motivo, /solo vale 0 o 1/);
+  assert.deepStrictEqual(P.multiview("", "pantalla"), { existe: false, activo: false, pedido: null, ignorado: null });
+  const pa = P.multiview("?xrmv=1", "pantalla"); assert.strictEqual(pa.activo, false); assert.match(pa.ignorado.motivo, /solo existe en la build de VR/);
+  assert.strictEqual(P.multiview("?xrmv=1", undefined).activo, false, "sin build conocida, pantalla");
+  // la línea: en pantalla, la de siempre (sin «multiview»); en VR, pedido / en uso / no en uso / apagado
+  const pl = P.plan(P.lee("", QUEST), QUEST);
+  assert.strictEqual(P.linea(Object.assign({}, pl, { mv: P.multiview("", "pantalla") })), "VR: fov 1 · escala 0,9 · 72 Hz · MSAA sí · nivel auto · near 0,1 · umbral JS 8 ms");
+  assert.strictEqual(P.linea(Object.assign({}, pl, { mv: P.multiview("", "vr") })), "VR: fov 1 · escala 0,9 · 72 Hz · MSAA sí · multiview pedido · nivel auto · near 0,1 · umbral JS 8 ms");
+  assert.match(P.linea(Object.assign({}, pl, { mv: Object.assign(P.multiview("", "vr"), { enUso: true }) })), /MSAA sí · multiview sí · nivel/);
+  assert.match(P.linea(Object.assign({}, pl, { mv: Object.assign(P.multiview("", "vr"), { enUso: false }) })), /multiview pedido, no en uso/);
+  assert.match(P.linea(Object.assign({}, pl, { mv: P.multiview("?xrmv=0", "vr") })), /multiview no \(xrmv=0\)/);
+});
+
+test("motor: XrPerillas.multiview(build) se decide una vez; mvEnUso lee renderer.xr.isMultiview; la línea lo dice y anota lo ignorado", () => {
+  const V = estado("?xrmv=1");
+  assert.strictEqual(V.mv, null, "sin llamar, nada");
+  assert.strictEqual(V.multiview("vr").activo, true); assert.strictEqual(V.multiview("pantalla").existe, true, "se decide una vez (la primera, la de 03_escena)");
+  V.despues({ renderState: {} }); V.mvEnUso({ xr: { isMultiview: true } });
+  assert.match(V.linea(), /MSAA sí · multiview sí · nivel auto/);
+  V.mvEnUso({ xr: {} }); assert.match(V.linea(), /multiview pedido, no en uso/, "three de pantalla o sin capa: no en uso");
+  const A = estado("?xrmv=0"); A.multiview("vr"); assert.match(A.linea(), /multiview no \(xrmv=0\)/);
+  const S = estado("?xrmv=1"); S.multiview("pantalla"); S.mvEnUso({ xr: { isMultiview: true } });
+  assert.doesNotMatch(S.linea(), /multiview (sí|pedido|no)/, "en la build de pantalla la línea no habla del multiview");
+  assert.match(S.linea(), /ignorado: xrmv=1 \(solo existe en la build de VR/);
+  assert.strictEqual(estado("").linea(), "VR: fov 1 · escala 0,9 · 72 Hz · MSAA sí · nivel auto · near 0,1 · umbral JS 8 ms", "sin multiview() la línea es la de siempre");
+});
+
+test("cableado F2a: 03_escena pide multiviewStereo solo si XrPerillas.multiview(Render.build) lo activa; 29_vr pide «layers» solo entonces y apunta si está en uso; la sonda lo dice", () => {
+  const e = lee("apps/web/motor/03_escena.js");
+  assert.match(e, /MV = XrPerillas\.multiview\(Render\.build\)/);
+  assert.match(e, /if \(MV\.activo\) opcionesRd\.multiviewStereo = true;/);
+  assert.match(e, /var opcionesRd = \{ canvas: lienzo, antialias: XrPerillas\.aa \}/, "en pantalla, el renderer con las MISMAS opciones de siempre");
+  assert.match(e, /new THREE\.WebGLRenderer\(opcionesRd\)/);
+  assert.strictEqual((e.match(/new THREE\.WebGLRenderer\(/g) || []).length, 1, "un solo renderer");
+  const vr = lee("apps/web/motor/29_vr.js");
+  assert.match(vr, /\["local-floor", "bounded-floor", "hand-tracking"\]\.concat\(XrPerillas\.mv && XrPerillas\.mv\.activo \? \["layers"\] : \[\]\)/);
+  assert.ok(vr.indexOf("XrPerillas.mvEnUso(renderer)") > vr.indexOf("await renderer.xr.setSession(ses)"), "en uso se mira con la sesión ya puesta");
+  assert.match(vr, /mv: XrPerillas\.mv \?/, "window.__vrDebug().xr.mv");
+  const mide = lee("apps/web/motor/30_mide.js");
+  assert.match(mide, /"build vr · pedido "/); assert.match(mide, /en uso " \+ \(renderer\.xr && renderer\.xr\.isMultiview/);
 });

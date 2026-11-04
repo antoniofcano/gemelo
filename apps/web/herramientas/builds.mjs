@@ -1,9 +1,11 @@
-// Las dos builds del mismo motor (ADR-0031, decisión de Antonio del 2026-11-04; doc/sistema/MULTIVIEW.md «Dos builds»). PREPARADA, NO ACTIVADA:
+// Las dos builds del mismo motor (ADR-0031, decisión de Antonio del 2026-11-04; doc/sistema/MULTIVIEW.md «Dos builds»). La de VR construye (F2a) y aún
+// no se publica ni la elige la página (F2c):
 //   · «pantalla» (por defecto, la de siempre): three (apps/web/package.json, hoy 0.186.1) → apps/web/dist/. Escritorio y móvil; más adelante, el
 //     WebGPURenderer + TSL material a material (F4).
 //   · «vr» (GEMELO_BUILD=vr): el alias «three» apunta a super-three (la variante MIT de three que mantiene A-Frame, 0.185.0: multiview en el
 //     WebGLRenderer clásico, `multiviewStereo`, y conserva onBeforeCompile) → apps/web/dist-vr/. Solo para el Quest, y solo si la prueba de humo F2 lo
-//     justifica. super-three NO está instalado: para F2, `cd apps/web && npm i -E super-three@0.185.0` (o GEMELO_SUPER_THREE=<carpeta del paquete>).
+//     justifica. super-three va en apps/web/package.json con versión exacta (F2a; GEMELO_SUPER_THREE=<carpeta del paquete> para probar otra).
+//     El multiview lo pide el motor (03_escena, perilla xrmv de 02f_xr_perillas); este fichero solo cambia el three.
 // No pueden convivir dos three en la misma página (clases distintas: instanceof falla): todo lo que importa «three» o «three/…» (el motor,
 // 3d-tiles-renderer, three-vrm, three-mesh-bvh, gemelo-olivo) se resuelve a la MISMA carpeta. La página elige la build al cargar: eligeBuild().
 import fs from "node:fs";
