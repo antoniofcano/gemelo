@@ -497,7 +497,7 @@
     teclas.up = teclas.down = teclas.left = teclas.right = false;
     actualizaPaseo(dt); primera = true; persona.visible = false;
     vrAplicaRig();
-    VrPresupuesto.mueve(nx, nz);   // Q0c-a (02g): recorta por distancia solo al pasar del umbral; sin reservas
+    VrPresupuesto.mueve(nx, nz);   // Q0c-a (02g): recorta por distancia solo tras moverse 15-75 m; sin reservas
     // viñeta de confort mientras te mueves
     vrVineta.visible = VRX.vineta; vrVineta.material.uniforms.uK.value += ((mueve ? 0.55 : 0) - vrVineta.material.uniforms.uK.value) * Math.min(1, dt * 8);
     // láminas

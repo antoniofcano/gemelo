@@ -55,7 +55,7 @@
   }
   Componentes.registra({
     id: "marcadores-lidar", version: 1,
-    consume: ["scene", "colorCss", "cIn", "marc", "copas", "suelo", "exag", "listo"],
+    consume: ["scene", "colorCss", "cIn", "marc", "copas", "suelo", "exag", "listo", "VrPresupuesto"],
     expone: [],
     eventos: { escucha: ["mundo:aplica", "capas:cambia"], emite: [] },
     bandera: { defecto: true, url: "marcadores" },

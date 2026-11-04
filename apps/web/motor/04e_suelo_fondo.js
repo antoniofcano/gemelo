@@ -60,7 +60,7 @@
   }
   Componentes.registra({
     id: "suelo-fondo", version: 1,
-    consume: ["D", "Mundo", "UN", "matSuelo", "Escena3D", "scene", "exag"],
+    consume: ["D", "Mundo", "UN", "matSuelo", "Escena3D", "scene", "exag", "VrPresupuesto", "VrPresupuestoPuro"],
     expone: [],
     eventos: { escucha: [], emite: [] },
     bandera: { defecto: true, url: "fondo" },
