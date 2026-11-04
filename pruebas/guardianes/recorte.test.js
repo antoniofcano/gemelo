@@ -229,6 +229,56 @@ test("02e_entidades y 29_vr: el anillo de resaltado y las láminas VR se recorta
   const a = new THREE.Mesh(new THREE.RingGeometry(0.86, 1, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial()); a.position.set(-40, 120, 33); a.scale.setScalar(2.4); primerFotograma(a); contiene(a, "anillo");
 });
 
+// ---------------------------------------------------------------- 38_presencia_compartida (AG-1.3b): los avatares instanciados se recortan con una esfera rehecha cada fotograma
+function esferaInstDe() {
+  const F = lee("apps/web/motor/38_presencia_compartida.js"), T = trozo(F, "    var esS = null, esM = null;", "    // las cajas y ruedas de a según");
+  return new Function("THREE", "\"use strict\";\n" + T + "\nreturn esferaInst;")(THREE);
+}
+/** los vértices en el mundo de las instancias vivas (no a escala 0): lo que de verdad se dibuja */
+function puntosVivos(im) {
+  im.updateWorldMatrix(true, false);
+  const pos = im.geometry.attributes.position, v = new THREE.Vector3(), mi = new THREE.Matrix4(), out = [];
+  for (let k = 0; k < im.count; k++) {
+    im.getMatrixAt(k, mi); if (!(mi.getMaxScaleOnAxis() > 0)) continue;
+    for (let i = 0; i < pos.count; i++) out.push(v.fromBufferAttribute(pos, i).clone().applyMatrix4(mi).applyMatrix4(im.matrixWorld));
+  }
+  return out;
+}
+function dentro(im, que) {
+  const s = im.boundingSphere.clone().applyMatrix4(im.matrixWorld), ps = puntosVivos(im), tol = 1e-4 * (1 + s.radius);
+  assert.ok(ps.length > 0, que + ": nada vivo");
+  let peor = -Infinity; for (const p of ps) peor = Math.max(peor, p.distanceTo(s.center) - s.radius);
+  assert.ok(peor <= tol, que + ": un vértice queda " + peor.toFixed(3) + " m fuera de la esfera (radio " + s.radius.toFixed(2) + ")");
+}
+test("38_presencia: los avatares (cuerpo, cabeza, nombre, vehículos) se recortan; su esfera los contiene tras colocarlos y tras moverlos, y las ocultas (escala 0) no la ensanchan", () => {
+  const F = sinComentarios(lee("apps/web/motor/38_presencia_compartida.js")), A = trozo(F, "    function actualiza(dt) {", "    function cierraVentana()");
+  assert.ok(!/frustumCulled\s*=\s*false/.test(F), "38: ya no hay frustumCulled = false");
+  assert.ok(A.indexOf("esferaInst(mallasInst[i])") > A.indexOf("coloca(V[i]"), "38: actualiza rehace la esfera después de colocar los avatares");
+  assert.ok(/esferaInst\(mQuad\)/.test(A) && /esferaInst\(mDron\)/.test(A), "38: también las del quad y el dron");
+  const esferaInst = esferaInstDe(), geos = [new THREE.BoxGeometry(1, 1, 1).translate(0, -0.5, 0), new THREE.IcosahedronGeometry(0.135, 0), new THREE.PlaneGeometry(1.6, 0.3)];
+  for (const g of geos) {
+    const im = new THREE.InstancedMesh(g, new THREE.MeshBasicMaterial(), 12);
+    primerFotograma(im);   // three la calcula una vez, con las matrices de identidad de antes de colocar nada (el caso malo)
+    const m = new THREE.Matrix4(), cero = new THREE.Matrix4().makeScale(0, 0, 0);
+    for (const vuelta of [0, 1]) {   // colocados y, después, movidos
+      for (let k = 0; k < 12; k++) {
+        if (k % 4 === 3) im.setMatrixAt(k, cero);   // oculta: sin pose
+        else im.setMatrixAt(k, m.compose(new THREE.Vector3(2000 + 900 * k + 500 * vuelta, 80 + 3 * k, -3000 + 400 * vuelta * k), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, k, 0)), new THREE.Vector3(0.3 + 0.1 * k, 0.5 + 0.2 * (k % 3), 1)));
+      }
+      esferaInst(im); im.position.set(10, 0, -5); im.updateMatrixWorld(true);
+      dentro(im, g.type + " vuelta " + vuelta);
+      assert.ok(im.boundingSphere.radius < 12000, g.type + ": la esfera no llega hasta el origen por las ocultas");
+    }
+  }
+  const vacia = new THREE.InstancedMesh(geos[1], new THREE.MeshBasicMaterial(), 4); vacia.count = 0; esferaInst(vacia);   // nadie: una esfera de un punto, sin NaN
+  assert.strictEqual(vacia.boundingSphere.radius, 0); assert.ok(Number.isFinite(vacia.boundingSphere.center.x));
+});
+test("38_presencia: con la esfera de three sin rehacer (calculada una vez antes de colocar) los avatares quedarían fuera de ella: la prueba de arriba muerde", () => {
+  const im = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial(), 4); primerFotograma(im);
+  for (let k = 0; k < 4; k++) im.setMatrixAt(k, new THREE.Matrix4().makeTranslation(3000 + k * 500, 80, -2000));
+  assert.throws(() => dentro(im, "sin rehacer"), /fuera de la esfera/);
+});
+
 // ---------------------------------------------------------------- el inventario de los frustumCulled = false que quedan
 // Cada uno, con su motivo. La clase C (MEJORAS-TECNICAS, AG-1.3): su esfera abarca la finca o la cabeza (la cámara está dentro y three la daría siempre por visible:
 // recortar no ahorra nada) o se mueve cada fotograma. «tanda 2»: pendientes de otra tanda con sus pruebas de bandera. Un `frustumCulled = false` nuevo, o más de
@@ -244,9 +294,8 @@ const SIN_RECORTE = {
   "16b_fauna.js": [1, "las aves: se mueven cada fotograma; vacías no se dibujan"],
   "21_suelo.js": [3, "matas, piedras y contornos: instancias alrededor de quien mira, rehechas al moverse"],
   "22b_huellas_polvo.js": [2, "huellas y polvo alrededor de quien pasea, escritas sueltas en un anillo; sin nada vivo no se dibujan (visible)"],
-  "26b_avatares.js": [1, "mallas con esqueleto: su volumen es el de reposo (tanda 2)"],
-  "29_vr.js": [4, "el arco y la línea del teletransporte (se reescriben cada fotograma), y el fundido a negro y la viñeta, pegados a la cámara"],
-  "38_presencia_compartida.js": [2, "los muñecos de la presencia: se mueven cada fotograma (tanda 2)"]
+  "26b_avatares.js": [1, "mallas con esqueleto (VRM): three calcula su volumen una vez, con la pose de reposo, y los huesos se animan cada fotograma; rehacerlo por avatar costaría más de lo que ahorra (AG-1.3b: se queda)"],
+  "29_vr.js": [4, "el arco y la línea del teletransporte (se reescriben cada fotograma), y el fundido a negro y la viñeta, pegados a la cámara"]
 };
 test("inventario: los frustumCulled = false que quedan en el motor son los anotados, cada uno con su motivo", () => {
   const dir = path.join(RAIZ, "apps/web/motor"), hay = {};

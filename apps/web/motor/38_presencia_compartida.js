@@ -3,7 +3,7 @@
 // Consume: 01_datos (D, $), 01a_aparato (Aparato), 02_mundo (suelo), 02c_componentes (Bus, ConfigPuro, Componentes), 02e_entidades (Entidades),
 //   03_escena (visor, renderer, scene, camera, texColor, exag, modo), 06_arboles (tronco), 09_camara (objetivo, suelta, elige),
 //   12_paseo (paseando, persona, primera), 12b_llegada (Llegada), 14_historia (lista, aviso), 15_tiempo (rumbo, hace),
-//   16_vida (enQuad, quita, mira, quad, enDron, dron),
+//   16_vida (enQuad, esfera, quita, mira, quad, enDron, dron),
 //   26_presencia (PoseCodec, BufferPose, Aspecto, SalaPose, Chat, Muneco, Encuentro, AutoPresencia, sitioJunto),
 //   29_vr (VRX, vrFundido, panel, ficha), 33_ajustes (Ajustes), 34_movibles (Movibles)
 // Nota: Componente «presencia-compartida» (ADR-0023, C5): solo se registra; consume la red (sala «visita») y expone «Presencia» (para los avatares VRM). Sin ?presencia=sim o ?presencia=red, montado no crea nada; con red, el panel Gente y el chat; F3f: viaja a la sala de una visita guiada (Presencia.entraGuiada, token de F3c) y vuelve sola a la general si la sala se cierra o te sacan. Registra el tipo persona en Entidades (C7) y da su línea de ?debug por «depura:lineas». Publica window.__presencia y window.__presenciaChat (pruebas). Lo prueba en Node pruebas/guardianes/red.test.js.
@@ -50,6 +50,21 @@
         toma: function (n) { var r = []; for (var i = 0; i < cap && r.length < n; i++) if (!oc[i]) { oc[i] = true; r.push(i); } fija(); return r; },
         suelta: function (r) { for (var i = 0; i < r.length; i++) { oc[r[i]] = false; malla.setMatrixAt(r[i], m4.makeScale(0, 0, 0)); } malla.instanceMatrix.needsUpdate = true; fija(); }
       };
+    }
+    // AG-1.3b: la esfera envolvente de una malla instanciada, rehecha cada fotograma DESPUÉS de escribir sus matrices (three solo la calcula una vez, cuando vale null: con count 0
+    // o con todo a escala 0 quedaría vacía o mal puesta para siempre). Las instancias a escala 0 (ocultas, sin pose) no cuentan: en three su centro sería el origen del mundo y abrirían la esfera hasta allí
+    var esS = null, esM = null;
+    function esferaInst(m) {
+      var g = m.geometry, b = m.boundingSphere, i, sc;
+      if (!esS) { esS = new THREE.Sphere(); esM = new THREE.Matrix4(); }
+      if (!g.boundingSphere) g.computeBoundingSphere();
+      if (!b) b = m.boundingSphere = new THREE.Sphere();
+      b.makeEmpty();
+      for (i = 0; i < m.count; i++) {
+        m.getMatrixAt(i, esM); sc = esM.getMaxScaleOnAxis(); if (!(sc > 0)) continue;
+        esS.copy(g.boundingSphere).applyMatrix4(esM); if (b.isEmpty()) b.copy(esS); else b.union(esS);
+      }
+      if (b.isEmpty()) b.radius = 0;   // nada que dibujar: una esfera de un punto
     }
     // las cajas y ruedas de a según su sombrero y su apoyo; a.iSom = la caja del sombrero (o −1) y a.iApoyo = la primera del apoyo en a.cajas
     // OF10: la oficina pide una caja más, la última, para su insignia (a.iIns; −1 si no es oficina o si la reserva se quedó corta)
@@ -99,7 +114,7 @@
       mats.push(matN);
       mNombres = new THREE.InstancedMesh(gNom, matN, nCuerpos); mNombres.renderOrder = 5;
       mallasInst = [mCuerpo, mCabeza, mSombrero, mManos, mNombres, mRuedas];   // las que se marcan cada fotograma, ya en su lista (AG-1.4)
-      mallasInst.forEach(function (m) { m.frustumCulled = false; m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); grupo.add(m); });   // se mueven cada fotograma: el volumen envolvente de una InstancedMesh se calcula una vez (r151)
+      mallasInst.forEach(function (m) { m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); grupo.add(m); });   // se recortan: su esfera se rehace cada fotograma con esferaInst (AG-1.3b)
       vEsc = new THREE.Vector3(DRON_ESC, DRON_ESC, DRON_ESC);
       cargaVehiculos(nCuerpos);
     }
@@ -131,7 +146,7 @@
       var mat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }), im = new THREE.InstancedMesh(geo, mat, n);
       geos.push(geo); mats.push(mat);
       for (var i = 0; i < n; i++) im.setMatrixAt(i, m4.makeScale(0, 0, 0));
-      im.frustumCulled = false; im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); im.visible = false; grupo.add(im);
+      im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); im.visible = false; grupo.add(im);
       return im;
     }
     function pintaNombre(k, alias, oficial) {   // la celda k del atlas; vacía si no hay alias. OF10: la oficina, «◆ Oficina» sobre verde oliva (su insignia, también de lejos)
@@ -720,8 +735,9 @@
         est.cerca = nc;
       }
       if (vrmG) vrmG.actualiza(dt);
-      for (i = 0; i < mallasInst.length; i++) mallasInst[i].instanceMatrix.needsUpdate = true;
-      if (mQuad) { mQuad.visible = nVehQ > 0; mQuad.instanceMatrix.needsUpdate = true; } if (mDron) { mDron.visible = nVehD > 0; mDron.instanceMatrix.needsUpdate = true; }
+      for (i = 0; i < mallasInst.length; i++) { mallasInst[i].instanceMatrix.needsUpdate = true; esferaInst(mallasInst[i]); }   // AG-1.3b: la esfera, con las matrices ya escritas
+      if (mQuad) { mQuad.visible = nVehQ > 0; mQuad.instanceMatrix.needsUpdate = true; if (nVehQ > 0) esferaInst(mQuad); }
+      if (mDron) { mDron.visible = nVehD > 0; mDron.instanceMatrix.needsUpdate = true; if (nVehD > 0) esferaInst(mDron); }
       est.quad = nVehQ; est.dron = nVehD;
       var ms = performance.now() - t0; msVentana = Math.max(msVentana, ms); est.ms = est.ms ? est.ms * 0.95 + ms * 0.05 : ms;
       tEst += dt;
