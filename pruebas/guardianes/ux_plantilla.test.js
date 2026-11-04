@@ -98,3 +98,23 @@ test("genera_motor.mjs sigue cambiando los textos de la finca en la plantilla nu
   assert.match(out, /id="historia" data-sin/);
   assert.match(css, /#historia\[data-sin\] \{ display: none !important; \}/, "plantilla.css oculta la historia de las fincas que no la tienen");
 });
+
+test("accesibilidad: todo <input>, <select> y <textarea> lleva id o name (DevTools: «A form field element should have an id or name attribute»; afecta al autorrelleno y a los lectores de pantalla)", () => {
+  const fs = require("node:fs"), dir = path.join(RAIZ, "apps", "web", "motor");
+  const sin = [];
+  for (const m of PL.matchAll(/<(input|select|textarea)\b[^>]*>/gi)) if (!/\b(id|name)\s*=/.test(m[0])) sin.push("plantilla.html: " + m[0].slice(0, 80));
+  // los campos que crea el motor: la sentencia (la línea y las 3 siguientes) debe poner id o name. 39_oficina_mundo.js lo arregla otro encargo: pendiente anotado
+  const PENDIENTES = ["39_oficina_mundo.js"];
+  for (const f of fs.readdirSync(dir).filter(x => x.endsWith(".js") && !PENDIENTES.includes(x))) {
+    const texto = fs.readFileSync(path.join(dir, f), "utf8"), l = texto.split("\n");
+    l.forEach((t, i) => {
+      if (!/(createElement|\bel)\(\s*["'](input|select|textarea)["']/.test(t)) return;
+      const ventana = l.slice(i, i + 4).join("\n");
+      if (!/\.(id|name)\s*=|\b(id|name)\s*:|setAttribute\(\s*["'](id|name)["']/.test(ventana)) sin.push(f + ":" + (i + 1));
+    });
+    for (const m of texto.matchAll(/<(input|select|textarea)\b[^>]*>/gi)) if (!/\b(id|name)\s*=/.test(m[0])) sin.push(f + ": HTML " + m[0].slice(0, 60));
+  }
+  assert.deepStrictEqual(sin, [], "campos de formulario sin id ni name (añade uno único y estable): " + sin.join(" | "));
+  const vistos = new Set(), rep = IDS.filter(i => vistos.has(i) || !vistos.add(i));
+  assert.deepStrictEqual(rep, [], "ids repetidos en plantilla.html");
+});
