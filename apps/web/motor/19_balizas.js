@@ -25,7 +25,7 @@
     g.userData = { k: k, mat: mat, col: col, rombo: rombo, anillo: anillo, estado: "nada", visita: false };
     gBal.add(g); return g;
   });
-  var balCerca = -1, balVisitas = 0, balSig = "", balCerrada = -1, balForzada = -1;   // cerrada: la × la quitó hasta alejarse; forzada: abierta al tocarla
+  var balCerca = -1, balVisitas = 0, balCerrada = -1, balForzada = -1, balSigOk = false, balSigF, balSigI = false, balSigV = "";   // cerrada: la × la quitó hasta alejarse; forzada: abierta al tocarla
   function nombreParcelaIA(x) { return String(x || "").toLowerCase(); }
   function vigiaMarca(pr) {
     var v = VIVO && VIVO.vigia; if (!v) return null; var m = nombreParcelaIA(pr.nombre);
@@ -177,10 +177,16 @@
     });
   }
   var tBal = 0, ultFicha = -2;
+  // ¿cambió de dónde vienen los datos de las balizas (la fecha de la consulta, si son los de fábrica o los vivos, cuántos avisos de Vigía)? Antes se construía una cadena
+  // «fecha|i/v|n» cada fotograma y se comparaba; ahora se comparan los tres campos, sin cadenas (AG-1.4c). Recuerda lo último visto; el primer fotograma siempre cambia.
+  function firmaCambia() {
+    var f = OT && OT.fecha_consulta, i = OT === D.ot, v = VIVO ? (VIVO.vigia ? VIVO.vigia.length : "x") : "n";
+    if (balSigOk && f === balSigF && i === balSigI && v === balSigV) return false;
+    balSigOk = true; balSigF = f; balSigI = i; balSigV = v; return true;
+  }
   function actualizaBalizas(dt) {
     uBaliza.uT.value = tVida; tBal += dt;
-    var firma = (OT && OT.fecha_consulta) + "|" + (OT === D.ot ? "i" : "v") + "|" + (VIVO ? (VIVO.vigia ? VIVO.vigia.length : "x") : "n");
-    if (firma !== balSig) { balSig = firma; refrescaBalizas(); ultFicha = -2; }
+    if (firmaCambia()) { refrescaBalizas(); ultFicha = -2; }
     BAL.forEach(function (g, i) {
       var u = g.userData; u.rombo.rotation.y += dt * 1.4; u.rombo.position.y = 27.5 + Math.sin(tVida * 1.8 + i) * 0.5;
       u.anillo.scale.setScalar(1 + 0.12 * Math.sin(tVida * 3 + i * 2)); g.visible = true;

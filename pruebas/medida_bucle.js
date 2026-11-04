@@ -69,6 +69,18 @@ function compara(titulo, n, hazAntes, hazAhora) {
     compara("5a actualizaPerros + 3 preguntas de amenaza", 4000, mk("pruebas/guardianes/referencias/25_perros_antes.js"), mk("apps/web/motor/25_perros.js"));
   }
 
+  // ---- 5b · el rastro del minimapa: caminar sin parar (el rastro lleno, 240 puntos)  ·  5c · la firma de las balizas
+  {
+    const A = function (mini, pp) { var u = mini.rastro[mini.rastro.length - 1]; if (u && Math.hypot(u[0] - pp.x, u[1] - pp.y) > 25) mini.rastro.length = 0; if (!u || Math.hypot(u[0] - pp.x, u[1] - pp.y) > 2.5) { mini.rastro.push([pp.x, pp.y]); if (mini.rastro.length > 240) mini.rastro.shift(); } };
+    const nuevo = new Function("mini", "pp", R.cuerpo(lee("apps/web/motor/17_minimapa.js"), "function actualizaRastro(") && lee("apps/web/motor/17_minimapa.js").slice(lee("apps/web/motor/17_minimapa.js").indexOf("function actualizaRastro("), lee("apps/web/motor/17_minimapa.js").indexOf("  function actualizaMinimapa(")) + "\nreturn actualizaRastro;");
+    const mk = (f) => () => { const mini = { rastro: [] }, pp = { x: 0, y: 0 }, paso = f === A ? () => A(mini, pp) : nuevo(mini, pp); return (i) => { pp.x += Math.cos(i * 0.001) * 2.6; pp.y += Math.sin(i * 0.001) * 2.6; paso(); }; };
+    compara("5b rastro del minimapa (andando)", 200000, mk(A), mk(nuevo));
+    const OT = { fecha_consulta: "2026-11-03" }, Dd = { ot: OT }, VIVO = { vigia: [1, 2, 3] };
+    const antes = () => { let balSig = ""; return () => { var firma = (OT && OT.fecha_consulta) + "|" + (OT === Dd.ot ? "i" : "v") + "|" + (VIVO ? (VIVO.vigia ? VIVO.vigia.length : "x") : "n"); if (firma !== balSig) { balSig = firma; return 1; } return 0; }; };
+    const ahora = () => { let ok = false, bf, bi = false, bv = ""; return () => { var f = OT && OT.fecha_consulta, i = OT === Dd.ot, v = VIVO ? (VIVO.vigia ? VIVO.vigia.length : "x") : "n"; if (ok && f === bf && i === bi && v === bv) return 0; ok = true; bf = f; bi = i; bv = v; return 1; }; };
+    compara("5c firma de las balizas", 500000, antes, ahora);
+  }
+
   // ---- 3 · el nivel del sol que piden paisaje, sonido y huellas cada fotograma (3 llamadas con el mismo ms): nivel(ms).d contra nivelEn(ms, temporal).d
   {
     const N = new Function('"use strict"; var LAT = 37.73, LON = -4.006;\n' + F.nivelNuevo() + "\nreturn { nivel: nivel, nivelEn: nivelEn };")();

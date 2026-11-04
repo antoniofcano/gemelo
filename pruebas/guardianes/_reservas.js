@@ -68,6 +68,8 @@ function reservas(src, fn, inicio) {
 
 /** Las funciones del bucle, por módulo. «inicio» localiza la función (debe ser único en el fichero). Solo lo que corre a cada fotograma. */
 const BUCLE = {
+  "17_minimapa.js": [["actualizaRastro", "function actualizaRastro("]],
+  "19_balizas.js": [["firmaCambia", "function firmaCambia("]],
   "25_perros.js": [["amenazaEn", "function amenazaEn("], ["actualizaPerros", "function actualizaPerros("]],
   "02c_componentes.js": [["Bus.emite", "function emite(ev, datos)"]],
   "18_paisaje.js": [["distArroyo", "function distArroyo("], ["celdaArroyoDist", "function celdaArroyoDist("]],

@@ -68,13 +68,20 @@
     function pinta(c, X, Y, info) { for (var i = 0; i < capas.length; i++) { c.save(); try { capas[i].fn(c, X, Y, info); } catch (e) {} c.restore(); } }
     return { capa: capa, pinta: pinta, cuantas: function () { return capas.length; } };
   })();
+  // tu rastro: un punto cada 2,5 m, hasta 240 (AG-1.4c: sin Math.hypot —se compara el cuadrado— y sin crear un par nuevo por punto una vez lleno: se recicla el más viejo)
+  function actualizaRastro() {
+    var r = mini.rastro, u = r[r.length - 1], dx = u ? u[0] - pp.x : 0, dy = u ? u[1] - pp.y : 0, d2 = dx * dx + dy * dy, q;
+    if (u && d2 > 625) r.length = 0;   // un salto (ir con alguien): el rastro empieza de nuevo, sin una raya de lado a lado
+    if (!u || d2 > 6.25) {
+      if (r.length >= 240) { q = r.shift(); q[0] = pp.x; q[1] = pp.y; } else q = [pp.x, pp.y];   // reserva-ok: solo mientras el rastro crece hasta 240 puntos
+      r.push(q);
+    }
+  }
   function actualizaMinimapa(dt) {
     var ver = paseando; mini.wrap.hidden = !ver;
     if (ver !== mini.ver) { mini.ver = ver; if (ver && mini.mov) mini.mov.coloca(); }   // al aparecer, a su sitio guardado (o el de partida), fuera de los controles
     if (!paseando) { mini.rastro.length = 0; return; }
-    var u = mini.rastro[mini.rastro.length - 1];
-    if (u && Math.hypot(u[0] - pp.x, u[1] - pp.y) > 25) mini.rastro.length = 0;   // un salto (ir con alguien): el rastro empieza de nuevo, sin una raya de lado a lado
-    if (!u || Math.hypot(u[0] - pp.x, u[1] - pp.y) > 2.5) { mini.rastro.push([pp.x, pp.y]); if (mini.rastro.length > 240) mini.rastro.shift(); }
+    actualizaRastro();
     if (mini.sel) { mini.sel.t -= dt; if (mini.sel.t <= 0) { mini.sel = null; mini.t = 1; } }
     mini.t += dt; if (mini.oculto || mini.t < 0.08) return; mini.t = 0;   // oculto: sigue el rastro, pero no se pinta
     var c = mini.ctx, k = mini.dpr, ancho = mini.cerca ? 150 : ANCHO, alto = ancho * ALTO / ANCHO, cx0 = mini.cerca ? pp.x : x0 + ANCHO / 2, cy0 = mini.cerca ? pp.y : yN - ALTO / 2;
