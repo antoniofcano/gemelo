@@ -30,6 +30,8 @@
         if (m.par >= 0) { var c = copas[m.par], g2 = suelo(c.x, c.y); seg.push(m.x, (gz + 0.5) * exag, -m.y, c.x, (g2 + 0.5) * exag, -c.y); }
       }); mMarc.instanceMatrix.needsUpdate = true;
       desfGeo.setAttribute("position", new THREE.Float32BufferAttribute(seg, 3));
+      // la esfera de recorte se calcula tras escribir las posiciones (three la calcula una sola vez, con lo que hubiera en el primer fotograma, y la exageración las mueve en y); con un vértice no finito, sin recorte
+      if (seg.every(isFinite)) desfGeo.computeBoundingSphere(); else desfGeo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), Infinity);
     }
     function ponCapas() { gCopas.visible = $("cCopas").checked; gMarc.visible = $("cMarc").checked; gDesf.visible = $("cDesf").checked; }
     n.on("mundo:aplica", coloca);
