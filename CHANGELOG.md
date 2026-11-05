@@ -276,6 +276,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 
 
 ### Corregido
+- `?fecha=AAAA-MM-DD` ya no salta al día siguiente entre las 23:00 y las 24:00 cuando el día pedido tiene otro horario (invierno ↔ verano): se corrige la hora del cambio. Lo destapó la puerta rápida pasada a medianoche; prueba con el reloj fijado.
 - VR con multiview (build de VR): el terreno y los olivos salían negros dentro de VR en el Quest 3 porque super-three 0.185.0 aplaza las subidas de texturas y nunca las ejecuta; un parche del build las sube tras el dibujo multiview (`herramientas/parche_multiview.mjs`); y, la causa principal vista con la consola del Quest, ningún material de three compilaba con multiview (parámetros GLSL llamados `viewMatrix` que el multiview convierte en array, y las `#extension` de `BatchedMesh` fuera de orden): el mismo parche los corrige. Comprobado en el Quest 3.
 - Suelo con texturas de la finca: la casilla no tenía efecto porque el montaje de las texturas entraba en la Cola con la prioridad más baja (1e9) y, al pasear, siempre había teselas, olivos o detalle por delante; ahora entra como algo a 60 m. Comprobado en Chrome (se monta y se enciende); `__g.SueloFotos.resumen()` da su estado.
 - El color de fondo del suelo cercano (`uGnd`, también sin el suelo de fotos) se leía volteado de norte a sur y, en las hojas de 128 m del tileset, a escala doble; ahora casa con la ortofoto. Comprobado en Node con una ortofoto sintética; sin ver en un navegador.

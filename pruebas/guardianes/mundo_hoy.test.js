@@ -177,4 +177,11 @@ test("el día real: la estación del olivo arranca hoy y ?fecha=AAAA-MM-DD mueve
   assert.strictEqual(fmt.format(new Date(t)), "2026-04-15");
   assert.ok(Math.abs(ahora({ search: "" }, fmt)() - Date.now()) < 1000, "sin parámetros, el reloj real");
   assert.strictEqual(ahora({ search: "?hora=2026-01-02T08:00&fecha=2026-04-15" }, fmt)(), Date.parse("2026-01-02T08:00"), "?hora= manda sobre ?fecha=");
+  // el cambio de hora: a las 23:30 de invierno (UTC+1), ?fecha= de verano (UTC+2) no salta al día siguiente, ni al revés a las 00:30 de verano
+  const conReloj = ms => { class F extends Date { constructor(...a) { a.length ? super(...a) : super(ms); } static now() { return ms; } } return F; };
+  const ahoraEn = ms => new Function("location", "fmtClaveDia", "Date", tie.slice(i, f) + "\nreturn ahoraMs;");
+  for (const [reloj, fecha] of [[Date.parse("2026-11-05T22:30:00Z"), "2026-04-15"], [Date.parse("2026-11-05T23:30:00Z"), "2026-04-15"], [Date.parse("2026-07-01T22:30:00Z"), "2026-01-10"]]) {
+    const r = ahoraEn(reloj)({ search: "?fecha=" + fecha }, fmt, conReloj(reloj))();
+    assert.strictEqual(fmt.format(new Date(r)), fecha, "con el reloj en " + new Date(reloj).toISOString() + ", ?fecha=" + fecha + " cae en su día");
+  }
 });

@@ -126,7 +126,13 @@
   function ahoraMs() {
     if (HORA_FIJA != null) return HORA_FIJA;
     if (!FECHA_FIJA) return Date.now();
-    if (desfaseFecha === null) desfaseFecha = Date.parse(FECHA_FIJA + "T12:00:00Z") - Date.parse(fmtClaveDia.format(new Date()) + "T12:00:00Z");   // días enteros: la hora sigue siendo la de ahora
+    if (desfaseFecha === null) {
+      var ya = Date.now();
+      desfaseFecha = Date.parse(FECHA_FIJA + "T12:00:00Z") - Date.parse(fmtClaveDia.format(new Date(ya)) + "T12:00:00Z");   // días enteros: la hora sigue siendo la de ahora
+      // el cambio de hora (UTC+1 ↔ UTC+2) puede sacar de ese día la última o la primera hora: se corrige de hora en hora (como mucho dos pasos)
+      for (var k = 0; k < 2 && fmtClaveDia.format(new Date(ya + desfaseFecha)) > FECHA_FIJA; k++) desfaseFecha -= 3600000;
+      for (k = 0; k < 2 && fmtClaveDia.format(new Date(ya + desfaseFecha)) < FECHA_FIJA; k++) desfaseFecha += 3600000;
+    }
     return Date.now() + desfaseFecha;
   }
   // origen: de dónde sale lo que se ve («vigia», «fixture» o «simulado»); avisos: los de la api (de Vigía o del gemelo), como datos
