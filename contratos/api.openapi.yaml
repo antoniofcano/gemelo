@@ -83,6 +83,30 @@ components:
         aceptada: { type: boolean, description: este hogar ha aceptado la versión vigente }
         version_aceptada: { oneOf: [{ type: "null" }, { type: integer, minimum: 1 }], description: la que aceptó (puede ser una vieja; entonces aceptada es falsa) }
         aceptada_en: { oneOf: [{ type: "null" }, { type: string, format: date-time }] }
+    AjusteCercania:
+      type: object
+      additionalProperties: false
+      required: [activa, cambiada_en]
+      description: "F3k-1 (decisión 210): el ajuste «Voz por cercanía» de la cuenta; sin fila, apagado (cambiada_en null)"
+      properties:
+        activa: { type: boolean }
+        cambiada_en: { oneOf: [{ type: "null" }, { type: string, format: date-time }] }
+    SuspensionCercania:
+      type: object
+      additionalProperties: false
+      required: [desde, hasta, automatica]
+      description: "F3k-1 (Mo1, provisional): la voz por cercanía suspendida; hasta null = hasta nuevo aviso (o, si es automática, hasta que la oficina la revise)"
+      properties:
+        desde: { type: string, format: date-time }
+        hasta: { oneOf: [{ type: "null" }, { type: string, format: date-time }] }
+        automatica: { type: boolean }
+    QuienCorro:
+      type: object
+      required: [prefijo, alias]
+      description: "F3k-1: un hogar visto en un corro: el prefijo opaco de sus identidades en las salas (h_<22>) y su alias (como en Gente)"
+      properties:
+        prefijo: { type: string, pattern: "^h_[A-Za-z0-9_-]{22}$" }
+        alias: { type: [string, "null"] }
     Error:
       type: object
       additionalProperties: false
@@ -1724,6 +1748,7 @@ paths:
         Contrato: contratos/voz-consentimiento.md. `aceptada` es verdadera solo si la versión que aceptó es la vigente (`version`): si el texto del aviso
         cambia, hay que volver a aceptarlo. No depende de LiveKit ni de una visita.
       security: [{ sesion: [] }]
+      parameters: [{ name: ambito, in: query, required: false, schema: { enum: [guiada, cercania] }, description: "F3k-1 (decisión 211): el aviso de qué ámbito; sin él, guiada (el de F3j)" }]
       responses:
         "200": { description: el estado, content: { application/json: { schema: { $ref: "#/components/schemas/VozConsentimiento" } } } }
         "401": { $ref: "#/components/responses/SinSesion" }
@@ -1733,29 +1758,396 @@ paths:
         El cliente dice qué versión del texto ha enseñado; si no es la vigente, 409 version_distinta (una pestaña vieja). Idempotente: aceptar la versión
         ya aceptada no escribe nada. Guarda solo la versión y el instante; nada de la voz.
       security: [{ sesion: [] }]
+      parameters: [{ name: ambito, in: query, required: false, schema: { enum: [guiada, cercania] }, description: "F3k-1 (decisión 211): el aviso de qué ámbito; sin él, guiada (el de F3j)" }]
       requestBody:
         required: true
         content:
           application/json:
-            schema: { type: object, additionalProperties: false, required: [version], properties: { version: { type: integer, minimum: 1, maximum: 32767 } } }
+            schema: { type: object, additionalProperties: false, required: [version], properties: { version: { type: integer, minimum: 1, maximum: 32767 }, adulto: { type: boolean, description: "F3k-1 (M1, decisión 208 provisional): con ambito=cercania, la declaración de mayor de edad del aviso; obligatoria (true)" } } }
       responses:
         "200": { description: aceptado; el estado nuevo, content: { application/json: { schema: { $ref: "#/components/schemas/VozConsentimiento" } } } }
         "400": { $ref: "#/components/responses/EntradaNoValida" }
         "401": { $ref: "#/components/responses/SinSesion" }
         "403": { description: sin Origin, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
-        "409": { description: "la versión no es la vigente (version_distinta; trae `version`)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "409": { description: "la versión no es la vigente (version_distinta; trae `version`); con ambito=cercania, sin `adulto: true` (falta_declaracion)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
         "429": { $ref: "#/components/responses/Limite" }
     delete:
       summary: Retirar el consentimiento de voz (F3j; auditoría voz.consentimiento_retirado)
       description: >
         Borra la fila del hogar: desde ese instante la api no le da la palabra. Si tenía la palabra o la mano levantada en alguna sala, se le quita al
-        momento (LiveKit despublica su micro). Idempotente. Sin consecuencias para el resto de la cuenta.
+        momento (LiveKit despublica su micro). Idempotente. Sin consecuencias para el resto de la cuenta. Con ambito=cercania (F3k-1): se apaga su ajuste y sale al momento de su corro.
       security: [{ sesion: [] }]
+      parameters: [{ name: ambito, in: query, required: false, schema: { enum: [guiada, cercania] }, description: "F3k-1 (decisión 211): el aviso de qué ámbito; sin él, guiada (el de F3j)" }]
       responses:
         "204": { description: retirado (o no había) }
         "401": { $ref: "#/components/responses/SinSesion" }
         "403": { description: sin Origin, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
         "429": { $ref: "#/components/responses/Limite" }
+
+  # ---------------------------------------------------------------- la voz por cercanía en corros (F3k-1; ADR-0032; presencia/corro.ts, cercania.ts, corro_rutas.ts)
+  /api/presencia/corros/estado:
+    get:
+      summary: Mi estado de la voz por cercanía (F3k-1; decisiones 205-213)
+      description: >
+        Si la hay en el servidor (`disponible`: GEMELO_VOZ_CERCANIA y el interruptor de la oficina, apagado por omisión), mi ajuste (apagado por omisión,
+        decisión 210), mi consentimiento de ámbito «cercania» (decisión 211), mi suspensión, si `puedo` hablar en corro, mi corro (miembros por prefijo de hogar
+        y alias, como en Gente) y mis invitaciones pendientes. Contratos: livekit-roles.json v8, presencia.md, voz-consentimiento.md. Sin caché.
+      security: [{ sesion: [] }]
+      responses:
+        "200":
+          description: el estado
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [disponible, ajuste, consentimiento, suspension, puedo, corro, invitaciones]
+                properties:
+                  disponible: { type: boolean }
+                  ajuste: { $ref: "#/components/schemas/AjusteCercania" }
+                  consentimiento: { $ref: "#/components/schemas/VozConsentimiento" }
+                  suspension: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/SuspensionCercania" }] }
+                  puedo: { type: boolean, description: "disponible, con el ajuste activado, el consentimiento vigente y sin suspensión" }
+                  corro:
+                    oneOf:
+                      - { type: "null" }
+                      - type: object
+                        additionalProperties: false
+                        required: [id, sala, desde, miembros]
+                        properties:
+                          id: { type: string, pattern: "^[A-Za-z0-9_-]{12}$" }
+                          sala: { type: string, pattern: "^corro-[A-Za-z0-9_-]{12}$" }
+                          desde: { type: string, format: date-time }
+                          miembros: { type: array, maxItems: 5, items: { allOf: [{ $ref: "#/components/schemas/QuienCorro" }], properties: { desde: { type: string, format: date-time }, yo: { type: boolean } } } }
+                  invitaciones:
+                    type: object
+                    additionalProperties: false
+                    required: [recibidas, enviadas]
+                    properties:
+                      recibidas: { type: array, items: { type: object, required: [id, de, caduca_en], properties: { id: { type: string }, de: { $ref: "#/components/schemas/QuienCorro" }, caduca_en: { type: string, format: date-time } } } }
+                      enviadas: { type: array, items: { type: object, required: [id, a, caduca_en], properties: { id: { type: string }, a: { $ref: "#/components/schemas/QuienCorro" }, caduca_en: { type: string, format: date-time } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: la presencia está apagada en este servidor (presencia_apagada) }
+
+  /api/presencia/corros:
+    get:
+      summary: Los corros vivos, para el icono «hablan entre ellos» de quien está fuera (F3k-1, decisión 210)
+      description: >
+        Qué hogares (por su prefijo `h_<22>`, el mismo de sus identidades en la sala libre) están juntos en cada corro. Ni alias ni nada más. Vacío si la voz por
+        cercanía no está encendida en el servidor.
+      security: [{ sesion: [] }]
+      responses:
+        "200":
+          description: los corros
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [corros]
+                properties:
+                  corros: { type: array, items: { type: object, additionalProperties: false, required: [id, prefijos], properties: { id: { type: string, pattern: "^[A-Za-z0-9_-]{12}$" }, prefijos: { type: array, minItems: 2, maxItems: 5, items: { type: string, pattern: "^h_[A-Za-z0-9_-]{22}$" } } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: la presencia está apagada en este servidor }
+
+  /api/presencia/corros/ajuste:
+    get:
+      summary: Mi ajuste «Voz por cercanía» (por cuenta, en el servidor; apagado por omisión, decisión 210)
+      security: [{ sesion: [] }]
+      responses:
+        "200": { description: el ajuste, content: { application/json: { schema: { $ref: "#/components/schemas/AjusteCercania" } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+    put:
+      summary: Activar o apagar la voz por cercanía de mi cuenta (auditoría corro.ajuste)
+      description: >
+        Activarla pide el consentimiento de ámbito «cercania» vigente (409 sin_consentimiento, con `version`): el aviso propio va antes (decisión 211).
+        Apagarla me saca al momento de mi corro y borra mis invitaciones.
+      security: [{ sesion: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, additionalProperties: false, required: [activa], properties: { activa: { type: boolean } } } } } }
+      responses:
+        "200": { description: el ajuste nuevo, content: { application/json: { schema: { $ref: "#/components/schemas/AjusteCercania" } } } }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: sin Origin, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "409": { description: "sin el aviso de la voz por cercanía aceptado (sin_consentimiento)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/presencia/corros/invitaciones:
+    post:
+      summary: Invitar a hablar a una persona de la sala libre (F3k-1; K4, decisión 205 provisional; auditoría corro.invitacion)
+      description: >
+        `identidad` es la de su conexión en la sala libre; la api la convierte en su hogar. La cercanía (menos de 8 m) la comprueba el cliente: la api no ve las
+        poses. Se invita al corro de quien invita (o a uno nuevo). La invitación vive 60 s. A quien no puede (apagada, sin aviso, suspendido, bloqueo en
+        cualquier sentido, en otro corro, dos «Ahora no» seguidos en 24 h) solo se le llama «no disponible». Límites: 5 invitaciones cada 10 min por hogar.
+      security: [{ sesion: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, additionalProperties: false, required: [identidad], properties: { identidad: { type: string, pattern: "^h_[A-Za-z0-9_-]{22}_[A-Za-z0-9_-]{8}$" } } } } } }
+      responses:
+        "201": { description: invitación pendiente (o la que ya había), content: { application/json: { schema: { type: object, additionalProperties: false, required: [id, caduca_en], properties: { id: { type: string, pattern: "^[A-Za-z0-9_-]{12}$" }, caduca_en: { type: string, format: date-time } } } } } }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: "sin Origin, o expulsado por la oficina hace menos de 15 min (expulsado)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "409": { description: "apagada en el servidor (cercania_apagada); tu hogar (mismo_hogar); tú no la tienes activada o sin aviso aceptado o suspendido (no_puedes); la otra persona no puede (no_disponible); ya estáis juntos (ya_en_tu_corro); el corro tiene cinco hogares (corro_lleno)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { description: "5 invitaciones en 10 min (demasiadas_invitaciones) o demasiadas peticiones", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "503": { description: la presencia está apagada en este servidor }
+
+  /api/presencia/corros/invitaciones/{id}/aceptar:
+    post:
+      summary: Aceptar una invitación (entrar en el corro; auditoría corro.entra)
+      description: >
+        Se vuelve a comprobar todo en el momento (disponible, bloqueos con cada miembro, hasta 5 hogares). Si quien invitó no estaba en un corro, se crea uno con
+        los dos. Después, cada uno pide el token de la sala del corro (POST /api/presencia/corros/token).
+      security: [{ sesion: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, pattern: "^[A-Za-z0-9_-]{12}$" } }]
+      requestBody: { required: false, content: { application/json: { schema: { type: object, additionalProperties: false } } } }
+      responses:
+        "200": { description: dentro, content: { application/json: { schema: { type: object, additionalProperties: false, required: [corro, sala], properties: { corro: { type: string }, sala: { type: string, pattern: "^corro-[A-Za-z0-9_-]{12}$" } } } } } }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: "sin Origin o expulsado", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { description: "la invitación ya no está o no es tuya (no_existe)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "409": { description: "cercania_apagada, ya_en_un_corro, no_puedes, no_disponible o corro_lleno", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: la presencia está apagada en este servidor }
+
+  /api/presencia/corros/invitaciones/{id}/rechazar:
+    post:
+      summary: «Ahora no» (auditoría corro.ahora_no; dos seguidos de la misma persona, 24 h sin que pueda volver a invitarte)
+      security: [{ sesion: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, pattern: "^[A-Za-z0-9_-]{12}$" } }]
+      requestBody: { required: false, content: { application/json: { schema: { type: object, additionalProperties: false } } } }
+      responses:
+        "204": { description: rechazada }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: sin Origin, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { description: "no_existe", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: la presencia está apagada en este servidor }
+
+  /api/presencia/corros/invitaciones/{id}:
+    delete:
+      summary: Retirar una invitación que mandé (idempotente)
+      security: [{ sesion: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, pattern: "^[A-Za-z0-9_-]{12}$" } }]
+      responses:
+        "204": { description: retirada (o ya no estaba) }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: sin Origin, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: la presencia está apagada en este servidor }
+
+  /api/presencia/corros/salir:
+    post:
+      summary: Salir de mi corro (auditoría corro.sale; si quedan menos de dos, corro.deshecho y DeleteRoom)
+      description: >
+        La api saca mis conexiones de la sala del corro (RemoveParticipant). `motivo` es lo que vio el cliente (salir, lejos: a más de 40 m de todos durante
+        60 s, cambio_de_sala, vista_aerea más de 60 s); solo va a la auditoría. Idempotente.
+      security: [{ sesion: [] }]
+      requestBody: { required: false, content: { application/json: { schema: { type: object, additionalProperties: false, properties: { motivo: { enum: [salir, lejos, cambio_de_sala, vista_aerea] } } } } } }
+      responses:
+        "204": { description: fuera (o no estaba en ninguno) }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: sin Origin, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: la presencia está apagada en este servidor }
+
+  /api/presencia/corros/token:
+    post:
+      summary: Token de la sala de mi corro, `corro-<id>` (F3k-1; livekit-roles.json v8, roles_corro.miembro)
+      description: >
+        Solo audio: canPublish y canPublishSources [microphone], sin datos (la pose y el chat siguen en la sala libre, que sigue sin audio), canSubscribe; sin
+        roomAdmin. Solo a un hogar que está ahora en un corro y con la voz por cercanía disponible (se comprueba al firmar). Vida corta (15 min, como los demás:
+        solo vale para entrar). Misma identidad opaca que en la sala libre (otra sala: no se echan). `papel: miembro` en los metadatos. Nada se graba.
+      security: [{ sesion: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, additionalProperties: false, required: [dispositivo], properties: { dispositivo: { enum: [escritorio, movil, quest] } } } } } }
+      responses:
+        "200":
+          description: token firmado
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [url, sala, identidad, token, caduca_en, papel, corro]
+                properties:
+                  url: { type: string }
+                  sala: { type: string, pattern: "^corro-[A-Za-z0-9_-]{12}$" }
+                  identidad: { type: string, pattern: "^h_[A-Za-z0-9_-]{22}_[A-Za-z0-9_-]{8}$" }
+                  token: { type: string, description: JWT de LiveKit }
+                  caduca_en: { type: string, format: date-time }
+                  papel: { const: miembro }
+                  corro: { type: string, pattern: "^[A-Za-z0-9_-]{12}$" }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: "sin Origin o expulsado", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "409": { description: "no estás en un corro (sin_corro); apagada en el servidor (cercania_apagada); ya no la tienes disponible (no_puedes: sales del corro)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: la presencia está apagada en este servidor }
+
+  /api/presencia/corros/bloqueos:
+    get:
+      summary: Mis bloqueos de voz (en el servidor; F3k-1, Mo1)
+      security: [{ sesion: [] }]
+      responses:
+        "200": { description: a quién bloqueo, content: { application/json: { schema: { type: object, additionalProperties: false, required: [bloqueos], properties: { bloqueos: { type: array, items: { type: object, additionalProperties: false, required: [prefijo, alias, desde], properties: { prefijo: { type: string, pattern: "^h_[A-Za-z0-9_-]{22}$" }, alias: { type: string }, desde: { type: string, format: date-time } } } } } } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "503": { description: la presencia está apagada en este servidor }
+    post:
+      summary: Bloquear la voz de una persona de la sala libre (auditoría corro.bloqueo)
+      description: >
+        Quien bloqueo no puede invitarme ni entrar en un corro en el que estoy (solo ve «no disponible»: no se le dice). Si ya estábamos juntos, salgo yo.
+        Se guarda mientras existan los dos hogares y no lo quite (decisión 212, provisional). Vale aunque la voz por cercanía esté apagada.
+      security: [{ sesion: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, additionalProperties: false, required: [identidad], properties: { identidad: { type: string, pattern: "^h_[A-Za-z0-9_-]{22}_[A-Za-z0-9_-]{8}$" } } } } } }
+      responses:
+        "201": { description: bloqueado (o ya lo estaba), content: { application/json: { schema: { type: object, additionalProperties: false, required: [prefijo], properties: { prefijo: { type: string, pattern: "^h_[A-Za-z0-9_-]{22}$" } } } } } }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: sin Origin, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { description: "esa identidad no es de ningún hogar activo, o es la tuya (no_existe)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: la presencia está apagada en este servidor }
+
+  /api/presencia/corros/bloqueos/{prefijo}:
+    delete:
+      summary: Quitar un bloqueo de voz (idempotente; auditoría corro.desbloqueo)
+      security: [{ sesion: [] }]
+      parameters: [{ name: prefijo, in: path, required: true, schema: { type: string, pattern: "^h_[A-Za-z0-9_-]{22}$" } }]
+      responses:
+        "204": { description: quitado (o no estaba) }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: sin Origin, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: la presencia está apagada en este servidor }
+
+  /api/presencia/corros/avisos:
+    post:
+      summary: Avisar a la oficina de una persona (sin audio; auditoría corro.aviso; Mo1, decisión 209 provisional)
+      description: >
+        Motivo de lista y, si quieres, un texto de como mucho 280 caracteres. Llega a la oficina quién avisa, de qué hogar, cuándo, en qué corro (si estabais
+        juntos) y el motivo. Quien avisa sale de su corro al momento. Con avisos de 3 hogares distintos en 7 días, la voz por cercanía del avisado se suspende
+        sola hasta que la oficina lo revise (corro.suspendido, automática). Al avisado no se le dice quién avisó. 10 avisos por hora como mucho.
+      security: [{ sesion: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [identidad, motivo]
+              properties:
+                identidad: { type: string, pattern: "^h_[A-Za-z0-9_-]{22}_[A-Za-z0-9_-]{8}$" }
+                motivo: { enum: [insultos, acoso, contenido_sexual, parece_menor, otro] }
+                texto: { type: string, minLength: 1, maxLength: 280 }
+      responses:
+        "201": { description: guardado, content: { application/json: { schema: { type: object, additionalProperties: false, required: [id], properties: { id: { type: integer } } } } } }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: sin Origin, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { description: "no_existe", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: la presencia está apagada en este servidor }
+
+  /api/admin/voz/cercania:
+    get:
+      summary: La voz por cercanía vista por la oficina (F3k-1)
+      description: El tope del servidor (permitida, GEMELO_VOZ_CERCANIA), el interruptor general, cuántos corros y hogares hay ahora, los avisos nuevos y las suspensiones vigentes.
+      security: [{ sesion: [] }]
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [permitida, presencia, interruptor, corros, hogares, avisos_nuevos, suspensiones]
+                properties:
+                  permitida: { type: boolean }
+                  presencia: { type: boolean }
+                  interruptor: { type: object, additionalProperties: false, required: [activa, cambiada_en], properties: { activa: { type: boolean }, cambiada_en: { type: [string, "null"], format: date-time } } }
+                  corros: { type: integer, minimum: 0 }
+                  hogares: { type: integer, minimum: 0 }
+                  avisos_nuevos: { type: integer, minimum: 0 }
+                  suspensiones: { type: array, items: { type: object, properties: { hogar_id: { type: integer }, alias: { type: [string, "null"] }, desde: { type: string, format: date-time }, hasta: { type: [string, "null"], format: date-time }, automatica: { type: boolean } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+    put:
+      summary: Encender o apagar la voz por cercanía para todos (el interruptor general; apagado por omisión; auditoría corro.interruptor)
+      description: >
+        Apagarla deshace todos los corros al momento (DeleteRoom) y borra las invitaciones. Encenderla no la abre a nadie por sí sola: cada cuenta la activa en
+        su ajuste tras aceptar su aviso. Con GEMELO_VOZ_CERCANIA=no, encenderla da 409 no_permitida. Hasta cerrar la EIPD, solo con cuentas de prueba (decisión 41).
+      security: [{ sesion: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, additionalProperties: false, required: [activa], properties: { activa: { type: boolean } } } } } }
+      responses:
+        "200": { description: el interruptor, content: { application/json: { schema: { type: object, additionalProperties: false, required: [interruptor, deshechos], properties: { interruptor: { type: object }, deshechos: { type: integer, minimum: 0 } } } } } }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "409": { description: "el servidor no la permite (no_permitida)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/admin/voz/avisos:
+    get:
+      summary: Los avisos de persona de la voz por cercanía (la bandeja de la oficina; F3k-1)
+      description: >
+        Quién avisa, de quién, cuándo, en qué corro, el motivo y el texto (un DATO: se pinta con textContent; es una queja, no una prueba de lo dicho), cuántos
+        hogares distintos han avisado de esa persona en 7 días y si está suspendida. Sin audio: no hay. El resumen de la bandeja los cuenta (nuevas.aviso_voz).
+      security: [{ sesion: [] }]
+      parameters:
+        - { name: estado, in: query, required: false, schema: { enum: [nuevo, visto, resuelto, descartado] } }
+        - { name: limite, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 500 } }
+      responses:
+        "200": { description: los avisos (los más nuevos primero), content: { application/json: { schema: { type: object, required: [avisos], properties: { avisos: { type: array, items: { type: object } } } } } } }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+
+  /api/admin/voz/avisos/{id}/estado:
+    post:
+      summary: Cambiar el estado de un aviso de voz (visto, resuelto o descartado; auditoría corro.aviso_estado)
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, additionalProperties: false, required: [estado], properties: { estado: { enum: [visto, resuelto, descartado] } } } } } }
+      responses:
+        "204": { description: hecho }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: no existe }
+
+  /api/admin/voz/suspensiones:
+    post:
+      summary: Suspender la voz por cercanía de un hogar (7 días, 30 días o hasta nuevo aviso; auditoría corro.suspendido)
+      description: >
+        Sale al momento de su corro y no recibe invitaciones ni token; puede seguir paseando y escribiendo. Volver a suspender cambia el plazo (y quita lo
+        automático: la ha revisado una persona). [PROPUESTA del ADR-0032, provisional: 7 y 30 días]
+      security: [{ sesion: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, additionalProperties: false, required: [hogar_id, dias], properties: { hogar_id: { type: integer, minimum: 1 }, dias: { enum: [7, 30, null] } } } } } }
+      responses:
+        "200": { description: la suspensión, content: { application/json: { schema: { type: object, required: [suspension], properties: { suspension: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/SuspensionCercania" }] } } } } } }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
+        "404": { description: no existe ese hogar }
+        "429": { $ref: "#/components/responses/Limite" }
+
+  /api/admin/voz/suspensiones/{id}:
+    delete:
+      summary: Levantar la suspensión de la voz por cercanía de un hogar (id = el del hogar; idempotente; auditoría corro.suspension_levantada)
+      security: [{ sesion: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "204": { description: levantada (o no había) }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { $ref: "#/components/responses/SinPermiso" }
 
   /api/presencia/guiadas/{evento}/palabra:
     get:
@@ -2410,7 +2802,7 @@ paths:
                 required: [pendientes, nuevas, preguntas_sin_responder]
                 properties:
                   pendientes: { type: integer }
-                  nuevas: { type: object, properties: { contenido_nuevo: { type: integer }, sugerencia: { type: integer }, denuncia: { type: integer } } }
+                  nuevas: { type: object, properties: { contenido_nuevo: { type: integer }, sugerencia: { type: integer }, denuncia: { type: integer }, aviso_voz: { type: integer, description: "F3k-1: avisos de voz por cercanía nuevos (GET /api/admin/voz/avisos)" } } }
                   preguntas_sin_responder: { type: integer }
         "401": { $ref: "#/components/responses/SinSesion" }
         "403": { $ref: "#/components/responses/SinPermiso" }

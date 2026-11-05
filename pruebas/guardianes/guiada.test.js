@@ -86,8 +86,8 @@ test("GuiadaPuro: los avisos de 30 y 10 s se dan una vez al cruzarlos; pulsar do
   assert.strictEqual(G.textoError({ mensaje: "Otra familia tiene la palabra." }, 409), "Otra familia tiene la palabra."); assert.strictEqual(G.textoError(null, 503), "La api respondió 503.");
 });
 
-test("el aviso de cierre (tema «cierre» del contrato v7) solo vale SIN participante, en JSON v1 con «en» y la vuelta a la general", () => {
-  assert.strictEqual(ROLES.version, 7); const T = ROLES.temas_de_datos.cierre;
+test("el aviso de cierre (tema «cierre» del contrato v7, sigue igual en la v8) solo vale SIN participante, en JSON v1 con «en» y la vuelta a la general", () => {
+  assert.ok(ROLES.version >= 7); const T = ROLES.temas_de_datos.cierre;
   assert.strictEqual(T.lo_manda, "api"); assert.strictEqual(T.fiable, true); assert.strictEqual(T.lo_escucha, "46_guiada");
   const en = Date.parse("2026-11-14T11:00:15Z");
   assert.deepStrictEqual(G.leeCierre(json({ v: 1, en: iso(en), a: "general" }), null), { en, a: "general" });

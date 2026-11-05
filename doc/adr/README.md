@@ -44,4 +44,4 @@ Cada decisión con alternativas reales se escribe una vez, con su porqué y su c
 | [0029](0029-llaves-de-acceso-para-todos.md) | Llaves de acceso para todos; el enlace por correo queda para el alta y la recuperación | Aceptado |
 | [0030](0030-corresponsal-de-campo-pwa-en-primer-plano.md) | El corresponsal de campo: PWA en primer plano, solo en visitas guiadas | Propuesto |
 | [0031](0031-migrar-al-webgpurenderer-con-multiview.md) | Migrar al `WebGPURenderer` (backend WebGL) con multiview para VR | Aceptado |
-| [0032](0032-voz-por-cercania-en-la-visita-libre.md) | Voz por cercanía en la visita libre (F3k): corros con aceptación | Propuesto |
+| [0032](0032-voz-por-cercania-en-la-visita-libre.md) | Voz por cercanía en la visita libre (F3k): corros con aceptación | Aceptado (210, 211 y 213; 205-209 y 212 provisionales) |

@@ -49,6 +49,12 @@ export interface Config {
     | { modo: "mcp"; url: string; token: string };
   /** null si la presencia compartida (F2, LiveKit) está apagada: falta GEMELO_LIVEKIT_URL */
   livekit: ConfigLiveKit | null;
+  /**
+   * F3k-1 (ADR-0032): la voz por cercanía (corros de la visita libre). `permitida` (GEMELO_VOZ_CERCANIA, si por omisión) es el tope del servidor: con «no», la
+   * voz por cercanía no existe en este servidor y el interruptor de la oficina no la enciende. Con «si», la decide el interruptor general de la oficina, que
+   * nace APAGADO (migración 0025): en producción sigue apagada hasta que la oficina la enciende.
+   */
+  vozCercania: { permitida: boolean };
   /** fotos y pinturas de los hogares (doc/sistema/VIDA.md): carpeta null = subidas apagadas (503) */
   medios: { carpeta: string | null; maxBytes: number; retencionDias: number; subidasPorHora: number; escriturasPorHora: number };
   /** dónde dejar también la configuración publicada (GEMELO_CONFIG_SALIDA), para el hornero (calendario de épocas); null = en ningún sitio */
@@ -297,6 +303,7 @@ export function cargaConfig(e: Entorno = process.env): Config {
     },
     ot,
     livekit: cargaLiveKit(e, produccion),
+    vozCercania: { permitida: siNo(e, "GEMELO_VOZ_CERCANIA", true) },
     medios: {
       carpeta: e["GEMELO_MEDIOS"]?.trim() || null,
       maxBytes: entero(e, "GEMELO_MEDIOS_MAX_MB", 8, 1, 16) * 1024 * 1024,
