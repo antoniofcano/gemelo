@@ -121,7 +121,14 @@
     if (r) { t = new Date(); t.setHours(Number(r[1]), Number(r[2] || 0), 0, 0); t = t.getTime(); } else t = Date.parse(v);
     return isFinite(t) ? t : null;
   })();
-  function ahoraMs() { return HORA_FIJA == null ? Date.now() : HORA_FIJA; }
+  // ?fecha=AAAA-MM-DD (sin ?hora=): el mundo en ese día a la hora de ahora, con el reloj corriendo (la estación del olivo y el sol de ese día). Sin los dos, el día real (EV-3a).
+  var FECHA_FIJA = (function () { var m = /[?&]fecha=(\d{4}-\d{2}-\d{2})(?:&|$)/.exec(location.search); return m && isFinite(Date.parse(m[1] + "T12:00:00Z")) ? m[1] : null; })(), desfaseFecha = null;
+  function ahoraMs() {
+    if (HORA_FIJA != null) return HORA_FIJA;
+    if (!FECHA_FIJA) return Date.now();
+    if (desfaseFecha === null) desfaseFecha = Date.parse(FECHA_FIJA + "T12:00:00Z") - Date.parse(fmtClaveDia.format(new Date()) + "T12:00:00Z");   // días enteros: la hora sigue siendo la de ahora
+    return Date.now() + desfaseFecha;
+  }
   // origen: de dónde sale lo que se ve («vigia», «fixture» o «simulado»); avisos: los de la api (de Vigía o del gemelo), como datos
   var TM = { est: null, prev: null, his: null, modo: "ahora", idx: 0, ahoraIdx: 0, corrimientoH: 0, demo: "", jugando: false, origen: "simulado", avisos: [], api: null, oyentes: [] };
   var LAT = 37.73, LON = -4.006, ZONA = "Europe/Madrid";
