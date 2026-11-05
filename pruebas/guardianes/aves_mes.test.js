@@ -90,18 +90,33 @@ test("puro: la ficha dice nivel probable, deducido, de dónde sale, las licencia
   const vacio = copia(EJ); vacio.especies = []; assert.strictEqual(P.contenido(P.valida(vacio), 5), null, "sin aves, sin ficha");
 });
 
+test("puro: filaVR (panel de VR) reutiliza contenido(): 3 y «y X más», deducido, nota, atribución y licencias; sin datos o sin aves, null", () => {
+  const d = P.valida(copia(EJ)), v = P.filaVR(d, 1), c = P.contenido(d, 1);
+  assert.ok(c.filas.length > 3, "el ejemplo tiene más de 3 aves en enero");
+  assert.strictEqual(v.nombres.length, 3); assert.deepStrictEqual(v.nombres, c.filas.slice(0, 3).map(f => f.nombre), "las mismas, en el mismo orden que la ventana");
+  assert.strictEqual(v.mas, c.filas.length - 3);
+  assert.match(v.cab, /enero/); assert.match(v.cab, /deducido/); assert.match(v.cab, /nivel probable/);
+  assert.match(v.nota, /no se ha observado en la finca/); assert.match(v.nota, /sintéticos/, "lo sintético se avisa también en VR");
+  assert.ok(v.fuente.includes(c.atribucion) && /^Licencias: CC0, CC BY 4\.0/.test(v.fuente) && !/NC/.test(v.fuente));
+  assert.strictEqual(P.filaVR(d, 1, 99).mas, 0); assert.strictEqual(P.filaVR(d, 1, 99).nombres.length, c.filas.length);
+  assert.strictEqual(P.filaVR(null, 1), null); assert.strictEqual(P.filaVR(d, 0), null);
+  const vacio = copia(EJ); vacio.especies = []; assert.strictEqual(P.filaVR(P.valida(vacio), 5), null);
+  const real = copia(EJ); delete real.sintetico; assert.ok(!/sintéticos/.test(P.filaVR(P.valida(real), 1).nota));
+});
+
 // ---------- el componente con DOM falso ----------
 function mundo(base, respuesta) {
-  const reg = { ventanas: [], iconos: [], quitadas: 0, fetches: [], limpias: [] };
+  const reg = { ventanas: [], iconos: [], quitadas: 0, fetches: [], limpias: [], filas: [] };
   const nodo = tag => { const x = { tag, hijos: [], style: {}, className: "", textContent: "", set innerHTML(v) { throw new Error("nada de HTML: " + v); },
     appendChild(h) { this.hijos.push(h); h.parentNode = this; return h; }, removeChild(h) { this.hijos.splice(this.hijos.indexOf(h), 1); }, get firstChild() { return this.hijos[0]; } };
     return x; };
   const doc = { createElement: nodo, createTextNode: t => ({ tag: "#text", textContent: t, hijos: [] }) };
-  const api = new Function("AvesMesPuro", "D", "fetch", "Ventanas", "Hud", "document", "window", "Date",
+  const api = new Function("AvesMesPuro", "D", "fetch", "Ventanas", "Hud", "document", "window", "Date", "PanelVR",
     "\"use strict\";\n" + MOTOR + "\nreturn AvesMesMotor;")(
     P, { base, biodiversidad: arguments.length > 2 ? arguments[2] : "biodiversidad.json" }, typeof respuesta === "undefined" ? undefined : (u, o) => { reg.fetches.push(u); return Promise.resolve(respuesta); },
     { registra: (id, def) => { const cu = nodo("div"), v = { id, def, cu }; cu.parentNode = { hidden: true }; def.construye(cu); reg.ventanas.push(v); return () => { reg.quitadas++; }; } },
-    { icono: def => { reg.iconos.push(def); return () => { reg.quitadas++; }; } }, doc, {}, class extends Date { constructor(...a) { super(...(a.length ? a : [ENERO])); } static now() { return ENERO; } });
+    { icono: def => { reg.iconos.push(def); return () => { reg.quitadas++; }; } }, doc, {}, class extends Date { constructor(...a) { super(...(a.length ? a : [ENERO])); } static now() { return ENERO; } },
+    { filas: (pestana, def) => { const f = { pestana, def }; reg.filas.push(f); return () => { reg.filas.splice(reg.filas.indexOf(f), 1); }; } });
   const n = { limpia: f => reg.limpias.push(f) };
   return { api, n, reg };
 }
@@ -119,6 +134,28 @@ test("motor: con servidor y datos pone icono y ventana «deducido», nivel proba
   assert.ok(!t.includes("Vencejo común"), "enero: el vencejo no");
   reg.limpias.forEach(f => f());   // liberar suelta todo
   assert.ok(reg.quitadas >= 2);
+});
+
+test("motor: con datos registra la fila «aves» del panel de VR (pestaña Mundo) y la quita al liberar; sin datos no la registra", async () => {
+  const { api, n, reg } = mundo("/teselas/x/", json(copia(EJ)));
+  api(n); await espera();
+  assert.strictEqual(reg.filas.length, 1); const f = reg.filas[0]; assert.strictEqual(f.pestana, "mundo"); assert.strictEqual(f.def.id, "aves");
+  assert.ok(f.def.visible() === true && f.def.alto > 0 && f.def.alto <= 300, "compacta");
+  assert.match(f.def.firma(), /enero.*deducido/); assert.strictEqual(f.def.debug().aves.nombres.length, 3);
+  reg.limpias.forEach(g => g()); assert.strictEqual(reg.filas.length, 0, "liberar quita la fila");
+  for (const malo of [json({ v: 1 }), { status: 404, json: () => Promise.reject(new Error("no")) }, json(Object.assign(copia(EJ), { especies: [] }))]) {
+    const m = mundo("/t/", malo); m.api(m.n); await espera(); assert.strictEqual(m.reg.filas.length, 0, "sin datos, sin fila");
+  }
+});
+
+test("motor: pinta la fila en un lienzo falso (3 nombres, «y X más», nota y fuente) sin lanzar y sin HTML", async () => {
+  const { api, n, reg } = mundo("/teselas/x/", json(copia(EJ))); api(n); await espera();
+  const dib = []; const cx = { measureText: t => ({ width: t.length * 11 }), fillText: t => dib.push(t), save() {}, restore() {} };
+  const filaH = []; reg.filas[0].def.pinta(cx, 100, 1024, { fila: t => filaH.push(t), valores: {} });
+  const todo = dib.join(" | "); assert.deepStrictEqual(filaH, ["Aves del mes"]);
+  for (const x of ["Petirrojo europeo", "y ", " más", "deducido", "no se ha observado"]) assert.ok(todo.includes(x), "falta «" + x + "» en " + todo);
+  assert.ok(/Licencias: CC0/.test(dib.join(" ")) || /Licen/.test(todo), "la atribución y licencias se dibujan");
+  assert.ok(dib.length <= 12, "pocas líneas: " + dib.length);
 });
 
 test("motor: sin servidor, sin fichero, con un fichero malo o sin aves de este mes no monta nada y no lanza", async () => {
