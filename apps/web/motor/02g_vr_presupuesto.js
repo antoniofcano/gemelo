@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: VrPresupuestoPuro, VrPresupuesto
-// Consume: (nada de otros módulos)
+// Expone: VrPresupuestoPuro, VrControlPuro, VrPresupuesto
+// Consume: 01a_aparato (Aparato), 02b_cola (Cola), 14_historia (hist, tabla), 15_tiempo (nivel), 29_vr (VRX)
 // ===============================================================================
   // ---------- Q0c-a: el escalón de los perfiles de 29_vr manda también en lo que el perfil no tocaba (doc/sistema/VR.md#perfil-de-rendimiento-vr).
   // Medido en un Quest (MEDIDAS.md, 2026-11-04): en el escalón 3, 1,43 M triángulos por fotograma y p95 de 23 ms; el desglose de Hituelo real dice que
@@ -55,6 +55,41 @@
     function hundimiento(celdas, celdasBase, baja) { return celdas >= celdasBase ? baja : baja * celdasBase / Math.max(1, celdas); }
     return { FUENTES: FUENTES, ORDEN: ORDEN, ESCALONES: ESCALONES, PASO_MIN: PASO_MIN, base: base, reparto: reparto, paso: paso, recorta: recorta, hundimiento: hundimiento };
   })();
+
+  // ---------- Q0c-b: el controlador de nivel de VR, con histéresis y umbrales por aparato (doc/sistema/VR.md#controlador-de-nivel-vr-q0c-b).
+  // Medido en un Quest 3 (MEDIDAS.md, 2026-11-04): p95 de JS de 10-12 ms y el nivel oscilaba 0→3→2→3 porque bajaba con 8 ms y subía con 7 (1 ms de margen).
+  // Ahora baja cuando el JS (media móvil) pasa de `baja`, y solo SUBE cuando está por debajo de `sube` (mucho más abajo) durante `estable` segundos seguidos.
+  // Los umbrales salen de una tabla por casco (el modelo lo da Aparato.modelo(), del user agent); sin modelo conocido, la fila «defecto». La URL manda
+  // sobre la tabla: ?xrjs (baja, ya existía), ?xrjssube y ?xrestable (02f). NINGUNA cifra de esta tabla está calibrada en el casco: la de «quest-3» es la
+  // de AG-2.3 más la histéresis de Q0c-b (hipótesis, a medir); las demás filas son [SUPUESTO] (no hay medida de ese casco en MEDIDAS.md) y valen lo mismo que el defecto.
+  var VrControlPuro = (function () {
+    var DEF = { baja: 8, sube: 5, estable: 10, dtBaja: 15.2, dtSube: 14.4, guarda: 4, margen: 1 };   // ms de JS · ms de JS · s · ms de fotograma · ms de fotograma · s tras un cambio · ms mínimos entre sube y baja
+    var APARATOS = {
+      defecto: { baja: 8, sube: 5, supuesto: false, base: "AG-2.3 (8 ms) + histéresis de Q0c-b; sin casco conocido" },
+      "quest-3": { baja: 8, sube: 5, supuesto: false, base: "MEDIDAS.md, Quest 3 (2026-11-04): p95 de JS 10-12 ms; los umbrales siguen sin calibrar" },
+      "quest-3s": { baja: 8, sube: 5, supuesto: true, base: "[SUPUESTO] mismo SoC que el Quest 3; sin medida propia" },
+      "quest-2": { baja: 8, sube: 5, supuesto: true, base: "[SUPUESTO] sin medida de este casco (CPU más lenta que la del Quest 3: probablemente necesite más holgura)" },
+      "quest-pro": { baja: 8, sube: 5, supuesto: true, base: "[SUPUESTO] sin medida de este casco" }
+    };
+    // → { baja, sube, estable, fila, supuesto, base } (una copia; `modelo` es Aparato.modelo(): «quest-3», …, o «» / otra cosa = defecto)
+    function umbrales(modelo) {
+      var f = Object.prototype.hasOwnProperty.call(APARATOS, modelo) ? modelo : "defecto", a = APARATOS[f];
+      return { baja: a.baja, sube: a.sube, estable: DEF.estable, fila: f, supuesto: a.supuesto, base: a.base };
+    }
+    // el estado vive en `e` ({ emaDt, emaJs, tNivel, tEstable }, el VRX de 29_vr): SIN reservas, se llama cada fotograma en VR.
+    // Devuelve +1 (bajar un nivel), -1 (subir) o 0. `fijo`: nivel fijado por la URL, solo se actualizan las medias.
+    function decide(e, dtMs, jsMs, dt, nivel, maxNivel, baja, sube, estable, fijo) {
+      e.emaDt += (dtMs - e.emaDt) * 0.05; e.emaJs += (jsMs - e.emaJs) * 0.05; e.tNivel += dt;
+      var s = sube > baja - DEF.margen ? baja - DEF.margen : sube;   // la subida nunca queda a menos de `margen` de la bajada
+      if (e.emaJs < s && e.emaDt < DEF.dtSube) e.tEstable += dt; else e.tEstable = 0;
+      if (fijo) return 0;
+      if (e.tNivel < DEF.guarda) return 0;
+      if ((e.emaJs > baja || e.emaDt > DEF.dtBaja) && nivel < maxNivel) { e.tNivel = 0; e.tEstable = 0; return 1; }
+      if (nivel > 0 && e.tEstable >= estable) { e.tNivel = 0; e.tEstable = 0; return -1; }
+      return 0;
+    }
+    return { DEF: DEF, APARATOS: APARATOS, umbrales: umbrales, decide: decide };
+  })();
   // [puro:fin]
 
   // [motor:inicio]
@@ -101,12 +136,15 @@
       if (f.r !== null) { f.copias.forEach(function (c) { c.m.count = f.n; }); var r = f.r; f.r = null; if (isFinite(cx)) recortaInst(f, r); else restaura(f); }
     }
     function olvida(id) { delete F[id]; }
-    function ponEscalon(n) {
+    function fijaEscalon(n) {
       var fuera = n === null || n === undefined;
       escalon = fuera ? null : Math.max(0, Math.min(P.ESCALONES.length - 1, n | 0));
       rep = P.reparto(escalon); pasoM = P.paso(rep); if (fuera) { cx = NaN; cz = NaN; }
-      cuenta.cambios++; aplicaTodo();
+      cuenta.cambios++;
     }
+    function ponEscalon(n) { fijaEscalon(n); aplicaTodo(); }
+    // Q0c-b: lo mismo, repartido: una fuente por paso (la Cola de 29_vr lo avanza con yield, no de golpe). Cancelado a medias, el siguiente ponEscalon o escalonPorPasos acaba lo que falte
+    function* escalonPorPasos(n) { fijaEscalon(n); for (var i = 0; i < P.ORDEN.length; i++) { aplicaUna(P.ORDEN[i]); yield i; } }
     // cada fotograma en VR (29_vr): sin reservas; solo recorta al moverse más que el umbral
     function mueve(x, z) {
       if (pasoM === null) return;
@@ -121,6 +159,6 @@
       return o;
     }
     if (typeof window !== "undefined" && window) window.__vrPresupuesto = estado;   // pruebas y banco (escalón fijo por la perilla xrnivel, con la VR simulada)
-    return { fuente: fuente, instancias: instancias, renueva: renueva, olvida: olvida, ponEscalon: ponEscalon, mueve: mueve, estado: estado };
+    return { fuente: fuente, instancias: instancias, renueva: renueva, olvida: olvida, ponEscalon: ponEscalon, escalonPorPasos: escalonPorPasos, mueve: mueve, estado: estado };
   })();
   // [motor:fin]
