@@ -299,5 +299,5 @@
         reparto: g && g.escalera ? g.escalera.reparto : null, sombras: g && g.escalera ? g.escalera.sombras : null, sombraMap: !!(renderer.shadowMap && renderer.shadowMap.enabled),
         nivel0Mallas: Object.keys(celdas).filter(function (k) { return celdas[k].g && celdas[k].g.visible; }).length, instanciasN12: inst1, tilesetDibujados: t.estado === "activo" ? t.dibujadas : 0, lejanosDetalle: L };
     }
-    return { perfil: perfil, triMotor: function () { return triMotor; }, inicia: inicia, tileCargada: tileCargada, refresca: refresca, actualiza: actualiza, presupuesto: presupuesto, resumen: resumen, celdas: celdas };
+    return { perfil: perfil, inicia: inicia, tileCargada: tileCargada, refresca: refresca, actualiza: actualiza, presupuesto: presupuesto, resumen: resumen, celdas: celdas };
   })();

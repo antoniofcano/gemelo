@@ -86,7 +86,7 @@
       factor: function () { return s.f; },
       presupuesto: function () { return TopeOlivosPuro.presupuesto(s); },
       parteTiles: function (tope) { return TopeOlivosPuro.parteTiles(s, tope); },
-      linea: function (tri) { return P.fr === 0 ? TopeOlivosPuro.linea(s, { apagado: true, tri: tri }) : TopeOlivosPuro.linea(s); },
+      linea: function () { return P.fr === 0 && s.tri > 0 ? TopeOlivosPuro.linea(s, { apagado: true, tri: s.tri }) : TopeOlivosPuro.linea(s); },   // apagado: s.tri lo deja paso() igual
       resumen: function () { var L = s.lazo; return { activo: s.activo, tope: s.tope, reserva: s.reserva, tri: s.tri, ocupa: s.ocupa, factor: +s.f.toFixed(3), k: L.k, K: L.K, saturado: L.saturado, cambios: L.cambios, recortes: L.subidas, alivios: L.bajadas }; }
     };
   })();

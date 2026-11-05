@@ -1,7 +1,8 @@
 "use strict";
 // Q0n (apps/web/motor/02m_tope_olivos.js; doc/sistema/VR.md#tope-de-triángulos-de-los-olivos-del-motor-q0n): MEDIDA en el banco, con el WebXR
 // simulado (pruebas/mock_xr.js) y el fixture, de lo que dibuja un fotograma XR en el nivel 3 fijo (?xrnivel=3) con los dos lazos (Q0k + Q0n), solo
-// con el del tileset (&xrolivos=0) y sin ninguno (&xrtri=0). Recuentos de SwiftShader (llamadas y triángulos de los dos ojos), que valen; NO fps.
+// con el del tileset (&xrolivos=0), sin ninguno (&xrtri=0) y con un tope
+// forzado bajo (&xrtri=60000) para ver recortar al lazo. Recuentos de SwiftShader (llamadas y triángulos de los dos ojos), que valen; NO fps.
 // Imprime la tabla y solo afirma lo que no depende del aparato: entra en VR, el lazo de los olivos está activo con los dos y apagado sin ellos,
 // tileset + olivos del motor no pasan del tope del nivel salvo «saturado», y no hay errores. Opcional (GEMELO_VR=1), por el banco, un Chrome a la vez:
 //   GEMELO_VR=1 npm run puerta -- pruebas/guardianes/vr_tope_olivos.test.js
@@ -13,7 +14,8 @@ const { montaPagina, saltoPagina } = require("./_pagina");
 
 const SALTO = motivoSalto("el tope de los olivos en VR") || saltoPagina("el tope de los olivos en VR");
 const NIVEL = Number(process.env.GEMELO_VR_NIVEL || 3);
-const VARIANTES = [["con los dos lazos", ""], ["solo el del tileset (xrolivos=0)", "&xrolivos=0"], ["sin lazos (xrtri=0)", "&xrtri=0"]];
+// el fixture es pequeño (sus olivos del motor caben en la reserva del nivel 3): «tope forzado» baja T con ?xrtri= para que el lazo tenga que recortar
+const VARIANTES = [["solo el del tileset (xrolivos=0)", "&xrolivos=0"], ["con los dos lazos", ""], ["sin lazos (xrtri=0)", "&xrtri=0"], ["tope forzado (xrtri=60000)", "&xrtri=60000"]];
 let nav, srv, url, preparado = null;
 const prepara = () => preparado || (preparado = (async () => {
   srv = await sirve(montaPagina({ finca: process.env.GEMELO_VR_FINCA || "cerro" }).carpeta); url = "http://127.0.0.1:" + srv.address().port + "/index.html";
@@ -60,7 +62,11 @@ describe("tope de los olivos del motor en VR (WebXR simulado)", () => {
         console.log("     línea: " + d.linea);
         assert.strictEqual(d.nivel, NIVEL);
         assert.ok(o, "en VR, Arboles.resumen().topeOlivos existe");
-        if (q === "") {
+        if (q === "&xrtri=60000") {
+          assert.ok(o.activo && o.reserva === 18000, "reserva de 0,3 × 60 k");
+          assert.ok(o.recortes > 0 && o.factor < 1, "el lazo recorta: factor " + o.factor);
+          assert.ok(o.triMotor <= o.reserva || o.saturado, "acaba en la reserva o saturado: " + o.triMotor);
+        } else if (q === "") {
           assert.ok(o.activo, "con los dos lazos, el de los olivos está activo");
           assert.ok(ti && ti.tope + o.ocupa <= o.tope * 1.05 + 1, "el tileset recibe el tope menos lo que ocupan los olivos (± un paso de 5 %: se muestrean por separado)");
           if (!o.saturado && !(ti && ti.saturado)) assert.ok(o.triMotor <= o.reserva * 1.0001 || o.k > 0, "o cabe o el lazo está recortando");

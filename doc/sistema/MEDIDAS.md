@@ -689,6 +689,19 @@ Lo que se puede decir:
 - **Suelo de fotos en VR (EV-1k2):** sin coste claro frente a tomas parecidas; la tarjeta no dice si el suelo estaba encendido ni su memoria: no concluyente.
 - **Lo que falta en la tarjeta:** la cartulina y el suelo en uso, y la memoria de GPU; y tomar siempre desde el mismo sitio mirando igual.
 
+## Tope de los olivos del motor en VR (Q0n, 2026-11-06, foto, no se mantiene)
+Banco, Chrome con SwiftShader y WebXR simulado (`mock_xr.js`), fixture sintético de Cerro (sin `copas_param`: sin olivos generados, así que solo cuenta el nivel 0 de siempre), `?xrnivel=3`, 30 s en VR tras entrar; `GEMELO_VR=1 npm run puerta -- pruebas/guardianes/vr_tope_olivos.test.js`. Recuentos de un fotograma XR (los dos ojos, sin multiview), **no fps**. «Tileset» y «olivos del motor» son los triángulos que cuenta cada lazo (de la geometría, una vez, no por ojo).
+
+| Variante (además de `?debug&hora=12:00&xrnivel=3`) | Llamadas | Triángulos (2 ojos) | Olivos N0 | Tileset / su tope | Olivos del motor / reserva | Factor (paso) |
+|---|---|---|---|---|---|---|
+| `&xrolivos=0` (solo Q0k, como antes) | 110 | 121,5 k | 42 | 13,9 k / 130 k | 35,7 k / — | — |
+| con los dos lazos | 106 | 121,3 k | 42 | 13,9 k / 91 k | 35,7 k / 39 k | 1 (0/7) |
+| `&xrtri=0` (sin lazos) | 110 | 121,6 k | 42 | 13,9 k / — | 35,7 k / — | — |
+| `&xrtri=60000` (tope forzado) | 92 | 91,9 k | 21 | 16,9 k / 42 k | 17,8 k / 18 k | 0,41 (4/7) |
+
+Lectura: en el fixture los olivos del motor (35,7 k) caben en la reserva del nivel 3 (39 k), así que con el tope de verdad no se recorta nada y las tres primeras filas son iguales dentro del ruido entre cargas (una primera tanda dio 94-121 k para las mismas variantes: lo que cambia de una carga a otra no son los olivos, iguales en las tres). Con el tope forzado a 60 k, el lazo baja el factor en 4 pasos (×0,41): de 42 a 21 olivos de nivel 0, los olivos del motor de 35,7 k a 17,8 k (bajo su reserva de 18 k), y el tileset dibuja los olivos que el motor suelta (5,7 k → 8,7 k), dentro de su parte (60 k − 18 k). 0 errores.
+**Pantalla** (banco, `base` de siempre, la misma página antes y después de Q0n): en `lejos`, `cerca` y `nube`, las mismas llamadas (26, 46, 24), triángulos (17 778, 170 362, 14 374), puntos y olivos de nivel 0; las geometrías varían ±1 entre cargas (lejos: 26 → 27, con 22 → 18 celdas precargadas) y las capturas no se compararon píxel a píxel. **No probado en el Quest**, ni con Hituelo real ni con olivos generados.
+
 ## Medida por componente (C11) y por objeto (O2)
 
 **Pendiente: sin fecha, sin cifras.** La herramienta está escrita y probada solo con resultados sintéticos (`pruebas/medida_componentes.js`, guardián `medida_componentes.test.js`); nadie la ha ejecutado contra el banco. Para O10 (que el mundo se parezca al catálogo «Olivos tipo») hace falta saber qué cuesta cada componente y cada pieza de un olivo generado, y hoy no se sabe: los presupuestos declarados en los manifiestos son techos o medidas de Node, no esto.

@@ -2,8 +2,8 @@
 // Expone: Escena3D
 // Consume: 01_datos (D, $), 01a_aparato (Aparato), 02_mundo (Mundo, suelo), 02b_cola (CargaPuro, Cola), 02f_xr_perillas (XrPerillas),
 //   02l_tope_tiles (TopeTilesPuro), 02m_tope_olivos (TopeOlivos), 03_escena (visor, renderer, scene, camera, exag), 04c_olivos_tiles (OlivosTiles),
-//   04d_sombreado_tiles (SombreadoTiles), 05_nube (nube), 07b_arboles (Arboles), 08_marcadores (listo, aplica), 09_camara (objetivo, suelta, pon),
-//   14_historia (aviso), 16_vida (quita, mira), 29_vr (panel)
+//   04d_sombreado_tiles (SombreadoTiles), 05_nube (nube), 08_marcadores (listo, aplica), 09_camara (objetivo, suelta, pon), 14_historia (aviso),
+//   16_vida (quita, mira), 29_vr (panel)
 // ===============================================================================
   // ---------- la escena en 3D Tiles 1.1 (ADR-0015, aceptado; formato en doc/sistema/TILES3D.md): la ÚNICA escena (T8 fase 2, decisión 79). El relieve
   // con su ortofoto lo dibuja 3DTilesRendererJS (versión fijada en apps/web/package.json) desde un tileset.json de tuberia/tiles3d/, con el sombreado
@@ -198,7 +198,7 @@
     XrPerillas.lineaTiles = function () {
       if (!errorPerfil || !tiles) return "";
       var t = XrPerillas.topeTiles(triNivel) > 0 ? TopeTilesPuro.linea(tope, { mallas: vistoT.mallas }) : TopeTilesPuro.linea(tope, { apagado: true, tri: vistoT.tri });
-      var o = TopeOlivos.linea(typeof Arboles !== "undefined" ? Arboles.triMotor() : 0);   // Q0n: los olivos del motor, detrás
+      var o = TopeOlivos.linea();   // Q0n: los olivos del motor, detrás
       return t && o ? t + " · " + o : t || o;
     };
     // cada fotograma, antes de dibujar. En una sesión XR, como el ejemplo de XR de 3DTilesRendererJS: la cámara de la sesión (sus dos ojos) en
