@@ -2,7 +2,7 @@
 // Expone: (nada al resto de módulos)
 // Consume: 01_datos (D), 02_mundo (copas), 02c_componentes (Componentes), 02k_fusiona (fusionaGeometrias), 03_escena (scene, camera, texColor),
 //   04d_sombreado_tiles (hash), 07_follaje (matSombra, geoSombra), 12_paseo (paseando), 15_tiempo (esc),
-//   16_vida (tVida, enQuad, gFauna, altSuelo, mira, quad, enDron, dron), 17_minimapa (Minimapa), 22_huellas (pendienteRumbo, sueloSeco),
+//   16_vida (tVida, enQuad, gFauna, esfera, altSuelo, mira, quad, enDron, dron), 17_minimapa (Minimapa), 22_huellas (pendienteRumbo, sueloSeco),
 //   24_pantalla (aterriza)
 // Nota: Publica además window.__perrosDebug (depuración).
 // ===============================================================================
@@ -29,7 +29,7 @@
       var ge = new THREE.BoxGeometry(w, h, d); tmpEu.set(rx || 0, 0, rz || 0); ge.applyMatrix4(tmpMa.compose(tmpPo.set(x, y, z), tmpQu.setFromEuler(tmpEu), tmpEs)); return [ge, new THREE.Color(col)];
     }
     var mallaSombraP = new THREE.InstancedMesh(geoSombra, matSombra, 2);   // la sombra de los dos perros (una llamada)
-    mallaSombraP.name = "perros-sombra"; mallaSombraP.instanceMatrix.setUsage(THREE.DynamicDrawUsage); mallaSombraP.frustumCulled = false; mallaSombraP.count = 0; mallaSombraP.visible = false; gPerros.add(mallaSombraP);
+    mallaSombraP.name = "perros-sombra"; mallaSombraP.instanceMatrix.setUsage(THREE.DynamicDrawUsage); mallaSombraP.count = 0; mallaSombraP.visible = false; gPerros.add(mallaSombraP);
     function creaPerro(tipo) {
       var dal = tipo === "dalmata", esc = dal ? 1 : 1.22, g = new THREE.Group(), cuerpo = new THREE.Object3D(), cab = new THREE.Object3D(), cola = new THREE.Object3D();
       var mp = dal ? 0xffffff : 0xd9ac5c, mo = dal ? 0xffffff : 0xb98a47, anch = dal ? 1 : 1.18;
@@ -43,7 +43,7 @@
       var geoPata = fusionaGeometrias([cajaCol(0.07, 0.46, 0.07, mp, 0, -0.23, 0), cajaCol(0.08, 0.05, 0.11, mp, 0, -0.46, -0.02)], dal);
       var patas = [[-1, -0.2], [1, -0.2], [-1, 0.22], [1, 0.22]].map(function (q) { var pv = new THREE.Object3D(); pv.position.set(q[0] * 0.1 * anch, 0.45, q[1]); return pv; });
       var piezas = [new THREE.InstancedMesh(geoCuerpo, mat, 1), new THREE.InstancedMesh(geoCab, mat, 1), new THREE.InstancedMesh(geoCola, mat, 1), new THREE.InstancedMesh(geoPata, mat, 4)];
-      piezas.forEach(function (im, i) { im.name = "perro-" + tipo + "-" + ["cuerpo", "cabeza", "cola", "patas"][i]; im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); im.frustumCulled = false; im.count = 0; im.visible = false; gPerros.add(im); });
+      piezas.forEach(function (im, i) { im.name = "perro-" + tipo + "-" + ["cuerpo", "cabeza", "cola", "patas"][i]; im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); im.count = 0; im.visible = false; gPerros.add(im); });
       g.scale.setScalar(esc); g.visible = false;
       g.userData = { cuerpo: cuerpo, cab: cab, cola: cola, patas: patas, piezas: piezas, mat: mat, matSombra: new THREE.Matrix4().compose(new THREE.Vector3(0, 0.03, 0), new THREE.Quaternion(), new THREE.Vector3(0.9 * esc, 1, 1.4 * esc)) };
       return g;
@@ -143,9 +143,9 @@
         u.cola.updateMatrix(); p[2].setMatrixAt(0, tmpMp.multiplyMatrices(tmpMc, u.cola.matrix));
         for (k = 0; k < 4; k++) { u.patas[k].updateMatrix(); p[3].setMatrixAt(k, tmpMp.multiplyMatrices(tmpMc, u.patas[k].matrix)); }
         p[0].count = p[1].count = p[2].count = 1; p[3].count = 4;
-        for (k = 0; k < 4; k++) { im = p[k]; im.visible = true; im.instanceMatrix.needsUpdate = true; }
+        for (k = 0; k < 4; k++) { im = p[k]; im.visible = true; im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere(); }
       }
-      mallaSombraP.count = ns; mallaSombraP.visible = ns > 0; mallaSombraP.instanceMatrix.needsUpdate = true;
+      mallaSombraP.count = ns; mallaSombraP.visible = ns > 0; mallaSombraP.instanceMatrix.needsUpdate = true; if (ns > 0) mallaSombraP.computeBoundingSphere();   // con el recorte de three (esfera de las casillas escritas): el perro a tu espalda no se dibuja
     }
     function dibujaPerrosMini(c, X, Y) {
       PERROS.forEach(function (d) { if (!d.malla.visible || d.est === "fuera") return; c.fillStyle = d.color; c.strokeStyle = "#101418"; c.lineWidth = 1.4; c.beginPath(); c.arc(X(d.x), Y(d.y), 3.3, 0, 6.283); c.fill(); c.stroke(); });
