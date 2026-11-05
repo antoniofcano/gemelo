@@ -1,5 +1,5 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: EST, construyeFrutosLista, objetivoMundo, actualizaOlivo
+// Expone: EST, bbchEn, construyeFrutosLista, hoyMadrid, objetivoMundo, actualizaOlivo
 // Consume: 01_datos ($), 02_mundo (suelo, copas), 02i_materiales (Materiales), 03_escena (renderer, SRGB, sol, modo), 04d_sombreado_tiles (hash),
 //   06_arboles (gFollaje), 07_follaje (matHojaG, matHojaP), 10_ndvi (NDV, ndviIdx), 13_parcelas (parcelas), 14_historia (hist, aviso),
 //   15_tiempo (TiempoPuro, lluvia, fmtHora, fmtClaveDia, num1, esc, objetivoMundoBase, aplicaMundo)
