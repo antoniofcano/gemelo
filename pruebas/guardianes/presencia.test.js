@@ -322,7 +322,7 @@ test("balizas (I4): ir a una baliza te deja a 4-5,5 m de la columna, fuera de co
 });
 test("contratos/livekit-roles.json: en las salas fijas ningún rol publica audio ni vídeo, todos publican datos, nadie lleva roomAdmin y la identidad es opaca", () => {
   const R = JSON.parse(lee("contratos/livekit-roles.json"));
-  assert.strictEqual(R.contrato, "livekit-roles"); assert.strictEqual(R.version, 7); assert.strictEqual(R.fase, "F3");
+  assert.strictEqual(R.contrato, "livekit-roles"); assert.strictEqual(R.version, 8); assert.strictEqual(R.fase, "F3");
   assert.deepStrictEqual(Object.keys(R.roles).sort(), ["admin", "corresponsal", "guia", "hogar", "oficina"], "los roles de contratos/sesion.md");
   assert.strictEqual(R.roles.oficina.hidden, false, "la oficina es siempre visible en el mundo (decisión 107)");
   for (const [rol, p] of Object.entries(R.roles)) {
@@ -356,6 +356,25 @@ test("contratos/livekit-roles.json v6 (F3c, ADR-0026): en la sala guiada solo el
   for (const a of ["palabra_hasta", "mano"]) assert.ok(R.atributos[a], "atributo " + a);
   assert.ok(R.identidad.metadata.campos.includes("papel"));
   assert.ok(lee("contratos/presencia.md").includes("guiada-"), "presencia.md describe la sala guiada");
+});
+
+test("contratos/livekit-roles.json v8 (F3k-1, ADR-0032): la sala de cada corro es solo de audio (micrófono y solo micrófono, sin datos), sin roomAdmin; la sala libre sigue sin audio; temas y moderación de los corros", () => {
+  const R = JSON.parse(lee("contratos/livekit-roles.json"));
+  assert.deepStrictEqual(Object.keys(R.roles_corro).filter(k => k !== "$comment"), ["miembro"], "un solo papel: nadie tiene prioridad en un corro");
+  const m = R.roles_corro.miembro;
+  assert.strictEqual(m.canPublish, true); assert.deepStrictEqual(m.canPublishSources, ["microphone"], "solo micrófono (ni cámara ni pantalla)");
+  assert.strictEqual(m.canPublishData, false, "sin datos: la pose y el chat siguen en la sala libre"); assert.strictEqual(m.canSubscribe, true);
+  assert.strictEqual(m.roomAdmin, false); assert.strictEqual(m.canUpdateOwnMetadata, false); assert.strictEqual(m.hidden, false);
+  const p = new RegExp(R.salas.corro.patron);
+  assert.ok(p.test("corro-AbC_dE-fGh12")); for (const n of ["corro-", "corro-corto", "hituelo-libre", "guiada-4", "corro-AbC_dE-fGh123"]) assert.ok(!p.test(n), n);
+  assert.strictEqual(R.salas.corro.solo_audio, true); assert.ok(R.salas.corro.token.includes("/api/presencia/corros/token"));
+  // la sala libre NO cambia: nadie publica audio en ella (lo mira también el test de las salas fijas)
+  assert.strictEqual(R.salas.visita_libre.nombre, "hituelo-libre");
+  for (const x of Object.values(R.roles)) { assert.strictEqual(x.canPublish, false); assert.deepStrictEqual(x.canPublishSources, []); }
+  assert.strictEqual(R.temas_de_datos.corro.lo_manda, "api"); assert.strictEqual(R.temas_de_datos.corro.se_guarda, false);
+  for (const a of ["corro.invitacion", "corro.entra", "corro.sale", "corro.deshecho", "corro.suspendido", "corro.interruptor"]) assert.ok(R.moderacion.corros.includes(a), a);
+  assert.match(R.moderacion.corros, /sin roomAdmin/); assert.match(R.grabacion, /Egress/);
+  assert.ok(lee("contratos/presencia.md").includes("corro-"), "presencia.md describe la sala del corro");
 });
 
 // ---------- PB8: lo que cuesta dibujar al grupo, sin página (Cuenta, en el trozo puro). El de Chrome solo confirma que el montaje da lo mismo.

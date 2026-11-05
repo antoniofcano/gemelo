@@ -28,9 +28,20 @@ export async function datosDelHogar(bd: Bd, id: number): Promise<Record<string, 
   // los juegos (0009): sus partidas
   const ju = await bd.query("SELECT juego, puntos, duracion_s, jugada_en FROM juegos_partidas WHERE hogar_id = $1 ORDER BY id", [id]);
   // el consentimiento de voz (0018, F3j): qué versión del aviso aceptó y cuándo (o nada)
-  const vz = await bd.query("SELECT version, aceptado_en FROM voz_consentimientos WHERE hogar_id = $1", [id]);
+  const vz = await bd.query("SELECT version, aceptado_en FROM voz_consentimientos WHERE hogar_id = $1 AND ambito = 'guiada'", [id]);
+  // la voz por cercanía (0025, F3k-1): su consentimiento, su ajuste, a quién bloquea (alias, como lo ve en el mundo), los avisos que ha mandado y su suspensión.
+  // De los avisos RECIBIDOS solo el motivo, el estado y la fecha: ni quién avisó ni su texto [SUPUESTO: lo valida la asesoría, EIPD-VOZ §13.5 punto 3]
+  const [vc, va, vb, ve, vr, vs] = await Promise.all([
+    bd.query("SELECT version, aceptado_en FROM voz_consentimientos WHERE hogar_id = $1 AND ambito = 'cercania'", [id]),
+    bd.query("SELECT activa, cambiada_en FROM voz_cercania_ajustes WHERE hogar_id = $1", [id]),
+    bd.query("SELECT g.alias, b.creado_en FROM voz_bloqueos b LEFT JOIN hogares g ON g.id = b.bloqueado_id WHERE b.hogar_id = $1 ORDER BY b.creado_en", [id]),
+    bd.query("SELECT motivo, texto, estado, creado_en FROM voz_avisos WHERE avisa_id = $1 ORDER BY id", [id]),
+    bd.query("SELECT motivo, estado, creado_en FROM voz_avisos WHERE avisado_id = $1 ORDER BY id", [id]),
+    bd.query("SELECT desde, hasta, automatica FROM voz_cercania_suspensiones WHERE hogar_id = $1", [id]),
+  ]);
   return {
     hogar: h.rows[0], avatar: av.rows[0] ?? null, hazas: hz.rows, preguntas: pr.rows, visitas: vi.rows, sesiones: se.rows, aparatos_vinculados: cv.rows,
     olivos_personalizados: pe.rows, fotos_subidas: me.rows, denuncias: de.rows, sugerencias: su.rows, avisos: avi.rows, lotes: lo.rows, llaves_de_acceso: ll.rows, partidas_de_juegos: ju.rows, voz_consentimiento: vz.rows[0] ?? null,
+    voz_cercania: { consentimiento: vc.rows[0] ?? null, ajuste: va.rows[0] ?? null, bloqueos: vb.rows, avisos_mandados: ve.rows, avisos_recibidos: vr.rows, suspension: vs.rows[0] ?? null },
   };
 }

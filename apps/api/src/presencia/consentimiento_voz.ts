@@ -7,43 +7,55 @@
 //    versión, ya no vale). Retirar = borrar la fila. Quién manda es esta api: la palabra no se da a un hogar sin consentimiento vigente (voz.ts, Palabra).
 //  · PLAZO (decisión 164, como la 100: «la campaña y un año más»). La campaña de aceituna va de octubre a septiembre; una fila de la auditoría de voz se
 //    guarda hasta el 1 de octubre del segundo año tras la campaña en que se escribió y entonces se borra (corteAuditoriaVoz). Lo borrado: las acciones
-//    `guiada.*` (manos, palabra, silenciar, expulsar, cerrar) y las de consentimiento retirado (y los «dado» de quien ya no tiene consentimiento vigente).
+//    `guiada.*` (manos, palabra, silenciar, expulsar, cerrar), `corro.*` (F3k-1, migración 0025) y las de consentimiento retirado (y los «dado» de quien ya no tiene consentimiento vigente).
 //    Es una función SECURITY DEFINER de la base, porque `gemelo_api` no puede borrar de `auditoria` (solo-añadir, migración 0001). [SUPUESTO] campaña de
 //    octubre a septiembre (las zonas horarias no importan: el corte es un día de margen); la valida Antonio con la EIPD.
+//  · ÁMBITO (F3k-1, ADR-0032, decisión 211; migración 0025): el consentimiento es por ámbito. «guiada» es el de F3j (todo lo de arriba, sin cambios);
+//    «cercania» es el aviso propio de la voz por cercanía en la visita libre (con quién se habla, sin moderación en directo, sin grabar, la declaración de
+//    mayor de edad de M1, cómo avisar y salir), con su propia versión (VOZ_CERCANIA_AVISO_VERSION) y su texto (propuesto en contratos/voz-consentimiento.md;
+//    lo pondrá el motor en F3k-3). Aceptar el de un ámbito no vale para el otro. La auditoría del de cercanía lleva `ambito`; la del de la guiada, como antes.
 import type { Bd } from "../bd/pool.ts";
 import { audita } from "../auth/servicio.ts";
 
 /** La versión VIGENTE del aviso de voz. Súbela (y el texto del motor) cuando el texto cambie: todos los hogares lo vuelven a aceptar. */
 export const VOZ_AVISO_VERSION = 1;
+/** F3k-1 (decisión 211): la versión VIGENTE del aviso propio de la voz por cercanía. Súbela (y el texto del motor, cuando exista) si el texto cambia. */
+export const VOZ_CERCANIA_AVISO_VERSION = 1;
+export type AmbitoVoz = "guiada" | "cercania";
+export const AMBITOS_VOZ: readonly AmbitoVoz[] = ["guiada", "cercania"];
+export const VERSION_AVISO: Record<AmbitoVoz, number> = { guiada: VOZ_AVISO_VERSION, cercania: VOZ_CERCANIA_AVISO_VERSION };
+const detalleAmbito = (ambito: AmbitoVoz): Record<string, string> => (ambito === "guiada" ? {} : { ambito });
 
 export interface EstadoConsentimiento { version: number; aceptada: boolean; version_aceptada: number | null; aceptada_en: string | null }
 type Q = Pick<Bd, "query">;
 
 /** El estado del consentimiento de ese hogar frente a la versión vigente */
-export async function estadoConsentimiento(bd: Q, hogar: number): Promise<EstadoConsentimiento> {
-  const f = (await bd.query<{ version: number; aceptado_en: Date }>("SELECT version, aceptado_en FROM voz_consentimientos WHERE hogar_id = $1", [hogar])).rows[0];
-  return { version: VOZ_AVISO_VERSION, aceptada: !!f && f.version === VOZ_AVISO_VERSION, version_aceptada: f ? f.version : null, aceptada_en: f ? new Date(f.aceptado_en).toISOString() : null };
+export async function estadoConsentimiento(bd: Q, hogar: number, ambito: AmbitoVoz = "guiada"): Promise<EstadoConsentimiento> {
+  const f = (await bd.query<{ version: number; aceptado_en: Date }>("SELECT version, aceptado_en FROM voz_consentimientos WHERE hogar_id = $1 AND ambito = $2", [hogar, ambito])).rows[0];
+  const vigente = VERSION_AVISO[ambito];
+  return { version: vigente, aceptada: !!f && f.version === vigente, version_aceptada: f ? f.version : null, aceptada_en: f ? new Date(f.aceptado_en).toISOString() : null };
 }
 /** ¿Tiene ese hogar consentimiento VIGENTE? (lo que mira la api antes de dar la palabra) */
-export async function consiente(bd: Q, hogar: number): Promise<boolean> {
-  return (await bd.query("SELECT 1 FROM voz_consentimientos WHERE hogar_id = $1 AND version = $2", [hogar, VOZ_AVISO_VERSION])).rows.length > 0;
+export async function consiente(bd: Q, hogar: number, ambito: AmbitoVoz = "guiada"): Promise<boolean> {
+  return (await bd.query("SELECT 1 FROM voz_consentimientos WHERE hogar_id = $1 AND ambito = $2 AND version = $3", [hogar, ambito, VERSION_AVISO[ambito]])).rows.length > 0;
 }
 /** Acepta la versión vigente (idempotente: volver a aceptarla no escribe nada ni toca la auditoría). Quien llama ya comprobó que `version` es la vigente. */
-export async function aceptaVoz(bd: Bd, hogar: number): Promise<boolean> {
+export async function aceptaVoz(bd: Bd, hogar: number, ambito: AmbitoVoz = "guiada"): Promise<boolean> {
+  const version = VERSION_AVISO[ambito];
   const r = await bd.query(
-    `INSERT INTO voz_consentimientos (hogar_id, version) VALUES ($1, $2)
-     ON CONFLICT (hogar_id) DO UPDATE SET version = EXCLUDED.version, aceptado_en = now() WHERE voz_consentimientos.version <> EXCLUDED.version
-     RETURNING 1`, [hogar, VOZ_AVISO_VERSION]);
+    `INSERT INTO voz_consentimientos (hogar_id, ambito, version) VALUES ($1, $2, $3)
+     ON CONFLICT (hogar_id, ambito) DO UPDATE SET version = EXCLUDED.version, aceptado_en = now() WHERE voz_consentimientos.version <> EXCLUDED.version
+     RETURNING 1`, [hogar, ambito, version]);
   if (!r.rows.length) return false;
-  await audita(bd, hogar, "voz.consentimiento_dado", { version: VOZ_AVISO_VERSION });
+  await audita(bd, hogar, "voz.consentimiento_dado", { version, ...detalleAmbito(ambito) });
   return true;
 }
 /** Retira el consentimiento (borra la fila; idempotente). Devuelve si había. */
-export async function retiraVoz(bd: Bd, hogar: number): Promise<boolean> {
-  const r = await bd.query<{ version: number }>("DELETE FROM voz_consentimientos WHERE hogar_id = $1 RETURNING version", [hogar]);
+export async function retiraVoz(bd: Bd, hogar: number, ambito: AmbitoVoz = "guiada"): Promise<boolean> {
+  const r = await bd.query<{ version: number }>("DELETE FROM voz_consentimientos WHERE hogar_id = $1 AND ambito = $2 RETURNING version", [hogar, ambito]);
   const f = r.rows[0];
   if (!f) return false;
-  await audita(bd, hogar, "voz.consentimiento_retirado", { version: f.version });
+  await audita(bd, hogar, "voz.consentimiento_retirado", { version: f.version, ...detalleAmbito(ambito) });
   return true;
 }
 

@@ -11,6 +11,8 @@ import { AVATAR_POR_DEFECTO, type Avatar, type ClaveSala, CLAVES_SALA, DISPOSITI
 import { LigaduraVisita, puedeEntrar } from "./acceso_visita.ts";
 import { rutasOficinaMundo } from "./oficina_mundo.ts";
 import { rutasVoz } from "./voz_rutas.ts";
+import { creaCorros, rutasCorros } from "./corro_rutas.ts";
+import type { Corros } from "./corro.ts";
 
 const APAGADA = { error: "presencia_apagada", mensaje: "La visita compartida no está disponible en este servidor." } as const;
 
@@ -18,6 +20,8 @@ export interface DepsExpulsion {
   bd: Pick<Bd, "query">; lk: ConfigLiveKit; moderador: ModeradorSala; expulsados: Expulsados;
   /** F3c: las salas guiadas abiertas ahora (`guiada-<evento>`), para sacarle también de ellas; sin esto, solo las dos fijas */
   guiadas?: () => Promise<string[]>;
+  /** F3k-1: los corros de la visita libre: se le saca del suyo (y se borran sus invitaciones) y de su sala `corro-<id>` */
+  corros?: Corros | null;
 }
 export type ResultadoExpulsion = { ok: true; estaba_en_sala: boolean; conexiones: number } | { ok: false; motivo: "no_existe" };
 
@@ -33,8 +37,12 @@ export async function expulsa(d: DepsExpulsion, adminId: number, hogarId: number
   d.expulsados.marca(hogarId);
   const prefijo = prefijoHogar(d.lk, hogarId), donde: string[] = [];
   let conexiones = 0;
+  // F3k-1: primero se le saca de su corro (sale de la sala del corro con su RemoveParticipant y, si quedan menos de dos, el corro se deshace)
+  const corro = d.corros?.corroDe(hogarId) ?? null;
+  if (d.corros) await d.corros.sacaHogar(hogarId, "expulsion", adminId);
   const salas = [...CLAVES_SALA.map(k => SALAS[k]), ...(d.guiadas ? await d.guiadas() : [])];
   for (const s of salas) { const n = await d.moderador.expulsaHogar(s, prefijo); if (n > 0) donde.push(s); conexiones += n; }
+  if (corro) donde.push("corro-" + corro);
   const estaba = conexiones > 0;
   await audita(d.bd as Bd, adminId, "admin.presencia_expulsado", { hogar: hogarId, sala: donde.length ? donde.join(",") : SALA_LIBRE, estaba, conexiones, ...(motivo ? { motivo } : {}) });
   return { ok: true, estaba_en_sala: estaba, conexiones };
@@ -49,6 +57,9 @@ export async function rutasPresencia(app: FastifyInstance, ctx: Contexto): Promi
   const moderador: ModeradorSala | null = ctx.moderador ?? real;
   // F3c: con un moderador de mentira (pruebas) y sin uno de voz, la voz queda apagada (503) en vez de llamar a un LiveKit que no existe
   const voz = ctx.moderadorVoz ?? (ctx.moderador ? null : real);
+  // F3k-1: los corros de la visita libre (en memoria; null sin LiveKit o sin voz: sus rutas dan 503)
+  const depsCorros = { lk: lk ?? null, voz, moderador, expulsados, permitida: ctx.config.vozCercania.permitida, ...(ctx.relojVoz ? { reloj: ctx.relojVoz } : {}) };
+  const corros = creaCorros(bd, depsCorros, app.log);
 
   // F2b: ¿hay presencia en red en este servidor? Barato y sin secretos (solo si LiveKit está configurado); con sesión, como el resto. El motor lo
   // pregunta una vez para activarse solo, sin ?presencia=red
@@ -93,7 +104,7 @@ export async function rutasPresencia(app: FastifyInstance, ctx: Contexto): Promi
   }, async (req, rep) => {
     if (!lk || !moderador) return rep.code(503).send(APAGADA);
     const motivo = req.body.motivo?.trim().replace(/\s+/g, " ") || null;
-    const r = await expulsa({ bd, lk, moderador, expulsados, ...(voz ? { guiadas: () => voz.salasGuiadas() } : {}) }, req.session.hogarId!, req.body.hogar_id, motivo);
+    const r = await expulsa({ bd, lk, moderador, expulsados, corros, ...(voz ? { guiadas: () => voz.salasGuiadas() } : {}) }, req.session.hogarId!, req.body.hogar_id, motivo);
     if (!r.ok) return rep.code(404).send({ error: "no_existe" });
     return { estaba_en_sala: r.estaba_en_sala, conexiones: r.conexiones };
   });
@@ -101,5 +112,7 @@ export async function rutasPresencia(app: FastifyInstance, ctx: Contexto): Promi
   // OF10: el mundo en modo oficina (anunciar, llevar a otra sala, balizas oficiales): src/presencia/oficina_mundo.ts
   await rutasOficinaMundo(app, ctx, moderador, ligadura, voz ? () => voz.salasGuiadas() : undefined);
   // F3c: la voz de las visitas guiadas (sala `guiada-<evento>`, la palabra, silenciar, expulsar): src/presencia/voz_rutas.ts
-  await rutasVoz(app, bd, { lk: lk ?? null, voz, expulsados, ...(ctx.relojVoz ? { reloj: ctx.relojVoz } : {}) });
+  await rutasVoz(app, bd, { lk: lk ?? null, voz, expulsados, corros, ...(ctx.relojVoz ? { reloj: ctx.relojVoz } : {}) });
+  // F3k-1 (ADR-0032): la voz por cercanía en corros (invitar, aceptar, salir, token de `corro-<id>`, bloqueos, avisos, suspensiones, interruptor): corro_rutas.ts
+  await rutasCorros(app, bd, depsCorros, corros);
 }

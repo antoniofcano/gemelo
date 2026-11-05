@@ -1,6 +1,6 @@
 // Lo que la bandeja de la oficina (OF4, doc/sistema/OFICINA.md §5) necesita además de las rutas de V3 (`GET /api/admin/bandeja`,
 // `POST /api/admin/bandeja/:id/estado` y `POST /api/admin/personalizaciones/:id/retirar`, en vida/rutas.ts). Todas con la guarda de oficina:
-//   GET  /api/admin/bandeja/resumen                  lo pendiente, para el contador de la barra lateral
+//   GET  /api/admin/bandeja/resumen                  lo pendiente, para el contador de la barra lateral (F3k-1: también los avisos de voz nuevos)
 //   POST /api/admin/personalizaciones/:id/restaurar  deshace «retirar»: el contenido vuelve a verse (y el hogar lo sabe)
 //   GET  /api/admin/preguntas                        preguntas de las familias sobre su haza (con o sin respuesta)
 //   POST /api/admin/preguntas/:id/responder          la respuesta, que la familia ve en su haza (y un aviso)
@@ -21,15 +21,17 @@ export async function rutasBandeja(app: FastifyInstance, ctx: Contexto): Promise
   const { bd } = ctx;
 
   app.get("/api/admin/bandeja/resumen", { preHandler: OFICINA }, async (_req, rep) => {
-    const [b, p] = await Promise.all([
+    const [b, p, v] = await Promise.all([
       bd.query<{ tipo: string; n: number }>("SELECT tipo, count(*)::int AS n FROM bandeja WHERE estado = 'nueva' GROUP BY tipo"),
       bd.query<{ n: number }>("SELECT count(*)::int AS n FROM preguntas WHERE respuesta IS NULL"),
+      // F3k-1: los avisos de persona de la voz por cercanía (tabla propia, voz_avisos; se atienden en GET /api/admin/voz/avisos)
+      bd.query<{ n: number }>("SELECT count(*)::int AS n FROM voz_avisos WHERE estado = 'nuevo'"),
     ]);
     const por = (t: string) => b.rows.find(f => f.tipo === t)?.n ?? 0;
-    const nuevas = { contenido_nuevo: por("contenido_nuevo"), sugerencia: por("sugerencia"), denuncia: por("denuncia") };
+    const nuevas = { contenido_nuevo: por("contenido_nuevo"), sugerencia: por("sugerencia"), denuncia: por("denuncia"), aviso_voz: v.rows[0]?.n ?? 0 };
     const preguntas = p.rows[0]?.n ?? 0;
     rep.header("cache-control", "no-store");
-    return { pendientes: nuevas.contenido_nuevo + nuevas.sugerencia + nuevas.denuncia + preguntas, nuevas, preguntas_sin_responder: preguntas };
+    return { pendientes: nuevas.contenido_nuevo + nuevas.sugerencia + nuevas.denuncia + nuevas.aviso_voz + preguntas, nuevas, preguntas_sin_responder: preguntas };
   });
 
   // Deshacer «retirar» (decisión 93: se puede deshacer; queda en la auditoría). Las denuncias que se resolvieron como «retirado» se quedan

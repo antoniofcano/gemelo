@@ -18,6 +18,8 @@
 //   GET    /api/presencia/voz/consentimiento                              la versión vigente del aviso y si este hogar la ha aceptado
 //   PUT    /api/presencia/voz/consentimiento     { version }               aceptar el aviso (la versión vigente; otra da 409 version_distinta)
 //   DELETE /api/presencia/voz/consentimiento                               retirarlo: se le quita la palabra y se baja su mano al momento
+//   F3k-1 (decisión 211): las tres con `?ambito=cercania` hablan del aviso PROPIO de la voz por cercanía (sin él, «guiada», como antes). Aceptarlo pide además
+//   `adulto: true` (la declaración de mayor de edad de M1, decisión 208 provisional, que va en el texto); retirarlo saca al hogar de su corro y apaga su ajuste.
 //  La oficina:
 //   PUT    /api/admin/eventos/:id/guia                   { hogar_id | null }  el guía del evento (una cuenta activa de rol guia, oficina o admin)
 // Por qué /api/presencia/guiadas y no /api/admin/directos (OFICINA §8 lo esbozaba así): el guía no es la oficina, y las rutas /api/admin/* son solo suyas.
@@ -27,7 +29,9 @@ import { requiereSesion } from "../auth/roles.ts";
 import type { Bd } from "../bd/pool.ts";
 import type { ConfigLiveKit } from "../config.ts";
 import { OFICINA } from "../oficina/acceso.ts";
-import { aceptaVoz, consiente, estadoConsentimiento, retiraVoz, VOZ_AVISO_VERSION } from "./consentimiento_voz.ts";
+import { aceptaVoz, type AmbitoVoz, AMBITOS_VOZ, consiente, estadoConsentimiento, retiraVoz, VERSION_AVISO } from "./consentimiento_voz.ts";
+import { poneAjuste } from "./cercania.ts";
+import type { Corros } from "./corro.ts";
 import { AVATAR_POR_DEFECTO, type Avatar, DISPOSITIVOS, type Dispositivo, Expulsados, firmaTokenGuiada, identidadOpaca, limpiaAspecto, type ModeradorVoz, prefijoHogar, SALA_GUIADA } from "./livekit.ts";
 import { AVISO_CIERRE_MAX_S, AVISO_CIERRE_MIN_S, AVISO_CIERRE_S, type Auditor, Cierres, cuerpoCierre, decideGuiada, esGuiada, type EventoGuiada, Palabra, puedeGuiar, puedeModerar, type Rechazo, type Reloj, RELOJ_REAL, TEMA_CIERRE, ventana } from "./voz.ts";
 
@@ -54,7 +58,7 @@ const MENSAJES: Record<string, string> = {
 };
 const falla = (rep: FastifyReply, http: number, codigo: string) => rep.code(http).send({ error: codigo, mensaje: MENSAJES[codigo] ?? codigo });
 
-export interface DepsVoz { lk: ConfigLiveKit | null; voz: ModeradorVoz | null; expulsados: Expulsados; reloj?: Reloj }
+export interface DepsVoz { lk: ConfigLiveKit | null; voz: ModeradorVoz | null; expulsados: Expulsados; reloj?: Reloj; /** F3k-1: los corros, para sacar al hogar que retira su consentimiento de cercanía */ corros?: Corros | null }
 
 /** Expulsados de una sala guiada por el guía o la oficina: 15 min sin token de ESA sala (en memoria, como Expulsados). */
 export class ExpulsadosGuiada {
@@ -145,7 +149,7 @@ export async function rutasVoz(app: FastifyInstance, bd: Bd, d: DepsVoz): Promis
     const f = await deFamilia(req, rep);
     if (!f) return rep;
     const r = await palabra!.levanta(req.params.evento, f.identidad, f.hogar);
-    if (!r.ok && r.codigo === "sin_consentimiento") return rep.code(409).send({ error: r.codigo, mensaje: "Antes de pedir la palabra hay que aceptar el aviso de voz.", version: VOZ_AVISO_VERSION });
+    if (!r.ok && r.codigo === "sin_consentimiento") return rep.code(409).send({ error: r.codigo, mensaje: "Antes de pedir la palabra hay que aceptar el aviso de voz.", version: VERSION_AVISO.guiada });
     if (!r.ok) return falla(rep, 409, r.codigo);
     return { puesto: r.puesto };
   });
@@ -162,27 +166,40 @@ export async function rutasVoz(app: FastifyInstance, bd: Bd, d: DepsVoz): Promis
 
   // ---- el consentimiento de voz del hogar (F3j, decisión 163): no depende de LiveKit ni de una visita, y solo habla del hogar de la sesión
   const SIN_CACHE = (rep: FastifyReply) => rep.header("cache-control", "no-store");
-  app.get("/api/presencia/voz/consentimiento", { preHandler: requiereSesion }, async (req, rep) => {
+  const AMBITO = { type: "object", additionalProperties: false, properties: { ambito: { type: "string", enum: [...AMBITOS_VOZ] } } } as const;
+  type ConAmbito = { Querystring: { ambito?: AmbitoVoz } };
+  app.get<ConAmbito>("/api/presencia/voz/consentimiento", { preHandler: requiereSesion, schema: { querystring: AMBITO } }, async (req, rep) => {
     SIN_CACHE(rep);
-    return estadoConsentimiento(bd, req.session.hogarId!);
+    return estadoConsentimiento(bd, req.session.hogarId!, req.query.ambito ?? "guiada");
   });
-  app.put<{ Body: { version: number } }>("/api/presencia/voz/consentimiento", {
+  app.put<ConAmbito & { Body: { version: number; adulto?: boolean } }>("/api/presencia/voz/consentimiento", {
     preHandler: requiereSesion,
     config: { rateLimit: { max: 10, timeWindow: 60_000 } },
-    schema: { body: { type: "object", additionalProperties: false, required: ["version"], properties: { version: { type: "integer", minimum: 1, maximum: 32767 } } } },
+    schema: { querystring: AMBITO, body: { type: "object", additionalProperties: false, required: ["version"], properties: { version: { type: "integer", minimum: 1, maximum: 32767 }, adulto: { type: "boolean" } } } },
   }, async (req, rep) => {
     SIN_CACHE(rep);
+    const ambito = req.query.ambito ?? "guiada", vigente = VERSION_AVISO[ambito];
     // el cliente dice QUÉ texto vio: si no es el vigente (p. ej. una pestaña vieja), no vale y se le pide que lo vuelva a leer
-    if (req.body.version !== VOZ_AVISO_VERSION) return rep.code(409).send({ error: "version_distinta", mensaje: "El aviso ha cambiado: léelo de nuevo.", version: VOZ_AVISO_VERSION });
-    await aceptaVoz(bd, req.session.hogarId!);
-    return estadoConsentimiento(bd, req.session.hogarId!);
+    if (req.body.version !== vigente) return rep.code(409).send({ error: "version_distinta", mensaje: "El aviso ha cambiado: léelo de nuevo.", version: vigente });
+    // F3k-1 (M1, decisión 208 provisional): el aviso de la cercanía lleva la declaración de mayor de edad; sin marcarla, no se acepta
+    if (ambito === "cercania" && req.body.adulto !== true) return rep.code(409).send({ error: "falta_declaracion", mensaje: "Para activar la voz por cercanía hay que declarar que eres mayor de edad.", version: vigente });
+    await aceptaVoz(bd, req.session.hogarId!, ambito);
+    return estadoConsentimiento(bd, req.session.hogarId!, ambito);
   });
-  app.delete("/api/presencia/voz/consentimiento", {
+  app.delete<ConAmbito>("/api/presencia/voz/consentimiento", {
     preHandler: requiereSesion,
     config: { rateLimit: { max: 10, timeWindow: 60_000 } },
+    schema: { querystring: AMBITO },
   }, async (req, rep) => {
-    const hogar = req.session.hogarId!;
-    await retiraVoz(bd, hogar);   // primero la fila: desde este instante la api ya no le da la palabra
+    const hogar = req.session.hogarId!, ambito = req.query.ambito ?? "guiada";
+    await retiraVoz(bd, hogar, ambito);   // primero la fila: desde este instante la api ya no le da la palabra (ni el token de un corro)
+    if (ambito === "cercania") {
+      // F3k-1: sin consentimiento, el ajuste se apaga y sale al momento de su corro (RemoveParticipant; si LiveKit no responde, su token ya no se renueva)
+      await poneAjuste(bd, hogar, false);
+      try { await d.corros?.sacaHogar(hogar, "consentimiento", hogar); }
+      catch (err) { app.log.warn({ err: (err as Error).message }, "voz: consentimiento de cercanía retirado, pero no se pudo sacar del corro"); }
+      return rep.code(204).send();
+    }
     // y luego, si hablaba o esperaba, se le quita en LiveKit; si LiveKit no responde, el consentimiento ya está retirado y solo se avisa en el registro
     try { await palabra?.retiraConsentimiento(hogar, hogar); }
     catch (err) { app.log.warn({ err: (err as Error).message }, "voz: consentimiento retirado, pero no se pudo quitar la palabra en LiveKit"); }

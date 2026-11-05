@@ -50,6 +50,17 @@ const CON_MICRO: PermisosVoz = { ...SOLO_DATOS, canPublish: true, canPublishSour
 const SIN_MICRO: PermisosVoz = { ...SOLO_DATOS, canPublishSources: [] };
 export const PERMISOS_GUIADA: Record<Papel, PermisosVoz> = { guia: CON_MICRO, oficina: CON_MICRO, familia: SIN_MICRO };
 /**
+ * F3k (ADR-0032; contratos/livekit-roles.json v8, «salas.corro» y «roles_corro»): la sala SOLO DE AUDIO de un corro de la visita libre, `corro-<id>`, con un id
+ * opaco y al azar del corro (ni del hogar ni de la base). Solo la firma la api, y solo a los hogares que han aceptado estar en ese corro (corro.ts): quien no
+ * tiene token no entra ni se suscribe, aunque modifique su cliente. El papel único, «miembro»: micrófono y SOLO micrófono, sin datos (la pose y el chat siguen en
+ * `hituelo-libre`, que sigue sin audio) y, como todos, sin roomAdmin ni cambiar sus metadatos. Nada se graba (sin Egress, decisión 10).
+ */
+export const SALA_CORRO = (id: string): string => "corro-" + id;
+export const PATRON_ID_CORRO = /^[A-Za-z0-9_-]{12}$/;
+export const PATRON_SALA_CORRO = /^corro-[A-Za-z0-9_-]{12}$/;
+export type PapelCorro = "miembro";
+export const PERMISOS_CORRO: Record<PapelCorro, PermisosVoz> = { miembro: { ...SOLO_DATOS, canPublish: true, canPublishData: false, canPublishSources: [TrackSource.MICROPHONE] } };
+/**
  * Lo que la api pone a una familia al darle o quitarle la palabra (RoomService.UpdateParticipant). LiveKit cambia los permisos «de una vez»: hay que mandar
  * todos los que se quieren, no solo el que cambia (tipos de livekit-server-sdk 2.19.2). Al quitar canPublish, LiveKit despublica sus pistas solo
  * (documentación de LiveKit, «managing participants»; [NO VERIFICADO contra LiveKit 1.13.11]: lo comprueba F3g).
@@ -129,7 +140,7 @@ export const AVATAR_POR_DEFECTO: Avatar = { camisa: 0, sombrero: "paja", piel: 1
 /** F3c (livekit-roles v6): en la sala guiada, el papel de cada uno (lo pone la api): el guía del evento, la oficina o una familia apuntada. */
 export type Papel = "guia" | "oficina" | "familia";
 export const PAPELES: readonly Papel[] = ["guia", "oficina", "familia"];
-export interface Metadatos { alias: string; avatar: Avatar; rol: Rol; dispositivo: Dispositivo; papel?: Papel }
+export interface Metadatos { alias: string; avatar: Avatar; rol: Rol; dispositivo: Dispositivo; papel?: Papel | PapelCorro }
 
 export interface TokenPresencia { url: string; sala: string; identidad: string; token: string; caduca_en: string }
 
@@ -156,6 +167,19 @@ export async function firmaTokenGuiada(lk: ConfigLiveKit, hogarId: number, sesio
   const meta: Metadatos = { ...(esRolOficina(m.rol) ? { ...m, alias: ALIAS_OFICINA } : m), papel };
   const at = new AccessToken(lk.clave, lk.secreto, { identity: identidad, name: meta.alias, metadata: JSON.stringify(meta), ttl: TTL_S });
   at.addGrant({ room: nombre, ...PERMISOS_GUIADA[papel] });
+  return { url: lk.urlPublica, sala: nombre, identidad, token: await at.toJwt(), caduca_en: new Date(ahora + TTL_S * 1000).toISOString() };
+}
+
+/**
+ * F3k: el token de la sala de un corro (`corro-<id>`), con los permisos del papel «miembro» (PERMISOS_CORRO) y el papel en los metadatos. Quién puede pedirlo
+ * lo decide la api (corro_rutas.ts: solo un hogar que está en ese corro ahora, con la voz por cercanía disponible). Vida corta, como los demás (TTL_S).
+ */
+export async function firmaTokenCorro(lk: ConfigLiveKit, hogarId: number, sesionId: string, m: Metadatos, corro: string, ahora = Date.now()): Promise<TokenPresencia> {
+  if (!PATRON_ID_CORRO.test(corro)) throw new Error("id de corro no válido");
+  const identidad = identidadOpaca(lk, hogarId, sesionId), nombre = SALA_CORRO(corro);
+  const meta: Metadatos = { ...(esRolOficina(m.rol) ? { ...m, alias: ALIAS_OFICINA } : m), papel: "miembro" };
+  const at = new AccessToken(lk.clave, lk.secreto, { identity: identidad, name: meta.alias, metadata: JSON.stringify(meta), ttl: TTL_S });
+  at.addGrant({ room: nombre, ...PERMISOS_CORRO.miembro });
   return { url: lk.urlPublica, sala: nombre, identidad, token: await at.toJwt(), caduca_en: new Date(ahora + TTL_S * 1000).toISOString() };
 }
 

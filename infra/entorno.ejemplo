@@ -93,6 +93,9 @@ GEMELO_VIGIA=no
 # GEMELO_LIVEKIT_CLAVE=<nombre de la clave, el mismo de livekit_claves>
 # para el contenedor de LiveKit: la IP pública del VPS, el candidato ICE que anuncia (sin ella, los medios no llegan)
 # NODE_IP=<IP pública del VPS>
+# F3k (ADR-0032): la voz por cercanía (corros en la visita libre). «si» (por omisión) = la decide el interruptor de la oficina, que nace APAGADO
+# (PUT /api/admin/voz/cercania); «no» = no existe en este servidor y el interruptor no la enciende. Hasta cerrar la EIPD, solo cuentas de prueba (decisión 41).
+# GEMELO_VOZ_CERCANIA=no
 # --- fotos de los hogares (V7, contratos/vida.md). El compose fija GEMELO_MEDIOS=/datos/medios (volumen `medios`, que entra en las copias)
 # y GEMELO_CONFIG_SALIDA=/datos/config/publicada.json (volumen `config_publicada`, para el hornero): no se ponen aquí.
 # Tope por foto en MB (1–16): el Caddy interno y el de borde dejan pasar POST /api/medios hasta 9 MB; si lo subes de 8, sube también

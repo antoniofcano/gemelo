@@ -92,7 +92,7 @@ test("el resumen cuenta lo nuevo por tipo y las preguntas sin responder", async 
   await filaBandeja("sugerencia", "Una rama partida junto al camino.");
   await q("INSERT INTO preguntas (hogar_id, haza_id, texto) VALUES ($1, $2, '¿Cuándo se recoge?')", [ids[ANA], hazaId]);
   const r = (await pide("GET", "/api/admin/bandeja/resumen")).json();
-  assert.deepEqual(r.nuevas, { contenido_nuevo: 1, sugerencia: 1, denuncia: 0 });
+  assert.deepEqual(r.nuevas, { contenido_nuevo: 1, sugerencia: 1, denuncia: 0, aviso_voz: 0 });
   assert.equal(r.preguntas_sin_responder, 1);
   assert.equal(r.pendientes, 3);
 });

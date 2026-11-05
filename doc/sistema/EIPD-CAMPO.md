@@ -4,7 +4,7 @@
 
 - **Estado:** borrador (2026-11-02), tarea F4-1. Sigue la estructura de [EIPD-VOZ](EIPD-VOZ.md) y la amplía; el documento final debe ser **una sola EIPD** con la de la voz y la de OlivarTrack (decisiones 41, 102 y 165).
 - **Base técnica:** [ADR-0030](../adr/0030-corresponsal-de-campo-pwa-en-primer-plano.md) (Propuesto) y el estudio [CORRESPONSAL](CORRESPONSAL.md).
-- **Hoy no existe nada de esto:** ningún rol puede publicar cámara (`contratos/livekit-roles.json` v7), no hay página de campo ni tabla de clips.
+- **Hoy no existe nada de esto:** ningún rol puede publicar cámara (`contratos/livekit-roles.json` v8: los corros, solo micrófono), no hay página de campo ni tabla de clips.
 
 ## 1. El tratamiento nuevo
 
