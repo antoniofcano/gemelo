@@ -12,7 +12,7 @@
 - Solo en salas `guiada-<evento>` (una por visita, decisión 39), abiertas a los hogares inscritos en el evento (decisión 154).
 - Habla el guía y la oficina (decisión 114); una familia habla solo cuando se le da la palabra (decisión 115), por turnos de tiempo limitado y con el micrófono abierto por un gesto suyo (propuesta del ADR-0026; decisiones 158, 160, 161 abiertas).
 - **No se graba** (decisión 10): no se despliega Egress, la api no tiene ruta de grabación y no hay transcripción ni subtítulos automáticos (ADR-0026).
-- Fuera de F3: voz en la visita libre o por cercanía (decisión 157, recomendada «no»), vídeo del corresponsal (F4, tratamiento aparte que la EIPD debe incluir antes de abrirlo), clips (decisión 10).
+- Fuera de F3: voz en la visita libre o por cercanía (decisión 157, recomendada «no»; su ampliación en borrador, F3k, en el [§13](#13-voz-por-cercanía-f3k-borrador)), vídeo del corresponsal (F4, tratamiento aparte que la EIPD debe incluir antes de abrirlo), clips (decisión 10).
 
 Hoy **no existe**: todos los roles tienen `canPublish: false` en `contratos/livekit-roles.json` (v5) y no se acepta ninguna pista de micrófono (ADR-0026, comprobado contra LiveKit 1.13.11). Este borrador describe lo que se va a construir en F3c-F3i.
 
@@ -119,6 +119,79 @@ La decisión 41 ya fija una EIPD con F3 y ARQUITECTURA-MULTIUSUARIO la prevé. Q
 8. **Procedimiento de queja sin grabación** (R2): qué hace la oficina.
 9. **Personas trabajadoras**: información previa, y si el uso de su voz entra en el convenio o en la política interna.
 10. **Validación legal** de todo lo marcado [SUPUESTO] / [NO VERIFICADO]. Hasta entonces: **solo cuentas de prueba** (decisión 41).
+
+## 13. Voz por cercanía (F3k), borrador
+
+> **BORRADOR para la asesoría (2026-11-05, tarea F3k-0).** Como el resto de este documento, **no es asesoramiento jurídico**: lo escribe un agente con lo que dice el repo; las referencias a normativa son de memoria y sin contrastar; lo que no está en el repo va **[SUPUESTO]**. Nada de esto existe: **ningún micrófono se abre en la visita libre** (`hituelo-libre` sigue con `canPublish: false` para todos). Base técnica: [ADR-0032](../adr/0032-voz-por-cercania-en-la-visita-libre.md) (Propuesto; decisiones 205-213 abiertas).
+
+**Por qué va en este fichero y no en uno nuevo.** Es el **mismo tratamiento** (voz en directo de las familias, por el mismo LiveKit del VPS, con la misma base de consentimiento, sin grabar y con las mismas medidas técnicas), en un **contexto nuevo** (sin guía y con quien te encuentras); la decisión 41 pide una sola EIPD con F3, y la lista «Cuándo se rehace» de abajo ya nombra «voz fuera de las guiadas». El vídeo del corresponsal sí tiene fichero propio ([EIPD-CAMPO](EIPD-CAMPO.md)) porque trata otros datos de otras personas. Si la asesoría prefiere documentos separados por contexto, esta sección se mueve tal cual.
+
+### 13.1 Qué se trata
+
+Con la opción recomendada del ADR-0032 (**corro con aceptación**, K4):
+- **Voz en directo** de los miembros de un **corro** (de 2 a 5 hogares que han aceptado hablar entre sí en la visita libre), solo para ellos y mientras estén cerca (se deja de oír a más de 20 m [PROPUESTA]). Sale cuando quien habla pulsa, y se cierra al soltar o volver a pulsar, tras 60 s en silencio o al salir del corro.
+- **Lo que se trata y lo que se guarda** (nada con audio ni con el texto de lo dicho):
+
+| Dato | Para qué | ¿Se guarda? |
+|---|---|---|
+| Voz y lo que se dice | que el corro se oiga | **No.** Ni grabación, ni transcripción, ni Egress |
+| Corro en curso (quién está, desde cuándo) | dar y quitar los tokens de su sala | **No**: en memoria de la api; se pierde al deshacerse o al reiniciar |
+| Auditoría `corro.*` (invitó, entró, salió, deshecho, suspendido) | atender un aviso: quién estaba con quién y cuándo | Sí: **quién (hogar), con quién y cuándo**; plazo propuesto, la campaña y un año más (decisión 212) |
+| **Consentimiento de ámbito «cercanía»** con la declaración de adulto | base del tratamiento (como la 163) | Sí, por hogar y versión del texto (como F3j) |
+| **Ajuste «Voz por cercanía»** (activada o apagada) | no recibir invitaciones ni pistas si está apagada | Sí, por cuenta |
+| **Bloqueos de voz** (quién bloquea a quién) | que quien bloqueas no te invite ni entre en tu corro | Sí, mientras existan los dos hogares y no se quite; el bloqueado no lo ve |
+| **Avisos a la oficina** (quién avisa, de qué hogar, cuándo, en qué corro, motivo y texto ≤ 280) | moderación sin guía | Sí; plazo propuesto, la campaña y un año más |
+| Suspensiones de la voz por cercanía (de qué hogar, hasta cuándo, quién) | moderación | Sí, en la auditoría |
+| IP y datos de la segunda conexión de LiveKit | WebRTC | Como en el §4: **[NO VERIFICADO]** qué registra LiveKit |
+
+### 13.2 Riesgos nuevos frente a las guiadas
+
+Gravedad y probabilidad, juicio del agente sin medir; la numeración sigue la tabla del §8.
+
+| # | Riesgo | Por qué es nuevo | Valoración (con K4) |
+|---|---|---|---|
+| R9 | **Desconocidos**: voz con personas con las que no se ha quedado ni hay evento | en la guiada todos se inscribieron a lo mismo | Media con K4 (hay que aceptar); **alta con K1** (voz no pedida) |
+| R10 | **Sin moderación en directo**: nadie corta un insulto mientras pasa, y sin grabación no hay prueba | en la guiada modera el guía | Media-alta. Queda el «salir» de cada uno y el aviso a posteriori |
+| R11 | **Menores cerca**: un menor junto al micro de un adulto, o hablando con su cuenta, ahora con desconocidos y sin guía | en la guiada el guía oye y corta | Media-alta (decisión 45: no hay cuentas de menor, pero eso no evita al menor de la casa) |
+| R12 | **Acoso**: invitar una y otra vez, seguir a alguien por el olivar, decir algo ofensivo y salir, volver con otra sesión | en la guiada es un rato y con turno | Media. Lo acotan aceptar, bloquear en el servidor, los límites y la suspensión |
+| R13 | **Audio de terceros en casa**: lo que suena alrededor de quien habla (otra persona, la tele, una llamada) | en la guiada el micro se abre un turno de 2 min; aquí no hay turno | Media. Lo acotan pulsar para hablar y el cierre por silencio |
+| R14 | **Tratamiento continuo**: cualquier día y a cualquier hora, sin acotar a una visita | la guiada es un rato con fecha | Media: es lo que obliga a ampliar la EIPD |
+| R15 | **Datos de moderación**: un aviso o una suspensión sin prueba pueden ser injustos; la lista de bloqueos dice con quién no quiere hablar alguien | no existían | Media-baja; pide garantías (13.3) |
+| R16 | **Escucha a escondidas o falsa sensación de privacidad**: alguien cree que nadie le oye, o alguien oye sin aparecer | en la guiada la sala es de inscritos | **Baja con K4** (solo oye quien tiene token del corro y sale en su lista); **alta con K1** (un cliente modificado oiría toda la sala) |
+
+### 13.3 Medidas, por opción
+
+| Punto (decisión) | Opción recomendada y su medida | Si se eligiera otra |
+|---|---|---|
+| Con quién (205) | **K4, corro con aceptación**: sin aceptar no se oye nada; el servidor firma el token de la sala del corro solo a sus miembros; lista visible de quién está; hasta 5 hogares; del corro no se guarda nada | K1: voz no pedida y la cercanía la impone el cliente (R9 y R16 altas); K2: un grafo de amigos guardado (dato nuevo persistente); K3: se oye a cualquiera que entre en la haza |
+| Distancia (206) | invitar a menos de 8 m; dejar de oír a más de 20 m; el corro se deshace a más de 40 m durante 60 s [PROPUESTA] | radio único de 12 m (K1) |
+| Micro (207) | **pulsar** (o mantener); se cierra tras 60 s de silencio, al salir del corro y al perder el permiso; indicador fijo «● Tu micro está abierto»; recomendar auriculares | P3 (abierto con detección de voz): capta la casa; descartada (B3 del ADR-0026) |
+| Menores (208) | sin cuentas de menor (45) y **declaración de adulto** en el aviso; pulsar para hablar; el motivo «parece un menor» al avisar | sin declaración (M2) o no abrir F3k (M3) |
+| Moderación (209) | silenciar, salir y **bloquear en el servidor**; **avisar** a la oficina, sin audio; la oficina **suspende** o expulsa y tiene un **interruptor general**; límites de invitaciones y suspensión automática con avisos de 3 hogares distintos en 7 días, **revisada por una persona** | Mo2: además, solo con la oficina conectada (piloto); Mo3: solo para uno, sin consecuencias |
+| Quien no habla (210) | **apagada por defecto** (se activa con un gesto en Ajustes o en la tarjeta de la primera vez); icono de corro para quien está fuera («no les oyes y ellos no te oyen»); se apaga del todo en Ajustes, también en VR | activada por defecto (V2): el tratamiento empieza sin un gesto |
+| Consentimiento (211) | **aviso propio** de la cercanía, por versión y ámbito; retirable cuando se quiera (retirarlo te saca al momento de cualquier corro) | el mismo de las guiadas: menos específico |
+| Plazos (212) | auditoría y avisos, la campaña y un año más (como la 164); bloqueos, mientras existan los dos hogares; corros, nada | avisos, 6 meses tras resolverlos |
+| Siempre | **sin grabar** (decisión 10), sin transcribir, sin terceros; solo cuentas de prueba hasta validar (41) | — |
+
+**Garantías para quien recibe un aviso [PROPUESTA]:** la suspensión automática es provisional y la revisa una persona de la oficina; el hogar suspendido ve que lo está, hasta cuándo y cómo pedir que se revise; **no se le dice quién avisó**; la oficina toma el texto de un aviso como queja, no como prueba de lo dicho.
+
+### 13.4 Base jurídica
+
+Como la decisión 163: **consentimiento** de las familias (RGPD art. 6.1.a **[SUPUESTO: citado de memoria]**), con un **aviso propio** de la cercanía (decisión 211): libre (sin aceptar, la visita libre y el chat siguen igual), específico (solo corros), informado (con quién, sin moderación en directo, sin grabación, cómo avisar y salir) y **retirable** en Ajustes o en VR. Dos matices para la asesoría: aceptar cada invitación es un **consentimiento por corro** que refuerza el general pero no lo sustituye; y los datos de moderación (bloqueos, avisos, suspensiones) **[SUPUESTO]** encajarían mejor en el **interés legítimo** de mantener la comunidad segura que en el consentimiento (no tendría sentido que quien acosa «retire su consentimiento» para borrar el aviso contra él). El guía y la oficina no tienen papel propio en los corros: la oficina modera por la api.
+
+### 13.5 Para la asesoría (lista corta)
+
+1. **¿Basta el consentimiento, con aviso propio y aceptación por corro,** para un tratamiento continuo entre desconocidos? ¿Y qué base y ponderación llevan bloqueos, avisos y suspensiones (¿interés legítimo?)?
+2. **Menores:** ¿basta la declaración de adulto en el aviso, con pulsar para hablar, o hace falta otra medida (verificación de edad, horarios, perfiles de menor)? ¿Qué edad aplica en España **[SUPUESTO: 14 años, LOPDGDD art. 7, de memoria]**?
+3. **Moderar sin prueba:** ¿se puede suspender por avisos sin grabación? ¿Qué garantías mínimas (aviso al suspendido, revisión, recurso)? ¿Se puede no decir quién avisó ante un derecho de acceso?
+4. **Plazos** de avisos, bloqueos y auditoría de corros (la propuesta de la 212).
+5. **Terceros en casa:** qué hay que decir en el aviso y en la política sobre las personas que se oyen de fondo.
+6. **Responsabilidad por lo que dicen otros** en una voz entre usuarios: normas de la comunidad y si hay obligaciones de prestador de un servicio de intermediación **[SUPUESTO: no se sabe si aplica el Reglamento de Servicios Digitales]**.
+7. **¿Consulta previa a la AEPD** si R10 y R11 quedan en riesgo medio-alto tras las medidas (§11)?
+
+### 13.6 Lo que queda abierto para Antonio
+
+Las decisiones **205-213** de [DECISIONS-PENDING](../rumbo/DECISIONS-PENDING.md) (con quién, distancia, micro, menores, moderación, apagado por defecto, consentimiento, plazos y orden) y, como en todo el documento, la **165** (responsable, canal de derechos, contrato con OVH, TURN, la EIPD de OlivarTrack), que también cierra esta sección.
 
 ## Cuándo se rehace
 

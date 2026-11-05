@@ -103,3 +103,7 @@ La decisión 115 ya dice **mano levantada y la oficina da la palabra**. Queda po
 ## Verificado el 2026-10-31 (F3g)
 
 Contra LiveKit 1.13.11 autoalojado: quitar `canPublish` despublica las pistas solas (70-411 ms al cortar; al vencer el turno a los 2 min, igual); los atributos `mano` y `palabra_hasta` llegan a la sala; `UpdateParticipant` sobre una identidad ausente da 404 `not_found`; el aviso de cierre llega antes del `DeleteRoom`. `silenciar` no ejerce `MutePublishedTrack` con una pista real por la api, porque la palabra se quita antes. Sigue sin comprobar: eco en Quest e iPhone, HRTF en Quest y móvil, CPU con 10 y 40 personas (F3h).
+
+## Enmienda propuesta 2026-11-05: voz por cercanía (F3k)
+
+El [ADR-0032](0032-voz-por-cercania-en-la-visita-libre.md) (**Propuesto**) propone enmendar la opción a) de este ADR: además de las guiadas, voz en la visita libre **en corros con aceptación**, en salas de audio propias (`corro-<id>`) y con `hituelo-libre` sin audio. Mientras Antonio no lo acepte (decisiones 205-213) y la asesoría no vea la [EIPD-VOZ §13](../sistema/EIPD-VOZ.md#13-voz-por-cercanía-f3k-borrador), sigue valiendo lo de arriba: voz solo en las guiadas (decisiones 157 y 180).
