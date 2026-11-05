@@ -1,8 +1,11 @@
 // EV-3a: la fuente AUTOMÁTICA de avisos del campo. De vez en cuando mira GET /api/mundo/hoy (el mismo servicio, sin llamar a nadie más) y, si
 // hay un aviso de los tipos elegidos, lo deja en la tabla `avisos` (tipo «labor», sin autor) para los hogares a los que toca; el correo lo manda
 // el repartidor de siempre (avisos/correo.ts: reintentos, baja con un clic, solo a quien lo pidió). APAGADA por defecto (GEMELO_AVISOS_CAMPO=no).
-//  · FRECUENCIA MÁXIMA: como mucho un aviso automático cada `minHoras` (GEMELO_AVISOS_CAMPO_MIN_HORAS, 168 = uno por semana) para todos: si ya
-//    salió uno, no sale otro, aunque haya más novedades (irán al resumen semanal, EV-3b). Y solo de 9:00 a 21:00 de Madrid.
+//  · CANAL (decisión de Antonio, 2026-11-05): solo los tipos de `correo` (GEMELO_AVISOS_CAMPO_CORREO; por defecto helada y lluvia) salen también por
+//    correo; los demás (recogida, fenología) se quedan en la campana (`avisos.por_correo` falso, migración 0027).
+//  · FRECUENCIA MÁXIMA: como mucho un aviso automático cada `minHoras` (GEMELO_AVISOS_CAMPO_MIN_HORAS, 168 = uno por semana) POR CANAL: si ya
+//    salió uno, no sale otro del mismo canal, aunque haya más novedades (irán al resumen semanal, EV-3b); uno de la campana no gasta el hueco del
+//    correo. Y solo de 9:00 a 21:00 de Madrid.
 //  · A QUIÉN: un aviso con parcelas de OlivarTrack (la recogida, la fenología), a los hogares con una haza en esas parcelas (haza_parcela); el
 //    del tiempo (helada, lluvia), a todos los hogares activos con haza. «mirada» (lo que marca Vigía) solo si se pone en GEMELO_AVISOS_CAMPO_TIPOS.
 //  · QUÉ DICE: el título fijo de su tipo y la frase fija que redacta mundo/hoy.ts (solo cifras), con de dónde sale y de cuándo es. Nunca un texto
@@ -21,6 +24,8 @@ const TITULOS: Record<TipoAvisoCampo, string> = {
   fenologia: "Novedades del olivar esta semana",
   mirada: "Vigía marca parcelas para mirar",
 };
+/** decisión de Antonio (2026-11-05): por correo, solo los del tiempo */
+export const CORREO_POR_DEFECTO: readonly TipoAvisoCampo[] = ["helada", "lluvia"];
 const FUENTE = { olivartrack: "OlivarTrack, el cuaderno de campo", vigia: "Vigía" } as const;
 const PROC = { medido: "registrado", modelado: "previsión, modelado" } as const;
 
@@ -41,6 +46,8 @@ export function textoDeAviso(a: AvisoCampo): { titulo: string; texto: string } {
 
 export interface OpcionesAvisosCampo {
   minHoras: number; tipos: readonly TipoAvisoCampo[];
+  /** los tipos que salen también por correo (por defecto, helada y lluvia); los demás, solo en la campana */
+  correo?: readonly TipoAvisoCampo[];
   /** franja de Madrid en la que puede salir (por defecto, de 9 a 21) */
   horaDesde?: number; horaHasta?: number;
   reloj?: () => number;
@@ -66,10 +73,13 @@ export class FuenteAvisosCampo {
   private async haz(): Promise<ResultadoPasada> {
     const { bd, o } = this, ahora = (o.reloj ?? Date.now)(), h = Number(horaMadrid(ahora).slice(0, 2));
     if (h < (o.horaDesde ?? 9) || h >= (o.horaHasta ?? 21)) return { creado: null, motivo: "fuera_de_hora", hogares: 0 };
-    const u = (await bd.query("SELECT max(creado_en) AS ultimo FROM avisos WHERE tipo = 'labor' AND autor_id IS NULL")).rows[0]?.ultimo;
-    if (u && ahora - new Date(u).getTime() < o.minHoras * 3_600_000) return { creado: null, motivo: "frecuencia", hogares: 0 };
-    const a = eligeAviso(await this.mundo.lee(), o.tipos);
-    if (!a) return { creado: null, motivo: "nada", hogares: 0 };
+    const u = (await bd.query("SELECT max(creado_en) FILTER (WHERE por_correo) AS ultimo_correo, max(creado_en) FILTER (WHERE NOT por_correo) AS ultimo_campana FROM avisos WHERE tipo = 'labor' AND autor_id IS NULL")).rows[0] ?? {};
+    const reciente = (v: unknown) => !!v && ahora - new Date(v as string).getTime() < o.minHoras * 3_600_000;
+    const porCorreo = new Set(o.correo ?? CORREO_POR_DEFECTO), cerrado = { correo: reciente(u.ultimo_correo), campana: reciente(u.ultimo_campana) };
+    const tipos = o.tipos.filter(t => !cerrado[porCorreo.has(t) ? "correo" : "campana"]);
+    if (!tipos.length) return { creado: null, motivo: "frecuencia", hogares: 0 };
+    const a = eligeAviso(await this.mundo.lee(), tipos);
+    if (!a) return { creado: null, motivo: o.tipos.length > tipos.length ? "frecuencia" : "nada", hogares: 0 };
     const porParcela = a.de === "olivartrack" && a.parcelas.length > 0;
     const destino = `SELECT DISTINCT hz.hogar_id FROM hazas hz JOIN hogares g ON g.id = hz.hogar_id AND g.activo
        WHERE NOT $3::boolean OR EXISTS (SELECT 1 FROM haza_parcela hp WHERE hp.haza_id = hz.id AND hp.parcela_ot = ANY($4::text[]))`;
@@ -77,10 +87,10 @@ export class FuenteAvisosCampo {
     // un solo INSERT … SELECT: si no hay a quién, no se crea el aviso (y no gasta la frecuencia)
     const r = await bd.query(
       `WITH d AS (${destino}),
-            a AS (INSERT INTO avisos (tipo, titulo, texto, enlace, caduca_en)
-                  SELECT 'labor', $1, $2, '/', now() + interval '3 days' WHERE EXISTS (SELECT 1 FROM d) RETURNING id)
+            a AS (INSERT INTO avisos (tipo, titulo, texto, enlace, caduca_en, por_correo)
+                  SELECT 'labor', $1, $2, '/', now() + interval '3 days', $5 WHERE EXISTS (SELECT 1 FROM d) RETURNING id)
        INSERT INTO avisos_hogar (aviso_id, hogar_id) SELECT a.id, d.hogar_id FROM a, d RETURNING aviso_id`,
-      [titulo, texto, porParcela, porParcela ? a.parcelas : []]);
+      [titulo, texto, porParcela, porParcela ? a.parcelas : [], porCorreo.has(a.tipo)]);
     const n = r.rowCount ?? 0;
     if (!n) return { creado: null, motivo: "sin_destinatarios", hogares: 0 };
     await audita(bd as Bd, null, "avisos.campo", { tipo: a.tipo, hogares: n }).catch(() => undefined);

@@ -274,18 +274,19 @@ test("GET /api/mundo/hoy con sesión: 200 con el contrato y caché privada corta
 // ---------------------------------------------------------------------------------------------- la fuente automática de avisos (apagada por defecto)
 test("configuración: la fuente de avisos del campo nace APAGADA, como mucho uno por semana y sin «mirada»; tipos desconocidos, error", () => {
   const base = { GEMELO_URL_PUBLICA: "https://gemelo.example.com", GEMELO_DB_URL: "postgresql://gemelo_api@db:5432/gemelo" };
-  assert.deepEqual(cargaConfig(base).avisosCampo, { activo: false, minHoras: 168, tipos: ["recogida", "helada", "lluvia", "fenologia"] });
-  assert.deepEqual(cargaConfig({ ...base, GEMELO_AVISOS_CAMPO: "si", GEMELO_AVISOS_CAMPO_MIN_HORAS: "48", GEMELO_AVISOS_CAMPO_TIPOS: "lluvia, mirada" }).avisosCampo, { activo: true, minHoras: 48, tipos: ["lluvia", "mirada"] });
+  assert.deepEqual(cargaConfig(base).avisosCampo, { activo: false, minHoras: 168, tipos: ["recogida", "helada", "lluvia", "fenologia"], correo: ["helada", "lluvia"] });
+  assert.deepEqual(cargaConfig({ ...base, GEMELO_AVISOS_CAMPO: "si", GEMELO_AVISOS_CAMPO_MIN_HORAS: "48", GEMELO_AVISOS_CAMPO_TIPOS: "lluvia, mirada" }).avisosCampo, { activo: true, minHoras: 48, tipos: ["lluvia", "mirada"], correo: ["helada", "lluvia"] });
   assert.throws(() => cargaConfig({ ...base, GEMELO_AVISOS_CAMPO_TIPOS: "tratamiento" }), /tipo desconocido/);
+  assert.throws(() => cargaConfig({ ...base, GEMELO_AVISOS_CAMPO_CORREO: "tratamiento" }), /GEMELO_AVISOS_CAMPO_CORREO: tipo desconocido/);
   assert.throws(() => cargaConfig({ ...base, GEMELO_AVISOS_CAMPO_MIN_HORAS: "1" }), /fuera de rango/);
 });
 
 /** una base de mentira: responde a la consulta del último aviso y al INSERT con lo que se le diga, y guarda lo que se le pidió */
-function bdFalsa(o: { ultimo?: Date | null; hogares?: number } = {}) {
+function bdFalsa(o: { ultimo?: Date | null; ultimoCorreo?: Date | null; hogares?: number } = {}) {
   const q: { sql: string; params: unknown[] | undefined }[] = [];
   return { q, bd: { query: async (sql: string, params?: unknown[]) => {
     q.push({ sql, params });
-    if (/max\(creado_en\)/.test(sql)) return { rows: [{ ultimo: o.ultimo ?? null }], rowCount: 1 };
+    if (/max\(creado_en\)/.test(sql)) return { rows: [{ ultimo_correo: o.ultimoCorreo !== undefined ? o.ultimoCorreo : o.ultimo ?? null, ultimo_campana: o.ultimo ?? null }], rowCount: 1 };
     if (/INSERT INTO avisos_hogar/.test(sql)) { const n = o.hogares ?? 2; return { rows: Array.from({ length: n }, () => ({ aviso_id: 1 })), rowCount: n }; }
     return { rows: [], rowCount: 0 };
   } } };
@@ -313,7 +314,7 @@ test("la fuente de avisos: fuera de hora y dentro de la frecuencia no hace nada;
   assert.match(ins.sql, /'labor'/); assert.match(ins.sql, /WHERE EXISTS \(SELECT 1 FROM d\)/, "sin destinatarios no se crea");
   assert.equal(ins.params![0], "Hoy se recoge en el olivar");
   assert.match(String(ins.params![1]), /^Hoy hay recogida en curso en 1 parcela\.\n\nDe OlivarTrack, el cuaderno de campo \(registrado\), dato del 5 de noviembre a las 11:00\. Lo redacta el gemelo a partir de ese dato\.$/);
-  assert.deepEqual(ins.params!.slice(2), [true, ["sintetica-1"]], "a los hogares con haza en esa parcela");
+  assert.deepEqual(ins.params!.slice(2), [true, ["sintetica-1"], false], "a los hogares con haza en esa parcela; la recogida, solo en la campana");
   assert.ok(b.q.some(x => /INSERT INTO auditoria/.test(x.sql) && /"hogares":3/.test(String(x.params![2])) && !/sintetica/.test(String(x.params![2]))), "auditoría con recuentos, sin a quién");
   const sin = bdFalsa({ hogares: 0 });
   assert.equal((await new FuenteAvisosCampo(sin.bd, fijo, { minHoras: 168, tipos: ["recogida"], reloj: () => AHORA }).pasada()).motivo, "sin_destinatarios");
@@ -335,8 +336,28 @@ test("los avisos por correo: el del tiempo va a todos; «mirada» solo si se pid
   if (lluvia) {
     const b = bdFalsa();
     await new FuenteAvisosCampo(b.bd, { lee: async () => r }, { minHoras: 168, tipos: ["lluvia"], reloj: () => AHORA }).pasada();
-    assert.deepEqual(b.q.find(x => /INSERT INTO avisos_hogar/.test(x.sql))!.params!.slice(2), [false, []], "el del tiempo, a todos los hogares con haza");
+    assert.deepEqual(b.q.find(x => /INSERT INTO avisos_hogar/.test(x.sql))!.params!.slice(2), [false, [], true], "el del tiempo, a todos los hogares con haza, y también por correo");
   }
+});
+
+test("canal (decisión 2026-11-05): un aviso de la campana no gasta el hueco del correo; con los dos cerrados ni se lee el mundo", async () => {
+  const { s, ot } = montaje();
+  ot.sustituye.set("tareas_abiertas", recogida());
+  const mundo = await s.lee(), fijo = { lee: async () => mundo };
+  // la campana cerrada (salió una recogida ayer) y el correo libre: la recogida no sale; si hay lluvia, sale la lluvia
+  const b = bdFalsa({ ultimo: new Date(AHORA - 24 * 3_600_000), ultimoCorreo: null });
+  const r = await new FuenteAvisosCampo(b.bd, fijo, { minHoras: 168, tipos: ["recogida", "lluvia"], reloj: () => AHORA }).pasada();
+  if (mundo.avisos.some(a => a.tipo === "lluvia")) assert.equal(r.creado, "lluvia");
+  else assert.equal(r.motivo, "frecuencia", "la recogida estaba cerrada y no había lluvia");
+  // los dos cerrados: ni lee el mundo
+  const c = bdFalsa({ ultimo: new Date(AHORA - 24 * 3_600_000) });
+  let leido = 0;
+  assert.equal((await new FuenteAvisosCampo(c.bd, { lee: async () => { leido++; return mundo; } }, { minHoras: 168, tipos: ["recogida", "lluvia"], reloj: () => AHORA }).pasada()).motivo, "frecuencia");
+  assert.equal(leido, 0);
+  // si se pone la recogida en la lista del correo, va por correo
+  const d = bdFalsa({ hogares: 1 });
+  await new FuenteAvisosCampo(d.bd, fijo, { minHoras: 168, tipos: ["recogida"], correo: ["recogida"], reloj: () => AHORA }).pasada();
+  assert.equal(d.q.find(x => /INSERT INTO avisos_hogar/.test(x.sql))!.params![4], true);
 });
 
 test("RECOGIDA [SUPUESTO]: con y sin tilde (los tipos de OlivarTrack traen tildes); los tipos vistos el 2026-11-05 no son recogida", () => {

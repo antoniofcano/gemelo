@@ -70,6 +70,7 @@ GEMELO_CORREO_AVISOS_CADA_SEG=60
 GEMELO_AVISOS_CAMPO=no
 GEMELO_AVISOS_CAMPO_MIN_HORAS=168
 GEMELO_AVISOS_CAMPO_TIPOS=recogida,helada,lluvia,fenologia
+GEMELO_AVISOS_CAMPO_CORREO=helada,lluvia
 
 # --- OlivarTrack por MCP, solo lectura (contratos/olivartrack-sync.md). «no» hasta que exista el token propio
 # (decisión 17) y se hayan ajustado las formas de respuesta reales. El token NO va aquí: /etc/gemelo/secretos/ot_token.

@@ -67,7 +67,7 @@ if (lector && config.ot.modo !== "no" && config.ot.cadaMin > 0) {
 }
 // EV-3a: la fuente automática de avisos del campo (APAGADA salvo GEMELO_AVISOS_CAMPO=si): mira cada hora; como mucho un aviso cada GEMELO_AVISOS_CAMPO_MIN_HORAS
 if (config.avisosCampo.activo) {
-  const fuente = new FuenteAvisosCampo(bd, mundoHoy, { minHoras: config.avisosCampo.minHoras, tipos: config.avisosCampo.tipos, ...(repartidor ? { alCrear: () => repartidor.despierta() } : {}),
+  const fuente = new FuenteAvisosCampo(bd, mundoHoy, { minHoras: config.avisosCampo.minHoras, tipos: config.avisosCampo.tipos, correo: config.avisosCampo.correo, ...(repartidor ? { alCrear: () => repartidor.despierta() } : {}),
     log: { warn: (o, m) => app.log.warn(o, m), info: (o, m) => app.log.info(o, m) } });
   const pasa = () => { fuente.pasada().catch(e => app.log.warn({ evento: "aviso_campo_fallido", error: e instanceof Error ? e.message : "?" }, "la fuente de avisos del campo falló")); };
   relojes.push(setInterval(pasa, 60 * 60_000));

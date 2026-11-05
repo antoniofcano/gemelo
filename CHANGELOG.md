@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Avisos del campo por canal (decisión de Antonio, 2026-11-05): la lluvia y la helada salen también por correo; la recogida y la fenología se quedan en la campana del mundo; como mucho uno por semana en cada canal (migración 0027, `GEMELO_AVISOS_CAMPO_CORREO`).
 - La api lee OlivarTrack y Vigía con las formas reales (comprobadas en solo lectura el 2026-11-05): ids de parcela y tipos con tildes, paréntesis y «/» (migración 0026), avance por encima del 100 %, la calibración de Vigía como texto; los pases en borrador no se pintan como tratamiento y el aforo, que llega por nombre de parcela, se aparta con aviso hasta tener la tabla nombre→id (OT-V).
 - El tablón de «Club La Linde» enseña «Hoy en el olivar»: el trabajo de la semana agregado por tipo (nunca por persona) o el aviso principal del campo, con su procedencia y «leído hace N h»; sin datos no se pinta, y cede ante él la línea de la época. Nuevo evento `mundo:hoy` (EV-3c).
 - El mundo de hoy (EV-3a): `GET /api/mundo/hoy` (fecha y hora de Madrid, tiempo de Vigía por días, fenología y trabajo de la semana agregados por parcela y finca, lo que marca Vigía y avisos del campo con frases fijas que nunca autorizan tratamientos; siempre 200); el motor arranca la estación en el día real y enseña «Hoy en el campo» con procedencia y frescura; la fuente automática de avisos por correo queda preparada y apagada (`GEMELO_AVISOS_CAMPO=no`). OlivarTrack y Vigía siguen apagados en el VPS.

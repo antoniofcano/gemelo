@@ -196,7 +196,7 @@ test("recorrido: buscar, alta, cerrar una sesión, asignar haza, baja y borrar (
     await pg.waitForSelector("#fTabla tr:has-text('ruiz@') .p-mal");
     const baja = await get("/__prueba/hogar?correo=ruiz@example.com");
     assert.strictEqual(baja.activo, false); assert.strictEqual(baja.con_baja, true);
-    assert.match(await pg.textContent("#fFicha"), /se borra el/);
+    await pg.waitForSelector("#fFicha :text(\"se borra el\")");   // la ficha se repinta tras la baja: esperar al texto, no leerlo a la vez (carrera vista en la pesada de la 10)
     await pg.click("#fFicha >> text=Reactivar");
     await pg.waitForSelector("#fTabla tr:has-text('ruiz@') .p-ok");
     assert.strictEqual((await get("/__prueba/hogar?correo=ruiz@example.com")).activo, true);

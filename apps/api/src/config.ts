@@ -42,7 +42,7 @@ export interface Config {
   avisosCorreo: { activo: boolean; reintentos: number; cadaSeg: number };
   /** EV-3a: la fuente AUTOMÁTICA de avisos del campo (de GET /api/mundo/hoy a la tabla avisos, que el repartidor manda por correo). APAGADA por defecto;
    *  como mucho un aviso cada `minHoras` y solo de los `tipos` elegidos (contratos/mundo-hoy.md § Avisos por correo) */
-  avisosCampo: { activo: boolean; minHoras: number; tipos: TipoAvisoCampo[] };
+  avisosCampo: { activo: boolean; minHoras: number; tipos: TipoAvisoCampo[]; correo: TipoAvisoCampo[] };
   ot:
     | { modo: "no" }
     | { modo: "grabado"; carpeta: string; cadaMin: number }
@@ -205,7 +205,10 @@ function cargaLiveKit(e: Entorno, produccion: boolean): ConfigLiveKit | null {
 function cargaAvisosCampo(e: Entorno): Config["avisosCampo"] {
   const tipos = texto(e, "GEMELO_AVISOS_CAMPO_TIPOS", "recogida,helada,lluvia,fenologia").split(",").map(s => s.trim()).filter(Boolean);
   for (const t of tipos) if (!(TIPOS_AVISO_CAMPO as readonly string[]).includes(t)) throw new ErrorDeConfig("GEMELO_AVISOS_CAMPO_TIPOS: tipo desconocido (hay " + TIPOS_AVISO_CAMPO.join(", ") + ")");
-  return { activo: siNo(e, "GEMELO_AVISOS_CAMPO", false), minHoras: entero(e, "GEMELO_AVISOS_CAMPO_MIN_HORAS", 168, 24, 2160), tipos: [...new Set(tipos)] as TipoAvisoCampo[] };
+  // de esos, cuáles salen también por correo (decisión de Antonio, 2026-11-05: solo los del tiempo); los demás, solo en la campana
+  const correo = texto(e, "GEMELO_AVISOS_CAMPO_CORREO", "helada,lluvia").split(",").map(s => s.trim()).filter(Boolean);
+  for (const t of correo) if (!(TIPOS_AVISO_CAMPO as readonly string[]).includes(t)) throw new ErrorDeConfig("GEMELO_AVISOS_CAMPO_CORREO: tipo desconocido (hay " + TIPOS_AVISO_CAMPO.join(", ") + ")");
+  return { activo: siNo(e, "GEMELO_AVISOS_CAMPO", false), minHoras: entero(e, "GEMELO_AVISOS_CAMPO_MIN_HORAS", 168, 24, 2160), tipos: [...new Set(tipos)] as TipoAvisoCampo[], correo: [...new Set(correo)] as TipoAvisoCampo[] };
 }
 
 function cargaVigia(e: Entorno, produccion: boolean): Config["vigia"] {

@@ -145,7 +145,7 @@ export class Repartidor {
          SELECT ah.aviso_id, ah.hogar_id FROM avisos_hogar ah
            JOIN avisos a ON a.id = ah.aviso_id
            JOIN hogares h ON h.id = ah.hogar_id AND h.activo AND h.avisos_correo
-          WHERE ah.correo_enviado_en IS NULL AND ah.correo_desistido_en IS NULL
+          WHERE ah.correo_enviado_en IS NULL AND ah.correo_desistido_en IS NULL AND a.por_correo
             AND (a.caduca_en IS NULL OR a.caduca_en > now())
             AND a.creado_en > now() - make_interval(days => ${ANTIGUEDAD_MAXIMA_DIAS})
             AND (ah.correo_ultimo_intento IS NULL OR ah.correo_ultimo_intento <= now() - make_interval(mins => power(3, ah.correo_intentos - 1)::int))

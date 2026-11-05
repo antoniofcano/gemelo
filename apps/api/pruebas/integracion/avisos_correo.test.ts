@@ -248,3 +248,19 @@ test("Mailpit: el cartero real manda el aviso de cancelación con el .ics (METHO
     assert.match(crudo, /text\/calendar; (?:charset=utf-8; )?method=CANCEL/i);
   } finally { await cartero.cierra(); }
 });
+
+test("canal (migración 0027, decisión 2026-11-05): un aviso con por_correo falso se queda en la campana y no sale por correo; con verdadero, sí", async t => {
+  if (salta(t)) return;
+  await q("UPDATE avisos_hogar SET correo_enviado_en = now() WHERE correo_enviado_en IS NULL");   // limpia lo de antes
+  await q("UPDATE hogares SET avisos_correo = true WHERE id = $1", [ids[ANA]]);   // otra prueba de este fichero se lo apaga (baja con un clic)
+  vacia();
+  for (const [titulo, porCorreo] of [["Hoy se recoge en el olivar", false], ["Mañana puede llover en el olivar", true]] as const) {
+    const [a] = await q<{ id: number }>("INSERT INTO avisos (tipo, titulo, texto, enlace, caduca_en, por_correo) VALUES ('labor', $1, 'Texto fijo.', '/', now() + interval '3 days', $2) RETURNING id", [titulo, porCorreo]);
+    await q("INSERT INTO avisos_hogar (aviso_id, hogar_id) VALUES ($1, $2)", [a!.id, ids[ANA]]);
+  }
+  assert.equal((await rep.reparte()).enviados, 1);
+  assert.ok(de(ANA).every(m => !/recoge/.test(JSON.stringify(m))), "la recogida no sale por correo");
+  assert.ok(de(ANA).some(m => /llover/.test(JSON.stringify(m))), "la lluvia sí");
+  const sinCorreo = await q("SELECT 1 FROM avisos_hogar ah JOIN avisos a ON a.id = ah.aviso_id WHERE ah.hogar_id = $1 AND NOT a.por_correo AND ah.correo_enviado_en IS NULL", [ids[ANA]]);
+  assert.equal(sinCorreo.length, 1, "sigue en la campana (no se marca enviado)");
+});
