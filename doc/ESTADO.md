@@ -6,7 +6,7 @@
 
 ## Publicado
 
-- **Desplegado en el VPS de OVH** (el gemelo, cuarto inquilino junto a Oficultor, Vigía y Filo, [DESPLIEGUE-V2](operacion/DESPLIEGUE-V2.md)): api, base de datos, web, LiveKit y hornero. La versión de producción es la **séptima subida** (2026-11-05, web y api de 667574b: reparto del JS, autopsia y `render()` en la api con la migración 0023, controlador de VR con histéresis, perros y conejos instanciados, objetos estáticos, CSP con `'wasm-unsafe-eval'`, suelo en KTX2, perillas y ajustes de tono, `alphaToCoverage` y multiview, y el parche de super-three que hace funcionar el multiview en el Quest; ADR-0031 aceptado). Sin probar en el Quest: el controlador nuevo y el reparto.
+- **Desplegado en el VPS de OVH** (el gemelo, cuarto inquilino junto a Oficultor, Vigía y Filo, [DESPLIEGUE-V2](operacion/DESPLIEGUE-V2.md)): api, base de datos, web, LiveKit y hornero. La versión de producción es la **octava subida** (2026-11-05, web y api de 8f03242: fotogramas perdidos en el medidor con la migración 0024, cartulinas de olivo `?cartulina=silueta|rect`, presencia con reintento, el presupuesto de VR que cuenta la gente `?xrgente=`; puerta pesada en verde con un fallo de Chrome inestable que pasó solo). Sobre la séptima (reparto del JS, controlador de VR con histéresis, KTX2, multiview con el parche de super-three; ADR-0031 aceptado). Sin probar en el Quest: el controlador nuevo, el reparto, las cartulinas, `xrescala` y la gente en VR.
 - Un gemelo anterior (v20) vive como artefacto de claude.ai y no se ha tocado.
 
 ## Hecho
