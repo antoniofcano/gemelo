@@ -2,7 +2,7 @@
 // Expone: (nada al resto de módulos)
 // Consume: 01_datos (D, $), 01a_aparato (Aparato), 02c_componentes (ConfigPuro, Teclas, Componentes), 02d_laminas (Laminas),
 //   03_escena (visor, modo), 08_marcadores (aplica, pendiente), 09_camara (suelta), 12_paseo (persona, teclas, primera), 14_historia (marca, aviso),
-//   15_tiempo (hace), 16_vida (quita), 29_vr (VRX, panel, PanelVR), 33_ajustes (Ajustes)
+//   15_tiempo (hace), 16_vida (quita), 29_vr (VRX, panel, PanelVR), 33_ajustes (Ajustes), 46b_primera_vez (PrimeraVezPuro)
 // Nota: Componente «habla-guiada» (F3e, ADR-0026; decisiones 157-162): la interacción de la voz en la visita guiada, solo dentro de una sala guiada y con papel. «Hablar» con botón (≥ 44 px; 56 en el navegador de Quest), tecla T y, en VR, el gatillo izquierdo (VRX.voz, que 29_vr.js lee cada fotograma), en dos modos según el ajuste «Hablar» de Configuración: pulsar para abrir y cerrar (por defecto) o mantener pulsado (familias; el guía siempre pulsa y abre su micro con el primer gesto, una vez). Sin la palabra, «Levantar la mano» / «Bajar la mano» por la api de F3c y «Estás 2.º en la cola» (la cola, de la api «Guiada» de 46). El micro siempre con icono y texto en una región aria-live; «Silenciarme» siempre a mano; el aviso de que con el micro abierto el sonido no es espacial y la casilla «Llevo auriculares» (Voz.auriculares). En VR, una lámina de 3 s al abrir o cerrar, una fila del panel («Ir a») y un pulso del mando. F3k-2: lo mismo dentro de un corro (papel «miembro»), con el micro que se cierra solo tras 60 s sin que se te oiga. Emite «habla:micro» y «habla:mano»; escucha «voz:estado», «guiada:palabra» y «depura:lineas». ?habla=0 lo apaga. Publica window.__habla (pruebas). Todo con textContent. Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/habla.test.js.
 // ===============================================================================
   // ---------- hablar en la visita guiada (F3e; ADR-0026, decisiones 157-162; COMPONENTES §F3e).
@@ -135,10 +135,11 @@
 
   // [motor:inicio] (lo evalúa en Node pruebas/guardianes/habla.test.js con un DOM, una voz y una guiada de mentira)
   function HablaMotor(n, Vz, Gd) {
-    var H = HablaPuro, modoAj = H.DEFECTO, v = null, ult = "", mensaje = "", tMsg = 0, puntero = false, sosten = "", pulsa = null, pidiendo = false, manoSup = null, ultMicro = "cerrado", autoEv = null, vivo = true, tLam = 0;
+    var H = HablaPuro, PV = PrimeraVezPuro, modoAj = H.DEFECTO, v = null, ult = "", mensaje = "", tMsg = 0, puntero = false, sosten = "", pulsa = null, pidiendo = false, manoSup = null, ultMicro = "cerrado", autoEv = null, vivo = true, tLam = 0;
     var cons = "?", consCarga = null, consIniciada = false, avisoVoz = null, avisoErr = "", avisoOcupado = false, avisoDom = null, avisoFoco = null;   // F3j: el consentimiento de voz ("si" | "no" | "?"), el aviso en pantalla
     var caja = null, estadoEl = null, icoEl = null, txtEl = null, boton = null, silencio = null, casilla = null, avisoEl = null, quitaFila = null, abriendoP = null;
     var est = { aperturas: 0, cierres: 0, manos: 0, errores: 0, teclas: 0, gatillos: 0, autos: 0, avisos: 0, aceptados: 0, retirados: 0, silencios: 0 }, LAM = "habla-micro", LAM_AVISO = "habla-consent";
+    var tarj = null, tarjDom = null, estTarj = 0, LAM_TARJ = "habla-tarjeta", tarjFoco = null;   // F3l: la tarjeta de la primera vez ({ promesa, res, vr, forzada }) y cuántas se han enseñado
     var tSilencio = 0;   // F3k-2: segundos con el micro abierto en un corro sin que se te oiga
     function el(tag, props, hijos) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === "style") e.style.cssText = props[k]; else if (k in e) e[k] = props[k]; else e.setAttribute(k, props[k]); }); (hijos || []).forEach(function (h) { e.appendChild(typeof h === "string" ? document.createTextNode(h) : h); }); return e; }
     function vr() { return !!(VRX && VRX.on); }
@@ -178,7 +179,9 @@
       var r = H.entrada({ modo: modo || modoAj, papel: w.e.papel, tipo: tipo, micro: w.e.micro, sosten: sosten === fuente });
       // F3j (decisión 163): una familia sin consentimiento vigente no abre el micro: se le enseña el aviso (la api tampoco le habría dado la palabra). Aceptar es
       // su propio gesto; para abrir el micro, otro (así el navegador ve un gesto claro)
-      if (r.accion === "abre" && H.requiere(w.e.papel, "micro", cons) !== "nada") { sosten = ""; asegura("micro").then(function (q) { if (q !== "no") msg("Pulsa Hablar para abrir el micrófono."); }); }
+      // F3l: tras el aviso (si hacía falta) y antes de abrir el micro por primera vez, la tarjeta «la primera vez que hablas»; después, otro gesto abre el micro
+      if (r.accion === "abre" && H.requiere(w.e.papel, "micro", cons) !== "nada") { sosten = ""; asegura("micro").then(function (q) { if (q === "no") return; return (tarjetaFalta(w.e) ? muestraTarjeta(false) : Promise.resolve()).then(function () { msg("Pulsa Hablar para abrir el micrófono."); }); }); }
+      else if (r.accion === "abre" && tarjetaFalta(w.e)) { sosten = ""; muestraTarjeta(false).then(function () { msg("Pulsa Hablar para abrir el micrófono."); }); }
       else if (r.accion === "abre") { sosten = r.sosten ? fuente : ""; abre(fuente); }
       else if (r.accion === "cierra") { sosten = ""; cierra(fuente); }
       else if (tipo === "suelta" && sosten === fuente) sosten = "";
@@ -277,6 +280,73 @@
       }, function () { emiteCons("retira", false); msg("No se pudo retirar tu permiso. Inténtalo otra vez."); return false; });
     }
     function refrescaAjustes() { try { if (typeof Ajustes !== "undefined" && Ajustes && Ajustes.pinta) Ajustes.pinta(); } catch (e) {} if (typeof PanelVR !== "undefined" && PanelVR.repinta) PanelVR.repinta(); }
+
+    // ---- F3l: la tarjeta «la primera vez que hablas» (PrimeraVezPuro, 46b). Se enseña la primera vez que una familia o un miembro de un corro va a abrir el micro,
+    // DESPUÉS del aviso de consentimiento (que es legal y se acepta; esto es comodidad y no pide nada). Que ya se vio se guarda en el aparato (Ajustes, «habla.tarjeta»,
+    // localStorage): no es un dato personal ni del hogar, y otro aparato la vuelve a enseñar una vez. Volver a verla: Configuración → Hablar y la fila del panel de VR.
+    function tarjetaVista() {
+      // sin Ajustes con lectura (un Ajustes de mentira), cuenta como vista: nunca se bloquea el micro por esto
+      try { return typeof Ajustes === "undefined" || !Ajustes || typeof Ajustes.lee !== "function" || Ajustes.lee(PV.CLAVE) === true; } catch (e) { return true; }
+    }
+    function tarjetaFalta(e) { return PV.debeVerse(tarjetaVista(), e.papel); }
+    function marcaTarjeta() { try { if (typeof Ajustes !== "undefined" && Ajustes && typeof Ajustes.pon === "function") Ajustes.pon(PV.CLAVE, true); } catch (e) {} }
+    function datosTarjeta() {
+      var e = lee(), amb = PV.ambitoDe(e) || "guiada";
+      return PV.tarjeta({ ambito: amb, forma: modoAj, corte: amb === "corro" ? PV.ALCANCE_CORRO : 0, vr: vr() });
+    }
+    // forzada: abierta a propósito (Configuración o el panel de VR); no es la primera vez
+    function muestraTarjeta(forzada) {
+      if (tarj) return tarj.promesa;
+      var res, promesa = new Promise(function (r) { res = r; });
+      tarj = { promesa: promesa, res: res, vr: vr(), forzada: !!forzada }; estTarj++;
+      if (tarj.vr) tarjetaLamina(); else tarjetaPantalla();
+      return promesa;
+    }
+    function cierraTarjeta(vista) {
+      var t = tarj; if (!t) return; tarj = null;
+      if (tarjDom && tarjDom.parentNode) tarjDom.parentNode.removeChild(tarjDom); tarjDom = null;
+      if (typeof Laminas !== "undefined" && Laminas && Laminas.hay && Laminas.hay(LAM_TARJ)) Laminas.cierra(LAM_TARJ, "cerrada");
+      try { if (tarjFoco && tarjFoco.focus) tarjFoco.focus(); } catch (e) {} tarjFoco = null;
+      if (vista) marcaTarjeta();
+      t.res(vista ? "vista" : "no");
+    }
+    function tarjetaPantalla() {
+      var h = px(), T = datosTarjeta();
+      try { tarjFoco = document.activeElement || null; } catch (e) { tarjFoco = null; }
+      var cuerpo = el("div", { id: "hablaTarjetaCaja", style: "background:#101418;color:#fff;border:1px solid rgba(64,240,255,0.6);border-radius:16px;padding:16px 18px;max-width:min(440px,calc(100% - 24px));max-height:calc(100% - 24px);overflow:auto;box-sizing:border-box;font:15px/1.45 system-ui,sans-serif;text-align:left" });
+      var tit = el("h2", { id: "hablaTarjetaT", style: "margin:0 0 8px;font:700 18px/1.3 system-ui,sans-serif" }, [T.titulo]);
+      var lineasEl = el("div", { id: "hablaTarjetaLineas" }, T.lineas.map(function (l) { return el("p", { id: "hablaTarjeta-" + l.k, style: "margin:6px 0" }, [el("strong", {}, [l.t + ". "]), l.txt]); }));
+      var pie = el("p", { id: "hablaTarjetaPie", style: "margin:8px 0 10px;font-size:13px;opacity:0.8" }, [T.pie]);
+      var ok = el("button", { id: "hablaTarjetaOk", type: "button", style: CSS_BTN + ";min-height:" + h + "px;min-width:" + h + "px" }, [T.boton]);
+      var fila = el("div", { style: "display:flex;justify-content:flex-end" }, [ok]);
+      [tit, lineasEl, pie, fila].forEach(function (x) { cuerpo.appendChild(x); });
+      tarjDom = el("div", { id: "hablaTarjeta", role: "dialog", "aria-modal": "true", "aria-labelledby": "hablaTarjetaT", tabindex: "-1",
+        style: "position:absolute;left:0;top:0;right:0;bottom:0;z-index:60;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6)" }, [cuerpo]);
+      ok.addEventListener("click", function () { cierraTarjeta(true); });
+      tarjDom.addEventListener("keydown", function (e) { if (e.key === "Escape") { if (e.preventDefault) e.preventDefault(); cierraTarjeta(true); } else if (e.key === "Tab") { if (e.preventDefault) e.preventDefault(); ok.focus(); } });
+      (visor || document.body).appendChild(tarjDom);
+      try { ok.focus(); } catch (e) {}
+    }
+    function tarjetaLamina() {
+      if (typeof Laminas === "undefined" || !Laminas || !Laminas.abre) { var t0 = tarj; tarj = null; t0.res("no"); return; }
+      var T = datosTarjeta();
+      Laminas.abre({ id: LAM_TARJ, ancho: 1.4, alto: 1.1, w: 1100, h: 860, firma: function () { return T.titulo; },
+        pinta: function (cx, w, hh) {
+          cx.fillStyle = "rgba(16,20,24,0.97)"; cx.fillRect(0, 0, w, hh); cx.strokeStyle = "rgba(64,240,255,0.7)"; cx.lineWidth = 4; cx.strokeRect(2, 2, w - 4, hh - 4);
+          cx.textBaseline = "top"; cx.fillStyle = "#ffffff"; var y = 28, medir = function (t) { return cx.measureText(t).width; };
+          cx.font = "700 40px system-ui, sans-serif"; cx.fillText(T.titulo, 32, y, w - 64); y += 58;
+          T.lineas.forEach(function (l) {
+            cx.fillStyle = "#7fe9ff"; cx.font = "600 28px system-ui, sans-serif"; cx.fillText(l.t, 32, y, w - 64); y += 36;
+            cx.fillStyle = "#ffffff"; cx.font = "28px system-ui, sans-serif"; H.lineas(l.txt, w - 64, medir).forEach(function (ln) { cx.fillText(ln, 32, y); y += 34; }); y += 14;
+          });
+          cx.fillStyle = "rgba(255,255,255,0.75)"; cx.font = "25px system-ui, sans-serif"; H.lineas(T.pie, w - 64, medir).forEach(function (ln) { cx.fillText(ln, 32, y); y += 30; });
+          var by = hh - 140, bh = 100;
+          cx.fillStyle = "rgba(64,240,255,0.3)"; cx.fillRect(32, by, w - 64, bh);
+          cx.fillStyle = "#ffffff"; cx.font = "600 40px system-ui, sans-serif"; cx.textBaseline = "middle"; cx.textAlign = "center"; cx.fillText(T.boton, w / 2, by + bh / 2); cx.textAlign = "left";
+        },
+        alTocar: function (u, v) { if (v >= 0.84) cierraTarjeta(true); return true; },
+        alCierra: function (motivo) { if (tarj && motivo !== "cerrada") { var t = tarj; tarj = null; t.res("no"); pinta(); } } });
+    }
 
     // ---- el aviso en pantalla (un diálogo modal con foco y Esc) y en VR (una lámina con dos zonas que se tocan con el rayo o el gatillo)
     function avisoPantalla() {
@@ -440,6 +510,7 @@
             var x = vista().v.primaria.accion; if (x === "levantar") pideMano(true); else if (x === "bajar") pideMano(false); else if (x === "micro") alterna("panel");
           }, w.e.micro !== "cerrado");
           if (w.v.auric) b("hAur", 580, y + 140, 404, 64, "Auriculares: " + (w.e.auriculares ? "sí" : "no"), function () { if (Vz) Vz.auriculares(!vista().e.auriculares); pinta(); }, w.e.auriculares);
+          if (!H.modera(w.e.papel)) b("hVer", 580, y + 220, 404, 64, PV.FILA_VOLVER, function () { muestraTarjeta(true); }, false);   // F3l: volver a leer la tarjeta de la primera vez
           if (cons === "si") b("hRet", 40, y + 220, 520, 64, "Retirar mi permiso de voz", function () { retiraConsent(); }, false);   // F3j: el permiso de voz, siempre a mano
         },
         debug: function () { return { habla: estado() }; } });
@@ -452,13 +523,16 @@
     function registraAjuste() {
       if (quitaAj || typeof Ajustes === "undefined" || !Ajustes.registra) return;
       quitaAj = function () {};   // marca «registrado» antes: aplica llama a pinta, que volvería aquí
-      var q = Ajustes.registra("habla", { modo: { tipo: "opc", def: H.DEFECTO, ops: H.MODOS.slice() } },
+      var q = Ajustes.registra("habla", { modo: { tipo: "opc", def: H.DEFECTO, ops: H.MODOS.slice() }, tarjeta: { tipo: "bool", def: false } },   // «tarjeta»: ¿ya se vio la de la primera vez? (F3l; en el aparato)
         { id: "habla", t: "Hablar", campos: [{ k: "modo", t: "Micrófono en la visita guiada", ops: [["pulsar", "Pulsar para abrir y pulsar para cerrar"], ["mantener", "Mantener pulsado para hablar"]],
           nota: "Solo para las familias cuando tienen la palabra; el guía siempre abre y cierra. Se usa con el botón «Hablar», la tecla T y, en VR, el gatillo izquierdo." },
           // F3j (decisión 163): retirar el consentimiento de voz, siempre a mano. Lo guarda la api, no este navegador
           { boton: "Retirar mi permiso de voz", id: "ajVozRetira", alClic: function () { retiraConsent(); },
             activo: function () { return cons === "si"; }, texto: function () { return cons === "si" ? "Retirar mi permiso de voz" : "Permiso de voz: no dado"; },
-            nota: "Si lo retiras, se te vuelve a pedir la próxima vez que quieras hablar en una visita guiada. Si en ese momento tienes la palabra, se te quita." }] },
+            nota: "Si lo retiras, se te vuelve a pedir la próxima vez que quieras hablar en una visita guiada. Si en ese momento tienes la palabra, se te quita." },
+          // F3l: volver a leer la tarjeta de la primera vez (no para el guía ni la oficina: no pasan por ella)
+          { boton: PV.FILA_VOLVER, id: "ajVozTarjeta", alClic: function () { if (!H.modera(lee().papel)) muestraTarjeta(true); }, activo: function () { return !H.modera(lee().papel); },
+            texto: function () { return PV.FILA_VOLVER; }, nota: "Con quién se oye tu voz, cómo cortar el micro y que no se graba." }] },
         function (k, val) { if (k === "habla.modo") { modoAj = H.modo(val); if (modoAj !== "mantener" && sosten) { sosten = ""; } ult = ""; if (vivo) pinta(); } });
       if (q) { quitaAj = q; n.limpia(q); }
     }
@@ -480,6 +554,7 @@
     function tarde(dt) {
       if (!consIniciada && ConfigPuro.prefijoApi(location.search, D && D.base)) { consIniciada = true; cargaConsent().then(function () { if (vivo && cons === "si") { registraAjuste(); refrescaAjustes(); } }); }
       if (avisoVoz && avisoVoz.vr !== vr()) { var a = avisoVoz; cierraAviso("no"); a.res("no"); }   // se cambió de pantalla a VR (o al revés) con el aviso abierto: se cierra y se vuelve a pedir
+      if (tarj && tarj.vr !== vr()) { var tt = tarj; cierraTarjeta(false); tt.res("no"); }   // F3l: se cambió de pantalla a VR (o al revés): se cierra (sin darla por vista)
       if (tMsg > 0) { tMsg -= dt; if (tMsg <= 0) { mensaje = ""; ult = ""; } }
       pinta();
       if (tLam > 0) { tLam -= dt; if (tLam <= 0 && typeof Laminas !== "undefined" && Laminas.hay(LAM)) Laminas.cierra(LAM, "cerrada"); }
@@ -495,11 +570,12 @@
       return { visible: w.v.visible, modo: modoAj, micro: w.e.micro, papel: w.e.papel, puede: w.e.puede, accion: w.v.primaria.accion, texto: w.v.primaria.texto, estado: H.textoEstado(w.v), cola: w.v.cola,
         puesto: w.e.puesto, mano: w.e.mano, aviso: w.v.aviso, sosten: sosten, silenciar: w.v.silenciar, auriculares: w.e.auriculares, boton: px(), aperturas: est.aperturas, cierres: est.cierres,
         manos: est.manos, errores: est.errores, teclas: est.teclas, gatillos: est.gatillos, autos: est.autos, teclaT: !!quitaT,
-        consentimiento: cons, aviso: !!avisoVoz, avisos: est.avisos, aceptados: est.aceptados, retirados: est.retirados, corro: !!w.e.corro, silencios: est.silencios };
+        consentimiento: cons, aviso: !!avisoVoz, avisos: est.avisos, aceptados: est.aceptados, retirados: est.retirados, corro: !!w.e.corro, silencios: est.silencios, tarjeta: !!tarj, tarjetas: estTarj, tarjetaVista: tarjetaVista() };
     }
     function libera() {
       vivo = false; sosten = "";
       if (avisoVoz) cierraAviso("no");
+      if (tarj) cierraTarjeta(false);
       if (Laminas && Laminas.hay && Laminas.hay(LAM)) Laminas.cierra(LAM, "cerrada");
       if (typeof VRX !== "undefined" && VRX && VRX.voz === gancho) VRX.voz = null;
       if (caja && caja.parentNode) caja.parentNode.removeChild(caja); caja = estadoEl = icoEl = txtEl = boton = silencio = casilla = avisoEl = null;
@@ -510,6 +586,7 @@
       if (a === "hablar") return alterna("boton"); if (a === "mano") return pideMano(arg !== false);
       if (a === "gatillo") { gancho.mando(!!arg, null); return estado(); }
       if (a === "modo") { modoAj = H.modo(arg); ult = ""; pinta(); return estado(); }
+      if (a === "entendido") { cierraTarjeta(true); return estado(); } if (a === "verTarjeta") { muestraTarjeta(true); return estado(); }
       if (a === "acepta") { aceptaAviso(); return estado(); } if (a === "ahoraNo") { rechazaAviso(); return estado(); } if (a === "retira") return retiraConsent();
       return estado();
     }
@@ -522,7 +599,7 @@
   // y la guiada (su api «Guiada»: quién eres y la cola); sin ellas no se monta. Montado y fuera de una sala guiada, no crea nada.
   Componentes.registra({
     id: "habla-guiada", version: 1,
-    consume: ["Aparato", "Voz", "Guiada", "Ajustes", "Teclas", "PanelVR", "VRX", "Laminas"],
+    consume: ["Aparato", "Voz", "Guiada", "Ajustes", "Teclas", "PanelVR", "VRX", "Laminas", "PrimeraVezPuro"],
     expone: [],
     eventos: { escucha: ["voz:estado", "guiada:palabra", "depura:lineas", "habla:alterna"], emite: ["habla:micro", "habla:mano", "habla:consentimiento"] },
     bandera: { defecto: true, url: "habla" },

@@ -61,3 +61,12 @@ Lo enseña el motor antes de activar la voz por cercanía (pantalla: diálogo mo
 > Más detalles en la página de privacidad.
 
 **[SUPUESTO del agente]** la redacción; las cifras (5 hogares, 20 m, 1 minuto) son las **provisionales** de las decisiones 205-207; si cambian, cambia el texto y se sube la versión. Lo revisa la asesoría con la EIPD (§13.5).
+
+## La tarjeta «Tu micrófono, en pocas palabras» (F3l)
+
+**No es un consentimiento** y no lleva versión ni va a la api: es una ayuda de comodidad que se enseña **después** del aviso (el de la guiada o el de `cercania`), la primera vez que una familia o un miembro de un corro va a abrir el micro. Dice en tres líneas con quién se oye (la guiada: el guía y las demás familias; un corro: solo su corro, hasta 5 hogares, y a más de 20 m dejáis de oíros), cómo cortar el micro (botón «Silenciarme» o dejar de apretar «Hablar», tecla T, gatillo izquierdo en VR; en un corro, también tras un minuto sin hablar) y que **no se graba ni se transcribe**. «Entendido» (o Esc) la da por vista.
+
+- **Dónde se guarda que ya se vio:** en el aparato (ajuste `habla.tarjeta`, `localStorage`), no en la api: no es un dato del hogar ni hace falta que viaje; otro aparato la enseña una vez. Volver a leerla: Configuración → Hablar → «Cómo funciona mi micrófono» y, en VR, ese botón en la fila «Micrófono» del panel.
+- **Quién no la ve:** el guía y la oficina (hablan por su cargo, como con el aviso).
+- **Código:** `apps/web/motor/46b_primera_vez.js` (texto y reglas, puro) y `47_habla.js` (cuándo sale y cómo se pinta: diálogo en pantalla, lámina en VR). La cifra de 20 m es la de `45_voz.js` (`DIST_CORRO.corte`); `primera_vez.test.js` las compara.
+- **Nota de comodidad (regla 11):** probado solo en Node (lógica y montaje con DOM y lámina de mentira; que el texto cabe en el lienzo de VR, con una medida aproximada). **Chrome, iPhone y Quest: NO PROBADO** (tamaños de botón, foco, legibilidad de la lámina con el casco, que el toque con el rayo en la franja inferior la cierre).

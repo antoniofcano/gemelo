@@ -18,6 +18,8 @@ const trozo = (s, ini, fin) => { const i = s.indexOf(ini), f = s.indexOf(fin); a
 const HAB = lee("apps/web/motor/47_habla.js"), GUI = lee("apps/web/motor/46_guiada.js"), VRJS = lee("apps/web/motor/29_vr.js"), AJU = lee("apps/web/motor/33_ajustes.js");
 const PURO = trozo(HAB, "// [puro:inicio]", "// [puro:fin]"), MOTOR = trozo(HAB, "// [motor:inicio]", "// [motor:fin]");
 const H = new Function("\"use strict\";\n" + PURO + "\nreturn HablaPuro;")();
+const PVJS = lee("apps/web/motor/46b_primera_vez.js"), PV = new Function("\"use strict\";\n" + trozo(PVJS, "// [puro:inicio]", "// [puro:fin]") + "\nreturn PrimeraVezPuro;")();
+const VOZJS = lee("apps/web/motor/45_voz.js"), VozPuro = new Function("\"use strict\";\n" + trozo(VOZJS, "// [puro:inicio]", "// [puro:fin]") + "\nreturn VozPuro;")();
 const AjustesPuro = new Function("\"use strict\";\n" + trozo(AJU, "// [puro:inicio]", "// [puro:fin]") + "\nreturn AjustesPuro;")();
 const EVENTOS = JSON.parse(lee("contratos/eventos.json")), IFACES = JSON.parse(lee("contratos/interfaces.json"));
 const espera = (ms = 0) => new Promise(r => setTimeout(r, ms));
@@ -115,7 +117,7 @@ class El {
 }
 const por = (raiz, id) => raiz.todos(e => (e.attrs.id || e.id) === id)[0];
 
-function montaHabla({ papel = "familia", puede = false, sala = "guiada-12", manos = [], yo = "h_yo", respuestas = {}, ua = "Node", modo = null, consent = "si", fallaPut = null } = {}) {
+function montaHabla({ papel = "familia", puede = false, sala = "guiada-12", manos = [], yo = "h_yo", respuestas = {}, ua = "Node", modo = null, consent = "si", fallaPut = null, tarjeta = null } = {}) {   // tarjeta: null = un Ajustes sin lectura (la tarjeta de la primera vez cuenta como vista); "nueva" | "vista" = con lectura y escritura (F3l)
   const voz = { s: { sala, dentro: true, guiada: /^guiada-/.test(sala), papel, puede, micro: "cerrado", auriculares: false, motivo: "" }, llamadas: [], retraso: 0 };
   const Vz = {
     estado: () => Object.assign({}, voz.s),
@@ -130,7 +132,8 @@ function montaHabla({ papel = "familia", puede = false, sala = "guiada-12", mano
   const n = { emite: (e, d) => { emitidos.push([e, d]); return 0; }, on: (e, f) => { (n.oy[e] = n.oy[e] || []).push(f); return f; }, oy: {}, limpia: f => { limpias.push(f); return f; } };
   const visor = new El("div"), ventana = { oy: {}, addEventListener(nm, f) { (this.oy[nm] = this.oy[nm] || []).push(f); }, removeEventListener(nm, f) { const l = this.oy[nm] || [], i = l.indexOf(f); if (i >= 0) l.splice(i, 1); } };
   const VRX = { on: false, voz: null };
-  const Ajustes = { pinta: () => ajustesPinta.push(1), registra: (pref, esq, pest, fn) => { aplicas.push({ pref, esq, pest, fn }); try { fn(pref + ".modo", modo || "pulsar"); } catch (e) {} return () => {}; } };
+  const guardado = { [PV.CLAVE]: tarjeta === "vista" }, escribe = [];
+  const Ajustes = { pinta: () => ajustesPinta.push(1), ...(tarjeta ? { lee: k => guardado[k], pon: (k, v) => { guardado[k] = v; escribe.push([k, v]); return true; } } : {}), registra: (pref, esq, pest, fn) => { aplicas.push({ pref, esq, pest, fn }); try { fn(pref + ".modo", modo || "pulsar"); } catch (e) {} return () => {}; } };
   const Teclas = { registra: (c, fn, d) => { if (teclas[c]) return null; teclas[c] = { fn, d }; return () => { delete teclas[c]; }; } };
   const PanelVR = { filas: (p, d) => { filas.push([p, d]); return () => {}; }, repinta() {} };
   const Laminas = { abre: o => { laminas[o.id] = o; return true; }, cierra: id => { delete laminas[id]; return true; }, hay: id => !!laminas[id], repinta: () => true };
@@ -151,11 +154,11 @@ function montaHabla({ papel = "familia", puede = false, sala = "guiada-12", mano
       const r = respuestas[o.method] || (o.method === "POST" ? { puesto: 2 } : {}), st = r.__status || (o.method === "DELETE" ? 204 : 200);
       return Promise.resolve({ ok: st < 300, status: st, json: () => Promise.resolve(r) });
     } };
-  Object.assign(g, { ConfigPuro: { prefijoApi: () => "/api" }, D: {}, location: { search: "" } });   // con servidor: sin él, el consentimiento no se pregunta
+  Object.assign(g, { PrimeraVezPuro: PV, ConfigPuro: { prefijoApi: () => "/api" }, D: {}, location: { search: "" } });   // con servidor: sin él, el consentimiento no se pregunta
   const nombres = Object.keys(g);
   const HablaMotor = new Function(...nombres, "\"use strict\";\n" + PURO + MOTOR + "\nreturn HablaMotor;")(...nombres.map(k => g[k]));
   const api = HablaMotor(n, Vz, Gd);
-  return { api, voz, guiada, emitidos, limpias, fetchs, consFetchs, cons, ajustesPinta, aplicas, filas, laminas, teclas, visor, ventana, VRX, n, tic: (dt = 0.25) => api.tarde(dt),
+  return { guardado, escribe, api, voz, guiada, emitidos, limpias, fetchs, consFetchs, cons, ajustesPinta, aplicas, filas, laminas, teclas, visor, ventana, VRX, n, tic: (dt = 0.25) => api.tarde(dt),
     caja: () => por(visor, "hablaCaja"), boton: () => por(visor, "hablaBoton"), silencio: () => por(visor, "hablaSilencio"), estado: () => por(visor, "hablaEstado"),
     casilla: () => por(visor, "hablaAuric"), aviso: () => por(visor, "hablaAviso"), dialogo: () => por(visor, "hablaConsent"), acepta: () => por(visor, "hablaConsentAcepta"), ahoraNo: () => por(visor, "hablaConsentNo"), nuevoModo: m => aplicas[0].fn("habla.modo", m) };
 }
@@ -298,7 +301,7 @@ test("HablaMotor en VR: el gatillo izquierdo es el micro (pulsar o mantener) con
   const fila = m.filas.find(x => x[0] === "ira" && x[1].id === "habla"); assert.ok(fila); assert.strictEqual(fila[1].visible(), true);
   m.nuevoModo("pulsar"); m.VRX.on = true;
   const bs = []; fila[1].botones((id, x, y, w, h, txt, fn, on) => bs.push({ id, w, h, txt, fn, on }), 0);
-  assert.deepStrictEqual(bs.map(x => x.id), ["hMic", "hAur", "hRet"], "y, con el permiso de voz dado, el de retirarlo (F3j)"); assert.ok(bs.every(x => x.h >= 64)); assert.strictEqual(bs[0].txt, "Hablar");
+  assert.deepStrictEqual(bs.map(x => x.id), ["hMic", "hAur", "hVer", "hRet"], "con la fila de volver a leer la tarjeta (F3l) y, con el permiso de voz dado, el de retirarlo (F3j)"); assert.ok(bs.every(x => x.h >= 64)); assert.strictEqual(bs[0].txt, "Hablar");
   bs[0].fn(); await espera(5); assert.strictEqual(m.voz.s.micro, "abierto", "el botón del panel alterna (con el rayo no se puede mantener)");
   bs[1].fn(); assert.strictEqual(m.voz.s.auriculares, true);
   const f1 = fila[1].firma(); m.voz.s.micro = "cerrado"; assert.notStrictEqual(f1, fila[1].firma(), "la firma cambia con el estado: el panel se repinta");
@@ -312,8 +315,8 @@ test("HablaMotor: el botón mide ≥ 44 px (56 en el navegador de Quest), el aju
   assert.match(m.boton().style.cssText, /min-height:56px;min-width:56px/); assert.strictEqual(m.api.estado().boton, 56);
   // el ajuste: prefijo «habla», una opción con las dos, válido para Ajustes de verdad
   m.tic(); m.tic(); assert.strictEqual(m.aplicas.length, 1, "se registra una sola vez");
-  const a = m.aplicas[0]; assert.strictEqual(a.pref, "habla"); assert.deepStrictEqual(a.esq, { modo: { tipo: "opc", def: "pulsar", ops: ["pulsar", "mantener"] } });
-  assert.deepStrictEqual(AjustesPuro.fusiona(a.pref, a.esq), []); assert.strictEqual(AjustesPuro.ESQUEMA["habla.modo"].def, "pulsar");
+  const a = m.aplicas[0]; assert.strictEqual(a.pref, "habla"); assert.deepStrictEqual(a.esq, { modo: { tipo: "opc", def: "pulsar", ops: ["pulsar", "mantener"] }, tarjeta: { tipo: "bool", def: false } });
+  assert.deepStrictEqual(AjustesPuro.fusiona(a.pref, a.esq), []); assert.strictEqual(AjustesPuro.ESQUEMA["habla.modo"].def, "pulsar"); assert.strictEqual(AjustesPuro.ESQUEMA["habla.tarjeta"].def, false); assert.strictEqual(PV.CLAVE, "habla.tarjeta");
   assert.deepStrictEqual(a.pest.campos[0].ops.map(x => x[0]), ["pulsar", "mantener"]); assert.strictEqual(a.pest.t, "Hablar");
   // lo que llega nunca es HTML (el El de prueba lanza si alguien usa innerHTML) y los mensajes de la api van como texto
   const r = montaHabla({ respuestas: { POST: { __status: 409, mensaje: "<img src=x onerror=alert(1)>" } } }); r.tic(); r.boton().dispara("click"); await espera(); r.tic();
@@ -498,4 +501,64 @@ test("F3j: el motor no habla con nada más que con su api, no lleva la versión 
   assert.strictEqual(H.URL_CONSENTIMIENTO, "/api/presencia/voz/consentimiento");
   const ajustes = lee("apps/web/motor/33_ajustes.js"); assert.match(ajustes, /c\.alClic \|\| ACCIONES\[c\.id\]/);
   const api = lee("contratos/api.openapi.yaml"); assert.ok(api.includes("  /api/presencia/voz/consentimiento:"));
+});
+
+// ---------- F3l: la tarjeta «tu micrófono, en pocas palabras» (46b_primera_vez.js), la primera vez que se abre el micro, tras el consentimiento
+const textoDe = e => e.textContent;
+test("HablaMotor F3l: la primera vez, «Hablar» enseña la tarjeta (no abre el micro); «Entendido» la da por vista; el siguiente «Hablar» abre; después ya no sale", async () => {
+  const m = montaHabla({ papel: "familia", puede: true, tarjeta: "nueva" }); m.tic();
+  m.boton().dispara("click"); await espera(); m.tic();
+  assert.ok(m.dialogo() === undefined, "el consentimiento ya estaba dado: no hay aviso");
+  const t = por(m.visor, "hablaTarjeta"); assert.ok(t, "sale la tarjeta"); assert.strictEqual(t.attrs.role, "dialog"); assert.strictEqual(m.api.estado().tarjeta, true);
+  assert.deepStrictEqual(m.voz.llamadas, [], "no se ha abierto el micro: otro gesto lo abre");
+  const tx = textoDe(t); assert.match(tx, /Te oyen el guía y las demás familias de esta visita guiada/); assert.match(tx, /Silenciarme/); assert.match(tx, /tecla T/); assert.match(tx, /gatillo izquierdo/); assert.match(tx, /No se graba ni se transcribe/);
+  assert.strictEqual(por(m.visor, "hablaTarjetaOk").enfocado, true, "el foco, en «Entendido»");
+  por(m.visor, "hablaTarjetaOk").dispara("click"); await espera();
+  assert.strictEqual(por(m.visor, "hablaTarjeta"), undefined); assert.deepStrictEqual(m.escribe, [["habla.tarjeta", true]]); assert.match(m.estado().textContent, /Pulsa Hablar/);
+  m.boton().dispara("click"); await espera(); assert.deepStrictEqual(m.voz.llamadas, ["abre"], "el segundo gesto abre el micro");
+  m.boton().dispara("click"); await espera(); m.boton().dispara("click"); await espera();
+  assert.strictEqual(por(m.visor, "hablaTarjeta"), undefined, "ya vista: no vuelve a salir"); assert.strictEqual(m.api.estado().tarjetas, 1);
+  // otro montaje con lo guardado: manda lo guardado
+  const n2 = montaHabla({ papel: "familia", puede: true, tarjeta: "vista" }); n2.tic(); n2.boton().dispara("click"); await espera();
+  assert.strictEqual(por(n2.visor, "hablaTarjeta"), undefined); assert.deepStrictEqual(n2.voz.llamadas, ["abre"]);
+});
+
+test("HablaMotor F3l: sin consentimiento, primero el aviso y luego la tarjeta; Esc cierra la tarjeta y la da por vista; el guía y la oficina no la ven", async () => {
+  const m = montaHabla({ papel: "familia", puede: true, consent: "no", tarjeta: "nueva" }); m.tic(); await espera(); m.boton().dispara("click"); await espera(); m.tic();
+  assert.ok(m.dialogo(), "primero el consentimiento"); assert.strictEqual(por(m.visor, "hablaTarjeta"), undefined);
+  m.acepta().dispara("click"); await espera(); await espera(); m.tic();
+  assert.ok(por(m.visor, "hablaTarjeta"), "tras aceptar, la tarjeta"); assert.deepStrictEqual(m.voz.llamadas, []);
+  por(m.visor, "hablaTarjeta").dispara("keydown", { key: "Escape" }); await espera();
+  assert.strictEqual(por(m.visor, "hablaTarjeta"), undefined); assert.strictEqual(m.guardado["habla.tarjeta"], true);
+  for (const papel of ["guia", "oficina"]) {
+    const g2 = montaHabla({ papel, puede: true, tarjeta: "nueva" }); g2.tic(); g2.boton().dispara("click"); await espera();
+    assert.strictEqual(por(g2.visor, "hablaTarjeta"), undefined, papel + " no pasa por la tarjeta"); assert.deepStrictEqual(g2.voz.llamadas, ["abre"]);
+  }
+});
+
+test("HablaMotor F3l: en un corro dice el alcance real (VozPuro.DIST_CORRO.corte) y el cierre por silencio; en «mantener» dice soltar; se puede volver a ver (Configuración y panel de VR)", async () => {
+  const m = montaHabla({ papel: "miembro", puede: true, sala: "corro-ABCdef123_-x", tarjeta: "nueva", modo: "mantener" }); m.voz.s.corro = true; m.voz.s.guiada = false; m.tic();
+  m.boton().dispara("pointerdown"); await espera(); m.tic();
+  const t = por(m.visor, "hablaTarjeta"); assert.ok(t, "también en un corro"); const tx = textoDe(t);
+  assert.match(tx, new RegExp("a más de " + VozPuro.DIST_CORRO.corte + " m dejáis de oíros")); assert.match(tx, /hasta 5 hogares/); assert.match(tx, /Deja de apretar el botón «Hablar»/); assert.match(tx, /un minuto sin hablar/);
+  assert.doesNotMatch(tx, /guía/);
+  por(m.visor, "hablaTarjetaOk").dispara("click"); await espera();
+  m.ventana.__habla("verTarjeta"); assert.ok(por(m.visor, "hablaTarjeta"), "volver a verla"); m.ventana.__habla("entendido");
+  const campos = m.aplicas[0].pest.campos, bot = campos.find(c => c.id === "ajVozTarjeta"); assert.ok(bot, "el botón en Configuración → Hablar"); assert.strictEqual(bot.texto(), PV.FILA_VOLVER); assert.strictEqual(bot.activo(), true);
+  bot.alClic(); assert.ok(por(m.visor, "hablaTarjeta")); m.ventana.__habla("entendido");
+  const fila = m.filas.find(f => f[1].id === "habla")[1], pedidos = []; fila.botones((id, x, y, w, h, txt) => pedidos.push([id, x, y, w, h, txt]), 100);
+  const ver = pedidos.find(p => p[0] === "hVer"); assert.ok(ver, "fila «Cómo funciona mi micrófono» en el panel de VR"); assert.strictEqual(ver[5], PV.FILA_VOLVER);
+  assert.ok(ver[1] + ver[3] <= 984 && ver[2] + ver[4] - 100 <= fila.alto, "cabe en la fila (alto " + fila.alto + ")");
+});
+
+test("HablaMotor F3l: en VR la tarjeta es una lámina que cabe en su lienzo y se cierra tocando abajo; cambiar de pantalla la cierra sin darla por vista", async () => {
+  const m = montaHabla({ papel: "familia", puede: true, tarjeta: "nueva" }); m.VRX.on = true; m.tic();
+  m.ventana.__habla("hablar"); await espera(); const L = m.laminas["habla-tarjeta"]; assert.ok(L, "lámina en VR"); assert.strictEqual(m.api.estado().tarjeta, true);
+  const dibujado = []; let maxY = 0;
+  const cx = { measureText: t => ({ width: String(t).length * 15 }), fillText: (t, x, y) => { if (t === "Entendido") return; dibujado.push(t); maxY = Math.max(maxY, y); }, fillRect() {}, strokeRect() {}, set fillStyle(v) {}, set strokeStyle(v) {}, set lineWidth(v) {}, set font(v) {}, set textBaseline(v) {}, set textAlign(v) {} };
+  L.pinta(cx, L.w, L.h); assert.ok(maxY + 34 < L.h - 140, "el texto acaba antes de la franja del botón (" + maxY + " de " + L.h + ")");
+  assert.ok(dibujado.join(" ").includes("No se graba"), "se dibuja lo de no grabar"); assert.ok(dibujado.join(" ").includes("gafas, fila «Micrófono»"), "el pie de VR dice dónde volver a verla");
+  m.VRX.on = false; m.tic(); m.tic(); assert.strictEqual(m.laminas["habla-tarjeta"], undefined, "cambio de pantalla: se cierra"); assert.strictEqual(m.guardado["habla.tarjeta"], false, "sin darla por vista");
+  m.VRX.on = true; m.ventana.__habla("hablar"); await espera(); assert.ok(m.laminas["habla-tarjeta"]); assert.strictEqual(m.laminas["habla-tarjeta"].alTocar(0.5, 0.9), true); await espera();
+  assert.strictEqual(m.laminas["habla-tarjeta"], undefined); assert.strictEqual(m.guardado["habla.tarjeta"], true);
 });
