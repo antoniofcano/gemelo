@@ -168,3 +168,33 @@ test("admin (mientras se depura): unas gafas vinculadas desde la cuenta de admin
   for (let i = 0; i <= MEDIDAS_POR_DIA; i++) ultimo = await pide("POST", "/api/medidas", gafasAna, medida({ p95_ms: 16 + i * 0.1 }));
   assert.equal(ultimo!.statusCode, 429, "las gafas de un hogar siguen con el tope");
 });
+
+// Q0i (migración 0023, contrato v3): ESCRITA SIN LANZAR (sin Docker en esta tarea). Usa el aparato «movil» con una cuenta de admin (sin tope diario) para no tocar el límite de ANA ni el p95 del Quest.
+test("0023 / Q0i: guarda render(), la autopsia y el reparto (jsonb), el cuerpo de la v2 sigue valiendo, el reparto de más de 16 se rechaza y la oficina ve render() p95 y el bloque más caro", async t => {
+  if (salta(t)) return;
+  const cols = (await bd.dueno.query<{ column_name: string; is_nullable: string; data_type: string }>("SELECT column_name, is_nullable, data_type FROM information_schema.columns WHERE table_name = 'medidas_fluidez'")).rows;
+  for (const c of ["render_mediana_ms", "render_p95_ms", "lentos_n", "lentos_cola", "lentos_tesela", "lentos_lote", "lentos_tarea", "lentos_compila", "lentos_textura", "lentos_sin_causa", "lentos_cola_ms", "reparto", "otros_p95_ms"]) {
+    const col = cols.find(x => x.column_name === c);
+    assert.ok(col && col.is_nullable === "YES", c + " existe y admite NULL (las medidas de antes siguen valiendo)");
+  }
+  assert.equal(cols.find(x => x.column_name === "reparto")!.data_type, "jsonb");
+  const priv = (await bd.dueno.query<{ p: string }>("SELECT privilege_type AS p FROM information_schema.role_table_grants WHERE grantee = 'gemelo_api' AND table_name = 'medidas_fluidez' ORDER BY 1")).rows.map(r => r.p);
+  assert.deepEqual(priv, ["INSERT", "SELECT"], "los permisos no cambian con la 0023");
+  const adm = await entra(ADM);
+  const mv = { aparato: "movil" as const, navegador: "Safari", nav_mayor: 17, vr: false, perfil: -1, modo: "gemelo", finca: "cerro" };
+  const v3 = (i: number, olivo: number) => ({ ...mv, render_mediana_ms: 2 + i, render_p95_ms: 4 + i, lentos_n: 30, lentos_cola: 10, lentos_tesela: 5, lentos_lote: 1, lentos_tarea: 0, lentos_compila: 0, lentos_textura: 2, lentos_sin_causa: 12, lentos_cola_ms: 2.5,
+    reparto: [{ bloque: "olivo (estación)", mediana_ms: olivo - 1, p95_ms: olivo }, { bloque: "c:fauna", mediana_ms: 0.5, p95_ms: 1 }], otros_p95_ms: 0.8 });
+  for (const [i, olivo] of [3, 5, 7].entries()) assert.equal((await pide("POST", "/api/medidas", adm, medida({ ...v3(i, olivo), medida_en: new Date(Date.now() - 120_000 - i).toISOString() }))).statusCode, 201);
+  assert.equal((await pide("POST", "/api/medidas", adm, medida({ ...mv, medida_en: new Date(Date.now() - 130_000).toISOString() }))).statusCode, 201, "el cuerpo de la v2, sin nada de la v3");
+  const fila = (await bd.dueno.query("SELECT * FROM medidas_fluidez WHERE aparato = 'movil' AND reparto IS NOT NULL ORDER BY id DESC LIMIT 1")).rows[0];
+  assert.ok(fila && Array.isArray(fila.reparto) && fila.reparto.length === 2 && fila.lentos_n === 30 && fila.otros_p95_ms > 0, JSON.stringify(fila));
+  assert.ok(!/Mozilla|Linux|198\.51\.100|adm-medidas/.test(JSON.stringify(fila)), "ni IP, ni agente de usuario, ni correo");
+  const antes = (await bd.dueno.query<{ n: number }>("SELECT count(*)::int AS n FROM medidas_fluidez")).rows[0]!.n;
+  const mal = [{ ...v3(0, 3), reparto: Array.from({ length: 17 }, (_, i) => ({ bloque: "b" + i, mediana_ms: 1, p95_ms: 2 })) }, { ...v3(0, 3), reparto: [{ bloque: "<b>x</b>", mediana_ms: 1, p95_ms: 2 }] },
+    { ...v3(0, 3), render_mediana_ms: 9, render_p95_ms: 3 }, { ...v3(0, 3), reparto: [{ bloque: "a", mediana_ms: 5, p95_ms: 2 }] }];
+  for (const [i, payload] of mal.entries()) assert.ok([400, 422].includes((await pide("POST", "/api/medidas", adm, medida({ ...payload, medida_en: new Date(Date.now() - 140_000 - i).toISOString() }))).statusCode), "rechazada " + i);
+  assert.equal((await bd.dueno.query<{ n: number }>("SELECT count(*)::int AS n FROM medidas_fluidez")).rows[0]!.n, antes, "ninguna se guardó");
+  const ofi = await entra(OFI), j = (await pide("GET", "/api/admin/medidas?aparato=movil", ofi)).json();
+  const f = j.filas.find((x: { aparato: string; render_p95_ms: number | null; bloque_caro: string | null }) => x.aparato === "movil" && x.bloque_caro !== null);
+  assert.ok(f && f.render_p95_ms !== null && f.render_p95_ms >= 4 && f.bloque_caro === "olivo (estación)" && f.bloque_caro_p95_ms === 5, "la mediana del p95 del bloque más caro entre 3, 5 y 7: " + JSON.stringify(f));
+});

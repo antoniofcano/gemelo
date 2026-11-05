@@ -1,6 +1,7 @@
 // Telemetría de fluidez en aparatos (PB9; contrato: contratos/medidas.md; tabla: migraciones/0017_medidas_fluidez.sql). El medidor del motor
 // (apps/web/motor/30_mide.js, `&mide=60`) enseña mediana, p95 y peor de una medida de 60 s; si la persona pulsa «Enviar esta medida a la oficina»
 // llega aquí. Q0e (contrato v2): además dice POR QUÉ va como va (ms de JS, niveles, perillas, olivos generados, llamadas, triángulos, personas), todo opcional.
+// Q0i (contrato v3): y lo que cuesta renderer.render(), la autopsia de los fotogramas lentos (lentos_*) y el reparto del JS por bloque (como mucho 16), todo opcional.
 //  - POST /api/medidas (cualquier sesión, también unas gafas vinculadas): esquema ESTRICTO (nada de campos de más) y límite por hogar y día, EN MEMORIA:
 //    el hogar solo sirve de clave del límite, nunca se guarda (la tabla no tiene hogar_id, ni IP, ni agente de usuario entero, ni posición).
 //    No se audita: la auditoría guarda el hogar, y eso enlazaría la medida con una familia.
@@ -30,7 +31,18 @@ export interface CuerpoMedida {
   // Q0e (contrato v2, todo opcional: un cliente de antes no los manda): por qué va como va
   js_mediana_ms?: number; js_p95_ms?: number; nivel_ini?: number; nivel_fin?: number; perillas?: string; olivos_gen?: boolean;
   llamadas_med?: number; triangulos_med?: number; personas?: number;
+  // Q0i (contrato v3, todo opcional): el coste de renderer.render(), la autopsia de los fotogramas lentos y el reparto del JS por bloque
+  render_mediana_ms?: number; render_p95_ms?: number;
+  lentos_n?: number; lentos_cola?: number; lentos_tesela?: number; lentos_lote?: number; lentos_tarea?: number; lentos_compila?: number; lentos_textura?: number; lentos_sin_causa?: number; lentos_cola_ms?: number;
+  reparto?: BloqueReparto[]; otros_p95_ms?: number;
 }
+export interface BloqueReparto { bloque: string; mediana_ms: number; p95_ms: number }
+/** Como mucho este número de bloques viaja en el reparto (el medidor ya los manda ordenados por p95, de mayor a menor). */
+export const MAX_BLOQUES = 16;
+/** El nombre de un bloque del motor («olivo (estación)», «c:fauna», «Cola»): letras, cifras, espacio y `: _ ( ) . + · -`, de 1 a 40. Identificadores del motor, nunca datos de nadie. */
+export const PATRON_BLOQUE = "^[0-9A-Za-z\\u00c1\\u00c9\\u00cd\\u00d3\\u00da\\u00dc\\u00d1\\u00e1\\u00e9\\u00ed\\u00f3\\u00fa\\u00fc\\u00f1 :_().+\\u00b7-]{1,40}$";
+const ENTERO_LENTOS = { type: "integer", minimum: 0, maximum: 1000000 } as const;
+const MS_10S = { type: "number", minimum: 0, maximum: 10000 } as const;
 /** El texto corto de las perillas de VR: letras, cifras, espacio y la puntuación que usa XrPerillas.linea(); 1 a 80 caracteres. Nada que parezca HTML, ruta, URL o correo. */
 export const PATRON_PERILLAS = "^[0-9A-Za-z\\u00c1\\u00c9\\u00cd\\u00d3\\u00da\\u00dc\\u00d1\\u00e1\\u00e9\\u00ed\\u00f3\\u00fa\\u00fc\\u00f1 ,.:;=()+_%\\u00b7-]{1,80}$";
 
@@ -62,6 +74,14 @@ export const CUERPO_MEDIDA = {
     llamadas_med: { type: "integer", minimum: 0, maximum: 100000 },
     triangulos_med: { type: "integer", minimum: 0, maximum: 100000000 },
     personas: { type: "integer", minimum: 0, maximum: 500 },
+    render_mediana_ms: MS_10S, render_p95_ms: MS_10S,
+    lentos_n: ENTERO_LENTOS, lentos_cola: ENTERO_LENTOS, lentos_tesela: ENTERO_LENTOS, lentos_lote: ENTERO_LENTOS, lentos_tarea: ENTERO_LENTOS, lentos_compila: ENTERO_LENTOS,
+    lentos_textura: ENTERO_LENTOS, lentos_sin_causa: ENTERO_LENTOS, lentos_cola_ms: MS_10S,
+    reparto: {
+      type: "array", maxItems: MAX_BLOQUES,
+      items: { type: "object", additionalProperties: false, required: ["bloque", "mediana_ms", "p95_ms"], properties: { bloque: { type: "string", pattern: PATRON_BLOQUE }, mediana_ms: MS_10S, p95_ms: MS_10S } },
+    },
+    otros_p95_ms: MS_10S,
   },
 } as const;
 
@@ -76,9 +96,11 @@ const CONSULTA = {
 } as const;
 
 /** Lo que el esquema no puede decir: el orden de las cifras y que la fecha sea de ahora. Devuelve el motivo, o null si cuadra. Pura. */
-export function motivoNoCreible(m: Pick<CuerpoMedida, "mediana_ms" | "p95_ms" | "peor_ms" | "medida_en"> & Partial<Pick<CuerpoMedida, "js_mediana_ms" | "js_p95_ms">>, ahora: number = Date.now()): string | null {
+export function motivoNoCreible(m: Pick<CuerpoMedida, "mediana_ms" | "p95_ms" | "peor_ms" | "medida_en"> & Partial<Pick<CuerpoMedida, "js_mediana_ms" | "js_p95_ms" | "render_mediana_ms" | "render_p95_ms" | "reparto">>, ahora: number = Date.now()): string | null {
   if (!(m.mediana_ms <= m.p95_ms && m.p95_ms <= m.peor_ms)) return "orden";   // mediana ≤ p95 ≤ peor, siempre
   if (m.js_mediana_ms !== undefined && m.js_p95_ms !== undefined && m.js_mediana_ms > m.js_p95_ms) return "orden";   // y lo mismo con el JS
+  if (m.render_mediana_ms !== undefined && m.render_p95_ms !== undefined && m.render_mediana_ms > m.render_p95_ms) return "orden";   // Q0i: y con render()
+  if (m.reparto?.some(b => b.mediana_ms > b.p95_ms)) return "orden";   // Q0i: y con cada bloque del reparto
   const t = Date.parse(m.medida_en);
   if (!Number.isFinite(t)) return "fecha";
   if (t > ahora + VENTANA.futuroMs || t < ahora - VENTANA.pasadoMs) return "fecha";
@@ -96,12 +118,15 @@ export interface FilaAgregada {
   // Q0e: medianas del día y aparato de lo que dice POR QUÉ (null si ninguna medida del día lo traía)
   js_mediana: number | string | null; js_p95: number | string | null; nivel_ini: number | string | null; nivel_fin: number | string | null; perillas: string | null;
   olivos_si: number | string; olivos_de: number | string; llamadas: number | string | null; triangulos: number | string | null; personas: number | string | null;
+  // Q0i: mediana del día de render() y el bloque que más cuesta (el de mayor p95 mediano del día; null si ninguna medida traía reparto). Los bloques los pone la segunda consulta
+  render_mediana?: number | string | null; render_p95?: number | string | null; bloque_caro?: string | null; bloque_caro_p95?: number | string | null;
 }
 export interface FilaMedidas {
   dia: string; aparato: Aparato; vr: boolean; medidas: number; p95_mediano_ms: number; p95_peor_ms: number; mediana_ms: number; peor_ms: number; fotogramas: number;
   navegadores: string[]; versiones: string[]; objetivo_p95_ms: number | null; cumple: boolean | null;
   js_mediana_ms: number | null; js_p95_ms: number | null; nivel_ini: number | null; nivel_fin: number | null; perillas: string | null;
   olivos_gen_si: number; olivos_gen_de: number; llamadas_med: number | null; triangulos_med: number | null; personas: number | null;
+  render_mediana_ms: number | null; render_p95_ms: number | null; bloque_caro: string | null; bloque_caro_p95_ms: number | null;
 }
 
 const r1 = (v: number): number => Math.round(v * 10) / 10;
@@ -117,8 +142,17 @@ export function formaFilas(filas: FilaAgregada[]): FilaMedidas[] {
       navegadores: f.navegadores, versiones: f.versiones, objetivo_p95_ms: objetivo, cumple: objetivo === null ? null : p95 <= objetivo,
       js_mediana_ms: r1n(f.js_mediana), js_p95_ms: r1n(f.js_p95), nivel_ini: rn(f.nivel_ini), nivel_fin: rn(f.nivel_fin), perillas: f.perillas ?? null,
       olivos_gen_si: Number(f.olivos_si ?? 0), olivos_gen_de: Number(f.olivos_de ?? 0), llamadas_med: rn(f.llamadas), triangulos_med: rn(f.triangulos), personas: rn(f.personas),
+      render_mediana_ms: r1n(f.render_mediana), render_p95_ms: r1n(f.render_p95), bloque_caro: f.bloque_caro ?? null, bloque_caro_p95_ms: r1n(f.bloque_caro_p95),
     };
   });
+}
+
+export interface BloqueCaro { dia: Date | string; aparato: Aparato; vr: boolean; bloque: string; p95: number | string }
+const claveDia = (d: Date | string): string => (typeof d === "string" ? d.slice(0, 10) : d.toISOString().slice(0, 10));
+/** Pone en cada fila agregada su bloque más caro (el de la segunda consulta, por día, aparato y VR). Pura. */
+export function uneBloqueCaro(filas: FilaAgregada[], caros: BloqueCaro[]): FilaAgregada[] {
+  const por = new Map(caros.map(c => [claveDia(c.dia) + "|" + c.aparato + "|" + String(c.vr), c]));
+  return filas.map(f => { const c = por.get(claveDia(f.dia) + "|" + f.aparato + "|" + String(f.vr)); return c ? { ...f, bloque_caro: c.bloque, bloque_caro_p95: c.p95 } : f; });
 }
 
 export async function rutasMedidas(app: FastifyInstance, ctx: Contexto): Promise<void> {
@@ -141,10 +175,14 @@ export async function rutasMedidas(app: FastifyInstance, ctx: Contexto): Promise
     // ni hogar ni IP ni cabeceras: solo el cuerpo ya validado
     await bd.query(
       `INSERT INTO medidas_fluidez (medida_en, aparato, navegador, nav_mayor, perfil, finca, modo, vr, mediana_ms, p95_ms, peor_ms, fotogramas, duracion_s, version,
-                                   js_mediana_ms, js_p95_ms, nivel_ini, nivel_fin, perillas, olivos_gen, llamadas_med, triangulos_med, personas)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)`,
+                                   js_mediana_ms, js_p95_ms, nivel_ini, nivel_fin, perillas, olivos_gen, llamadas_med, triangulos_med, personas,
+                                   render_mediana_ms, render_p95_ms, lentos_n, lentos_cola, lentos_tesela, lentos_lote, lentos_tarea, lentos_compila, lentos_textura, lentos_sin_causa, lentos_cola_ms, reparto, otros_p95_ms)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23,
+               $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35::jsonb, $36)`,
       [m.medida_en, m.aparato, m.navegador, m.nav_mayor, m.perfil, m.finca, m.modo, m.vr, m.mediana_ms, m.p95_ms, m.peor_ms, m.fotogramas, m.duracion_s, m.version,
-        m.js_mediana_ms ?? null, m.js_p95_ms ?? null, m.nivel_ini ?? null, m.nivel_fin ?? null, m.perillas ?? null, m.olivos_gen ?? null, m.llamadas_med ?? null, m.triangulos_med ?? null, m.personas ?? null]);
+        m.js_mediana_ms ?? null, m.js_p95_ms ?? null, m.nivel_ini ?? null, m.nivel_fin ?? null, m.perillas ?? null, m.olivos_gen ?? null, m.llamadas_med ?? null, m.triangulos_med ?? null, m.personas ?? null,
+        m.render_mediana_ms ?? null, m.render_p95_ms ?? null, m.lentos_n ?? null, m.lentos_cola ?? null, m.lentos_tesela ?? null, m.lentos_lote ?? null, m.lentos_tarea ?? null,
+        m.lentos_compila ?? null, m.lentos_textura ?? null, m.lentos_sin_causa ?? null, m.lentos_cola_ms ?? null, m.reparto ? JSON.stringify(m.reparto) : null, m.otros_p95_ms ?? null]);
     return rep.code(201).send({ guardada: true });
   });
 
@@ -164,10 +202,21 @@ export async function rutasMedidas(app: FastifyInstance, ctx: Contexto): Promise
               mode() WITHIN GROUP (ORDER BY perillas) FILTER (WHERE perillas IS NOT NULL) AS perillas,
               count(*) FILTER (WHERE olivos_gen) AS olivos_si, count(olivos_gen) AS olivos_de,
               percentile_cont(0.5) WITHIN GROUP (ORDER BY llamadas_med) AS llamadas, percentile_cont(0.5) WITHIN GROUP (ORDER BY triangulos_med) AS triangulos,
-              percentile_cont(0.5) WITHIN GROUP (ORDER BY personas) AS personas
+              percentile_cont(0.5) WITHIN GROUP (ORDER BY personas) AS personas,
+              percentile_cont(0.5) WITHIN GROUP (ORDER BY render_mediana_ms) AS render_mediana, percentile_cont(0.5) WITHIN GROUP (ORDER BY render_p95_ms) AS render_p95
          FROM medidas_fluidez
         WHERE ($1::text IS NULL OR aparato = $1) AND ($2::date IS NULL OR medida_en >= $2::date) AND ($3::date IS NULL OR medida_en < $3::date + 1)
         GROUP BY 1, 2, 3 ORDER BY 1 DESC, 2, 3 LIMIT $4`, [aparato ?? null, desde ?? null, hasta ?? null, limite]);
-    return { generado_en: new Date().toISOString(), objetivos_p95_ms: OBJETIVO_P95_MS, filas: formaFilas(r.rows) };
+    // Q0i: el bloque que más cuesta por día, aparato y VR: el de mayor p95 mediano entre las medidas del día que traían reparto
+    const b = await bd.query<BloqueCaro>(
+      `WITH bloques AS (
+         SELECT (medida_en AT TIME ZONE 'UTC')::date AS dia, aparato, vr, e->>'bloque' AS bloque, (e->>'p95_ms')::real AS p95
+           FROM medidas_fluidez, jsonb_array_elements(reparto) AS e
+          WHERE reparto IS NOT NULL AND ($1::text IS NULL OR aparato = $1) AND ($2::date IS NULL OR medida_en >= $2::date) AND ($3::date IS NULL OR medida_en < $3::date + 1)
+       ), por_bloque AS (
+         SELECT dia, aparato, vr, bloque, percentile_cont(0.5) WITHIN GROUP (ORDER BY p95) AS p95 FROM bloques GROUP BY 1, 2, 3, 4
+       )
+       SELECT DISTINCT ON (dia, aparato, vr) dia, aparato, vr, bloque, p95 FROM por_bloque ORDER BY dia, aparato, vr, p95 DESC, bloque`, [aparato ?? null, desde ?? null, hasta ?? null]);
+    return { generado_en: new Date().toISOString(), objetivos_p95_ms: OBJETIVO_P95_MS, filas: formaFilas(uneBloqueCaro(r.rows, b.rows)) };
   });
 }

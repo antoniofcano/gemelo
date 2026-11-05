@@ -21,5 +21,39 @@
   "olivos_gen": true,
   "llamadas_med": 212,
   "triangulos_med": 410000,
-  "personas": 0
+  "personas": 0,
+  "render_mediana_ms": 2.1,
+  "render_p95_ms": 3.4,
+  "lentos_n": 42,
+  "lentos_cola": 18,
+  "lentos_tesela": 9,
+  "lentos_lote": 3,
+  "lentos_tarea": 2,
+  "lentos_compila": 0,
+  "lentos_textura": 1,
+  "lentos_sin_causa": 17,
+  "lentos_cola_ms": 2.3,
+  "reparto": [
+    {
+      "bloque": "olivo (estación)",
+      "mediana_ms": 2.4,
+      "p95_ms": 3.8
+    },
+    {
+      "bloque": "c:fauna",
+      "mediana_ms": 1.1,
+      "p95_ms": 1.9
+    },
+    {
+      "bloque": "Cola",
+      "mediana_ms": 0.6,
+      "p95_ms": 1.7
+    },
+    {
+      "bloque": "minimapa",
+      "mediana_ms": 0.2,
+      "p95_ms": 0.4
+    }
+  ],
+  "otros_p95_ms": 1.2
 }

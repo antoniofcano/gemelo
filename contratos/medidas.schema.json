@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "medidas.schema.json",
-  "title": "Medida de fluidez de un aparato (PB9; v2 = Q0e)",
-  "description": "Cuerpo de POST /api/medidas. Lo mide el aparato de sí mismo (MEDIDO, regla 5) con el medidor de 30_mide.js y lo manda la persona con un botón. Nada personal: ni hogar, ni posición, ni IP, ni agente de usuario entero. Contrato en contratos/medidas.md. v2 (Q0e): nueve campos OPCIONALES más que dicen por qué va como va; un cliente de v1 que no los manda sigue valiendo; lo copia apps/api/src/medidas/rutas.ts (CUERPO_MEDIDA) y lo comprueba apps/api/pruebas/unidad/medidas.test.ts.",
+  "title": "Medida de fluidez de un aparato (PB9; v2 = Q0e; v3 = Q0i)",
+  "description": "Cuerpo de POST /api/medidas. Lo mide el aparato de sí mismo (MEDIDO, regla 5) con el medidor de 30_mide.js y lo manda la persona con un botón. Nada personal: ni hogar, ni posición, ni IP, ni agente de usuario entero. Contrato en contratos/medidas.md. v2 (Q0e): nueve campos OPCIONALES más que dicen por qué va como va; un cliente de v1 que no los manda sigue valiendo; v3 (Q0i): trece campos OPCIONALES más (render() y autopsia de los fotogramas lentos) y el reparto del JS por bloque (como mucho 16); un cliente de v1 o v2 sigue valiendo; lo copia apps/api/src/medidas/rutas.ts (CUERPO_MEDIDA) y lo comprueba apps/api/pruebas/unidad/medidas.test.ts.",
   "type": "object",
   "additionalProperties": false,
   "required": ["aparato", "navegador", "nav_mayor", "perfil", "finca", "modo", "vr", "mediana_ms", "p95_ms", "peor_ms", "fotogramas", "duracion_s", "version", "medida_en"],
@@ -29,6 +29,19 @@
     "olivos_gen": { "type": "boolean", "description": "Q0e (opcional): si los olivos generados estaban activos durante la medida" },
     "llamadas_med": { "type": "integer", "minimum": 0, "maximum": 100000, "description": "Q0e (opcional): mediana por fotograma de renderer.info.render.calls" },
     "triangulos_med": { "type": "integer", "minimum": 0, "maximum": 100000000, "description": "Q0e (opcional): mediana por fotograma de renderer.info.render.triangles" },
-    "personas": { "type": "integer", "minimum": 0, "maximum": 500, "description": "Q0e (opcional): personas visibles de la presencia al terminar (0 si no hay presencia); solo un número, ninguna identidad" }
+    "personas": { "type": "integer", "minimum": 0, "maximum": 500, "description": "Q0e (opcional): personas visibles de la presencia al terminar (0 si no hay presencia); solo un número, ninguna identidad" },
+    "render_mediana_ms": {"type":"number","minimum":0,"maximum":10000,"description":"Q0i (opcional): mediana por fotograma de los ms de renderer.render() (parte del JS); render_mediana_ms <= render_p95_ms"},
+    "render_p95_ms": {"type":"number","minimum":0,"maximum":10000,"description":"Q0i (opcional): p95 por fotograma de los ms de renderer.render()"},
+    "lentos_n": {"type":"integer","minimum":0,"maximum":1000000,"description":"Q0i (opcional): fotogramas lentos (por encima de 13,9 ms) de la medida; el total sobre el que se cuentan las causas"},
+    "lentos_cola": {"type":"integer","minimum":0,"maximum":1000000,"description":"Q0i (opcional): de los lentos, cuántos coinciden con trabajo de la Cola (>= 1 ms). Las causas pueden solaparse"},
+    "lentos_tesela": {"type":"integer","minimum":0,"maximum":1000000,"description":"Q0i (opcional): de los lentos, cuántos coinciden con la llegada de una tesela"},
+    "lentos_lote": {"type":"integer","minimum":0,"maximum":1000000,"description":"Q0i (opcional): de los lentos, cuántos coinciden con un lote de olivos generados montado"},
+    "lentos_tarea": {"type":"integer","minimum":0,"maximum":1000000,"description":"Q0i (opcional): de los lentos, cuántos coinciden con una tarea larga del navegador (>= 50 ms)"},
+    "lentos_compila": {"type":"integer","minimum":0,"maximum":1000000,"description":"Q0i (opcional): de los lentos, cuántos coinciden con un programa de sombreado compilado"},
+    "lentos_textura": {"type":"integer","minimum":0,"maximum":1000000,"description":"Q0i (opcional): de los lentos, cuántos coinciden con una textura subida a la GPU"},
+    "lentos_sin_causa": {"type":"integer","minimum":0,"maximum":1000000,"description":"Q0i (opcional): de los lentos, cuántos no coinciden con ninguna causa conocida"},
+    "lentos_cola_ms": {"type":"number","minimum":0,"maximum":10000,"description":"Q0i (opcional): mediana de los ms que trabajaron la Cola y las teselas en los lentos en que trabajaron"},
+    "reparto": {"type":"array","maxItems":16,"description":"Q0i (opcional): reparto del JS por bloque del motor, de mayor a menor p95, como mucho 16. Los bloques son identificadores del motor, no datos de nadie","items":{"type":"object","additionalProperties":false,"required":["bloque","mediana_ms","p95_ms"],"properties":{"bloque":{"type":"string","pattern":"^[0-9A-Za-z\\u00c1\\u00c9\\u00cd\\u00d3\\u00da\\u00dc\\u00d1\\u00e1\\u00e9\\u00ed\\u00f3\\u00fa\\u00fc\\u00f1 :_().+\\u00b7-]{1,40}$"},"mediana_ms":{"type":"number","minimum":0,"maximum":10000},"p95_ms":{"type":"number","minimum":0,"maximum":10000}}}},
+    "otros_p95_ms": {"type":"number","minimum":0,"maximum":10000,"description":"Q0i (opcional): p95 de lo que sobra del JS tras restar render() y los bloques del reparto"}
   }
 }
