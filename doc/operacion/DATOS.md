@@ -159,17 +159,18 @@ con su atribución bajo el mapa.
 Las fotos de campo (suelo: 27 jpg y `ficha.json` con la clase de cada una; cielo: 4 jpg y su ficha) viven **fuera del repo**, en una carpeta local que no se versiona; nunca entran las originales, ni en el historial. De ellas sale lo que sí se versiona, por decisión de Antonio del 2026-11-04: siete clases de textura repetible (13 con sus variantes: 2-3 fotos por clase donde las hay) en 768 y 384 px con su relieve, el manifiesto `suelo.json` (huellas sha256) y la paleta del atardecer.
 
 ```bash
-cd tuberia/suelo && npm ci && cd ../..                # sharp 0.35.5, fijado en tuberia/suelo/package.json
+cd tuberia/suelo && npm ci && cd ../..                # sharp 0.35.5, ktx2-encoder 0.6.0 y ktx-parse 1.1.0, fijados en tuberia/suelo/package.json
 GEMELO_SUELO_FOTOS=<carpeta de las fotos de suelo> \
 GEMELO_CIELO_FOTOS=<carpeta de las fotos de cielo> \
-node tuberia/suelo/construye.mjs                      # escribe apps/web/public/suelo/ y tuberia/suelo/paleta_cielo.json (≈ 20 s)
+node tuberia/suelo/construye.mjs                      # escribe apps/web/public/suelo/ (WebP y KTX2) y tuberia/suelo/paleta_cielo.json
+node tuberia/suelo/ktx2.mjs [--forzar]               # solo los KTX2 (no se versionan; también los hace `npm run build` de apps/web)
 ```
 
 - **Qué foto va a cada clase, qué recorte y qué escala** se decide en `tuberia/suelo/recetas.json`, no en el código. El orden de las clases, y de sus `variantes` detrás de cada una, es el de los niveles de la textura del motor (`SueloFotosPuro.CLASES` y `VARIANTES` en `04f_suelo_fotos.js`; lo comprueba `suelo_tuberia.test.js`). Lo que quede en la carpeta de salida y no esté en el manifiesto (otros tamaños, variantes quitadas) se borra.
 - **Pasos:** recorte cuadrado cenital, girado según el EXIF; luz aplanada (cada canal dividido por su desenfoque fuerte); color normalizado alrededor de 1, con el contraste y la saturación de la receta y las piedras sueltas comprimidas; repetible sin costuras (desplazamiento de medio lado y mezcla que conserva la varianza, en x y luego en y); relieve deducido (paso alto de la claridad); de 768 a 384 px por medias de 2×2, que conservan la periodicidad; WebP de calidad 78. Sin metadatos, porque sharp no copia el EXIF.
 - **Es determinista:** la misma entrada da los mismos bytes. Se comprobó dos veces el 2026-11-04 con las fotos de verdad (28 de 28 ficheros iguales) y otra con las variantes (52 de 52 iguales, y el manifiesto idéntico). Si se regenera, el manifiesto cambia con las texturas y `suelo_tuberia.test.js` comprueba que lo versionado es lo del manifiesto.
 - **Escala [SUPUESTO]:** las fotos no llevan referencia (solo las botas de la 08). Los metros de cada textura son una estimación. En la próxima sesión de fotos conviene poner un A4 o un metro en el suelo.
-- **Formato:** WebP. El motor no tiene cargador KTX2/Basis y la CSP del Caddy aún no deja WebAssembly ([EV-1f](../rumbo/PLAN.md)). Por eso KTX2 se propone aparte: bajaría la memoria de la tarjeta gráfica unas 4 veces (de 39,0 a ≈ 10 MB a 768 px, o dejaría volver a 1024).
+- **Formato:** WebP y, desde EV-1k, además un KTX2 por tamaño (`suelo_768.ktx2`, `suelo_384.ktx2`): una textura en array con las 13 capas y sus mipmaps, UASTC con zstd, que `tuberia/suelo/ktx2.mjs` saca de las WebP con el codificador de Basis Universal de `ktx2-encoder`. **No se versionan** (Antonio, 2026-11-05): los genera `npm run build` de `apps/web` (`herramientas/suelo_ktx2.mjs`) en `apps/web/public/suelo/`, ignorados, con su manifiesto suelto `ktx2.json`; si están al día no se rehacen, y sin las dependencias de `tuberia/suelo` el build avisa y sigue sin ellos. Es determinista (dos codificaciones, mismos bytes). El motor lo carga por defecto y vuelve a las WebP si falla. Por qué UASTC y no ETC1S, y lo que ocupa: [SUELO-FOTOS](../sistema/SUELO-FOTOS.md#formato-ktx2-ev-1k).
 - **Qué es cada cosa** (medido, deducido o ilustrativo), la bandera y el presupuesto: [SUELO-FOTOS](../sistema/SUELO-FOTOS.md).
 
 ## Medido y deducido
