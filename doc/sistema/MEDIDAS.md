@@ -604,6 +604,21 @@ Quest 3, Quest Browser 154, build de VR (super-three 0.185.0) servida en el VPS,
 
 Lectura: el peor fotograma baja de 40-50 ms (quinta subida) a 31,8 ms y el ritmo es prácticamente 72 por segundo. El criterio «p95 ≤ 13,9 ms» no se cumple por 1,5 ms de fluctuación; el número que dice si se pierden fotogramas es el de los que pasan de ~1,5 periodos (20,8 ms), que el medidor aún no da.
 
+## Multiview en el gemelo real, con el parche (AG-3c, 2026-11-05, foto, no se mantiene)
+Quest 3, Quest Browser 154, build de VR (super-three 0.185.0 con `herramientas/parche_multiview.mjs`) servida en el VPS, 72 Hz, MSAA, escala 0,9, foveación 1, nivel automático (el controlador viejo: oscila 0→3→2→3 en todas las tomas), olivos generados, 0 personas; quieto en el mismo sitio mirando al olivar; 60 s tras 3 s; tres tomas por fila, en la tabla la media.
+
+| Medida (media de 3) | `xrmv=1` (multiview) | `xrmv=0` | Diferencia |
+|---|---|---|---|
+| Fotogramas en 60 s | 4160 | 4010 | +150 (+3,7 %) |
+| Intervalo p95 (ms) | 18,1 | 20,9 | −2,8 |
+| JS por fotograma mediana / p95 (ms) | 6,4 / 10,4 | 7,3 / 11,3 | −0,9 / −0,9 |
+| `renderer.render()` mediana / p95 (ms) | 4,6 / 5,9 | 5,4 / 7,1 | −0,8 (−15 %) / −1,2 (−17 %) |
+| Resto del JS p95 (ms) | 5,4 | 5,5 | igual |
+| Llamadas por fotograma (mediana) | 106 | 205 | −48 % |
+| Triángulos por fotograma (mediana) | 188 k | 375 k | la mitad: con multiview se cuentan una vez para los dos ojos |
+
+Lectura: el multiview ahorra lo que prometía en llamadas (menos de la mitad) pero en `render()` solo un 15-17 %, lejos del 45 % de la página de humo: en el gemelo pesa también lo que no se reparte entre ojos (sombras, preparar cada objeto, la Cola). Las tomas se repiten bien (`render()` de 4,4 a 4,7 ms con multiview y de 5,2 a 5,5 sin él). La primera toma del día, con el mundo en negro, no cuenta.
+
 ## Triángulos por objeto con Hituelo real (2026-11-04, foto, no se mantiene)
 Banco (SwiftShader: recuentos, no fps), página de `main` tras la cuarta subida con los datos reales de Hituelo servidos en local, 12:00, `--desglose` (llamadas y, desde hoy, triángulos por objeto). Los olivos generados no llegaron a dibujarse en estos escenarios (0 triángulos), así que esta foto no dice lo que cuestan. Los triángulos son de una vista; en VR se pagan dos veces.
 
