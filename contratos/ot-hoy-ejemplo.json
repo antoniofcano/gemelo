@@ -33,7 +33,7 @@
       },
       {
         "clave": "CELZzsEsay9sOQIt",
-        "parcela": "sint-otra-9",
+        "parcela": "loma-(polígono-9-parcela-8)",
         "finca": "Otra finca sintética",
         "tipo": "varetas",
         "nombre": "Desvarete",
@@ -134,6 +134,8 @@
     "descartadas": 1,
     "fecha": "2026-10-28",
     "calibrada": false,
+    "calibracion": "Ninguna capa está calibrada contra observación de campo (sintético).",
+    "comoSeLee": "Relativo a las demás parcelas en la misma fecha; no es un umbral (sintético).",
     "frescura": {
       "generadoEn": "2026-10-28T09:10:00.000Z",
       "horasDeAntiguedad": 0.3,

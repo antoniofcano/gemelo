@@ -12,7 +12,7 @@ import pg from "pg";
 import { construyeApp } from "../../src/app.ts";
 import { eligeAviso, FuenteAvisosCampo, textoDeAviso } from "../../src/avisos/campo.ts";
 import { cargaConfig } from "../../src/config.ts";
-import { componeMundoHoy, diaMadrid, estacionDelAnio, horaMadrid, type LectorRegistro, NO_AUTORIZA, normalizaFenologia, previsionPorDias, ServicioMundoHoy } from "../../src/mundo/hoy.ts";
+import { componeMundoHoy, diaMadrid, estacionDelAnio, horaMadrid, type LectorRegistro, NO_AUTORIZA, normalizaFenologia, previsionPorDias, RECOGIDA, ServicioMundoHoy } from "../../src/mundo/hoy.ts";
 import { rutasMundoHoy } from "../../src/mundo/rutas.ts";
 import { ServicioHoy } from "../../src/ot/hoy.ts";
 import { LectorGrabado } from "../../src/ot/lector-grabado.ts";
@@ -337,4 +337,9 @@ test("los avisos por correo: el del tiempo va a todos; «mirada» solo si se pid
     await new FuenteAvisosCampo(b.bd, { lee: async () => r }, { minHoras: 168, tipos: ["lluvia"], reloj: () => AHORA }).pasada();
     assert.deepEqual(b.q.find(x => /INSERT INTO avisos_hogar/.test(x.sql))!.params!.slice(2), [false, []], "el del tiempo, a todos los hogares con haza");
   }
+});
+
+test("RECOGIDA [SUPUESTO]: con y sin tilde (los tipos de OlivarTrack traen tildes); los tipos vistos el 2026-11-05 no son recogida", () => {
+  for (const t of ["recoleccion", "recolección", "recolección_mecanizada", "recogida", "vareo", "cosecha"]) assert.ok(RECOGIDA.test(t), t);
+  for (const t of ["riego", "preparación_de_suelos", "tratamiento", "varetas", "otros"]) assert.ok(!RECOGIDA.test(t), t);
 });

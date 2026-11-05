@@ -19,14 +19,18 @@ Lo que la historia de Cerro leía en vivo por el conector de claude.ai (retirado
 
 | Herramienta | Pasa | No pasa |
 |---|---|---|
-| `tareas_abiertas` | `clave` (huella opaca del id), parcela (`parcelaId`, como en `D.ot`), finca, tipo, nombre de la tarea (≤ 120), fecha, estado (`pendiente`/`activo`/`pausada`) | el id de OlivarTrack, personas asignadas y su número, GPS, observaciones, origen |
-| `trabajo_realizado` | `clave`, parcela, finca, tipo, título (≤ 120), día de fin, estado, avance en olivos (`pct` 0–100, `hecho`, `objetivo`) | quién la hizo, **todas las horas** (también las agregadas), partes y cualquier texto de campo |
+| `tareas_abiertas` | `clave` (huella opaca del id), parcela (`parcelaId`, como en `D.ot`), finca, tipo, nombre de la tarea (≤ 120), fecha, estado (`pendiente`/`activo`/`pausada`) | el id de OlivarTrack, personas asignadas y su número (`nAsignadas`), GPS, observaciones, origen |
+| `trabajo_realizado` | `clave`, parcela, finca, tipo, título (≤ 120), día de fin, estado, avance en olivos (`pct` 0–1000, `hecho`, `objetivo`); `hasta` de `periodo.hasta` | quién la hizo, **todas las horas** (también las agregadas), incidencias, totales, partes y cualquier texto de campo |
 | `atencion_de_hoy` | por punto: tipo, `n`, severidad, el `texto` del recuento (≤ 160; la herramienta dice «solo recuentos, ni un nombre»); `total`, `parcial`, `avisos` | asuntos, personas, cualquier otro campo |
-| `estado_del_olivar_hoy` | por parcela marcada: nombre (según Vigía), gravedad, `motivo` y `comoSeLee` (≤ 300); `fecha`, `calibrada`, `frescura` | `dentroDeUmbrales`, ids internos, geometrías, quién lo revisó |
+| `estado_del_olivar_hoy` | por parcela marcada: nombre (según Vigía), gravedad, `motivo` (≤ 300); una vez, arriba: `comoSeLee` y `calibracion` (los textos de Vigía, ≤ 400); `fecha`, `calibrada`, `frescura` | `dentroDeUmbrales`, la capa, ids internos, geometrías, quién lo revisó, `explotacion`, `parcelasEnTotal` |
 
 - **Títulos de tarea**: los pone la oficina, no el campo, y ya los trae la instantánea `D.ot` del índice; por eso pasan, a diferencia de los textos libres que prohíbe [`olivartrack-sync.md`](olivartrack-sync.md) para la ficha de haza.
 - Lo que no tiene la forma esperada (sin id, tipo o estado de palabra limpia; estado no abierto; recuento negativo; mirada sin parcela) **se descarta y se cuenta** (`descartadas`, con aviso). Un número fuera de rango va a `null`: no se arregla ni se estima. Una respuesta entera sin la forma esperada deja esa parte en `null` con un aviso propio (nunca el texto del otro lado).
 - Los ids de tarea de OlivarTrack **no salen**: `clave` es una huella (`huella("ot-tarea:<id>")`), igual en `tareasAbiertas` y `trabajoRealizado`, que solo sirve para cruzar las dos listas.
+- **Palabras clave** (tipo, estado, severidad, gravedad): letras minúsculas **también con tilde o «ñ»** (OlivarTrack trae `preparación_de_suelos`), cifras, `_`, `.` y `-`, normalizadas a NFC; sin espacios, mayúsculas ni otros signos (`clave()` de `vivo/lista-blanca.ts`; en el esquema, `^[\p{Ll}0-9_.-]`).
+- **Ids de parcela**: un solo patrón, `PATRON_ID_PARCELA` de `vivo/lista-blanca.ts` (`^[\p{L}\p{N}:_.#()/-]{1,120}$`): letras con tilde, cifras y `: _ . # ( ) / -`, sin espacios ni control. Los reales traen tildes, paréntesis y `/` (sintético: `loma-(polígono-9-parcela-8)`, `huerta/pozo`). Un id que no cumple deja la parcela en `null`; no tira la tarea.
+- **`pct` del avance hasta 1000**: es lo hecho sobre el objetivo de la tarea y pasa de 100 cuando se hace más de lo previsto (se han visto 135 y 197); más de 1000 va a `null`.
+- **Vigía, `calibracion` es un texto**: pasa recortado, como dato, en `vigia.calibracion`; `calibrada` queda `null` (no se deduce un sí/no de la prosa; si algún día llega como objeto `{ calibrada, texto }`, se lee). `comoSeLee` va **una vez** en `vigia.comoSeLee`; el `comoSeLee` de cada mirada queda `null` (se mantiene por compatibilidad). `vigia.calibracion` y `vigia.comoSeLee` son **opcionales** en el esquema (versión 1 compatible: un servidor anterior no los manda).
 
 ## Reglas (de los conectores y del gemelo)
 
@@ -50,6 +54,7 @@ En los dos 503, sin servidor, o con una respuesta que no cumple el contrato, el 
 
 ## Lo que NO se sabe
 
-- **Las formas son [NO VERIFICADAS]**: las de OlivarTrack salen de lo que leía el motor por el conector y de la descripción de cada herramienta; las grabaciones de `apps/api/pruebas/grabaciones/` y `apps/api/pruebas/vigia/` son **sintéticas**. No se ha llamado a los servicios reales desde la api (hace falta URL y token del gemelo).
-- Si `trabajo_realizado` devuelve la parcela de cada tarea (la historia de Hituelo dice que no; por eso Hituelo sigue sin lectura en vivo).
-- Si `tareas_abiertas` trae `truncado` o `consultadoEn` (se leen si vienen). **[SUPUESTO]**
+- Las **formas** de las cuatro herramientas se **comprobaron en solo lectura el 2026-11-05** (por el conector, campo a campo); las grabaciones de `apps/api/pruebas/grabaciones/` y `apps/api/pruebas/vigia/` tienen esa forma con valores **sintéticos**. Lo que sigue sin probarse es el cliente MCP de la api contra los servidores reales con el token del gemelo (hace falta URL y token).
+- `trabajo_realizado` trae `parcela: null` en **todas** las tareas: la parcela solo sale de la tarea abierta o, en la historia de Cerro, del nº de olivos objetivo (por eso Hituelo sigue sin lectura en vivo).
+- `tareas_abiertas` **no trae `truncado`** (trae `total` y `consultadoEn`): se toma como no truncada; si algún día lo trae, se lee.
+- `estado_del_olivar_hoy` no trae `fecha`: `vigia.fecha` queda `null` y lo que vale es `frescura`.

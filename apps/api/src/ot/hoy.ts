@@ -8,7 +8,10 @@
 //  · los ids de tarea de OlivarTrack no salen: van como `clave`, una huella opaca que solo sirve para cruzar las dos listas.
 //  · `truncado` / `parcial` se dicen (y `completo: false`); lo que no tiene la forma esperada se descarta y se cuenta.
 //  · de Vigía no pasan `dentroDeUmbrales` ni ids internos ni geometrías: Vigía no autoriza tratamientos.
-// [NO VERIFICADO contra los servicios reales: las formas son las que leía el motor por el conector y las que describen las herramientas]
+// Formas comprobadas en solo lectura el 2026-11-05 (tareas_abiertas, trabajo_realizado, atencion_de_hoy y estado_del_olivar_hoy): los
+// tipos traen tildes («preparación_de_suelos»), los ids de parcela tildes, paréntesis y «/», el `pct` del avance pasa de 100, `hasta` va en
+// `periodo.hasta`, trabajo_realizado trae `parcela: null` en todas, tareas_abiertas no trae `truncado`, y en Vigía `calibracion` es un
+// TEXTO y `comoSeLee` va una vez, arriba (no por parcela).
 import { huella } from "../seguridad/cripto.ts";
 import type { LectorVigia } from "../vigia/lector.ts";
 import { avisosDeFrescura, type Frescura, frescura } from "../vigia/servicio.ts";
@@ -20,6 +23,8 @@ const MIN = 60_000;
 export const MAX_TAREAS = 500;
 const MAX_MIRADAS = 100;
 const MAX_ATENCION = 30;
+/** tope del `pct` de avance: es lo hecho sobre el objetivo de la tarea y pasa de 100 cuando se hace más de lo previsto (se ha visto 135 y 197) */
+export const MAX_PCT_AVANCE = 1000;
 const ESTADOS_ABIERTOS = new Set(["pendiente", "activo", "pausada"]);
 
 export type De = "gemelo" | "olivartrack" | "vigia";
@@ -33,7 +38,7 @@ interface ParteComun { leidoEn: string; consultadoEn: string | null; viejo: bool
 export interface ParteAbiertas extends ParteComun { truncado: boolean; tareas: TareaAbierta[] }
 export interface ParteTrabajo extends ParteComun { desde: string; hasta: string | null; truncado: boolean; tareas: TareaHecha[] }
 export interface ParteAtencion extends ParteComun { parcial: boolean; total: number | null; puntos: PuntoAtencion[] }
-export interface ParteVigia extends ParteComun { fecha: string | null; calibrada: boolean | null; frescura: Frescura; pidenUnaMirada: Mirada[] }
+export interface ParteVigia extends ParteComun { fecha: string | null; calibrada: boolean | null; calibracion: string | null; comoSeLee: string | null; frescura: Frescura; pidenUnaMirada: Mirada[] }
 export interface RespuestaHoy {
   version: 1;
   origen: { ot: "olivartrack" | "grabado" | null; vigia: "vigia" | "fixture" | null };
@@ -63,7 +68,7 @@ export function normalizaAbiertas(v: unknown): { truncado: boolean; tareas: Tare
 function avance(v: unknown): Avance | null {
   const a = obj(v);
   if (!a) return null;
-  const r = { pct: num(a["pct"], 0, 100), hecho: entero(a["hecho"], 1e7), objetivo: entero(a["objetivo"], 1e7) };
+  const r = { pct: num(a["pct"], 0, MAX_PCT_AVANCE), hecho: entero(a["hecho"], 1e7), objetivo: entero(a["objetivo"], 1e7) };
   return r.pct === null && r.hecho === null && r.objetivo === null ? null : r;
 }
 
@@ -77,7 +82,9 @@ export function normalizaTrabajo(v: unknown): { truncado: boolean; tareas: Tarea
     if (!t || !k || !tipo || !estado) { descartadas++; continue; }
     tareas.push({ clave: k, parcela: idParcela(t["parcela"]), finca: texto(t["finca"], 80), tipo, titulo: texto(t["titulo"], 120), completadaEn: dia(t["completadaEn"]), estado, avance: avance(t["avance"]) });
   }
-  return { truncado: si(d["truncado"]), tareas: tareas.slice(0, MAX_TAREAS), descartadas, consultadoEn: fecha(d["consultadoEn"]), hasta: dia(d["hasta"]), recortado: tareas.length > MAX_TAREAS };
+  const periodo = obj(d["periodo"]);
+  const hasta = (periodo && dia(periodo["hasta"])) ?? dia(d["hasta"]);   // el real va en periodo.hasta; el de arriba se sigue aceptando
+  return { truncado: si(d["truncado"]), tareas: tareas.slice(0, MAX_TAREAS), descartadas, consultadoEn: fecha(d["consultadoEn"]), hasta, recortado: tareas.length > MAX_TAREAS };
 }
 
 export function normalizaAtencion(v: unknown): { parcial: boolean; total: number | null; puntos: PuntoAtencion[]; descartadas: number; consultadoEn: string | null; avisos: string[] } | null {
@@ -94,7 +101,7 @@ export function normalizaAtencion(v: unknown): { parcial: boolean; total: number
   return { parcial: si(d["parcial"]), total: entero(d["total"], 1e6), puntos: puntos.slice(0, MAX_ATENCION), descartadas, consultadoEn: fecha(d["consultadoEn"]), avisos };
 }
 
-export function normalizaOlivar(v: unknown): { fecha: string | null; calibrada: boolean | null; frescura: Frescura; pidenUnaMirada: Mirada[]; descartadas: number; avisos: string[] } | null {
+export function normalizaOlivar(v: unknown): { fecha: string | null; calibrada: boolean | null; calibracion: string | null; comoSeLee: string | null; frescura: Frescura; pidenUnaMirada: Mirada[]; descartadas: number; avisos: string[] } | null {
   const d = obj(v);
   if (!d || !Array.isArray(d["pidenUnaMirada"])) return null;
   const pidenUnaMirada: Mirada[] = [];
@@ -104,9 +111,13 @@ export function normalizaOlivar(v: unknown): { fecha: string | null; calibrada: 
     if (!m || !parcela) { descartadas++; continue; }
     pidenUnaMirada.push({ parcela, gravedad: clave(m["gravedad"]), motivo: texto(m["motivo"], 300), comoSeLee: texto(m["comoSeLee"], 300) });
   }
+  // `calibracion` llega como TEXTO: pasa recortado, como dato, y `calibrada` sigue null (no se deduce de la prosa). Si algún día llega
+  // como objeto { calibrada, texto }, se lee igual que antes.
   const c = obj(d["calibracion"]);
+  const calibracion = c ? texto(c["texto"], 400) : texto(d["calibracion"], 400);
   return {
-    fecha: dia(d["fecha"]), calibrada: c && typeof c["calibrada"] === "boolean" ? c["calibrada"] : null, frescura: frescura(d["frescura"]),
+    fecha: dia(d["fecha"]), calibrada: c && typeof c["calibrada"] === "boolean" ? c["calibrada"] : null, calibracion,
+    comoSeLee: texto(d["comoSeLee"], 400), frescura: frescura(d["frescura"]),
     pidenUnaMirada: pidenUnaMirada.slice(0, MAX_MIRADAS), descartadas, avisos: avisosDeFrescura(d["frescura"]),
   };
 }
@@ -208,7 +219,7 @@ export class ServicioHoy {
         for (const s of n.avisos) avisos.push({ de: "vigia", texto: s });
         if (n.frescura.datosDeMaqueta) avisos.push({ de: "gemelo", texto: "Lo que marca Vigía: Vigía avisa de que son datos de maqueta." });
         descartes("estado_del_olivar_hoy", n.descartadas);
-        vigia = { ...v.c, consultadoEn: n.frescura.generadoEn, descartadas: n.descartadas, fecha: n.fecha, calibrada: n.calibrada, frescura: n.frescura, pidenUnaMirada: n.pidenUnaMirada };
+        vigia = { ...v.c, consultadoEn: n.frescura.generadoEn, descartadas: n.descartadas, fecha: n.fecha, calibrada: n.calibrada, calibracion: n.calibracion, comoSeLee: n.comoSeLee, frescura: n.frescura, pidenUnaMirada: n.pidenUnaMirada };
       }
     }
     if (!tareasAbiertas && !trabajoRealizado && !atencion && !vigia) return null;

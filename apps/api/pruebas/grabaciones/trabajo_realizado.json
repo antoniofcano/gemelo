@@ -1,18 +1,19 @@
 {
-  "$comentario": "SINTÉTICO: no es una respuesta real de OlivarTrack. Forma esperada de trabajo_realizado [NO VERIFICADA]: la que leía la historia por el conector de claude.ai (tareas[].id, finca, parcela, tipo, titulo, completadaEn, estado, avance.pct/hecho/objetivo). Lleva a propósito horas por persona, quién la hizo y un parte con texto libre, que la lista blanca debe tirar; y un avance fuera de rango.",
-  "consultadoEn": "2026-10-28T09:00:00Z",
-  "desde": "2026-05-01",
-  "hasta": "2026-10-28",
-  "truncado": false,
+  "$comentario": "SINTÉTICO: ningún valor es de OlivarTrack. Misma FORMA que la respuesta real de trabajo_realizado (comprobada en solo lectura el 2026-11-05): periodo {desde, hasta} (hasta NO va arriba); tareas[].id, titulo, tipo, finca, parcela (null en TODAS), estado (completado|activo), completadaEn, avance {hecho, objetivo, unidad: olivos, pct} con pct que puede pasar de 100, horas {fichadas, cuadrilla, declaradas, total}, incidencias {abiertas, total}; totales, avisos, truncado, consultadoEn. Lleva a propósito horas, quién la hizo y un parte con texto libre, que la lista blanca debe tirar; y un avance fuera de rango.",
+  "periodo": { "desde": "2026-04-01", "hasta": "2026-10-28" },
   "tareas": [
-    { "id": "t-sint-10", "finca": "Finca sintética", "parcela": "sintetica-1", "tipo": "varetas", "titulo": "Desvarete (sintético)", "completadaEn": "2026-07-02T16:00:00Z", "estado": "completado",
-      "avance": { "pct": 96, "hecho": 48, "objetivo": 50 }, "horas": { "fichadas": 12, "cuadrilla": 4, "declaradas": 0 },
+    { "id": "t-sint-10", "titulo": "Desvarete (sintético)", "tipo": "varetas", "finca": "Finca sintética", "parcela": null, "estado": "completado", "completadaEn": "2026-07-02T16:00:00Z",
+      "avance": { "hecho": 48, "objetivo": 50, "unidad": "olivos", "pct": 96 }, "horas": { "fichadas": 12, "cuadrilla": 4, "declaradas": 0, "total": 16 }, "incidencias": { "abiertas": 0, "total": 1 },
       "hechaPor": [{ "nombre": "PERSONA SINTETICA 2", "horas": 6 }], "parte": "TEXTO LIBRE DE CAMPO QUE NO DEBE SALIR" },
-    { "id": "t-sint-11", "finca": "Finca sintética", "parcela": null, "tipo": "varetas", "titulo": "Desvarete (sintético)", "completadaEn": "2026-07-05", "estado": "completado",
-      "avance": { "pct": 100, "hecho": 90, "objetivo": 90 } },
-    { "id": "t-sint-1", "finca": "Finca sintética", "parcela": null, "tipo": "riego", "titulo": "Sustituir goteros (sintético)", "completadaEn": null, "estado": "activo",
-      "avance": { "pct": 40, "hecho": 20, "objetivo": 50 } },
-    { "id": "t-sint-12", "finca": "Finca sintética", "parcela": "sintetica-2", "tipo": "riego", "titulo": "Sustituir goteros (sintético)", "completadaEn": "2026-06-10", "estado": "completado",
-      "avance": { "pct": 250, "hecho": -3, "objetivo": "muchos" } }
-  ]
+    { "id": "t-sint-11", "titulo": "Desvarete de la loma (sintético)", "tipo": "varetas", "finca": "Finca sintética", "parcela": null, "estado": "completado", "completadaEn": "2026-07-05",
+      "avance": { "hecho": 135, "objetivo": 100, "unidad": "olivos", "pct": 135 }, "horas": { "fichadas": 3, "cuadrilla": 0, "declaradas": 1, "total": 4 }, "incidencias": { "abiertas": 0, "total": 0 } },
+    { "id": "t-sint-1", "titulo": "Sustituir goteros (sintético)", "tipo": "riego", "finca": "Finca sintética", "parcela": null, "estado": "activo", "completadaEn": null,
+      "avance": { "hecho": 20, "objetivo": 50, "unidad": "olivos", "pct": 40 }, "horas": { "fichadas": 2, "cuadrilla": 0, "declaradas": 0, "total": 2 }, "incidencias": { "abiertas": 1, "total": 1 } },
+    { "id": "t-sint-12", "titulo": "Preparar el suelo (sintético)", "tipo": "preparación_de_suelos", "finca": "Finca sintética", "parcela": null, "estado": "completado", "completadaEn": "2026-06-10",
+      "avance": { "hecho": -3, "objetivo": "muchos", "unidad": "olivos", "pct": 2500 }, "horas": { "fichadas": 0, "cuadrilla": 0, "declaradas": 0, "total": 0 }, "incidencias": { "abiertas": 0, "total": 0 } }
+  ],
+  "totales": { "horas": 22, "tareasCompletadas": 3 },
+  "avisos": [],
+  "truncado": false,
+  "consultadoEn": "2026-10-28T09:00:00Z"
 }

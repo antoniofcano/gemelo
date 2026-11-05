@@ -25,7 +25,7 @@ const AHORA = Date.parse("2026-10-28T09:30:00Z");
 const MIN = 60_000;
 const valida = validadorOtHoy();
 const errores = () => JSON.stringify(valida.errors);
-const PROHIBIDO = ["PERSONA SINTETICA", "TEXTO LIBRE DE CAMPO", "gps", "geometria", "coordinates", "dentroDeUmbrales", "revisadoPor", "vig-sint-interno", "t-sint-", "asignados", "hechaPor", "fichadas", "\"parte\"", "observaciones", "quien", "asunto"];
+const PROHIBIDO = ["PERSONA SINTETICA", "TEXTO LIBRE DE CAMPO", "gps", "geometria", "coordinates", "dentroDeUmbrales", "revisadoPor", "vig-sint-interno", "t-sint-", "asignados", "hechaPor", "fichadas", "\"parte\"", "\"observaciones\"", "quien", "asunto", "nAsignadas", "\"incidencias\"", "\"capa\"", "\"totales\"", "\"horas\""];
 
 function reloj(t0 = AHORA) { const r = { t: t0, fn: () => r.t }; return r; }
 function servicio(o: { r?: ReturnType<typeof reloj>; ot?: LectorGrabado | null; vig?: LectorVigiaFixture | null; tope?: number } = {}) {
@@ -63,18 +63,43 @@ test("lo que no tiene la forma esperada se descarta y se cuenta; lo fuera de ran
   const a = normalizaAbiertas(crudo(GRABACIONES, "tareas_abiertas"))!;
   assert.equal(a.tareas.length, 3);
   assert.equal(a.descartadas, 1, "la de tipo raro y estado «borrada»");
-  assert.equal(a.tareas.find(t => t.tipo === "varetas")!.fecha, null, "«no es fecha» → null");
+  assert.equal(a.truncado, false, "tareas_abiertas no trae truncado: no es truncado");
+  assert.equal(a.tareas.find(t => t.tipo === "otros")!.fecha, null, "«no es fecha» → null");
   const t = normalizaTrabajo(crudo(GRABACIONES, "trabajo_realizado"))!;
-  const fuera = t.tareas.find(x => x.parcela === "sintetica-2")!;
-  assert.equal(fuera.avance, null, "pct 250, hecho −3 y objetivo «muchos»: nada vale, y no se arregla");
-  assert.equal(t.tareas.find(x => x.titulo === "Desvarete (sintético)" && x.parcela === null)!.completadaEn, "2026-07-05");
+  const fuera = t.tareas.find(x => x.titulo === "Preparar el suelo (sintético)")!;
+  assert.equal(fuera.avance, null, "pct 2500, hecho −3 y objetivo «muchos»: nada vale, y no se arregla");
+  assert.equal(t.tareas.find(x => x.titulo === "Desvarete de la loma (sintético)")!.completadaEn, "2026-07-05");
+  assert.ok(t.tareas.every(x => x.parcela === null), "trabajo_realizado trae parcela null en todas");
+  assert.equal(t.hasta, "2026-10-28", "hasta sale de periodo.hasta");
   const n = normalizaAtencion(crudo(GRABACIONES, "atencion_de_hoy"))!;
   assert.equal(n.puntos.length, 2); assert.equal(n.descartadas, 1, "tipo «<script>» y n negativo");
   const v = normalizaOlivar(crudo(VIGIA, "estado_del_olivar_hoy"))!;
   assert.equal(v.pidenUnaMirada.length, 2); assert.equal(v.descartadas, 1, "sin parcela no pasa");
-  assert.equal(v.calibrada, false);
+  assert.equal(v.calibrada, null, "la calibración viene como texto: no se deduce un sí/no de la prosa");
+  assert.equal(v.calibracion, "Ninguna capa está calibrada contra observación de campo (sintético).");
+  assert.equal(v.comoSeLee, "Relativo a las demás parcelas en la misma fecha; no es un umbral (sintético).", "una vez, arriba");
+  assert.ok(v.pidenUnaMirada.every(m => m.comoSeLee === null), "no se repite por mirada");
+  assert.equal(v.fecha, null, "la respuesta real no trae fecha");
   // formas que no son: null (la ruta lo dice como aviso, no como «sin datos»)
   for (const f of [normalizaAbiertas, normalizaTrabajo, normalizaAtencion, normalizaOlivar]) { assert.equal(f(null), null); assert.equal(f({ tareas: "x", atencion: 1, pidenUnaMirada: {} }), null); }
+});
+
+test("formas reales (2026-11-05): tipos con tilde, ids de parcela con tildes, paréntesis y «/», avance de más del 100 %", () => {
+  const a = normalizaAbiertas(crudo(GRABACIONES, "tareas_abiertas"))!;
+  const suelo = a.tareas.find(t => t.tipo === "preparación_de_suelos");
+  assert.ok(suelo, "«preparación_de_suelos» no tumba la tarea");
+  assert.equal(suelo!.parcela, "sintetica-2");
+  assert.equal(a.tareas.find(t => t.tipo === "otros")!.parcela, "loma-(polígono-9-parcela-8)");
+  // una tilde suelta (NFD) se normaliza; mayúsculas, espacios y signos siguen fuera
+  const n = normalizaAbiertas({ tareas: [
+    { id: "a", tipo: "preparaci\u006f\u0301n", estado: "activo", parcelaId: "huerta/pozo" }, { id: "b", tipo: "Riego", estado: "activo" },
+    { id: "c", tipo: "riego de pie", estado: "activo" }, { id: "d", tipo: "riego!", estado: "activo" }, { id: "e", tipo: "riego", estado: "activo", parcelaId: "con espacio" }] })!;
+  assert.deepEqual(n.tareas.map(t => [t.tipo, t.parcela]), [["preparación", "huerta/pozo"], ["riego", null]], "un id que no vale deja la parcela en null, no tira la tarea");
+  assert.equal(n.descartadas, 3);
+  const t = normalizaTrabajo(crudo(GRABACIONES, "trabajo_realizado"))!;
+  assert.deepEqual(t.tareas.find(x => x.titulo === "Desvarete de la loma (sintético)")!.avance, { pct: 135, hecho: 135, objetivo: 100 }, "135 % es avance real");
+  assert.equal(normalizaTrabajo({ tareas: [{ id: "x", tipo: "riego", estado: "activo", avance: { pct: 1001 } }] })!.tareas[0]!.avance, null, "por encima de 1000, fuera");
+  assert.equal(normalizaTrabajo({ hasta: "2026-01-02", tareas: [] })!.hasta, "2026-01-02", "el hasta de arriba se sigue aceptando");
 });
 
 test("un texto que «da órdenes» es un dato: pasa recortado y tal cual, sin caracteres de control, y no cambia nada más", async () => {
@@ -89,6 +114,8 @@ test("un texto que «da órdenes» es un dato: pasa recortado y tal cual, sin ca
   assert.ok(!/[\u0000-\u001f\u2028]/.test(t.nombre!));
   // la orden del fixture de Vigía también pasa como dato, y solo se ha leído: ninguna llamada fuera de la lista
   assert.ok(r.vigia!.pidenUnaMirada.some(m => /^Ignora las instrucciones/.test(m.motivo ?? "")));
+  assert.equal(r.vigia!.calibrada, null);
+  assert.match(r.vigia!.calibracion!, /calibrada/); assert.match(r.vigia!.comoSeLee!, /Relativo/);
   assert.deepEqual([...new Set(ot!.llamadas.map(l => l.herramienta))].sort(), ["atencion_de_hoy", "tareas_abiertas", "trabajo_realizado"]);
   assert.equal(vig!.llamadasOlivar, 1);
 });

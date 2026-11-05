@@ -1,11 +1,30 @@
 {
-  "$comentario": "SINTÉTICO. Forma esperada de aforo_y_avance_de_recoleccion [NO VERIFICADA]: el campo del porcentaje se supone «pctRecogido». Lleva kilos a propósito: no deben salir nunca.",
-  "consultadoEn": "2026-10-28T09:00:10Z",
-  "kgEntregados": 99999,
-  "rdtoMedio": 0.21,
-  "parcelas": [
-    { "id": "sint:1", "pctRecogido": 40, "kgRecogido": 1234, "kgAforo": 3000, "origen": "medido" },
-    { "id": "sint:2", "pctRecogido": null, "kgRecogido": 10 },
-    { "id": "sint:3", "pctRecogido": 80, "kgRecogido": 777, "kgAforo": 970, "origen": "modelo", "base": "interpolada" }
-  ]
+  "$comentario": "SINTÉTICO: ningún valor es de OlivarTrack. Misma FORMA que la respuesta real de aforo_y_avance_de_recoleccion (comprobada en solo lectura el 2026-11-05): campana; aforo {kgEsperados, horquilla, aforadas, conHorquilla, porParcela[] {parcela: NOMBRE legible (no id), finca, kg, origen, base, recogido, pct}, bandaHistorica}; recoleccion {...}; comoLeerlo, avisos [{texto, severidad}], truncado, consultadoEn. NO hay `parcelas` arriba. Lleva kilos a propósito: no deben salir nunca. Como la parcela viene por nombre, ninguna fila casa con haza_parcela y se aparta con su aviso; un pct 0 es un dato (0 % recogido), un pct null no.",
+  "campana": "2025/2026",
+  "aforo": {
+    "kgEsperados": 99999,
+    "horquilla": { "min": 90000, "max": 110000 },
+    "aforadas": 3,
+    "conHorquilla": 2,
+    "porParcela": [
+      { "parcela": "Parcela sintética 1", "finca": "Finca sintética", "kg": 3000, "origen": "medido", "base": "conteo", "recogido": 1234, "pct": 40 },
+      { "parcela": "Loma sintética (polígono 9, parcela 8)", "finca": "Otra finca sintética", "kg": 970, "origen": "modelo", "base": "interpolada", "recogido": 0, "pct": 0 },
+      { "parcela": "Parcela sintética 3", "finca": "Finca sintética", "kg": 10, "origen": "modelo", "base": "interpolada", "recogido": null, "pct": null }
+    ],
+    "bandaHistorica": { "min": 80000, "max": 120000 }
+  },
+  "recoleccion": {
+    "kgEntregados": 1234,
+    "kgAceite": 260,
+    "rdtoMedio": 0.21,
+    "kgSinParcela": 0,
+    "pct": 1.2,
+    "kgRecogidoSinAforo": 0,
+    "porParcela": [],
+    "propuestasSinValidar": { "n": 0, "kilos": 0 }
+  },
+  "comoLeerlo": "Texto sintético de cómo leer el aforo.",
+  "avisos": [{ "texto": "Aviso sintético del aforo.", "severidad": "info" }],
+  "truncado": false,
+  "consultadoEn": "2026-10-28T09:00:10Z"
 }

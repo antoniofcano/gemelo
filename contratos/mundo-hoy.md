@@ -29,7 +29,7 @@ Con `GEMELO_OT=no` no se llama a OlivarTrack ni se lee la fenología de la base;
 
 | `tipo` | Cuándo | Frase (fija) | `de` · `basadoEn` | `parcelas` |
 |---|---|---|---|---|
-| `recogida` | hay tareas **activas** de recogida (tipo que empieza por `recoleccion`, `recogida`, `vareo` o `cosecha` **[SUPUESTO: nombres de tipo no vistos en una respuesta real]**) | «Hoy hay recogida en curso en N parcelas.» | olivartrack · medido | ids de OlivarTrack |
+| `recogida` | hay tareas **activas** de recogida (tipo que empieza por `recoleccion` o `recolección`, `recogida`, `vareo` o `cosecha` **[SUPUESTO: ningún tipo de recogida se ha visto aún en una respuesta real]**) | «Hoy hay recogida en curso en N parcelas.» | olivartrack · medido | ids de OlivarTrack |
 | `helada` | mañana (día de Madrid) la mínima prevista es ≤ 0 °C | «Previsión de helada para mañana: mínima de X °C. Es una previsión (modelado) y puede cambiar.» | vigia · modelado | — |
 | `lluvia` | mañana la lluvia prevista suma ≥ 1 mm o la probabilidad llega al 60 % | «Previsión de lluvia para mañana: unos X mm (probabilidad de hasta el P %). Es una previsión (modelado) y puede cambiar.» | vigia · modelado | — |
 | `fenologia` | hay fenología anotada en los últimos 7 días | «Esta semana se ha anotado la fenología de N parcelas: etapa (BBCH a–b).» | olivartrack · medido | ids |
@@ -53,8 +53,8 @@ Con `GEMELO_OT=no` no se llama a OlivarTrack ni se lee la fenología de la base;
 
 ## Lo que NO se sabe
 
-- **Las formas de OlivarTrack y Vigía siguen [NO VERIFICADAS]** (las de [`ot-hoy.md`](ot-hoy.md) y [`tiempo.md`](tiempo.md)): no se ha llamado a los servicios reales desde la api.
-- Los nombres de tipo de recogida (`RECOGIDA` en `mundo/hoy.ts`) son un **[SUPUESTO]**.
+- Las formas de OlivarTrack y Vigía (las de [`ot-hoy.md`](ot-hoy.md) y [`tiempo.md`](tiempo.md)) se **comprobaron en solo lectura el 2026-11-05**, por el conector y no desde la api: el cliente MCP de la api, con el token del gemelo, sigue sin llamar a los servicios reales.
+- Los nombres de tipo de recogida (`RECOGIDA` en `mundo/hoy.ts`, con y sin tilde) son un **[SUPUESTO]**: los tipos vistos el 2026-11-05 son riego, preparación_de_suelos, tratamiento, varetas y otros.
 - Hituelo: igual que en `ot-hoy.md`, lo que no trae parcela se cuenta en `sinParcela`.
 
 ## «Hoy en el olivar» en el tablón de La Linde (EV-3c)

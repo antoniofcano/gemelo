@@ -30,11 +30,23 @@ export function dia(v: unknown): string | null {
   const f = fecha(v);
   return f ? f.slice(0, 10) : null;
 }
-/** palabra clave (tipo, estado, severidad): minúsculas, cifras, «_», «.» y «-»; si no, null */
+/** palabra clave (tipo, estado, severidad): letras minúsculas (también con tilde o «ñ»: OlivarTrack trae tipos como
+ *  «preparación_de_suelos»; formas comprobadas en solo lectura el 2026-11-05), cifras, «_», «.» y «-»; sin espacios, mayúsculas
+ *  ni otros signos. Se normaliza a NFC antes de mirarla (una tilde suelta, NFD, no es una letra). Si no, null */
 export function clave(v: unknown, max = 40): string | null {
-  return typeof v === "string" && new RegExp("^[a-z0-9_.-]{1," + max + "}$").test(v) ? v : null;
+  if (typeof v !== "string") return null;
+  const s = v.normalize("NFC");
+  return new RegExp("^[\\p{Ll}0-9_.-]{1," + max + "}$", "u").test(s) ? s : null;
 }
-/** identificador de parcela tal como lo trae el índice del mundo (D.ot): sin espacios ni marcas; si no, null */
+
+/** Identificador de parcela de OlivarTrack: UN SOLO patrón para la api (lista blanca de hoy, del mundo y de la sincronía) y para los
+ *  contratos (ot-hoy, mundo-hoy) y la carga de hazas; el CHECK de haza_parcela (migración 0026) es su equivalente en Postgres.
+ *  Letras de cualquier alfabeto (con tilde), cifras y «: _ . # ( ) / -»; sin espacios, sin caracteres de control, de 1 a 120.
+ *  Los ids reales traen tildes, paréntesis y «/» (p. ej. «loma-(polígono-9-parcela-8)», «huerta/pozo»; formas comprobadas en solo
+ *  lectura el 2026-11-05). El id NO se normaliza: es una identidad y tiene que casar tal cual con haza_parcela. */
+export const PATRON_ID_PARCELA = "^[\\p{L}\\p{N}:_.#()/-]{1,120}$";
+const RE_ID_PARCELA = new RegExp(PATRON_ID_PARCELA, "u");
+/** identificador de parcela (PATRON_ID_PARCELA) o null */
 export function idParcela(v: unknown): string | null {
-  return typeof v === "string" && /^[A-Za-z0-9_.:#-]{1,64}$/.test(v) ? v : null;
+  return typeof v === "string" && RE_ID_PARCELA.test(v) ? v : null;
 }

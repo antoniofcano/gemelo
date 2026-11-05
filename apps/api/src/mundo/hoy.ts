@@ -135,8 +135,10 @@ export function normalizaFenologia(v: unknown): { parcelas: FenologiaParcela[]; 
 }
 
 // ---------------------------------------------------------------- el trabajo de la semana (puro): por parcela y por finca, contado por tipo
-/** Tipos de tarea que son recogida. [SUPUESTO: los nombres de tipo de OlivarTrack no se han visto en una respuesta real] */
-export const RECOGIDA = /^(recoleccion|recogida|vareo|cosecha)/;
+/** Tipos de tarea que son recogida, con y sin tilde (los tipos de OlivarTrack traen tildes: «preparación_de_suelos»; comprobado en solo
+ *  lectura el 2026-11-05). [SUPUESTO: ningún tipo de recogida se ha visto aún en una respuesta real; los vistos son riego,
+ *  preparación_de_suelos, tratamiento, varetas y otros] */
+export const RECOGIDA = /^(recolecci[oó]n|recogida|vareo|cosecha)/;
 
 const cuenta = (m: Map<string, number>, k: string) => m.set(k, (m.get(k) ?? 0) + 1);
 const recuentos = (m: Map<string, number>, sabe: boolean): Recuento[] => [...m.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([tipo, n]) => ({ tipo, n: sabe ? n : null }));

@@ -19,7 +19,7 @@ async function levanta(opciones: { escritura?: boolean; soloTexto?: boolean }) {
     cabeceras.push(req.headers.authorization);
     const mcp = new McpServer({ name: "ot-sintetico", version: "0.0.0" });
     mcp.registerTool("aforo_y_avance_de_recoleccion", { description: "sintético" }, async () => {
-      const datos = { consultadoEn: "2026-10-28T09:00:00Z", parcelas: [{ id: "sint:1", pctRecogido: 40 }] };
+      const datos = { consultadoEn: "2026-10-28T09:00:00Z", aforo: { porParcela: [{ parcela: "Parcela sintética 1", pct: 40 }] } };
       return opciones.soloTexto
         ? { content: [{ type: "text" as const, text: JSON.stringify(datos) }] }
         : { content: [{ type: "text" as const, text: "resumen para un modelo" }], structuredContent: datos };
@@ -43,8 +43,8 @@ test("lee la salida estructurada y manda el token en Authorization: Bearer", asy
   const { url, cabeceras } = await levanta({});
   const l = new LectorMcp(url, TOKEN);
   try {
-    const r = await l.llama("aforo_y_avance_de_recoleccion", {}) as { parcelas: unknown[] };
-    assert.equal(r.parcelas.length, 1);
+    const r = await l.llama("aforo_y_avance_de_recoleccion", {}) as { aforo: { porParcela: unknown[] } };
+    assert.equal(r.aforo.porParcela.length, 1);
     const n = await l.llama("novedades", { desde: "2026-01-01T00:00:00Z", limite: 500 }) as { eco: string };
     assert.equal(n.eco, "2026-01-01T00:00:00Z", "los argumentos llegan");
     assert.ok(cabeceras.length > 0 && cabeceras.every(c => c === "Bearer " + TOKEN));

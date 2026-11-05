@@ -9,8 +9,8 @@
   "definitions": {
     "dia": { "type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
     "clave": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16}$", "description": "huella opaca del id de tarea de OlivarTrack: solo sirve para cruzar las dos listas" },
-    "parcela": { "type": ["string", "null"], "pattern": "^[A-Za-z0-9_.:#-]{1,64}$", "description": "id de parcela de OlivarTrack, como en la instantánea D.ot del índice" },
-    "palabra": { "type": "string", "pattern": "^[a-z0-9_.-]{1,60}$" }
+    "parcela": { "type": ["string", "null"], "pattern": "^[\\p{L}\\p{N}:_.#()/-]{1,120}$", "description": "id de parcela de OlivarTrack (PATRON_ID_PARCELA de apps/api/src/vivo/lista-blanca.ts): letras con tilde, cifras y : _ . # ( ) / -; sin espacios. Formas comprobadas en solo lectura el 2026-11-05" },
+    "palabra": { "type": "string", "pattern": "^[\\p{Ll}0-9_.-]{1,60}$" }
   },
   "properties": {
     "version": { "const": 1 },
@@ -82,7 +82,7 @@
                 "type": ["object", "null"], "additionalProperties": false,
                 "required": ["pct", "hecho", "objetivo"],
                 "properties": {
-                  "pct": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+                  "pct": { "type": ["number", "null"], "minimum": 0, "maximum": 1000, "description": "hecho sobre objetivo, en %; pasa de 100 si se hizo más de lo previsto" },
                   "hecho": { "type": ["integer", "null"], "minimum": 0, "description": "olivos hechos" },
                   "objetivo": { "type": ["integer", "null"], "minimum": 0, "description": "olivos de la tarea" }
                 }
@@ -111,7 +111,7 @@
             "properties": {
               "tipo": { "$ref": "#/definitions/palabra" },
               "n": { "type": "integer", "minimum": 0 },
-              "severidad": { "type": ["string", "null"], "pattern": "^[a-z0-9_.-]{1,40}$" },
+              "severidad": { "type": ["string", "null"], "pattern": "^[\\p{Ll}0-9_.-]{1,40}$" },
               "texto": { "type": ["string", "null"], "maxLength": 160, "description": "el recuento en palabras de OlivarTrack (sin nombres, según la herramienta)" }
             }
           }
@@ -128,7 +128,9 @@
         "viejo": { "type": "boolean" },
         "descartadas": { "type": "integer", "minimum": 0 },
         "fecha": { "$ref": "#/definitions/dia" },
-        "calibrada": { "type": ["boolean", "null"], "description": "Vigía: ninguna capa está calibrada contra observación de campo" },
+        "calibrada": { "type": ["boolean", "null"], "description": "Vigía: ninguna capa está calibrada contra observación de campo. Hoy Vigía da la calibración como texto (`calibracion`): esto queda null, no se deduce de la prosa" },
+        "calibracion": { "type": ["string", "null"], "maxLength": 400, "description": "lo que dice Vigía de la calibración, como texto (DATO; el motor lo escapa). Opcional: un servidor anterior no lo manda" },
+        "comoSeLee": { "type": ["string", "null"], "maxLength": 400, "description": "cómo se lee lo que marca Vigía, una vez para todas las parcelas (DATO). Opcional: un servidor anterior no lo manda" },
         "frescura": {
           "type": "object", "additionalProperties": false,
           "required": ["generadoEn", "horasDeAntiguedad", "datosDeMaqueta"],
@@ -145,9 +147,9 @@
             "required": ["parcela", "gravedad", "motivo", "comoSeLee"],
             "properties": {
               "parcela": { "type": "string", "minLength": 1, "maxLength": 80, "description": "nombre de la parcela según Vigía" },
-              "gravedad": { "type": ["string", "null"], "pattern": "^[a-z0-9_.-]{1,40}$" },
+              "gravedad": { "type": ["string", "null"], "pattern": "^[\\p{Ll}0-9_.-]{1,40}$" },
               "motivo": { "type": ["string", "null"], "maxLength": 300 },
-              "comoSeLee": { "type": ["string", "null"], "maxLength": 300 }
+              "comoSeLee": { "type": ["string", "null"], "maxLength": 300, "description": "por parcela, si Vigía lo diera así; hoy va una vez arriba (vigia.comoSeLee) y aquí queda null" }
             }
           }
         }

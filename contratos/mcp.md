@@ -2,7 +2,7 @@
 
 **El navegador ya no lee de ningún conector MCP.** La página leía en vivo de dos conectores de claude.ai (`window.claude.use("mcp")` y `callTool`, solo la historia de Cerro y el tiempo); eso murió con la salida artefacto (decisión 79: el gemelo solo se sirve desde el servidor) y se quitó de `14_historia.js`, `15_tiempo.js` y `23_estacion.js`. Los servidores **Olivartrack** y **Vigia** los lee ahora **solo la api**, con su propio cliente MCP (SDK oficial, transporte Streamable HTTP) y un token del gemelo en `Authorization: Bearer`; el navegador pide a la api, del mismo origen y tras sesión.
 
-Esto es lo que **el código lee**, no lo que los conectores garantizan. **Nada de esto está verificado en vivo desde este repo**. Las instrucciones de los propios conectores mandan sobre este resumen.
+Esto es lo que **el código lee**, no lo que los conectores garantizan. Las **formas** de las respuestas de las herramientas de la tabla se **comprobaron en solo lectura el 2026-11-05** (por el conector, campo a campo; los fixtures del repo tienen esa forma con valores sintéticos); lo que **no** se ha probado es el cliente MCP de la api contra los servidores reales con el token del gemelo. Las instrucciones de los propios conectores mandan sobre este resumen.
 
 ## Servidores referenciados (desde la api, no desde el navegador)
 
@@ -30,5 +30,7 @@ Configuración y modos (`GEMELO_VIGIA=mcp|fixture|no`, URL y token por fichero e
 6. Vigía **no autoriza tratamientos**; ninguna capa está calibrada con observación de campo: sirve para decidir dónde mirar. El color es relativo.
 
 ## Lo que NO se sabe
-- Si los nombres de herramienta y campos siguen vigentes (los conectores evolucionan): la api no se ha probado contra los servidores reales (hace falta URL y token del gemelo).
+- Si los nombres de herramienta y campos siguen vigentes (los conectores evolucionan): se comprobaron el 2026-11-05, pero la api no se ha probado contra los servidores reales (hace falta URL y token del gemelo).
+- **[NO VERIFICADO]** (no se ha visto ninguna en una respuesta real): las cargas de `fenologia.registrada` y `analitica.validada` en `novedades`, el estado de un pase ya aplicado (solo se ha visto `borrador`) y los tipos de tarea de recogida (`RECOGIDA` en `mundo/hoy.ts`).
+- **El aforo viene por nombre de parcela**, sin id: hasta que haya una tabla nombre→id, el avance de recolección no llega a la ficha de haza ([`olivartrack-sync.md`](olivartrack-sync.md)).
 - Hituelo no tiene lectura en vivo: usa la instantánea `D.ot` (sin trabajos ni fenología de Marín Hituelo); el MCP no da la parcela de cada trabajo y, con 27 parcelas, no hay forma segura de asignarlo.

@@ -42,7 +42,7 @@ Para la estación del olivo (`23_estacion.js`: el clima de la semana de la fecha
 - Herramienta de Vigía: `historico_meteo` con `{ desde, hasta }`. Respuesta: `fuentes[]` (una por estación o fuente: `id`, `temperaturaMaxima`, `temperaturaMinima`, `lluviaTotalMm`, `dias`, `diasSinDato`; **medido**), `frescura`, `avisos` (los de antigüedad o de maqueta, como en `/api/tiempo`).
 - Rango: días reales, `hasta` no antes que `desde`, como mucho 31 días; si no, `400 rango_no_valido`. Caché en la api: 1 h por rango; un fallo no se repite hasta pasado un minuto; si Vigía falla y hay una lectura anterior de menos de 24 h, se sirve con aviso. `503 tiempo_apagado` / `503 vigia_no_responde` como en `/api/tiempo`. `cache-control: private, max-age=300`.
 - El motor elige la fuente de la **estación del tiempo de ahora** (`estacion.id`) o, si no, la que se llama «Imarto» (lo que hacía antes); si no hay ninguna, no elige otra al azar: dice que la estación no tiene datos esa semana. Sin api o con error, el clima del mundo sigue siendo el de hoy y la ventana lo dice.
-- **[NO VERIFICADO contra el Vigía real]**: los nombres de campo salen de lo que leía el motor por el conector de claude.ai (`porFuente[]`, `temperaturaMaxima`, `temperaturaMinima`, `lluviaTotalMm`, `dias`, `diasSinDato`).
+- Formas de `tiempo_en_la_explotacion`, `prevision_72_horas` e `historico_meteo` **comprobadas en solo lectura el 2026-11-05**, campo a campo contra `vigia/servicio.ts` (por el conector; sin cambios). Sigue sin probarse el cliente MCP de la api contra el Vigía real con el token del gemelo.
 
 ## En el motor
 
