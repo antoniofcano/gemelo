@@ -587,7 +587,7 @@ Telemetría del medidor (`&mide=60`), Quest Browser 154, modo gemelo, código de
 - **En VR, sin medida limpia tras la subida**: hay que entrar primero en VR y medir desde el panel (Comodidad → «Medir 60 s»). Tarea: que una medida que cambia de modo a mitad se marque como mixta.
 
 ## Multiview en el gemelo real, sexta subida (AG-3c, 2026-11-05, foto, no se mantiene)
-Quest 3, Quest Browser 154, build de VR (super-three 0.185.0) servida en el VPS, multiview pedido y en uso (`OVR_multiview2`, texture-array de 2 capas), 72 Hz, MSAA, escala 0,9, foveación 1, nivel automático, olivos generados, 0 personas; 60 s tras 3 s. Una medida (toma 1 de `xrmv=1`); faltan las de `xrmv=0` y `build=pantalla` para comparar.
+Quest 3, Quest Browser 154, build de VR (super-three 0.185.0) servida en el VPS, multiview pedido y en uso (`OVR_multiview2`, texture-array de 2 capas), 72 Hz, MSAA, escala 0,9, foveación 1, nivel automático, olivos generados, 0 personas; 60 s tras 3 s. Una medida (toma 1 de `xrmv=1`); faltan las de `xrmv=0` y `build=pantalla` para comparar. **No vale para comparar:** se tomó con el fallo de las texturas en negro del multiview (MULTIVIEW.md §«Texturas en negro»; terreno y olivos sin textura), así que `render()` y el JS salen por debajo de lo real. Se repite tras el arreglo (subido el 2026-11-05).
 
 | Medida | Valor |
 |---|---|
