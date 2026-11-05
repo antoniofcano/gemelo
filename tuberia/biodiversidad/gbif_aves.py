@@ -3,7 +3,7 @@
 
 Qué hace: pregunta a la API pública de GBIF (https://api.gbif.org/v1, sin clave) cuántos registros de aves hay en el cuadro, por mes y año, con
 LICENCIA DE CADA REGISTRO en CC0, CC BY o CC BY-SA (decisión 198: nada CC BY-NC ni sin licencia clara); agrega especie por mes (nº de registros y
-nº de años distintos), guarda de cada conjunto de datos su DOI, su cita y las licencias de lo que se ha contado, y escribe un JSON.
+nº de años distintos), excluye la telemetría (basisOfRecord MACHINE_OBSERVATION), guarda de cada conjunto de datos su DOI, su cita y las licencias de lo que se ha contado, y escribe un JSON.
 
 Es DEDUCIDO, no observado en la finca: son registros de ciencia ciudadana y de proyectos de seguimiento en 10 km a la redonda.
 
@@ -30,7 +30,11 @@ API = "https://api.gbif.org/v1"
 CLASE_AVES = 212                      # classKey de Aves en la columna vertebral de GBIF
 LICENCIAS_OK = ("CC0_1_0", "CC_BY_4_0", "CC_BY_SA_4_0")   # decisión 198; GBIF no usa SA hoy, se admite por si aparece. NC fuera
 LICENCIAS_CONSULTA = ("CC0_1_0", "CC_BY_4_0")   # lo que la API de GBIF acepta como filtro (CC_BY_SA_4_0 da 400: GBIF no la tiene como licencia); SA sigue admitida al comprobar
-BASES = ("HUMAN_OBSERVATION", "OBSERVATION", "MACHINE_OBSERVATION")
+# Tipo de registro (basisOfRecord, vocabulario de GBIF/Darwin Core). Se EXCLUYE MACHINE_OBSERVATION: es donde GBIF clasifica la telemetría/GPS de aves
+# marcadas (un animal da miles de fijaciones) y las grabadoras automáticas; inflan una especie sin decir cuánta gente la ve. Se queda lo observado por
+# personas (HUMAN_OBSERVATION, OBSERVATION). Es un filtro de la propia API, sin listas caseras de conjuntos de datos.
+# Fuente: https://techdocs.gbif.org/en/data-use/api-occurrences (parámetro basisOfRecord) y https://rs.gbif.org/vocabulary/gbif/basis_of_record.xml
+BASES = ("HUMAN_OBSERVATION", "OBSERVATION")
 UA = "gemelo-biodiversidad/1 (gemelo digital de olivar; lectura de agregados)"
 ATRIBUCION = ("Registros de aves de GBIF.org (https://www.gbif.org), de conjuntos de datos con licencia CC0, CC BY o CC BY-SA; "
               "cada conjunto conserva su cita y su DOI en «fuentes». Agregado por especie y mes; no es lo observado en la finca.")

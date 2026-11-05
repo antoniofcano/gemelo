@@ -90,6 +90,9 @@ class Prueba(unittest.TestCase):
         for _, params in pet:                    # toda consulta pide SOLO las tres licencias y las aves
             self.assertEqual([v for k, v in params if k == "license"], list(g.LICENCIAS_CONSULTA))   # GBIF rechaza CC_BY_SA_4_0 como filtro (400, visto el 2026-11-05)
             self.assertIn(("classKey", g.CLASE_AVES), params)
+            bases = [v for k, v in params if k == "basisOfRecord"]
+            self.assertEqual(bases, ["HUMAN_OBSERVATION", "OBSERVATION"])
+            self.assertNotIn("MACHINE_OBSERVATION", bases, "la telemetría GPS queda fuera por la propia API")
         fuentes = g.fuentes_de(api, wkt, por_ds)
         self.assertEqual([f["id"] for f in fuentes], ["ds-ok"], "el conjunto con licencia NC no entra")
         self.assertEqual(fuentes[0]["doi"], "10.0000/bueno")
@@ -107,6 +110,21 @@ class Prueba(unittest.TestCase):
         txt = json.dumps(doc, ensure_ascii=False)
         self.assertNotIn("POLYGON", txt, "el documento no lleva el cuadro ni el centro")
         self.assertNotIn("geometry", txt)
+
+    def test_la_telemetria_queda_fuera(self):
+        """API falsa que respeta basisOfRecord como GBIF: un conjunto de telemetría (MACHINE_OBSERVATION, miles de registros) no debe contar."""
+        def pide(ruta, params):
+            bases = {v for k, v in params if k == "basisOfRecord"}
+            humano, telem = 3, 5000
+            n = (humano if bases & {"HUMAN_OBSERVATION", "OBSERVATION"} else 0) + (telem if "MACHINE_OBSERVATION" in bases else 0)
+            if p_mes(params) == 1 and n:
+                return {"facets": [{"field": "SPECIES_KEY", "counts": [{"name": "333", "count": n}]}]}
+            return {"facets": []}
+
+        def p_mes(params):
+            return dict(params).get("month")
+        filas, _ = g.descarga(g.Gbif(pide=pide), g.cuadro_wkt(37.5, -4.0, 10), 2025, 2025)
+        self.assertEqual(g.agrega(filas)["333"][0], {"n": 3, "anios": 1})
 
     def test_el_fixture_del_contrato_es_coherente(self):
         raiz = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
