@@ -116,7 +116,7 @@ test("guardián: nada fuera de la lista blanca llega a un cartel, venga lo que v
   assert.strictEqual(P.contenido({ nombre: "A\u0000B\n<b>C" }, null).titulo, "A B <b>C");
 });
 
-test("el tablón: «Club La Linde» y la finca, hazas y olivos medidos, la época con su procedencia; «Hoy en el olivar» reservada y sin mostrar", () => {
+test("el tablón: «Club La Linde» y la finca, hazas y olivos medidos, la época con su procedencia; «Hoy en el olivar» solo con datos", () => {
   assert.strictEqual(P.nombreFinca(undefined, "hituelo"), "Hituelo"); assert.strictEqual(P.nombreFinca("Mi finca", "hituelo"), "Mi finca"); assert.strictEqual(P.nombreFinca(null, null), "La finca");
   assert.strictEqual(P.nombreFinca(null, "cerro_velasco"), "Cerro velasco");
   const ctx = { hazas: 12, olivos: 4321, hoy: "2026-11-05", bbch: 82, origen: "calendario típico, sin observaciones que lo ajusten" };
@@ -125,8 +125,8 @@ test("el tablón: «Club La Linde» y la finca, hazas y olivos medidos, la époc
   assert.ok(/^12 hazas · 4\.?321 olivos$/.test(t.datos[0].txt), t.datos[0].txt); assert.ok(/^medido/.test(t.datos[0].de));
   assert.strictEqual(t.datos[1].txt, "Otoño: empieza el envero"); assert.strictEqual(t.datos[1].de, "ilustrativo · calendario típico");
   assert.strictEqual(P.tablon("H", Object.assign({}, ctx, { origen: "calendario típico ajustado con tu fenología (BBCH 70)" })).datos[1].de, "deducido · calendario ajustado");
-  assert.ok(Array.isArray(t.hoy) && t.hoy.length === 0, "la entrada de «Hoy en el olivar» existe y está vacía (tanda 10)");
-  assert.ok(!/Hoy en el olivar/i.test(todo + pintado + P.firma(t)), "hoy no se muestra");
+  assert.ok(Array.isArray(t.hoy) && t.hoy.length === 0, "sin datos del campo, «Hoy en el olivar» queda vacía y no se pinta");
+  assert.ok(!/Semana|OlivarTrack/i.test(todo + pintado + P.firma(t)), "sin datos, ni rastro de la línea");
   assert.ok(!/deslinde/.test(pintado), "sin el pie de las lindes");
   assert.deepStrictEqual(P.tablon("H", { hazas: 3, olivos: 0, hoy: "2026-01-10", bbch: 89 }).datos.map(d => d.txt), ["3 hazas", "Invierno: maduración del fruto"], "sin dato fiable de olivos, no se pone");
   assert.deepStrictEqual(P.tablon("H", {}).datos, [], "sin nada fiable, solo el título");
@@ -135,6 +135,52 @@ test("el tablón: «Club La Linde» y la finca, hazas y olivos medidos, la époc
   assert.strictEqual(P.epoca("x", 1, ""), null);
   assert.deepStrictEqual(P.entrada([{ centro: [100, 200] }], [0, 0, 1, 1]), [105, 198]);
   assert.deepStrictEqual(P.entrada([], [0, 100, 200, 0]), [100, 50]);
+});
+
+// EV-3c: «Hoy en el olivar»
+const AHORA = Date.parse("2026-11-05T12:00:00Z"), CAMPO = { txt: "Semana: 9 tareas", de: "OlivarTrack", cuando: "2026-11-05T10:00:00.000Z" };
+const TCTX = { hazas: 12, olivos: 4321, hoy: "2026-11-05", bbch: 82, origen: "", ahora: AHORA };
+test("hoy en el olivar: con datos pasa por delante de la época y lleva su procedencia y frescura; sin datos o con datos malos, no se pinta", () => {
+  const t = P.tablon("Hituelo", Object.assign({ campo: CAMPO }, TCTX));
+  assert.deepStrictEqual(t.hoy, [{ txt: "Semana: 9 tareas", de: "OlivarTrack · leído hace 2 h" }]);
+  assert.strictEqual(t.datos.length, 2, "hazas y olivos, y hoy; la época cede (solo caben dos pares)");
+  assert.ok(/olivos$/.test(t.datos[0].txt) && t.datos[1].txt === CAMPO.txt);
+  const m = P.maqueta(t, medir), pintado = m.bloques.map(b => b.texto);
+  assert.ok(pintado.includes("OlivarTrack · leído hace 2 h") && pintado.includes("Semana: 9 tareas"));
+  assert.ok(!pintado.some(x => /Otoño/.test(x)), "la época ilustrativa cede");
+  // sin hazas: hoy y época caben juntas
+  assert.deepStrictEqual(P.tablon("H", { hoy: "2026-11-05", bbch: 82, campo: CAMPO, ahora: AHORA }).datos.map(d => d.txt), ["Semana: 9 tareas", "Otoño: empieza el envero"]);
+  // sin datos: como antes (nada de «hoy»)
+  const base = P.tablon("H", TCTX).datos.map(d => d.txt);
+  for (const mal of [undefined, null, {}, { txt: "", de: "OlivarTrack" }, { txt: "x", de: "" }, "texto", 7]) {
+    const q = P.tablon("H", Object.assign({}, TCTX, { campo: mal })); assert.deepStrictEqual(q.hoy, [], JSON.stringify(mal));
+    assert.deepStrictEqual(q.datos.map(d => d.txt), base);
+  }
+  assert.strictEqual(P.lineaHoy(Object.assign({}, CAMPO, { cuando: null }), AHORA).de, "OlivarTrack · sin fecha");
+  assert.strictEqual(P.lineaHoy(Object.assign({}, CAMPO, { cuando: "2026-11-05T11:30:00Z" }), AHORA).de, "OlivarTrack · leído hace 30 min");
+  assert.strictEqual(P.lineaHoy(Object.assign({}, CAMPO, { cuando: "2026-11-01T12:00:00Z" }), AHORA).de, "OlivarTrack · leído hace 4 días");
+  // textos de fuera: sin controles y recortados; nunca HTML (el lienzo los pinta como texto)
+  const ev = P.lineaHoy({ txt: "A\u0000B\n<b>C</b>" + "x".repeat(80), de: "<i>Fuente</i>muylarga".repeat(3), cuando: null }, AHORA);
+  assert.ok(ev.txt.length <= 40 && !/[\u0000-\u001f]/.test(ev.txt) && ev.de.length <= 20 + " · sin fecha".length);
+  // la firma cambia con el dato (repinta) y no sin él
+  const f0 = P.firma(P.tablon("H", TCTX)), f1 = P.firma(P.tablon("H", Object.assign({ campo: CAMPO }, TCTX))), f2 = P.firma(P.tablon("H", Object.assign({ campo: CAMPO }, TCTX, { ahora: AHORA + 60000 })));
+  assert.notStrictEqual(f0, f1); assert.strictEqual(f1, f2, "el mismo dato un minuto después: misma firma, sin repintar");
+  assert.notStrictEqual(f1, P.firma(P.tablon("H", Object.assign({ campo: CAMPO }, TCTX, { ahora: AHORA + 3 * 3600000 }))), "pasa de «hace 2 h» a «hace 5 h»: cambia");
+});
+
+test("hoy en el olivar: la maqueta con la línea cabe en 512 × 320 y pasa los topes angulares de VR a todas las distancias", () => {
+  const largo = { txt: "Semana: " + "w".repeat(60), de: "Vigía y OlivarTrack juntos y revueltos", cuando: "2026-11-05T10:00:00Z" };
+  [CAMPO, largo].forEach(campo => [TCTX, { hoy: "2026-11-05", bbch: 82, ahora: AHORA }, {}].forEach(c => {
+    const t = P.tablon("Finca con un nombre bastante largo del todo", Object.assign({ campo }, c)), m = P.maqueta(t, medir);
+    assert.ok(m.usado <= P.H, "alto " + m.usado);
+    m.bloques.forEach(b => assert.ok(b.y + P.LINEA[b.clase] <= P.H + 1e-9 && (b.x + medir(b.texto, b.px, b.negrita) <= P.W + 1e-9 || b.texto.split(" ").length === 1), "cabe: " + b.texto));
+    assert.strictEqual(m.bloques.filter(b => b.clase === "dato").length, m.bloques.filter(b => b.clase === "fuente").length, "cada dato con su procedencia");
+    [P.RADIO * (1 + P.HIST), P.LEJOS_TABLON, 3, 10, 25].forEach(dist => {
+      const r = LP.legible({ mmPorPx: P.ANCHO_M * 1000 / P.W * P.escala(dist), dist: Math.max(dist, 0.5), lineas: m.interlineados });
+      assert.deepStrictEqual(r.fallos, [], "a " + dist + " m: " + r.fallos.join("; "));
+    });
+  }));
+  assert.ok(P.maqueta(P.tablon("H", Object.assign({ campo: CAMPO }, TCTX)), medir).bloques.some(b => b.texto === "OlivarTrack · leído hace 2 h"));
 });
 
 test("maqueta: cabe en 512 × 320, cada dato va con su procedencia y todo interlineado pasa los topes de EV2-A0 hasta la distancia máxima", () => {
@@ -235,6 +281,22 @@ test("motor: repinta solo cuando cambia la haza o su ficha; al llegar la ficha, 
   assert.strictEqual(w.log.mats, 4); assert.deepStrictEqual(w.win.__carteles().ids.filter(v => v !== null), [2]);
   hs.length = 0; w.escuchas["hazas:cambia"](); assert.deepStrictEqual(w.log.disposed, { geo: 1, mat: 4, tex: 4 }); w.motor.tarde(); w.motor.mundo();
   w.motor.libera();
+});
+
+test("motor: «mundo:hoy» llena la línea del tablón, repinta solo si cambia, y null o basura la quitan", () => {
+  const w = mundo({ hazas: [haza(1, 10, 0, 20, 10)] });
+  assert.strictEqual(typeof w.escuchas["mundo:hoy"], "function", "escucha mundo:hoy");
+  w.motor.tarde(); const p0 = w.motor.estado().pintadas;
+  w.motor.tarde(); assert.strictEqual(w.motor.estado().pintadas, p0, "sin cambio, nada");
+  w.escuchas["mundo:hoy"]({ linea: { txt: "Semana: poda 8", de: "OlivarTrack", cuando: new Date().toISOString() } }); w.motor.tarde();
+  assert.strictEqual(w.motor.estado().pintadas, p0 + 1, "llega la línea: el tablón se repinta una vez");
+  w.motor.tarde(); w.motor.tarde(); assert.strictEqual(w.motor.estado().pintadas, p0 + 1, "misma firma: sin repintar");
+  w.escuchas["mundo:hoy"]({ linea: null }); w.motor.tarde(); assert.strictEqual(w.motor.estado().pintadas, p0 + 2, "null: se quita");
+  w.escuchas["mundo:hoy"]({ linea: "basura" }); w.escuchas["mundo:hoy"](undefined); w.motor.tarde(); assert.strictEqual(w.motor.estado().pintadas, p0 + 2, "basura = sin línea, ya estaba quitada");
+  assert.strictEqual(w.log.mallas.length, 4, "no se crea nada nuevo"); w.motor.libera();
+});
+test("manifiesto: el tablón escucha «mundo:hoy» y no pide nada a la red", () => {
+  assert.ok(/escucha: \["hazas:cambia", "mundo:hoy"\]/.test(FUENTE)); assert.ok(!/fetch\(|XMLHttpRequest/.test(FUENTE.replace(/\/\/.*$/gm, "")));
 });
 
 test("manifiesto: componente «carteles-haza», con bandera y material básico (multiview)", () => {

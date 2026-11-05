@@ -56,3 +56,7 @@ Con `GEMELO_OT=no` no se llama a OlivarTrack ni se lee la fenología de la base;
 - **Las formas de OlivarTrack y Vigía siguen [NO VERIFICADAS]** (las de [`ot-hoy.md`](ot-hoy.md) y [`tiempo.md`](tiempo.md)): no se ha llamado a los servicios reales desde la api.
 - Los nombres de tipo de recogida (`RECOGIDA` en `mundo/hoy.ts`) son un **[SUPUESTO]**.
 - Hituelo: igual que en `ot-hoy.md`, lo que no trae parcela se cuenta en `sinParcela`.
+
+## «Hoy en el olivar» en el tablón de La Linde (EV-3c)
+
+Sin pedir nada más: tras cada lectura buena, `53_mundo_hoy.js` emite el evento `mundo:hoy` (`contratos/eventos.json`) con `{ linea }`, y `44b_carteles.js` la pinta en el tablón de la entrada, con su procedencia («OlivarTrack · leído hace 2 h»). La línea es el trabajo de la semana **agregado por tipo** (`trabajoSemana.porParcela`, sumando en curso y terminadas; nunca por persona ni por parcela) o, si no hay, el titular fijo del primer aviso del campo (recogida, helada, lluvia, fenología; `mirada` no sale: es para quien lleva el olivar). `linea` es `null`, y el tablón no la pinta, si `completo` es `false`, si el trabajo viene truncado y no hay aviso, o si la fuente está apagada o sin sesión. En el lienzo de 512 × 320 solo caben dos pares dato + procedencia: hazas y olivos, hoy, época; la época cede ante un dato de hoy.

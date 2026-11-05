@@ -632,6 +632,48 @@
         "08b_marcadores_lidar"
       ]
     },
+    "mundo:hoy": {
+      "descripcion": "53_mundo_hoy.js acaba de leer /api/mundo/hoy (EV-3a): la línea corta de «Hoy en el olivar» para el tablón de la entrada (EV-3c): el trabajo de la semana agregado por tipo (nunca por persona) o el titular del aviso principal del campo; linea es null si la lectura no está completa o no hay nada que decir. cuando es el instante de la fuente (ISO) o null. Los textos son datos: se pintan en un lienzo, nunca como HTML.",
+      "datos": {
+        "type": "object",
+        "required": [
+          "linea"
+        ],
+        "properties": {
+          "linea": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "required": [
+              "txt",
+              "de",
+              "cuando"
+            ],
+            "properties": {
+              "txt": {
+                "type": "string"
+              },
+              "de": {
+                "type": "string"
+              },
+              "cuando": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "emiten": [
+        "53_mundo_hoy"
+      ],
+      "escuchan": [
+        "44b_carteles"
+      ]
+    },
     "mundo:pausa": {
       "descripcion": "El mundo entra en pausa (activa true: alguien llamó a Pausa.pon, p. ej. un juego a pantalla completa) o sale de ella (activa false). En pausa el bucle no avanza ni pinta el mundo: solo corre la fase «pausa».",
       "datos": {
