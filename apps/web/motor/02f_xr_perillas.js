@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: XrPerillas
-// Consume: 03_escena (lienzo, renderer), 08_marcadores (aplica), 14_historia (hist, tabla, rango), 15_tiempo (nivel, hace, anuncia),
-//   29_vr (VR_PERFILES)
+// Consume: 02m_tope_olivos (TopeOlivos), 03_escena (lienzo, renderer), 08_marcadores (aplica), 14_historia (hist, tabla, rango),
+//   15_tiempo (nivel, hace, anuncia), 29_vr (VR_PERFILES)
 // ===============================================================================
   // ---------- perillas de rendimiento VR por URL (Q0b; doc/sistema/VR.md#perillas-de-rendimiento-por-url). Para probar en el casco sin recompilar:
   //   ?xrfov=0..1 (foveación; defecto 1) · ?xrescala=0.5..1.5 (framebufferScaleFactor; defecto 0,9) · ?xrhz=72|80|90|120 (frecuencia pedida; defecto 72, solo si el casco la anuncia)
@@ -10,7 +10,7 @@
   //   ?xrjssube=2..10 (Q0c-b: ms de JS por debajo de los que el controlador SUBE de nivel; defecto 5) · ?xrestable=2..120 (Q0c-b: segundos seguidos por debajo de eso antes de subir; defecto 10)
   //   ?xrmv=0|1 (F2a, doc/sistema/MULTIVIEW.md: multiview de super-three, `multiviewStereo`; SOLO existe en la build de VR, con defecto 1 (URL, luego el ajuste «vr.multiview», luego 1); en la de pantalla
   //   se ignora y se dice; se lee antes de crear el renderer, como xraa)
-  //   ?xrtri=0|20000..2000000 (Q0k: tope de triángulos del tileset en VR; 0 apaga el lazo; sin ella, el tri de cada nivel) · ?xrtrierr=16..256 (Q0k: error máximo del tileset, px; defecto 128)
+  //   ?xrtri=0|20000..2000000 (Q0k: tope de triángulos del tileset en VR; 0 apaga el lazo; sin ella, el tri de cada nivel) · ?xrtrierr=16..256 (Q0k: error máximo del tileset, px; defecto 128) · ?xrolivos=0|0.1..0.7 (Q0n, 02m: parte del tope para los olivos del motor; 0 la apaga; defecto 0,3)
   // Sin ninguna, nada cambia. Es el ÚNICO sitio que lee estas banderas de la URL. Presupuesto (regla 6): no dibuja ni reserva nada.
   // [puro:inicio] (sin THREE ni DOM: lo evalúa en Node pruebas/guardianes/xr_perillas.test.js)
   var XrPerillasPuro = (function () {
@@ -75,6 +75,7 @@
       });
       return r;
     }
+    // (Q0n: ?xrtri=0 apaga también el tope de los olivos del motor, 02m; ?xrolivos= lo lee 02m, y sus ignorados salen en la misma línea)
     // Q0k: el tope de triángulos del tileset en VR (02l_tope_tiles.js, 04b). ?xrtri=0 apaga el lazo; ?xrtri=N (20000 a 2000000) fija el tope en N triángulos
     // en todos los niveles (sin ella, el `tri` del nivel, VR_PERFILES[n].tri); ?xrtrierr=16..256 el error máximo (px) al que puede subir (defecto 128).
     // → { tri, err } (null = no pedida) e ignorados, como lee()
@@ -139,7 +140,7 @@
       try { if (X.efectivas.hz != null && ses && ses.updateTargetFrameRate) ses.updateTargetFrameRate(X.efectivas.hz); } catch (e) {}
     };
     X.linea = function () {
-      var e = X.efectivas, ig = (X.mv && X.mv.ignorado ? e.ignorados.concat([X.mv.ignorado]) : e.ignorados).concat(X.tiles.ignorados), t = X.lineaTiles ? X.lineaTiles() : "";
+      var e = X.efectivas, ig = (X.mv && X.mv.ignorado ? e.ignorados.concat([X.mv.ignorado]) : e.ignorados).concat(X.tiles.ignorados).concat(typeof TopeOlivos !== "undefined" ? TopeOlivos.ignorados : []), t = X.lineaTiles ? X.lineaTiles() : "";
       return XrPerillasPuro.linea({ fov: e.fov, escala: e.escala, hz: e.hz, aa: X.aa, mv: X.mv, nivel: e.nivel, near: e.near, js: X.js(), ignorados: ig }) + (t ? " · " + t : "");   // Q0k: el tileset, al final
     };
     return X;
