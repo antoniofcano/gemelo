@@ -15,6 +15,7 @@ Los datos **no se versionan** (ADR-0004): todo sucede en local con variables `GE
 5. **Exportar:** `python tuberia/finca_8_teselas.py --finca <finca> [--salida <carpeta>]` → `salida/<finca>/{indice.json, t/}` (con `copas_id` y `copas_tipo`). Para una finca nueva hay que añadir su opción al exportador (hoy `cerro`|`hituelo`, y `tuberia/hituelo_conv.py` está escrito para Hituelo): decisión técnica, se cuenta en un ADR si cambia el contrato.
 6. **Tileset y página:** `node tuberia/tiles3d/genera.mjs` sobre la salida del exportador (el índice lleva `tileset`) y `cd apps/web && GEMELO_DATOS=<indice.json> npm run build`, o el entorno local de `infra/dev`. Si la finca no tiene guion de historia: `textos.sin_historia = true` (lo aplica `genera_motor.mjs`).
 7. **Probar:** servir y `node pruebas/prueba3.js <url> <prefijo>` con `?debug`; mirar a ojo órbita, Gemelo, Ortofoto, NDVI, paseo y minimapa.
+7b. **Aves probables (opcional, EV-1g):** `python tuberia/biodiversidad/gbif_aves.py` con el `indice.json` de la finca; deja `biodiversidad.json` junto al índice (solo CC0, CC BY y CC BY-SA; deducido). Ver `doc/operacion/DATOS.md`.
 8. **Actualizar** `doc/operacion/DATOS.md` (hojas, nombre de la finca), `ESTADO.md` (datos) y CHANGELOG.
 
 ## Lista de comprobaciones

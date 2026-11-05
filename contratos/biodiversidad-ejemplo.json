@@ -1,0 +1,594 @@
+{
+ "v": 1,
+ "origen": "gbif",
+ "sintetico": true,
+ "grupo": "aves",
+ "generado": "2026-01-15",
+ "cuadro_km": 10,
+ "anios": {
+  "desde": 2017,
+  "hasta": 2026
+ },
+ "descarga": {
+  "fecha": "2026-01-15",
+  "via": "SINTÉTICO: ejemplo del contrato, no es una descarga real",
+  "consulta": "ejemplo sintético; cifras inventadas pero plausibles",
+  "cita": "SINTÉTICO: sin cita real."
+ },
+ "atribucion": "SINTÉTICO: datos de ejemplo del contrato, sin origen real. En una descarga real: registros de aves de GBIF.org con licencia CC0, CC BY o CC BY-SA, y la cita y el DOI de cada conjunto en «fuentes».",
+ "fuentes": [
+  {
+   "id": "00000000-0000-4000-8000-000000000001",
+   "titulo": "Conjunto sintético A (ciencia ciudadana)",
+   "doi": "10.0000/sintetico-a",
+   "cita": "Conjunto sintético A (2026). Dato inventado para pruebas.",
+   "licencias": [
+    "CC_BY_4_0"
+   ],
+   "registros": 5200
+  },
+  {
+   "id": "00000000-0000-4000-8000-000000000002",
+   "titulo": "Conjunto sintético B (seguimiento)",
+   "doi": null,
+   "cita": "Conjunto sintético B (2026). Dato inventado para pruebas.",
+   "licencias": [
+    "CC0_1_0",
+    "CC_BY_4_0"
+   ],
+   "registros": 1800
+  }
+ ],
+ "especies": [
+  {
+   "taxon_key": 9000001,
+   "nombre_cientifico": "Parus major",
+   "nombre_comun": "Carbonero común",
+   "meses": [
+    {
+     "n": 40,
+     "anios": 6
+    },
+    {
+     "n": 42,
+     "anios": 6
+    },
+    {
+     "n": 55,
+     "anios": 7
+    },
+    {
+     "n": 70,
+     "anios": 8
+    },
+    {
+     "n": 60,
+     "anios": 8
+    },
+    {
+     "n": 38,
+     "anios": 6
+    },
+    {
+     "n": 25,
+     "anios": 5
+    },
+    {
+     "n": 22,
+     "anios": 5
+    },
+    {
+     "n": 35,
+     "anios": 6
+    },
+    {
+     "n": 48,
+     "anios": 7
+    },
+    {
+     "n": 50,
+     "anios": 7
+    },
+    {
+     "n": 44,
+     "anios": 6
+    }
+   ]
+  },
+  {
+   "taxon_key": 9000002,
+   "nombre_cientifico": "Turdus merula",
+   "nombre_comun": "Mirlo común",
+   "meses": [
+    {
+     "n": 60,
+     "anios": 7
+    },
+    {
+     "n": 62,
+     "anios": 7
+    },
+    {
+     "n": 70,
+     "anios": 8
+    },
+    {
+     "n": 85,
+     "anios": 9
+    },
+    {
+     "n": 80,
+     "anios": 9
+    },
+    {
+     "n": 55,
+     "anios": 8
+    },
+    {
+     "n": 40,
+     "anios": 6
+    },
+    {
+     "n": 38,
+     "anios": 6
+    },
+    {
+     "n": 50,
+     "anios": 7
+    },
+    {
+     "n": 64,
+     "anios": 8
+    },
+    {
+     "n": 66,
+     "anios": 8
+    },
+    {
+     "n": 62,
+     "anios": 7
+    }
+   ]
+  },
+  {
+   "taxon_key": 9000003,
+   "nombre_cientifico": "Erithacus rubecula",
+   "nombre_comun": "Petirrojo europeo",
+   "meses": [
+    {
+     "n": 70,
+     "anios": 8
+    },
+    {
+     "n": 68,
+     "anios": 8
+    },
+    {
+     "n": 52,
+     "anios": 7
+    },
+    {
+     "n": 30,
+     "anios": 5
+    },
+    {
+     "n": 12,
+     "anios": 3
+    },
+    {
+     "n": 4,
+     "anios": 1
+    },
+    {
+     "n": 3,
+     "anios": 1
+    },
+    {
+     "n": 5,
+     "anios": 2
+    },
+    {
+     "n": 22,
+     "anios": 5
+    },
+    {
+     "n": 60,
+     "anios": 8
+    },
+    {
+     "n": 75,
+     "anios": 9
+    },
+    {
+     "n": 72,
+     "anios": 8
+    }
+   ]
+  },
+  {
+   "taxon_key": 9000004,
+   "nombre_cientifico": "Sylvia atricapilla",
+   "nombre_comun": "Curruca capirotada",
+   "meses": [
+    {
+     "n": 10,
+     "anios": 3
+    },
+    {
+     "n": 14,
+     "anios": 4
+    },
+    {
+     "n": 45,
+     "anios": 7
+    },
+    {
+     "n": 80,
+     "anios": 9
+    },
+    {
+     "n": 70,
+     "anios": 9
+    },
+    {
+     "n": 40,
+     "anios": 7
+    },
+    {
+     "n": 22,
+     "anios": 5
+    },
+    {
+     "n": 25,
+     "anios": 6
+    },
+    {
+     "n": 48,
+     "anios": 8
+    },
+    {
+     "n": 36,
+     "anios": 7
+    },
+    {
+     "n": 16,
+     "anios": 4
+    },
+    {
+     "n": 10,
+     "anios": 3
+    }
+   ]
+  },
+  {
+   "taxon_key": 9000005,
+   "nombre_cientifico": "Upupa epops",
+   "nombre_comun": "Abubilla",
+   "meses": [
+    {
+     "n": 0,
+     "anios": 0
+    },
+    {
+     "n": 2,
+     "anios": 1
+    },
+    {
+     "n": 18,
+     "anios": 5
+    },
+    {
+     "n": 40,
+     "anios": 7
+    },
+    {
+     "n": 38,
+     "anios": 7
+    },
+    {
+     "n": 26,
+     "anios": 6
+    },
+    {
+     "n": 20,
+     "anios": 5
+    },
+    {
+     "n": 14,
+     "anios": 4
+    },
+    {
+     "n": 6,
+     "anios": 3
+    },
+    {
+     "n": 1,
+     "anios": 1
+    },
+    {
+     "n": 0,
+     "anios": 0
+    },
+    {
+     "n": 0,
+     "anios": 0
+    }
+   ]
+  },
+  {
+   "taxon_key": 9000006,
+   "nombre_cientifico": "Hirundo rustica",
+   "nombre_comun": "Golondrina común",
+   "meses": [
+    {
+     "n": 0,
+     "anios": 0
+    },
+    {
+     "n": 0,
+     "anios": 0
+    },
+    {
+     "n": 6,
+     "anios": 3
+    },
+    {
+     "n": 52,
+     "anios": 8
+    },
+    {
+     "n": 66,
+     "anios": 9
+    },
+    {
+     "n": 58,
+     "anios": 9
+    },
+    {
+     "n": 44,
+     "anios": 8
+    },
+    {
+     "n": 40,
+     "anios": 8
+    },
+    {
+     "n": 20,
+     "anios": 6
+    },
+    {
+     "n": 2,
+     "anios": 1
+    },
+    {
+     "n": 0,
+     "anios": 0
+    },
+    {
+     "n": 0,
+     "anios": 0
+    }
+   ]
+  },
+  {
+   "taxon_key": 9000007,
+   "nombre_cientifico": "Apus apus",
+   "nombre_comun": "Vencejo común",
+   "meses": [
+    {
+     "n": 0,
+     "anios": 0
+    },
+    {
+     "n": 0,
+     "anios": 0
+    },
+    {
+     "n": 2,
+     "anios": 1
+    },
+    {
+     "n": 35,
+     "anios": 6
+    },
+    {
+     "n": 60,
+     "anios": 8
+    },
+    {
+     "n": 64,
+     "anios": 9
+    },
+    {
+     "n": 48,
+     "anios": 8
+    },
+    {
+     "n": 18,
+     "anios": 5
+    },
+    {
+     "n": 1,
+     "anios": 1
+    },
+    {
+     "n": 0,
+     "anios": 0
+    },
+    {
+     "n": 0,
+     "anios": 0
+    },
+    {
+     "n": 0,
+     "anios": 0
+    }
+   ]
+  },
+  {
+   "taxon_key": 9000008,
+   "nombre_cientifico": "Turdus philomelos",
+   "nombre_comun": "Zorzal común",
+   "meses": [
+    {
+     "n": 30,
+     "anios": 5
+    },
+    {
+     "n": 26,
+     "anios": 5
+    },
+    {
+     "n": 12,
+     "anios": 3
+    },
+    {
+     "n": 3,
+     "anios": 1
+    },
+    {
+     "n": 0,
+     "anios": 0
+    },
+    {
+     "n": 0,
+     "anios": 0
+    },
+    {
+     "n": 0,
+     "anios": 0
+    },
+    {
+     "n": 0,
+     "anios": 0
+    },
+    {
+     "n": 2,
+     "anios": 1
+    },
+    {
+     "n": 16,
+     "anios": 4
+    },
+    {
+     "n": 34,
+     "anios": 6
+    },
+    {
+     "n": 36,
+     "anios": 6
+    }
+   ]
+  },
+  {
+   "taxon_key": 9000009,
+   "nombre_cientifico": "Falco tinnunculus",
+   "nombre_comun": "Cernícalo vulgar",
+   "meses": [
+    {
+     "n": 14,
+     "anios": 5
+    },
+    {
+     "n": 15,
+     "anios": 5
+    },
+    {
+     "n": 16,
+     "anios": 5
+    },
+    {
+     "n": 18,
+     "anios": 6
+    },
+    {
+     "n": 16,
+     "anios": 6
+    },
+    {
+     "n": 14,
+     "anios": 5
+    },
+    {
+     "n": 13,
+     "anios": 5
+    },
+    {
+     "n": 12,
+     "anios": 5
+    },
+    {
+     "n": 14,
+     "anios": 5
+    },
+    {
+     "n": 15,
+     "anios": 5
+    },
+    {
+     "n": 15,
+     "anios": 5
+    },
+    {
+     "n": 14,
+     "anios": 5
+    }
+   ]
+  },
+  {
+   "taxon_key": 9000010,
+   "nombre_cientifico": "Carduelis carduelis",
+   "nombre_comun": "Jilguero europeo",
+   "meses": [
+    {
+     "n": 28,
+     "anios": 6
+    },
+    {
+     "n": 30,
+     "anios": 6
+    },
+    {
+     "n": 34,
+     "anios": 6
+    },
+    {
+     "n": 40,
+     "anios": 7
+    },
+    {
+     "n": 38,
+     "anios": 7
+    },
+    {
+     "n": 36,
+     "anios": 7
+    },
+    {
+     "n": 30,
+     "anios": 6
+    },
+    {
+     "n": 28,
+     "anios": 6
+    },
+    {
+     "n": 32,
+     "anios": 6
+    },
+    {
+     "n": 34,
+     "anios": 6
+    },
+    {
+     "n": 30,
+     "anios": 6
+    },
+    {
+     "n": 26,
+     "anios": 6
+    }
+   ]
+  }
+ ]
+}

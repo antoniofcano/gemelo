@@ -1,0 +1,4 @@
+# tuberia/biodiversidad/gbif_aves.py (EV-1g): requests para la API pública de GBIF (solo al descargar de verdad; las pruebas no la importan)
+# y pyproj para pasar el centro de la finca (UTM 30N, EPSG:25830) a latitud y longitud. Versiones fijadas.
+requests==2.32.5
+pyproj==3.7.2

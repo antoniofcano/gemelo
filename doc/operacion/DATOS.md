@@ -14,6 +14,7 @@
 | three.js 0.186.1 | npm (empaquetado por Vite) | MIT |
 | Tipografías: Fraunces (500, 600) e Instrument Sans (400, 500, 600), subconjunto latino, woff2 | npm `@fontsource/fraunces` y `@fontsource/instrument-sans` 5.3.0 (versión fijada en `apps/web/package.json`), empaquetadas por Vite desde `apps/web/plantilla.css` y servidas del mismo origen (sin Google Fonts: la CSP solo admite `'self'` y ningún visitante envía su IP a un tercero) | SIL Open Font License 1.1 (Fraunces: © The Fraunces Project Authors; Instrument Sans: © The Instrument Sans Project Authors); la licencia va en cada paquete |
 | Texturas de suelo de cerca (`apps/web/public/suelo/`, EV-1s) y paleta del atardecer (`tuberia/suelo/paleta_cielo.json`) | fotos de campo de Antonio en una finca de Cano & Damas (2026-11-04), procesadas por `tuberia/suelo/` | © Cano & Damas Oleicultores, autor Antonio; uso en el gemelo ([LICENCIA](../../apps/web/public/suelo/LICENCIA.md)). Las fotos originales no se versionan |
+| Aves probables por mes (EV-1g) | Registros de aves de GBIF.org en un cuadro de 10 km (API pública `api.gbif.org/v1`, sin clave) | Solo registros CC0, CC BY y CC BY-SA (decisión 198; CC BY-NC fuera). Cada conjunto de datos conserva su cita, su DOI y su licencia en `biodiversidad.json`; el motor enseña la atribución. Citar como «GBIF.org (fecha), GBIF Occurrence Data» |
 | Parcelas, marcas de olivos, datos de la explotación | OlivarTrack | **privado**, no se versiona |
 | Contorno de la finca (OF3c), por defecto | Parcelas de OlivarTrack que ya usa el gemelo (`GEMELO_PARCELAS`): polígono con límite SIGPAC | Dato de OlivarTrack, con origen SIGPAC © FEGA, CC BY 4.0 (atribución «© FEGA») |
 | Contorno de la finca (OF3b), respaldo A | Recintos SIGPAC, FEGA (OGC API Features `sigpac-hubcloud.es/ogcapi`, colección `recintos`) | © FEGA, CC BY 4.0 (ficha del servicio en datos.gob.es) |
@@ -172,6 +173,20 @@ node tuberia/suelo/ktx2.mjs [--forzar]               # solo los KTX2 (no se vers
 - **Escala [SUPUESTO]:** las fotos no llevan referencia (solo las botas de la 08). Los metros de cada textura son una estimación. En la próxima sesión de fotos conviene poner un A4 o un metro en el suelo.
 - **Formato:** WebP y, desde EV-1k, además un KTX2 por tamaño (`suelo_768.ktx2`, `suelo_384.ktx2`): una textura en array con las 13 capas y sus mipmaps, UASTC con zstd, que `tuberia/suelo/ktx2.mjs` saca de las WebP con el codificador de Basis Universal de `ktx2-encoder`. **No se versionan** (Antonio, 2026-11-05): los genera `npm run build` de `apps/web` (`herramientas/suelo_ktx2.mjs`) en `apps/web/public/suelo/`, ignorados, con su manifiesto suelto `ktx2.json`; si están al día no se rehacen, y sin las dependencias de `tuberia/suelo` el build avisa y sigue sin ellos. Es determinista (dos codificaciones, mismos bytes). El motor lo carga por defecto y vuelve a las WebP si falla. Por qué UASTC y no ETC1S, y lo que ocupa: [SUELO-FOTOS](../sistema/SUELO-FOTOS.md#formato-ktx2-ev-1k).
 - **Qué es cada cosa** (medido, deducido o ilustrativo), la bandera y el presupuesto: [SUELO-FOTOS](../sistema/SUELO-FOTOS.md).
+
+## Aves probables por mes (EV-1g)
+Fuente: GBIF (https://www.gbif.org), solo aves (`classKey` 212), registros con licencia **CC0, CC BY o CC BY-SA** (los CC BY-NC se descartan: decisión 198) y con coordenadas sin incidencias, en un cuadro de 10 km alrededor de la finca, de los últimos 10 años. **Deducido**, no observado en la finca (el motor lo rotula «probable»). Contrato: [CONTRATOS §1.5](../sistema/CONTRATOS.md).
+
+```bash
+pip install -r tuberia/biodiversidad/requirements.txt          # requests y pyproj, fijadas
+GEMELO_DATOS=<indice.json de la finca> GEMELO_BIODIVERSIDAD=<carpeta de salida> python tuberia/biodiversidad/gbif_aves.py                        # o --lat/--lon en lugar del índice; --anios 10 --km 10
+```
+
+- **El centro sale de los datos de la finca** (`centro_utm` del `indice.json`, pasado a WGS84 con pyproj) o de `--lat` y `--lon`; no hay ninguna coordenada en el repo y el JSON de salida tampoco la lleva.
+- Hace 12 × años consultas de facetas (una por mes y año) más una por especie y dos por conjunto de datos, con pausa y reintentos: unos minutos. **Las pruebas no tocan la red** (`tuberia/biodiversidad/prueba_biodiversidad.py` usa una API falsa).
+- **Nombres comunes:** GBIF no los da con una licencia clara; si se quieren, un JSON hecho a mano `{"Parus major": "Carbonero común"}` por `--nombres` o `GEMELO_BIODIVERSIDAD_NOMBRES`. Sin él, el motor enseña el nombre científico.
+- **Publicar:** `biodiversidad.json` va al lado de `indice.json` de la finca (misma carpeta que sirve `D.base`). Si no está, el motor no enseña nada.
+- **DOI de descarga:** la API pública no lo da; cada conjunto de datos lleva el suyo. Si se quiere una cita de descarga única, hay que pedirla con cuenta de GBIF y apuntarla en `descarga.doi`.
 
 ## Medido y deducido
 Copas y relieve: medidos. Tendido, postes, cauces y clasificación de árboles no olivo: **deducidos** de la geometría. Troncos y ramas: ilustrativos. Frutales sin marcar en Hituelo: el LiDAR no los distingue.
