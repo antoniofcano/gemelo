@@ -71,7 +71,7 @@ const BUCLE = {
   "30_mide.js": [["causasDelFotograma", "function causasDelFotograma("], ["bits", "function bits("], ["apuntaReparto", "function apuntaReparto("]],   // Q0g: la autopsia de los fotogramas lentos, cada fotograma medido
   "17_minimapa.js": [["actualizaRastro", "function actualizaRastro("]],
   "19_balizas.js": [["firmaCambia", "function firmaCambia("]],
-  "25_perros.js": [["amenazaEn", "function amenazaEn("], ["actualizaPerros", "function actualizaPerros("]],
+  "25_perros.js": [["amenazaEn", "function amenazaEn("], ["actualizaPerros", "function actualizaPerros("], ["empacaPerros", "function empacaPerros("]],
   "02c_componentes.js": [["Bus.emite", "function emite(ev, datos)"], ["Reparto.pasa", "function pasa(i, q)"], ["Reparto.ini", "function ini(t)"]],   // Q0h: el reparto del JS por bloque, cada fotograma medido
   "02g_vr_presupuesto.js": [["VrPresupuesto.mueve", "function mueve("]],   // Q0c-a: cada fotograma en VR
   "18_paisaje.js": [["distArroyo", "function distArroyo("], ["celdaArroyoDist", "function celdaArroyoDist("]],

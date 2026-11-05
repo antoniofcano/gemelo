@@ -30,7 +30,7 @@ function mundo(extra) {
   return { E, g, defs, scene, gFauna, Bus, capas };
 }
 function carga(fichero, m) {
-  vm.runInContext("\"use strict\";\n" + lee("apps/web/motor/" + fichero), vm.createContext(m.g), { filename: fichero });
+  vm.runInContext("\"use strict\";\n" + lee("apps/web/motor/" + fichero), vm.createContext(require("./_materiales").conFabrica(m.g)), { filename: fichero });
   assert.strictEqual(m.defs.length, 1, "un componente por fichero");
   return m.defs[0];
 }

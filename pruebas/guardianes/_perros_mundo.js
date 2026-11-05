@@ -5,6 +5,7 @@
 const vm = require("vm");
 const { lee } = require("./_util");
 const F = require("./_fauna_mundo");
+const { conFabrica } = require("./_materiales");
 /** El mundo de mentira de los perros: lo que el motor deja ver al componente, con un Math de semilla y conejos que se mueven. fichero: el nuevo o la copia anterior. */
 function mundoPerros(THREE, fichero, sem) {
   const rnd = F.semilla(sem), M = Object.create(Math); M.random = rnd;
@@ -25,7 +26,7 @@ function mundoPerros(THREE, fichero, sem) {
   };
   for (let i = 0; i < 40; i++) g.copas.push({ x: (rnd() - 0.5) * 120, y: (rnd() - 0.5) * 120, oliv: rnd() > 0.1 });
   for (const k of ["paseando", "enQuad", "enDron", "tVida"]) Object.defineProperty(g, k, { get: () => E[k], enumerable: true });
-  const ctx = vm.createContext(g);
+  const ctx = vm.createContext(conFabrica(g));
   vm.runInContext("\"use strict\";\n" + lee(fichero), ctx, { filename: fichero });
   const n = { on: (ev, fn) => (Bus.on(ev, fn), fn), emite: (ev, d) => Bus.emite(ev, d), limpia: fn => fn, api: () => null, parametros: {} };
   const api = defs[0].monta(n);
