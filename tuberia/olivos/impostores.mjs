@@ -38,6 +38,26 @@ export function huellaPagina() {
   return h.digest("hex").slice(0, 16);
 }
 
+/**
+ * Las siluetas de las celdas del atlas de color (AG-2.2, contrato §4 `siluetas`; apps/web/olivo/silueta.js): por variante y vista, el hexágono que
+ * abraza lo que pasa el recorte del motor (alfa ≥ 0,5) en el nivel 0 y en los mipmaps de caja que hará la GPU mientras la celda tenga ≥ 16 px,
+ * con 1 texel de margen; en coordenadas (u, v) de la celda, v hacia arriba. Sale del alfa (sin pérdida en el WebP) y no entra en la clave: no hace
+ * falta volver a hornear para tenerlas. Una celda vacía o sin ganancia lleva el cuadrado.
+ * @param rgba  el atlas de color crudo (fila 0 arriba), `lado` × `lado`
+ */
+export async function siluetasAtlas(rgba, lado, nVariantes) {
+  const S = await imp("silueta.js"), { IMPOSTOR: I, celdaUV } = await imp("impostor.js"), K = 6, n = I.REJILLA;
+  const L = [{ datos: rgba, ancho: lado, alto: lado }].concat(S.mipsCaja(rgba, lado, lado, { minLado: lado / I.VISTA * S.SILUETA.MIN_TEXELES }));
+  const poligonos = [];
+  for (let k = 0; k < nVariantes; k++) for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+    const R = celdaUV(k, i, j), s = S.siluetaDe(L, R, { umbral: 0.5, vertices: K, filaArriba: true });
+    const P = S.compensa(s) ? s.poligono.map(([u, v]) => [(u - R[0]) / (R[2] - R[0]), (v - R[1]) / (R[3] - R[1])]) : null;
+    // en orden de celda: la de la variante k y la vista (i, j) va en k · 64 + j · 8 + i (lo que lee el motor: 07ac, texelFetch)
+    poligonos[k * n * n + j * n + i] = Array.from(S.poligonosFijos([P], K), x => Math.min(1, Math.max(0, Math.round(x * 1e4) / 1e4)));
+  }
+  return { vertices: K, umbral: 0.5, ensancha: S.SILUETA.ENSANCHA, poligonos };
+}
+
 /** Las fuentes de cada época: las filas E2 del manifiesto, en su orden, hasta 4 (una celda del atlas cada una) */
 export function fuentesPorEpoca(man, I) {
   const por = new Map();
@@ -130,6 +150,13 @@ export async function horneaImpostores(o) {
     const ok = ["color", "normales"].every(k => f[k] && fs.existsSync(path.join(o.carpeta, f[k].huella + ".webp")) && fs.statSync(path.join(o.carpeta, f[k].huella + ".webp")).size === f[k].bytes);
     if (ok) previas.set(f.clave, f);
   }
+  // AG-2.2: a una fila reutilizada sin siluetas se le añaden del atlas que ya hay (sin Chrome: el alfa del WebP es sin pérdida)
+  for (const f of previas.values()) if (!f.siluetas) {
+    try {
+      const a = await deWebp(fs.readFileSync(path.join(o.carpeta, f.color.huella + ".webp")));
+      if (a.ancho === I.LADO && a.alto === I.LADO) f.siluetas = await siluetasAtlas(a.datos, I.LADO, f.variantes.length);
+    } catch (e) { log("[impostores] " + f.epoca + ": sin siluetas (" + String(e && e.message || e).slice(0, 60) + "): el motor dibuja el cuadrado"); }
+  }
   const filas = [], porHacer = [];
   for (const [epoca, fuentes] of fuentesPorEpoca(o.manifiesto, I)) {
     if (!fuentes.length) continue;
@@ -151,10 +178,12 @@ export async function horneaImpostores(o) {
           const webp = await aWebp(new Uint8Array(crudo.buffer, crudo.byteOffset, crudo.length), lado, WEBP[k]), h = huella128(webp), destino = path.join(o.carpeta, h + ".webp");
           if (!(fs.existsSync(destino) && fs.statSync(destino).size === webp.length)) escribeAtomico(destino, webp);
           fila[k] = { huella: h, bytes: webp.length, lado, imagen: "webp", sin_perdida: !!WEBP[k].lossless };
+          if (k === "color") fila.siluetas_ = await siluetasAtlas(new Uint8Array(crudo.buffer, crudo.byteOffset, crudo.length), lado, t.fuentes.length);
           delete srv.recogido[k];
         }
         fila.variantes = r.variantes.map((v, k) => Object.assign({ celda: k, tipo: v.tipo, semilla: v.semilla, fuente: t.fuentes[k].huella }, { caja: v.caja, centro: v.centro, semilado: v.semilado, copa: v.copa, medidas: v.medidas }));
         fila.horneado = { three: r.three, chrome, ms: r.ms };
+        fila.siluetas = fila.siluetas_; delete fila.siluetas_;   // después de `variantes`: el orden de los campos de siempre
         filas[t.i] = fila; horneados++;
         if (p.errores.length) log("[impostores] avisos de la página: " + p.errores.join(" | "));
       }

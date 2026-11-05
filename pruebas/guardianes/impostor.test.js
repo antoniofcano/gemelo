@@ -82,6 +82,8 @@ const ejemplo = () => JSON.parse(fs.readFileSync(path.join(RAIZ, "pruebas", "oli
 
 test("manifiesto con impostores: valida (ajv + lo que el esquema no dice), ida y vuelta por JSON, y los errores se ven", () => {
   const m = ejemplo(); m.impostores = [filaSintetica(m, "envero", ["a".repeat(32), "b".repeat(32)]), filaSintetica(m, "madura", ["c".repeat(32), "d".repeat(32)])];
+  // AG-2.2: `siluetas` es opcional (una fila la lleva y la otra no) y el esquema la vigila
+  m.impostores[1].siluetas = { vertices: 6, umbral: 0.5, ensancha: 1, poligonos: m.impostores[1].variantes.flatMap(() => Array.from({ length: 64 }, () => [0, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1])) };
   assert.deepStrictEqual(HN.validaManifiesto(m), []);
   for (const f of m.impostores) assert.deepStrictEqual(I.validaFilaImpostor(f), []);
   const vuelta = JSON.parse(JSON.stringify(m)); assert.deepStrictEqual(vuelta, m); assert.deepStrictEqual(HN.validaManifiesto(vuelta), []);
@@ -91,6 +93,7 @@ test("manifiesto con impostores: valida (ajv + lo que el esquema no dice), ida y
   const e = HN.validaManifiesto(mal).join(" | ");
   assert.match(e, /impostor repetido/); assert.match(e, /fuente e+ no es una variante/); assert.match(e, /lados/);
   const mal2 = JSON.parse(JSON.stringify(m)); mal2.impostores[0].rejilla = 16; assert.ok(HN.validaManifiesto(mal2).length, "otra rejilla: el esquema la rechaza");
+  const mal4 = JSON.parse(JSON.stringify(m)); mal4.impostores[1].siluetas.poligonos[0][3] = 1.5; assert.ok(HN.validaManifiesto(mal4).length, "una silueta fuera de su celda: el esquema la rechaza");
   const mal3 = JSON.parse(JSON.stringify(m)); mal3.impostores[0].variantes[0].caja = [[1, 1, 1], [0, 0, 0]]; assert.ok(I.validaFilaImpostor(mal3.impostores[0]).some(x => /al revés/.test(x)));
 });
 
@@ -156,6 +159,15 @@ test("Chrome: el hornero hornea los impostores de una variante E2 del fixture (2
     if (!hay) sinCentro.push([i, j]);
   }
   assert.strictEqual(vistasConArbol, 64, "el árbol se ve en las 64 vistas");
+  // AG-2.2: las siluetas de la fila (una por vista) contienen todos los texeles que pasan el recorte del motor (alfa ≥ 0,5)
+  assert.ok(f.siluetas && f.siluetas.poligonos.length === 64, "la fila lleva 64 siluetas (una variante)");
+  const SL = await imp("apps", "web", "olivo", "silueta.js");
+  for (let j = 0; j < 8; j++) for (let i = 0; i < 8; i++) {
+    const c = I.celdaPixeles(0, i, j, 2048), w = c.w, q = f.siluetas.poligonos[j * 8 + i], P = []; for (let k = 0; k < q.length; k += 2) P.push([q[k], q[k + 1]]);
+    const Pc = SL.envolvente(P);
+    for (let y = 0; y < w; y++) for (let x = 0; x < w; x++) if (px(color, c.x + x, c.y + y)[3] >= 128)
+      for (const [a, b] of [[x, y], [x + 1, y], [x, y + 1], [x + 1, y + 1]]) assert.ok(SL.contiene(Pc, [a / w, 1 - b / w], 1e-3), "texel opaco fuera de la silueta en la vista " + [i, j]);
+  }
   assert.deepStrictEqual(sinCentro, [], "centro con color");
   // las otras tres celdas (no hay más variantes) quedan transparentes
   const c3 = I.celdaPixeles(3, 4, 4, 2048); assert.strictEqual(px(color, c3.x + 64, c3.y + 64)[3], 0);
