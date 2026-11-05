@@ -104,7 +104,7 @@ r=$(pide /)
 tiene "$r" "^HTTP/1.1 200" && ok "/ responde 200 sin sesión" || mal "/ no responde 200: $(head -1 <<<"$r")"
 tiene "$r" "^content-security-policy-report-only: default-src 'self'; script-src 'self'" && ok "CSP estricta en Report-Only" || mal "falta la CSP Report-Only"
 tiene "$r" "^content-security-policy:" && mal "hay CSP impuesta (debe ser solo informe en F1a)" || ok "la CSP no se impone todavía"
-tiene "$r" "^content-security-policy-report-only:[^;]*script-src 'self' 'wasm-unsafe-eval';" && ok "la CSP admite WebAssembly (wasm-unsafe-eval) para Basis y meshopt" || mal "la CSP no incluye 'wasm-unsafe-eval' en script-src"
+tiene "$r" "^content-security-policy-report-only:.*script-src 'self' 'wasm-unsafe-eval';" && ok "la CSP admite WebAssembly (wasm-unsafe-eval) para Basis y meshopt" || mal "la CSP no incluye 'wasm-unsafe-eval' en script-src"
 tiene "$r" "^content-security-policy-report-only:.*[^-]'unsafe-eval'" && mal "la CSP abre 'unsafe-eval' a secas" || ok "la CSP no abre 'unsafe-eval' a secas"
 tiene "$r" "^permissions-policy:.*xr-spatial-tracking=(self)" && ok "Permissions-Policy con xr-spatial-tracking=(self)" || mal "Permissions-Policy sin xr-spatial-tracking"
 tiene "$r" "^permissions-policy:.*microphone=(self)" && ok "Permissions-Policy con microphone=(self) (la voz)" || mal "Permissions-Policy niega el micrófono"

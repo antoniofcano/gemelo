@@ -147,7 +147,10 @@ test("con builds de Vite de verdad (entrada mínima; super-three de mentira): le
   fs.mkdirSync(path.join(st, "build"), { recursive: true });
   fs.writeFileSync(path.join(st, "package.json"), JSON.stringify({ name: "super-three", version: "0.185.0", type: "module" }));
   fs.writeFileSync(path.join(st, "build/three.module.js"), 'export const REVISION = "185-STUB";\n');
-  const raiz = fs.mkdtempSync(path.join(os.tmpdir(), "gemelo-raiz-f2c-")), sp = fs.mkdtempSync(path.join(os.tmpdir(), "gemelo-sp-f2c-")), sv = fs.mkdtempSync(path.join(os.tmpdir(), "gemelo-sv-f2c-"));
+  // EV-1k: el build copia el transcodificador Basis de la three de cada build (vite.config.js) y falla si falta
+  fs.mkdirSync(path.join(st, "examples/jsm/libs/basis"), { recursive: true });
+  for (const f of ["basis_transcoder.js", "basis_transcoder.wasm"]) fs.writeFileSync(path.join(st, "examples/jsm/libs/basis", f), "STUB-BASIS\n");
+  const raiz = fs.mkdtempSync(path.join(os.tmpdir(), "gemelo-raiz-f2c-")), sp =fs.mkdtempSync(path.join(os.tmpdir(), "gemelo-sp-f2c-")), sv = fs.mkdtempSync(path.join(os.tmpdir(), "gemelo-sv-f2c-"));
   const dest = path.join(os.tmpdir(), "gemelo-pubv-f2c-" + process.pid);
   fs.writeFileSync(path.join(raiz, "index.html"), '<!doctype html>\n<html><head><meta charset="utf-8"></head><body><script type="module" src="./e.js"></script></body></html>\n');
   fs.writeFileSync(path.join(raiz, "e.js"), 'import * as THREE from "three";\nimport "./e.css";\nimport("./l.js");\ndocument.title = THREE.REVISION;\n');
