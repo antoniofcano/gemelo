@@ -4,7 +4,7 @@
 //   02c_componentes (ComponentesPuro, Bus, Config), 02d_laminas (LaminasPuro, Laminas), 02e_entidades (EntidadesPuro, Entidades, Usables),
 //   02f_xr_perillas (XrPerillas), 02g_vr_presupuesto (VrControlPuro, VrPresupuesto), 02h_render (InfoDibujo), 02i_materiales (Materiales),
 //   03_escena (lienzo, visor, renderer, scene, camera, sol, texColor, exag, modo, calidad), 04b_escena3d (Escena3D), 05_nube (nube),
-//   07b_arboles (Arboles), 08_marcadores (capas), 09_camara (pon), 10_ndvi (NDV, ndviIdx),
+//   07b_arboles (Arboles), 08_marcadores (capas), 09_camara (pon), 10_ndvi (NDV, ndviIdx, rampa),
 //   12_paseo (paseando, persona, teclas, primera, entraPaseo, salePaseo, actualizaPaseo), 12b_llegada (Llegada), 13_parcelas (parcelas, fincas),
 //   14_historia (hist, tabla, lista, aviso), 15_tiempo (calma, meta, nivel, rumbo, hace, pasoHoraMundo, horaMundoTexto, anuncia),
 //   16_vida (quita, mira, quad, dron), 22_huellas (pendFactor), 24_pantalla (suave), 33_ajustes (Ajustes), 90_final (tamano, cuadro, bucle)
@@ -127,6 +127,23 @@
   // y por debajo de los ojos: la distancia de verdad es la hipotenusa) y el interlineado (px) de cada clase de texto. botonesB(acciones, W, H): dónde caen
   // los botones de la ficha de la baliza (las acciones a la izquierda, en 470 px, y «Cerrar» a la derecha); HUECO_B = 16 px (12,9 mm a 0,8 mm/px; antes 12 px
   // = 9,7 mm, por debajo de los 12 mm del tope).
+  // Q9: el confort anti-mareo, en funciones puras (probadas en Node: pruebas/guardianes/vr_confort.test.js). Fuentes en doc/sistema/VR.md («Confort anti-mareo»).
+  // VEL: m/s a pie y volando (a velocidad humana: andar 1,4 y trotar 3,0; antes 1,7 y 4,3). vineta(v, intens, giro): cuánto se cierra la viñeta (0-1) según la
+  // VELOCIDAD REAL (más rápido, más cerrada; «fuerte» la cierra más) y la abertura del centro; durante un giro o un salto se mantiene un mínimo. rampa: sube la
+  // velocidad en ~0,15 s (sin aceleración brusca) y frena de golpe (soltar la palanca para en seco, que es lo cómodo).
+  var VrConfortPuro = (function () {
+    var VEL = { anda: 1.4, corre: 3.0, vuela: 8, vuelaRapido: 20 }, PUNTOS = [[0, 0], [1.4, 0.3], [3, 0.5], [8, 0.68], [20, 0.82]], INTENS = { suave: 1, fuerte: 1.4 }, MIN_SALTO = 0.4, SUBE_S = 0.15;
+    function vineta(v, intens, salto) {
+      var m = INTENS[intens] || 1, x = Math.max(0, Math.abs(v) || 0), k = PUNTOS[PUNTOS.length - 1][1];
+      for (var i = 1; i < PUNTOS.length; i++) if (x <= PUNTOS[i][0]) { var a = PUNTOS[i - 1], b = PUNTOS[i]; k = a[1] + (b[1] - a[1]) * (x - a[0]) / (b[0] - a[0]); break; }
+      if (salto) k = Math.max(k, MIN_SALTO);
+      k = Math.min(0.95, k * m);
+      return { k: k, abre: 0.40 - 0.18 * k };   // k: opacidad en el borde; abre: radio (0-1) donde empieza a oscurecer: se cierra al subir k
+    }
+    function rampa(f, obj, dt) { return obj <= f ? obj : Math.min(obj, f + dt / SUBE_S); }   // f y obj en [0, 1]
+    function sigue(k, obj, dt) { return k + (obj - k) * Math.min(1, dt * (obj > k ? 10 : 4)); }   // la viñeta cierra rápido (0,1 s) y abre despacio (0,25 s)
+    return { VEL: VEL, vineta: vineta, rampa: rampa, sigue: sigue, SUBE_S: SUBE_S };
+  })();
   var VrFichaPuro = (function () {
     var MEDIDAS = {
       panel: { W: 1024, H: 1088, pw: 1.0, ph: 1.0625, dist: 1.05, bajo: -0.2 },
@@ -250,7 +267,7 @@
   var VR_SENTADO = 0.42;   // 1,62 m de pie → 1,20 m sentado (los mismos ojos que el paseo en primera persona)
   function vrBaseY() { return VRX.ojo - (vrAj("vista.altura", "pie") === "sentado" ? VR_SENTADO : 0); }
   function vrLeeAjustes() {   // al entrar en la sesión y cada vez que Configuración cambia algo
-    var v = vrAj("vr.vineta", VRX.vineta); VRX.vineta = !(v === false || v === "false" || v === 0 || v === "no");
+    var v = vrAj("vr.vineta", VRX.vineta); VRX.vineta = !(v === false || v === "false" || v === 0 || v === "no"); VRX.vinetaTipo = v === "fuerte" ? "fuerte" : "suave";
     var g = Number(vrAj("vr.giro", 30)); VRX.giro = isFinite(g) && g >= 5 && g <= 90 ? g : 30; VRX.sucio = true;
   }
   var vrSuscrito = false;   // 33_ajustes.js se monta después de este módulo: se suscribe al entrar en la sesión, no al cargar
@@ -524,7 +541,8 @@
     // andar (palanca izquierda): relativo a la mirada
     var av = -vrDz(iz.y), la = vrDz(iz.x), g = camera.getWorldDirection(vrV3);
     var fx = g.x, fz = g.z, hl = Math.hypot(fx, fz) || 1, hx = fx / hl, hz = fz / hl;   // dirección horizontal de la mirada
-    var vel = VRX.vuelo ? (VRX.correr ? 30 : 10) : (VRX.correr ? 4.3 : 1.7) * pendFactor(), mov = Math.min(1, Math.hypot(av, la));
+    var CV = VrConfortPuro.VEL, vel = VRX.vuelo ? (VRX.correr ? CV.vuelaRapido : CV.vuela) : (VRX.correr ? CV.corre : CV.anda) * pendFactor(), mov0 = Math.min(1, Math.hypot(av, la)), mov = VRX.movF = VrConfortPuro.rampa(VRX.movF || 0, mov0, dt);
+    vel *= mov0 > 0 ? mov / mov0 : 0;   // la rampa de salida (~0,15 s) escala la velocidad; soltar la palanca frena en seco
     var dx = 0, dz = 0, dy = 0;
     if (mov > 0) {
       if (VRX.vuelo) { dx = g.x * av * vel * dt - hz * la * vel * dt; dz = g.z * av * vel * dt + hx * la * vel * dt; dy = g.y * av * vel * dt; }
@@ -540,13 +558,14 @@
     if (VRX.vuelo) r.y = Math.max(r.y, gnd + 0.4); else r.y += (gnd - r.y) * Math.min(1, dt * 12);
     VRX.hMov = Math.max(0, VRX.hMov - dt); var mueve = mov > 0 || VRX.hMov > 0;
     // lo que el resto del programa mira: el «paseo» (pp) es la cabeza; el muñequito va oculto
-    pp.x = nx; pp.y = -nz; pp.ang = Math.atan2(hx, -hz); if (!VRX.vuelo && mov > 0) pp.paso += vel * mov * dt * 3.4;
+    pp.x = nx; pp.y = -nz; pp.ang = Math.atan2(hx, -hz); if (!VRX.vuelo && mov > 0) pp.paso += vel * mov0 * dt * 3.4;
     teclas.up = teclas.down = teclas.left = teclas.right = false;
     actualizaPaseo(dt); primera = true; persona.visible = false;
     vrAplicaRig();
     VrPresupuesto.mueve(nx, nz);   // Q0c-a (02g): recorta por distancia solo tras moverse 15-75 m; sin reservas
     // viñeta de confort mientras te mueves
-    vrVineta.visible = VRX.vineta; vrVineta.material.uniforms.uK.value += ((mueve ? 0.55 : 0) - vrVineta.material.uniforms.uK.value) * Math.min(1, dt * 8);
+    var vn = VrConfortPuro.vineta(vel * mov0, VRX.vinetaTipo, VRX.hMov > 0), vu = vrVineta.material.uniforms;
+    vrVineta.visible = VRX.vineta; vu.uK.value = VrConfortPuro.sigue(vu.uK.value, mueve ? vn.k : 0, dt); vu.uA.value = vn.abre;
     // láminas
     var rr = vrRayoDe(R), hv = "";
     if (VR_CAPAS) Laminas.apunta(rr);   // EV2-A1: el resalte de los botones de las fichas en el mundo (sin la bandera, ni un rayo de más)
@@ -594,9 +613,9 @@
 
   // ----- 5) la viñeta de confort (un velo con el centro transparente, pegado a la cabeza)
   var vrVineta = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.4), Materiales.sombreador("vineta-vr", {
-    uniforms: { uK: { value: 0 } }, transparent: true, depthTest: false, depthWrite: false,
+    uniforms: { uK: { value: 0 }, uA: { value: 0.4 } }, transparent: true, depthTest: false, depthWrite: false,
     vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
-    fragmentShader: "uniform float uK; varying vec2 vUv; void main(){ float r = length(vUv - 0.5) * 2.0; float a = smoothstep(0.28, 0.62, r) * uK; gl_FragColor = vec4(0.0, 0.0, 0.0, a); }"
+    fragmentShader: "uniform float uK; uniform float uA; varying vec2 vUv; void main(){ float r = length(vUv - 0.5) * 2.0; float a = smoothstep(uA, uA + 0.34, r) * uK; gl_FragColor = vec4(0.0, 0.0, 0.0, a); }"
   }));
   vrVineta.position.set(0, 0, -0.32); vrVineta.renderOrder = 999; vrVineta.frustumCulled = false; vrVineta.visible = false;
 
@@ -661,7 +680,7 @@
     scene.add(vrRig); vrRig.add(camera); camera.add(vrVineta); camera.position.set(0, VRX.ojo ? 0 : 1.6, 0); camera.quaternion.identity(); VRC.forEach(function (o) { vrRig.add(o.c); vrRig.add(o.g); }); Bus.emite("vr:rig-monta", { rig: vrRig }); scene.add(arco); scene.add(arcoMarca); scene.add(panel.m); scene.add(ficha.m); scene.add(fichaB.m); vrVueloEntra();
     VRP.on = true; vrPerfil(XrPerillas.fijo() ? XrPerillas.efectivas.nivel : 0); VRX.emaDt = 13.9; VRX.emaJs = 6; VRX.tNivel = 0; VRX.tEstable = 0;
     if (!paseando) entraPaseo(); primera = true; TR.act = false; persona.visible = false; Bus.emite("perros:llegan");
-    var r = VRX.rig; r.x = pp.x; r.z = -pp.y; r.yaw = 0; r.y = suelo(pp.x, pp.y) * exag + vrBaseY(); VRX.vuelo = false; VRX.mirador = false; VRX.prev = {}; VRX.giroOk = true; VRX.sucio = true; panel.m.visible = true; panel.ini = false; ficha.m.visible = false; fichaB.m.visible = false; VRX.fichaId = ""; VRX.balFirma = "";
+    var r = VRX.rig; r.x = pp.x; r.z = -pp.y; r.yaw = 0; r.y = suelo(pp.x, pp.y) * exag + vrBaseY(); VRX.vuelo = false; VRX.mirador = false; VRX.prev = {}; VRX.giroOk = true; VRX.movF = 0; VRX.sucio = true; panel.m.visible = true; panel.ini = false; ficha.m.visible = false; fichaB.m.visible = false; VRX.fichaId = ""; VRX.balFirma = "";
     vrAplicaRig(); vrRig.updateMatrixWorld(true); VRX.on = true; VRX.entrando = false; vrEstado("sesión VR en marcha"); vrPrecompila(); Bus.emite("vr:entra");
   }
   function vrAnimacion(t, frame) { if (!frame || !VRX.on) return; VRX.frame = frame; cuadro(performance.now()); }
