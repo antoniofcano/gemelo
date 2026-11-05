@@ -2,7 +2,7 @@
 // Expone: EST, bbchEn, construyeFrutosLista, hoyMadrid, objetivoMundo, actualizaOlivo
 // Consume: 01_datos ($), 02_mundo (suelo, copas), 02i_materiales (Materiales), 03_escena (renderer, SRGB, sol, modo), 04d_sombreado_tiles (hash),
 //   06_arboles (gFollaje), 07_follaje (matHojaG, matHojaP), 10_ndvi (NDV, ndviIdx), 13_parcelas (parcelas), 14_historia (hist, aviso),
-//   15_tiempo (TiempoPuro, lluvia, fmtHora, fmtClaveDia, num1, esc, objetivoMundoBase, aplicaMundo)
+//   15_tiempo (TiempoPuro, ahoraMs, lluvia, fmtHora, fmtClaveDia, num1, esc, objetivoMundoBase, aplicaMundo)
 // Nota: Publica además window.__otDebug (depuración del olivo estacional).
 // ===============================================================================
   // ---------- el olivo estacional: la fecha de la estación (el deslizador de la hierba) manda en el sol, el clima, el color de la copa y la fenología
@@ -59,8 +59,10 @@
   }
 
   // --- la fecha manda: sol, clima y fenología
-  function hoyMadrid() { return fmtClaveDia.format(new Date()); }
-  function fechaEstacion() { return NDV ? NDV.fechas[ndviIdx] : hoyMadrid(); }
+  // el día de hoy en Madrid según el reloj del mundo (ahoraMs: el real, o el de ?hora= / ?fecha=). EV-3a: la estación del olivo arranca HOY (la fenología del
+  // calendario de hoy); al mover la fecha del campo a otra imagen, la de esa imagen. La copa (NDVI) es siempre la de la imagen elegida.
+  function hoyMadrid() { return fmtClaveDia.format(new Date(ahoraMs())); }
+  function fechaEstacion() { return NDV && ndviIdx !== NDV.fechas.length - 1 ? NDV.fechas[ndviIdx] : hoyMadrid(); }
   function pideClima(iso) {
     if (EST.cache[iso] !== undefined) { EST.clima = EST.cache[iso]; EST.estado = EST.clima ? "" : "sin dato de la estación esa semana"; pintaEstacion(); return; }
     function fin(c, msg) { EST.cache[iso] = c; if (fechaEstacion() === iso) { EST.clima = c; EST.estado = c ? "" : msg; pintaEstacion(); } }
@@ -89,8 +91,8 @@
   }
   function pintaEstacion() {
     var c = $("tEstac"); if (!c || !NDV) return;
-    var iso = fechaEstacion(), bb = bbchEn(iso), v = vigorCopa(ndviIdx), a = SN ? SN.a[ndviIdx] : null, f = iso.split("-").reverse().join("/");
-    var h = '<h3>El olivo en esta fecha <span class="t-pill t-pill-m">estimado</span></h3><p class="t-sub">' + (EST.activa ? "Estación del " + f + " (no es hoy). " : "Imagen más reciente: " + f + " (hoy se usa el tiempo real). ") + '<button type="button" class="h-btn" id="tHoy"' + (EST.activa ? "" : " hidden") + ">Volver a hoy</button></p>";
+    var iso = fechaEstacion(), bb = bbchEn(iso), v = vigorCopa(ndviIdx), a = SN ? SN.a[ndviIdx] : null, f = iso.split("-").reverse().join("/"), fImg = String(NDV.fechas[ndviIdx]).split("-").reverse().join("/");
+    var h = '<h3>El olivo en esta fecha <span class="t-pill t-pill-m">estimado</span></h3><p class="t-sub">' + (EST.activa ? "Estación del " + f + " (no es hoy). " : "Hoy, " + f + ": la fenología es la del calendario de hoy y el tiempo, el real; la copa, de la imagen más reciente (" + fImg + "). ") + '<button type="button" class="h-btn" id="tHoy"' + (EST.activa ? "" : " hidden") + ">Volver a hoy</button></p>";
     h += '<dl class="t-cifras"><div><dt>Fenología (BBCH)</dt><dd>' + Math.round(bb) + ' <small>' + esc(textoBBCH(bb)) + '</small></dd></div><div><dt>NDVI de la copa</dt><dd>' + (COPA.length ? num1(COPA[ndviIdx], 2) : "—") + ' <small>' + (v > 0.66 ? "vigorosa" : v > 0.33 ? "normal" : "apagada") + '</small></dd></div><div><dt>NDVI del suelo</dt><dd>' + (a != null ? num1(a, 2) : "—") + '</dd></div></dl>';
     h += '<p class="t-sub">' + esc(EST.origen) + ".</p>";
     if (EST.activa) {

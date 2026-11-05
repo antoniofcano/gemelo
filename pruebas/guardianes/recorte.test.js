@@ -200,7 +200,8 @@ test("23_estacion: fuera del BBCH que pinta el sombreador (b = BBCH ± 3,5 entre
   const F = sinComentarios(lee("apps/web/motor/23_estacion.js"));
   // las cifras del sombreador de las que sale el rango: si cambian, esta prueba lo dice
   for (const t of ["float b = uBBCH + (aR - 0.5) * 7.0;", "if (b >= 58.0 && b < 70.5)", "smoothstep(58.0, 62.0, b)", "else if (b >= 70.5 && b < 91.0)", "if (aS < 0.55)"]) assert.ok(F.includes(t), "el sombreador de los frutos: falta «" + t + "»");
-  const g = mundoEstacion(["2026-01-15", "2026-03-01", "2026-06-15", "2026-10-20"]);
+  // la última fecha es «hoy» (EV-3a: en la imagen más reciente la estación es la del día real); las cuatro de antes, la de su imagen
+  const g = mundoEstacion(["2026-01-15", "2026-03-01", "2026-06-15", "2026-10-20", "2026-12-01"]);
   // el sombreador, en JS: ¿algún punto (aR en [0, 1), aS cualquiera) tendría tamaño con este BBCH?
   // flores: dens > 0 solo con 58 < b < 70,5 (y aS pequeño); aceitunas: 70,5 ≤ b < 91 (aS < 0,55)
   const pinta = bb => { for (let k = 0; k < 2000; k++) { const b = bb + (k / 2000 - 0.5) * 7; if (b > 58 && b < 91) return true; } return false; };

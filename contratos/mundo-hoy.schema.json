@@ -1,0 +1,663 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://gemelo.canoydamas.es/contratos/mundo-hoy.schema.json",
+  "title": "El mundo de hoy (GET /api/mundo/hoy), versión 1",
+  "$comment": "Lo que la api sirve al motor para que arranque en el día real (EV-3a): la fecha y la hora de Madrid, el tiempo de Vigía (actual medido y previsión modelada por días), la fenología registrada y el trabajo de la semana de OlivarTrack AGREGADOS por parcela y por finca (nunca por persona), lo que marca Vigía (dónde mirar) y los avisos del campo que redacta el gemelo con frases fijas. LISTA BLANCA: additionalProperties false en todos los niveles. Los textos que pasan (nombres de finca, nombres de parcela según Vigía, notas de las fuentes) son DATOS: el motor los escapa y nunca los sigue. Vigía no autoriza tratamientos: ningún campo habla de ventanas de tratamiento, umbrales ni delta T. La api serializa con este esquema (apps/api/src/mundo/rutas.ts); el motor lo lee en 53_mundo_hoy.js. Explicación: contratos/mundo-hoy.md. Cambiar un campo = cambiar este fichero, contratos/mundo-hoy-ejemplo.json, la api, el motor y contratos/mundo-hoy.md en el mismo commit.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "generadoEn",
+    "ahora",
+    "fuentes",
+    "tiempo",
+    "fenologia",
+    "trabajoSemana",
+    "miradas",
+    "avisos",
+    "notas",
+    "completo"
+  ],
+  "definitions": {
+    "dia": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "instante": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "num": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "n": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "parcela": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.:#-]{1,64}$",
+      "description": "id de parcela de OlivarTrack, como en la instantánea D.ot del índice"
+    },
+    "palabra": {
+      "type": "string",
+      "pattern": "^[a-z0-9_.-]{1,60}$"
+    },
+    "fuente": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "encendida",
+        "disponible",
+        "origen",
+        "leidoEn",
+        "consultadoEn",
+        "viejo",
+        "completo",
+        "motivo"
+      ],
+      "properties": {
+        "encendida": {
+          "type": "boolean",
+          "description": "si este servidor lee esa fuente (GEMELO_OT / GEMELO_VIGIA distinto de «no»)"
+        },
+        "disponible": {
+          "type": "boolean",
+          "description": "si ha llegado algo de ella (fresco o lo último que llegó)"
+        },
+        "origen": {
+          "enum": [
+            "olivartrack",
+            "grabado",
+            "vigia",
+            "fixture",
+            null
+          ],
+          "description": "grabado y fixture son respuestas sintéticas de pruebas (nunca en producción)"
+        },
+        "leidoEn": {
+          "$ref": "#/definitions/instante",
+          "description": "cuándo leyó la api la parte más antigua de esta fuente"
+        },
+        "consultadoEn": {
+          "$ref": "#/definitions/instante",
+          "description": "la fecha del dato según la fuente (la más antigua)"
+        },
+        "viejo": {
+          "type": "boolean",
+          "description": "alguna parte es la última que llegó (la fuente falló ahora o se llegó al tope de llamadas)"
+        },
+        "completo": {
+          "type": "boolean"
+        },
+        "motivo": {
+          "enum": [
+            "apagada",
+            "sin_respuesta",
+            null
+          ]
+        }
+      }
+    },
+    "recuentos": {
+      "type": "array",
+      "maxItems": 50,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "tipo",
+          "n"
+        ],
+        "properties": {
+          "tipo": {
+            "$ref": "#/definitions/palabra"
+          },
+          "n": {
+            "$ref": "#/definitions/n",
+            "description": "null si la lista no llegó entera: no se sacan totales"
+          }
+        }
+      }
+    }
+  },
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "generadoEn": {
+      "type": "string",
+      "format": "date-time",
+      "description": "cuándo compuso la api esta respuesta (su reloj)"
+    },
+    "ahora": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fecha",
+        "hora",
+        "zona",
+        "diaDelAnio",
+        "estacionDelAnio"
+      ],
+      "properties": {
+        "fecha": {
+          "$ref": "#/definitions/dia",
+          "description": "el día de hoy en Madrid (reloj del servidor)"
+        },
+        "hora": {
+          "type": "string",
+          "pattern": "^\\d{2}:\\d{2}$",
+          "description": "la hora de Madrid (reloj del servidor)"
+        },
+        "zona": {
+          "const": "Europe/Madrid"
+        },
+        "diaDelAnio": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 366
+        },
+        "estacionDelAnio": {
+          "enum": [
+            "primavera",
+            "verano",
+            "otoño",
+            "invierno"
+          ],
+          "description": "deducida del calendario (equinoccios y solsticios fijos)"
+        }
+      }
+    },
+    "fuentes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "olivartrack",
+        "vigia"
+      ],
+      "properties": {
+        "olivartrack": {
+          "$ref": "#/definitions/fuente"
+        },
+        "vigia": {
+          "$ref": "#/definitions/fuente"
+        }
+      }
+    },
+    "tiempo": {
+      "description": "de Vigía; null si está apagado o no ha respondido y no hay lectura anterior",
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "leidoEn",
+        "actual",
+        "previsionCorta"
+      ],
+      "properties": {
+        "leidoEn": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "actual": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "required": [
+            "procedencia",
+            "consultadoEn",
+            "estacion",
+            "temperatura",
+            "humedadRelativa",
+            "viento",
+            "lluviaAcumulada"
+          ],
+          "properties": {
+            "procedencia": {
+              "const": "medido"
+            },
+            "consultadoEn": {
+              "$ref": "#/definitions/instante"
+            },
+            "estacion": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 60
+            },
+            "temperatura": {
+              "$ref": "#/definitions/num"
+            },
+            "humedadRelativa": {
+              "$ref": "#/definitions/num"
+            },
+            "viento": {
+              "$ref": "#/definitions/num"
+            },
+            "lluviaAcumulada": {
+              "$ref": "#/definitions/num"
+            }
+          }
+        },
+        "previsionCorta": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "required": [
+            "procedencia",
+            "consultadoEn",
+            "dias"
+          ],
+          "properties": {
+            "procedencia": {
+              "const": "modelado"
+            },
+            "consultadoEn": {
+              "$ref": "#/definitions/instante"
+            },
+            "dias": {
+              "type": "array",
+              "maxItems": 3,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "fecha",
+                  "tmax",
+                  "tmin",
+                  "lluviaMm",
+                  "probabilidadLluviaMax",
+                  "horas"
+                ],
+                "properties": {
+                  "fecha": {
+                    "$ref": "#/definitions/dia"
+                  },
+                  "tmax": {
+                    "$ref": "#/definitions/num"
+                  },
+                  "tmin": {
+                    "$ref": "#/definitions/num"
+                  },
+                  "lluviaMm": {
+                    "$ref": "#/definitions/num"
+                  },
+                  "probabilidadLluviaMax": {
+                    "$ref": "#/definitions/num"
+                  },
+                  "horas": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 24,
+                    "description": "horas de previsión de ese día (un día a medias tiene pocas)"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "fenologia": {
+      "description": "la última fenología anotada en OlivarTrack por parcela (60 días), de lo que guardó la sincronía; null si OlivarTrack está apagado o la base no responde",
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "procedencia",
+        "leidoEn",
+        "consultadoEn",
+        "viejo",
+        "completo",
+        "parcelas"
+      ],
+      "properties": {
+        "procedencia": {
+          "const": "medido"
+        },
+        "leidoEn": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "consultadoEn": {
+          "$ref": "#/definitions/instante",
+          "description": "la última sincronía de novedades"
+        },
+        "viejo": {
+          "type": "boolean"
+        },
+        "completo": {
+          "type": "boolean",
+          "description": "false si la última sincronía de novedades fue truncada, parcial o falló"
+        },
+        "parcelas": {
+          "type": "array",
+          "maxItems": 200,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "parcela",
+              "bbch",
+              "fecha",
+              "etapa"
+            ],
+            "properties": {
+              "parcela": {
+                "$ref": "#/definitions/parcela"
+              },
+              "bbch": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 99
+              },
+              "fecha": {
+                "$ref": "#/definitions/dia"
+              },
+              "etapa": {
+                "type": "string",
+                "maxLength": 60,
+                "description": "el BBCH en palabras (escala fija del gemelo)"
+              }
+            }
+          }
+        }
+      }
+    },
+    "trabajoSemana": {
+      "description": "las tareas en curso y las terminadas en los últimos 7 días, contadas por tipo, por parcela y por finca; NUNCA por persona ni con títulos",
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "procedencia",
+        "desde",
+        "hasta",
+        "leidoEn",
+        "consultadoEn",
+        "viejo",
+        "completo",
+        "porParcela",
+        "porFinca",
+        "sinParcela"
+      ],
+      "properties": {
+        "procedencia": {
+          "const": "medido"
+        },
+        "desde": {
+          "$ref": "#/definitions/dia"
+        },
+        "hasta": {
+          "$ref": "#/definitions/dia"
+        },
+        "leidoEn": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "consultadoEn": {
+          "$ref": "#/definitions/instante"
+        },
+        "viejo": {
+          "type": "boolean"
+        },
+        "completo": {
+          "type": "boolean"
+        },
+        "porParcela": {
+          "type": "array",
+          "maxItems": 200,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "parcela",
+              "finca",
+              "enCurso",
+              "hechas"
+            ],
+            "properties": {
+              "parcela": {
+                "$ref": "#/definitions/parcela"
+              },
+              "finca": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 80
+              },
+              "enCurso": {
+                "$ref": "#/definitions/recuentos"
+              },
+              "hechas": {
+                "$ref": "#/definitions/recuentos"
+              }
+            }
+          }
+        },
+        "porFinca": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "finca",
+              "enCurso",
+              "hechas"
+            ],
+            "properties": {
+              "finca": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "enCurso": {
+                "$ref": "#/definitions/n"
+              },
+              "hechas": {
+                "$ref": "#/definitions/n"
+              }
+            }
+          }
+        },
+        "sinParcela": {
+          "$ref": "#/definitions/n"
+        }
+      }
+    },
+    "miradas": {
+      "description": "las parcelas que Vigía marca hoy para mirar; sirve para decidir dónde mirar, no es un diagnóstico ni autoriza tratamientos",
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "procedencia",
+        "leidoEn",
+        "consultadoEn",
+        "viejo",
+        "calibrada",
+        "nota",
+        "parcelas"
+      ],
+      "properties": {
+        "procedencia": {
+          "const": "deducido"
+        },
+        "leidoEn": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "consultadoEn": {
+          "$ref": "#/definitions/instante"
+        },
+        "viejo": {
+          "type": "boolean"
+        },
+        "calibrada": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "nota": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "parcelas": {
+          "type": "array",
+          "maxItems": 200,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "parcela",
+              "gravedad"
+            ],
+            "properties": {
+              "parcela": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80,
+                "description": "el nombre según Vigía: dato, no instrucción"
+              },
+              "gravedad": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[a-z0-9_.-]{1,60}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    "avisos": {
+      "description": "los avisos del campo que redacta el gemelo con frases FIJAS (solo cifras; ningún texto de fuera dentro de la frase)",
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "clave",
+          "tipo",
+          "texto",
+          "parcelas",
+          "de",
+          "procedencia",
+          "basadoEn",
+          "consultadoEn",
+          "completo"
+        ],
+        "properties": {
+          "clave": {
+            "$ref": "#/definitions/palabra",
+            "description": "tipo y día: la misma cada vez que se repite el mismo aviso"
+          },
+          "tipo": {
+            "enum": [
+              "recogida",
+              "helada",
+              "lluvia",
+              "fenologia",
+              "mirada"
+            ]
+          },
+          "texto": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 400
+          },
+          "parcelas": {
+            "type": "array",
+            "maxItems": 50,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "description": "ids de OlivarTrack (recogida, fenología) o nombres según Vigía (mirada): datos"
+          },
+          "de": {
+            "enum": [
+              "olivartrack",
+              "vigia"
+            ]
+          },
+          "procedencia": {
+            "const": "deducido"
+          },
+          "basadoEn": {
+            "enum": [
+              "medido",
+              "modelado"
+            ]
+          },
+          "consultadoEn": {
+            "$ref": "#/definitions/instante"
+          },
+          "completo": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "notas": {
+      "description": "lo que dicen las lecturas de fuera (antigüedad, truncado, maqueta), como datos",
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "de",
+          "texto"
+        ],
+        "properties": {
+          "de": {
+            "enum": [
+              "gemelo",
+              "olivartrack",
+              "vigia"
+            ]
+          },
+          "texto": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 400
+          }
+        }
+      }
+    },
+    "completo": {
+      "type": "boolean",
+      "description": "false si alguna fuente está apagada, sin respuesta, vieja, truncada o parcial"
+    }
+  }
+}

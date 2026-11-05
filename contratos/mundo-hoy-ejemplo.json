@@ -1,0 +1,221 @@
+{
+  "version": 1,
+  "generadoEn": "2026-11-05T10:30:00.000Z",
+  "ahora": {
+    "fecha": "2026-11-05",
+    "hora": "11:30",
+    "zona": "Europe/Madrid",
+    "diaDelAnio": 309,
+    "estacionDelAnio": "otoño"
+  },
+  "fuentes": {
+    "olivartrack": {
+      "encendida": true,
+      "disponible": true,
+      "origen": "grabado",
+      "leidoEn": "2026-11-05T10:30:00.000Z",
+      "consultadoEn": "2026-11-05T09:00:00.000Z",
+      "viejo": false,
+      "completo": true,
+      "motivo": null
+    },
+    "vigia": {
+      "encendida": true,
+      "disponible": true,
+      "origen": "fixture",
+      "leidoEn": "2026-11-05T10:30:00.000Z",
+      "consultadoEn": "2026-11-05T10:10:00.000Z",
+      "viejo": false,
+      "completo": true,
+      "motivo": null
+    }
+  },
+  "tiempo": {
+    "leidoEn": "2026-11-05T10:30:00.000Z",
+    "actual": {
+      "procedencia": "medido",
+      "consultadoEn": "2026-11-05T10:10:00.000Z",
+      "estacion": "SINT-EST-01",
+      "temperatura": 14.2,
+      "humedadRelativa": 63,
+      "viento": 1.4,
+      "lluviaAcumulada": 0.8
+    },
+    "previsionCorta": {
+      "procedencia": "modelado",
+      "consultadoEn": "2026-11-05T10:10:00.000Z",
+      "dias": [
+        {
+          "fecha": "2026-11-05",
+          "horas": 13,
+          "tmax": 15,
+          "tmin": 7.4,
+          "lluviaMm": 0,
+          "probabilidadLluviaMax": 5
+        },
+        {
+          "fecha": "2026-11-06",
+          "horas": 24,
+          "tmax": 15,
+          "tmin": 3,
+          "lluviaMm": 5.1,
+          "probabilidadLluviaMax": 80
+        },
+        {
+          "fecha": "2026-11-07",
+          "horas": 24,
+          "tmax": 15,
+          "tmin": 3,
+          "lluviaMm": 0.9,
+          "probabilidadLluviaMax": 80
+        }
+      ]
+    }
+  },
+  "fenologia": {
+    "procedencia": "medido",
+    "leidoEn": "2026-11-05T10:30:00.000Z",
+    "consultadoEn": "2026-11-05T09:00:00.000Z",
+    "viejo": false,
+    "completo": true,
+    "parcelas": [
+      {
+        "parcela": "sintetica-1",
+        "bbch": 85,
+        "fecha": "2026-11-03",
+        "etapa": "envero y maduración"
+      }
+    ]
+  },
+  "trabajoSemana": {
+    "procedencia": "medido",
+    "desde": "2026-10-30",
+    "hasta": "2026-11-05",
+    "leidoEn": "2026-11-05T10:30:00.000Z",
+    "consultadoEn": "2026-11-05T10:00:00.000Z",
+    "viejo": false,
+    "completo": true,
+    "porParcela": [
+      {
+        "parcela": "sintetica-1",
+        "finca": "Finca sintética",
+        "enCurso": [
+          {
+            "tipo": "recoleccion",
+            "n": 1
+          }
+        ],
+        "hechas": []
+      },
+      {
+        "parcela": "sintetica-2",
+        "finca": "Finca sintética",
+        "enCurso": [],
+        "hechas": [
+          {
+            "tipo": "riego",
+            "n": 1
+          }
+        ]
+      }
+    ],
+    "porFinca": [
+      {
+        "finca": "Finca sintética",
+        "enCurso": 1,
+        "hechas": 1
+      }
+    ],
+    "sinParcela": 0
+  },
+  "miradas": {
+    "procedencia": "deducido",
+    "leidoEn": "2026-11-05T10:30:00.000Z",
+    "consultadoEn": "2026-11-05T10:10:00.000Z",
+    "viejo": false,
+    "calibrada": false,
+    "nota": "Sirve para decidir dónde mirar: no es un diagnóstico ni una recomendación de tratamiento, y ninguna capa está calibrada con observación de campo.",
+    "parcelas": [
+      {
+        "parcela": "Parcela sintética A",
+        "gravedad": "media"
+      },
+      {
+        "parcela": "Parcela sintética de otra finca",
+        "gravedad": "baja"
+      }
+    ]
+  },
+  "avisos": [
+    {
+      "clave": "recogida-2026-11-05",
+      "tipo": "recogida",
+      "de": "olivartrack",
+      "procedencia": "deducido",
+      "basadoEn": "medido",
+      "consultadoEn": "2026-11-05T10:00:00.000Z",
+      "completo": true,
+      "parcelas": [
+        "sintetica-1"
+      ],
+      "texto": "Hoy hay recogida en curso en 1 parcela."
+    },
+    {
+      "de": "vigia",
+      "procedencia": "deducido",
+      "basadoEn": "modelado",
+      "consultadoEn": "2026-11-05T10:10:00.000Z",
+      "completo": true,
+      "parcelas": [],
+      "clave": "lluvia-2026-11-06",
+      "tipo": "lluvia",
+      "texto": "Previsión de lluvia para mañana: unos 5,1 mm (probabilidad de hasta el 80 %). Es una previsión (modelado) y puede cambiar."
+    },
+    {
+      "clave": "fenologia-2026-11-05",
+      "tipo": "fenologia",
+      "de": "olivartrack",
+      "procedencia": "deducido",
+      "basadoEn": "medido",
+      "consultadoEn": "2026-11-05T09:00:00.000Z",
+      "completo": true,
+      "parcelas": [
+        "sintetica-1"
+      ],
+      "texto": "Esta semana se ha anotado la fenología de 1 parcela: envero y maduración (BBCH 85)."
+    },
+    {
+      "clave": "mirada-2026-11-05",
+      "tipo": "mirada",
+      "de": "vigia",
+      "procedencia": "deducido",
+      "basadoEn": "medido",
+      "consultadoEn": "2026-11-05T10:10:00.000Z",
+      "completo": true,
+      "parcelas": [
+        "Parcela sintética A",
+        "Parcela sintética de otra finca"
+      ],
+      "texto": "Vigía marca 2 parcelas para mirar hoy. Sirve para decidir dónde mirar: no es un diagnóstico ni una recomendación de tratamiento, y ninguna capa está calibrada con observación de campo."
+    }
+  ],
+  "notas": [
+    {
+      "de": "gemelo",
+      "texto": "Lo que marca Vigía: Vigía avisa de que son datos de maqueta."
+    },
+    {
+      "de": "gemelo",
+      "texto": "Lo que marca Vigía: 1 elemento sin la forma esperada no se muestra."
+    },
+    {
+      "de": "gemelo",
+      "texto": "La lectura de la estación: Vigía avisa de que son datos de maqueta."
+    },
+    {
+      "de": "gemelo",
+      "texto": "La previsión: Vigía avisa de que son datos de maqueta."
+    }
+  ],
+  "completo": true
+}

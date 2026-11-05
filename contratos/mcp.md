@@ -13,6 +13,7 @@ Esto es lo que **el código lee**, no lo que los conectores garantizan. **Nada d
 | Olivartrack | `apps/api/src/ot/` (`LectorMcp`) | `pases_del_periodo`, `novedades`, `aforo_y_avance_de_recoleccion` | la sincronización a la base (la ficha de haza) | [`olivartrack-sync.md`](olivartrack-sync.md) |
 | Olivartrack | idem | `tareas_abiertas`, `atencion_de_hoy` (sin argumentos), `trabajo_realizado` (`{ desde }`) | `GET /api/ot/hoy` (la historia) | [`ot-hoy.md`](ot-hoy.md) |
 | Vigia | `apps/api/src/vigia/` (`LectorVigiaMcp`) | `estado_del_olivar_hoy` (sin argumentos) | `GET /api/ot/hoy` (la historia y las balizas) | [`ot-hoy.md`](ot-hoy.md) |
+| Las dos | ninguna llamada nueva: compone las de arriba (y la fenología que guardó la sincronía) | — | `GET /api/mundo/hoy` (el mundo de hoy, EV-3a) | [`mundo-hoy.md`](mundo-hoy.md) |
 
 Configuración y modos (`GEMELO_VIGIA=mcp|fixture|no`, URL y token por fichero en producción): ver `tiempo.md` y `olivartrack-sync.md`.
 
