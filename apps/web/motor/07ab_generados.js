@@ -177,6 +177,7 @@
     var fr = /[?&]olivosTri=([0-9.]+)/.exec(location.search), FRACCION = fr && !ESCALERA ? Math.min(0.9, Number(fr[1])) : ESCALERA ? 1 : 0.45;
     var mpr = /[?&]olivosPropios=([0-6])\b/.exec(location.search), MAX_PROPIOS_VR = null;   // MAX_PROPIOS_VR: el de las gafas, si la configuración lo da
     var ESTIM = { E0: 160000, E1: 80000, E2: 38000, E2VR: 28000 }, SEM_VAR = [11, 23, 37, 51], MAX_PROPIOS = mpr ? Number(mpr[1]) : 6, MAX_VAR = 48, RADIO_CAND = 160, MARGEN = 12;
+    var SIL = null, silPend = false;   // AG-2.2 (?cartulina=silueta): la geometría recortada de cada cartulina de hoja, por clave de malla instanciada (claveInst)
     var nLotes = 0, recetas = {}, pidiendo = {}, nPidiendo = 0, plan = [], listos = {}, enLote = {}, lote = null, claveLote = "", nuevo = null, R = 0, triGen = 0, costoGen = 0, info = { llamadas: 0, triangulos: 0 };
     var ff = /[?&]olivosFundido=([0-9.]+)/.exec(location.search), FUNDIDO = ff ? Math.min(3, Number(ff[1])) : 0.6;
     var HORNEADO = !/[?&]olivosHorneado=0\b/.test(location.search), manif = null, varSem = null, epocaManif = null, fechaPrueba = null;
@@ -206,6 +207,7 @@
         prof = { corteza: profundidad(), muerta: profundidad() };   // la sombra de las mallas por lotes, con el mismo fundido
         var f = M.creaFabrica({ trabajador: true }); if (f.modo === "trabajador") fabrica = f; else f.cierra();
         estado = "activo";
+        if (Materiales.cartulina.silueta) { silPend = true; encola("Gsiluetas", -2, siluetasG(), function () { silPend = false; }); }   // AG-2.2: antes del primer lote (prio −2 < −1 del lote)
       }).catch(function (e) { estado = "sin"; motivo = String(e && e.message || e); if (!POR_DEFECTO) console.warn("olivos generados: " + motivo); });   // por defecto, sin avisar: se dibuja lo de siempre y ?debug lo dice
     }
     // ---- el manifiesto de las variantes horneadas: solo con la página del servidor; si no vale, se ignora entero y todo se calcula (sin avisar en consola)
@@ -351,7 +353,15 @@
       }
       return new THREE.Matrix4().makeScale(sx, sy * exag, sz).setPosition(c.x, gz, -c.y);
     }
-    function tri(r) { return r ? M.triangulosNivel(r) : 0; }
+    function tri(r) { return r ? M.triangulosNivel(r) + extraSil(r) : 0; }
+    // AG-2.2: lo que añaden las cartulinas recortadas (la biblioteca cuenta 2 triángulos por ramita o relleno y 6 por tarjeta): así el reparto por
+    // presupuesto paga lo que de verdad se dibuja y los topes no se pasan (con la silueta, el reparto acerca las fronteras un poco)
+    function extraSil(r) {
+      if (!SIL) return 0;
+      var t = 0, P = r.piezas;
+      for (var i = 0; i < P.length; i++) { var z = P[i]; if (z.clase !== "instancias") continue; var s = SIL[claveInst(z)]; if (s) t += z.n * s.extra; }
+      return t;
+    }
     // lo que cuesta de verdad por fotograma: sus triángulos más los de la pasada de sombras (todo proyecta sombra salvo las olivas y los puntos).
     // Con ?olivos=escalera, la pasada solo se cobra si existe: el motor no activa renderer.shadowMap (O8c lo comprobó con renderer.info: ver
     // doc/sistema/MEDIDAS.md) y entonces cuesta sus triángulos. ?olivos=gen sigue cobrándola (no cambia lo que dibuja).
@@ -696,8 +706,42 @@
     // las mallas instanciadas de hoja: por material, salvo las dos tarjetas de E1/E2 (O9b), que comparten material y cambian de geometría
     var GEO_INST = { ramita0: "ramita", ramita1: "ramita", relleno: "relleno", tarjeta: "tarjeta", tarjetaO: "tarjetaO" };
     function claveInst(z) { return z.geo === "tarjeta" || z.geo === "tarjetaO" ? z.geo : z.mat; }
+    // ---- AG-2.2 (?cartulina=silueta, doc/sistema/CARTULINAS.md): cada cartulina de hoja, con el polígono de 6 vértices que abraza lo opaco de su
+    // textura (la del material, con sus mipmaps de cobertura: los mismos texeles que lee la GPU) en lugar del rectángulo; las mismas uv. Una vez, al
+    // montar los materiales, por la cola propia (generador: una textura por rebanada), nunca por fotograma. Sin canvas 2D (Node) o sin nada opaco, el rectángulo.
+    var SIL_PIEZAS = [["ramita0", "ramita", "ramita0"], ["ramita1", "ramita", "ramita1"], ["relleno", "relleno", "relleno"], ["tarjeta", "tarjeta", "tarjeta"], ["tarjetaO", "tarjetaO", "tarjeta"]], SIL_VERTICES = 6;
+    function nivelesDe(t) {
+      if (!t) return null;
+      if (t.mipmaps && t.mipmaps.length && t.mipmaps[0].data) return t.mipmaps.map(function (d) { return { datos: d.data, ancho: d.width, alto: d.height }; });
+      var c = t.image, g = c && c.getContext ? c.getContext("2d") : null; if (!g) return null;
+      var d0 = g.getImageData(0, 0, c.width, c.height).data;
+      return [{ datos: d0, ancho: c.width, alto: c.height }].concat(M.mipsCaja(d0, c.width, c.height));   // los mipmaps de la GPU (?olivosMips=0): media de 2 × 2
+    }
+    function* siluetasG() {
+      var G = M.geos(), out = {}, porTex = new Map();
+      try {
+        for (var i = 0; i < SIL_PIEZAS.length; i++) {
+          var k = SIL_PIEZAS[i][0], gk = SIL_PIEZAS[i][1], mat = mats[SIL_PIEZAS[i][2]], t = mat && mat.map;
+          if (!t) continue;
+          if (!porTex.has(t)) { porTex.set(t, nivelesDe(t)); yield; }
+          var L = porTex.get(t); if (!L) continue;
+          var areas = [], opacos = [], umbral = mat.alphaTest;
+          var g = M.recortaQuads(G[gk].atrib, G[gk].indice, function (u0, v0, u1, v1) {
+            var s = M.siluetaDe(L, [u0, v0, u1, v1], { umbral: umbral, vertices: SIL_VERTICES });
+            opacos.push(s.opaco); var ok = M.compensaSilueta(s); areas.push(ok ? s.area : 1);
+            return ok ? s.poligono : null;
+          });
+          var rect = G[gk].indice.length / 3, media = function (a) { return a.length ? +(a.reduce(function (x, y) { return x + y; }, 0) / a.length).toFixed(3) : 1; };
+          out[k] = { atrib: g.atrib, indice: g.indice, triangulos: g.triangulos, extra: g.triangulos - rect };
+          Materiales.apuntaCartulina("gen-" + k, { opaco: media(opacos), area: media(areas), triangulosRect: rect, triangulos: g.triangulos });
+          yield;
+        }
+        SIL = out;
+      } catch (e) { SIL = null; Materiales.apuntaCartulina("gen", { error: String(e && e.message || e).slice(0, 80) }); }
+    }
     function* construyeG(items) {
       var G = M.geos(), out = new THREE.Group(), m4 = new THREE.Matrix4(), mp = new THREE.Matrix4(), mi = new THREE.Matrix4(), col = new THREE.Vector4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), s3 = new THREE.Vector3();
+      if (silPend) yield { espera: function () { return silPend; } };   // AG-2.2: el primer lote espera a las siluetas (una vez)
       var sel = items.map(function (x) { return x.p; }), cod = 0;   // el código de cada pieza va en el alfa de su color en las mallas por lotes (1 − código / 2)
       var salen = { B: {}, I: {}, P: null }, hay2 = items.some(function (x) { return x.cod === 2; });
       // 1) recuento para dar a cada malla su tamaño justo
@@ -730,7 +774,7 @@
       });
       Object.keys(inst).forEach(function (k) {
         if (!inst[k]) return;
-        var gk = GEO_INST[k], mk = k === "tarjetaO" ? "tarjeta" : k, g = geoDe(G[gk].atrib, G[gk].indice, false);   // las dos tarjetas (O9b) comparten material: atlas con y sin olivas
+        var gk = GEO_INST[k], mk = k === "tarjetaO" ? "tarjeta" : k, gs = SIL && SIL[k] || G[gk], g = geoDe(gs.atrib, gs.indice, false);   // AG-2.2: la silueta, si la hay   // las dos tarjetas (O9b) comparten material: atlas con y sin olivas
         g.setAttribute("aFun", new THREE.InstancedBufferAttribute(new Float32Array(inst[k]), 1));   // el código de fundido de cada instancia
         var im = new THREE.InstancedMesh(g, mats[mk], inst[k]); im.name = "gen-" + k; im.castShadow = true; im.receiveShadow = true; im.customDepthMaterial = mats[mk + "_sombra"];
         im.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(inst[k] * 3), 3); I[k] = im; out.add(im);
@@ -852,7 +896,7 @@
       return no.length ? { motivo: no.join("; ").slice(0, 120) } : f;
     }
     return { lotes: function () { return nLotes; }, escalera: function () { return ESCALERA; }, modoGen: function () { return MODO; }, lejanos: paraLejanos, activo: function () { return estado === "activo"; }, actualiza: actualiza, paso: paso, gastado: function () { return gastado; }, pendientes: pendientes, rotulo: rotulo, piezas: piezas, estado: function () { return estado; },
-      _prueba: { fecha: function (f) { fechaPrueba = f; }, mats: function () { return mats; }, prof: function () { return prof; }, uFun: uFun, lote: function () { return lote; }, tiene: tiene, fase: fase, listos: function () { return listos; }, saliendo: function () { return saliendo; }, recetas: function () { return recetas; },
+      _prueba: { fecha: function (f) { fechaPrueba = f; }, mats: function () { return mats; }, siluetas: function () { return SIL; }, silPend: function () { return silPend; }, prof: function () { return prof; }, uFun: uFun, lote: function () { return lote; }, tiene: tiene, fase: fase, listos: function () { return listos; }, saliendo: function () { return saliendo; }, recetas: function () { return recetas; },
         uBanda: uBanda, bandas: function () { return bandas; }, lejRanura: function () { return lejRanura; }, enLote: function () { return enLote; }, selLote: function () { return selLote; },
         construye: function (items) { return construyeG(items); }, elementos: function (fija) { return elementos(fija); } } };   // AG-1.5a: pruebas/olivo/lote_tramos.mjs mide los tramos entre yield
   })();

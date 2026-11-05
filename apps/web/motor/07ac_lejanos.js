@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Lejanos
-// Consume: 02i_materiales (Materiales), 03_escena (renderer, exag), 06_arboles (gArboles), 07ab_generados (Generados)
+// Consume: 02b_cola (Cola), 02i_materiales (Materiales), 03_escena (renderer, exag), 06_arboles (gArboles), 07ab_generados (Generados)
 // ===============================================================================
   // ---------- los olivos LEJANOS de la escalera (ADR-0019 §2, fase A, O8c), solo con ?olivos=escalera o con ?olivos=gen y variantes horneadas (modoGen
   // de 07ab): sin ellas no crea nada ni gasta nada.
@@ -28,6 +28,11 @@
     var activo = function () { return Generados.escalera(); }, via = activo() ? "esperando" : "apagado", motivo = "", U2 = 1600, CEL = 128, CAPA_S = 1, repartido = false;
     var olivos = null, malla = null, matrices = null, posDe = {}, exagM = -1, nv = 0, triPor = 0, texMiB = 0, rt = null, uCapa = { value: 0 }, tCapa = 0, avisoImp = false;
     var info = { dibujados: 0, entran: 0, salen: 0 }, sinGPU = false, cajas = null, ids = null;
+    // AG-2.2 (?cartulina=silueta, doc/sistema/CARTULINAS.md): cada celda del atlas (impostor: variante × vista; sustituto: variante × plano) con el
+    // polígono de K vértices que abraza lo opaco, en una textura de datos (K × celdas, RGBA32F: u, v de la celda) que el sombreador de vértices lee por
+    // instancia con texelFetch. Impostor: los polígonos vienen con el atlas en la fila del manifiesto (tubería: `siluetas`); sustituto: se calculan al
+    // hornear, por la Cola. Sin ellos, o con ?cartulina=rect (defecto), el cuadrado de siempre.
+    var SIL_K = 6, tPoli = null, silInfo = null;
     function inicia(ls) { olivos = ls; olivos.forEach(function (c, k) { posDe[c.i] = k; }); }
     function hayCapa() { return via === "sustituto" || via === "impostor"; }
     // cada fotograma (desde 07b): en cuanto están las variantes E2, se monta la capa; luego entra con su tramado. true si el reparto debe rehacerse
@@ -75,9 +80,46 @@
     function impostores(f, rs) {
       return Promise.all([atlas(f.color, true), atlas(f.normales, false)]).then(function (tx) {
         if (!activo() || via !== "cargando impostores") { tx.forEach(function (t) { t.dispose(); }); return; }
-        ponMalla(geoCuadro(), matImpostor(tx[0], tx[1], f), rs, null); malla.userData.sinEscala = true;
-        triPor = 2; texMiB = (f.color.lado * f.color.lado + f.normales.lado * f.normales.lado) * 4 * 4 / 3 / 1048576; via = "impostor"; tCapa = 0; uCapa.value = 0;
+        var P = Materiales.cartulina.silueta ? polisImpostor(f) : null;
+        ponMalla(P ? geoPoli(1) : geoCuadro(), matImpostor(tx[0], tx[1], f, P), rs, null); malla.userData.sinEscala = true;
+        triPor = P ? SIL_K - 2 : 2; texMiB = (f.color.lado * f.color.lado + f.normales.lado * f.normales.lado) * 4 * 4 / 3 / 1048576; via = "impostor"; tCapa = 0; uCapa.value = 0;
       });
+    }
+    // los polígonos del impostor de la fila del manifiesto (contratos/olivo-impostor.md §4, `siluetas`), comprobados: K vértices por celda, 64 celdas por variante
+    function polisImpostor(f) {
+      var S = f.siluetas, nc = Math.min(4, f.variantes.length) * 64;
+      if (!S || S.vertices !== SIL_K || !Array.isArray(S.poligonos) || S.poligonos.length !== nc) { silInfo = { fuente: "impostor", motivo: S ? "siluetas de otra forma: cuadrado" : "la fila no trae siluetas: cuadrado" }; return null; }
+      var d = new Float32Array(SIL_K * 256 * 4), a = 0;
+      for (var c = 0; c < nc; c++) {
+        var q = S.poligonos[c]; if (!Array.isArray(q) || q.length !== 2 * SIL_K) { silInfo = { fuente: "impostor", motivo: "un polígono mal formado: cuadrado" }; return null; }
+        for (var i = 0; i < SIL_K; i++) {
+          var u = +q[2 * i], v = +q[2 * i + 1];
+          if (!(u >= 0 && u <= 1 && v >= 0 && v <= 1)) { silInfo = { fuente: "impostor", motivo: "un vértice fuera de la celda: cuadrado" }; return null; }
+          d[(c * SIL_K + i) * 4] = u; d[(c * SIL_K + i) * 4 + 1] = v;
+        }
+        a += areaPoli(q);
+      }
+      silInfo = { fuente: "impostor", celdas: nc, area: +(a / nc).toFixed(3), triangulos: SIL_K - 2 };
+      Materiales.apuntaCartulina("lejanos-impostor", { area: silInfo.area, triangulosRect: 2, triangulos: SIL_K - 2, celdas: nc });
+      return texPoli(d, 256);
+    }
+    function areaPoli(q) { var s = 0, n = q.length / 2; for (var i = 0; i < n; i++) { var j = (i + 1) % n; s += q[2 * i] * q[2 * j + 1] - q[2 * j] * q[2 * i + 1]; } return Math.abs(s) / 2; }
+    function texPoli(d, filas) {
+      var t = new THREE.DataTexture(d, SIL_K, filas, THREE.RGBAFormat, THREE.FloatType);
+      t.minFilter = t.magFilter = THREE.NearestFilter; t.generateMipmaps = false; t.needsUpdate = true; tPoli = t; return t;
+    }
+    // la geometría de la silueta: K vértices por plano (aIdx = el vértice del polígono; la posición la pone el sombreador), en abanico (K − 2 triángulos)
+    function geoPoli(planos) {
+      var P = [], N = [], U = [], I = [], X = [], V = [];
+      for (var v = 0; v < planos; v++) {
+        for (var k = 0; k < SIL_K; k++) { P.push(0, 0, 0); if (planos > 1) N.push(0, 1, 0); else N.push(0, 0, 1); U.push(0, 0); X.push(k); V.push(v); }
+        for (var t = 1; t < SIL_K - 1; t++) I.push(v * SIL_K, v * SIL_K + t, v * SIL_K + t + 1);
+      }
+      var g = new THREE.BufferGeometry();
+      g.setAttribute("position", new THREE.Float32BufferAttribute(P, 3)); g.setAttribute("normal", new THREE.Float32BufferAttribute(N, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute(U, 2));
+      g.setAttribute("aIdx", new THREE.Float32BufferAttribute(X, 1)); if (planos > 1) g.setAttribute("aVista", new THREE.Float32BufferAttribute(V, 1));
+      g.setIndex(I);
+      return g;
     }
     function geoCuadro() {
       var g = new THREE.BufferGeometry();
@@ -100,7 +142,12 @@
       " vOtQ = vec2(dot(ot_off, ot_rv), dot(ot_off, ot_uv));\n" +
       " vOtUV = (vec2(mod(float(ot_k), 2.0) * 8.0 + ot_ij.x, floor(float(ot_k) / 2.0) * 8.0 + ot_ij.y) + vOtQ * 0.5 + 0.5) / 16.0;\n" +
       " mat3 ot_nm = transpose(inverse(mat3(ot_IM))); vOtN0 = ot_nm[0]; vOtN1 = ot_nm[1]; vOtN2 = ot_nm[2];";
-    function matImpostor(tCol, tNor, f) {
+    // AG-2.2: con silueta, el vértice k del polígono de la celda (ij) de la variante: q en [−1, 1]² de la celda y la posición del plano girado a la
+    // cámara que se proyecta en q (la inversa de la reproyección a la vista: ot_M); vOtXY lleva la posición para descartar lo mismo que el cuadrado
+    var GLSL_IMP_SIL = " vec2 ot_q = texelFetch(tPoli, ivec2(int(aIdx + 0.5), ot_k * 64 + int(ot_ij.y + 0.5) * 8 + int(ot_ij.x + 0.5)), 0).xy * 2.0 - 1.0;\n" +
+      " mat2 ot_M = mat2(dot(ot_r, ot_rv), dot(ot_r, ot_uv), dot(ot_u, ot_rv), dot(ot_u, ot_uv)); vec2 ot_xy = abs(determinant(ot_M)) > 1e-3 ? inverse(ot_M) * ot_q : ot_q; vOtXY = ot_xy;\n" +
+      " vec3 ot_off = ot_xy.x * ot_r + ot_xy.y * ot_u;";
+    function matImpostor(tCol, tNor, f, tP) {
       var C = [], S = [];
       for (var k = 0; k < 4; k++) { var v = f.variantes[Math.min(k, f.variantes.length - 1)]; C.push(new THREE.Vector3().fromArray(v.centro)); S.push(v.semilado); }
       var m = Materiales.recorte(new THREE.MeshLambertMaterial({ map: tCol, alphaTest: 0.5 })), U = { uCentro: { value: C }, uSemi: { value: S }, tNorm: { value: tNor } };
@@ -108,12 +155,15 @@
         sh.uniforms.uCentro = U.uCentro; sh.uniforms.uSemi = U.uSemi; sh.uniforms.tNorm = U.tNorm; sh.uniforms.uCapa = uCapa;
         Generados.lejanos.parcheLuz(sh); Generados.lejanos.parcheFundido(sh);
         // después de los parches: así el cuadrado ya está colocado cuando la sombra de nubes lee «transformed»
-        sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nattribute float aVar; uniform vec3 uCentro[4]; uniform float uSemi[4]; varying vec2 vOtQ; varying vec2 vOtUV; varying vec3 vOtN0, vOtN1, vOtN2;\n" + GLSL_IMP)
-          .replace("#include <begin_vertex>", "#include <begin_vertex>\n" + GLSL_IMP_V + "\n#ifdef USE_MAP\n vMapUv = vOtUV;\n#endif\n");   // uv_vertex va antes que begin_vertex: el mapa se reescribe aquí
-        sh.fragmentShader = sh.fragmentShader.replace("void main() {", "uniform float uCapa; uniform sampler2D tNorm; varying vec2 vOtQ; varying vec2 vOtUV; varying vec3 vOtN0, vOtN1, vOtN2;\nvoid main() {\n if (abs(vOtQ.x) > 1.0 || abs(vOtQ.y) > 1.0 || ot_ign(gl_FragCoord.xy + vec2(17.0, 31.0)) >= uCapa) discard;")
+        var V = tP ? GLSL_IMP_V.replace(" vec3 ot_off = position.x * ot_r + position.y * ot_u;", GLSL_IMP_SIL) : GLSL_IMP_V, dSil = tP ? "attribute float aIdx; uniform highp sampler2D tPoli; varying vec2 vOtXY;\n" : "";
+        if (tP) sh.uniforms.tPoli = { value: tP };
+        sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nattribute float aVar; uniform vec3 uCentro[4]; uniform float uSemi[4]; varying vec2 vOtQ; varying vec2 vOtUV; varying vec3 vOtN0, vOtN1, vOtN2;\n" + dSil + GLSL_IMP)
+          .replace("#include <begin_vertex>", "#include <begin_vertex>\n" + V + "\n#ifdef USE_MAP\n vMapUv = vOtUV;\n#endif\n");   // uv_vertex va antes que begin_vertex: el mapa se reescribe aquí
+        sh.fragmentShader = sh.fragmentShader.replace("void main() {", "uniform float uCapa; uniform sampler2D tNorm; varying vec2 vOtQ; varying vec2 vOtUV; varying vec3 vOtN0, vOtN1, vOtN2;\n" + (tP ? "varying vec2 vOtXY;\n" : "") +
+          "void main() {\n if (abs(vOtQ.x) > 1.0 || abs(vOtQ.y) > 1.0 || " + (tP ? "abs(vOtXY.x) > 1.0 || abs(vOtXY.y) > 1.0 || " : "") + "ot_ign(gl_FragCoord.xy + vec2(17.0, 31.0)) >= uCapa) discard;")
           .replace("#include <normal_fragment_maps>", "#include <normal_fragment_maps>\n normal = normalize((viewMatrix * vec4(normalize(mat3(vOtN0, vOtN1, vOtN2) * (texture2D(tNorm, vOtUV).xyz * 2.0 - 1.0)), 0.0)).xyz);");
       });
-      m.customProgramCacheKey = function () { return "lejanos-impostor-1"; };
+      m.customProgramCacheKey = function () { return "lejanos-impostor-1" + (tP ? "-sil" + SIL_K : ""); };
       return m;
     }
     // ---- el sustituto: la silueta de cada variante, horneada a una textura (2 vistas por variante) y dos planos cruzados por olivo
@@ -123,9 +173,31 @@
         cajas = gs.map(function (g) { return new THREE.Box3().setFromObject(g); });
         var tex = sinGPU ? null : hornea(gs);
         gs.forEach(function (g) { Generados.lejanos.libera(g); });
-        ponMalla(geoCruz(), matSustituto(tex), rs, cajas);
-        triPor = 4; texMiB = tex ? 2 * CEL * nv * CEL * 4 * 4 / 3 / 1048576 : 0; via = "sustituto"; tCapa = 0; uCapa.value = 0;
+        texMiB = tex ? 2 * CEL * nv * CEL * 4 * 4 / 3 / 1048576 : 0;
+        var ponSus = function (tP) { ponMalla(tP ? geoPoli(2) : geoCruz(), matSustituto(tex, tP), rs, cajas); triPor = tP ? 2 * (SIL_K - 2) : 4; via = "sustituto"; tCapa = 0; uCapa.value = 0; };
+        if (!tex || !Materiales.cartulina.silueta) { ponSus(null); return; }
+        // AG-2.2: las siluetas de las 2 · nv celdas, del alfa del horneado (una lectura de la GPU, una vez) y por la Cola; mientras, «siluetas» (pendientes() lo cuenta)
+        via = "siluetas";
+        var gen = siluetasSustitutoG(), fin = function (tP) { if (via === "siluetas") ponSus(tP); };
+        if (typeof Cola !== "undefined" && Cola && Cola.add) Cola.add("Lsil", 60, gen, fin); else { var x; do { x = gen.next(); } while (!x.done); fin(x.value); }
       } catch (e) { via = "sin"; motivo = String(e && e.message || e).slice(0, 80); console.warn("olivos lejanos: " + motivo + " (de lejos, solo la ortofoto)"); }
+    }
+    function* siluetasSustitutoG() {
+      try {
+        var M = Generados.lejanos.constructor(), W = 2 * CEL, H = nv * CEL, px = new Uint8Array(W * H * 4);
+        renderer.readRenderTargetPixels(rt, 0, 0, W, H, px); yield;
+        var L = [{ datos: px, ancho: W, alto: H }].concat(M.mipsCaja(px, W, H)), polis = [], a = 0, ok = 0; yield;
+        for (var j = 0; j < nv; j++) for (var v = 0; v < 2; v++) {
+          var s = M.siluetaDe(L, [v / 2, j / nv, (v + 1) / 2, (j + 1) / nv], { umbral: 0.5, vertices: SIL_K, filaArriba: false }), P = null;
+          if (M.compensaSilueta(s)) { P = s.poligono.map(function (p) { return [p[0] * 2 - v, p[1] * nv - j]; }); a += s.area; ok++; } else a += 1;
+          polis.push(P); yield;
+        }
+        var d = M.poligonosFijos(polis, SIL_K), d4 = new Float32Array(SIL_K * 2 * nv * 4);
+        for (var i = 0; i < d.length / 2; i++) { d4[i * 4] = d[i * 2]; d4[i * 4 + 1] = d[i * 2 + 1]; }
+        silInfo = { fuente: "sustituto", celdas: 2 * nv, conSilueta: ok, area: +(a / (2 * nv)).toFixed(3), triangulos: SIL_K - 2 };
+        Materiales.apuntaCartulina("lejanos-sustituto", { area: silInfo.area, triangulosRect: 2, triangulos: SIL_K - 2, celdas: 2 * nv });
+        return texPoli(d4, 2 * nv);
+      } catch (e) { silInfo = { fuente: "sustituto", motivo: String(e && e.message || e).slice(0, 80) }; return null; }
     }
     function hornea(gs) {
       var W = 2 * CEL, H = nv * CEL, t = new THREE.WebGLRenderTarget(W, H, { minFilter: THREE.LinearMipmapLinearFilter, magFilter: THREE.LinearFilter, generateMipmaps: true });
@@ -165,16 +237,20 @@
       g.setAttribute("uv", new THREE.Float32BufferAttribute(U, 2)); g.setAttribute("aVista", new THREE.Float32BufferAttribute(V, 1)); g.setIndex(I);
       return g;
     }
-    function matSustituto(tex) {
+    function matSustituto(tex, tP) {
       var m = Materiales.recorte(new THREE.MeshLambertMaterial({ map: tex, alphaTest: 0.5, side: THREE.DoubleSide })), uNV = { value: nv };
       Materiales.parchea(m, "impostor-sustituto", function (sh) {
-        sh.uniforms.uNVar = uNV; sh.uniforms.uCapa = uCapa;
-        sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nattribute float aVar; attribute float aVista; uniform float uNVar;")
-          .replace("#include <uv_vertex>", "#include <uv_vertex>\n#ifdef USE_MAP\n vMapUv = (vec2(aVista, aVar) + uv) / vec2(2.0, uNVar);\n#endif");
+        sh.uniforms.uNVar = uNV; sh.uniforms.uCapa = uCapa; if (tP) sh.uniforms.tPoli = { value: tP };
+        // AG-2.2: con silueta, el vértice aIdx del polígono de la celda (aVar, aVista): sus (u, w) dan la uv y la posición en el plano
+        var q = tP ? " vec2 ot_pq = texelFetch(tPoli, ivec2(int(aIdx + 0.5), int(aVar + 0.5) * 2 + int(aVista + 0.5)), 0).xy;\n" : "", uv = tP ? "ot_pq" : "uv";
+        sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nattribute float aVar; attribute float aVista; uniform float uNVar;" + (tP ? " attribute float aIdx; uniform highp sampler2D tPoli;" : ""))
+          .replace("#include <uv_vertex>", "#include <uv_vertex>\n" + q + "#ifdef USE_MAP\n vMapUv = (vec2(aVista, aVar) + " + uv + ") / vec2(2.0, uNVar);\n#endif");
         sh.fragmentShader = sh.fragmentShader.replace("void main() {", "uniform float uCapa;\nvoid main() {\n if (ot_ign(gl_FragCoord.xy + vec2(17.0, 31.0)) >= uCapa) discard;");
         Generados.lejanos.parcheLuz(sh); Generados.lejanos.parcheFundido(sh);
+        // después de los parches (la sombra de nubes lee «transformed» ya colocado): el plano 0 en XY (x = u − 0,5) y el 1 en ZY (z = 0,5 − u), como geoCruz
+        if (tP) sh.vertexShader = sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\n transformed = aVista < 0.5 ? vec3(ot_pq.x - 0.5, ot_pq.y, 0.0) : vec3(0.0, ot_pq.y, 0.5 - ot_pq.x);");
       });
-      m.customProgramCacheKey = function () { return "lejanos-sustituto"; };
+      m.customProgramCacheKey = function () { return "lejanos-sustituto" + (tP ? "-sil" + SIL_K : ""); };
       return m;
     }
     function ponMalla(geo, mat, rs, cj) {
@@ -220,8 +296,8 @@
     function capaCompleta() { return hayCapa() && uCapa.value >= 1; }
     function triangulos() { return malla && hayCapa() ? malla.count * triPor : 0; }
     // también mientras la capa entra con su tramado (o va a entrar: hay capa y los olivos se ven): las pruebas miden con la capa entera
-    function pendientes() { return activo() && ((via === "esperando" || via === "cargando impostores") && Generados.activo() || hayCapa() && (repartido || gArboles.visible) && uCapa.value < 1) ? 1 : 0; }
-    function resumen() { return activo() ? { fuente: via, motivo: motivo, aviso2: avisoImp || undefined, dibujados: info.dibujados, entran: info.entran, salen: info.salen, triangulos: triangulos(), llamadas: malla && hayCapa() && malla.count ? 1 : 0, capa: +uCapa.value.toFixed(2), texturaMiB: +texMiB.toFixed(2) } : null; }
+    function pendientes() { return activo() && ((via === "esperando" || via === "cargando impostores" || via === "siluetas") && Generados.activo() || hayCapa() && (repartido || gArboles.visible) && uCapa.value < 1) ? 1 : 0; }
+    function resumen() { return activo() ? { fuente: via, motivo: motivo, aviso2: avisoImp || undefined, dibujados: info.dibujados, entran: info.entran, salen: info.salen, triangulos: triangulos(), llamadas: malla && hayCapa() && malla.count ? 1 : 0, capa: +uCapa.value.toFixed(2), texturaMiB: +texMiB.toFixed(2), cartulina: Materiales.cartulina.modo, silueta: silInfo || undefined } : null; }
     return { inicia: inicia, paso: paso, hayCapa: hayCapa, capaCompleta: capaCompleta, reparte: reparte, triangulos: triangulos, pendientes: pendientes, resumen: resumen,
       _prueba: { sinGPU: function () { sinGPU = true; }, malla: function () { return malla; }, cajas: function () { return cajas; }, ids: function () { return ids && malla ? Array.from(ids.subarray(0, malla.count)) : []; } } };
   })();

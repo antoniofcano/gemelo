@@ -83,7 +83,17 @@
               }
             }
           },
-          "horneado": { "type": "object", "required": ["three", "chrome", "ms"], "additionalProperties": false, "properties": { "three": { "type": "string" }, "chrome": { "type": "string" }, "ms": { "type": "integer", "minimum": 0 } }, "$comment": "con qué se horneó (informativo)" }
+          "horneado": { "type": "object", "required": ["three", "chrome", "ms"], "additionalProperties": false, "properties": { "three": { "type": "string" }, "chrome": { "type": "string" }, "ms": { "type": "integer", "minimum": 0 } }, "$comment": "con qué se horneó (informativo)" },
+          "siluetas": {
+            "type": "object", "additionalProperties": false, "required": ["vertices", "umbral", "ensancha", "poligonos"],
+            "$comment": "OPCIONAL (AG-2.2, contratos/olivo-impostor.md §4): el polígono convexo que abraza lo opaco de cada celda del atlas de color, para dibujar la cartulina con él (?cartulina=silueta). Sale del alfa: no entra en la clave",
+            "properties": {
+              "vertices": { "type": "integer", "minimum": 3, "maximum": 10, "$comment": "vértices por celda (el motor de hoy usa 6); los que sobran repiten el último" },
+              "umbral": { "type": "number", "exclusiveMinimum": 0, "maximum": 1, "$comment": "el recorte alfa del motor (0,5)" },
+              "ensancha": { "type": "number", "minimum": 0, "$comment": "margen en texeles de cada nivel" },
+              "poligonos": { "type": "array", "maxItems": 256, "items": { "type": "array", "minItems": 6, "maxItems": 20, "items": { "type": "number", "minimum": 0, "maximum": 1 } }, "$comment": "uno por celda, en el orden k · 64 + j · 8 + i (variante k, vista (i, j)): u0, v0, u1, v1, … en la celda, v hacia arriba, antihorario" }
+            }
+          }
         }
       }
     }

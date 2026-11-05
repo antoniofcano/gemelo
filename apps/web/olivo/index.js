@@ -9,6 +9,7 @@
 //   creaCache({memMB, discoMB}) · claveReceta(entrada, nivel) (caché de recetas en memoria e IndexedDB, §5 del contrato)
 //   codifica(receta, {nivel, clave, gen_version, cache_version}) → bytes · decodifica(bytes) → {cabecera, receta} · huellaBytes · verificaHuella · perdida · igualEstructura (receta horneada v1: contratos/olivo-horneado.md; brotli en horneado_node.js, solo Node)
 //   epocaDeFecha(tabla, fecha) · siguienteEpoca · tablaDe(calendario, finca) · validaTabla (contratos/epocas-calendario.json)
+//   SILUETA · siluetaDe · recortaQuads · mipsCaja · compensaSilueta · poligonosFijos (cartulinas recortadas a la silueta, AG-2.2: silueta.js)
 //   IMPOSTOR · direccionDeVista · octaDeDireccion · vistaContinua · baseDeVista · celdaUV · celdaPixeles (impostor hemi-octaédrico v1: contratos/olivo-impostor.md)
 //   semillaDeId(id) · GEN_VERSION · TIPOS · ESTADOS · ID_TIPO · tipoDeId · bbchAEpoca · creaMateriales · cargaFotos · creaFabrica · hornear · glb
 //
@@ -35,6 +36,7 @@ export { creaCache, claveReceta, bytesReceta, CACHE_VERSION, PREFIJO_CLAVE } fro
 export { FORMATO as FORMATO_HORNEADO, TOPES as TOPES_HORNEADO, codifica, decodifica, leeCabecera, huellaBytes, verificaHuella, perdida, igualEstructura, codificaManifiestoTesela, decodificaManifiestoTesela } from "./horneado.js";
 export { ORDEN_EPOCAS, tablaDe, epocaDeFecha, siguienteEpoca, validaTabla } from "./epocas.js";
 export { IMPOSTOR, direccionDeVista, octaDeDireccion, vistaContinua, baseDeVista, celdaUV, celdaPixeles, claveImpostor, validaFilaImpostor } from "./impostor.js";
+export { SILUETA, siluetaDe, recortaQuads, mipsCaja, compensa as compensaSilueta, poligonosFijos, envolvente, reduce as reducePoligono, contiene as contienePunto } from "./silueta.js";
 export { revision,uvDelMapa, texturaDeColor, colorLineal } from "./compat.js";
 export { aNivel, aNivelG, NIVELES, triangulosNivel, llamadasNivel, creaFabrica, aRebanadas, triangulosDe, liberaOlivo, resuelve, triangulos };
 
