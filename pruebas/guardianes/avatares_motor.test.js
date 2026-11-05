@@ -315,3 +315,32 @@ test("en Chrome con VR simulada (a petición): 10 y 40 personas en cada escalón
     assert.ok(m.vrm.conVrm <= AP.GENTE_VR[nivel].vrm, k + ": nunca más VRM que el cupo (" + m.vrm.conVrm + ")");
   }
 });
+
+// EV-3b: la boca (ilustrativa): envolvente de 6-8 Hz con ataque rápido y caída lenta, y quién la mueve (cerca y, en VR, solo en los escalones bajos)
+test("boca: se abre y cierra a 6-8 Hz mientras habla, sube rápido y baja lento, y se cierra del todo al callar", () => {
+  let s = 5; const r = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
+  const st = {}, dt = 1 / 60; let n = 0, max = 0, prev = 0;
+  for (let i = 0; i < 60 * 20; i++) {
+    const v = AP.boca(st, dt, true, 0.6, r); assert.ok(v >= 0 && v <= AP.BOCA_MAX + 1e-9); max = Math.max(max, v);
+    if (v > 0.3 && prev <= 0.3) n++; prev = v;
+  }
+  assert.ok(n >= 20 * 2 && n <= 20 * 4.2, n + " aperturas en 20 s (una de cada dos sílabas de 6-8 Hz)"); assert.ok(max > 0.4, "abre");
+  const a = AP.boca({}, dt, true, 1, () => 0.99), b = AP.boca({}, dt, true, 0.2, () => 0.99);
+  assert.ok(a > b, "más nivel, más abierta");
+  const c = { v: 0.8, t: 0, abre: true, o: 0.9 }, v1 = AP.boca(c, dt, false, 0, r);
+  assert.ok(v1 < 0.8 && v1 > 0.8 * 0.8, "la caída es lenta (un fotograma: poco)");
+  assert.ok(a > 0.5 * AP.BOCA_MAX * 0.99 * 0.9 * 0.5, "el ataque es rápido (un fotograma: ya se abre)");
+  for (let i = 0; i < 120; i++) AP.boca(c, dt, false, 0, r);
+  assert.strictEqual(c.v, 0, "calla: cerrada del todo");
+});
+
+test("conBoca: a ≤ 12 m fuera de VR; con gafas, solo escalones 0-1 y a ≤ 8 m; sin distancia, no", () => {
+  assert.ok(AP.conBoca(false, 0, 11.9) && !AP.conBoca(false, 0, 12.1) && !AP.conBoca(false, 0, NaN) && !AP.conBoca(false, 0, undefined));
+  assert.ok(AP.conBoca(true, 0, 7) && AP.conBoca(true, 1, 7) && !AP.conBoca(true, 2, 3) && !AP.conBoca(true, 3, 3) && !AP.conBoca(true, 0, 9));
+});
+
+test("motor: la boca escucha «voz:habla», usa la expresión «aa» y no analiza ni graba audio", () => {
+  const m = lee("apps/web/motor/26b_avatares.js");
+  assert.match(m, /n\.on\("voz:habla"/); assert.match(m, /setValue\("aa"/); assert.match(m, /escucha: \["presencia:activada", "voz:habla"\]/);
+  assert.ok(!/AudioContext|MediaRecorder|AnalyserNode/.test(m), "no analiza ni graba audio");
+});
