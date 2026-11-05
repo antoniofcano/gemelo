@@ -1,6 +1,6 @@
 # ADR-0031 — Migrar al `WebGPURenderer` (backend WebGL) con multiview para VR
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado (2026-11-05, Antonio, con la medida del gemelo real en el Quest 3; ver «Resultado en el gemelo real»)
 - **Fecha:** 2026-11-04
 
 ## Contexto
@@ -37,3 +37,6 @@ Migramos el motor al `WebGPURenderer` de three con `forceWebGL: true`, `multivie
 
 ## Resultado de la prueba de humo F2 (2026-11-04)
 Medido por Antonio en su Quest 3 (Quest Browser 154) con la página de humo, n = 200 llamadas por ojo ([MEDIDAS](../sistema/MEDIDAS.md#multiview-en-el-quest-3-con-la-página-de-humo-2026-11-04-foto-no-se-mantiene)): el navegador ofrece el multiview sin banderas; `render()` (mediana) clásico 2,0 ms, super-three 2,0 ms, **super-three con multiview 1,1 ms (−45 %)**, `WebGPURenderer` 4,0 ms y con multiview 3,1 ms (y sin foveación en la capa). Se confirma el enfoque de las dos builds: la de VR con super-three y multiview; el renderizador nuevo, solo en la pantalla y sin prisa, a repetir con three 0.187. Falta medir cuánto pesa `render()` en el fotograma del gemelo real (build de VR con `?xrmv=0|1`) antes de pasar este ADR a «Aceptado».
+
+## Resultado en el gemelo real (AG-3c, 2026-11-05)
+Quest 3, build de VR (super-three 0.185.0) servida en el VPS, tres tomas por caso, quieto mirando al olivar ([MEDIDAS](../sistema/MEDIDAS.md#multiview-en-el-gemelo-real-con-el-parche-ag-3c-2026-11-05-foto-no-se-mantiene)): con multiview, `render()` baja de 5,4 / 7,1 ms (mediana / p95) a 4,6 / 5,9 ms (−15 % / −17 %), las llamadas a menos de la mitad, el intervalo p95 de 20,9 a 18,1 ms y salen ~150 fotogramas más por minuto; la build de VR sin multiview rinde igual que la de pantalla (super-three no cuesta). La ganancia es real pero menor que el −45 % de la página de humo: en el gemelo pesa lo que no se reparte entre ojos (sombras, preparar cada objeto, la Cola). Para llegar aquí hubo que parchear tres fallos de super-three en el build (`apps/web/herramientas/parche_multiview.mjs`: ningún material de three compilaba con multiview y las texturas aplazadas no se subían), avisados en supermedium/three.js#28 y #27; el parche falla al construir si super-three cambia, y se retira cuando lo corrijan. **Decisión:** la build de VR con multiview queda por defecto en el Quest (el cargador ya la elige; se apaga en Configuración o con `?xrmv=0`); el resto del plan (F3-F5) sigue como está.
