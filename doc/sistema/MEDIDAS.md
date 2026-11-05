@@ -691,9 +691,55 @@ Lo que se puede decir:
 
 ## Medida por componente (C11) y por objeto (O2)
 
-**Pendiente: sin fecha, sin cifras.** La herramienta está escrita y probada solo con resultados sintéticos (`pruebas/medida_componentes.js`, guardián `medida_componentes.test.js`); nadie la ha ejecutado contra el banco. Para O10 (que el mundo se parezca al catálogo «Olivos tipo») hace falta saber qué cuesta cada componente y cada pieza de un olivo generado, y hoy no se sabe: los presupuestos declarados en los manifiestos son techos o medidas de Node, no esto.
+### Medida de 2026-11-05 (banco, SwiftShader, fixture sintético)
 
-Cómo se rellena (comandos en [TESTING.md](../operacion/TESTING.md#banco-de-pruebas-un-solo-chrome-o-docker-a-la-vez-política-desde-el-2026-10-29)): `npm run medida:componentes -- encarga --raiz <build de Vite del fixture>`, `npm run banco:ronda` y `npm run medida:componentes -- tabla --resultados … --fecha AAAA-MM-DD`; la salida (dos tablas) se pega aquí con su fecha, el fixture usado y «SwiftShader: recuentos, no fps». Qué trae:
+**Cómo se tomó.** Fixture sintético (`npm run fixture`; Hituelo sintético: 2 teselas, 140 olivos, nube de 2.340 puntos), página construida con Vite y el constructor de olivos (`montaPagina({ finca: "hituelo", olivos: true })`), Chrome sin pantalla con SwiftShader, un solo Chrome por el banco: `npm run medida:componentes -- encarga --raiz <build> --de <agente>`, `npm run banco:ronda` y `npm run medida:componentes -- tabla --resultados <carpeta de «componentes»> --resultados <carpeta de «olivos»> --fecha 2026-11-05`. Componentes: 31 variantes (la base y 30 con su bandera cambiada) × `lejos` y `cerca`, un fotograma tras la carga. Olivos: `?olivos=0` frente a `?olivos=gen` en `lejos`, `cerca` y `paseo`.
+
+**Advertencia de siempre.** SwiftShader vale para recuentos (llamadas, triángulos, puntos) y memoria, **no** para fps ni ms de GPU. Nada medido en Quest ni en iPhone: **no probado** en hardware real. El heap oscila ±3 MB entre cargas: un delta de heap de ese tamaño no es real. Es el fixture sintético, no Hituelo real.
+
+**Base** (todos los componentes en su defecto; llamadas / triángulos / puntos / heap MB): `lejos` 26 / 17.778 / 420 / 34 · `cerca` 34 / 277.545 / 420 / 47. En `cerca` la base ya lleva los olivos generados (`?olivos=gen`, el defecto de esta página).
+
+#### Por componente (C11), «con − sin»
+
+Solo dos componentes dibujan algo medible en estas escenas:
+
+| Componente | Bandera | Presupuesto declarado (llam. / tri) | lejos llam. / tri | cerca llam. / tri | Veredicto |
+|---|---|---|---|---|---|
+| `suelo-fondo` | `?fondo=0` | 1 / 32.768 | +1 / +10.824 | +1 / +10.824 | ok |
+| `marcadores-lidar` | `?marcadores=0` | 3 / 240.000 | +2 / +1.344 | +2 / +1.344 | ok |
+
+Los otros 28 componentes salen con **0 llamadas, 0 triángulos y 0 puntos** y un heap dentro del ruido (de −3 a +5 MB, sin patrón): `capa-ndvi`, `fauna-olivar`, `sonido-ambiente`, `huellas-polvo`, `perros-paseo`, `avatares-vrm`, `medidor-fotogramas`, `fichas-tiempo`, `mandos-vr`, `red-salas`, `presencia-compartida`, `oficina-mundo`, `juegos`, `cae-la-cosecha`, `personalizacion`, `agenda`, `lindes-hazas`, `carteles-haza`, `voz-guiada`, `visita-guiada`, `habla-guiada`, `corro-voz`, `vista-familia`, `avisos-correo`, `decoraciones-olivo`, `fichas-mundo`, `aves-mes`, `mundo-hoy`. Todos con veredicto `ok` contra su presupuesto. **Qué NO se puede concluir de esos ceros:** no que cuesten cero, sino que **en un fotograma quieto de `lejos` y `cerca` del fixture no dibujan** (fauna, huellas, perros, avatares, presencia, etc. necesitan paseo, sesión, red o datos que el fixture no trae). Sus presupuestos declarados (p. ej. `avatares-vrm` 24 / 120.000, `fauna-olivar` 8 / 13.000) son **techos del manifiesto, no medidos aquí**; medirlos pide el escenario `paseo` o uno con el componente activo, pendiente.
+
+#### Olivos generados (O2): `?olivos=gen` frente a `?olivos=0` (el coste de `factorR8 = 1`)
+
+| Escenario | llam. 0 → gen | tri 0 → gen | puntos 0 → gen | heap MB 0 → gen | lote: llam. / tri / olivos |
+|---|---|---|---|---|---|
+| lejos | 26 → 26 (0) | 17.778 → 17.778 (0) | 420 → 420 | 24 → 31 (+7) | 0 / 0 / 0 |
+| cerca | 46 → 34 (−12) | 170.362 → 277.545 (**+107.183**) | 2.421 → 420 (−2.001) | 26 → 50 (+24) | 7 / 128.891 / 3 |
+| paseo | 43 → 41 (−2) | 168.664 → 262.822 (**+94.158**) | 2.117 → 420 (−1.697) | 26 → 50 (+24) | 7 / 128.891 / 3 |
+
+Los generados cuestan triángulos (≈ +100 k en `cerca` y `paseo`) y heap (+24 MB), y **ahorran** llamadas y puntos: sustituyen a los olivos de la nube y a mallas sueltas por mallas fundidas. En `lejos` no hay lote (0 olivos generados), así que no cambia nada salvo el heap (+7 MB). El `paseo` varía de una carga a otra en los recuentos del 0 (42/43 llamadas en dos mediciones): depende de la cadencia de la Cola, no es un efecto de los generados.
+
+Piezas del lote en `cerca` (por malla fundida; triángulos de **una** pasada; todas con 1 llamada en la principal y 0 en la de sombras, `castShadow` apagado):
+
+| Pieza | tipo | instancias | triángulos (1 pasada) |
+|---|---|---|---|
+| `gen-corteza` | BatchedMesh | 118 | 80.784 |
+| `gen-olivas` | BatchedMesh | 1.839 | 36.780 |
+| `gen-ramita0` | InstancedMesh | 1.804 | 3.608 |
+| `gen-ramita1` | InstancedMesh | 1.735 | 3.470 |
+| `gen-tarjetaO` | InstancedMesh | 457 | 2.742 |
+| `gen-relleno` | InstancedMesh | 461 | 922 |
+| `gen-muerta` | BatchedMesh | 32 | 585 |
+| **Suma** | | | **128.891** |
+
+Escalones del lote en `cerca` (y `paseo`, igual): 3 olivos en el lote; recetas de E0 = 97.463 tri, E1 = 21.308, E2 = 10.120 (un olivo por escalón). La corteza es el 63 % de los triángulos del lote y las olivas el 29 %.
+
+**Lo medido y lo deducido.** Medido: todos los recuentos de las tablas (banco, una carga por variante y escenario). Deducido: que la corteza y las olivas dominan el lote (aritmética sobre la tabla); que los ceros se deben a que el fixture no activa esos componentes (explicación, no comprobada con una variante que sí los active). Fuera de esta medida: fps, GPU real, texturas de los componentes (`texturasMB`), Hituelo real, Quest e iPhone.
+
+**Un fallo de la herramienta, arreglado en la medida.** En la primera pasada `gen-olivas` salió con −613 triángulos: `Generados.piezas()` contaba `indexCount / 3` de cada instancia del `BatchedMesh` y, sin índice (las olivas no lo tienen), three da `indexCount = −1`. Arreglo mínimo en `apps/web/motor/07ab_generados.js` (sin índice se cuentan los vértices); el encargo de olivos se repitió con el arreglo y es el que se ha pegado arriba. Los recuentos del renderer (+107.183 tri en `cerca`) no cambiaron entre las dos pasadas.
+
+Cómo se vuelve a rellenar (comandos en [TESTING.md](../operacion/TESTING.md#banco-de-pruebas-un-solo-chrome-o-docker-a-la-vez-política-desde-el-2026-10-29)): `npm run medida:componentes -- encarga --raiz <build de Vite del fixture>`, `npm run banco:ronda` y `npm run medida:componentes -- tabla --resultados … --fecha AAAA-MM-DD`; la salida (dos tablas) se pega aquí con su fecha, el fixture usado y «SwiftShader: recuentos, no fps». Qué trae:
 - **Por componente**: llamadas, triángulos, puntos y heap «con − sin» en `lejos` y `cerca`, contra el presupuesto declarado (`ok` / `por encima` / `sin declarar`). Un `por encima` es una discrepancia entre el manifiesto y la realidad: se corrige el manifiesto (o el componente) en el mismo commit que la medida.
 - **Por objeto (O2)**: `?olivos=gen` frente a `?olivos=0` (el coste de `factorR8 = 1`); y, de un árbol cercano, por malla fundida del lote (`gen-corteza`, `gen-muerta`, `gen-olivas`, `gen-ramita0/1`, `gen-relleno`, `gen-tarjeta`, `gen-puntos`) los triángulos de una pasada, las instancias y las llamadas de la pasada principal y de la de sombras, y por escalón (E0, E1, E2, E2VR) cuántos olivos y cuántos triángulos de recetas.
 - Lo que **no** mide: fps, GPU real (iPhone, Quest) ni las texturas de los componentes (`texturasMB` no se compara). Con el fixture sintético, no con Hituelo real.
