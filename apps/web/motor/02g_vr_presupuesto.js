@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: VrPresupuestoPuro, VrControlPuro, VrPresupuesto
-// Consume: 01a_aparato (Aparato), 02b_cola (Cola), 14_historia (hist, tabla), 15_tiempo (nivel), 29_vr (VRX)
+// Consume: 01a_aparato (Aparato), 02_mundo (suelo), 02b_cola (Cola), 14_historia (hist, tabla), 15_tiempo (nivel), 29_vr (VRX)
 // ===============================================================================
   // ---------- Q0c-a: el escalón de los perfiles de 29_vr manda también en lo que el perfil no tocaba (doc/sistema/VR.md#perfil-de-rendimiento-vr).
   // Medido en un Quest (MEDIDAS.md, 2026-11-04): en el escalón 3, 1,43 M triángulos por fotograma y p95 de 23 ms; el desglose de Hituelo real dice que
@@ -78,23 +78,34 @@
     }
     // el estado vive en `e` ({ emaDt, emaJs, tNivel, tEstable }, el VRX de 29_vr): SIN reservas, se llama cada fotograma en VR.
     // Devuelve +1 (bajar un nivel), -1 (subir) o 0. `fijo`: nivel fijado por la URL, solo se actualizan las medias.
-    function decide(e, dtMs, jsMs, dt, nivel, maxNivel, baja, sube, estable, fijo) {
+    // Q0c-c: `suelo` (opcional, 0 si falta) es el nivel mínimo que pide la gente a la vista (sueloGente): por debajo de él se baja ya, sin esperar al JS, y no se sube
+    function decide(e, dtMs, jsMs, dt, nivel, maxNivel, baja, sube, estable, fijo, suelo) {
       e.emaDt += (dtMs - e.emaDt) * 0.05; e.emaJs += (jsMs - e.emaJs) * 0.05; e.tNivel += dt;
       var s = sube > baja - DEF.margen ? baja - DEF.margen : sube;   // la subida nunca queda a menos de `margen` de la bajada
       if (e.emaJs < s && e.emaDt < DEF.dtSube) e.tEstable += dt; else e.tEstable = 0;
       if (fijo) return 0;
       if (e.tNivel < DEF.guarda) return 0;
+      suelo = suelo > 0 ? Math.min(suelo | 0, maxNivel) : 0;
+      if (nivel < suelo) { e.tNivel = 0; e.tEstable = 0; return 1; }   // la gente a la vista pide bajar un escalón con antelación (un nivel por vez, con la misma guarda)
       if ((e.emaJs > baja || e.emaDt > DEF.dtBaja) && nivel < maxNivel) { e.tNivel = 0; e.tEstable = 0; return 1; }
-      if (nivel > 0 && e.tEstable >= estable) { e.tNivel = 0; e.tEstable = 0; return -1; }
+      if (nivel > suelo && e.tEstable >= estable) { e.tNivel = 0; e.tEstable = 0; return -1; }
       return 0;
     }
-    return { DEF: DEF, APARATOS: APARATOS, umbrales: umbrales, decide: decide };
+    // Q0c-c: el nivel mínimo que pide la gente. 0 con pocas personas; 1 (UN escalón de antelación, no más) si hay más de `n` a la vista. Con histéresis: una vez pedido,
+    // sigue hasta que baje a `n - SALIDA_GENTE` o menos, para que alguien en el borde del campo de visión no haga subir y bajar el nivel. Sin gente (0 personas) siempre 0.
+    var SALIDA_GENTE = 2, ESCALON_GENTE = 1;   // [PROPUESTA] personas de histéresis · escalones de antelación
+    function sueloGente(vistos, n, previo) {
+      if (!(vistos > 0) || !(n > 0)) return 0;
+      if (vistos > n) return ESCALON_GENTE;
+      return previo > 0 && vistos > n - SALIDA_GENTE ? ESCALON_GENTE : 0;
+    }
+    return { DEF: DEF, APARATOS: APARATOS, SALIDA_GENTE: SALIDA_GENTE, ESCALON_GENTE: ESCALON_GENTE, umbrales: umbrales, decide: decide, sueloGente: sueloGente };
   })();
   // [puro:fin]
 
   // [motor:inicio]
   var VrPresupuesto = (function () {
-    var P = VrPresupuestoPuro, F = {}, rep = P.base(), escalon = null, cx = NaN, cz = NaN, pasoM = null, cuenta = { cambios: 0, recortes: 0 };
+    var P = VrPresupuestoPuro, F = {}, rep = P.base(), escalon = null, cx = NaN, cz = NaN, pasoM = null, cuenta = { cambios: 0, recortes: 0 }, gente = 0, sueloG = 0;
     function copia(m) { return { m: m, mat: new Float32Array(m.instanceMatrix.array), col: m.instanceColor ? new Float32Array(m.instanceColor.array) : null, vis: m.visible }; }
     function marcaSubida(m, k) { m.count = k; m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; if (m.frustumCulled !== false && k > 0) m.computeBoundingSphere(); }
     function restaura(f) {
@@ -142,7 +153,10 @@
       rep = P.reparto(escalon); pasoM = P.paso(rep); if (fuera) { cx = NaN; cz = NaN; }
       cuenta.cambios++;
     }
-    function ponEscalon(n) { fijaEscalon(n); aplicaTodo(); }
+    function ponEscalon(n) { fijaEscalon(n); aplicaTodo(); if (n === null || n === undefined) { gente = 0; sueloG = 0; } }   // al salir de VR, la gente que se contó ya no vale
+    // Q0c-c: las personas a la vista (26b_avatares.js lo anota cada medio segundo, solo en VR) y el nivel mínimo que piden (sueloGente, con histéresis). Sin reservas
+    function ponGente(n) { gente = n > 0 ? n | 0 : 0; }
+    function suelo(umbral) { sueloG = VrControlPuro.sueloGente(gente, umbral, sueloG); return sueloG; }
     // Q0c-b: lo mismo, repartido: una fuente por paso (la Cola de 29_vr lo avanza con yield, no de golpe). Cancelado a medias, el siguiente ponEscalon o escalonPorPasos acaba lo que falte
     function* escalonPorPasos(n) { fijaEscalon(n); for (var i = 0; i < P.ORDEN.length; i++) { aplicaUna(P.ORDEN[i]); yield i; } }
     // cada fotograma en VR (29_vr): sin reservas; solo recorta al moverse más que el umbral
@@ -154,11 +168,11 @@
       for (var i = 0; i < P.ORDEN.length; i++) { var f = F[P.ORDEN[i]]; if (f && f.tipo === "inst") aplicaUna(P.ORDEN[i]); }
     }
     function estado() {
-      var o = { escalon: escalon, reparto: rep, paso: pasoM, centro: isFinite(cx) ? [cx, cz] : null, cambios: cuenta.cambios, recortes: cuenta.recortes, fuentes: {} };
+      var o = { escalon: escalon, gente: gente, sueloGente: sueloG, reparto: rep, paso: pasoM, centro: isFinite(cx) ? [cx, cz] : null, cambios: cuenta.cambios, recortes: cuenta.recortes, fuentes: {} };
       Object.keys(F).forEach(function (id) { var f = F[id]; o.fuentes[id] = f.tipo === "valor" ? { valor: f.puesto } : { radio: f.r, dibujadas: f.r === null ? f.n : f.k, total: f.n }; });
       return o;
     }
     if (typeof window !== "undefined" && window) window.__vrPresupuesto = estado;   // pruebas y banco (escalón fijo por la perilla xrnivel, con la VR simulada)
-    return { fuente: fuente, instancias: instancias, renueva: renueva, olvida: olvida, ponEscalon: ponEscalon, escalonPorPasos: escalonPorPasos, mueve: mueve, estado: estado };
+    return { fuente: fuente, instancias: instancias, renueva: renueva, olvida: olvida, ponEscalon: ponEscalon, ponGente: ponGente, suelo: suelo, escalonPorPasos: escalonPorPasos, mueve: mueve, estado: estado };
   })();
   // [motor:fin]

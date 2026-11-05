@@ -107,7 +107,7 @@ test("cableado: 29_vr usa XrPerillas en un solo sitio, 03_escena el MSAA, y el i
   const vr = lee("apps/web/motor/29_vr.js");
   assert.match(vr, /setFramebufferScaleFactor\(XrPerillas\.efectivas\.escala\)/); assert.match(vr, /XrPerillas\.antes\(renderer\)/); assert.match(vr, /XrPerillas\.despues\(ses\)/);
   assert.doesNotMatch(vr, /setFramebufferScaleFactor\(0\.9\)/, "el 0,9 ya no está repartido: vive en XrPerillasPuro.DEF");
-  assert.match(vr, /XrPerillas\.estable\(\), XrPerillas\.fijo\(\)\)/, "el controlador adaptativo no actúa con ?xrnivel=");
+  assert.match(vr, /XrPerillas\.estable\(\), XrPerillas\.fijo\(\), VrPresupuesto\.suelo\(XrPerillas\.gente\(\)\)\)/, "el controlador adaptativo no actúa con ?xrnivel=");
   assert.match(vr, /vrPerfil\(XrPerillas\.fijo\(\) \? XrPerillas\.efectivas\.nivel : 0\)/);
   assert.match(vr, /xr: \{ near: [^}]*fov: /, "window.__vrDebug() trae las perillas");
   assert.match(lee("apps/web/motor/03_escena.js"), /antialias: XrPerillas\.aa/);
@@ -153,7 +153,9 @@ test("29_vr: near efectivo al entrar y restaurado al salir; el controlador baja 
     const VRX = { emaDt: 13.9, emaJs: 6, tNivel: 0, nivel: 0, nBaj: 0, nAlt: 0 };
     // Q0c-b: el cambio de nivel va por la Cola (se anota el nivel pedido); aquí no se avanza el generador
     const VR_PERFILES = [0, 1, 2, 3], Cola = { cancela() {}, add(k, prio, gen) { niveles.push(VRX.nivel); } };
-    const f = new Function("VRX", "XrPerillas", "VR_PERFILES", "Cola", "VrControlPuro", "\"use strict\";\n" + ad + "\nreturn vrAdapta;")(VRX, X, VR_PERFILES, Cola, VrControlPuro);
+    // Q0c-c: el VrPresupuesto de verdad (02g), que da el nivel mínimo que pide la gente a la vista (0 sin gente)
+    const VrPresupuesto = new Function("\"use strict\";\n" + F02G.slice(F02G.indexOf("// [puro:inicio]"), F02G.indexOf("// [puro:fin]")) + F02G.slice(F02G.indexOf("// [motor:inicio]"), F02G.indexOf("// [motor:fin]")) + "\nreturn VrPresupuesto;")();
+    const f = new Function("VRX", "XrPerillas", "VR_PERFILES", "Cola", "VrControlPuro", "VrPresupuesto", "\"use strict\";\n" + ad + "\nreturn vrAdapta;")(VRX, X, VR_PERFILES, Cola, VrControlPuro, VrPresupuesto);
     return { f, VRX, niveles };
   }
   // 400 fotogramas de 72 Hz con el JS dado: el EMA llega y pasan los 4 s de guarda

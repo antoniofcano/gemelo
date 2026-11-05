@@ -618,7 +618,7 @@
   function vrNivelPorCola(n) { n = Math.max(0, Math.min(VR_PERFILES.length - 1, n)); VRX.nivel = n; Cola.cancela("vnivel"); Cola.add("vnivel", 5, vrNivelPasos(n)); }   // reserva-ok: por un cambio de nivel, no por fotograma
   // Q0c-b: histéresis (VrControlPuro.decide, 02g): baja con XrPerillas.js() (8 ms de JS) o 15,2 ms de fotograma; solo sube con JS < jsSube() (5 ms) durante estable() s (10) seguidos
   function vrAdapta(dtMs, jsMs, dt) {
-    var d = VrControlPuro.decide(VRX, dtMs, jsMs, dt, VRX.nivel, VR_PERFILES.length - 1, XrPerillas.js(), XrPerillas.jsSube(), XrPerillas.estable(), XrPerillas.fijo());   // fijo: nivel fijado por la URL, sin controlador (Q0b, 02f)
+    var d = VrControlPuro.decide(VRX, dtMs, jsMs, dt, VRX.nivel, VR_PERFILES.length - 1, XrPerillas.js(), XrPerillas.jsSube(), XrPerillas.estable(), XrPerillas.fijo(), VrPresupuesto.suelo(XrPerillas.gente()));   // Q0c-c: el último, el nivel mínimo que pide la gente a la vista (0 sin gente). fijo: nivel fijado por la URL, sin controlador (Q0b, 02f)
     if (d > 0) { VRX.nBaj++; vrNivelPorCola(VRX.nivel + 1); } else if (d < 0) { VRX.nAlt++; vrNivelPorCola(VRX.nivel - 1); }
   }
   // Q0c-b: al entrar en VR se precompilan los sombreadores de la escena con la cámara y el renderer ya en modo XR (con multiview el programa es otro y el primer
