@@ -586,6 +586,24 @@ Telemetría del medidor (`&mide=60`), Quest Browser 154, modo gemelo, código de
 - **El peor fotograma sube** (206 y 145 ms frente a 72): sin repeticiones no se sabe si es la carga con el presupuesto de AG-1.5 o el arranque. Por medir.
 - **En VR, sin medida limpia tras la subida**: hay que entrar primero en VR y medir desde el panel (Comodidad → «Medir 60 s»). Tarea: que una medida que cambia de modo a mitad se marque como mixta.
 
+## Multiview en el gemelo real, sexta subida (AG-3c, 2026-11-05, foto, no se mantiene)
+Quest 3, Quest Browser 154, build de VR (super-three 0.185.0) servida en el VPS, multiview pedido y en uso (`OVR_multiview2`, texture-array de 2 capas), 72 Hz, MSAA, escala 0,9, foveación 1, nivel automático, olivos generados, 0 personas; 60 s tras 3 s. Una medida (toma 1 de `xrmv=1`); faltan las de `xrmv=0` y `build=pantalla` para comparar.
+
+| Medida | Valor |
+|---|---|
+| Fotogramas en 60 s | 4299 (71,7 por segundo) |
+| Intervalo mediana / p95 / p99 / peor (ms) | 13,9 / 15,4 / 16,7 / 31,8 |
+| Por encima de 13,9 ms | 48,6 % (la mediana cae en el propio umbral: casi todo es fluctuación del reloj, no fotogramas perdidos) |
+| JS por fotograma mediana / p95 / peor (ms) | 5,8 / 8,1 / 19,6 |
+| `renderer.render()` mediana / p95 / peor (ms) | 3,9 / 5,0 / 15,3 |
+| Resto del JS mediana / p95 / peor (ms) | 1,7 / 4,9 / 17,1 |
+| Llamadas / triángulos por fotograma (mediana) | 126 / 419 178 |
+| Nivel VR | 0 → 1 a los 5 s → 0 a los 30 s |
+| Autopsia de los lentos | Cola 223 · lote de olivos 8 · teselas 1 · programa nuevo 1 · sin causa 1858 |
+| Tareas largas (≥ 50 ms) | 0 |
+
+Lectura: el peor fotograma baja de 40-50 ms (quinta subida) a 31,8 ms y el ritmo es prácticamente 72 por segundo. El criterio «p95 ≤ 13,9 ms» no se cumple por 1,5 ms de fluctuación; el número que dice si se pierden fotogramas es el de los que pasan de ~1,5 periodos (20,8 ms), que el medidor aún no da.
+
 ## Triángulos por objeto con Hituelo real (2026-11-04, foto, no se mantiene)
 Banco (SwiftShader: recuentos, no fps), página de `main` tras la cuarta subida con los datos reales de Hituelo servidos en local, 12:00, `--desglose` (llamadas y, desde hoy, triángulos por objeto). Los olivos generados no llegaron a dibujarse en estos escenarios (0 triángulos), así que esta foto no dice lo que cuestan. Los triángulos son de una vista; en VR se pagan dos veces.
 
