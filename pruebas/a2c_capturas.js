@@ -7,7 +7,8 @@ const path = require("path"), { spawnSync } = require("child_process");
 const { montaPagina } = require("./guardianes/_pagina");
 
 const a = process.argv.slice(2), finca = a.includes("--finca") ? a[a.indexOf("--finca") + 1] : "hituelo", dry = a.includes("--dry");
-const VARIANTES = ["a2c0=?a2c=0", "a2c1=?a2c=1"];
+// a mediodía fijo, como las del tono (con la hora del reloj pueden salir de noche)
+const VARIANTES = ["a2c0=?a2c=0&hora=12:00", "a2c1=?a2c=1&hora=12:00"];
 const args = [];
 let raiz = "<carpeta montada>";
 if (!dry) raiz = montaPagina({ finca, salida: path.join(__dirname, "salida", "a2c", finca) }).carpeta;

@@ -7,7 +7,8 @@ const path = require("path"), { spawnSync } = require("child_process");
 const { montaPagina } = require("./guardianes/_pagina");
 
 const a = process.argv.slice(2), finca = a.includes("--finca") ? a[a.indexOf("--finca") + 1] : "hituelo", dry = a.includes("--dry");
-const VARIANTES = ["neutro=", "agx=?tono=agx", "aces=?tono=aces", "neutral=?tono=neutral"];
+// a mediodía fijo: con la hora del reloj, de noche no se distingue nada (2026-11-05)
+const VARIANTES = ["neutro=?hora=12:00", "agx=?tono=agx&hora=12:00", "aces=?tono=aces&hora=12:00", "neutral=?tono=neutral&hora=12:00"];
 const args = [];
 let raiz = "<carpeta montada>";
 if (!dry) raiz = montaPagina({ finca, salida: path.join(__dirname, "salida", "tono", finca) }).carpeta;
