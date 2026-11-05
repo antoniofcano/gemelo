@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: HazasPuro, Hazas
 // Consume: 01_datos (D, $), 02_mundo (suelo), 02c_componentes (Bus), 02e_entidades (Entidades, Usables), 03_escena (camera, exag),
-//   09_camara (objetivo, elige), 12_paseo (paseando, primera), 13_parcelas (parcelas), 15_tiempo (lindes), 29_vr (ficha)
+//   09_camara (objetivo, elige), 12_paseo (paseando, primera), 13_parcelas (parcelas), 14_historia (lista), 15_tiempo (lindes), 29_vr (ficha)
 // Nota: Sin D.base /teselas/… ni ?api= no pide nada ni crea nada. No dibuja la linde: la da con Hazas.lindes() y avisa con «hazas:cambia» (la dibuja 44_lindes.js); el trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/hazas.test.js.
 // ===============================================================================
   // ---------- las hazas en el mundo (F1, el «3c»): sus límites (los dibuja sobre el suelo el componente «lindes», 44_lindes.js, con Hazas.lindes() y el evento
@@ -197,16 +197,19 @@
       r.filas.forEach(function (q) { out.push({ k: q.k, v: q.v, de: q.de }); }); if (r.alerta) out.push({ k: "Aviso", v: r.alerta });
       return { titulo: r.titulo, filas: out };
     }
+    // pide la ficha pública a la api (una vez a la vez por haza); al llegar, repinta lo que la tenga elegida. Lo usan fichaHaza y datos().
+    function pide(h, id) {
+      if (pend[h.id]) return;
+      pend[h.id] = true;
+      trae(API + "hazas/" + encodeURIComponent(h.id)).then(function (f) {
+        delete pend[h.id]; if (!f || typeof f !== "object") { fallo[h.id] = true; } else cache[h.id] = { t: performance.now(), f: f }; Usables.refresca(id);
+      }).catch(function () { delete pend[h.id]; fallo[h.id] = true; Usables.refresca(id); });
+    }
     function fichaHaza(id) {
       var h = hazaDe(id); if (!h) return null;
       var c = cache[h.id]; if (c && performance.now() - c.t < 60000) return filasDe(h, c.f);
       if (fallo[h.id]) return filasDe(h, null, "no se ha podido leer (sin sesión o sin conexión)");
-      if (!pend[h.id]) {
-        pend[h.id] = true;
-        trae(API + "hazas/" + encodeURIComponent(h.id)).then(function (f) {
-          delete pend[h.id]; if (!f || typeof f !== "object") { fallo[h.id] = true; } else cache[h.id] = { t: performance.now(), f: f }; Usables.refresca(id);
-        }).catch(function () { delete pend[h.id]; fallo[h.id] = true; Usables.refresca(id); });
-      }
+      pide(h, id);
       return filasDe(h, null, "leyendo…");
     }
     function engancha() {
@@ -239,5 +242,13 @@
     // lindes() la geometría de la linde de cada haza vista, para quien la dibuje (44_lindes.js): [{ id, codigo, es_mia, anillos: [[[x este, y norte] locales…]…] }].
     // Son las del contrato tal cual (la oficina las dibuja; aquí no se simplifican ni se mueven): una copia, que nadie toca las de Hazas.
     function lindes() { return hz.map(function (h) { return { id: h.id, codigo: h.codigo, es_mia: !!h.es_mia, anillos: h.anillos.map(function (an) { return an.map(function (q) { return [q[0], q[1]]; }); }) }; }); }
-    return { estado: estado, libera: libera, vistas: vistas, enPunto: enPunto, lindes: lindes };
+    // datos(id) (id numérico de la haza) → { id, codigo, nombre, es_mia, ficha } para los carteles (44b_carteles.js): la ficha pública tal cual la dio la api (o null si aún
+    // no ha llegado: la pide, como mucho una vez cada minuto), y SIN filtrar; quien la usa se limita a la lista blanca de contratos/haza.schema.json. null si la haza no se ve.
+    function datos(id) {
+      var h = hazaDe("haza:" + id); if (!h) return null;
+      var c = cache[h.id], viva = c && performance.now() - c.t < 60000;
+      if (!viva && !fallo[h.id]) pide(h, idHaza(h));
+      return { id: h.id, codigo: h.codigo, nombre: h.nombre, es_mia: !!h.es_mia, ficha: c ? c.f : null };
+    }
+    return { estado: estado, libera: libera, vistas: vistas, enPunto: enPunto, lindes: lindes, datos: datos };
   })();
