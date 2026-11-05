@@ -621,6 +621,22 @@ Referencia, una toma con la build de pantalla (three 0.186.1, sin multiview) en 
 
 Lectura: el multiview ahorra lo que prometía en llamadas (menos de la mitad) pero en `render()` solo un 15-17 %, lejos del 45 % de la página de humo: en el gemelo pesa también lo que no se reparte entre ojos (sombras, preparar cada objeto, la Cola). Las tomas se repiten bien (`render()` de 4,4 a 4,7 ms con multiview y de 5,2 a 5,5 sin él). La primera toma del día, con el mundo en negro, no cuenta.
 
+## Gente en VR por nivel (Q0c-c, 2026-11-05, foto, no se mantiene)
+Banco, Chrome con SwiftShader y WebXR simulado (`mock_xr.js`), fixture sintético, `?xrnivel=N` fijo, presencia simulada; `GEMELO_AVATARES_VR=1 npm run puerta -- pruebas/guardianes/avatares_motor.test.js`. Recuentos de un fotograma (los dos ojos, sin multiview); sin fps (SwiftShader no los da).
+
+| Personas · nivel | Llamadas | Triángulos | VRM cargados / cupo | Heap |
+|---|---|---|---|---|
+| 10 · 0 | 140 | 160 k | 1 / 3 | 34 MB |
+| 10 · 1 | 136 | 133 k | 1 / 2 | 33 MB |
+| 10 · 2 | 120 | 103 k | 1 / 1 | 33 MB |
+| 10 · 3 | 112 | 89 k | 0 / 0 | 33 MB |
+| 40 · 0 | 140 | 167 k | 1 / 3 | 34 MB |
+| 40 · 1 | 140 | 141 k | 1 / 2 | 36 MB |
+| 40 · 2 | 124 | 110 k | 1 / 1 | 35 MB |
+| 40 · 3 | 112 | 96 k | 0 / 0 | 33 MB |
+
+Lectura: pasar de 10 a 40 personas cuesta casi nada en llamadas (los muñecos van instanciados) y 4-7 k triángulos; el nivel manda mucho más (de 160 k a 89 k). Solo carga 1 VRM aunque el cupo sea 3: en la escena de prueba los avatares cercanos están a la distancia de un solo VRM del catálogo sintético; con gente real y más cerca el cupo se llenaría (sin medir). 0 errores. Ni el Quest ni el fundido de VRM a muñeco en estéreo están probados.
+
 ## Triángulos por objeto con Hituelo real (2026-11-04, foto, no se mantiene)
 Banco (SwiftShader: recuentos, no fps), página de `main` tras la cuarta subida con los datos reales de Hituelo servidos en local, 12:00, `--desglose` (llamadas y, desde hoy, triángulos por objeto). Los olivos generados no llegaron a dibujarse en estos escenarios (0 triángulos), así que esta foto no dice lo que cuestan. Los triángulos son de una vista; en VR se pagan dos veces.
 
