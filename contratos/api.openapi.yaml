@@ -463,6 +463,20 @@ paths:
         "429": { $ref: "#/components/responses/Limite" }
         "503": { description: "ni OlivarTrack ni Vigía están encendidos en este servidor (hoy_apagado) o nada responde y no hay lectura reciente (hoy_no_responde)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
 
+  /api/mundo/hoy:
+    get:
+      summary: El mundo de hoy (EV-3a; contratos/mundo-hoy.md) — fecha y hora de Madrid, tiempo de Vigía, fenología y trabajo de la semana agregados, lo que marca Vigía y los avisos del campo
+      description: >
+        Lista blanca de mundo-hoy.schema.json. No lee nada nuevo de fuera: compone /api/tiempo, /api/ot/hoy (con sus memorias) y la fenología que guardó la
+        sincronía. Nada por persona: el trabajo va contado por tipo, por parcela y por finca. Truncado o parcial: completo false y recuentos en null. Cada parte
+        dice su procedencia (medido, modelado, deducido) y de cuándo es. Los avisos del campo los redacta el gemelo con frases fijas; Vigía no autoriza
+        tratamientos. SIEMPRE 200: con las fuentes apagadas o sin respuesta, esas partes van en null y la fuente dice disponible false (nunca 503).
+      security: [{ sesion: [] }]
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "mundo-hoy.schema.json" } } } }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "429": { $ref: "#/components/responses/Limite" }
+
   /api/yo/alias:
     put:
       summary: Alias del hogar (3–20 caracteres) y si se muestra en sus hazas

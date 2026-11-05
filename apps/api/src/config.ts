@@ -10,6 +10,8 @@ import { dirname, join } from "node:path";
 export type ModoCorreo = "smtp" | "buzon";
 export type ModoOt = "mcp" | "grabado" | "no";
 export type ModoVigia = "mcp" | "fixture" | "no";
+export type TipoAvisoCampo = "recogida" | "helada" | "lluvia" | "fenologia" | "mirada";
+const TIPOS_AVISO_CAMPO: readonly TipoAvisoCampo[] = ["recogida", "helada", "lluvia", "fenologia", "mirada"];
 
 export interface ConfigSmtp {
   modo: "smtp"; host: string; puerto: number; tls: boolean;
@@ -38,6 +40,9 @@ export interface Config {
   correo: { modo: "buzon" } | ConfigSmtp;
   /** el correo de los avisos de la campana y los .ics de la Agenda (OF11c): usa el mismo cartero; apagable sin tocar el del enlace mágico */
   avisosCorreo: { activo: boolean; reintentos: number; cadaSeg: number };
+  /** EV-3a: la fuente AUTOMÁTICA de avisos del campo (de GET /api/mundo/hoy a la tabla avisos, que el repartidor manda por correo). APAGADA por defecto;
+   *  como mucho un aviso cada `minHoras` y solo de los `tipos` elegidos (contratos/mundo-hoy.md § Avisos por correo) */
+  avisosCampo: { activo: boolean; minHoras: number; tipos: TipoAvisoCampo[] };
   ot:
     | { modo: "no" }
     | { modo: "grabado"; carpeta: string; cadaMin: number }
@@ -196,6 +201,13 @@ function cargaLiveKit(e: Entorno, produccion: boolean): ConfigLiveKit | null {
 }
 
 /** Vigía (el tiempo): «no» por defecto; «fixture» lee respuestas sintéticas de una carpeta (nunca en producción); «mcp», la URL y el token. */
+/** EV-3a: la fuente automática de avisos del campo; apagada salvo GEMELO_AVISOS_CAMPO=si. Por defecto, como mucho uno por semana (168 h) y sin los de Vigía («mirada»). */
+function cargaAvisosCampo(e: Entorno): Config["avisosCampo"] {
+  const tipos = texto(e, "GEMELO_AVISOS_CAMPO_TIPOS", "recogida,helada,lluvia,fenologia").split(",").map(s => s.trim()).filter(Boolean);
+  for (const t of tipos) if (!(TIPOS_AVISO_CAMPO as readonly string[]).includes(t)) throw new ErrorDeConfig("GEMELO_AVISOS_CAMPO_TIPOS: tipo desconocido (hay " + TIPOS_AVISO_CAMPO.join(", ") + ")");
+  return { activo: siNo(e, "GEMELO_AVISOS_CAMPO", false), minHoras: entero(e, "GEMELO_AVISOS_CAMPO_MIN_HORAS", 168, 24, 2160), tipos: [...new Set(tipos)] as TipoAvisoCampo[] };
+}
+
 function cargaVigia(e: Entorno, produccion: boolean): Config["vigia"] {
   const modo = texto(e, "GEMELO_VIGIA", "no");
   if (modo !== "mcp" && modo !== "fixture" && modo !== "no") throw new ErrorDeConfig("GEMELO_VIGIA debe ser mcp, fixture o no");
@@ -301,6 +313,7 @@ export function cargaConfig(e: Entorno = process.env): Config {
       reintentos: entero(e, "GEMELO_CORREO_REINTENTOS", 5, 1, 10),
       cadaSeg: entero(e, "GEMELO_CORREO_AVISOS_CADA_SEG", 60, 0, 3600),
     },
+    avisosCampo: cargaAvisosCampo(e),
     ot,
     livekit: cargaLiveKit(e, produccion),
     vozCercania: { permitida: siNo(e, "GEMELO_VOZ_CERCANIA", true) },

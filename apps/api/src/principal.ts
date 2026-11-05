@@ -4,6 +4,7 @@
 import { construyeApp } from "./app.ts";
 import { purgaBajas } from "./admin/bajas.ts";
 import { purga } from "./auth/servicio.ts";
+import { FuenteAvisosCampo } from "./avisos/campo.ts";
 import { Repartidor } from "./avisos/correo.ts";
 import { BuzonDePruebas, type Cartero, CarteroSmtp } from "./auth/correo.ts";
 import { creaBd } from "./bd/pool.ts";
@@ -11,6 +12,8 @@ import { cargaConfig } from "./config.ts";
 import { LectorGrabado } from "./ot/lector-grabado.ts";
 import { LectorMcp } from "./ot/lector-mcp.ts";
 import type { LectorOlivarTrack } from "./ot/lector.ts";
+import { ServicioMundoHoy } from "./mundo/hoy.ts";
+import { RegistroPg } from "./mundo/registro.ts";
 import { ServicioHoy } from "./ot/hoy.ts";
 import { sincroniza } from "./ot/sincronia.ts";
 import { LectorVigiaFixture } from "./vigia/lector-fixture.ts";
@@ -35,12 +38,16 @@ const lectorVigia = config.vigia.modo === "mcp" ? new LectorVigiaMcp(config.vigi
 const tiempo = lectorVigia ? new ServicioTiempo(lectorVigia) : null;
 // lo de hoy en vivo (GET /api/ot/hoy): el mismo lector de OlivarTrack que la sincronía y el mismo de Vigía que el tiempo, con su propia memoria
 const hoy = lector || lectorVigia ? new ServicioHoy(lector && config.ot.modo !== "no" ? { lector, origen: config.ot.modo === "mcp" ? "olivartrack" : "grabado" } : null, lectorVigia) : null;
+// el mundo de hoy (GET /api/mundo/hoy, EV-3a): compone el tiempo y lo de hoy de arriba (sus memorias) y la fenología que guardó la sincronía; no lee nada nuevo de fuera
+const otEncendido = !!lector && config.ot.modo !== "no";
+const mundoHoy = new ServicioMundoHoy({ hoy, tiempo, registro: otEncendido ? new RegistroPg(bd) : null, otEncendido, vigiaEncendido: !!lectorVigia,
+  cadaMin: config.ot.modo !== "no" && config.ot.cadaMin > 0 ? config.ot.cadaMin : 60 });
 
 // el correo de los avisos y los .ics (OF11c): en segundo plano, con el mismo cartero; en modo buzón de pruebas no se manda nada (ni se marca como enviado)
 const repartidor = config.avisosCorreo.activo && config.correo.modo === "smtp"
   ? new Repartidor(bd, cartero, { urlPublica: config.urlPublica, secreto: config.sesion.secreto, remitente: config.correo.remitente, reintentos: config.avisosCorreo.reintentos, cadaSeg: config.avisosCorreo.cadaSeg, log: { warn: (o, m) => app.log.warn(o, m), info: (o, m) => app.log.info(o, m) } })
   : undefined;
-const app = await construyeApp({ config, bd, cartero, lector, tiempo, hoy, ...(repartidor ? { repartidor } : {}) });
+const app = await construyeApp({ config, bd, cartero, lector, tiempo, hoy, mundoHoy, ...(repartidor ? { repartidor } : {}) });
 repartidor?.inicia();
 if (config.vigia.modo === "fixture") app.log.warn("el tiempo es el fixture SINTÉTICO de pruebas (GEMELO_VIGIA=fixture), no Vigía");
 if (config.correo.modo === "buzon") app.log.warn("correo en modo buzón de pruebas: los enlaces NO se mandan");
@@ -57,6 +64,15 @@ if (lector && config.ot.modo !== "no" && config.ot.cadaMin > 0) {
   };
   relojes.push(setInterval(tarea, config.ot.cadaMin * 60_000));
   setTimeout(tarea, 10_000).unref();
+}
+// EV-3a: la fuente automática de avisos del campo (APAGADA salvo GEMELO_AVISOS_CAMPO=si): mira cada hora; como mucho un aviso cada GEMELO_AVISOS_CAMPO_MIN_HORAS
+if (config.avisosCampo.activo) {
+  const fuente = new FuenteAvisosCampo(bd, mundoHoy, { minHoras: config.avisosCampo.minHoras, tipos: config.avisosCampo.tipos, ...(repartidor ? { alCrear: () => repartidor.despierta() } : {}),
+    log: { warn: (o, m) => app.log.warn(o, m), info: (o, m) => app.log.info(o, m) } });
+  const pasa = () => { fuente.pasada().catch(e => app.log.warn({ evento: "aviso_campo_fallido", error: e instanceof Error ? e.message : "?" }, "la fuente de avisos del campo falló")); };
+  relojes.push(setInterval(pasa, 60 * 60_000));
+  setTimeout(pasa, 120_000).unref();
+  if (!repartidor) app.log.warn("avisos del campo encendidos sin correo (GEMELO_CORREO_AVISOS o SMTP): se guardan, pero no salen");
 }
 relojes.push(setInterval(() => {
   purga(bd).catch(() => undefined);

@@ -14,6 +14,7 @@ import type { Contexto } from "./contexto.ts";
 import { rutasHazas } from "./hazas/rutas.ts";
 import { rutasJuegos } from "./juegos/rutas.ts";
 import { rutasMedidas } from "./medidas/rutas.ts";
+import { rutasMundoHoy } from "./mundo/rutas.ts";
 import { rutasLlaves } from "./oficina/llaves_rutas.ts";
 import { rutasOficina } from "./oficina/rutas.ts";
 import { rutasPresencia } from "./presencia/rutas.ts";
@@ -110,6 +111,7 @@ export async function construyeApp(ctx: Contexto, o: OpcionesApp = {}): Promise<
   await rutasTiempo(app, ctx);
   await rutasTiempoHistorico(app, ctx);
   await rutasOtHoy(app, ctx);
+  await rutasMundoHoy(app, ctx);
   await rutasVida(app, ctx);
   await rutasConfig(app, ctx);
   await rutasJuegos(app, ctx);

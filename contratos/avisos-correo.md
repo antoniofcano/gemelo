@@ -8,6 +8,8 @@ Contrato entre la api, la base y el cartero. Código: `apps/api/src/avisos/corre
 Cada fila de `avisos_hogar` (la campana del gemelo) de un hogar activo con `hogares.avisos_correo` y `correo_enviado_en` NULL. Salen: los avisos de la oficina
 (`/api/admin/eventos/:id/avisar`, la bandeja), los del sistema de la Agenda (promoción desde la espera, cambio de fecha o lugar, cancelación) y la
 confirmación de inscripción (solo si el hogar quedó **apuntado** y pidió los avisos). Los hogares sin `avisos_correo` solo los ven en la campana.
+Desde EV-3a puede salir también un **aviso del campo** automático (tipo `labor`, sin autor), **apagado por defecto** (`GEMELO_AVISOS_CAMPO=no`) y como mucho uno cada
+`GEMELO_AVISOS_CAMPO_MIN_HORAS`: lo explica [`mundo-hoy.md`](mundo-hoy.md#avisos-por-correo-fuente-automática-apagada-por-defecto).
 
 ## Avisos de seguridad de las llaves de acceso (OF13b-4, decisión 187)
 

@@ -21,7 +21,7 @@ COPY --from=construye /app/node_modules ./node_modules
 COPY --from=construye /app/dist ./dist
 COPY apps/api/package.json ./
 COPY apps/api/migraciones ./migraciones
-COPY contratos/haza.schema.json contratos/olivos-haza.schema.json contratos/tiempo.schema.json contratos/tiempo-historico.schema.json contratos/ot-hoy.schema.json contratos/config.schema.json ./contratos/
+COPY contratos/haza.schema.json contratos/olivos-haza.schema.json contratos/tiempo.schema.json contratos/tiempo-historico.schema.json contratos/ot-hoy.schema.json contratos/mundo-hoy.schema.json contratos/config.schema.json ./contratos/
 # los puntos de montaje de los volúmenes de escritura (medios V7, configuración publicada V10), del usuario node (uid 1000): un volumen nuevo hereda su dueño
 RUN mkdir -p /datos/medios /datos/config /datos/hornero && chown node:node /datos/medios /datos/config /datos/hornero
 USER node

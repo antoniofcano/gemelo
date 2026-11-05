@@ -64,6 +64,12 @@ GEMELO_CORREO_REMITENTE=Gemelo del olivar <buzon-del-gemelo@ejemplo.invalid>
 GEMELO_CORREO_AVISOS=si
 GEMELO_CORREO_REINTENTOS=5
 GEMELO_CORREO_AVISOS_CADA_SEG=60
+# Avisos AUTOMÁTICOS del campo (EV-3a, contratos/mundo-hoy.md § Avisos por correo): de OlivarTrack y Vigía a la campana y al correo. APAGADOS hasta que
+# Antonio decida qué avisos salen y cada cuánto. Como mucho uno cada MIN_HORAS (168 = uno por semana), de 9 a 21 h; tipos en orden de prioridad
+# (recogida, helada, lluvia, fenologia, mirada). Vigía no autoriza tratamientos: ningún aviso dice «trata».
+GEMELO_AVISOS_CAMPO=no
+GEMELO_AVISOS_CAMPO_MIN_HORAS=168
+GEMELO_AVISOS_CAMPO_TIPOS=recogida,helada,lluvia,fenologia
 
 # --- OlivarTrack por MCP, solo lectura (contratos/olivartrack-sync.md). «no» hasta que exista el token propio
 # (decisión 17) y se hayan ajustado las formas de respuesta reales. El token NO va aquí: /etc/gemelo/secretos/ot_token.

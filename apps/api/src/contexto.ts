@@ -3,6 +3,7 @@ import type { Cartero } from "./auth/correo.ts";
 import type { Bd } from "./bd/pool.ts";
 import type { Repartidor } from "./avisos/correo.ts";
 import type { Config } from "./config.ts";
+import type { ServicioMundoHoy } from "./mundo/hoy.ts";
 import type { ServicioHoy } from "./ot/hoy.ts";
 import type { LectorOlivarTrack } from "./ot/lector.ts";
 import type { ModeradorSala, ModeradorVoz } from "./presencia/livekit.ts";
@@ -25,6 +26,8 @@ export interface Contexto {
   tiempo?: ServicioTiempo | null;
   /** lo de hoy de OlivarTrack y Vigía en vivo (GET /api/ot/hoy, contratos/ot-hoy.md); null o ausente si los dos están apagados */
   hoy?: ServicioHoy | null;
+  /** el mundo de hoy (GET /api/mundo/hoy, contratos/mundo-hoy.md; EV-3a): compone el tiempo, lo de hoy y la fenología guardada. Ausente: responde «no disponible» */
+  mundoHoy?: ServicioMundoHoy | null;
   /** quien manda por correo los avisos pendientes (OF11c); lo crea principal.ts. Las pruebas de rutas no lo ponen: no hay envío en segundo plano */
   repartidor?: Pick<Repartidor, "despierta">;
 }
