@@ -75,7 +75,7 @@ ESQUEMA_HAZAS = {
                                     "type": "object", "additionalProperties": False, "required": ["id"],
                                     # id de parcela de OlivarTrack: el equivalente en Python (re, \w Unicode) de PATRON_ID_PARCELA
                                     # (apps/api/src/vivo/lista-blanca.ts) y del CHECK de la migración 0026: tildes, paréntesis y «/»
-                                    "properties": {"id": {"type": "string", "pattern": "^[\\w:.#()/-]{1,120}$"},
+                                    "properties": {"id": {"type": "string", "pattern": r"^[\w:.#()/-]{1,120}$"},
                                                    "ha": {"type": ["number", "null"], "exclusiveMinimum": 0}},
                                 },
                             },
