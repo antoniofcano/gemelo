@@ -251,6 +251,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 
 
 ### Corregido
+- VR con multiview (build de VR): el terreno y los olivos salían negros dentro de VR en el Quest 3 porque super-three 0.185.0 aplaza las subidas de texturas y nunca las ejecuta; un parche del build las sube tras el dibujo multiview (`herramientas/parche_multiview.mjs`). Sin comprobar todavía en el casco.
 - Suelo con texturas de la finca: la casilla no tenía efecto porque el montaje de las texturas entraba en la Cola con la prioridad más baja (1e9) y, al pasear, siempre había teselas, olivos o detalle por delante; ahora entra como algo a 60 m. Comprobado en Chrome (se monta y se enciende); `__g.SueloFotos.resumen()` da su estado.
 - El color de fondo del suelo cercano (`uGnd`, también sin el suelo de fotos) se leía volteado de norte a sur y, en las hojas de 128 m del tileset, a escala doble; ahora casa con la ortofoto. Comprobado en Node con una ortofoto sintética; sin ver en un navegador.
 - Medidor (Q0f): si una medida cambia de pantalla a VR (o al revés) a mitad, vuelve a empezar en el modo nuevo; «Medir» en el mapa y luego entrar en VR daba una medida de «pantalla» sin nivel ni perillas.

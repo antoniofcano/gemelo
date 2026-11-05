@@ -107,6 +107,7 @@ test("el motor entero construye con las dos builds: vr con super-three 0.185 y s
     assert.match(jv, /REVISION\s*=\s*"185"|="185"/, "super-three (185) en la build vr");
     assert.ok(!/="186"/.test(jv), "el three de pantalla (186) se coló en la build vr");
     for (const m of marcasSuper) assert.ok(jv.includes(m), "falta " + m + " (super-three) en la build vr");
+    assert.match(jv, /setDeferTextureUploads\(\s*(false|!1)\s*\)[,;]\s*\w+\.runDeferredUploads\(\)/, "la build vr sube las texturas que aplaza el multiview (parche_multiview.mjs)");
     assert.match(jp, /="186"/, "three 0.186 en la build de pantalla");
     assert.ok(!/="185"/.test(jp), "super-three se coló en la build de pantalla");
     for (const m of marcasSuper) assert.ok(!jp.includes(m), "«" + m + "» (de super-three) en la build de pantalla");

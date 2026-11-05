@@ -6,6 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import fs from "node:fs";
 import { buildPedida, aliasThree, salida } from "./herramientas/builds.mjs";
+import { multiviewSubeTexturas } from "./herramientas/parche_multiview.mjs";
 
 const WEB = path.dirname(fileURLToPath(import.meta.url));
 // ADR-0031 (enmienda 2026-11-04): dos builds del mismo motor. Sin GEMELO_BUILD, la de pantalla, exactamente la de siempre (three de package.json, dist/);
@@ -73,6 +74,7 @@ export default defineConfig({
   },
   plugins: [
     perfilesXrSinCdn(),
+    multiviewSubeTexturas(),   // super-three 0.185.0: sube las texturas que el multiview aplaza y nunca subía (herramientas/parche_multiview.mjs)
     viteStaticCopy({
       silent: true,
       targets: [
