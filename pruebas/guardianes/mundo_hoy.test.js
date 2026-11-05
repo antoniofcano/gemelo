@@ -149,7 +149,7 @@ test("el registro: componente «mundo-hoy», bandera ?mundohoy=, presupuesto 0, 
 test("el día real: la estación del olivo arranca hoy y ?fecha=AAAA-MM-DD mueve el reloj del mundo", () => {
   const est = lee("apps/web/motor/23_estacion.js"), tie = lee("apps/web/motor/15_tiempo.js");
   assert.match(est, /function hoyMadrid\(\) \{ return fmtClaveDia\.format\(new Date\(ahoraMs\(\)\)\); \}/);
-  assert.match(est, /function fechaEstacion\(\) \{ return NDV && EST\.activa \? NDV\.fechas\[ndviIdx\] : hoyMadrid\(\); \}/);
+  assert.match(est, /function fechaEstacion\(\) \{ return NDV && ndviIdx !== NDV\.fechas\.length - 1 \? NDV\.fechas\[ndviIdx\] : hoyMadrid\(\); \}/);
   assert.match(tie, /\[\?&\]fecha=\(\\d\{4\}-\\d\{2\}-\\d\{2\}\)/);
   // ahoraMs con ?fecha=: el mismo reloj, corrido días enteros
   const i = tie.indexOf("  var HORA_FIJA"), f = tie.indexOf("  // origen: de dónde sale lo que se ve");

@@ -62,7 +62,7 @@
   // el día de hoy en Madrid según el reloj del mundo (ahoraMs: el real, o el de ?hora= / ?fecha=). EV-3a: la estación del olivo arranca HOY (la fenología del
   // calendario de hoy); al mover la fecha del campo a otra imagen, la de esa imagen. La copa (NDVI) es siempre la de la imagen elegida.
   function hoyMadrid() { return fmtClaveDia.format(new Date(ahoraMs())); }
-  function fechaEstacion() { return NDV && EST.activa ? NDV.fechas[ndviIdx] : hoyMadrid(); }
+  function fechaEstacion() { return NDV && ndviIdx !== NDV.fechas.length - 1 ? NDV.fechas[ndviIdx] : hoyMadrid(); }
   function pideClima(iso) {
     if (EST.cache[iso] !== undefined) { EST.clima = EST.cache[iso]; EST.estado = EST.clima ? "" : "sin dato de la estación esa semana"; pintaEstacion(); return; }
     function fin(c, msg) { EST.cache[iso] = c; if (fechaEstacion() === iso) { EST.clima = c; EST.estado = c ? "" : msg; pintaEstacion(); } }
