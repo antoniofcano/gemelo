@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- La primera vez que una familia o alguien de un corro abre el micro, una tarjeta breve («Tu micrófono, en pocas palabras») dice con quién se le oye, cómo cortarlo y que no se graba; se guarda por aparato y se vuelve a leer en Configuración → Hablar y en el panel de VR. En Chrome, iPhone y Quest, no probado. (F3l)
 - Medida por componente (C11) y por objeto de los olivos generados (O2), por el banco con el fixture sintético y SwiftShader (recuentos, no fps; tabla en MEDIDAS): solo `suelo-fondo` y `marcadores-lidar` dibujan en las escenas fijas; los olivos generados añaden ≈ +100 k triángulos y +24 MB de heap. Arreglo: `Generados.piezas()` contaba mal las mallas fundidas sin índice.
 - Panel de VR: cuarta pestaña «Info» con la agenda, sus avisos y «Aves del mes» (3 aves probables y «y X más», deducido, la nota de que no se han observado en la finca y las licencias; sin datos no sale). La pestaña Mundo ya desbordaba (790-920 px frente a 683 útiles) y queda en 588; botones de pestaña de 224 px. Guardián nuevo de alturas del panel. En Chrome y en el Quest, no probado. (EV-1g)
 - Aves probables del mes: la consulta a GBIF deja fuera los registros de máquina (`basisOfRecord` MACHINE_OBSERVATION, donde va la telemetría GPS de aves marcadas, que inflaba esas especies); se pierden también las grabadoras acústicas. Hay que regenerar `biodiversidad.json` para que se note; sin verificar con el cuadro real.
