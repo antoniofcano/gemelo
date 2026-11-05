@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Medidas v3 (Q0i): la autopsia de los fotogramas lentos, el coste de `renderer.render()` y el reparto del JS por bloque (16 como mucho) viajan a la api con campos opcionales (los clientes v1 y v2 siguen valiendo; migración 0023); la oficina enseña el `render()` p95 y el bloque más caro del día. La migración no está probada contra Postgres.
 - VR: el controlador de nivel ya no oscila (baja con más de 8 ms de JS y solo sube tras 10 s por debajo de 5 ms), tiene umbrales por casco y perillas `?xrjssube` y `?xrestable`, reparte el cambio de nivel por la Cola y precompila los sombreadores al entrar (Q0c-b; sin probar en Quest).
 - Los perros se dibujan con mallas instanciadas (cuerpo, cabeza, cola, patas y sombra; 42 llamadas → 11 con los dos a la vista) y la fusión de geometrías es común a aves, conejos y perros (`02k_fusiona.js`); mismas poses y triángulos. No probado en Quest (AG-1.13b).
 - Recortes alfa de hierba, follaje, ramitas, tarjetas e impostores con `alphaToCoverage` cuando hay MSAA (perilla `?a2c=0|1`, defecto 1; `?a2c=0` devuelve el `alphaTest` de siempre); sin probar en Quest ni iPhone (AG-2.1).
