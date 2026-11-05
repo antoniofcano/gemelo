@@ -88,6 +88,62 @@ test("la costura: 09_camara solo camina si no se eligió nada, 12_paseo cancela 
   assert.match(paseo, /IrA\.paso\(dt, !!\(teclas\.up \|\| teclas\.down \|\| teclas\.left \|\| teclas\.right \|\| mandoPalanca\.av \|\| mandoPalanca\.lat \|\| mandoPalanca\.giro\)\)/);
   assert.match(paseo, /paseando = false; IrA\.cancela\(\)/);
   assert.match(aj, /"controles\.tocarIr": bool\(true\)/);
-  assert.ok(!/new THREE\.Mesh/.test(FUENTE), "reusa el anillo de la llegada: ninguna malla nueva");
+  assert.ok(!/new THREE\.Mesh/.test(FUENTE), "reusa el anillo de la llegada: ninguna malla nueva (solo la línea de puntos)");
   assert.ok(!/addEventListener/.test(FUENTE), "sin oyentes propios: lo llama 09_camara");
+});
+
+// ---- rodear troncos y línea de puntos (EV2-B3)
+function marco(n, m, sep) { const c = []; for (let i = 0; i < n; i++) for (let j = 0; j < m; j++) c.push({ x: i * sep, y: j * sep, oliv: true }); return c; }
+function camina(st, pos, tope, copas) {   // simula actualizaPaseo: avanza y empuja fuera de los troncos (0,55 m)
+  let t = 0, fin = null, minD = Infinity;
+  for (; t < tope && !fin; t += 0.016) {
+    const r = P.paso(st, pos, 0.016, 1.7); if (!r) break; fin = r.fin; pos.ang = r.ang;
+    pos.x += Math.sin(pos.ang) * r.av * 1.7 * 0.016; pos.y += Math.cos(pos.ang) * r.av * 1.7 * 0.016;
+    for (const c of copas) { const dx = pos.x - c.x, dy = pos.y - c.y, d = Math.hypot(dx, dy); if (d < 0.55) { pos.x = c.x + dx / d * 0.55; pos.y = c.y + dy / d * 0.55; } minD = Math.min(minD, d); }
+  }
+  return { fin, t, minD };
+}
+
+test("planifica: camino libre = solo el destino; con un tronco en medio, un punto por el lado libre", () => {
+  assert.deepStrictEqual(P.planifica({ x: 0, y: 0 }, { x: 0, y: 10 }, [{ x: 5, y: 5, oliv: true }]), [{ x: 0, y: 10 }]);
+  const ruta = P.planifica({ x: 0, y: 0 }, { x: 0, y: 10 }, [{ x: 0, y: 5, oliv: true }]);
+  assert.strictEqual(ruta.length, 2); assert.deepStrictEqual(ruta[1], { x: 0, y: 10 });
+  assert.ok(Math.hypot(ruta[0].x - 0, ruta[0].y - 5) >= P.R_TRONCO, "pasa a más de 1 m del tronco");
+  const alto = P.planifica({ x: 0, y: 0 }, { x: 0, y: 10 }, [{ x: 0, y: 5, oliv: true }, { x: -1.3, y: 5, oliv: true }]);
+  assert.ok(alto[0].x > 0, "si un lado está tapado por otro tronco, va por el otro");
+  assert.ok(P.planifica({ x: 0, y: 0 }, { x: 0, y: 10 }, [{ x: 0, y: 5, oliv: false }]).length === 1, "lo que no es olivo no estorba");
+});
+
+test("andar a través de un marco de olivos de 6 m llega sin rendirse y sin pegarse al tronco", () => {
+  const copas = marco(8, 8, 6), pos = { x: 3, y: 3, ang: 0.7 }, d = { x: 33, y: 33 };
+  const ruta = P.planifica(pos, d, copas); assert.ok(ruta, "hay rodeo");
+  const st = P.crea(); P.ir(st, d.x, d.y, ruta.slice(0, -1), copas);
+  const r = camina(st, pos, 80, copas);
+  assert.strictEqual(r.fin, "llego", JSON.stringify([r, pos, ruta]));
+  assert.ok(r.minD > 0.55 - 1e-9);
+});
+
+test("sin rodeo posible no se cuelga (tope) y se rinde: atascado tras replanificar una vez", () => {
+  const copas = []; for (let i = -3; i <= 3; i++) copas.push({ x: i * 0.9, y: 5, oliv: true });   // un muro de troncos
+  const ext = [-50, 50, 50, -50], t0 = Date.now(); const ruta = P.planifica({ x: 0, y: 0 }, { x: 0, y: 10 }, copas, 1.0, [-50, 50, 50, -50]);
+  assert.ok(Date.now() - t0 < 100, "el tope de tramos acota el tiempo");
+  const st = P.crea(), pos = { x: 0, y: 0, ang: 0 }; P.ir(st, 0, 10, [], copas, ext);
+  const r = camina(st, pos, 8, copas); assert.strictEqual(r.fin, "atascado", JSON.stringify([ruta, r]));
+});
+
+test("línea de puntos: sobre el camino, cada 1,2 m desde el destino, sin el del destino, se acorta al avanzar y respeta el tope", () => {
+  const st = P.crea(); P.ir(st, 0, 12.5, [{ x: 3, y: 6 }]);
+  const v = P.puntosLinea({ x: 0, y: 0 }, st, 1.2, 80);
+  assert.ok(v.length >= 8 && v.length <= 14, String(v.length));
+  assert.ok(v.every(p => Math.hypot(p.x - 0, p.y - 12.5) > 1.0), "ninguno sobre el destino");
+  const w = P.puntosLinea({ x: 3, y: 6 }, st, 1.2, 80);
+  assert.ok(w.length < v.length, "al avanzar quedan menos");
+  assert.ok(Math.abs(w[w.length - 1].x - v[v.length - 1].x) < 1e-6 && Math.abs(w[w.length - 1].y - v[v.length - 1].y) < 1e-6, "los de delante no se mueven");
+  st.dest = { x: 0, y: 500 }; assert.strictEqual(P.puntosLinea({ x: 0, y: 0 }, st, 1.2, 80).length, 80);
+  P.cancela(st); assert.deepStrictEqual(P.puntosLinea({ x: 0, y: 0 }, st, 1.2, 80), []);
+});
+
+test("la línea de puntos es una sola malla, creada una vez, con dispose", () => {
+  assert.strictEqual((FUENTE.match(/new THREE\.Points\(/g) || []).length, 1);
+  assert.match(FUENTE, /geoP\.dispose\(\); matP\.dispose\(\)/);
 });

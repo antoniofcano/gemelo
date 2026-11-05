@@ -240,8 +240,8 @@ Con menos detalle que el acceso: es la pantalla que más cambiará al probarla. 
 
 ### 5.8 Primera llegada: mini-tutorial
 Diálogo breve, una vez (y en Menú → Controles y ayuda):
-- **Escritorio:** W A S D o flechas: andar · arrastrar: mirar · clic en haza o H: datos · T: chat · V o botón: hablar · Esc: menú · con el Dron (E): clic en el suelo marca la llegada, Intro o L aterriza allí (§5.9).
-- **Móvil:** cruceta: andar · arrastrar: mirar · pellizcar: acercar · tocar haza · barra de abajo · ≡: menú · con el Dron: toque corto en el suelo marca la llegada, «Aterrizar aquí» (§5.9).
+- **Escritorio:** W A S D o flechas: andar · arrastrar: mirar · clic en el suelo: ir andando (rodea los troncos, con línea de puntos) · H o clic en una haza desde la órbita: datos · T: chat · V o botón: hablar · Esc: menú · con el Dron (E): clic en el suelo marca la llegada, Intro o L aterriza allí (§5.9).
+- **Móvil:** cruceta: andar · arrastrar: mirar · pellizcar: acercar · toque corto en el suelo: ir andando (con línea de puntos; la ficha de la haza, desde la órbita, el botón Haza o el cartel) · barra de abajo · ≡: menú · con el Dron: toque corto en el suelo marca la llegada, «Aterrizar aquí» (§5.9).
 - **Quest:** palanca izq.: andar (grip izq.: correr) · palanca der. ← →: girar 30° · palanca der. ↑ y soltar: teletransporte (volando o en el mirador, rayo recto y bajas de pie al anillo, §5.9) · gatillo der.: elegir · Y: panel · X: viñeta · grip der.: hablar (propuesta). Nota: «Si te mareas, activa la viñeta o usa solo teletransporte».
 - **Corresponsal:** emitir · pausar cámara · clip diferido.
 
@@ -256,6 +256,8 @@ El mismo gesto en las dos formas: **se marca el punto con un anillo ámbar en el
 | **Móvil**, con el Dron | **Toque corto** en el suelo (≤ 12 px y ≤ 0,4 s); otro toque lo mueve; arrastrar o mantener no lo pone | Botón **«Aterrizar aquí»** (ancho de la cruceta, 44 px de alto) | «Aterrizar» guarda el Dron |
 
 Comodidad: la cámara no se mueve hasta que se suelta o se pulsa; el rayo es una línea fina semitransparente y el anillo es solo un aro (no tapa); sin anillo por detrás del usuario. **No probado en unas Quest, ni en un iPhone ni en un Android** (solo Chrome sin pantalla con WebXR simulado y ratón).
+
+**Ir andando (a pie, en pantalla).** Clic (≤ 6 px, ≤ 0,4 s) o toque corto (≤ 12 px) en el suelo: el paseante gira (3,2 rad/s) y camina a la velocidad de siempre hasta el anillo, rodeando los troncos por puntos intermedios y con una línea de puntos ámbar que se acorta; cualquier tecla, la cruceta o la palanca lo cancela, otro toque cambia el destino y, si no hay rodeo, se rinde a los ~1,2 s. Un olivo, una baliza o una persona debajo del dedo siguen eligiéndose como antes. Apagable en Configuración → Controles o con `?tocar=0`. La ficha de la haza no depende de este gesto (a pie nunca se abría con el toque al suelo: H, el botón Haza, el cartel o «tu haza»). Comodidad: no se mueve nada sin pedirlo, sin saltos ni vuelos de cámara. **No probado en iPhone ni en Android ni en pantalla real** (solo pruebas de Node con la lógica pura).
 
 ## 6. Privacidad hecha visible
 
