@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: paseando, persona, teclas, primera, pp, camPos, PalancaPuro, ponPalanca, giraPalanca, entraPaseo, salePaseo, actualizaPaseo
 // Consume: 01_datos (D, $), 02_mundo (suelo, copaAlta, copas), 03_escena (lienzo, visor, scene, camera, exag, modo), 06_arboles (tronco),
-//   08_marcadores (aplica, pendiente), 09_camara (sensMirar), 13_parcelas (fincas, fincaSel, parcelaSel),
+//   08_marcadores (aplica, pendiente), 09_camara (sensMirar), 12c_ir_a (IrA), 13_parcelas (fincas, fincaSel, parcelaSel),
 //   16_vida (enQuad, mira, quad, velPaseo, giroPaseo, ponQuad, vidaPaseo, enDron, dron, ponDron, cicloVista, dronMando, camaraDron, vidaEntra, vidaSale),
 //   24_pantalla (iniciaTransicion, iniciaSalida), 29_vr (ficha), 33_ajustes (Ajustes)
 // ===============================================================================
@@ -64,7 +64,7 @@
     camPos.set(pp.x, 5, -pp.y + 5); vidaEntra(); iniciaTransicion();
   }
   function salePaseo() {
-    paseando = false; persona.visible = false; teclas = {}; ponPalanca(0, 0); mandoPalanca.giro = 0; vidaSale(); iniciaSalida(); $("btnPaseo").setAttribute("aria-pressed", "false");
+    paseando = false; IrA.cancela(); persona.visible = false; teclas = {}; ponPalanca(0, 0); mandoPalanca.giro = 0; vidaSale(); iniciaSalida(); $("btnPaseo").setAttribute("aria-pressed", "false");
     visor.classList.remove("paseo"); $("ayudaPaseo").hidden = true; $("ayuda").hidden = false;
   }
   $("btnPaseo").addEventListener("click", function () { if (paseando) salePaseo(); else entraPaseo(); });
@@ -95,10 +95,12 @@
   $("padRun").addEventListener("click", function () { teclas.run = !teclas.run; $("padRun").setAttribute("aria-pressed", String(!!teclas.run)); });
   $("padCam").addEventListener("click", function () { cicloVista(); });
   function actualizaPaseo(dt) {
+    var irA = IrA.paso(dt, !!(teclas.up || teclas.down || teclas.left || teclas.right || mandoPalanca.av || mandoPalanca.lat || mandoPalanca.giro));   // «tocar para ir andando» (12c_ir_a.js): null sin destino o si algo del usuario lo cancela
     var av = (teclas.up ? 1 : 0) - (teclas.down ? 1 : 0), gi = (teclas.right ? 1 : 0) - (teclas.left ? 1 : 0);
     var lat = 0;   // paso lateral de la palanca (solo a pie; en quad y dron el lado de la palanca gira, como la cruceta)
     if (mandoPalanca.av || mandoPalanca.lat) { av = Math.max(-1, Math.min(1, av + mandoPalanca.av)); if (enQuad || enDron) gi = Math.max(-1, Math.min(1, gi + mandoPalanca.lat)); else lat = mandoPalanca.lat; }
     if (mandoPalanca.giro) { pp.ang += mandoPalanca.giro; mandoPalanca.giro = 0; }   // arrastrar la otra mitad: mirar
+    if (irA) { av = irA.av; pp.ang = irA.ang; }   // camina hacia el punto tocado: gira y avanza; la velocidad, los troncos y el borde son los de siempre
     if (TR.act && TR.t < TR.tCae + 0.25) { av = 0; gi = 0; lat = 0; }   // quieto mientras cae
     if (enDron) { dronMando(av, gi, dt); av = 0; gi = 0; }
     var vel = velPaseo(av, dt);

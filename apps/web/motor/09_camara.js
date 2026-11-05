@@ -1,8 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: objetivo, orb, camara, sensMirar, suelta, elige, pon
 // Consume: 01_datos ($, fmt, DIST_MAX, DIST_INI), 02_mundo (orto, kcor), 02e_entidades (Usables), 03_escena (lienzo, camera, exag, modo),
-//   05_nube (nube), 08_marcadores (aplica, capas, aplicaLuego), 12_paseo (paseando), 13_parcelas (parcelaSel, elegirParcela), 29_vr (ficha),
-//   33_ajustes (Ajustes)
+//   05_nube (nube), 08_marcadores (aplica, capas, aplicaLuego), 12_paseo (paseando), 12c_ir_a (IrA), 13_parcelas (parcelaSel, elegirParcela),
+//   29_vr (ficha), 33_ajustes (Ajustes)
 // ===============================================================================
 
   // cámara orbital
@@ -17,10 +17,10 @@
   var punteros = {}, movido = 0;
   var toquePaseo = null;   // en el paseo no se gira la vista con el dedo, pero un toque corto elige lo que haya debajo (olivo, baliza…)
   lienzo.addEventListener("pointerdown", function (e) {
-    if (paseando) { toquePaseo = { x: e.clientX, y: e.clientY, t: performance.now() }; return; }
+    if (paseando) { toquePaseo = { x: e.clientX, y: e.clientY, t: performance.now(), mov: 0 }; return; }
     lienzo.setPointerCapture(e.pointerId); punteros[e.pointerId] = { x: e.clientX, y: e.clientY }; movido = 0; });
   lienzo.addEventListener("pointermove", function (e) {
-    if (paseando) return;
+    if (paseando) { if (toquePaseo) toquePaseo.mov = Math.max(toquePaseo.mov, Math.hypot(e.clientX - toquePaseo.x, e.clientY - toquePaseo.y)); return; }
     var p = punteros[e.pointerId]; if (!p) return;
     var ids = Object.keys(punteros), dx = e.clientX - p.x, dy = e.clientY - p.y; movido += Math.abs(dx) + Math.abs(dy);
     if (ids.length === 1) { if (e.shiftKey || e.buttons === 2) pan(dx, dy); else { var se = sensMirar(); orb.az -= dx * 0.006 * se.k; orb.el = Math.max(0.08, Math.min(1.5, orb.el + dy * 0.006 * se.k * se.y)); } }
@@ -28,7 +28,7 @@
     p.x = e.clientX; p.y = e.clientY;
   });
   function suelta(e) {
-    if (paseando) { var q = toquePaseo; toquePaseo = null; if (q && e.type === "pointerup" && Math.hypot(e.clientX - q.x, e.clientY - q.y) < 10 && performance.now() - q.t < 600) elige(e.clientX, e.clientY); return; }
+    if (paseando) { var q = toquePaseo; toquePaseo = null; if (q && e.type === "pointerup" && Math.hypot(e.clientX - q.x, e.clientY - q.y) < 10 && performance.now() - q.t < 600) { var mov = Math.max(q.mov, Math.hypot(e.clientX - q.x, e.clientY - q.y)), ms = performance.now() - q.t; if (!elige(e.clientX, e.clientY)) IrA.toca(e.clientX, e.clientY, mov, ms, e.pointerType); } return; }   // sin nada elegido debajo, el toque corto va andando (12c_ir_a.js)
     var tocar = Object.keys(punteros).length === 1 && movido < 6; delete punteros[e.pointerId]; if (tocar && e.type === "pointerup") elige(e.clientX, e.clientY); }
   lienzo.addEventListener("pointerup", suelta); lienzo.addEventListener("pointercancel", suelta); lienzo.addEventListener("contextmenu", function (e) { e.preventDefault(); });
   lienzo.addEventListener("wheel", function (e) { e.preventDefault(); if (paseando) return; orb.dist = Math.max(30, Math.min(DIST_MAX, orb.dist * (1 + Math.sign(e.deltaY) * 0.1))); }, { passive: false });
@@ -36,7 +36,7 @@
 
   // un toque corto o un clic: elige lo que haya debajo (C7: Usables, 02e_entidades.js; cada tipo de cosa del mundo dice si está bajo el dedo y gana por
   // tipo y por cercanía); sobre nada, suelta lo elegido y cierra la ficha
-  function elige(cx, cy) { Usables.toque(cx, cy); }
+  function elige(cx, cy) { return Usables.toque(cx, cy); }
 
   function pon(m) { modo = m; ["Nube", "Gem", "Orto"].forEach(function (n) { $("m" + n).setAttribute("aria-pressed", String((n === "Nube" && m === "nube") || (n === "Gem" && m === "gem") || (n === "Orto" && m === "orto"))); }); aplica(); }
   $("mNube").addEventListener("click", function () { pon("nube"); }); $("mGem").addEventListener("click", function () { pon("gem"); }); $("mOrto").addEventListener("click", function () { pon("orto"); });
