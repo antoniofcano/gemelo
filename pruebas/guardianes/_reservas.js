@@ -68,6 +68,8 @@ function reservas(src, fn, inicio) {
 
 /** Las funciones del bucle, por módulo. «inicio» localiza la función (debe ser único en el fichero). Solo lo que corre a cada fotograma. */
 const BUCLE = {
+  "02l_tope_tiles.js": [["paso (Q0k)", "function paso(s, m)"]],   // el lazo del tope del tileset: cada 0,25 s en VR
+  "04b_escena3d.js": [["muestraTope", "function muestraTope("], ["sumaVisible", "function sumaVisible("]],
   "30_mide.js": [["causasDelFotograma", "function causasDelFotograma("], ["bits", "function bits("], ["apuntaReparto", "function apuntaReparto("]],   // Q0g: la autopsia de los fotogramas lentos, cada fotograma medido
   "17_minimapa.js": [["actualizaRastro", "function actualizaRastro("]],
   "19_balizas.js": [["firmaCambia", "function firmaCambia("]],

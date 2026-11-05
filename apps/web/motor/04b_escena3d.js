@@ -1,8 +1,9 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Escena3D
-// Consume: 01_datos (D, $), 01a_aparato (Aparato), 02_mundo (Mundo, suelo), 02b_cola (CargaPuro, Cola),
-//   03_escena (visor, renderer, scene, camera, exag), 04d_sombreado_tiles (SombreadoTiles), 05_nube (nube), 08_marcadores (listo, aplica),
-//   09_camara (objetivo, suelta, pon), 14_historia (aviso), 16_vida (quita, mira), 29_vr (panel)
+// Consume: 01_datos (D, $), 01a_aparato (Aparato), 02_mundo (Mundo, suelo), 02b_cola (CargaPuro, Cola), 02f_xr_perillas (XrPerillas),
+//   02l_tope_tiles (TopeTilesPuro), 03_escena (visor, renderer, scene, camera, exag), 04c_olivos_tiles (OlivosTiles),
+//   04d_sombreado_tiles (SombreadoTiles), 05_nube (nube), 08_marcadores (listo, aplica), 09_camara (objetivo, suelta, pon), 14_historia (aviso),
+//   16_vida (quita, mira), 29_vr (panel)
 // ===============================================================================
   // ---------- la escena en 3D Tiles 1.1 (ADR-0015, aceptado; formato en doc/sistema/TILES3D.md): la ÚNICA escena (T8 fase 2, decisión 79). El relieve
   // con su ortofoto lo dibuja 3DTilesRendererJS (versión fijada en apps/web/package.json) desde un tileset.json de tuberia/tiles3d/, con el sombreado
@@ -57,6 +58,10 @@
     var estado = pedida ? "cargando" : "apagado", motivo = "", tiles = null, Sched = null, raizT = null, exagPuesta = NaN, sesion = null, errores = 0;
     var ERROR_ESCRITORIO = (function () { var m = /[?&]tilesError=([0-9.]+)/.exec(location.search), v = m ? Number(m[1]) : 16; return v > 0 && v <= 256 ? v : 16; })();
     var errorPerfil = null;   // el del perfil VR (29_vr.js, campo e de cada perfil); null = el de escritorio
+    // Q0k (02l_tope_tiles.js): el lazo que sube el error del tileset si sus triángulos pasan del tope del perfil de VR (y lo baja cuando sobra). Solo en VR;
+    // en pantalla y móvil no corre. triNivel: el `tri` del perfil; vistoT: lo último contado (relieve de las teselas visibles + sus olivos), cada MUESTRA s
+    var tope = TopeTilesPuro.nuevo(), triNivel = null, ultMuestra = 0, cab = new THREE.Vector3();
+    var vistoT = { tri: 0, relieve: 0, olivos: 0, mallas: 0 }, mm = { dt: 0, tri: 0, tope: 0, eBase: 0, errMax: 0, cargando: false, x: 0, z: 0 };
     var tam = new THREE.Vector2();
     var BVH = /[?&]bvh(=1|=true)?(&|#|$)/.test(location.search), bvhLib = null, bvhN = { mallas: 0, triangulos: 0 };   // AG-1.6 (opt-in): ver RayosPuro
     var POL = Aparato.politica();   // AG-1.5: tilesParse / tilesParseVr (cuántas teselas analiza la librería a la vez)
@@ -145,7 +150,7 @@
         });
         // AG-1.5: lo que el motor ejecuta al llegar una tesela (olivos de 04c, sombreado de 04d) corre fuera de la Cola, cuando la librería acaba de
         // analizarla; Cola.cobra lo apunta como deuda («T» en ?debug) y el fotograma siguiente carga menos (07b_arboles, CargaPuro.base)
-        tiles.addEventListener("load-model", Cola.cobra("T", function (e) { if (!(ganchos.alModelo && ganchos.alModelo(e.scene, e.tile))) quitaOlivos(e.scene); e.scene.userData.tesela = { uri: e.tile.content && e.tile.content.uri, lado: e.tile.boundingVolume && e.tile.boundingVolume.box ? 2 * e.tile.boundingVolume.box[3] : null, error: e.tile.geometricError }; }));
+        tiles.addEventListener("load-model", Cola.cobra("T", function (e) { if (!(ganchos.alModelo && ganchos.alModelo(e.scene, e.tile))) quitaOlivos(e.scene); var r = cuentaRelieve(e.scene); e.scene.userData.tesela = { uri: e.tile.content && e.tile.content.uri, lado: e.tile.boundingVolume && e.tile.boundingVolume.box ? 2 * e.tile.boundingVolume.box[3] : null, error: e.tile.geometricError, tri: r.tri, mallas: r.mallas }; }));   // Q0k: los triángulos del relieve, una vez por tesela
         tiles.addEventListener("load-model", Cola.cobra("T", function (e) { SombreadoTiles.modelo(e.scene, e.tile); }));   // el relieve, con su sombreado (04d)
         tiles.addEventListener("dispose-model", function (e) { SombreadoTiles.suelta(e.scene); });
         if (BVH) {   // AG-1.6: el BVH de cada tesela al llegar (en la deuda «T») y fuera al soltarla; la librería se pide aparte y, al llegar, cubre las ya cargadas
@@ -161,8 +166,39 @@
         scene.add(tiles.group);
       }).catch(falla);
     }
-    // el error en pantalla que se pide: el del perfil VR si lo hay; si no, el de escritorio (?tilesError=, 16 px por defecto como la librería)
-    function perfil(p) { errorPerfil = p && p.e > 0 ? p.e : null; if (tiles) tiles.errorTarget = errorPerfil || ERROR_ESCRITORIO; }
+    // el error en pantalla que se pide: el del perfil VR si lo hay; si no, el de escritorio (?tilesError=, 16 px por defecto como la librería).
+    // Q0k: con el lazo en marcha, el error del perfil por el paso en que esté (al cambiar de perfil, el lazo olvida lo aprendido y sigue desde ese paso)
+    function perfil(p) {
+      errorPerfil = p && p.e > 0 ? p.e : null; triNivel = p && p.tri > 0 ? p.tri : null;
+      if (!errorPerfil) { mm.tope = 0; mm.eBase = 0; TopeTilesPuro.paso(tope, mm); ultMuestra = 0; }   // fuera de VR: el lazo, a cero
+      if (tiles) tiles.errorTarget = errorPerfil ? (tope.activo ? TopeTilesPuro.error(errorPerfil, tope.k, XrPerillas.errMaxTiles()) : errorPerfil) : ERROR_ESCRITORIO;
+    }
+    // Q0k: los triángulos y mallas del relieve de una tesela (lo que no es olivo instanciado), al llegar
+    function cuentaRelieve(sc) {
+      var r = { tri: 0, mallas: 0 };
+      sc.traverse(function (o) { if (!o.isMesh || o.isInstancedMesh || !o.geometry) return; r.tri += RayosPuro.triangulos(o.geometry); r.mallas++; });
+      return r;
+    }
+    function sumaVisible(t) { var sc = t.engineData && t.engineData.scene, u = sc && sc.userData.tesela; if (u && u.tri) { vistoT.relieve += u.tri; vistoT.mallas += u.mallas; } }
+    // Q0k: cada MUESTRA s en VR (no cada fotograma): cuenta lo que el tileset manda a dibujar y deja que el lazo (02l) decida el error. Solo sumas y una
+    // asignación: no hay trabajo que repartir por la Cola (lo pesado lo lleva la librería en su update, con sus propias colas)
+    function muestraTope(cx) {
+      var ahora = performance.now(), dt = (ahora - ultMuestra) / 1000;
+      if (ultMuestra && dt < TopeTilesPuro.DEF.MUESTRA) return;
+      if (!ultMuestra || dt > 1) dt = TopeTilesPuro.DEF.MUESTRA;   // al empezar, o tras una pausa: una muestra normal
+      ultMuestra = ahora;
+      vistoT.relieve = 0; vistoT.mallas = 0; tiles.visibleTiles.forEach(sumaVisible);   // reserva-ok: Set.forEach con una función ya declarada (sin cierre nuevo)
+      vistoT.olivos = typeof OlivosTiles !== "undefined" && OlivosTiles.dibuja() ? OlivosTiles.triangulos() : 0; vistoT.tri = vistoT.relieve + vistoT.olivos;
+      var s = tiles.stats; cx.getWorldPosition(cab);
+      mm.dt = dt; mm.tri = vistoT.tri; mm.tope = XrPerillas.topeTiles(triNivel); mm.eBase = errorPerfil; mm.errMax = XrPerillas.errMaxTiles(); mm.cargando = s.queued + s.downloading + s.parsing > 0; mm.x = cab.x; mm.z = cab.z;
+      var e = TopeTilesPuro.paso(tope, mm);
+      if (e > 0 && tiles.errorTarget !== e) tiles.errorTarget = e;
+    }
+    // la línea de ?debug y del medidor (XrPerillas.linea, 02f): «tileset 152 k / tope 130 k tri · 41 mallas · error 60 px (lazo 1/4)»; "" fuera de VR
+    XrPerillas.lineaTiles = function () {
+      if (!errorPerfil || !tiles) return "";
+      return XrPerillas.topeTiles(triNivel) > 0 ? TopeTilesPuro.linea(tope, { mallas: vistoT.mallas }) : TopeTilesPuro.linea(tope, { apagado: true, tri: vistoT.tri });
+    };
     // cada fotograma, antes de dibujar. En una sesión XR, como el ejemplo de XR de 3DTilesRendererJS: la cámara de la sesión (sus dos ojos) en
     // lugar de la de siempre, con la resolución de un ojo; y el Scheduler de la librería atado a la sesión (si no, sus colas esperan al
     // requestAnimationFrame de la ventana, que en las gafas no corre)
@@ -174,6 +210,7 @@
         if (tiles.hasCamera(camera)) tiles.deleteCamera(camera);
         var cx = xr.getCamera(); tiles.setCamera(cx);
         var ojo = cx.cameras && cx.cameras[0]; if (ojo && ojo.viewport) tiles.setResolution(cx, ojo.viewport.z, ojo.viewport.w);
+        if (errorPerfil) muestraTope(cx);   // Q0k: el tope de triángulos del perfil (con lo que dibujó el fotograma anterior)
       } else {
         if (tiles.cameras.length !== 1 || !tiles.hasCamera(camera)) { tiles.cameras.slice().forEach(function (c) { tiles.deleteCamera(c); }); tiles.setCamera(camera); }
         renderer.getSize(tam); tiles.setResolution(camera, tam.x, tam.y);
@@ -187,7 +224,9 @@
     function sumaBVH(r) { bvhN.mallas += r.mallas; bvhN.triangulos += r.triangulos; }
     function resumen() {
       var vis = 0; if (tiles) tiles.visibleTiles.forEach(function (t) { if (t.content && t.content.uri) vis++; });
-      return { estado: estado, motivo: motivo, errores: errores, visibles: vis, bvh: BVH ? { activo: !!bvhLib, mallas: tiles ? RayosPuro.cuenta(tiles.group) : 0, construidas: bvhN.mallas, triangulos: bvhN.triangulos } : null, errorTarget: tiles ? tiles.errorTarget : null, stats: tiles ? JSON.parse(JSON.stringify(tiles.stats)) : null };
+      return { estado: estado, motivo: motivo, errores: errores, visibles: vis, bvh: BVH ? { activo: !!bvhLib, mallas: tiles ? RayosPuro.cuenta(tiles.group) : 0, construidas: bvhN.mallas, triangulos: bvhN.triangulos } : null, errorTarget: tiles ? tiles.errorTarget : null,
+        tope: { activo: tope.activo, tope: tope.tope, tri: vistoT.tri, relieve: vistoT.relieve, olivos: vistoT.olivos, mallas: vistoT.mallas, error: tope.error, k: tope.k, K: tope.K, saturado: tope.saturado, cambios: tope.cambios, subidas: tope.subidas, bajadas: tope.bajadas },   // Q0k
+        stats: tiles ? JSON.parse(JSON.stringify(tiles.stats)) : null };
     }
     // altura del relieve DIBUJADO en (x, y) del marco local (rayo vertical contra las teselas visibles: la librería saca de tiles.group las que no
     // se dibujan), sin exageración; null si no hay tesela. relieveEn dice además qué glb lo dibuja (uri, lado y geometricError de su tesela).

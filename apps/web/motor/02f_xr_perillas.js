@@ -10,6 +10,7 @@
   //   ?xrjssube=2..10 (Q0c-b: ms de JS por debajo de los que el controlador SUBE de nivel; defecto 5) · ?xrestable=2..120 (Q0c-b: segundos seguidos por debajo de eso antes de subir; defecto 10)
   //   ?xrmv=0|1 (F2a, doc/sistema/MULTIVIEW.md: multiview de super-three, `multiviewStereo`; SOLO existe en la build de VR, con defecto 1 (URL, luego el ajuste «vr.multiview», luego 1); en la de pantalla
   //   se ignora y se dice; se lee antes de crear el renderer, como xraa)
+  //   ?xrtri=0|20000..2000000 (Q0k: tope de triángulos del tileset en VR; 0 apaga el lazo; sin ella, el tri de cada nivel) · ?xrtrierr=16..256 (Q0k: error máximo del tileset, px; defecto 128)
   // Sin ninguna, nada cambia. Es el ÚNICO sitio que lee estas banderas de la URL. Presupuesto (regla 6): no dibuja ni reserva nada.
   // [puro:inicio] (sin THREE ni DOM: lo evalúa en Node pruebas/guardianes/xr_perillas.test.js)
   var XrPerillasPuro = (function () {
@@ -74,6 +75,22 @@
       });
       return r;
     }
+    // Q0k: el tope de triángulos del tileset en VR (02l_tope_tiles.js, 04b). ?xrtri=0 apaga el lazo; ?xrtri=N (20000 a 2000000) fija el tope en N triángulos
+    // en todos los niveles (sin ella, el `tri` del nivel, VR_PERFILES[n].tri); ?xrtrierr=16..256 el error máximo (px) al que puede subir (defecto 128).
+    // → { tri, err } (null = no pedida) e ignorados, como lee()
+    var LIMT = { tri: [20000, 2000000], err: [16, 256] }, DEFT = { err: 128 };
+    function leeTiles(busqueda) {
+      var q = String(busqueda || ""), r = { tri: null, err: null, ignorados: [] };
+      [["xrtri", "tri"], ["xrtrierr", "err"]].forEach(function (par) {
+        var t = cruda(q, par[0]); if (t === null) return;
+        var v = num(t); if (!isFinite(v)) { r.ignorados.push({ param: par[0], valor: t, motivo: "no es un número" }); return; }
+        if (par[1] === "tri" && v === 0) { r.tri = 0; return; }   // 0: el lazo apagado
+        var a = LIMT[par[1]][0], b = LIMT[par[1]][1], c = Math.min(b, Math.max(a, Math.round(v)));
+        if (c !== v) r.ignorados.push({ param: par[0], valor: t, motivo: "fuera de rango (" + (par[1] === "tri" ? "0 o " : "") + a + " a " + b + "), recortado a " + c });
+        r[par[1]] = c;
+      });
+      return r;
+    }
     function coma(v) { return String(v).replace(".", ","); }
     // e.mv (F2a): solo en la build de VR: «multiview sí» (pedido y en uso), «multiview pedido, no en uso» (el casco no dio OCULUS_multiview o la capa de proyección),
     // «multiview pedido» (aún sin sesión) o «multiview no (xrmv=0)». En la de pantalla e.mv no existe y la línea es la de siempre.
@@ -88,7 +105,7 @@
       if (e.ignorados && e.ignorados.length) s += " · ignorado: " + e.ignorados.map(function (i) { return i.param + "=" + i.valor + " (" + i.motivo + ")"; }).join("; ");
       return s;
     }
-    return { lee: lee, leeControl: leeControl, LIMC: LIMC, DEFC: DEFC, plan: plan, linea: linea, multiview: multiview, LIM: LIM, HZ: HZ, DEF: DEF };
+    return { lee: lee, leeControl: leeControl, LIMC: LIMC, DEFC: DEFC, leeTiles: leeTiles, LIMT: LIMT, DEFT: DEFT, plan: plan, linea: linea, multiview: multiview, LIM: LIM, HZ: HZ, DEF: DEF };
   })();
   // [puro:fin]
 
@@ -110,6 +127,10 @@
     function ajusteMv() { try { var s = window.localStorage.getItem("gemelo.ajustes.vr.multiview"); return s == null ? undefined : JSON.parse(s); } catch (e) { return undefined; } }
     X.multiview = function (build) { if (!X.mv) X.mv = XrPerillasPuro.multiview(q, build, ajusteMv()); return X.mv; };
     X.mvEnUso = function (renderer) { if (X.mv && X.mv.existe) X.mv.enUso = !!(renderer && renderer.xr && renderer.xr.isMultiview); };   // 29_vr, con la sesión ya puesta (super-three: xr.isMultiview)
+    // Q0k: el tope del tileset (04b lo pide al cambiar de nivel): 0 = lazo apagado; si no, ?xrtri= o el tri del nivel. errMax: ?xrtrierr= o 128 px
+    X.tiles = XrPerillasPuro.leeTiles(q); X.lineaTiles = null;   // 04b deja en lineaTiles una función que da su trozo de la línea («tileset … tri · error … px»), "" fuera de VR
+    X.topeTiles = function (triNivel) { var t = X.tiles.tri; return t === 0 ? 0 : t != null ? t : (triNivel > 0 ? triNivel : 0); };
+    X.errMaxTiles = function () { return X.tiles.err != null ? X.tiles.err : XrPerillasPuro.DEFT.err; };
     X.fijo = function () { return X.efectivas.nivel != null; };   // ?xrnivel=: el controlador adaptativo no actúa
     X.antes = function (renderer) { renderer.xr.setFoveation(X.efectivas.fov); };   // antes de setSession: three la aplica a la capa al crearla (proyección o base)
     X.despues = function (ses) {   // con la sesión ya abierta se conocen las frecuencias del casco: el plan real sustituye al previo
@@ -117,7 +138,10 @@
       try { var capa = ses && ses.renderState && ses.renderState.baseLayer; if (capa && "fixedFoveation" in capa) capa.fixedFoveation = X.efectivas.fov; } catch (e) {}
       try { if (X.efectivas.hz != null && ses && ses.updateTargetFrameRate) ses.updateTargetFrameRate(X.efectivas.hz); } catch (e) {}
     };
-    X.linea = function () { var e = X.efectivas, ig = X.mv && X.mv.ignorado ? e.ignorados.concat([X.mv.ignorado]) : e.ignorados; return XrPerillasPuro.linea({ fov: e.fov, escala: e.escala, hz: e.hz, aa: X.aa, mv: X.mv, nivel: e.nivel, near: e.near, js: X.js(), ignorados: ig }); };
+    X.linea = function () {
+      var e = X.efectivas, ig = (X.mv && X.mv.ignorado ? e.ignorados.concat([X.mv.ignorado]) : e.ignorados).concat(X.tiles.ignorados), t = X.lineaTiles ? X.lineaTiles() : "";
+      return XrPerillasPuro.linea({ fov: e.fov, escala: e.escala, hz: e.hz, aa: X.aa, mv: X.mv, nivel: e.nivel, near: e.near, js: X.js(), ignorados: ig }) + (t ? " · " + t : "");   // Q0k: el tileset, al final
+    };
     return X;
   })();
   // [motor:fin]
