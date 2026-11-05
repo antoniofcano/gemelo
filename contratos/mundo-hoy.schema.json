@@ -45,12 +45,12 @@
     },
     "parcela": {
       "type": "string",
-      "pattern": "^[A-Za-z0-9_.:#-]{1,64}$",
-      "description": "id de parcela de OlivarTrack, como en la instantánea D.ot del índice"
+      "pattern": "^[\\p{L}\\p{N}:_.#()/-]{1,120}$",
+      "description": "id de parcela de OlivarTrack (PATRON_ID_PARCELA de apps/api/src/vivo/lista-blanca.ts): letras con tilde, cifras y : _ . # ( ) / -; sin espacios"
     },
     "palabra": {
       "type": "string",
-      "pattern": "^[a-z0-9_.-]{1,60}$"
+      "pattern": "^[\\p{Ll}0-9_.-]{1,60}$"
     },
     "fuente": {
       "type": "object",
@@ -550,7 +550,7 @@
                   "string",
                   "null"
                 ],
-                "pattern": "^[a-z0-9_.-]{1,60}$"
+                "pattern": "^[\\p{Ll}0-9_.-]{1,60}$"
               }
             }
           }
