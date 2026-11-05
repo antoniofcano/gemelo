@@ -845,7 +845,7 @@
       var id = D.copas_id ? D.copas_id[i] : -1, prov = !(id >= 0 && id < 2147483648);
       return p ? { forma: "ilustrativa con medidas del LiDAR", provisional: prov, niv: p.niv, variante: !p.propio } : { forma: "ilustrativa con medidas del LiDAR", provisional: prov, niv: "lejano", variante: true, lejano: true };
     }
-    /** O2 (medida, no dibuja): qué cuesta cada pieza del lote que se está dibujando. Por malla fundida (gen-corteza, gen-olivas, gen-tarjeta…): tipo, instancias visibles,
+    /** O2 (medida, no dibuja; sin índice, indexCount es -1 y se cuentan los vértices): qué cuesta cada pieza del lote que se está dibujando. Por malla fundida (gen-corteza, gen-olivas, gen-tarjeta…): tipo, instancias visibles,
      *  triángulos de UNA pasada (los de la pasada de sombras se suman aparte si la malla proyecta: sombra) y llamadas (1, más 1 si proyecta sombra); y por escalón
      *  (E0/E1/E2/E2VR) cuántos olivos y los triángulos de sus recetas. Lo pide pruebas/guardianes/_navegador.js con el desglose; sin lote, null. */
     function piezas() {
@@ -856,7 +856,7 @@
         if (o.isBatchedMesh) {
           var r = {};
           for (var id = 0; id < o.maxInstanceCount; id++) {
-            try { if (!o.getVisibleAt(id)) continue; inst++; tri += o.getGeometryRangeAt(o.getGeometryIdAt(id), r).indexCount / 3; } catch (e) { /* instancia sin usar */ }
+            try { if (!o.getVisibleAt(id)) continue; inst++; o.getGeometryRangeAt(o.getGeometryIdAt(id), r); tri += (r.indexCount >= 0 ? r.indexCount : r.vertexCount) / 3; } catch (e) { /* instancia sin usar */ }
           }
         } else if (o.isInstancedMesh) { inst = o.count; var g = o.geometry; tri = o.count * (g.index ? g.index.count : g.attributes.position.count) / 3; }
         else if (o.isPoints) { var dr = o.geometry.drawRange, tot = o.geometry.attributes.position.count; pts = Math.min(tot, isFinite(dr.count) ? dr.count : tot); inst = pts; }
