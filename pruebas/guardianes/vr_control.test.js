@@ -118,7 +118,7 @@ test("perillas ?xrjssube y ?xrestable: valor, recorte con motivo, no numérico i
   assert.deepStrictEqual(L.ignorados.map(i => i.param), ["xrjssube", "xrestable"]); assert.match(L.ignorados[0].motivo, /recortado a 2/);
   const N = XP.leeControl("?xrjssube=poco&xrestable="); assert.deepStrictEqual([N.sube, N.estable], [null, null]);
   assert.deepStrictEqual(N.ignorados.map(i => i.motivo), ["no es un número", "no es un número"]);
-  assert.deepStrictEqual(XP.leeControl(""), { sube: null, estable: null, ignorados: [] });
+  assert.deepStrictEqual(XP.leeControl(""), { sube: null, estable: null, gente: null, ignorados: [] });
   assert.match(VR, /subeJs: XrPerillas\.jsSube\(\), estableS: XrPerillas\.estable\(\)/, "__vrDebug().xr lo enseña");
 });
 

@@ -119,6 +119,43 @@ El nivel (0 a 3, `VR_PERFILES`) lo decide `VrControlPuro.decide` (`02g_vr_presup
 
 **Nota de comodidad (Q0c-b).** *Qué se probó:* solo en Node, con series sintéticas y dobles del renderer y de la Cola. *Qué se espera en el casco:* menos vaivenes de calidad (la hierba y los olivos no deberían aparecer y desaparecer cada pocos segundos) y menos tirón al cambiar de nivel, a costa de recuperar calidad más tarde o menos veces (hace falta JS < 5 ms durante 10 s). *Qué NO se ha probado:* **nada en Quest ni en ningún casco** (ni el efecto en fps o en el peor fotograma, ni que 8/5/10 sean buenos números, ni que la precompilación reduzca el pico de la entrada, ni el aspecto de un cambio de nivel repartido en varios fotogramas), ni en iPhone. Se compara con `?xrnivel=N` fijo en la misma ruta y se ajusta con `?xrjs`, `?xrjssube` y `?xrestable`.
 
+### La gente en el presupuesto (Q0c-c)
+
+Hasta Q0c-b el controlador decidía solo con el JS y el tiempo de fotograma; los avatares (VRM cercanos y muñecos de la presencia) no entraban en la cuenta, aunque con 10-40 personas en la finca suman llamadas y triángulos. Q0c-c no cambia la regla del controlador: añade una **tabla por nivel** y un **suelo** que pide la gente.
+
+**Qué cuesta un avatar hoy** (`MEDIDO avatares`, `pruebas/guardianes/avatares_motor.test.js`, con 10 y 40 visitantes simulados; SwiftShader mide recuentos y memoria, no fps): el muñeco es lo barato (una instancia por pieza, `Presencia.instancias`); el VRM cercano es lo caro (hasta 20.000 triángulos y 4 primitivas por avatar, ADR-0020; la geometría y las texturas se comparten entre personas con el mismo avatar). Por eso el presupuesto se gobierna con el **cupo de VRM**: `AvataresPuro.cupo` (`26b_avatares.js`) da 6 en escritorio y 3 en móvil o Quest fuera de VR; dentro de VR lo da la tabla de abajo. Los muñecos no se limitan por nivel: este escalón solo toca los VRM (el coste de los muñecos de la presencia no entra todavía en la tabla; es el siguiente paso si la medida de 40 personas lo pide).
+
+**La tabla** (`AvataresPuro.GENTE_VR`, una fila por escalón de `VR_PERFILES`; el reparto está en `reparte`, con la distancia como cuarto argumento). Los números marcados [PROPUESTA] **no están medidos en un casco**:
+
+| Nivel | VRM como mucho | A partir de qué distancia pasa a muñeco | Origen |
+|---|---|---|---|
+| 0 | 3 | 40 m (`DMAX`, como en pantalla) | el de hoy |
+| 1 | 2 | 30 m | cupo de hoy; distancia [PROPUESTA] |
+| 2 | 1 | 20 m | cupo de hoy; distancia [PROPUESTA] |
+| 3 | 0 | 10 m (sin efecto: no hay cupo) | cupo de hoy; distancia [PROPUESTA] |
+
+El cupo por nivel es el que ya había (`CUPO_VR = [3, 2, 1, 0]`, ahora derivado de la tabla); lo nuevo es la distancia. Quien ya lleva VRM sigue llevándolo hasta 1,1 veces esa distancia (la histéresis de siempre de `reparte`).
+
+**Bajada anticipada «con visita».** `26b_avatares.js` cuenta cada medio segundo, y solo dentro de VR, las personas a la vista (`Presencia.vrmPersonas()`) y se las pasa a `VrPresupuesto.ponGente`. El controlador pide un **suelo** de nivel: `VrControlPuro.sueloGente(vistos, N, previo)` da 1 si hay **más de N** personas a la vista y 0 si no. Con `decide(…, suelo)`: si `nivel < suelo` baja un escalón **ya**, sin esperar al JS (con la guarda de 4 s de siempre), y no sube por debajo del suelo. Es **un solo escalón** de antelación, nunca más: si el JS exige bajar más, baja más (el suelo es un mínimo, no un tope). Histéresis: una vez pedido, el suelo se mantiene hasta que baja a `N − 2` personas o menos (`SALIDA_GENTE`), para que alguien en el borde del campo de visión no haga subir y bajar el nivel. N vale **8** por defecto [PROPUESTA] y se cambia con `?xrgente=` (2 a 64). Con `?xrnivel=` fijo el controlador no actúa y el suelo tampoco.
+
+**Cómo se aplica (nunca de golpe).** La bajada anticipada es un cambio de nivel como cualquier otro: `vrAdapta` llama a `vrNivelPorCola`, que reparte el trabajo en la `Cola` (`vnivel`, un paso por `yield`). Los avatares no cambian en un fotograma: el nuevo cupo y la nueva distancia los lee `tic()` de `26b_avatares.js` cada medio segundo; quien deja de caber **no desaparece**, se funde de VRM a muñeco durante `FUNDIDO` (0,6 s, `r.k`, es el `fundiendo` de las medidas), y quien entra en el cupo se carga y se funde de muñeco a VRM. No hay ningún avatar que aparezca o desaparezca en un solo fotograma.
+
+**Sin gente, nada cambia.** Con 0 personas `sueloGente` da 0, `decide(…, 0)` es exactamente la regla de Q0b/Q0c-b (el guardián lo comprueba con tres series: mismos cambios en los mismos instantes), el cupo por nivel es el de antes y la distancia del nivel 0 es `DMAX`. Los niveles 1 y 2 sí llevan ahora una distancia menor que 40 m: es el único cambio con gente aunque no haya bajada anticipada.
+
+**Reservas y contratos.** Cero reservas por fotograma: el recuento es un número (`ponGente`) y `suelo()` solo hace comparaciones; el recuento reserva una lista a 2 Hz (la misma que ya hacía `tic`) y solo en VR. `26b_avatares.js` consume ahora `VrPresupuesto` (02g), y `contrato_modulos.js --comprueba` está al día.
+
+**Pruebas.** `pruebas/guardianes/vr_gente_presupuesto.test.js` (Node, `GEMELO_SOLO_NODE=1`): la tabla por nivel y el cupo, la distancia en el reparto, `sueloGente` y su histéresis, la bajada anticipada con más de N (un escalón, no sube mientras haya gente, no oscila en 9/7), 0 personas idéntico a antes, la perilla `?xrgente=` y el cableado (Cola, 2 Hz y solo en VR). Más las de siempre: `vr_control`, `vr_presupuesto`, `xr_perillas`, `avatares_motor`, `presencia`, `sin_reservas`, `contratos`, `componentes`.
+
+**Orden para el banco (escrita, SIN lanzar).** Mide 10 y 40 avatares con cada nivel fijado, en VR simulada (SwiftShader: llamadas, triángulos, VRM, cupo y `fundiendo`; no fps). Reusa la prueba de `avatares` (es la que imprime `MEDIDO avatares`; la parte nueva imprime `MEDIDO avatares-vr`). Con Docker y memoria comprobados, y por el turno del banco:
+
+```
+GEMELO_AVATARES_VR=1 npm run puerta -- pruebas/guardianes/avatares_motor.test.js
+```
+
+(Una sola tanda: 8 páginas, 10 y 40 personas × niveles 0 a 3. Compara con `MEDIDO avatares` de escritorio, que tiene `vrm10` y `vrm40`.) Para verlo en un Quest real: `…/?debug&mide=60&presencia=sim&n=40&vrm=1&xrnivel=N` con N = 0 a 3, y la bajada anticipada sin fijar nivel: `?debug&presencia=sim&n=12&vrm=1&xrgente=8`; `__vrDebug().nivel` y `__vrPresupuesto().gente` / `.sueloGente` dicen qué pasa.
+
+**Nota de comodidad (Q0c-c).** *Qué cambia a la vista:* al bajar el nivel, una persona con su VRM cercano se **funde** en 0,6 s a su muñeco (cuerpo más simple, sin cara ni ropa del catálogo) y los VRM lejanos (más allá de 30, 20 o 10 m según el nivel) son muñeco desde ya; al subir, al revés. Con más de 8 personas a la vista, esto ocurre **antes de que se note un tirón**, no después. El fundido es el de siempre en pantalla; en VR un cambio de cuerpo a pocos metros puede resultar más llamativo que en pantalla, y quien lo vea de cerca (a menos de 3-8 m) notará el cambio de rasgos. *Qué se probó:* solo Node (reparto, controlador, cableado). *Qué NO se ha probado:* **nada en Quest ni en ningún casco**: ni que el fundido se vea bien en estéreo, ni que N = 8, el escalón de antelación o las distancias de 30, 20 y 10 m sean los buenos, ni el efecto en fps; tampoco la medida de 10 y 40 personas por nivel en Chrome (la orden de arriba está escrita, no lanzada). La mirada de los muñecos y los gestos de la persona (manos, cabeza) no cambian con el nivel.
+
 ## Perillas de rendimiento por URL
 Para probar en el Quest sin recompilar (Q0b), el perfil de arriba se puede tocar desde la URL. **Todas son opcionales; sin ellas nada cambia.** Se leen en un solo sitio (`apps/web/motor/02f_xr_perillas.js`, función pura `XrPerillasPuro.lee`), se recortan a su rango (lo recortado o ignorado se anota con el motivo) y no hay interfaz en el panel VR: solo URL. Ejemplo: `/finca/?debug&mide=60&xrescala=0.8&xrfov=1&xrnivel=1`.
 
@@ -132,6 +169,7 @@ Para probar en el Quest sin recompilar (Q0b), el perfil de arriba se puede tocar
 | `xrjs` | Umbral de ms de JS por fotograma con que el controlador adaptativo **baja** de nivel (el de subir es `xrjssube`) | 8 (o `escalera.vrJsMs` de la configuración) | 4 a 16 | Menos: baja de nivel antes (imagen algo más sencilla, menos tirones). Más: aguanta más antes de bajar. Con `xrnivel` el controlador no actúa y esta no cuenta |
 | `xrjssube` | Q0c-b: ms de JS por debajo de los que el controlador **sube** de nivel (siempre queda al menos 1 ms por debajo del de bajar) | 5 (tabla por aparato) | 2 a 10 | Más: sube antes (y puede volver a bajar). Menos: tarda más en recuperar calidad. Con `xrnivel` no cuenta |
 | `xrestable` | Q0c-b: segundos seguidos por debajo de `xrjssube` antes de subir de nivel | 10 | 2 a 120 | Menos: sube antes; más: espera más y oscila menos. Con `xrnivel` no cuenta |
+| `xrgente` | Q0c-c: a partir de cuántas personas **a la vista** (más de N) el controlador baja un escalón con antelación, sin esperar al JS ([La gente en el presupuesto](#la-gente-en-el-presupuesto-q0c-c)) | 8 [PROPUESTA] | 2 a 64 | Menos: baja antes con poca gente (menos VRM cercanos). Más: aguanta más gente con el nivel alto. Con `xrnivel` no cuenta; con 0 personas no hace nada |
 | `xrnivel` | Fija un nivel de `VR_PERFILES` y **apaga el controlador adaptativo** | auto | 0 a 3 | Para medir un nivel concreto sin que cambie a mitad de la medida; sin él, el controlador de siempre |
 | `xrmv` | **Solo en la build de VR** (super-three, [MULTIVIEW.md](MULTIVIEW.md#estado-de-f2a-2026-11-04-solo-node-la-build-de-vr-con-super-three-de-verdad)): multiview del renderer clásico (`multiviewStereo`; se lee antes de crearlo, como `xraa`). Con él se pide además la función `layers` de la sesión | 1 | 0 o 1 | Con multiview, un dibujo por objeto para los dos ojos (menos CPU, por medir). 0 vuelve al dibujo por ojo con el mismo super-three, para comparar. En la build de pantalla no existe: se ignora y se anota. Sin URL manda el ajuste `vr.multiview` (Configuración → Comodidad VR, solo en la build de VR; orden: URL, ajuste, encendido; se aplica al recargar) |
 

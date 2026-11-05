@@ -288,3 +288,30 @@ test("en Chrome: con &vrm=1 y nada en /avatares, todos son el muñeco, sin error
   const mb = await medir(p); await p.close();
   assert.strictEqual(mb.vrm.catalogo, -1, "sin &vrm=1 no se pide el catálogo"); assert.ok(!pedidas.some(u => /avatares/.test(u)), pedidas.filter(u => /avatares/.test(u)).join(" "));
 });
+
+// Q0c-c: la gente en el presupuesto de VR. SOLO a petición (GEMELO_AVATARES_VR=1; no entra en la puerta): 10 y 40 visitantes con VRM en VR simulada (mock_xr.js) y cada
+// escalón fijado con ?xrnivel=N (el controlador no actúa). Imprime «MEDIDO avatares-vr {…}»: por escalón, llamadas, triángulos, VRM, cupo y fundiendo. SwiftShader mide recuentos y
+// memoria, no fps; el cupo y la distancia por nivel salen de AvataresPuro.GENTE_VR. ESCRITA, NO LANZADA en esta tarea (Q0c-c); la orden para el banco está en doc/sistema/VR.md.
+test("en Chrome con VR simulada (a petición): 10 y 40 personas en cada escalón de VR; el cupo de VRM baja con el nivel (3/2/1/0) y el resto es muñeco", { timeout: 1500000 }, async t => {
+  if (SALTO) return t.skip(SALTO);
+  if (process.env.GEMELO_AVATARES_VR !== "1") return t.skip("a petición: GEMELO_AVATARES_VR=1 (medida de Q0c-c, por el banco)");
+  const mock = fs.readFileSync(path.join(RAIZ, "pruebas", "mock_xr.js"), "utf8"), res = {};
+  for (const n of [10, 40]) for (let nivel = 0; nivel < AP.GENTE_VR.length; nivel++) {
+    const p = await nav.newPage({ viewport: ventanaDe(VENTANA_CHICA) }), errores = [];
+    p.on("pageerror", e => errores.push("PAGEERROR " + String(e.stack || e).slice(0, 400)));
+    await p.addInitScript({ content: mock });
+    await p.goto(base + "?debug&presencia=sim&n=" + n + "&vrm=1&yo=no&xrnivel=" + nivel);
+    await p.waitForFunction(() => window.__g && window.__g.listo() && window.__vrDebug, null, { timeout: 90000 });
+    await p.click("#btnVR"); await p.waitForFunction(() => window.__vrDebug().on, null, { timeout: 60000 }).catch(() => {});
+    await p.waitForFunction(() => { const v = window.__presencia().vrm; return v && v.catalogo > 0 && v.cargando === 0 && v.fundiendo === 0; }, null, { timeout: 120000, polling: 500 }).catch(() => {});
+    await p.waitForTimeout(3000);
+    const m = await medir(p); m.nivel = await p.evaluate(() => window.__vrDebug().nivel); m.errores = errores; res["n" + n + "_nivel" + nivel] = m; await p.close();
+  }
+  console.log("MEDIDO avatares-vr " + JSON.stringify(res));
+  for (const k in res) {
+    const m = res[k], nivel = Number(/nivel(\d)/.exec(k)[1]);
+    assert.deepStrictEqual(m.errores, [], k); assert.strictEqual(m.nivel, nivel, k + ": el escalón fijado");
+    assert.strictEqual(m.vrm.cupo, AP.GENTE_VR[nivel].vrm, k + ": el cupo es el de la tabla");
+    assert.ok(m.vrm.conVrm <= AP.GENTE_VR[nivel].vrm, k + ": nunca más VRM que el cupo (" + m.vrm.conVrm + ")");
+  }
+});

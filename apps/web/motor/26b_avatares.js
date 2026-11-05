@@ -1,8 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos ($), 01a_aparato (Aparato), 02_mundo (suelo), 02c_componentes (Reparto, Componentes), 02i_materiales (Materiales),
-//   03_escena (renderer, scene, camera, exag), 12_paseo (paseando, persona, primera), 16_vida (enQuad, quad, enDron, dron),
-//   26_presencia (Aspecto, Muneco), 29_vr (VRX)
+// Consume: 01_datos ($), 01a_aparato (Aparato), 02_mundo (suelo), 02c_componentes (Reparto, Componentes), 02g_vr_presupuesto (VrPresupuesto),
+//   02i_materiales (Materiales), 03_escena (renderer, scene, camera, exag), 12_paseo (paseando, persona, primera), 15_tiempo (nivel),
+//   16_vida (enQuad, quad, enDron, dron), 26_presencia (Aspecto, Muneco), 29_vr (VRX, VR_PERFILES)
 // Nota: Componente «avatares-vrm» (ADR-0023, C5): solo se registra; consume la presencia (n.api) y se engancha a ella con enganchaVRM. Sin presencia activa no crea nada; con ella, pide /avatares/catalogo.json solo si alguien lleva avatar (o con &vrm=1 en la simulación) e import("@pixiv/three-vrm") solo entonces. El trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/avatares_motor.test.js.
 // ===============================================================================
   // ---------- avatares VRM (P7c, ADR-0020), componente «avatares-vrm» (C5, ADR-0023, consume la presencia): los N más cercanos que caben en el presupuesto del aparato llevan su VRM del catálogo; el resto, el muñeco
@@ -25,7 +25,10 @@
 
   // [puro:inicio] — sin THREE ni DOM: pruebas/guardianes/avatares.test.js evalúa este trozo tal cual en Node
   var AvataresPuro = (function () {
-    var CUPO = { escritorio: 6, movil: 3, quest: 3 }, CUPO_VR = [3, 2, 1, 0];
+    var CUPO = { escritorio: 6, movil: 3, quest: 3 };
+    // Q0c-c: la TABLA de la gente en VR, una fila por escalón de VR_PERFILES (29_vr): cuántos VRM como mucho (vrm) y a qué distancia, en metros, pasan a muñeco (dist).
+    // vrm es el CUPO_VR de siempre ([3, 2, 1, 0]); dist del nivel 0 es DMAX (como en pantalla). Las otras distancias son [PROPUESTA], SIN medir en gafas (doc/sistema/VR.md#la-gente-en-el-presupuesto-q0c-c)
+    var GENTE_VR = [{ vrm: 3, dist: 40 }, { vrm: 2, dist: 30 }, { vrm: 1, dist: 20 }, { vrm: 0, dist: 10 }], CUPO_VR = GENTE_VR.map(function (f) { return f.vrm; });
     var DMAX = 40, PUESTOS_EXTRA = 2, DIST_EXTRA = 1.1, MEJORA = 0.9;
     var BAJA = 1.25, CODO = 0.15, CODO_QUAD = 0.4, CODO_DRON = 0.9, RODILLA = 0.6, INCLINA = 0.35, CAB_YAW = 1.1, CAB_PITCH = 0.6;
     var ID = /^[a-z0-9-]{1,32}$/, FICHERO = /^[a-z0-9-]{1,32}\.vrm$/, SHA = /^[0-9a-f]{64}$/, HEX = /^#?([0-9a-fA-F]{6})$/, MALLA = /^pieza_[a-z0-9-]{1,32}$/;
@@ -34,6 +37,11 @@
     function cupo(disp, vr, nivelVR) {
       if (vr) { var n = nivelVR | 0; return CUPO_VR[Math.max(0, Math.min(CUPO_VR.length - 1, n))]; }
       return CUPO[disp] != null ? CUPO[disp] : CUPO.escritorio;
+    }
+    // a qué distancia (m) un VRM pasa a muñeco: DMAX fuera de VR; con gafas, la de la fila del escalón
+    function distVrm(vr, nivelVR) {
+      if (!vr) return DMAX;
+      return GENTE_VR[Math.max(0, Math.min(GENTE_VR.length - 1, nivelVR | 0))].dist;
     }
     function color(v) {
       if (typeof v === "number" && v % 1 === 0 && v >= 0 && v <= 0xffffff) return v;
@@ -102,12 +110,13 @@
     // quién lleva VRM: tengo = {id: true} los de ahora; cand = [{id, d}] los que podrían (se ven, tienen avatar del catálogo y no ha fallado su fichero);
     // n = plazas. Devuelve el conjunto nuevo (nunca más de n). Histéresis: quien ya lo lleva sigue mientras esté en los n + 2 primeros y a menos de 44 m;
     // uno nuevo entra si está en los n primeros y a menos de 40 m, si hay plaza o si está un 10 % más cerca que el más lejano de los que lo llevan
-    function reparte(tengo, cand, n) {
+    function reparte(tengo, cand, n, dmax) {
+      var DM = dmax > 0 ? dmax : DMAX;
       var c = cand.slice().sort(function (a, b) { return a.d - b.d || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0); }), nuevo = {}, dentro = [], i, x;
       if (n <= 0) return nuevo;
-      for (i = 0; i < c.length; i++) { x = c[i]; if (tengo[x.id] && i + 1 < n + PUESTOS_EXTRA && x.d < DMAX * DIST_EXTRA && dentro.length < n) { nuevo[x.id] = true; dentro.push(x); } }
+      for (i = 0; i < c.length; i++) { x = c[i]; if (tengo[x.id] && i + 1 < n + PUESTOS_EXTRA && x.d < DM * DIST_EXTRA && dentro.length < n) { nuevo[x.id] = true; dentro.push(x); } }
       for (i = 0; i < c.length && i < n; i++) {
-        x = c[i]; if (nuevo[x.id] || !(x.d < DMAX)) continue;
+        x = c[i]; if (nuevo[x.id] || !(x.d < DM)) continue;
         if (dentro.length < n) { nuevo[x.id] = true; dentro.push(x); continue; }
         var lejos = 0; for (var j = 1; j < dentro.length; j++) if (dentro[j].d > dentro[lejos].d) lejos = j;
         if (x.d < dentro[lejos].d * MEJORA) { delete nuevo[dentro[lejos].id]; dentro[lejos] = x; nuevo[x.id] = true; }
@@ -161,7 +170,7 @@
       var f = (st.t - st.prox) / DUR; if (f >= 1) { st.t = 0; st.prox = 2 + r() * 4; return 0; }
       return 1 - Math.abs(f * 2 - 1);
     }
-    return { CUPO: CUPO, CUPO_VR: CUPO_VR, DMAX: DMAX, BAJA: BAJA, cupo: cupo, leeCatalogo: leeCatalogo, cualVrm: cualVrm, piezasDe: piezasDe, colorMaterial: colorMaterial, reparte: reparte, huesos: huesos, ik: ik, parpadeo: parpadeo };
+    return { CUPO: CUPO, CUPO_VR: CUPO_VR, GENTE_VR: GENTE_VR, DMAX: DMAX, distVrm: distVrm, BAJA: BAJA, cupo: cupo, leeCatalogo: leeCatalogo, cualVrm: cualVrm, piezasDe: piezasDe, colorMaterial: colorMaterial, reparte: reparte, huesos: huesos, ik: ik, parpadeo: parpadeo };
   })();
   // [puro:fin]
 
@@ -171,7 +180,7 @@
     var simVrm = /[?&]vrm=1\b/.test(location.search), comparte = !/[?&]vrmcomparte=no\b/.test(location.search), sinPropio = /[?&]yo=no\b/.test(location.search);
     var disp = Aparato.clase();
     var LIB = null, pideLib = null, cat = null, pideCat = null, bufs = Object.create(null), vivos = Object.create(null), falla = Object.create(null);
-    var regs = new Map(), mio = null, gVrm = null, tTic = TICK, asignado = false, semilla = 7, est = { catalogo: -1, cargas: 0, fallos: 0, instancias: 0, msParse: 0 };
+    var regs = new Map(), mio = null, gVrm = null, tTic = TICK, tGen = TICK, asignado = false, semilla = 7, est = { catalogo: -1, cargas: 0, fallos: 0, instancias: 0, msParse: 0 };
     var v1 = new THREE.Vector3(), v2 = new THREE.Vector3(), v3 = new THREE.Vector3(), q1 = new THREE.Quaternion(), q2 = new THREE.Quaternion(), e1 = new THREE.Euler(), angs = {};
     function azar() { semilla = (semilla + 0x6d2b79f5) | 0; var t = Math.imul(semilla ^ (semilla >>> 15), 1 | semilla); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }
     function avisa(t, e) { if (typeof console !== "undefined") console.warn("avatares: " + t + (e ? " (" + (e && e.message ? e.message : e) + ")" : "")); }
@@ -354,7 +363,7 @@
       var n = Math.max(0, cupo() - (propioVisible() ? 1 : 0)), tengo = new Map(), cand = candidatos(), ids = [], i;
       // reparte trabaja con ids de texto: el índice de cada candidato
       var tObj = {}; for (i = 0; i < cand.length; i++) { var r = regs.get(cand[i].id); if (r && r.dir > 0) tObj["c" + i] = true; ids.push({ id: "c" + i, d: cand[i].d }); tengo.set("c" + i, cand[i].id); }
-      var nuevo = AvataresPuro.reparte(tObj, ids, n), quedan = new Set();
+      var nuevo = AvataresPuro.reparte(tObj, ids, n, AvataresPuro.distVrm(VRX.on, VRX.nivel)), quedan = new Set();
       for (var k in nuevo) quedan.add(tengo.get(k));
       regs.forEach(function (r, a) { if (!quedan.has(a) && r.dir > 0) r.dir = -1; });
       quedan.forEach(function (a) { var r = regs.get(a); if (!r) pide(a); else if (r.dir < 0) { r.dir = 1; r.tRep = 0; } });
@@ -441,6 +450,7 @@
     }
     function actualiza(dt) {
       if (!gVrm) return;
+      if (VRX.on) { tGen += dt; if (tGen >= TICK) { tGen = 0; VrPresupuesto.ponGente(Presencia.vrmPersonas().length); } }   // Q0c-c: las personas a la vista, a 2 Hz y solo en VR, para el controlador de nivel (02g)
       if (!pideCat) {   // el catálogo solo se pide si alguien lleva avatar (o con &vrm=1)
         var mm = Presencia.miAvatar(), hay = simVrm || !!(mm && (mm.vrm || (mm.receta && mm.receta.cuerpo))), ps = hay ? null : Presencia.vrmPersonas(true);
         if (ps) for (var i = 0; i < ps.length && !hay; i++) if (ps[i].vrm || (ps[i].receta && ps[i].receta.cuerpo)) hay = true;
@@ -490,7 +500,7 @@
   // Consume la presencia: sin ella no se monta; con ella pero sin ?presencia=sim|red, montado no crea nada.
   Componentes.registra({
     id: "avatares-vrm", version: 1,
-    consume: ["Materiales", "Aparato", "Presencia", "Aspecto", "VRX", "paseando", "persona", "primera", "enQuad", "enDron", "pp"],
+    consume: ["Materiales", "Aparato", "Presencia", "Aspecto", "VRX", "VrPresupuesto", "paseando", "persona", "primera", "enQuad", "enDron", "pp"],
     expone: [],
     eventos: { escucha: ["presencia:activada"], emite: [] },
     bandera: { defecto: true, url: "avatares" },

@@ -61,11 +61,11 @@
       if (existe && ajuste === false) { r.activo = false; r.origen = "ajuste"; }
       return r;
     }
-    // Q0c-b: las dos perillas de la histéresis del controlador (la de bajar es xrjs). → { sube, estable } (null = no pedida) e ignorados, como lee()
-    var LIMC = { sube: [2, 10], estable: [2, 120] }, DEFC = { sube: 5, estable: 10 };
+    // Q0c-b: las perillas de la histéresis del controlador (la de bajar es xrjs) y ?xrgente (Q0c-c). → { sube, estable, gente } (null = no pedida) e ignorados, como lee()
+    var LIMC = { sube: [2, 10], estable: [2, 120], gente: [2, 64] }, DEFC = { sube: 5, estable: 10, gente: 8 };   // gente (?xrgente=): a partir de cuántas personas a la vista el controlador baja un escalón con antelación (Q0c-c; [PROPUESTA] sin medir en gafas)
     function leeControl(busqueda) {
-      var q = String(busqueda || ""), r = { sube: null, estable: null, ignorados: [] };
-      [["xrjssube", "sube"], ["xrestable", "estable"]].forEach(function (par) {
+      var q = String(busqueda || ""), r = { sube: null, estable: null, gente: null, ignorados: [] };
+      [["xrjssube", "sube"], ["xrestable", "estable"], ["xrgente", "gente"]].forEach(function (par) {
         var t = cruda(q, par[0]); if (t === null) return;
         var v = num(t); if (!isFinite(v)) { r.ignorados.push({ param: par[0], valor: t, motivo: "no es un número" }); return; }
         var a = LIMC[par[1]][0], b = LIMC[par[1]][1], c = Math.min(b, Math.max(a, v));
@@ -103,6 +103,7 @@
     X.control = XrPerillasPuro.leeControl(q); X.tablaSube = null;
     X.jsSube = function () { return X.control.sube != null ? X.control.sube : (X.tablaSube != null ? X.tablaSube : XrPerillasPuro.DEFC.sube); };
     X.estable = function () { return X.control.estable != null ? X.control.estable : XrPerillasPuro.DEFC.estable; };
+    X.gente = function () { return X.control.gente != null ? X.control.gente : XrPerillasPuro.DEFC.gente; };   // Q0c-c: ?xrgente= > defecto (8)
     // F2a: el multiview, decidido UNA vez con la build (03_escena lo pide antes de crear el renderer: multiviewStereo va en el constructor). Sin llamar, null
     X.mv = null;
     // el ajuste «vr.multiview» se lee aquí, una vez (33_ajustes se monta después; mismo patrón que 04f con «vista.suelo»)
