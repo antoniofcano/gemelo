@@ -1,7 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos ($), 01a_aparato (Aparato), 02c_componentes (Componentes), 03_escena (camera, modo), 15_tiempo (nivel), 29_vr (VRX)
-// Nota: Componente «voz-guiada» (F3d, ADR-0026; decisiones 157-162): la voz de las visitas guiadas, SOLO en una sala «guiada-<evento>» de la red (Voz.entra(evento) con el token de F3c, Voz.usa(clave) o ?guiada=<evento>; F3f: con ?presencia=red viaja la presencia y la voz usa su conexión, y se engancha sola a una sala de la red que entra en una guiada, «red:estado»). Consume la red y la presencia (Presencia.cabeza: de dónde sale cada voz). Pide las pistas de micrófono, cada una a un <audio> silenciado y de él a Web Audio (ganancia por distancia y PannerNode HRTF; la escucha, la cámara o la cabeza en VR); con tu micrófono abierto y sin auriculares, plano por los <audio> (cancelación de eco). Abre tu micrófono solo con permiso y tras un gesto (Voz.abre; lo dispara F3e). Emite «voz:habla» y «voz:estado»; escucha «audio:desbloquea», «depura:lineas» y «red:estado». Sin grabación. ?voz=0 lo apaga; ?voz=plano, sin espacializar. Publica window.__voz (pruebas). Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/voz.test.js.
+// Consume: 01_datos ($), 01a_aparato (Aparato), 02_mundo (suelo), 02c_componentes (Componentes), 03_escena (camera, modo), 15_tiempo (nivel),
+//   29_vr (VRX)
+// Nota: Componente «voz-guiada» (F3d, ADR-0026; decisiones 157-162): la voz de las visitas guiadas, SOLO en una sala «guiada-<evento>» de la red (Voz.entra(evento) con el token de F3c, Voz.usa(clave) o ?guiada=<evento>; F3f: con ?presencia=red viaja la presencia y la voz usa su conexión, y se engancha sola a una sala de la red que entra en una guiada, «red:estado»). Consume la red y la presencia (Presencia.cabeza: de dónde sale cada voz). Pide las pistas de micrófono, cada una a un <audio> silenciado y de él a Web Audio (ganancia por distancia y PannerNode HRTF; la escucha, la cámara o la cabeza en VR); con tu micrófono abierto y sin auriculares, plano por los <audio> (cancelación de eco). Abre tu micrófono solo con permiso y tras un gesto (Voz.abre; lo dispara F3e). F3k-2: también la sala solo de audio de un corro de la visita libre («corro-<id>», Voz.entraCorro con el token de POST /api/presencia/corros/token, clave «corro» de la red) con su curva (sin suelo mínimo, fundido de 15 a 20 m en 1 s); Voz.silencia deja de pedir la pista de quien silencias (F3k-3). Emite «voz:habla» y «voz:estado»; escucha «audio:desbloquea», «depura:lineas» y «red:estado». Sin grabación. ?voz=0 lo apaga; ?voz=plano, sin espacializar. Publica window.__voz (pruebas). Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/voz.test.js.
 // ===============================================================================
   // ---------- la voz de las visitas guiadas (F3d; ADR-0026, decisiones 157-162; contratos/livekit-roles.json v6 y presencia.md «La voz de las visitas guiadas»).
   // El componente «voz-guiada» consume la red (37_red.js, el único que habla con LiveKit) y la presencia (38_presencia_compartida.js, para saber dónde está cada avatar).
@@ -33,11 +34,20 @@
   // es del orden de 1-2 % de un núcleo de escritorio; en Quest y móvil, más [NO VERIFICADO: F3h]. Red: ~40 kbps de bajada por voz activa (ADR-0026 §4).
   // [puro:inicio] — sin DOM, sin THREE y sin Web Audio: pruebas/guardianes/voz.test.js lo evalúa tal cual en Node
   var VozPuro = (function () {
-    var SALA = /^guiada-[1-9][0-9]{0,9}$/, PAPELES = ["guia", "oficina", "familia"];
+    var SALA = /^guiada-[1-9][0-9]{0,9}$/, PAPELES = ["guia", "oficina", "familia", "miembro"];
+    // F3k-2 (ADR-0032; livekit-roles v8, salas.corro.patron): la sala solo de audio de un corro de la visita libre; su único papel es «miembro»
+    var SALA_CORRO = /^corro-[A-Za-z0-9_-]{12}$/;
     var DIST = { ref: 2, rolloff: 1, corte: 40, minimo: 0.25, sinSitio: 0.5 };
+    // F3k-2 (decisión 206, provisional): en un corro, la misma ley inversa SIN suelo mínimo (nadie tiene prioridad) y un fundido de 15 a 20 m: a más de 20 m
+    // no se oye a un miembro aunque siga en el corro. El cambio de ganancia en el tiempo dura 1 s (constante de tiempo fundido/3: al 95 % en 1 s), sin chasquido
+    var DIST_CORRO = { desde: 15, corte: 20, fundido: 1 };
     var PANNER = { panningModel: "HRTF", distanceModel: "inverse", refDistance: 1, maxDistance: 10000, rolloffFactor: 0, coneInnerAngle: 360, coneOuterAngle: 360, coneOuterGain: 1 };
     var SUAVE = 0.05, MAX_VOCES = 4, PASO_NIVEL = 0.1;   // s de los cambios de ganancia y posición (sin chasquidos); voces a la vez; cambio de nivel que se avisa
     function esGuiada(nombre) { return typeof nombre === "string" && SALA.test(nombre); }
+    function esCorro(nombre) { return typeof nombre === "string" && SALA_CORRO.test(nombre); }
+    // una sala de voz es la de una guiada o la de un corro; su ámbito, "guiada", "corro" o ""
+    function ambito(nombre) { return esGuiada(nombre) ? "guiada" : esCorro(nombre) ? "corro" : ""; }
+    function esSalaVoz(nombre) { return ambito(nombre) !== ""; }
     // el id de un evento de la agenda (entero 1..2^31−1, o su texto), o null
     function evento(v) { var x = typeof v === "string" && /^[1-9][0-9]{0,9}$/.test(v) ? Number(v) : v; return Number.isInteger(x) && x >= 1 && x <= 2147483647 ? x : null; }
     // el papel que pone la api en los metadatos del token de la guiada (guia, oficina o familia); "" si no lo trae o no se entiende
@@ -51,12 +61,16 @@
       return Math.max(0, Math.ceil((t - tMs) / 1000));
     }
     function prioritaria(papel, turnoS) { return papel === "guia" || papel === "oficina" || (typeof turnoS === "number" && turnoS > 0); }
-    // la ganancia por distancia (m): ley inversa de Web Audio con ref y rolloff; las prioritarias no bajan de DIST.minimo, las demás se cortan a más de DIST.corte
-    function ganancia(d, prio) {
+    // la ganancia por distancia (m): ley inversa de Web Audio con ref y rolloff; las prioritarias no bajan de DIST.minimo, las demás se cortan a más de DIST.corte.
+    // En un corro (amb = "corro"), sin suelo mínimo y fundida de DIST_CORRO.desde a DIST_CORRO.corte: 0 a 20 m o más
+    function ganancia(d, prio, amb) {
       if (typeof d !== "number" || !isFinite(d) || d < 0) return DIST.sinSitio;
       var g = DIST.ref / (DIST.ref + DIST.rolloff * (Math.max(d, DIST.ref) - DIST.ref));
+      if (amb === "corro") return d >= DIST_CORRO.corte ? 0 : d <= DIST_CORRO.desde ? g : g * (DIST_CORRO.corte - d) / (DIST_CORRO.corte - DIST_CORRO.desde);
       return prio ? Math.max(g, DIST.minimo) : d > DIST.corte ? 0 : g;
     }
+    // la constante de tiempo (s) de los cambios de ganancia: SUAVE en la guiada; en un corro, la del fundido de 1 s
+    function suaveDe(amb) { return amb === "corro" ? DIST_CORRO.fundido / 3 : SUAVE; }
     function rota(v, q) {   // el vector v girado por el cuaternión q = [x, y, z, w]
       var x = q[0], y = q[1], z = q[2], w = q[3], tx = 2 * (y * v[2] - z * v[1]), ty = 2 * (z * v[0] - x * v[2]), tz = 2 * (x * v[1] - y * v[0]);
       return [v[0] + w * tx + (y * tz - z * ty), v[1] + w * ty + (z * tx - x * tz), v[2] + w * tz + (x * ty - y * tx)];
@@ -71,10 +85,11 @@
       return o.micro && !o.auriculares ? "plano" : "espacial";
     }
     // a qué publicaciones suscribirse: las de micrófono, como mucho max, por prioridad (guía, palabra, oficina, el resto) y, a igualdad, en el orden dado.
-    // pubs = [{ identidad, sid, fuente }]; info(identidad) → { papel, turno }. Devuelve la ls de sid
-    function aSuscribir(pubs, info, max) {
+    // pubs = [{ identidad, sid, fuente }]; info(identidad) → { papel, turno }; fuera = { identidad: true }, a quien TÚ has silenciado (F3k-3: su pista no se pide).
+    // Devuelve la ls de sid
+    function aSuscribir(pubs, info, max, fuera) {
       var puesto = function (i) { return i.papel === "guia" ? 0 : typeof i.turno === "number" && i.turno > 0 ? 1 : i.papel === "oficina" ? 2 : 3; };
-      return (pubs || []).filter(function (p) { return p && p.fuente === "microphone" && p.sid; }).map(function (p, k) { return { sid: p.sid, r: puesto(info(p.identidad) || {}), k: k }; })
+      return (pubs || []).filter(function (p) { return p && p.fuente === "microphone" && p.sid && !(fuera && fuera[p.identidad] === true); }).map(function (p, k) { return { sid: p.sid, r: puesto(info(p.identidad) || {}), k: k }; })
         .sort(function (a, b) { return a.r - b.r || a.k - b.k; }).slice(0, max === undefined ? MAX_VOCES : max).map(function (x) { return x.sid; });
     }
     // ¿se abre el micrófono? e = { dentro, guiada, micro: cerrado|abriendo|abierto, puede, gesto } → { abre, motivo }
@@ -96,7 +111,8 @@
     }
     // el motivo de un error al abrir el micrófono (getUserMedia o LiveKit) en palabras del motor
     function motivoMicro(e) { var n = e && e.name; return n === "NotAllowedError" || n === "SecurityError" ? "micro_denegado" : n === "NotFoundError" || n === "OverconstrainedError" ? "sin_micro" : "error_micro"; }
-    return { SALA: SALA, DIST: DIST, PANNER: PANNER, SUAVE: SUAVE, MAX_VOCES: MAX_VOCES, PASO_NIVEL: PASO_NIVEL, esGuiada: esGuiada, evento: evento, papelDe: papelDe,
+    return { SALA: SALA, SALA_CORRO: SALA_CORRO, DIST: DIST, DIST_CORRO: DIST_CORRO, PANNER: PANNER, SUAVE: SUAVE, MAX_VOCES: MAX_VOCES, PASO_NIVEL: PASO_NIVEL, esGuiada: esGuiada,
+      esCorro: esCorro, ambito: ambito, esSalaVoz: esSalaVoz, suaveDe: suaveDe, evento: evento, papelDe: papelDe,
       puedeHablar: puedeHablar, turno: turno, prioritaria: prioritaria, ganancia: ganancia, rota: rota, oyente: oyente, distancia: distancia, modo: modo,
       aSuscribir: aSuscribir, decideAbrir: decideAbrir, difHablan: difHablan, motivoMicro: motivoMicro };
   })();
@@ -105,7 +121,7 @@
   // [motor:inicio] — con DOM y Web Audio; pruebas/guardianes/voz.test.js lo monta en Node con una red, un DOM y un AudioContext de mentira
   function VozMotor(n, R, P) {
     var V = VozPuro, forzado = (/[?&]voz=(plano|espacial)(?:[&#]|$)/.exec(location.search) || [])[1] || "";
-    var sala = null, propia = false, ganchos = [], voces = Object.create(null), hablando = {}, info = Object.create(null);
+    var sala = null, propia = false, ganchos = [], voces = Object.create(null), hablando = {}, info = Object.create(null), callados = Object.create(null);   // callados (F3k-3): a quién has silenciado TÚ
     var ctx = null, salida = null, micro = "cerrado", auric = false, motivo = "", ultimo = "", entrando = false, bloqueado = false, vivo = true;
     var qO = new THREE.Quaternion(), ejeY = new THREE.Vector3(0, 1, 0), vO = new THREE.Vector3();
     var est = { aperturas: 0, cierres: 0, suscripciones: 0, pistas: 0 };
@@ -131,7 +147,7 @@
       ganchos.splice(0).forEach(function (q) { try { q(); } catch (e) {} });
       Object.keys(voces).forEach(quitaVoz);
       alHablar([]);
-      sala = null; info = Object.create(null);
+      sala = null; info = Object.create(null); callados = Object.create(null);
       emiteEstado();
     }
     function leeInfo() {   // papel (metadatos) y turno (atributos) de cada uno, como DATOS
@@ -142,7 +158,7 @@
     function infoDe(id) { return info[id] || { papel: "", turno: null }; }
     function revisa() {   // pedir las publicaciones de micrófono que tocan y soltar las demás
       if (!dentro()) return;
-      var pubs = sala.publicaciones(), quiere = V.aSuscribir(pubs, infoDe, V.MAX_VOCES);
+      var pubs = sala.publicaciones(), quiere = V.aSuscribir(pubs, infoDe, V.MAX_VOCES, callados);
       pubs.forEach(function (p) { var si = quiere.indexOf(p.sid) >= 0; if (si !== p.suscrita && sala.suscribe(p.identidad, p.sid, si) && si) est.suscripciones++; });
     }
 
@@ -216,13 +232,13 @@
       else { L.setPosition(o.p[0], o.p[1], o.p[2]); L.setOrientation(o.f[0], o.f[1], o.f[2], o.u[0], o.u[1], o.u[2]); }
     }
     function coloca(v, o) {
-      var c = P && P.cabeza ? P.cabeza(v.identidad) : null, i = infoDe(v.identidad);
+      var c = P && P.cabeza ? P.cabeza(v.identidad) : null, i = infoDe(v.identidad), amb = V.ambito(sala.nombre());
       var pos = c ? [c.x, c.y, c.z] : [o.p[0] + o.f[0], o.p[1] + o.f[1], o.p[2] + o.f[2]];   // sin sitio: un metro delante
-      v.gan = c ? V.ganancia(V.distancia(pos, o.p), V.prioritaria(i.papel, i.turno)) : V.DIST.sinSitio;
+      v.gan = c ? V.ganancia(V.distancia(pos, o.p), V.prioritaria(i.papel, i.turno), amb) : V.DIST.sinSitio;
       if (v.modo !== "espacial" || !v.p) return;
       var t = ctx.currentTime, p = v.p;
       if (p.positionX) { fija(p.positionX, pos[0], t); fija(p.positionY, pos[1], t); fija(p.positionZ, pos[2], t); } else p.setPosition(pos[0], pos[1], pos[2]);
-      fija(v.g.gain, v.gan, t);
+      if (v.g.gain.setTargetAtTime) v.g.gain.setTargetAtTime(v.gan, t, V.suaveDe(amb)); else v.g.gain.value = v.gan;   // F3k-2: en un corro, el fundido de 1 s
     }
     function tarde() {
       if (!sala) return;
@@ -251,7 +267,7 @@
     }
     /** abre tu micrófono (decisión 158: lo pide un gesto; F3e pone el botón, la tecla y el gatillo). Promesa de true si queda abierto */
     function abre() {
-      var d = V.decideAbrir({ dentro: dentro(), guiada: dentro() && V.esGuiada(sala.nombre()), micro: micro, puede: V.puedeHablar(permiso()), gesto: gesto() });
+      var d = V.decideAbrir({ dentro: dentro(), guiada: dentro() && V.esSalaVoz(sala.nombre()), micro: micro, puede: V.puedeHablar(permiso()), gesto: gesto() });   // una sala de voz: guiada o corro (F3k-2)
       if (!d.abre) { if (d.motivo !== "ya_abierto") motivo = d.motivo; emiteEstado(); return Promise.resolve(micro === "abierto"); }
       var s = sala; micro = "abriendo"; motivo = ""; aplicaModos(); desbloquea(); emiteEstado();
       return s.microfono(true).then(function (ok) {
@@ -305,6 +321,35 @@
       if (s !== sala) engancha(s, false);
       return true;
     }
+    /** F3k-2: entra en la sala de TU corro de la visita libre (corro-<id>): token de POST /api/presencia/corros/token (la api solo lo firma a quien está ahora
+     *  en ese corro y tiene la voz por cercanía disponible) y la clave «corro» de la red: una segunda conexión, porque la presencia sigue en la sala libre (sin
+     *  audio) y cada voz sale de su avatar de allí (misma identidad en las dos salas). Promesa de true si queda dentro de un corro. Estando en una guiada, no
+     *  (motivo «en_guiada»: la guiada manda; el corro sale por «cambio_de_sala», 47b_corro.js) */
+    async function entraCorro() {
+      if (!R || entrando || !vivo) return false;
+      if (sala && V.esCorro(sala.nombre()) && dentro()) return true;
+      if (sala && V.esGuiada(sala.nombre())) { motivo = "en_guiada"; emiteEstado(); return false; }
+      entrando = true; motivo = ""; emiteEstado();
+      try {
+        var r = await fetch("/api/presencia/corros/token", { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" },
+          body: JSON.stringify({ dispositivo: Aparato.clase() }) });
+        if (!r.ok) { var e = null; try { e = await r.json(); } catch (x) {} motivo = e && typeof e.error === "string" ? e.error : "http_" + r.status; return false; }
+        var t = await r.json(); if (!vivo) return false;
+        var s = R.sala("corro");
+        if (!(await s.une({ url: t.url, token: t.token })) || !vivo) return false;
+        if (!V.esCorro(s.nombre())) { motivo = "no_corro"; s.sale(); return false; }
+        engancha(s, true);
+        return true;
+      } catch (err) { motivo = "sin_conexion"; avisa(err && err.message ? err.message : err); return false; }
+      finally { entrando = false; emiteEstado(); }
+    }
+    /** F3k-3: deja de oír (si = true) o vuelve a oír a esa identidad, solo en este aparato: su pista no se pide (nadie se entera). Devuelve si queda silenciada */
+    function silencia(identidad, si) {
+      if (typeof identidad !== "string" || !identidad) return false;
+      if (si) callados[identidad] = true; else delete callados[identidad];
+      revisa(); emiteEstado();
+      return callados[identidad] === true;
+    }
     function sale() { var s = sala, suya = propia; desengancha(); motivo = ""; if (s && suya) s.sale(); emiteEstado(); return Promise.resolve(); }
     function auriculares(si) { if (si !== undefined) { auric = !!si; aplicaModos(); emiteEstado(); } return auric; }
     function hablan() { return Object.keys(hablando).map(function (id) { return { identidad: id, nivel: hablando[id].nivel, yo: hablando[id].yo }; }); }
@@ -312,9 +357,9 @@
     function estado() {
       var p = permiso(), yo = dentro() ? sala.yo() : null;
       // bloqueado: el navegador no dejó reproducir alguna voz (sin gesto todavía): F3e dice «toca para oír»
-      return { sala: dentro() ? sala.nombre() : "", dentro: dentro(), guiada: dentro() && V.esGuiada(sala.nombre()), entrando: entrando,
+      return { sala: dentro() ? sala.nombre() : "", dentro: dentro(), guiada: dentro() && V.esGuiada(sala.nombre()), corro: dentro() && V.esCorro(sala.nombre()), entrando: entrando,
         papel: yo ? V.papelDe(yo.metadatos) : "", puede: V.puedeHablar(p), micro: micro, turno: yo ? V.turno(sala.atributos(), Date.now()) : null,
-        modo: modoAhora(), auriculares: auric, bloqueado: bloqueado, voces: Object.keys(voces).length, hablan: Object.keys(hablando).length, motivo: motivo };
+        modo: modoAhora(), auriculares: auric, bloqueado: bloqueado, voces: Object.keys(voces).length, hablan: Object.keys(hablando).length, callados: Object.keys(callados), motivo: motivo };
     }
     function emiteEstado() {
       var e = estado(), k = JSON.stringify(e); if (k === ultimo) return; ultimo = k;
@@ -340,6 +385,8 @@
     function gancho(accion, arg) {
       if (accion === "voces") return Object.keys(voces).map(function (k) { var v = voces[k]; return { identidad: v.identidad, sid: v.sid, modo: v.modo, ganancia: Math.round(v.gan * 1000) / 1000, silenciada: v.el.muted, espacial: !!v.p }; });
       if (accion === "entra") return entra(arg);
+      if (accion === "entraCorro") return entraCorro();
+      if (accion === "silencia") return silencia(arg && arg.identidad, !!(arg && arg.si));
       if (accion === "abre") return abre();
       if (accion === "cierra") return cierra();
       if (accion === "sale") return sale();
@@ -350,7 +397,7 @@
     window.__voz = gancho;
     var m = /[?&]guiada=([1-9][0-9]{0,9})(?:[&#]|$)/.exec(location.search);
     if (m) entra(m[1]);
-    return { entra: entra, usa: usa, sale: sale, abre: abre, cierra: cierra, estado: estado, hablan: hablan, auriculares: auriculares, actualiza: tarde, libera: libera };
+    return { entra: entra, entraCorro: entraCorro, silencia: silencia, usa: usa, sale: sale, abre: abre, cierra: cierra, estado: estado, hablan: hablan, auriculares: auriculares, actualiza: tarde, libera: libera };
   }
   // [motor:fin]
 

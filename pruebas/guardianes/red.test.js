@@ -180,7 +180,7 @@ class El {
 }
 /** el registro (02c entero) con la lógica pura de la presencia (26_presencia.js) y los componentes que se pidan; lo demás, de mentira */
 function motor({ busqueda = "", ficheros = ["red", "presencia", "avatares"], token = { url: "/rtc", token: "tk" }, tokenEstado = 200, base = "", hay = null } = {}) {
-  const LK = lkFalso(), errores = [], avisos = [], cuenta = { mallas: 0, mallasLibres: 0, escena: 0, tipos: [], quitados: 0, fetch: [] };
+  const LK = lkFalso(), errores = [], avisos = [], cuenta = { mallas: 0, mallasLibres: 0, escena: 0, tipos: [], defs: {}, quitados: 0, fetch: [] };
   const fuentes = { red: sinCabecera(RED).replace('import("livekit-client")', "Promise.resolve(LK_FALSO)"),
     presencia: sinCabecera(PRES).replace('import("three/addons/utils/BufferGeometryUtils.js")', "Promise.reject(new Error(\"sin addons en Node\"))"),
     avatares: sinCabecera(AVAT) };
@@ -190,7 +190,7 @@ function motor({ busqueda = "", ficheros = ["red", "presencia", "avatares"], tok
   const g = {
     THREE: threeFalso(cuenta), LK_FALSO: LK, D: { ext: [0, 200, 200, 0], base }, suelo: () => 10, copas: [], exag: 1, texColor: x => x,
     scene: { add: () => { cuenta.escena++; }, remove: () => { cuenta.escena--; } }, camera: { position: new V3(0, 20, 0), quaternion: new Q() }, renderer: cualquiera(), visor,
-    Entidades: { registra: d => { cuenta.tipos.push(d.tipo); return () => { cuenta.quitados++; }; } }, Llegada: { funde: fn => { fn(); return true; }, aparece() {} }, TR: {},
+    Entidades: { registra: d => { cuenta.tipos.push(d.tipo); cuenta.defs[d.tipo] = d; return () => { cuenta.quitados++; }; } }, Llegada: { funde: fn => { fn(); return true; }, aparece() {} }, TR: {},
     Movibles: { hazMovible: () => ({ menuLlevar() {}, coloca() {} }) }, VRX: { on: false, cab: new V3(), rig: { yaw: 0 } }, paseando: true, pp: { x: 50, y: 50, ang: 0 },
     enQuad: false, enDron: false, quad: cualquiera(), dron: cualquiera(), objetivo: new V3(50, 0, -50), persona: null, primera: false, Aparato: aparatoDe({ userAgent: "Node" }), navigator: { userAgent: "Node" },
     fetch: (u, o) => { cuenta.fetch.push([u, o && o.method]);
@@ -304,6 +304,25 @@ test("componentes en Node: un token que la api niega deja el aviso de siempre y 
   const e = r.ventana.__presencia(); assert.strictEqual(e.activo, true); assert.strictEqual(e.variante, "sim"); assert.strictEqual(e.n, 3); assert.ok(e.enviados > 0);
   assert.deepStrictEqual(r.cuenta.fetch, []); assert.strictEqual(r.LK.salas.length, 0, "la simulación no toca la red");
   r.ventana.__presencia("libera"); assert.strictEqual(r.ventana.__presencia().activo, false); assert.deepStrictEqual(r.errores, []);
+});
+
+test("F3k-3: Presencia.accionesPersona añade las acciones de otro componente a la ficha de una persona (con su distancia y el modo) y Presencia.distancia dice a cuántos metros está", async () => {
+  const r = motor({ busqueda: "?presencia=sim&n=3", ficheros: ["red", "presencia"] });
+  let api = null;
+  r.Componentes.registra({ id: "lector", consume: ["Presencia"], expone: [], eventos: { escucha: [], emite: [] }, bandera: { defecto: true }, presupuesto: { llamadas: 0, triangulos: 0 },
+    monta: n => { api = n.api("presencia-compartida"); return {}; }, libera() {} });
+  for (let i = 0; i < 30 && !api.puntos().length; i++) { r.Componentes.actualiza("mundo", 0.1, i); await espera(40); }   // la simulación interpola con el reloj de verdad
+  const vista = api.puntos()[0]; assert.ok(vista, "alguien a la vista en la simulación");
+  const d = api.distancia(vista.id); assert.strictEqual(typeof d, "number"); assert.ok(d >= 0); assert.strictEqual(api.distancia("nadie"), null, "a quien no se ve, null");
+  const vistos = [];
+  const quita = api.accionesPersona((id, o) => { vistos.push([id, o.alias, typeof o.distancia, o.modo]); return [{ id: "invitar", txt: "Invitar a hablar", fn: () => "hecho" }, { txt: 7 }, null]; });
+  const f = r.cuenta.defs.persona.ficha("persona:" + vista.id, "vr");
+  assert.deepStrictEqual(f.acciones.map(a => a.id), ["ir", "invitar"], "las suyas detrás de «Ir con»; lo que no es acción (sin texto o sin función) no entra");
+  assert.strictEqual(f.acciones[1].fn(), "hecho"); assert.deepStrictEqual(vistos[0], [vista.id, vista.alias, "number", "vr"]);
+  quita(); assert.deepStrictEqual(r.cuenta.defs.persona.ficha("persona:" + vista.id, "pantalla").acciones.map(a => a.id), ["ir"], "quitado, ya no sale");
+  api.accionesPersona(() => { throw new Error("roto"); }); assert.deepStrictEqual(r.cuenta.defs.persona.ficha("persona:" + vista.id, "pantalla").acciones.map(a => a.id), ["ir"], "un proveedor que falla no rompe la ficha");
+  api.repintaGente(); assert.deepStrictEqual(r.errores, []);
+  r.ventana.__presencia("libera");
 });
 
 test("la api de la presencia (lo que consumen los avatares) es la del contrato (interfaces.json → apis_de_componentes)", async () => {

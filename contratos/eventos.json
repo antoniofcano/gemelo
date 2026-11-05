@@ -346,7 +346,7 @@
       "escuchan": []
     },
     "habla:micro": {
-      "descripcion": "F3e: esta sesión pidió abrir o cerrar su micrófono (Voz.abre / Voz.cierra, que exige permiso y gesto: el estado de verdad llega por voz:estado). accion = abre | cierra; fuente = boton | tecla | gatillo | panel | auto (el guía, con el primer gesto de la sala); modo = pulsar | mantener (el ajuste «Hablar»).",
+      "descripcion": "F3e: esta sesión pidió abrir o cerrar su micrófono (Voz.abre / Voz.cierra, que exige permiso y gesto: el estado de verdad llega por voz:estado). accion = abre | cierra; fuente = boton | tecla | gatillo | panel | auto (el guía, con el primer gesto de la sala) | consentimiento (al retirarlo, F3j) | silencio (F3k-2: en un corro, un minuto sin hablar); modo = pulsar | mantener (el ajuste «Hablar»).",
       "datos": {
         "type": "object",
         "required": [
@@ -367,7 +367,9 @@
               "tecla",
               "gatillo",
               "panel",
-              "auto"
+              "auto",
+              "consentimiento",
+              "silencio"
             ]
           },
           "modo": {
@@ -1034,7 +1036,7 @@
       "escuchan": []
     },
     "voz:estado": {
-      "descripcion": "F3d: algo ha cambiado en la voz de la visita guiada (componente «voz»): si estás en una sala guiada-<evento>, tu papel, si el permiso te deja hablar, el estado de tu micrófono (cerrado, abriendo, abierto), los segundos de tu turno (palabra_hasta), si las voces suenan espaciales o planas (micrófono abierto sin auriculares: con cancelación de eco), si el navegador bloqueó el audio por falta de gesto, cuántas voces y el motivo del último rechazo. Para el indicador «Tu micro está abierto», el botón Hablar y el panel (F3e, F3f). Lo mismo que Voz.estado().",
+      "descripcion": "F3d: algo ha cambiado en la voz de la visita guiada o de un corro (componente «voz»): si estás en una sala guiada-<evento> (guiada) o corro-<id> (corro, F3k-2; papel «miembro»), tu papel, si el permiso te deja hablar, el estado de tu micrófono (cerrado, abriendo, abierto), los segundos de tu turno (palabra_hasta), si las voces suenan espaciales o planas (micrófono abierto sin auriculares: con cancelación de eco), si el navegador bloqueó el audio por falta de gesto, cuántas voces, a quién has silenciado tú (callados, F3k-3: identidades) y el motivo del último rechazo. Para el indicador «Tu micro está abierto», el botón Hablar y el panel (F3e, F3f). Lo mismo que Voz.estado().",
       "datos": {
         "type": "object",
         "required": [
@@ -1058,6 +1060,9 @@
           "guiada": {
             "type": "boolean"
           },
+          "corro": {
+            "type": "boolean"
+          },
           "entrando": {
             "type": "boolean"
           },
@@ -1066,7 +1071,8 @@
               "",
               "guia",
               "oficina",
-              "familia"
+              "familia",
+              "miembro"
             ]
           },
           "puede": {
@@ -1106,6 +1112,12 @@
             "type": "integer",
             "minimum": 0
           },
+          "callados": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "motivo": {
             "type": "string"
           }
@@ -1122,7 +1134,7 @@
       ]
     },
     "voz:habla": {
-      "descripcion": "F3d: alguien de la sala guiada empieza a hablar (habla true), su nivel cambia en 0,1 o más, o calla (habla false, nivel 0). Sale de ActiveSpeakers de LiveKit: solo de las voces que se oyen (suscritas) y de la tuya (yo true). La identidad es la opaca de la sala (la del avatar en la presencia): para la etiqueta del avatar y la lista de Gente (F3e). Sin nadie que lo escuche, no pasa nada.",
+      "descripcion": "F3d: alguien de la sala de voz (guiada o, F3k-2, corro) empieza a hablar (habla true), su nivel cambia en 0,1 o más, o calla (habla false, nivel 0). Sale de ActiveSpeakers de LiveKit: solo de las voces que se oyen (suscritas) y de la tuya (yo true). La identidad es la opaca de la sala (la del avatar en la presencia): para la etiqueta del avatar y la lista de Gente (F3e). Sin nadie que lo escuche, no pasa nada.",
       "datos": {
         "type": "object",
         "required": [

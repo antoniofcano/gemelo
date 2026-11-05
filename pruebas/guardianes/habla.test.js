@@ -216,6 +216,22 @@ test("HablaMotor: con la palabra, «Hablar» en pulsar abre y cierra; el micro d
   const q = montaHabla({ puede: true }); q.tic(); q.voz.s.motivo = "micro_denegado"; q.tic(); assert.match(q.estado().textContent, /navegador no deja usar el micrófono/);
 });
 
+test("HablaMotor F3k-2: en un corro (papel «miembro»), «Hablar» como en la guiada, «● Tu micro está abierto» y el micro se cierra solo tras un minuto sin hablar", async () => {
+  const m = montaHabla({ papel: "miembro", puede: true, sala: "corro-ABCdef123_-x" }); m.voz.s.corro = true; m.tic();
+  assert.strictEqual(m.caja().hidden, false); assert.strictEqual(m.caja().attrs["aria-label"], "Micrófono del corro"); assert.strictEqual(m.boton().textContent, "Hablar");
+  m.boton().dispara("click"); await espera(5); m.tic();
+  assert.deepStrictEqual(m.voz.llamadas, ["abre"]); assert.match(m.estado().textContent, /Tu micro está abierto: te oye el corro\./);
+  for (let i = 0; i < 238; i++) m.tic(0.25);   // 59,5 s
+  assert.deepStrictEqual(m.voz.llamadas, ["abre"], "a los 59,5 s sigue abierto");
+  for (let i = 0; i < 3; i++) m.tic(0.25); await espera();
+  assert.deepStrictEqual(m.voz.llamadas, ["abre", "cierra"], "a los 60 s sin voz, se cierra solo"); assert.strictEqual(m.api.estado().silencios, 1);
+  assert.deepStrictEqual(m.emitidos.filter(e => e[0] === "habla:micro").pop()[1], { accion: "cierra", fuente: "silencio", modo: "pulsar" });
+  m.tic(); assert.match(m.estado().textContent, /Micrófono cerrado tras un minuto sin hablar/);
+  // en la guiada no se cierra por silencio (allí lo cierra el turno)
+  const g = montaHabla({ papel: "guia", puede: true }); g.tic(); g.boton().dispara("click"); await espera(5);
+  for (let i = 0; i < 300; i++) g.tic(0.25); assert.ok(!g.voz.llamadas.includes("cierra"));
+});
+
 test("HablaMotor: en mantener, apretar abre y soltar cierra (incluso si se suelta mientras se abre); el clic suelto no hace nada; el guía siempre pulsa", async () => {
   const m = montaHabla({ puede: true, modo: "mantener" }); m.tic();
   let b = m.boton(); assert.strictEqual(b.textContent, "Mantén pulsado para hablar");
@@ -319,7 +335,7 @@ test("el manifiesto, los eventos del catálogo y la api de la guiada: «habla-gu
   assert.match(m, /consume: \["Aparato", "Voz", "Guiada"/);
   for (const e of ["habla:micro", "habla:mano"]) assert.deepStrictEqual(EVENTOS.eventos[e].emiten, ["47_habla"], e);
   for (const e of ["voz:estado", "guiada:palabra", "depura:lineas"]) assert.ok(EVENTOS.eventos[e].escuchan.includes("47_habla"), e);
-  assert.deepStrictEqual(EVENTOS.eventos["habla:micro"].datos.properties.fuente.enum, ["boton", "tecla", "gatillo", "panel", "auto"]);
+  assert.deepStrictEqual(EVENTOS.eventos["habla:micro"].datos.properties.fuente.enum, ["boton", "tecla", "gatillo", "panel", "auto", "consentimiento", "silencio"], "consentimiento (F3j, al retirarlo) y silencio (F3k-2, un minuto sin hablar en un corro)");
   // 46 da lo que 47 lee: quién eres, el evento y la cola
   assert.match(GUI, /expone: \["Guiada"\]/); assert.match(GUI, /return \{ evento: ev, yo: yoId,/);
   assert.deepStrictEqual(IFACES.apis_de_componentes["visita-guiada"], { modulo: "46_guiada.js", expone: "Guiada", miembros: ["tarde", "libera", "estado"] });
