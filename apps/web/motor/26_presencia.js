@@ -1,5 +1,5 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: PoseCodec, BufferPose, Aspecto, SalaPose, Chat, Muneco, Encuentro, Cuenta, AutoPresencia, sitioJunto
+// Expone: PoseCodec, BufferPose, Aspecto, SalaPose, Chat, Muneco, Encuentro, Cuenta, AutoPresencia, Reintento, sitioJunto
 // Consume: 01_datos (D, $), 02_mundo (suelo, copas), 02c_componentes (ConfigPuro), 02e_entidades (Entidades), 03_escena (exag, modo),
 //   04d_sombreado_tiles (hash), 06_arboles (tronco), 12_paseo (paseando, persona, primera), 12b_llegada (Llegada), 13b_hazas (HazasPuro),
 //   14_historia (lista), 15_tiempo (rumbo, hace), 16_vida (quad, vidaPaseo, dron), 33_ajustes (Ajustes)
@@ -416,6 +416,13 @@
     }
     function decideRed(j) { return !!j && typeof j === "object" && j.red === true; }
     return { decide: decide, decideRed: decideRed };
+  })();
+  // F2b: el reintento de la presencia que arrancó sola. Función pura: espera(fallos) = ms hasta el siguiente intento tras el fallo n.º «fallos» (30 s, 60 s, 120 s…
+  // con tope de 10 min) o -1 cuando ya se intentó MAX veces (se deja en paz hasta recargar la página). Así un servidor caído no recibe más de un intento cada 30 s o más.
+  var Reintento = (function () {
+    var BASE = 30000, TOPE = 600000, MAX = 6;
+    function espera(fallos) { if (!(fallos >= 1) || fallos > MAX) return -1; return Math.min(TOPE, BASE * Math.pow(2, fallos - 1)); }
+    return { espera: espera, BASE: BASE, TOPE: TOPE, MAX: MAX };
   })();
   // [puro:fin]
 
