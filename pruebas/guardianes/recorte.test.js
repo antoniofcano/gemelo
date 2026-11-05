@@ -302,6 +302,7 @@ test("38_presencia: con la esfera de three sin rehacer (calculada una vez antes 
 // recortar no ahorra nada) o se mueve cada fotograma. «tanda 2»: pendientes de otra tanda con sus pruebas de bandera. Un `frustumCulled = false` nuevo, o más de
 // los que hay aquí en un fichero, falla: o se calcula la esfera (computeBoundingSphere DESPUÉS de escribir posiciones o matrices) o se anota aquí por qué no.
 const SIN_RECORTE = {
+  "12c_ir_a.js": [1, "la línea de puntos hasta el destino de ir andando: se reescribe al planificar y al avanzar, junto a quien pasea; sin destino no se dibuja (visible)"],
   "07_follaje.js": [1, "las sombras de los olivos: una InstancedMesh con toda la finca (la cámara siempre dentro)"],
   "07ac_lejanos.js": [1, "los olivos lejanos: instancias por toda la finca (hasta 1,6 km) que se rehacen al moverse; vacía no se dibuja (visible = count > 0)"],
   "07b_arboles.js": [1, "niveles 1 y 2: instancias por toda la finca que se rehacen al moverse; vacías no se dibujan (visible = count > 0)"],
