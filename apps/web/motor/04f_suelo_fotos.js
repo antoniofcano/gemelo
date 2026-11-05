@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: SueloFotosPuro, SueloFotos
-// Consume: 01a_aparato (Aparato), 02_mundo (Mundo, suelo, copas), 02b_cola (Cola)
+// Consume: 01a_aparato (Aparato), 02_mundo (Mundo, suelo, copas), 02b_cola (Cola), 03_escena (renderer)
 // ===============================================================================
   // ---------- EV-1s: el suelo de cerca con texturas de fotos de la finca (?suelo=fotos; APAGADO por defecto y, en VR, apagado salvo ?sueloVR=1)
   // Siete clases de textura repetible (tuberia/suelo/construye.mjs; apps/web/public/suelo/, con su LICENCIA.md) en UNA textura en array (DataArrayTexture:
@@ -63,6 +63,32 @@
       }
       return out;
     }
+    // EV-1k: el formato de las texturas. Por defecto KTX2 (UASTC en una textura en array con mipmaps: tuberia/suelo/ktx2.mjs), que la tarjeta guarda
+    // a 1 byte por texel en vez de 4; si no carga (no está, el transcodificador falla, el aparato no puede), las WebP de siempre.
+    // ?suelofmt=png (o webp) fuerza las WebP para comparar; ?suelofmt=ktx2, el de por defecto. El transcodificador de three (basis_transcoder.js y
+    // .wasm) lo copia el build de Vite en <página>/basis/ (vite.config.js): del mismo origen, nunca de un CDN.
+    var BASIS = "basis/";
+    function ktx2(px) { return "suelo/suelo_" + px + ".ktx2"; }
+    function formato(busqueda) { var m = /[?&]suelofmt=(ktx2|png|webp)(?![^&#])/.exec(busqueda || ""); return m && m[1] !== "ktx2" ? "png" : "ktx2"; }
+    function orden(pedido) { return pedido === "ktx2" ? ["ktx2", "png"] : ["png"]; }
+    // prueba los formatos en orden: el primero que da textura gana; si uno falla, se avisa (avisa(formato, error)) y se pasa al siguiente. Sin THREE:
+    // intentos[formato]() devuelve una promesa de la textura (así lo prueba Node con intentos de mentira)
+    function cargaEnOrden(formatos, intentos, avisa) {
+      var i = 0;
+      function sigue() {
+        if (i >= formatos.length) return Promise.reject(new Error("ningún formato cargó (" + formatos.join(", ") + ")"));
+        var f = formatos[i++];
+        return new Promise(function (ok) { ok(intentos[f]()); }).then(function (t) { return { formato: f, tex: t }; }, function (e) { if (avisa) avisa(f, e); return sigue(); });
+      }
+      return sigue();
+    }
+    // ¿es el KTX2 que espera el sombreado? una lámina por clase y variante, del tamaño pedido y con su cadena de mipmaps entera (si no, se vuelve a las WebP)
+    function ktx2Vale(t, px) {
+      var im = t && t.image, n = 1 + Math.floor(Math.log2(px));
+      return !!(im && im.width === px && im.height === px && im.depth === CAPAS && t.mipmaps && t.mipmaps.length === n);
+    }
+    // bytes en la tarjeta de lo que se sube de verdad (los niveles de mipmap de una textura comprimida, con todas sus láminas)
+    function bytesNiveles(mipmaps) { var s = 0; for (var i = 0; i < (mipmaps || []).length; i++) s += mipmaps[i].data ? mipmaps[i].data.byteLength : 0; return s; }
     function f1(v) { var s = String(v); return s.indexOf(".") < 0 ? s + ".0" : s; }
     // el GLSL que se añade al sombreado del relieve de 04d (solo con la bandera). cab: cabecera; pre: antes de la gravilla; color: antes de pasar a lineal
     function glsl(TS) {
@@ -109,7 +135,8 @@
       Object.keys(ANCLAS).forEach(function (k) { if (color.split(ANCLAS[k]).length !== 2) throw new Error("04f_suelo_fotos: el ancla «" + ANCLAS[k] + "» no está una vez en el sombreado de 04d"); });
       return { cab: cab + g.cab, color: color.replace(ANCLAS.pre, g.pre + ANCLAS.pre).replace(ANCLAS.grano, "(1.0 - m) * 0.3, 0.0, 1.0) * cercaM * (1.0 - fotA);").replace(ANCLAS.color, g.color + ANCLAS.color) };
     }
-    return { CLASES: CLASES, METROS: METROS, VARIANTES: VARIANTES, BASE: BASE, CAPAS: CAPAS, PX: PX, FUNDIDO: FUNDIDO, RUE_GN: RUE_GN, decide: decide, ficheros: ficheros, presupuesto: presupuesto, campoRuedo: campoRuedo, glsl: glsl, parcheGlsl: parcheGlsl };
+    return { CLASES: CLASES, METROS: METROS, VARIANTES: VARIANTES, BASE: BASE, CAPAS: CAPAS, PX: PX, FUNDIDO: FUNDIDO, RUE_GN: RUE_GN, decide: decide, ficheros: ficheros, presupuesto: presupuesto, campoRuedo: campoRuedo, glsl: glsl, parcheGlsl: parcheGlsl,
+      BASIS: BASIS, ktx2: ktx2, formato: formato, orden: orden, cargaEnOrden: cargaEnOrden, ktx2Vale: ktx2Vale, bytesNiveles: bytesNiveles };
   })();
   // [puro:fin]
   var SueloFotos = (function () {
@@ -141,21 +168,54 @@
       t.onUpdate = function () { t.image.data = null; };   // ya en la tarjeta gráfica: fuera la copia de la CPU (29,3 MB a 768, 7,3 MB a 384: presupuesto().cpuMB)
       return t;
     }
-    var pedido = false;
+    var pedido = false, vez = 0, pide = P.formato(typeof location !== "undefined" ? location.search : ""), cargado = null, bytesTex = 0, gpuFmt = null, loader = null;
+    // prioridad 60 (como algo a 60 m): con 1e9 nunca le llegaba el turno, porque la Cola siempre corre la menor y al moverse siempre hay teselas, olivos o detalle pendientes
+    function enCola(gen) { return new Promise(function (ok, mal) { if (!Cola.add("SF", 60, gen, ok)) mal(new Error("ya había un trabajo SF en la Cola")); }); }
+    function cargaWebp() {
+      var L = P.ficheros(cfg.px), srcs = []; L.forEach(function (f) { srcs.push(f.color, f.relieve); });
+      return Promise.all(srcs.map(img)).then(function (ims) { return enCola(juntaG(L, ims)); });
+    }
+    function sueltaLoader() { if (loader) { loader.dispose(); loader = null; } }   // fuera los workers del transcodificador y su URL blob:
+    // EV-1k: el KTX2 de array con el KTX2Loader de three (import() solo con la bandera y este formato). detectSupport decide a qué formato de la tarjeta
+    // se transcodifica (ASTC 4x4, BC7, ETC2 RGBA… o RGBA8 si no hay ninguno); el loader se libera en cuanto da la textura o falla
+    function cargaKtx2() {
+      return import("three/addons/loaders/KTX2Loader.js").then(function (m) {
+        loader = new m.KTX2Loader().setTranscoderPath(P.BASIS).setWorkerLimit(1).detectSupport(renderer);
+        return loader.loadAsync(P.ktx2(cfg.px));
+      }).then(function (t) {
+        sueltaLoader();
+        if (!P.ktx2Vale(t, cfg.px)) { t.dispose(); throw new Error(P.ktx2(cfg.px) + " no trae " + P.CAPAS + " láminas de " + cfg.px + " px con todos sus mipmaps"); }
+        return enCola((function* () {   // poco trabajo en el hilo principal (lo pesado lo hizo el worker), pero por la Cola, como todo lo que monta texturas
+          yield;
+          t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; t.colorSpace = THREE.NoColorSpace;   // factores, no colores (como la de las WebP)
+          bytesTex = P.bytesNiveles(t.mipmaps); gpuFmt = t.format;
+          t.onUpdate = function () { t.mipmaps = []; };   // ya en la tarjeta gráfica: fuera la copia de la CPU (lo que ocupaba: bytesTex)
+          return t;
+        })());
+      }, function (e) { sueltaLoader(); throw e; });
+    }
     function carga() {
       if (!cfg.activo || pedido) return; pedido = true;
-      var L = P.ficheros(cfg.px), srcs = []; L.forEach(function (f) { srcs.push(f.color, f.relieve); });
-      Promise.all(srcs.map(img)).then(function (ims) {
-        // prioridad 60 (como algo a 60 m): con 1e9 nunca le llegaba el turno, porque la Cola siempre corre la menor y al moverse siempre hay teselas, olivos o detalle pendientes
-        Cola.add("SF", 60, juntaG(L, ims), function (t) { tex = t; U.uFot.value = t; hecho = true; });
-      }, function (e) { console.warn("suelo=fotos: " + e.message + "; el suelo sigue como siempre"); });
+      var mia = ++vez;   // si libera() llega antes que la textura, la que llegue tarde se tira
+      P.cargaEnOrden(P.orden(pide), { ktx2: cargaKtx2, png: cargaWebp }, function (f, e) { console.warn("suelo=fotos (" + f + "): " + (e && e.message || e) + (f === "ktx2" ? "; vuelvo a las WebP" : "")); })
+        .then(function (r) {
+          if (mia !== vez) { r.tex.dispose(); return; }
+          if (r.formato === "png") { bytesTex = P.presupuesto(cfg.px).texturaBytes; gpuFmt = THREE.RGBAFormat; }
+          cargado = r.formato; tex = r.tex; U.uFot.value = r.tex; hecho = true;
+        }, function (e) { if (mia === vez) console.warn("suelo=fotos: " + e.message + "; el suelo sigue como siempre"); });
     }
     // cada 0,2 s (desde 04d): encendido si ya cargó y, en VR, solo con ?sueloVR=1 (hasta medir en el Quest)
     function actualiza() { if (!cfg.activo) return; carga(); U.uFotK.value = hecho && (cfg.vr || !Aparato.vr()) ? 1 : 0; }
     function libera() {
-      if (tex) { tex.dispose(); tex = null; U.uFot.value = null; } hecho = false; pedido = false; U.uFotK.value = 0;
+      vez++; sueltaLoader(); Cola.cancela("SF");
+      if (tex) { tex.dispose(); tex = null; U.uFot.value = null; } hecho = false; pedido = false; U.uFotK.value = 0; cargado = null; bytesTex = 0; gpuFmt = null;
       campos.forEach(function (t) { t.dispose(); }); campos = []; if (neutro) { neutro.dispose(); neutro = null; }
     }
-    function resumen() { var b = P.presupuesto(cfg.px); return { activo: cfg.activo, px: cfg.px, vr: cfg.vr, hecho: hecho, encendido: U.uFotK.value > 0, texturaMB: b.texturaMB, campos: campos.length }; }
+    // texturaMB: lo declarado para RGBA8 (presupuesto); gpuMB: lo que se subió de verdad con el formato que se cargó (null hasta que carga)
+    function resumen() {
+      var b = P.presupuesto(cfg.px);
+      return { activo: cfg.activo, px: cfg.px, vr: cfg.vr, hecho: hecho, encendido: U.uFotK.value > 0, texturaMB: b.texturaMB, campos: campos.length,
+        formato: pide, cargado: cargado, gpuFormato: gpuFmt, gpuBytes: bytesTex, gpuMB: hecho ? Math.round(bytesTex / 1048576 * 10) / 10 : null };
+    }
     return { activo: cfg.activo, U: U, rueNeutro: rueNeutro, campo: campo, actualiza: actualiza, libera: libera, resumen: resumen };
   })();

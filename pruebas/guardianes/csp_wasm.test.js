@@ -15,4 +15,14 @@ for (const rel of [["infra", "Caddyfile"], ["infra", "dev", "Caddyfile"]]) {
     assert.ok(fuentes.includes("'wasm-unsafe-eval'"), "script-src sin 'wasm-unsafe-eval': " + dir);
     assert.ok(!/'unsafe-eval'/.test(m[1]), "la CSP abre 'unsafe-eval'");
   });
+  // EV-1k: el KTX2Loader de three (suelo de fotos, 04f_suelo_fotos) pide basis/basis_transcoder.{js,wasm} con fetch (connect-src 'self') y monta su
+  // worker desde una URL blob: con ese código (worker-src blob:); el worker hereda la CSP de la página, así que compila el WebAssembly con el
+  // 'wasm-unsafe-eval' de script-src. Ni el worker ni el transcodificador piden nada a otro origen.
+  test("la CSP de " + rel.join("/") + " deja el worker blob: del KTX2Loader (worker-src 'self' blob:) y su fetch del mismo origen (connect-src 'self')", () => {
+    const m = /Content-Security-Policy-Report-Only\s+"([^"]+)"/.exec(fs.readFileSync(path.join(RAIZ, ...rel), "utf8"));
+    const dirs = Object.fromEntries(m[1].split(";").map(x => x.trim().split(/\s+/)).map(([k, ...v]) => [k, v]));
+    assert.ok(dirs["worker-src"] && dirs["worker-src"].includes("'self'") && dirs["worker-src"].includes("blob:"), "worker-src sin 'self' blob:: " + dirs["worker-src"]);
+    assert.ok(dirs["connect-src"] && dirs["connect-src"].includes("'self'"), "connect-src sin 'self'");
+    assert.ok(!dirs["worker-src"].some(x => /^https?:/.test(x)), "worker-src abre otro origen");
+  });
 }

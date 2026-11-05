@@ -165,6 +165,7 @@ async function mide(navegador, url, { escenarios = ESCENARIOS, tope = TOPE_MEDID
     if (desglose) medidas[nombre].desglose = await p.evaluate(desgloseLlamadas);
     if (desglose) medidas[nombre].piezasGen = await p.evaluate(() => { const G = window.__g.Generados; return G && G.piezas ? G.piezas() : null; });   // O2: por pieza del lote de olivos generados (07ab piezas()); null sin ?olivos=gen
     if (desglose) medidas[nombre].escena3d = await p.evaluate(() => window.__g.Escena3D ? window.__g.Escena3D.resumen() : null);
+    if (desglose) medidas[nombre].sueloFotos = await p.evaluate(() => window.__g.SueloFotos && window.__g.SueloFotos.activo ? window.__g.SueloFotos.resumen() : null);   // EV-1k: formato cargado y bytes subidos a la tarjeta; null sin ?suelo=fotos
     if (capturas) { fs.mkdirSync(capturas, { recursive: true }); await p.screenshot({ path: path.join(capturas, nombre + ".png") }); }
   }
   } catch (e) { if (Date.now() - t0 < tope) throw e; parcial = true; errores.push("TOPE " + Math.round(tope / 1000) + " s: " + String(e.message).slice(0, 200)); }

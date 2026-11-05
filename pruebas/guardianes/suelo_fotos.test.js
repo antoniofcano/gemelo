@@ -105,3 +105,60 @@ test("la casilla «Suelo con texturas de la finca» (vista.suelo) lo enciende; l
   assert.strictEqual(P.decide("?suelo=fotos", "escritorio", false).activo, true, "?suelo=fotos manda sobre la casilla");
   assert.ok(F.includes('localStorage.getItem("gemelo.ajustes.vista.suelo")'), "lee el ajuste guardado con el prefijo de 33_ajustes");
 });
+
+// EV-1k: el suelo de fotos en KTX2 (UASTC en una textura en array con mipmaps, tuberia/suelo/ktx2.mjs) con el KTX2Loader de three, y la vuelta a las WebP
+test("la perilla ?suelofmt: KTX2 por defecto; png (o webp) fuerza las WebP; lo que no es una de las tres, lo de por defecto", () => {
+  assert.strictEqual(P.formato(""), "ktx2"); assert.strictEqual(P.formato("?suelo=fotos"), "ktx2");
+  assert.strictEqual(P.formato("?suelo=fotos&suelofmt=ktx2"), "ktx2");
+  assert.strictEqual(P.formato("?suelofmt=png"), "png"); assert.strictEqual(P.formato("?a=1&suelofmt=webp#x"), "png");
+  assert.strictEqual(P.formato("?suelofmt=pngx"), "ktx2"); assert.strictEqual(P.formato("?suelofmt=jpg"), "ktx2"); assert.strictEqual(P.formato("?xsuelofmt=png"), "ktx2");
+  assert.deepStrictEqual(P.orden("ktx2"), ["ktx2", "png"], "con KTX2, las WebP detrás por si falla");
+  assert.deepStrictEqual(P.orden("png"), ["png"], "con ?suelofmt=png no se pide el KTX2 (ni el transcodificador)");
+  assert.strictEqual(P.ktx2(768), "suelo/suelo_768.ktx2"); assert.strictEqual(P.ktx2(384), "suelo/suelo_384.ktx2");
+  assert.strictEqual(P.BASIS, "basis/", "el transcodificador, del mismo origen: la carpeta que copia vite.config.js");
+  // la decisión de siempre no cambia: decide() no sabe del formato
+  assert.deepStrictEqual(P.decide("?suelo=fotos&suelofmt=png", "escritorio"), { activo: true, px: 768, vr: false });
+});
+
+test("la vuelta atrás: si el KTX2 falla (rechazo o excepción), las WebP; si va bien, ni se piden; si todo falla, se rechaza y el suelo sigue como siempre", async () => {
+  const pide = [], avisos = [], intentos = (k, p) => ({ ktx2: () => { pide.push("ktx2"); return k(); }, png: () => { pide.push("png"); return p(); } });
+  const ok = v => () => Promise.resolve(v), mal = m => () => Promise.reject(new Error(m)), lanza = m => () => { throw new Error(m); };
+  let r = await P.cargaEnOrden(P.orden("ktx2"), intentos(mal("404"), ok("tex-png")), (f, e) => avisos.push(f + ":" + e.message));
+  assert.deepStrictEqual(r, { formato: "png", tex: "tex-png" }); assert.deepStrictEqual(pide, ["ktx2", "png"]); assert.deepStrictEqual(avisos, ["ktx2:404"]);
+  pide.length = 0; avisos.length = 0;
+  r = await P.cargaEnOrden(P.orden("ktx2"), intentos(lanza("sin WebGL2"), ok("tex-png")), (f, e) => avisos.push(f + ":" + e.message));
+  assert.strictEqual(r.formato, "png", "una excepción síncrona del intento también vuelve a las WebP"); assert.deepStrictEqual(avisos, ["ktx2:sin WebGL2"]);
+  pide.length = 0; avisos.length = 0;
+  r = await P.cargaEnOrden(P.orden("ktx2"), intentos(ok("tex-ktx2"), ok("tex-png")));
+  assert.deepStrictEqual(r, { formato: "ktx2", tex: "tex-ktx2" }); assert.deepStrictEqual(pide, ["ktx2"], "si el KTX2 carga, las WebP no se piden");
+  pide.length = 0;
+  r = await P.cargaEnOrden(P.orden("png"), intentos(ok("tex-ktx2"), ok("tex-png")));
+  assert.deepStrictEqual(r, { formato: "png", tex: "tex-png" }); assert.deepStrictEqual(pide, ["png"], "?suelofmt=png no toca el KTX2");
+  await assert.rejects(P.cargaEnOrden(P.orden("ktx2"), intentos(mal("a"), mal("b")), f => avisos.push(f)), /ningún formato cargó/);
+});
+
+test("ktx2Vale: solo vale el KTX2 que espera el sombreado (13 láminas del tamaño pedido y la cadena de mipmaps entera); bytesNiveles cuenta lo que se sube", () => {
+  const mips = (px, n) => Array.from({ length: n }, (_, l) => { const w = Math.max(1, px >> l); return { data: new Uint8Array(Math.ceil(w / 4) * Math.ceil(w / 4) * 16 * P.CAPAS), width: w, height: w }; });
+  const tex = (px, capas, n) => ({ image: { width: px, height: px, depth: capas }, mipmaps: mips(px, n) });
+  assert.ok(P.ktx2Vale(tex(768, 13, 10), 768)); assert.ok(P.ktx2Vale(tex(384, 13, 9), 384));
+  assert.ok(!P.ktx2Vale(tex(384, 13, 9), 768), "otro tamaño"); assert.ok(!P.ktx2Vale(tex(384, 7, 9), 384), "otras láminas (un KTX2 viejo)");
+  assert.ok(!P.ktx2Vale(tex(384, 13, 1), 384), "sin mipmaps"); assert.ok(!P.ktx2Vale(null, 384)); assert.ok(!P.ktx2Vale({}, 384));
+  // 1 byte por texel (ASTC 4x4, BC7, ETC2 RGBA, en bloques de 4×4) con mipmaps: ≈ la cuarta parte de lo declarado para RGBA8 (presupuesto)
+  const b768 = P.bytesNiveles(tex(768, 13, 10).mipmaps), b384 = P.bytesNiveles(tex(384, 13, 9).mipmaps);
+  assert.ok(Math.abs(b768 / P.presupuesto(768).texturaBytes - 0.25) < 0.01, "768: " + b768); assert.ok(Math.abs(b384 / P.presupuesto(384).texturaBytes - 0.25) < 0.01, "384: " + b384);
+  assert.strictEqual(P.bytesNiveles([]), 0); assert.strictEqual(P.bytesNiveles(undefined), 0);
+});
+
+test("el motor carga el KTX2 con el KTX2Loader de three, con detectSupport, del mismo origen, por la Cola, y lo suelta todo (loader y workers)", () => {
+  assert.ok(F04F.includes('import("three/addons/loaders/KTX2Loader.js")'), "el KTX2Loader de three, con import() solo cuando hace falta");
+  assert.ok(/setTranscoderPath\(P\.BASIS\)/.test(F04F), "el transcodificador de basis/ (mismo origen), no la ruta de import.meta.url");
+  assert.ok(/\.detectSupport\(renderer\)/.test(F04F), "detectSupport(renderer) es obligatorio");
+  assert.ok(/function sueltaLoader\(\) \{ if \(loader\) \{ loader\.dispose\(\); loader = null; \} \}/.test(F04F), "el loader se libera (sus workers y su URL blob:)");
+  const cuerpo = F04F.slice(F04F.indexOf("function cargaKtx2()"), F04F.indexOf("function carga()"));
+  assert.strictEqual((cuerpo.match(/sueltaLoader\(\)/g) || []).length, 2, "se suelta tanto si carga como si falla");
+  assert.ok(/function libera\(\) \{\s*vez\+\+; sueltaLoader\(\); Cola\.cancela\("SF"\);/.test(F04F), "libera() suelta el loader, cancela lo pendiente y tira lo que llegue tarde");
+  assert.ok(/return enCola\(\(function\* \(\) \{/.test(cuerpo), "el montaje del KTX2 va por la Cola");
+  assert.ok(/t\.onUpdate = function \(\) \{ t\.mipmaps = \[\]; \};/.test(cuerpo), "ya en la tarjeta, fuera la copia de la CPU");
+  assert.ok(/t\.wrapS = t\.wrapT = THREE\.RepeatWrapping/.test(cuerpo) && /t\.colorSpace = THREE\.NoColorSpace/.test(cuerpo), "repetible y sin espacio de color, como la de las WebP");
+  assert.ok(!/https?:\/\//.test(F04F.replace(/\/\/[^\n]*/g, "")), "el motor no pide nada a otro origen");
+});

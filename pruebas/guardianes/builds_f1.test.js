@@ -30,6 +30,9 @@ function stub() {
   fs.writeFileSync(path.join(d, "build/three.module.js"), 'export const REVISION = "185-STUB-SUPER-THREE"; export class Loader { constructor() { this.marca = "STUB-LOADER-BASE"; } }\n');
   fs.writeFileSync(path.join(d, "examples/jsm/loaders/GLTFLoader.js"), 'import { Loader } from "three";\nexport class GLTFLoader extends Loader { tipo() { return "STUB-GLTF"; } }\n');
   fs.writeFileSync(path.join(d, "examples/fonts/fuente.js"), 'export const FUENTE = "STUB-FUENTE";\n');
+  // EV-1k: vite.config.js copia el transcodificador Basis de la three de la build (y falla si no está): el stub trae uno de mentira
+  fs.mkdirSync(path.join(d, "examples/jsm/libs/basis"), { recursive: true });
+  for (const f of ["basis_transcoder.js", "basis_transcoder.wasm"]) fs.writeFileSync(path.join(d, "examples/jsm/libs/basis", f), "STUB-BASIS\n");
   return d;
 }
 function raizMini(entrada) {
