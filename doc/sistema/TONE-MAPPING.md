@@ -13,6 +13,8 @@ Perilla de URL para **probar** el tone mapping del renderizador y que Antonio el
 | `aces` | `ACESFilmicToneMapping` | ACES filmic: más contraste y saturación en medios, vira algo los verdes y los tonos cálidos. |
 | `neutral` | `NeutralToneMapping` | Khronos PBR Neutral: casi no cambia el color por debajo de un umbral y comprime solo los brillos; la más cercana a `neutro`. |
 
+Sin URL, manda el ajuste **Configuración → Vista → «Tono (tone mapping)»** (`vista.tono`: Neutro, AgX, ACES, Neutral; se aplica al recargar la página). Orden de mando: **la URL, luego el ajuste, luego `neutro`**; `?tono=neutro` apaga un ajuste puesto. `?expo=` se queda solo en la URL (vale también con un tono del ajuste). `Render.tono.origen` dice de dónde viene (`url`, `ajuste` o `defecto`) y el informe de `?mide` lo repite en su línea «Dibujo: …». El ajuste se lee una vez, al arrancar, de `localStorage` (`gemelo.ajustes.vista.tono`, con `try/catch`) en `02h_render.js`, antes de crear el renderer (`33_ajustes` se monta después; mismo patrón que `04f` con `vista.suelo`).
+
 Verlas: `…/?tono=agx`, `…/?tono=aces`, `…/?tono=neutral` (combinable con el resto, p. ej. `?tono=agx&expo=1.2&hora=18:45`). Un valor desconocido avisa en la consola (`tono: …`) y se usa `neutro`. Código: `RenderPuro.eligeTono` en `02h_render.js` (puro, probado en Node por `pruebas/guardianes/tono.test.js`) y su aplicación en `03_escena.js`, el único sitio que fija `renderer.toneMapping`.
 
 ## Qué se ve afectado

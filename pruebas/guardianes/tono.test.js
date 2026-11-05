@@ -17,10 +17,27 @@ test.before(async () => {
   assert.ok(TH.pantalla, "falta three en apps/web/node_modules (npm i)");
 });
 
+test("orden de mando: la URL, luego el ajuste «vista.tono», luego neutro", () => {
+  const { RenderPuro } = fabrica(TH.pantalla), E = (q, aj) => plano(RenderPuro.eligeTono(q, aj));
+  assert.strictEqual(E("", undefined).tono, "neutro"); assert.strictEqual(E("", undefined).origen, "defecto");
+  assert.strictEqual(E("", "neutro").origen, "defecto");
+  for (const t of ["agx", "aces", "neutral"]) { const r = E("", t); assert.strictEqual(r.tono, t); assert.strictEqual(r.origen, "ajuste"); assert.strictEqual(r.constante, RenderPuro.TONOS[t]); }
+  assert.strictEqual(E("?tono=aces", "agx").tono, "aces", "la URL manda"); assert.strictEqual(E("?tono=aces", "agx").origen, "url");
+  assert.strictEqual(E("?tono=neutro", "agx").tono, "neutro", "?tono=neutro apaga un ajuste");
+  const raro = E("?tono=rosa", "agx"); assert.strictEqual(raro.tono, "agx", "un valor raro de la URL cae al ajuste"); assert.match(raro.advertencia, /el ajuste/);
+  assert.strictEqual(E("", "rosa").tono, "neutro", "un ajuste raro (localStorage manipulado) se ignora");
+  assert.strictEqual(E("?expo=2", "agx").expo, 2, "?expo= solo va en la URL y vale con un tono del ajuste");
+  assert.strictEqual(E("?expo=2", undefined).expo, 1);
+  const r = lee("apps/web/motor/02h_render.js");
+  assert.match(r, /function ajusteGuardado\(clave\) \{ try \{ var s = window\.localStorage\.getItem\("gemelo\.ajustes\." \+ clave\)[^}]*\} catch \(e\)/);
+  assert.match(r, /ajusteGuardado\("vista\.tono"\)/);
+  assert.match(lee("apps/web/motor/33_ajustes.js"), /"vista\.tono": opc\("neutro", \["neutro", "agx", "aces", "neutral"\]\)/);
+});
+
 test("sin perilla: neutro, NoToneMapping y exposición 1", () => {
   const { RenderPuro, Render } = fabrica(TH.pantalla);
   for (const q of ["", "?debug", "?a=1&render=clasico", undefined, null]) {
-    assert.deepStrictEqual(plano(RenderPuro.eligeTono(q)), { pedido: "", tono: "neutro", constante: "NoToneMapping", expo: 1, advertencia: "" }, String(q));
+    assert.deepStrictEqual(plano(RenderPuro.eligeTono(q)), { pedido: "", tono: "neutro", constante: "NoToneMapping", expo: 1, advertencia: "", origen: "defecto" }, String(q));
   }
   assert.strictEqual(Render.tono.tono, "neutro");
   assert.strictEqual(TH.pantalla[Render.tono.constante], TH.pantalla.NoToneMapping);

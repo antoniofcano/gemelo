@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Ajustes
-// Consume: 01_datos ($, fmt), 02_mundo (suelo, copas), 02c_componentes (Bus), 03_escena (visor, renderer, exag, modo, calidad),
+// Consume: 01_datos ($, fmt), 02_mundo (suelo, copas), 02c_componentes (Bus), 02h_render (Render), 03_escena (visor, renderer, exag, modo, calidad),
 //   08_marcadores (listo, aplica), 09_camara (pon), 12_paseo (persona), 14_historia (FINCA, lista, rango), 16_vida (quita), 24_pantalla (suave),
 //   26_presencia (Chat), 29_vr (panel), 31_hud (Hud), 32b_capas (Capas), 34_movibles (Movibles), 90_final (tamano, bucle)
 // ===============================================================================
@@ -20,9 +20,9 @@
     function opc(def, ops) { return { tipo: "opc", def: def, ops: ops }; }
     var ESQUEMA = {
       "graficos.calidad": opc("auto", ["auto", "0", "1", "2"]), "graficos.ahorro": bool(false),
-      "vista.exag": num(1, 1, 3, 0.25), "vista.corr": num(1, 0, 1.5, 0.25), "vista.brujula": bool(true), "vista.personal": bool(true), "vista.suelo": bool(false), "vista.unidades": opc("ha", ["ha", "m2"]), "vista.altura": opc("pie", ["pie", "sentado"]),
+      "vista.exag": num(1, 1, 3, 0.25), "vista.corr": num(1, 0, 1.5, 0.25), "vista.brujula": bool(true), "vista.personal": bool(true), "vista.suelo": bool(false), "vista.tono": opc("neutro", ["neutro", "agx", "aces", "neutral"]), "vista.a2c": bool(false), "vista.unidades": opc("ha", ["ha", "m2"]), "vista.altura": opc("pie", ["pie", "sentado"]),
       "controles.tactil": opc("auto", ["auto", "si", "no"]), "controles.mano": opc("diestra", ["diestra", "zurda"]), "controles.sens": num(1, 0.4, 2, 0.2), "controles.invertir": bool(false), "controles.palanca": bool(true),
-      "vr.giro": opc("30", ["15", "30", "45", "60"]), "vr.vineta": opc("suave", ["suave", "fuerte", "no"]), "vr.vuelo": bool(false),
+      "vr.giro": opc("30", ["15", "30", "45", "60"]), "vr.vineta": opc("suave", ["suave", "fuerte", "no"]), "vr.vuelo": bool(false), "vr.multiview": bool(true),
       "acc.texto": num(100, 100, 200, 25), "acc.contraste": bool(false), "acc.movimiento": opc("sistema", ["sistema", "reducido", "normal"]),
       "avanzado.contador": bool(false)
     };
@@ -143,6 +143,8 @@
         { k: "vista.brujula", t: "Mostrar la brújula" },
         { k: "vista.personal", t: "Mostrar hora, tu haza, hablar y volver" },
         { k: "vista.suelo", t: "Suelo con texturas de la finca", nota: "Hojarasca, compost, ruedo, camino y piedras de cerca, sacados de fotos de la finca; el color sigue siendo el de la ortofoto. Se aplica al recargar la página. En las gafas sigue apagado hasta medirlo." },
+        { k: "vista.tono", t: "Tono (tone mapping)", ops: [["neutro", "Neutro (el de siempre)"], ["agx", "AgX (suave, apaga menos los colores)"], ["aces", "ACES (cinematográfico, más contraste)"], ["neutral", "Neutral de Khronos (fiel a los colores)"]], nota: "Cómo se pasa la luz de la escena a la pantalla. Se aplica al recargar la página; ?tono= en la dirección manda sobre esto. La exposición (?expo=) solo va en la dirección." },
+        { k: "vista.a2c", t: "Bordes suaves en hojas y hierba (alphaToCoverage)", nota: "Alisa el borde de las hojas y la hierba cuando hay MSAA; apagado, las copas de cerca salen más limpias. Se aplica al recargar la página; ?a2c=0|1 en la dirección manda sobre esto." },
         { k: "vista.unidades", t: "Superficie en", ops: [["ha", "hectáreas"], ["m2", "metros cuadrados"]] },
         { k: "vista.altura", t: "Altura de la vista", ops: [["pie", "De pie (ojos a 1,62 m)"], ["sentado", "Sentado (ojos a 1,20 m)"]], nota: "Al pasear y en las gafas VR. No depende de tu avatar. En las gafas se suma a la altura que dé el visor: si juegas sentado y el visor ya sabe dónde está el suelo, déjalo en «De pie»." } ] },
       { id: "controles", t: "Controles", campos: [
@@ -154,7 +156,8 @@
       { id: "vr", t: "Comodidad VR", nota: "Se aplica en las gafas. Nada de esto está probado en unas Quest.", campos: [
         { k: "vr.giro", t: "Giro", ops: [["15", "A saltos de 15°"], ["30", "A saltos de 30°"], ["45", "A saltos de 45°"], ["60", "A saltos de 60°"]] },
         { k: "vr.vineta", t: "Viñeta", ops: [["suave", "Suave"], ["fuerte", "Fuerte"], ["no", "Apagada"]] },
-        { k: "vr.vuelo", t: "Permitir vuelo (A) y mirador (B)" } ] },
+        { k: "vr.vuelo", t: "Permitir vuelo (A) y mirador (B)" },
+        { k: "vr.multiview", t: "Multiview (dibuja los dos ojos de una vez)", soloBuild: "vr", nota: "Solo en la versión para gafas. Se aplica al recargar la página; ?xrmv (0 o 1) en la dirección manda sobre esto. Sin probar en unas Quest desde este panel." } ] },
       { id: "acc", t: "Accesibilidad", campos: [
         { k: "acc.texto", t: "Tamaño del texto", fmt: function (v) { return v + " %"; } },
         { k: "acc.contraste", t: "Alto contraste en el HUD" },
@@ -237,7 +240,7 @@
       lista.appendChild(t);
       var q = el("div"); q.id = "aj-p-" + p.id; q.setAttribute("role", "tabpanel"); q.setAttribute("aria-labelledby", t.id); q.hidden = true;
       q.appendChild(el("h3", null, p.t)); if (p.nota) q.appendChild(el("p", "aj-nota", p.nota));
-      p.campos.forEach(function (c) { pintaCampo(c, q); });
+      p.campos.forEach(function (c) { if (c.soloBuild && (typeof Render === "undefined" || Render.build !== c.soloBuild)) return; pintaCampo(c, q); });   // soloBuild: el control existe solo en esa build (el multiview, en la de VR)
       cont.appendChild(q);
     }
     function construye() {

@@ -178,9 +178,9 @@ test("29_vr: near efectivo al entrar y restaurado al salir; el controlador baja 
 
 // ---------- F2a (doc/sistema/MULTIVIEW.md): ?xrmv=0|1, el multiview de super-three, SOLO en la build de VR (defecto 1); en la de pantalla no existe
 test("xrmv: en la build de VR, por defecto sí, 0 lo apaga, 1 lo pide y otro valor se ignora con motivo; en la de pantalla no existe y se dice", () => {
-  assert.deepStrictEqual(P.multiview("", "vr"), { existe: true, activo: true, pedido: null, ignorado: null });
-  assert.deepStrictEqual(P.multiview("?debug&xrmv=0", "vr"), { existe: true, activo: false, pedido: "0", ignorado: null });
-  assert.deepStrictEqual(P.multiview("?xrmv=1&mide=60", "vr"), { existe: true, activo: true, pedido: "1", ignorado: null });
+  assert.deepStrictEqual(P.multiview("", "vr"), { existe: true, activo: true, pedido: null, ignorado: null, origen: "defecto" });
+  assert.deepStrictEqual(P.multiview("?debug&xrmv=0", "vr"), { existe: true, activo: false, pedido: "0", ignorado: null, origen: "url" });
+  assert.deepStrictEqual(P.multiview("?xrmv=1&mide=60", "vr"), { existe: true, activo: true, pedido: "1", ignorado: null, origen: "url" });
   const raro = P.multiview("?xrmv=si", "vr"); assert.strictEqual(raro.activo, true, "un valor raro deja el de siempre"); assert.match(raro.ignorado.motivo, /solo vale 0 o 1/);
   assert.deepStrictEqual(P.multiview("", "pantalla"), { existe: false, activo: false, pedido: null, ignorado: null });
   const pa = P.multiview("?xrmv=1", "pantalla"); assert.strictEqual(pa.activo, false); assert.match(pa.ignorado.motivo, /solo existe en la build de VR/);
@@ -192,6 +192,22 @@ test("xrmv: en la build de VR, por defecto sí, 0 lo apaga, 1 lo pide y otro val
   assert.match(P.linea(Object.assign({}, pl, { mv: Object.assign(P.multiview("", "vr"), { enUso: true }) })), /MSAA sí · multiview sí · nivel/);
   assert.match(P.linea(Object.assign({}, pl, { mv: Object.assign(P.multiview("", "vr"), { enUso: false }) })), /multiview pedido, no en uso/);
   assert.match(P.linea(Object.assign({}, pl, { mv: P.multiview("?xrmv=0", "vr") })), /multiview no \(xrmv=0\)/);
+});
+
+test("multiview: la URL, luego el ajuste «vr.multiview», luego encendido; en pantalla no existe y el ajuste no hace nada", () => {
+  assert.strictEqual(P.multiview("", "vr", undefined).activo, true, "defecto: encendido");
+  assert.strictEqual(P.multiview("", "vr", true).activo, true);
+  const aj = P.multiview("", "vr", false); assert.strictEqual(aj.activo, false); assert.strictEqual(aj.origen, "ajuste");
+  assert.strictEqual(P.multiview("?xrmv=1", "vr", false).activo, true, "la URL enciende aunque el ajuste lo apague"); assert.strictEqual(P.multiview("?xrmv=1", "vr", false).origen, "url");
+  assert.strictEqual(P.multiview("?xrmv=0", "vr", true).activo, false, "la URL apaga aunque el ajuste lo encienda");
+  const raro = P.multiview("?xrmv=si", "vr", false); assert.strictEqual(raro.activo, false, "un valor raro cae al ajuste"); assert.ok(raro.ignorado);
+  const pa = P.multiview("", "pantalla", false); assert.strictEqual(pa.existe, false); assert.strictEqual(pa.activo, false); assert.strictEqual(pa.origen, undefined, "en pantalla no hay multiview que explicar");
+  assert.match(P.linea(Object.assign({}, P.plan(P.lee("", null), null), { mv: aj })), /multiview no \(ajuste\)/, "la línea dice de dónde viene");
+  assert.match(P.linea(Object.assign({}, P.plan(P.lee("", null), null), { mv: P.multiview("?xrmv=0", "vr", true) })), /multiview no \(xrmv=0\)/);
+  // el panel: la casilla existe en el esquema y solo se pinta en la build de VR; 02f lee el guardado una vez con try/catch
+  const aju = lee("apps/web/motor/33_ajustes.js");
+  assert.match(aju, /"vr\.multiview": bool\(true\)/); assert.match(aju, /k: "vr\.multiview"[^\n]*soloBuild: "vr"/); assert.match(aju, /c\.soloBuild && \(typeof Render === "undefined" \|\| Render\.build !== c\.soloBuild\)\) return/);
+  assert.match(lee("apps/web/motor/02f_xr_perillas.js"), /function ajusteMv\(\) \{ try \{ var s = window\.localStorage\.getItem\("gemelo\.ajustes\.vr\.multiview"\)/);
 });
 
 test("motor: XrPerillas.multiview(build) se decide una vez; mvEnUso lee renderer.xr.isMultiview; la línea lo dice y anota lo ignorado", () => {

@@ -8,7 +8,7 @@
   //   ?xraa=0|1 (MSAA del lienzo; defecto 1; se lee antes de crear el renderer) · ?xrnivel=0..3 (fija un VR_PERFILES y APAGA el controlador adaptativo)
   //   ?xrnear=0.05..0.3 (plano cercano de la cámara en VR; defecto 0,1) · ?xrjs=4..16 (umbral de ms de JS por fotograma con que el controlador adaptativo baja de nivel; defecto 8, AG-2.3)
   //   ?xrjssube=2..10 (Q0c-b: ms de JS por debajo de los que el controlador SUBE de nivel; defecto 5) · ?xrestable=2..120 (Q0c-b: segundos seguidos por debajo de eso antes de subir; defecto 10)
-  //   ?xrmv=0|1 (F2a, doc/sistema/MULTIVIEW.md: multiview de super-three, `multiviewStereo`; SOLO existe en la build de VR, con defecto 1; en la de pantalla
+  //   ?xrmv=0|1 (F2a, doc/sistema/MULTIVIEW.md: multiview de super-three, `multiviewStereo`; SOLO existe en la build de VR, con defecto 1 (URL, luego el ajuste «vr.multiview», luego 1); en la de pantalla
   //   se ignora y se dice; se lee antes de crear el renderer, como xraa)
   // Sin ninguna, nada cambia. Es el ÚNICO sitio que lee estas banderas de la URL. Presupuesto (regla 6): no dibuja ni reserva nada.
   // [puro:inicio] (sin THREE ni DOM: lo evalúa en Node pruebas/guardianes/xr_perillas.test.js)
@@ -48,12 +48,18 @@
     }
     // F2a: ?xrmv=0|1. build: «pantalla» o «vr» (la de 02h_render). Solo la build «vr» (super-three) tiene multiview; en la de pantalla no existe y la perilla se ignora.
     // → { existe, activo (¿se pide multiviewStereo al crear el renderer?), pedido ("0" | "1" | null), ignorado: { param, valor, motivo } | null }
-    function multiview(busqueda, build) {
+    // ajuste: el guardado de Configuración → Comodidad VR («vr.multiview», true/false) o undefined. Orden de mando: la URL, luego el ajuste, luego encendido. En la build de pantalla no existe y se ignora.
+    // origen (solo en la build de VR): "url" | "ajuste" | "defecto"
+    function multiview(busqueda, build, ajuste) {
       var t = cruda(String(busqueda || ""), "xrmv"), existe = build === "vr", r = { existe: existe, activo: existe, pedido: null, ignorado: null };
-      if (t === null) return r;
-      if (!existe) { r.ignorado = { param: "xrmv", valor: t, motivo: "solo existe en la build de VR (esta es «" + (build || "pantalla") + "»)" }; return r; }
-      if (t !== "0" && t !== "1") { r.ignorado = { param: "xrmv", valor: t, motivo: "solo vale 0 o 1" }; return r; }
-      r.pedido = t; r.activo = t === "1"; return r;
+      if (existe) r.origen = "defecto";
+      if (t !== null) {
+        if (!existe) { r.ignorado = { param: "xrmv", valor: t, motivo: "solo existe en la build de VR (esta es «" + (build || "pantalla") + "»)" }; return r; }
+        if (t === "0" || t === "1") { r.pedido = t; r.activo = t === "1"; r.origen = "url"; return r; }
+        r.ignorado = { param: "xrmv", valor: t, motivo: "solo vale 0 o 1" };
+      }
+      if (existe && ajuste === false) { r.activo = false; r.origen = "ajuste"; }
+      return r;
     }
     // Q0c-b: las dos perillas de la histéresis del controlador (la de bajar es xrjs). → { sube, estable } (null = no pedida) e ignorados, como lee()
     var LIMC = { sube: [2, 10], estable: [2, 120] }, DEFC = { sube: 5, estable: 10 };
@@ -73,7 +79,7 @@
     // «multiview pedido» (aún sin sesión) o «multiview no (xrmv=0)». En la de pantalla e.mv no existe y la línea es la de siempre.
     function textoMv(mv) {
       if (!mv || !mv.existe) return "";
-      if (!mv.activo) return " · multiview no (xrmv=0)";
+      if (!mv.activo) return " · multiview no (" + (mv.origen === "ajuste" ? "ajuste" : "xrmv=0") + ")";
       return " · multiview " + (mv.enUso === true ? "sí" : mv.enUso === false ? "pedido, no en uso" : "pedido");
     }
     // «VR: fov 1 · escala 0,9 · 72 Hz · MSAA sí · nivel auto · near 0,1 · umbral JS 8 ms» (y «ignorado: …» por cada perilla descartada o recortada)
@@ -99,7 +105,9 @@
     X.estable = function () { return X.control.estable != null ? X.control.estable : XrPerillasPuro.DEFC.estable; };
     // F2a: el multiview, decidido UNA vez con la build (03_escena lo pide antes de crear el renderer: multiviewStereo va en el constructor). Sin llamar, null
     X.mv = null;
-    X.multiview = function (build) { if (!X.mv) X.mv = XrPerillasPuro.multiview(q, build); return X.mv; };
+    // el ajuste «vr.multiview» se lee aquí, una vez (33_ajustes se monta después; mismo patrón que 04f con «vista.suelo»)
+    function ajusteMv() { try { var s = window.localStorage.getItem("gemelo.ajustes.vr.multiview"); return s == null ? undefined : JSON.parse(s); } catch (e) { return undefined; } }
+    X.multiview = function (build) { if (!X.mv) X.mv = XrPerillasPuro.multiview(q, build, ajusteMv()); return X.mv; };
     X.mvEnUso = function (renderer) { if (X.mv && X.mv.existe) X.mv.enUso = !!(renderer && renderer.xr && renderer.xr.isMultiview); };   // 29_vr, con la sesión ya puesta (super-three: xr.isMultiview)
     X.fijo = function () { return X.efectivas.nivel != null; };   // ?xrnivel=: el controlador adaptativo no actúa
     X.antes = function (renderer) { renderer.xr.setFoveation(X.efectivas.fov); };   // antes de setSession: three la aplica a la capa al crearla (proyección o base)

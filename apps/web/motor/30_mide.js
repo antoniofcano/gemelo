@@ -1,9 +1,9 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
 // Consume: 01_datos (D, $, DEPURA), 01a_aparato (Aparato), 02b_cola (Cola), 02c_componentes (Reparto, Bus, ConfigPuro, Componentes),
-//   02f_xr_perillas (XrPerillas), 02h_render (Render), 03_escena (visor, renderer, modo, calidad), 04b_escena3d (Escena3D),
-//   07ab_generados (Generados), 07b_arboles (Arboles), 08_marcadores (listo, capas), 12_paseo (persona), 14_historia (lista, rango),
-//   15_tiempo (nivel, hace), 29_vr (VRX, panel, PanelVR, VR_PERFILES), 33_ajustes (Ajustes), 90_final (cuadro, bucle)
+//   02f_xr_perillas (XrPerillas), 02h_render (Render), 02i_materiales (Materiales), 03_escena (visor, renderer, modo, calidad),
+//   04b_escena3d (Escena3D), 07ab_generados (Generados), 07b_arboles (Arboles), 08_marcadores (listo, capas), 12_paseo (persona),
+//   14_historia (lista, rango), 15_tiempo (nivel, hace), 29_vr (VRX, panel, PanelVR, VR_PERFILES), 33_ajustes (Ajustes), 90_final (cuadro, bucle)
 // ===============================================================================
 
   // ---------- medidor de fotogramas para la prueba en el aparato (T7a, doc/sistema/VR.md#medir-con-el-medidor). Componente «medidor-fotogramas» (ADR-0023, C10 tercera tanda; ?medidor=0 lo apaga). Sin &mide ni botón pulsado no hace nada: no escucha «cuadro:fin» y el bucle no paga nada.
@@ -116,6 +116,7 @@
         if (!corto) r.nivel.cambios.forEach(function (c) { L.push("  a los " + f1(c.t) + " s: " + c.de + " → " + c.a); });
       }
       if (r.perillas) L.push(r.perillas);   // Q0b: con qué perillas se midió (regla 7)
+      if (r.dibujo) L.push(r.dibujo);   // con qué tono y qué recorte alfa se dibujó, y de dónde viene cada uno (URL, ajuste o defecto)
       if (r.olivos) L.push("Olivos al terminar: N0 " + r.olivos[0] + " · N1 " + r.olivos[1] + " · N2 " + r.olivos[2]);
       if (e.ll || e.tr || typeof r.olivosGen === "boolean" || r.personas != null) {   // Q0e: con qué se dibujó (para decir si manda la CPU o la GPU)
         var d = [];
@@ -240,6 +241,10 @@
     // F0 (doc/sistema/MULTIVIEW.md): la sonda del multiview. Solo lee (extensiones del contexto y, con sesión, si una capa de proyección admite «texture-array»); no cambia el dibujo.
     // Se calcula una vez (y otra si hay sesión y antes no la había) y se guarda: ni por fotograma ni con reservas.
     var sonda = "", sondaConSesion = false;
+    // «Dibujo: tono neutro (defecto) · alphaToCoverage no (defecto)»: con qué se dibujó y de dónde viene cada elección (url, ajuste o defecto); una medida dice con qué se tomó (regla 7)
+    function lineaDibujo() {
+      try { var t = Render.tono, a = Materiales.a2c; return "Dibujo: tono " + t.tono + " (" + t.origen + ") · alphaToCoverage " + (a.activo ? "sí" : "no") + " (" + a.origen + ")"; } catch (e) { return ""; }
+    }
     function sondaMultiview() {
       var ses = null, gl = null, p = [], ext, e2;
       try { ses = renderer.xr && renderer.xr.getSession ? renderer.xr.getSession() : null; } catch (e) { ses = null; }
@@ -323,7 +328,7 @@
       res = {
         version: 1, fecha: new Date().toISOString().slice(0, 19) + "Z", aparato: { modo: modoIni, ua: MideEst.resumeUA(Aparato.agente()) },
         escena: Escena3D.resumen().estado === "sin" ? "sin" : "tiles", banderas: banderas(), duracion: N, calentamiento: MideEst.CALENTAMIENTO, est: e, largas: largasR,
-        nivel: modoIni === "VR" ? { ini: nivIni === null ? -1 : nivIni, fin: nv === null ? -1 : nv, cambios: cambios } : null, olivos: [a.nivel0, a.nivel1, a.nivel2], avisos: avisos, perillas: modoIni === "VR" ? XrPerillas.linea() : "",
+        nivel: modoIni === "VR" ? { ini: nivIni === null ? -1 : nivIni, fin: nv === null ? -1 : nv, cambios: cambios } : null, olivos: [a.nivel0, a.nivel1, a.nivel2], avisos: avisos, perillas: modoIni === "VR" ? XrPerillas.linea() : "", dibujo: lineaDibujo(),
         multiview: sondaMultiview(), olivosGen: olivosGenActivos(), personas: personasVisibles()   // Q0e: con qué se dibujó (si los olivos generados estaban y cuánta gente se veía)
       };
       estado = "listo"; api.on = false; largas = null; desengancha(); prev = -1;
@@ -419,7 +424,7 @@
   }
   Componentes.registra({
     id: "medidor-fotogramas", version: 1,
-    consume: ["Aparato", "Cola", "Generados", "visor", "renderer", "modo", "D", "DEPURA", "ConfigPuro", "Ajustes", "Arboles", "Escena3D", "VRX", "PanelVR", "XrPerillas", "Render", "Reparto"],
+    consume: ["Aparato", "Cola", "Generados", "visor", "renderer", "modo", "D", "DEPURA", "ConfigPuro", "Ajustes", "Arboles", "Escena3D", "VRX", "PanelVR", "XrPerillas", "Render", "Materiales", "Reparto"],
     expone: [],
     eventos: { escucha: ["cuadro:fin", "depura:lineas", "medida:estado", "medida:envia", "medida:inicia", "medida:muestra"], emite: ["medida:empieza", "medida:envio", "medida:fin"] },
     bandera: { defecto: true, url: "medidor" },

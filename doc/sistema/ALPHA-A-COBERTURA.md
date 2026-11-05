@@ -19,11 +19,12 @@ Con `alphaToCoverage` three quita la definición `OPAQUE` del material: el alfa 
 
 ## Cómo compararlo
 
-`?a2c=0|1` (defecto **1**, encendido):
+Defecto **apagado** (en las capturas las copas de cerca salían blanquecinas con el recorte suave, así que se enciende solo a petición). Orden de mando: **la URL, luego el ajuste, luego apagado**.
 
-- `?a2c=1` o sin perilla: `alphaToCoverage` donde haya MSAA.
-- `?a2c=0`: el `alphaTest` de siempre.
-- Un valor distinto avisa en consola y se usa 1. Con `?xraa=0` (sin MSAA) no se enciende ni por defecto, y `Materiales.a2c.motivo` lo dice.
+- `?a2c=1`: `alphaToCoverage` donde haya MSAA. `?a2c=0`: el `alphaTest` de siempre, aunque el ajuste lo encienda.
+- Sin `?a2c`: manda el ajuste **Configuración → Vista → «Bordes suaves en hojas y hierba (alphaToCoverage)»** (`vista.a2c`, apagado de fábrica; se aplica al recargar la página). `Materiales.a2c.origen` dice de dónde viene (`url`, `ajuste` o `defecto`) y el informe de `?mide` lo repite en su línea «Dibujo: …».
+- Un valor distinto de 0 o 1 avisa en consola y cae al ajuste (o a apagado). Con `?xraa=0` (sin MSAA) no se enciende nunca, y `Materiales.a2c.motivo` lo dice.
+- El ajuste se lee **una vez**, al arrancar, de `localStorage` (`gemelo.ajustes.vista.a2c`, con `try/catch`) en `02i_materiales.js`, porque `33_ajustes` se monta después; es el mismo patrón que `04f_suelo_fotos.js` con `vista.suelo`. El orden de montaje no se toca.
 
 Capturas lado a lado (no abre Chrome; deja un encargo en el banco): `node pruebas/a2c_capturas.js` (`--dry` imprime la orden). Variantes `a2c0` y `a2c1`; escenarios `lejos`, `cerca` (olivar de cerca: ramitas, follaje, impostores) y `paseo` (a pie de suelo, la hierba). Se miran los bordes de las hojas y las matas, el parpadeo al moverse y que la silueta no cambie de tamaño.
 

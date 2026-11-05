@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Materiales
-// Consume: 02f_xr_perillas (XrPerillas), 02h_render (Render), 15_tiempo (hace), 16_vida (quita)
+// Consume: 02_mundo (copas), 02f_xr_perillas (XrPerillas), 02h_render (Render), 15_tiempo (hace), 16_vida (quita), 24_pantalla (suave)
 // ===============================================================================
   // ---------- AG-3a / F1 (doc/sistema/MULTIVIEW.md §4, ADR-0031): la fábrica ÚNICA de los materiales propios del motor.
   // Todo sombreador propio pasa por aquí: los ShaderMaterial y los materiales de three con su parche (onBeforeCompile). Hoy devuelve EXACTAMENTE lo de siempre
@@ -15,7 +15,7 @@
   //   Materiales.recorte(mat)                                AG-2.1: un material de recorte alfa (alphaTest > 0, cara de color; NUNCA los de sombra) pasa a alphaToCoverage si ?a2c lo deja y hay MSAA; devuelve mat
   //   Materiales.recortes(activo)                            enciende o apaga el alphaToCoverage de todos los que pasaron por recorte() (07ac lo apaga mientras hornea en un blanco sin MSAA)
   //   Materiales.a2c / Materiales.eligeA2c(busqueda, msaa)   el estado { pedido, activo, msaa, motivo, advertencia, n } y su parte pura (lo prueba pruebas/guardianes/a2c.test.js)
-  //   ?a2c=0|1 (defecto 1): 1 = alphaToCoverage donde hay MSAA (XrPerillas.aa; la perilla de MSAA de 02f lo quita); 0 = el alphaTest de siempre. Se conserva el umbral original del alphaTest (el
+  //   ?a2c=0|1 (defecto 0, apagado; el ajuste «vista.a2c» de Configuración lo enciende; orden: URL, ajuste, apagado): 1 = alphaToCoverage donde hay MSAA (XrPerillas.aa; la perilla de MSAA de 02f lo quita); 0 = el alphaTest de siempre. Se conserva el umbral original del alphaTest (el
   //   recorte no se mueve: three suaviza con smoothstep(alphaTest, alphaTest + fwidth(a), a) y descarta lo del todo transparente, así que sigue sin escribirse profundidad ahí)
   // El guardián pruebas/guardianes/materiales_f1.test.js cuenta los onBeforeCompile y new THREE.ShaderMaterial que quedan FUERA de este módulo y solo deja que bajen.
   // Presupuesto (regla 6): no dibuja ni reserva nada; cada material lo libera quien lo pidió, como siempre.
@@ -53,14 +53,18 @@
       return new THREE.ShaderMaterial(opciones);
     }
     // ---- AG-2.1: alphaToCoverage para los recortes alfa (doc/sistema/ALPHA-A-COBERTURA.md)
-    function eligeA2c(busqueda, msaa) {
-      var q = typeof busqueda === "string" ? busqueda : "", m = /[?&]a2c=([^&#]*)/.exec(q), r = { pedido: "", activo: true, msaa: msaa !== false, motivo: "", advertencia: "" };
-      if (m) { var v = decodeURIComponent(m[1]); r.pedido = v; if (v === "0") r.activo = false; else if (v !== "1") r.advertencia = "?a2c=" + v + " solo vale 0 o 1: se usa 1"; }
+    // ajuste: el guardado de Configuración → Vista («vista.a2c», true/false) o undefined. Orden de mando: la URL (?a2c=0|1), luego el ajuste, luego APAGADO (las copas de cerca salían
+    // blanquecinas con el recorte suave; se enciende a petición). origen: "url" | "ajuste" | "defecto"
+    function eligeA2c(busqueda, msaa, ajuste) {
+      var q = typeof busqueda === "string" ? busqueda : "", m = /[?&]a2c=([^&#]*)/.exec(q), r = { pedido: "", activo: false, msaa: msaa !== false, motivo: "", advertencia: "", origen: "defecto" };
+      if (m) { var v = decodeURIComponent(m[1]); r.pedido = v; if (v === "0" || v === "1") { r.activo = v === "1"; r.origen = "url"; } else r.advertencia = "?a2c=" + v + " solo vale 0 o 1: se usa " + (ajuste === true ? "el ajuste" : "apagado"); }
+      if (r.origen === "defecto" && ajuste === true) { r.activo = true; r.origen = "ajuste"; }
       if (r.activo && !r.msaa) { r.activo = false; r.motivo = "sin MSAA (perilla de 02f): alphaToCoverage no hace nada y se deja el alphaTest"; }
-      else if (!r.activo) r.motivo = "?a2c=0: el alphaTest de siempre";
+      else if (!r.activo) r.motivo = r.origen === "url" ? "?a2c=0: el alphaTest de siempre" : "apagado por defecto: el alphaTest de siempre (se enciende en Configuración → Vista o con ?a2c=1)";
       return r;
     }
-    var a2c = eligeA2c(typeof location !== "undefined" && location ? location.search : "", typeof XrPerillas !== "undefined" && XrPerillas ? XrPerillas.aa : true), recortados = [];
+    function ajusteGuardado(clave) { try { var s = window.localStorage.getItem("gemelo.ajustes." + clave); return s == null ? undefined : JSON.parse(s); } catch (e) { return undefined; } }   // se lee UNA vez (33_ajustes se monta después; mismo patrón que 04f)
+    var a2c = eligeA2c(typeof location !== "undefined" && location ? location.search : "", typeof XrPerillas !== "undefined" && XrPerillas ? XrPerillas.aa : true, ajusteGuardado("vista.a2c")), recortados = [];
     a2c.n = 0;
     if (a2c.advertencia && typeof console !== "undefined") console.warn("a2c: " + a2c.advertencia);
     function recorte(mat) {
