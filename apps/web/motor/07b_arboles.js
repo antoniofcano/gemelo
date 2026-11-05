@@ -1,11 +1,11 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Arboles
 // Consume: 01_datos (FACTOR_R8), 01a_aparato (Aparato), 02_mundo (Mundo, suelo, copaAlta, kcor, tinte, aviva, copas), 02b_cola (CargaPuro, Cola),
-//   02c_componentes (Config), 02h_render (InfoDibujo), 02j_estaticos (Estaticos), 03_escena (renderer, camera, exag, modo, calidad),
-//   04c_olivos_tiles (OlivosTiles), 04d_sombreado_tiles (hash), 05_nube (ALTO_MAX, nube), 06_arboles (gArboles, tronco, arbolesG),
-//   07_follaje (follajeG, construyeSombras), 07a_catalogo (Catalogo), 07ab_generados (Escalera, Generados), 07ac_lejanos (Lejanos),
-//   09_camara (objetivo, orb), 10_ndvi (ndviIdx), 12_paseo (paseando), 15_tiempo (nivel, esc, hace), 16_vida (mira), 29_vr (VR_PERFILES),
-//   33_ajustes (Ajustes)
+//   02c_componentes (Config), 02f_xr_perillas (XrPerillas), 02h_render (InfoDibujo), 02j_estaticos (Estaticos), 02l_tope_tiles (TopeTilesPuro),
+//   02m_tope_olivos (TopeOlivos), 03_escena (renderer, camera, exag, modo, calidad), 04c_olivos_tiles (OlivosTiles), 04d_sombreado_tiles (hash),
+//   05_nube (ALTO_MAX, nube), 06_arboles (gArboles, tronco, arbolesG), 07_follaje (follajeG, construyeSombras), 07a_catalogo (Catalogo),
+//   07ab_generados (Escalera, Generados), 07ac_lejanos (Lejanos), 09_camara (objetivo, orb), 10_ndvi (ndviIdx), 12_paseo (paseando),
+//   15_tiempo (nivel, esc, hace), 16_vida (mira), 29_vr (VR_PERFILES), 33_ajustes (Ajustes)
 // ===============================================================================
   // ---------- los olivos del modo Gemelo con tres niveles de detalle: el coste de dibujo no crece con la superficie de la finca
   // Nivel 0: celdas de 64 m con el modelo completo (copa medida, troncos, hojas, flores y aceitunas) alrededor de lo que se mira (o de quien pasea), hasta MAX0 olivos.
@@ -19,6 +19,8 @@
     var olivos = copas.filter(function (c) { return c.oliv; }), celdas = {}, ultima = { x: 1e9, y: 1e9, z: 1e9, fx: 0, fz: 0, tms: 0, exag: -1, k: "" }, t = 0, sucio = true, nL0 = 0, n1 = 0, n2 = 0, faltan = 0, nPre = 0, triEst = 0;
     var cx = Mundo.cx, cy = Mundo.cy, m4 = new THREE.Matrix4(), c3 = [0, 0, 0], vel = { x: 0, z: 0 };
     var vrP = null, TOPE_TRI0 = TOPE_TRI, TRI_MOVIL_CFG = 0;   // perfil de las gafas VR (29_vr.js): menos olivos de nivel 0, radio más corto y menos triángulos
+    // Q0n (02m_tope_olivos.js): en VR, los triángulos de los olivos que dibuja el motor (triMotor, contados en cada reparto) y el reloj de su muestra
+    var triMotor = 0, tMuestraO = 0;
     // el presupuesto de escritorio y el de móvil de la configuración del servidor (escalera.triangulos, contratos/config.schema.json; recortados por
     // Config, 02c), al llegar en el arranque; sin ella, los de siempre. Los de gafas van en VR_PERFILES (29_vr.js).
     Config.al(function () {
@@ -105,7 +107,7 @@
       Cola.add("C" + cel.k, cel.prio, celdaG(cel), function (g) {
         if (cel.g) { gArboles.remove(cel.g); libera(cel.g); }
         Estaticos.congela(g);   // AG-1.15: la celda no se mueve (todo en sus vértices e instancias)
-        cel.g = g; g.visible = false; gArboles.add(g); cel.kd = kd; cel.sucia = kd !== claveActual(); sucio = true;
+        cel.g = g; cel.tri = null; g.visible = false; gArboles.add(g); cel.kd = kd; cel.sucia = kd !== claveActual(); sucio = true;
       });
     }
     function quitaCelda(cel) { Cola.cancela("C" + cel.k); if (cel.g) { gArboles.remove(cel.g); libera(cel.g); cel.g = null; } cel.sucia = true; }
@@ -115,7 +117,13 @@
       if (sp > 0.8) { var ux = (mx - fx), uz = (mz - fz), l = Math.hypot(ux, uz) || 1, ahead = (ux * vel.x + uz * vel.z) / (l * sp); d -= 42 * ahead * Math.min(1, sp / 4); }
       return Math.max(0, d);
     }
-    function radioNivel0() { return paseando ? 112 * Math.sqrt(esc) * (vrP ? vrP.r : 1) : orb.dist < 520 ? Math.min(210, 40 + orb.dist * 0.5) * Math.sqrt(esc) : 0; }
+    function radioNivel0() { var r = paseando ? 112 * Math.sqrt(esc) * (vrP ? vrP.r : 1) : orb.dist < 520 ? Math.min(210, 40 + orb.dist * 0.5) * Math.sqrt(esc) : 0; return vrP && TopeOlivos.activo() ? r * Math.sqrt(TopeOlivos.factor()) : r; }   // Q0n: en VR, × √f (el área, × f)
+    // Q0n: los triángulos de verdad de una celda de nivel 0 (sus mallas, por sus instancias), contados una vez al pedirlos; solo en VR
+    function triCelda(cel) {
+      if (cel.tri == null && cel.g) { var t = 0; cel.g.traverse(function (o) { if (!o.isMesh || !o.geometry) return; var g = o.geometry, n = g.index ? g.index.count / 3 : g.attributes.position ? g.attributes.position.count / 3 : 0; t += n * (o.isInstancedMesh ? o.count : 1); }); cel.tri = t; }
+      return cel.tri || 0;
+    }
+    function triNivel0() { var t = 0; for (var k in celdas) { var c = celdas[k]; if (c.g && c.g.visible) t += triCelda(c); } return t; }
     function radioPre() { return paseando ? 175 : orb.dist < 1100 ? 190 : 0; }
 
     function reclasifica() {
@@ -126,12 +134,15 @@
       ultima.fx = fx; ultima.fz = fz; ultima.tms = ahora;
       // con la escena 3D Tiles (04c_olivos_tiles.js): los olivos de media y larga distancia los dibuja el tileset y sus triángulos cuentan en el tope
       var TIL = OlivosTiles.dibuja(), triTil = TIL ? OlivosTiles.triangulos() : 0;
+      // Q0n: en VR con el tope de los olivos del motor (02m), su presupuesto BO (reserva × f) recorta el de los generados y el de los niveles 1 y 2,
+      // y f el número de olivos de nivel 0; fuera de VR, BO = Infinity y f = 1: el reparto de siempre
+      var QO = !!vrP && TopeOlivos.activo(), BO = QO ? TopeOlivos.presupuesto() : Infinity, fO = QO ? TopeOlivos.factor() : 1;
       // el foco de los generados, paseando, es quien pasea (pp), no la cámara: la cámara va detrás y, al girar en el sitio, describe un círculo
       // que cambiaba el plan y rehacía el lote (Antonio, en el móvil: «si giras sin moverte llega a desaparecer»)
       // con la escalera horneada esperando a sus lejanos (Escalera.dibuja), lo generado ya va por la escalera pero con la parte de ?olivos=gen
-      var GEN = Generados.actualiza(paseando ? pp.x : fx, paseando ? -pp.y : fz, Math.max(0, TOPE_TRI - triTil) * (Generados.escalera() ? Escalera.FR_ESPERA : 1), olivos, esc);   // ?olivos=gen (07ab): dentro de su radio, el nivel 0 de siempre se apaga; sin la bandera, radio 0
+      var GEN = Generados.actualiza(paseando ? pp.x : fx, paseando ? -pp.y : fz, Math.min(BO, Math.max(0, TOPE_TRI - triTil)) * (Generados.escalera() ? Escalera.FR_ESPERA : 1), olivos, esc);   // ?olivos=gen (07ab): dentro de su radio, el nivel 0 de siempre se apaga; sin la bandera, radio 0
       ajustaEscala();
-      var tope0 = MAX0 * esc * (vrP ? vrP.n : 1);
+      var tope0 = MAX0 * esc * (vrP ? vrP.n : 1) * fO;
       // 1) celdas de nivel 0 (las que se ven) y de precarga (las de alrededor y las de delante, que se construyen sin enseñarse)
       var bajo = !paseando && cam.y - suelo(cam.x, -cam.z) * exag < 45, RC = 95 * Math.sqrt(esc);   // con la cámara a ras de suelo se ve hasta lejos: también cuentan las celdas de su alrededor
       todas.forEach(function (c) { c.d = distFoco(c, fx, fz); if (bajo && R0 > 0) c.d = Math.min(c.d, distFoco(c, cam.x, cam.z) * R0 / RC); c.enAntes = c.en; c.en = false; c.pre = false; });
@@ -160,14 +171,14 @@
       });
       if (TIL) { OlivosTiles.cerca(cerca); triTil = OlivosTiles.triangulos(); }   // la máscara: los de cerca no se dibujan también en el tileset
       tri0 = nL0 * TRI0 + GEN.tri; rest.sort(function (a, b) { return a.d - b.d; });
-      var tope1 = Math.max(500, Math.min(MAX1, Math.floor((TOPE_TRI - tri0 - TRI2 * Math.min(MAX2, rest.length)) / TRI1)));
+      var tope1 = Math.max(QO ? 0 : 500, Math.min(MAX1, Math.floor((Math.min(TOPE_TRI, BO) - tri0 - TRI2 * Math.min(MAX2, rest.length)) / TRI1)));
       var cnt1 = [], cnt2 = [], a1 = 0, a2 = 0, tc = new THREE.Color(), mm = m4, e = mm.elements, i, k;
       for (k = 0; k < NP1; k++) cnt1.push(0); for (k = 0; k < NP2; k++) cnt2.push(0);
       for (k in extra) extra[k].n1 = extra[k].n2 = 0;
       for (i = 0; i < rest.length; i++) {
         var c = rest[i], ht = Math.min(1.5, Math.max(0.9, c.h * 0.3)), cb = ht + 0.1, top = Math.max(c.h, cb + 1.4), gz = c.gz * exag, H = (top - cb) * 0.82 * exag, cs = Math.cos(c.ang), sn = Math.sin(c.ang);
         var l1 = a1 < tope1 && c.d < U1;
-        if (!l1 && a2 >= MAX2) continue;
+        if (!l1 && (a2 >= MAX2 || (QO && tri0 + a1 * TRI1 + (a2 + 1) * TRI2 > BO))) continue;   // Q0n: el nivel 2, dentro del presupuesto
         c3[0] = c.cr; c3[1] = c.cg; c3[2] = c.cb; aviva(c3, c.x, c.y);   // el tinte NDVI, si está activo, también llega de lejos
         tc.setRGB(c3[0] * 0.74 * c.vf, c3[1] * 0.88 * c.vf, c3[2] * 0.64 * c.vf);   // un verde plateado algo distinto en cada olivo
         var X = c.tipo !== -1 ? extra[c.tipo] : null;   // olivo con un tipo del catálogo cargado (y piezas en este nivel); si no, el de siempre
@@ -183,6 +194,7 @@
       for (k = 0; k < NP2; k++) { cuenta(iCopa2[k], cnt2[k]); iCopa2[k].instanceMatrix.needsUpdate = true; if (iCopa2[k].instanceColor) iCopa2[k].instanceColor.needsUpdate = true; }
       for (k in extra) [[extra[k].m1, extra[k].n1], [extra[k].m2, extra[k].n2]].forEach(function (mn) { mn[0].forEach(function (m) { cuenta(m, mn[1]); m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; }); });
       n1 = a1; n2 = a2; triEst = tri0 + a1 * TRI1 + a2 * TRI2 + triTil;
+      if (vrP) triMotor = triNivel0() + GEN.tri + a1 * TRI1 + a2 * TRI2;   // Q0n: lo que dibujan los olivos del motor (el nivel 0, contado de su geometría)
       ultima.x = cam.x; ultima.y = cam.y; ultima.z = cam.z; ultima.exag = exag; ultima.k = tinte + "|" + ndviIdx + "|" + kcor; sucio = false;
     }
     // el aparato manda: sube o baja la escala según el tiempo por fotograma medido
@@ -225,11 +237,13 @@
       apagaSiempre(todos);
       ajustaEscala();
       presEsc = Escalera.tope({ base: TOPE_TRI, vr: vrP, movil: MOVIL, triMovil: TRI_MOVIL_CFG, escala: esc, triLejanos: Lejanos.triangulos() + triTil });
+      if (vrP && TopeOlivos.activo()) presEsc = Math.min(presEsc, Math.max(0, TopeOlivos.presupuesto() - Lejanos.triangulos()));   // Q0n: generados y lejanos, dentro de la reserva × f
       // el foco, paseando, es quien pasea (pp); retener: sin lejanos todavía, lo que sale del 3D se queda en él
       var GEN = Generados.actualiza(paseando ? pp.x : fx, paseando ? -pp.y : fz, presEsc, olivos, esc, !Lejanos.hayCapa());
       if (vis) Lejanos.reparte(cam, GEN);
       if (!todos && OlivosTiles.dibuja()) { var en3d = []; olivos.forEach(function (c) { if (GEN.tiene(c.i)) en3d.push(c.i); }); OlivosTiles.cerca(en3d); triTil = OlivosTiles.triangulos(); }
       nL0 = n1 = n2 = 0; faltan = 0; nPre = 0; triEst = GEN.tri + Lejanos.triangulos() + triTil; mascara = masc;
+      if (vrP) triMotor = GEN.tri + Lejanos.triangulos();   // Q0n
       ultima.x = cam.x; ultima.y = cam.y; ultima.z = cam.z; ultima.exag = exag; ultima.k = tinte + "|" + ndviIdx + "|" + kcor; sucio = false;
     }
     function tileCargada(ts) {   // llegaron los datos de una tesela: la altura de sus olivos pasa del relieve grueso al fino
@@ -246,10 +260,17 @@
       if (Generados.paso(dt, presupuestoBase() * (!Cola.pendientes() ? 1 : faltan > 0 ? 0.3 : 0.5))) sucio = true;
       if (Lejanos.paso(dt)) sucio = true;   // ?olivos=escalera: la capa de lejanos preparada (o fallida); sin la bandera, nada
       emaDt += (Math.min(dt, 0.1) - emaDt) * 0.04;
+      if (vrP) muestraTopeOlivos(dt);   // Q0n: solo en VR
       var vis = gArboles.visible; if (!vis && modo !== "nube") return;   // en modo Ortofoto no hay árboles; en modo Nube se precargan los de alrededor
       t += dt;
       var cam = camera.position, umbral = paseando ? 2.5 : 6, mueve = Math.hypot(cam.x - ultima.x, cam.y - ultima.y, cam.z - ultima.z) > umbral, k = tinte + "|" + ndviIdx + "|" + kcor;
       if (forzar || sucio || ultima.exag !== exag || ultima.k !== k || (mueve && t > 0.25) || t > (paseando ? 0.7 : 1.5)) { t = 0; reclasifica(); }
+    }
+    // Q0n: cada TopeTilesPuro.DEF.MUESTRA s en VR, el lazo de 02m mira los triángulos del último reparto; si cambia el factor, se reparte de nuevo
+    function muestraTopeOlivos(dt) {
+      tMuestraO += dt; if (tMuestraO < TopeTilesPuro.DEF.MUESTRA) return;
+      var d = tMuestraO > 1 ? TopeTilesPuro.DEF.MUESTRA : tMuestraO, cam = camera.position; tMuestraO = 0;
+      if (TopeOlivos.paso(d, triMotor, XrPerillas.topeTiles(vrP.tri), faltan > 0 || Generados.pendientes() > 0, cam.x, cam.z)) sucio = true;
     }
     function presupuesto() { return Math.max(0.5, presupuestoBase() - Generados.gastado()); }   // lo que ya gastaron los generados este fotograma, se descuenta
     // AG-1.5: el reloj de carga es UNO por fotograma: lo de siempre (más si faltan olivos de nivel 0 y el aparato va holgado), recortado por el tope del
@@ -257,10 +278,15 @@
     // Cola.corre (Cola.deuda). De él salen la parte de los generados (Generados.paso) y el resto para la Cola. La regla, en CargaPuro.base (02b_cola: se prueba en Node)
     var POL = Aparato.politica(), oBase = { emaDt: 0, faltan: 0, paseando: false, vr: false, pol: POL, deuda: 0 };   // oBase: el mismo objeto cada vez (sin basura por fotograma)
     function presupuestoBase() { oBase.emaDt = emaDt; oBase.faltan = faltan; oBase.paseando = paseando; oBase.vr = Aparato.vr(); oBase.deuda = Cola.deuda(); return CargaPuro.base(oBase); }
-    function perfil(p) { vrP = p || null; TOPE_TRI = p ? p.tri : TOPE_TRI0; sucio = true; }
+    function perfil(p) {
+      vrP = p || null; TOPE_TRI = p ? p.tri : TOPE_TRI0; sucio = true; tMuestraO = 0;
+      if (p) TopeOlivos.paso(0, triMotor, XrPerillas.topeTiles(p.tri), true, camera.position.x, camera.position.z);   // Q0n: el tope del nivel, desde ya
+      else { TopeOlivos.apaga(); triMotor = 0; }   // fuera de VR: sin reserva y f = 1
+    }
     function resumen() {
       var r = { olivos: olivos.length, nivel0: nL0, nivel1: n1, nivel2: n2, celdas: Object.keys(celdas).length, construidas: Object.keys(celdas).filter(function (k) { return celdas[k].g; }).length, faltan: faltan, precarga: nPre, esc: +esc.toFixed(2), triEst: triEst, tiles: OlivosTiles.dibuja(), emaMs: +(emaDt * 1000).toFixed(1) };
       if (Generados.escalera()) r.escalera = resumenEscalera();   // solo con la bandera: sin ella, el resumen es el de siempre
+      if (vrP) r.topeOlivos = Object.assign(TopeOlivos.resumen(), { triMotor: triMotor });   // Q0n: solo en VR
       return r;
     }
     /** ?olivos=escalera: el reparto (E0/E1/E2/lejanos), triángulos y llamadas de olivos, para ?debug y el banco */
@@ -273,5 +299,5 @@
         reparto: g && g.escalera ? g.escalera.reparto : null, sombras: g && g.escalera ? g.escalera.sombras : null, sombraMap: !!(renderer.shadowMap && renderer.shadowMap.enabled),
         nivel0Mallas: Object.keys(celdas).filter(function (k) { return celdas[k].g && celdas[k].g.visible; }).length, instanciasN12: inst1, tilesetDibujados: t.estado === "activo" ? t.dibujadas : 0, lejanosDetalle: L };
     }
-    return { perfil: perfil, inicia: inicia, tileCargada: tileCargada, refresca: refresca, actualiza: actualiza, presupuesto: presupuesto, resumen: resumen, celdas: celdas };
+    return { perfil: perfil, triMotor: function () { return triMotor; }, inicia: inicia, tileCargada: tileCargada, refresca: refresca, actualiza: actualiza, presupuesto: presupuesto, resumen: resumen, celdas: celdas };
   })();

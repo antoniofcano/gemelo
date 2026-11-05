@@ -70,6 +70,8 @@ function reservas(src, fn, inicio) {
 const BUCLE = {
   "02l_tope_tiles.js": [["paso (Q0k)", "function paso(s, m)"]],   // el lazo del tope del tileset: cada 0,25 s en VR
   "04b_escena3d.js": [["muestraTope", "function muestraTope("], ["sumaVisible", "function sumaVisible("]],
+  "02m_tope_olivos.js": [["paso (Q0n, puro)", "function paso(s, m)"], ["TopeOlivos.paso", "function paso(dt, tri,"]],   // Q0n: el lazo de los olivos del motor, cada 0,25 s en VR
+  "07b_arboles.js": [["muestraTopeOlivos", "function muestraTopeOlivos("]],
   "30_mide.js": [["causasDelFotograma", "function causasDelFotograma("], ["bits", "function bits("], ["apuntaReparto", "function apuntaReparto("]],   // Q0g: la autopsia de los fotogramas lentos, cada fotograma medido
   "17_minimapa.js": [["actualizaRastro", "function actualizaRastro("]],
   "19_balizas.js": [["firmaCambia", "function firmaCambia("]],

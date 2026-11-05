@@ -1,9 +1,9 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Escena3D
 // Consume: 01_datos (D, $), 01a_aparato (Aparato), 02_mundo (Mundo, suelo), 02b_cola (CargaPuro, Cola), 02f_xr_perillas (XrPerillas),
-//   02l_tope_tiles (TopeTilesPuro), 03_escena (visor, renderer, scene, camera, exag), 04c_olivos_tiles (OlivosTiles),
-//   04d_sombreado_tiles (SombreadoTiles), 05_nube (nube), 08_marcadores (listo, aplica), 09_camara (objetivo, suelta, pon), 14_historia (aviso),
-//   16_vida (quita, mira), 29_vr (panel)
+//   02l_tope_tiles (TopeTilesPuro), 02m_tope_olivos (TopeOlivos), 03_escena (visor, renderer, scene, camera, exag), 04c_olivos_tiles (OlivosTiles),
+//   04d_sombreado_tiles (SombreadoTiles), 05_nube (nube), 07b_arboles (Arboles), 08_marcadores (listo, aplica), 09_camara (objetivo, suelta, pon),
+//   14_historia (aviso), 16_vida (quita, mira), 29_vr (panel)
 // ===============================================================================
   // ---------- la escena en 3D Tiles 1.1 (ADR-0015, aceptado; formato en doc/sistema/TILES3D.md): la ÚNICA escena (T8 fase 2, decisión 79). El relieve
   // con su ortofoto lo dibuja 3DTilesRendererJS (versión fijada en apps/web/package.json) desde un tileset.json de tuberia/tiles3d/, con el sombreado
@@ -190,14 +190,16 @@
       vistoT.relieve = 0; vistoT.mallas = 0; tiles.visibleTiles.forEach(sumaVisible);   // reserva-ok: Set.forEach con una función ya declarada (sin cierre nuevo)
       vistoT.olivos = typeof OlivosTiles !== "undefined" && OlivosTiles.dibuja() ? OlivosTiles.triangulos() : 0; vistoT.tri = vistoT.relieve + vistoT.olivos;
       var s = tiles.stats; cx.getWorldPosition(cab);
-      mm.dt = dt; mm.tri = vistoT.tri; mm.tope = XrPerillas.topeTiles(triNivel); mm.eBase = errorPerfil; mm.errMax = XrPerillas.errMaxTiles(); mm.cargando = s.queued + s.downloading + s.parsing > 0; mm.x = cab.x; mm.z = cab.z;
+      mm.dt = dt; mm.tri = vistoT.tri; mm.tope = TopeOlivos.parteTiles(XrPerillas.topeTiles(triNivel)); mm.eBase = errorPerfil; mm.errMax = XrPerillas.errMaxTiles(); mm.cargando = s.queued + s.downloading + s.parsing > 0; mm.x = cab.x; mm.z = cab.z;   // Q0n (02m): el tope, menos lo que ocupan los olivos del motor
       var e = TopeTilesPuro.paso(tope, mm);
       if (e > 0 && tiles.errorTarget !== e) tiles.errorTarget = e;
     }
     // la línea de ?debug y del medidor (XrPerillas.linea, 02f): «tileset 152 k / tope 130 k tri · 41 mallas · error 60 px (lazo 1/4)»; "" fuera de VR
     XrPerillas.lineaTiles = function () {
       if (!errorPerfil || !tiles) return "";
-      return XrPerillas.topeTiles(triNivel) > 0 ? TopeTilesPuro.linea(tope, { mallas: vistoT.mallas }) : TopeTilesPuro.linea(tope, { apagado: true, tri: vistoT.tri });
+      var t = XrPerillas.topeTiles(triNivel) > 0 ? TopeTilesPuro.linea(tope, { mallas: vistoT.mallas }) : TopeTilesPuro.linea(tope, { apagado: true, tri: vistoT.tri });
+      var o = TopeOlivos.linea(typeof Arboles !== "undefined" ? Arboles.triMotor() : 0);   // Q0n: los olivos del motor, detrás
+      return t && o ? t + " · " + o : t || o;
     };
     // cada fotograma, antes de dibujar. En una sesión XR, como el ejemplo de XR de 3DTilesRendererJS: la cámara de la sesión (sus dos ojos) en
     // lugar de la de siempre, con la resolución de un ojo; y el Scheduler de la librería atado a la sesión (si no, sus colas esperan al
