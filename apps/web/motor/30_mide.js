@@ -3,7 +3,8 @@
 // Consume: 01_datos (D, $, DEPURA), 01a_aparato (Aparato), 02b_cola (Cola), 02c_componentes (Reparto, Bus, ConfigPuro, Componentes),
 //   02f_xr_perillas (XrPerillas), 02h_render (Render), 02i_materiales (Materiales), 03_escena (visor, renderer, modo, calidad),
 //   04b_escena3d (Escena3D), 07ab_generados (Generados), 07b_arboles (Arboles), 08_marcadores (listo, capas), 12_paseo (persona),
-//   14_historia (lista, rango), 15_tiempo (nivel, hace), 29_vr (VRX, panel, PanelVR, VR_PERFILES), 33_ajustes (Ajustes), 90_final (cuadro, bucle)
+//   14_historia (lista, pct, rango), 15_tiempo (nivel, hace), 29_vr (VRX, panel, PanelVR, VR_PERFILES), 33_ajustes (Ajustes),
+//   90_final (cuadro, bucle)
 // ===============================================================================
 
   // ---------- medidor de fotogramas para la prueba en el aparato (T7a, doc/sistema/VR.md#medir-con-el-medidor). Componente «medidor-fotogramas» (ADR-0023, C10 tercera tanda; ?medidor=0 lo apaga). Sin &mide ni botón pulsado no hace nada: no escucha «cuadro:fin» y el bucle no paga nada.
@@ -19,7 +20,8 @@
     function serie(v) { var o = ordena(v); return { mediana: mediana(o), p95: percentil(o, 95), p99: percentil(o, 99), peor: o.length ? o[o.length - 1] : 0 }; }
     // m = { t: [s desde que se armó], ms: [intervalo con el fotograma anterior], js: [ms de JS], oc: [1 si la pestaña estaba oculta], ll?: [llamadas de dibujo], tr?: [triángulos] }
     // (F0: rd = ms de renderer.render() dentro de js, opcional. Q0e: ll y tr son opcionales; una medida guardada de antes no los trae. Q0g: cz = bits de causa por fotograma, cq = ms de Cola y teselas; tambien opcionales)
-    function calcula(m, calent, dur, umbral) {
+    // hz (opcional): los Hz del aparato o de la sesión de VR; sin ellos, el periodo es la mediana del intervalo (perdidos.fuente = "mediana")
+    function calcula(m, calent, dur, umbral, hz) {
       calent = calent == null ? CALENTAMIENTO : calent; umbral = umbral == null ? UMBRAL : umbral;
       var ms = [], js = [], rd = [], rs = [], ll = [], tr = [], cz = [], cq = [], bl = [], suma = [], otr = [], desc = { calentamiento: 0, ocultos: 0, despues: 0 }, i;
       for (i = 0; i < m.t.length; i++) {
@@ -35,7 +37,14 @@
         if (m.ll) ll.push(m.ll[i]); if (m.tr) tr.push(m.tr[i]); if (m.cz) { cz.push(m.cz[i]); cq.push(m.cq ? m.cq[i] : 0); }
       }
       var sobre = 0; for (i = 0; i < ms.length; i++) if (ms[i] > umbral) sobre++;
-      return { n: ms.length, ms: serie(ms), js: serie(js), rd: rd.length ? serie(rd) : null, resto: rs.length ? serie(rs) : null, ll: ll.length ? serie(ll) : null, tr: tr.length ? serie(tr) : null, causas: resumenCausas(ms, cz, cq, umbral), reparto: resumenReparto(m.bn, bl, suma, otr), sobre: sobre, pctSobre: ms.length ? 100 * sobre / ms.length : 0, umbral: umbral, descartados: desc };
+      return { n: ms.length, ms: serie(ms), js: serie(js), rd: rd.length ? serie(rd) : null, resto: rs.length ? serie(rs) : null, ll: ll.length ? serie(ll) : null, tr: tr.length ? serie(tr) : null, causas: resumenCausas(ms, cz, cq, umbral), reparto: resumenReparto(m.bn, bl, suma, otr), sobre: sobre, pctSobre: ms.length ? 100 * sobre / ms.length : 0, umbral: umbral, perdidos: perdidosDe(ms, hz), descartados: desc };
+    }
+    // ---- fotogramas perdidos: intervalos de más de 1,5 periodos de refresco (la fluctuación del reloj no cuenta); vsync perdidos = suma de round(intervalo/periodo) − 1. Se calcula al resumir, sobre la serie que ya se guarda (nada por fotograma)
+    var PERDIDOS_MAX = 1;   // [SUPUESTO] propuesta: «perdidos ≤ 1 %»; no está en ADR-0015
+    function perdidosDe(ms, hz) {
+      var deHz = typeof hz === "number" && hz >= 20 && hz <= 240, p = deHz ? 1000 / hz : mediana(ordena(ms)), u = 1.5 * p, n = 0, v = 0, i;
+      if (p > 0) for (i = 0; i < ms.length; i++) if (ms[i] > u) { n++; v += Math.max(0, Math.round(ms[i] / p) - 1); }
+      return { periodo: p, fuente: deHz ? "hz" : "mediana", hz: deHz ? hz : null, umbral: u, n: n, vsync: v, pct: ms.length ? 100 * n / ms.length : 0 };
     }
     // ---- Q0h: bl[k] = ms del bloque k en cada fotograma (ya filtrados como los demás); bn[k] su nombre. Los bloques salen ordenados por p95 (de mayor a menor); suma y otros, la suma de bloques y lo que sobra del JS
     function resumenReparto(bn, bl, suma, otr) {
@@ -92,9 +101,13 @@
       L.push("Aparato: " + r.aparato.modo + (corto ? "" : " · " + r.aparato.ua));
       L.push("Escena: " + r.escena + (r.banderas ? " · " + r.banderas : ""));
       var sobreTx = "Por encima de " + String(e.umbral).replace(".", ",") + " ms: " + e.sobre + " (" + f1(e.pctSobre) + " %)";
-      L.push(corto ? e.n + " fotogramas en " + r.duracion + " s · " + e.sobre + " sobre " + String(e.umbral).replace(".", ",") + " ms (" + f1(e.pctSobre) + " %)" : e.n + " fotogramas en " + r.duracion + " s (tras " + r.calentamiento + " s de calentamiento)");
+      L.push(corto ? e.n + " fotogramas en " + r.duracion + " s · " + e.sobre + " sobre " + String(e.umbral).replace(".", ",") + " ms (" + f1(e.pctSobre) + " %)" + (e.perdidos ? " · " + e.perdidos.n + " perdidos (" + f1(e.perdidos.pct) + " %)" : "") : e.n + " fotogramas en " + r.duracion + " s (tras " + r.calentamiento + " s de calentamiento)");
       L.push("Intervalo (ms): mediana " + f1(e.ms.mediana) + " · p95 " + f1(e.ms.p95) + " · p99 " + f1(e.ms.p99) + " · peor " + f1(e.ms.peor));
       if (!corto) L.push(sobreTx);   // en la tarjeta de VR va en la línea de los fotogramas (cabe en 14 líneas)
+      if (!corto && e.perdidos) {
+        var pd = e.perdidos;
+        L.push("Fotogramas perdidos (intervalo > 1,5 periodos = " + f1(pd.umbral) + " ms; periodo " + f1(pd.periodo) + " ms " + (pd.fuente === "hz" ? "de " + pd.hz + " Hz" : "= mediana del intervalo, sin Hz conocidos") + "): " + pd.n + " (" + f1(pd.pct) + " %) · vsync perdidos: " + pd.vsync);
+      }
       var lc = lineaCausas(e.causas, corto); if (lc) L.push(lc);   // Q0g: que se movio en los fotogramas lentos
       L.push("JS por fotograma (ms): mediana " + f1(e.js.mediana) + " · p95 " + f1(e.js.p95) + " · peor " + f1(e.js.peor));
       if (e.rd && e.resto) {   // F0: el techo del multiview (doc/sistema/MULTIVIEW.md): cuánto del JS es renderer.render() y cuánto el resto del fotograma
@@ -125,7 +138,7 @@
         L.push("Por fotograma (mediana): " + d.join(" · "));
       }
       if (!corto && r.largas) L.push("Tareas largas del navegador (≥ 50 ms) durante la medida: " + r.largas.n + (r.largas.n ? " (suman " + Math.round(r.largas.ms) + " ms)" : ""));
-      if (vr && e.n) L.push("p95 ≤ 13,9 ms (criterio 5 de ADR-0015): " + (e.ms.p95 <= 13.9 ? "sí" : "no"));
+      if (vr && e.n) L.push("p95 ≤ 13,9 ms (criterio 5 de ADR-0015): " + (e.ms.p95 <= 13.9 ? "sí" : "no") + (e.perdidos ? " · perdidos ≤ " + PERDIDOS_MAX + " %: " + (e.perdidos.pct <= PERDIDOS_MAX ? "sí" : "no") : ""));
       if (e.descartados.ocultos) L.push("Descartados por pestaña oculta: " + e.descartados.ocultos);
       if (r.avisos && r.avisos.length) r.avisos.forEach(function (a) { L.push("Aviso: " + a); });
       return L;
@@ -191,6 +204,8 @@
         for (i = 0; i < CLAVES_LENTOS.length; i++) { var nl = entero(cs[CLAVES_LENTOS[i][0]], 0, 1000000); if (nl !== null) c[CLAVES_LENTOS[i][1]] = nl; }
         if (cs.colaMs >= 0 && cs.colaMs <= 10000) c.lentos_cola_ms = r2(cs.colaMs);
       }
+      var pf = r.est.perdidos;   // contrato v3.1 (opcionales): fotogramas y vsync perdidos
+      if (pf) { var pn2 = entero(pf.n, 0, 1000000), pv = entero(pf.vsync, 0, 10000000); if (pn2 !== null && pv !== null) { c.perdidos_n = pn2; c.vsync_perdidos = pv; } }
       var rp = r.est.reparto;
       if (rp && rp.bloques && rp.bloques.length) {
         var bs = [];
@@ -202,7 +217,7 @@
       }
       return c;
     }
-    return { resumenReparto: resumenReparto, BIT: BIT, bits: bits, marcaLargas: marcaLargas, resumenCausas: resumenCausas, lineaCausas: lineaCausas, UMBRAL: UMBRAL, CALENTAMIENTO: CALENTAMIENTO, calcula: calcula, serie: serie, percentil: percentil, mediana: mediana, lineas: lineas, texto: texto, resumeUA: resumeUA, aparatoDe: aparatoDe, navegadorDe: navegadorDe, cuerpoEnvio: cuerpoEnvio, perillasLimpias: perillasLimpias };
+    return { resumenReparto: resumenReparto, BIT: BIT, bits: bits, marcaLargas: marcaLargas, resumenCausas: resumenCausas, lineaCausas: lineaCausas, UMBRAL: UMBRAL, PERDIDOS_MAX: PERDIDOS_MAX, perdidosDe: perdidosDe, CALENTAMIENTO: CALENTAMIENTO, calcula: calcula, serie: serie, percentil: percentil, mediana: mediana, lineas: lineas, texto: texto, resumeUA: resumeUA, aparatoDe: aparatoDe, navegadorDe: navegadorDe, cuerpoEnvio: cuerpoEnvio, perillasLimpias: perillasLimpias };
   })();
   // [puro:fin]
 
@@ -319,10 +334,17 @@
       }
       for (; k < m.bl.length; k++) m.bl[k].push(0);
     }
+    // los Hz con que se midió: en VR, los de la sesión (frameRate) o, si no, los que pidió la perilla (XrPerillas); en pantalla, ninguno (el periodo sale de la mediana)
+    function hzAparato() {
+      if (modoIni !== "VR") return null;
+      try { var c = Aparato.capacidades(), f = c && c.vr ? c.vr.frecuencia : null; if (typeof f === "number" && f > 0) return f; } catch (e) {}
+      try { var h = XrPerillas.efectivas && XrPerillas.efectivas.hz; if (typeof h === "number" && h > 0) return h; } catch (e) {}
+      return null;
+    }
     function termina() {
       Reparto.on = false;
       desobservaLargas();
-      var largasR = largas ? MideEst.marcaLargas(m, t0, largas, MideEst.CALENTAMIENTO, N) : null, e = MideEst.calcula(m, MideEst.CALENTAMIENTO, N), a = Arboles.resumen(), nv = nivelAhora(), avisos = [];
+      var largasR = largas ? MideEst.marcaLargas(m, t0, largas, MideEst.CALENTAMIENTO, N) : null, e = MideEst.calcula(m, MideEst.CALENTAMIENTO, N, undefined, hzAparato()), a = Arboles.resumen(), nv = nivelAhora(), avisos = [];
       if (modoIni !== modoAhora()) avisos.push("cambió de " + modoIni + " a " + modoAhora() + " durante la medida");
       if (e.n < 10) avisos.push("muy pocos fotogramas: la medida no sirve");
       res = {

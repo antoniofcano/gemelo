@@ -35,6 +35,8 @@ export interface CuerpoMedida {
   render_mediana_ms?: number; render_p95_ms?: number;
   lentos_n?: number; lentos_cola?: number; lentos_tesela?: number; lentos_lote?: number; lentos_tarea?: number; lentos_compila?: number; lentos_textura?: number; lentos_sin_causa?: number; lentos_cola_ms?: number;
   reparto?: BloqueReparto[]; otros_p95_ms?: number;
+  // contrato v3.1 (migración 0024, todo opcional): fotogramas perdidos (intervalos de más de 1,5 periodos de refresco) y vsync perdidos
+  perdidos_n?: number; vsync_perdidos?: number;
 }
 export interface BloqueReparto { bloque: string; mediana_ms: number; p95_ms: number }
 /** Como mucho este número de bloques viaja en el reparto (el medidor ya los manda ordenados por p95, de mayor a menor). */
@@ -82,6 +84,7 @@ export const CUERPO_MEDIDA = {
       items: { type: "object", additionalProperties: false, required: ["bloque", "mediana_ms", "p95_ms"], properties: { bloque: { type: "string", pattern: PATRON_BLOQUE }, mediana_ms: MS_10S, p95_ms: MS_10S } },
     },
     otros_p95_ms: MS_10S,
+    perdidos_n: ENTERO_LENTOS, vsync_perdidos: { type: "integer", minimum: 0, maximum: 10000000 },
   },
 } as const;
 
@@ -176,13 +179,13 @@ export async function rutasMedidas(app: FastifyInstance, ctx: Contexto): Promise
     await bd.query(
       `INSERT INTO medidas_fluidez (medida_en, aparato, navegador, nav_mayor, perfil, finca, modo, vr, mediana_ms, p95_ms, peor_ms, fotogramas, duracion_s, version,
                                    js_mediana_ms, js_p95_ms, nivel_ini, nivel_fin, perillas, olivos_gen, llamadas_med, triangulos_med, personas,
-                                   render_mediana_ms, render_p95_ms, lentos_n, lentos_cola, lentos_tesela, lentos_lote, lentos_tarea, lentos_compila, lentos_textura, lentos_sin_causa, lentos_cola_ms, reparto, otros_p95_ms)
+                                   render_mediana_ms, render_p95_ms, lentos_n, lentos_cola, lentos_tesela, lentos_lote, lentos_tarea, lentos_compila, lentos_textura, lentos_sin_causa, lentos_cola_ms, reparto, otros_p95_ms, perdidos_n, vsync_perdidos)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23,
-               $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35::jsonb, $36)`,
+               $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35::jsonb, $36, $37, $38)`,
       [m.medida_en, m.aparato, m.navegador, m.nav_mayor, m.perfil, m.finca, m.modo, m.vr, m.mediana_ms, m.p95_ms, m.peor_ms, m.fotogramas, m.duracion_s, m.version,
         m.js_mediana_ms ?? null, m.js_p95_ms ?? null, m.nivel_ini ?? null, m.nivel_fin ?? null, m.perillas ?? null, m.olivos_gen ?? null, m.llamadas_med ?? null, m.triangulos_med ?? null, m.personas ?? null,
         m.render_mediana_ms ?? null, m.render_p95_ms ?? null, m.lentos_n ?? null, m.lentos_cola ?? null, m.lentos_tesela ?? null, m.lentos_lote ?? null, m.lentos_tarea ?? null,
-        m.lentos_compila ?? null, m.lentos_textura ?? null, m.lentos_sin_causa ?? null, m.lentos_cola_ms ?? null, m.reparto ? JSON.stringify(m.reparto) : null, m.otros_p95_ms ?? null]);
+        m.lentos_compila ?? null, m.lentos_textura ?? null, m.lentos_sin_causa ?? null, m.lentos_cola_ms ?? null, m.reparto ? JSON.stringify(m.reparto) : null, m.otros_p95_ms ?? null, m.perdidos_n ?? null, m.vsync_perdidos ?? null]);
     return rep.code(201).send({ guardada: true });
   });
 
