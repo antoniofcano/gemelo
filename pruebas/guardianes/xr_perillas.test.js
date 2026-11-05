@@ -14,6 +14,8 @@ function trozo(ini, fin) {
 const PURO = trozo("// [puro:inicio]", "// [puro:fin]"), MOTOR = trozo("// [motor:inicio]", "// [motor:fin]");
 const P = new Function("\"use strict\";\n" + PURO + "\nreturn XrPerillasPuro;")();
 function estado(busqueda) { return new Function("location", "\"use strict\";\n" + PURO + MOTOR + "\nreturn XrPerillas;")({ search: busqueda }); }
+const F02G = lee("apps/web/motor/02g_vr_presupuesto.js");
+const VrControlPuro = new Function("\"use strict\";\n" + F02G.slice(F02G.indexOf("// [puro:inicio]"), F02G.indexOf("// [puro:fin]")) + "\nreturn VrControlPuro;")();
 const QUEST = { frameRates: [72, 80, 90] };
 
 test("sin parámetros: nada pedido, nada ignorado y los valores de siempre", () => {
@@ -105,7 +107,7 @@ test("cableado: 29_vr usa XrPerillas en un solo sitio, 03_escena el MSAA, y el i
   const vr = lee("apps/web/motor/29_vr.js");
   assert.match(vr, /setFramebufferScaleFactor\(XrPerillas\.efectivas\.escala\)/); assert.match(vr, /XrPerillas\.antes\(renderer\)/); assert.match(vr, /XrPerillas\.despues\(ses\)/);
   assert.doesNotMatch(vr, /setFramebufferScaleFactor\(0\.9\)/, "el 0,9 ya no está repartido: vive en XrPerillasPuro.DEF");
-  assert.match(vr, /if \(XrPerillas\.fijo\(\)\) return;/, "el controlador adaptativo no actúa con ?xrnivel=");
+  assert.match(vr, /XrPerillas\.estable\(\), XrPerillas\.fijo\(\)\)/, "el controlador adaptativo no actúa con ?xrnivel=");
   assert.match(vr, /vrPerfil\(XrPerillas\.fijo\(\) \? XrPerillas\.efectivas\.nivel : 0\)/);
   assert.match(vr, /xr: \{ near: [^}]*fov: /, "window.__vrDebug() trae las perillas");
   assert.match(lee("apps/web/motor/03_escena.js"), /antialias: XrPerillas\.aa/);
@@ -142,15 +144,16 @@ test("motor: el umbral es URL > configuración > 8, y near llega a las efectivas
 // el motor de verdad: 29_vr con renderer y sesión de mentira. Se extrae por texto lo que AG-2.3 cambia (entrada, salida y controlador); lo demás de 29_vr lo prueba Chrome.
 test("29_vr: near efectivo al entrar y restaurado al salir; el controlador baja con 8 ms y no con 6; con nivel fijo no actúa", () => {
   const vr = lee("apps/web/motor/29_vr.js");
-  const a = vr.indexOf("function vrAdapta"), b = vr.indexOf("function vrFin");
+  const a = vr.indexOf("function* vrNivelPasos"), b = vr.indexOf("function vrFin");   // Q0c-b: incluye el cambio por la Cola y la histéresis
   assert.ok(a > 0 && b > a);
   const ad = vr.slice(a, b);
   function banco(busqueda, umbralCfg) {
     const X = estado(busqueda); if (umbralCfg != null) X.configJs = umbralCfg;
     const niveles = [];
     const VRX = { emaDt: 13.9, emaJs: 6, tNivel: 0, nivel: 0, nBaj: 0, nAlt: 0 };
-    const VR_PERFILES = [0, 1, 2, 3], vrPerfil = n => { VRX.nivel = n; niveles.push(n); };
-    const f = new Function("VRX", "XrPerillas", "VR_PERFILES", "vrPerfil", "\"use strict\";\n" + ad + "\nreturn vrAdapta;")(VRX, X, VR_PERFILES, vrPerfil);
+    // Q0c-b: el cambio de nivel va por la Cola (se anota el nivel pedido); aquí no se avanza el generador
+    const VR_PERFILES = [0, 1, 2, 3], Cola = { cancela() {}, add(k, prio, gen) { niveles.push(VRX.nivel); } };
+    const f = new Function("VRX", "XrPerillas", "VR_PERFILES", "Cola", "VrControlPuro", "\"use strict\";\n" + ad + "\nreturn vrAdapta;")(VRX, X, VR_PERFILES, Cola, VrControlPuro);
     return { f, VRX, niveles };
   }
   // 400 fotogramas de 72 Hz con el JS dado: el EMA llega y pasan los 4 s de guarda
@@ -169,7 +172,7 @@ test("29_vr: near efectivo al entrar y restaurado al salir; el controlador baja 
   assert.match(vr, /VRX\.nearPrev = camera\.near; VRX\.farPrev = camera\.far;/);
   assert.match(vr, /camera\.near = VRX\.nearPrev; camera\.far = VRX\.farPrev; camera\.updateProjectionMatrix\(\)/);
   assert.doesNotMatch(vr, /camera\.near = 0\.3/);
-  assert.match(vr, /Config\.param\("escalera\.vrJsMs", XrPerillas\.defJs\)/);
+  assert.match(vr, /Config\.param\("escalera\.vrJsMs", u\.baja\)/);   // Q0c-b: el código por defecto sale de la tabla por aparato
   assert.match(vr, /xr: \{ near: XrPerillas\.efectivas\.near, topeJs: XrPerillas\.js\(\)/);
 });
 

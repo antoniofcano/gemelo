@@ -1,11 +1,13 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: XrPerillas
-// Consume: 03_escena (lienzo, renderer), 08_marcadores (aplica), 14_historia (rango), 15_tiempo (nivel, hace, anuncia), 29_vr (VR_PERFILES)
+// Consume: 03_escena (lienzo, renderer), 08_marcadores (aplica), 14_historia (hist, tabla, rango), 15_tiempo (nivel, hace, anuncia),
+//   29_vr (VR_PERFILES)
 // ===============================================================================
   // ---------- perillas de rendimiento VR por URL (Q0b; doc/sistema/VR.md#perillas-de-rendimiento-por-url). Para probar en el casco sin recompilar:
   //   ?xrfov=0..1 (foveación; defecto 1) · ?xrescala=0.5..1.5 (framebufferScaleFactor; defecto 0,9) · ?xrhz=72|80|90|120 (frecuencia pedida; defecto 72, solo si el casco la anuncia)
   //   ?xraa=0|1 (MSAA del lienzo; defecto 1; se lee antes de crear el renderer) · ?xrnivel=0..3 (fija un VR_PERFILES y APAGA el controlador adaptativo)
   //   ?xrnear=0.05..0.3 (plano cercano de la cámara en VR; defecto 0,1) · ?xrjs=4..16 (umbral de ms de JS por fotograma con que el controlador adaptativo baja de nivel; defecto 8, AG-2.3)
+  //   ?xrjssube=2..10 (Q0c-b: ms de JS por debajo de los que el controlador SUBE de nivel; defecto 5) · ?xrestable=2..120 (Q0c-b: segundos seguidos por debajo de eso antes de subir; defecto 10)
   //   ?xrmv=0|1 (F2a, doc/sistema/MULTIVIEW.md: multiview de super-three, `multiviewStereo`; SOLO existe en la build de VR, con defecto 1; en la de pantalla
   //   se ignora y se dice; se lee antes de crear el renderer, como xraa)
   // Sin ninguna, nada cambia. Es el ÚNICO sitio que lee estas banderas de la URL. Presupuesto (regla 6): no dibuja ni reserva nada.
@@ -53,6 +55,19 @@
       if (t !== "0" && t !== "1") { r.ignorado = { param: "xrmv", valor: t, motivo: "solo vale 0 o 1" }; return r; }
       r.pedido = t; r.activo = t === "1"; return r;
     }
+    // Q0c-b: las dos perillas de la histéresis del controlador (la de bajar es xrjs). → { sube, estable } (null = no pedida) e ignorados, como lee()
+    var LIMC = { sube: [2, 10], estable: [2, 120] }, DEFC = { sube: 5, estable: 10 };
+    function leeControl(busqueda) {
+      var q = String(busqueda || ""), r = { sube: null, estable: null, ignorados: [] };
+      [["xrjssube", "sube"], ["xrestable", "estable"]].forEach(function (par) {
+        var t = cruda(q, par[0]); if (t === null) return;
+        var v = num(t); if (!isFinite(v)) { r.ignorados.push({ param: par[0], valor: t, motivo: "no es un número" }); return; }
+        var a = LIMC[par[1]][0], b = LIMC[par[1]][1], c = Math.min(b, Math.max(a, v));
+        if (c !== v) r.ignorados.push({ param: par[0], valor: t, motivo: "fuera de rango (" + a + " a " + b + "), recortado a " + c });
+        r[par[1]] = c;
+      });
+      return r;
+    }
     function coma(v) { return String(v).replace(".", ","); }
     // e.mv (F2a): solo en la build de VR: «multiview sí» (pedido y en uso), «multiview pedido, no en uso» (el casco no dio OCULUS_multiview o la capa de proyección),
     // «multiview pedido» (aún sin sesión) o «multiview no (xrmv=0)». En la de pantalla e.mv no existe y la línea es la de siempre.
@@ -67,7 +82,7 @@
       if (e.ignorados && e.ignorados.length) s += " · ignorado: " + e.ignorados.map(function (i) { return i.param + "=" + i.valor + " (" + i.motivo + ")"; }).join("; ");
       return s;
     }
-    return { lee: lee, plan: plan, linea: linea, multiview: multiview, LIM: LIM, HZ: HZ, DEF: DEF };
+    return { lee: lee, leeControl: leeControl, LIMC: LIMC, DEFC: DEFC, plan: plan, linea: linea, multiview: multiview, LIM: LIM, HZ: HZ, DEF: DEF };
   })();
   // [puro:fin]
 
@@ -78,6 +93,10 @@
     var X = { pedidas: p, aa: p.aa != null ? p.aa : XrPerillasPuro.DEF.aa, efectivas: XrPerillasPuro.plan(p, null), entro: false };
     X.defJs = XrPerillasPuro.DEF.js; X.configJs = null;   // 29_vr deja en configJs el de la configuración (escalera.vrJsMs) cuando llega
     X.js = function () { return p.js != null ? p.js : (X.configJs != null ? X.configJs : X.defJs); };   // el umbral del controlador adaptativo: URL (?xrjs=) > configuración > 8 ms del código
+    // Q0c-b: la histéresis. Umbral de bajar = js() (arriba); de subir y segundos estables: URL > el valor de la tabla por aparato que 29_vr deja en `tablaSube` > defecto
+    X.control = XrPerillasPuro.leeControl(q); X.tablaSube = null;
+    X.jsSube = function () { return X.control.sube != null ? X.control.sube : (X.tablaSube != null ? X.tablaSube : XrPerillasPuro.DEFC.sube); };
+    X.estable = function () { return X.control.estable != null ? X.control.estable : XrPerillasPuro.DEFC.estable; };
     // F2a: el multiview, decidido UNA vez con la build (03_escena lo pide antes de crear el renderer: multiviewStereo va en el constructor). Sin llamar, null
     X.mv = null;
     X.multiview = function (build) { if (!X.mv) X.mv = XrPerillasPuro.multiview(q, build); return X.mv; };
