@@ -619,6 +619,19 @@ Banco (SwiftShader: recuentos, no fps), página de `main` tras la cuarta subida 
 - `#49` es una malla Lambert de 107 k sin nombre que solo aparece de cerca: por identificar.
 - **Tras AG-1.12** (mismo banco y datos, 12:00): lejos 626 k → 338 k, cerca 729 k → 442 k, paseo 784 k → 497 k, paseoE 704 k → 416 k, paseoS 696 k → 408 k triángulos (de 287 k menos por vista, 39-46 %); `marcas` 238 k → 95 k y `paisaje` 206 k → 62 k; llamadas iguales; capturas con 0,3-0,4 % de píxeles distintos en lejos y cerca (el ruido del banco) y los árboles del fondo algo más angulosos.
 
+## Suelo de fotos en KTX2 (EV-1k, 2026-11-05, foto, no se mantiene)
+Ronda del banco (SwiftShader: recuentos y memoria, no fps), fixture de Hituelo, escenario `cerca`, `node pruebas/suelo_fotos_capturas.js --memoria` y `npm run banco:ronda`. `gpuBytes` es `SueloFotos.resumen()`: con KTX2, la suma de los niveles que sube three (medida); con las WebP, la fórmula de RGBA8 (cálculo). `texturas` es `renderer.info.memory.textures` (un recuento, no bytes).
+
+| Variante | Cargó | Formato en la tarjeta | Textura del suelo | Llamadas | Triángulos | `texturas` | Heap JS | Errores |
+|---|---|---|---|---|---|---|---|---|
+| `base` (sin bandera) | — | — | — | 49 | 171.946 | 19 | 24 MB | 0 |
+| `ktx2` (`?suelo=fotos`, 768) | KTX2 | ASTC 4x4 (SwiftShader lo ofrece) | **9,8 MB** (10.224.240 B) | 46 | 170.362 | 22 | 23 MB | 0 |
+| `png` (`&suelofmt=png`, 768) | WebP | RGBA8 | 39,0 MB (cálculo) | 46 | 170.362 | 22 | 53 MB | 0 |
+| `ktx2_384` | KTX2 | ASTC 4x4 | **2,4 MB** (2.556.528 B) | 46 | 170.362 | 22 | 27 MB | 0 |
+| `png_384` | aún no (la medida llegó antes que la textura) | — | — | 46 | 170.362 | 20 | 30 MB | 0 |
+
+Las llamadas de `base` y de las demás no se comparan (49 frente a 46): las variantes con la bandera se midieron sin que la Cola terminara (23-26 trabajos pendientes a los 48 s; `base` sí terminó). El heap oscila ±3 MB entre cargas; la bajada de 53 a 23 MB a 768 es la decodificación de las 26 WebP en el hilo principal, que con KTX2 hace el worker. Qué formato elige `detectSupport` en el Quest o en el iPhone, y su memoria allí: **no medido**.
+
 ## Medida por componente (C11) y por objeto (O2)
 
 **Pendiente: sin fecha, sin cifras.** La herramienta está escrita y probada solo con resultados sintéticos (`pruebas/medida_componentes.js`, guardián `medida_componentes.test.js`); nadie la ha ejecutado contra el banco. Para O10 (que el mundo se parezca al catálogo «Olivos tipo») hace falta saber qué cuesta cada componente y cada pieza de un olivo generado, y hoy no se sabe: los presupuestos declarados en los manifiestos son techos o medidas de Node, no esto.

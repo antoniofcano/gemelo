@@ -3,6 +3,7 @@
 //                                                           del suelo); _v1, _v2: las variantes de la clase (otras fotos de la misma clase)
 //   apps/web/public/suelo/<clase>[_v<k>]_<px>_relieve.webp   relieve aproximado (deducido de la claridad), 0,5 = plano
 //   apps/web/public/suelo/suelo.json                  manifiesto: clases, su primera capa y cuántas (variantes), metros supuestos, fotos, huellas sha256
+//   apps/web/public/suelo/suelo_<px>.ktx2              las mismas WebP en UNA textura en array KTX2 (UASTC + zstd, con mipmaps) por tamaño: ktx2.mjs (EV-1k)
 //   tuberia/suelo/paleta_cielo.json                   paleta del atardecer (horizonte, cenit, nube iluminada, nube en sombra)
 // Uso:  GEMELO_SUELO_FOTOS=<carpeta con NN.jpg y ficha.json> [GEMELO_CIELO_FOTOS=<carpeta>] node tuberia/suelo/construye.mjs [--salida <dir>]
 // Nunca se escriben rutas ni metadatos de las fotos (sharp no copia el EXIF salvo que se le pida). Determinista: misma entrada → mismos bytes.
@@ -11,6 +12,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import sharp from "sharp";
+import { construyeKtx2 } from "./ktx2.mjs";
 import { deBytes, aBytes, aplana, normaliza, sinCostura, relieve, mitad, costura, colorMedio, hex, cuentaCielo, juntaCielo } from "./nucleo.mjs";
 
 const AQUI = path.dirname(fileURLToPath(import.meta.url));
@@ -106,6 +108,7 @@ export async function construye({ fotos, salida, cielo, opc = {} }) {
   for (const f of fs.readdirSync(salida)) if (f.endsWith(".webp") && !man.ficheros[f]) fs.rmSync(path.join(salida, f));
   man.memoria_gpu_mb = Object.fromEntries(tamanos.map(px => [px, Number((px * px * 4 * capa * 4 / 3 / 1048576).toFixed(1))]));   // RGBA8 en una textura de capas, con mipmaps
   fs.writeFileSync(path.join(salida, "suelo.json"), JSON.stringify(man, null, 1) + "\n");
+  if (opc.ktx2 !== false) man.ktx2 = await construyeKtx2({ dir: salida, tamanos });   // EV-1k: de las WebP recién escritas (y lo apunta en suelo.json)
   let paleta = null;
   if (cielo && fs.existsSync(cielo)) { paleta = await paletaCielo(cielo); fs.writeFileSync(opc.paleta || path.join(AQUI, "paleta_cielo.json"), JSON.stringify(paleta, null, 1) + "\n"); }
   return { manifiesto: man, paleta };

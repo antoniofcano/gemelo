@@ -5,7 +5,7 @@ import { viteStaticCopy } from "vite-plugin-static-copy";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import fs from "node:fs";
-import { buildPedida, aliasThree, salida } from "./herramientas/builds.mjs";
+import { buildPedida, aliasThree, salida, carpetaThree } from "./herramientas/builds.mjs";
 import { multiviewSubeTexturas } from "./herramientas/parche_multiview.mjs";
 
 const WEB = path.dirname(fileURLToPath(import.meta.url));
@@ -41,6 +41,13 @@ function perfilesXrSinCdn() {
     },
   };
 }
+
+// EV-1k: el transcodificador Basis de three (basis_transcoder.js y .wasm) para el KTX2Loader del suelo de fotos (04f_suelo_fotos), servido del MISMO
+// origen en <página>/basis/ (CLAUDE.md §5). Sale de la three de ESTA build (super-three en la de VR: hoy los dos ficheros son idénticos byte a byte),
+// para que el transcodificador vaya siempre con el KTX2Loader que lo usa. Si three lo mueve de sitio, el build falla aquí, no en el aparato.
+export const RUTA_BASIS = "basis";
+const BASIS_ORIGEN = path.join(carpetaThree(BUILD, WEB, process.env), "examples", "jsm", "libs", "basis");
+for (const f of ["basis_transcoder.js", "basis_transcoder.wasm"]) if (!fs.existsSync(path.join(BASIS_ORIGEN, f))) throw new Error("falta " + f + " en " + BASIS_ORIGEN + " (EV-1k): revisa vite.config.js");
 
 // la versión del gemelo (fichero VERSION de la raíz del repo) para la telemetría de fluidez (PB9): el motor la manda con la medida si la persona la envía
 const VERSION = (() => { try { return fs.readFileSync(path.join(WEB, "..", "..", "VERSION"), "utf8").trim(); } catch { return "dev"; } })();
@@ -80,6 +87,7 @@ export default defineConfig({
       targets: [
         ...PERFILES_XR.map(p => ({ src: XR_ORIGEN + "/dist/profiles/" + p + "/*", dest: RUTA_XR + "/" + p })),
         { src: XR_ORIGEN + "/LICENSE.md", dest: RUTA_XR },
+        { src: normalizePath(BASIS_ORIGEN) + "/basis_transcoder.{js,wasm}", dest: RUTA_BASIS },
         { src: XR_ORIGEN + "/dist/profiles/profilesList.json", dest: RUTA_XR,
           transform: c => { const L = JSON.parse(c), o = {}; for (const k of Object.keys(L)) if (PERFILES_XR.includes(L[k].path.split("/")[0])) o[k] = L[k]; return JSON.stringify(o, null, 1); } },
       ],

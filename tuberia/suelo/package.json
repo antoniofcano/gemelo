@@ -3,11 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Tubería de texturas de suelo (EV-1s): de las fotos de campo (GEMELO_SUELO_FOTOS, fuera del repo) a texturas repetibles WebP de 1024 y 512 px para el detalle de cerca del suelo, y la paleta del cielo de atardecer (GEMELO_CIELO_FOTOS). Ver doc/operacion/DATOS.md",
+  "description": "Tubería de texturas de suelo (EV-1s): de las fotos de campo (GEMELO_SUELO_FOTOS, fuera del repo) a texturas repetibles WebP de 768 y 384 px para el detalle de cerca del suelo, y la paleta del cielo de atardecer (GEMELO_CIELO_FOTOS); y de esas WebP a una textura en array KTX2 (UASTC + zstd) por tamaño (EV-1k, ktx2.mjs). Ver doc/operacion/DATOS.md",
   "scripts": {
-    "construye": "node construye.mjs"
+    "construye": "node construye.mjs",
+    "ktx2": "node ktx2.mjs"
   },
   "dependencies": {
+    "ktx-parse": "1.1.0",
+    "ktx2-encoder": "0.6.0",
     "sharp": "0.35.5"
   }
 }

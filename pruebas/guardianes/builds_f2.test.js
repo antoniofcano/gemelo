@@ -6,7 +6,8 @@
 //     existe en el ShaderChunk de super-three y es IGUAL que en three (un parche de texto que casa en una build y no en la otra falla en silencio);
 //   · todo THREE.X que usa el motor y todo three/addons/… que importa existen en super-three;
 //   · el motor entero construye con las dos builds: la de VR lleva super-three (0.185) y nada del three de pantalla; la de pantalla, three 0.186 y nada de super-three,
-//     con los mismos trozos (chunks) en las dos.
+//     con los mismos trozos (chunks) en las dos;
+//   · EV-1k: las dos llevan en basis/ el transcodificador Basis de SU three (para el KTX2Loader del suelo de fotos), del mismo origen y sin CDN.
 // Solo Node (Vite sin navegador). Sin Vite, 3d-tiles-renderer o super-three instalados (cd apps/web && npm ci) se salta con aviso.
 const test = require("node:test"), assert = require("node:assert"), path = require("path"), os = require("os"), { pathToFileURL } = require("url");
 const { RAIZ, fs, lee, ejecuta } = require("./_util");
@@ -89,6 +90,9 @@ function construye(raiz, build) {
   for (const f of js) { o.js[f] = fs.readFileSync(path.join(dir, f), "utf8"); }
   const suma = d => fs.readdirSync(d, { withFileTypes: true }).reduce((a, e) => a + (e.isDirectory() ? suma(path.join(d, e.name)) : fs.statSync(path.join(d, e.name)).size), 0);
   o.bytes = suma(sal); o.assetsJs = js.reduce((a, f) => a + Buffer.byteLength(o.js[f]), 0);
+  // EV-1k: el transcodificador Basis que copia vite.config.js en basis/ (del mismo origen) para el KTX2Loader del suelo de fotos
+  const bd = path.join(sal, "basis");
+  o.basis = fs.existsSync(bd) ? Object.fromEntries(fs.readdirSync(bd).sort().map(f => [f, fs.readFileSync(path.join(bd, f))])) : {};
   fs.rmSync(sal, { recursive: true, force: true });
   return o;
 }
@@ -112,6 +116,17 @@ test("el motor entero construye con las dos builds: vr con super-three 0.185 y s
     assert.ok(!/="185"/.test(jp), "super-three se coló en la build de pantalla");
     for (const m of marcasSuper) assert.ok(!jp.includes(m), "«" + m + "» (de super-three) en la build de pantalla");
     assert.deepStrictEqual(vr.nombres, pa.nombres, "las dos builds deben partirse en los mismos trozos (mismos import() y addons)");
+    // EV-1k: el transcodificador entra en las dos builds, en basis/, y es el de la three de cada una (super-three en la de VR); el KTX2Loader va en su
+    // trozo (import() del suelo de fotos), el motor le dice que lo coja de basis/ y nada de eso apunta a otro origen
+    for (const [o, dir, nom] of [[pa, THREE_DIR, "pantalla"], [vr, SUPER, "vr"]]) {
+      assert.deepStrictEqual(Object.keys(o.basis), ["basis_transcoder.js", "basis_transcoder.wasm"], "basis/ de la build " + nom);
+      for (const f of Object.keys(o.basis)) assert.ok(o.basis[f].equals(fs.readFileSync(path.join(dir, "examples/jsm/libs/basis", f))), f + " de la build " + nom + " no es el de su three");
+      assert.ok(!/https?:\/\//.test(o.basis["basis_transcoder.js"].toString("utf8")), "el transcodificador de la build " + nom + " nombra otro origen");
+      const k = Object.keys(o.js).filter(f => o.js[f].includes("KTX2Loader") && o.js[f].includes("transcoderPath"));
+      assert.ok(k.length >= 1, "el KTX2Loader no está en la build " + nom);
+      assert.ok(Object.values(o.js).some(j => /setTranscoderPath\(["']basis\/["']\)|BASIS\s*=\s*["']basis\/["']|["']basis\/["']/.test(j)), "el motor de la build " + nom + " no pide el transcodificador a basis/");
+      for (const f of k) assert.ok(!/(jsdelivr|unpkg|gstatic|cdnjs|githack)\./.test(o.js[f]), f + " (build " + nom + ") nombra un CDN");
+    }
     t.diagnostic("assets JS: pantalla " + (pa.assetsJs / 1048576).toFixed(2) + " MiB · vr " + (vr.assetsJs / 1048576).toFixed(2) + " MiB · salida entera: pantalla " + (pa.bytes / 1048576).toFixed(1) + " MiB · vr " + (vr.bytes / 1048576).toFixed(1) + " MiB");
   } finally { fs.rmSync(raiz, { recursive: true, force: true }); }
 });
