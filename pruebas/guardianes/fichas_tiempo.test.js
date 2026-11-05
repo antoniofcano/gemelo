@@ -66,7 +66,8 @@ test("nada de dentroDeUmbrales ni de tratamientos: ni en la lámina ni en el pan
   assert.ok(!/dentroDeUmbrales/.test(FUENTE.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "")), "35_fichas_tiempo.js no lee dentroDeUmbrales");
   const sVR = FUENTE.slice(FUENTE.indexOf("function pintaFila"), FUENTE.indexOf("function rrPanel"));
   assert.ok(sVR.length > 0 && !/umbral|tratar/i.test(sVR), "la fila del tiempo del panel VR tampoco");
-  assert.ok(!/umbral|tratar/i.test(VR), "29_vr.js no habla de tratar");
+  // Q0c-b: 29_vr.js habla de los umbrales de ms del controlador de nivel VR; lo prohibido son los de tratamiento
+  assert.ok(!/tratar|tratamiento|dentroDeUmbrales|umbral(es)? de tratamiento/i.test(VR), "29_vr.js no habla de tratar");
 });
 
 test("simulado: se rotula «no es el tiempo real» y las etiquetas dicen simulado, no medido", () => {

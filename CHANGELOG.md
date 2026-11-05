@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Tono, bordes suaves (`alphaToCoverage`) y multiview, antes solo por URL, tienen su control en Configuración (la URL manda, luego el ajuste); `alphaToCoverage` pasa a apagado por defecto (las copas de cerca salían blanquecinas en las capturas); la línea «Dibujo:» del informe de `?mide` dice con qué se midió. Sin probar en Quest ni iPhone.
 - El suelo de fotos (`?suelo=fotos`) carga por defecto un KTX2 (UASTC + zstd, en array con mipmaps) con el `KTX2Loader` de three y el transcodificador del mismo origen (`basis/`); si falla vuelve a las WebP, y `?suelofmt=png` las fuerza. Los KTX2 no se versionan: los genera `npm run build` desde las WebP y no los rehace si están al día. Memoria de GPU medida en el banco: 9,8 MB a 768 y 2,4 MB a 384, frente a 39,0 y 9,8 MB (EV-1k; no probado en Quest ni iPhone).
 - Medidas v3 (Q0i): la autopsia de los fotogramas lentos, el coste de `renderer.render()` y el reparto del JS por bloque (16 como mucho) viajan a la api con campos opcionales (los clientes v1 y v2 siguen valiendo; migración 0023); la oficina enseña el `render()` p95 y el bloque más caro del día. La migración no está probada contra Postgres.
 - VR: el controlador de nivel ya no oscila (baja con más de 8 ms de JS y solo sube tras 10 s por debajo de 5 ms), tiene umbrales por casco y perillas `?xrjssube` y `?xrestable`, reparte el cambio de nivel por la Cola y precompila los sombreadores al entrar (Q0c-b; sin probar en Quest).
