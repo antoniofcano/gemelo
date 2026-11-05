@@ -1,7 +1,8 @@
 // Cliente MCP de OlivarTrack (SDK oficial, transporte Streamable HTTP) con el token PROPIO de solo lectura del gemelo
 // (decisión 17) en la cabecera Authorization. El filtro de verdad está en el servidor de OlivarTrack; aquí hay dos
 // barreras más: solo se llaman herramientas de la lista cerrada y, si el servidor ofrece alguna de escritura a este
-// token, el lector se niega a seguir (el token estaría mal emitido). [NO VERIFICADO contra el OlivarTrack real]
+// token, el lector se niega a seguir (el token estaría mal emitido). Formas comprobadas en solo lectura el 2026-11-05 (por el
+// conector); [NO VERIFICADO: este cliente, con el token del gemelo, contra el OlivarTrack real]
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { ErrorDeLectura, esHerramientaDeLectura, type HerramientaLectura, type LectorOlivarTrack, PREFIJOS_ESCRITURA } from "./lector.ts";

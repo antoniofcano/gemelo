@@ -1,7 +1,8 @@
 // Cliente MCP de Vigía (SDK oficial, transporte Streamable HTTP) con el token del gemelo en la cabecera Authorization,
 // como el de OlivarTrack (ot/lector-mcp.ts). Solo llama a las dos herramientas del tiempo (sin argumentos), a historico_meteo (desde, hasta)
 // y a estado_del_olivar_hoy (sin argumentos).
-// [NO VERIFICADO contra el Vigía real: la forma de las respuestas se leyó por el conector de claude.ai el 2026-10-30]
+// Formas de las respuestas comprobadas en solo lectura el 2026-11-05 (por el conector de claude.ai, campo a campo). [NO VERIFICADO: este
+// cliente, con el token del gemelo, contra el Vigía real]
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { ErrorDeVigia, esHerramientaTiempo, type HerramientaTiempo, type LectorVigia } from "./lector.ts";
