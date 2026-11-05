@@ -31,7 +31,7 @@ Decisiones que **no puede tomar un agente**: las cierra Antonio. Las técnicas s
 | 14 | Recuento de olivos y fincas | **LiDAR (medido) + declarado al lado**, cada uno con su fuente; **solo Hituelo** en F1a | ADR-0009, fase 1a |
 | 15 | Correo del enlace mágico | **SMTP de OVH** (dominio canoydamas.es) | ADR-0009, fase 1a |
 | 16 | Qué se ve sin sesión | **Solo la portada**; mundo, hazas y datos tras sesión | ADR-0009, fase 1a |
-| 17 | Token de lectura de OlivarTrack | **Token propio** de solo lectura para el gemelo (cambio pequeño en OlivarTrack) | fase 2 |
+| 17 | Token de lectura de OlivarTrack | **Token propio** de solo lectura para el gemelo (cambio pequeño en OlivarTrack) | fase 2; **bloquea ya EV-3a y EV-3c**: el 2026-11-05, al encender OlivarTrack en el VPS, la api rechazó el token compartido con Oficultor (deja ver 10 herramientas de escritura) y no leyó nada |
 | 18 | Cambio visual al subir three | **Aceptar el aspecto nuevo** (color y luz modernos, recalibrado a ojo) | fase 1c |
 | 19 | Corresponsal de campo | **La misma web como PWA** (Wake Lock) | fase 4 |
 | 20 | Salida artefacto | **Se mantiene hasta la fase 2** y luego se retira | ADR-0010 |
