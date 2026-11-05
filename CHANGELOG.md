@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Oficina: sección «Voz» con el interruptor general de la voz por cercanía (apagado; pide confirmación al encenderlo y, hasta cerrar la EIPD, solo cuentas de prueba), la bandeja de avisos de voz y la suspensión de la voz de un hogar (7 días, 30 días o hasta nuevo aviso) (F3k-4). No probado en pantalla real.
 - Voz por cercanía, lado del servidor (F3k-1, ADR-0032): contrato `livekit-roles` v8 con salas `corro-<id>` solo de audio (la sala libre sigue sin audio); invitar, aceptar, «Ahora no» y salir, hasta 5 hogares; bloqueos en el servidor; avisos a la oficina sin audio; suspensiones; consentimiento por ámbito con el aviso propio «cercania»; migración 0025. Apagada por defecto, con interruptor general de la oficina apagado; aún sin motor.
 - VR, confort anti-mareo (Q9): andar 1,4 m/s, correr 3,0 y volar 8/20 (antes 1,7, 4,3 y 10/30), arranque con rampa de 0,15 s, y la viñeta se cierra según la velocidad real (la «fuerte» ahora se nota; mínimo en giros y saltos). Se respetan los ajustes guardados. Solo Node; no probado en Quest.
 - Paseo: ir andando rodea los troncos con un rodeo local (replanifica una vez si se atasca) y marca el camino con una línea de puntos ámbar, una sola malla y solo mientras se anda (EV2-B3). No probado en aparato real.
