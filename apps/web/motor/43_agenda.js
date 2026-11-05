@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos (D, $), 02_mundo (Mundo), 02c_componentes (Bus, ConfigPuro, Componentes), 03_escena (lienzo, modo), 12_paseo (persona),
+// Consume: 01_datos (D, $), 02c_componentes (Bus, ConfigPuro, Componentes), 03_escena (lienzo, modo), 12_paseo (persona),
 //   14_historia (marca, lista, aviso), 29_vr (panel, ficha, PanelVR), 31_hud (Hud), 32_ventanas (Ventanas)
 // Nota: Componente «agenda» (OF11d, ADR-0023; decisiones 145-148): la agenda de la finca dentro del mundo. Solo se registra; nadie lo nombra. Montado (solo con servidor): icono y ventana «Agenda» con los próximos eventos, plazas libres, tu estado (apuntados / en espera) y, solo si la api dice puede_inscribirse, apuntarse o borrarse con el número de personas (1-10); en VR, una fila en la pestaña Mundo del panel que lista los próximos y dice «Apúntate desde el móvil o el ordenador» (nadie se apunta desde las gafas). Todo lo de la api es dato: lista blanca y textContent / fillText. Publica window.__agenda (pruebas). El trozo [puro:…] lo evalúa en Node pruebas/guardianes/agenda_mundo.test.js.
 // ===============================================================================
@@ -11,7 +11,7 @@
   // Es un COMPONENTE (ADR-0023): se registra y nadie lo nombra. ?agenda=0 o la configuración del servidor lo apagan: sin icono, sin ventana, sin fila en VR.
   // Sin servidor (sin D.base /teselas/… ni ?api=) no se monta nada: no hay agenda que enseñar. Lo que llega de la api es dato: se valida con lista blanca y se
   // pinta SIEMPRE como texto (textContent y fillText), nunca como HTML.
-  // En VR (decisión 146): una fila «Agenda» en la pestaña Mundo del panel con los próximos (fecha, título, plazas) y la frase «Apúntate desde el móvil o el
+  // En VR (decisión 146): una fila «Agenda» en la pestaña Info del panel con los próximos (fecha, título, plazas) y la frase «Apúntate desde el móvil o el
   // ordenador»: en VR no se apunta nadie, ni siquiera la titular (el panel no tiene teclado ni selector cómodo, y el enlace de gafas no es el de la titular).
   // [puro:inicio] (sin DOM ni THREE: lo evalúa en Node pruebas/guardianes/agenda_mundo.test.js)
   var AgendaPuro = (function () {
@@ -290,10 +290,10 @@
       else cuerpo.appendChild(el("p", "margin:10px 0 0;font-size:14px;opacity:.75", "Podéis cambiar el número de personas borrándoos y volviendo a apuntaros. Si no cabéis, quedáis en la lista de espera."));
     }
 
-    // --- la fila «Agenda» del panel VR (pestaña Mundo): los próximos y dónde apuntarse; nada que pulsar
+    // --- la fila «Agenda» del panel VR (pestaña Info): los próximos y dónde apuntarse; nada que pulsar
     function vistaVR() { return datos ? AP.filasVR(datos, Date.now(), 3) : null; }
     if (typeof PanelVR !== "undefined") {
-      n.limpia(PanelVR.filas("mundo", { id: "agenda", orden: 70, alto: 290, visible: function () { return !!datos; },
+      n.limpia(PanelVR.filas("info", { id: "agenda", orden: 70, alto: 290, visible: function () { return !!datos; },
         botones: function (b, y) {   // OF11e: «Entrar en la visita» solo si hay una a la que se puede entrar ya y hay por dónde (presencia o voz)
           var v = vistaVR(); if (!v || !v.entrar || !viaje()) return;
           var e = datos.eventos.filter(function (x) { return x.id === v.entrar.id; })[0];
@@ -315,7 +315,7 @@
         firma: function () { var v = vistaVR(); return v ? v.filas.map(function (f) { return f.t + "|" + f.s; }).join("/") + "|" + v.vacia + "|" + (v.entrar ? v.entrar.id : "") + (entrando ? "!" : "") : ""; },
         debug: function () { return { agenda: vistaVR() }; } }));
       // OF11g: cuántos avisos sin leer hay y el último; sin nada sin leer, la fila no sale. Leerlos, en la ventana (el panel no tiene teclado ni lista cómoda)
-      n.limpia(PanelVR.filas("mundo", { id: "agenda_avisos", orden: 71, alto: 130, visible: function () { return !!AP.filaAvisosVR(avisos); },
+      n.limpia(PanelVR.filas("info", { id: "agenda_avisos", orden: 71, alto: 130, visible: function () { return !!AP.filaAvisosVR(avisos); },
         pinta: function (cx, y, W, h) {
           var v = AP.filaAvisosVR(avisos); h.fila("Avisos", y); if (!v) return;
           cx.textAlign = "left"; cx.textBaseline = "alphabetic";

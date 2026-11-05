@@ -136,11 +136,11 @@ test("motor: con servidor y datos pone icono y ventana «deducido», nivel proba
   assert.ok(reg.quitadas >= 2);
 });
 
-test("motor: con datos registra la fila «aves» del panel de VR (pestaña Mundo) y la quita al liberar; sin datos no la registra", async () => {
+test("motor: con datos registra la fila «aves» del panel de VR (pestaña Info) y la quita al liberar; sin datos no la registra", async () => {
   const { api, n, reg } = mundo("/teselas/x/", json(copia(EJ)));
   api(n); await espera();
-  assert.strictEqual(reg.filas.length, 1); const f = reg.filas[0]; assert.strictEqual(f.pestana, "mundo"); assert.strictEqual(f.def.id, "aves");
-  assert.ok(f.def.visible() === true && f.def.alto > 0 && f.def.alto <= 300, "compacta");
+  assert.strictEqual(reg.filas.length, 1); const f = reg.filas[0]; assert.strictEqual(f.pestana, "info"); assert.strictEqual(f.def.id, "aves");
+  assert.ok(f.def.visible() === true && f.def.alto > 0 && f.def.alto <= 220, "compacta");
   assert.match(f.def.firma(), /enero.*deducido/); assert.strictEqual(f.def.debug().aves.nombres.length, 3);
   reg.limpias.forEach(g => g()); assert.strictEqual(reg.filas.length, 0, "liberar quita la fila");
   for (const malo of [json({ v: 1 }), { status: 404, json: () => Promise.reject(new Error("no")) }, json(Object.assign(copia(EJ), { especies: [] }))]) {

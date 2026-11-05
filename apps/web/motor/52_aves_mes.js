@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos (D), 02_mundo (Mundo), 02c_componentes (Componentes), 03_escena (lienzo), 15_tiempo (nivel), 29_vr (panel, PanelVR),
-//   31_hud (Hud), 32_ventanas (Ventanas)
+// Consume: 01_datos (D), 02c_componentes (Componentes), 03_escena (lienzo), 15_tiempo (nivel), 29_vr (panel, PanelVR), 31_hud (Hud),
+//   32_ventanas (Ventanas)
 // Nota: Componente «aves-mes» (EV-1g «Biodiversidad B0»): ventana «Aves probables este mes» con lo que GBIF registra en 10 km (DEDUCIDO, nivel probable, con atribución y licencias CC0, CC BY y CC BY-SA). Además, la fila «Aves del mes» del panel de VR (pestaña Mundo: 3 especies y «y X más», con «deducido», nota, atribución y licencias; AvesMesPuro.filaVR). Solo se registra; nadie lo nombra. Sin D.base, sin fichero o sin aves de este mes no monta nada (ni fila). Los trozos [puro:…] los evalúa en Node pruebas/guardianes/aves_mes.test.js.
 // ===============================================================================
   // ---------- las aves probables este mes (EV-1g; contratos/biodiversidad.schema.json, v 1): una ventana con las especies de aves que GBIF registra en este
@@ -65,7 +65,7 @@
         atribucion: d.atribucion, licencias: licenciasTxt(d), anios: d.anios ? d.anios.desde + "–" + d.anios.hasta : null, generado: d.generado,
         fuentes: d.fuentes.map(function (f) { return f.titulo + (f.doi ? " · doi:" + f.doi : "") + " · " + f.licencias.map(function (x) { return LICENCIAS[x]; }).join(", "); }) };
     }
-    // la fila del panel de VR (pestaña Mundo): lo mismo que la ventana (mismas probables, misma nota, atribución y licencias) en pocas líneas legibles en el lienzo:
+    // la fila del panel de VR (pestaña Info): lo mismo que la ventana (mismas probables, misma nota, atribución y licencias) en pocas líneas legibles en el lienzo:
     // las `max` primeras (3) y «y X más»; null si no hay datos o no hay aves este mes (la fila no sale). Texto llano; nada de cálculo propio: sale de contenido().
     function filaVR(d, mes, max) {
       var c = contenido(d, mes); if (!c) return null;
@@ -121,11 +121,11 @@
           var mo = new MutationObserver(function () { if (!cuerpo.parentNode.hidden && P.mesDe(Date.now()) !== mesPintado) pinta(); });
           mo.observe(cuerpo.parentNode, { attributes: true, attributeFilter: ["hidden"] }); n.limpia(function () { mo.disconnect(); });
         }
-        // EV-1g, la fila «Aves del mes» del panel de VR (pestaña Mundo): lo mismo que la ventana, en pocas líneas (3 especies y «y X más»), con «deducido», la nota de que no
+        // EV-1g, la fila «Aves del mes» del panel de VR (pestaña Info): lo mismo que la ventana, en pocas líneas (3 especies y «y X más»), con «deducido», la nota de que no
         // se ha observado en la finca, la atribución y las licencias. Nada que pulsar; sin datos o sin aves este mes no sale. Solo texto en el lienzo del panel (sin textura propia).
         if (typeof PanelVR !== "undefined" && PanelVR.filas) {
           var vistaVR = function () { return P.filaVR(datos, P.mesDe(Date.now())); };
-          n.limpia(PanelVR.filas("mundo", { id: "aves", orden: 80, alto: 270, visible: function () { return !!vistaVR(); },
+          n.limpia(PanelVR.filas("info", { id: "aves", orden: 80, alto: 220, visible: function () { return !!vistaVR(); },
             pinta: function (cx, y, W, h) {
               var v = vistaVR(); h.fila(v ? v.titulo : "Aves del mes", y); if (!v) return;
               cx.textAlign = "left"; cx.textBaseline = "alphabetic";
@@ -137,13 +137,14 @@
                 if (ls.length > max) { ls = ls.slice(0, max); ls[max - 1] = ajusta(ls[max - 1] + "…", ancho); }
                 return ls;
               }
-              cx.fillStyle = "#ffe9a8"; cx.font = "700 22px system-ui, sans-serif"; cx.fillText(ajusta(v.cab, 590), 420, y + 26);
-              cx.fillStyle = "#ffffff"; cx.font = "700 26px system-ui, sans-serif";
-              v.nombres.forEach(function (t, i) { cx.fillText(ajusta(t, 590), 420, y + 62 + i * 32); });
-              if (v.mas) { cx.fillStyle = "#cfdccb"; cx.font = "600 22px system-ui, sans-serif"; cx.fillText("y " + v.mas + " más", 420, y + 62 + v.nombres.length * 32); }
+              cx.fillStyle = "#ffe9a8"; cx.font = "700 22px system-ui, sans-serif"; cx.fillText(ajusta(v.cab, 944), 40, y + 66);
+              cx.fillStyle = "#ffffff"; cx.font = "700 26px system-ui, sans-serif";   // una sola línea: «A, B, C y X más»; si no cabe, pasan nombres al «y X más»
+              var nom = v.nombres.slice(), mas = v.mas, linea = function () { return nom.join(", ") + (mas ? " y " + mas + " más" : ""); };
+              while (nom.length > 1 && cx.measureText(linea()).width > 944) { nom.pop(); mas++; }
+              cx.fillText(ajusta(linea(), 944), 40, y + 100);
               cx.fillStyle = "#cfdccb"; cx.font = "600 21px system-ui, sans-serif";
-              envuelve(v.nota, 944, 2).forEach(function (t, i) { cx.fillText(t, 40, y + 184 + i * 24); });
-              envuelve(v.fuente, 944, 2).forEach(function (t, i) { cx.fillText(t, 40, y + 236 + i * 24); });
+              envuelve(v.nota, 944, 2).forEach(function (t, i) { cx.fillText(t, 40, y + 132 + i * 24); });
+              envuelve(v.fuente, 944, 2).forEach(function (t, i) { cx.fillText(t, 40, y + 186 + i * 24); });   // hasta y + 210: dentro del alto de 220
             },
             firma: function () { var v = vistaVR(); return v ? v.cab + "|" + v.nombres.join("/") + "|" + v.mas : ""; },
             debug: function () { return { aves: vistaVR() }; } }));
