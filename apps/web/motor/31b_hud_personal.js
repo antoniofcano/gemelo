@@ -1,5 +1,5 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: (nada al resto de módulos)
+// Expone: HudPersonalPuro
 // Consume: 01_datos ($), 02c_componentes (Bus), 02e_entidades (Usables), 03_escena (modo), 09_camara (objetivo), 12_paseo (paseando),
 //   13b_hazas (Hazas), 15_tiempo (horaMundoTexto), 29_vr (ficha), 31_hud (Hud)
 // ===============================================================================

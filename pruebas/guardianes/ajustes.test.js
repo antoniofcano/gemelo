@@ -24,7 +24,7 @@ function almacen(datos, falla) {
 test("valores por defecto de todos los ajustes (los del diseño, UX-FINCA-JUEGO §4.5)", () => {
   const a = P.crea(almacen({}), "");
   const esperado = { "graficos.calidad": "auto", "graficos.ahorro": false, "vista.exag": 1, "vista.corr": 1, "vista.brujula": true, "vista.personal": true, "vista.suelo": false, "vista.tono": "neutro", "vista.a2c": false, "vr.multiview": true, "vista.unidades": "ha", 
-    "controles.tactil": "auto", "controles.mano": "diestra", "controles.sens": 1, "controles.invertir": false, "controles.palanca": true, "vr.giro": "30", "vr.vineta": "suave", "vr.vuelo": false, "vista.altura": "pie",
+    "controles.tactil": "auto", "controles.mano": "diestra", "controles.sens": 1, "controles.invertir": false, "controles.palanca": true, "vr.giro": "30", "vr.vineta": "suave", "vr.vuelo": false, "vr.muneca": true, "vista.altura": "pie",
     "acc.texto": 100, "acc.contraste": false, "acc.movimiento": "sistema", "avanzado.contador": false };
   assert.deepStrictEqual(a.claves().sort(), Object.keys(esperado).sort());
   for (const k of Object.keys(esperado)) assert.strictEqual(a.lee(k), esperado[k], k);

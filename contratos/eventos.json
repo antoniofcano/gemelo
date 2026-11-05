@@ -296,10 +296,11 @@
       ]
     },
     "habla:alterna": {
-      "descripcion": "EV2-A4: el botón «Hablar» de lo tuyo en pantalla (HUD): abre o cierra el micrófono de esta sesión, como el botón de la caja de la visita guiada en modo «pulsar» (con su aviso de voz si falta el consentimiento). Fuera de una visita guiada, o sin la palabra, nadie hace nada.",
+      "descripcion": "EV2-A4: el botón «Hablar» de lo tuyo en pantalla (HUD; EV2-A3: y el de la muñeca en VR): abre o cierra el micrófono de esta sesión, como el botón de la caja de la visita guiada en modo «pulsar» (con su aviso de voz si falta el consentimiento). Fuera de una visita guiada, o sin la palabra, nadie hace nada.",
       "datos": {},
       "emiten": [
-        "31b_hud_personal"
+        "31b_hud_personal",
+        "31c_muneca"
       ],
       "escuchan": [
         "47_habla"
@@ -702,9 +703,9 @@
       "escuchan": ["22b_huellas_polvo"]
     },
     "prevision:alterna": {
-      "descripcion": "Abrir o cerrar la lámina de la previsión del tiempo en el mundo (el botón «Ver la previsión en el mundo» de la ventana Tiempo). Sin datos alterna; con abre true o false, abre o cierra.",
+      "descripcion": "Abrir o cerrar la lámina de la previsión del tiempo en el mundo (el botón «Ver la previsión en el mundo» de la ventana Tiempo y, en VR, «hora» en el menú de muñeca, EV2-A3). Sin datos alterna; con abre true o false, abre o cierra.",
       "datos": { "type": "object", "properties": { "abre": { "type": "boolean" } } },
-      "emiten": ["15_tiempo"],
+      "emiten": ["15_tiempo", "31c_muneca"],
       "escuchan": ["35_fichas_tiempo"]
     },
     "mundo:aplica": {
@@ -1114,6 +1115,7 @@
       ],
       "escuchan": [
         "31b_hud_personal",
+        "31c_muneca",
         "46_guiada",
         "47_habla"
       ]
@@ -1200,6 +1202,7 @@
       ],
       "escuchan": [
         "02d_laminas",
+        "31c_muneca",
         "40_juegos"
       ]
     }

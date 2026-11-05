@@ -1,5 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: VRX, vrDebugExtra, vrFundido, vrAparece, panel, ficha, fichaB, PanelVR, vrActualiza, VR_PERFILES, vrFin
+// Expone: VRX, vrRig, vrDebugExtra, vrMano, vrRayoDe, vrFundido, vrAparece, creaLamina, panel, ficha, fichaB, vrBajoRayo, vrRect, vrAj, PanelVR,
+//   vrPintaFicha, vrPulso, vrActualiza, VR_PERFILES, vrFin
 // Consume: 01_datos (D, $, fmt, VRP), 01a_aparato (Aparato), 02_mundo (Mundo, suelo, orto, copas), 02b_cola (Cola),
 //   02c_componentes (ComponentesPuro, Bus, Config), 02d_laminas (LaminasPuro, Laminas), 02e_entidades (EntidadesPuro, Entidades, Usables),
 //   02f_xr_perillas (XrPerillas), 02g_vr_presupuesto (VrControlPuro, VrPresupuesto), 02h_render (InfoDibujo), 02i_materiales (Materiales),
@@ -270,8 +271,14 @@
   // segundo con el panel abierto y, si cambia, se repinta; debug() se suma a window.__vrDebug(). Las filas de siempre (modos, hora, fecha; parcela y gente;
   // viñeta, giro, relieve y medida) se registran aquí mismo y caen donde caían. PanelVR.tapa(fn): una lámina propia que está delante (la ficha de
   // la baliza espera). PanelVR.cierra() cierra el panel (Y lo vuelve a abrir); PanelVR.rumbo(): hacia dónde mira quien ve el panel de frente.
+  // EV2-A3 (menú de muñeca, 31c_muneca.js): PanelVR.alFotograma(fn(dt)) se llama cada fotograma en VR tras las láminas; PanelVR.alGatillo(fn(o, rayo)) se
+  // pregunta ANTES que el panel al apretar un gatillo y, si devuelve true, el gatillo es suyo. Los dos devuelven quitar(). PanelVR.conmutaPanel() y
+  // PanelVR.conmutaVineta() son lo mismo que Y y X (un solo sitio para los botones, el panel y la muñeca).
   var PanelVR = (function () {
-    var filas = {}, tapan = [];
+    var filas = {}, tapan = [], porFot = [], porGat = [];
+    function engancha(l, fn) { if (typeof fn !== "function") return function () {}; l.push(fn); return function () { var i = l.indexOf(fn); if (i >= 0) l.splice(i, 1); }; }
+    function fotograma(dt) { for (var i = 0; i < porFot.length; i++) { try { porFot[i](dt); } catch (e) { try { console.error("[PanelVR] alFotograma", e); } catch (e2) {} } } }
+    function gatillo(o, rr) { for (var i = 0; i < porGat.length; i++) { try { if (porGat[i](o, rr)) return true; } catch (e) { try { console.error("[PanelVR] alGatillo", e); } catch (e2) {} } } return false; }
     VR_PESTANAS.forEach(function (t) { filas[t[0]] = []; });
     function registra(pestana, def) {
       if (!filas[pestana] || !def || !def.id || !(def.alto > 0) || filas[pestana].some(function (f) { return f.id === def.id; })) return null;
@@ -284,8 +291,12 @@
     function tapado() { return tapan.some(function (fn) { try { return !!fn(); } catch (e) { return false; } }); }
     function debug() { var o = {}; Object.keys(filas).forEach(function (p) { filas[p].forEach(function (f) { if (f.debug) { try { Object.assign(o, f.debug()); } catch (e) {} } }); }); return o; }
     return { filas: registra, visibles: visibles, tapa: tapa, tapado: tapado, debug: debug, cierra: function () { panel.m.visible = false; VRX.hover = ""; VRX.sucio = true; },
+      alFotograma: function (fn) { return engancha(porFot, fn); }, alGatillo: function (fn) { return engancha(porGat, fn); }, fotograma: fotograma, gatillo: gatillo,
+      conmutaPanel: function () { vrPanelConmuta(); }, conmutaVineta: function () { vrVinetaConmuta(); }, abierto: function () { return panel.m.visible; },
       repinta: function () { VRX.sucio = true; }, rumbo: function () { return vrRumboPanel(); }, enVR: function () { return VRX.on; } };
   })();
+  function vrPanelConmuta() { panel.m.visible = !panel.m.visible; if (panel.m.visible) { panel.ini = false; VRX.sucio = true; } else VRX.hover = ""; }   // Y, y la muñeca
+  function vrVinetaConmuta() { VRX.vineta = !VRX.vineta; vrAjPon("vr.vineta", VRX.vineta ? (vrAj("vr.vineta", "suave") === "fuerte" ? "fuerte" : "suave") : "no"); VRX.sucio = true; }   // X, el panel y la muñeca
   function vrBotones() {
     var B = [];
     function b(id, x, y, w, h, txt, fn, on) { B.push({ id: id, x: x, y: y, w: w, h: h, txt: txt, fn: fn, on: !!on }); }
@@ -315,7 +326,7 @@
   PanelVR.filas("ira", { id: "gente", orden: 20, alto: 400, botones: function (b, y) { vrGenteBotones(b, y); }, pinta: function (cx, y, W) { vrPintaGente(cx, W, y); },
     firma: function () { return VrGentePuro.firma(vrGente()); } });
   PanelVR.filas("comodidad", { id: "vineta", orden: 10, alto: 88, pinta: function (cx, y, W, h) { h.fila("Viñeta", y); },
-    botones: function (b, y) { b("vig", 420, y, 470, 64, "Viñeta: " + (VRX.vineta ? "sí" : "no"), function () { VRX.vineta = !VRX.vineta; vrAjPon("vr.vineta", VRX.vineta ? (vrAj("vr.vineta", "suave") === "fuerte" ? "fuerte" : "suave") : "no"); VRX.sucio = true; }, VRX.vineta); } });
+    botones: function (b, y) { b("vig", 420, y, 470, 64, "Viñeta: " + (VRX.vineta ? "sí" : "no"), vrVinetaConmuta, VRX.vineta); } });
   PanelVR.filas("comodidad", { id: "giro", orden: 20, alto: 88, pinta: function (cx, y, W, h) { h.fila("Giro", y); },
     botones: function (b, y) { b("giro", 420, y, 470, 64, "Giro por saltos de " + VRX.giro + "°", function () { var i = VR_GIROS.indexOf(VRX.giro); VRX.giro = VR_GIROS[(i + 1) % VR_GIROS.length]; vrAjPon("vr.giro", String(VRX.giro)); VRX.sucio = true; }, false); } });
   PanelVR.filas("comodidad", { id: "relieve", orden: 40, alto: 88, pinta: function (cx, y, W, h) { h.fila("Relieve", y, h.valores.exag); },
@@ -501,8 +512,8 @@
     vrFundidoPaso(dt);
     var r = VRX.rig, h = vrCabeza(), L = vrMano("left"), R = vrMano("right"), iz = vrEjes(L.src), de = vrEjes(R.src);
     // botones: Y panel, X viñeta, A vuelo, B mirador
-    if (vrFlanco("Y", vrBoton(L.src, 5))) { panel.m.visible = !panel.m.visible; if (panel.m.visible) { panel.ini = false; VRX.sucio = true; } vrPulso(L, 0.2, 20); }
-    if (vrFlanco("X", vrBoton(L.src, 4))) { VRX.vineta = !VRX.vineta; vrAjPon("vr.vineta", VRX.vineta ? (vrAj("vr.vineta", "suave") === "fuerte" ? "fuerte" : "suave") : "no"); VRX.sucio = true; }
+    if (vrFlanco("Y", vrBoton(L.src, 5))) { vrPanelConmuta(); vrPulso(L, 0.2, 20); }
+    if (vrFlanco("X", vrBoton(L.src, 4))) vrVinetaConmuta();
     if (vrFlanco("A", vrBoton(R.src, 4))) { VRX.vuelo = !VRX.vuelo; VRX.mirador = false; VRX.sucio = true; vrPulso(R, 0.2, 20); }
     var fB = vrFlanco("B", vrBoton(R.src, 5)), fP = vrFlanco("RS", vrBoton(R.src, 3));
     if (VRX.captura && (fB || fP)) { if (VRX.captura.boton(fB ? "B" : "palanca")) vrPulso(R, 0.3, 25); }   // C9b: con un juego en lámina, B pausa y pulsar la palanca sale
@@ -564,6 +575,7 @@
       var qb = vrBajoRayo(fichaB, VRX.botonesB, rr), hb = qb ? qb.id : "";
       if (hb !== VRX.hoverB) { VRX.hoverB = hb; if (VRX.balInfo) vrPintaAcciones(VRX.balInfo); }
     }
+    PanelVR.fotograma(dt);   // EV2-A3: lo enganchado (el menú de muñeca, 31c_muneca.js), con el rig ya colocado
   }
   function vrMirador(on) {
     VRX.mirador = on; VRX.vuelo = on; VRX.sucio = true; var h = vrCabeza();
@@ -573,6 +585,7 @@
   // el gatillo: sobre el panel pulsa un botón; sobre un olivo, abre su ficha
   function vrGatillo(o) {
     var rr = vrRayoDe(o);
+    if (PanelVR.gatillo(o, rr)) { vrPulso(o, 0.4, 25); return; }   // EV2-A3: el menú de muñeca, si está a la vista, va primero (está más cerca que el panel)
     if (panel.m.visible) {
       var q = vrBajoRayo(panel, VRX.botones, rr);
       if (q) { vrPulso(o, 0.4, 25); q.fn(); VRX.sucio = true; return; }
