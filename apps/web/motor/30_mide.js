@@ -1,10 +1,10 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos (D, $, DEPURA), 01a_aparato (Aparato), 02b_cola (Cola), 02c_componentes (Reparto, Bus, ConfigPuro, Componentes),
-//   02f_xr_perillas (XrPerillas), 02h_render (Render), 02i_materiales (Materiales), 03_escena (visor, renderer, modo, calidad),
-//   04b_escena3d (Escena3D), 07ab_generados (Generados), 07b_arboles (Arboles), 08_marcadores (listo, capas), 12_paseo (persona),
-//   14_historia (lista, pct, rango), 15_tiempo (nivel, hace), 29_vr (VRX, panel, PanelVR, VR_PERFILES), 33_ajustes (Ajustes),
-//   90_final (cuadro, bucle)
+// Consume: 01_datos (D, $, fmt, DEPURA), 01a_aparato (Aparato), 02_mundo (suelo), 02b_cola (Cola),
+//   02c_componentes (Reparto, Bus, ConfigPuro, Componentes), 02f_xr_perillas (XrPerillas), 02h_render (Render), 02i_materiales (Materiales),
+//   03_escena (visor, renderer, modo, calidad), 04b_escena3d (Escena3D), 04f_suelo_fotos (SueloFotos), 07ab_generados (Generados),
+//   07b_arboles (Arboles), 08_marcadores (listo, capas), 12_paseo (persona), 14_historia (lista, pct, rango), 15_tiempo (nivel, rumbo, hace),
+//   29_vr (VRX, panel, PanelVR, VR_PERFILES), 33_ajustes (Ajustes), 90_final (cuadro, bucle)
 // ===============================================================================
 
   // ---------- medidor de fotogramas para la prueba en el aparato (T7a, doc/sistema/VR.md#medir-con-el-medidor). Componente «medidor-fotogramas» (ADR-0023, C10 tercera tanda; ?medidor=0 lo apaga). Sin &mide ni botón pulsado no hace nada: no escucha «cuadro:fin» y el bucle no paga nada.
@@ -98,8 +98,10 @@
     function lineas(r, corto) {
       var L = [], e = r.est, vr = r.aparato.modo === "VR";
       L.push("Medida del gemelo · " + r.fecha);
-      L.push("Aparato: " + r.aparato.modo + (corto ? "" : " · " + r.aparato.ua));
-      L.push("Escena: " + r.escena + (r.banderas ? " · " + r.banderas : ""));
+      L.push("Aparato: " + r.aparato.modo + (corto ? (vr && r.cabeza !== undefined ? " · " + textoCabeza(r.cabeza) : "") : " · " + r.aparato.ua));
+      if (corto && r.url) L.push("Escena: " + r.escena + " · " + r.url);   // Q0l: en la tarjeta, la URL de la toma en la misma linea (lleva las banderas)
+      else { L.push("Escena: " + r.escena + (r.banderas ? " · " + r.banderas : "")); if (r.url) L.push("URL de la toma: " + r.url); }
+      if (!corto && vr && r.cabeza !== undefined) L.push("Cabeza al empezar (a metros y a 15°; rumbo 0° = hacia -Z del mundo): " + textoCabeza(r.cabeza) + " · guía: " + GUIA_VR);
       var sobreTx = "Por encima de " + String(e.umbral).replace(".", ",") + " ms: " + e.sobre + " (" + f1(e.pctSobre) + " %)";
       L.push(corto ? e.n + " fotogramas en " + r.duracion + " s · " + e.sobre + " sobre " + String(e.umbral).replace(".", ",") + " ms (" + f1(e.pctSobre) + " %)" + (e.perdidos ? " · " + e.perdidos.n + " perdidos (" + f1(e.perdidos.pct) + " %)" : "") : e.n + " fotogramas en " + r.duracion + " s (tras " + r.calentamiento + " s de calentamiento)");
       L.push("Intervalo (ms): mediana " + f1(e.ms.mediana) + " · p95 " + f1(e.ms.p95) + " · p99 " + f1(e.ms.p99) + " · peor " + f1(e.ms.peor));
@@ -129,7 +131,8 @@
         if (!corto) r.nivel.cambios.forEach(function (c) { L.push("  a los " + f1(c.t) + " s: " + c.de + " → " + c.a); });
       }
       if (r.perillas) L.push(r.perillas);   // Q0b: con qué perillas se midió (regla 7)
-      if (r.dibujo) L.push(r.dibujo);   // con qué tono y qué recorte alfa se dibujó, y de dónde viene cada uno (URL, ajuste o defecto)
+      if (r.dibujo) L.push(r.dibujo + (r.uso ? " · " + textoUso(r.uso) : ""));
+      var lg = lineaGpu(r.gpu); if (lg) L.push(lg);   // Q0l: memoria de GPU al empezar y al terminar   // con qué tono y qué recorte alfa se dibujó, y de dónde viene cada uno (URL, ajuste o defecto)
       if (r.olivos) L.push("Olivos al terminar: N0 " + r.olivos[0] + " · N1 " + r.olivos[1] + " · N2 " + r.olivos[2]);
       if (e.ll || e.tr || typeof r.olivosGen === "boolean" || r.personas != null) {   // Q0e: con qué se dibujó (para decir si manda la CPU o la GPU)
         var d = [];
@@ -217,13 +220,43 @@
       }
       return c;
     }
-    return { resumenReparto: resumenReparto, BIT: BIT, bits: bits, marcaLargas: marcaLargas, resumenCausas: resumenCausas, lineaCausas: lineaCausas, UMBRAL: UMBRAL, PERDIDOS_MAX: PERDIDOS_MAX, perdidosDe: perdidosDe, CALENTAMIENTO: CALENTAMIENTO, calcula: calcula, serie: serie, percentil: percentil, mediana: mediana, lineas: lineas, texto: texto, resumeUA: resumeUA, aparatoDe: aparatoDe, navegadorDe: navegadorDe, cuerpoEnvio: cuerpoEnvio, perillasLimpias: perillasLimpias };
+    // Q0l: lo que le faltaba a la tarjeta para saber QUE toma es y para comparar tomas (solo se enseña en pantalla/VR y en el texto copiado; la api no recibe nada de esto)
+    // la URL de la toma: solo parametros conocidos del motor y valores cortos y sin simbolos; nada de api=, yo=, chat=, voz=, presencia=, vrm=, oficial=, n=, tileset=, ni tokens
+    var CLAVES_URL = /^(debug|mide|medidor|escena|olivos\w*|factorR8|arbsc|tiles?|lod|calidad|xr\w+|cartulina|suelo|sueloVR|sueloPx|suelofmt|tono|a2c|render|expo|aspecto|hora|epoca|vista|semilla|bvh|ortoMax|ui)$/;
+    function urlToma(search) {
+      var out = [], r = /[?&]([\w-]+)(?:=([^&#]*))?/g, x, v;
+      while ((x = r.exec(String(search || "")))) {
+        if (!CLAVES_URL.test(x[1])) continue;
+        v = x[2]; if (v != null && !/^[\w.-]{0,24}$/.test(v)) continue;
+        out.push(x[1] + (v != null ? "=" + v : ""));
+      }
+      return out.length ? "?" + out.join("&") : "(sin parametros)";
+    }
+    // la cabeza al empezar, redondeada: x y z a metros, rumbo (0 = hacia -Z del mundo, creciendo hacia +X) a multiplos de 15 grados; null si no hay pose
+    function cabezaToma(cab, dir) {
+      if (!cab || !dir || !isFinite(cab.x) || !isFinite(cab.z) || !isFinite(dir.x) || !isFinite(dir.z)) return null;
+      var g = Math.atan2(dir.x, -dir.z) * 180 / Math.PI, q = Math.round(g / 15) * 15;
+      return { x: Math.round(cab.x), z: Math.round(cab.z), rumbo: ((q % 360) + 360) % 360 };
+    }
+    function textoCabeza(c) { return c ? "cabeza x " + c.x + " z " + c.z + " m, rumbo " + c.rumbo + "°" : "cabeza n/d"; }
+    function flecha(a, b) { return a === b ? String(a) : a + " → " + b; }
+    function lineaGpu(g) {
+      if (!g || !g.ini || !g.fin) return "";
+      return "GPU: geometrías " + flecha(g.ini.g, g.fin.g) + " · texturas " + flecha(g.ini.t, g.fin.t) + (g.sueloMB != null ? " · suelo " + (g.sueloFmt || "fotos") + " " + String(g.sueloMB).replace(".", ",") + " MB" : "");
+    }
+    function textoUso(u) {
+      if (!u) return "";
+      var c = u.cartulina ? "cartulina " + u.cartulina.modo + " (" + u.cartulina.origen + ")" : "", s = u.suelo ? "suelo de fotos " + (u.suelo.activo ? "sí" + (u.suelo.vr ? " (en VR)" : " (no en VR)") + (u.suelo.encendido ? " · encendido" : " · aún sin cargar") : "no") : "";
+      return [c, s].filter(Boolean).join(" · ");
+    }
+    var GUIA_VR = "Quieto, desde la llegada, mirando igual que en la toma anterior";
+    return { urlToma: urlToma, cabezaToma: cabezaToma, textoCabeza: textoCabeza, lineaGpu: lineaGpu, textoUso: textoUso, GUIA_VR: GUIA_VR, resumenReparto: resumenReparto, BIT: BIT, bits: bits, marcaLargas: marcaLargas, resumenCausas: resumenCausas, lineaCausas: lineaCausas, UMBRAL: UMBRAL, PERDIDOS_MAX: PERDIDOS_MAX, perdidosDe: perdidosDe, CALENTAMIENTO: CALENTAMIENTO, calcula: calcula, serie: serie, percentil: percentil, mediana: mediana, lineas: lineas, texto: texto, resumeUA: resumeUA, aparatoDe: aparatoDe, navegadorDe: navegadorDe, cuerpoEnvio: cuerpoEnvio, perillasLimpias: perillasLimpias };
   })();
   // [puro:fin]
 
   var medSuelta = null;   // lo que libera el componente montado
   function MedidorMotor(n) {
-    var N = 60, estado = "inactivo", tArma = 0, t0 = 0, m = null, prev = -1, nvPrev = -2, nivIni = null, cambios = [], modoIni = "", res = null, huboVisib = false, UI = null, pCola = 0, pMsT = 0, pNT = 0, pLo = 0, pProg = 0, pTex = 0, hayPrev = false, uCq = 0, largas = null, obsLargas = null, copiado = 0, tPinta = 0, envio = "";   // envio: "" | "enviando" | "ok" | "limite" | "mal"
+    var N = 60, estado = "inactivo", tArma = 0, t0 = 0, m = null, prev = -1, nvPrev = -2, nivIni = null, cambios = [], modoIni = "", res = null, huboVisib = false, UI = null, pCola = 0, pMsT = 0, pNT = 0, pLo = 0, pProg = 0, pTex = 0, hayPrev = false, uCq = 0, largas = null, obsLargas = null, copiado = 0, tPinta = 0, envio = "", gpuIni = null, cabIni;   // envio: "" | "enviando" | "ok" | "limite" | "mal"
     var CLAVE = "gemelo_mide";
     var api = { on: false, alTerminar: null };
     function contador() { return typeof Ajustes !== "undefined" && Ajustes ? Ajustes.lee("avanzado.contador") : DEPURA; }   // 33_ajustes.js se monta después: al cargar, solo ?debug
@@ -232,6 +265,14 @@
     // Q0e: ganchos de pruebas del propio motor, sin dependencia nueva: __olivosGen() (07ab) y __presencia() (38). Solo un sí/no y un número; ninguna identidad.
     function olivosGenActivos() { try { var g = window.__olivosGen ? window.__olivosGen() : null; return g ? g.estado === "activo" : undefined; } catch (e) { return undefined; } }
     function personasVisibles() { try { var p = window.__presencia ? window.__presencia() : null; return p && p.activo ? Math.max(0, Math.min(500, Math.round(Number(p.vistos) || 0))) : 0; } catch (e) { return 0; } }
+    // Q0l: renderer.info.memory (solo dos enteros) y la cabeza (VR) al empezar la ventana medida; el suelo KTX2 y la cartulina en uso
+    function memoriaGpu() { try { var mm = renderer.info.memory; return { g: mm.geometries | 0, t: mm.textures | 0 }; } catch (e) { return null; } }
+    function usoDibujo() {
+      var u = {};
+      try { u.cartulina = { modo: Materiales.cartulina.modo, origen: Materiales.cartulina.origen }; } catch (e) {}
+      try { var s = SueloFotos.resumen(); u.suelo = { activo: !!s.activo, vr: !!s.vr, encendido: !!s.encendido, mb: s.gpuMB, fmt: s.cargado === "ktx2" || s.formato === "ktx2" ? "KTX2" : "WebP" }; } catch (e) {}
+      return u;
+    }
     function banderas() {
       var out = [], r = /[?&]([\w-]+)(?:=([\w.-]*))?/g, x;
       while ((x = r.exec(location.search))) if (/^(escena|olivos?|arbsc|tiles?|lod|calidad)$/.test(x[1])) out.push(x[1] + (x[2] != null ? "=" + x[2] : ""));
@@ -243,7 +284,7 @@
       empieza(performance.now());
     }
     function empieza(tIni) {
-      t0 = tIni; m = { t: [], ms: [], js: [], rd: [], oc: [], ll: [], tr: [], cz: [], cq: [], bl: [], bn: [] }; Reparto.on = true; hayPrev = false; desobservaLargas(); largas = { fin: [], dur: [] }; observaLargas(); prev = -1; nvPrev = -2; nivIni = null; cambios = []; modoIni = modoAhora(); res = null; envio = ""; estado = "midiendo"; api.on = true; engancha();
+      t0 = tIni; m = { t: [], ms: [], js: [], rd: [], oc: [], ll: [], tr: [], cz: [], cq: [], bl: [], bn: [] }; Reparto.on = true; hayPrev = false; desobservaLargas(); largas = { fin: [], dur: [] }; observaLargas(); prev = -1; nvPrev = -2; nivIni = null; cambios = []; modoIni = modoAhora(); gpuIni = memoriaGpu(); cabIni = undefined; res = null; envio = ""; estado = "midiendo"; api.on = true; engancha();
       if (!huboVisib) { document.addEventListener("visibilitychange", alVisibilidad); huboVisib = true; }
       ui(); pinta();
       if (VRX.on) n.emite("medida:empieza");   // 29_vr.js: el panel no tapa la vista durante la medida
@@ -295,7 +336,7 @@
       // Q0f: si cambia de pantalla a VR (o al revés) a mitad, vuelve a empezar en el modo nuevo; así «Medir» en el mapa y luego entrar en VR da una medida de VR entera
       if (modoIni !== modoAhora()) { empieza(tIni); return; }
       var t = (tIni - t0) / 1000, nv = nivelAhora();
-      if (t >= MideEst.CALENTAMIENTO && nivIni === null) nivIni = nv === null ? -1 : nv;
+      if (t >= MideEst.CALENTAMIENTO && nivIni === null) { nivIni = nv === null ? -1 : nv; if (modoIni === "VR") cabIni = MideEst.cabezaToma(VRX.cab, VRX.mira); }   // Q0l: la cabeza al empezar la ventana
       if (nvPrev !== -2 && nv !== nvPrev && t >= MideEst.CALENTAMIENTO) cambios.push({ t: t - MideEst.CALENTAMIENTO, de: nvPrev === null ? -1 : nvPrev, a: nv === null ? -1 : nv });
       nvPrev = nv;
       var oculto = document.hidden && !renderer.xr.isPresenting, cz = causasDelFotograma();
@@ -341,6 +382,10 @@
       try { var h = XrPerillas.efectivas && XrPerillas.efectivas.hz; if (typeof h === "number" && h > 0) return h; } catch (e) {}
       return null;
     }
+    function gpuFin() {
+      var f = memoriaGpu(), u = usoDibujo(), s = u.suelo && u.suelo.encendido && u.suelo.mb != null ? u.suelo : null;
+      return gpuIni && f ? { ini: gpuIni, fin: f, sueloMB: s ? s.mb : null, sueloFmt: s ? s.fmt : null } : null;
+    }
     function termina() {
       Reparto.on = false;
       desobservaLargas();
@@ -351,6 +396,7 @@
         version: 1, fecha: new Date().toISOString().slice(0, 19) + "Z", aparato: { modo: modoIni, ua: MideEst.resumeUA(Aparato.agente()) },
         escena: Escena3D.resumen().estado === "sin" ? "sin" : "tiles", banderas: banderas(), duracion: N, calentamiento: MideEst.CALENTAMIENTO, est: e, largas: largasR,
         nivel: modoIni === "VR" ? { ini: nivIni === null ? -1 : nivIni, fin: nv === null ? -1 : nv, cambios: cambios } : null, olivos: [a.nivel0, a.nivel1, a.nivel2], avisos: avisos, perillas: modoIni === "VR" ? XrPerillas.linea() : "", dibujo: lineaDibujo(),
+        url: MideEst.urlToma(location.search), uso: usoDibujo(), gpu: gpuFin(), cabeza: modoIni === "VR" ? (cabIni || null) : undefined,
         multiview: sondaMultiview(), olivosGen: olivosGenActivos(), personas: personasVisibles()   // Q0e: con qué se dibujó (si los olivos generados estaban y cuánta gente se veía)
       };
       estado = "listo"; api.on = false; largas = null; desengancha(); prev = -1;
@@ -433,6 +479,7 @@
     n.on("medida:muestra", function (d) { api.muestra(!!(d && d.on)); });
     // la fila «Medida» de la pestaña Comodidad del panel de VR (solo con ?debug), que 29_vr.js ya no conoce
     n.limpia(PanelVR.filas("comodidad", { id: "multiview", orden: 55, alto: 88, visible: function () { return DEPURA; }, pinta: function (cx, y, W, h) { h.fila(sondaMultiview().replace(/^multiview: (sí|no).*?(?:en uso (sí|no))?$/, function (t, a, u) { return "Multiview: " + a + (u ? " · en uso " + u : ""); }), y); } }));   // F0: sí/no; el detalle va en el contador y en el informe
+    n.limpia(PanelVR.filas("comodidad", { id: "mideGuia", orden: 49, alto: 60, visible: function () { return DEPURA; }, pinta: function (cx, y, W, h) { h.fila(MideEst.GUIA_VR, y); } }));   // Q0l: la guía antes de pulsar «Medir»
     n.limpia(PanelVR.filas("comodidad", { id: "mide", orden: 50, alto: 88, visible: function () { return DEPURA; }, pinta: function (cx, y, W, h) { h.fila("Medida", y); },
       botones: function (b, y) { b("mide", 420, y, 470, 64, "Medir " + N + " s", function () { inicia(); }, estado === "midiendo"); } }));
     var param = /[?&]mide(?:=(\d+))?(?=&|$)/.exec(location.search);
@@ -446,7 +493,7 @@
   }
   Componentes.registra({
     id: "medidor-fotogramas", version: 1,
-    consume: ["Aparato", "Cola", "Generados", "visor", "renderer", "modo", "D", "DEPURA", "ConfigPuro", "Ajustes", "Arboles", "Escena3D", "VRX", "PanelVR", "XrPerillas", "Render", "Materiales", "Reparto"],
+    consume: ["Aparato", "Cola", "Generados", "visor", "renderer", "modo", "D", "DEPURA", "ConfigPuro", "Ajustes", "Arboles", "Escena3D", "VRX", "PanelVR", "XrPerillas", "Render", "Materiales", "Reparto", "SueloFotos"],
     expone: [],
     eventos: { escucha: ["cuadro:fin", "depura:lineas", "medida:estado", "medida:envia", "medida:inicia", "medida:muestra"], emite: ["medida:empieza", "medida:envio", "medida:fin"] },
     bandera: { defecto: true, url: "medidor" },

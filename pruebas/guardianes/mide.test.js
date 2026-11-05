@@ -507,3 +507,43 @@ test("perdidos: una medida guardada de antes (sin «perdidos») sigue dando text
   assert.deepStrictEqual([c.perdidos_n, c.vsync_perdidos], [9, 11]);
   for (const k of ["perdidos_n", "vsync_perdidos"]) { assert.ok(k in esquema.properties, k); assert.ok(!esquema.required.includes(k)); }
 });
+
+// ---- Q0l: la tarjeta dice qué toma es y con qué se dibujó
+test("Q0l: la URL de la toma deja solo parametros conocidos del motor y valores cortos (sin tokens ni datos personales)", () => {
+  assert.strictEqual(E.urlToma("?debug&mide=60&xrescala=0.8&cartulina=silueta"), "?debug&mide=60&xrescala=0.8&cartulina=silueta");
+  assert.strictEqual(E.urlToma("?api=https://x.es&yo=Pepe&chat=1&token=abc&debug&suelo=fotos&sueloVR=1"), "?debug&suelo=fotos&sueloVR=1");
+  assert.strictEqual(E.urlToma("?tileset=http://a/b&olivos=" + "x".repeat(40) + "&mide=60"), "?mide=60", "valores largos o con simbolos fuera");
+  assert.strictEqual(E.urlToma(""), "(sin parametros)");
+  assert.strictEqual(E.urlToma("?oficial=ab12&n=3"), "(sin parametros)");
+});
+test("Q0l: la cabeza se redondea a metros y a 15 grados", () => {
+  assert.deepStrictEqual(E.cabezaToma({ x: 12.4, z: -45.6 }, { x: 1, z: 0 }), { x: 12, z: -46, rumbo: 90 });
+  assert.deepStrictEqual(E.cabezaToma({ x: 0, z: 0 }, { x: 0, z: -1 }), { x: 0, z: 0, rumbo: 0 });
+  assert.strictEqual(E.cabezaToma({ x: 0, z: 0 }, { x: -0.3, z: -1 }).rumbo, 345, "−16,7° cae en 345, no en negativo");
+  assert.strictEqual(E.cabezaToma({ x: 0, z: 0 }, { x: Math.sin(0.13), z: -Math.cos(0.13) }).rumbo, 0, "7,4° cae en 0");
+  assert.strictEqual(E.cabezaToma(null, { x: 0, z: -1 }), null);
+  assert.strictEqual(E.cabezaToma({ x: NaN, z: 0 }, { x: 0, z: -1 }), null);
+  assert.strictEqual(E.textoCabeza({ x: 12, z: -46, rumbo: 90 }), "cabeza x 12 z -46 m, rumbo 90°");
+});
+test("Q0l: la tarjeta de VR lleva URL, cartulina, suelo, GPU y cabeza; la de pantalla no lleva cabeza", () => {
+  const extra = { url: "?debug&mide=60&cartulina=silueta", uso: { cartulina: { modo: "silueta", origen: "url" }, suelo: { activo: true, vr: true, encendido: true } }, gpu: { ini: { g: 210, t: 80 }, fin: { g: 214, t: 80 }, sueloMB: 21.3, sueloFmt: "KTX2" }, cabeza: { x: 12, z: -46, rumbo: 90 }, dibujo: "Dibujo: tono neutro (defecto) · alphaToCoverage no (defecto)" };
+  const vr = E.lineas(conDibujo("VR", 400, extra), true).join("\n");
+  assert.match(vr, /Escena: tiles · \?debug&mide=60&cartulina=silueta/);
+  assert.match(vr, /Aparato: VR · cabeza x 12 z -46 m, rumbo 90°/);
+  assert.match(vr, /Dibujo: .* · cartulina silueta \(url\) · suelo de fotos sí \(en VR\) · encendido/);
+  assert.match(vr, /GPU: geometrías 210 → 214 · texturas 80 · suelo KTX2 21,3 MB/);
+  const largo = E.texto(conDibujo("VR", 400, extra));
+  assert.match(largo, /URL de la toma: \?debug&mide=60&cartulina=silueta/);
+  assert.match(largo, /Cabeza al empezar .*cabeza x 12 z -46 m, rumbo 90°.*Quieto, desde la llegada, mirando igual que en la toma anterior/);
+  const pant = E.texto(conDibujo("pantalla", 400, Object.assign({}, extra, { cabeza: undefined })));
+  assert.doesNotMatch(pant, /Cabeza al empezar/);
+  assert.doesNotMatch(E.texto(conDibujo("VR", 400)), /GPU:|URL de la toma|Cabeza al empezar/, "una medida vieja sin estos campos sale como siempre");
+  assert.match(E.texto(conDibujo("VR", 400, { cabeza: null })), /cabeza n\/d/);
+});
+test("Q0l: nada de lo nuevo viaja a la api (el cuerpo del envio no cambia)", () => {
+  const p = E.cuerpoEnvio(conDibujo("VR", 400, { url: "?debug", gpu: { ini: { g: 1, t: 1 }, fin: { g: 1, t: 1 } }, cabeza: { x: 1, z: 1, rumbo: 0 }, uso: {} }), { ua: UA_QUEST, finca: "f", modo: "m", version: "1" });
+  assert.ok(p && !("url" in p) && !("gpu" in p) && !("cabeza" in p) && !("uso" in p));
+});
+test("Q0l: el motor pone la guia en el panel y consume SueloFotos", () => {
+  assert.match(FUENTE, /id: "mideGuia"/); assert.match(FUENTE, /"Reparto", "SueloFotos"\]/);
+});
