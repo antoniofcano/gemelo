@@ -55,3 +55,6 @@ apps/web/dist-oficina/
 .vscode/
 apps/web/dist-vr/
 apps/web/dist-publicar/
+# EV-1k: los KTX2 del suelo de fotos no se versionan (Antonio, 2026-11-05): los genera el build (apps/web/herramientas/suelo_ktx2.mjs)
+apps/web/public/suelo/*.ktx2
+apps/web/public/suelo/ktx2.json

@@ -6,7 +6,8 @@
   "description": "Cliente web del gemelo (escritorio, móvil y Meta Quest): motor de apps/web/motor/ empaquetado con Vite",
   "scripts": {
     "motor": "node herramientas/genera_motor.mjs",
-    "build": "node herramientas/genera_motor.mjs && vite build",
+    "build": "node herramientas/genera_motor.mjs && node herramientas/suelo_ktx2.mjs && vite build",
+    "suelo:ktx2": "node herramientas/suelo_ktx2.mjs",
     "dev": "node herramientas/genera_motor.mjs && vite",
     "iconos": "node herramientas/iconos.mjs",
     "build:portada": "vite build --config vite.portada.config.js",

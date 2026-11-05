@@ -10,8 +10,9 @@ const crypto = require("node:crypto"), os = require("node:os");
 
 const SU = path.join(RAIZ, "tuberia", "suelo");
 const imp = f => import(pathToFileURL(path.join(SU, f)).href);
-const HAY_SHARP = fs.existsSync(path.join(SU, "node_modules", "sharp", "package.json"));
-const sinSharp = HAY_SHARP ? false : "falta sharp en tuberia/suelo (cd tuberia/suelo && npm ci)";
+// sharp y, desde EV-1k, ktx2-encoder y ktx-parse (las tres, con versión fijada en tuberia/suelo/package.json)
+const HAY_SHARP = ["sharp", "ktx2-encoder", "ktx-parse"].every(p => fs.existsSync(path.join(SU, "node_modules", p, "package.json")));
+const sinSharp = HAY_SHARP ? false : "faltan sharp o ktx2-encoder en tuberia/suelo (cd tuberia/suelo && npm ci)";
 const sha = b => crypto.createHash("sha256").update(b).digest("hex");
 const RECETAS = JSON.parse(lee("tuberia/suelo/recetas.json"));
 
@@ -81,6 +82,28 @@ test("la tubería entera sobre fotos sintéticas: determinista, repetible, sin E
     }
     const txt = fs.readFileSync(path.join(dir, "s1", "suelo.json"), "utf8");
     assert.ok(!txt.includes(dir) && !/[A-Za-z]:[\\/]/.test(txt), "el manifiesto no lleva rutas");
+    // EV-1k: un KTX2 de array por tamaño, determinista, con una capa por nivel y la cadena de mipmaps entera, UASTC + zstd, lineal
+    const K = await imp("ktx2.mjs");
+    assert.deepStrictEqual(Object.keys(r1.manifiesto.ktx2.ficheros).sort(), ["suelo_128.ktx2", "suelo_64.ktx2"]);
+    assert.deepStrictEqual(r1.manifiesto.ktx2.ficheros, r2.manifiesto.ktx2.ficheros, "misma entrada → mismo KTX2");
+    for (const px of [128, 64]) {
+      const b = fs.readFileSync(path.join(dir, "s1", K.nombreKtx2(px))), d = K.describe(b), f = JSON.parse(fs.readFileSync(path.join(dir, "s1", "ktx2.json"), "utf8")).ficheros[K.nombreKtx2(px)];
+      assert.strictEqual(sha(b), f.sha256); assert.strictEqual(b.length, f.bytes);
+      assert.deepStrictEqual([d.ancho, d.alto, d.capas, d.caras, d.niveles], [px, px, 3, 1, 1 + Math.log2(px)], "array de 3 capas con todos sus mipmaps");
+      assert.strictEqual(d.vkFormat, 0, "Basis (VK_FORMAT_UNDEFINED): lo transcodifica el KTX2Loader");
+      assert.strictEqual(d.modeloColor, 166, "UASTC (KHR_DF_MODEL_UASTC)"); assert.strictEqual(d.supercompresion, 2, "zstd"); assert.strictEqual(d.transferencia, 1, "lineal: son factores, no colores sRGB");
+      assert.strictEqual(f.memoria_gpu_mb, Number((K.bytesGpu(px, 3, d.niveles) / 1048576).toFixed(1)));
+    }
+    assert.ok(!("ktx2" in JSON.parse(txt)), "suelo.json (versionado) no sabe nada de los KTX2: van en ktx2.json, que no se versiona");
+    // al día: la misma entrada no se rehace; una WebP cambiada (otra huella en suelo.json), sí, solo su tamaño; si falta el fichero, también
+    assert.deepStrictEqual((await K.construyeKtx2({ dir: path.join(dir, "s1") })).rehechos, [], "al día: no se rehace");
+    const fm = path.join(dir, "s1", "suelo.json"), m = JSON.parse(fs.readFileSync(fm, "utf8")); m.ficheros["ruedo_64.webp"].sha256 = "0".repeat(64); fs.writeFileSync(fm, JSON.stringify(m));
+    assert.deepStrictEqual((await K.construyeKtx2({ dir: path.join(dir, "s1") })).rehechos, [64], "cambió una WebP de 64: se rehace solo ese");
+    fs.rmSync(path.join(dir, "s1", "suelo_128.ktx2"));
+    assert.deepStrictEqual((await K.construyeKtx2({ dir: path.join(dir, "s1") })).rehechos, [128], "si falta el fichero, se rehace");
+    // lo de un tamaño que ya no está en el manifiesto sobra
+    fs.writeFileSync(path.join(dir, "s1", "suelo_1024.ktx2"), "viejo"); await K.construyeKtx2({ dir: path.join(dir, "s1") });
+    assert.deepStrictEqual(fs.readdirSync(path.join(dir, "s1")).filter(f => f.endsWith(".ktx2")).sort(), ["suelo_128.ktx2", "suelo_64.ktx2"]);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
@@ -102,4 +125,32 @@ test("lo versionado en apps/web/public/suelo/ es lo del manifiesto: clases y met
   }
   assert.ok(fs.existsSync(path.join(dir, "LICENCIA.md")));
   for (const px of RECETAS.tamanos) assert.strictEqual(P.presupuesto(px).texturaMB, man.memoria_gpu_mb[px], "memoria a " + px + " px");
+});
+
+test("EV-1k: los KTX2 no se versionan (Antonio, 2026-11-05): ninguno en lo versionado, ignorados, y el build de apps/web los genera antes de Vite con el nombre que pide el motor", () => {
+  const { ficheros } = require("./_util");
+  assert.deepStrictEqual(ficheros().filter(f => /\.ktx2$/i.test(f) || f.endsWith("public/suelo/ktx2.json")), [], "KTX2 versionados: los genera el build");
+  const ign = lee(".gitignore").split("\n").map(l => l.trim());
+  assert.ok(ign.includes("apps/web/public/suelo/*.ktx2") && ign.includes("apps/web/public/suelo/ktx2.json"), "hay que ignorar los KTX2 del suelo y su ktx2.json");
+  assert.ok(!("ktx2" in JSON.parse(lee("apps/web/public/suelo/suelo.json"))), "suelo.json (versionado) no lleva los KTX2");
+  const b = JSON.parse(lee("apps/web/package.json")).scripts.build;
+  assert.match(b, /genera_motor\.mjs && node herramientas\/suelo_ktx2\.mjs && vite build$/, "npm run build debe generar los KTX2 antes de Vite");
+  const h = lee("apps/web/herramientas/suelo_ktx2.mjs");
+  assert.ok(h.includes('"tuberia", "suelo"') && h.includes('"ktx2.mjs"') && h.includes('path.join(WEB, "public", "suelo")'), "con tuberia/suelo/ktx2.mjs y a lo público (Vite lo copia en las dos builds)");
+  const fuente = lee("apps/web/motor/04f_suelo_fotos.js"), i = fuente.indexOf("// [puro:inicio]"), f = fuente.indexOf("// [puro:fin]");
+  const P = new Function("\"use strict\";\n" + fuente.slice(i, f) + "\nreturn SueloFotosPuro;")();
+  const nombre = /export const nombreKtx2 = px => "suelo_" \+ px \+ "\.ktx2";/.test(lee("tuberia/suelo/ktx2.mjs"));
+  assert.ok(nombre && RECETAS.tamanos.every(px => P.ktx2(px) === "suelo/suelo_" + px + ".ktx2"), "la tubería escribe el nombre que pide el motor");
+});
+
+test("EV-1k: sin las dependencias de tuberia/suelo, el paso del build avisa y sigue (sale con 0) sin KTX2", () => {
+  const { ejecuta } = require("./_util"), falsa = fs.mkdtempSync(path.join(os.tmpdir(), "tuberia-sin-deps-"));
+  const paso = path.join(RAIZ, "apps", "web", "herramientas", "suelo_ktx2.mjs");
+  try {
+    fs.writeFileSync(path.join(falsa, "ktx2.mjs"), "throw new Error('no debería importarse');\n");
+    const r = ejecuta(process.execPath, [paso], { env: Object.assign({}, process.env, { GEMELO_SUELO_TUBERIA: falsa }) });
+    assert.strictEqual(r.status, 0, r.stdout + r.stderr); assert.match(r.stderr, /aviso \(EV-1k\).*faltan sharp, ktx2-encoder, ktx-parse.*WebP/);
+    const r0 = ejecuta(process.execPath, [paso], { env: Object.assign({}, process.env, { GEMELO_SUELO_KTX2: "0" }) });
+    assert.strictEqual(r0.status, 0, r0.stdout + r0.stderr); assert.match(r0.stderr, /GEMELO_SUELO_KTX2=0/);
+  } finally { fs.rmSync(falsa, { recursive: true, force: true }); }
 });
