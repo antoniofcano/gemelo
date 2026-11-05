@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Medida por componente (C11) y por objeto de los olivos generados (O2), por el banco con el fixture sintético y SwiftShader (recuentos, no fps; tabla en MEDIDAS): solo `suelo-fondo` y `marcadores-lidar` dibujan en las escenas fijas; los olivos generados añaden ≈ +100 k triángulos y +24 MB de heap. Arreglo: `Generados.piezas()` contaba mal las mallas fundidas sin índice.
 - Panel de VR: cuarta pestaña «Info» con la agenda, sus avisos y «Aves del mes» (3 aves probables y «y X más», deducido, la nota de que no se han observado en la finca y las licencias; sin datos no sale). La pestaña Mundo ya desbordaba (790-920 px frente a 683 útiles) y queda en 588; botones de pestaña de 224 px. Guardián nuevo de alturas del panel. En Chrome y en el Quest, no probado. (EV-1g)
 - Aves probables del mes: la consulta a GBIF deja fuera los registros de máquina (`basisOfRecord` MACHINE_OBSERVATION, donde va la telemetría GPS de aves marcadas, que inflaba esas especies); se pierden también las grabadoras acústicas. Hay que regenerar `biodiversidad.json` para que se note; sin verificar con el cuadro real.
 - Avisos del campo por canal (decisión de Antonio, 2026-11-05): la lluvia y la helada salen también por correo; la recogida y la fenología se quedan en la campana del mundo; como mucho uno por semana en cada canal (migración 0027, `GEMELO_AVISOS_CAMPO_CORREO`).
