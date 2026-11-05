@@ -1,6 +1,6 @@
 # ADR-0032 — Voz por cercanía en la visita libre (F3k)
 
-- **Estado:** Propuesto (2026-11-05, tarea F3k-0; lo cierra Antonio punto por punto, decisiones 205-213, y no se escribe código del producto hasta que la asesoría vea la [EIPD-VOZ §13](../sistema/EIPD-VOZ.md#13-voz-por-cercanía-f3k-borrador))
+- **Estado:** Aceptado (2026-11-05, Antonio): **213** «construir ya», en paralelo a la asesoría; **210** V1 (apagada por defecto, se activa por cuenta en Configuración); **211** aviso propio (ámbito `cercania`). **Provisionales** con la opción recomendada hasta que las cierre: **205** K4 (corro con aceptación, hasta 5 hogares), **206** las distancias de b), **207** P1 (pulsar, cierre por silencio de 60 s), **208** M1 (declaración de mayor de edad en el aviso), **209** Mo1 y **212** h) (plazos como la 164). Hasta cerrar la EIPD, solo cuentas de prueba (decisión 41) y un **interruptor general** de la oficina, **apagado** por defecto. F3k-1 (api y contrato `livekit-roles` v8) hecho en código el 2026-11-05. (Propuesto el mismo día, tarea F3k-0.)
 - **Fecha:** 2026-11-05
 
 ## Contexto
