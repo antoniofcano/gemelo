@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- El mundo de hoy (EV-3a): `GET /api/mundo/hoy` (fecha y hora de Madrid, tiempo de Vigía por días, fenología y trabajo de la semana agregados por parcela y finca, lo que marca Vigía y avisos del campo con frases fijas que nunca autorizan tratamientos; siempre 200); el motor arranca la estación en el día real y enseña «Hoy en el campo» con procedencia y frescura; la fuente automática de avisos por correo queda preparada y apagada (`GEMELO_AVISOS_CAMPO=no`). OlivarTrack y Vigía siguen apagados en el VPS.
 - VR: el tileset 3D respeta el tope de triángulos de cada nivel (Q0k): un lazo con histéresis sube su error (×1,25 por paso, hasta 128 px) cuando pasa del tope y lo baja cuando sobra; `?xrtri=0` lo apaga, `?xrtri=N` y `?xrtrierr=` lo ajustan; la línea VR de `?debug` y del medidor dice los triángulos del tileset y el error en uso. Pantalla y móvil sin cambios. No probado en el Quest.
 - Medidor: la tarjeta dice qué toma es y con qué se dibujó: la URL (solo parámetros conocidos del motor), la cartulina y el suelo de fotos en uso, la memoria de GPU y, en VR, la posición y el rumbo de la cabeza al empezar, con la guía «quieto, desde la llegada, mirando igual» junto a «Medir» (Q0l). La api no recibe nada nuevo.
 - La boca de los avatares VRM se mueve cuando esa persona habla: expresión `aa` a 6-8 Hz, ilustrativa, escalada por el nivel de `voz:habla`; solo cerca (12 m; en VR, 8 m y escalones 0-1); no se analiza ni se graba audio (EV-3b).
