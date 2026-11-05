@@ -115,6 +115,8 @@ test("e2e F3k-5: corros con tres Chrome y micrófono simulado (sin aceptar no se
         assert.deepStrictEqual(l.map(x => x.identity).sort(), [idA, idB].sort(), "la misma identidad que en la sala libre; C no está");
         await hasta(async () => await A.pg.isVisible("#hablaBoton"), 15000, "el botón Hablar de A");
         await A.pg.click("#hablaBoton");
+        // F3l (sin ejecutar: lo mide el banco): la primera vez sale la tarjeta «tu micrófono, en pocas palabras»; «Entendido» y otro «Hablar» abren el micro
+        if (await A.pg.isVisible("#hablaTarjetaOk")) { await A.pg.click("#hablaTarjetaOk"); await A.pg.click("#hablaBoton"); }
         await hasta(async () => (await A.voz()).micro === "abierto", 15000, "el micro de A abierto");
         const vs = await hasta(async () => { const v = await B.voz("voces"); return v.length === 1 && v; }, 20000, "B recibe la pista de A");
         assert.strictEqual(vs[0].identidad, idA);
