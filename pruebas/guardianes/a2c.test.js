@@ -1,6 +1,6 @@
 "use strict";
 // AG-2.1: ?a2c=0|1 y Materiales.recorte (apps/web/motor/02i_materiales.js), en Node y con el three de verdad (pantalla) y, si está, super-three (VR).
-//   · la perilla: defecto 1; 0 apaga; un valor raro avisa y se queda en 1; sin MSAA (?xraa=0) no se enciende nunca;
+//   · la perilla: defecto APAGADO (las copas de cerca salían blanquecinas); 1 enciende; un valor raro avisa y se queda como estaba; el ajuste «vista.a2c» enciende; orden URL > ajuste > apagado; sin MSAA (?xraa=0) no se enciende nunca;
 //   · recorte(): solo toca materiales con alphaTest > 0 y nunca los de sombra (MeshDepthMaterial); conserva el umbral; recortes(false/true) los apaga y enciende;
 //   · cada sitio de recorte alfa del motor pasa por la fábrica (fuentes) y el contexto sigue creándose con antialias: XrPerillas.aa.
 // No dibuja nada: cómo se ve lo dan las capturas (pruebas/a2c_capturas.js) y, en el Quest o el iPhone, nadie todavía (no probado).
@@ -18,25 +18,40 @@ test.before(async () => {
 });
 const plano = x => JSON.parse(JSON.stringify(x));
 
-test("la perilla: defecto 1, 0 apaga, lo raro avisa, sin MSAA nunca", () => {
-  const { Materiales } = fabrica(TH.pantalla), E = (q, m) => plano(Materiales.eligeA2c(q, m));
-  for (const q of ["", "?debug", undefined, null, "?a2c=1", "?x=1&a2c=1&y=2"]) assert.strictEqual(E(q).activo, true, String(q));
+test("la perilla: defecto apagado, 1 enciende, lo raro avisa, sin MSAA nunca", () => {
+  const { Materiales } = fabrica(TH.pantalla), E = (q, m, aj) => plano(Materiales.eligeA2c(q, m, aj));
+  for (const q of ["", "?debug", undefined, null]) { assert.strictEqual(E(q).activo, false, String(q)); assert.strictEqual(E(q).origen, "defecto"); }
+  for (const q of ["?a2c=1", "?x=1&a2c=1&y=2"]) { assert.strictEqual(E(q).activo, true, String(q)); assert.strictEqual(E(q).origen, "url"); }
   assert.strictEqual(E("?a2c=0").activo, false);
   assert.strictEqual(E("?a=1&a2c=0&b=2").activo, false);
   const raro = E("?a2c=si");
-  assert.strictEqual(raro.activo, true); assert.match(raro.advertencia, /solo vale 0 o 1/);
+  assert.strictEqual(raro.activo, false); assert.match(raro.advertencia, /solo vale 0 o 1/);
   const sin = E("?a2c=1", false);
   assert.strictEqual(sin.activo, false); assert.match(sin.motivo, /sin MSAA/);
   assert.strictEqual(E("", false).activo, false, "sin MSAA no se enciende ni por defecto");
-  assert.strictEqual(E("", true).activo, true);
-  assert.strictEqual(Materiales.a2c.activo, true, "en la fábrica sin XrPerillas (Node) se supone MSAA, el defecto de 02f");
+  assert.strictEqual(E("", true, true).activo, true, "el ajuste lo enciende");
+  assert.strictEqual(E("", true, true).origen, "ajuste");
+  assert.strictEqual(E("", true, false).activo, false); assert.strictEqual(E("", true, undefined).activo, false);
+  // orden de mando: la URL, luego el ajuste, luego apagado
+  assert.strictEqual(E("?a2c=0", true, true).activo, false, "la URL apaga aunque el ajuste encienda"); assert.strictEqual(E("?a2c=0", true, true).origen, "url");
+  assert.strictEqual(E("?a2c=1", true, false).activo, true, "la URL enciende aunque el ajuste esté apagado");
+  assert.strictEqual(E("?a2c=si", true, true).activo, true, "un valor raro cae al ajuste"); assert.match(E("?a2c=si", true, true).advertencia, /el ajuste/);
+  assert.strictEqual(E("", false, true).activo, false, "el ajuste tampoco enciende sin MSAA");
+  assert.strictEqual(Materiales.a2c.activo, false, "en la fábrica (Node, sin localStorage) el defecto es apagado");
+});
+
+test("el ajuste «vista.a2c» está en el esquema (apagado) y 02i lo lee de localStorage una vez, con try/catch", () => {
+  assert.match(lee("apps/web/motor/33_ajustes.js"), /"vista\.a2c": bool\(false\)/);
+  const m = lee("apps/web/motor/02i_materiales.js");
+  assert.match(m, /function ajusteGuardado\(clave\) \{ try \{ var s = window\.localStorage\.getItem\("gemelo\.ajustes\." \+ clave\)[^}]*\} catch \(e\)/);
+  assert.match(m, /ajusteGuardado\("vista\.a2c"\)/);
 });
 
 for (const b of ["pantalla", "vr"]) {
   test("recorte() y recortes() (build " + b + ")", (t) => {
     if (!TH[b]) return t.skip("no hay " + LIB[b] + " instalado");
     const T = TH[b];
-    for (const [q, esperado] of [["", true], ["?a2c=1", true], ["?a2c=0", false]]) {
+    for (const [q, esperado] of [["", false], ["?a2c=1", true], ["?a2c=0", false]]) {
       const { Materiales } = fabrica(T, { busqueda: q });
       const hoja = Materiales.recorte(new T.MeshLambertMaterial({ alphaTest: 0.42, side: T.DoubleSide }));
       const pts = Materiales.recorte(new T.PointsMaterial({ alphaTest: 0.4 }));
