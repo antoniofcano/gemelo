@@ -672,6 +672,7 @@ Medido por Antonio en un Quest 3 real (Quest Browser 154, build VR, multiview en
 | Toma | URL (además de `?debug&mide=60`) | p95 (ms) | perdidos (> 20,8 ms) | JS p95 | render() p95 | llamadas | triángulos |
 |---|---|---|---|---|---|---|---|
 | 1 · base | — | (sin cabecera) | — | 9,8 | 5,8 | 99 | 198 k |
+| 1 · base, repetida | — | 16,1 | 1,7 % | 10,1 | 5,4 | 97 | 208 k |
 | 2 | `xrescala=0.8` | 16,5 | 2,1 % | 9,6 | 5,8 | 114 | 253 k |
 | 3 | `xrescala=1.2` | 17,5 | 2,5 % | 10,0 | 6,2 | 112 | 225 k |
 | 4 | `cartulina=silueta` | 15,8 | 1,6 % | 10,0 | 5,0 | 72 | 174 k |
@@ -679,6 +680,7 @@ Medido por Antonio en un Quest 3 real (Quest Browser 154, build VR, multiview en
 | 6 | `suelo=fotos&sueloVR=1` | 16,8 | 2,3 % | 10,4 | 6,2 | 114 | 216 k |
 
 Lo que se puede decir:
+- **Todas las tomas entre 15,8 y 17,5 ms de p95** (base 16,1): ninguna perilla de hoy mueve el fotograma de forma clara; frente a la séptima (18,1 ms) hay ~2 ms de mejora (multiview y controlador sin oscilar).
 - **Controlador de nivel (Q0c-b):** en las seis tomas baja 0 → 1 → 2 → 3 en unos 10 s (una vez a los 31 s) y se queda; ya no oscila.
 - **JS:** p95 de 9,6-10,4 ms; el bloque mayor es la Cola (p95 3,4-3,9 ms). Cabe en 13,9 ms: **el cuello no es el JS**.
 - **Resolución (AG-2.0):** de 0,8 a 1,2 son 2,25 veces los píxeles y el p95 sube solo 1 ms: **la resolución no es el cuello**.
