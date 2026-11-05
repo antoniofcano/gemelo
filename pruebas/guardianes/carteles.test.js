@@ -56,32 +56,58 @@ test("la linde más cercana: el punto sobre el lado y la caja que descarta lo le
   assert.ok(P.lejosDeCaja(c, 300, 0, 45) && !P.lejosDeCaja(c, 130, 0, 45));
 });
 
-test("contenido: solo nombre, alias público y datos MEDIDOS de la lista blanca, cada dato con su procedencia", () => {
-  const c = P.contenido({ nombre: "La Loma", es_mia: false }, ficha());
+const REC = { hoy: "2026-11-05" }, FUERA = { hoy: "2026-06-15" };
+test("contenido: nombre, alias público y lo medido (una línea), con su procedencia; fenología y, solo en recolección, % recogido", () => {
+  const c = P.contenido({ nombre: "La Loma", es_mia: false }, ficha(), REC);
   assert.strictEqual(c.titulo, "La Loma");
   assert.strictEqual(c.alias, "Hogar visible como «Casa Olmo»");
-  assert.strictEqual(c.datos.length, 2);
-  assert.ok(/^Superficie: 3,42 ha$/.test(c.datos[0].txt) && /^Olivos contados: 1\.?234$/.test(c.datos[1].txt), JSON.stringify(c.datos));
-  assert.ok(/medida/.test(c.datos[0].de) && /medido · LiDAR PNOA 2024/.test(c.datos[1].de), JSON.stringify(c.datos));
+  assert.strictEqual(c.datos.length, 2, JSON.stringify(c.datos));
+  assert.ok(/^3,42 ha · 1\.?234 olivos$/.test(c.datos[0].txt) && /^medido · linde y LiDAR PNOA 2024$/.test(c.datos[0].de), JSON.stringify(c.datos));
+  assert.strictEqual(c.datos[1].txt, "Maduración · 40 % recogido");
+  assert.strictEqual(c.datos[1].de, "OlivarTrack · leído 1-nov-2026", "la procedencia que trae la ficha (datos_de)");
   c.datos.forEach(d => assert.ok(d.de.length > 3, "todo dato lleva procedencia"));
-  assert.strictEqual(P.contenido({ nombre: "La Loma", es_mia: true }, ficha()).alias, "");
-  assert.deepStrictEqual(P.contenido({ nombre: "La Loma", es_mia: true }, null).datos, []);
-  assert.strictEqual(P.contenido({ nombre: "La Loma" }, ficha({ olivos: { lidar: { n: 5, fuente: "x", naturaleza: "declarado" }, declarado: { n: 9, fuente: "y", naturaleza: "declarado" } } })).datos.length, 1, "un conteo que no es «medido» no entra");
+  assert.strictEqual(P.contenido({ nombre: "La Loma", es_mia: true }, ficha(), REC).alias, "");
+  assert.deepStrictEqual(P.contenido({ nombre: "La Loma", es_mia: true }, null, REC).datos, []);
+  const solo = P.contenido({ nombre: "La Loma" }, ficha({ olivos: { lidar: { n: 5, fuente: "x", naturaleza: "declarado" }, declarado: { n: 9, fuente: "y", naturaleza: "declarado" } } }), REC);
+  assert.ok(!/olivos/.test(solo.datos[0].txt) && /^Superficie/.test(solo.datos[0].txt), "un conteo que no es «medido» no entra");
   assert.strictEqual(P.contenido({ nombre: "La Loma" }, ficha({ alias: null })).alias, "");
   assert.strictEqual(P.contenido({}, null).titulo, "Haza");
+});
+
+test("fenología y % recogido: la fenología si la ficha la trae; el % solo en recolección y solo con valor", () => {
+  const sin = P.contenido({ nombre: "A" }, ficha({ fenologia: [] }), FUERA);
+  assert.strictEqual(sin.datos.length, 1, "sin fenología y fuera de recolección, solo lo medido");
+  const flor = P.contenido({ nombre: "A" }, ficha({ fenologia: [{ fecha: "2026-05-01", bbch: 5 }, { fecha: "2026-05-20", bbch: 65 }] }), FUERA);
+  assert.strictEqual(flor.datos[1].txt, "En flor", "la fenología más reciente; fuera de recolección no hay %");
+  assert.ok(!/recogido|%/.test(textos(flor)));
+  [[10, "Brotación"], [55, "Botón floral"], [75, "Cuajado"], [82, "Envero"], [89, "Maduración"], [0, "Reposo"]].forEach(([b, t]) => assert.strictEqual(P.fenologia(b), t));
+  assert.strictEqual(P.contenido({ nombre: "A" }, ficha({ avance: { pct: 40 } }), REC).datos[1].txt, "Maduración · 40 % recogido");
+  assert.strictEqual(P.contenido({ nombre: "A" }, ficha({ avance: { pct: 0 } }), REC).datos[1].txt, "Maduración · 0 % recogido", "un 0 con valor es un valor");
+  assert.strictEqual(P.contenido({ nombre: "A" }, ficha({ avance: { pct: null } }), REC).datos[1].txt, "Maduración", "sin valor no se enseña");
+  assert.strictEqual(P.contenido({ nombre: "A" }, ficha({ fenologia: [], avance: { pct: 60 } }), REC).datos[1].txt, "60 % recogido");
+  assert.strictEqual(P.contenido({ nombre: "A" }, ficha({ fenologia: [], avance: { pct: null } }), REC).datos.length, 1);
+  assert.strictEqual(P.contenido({ nombre: "A" }, ficha(), null).datos[1].txt, "Maduración", "sin contexto no hay recolección");
+  assert.ok(P.recoleccion("2026-10-01") && P.recoleccion("2027-01-31") && !P.recoleccion("2026-09-30") && !P.recoleccion("2026-02-01") && !P.recoleccion(undefined));
+  assert.ok(/^OlivarTrack · leído 5-dic-2026$/.test(P.contenido({ nombre: "A" }, ficha({ datos_de: "2026-12-05T08:00:00Z" }), REC).datos[1].de));
 });
 
 test("guardián: nada fuera de la lista blanca llega a un cartel, venga lo que venga de la api", () => {
   [ficha(), ficha({ es_mia: true })].forEach(f => {
     [true, false].forEach(mia => {
-      const c = P.contenido({ nombre: "La Loma", es_mia: mia }, f), todo = textos(c) + P.firma(c) + JSON.stringify(P.maqueta(c, medir).bloques);
+      [REC, FUERA].forEach(ctx => {
+      const c = P.contenido({ nombre: "La Loma", es_mia: mia }, f, ctx), todo = textos(c) + P.firma(c) + JSON.stringify(P.maqueta(c, medir).bloques);
       PROHIBIDO.forEach(p => assert.ok(todo.indexOf(p) < 0, "no debe salir " + p));
-      ["tratamiento", "fenolog", "analítica", "Recogido", "NDVI", "kilos", "titular", "declar", "BBCH"].forEach(p => assert.ok(!new RegExp(p, "i").test(todo), "no debe salir «" + p + "»"));
+      ["tratamiento", "fenolog", "analítica", "Recogido:", "NDVI", "kilos", "titular", "declar", "BBCH", "2026-10-01", "1-oct", "plazo"].forEach(p => assert.ok(!new RegExp(p, "i").test(todo), "no debe salir «" + p + "»"));
+      });
     });
   });
   const leidas = new Set(), prox = new Proxy(ficha(), { get(o, k) { leidas.add(String(k)); return o[k]; } });
-  P.contenido({ nombre: "N", es_mia: false }, prox);
-  assert.deepStrictEqual([...leidas].sort(), ["alias", "olivos", "superficie_ha"].sort());
+  P.contenido({ nombre: "N", es_mia: false }, prox, REC);
+  assert.deepStrictEqual([...leidas].sort(), ["alias", "avance", "datos_de", "fenologia", "olivos", "superficie_ha"].sort(), "solo estos campos de la ficha");
+  const l2 = new Set(); P.contenido({ nombre: "N" }, new Proxy(ficha(), { get(o, k) { l2.add(String(k)); return o[k]; } }), FUERA);
+  assert.ok(!l2.has("avance"), "fuera de recolección ni se mira el avance");
+  const lav = new Set(); P.contenido({ nombre: "N" }, ficha({ avance: new Proxy({ pct: 3, nota: "AVANCE-SECRETO", parcelas: 4 }, { get(o, k) { lav.add(String(k)); return o[k]; } }) }), REC);
+  assert.deepStrictEqual([...lav].sort(), ["pct"], "del avance, solo el porcentaje");
   const ol = new Set(), prox2 = new Proxy(ficha().olivos.lidar, { get(o, k) { ol.add(String(k)); return o[k]; } });
   P.contenido({ nombre: "N" }, { olivos: { lidar: prox2 }, superficie_ha: 1 });
   assert.deepStrictEqual([...ol].sort(), ["fuente", "n", "naturaleza"]);
@@ -90,19 +116,32 @@ test("guardián: nada fuera de la lista blanca llega a un cartel, venga lo que v
   assert.strictEqual(P.contenido({ nombre: "A\u0000B\n<b>C" }, null).titulo, "A B <b>C");
 });
 
-test("el tablón: nombre de la finca y bienvenida neutra, sin datos de nadie", () => {
+test("el tablón: «Club La Linde» y la finca, hazas y olivos medidos, la época con su procedencia; «Hoy en el olivar» reservada y sin mostrar", () => {
   assert.strictEqual(P.nombreFinca(undefined, "hituelo"), "Hituelo"); assert.strictEqual(P.nombreFinca("Mi finca", "hituelo"), "Mi finca"); assert.strictEqual(P.nombreFinca(null, null), "La finca");
   assert.strictEqual(P.nombreFinca(null, "cerro_velasco"), "Cerro velasco");
-  const t = P.tablon("Hituelo"), m = P.maqueta(t, medir), todo = textos(t);
-  assert.ok(/Bienvenida/.test(todo) && /medido, deducido o ilustrativo/.test(todo)); assert.ok(!/deslinde/.test(m.bloques.map(b => b.texto).join(" ")), "sin el pie de las lindes");
+  const ctx = { hazas: 12, olivos: 4321, hoy: "2026-11-05", bbch: 82, origen: "calendario típico, sin observaciones que lo ajusten" };
+  const t = P.tablon("Hituelo", ctx), m = P.maqueta(t, medir), todo = textos(t), pintado = m.bloques.map(b => b.texto).join(" | ");
+  assert.strictEqual(t.titulo, "Club La Linde"); assert.strictEqual(t.alias, "Hituelo");
+  assert.ok(/^12 hazas · 4\.?321 olivos$/.test(t.datos[0].txt), t.datos[0].txt); assert.ok(/^medido/.test(t.datos[0].de));
+  assert.strictEqual(t.datos[1].txt, "Otoño: empieza el envero"); assert.strictEqual(t.datos[1].de, "ilustrativo · calendario típico");
+  assert.strictEqual(P.tablon("H", Object.assign({}, ctx, { origen: "calendario típico ajustado con tu fenología (BBCH 70)" })).datos[1].de, "deducido · calendario ajustado");
+  assert.ok(Array.isArray(t.hoy) && t.hoy.length === 0, "la entrada de «Hoy en el olivar» existe y está vacía (tanda 10)");
+  assert.ok(!/Hoy en el olivar/i.test(todo + pintado + P.firma(t)), "hoy no se muestra");
+  assert.ok(!/deslinde/.test(pintado), "sin el pie de las lindes");
+  assert.deepStrictEqual(P.tablon("H", { hazas: 3, olivos: 0, hoy: "2026-01-10", bbch: 89 }).datos.map(d => d.txt), ["3 hazas", "Invierno: maduración del fruto"], "sin dato fiable de olivos, no se pone");
+  assert.deepStrictEqual(P.tablon("H", {}).datos, [], "sin nada fiable, solo el título");
+  assert.strictEqual(P.epoca("2026-04-20", 62, "").txt, "Primavera: en plena floración");
+  assert.strictEqual(P.epoca("2026-07-20", 77, "").txt, "Verano: cuaja y crece el fruto");
+  assert.strictEqual(P.epoca("x", 1, ""), null);
   assert.deepStrictEqual(P.entrada([{ centro: [100, 200] }], [0, 0, 1, 1]), [105, 198]);
   assert.deepStrictEqual(P.entrada([], [0, 100, 200, 0]), [100, 50]);
 });
 
 test("maqueta: cabe en 512 × 320, cada dato va con su procedencia y todo interlineado pasa los topes de EV2-A0 hasta la distancia máxima", () => {
   assert.ok(P.W <= 512 && P.H <= 320, "lienzo ≤ 512 × 320");
-  const casos = [P.contenido({ nombre: "La Loma", es_mia: false }, ficha()), P.contenido({ nombre: "Un nombre larguísimo de una haza que no cabe en una línea y que sigue y sigue y sigue", es_mia: true }, ficha()),
-    P.contenido({ nombre: "Sola" }, null), P.tablon("Hituelo"), P.contenido({ nombre: "Tres líneas de nombre " + "x".repeat(200) }, ficha())];
+  const tctx = { hazas: 12, olivos: 4321, hoy: "2026-11-05", bbch: 82, origen: "" };
+  const casos = [P.contenido({ nombre: "La Loma", es_mia: false }, ficha(), REC), P.contenido({ nombre: "Un nombre larguísimo de una haza que no cabe en una línea y que sigue y sigue y sigue", es_mia: true }, ficha(), REC),
+    P.contenido({ nombre: "Sola" }, null), P.tablon("Hituelo", tctx), P.tablon("Hituelo"), P.contenido({ nombre: "Tres líneas de nombre " + "x".repeat(200) }, ficha(), REC), P.contenido({ nombre: "La Loma", es_mia: true }, ficha(), FUERA)];
   casos.forEach(c => {
     const m = P.maqueta(c, medir);
     assert.ok(m.usado <= P.H, "alto usado " + m.usado);
@@ -115,6 +154,10 @@ test("maqueta: cabe en 512 × 320, cada dato va con su procedencia y todo interl
       assert.deepStrictEqual(r.fallos, [], "a " + dist + " m: " + r.fallos.join("; "));
     });
   });
+  const nDatos = (c) => P.maqueta(c, medir).bloques.filter(b => b.clase === "dato").length;
+  assert.strictEqual(nDatos(P.contenido({ nombre: "La Loma", es_mia: false }, ficha(), REC)), 2, "con alias y recolección caben los dos pares");
+  assert.strictEqual(nDatos(P.contenido({ nombre: "La Loma", es_mia: true }, ficha(), REC)), 2);
+  assert.strictEqual(nDatos(P.tablon("Hituelo", tctx)), 2, "el tablón lleva sus dos pares");
   assert.ok(P.maqueta(P.contenido({ nombre: "Sola" }, null), medir).bloques.every(b => b.clase === "titulo" || b.clase === "fuente"));
 });
 
@@ -152,10 +195,10 @@ function mundo(opts) {
   const scene = new THREE.Group(), escuchas = {};
   const n = { on: (ev, fn) => { escuchas[ev] = fn; return () => {}; }, limpia: () => {} };
   const camera = { updateMatrixWorld() {}, matrixWorld: {} }, win = {};
-  const f = new Function("THREE", "document", "window", "scene", "camera", "VRX", "texColor", "gLinde", "suelo", "exag", "Hazas", "D", "Componentes",
+  const f = new Function("THREE", "document", "window", "scene", "camera", "VRX", "texColor", "gLinde", "suelo", "exag", "Hazas", "D", "Componentes", "cIn", "EST", "bbchEn", "hoyMadrid",
     "var CartelesPuro = null;\n" + "return function (P) { CartelesPuro = P; " + MOTOR + "\nreturn CartelesMotor; };");
   const D = { parcelas: [{ centro: [0, 0] }], ext: [-500, 500, 500, -500], finca_id: "hituelo" };
-  const motor = f(THREE, document, win, scene, camera, { on: false }, t => t, { visible: true }, () => 2, 1, Hazas, D, {})(P)(n);
+  const motor = f(THREE, document, win, scene, camera, { on: false }, t => t, { visible: true }, () => 2, 1, Hazas, D, {}, new Array(4321), { origen: "" }, () => 82, () => "2026-11-05")(P)(n);
   return { motor, log, scene, escuchas, win, mueve(x, y) { cam.x = x; cam.y = y; } };
 }
 const cuadro = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]];

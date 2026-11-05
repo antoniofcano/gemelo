@@ -1,15 +1,16 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos (D), 02_mundo (Mundo, suelo), 02c_componentes (Componentes), 03_escena (lienzo, scene, camera, texColor, exag),
+// Consume: 01_datos (D), 02_mundo (Mundo, suelo, cIn), 02c_componentes (Componentes), 03_escena (lienzo, scene, camera, texColor, exag),
 //   08_marcadores (gLinde), 12_paseo (primera, entraPaseo), 13_parcelas (parcelas), 13b_hazas (Hazas), 14_historia (hist, lista),
-//   15_tiempo (lindes), 16_vida (mira), 29_vr (VRX, ficha)
+//   15_tiempo (lindes), 16_vida (mira), 23_estacion (EST, bbchEn, hoyMadrid), 29_vr (VRX, ficha)
 // Nota: Componente «carteles-haza» (EV2-A6, ADR-0023; ADR-0014): como mucho 3 carteles de haza sobre la linde (los más cercanos, con histéresis) y un tablón en la entrada, con un pool de 3+1 mallas y lienzos de 512 × 320; solo nombre y datos medidos de la lista blanca de la ficha, cada uno con su procedencia; ?carteles=0 lo apaga; el trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/carteles.test.js.
 // ===============================================================================
   // ---------- EV2-A6: carteles de haza en la linde y tablón en la entrada (ADR-0014, decisiones 12, 188 y 202; doc/sistema/COMPONENTES.md).
-  // Sobre la linde de las hazas que tienes cerca cuelga un cartel con el NOMBRE de la haza y solo datos MEDIDOS que ya están en la lista blanca de su ficha pública
-  // (contratos/haza.schema.json): superficie sobre la linde y olivos contados con LiDAR, cada uno con su procedencia en la línea de debajo. Nada de titular (salvo el
-  // alias que el hogar deja ver), kilos, tratamientos, avance ni personas: lo que no está en CartelesPuro.contenido no se pinta aunque la api lo mande. Qué más datos
-  // lleva lo decide Antonio más adelante (DECISIONS-PENDING). En la entrada de la finca, un tablón con su nombre y una bienvenida neutra.
+  // Sobre la linde de las hazas que tienes cerca cuelga un cartel con el NOMBRE de la haza (y el alias del hogar si lo deja ver) y solo lo que decidió Antonio (2026-11-05, club privado
+  // «La Linde»): superficie y olivos contados con LiDAR (medido), la fenología del momento y, SOLO en recolección (octubre a enero, [SUPUESTO]), el % recogido (los dos de OlivarTrack,
+  // con la procedencia que trae la ficha). Lo demás de la ficha (tratamientos, NDVI, olivos declarados, kilos, personas) no se pinta aunque la api lo mande: lo que no está en
+  // CartelesPuro.contenido no sale. El tablón de la entrada: «Club La Linde», el nombre de la finca, hazas y olivos contados de toda la finca (medido) y la época del olivar hoy
+  // (23_estacion.js: deducido si el calendario se ajusta con lo observado, ilustrativo si es el típico). La línea «Hoy en el olivar» está reservada y NO se muestra (tanda 10).
   //   · Como mucho MAX = 3 carteles a la vista (más el tablón): los de las hazas más cercanas (distancia a su linde), con histéresis (la que ya está se queda hasta que otra
   //     le gana por más del 20 %) y dentro de RADIO = 30 m (36 m los que ya estaban; más lejos, ni con 5,5 de escala llegaría a 1,5° por línea). Los carteles son un pool de 3 mallas y 3 lienzos de 512 × 320 creados UNA vez; al cambiar de haza se repinta el lienzo
   //     (solo si cambia su firma), nada se crea ni se libera. Al apagar el componente o quedarse sin hazas, se libera todo (geometría, materiales, texturas).
@@ -64,26 +65,57 @@
     }
     // m de lado del cartel según la distancia (m): cada línea (≥ 44 px a 4,69 mm/px) ocupa ≥ 1,5° mientras escala ≥ 0,127 × dist; con 0,14 queda margen
     function escala(dist) { return Math.max(1, Math.min(ESC_MAX, COEF * dist)); }
-    // ---- el contenido: SOLO la lista blanca (campo a campo). h = { nombre, es_mia }; f = la ficha pública de la api (o null).
-    // → { titulo, alias, es_mia, datos: [{ txt, de }] } (de = su procedencia, siempre)
-    function contenido(h, f) {
+    // ---- fechas y fenología (decisión de Antonio, 2026-11-05: la cartelería de «La Linde» lleva la fenología del momento y, solo en recolección, el % recogido)
+    var MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+    function dia(s) { var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(typeof s === "string" ? s : ""); return m ? Number(m[3]) + "-" + MESES[Number(m[2]) - 1] + "-" + m[1] : ""; }
+    function ultimo(hs) { var u = null; (Array.isArray(hs) ? hs : []).forEach(function (e) { if (e && typeof e.fecha === "string" && num(e.bbch) && e.bbch <= 99 && (!u || e.fecha > u.fecha)) u = e; }); return u; }
+    // BBCH del olivo → palabra de campo (escala BBCH: 51-59 botón floral, 60-69 floración, 70-79 fruto, 80-89 maduración); es lo que la ficha dice, solo traducido
+    function fenologia(b) { return b < 10 ? "Reposo" : b < 50 ? "Brotación" : b < 60 ? "Botón floral" : b < 70 ? "En flor" : b < 80 ? "Cuajado" : b < 85 ? "Envero" : "Maduración"; }
+    // [SUPUESTO] la campaña de recolección va de octubre a enero (calendario típico del olivar de Jaén); el cartel enseña el % recogido solo entonces. hoy = «AAAA-MM-DD»
+    function recoleccion(hoy) { var m = /^\d{4}-(\d{2})-/.exec(typeof hoy === "string" ? hoy : ""); var n = m ? Number(m[1]) : 0; return n >= 10 || n === 1; }
+    // ---- el contenido: SOLO la lista blanca (campo a campo). h = { nombre, es_mia }; f = la ficha pública de la api (o null); ctx = { hoy } (para saber si hay recolección).
+    // → { titulo, alias, es_mia, datos: [{ txt, de }] } (de = su procedencia, siempre). Hay lugar para dos pares dato + procedencia en el lienzo: lo medido va junto en una línea
+    // y lo de OlivarTrack (fenología y, solo en recolección, % recogido) en otra, con la procedencia que trae la ficha (datos_de). NO llevan fecha de tratamiento, NDVI ni olivos declarados.
+    function contenido(h, f, ctx) {
       var o = { titulo: txt(h && h.nombre, 60) || "Haza", alias: "", es_mia: !!(h && h.es_mia), datos: [] };
       if (!f || typeof f !== "object") return o;
       if (!o.es_mia && typeof f.alias === "string" && txt(f.alias, 20)) o.alias = "Hogar visible como «" + txt(f.alias, 20) + "»";
-      if (num(f.superficie_ha)) o.datos.push({ txt: "Superficie: " + n1(f.superficie_ha, 2) + " ha", de: "medida sobre la linde de la oficina" });
-      var ol = f.olivos && f.olivos.lidar;
-      if (ol && num(ol.n) && ol.naturaleza === "medido") o.datos.push({ txt: "Olivos contados: " + n1(ol.n), de: "medido · " + (txt(ol.fuente, 40) || "LiDAR") });
+      var area = num(f.superficie_ha) ? n1(f.superficie_ha, 2) + " ha" : "", ol = f.olivos && f.olivos.lidar, oli = ol && num(ol.n) && ol.naturaleza === "medido" ? n1(ol.n) + " olivos" : "";
+      var fu = oli ? txt(ol.fuente, 40) || "LiDAR" : "";
+      if (area && oli) o.datos.push({ txt: area + " · " + oli, de: "medido · linde y " + fu });
+      else if (area) o.datos.push({ txt: "Superficie: " + area, de: "medida sobre la linde de la oficina" });
+      else if (oli) o.datos.push({ txt: "Olivos contados: " + n1(ol.n), de: "medido · " + fu });
+      var fe = ultimo(f.fenologia), av = ctx && recoleccion(ctx.hoy) ? f.avance : null, porc = av && num(av.pct) && av.pct <= 100 ? av.pct : null, partes = [];   // fuera de recolección ni se mira el avance
+      if (fe) partes.push(fenologia(fe.bbch));
+      if (porc !== null) partes.push(n1(porc) + " % recogido");
+      if (partes.length) o.datos.push({ txt: partes.join(" · "), de: "OlivarTrack · leído " + (dia(f.datos_de) || dia(fe && fe.fecha) || "sin fecha") });
       return o;
     }
     function firma(c) { return JSON.stringify([c.titulo, c.alias, c.es_mia, c.datos.map(function (d) { return d.txt + "|" + d.de; })]); }
-    // el tablón: el nombre de la finca (el título de las gafas si lo hay; si no, el id con mayúscula) y una bienvenida neutra
+    // el nombre de la finca (el título de las gafas si lo hay; si no, el id con mayúscula)
     function nombreFinca(tituloVr, fincaId) {
       var t = txt(tituloVr, 40); if (t) return t;
       var s = txt(String(fincaId || "").replace(/[_-]+/g, " "), 40); return s ? s.charAt(0).toUpperCase() + s.slice(1) : "La finca";
     }
-    function tablon(nombre) {
-      return { titulo: nombre, alias: "Bienvenida a la finca", es_mia: false, tablon: true,
-        datos: [{ txt: "Gemelo digital del olivar", de: "cada dato dice si es medido, deducido o ilustrativo" }] };
+    // la época del olivar: estación del año (por el mes) y fase del ciclo (por el BBCH que da 23_estacion.js: calendario típico de Jaén, ajustado con lo observado si hay)
+    function epoca(hoy, bbch, origen) {
+      var m = /^\d{4}-(\d{2})-/.exec(typeof hoy === "string" ? hoy : ""); if (!m || !num(bbch)) return null;
+      var n = Number(m[1]), est = n === 12 || n <= 2 ? "Invierno" : n <= 5 ? "Primavera" : n <= 8 ? "Verano" : "Otoño", b = Math.round(bbch);
+      var fase = b < 10 ? "reposo del olivo" : b < 50 ? "crecen los brotes" : b < 60 ? "se forman las flores" : b < 70 ? "en plena floración" : b < 80 ? "cuaja y crece el fruto" : b < 83 ? "empieza el envero" : b < 85 ? "envero" : "maduración del fruto";
+      var aj = /ajustado/.test(String(origen || ""));
+      return { txt: est + ": " + fase, de: aj ? "deducido · calendario ajustado" : "ilustrativo · calendario típico" };
+    }
+    // el tablón de la entrada. ctx = { hazas, olivos, hoy, bbch, origen }: nº de hazas con linde y olivos contados con LiDAR de toda la finca (medidos; sin dato fiable no se pone) y la época de hoy.
+    // «Hoy en el olivar» (el trabajo de la semana de OlivarTrack, agregado y sin nombres) queda RESERVADO: hoy no se muestra; se llenará en la tanda 10.
+    function tablon(nombre, ctx) {
+      var t = { titulo: "Club La Linde", alias: nombre, es_mia: false, tablon: true, datos: [], hoy: [] };   // hoy: entradas { txt, de } de «Hoy en el olivar»; vacío = no se muestra (tanda 10)
+      ctx = ctx || {};
+      var nh = ctx.hazas > 0 ? Math.floor(ctx.hazas) : 0, no = ctx.olivos > 0 ? Math.floor(ctx.olivos) : 0;
+      if (nh && no) t.datos.push({ txt: n1(nh) + (nh === 1 ? " haza" : " hazas") + " · " + n1(no) + " olivos", de: "medido · LiDAR 2024 y lindes" });
+      else if (no) t.datos.push({ txt: n1(no) + " olivos contados", de: "medido · LiDAR 2024" });
+      else if (nh) t.datos.push({ txt: n1(nh) + (nh === 1 ? " haza" : " hazas"), de: "lindes de la oficina" });
+      var ep = epoca(ctx.hoy, ctx.bbch, ctx.origen); if (ep) t.datos.push(ep);
+      return t;
     }
     // corta un texto en líneas de ancho px (medir(texto, px, negrita) → px), a lo sumo max (la última con «…»)
     function envuelve(texto, ancho, medir, px, negrita, max) {
@@ -124,7 +156,7 @@
     // el giro (rad) de un cartel en (px, pz) para que su cara (+z) mire a la cabeza en (cx, cz)
     function mirando(cx, cz, px, pz) { return Math.atan2(cx - px, cz - pz); }
     return { MAX: MAX, RADIO: RADIO, HIST: HIST, W: W, H: H, ANCHO_M: ANCHO_M, ALTO_M: ALTO_M, LEJOS_TABLON: LEJOS_TABLON, LLAMADAS: LLAMADAS, LETRA: LETRA, LINEA: LINEA,
-      masCerca: masCerca, caja: caja, lejosDeCaja: lejosDeCaja, escoge: escoge, escala: escala, contenido: contenido, firma: firma, nombreFinca: nombreFinca, tablon: tablon,
+      masCerca: masCerca, caja: caja, lejosDeCaja: lejosDeCaja, escoge: escoge, escala: escala, contenido: contenido, firma: firma, nombreFinca: nombreFinca, tablon: tablon, epoca: epoca, fenologia: fenologia, recoleccion: recoleccion,
       envuelve: envuelve, maqueta: maqueta, coloca: coloca, entrada: entrada, mirando: mirando };
   })();
   // [puro:fin]
@@ -168,12 +200,15 @@
     }
     function repinta(s, c) { var f = P.firma(c); if (f === s.firma) return; s.firma = f; pinta(s, c); }
     function suelo3(x, y) { return suelo(x, y) * exag; }
-    // el tablón: se pinta una vez (el nombre de la finca) y se coloca en la entrada
+    // el tablón: se coloca una vez en la entrada y se repinta solo si cambia su firma (la época cambia con los días, no por fotograma)
+    function pintaTablon() {
+      var hoy = hoyMadrid();
+      repinta(tab, P.tablon(P.nombreFinca(D.titulo_vr, D.finca_id), { hazas: lins.length, olivos: cIn.length, hoy: hoy, bbch: bbchEn(hoy), origen: EST.origen }));
+    }
     function ponTablon() {
       var q = P.entrada(D.parcelas, D.ext);
       tab.p = q; tab.g = suelo3(q[0], q[1]);
-      repinta(tab, P.tablon(P.nombreFinca(D.titulo_vr, D.finca_id)));
-      st.tablon = true;
+      pintaTablon(); st.tablon = true;
     }
     function rehaz() {   // las lindes se copian UNA vez al cambiar las hazas (no cada 0,5 s)
       lins = Hazas.lindes().map(function (l) { return { id: l.id, anillos: l.anillos, caja: P.caja(l.anillos) }; });
@@ -183,7 +218,7 @@
     var gx = 0;
     function tarde() {
       if (!grupo) return;
-      var h = cabeza(), x = h.x, y = -h.z, cand = [], i;
+      var h = cabeza(), x = h.x, y = -h.z, cand = [], i, ctx = { hoy: hoyMadrid() };
       grupo.visible = gLinde.visible;
       lins.forEach(function (l) {
         if (P.lejosDeCaja(l.caja, x, y, P.RADIO * (1 + P.HIST))) return;
@@ -197,10 +232,10 @@
         var d = Hazas.datos(id); if (!d) { s.id = null; s.mesh.visible = false; continue; }
         if (!s.p) { for (var k = 0; k < cand.length; k++) if (cand[k].id === id) s.p = [cand[k].q.x, cand[k].q.y]; if (!s.p) { s.mesh.visible = false; continue; } }
         s.g = suelo3(s.p[0], s.p[1]);
-        repinta(s, P.contenido(d, d.ficha)); s.mesh.visible = true; cuenta++;
+        repinta(s, P.contenido(d, d.ficha, ctx)); s.mesh.visible = true; cuenta++;
       }
       st.carteles = cuenta;
-      if (tab && tab.p) { tab.g = suelo3(tab.p[0], tab.p[1]); tab.mesh.visible = Math.hypot(tab.p[0] - x, tab.p[1] - y) <= P.LEJOS_TABLON; }
+      if (tab && tab.p) { pintaTablon(); tab.g = suelo3(tab.p[0], tab.p[1]); tab.mesh.visible = Math.hypot(tab.p[0] - x, tab.p[1] - y) <= P.LEJOS_TABLON; }
     }
     function mundo() {
       if (!grupo || !grupo.visible) return;
@@ -223,7 +258,7 @@
   // el manifiesto (ADR-0023): lo lee el guardián pruebas/guardianes/componentes.test.js sin montar nada. ?carteles=0 lo apaga; ?carteles=1 lo enciende.
   Componentes.registra({
     id: "carteles-haza", version: 1,
-    consume: ["Hazas", "VRX", "gLinde"],
+    consume: ["Hazas", "VRX", "gLinde", "cIn", "EST", "bbchEn", "hoyMadrid"],
     expone: [],
     eventos: { escucha: ["hazas:cambia"], emite: [] },
     bandera: { defecto: true, url: "carteles" },
