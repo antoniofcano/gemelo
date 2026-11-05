@@ -62,7 +62,7 @@ test("puro: el mes es el de Madrid y la ruta sale de D.base", () => {
   assert.strictEqual(P.mesDe(ENERO), 1); assert.strictEqual(P.mesDe(JULIO), 7);
   assert.strictEqual(P.mesDe(Date.UTC(2026, 11, 31, 23, 30)), 1, "a las 00:30 de Madrid ya es enero");
   assert.strictEqual(P.mesDe(Date.UTC(2026, 2, 31, 22, 30)), 4, "con el horario de verano, 00:30 del 1 de abril");
-  assert.strictEqual(P.rutaDatos("/teselas/x/"), "/teselas/x/biodiversidad.json"); assert.strictEqual(P.rutaDatos(""), null); assert.strictEqual(P.rutaDatos(undefined), null);
+  assert.strictEqual(P.rutaDatos("/teselas/x/", "biodiversidad.json"), "/teselas/x/biodiversidad.json"); assert.strictEqual(P.rutaDatos("/teselas/x/"), null, "sin indice.biodiversidad no se pide (ni un 404)"); assert.strictEqual(P.rutaDatos("/teselas/x/", "../otro.json"), null); assert.strictEqual(P.rutaDatos("", "biodiversidad.json"), null); assert.strictEqual(P.rutaDatos(undefined), null);
 });
 
 test("puro: las probables del mes dependen de los años con registros, salen por registros y respetan el tope", () => {
@@ -99,7 +99,7 @@ function mundo(base, respuesta) {
   const doc = { createElement: nodo, createTextNode: t => ({ tag: "#text", textContent: t, hijos: [] }) };
   const api = new Function("AvesMesPuro", "D", "fetch", "Ventanas", "Hud", "document", "window", "Date",
     "\"use strict\";\n" + MOTOR + "\nreturn AvesMesMotor;")(
-    P, { base }, typeof respuesta === "undefined" ? undefined : (u, o) => { reg.fetches.push(u); return Promise.resolve(respuesta); },
+    P, { base, biodiversidad: arguments.length > 2 ? arguments[2] : "biodiversidad.json" }, typeof respuesta === "undefined" ? undefined : (u, o) => { reg.fetches.push(u); return Promise.resolve(respuesta); },
     { registra: (id, def) => { const cu = nodo("div"), v = { id, def, cu }; cu.parentNode = { hidden: true }; def.construye(cu); reg.ventanas.push(v); return () => { reg.quitadas++; }; } },
     { icono: def => { reg.iconos.push(def); return () => { reg.quitadas++; }; } }, doc, {}, class extends Date { constructor(...a) { super(...(a.length ? a : [ENERO])); } static now() { return ENERO; } });
   const n = { limpia: f => reg.limpias.push(f) };
@@ -123,6 +123,7 @@ test("motor: con servidor y datos pone icono y ventana «deducido», nivel proba
 
 test("motor: sin servidor, sin fichero, con un fichero malo o sin aves de este mes no monta nada y no lanza", async () => {
   const sin = mundo("", json(copia(EJ))); assert.strictEqual(sin.api(sin.n), null); assert.strictEqual(sin.reg.fetches.length, 0, "sin D.base ni se pide");
+  const sinMarca = mundo("/t/", json(copia(EJ)), undefined); assert.strictEqual(sinMarca.api(sinMarca.n), null); assert.strictEqual(sinMarca.reg.fetches.length, 0, "sin indice.biodiversidad ni se pide (ni un 404 en la consola)");
   const nofetch = mundo("/t/", undefined); assert.strictEqual(nofetch.api(nofetch.n), null);
   const casos = [{ status: 404, json: () => Promise.reject(new Error("no")) }, { status: 200, json: () => Promise.reject(new Error("html")) }, json({ v: 1 }), json(null),
     json(Object.assign(copia(EJ), { fuentes: [{ titulo: "x", licencias: ["CC_BY_NC_4_0"], cita: "c", registros: 1 }] })), json(Object.assign(copia(EJ), { especies: [] }))];

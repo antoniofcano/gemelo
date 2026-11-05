@@ -17,7 +17,8 @@
     var MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
     var NIVEL = "probable", NOTA = "Deducido de los registros de GBIF en 10 km a la redonda; no se ha observado en la finca.";
     var MAX_ESPECIES = 3000, MAX_FUENTES = 500, HUSO = "Europe/Madrid";
-    function rutaDatos(base) { return typeof base === "string" && base ? base + "biodiversidad.json" : null; }
+    // solo si el índice de la finca dice que el fichero está publicado (indice.biodiversidad, lo escribe gbif_aves.py): sin él no se pide nada (ni un 404 en la consola)
+    function rutaDatos(base, fichero) { return typeof base === "string" && base && typeof fichero === "string" && /^[a-z0-9_-]+.json$/.test(fichero) ? base + fichero : null; }
     function txt(s, max) { return typeof s === "string" && s.trim() ? s.trim().slice(0, max || 300) : null; }
     function ent(v, max) { return typeof v === "number" && isFinite(v) && v >= 0 && v === Math.floor(v) && v <= (max || 1e9) ? v : null; }
     // filas blanca del contrato: devuelve { atribucion, generado, anios, cuadroKm, sintetico, fuentes, especies } o null si no cumple (versión, origen, grupo, licencias)
@@ -69,7 +70,7 @@
 
   // [motor:inicio]
   function AvesMesMotor(n) {
-    var P = AvesMesPuro, ruta = P.rutaDatos(D && D.base);
+    var P = AvesMesPuro, ruta = P.rutaDatos(D && D.base, D && D.biodiversidad);
     if (!ruta || typeof fetch !== "function") return null;   // sin servidor no hay fichero publicado: ni icono ni ventana
     var vivo = true, datos = null, cuerpo = null, mesPintado = 0;
     n.limpia(function () { vivo = false; });

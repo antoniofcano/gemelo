@@ -118,6 +118,8 @@ export async function rutasCorros(app: FastifyInstance, bd: Bd, d: DepsCorros, c
   // ---------------------------------------------------------------- lo de cada uno
 
   app.get("/api/presencia/corros/estado", { preHandler: requiereSesion, config: { rateLimit: { max: 120, timeWindow: 60_000 } } }, async (req, rep) => {
+    // sin LiveKit no hay voz por cercanía, y se dice con un 200 «no disponible» (no un 503): el motor lo pregunta al montarse y un error ensuciaría la consola de todos
+    if (!lk || !corros) { sinCache(rep); return { disponible: false, ajuste: { activa: false }, consentimiento: null, suspension: null, puedo: false, corro: null, invitaciones: { recibidas: [], enviadas: [] } }; }
     const b = await base(rep); if (!b) return rep;
     sinCache(rep);
     const h = req.session.hogarId!, v = b.corros.vista(h);

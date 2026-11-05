@@ -179,7 +179,7 @@ Fuente: GBIF (https://www.gbif.org), solo aves (`classKey` 212), registros con l
 
 ```bash
 pip install -r tuberia/biodiversidad/requirements.txt          # requests y pyproj, fijadas
-GEMELO_DATOS=<indice.json de la finca> GEMELO_BIODIVERSIDAD=<carpeta de salida> python tuberia/biodiversidad/gbif_aves.py                        # o --lat/--lon en lugar del índice; --anios 10 --km 10
+GEMELO_DATOS=<indice.json de la finca> GEMELO_BIODIVERSIDAD=<carpeta de salida> python tuberia/biodiversidad/gbif_aves.py --marca-indice                        # o --lat/--lon en lugar del índice; --anios 10 --km 10
 ```
 
 - **El centro sale de los datos de la finca** (`centro_utm` del `indice.json`, pasado a WGS84 con pyproj) o de `--lat` y `--lon`; no hay ninguna coordenada en el repo y el JSON de salida tampoco la lleva.

@@ -202,6 +202,7 @@ def main(argv=None):
     ap.add_argument("--lat", type=float)
     ap.add_argument("--lon", type=float)
     ap.add_argument("--indice", default=os.environ.get("GEMELO_DATOS"), help="indice.json de la finca (o GEMELO_DATOS)")
+    ap.add_argument("--marca-indice", action="store_true", help="anota en el indice.json el fichero escrito (indice.biodiversidad); sin esa marca el motor no lo pide")
     ap.add_argument("--salida", default=os.environ.get("GEMELO_BIODIVERSIDAD"), help="fichero .json o carpeta (o GEMELO_BIODIVERSIDAD)")
     ap.add_argument("--nombres", default=os.environ.get("GEMELO_BIODIVERSIDAD_NOMBRES"), help="JSON {científico: común} (o GEMELO_BIODIVERSIDAD_NOMBRES)")
     ap.add_argument("--km", type=float, default=10.0)
@@ -238,7 +239,23 @@ def main(argv=None):
     with open(dest, "w", encoding="utf-8", newline="\n") as f:
         json.dump(doc, f, ensure_ascii=False, separators=(",", ":"))
     log("escrito %s (%d especies)" % (dest, len(doc["especies"])))
+    if a.marca_indice:
+        if not a.indice:
+            ap.error("--marca-indice necesita --indice (o GEMELO_DATOS)")
+        marca_indice(a.indice, dest)
+        log("anotado en %s: biodiversidad = %s" % (a.indice, os.path.basename(dest)))
     return 0
+
+
+def marca_indice(ruta_indice, dest):
+    """Anota en el indice.json el nombre del fichero (debe estar en la misma carpeta, que es la que sirve D.base)."""
+    if os.path.dirname(os.path.abspath(dest)) != os.path.dirname(os.path.abspath(ruta_indice)):
+        raise SystemExit("--marca-indice: el fichero debe ir junto al indice.json (misma carpeta)")
+    with open(ruta_indice, encoding="utf-8") as f:
+        ind = json.load(f)
+    ind["biodiversidad"] = os.path.basename(dest)
+    with open(ruta_indice, "w", encoding="utf-8", newline="\n") as f:
+        json.dump(ind, f, ensure_ascii=False, separators=(",", ":"))
 
 
 if __name__ == "__main__":

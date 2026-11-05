@@ -131,7 +131,7 @@ test("recorrido: buscar, alta, cerrar una sesión, asignar haza, baja y borrar (
     }
     await pg.waitForFunction(() => document.querySelector("#s-rol").textContent !== "—");
     assert.strictEqual(await pg.textContent("#s-rol"), "admin");
-    assert.strictEqual(await pg.locator("#nav button").count(), 9, "las nueve secciones de la maqueta");
+    assert.strictEqual(await pg.locator("#nav button").count(), 10, "las diez secciones de la maqueta (con Voz, F3k-4)");
     assert.strictEqual(await pg.locator("#nav .pronto").count(), (fuentes["oficina.js"].match(/", false\]/g) || []).length, "tantos «pronto» como secciones sin hacer");
     await pg.click("#nav button[data-sec=directos]");
     assert.match(await pg.textContent("#s-proximamente"), /próximamente/i);
