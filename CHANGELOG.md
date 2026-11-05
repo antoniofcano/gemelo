@@ -5,6 +5,8 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Paseo: tocar el suelo para ir andando (EV2-B3, primera parte). En pantalla, a pie, un clic o toque corto en el suelo hace caminar hasta allí con el anillo de la llegada; se cancela con teclas, cruceta, palanca, quad o dron; arrastrar sigue siendo mirar y un olivo, baliza o persona sigue abriendo su ficha. Ajuste «Tocar para ir andando» y `?tocar=0`. Solo probado en Node.
+- VR: menú de muñeca (EV2-A3). Al girar la muñeca hacia la cara aparecen «hora · tu haza · hablar · volver», que se pulsan con el rayo o la punta del otro mando; muñeca izquierda, o derecha con `controles.mano` zurda. `?xrmuneca=0` o el ajuste «Menú de muñeca» lo apagan. Probado solo en Node; no probado en unas Quest.
 - VR: el controlador de nivel cuenta la gente. Cada escalón fija cuántos VRM como mucho y a qué distancia pasan a muñeco (3/40 m, 2/30 m, 1/20 m, 0/10 m; distancias [PROPUESTA]); con más de 8 personas a la vista (`?xrgente=`) baja un escalón con antelación, por la Cola y con fundido. Sin gente, igual que antes. No probado en Quest (Q0c-c).
 - Presencia en red: si no conecta al arrancar sola, el mundo sigue igual sin avisos y reintenta con espera creciente (30 s a 10 min, 6 intentos); la línea de `?debug` dice el motivo (F2b).
 - Medidor: fotogramas perdidos (intervalos de más de 1,5 periodos de refresco) y vsync perdidos, en la tarjeta de VR, el informe largo y el contrato v3.1 (campos opcionales `perdidos_n` y `vsync_perdidos`, migración 0024); el umbral «perdidos ≤ 1 %» es una propuesta (Q0j).

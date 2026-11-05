@@ -120,7 +120,7 @@
   function angDifRad(a, b) { var d = (a - b) % (2 * Math.PI); if (d > Math.PI) d -= 2 * Math.PI; if (d < -Math.PI) d += 2 * Math.PI; return d; }
   function textoAyudaPaseo() {
     return enDron ? "Dron: W/S avanzar · A/D girar · Espacio/C subir y bajar · Mayús rápido · V cámara · clic en el suelo: marcar llegada · Intro o L: aterrizar · E guardar · Esc: salir"
-      : "Flechas o WASD: andar y girar · Mayús: correr · V: primera persona · Q: quad · E: dron · M: minimapa · Esc: salir";
+      : "Flechas o WASD: andar y girar · Mayús: correr · clic en el suelo: ir andando · V: primera persona · Q: quad · E: dron · M: minimapa · Esc: salir";
   }
   function ponDron(v) {
     var quiero = !!v && paseando;

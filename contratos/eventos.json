@@ -815,7 +815,7 @@
       ]
     },
     "prevision:alterna": {
-      "descripcion": "Abrir o cerrar la lámina de la previsión del tiempo en el mundo (el botón «Ver la previsión en el mundo» de la ventana Tiempo). Sin datos alterna; con abre true o false, abre o cierra.",
+      "descripcion": "Abrir o cerrar la lámina de la previsión del tiempo en el mundo (el botón «Ver la previsión en el mundo» de la ventana Tiempo y, en VR, «hora» en el menú de muñeca, EV2-A3). Sin datos alterna; con abre true o false, abre o cierra.",
       "datos": {
         "type": "object",
         "properties": {
@@ -825,7 +825,8 @@
         }
       },
       "emiten": [
-        "15_tiempo"
+        "15_tiempo",
+        "31c_muneca"
       ],
       "escuchan": [
         "35_fichas_tiempo"
