@@ -88,7 +88,7 @@ class Prueba(unittest.TestCase):
         filas, por_ds = g.descarga(api, wkt, 2024, 2025)
         self.assertEqual(len(pet), 24)           # 12 meses x 2 años
         for _, params in pet:                    # toda consulta pide SOLO las tres licencias y las aves
-            self.assertEqual([v for k, v in params if k == "license"], list(g.LICENCIAS_OK))
+            self.assertEqual([v for k, v in params if k == "license"], list(g.LICENCIAS_CONSULTA))   # GBIF rechaza CC_BY_SA_4_0 como filtro (400, visto el 2026-11-05)
             self.assertIn(("classKey", g.CLASE_AVES), params)
         fuentes = g.fuentes_de(api, wkt, por_ds)
         self.assertEqual([f["id"] for f in fuentes], ["ds-ok"], "el conjunto con licencia NC no entra")

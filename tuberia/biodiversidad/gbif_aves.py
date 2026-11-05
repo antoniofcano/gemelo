@@ -29,6 +29,7 @@ import time
 API = "https://api.gbif.org/v1"
 CLASE_AVES = 212                      # classKey de Aves en la columna vertebral de GBIF
 LICENCIAS_OK = ("CC0_1_0", "CC_BY_4_0", "CC_BY_SA_4_0")   # decisión 198; GBIF no usa SA hoy, se admite por si aparece. NC fuera
+LICENCIAS_CONSULTA = ("CC0_1_0", "CC_BY_4_0")   # lo que la API de GBIF acepta como filtro (CC_BY_SA_4_0 da 400: GBIF no la tiene como licencia); SA sigue admitida al comprobar
 BASES = ("HUMAN_OBSERVATION", "OBSERVATION", "MACHINE_OBSERVATION")
 UA = "gemelo-biodiversidad/1 (gemelo digital de olivar; lectura de agregados)"
 ATRIBUCION = ("Registros de aves de GBIF.org (https://www.gbif.org), de conjuntos de datos con licencia CC0, CC BY o CC BY-SA; "
@@ -153,7 +154,7 @@ class Gbif:
 
     def base(self, wkt, **extra):
         p = [("geometry", wkt), ("classKey", CLASE_AVES), ("occurrenceStatus", "PRESENT"), ("hasCoordinate", "true"), ("hasGeospatialIssue", "false"), ("limit", 0)]
-        p += [("basisOfRecord", b) for b in BASES] + [("license", lic) for lic in LICENCIAS_OK]
+        p += [("basisOfRecord", b) for b in BASES] + [("license", lic) for lic in LICENCIAS_CONSULTA]
         return p + list(extra.items())
 
 
