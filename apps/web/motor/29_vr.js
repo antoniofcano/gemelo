@@ -257,10 +257,10 @@
   }
   function vrRect(cx, x, y, w, h, r) { cx.beginPath(); cx.moveTo(x + r, y); cx.arcTo(x + w, y, x + w, y + h, r); cx.arcTo(x + w, y + h, x, y + h, r); cx.arcTo(x, y + h, x, y, r); cx.arcTo(x, y, x + w, y, r); cx.closePath(); }
   function dd2(iso) { return iso ? iso.split("-").reverse().join("/") : "–"; }
-  // ----- 3a) el panel en tres pestañas (U8, decisiones 83-90): Mundo (modo, hora, fecha y lo que añadan los componentes, como el tiempo) · Ir a (parcelas y gente con «Ir con») · Comodidad (viñeta, giro, relieve y lo que añadan los componentes, como el sonido; «Medir 60 s» solo con ?debug).
+  // ----- 3a) el panel en cuatro pestañas (U8, decisiones 83-90; la cuarta, Info, EV-1g: la agenda y las aves, que no cabían en Mundo): Mundo (modo, hora, fecha y lo que añadan los componentes, como el tiempo) · Ir a (parcelas y gente con «Ir con») · Comodidad (viñeta, giro, relieve y lo que añadan los componentes, como el sonido; «Medir 60 s» solo con ?debug).
   // «Salir de VR» y las ayudas de los mandos quedan abajo en todas. Botones de 64 px en 1.024 px por metro (6,25 cm a 1 m). Los ajustes de comodidad se leen de Configuración (Ajustes.lee("vr.*"))
   // si ese módulo existe; si no, valen los de siempre (viñeta sí, giro de 30°).
-  var VR_PESTANAS = [["mundo", "Mundo"], ["ira", "Ir a"], ["comodidad", "Comodidad"]], VR_GIROS = [15, 30, 45, 60];
+  var VR_PESTANAS = [["mundo", "Mundo"], ["ira", "Ir a"], ["comodidad", "Comodidad"], ["info", "Info"]], VR_GIROS = [15, 30, 45, 60];
   function vrAj(clave, def) { try { if (typeof Ajustes !== "undefined" && Ajustes && Ajustes.lee) { var v = Ajustes.lee(clave); if (v !== undefined && v !== null) return v; } } catch (e) {} return def; }
   function vrAjPon(clave, v) { try { if (typeof Ajustes !== "undefined" && Ajustes && Ajustes.pon) Ajustes.pon(clave, v); } catch (e) {} }
   // AV2 (decisión 133): «Altura de la vista» (Configuración, vista.altura). Sentado baja la vista VR_SENTADO m respecto a la que dan las gafas (se SUMA al suelo de la sesión: si el visor ya da la
@@ -323,7 +323,7 @@
       b("mideX", envia ? 664 : 372, 668, envia ? 320 : 280, 76, "Cerrar", function () { VRX.mideTarjeta = false; }); return B;
     }   // T7a: con la tarjeta de la medida abierta, solo «Cerrar»
     var y = vrY0(), p = VRX.pestana;
-    VR_PESTANAS.forEach(function (t, i) { b("t_" + t[0], 40 + i * 316, 104, 300, 64, t[1], function () { VRX.pestana = t[0]; VRX.hover = ""; }, p === t[0]); });
+    VR_PESTANAS.forEach(function (t, i) { b("t_" + t[0], 40 + i * 236, 104, 224, 64, t[1], function () { VRX.pestana = t[0]; VRX.hover = ""; }, p === t[0]); });
     PanelVR.visibles(p).forEach(function (f) { f.y = y; if (f.botones) { try { f.botones(b, y); } catch (e) { try { console.error("[PanelVR] " + f.id, e); } catch (e2) {} } } y += f.alto; });
     b("sal", 40, 984, 944, 64, "Salir de VR", function () { if (VRX.sesion) VRX.sesion.end(); }, false);   // siempre abajo
     VRX.gente = vrGente(); VRX.genteFirma = VrGentePuro.firma(VRX.gente);   // el estado de Gente también sin su pestaña (para detectar cambios y para las pruebas)

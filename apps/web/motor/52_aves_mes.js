@@ -1,7 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos (D), 02c_componentes (Componentes), 31_hud (Hud), 32_ventanas (Ventanas)
-// Nota: Componente «aves-mes» (EV-1g «Biodiversidad B0»): ventana «Aves probables este mes» con lo que GBIF registra en 10 km (DEDUCIDO, nivel probable, con atribución y licencias CC0, CC BY y CC BY-SA). Solo se registra; nadie lo nombra. Sin D.base, sin fichero o sin aves de este mes no monta nada. Los trozos [puro:…] los evalúa en Node pruebas/guardianes/aves_mes.test.js.
+// Consume: 01_datos (D), 02c_componentes (Componentes), 03_escena (lienzo), 15_tiempo (nivel), 29_vr (panel, PanelVR), 31_hud (Hud),
+//   32_ventanas (Ventanas)
+// Nota: Componente «aves-mes» (EV-1g «Biodiversidad B0»): ventana «Aves probables este mes» con lo que GBIF registra en 10 km (DEDUCIDO, nivel probable, con atribución y licencias CC0, CC BY y CC BY-SA). Además, la fila «Aves del mes» del panel de VR (pestaña Mundo: 3 especies y «y X más», con «deducido», nota, atribución y licencias; AvesMesPuro.filaVR). Solo se registra; nadie lo nombra. Sin D.base, sin fichero o sin aves de este mes no monta nada (ni fila). Los trozos [puro:…] los evalúa en Node pruebas/guardianes/aves_mes.test.js.
 // ===============================================================================
   // ---------- las aves probables este mes (EV-1g; contratos/biodiversidad.schema.json, v 1): una ventana con las especies de aves que GBIF registra en este
   // mes en el recuadro de 10 km alrededor de la finca. Es DEDUCIDO (regla 5): registros de ciencia ciudadana y de proyectos de seguimiento, NO lo observado en la
@@ -10,7 +11,7 @@
   // Los datos los prepara fuera tuberia/biodiversidad/gbif_aves.py y se publican junto al índice: el motor pide <D.base>biodiversidad.json (su mismo origen; nunca
   // otro host). Sin servidor (sin D.base), sin el fichero, con un fichero que no cumple el contrato o sin especies de este mes: no se monta nada (ni icono ni
   // ventana) y no se rompe nada. Lo que llega es dato: se valida con filas blanca y se pinta SIEMPRE como texto (textContent), nunca como HTML.
-  // Presupuesto (regla 6): nada en la escena 3D (DOM: una ventana y un icono). Sin geometría, sin texturas, sin llamadas de dibujo.
+  // Presupuesto (regla 6): nada en la escena 3D (DOM: una ventana y un icono). Sin geometría, sin texturas, sin llamadas de dibujo. La fila de VR se pinta en el lienzo que el panel ya tiene (2D, solo con el panel abierto y a la vista): ni textura, ni malla, ni llamada de dibujo propia (por diseño; sin medir).
   // [puro:inicio] (sin DOM ni THREE: lo evalúa en Node pruebas/guardianes/aves_mes.test.js)
   var AvesMesPuro = (function () {
     var LICENCIAS = { CC0_1_0: "CC0", CC_BY_4_0: "CC BY 4.0", CC_BY_SA_4_0: "CC BY-SA 4.0" };   // las únicas admitidas (decisión 198)
@@ -64,7 +65,17 @@
         atribucion: d.atribucion, licencias: licenciasTxt(d), anios: d.anios ? d.anios.desde + "–" + d.anios.hasta : null, generado: d.generado,
         fuentes: d.fuentes.map(function (f) { return f.titulo + (f.doi ? " · doi:" + f.doi : "") + " · " + f.licencias.map(function (x) { return LICENCIAS[x]; }).join(", "); }) };
     }
-    return { LICENCIAS: LICENCIAS, MESES: MESES, NIVEL: NIVEL, NOTA: NOTA, rutaDatos: rutaDatos, valida: valida, mesDe: mesDe, probables: probables, licenciasTxt: licenciasTxt, contenido: contenido };
+    // la fila del panel de VR (pestaña Info): lo mismo que la ventana (mismas probables, misma nota, atribución y licencias) en pocas líneas legibles en el lienzo:
+    // las `max` primeras (3) y «y X más»; null si no hay datos o no hay aves este mes (la fila no sale). Texto llano; nada de cálculo propio: sale de contenido().
+    function filaVR(d, mes, max) {
+      var c = contenido(d, mes); if (!c) return null;
+      var tope = max == null ? 3 : max, n = c.filas.length;
+      // las licencias van primero en `fuente`: si la atribución no cabe en dos líneas, lo que se recorta es su cola
+      return { titulo: "Aves del mes", cab: "Probables en " + MESES[mes - 1] + " · deducido · nivel " + c.grado,
+        nombres: c.filas.slice(0, tope).map(function (f) { return f.nombre; }), mas: n > tope ? n - tope : 0,
+        nota: (c.advertencia ? c.advertencia + " " : "") + c.nota, fuente: "Licencias: " + c.licencias + ". Fuente: " + c.atribucion, sintetico: c.sintetico };
+    }
+    return { LICENCIAS: LICENCIAS, MESES: MESES, NIVEL: NIVEL, NOTA: NOTA, rutaDatos: rutaDatos, valida: valida, mesDe: mesDe, probables: probables, licenciasTxt: licenciasTxt, contenido: contenido, filaVR: filaVR };
   })();
   // [puro:fin]
 
@@ -110,6 +121,34 @@
           var mo = new MutationObserver(function () { if (!cuerpo.parentNode.hidden && P.mesDe(Date.now()) !== mesPintado) pinta(); });
           mo.observe(cuerpo.parentNode, { attributes: true, attributeFilter: ["hidden"] }); n.limpia(function () { mo.disconnect(); });
         }
+        // EV-1g, la fila «Aves del mes» del panel de VR (pestaña Info): lo mismo que la ventana, en pocas líneas (3 especies y «y X más»), con «deducido», la nota de que no
+        // se ha observado en la finca, la atribución y las licencias. Nada que pulsar; sin datos o sin aves este mes no sale. Solo texto en el lienzo del panel (sin textura propia).
+        if (typeof PanelVR !== "undefined" && PanelVR.filas) {
+          var vistaVR = function () { return P.filaVR(datos, P.mesDe(Date.now())); };
+          n.limpia(PanelVR.filas("info", { id: "aves", orden: 80, alto: 220, visible: function () { return !!vistaVR(); },
+            pinta: function (cx, y, W, h) {
+              var v = vistaVR(); h.fila(v ? v.titulo : "Aves del mes", y); if (!v) return;
+              cx.textAlign = "left"; cx.textBaseline = "alphabetic";
+              function ajusta(t, ancho) { var r = t; while (cx.measureText(r).width > ancho && r.length > 6) r = r.slice(0, -2); return r === t ? r : r.trim() + "…"; }
+              function envuelve(t, ancho, max) {   // hasta `max` líneas; lo que sobra acaba en «…»
+                var pal = t.split(" "), ls = [], l = "";
+                for (var i = 0; i < pal.length; i++) { var q = l ? l + " " + pal[i] : pal[i]; if (cx.measureText(q).width > ancho && l) { ls.push(l); l = pal[i]; } else l = q; }
+                if (l) ls.push(l);
+                if (ls.length > max) { ls = ls.slice(0, max); ls[max - 1] = ajusta(ls[max - 1] + "…", ancho); }
+                return ls;
+              }
+              cx.fillStyle = "#ffe9a8"; cx.font = "700 22px system-ui, sans-serif"; cx.fillText(ajusta(v.cab, 944), 40, y + 66);
+              cx.fillStyle = "#ffffff"; cx.font = "700 26px system-ui, sans-serif";   // una sola línea: «A, B, C y X más»; si no cabe, pasan nombres al «y X más»
+              var nom = v.nombres.slice(), mas = v.mas, linea = function () { return nom.join(", ") + (mas ? " y " + mas + " más" : ""); };
+              while (nom.length > 1 && cx.measureText(linea()).width > 944) { nom.pop(); mas++; }
+              cx.fillText(ajusta(linea(), 944), 40, y + 100);
+              cx.fillStyle = "#cfdccb"; cx.font = "600 21px system-ui, sans-serif";
+              envuelve(v.nota, 944, 2).forEach(function (t, i) { cx.fillText(t, 40, y + 132 + i * 24); });
+              envuelve(v.fuente, 944, 2).forEach(function (t, i) { cx.fillText(t, 40, y + 186 + i * 24); });   // hasta y + 210: dentro del alto de 220
+            },
+            firma: function () { var v = vistaVR(); return v ? v.cab + "|" + v.nombres.join("/") + "|" + v.mas : ""; },
+            debug: function () { return { aves: vistaVR() }; } }));
+        }
         window.__avesMes = function () { return { mes: mesPintado, contenido: P.contenido(datos, mesPintado || P.mesDe(Date.now())) }; };   // pruebas y ?debug
         n.limpia(function () { try { delete window.__avesMes; } catch (e) { window.__avesMes = undefined; } });
       }).catch(function () {});   // sin red, JSON roto, lo que sea: nada
@@ -120,7 +159,7 @@
   // el manifiesto (ADR-0023): lo lee el guardián pruebas/guardianes/componentes.test.js sin montar nada. ?aves=0 lo apaga; ?aves=1 lo enciende.
   Componentes.registra({
     id: "aves-mes", version: 1,
-    consume: ["Hud", "Ventanas"],
+    consume: ["Hud", "Ventanas", "PanelVR"],
     expone: [],
     eventos: { escucha: [], emite: [] },
     bandera: { defecto: true, url: "aves" },

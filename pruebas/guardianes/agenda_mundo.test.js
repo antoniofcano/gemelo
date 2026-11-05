@@ -178,7 +178,7 @@ test("el título que llega de la api es un dato: texto, nunca HTML", async () =>
 test("la fila del panel VR (pestaña Mundo): visible con datos, lista los próximos y dice dónde apuntarse; sin botones; se refresca al entrar en VR", async () => {
   const m = monta({ respuestas: () => J(200, AGENDA()) });
   try {
-    const f = m.filas.find(x => x.p === "mundo" && x.d.id === "agenda"); assert.ok(f, "la fila existe"); assert.strictEqual(f.d.visible(), false, "sin datos, escondida"); const pulsables = []; f.d.botones((id, x, y, w, h, t) => pulsables.push(t), 0); assert.deepStrictEqual(pulsables, [], "sin visita abierta, nada que pulsar en VR (decisión 146)");
+    const f = m.filas.find(x => x.p === "info" && x.d.id === "agenda"); assert.ok(f, "la fila existe"); assert.strictEqual(f.d.visible(), false, "sin datos, escondida"); const pulsables = []; f.d.botones((id, x, y, w, h, t) => pulsables.push(t), 0); assert.deepStrictEqual(pulsables, [], "sin visita abierta, nada que pulsar en VR (decisión 146)");
     assert.ok(f.d.alto > 0 && f.d.alto <= 300, "cabe en el panel: " + f.d.alto);
     assert.strictEqual(m.llamadas.length, 0); m.bus["vr:entra"](); await new Promise(r => setTimeout(r, 20)); assert.strictEqual(m.llamadas.filter(c => c.url === "/api/agenda").length, 1, "al entrar en VR pide la agenda");
     assert.strictEqual(f.d.visible(), true);
@@ -315,7 +315,7 @@ test("OF11g: la ficha del evento enseña SUS avisos con la marca de sin leer, co
     assert.strictEqual(t4.busca(x => "data-aviso" in x.attrs).length, 0, "sin avisos, nada"); assert.strictEqual(t4.busca(x => "data-avisos" in x.attrs).length, 0);
     assert.strictEqual(t1.busca(x => "data-sin-leer" in x.attrs).length, 1, "solo el no leído lleva punto"); assert.deepStrictEqual(t1.busca(x => "data-leido" in x.attrs).map(b => b.attrs["data-leido"]), ["1"]);
     assert.ok(t1.textContent.includes(malo) && t1.textContent.includes("<script>x</script>"), "texto tal cual"); assert.strictEqual(cu.busca(x => x.tag === "img" || x.tag === "script").length, 0);
-    const f = m.filas.find(x => x.d.id === "agenda_avisos"); assert.ok(f, "la fila de VR existe"); assert.strictEqual(f.p, "mundo"); assert.strictEqual(f.d.visible(), true);
+    const f = m.filas.find(x => x.d.id === "agenda_avisos"); assert.ok(f, "la fila de VR existe"); assert.strictEqual(f.p, "info"); assert.strictEqual(f.d.visible(), true);
     const ops = [], cx = { measureText: s => ({ width: String(s).length * 12 }), fillText: s => ops.push(s) }; f.d.pinta(cx, 100, 1024, { fila: s => ops.push(s) });
     assert.ok(ops.includes("Avisos") && ops.some(s => /2 avisos sin leer/.test(s)) && ops.some(s => /^Último: /.test(s)), ops.join(" | ")); const firma = f.d.firma();
     cu.busca(x => x.attrs["data-leido"] === "1")[0].clic(); await new Promise(r => setTimeout(r, 20));

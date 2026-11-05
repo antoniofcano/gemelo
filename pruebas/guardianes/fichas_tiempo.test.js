@@ -156,7 +156,7 @@ test("el panel VR: el resumen va en la pestaña Mundo, con «Ver previsión» de
   assert.match(FUENTE, /b\("tiempo", 520, y \+ 144, 444, 72, ft \? "Quitar la previsión" : "Ver previsión"/);
   for (const [id, orden] of [["modos", 10], ["hora", 20], ["fecha", 30]]) assert.match(VR, new RegExp('PanelVR\\.filas\\("mundo", \\{ id: "' + id + '", orden: ' + orden + ', alto: 88,'), id + ": 88 px, antes del tiempo");
   assert.ok(!/FichasTiempo/.test(VR), "29_vr.js ya no nombra las fichas del tiempo");
-  assert.match(VR, /var VR_PESTANAS = \[\["mundo", "Mundo"\], \["ira", "Ir a"\], \["comodidad", "Comodidad"\]\]/, "siguen tres pestañas");
+  assert.match(VR, /var VR_PESTANAS = \[\["mundo", "Mundo"\], \["ira", "Ir a"\], \["comodidad", "Comodidad"\], \["info", "Info"\]\]/, "cuatro pestañas (la cuarta, Info, EV-1g)");
   assert.match(VR, /b\("sal", 40, 984, 944, 64, "Salir de VR"/);
   // el bloque del tiempo (y0 + 264 … + 236) cabe encima de las ayudas de los mandos (y = 890), también con el letrero de «sin escena» (y0 = 280)
   assert.ok(280 + 264 + 236 < 870, "el bloque del tiempo cabe en el panel");
