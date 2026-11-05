@@ -112,7 +112,7 @@ Ortofoto PNOA de la tesela, JPEG RGB cuadrado de `orto_px` píxeles, **fila 0 = 
 `indice.json` en la página y `t/` al lado (ficheros). Ya no existe el modo **embebido** (`embebido.json` con la ortofoto en data URI), que era de la salida artefacto retirada ([ADR-0021](../adr/0021-se-retira-la-salida-artefacto-y-la-escena-de-siempre.md)); el fixture tampoco lo genera.
 
 ### 1.5 `biodiversidad.json` (EV-1g, v 1)
-Aves que GBIF registra en el cuadro de 10 km alrededor de la finca, **por especie y mes**. Lo escribe `tuberia/biodiversidad/gbif_aves.py` (fuera del repo) y se publica junto al `indice.json` de la finca; el motor lo pide a su mismo origen (`<D.base>biodiversidad.json`, nunca a otro host) y, si no está o no cumple el contrato, no enseña nada. Es **deducido** (regla 5): registros de ciencia ciudadana y de proyectos de seguimiento en 10 km, **no observado en la finca**; el motor lo rotula con el nivel **probable**.
+Aves que GBIF registra en el cuadro de 10 km alrededor de la finca, **por especie y mes**. Lo escribe `tuberia/biodiversidad/gbif_aves.py` (fuera del repo) y se publica junto al `indice.json` de la finca; el motor lo pide a su mismo origen (`<D.base>biodiversidad.json`, nunca a otro host) y, si no está o no cumple el contrato, no enseña nada. El exportador pide solo `basisOfRecord` HUMAN_OBSERVATION y OBSERVATION: la telemetría/GPS de aves marcadas (MACHINE_OBSERVATION) queda fuera para que un animal con miles de fijaciones no infle la especie. Es **deducido** (regla 5): registros de ciencia ciudadana y de proyectos de seguimiento en 10 km, **no observado en la finca**; el motor lo rotula con el nivel **probable**.
 
 | Campo | Contenido |
 |---|---|
