@@ -22,7 +22,7 @@
       "graficos.calidad": opc("auto", ["auto", "0", "1", "2"]), "graficos.ahorro": bool(false),
       "vista.exag": num(1, 1, 3, 0.25), "vista.corr": num(1, 0, 1.5, 0.25), "vista.brujula": bool(true), "vista.personal": bool(true), "vista.suelo": bool(false), "vista.tono": opc("neutro", ["neutro", "agx", "aces", "neutral"]), "vista.a2c": bool(false), "vista.unidades": opc("ha", ["ha", "m2"]), "vista.altura": opc("pie", ["pie", "sentado"]),
       "controles.tactil": opc("auto", ["auto", "si", "no"]), "controles.mano": opc("diestra", ["diestra", "zurda"]), "controles.sens": num(1, 0.4, 2, 0.2), "controles.invertir": bool(false), "controles.palanca": bool(true), "controles.tocarIr": bool(true),
-      "vr.giro": opc("30", ["15", "30", "45", "60"]), "vr.vineta": opc("suave", ["suave", "fuerte", "no"]), "vr.vuelo": bool(false), "vr.multiview": bool(true),
+      "vr.giro": opc("30", ["15", "30", "45", "60"]), "vr.vineta": opc("suave", ["suave", "fuerte", "no"]), "vr.vuelo": bool(false), "vr.multiview": bool(true), "vr.muneca": bool(true),
       "acc.texto": num(100, 100, 200, 25), "acc.contraste": bool(false), "acc.movimiento": opc("sistema", ["sistema", "reducido", "normal"]),
       "avanzado.contador": bool(false)
     };
@@ -158,6 +158,7 @@
         { k: "vr.giro", t: "Giro", ops: [["15", "A saltos de 15°"], ["30", "A saltos de 30°"], ["45", "A saltos de 45°"], ["60", "A saltos de 60°"]] },
         { k: "vr.vineta", t: "Viñeta", ops: [["suave", "Suave"], ["fuerte", "Fuerte"], ["no", "Apagada"]] },
         { k: "vr.vuelo", t: "Permitir vuelo (A) y mirador (B)" },
+        { k: "vr.muneca", t: "Menú de muñeca (gira la muñeca izquierda hacia la cara)", nota: "Accesos rápidos pegados a la muñeca: volver al inicio, panel, viñeta, hora e «Ir con». ?xrmuneca (0 o 1) en la dirección manda sobre esto. Sin probar en unas Quest." },
         { k: "vr.multiview", t: "Multiview (dibuja los dos ojos de una vez)", soloBuild: "vr", nota: "Solo en la versión para gafas. Se aplica al recargar la página; ?xrmv (0 o 1) en la dirección manda sobre esto. Sin probar en unas Quest desde este panel." } ] },
       { id: "acc", t: "Accesibilidad", campos: [
         { k: "acc.texto", t: "Tamaño del texto", fmt: function (v) { return v + " %"; } },
