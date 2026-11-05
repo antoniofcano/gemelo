@@ -80,6 +80,52 @@
         "15_tiempo"
       ]
     },
+    "corro:estado": {
+      "descripcion": "F3k-3: ha cambiado lo que sabe el motor de la voz por cercanía (componente «corro-voz», GET /api/presencia/corros/estado): si está disponible en el servidor, si la tienes activada, si puedes usarla ahora, si estás en un corro y con cuántos hogares, y cuántas invitaciones recibidas y enviadas hay. Sin datos de nadie (ni alias ni identidades). Nadie lo atiende hoy; sirve al HUD y a las pruebas (F3k-5).",
+      "datos": {
+        "type": "object",
+        "required": [
+          "disponible",
+          "activa",
+          "puedo",
+          "corro",
+          "miembros",
+          "recibidas",
+          "enviadas"
+        ],
+        "properties": {
+          "disponible": {
+            "type": "boolean"
+          },
+          "activa": {
+            "type": "boolean"
+          },
+          "puedo": {
+            "type": "boolean"
+          },
+          "corro": {
+            "type": "boolean"
+          },
+          "miembros": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 5
+          },
+          "recibidas": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "enviadas": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "emiten": [
+        "47b_corro"
+      ],
+      "escuchan": []
+    },
     "cuadro:fin": {
       "descripcion": "El fotograma acaba (después de pintar y del contador de ?debug), también en pausa. Lo emite 90_final.js con el mismo objeto cada vez ({ t }: la hora del fotograma, la de requestAnimationFrame). Solo lo escucha el medidor de fotogramas, y solo mientras está armado o midiendo; sin él, nadie lo atiende y no cuesta nada.",
       "datos": {
@@ -126,6 +172,7 @@
         "45_voz",
         "46_guiada",
         "47_habla",
+        "47b_corro",
         "50_decoraciones"
       ]
     },
@@ -1130,7 +1177,8 @@
         "31b_hud_personal",
         "31c_muneca",
         "46_guiada",
-        "47_habla"
+        "47_habla",
+        "47b_corro"
       ]
     },
     "voz:habla": {
@@ -1164,7 +1212,9 @@
       "emiten": [
         "45_voz"
       ],
-      "escuchan": []
+      "escuchan": [
+        "47b_corro"
+      ]
     },
     "vr:entra": {
       "descripcion": "Empieza una sesión de realidad virtual (la cámara ya cuelga del rig y el panel está abierto).",
