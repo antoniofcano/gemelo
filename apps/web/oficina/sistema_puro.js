@@ -65,7 +65,7 @@ export function celdasFluidez(f) {
     objetivo: f.objetivo_p95_ms === null || f.objetivo_p95_ms === undefined ? "—" : ms1(f.objetivo_p95_ms) + " ms",
     mediana: ms1(f.mediana_ms) + " ms", peor: ms1(f.peor_ms) + " ms", navegadores: (f.navegadores || []).join(", ") || "—", versiones: (f.versiones || []).join(", ") || "—",
     // Q0e: por qué va como va (todo puede faltar: una medida de antes, o de un cliente antiguo, no lo trae)
-    js: textoJs(f), nivel: textoNivel(f), perillas: typeof f.perillas === "string" && f.perillas ? f.perillas : "—", olivosGen: textoOlivosGen(f),
+    js: textoJs(f), render: textoRender(f), bloque: textoBloqueCaro(f), nivel: textoNivel(f), perillas: typeof f.perillas === "string" && f.perillas ? f.perillas : "—", olivosGen: textoOlivosGen(f),
   };
 }
 
@@ -79,6 +79,16 @@ const num = v => typeof v === "number" && Number.isFinite(v);
 export function textoJs(f) {
   if (!num(f.js_mediana_ms) && !num(f.js_p95_ms)) return "—";
   return ms1(f.js_mediana_ms) + " / " + ms1(f.js_p95_ms) + " ms";
+}
+/** «2,1 / 3,4 ms» (mediana / p95 de renderer.render() por fotograma, Q0i); «—» si no llegó. */
+export function textoRender(f) {
+  if (!num(f.render_mediana_ms) && !num(f.render_p95_ms)) return "—";
+  return ms1(f.render_mediana_ms) + " / " + ms1(f.render_p95_ms) + " ms";
+}
+/** «olivo (estación) 3,8 ms»: el bloque del motor que más cuesta (p95 mediano del día, Q0i); «—» si ninguna medida traía el reparto. */
+export function textoBloqueCaro(f) {
+  if (typeof f.bloque_caro !== "string" || !f.bloque_caro) return "—";
+  return f.bloque_caro + (num(f.bloque_caro_p95_ms) ? " " + ms1(f.bloque_caro_p95_ms) + " ms" : "");
 }
 /** ¿Manda la CPU? true si el p95 del JS pasa de 13 ms, false si no, null si no hay dato. */
 export function mandaLaCpu(f) { return num(f.js_p95_ms) ? f.js_p95_ms > UMBRAL_JS_MS : null; }

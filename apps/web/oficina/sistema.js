@@ -140,10 +140,10 @@ export function iniciaSistema({ sesion }) {
       const c = celdasFluidez(f);
       cuerpo.append(h("tr", { "data-dia": f.dia, "data-aparato": f.aparato },
         h("td", null, c.dia), h("td", null, c.aparato), h("td", null, c.medidas), h("td", null, h("b", null, c.p95)), h("td", null, c.objetivo), h("td", null, pill({ x: juicioFluidez(f) }, "x")),
-        h("td", null, c.mediana), h("td", null, c.peor), h("td", { "data-col": "js" }, c.js), h("td", { "data-col": "nivel" }, c.nivel), h("td", { class: "nota", "data-col": "perillas" }, c.perillas),
+        h("td", null, c.mediana), h("td", null, c.peor), h("td", { "data-col": "js" }, c.js), h("td", { "data-col": "render" }, c.render), h("td", { class: "nota", "data-col": "bloque" }, c.bloque), h("td", { "data-col": "nivel" }, c.nivel), h("td", { class: "nota", "data-col": "perillas" }, c.perillas),
         h("td", { "data-col": "olivos" }, c.olivosGen), h("td", { class: "nota" }, c.navegadores), h("td", { class: "nota" }, c.versiones)));
     }
-    if (!r.datos.filas.length) cuerpo.append(h("tr", null, h("td", { colspan: "14", class: "nota" }, "Todavía no ha llegado ninguna medida (con estos filtros).")));
+    if (!r.datos.filas.length) cuerpo.append(h("tr", null, h("td", { colspan: "16", class: "nota" }, "Todavía no ha llegado ninguna medida (con estos filtros).")));
     $("#sFluLectura").textContent = LECTURA_FLUIDEZ;
     $("#sFluNota").textContent = r.datos.filas.length ? r.datos.filas.length + " fila" + (r.datos.filas.length > 1 ? "s" : "") + ", la más reciente primero." : "";
   }

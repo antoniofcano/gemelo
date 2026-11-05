@@ -152,6 +152,12 @@
       t = String(t == null ? "" : t).replace(/^VR:\s*/, "").replace(/[^0-9A-Za-zÁÉÍÓÚÜÑáéíóúüñ ,.:;=()+_%·-]/g, "").replace(/\s+/g, " ").trim().slice(0, 80).trim();
       return t || null;
     }
+    // Q0i: el nombre de un bloque del reparto como lo admite la api (el mismo patron que contratos/medidas.schema.json), de 40 como mucho; null si queda vacio
+    function bloqueLimpio(t) {
+      t = String(t == null ? "" : t).replace(/[^0-9A-Za-zÁÉÍÓÚÜÑáéíóúüñ :_().+·-]/g, "").replace(/\s+/g, " ").trim().slice(0, 40).trim();
+      return t || null;
+    }
+    var MAX_BLOQUES = 16, CLAVES_LENTOS = [["lentos", "lentos_n"], ["cola", "lentos_cola"], ["tesela", "lentos_tesela"], ["lote", "lentos_lote"], ["tarea", "lentos_tarea"], ["compila", "lentos_compila"], ["textura", "lentos_textura"], ["sin", "lentos_sin_causa"]];
     // x = { ua, finca, modo, version }; null si la medida no sirve (pocos fotogramas, cifras que no cuadran)
     function cuerpoEnvio(r, x) {
       if (!r || !r.est || !(r.est.n >= 10)) return null;
@@ -176,6 +182,23 @@
       if (ll) { var l = entero(ll.mediana, 0, 100000); if (l !== null) c.llamadas_med = l; }
       if (tr) { var t = entero(tr.mediana, 0, 100000000); if (t !== null) c.triangulos_med = t; }
       if (r.personas != null) { var pn = entero(r.personas, 0, 500); if (pn !== null) c.personas = pn; }
+      // Q0i (contrato v3, todo opcional): lo que cuesta renderer.render(), la autopsia de los fotogramas lentos y el reparto del JS por bloque. El cuerpo se construye solo al enviar (nada por fotograma).
+      var rd = r.est.rd;
+      if (rd && rd.mediana >= 0 && rd.mediana <= rd.p95 && rd.p95 <= 10000) { c.render_mediana_ms = r2(rd.mediana); c.render_p95_ms = r2(rd.p95); }
+      var cs = r.est.causas, i;
+      if (cs) {
+        for (i = 0; i < CLAVES_LENTOS.length; i++) { var nl = entero(cs[CLAVES_LENTOS[i][0]], 0, 1000000); if (nl !== null) c[CLAVES_LENTOS[i][1]] = nl; }
+        if (cs.colaMs >= 0 && cs.colaMs <= 10000) c.lentos_cola_ms = r2(cs.colaMs);
+      }
+      var rp = r.est.reparto;
+      if (rp && rp.bloques && rp.bloques.length) {
+        var bs = [];
+        for (i = 0; i < rp.bloques.length && bs.length < MAX_BLOQUES; i++) {
+          var b = rp.bloques[i], nb = bloqueLimpio(b.nom);
+          if (nb && b.mediana >= 0 && b.mediana <= b.p95 && b.p95 <= 10000) bs.push({ bloque: nb, mediana_ms: r2(b.mediana), p95_ms: r2(b.p95) });
+        }
+        if (bs.length) { c.reparto = bs; if (rp.otros && rp.otros.p95 >= 0 && rp.otros.p95 <= 10000) c.otros_p95_ms = r2(rp.otros.p95); }
+      }
       return c;
     }
     return { resumenReparto: resumenReparto, BIT: BIT, bits: bits, marcaLargas: marcaLargas, resumenCausas: resumenCausas, lineaCausas: lineaCausas, UMBRAL: UMBRAL, CALENTAMIENTO: CALENTAMIENTO, calcula: calcula, serie: serie, percentil: percentil, mediana: mediana, lineas: lineas, texto: texto, resumeUA: resumeUA, aparatoDe: aparatoDe, navegadorDe: navegadorDe, cuerpoEnvio: cuerpoEnvio, perillasLimpias: perillasLimpias };

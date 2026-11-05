@@ -321,14 +321,34 @@ test("Q0g: el informe largo y la tarjeta de VR muestran las causas; la tarjeta s
   assert.ok(c.length <= 14, "la tarjeta de VR debe caber en el panel: " + c.length);
   assert.ok(!/tarea larga|Tareas largas/i.test(c.join("\n")), "las tareas largas van solo en el informe largo");
 });
-test("Q0g: lo que viaja a la api no cambia (el contrato no admite campos nuevos): el cuerpo no trae nada de la autopsia", () => {
+test("Q0i: lo que viaja a la api lleva el resumen de la autopsia (lentos_*) y render(), pero nunca las series por fotograma (cz, cq)", () => {
   const r = conDibujo("VR", 400);
-  const m = serie(Array.from({ length: 400 }, (_, i) => 10 + (i % 5) + (i % 50 === 0 ? 20 : 0)), 3, 0.05); m.cz = m.ms.map(() => 1); m.cq = m.ms.map(() => 2);
+  const m = serie(Array.from({ length: 400 }, (_, i) => 10 + (i % 5) + (i % 50 === 0 ? 20 : 0)), 3, 0.05); m.cz = m.ms.map((_, i) => (i % 2 ? 1 : 0)); m.cq = m.ms.map(() => 2);
+  m.js = m.ms.map(() => 6); m.rd = m.ms.map((_, i) => 1 + (i % 4) * 0.5);
   r.est = E.calcula(m, 3, 60); r.largas = { n: 1, ms: 60 };
   const c = E.cuerpoEnvio(r, { ua: UA_QUEST, finca: "hituelo", modo: "gemelo", version: "0.2.0" });
-  assert.ok(c && !/causa|lentos|larga|cz|cq/i.test(JSON.stringify(c)), JSON.stringify(c));
+  const cs = r.est.causas;
+  assert.ok(c && cs.lentos > 0);
+  assert.deepStrictEqual([c.lentos_n, c.lentos_cola, c.lentos_tesela, c.lentos_lote, c.lentos_tarea, c.lentos_compila, c.lentos_textura, c.lentos_sin_causa],
+    [cs.lentos, cs.cola, cs.tesela, cs.lote, cs.tarea, cs.compila, cs.textura, cs.sin], "los mismos recuentos que la tarjeta");
+  assert.strictEqual(c.lentos_cola_ms, Math.round(cs.colaMs * 100) / 100);
+  assert.deepStrictEqual([c.render_mediana_ms, c.render_p95_ms], [Math.round(r.est.rd.mediana * 100) / 100, Math.round(r.est.rd.p95 * 100) / 100]);
+  assert.ok(c.render_mediana_ms <= c.render_p95_ms);
+  assert.ok(!/"cz"|"cq"|largas/i.test(JSON.stringify(c)), JSON.stringify(c));
   const esquema = JSON.parse(lee("contratos/medidas.schema.json"));
   assert.deepStrictEqual(Object.keys(c).filter(k => !(k in esquema.properties)), [], "solo campos del esquema");
+  for (const k of Object.keys(c)) { const p = esquema.properties[k]; if (p.type === "integer") assert.ok(Number.isInteger(c[k]) && c[k] >= p.minimum && c[k] <= p.maximum, k); if (p.type === "number") assert.ok(c[k] >= p.minimum && c[k] <= p.maximum, k); }
+});
+test("Q0i: una medida de antes (sin render(), sin autopsia, sin reparto) da el cuerpo de la v2, que sigue siendo válido: ningún campo de la v3 obligatorio", () => {
+  const esquema = JSON.parse(lee("contratos/medidas.schema.json"));
+  const V3 = ["render_mediana_ms", "render_p95_ms", "lentos_n", "lentos_cola", "lentos_tesela", "lentos_lote", "lentos_tarea", "lentos_compila", "lentos_textura", "lentos_sin_causa", "lentos_cola_ms", "reparto", "otros_p95_ms"];
+  for (const k of V3) { assert.ok(k in esquema.properties, k); assert.ok(!esquema.required.includes(k), k + " es opcional"); }
+  const viejo = medidaVR("VR", 400), c = E.cuerpoEnvio(viejo, { ua: UA_QUEST, finca: "hituelo", modo: "nube", version: "0.2.0" });
+  assert.ok(c); for (const k of V3) assert.ok(!(k in c), k + " no viaja si no se midió");
+  for (const k of esquema.required) assert.ok(k in c, "obligatorio " + k);
+  const v2 = JSON.parse(lee("contratos/medidas-v2-ejemplo.json"));
+  assert.deepStrictEqual(Object.keys(v2).filter(k => !(k in esquema.properties)), [], "el ejemplo de la v2 cabe en el esquema de la v3");
+  for (const k of V3) assert.ok(!(k in v2), "el ejemplo de la v2 no trae " + k);
 });
 test("Q0g: la autopsia solo se paga midiendo: sin &mide ni botón no hay observador, ni «cuadro:fin» escuchado, y el fotograma no reserva", () => {
   const R = require("./_reservas");
@@ -397,10 +417,36 @@ test("Q0h: el reparto sale en el informe largo (todos los bloques, la suma y «o
   assert.ok(c.length <= 14, "la tarjeta de VR debe caber en el panel: " + c.length + "\n" + c.join("\n"));
   assert.ok(l[0].length <= 72, "la línea del reparto cabe a lo ancho del panel: " + l[0].length);
 });
-test("Q0h: el reparto no cambia el cuerpo que viaja a la api (eso es Q0i)", () => {
-  const n = 400, m = conReparto({ a: Array.from({ length: n }, () => 2) }, Array.from({ length: n }, () => 6), Array.from({ length: n }, () => 1));
+test("Q0i: el reparto viaja a la api: {bloque, mediana_ms, p95_ms} de mayor a menor p95, con otros_p95_ms, y los nombres cumplen el patrón del esquema", () => {
+  const n = 400, B = { "olivo (estación)": 3.1, "c:fauna": 1.4, "Cola": 0.9, "<b>x</b>/ruta\\mala": 0.5 }, bl = {};
+  Object.keys(B).forEach(k => { bl[k] = Array.from({ length: n }, (_, i) => B[k] * (0.8 + (i % 5) * 0.1)); });
+  const m = conReparto(bl, Array.from({ length: n }, () => 8), Array.from({ length: n }, () => 1.2));
   const c = E.cuerpoEnvio(medidaVR("VR", n, { est: E.calcula(m, 3, 60) }), { ua: UA_QUEST, finca: "hituelo", modo: "gemelo", version: "0.2.0" });
-  assert.ok(c && !/reparto|bloque|otros/i.test(JSON.stringify(c)), JSON.stringify(c));
+  const esquema = JSON.parse(lee("contratos/medidas.schema.json")), pat = new RegExp(esquema.properties.reparto.items.properties.bloque.pattern);
+  assert.deepStrictEqual(c.reparto.map(b => b.bloque).slice(0, 3), ["olivo (estación)", "c:fauna", "Cola"]);
+  for (const b of c.reparto) {
+    assert.ok(pat.test(b.bloque), "nombre fuera del patrón: " + b.bloque); assert.ok(b.mediana_ms <= b.p95_ms);
+    assert.deepStrictEqual(Object.keys(b).sort(), ["bloque", "mediana_ms", "p95_ms"]);
+  }
+  assert.ok(!c.reparto.some(b => /[<>/\\]/.test(b.bloque)), "lo que no cabe en el patrón se quita del nombre");
+  assert.ok(c.otros_p95_ms >= 0 && c.otros_p95_ms <= 10000);
+  assert.ok(c.reparto[0].p95_ms >= c.reparto[1].p95_ms, "el orden del medidor se conserva");
+});
+test("Q0i: el reparto se acota a 16 bloques (los de mayor p95) aunque el motor tenga más componentes", () => {
+  const n = 300, bl = {};
+  for (let k = 0; k < 40; k++) bl["bloque" + k] = Array.from({ length: n }, () => 0.1 + k * 0.1);
+  const m = conReparto(bl, Array.from({ length: n }, () => 100), Array.from({ length: n }, () => 1));
+  const c = E.cuerpoEnvio(medidaVR("VR", n, { est: E.calcula(m, 3, 60) }), { ua: UA_QUEST, finca: "hituelo", modo: "gemelo", version: "0.2.0" });
+  assert.strictEqual(c.reparto.length, 16);
+  assert.deepStrictEqual(c.reparto.map(b => b.bloque).slice(0, 2), ["bloque39", "bloque38"], "se quedan los que más cuestan");
+  assert.ok(!c.reparto.some(b => b.bloque === "bloque0"));
+  assert.ok(JSON.stringify(c).length < 3000, "el cuerpo sigue siendo pequeño");
+  const largo = conReparto({ ["x".repeat(100)]: Array.from({ length: n }, () => 1) }, Array.from({ length: n }, () => 5), Array.from({ length: n }, () => 1));
+  assert.strictEqual(E.cuerpoEnvio(medidaVR("VR", n, { est: E.calcula(largo, 3, 60) }), { ua: UA_QUEST, finca: "hituelo", modo: "gemelo", version: "0.2.0" }).reparto[0].bloque.length, 40, "el nombre se corta a 40");
+});
+test("Q0i: sin reparto (medida de antes) no viaja ni reparto ni otros_p95_ms", () => {
+  const c = E.cuerpoEnvio(medidaVR("VR", 400), { ua: UA_QUEST, finca: "hituelo", modo: "gemelo", version: "0.2.0" });
+  assert.ok(c && !("reparto" in c) && !("otros_p95_ms" in c));
 });
 test("Q0h: coste cero sin medir: ni una lectura de reloj nueva en el bucle fuera de lo guardado por «rp», y cero reservas en lo que corre midiendo", () => {
   const fin = lee("apps/web/motor/90_final.js"), cuerpo = fin.slice(fin.indexOf("function cuadro(t)"), fin.indexOf("var tAhorro"));

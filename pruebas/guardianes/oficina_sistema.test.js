@@ -104,6 +104,12 @@ test("Q0e, «Fluidez en aparatos» dice por qué: columnas JS, Nivel, Perillas y
     const v = P.celdasFluidez(vieja);
     assert.deepStrictEqual([v.js, v.nivel, v.perillas, v.olivosGen], ["—", "—", "—", "—"]);
   }
+  // Q0i: render() y el bloque más caro del día (o «—» si ninguna medida traía el reparto)
+  const q0i = P.celdasFluidez({ ...nueva, render_mediana_ms: 2.1, render_p95_ms: 3.4, bloque_caro: "olivo (estación)", bloque_caro_p95_ms: 3.8 });
+  assert.deepStrictEqual([q0i.render, q0i.bloque], ["2,1 / 3,4 ms", "olivo (estación) 3,8 ms"]);
+  assert.deepStrictEqual([c.render, c.bloque], ["—", "—"], "una fila sin lo de la v3 se pinta con guiones");
+  assert.deepStrictEqual([P.textoRender({ render_mediana_ms: null, render_p95_ms: null }), P.textoBloqueCaro({ bloque_caro: null })], ["—", "—"]);
+  assert.match(js, /data-col": "render"/); assert.match(js, /data-col": "bloque"/);
   assert.strictEqual(P.celdasFluidez({ ...nueva, perillas: "<b>x</b>" }).perillas, "<b>x</b>", "la celda trae el texto tal cual y se pinta con textContent: no se interpreta como HTML");
 });
 
