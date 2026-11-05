@@ -4,7 +4,7 @@
 //   02c_componentes (Reparto, Bus, ConfigPuro, Componentes), 02f_xr_perillas (XrPerillas), 02h_render (Render), 02i_materiales (Materiales),
 //   03_escena (visor, renderer, modo, calidad), 04b_escena3d (Escena3D), 04f_suelo_fotos (SueloFotos), 07ab_generados (Generados),
 //   07b_arboles (Arboles), 08_marcadores (listo, capas), 12_paseo (persona), 14_historia (lista, pct, rango), 15_tiempo (nivel, rumbo, hace),
-//   16_vida (mira), 29_vr (VRX, panel, PanelVR, VR_PERFILES), 33_ajustes (Ajustes), 90_final (cuadro, bucle)
+//   29_vr (VRX, panel, PanelVR, VR_PERFILES), 33_ajustes (Ajustes), 90_final (cuadro, bucle)
 // ===============================================================================
 
   // ---------- medidor de fotogramas para la prueba en el aparato (T7a, doc/sistema/VR.md#medir-con-el-medidor). Componente «medidor-fotogramas» (ADR-0023, C10 tercera tanda; ?medidor=0 lo apaga). Sin &mide ni botón pulsado no hace nada: no escucha «cuadro:fin» y el bucle no paga nada.
@@ -233,9 +233,9 @@
       return out.length ? "?" + out.join("&") : "(sin parametros)";
     }
     // la cabeza al empezar, redondeada: x y z a metros, rumbo (0 = hacia -Z del mundo, creciendo hacia +X) a multiplos de 15 grados; null si no hay pose
-    function cabezaToma(cab, mira) {
-      if (!cab || !mira || !isFinite(cab.x) || !isFinite(cab.z) || !isFinite(mira.x) || !isFinite(mira.z)) return null;
-      var g = Math.atan2(mira.x, -mira.z) * 180 / Math.PI, q = Math.round(g / 15) * 15;
+    function cabezaToma(cab, dir) {
+      if (!cab || !dir || !isFinite(cab.x) || !isFinite(cab.z) || !isFinite(dir.x) || !isFinite(dir.z)) return null;
+      var g = Math.atan2(dir.x, -dir.z) * 180 / Math.PI, q = Math.round(g / 15) * 15;
       return { x: Math.round(cab.x), z: Math.round(cab.z), rumbo: ((q % 360) + 360) % 360 };
     }
     function textoCabeza(c) { return c ? "cabeza x " + c.x + " z " + c.z + " m, rumbo " + c.rumbo + "°" : "cabeza n/d"; }

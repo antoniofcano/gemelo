@@ -81,7 +81,7 @@ test("medidor-fotogramas: manifiesto, sin &mide no escucha el fotograma ni dibuj
   assert.strictEqual(m.Bus.hay("cuadro:fin"), false, "sin &mide ni botón, el bucle no paga nada: nadie escucha el fotograma");
   assert.strictEqual(m.visor.children.length, 0, "sin ?debug ni &mide no hay caja");
   // F0 (MULTIVIEW): además de «Medida», la fila de la sonda del multiview; las dos en Comodidad y solo con ?debug
-  assert.deepStrictEqual(m.filas.map(f => f.p + ":" + f.d.id).sort(), ["comodidad:mide", "comodidad:multiview"]);
+  assert.deepStrictEqual(m.filas.map(f => f.p + ":" + f.d.id).sort(), ["comodidad:mide", "comodidad:mideGuia", "comodidad:multiview"]);
   for (const f of m.filas) assert.strictEqual(f.d.visible(), false, "la fila de VR «" + f.d.id + "» solo con ?debug");
   for (const ev of ["depura:lineas", "medida:estado", "medida:envia", "medida:inicia", "medida:muestra"]) assert.ok(m.Bus.hay(ev), ev);
   const ext = { lineas: [] }; m.Bus.emite("depura:lineas", ext); assert.strictEqual(ext.lineas.length, 0, "inactivo no añade línea");
