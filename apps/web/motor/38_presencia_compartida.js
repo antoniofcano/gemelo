@@ -6,7 +6,7 @@
 //   15_tiempo (rumbo, hace), 16_vida (enQuad, quita, mira, quad, enDron, dron),
 //   26_presencia (PoseCodec, BufferPose, Aspecto, SalaPose, Chat, Muneco, Encuentro, AutoPresencia, Reintento, sitioJunto),
 //   29_vr (VRX, vrFundido, panel, ficha), 33_ajustes (Ajustes), 34_movibles (Movibles)
-// Nota: Componente «presencia-compartida» (ADR-0023, C5): solo se registra; consume la red (sala «visita») y expone «Presencia» (para los avatares VRM). Sin ?presencia=sim o ?presencia=red, montado no crea nada; con red, el panel Gente y el chat; F3f: viaja a la sala de una visita guiada (Presencia.entraGuiada, token de F3c) y vuelve sola a la general si la sala se cierra o te sacan. Registra el tipo persona en Entidades (C7) y da su línea de ?debug por «depura:lineas». Publica window.__presencia y window.__presenciaChat (pruebas). Lo prueba en Node pruebas/guardianes/red.test.js.
+// Nota: Componente «presencia-compartida» (ADR-0023, C5): solo se registra; consume la red (sala «visita») y expone «Presencia» (para los avatares VRM). Sin ?presencia=sim o ?presencia=red, montado no crea nada; con red, el panel Gente y el chat; F3f: viaja a la sala de una visita guiada (Presencia.entraGuiada, token de F3c) y vuelve sola a la general si la sala se cierra o te sacan. Registra el tipo persona en Entidades (C7) y da su línea de ?debug por «depura:lineas». F3k-3: acciones de otros componentes en la ficha de una persona y en su fila de Gente (Presencia.accionesPersona; los corros de 47b), su distancia (Presencia.distancia) y repintar Gente (Presencia.repintaGente). Publica window.__presencia y window.__presenciaChat (pruebas). Lo prueba en Node pruebas/guardianes/red.test.js.
 // ===============================================================================
 
   // ---------- presencia compartida (F2, contratos/presencia.md), componente «presencia-compartida» (C5, ADR-0023): los demás visitantes como muñecos instanciados,
@@ -661,6 +661,11 @@
           ic.addEventListener("click", function () { irCon(x.id); });
           hijos.push(ic);
         }
+        if (!bl) accionesDe(x.id, m.alias, "gente").forEach(function (ac) {   // F3k-3: las de otros componentes (invitar a hablar…), con su texto
+          var bt = el("button", { type: "button", style: "font:inherit;color:inherit;background:none;border:1px solid rgba(255,255,255,0.3);border-radius:6px;padding:1px 6px;margin-left:6px;cursor:pointer;min-height:32px" }, [ac.txt]);
+          bt.addEventListener("click", function () { ac.fn(); });
+          hijos.push(bt);
+        });
         ui.listaG.appendChild(el("li", { style: "margin:3px 0" + (bl ? ";opacity:0.55" : "") }, hijos));
       });
     }
@@ -723,8 +728,24 @@
       var a = personaDe(id); if (!a) return null;
       var c = a.out.cab.p, o = oyente(), m = MODOS_P[a.out.modo | 0] || MODOS_P[0], al = String(a.alias || "Visitante"), dm = Math.round(Math.hypot(c[0] - o.x, -c[2] - o.y));
       return { titulo: al, filas: [{ k: "Va", v: m }, { k: "Está", v: "a " + dm + " m de ti" }], lineas: [m + " · a " + dm + " m de ti"],
-        acciones: [{ id: "ir", txt: modoF === "vr" ? "Ir con" : "Ir con " + al, fn: function () { return irCon(idDe(a)); } }] };
+        acciones: [{ id: "ir", txt: modoF === "vr" ? "Ir con" : "Ir con " + al, fn: function () { return irCon(idDe(a)); } }].concat(accionesDe(idDe(a), al, modoF)) };
     }
+    // F3k-3: punto de extensión de las acciones sobre una persona (la ficha al tocarla o apuntarla, y su fila de Gente). Otro componente (47b_corro.js: invitar a
+    // hablar, silenciar, bloquear la voz, avisar) registra fn(identidad, { alias, distancia (m, o null sin pose), modo ("pantalla" | "vr" | "gente") }) → [{ id, txt, fn }].
+    // Lo que devuelve son acciones de quien lo registra: aquí solo se ponen como botones con su texto (textContent). accionesPersona(fn) devuelve la función que lo quita
+    var proveedores = [];
+    function accionesPersona(fn) { if (typeof fn !== "function") return function () {}; proveedores.push(fn); claveGente = ""; return function () { var i = proveedores.indexOf(fn); if (i >= 0) proveedores.splice(i, 1); claveGente = ""; }; }
+    function accionesDe(identidad, alias, modoF) {
+      var d = distancia(identidad), out = [];
+      proveedores.forEach(function (fn) { try { (fn(identidad, { alias: alias, distancia: d, modo: modoF || "pantalla" }) || []).forEach(function (x) { if (x && typeof x.txt === "string" && typeof x.fn === "function") out.push({ id: String(x.id || "accion"), txt: x.txt, fn: x.fn }); }); } catch (e) {} });
+      return out;
+    }
+    // a cuántos metros (en el plano) está esa persona de ti; null si no se la ve (de otra sala, sin pose, en vista aérea o bloqueada por ti)
+    function distancia(identidad) {
+      var a = activo ? busca(identidad) : null; if (!seVe(a, performance.now())) return null;
+      var c = a.out.cab.p, o = oyente(); return Math.hypot(c[0] - o.x, -c[2] - o.y);
+    }
+    function repintaGente() { claveGente = ""; if (ui) pintaGente(performance.now()); }
     function registraPersona() { quitaPersona = Entidades.registra({ tipo: "persona", dueno: "38_presencia_compartida", prioridad: 30, pantalla: personaEnPantalla, rayo: personaEnRayo, ficha: fichaPersona,
       existe: function (id) { return !!personaDe(id); },
       lista: function () { return puntos().map(function (q) { return { id: "persona:" + q.id, ref: q.id, alias: q.alias, x: q.x, y: q.y, modo: q.modo }; }); },
@@ -842,7 +863,7 @@
     var api = { activo: function () { return activo; }, actualiza: actualiza, estado: estado, libera: libera, texto: texto, llegadas: llegadas, puntos: puntos, irCon: irCon,
       vrmPersonas: vrmPersonas, miVrm: miVrm, miAvatar: miAvatar, recolorea: recolorea, cambiaron: cambiaron, enganchaVRM: enganchaVRM,
       sala: function () { return claveSala; }, cambiaSala: cambiaSala, entraGuiada: entraGuiada, avisoGuiada: function () { return avisoGuiada; }, evento: function () { return claveSala === "guiada" ? eventoGuiada : null; }, nombreSala: nombreSala,
-      yo: miInfo, mensaje: mensaje, cabeza: cabeza };
+      yo: miInfo, mensaje: mensaje, cabeza: cabeza, accionesPersona: accionesPersona, distancia: distancia, repintaGente: repintaGente };
     window.__presenciaChat = function (txt) { anadeMensaje("Prueba", String(txt || "Hola"), false); };   // pruebas del chat movible (la ventana solo existe con ?presencia=red o &chat=1)
     // gancho de pruebas: estado; con "libera", apagar el componente (soltar todo; los avatares VRM se sueltan antes); con "llegadas", las poses apuntadas (P4);
     // con "puntos", quién sale en el minimapa; con "ir" e id, ir con esa persona (I1). Tras liberar sigue contestando (activo: false), como antes de C5

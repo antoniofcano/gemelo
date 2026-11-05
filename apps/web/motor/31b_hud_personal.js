@@ -22,9 +22,9 @@
       return h.es_mia ? { visible: true, texto: "Tu haza", nombre: "Tu haza: estás en una haza tuya. Ver su ficha" }
         : { visible: true, texto: "Otra haza", nombre: "Otra haza: de otro hogar. Ver su ficha" };
     }
-    // hablar: e = el estado de la voz ("voz:estado": dentro, guiada, puede, micro) o null. Solo sale dentro de una visita guiada y con permiso de hablar
+    // hablar: e = el estado de la voz ("voz:estado": dentro, guiada, corro, puede, micro) o null. Solo sale dentro de una visita guiada o de un corro (F3k-2) y con permiso de hablar
     function hablar(e) {
-      var vis = !!(e && e.dentro && e.guiada && e.puede), micro = e && typeof e.micro === "string" ? e.micro : "cerrado";
+      var vis = !!(e && e.dentro && (e.guiada || e.corro) && e.puede), micro = e && typeof e.micro === "string" ? e.micro : "cerrado";
       if (!vis) return { visible: false, texto: "Hablar", nombre: "Hablar", pulsado: false };
       if (micro === "abriendo") return { visible: true, texto: "Abriendo…", nombre: "Abriendo…: el micrófono se está abriendo", pulsado: true };
       if (micro !== "cerrado") return { visible: true, texto: "Callar", nombre: "Callar: cerrar el micrófono", pulsado: true };

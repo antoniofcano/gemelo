@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: LaminasPuro, Laminas
 // Consume: 02c_componentes (Bus), 02h_render (InfoDibujo), 03_escena (lienzo, renderer, scene, camera, texColor, modo), 08_marcadores (capas),
-//   15_tiempo (rumbo, hace), 16_vida (mira), 24_pantalla (suave), 29_vr (VRX, panel), 90_final (bucle)
+//   14_historia (aviso), 15_tiempo (rumbo, hace), 16_vida (mira), 24_pantalla (suave), 29_vr (VRX, panel), 90_final (bucle)
 // Nota: Servicio del núcleo (ADR-0023, C8): LaminasPuro y Laminas (un lienzo 2D como textura de un cartel en el mundo: colocación delante a la altura de los ojos, giro suave, cierre por distancia o al salir de VR, repintado solo si cambia la firma, liberado entero y alTocar(u, v) para el rayo y el gatillo). Sin reloj propio: lo mueve 90_final (Laminas.revisa) y 29_vr (Laminas.toca). Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/laminas.test.js.
 // ===============================================================================
   // ---------- las láminas (ADR-0023, C8; doc/sistema/COMPONENTES.md): un lienzo 2D como textura de un cartel en el mundo, anclado al mundo (no a la cabeza), a la
@@ -113,7 +113,15 @@
       if (prev && dt > 0) { var s = Math.min(1, dt * AGARRE.suave); p.x = prev.x + (p.x - prev.x) * s; p.y = prev.y + (p.y - prev.y) * s; p.z = prev.z + (p.z - prev.z) * s; }
       p.rotY = mirando(cab, p); return p;
     }
-    return { LEJOS: LEJOS, DIST: DIST, BAJO: BAJO, PX_M: PX_M, TOPES: TOPES, toque: toque, giro: giro, medidas: medidas, valida: valida, grados: grados, hueco: hueco, legible: legible,
+    // parte un texto en líneas de como mucho `ancho` px; medir(texto) → px (el measureText del lienzo de la lámina). F3k-3: para todas las láminas con texto
+    // largo (el aviso y la invitación de los corros); la misma regla que el aviso de voz de 47_habla.js
+    function lineas(texto, ancho, medir) {
+      var palabras = String(texto).split(/\s+/).filter(Boolean), out = [], actual = "";
+      palabras.forEach(function (p) { var prueba = actual ? actual + " " + p : p; if (actual && medir(prueba) > ancho) { out.push(actual); actual = p; } else actual = prueba; });
+      if (actual) out.push(actual);
+      return out;
+    }
+    return { LEJOS: LEJOS, DIST: DIST, BAJO: BAJO, PX_M: PX_M, TOPES: TOPES, toque: toque, lineas: lineas, giro: giro, medidas: medidas, valida: valida, grados: grados, hueco: hueco, legible: legible,
       ang: ang, rotaY: rotaY, miradaH: miradaH, mirando: mirando, nace: nace, desvio: desvio, AGARRE: AGARRE, agarra: agarra, arrastra: arrastra };
   })();
   // [puro:fin]

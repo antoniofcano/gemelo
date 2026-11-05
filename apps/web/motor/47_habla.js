@@ -3,7 +3,7 @@
 // Consume: 01_datos (D, $), 01a_aparato (Aparato), 02c_componentes (ConfigPuro, Teclas, Componentes), 02d_laminas (Laminas),
 //   03_escena (visor, modo), 08_marcadores (aplica, pendiente), 09_camara (suelta), 12_paseo (persona, teclas, primera), 14_historia (marca, aviso),
 //   15_tiempo (hace), 16_vida (quita), 29_vr (VRX, panel, PanelVR), 33_ajustes (Ajustes)
-// Nota: Componente «habla-guiada» (F3e, ADR-0026; decisiones 157-162): la interacción de la voz en la visita guiada, solo dentro de una sala guiada y con papel. «Hablar» con botón (≥ 44 px; 56 en el navegador de Quest), tecla T y, en VR, el gatillo izquierdo (VRX.voz, que 29_vr.js lee cada fotograma), en dos modos según el ajuste «Hablar» de Configuración: pulsar para abrir y cerrar (por defecto) o mantener pulsado (familias; el guía siempre pulsa y abre su micro con el primer gesto, una vez). Sin la palabra, «Levantar la mano» / «Bajar la mano» por la api de F3c y «Estás 2.º en la cola» (la cola, de la api «Guiada» de 46). El micro siempre con icono y texto en una región aria-live; «Silenciarme» siempre a mano; el aviso de que con el micro abierto el sonido no es espacial y la casilla «Llevo auriculares» (Voz.auriculares). En VR, una lámina de 3 s al abrir o cerrar, una fila del panel («Ir a») y un pulso del mando. Emite «habla:micro» y «habla:mano»; escucha «voz:estado», «guiada:palabra» y «depura:lineas». ?habla=0 lo apaga. Publica window.__habla (pruebas). Todo con textContent. Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/habla.test.js.
+// Nota: Componente «habla-guiada» (F3e, ADR-0026; decisiones 157-162): la interacción de la voz en la visita guiada, solo dentro de una sala guiada y con papel. «Hablar» con botón (≥ 44 px; 56 en el navegador de Quest), tecla T y, en VR, el gatillo izquierdo (VRX.voz, que 29_vr.js lee cada fotograma), en dos modos según el ajuste «Hablar» de Configuración: pulsar para abrir y cerrar (por defecto) o mantener pulsado (familias; el guía siempre pulsa y abre su micro con el primer gesto, una vez). Sin la palabra, «Levantar la mano» / «Bajar la mano» por la api de F3c y «Estás 2.º en la cola» (la cola, de la api «Guiada» de 46). El micro siempre con icono y texto en una región aria-live; «Silenciarme» siempre a mano; el aviso de que con el micro abierto el sonido no es espacial y la casilla «Llevo auriculares» (Voz.auriculares). En VR, una lámina de 3 s al abrir o cerrar, una fila del panel («Ir a») y un pulso del mando. F3k-2: lo mismo dentro de un corro (papel «miembro»), con el micro que se cierra solo tras 60 s sin que se te oiga. Emite «habla:micro» y «habla:mano»; escucha «voz:estado», «guiada:palabra» y «depura:lineas». ?habla=0 lo apaga. Publica window.__habla (pruebas). Todo con textContent. Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/habla.test.js.
 // ===============================================================================
   // ---------- hablar en la visita guiada (F3e; ADR-0026, decisiones 157-162; COMPONENTES §F3e).
   // Componente «habla-guiada» (ADR-0023; ?habla=0 lo apaga): la interacción de la voz. Por qué un módulo nuevo y no dentro de 46_guiada.js: 46 es la
@@ -70,6 +70,16 @@
       return out;
     }
     var AVISO_ESPACIAL = "Con el micrófono abierto el sonido no es espacial; con auriculares sí.";
+    // F3k-2 (decisión 207, P1 provisional): en un corro no hay turno que cierre el micro: lo cierra el silencio. SILENCIO_S segundos sin que se te oiga hablar
+    // (ActiveSpeakers de LiveKit, «voz:habla» con yo) y se cierra solo. o = { corro, micro, habla (¿se te oye ahora?), t (s callado hasta ahora), dt } → { t, cierra }
+    var SILENCIO_S = 60;
+    function silencio(o) {
+      if (!o || !o.corro || o.micro !== "abierto" || o.habla) return { t: 0, cierra: false };
+      var t = (typeof o.t === "number" && isFinite(o.t) ? o.t : 0) + (typeof o.dt === "number" && o.dt > 0 ? o.dt : 0);
+      return t >= SILENCIO_S ? { t: 0, cierra: true } : { t: t, cierra: false };
+    }
+    // ¿se enseña la caja del micro? En una guiada, con papel (guía, oficina o familia); en un corro (F3k-2), con el papel «miembro» de su token
+    function enSala(e) { return !!e && ((!!e.guiada && ["guia", "oficina", "familia"].indexOf(e.papel) >= 0) || (!!e.corro && e.papel === "miembro")); }
     function modo(v) { return MODOS.indexOf(v) >= 0 ? v : DEFECTO; }
     function evento(sala) { var m = typeof sala === "string" ? SALA.exec(sala) : null; return m ? Number(m[1]) : null; }
     function modera(papel) { return papel === "guia" || papel === "oficina"; }
@@ -79,6 +89,8 @@
     function textoCola(puesto) { return typeof puesto === "number" && puesto >= 1 ? "Estás " + ordinal(Math.floor(puesto)) + " en la cola." : "Tienes la mano levantada."; }
     // el micro, con icono y TEXTO: e = { papel, puede, micro (cerrado|abriendo|abierto), motivo } → { clave, icono, texto }
     function textoMicro(e) {
+      // en un corro, el indicador que promete su aviso (contratos/voz-consentimiento.md, «cercania» v1): «● Tu micro está abierto»
+      if (e.micro === "abierto" && e.corro) return { clave: "abierto", icono: "●", texto: "Tu micro está abierto: te oye el corro." };
       if (e.micro === "abierto") return { clave: "abierto", icono: "🎙", texto: "Micrófono abierto: te oyen." };
       if (e.micro === "abriendo") return { clave: "abriendo", icono: "⏳", texto: "Abriendo el micrófono…" };
       if (e.motivo === "micro_denegado") return { clave: "denegado", icono: "🚫", texto: "El navegador no deja usar el micrófono: permítelo en los ajustes del sitio." };
@@ -90,7 +102,7 @@
     // lo que se enseña: e = { guiada, papel, puede, micro, motivo, auriculares, mano (¿la tienes levantada?), puesto (n | null), ocupado (¿una petición en vuelo?) }, m = modo
     function vista(e, m) {
       m = modo(m);
-      if (!e || !e.guiada || ["guia", "oficina", "familia"].indexOf(e.papel) < 0) return { visible: false, micro: null, primaria: { accion: "ninguna", texto: "", aria: "", off: true }, silenciar: false, cola: "", auric: false, aviso: "" };
+      if (!enSala(e)) return { visible: false, micro: null, primaria: { accion: "ninguna", texto: "", aria: "", off: true }, silenciar: false, cola: "", auric: false, aviso: "" };
       var abierto = e.micro !== "cerrado", mant = m === "mantener" && !modera(e.papel), t = textoMicro(e), p;
       if (e.puede || abierto) {
         p = abierto
@@ -116,7 +128,7 @@
     // el texto único de la región aria-live: el micro y, si hay, la cola
     function textoEstado(v) { return v && v.visible ? v.micro.texto + (v.cola ? " " + v.cola : "") : ""; }
     return { AVISO_VERSION: AVISO_VERSION, AVISO: AVISO, URL_CONSENTIMIENTO: URL_CONSENTIMIENTO, consentimiento: consentimiento, requiere: requiere, errorAceptar: errorAceptar, lineas: lineas,
-      MODOS: MODOS, DEFECTO: DEFECTO, MANO_MS: MANO_MS, AVISO_S: AVISO_S, MENSAJE_S: MENSAJE_S, AVISO_ESPACIAL: AVISO_ESPACIAL, modo: modo, evento: evento, modera: modera, ordinal: ordinal, puestoDe: puestoDe,
+      MODOS: MODOS, DEFECTO: DEFECTO, MANO_MS: MANO_MS, AVISO_S: AVISO_S, MENSAJE_S: MENSAJE_S, AVISO_ESPACIAL: AVISO_ESPACIAL, SILENCIO_S: SILENCIO_S, silencio: silencio, enSala: enSala, modo: modo, evento: evento, modera: modera, ordinal: ordinal, puestoDe: puestoDe,
       textoCola: textoCola, textoMicro: textoMicro, vista: vista, entrada: entrada, activo: activo, textoEstado: textoEstado };
   })();
   // [puro:fin]
@@ -126,7 +138,8 @@
     var H = HablaPuro, modoAj = H.DEFECTO, v = null, ult = "", mensaje = "", tMsg = 0, puntero = false, sosten = "", pulsa = null, pidiendo = false, manoSup = null, ultMicro = "cerrado", autoEv = null, vivo = true, tLam = 0;
     var cons = "?", consCarga = null, consIniciada = false, avisoVoz = null, avisoErr = "", avisoOcupado = false, avisoDom = null, avisoFoco = null;   // F3j: el consentimiento de voz ("si" | "no" | "?"), el aviso en pantalla
     var caja = null, estadoEl = null, icoEl = null, txtEl = null, boton = null, silencio = null, casilla = null, avisoEl = null, quitaFila = null, abriendoP = null;
-    var est = { aperturas: 0, cierres: 0, manos: 0, errores: 0, teclas: 0, gatillos: 0, autos: 0, avisos: 0, aceptados: 0, retirados: 0 }, LAM = "habla-micro", LAM_AVISO = "habla-consent";
+    var est = { aperturas: 0, cierres: 0, manos: 0, errores: 0, teclas: 0, gatillos: 0, autos: 0, avisos: 0, aceptados: 0, retirados: 0, silencios: 0 }, LAM = "habla-micro", LAM_AVISO = "habla-consent";
+    var tSilencio = 0;   // F3k-2: segundos con el micro abierto en un corro sin que se te oiga
     function el(tag, props, hijos) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === "style") e.style.cssText = props[k]; else if (k in e) e[k] = props[k]; else e.setAttribute(k, props[k]); }); (hijos || []).forEach(function (h) { e.appendChild(typeof h === "string" ? document.createTextNode(h) : h); }); return e; }
     function vr() { return !!(VRX && VRX.on); }
     function px() { return Aparato.clase() === "quest" ? 56 : 44; }
@@ -134,11 +147,11 @@
     // ---- lo que se sabe: de la voz (permiso, micro, papel, sala) y de la guiada (quién eres y la cola)
     function lee() {
       var s = Vz ? Vz.estado() : null, g = Gd ? Gd.estado() : null;
-      if (!s) return { guiada: false, papel: "", puede: false, micro: "cerrado", motivo: "", auriculares: false, mano: false, puesto: null, ocupado: false, evento: null };
+      if (!s) return { guiada: false, corro: false, papel: "", puede: false, micro: "cerrado", motivo: "", auriculares: false, mano: false, puesto: null, ocupado: false, evento: null };
       var puesto = g && g.evento === H.evento(s.sala) ? H.puestoDe(g.manos, g.yo) : null, dicho = manoSup && Date.now() < manoSup.hasta ? manoSup : null;
       // la api acaba de contestar y el atributo «mano» aún no ha llegado por la sala: durante 3 s vale lo que dijo la api
       if (dicho) puesto = dicho.v ? (puesto !== null ? puesto : dicho.puesto || null) : null;
-      return { guiada: !!s.guiada, papel: s.papel, puede: !!s.puede, micro: s.micro, motivo: s.motivo || "", auriculares: !!s.auriculares, mano: dicho ? dicho.v : puesto !== null,
+      return { guiada: !!s.guiada, corro: !!s.corro, papel: s.papel, puede: !!s.puede, micro: s.micro, motivo: s.motivo || "", auriculares: !!s.auriculares, mano: dicho ? dicho.v : puesto !== null,
         puesto: puesto, ocupado: pidiendo, evento: H.evento(s.sala) };
     }
     function vista() { var e = lee(); return { e: e, v: H.vista(e, modoAj) }; }
@@ -360,7 +373,7 @@
       monta();
       var t = H.textoEstado(w.v) + (mensaje ? " " + mensaje : ""), k = JSON.stringify([t, w.v.primaria, w.v.silenciar, w.v.auric, w.v.aviso, w.e.auriculares, vr()]);
       if (k === ult) return; ult = k;
-      caja.hidden = vr();
+      caja.hidden = vr(); caja.setAttribute("aria-label", w.e.corro ? "Micrófono del corro" : "Micrófono de la visita guiada");
       icoEl.textContent = w.v.micro.icono; txtEl.textContent = t;
       boton.textContent = w.v.primaria.texto; boton.disabled = !!w.v.primaria.off; boton.setAttribute("aria-label", w.v.primaria.aria);
       boton.title = w.v.primaria.accion === "micro" ? w.v.primaria.texto + " (tecla T)" : w.v.primaria.texto;
@@ -472,13 +485,17 @@
       if (tLam > 0) { tLam -= dt; if (tLam <= 0 && typeof Laminas !== "undefined" && Laminas.hay(LAM)) Laminas.cierra(LAM, "cerrada"); }
       if (sosten === "gatillo" && !vr()) { gatilloAntes = false; gesto("suelta", "gatillo"); }
       if (vr()) autoGuia(null);
+      // F3k-2: en un corro, el micro abierto se cierra solo tras un minuto sin que se te oiga (no hay turno que lo cierre)
+      var e = v ? v.e : null, hablaYo = !!(Vz && Vz.hablan && Vz.hablan().some(function (h) { return h && h.yo; }));
+      var sl = H.silencio({ corro: !!(e && e.corro), micro: e ? e.micro : "cerrado", habla: hablaYo, t: tSilencio, dt: dt }); tSilencio = sl.t;
+      if (sl.cierra) { est.silencios++; sosten = ""; cierra("silencio"); msg("Micrófono cerrado tras un minuto sin hablar."); }
     }
     function estado() {
       var w = vista();
       return { visible: w.v.visible, modo: modoAj, micro: w.e.micro, papel: w.e.papel, puede: w.e.puede, accion: w.v.primaria.accion, texto: w.v.primaria.texto, estado: H.textoEstado(w.v), cola: w.v.cola,
         puesto: w.e.puesto, mano: w.e.mano, aviso: w.v.aviso, sosten: sosten, silenciar: w.v.silenciar, auriculares: w.e.auriculares, boton: px(), aperturas: est.aperturas, cierres: est.cierres,
         manos: est.manos, errores: est.errores, teclas: est.teclas, gatillos: est.gatillos, autos: est.autos, teclaT: !!quitaT,
-        consentimiento: cons, aviso: !!avisoVoz, avisos: est.avisos, aceptados: est.aceptados, retirados: est.retirados };
+        consentimiento: cons, aviso: !!avisoVoz, avisos: est.avisos, aceptados: est.aceptados, retirados: est.retirados, corro: !!w.e.corro, silencios: est.silencios };
     }
     function libera() {
       vivo = false; sosten = "";
