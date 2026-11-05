@@ -103,7 +103,7 @@
     function matImpostor(tCol, tNor, f) {
       var C = [], S = [];
       for (var k = 0; k < 4; k++) { var v = f.variantes[Math.min(k, f.variantes.length - 1)]; C.push(new THREE.Vector3().fromArray(v.centro)); S.push(v.semilado); }
-      var m = new THREE.MeshLambertMaterial({ map: tCol, alphaTest: 0.5 }), U = { uCentro: { value: C }, uSemi: { value: S }, tNorm: { value: tNor } };
+      var m = Materiales.recorte(new THREE.MeshLambertMaterial({ map: tCol, alphaTest: 0.5 })), U = { uCentro: { value: C }, uSemi: { value: S }, tNorm: { value: tNor } };
       Materiales.parchea(m, "impostor-lejano", function (sh) {
         sh.uniforms.uCentro = U.uCentro; sh.uniforms.uSemi = U.uSemi; sh.uniforms.tNorm = U.tNorm; sh.uniforms.uCapa = uCapa;
         Generados.lejanos.parcheLuz(sh); Generados.lejanos.parcheFundido(sh);
@@ -133,6 +133,7 @@
       var sc = new THREE.Scene(); sc.add(new THREE.AmbientLight(0xffffff, Math.PI));   // irradiancia π × Lambert 1/π: el albedo tal cual
       var prevRT = renderer.getRenderTarget(), prevXR = renderer.xr.enabled, cc = new THREE.Color(), ca = renderer.getClearAlpha(), cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.01, 100);
       renderer.getClearColor(cc); renderer.xr.enabled = false; renderer.setClearColor(0x000000, 0); t.scissorTest = true;
+      Materiales.recortes(false);   // AG-2.1: el blanco del horneado no tiene MSAA y su alfa tiene que seguir siendo el del recorte duro: sin alphaToCoverage mientras se hornea
       try {
         gs.forEach(function (g, j) {
           var b = cajas[j], cx = (b.min.x + b.max.x) / 2, cy = (b.min.y + b.max.y) / 2, cz = (b.min.z + b.max.z) / 2, hy = (b.max.y - b.min.y) / 2;
@@ -147,7 +148,7 @@
           }
           sc.remove(g);
         });
-      } finally { renderer.setRenderTarget(prevRT); renderer.xr.enabled = prevXR; renderer.setClearColor(cc, ca); }
+      } finally { Materiales.recortes(true); renderer.setRenderTarget(prevRT); renderer.xr.enabled = prevXR; renderer.setClearColor(cc, ca); }
       rt = t; return t.texture;
     }
     // dos planos verticales que se cruzan en el eje del pie, en coordenadas unidad (la caja de la variante los estira): vista 0 en el plano XY, vista 1 en el ZY
@@ -165,7 +166,7 @@
       return g;
     }
     function matSustituto(tex) {
-      var m = new THREE.MeshLambertMaterial({ map: tex, alphaTest: 0.5, side: THREE.DoubleSide }), uNV = { value: nv };
+      var m = Materiales.recorte(new THREE.MeshLambertMaterial({ map: tex, alphaTest: 0.5, side: THREE.DoubleSide })), uNV = { value: nv };
       Materiales.parchea(m, "impostor-sustituto", function (sh) {
         sh.uniforms.uNVar = uNV; sh.uniforms.uCapa = uCapa;
         sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nattribute float aVar; attribute float aVista; uniform float uNVar;")

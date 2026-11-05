@@ -1,8 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: matHojaG, matHojaP, matCorteza, matSombra, geoSombra, follajeG, construyeSombras
-// Consume: 01_datos (ESC_R8), 02_mundo (suelo, copaAlta, aviva, colorEn, copas), 02g_vr_presupuesto (VrPresupuesto), 02j_estaticos (Estaticos),
-//   03_escena (texColor, exag, calidad), 04d_sombreado_tiles (hash), 06_arboles (gSombras, radioEn), 14_historia (lista), 16_vida (esfera),
-//   18_paisaje (instSombra, sombrasSol), 23_estacion (construyeFrutosLista)
+// Consume: 01_datos (ESC_R8), 02_mundo (suelo, copaAlta, aviva, colorEn, copas), 02g_vr_presupuesto (VrPresupuesto), 02i_materiales (Materiales),
+//   02j_estaticos (Estaticos), 03_escena (texColor, exag, calidad), 04d_sombreado_tiles (hash), 06_arboles (gSombras, radioEn), 14_historia (lista),
+//   16_vida (esfera, quita), 18_paisaje (instSombra, sombrasSol), 23_estacion (construyeFrutosLista)
 // ===============================================================================
 
   // follaje: cada punto LiDAR de copa es un montoncito de hojas plateadas (sprites con textura propia)
@@ -27,8 +27,8 @@
     var tex = texColor(new THREE.CanvasTexture(cv)); tex.generateMipmaps = true; return tex;
   }
   var texHojas = texturaHojas();
-  var matHojaG = new THREE.PointsMaterial({ size: 3.1, map: texHojas, alphaTest: 0.4, vertexColors: true, sizeAttenuation: true, transparent: false });
-  var matHojaP = new THREE.PointsMaterial({ size: 1.7, map: texHojas, alphaTest: 0.4, vertexColors: true, sizeAttenuation: true, transparent: false });
+  var matHojaG = Materiales.recorte(new THREE.PointsMaterial({ size: 3.1, map: texHojas, alphaTest: 0.4, vertexColors: true, sizeAttenuation: true, transparent: false }));   // AG-2.1: alphaToCoverage con MSAA (?a2c=0 lo quita)
+  var matHojaP = Materiales.recorte(new THREE.PointsMaterial({ size: 1.7, map: texHojas, alphaTest: 0.4, vertexColors: true, sizeAttenuation: true, transparent: false }));
   var matCorteza = new THREE.PointsMaterial({ size: 0.5, vertexColors: true, sizeAttenuation: true });
   function texturaSombra() {
     var cv = document.createElement("canvas"); cv.width = cv.height = 64; var x = cv.getContext("2d"), g = x.createRadialGradient(32, 32, 4, 32, 32, 32);

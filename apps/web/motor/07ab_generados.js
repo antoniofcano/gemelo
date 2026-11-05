@@ -300,6 +300,7 @@
     function parcheGen(m) {
       if (m.isMeshDepthMaterial) { Materiales.encadena(m, "gen-profundidad", parcheFundido, "gen-fundido", M.encadena); return; }
       if (m.color) m.color.convertSRGBToLinear();   // el número de la referencia es un color «tal como se ve» (sRGB): el convenio del motor
+      Materiales.recorte(m);   // AG-2.1: relleno, ramitas y tarjetas (alphaTest > 0) a alphaToCoverage; la corteza no tiene recorte y no cambia
       Materiales.encadena(m, "gen-olivo", function (sh) { parcheLuz(sh); parcheFundido(sh); }, "gen-luz-fundido", M.encadena);
     }
     function profundidad() { var d = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking }); Materiales.encadena(d, "gen-profundidad", parcheFundido, "gen-fundido", M.encadena); return d; }
