@@ -91,7 +91,7 @@
       geo.setAttribute("color", new THREE.BufferAttribute(lin, 3));
       mat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
       malla = new THREE.InstancedMesh(geo, mat, P.MAX);
-      malla.name = "trabajo de hoy (tractores, deducido)"; malla.count = 0; malla.visible = false; malla.castShadow = malla.receiveShadow = false; malla.frustumCulled = false;
+      malla.name = "trabajo de hoy (tractores, deducido)"; malla.count = 0; malla.visible = false; malla.castShadow = malla.receiveShadow = false;
       malla.raycast = function () {};   // se elige por la ficha de Entidades (cercanía), no por la malla
       scene.add(malla);
     }
@@ -103,7 +103,7 @@
         var p = posDe(s); pv.set(p.x, p.y, p.z); q.setFromAxisAngle(eje, s.giro);
         malla.setMatrixAt(i, m4.compose(pv, q, sv));
       });
-      malla.count = puestos.length; malla.instanceMatrix.needsUpdate = true; malla.visible = true;
+      malla.count = puestos.length; malla.instanceMatrix.needsUpdate = true; malla.computeBoundingSphere(); malla.visible = true;   // el volumen envolvente, tras escribir las matrices (recorte por cámara, clase A)
     }
     n.on("mundo:hoy", function (d) {
       if (!vivo) return;
