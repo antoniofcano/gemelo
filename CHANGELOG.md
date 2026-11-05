@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- En VR, los olivos que dibuja el motor (detalle cercano, generados y lejanos) también respetan el tope de triángulos de cada nivel: tienen su reserva (0,3 del tope) y el tileset recibe el resto; `?xrolivos=0` lo apaga y `?xrtri=0` apaga los dos topes. En pantalla no cambia nada. No probado en el Quest. (Q0n)
 - Trabajo en la haza (F4b W1), con `?trabajo=1` y apagado por defecto: un tractor ilustrativo en cada haza con tarea en curso según OlivarTrack, con su ficha «deducido» (OlivarTrack no dice quién, cuántos ni dónde); nada por persona. Sin datos hasta que OlivarTrack tenga su token propio. Solo probado en Node.
 - La primera vez que una familia o alguien de un corro abre el micro, una tarjeta breve («Tu micrófono, en pocas palabras») dice con quién se le oye, cómo cortarlo y que no se graba; se guarda por aparato y se vuelve a leer en Configuración → Hablar y en el panel de VR. En Chrome, iPhone y Quest, no probado. (F3l)
 - Medida por componente (C11) y por objeto de los olivos generados (O2), por el banco con el fixture sintético y SwiftShader (recuentos, no fps; tabla en MEDIDAS): solo `suelo-fondo` y `marcadores-lidar` dibujan en las escenas fijas; los olivos generados añaden ≈ +100 k triángulos y +24 MB de heap. Arreglo: `Generados.piezas()` contaba mal las mallas fundidas sin índice.
