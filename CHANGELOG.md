@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- VR: el controlador de nivel cuenta la gente. Cada escalón fija cuántos VRM como mucho y a qué distancia pasan a muñeco (3/40 m, 2/30 m, 1/20 m, 0/10 m; distancias [PROPUESTA]); con más de 8 personas a la vista (`?xrgente=`) baja un escalón con antelación, por la Cola y con fundido. Sin gente, igual que antes. No probado en Quest (Q0c-c).
 - Presencia en red: si no conecta al arrancar sola, el mundo sigue igual sin avisos y reintenta con espera creciente (30 s a 10 min, 6 intentos); la línea de `?debug` dice el motivo (F2b).
 - Medidor: fotogramas perdidos (intervalos de más de 1,5 periodos de refresco) y vsync perdidos, en la tarjeta de VR, el informe largo y el contrato v3.1 (campos opcionales `perdidos_n` y `vsync_perdidos`, migración 0024); el umbral «perdidos ≤ 1 %» es una propuesta (Q0j).
 - Cartulinas recortadas a la silueta (AG-2.2): `?cartulina=silueta` dibuja ramitas, relleno, tarjetas, impostores y sustitutos con el hexágono que abraza lo opaco de su textura (entre un 17 y un 34 % menos píxeles por cartulina, un 10 % más de triángulos por olivo, que paga el reparto); por defecto `rect` hasta medirlo en un aparato real. Sin capturas todavía; no probado en Quest ni iPhone.
