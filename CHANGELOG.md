@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Los perros se dibujan con mallas instanciadas (cuerpo, cabeza, cola, patas y sombra; 42 llamadas → 11 con los dos a la vista) y la fusión de geometrías es común a aves, conejos y perros (`02k_fusiona.js`); mismas poses y triángulos. No probado en Quest (AG-1.13b).
 - Recortes alfa de hierba, follaje, ramitas, tarjetas e impostores con `alphaToCoverage` cuando hay MSAA (perilla `?a2c=0|1`, defecto 1; `?a2c=0` devuelve el `alphaTest` de siempre); sin probar en Quest ni iPhone (AG-2.1).
 - Perilla `?tono=agx|aces|neutral` (y `?expo=`) para comparar el tone mapping; sin ella el aspecto no cambia (AG-2.5; sin probar en Quest ni iPhone).
 - La CSP (en Report-Only) admite WebAssembly con `'wasm-unsafe-eval'` en `script-src` de los dos Caddyfile, para el transcodificador Basis (KTX2) y meshopt; con su comprobación en `infra/probar-caddy.sh` y el guardián `csp_wasm.test.js` (EV-1f; sin desplegar).
