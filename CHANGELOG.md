@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- Recortes alfa de hierba, follaje, ramitas, tarjetas e impostores con `alphaToCoverage` cuando hay MSAA (perilla `?a2c=0|1`, defecto 1; `?a2c=0` devuelve el `alphaTest` de siempre); sin probar en Quest ni iPhone (AG-2.1).
 - Perilla `?tono=agx|aces|neutral` (y `?expo=`) para comparar el tone mapping; sin ella el aspecto no cambia (AG-2.5; sin probar en Quest ni iPhone).
 - La CSP (en Report-Only) admite WebAssembly con `'wasm-unsafe-eval'` en `script-src` de los dos Caddyfile, para el transcodificador Basis (KTX2) y meshopt; con su comprobación en `infra/probar-caddy.sh` y el guardián `csp_wasm.test.js` (EV-1f; sin desplegar).
 - El medidor de fotogramas reparte el JS del fotograma por bloque (cámara, tiempo, vida, suelo, Cola, escena 3D, componentes…): mediana y p95 de cada uno, ordenados por p95, más la suma, `render()` y «otros», en el informe de `?mide` y en una línea de la tarjeta de VR. Sin medir, el bucle no lee el reloj. Sin probar todavía en el Quest. (Q0h)
