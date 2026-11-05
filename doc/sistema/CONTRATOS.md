@@ -16,6 +16,7 @@ Versión del contrato de datos: **v = 2** (campo `v` del índice).
 | Receta de olivo horneada, formato v1 (ADR-0018: objeto binario cuantizado por huella, `.br`, pérdidas máximas, manifiesto binario por tesela) | [`contratos/olivo-horneado.md`](../../contratos/olivo-horneado.md) | `horneado.test.js` (ida y vuelta con receta sintética y con `olivo-2` real, huella fijada, errores) |
 | Manifiesto del hornero por finca (variantes, épocas horneadas, bandera `propios`) | [`contratos/hornero-manifiesto.schema.json`](../../contratos/hornero-manifiesto.schema.json) + ejemplo `pruebas/olivo/horneado/manifiesto-ejemplo.json` | `horneado.test.js` (ajv, rechaza lo que debe, coherencia) |
 | Calendario de épocas del olivo por fecha (decisión 64; valores de partida, a ajustar por Antonio) | [`contratos/epocas-calendario.json`](../../contratos/epocas-calendario.json) + [`epocas-calendario.schema.json`](../../contratos/epocas-calendario.schema.json) | `horneado.test.js` (ajv; 366 días con una sola época) |
+| Aves de GBIF por especie y mes en 10 km (EV-1g, v 1; `biodiversidad.json` junto al índice; deducido, solo CC0, CC BY y CC BY-SA) | [`contratos/biodiversidad.schema.json`](../../contratos/biodiversidad.schema.json) + ejemplo sintético `contratos/biodiversidad-ejemplo.json` (§1.5) | `aves_mes.test.js` (ajv del ejemplo y de los rechazos; ficha del motor; agregación y filtro de licencias del exportador con una API falsa) |
 | Módulos de `apps/web/motor/` | cabecera «Expone / Consume» de cada fichero | `contratos.test.js` (vía `pruebas/contrato_modulos.js`) |
 | Conectores MCP | [`contratos/mcp.md`](../../contratos/mcp.md) | **nada** (no verificado en vivo) |
 | Api HTTP (F1a) | [`contratos/api.openapi.yaml`](../../contratos/api.openapi.yaml) | `apps/api/pruebas/unidad/app.test.ts` (cada ruta en el contrato y al revés) |
@@ -108,6 +109,21 @@ Ortofoto PNOA de la tesela, JPEG RGB cuadrado de `orto_px` píxeles, **fila 0 = 
 
 ### 1.4 Modo de servicio
 `indice.json` en la página y `t/` al lado (ficheros). Ya no existe el modo **embebido** (`embebido.json` con la ortofoto en data URI), que era de la salida artefacto retirada ([ADR-0021](../adr/0021-se-retira-la-salida-artefacto-y-la-escena-de-siempre.md)); el fixture tampoco lo genera.
+
+### 1.5 `biodiversidad.json` (EV-1g, v 1)
+Aves que GBIF registra en el cuadro de 10 km alrededor de la finca, **por especie y mes**. Lo escribe `tuberia/biodiversidad/gbif_aves.py` (fuera del repo) y se publica junto al `indice.json` de la finca; el motor lo pide a su mismo origen (`<D.base>biodiversidad.json`, nunca a otro host) y, si no está o no cumple el contrato, no enseña nada. Es **deducido** (regla 5): registros de ciencia ciudadana y de proyectos de seguimiento en 10 km, **no observado en la finca**; el motor lo rotula con el nivel **probable**.
+
+| Campo | Contenido |
+|---|---|
+| `v`, `origen`, `grupo` | `1`, `"gbif"`, `"aves"` |
+| `sintetico` | *(opcional)* `true` solo en el ejemplo y los fixtures: cifras inventadas |
+| `generado`, `cuadro_km`, `anios{desde,hasta}` | fecha de la descarga (`AAAA-MM-DD`), lado del cuadro (10) y años cubiertos. **No lleva el centro ni el cuadro**: no hay coordenadas |
+| `descarga` | `{ fecha, via, consulta, cita, doi? }`: cómo se pidió y la cita de GBIF. La API pública no da DOI de descarga; el DOI es el de cada conjunto de datos (`fuentes[].doi`) |
+| `atribucion` | frase que el motor enseña tal cual junto a la ficha |
+| `fuentes[]` | un conjunto de datos de GBIF por fila: `id, titulo, doi (o null), cita, licencias[], registros`. `licencias` ⊂ {`CC0_1_0`, `CC_BY_4_0`, `CC_BY_SA_4_0`} (decisión 198: nada CC BY-NC ni sin licencia) |
+| `especies[]` | `taxon_key, nombre_cientifico, nombre_comun?, meses[12]`; cada mes `{ n, anios }` = registros de ese mes sumados en todos los años y años distintos con alguno |
+
+El motor trata como **probable** del mes una especie con registros en ≥ 2 años distintos y ≥ 3 en total. Un fichero con una licencia fuera de la lista se rechaza entero. Cambiar un campo es cambiar este apartado, el esquema y el ejemplo en el mismo commit.
 
 ## 2. Interfaces del motor
 
