@@ -665,6 +665,28 @@ Ronda del banco (SwiftShader: recuentos y memoria, no fps), fixture de Hituelo, 
 
 Las llamadas de `base` y de las demás no se comparan (49 frente a 46): las variantes con la bandera se midieron sin que la Cola terminara (23-26 trabajos pendientes a los 48 s; `base` sí terminó). El heap oscila ±3 MB entre cargas; la bajada de 53 a 23 MB a 768 es la decodificación de las 26 WebP en el hilo principal, que con KTX2 hace el worker. Qué formato elige `detectSupport` en el Quest o en el iPhone, y su memoria allí: **no medido**.
 
+## Quest 3 con la octava subida (2026-11-05, foto, no se mantiene)
+
+Medido por Antonio en un Quest 3 real (Quest Browser 154, build VR, multiview en uso, escena del tileset, 60 s tras 3 s de calentamiento, nivel automático; sin personas). **Cada toma se hizo mirando a sitios distintos**: las cifras absolutas no se comparan entre tomas, solo lo que cambia dentro de un mismo par.
+
+| Toma | URL (además de `?debug&mide=60`) | p95 (ms) | perdidos (> 20,8 ms) | JS p95 | render() p95 | llamadas | triángulos |
+|---|---|---|---|---|---|---|---|
+| 1 · base | — | (sin cabecera) | — | 9,8 | 5,8 | 99 | 198 k |
+| 2 | `xrescala=0.8` | 16,5 | 2,1 % | 9,6 | 5,8 | 114 | 253 k |
+| 3 | `xrescala=1.2` | 17,5 | 2,5 % | 10,0 | 6,2 | 112 | 225 k |
+| 4 | `cartulina=silueta` | 15,8 | 1,6 % | 10,0 | 5,0 | 72 | 174 k |
+| 5 | `cartulina=rect` | 16,0 | 1,8 % | 10,0 | 5,2 | 83 | 183 k |
+| 6 | `suelo=fotos&sueloVR=1` | 16,8 | 2,3 % | 10,4 | 6,2 | 114 | 216 k |
+
+Lo que se puede decir:
+- **Controlador de nivel (Q0c-b):** en las seis tomas baja 0 → 1 → 2 → 3 en unos 10 s (una vez a los 31 s) y se queda; ya no oscila.
+- **JS:** p95 de 9,6-10,4 ms; el bloque mayor es la Cola (p95 3,4-3,9 ms). Cabe en 13,9 ms: **el cuello no es el JS**.
+- **Resolución (AG-2.0):** de 0,8 a 1,2 son 2,25 veces los píxeles y el p95 sube solo 1 ms: **la resolución no es el cuello**.
+- **Geometría:** las tomas con menos llamadas y triángulos a la vista son las de mejor p95; ~1.750-1.900 fotogramas lentos «sin causa» por toma (ni JS, ni programa, ni textura). Hipótesis: la GPU va al límite con la geometría. En el nivel 3 el tileset dibuja 170-250 k triángulos frente a los 130 k de su presupuesto (`VR_PERFILES[3].tri`): el nivel relaja el error del tileset (16 → 48) pero no impone el tope.
+- **Cartulina (AG-2.2):** silueta y rect, dentro del ruido entre tomas (−11 llamadas y −0,2 ms con silueta).
+- **Suelo de fotos en VR (EV-1k2):** sin coste claro frente a tomas parecidas; la tarjeta no dice si el suelo estaba encendido ni su memoria: no concluyente.
+- **Lo que falta en la tarjeta:** la cartulina y el suelo en uso, y la memoria de GPU; y tomar siempre desde el mismo sitio mirando igual.
+
 ## Medida por componente (C11) y por objeto (O2)
 
 **Pendiente: sin fecha, sin cifras.** La herramienta está escrita y probada solo con resultados sintéticos (`pruebas/medida_componentes.js`, guardián `medida_componentes.test.js`); nadie la ha ejecutado contra el banco. Para O10 (que el mundo se parezca al catálogo «Olivos tipo») hace falta saber qué cuesta cada componente y cada pieza de un olivo generado, y hoy no se sabe: los presupuestos declarados en los manifiestos son techos o medidas de Node, no esto.
