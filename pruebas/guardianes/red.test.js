@@ -20,6 +20,8 @@ const NUCLEO = lee("apps/web/motor/02c_componentes.js");
 const RedPuro = new Function("\"use strict\";\n" + trozo(RED, "// [puro:inicio]", "// [puro:fin]") + "\nreturn RedPuro;")();
 const IFACES = JSON.parse(lee("contratos/interfaces.json"));
 const espera = (ms = 0) => new Promise(r => setTimeout(r, ms));
+// F2b: el reintento de la presencia (30 s o más) no debe mantener vivo el proceso de la prueba: los temporizadores largos se sueltan (unref)
+{ const real = globalThis.setTimeout; globalThis.setTimeout = (fn, ms, ...a) => { const t = real(fn, ms, ...a); if (ms >= 10000 && t && t.unref) t.unref(); return t; }; }
 
 // ---------- un livekit-client de mentira: lo justo de Room que usa 37_red.js, y cómo simular lo que manda el servidor
 function lkFalso(opc = {}) {
@@ -357,4 +359,30 @@ test("F2b: AutoPresencia.decide es una función pura: la URL manda, la casilla d
   assert.strictEqual(A.decide("?presencia=1", "/api/", true), "", "otro valor: como hasta ahora, nada");
   assert.strictEqual(A.decideRed({ red: true }), true);
   for (const j of [null, undefined, {}, { red: false }, { red: "true" }, { red: 1 }, [], "x"]) assert.strictEqual(A.decideRed(j), false, JSON.stringify(j));
+});
+
+test("F2b: Reintento.espera es un backoff: 30 s, 60 s, 120 s… con tope de 10 min y se rinde tras MAX fallos", () => {
+  const A = new Function("\"use strict\";\n" + trozo(LIB, "// [puro:inicio]", "// [puro:fin]") + "\nreturn Reintento;")();
+  assert.deepStrictEqual([1, 2, 3, 4, 5, 6].map(A.espera), [30000, 60000, 120000, 240000, 480000, 600000]);
+  for (const n of [0, -1, NaN, undefined, A.MAX + 1, 99]) assert.strictEqual(A.espera(n), -1, String(n));
+  assert.ok(A.BASE >= 30000, "nunca más de un intento cada 30 s");
+});
+
+test("F2b: si la api o LiveKit fallan con la presencia en automático, calla (sin errores), no intenta más de una vez y programa el reintento con backoff; sin LiveKit, sin sesión o sin api no programa nada", async () => {
+  const setReal = globalThis.setTimeout, clearReal = globalThis.clearTimeout, pend = [];
+  globalThis.setTimeout = (fn, ms) => { if (ms >= 1000) { pend.push({ fn, ms }); return pend.length; } return setReal(fn, ms); };
+  globalThis.clearTimeout = id => { if (typeof id === "number" && id <= pend.length) pend[id - 1] = null; else clearReal(id); };
+  try {
+    const API = "/teselas/hituelo/", llamadas = r => r.cuenta.fetch.map(f => f[0]).filter(u => u !== "/api/config");
+    // el token falla (503): una sola vez, sin errores, y el reintento a los 30 s
+    let r = motor({ base: API, hay: true, tokenEstado: 503 }); await espera(20);
+    assert.deepStrictEqual(llamadas(r), ["/api/presencia", "/api/presencia/token"]); assert.deepStrictEqual(r.errores, []);
+    assert.deepStrictEqual(pend.filter(Boolean).map(p => p.ms), [30000], "un reintento programado, a los 30 s");
+    r.ventana.__presencia("libera"); assert.ok(pend.every(p => p === null), "al liberar se cancela el reintento");
+    // la api no responde (fetch caído): también reintenta, sin ruido
+    pend.length = 0; r = motor({ base: API, hay: "falla" }); await espera(20);
+    assert.deepStrictEqual(llamadas(r), ["/api/presencia"]); assert.deepStrictEqual(r.errores, []); assert.deepStrictEqual(pend.filter(Boolean).map(p => p.ms), [30000]);
+    // sin LiveKit (red:false), sin sesión (401) o sin api: nada que reintentar
+    for (const o of [{ base: API, hay: false }, { base: API, hay: 401 }, { hay: true }]) { pend.length = 0; r = motor(o); await espera(20); assert.deepStrictEqual(pend.filter(Boolean), [], JSON.stringify(o)); assert.strictEqual(r.LK.salas.length, 0); }
+  } finally { globalThis.setTimeout = setReal; globalThis.clearTimeout = clearReal; }
 });

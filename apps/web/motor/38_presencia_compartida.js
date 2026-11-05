@@ -4,7 +4,7 @@
 //   02i_materiales (Materiales), 03_escena (visor, renderer, scene, camera, texColor, exag, modo), 06_arboles (tronco),
 //   09_camara (objetivo, suelta, elige), 12_paseo (paseando, persona, primera), 12b_llegada (Llegada), 14_historia (lista, aviso),
 //   15_tiempo (rumbo, hace), 16_vida (enQuad, quita, mira, quad, enDron, dron),
-//   26_presencia (PoseCodec, BufferPose, Aspecto, SalaPose, Chat, Muneco, Encuentro, AutoPresencia, sitioJunto),
+//   26_presencia (PoseCodec, BufferPose, Aspecto, SalaPose, Chat, Muneco, Encuentro, AutoPresencia, Reintento, sitioJunto),
 //   29_vr (VRX, vrFundido, panel, ficha), 33_ajustes (Ajustes), 34_movibles (Movibles)
 // Nota: Componente «presencia-compartida» (ADR-0023, C5): solo se registra; consume la red (sala «visita») y expone «Presencia» (para los avatares VRM). Sin ?presencia=sim o ?presencia=red, montado no crea nada; con red, el panel Gente y el chat; F3f: viaja a la sala de una visita guiada (Presencia.entraGuiada, token de F3c) y vuelve sola a la general si la sala se cierra o te sacan. Registra el tipo persona en Entidades (C7) y da su línea de ?debug por «depura:lineas». Publica window.__presencia y window.__presenciaChat (pruebas). Lo prueba en Node pruebas/guardianes/red.test.js.
 // ===============================================================================
@@ -26,6 +26,14 @@
     var variante = (/[?&]presencia=(sim|red)\b/.exec(location.search) || [])[1] || "", activo = !!variante, N = 0;
     // F2b: sin ?presencia= y con api, la presencia en red arranca sola si el servidor tiene LiveKit (GET /api/presencia -> { red: true }) y la casilla de Ajustes está marcada
     var PREFIJO_API = (function () { try { return ConfigPuro.prefijoApi(location.search, D && D.base); } catch (e) { return null; } })(), auto = false;
+    // F2b: si la presencia que arrancó sola no consigue conectar (la api o LiveKit no responden), el mundo sigue igual y callado (solo la línea de ?debug); se reintenta con backoff (Reintento)
+    var fallosAuto = 0, tReintento = 0, avisoAuto = "", reintentaAuto = null;
+    function fallaAuto(motivo) {
+      avisoAuto = motivo; fallosAuto++;
+      var ms = Reintento.espera(fallosAuto); if (ms < 0 || !reintentaAuto || typeof setTimeout !== "function") return;
+      if (tReintento) clearTimeout(tReintento);
+      tReintento = setTimeout(function () { tReintento = 0; reintentaAuto(); }, ms);
+    }
     var CERCA_ENTRA = 55, CERCA_SALE = 65, TICK = 0.1, CADA_LEJOS = 5, RET_CERCA = 150, RET_LEJOS = 650, ALTO_OJOS = 1.6;   // contratos/presencia.md
     var MAXV = 49;   // red: plazas de avatar (la sala admite 50 personas, infra/dev/livekit.yaml: tú y 49 más)
     var grupo = null, mCuerpo = null, mCabeza = null, mSombrero = null, mManos = null, mNombres = null, texNombres = null, cxNom = null, geos = [], mats = [];
@@ -424,18 +432,20 @@
             claveSala = "general"; volverGeneral = typeof e.mensaje === "string" && e.mensaje ? e.mensaje : "Esta visita es para las familias apuntadas.";
             return;
           }
+          if (auto) { fallaAuto("token " + r.status); ponEstado("", false); return; }   // F2b: arrancó sola: sin aviso visible, solo ?debug y el reintento
           ponEstado(r.status === 401 ? "Entra con tu enlace para ver a los demás." : (e && typeof e.mensaje === "string" ? e.mensaje : "No se pudo entrar en la visita compartida (" + r.status + ")."), true);
           return;
         }
         var t = await r.json();
         if (!activo) return;
         // la red resuelve la URL (wss://… o /rtc del mismo origen) contra la página y pide livekit-client la primera vez (import() solo con esta bandera)
-        if (!(await SR.une({ url: t.url, token: t.token })) || !activo) return;
-        var mi = SR.yo(); sala = SR;
+        if (!(await SR.une({ url: t.url, token: t.token })) || !activo) { if (auto && activo) { fallaAuto("LiveKit no responde"); ponEstado("", false); } return; }
+        var mi = SR.yo(); sala = SR; avisoAuto = ""; fallosAuto = 0;
         yo = { identidad: mi.identidad, info: SalaPose.leeInfo(mi.metadatos) };
         SR.participantes().forEach(function (de) { entraOtro(de); });
         ponEstado("", false); pintaNota();
       } catch (err) {
+        if (auto) { fallaAuto("sala: " + (err && err.message ? err.message : err)); ponEstado("", false); return; }   // F2b: callada; ?debug lo cuenta
         ponEstado("No se pudo conectar con la visita compartida.", true);
         if (typeof console !== "undefined") console.warn("presencia: " + (err && err.message ? err.message : err));
       } finally { conectando = false; }
@@ -757,6 +767,7 @@
       return e;
     }
     function libera() {   // libera todo lo de la GPU (y, en red, sale de la sala y retira el apartado) y deja la presencia como sin la bandera
+      if (tReintento) { clearTimeout(tReintento); tReintento = 0; }
       if (quitaPersona) { quitaPersona(); quitaPersona = null; }   // C7: sin presencia no hay personas que elegir
       quitaRed.splice(0).forEach(function (q) { q(); }); quitaMandos.splice(0).forEach(function (q) { q(); });
       if (SR) { var s = SR; SR = null; sala = null; activo = false; s.sale(); }   // sale de la sala «visita» (o deja de entrar, si estaba entrando)
@@ -768,7 +779,7 @@
       geos.forEach(function (g) { g.dispose(); }); mats.forEach(function (m) { m.dispose(); }); if (texNombres) texNombres.dispose();
       grupo = null; mallasInst = []; V = []; redSim = []; porId = Object.create(null); mensajes = [];
     }
-    function texto() { return activo ? "presencia (" + variante + ") " + est.n + " · cerca " + est.cerca + " · " + est.bps + " B/s · JS " + est.ms.toFixed(2) + " ms" + (variante === "sim" ? " · retardo p95 " + est.retP95 + " ms" : sala ? "" : " · sin conexión") : ""; }
+    function texto() { return activo ? "presencia (" + variante + ") " + est.n + " · cerca " + est.cerca + " · " + est.bps + " B/s · JS " + est.ms.toFixed(2) + " ms" + (variante === "sim" ? " · retardo p95 " + est.retP95 + " ms" : sala ? "" : " · sin conexión" + (avisoAuto ? " (" + avisoAuto + (tReintento ? ", reintento " + fallosAuto : "") + ")" : "")) : ""; }
     if (variante === "sim") { inicia(); if (/[?&]chat=1(&|$)/.test(location.search)) montaPanel(); }   // &chat=1 (solo pruebas): la ventana del chat también en la simulación, sin sala
     else if (variante === "red") iniciaRed();
     // F2b: el arranque solo. Pregunta UNA vez a la api; con { red: true } arranca como con ?presencia=red. Sin api (file://, fixture, banco), sin sesión, con error
@@ -776,12 +787,16 @@
     function arrancaAuto() {
       if (variante || auto || !PREFIJO_API || typeof fetch !== "function") return;
       auto = true;
-      fetch(PREFIJO_API + "presencia", { credentials: "same-origin", headers: { accept: "application/json" } }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+      fetch(PREFIJO_API + "presencia", { credentials: "same-origin", headers: { accept: "application/json" } }).then(function (r) { if (!r.ok && r.status >= 500) fallaAuto("api " + r.status); return r.ok ? r.json() : null; }).then(function (j) {
         if (variante || quitaPersona || grupo || !AutoPresencia.decideRed(j) || AutoPresencia.decide(location.search, PREFIJO_API, verAjuste()) !== "pregunta") { auto = false; return; }   // ya hay presencia, no hay red o la apagaron mientras
-        variante = "red"; activo = true; registraPersona(); iniciaRed();
+        variante = "red"; activo = true; registraPersona(); iniciaRed(); avisoAuto = ""; fallosAuto = 0;
         n.emite("presencia:activada", { variante: "red" });   // los avatares VRM miran la presencia al montarse (y se montaron vacíos): al oírlo se remontan
-      }).catch(function () { auto = false; });
+      }).catch(function () { auto = false; fallaAuto("sin respuesta de la api"); });
     }
+    reintentaAuto = function () {
+      if (quitaPersona && activo && !sala && auto) { conecta(); return; }   // arrancó sola pero la sala no conectó: solo la conexión
+      if (!variante && !grupo) arrancaAuto();   // la pregunta a la api no llegó
+    };
     function verAjuste() { try { return typeof Ajustes !== "undefined" && Ajustes.lee ? Ajustes.lee("presencia.ver") : true; } catch (e) { return true; } }
     // la casilla «Ver a los demás y chatear» (marcada por defecto; Ajustes la recuerda por visitante en localStorage, con try/catch). Solo cuando hay api y la URL no manda
     // (?presencia=…): desmarcarla apaga ya la presencia que arrancó sola; volver a marcarla la arranca de nuevo al recargar la página
@@ -846,7 +861,7 @@
   // Consume la red (37_red.js, expone «Red»): sin ella (?red=0, apagada en el servidor o fuera del motor) la presencia no se monta, tampoco la simulada.
   Componentes.registra({
     id: "presencia-compartida", version: 1,
-    consume: ["Materiales", "Aparato", "Red", "Ajustes", "AutoPresencia", "PoseCodec", "BufferPose", "Aspecto", "SalaPose", "Chat", "Muneco", "Encuentro", "sitioJunto", "Llegada", "Movibles", "VRX", "TR",
+    consume: ["Materiales", "Aparato", "Red", "Ajustes", "AutoPresencia", "Reintento", "PoseCodec", "BufferPose", "Aspecto", "SalaPose", "Chat", "Muneco", "Encuentro", "sitioJunto", "Llegada", "Movibles", "VRX", "TR",
       "paseando", "pp", "enQuad", "enDron", "quad", "dron", "objetivo", "texColor"],
     expone: ["Presencia"],
     eventos: { escucha: ["chat:alterna", "depura:lineas", "guiada:entrar"], emite: ["guiada:entrada", "presencia:activada"] },
