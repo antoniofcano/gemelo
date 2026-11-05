@@ -15,15 +15,24 @@ Proyección pública: [ADR-0014](../doc/adr/0014-proyeccion-publica-por-haza.md)
 
 | Herramienta | Se queda | Se tira |
 |---|---|---|
-| `pases_del_periodo` | fecha, parcelas, por componente: tipo, producto, nº de registro, dosis y unidad (por ha); plazo de seguridad | aplicador, cantidades totales, GPS, observaciones, componentes con texto raro |
-| `novedades` | `fenologia.registrada` (BBCH 0–99) y `analitica.validada` (resultados numéricos con clave limpia) | incidencias, entregas y cualquier otro tipo; quién registró |
-| `aforo_y_avance_de_recoleccion` | % recogido por parcela (sin aforo no hay dato, no es 0 %) | todos los kilos, rendimientos, origen del aforo |
+| `pases_del_periodo` | fecha, parcelas (`parcelas[].id`), por componente: tipo (`fito` → `fitosanitario`), producto, nº de registro (`numRegistro`), dosis y unidad por ha (la respuesta real no trae unidad: `null`); plazo de seguridad (`plazoSeguridad.dias`) | aplicador y `aplicadorConRopo`, cantidades totales, materia activa, modalidad, GPS, observaciones, componentes con texto raro; **los pases en `borrador`** |
+| `novedades` | `fenologia.registrada` (BBCH 0–99) y `analitica.validada` (resultados numéricos con clave limpia) | incidencias, entregas, `tarea.creada`, `tarea.completada`, `cierre.parte` y cualquier otro tipo; quién registró |
+| `aforo_y_avance_de_recoleccion` | % recogido por parcela (`aforo.porParcela[].pct`; cada fila es una parcela con aforo: 0 % es un dato; sin aforo no hay fila) **si la fila trae un id de parcela**; hoy no lo trae (ver abajo) | todos los kilos, rendimientos, origen y base del aforo, la recolección, `comoLeerlo`, el nombre de la parcela |
 
 La haza reparte por `haza_parcela` (qué parcelas de OlivarTrack caen en ella y cuántas ha); el avance se pondera por esas ha. Un pase de una parcela sin haza se cuenta como `sinHaza` y no se guarda.
 
-## Formas esperadas — **[NO VERIFICADAS]**
+- **Ids de parcela.** Un solo patrón, `PATRON_ID_PARCELA` (`apps/api/src/vivo/lista-blanca.ts`, `^[\p{L}\p{N}:_.#()/-]{1,120}$`): los ids reales traen tildes, paréntesis y `/`. En la base, el CHECK de `haza_parcela.parcela_ot` es su equivalente (migración `0026_parcela_ot_con_tildes.sql`: `[[:alnum:]]` más Latin-1 y Latin Extended-A explícitos, para que el castellano quepa aunque la collation sea «C»); en la carga de hazas (`tuberia/hazas/carga_hazas.py`), `^[\w:.#()/-]{1,120}$` con `\w` de Python (Unicode).
+- **Pases en borrador: no se proyectan** (decisión técnica de OT-V, 2026-11-05). Un borrador es un pase que aún no se ha aplicado; enseñarlo como tratamiento en la ficha diría algo falso. Se **apartan y se cuentan** (`apartados` en el resumen y en `sincronias_ot.avisos`), no son un error ni dejan la lectura incompleta. Si un borrador se aplica, aparece en la siguiente lectura; si un pase aplicado vuelve a borrador, una lectura completa lo quita como cualquier pase anulado. **[SUPUESTO]** el nombre del estado de un pase ya aplicado (solo se ha visto `borrador`): cualquier otro estado se proyecta.
+- **El aforo viene por NOMBRE de parcela** (`porParcela[].parcela` es el nombre legible, no el id) y **no hay tabla nombre→id** con la que casarlo con `haza_parcela`. No se adivina (los pases traen `{ id, nombre }`, pero solo de las parcelas tratadas y sin garantía de que el nombre sea único): cada fila sin id se **aparta y se cuenta**, con el aviso «El aforo viene por nombre de parcela; falta la tabla nombre→id» en `sincronias_ot.avisos`. Hasta que exista esa tabla (o el aforo traiga el id: `parcelaId` o `id` se leen si vienen), la ficha no tiene avance (`avance.pct: null`). **Pendiente**: la tabla nombre→id (de dónde sale y quién la mantiene) es una decisión abierta.
 
-Las grabaciones de `apps/api/pruebas/grabaciones/` son **sintéticas**: suponen nombres de campo (`pases[].componentes[]`, `novedades[].carga`, `parcelas[].pctRecogido`, `hayMas`/`siguienteDesde`) que no se han contrastado con respuestas reales de OlivarTrack. Antes de poner `GEMELO_OT=mcp` hay que grabar respuestas reales (sin datos de personas) y ajustar `ot/mapeo.ts` y estas grabaciones.
+## Formas — comprobadas en solo lectura el 2026-11-05
+
+Las formas de `pases_del_periodo`, `novedades` (cabecera, y las cargas de `tarea.creada`, `tarea.completada` y `cierre.parte`) y `aforo_y_avance_de_recoleccion` se comprobaron en solo lectura el 2026-11-05 (por el conector, campo a campo); `ot/mapeo.ts` las lee así. Las grabaciones de `apps/api/pruebas/grabaciones/` tienen **esa forma con valores sintéticos** (ningún nombre, id ni producto real).
+
+Sigue **[NO VERIFICADO]**:
+- las cargas de `fenologia.registrada` y `analitica.validada` (no se ha visto ninguna: se leen como se esperaban, `{ parcela, bbch }` y `{ parcela, tipo, fecha, resultados }`);
+- el estado de un pase ya aplicado (solo se ha visto `borrador`);
+- el cliente MCP de la api contra el OlivarTrack real con el token del gemelo (`GEMELO_OT=mcp`).
 
 `GEMELO_OT=fixture` vale como otro nombre de `grabado` (como `GEMELO_VIGIA=fixture`).
 

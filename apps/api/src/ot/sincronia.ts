@@ -10,6 +10,8 @@ export interface Resumen {
   herramienta: HerramientaLectura;
   estado: "ok" | "truncado" | "parcial" | "error";
   recibidos: number; guardados: number; descartados: number; sinHaza: number; borrados: number;
+  /** bien formados pero apartados a propósito (pases en borrador, aforo por nombre de parcela); el porqué va en sincronias_ot.avisos */
+  apartados: number;
 }
 
 const DIA = 86_400_000;
@@ -64,8 +66,8 @@ async function guarda(bd: Bd, herramienta: HerramientaLectura, empezada: Date, l
       `INSERT INTO sincronias_ot (herramienta, empezada_en, terminada_en, estado, consultado_en, recibidos, guardados, cursor, avisos)
        VALUES ($1, $2, now(), $3, $4, $5, $6, $7, $8)`,
       [herramienta, empezada, l.estado, consultado, l.recibidos, guardados, l.estado === "ok" ? cursor : null,
-        JSON.stringify(l.descartados ? [{ descartados: l.descartados }] : [])]);
-    return { herramienta, estado: l.estado, recibidos: l.recibidos, guardados, descartados: l.descartados, sinHaza, borrados };
+        JSON.stringify([...(l.descartados ? [{ descartados: l.descartados }] : []), ...(l.apartados ? [{ apartados: l.apartados, motivo: l.avisos.join(" ") }] : [])])]);
+    return { herramienta, estado: l.estado, recibidos: l.recibidos, guardados, descartados: l.descartados, sinHaza, borrados, apartados: l.apartados };
   });
 }
 
@@ -73,7 +75,7 @@ async function anotaError(bd: Bd, herramienta: HerramientaLectura, empezada: Dat
   await bd.query(
     "INSERT INTO sincronias_ot (herramienta, empezada_en, terminada_en, estado, avisos) VALUES ($1, $2, now(), 'error', $3)",
     [herramienta, empezada, JSON.stringify([{ error: motivo(e) }])]);
-  return { herramienta, estado: "error", recibidos: 0, guardados: 0, descartados: 0, sinHaza: 0, borrados: 0 };
+  return { herramienta, estado: "error", recibidos: 0, guardados: 0, descartados: 0, sinHaza: 0, borrados: 0, apartados: 0 };
 }
 
 export async function sincroniza(bd: Bd, lector: LectorOlivarTrack, ahora: Date = new Date()): Promise<Resumen[]> {
@@ -94,11 +96,11 @@ export async function sincroniza(bd: Bd, lector: LectorOlivarTrack, ahora: Date 
     const previo = await bd.query<{ cursor: string }>(
       "SELECT cursor FROM sincronias_ot WHERE herramienta = 'novedades' AND estado = 'ok' AND cursor IS NOT NULL ORDER BY empezada_en DESC LIMIT 1");
     let marca = previo.rows[0]?.cursor ?? new Date(ahora.getTime() - 365 * DIA).toISOString();
-    const total: Lectura = { eventos: [], estado: "ok", consultadoEn: null, recibidos: 0, descartados: 0, hayMas: false, siguienteDesde: null };
+    const total: Lectura = { eventos: [], estado: "ok", consultadoEn: null, recibidos: 0, descartados: 0, hayMas: false, siguienteDesde: null, apartados: 0, avisos: [] };
     for (let pagina = 0; pagina < MAX_PAGINAS; pagina++) {
       const l = mapea("novedades", await lector.llama("novedades", { desde: marca, limite: 500 }));
       total.eventos.push(...l.eventos);
-      total.recibidos += l.recibidos; total.descartados += l.descartados;
+      total.recibidos += l.recibidos; total.descartados += l.descartados; total.apartados += l.apartados; total.avisos.push(...l.avisos);
       total.consultadoEn ??= l.consultadoEn;
       if (l.estado !== "ok") total.estado = l.estado;
       if (l.siguienteDesde) marca = l.siguienteDesde;
@@ -108,7 +110,7 @@ export async function sincroniza(bd: Bd, lector: LectorOlivarTrack, ahora: Date 
     resumen.push(await guarda(bd, "novedades", t0, total, marca, mapa, null));
   } catch (e) { resumen.push(await anotaError(bd, "novedades", t0, e)); }
 
-  // 3. avance de recolección (solo %)
+  // 3. avance de recolección (solo %; hoy viene por nombre de parcela y se aparta: ver mapeo.ts)
   t0 = new Date();
   try {
     const l = mapea("aforo_y_avance_de_recoleccion", await lector.llama("aforo_y_avance_de_recoleccion", {}));

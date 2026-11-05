@@ -267,9 +267,13 @@ test("sincronía con la grabación: ficha completa, sin nada prohibido, y repeti
   const admin = await entra(ADMIN), luis = await entra(LUIS);
   const r1 = await con("POST", "/api/admin/sincronia", admin);
   assert.equal(r1.statusCode, 200);
-  const res1 = r1.json().resumen as { herramienta: string; estado: string; guardados: number; sinHaza: number }[];
+  const res1 = r1.json().resumen as { herramienta: string; estado: string; guardados: number; sinHaza: number; apartados: number }[];
   assert.deepEqual(res1.map(x => x.estado), ["ok", "ok", "ok"]);
-  assert.equal(res1[0]!.sinHaza, 1, "el pase de la parcela sint:99 no es de ninguna haza");
+  assert.equal(res1[0]!.sinHaza, 2, "el pase p-sint-4 va a dos parcelas (con tildes, paréntesis y «/») que no son de ninguna haza");
+  assert.equal(res1[0]!.apartados, 1, "el pase en borrador no se proyecta");
+  assert.deepEqual([res1[2]!.guardados, res1[2]!.apartados], [0, 2], "el aforo viene por nombre de parcela: se aparta, no se adivina el id");
+  const avAforo = (await bd.dueno.query("SELECT avisos FROM sincronias_ot WHERE herramienta = 'aforo_y_avance_de_recoleccion' ORDER BY id DESC LIMIT 1")).rows[0].avisos;
+  assert.deepEqual(avAforo, [{ apartados: 2, motivo: "El aforo viene por nombre de parcela; falta la tabla nombre→id: 2 parcelas sin avance en la haza." }]);
   const n1 = (await bd.dueno.query("SELECT count(*)::int AS n FROM eventos_haza")).rows[0].n;
   const f1 = (await get("/api/hazas/" + ids["H-S01"], luis)).json();
   const f2 = (await get("/api/hazas/" + ids["H-S02"], luis)).json();
@@ -277,8 +281,8 @@ test("sincronía con la grabación: ficha completa, sin nada prohibido, y repeti
   for (const f of [f1, f2, f3]) { assert.ok(valida(f), JSON.stringify(valida.errors)); assert.equal(f.completo, true); assert.deepEqual(f.avisos, []); }
   assert.ok(!PROHIBIDO.test(JSON.stringify([f1, f2, f3])), "se ha colado algo prohibido en una ficha");
   assert.ok(!PROHIBIDO.test(JSON.stringify((await bd.dueno.query("SELECT datos FROM eventos_haza")).rows)), "ni en la base");
-  assert.deepEqual([f1.tratamientos.length, f1.fenologia[0]?.bbch, f1.avance.pct], [1, 69, 40]);
-  assert.deepEqual([f2.tratamientos.length, f2.analiticas.length, f2.fenologia[0]?.bbch, f2.avance], [2, 1, 81, { pct: 80, parcelas_con_dato: 1, parcelas: 2, fecha: "2026-10-28" }]);
+  assert.deepEqual([f1.tratamientos.length, f1.fenologia[0]?.bbch, f1.avance.pct], [1, 69, null], "sin tabla nombre→id no hay avance (ni se inventa)");
+  assert.deepEqual([f2.tratamientos.length, f2.analiticas.length, f2.fenologia[0]?.bbch, f2.avance], [2, 1, 81, { pct: null, parcelas_con_dato: 0, parcelas: 2, fecha: null }]);
   assert.equal(f2.analiticas[0].resultados.pH, 7.9);
   assert.equal(f2.datos_de, "2026-10-28T09:00:00.000Z");
   ctx.lector.reinicia();

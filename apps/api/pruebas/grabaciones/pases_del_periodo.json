@@ -1,18 +1,21 @@
 {
-  "$comentario": "SINTÉTICO: no es una respuesta real de OlivarTrack. Forma esperada de pases_del_periodo [NO VERIFICADA]. Lleva campos que la lista blanca debe tirar (aplicador con nombre, gps, kilos).",
-  "consultadoEn": "2026-10-28T09:00:00Z",
-  "truncado": false,
+  "$comentario": "SINTÉTICO: ningún valor es de OlivarTrack. Misma FORMA que la respuesta real de pases_del_periodo (comprobada en solo lectura el 2026-11-05): periodo; pases[].id, fecha, modalidad, estado, parcelas[] {id, nombre, ha}, componentes[] {tipo: fito, producto, numRegistro, materiaActiva, dosis} SIN unidad, plazoSeguridad {estado, raw, dias}, noRecolectarAntesDe, aplicadorConRopo; avisos, truncado, consultadoEn. Los ids de parcela traen tildes, paréntesis y «/». Lleva campos que la lista blanca debe tirar (aplicador, gps, observaciones, cantidad) y un pase en BORRADOR que no se proyecta. [SUPUESTO] «aplicado»: el nombre del estado de un pase ya aplicado no se ha visto (solo «borrador»). El p-sint-2 usa los nombres antiguos (registro, unidad, plazoSeguridadDias), que se siguen aceptando.",
+  "periodo": { "desde": "2025-10-28", "hasta": "2026-10-28" },
   "pases": [
     {
       "id": "p-sint-1",
       "fecha": "2026-05-12",
-      "parcelas": [{ "id": "sint:1", "nombre": "Parcela sintética 1" }, { "id": "sint:2" }],
+      "modalidad": "foliar",
+      "estado": "aplicado",
+      "parcelas": [{ "id": "sint:1", "nombre": "Parcela sintética 1", "ha": 1.2 }, { "id": "sint:2", "nombre": "Parcela sintética 2", "ha": 0.8 }],
       "componentes": [
-        { "tipo": "fitosanitario", "producto": "Oxicloruro de cobre 50%", "registro": "ES-00001", "dosis": 2.5, "unidad": "kg/ha", "cantidad": 7.5 },
-        { "tipo": "corrector", "producto": "Producto <script>", "registro": "x", "dosis": 1, "unidad": "kg/ha" }
+        { "tipo": "fito", "producto": "Oxicloruro de cobre 50%", "numRegistro": "ES-00001", "materiaActiva": null, "dosis": 2.5, "cantidad": 7.5 },
+        { "tipo": "corrector", "producto": "Producto <script>", "numRegistro": "x", "materiaActiva": null, "dosis": 1 }
       ],
-      "plazoSeguridadDias": 15,
-      "aplicador": { "ropo": true, "nombre": "PERSONA SINTETICA APLICADORA" },
+      "plazoSeguridad": { "estado": "NUMERICO", "raw": "15", "dias": 15 },
+      "noRecolectarAntesDe": null,
+      "aplicadorConRopo": true,
+      "aplicador": { "nombre": "PERSONA SINTETICA APLICADORA" },
       "gps": [[-3.1, 37.9], [-3.2, 37.8]],
       "observaciones": "TEXTO LIBRE DE CAMPO QUE NO DEBE SALIR"
     },
@@ -27,8 +30,27 @@
     {
       "id": "p-sint-4",
       "fecha": "2026-07-01",
-      "parcelas": ["sint:99"],
-      "componentes": [{ "tipo": "fitosanitario", "producto": "Producto de otra finca", "dosis": 1, "unidad": "l/ha" }]
+      "modalidad": "foliar",
+      "estado": "aplicado",
+      "parcelas": [{ "id": "loma-(polígono-9-parcela-8)", "nombre": "Loma sintética", "ha": 2 }, { "id": "huerta/pozo", "nombre": "Huerta sintética", "ha": 0.3 }],
+      "componentes": [{ "tipo": "fito", "producto": "Producto de otra finca", "numRegistro": "ES-00002", "materiaActiva": null, "dosis": 1 }],
+      "plazoSeguridad": { "estado": "NUMERICO", "raw": "7", "dias": 7 },
+      "noRecolectarAntesDe": null,
+      "aplicadorConRopo": false
+    },
+    {
+      "id": "p-sint-5",
+      "fecha": "2026-10-20",
+      "modalidad": "foliar",
+      "estado": "borrador",
+      "parcelas": [{ "id": "sint:1", "nombre": "Parcela sintética 1", "ha": 1.2 }],
+      "componentes": [{ "tipo": "fito", "producto": "Producto en borrador", "numRegistro": "ES-00003", "materiaActiva": null, "dosis": 3 }],
+      "plazoSeguridad": { "estado": "NUMERICO", "raw": "21", "dias": 21 },
+      "noRecolectarAntesDe": null,
+      "aplicadorConRopo": true
     }
-  ]
+  ],
+  "avisos": [],
+  "truncado": false,
+  "consultadoEn": "2026-10-28T09:00:00Z"
 }
