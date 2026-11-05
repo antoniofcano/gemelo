@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos (D, $), 02c_componentes (Componentes), 12_paseo (persona), 13_parcelas (parcelas), 13b_hazas (HazasPuro),
+// Consume: 01_datos (D, $), 02c_componentes (Componentes), 03_escena (lienzo), 12_paseo (persona), 13_parcelas (parcelas), 13b_hazas (HazasPuro),
 //   14_historia (marca, lista, aviso), 15_tiempo (lluvia, hace), 29_vr (ficha), 31_hud (Hud)
 // Nota: Componente «mundo-hoy» (EV-3a, contratos/mundo-hoy.md): solo se registra; nadie lo nombra. Con D.base /teselas/… o ?api= pide GET /api/mundo/hoy (mismo origen) al montar y cada 10 min y pinta la tarjeta «Hoy en el campo» en Tiempo y estación → Ahora (textContent) y el primer aviso en el HUD; sin servidor no pide nada. De lo que la derivación cree que consume, solo D, $, Componentes, HazasPuro y Hud son usos: persona, parcelas, marca, lista, aviso, lluvia, hace y ficha son palabras de sus textos. Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/mundo_hoy.test.js.
 // ===============================================================================
@@ -92,7 +92,32 @@
     }
     // lo que sale en el HUD al llegar: el primer aviso, tal cual (o null)
     function hud(r) { return r.avisos.length ? txt(r.avisos[0].texto, 200) : null; }
-    return { valida: valida, lee: lee, haceTxt: haceTxt, nombre: nombre, lineas: lineas, cabecera: cabecera, hud: hud };
+    // «Hoy en el olivar» del tablón de La Linde (EV-3c, 44b_carteles.js): UNA línea corta { txt, de, cuando } con el trabajo de la semana agregado por tipo (nunca por persona ni por
+    // parcela) o, si no hay, el aviso principal del campo (su titular fijo, nunca el texto de la api). null si la lectura no está completa o no hay nada que decir: entonces no se pinta.
+    var TITULAR = { recogida: "Hoy se recoge", helada: "Puede helar mañana", lluvia: "Lluvia en la previsión", fenologia: "Fenología anotada" };
+    function tablon(r) {
+      if (!r || r.completo !== true) return null;
+      var w = r.trabajoSemana;
+      if (w && w.completo === true && Array.isArray(w.porParcela)) {
+        var por = {}, ok = true;
+        w.porParcela.forEach(function (p) {
+          [p && p.enCurso, p && p.hechas].forEach(function (lst) {
+            if (!Array.isArray(lst)) { ok = false; return; }
+            lst.forEach(function (x) { var t = esObj(x) ? txt(x.tipo, 14) : null; if (!t || typeof x.n !== "number" || !isFinite(x.n) || x.n < 0) { ok = false; return; } por[t] = (por[t] || 0) + x.n; });
+          });
+        });
+        var ks = Object.keys(por).filter(function (k) { return por[k] > 0; }).sort(function (a, b) { return por[b] - por[a] || (a < b ? -1 : 1); }), tot = 0;
+        ks.forEach(function (k) { tot += por[k]; });
+        if (ok && tot > 0) {
+          var t = "Semana: " + ks.map(function (k) { return k + " " + por[k]; }).join(", ");   // si no caben todos los tipos en el lienzo, el total (no se enseña un trozo como si fuera todo)
+          if (t.length > 23) t = "Semana: " + tot + (tot === 1 ? " tarea" : " tareas");
+          return { txt: t, de: "OlivarTrack", cuando: typeof (w.consultadoEn || w.leidoEn) === "string" ? (w.consultadoEn || w.leidoEn) : null };
+        }
+      }
+      var a = r.avisos.filter(function (x) { return TITULAR[x.tipo] && x.completo !== false && FUENTE[x.de]; })[0];
+      return a ? { txt: TITULAR[a.tipo], de: FUENTE[a.de], cuando: typeof a.consultadoEn === "string" ? a.consultadoEn : null } : null;
+    }
+    return { valida: valida, lee: lee, haceTxt: haceTxt, nombre: nombre, lineas: lineas, cabecera: cabecera, hud: hud, tablon: tablon };
   })();
   // [puro:fin]
 
@@ -125,6 +150,7 @@
         if (!vivo) return;
         if (!x.ok) { if (!ultimo) art.hidden = true; return; }   // sin sesión o la api no contesta: no se enseña nada (y se queda lo último)
         ultimo = x.datos; pinta(x.datos);
+        if (n && n.emite) n.emite("mundo:hoy", { linea: P.tablon(x.datos) });   // EV-3c: el tablón de la entrada (44b_carteles.js) pinta esta línea; null = nada que decir
         var t = P.hud(x.datos);
         if (t && !avisado && typeof Hud !== "undefined" && Hud.aviso) { avisado = true; Hud.aviso(t, 6000); }
       });
@@ -145,7 +171,7 @@
     id: "mundo-hoy", version: 1,
     consume: ["HazasPuro", "Hud"],
     expone: [],
-    eventos: { escucha: [], emite: [] },
+    eventos: { escucha: [], emite: ["mundo:hoy"] },
     bandera: { defecto: true, url: "mundohoy" },
     presupuesto: { llamadas: 0, triangulos: 0 },   // DOM: una tarjeta en Tiempo y estación; nada en la escena 3D
     monta: function (n) { return MundoHoyMotor(n); },

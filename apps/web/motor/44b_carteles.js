@@ -1,8 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
 // Consume: 01_datos (D), 02_mundo (Mundo, suelo, cIn), 02c_componentes (Componentes), 03_escena (lienzo, scene, camera, texColor, exag),
-//   08_marcadores (gLinde), 12_paseo (primera, entraPaseo), 13_parcelas (parcelas), 13b_hazas (Hazas), 14_historia (hist, lista),
-//   15_tiempo (lindes), 16_vida (mira), 23_estacion (EST, bbchEn, hoyMadrid), 29_vr (VRX, ficha)
+//   08_marcadores (gLinde), 12_paseo (primera, entraPaseo), 13_parcelas (parcelas), 13b_hazas (Hazas), 14_historia (hist, lista, aviso),
+//   15_tiempo (hace, lindes), 16_vida (mira), 23_estacion (EST, bbchEn, hoyMadrid), 29_vr (VRX, ficha)
 // Nota: Componente «carteles-haza» (EV2-A6, ADR-0023; ADR-0014): como mucho 3 carteles de haza sobre la linde (los más cercanos, con histéresis) y un tablón en la entrada, con un pool de 3+1 mallas y lienzos de 512 × 320; solo nombre y datos medidos de la lista blanca de la ficha, cada uno con su procedencia; ?carteles=0 lo apaga; el trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/carteles.test.js.
 // ===============================================================================
   // ---------- EV2-A6: carteles de haza en la linde y tablón en la entrada (ADR-0014, decisiones 12, 188 y 202; doc/sistema/COMPONENTES.md).
@@ -10,7 +10,7 @@
   // «La Linde»): superficie y olivos contados con LiDAR (medido), la fenología del momento y, SOLO en recolección (octubre a enero, [SUPUESTO]), el % recogido (los dos de OlivarTrack,
   // con la procedencia que trae la ficha). Lo demás de la ficha (tratamientos, NDVI, olivos declarados, kilos, personas) no se pinta aunque la api lo mande: lo que no está en
   // CartelesPuro.contenido no sale. El tablón de la entrada: «Club La Linde», el nombre de la finca, hazas y olivos contados de toda la finca (medido) y la época del olivar hoy
-  // (23_estacion.js: deducido si el calendario se ajusta con lo observado, ilustrativo si es el típico). La línea «Hoy en el olivar» está reservada y NO se muestra (tanda 10).
+  // (23_estacion.js: deducido si el calendario se ajusta con lo observado, ilustrativo si es el típico). La línea «Hoy en el olivar» (EV-3c) es el trabajo de la semana agregado por tipo, o el aviso principal del campo, que da /api/mundo/hoy por el evento «mundo:hoy» (53_mundo_hoy.js; esta pieza no pide nada), con su procedencia y «leído hace N h»; sin datos, no se pinta. En el lienzo solo caben dos pares dato + procedencia: prioridad hazas y olivos, hoy, época (la época, ilustrativa o deducida, cede ante un dato de hoy).
   //   · Como mucho MAX = 3 carteles a la vista (más el tablón): los de las hazas más cercanas (distancia a su linde), con histéresis (la que ya está se queda hasta que otra
   //     le gana por más del 20 %) y dentro de RADIO = 30 m (36 m los que ya estaban; más lejos, ni con 5,5 de escala llegaría a 1,5° por línea). Los carteles son un pool de 3 mallas y 3 lienzos de 512 × 320 creados UNA vez; al cambiar de haza se repinta el lienzo
   //     (solo si cambia su firma), nada se crea ni se libera. Al apagar el componente o quedarse sin hazas, se libera todo (geometría, materiales, texturas).
@@ -106,15 +106,29 @@
       return { txt: est + ": " + fase, de: aj ? "deducido · calendario ajustado" : "ilustrativo · calendario típico" };
     }
     // el tablón de la entrada. ctx = { hazas, olivos, hoy, bbch, origen }: nº de hazas con linde y olivos contados con LiDAR de toda la finca (medidos; sin dato fiable no se pone) y la época de hoy.
-    // «Hoy en el olivar» (el trabajo de la semana de OlivarTrack, agregado y sin nombres) queda RESERVADO: hoy no se muestra; se llenará en la tanda 10.
+    // «Hoy en el olivar» (EV-3c): ctx.campo = { txt, de, cuando } (la línea que emite 53_mundo_hoy.js: trabajo de la semana agregado, o el aviso principal) y ctx.ahora (ms). Con datos
+    // válidos pasa por delante de la época (solo caben dos pares); sin ellos, hoy queda vacío y no se pinta.
+    function haceHoy(iso, ahora) {
+      var t = typeof iso === "string" ? Date.parse(iso) : NaN; if (!isFinite(t) || !num(ahora)) return "";
+      var m = Math.max(1, Math.round((ahora - t) / 60000));
+      return m < 90 ? "hace " + m + " min" : m < 36 * 60 ? "hace " + Math.round(m / 60) + " h" : "hace " + Math.round(m / 1440) + " días";
+    }
+    function lineaHoy(c, ahora) {
+      if (!c || typeof c !== "object") return null;
+      var t = txt(c.txt, 40), de = txt(c.de, 20); if (!t || !de) return null;
+      var h = haceHoy(c.cuando, ahora);
+      return { txt: t, de: de + " · " + (h ? "leído " + h : "sin fecha") };
+    }
     function tablon(nombre, ctx) {
-      var t = { titulo: "Club La Linde", alias: nombre, es_mia: false, tablon: true, datos: [], hoy: [] };   // hoy: entradas { txt, de } de «Hoy en el olivar»; vacío = no se muestra (tanda 10)
+      var t = { titulo: "Club La Linde", alias: nombre, es_mia: false, tablon: true, datos: [], hoy: [] };   // hoy: entradas { txt, de } de «Hoy en el olivar»; vacío = no se muestra
       ctx = ctx || {};
       var nh = ctx.hazas > 0 ? Math.floor(ctx.hazas) : 0, no = ctx.olivos > 0 ? Math.floor(ctx.olivos) : 0;
       if (nh && no) t.datos.push({ txt: n1(nh) + (nh === 1 ? " haza" : " hazas") + " · " + n1(no) + " olivos", de: "medido · LiDAR 2024 y lindes" });
       else if (no) t.datos.push({ txt: n1(no) + " olivos contados", de: "medido · LiDAR 2024" });
       else if (nh) t.datos.push({ txt: n1(nh) + (nh === 1 ? " haza" : " hazas"), de: "lindes de la oficina" });
+      var lh = lineaHoy(ctx.campo, ctx.ahora); if (lh) { t.hoy.push(lh); t.datos.push(lh); }
       var ep = epoca(ctx.hoy, ctx.bbch, ctx.origen); if (ep) t.datos.push(ep);
+      t.datos = t.datos.slice(0, 2);   // el lienzo de 512 × 320 da para título, finca y dos pares; esto fija la prioridad
       return t;
     }
     // corta un texto en líneas de ancho px (medir(texto, px, negrita) → px), a lo sumo max (la última con «…»)
@@ -156,13 +170,13 @@
     // el giro (rad) de un cartel en (px, pz) para que su cara (+z) mire a la cabeza en (cx, cz)
     function mirando(cx, cz, px, pz) { return Math.atan2(cx - px, cz - pz); }
     return { MAX: MAX, RADIO: RADIO, HIST: HIST, W: W, H: H, ANCHO_M: ANCHO_M, ALTO_M: ALTO_M, LEJOS_TABLON: LEJOS_TABLON, LLAMADAS: LLAMADAS, LETRA: LETRA, LINEA: LINEA,
-      masCerca: masCerca, caja: caja, lejosDeCaja: lejosDeCaja, escoge: escoge, escala: escala, contenido: contenido, firma: firma, nombreFinca: nombreFinca, tablon: tablon, epoca: epoca, fenologia: fenologia, recoleccion: recoleccion,
+      masCerca: masCerca, caja: caja, lejosDeCaja: lejosDeCaja, escoge: escoge, escala: escala, contenido: contenido, firma: firma, nombreFinca: nombreFinca, tablon: tablon, lineaHoy: lineaHoy, epoca: epoca, fenologia: fenologia, recoleccion: recoleccion,
       envuelve: envuelve, maqueta: maqueta, coloca: coloca, entrada: entrada, mirando: mirando };
   })();
   // [puro:fin]
   // [motor:inicio] (lo evalúa también en Node pruebas/guardianes/carteles.test.js con un THREE, un Hazas y un lienzo de mentira)
   function CartelesMotor(n) {
-    var P = CartelesPuro, vivo = true, grupo = null, geo = null, slots = [], tab = null, lins = [], vC = new THREE.Vector3();
+    var P = CartelesPuro, vivo = true, grupo = null, geo = null, slots = [], tab = null, lins = [], campo = null, vC = new THREE.Vector3();
     var st = { carteles: 0, tablon: false, pintadas: 0, llamadas: 0, hazas: 0 };
     function cabeza() { if (VRX.on) return vC.copy(VRX.cab); camera.updateMatrixWorld(); return vC.setFromMatrixPosition(camera.matrixWorld); }
     function crea(nombre) {   // una malla con su lienzo: se crea UNA vez
@@ -203,7 +217,7 @@
     // el tablón: se coloca una vez en la entrada y se repinta solo si cambia su firma (la época cambia con los días, no por fotograma)
     function pintaTablon() {
       var hoy = hoyMadrid();
-      repinta(tab, P.tablon(P.nombreFinca(D.titulo_vr, D.finca_id), { hazas: lins.length, olivos: cIn.length, hoy: hoy, bbch: bbchEn(hoy), origen: EST.origen }));
+      repinta(tab, P.tablon(P.nombreFinca(D.titulo_vr, D.finca_id), { hazas: lins.length, olivos: cIn.length, hoy: hoy, bbch: bbchEn(hoy), origen: EST.origen, campo: campo, ahora: Date.now() }));
     }
     function ponTablon() {
       var q = P.entrada(D.parcelas, D.ext);
@@ -248,6 +262,7 @@
       }
     }
     n.on("hazas:cambia", function () { if (vivo) rehaz(); });
+    n.on("mundo:hoy", function (d) { campo = d && d.linea && typeof d.linea === "object" ? d.linea : null; });   // lo repinta la fase «tarde» (solo si cambia la firma)
     if (Hazas.lindes().length) rehaz();
     window.__carteles = function () { return { carteles: st.carteles, tablon: st.tablon, pintadas: st.pintadas, llamadas: st.llamadas, hazas: st.hazas, ids: slots.map(function (s) { return s.id; }) }; };
     n.limpia(function () { try { delete window.__carteles; } catch (e) { window.__carteles = undefined; } });
@@ -260,7 +275,7 @@
     id: "carteles-haza", version: 1,
     consume: ["Hazas", "VRX", "gLinde", "cIn", "EST", "bbchEn", "hoyMadrid"],
     expone: [],
-    eventos: { escucha: ["hazas:cambia"], emite: [] },
+    eventos: { escucha: ["hazas:cambia", "mundo:hoy"], emite: [] },
     bandera: { defecto: true, url: "carteles" },
     // 3 carteles + el tablón: 4 mallas de un plano (4 llamadas, 8 triángulos; en VR sin multiview, una por ojo) y 4 texturas de 512 × 320 sin mipmaps (2,5 MB: 0,63 MB cada una)
     presupuesto: { llamadas: 4, triangulos: 8, texturasMB: 2.5 },

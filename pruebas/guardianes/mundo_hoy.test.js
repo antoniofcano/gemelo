@@ -105,6 +105,24 @@ function monta(o = {}) {
   return { api, dom, hud, pedidas, reloj };
 }
 
+test("puro: la línea del tablón de La Linde (EV-3c): trabajo de la semana por tipo, o el titular del aviso; null si no hay o no está completo", () => {
+  const v = () => P.valida(copia(EJEMPLO));
+  assert.deepStrictEqual(P.tablon(v()), { txt: "Semana: 2 tareas", de: "OlivarTrack", cuando: EJEMPLO.trabajoSemana.consultadoEn });
+  const r = v(); r.trabajoSemana.porParcela.push({ parcela: "p3", finca: "Otra", enCurso: [{ tipo: "poda", n: 9 }, { tipo: "riego", n: 2 }], hechas: [{ tipo: "poda", n: 1 }] });
+  assert.strictEqual(P.tablon(r).txt, "Semana: 14 tareas", "se suma por tipo, entre parcelas y fincas");
+  r.trabajoSemana.porParcela = [{ parcela: "p", finca: null, enCurso: [{ tipo: "t" + "x".repeat(30), n: 5 }], hechas: [] }];
+  assert.ok(P.tablon(r).txt.length <= 23);
+  const sin = v(); sin.trabajoSemana.porParcela = []; assert.deepStrictEqual(P.tablon(sin), { txt: "Hoy se recoge", de: "OlivarTrack", cuando: EJEMPLO.avisos[0].consultadoEn }, "sin trabajo, el aviso principal");
+  const corto = v(); corto.trabajoSemana.porParcela = [{ parcela: "p", finca: null, enCurso: [{ tipo: "poda", n: 3 }], hechas: [{ tipo: "riego", n: 2 }] }]; assert.strictEqual(P.tablon(corto).txt, "Semana: poda 3, riego 2", "si caben todos los tipos, se dicen");
+  const trunc = v(); trunc.trabajoSemana.completo = false; assert.strictEqual(P.tablon(trunc).txt, "Hoy se recoge");
+  const nul = v(); nul.trabajoSemana.porParcela[0].enCurso[0].n = null; assert.strictEqual(P.tablon(nul).txt, "Hoy se recoge", "con un recuento null no se sacan totales");
+  const solo = v(); solo.avisos = solo.avisos.filter(a => a.tipo === "mirada"); solo.trabajoSemana = null; assert.strictEqual(P.tablon(solo), null, "«mirada» no sale en el tablón");
+  const inc = v(); inc.completo = false; assert.strictEqual(P.tablon(inc), null, "completo:false: nada");
+  const apag = v(); apag.trabajoSemana = null; apag.avisos = []; assert.strictEqual(P.tablon(apag), null);
+  assert.strictEqual(P.tablon(null), null);
+  assert.ok(!/persona|nombre|sintetica-/i.test(JSON.stringify(P.tablon(v()))), "nada por persona ni por parcela");
+});
+
 test("sin servidor (sin D.base /teselas/…): no pide nada ni crea nada", async () => {
   const m = monta({ base: "" });
   await espera();
