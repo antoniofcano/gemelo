@@ -710,7 +710,7 @@
       var w = C.vista(E, hablanPorPrefijo(), callados);
       return { activo: hayApi && !sinApi, disponible: E.disponible, activa: E.activa, consentimiento: E.consentimiento, puedo: E.puedo, suspendida: E.suspendida,
         corro: E.corro ? E.corro.sala : "", miembros: w.filas.map(function (f) { return f.alias; }), hablan: w.hablan, recibidas: E.recibidas.length, enviadas: E.enviadas.length,
-        invitacion: !!invitacion(), aviso: !!avisoP, avisar: !!avisarP, lamina: lam ? lam.tipo : "", iconos: iconos.length, lejos: lejos.lejos, tLejos: Math.round(lejos.t * 10) / 10,
+        invitacion: !!invitacion(), aviso: !!avisoP, avisar: !!avisarP, lamina: lam ? lam.tipo : "", iconos: iconos.length, publicos: publicos.length, vistos: P && P.puntos ? P.puntos().length : 0, lejos: lejos.lejos, tLejos: Math.round(lejos.t * 10) / 10,
         tAerea: Math.round(aereaT * 10) / 10, pestana: !!quitaAj, callados: Object.keys(callados), medidas: Object.assign({}, est) };
     }
     function libera() {

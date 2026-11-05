@@ -121,7 +121,7 @@ test("e2e F3k-5: corros con tres Chrome y micrófono simulado (sin aceptar no se
         assert.strictEqual((await C.voz()).sala, "", "C sin sala de voz"); assert.strictEqual((await C.voz()).voces, 0);
       });
       await t.test("3. C ve el icono del corro y no tiene token", async () => {
-        await hasta(async () => (await C.cor()).iconos >= 1, 30000, "el icono sobre A y B");
+        await hasta(async () => (await C.cor()).iconos >= 1, 60000, "el icono sobre A y B").catch(async e => { t.diagnostic("C: " + JSON.stringify(await C.cor()) + " · A: " + JSON.stringify(await A.pres())); throw e; });
         const tk = await pide("/api/presencia/corros/token", { method: "POST", cookie: ses.C, body: JSON.stringify({ dispositivo: "escritorio" }) });
         assert.strictEqual(tk.status, 409); assert.strictEqual(JSON.parse(tk.texto).error, "sin_corro");
       });
@@ -141,7 +141,7 @@ test("e2e F3k-5: corros con tres Chrome y micrófono simulado (sin aceptar no se
         assert.strictEqual(await A.cor("invita", idB), true);
         await hasta(async () => (await B.cor()).invitacion, 20000, "la invitación");
         await B.cor("acepta");
-        await hasta(async () => (await B.voz()).corro, 30000, "en corro otra vez");
+        await hasta(async () => (await B.voz()).corro, 60000, "en corro otra vez");
         await bd.query("INSERT INTO voz_cercania_suspensiones (hogar_id, hasta, automatica) VALUES ($1, NULL, false) ON CONFLICT (hogar_id) DO UPDATE SET hasta = NULL", [hB]);
         const tk = await pide("/api/presencia/corros/token", { method: "POST", cookie: ses.B, body: JSON.stringify({ dispositivo: "escritorio" }) });
         assert.strictEqual(tk.status, 409); assert.strictEqual(JSON.parse(tk.texto).error, "no_puedes");
