@@ -35,3 +35,20 @@ test("si el trozo no está (otra versión), falla en vez de parchear a ciegas", 
   assert.strictEqual(pl.transform("x", "/a/node_modules/three/build/three.module.js"), null, "la build de pantalla (three) no se toca");
   assert.strictEqual(pl.transform("x", "/a/otro.js"), null);
 });
+
+// el multiview define viewMatrix, modelViewMatrix, projectionMatrix y normalMatrix como macros: ningún PARÁMETRO de función GLSL puede llamarse así
+// (en el Quest 3 rompía todos los materiales de three: «array size must be a constant integer expression», 2026-11-05)
+const PARAM_PROHIBIDO = /\bin\s+mat[34]\s+(viewMatrix|modelViewMatrix|projectionMatrix|normalMatrix)\b(?!\w)/;
+test("tras el parche, ningún sombreador de super-three tiene un parámetro con el nombre de una macro del multiview", { skip: !fs.existsSync(SUPER) && "sin apps/web/node_modules (npm ci)" }, async () => {
+  const { parcheaMultiview } = await carga();
+  const p = parcheaMultiview(fs.readFileSync(SUPER, "utf8"));
+  const malos = (p.match(new RegExp(PARAM_PROHIBIDO.source, "g")) || []);
+  assert.deepStrictEqual(malos, [], "parámetros que el multiview convierte en array");
+  assert.match(p, /'#extension GL_OVR_multiview : require',\n\t+customVertexExtensions,/, "las #extension del material van antes del layout(num_views)");
+});
+
+test("los sombreadores propios del motor tampoco usan esos nombres como parámetro", () => {
+  const MOTOR = path.join(WEB, "motor");
+  const malos = fs.readdirSync(MOTOR).filter(f => f.endsWith(".js")).filter(f => PARAM_PROHIBIDO.test(fs.readFileSync(path.join(MOTOR, f), "utf8")));
+  assert.deepStrictEqual(malos, []);
+});
