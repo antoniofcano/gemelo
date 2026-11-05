@@ -617,6 +617,8 @@ Quest 3, Quest Browser 154, build de VR (super-three 0.185.0 con `herramientas/p
 | Llamadas por fotograma (mediana) | 106 | 205 | −48 % |
 | Triángulos por fotograma (mediana) | 188 k | 375 k | la mitad: con multiview se cuentan una vez para los dos ojos |
 
+Referencia, una toma con la build de pantalla (three 0.186.1, sin multiview) en el mismo sitio: 4015 fotogramas, intervalo p95 20,8 ms, `render()` 5,6 / 7,3 ms, resto del JS p95 5,6 ms, 194 llamadas. Igual que `xrmv=0`: super-three sin multiview no cuesta ni ahorra frente a three; la ganancia es del multiview.
+
 Lectura: el multiview ahorra lo que prometía en llamadas (menos de la mitad) pero en `render()` solo un 15-17 %, lejos del 45 % de la página de humo: en el gemelo pesa también lo que no se reparte entre ojos (sombras, preparar cada objeto, la Cola). Las tomas se repiten bien (`render()` de 4,4 a 4,7 ms con multiview y de 5,2 a 5,5 sin él). La primera toma del día, con el mundo en negro, no cuenta.
 
 ## Triángulos por objeto con Hituelo real (2026-11-04, foto, no se mantiene)
