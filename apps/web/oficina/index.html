@@ -160,6 +160,28 @@
   <p class="nota">Lo que cuelgan las familias se ve al momento (decisión 93); aquí se retira en un clic, se puede volver a mostrar y todo queda en la auditoría. «Pasar a OlivarTrack» manda una <b>propuesta</b> que valida una persona en OlivarTrack: el gemelo no escribe allí por su cuenta (decisión 94), así que hoy se copia el texto y se apunta el id de la propuesta.</p>
 </section>
 
+<section id="s-voz" hidden>
+  <div class="tarjeta" aria-labelledby="vInterruptorT">
+    <h3 id="vInterruptorT">Voz por cercanía (visita libre)</h3>
+    <p><span class="pill p-suave" id="vEstado" role="status">Comprobando…</span></p>
+    <p id="vDetalle"></p>
+    <p class="nota" id="vResumen" aria-live="polite"></p>
+    <p><button class="boton" id="vInterruptor" type="button" aria-pressed="false" disabled>Encender la voz por cercanía</button></p>
+    <p class="nota">Está <b>apagada por omisión</b>. Hasta cerrar la EIPD se prueba solo con cuentas de prueba (decisión 41). Apagarla deshace todos los corros al momento. No se graba ni se guarda nada de lo hablado: aquí solo hay avisos de persona (una queja de una familia, no una prueba de lo dicho).</p>
+    <h4>Voz suspendida</h4>
+    <ul class="lista" id="vSuspensiones"></ul>
+  </div>
+  <div class="barra-h">
+    <h3>Avisos de voz</h3>
+    <label class="vh" for="vEstadoFiltro">Filtrar por estado</label>
+    <select class="entrada empuja" id="vEstadoFiltro"></select>
+    <button class="boton suave" id="vRecarga" type="button">↻ Actualizar</button>
+  </div>
+  <p class="nota" id="vAvisosResumen" aria-live="polite"></p>
+  <ul class="lista" id="vLista"></ul>
+  <p class="nota">Tres hogares distintos que avisen de la misma persona en 7 días la suspenden solos hasta que una persona de la oficina lo revise (provisional, ADR-0032). Suspender no la echa de la visita: solo le quita la voz por cercanía.</p>
+</section>
+
 <section id="s-sistema" hidden>
   <div class="barra-h">
     <p class="nota" id="sSaludHora">Comprobando…</p>

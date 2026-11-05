@@ -5,6 +5,7 @@ import { iniciaLlavesSistema, leeSesionOficina, muestraPantallaEntrada, muestraP
 import { iniciaFamilias } from "./familias.js";
 import { cuentaPendientes, iniciaBandeja } from "./bandeja.js";
 import { iniciaSistema } from "./sistema.js";
+import { iniciaVoz } from "./voz.js";
 import { iniciaOlivos } from "./olivos.js";
 import { iniciaFichaOlivo } from "./olivo_ficha.js";
 import { iniciaAgenda } from "./agenda.js";
@@ -12,13 +13,13 @@ import { iniciaMundo } from "./mundo.js";
 import { construyeHash, parseaHash } from "./enlaces_puro.js";
 
 const SECCIONES = [
-  ["inicio", "🏠", "Inicio", true], ["familias", "👪", "Familias", true], ["hazas", "🗺️", "Hazas", true], ["bandeja", "📥", "Bandeja", true],
+  ["inicio", "🏠", "Inicio", true], ["familias", "👪", "Familias", true], ["hazas", "🗺️", "Hazas", true], ["bandeja", "📥", "Bandeja", true], ["voz", "🔇", "Voz", true],
   ["agenda", "📅", "Agenda", true], ["directos", "🎙️", "Directos", false], ["mundo", "🌳", "Mundo", true], ["olivos", "🫒", "Olivos", true],
   ["sistema", "⚙️", "Sistema", true],
 ];
 const sesion = { rol: "oficina", cargada: false };
 let actual = "inicio";
-let familias = null, hazas = null, bandeja = null, sistema = null, olivos = null, agenda = null, mundo = null, llaves = null, fichaOlivo = null;
+let familias = null, hazas = null, bandeja = null, voz = null, sistema = null, olivos = null, agenda = null, mundo = null, llaves = null, fichaOlivo = null;
 
 // ------------------------------------------------------------------ tema
 $("#bTema").addEventListener("click", () => {
@@ -33,7 +34,8 @@ const nav = $("#nav");
 for (const [id, ico, nombre, hecha] of SECCIONES) {
   nav.append(h("li", null, h("button", { type: "button", "data-sec": id },
     h("span", { class: "ico", "aria-hidden": "true" }, ico), nombre, hecha ? null : h("span", { class: "pronto" }, "pronto"),
-    id === "bandeja" ? h("span", { class: "cuenta", id: "navBandeja", hidden: true }) : null)));
+    id === "bandeja" ? h("span", { class: "cuenta", id: "navBandeja", hidden: true }) : null,
+    id === "voz" ? h("span", { class: "cuenta", id: "navVoz", hidden: true }) : null)));
 }
 nav.addEventListener("click", e => { const b = e.target.closest("button[data-sec]"); if (b) ir(b.dataset.sec, true); });
 document.addEventListener("click", e => { const b = e.target.closest("[data-ir]"); if (b) ir(b.dataset.ir, true); });
@@ -52,7 +54,7 @@ function ir(sec, foco, param = null) {
   if (!SECCIONES.some(s => s[0] === sec)) sec = "inicio";
   actual = vista || sec;
   const [, , nombre0, hecha] = SECCIONES.find(s => s[0] === sec), nombre = vista ? "Ficha del olivo" : nombre0;
-  for (const id of ["inicio", "familias", "hazas", "bandeja", "agenda", "mundo", "olivos", "sistema", "olivo", "proximamente"]) $("#s-" + id).hidden = id !== (vista || (hecha ? sec : "proximamente"));
+  for (const id of ["inicio", "familias", "hazas", "bandeja", "voz", "agenda", "mundo", "olivos", "sistema", "olivo", "proximamente"]) $("#s-" + id).hidden = id !== (vista || (hecha ? sec : "proximamente"));
   if (!hecha) $("#proxTitulo").textContent = nombre + ": próximamente";
   for (const b of nav.querySelectorAll("button")) { if (b.dataset.sec === sec) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); }
   $("#titulo").textContent = nombre;
@@ -63,6 +65,7 @@ function ir(sec, foco, param = null) {
   if (vista) fichaOlivo.abre(param);
   else if (sec === "hazas") abreHazas(param);
   if (sec === "bandeja") bandeja.abre();
+  if (sec === "voz") voz.abre();
   if (sec === "agenda") agenda.abre();
   if (sec === "sistema") { sistema.abre(); llaves.abre(); }
   if (sec === "mundo") mundo.abre(); else if (mundo) mundo.sale();   // OF14: el refresco de «Quién está en el mundo» para al cambiar de sección
@@ -121,6 +124,7 @@ $("#salir").addEventListener("click", async () => {
 
 familias = iniciaFamilias({ sesion });
 bandeja = iniciaBandeja({ sesion });
+voz = iniciaVoz();
 sistema = iniciaSistema({ sesion });
 olivos = iniciaOlivos({ sesion });
 fichaOlivo = iniciaFichaOlivo();

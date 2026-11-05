@@ -27,7 +27,7 @@ test("nada en línea ni de otro origen; el DOM se hace con textContent (un corre
 test("la barra lateral tiene las secciones de la maqueta; Inicio, Familias, Hazas (OF3), Bandeja (OF4), Agenda (OF11), Olivos (OF7) y Sistema (OF5) están hechas", () => {
   const js = fuentes["oficina.js"];
   const ids = [...js.matchAll(/\["([a-z]+)", "[^"]+", "([^"]+)", (true|false)\]/g)].map(m => [m[1], m[3]]);
-  assert.deepStrictEqual(ids.map(x => x[0]), ["inicio", "familias", "hazas", "bandeja", "agenda", "directos", "mundo", "olivos", "sistema"]);
+  assert.deepStrictEqual(ids.map(x => x[0]), ["inicio", "familias", "hazas", "bandeja", "voz", "agenda", "directos", "mundo", "olivos", "sistema"]);
   const hechas = ids.filter(x => x[1] === "true").map(x => x[0]);   // otras tareas (Sistema, OF5…) irán añadiendo las suyas
   for (const id of ["inicio", "familias", "hazas", "bandeja", "agenda", "olivos", "sistema"]) assert.ok(hechas.includes(id), id + " está hecha");
   assert.match(html, /<a class="boton prim" href="\/finca\/"/, "«Entrar al mundo como oficina» siempre a mano");

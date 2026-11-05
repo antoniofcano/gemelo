@@ -4,6 +4,7 @@
 // apunta el id de la propuesta: el gemelo no escribe en OlivarTrack, decisión 94). Los textos de las familias son DATOS: se pintan con
 // textContent dentro de una cita y nunca se interpretan (ni como HTML ni como instrucciones).
 import { $, api, aviso, fecha, h, vacia } from "./comun.js";
+import { avisosVozDelResumen, textoAvisosVoz } from "./voz_puro.js";
 import { ABIERTOS, ESTADOS, MOTIVOS, TIPOS, TIPO_UNO, cuentaPorTipo, filtra, idOtValido, motivoDeRetirada, normaliza, nuevos, sePuedePasar, textoParaOlivarTrack } from "./bandeja_puro.js";
 
 const ETIQUETA = {
@@ -19,8 +20,11 @@ export async function cuentaPendientes() {
   const n = r.datos.pendientes;
   const c = $("#navBandeja");
   if (c) { c.textContent = String(n); c.hidden = n === 0; c.setAttribute("aria-label", n + (n === 1 ? " pendiente" : " pendientes")); }
+  // F3k-4: los avisos de voz por cercanía se atienden en la sección Voz; su contador va en su botón y en la nota de Inicio
+  const v = avisosVozDelResumen(r.datos), cv = $("#navVoz");
+  if (cv) { cv.textContent = String(v); cv.hidden = v === 0; cv.setAttribute("aria-label", textoAvisosVoz(v)); }
   const k = $("#kBandeja");
-  if (k) { k.textContent = String(n); $("#kBandejaNota").textContent = r.datos.nuevas.denuncia + " denuncia" + (r.datos.nuevas.denuncia === 1 ? "" : "s") + " sin mirar · " + r.datos.preguntas_sin_responder + " pregunta" + (r.datos.preguntas_sin_responder === 1 ? "" : "s") + " sin responder"; }
+  if (k) { k.textContent = String(n); $("#kBandejaNota").textContent = r.datos.nuevas.denuncia + " denuncia" + (r.datos.nuevas.denuncia === 1 ? "" : "s") + " sin mirar · " + r.datos.preguntas_sin_responder + " pregunta" + (r.datos.preguntas_sin_responder === 1 ? "" : "s") + " sin responder" + (v ? " · " + textoAvisosVoz(v) : ""); }
   return n;
 }
 
