@@ -60,3 +60,11 @@ Con `GEMELO_OT=no` no se llama a OlivarTrack ni se lee la fenología de la base;
 ## «Hoy en el olivar» en el tablón de La Linde (EV-3c)
 
 Sin pedir nada más: tras cada lectura buena, `53_mundo_hoy.js` emite el evento `mundo:hoy` (`contratos/eventos.json`) con `{ linea }`, y `44b_carteles.js` la pinta en el tablón de la entrada, con su procedencia («OlivarTrack · leído hace 2 h»). La línea es el trabajo de la semana **agregado por tipo** (`trabajoSemana.porParcela`, sumando en curso y terminadas; nunca por persona ni por parcela) o, si no hay, el titular fijo del primer aviso del campo (recogida, helada, lluvia, fenología; `mirada` no sale: es para quien lleva el olivar). `linea` es `null`, y el tablón no la pinta, si `completo` es `false`, si el trabajo viene truncado y no hay aviso, o si la fuente está apagada o sin sesión. En el lienzo de 512 × 320 solo caben dos pares dato + procedencia: hazas y olivos, hoy, época; la época cede ante un dato de hoy.
+
+## Un tractor en la haza con tarea (F4b, W1; `54_trabajo_hoy.js`, APAGADO por defecto)
+
+El mismo evento `mundo:hoy` lleva ahora `trabajo: { parcelas: [id], cuando } | null`: los ids de OlivarTrack de las parcelas con alguna tarea **en curso** (`trabajoSemana.porParcela[].enCurso` con `n > 0`), solo si `trabajoSemana.completo` y `completo` son `true`. Nunca quién, cuántas personas ni dónde. No cambia la respuesta de la api ni su esquema: no hay petición nueva.
+
+El componente `trabajo-hoy` (bandera `?trabajo=1`; **apagado por defecto** porque OlivarTrack está apagado en el servidor a la espera de un token propio de solo lectura) escucha el evento y pone **un tractor ilustrativo por haza** en el centro de la haza (solo las que el índice de la finca conoce; si no, no se pinta). Es **deducido**: «hoy hay una tarea en curso en esta haza», no «hay alguien aquí». Su ficha (entidad `trabajo:<id de parcela>`, por cercanía a 30 m, y en VR por las láminas comunes de Entidades) lleva el rótulo «Deducido» y dice lo que no se sabe. Sin datos, sin lectura completa o sin el evento, no sale nada y no hay errores.
+
+Presupuesto de **diseño** (contado en Node, no medido en el renderizador): 1 llamada y ≤ 16 tractores de 72 triángulos (1.152). Nota de comodidad: probado solo en Node (`pruebas/guardianes/trabajo_hoy.test.js`); Chrome, iPhone y Quest, **no probado**.

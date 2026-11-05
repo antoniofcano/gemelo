@@ -117,7 +117,19 @@
       var a = r.avisos.filter(function (x) { return TITULAR[x.tipo] && x.completo !== false && FUENTE[x.de]; })[0];
       return a ? { txt: TITULAR[a.tipo], de: FUENTE[a.de], cuando: typeof a.consultadoEn === "string" ? a.consultadoEn : null } : null;
     }
-    return { valida: valida, lee: lee, haceTxt: haceTxt, nombre: nombre, lineas: lineas, cabecera: cabecera, hud: hud, tablon: tablon };
+    // F4b/W1 (54_trabajo_hoy.js): los ids de las parcelas con alguna tarea EN CURSO (nunca quién ni cuántas personas), solo con la lectura completa; null si no hay ninguna o no se sabe
+    function trabajo(r) {
+      var w = r && r.completo === true ? r.trabajoSemana : null;
+      if (!w || w.completo !== true || !Array.isArray(w.porParcela)) return null;
+      var ids = [];
+      w.porParcela.forEach(function (p) {
+        if (!esObj(p) || typeof p.parcela !== "string" || !Array.isArray(p.enCurso)) return;
+        var n = 0; p.enCurso.forEach(function (x) { if (esObj(x) && typeof x.n === "number" && isFinite(x.n) && x.n > 0) n += x.n; });
+        if (n > 0 && ids.indexOf(p.parcela) < 0) ids.push(p.parcela);
+      });
+      return ids.length ? { parcelas: ids, cuando: typeof (w.consultadoEn || w.leidoEn) === "string" ? (w.consultadoEn || w.leidoEn) : null } : null;
+    }
+    return { valida: valida, lee: lee, haceTxt: haceTxt, nombre: nombre, lineas: lineas, cabecera: cabecera, hud: hud, tablon: tablon, trabajo: trabajo };
   })();
   // [puro:fin]
 
@@ -150,7 +162,7 @@
         if (!vivo) return;
         if (!x.ok) { if (!ultimo) art.hidden = true; return; }   // sin sesión o la api no contesta: no se enseña nada (y se queda lo último)
         ultimo = x.datos; pinta(x.datos);
-        if (n && n.emite) n.emite("mundo:hoy", { linea: P.tablon(x.datos) });   // EV-3c: el tablón de la entrada (44b_carteles.js) pinta esta línea; null = nada que decir
+        if (n && n.emite) n.emite("mundo:hoy", { linea: P.tablon(x.datos), trabajo: P.trabajo(x.datos) });   // EV-3c: el tablón de la entrada (44b_carteles.js) pinta esta línea; null = nada que decir
         var t = P.hud(x.datos);
         if (t && !avisado && typeof Hud !== "undefined" && Hud.aviso) { avisado = true; Hud.aviso(t, 6000); }
       });
