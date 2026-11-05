@@ -17,6 +17,9 @@
   //  · Animación (AvataresPuro.huesos): los ángulos de Muneco.avanza sobre los huesos humanoides normalizados (andar, quieto, agacharse, sentado en el
   //    quad, con el dron); la cabeza, con el giro de la pose; con manos de Quest, los brazos a las manos con un IK analítico de dos huesos; parpadeo al
   //    azar y mirada (VRMLookAt) hacia la cámara si está cerca y delante. Muelles (pelo, ropa) solo en escritorio y fuera de VR. Todo ilustrativo (regla 5).
+  //  · EV-3b, la boca: con «voz:habla» (45_voz.js), la expresión «aa» del VRM se abre y cierra a 6-8 Hz mientras esa persona habla, con ataque rápido y caída lenta
+  //    (AvataresPuro.boca); del evento solo se usa SI habla y su nivel (que fija cuánto abre): el ritmo es inventado, ILUSTRATIVO (regla 5). Solo a ≤ 12 m (en VR, ≤ 8 m y
+  //    escalones 0-1; en los altos, sin boca). Los muñecos sin cara: nada. No se graba ni se analiza audio.
   //  · Varias personas con el mismo avatar: three-vrm no clona un VRM (VRMUtils no trae clon): se vuelve a analizar desde el MISMO ArrayBuffer y la
   //    geometría y las texturas se toman de la primera copia viva (?vrmcomparte=no lo apaga, para medir); se sueltan con la última (deepDispose).
   //  · AV4 (ADR-0025, catálogo v2): el CUERPO de la receta (metadatos: avatar.cuerpo, pelo, vello, ropa…) es un VRM con todas sus piezas dentro; se enseñan las de la
@@ -170,7 +173,31 @@
       var f = (st.t - st.prox) / DUR; if (f >= 1) { st.t = 0; st.prox = 2 + r() * 4; return 0; }
       return 1 - Math.abs(f * 2 - 1);
     }
-    return { CUPO: CUPO, CUPO_VR: CUPO_VR, GENTE_VR: GENTE_VR, DMAX: DMAX, distVrm: distVrm, BAJA: BAJA, cupo: cupo, leeCatalogo: leeCatalogo, cualVrm: cualVrm, piezasDe: piezasDe, colorMaterial: colorMaterial, reparte: reparte, huesos: huesos, ik: ik, parpadeo: parpadeo };
+    // EV-3b: la boca. ILUSTRATIVA (regla 5): ni se mide la voz ni se lee la boca de nadie. De «voz:habla» (45_voz.js: ActiveSpeakers de LiveKit) llega solo SI habla y un
+    // nivel gordo (0..1, en saltos de ≥ 0,1): ese nivel fija cuánto abre la sílaba; el abrir y cerrar (6-8 Hz, con azar) es inventado. Sin audio propio, sin grabar nada.
+    // Ataque rápido, caída lenta; sin asignar memoria (st se reusa). [SUPUESTO: valores a ajustar a ojo, sin probar en Quest ni móvil]
+    var BOCA_HZ = [6, 8], BOCA_MAX = 0.8, BOCA_ATAQUE = 40, BOCA_CAIDA = 10, BOCA_CERCA = 12, BOCA_CERCA_VR = 8, BOCA_NIVEL_VR = 1;
+    // ¿se anima la boca de este avatar? fuera de VR a ≤ 12 m; con gafas solo en los escalones 0 y 1 de VR_PERFILES y a ≤ 8 m (en los altos, sin boca: cada llamada cuenta)
+    function conBoca(vr, nivelVR, dist) {
+      if (!(dist >= 0)) return false;
+      return vr ? ((nivelVR | 0) <= BOCA_NIVEL_VR && dist <= BOCA_CERCA_VR) : dist <= BOCA_CERCA;
+    }
+    // st = {v, t, abre} (se rellena solo); habla: ¿habla ahora?; energía 0..1; r() en [0, 1). Devuelve la apertura de «aa», de 0 a BOCA_MAX
+    function boca(st, dt, habla, energia, r) {
+      if (st.v == null) { st.v = 0; st.t = 0; st.abre = false; }
+      var obj = 0;
+      if (habla) {
+        st.t -= dt;
+        if (st.t <= 0) { st.t = 1 / (BOCA_HZ[0] + r() * (BOCA_HZ[1] - BOCA_HZ[0])); st.abre = !st.abre; st.o = st.abre ? 0.45 + 0.55 * r() : 0.12 * r(); }
+        var n = energia > 0 ? (energia < 1 ? energia : 1) : 0;
+        obj = st.o * BOCA_MAX * (0.5 + 0.5 * n);
+      } else { st.t = 0; st.abre = false; }
+      var k = obj > st.v ? BOCA_ATAQUE : BOCA_CAIDA;
+      st.v += (obj - st.v) * (1 - Math.exp(-k * (dt > 0.1 ? 0.1 : dt)));
+      if (!habla && st.v < 0.01) st.v = 0;
+      return st.v;
+    }
+    return { CUPO: CUPO, CUPO_VR: CUPO_VR, GENTE_VR: GENTE_VR, DMAX: DMAX, distVrm: distVrm, BAJA: BAJA, cupo: cupo, leeCatalogo: leeCatalogo, cualVrm: cualVrm, piezasDe: piezasDe, colorMaterial: colorMaterial, reparte: reparte, huesos: huesos, ik: ik, parpadeo: parpadeo, conBoca: conBoca, boca: boca, BOCA_MAX: BOCA_MAX };
   })();
   // [puro:fin]
 
@@ -180,6 +207,8 @@
     var simVrm = /[?&]vrm=1\b/.test(location.search), comparte = !/[?&]vrmcomparte=no\b/.test(location.search), sinPropio = /[?&]yo=no\b/.test(location.search);
     var disp = Aparato.clase();
     var LIB = null, pideLib = null, cat = null, pideCat = null, bufs = Object.create(null), vivos = Object.create(null), falla = Object.create(null);
+    var hablan = Object.create(null), YO = "yo";   // EV-3b: lo último de «voz:habla» por identidad (y el tuyo, bajo YO)
+    n.on("voz:habla", function (d) { if (d && typeof d.identidad === "string") hablan[d.yo ? YO : d.identidad] = d.habla ? { habla: true, fuerza: d.nivel } : null; });
     var regs = new Map(), mio = null, gVrm = null, tTic = TICK, tGen = TICK, asignado = false, semilla = 7, est = { catalogo: -1, cargas: 0, fallos: 0, instancias: 0, msParse: 0 };
     var v1 = new THREE.Vector3(), v2 = new THREE.Vector3(), v3 = new THREE.Vector3(), q1 = new THREE.Quaternion(), q2 = new THREE.Quaternion(), e1 = new THREE.Euler(), angs = {};
     function azar() { semilla = (semilla + 0x6d2b79f5) | 0; var t = Math.imul(semilla ^ (semilla >>> 15), 1 | semilla); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }
@@ -260,7 +289,7 @@
       giro.scale.setScalar(s); giro.add(vrm.scene); raiz.add(giro);
       vrm.scene.traverse(function (o) { if (o.isMesh) { o.frustumCulled = false; [].concat(o.material).forEach(function (m) { parcheFundido(m, uni); }); } });   // el volumen de una malla con esqueleto es el de reposo
       raiz.visible = false;
-      return { id: id, vrm: vrm, raiz: raiz, giro: giro, h: h, s: s, yCad: yCad, L: yCad * s, cadera0: h.hips ? h.hips.position.y : 0, v0: !!(vrm.meta && vrm.meta.metaVersion === "0"), uni: uni, blink: {}, compartida: compartida,
+      return { id: id, vrm: vrm, raiz: raiz, giro: giro, h: h, s: s, yCad: yCad, L: yCad * s, cadera0: h.hips ? h.hips.position.y : 0, v0: !!(vrm.meta && vrm.meta.metaVersion === "0"), uni: uni, blink: {}, boca: {}, sinAa: null, compartida: compartida,
         cuerpo: !!e.cuerpo, conMirada: !e.cuerpo || e.mirada !== "ninguna" };
     }
     // AV4 (ADR-0025): un cuerpo del creador con lo de la persona: enseña las piezas de su receta (las demás no se dibujan ni se suben a la GPU), tiñe por nombre de material
@@ -296,7 +325,7 @@
     }
 
     // ---- poner un avatar: posición, giro, huesos, manos, mirada y parpadeo
-    function anima(inst, mu, cab, dt, manos, mirar) {
+    function anima(inst, mu, cab, dt, manos, mirar, hab, cerca) {
       var V0 = inst.v0, a = AvataresPuro.huesos(mu, { L: inst.L, v0: V0 }, cab, angs), h = inst.h;
       for (var n in h) { var b = h[n], r = a[n]; if (b && r) b.rotation.set(r[0], r[1], r[2]); }
       if (h.hips) h.hips.position.y = inst.cadera0 - a.baja / inst.s;
@@ -309,9 +338,22 @@
         if (mirar) vrm.lookAt.lookAt(camera.position); else { vrm.lookAt.yaw = 0; vrm.lookAt.pitch = 0; }
         vrm.lookAt.update(dt);
       }
-      if (vrm.expressionManager) { vrm.expressionManager.setValue("blink", AvataresPuro.parpadeo(inst.blink, dt, azar)); vrm.expressionManager.update(); }
+      if (vrm.expressionManager) {
+        vrm.expressionManager.setValue("blink", AvataresPuro.parpadeo(inst.blink, dt, azar));
+        habla(inst, dt, hab, cerca);
+        vrm.expressionManager.update();
+      }
       if (vrm.springBoneManager && disp === "escritorio" && !VRX.on) vrm.springBoneManager.update(dt);   // muelles: solo en escritorio y fuera de VR [SUPUESTO hasta medir en Quest]
       if (vrm.nodeConstraintManager) vrm.nodeConstraintManager.update();
+    }
+    // EV-3b: la boca («aa»; los muñecos no tienen cara: ahí solo la etiqueta y el halo del corro, ya existentes). hab = lo último de «voz:habla» de esa persona o null
+    function habla(inst, dt, hab, cerca) {
+      var em = inst.vrm.expressionManager;
+      if (inst.sinAa == null) inst.sinAa = !em.getExpression("aa");
+      if (inst.sinAa) return;
+      var on = !!(hab && hab.habla && cerca);
+      if (!on && inst.boca.v === 0) return;   // callado y cerrado: nada que hacer
+      em.setValue("aa", AvataresPuro.boca(inst.boca, dt, on, on ? hab.fuerza : 0, azar));
     }
     // el brazo a la mano de la pose (Quest): IK analítico de dos huesos sobre los huesos normalizados. No CCDIKSolver (addons de three): ese trabaja sobre
     // los huesos de una SkinnedMesh por índice, y aquí se mueven los normalizados, que no son huesos de ninguna malla; con dos huesos la solución es cerrada
@@ -347,7 +389,7 @@
         if (regs.get(a) === r) regs.delete(a);
       });
     }
-    function quitaReg(a) { var r = regs.get(a); if (!r) return; regs.delete(a); if (r.inst) sueltaInst(r.inst); }
+    function quitaReg(a) { var r = regs.get(a); if (!r) return; regs.delete(a); delete hablan[a.id]; if (r.inst) sueltaInst(r.inst); }
     function candidatos() {
       var l = [], ps = Presencia.vrmPersonas();
       for (var i = 0; i < ps.length; i++) {
@@ -378,7 +420,8 @@
       var cab = { yaw: yawCab - mu.yaw, pitch: Math.asin(Math.max(-1, Math.min(1, v1.y))) };
       var manos = null;
       if (o.hayIzq || o.hayDer) { manos = manosL; manos.izq = o.hayIzq ? mano(o.izq, mI) : null; manos.der = o.hayDer ? mano(o.der, mD) : null; }
-      anima(inst, mu, cab, dt, manos, true);
+      var dB = Math.hypot(cx - camera.position.x, cz - camera.position.z);
+      anima(inst, mu, cab, dt, manos, true, hablan[a.id] || null, AvataresPuro.conBoca(VRX.on, VRX.nivel, dB));
       return r.k >= 1 && r.dir > 0;
     }
     var manosL = { izq: null, der: null }, mI = new THREE.Vector3(), mD = new THREE.Vector3();
@@ -417,7 +460,7 @@
       if (!cuerpoNaranja) cuerpoNaranja = persona.children.filter(function (c) { return c !== mio.inst.raiz; });
       mio.k = Math.min(1, mio.k + dt / FUNDIDO); mio.inst.uni.value = mio.k; mio.inst.raiz.visible = true;
       var u = persona.userData, mu = { piernaI: u.pi.rotation.x, piernaD: u.pd.rotation.x, brazoI: u.bi.rotation.x, brazoD: u.bd.rotation.x, agacho: 0, vehiculo: enQuad ? 1 : enDron ? 2 : 0, yaw: -pp.ang };
-      anima(mio.inst, mu, null, dt, null, false);
+      anima(mio.inst, mu, null, dt, null, false, hablan[YO] || null, !VRX.on);
       var tapa = mio.k >= 1; cuerpoNaranja.forEach(function (c) { c.visible = !tapa; });
     }
     function quitaPropio() {
@@ -502,7 +545,7 @@
     id: "avatares-vrm", version: 1,
     consume: ["Materiales", "Aparato", "Presencia", "Aspecto", "VRX", "VrPresupuesto", "paseando", "persona", "primera", "enQuad", "enDron", "pp"],
     expone: [],
-    eventos: { escucha: ["presencia:activada"], emite: [] },
+    eventos: { escucha: ["presencia:activada", "voz:habla"], emite: [] },
     bandera: { defecto: true, url: "avatares" },
     // escritorio: 6 VRM a la vez (cupo; 3 en móvil y Quest) × ≤ 4 primitivas y ≤ 20.000 triángulos cada uno (topes de la tubería, ADR-0020 §2: ESTIMADO, sin medir);
     // texturas: ≤ 3 de 1024 px por avatar (≈ 16 MB cada uno con mipmaps, ADR-0020: 50-100 MB estimados)
