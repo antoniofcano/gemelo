@@ -55,5 +55,7 @@
       "p95_ms": 0.4
     }
   ],
-  "otros_p95_ms": 1.2
+  "otros_p95_ms": 1.2,
+  "perdidos_n": 9,
+  "vsync_perdidos": 11
 }

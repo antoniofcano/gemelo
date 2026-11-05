@@ -42,6 +42,8 @@
     "lentos_sin_causa": {"type":"integer","minimum":0,"maximum":1000000,"description":"Q0i (opcional): de los lentos, cuántos no coinciden con ninguna causa conocida"},
     "lentos_cola_ms": {"type":"number","minimum":0,"maximum":10000,"description":"Q0i (opcional): mediana de los ms que trabajaron la Cola y las teselas en los lentos en que trabajaron"},
     "reparto": {"type":"array","maxItems":16,"description":"Q0i (opcional): reparto del JS por bloque del motor, de mayor a menor p95, como mucho 16. Los bloques son identificadores del motor, no datos de nadie","items":{"type":"object","additionalProperties":false,"required":["bloque","mediana_ms","p95_ms"],"properties":{"bloque":{"type":"string","pattern":"^[0-9A-Za-z\\u00c1\\u00c9\\u00cd\\u00d3\\u00da\\u00dc\\u00d1\\u00e1\\u00e9\\u00ed\\u00f3\\u00fa\\u00fc\\u00f1 :_().+\\u00b7-]{1,40}$"},"mediana_ms":{"type":"number","minimum":0,"maximum":10000},"p95_ms":{"type":"number","minimum":0,"maximum":10000}}}},
-    "otros_p95_ms": {"type":"number","minimum":0,"maximum":10000,"description":"Q0i (opcional): p95 de lo que sobra del JS tras restar render() y los bloques del reparto"}
+    "otros_p95_ms": {"type":"number","minimum":0,"maximum":10000,"description":"Q0i (opcional): p95 de lo que sobra del JS tras restar render() y los bloques del reparto"},
+    "perdidos_n": {"type":"integer","minimum":0,"maximum":1000000,"description":"v3.1 (opcional): fotogramas perdidos, los de intervalo mayor de 1,5 periodos de refresco (periodo = 1000/Hz del aparato o de la sesión; sin Hz, la mediana del intervalo)"},
+    "vsync_perdidos": {"type":"integer","minimum":0,"maximum":10000000,"description":"v3.1 (opcional): vsync perdidos, suma de round(intervalo/periodo) - 1 en los fotogramas perdidos"}
   }
 }

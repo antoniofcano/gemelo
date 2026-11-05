@@ -465,3 +465,45 @@ test("Q0h: coste cero sin medir: ni una lectura de reloj nueva en el bucle fuera
   // y el medidor lo apaga al terminar y al liberar
   assert.ok(/Reparto\.on = true/.test(FUENTE) && (FUENTE.match(/Reparto\.on = false/g) || []).length === 2);
 });
+
+// ---------- fotogramas perdidos (intervalos de más de 1,5 periodos de refresco) y vsync perdidos ----------
+function aleat(sem) { let s = sem; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+test("perdidos: 72 Hz con fluctuación de ±0,3 ms da 0 perdidos aunque «por encima de 13,9» ronde el 50 %", () => {
+  const r = aleat(7), ms = Array.from({ length: 4000 }, () => 13.9 + (r() * 2 - 1) * 0.3);
+  const e = E.calcula(serie(ms, 3, 0.015), 3, 60, undefined, 72);
+  assert.ok(e.pctSobre > 40 && e.pctSobre < 60, "el criterio de 13,9 ms se rompe por fluctuación: " + e.pctSobre);
+  assert.strictEqual(e.perdidos.n, 0); assert.strictEqual(e.perdidos.vsync, 0); assert.strictEqual(e.perdidos.fuente, "hz");
+  assert.ok(Math.abs(e.perdidos.umbral - 20.83) < 0.01 && Math.abs(e.perdidos.periodo - 13.889) < 0.001);
+});
+test("perdidos: un intervalo de 27,8 ms pierde 1 vsync y uno de 41,7 ms pierde 2; el límite es estricto en 1,5 periodos", () => {
+  const ms = Array.from({ length: 100 }, () => 13.9); ms[10] = 27.8; ms[20] = 41.7; ms[30] = 20.8; ms[40] = 20.9;
+  const e = E.calcula(serie(ms, 3, 0.05), 3, 60, undefined, 72);
+  assert.strictEqual(e.perdidos.n, 3);   // 27,8; 41,7 y 20,9 (20,8 < 20,83 no cuenta)
+  assert.strictEqual(e.perdidos.vsync, 1 + 2 + 1);   // 20,9 / 13,89 redondea a 2 -> pierde 1
+  assert.strictEqual(e.perdidos.pct, 3);
+  const solo = E.perdidosDe([13.9, 27.8], 72), dos = E.perdidosDe([13.9, 41.7], 72);
+  assert.deepStrictEqual([solo.vsync, dos.vsync], [1, 2]);
+});
+test("perdidos: sin Hz conocidos el periodo es la mediana del intervalo y el informe lo dice; la tarjeta sigue en 14 líneas y trae el criterio nuevo", () => {
+  const ms = Array.from({ length: 200 }, () => 16.7); ms[5] = 33.4;
+  const e = E.calcula(serie(ms, 3, 0.05), 3, 60);
+  assert.strictEqual(e.perdidos.fuente, "mediana"); assert.strictEqual(e.perdidos.n, 1); assert.strictEqual(e.perdidos.vsync, 1);
+  const r = medidaVR("VR", 400); r.est = E.calcula(serie(Array.from({ length: 400 }, (_, i) => (i === 7 ? 41.7 : 13.9)), 3, 0.05), 3, 60, undefined, 72);
+  const c = E.lineas(r, true), l = E.lineas(r, false).join("\n"), t = c.join("\n");
+  assert.ok(c.length <= 14, "la tarjeta cabe: " + c.length);
+  assert.match(t, /1 perdidos \(0\.3 %\)/); assert.match(t, /perdidos ≤ 1 %: sí/); assert.match(t, /criterio 5 de ADR-0015/);
+  assert.match(l, /Fotogramas perdidos \(intervalo > 1,5 periodos = 20\.8 ms; periodo 13\.9 ms de 72 Hz\): 1 \(0\.3 %\) · vsync perdidos: 2/);
+  assert.match(E.lineas(Object.assign({}, r, { est: e }), false).join("\n"), /mediana del intervalo, sin Hz conocidos/);
+  const mala = medidaVR("VR", 400); mala.est = E.calcula(serie(Array.from({ length: 400 }, (_, i) => (i % 10 === 0 ? 27.8 : 13.9)), 3, 0.05), 3, 60, undefined, 72);
+  assert.match(E.lineas(mala, true).join("\n"), /perdidos ≤ 1 %: no/);
+});
+test("perdidos: una medida guardada de antes (sin «perdidos») sigue dando texto; el cuerpo de envío trae perdidos_n y vsync_perdidos solo si se midieron", () => {
+  const r = medidaVR("VR", 400); delete r.est.perdidos;
+  assert.doesNotThrow(() => E.lineas(r, true)); assert.doesNotThrow(() => E.lineas(r, false));
+  const x = { ua: UA_QUEST, finca: "hituelo", modo: "nube", version: "0.2.0" };
+  assert.ok(!("perdidos_n" in E.cuerpoEnvio(r, x)));
+  r.est.perdidos = { n: 9, vsync: 11, pct: 0.2, periodo: 13.9, umbral: 20.8, fuente: "hz", hz: 72 };
+  const c = E.cuerpoEnvio(r, x), esquema = JSON.parse(lee("contratos/medidas.schema.json"));
+  assert.deepStrictEqual([c.perdidos_n, c.vsync_perdidos], [9, 11]);
+  for (const k of ["perdidos_n", "vsync_perdidos"]) { assert.ok(k in esquema.properties, k); assert.ok(!esquema.required.includes(k)); }
+});

@@ -664,3 +664,10 @@ Cómo se rellena (comandos en [TESTING.md](../operacion/TESTING.md#banco-de-prue
 - Las teselas se piden a ≤ 1.800 m de la cámara, de 3 en 3.
 - Las teselas sin datos (fuera de las parcelas + 60 m) son un hueco: el mundo de Hituelo es un mosaico, no un rectángulo.
 - NDVI de Hituelo en el HTML: 2,3 MB (u8) → 3 MB; página 4,6 MB. Si el artefacto no admite `fetch` de ficheros de apoyo, Hituelo (52 MB de teselas) no cabe en una sola página.
+
+## Cómo leer los fotogramas perdidos (medidor, 2026-11-05)
+«Por encima de 13,9 ms» mide sobre todo la fluctuación del reloj cuando la mediana cae justo en el umbral (caso de la tabla de arriba), y por eso no dice si se pierden fotogramas. El medidor da ahora, además:
+- **Fotogramas perdidos**: los de intervalo mayor de 1,5 periodos de refresco. El periodo es 1000 / Hz, con los Hz de la sesión de VR (o, si no, los que pidió la perilla); a 72 Hz, 13,9 ms y umbral de 20,8 ms. Sin Hz conocidos (pantalla) el periodo es la mediana del intervalo, y el informe largo lo dice («sin Hz conocidos»).
+- **Vsync perdidos**: la suma de `round(intervalo / periodo) - 1` en esos fotogramas; un fotograma de 2 periodos pierde 1 vsync, uno de 3 pierde 2. Un fotograma perdido puede perder varios vsync.
+- Se cuentan al resumir, sobre la serie que ya se guarda: no cuestan nada por fotograma. La tarjeta de VR los pone en la línea de los fotogramas («· P perdidos (y %)») y, junto al criterio 5 de ADR-0015, «perdidos ≤ 1 %: sí/no». **[SUPUESTO]** ese 1 % es una propuesta, no un criterio acordado; el criterio de ADR-0015 («p95 ≤ 13,9 ms») no cambia.
+- Las medidas anteriores a este cambio no traen estas cifras; no se recalculan. Pendiente de medir en un Quest real: **no probado** en hardware.

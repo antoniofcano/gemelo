@@ -1,5 +1,5 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: OT, hist, VIVO, FINCA, marca, dd, tabla, lista, nMarc, sw, avTipo, pintaAvance, rango, aviso
+// Expone: OT, hist, VIVO, FINCA, marca, dd, tabla, lista, nMarc, sw, avTipo, pintaAvance, pct, rango, aviso
 // Consume: 01_datos (D, $, tinta, fmt), 02_mundo (suelo, orto, copas, cIn, marc, med), 02i_materiales (Materiales), 02j_estaticos (Estaticos),
 //   03_escena (scene, exag), 05_nube (nube), 08_marcadores (aplica, pendiente), 09_camara (objetivo, orb, pon), 10_ndvi (NDV, ndviIdx, pintaNdvi),
 //   12_paseo (paseando, persona, primera, salePaseo), 13_parcelas (parcelas, fincas, claseUsda, elegirParcela, elegirFinca), 13b_hazas (HazasPuro),

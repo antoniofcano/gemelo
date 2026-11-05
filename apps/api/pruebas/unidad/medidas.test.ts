@@ -18,6 +18,7 @@ after(async () => { await app.close(); await bd.end(); });
 
 let ipN = 0;
 const otraIp = (): Record<string, string> => deLaWeb({ "x-forwarded-for": "198.51.100." + (++ipN % 250) });   // el límite por IP (10 por minuto) no es lo que se prueba aquí
+const V31 = ["perdidos_n", "vsync_perdidos"];   // contrato v3.1 (migración 0024)
 const V3 = ["render_mediana_ms", "render_p95_ms", "lentos_n", "lentos_cola", "lentos_tesela", "lentos_lote", "lentos_tarea", "lentos_compila", "lentos_textura", "lentos_sin_causa", "lentos_cola_ms", "reparto", "otros_p95_ms"];
 const lee = (rel: string): string => readFileSync(new URL("../../../../" + rel, import.meta.url), "utf8");
 const AHORA = Date.parse("2026-10-31T12:00:00Z");
@@ -32,7 +33,7 @@ test("el esquema de la api es el del contrato (contratos/medidas.schema.json): m
   assert.deepEqual(c.required, [...CUERPO_MEDIDA.required]);
   const quita = (o: Record<string, Record<string, unknown>>) => Object.fromEntries(Object.entries(o).map(([k, v]) => { const { description: _d, ...resto } = v; return [k, resto]; }));
   assert.deepEqual(quita(c.properties), quita(CUERPO_MEDIDA.properties as unknown as Record<string, Record<string, unknown>>));
-  const NUEVOS = ["js_mediana_ms", "js_p95_ms", "nivel_ini", "nivel_fin", "perillas", "olivos_gen", "llamadas_med", "triangulos_med", "personas", ...V3];
+  const NUEVOS = ["js_mediana_ms", "js_p95_ms", "nivel_ini", "nivel_fin", "perillas", "olivos_gen", "llamadas_med", "triangulos_med", "personas", ...V3, ...V31];
   assert.deepEqual(Object.keys(c.properties).sort(), [...CUERPO_MEDIDA.required, ...NUEVOS].sort(), "los obligatorios de la v1 más los nueve opcionales de la v2 (Q0e) y los trece de la v3 (Q0i), ninguno más");
   for (const k of NUEVOS) assert.ok(!c.required.includes(k), k + " es opcional: un cliente de la v1 sigue valiendo");
 });
@@ -129,8 +130,8 @@ test("v3 (Q0i): el ejemplo del contrato es válido (api y esquema del contrato) 
   const ajv = new Ajv({ allErrors: true, strict: false }), valida = ajv.compile(CUERPO_MEDIDA as unknown as object), contrato = ajv.compile(JSON.parse(lee("contratos/medidas.schema.json")));
   const v3 = JSON.parse(lee("contratos/medidas-ejemplo.json")), v2 = JSON.parse(lee("contratos/medidas-v2-ejemplo.json"));
   for (const [n, v] of [["v3", v3], ["v2", v2]] as const) { assert.equal(valida(v), true, n + " api: " + JSON.stringify(valida.errors)); assert.equal(contrato(v), true, n + " contrato: " + JSON.stringify(contrato.errors)); }
-  for (const k of V3) assert.ok(k in v3, k + " en el ejemplo v3");
-  for (const k of V3) assert.ok(!(k in v2), k + " no está en el ejemplo v2");
+  for (const k of [...V3, ...V31]) assert.ok(k in v3, k + " en el ejemplo v3");
+  for (const k of [...V3, ...V31]) assert.ok(!(k in v2), k + " no está en el ejemplo v2");
   assert.equal(motivoNoCreible({ ...v3, medida_en: new Date().toISOString() }), null);
   assert.ok(!/hogar|correo|@|C:\\|\/Users/i.test(JSON.stringify(v3)), "nada personal en el ejemplo");
 });
@@ -146,6 +147,19 @@ test("v3 (Q0i): el reparto se acota a 16 bloques; con 17, 400; nombres con HTML,
   assert.equal(ok({ reparto: [{ bloque: "a", mediana_ms: -1, p95_ms: 2 }] }), false); assert.equal(ok({ reparto: [{ bloque: "a", mediana_ms: 1, p95_ms: 10001 }] }), false); assert.equal(ok({ reparto: "no" }), false);
   assert.equal(ok(completa()), true);
   for (const [k, v] of [["render_p95_ms", -1], ["render_mediana_ms", 10001], ["lentos_n", -1], ["lentos_cola", 1.5], ["lentos_sin_causa", 1000001], ["lentos_cola_ms", 10001], ["otros_p95_ms", "x"]] as const) assert.equal(ok({ [k]: v }), false, k);
+});
+
+test("v3.1: perdidos_n y vsync_perdidos son opcionales, enteros y acotados; la migración 0024 solo añade esas dos columnas nulas y el INSERT las guarda", () => {
+  const valida = new Ajv({ allErrors: true, strict: false }).compile(CUERPO_MEDIDA as unknown as object);
+  const ok = (extra: Record<string, unknown>) => valida({ ...medida(), ...extra });
+  assert.equal(ok({}), true); assert.equal(ok({ perdidos_n: 0, vsync_perdidos: 0 }), true); assert.equal(ok({ perdidos_n: 12, vsync_perdidos: 15 }), true);
+  for (const [k, v] of [["perdidos_n", -1], ["perdidos_n", 1.5], ["perdidos_n", 1000001], ["vsync_perdidos", -1], ["vsync_perdidos", "x"], ["vsync_perdidos", 10000001]] as const) assert.equal(ok({ [k]: v }), false, k);
+  const sql = lee("apps/api/migraciones/0024_medidas_fluidez_perdidos.sql").split("\n").filter(l => !l.trim().startsWith("--")).join("\n");
+  assert.ok(!/DROP|DELETE|UPDATE|TRUNCATE|NOT NULL|ALTER COLUMN|RENAME/i.test(sql), "solo se añaden columnas nulas");
+  assert.equal((sql.match(/ADD COLUMN/g) ?? []).length, V31.length);
+  const insert = /INSERT INTO medidas_fluidez[\s\S]*?\]\);/.exec(lee("apps/api/src/medidas/rutas.ts"))![0];
+  for (const c of V31) assert.ok(insert.includes(c) && sql.includes(c), c);
+  assert.ok(/\$37, \$38\)/.test(insert));
 });
 
 test("v3 (Q0i): render_mediana_ms ≤ render_p95_ms y mediana ≤ p95 en cada bloque, o no es creíble", () => {

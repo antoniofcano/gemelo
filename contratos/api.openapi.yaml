@@ -2690,7 +2690,7 @@ paths:
         (10 por día, en memoria: el hogar no se guarda, ni IP, ni el agente de usuario entero; no se audita). Contrato v2 (Q0e): nueve campos OPCIONALES
         (js_mediana_ms, js_p95_ms, nivel_ini, nivel_fin, perillas, olivos_gen, llamadas_med, triangulos_med, personas); el cuerpo de la v1 sigue valiendo. Contrato v3 (Q0i, migración 0023):
         trece más, también opcionales (render_mediana_ms, render_p95_ms, lentos_n, lentos_cola, lentos_tesela, lentos_lote, lentos_tarea, lentos_compila, lentos_textura,
-        lentos_sin_causa, lentos_cola_ms, otros_p95_ms y `reparto`: como mucho 16 bloques { bloque, mediana_ms, p95_ms }); 422 también si render_mediana_ms > render_p95_ms o un bloque tiene mediana > p95.
+        lentos_sin_causa, lentos_cola_ms, otros_p95_ms y `reparto`: como mucho 16 bloques { bloque, mediana_ms, p95_ms }); 422 también si render_mediana_ms > render_p95_ms o un bloque tiene mediana > p95. Contrato v3.1 (migración 0024): dos más, opcionales (perdidos_n, vsync_perdidos: fotogramas de más de 1,5 periodos de refresco y vsync que perdieron).
       security: [{ sesion: [] }]
       requestBody:
         required: true
