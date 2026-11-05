@@ -15,7 +15,7 @@
   //   Materiales.recorte(mat)                                AG-2.1: un material de recorte alfa (alphaTest > 0, cara de color; NUNCA los de sombra) pasa a alphaToCoverage si ?a2c lo deja y hay MSAA; devuelve mat
   //   Materiales.recortes(activo)                            enciende o apaga el alphaToCoverage de todos los que pasaron por recorte() (07ac lo apaga mientras hornea en un blanco sin MSAA)
   //   Materiales.a2c / Materiales.eligeA2c(busqueda, msaa)   el estado { pedido, activo, msaa, motivo, advertencia, n } y su parte pura (lo prueba pruebas/guardianes/a2c.test.js)
-  //   ?a2c=0|1 (defecto 1): 1 = alphaToCoverage donde hay MSAA (XrPerillas.aa; ?xraa=0 lo quita); 0 = el alphaTest de siempre. Se conserva el umbral original del alphaTest (el
+  //   ?a2c=0|1 (defecto 1): 1 = alphaToCoverage donde hay MSAA (XrPerillas.aa; la perilla de MSAA de 02f lo quita); 0 = el alphaTest de siempre. Se conserva el umbral original del alphaTest (el
   //   recorte no se mueve: three suaviza con smoothstep(alphaTest, alphaTest + fwidth(a), a) y descarta lo del todo transparente, así que sigue sin escribirse profundidad ahí)
   // El guardián pruebas/guardianes/materiales_f1.test.js cuenta los onBeforeCompile y new THREE.ShaderMaterial que quedan FUERA de este módulo y solo deja que bajen.
   // Presupuesto (regla 6): no dibuja ni reserva nada; cada material lo libera quien lo pidió, como siempre.
@@ -56,7 +56,7 @@
     function eligeA2c(busqueda, msaa) {
       var q = typeof busqueda === "string" ? busqueda : "", m = /[?&]a2c=([^&#]*)/.exec(q), r = { pedido: "", activo: true, msaa: msaa !== false, motivo: "", advertencia: "" };
       if (m) { var v = decodeURIComponent(m[1]); r.pedido = v; if (v === "0") r.activo = false; else if (v !== "1") r.advertencia = "?a2c=" + v + " solo vale 0 o 1: se usa 1"; }
-      if (r.activo && !r.msaa) { r.activo = false; r.motivo = "sin MSAA (?xraa=0): alphaToCoverage no hace nada y se deja el alphaTest"; }
+      if (r.activo && !r.msaa) { r.activo = false; r.motivo = "sin MSAA (perilla de 02f): alphaToCoverage no hace nada y se deja el alphaTest"; }
       else if (!r.activo) r.motivo = "?a2c=0: el alphaTest de siempre";
       return r;
     }
