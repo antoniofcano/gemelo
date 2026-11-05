@@ -14,6 +14,7 @@
 ## Hacia dónde vamos — `rumbo/`
 - [rumbo/PLAN.md](rumbo/PLAN.md) — iniciativas con su estado.
 - [rumbo/DECISIONS-PENDING.md](rumbo/DECISIONS-PENDING.md) — decisiones abiertas, quién decide, qué bloquean.
+- [rumbo/EV-3-QUE-LA-GENTE-VUELVA.md](rumbo/EV-3-QUE-LA-GENTE-VUELVA.md) — estudio EV-3 (no implementa): huellas, notas y ecos, avisos del campo (correo o web push), primera vez con gafas, estado del mundo, boca por voz, postal y Mayoral; reuso, coste, privacidad, propuesta de la tanda 10 y decisiones para Antonio.
 
 ## Decisiones — `adr/`
 - [adr/README.md](adr/README.md) — reglas e índice de ADR. Plantilla: [adr/_template.md](adr/_template.md).
