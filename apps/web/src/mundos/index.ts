@@ -89,3 +89,5 @@ export { ID_VR, creaVr } from "./comun/vr.ts";
 export type { CtxVr, DepsVr, Vr } from "./comun/vr.ts";
 export { VR_GIROS, VR_PESTANAS, creaPanelVR } from "./comun/vr-panel.ts";
 export type { CtxPanelVR, Lamina, PanelVR } from "./comun/vr-panel.ts";
+export { ID_IR_A, creaIrA, manifiestoIrA } from "./comun/ir-a.ts";
+export type { DepsIrA, IrA } from "./comun/ir-a.ts";

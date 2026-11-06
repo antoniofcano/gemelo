@@ -16,16 +16,26 @@ const acorn = require("acorn");
 const { ficheros, lee } = require("./_util"), { fuenteMotor } = require("./_fuente");
 
 const MODULOS = ["12_paseo.js", "12b_llegada.js", "12c_ir_a.js", "16_vida.js", "29_vr.js"];
-// A3-6c (MU5-n): el código de 29_vr vive en mundos/comun/vr*.ts, que acorn no lee; lo suyo se mira sobre su texto (abajo, como 16_vida). ACORN: los que siguen en el legado.
-const ACORN = MODULOS.filter(m => m !== "29_vr.js");
+// A3-6c (MU5-n): los que viven en mundos/comun/ (29_vr, 12c_ir_a…) se analizan con su talón y el JavaScript que sale de sus .ts (_fuente.js: sin tipos), sin sus import
+const { TS_DE, comoJs } = require("./_fuente");
+const enComun = m => [].concat(TS_DE[m] || []).some(f => f.includes("/mundos/comun/"));
+const textoDe = (f, nombre) => enComun(nombre) ? fuenteMotor(nombre).replace(/^import .*$/gm, "") : lee(f);
+const ACORN = MODULOS;
 // Lo que se queda en el legado a propósito. `en`: la función que lo contiene (el nombre de su declaración, de su variable o de lo que se le asigna);
 // `codigo`: el texto exacto de la llamada o del nombre. Si cambia el texto, falla: se revisa si sigue siendo legítimo.
 const PERMITIDAS = {
   suelo: [
     { f: "12c_ir_a.js", en: "pintaLinea", codigo: "suelo(v[i].x, v[i].y)", motivo: "dibuja la línea de puntos del camino (no mueve a nadie)" },
+    { f: "29_vr.js", en: "vrActualiza", codigo: "suelo(VRX.tp.x, -VRX.tp.z)", motivo: "coloca la marca del arco del teletransporte (dibujo; el punto de caída lo calcula vrArco con gm.suelo y gm.dentro)" },
+    { f: "29_vr.js", en: "window.__vrOlivo", codigo: "suelo(b.x, b.y)", motivo: "ayuda de las pruebas de VR: el olivo más cercano a la cabeza" },
   ],
   copas: [
     { f: "12c_ir_a.js", en: "toca", codigo: "copas", n: 2, motivo: "el rodeo (IrAPuro.planifica y su replanificación en IrAPuro.ir) cruza un segmento con cada tronco, que un obstaculo(x, y, radio) de un punto no responde" },
+    { f: "12c_ir_a.js", en: "copas", codigo: "copas", n: 1, motivo: "A3-6c: el talón da el censo a ir-a.ts por función (02_mundo lo declara; nadie lo reescribe, pero así se lee al usarlo)" },
+    { f: "12c_ir_a.js", en: "creaIrA", codigo: "copas", n: 1, motivo: "A3-6c: el alias de esa función dentro de creaIrA (el rodeo la llama, arriba)" },
+    { f: "29_vr.js", en: "window.__vrOlivo", codigo: "copas", n: 1, motivo: "ayuda de las pruebas de VR: el olivo más cercano a la cabeza" },
+    { f: "29_vr.js", en: "copas", codigo: "copas", n: 1, motivo: "A3-6c: el talón da el censo a la VR por función, solo para window.__vrOlivo" },
+    { f: "29_vr.js", en: "creaVrSesion", codigo: "copas", n: 1, motivo: "A3-6c: el alias de esa función en vr-sesion.ts, para window.__vrOlivo" },
   ],
 };
 
@@ -70,7 +80,7 @@ function analiza(modulos, vigilados) {
 
 const MOTOR = ficheros().filter(f => /^apps\/web\/motor\/[^/]+\.js$/.test(f)).sort();
 let cache = null;
-const montaje = () => cache || (cache = analiza(MOTOR.map(f => ({ nombre: f.slice("apps/web/motor/".length), texto: lee(f) })), ACORN));
+const montaje = () => cache || (cache = analiza(MOTOR.map(f => ({ nombre: f.slice("apps/web/motor/".length), texto: textoDe(f, f.slice("apps/web/motor/".length)) })), ACORN));
 const clave = u => u.f + " · " + u.en + " · " + u.codigo;
 
 test("los cinco módulos de locomoción están en el motor", () => {

@@ -5,7 +5,7 @@
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
 
-const FUENTE = lee("apps/web/motor/12c_ir_a.js");
+const FUENTE = require("./_fuente").fuenteMotor("12c_ir_a.js");   // A3-6c: el talón y mundos/comun/ir-a.ts
 
 test("12c_ir_a.js toma su lógica pura del núcleo (IrAPuro = Nucleo.IrAPuro)", () => {
   assert.match(FUENTE, /^  var IrAPuro = Nucleo\.IrAPuro;$/m);
