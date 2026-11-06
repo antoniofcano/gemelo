@@ -18,6 +18,7 @@ const TS_DE = {
   "07_follaje.js": "apps/web/src/mundos/exterior/follaje.ts",   // A3-2b
   "08_marcadores.js": "apps/web/src/mundos/exterior/marcadores.ts",   // A3-2b
   "08b_marcadores_lidar.js": "apps/web/src/mundos/exterior/marcadores-lidar.ts",   // A3-2b
+  "05_nube.js": "apps/web/src/mundos/exterior/nube.ts",
   "07a_catalogo.js": "apps/web/src/mundos/exterior/catalogo.ts",
   // A3-2a: 07ab vive en varios ficheros (la escalera, el horneado, la cola, el sombreado, el lote y el módulo): se leen todos, en este orden
   "07ab_generados.js": ["generados.ts", "generados-escalera.ts", "generados-horneado.ts", "generados-cola.ts", "generados-sombreado.ts", "generados-lote.ts"].map(f => "apps/web/src/mundos/exterior/" + f),

@@ -10,6 +10,7 @@
 const test = require("node:test"), assert = require("node:assert"), vm = require("vm"), path = require("path"), { pathToFileURL } = require("url");
 const { lee, RAIZ, fs } = require("./_util");
 const { conFabrica } = require("./_materiales");
+const { fuenteMotor } = require("./_fuente");   // A3-3: lo que ya es un talón se lee con su .ts
 
 let THREE;
 test.before(async () => { THREE = await import(pathToFileURL(path.join(RAIZ, "apps/web/node_modules/three/build/three.module.js")).href); });
@@ -186,10 +187,10 @@ const motores = () => fs.readdirSync(MOTOR).filter(f => f.endsWith(".js"));
 test("inventario: congelan exactamente los ficheros registrados aquí (uno nuevo hay que añadirlo, con su motivo) y cada uno recoloca con congela tras colocar", () => {
   const usan = motores().filter(f => f !== "02j_estaticos.js" && /Estaticos\.congela\(/.test(sinComentarios(require("./_fuente").fuenteMotor(f)))).sort();
   assert.deepStrictEqual(usan, Object.keys(CONGELAN).sort());
-  const S = f => sinComentarios(lee("apps/web/motor/" + f));
+  const S = f => sinComentarios(fuenteMotor(f));
   assert.match(S("18_paisaje.js"), /Estaticos\.congela\(gPaisaje\);[\s\S]{0,200}sombrasSol\(true\)/, "colocaPaisaje congela el paisaje antes de las sombras");
   assert.ok(S("18_paisaje.js").indexOf("Estaticos.congela(gPaisaje)") > S("18_paisaje.js").indexOf("esferaSegura(geoCable)"), "después de escribir vértices e instancias");
-  assert.match(S("05_nube.js"), /function exagNube\(\) \{[^}]*Estaticos\.congela\(m\)/, "exagNube recoloca y congela de nuevo");
+  assert.match(S("05_nube.js"), /function exagNube\(\)(?:: void)? \{[^}]*Estaticos\.congela\(m\)/, "exagNube recoloca y congela de nuevo");
   assert.match(S("19_balizas.js"), /function colocaBalizas\(\) \{[\s\S]{0,260}\}\); congelaBalizas\(\); refrescaBalizas\(\)/, "colocaBalizas congela tras colocar");
 });
 
@@ -199,7 +200,7 @@ test("inventario: lo que ya iba congelado a mano sigue así, y lo que se queda e
   for (const f of Object.keys(YA_ESTATICOS)) assert.match(sinComentarios(lee(MIGRADOS[f] || "apps/web/motor/" + f)), /matrixAutoUpdate = false/, f + ": sigue con matrixAutoUpdate = false");
   for (const k of Object.keys(AUTOMATICO)) {
     const f = k.split("#")[0]; assert.ok(fs.existsSync(path.join(MOTOR, f)), f + ": existe");
-    if (!(f in CONGELAN)) assert.ok(!/Estaticos\.congela\(|matrixAutoUpdate = false/.test(sinComentarios(lee("apps/web/motor/" + f))), f + ": se queda en automático, no se congela");
+    if (!(f in CONGELAN)) assert.ok(!/Estaticos\.congela\(|matrixAutoUpdate = false/.test(sinComentarios(fuenteMotor(f))), f + ": se queda en automático, no se congela");
   }
   // nada de lo que se mueve se congela por descuido: el rombo y el anillo de las balizas van en la lista de excepciones
   assert.match(sinComentarios(lee("apps/web/motor/19_balizas.js")), /mov\.push\(g\.userData\.rombo, g\.userData\.anillo\)/);
