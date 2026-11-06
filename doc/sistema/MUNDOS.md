@@ -1,6 +1,6 @@
-# Mundos: interfaces, contratos y fase 1 (ADR-0033, Propuesto)
+# Mundos: interfaces, contratos y fase 1 (ADR-0033)
 
-**2026-11-06 · diseño, sin código todavía.** Las interfaces están en TypeScript solo como documentación: ningún fichero de `apps/web/src/` existe aún. La decisión y sus alternativas están en el [ADR-0033](../adr/0033-mundos.md). Las fases, en el [PLAN](../rumbo/PLAN.md#mundos-múltiples-adr-0033-propuesto). Lo que decide Antonio, en [DECISIONS-PENDING 216-227](../rumbo/DECISIONS-PENDING.md#mundos-múltiples-adr-0033-abiertas-el-2026-11-06).
+**2026-11-06 · diseño, sin código todavía.** Las interfaces están en TypeScript solo como documentación: ningún fichero de `apps/web/src/` existe aún. La decisión y sus alternativas están en el [ADR-0033](../adr/0033-mundos.md). Las fases, en el [PLAN](../rumbo/PLAN.md#mundos-múltiples-adr-0033). Lo que decidió Antonio el 2026-11-06, en [DECISIONS-PENDING 216-227](../rumbo/DECISIONS-PENDING.md#mundos-múltiples-adr-0033-cerradas-el-2026-11-06).
 
 Cada afirmación sobre el código remite a `fichero:línea` de `apps/web/motor/` (en `main` da49133) salvo que se diga otra cosa. Cada interfaz dice qué hallazgos de la [auditoría de noviembre](../auditoria-noviembre2026/RESUMEN.md) resuelve. **[NO VERIFICADO]** = no lo he podido comprobar. **[SUPUESTO]** = cifra o hecho de diseño.
 
@@ -258,7 +258,7 @@ Regla 3: contrato, esquema y fixture van en el mismo commit que el código que l
 - el motor generado expone los mismos nombres;
 - el trinquete del legado ha bajado.
 
-Antes de la fase 1 van la fase 0 y las tandas 0 y 1 de la auditoría: el [PLAN](../rumbo/PLAN.md#mundos-múltiples-adr-0033-propuesto).
+Antes de la fase 1 van la fase 0 y las tandas 0 y 1 de la auditoría: el [PLAN](../rumbo/PLAN.md#mundos-múltiples-adr-0033).
 
 ### 9.1 `tsconfig`
 - **Base común:** `tsconfig.base.json` en la raíz, con lo que ya usa `apps/api/tsconfig.json`: `strict`, `noUncheckedIndexedAccess`, `noImplicitOverride`, `noFallthroughCasesInSwitch`, `verbatimModuleSyntax` y `erasableSyntaxOnly`.

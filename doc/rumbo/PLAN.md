@@ -169,7 +169,7 @@ Mapa de iniciativas con su estado y el ADR que las sostiene. **No** es el estado
 
 Tareas sueltas decididas: ✅ anonimizar `doc/historico/DISENO-2026-10.md` (decisión 2) · ✅ exportadores multiplataforma (decisión 8, D4).
 
-## Mundos múltiples (ADR-0033, Propuesto)
+## Mundos múltiples (ADR-0033)
 
 Exterior, molino y bodega en un solo PWA, cada uno con su sala de red; TypeScript estricto, Vitest y migración strangler ([ADR-0033](../adr/0033-mundos.md), interfaces y fase 1 al detalle en [MUNDOS](../sistema/MUNDOS.md), riesgos en [MUNDOS §10](../sistema/MUNDOS.md#10-riesgos), decisiones 216-227). Las estimaciones son días de agente con Antonio revisando, **[ESTIMACIÓN]**. Tipo: **ligera** = Node (código, contratos, Vitest); **pesada** = banco (Chrome o Docker) o Blender; 👤 = Antonio o su Quest. Dentro de cada fase, primero lo que abarata el banco; las pesadas, agrupadas en una ronda.
 
@@ -191,7 +191,7 @@ Exterior, molino y bodega en un solo PWA, cada uno con su sala de red; TypeScrip
 | MU0-3 | L4-03, L4-04: contrato y guardián de acuerdo sobre `teselas.v`; teselas de los exportadores reales contra `tesela.schema.json` | — | ligera · sonnet | 1 d | ⬜ |
 | MU0-4 | `gitleaks` de todo el historial en un clon completo, solo lectura (decisión 222) | 👤 222 | ligera · haiku | ½ d | ⬜ |
 | MU0-5 | L1-06 + L1-07 + L2-06 en una sola ronda del banco: recalibrar topes con una tesela densa en el fixture, tope de memoria de GPU, activar `memoria_vr_chrome` (con el arreglo del goteo de `29_vr`/`36_mandos`) | MU0-2 | pesada · opus (banco) | 2 d | ⬜ |
-| MU0-6 | ADR-0033 aceptado; enmienda de CLAUDE.md §5 y regla 2 si 216 = sí; enmienda de ARQUITECTURA-MULTIUSUARIO.md:11,35,128-130 | 👤 216-218 | ligera · opus | ½ d | ⬜ |
+| MU0-6 | ADR-0033 aceptado; enmienda de CLAUDE.md §5 y regla 2 si 216 = sí; enmienda de ARQUITECTURA-MULTIUSUARIO.md:11,35,128-130 | 👤 216-218 | ligera · opus | ½ d | ✅ 2026-11-06: ADR aceptado, decisiones 216-227 cerradas, CLAUDE.md (reglas 2 y 13, §5) y la entrada a interiores enmendados |
 | MU1-1 | `tsconfig.base.json` en la raíz y `apps/web/tsconfig.json` (MUNDOS §9.1); la api lo extiende en otro commit | MU0-6 | ligera · sonnet | ½ d | ⬜ |
 | MU1-2 | Vitest 5.1.0 fijado y un guardián de `node:test` que lanza `tsc --noEmit` y `vitest run` (MUNDOS §9.2) | MU1-1 | ligera · sonnet | ½ d | ⬜ |
 | MU1-3 | `dependency-cruiser` fijado con las reglas de las cuatro fronteras (MUNDOS §1) | MU1-1 | ligera · sonnet | ½ d | ⬜ |

@@ -1,6 +1,6 @@
 # ADR-0033 — Mundos: varias salas en un solo PWA, con fronteras tipadas y migración strangler
 
-- **Estado:** Propuesto (2026-11-06; espera el OK de Antonio y las decisiones 216-227 de [DECISIONS-PENDING](../rumbo/DECISIONS-PENDING.md#mundos-múltiples-adr-0033-abiertas-el-2026-11-06))
+- **Estado:** Aceptado (2026-11-06, Antonio, con las decisiones 216-227 cerradas en la opción recomendada: [DECISIONS-PENDING](../rumbo/DECISIONS-PENDING.md#mundos-múltiples-adr-0033-cerradas-el-2026-11-06))
 - **Fecha:** 2026-11-06
 
 ## Contexto
@@ -136,7 +136,7 @@ Lo concreto (el diseño de las interfaces está en [MUNDOS.md](../sistema/MUNDOS
   - el exterior congelado sigue ocupando memoria mientras no sepa liberarse: cuánta es **sin medir**;
   - hay que tocar la api y el contrato para tener sala por mundo, y la bodega añade permisos de pantalla compartida;
   - las dos builds siguen (dos `dist/`, un parche frágil);
-  - estimación: 60-80 días de agente hasta acabar con el legado, y 40-46 hasta tener las dos salas (**[ESTIMACIÓN]**, desglose en el [PLAN](../rumbo/PLAN.md#mundos-múltiples-adr-0033-propuesto)).
+  - estimación: 60-80 días de agente hasta acabar con el legado, y 40-46 hasta tener las dos salas (**[ESTIMACIÓN]**, desglose en el [PLAN](../rumbo/PLAN.md#mundos-múltiples-adr-0033)).
 - **Implicaciones futuras:**
   - CLAUDE.md §5 y la regla 2 hay que reescribirlas al aceptar este ADR (decisión 216);
   - ADR-0010 y ADR-0023 quedan enmendados en lo que dicen del estilo del motor (los cuerpos no se reescriben; se añade una enmienda fechada);

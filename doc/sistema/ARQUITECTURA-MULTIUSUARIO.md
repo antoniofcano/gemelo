@@ -125,11 +125,11 @@ Con dos salas unidas por un tabique abierto, el interior no necesita escanearse:
 - **Las piezas del molino.** Cada elemento (rulos, prensas, capachos, tinajas…) es un glTF independiente que se coloca y se mueve sin tocar la nave. Las piezas existen, pero bajo escombro: se escanean una a una con el móvil por fotogrametría cuando estén limpias y accesibles por todos los lados, y se simplifican. Antes, un escaneo del estado actual sirve para planificar el desescombro y como «antes» del museo.
 - **El museo.** Cartelas, fotos antiguas y vídeos como paneles, y un punto de interés por pieza que el guía puede señalar en la visita.
 - **Rendimiento.** Dos salas con una veintena de piezas caben de sobra en Quest, sin carga por partes.
-- **Entrada.** Al cruzar la puerta se ocultan las teselas exteriores; la sala de LiveKit es la misma.
+- **Entrada.** Cada interior es un mundo con su propia sala de presencia y de LiveKit; al cruzar la puerta el exterior se congela y, cuando sepa, se libera ([ADR-0033](../adr/0033-mundos.md), [MUNDOS](MUNDOS.md)).
 
-El Gaussian splatting queda como alternativa si algún día se quiere el aspecto fotográfico exacto del edificio; para dos salas con piezas añadidas no compensa. Las gafas sí sirven para revisar escala y recorridos dentro del modelo antes de publicarlo.
+El Gaussian splatting queda como alternativa si algún día se quiere el aspecto fotográfico exacto del edificio; para dos salas con piezas añadidas no compensa en la primera versión: el molino va en glb con luz horneada, y los *splats* quedan abiertos para después (decisión 223). Las gafas sí sirven para revisar escala y recorridos dentro del modelo antes de publicarlo.
 
-> **Enmienda propuesta (2026-11-06, [ADR-0033](../adr/0033-mundos.md), Propuesto):** cada interior será un mundo con su propia sala de presencia y de LiveKit, y el exterior se congela (y, cuando sepa, se libera) al cruzar la puerta; el *splatting* pasa a opción abierta para el molino, no en la primera versión. Hasta que se acepte, este párrafo sigue siendo el vigente. También están desfasadas las menciones a «una sala por visita»: hoy hay salas fijas por finca, más `guiada-<evento>` y `corro-<id>`.
+> **Enmienda (2026-11-06, [ADR-0033](../adr/0033-mundos.md), Aceptado):** el párrafo de entrada y el del *splatting* ya están corregidos. También están desfasadas las menciones a «una sala por visita»: hoy hay salas fijas por finca, más `guiada-<evento>` y `corro-<id>`.
 
 ## Privacidad, roles y moderación
 
