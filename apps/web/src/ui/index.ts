@@ -14,3 +14,6 @@ export type { Soltador } from "./soltador.ts";
 // A3-7a: las ventanas (antes 32_ventanas.js), componente de todo mundo.
 export { ID_VENTANAS, VentanasPuro, creaVentanas, manifiestoVentanas } from "./ventanas.ts";
 export type { DepsVentanas, Ventanas } from "./ventanas.ts";
+// A3-7a: el HUD (antes 31_hud.js), componente de todo mundo; su libera() para sus relojes (L2-11).
+export { HudPuro, ID_HUD, creaHud, manifiestoHud } from "./hud.ts";
+export type { DepsHud, Hud } from "./hud.ts";

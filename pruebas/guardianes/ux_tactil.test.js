@@ -6,7 +6,7 @@
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
 
-const FUENTE = lee("apps/web/motor/31_hud.js"), PL = lee("apps/web/plantilla.html");
+const FUENTE = require("./_fuente").fuenteMotor("31_hud.js"), PL = lee("apps/web/plantilla.html");
 const P = (() => {
   const i = FUENTE.indexOf("// [puro:inicio]"), f = FUENTE.indexOf("// [puro:fin]");
   return new Function("\"use strict\";\n" + FUENTE.slice(i, f) + "\nreturn HudPuro;")();

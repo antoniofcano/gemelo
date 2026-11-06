@@ -6,7 +6,7 @@ const test = require("node:test"), assert = require("node:assert");
 const { lee, RAIZ } = require("./_util");
 const fs = require("fs"), path = require("path");
 
-const HUD = lee("apps/web/motor/31_hud.js"), PANT = lee("apps/web/motor/24_pantalla.js"), PL = lee("apps/web/plantilla.html");
+const HUD = require("./_fuente").fuenteMotor("31_hud.js"), PANT = lee("apps/web/motor/24_pantalla.js"), PL = lee("apps/web/plantilla.html");
 const P = (() => {
   const i = HUD.indexOf("// [puro:inicio]"), f = HUD.indexOf("// [puro:fin]");
   return new Function("\"use strict\";\n" + HUD.slice(i, f) + "\nreturn HudPuro;")();

@@ -50,7 +50,7 @@
       "descripcion": "El icono del chat de la barra (o del menú «Más»): si el chat de la visita compartida está minimizado (burbuja) se abre; si está abierto, se minimiza. Sin chat (sin presencia en red, o sin &chat=1 en la simulación) nadie lo atiende y no pasa nada.",
       "datos": {},
       "emiten": [
-        "31_hud"
+        "ui/hud"
       ],
       "escuchan": [
         "mundos/comun/presencia"

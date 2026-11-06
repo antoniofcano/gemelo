@@ -21,7 +21,7 @@ Los componentes del motor ([ADR-0023](../doc/adr/0023-componentes-del-mundo.md),
 
 | Evento | Datos | Emite | Escucha |
 |---|---|---|---|
-| `chat:alterna` | — | `31_hud` (el icono del chat de la barra o del menú «Más») | `mundos/comun/presencia` (antes 38_presencia_compartida) (abre el chat minimizado o lo minimiza; sin chat, nada) |
+| `chat:alterna` | — | `ui/hud` (antes 31_hud; el icono del chat de la barra o del menú «Más») | `mundos/comun/presencia` (antes 38_presencia_compartida) (abre el chat minimizado o lo minimiza; sin chat, nada) |
 | `audio:desbloquea` | — | `29_vr` (al pulsar «Entrar en VR»: el gesto que deja arrancar el audio) | `20_sonido`, `45_voz` (arranca el AudioContext de la voz si estás en una guiada) |
 | `componentes:cambia` | `{ id, activo }` | `nucleo/componentes` (`apps/web/src/nucleo/componentes.ts`, MU2-5: al montar o liberar un componente) | `15_tiempo` (esconde «Ver la previsión en el mundo» si nadie la atiende) |
 | `capas:cambia` | (nada) | `mundos/exterior/marcadores` (`capas()`: cambió una casilla de capas o se aplicó el estado) | `mundos/exterior/marcadores-lidar` (lee las casillas de copas, marcas y desfase) |

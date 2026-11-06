@@ -58,7 +58,7 @@ for (const f of Object.keys(total)) {
 
 // ---------- el HUD y ?debug: a 4 Hz como mucho ----------
 test("el HUD refresca su estado a 4 Hz como mucho (31_hud.js)", () => {
-  const m = /setInterval\(refresca,\s*(\d+)\)/.exec(lee("apps/web/motor/31_hud.js"));
+  const m = /setInterval\(refresca,\s*(\d+)\)/.exec(require("./_fuente").fuenteMotor("31_hud.js"));
   assert.ok(m, "31_hud.js debe refrescar su estado con setInterval(refresca, ms)");
   assert.ok(Number(m[1]) >= 250, "refresca() va cada " + m[1] + " ms: como mucho 4 Hz");
 });
