@@ -31,19 +31,22 @@ const PRESUPUESTO = json("pruebas/presupuesto.json");
 const ficherosMotor = () => fs.readdirSync(MOTOR).filter(f => f.endsWith(".js")).sort();
 const sinCabecera = s => s.startsWith(contratoModulos.MARCA_I) ? s.slice(s.indexOf(contratoModulos.MARCA_F) + contratoModulos.MARCA_F.length + 1) : s;
 const sinComentarios = s => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'\\])\/\/.*$/gm, "$1");
-const esComponente = f => /^  Componentes\.registra\((\{|Mundos\.)/m.test(fs.readFileSync(path.join(MOTOR, f), "utf8"));
+const esComponente = f => /^  Componentes\.registra\((\{|Mundos\.|Interfaz\.)/m.test(fs.readFileSync(path.join(MOTOR, f), "utf8"));
 const COMPONENTES = ficherosMotor().filter(esComponente);
 // MU5-n (A3-1a): un componente que pasó a TypeScript se registra con su manifiesto de src/mundos/ (Componentes.registra(Mundos.<fábrica>(…))); sus eventos
 // están en el fichero de TypeScript que exporta esa fábrica, que es «suyo»
 const MUNDOS_TS = require(path.join(RAIZ, "apps", "web", "src", "mundos", "index.ts"));
+// A3-7a: y los de la interfaz (apps/web/src/ui/), que el legado ve como Interfaz.<x>
+const UI_TS = require(path.join(RAIZ, "apps", "web", "src", "ui", "index.ts"));
 /** ¿el fichero del motor es el puente de un componente de TypeScript? Un talón («// [talón] …») o una extracción parcial (A3-4: 15_tiempo.js, que conserva
  *  funciones declaradas que otros piden antes en el montaje) que registra el manifiesto de src/mundos con Componentes.registra(Mundos.…) */
-const delTs = src => (/^  \/\/ \[talón\] /m.test(src) || /extracción parcial/.test(src)) && /^  Componentes\.registra\(Mundos\.\w+\(/m.test(src);
+const delTs = src => (/^  \/\/ \[talón\] /m.test(src) || /extracción parcial/.test(src)) && /^  Componentes\.registra\((?:Mundos|Interfaz)\.\w+\(/m.test(src);
 function delegaEn(f) {
-  const m = /^  Componentes\.registra\(Mundos\.(\w+)\(/m.exec(fs.readFileSync(path.join(MOTOR, f), "utf8")); if (!m) return null;
+  const m = /^  Componentes\.registra\((?:Mundos|Interfaz)\.(\w+)\(/m.exec(fs.readFileSync(path.join(MOTOR, f), "utf8")); if (!m) return null;
   const busca = (d, rel) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { if (e.isDirectory()) { const r = busca(path.join(d, e.name), rel + e.name + "/"); if (r) return r; } else if (e.name.endsWith(".ts") && !e.name.endsWith(".test.ts") && new RegExp("export function " + m[1] + "\\(").test(fs.readFileSync(path.join(d, e.name), "utf8"))) return rel + e.name.slice(0, -3); } return null; };
   // A3-6a: también la red (apps/web/src/red/), que el legado ve por Mundos (mundos/index.ts la reexporta)
-  return busca(path.join(RAIZ, "apps", "web", "src", "mundos"), "mundos/") || busca(path.join(RAIZ, "apps", "web", "src", "red"), "red/");
+  // A3-7a: y la interfaz (apps/web/src/ui/), que el legado ve por Interfaz
+  return busca(path.join(RAIZ, "apps", "web", "src", "mundos"), "mundos/") || busca(path.join(RAIZ, "apps", "web", "src", "red"), "red/") || busca(path.join(RAIZ, "apps", "web", "src", "ui"), "ui/");
 }
 
 function manifiesto(def = {}) {
@@ -180,15 +183,15 @@ test("Teclas: las de los módulos de siempre no se pueden coger; una tecla, un d
 function manifiestos() {
   const out = {};
   for (const f of COMPONENTES) {
-    const defs = [], ctx = vm.createContext({ Mundos: MUNDOS_TS, Componentes: { registra: d => { defs.push(d); return true; } }, Bus: { on: () => () => {}, emite: () => 0, hay: () => false }, console, Intl, Date, Math, JSON });
+    const defs = [], ctx = vm.createContext({ Mundos: MUNDOS_TS, Interfaz: UI_TS, Componentes: { registra: d => { defs.push(d); return true; } }, Bus: { on: () => () => {}, emite: () => 0, hay: () => false }, console, Intl, Date, Math, JSON });
     const src = fs.readFileSync(path.join(MOTOR, f), "utf8");
     // A3-1b: un talón «var X = Mundos.creaX({…deps del motor…}); Componentes.registra(Mundos.manifiestoX(X));» no puede evaluarse sin el motor (la
     // fábrica recibe sus dependencias); su manifiesto se pide a Mundos con un doble de X (el manifiesto solo guarda X para llamarlo en sus fases)
     // MU5-n (A3-4): también una extracción parcial (15_tiempo.js) que registra así el manifiesto de su componente de src/mundos
-    const talon = (/^  \/\/ \[talón\] /m.test(src) || /extracción parcial/.test(src)) && /^  Componentes\.registra\(Mundos\.(\w+)\(/m.exec(src);
+    const talon = (/^  \/\/ \[talón\] /m.test(src) || /extracción parcial/.test(src)) && /^  Componentes\.registra\((Mundos|Interfaz)\.(\w+)\(/m.exec(src);
     if (talon) {
       const doble = new Proxy(function () {}, { get: (t, k) => k === Symbol.toPrimitive ? () => "" : k === "then" ? undefined : doble, apply: () => doble });
-      defs.push(MUNDOS_TS[talon[1]](doble));
+      defs.push((talon[1] === "Interfaz" ? UI_TS : MUNDOS_TS)[talon[2]](doble));   // A3-7a: el de la interfaz, de ui/index.ts
     } else assert.doesNotThrow(() => vm.runInContext("\"use strict\";\n" + src, ctx, { filename: f }), f + ": su primer nivel debe poder evaluarse sin el resto del motor");
     assert.strictEqual(defs.length, 1, f + ": un componente por fichero");
     out[f] = defs[0];
@@ -218,12 +221,13 @@ function eventosDelCodigo() {
       if (!e.name.endsWith(".ts") || e.name.endsWith(".test.ts")) continue;
       const s = sinComentarios(fs.readFileSync(path.join(d, e.name), "utf8")), mod = pre + rel + e.name.slice(0, -3);
       // A3-6c: en mundos/comun/ la VR y la locomoción conservan el nombre del legado, Bus
-      const re = rel.startsWith("comun/") ? /\b(?:bus|Bus|n)\.(emite|on)\(\s*"([^"]+)"/g : /\b(?:bus|n)\.(emite|on)\(\s*"([^"]+)"/g;
+      const re = rel.startsWith("comun/") || pre === "ui/" ? /\b(?:bus|Bus|n)\.(emite|on)\(\s*"([^"]+)"/g : /\b(?:bus|n)\.(emite|on)\(\s*"([^"]+)"/g;
       for (const x of s.matchAll(re)) apunta(x[2], x[1] === "emite", mod);
     }
   }
   recorre(path.join(RAIZ, "apps", "web", "src", "mundos"), "", "mundos/");
   recorre(path.join(RAIZ, "apps", "web", "src", "red"), "", "red/");
+  recorre(path.join(RAIZ, "apps", "web", "src", "ui"), "", "ui/");   // A3-7a: la interfaz conserva el nombre del legado, Bus (con dp. delante si llega por getter)
   return m;
 }
 

@@ -4,7 +4,8 @@
 //
 //   nucleo/  no importa de nadie            datos/   no importa de nadie
 //   red/     importa solo de datos          mundos/  importa de nucleo, datos y red; un mundo no importa a otro
-//   ui/      cliente de todo                motor/   (legado) fuera de src/: nada de src/ lo importa
+//   ui/      (A3-7a) importa solo de nucleo y datos; nadie de src/ importa de ui
+//   motor/   (legado) fuera de src/: nada de src/ lo importa
 //   mundos/comun/ (A3-6a) no es un mundo: lo de todo mundo que dibuja (la presencia, los avatares, el muñeco); lo puede usar cualquier mundo y no importa de ninguno
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
@@ -43,6 +44,13 @@ module.exports = {
       severity: "error",
       from: { path: "^src/mundos/" },
       to: { path: "^src/ui/" },
+    },
+    {
+      name: "ui-solo-importa-de-nucleo-y-datos",
+      comment: "ui/ (A3-7a: el DOM, las láminas, las ventanas, el HUD, la Configuración y el medidor) importa de nucleo/ y datos/; no de red/ ni de mundos/ (ni de mundos/comun/): lo de un mundo o de la red que enseña le llega por argumento desde el legado, para que la interfaz sirva igual en cualquier mundo.",
+      severity: "error",
+      from: { path: "^src/ui/" },
+      to: { path: "^src/(red|mundos)/" },
     },
     {
       name: "un-mundo-no-importa-a-otro",

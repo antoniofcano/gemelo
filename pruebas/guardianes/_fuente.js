@@ -58,7 +58,9 @@ const TS_DE = {
  *  expresiones regulares o evalúan sus trozos [puro] con new Function) miran el código movido tal cual, sin tener que aceptar «: T» en cada patrón. Solo para comun/: los
  *  guardianes de exterior/ ya leen su TypeScript con los tipos. */
 // solo los de A3-6c (la VR y la locomoción); los de A3-6a en comun/ (presencia, avatares, muñeca…) se leen con su TypeScript o con fuenteMotorJs, como los dejó A3-6a
-const COMO_JS = /(^|\/)apps\/web\/src\/mundos\/comun\/(vr[\w-]*|mandos|paseo|llegada|ir-a|camara|palanca)\.ts$/;
+// A3-7a: y los de la interfaz (apps/web/src/ui/), que además leen lo que el legado reescribe por getters del talón (`dp.paseando`): se lee sin el `dp.` (comoJsUi)
+const COMO_JS = /(^|\/)apps\/web\/src\/(mundos\/comun\/(vr[\w-]*|mandos|paseo|llegada|ir-a|camara|palanca)|ui\/[\w-]+)\.ts$/;
+const DE_UI = /(^|\/)apps\/web\/src\/ui\//;
 function comoJs(ts) {
   const m = require("node:module"), avisa = process.emitWarning;
   process.emitWarning = () => {};   // «experimental»: no ensucia la salida de las pruebas
@@ -72,8 +74,10 @@ function comoJs(ts) {
 function fuenteMotor(fichero) {
   const talon = lee("apps/web/motor/" + fichero);
   const ts = TS_DE[fichero];
-  return ts ? [talon].concat([].concat(ts).map(f => COMO_JS.test(f) ? comoJs(lee(f)) : lee(f))).join("\n") : talon;
+  return ts ? [talon].concat([].concat(ts).map(f => DE_UI.test(f) ? comoJsUi(lee(f)) : COMO_JS.test(f) ? comoJs(lee(f)) : lee(f))).join("\n") : talon;
 }
+/** A3-7a: un .ts de ui/ como el JavaScript de antes: sin tipos (comoJs) y sin el prefijo `dp.` de lo que el talón le da por getters (paseando, Ventanas, Hud…) */
+function comoJsUi(ts) { return comoJs(ts).replace(/(?<![\w.$])dp\./g, ""); }
 
 /** A3-6a: el mismo texto sin las anotaciones mecánicas que puso la migración a TypeScript (`?: any`, `: any[]`, `: any`) ni el prefijo de las dependencias que
  *  llegan por getters (`dp.`): así las pruebas que miran el código de la presencia, los avatares y el menú de muñeca con expresiones regulares lo leen como antes */
@@ -81,4 +85,4 @@ function fuenteMotorJs(fichero) {
   return fuenteMotor(fichero).replace(/\?: any(?![\w$])/g, "").replace(/: any(?:\[\])?(?=[\s,)=;])/g, "").replace(/(?<![\w.$])dp\./g, "");
 }
 
-module.exports = { fuenteMotor, fuenteMotorJs, TS_DE, comoJs, COMO_JS };
+module.exports = { fuenteMotor, fuenteMotorJs, TS_DE, comoJs, comoJsUi, COMO_JS };

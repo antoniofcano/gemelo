@@ -13,7 +13,8 @@ apps/web/src/
   datos/     tipos generados de contratos/, índice, teselas, fixtures                                → no importa de nadie
   red/       Sesion, Salas, códec de pose, Voz, Pizarra (transporte)                                 → importa de datos
   mundos/    World, Ambiente, Contexto (mundo.ts); exterior/, molino/, bodega/, vacio/               → importa de nucleo, datos y red
-  ui/        HUD, ventanas, panel VR (cuando se migren 24, 31, 32 y 33)                              → cliente de todo
+  ui/        el DOM, las láminas, las ventanas, el HUD, el menú, la Configuración, el minimapa,
+             el medidor y los ganchos de prueba (A3-7a, MU5-n)                                       → importa de nucleo y datos
 apps/web/motor/   el legado (IIFE), que encoge en su sitio: no se renombra (ADR-0033 §6)              → cliente de todo, por el puente
 ```
 
@@ -22,6 +23,7 @@ apps/web/motor/   el legado (IIFE), que encoge en su sitio: no se renombra (ADR-
   - `red` no sabe qué hay dentro de un mundo: solo conoce salas, identidades y temas.
   - Un mundo no importa a otro mundo.
   - **`mundos/comun/` no es un mundo** (MU5-n, A3-6a): es lo de todo mundo que dibuja (la presencia, los avatares, el muñeco, el menú de muñeca). Cualquier mundo puede importarlo y él no importa de ninguno; lo vigila la misma regla de `dependency-cruiser` («un-mundo-no-importa-a-otro», con `mundos/comun/` en su `pathNot`).
+  - **`ui/`, la interfaz** (MU5-n, A3-7a, 2026-11-07): lo que la persona ve y toca fuera del mundo 3D o encima de él. **Qué va ahí:** el DOM de la página (el HUD y lo tuyo, las ventanas y las capas, el menú y la pantalla completa, la Configuración, las ventanas flotantes, el minimapa, la caja del medidor y el contador de `?debug`), las láminas (un lienzo 2D como cartel en el mundo: es interfaz aunque se dibuje en la escena), la selección común de lo que se toca (`Usables`, con su ficha y su anillo) y los ganchos de las pruebas (`window.__g`). **Qué puede importar:** `nucleo/` y `datos/`, nada más: ni `red/` ni `mundos/` (tampoco `mundos/comun/`). Lo de un mundo o de la red que enseña (el mapa del exterior, las cifras de los olivos, la gente) le llega **por argumento** desde el legado, como a los mundos; así la misma interfaz sirve en cualquier mundo. **Quién la importa:** nadie de `src/` (`nucleo`, `datos` y `red` ya no podían; `mundos` tampoco: «mundos-no-importa-de-ui»); solo el legado, por su propio alias, `@gemelo/ui`, que ve como `Interfaz.<nombre>` (`UI` ya era una variable de `30_mide`). Lo vigila la regla «ui-solo-importa-de-nucleo-y-datos» de `dependency-cruiser`, con su caso roto (a `mundos/comun/` y a `red/`) en `tipos_web.test.js`. **Por qué no «cliente de todo»,** como decía esta tabla: la interfaz que importara un mundo dejaría de valer en los demás, y la que importara la red ataría el HUD al transporte; lo que necesita cabe por argumento (lo que ya hacía el legado). Si un día hace falta un tipo de `mundos/comun/`, se mueve a `nucleo/` o a `datos/`, no se abre la frontera.
   - Solo `nucleo/render` y la fábrica de materiales importan algo de `three` que dependa del renderer: `three/webgpu`, TSL, `WebGLRenderer`.
     - Desde MU5-0, la fábrica es `nucleo/materiales.ts` ([MATERIALES](MATERIALES.md)). Hoy no importa ninguno de los dos: recibe `three/webgpu` y `three/tsl` por argumento (`nodos()`), y en MU6 se los cargará `nucleo/render` con `import()` solo con `?renderer=webgpu`.
   - Los mundos importan `three` solo para geometría, materiales estándar, `Group` y `AnimationMixer`.

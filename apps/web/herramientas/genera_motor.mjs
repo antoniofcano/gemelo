@@ -4,6 +4,7 @@
 // pruebas/guardianes/componentes.test.js). Solo componentes: quitar un fichero del núcleo o de los de siempre rompe el motor.
 // Escribe en <dest> (por defecto apps/web/.generado/):
 //   entrada/motor.generado.js  = `import * as THREE from "three";` + `import * as Nucleo from "@gemelo/nucleo";` (el puente, MUNDOS §9.3) + `import * as Mundos from "@gemelo/mundos";` (el exterior, MU2-3) +
+//                                `import * as Interfaz from "@gemelo/ui";` (la interfaz, A3-7a) +
 //                                los módulos de motor/ concatenados en orden alfabético, que ES el orden de montaje (01_datos abre la IIFE y
 //                                99_cierre la cierra). Dentro de la IIFE se ven THREE y Nucleo (lo que exporta apps/web/src/nucleo/index.ts)
 //   index.html                 = plantilla.html (con los textos de la finca, si el índice trae `textos`) + el JSON del índice (#datos) + la entrada como módulo
@@ -22,11 +23,14 @@ const MOTOR = path.join(WEB, "motor");
 export const IMPORTA_THREE = 'import * as THREE from "three";\n';
 export const IMPORTA_NUCLEO = 'import * as Nucleo from "@gemelo/nucleo";\n';
 export const IMPORTA_MUNDOS = 'import * as Mundos from "@gemelo/mundos";\n';   // MU2-3: el exterior, que nucleo/ no puede importar
+// A3-7a (MU5-n): la interfaz (apps/web/src/ui/: HUD, ventanas, láminas, ajustes, medidor), que ni nucleo/ ni mundos/ pueden importar (MUNDOS §1): su propio alias,
+// «@gemelo/ui», que el legado ve como Interfaz.<nombre> («UI» ya es una variable local de 30_mide)
+export const IMPORTA_UI = 'import * as Interfaz from "@gemelo/ui";\n';
 export const IMPORTA_CSS = 'import "./plantilla.css";\n';
 
 /** El texto entero de entrada/motor.generado.js (sin = ficheros que se dejan fuera, como en concatenaMotor) */
 export function entradaMotor(sin = []) {
-  return IMPORTA_THREE + IMPORTA_NUCLEO + IMPORTA_MUNDOS + IMPORTA_CSS + concatenaMotor(sin);
+  return IMPORTA_THREE + IMPORTA_NUCLEO + IMPORTA_MUNDOS + IMPORTA_UI + IMPORTA_CSS + concatenaMotor(sin);
 }
 
 /** Escapa un texto para contenido HTML (L9-04): el nombre de la finca y los textos del índice no pueden cerrar etiquetas ni meter marcado */
