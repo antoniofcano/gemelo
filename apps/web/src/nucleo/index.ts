@@ -9,3 +9,5 @@ export { XrPerillasPuro, creaXrPerillas } from "./xr-perillas.ts";
 export { EntidadesPuro } from "./entidades.ts";
 export { LlegadaPuro, IrAPuro } from "./locomocion.ts";
 export { VrPresupuestoPuro, VrControlPuro, creaVrPresupuesto } from "./presupuesto.ts";
+export { ESTADO_INICIAL, creaEstado } from "./estado.ts";
+export type { Estado, Modo } from "./estado.ts";
