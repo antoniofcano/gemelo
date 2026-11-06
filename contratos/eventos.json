@@ -802,7 +802,7 @@
       "descripcion": "El muñequito empieza a pasear (entraPaseo, ya con la cámara en el paseo): lo que vive solo mientras se pasea (la fauna) se coloca entre los olivos.",
       "datos": {},
       "emiten": [
-        "16_vida"
+        "mundos/exterior/vida"
       ],
       "escuchan": [
         "mundos/exterior/fauna"
@@ -812,7 +812,7 @@
       "descripcion": "El muñequito deja de pasear: lo que vive solo mientras se pasea (la fauna) se esconde.",
       "datos": {},
       "emiten": [
-        "16_vida"
+        "mundos/exterior/vida"
       ],
       "escuchan": [
         "mundos/exterior/fauna"

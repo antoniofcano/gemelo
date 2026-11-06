@@ -13,7 +13,7 @@
 // Solo Node.
 const test = require("node:test"), assert = require("node:assert");
 const acorn = require("acorn");
-const { ficheros, lee } = require("./_util");
+const { ficheros, lee } = require("./_util"), { fuenteMotor } = require("./_fuente");
 
 const MODULOS = ["12_paseo.js", "12b_llegada.js", "12c_ir_a.js", "16_vida.js", "29_vr.js"];
 // Lo que se queda en el legado a propósito. `en`: la función que lo contiene (el nombre de su declaración, de su variable o de lo que se le asigna);
@@ -21,7 +21,6 @@ const MODULOS = ["12_paseo.js", "12b_llegada.js", "12c_ir_a.js", "16_vida.js", "
 const PERMITIDAS = {
   suelo: [
     { f: "12c_ir_a.js", en: "pintaLinea", codigo: "suelo(v[i].x, v[i].y)", motivo: "dibuja la línea de puntos del camino (no mueve a nadie)" },
-    { f: "16_vida.js", en: "altSuelo", codigo: "suelo(x, y)", motivo: "altSuelo es el de la vida ambiental (16b_fauna, 25_perros, 22b_huellas_polvo, 24_pantalla) y del dibujo del dron (vidaDron); el dron se mueve con altMueve = gm.suelo" },
     { f: "29_vr.js", en: "vrActualiza", codigo: "suelo(VRX.tp.x, -VRX.tp.z)", motivo: "coloca la marca del arco del teletransporte (dibujo; el punto de caída lo calcula vrArco con gm.suelo y gm.dentro)" },
     { f: "29_vr.js", en: "window.__vrOlivo", codigo: "suelo(b.x, b.y)", motivo: "ayuda de las pruebas de VR: el olivo más cercano a la cabeza" },
   ],
@@ -117,6 +116,19 @@ test("LlegadaPuro.rayoSuelo, IrAPuro.planifica e IrAPuro.ir reciben los delegado
 
 test("cada módulo de locomoción pregunta al mundo activo (gm.suelo, gm.dentro o gm.obstaculo)", () => {
   for (const m of MODULOS) assert.match(lee("apps/web/motor/" + m), /\bgm\.(suelo|dentro|obstaculo)\(|\bgm\.dentro\b/, m + " no usa los delegados de gm");
+});
+
+// A3-5 (MU5-n): el código de 16_vida vive en mundos/exterior/vida.ts, que acorn no lee (TypeScript); el talón solo cablea. Lo mismo, sobre el texto del .ts sin comentarios: el dron se mueve con
+// el suelo y el borde del mundo activo (sueloMundo y obstaculo, que el talón cablea a gm.suelo y gm.obstaculo), el dibujo usa altSuelo (el suelo de 02_mundo), y nadie lee D.ext ni copas ni fueraDeTroncos.
+test("16_vida (vida.ts): el dron se mueve con sueloMundo y obstaculo (gm); suelo( solo en altSuelo, que es de dibujo y de la vida ambiental; ni D.ext, ni copas, ni fueraDeTroncos", () => {
+  const ts = fuenteMotor("16_vida.js").split("\n").filter(l => !/^\s*\/\//.test(l)).map(l => l.replace(/\s\/\/.*$/, "")).join("\n");
+  assert.deepStrictEqual([...ts.matchAll(/(?<![\w.])suelo\((?!x: number)/g)].length, 1, "vida.ts llama a suelo( una sola vez: en altSuelo (la otra mención es el tipo de DepsVida; gm.suelo del talón no cuenta)");
+  assert.match(ts, /function altSuelo\(x: any, y: any\) \{ return suelo\(x, y\) \* Estado\.exag; \}/, "altSuelo es el de la vida ambiental (16b_fauna, 25_perros, 22b_huellas_polvo, 24_pantalla) y del dibujo del dron (vidaDron)");
+  assert.match(ts, /function altMueve\(x: any, y: any\) \{ return sueloMundo\(x, y\) \* Estado\.exag; \}/, "el dron se mueve con altMueve = el suelo del mundo activo");
+  assert.match(ts, /var o = obstaculo\(dr\.x, dr\.y, 0\);/, "el borde del mundo activo es obstaculo(x, y, 0)");
+  assert.ok(!/\bD\.ext\b/.test(ts) && !/\bfueraDeTroncos\b/.test(ts) && !/\bcopas\b/.test(ts), "vida.ts no lee D.ext, ni copas, ni fueraDeTroncos");
+  const talon = lee("apps/web/motor/16_vida.js");
+  assert.match(talon, /sueloMundo: function \(x, y\) \{ return gm\.suelo\(x, y\); \}, obstaculo: function \(x, y, r\) \{ return gm\.obstaculo\(x, y, r\); \}/, "el talón cablea el mundo activo");
 });
 
 test("90_final.js da al exterior su caja y su censo (creaExterior({ ext: D.ext, copas: copas, … }))", () => {

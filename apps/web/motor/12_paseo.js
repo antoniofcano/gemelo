@@ -2,7 +2,7 @@
 // Expone: paseando, persona, teclas, primera, pp, camPos, PalancaPuro, ponPalanca, giraPalanca, entraPaseo, salePaseo, actualizaPaseo
 // Consume: 01_datos (D, $), 02_mundo (copaAlta), 03_escena (lienzo, visor, scene, camera, Estado), 09_camara (sensMirar), 12c_ir_a (IrA),
 //   13_parcelas (fincas, fincaSel, parcelaSel),
-//   16_vida (enQuad, velPaseo, giroPaseo, ponQuad, vidaPaseo, enDron, ponDron, cicloVista, dronMando, camaraDron, vidaEntra, vidaSale),
+//   16_vida (enQuad, enDron, velPaseo, giroPaseo, ponQuad, vidaPaseo, ponDron, cicloVista, dronMando, camaraDron, vidaEntra, vidaSale),
 //   24_pantalla (TR, iniciaTransicion, iniciaSalida), 33_ajustes (Ajustes), 90_final (gm)
 // ===============================================================================
 

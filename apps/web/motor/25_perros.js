@@ -2,7 +2,7 @@
 // Expone: (nada al resto de módulos)
 // Consume: 01_datos (D), 02_mundo (copas), 02c_componentes (Componentes), 02i_materiales (Materiales), 02k_fusiona (fusionaGeometrias),
 //   03_escena (camera, texColor), 04d_sombreado_tiles (hash), 07_follaje (matSombra, geoSombra), 12_paseo (paseando, pp),
-//   16_vida (tVida, enQuad, gFauna, altSuelo, enDron), 17_minimapa (Minimapa), 22_huellas (pendienteRumbo, sueloSeco)
+//   16_vida (tVida, enQuad, enDron, gFauna, altSuelo), 17_minimapa (Minimapa), 22_huellas (pendienteRumbo, sueloSeco)
 // Nota: TALÓN (MU5-n, A3-5): el código vive en apps/web/src/mundos/exterior/perros.ts (Mundos.manifiestoPerros). Publica además window.__perrosDebug (depuración).
 // ===============================================================================
   // ---------- los perros del paseo: una dálmata adulta y un cruce de dálmata y mastín (rubio y sin manchas). Te siguen, exploran, persiguen conejos y vuelven a tu lado.

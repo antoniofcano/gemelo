@@ -5,7 +5,7 @@
 //   02h_render (Render), 02i_materiales (Materiales), 03_escena (visor, renderer, scene, camera, hemi, sol, colorCss, Estado),
 //   04b_escena3d (Escena3D), 04d_sombreado_tiles (SombreadoTiles), 05_nube (actualizaNubeTeselas, actualizaNube), 06_arboles (Arboles0),
 //   07_follaje (Follaje), 07ac_lejanos (Lejanos), 07b_arboles (Arboles), 08_marcadores (listo, aplica), 09_camara (objetivo, camara),
-//   10_ndvi (Ndvi), 12_paseo (paseando, persona, pp, actualizaPaseo), 15_tiempo (actualizaTiempo), 16_vida (actualizaVida),
+//   10_ndvi (Ndvi), 12_paseo (paseando, persona, pp, actualizaPaseo), 15_tiempo (actualizaTiempo), 16_vida (Vida, actualizaVida),
 //   17_minimapa (actualizaMinimapa), 18_paisaje (actualizaPaisaje), 19_balizas (actualizaBalizas), 21_suelo (recoloreaSuelo, actualizaSuelo),
 //   23_estacion (actualizaOlivo), 24_pantalla (transEntrada, transSalida), 28_depura (depuraCuadro),
 //   29_vr (VRX, vrRig, vrCierra, vrAbre, vrRecoloca, vrActualiza, vrFin), 31_hud (Hud), 33_ajustes (Ajustes)
@@ -64,4 +64,5 @@
   new MutationObserver(reambienta).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
   if (window.matchMedia) window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", reambienta);
   [Mundo, SombreadoTiles, Ndvi, Arboles0, Follaje, Lejanos, Arboles].forEach(function (c) { Componentes.registra(c.componente); });   // MU5-n (A3-1a): los del exterior que el motor lee por su nombre desde que se monta (src/mundos/exterior/): se liberan con él
+  Componentes.registra(Vida.componente);   // MU5-n (A3-5): la vida del olivar (el quad, el dron y las estelas; 16_vida.js) se libera con el exterior
   window.__bucle = Bucle.estado; Componentes.arranca(); gm.arranca("exterior").then(function (r) { if (!r.ok) console.error("el exterior no ha arrancado", r); Render.arranca(renderer, bucle); });   // __bucle: fallos, salidas de VR, ocultación y contexto perdido (pruebas/prueba_vr.js y ?debug); Componentes tras montar todos los ficheros (URL > servidor > defecto de cada manifiesto); el primer fotograma, con el exterior ya entrado (arranca es asíncrona aunque no haya nada que esperar) y, con el renderizador nuevo, tras su init() (02h_render, F1)

@@ -64,7 +64,7 @@ Los componentes del motor ([ADR-0023](../doc/adr/0023-componentes-del-mundo.md),
 | `sonido:baliza` | `{ completa? }` | `19_balizas` (al llegar a una baliza) | `20_sonido` (campanilla o arpegio) |
 | `sonido:golpe` | — | `24_pantalla` (el aterrizaje del paseo) | `20_sonido` |
 | `sonido:juego` | `{ que, cadena? }` | `41_cae_la_cosecha` | `20_sonido` (notas cortas sintetizadas) |
-| `perros:amenaza` | `{ x, y, res }` (pregunta: quien escuche rellena `res` con `{ x, y }` o lo deja en `null`) | `16_vida` | `mundos/exterior/perros` |
+| `perros:amenaza` | `{ x, y, res }` (pregunta: quien escuche rellena `res` con `{ x, y }` o lo deja en `null`) | `mundos/exterior/fauna` | `mundos/exterior/perros` |
 | `perros:llegan` | (nada) | `24_pantalla`, `29_vr` | `mundos/exterior/perros` |
 | `polvo:emite` | `{ x, y, h, vx?, vy?, vz?, tam?, vida? }` | `24_pantalla`, `mundos/exterior/perros` | `mundos/exterior/huellas-polvo` (antes 22b_huellas_polvo) |
 | `sonido:ladrido` | `{ grave? }` | `mundos/exterior/perros` | `20_sonido` |

@@ -64,3 +64,5 @@ export { ID_FAUNA, creaFauna, manifiestoFauna } from "./exterior/fauna.ts";
 export type { DepsFauna, Fauna } from "./exterior/fauna.ts";
 export { ID_PERROS, angCorto, creaPerros, manifiestoPerros } from "./exterior/perros.ts";
 export type { DepsPerros, Perros } from "./exterior/perros.ts";
+export { ID_VIDA, creaVida } from "./exterior/vida.ts";
+export type { DepsVida, EstadoVida, Vida } from "./exterior/vida.ts";

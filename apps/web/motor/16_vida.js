@@ -1,203 +1,26 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: tVida, enQuad, vq, gFauna, altSuelo, quita, mira, quad, temaEstela, velPaseo, giroPaseo, ponQuad, vidaPaseo, enDron, dr, dron, ponDron,
-//   cicloVista, dronMando, camaraDron, vidaEntra, vidaSale, actualizaVida
+// Expone: tVida, enQuad, vq, enDron, Vida, gFauna, altSuelo, quita, mira, quad, temaEstela, velPaseo, giroPaseo, ponQuad, vidaPaseo, dr, dron,
+//   ponDron, cicloVista, dronMando, camaraDron, vidaEntra, vidaSale, actualizaVida
 // Consume: 01_datos ($), 02_mundo (suelo, copaAlta), 02c_componentes (Bus), 02i_materiales (Materiales), 03_escena (scene, camera, Estado),
 //   07_follaje (matSombra, geoSombra), 12_paseo (paseando, persona, teclas, primera, pp, camPos), 12b_llegada (Llegada),
-//   15_tiempo (nivelEn, texBrillo, cur, meta, ins, temaBarrera, num1, rumbo), 22_huellas (pendFactor, quadInc, inclinaQuad), 90_final (gm)
+//   15_tiempo (nivelEn, texBrillo, cur, ins, temaBarrera, num1, rumbo), 22_huellas (pendFactor, quadInc, inclinaQuad), 90_final (gm)
 // ===============================================================================
-  // ---------- la vida del olivar: el quad con estela de luz (Tron) y el dron para el paseo (los pájaros y los conejos son el componente «fauna-olivar», 16b_fauna.js)
-  var tVida = 0, enQuad = false, vq = 0, gFauna = new THREE.Group(); gFauna.name = "fauna"; scene.add(gFauna);
-  function esfera(r, m, sx, sy, sz, x, y, z, padre) { var me = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 8), m); me.scale.set(sx, sy, sz); me.position.set(x, y, z); padre.add(me); return me; }
-  function altSuelo(x, y) { return suelo(x, y) * Estado.exag; }   // el de la vida ambiental (fauna, perros, huellas) y el dibujo del dron: sigue con el suelo de 02_mundo
-  function altMueve(x, y) { return gm.suelo(x, y) * Estado.exag; }   // el de moverse (el dron y su cámara): el suelo del mundo activo (MU2-4)
-  var lvVida = { s: { alt: 0, az: 0 }, d: 0 };   // el nivel del sol del quad y del dron, el mismo objeto cada fotograma (AG-1.4b)
-  function quita(a, o) { var i = a.indexOf(o); if (i >= 0) a.splice(i, 1); }
-
-  function mira(g, hx, hz) { g.rotation.y = Math.atan2(-hx, -hz); }
-
-  // --- el quad: mira hacia -z; las ruedas giran con la velocidad; los acentos de neón combinan con la linde
-  var quad = (function () {
-    var g = new THREE.Group(), mt = function (c) { return new THREE.MeshLambertMaterial({ color: c }); }, neon = new THREE.MeshBasicMaterial({ color: 0x40f0ff }), ruedas = [];
-    function caja(w, h, d, m, x, y, z) { var me = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); me.position.set(x, y, z); g.add(me); return me; }
-    caja(0.62, 0.22, 1.55, mt(0x2a2e34), 0, 0.46, 0); caja(0.5, 0.3, 0.5, mt(0xd9561c), 0, 0.78, -0.22); caja(0.38, 0.14, 0.62, mt(0x15171a), 0, 0.74, 0.28);
-    caja(0.78, 0.07, 0.4, mt(0xd9561c), 0, 0.55, -0.82); caja(0.78, 0.07, 0.36, mt(0x2a2e34), 0, 0.55, 0.82);
-    caja(0.05, 0.4, 0.05, mt(0x15171a), 0, 0.82, -0.52); caja(0.92, 0.05, 0.05, mt(0x15171a), 0, 1.02, -0.5);
-    caja(0.04, 0.04, 1.5, neon, -0.32, 0.44, 0); caja(0.04, 0.04, 1.5, neon, 0.32, 0.44, 0);
-    var faro = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), new THREE.MeshBasicMaterial({ color: 0xfff6d0 })); faro.position.set(0, 0.7, -0.95); g.add(faro);
-    [[-0.58, -0.62], [0.58, -0.62], [-0.58, 0.62], [0.58, 0.62]].forEach(function (p) {
-      var w = new THREE.Group(); w.position.set(p[0], 0.3, p[1]);
-      var r = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.26, 14), mt(0x1a1b1d)); r.rotation.z = Math.PI / 2; w.add(r);
-      var tapa = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.28, 8), mt(0xb9bcc2)); tapa.rotation.z = Math.PI / 2; w.add(tapa); g.add(w); ruedas.push(w);
-    });
-    var sb = new THREE.Mesh(geoSombra, matSombra); sb.scale.set(1.9, 1, 2.5); sb.position.y = 0.03; g.add(sb);
-    var glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: texBrillo(), transparent: true, depthWrite: false, fog: false, blending: THREE.AdditiveBlending, opacity: 0 })); glow.scale.set(3.4, 3.4, 1); glow.position.set(0, 0.7, -1.1); g.add(glow);
-    g.userData = { ruedas: ruedas, glow: glow }; g.visible = false; scene.add(g); return g;
-  })();
-
-  // --- las estelas: un muro de luz que se apaga con el tiempo (como en Tron); una para el quad (naranja) y otra para el dron (cian)
-  var ESTELAS = [];
-  function creaEstela(colOsc, colCla, alto, vida, NE) {
-    var e = { n: 0, ult: null, ultB: [0, 0], alto: alto, NE: NE }, pos = new Float32Array(NE * 6), av = new Float32Array(NE * 2), ab = new Float32Array(NE * 2), idx = [];
-    for (var i = 0; i < NE; i++) { av[i * 2] = 0; av[i * 2 + 1] = 1; if (i < NE - 1) { var a0 = i * 2; idx.push(a0, a0 + 2, a0 + 1, a0 + 1, a0 + 2, a0 + 3); } }
-    var g = new THREE.BufferGeometry();
-    g.setAttribute("position", new THREE.BufferAttribute(pos, 3)); g.setAttribute("aV", new THREE.BufferAttribute(av, 1)); g.setAttribute("aB", new THREE.BufferAttribute(ab, 1)); g.setIndex(idx); g.setDrawRange(0, 0);
-    e.u = { uNow: { value: 0 }, uVida: { value: vida }, uColor: { value: new THREE.Color(colOsc) }, uAlpha: { value: 1 } };
-    e.mat = Materiales.sombreador("estela", {
-      uniforms: e.u, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending,
-      vertexShader: "attribute float aV; attribute float aB; varying float vV; varying float vB; void main(){ vV = aV; vB = aB; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
-      fragmentShader: "uniform float uNow; uniform float uVida; uniform vec3 uColor; uniform float uAlpha; varying float vV; varying float vB; " +
-        "void main(){ float edad = clamp((uNow - vB) / uVida, 0.0, 1.0); float v = (1.0 - edad); v *= v; " +
-        "float caida = pow(1.0 - vV, 1.3); float pie = smoothstep(0.14, 0.0, vV); float filo = smoothstep(0.88, 1.0, vV) * 0.7; " +
-        "float a = (0.14 + 0.6 * caida + pie * 0.9 + filo) * v * uAlpha; " +
-        "gl_FragColor = vec4(uColor * (1.0 + 0.9 * pie * (1.0 - edad)), clamp(a, 0.0, 1.0));\n#include <colorspace_fragment>\n}"
-    });
-    e.malla = new THREE.Mesh(g, e.mat); e.malla.frustumCulled = false; e.malla.renderOrder = 6; e.malla.visible = false; scene.add(e.malla);   // vacía no se dibuja (three moderno cuenta la llamada aunque no haya vértices)
-    e.tema = function (oscuro) { e.mat.blending = oscuro ? THREE.AdditiveBlending : THREE.NormalBlending; e.u.uColor.value.set(oscuro ? colOsc : colCla); e.u.uAlpha.value = oscuro ? 1 : 1.3; e.mat.needsUpdate = true; };
-    e.reinicia = function () { e.ult = null; };
-    e.emite = function (x, y, y0, sep) {
-      if (e.ult && Math.hypot(x - e.ult[0], y - e.ult[1]) < (sep || 0.55)) return;
-      if (!e.ult) e.ult = e.ultB; e.ult[0] = x; e.ult[1] = y;   // el mismo par cada vez (AG-1.4: sin reservas por fotograma)
-      if (e.n === NE) { pos.copyWithin(0, 6); ab.copyWithin(0, 2); e.n -= 1; }
-      var i = e.n++;
-      pos[i * 6] = x; pos[i * 6 + 1] = y0; pos[i * 6 + 2] = -y; pos[i * 6 + 3] = x; pos[i * 6 + 4] = y0 + e.alto; pos[i * 6 + 5] = -y;
-      ab[i * 2] = ab[i * 2 + 1] = tVida;
-      g.attributes.position.needsUpdate = true; g.attributes.aB.needsUpdate = true; g.setDrawRange(0, Math.max(0, (e.n - 1) * 6)); e.malla.visible = e.n > 1;
-    };
-    ESTELAS.push(e); return e;
-  }
-  var estelaQuad = creaEstela(0xff9a2e, 0xd25a00, 1.3, 6.5, 240), estelaDron = creaEstela(0x40f0ff, 0x007f99, 0.5, 5, 260);
-  function temaEstela(oscuro) { if (!ESTELAS) return; ESTELAS.forEach(function (e) { e.tema(oscuro); }); if (anilloDron) { anilloDron.material.blending = oscuro ? THREE.AdditiveBlending : THREE.NormalBlending; anilloDron.material.color.set(oscuro ? 0x40f0ff : 0x007f99); anilloDron.material.needsUpdate = true; } }
-
-  // --- el paseo: el quad cambia la velocidad, el giro, la colisión y la cámara
-  function velPaseo(av, dt) {
-    if (!enQuad) { vq = 0; return av * (teclas.run ? 4.3 : 1.7) * (av < 0 ? 0.55 : 1) * pendFactor(); }
-    var meta = av * (teclas.run ? 12 : 7.5) * (av < 0 ? 0.4 : 1) * pendFactor(), k = (Math.abs(meta) < Math.abs(vq) || meta * vq < 0) ? 4.5 : 2.2;
-    vq += (meta - vq) * Math.min(1, dt * k); if (Math.abs(vq) < 0.02 && !av) vq = 0; return vq;
-  }
-  function giroPaseo(vel) { if (!enQuad) return 1.9; return 2.2 * (0.3 + 0.7 * Math.min(1, Math.abs(vel) / 3)) * (1 - 0.35 * Math.min(1, Math.abs(vel) / 12)); }
-  function ponQuad(v) {
-    if (v && enDron) ponDron(false);
-    enQuad = !!v && paseando; vq = 0; estelaQuad.reinicia(); quad.visible = enQuad;
-    $("btnQuad").setAttribute("aria-pressed", String(enQuad)); $("btnQuad").textContent = enQuad ? "Bajar del quad" : "Subir al quad"; $("padQuad").setAttribute("aria-pressed", String(enQuad));
-    if (!enQuad) { var u = persona.userData; u.pi.rotation.x = u.pd.rotation.x = u.bi.rotation.x = u.bd.rotation.x = 0; }
-  }
-  function vidaPaseo(dt, gy, vel) {
-    if (enDron) { var ud = persona.userData; ud.pi.rotation.x = ud.pd.rotation.x = 0; ud.bi.rotation.x = ud.bd.rotation.x = 1.0; }
-    if (!enQuad) { quad.visible = false; return; }
-    var fx = Math.sin(pp.ang), fz = -Math.cos(pp.ang), u = persona.userData, mov = Math.min(1, Math.abs(vel) / 6);
-    quad.visible = true; quad.position.set(pp.x, gy + 0.02 + Math.sin(tVida * 31) * 0.012 * mov, -pp.y); inclinaQuad(dt);
-    var rueds = quad.userData.ruedas; for (var ir = 0; ir < rueds.length; ir++) rueds[ir].rotation.x -= vel * dt / 0.3;
-    persona.position.set(pp.x - fx * 0.2, gy - 0.02, -pp.y - fz * 0.2); persona.rotation.set(quadInc.pit * 0.9, -pp.ang, quadInc.rol * 0.9, "YXZ");
-    u.pi.rotation.x = u.pd.rotation.x = 1.15; u.bi.rotation.x = u.bd.rotation.x = 1.05;
-    var noche = 1 - nivelEn(cur.ms, lvVida).d; quad.userData.glow.material.opacity = 0.2 + 0.7 * noche;
-    if (Math.abs(vel) > 0.8) estelaQuad.emite(pp.x - fx * 1.0, pp.y - Math.cos(pp.ang) * 1.0, gy + 0.06);
-  }
-
-  // --- el dron: lo vuela el muñequito desde donde está (el dron mira hacia -z, como todo lo demás)
-  var enDron = false, vistaD = 0, dr = { x: 0, y: 0, h: 0, yaw: 0, vf: 0, vh: 0, giro: 0, pit: 0, rol: 0 };
-  var dron = (function () {
-    var g = new THREE.Group(), mt = function (c) { return new THREE.MeshLambertMaterial({ color: c }); }, led = function (c) { return new THREE.MeshBasicMaterial({ color: c }); }, props = [], leds = [];
-    function caja(w, h, d, m, x, y, z, ry) { var me = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); me.position.set(x, y, z); if (ry) me.rotation.y = ry; g.add(me); return me; }
-    caja(0.3, 0.1, 0.42, mt(0xe9ebee), 0, 0, 0); caja(0.24, 0.06, 0.3, mt(0x2b2f36), 0, 0.07, 0.02); caja(0.26, 0.16, 0.3, mt(0xf4f6f8), 0, -0.14, 0.04);
-    var cam = new THREE.Mesh(new THREE.SphereGeometry(0.045, 10, 8), mt(0x15171a)); cam.position.set(0, -0.08, -0.2); g.add(cam);
-    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(function (p, k) {
-      var mx = p[0] * 0.4, mz = p[1] * 0.4, largo = Math.hypot(mx, mz);
-      caja(0.045, 0.035, largo, mt(0x2b2f36), mx / 2, 0.03, mz / 2, Math.atan2(mx, mz));
-      var motor = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.07, 10), mt(0x15171a)); motor.position.set(mx, 0.05, mz); g.add(motor);
-      var h = new THREE.Group(); h.position.set(mx, 0.1, mz);
-      var disco = new THREE.Mesh(new THREE.CircleGeometry(0.2, 20), new THREE.MeshBasicMaterial({ color: 0xd8dde3, transparent: true, forceSinglePass: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false })); disco.rotation.x = -Math.PI / 2; h.add(disco);
-      var pala = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.008, 0.03), mt(0x20232a)); h.add(pala); g.add(h); props.push({ g: h, s: k % 2 ? 1 : -1 });
-      var l = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 5), led(p[1] < 0 ? 0xff3b30 : 0x34e07a)); l.position.set(mx, 0.0, mz + p[1] * 0.04); g.add(l); leds.push(l);
-    });
-    var glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: texBrillo(), transparent: true, depthWrite: false, fog: false, blending: THREE.AdditiveBlending, opacity: 0, color: 0x9ff4ff })); glow.scale.set(5, 5, 1); glow.position.set(0, -0.25, 0); g.add(glow);
-    g.scale.setScalar(1.8); g.userData = { props: props, leds: leds, glow: glow }; g.visible = false; scene.add(g); return g;
-  })();
-  var anilloDron = (function () {
-    var g = new THREE.RingGeometry(0.86, 1, 56); g.rotateX(-Math.PI / 2);
-    var m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: 0x40f0ff, transparent: true, forceSinglePass: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false }));
-    m.visible = false; m.renderOrder = 4; scene.add(m); return m;
-  })();
-  function angDifRad(a, b) { var d = (a - b) % (2 * Math.PI); if (d > Math.PI) d -= 2 * Math.PI; if (d < -Math.PI) d += 2 * Math.PI; return d; }
-  function textoAyudaPaseo() {
-    return enDron ? "Dron: W/S avanzar · A/D girar · Espacio/C subir y bajar · Mayús rápido · V cámara · clic en el suelo: marcar llegada · Intro o L: aterrizar · E guardar · Esc: salir"
-      : "Flechas o WASD: andar y girar · Mayús: correr · clic en el suelo: ir andando · V: primera persona · Q: quad · E: dron · M: minimapa · Esc: salir";
-  }
-  function ponDron(v) {
-    var quiero = !!v && paseando;
-    if (quiero && enQuad) ponQuad(false);
-    enDron = quiero; vistaD = 0; primera = false; dron.visible = enDron; anilloDron.visible = enDron; estelaDron.reinicia();
-    if (enDron) {
-      var gy0 = altMueve(pp.x, pp.y); dr.x = pp.x + Math.sin(pp.ang) * 1.2; dr.y = pp.y + Math.cos(pp.ang) * 1.2; dr.yaw = pp.ang; dr.h = gy0 + 3; dr.vf = dr.vh = dr.giro = 0;
-    } else { var u = persona.userData; u.pi.rotation.x = u.pd.rotation.x = u.bi.rotation.x = u.bd.rotation.x = 0; }
-    $("btnDron").setAttribute("aria-pressed", String(enDron)); $("btnDron").textContent = enDron ? "Guardar el dron" : "Sacar el dron"; $("padDron").setAttribute("aria-pressed", String(enDron));
-    $("padSube").hidden = !enDron; $("padBaja").hidden = !enDron; $("tDron").hidden = !enDron; $("ayudaPaseo").textContent = textoAyudaPaseo();
-    Llegada.conDron(enDron);   // el anillo de llegada y «Aterrizar aquí» (12b_llegada.js)
-  }
-  function cicloVista() {
-    if (enDron) { vistaD = (vistaD + 1) % 3; primera = vistaD === 1; } else primera = !primera;
-  }
-  // el mando: se llama desde el paseo con lo que se pulsa (y el muñequito deja de andar)
-  function dronMando(av, gi, dt) {
-    var vmax = teclas.run ? 15 : 8.5, sube = (teclas.sube ? 1 : 0) - (teclas.baja ? 1 : 0), k = Math.min(1, dt * 2.4);
-    dr.vf += (av * vmax * (av < 0 ? 0.6 : 1) - dr.vf) * k; dr.giro += (gi * 1.7 - dr.giro) * Math.min(1, dt * 5); dr.yaw += dr.giro * dt; dr.vh += (sube * 5.5 - dr.vh) * Math.min(1, dt * 3);
-    // el viento del tiempo lo empuja (más de lo real para que se note); mismo marco que el mundo: x este, y norte
-    var rad = Math.PI / 180, wx = -Math.sin(cur.dir * rad) * cur.viento * 0.35, wy = -Math.cos(cur.dir * rad) * cur.viento * 0.35;
-    var fx = Math.sin(dr.yaw), fy = Math.cos(dr.yaw);
-    dr.x += (fx * dr.vf + wx) * dt; dr.y += (fy * dr.vf + wy) * dt;
-    var o = gm.obstaculo(dr.x, dr.y, 0); if (o) { dr.x = o.x; dr.y = o.y; }   // radio 0: vuela sobre los troncos, solo lo frena el borde del mundo activo (MU2-4; antes, D.ext)
-    var suel = altMueve(dr.x, dr.y), copa = copaAlta(dr.x, dr.y) * Estado.exag, minH = suel + copa + 1.0;   // sobrevuela las copas, no las atraviesa
-    dr.h = Math.max(minH, Math.min(suel + 90, dr.h + dr.vh * dt));
-    dr.pit += (dr.vf * 0.022 - dr.pit) * Math.min(1, dt * 5); dr.rol += (-dr.giro * 0.2 - dr.rol) * Math.min(1, dt * 5);
-    // el muñequito se vuelve a mirar el dron
-    pp.ang += angDifRad(Math.atan2(dr.x - pp.x, dr.y - pp.y), pp.ang) * Math.min(1, dt * 3);
-  }
-  // la cámara en modo dron: true si la lleva ella
-  var camV = new THREE.Vector3(), camDp = new THREE.Vector3(), camF = new THREE.Vector3(), camMira = new THREE.Vector3();   // temporales del módulo: la cámara del dron no reserva por fotograma
-  function camaraDron(dt, gy) {
-    if (!enDron) return false;
-    camDp.set(dr.x, dr.h, -dr.y);
-    if (vistaD === 2) { camF.set(Math.sin(dr.yaw), -0.2 - dr.pit * 2, -Math.cos(dr.yaw)); camera.position.set(dr.x, dr.h - 0.1, -dr.y); camera.lookAt(camMira.copy(camera.position).add(camF.multiplyScalar(10))); return true; }
-    if (vistaD === 1) { camera.position.set(pp.x, gy + 1.62, -pp.y); camera.lookAt(camDp); return true; }
-    var fx = Math.sin(pp.ang), fz = -Math.cos(pp.ang), ox = pp.x - fx * 4.6, oz = -pp.y - fz * 4.6, oy = Math.max(gy + 2.4, altMueve(ox, -oz) + 1.3);
-    camV.set(ox, oy, oz); camPos.x += (camV.x - camPos.x) * Math.min(1, dt * 4); camPos.y += (camV.y - camPos.y) * Math.min(1, dt * 4); camPos.z += (camV.z - camPos.z) * Math.min(1, dt * 4);
-    camera.position.copy(camPos); camera.lookAt(camDp.x * 0.7 + pp.x * 0.3, camDp.y * 0.8 + (gy + 1.4) * 0.2, camDp.z * 0.7 - pp.y * 0.3); return true;
-  }
-  function vidaDron(dt) {
-    if (!enDron) return;
-    var u = dron.userData, suel = altSuelo(dr.x, dr.y);
-    dron.position.set(dr.x, dr.h + Math.sin(tVida * 2.2) * 0.04, -dr.y); dron.rotation.set(dr.pit, -dr.yaw, dr.rol, "YXZ");
-    for (var ih = 0; ih < u.props.length; ih++) u.props[ih].g.rotation.y += u.props[ih].s * dt * 70;
-    var parp = Math.floor(tVida * 2.2) % 2 === 0; for (var il = 0; il < u.leds.length; il++) u.leds[il].visible = il < 2 ? parp : true;
-    u.glow.material.opacity = 0.15 + 0.5 * (1 - nivelEn(cur.ms, lvVida).d);
-    Llegada.porFotograma();
-    var alt = dr.h - suel; anilloDron.visible = true; anilloDron.position.set(dr.x, suel + 0.15, -dr.y); anilloDron.scale.setScalar(1.6 + alt * 0.28);
-    anilloDron.material.opacity = Math.max(0.15, 0.7 - alt * 0.008) * (0.8 + 0.2 * Math.sin(tVida * 4));
-    if (Math.abs(dr.vf) > 0.6 || Math.abs(dr.vh) > 0.6) estelaDron.emite(dr.x - Math.sin(dr.yaw) * 0.5, dr.y - Math.cos(dr.yaw) * 0.5, dr.h - 0.3, 0.5);
-    ins.d = (ins.d || 0) + dt;
-    if (ins.d > 0.25) { ins.d = 0; $("tDron").textContent = textoDron(alt); }   // el texto del HUD del dron, a 4 Hz (no por fotograma)
-  }
-  function textoDron(alt) {
-    var vient = cur.viento;
-    return "Dron · " + num1(alt, 0) + " m de altura · " + num1(Math.abs(dr.vf), 1) + " m/s · viento " + (vient < 0.3 ? "en calma" : rumbo(cur.dir) + " " + num1(vient, 1) + " m/s") + (vient > 9 ? " · demasiado para volar" : "");
-  }
-
-  function vidaEntra() {
-    $("btnQuad").hidden = false; $("padQuad").hidden = false; $("btnDron").hidden = false; $("padDron").hidden = false; ponQuad(false); ponDron(false); $("ayudaPaseo").textContent = textoAyudaPaseo();
-    Bus.emite("paseo:entra");   // la fauna (16b_fauna.js) coloca sus aves posadas y sus conejos
-  }
-  function vidaSale() {
-    ponQuad(false); ponDron(false); $("btnQuad").hidden = true; $("padQuad").hidden = true; $("btnDron").hidden = true; $("padDron").hidden = true;
-    Bus.emite("paseo:sale");
-  }
-  function actualizaVida(dt) {
-    tVida += dt; for (var ie = 0; ie < ESTELAS.length; ie++) ESTELAS[ie].u.uNow.value = tVida; vidaDron(dt);
-    gFauna.visible = $("cFauna").checked;
-  }
-  (function () {
-    $("btnQuad").addEventListener("click", function () { ponQuad(!enQuad); }); $("padQuad").addEventListener("click", function () { ponQuad(!enQuad); });
-    $("btnDron").addEventListener("click", function () { ponDron(!enDron); }); $("padDron").addEventListener("click", function () { ponDron(!enDron); });
-    [["padSube", "sube"], ["padBaja", "baja"]].forEach(function (p) { var b = $(p[0]); b.addEventListener("pointerdown", function (e) { e.preventDefault(); teclas[p[1]] = true; b.setPointerCapture(e.pointerId); }); b.addEventListener("pointerup", function () { teclas[p[1]] = false; }); b.addEventListener("pointercancel", function () { teclas[p[1]] = false; }); });
-  })();
+  // ---------- la vida del olivar: el quad con estela de luz (Tron) y el dron para el paseo (los pájaros y los conejos son el componente «fauna-olivar», 16b_fauna.js; los perros, «perros-paseo»).
+  // MU5-n (A3-5): migrado a TypeScript; el código vive en apps/web/src/mundos/exterior/vida.ts (el grupo de la fauna, el quad, el dron, el anillo, las estelas y los mandos del paseo), componente
+  // «vida» de los mundos ["exterior"] con un libera() que suelta de verdad todo lo que crea y quita las escuchas de sus botones (L2-05, L2-11; lo registra 90_final.js, como los de A3-1a).
+  // Aquí se cablea lo del legado: el estado que lee el resto de módulos (tVida, enQuad, vq, enDron) se espeja en estas var cada vez que cambia en Vida.E, y las funciones de siempre
+  // (velPaseo, ponDron…) son las de Vida con el mismo nombre.
+  var tVida = 0, enQuad = false, vq = 0, enDron = false;
+  var Vida = Mundos.creaVida({
+    THREE: THREE, scene: scene, camera: camera, Estado: Estado, Materiales: Materiales, Bus: Bus, $: $, suelo: suelo, copaAlta: copaAlta,
+    sueloMundo: function (x, y) { return gm.suelo(x, y); }, obstaculo: function (x, y, r) { return gm.obstaculo(x, y, r); },   // el mundo activo (90_final, que declara gm después)
+    geoSombra: geoSombra, matSombra: matSombra, texBrillo: texBrillo, nivelEn: nivelEn, cur: cur, ins: ins, num1: num1, rumbo: rumbo,
+    paseando: function () { return paseando; }, teclas: function () { return teclas; }, persona: function () { return persona; },   // 12_paseo: cambian (teclas se reemplaza al salir)
+    primera: function () { return primera; }, ponPrimera: function (v) { primera = v; }, pp: pp, camPos: camPos, Llegada: Llegada,
+    pendFactor: function () { return pendFactor(); }, quadInc: function () { return quadInc; }, inclinaQuad: function (dt) { inclinaQuad(dt); },   // 22_huellas, que se carga después
+    espeja: function (e) { tVida = e.tVida; enQuad = e.enQuad; vq = e.vq; enDron = e.enDron; }
+  });
+  var gFauna = Vida.gFauna, altSuelo = Vida.altSuelo, quita = Vida.quita, mira = Vida.mira, quad = Vida.quad, temaEstela = Vida.temaEstela;
+  var velPaseo = Vida.velPaseo, giroPaseo = Vida.giroPaseo, ponQuad = Vida.ponQuad, vidaPaseo = Vida.vidaPaseo, dr = Vida.dr, dron = Vida.dron, ponDron = Vida.ponDron;
+  var cicloVista = Vida.cicloVista, dronMando = Vida.dronMando, camaraDron = Vida.camaraDron, vidaEntra = Vida.vidaEntra, vidaSale = Vida.vidaSale, actualizaVida = Vida.actualizaVida;
   temaBarrera();
-
-

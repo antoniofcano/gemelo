@@ -18,6 +18,7 @@ const TS_DE = {
   "07_follaje.js": "apps/web/src/mundos/exterior/follaje.ts",   // A3-2b
   "08_marcadores.js": "apps/web/src/mundos/exterior/marcadores.ts",   // A3-2b
   "08b_marcadores_lidar.js": "apps/web/src/mundos/exterior/marcadores-lidar.ts",   // A3-2b
+  "16_vida.js": "apps/web/src/mundos/exterior/vida.ts",   // A3-5
   "16b_fauna.js": "apps/web/src/mundos/exterior/fauna.ts",   // A3-5
   "25_perros.js": "apps/web/src/mundos/exterior/perros.ts",   // A3-5
   "22_huellas.js": "apps/web/src/mundos/exterior/huellas.ts",   // A3-5
