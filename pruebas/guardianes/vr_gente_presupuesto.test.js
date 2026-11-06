@@ -135,6 +135,7 @@ test("cableado: vrAdapta pasa el suelo de la gente; el cambio va por la Cola; el
   assert.match(F26B, /AvataresPuro\.reparte\(tObj, ids, n, AvataresPuro\.distVrm\(VRX\.on, VRX\.nivel\)\)/);
   assert.match(F26B, /var FUNDIDO|FUNDIDO = 0\.6/, "el paso de VRM a muñeco sigue siendo un fundido (r.k), no un corte");
   assert.match(F26B, /r\.dir = -1/, "quien deja de caber en el cupo o la distancia se funde a muñeco");
-  assert.match(F02G.split("\n").slice(0, 4).join("\n"), /Consume:.*29_vr \(VRX\)/);
+  // 02g ya no declara consumir 29_vr (VRX): solo lo nombra en un comentario (el estado `e` lo pasa 29_vr), y las cabeceras se derivan del código (L4-02)
+  assert.doesNotMatch(F02G.split("\n").slice(0, 4).join("\n"), /Consume:.*29_vr \(VRX\)/);
   assert.match(F26B.split("\n").slice(0, 6).join("\n"), /02g_vr_presupuesto \(VrPresupuesto\)/);
 });

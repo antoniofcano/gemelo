@@ -188,8 +188,8 @@ Exterior, molino y bodega en un solo PWA, cada uno con su sala de red; TypeScrip
 
 | Id | Tarea | Depende de | Tipo · modelo | [ESTIMACIÓN] | Estado |
 |---|---|---|---|---|---|
-| MU0-1 | L4-01: el motor compara `centro_utm` y `z0` del tileset con el índice (`04b_escena3d.js`) y la tubería igual; prueba con un tileset desplazado 10 m | — | ligera · sonnet | ½ d | ⬜ |
-| MU0-2 | L4-02: el comprobador de cabeceras quita comentarios y cadenas antes de buscar nombres; regenerar cabeceras | — | ligera · sonnet | 1 d | ⬜ |
+| MU0-1 | L4-01: el motor compara `centro_utm` y `z0` del tileset con el índice (`04b_escena3d.js`) y la tubería igual; prueba con un tileset desplazado 10 m | — | ligera · sonnet | ½ d | ✅ 2026-11-06 (A1-1): motor y `comprueba.mjs` rechazan el tileset de otro `centro_utm`/`z0`; pruebas en Node; la parte de Chrome sin pasar |
+| MU0-2 | L4-02: el comprobador de cabeceras quita comentarios y cadenas antes de buscar nombres; regenerar cabeceras | — | ligera · sonnet | 1 d | ✅ 2026-11-06 (A1-2): tokenizador `acorn`, lista blanca de nombres cortos, cabeceras regeneradas (573 consumos falsos fuera, 52 reales dentro) |
 | MU0-3 | L4-03, L4-04: contrato y guardián de acuerdo sobre `teselas.v`; teselas de los exportadores reales contra `tesela.schema.json` | — | ligera · sonnet | 1 d | ⬜ |
 | MU0-4 | `gitleaks` de todo el historial en un clon completo, solo lectura (decisión 222) | 👤 222 | ligera · haiku | ½ d | ✅ hecho el 2026-11-06 sobre un clon completo de GitHub (1052 commits de todas las ramas) y los 2 commits locales: `gitleaks` 8.30.1 da un solo aviso, falso (el literal de prueba de `apps/api/pruebas/unidad/avisos_correo.test.ts:13`); a mano, cero rutas locales, enlaces de artefacto, IP del VPS ni correos reales (solo `@canoydamas.invalid`). No hay nada que rotar y la 219 no pide reescribir el historial |
 | MU0-5 | L1-06 + L1-07 + L2-06 en una sola ronda del banco: recalibrar topes con una tesela densa en el fixture, tope de memoria de GPU, activar `memoria_vr_chrome` (con el arreglo del goteo de `29_vr`/`36_mandos`) | MU0-2 | pesada · opus (banco) | 2 d | ⬜ |
@@ -198,9 +198,9 @@ Exterior, molino y bodega en un solo PWA, cada uno con su sala de red; TypeScrip
 | MU0-8 | Visor suelto de interiores en `prototipos/` (three y el validador, sin el motor) para que Antonio vea sus modelos con el presupuesto de cada perfil, también en el Quest | MU0-7 | ligera · sonnet | ½ d | ⬜ |
 | MUB-1 | Eje B · bodega: modelo de Antonio que pasa el validador de MU0-7 | MU0-7 | 👤 Antonio, modelado | sin fecha | ⬜ |
 | MUB-2 | Eje B · fábrica: captura y modelo que pasan el validador (= MU4-1, privados: decisión 227) | MU0-7 | 👤 Antonio, modelado | sin fecha | ⬜ |
-| MU1-1 | `tsconfig.base.json` en la raíz y `apps/web/tsconfig.json` (MUNDOS §9.1); la api lo extiende en otro commit | MU0-6 | ligera · sonnet | ½ d | ⬜ |
-| MU1-2 | Vitest 5.1.0 fijado y un guardián de `node:test` que lanza `tsc --noEmit` y `vitest run` (MUNDOS §9.2) | MU1-1 | ligera · sonnet | ½ d | ⬜ |
-| MU1-3 | `dependency-cruiser` fijado con las reglas de las cuatro fronteras (MUNDOS §1) | MU1-1 | ligera · sonnet | ½ d | ⬜ |
+| MU1-1 | `tsconfig.base.json` en la raíz y `apps/web/tsconfig.json` (MUNDOS §9.1); la api lo extiende en otro commit | MU0-6 | ligera · sonnet | ½ d | ✅ 2026-11-06 (A1-3); la api aún no extiende la base |
+| MU1-2 | Vitest 5.1.0 fijado y un guardián de `node:test` que lanza `tsc --noEmit` y `vitest run` (MUNDOS §9.2) | MU1-1 | ligera · sonnet | ½ d | ✅ 2026-11-06 (A1-3): Vitest 5.1.0 y `tipos_web.test.js` en la puerta rápida |
+| MU1-3 | `dependency-cruiser` fijado con las reglas de las cuatro fronteras (MUNDOS §1) | MU1-1 | ligera · sonnet | ½ d | ✅ 2026-11-06 (A1-3): 7 reglas, cada una con su caso que la rompe |
 | MU1-4 | Toma de referencia del banco: vistas, recuentos, memoria y VR simulada (MUNDOS §9.5), antes de tocar el motor | MU0-5 | pesada · haiku (banco) | ½ d | ⬜ |
 | MU1-5 | Puente en `genera_motor.mjs` (`@gemelo/nucleo`), talones, guardián del puente y trinquete del legado (MUNDOS §9.3) | MU1-2 | ligera · opus | 1 d | ⬜ |
 | MU1-6 | Extraer `Cola` con dueño por prefijo (§9.4 #1) y mover sus pruebas `[puro]` a Vitest | MU1-5 | ligera · sonnet | ½ d | ⬜ |
