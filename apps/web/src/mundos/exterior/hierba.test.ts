@@ -88,6 +88,21 @@ describe("la hierba y las piedras del exterior", () => {
     expect(iMata.material.customProgramCacheKey()).toBe(iMata.material.onBeforeCompile.toString()); expect(iPiedra.material.color.getHex()).toBe(0xffffff);
     H.libera(); expect(F.duenos()).toEqual({}); expect(F.a2c.n).toBe(0);
   });
+  it("las variantes TSL (apagadas y PARCIALES): solo con el renderizador nuevo; con three/webgpu y three/tsl de verdad, MeshLambertNodeMaterial con sus nodos", async () => {
+    const W: A = await import(/* @vite-ignore */ "three/webgpu" as string), TSL: A = await import(/* @vite-ignore */ "three/tsl" as string);
+    const { DEF_MATAS, DEF_PIEDRAS } = await import("./hierba.ts");
+    const hoy = creaMateriales({ THREE: THREE as unknown as ThreeMin, render: { tipo: "clasico", pedido: "" }, nodos: () => ({ THREE: W, TSL }) });
+    hoy.define("matas", DEF_MATAS); expect(hoy.ruta("matas")).toBe("clasico");
+    const F = creaMateriales({ THREE: THREE as unknown as ThreeMin, render: { tipo: "nuevo", pedido: "nuevo" }, nodos: () => ({ THREE: W, TSL }) });
+    F.define("matas", DEF_MATAS); F.define("piedras", DEF_PIEDRAS);
+    expect(F.ruta("matas")).toBe("tsl"); expect(F.cobertura()["piedras"]).toMatchObject({ clasico: true, tsl: true });
+    const P = creaParcheTiempo({ THREE, colorVertSRGB: () => {} }), u = { uSombra: P.uSombra, uViento: P.uViento }, map = new THREE.Texture();
+    const ma: A = F.crea("matas", { map, parche: () => {}, u }), pi: A = F.crea("piedras", { parche: () => {}, u });
+    expect(ma.isMeshLambertNodeMaterial && ma.alphaTest === 0.42 && ma.side === THREE.DoubleSide && ma.map === map).toBe(true);
+    expect(ma.colorNode && ma.maskNode && ma.positionNode && ma.outputNode).toBeTruthy();
+    expect(pi.isMeshLambertNodeMaterial).toBe(true); expect(pi.colorNode && pi.outputNode).toBeTruthy(); expect(pi.positionNode).toBeFalsy();
+    const sin: A = F.crea("matas", { map, parche: () => {} }); expect(sin.outputNode).toBeFalsy();   // sin los uniformes del tiempo, sin nubes ni viento
+  });
   it("el manifiesto vale, es de los mundos [exterior], monta el mismo objeto y su libera lo suelta", () => {
     const { H, scene } = monta(), man = manifiestoHierba(H);
     expect(ComponentesPuro.valida(man)).toEqual([]); expect(man.id).toBe("hierba-suelo"); expect(man.mundos).toEqual(["exterior"]);

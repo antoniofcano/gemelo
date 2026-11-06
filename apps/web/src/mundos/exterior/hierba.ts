@@ -9,6 +9,7 @@
 // Del legado recibe por argumento lo que necesita; lo que cambia (la fecha del NDVI, quien pasea, el dron, el arroyo) se lee en cada uso, por función.
 import type { Manifiesto } from "../../nucleo/componentes.ts";
 import type { DefMaterial } from "../../nucleo/materiales.ts";
+import { nodosTiempo } from "./tiempo-parche.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type A = any;
@@ -42,13 +43,37 @@ export const ID_HIERBA = "hierba-suelo";
 export const MATERIAL_MATAS = "matas";
 export const MATERIAL_PIEDRAS = "piedras";
 /** lo que pide cada uno: su parche de siempre (parcheMata o parchePiedra de creaHierba, que cierran sobre los uniformes del viento y de la sombra) y, las matas, el atlas */
-export interface OpcMatas { map: A; parche: (sh: A) => void }
-export interface OpcPiedras { parche: (sh: A) => void }
+export interface OpcMatas { map: A; parche: (sh: A) => void; u?: { uSombra: A; uViento: A } }
+export interface OpcPiedras { parche: (sh: A) => void; u?: { uSombra: A; uViento: A } }
+// MU5-n, tercer commit: las variantes TSL, APAGADAS (solo con el WebGPURenderer, MU6) y PARCIALES (MATERIALES §9). Construyen su NodeMaterial con sus nodos (lo
+// prueba Vitest con three/webgpu de verdad); NO se han compilado ni dibujado y NO son equivalentes: las capturas son de MU6. Los uniformes, los MISMOS objetos.
+//   · matas: el atlas por instancia (aTile), el pie más oscuro, el fundido por trama con la distancia (maskNode), el recorte alfa del atlas, el vaivén del viento
+//     (positionNode) y la sombra de nubes y la escarcha tras la luz (los nodos de parcheTiempo, en la posición del mundo);
+//   · piedras: los granos, las vetas y el liquen por ruido de la posición local, y la sombra de nubes tras la luz (sin escarcha, como el clásico);
+//   · FALTA, en las dos: el color por instancia leído en sRGB (colorVertSRGB): la TSL lo toma como lineal (salen más claras);
+//   · DIFIERE: el vaivén de las matas se suma tras la instancia (sin su escala ni su giro: three aplica la instancia antes de positionNode); la semilla de cada
+//     piedra sale de su índice de instancia (instanceIndex), no de la posición de su matriz.
 /** el clásico de siempre, movido: el Lambert del atlas con su recorte alfa y las dos caras, y el parche asignado tal cual (three usa su texto como clave del programa) */
 export const DEF_MATAS: DefMaterial<OpcMatas> = {
   clasico: function (o, c) {
     var THREE = c.THREE as A, m = new THREE.MeshLambertMaterial({ map: o.map, alphaTest: 0.42, side: THREE.DoubleSide });
     m.onBeforeCompile = o.parche; m.needsUpdate = true;
+    return m;
+  },
+  tsl: function (o, c) {
+    var W = c.THREE as A, T = c.TSL as A, m = new W["MeshLambertNodeMaterial"]({ map: o.map, alphaTest: 0.42, side: W.DoubleSide });
+    var aTile = T.attribute("aTile", "float"), uvA = T.vec2(T.uv().x.add(aTile).mul(0.25), T.uv().y), tx = T.texture(o.map, uvA);
+    m.colorNode = T.vec4(tx.rgb.mul(T.float(0.5).add(T.smoothstep(0.0, 0.55, uvA.y).mul(0.5))), tx.a);   // el pie más oscuro que la punta
+    // fundido por trama con la distancia: se descarta donde smoothstep(34, 58, d) > ruido o smoothstep(0,9, 0,2, d) > ruido
+    var dd = T.length(T.positionView), ign = T.fract(T.fract(T.dot(T.screenCoordinate.xy, T.vec2(0.06711056, 0.00583715))).mul(52.9829189));
+    m.maskNode = T.smoothstep(34.0, 58.0, dd).lessThanEqual(ign).and(T.smoothstep(0.9, 0.2, dd).lessThanEqual(ign));
+    if (o.u) {
+      var N = nodosTiempo(T, o.u.uSombra, o.u.uViento), num = function (x: A): A { return T.uniform(x.value).onObjectUpdate(function () { return x.value; }); };
+      var uT = num(o.u.uViento.uT), uAmp = num(o.u.uViento.uAmp), uDir = num(o.u.uViento.uDir), p = T.positionLocal, s = T.positionGeometry.y;
+      var dxz = uDir.mul(uAmp).mul(1.5).add(T.vec2(T.sin(uT.mul(3.0).add(p.x.mul(1.7))), T.cos(uT.mul(2.6).add(p.z.mul(1.9)))).mul(0.06)).mul(s.mul(s));
+      m.positionNode = T.vec3(p.x.add(dxz.x), p.y, p.z.add(dxz.y));
+      m.outputNode = N.salida(T.positionWorld.xz);
+    }
     return m;
   }
 };
@@ -57,6 +82,17 @@ export const DEF_PIEDRAS: DefMaterial<OpcPiedras> = {
   clasico: function (o, c) {
     var m = new (c.THREE as A).MeshLambertMaterial({ color: 0xffffff });
     m.onBeforeCompile = o.parche; m.needsUpdate = true;
+    return m;
+  },
+  tsl: function (o, c) {
+    var W = c.THREE as A, T = c.TSL as A, m = new W["MeshLambertNodeMaterial"]({ color: 0xffffff });
+    var sh3 = function (p: A): A { return T.fract(T.sin(T.dot(T.floor(p), T.vec3(12.9898, 78.233, 37.719))).mul(43758.5453)); };
+    var vP = T.positionGeometry, seed = T.fract(T.sin(T.float(T.instanceIndex).mul(12.9898)).mul(43758.5453));   // DIFIERE: por índice de instancia
+    var n1 = sh3(vP.mul(5.0).add(seed.mul(40.0))), n2 = sh3(vP.mul(13.0).add(seed.mul(17.0)));
+    var veta = T.float(0.5).add(T.sin(vP.x.mul(2.1).add(vP.y.mul(3.4)).add(seed.mul(9.0)).mul(3.0).add(n1.mul(1.5))).mul(0.5));
+    var base = T.vec4(T.materialColor).rgb.mul(T.float(0.74).add(n1.mul(0.16)).add(n2.mul(0.1)).add(veta.mul(0.12)));
+    m.colorNode = T.vec4(T.mix(base, T.sRGBTransferEOTF(T.vec3(0.46, 0.5, 0.3).mul(0.8)), T.step(0.86, n1).mul(0.4).mul(T.smoothstep(-0.2, 0.9, vP.y))), 1);
+    if (o.u) { var N = nodosTiempo(T, o.u.uSombra, null); m.outputNode = T.vec4(T.output.rgb.mul(N.enVertice(N.sombra(T.positionWorld.xz))), T.output.a); }   // sin escarcha, como el clásico
     return m;
   }
 };
@@ -154,7 +190,7 @@ export function creaHierba(d: DepsHierba) {
   // libera con su libera() (también sale de la lista de recortes alfa)
   Materiales.define(MATERIAL_MATAS, DEF_MATAS); Materiales.define(MATERIAL_PIEDRAS, DEF_PIEDRAS);
   var materiales = Materiales.de(ID_HIERBA);
-  var NTUFT = 16000, NSTONE = 2600, texHierba = atlasHierba(), matMata = Materiales.recorte(materiales.crea(MATERIAL_MATAS, { map: texHierba, parche: parcheMata })), matPiedra = materiales.crea(MATERIAL_PIEDRAS, { parche: parchePiedra });
+  var NTUFT = 16000, NSTONE = 2600, texHierba = atlasHierba(), matMata = Materiales.recorte(materiales.crea(MATERIAL_MATAS, { map: texHierba, parche: parcheMata, u: { uSombra: uSombra, uViento: uViento } })), matPiedra = materiales.crea(MATERIAL_PIEDRAS, { parche: parchePiedra, u: { uSombra: uSombra, uViento: uViento } });
   var iMata = new THREE.InstancedMesh(geoMata(), matMata, NTUFT), iPiedra = new THREE.InstancedMesh(geoPiedra(), matPiedra, NSTONE), tileMata = new THREE.InstancedBufferAttribute(new Float32Array(NTUFT), 1);
   var geoCont = new THREE.PlaneGeometry(1, 1); geoCont.rotateX(-Math.PI / 2);
   var texCont = texContacto(), matCont = materiales.estandar("MeshBasicMaterial", { map: texCont, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), iCont = new THREE.InstancedMesh(geoCont, matCont, NSTONE);
