@@ -119,7 +119,7 @@ export type Llegada = ReturnType<typeof creaLlegada>;
 /** El componente «anillo-llegada» (solo ciclo de vida; de todos los mundos): lo registra el talón de 12b con Componentes.registra */
 export function manifiestoLlegada(api: Llegada): Manifiesto {
   return {
-    id: ID_LLEGADA, version: 1, consume: ["scene"], expone: [], eventos: { escucha: [], emite: [] }, bandera: { defecto: true }, presupuesto: { llamadas: 1, triangulos: 80 },
+    id: ID_LLEGADA, version: 1, consume: ["scene"], expone: [], eventos: { escucha: [], emite: [] }, bandera: { defecto: true }, presupuesto: { llamadas: 0, triangulos: 0 },   // solo ciclo de vida: el anillo (1 llamada, 80 triángulos, solo con destino) va en el presupuesto de la escena
     fases: {}, mundos: TODO_MUNDO,
     monta: function () { api.monta(); return api; }, libera: function () { api.libera(); }
   };

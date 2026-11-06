@@ -69,7 +69,7 @@ export type IrA = ReturnType<typeof creaIrA>;
 /** El componente «ir-a» (solo ciclo de vida: el paseo lo mueve; de todos los mundos): lo registra el talón de 12c con Componentes.registra */
 export function manifiestoIrA(api: IrA): Manifiesto {
   return {
-    id: ID_IR_A, version: 1, consume: ["scene"], expone: [], eventos: { escucha: [], emite: [] }, bandera: { defecto: true }, presupuesto: { llamadas: 1, triangulos: 0 },
+    id: ID_IR_A, version: 1, consume: ["scene"], expone: [], eventos: { escucha: [], emite: [] }, bandera: { defecto: true }, presupuesto: { llamadas: 0, triangulos: 0 },   // solo ciclo de vida: la línea (1 llamada, solo con destino) va en el presupuesto de la escena (pruebas/presupuesto.json)
     fases: {}, mundos: TODO_MUNDO,
     monta: function () { api.monta(); return api; }, libera: function () { api.libera(); }
   };
