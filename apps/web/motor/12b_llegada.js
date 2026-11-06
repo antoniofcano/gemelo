@@ -2,7 +2,7 @@
 // Expone: LlegadaPuro, Llegada
 // Consume: 01_datos (D, $), 02_mundo (suelo, copas), 03_escena (lienzo, visor, scene, camera, exag), 12_paseo (paseando, pp, camPos, entraPaseo),
 //   16_vida (enDron, ponDron), 29_vr (VRX, vrFundido, vrAparece)
-// Nota: Publica además window.__llegada (pruebas). El trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/llegada.test.js.
+// Nota: Publica además window.__llegada (pruebas). LlegadaPuro vive en apps/web/src/nucleo/locomocion.ts (A1-11; sus pruebas, en locomocion.test.ts); el módulo conserva el anillo, el velo y los oyentes, que tocan THREE y el DOM.
 // ===============================================================================
   // ---------- la llegada: el anillo en el suelo adonde quieres ir y el salto hasta él (de pie, fuera de troncos, a la altura del suelo, andando).
   // Una sola pieza para la VR y la pantalla:
@@ -11,53 +11,8 @@
   //     Intro o L te deja de pie en él con un fundido corto; sin anillo, aterrizar guarda el Dron como siempre.
   // El suelo es el de la CPU (suelo()·exag), no el relieve dibujado del tileset. Nada se mueve sin que el usuario lo pida y el salto va con fundido (~0,3 s), nunca con vuelo de cámara.
   // aparece(x, y, ang) y ve(x, y, ang) (con fundido) los puede usar cualquier otro módulo para «aparecer en (x, y) mirando a ang» (p. ej. ir con otro visitante).
-  // [puro:inicio] (sin THREE ni DOM: lo evalúa en Node pruebas/guardianes/llegada.test.js)
-  var LlegadaPuro = (function () {
-    var MAX = 2500, MARGEN = 3, TOQUE_MS = 400, TOQUE_PX = { mouse: 6, pen: 8, touch: 12 };
-    // ¿(x, z) de la escena (z = −norte) dentro de D.ext = [x0, yNorte, x1, ySur], con 3 m de margen (como el paseo y el teletransporte a pie)?
-    function dentro(x, z, e) { var y = -z; return x >= e[0] + MARGEN && x <= e[2] - MARGEN && y >= e[3] + MARGEN && y <= e[1] - MARGEN; }
-    // rayo (origen o, dirección d) contra el suelo alto(x, z) (m de la escena, ya con exageración). Avanza a pasos de la mitad de la altura que le queda
-    // (0,5–25 m) y afina con bisección. Devuelve { x, y, z, dist } o null si apunta hacia arriba, no toca suelo en `max` m o cae fuera de la finca.
-    function rayoSuelo(o, d, alto, ext, max) {
-      var l = Math.hypot(d.x, d.y, d.z); if (!(l > 0)) return null;
-      var dx = d.x / l, dy = d.y / l, dz = d.z / l; max = max || MAX;
-      if (dy > -0.02) return null;
-      var t = 0, prev = 0, h = o.y - alto(o.x, o.z);
-      if (!(h > 0)) return null;
-      while (t < max) {
-        prev = t; t = Math.min(max, t + Math.max(0.5, Math.min(25, h * 0.5)));
-        h = o.y + dy * t - alto(o.x + dx * t, o.z + dz * t);
-        if (h <= 0) {
-          var a = prev, b = t;
-          for (var k = 0; k < 16; k++) { var m = (a + b) / 2; if (o.y + dy * m - alto(o.x + dx * m, o.z + dz * m) > 0) a = m; else b = m; }
-          var tt = (a + b) / 2, px = o.x + dx * tt, pz = o.z + dz * tt;
-          return dentro(px, pz, ext) ? { x: px, y: alto(px, pz), z: pz, dist: tt } : null;
-        }
-      }
-      return null;
-    }
-    // ¿el punto p está a la vista desde c mirando hacia `mirada`? (sin anillo por detrás del usuario: ángulo con la mirada menor de ~96°)
-    function delante(c, mirada, p) {
-      var vx = p.x - c.x, vy = p.y - c.y, vz = p.z - c.z, l = Math.hypot(vx, vy, vz), lm = Math.hypot(mirada.x, mirada.y, mirada.z);
-      if (!(l > 0) || !(lm > 0)) return true;
-      return (vx * mirada.x + vy * mirada.y + vz * mirada.z) / (l * lm) > -0.1;
-    }
-    // radio del anillo (m) según la distancia a quien observa: ~1,4° de ángulo, entre 0,4 y 30 m (se ve desde el aire y no tapa de cerca)
-    function radioMarca(dist) { return Math.max(0.4, Math.min(30, dist * 0.025)); }
-    // aparta (x, z) de los troncos de olivo (copas: { x, y = norte, oliv }) a r m (0,55, como al andar)
-    function fueraDeTroncos(x, z, copas, r) {
-      r = r || 0.55; var r2 = r * r;
-      for (var i = 0; i < copas.length; i++) {
-        var c = copas[i]; if (!c.oliv) continue; var ex = x - c.x, ez = z + c.y, d2 = ex * ex + ez * ez;
-        if (d2 < r2) { if (d2 === 0) { ex = 1; ez = 0; d2 = 1; } var dl = Math.sqrt(d2); x = c.x + ex / dl * r; z = -c.y + ez / dl * r; }
-      }
-      return { x: x, z: z };
-    }
-    // ¿un clic/toque (y no un arrastre ni una pulsación larga)? mov: lo más lejos (px) que se fue el puntero desde que bajó; ms: lo que duró
-    function esToque(mov, ms, tipo) { return mov <= (TOQUE_PX[tipo] || TOQUE_PX.mouse) && ms <= TOQUE_MS; }
-    return { rayoSuelo: rayoSuelo, delante: delante, radioMarca: radioMarca, fueraDeTroncos: fueraDeTroncos, dentro: dentro, esToque: esToque, MAX: MAX, TOQUE_MS: TOQUE_MS, TOQUE_PX: TOQUE_PX };
-  })();
-  // [puro:fin]
+  // La lógica pura pasó a TypeScript (A1-11 / MU1-7): apps/web/src/nucleo/locomocion.ts (MUNDOS §9.4, pieza 6). Este módulo conserva lo que toca THREE y el DOM: no es un talón completo.
+  var LlegadaPuro = Nucleo.LlegadaPuro;
   var Llegada = (function () {
     var COLOR = 0xffc94a;   // ámbar: distinto del anillo cian que señala la sombra del Dron y de la parábola del teletransporte a pie
     var anillo = new THREE.Mesh(new THREE.RingGeometry(0.72, 1, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: COLOR, fog: false, transparent: true, forceSinglePass: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false }));
