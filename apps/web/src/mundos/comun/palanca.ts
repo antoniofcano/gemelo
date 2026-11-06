@@ -7,7 +7,6 @@
 // Componente «palanca-tactil» de TODOS los mundos (la locomoción es de todo mundo). Su libera() destruye la palanca, quita las escuchas del lienzo, del botón y de la media query, desconecta
 // el observador del visor y se borra de Configuración. Código movido tal cual (solo se tipan los parámetros); lo que cambia (paseando, Ajustes) entra por función.
 import type { Manifiesto } from "../../nucleo/componentes.ts";
-import { TODO_MUNDO } from "./tipos.ts";
 import type { T } from "./tipos.ts";
 
 export const ID_PALANCA = "palanca-tactil";
@@ -69,6 +68,6 @@ export type Palanca = ReturnType<typeof creaPalanca>;
 export function manifiestoPalanca(api: { libera(): void }): Manifiesto {
   return {
     id: ID_PALANCA, version: 1, consume: [], expone: [], eventos: { escucha: [], emite: [] }, bandera: { defecto: true }, presupuesto: { llamadas: 0, triangulos: 0 },
-    fases: {}, mundos: TODO_MUNDO, monta: function () { return api; }, libera: function () { api.libera(); }
+    fases: {}, mundos: "todos", monta: function () { return api; }, libera: function () { api.libera(); }
   };
 }

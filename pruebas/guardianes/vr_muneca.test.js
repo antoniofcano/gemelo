@@ -7,8 +7,9 @@ const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
 
 function trozo(fuente, ini, fin) { const i = fuente.indexOf(ini), f = fuente.indexOf(fin, i); assert.ok(i >= 0 && f > i, "debe marcar " + ini + " … " + fin); return fuente.slice(i, f); }
-const MUN = lee("apps/web/motor/31c_muneca.js"), VR = require("./_fuente").fuenteMotor("29_vr.js"), HUDP = lee("apps/web/motor/31b_hud_personal.js"), AJU = lee("apps/web/motor/33_ajustes.js");
-const MP = new Function("\"use strict\";\n" + trozo(MUN, "// [puro:inicio]", "// [puro:fin]") + "\nreturn MunecaPuro;")();
+const MUN = require("./_fuente").fuenteMotorJs("31c_muneca.js"),   // A3-6a: el talón y apps/web/src/mundos/comun/muneca.ts, sin las anotaciones de tipos
+  VR = require("./_fuente").fuenteMotor("29_vr.js"), HUDP = lee("apps/web/motor/31b_hud_personal.js"), AJU = lee("apps/web/motor/33_ajustes.js");
+const MP = require("./_mundos").MunecaPuro;   // A3-6a
 const HP = new Function("\"use strict\";\n" + trozo(HUDP, "// [puro:inicio]", "// [puro:fin]") + "\nreturn HudPersonalPuro;")();
 const LP = new Function("\"use strict\";\n" + trozo(lee("apps/web/motor/02d_laminas.js"), "// [puro:inicio]", "// [puro:fin]") + "\nreturn LaminasPuro;")();
 
@@ -161,13 +162,13 @@ test("firma: cambia con lo que se ve (texto, encendido, resaltado), no con nada 
 });
 
 test("el motor: una sola lámina por sesión (creaLamina de 29_vr), liberada al salir de VR; sin sombreadores propios ni relojes; repinta solo si cambia la firma", () => {
-  assert.strictEqual((MUN.match(/creaLamina\(/g) || []).length, 1, "una lámina");
+  assert.strictEqual((MUN.match(/(?<!get )creaLamina\(/g) || []).length, 1, "una lámina");   // A3-6a: sin contar el getter del talón
   assert.ok(!/new THREE\.(Mesh|\w*Geometry|\w*Material|CanvasTexture)\b|createElement\("canvas"\)/.test(MUN), "nada de GPU propio: lo crea creaLamina");
   assert.match(MUN, /function crea\(\) \{ if \(lam\) return;/, "se reutiliza");
   const lib = trozo(MUN, "function libera()", "function cabeza()");
   assert.match(lib, /lam\.m\.geometry\.dispose\(\); lam\.m\.material\.dispose\(\); lam\.tex\.dispose\(\);/);
-  assert.match(MUN, /Bus\.on\("vr:sale", libera\)/);
-  assert.ok(!/ShaderMaterial|onBeforeCompile|setInterval|setTimeout|requestAnimationFrame/.test(trozo(MUN, "var Muneca = ", "window.__vrMuneca")), "sin sombreadores (multiview) ni relojes propios");
+  assert.match(MUN, /(?:Bus|n)\.on\("vr:sale", libera\)/);   // A3-6a: por el contexto del componente (se suelta al liberarlo)
+  assert.ok(!/ShaderMaterial|onBeforeCompile|setInterval|setTimeout|requestAnimationFrame/.test(trozo(MUN, "export function creaMuneca(", "window.__vrMuneca")), "sin sombreadores (multiview) ni relojes propios");
   assert.match(MUN, /if \(f !== firmaVista\) \{ firmaVista = f; pinta\(\); \}/, "solo repinta si cambia");
   assert.ok(/tex\.needsUpdate = true/.test(trozo(MUN, "function pinta()", "function fotograma(")), "subir la textura, solo al pintar");
   assert.ok(!/needsUpdate/.test(trozo(MUN, "function fotograma(", "function gatillo(")), "el fotograma no sube la textura por su cuenta");
@@ -179,10 +180,10 @@ test("el enganche con 29_vr: puntos de extensión de PanelVR (el menú no se nom
   assert.match(trozo(VR, "function vrGatillo(o) {", "if (panel.m.visible) {"), /if \(PanelVR\.gatillo\(o, rr\)\) \{ vrPulso\(o, 0\.4, 25\); return; \}/);
   assert.match(VR, /if \(vrFlanco\("Y", vrBoton\(L\.src, 5\)\)\) \{ vrPanelConmuta\(\);/);
   assert.match(VR, /if \(vrFlanco\("X", vrBoton\(L\.src, 4\)\)\) vrVinetaConmuta\(\);/);
-  assert.match(MUN, /PanelVR\.alFotograma\(fotograma\); PanelVR\.alGatillo\(gatillo\);/);
+  assert.match(MUN, /PanelVR\.alFotograma\(fotograma\)[;,] PanelVR\.alGatillo\(gatillo\)/);   // A3-6a: guarda lo que quita cada uno
   // el orden de montaje: después de lo que consume (29_vr y 31b_hud_personal)
   const orden = ["29_vr.js", "31b_hud_personal.js", "31c_muneca.js"]; assert.deepStrictEqual(orden.slice().sort(), orden);
   // las acciones: las de siempre (regla 12), no unas propias
   const pul = trozo(MUN, "function pulsa(b)", "function pinta()");
-  for (const re of [/Bus\.emite\("prevision:alterna"\)/, /Usables\.elige\("haza:" \+ q\.id, "tecla"\)/, /Bus\.emite\("habla:alterna", \{\}\)/, /Llegada\.ve\(inicio\.x, inicio\.y\)/]) assert.match(pul, re);
+  for (const re of [/(?:Bus|n)\.emite\("prevision:alterna"\)/, /Usables\.elige\("haza:" \+ q\.id, "tecla"\)/, /(?:Bus|n)\.emite\("habla:alterna", \{\}\)/, /Llegada\.ve\(inicio\.x, inicio\.y\)/]) assert.match(pul, re);
 });

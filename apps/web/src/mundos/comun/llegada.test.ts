@@ -61,6 +61,6 @@ describe("llegada", () => {
   });
   it("el componente es de todos los mundos y solo de ciclo de vida", () => {
     const c = manifiestoLlegada(monta().api);
-    expect(c.id).toBe(ID_LLEGADA); expect(c.mundos).toEqual(["exterior", "molino", "bodega", "vacio"]); expect(c.fases).toEqual({});
+    expect(c.id).toBe(ID_LLEGADA); expect(c.mundos).toBe("todos"); expect(c.fases).toEqual({});
   });
 });

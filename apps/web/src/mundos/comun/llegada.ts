@@ -10,7 +10,6 @@
 // gm) entra por función: gm es un intermediario que pregunta en cada llamada al gestor de mundos (90_final lo declara después).
 import type { Manifiesto } from "../../nucleo/componentes.ts";
 import { LlegadaPuro } from "../../nucleo/locomocion.ts";
-import { TODO_MUNDO } from "./tipos.ts";
 import type { T } from "./tipos.ts";
 
 export const ID_LLEGADA = "anillo-llegada";   // «llegada» a secas lo nombran textos de otros módulos (la regla de quitar un componente lo prohíbe)
@@ -120,7 +119,7 @@ export type Llegada = ReturnType<typeof creaLlegada>;
 export function manifiestoLlegada(api: Llegada): Manifiesto {
   return {
     id: ID_LLEGADA, version: 1, consume: ["scene"], expone: [], eventos: { escucha: [], emite: [] }, bandera: { defecto: true }, presupuesto: { llamadas: 0, triangulos: 0 },   // solo ciclo de vida: el anillo (1 llamada, 80 triángulos, solo con destino) va en el presupuesto de la escena
-    fases: {}, mundos: TODO_MUNDO,
+    fases: {}, mundos: "todos",
     monta: function () { api.monta(); return api; }, libera: function () { api.libera(); }
   };
 }

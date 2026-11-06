@@ -38,7 +38,9 @@ const C = require(path.join(RAIZ, "pruebas", "contrato_modulos.js"));
 // 2026-11-06, A3-3 (05, 18, 19, 44, 44b y 50 a TypeScript): 14.517 líneas
 // 2026-11-06, A3-5 (16, 16b, 22, 22b, 25, 52 y 54 a TypeScript): 13.603 líneas
 // 2026-11-06, A3-4 (15, 21, 23, 11 y 20 a TypeScript): 12.605 líneas
-const TOPE = 12605;
+// 2026-11-07, A3-6a (37, 26, 38, 26b y 31c a TypeScript, componentes de todo mundo): 10.343 líneas
+// 2026-11-07, A3-6c (29, 36, 12, 12b, 12c, 09 y 34b a TypeScript, componentes de todo mundo): 9.203 líneas
+const TOPE = 9203;
 
 /** líneas de un texto (la última sin salto también cuenta) */
 const lineas = s => s === "" ? 0 : s.split("\n").length - (s.endsWith("\n") ? 1 : 0);

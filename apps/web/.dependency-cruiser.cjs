@@ -5,6 +5,7 @@
 //   nucleo/  no importa de nadie            datos/   no importa de nadie
 //   red/     importa solo de datos          mundos/  importa de nucleo, datos y red; un mundo no importa a otro
 //   ui/      cliente de todo                motor/   (legado) fuera de src/: nada de src/ lo importa
+//   mundos/comun/ (A3-6a) no es un mundo: lo de todo mundo que dibuja (la presencia, los avatares, el muñeco); lo puede usar cualquier mundo y no importa de ninguno
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
   forbidden: [
@@ -45,10 +46,10 @@ module.exports = {
     },
     {
       name: "un-mundo-no-importa-a-otro",
-      comment: "Cada mundo (mundos/exterior, molino, bodega) es un paquete: no importa de otro mundo.",
+      comment: "Cada mundo (mundos/exterior, molino, bodega) es un paquete: no importa de otro mundo. mundos/comun/ (A3-6a) no es un mundo: todos pueden importarlo, y él no importa de ninguno (esta misma regla, con $1 = comun).",
       severity: "error",
       from: { path: "^src/mundos/([^/]+)/" },
-      to: { path: "^src/mundos/([^/]+)/", pathNot: "^src/mundos/$1/" },
+      to: { path: "^src/mundos/([^/]+)/", pathNot: ["^src/mundos/$1/", "^src/mundos/comun/"] },
     },
     {
       name: "renderer-solo-en-nucleo-render",

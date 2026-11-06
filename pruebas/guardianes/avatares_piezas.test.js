@@ -15,8 +15,8 @@ function trozo(fich, devuelve) {
   assert.ok(i >= 0 && f > i, fich + " debe marcar su trozo puro");
   return new Function("\"use strict\";\n" + s.slice(i, f) + "\nreturn " + devuelve + ";")();
 }
-const AP = trozo("apps/web/motor/26b_avatares.js", "AvataresPuro");
-const { Aspecto, SalaPose } = trozo("apps/web/motor/26_presencia.js", "{ Aspecto: Aspecto, SalaPose: SalaPose }");
+const AP = require("./_mundos").AvataresPuro;   // A3-6a: en apps/web/src/mundos/comun/avatares.ts
+const { Aspecto, SalaPose } = require("./_mundos");   // MU5-n (A3-6a): la lógica pura de 26_presencia.js vive en apps/web/src/red/ (pose.ts, sala.ts) y mundos/comun/muneco.ts; el legado la ve como Mundos.<nombre>
 const imp = f => import(pathToFileURL(path.join(RAIZ, f)).href);
 const hex = n => "#" + n.toString(16).padStart(6, "0");
 const NEGRA = /abuel|chic[oa]s?\b|hombre|mujer|señor|niñ[oa]|masculin|femenin|\bmale\b|female/i;   // la lista negra de C9 (y lo de C8)
@@ -85,7 +85,7 @@ test("api: la receta pasa por limpiaAspecto con los mismos campos que lee el mot
   const ts = lee("apps/api/src/presencia/livekit.ts"), rutas = lee("apps/api/src/yo/rutas.ts"), oa = lee("contratos/api.openapi.yaml");
   for (const k of ["cuerpo", "pelo", "vello", "ropa"]) { assert.match(ts, new RegExp('"' + k + '"')); assert.match(oa, new RegExp("\\n\\s+" + k + ": \\{ type: string, pattern")); }
   assert.match(ts, /pelo_color: \{ min: 0, max: 9 \}/); assert.match(ts, /RECETA_MAX_BYTES = 200/); assert.match(rutas, /bytesReceta\(aspecto\) > RECETA_MAX_BYTES/);
-  assert.match(lee("apps/web/motor/26_presencia.js"), /peloColor: ent\(av\.pelo_color, 0, 9\)/, "el motor lee pelo_color");
+  assert.match(require("./_fuente").fuenteMotor("26_presencia.js"), /peloColor: ent\(av\.pelo_color, 0, 9\)/, "el motor lee pelo_color");
 });
 
 // ------------------------------------------------------------------------------------------------- el motor: lector v2, elección, piezas y tinte
@@ -152,14 +152,14 @@ test("motor: con silla de ruedas el VRM va sentado como en el quad (muslos adela
   const quad = AP.huesos({ piernaI: 1.15, piernaD: 1.15, brazoI: 1.05, brazoD: 1.05, agacho: 0, vehiculo: 1 }, { L: 0.9 }, null, {});
   assert.deepStrictEqual([silla.leftUpperLeg, silla.leftLowerLeg, silla.leftLowerArm], [quad.leftUpperLeg, quad.leftLowerLeg, quad.leftLowerArm]);
   assert.deepStrictEqual(silla.leftUpperArm, [-0.55, 0, -AP.BAJA], "los brazos a las ruedas");
-  const p = lee("apps/web/motor/38_presencia_compartida.js");   // C5: el dibujo de los muñecos es del componente de la presencia
+  const p = require("./_fuente").fuenteMotorJs("38_presencia_compartida.js");   // A3-6a: el talón y apps/web/src/mundos/comun/presencia.ts (sin las anotaciones de tipos)   // C5: el dibujo de los muñecos es del componente de la presencia
   assert.match(p, /outMu, o\.modo, a\.mov === "silla"\);/, "Muneco.avanza sienta también a quien lleva VRM");
   assert.ok(!/a\.mov === "silla" && !a\.vrm/.test(p));
   assert.match(p, /if \(a\.iSom >= 0\) mSombrero\.setMatrixAt\(a\.iSom, m4\);/, "con VRM se quita el sombrero del muñeco, no el apoyo");
 });
 
 test("motor: los cuerpos sin huesos de ojos no gastan VRMLookAt (mirada «ninguna»: la mirada va con la cabeza); la escala de un cuerpo es la de verdad × la altura de la receta", () => {
-  const b = lee("apps/web/motor/26b_avatares.js");
+  const b = require("./_fuente").fuenteMotorJs("26b_avatares.js");   // A3-6a: el talón y apps/web/src/mundos/comun/avatares.ts (sin las anotaciones de tipos)
   assert.match(b, /conMirada: !e\.cuerpo \|\| e\.mirada !== "ninguna"/); assert.match(b, /if \(vrm\.lookAt && inst\.conMirada\)/);
   assert.match(b, /var s = e\.cuerpo \? 1 : 1\.5 \/ Math\.max\(0\.3, yCab\)/); assert.match(b, /var s = v\.fa \|\| 1; inst\.giro\.scale\.setScalar\(s\)/);
   assert.match(b, /userData\.name/, "las piezas se buscan por el nombre original del nodo");

@@ -10,7 +10,8 @@ const { lee, ficheros, RAIZ } = require("./_util");
 const PL = lee("apps/web/plantilla.html");
 const ids = s => [...s.matchAll(/\bid="([^"]+)"/g)].map(m => m[1]);
 const IDS = ids(PL);
-const MOTOR = ficheros().filter(f => /^apps\/web\/motor\/[^/]+\.js$/.test(f)).sort().map(f => require("./_fuente").fuenteMotor(f.slice("apps/web/motor/".length))).join("\n");   // A3-6c: de un talón, también sus .ts
+// MU5-n (A3-6a): también lo migrado a apps/web/src/ (sin las pruebas): ahí crea la presencia su #presenciaGente
+const MOTOR = ficheros().filter(f => /^apps\/web\/motor\/[^/]+\.js$/.test(f) || /^apps\/web\/src\/.+(?<!\.test)\.ts$/.test(f)).sort().map(f => f.startsWith("apps/web/motor/") ? require("./_fuente").fuenteMotor(f.slice("apps/web/motor/".length)) : lee(f)).join("\n");   // A3-6c: de un talón, también sus .ts
 const css = lee("apps/web/plantilla.css");   // V12: los estilos salieron del <style> de la plantilla
 
 test("V12: la plantilla cumple la CSP estricta: sin style=\"…\" ni <style> en línea, sin Google Fonts ni otro origen en sus <link>", () => {

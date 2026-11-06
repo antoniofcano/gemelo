@@ -10,13 +10,8 @@ const { sirve, motivoSalto, lanza, ESCENARIOS, desgloseLlamadas, VENTANA_CHICA, 
 const { montaPagina, saltoPagina } = require("./_pagina");
 
 const MIDE = !!process.env.GEMELO_MIDE;
-const FUENTE = lee("apps/web/motor/26_presencia.js");
-function puro() {
-  const i = FUENTE.indexOf("// [puro:inicio]"), f = FUENTE.indexOf("// [puro:fin]");
-  assert.ok(i >= 0 && f > i, "26_presencia.js debe marcar su trozo puro con // [puro:inicio] y // [puro:fin]");
-  return new Function("\"use strict\";\n" + FUENTE.slice(i, f) + "\nreturn { PoseCodec: PoseCodec, BufferPose: BufferPose, Muneco: Muneco, Encuentro: Encuentro, Cuenta: Cuenta, Aspecto: Aspecto };")();
-}
-const { PoseCodec, BufferPose, Muneco, Encuentro, Cuenta, Aspecto } = puro();
+const FUENTE = require("./_fuente").fuenteMotor("26_presencia.js");   // el talón y sus .ts
+const { PoseCodec, BufferPose, Muneco, Encuentro, Cuenta, Aspecto } = require("./_mundos");   // MU5-n (A3-6a): la lógica pura de 26_presencia.js vive en apps/web/src/red/ (pose.ts, sala.ts) y mundos/comun/muneco.ts; el legado la ve como Mundos.<nombre>
 
 // azar con semilla (mulberry32): las pruebas dan siempre lo mismo
 function azarCon(s) { return () => { s = (s + 0x6d2b79f5) | 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
@@ -282,7 +277,7 @@ test("ir con alguien: junto a la linde de la finca, dentro (3 m de margen); y si
   const S = Encuentro.punto({ x: 100, y: 100 }, { x: 100, y: 100 }, [], EXT); assert.ok(Math.abs(S.x - 100) < 1e-9 && S.y < 100, "encima de ella: por el sur");
 });
 test("ir con alguien y minimapa: en la página, solo con la bandera; con ella, solo a quien se dibuja (de la sala, con pose, sin bloquear)", () => {
-  const M = lee("apps/web/motor/17_minimapa.js"), F = lee("apps/web/motor/38_presencia_compartida.js");
+  const M = lee("apps/web/motor/17_minimapa.js"), F = require("./_fuente").fuenteMotorJs("38_presencia_compartida.js");   // A3-6a: el talón y apps/web/src/mundos/comun/presencia.ts (sin las anotaciones de tipos)
   // C5: el minimapa no nombra a la presencia: pinta las entidades «persona» (las registra la presencia solo con su bandera) e «Ir con» es su acción «ir»
   assert.match(M, /var gente = Entidades\.lista\("persona"\);[^\n]*\n\s*if \(gente\) \{/, "el minimapa solo pinta a los demás si hay tipo «persona» (presencia activa)");
   assert.match(M, /Usables\.usa\(mejor\.id, "ir"\)/, "el segundo toque va con esa persona por su acción «ir»");
@@ -305,7 +300,7 @@ test("balizas (I4): quién está en una parcela, por su linde (HazasPuro.dentroP
   const B = require("./_fuente").fuenteMotor("19_balizas.js");   // A3-3: 19_balizas es un talón; su código está en balizas.ts
   assert.match(B, /return d\.Encuentro\(\)\.enParcela\(gente, parcelas\[k\]!\.linde, d\.HazasPuro\.dentroPoligono\);/, "la lista sale de las entidades «persona»");
   assert.match(B, /const gente = d\.Entidades\.lista\("persona"\); if \(!gente\) return null;/, "sin presencia (sin tipo «persona»), no hay lista (el aviso solo pregunta)");
-  assert.match(lee("apps/web/motor/38_presencia_compartida.js"), /lista: function \(\) \{ return puntos\(\)\.map\(/, "la lista del tipo «persona» son los puntos de la presencia (los que se dibujan)");
+  assert.match(require("./_fuente").fuenteMotorJs("38_presencia_compartida.js"), /lista: function \(\) \{ return puntos\(\)\.map\(/, "la lista del tipo «persona» son los puntos de la presencia (los que se dibujan)");
   assert.match(B, /avisoB\.txt\.textContent = textoAvisoBaliza\(k\)/, "el aviso pone los alias como texto, nunca como HTML");
   assert.match(B, /gente\.map\(esc\)/, "en la ficha (HTML), los alias escapados");
 });

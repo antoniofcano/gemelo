@@ -15,8 +15,8 @@ function trozo(fich, devuelve) {
   assert.ok(i >= 0 && f > i, fich + " debe marcar su trozo puro");
   return new Function("\"use strict\";\n" + s.slice(i, f) + "\nreturn " + devuelve + ";")();
 }
-const AP = trozo("apps/web/motor/26b_avatares.js", "AvataresPuro");
-const { Muneco, SalaPose } = trozo("apps/web/motor/26_presencia.js", "{ Muneco: Muneco, SalaPose: SalaPose }");
+const AP = require("./_mundos").AvataresPuro;   // A3-6a: en apps/web/src/mundos/comun/avatares.ts
+const { Muneco, SalaPose } = require("./_mundos");   // MU5-n (A3-6a): la lógica pura de 26_presencia.js vive en apps/web/src/red/ (pose.ts, sala.ts) y mundos/comun/muneco.ts; el legado la ve como Mundos.<nombre>
 const cerca = (a, b, e, m) => assert.ok(Math.abs(a - b) <= (e || 1e-9), (m || "") + " " + a + " ≠ " + b);
 
 test("cupo: escritorio 6, móvil 3, Quest 3; con gafas según el nivel de VR_PERFILES (3/2/1/0)", () => {
@@ -135,8 +135,13 @@ test("parpadeo: cierres de 0,15 s cada 2-6 s, del 0 al 1 y vuelta", () => {
 
 test("motor: @pixiv/three-vrm con versión exacta, pedido con import() solo dentro de Avatares (con presencia); Vite la resuelve", () => {
   const p = JSON.parse(lee("apps/web/package.json")); assert.strictEqual(p.dependencies["@pixiv/three-vrm"], "3.5.5");
-  const f = lee("apps/web/motor/26b_avatares.js");
-  assert.match(f, /import\("@pixiv\/three-vrm"\)/); assert.ok(f.indexOf('import("@pixiv/three-vrm")', f.indexOf("[puro:fin]")) > f.indexOf("if (!Presencia.activo()) return null;"), "solo con presencia");
+  const f = require("./_fuente").fuenteMotorJs("26b_avatares.js");   // A3-6a: el talón y apps/web/src/mundos/comun/avatares.ts (sin las anotaciones de tipos)
+  // A3-6a: el import() se queda escrito en el talón (cargaVrm, para que Vite lo trocee); solo lo llama lib(), dentro de creaAvatares, que el manifiesto monta solo con presencia activa
+  assert.match(lee("apps/web/motor/26b_avatares.js"), /cargaVrm: function \(\) \{ return Promise\.all\(\[import\("@pixiv\/three-vrm"\), import\("three\/addons\/loaders\/GLTFLoader\.js"\)\]\); \}/);
+  const ts = lee("apps/web/src/mundos/comun/avatares.ts");
+  assert.ok(ts.indexOf("pideLib = dp.cargaVrm()") > ts.indexOf("export function creaAvatares("), "la librería, solo dentro de los avatares montados");
+  assert.match(ts, /if \(!P\.activo\(\)\) \{[^]*?return \{ estado: function \(\) \{ return null; \}, libera: function \(\) \{\} \};\s*\}\s*return creaAvatares\(dp, n, P\);/, "solo con presencia");
+  assert.ok(!/import\(/.test(ts.replace(/\/\/.*$/gm, "").replace(/\/\*\*[^]*?\*\//g, "")), "el .ts no importa nada a destiempo: la librería llega por cargaVrm");
   assert.ok(!/fetch\("http|fetch\('http|https?:\/\//.test(f.replace(/\/\/.*$/gm, "")), "el motor no pide a otros hosts");
   assert.match(lee("apps/web/vite.config.js"), /@pixiv\\\/three-vrm/);
 });
@@ -340,7 +345,7 @@ test("conBoca: a ≤ 12 m fuera de VR; con gafas, solo escalones 0-1 y a ≤ 8 m
 });
 
 test("motor: la boca escucha «voz:habla», usa la expresión «aa» y no analiza ni graba audio", () => {
-  const m = lee("apps/web/motor/26b_avatares.js");
+  const m = require("./_fuente").fuenteMotorJs("26b_avatares.js");   // A3-6a: el talón y apps/web/src/mundos/comun/avatares.ts (sin las anotaciones de tipos)
   assert.match(m, /n\.on\("voz:habla"/); assert.match(m, /setValue\("aa"/); assert.match(m, /escucha: \["presencia:activada", "voz:habla"\]/);
   assert.ok(!/AudioContext|MediaRecorder|AnalyserNode/.test(m), "no analiza ni graba audio");
 });

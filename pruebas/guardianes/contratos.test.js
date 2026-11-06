@@ -1,6 +1,6 @@
 "use strict";
 const test = require("node:test"), assert = require("node:assert");
-const { RAIZ, fixture, lee, fs, path } = require("./_util"), { fuenteMotor } = require("./_fuente");
+const { RAIZ, fixture, lee, fs, path } = require("./_util"), { fuenteMotor, TS_DE } = require("./_fuente");
 const { erroresTesela, enHuella } = require("./_tesela");
 const Ajv2020 = require("ajv/dist/2020").default;
 const contratoModulos = require(path.join(RAIZ, "pruebas", "contrato_modulos.js"));
@@ -208,10 +208,11 @@ function claves(fuente, ini) {
   }
   return out;
 }
-function retornoDe(fuente, nombre) {
-  const ini = fuente.indexOf("var " + nombre + " = (function");
-  assert.ok(ini >= 0, "no encuentro «var " + nombre + " = (function»");
-  const fin = fuente.indexOf("\n  })();", ini);
+function retornoDe(fuente, nombre, ts) {
+  // A3-6a: en TypeScript, el mismo objeto de una IIFE movida tal cual (`export const NOMBRE: any = (function () { … })();`, sin la sangría del motor)
+  const pre = ts ? "export const " + nombre + ": any = (function" : "var " + nombre + " = (function", ini = fuente.indexOf(pre);
+  assert.ok(ini >= 0, "no encuentro «" + pre + "»");
+  const fin = fuente.indexOf(ts ? "\n})();" : "\n  })();", ini);
   const ret = fuente.lastIndexOf("return {", fin);
   assert.ok(ret > ini, "no encuentro el return de " + nombre);
   return claves(fuente, ret);
@@ -239,9 +240,12 @@ for (const [nombre, def] of Object.entries(IFACES.interfaces)) {
       const t = fuenteMotor(def.modulo);
       assert.match(t, new RegExp("^  var " + def.de + " = (?:Nucleo|Mundos)\\." + def.fabricaDe + "\\(", "m"), def.modulo + " (talón) debe hacer var " + def.de + " = Mundos." + def.fabricaDe + "(…)");
       assert.match(t, new RegExp("[ ,]" + nombre + " = " + def.de + "\\." + nombre + "[,;]"), def.modulo + " (talón) debe sacar " + nombre + " = " + def.de + "." + nombre);
-    } else if (def.fuente) {   // migrada a TypeScript (A1-10): el contrato lo cumple la fábrica de apps/web/src/, y el módulo del motor es un talón que la llama
+    } else if (def.fuente && def.fabrica) {   // migrada a TypeScript (A1-10): el contrato lo cumple la fábrica de apps/web/src/, y el módulo del motor es un talón que la llama
       real = retornoDeFabrica(lee(def.fuente), def.fabrica).sort();
       assert.match(fuenteMotor(def.modulo), new RegExp("^  var " + nombre + " = (?:Nucleo|Mundos)\\." + def.fabrica + "\\(", "m"), def.modulo + " (talón) debe hacer var " + nombre + " = Nucleo|Mundos." + def.fabrica + "(…)");   // A3-1b: los componentes del exterior vienen de Mundos
+    } else if (def.fuente) {   // A3-6a: la IIFE movida a TypeScript tal cual; el módulo del motor es su talón (la marca apunta a ese .ts)
+      real = retornoDe(lee(def.fuente), nombre, true).sort();
+      assert.ok([].concat(TS_DE[def.modulo] || []).includes(def.fuente), def.modulo + " debe ser el talón de " + def.fuente + " (TS_DE de _fuente.js)");
     } else real = retornoDe(lee("apps/web/motor/" + def.modulo), nombre).sort();
     assert.deepStrictEqual(real, def.miembros.slice().sort(), "cambia contratos/interfaces.json y doc/sistema/CONTRATOS.md en el mismo commit");
   });

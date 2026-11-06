@@ -248,6 +248,7 @@ Exterior, molino y bodega en un solo PWA, cada uno con su sala de red; TypeScrip
 | A3-3 | Nube y paisaje (`05`, `18`, `19`, `44`, `44b`, `50`) a TypeScript; L1-01, L2-02, L1-02, L2-05 | MU5-0 | ligera · sonnet | 2 d | ✅ 2026-11-06: TSL parciales de `nube-lidar` y `lindes-acerca` (MATERIALES §10); guardián `nube.test.js`; legado 14.517 |
 | A3-4 | Cielo, tiempo y suelo (`15`, `21`, `23`, `11`, `20`) a TypeScript; L2-05, L2-11, L8-05, L1-10 | MU5-0 | ligera · opus | 2 d | ✅ 2026-11-06: `15_tiempo` en ocho ficheros; TSL de `parcheTiempo`; legado 12.605 |
 | A3-5 | Vida (`16`, `16b`, `22`, `22b`, `25`, `52`, `54`) a TypeScript; L2-05, L2-11 | MU5-0 | ligera · sonnet | 1½ d | ✅ 2026-11-06: TSL de `estela`, `huella` y `polvo`; legado 13.603 |
+| A3-6a | Presencia y red (`37`, `26`, `38`, `26b`, `31c`) a TypeScript, de todo mundo; L2-09 | MU5-0 | ligera · opus | 2 d | ✅ 2026-11-07: `mundos: "todos"`; `red/` y `mundos/comun/`; legado 10.343 |
 | MU5-0 | Fábrica `nucleo/materiales`: da el material clásico y, con `?renderer=webgpu`, el TSL; los estándar valen en los dos sin cambio | MU2-7 | ligera · opus | 1 d | ✅ 2026-11-06: `nucleo/materiales.ts`, 22 de 30 sombreadores por la fábrica, 8 fuera con trinquete; receta en MATERIALES §5; legado 18.707 |
 
 ## Tablero de tareas (desde el 2026-10-29)

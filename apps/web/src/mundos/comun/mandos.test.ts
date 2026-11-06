@@ -115,7 +115,7 @@ describe("mandos-vr: el ciclo de vida por sesión (L2-06)", () => {
   it("el manifiesto: el de siempre (bandera ?mandos, sin fases ni dibujo fuera de VR) y de todos los mundos", () => {
     const m = monta(false), d = manifiestoMandos(m.deps);
     expect(d.id).toBe("mandos-vr"); expect(d.bandera).toEqual({ defecto: true, url: "mandos" }); expect(d.fases).toEqual({});
-    expect(d.mundos).toEqual(["exterior", "molino", "bodega", "vacio"]);
+    expect(d.mundos).toBe("todos");
     expect(d.eventos).toEqual({ escucha: ["vr:rig-monta", "vr:rig-libera"], emite: [] });
   });
 });

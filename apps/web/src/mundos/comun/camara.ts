@@ -4,7 +4,6 @@
 // Componente «camara» de TODOS los mundos (la vista y sus gestos son de todo mundo). Su libera() quita las escuchas del lienzo, de los botones de modo, de las capas y de los deslizadores.
 // Código movido tal cual (solo se tipan los parámetros); lo que el legado reescribe o declara después (paseando, kcor, IrA, parcelaSel, elegirParcela, Ajustes) entra por función.
 import type { Manifiesto } from "../../nucleo/componentes.ts";
-import { TODO_MUNDO } from "./tipos.ts";
 import type { T } from "./tipos.ts";
 
 export const ID_CAMARA = "camara-orbital";
@@ -71,6 +70,6 @@ export type Camara = ReturnType<typeof creaCamara>;
 export function manifiestoCamara(api: { libera(): void }): Manifiesto {
   return {
     id: ID_CAMARA, version: 1, consume: [], expone: [], eventos: { escucha: [], emite: [] }, bandera: { defecto: true }, presupuesto: { llamadas: 0, triangulos: 0 },
-    fases: {}, mundos: TODO_MUNDO, monta: function () { return api; }, libera: function () { api.libera(); }
+    fases: {}, mundos: "todos", monta: function () { return api; }, libera: function () { api.libera(); }
   };
 }

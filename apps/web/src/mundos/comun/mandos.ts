@@ -8,11 +8,10 @@
 // Presupuesto (regla 6): sin sombras (ni proyectan ni reciben), y todo lo de GPU se libera al salir de la sesión (libera()).
 // Las fábricas escuchan a un «apoderado» (un EventDispatcher por mando y sesión), no a los grupos de three, que viven toda la vida de la página: así cada sesión empieza limpia y no se
 // acumulan escuchas. Los grupos reales (grip y mano) solo los escucha este módulo, una vez.
-// Componente «mandos-vr» de TODOS los mundos (TODO_MUNDO): la VR es de todo mundo y tiene que seguir al entrar en un interior. Su libera() suelta la sesión si la hay (modelos, cajas,
+// Componente «mandos-vr» de TODOS los mundos (mundos: "todos"): la VR es de todo mundo y tiene que seguir al entrar en un interior. Su libera() suelta la sesión si la hay (modelos, cajas,
 // relojes) y quita las escuchas de los grupos de three y el gancho de depuración (window.__mandos).
 import type { ContextoComponente, Manifiesto } from "../../nucleo/componentes.ts";
 import type { Materiales } from "../../nucleo/materiales.ts";
-import { TODO_MUNDO } from "./tipos.ts";
 import type { T } from "./tipos.ts";
 
 export const ID_MANDOS = "mandos-vr";
@@ -206,7 +205,7 @@ export function manifiestoMandos(d: DepsMandos): Manifiesto {
     bandera: { defecto: true, url: "mandos" },
     presupuesto: { llamadas: 0, triangulos: 0 },   // sin sesión VR no dibuja nada; en sesión, el modelo del mando (o la mano) por mando, sin sombras: medido en Quest NO (solo con el WebXR simulado, prueba_vr.js)
     fases: {},
-    mundos: TODO_MUNDO,
+    mundos: "todos",
     monta: function (n) { api = creaMandos(d, n); return api; },
     libera: function () { if (api) api.suelta(); api = null; }
   };

@@ -61,6 +61,6 @@ describe("paseo", () => {
   });
   it("el componente es de todos los mundos y solo de ciclo de vida", () => {
     const c = monta().api.componente!;
-    expect(c.id).toBe(ID_PASEO); expect(c.mundos).toEqual(["exterior", "molino", "bodega", "vacio"]); expect(c.fases).toEqual({});
+    expect(c.id).toBe(ID_PASEO); expect(c.mundos).toBe("todos"); expect(c.fases).toEqual({});
   });
 });

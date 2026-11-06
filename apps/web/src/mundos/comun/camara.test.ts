@@ -40,6 +40,6 @@ describe("cámara orbital", () => {
   });
   it("el componente es de todos los mundos y solo de ciclo de vida", () => {
     const c = manifiestoCamara(monta().api);
-    expect(c.id).toBe(ID_CAMARA); expect(c.mundos).toEqual(["exterior", "molino", "bodega", "vacio"]); expect(c.fases).toEqual({});
+    expect(c.id).toBe(ID_CAMARA); expect(c.mundos).toBe("todos"); expect(c.fases).toEqual({});
   });
 });

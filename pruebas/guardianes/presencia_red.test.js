@@ -6,13 +6,7 @@
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
 
-const FUENTE = lee("apps/web/motor/26_presencia.js");
-function puro() {
-  const i = FUENTE.indexOf("// [puro:inicio]"), f = FUENTE.indexOf("// [puro:fin]");
-  assert.ok(i >= 0 && f > i);
-  return new Function("\"use strict\";\n" + FUENTE.slice(i, f) + "\nreturn { PoseCodec: PoseCodec, BufferPose: BufferPose, SalaPose: SalaPose, Chat: Chat };")();
-}
-const { PoseCodec, SalaPose, Chat } = puro();
+const { PoseCodec, SalaPose, Chat } = require("./_mundos");   // MU5-n (A3-6a): la lógica pura de 26_presencia.js vive en apps/web/src/red/ (pose.ts, sala.ts) y mundos/comun/muneco.ts; el legado la ve como Mundos.<nombre>
 
 const pose = (x, z, seq = 0, t = 0) => ({ tipo: 1, seq, t, cab: { p: [x, 1.6, z], q: [0, 0, 0, 1] }, izq: null, der: null });
 const bytes = (x, z, seq, t) => PoseCodec.codifica(pose(x, z, seq, t));
@@ -110,16 +104,16 @@ test("chat: UTF-8 de como mucho 280 caracteres, sin caracteres de control ni de 
 
 test("el motor solo pide livekit-client cuando alguien se une a una sala (la presencia, con ?presencia=red) y la versión está fijada en apps/web/package.json", () => {
   // C5: la conexión es del componente de la red (37_red.js, el único que nombra livekit-client); la presencia (38_presencia_compartida.js) solo usa su api
-  const RED = lee("apps/web/motor/37_red.js"), PRES = lee("apps/web/motor/38_presencia_compartida.js");
+  const RED = require("./_fuente").fuenteMotor("37_red.js"), PRES = require("./_fuente").fuenteMotorJs("38_presencia_compartida.js");   // A3-6a: el talón y apps/web/src/mundos/comun/presencia.ts (sin las anotaciones de tipos)
   const motor = require("fs").readdirSync(require("path").join(__dirname, "..", "..", "apps", "web", "motor")).filter(f => f.endsWith(".js"));
   assert.deepStrictEqual(motor.filter(f => /livekit-client"\)/.test(lee("apps/web/motor/" + f))), ["37_red.js"], "solo la red importa livekit-client");
   assert.strictEqual((RED.replace(/^\s*\/\/.*$/gm, "").match(/import\("livekit-client"\)/g) || []).length, 1, "un solo import (fuera de los comentarios)");
   assert.match(RED, /carga: function \(\) \{ return import\("livekit-client"\); \}/, "el import es el cargador de la red: se llama la primera vez que una sala se une (carga() dentro de une())");
-  assert.ok(RED.indexOf("return carga().then(") > RED.indexOf("function une(cred, opc)"), "carga() va dentro de une()");
+  assert.ok(RED.indexOf("return carga().then(") > RED.search(/function une\(cred\b/), "carga() va dentro de une()");   // A3-6a: en el .ts, con sus tipos
   assert.match(PRES, /\[\?&\]presencia=\(sim\|red\)\\b/, "la bandera decide la variante");
   assert.ok(PRES.indexOf("SR.une(") > PRES.indexOf("async function conecta"), "la presencia solo se une en conecta(), que solo llama iniciaRed()");
   assert.match(PRES, /sala\.publica\("pose", e\.bytes, op\)/); assert.match(PRES, /var op = \{ fiable: false \};/); assert.match(PRES, /sala\.publica\("chat", Chat\.codifica\(txt\), \{ fiable: true \}\)/);
-  assert.match(RED, /var op = \{ reliable: !!opc\.fiable, topic: tema \}; if \(opc\.destinos\) op\.destinationIdentities = opc\.destinos;/, "la red pasa fiable/tema/destinos a LiveKit tal cual");
+  assert.match(RED, /var op(?:: any)? = \{ reliable: !!opc\.fiable, topic: tema \}; if \(opc\.destinos\) op\.destinationIdentities = opc\.destinos;/, "la red pasa fiable/tema/destinos a LiveKit tal cual");
   const p = JSON.parse(lee("apps/web/package.json"));
   assert.match(p.dependencies["livekit-client"], /^\d+\.\d+\.\d+$/, "versión exacta (regla 12)");
   assert.ok(!/innerHTML/.test(PRES) && !/innerHTML/.test(RED), "lo que llega de la sala nunca se pone como HTML");

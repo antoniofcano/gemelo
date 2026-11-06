@@ -232,6 +232,6 @@ describe("VR: libera() suelta de verdad", () => {
   });
   it("el componente es de todos los mundos y solo de ciclo de vida", () => {
     const m = monta(), c = m.vr.componente;
-    expect(c.id).toBe("vr"); expect(c.mundos).toEqual(["exterior", "molino", "bodega", "vacio"]); expect(c.fases).toEqual({});
+    expect(c.id).toBe("vr"); expect(c.mundos).toBe("todos"); expect(c.fases).toEqual({});
   });
 });

@@ -30,6 +30,6 @@ describe("palanca táctil", () => {
   });
   it("el componente es de todos los mundos y solo de ciclo de vida", () => {
     const c = manifiestoPalanca(monta("").api);
-    expect(c.id).toBe(ID_PALANCA); expect(c.mundos).toEqual(["exterior", "molino", "bodega", "vacio"]); expect(c.fases).toEqual({});
+    expect(c.id).toBe(ID_PALANCA); expect(c.mundos).toBe("todos"); expect(c.fases).toEqual({});
   });
 });

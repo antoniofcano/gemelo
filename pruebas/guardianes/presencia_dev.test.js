@@ -157,7 +157,8 @@ test("e2e: presencia con LiveKit real (dos Chrome, mismo hogar en dos aparatos, 
         const cierra = async s => { const i = ctxs.indexOf(s.ctx); if (i >= 0) ctxs.splice(i, 1); await s.ctx.close(); };
         // una página LIGERA (la portada, sin WebGL) con el MISMO livekit-client 2.22.4 del motor, el mismo token de la api y
         // la misma pose del contrato a 10 Hz: mide LiveKit + navegador sin el coste de dibujar el mundo con SwiftShader
-        const PURO = (() => { const F = lee("apps/web/motor/26_presencia.js"); return "\"use strict\";\n" + F.slice(F.indexOf("// [puro:inicio]"), F.indexOf("// [puro:fin]")) + "\nreturn { PoseCodec: PoseCodec };"; })();
+        // MU5-n (A3-6a): el códec vive en apps/web/src/red/pose.ts; a la página va su trozo puro con los tipos quitados (stripTypeScriptTypes de Node, el mismo que carga los .ts)
+        const PURO = (() => { const F = require("node:module").stripTypeScriptTypes(lee("apps/web/src/red/pose.ts")); return "\"use strict\";\n" + F.slice(F.indexOf("// [puro:inicio]"), F.indexOf("// [puro:fin]")).replace(/^export const /gm, "const ") + "\nreturn { PoseCodec: PoseCodec };"; })();
         const ligera = async cookie => {
           const s = await abre(cookie, null);
           await s.ctx.route(base + "/__p4/livekit-client.mjs", r => r.fulfill({ status: 200, contentType: "text/javascript", body: LK_SRC }));

@@ -11,7 +11,7 @@
 //   este fichero         el estado VRX, la viñeta de confort, la locomoción de cada fotograma (vrActualiza) y el componente.
 // Lo puro (confort, medidas de las fichas, Gente, «sessiongranted») está en vr-puros.ts; los tipos (DepsVr, CtxVr), en vr-tipos.ts. El código es el de 29_vr movido tal cual (lo
 // repartió un generador por líneas; solo se tiparon los parámetros y lo que el legado reescribe pasó a función: paseando(), primera(), persona(), teclas(), gm…).
-// Es un componente de TODOS los mundos (TODO_MUNDO): la VR tiene que seguir al entrar en un interior; se mueve por el mundo activo (gm.suelo, gm.dentro, gm.obstaculo; MU2-4) y su
+// Es un componente de TODOS los mundos (mundos: "todos"): la VR tiene que seguir al entrar en un interior; se mueve por el mundo activo (gm.suelo, gm.dentro, gm.obstaculo; MU2-4) y su
 // near/far es el del Ambiente del mundo activo (aplicaCamara; MU2-7). Lo registra 90_final.js (como Vida: el legado la usa por su nombre desde que se monta). Su libera() suelta de verdad
 // lo que crea una vez por página (los rayos, el arco y su marca, la línea, el velo, la viñeta y las tres láminas con sus texturas) y quita sus escuchas (los mandos, el botón,
 // «sessiongranted», el Bus, el presentador, Configuración); si hay una sesión abierta, la termina antes.
@@ -20,7 +20,6 @@ import type { DefMaterial, MaterialMin } from "../../nucleo/materiales.ts";
 import { aplicaCamara } from "../../nucleo/ambiente.ts";
 import { BuclePuro } from "../../nucleo/bucle.ts";
 import { FundidoPuro, creaFundido } from "../../nucleo/fundido.ts";
-import { TODO_MUNDO } from "./tipos.ts";
 import type { T } from "./tipos.ts";
 import { VrConfortPuro, VrFichaPuro } from "./vr-puros.ts";
 import { creaVrRig } from "./vr-rig.ts";
@@ -182,7 +181,7 @@ export function creaVr(d: DepsVr) {
   var componente: Manifiesto = {
     id: ID_VR, version: 1, consume: ["renderer", "scene", "camera"], expone: [],
     eventos: { escucha: [], emite: [] },
-    bandera: { defecto: true }, presupuesto: { llamadas: 0, triangulos: 0 }, fases: {}, mundos: TODO_MUNDO,
+    bandera: { defecto: true }, presupuesto: { llamadas: 0, triangulos: 0 }, fases: {}, mundos: "todos",
     monta: function () { monta(); return { libera: libera }; }, libera: function () { libera(); }
   };
   return {

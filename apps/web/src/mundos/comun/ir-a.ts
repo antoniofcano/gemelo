@@ -8,7 +8,6 @@
 // geometría y su material. Código movido tal cual; lo que el legado reescribe o declara después (paseando, teclas, enQuad, enDron, VRX, Ajustes, gm) entra por función.
 import type { Manifiesto } from "../../nucleo/componentes.ts";
 import { IrAPuro } from "../../nucleo/locomocion.ts";
-import { TODO_MUNDO } from "./tipos.ts";
 import type { T } from "./tipos.ts";
 
 export const ID_IR_A = "ir-a";
@@ -70,7 +69,7 @@ export type IrA = ReturnType<typeof creaIrA>;
 export function manifiestoIrA(api: IrA): Manifiesto {
   return {
     id: ID_IR_A, version: 1, consume: ["scene"], expone: [], eventos: { escucha: [], emite: [] }, bandera: { defecto: true }, presupuesto: { llamadas: 0, triangulos: 0 },   // solo ciclo de vida: la línea (1 llamada, solo con destino) va en el presupuesto de la escena (pruebas/presupuesto.json)
-    fases: {}, mundos: TODO_MUNDO,
+    fases: {}, mundos: "todos",
     monta: function () { api.monta(); return api; }, libera: function () { api.libera(); }
   };
 }

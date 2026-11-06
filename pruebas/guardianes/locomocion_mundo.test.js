@@ -17,8 +17,8 @@ const { ficheros, lee } = require("./_util"), { fuenteMotor } = require("./_fuen
 
 const MODULOS = ["12_paseo.js", "12b_llegada.js", "12c_ir_a.js", "16_vida.js", "29_vr.js"];
 // A3-6c (MU5-n): los que viven en mundos/comun/ (29_vr, 12c_ir_a…) se analizan con su talón y el JavaScript que sale de sus .ts (_fuente.js: sin tipos), sin sus import
-const { TS_DE, comoJs } = require("./_fuente");
-const enComun = m => [].concat(TS_DE[m] || []).some(f => f.includes("/mundos/comun/"));
+const { TS_DE, COMO_JS } = require("./_fuente");
+const enComun = m => [].concat(TS_DE[m] || []).some(f => COMO_JS.test(f));   // los de A3-6c, que _fuente.js lee como JavaScript
 const textoDe = (f, nombre) => enComun(nombre) ? fuenteMotor(nombre).replace(/^import .*$/gm, "") : lee(f);
 const ACORN = MODULOS;
 // Lo que se queda en el legado a propósito. `en`: la función que lo contiene (el nombre de su declaración, de su variable o de lo que se le asigna);

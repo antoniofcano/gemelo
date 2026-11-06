@@ -7,7 +7,6 @@
 // mandos de la vida son intermediarios que preguntan en cada llamada. Código movido tal cual (solo se tipan los parámetros).
 // Ilustrativo (regla 5): el muñequito no es una persona medida.
 import type { Manifiesto } from "../../nucleo/componentes.ts";
-import { TODO_MUNDO } from "./tipos.ts";
 import type { T } from "./tipos.ts";
 
 export const ID_PASEO = "paseo";
@@ -189,7 +188,7 @@ export type Paseo = ReturnType<typeof creaPaseo>;
 export function manifiestoPaseo(api: { libera(): void }): Manifiesto {
   return {
     id: ID_PASEO, version: 1, consume: ["scene"], expone: [], eventos: { escucha: [], emite: [] }, bandera: { defecto: true }, presupuesto: { llamadas: 11, triangulos: 520 },
-    fases: {}, mundos: TODO_MUNDO,
+    fases: {}, mundos: "todos",
     monta: function () { return api; }, libera: function () { api.libera(); }
   };
 }

@@ -98,8 +98,22 @@ export { ID_PERROS, angCorto, creaPerros, manifiestoPerros } from "./exterior/pe
 export type { DepsPerros, Perros } from "./exterior/perros.ts";
 export { ID_VIDA, creaVida } from "./exterior/vida.ts";
 export type { DepsVida, EstadoVida, Vida } from "./exterior/vida.ts";
+// A3-6a (MU5-n): la red, la presencia y los avatares, componentes de TODO mundo (mundos: "todos", COMPONENTES §3.2). Lo que es red (sin three) vive en red/ y entra aquí
+// para que el legado lo vea como Mundos.<nombre>; lo que dibuja, en mundos/comun/ (no es un mundo: lo usan todos y no importa de ninguno).
+export * from "../red/index.ts";
+// A3-6a: el muñeco de los demás, «Ir con alguien» y la cuenta del dibujo de la gente (antes el trozo puro de 26_presencia.js), de todo mundo.
+export { Cuenta, Encuentro, Muneco, creaSitioJunto } from "./comun/muneco.ts";
+export type { DepsSitioJunto } from "./comun/muneco.ts";
+// A3-6a: la presencia compartida (antes 38_presencia_compartida.js), de todo mundo.
+export { ID_PRESENCIA, MATERIAL_NOMBRES, creaPresencia, defNombres, manifiestoPresencia } from "./comun/presencia.ts";
+export type { DepsPresencia, Presencia } from "./comun/presencia.ts";
+// A3-6a: los avatares VRM (antes 26b_avatares.js), de todo mundo.
+export { AvataresPuro, ID_AVATARES, MATERIAL_VRM_FUNDIDO, creaAvatares, defVrmFundido, manifiestoAvatares, parcheVrmFundido } from "./comun/avatares.ts";
+export type { DepsAvatares } from "./comun/avatares.ts";
+// A3-6a: el menú de muñeca en VR (antes 31c_muneca.js), componente de todo mundo.
+export { ID_MUNECA, MunecaPuro, creaMuneca, manifiestoMuneca } from "./comun/muneca.ts";
+export type { ContextoMuneca, DepsMuneca } from "./comun/muneca.ts";
 // A3-6c (MU5-n): la VR y la locomoción, componentes de TODOS los mundos (mundos/comun/). Cada uno, con su libera() de verdad.
-export { TODO_MUNDO } from "./comun/tipos.ts";
 export { ID_MANDOS, creaMandos, manifiestoMandos } from "./comun/mandos.ts";
 export type { DepsMandos, LibMandos, Mandos } from "./comun/mandos.ts";
 export { VrConfortPuro, VrFichaPuro, VrGentePuro, VrConcedidaPuro } from "./comun/vr-puros.ts";
