@@ -153,7 +153,7 @@ describe("paisaje (componente del exterior)", () => {
   it("sus materiales salen de la fábrica con dueño: el cauce por define + crea («arroyo», el ShaderMaterial de siempre) y los demás como estándar; matTronco es el mismo objeto antes y después de liberar", () => {
     const { api, deps } = monta(), F = deps.Materiales;
     expect(MATERIAL_ARROYO).toBe("arroyo");
-    expect(F.cobertura()["arroyo"]).toEqual({ clasico: true, tsl: false, usado: 1 }); expect(F.inventario()["arroyo"]).toEqual({ tipo: "define", n: 1 });
+    expect(F.cobertura()["arroyo"]).toEqual({ clasico: true, tsl: true, usado: 1 }); expect(F.inventario()["arroyo"]).toEqual({ tipo: "define", n: 1 });
     expect(F.duenos()).toEqual({ "paisaje-lidar": 5 + 2 + 1 });   // matMuro, matPoste, matCable, matTronco, matCopaArb + un tejado por edificio + el cauce
     const cauce = api.grupo().children.filter((o: { geometry?: { attributes: { aV?: unknown } } }) => o.geometry && o.geometry.attributes.aV)[0].material;
     // el clásico es el de siempre: el mismo ShaderMaterial que new THREE.ShaderMaterial(opciones), con los uniformes por referencia y la clave de programa de three
@@ -167,6 +167,26 @@ describe("paisaje (componente del exterior)", () => {
     const t = api.matTronco; expect(t.isMeshLambertMaterial).toBe(true);
     api.libera(); expect(F.duenos()).toEqual({}); api.monta();
     expect(api.matTronco).toBe(t); expect(F.inventario()["arroyo"]).toEqual({ tipo: "define", n: 2 }); expect(F.duenos()).toEqual({ "paisaje-lidar": 8 });
+  });
+
+  it("la variante TSL del cauce (apagada): solo con el renderizador nuevo; con three/webgpu y three/tsl de verdad se construye un MeshBasicNodeMaterial con el estado de dibujo del clásico y su colorNode", async () => {
+    const rutaW = "three/webgpu", rutaT = "three/tsl";   // por variable: three no trae tipos
+    const W = await import(/* @vite-ignore */ rutaW as string), TSL = await import(/* @vite-ignore */ rutaT as string);
+    const nuevo = { tipo: "nuevo", pedido: "nuevo" }, clasico = { tipo: "clasico", pedido: "" };
+    const uni = { uT: { value: 3 }, uAgua: { value: 0.5 }, uLuz: { value: 0.8 }, uArena: { value: new W.Color(0xa8977a) } };
+    const opc = { uniforms: uni, transparent: true, depthWrite: false, side: W.DoubleSide, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 };
+    // sin renderizador nuevo (hoy, siempre): el clásico, aunque haya nodos
+    const hoy = creaMateriales({ THREE: THREE as unknown as ThreeMin, render: clasico, nodos: () => ({ THREE: W, TSL }) });
+    hoy.define(MATERIAL_ARROYO, DEF_ARROYO);
+    expect(hoy.ruta(MATERIAL_ARROYO)).toBe("clasico"); expect((hoy.crea(MATERIAL_ARROYO, opc) as { isShaderMaterial?: boolean }).isShaderMaterial).toBe(true);
+    // con él y la variante: el TSL
+    const F = creaMateriales({ THREE: THREE as unknown as ThreeMin, render: nuevo, nodos: () => ({ THREE: W, TSL }) });
+    F.define(MATERIAL_ARROYO, DEF_ARROYO);
+    expect(F.ruta(MATERIAL_ARROYO)).toBe("tsl"); expect(F.cobertura()[MATERIAL_ARROYO]).toMatchObject({ clasico: true, tsl: true });
+    const m = F.crea(MATERIAL_ARROYO, opc) as { isNodeMaterial: boolean; isMeshBasicNodeMaterial: boolean; colorNode: { isNode?: boolean }; transparent: boolean; depthWrite: boolean; side: number; polygonOffset: boolean; polygonOffsetFactor: number; fog: boolean; toneMapped: boolean; uniforms?: unknown };
+    expect(m.isNodeMaterial).toBe(true); expect(m.isMeshBasicNodeMaterial).toBe(true); expect(m.colorNode.isNode).toBe(true);
+    expect(m.transparent).toBe(true); expect(m.depthWrite).toBe(false); expect(m.side).toBe(W.DoubleSide); expect(m.polygonOffset).toBe(true); expect(m.polygonOffsetFactor).toBe(-3); expect(m.fog).toBe(false); expect(m.toneMapped).toBe(false);
+    expect(m.uniforms).toBeUndefined();   // no es un ShaderMaterial: los uniformes que mueve actualizaPaisaje (opc.uniforms) los relee el nodo en cada objeto
   });
 
   it("el manifiesto vale, es de los mundos [exterior], y su libera suelta de verdad", () => {

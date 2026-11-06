@@ -59,6 +59,26 @@ export const DEF_ARROYO: DefMaterial<OpcArroyo> = {
   clasico: function (o, c) {
     const Sombreador = c.THREE["ShaderMaterial"] as new (opc: unknown) => MaterialMin;
     return new Sombreador({ ...o, vertexShader: VS_ARROYO, fragmentShader: FS_ARROYO });
+  },
+  // MU5-n, tercer commit: la variante TSL, APAGADA (solo con el WebGPURenderer, que hasta MU6 no existe; nadie la usa hoy). El mismo cálculo que el fragmento (el borde del
+  // cauce, el lecho de arena con ruido por celda, el agua que ensancha con uAgua y fluye con uT, la luz del día) escrito en nodos, con los MISMOS uniformes que mueve
+  // actualizaPaisaje (se releen en cada objeto, como el ejemplo de la fábrica), el estado de dibujo del clásico y sin niebla. El sombreador de vértices no hace falta: los
+  // atributos aV y aU entran por attribute(). NO se ha comparado con el clásico dibujado (las capturas son de MU6): es la misma cuenta, no una equivalencia comprobada
+  tsl: function (o, c) {
+    const Basico = c.THREE["MeshBasicNodeMaterial"] as new (opc: unknown) => MaterialMin & { colorNode: unknown };
+    const { attribute, uniform, float, vec2, vec3, vec4, smoothstep, mix, floor, fract, sin, dot, abs, step, sRGBTransferEOTF } = c.TSL as Record<string, any>;   // eslint-disable-line @typescript-eslint/no-explicit-any
+    const u = o.uniforms;
+    const uT = uniform(0).onObjectUpdate(function () { return u.uT.value; }), uAgua = uniform(0).onObjectUpdate(function () { return u.uAgua.value; });
+    const uLuz = uniform(1).onObjectUpdate(function () { return u.uLuz.value; }), uArena = uniform(u.uArena.value).onObjectUpdate(function () { return u.uArena.value; });
+    const vV = attribute("aV", "float"), vU = attribute("aU", "float");
+    const hh = function (p: unknown) { return fract(sin(dot(p, vec2(127.1, 311.7))).mul(43758.5453)); };
+    const borde = smoothstep(1.0, 0.62, abs(vV)), lecho = uArena.mul(mix(0.72, 1.12, hh(floor(vec2(vU.mul(1.4), vV.mul(7.0))))));
+    const anchoA = uAgua.mul(0.78), agua = smoothstep(anchoA.add(0.12), anchoA.sub(0.12), abs(vV)).mul(step(0.01, uAgua));
+    const flujo = sin(vU.mul(2.2).sub(uT.mul(3.4)).add(vV.mul(5.0))).mul(0.5).add(0.5);
+    const colA = sRGBTransferEOTF(vec4(mix(vec3(0.16, 0.36, 0.5), vec3(0.6, 0.8, 0.9), flujo.mul(flujo).mul(0.55)), float(1.0))).rgb;
+    const m = new Basico({ transparent: o.transparent, depthWrite: o.depthWrite, side: o.side, polygonOffset: o.polygonOffset, polygonOffsetFactor: o.polygonOffsetFactor, polygonOffsetUnits: o.polygonOffsetUnits, fog: false, toneMapped: false });
+    m.colorNode = vec4(mix(lecho, colA, agua).mul(uLuz), borde.mul(mix(0.72, 0.88, agua)));
+    return m;
   }
 };
 
