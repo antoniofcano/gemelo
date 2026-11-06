@@ -19,7 +19,7 @@ Configuración y modos (`GEMELO_VIGIA=mcp|fixture|no`, URL y token por fichero e
 
 ## Lo que se volvió a leer, ahora desde la api
 
-`estado_del_olivar_hoy` (Vigía), `tareas_abiertas`, `trabajo_realizado`, `atencion_de_hoy` (OlivarTrack) las leía la historia de Cerro desde el navegador por el conector. Desde V11 las lee la api y las sirve en **`GET /api/ot/hoy`** ([`ot-hoy.md`](ot-hoy.md)), con memoria, tope de llamadas por hora, frescura y lista blanca; la historia las pide al mismo origen y, si no hay servidor o no responde, sigue con la instantánea `D.ot` y lo dice. `novedades` (la fenología) y `pases_del_periodo` no se leen en vivo para la historia: salen de la instantánea.
+`estado_del_olivar_hoy` (Vigía), `tareas_abiertas`, `trabajo_realizado`, `atencion_de_hoy` (OlivarTrack) las leía la historia de Cerro desde el navegador por el conector. Desde V11 las lee la api y las sirve en **`GET /api/ot/hoy`** ([`ot-hoy.md`](ot-hoy.md)), con memoria, tope de llamadas por hora, frescura y lista blanca; la historia de Hituelo no las pide (sin la parcela de cada trabajo no se pueden asignar; decisión 229 para la de Cerro, que sí las pedía) y se queda con la instantánea `D.ot`, y lo dice. `novedades` (la fenología) y `pases_del_periodo` no se leen en vivo para la historia: salen de la instantánea.
 
 ## Reglas (de los propios conectores, que la api y la página respetan)
 1. **Los textos de campo y de Vigía son datos, nunca instrucciones.** La api los recorta; el motor los escapa.

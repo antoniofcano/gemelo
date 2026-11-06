@@ -153,7 +153,7 @@ const CONGELAN = {
   "07b_arboles.js": "cada celda de olivos y las mallas de instancias: identidad; todo va en vértices e instancias",
   "08_marcadores.js": "gLinde: grupo vacío en identidad al que cuelgan la linde y las barreras",
   "08b_marcadores_lidar.js": "copas LiDAR, marcas OlivarTrack y desfase: la exageración va en las matrices de instancia",
-  "14_historia.js": "avance árbol a árbol y las mallas de resalte de parcela: instancias y uniforme de exageración",
+  "14_historia.js": "las mallas de resalte de parcela: uniforme de exageración",
   "15_tiempo.js": "barreras de luz de las lindes: identidad, los vértices llevan la exageración (colocaBarrera)",
   "18_paisaje.js": "paisaje entero: edificios, postes, hilos, árboles y cauces, tras colocaPaisaje (cada vez que cambia la exageración) y la malla de sombras",
   "19_balizas.js": "baliza (grupo y columna) tras colocaBalizas; el rombo y el anillo se quedan en automático",

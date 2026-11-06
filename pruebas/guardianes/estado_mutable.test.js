@@ -25,7 +25,7 @@ const PENDIENTES = [
   "listo",         // 08_marcadores; la escribe 90_final
   "tinte",         // 02_mundo; la escribe 10_ndvi (ndLo y ndHi también nacen en 02_mundo, pero solo las escribe y las lee 10_ndvi: no entran)
   "aguaNivel",     // 18_paisaje (escribe y lee él; leen 20_sonido y 22_huellas)
-  "avTipo", "OT", "VIVO",    // 14_historia
+  "OT", "VIVO",    // 14_historia
   "enDron", "enQuad", "tVida", "vq",   // 16_vida
   "FACTOR_R8", "FACTOR_R8_GEN",        // 01_datos
   "fincaSel", "parcelaSel",            // 13_parcelas

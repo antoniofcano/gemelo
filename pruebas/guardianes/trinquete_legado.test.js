@@ -16,7 +16,9 @@ const C = require(path.join(RAIZ, "pruebas", "contrato_modulos.js"));
 // 2026-11-06, A1-11 (MU1-7, 12b_llegada.js y 12c_ir_a.js entregan LlegadaPuro e IrAPuro a apps/web/src/nucleo/locomocion.ts y conservan Llegada e IrA, que tocan THREE y el DOM): 19.303 líneas (de 19.449)
 // 2026-11-06, A1-12 (MU1-8, 02g_vr_presupuesto.js pasa a talón en apps/web/src/nucleo/presupuesto.ts): 19.135 líneas (de 19.303)
 // 2026-11-06, A1-14 (MU1-10, el bucle de 90_final.js pasa a apps/web/src/nucleo/bucle.ts; 29_vr.js +6 líneas: vrRecoloca): 19.124 líneas (de 19.135)
-const TOPE = 19124;
+// 2026-11-06, C1 (decisión 229: la historia y el avance árbol a árbol de la finca que salió del mundo, fuera de 14_historia.js): 18.958 líneas (de 19.135)
+// 2026-11-06, al fusionar A1-14 y C1: 18.947 líneas
+const TOPE = 18947;
 
 /** líneas de un texto (la última sin salto también cuenta) */
 const lineas = s => s === "" ? 0 : s.split("\n").length - (s.endsWith("\n") ? 1 : 0);

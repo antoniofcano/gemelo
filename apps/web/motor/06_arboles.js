@@ -2,7 +2,7 @@
 // Expone: gArboles, gFollaje, gSombras, matTronco, radioEn, arbolesG
 // Consume: 01_datos (D, fmt, FACTOR_R8, ESC_R8), 02_mundo (suelo, aviva, colorEn, copas, marc), 02e_entidades (Entidades),
 //   02i_materiales (Materiales), 02j_estaticos (Estaticos), 03_escena (scene, camera, colorVertSRGB, Estado), 04d_sombreado_tiles (hash),
-//   07ab_generados (Generados), 13_parcelas (parcelas), 14_historia (FINCA)
+//   07ab_generados (Generados), 13_parcelas (parcelas)
 // ===============================================================================
   // ---------- los olivos del modo Gemelo: copa con la forma real medida (8 radios) y tronco debajo (nivel 0, por celdas de 64 m; ver Arboles)
   var gArboles = new THREE.Group(), gFollaje = gArboles, gSombras = new THREE.Group(); gArboles.name = "arboles"; gSombras.name = "sombras-olivos"; Estaticos.congela(gArboles); Estaticos.congela(gSombras); scene.add(gArboles); scene.add(gSombras);   // AG-1.15: los grupos no se mueven; lo que cuelga se congela al crearlo (07b celdas, 07 sombras)   // gFollaje es el mismo grupo: las celdas de nivel 0 llevan copa, tronco, hojas y frutos

@@ -308,7 +308,6 @@ const SIN_RECORTE = {
   "07ac_lejanos.js": [1, "los olivos lejanos: instancias por toda la finca (hasta 1,6 km) que se rehacen al moverse; vacía no se dibuja (visible = count > 0)"],
   "07b_arboles.js": [1, "niveles 1 y 2: instancias por toda la finca que se rehacen al moverse; vacías no se dibujan (visible = count > 0)"],
   "08b_marcadores_lidar.js": [2, "copas y marcadores LiDAR: instancias por toda la finca"],
-  "14_historia.js": [1, "el avance de tareas: instancias por toda la finca, rehechas al cambiar de tarea"],
   "15_tiempo.js": [3, "nubes, estrellas y lluvia van con la cámara (las estrellas, además, no se dibujan de día: visible = opacity > 0)"],
   "16_vida.js": [1, "las estelas: se reescriben cada fotograma; vacías no se dibujan"],
   "16b_fauna.js": [2, "las aves y los conejos (seis como mucho, a menos de 120 m): se mueven cada fotograma; vacías no se dibujan"],

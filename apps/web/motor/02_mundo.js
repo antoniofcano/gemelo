@@ -146,7 +146,7 @@
   })();
   var suelo = Mundo.suelo, copaAlta = Mundo.copaAlta, colorSuelo = Mundo.colorSuelo, orto = Mundo.orto;
 
-  // La ortofoto enseña la copa corrida hacia el este según su altura (medido en esta parcela:
+  // La ortofoto enseña la copa corrida hacia el este según su altura (ajuste empírico medido en otra finca y aplicado sin recalibrar:
   // ~1,2 m a 1 m de altura, ~2,5 m a 4 m). Para pintar un punto del LiDAR se mira el píxel donde la ortofoto lo dibuja.
   var kcor = 1;
   function desp(h) { return kcor * (1.2 * Math.min(h, 1) + 0.42 * Math.max(h - 1, 0)); }

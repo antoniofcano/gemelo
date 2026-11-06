@@ -50,7 +50,7 @@ La página pide `t/<clave>.json|jpg` (`D.teselas` es el índice; `D.base` da el 
 | `12b_llegada.js` | `LlegadaPuro`, `Llegada` | el anillo de llegada y el salto con fundido (de pie, fuera de troncos, andando): en VR desde el vuelo o el mirador (palanca derecha ↑ y soltar) y en pantalla con el Dron (clic o toque corto, «Aterrizar aquí», Intro o L); `aparece`/`ve` para aparecer en un punto desde otros módulos |
 | `13_parcelas.js` | selector fincas→parcelas | suelo por parcela (USDA) |
 | `13b_hazas.js` | `HazasPuro`, `Hazas` | F1: las hazas de `/api/hazas` (su linde la da `Hazas.lindes()` y la avisa `hazas:cambia`; la dibuja `44_lindes.js`) y, al tocarla o con H, su ficha de `/api/hazas/{id}` (solo la lista blanca, con procedencia y fecha). Solo con la página servida por el servidor (`D.base` = `/teselas/…`) o `?api=`; sin eso, o sin sesión o con error, no crea nada ([haza.schema.json](../../contratos/haza.schema.json), ADR-0014) |
-| `14_historia.js` | `ESCENAS` (Cerro/Hituelo) | cruza OlivarTrack (`D.ot`, MCP) |
+| `14_historia.js` | `ESCENAS` (Hituelo) | cruza la instantánea de OlivarTrack (`D.ot`); `HistoriaPuro` sabe leer `/api/ot/hoy`, sin cablear |
 | `15_tiempo.js` | `actualizaTiempo` | estación, previsión, demos (Vigía) |
 | `16_vida.js`, `25_perros.js` | fauna | pájaros, conejos, quad, perros |
 | `17_minimapa.js` | minimapa, `Minimapa` | mosaico + rastro; `Minimapa.capa(fn)`: capas que pintan los componentes |

@@ -216,7 +216,6 @@ kbd { font-family: ui-monospace, Menlo, monospace; font-size: 12px; border: 1px 
 .h-estado[data-t="vivo"] { color: var(--olivo); font-weight: 500; }
 .h-estado[data-t="parcial"] { color: var(--guardado); }
 .h-estado[data-t="error"] { color: #f08a7e; }
-.h-bola { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
 .h-aviso-t { background: color-mix(in srgb, var(--guardado) 16%, transparent); padding: 8px 10px; border-radius: 8px; }
 .h-texto code { font-size: 12px; background: var(--bg); padding: 0 4px; border-radius: 4px; }
 .h-btn { border: 1px solid var(--line); background: var(--bg); color: var(--fg); min-height: 40px; padding: 7px 13px; border-radius: 8px; font: inherit; cursor: pointer; }
@@ -237,11 +236,8 @@ kbd { font-family: ui-monospace, Menlo, monospace; font-size: 12px; border: 1px 
 .h-tabla { width: 100%; border-collapse: collapse; margin: 6px 0 10px; font-size: 13px; font-variant-numeric: tabular-nums; }
 .h-tabla th { text-align: left; color: var(--muted); font-weight: 500; border-bottom: 1px solid var(--line); padding: 3px 6px; }
 .h-tabla td { padding: 3px 6px; border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
-.h-tabla .n { text-align: right; } .h-tabla tr.h-aviso td { background: color-mix(in srgb, var(--guardado) 16%, transparent); }
+.h-tabla .n { text-align: right; }
 .h-sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 7px; }
-.h-pase { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin: 6px 0 8px; background: var(--bg); }
-.h-pase-cab { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
-.h-dos { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; } @media (max-width: 640px) { .h-dos { grid-template-columns: 1fr; } }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { border: 1px solid var(--line); background: var(--bg); color: var(--fg); min-height: 40px; padding: 6px 12px; border-radius: 99px; font: inherit; font-size: 13px; cursor: pointer; }
 .chip[aria-pressed="true"] { background: var(--olivo); border-color: var(--olivo); color: var(--sobre-olivo); }
@@ -315,7 +311,6 @@ kbd { font-family: ui-monospace, Menlo, monospace; font-size: 12px; border: 1px 
 #historia[data-sin] { display: none !important; }   /* genera_motor.mjs: finca sin historia */
 /* V12: colores y anchos que el motor ponía con un atributo style en el HTML que arma (el dato variable va en data-fondo / data-ancho y lo pasa tinta(), de 01_datos.js) */
 .c-arena { background: var(--arena); } .c-limo { background: var(--limo); } .c-arcilla { background: var(--arcilla); }
-.h-bola.b-andado { background: #2e8b3d; } .h-bola.b-fuera { background: #d23a2a; } .h-bola.b-sinmarca { background: #8e5bc4; }
 .t-leyenda .l-temp { background: var(--guardado); } .t-leyenda .l-nubes { background: var(--muted); opacity: .4; } .t-leyenda .l-lluvia { background: var(--lidar); } .t-leyenda .l-viento { background: var(--fg); }
 .t-baliza .b-pill.e-alerta, .t-baliza .b-pill.e-abierta { --c: var(--guardado); } .t-baliza .b-pill.e-hecha { --c: var(--olivo); } .t-baliza .b-pill.e-nada { --c: var(--muted); }
 /* Configuración (33_ajustes.js): antes un <style id="ajustesEstilo"> que creaba el motor y que la CSP style-src 'self' rechaza (style-src-elem) */

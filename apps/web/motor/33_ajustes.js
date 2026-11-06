@@ -138,7 +138,7 @@
         { k: "graficos.ahorro", t: "Ahorro de batería (resolución 1× y unos 30 fotogramas por segundo)" } ] },
       { id: "vista", t: "Vista", campos: [
         { k: "vista.exag", t: "Relieve exagerado", fmt: function (v) { return fmt(v, v % 1 ? 2 : 0) + "×"; } },
-        { k: "vista.corr", t: "Corrección de la ortofoto", fmt: function (v) { return fmt(v, v % 1 ? 2 : 0) + "×"; }, nota: "Ajuste medido en la finca (las copas se ven desplazadas al este según su altura); no es una ortorrectificación." },
+        { k: "vista.corr", t: "Corrección de la ortofoto", fmt: function (v) { return fmt(v, v % 1 ? 2 : 0) + "×"; }, nota: "Ajuste empírico medido en otra finca y aplicado aquí sin recalibrar (las copas se ven desplazadas al este según su altura); no es una ortorrectificación." },
         { k: "vista.brujula", t: "Mostrar la brújula" },
         { k: "vista.personal", t: "Mostrar hora, tu haza, hablar y volver" },
         { k: "vista.suelo", t: "Suelo con texturas de la finca", nota: "Hojarasca, compost, ruedo, camino y piedras de cerca, sacados de fotos de la finca; el color sigue siendo el de la ortofoto. Se aplica al recargar la página. En las gafas sigue apagado hasta medirlo." },

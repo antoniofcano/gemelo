@@ -6,8 +6,8 @@ import { EntidadesPuro as P } from "./entidades.ts";
 
 describe("EntidadesPuro", () => {
   it("ids «tipo:resto», tipo y resto", () => {
-    expect(P.id("olivo", "cerro", 2147483650)).toBe("olivo:cerro:2147483650");
-    expect(P.tipoDe("olivo:cerro:7")).toBe("olivo"); expect(P.resto("olivo:cerro:7")).toBe("cerro:7");
+    expect(P.id("olivo", "hituelo", 2147483650)).toBe("olivo:hituelo:2147483650");
+    expect(P.tipoDe("olivo:hituelo:7")).toBe("olivo"); expect(P.resto("olivo:hituelo:7")).toBe("hituelo:7");
     expect(P.tipoDe("sin-dos-puntos")).toBe(""); expect(P.tipoDe(null)).toBe(""); expect(P.tipoDe(":x")).toBe("");
   });
 

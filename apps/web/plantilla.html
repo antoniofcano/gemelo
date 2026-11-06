@@ -201,9 +201,9 @@
     <section class="ventana" id="ventanaHistoria" role="dialog" aria-modal="false" aria-labelledby="ventanaHistoriaT" hidden>
       <header><h2 id="ventanaHistoriaT" tabindex="-1">La historia de la finca</h2><button type="button" class="cerrar" data-cierra aria-label="Cerrar">×</button></header>
       <div class="cuerpo historia" id="historia" aria-label="La historia de la finca">
-        <div class="h-ctl"><button type="button" id="hIni" class="h-btn h-btn-prim">Empezar el recorrido</button> <button type="button" id="hLeer" class="h-btn" hidden>Leer de nuevo</button></div>
+        <div class="h-ctl"><button type="button" id="hIni" class="h-btn h-btn-prim">Empezar el recorrido</button></div>
         <p id="hEstado" class="h-estado" role="status"></p>
-        <p class="nota" id="hIntro">Once escenas que cruzan el gemelo con lo que OlivarTrack ya sabe de estas cinco parcelas: cómo se cuentan sus olivos, qué se hizo en septiembre, dónde mirar hoy y cómo se conectará con el MCP. Avanza con los botones o con las flechas del teclado.</p>
+        <p class="nota" id="hIntro">Un recorrido que cruza el gemelo con lo que OlivarTrack ya sabe de estas fincas: cómo se cuentan sus olivos, qué trabajos están hechos y cuáles abiertos, cómo está el campo y lo que aún no sabemos. Avanza con los botones o con las flechas del teclado.</p>
         <p class="nota">Al empezar, esta ventana se cierra y el recorrido sigue en una tarjeta arriba: el mundo queda a la vista.</p>
         <div id="hCuerpo" hidden>
           <div class="h-puntos" id="hPuntos" role="group" aria-label="Escenas"></div>
@@ -287,7 +287,7 @@
             <div class="rango">
               <label for="corr">Corrección de la ortofoto: <strong id="corrV">1×</strong></label>
               <input type="range" id="corr" min="0" max="1.5" step="0.25" value="1">
-              <p class="nota">Un ajuste medido en Cerro Velasco (la copa se ve desplazada hacia el este según su altura), no una ortorrectificación.</p>
+              <p class="nota">Un ajuste empírico (la copa se ve corrida hacia el este según su altura), medido en otra finca y aplicado aquí sin recalibrar; no es una ortorrectificación.</p>
             </div>
             <h3>Gráficos</h3>
             <div class="rango">
@@ -307,7 +307,7 @@
         <div role="tabpanel" id="menuFinca" aria-labelledby="menuPestFinca" hidden>
           <h1>La finca, en 3D</h1>
           <p>Gemelo de la finca: la forma sale de los puntos del vuelo LiDAR de 2024 y el color, de la ortofoto del PNOA corregida por la altura de cada copa.</p>
-          <p class="pie">Gemelo de la finca. La copa de cada olivo es medida (el recuento de olivos es detectado: LiDAR más una regla); sus troncos y ramas son una forma ilustrativa con los 2 o 3 pies habituales, no una medición: el número real de pies de cada olivo no se puede sacar de esta nube. Nube PNOA-LiDAR 2024 (3ª cobertura), MDT de 0,5 m del CNIG y ortofoto PNOA del IGN, licencia CC-BY 4.0. La corrección de la ortofoto es un ajuste medido en esta parcela (la copa se ve desplazada hacia el este unos 1,2 m a 1 m de altura y unos 2,5 m a 4 m), no una ortorrectificación. Es un modelo de trabajo, no una medición topográfica.</p>
+          <p class="pie">Gemelo de la finca. La copa de cada olivo es medida (el recuento de olivos es detectado: LiDAR más una regla); sus troncos y ramas son una forma ilustrativa con los 2 o 3 pies habituales, no una medición: el número real de pies de cada olivo no se puede sacar de esta nube. Nube PNOA-LiDAR 2024 (3ª cobertura), MDT de 0,5 m del CNIG y ortofoto PNOA del IGN, licencia CC-BY 4.0. La corrección de la ortofoto es un ajuste empírico (la copa se ve corrida hacia el este según su altura) que se midió en otra finca y aquí se aplica sin recalibrar (unos 1,2 m a 1 m de altura y unos 2,5 m a 4 m), no una ortorrectificación. Es un modelo de trabajo, no una medición topográfica.</p>
         </div>
       </div>
     </div>

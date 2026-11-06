@@ -36,14 +36,15 @@ test("el contrato de la haza rotula el conteo de LiDAR como «detectado» y el d
 
 test("la cabecera sale del índice: las hectáreas llevan «declaradas (OlivarTrack)» y los olivos «detectados», para una finca y para varias", async () => {
   const { textosFinca } = await import(pathToFileURL(path.join(RAIZ, "apps", "web", "herramientas", "genera_motor.mjs")).href);
-  for (const T of [{ finca: "Cerro Velasco", fincas: 1, parcelas: 5, ha: 7.1, olivos: 812 }, { finca: "Hituelo", fincas: 4, parcelas: 27, ha: 95.2, olivos: 5900, puntos_m2: 6.5 }]) {
+  for (const T of [{ finca: "Finca sintética", fincas: 1, parcelas: 5, ha: 7.1, olivos: 812 }, { finca: "Hituelo", fincas: 4, parcelas: 27, ha: 95.2, olivos: 5900, puntos_m2: 6.5 }]) {
     const out = textosFinca(PL, T);
     const ha = [...out.matchAll(/\d[\d.,]*\s*ha\b(?!\s*declaradas \(OlivarTrack\))/g)].map(m => m[0]);
     assert.deepStrictEqual(ha, [], T.finca + ": hectáreas sin «declaradas (OlivarTrack)»: " + ha.join(" | "));
     assert.match(out, /ha declaradas \(OlivarTrack\)/);
     assert.match(out, new RegExp(T.olivos + " olivos detectados"));
     assert.doesNotMatch(out, new RegExp(T.olivos + " olivos(?! detectados)"), "olivos sin «detectados»");
-    if (T.finca !== "Cerro Velasco") assert.ok(!/Cerro Velasco/.test(out.replace(/medido en Cerro Velasco/g, "")), "restos de Cerro Velasco escritos a mano en otra finca");
+    assert.ok(!/\bcerro\b|velasco/i.test(out), "restos de la finca que salió del mundo (decisión 229) en la cabecera de " + T.finca);
+    assert.match(out, /corrida hacia el este según su altura\) que se midió en otra finca y aquí se aplica sin recalibrar/, "la corrección de la ortofoto dice que no se midió en esta finca (regla 5)");
   }
 });
 

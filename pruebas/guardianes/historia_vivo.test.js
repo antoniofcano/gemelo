@@ -91,15 +91,16 @@ test("el aviso dice de dónde, de cuándo y si está incompleto; la atención va
   assert.strictEqual(P.atencion(null), "");
 });
 
-test("en el código: lo de fuera se escapa al pintarlo, solo se pide al mismo origen y Hituelo no lee en vivo", () => {
+// Decisión 229: la lectura en vivo solo se cableaba para la finca que salió del mundo. HistoriaPuro se queda (probado arriba, listo para
+// cuando el MCP dé la parcela de cada trabajo), pero la historia no lo llama: Hituelo no lee en vivo y lo dice.
+test("en el código: lo de fuera se escapa al pintarlo, nada se pide a otros hosts y la historia no lee en vivo (Hituelo)", () => {
   assert.ok(!/fetch\(\s*["']https?:/.test(FUENTE), "nada de fetch a otros hosts");
-  assert.match(FUENTE, /HistoriaPuro\.lee\(fetch\.bind\(window\), api\)/);
-  assert.match(FUENTE, /var api = !esH &&/, "solo Cerro");
+  const fuera = FUENTE.slice(FUENTE.indexOf("// [puro:fin]"));
+  assert.doesNotMatch(fuera, /HistoriaPuro\.lee\(|fetch\(/, "la historia no lee en vivo: Hituelo no tiene la parcela de cada trabajo");
+  assert.match(FUENTE, /La lectura en vivo \(MCP\) no está activada en Hituelo/, "y lo dice");
   assert.match(FUENTE, /esc\(x\.t\.titulo\)/, "el título de una tarea abierta se escapa");
-  assert.match(FUENTE, /esc\(x\.parcela\)/, "la parcela de Vigía se escapa");
-  assert.match(FUENTE, /esc\(at\)/, "la línea de atención se escapa");
   assert.ok(!/dentroDeUmbrales/.test(FUENTE), "Vigía no autoriza tratamientos: nada de dentroDeUmbrales");
-  assert.match(lee("apps/web/plantilla.html"), /id="hLeer"[^>]*hidden/, "el botón de leer de nuevo nace oculto (solo con servidor)");
+  assert.doesNotMatch(lee("apps/web/plantilla.html"), /id="hLeer"/, "sin lectura en vivo no hay botón de leer de nuevo");
 });
 
 // L9-03: los textos de OlivarTrack y Vigía (títulos, parcelas, fincas, fechas, BBCH, frescura) entran en el HTML de la historia
@@ -124,7 +125,6 @@ test("L9-03: un título con HTML sale escapado y los campos de fuera nunca se pe
   const lineas = FUENTE.split("\n").filter(l => CAMPO_SIN_ESC.test(l));
   assert.deepStrictEqual(lineas, [], "campos de OlivarTrack/Vigía sin esc() en 14_historia.js:\n" + lineas.join("\n"));
   // las fechas y los BBCH también vienen de fuera: pasan por esc()
-  assert.ok((FUENTE.match(/esc\("BBCH " \+ /g) || []).length >= 2, "el BBCH se escapa en las dos tablas");
+  assert.ok((FUENTE.match(/esc\("BBCH " \+ /g) || []).length >= 1, "el BBCH se escapa en la tabla de fenología");
   assert.match(FUENTE, /function dd\(iso\) \{ return iso \? esc\(/, "las fechas (dd) se escapan");
-  assert.match(FUENTE, /esc\(VIVO\.vigiaFrescura\)/, "la frescura de Vigía se escapa");
 });
