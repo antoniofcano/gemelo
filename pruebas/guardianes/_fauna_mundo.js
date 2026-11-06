@@ -69,7 +69,7 @@ function construye(THREE, fichero, copas, sem) {
   // El código se evalúa como en el motor: dentro de una función, con lo que consume como variables de esa función (no como globales de un contexto vm, que son
   // mucho más lentas de leer y falsearían los tiempos), y con paseando / enQuad / tVida como variables que se cambian por fuera con __pon.
   const nombres = Object.keys(g), valores = nombres.map(k => g[k]);
-  const cuerpo = '"use strict";\nvar paseando = true, enQuad = false, tVida = 0, LAT = 37.73, LON = -4.006;\nfunction __pon(a, b, c) { paseando = a; enQuad = b; tVida = c; }\n' +
+  const cuerpo = '"use strict";\nvar paseando = true, enQuad = false, tVida = 0, LAT = 37.7, LON = -4.0;\nfunction __pon(a, b, c) { paseando = a; enQuad = b; tVida = c; }\n' +
     (nuevo ? nivelNuevo() : NIVEL_ANTES) + "\n" + lee(fichero) + "\nreturn __pon;";
   const pon = new Function(...nombres, cuerpo)(...valores);
   const n = { on: (ev, fn) => (Bus.on(ev, fn), fn), emite: (ev, d) => Bus.emite(ev, d), limpia: fn => fn, api: () => null, parametros: {} };

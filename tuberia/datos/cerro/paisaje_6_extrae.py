@@ -79,7 +79,8 @@ for c_, tpos in sorted(elegidos, key=lambda q: q[1]):
 salida["tendido"]["postes"] = postes; print("tendido: %d tramos, %d postes %s" % (len(tt), len(postes), [(q["x"], q["y"], round(q["zAlto"] - q["zBase"], 1)) for q in postes]))
 
 # ---------------- el arroyo: camino de menor cota (el fondo del cauce) entre sus dos extremos
-cx0, cx1, cy0, cy1 = 410713, 411010, 4176370, 4176514
+PRIV = json.load(open(os.path.join(R, "cerro_privado.json"), encoding="utf-8"))   # privado (decisión 219): ids y nombres de parcela, recortes; ejemplo en cerro_privado.ejemplo.json
+cx0, cx1, cy0, cy1 = PRIV["recorte_arroyo"]
 c0, c1 = int((cx0 - x0) / 0.5), int((cx1 - x0) / 0.5); r0, r1 = int((y1 - cy1) / 0.5), int((y1 - cy0) / 0.5)
 sub = mdt[r0:r1, c0:c1]; sub = sub[:sub.shape[0] // 4 * 4, :sub.shape[1] // 4 * 4].reshape(sub.shape[0] // 4, 4, sub.shape[1] // 4, 4).mean(axis=(1, 3)); gs = ndi.gaussian_filter(sub, 1.0)
 hh, ww = gs.shape; zmin = gs.min(); coste = 1 + ((gs - zmin) / 1.2) ** 2.2
@@ -96,7 +97,7 @@ def celda(x, y): return int(np.clip((cy1 - y) / 2.0, 0, hh - 1)) * ww + int(np.c
 def mas_bajo(x, y, r=12):
     rr, cc = int(np.clip((cy1 - y) / 2.0, 0, hh - 1)), int(np.clip((x - cx0) / 2.0, 0, ww - 1)); ra = int(r / 2)
     win = gs[max(0, rr - ra):rr + ra + 1, max(0, cc - ra):cc + ra + 1]; k = np.unravel_index(np.argmin(win), win.shape); return (max(0, rr - ra) + k[0]) * ww + max(0, cc - ra) + k[1]
-ini = mas_bajo(410716, 4176405); fin = mas_bajo(411005, 4176507)
+ini = mas_bajo(*PRIV["arroyo_ini"]); fin = mas_bajo(*PRIV["arroyo_fin"])
 dist, pred = dijkstra(G, directed=False, indices=ini, return_predecessors=True)
 camino = []; k = fin
 while k != ini and k >= 0: camino.append(k); k = pred[k]
@@ -152,7 +153,7 @@ for r_, c_ in zip(pr, pc):
 # ---------------- correcciones de Antonio (27-oct-2026): lo que el LiDAR por sí solo no distingue
 # · en la finca de la Nave, dos de los «árboles» eran postes de una derivación del tendido que sale del principal hacia la nave;
 # · el de 1,6 m de radio junto a la nave es un frutal (peral y manzanos).
-CORRECCIONES = {"postes_derivacion": [(411170, 4176332), (411152, 4176355)], "frutales": [(411123, 4176397)]}
+CORRECCIONES = {k: [tuple(p) for p in v] for k, v in PRIV["correcciones"].items()}
 def poste_en(x, y):   # el racimo de puntos altos cerca de lo indicado: posición media y cota de la punta
     m = (np.hypot(X - x, Y - y) < 3.0) & (Hh > 6.5) & (CL != 7)
     if m.sum() < 3: return None

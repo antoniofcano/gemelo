@@ -15,7 +15,8 @@ mdt, _ = merge(srcs, bounds=(x0, y0, x1, y1), res=0.5, nodata=np.nan); mdt = mdt
 if np.isnan(mdt).any():
     idx = ndi.distance_transform_edt(np.isnan(mdt), return_distances=False, return_indices=True); mdt = mdt[tuple(idx)]
 # recorte del noroeste
-cx0, cx1, cy0, cy1 = 410713, 411010, 4176370, 4176514
+PRIV = json.load(open(os.path.join(R, "cerro_privado.json"), encoding="utf-8"))   # privado (decisión 219): ids y nombres de parcela, recortes; ejemplo en cerro_privado.ejemplo.json
+cx0, cx1, cy0, cy1 = PRIV["recorte_arroyo"]
 c0, c1 = int((cx0 - x0) / 0.5), int((cx1 - x0) / 0.5); r0, r1 = int((y1 - cy1) / 0.5), int((y1 - cy0) / 0.5)
 sub = ndi.gaussian_filter(mdt[r0:r1, c0:c1], 2)
 ls = LightSource(azdeg=315, altdeg=40)

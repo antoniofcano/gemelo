@@ -230,7 +230,7 @@
           "<p>Tarea: <button type='button' class='h-btn' data-av='goteros'>Sustituir goteros</button> <button type='button' class='h-btn' data-av='ninguno'>Quitar</button></p>" +
           tabla(["Parcela", "Marcas", "En zona", "Fuera", "Copas sin marca"], filas) +
           "<p>" + txtFuera + " Es decir: <strong>los olivos que faltan en Nave podrían ser marcas sin árbol</strong>; hay que mirarlo en el campo, no darlo por hecho.</p>" +
-          (d && !d.reproduce ? "<p class='h-aviso-t'><strong>Una discrepancia para revisar:</strong> el desvarete de Canario figura como " + fmt(d.declarados) + " de " + fmt(d.objetivo) + " olivos, pero las zonas guardadas en sus partes cubren solo " + fmt(d.marcas_en_zona) + " marcas. No se pinta porque no se puede reproducir.</p>" : "") +
+          (d && !d.reproduce ? "<p class='h-aviso-t'><strong>Una discrepancia para revisar:</strong> el desvarete de " + esc(parcelas[2].nombre) + " figura como " + fmt(d.declarados) + " de " + fmt(d.objetivo) + " olivos, pero las zonas guardadas en sus partes cubren solo " + fmt(d.marcas_en_zona) + " marcas. No se pinta porque no se puede reproducir.</p>" : "") +
           "<p class='h-decision'><strong>Propuesta para el MCP:</strong> una herramienta <code>olivos_andados_de_la_tarea</code>, calculada en el servidor, que devuelva ids de olivo y estado, sin ninguna persona; y un identificador estable por olivo en <code>olivosParcela</code>. Del dato solo sale un estado por olivo y tarea, no las zonas ni quién las recorrió.</p>" +
           "<p class='h-nota'>«Copa sin marca» significa que el LiDAR ve una copa sin marca a menos de 3 m; puede ser un olivo sin marcar o una copa partida en dos.</p>"; } },
 
@@ -260,7 +260,7 @@
         var ha = parcelas[2].ha, cubas = Math.ceil(ha * 1000 / 2000), cubren = cubas * 2000 / 1000;
         var np = VIVO && VIVO.pasesFinca != null ? VIVO.pasesFinca : OT.pases_finca;
         return "<p>Le das a Claude (o a Oficultor) un albarán y le pides el pase en esta parcela. Con el MCP de OlivarTrack, el abono y el pase nacen como <strong>propuesta</strong>: ninguno se aplica solo.</p>" +
-          '<div class="h-pase"><div class="h-pase-cab"><strong>Pase en borrador · Canario · ' + fmt(ha, 2) + ' ha</strong><span class="h-pill">propuesto por el agente</span></div>' +
+          '<div class="h-pase"><div class="h-pase-cab"><strong>Pase en borrador · ' + esc(parcelas[2].nombre) + ' · ' + fmt(ha, 2) + ' ha</strong><span class="h-pill">propuesto por el agente</span></div>' +
           tabla(["Abono", "Albarán", "Por cuba"], [{ c: ["Calcio foliar 15", "40 L", fmt(40 / cubas) + " L"] }, { c: ["Boro 10", "8 kg", fmt(8 / cubas) + " kg"] }]) +
           "<p class='h-nota'>" + cubas + " cubas de 2.000 L a 1.000 L/ha cubren " + fmt(cubren) + " ha y la parcela tiene " + fmt(ha, 2) + ": aviso, no error (puede haber una cuba a medias). La <strong>dosis por hectárea queda vacía</strong> y el abono, sin validar: la oficina completa ambas en el panel antes de aplicar.</p></div>" +
           "<p class='h-nota'>Ejemplo ilustrativo con datos inventados. " + (np === 0 ? "OlivarTrack no tiene hoy ningún pase de esta finca." : "OlivarTrack tiene " + np + " pase(s) de esta finca.") + "</p>"; } },

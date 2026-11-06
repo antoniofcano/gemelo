@@ -4,8 +4,9 @@ import numpy as np
 from rasterio.warp import transform as tr
 R = __import__("os").environ.get("GEMELO_DATOS", "datos")
 F = json.load(open(os.path.join(R, "finca_cerro_velasco.json"), encoding="utf-8"))
-ORDEN = ["cerro", "nave", "arroyo/abuelo", "polígono-65-parcela-254", "polígono-65-parcela-254-2"]
-NOMBRES = {"cerro": "Cerro Velasco", "nave": "Nave / Cien olivos", "arroyo/abuelo": "Canario", "polígono-65-parcela-254": "Cerro Velasco Arriba", "polígono-65-parcela-254-2": "Pol. 65 Parc. 254-2"}
+PRIV = json.load(open(os.path.join(R, "cerro_privado.json"), encoding="utf-8"))   # privado (decisión 219): ids y nombres de parcela, recortes; ejemplo en cerro_privado.ejemplo.json
+ORDEN = PRIV["orden"]
+NOMBRES = PRIV["nombres"]
 def utm(lista):
     if not lista: return []
     xs, ys = tr("EPSG:4326", "EPSG:25830", [q["lng"] for q in lista], [q["lat"] for q in lista])

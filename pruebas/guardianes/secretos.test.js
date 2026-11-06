@@ -72,3 +72,26 @@ test("sin ids internos de OlivarTrack en lo versionado", () => {
   const mal = TEXTOS.filter(f => !f.startsWith("pruebas/guardianes/") && ID_INTERNO.test(lee(f)));
   assert.deepStrictEqual(mal, [], "restos de ids internos en: " + mal.join(", "));
 });
+
+// Decisión 219 (Antonio, 2026-11-06; L9-01, L9-02): las referencias de parcela y las coordenadas exactas de las fincas no se versionan.
+// Viven en GEMELO_DATOS (cerro_privado.json; ejemplo inventado en tuberia/datos/cerro/cerro_privado.ejemplo.json). Los datos sintéticos
+// usan cajas de 500000, 4100000 o de 430000, 4180000 y el polígono 9 (la forma de los ids de OlivarTrack en las grabaciones: «loma-(polígono-9-parcela-8)»). Patrones construidos por partes para no marcarse a sí mismos.
+const EXPLOTACION = [
+  ["referencia de polígono y parcela", new RegExp("pol(?:[ií]gono|\\.)[-_\\s]*(?!9\\D)\\d+[-_\\s,.]*parc(?:ela|\\.)?[-_\\s]*\\d+", "i")],
+  ["coordenada UTM norte de la zona de las fincas", new RegExp("\\b417" + "[5-9]\\d{3}(?:\\.\\d+)?\\b")],
+  ["latitud y longitud con más precisión que la comarca", new RegExp("\\b3[78]\\.\\d{2,}\\s*[,;]\\s*(?:LON\\s*=\\s*)?[-−]\\s?[34]\\.\\d{2,}")],
+  ["latitud asignada con más precisión que la comarca", new RegExp("\\b(?:LAT|lat|fi)\\s*=\\s*3[78]\\.\\d{2,}")],
+];
+
+test("los patrones de datos de la explotación reconocen lo que deben y no lo sintético", () => {
+  const debe = ["pol" + "ígono-12-parcela-345", "Pol" + ". 12 Parc. 345", "[40" + "0000, 41" + "77123]", "37" + ".731, -4.006", "LAT = 37" + ".73, LON = -4.006", "fi = 37" + ".73 * Math.PI"];
+  const no = ["loma-(polígono-9-parcela-8)", "centro_utm: [500000, 4100000]", "const CX = 430000, CY = 4180000;", "LAT = 37.7, LON = -4.0", "poligono de la parcela", "4100150"];
+  for (const s of debe) assert.ok(EXPLOTACION.some(([, re]) => re.test(s)), "debería marcarse: " + s);
+  for (const s of no) assert.ok(!EXPLOTACION.some(([, re]) => re.test(s)), "no debería marcarse: " + s);
+});
+
+test("sin referencias de parcela ni coordenadas exactas de las fincas en lo versionado (decisión 219)", () => {
+  const mal = [];
+  for (const f of TEXTOS) { if (f === "package-lock.json" || /(^|\/)package-lock\.json$/.test(f)) continue; const s = lee(f); for (const [nombre, re] of EXPLOTACION) if (re.test(s)) mal.push(f + ": " + nombre); }
+  assert.deepStrictEqual(mal, [], "datos de la explotación en: " + mal.join(", ") + " (van a GEMELO_DATOS, no al repo público)");
+});

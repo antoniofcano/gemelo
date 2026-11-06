@@ -410,7 +410,7 @@ test("siembra de prueba: de_prueba.py coloca 4 hazas inventadas DENTRO de las co
   // un índice con copas repartidas por una caja grande, como el de una finca real (inventado aquí)
   const copas = []; for (let i = 0; i < 40; i++) for (let j = 0; j < 40; j++) copas.push([-400 + i * 20, -300 + j * 15, 4]);
   const ind = path.join(tmp, "indice.json");
-  fs.writeFileSync(ind, JSON.stringify({ finca_id: "hituelo", centro_utm: [405775, 4178870], copas }));
+  fs.writeFileSync(ind, JSON.stringify({ finca_id: "hituelo", centro_utm: [500000, 4100000], copas }));
   const r = ejecuta(py, ["tuberia/hazas/de_prueba.py", "--indice", ind, "--salida", path.join(tmp, "s")]);
   assert.strictEqual(r.status, 0, r.stderr);
   assert.deepStrictEqual(JSON.parse(r.stdout), { hazas: 4, olivos: 0, salida: "hazas.sql" });
@@ -420,7 +420,7 @@ test("siembra de prueba: de_prueba.py coloca 4 hazas inventadas DENTRO de las co
   for (const f of hz.features) {
     assert.match(f.properties.nombre, /de prueba, inventada/);
     assert.strictEqual(f.properties.olivos_declarados, null); assert.deepStrictEqual(f.properties.parcelas_ot, []);
-    for (const [x, y] of f.geometry.coordinates[0]) assert.ok(x > 405775 - 450 && x < 405775 + 450 && y > 4178870 - 350 && y < 4178870 + 350, "dentro de la caja de copas");
+    for (const [x, y] of f.geometry.coordinates[0]) assert.ok(x > 500000 - 450 && x < 500000 + 450 && y > 4100000 - 350 && y < 4100000 + 350, "dentro de la caja de copas");
   }
   const s = lee("infra/dev/herramientas/siembra.mjs");
   assert.match(s, /de_prueba\.py/); assert.match(s, /DELETE FROM olivos/);

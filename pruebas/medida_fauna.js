@@ -39,7 +39,7 @@ function corre(THREE, fichero, copas) {
 
   // el nivel del sol: 1 millón de llamadas, con el ms cambiando una vez de cada 6 (un fotograma pide el nivel unas 6 veces: tiempo, fauna, quad/dron, paisaje, sonido, huellas)
   // (dentro de una función cada una, como en el motor: los globales de un contexto vm son más lentos de leer y falsearían la comparación)
-  const base = "\"use strict\"; var LAT = 37.73, LON = -4.006;\n";
+  const base = "\"use strict\"; var LAT = 37.7, LON = -4.0;\n";
   const corA = new Function(base + F.NIVEL_ANTES + "\nreturn function (n) { var s = 0; for (var i = 0; i < n; i++) s += nivel(1.7e12 + ((i / 6) | 0) * 16.7).d; return s; };")();
   const corB = new Function(base + F.nivelNuevo() + "\nreturn function (n, sal) { var s = 0; for (var i = 0; i < n; i++) s += nivelEn(1.7e12 + ((i / 6) | 0) * 16.7, sal).d; return s; };")();
   const antes = { run: corA }, ahora = { run: corB }, sal = { s: { alt: 0, az: 0 }, d: 0 };

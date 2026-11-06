@@ -13,7 +13,7 @@ test.before(async () => { THREE = await F.cargaThree(); });
 
 test("nivelEn(ms, salida) da lo mismo que el nivel(ms) de antes, y el recuerdo no se equivoca al repetir ni al cambiar de ms", () => {
   const nuevo = vm.createContext({ Math }), antes = vm.createContext({ Math });
-  vm.runInContext("var LAT = 37.73, LON = -4.006;\n" + F.nivelNuevo(), nuevo); vm.runInContext("var LAT = 37.73, LON = -4.006;\n" + F.NIVEL_ANTES, antes);
+  vm.runInContext("var LAT = 37.7, LON = -4.0;\n" + F.nivelNuevo(), nuevo); vm.runInContext("var LAT = 37.7, LON = -4.0;\n" + F.NIVEL_ANTES, antes);
   const sal = { s: { alt: 0, az: 0 }, d: 0 }, sal2 = { s: { alt: 0, az: 0 }, d: 0 }, r = F.semilla(7);
   const mss = [0, 1, Date.UTC(2026, 5, 21, 12), Date.UTC(2026, 11, 21, 0, 30), NaN];
   for (let i = 0; i < 4000; i++) mss.push(Date.UTC(2026, 0, 1) + Math.floor(r() * 365 * 86400000));

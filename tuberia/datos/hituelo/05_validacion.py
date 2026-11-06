@@ -81,5 +81,6 @@ for c in pj["tendido"]["cadenas"]:
 for c in pj["cauces"]: E_ = np.array(c["eje"]); ax.plot(E_[:, 0], E_[:, 1], c="#39f", lw=1.8)
 tc = {"frondosa": "#0c0", "conifera": "#060", "arbusto": "#9e5", "frutal": "#f6c"}
 ax.scatter([a_["x"] for a_ in pj["arboles"]], [a_["y"] for a_ in pj["arboles"]], s=[max(2, a_["r"] ** 2 * 6) for a_ in pj["arboles"]], c=[tc.get(a_["tipo"], "#888") for a_ in pj["arboles"]], alpha=0.6, edgecolors="none")
-ax.set_xlim(404700, 406800); ax.set_ylim(4177350, 4180250); ax.set_aspect("equal"); ax.set_title("Hituelo · sombreado del suelo (MDT 0,5 m), CHM, olivos (rojo), edificios (magenta), tendido (naranja), cauces (azul), árboles no olivo")
+ax.set_aspect("equal");   # los límites salen de lo dibujado (decisión 219: sin coordenadas de la finca en el repo)
+ax.set_title("Hituelo · sombreado del suelo (MDT 0,5 m), CHM, olivos (rojo), edificios (magenta), tendido (naranja), cauces (azul), árboles no olivo")
 plt.tight_layout(); plt.savefig(BASE + "/control_general.png"); print("lámina %.0f s" % (time.time() - t0))

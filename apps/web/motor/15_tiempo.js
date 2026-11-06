@@ -137,7 +137,7 @@
   }
   // origen: de dónde sale lo que se ve («vigia», «fixture» o «simulado»); avisos: los de la api (de Vigía o del gemelo), como datos
   var TM = { est: null, prev: null, his: null, modo: "ahora", idx: 0, ahoraIdx: 0, corrimientoH: 0, demo: "", jugando: false, origen: "simulado", avisos: [], api: null, oyentes: [] };
-  var LAT = 37.73, LON = -4.006, ZONA = "Europe/Madrid";
+  var LAT = 37.7, LON = -4.0, ZONA = "Europe/Madrid";   // la comarca, a ~10 km (decisión 219): basta para el sol y la luna y no sitúa la finca
   var calma = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   var DEMOS = {
     lluvia: { nub: 96, lluvia: 6, viento: 5.5, dir: 225, hr: 88, temp: 12, etiqueta: "Lluvia de ejemplo" },

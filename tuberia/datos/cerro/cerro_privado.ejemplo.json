@@ -1,0 +1,49 @@
+{
+ "_nota": "Ejemplo con valores INVENTADOS de cerro_privado.json, que vive en GEMELO_DATOS y no se versiona (regla 4, decisión 219).",
+ "orden": [
+  "cerro",
+  "nave",
+  "parcela-c",
+  "parcela-d",
+  "parcela-e"
+ ],
+ "nombres": {
+  "cerro": "Cerro Velasco",
+  "nave": "Nave",
+  "parcela-c": "Parcela C",
+  "parcela-d": "Parcela D",
+  "parcela-e": "Parcela E"
+ },
+ "recorte_arroyo": [
+  500000,
+  500300,
+  4100000,
+  4100150
+ ],
+ "arroyo_ini": [
+  500003,
+  4100035
+ ],
+ "arroyo_fin": [
+  500292,
+  4100137
+ ],
+ "correcciones": {
+  "postes_derivacion": [
+   [
+    500450,
+    4099960
+   ],
+   [
+    500430,
+    4099985
+   ]
+  ],
+  "frutales": [
+   [
+    500400,
+    4100025
+   ]
+  ]
+ }
+}

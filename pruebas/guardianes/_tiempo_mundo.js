@@ -43,7 +43,7 @@ function mundoTiempo(THREE, nuevo) {
   const codigo = nuevo
     ? trozo("15_tiempo.js", "  var nubesOrden", "  var sprSol") + "\n" + trozo("15_tiempo.js", "  var lvT", "  // --- la barrera de la linde")
     : lee("pruebas/guardianes/referencias/15_tiempo_antes.js");
-  const cuerpo = '"use strict";\nvar LAT = 37.73, LON = -4.006, calma = false, tMundo = 0, lluviaVis = 0, ins = { t: 1, txt: "" }, vFlecha = new THREE.Vector3();\n' + F.nivelNuevo() + "\n" + codigo +
+  const cuerpo = '"use strict";\nvar LAT = 37.7, LON = -4.0, calma = false, tMundo = 0, lluviaVis = 0, ins = { t: 1, txt: "" }, vFlecha = new THREE.Vector3();\n' + F.nivelNuevo() + "\n" + codigo +
     "\nreturn { act: actualizaTiempo, calma: function (v) { calma = v; }, tMundo: function () { return tMundo; }, lluviaVis: function () { return lluviaVis; }, ins: ins };";
   const api = new Function(...nombres, cuerpo)(...valores);
   return { W, api };

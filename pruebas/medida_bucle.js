@@ -83,7 +83,7 @@ function compara(titulo, n, hazAntes, hazAhora) {
 
   // ---- 3 · el nivel del sol que piden paisaje, sonido y huellas cada fotograma (3 llamadas con el mismo ms): nivel(ms).d contra nivelEn(ms, temporal).d
   {
-    const N = new Function('"use strict"; var LAT = 37.73, LON = -4.006;\n' + F.nivelNuevo() + "\nreturn { nivel: nivel, nivelEn: nivelEn };")();
+    const N = new Function('"use strict"; var LAT = 37.7, LON = -4.0;\n' + F.nivelNuevo() + "\nreturn { nivel: nivel, nivelEn: nivelEn };")();
     const lvA = { s: { alt: 0, az: 0 }, d: 0 }, lvB = { s: { alt: 0, az: 0 }, d: 0 }, lvC = { s: { alt: 0, az: 0 }, d: 0 }, t0 = Date.UTC(2026, 5, 21, 10);
     compara("3 nivel del sol, tres peticiones por fotograma", 200000, () => (i) => { const ms = t0 + i * 20000; return N.nivel(ms).d + N.nivel(ms).d + N.nivel(ms).d; },
       () => (i) => { const ms = t0 + i * 20000; return N.nivelEn(ms, lvA).d + N.nivelEn(ms, lvB).d + N.nivelEn(ms, lvC).d; });

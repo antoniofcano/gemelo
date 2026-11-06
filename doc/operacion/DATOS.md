@@ -38,7 +38,7 @@ Detalle paso a paso y comprobaciones: [skill `datos-finca`](../../.claude/skills
 
 1. Descargar las hojas y el MDT (`GEMELO_DESCARGAS`) y tener las parcelas en UTM (`GEMELO_PARCELAS`).
 2. **Hituelo**: `tuberia/datos/hituelo/01_particiona.py` → `02_tesela.py` → `03_arboles.py` → `04a_candidatos` → `04b_tendido` → `04c_paisaje` → `05_validacion`; imagen en `tuberia/datos/hituelo/imagen/` (`orto`, `ndvi`, `suelo_ndvi`, `suelo_parcelas`). Luego `python tuberia/finca_8_teselas.py --finca hituelo` (delega en `tuberia/hituelo_conv.py`).
-3. **Cerro**: `tuberia/datos/cerro/finca_1…finca_6`, `ndvi_sentinel`, `paisaje_1…6`, `suelo_1…2`. `finca_8_teselas.py --finca cerro` lee `datos_cerro_embebido.json`, **un intermedio que ningún script del repo produce** (pendiente D5); ya no hay un `embebido.json` de salida.
+3. **Cerro**: `tuberia/datos/cerro/finca_1…finca_6`, `ndvi_sentinel`, `paisaje_1…6`, `suelo_1…2`. `finca_8_teselas.py --finca cerro` lee `datos_cerro_embebido.json`, **un intermedio que ningún script del repo produce** (pendiente D5); ya no hay un `embebido.json` de salida. `finca_1_ventana_orto.py`, `paisaje_5_arroyo.py` y `paisaje_6_extrae.py` leen además `cerro_privado.json` de `GEMELO_DATOS`: orden, ids y nombres de las parcelas, recorte del arroyo y correcciones de campo (decisión 219: no se versionan). La forma, con valores inventados, en [cerro_privado.ejemplo.json](../../tuberia/datos/cerro/cerro_privado.ejemplo.json).
 4. Generar el tileset: `node tuberia/tiles3d/genera.mjs --salida <carpeta>` ([TILES3D](../sistema/TILES3D.md)) y servir con el entorno local o construir la web con Vite ([DESARROLLO-LOCAL](DESARROLLO-LOCAL.md)).
 
 ### Parámetros de cada olivo (`copas_param`, ADR-0017)
