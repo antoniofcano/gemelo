@@ -43,7 +43,7 @@
         "08_marcadores"
       ],
       "escuchan": [
-        "08b_marcadores_lidar"
+        "mundos/exterior/marcadores-lidar"
       ]
     },
     "chat:alterna": {
@@ -629,7 +629,7 @@
         "08_marcadores"
       ],
       "escuchan": [
-        "08b_marcadores_lidar"
+        "mundos/exterior/marcadores-lidar"
       ]
     },
     "mundo:entra": {
@@ -870,7 +870,7 @@
       "descripcion": "El mundo se ha vuelto a aplicar (aplica() de 08_marcadores.js: cambió la exageración vertical, el modo o los datos de las teselas): lo que cuelga del terreno se recoloca. Hoy lo atiende el componente de los marcadores del LiDAR (copas, anillos y desfase); sin él (?marcadores=0), nadie.",
       "datos": {},
       "emiten": ["08_marcadores"],
-      "escuchan": ["08b_marcadores_lidar"]
+      "escuchan": ["mundos/exterior/marcadores-lidar"]
     },
     "ndvi:cambia": {
       "descripcion": "Cambió la fecha del campo o la escala relativa del NDVI (pintaNdvi() de 10_ndvi.js, desde MU5-n Ndvi.pinta de src/mundos/exterior/ndvi.ts, que ya ha dejado la escala en el núcleo). Lo atiende el componente de la capa de vigor: rehace la textura, la leyenda y la gráfica. Sin él (?capandvi=0), nadie, y el tinte de los árboles sigue funcionando.",

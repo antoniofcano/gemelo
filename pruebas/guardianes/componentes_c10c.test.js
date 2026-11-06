@@ -206,7 +206,7 @@ test("marcadores-lidar: manifiesto; mundo:aplica coloca copas, anillos y desfase
   assert.ok(dib.llamadas <= d.presupuesto.llamadas && dib.triangulos <= d.presupuesto.triangulos);
   assert.strictEqual(typeof api.coloca, "function");
   const sp = espiaDispose();
-  try { d.libera(); n.suelta(); } finally { sp.quita(); }
+  try { d.libera(api); n.suelta(); } finally { sp.quita(); }
   assert.ok(sp.cuenta() >= 8, "dispose de mallas, geometrías y materiales: " + sp.cuenta());
   assert.strictEqual(m.scene.children.length, 0, "la escena queda como estaba"); assert.ok(!m.Bus.hay("mundo:aplica") && !m.Bus.hay("capas:cambia"));
   assert.doesNotThrow(() => d.libera(api), "liberar dos veces no rompe");

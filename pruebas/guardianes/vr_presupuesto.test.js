@@ -57,12 +57,12 @@ test("08b_marcadores_lidar: anillos y octaedros se apuntan, recortan por su radi
   const defs = [], Bus = { on() { return () => {}; } }, scene = new THREE.Scene();
   const c = ctx({ scene, $: () => ({ checked: true }), colorCss: () => 0x58b6e8, cIn: copas, marc, copas, suelo: () => 100, Estado: { exag: 1 }, listo: true, Componentes: { registra: d => defs.push(d) } });
   corre(c, "08b_marcadores_lidar.js");
-  defs[0].monta({ on: () => () => {} });
+  const apiM = defs[0].monta({ on: () => () => {} });
   const V = vm.runInContext("VrPresupuesto", c), mc = scene.children[0].children[0], mm = scene.children[1].children[0];
   V.ponEscalon(2); V.mueve(0, 0); assert.strictEqual(mc.count, 400, "escalón 2: las copas del LiDAR enteras (medido)"); assert.strictEqual(mm.count, enRadio(400, 2, -1, 180), "anillos a ≤ 180 m");
   V.ponEscalon(3); V.mueve(0, 0); assert.strictEqual(mc.count, enRadio(400, 2, 0, 250), "escalón 3: copas a ≤ 250 m");
   V.ponEscalon(null); assert.strictEqual(mc.count, 400); assert.strictEqual(mm.count, 400);
-  defs[0].libera(); assert.deepStrictEqual(Object.keys(V.estado().fuentes), [], "liberado, ninguna fuente apuntada");
+  defs[0].libera(apiM); assert.deepStrictEqual(Object.keys(V.estado().fuentes), [], "liberado, ninguna fuente apuntada");
 });
 
 test("04e_suelo_fondo: en el escalón 3 la rejilla tiene 64 celdas y baja el doble; al volver, 128 y 1,5 m; fuera de VR, como siempre", () => {

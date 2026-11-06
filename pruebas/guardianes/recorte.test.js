@@ -234,7 +234,7 @@ test("02e_entidades y 29_vr: el anillo de resaltado y las láminas VR se recorta
 
 // ---------------------------------------------------------------- 08b_marcadores_lidar: las líneas de desfase (se reescriben con cada «mundo:aplica»)
 test("08b_marcadores_lidar: las líneas de desfase se recortan y su esfera las contiene tras coloca(), aunque three la calculara antes o con otra exageración", () => {
-  const F = lee("apps/web/motor/08b_marcadores_lidar.js"), T = trozo(F, "    var tmpMarc = new THREE.Object3D();", "    function ponCapas()");
+  const F = require("node:module").stripTypeScriptTypes(lee("apps/web/src/mundos/exterior/marcadores-lidar.ts")), T = "var vrPres = null;\n" + trozo(F, "  const tmpMarc = new THREE.Object3D();", "  function ponCapas()");   // A3-2b: el código vive en el .ts; se le quitan los tipos
   const cIn = [], copas = [], marc = [];
   for (let i = 0; i < 12; i++) { copas.push({ x: -100 + 19 * i, y: 80 - 13 * i, h: 4 }); cIn.push(copas[i]); marc.push({ x: -95 + 19 * i, y: 78 - 13 * i, par: i % 4 ? i : -1 }); }
   const mCopas = { setMatrixAt() {}, instanceMatrix: {} }, mMarc = { setMatrixAt() {}, instanceMatrix: {} };
@@ -319,7 +319,7 @@ const SIN_RECORTE = {
 test("inventario: los frustumCulled = false que quedan en el motor son los anotados, cada uno con su motivo", () => {
   const dir = path.join(RAIZ, "apps/web/motor"), hay = {};
   for (const f of fs.readdirSync(dir).filter(f => f.endsWith(".js"))) {
-    const n = (sinComentarios(fs.readFileSync(path.join(dir, f), "utf8")).match(/frustumCulled\s*=\s*false/g) || []).length;
+    const n = (sinComentarios(require("./_fuente").fuenteMotor(f)).match(/frustumCulled\s*=\s*false/g) || []).length;
     if (n) hay[f] = n;
   }
   const mal = [];

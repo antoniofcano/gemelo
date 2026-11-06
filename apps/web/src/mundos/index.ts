@@ -27,3 +27,5 @@ export type { DepsCapaNdvi } from "./exterior/capa-ndvi.ts";
 // A3-2b (MU5-n): el tope de triángulos de los olivos del motor (Q0n; antes 02m_tope_olivos.js).
 export { creaTopeOlivos, creaTopeOlivosPuro } from "./exterior/tope-olivos.ts";
 export type { DepsTopeOlivos, TopeOlivos, TopeOlivosPuro, TopeTilesPuroMin } from "./exterior/tope-olivos.ts";
+export { ID_MARCADORES_LIDAR, creaMarcadoresLidar, manifiestoMarcadoresLidar } from "./exterior/marcadores-lidar.ts";
+export type { DepsMarcadoresLidar, MarcadoresLidar, PuntoLidar } from "./exterior/marcadores-lidar.ts";

@@ -184,7 +184,7 @@ const AUTOMATICO = {
 const motores = () => fs.readdirSync(MOTOR).filter(f => f.endsWith(".js"));
 
 test("inventario: congelan exactamente los ficheros registrados aquí (uno nuevo hay que añadirlo, con su motivo) y cada uno recoloca con congela tras colocar", () => {
-  const usan = motores().filter(f => f !== "02j_estaticos.js" && /Estaticos\.congela\(/.test(sinComentarios(lee("apps/web/motor/" + f)))).sort();
+  const usan = motores().filter(f => f !== "02j_estaticos.js" && /Estaticos\.congela\(/.test(sinComentarios(require("./_fuente").fuenteMotor(f)))).sort();
   assert.deepStrictEqual(usan, Object.keys(CONGELAN).sort());
   const S = f => sinComentarios(lee("apps/web/motor/" + f));
   assert.match(S("18_paisaje.js"), /Estaticos\.congela\(gPaisaje\);[\s\S]{0,200}sombrasSol\(true\)/, "colocaPaisaje congela el paisaje antes de las sombras");

@@ -49,7 +49,7 @@ test("18_paisaje (AG-1.12): 80 triángulos por árbol y la misma caja de copa qu
 });
 
 test("08b_marcadores_lidar (AG-1.12): el anillo de las marcas es de 8 lados (16 triángulos, antes 40) y conserva sus radios y su caja", () => {
-  assert.ok(/new THREE\.RingGeometry\(0\.55, 0\.95, 8\)/.test(lee("apps/web/motor/08b_marcadores_lidar.js")), "el motor usa ese anillo");
+  assert.ok(/new THREE\.RingGeometry\(0\.55, 0\.95, 8\)/.test(require("./_fuente").fuenteMotor("08b_marcadores_lidar.js")), "el motor usa ese anillo");
   const a = new THREE.RingGeometry(0.55, 0.95, 8).rotateX(-Math.PI / 2), vieja = new THREE.RingGeometry(0.55, 0.95, 20).rotateX(-Math.PI / 2);
   assert.strictEqual(tri({ geometry: a }), 16); assert.strictEqual(tri({ geometry: vieja }), 40);
   a.computeBoundingBox(); vieja.computeBoundingBox();

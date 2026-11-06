@@ -24,7 +24,7 @@ Los componentes del motor ([ADR-0023](../doc/adr/0023-componentes-del-mundo.md),
 | `chat:alterna` | — | `31_hud` (el icono del chat de la barra o del menú «Más») | `38_presencia_compartida` (abre el chat minimizado o lo minimiza; sin chat, nada) |
 | `audio:desbloquea` | — | `29_vr` (al pulsar «Entrar en VR»: el gesto que deja arrancar el audio) | `20_sonido`, `45_voz` (arranca el AudioContext de la voz si estás en una guiada) |
 | `componentes:cambia` | `{ id, activo }` | `nucleo/componentes` (`apps/web/src/nucleo/componentes.ts`, MU2-5: al montar o liberar un componente) | `15_tiempo` (esconde «Ver la previsión en el mundo» si nadie la atiende) |
-| `capas:cambia` | (nada) | `08_marcadores` (`capas()`: cambió una casilla de capas o se aplicó el estado) | `08b_marcadores_lidar` (lee las casillas de copas, marcas y desfase) |
+| `capas:cambia` | (nada) | `08_marcadores` (`capas()`: cambió una casilla de capas o se aplicó el estado) | `mundos/exterior/marcadores-lidar` (lee las casillas de copas, marcas y desfase) |
 | `corro:estado` | `{ disponible, activa, puedo, corro, miembros, recibidas, enviadas }` | `47b_corro` (F3k-3: cambió lo que sabe de la voz por cercanía, tras `GET /api/presencia/corros/estado`; sin alias ni identidades) | — (el HUD, las pruebas de F3k-5) |
 | `cuadro:fin` | `{ t }` (el mismo objeto cada fotograma) | `90_final` (al acabar `cuadro()`, también en pausa) | `30_mide` (solo mientras está armado o midiendo) |
 | `decoraciones:cambian` | `{ lista: [{ finca, copas_id, pieza, mia }] }` (la lista entera) | `42_personalizacion` (P7g D3: trajo la lista blanca de una haza, o se lo pidieron; al liberarse, la lista vacía) | `50_decoraciones` (la sustituye y redibuja; ignora las piezas que no conoce) |
@@ -51,7 +51,7 @@ Los componentes del motor ([ADR-0023](../doc/adr/0023-componentes-del-mundo.md),
 | `medida:fin` | (nada) | `30_mide` (termina una medida dentro de VR) | `29_vr` (abre la tarjeta del resultado) |
 | `medida:inicia` | `{ segundos? }` | `33_ajustes` («Medir 60 s» de Configuración → Avanzado) | `30_mide` |
 | `medida:muestra` | `{ on }` | `33_ajustes` (cambia «Contador de rendimiento») | `30_mide` (enseña o esconde su caja) |
-| `mundo:aplica` | (nada) | `08_marcadores` (`aplica()`: cambió la exageración, el modo o los datos de las teselas) | `08b_marcadores_lidar` (recoloca copas, anillos y desfase) |
+| `mundo:aplica` | (nada) | `08_marcadores` (`aplica()`: cambió la exageración, el modo o los datos de las teselas) | `mundos/exterior/marcadores-lidar` (recoloca copas, anillos y desfase) |
 | `ndvi:cambia` | `{ lo, hi }` | `mundos/exterior/ndvi` (`pintaNdvi()` de `10_ndvi`, que es `Ndvi.pinta` desde MU5-n: cambió la fecha del campo o la escala relativa) | `mundos/exterior/capa-ndvi` (el componente de `10b_capa_ndvi`: rehace la textura, la leyenda y la gráfica) |
 | `mundo:hoy` | `{ linea: { txt, de, cuando } \| null, trabajo: { parcelas: [id], cuando } \| null }` | `53_mundo_hoy` (tras cada lectura buena de `/api/mundo/hoy`) | `44b_carteles` (la línea «Hoy en el olivar» del tablón), `54_trabajo_hoy` (un tractor en cada haza con tarea en curso, apagado por defecto) |
 | `mundo:pausa` | `{ activa }` | `02c_componentes` (`Pausa.pon` / `Pausa.quita`) | (nadie todavía) |
