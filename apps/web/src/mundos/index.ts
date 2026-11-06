@@ -95,3 +95,5 @@ export { ID_LLEGADA, creaLlegada, manifiestoLlegada } from "./comun/llegada.ts";
 export type { DepsLlegada, Llegada } from "./comun/llegada.ts";
 export { ID_PASEO, PalancaPuro, creaPaseo, manifiestoPaseo } from "./comun/paseo.ts";
 export type { DepsPaseo, Paseo } from "./comun/paseo.ts";
+export { ID_CAMARA, creaCamara, manifiestoCamara } from "./comun/camara.ts";
+export type { Camara, DepsCamara } from "./comun/camara.ts";
