@@ -145,7 +145,7 @@ test("la línea: olivos, reserva, factor y paso; apagado con xrolivos=0; nada si
 });
 
 test("enganche (texto): 07b recorta solo en VR y fuera de VR reparte como siempre; 04b le da al tileset su parte", () => {
-  const A = lee("apps/web/motor/07b_arboles.js"), E = require("./_fuente").fuenteMotor("04b_escena3d.js"), M = require("./_fuente").fuenteMotor("02m_tope_olivos.js");
+  const A = require("./_fuente").fuenteMotor("07b_arboles.js"), E = require("./_fuente").fuenteMotor("04b_escena3d.js"), M = require("./_fuente").fuenteMotor("02m_tope_olivos.js");
   assert.match(A, /var QO = !!vrP && TopeOlivos\.activo\(\), BO = QO \? TopeOlivos\.presupuesto\(\) : Infinity, fO = QO \? TopeOlivos\.factor\(\) : 1;/, "fuera de VR: BO = Infinity y f = 1");
   assert.match(A, /Math\.min\(BO, Math\.max\(0, TOPE_TRI - triTil\)\)/, "los generados: min(Infinity, x) = x fuera de VR");
   assert.match(A, /var tope0 = MAX0 \* esc \* \(vrP \? vrP\.n : 1\) \* fO;/);

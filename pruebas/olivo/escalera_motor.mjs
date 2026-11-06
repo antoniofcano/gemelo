@@ -327,6 +327,7 @@ if (fs.existsSync(FX)) {
       Mundo: { cx: 0, cy: 0, tesela: () => ({ estado: 2, pts: null, key: "t" }), ortoGrueso: (x, y, c3) => { c3[0] = 0.3; c3[1] = 0.35; c3[2] = 0.2; }, aseguraOrto: function* () {} },
       Catalogo: { SIN: -1, variantes: (t, n) => (n === 1 ? 4 : 2), geometria: () => mat(), alCambiar: () => {}, tipos: () => [], info: () => ({}) },
       OlivosTiles: { dibuja: () => true, triangulos: () => (copas.length - tiles.cerca.length) * tiles.triPor, cerca: l => { tiles.cerca = l.slice(); }, resumen: () => ({ estado: "activo", dibujadas: 0 }) },
+      XrPerillas: {}, VrControlPuro: {}, InfoDibujo: { triangulos: () => 0 }, TopeTilesPuro: { DEF: {} }, TopeOlivos: { activo: () => false, apaga() {}, factor: () => 1, presupuesto: () => Infinity, paso: () => false, resumen: () => ({}) },   // A3-2b: el talón de 07b las recibe al montarse (fuera de VR no se usan)
       Cola: { pendientes: () => 0, deuda: () => 0 },   // MU2-6: lo que 07b pide (celdas C y bins B) va por ColaExt, la Cola del exterior
       ColaExt: { pon: k => { if (k.charAt(0) !== "C" && k.charAt(0) !== "B") throw new Error("los generados no deben usar la Cola compartida: " + k); cola.add.push(k); }, hay: () => false, cancela: () => { cola.cancela++; } },
       CargaPuro   // AG-1.5: la regla real del presupuesto de carga (nucleo/cola.ts)

@@ -40,3 +40,6 @@ export type { DepsFollaje, Follaje } from "./exterior/follaje.ts";
 // A3-2b (MU5-n): los olivos lejanos de la escalera (07ac_lejanos.js).
 export { ID_LEJANOS, creaLejanos } from "./exterior/lejanos.ts";
 export type { DepsLejanos, Lejanos } from "./exterior/lejanos.ts";
+// A3-2b (MU5-n): los olivos del motor con tres niveles de detalle (07b_arboles.js).
+export { ID_ARBOLES, creaArboles } from "./exterior/arboles.ts";
+export type { Arboles, DepsArboles } from "./exterior/arboles.ts";

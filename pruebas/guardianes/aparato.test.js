@@ -146,7 +146,7 @@ test("guardián: solo 01a_aparato.js lee userAgent, deviceMemory, hardwareConcur
   // y los 9 sitios de antes llaman a la API nueva
   const usa = { "02_mundo.js": "Aparato.politica().ortoMax", "07ab_generados.js": "Aparato.politica()", "07b_arboles.js": "Aparato.politica().olivosLigero", "26b_avatares.js": "Aparato.clase()",
     "30_mide.js": "Aparato.agente()", "38_presencia_compartida.js": "Aparato.clase()", "45_voz.js": "Aparato.clase()", "47_habla.js": "Aparato.clase()", "28_depura.js": "Aparato.linea()", "03_escena.js": "Aparato.enlaza" };
-  for (const [f, s] of Object.entries(usa)) assert.ok(fs.readFileSync(path.join(MOTOR, f), "utf8").includes(s), f + " usa " + s);
+  for (const [f, s] of Object.entries(usa)) assert.ok(require("./_fuente").fuenteMotor(f).includes(s), f + " usa " + s);   // A3-2b: lo migrado, junto a su talón
 });
 
 test("01a_aparato.js monta antes que todos los que lo consumen (orden alfabético) y no consume nada de otros módulos", () => {

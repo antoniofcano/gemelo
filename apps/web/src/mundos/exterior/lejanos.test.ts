@@ -88,6 +88,6 @@ describe("lejanos de la escalera (componente del exterior)", () => {
     const { api, gArboles } = monta();
     api.paso(0.1);
     expect(api.componente.id).toBe(ID_LEJANOS); expect(api.componente.mundos).toEqual(["exterior"]); expect(api.componente.presupuesto.llamadas).toBe(1);
-    expect(api.componente.monta({} as never)).toBe(api); api.componente.libera(api); expect(gArboles.children).toHaveLength(0);
+    expect(api.componente.monta({} as never)).toEqual({ libera: api.libera }); api.componente.libera(api); expect(gArboles.children).toHaveLength(0);
   });
 });

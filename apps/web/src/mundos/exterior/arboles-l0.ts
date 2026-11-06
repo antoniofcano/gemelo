@@ -220,11 +220,10 @@ export function creaArbolesL0(d: DepsArbolesL0) {
     bandera: { defecto: true },
     presupuesto: { llamadas: 0, triangulos: 0 },   // sus mallas son las celdas de nivel 0 de 07b: su coste entra en el de 07b (TRI0 por olivo, tope MAX0)
     mundos: ["exterior"],
-    monta: function () { return api; },
+    monta: function () { return { libera }; },
     libera: function () { libera(); }
   };
-  const api = { gArboles, gFollaje, gSombras, matCopa, matTroncoL0, materiales, radioEn, arbolesG, libera, componente };
-  return api;
+  return { gArboles, gFollaje, gSombras, matCopa, matTroncoL0, materiales, radioEn, arbolesG, libera, componente };
 }
 export type ArbolesL0 = ReturnType<typeof creaArbolesL0>;
 

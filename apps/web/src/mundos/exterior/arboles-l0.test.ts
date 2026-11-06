@@ -68,7 +68,7 @@ describe("olivos de nivel 0 (componente del exterior)", () => {
     const { api, scene } = monta();
     expect(api.componente.id).toBe(ID_ARBOLES_L0); expect(api.componente.mundos).toEqual(["exterior"]);
     expect(api.componente.presupuesto).toEqual({ llamadas: 0, triangulos: 0 });
-    expect(api.componente.monta({} as never)).toBe(api);
+    expect(api.componente.monta({} as never)).toEqual({ libera: api.libera });
     api.componente.libera(api); expect(scene.children).toHaveLength(0);
   });
 });

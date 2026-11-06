@@ -156,10 +156,9 @@ export function creaFollaje(d: DepsFollaje) {
     bandera: { defecto: true },
     presupuesto: { llamadas: 1, triangulos: 2 * 30000 },   // la malla de sombras: UNA llamada con 2 triángulos por olivo (techo para 30.000 olivos); las hojas son puntos de las celdas de 07b
     mundos: ["exterior"],
-    monta: function () { return api; },
+    monta: function () { return { libera }; },
     libera: function () { libera(); }
   };
-  const api = { texHojas, matHojaG, matHojaP, matCorteza, matSombra, geoSombra, follajeG, construyeSombras, libera, materiales, sombras: function () { return inst; }, componente };
-  return api;
+  return { texHojas, matHojaG, matHojaP, matCorteza, matSombra, geoSombra, follajeG, construyeSombras, libera, materiales, sombras: function () { return inst; }, componente };
 }
 export type Follaje = ReturnType<typeof creaFollaje>;

@@ -233,7 +233,7 @@ if (caso) exige(await O.huella(O.receta({ tipo: "centenario3", epoca: "envero", 
 else mal.push("sin el caso centenario3/envero/7 en las huellas");
 
 // ---- 5) paseando, 07b pasa a Generados la posición de quien pasea (pp), no la de la cámara (que gira alrededor en tercera persona)
-exige(/Generados\.actualiza\(paseando \? pp\.x : fx, paseando \? -pp\.y : fz,/.test(lee("07b_arboles.js")), "07b_arboles: paseando, el foco de los generados debe ser pp, no la cámara");
+exige(/Generados\.actualiza\(paseando \? pp\.x : fx, paseando \? -pp\.y : fz,/.test(lee("07b_arboles.js") + fs.readFileSync(path.join(RAIZ, "apps/web/src/mundos/exterior/arboles.ts"), "utf8"))   /* A3-2b: 07b es un talón de arboles.ts */, "07b_arboles: paseando, el foco de los generados debe ser pp, no la cámara");
 
 // ---- 6) variantes horneadas (O7e): manifiesto + objetos servidos por un fetch falso desde /teselas/fixture/
 {

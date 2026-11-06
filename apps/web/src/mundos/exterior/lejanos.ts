@@ -345,11 +345,10 @@ export function creaLejanos(d: DepsLejanos) {
     bandera: { defecto: true },
     presupuesto: { llamadas: 1, triangulos: 0 },   // UNA llamada con la malla instanciada de toda la finca; sus triángulos (4 por olivo el sustituto, 2 el impostor) cuentan en el tope de 07b (triangulos())
     mundos: ["exterior"],
-    monta: function () { return api; },
+    monta: function () { return { libera }; },
     libera: function () { libera(); }
   };
-  const api = { inicia, paso, hayCapa, capaCompleta, reparte, triangulos, pendientes, resumen, libera, materiales, componente,
+  return { inicia, paso, hayCapa, capaCompleta, reparte, triangulos, pendientes, resumen, libera, materiales, componente,
     _prueba: { sinGPU: function () { sinGPU = true; }, malla: function () { return malla; }, cajas: function () { return cajas; }, ids: function () { return ids && malla ? Array.from(ids.subarray(0, malla.count)) : []; } } };
-  return api;
 }
 export type Lejanos = ReturnType<typeof creaLejanos>;

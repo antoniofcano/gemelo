@@ -12,7 +12,7 @@ const { RAIZ, fs, path } = require("./_util");
 const { modulo } = require("./_aparato");
 
 const MOTOR = path.join(RAIZ, "apps", "web", "motor"), lee = f => fs.readFileSync(path.join(MOTOR, f), "utf8");
-const G07 = lee("07ab_generados.js"), B04 = require("./_fuente").fuenteMotor("04b_escena3d.js")   /* A3-1b: talón + escena-tiles.ts */, A07 = lee("07b_arboles.js");
+const G07 = lee("07ab_generados.js"), B04 = require("./_fuente").fuenteMotor("04b_escena3d.js")   /* A3-1b: talón + escena-tiles.ts */, A07 = require("./_fuente").fuenteMotor("07b_arboles.js");   // A3-2b: talón + arboles.ts
 const { AparatoPuro } = modulo({});
 
 const { pathToFileURL } = require("url");

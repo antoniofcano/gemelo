@@ -112,7 +112,7 @@ test("precompilación: una vez al entrar en VR, con compileAsync (compile si no 
 test("A1-12 (L7-03, L1-03): 29_vr reinicia el controlador al entrar en VR y 07b_arboles, en VR, ajusta la escala de los olivos con VrControlPuro", () => {
   assert.match(VR, /vrPerfil\(XrPerillas\.fijo\(\) \? XrPerillas\.efectivas\.nivel : 0\); VrControlPuro\.reinicia\(VRX\);/, "al entrar: medias, periodo, perdidos, buenos y castigo de cero");
   assert.doesNotMatch(VR, /VRX\.emaDt = 13\.9; VRX\.emaJs = 6;/, "el reinicio a mano de antes ya no está");
-  const A = lee("apps/web/motor/07b_arboles.js"), aj = trozo(A, "function ajustaEscala()", "// por encima de 1,6");
+  const A = require("./_fuente").fuenteMotor("07b_arboles.js"), aj = trozo(A, "function ajustaEscala()", "// por encima de 1,6");
   assert.match(aj, /if \(vrP\) \{ esc = VrControlPuro\.escalaVr\(esc, VrControlPuro\.holgura\(VRX, XrPerillas\.js\(\), XrPerillas\.jsSube\(\)\), InfoDibujo\.triangulos\(renderer\), vrP\.tri\); return; \}/,
     "en VR la escala no usa emaDt < 16 ms: usa la holgura del controlador y los triángulos del perfil");
   assert.ok(aj.indexOf("if (vrP)") > aj.indexOf("if (fq != null)"), "la calidad fijada en Ajustes sigue mandando también en VR");

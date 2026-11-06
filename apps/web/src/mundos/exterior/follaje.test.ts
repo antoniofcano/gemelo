@@ -86,7 +86,7 @@ describe("follaje y sombras de los olivos (componente del exterior)", () => {
   it("la fuente de VR esconde las manchas desde el escalón 2 y el componente es del exterior, solo ciclo de vida", () => {
     const { api, estado } = monta(3);
     estado.fuente!(false); expect(api.matSombra.visible).toBe(false); estado.fuente!(true); expect(api.matSombra.visible).toBe(true);
-    expect(api.componente.id).toBe(ID_FOLLAJE); expect(api.componente.mundos).toEqual(["exterior"]); expect(api.componente.monta({} as never)).toBe(api);
+    expect(api.componente.id).toBe(ID_FOLLAJE); expect(api.componente.mundos).toEqual(["exterior"]); expect(api.componente.monta({} as never)).toEqual({ libera: api.libera });
     api.componente.libera(api);
   });
 });

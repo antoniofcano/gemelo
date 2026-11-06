@@ -207,7 +207,7 @@ test("04c_olivos_tiles: un json que no es el del tileset no resuelve nada (vuelv
 });
 
 test("los enganches de 04c: 04b solo retira los olivos si 04c no se queda con ellos, 07b no dibuja sus niveles 1 y 2 con el tileset y le pasa los de cerca", () => {
-  const b = fuenteMotor("04b_escena3d.js"), a = lee(path.join(MOTOR, "07b_arboles.js"));
+  const b = fuenteMotor("04b_escena3d.js"), a = fuenteMotor("07b_arboles.js");
   assert.match(b, /if \(!\(ganchos\.alModelo && ganchos\.alModelo\(e\.scene, e\.tile\)\)\) quitaOlivos\(e\.scene\)/);
   assert.match(b, /"dispose-model"/); assert.match(b, /ganchos\.alApagar/); assert.match(b, /ganchos\.fotograma\(\)/);
   assert.match(FUENTE_OT, /if \(estado === "esperando"\) Escena3D\.engancha\(/, "04c solo se engancha si la escena no está «sin»");
