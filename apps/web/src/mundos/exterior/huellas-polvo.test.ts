@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { creaMateriales } from "../../nucleo/materiales.ts";
 import type { ThreeMin } from "../../nucleo/materiales.ts";
 import type { ContextoComponente } from "../../nucleo/componentes.ts";
-import { ID_HUELLAS_POLVO, creaHuellasPolvo, manifiestoHuellasPolvo } from "./huellas-polvo.ts";
+import { ID_HUELLAS_POLVO, MATERIAL_HUELLA, MATERIAL_POLVO, creaHuellasPolvo, defHuella, defPolvo, manifiestoHuellasPolvo } from "./huellas-polvo.ts";
 import type { DepsHuellasPolvo } from "./huellas-polvo.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -85,5 +85,25 @@ describe("huellas y polvo: el ciclo de vida", () => {
   it("no deja relojes: ni setInterval ni setTimeout propios", () => {
     const fuente = String(creaHuellasPolvo);
     expect(/setInterval|setTimeout/.test(fuente)).toBe(false);
+  });
+});
+
+describe("huellas y polvo: las variantes TSL (apagadas)", () => {
+  it("con three/webgpu y three/tsl de verdad: huella es un MeshBasicNodeMaterial y polvo un PointsNodeMaterial, con sus nodos, y solo salen con el renderer nuevo", async () => {
+    const rutaW = "three/webgpu", rutaT = "three/tsl";   // por variable: three no trae tipos (y así tampoco entra en el grafo de dependency-cruiser)
+    const W = await import(/* @vite-ignore */ rutaW), T = await import(/* @vite-ignore */ rutaT);
+    const nuevo = creaMateriales({ THREE: THREE as unknown as ThreeMin, render: { tipo: "nuevo", pedido: "nuevo" }, nodos: () => ({ THREE: W, TSL: T }) });
+    const clasico = creaMateriales({ THREE: THREE as unknown as ThreeMin, busqueda: "" });
+    for (const M of [nuevo, clasico]) { M.define(MATERIAL_HUELLA, defHuella()); M.define(MATERIAL_POLVO, defPolvo()); }
+    expect(nuevo.ruta(MATERIAL_HUELLA)).toBe("tsl"); expect(nuevo.ruta(MATERIAL_POLVO)).toBe("tsl"); expect(clasico.ruta(MATERIAL_HUELLA)).toBe("clasico");
+    // los uniformes son los del componente: los mismos objetos { value }
+    const uH = { uNow: { value: 3 }, uColor: { value: new THREE.Color(0x2c2218) } }, uP = { uNow: { value: 3 }, uColor: { value: new THREE.Color(0xb89e74) }, uLuz: { value: 0.5 } };
+    const h = nuevo.crea(MATERIAL_HUELLA, { uniforms: uH }) as { isNodeMaterial?: boolean; type?: string; colorNode?: unknown; transparent?: boolean; depthWrite?: boolean; polygonOffsetFactor?: number };
+    expect(h.isNodeMaterial).toBe(true); expect(h.type).toBe("MeshBasicNodeMaterial"); expect(h.colorNode).toBeTruthy();
+    expect(h.transparent).toBe(true); expect(h.depthWrite).toBe(false); expect(h.polygonOffsetFactor).toBe(-4);
+    const p = nuevo.crea(MATERIAL_POLVO, { uniforms: uP }) as { isNodeMaterial?: boolean; type?: string; colorNode?: unknown; opacityNode?: unknown; sizeNode?: unknown; transparent?: boolean };
+    expect(p.isNodeMaterial).toBe(true); expect(p.type).toBe("PointsNodeMaterial"); expect(p.colorNode).toBeTruthy(); expect(p.opacityNode).toBeTruthy(); expect(p.sizeNode).toBeTruthy(); expect(p.transparent).toBe(true);
+    expect(clasico.crea(MATERIAL_HUELLA, { uniforms: uH })).toMatchObject({ type: "ShaderMaterial" });
+    expect(nuevo.cobertura()[MATERIAL_HUELLA]).toMatchObject({ clasico: true, tsl: true }); expect(nuevo.cobertura()[MATERIAL_POLVO]).toMatchObject({ clasico: true, tsl: true });
   });
 });

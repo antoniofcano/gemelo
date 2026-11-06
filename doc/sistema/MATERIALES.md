@@ -56,8 +56,8 @@ Son tres. Pasados a TSL, desbloquean a casi todos:
 | 17 | `16_vida.js` | `estela` | `ShaderMaterial` | estela del dron por edad (`uNow`) | no | no | no | no | B |
 | 18 | `18_paisaje.js` | `arroyo` | `ShaderMaterial` | agua del arroyo cuando llueve | no | no | no | `uT`, `uLuz` | B |
 | 19 | `19_balizas.js` | `baliza` | `ShaderMaterial` (uno por baliza) | columna con pulso | no | no | no | `uT` | B |
-| 20 | `22b_huellas_polvo.js` | `huella` | `ShaderMaterial` (instanciado) | huellas que se borran con la edad | no | no | no | no | M |
-| 21 | `22b_huellas_polvo.js` | `polvo` | `ShaderMaterial` (puntos) | polvo | no | no | CPU | `uLuz` | M (puntos) |
+| 20 | `apps/web/src/mundos/exterior/huellas-polvo.ts` (antes `22b_huellas_polvo.js`) | `huella` | `ShaderMaterial` (instanciado) | huellas que se borran con la edad | no | no | no | no | M — **TSL parcial, apagada (MU5-n, A3-5):** `define` con clásico y TSL (`MeshBasicNodeMaterial`); §10 |
+| 21 | `apps/web/src/mundos/exterior/huellas-polvo.ts` (antes `22b_huellas_polvo.js`) | `polvo` | `ShaderMaterial` (puntos) | polvo | no | no | CPU | `uLuz` | M (puntos) — **TSL parcial, apagada (MU5-n, A3-5):** `PointsNodeMaterial`; el tamaño en píxeles no vale en el WebGPURenderer nativo (§10) |
 | 22 | `23_estacion.js` | `fruto-flor` | `ShaderMaterial` (puntos) | flores y aceitunas por BBCH | no | CPU (vigor) | no | `uLuz` | M (puntos) |
 | 23 | `26b_avatares.js` | `vrm-fundido` | MToon + `encadena` | fundido por tramado | sí (MToon) | no | no | no | M-A (`MToonNodeMaterial`) |
 | 24 | `29_vr.js` | `vineta-vr` | `ShaderMaterial` | viñeta de confort | no | no | no | no | B |

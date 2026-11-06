@@ -50,6 +50,23 @@ export function defHuella(): DefMaterial<OpcSombreador> {
           "else { float planta = smoothstep(1.0, 0.7, length(vec2(p.x / 0.3, (p.y + 0.14) / 0.32))); float punta = smoothstep(1.0, 0.7, length(vec2(p.x / 0.36, (p.y - 0.30) / 0.16))); a = max(planta, punta * 0.9) * 0.55; }\n" +
           "a *= 1.0 - smoothstep(0.55, 1.0, vAge); gl_FragColor = vec4(uColor, a);\n#include <colorspace_fragment>\n}"
       });
+    },
+    // MU5-n, tercer commit: la variante TSL, APAGADA (solo con el WebGPURenderer, que hasta MU6 no existe; nadie la usa hoy). Un MeshBasicNodeMaterial (transparente, sin escribir
+    // profundidad y con el mismo polygonOffset) cuyo colorNode es el de las huellas: la edad (uNow − aBorn) / aVida con los MISMOS uniformes que mueve actualizaHuellas, el dibujo
+    // de la pisada o la rodada según aTipo (los atributos de instancia del clásico) y el borrado con la edad. El renderer pasa del color lineal al de pantalla (el clásico lo hacía con
+    // colorspace_fragment). El smoothstep(a, b, x) del GLSL con a > b se escribe 1 − smoothstep(b, a, x): lo mismo, y WGSL exige a < b.
+    // FALTA: nada conocido del dibujo; NO VERIFICADO que el grafo compile ni que se vea igual (capturas por material: MU6).
+    tsl: function (opc, c) {
+      const T = c.TSL as T3, M = c.THREE["MeshBasicNodeMaterial"] as new (o: unknown) => MaterialMin;
+      const u = opc.uniforms as T3, uNow = T.uniform(u["uNow"].value).onObjectUpdate(function () { return u["uNow"].value; }), uColor = T.uniform(u["uColor"].value);   // el mismo Color, que se mueve en su sitio
+      const edad = T.clamp(uNow.sub(T.attribute("aBorn", "float")).div(T.attribute("aVida", "float")), 0, 1), tipo = T.attribute("aTipo", "float"), p = T.uv().sub(0.5);
+      const uno = (a: T3, b: T3, x: T3): T3 => T.float(1).sub(T.smoothstep(b, a, x));   // el smoothstep(a, b, x) de GLSL con a > b
+      const borde = uno(0.5, 0.34, T.abs(p.x)), tacos = T.float(0.62).add(T.float(0.38).mul(T.step(0.5, T.fract(T.uv().y.mul(5).add(T.abs(p.x).mul(2.5)))))), rodada = borde.mul(tacos).mul(0.6);
+      const planta = uno(1.0, 0.7, T.length(T.vec2(p.x.div(0.3), p.y.add(0.14).div(0.32)))), punta = uno(1.0, 0.7, T.length(T.vec2(p.x.div(0.36), p.y.sub(0.30).div(0.16)))), pisada = T.max(planta, punta.mul(0.9)).mul(0.55);
+      const a = T.select(tipo.lessThan(0.5), rodada, pisada).mul(T.float(1).sub(T.smoothstep(0.55, 1.0, edad)));
+      const m = new M({ transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }) as MaterialMin & { colorNode: unknown };
+      m.colorNode = T.vec4(uColor, a);
+      return m;
     }
   };
 }
@@ -63,6 +80,21 @@ export function defPolvo(): DefMaterial<OpcSombreador> {
           "void main(){ float e = clamp((uNow - aBorn) / aVida, 0.0, 1.0); vA = (1.0 - e) * (1.0 - e); vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = aTam * (1.0 + 2.4 * e) * (520.0 / max(1.0, -mv.z)); gl_Position = projectionMatrix * mv; }",
         fragmentShader: "uniform vec3 uColor; uniform float uLuz; varying float vA; void main(){ float d = length(gl_PointCoord - 0.5) * 2.0; gl_FragColor = vec4(uColor * uLuz, smoothstep(1.0, 0.1, d) * vA * 0.62);\n#include <colorspace_fragment>\n}"
       });
+    },
+    // MU5-n, tercer commit: la variante TSL, APAGADA. Un PointsNodeMaterial cuyo color es el del polvo por la luz del día (uLuz) y cuya opacidad es el disco suave (pointUV) por el
+    // borrado con la edad ((1 − e)²) y 0,62. El tamaño sale de sizeNode (aTam · (1 + 2,4 e) · 520 / max(1, −z de vista)), como el gl_PointSize del clásico.
+    // FALTA: en el WebGPURenderer un punto mide siempre 1 px (MATERIALES §5, «Los puntos»): el tamaño solo valdría con el backend WebGL del WebGPURenderer; con el nativo, el polvo pasa a
+    // sprites instanciados, y eso se mide en el banco (MU6). NO VERIFICADO que el grafo compile ni que se vea igual.
+    tsl: function (opc, c) {
+      const T = c.TSL as T3, M = c.THREE["PointsNodeMaterial"] as new (o: unknown) => MaterialMin;
+      const u = opc.uniforms as T3, uColor = T.uniform(u["uColor"].value), uLuz = T.uniform(u["uLuz"].value).onObjectUpdate(function () { return u["uLuz"].value; });
+      const uNow = T.uniform(u["uNow"].value).onObjectUpdate(function () { return u["uNow"].value; });
+      const e = T.clamp(uNow.sub(T.attribute("aBorn", "float")).div(T.attribute("aVida", "float")), 0, 1), vA = T.float(1).sub(e).mul(T.float(1).sub(e));
+      const d = T.length(T.pointUV.sub(0.5)).mul(2.0), disco = T.float(1).sub(T.smoothstep(0.1, 1.0, d));   // el smoothstep(1.0, 0.1, d) de GLSL
+      const m = new M({ transparent: true, depthWrite: false }) as MaterialMin & { colorNode: unknown; opacityNode: unknown; sizeNode: unknown };
+      m.colorNode = uColor.mul(uLuz); m.opacityNode = disco.mul(vA).mul(0.62);
+      m.sizeNode = T.attribute("aTam", "float").mul(T.float(1).add(e.mul(2.4))).mul(T.float(520).div(T.max(1, T.positionView.z.negate())));
+      return m;
     }
   };
 }
