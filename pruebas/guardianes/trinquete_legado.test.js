@@ -23,7 +23,8 @@ const C = require(path.join(RAIZ, "pruebas", "contrato_modulos.js"));
 // 2026-11-06, MU2-3 (el exterior como primer mundo: el cableado del gestor entra en 90_final.js y actualizaCarga sale a apps/web/src/mundos/exterior.ts; sin cambio neto): 18.947 líneas (sin cambio)
 // 2026-11-06, A2 (MU2-5, 02c_componentes.js entrega ComponentesPuro y Componentes a apps/web/src/nucleo/componentes.ts y conserva Bus, Reparto, Pausa, Teclas y Config): 18.780 líneas (de 18.947)
 // 2026-11-06, al fusionar MU2-3 y MU2-5: 18780 líneas
-const TOPE = 18780;
+// 2026-11-06, MU2-4 (la locomoción pregunta al mundo activo): 18.777 líneas
+const TOPE = 18777;
 
 /** líneas de un texto (la última sin salto también cuenta) */
 const lineas = s => s === "" ? 0 : s.split("\n").length - (s.endsWith("\n") ? 1 : 0);
