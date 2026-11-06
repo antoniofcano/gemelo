@@ -24,9 +24,16 @@ function manifiestos(carpeta = MOTOR) {
   const out = [];
   for (const f of fs.readdirSync(carpeta).filter(f => f.endsWith(".js")).sort()) {
     const s = fs.readFileSync(path.join(carpeta, f), "utf8");
-    if (!/^  Componentes\.registra\(\{/m.test(s)) continue;
-    const defs = [], ctx = vm.createContext({ Componentes: { registra: d => { defs.push(d); return true; } }, Bus: { on: () => () => {}, emite: () => 0, hay: () => false }, console, Intl, Date, Math, JSON });
-    vm.runInContext("\"use strict\";\n" + s, ctx, { filename: f });
+    // A3-1b: el talón de un componente del exterior registra el manifiesto que da apps/web/src/mundos (`Componentes.registra(Mundos.manifiestoX(…))`). El manifiesto es
+    // estático (no toca sus dependencias hasta monta()), así que se pide con un objeto vacío en vez de evaluar el talón, que necesitaría todo el motor.
+    const talon = /^  Componentes\.registra\(Mundos\.(\w+)\(/m.exec(s);
+    if (!talon && !/^  Componentes\.registra\(\{/m.test(s)) continue;
+    const defs = [];
+    if (talon) defs.push(require("./guardianes/_mundos")[talon[1]]({}));
+    else {
+      const ctx = vm.createContext({ Componentes: { registra: d => { defs.push(d); return true; } }, Bus: { on: () => () => {}, emite: () => 0, hay: () => false }, console, Intl, Date, Math, JSON });
+      vm.runInContext("\"use strict\";\n" + s, ctx, { filename: f });
+    }
     for (const d of defs) {
       const b = d.bandera || {};
       out.push({ id: d.id, fichero: f, url: b.url || null, defecto: !!b.defecto, presupuesto: d.presupuesto ? { llamadas: d.presupuesto.llamadas, triangulos: d.presupuesto.triangulos, texturasMB: d.presupuesto.texturasMB } : null });
