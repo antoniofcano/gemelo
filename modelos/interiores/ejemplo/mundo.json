@@ -1,0 +1,24 @@
+{
+ "v": 1,
+ "id": "sala-ejemplo",
+ "nombre": "Sala de ejemplo (sintética)",
+ "fuente": "ilustrativo",
+ "notas": "Inventada para el contrato: una sala de 8 × 6 × 3 m con una rueda que gira. No es la bodega ni la fábrica.",
+ "licencia": { "spdx": "CC0-1.0", "autor": "Gemelo (fixture sintético)", "atribucion": "" },
+ "glb": "sala.glb",
+ "unidades": "m",
+ "arriba": "+Y",
+ "aforo": 20,
+ "zonas": [
+  { "id": "sala", "anillo": [[-3.7, -5.7], [3.7, -5.7], [3.7, -0.3], [0.5, -0.3], [0.5, 0], [-0.5, 0], [-0.5, -0.3], [-3.7, -0.3]], "y": 0 }
+ ],
+ "puertas": [
+  { "id": "principal", "a": "exterior", "pos": [0, 0, 0], "rumbo": 0, "ancho": 1.2, "alto": 2.2, "llegada": { "pos": [0, 0, -1.5], "rumbo": 180 } }
+ ],
+ "animaciones": [
+  { "nombre": "rueda-gira", "bucle": true, "fuente": "ilustrativo" }
+ ],
+ "puntos": [
+  { "id": "rueda", "titulo": "La rueda (ilustrativa)", "pos": [0, 1.6, -5.7] }
+ ]
+}
