@@ -63,6 +63,18 @@ describe("ComponentesPuro", () => {
     expect(P.deMundo(manifiesto(), null)).toBe(false);   // sin mundo activo (a oscuras), nadie
   });
 
+  it("mundos: \"todos\" (A3-6a): un componente de todo mundo vive en cada uno de MUNDOS, también en los que se añadan; nada más vale como palabra", () => {
+    expect(P.TODOS).toBe("todos");
+    expect(P.valida(manifiesto({ mundos: "todos" }))).toEqual([]);
+    for (const m of ["todo", "Todos", "exterior", ["todos"]]) expect(P.valida(manifiesto({ mundos: m as IdMundo[] })).filter(e => /^mundos/.test(e)), JSON.stringify(m)).toHaveLength(1);
+    expect(P.mundosDe(manifiesto({ mundos: "todos" }))).toEqual(P.MUNDOS);
+    for (const id of P.MUNDOS) expect(P.deMundo(manifiesto({ mundos: "todos" }), id), id).toBe(true);
+    expect(P.deMundo(manifiesto({ mundos: "todos" }), null)).toBe(false);   // a oscuras, entre dos mundos, tampoco corre (como todos)
+    expect(P.deTodos(manifiesto({ mundos: "todos" }))).toBe(true);
+    expect(P.deTodos(manifiesto({ mundos: [...P.MUNDOS] }))).toBe(false);   // la lista entera no es lo mismo: no hereda un mundo nuevo
+    expect(P.deTodos(manifiesto())).toBe(false);
+  });
+
   it("el orden de montaje: quien consume lo que otro expone va después; los ciclos se detectan", () => {
     const a = manifiesto({ id: "a", expone: ["A"] }), b = manifiesto({ id: "b", consume: ["A"], expone: ["B"] }), c = manifiesto({ id: "c", consume: ["B", "TiempoVivo"] });
     const o = P.orden([c, b, a]);
@@ -178,6 +190,31 @@ describe("creaComponentes: el filtro por mundo (MU2-5)", () => {
     r.C.registra(mk("fuera")); r.C.registra(mk("dentro", ["molino"])); r.C.registra(mk("ambos", ["exterior", "molino"]));
     return { ...r, log };
   }
+
+  it("«todos» (A3-6a): corre en el exterior, en el molino y en el vacío; a oscuras no; y no se libera mientras quede un mundo vivo", () => {
+    const r = registro(), log: string[] = [];
+    r.C.registra(manifiesto({ id: "gente", mundos: "todos", fases: { mundo: 0 }, actualiza: { mundo: () => { log.push("gente"); } },
+      monta: () => { log.push("monta gente"); return {}; }, libera: () => { log.push("libera gente"); } }));
+    r.C.registra(manifiesto({ id: "olivar", fases: { mundo: 0 }, actualiza: { mundo: () => { log.push("olivar"); } }, monta: () => ({}), libera: () => { log.push("libera olivar"); } }));
+    r.C.arranca();
+    expect(log.splice(0)).toEqual(["monta gente"]);
+    r.C.actualiza("mundo", 0.016, 0);
+    expect(log.splice(0)).toEqual(["gente", "olivar"]);
+    for (const [desde, hacia] of [["exterior", "molino"], ["molino", "vacio"]] as const) {
+      r.bus.emite("mundo:sale", { id: desde, desde, hacia });
+      r.C.actualiza("mundo", 0.016, 0);
+      expect(log.splice(0), "a oscuras").toEqual([]);
+      r.bus.emite("mundo:entra", { id: hacia, desde, hacia });
+      r.C.actualiza("mundo", 0.016, 0);
+      expect(log.splice(0), "en " + hacia).toEqual(["gente"]);
+    }
+    expect(r.C.liberaMundo("exterior")).toBe(1);   // se va el exterior: el olivar, que es solo suyo; la gente sigue (el vacío está vivo)
+    expect(log.splice(0)).toEqual(["libera olivar"]);
+    expect(r.C.activo("gente")).toBe(true);
+    r.C.liberaMundo("molino"); expect(r.C.activo("gente")).toBe(true);
+    expect(r.C.liberaMundo("vacio")).toBe(1);   // el último mundo vivo: ahora sí
+    expect(log.splice(0)).toEqual(["libera gente"]);
+  });
 
   it("sin «mundos», del exterior: hoy todo corre como antes y nada cambia sin eventos", () => {
     const { C, log } = tres();

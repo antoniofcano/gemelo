@@ -12,7 +12,9 @@
 //     siguiente no hay mundo activo (a oscuras) y no corre ninguna fase. Al arrancar, el activo es el exterior.
 //   · Un componente se monta solo si alguno de sus mundos está vivo (cargado: activo o congelado). Al entrar en un mundo que no lo estaba, se montan los
 //     suyos; liberaMundo(id) (quien libere el mundo, MU2-6) libera los componentes que se quedan sin ningún mundo vivo.
-//   Hoy todos los componentes son del exterior y nadie emite esos eventos: no cambia nada visible.
+//   · MU5-n (A3-6a): «mundos: "todos"» es un componente de TODO mundo (la red, la presencia, los avatares, el menú de muñeca): vive en cada uno de los de
+//     MUNDOS, también en los que se añadan después, así que sus fases corren en el que esté activo y solo se libera cuando no queda ningún mundo vivo.
+//   Hoy casi todos los componentes son del exterior y nadie emite esos eventos: no cambia nada visible.
 // Nada de aquí lee globales al cargarse: el Bus, el Reparto, el reloj, la URL, el documento y la consola entran por argumento de creaComponentes.
 import type { IdMundo } from "./mundos.ts";
 
@@ -25,6 +27,10 @@ const _todos: [FaltaEnMundos] extends [never] ? true : never = true;   // si IdM
 void _todos;
 /** Sin «mundos» en el manifiesto, el componente es del exterior. */
 const DEFECTO_MUNDOS: readonly IdMundo[] = ["exterior"];
+/** MU5-n (A3-6a): el valor de «mundos» de un componente de todo mundo (la presencia, la red y los avatares siguen al entrar en un interior). Es una palabra y no
+ *  la lista de todos para que un mundo nuevo de IdMundo lo herede sin tocar su manifiesto (una lista escrita a mano se quedaría corta en silencio). */
+const TODOS = "todos";
+export type MundosComponente = IdMundo[] | typeof TODOS;
 
 const ID = /^[a-z][a-z0-9-]*$/, URLN = /^[a-z][a-z0-9]*$/;
 
@@ -60,8 +66,8 @@ export interface Manifiesto {
   monta(n: ContextoComponente): unknown;
   libera(api: ApiComponente | null): void;
   cultivo?: string | string[];
-  /** MU2-5: los mundos en los que vive; sin el campo, el exterior */
-  mundos?: IdMundo[];
+  /** MU2-5: los mundos en los que vive; sin el campo, el exterior; «todos» (A3-6a): en cada mundo, también los que se añadan */
+  mundos?: MundosComponente;
 }
 
 /** El bloque «componentes» de la configuración (contratos/config.schema.json). */
@@ -103,8 +109,8 @@ function valida(d: unknown): string[] {
   if (typeof d.libera !== "function") e.push("libera: función (obligatoria: todo recurso se suelta)");
   if (d.cultivo !== undefined && !(typeof d.cultivo === "string" || esLista(d.cultivo))) e.push("cultivo: nombre o lista");
   const m = d.mundos;
-  if (m !== undefined && !(Array.isArray(m) && m.length > 0 && m.every(esMundo) && new Set(m).size === m.length))
-    e.push("mundos: lista sin repetir de " + MUNDOS.join(", ") + " (sin el campo, el exterior)");
+  if (m !== undefined && m !== TODOS && !(Array.isArray(m) && m.length > 0 && m.every(esMundo) && new Set(m).size === m.length))
+    e.push("mundos: lista sin repetir de " + MUNDOS.join(", ") + " o \"" + TODOS + "\" (sin el campo, el exterior)");
   return e;
 }
 
@@ -167,11 +173,13 @@ function toca(est: EstadoFase, periodo: number, dt: number): number {
   const a = est.acum; est.acum = 0; return a;
 }
 
-/** MU2-5: los mundos de un componente (sin el campo, el exterior) y si es de un mundo. */
-function mundosDe(d: Pick<Manifiesto, "mundos">): readonly IdMundo[] { return d.mundos && d.mundos.length ? d.mundos : DEFECTO_MUNDOS; }
+/** MU2-5: los mundos de un componente (sin el campo, el exterior; con «todos», cada uno de MUNDOS) y si es de un mundo. */
+function mundosDe(d: Pick<Manifiesto, "mundos">): readonly IdMundo[] { return d.mundos === TODOS ? MUNDOS : d.mundos && d.mundos.length ? d.mundos : DEFECTO_MUNDOS; }
+/** A3-6a: ¿es de todo mundo? */
+function deTodos(d: Pick<Manifiesto, "mundos">): boolean { return d.mundos === TODOS; }
 function deMundo(d: Pick<Manifiesto, "mundos">, id: IdMundo | null): boolean { return id !== null && mundosDe(d).indexOf(id) >= 0; }
 
-export const ComponentesPuro = { FASES, MUNDOS, valida, orden, valorUrl, encendido, validaConfig, toca, mundosDe, deMundo };
+export const ComponentesPuro = { FASES, MUNDOS, TODOS, valida, orden, valorUrl, encendido, validaConfig, toca, mundosDe, deMundo, deTodos };
 
 /** El Bus del legado (02c_componentes.js; contratos/eventos.json). */
 export interface BusComponentes {

@@ -95,7 +95,7 @@ Estilo del motor intacto (`var`, sin módulos ES dentro, concatenación): un com
     bandera: { defecto: true, url: "fichas" },        // ?fichas=0 la apaga; /api/config manda en el servidor (C6)
     presupuesto: { llamadas: 1, triangulos: 2, texturasMB: 1 },   // regla 6: lo que puede sumar como mucho
     fases: { tarde: 0.5 },                            // «tarde» cada 0,5 s (sustituye al setInterval); «mundo» cada fotograma
-    mundos: ["exterior"],                             // MU2-5: en qué mundos vive (opcional; sin el campo, el exterior)
+    mundos: ["exterior"],                             // MU2-5: en qué mundos vive (opcional; sin el campo, el exterior; "todos": en cada mundo, A3-6a)
     monta: function (n) { … return api; },            // n = el núcleo; puede devolver una promesa (import() perezoso)
     actualiza: { tarde: function (dt, t) { revisa(); } },
     libera: function () { … dispose() de todo … }     // obligatorio si monta crea recursos de GPU o escucha algo
@@ -103,6 +103,14 @@ Estilo del motor intacto (`var`, sin módulos ES dentro, concatenación): un com
 ```
 
 **El campo `mundos`** (MU2-5, [MUNDOS](MUNDOS.md) §3): la lista sin repetir de los mundos en los que vive el componente, de los de `IdMundo` (`"exterior"`, `"molino"`, `"bodega"`, `"vacio"`); sin el campo, `["exterior"]`, que es lo de todos los de hoy. Sus fases solo corren mientras uno de sus mundos es el activo (lo dicen «mundo:entra» y «mundo:sale» del Bus, que emite el gestor de mundos; a oscuras, entre los dos, no corre ninguna); se monta solo si uno de sus mundos está cargado (activo o congelado), y se libera cuando el último de ellos se libera (`Componentes.liberaMundo`, que `90_final.js` engancha a la limpieza de cada mundo). Congelado su mundo (MU2-6), el componente sigue montado pero sin fases: si dibuja algo colgado de la escena, se oculta con las raíces del exterior. Lo valida `ComponentesPuro.valida` y lo prueba `nucleo/componentes.test.ts` (Vitest).
+
+**Los componentes de todo mundo: `mundos: "todos"`** (MU5-n, A3-6a, 2026-11-06). La red (`red-salas`), la presencia (`presencia-compartida`), los avatares (`avatares-vrm`) y el menú de muñeca de VR (`muneca-vr`) no son del exterior: tienen que seguir al entrar en un interior (la gente que ves, tu sala y tu voz no cambian por cruzar una puerta; la sala por mundo de MUNDOS §7.1 es de MU3). Se declaran con la palabra `"todos"` en vez de una lista:
+
+- **Qué hace.** `ComponentesPuro.mundosDe` devuelve todos los de `MUNDOS` (los de `IdMundo`), así que el componente corre sus fases en el mundo que esté activo, sea cual sea; a oscuras, entre dos mundos, no corre (como los demás: el gestor cambia de mundo con la pantalla en negro); se monta desde el arranque y solo se libera cuando **no queda ningún mundo vivo** (`liberaMundo` del último). `ComponentesPuro.deTodos(def)` dice si lo es.
+- **Por qué una palabra y no la lista.** Con `["exterior", "molino", "bodega", "vacio"]` escrito a mano, el día que `IdMundo` gane un mundo (la almazara, otra finca) el componente se quedaría fuera de él **en silencio**: dejarías de ver a la gente al entrar. `"todos"` lo hereda sin tocar ningún manifiesto. La lista entera sigue valiendo, pero no es lo mismo (`deTodos` es falso). Otra palabra (`"todo"`, `"Todos"`) o `["todos"]` es un error del manifiesto.
+- **Lo que no cambia.** Sin el campo, el exterior (lo de todos los de antes). Un componente de todo mundo que dibuja cuelga lo suyo de la escena, no de las raíces del exterior: al congelarse el exterior no se oculta con él (la presencia, los avatares).
+- **Dónde vive su código** (MUNDOS §1, «Cómo quedó (MU5-n, A3-6a)»): lo que es red, presencia y su códec, sin `three`, en `apps/web/src/red/`; lo que dibuja (la presencia, los avatares, el muñeco y el menú de muñeca), en `apps/web/src/mundos/comun/`, que no es un mundo: lo pueden usar todos y no importa de ninguno.
+- **Prueba:** `nucleo/componentes.test.ts` (Vitest): la palabra vale y nada parecido vale; corre en el exterior, el molino y el vacío; a oscuras no; y se libera solo con el último mundo.
 
 Reglas que vigila un guardián nuevo (C1, en Node, sin Chrome):
 
