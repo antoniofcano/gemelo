@@ -4,8 +4,10 @@
   "promesas": [
     {
       "origen": "CLAUDE.md §1", "clave": "1", "titulo": "Nada llega a `main` sin pasar la puerta local.",
-      "vigila": null,
-      "motivo": "Pasar la puerta antes de subir lo hace quien sube (y la repite CI en GitHub Actions); ninguna prueba puede saber, desde dentro de la puerta, si se pasó antes de un commit. «La lista vive en un solo sitio» y «cada pieza nueva lleva su comprobación» tampoco tienen guardián hoy."
+      "vigila": [
+        { "fichero": "pruebas/guardianes/filas_puerta.test.js", "test": "cada pruebas/guardianes/*.test.js tiene su fila en la tabla de la puerta y cada *.test.js que cita la tabla existe" }
+      ],
+      "falta": "Pasar la puerta antes de subir lo hace quien sube (y la repite CI en GitHub Actions): ninguna prueba puede saber, desde dentro de la puerta, si se pasó antes de un commit. «Cada pieza nueva lleva su comprobación» no tiene guardián."
     },
     {
       "origen": "CLAUDE.md §1", "clave": "2", "titulo": "La lógica testeable vive en módulos con contrato (`apps/web/motor/NN_*.js`), no repartida.",
@@ -93,9 +95,10 @@
         { "fichero": "pruebas/guardianes/web.test.js", "test": "three va con versión exacta" },
         { "fichero": "pruebas/guardianes/escena3d.test.js", "test": "3DTilesRendererJS: versión exacta en apps/web/package.json" },
         { "fichero": "pruebas/guardianes/api.test.js", "test": "dependencias de apps/api fijadas a versión exacta y con package-lock" },
-        { "fichero": "pruebas/guardianes/dev.test.js", "test": "dependencias de las herramientas con versión exacta" }
+        { "fichero": "pruebas/guardianes/dev.test.js", "test": "dependencias de las herramientas con versión exacta" },
+        { "fichero": "pruebas/guardianes/versiones.test.js", "test": "toda dependencia de cada package.json va con versión exacta y toda línea de requirements*.txt usa ==" }
       ],
-      "falta": "Solo la versión fijada de algunas dependencias (three, 3DTilesRendererJS, apps/api, las herramientas de la raíz); no apps/web entera, ni tuberia/ (requirements.txt), ni el «no reescribir lo que ya existe», que juzga una persona."
+      "falta": "Las dependencias sin fijar que se conocen siguen sin fijar (requirements.txt: rasterio y matplotlib, sin package-lock que las resuelva; anotadas en PENDIENTES de versiones.test.js). «No reescribir lo que ya existe» lo juzga una persona."
     },
     {
       "origen": "CLAUDE.md §1", "clave": "13", "titulo": "Cada promesa escrita tiene un guardián, o se borra",
@@ -117,9 +120,11 @@
       "vigila": [
         { "fichero": "pruebas/guardianes/sintaxis.test.js", "test": "el motor montado (todos los motor/*.js concatenados, como hace genera_motor.mjs) es JavaScript válido" },
         { "fichero": "pruebas/guardianes/sintaxis.test.js", "test": "módulo válido por sí solo (envuelto en una función)" },
-        { "fichero": "pruebas/guardianes/web.test.js", "test": "la página empaquetada carga sin errores, lleva la three de apps/web y solo pide a su mismo origen" }
+        { "fichero": "pruebas/guardianes/web.test.js", "test": "la página empaquetada carga sin errores, lleva la three de apps/web y solo pide a su mismo origen" },
+        { "fichero": "pruebas/guardianes/estilo_motor.test.js", "test": "el motor legado no tiene let, const ni class (ni al nivel de módulo ni dentro de funciones)" },
+        { "fichero": "pruebas/guardianes/estilo_motor.test.js", "test": "solo 01_datos.js abre la IIFE y solo 99_cierre.js la cierra (el montaje es una sola sentencia)" }
       ],
-      "falta": "Que un módulo use `var` y no declare globales fuera de la IIFE de 01_datos.js/99_cierre.js no se comprueba: solo que el montaje es JavaScript válido y la página carga."
+      "falta": "Los globales escritos a mano (window.X, globalThis.X) no se buscan; «var» se exige solo por la prohibición de let, const y class."
     },
     {
       "origen": "CLAUDE.md §5", "clave": "Código nuevo",
