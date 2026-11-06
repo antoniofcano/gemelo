@@ -2,6 +2,7 @@
 
 - **Estado:** Aceptado (2026-11-06, Antonio, con las decisiones 216-227 cerradas en la opción recomendada: [DECISIONS-PENDING](../rumbo/DECISIONS-PENDING.md#mundos-múltiples-adr-0033-cerradas-el-2026-11-06))
 - **Fecha:** 2026-11-06
+- **Orden de trabajo** (Antonio, 2026-11-06, tras aceptarlo): dos ejes que no se bloquean. El exterior (código) va primero y libera el exterior justo después de MU2. Los interiores (modelado) siguen aparte, atados solo al contrato de mundo interior, y se unen en MU3 y MU4 ([PLAN](../rumbo/PLAN.md#mundos-múltiples-adr-0033)).
 
 ## Contexto
 Antonio quiere un metaverso de varias salas sobre el gemelo: **exterior** (el olivar de hoy), **molino** (la fábrica restaurada como museo, con maquinaria animada de principios del siglo XX) y **bodega** (sala de conferencias con voz espacial, pizarra, pantalla compartida, aforo y moderación). Cada sala es un mundo con su sala de red, pero todas viven en el mismo PWA para no perder la sesión WebXR al cambiar de una a otra. Ya ha decidido (2026-11-06, no se reabre aquí): TypeScript estricto y módulos ES en el cliente, Vitest para la lógica en Node, migración *strangler*, three 0.187 en pantalla con paso gradual a TSL/`WebGPURenderer` según el [ADR-0031](0031-migrar-al-webgpurenderer-con-multiview.md), super-three solo como build de optimización del Quest, y «cada promesa escrita tiene un guardián o se borra».

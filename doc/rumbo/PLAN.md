@@ -173,14 +173,16 @@ Tareas sueltas decididas: ✅ anonimizar `doc/historico/DISENO-2026-10.md` (deci
 
 Exterior, molino y bodega en un solo PWA, cada uno con su sala de red; TypeScript estricto, Vitest y migración strangler ([ADR-0033](../adr/0033-mundos.md), interfaces y fase 1 al detalle en [MUNDOS](../sistema/MUNDOS.md), riesgos en [MUNDOS §10](../sistema/MUNDOS.md#10-riesgos), decisiones 216-227). Las estimaciones son días de agente con Antonio revisando, **[ESTIMACIÓN]**. Tipo: **ligera** = Node (código, contratos, Vitest); **pesada** = banco (Chrome o Docker) o Blender; 👤 = Antonio o su Quest. Dentro de cada fase, primero lo que abarata el banco; las pesadas, agrupadas en una ronda.
 
+**Dos ejes que no se bloquean** (Antonio, 2026-11-06). **A · exterior, la prioridad:** MU0 → MU1 → MU2 → MU5 → MU6 → MU7, todo código, sin esperar a ningún modelo (el cambio de mundo se prueba con `?mundo=vacio`). **B · interiores:** la fábrica y la bodega son proyectos de modelado de Antonio, aparte y sin fecha, que solo dependen del **contrato de mundo interior** (MU0-7) y se comprueban con su validador y su visor (MU0-8), sin el motor. **Unión:** MU3 (bodega) y MU4 (molino), cuando A haya pasado MU2 y B tenga un glb que pase el validador.
+
 | Fase | Qué | Criterio de salida (medible) | [ESTIMACIÓN] | Estado |
 |---|---|---|---|---|
 | MU0 | Instrumentos: tandas 0 y 1 de la [auditoría](../auditoria-noviembre2026/PLAN.md) y ADR-0033 aceptado | puerta pesada en verde; L4-01 con su prueba; topes de `pruebas/presupuesto.json` a ≤ 2× la medida del fixture; tope de memoria de GPU; guardián de memoria de VR activo; ADR-0033 y decisiones 216-218 cerradas | 4-5 d | ⬜ |
 | MU1 | Cimientos sin cambio visible: `tsconfig`, Vitest, fronteras, puente y núcleo puro (MUNDOS §9) | puerta rápida con `tsc` y Vitest; capturas iguales y recuentos e `info.memory` idénticos a la toma de referencia; trinquete del legado más bajo que al empezar | 10-12 d | ⬜ |
 | MU2 | El exterior como primer `World` (congelar, no liberar) | `WorldManager` con un mundo y sin regresión (capturas y recuentos); guardián «exterior congelado» en verde; memoria del exterior congelado medida en Chrome y en el Quest y escrita en MEDIDAS | 8-10 d | ⬜ |
-| MU3 | Bodega (o molino primero: decisión 217) | e2e: dos en la bodega y una fuera no se ven ni se oyen; aforo impuesto por la api; reunión de 6 con pantalla compartida en el Quest dentro del presupuesto de su perfil; «ir y volver» deja `info.memory` como estaba | 10-12 d | ⬜ |
-| MU4 | Molino | una máquina completa animada (prensa de viga) con sonido, a 72 Hz en el Quest sin bajar de nivel; «ir y volver» en verde | 8 d + modelado | ⬜ |
-| MU5 | Liberar el exterior y encoger el legado | `renderer.info.memory` vuelve a la base al salir del exterior liberado; 0 líneas en `apps/web/motor/` | 20-30 d, repartidos | ⬜ |
+| MU5 | Liberar el exterior y encoger el legado (eje A, justo tras MU2; decisión 218 reordenada) | `renderer.info.memory` vuelve a la base al salir del exterior liberado; 0 líneas en `apps/web/motor/` | 20-30 d, repartidos | ⬜ |
+| MU3 | Unión · bodega (decisión 217): el glb del eje B en el `WorldManager` del eje A, con su sala de red | e2e: dos en la bodega y una fuera no se ven ni se oyen; aforo impuesto por la api; reunión de 6 con pantalla compartida en el Quest dentro del presupuesto de su perfil; «ir y volver» deja `info.memory` como estaba | 10-12 d | ⬜ |
+| MU4 | Unión · molino: el glb del eje B, sus máquinas animadas y su sala | una máquina completa animada (prensa de viga) con sonido, a 72 Hz en el Quest sin bajar de nivel; «ir y volver» en verde | 8 d + modelado | ⬜ |
 | MU6 | Renderer nuevo en pantalla (F3-F5 del ADR-0031 sobre la fábrica tipada) | capturas iguales por material; medida ≤ clásico | según MULTIVIEW | ⬜ |
 | MU7 | Una sola build | F2 repetida en el Quest con el three del momento; super-three y su parche retirados | cuando three lo permita | ⬜ |
 
@@ -192,6 +194,10 @@ Exterior, molino y bodega en un solo PWA, cada uno con su sala de red; TypeScrip
 | MU0-4 | `gitleaks` de todo el historial en un clon completo, solo lectura (decisión 222) | 👤 222 | ligera · haiku | ½ d | ✅ hecho el 2026-11-06 sobre un clon completo de GitHub (1052 commits de todas las ramas) y los 2 commits locales: `gitleaks` 8.30.1 da un solo aviso, falso (el literal de prueba de `apps/api/pruebas/unidad/avisos_correo.test.ts:13`); a mano, cero rutas locales, enlaces de artefacto, IP del VPS ni correos reales (solo `@canoydamas.invalid`). No hay nada que rotar y la 219 no pide reescribir el historial |
 | MU0-5 | L1-06 + L1-07 + L2-06 en una sola ronda del banco: recalibrar topes con una tesela densa en el fixture, tope de memoria de GPU, activar `memoria_vr_chrome` (con el arreglo del goteo de `29_vr`/`36_mandos`) | MU0-2 | pesada · opus (banco) | 2 d | ⬜ |
 | MU0-6 | ADR-0033 aceptado; enmienda de CLAUDE.md §5 y regla 2 si 216 = sí; enmienda de ARQUITECTURA-MULTIUSUARIO.md:11,35,128-130 | 👤 216-218 | ligera · opus | ½ d | ✅ 2026-11-06: ADR aceptado, decisiones 216-227 cerradas, CLAUDE.md (reglas 2 y 13, §5) y la entrada a interiores enmendados |
+| MU0-7 | Contrato de mundo interior (`contratos/`): glb con materiales estándar y sin luces ni sombreadores propios, tope de triángulos, texturas y llamadas por perfil, puertas, paredes (`dentro`) y metadatos; validador en Node (`@gltf-transform`, fijado) que da el informe de cada glb | MU0-6 | ligera · opus | 1 d | ⬜ |
+| MU0-8 | Visor suelto de interiores en `prototipos/` (three y el validador, sin el motor) para que Antonio vea sus modelos con el presupuesto de cada perfil, también en el Quest | MU0-7 | ligera · sonnet | ½ d | ⬜ |
+| MUB-1 | Eje B · bodega: modelo de Antonio que pasa el validador de MU0-7 | MU0-7 | 👤 Antonio, modelado | sin fecha | ⬜ |
+| MUB-2 | Eje B · fábrica: captura y modelo que pasan el validador (= MU4-1, privados: decisión 227) | MU0-7 | 👤 Antonio, modelado | sin fecha | ⬜ |
 | MU1-1 | `tsconfig.base.json` en la raíz y `apps/web/tsconfig.json` (MUNDOS §9.1); la api lo extiende en otro commit | MU0-6 | ligera · sonnet | ½ d | ⬜ |
 | MU1-2 | Vitest 5.1.0 fijado y un guardián de `node:test` que lanza `tsc --noEmit` y `vitest run` (MUNDOS §9.2) | MU1-1 | ligera · sonnet | ½ d | ⬜ |
 | MU1-3 | `dependency-cruiser` fijado con las reglas de las cuatro fronteras (MUNDOS §1) | MU1-1 | ligera · sonnet | ½ d | ⬜ |
@@ -217,14 +223,14 @@ Exterior, molino y bodega en un solo PWA, cada uno con su sala de red; TypeScrip
 | MU3-1 | Contratos: `livekit-roles.json` v9 (sala por mundo, `roles_bodega`, aforo, tema `pizarra`), pose con mundo en los bits 6-7, contrato de la pizarra (MUNDOS §7) | MU0-6, 👤 225 | ligera · opus | 1 d | ⬜ |
 | MU3-2 | api: claves de sala por mundo, aforo con el cupo de la agenda, permisos de pantalla compartida, webhook que vuelve a expulsar (L9-06) | MU3-1 | ligera · opus | 2 d | ⬜ |
 | MU3-3 | red en TS: `cambiaSala` por mundo, pose con mundo, suscripción a pistas de vídeo (hoy no hay vídeo: `37_red.js:17`) | MU3-1 | ligera · sonnet | 1½ d | ⬜ |
-| MU3-4 | Mundo bodega v0: nave glb de pocos polígonos con luz horneada, materiales estándar, paredes (`dentro`) y su puerta; puertas en el índice | MU2-7 | ligera · sonnet; pesada si hay Blender | 1½ d | ⬜ |
+| MU3-4 | Mundo bodega v0: nave glb de pocos polígonos con luz horneada, materiales estándar, paredes (`dentro`) y su puerta; puertas en el índice | MU2-7, MUB-1 | ligera · sonnet; pesada si hay Blender | 1½ d | ⬜ |
 | MU3-5 | Voz de la bodega reutilizando las guiadas (palabra, cierre, moderación) y las voces a la vez de la decisión 225 | MU3-2, MU3-3 | ligera · sonnet | 1½ d | ⬜ |
 | MU3-6 | Pantalla compartida (`VideoTexture`) y pizarra v0 (`CanvasTexture`), con sus pruebas de tope en Vitest | MU3-3, MU3-4 | ligera · sonnet | 2 d | ⬜ |
 | MU3-7 | Panel de la oficina: aforo, ponente y expulsar en la bodega | MU3-2 | ligera · sonnet | 1 d | ⬜ |
 | MU3-8 | Ronda pesada: e2e de dos Chrome con Docker (aislamiento por sala), «ir y volver» de memoria, VR simulada con cambio de mundo | MU3-4..7 | pesada · sonnet (banco + Docker) | 1 d | ⬜ |
 | MU3-9 | Reunión de 6 en el Quest y nota de comodidad (regla 11) | MU3-8 | 👤 Quest | — | ⬜ |
 | MU4-0 | Prueba de humo de Spark con super-three y multiview en el Quest, fuera del motor (`prototipos/`), solo si 223 = splats | 👤 223 | pesada · sonnet; 👤 Quest | 1 d | ⬜ |
-| MU4-1 | Nave del molino: de la captura (protocolo aparte) a glb horneado dentro del presupuesto, fuera del repo (decisión 227) | 👤 227 | pesada · Blender; 👤 | modelado | ⬜ |
+| MU4-1 | Nave del molino: de la captura (protocolo aparte) a glb horneado dentro del presupuesto, fuera del repo (decisión 227); es la MUB-2 del eje B | 👤 227, MU0-7 | pesada · Blender; 👤 | modelado | ⬜ |
 | MU4-2 | Mundo molino v0 con su puerta, paredes y presupuesto por perfil | MU4-1, MU2-7 | ligera · sonnet | 1 d | ⬜ |
 | MU4-3 | Prensa de viga animada (`AnimationMixer` sobre glTF) con sonido; después empiedro y pozuelos | MU4-2 | ligera · sonnet | 2 d por máquina | ⬜ |
 | MU4-4 | El proceso de molturación contado: visita guiada reutilizando `46_guiada.js` | MU4-3 | ligera · sonnet | 2 d | ⬜ |
