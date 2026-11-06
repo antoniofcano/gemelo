@@ -54,7 +54,7 @@
   "23_estacion.js": ["EST","bbchEn","construyeFrutosLista","hoyMadrid","objetivoMundo","actualizaOlivo"],
   "24_pantalla.js": ["Menu","TR","iniciaTransicion","transEntrada","iniciaSalida","transSalida"],
   "25_perros.js": [],
-  "26_presencia.js": ["PoseCodec","BufferPose","Aspecto","SalaPose","Chat","Muneco","Encuentro","AutoPresencia","Reintento","sitioJunto"],
+  "26_presencia.js": ["Aspecto","SalaPose","Chat","Encuentro","sitioJunto"],
   "26b_avatares.js": [],
   "27_debug.js": [],
   "28_depura.js": ["depuraCuadro"],

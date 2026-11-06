@@ -1,5 +1,5 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: PoseCodec, BufferPose, Aspecto, SalaPose, Chat, Muneco, Encuentro, AutoPresencia, Reintento, sitioJunto
+// Expone: Aspecto, SalaPose, Chat, Encuentro, sitioJunto
 // Consume: 01_datos (D), 02_mundo (suelo, copas)
 // Nota: No es un componente ni monta nada: el protocolo y la lógica pura de la presencia compartida (PoseCodec, BufferPose, Aspecto, SalaPose, Chat, Muneco, Encuentro) y sitioJunto. MU5-n (A3-6a): talón; el código vive en apps/web/src/red/pose.ts y sala.ts (lo que es red) y en apps/web/src/mundos/comun/muneco.ts (el muñeco, el encuentro y la cuenta). La presencia que los usa es el componente de 38_presencia_compartida.js (C5). Lo prueban pose.test.ts, sala.test.ts, muneco.test.ts y pruebas/guardianes/presencia.test.js, presencia_red.test.js y muneco_aspecto.test.js.
 // ===============================================================================

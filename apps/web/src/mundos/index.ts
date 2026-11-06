@@ -85,3 +85,6 @@ export * from "../red/index.ts";
 // A3-6a: el muñeco de los demás, «Ir con alguien» y la cuenta del dibujo de la gente (antes el trozo puro de 26_presencia.js), de todo mundo.
 export { Cuenta, Encuentro, Muneco, creaSitioJunto } from "./comun/muneco.ts";
 export type { DepsSitioJunto } from "./comun/muneco.ts";
+// A3-6a: la presencia compartida (antes 38_presencia_compartida.js), de todo mundo.
+export { ID_PRESENCIA, creaPresencia, manifiestoPresencia } from "./comun/presencia.ts";
+export type { DepsPresencia, Presencia } from "./comun/presencia.ts";

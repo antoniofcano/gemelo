@@ -53,7 +53,7 @@
         "31_hud"
       ],
       "escuchan": [
-        "38_presencia_compartida"
+        "mundos/comun/presencia"
       ]
     },
     "componentes:cambia": {
@@ -167,7 +167,7 @@
       ],
       "escuchan": [
         "30_mide",
-        "38_presencia_compartida",
+        "mundos/comun/presencia",
         "mundos/exterior/lindes",
         "45_voz",
         "46_guiada",
@@ -286,7 +286,7 @@
         }
       },
       "emiten": [
-        "38_presencia_compartida"
+        "mundos/comun/presencia"
       ],
       "escuchan": [
         "43_agenda"
@@ -310,7 +310,7 @@
         "43_agenda"
       ],
       "escuchan": [
-        "38_presencia_compartida"
+        "mundos/comun/presencia"
       ]
     },
     "guiada:palabra": {
@@ -966,7 +966,7 @@
         }
       },
       "emiten": [
-        "38_presencia_compartida"
+        "mundos/comun/presencia"
       ],
       "escuchan": [
         "26b_avatares"

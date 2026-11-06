@@ -251,7 +251,7 @@ test("08b_marcadores_lidar: las líneas de desfase se recortan y su esfera las c
 
 // ---------------------------------------------------------------- 38_presencia_compartida (AG-1.3b): los avatares instanciados se recortan con una esfera rehecha cada fotograma
 function esferaInstDe() {
-  const F = lee("apps/web/motor/38_presencia_compartida.js"), T = trozo(F, "    var esS = null, esM = null;", "    // las cajas y ruedas de a según");
+  const F = require("./_fuente").fuenteMotorJs("38_presencia_compartida.js"), T = trozo(F, "  var esS = null, esM = null;", "  // las cajas y ruedas de a según");   // A3-6a: el talón y apps/web/src/mundos/comun/presencia.ts (sin las anotaciones de tipos)
   return new Function("THREE", "\"use strict\";\n" + T + "\nreturn esferaInst;")(THREE);
 }
 /** los vértices en el mundo de las instancias vivas (no a escala 0): lo que de verdad se dibuja */
@@ -271,7 +271,7 @@ function dentro(im, que) {
   assert.ok(peor <= tol, que + ": un vértice queda " + peor.toFixed(3) + " m fuera de la esfera (radio " + s.radius.toFixed(2) + ")");
 }
 test("38_presencia: los avatares (cuerpo, cabeza, nombre, vehículos) se recortan; su esfera los contiene tras colocarlos y tras moverlos, y las ocultas (escala 0) no la ensanchan", () => {
-  const F = sinComentarios(lee("apps/web/motor/38_presencia_compartida.js")), A = trozo(F, "    function actualiza(dt) {", "    function cierraVentana()");
+  const F = sinComentarios(require("./_fuente").fuenteMotorJs("38_presencia_compartida.js")), A = trozo(F, "  function actualiza(dt) {", "  function cierraVentana()");   // A3-6a: el talón y apps/web/src/mundos/comun/presencia.ts (sin las anotaciones de tipos)
   assert.ok(!/frustumCulled\s*=\s*false/.test(F), "38: ya no hay frustumCulled = false");
   assert.ok(A.indexOf("esferaInst(mallasInst[i])") > A.indexOf("coloca(V[i]"), "38: actualiza rehace la esfera después de colocar los avatares");
   assert.ok(/esferaInst\(mQuad\)/.test(A) && /esferaInst\(mDron\)/.test(A), "38: también las del quad y el dron");

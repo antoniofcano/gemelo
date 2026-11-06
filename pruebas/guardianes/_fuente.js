@@ -2,7 +2,7 @@
 // El texto de un módulo del motor que ya es un talón de un componente (A3-1b, MU5-n): el talón de apps/web/motor/ y el .ts de apps/web/src/ (mundos/exterior/, mundos/comun/ o red/)
 // juntos, que es lo que ve el motor. Las pruebas que miran el código de estos módulos con expresiones regulares (el enganche, lo que no reserva por fotograma, las marcas)
 // lo leen de aquí en vez de leer solo el talón.
-//   const { fuenteMotor, TS_DE } = require("./_fuente");   fuenteMotor("04b_escena3d.js")
+//   const { fuenteMotor, fuenteMotorJs, TS_DE } = require("./_fuente");   fuenteMotor("04b_escena3d.js")
 const { lee } = require("./_util");
 
 /** módulo del motor → el .ts de apps/web/src/ en que vive su código */
@@ -27,6 +27,7 @@ const TS_DE = {
   "54_trabajo_hoy.js": "apps/web/src/mundos/exterior/trabajo-hoy.ts",   // A3-5
   "37_red.js": "apps/web/src/red/salas.ts",   // A3-6a: de todo mundo (red/)
   "26_presencia.js": ["apps/web/src/red/pose.ts", "apps/web/src/red/sala.ts", "apps/web/src/mundos/comun/muneco.ts"],   // A3-6a
+  "38_presencia_compartida.js": "apps/web/src/mundos/comun/presencia.ts",   // A3-6a
   "05_nube.js": "apps/web/src/mundos/exterior/nube.ts",
   "07a_catalogo.js": "apps/web/src/mundos/exterior/catalogo.ts",
   "18_paisaje.js": "apps/web/src/mundos/exterior/paisaje.ts",
@@ -44,4 +45,10 @@ function fuenteMotor(fichero) {
   return ts ? [talon].concat([].concat(ts).map(lee)).join("\n") : talon;
 }
 
-module.exports = { fuenteMotor, TS_DE };
+/** A3-6a: el mismo texto sin las anotaciones mecánicas que puso la migración a TypeScript (`?: any`, `: any[]`, `: any`) ni el prefijo de las dependencias que
+ *  llegan por getters (`dp.`): así las pruebas que miran el código de la presencia, los avatares y el menú de muñeca con expresiones regulares lo leen como antes */
+function fuenteMotorJs(fichero) {
+  return fuenteMotor(fichero).replace(/\?: any(?![\w$])/g, "").replace(/: any(?:\[\])?(?=[\s,)=;])/g, "").replace(/(?<![\w.$])dp\./g, "");
+}
+
+module.exports = { fuenteMotor, fuenteMotorJs, TS_DE };

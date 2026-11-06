@@ -81,7 +81,7 @@ test("AV2: la silla de ruedas — sentado como en el quad, sin paso, a la misma 
 });
 
 test("AV2: en el código — ruedas con su reserva, dos por silla, la silla también con VRM (AV4), lo elegido manda sobre el catálogo y ningún campo de género", () => {
-  const C = lee("apps/web/motor/38_presencia_compartida.js");   // C5: el dibujo de los muñecos es del componente de la presencia; la lógica pura sigue en 26_presencia.js
+  const C = require("./_fuente").fuenteMotorJs("38_presencia_compartida.js");   // A3-6a: el talón y apps/web/src/mundos/comun/presencia.ts (sin las anotaciones de tipos)   // C5: el dibujo de los muñecos es del componente de la presencia; la lógica pura sigue en 26_presencia.js
   assert.match(C, /rRuedas = reserva\(mRuedas\)/, "las ruedas, una malla instanciada más con su reserva");
   assert.match(C, /rRuedas\.toma\(2\)/, "dos ruedas por silla");
   assert.match(C, /outMu, o\.modo, a\.mov === "silla"\);/, "AV4: con VRM también va sentado en su silla (26b_avatares.js lo sienta)");
