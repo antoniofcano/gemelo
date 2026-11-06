@@ -311,7 +311,7 @@ Solo lo que ya es puro o casi, y está probado en Node. En este orden, un commit
 
 | # | De | A `apps/web/src/…` | Talón en el legado | Arreglo de la auditoría que entra |
 |---|---|---|---|---|
-| 1 | `02b_cola.js` (`CargaPuro`, `Cola`) | `nucleo/cola.ts` | `var CargaPuro = Nucleo.CargaPuro; var Cola = Nucleo.creaCola(…)` | dueño por prefijo (`cancelaTodo`), preparación de `congela` |
+| 1 (hecha, A1-10) | `02b_cola.js` (`CargaPuro`, `Cola`) | `nucleo/cola.ts` | `var CargaPuro = Nucleo.CargaPuro; var Cola = Nucleo.creaCola(…)` | dueño por prefijo (`cancelaTodo`), preparación de `congela` |
 | 2 | `02h_render.js` (`Render`, `InfoDibujo`) | `nucleo/render.ts` | `var Render = …, InfoDibujo = …` | `memoria()` (L1-07, si no entró ya en la tanda 1) |
 | 3 | `02g_vr_presupuesto.js` (`VrPresupuestoPuro`, `VrControlPuro`) | `nucleo/presupuesto.ts` | ídem | L7-03 y L1-03 (perfiles que también suben; «holgado» contra el perfil): con cambio de comportamiento solo en VR, va en commit aparte con su prueba |
 | 4 | `02f_xr_perillas.js` | `nucleo/xr-perillas.ts` | ídem | — |
@@ -320,6 +320,8 @@ Solo lo que ya es puro o casi, y está probado en Node. En este orden, un commit
 | 7 | estado mutable: `exag`, `modo`, `calidad` (`03_escena.js:45`) | `nucleo/estado.ts` (`Estado.exag`…) | `var exag` desaparece; sus lectores en el legado leen `Estado.exag` (cambio mecánico en 30 o más sitios, en commit aparte) | requisito de §4 |
 | 8 | nuevo: `Bucle` | `nucleo/bucle.ts` | `90_final.js` llama a `Nucleo.bucle.cuadro(…)` con las mismas llamadas en el mismo orden | L7-01, L7-02, L7-10 (`try/catch` por fotograma, `visibilitychange`, pérdida de contexto) |
 | 9 | nuevo: tipos de contratos | `datos/tipos/*.ts` generados | — | L4-03, L4-04, L4-05 (salen a la luz los campos fuera de contrato) |
+
+- **Pieza 1, hecha (A1-10 = MU1-6).** `nucleo/cola.ts` exporta `CargaPuro`, `creaCola({ ahora })` y `duenoDe`; `02b_cola.js` es el primer talón (4 líneas) y la Cola sale del núcleo con el mismo orden de trabajo y los mismos presupuestos por fotograma. Lo nuevo, aditivo: el dueño por prefijo (`exterior:N12`; `cancelaDe(dueño)` y `pendientesDe(dueño)`), con lo que `ColaDeMundo.cancelaTodo()` de §6 se escribe encima sin tocar la Cola otra vez. Las pruebas puras de la Cola y de `CargaPuro` se movieron de `carga_sin_tirones.test.js` a `nucleo/cola.test.ts` (Vitest); `contratos/interfaces.json` lleva `fuente` y `fabrica` para que `contratos.test.js` siga vigilando los miembros exactos sobre `creaCola` y que el talón la llame. El motor legado pasó de 19.774 a 19.712 líneas (`TOPE`).
 
 - **Fuera de la fase 1:**
   - `02c_componentes.js`, por tamaño (396 líneas) y porque de él cuelgan 32 componentes: va en la fase 2;

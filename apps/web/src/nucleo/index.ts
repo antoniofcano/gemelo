@@ -3,3 +3,4 @@
 // está en vite.config.js (las dos builds) y en tsconfig.json («paths»). Un módulo legado migrado queda en motor/ como talón: `var X = Nucleo.X;`.
 // Regla: nada de aquí lee globales del legado al cargarse; lo que necesite del legado lo recibe por argumento cuando el talón llama a su fábrica.
 export { partesDeVersion } from "./version.ts";
+export { CargaPuro, creaCola, duenoDe } from "./cola.ts";

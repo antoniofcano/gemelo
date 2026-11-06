@@ -199,9 +199,9 @@ function claves(fuente, ini) {
     if (instr) { if (ch === "\\") k++; else if (ch === instr) instr = null; continue; }
     if (ch === "\"" || ch === "'" || ch === "`") { instr = ch; continue; }
     if ("{[(".includes(ch)) { prof++; if (prof === 1) { esperaClave = true; cur = ""; } continue; }
-    if ("}])".includes(ch)) { prof--; if (prof === 0) break; continue; }
+    if ("}])".includes(ch)) { prof--; if (prof === 0) { if (esperaClave && cur.trim()) out.push(cur.trim()); break; } continue; }   // la última, abreviada (TypeScript: { est, add })
     if (prof === 1) {
-      if (ch === ",") { esperaClave = true; cur = ""; }
+      if (ch === ",") { if (esperaClave && cur.trim()) out.push(cur.trim()); esperaClave = true; cur = ""; }   // una clave abreviada («est,») vale por su nombre
       else if (ch === ":" && esperaClave) { out.push(cur.trim()); esperaClave = false; }
       else if (esperaClave) cur += ch;
     }
@@ -217,9 +217,22 @@ function retornoDe(fuente, nombre) {
   return claves(fuente, ret);
 }
 
+/** como retornoDe, para una fábrica de TypeScript: el último `return {…}` de `export function FABRICA` (cierra en la primera `}` sin sangría) */
+function retornoDeFabrica(fuente, fabrica) {
+  const ini = fuente.indexOf("export function " + fabrica + "(");
+  assert.ok(ini >= 0, "no encuentro «export function " + fabrica + "»");
+  const fin = fuente.indexOf("\n}\n", ini), ret = fuente.lastIndexOf("return {", fin);
+  assert.ok(ret > ini, "no encuentro el return de " + fabrica);
+  return claves(fuente, ret);
+}
+
 for (const [nombre, def] of Object.entries(IFACES.interfaces)) {
   test("interfaz " + nombre + " (" + def.modulo + "): devuelve exactamente los miembros de contratos/interfaces.json", () => {
-    const real = retornoDe(lee("apps/web/motor/" + def.modulo), nombre).sort();
+    let real;
+    if (def.fuente) {   // migrada a TypeScript (A1-10): el contrato lo cumple la fábrica de apps/web/src/, y el módulo del motor es un talón que la llama
+      real = retornoDeFabrica(lee(def.fuente), def.fabrica).sort();
+      assert.match(lee("apps/web/motor/" + def.modulo), new RegExp("^  var " + nombre + " = Nucleo\\." + def.fabrica + "\\(", "m"), def.modulo + " (talón) debe hacer var " + nombre + " = Nucleo." + def.fabrica + "(…)");
+    } else real = retornoDe(lee("apps/web/motor/" + def.modulo), nombre).sort();
     assert.deepStrictEqual(real, def.miembros.slice().sort(), "cambia contratos/interfaces.json y doc/sistema/CONTRATOS.md en el mismo commit");
   });
 }
