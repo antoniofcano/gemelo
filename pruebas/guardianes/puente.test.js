@@ -103,13 +103,19 @@ function revisaTalon(nombre, texto) {
   if (codigo.length > MAX_LINEAS_TALON) err.push(nombre + ": " + codigo.length + " líneas de código (un talón no pasa de " + MAX_LINEAS_TALON + ")");
   let prog;
   try { prog = acorn.parse(cuerpo, { ecmaVersion: "latest", sourceType: "script" }); } catch (e) { return err.concat(nombre + ": no es JavaScript válido: " + e.message); }
+  const propios = new Set();   // A3-3: lo que el propio talón ya declaró desde el núcleo o los mundos (de ahí se puede sacar un alias: var nube = Nube.nube)
   for (const st of prog.body) {
     // A3-1b: el talón de un componente del exterior registra el manifiesto que le da apps/web/src/mundos: `Componentes.registra(Mundos.<x>({ … }));`
     if (st.type === "ExpressionStatement" && /^Componentes\.registra\(Mundos\.[A-Za-z_$][\w$]*\(/.test(cuerpo.slice(st.start, st.end))) continue;
     if (st.type !== "VariableDeclaration" || st.kind !== "var") { err.push(nombre + ": un talón solo lleva `var X = …Nucleo…;` o `Componentes.registra(Mundos.…)` (hay " + st.type + ")"); continue; }
     for (const dcl of st.declarations) {
       const ini = dcl.init ? cuerpo.slice(dcl.init.start, dcl.init.end) : "";
-      if (!usosNucleo(ini).usos.size && !/(?<![\w.$])Mundos\.[A-Za-z_$]/.test(ini)) err.push(nombre + ": " + (dcl.id.name || "?") + " no sale del núcleo ni de los mundos (Nucleo.<x>, Mundos.<x>)");
+      const delNucleo = usosNucleo(ini).usos.size || /(?<![\w.$])Mundos\.[A-Za-z_$]/.test(ini);
+      // A3-3: el alias de un miembro de lo que el talón ya sacó del núcleo o de los mundos (`var Nube = Mundos.creaNube(…); var nube = Nube.nube;`): el legado nombra esos
+      // miembros sueltos (pintaNube, aguaNivel…) y no pueden ser importaciones (MUNDOS §9.3)
+      const alias = /^([A-Za-z_$][\w$]*)\.[A-Za-z_$][\w$]*$/.exec(ini.trim());
+      if (!delNucleo && !(alias && propios.has(alias[1]))) err.push(nombre + ": " + (dcl.id.name || "?") + " no sale del núcleo ni de los mundos (Nucleo.<x>, Mundos.<x>)");
+      else if (dcl.id.name) propios.add(dcl.id.name);
     }
   }
   for (const l of cuerpo.split("\n")) if (/^\s*var\s/.test(l) && !/^  var\s/.test(l)) err.push(nombre + ": `var` con sangría de dos espacios, o contrato_modulos.js no ve lo que expone");
@@ -131,6 +137,9 @@ test("la regla de los talones, sobre talones inventados: acepta el de MUNDOS §9
   assert.match(revisaTalon("x.js", bien.replace("nucleo/index.ts", "nucleo/no_existe.ts")).join(), /no existe/);
   assert.match(revisaTalon("x.js", bien + "  function otra() { return 1; }\n").join(), /solo lleva `var X/);
   assert.match(revisaTalon("x.js", bien + "  var Suelta = 3;\n").join(), /Suelta no sale del núcleo/);
+  assert.deepStrictEqual(revisaTalon("x.js", bien + "  var Esperar = Cola.espera, Otra = Cola.otra;\n"), [], "un alias de un miembro de lo que el propio talón sacó del núcleo vale (A3-3)");
+  assert.match(revisaTalon("x.js", bien + "  var Ajeno = Mundo.suelo;\n").join(), /Ajeno no sale del núcleo/, "…pero no el de algo que el talón no declaró");
+  assert.match(revisaTalon("x.js", bien + "  var Hondo = Cola.a.b;\n").join(), /Hondo no sale del núcleo/, "…ni una expresión más larga que `X.miembro`");
   assert.match(revisaTalon("x.js", bien + "var Pegada = Nucleo.CargaPuro;\n").join(), /sangría de dos espacios/);
   assert.match(revisaTalon("x.js", bien.slice(cab.length)).join(), /sin la cabecera/);
   assert.match(revisaTalon("x.js", bien + "  var Z = Nucleo.CargaPuro;\n".repeat(MAX_LINEAS_TALON)).join(), /no pasa de/);

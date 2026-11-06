@@ -168,12 +168,12 @@
       "escuchan": [
         "30_mide",
         "38_presencia_compartida",
-        "44_lindes",
+        "mundos/exterior/lindes",
         "45_voz",
         "46_guiada",
         "47_habla",
         "47b_corro",
-        "50_decoraciones"
+        "mundos/exterior/decoraciones"
       ]
     },
     "decoraciones:cambian": {
@@ -198,12 +198,12 @@
         }
       },
       "emiten": ["42_personalizacion"],
-      "escuchan": ["50_decoraciones"]
+      "escuchan": ["mundos/exterior/decoraciones"]
     },
     "decoraciones:pide": {
       "descripcion": "P7g (D3): quien dibuja las decoraciones (50_decoraciones), al montarse, pide la última lista; quien la tiene (42_personalizacion) responde con «decoraciones:cambian». Sin nadie que la tenga, no pasa nada (llegará cuando se traiga).",
       "datos": { "type": "object" },
-      "emiten": ["50_decoraciones"],
+      "emiten": ["mundos/exterior/decoraciones"],
       "escuchan": ["42_personalizacion"]
     },
     "fauna:conejo-cerca": {
@@ -455,8 +455,8 @@
         "13b_hazas"
       ],
       "escuchan": [
-        "44_lindes",
-        "44b_carteles"
+        "mundos/exterior/lindes",
+        "mundos/exterior/carteles"
       ]
     },
     "juego:ofrece": {
@@ -716,7 +716,7 @@
         "53_mundo_hoy"
       ],
       "escuchan": [
-        "44b_carteles",
+        "mundos/exterior/carteles",
         "mundos/exterior/trabajo-hoy"
       ]
     },
@@ -1033,7 +1033,7 @@
         }
       },
       "emiten": [
-        "19_balizas"
+        "mundos/exterior/balizas"
       ],
       "escuchan": [
         "20_sonido"

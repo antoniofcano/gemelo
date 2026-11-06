@@ -45,7 +45,7 @@ Son tres. Pasados a TSL, desbloquean a casi todos:
 | 6 | `21_suelo.js` (fuera) | — (`matas`) | Lambert + parche (instanciado, recorte alfa) | atlas por instancia, viento, nubes, helada | sí | CPU (colocación) | **sí** | nubes, helada | M |
 | 7 | `21_suelo.js` (fuera) | — (`piedras`) | Lambert + parche (instanciado) | vetas, granos y liquen por ruido, nubes | sí | no | no | nubes | M |
 | 8 | `apps/web/src/mundos/exterior/suelo-fondo.ts` (antes `04e_suelo_fondo.js`) | `suelo-fondo` | Lambert + parche | mosaico sRGB → lineal | sí | no | no | tinte de `matSuelo` (indirecto) | B — **hecho (MU5-n, A3-1b):** `define("suelo-fondo", { clasico, tsl })`, la TSL apagada |
-| 9 | `05_nube.js` | `nube-lidar` | Points + `parcheTiempo` | nube LiDAR con sombra de nubes | sí | CPU (tinte) | no | nubes, tinte | M (puntos de 1 px, MULTIVIEW §2.3) |
+| 9 | `05_nube.js` | `nube-lidar` | Points + `parcheTiempo` | nube LiDAR con sombra de nubes | sí | CPU (tinte) | no | nubes, tinte | M (puntos de 1 px, MULTIVIEW §2.3) — **hecho (MU5-n, A3-3):** `define("nube-lidar", { clasico, tsl })`, la TSL apagada y **parcial** (§9.1) |
 | 10 | `mundos/exterior/arboles-l0.ts` (antes `06_arboles.js`) | `copa-l0`, `tronco-l0` | Lambert + `colorVertSRGB` | color por vértice en sRGB | sí | no | no | no | B — **hecho (MU5-n, A3-2b):** `define` con su clásico y su TSL apagada (`MeshLambertNodeMaterial`, `vertexColor()` pasado a lineal) |
 | 11 | `apps/web/src/mundos/exterior/catalogo.ts` (antes `07a_catalogo.js`) | `copa-l1`, `tronco-l1` | Lambert + `parcheTiempo` (instanciado) | silueta rota por ruido, motas, envés en el borde | sí | no | no | nubes, helada | M / B — **TSL parcial (MU5-n, A3-2a):** `define` con clásico y TSL apagada; le faltan las nubes y la helada (§8) |
 | 12 | `apps/web/src/mundos/exterior/generados-sombreado.ts` (antes `07ab_generados.js`) + `apps/web/olivo/materiales.js` | `gen-olivo` | Standard + `encadena` | luz (`parcheTiempo` en el mundo), color por lote en sRGB, fundido por tramado (`gl_DrawID`, `BatchedMesh`) | sí | no | no | nubes, helada | **A** — **TSL parcial (MU5-n, A3-2a):** el fundido de las instanciadas y los puntos; le faltan el de las mallas por lotes y la luz (§8) |
@@ -54,15 +54,15 @@ Son tres. Pasados a TSL, desbloquean a casi todos:
 | 15 | `mundos/exterior/lejanos.ts` (antes `07ac_lejanos.js`) | `impostor-sustituto` | Lambert + parche | sustituto por variante y vista (con silueta, `texelFetch`) | sí | no | no | no | **A** |
 | 16 | `14_historia.js` | `resalte-parcela` | Basic + parche | resalte que sigue `uExag` (`UN.uExag`) | sí | no | no | no | B |
 | 17 | `apps/web/src/mundos/exterior/vida.ts` (antes `16_vida.js`) | `estela` | `ShaderMaterial` | estela del quad y del dron por edad (`uNow`) | no | no | no | no | B — **TSL apagada (MU5-n, A3-5):** `define("estela", { clasico, tsl })` (`MeshBasicNodeMaterial`); §12 |
-| 18 | `18_paisaje.js` | `arroyo` | `ShaderMaterial` | agua del arroyo cuando llueve | no | no | no | `uT`, `uLuz` | B |
-| 19 | `19_balizas.js` | `baliza` | `ShaderMaterial` (uno por baliza) | columna con pulso | no | no | no | `uT` | B |
+| 18 | `18_paisaje.js` | `arroyo` | `ShaderMaterial` | agua del arroyo cuando llueve | no | no | no | `uT`, `uLuz` | B — **hecho (MU5-n, A3-3):** `define("arroyo", { clasico, tsl })`, la TSL apagada (§9.1) |
+| 19 | `19_balizas.js` | `baliza` | `ShaderMaterial` (uno por baliza) | columna con pulso | no | no | no | `uT` | B — **hecho (MU5-n, A3-3):** `define("baliza", { clasico, tsl })`, la TSL apagada (§9.1) |
 | 20 | `apps/web/src/mundos/exterior/huellas-polvo.ts` (antes `22b_huellas_polvo.js`) | `huella` | `ShaderMaterial` (instanciado) | huellas que se borran con la edad | no | no | no | no | M — **TSL parcial, apagada (MU5-n, A3-5):** `define` con clásico y TSL (`MeshBasicNodeMaterial`); §12 |
 | 21 | `apps/web/src/mundos/exterior/huellas-polvo.ts` (antes `22b_huellas_polvo.js`) | `polvo` | `ShaderMaterial` (puntos) | polvo | no | no | CPU | `uLuz` | M (puntos) — **TSL parcial, apagada (MU5-n, A3-5):** `PointsNodeMaterial`; el tamaño en píxeles no vale en el WebGPURenderer nativo (§12) |
 | 22 | `23_estacion.js` | `fruto-flor` | `ShaderMaterial` (puntos) | flores y aceitunas por BBCH | no | CPU (vigor) | no | `uLuz` | M (puntos) |
 | 23 | `26b_avatares.js` | `vrm-fundido` | MToon + `encadena` | fundido por tramado | sí (MToon) | no | no | no | M-A (`MToonNodeMaterial`) |
 | 24 | `29_vr.js` | `vineta-vr` | `ShaderMaterial` | viñeta de confort | no | no | no | no | B |
 | 25 | `38_presencia_compartida.js` | `nombres-presencia` | `ShaderMaterial` (instanciado) | nombres de un atlas, de cara a la cámara | no | no | no | no | M (de cara a la cámara **por ojo**) |
-| 26 | `44_lindes.js` | `lindes-acerca` | `LineMaterial` + parche | lindes acercadas a la cámara | sí | no | no | no | M (`Line2NodeMaterial`) |
+| 26 | `44_lindes.js` | `lindes-acerca` | `LineMaterial` + parche | lindes acercadas a la cámara | sí | no | no | no | M (`Line2NodeMaterial`) — **hecho (MU5-n, A3-3):** `define("lindes-acerca", { clasico, tsl })`, la TSL apagada y **parcial** (§9.1) |
 | — | `nucleo/materiales.ts` | `ejemplo-tsl` | Basic + parche / `MeshBasicNodeMaterial` | el ejemplo de la ruta (§3): color · `uBrillo` | sí | no | no | no | hecho |
 
 ### 1.4 Los recuentos
@@ -275,6 +275,48 @@ Siete módulos del legado pasan a `apps/web/src/mundos/exterior/` (MUNDOS §2, �
 - **Cobertura (`Materiales.cobertura()`):** `copa-l0` y `tronco-l0` con clásico y TSL; `impostor-lejano` e `impostor-sustituto` con clásico y sin TSL.
 - **Pruebas:** un `.test.ts` por módulo (con el three de verdad) y, para las variantes TSL, `arboles-l0.test.ts`. `pruebas/guardianes/materiales_f1.test.js` cuenta también los `define` de `src/mundos`.
 - **No probado:** que la TSL de `copa-l0` y `tronco-l0` se vea igual que la clásica (capturas por material: MU6), ni nada en el Quest. Tampoco el color de los troncos del nivel 0 tras L5-01 (§ MUNDOS), que cambia a propósito.
+
+## 10. Lo hecho en A3-3 (2026-11-06): la nube, el paisaje, las balizas, las lindes, los carteles y las decoraciones
+
+Seis módulos pasan a `apps/web/src/mundos/exterior/` (MUNDOS §2, «Cómo quedó (MU5-n, A3-3)»). Cuatro tienen sombreador propio y llevan los tres commits de la receta del §5; dos no lo tienen y llevan solo el primero.
+
+| Módulo | 1.er commit (TS y componente) | 2.º commit (materiales por la fábrica) | 3.er commit (TSL apagada) |
+|---|---|---|---|
+| `05_nube.js` → `nube.ts` (componente `nube-lidar`) | hecho (+ L1-01, L1-02, L2-02) | hecho: `nube-lidar` pasa de `parchea` a `define` + `Materiales.de("nube-lidar").crea` (uno por nivel); el clásico es el `PointsMaterial` con el color del maestro y el parche de `15_tiempo` asignado tal cual (sin clave propia) | **parcial** (§10.1) |
+| `18_paisaje.js` → `paisaje.ts` (`paisaje-lidar`) | hecho (+ L2-05) | hecho: `arroyo` pasa de `sombreador` a `define` + `crea`; los estándar (muro, poste, hilo, tronco, copa de los árboles y un tejado por edificio), por `.estandar()` con el mismo dueño | hecho (§10.1) |
+| `19_balizas.js` → `balizas.ts` (`balizas-parcela`) | hecho (+ L2-05) | hecho: `baliza` pasa de `sombreador` a `define` + `crea` (uno por baliza); rombo y anillo, por `.estandar()` | hecho (§10.1) |
+| `44_lindes.js` → `lindes.ts` (`lindes-hazas`) | hecho | hecho: `lindes-acerca` pasa de `parchea` a `define` + `crea`; el clásico es el `LineMaterial` (que llega con el `import()` del talón) con `uAcerca`, el parche tal cual y su clave de programa propia | **parcial** (§10.1) |
+| `44b_carteles.js` → `carteles.ts` (`carteles-haza`) | hecho | **no hace falta:** `MeshBasicMaterial` sin parche ni `ShaderMaterial` (multiview) | **no hace falta** |
+| `50_decoraciones.js` → `decoraciones.ts` (`decoraciones-olivo`) | hecho | **no hace falta:** `MeshLambertMaterial` y `MeshBasicMaterial` con color por vértice, sin parche | **no hace falta** |
+
+- **Cobertura (`Materiales.cobertura()`):** `nube-lidar`, `arroyo`, `baliza` y `lindes-acerca` tienen clásico y TSL; el resto de la tabla del §1 sigue como estaba.
+- **Fuera de la fábrica:** ninguna fila de `FUERA` que bajar: los cuatro ya pasaban por ella (`Materiales.parchea` y `Materiales.sombreador`).
+- **Por qué los dos últimos no tienen commit de materiales:** el §5 los pide solo para «cada material con sombreador propio». Los carteles y las decoraciones usan materiales estándar de three con color por vértice o por textura, que el `WebGPURenderer` convierte solo (MULTIVIEW §2.1). Sus `libera()` ya los soltaban a mano.
+
+### 10.1 Las variantes TSL: lo que hacen y lo que les falta
+
+Todas viven junto a su clásico (una sola fuente), están **apagadas** (solo las daría la fábrica con el `WebGPURenderer`, MU6). Probadas en Vitest con `three/webgpu` y `three/tsl` de verdad: se construyen y la ruta es `tsl` solo con el renderizador nuevo. **No comprobado:** que el grafo compile (sin renderizador en Node) ni que se vea igual (capturas: MU6). **No son equivalentes al clásico probado.**
+
+- **`nube-lidar`** (`PointsNodeMaterial`):
+  - **lleva:** el tamaño de su nivel, la atenuación por distancia, el color por vértice y el MISMO objeto de color del maestro (que el ciclo del día tiñe);
+  - **falta:** el parche de la luz (`parcheTiempo`: la sombra de nubes y la helada, fila 2, sin TSL aún);
+  - **difiere:** con el backend WebGPU el punto mide siempre 1 px (MULTIVIEW §2.3), así que el tamaño en píxeles de cada nivel no se respeta; la fila acabará en sprites instanciados, y eso hay que medirlo en el banco.
+- **`arroyo`** (`MeshBasicNodeMaterial`): el mismo cálculo que el fragmento (borde, lecho de arena con ruido por celda, agua que se ensancha con `uAgua` y fluye con `uT`, luz del día) en nodos, con los mismos uniformes (releídos en cada objeto) y el estado de dibujo del clásico (transparente, dos caras, sin profundidad, desplazamiento de polígono, sin niebla ni tonemapping). **Sin diferencias conocidas, sin comprobar dibujado.**
+- **`baliza`** (`MeshBasicNodeMaterial` aditivo): la columna que se apaga hacia arriba (con `positionLocal.y`), el latido con `uT` y el pulso de la alerta, con los mismos uniformes y el estado de dibujo del clásico. **Sin diferencias conocidas, sin comprobar dibujado.**
+- **`lindes-acerca`** (`Line2NodeMaterial`): los parámetros del `LineMaterial` (color, ancho en píxeles, opacidad, profundidad).
+  - **falta:** el acercamiento de profundidad (`uAcerca`: cada extremo del tramo se acerca al ojo una fracción de su distancia), así que habrá más riesgo de parpadeo donde el tileset sube sobre la linde (para MU6: pasarlo a un `positionNode`);
+  - **falta:** el ancho × 1,5 por ojo en VR (el `onBeforeRender` que mide el viewport de cada ojo); la `Line2NodeMaterial` mide el del renderizador. **[NO VERIFICADO]** cuál es el ancho cómodo en el Quest.
+
+### 10.2 Los ciclos de vida (`libera()`)
+
+- **`nube-lidar`:** cada malla con su geometría y sus copias de CPU (`X`, `Y`, `H`, `B` y el color: ≈ 23 B por punto), los trabajos de la Cola (`N<tesela>`, `NP<tesela>`), el grupo y los materiales de los niveles (por la fábrica). Además, el comportamiento nuevo (L1-01, L2-02): fuera del modo Nube, a los 2 s se sueltan todas las mallas.
+- **`paisaje-lidar`** (L2-05): el grupo, cada geometría, los cuatro `InstancedMesh`, los materiales (uno por tejado, el del cauce y los fijos), la malla de sombras que añade al grupo de `06_arboles`, la fuente de VR `arbolesPaisaje` y el oyente de la casilla «Paisaje». Los materiales fijos (muro, poste, hilo, tronco y copa de los árboles) vuelven a ser del dueño al montar: el objeto es el mismo antes y después. (El `matTronco` de `18` ya no choca con el del nivel 0 de `06_arboles`, que desde A3-2b es `matTroncoL0`: L5-01.)
+- **`balizas-parcela`** (L2-05): el grupo, las geometrías y los tres materiales de cada baliza, el tipo `baliza` de `Entidades`, el oyente de la ficha, el aviso del minimapa (su DOM), `window.__vrBalizas` y la ficha abierta.
+- **`lindes-hazas`:** el grupo, las geometrías y los dos `LineMaterial` (por la fábrica, dueño `lindes-hazas`).
+- **`carteles-haza`:** el grupo, la geometría, los cuatro materiales y las cuatro texturas (y los lienzos, a 1 × 1).
+- **`decoraciones-olivo`:** las `InstancedMesh`, sus geometrías, los dos materiales compartidos y su fila de la ficha del olivo.
+- **Pruebas de memoria** (Vitest, sin GPU: no hay `renderer.info`): tras montar y liberar no queda viva ninguna geometría, material ni textura de lo que cuelga del grupo (con dobles que cuentan los eventos `dispose` de three), también montando y liberando varias veces (`nube.test.ts`, `paisaje.test.ts`, `balizas.test.ts`, `lindes.test.ts`, `carteles.test.ts`, `decoraciones.test.ts`). El guardián de Node `nube.test.js` repite la de L1-01 / L1-02 / L2-02 con el módulo de verdad.
+- **No probado:** en un navegador, en el Quest y en iPhone (esta tarea no abrió Chrome); ni la memoria real de la nube en Hituelo (las cifras de L1-01 y L2-02 son las de la auditoría, deducidas).
 
 ## 12. Lo hecho en A3-5 (2026-11-06): la vida del olivar
 

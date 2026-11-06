@@ -15,9 +15,11 @@ const fc = require("fast-check");
 const { RAIZ, fs, lee } = require("./_util");
 const { conFabrica } = require("./_materiales");   // Estaticos (02j) en el contexto del módulo
 
-const FICHERO = "apps/web/motor/50_decoraciones.js", FUENTE = lee(FICHERO);
-const trozo = (ini, fin) => { const i = FUENTE.indexOf(ini), f = FUENTE.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas " + ini); return FUENTE.slice(i, f); };
-const P = new Function("\"use strict\";\n" + trozo("// [puro:inicio]", "// [puro:fin]") + "\nreturn DecoracionesPuro;")();
+// A3-3: 50_decoraciones es un talón; DecoracionesPuro y el componente viven en apps/web/src/mundos/exterior/decoraciones.ts y aquí corre ESE código (Mundos, de _mundos.js). TALON es lo que se
+// evalúa en el contexto de mentira (el cableado del legado); FUENTE, el talón y el .ts juntos (lo que ve el motor)
+const Mundos = require("./_mundos"), { fuenteMotor } = require("./_fuente");
+const FICHERO = "apps/web/motor/50_decoraciones.js", TALON = lee(FICHERO), FUENTE = fuenteMotor("50_decoraciones.js");
+const P = Mundos.DecoracionesPuro;
 const CATALOGO = JSON.parse(lee("contratos/decoraciones.json"));
 const IMPORTA = 'import("three/addons/utils/BufferGeometryUtils.js")';
 
@@ -117,8 +119,7 @@ test("puro: el reparto por pieza (cada grupo en orden de clave), su firma y su c
 
 // ---------- las mallas, con el three de verdad
 test("mallas (three de verdad): cada pieza cabe en los triángulos del catálogo, sin índice ni uv, con color en los vértices", { skip: SIN_THREE }, () => {
-  const ctx = vm.createContext({ THREE, Componentes: { registra: () => true }, console, Math });
-  vm.runInContext("\"use strict\";\n" + FUENTE + "\nthis.geo = decoracionesGeometria;", ctx, { filename: FICHERO });
+  const ctx = { geo: (id, UU) => Mundos.decoracionesGeometria(THREE, id, UU) };   // A3-3: la función de verdad, del .ts
   const medido = {};
   for (const p of P.CATALOGO) {
     const g = ctx.geo(p.id, U);
@@ -155,8 +156,8 @@ function mundo({ sinApi = false, falla = false } = {}) {
   Object.defineProperty(g, "paseando", { get: () => E.paseando, enumerable: true });
   g.Estado = { get exag() { return E.exag; } };   // exag vive en Estado (A1-13): se lee de E por un getter
   let pedido = 0;
-  const fuente = FUENTE.replace(IMPORTA, "(pedidoUtiles(), " + (falla ? "Promise.reject(new Error(\"sin red\"))" : "Promise.resolve(UTILES)") + ")");
-  assert.notStrictEqual(fuente, FUENTE, "el import() de mergeGeometries está donde se espera");
+  const fuente = TALON.replace(IMPORTA, "(pedidoUtiles(), " + (falla ? "Promise.reject(new Error(\"sin red\"))" : "Promise.resolve(UTILES)") + ")");
+  assert.notStrictEqual(fuente, TALON, "el import() de mergeGeometries está donde se espera");
   g.UTILES = U; g.pedidoUtiles = () => { pedido++; };
   const ctx = vm.createContext(conFabrica(g));
   vm.runInContext("\"use strict\";\n" + fuente, ctx, { filename: FICHERO });

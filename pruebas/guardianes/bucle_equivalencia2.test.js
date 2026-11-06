@@ -92,8 +92,16 @@ test("firmaCambia dice «cambió» exactamente cuando cambiaba la cadena firma d
   const ANTES = `var balSig = ""; var OT, D, VIVO; function cambia(o, d, v) { OT = o; D = d; VIVO = v;
     var firma = (OT && OT.fecha_consulta) + "|" + (OT === D.ot ? "i" : "v") + "|" + (VIVO ? (VIVO.vigia ? VIVO.vigia.length : "x") : "n");
     if (firma !== balSig) { balSig = firma; return true; } return false; } return cambia;`;
-  const AHORA = "var balSigOk = false, balSigF, balSigI = false, balSigV = \"\"; var OT, D, VIVO;\n" + fuente("19_balizas.js", "function firmaCambia(") + "\nreturn function (o, d, v) { OT = o; D = d; VIVO = v; return firmaCambia(); };";
-  const a = new Function(ANTES)(), b = new Function(AHORA)(), r = F.semilla(8);
+  // A3-3: 19_balizas es un talón; firmaCambia vive en apps/web/src/mundos/exterior/balizas.ts y se prueba LA DE VERDAD (Mundos.creaBalizas sin parcelas, con OT, VIVO y D de mentira)
+  const nueva = () => {
+    const st = { OT: null, VIVO: null, D: { ot: null } }, M = require("./_mundos"), { fabrica } = require("./_materiales");
+    const api = M.creaBalizas({ THREE, $: () => ({ addEventListener() {}, removeEventListener() {} }), suelo: () => 0, bus: { emite() { return 0; } }, Entidades: { registra: () => () => {}, lista: () => null }, Usables: { cercano: () => null },
+      Materiales: fabrica(THREE).Materiales, Estaticos: { congela() {} }, visor: null, scene: new THREE.Scene(), camera: {}, Estado: { exag: 1 }, objetivo: { x: 0, z: 0 }, paseando: () => false, pp: { x: 0, y: 0 },
+      Llegada: { ve: () => true }, parcelas: [], HazasPuro: {}, D: st.D, OT: () => st.OT, VIVO: () => st.VIVO, num1: String, esc: String, tVida: () => 0, enQuad: () => false, TR: () => ({ act: false, t: 0, tCae: 1 }),
+      Encuentro: () => ({}), sitioJunto: () => ({}), VRX: () => ({ on: false }), documento: {}, ventana: {} });
+    return (o, d, v) => { st.OT = o; st.D.ot = d.ot; st.VIVO = v; return api.firmaCambia(); };
+  };
+  const a = new Function(ANTES)(), b = nueva(), r = F.semilla(8);
   const fabrica = { fecha_consulta: "2026-10-01", fuente: "fabrica" }, vivo1 = { fecha_consulta: "2026-11-03", fuente: "vivo" }, vivo2 = { fecha_consulta: "2026-11-04", fuente: "vivo" }, sinFecha = { fuente: "vivo" };
   const OTs = [fabrica, vivo1, vivo2, sinFecha, null, undefined], VIVOs = [null, undefined, {}, { vigia: [] }, { vigia: [1, 2] }, { vigia: [1, 2, 3] }];
   let cambios = 0, quietos = 0;
@@ -103,7 +111,7 @@ test("firmaCambia dice «cambió» exactamente cuando cambiaba la cadena firma d
     const ra = a(o, d, v), rb = b(o, d, v); assert.strictEqual(rb, ra, "paso " + i); ra ? cambios++ : quietos++;
   }
   assert.ok(cambios > 1000 && quietos > 1000, "cambios " + cambios + ", quietos " + quietos);
-  assert.strictEqual(new Function(AHORA)()(fabrica, { ot: fabrica }, null), true, "el primer fotograma siempre cambia");
+  assert.strictEqual(nueva()(fabrica, { ot: fabrica }, null), true, "el primer fotograma siempre cambia");
 });
 
 test("la comparación de los perros pasó por todos los estados que cambian el camino del código (cobertura de la prueba)", () => {

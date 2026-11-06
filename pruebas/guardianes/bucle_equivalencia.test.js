@@ -25,10 +25,15 @@ function azar(sem) { let s = sem >>> 0 || 1; return () => { s ^= s << 13; s >>>=
 // ---------- 1 · distArroyo (18_paisaje.js): rejilla en vez de recorrer el eje ----------
 // La foto del código anterior (incluido su `i += 2` sobre la lista de pares: solo cuentan los puntos de índice par).
 function distArroyoAntes(ejeArroyo) { return function (x, y) { var m = 1e9; for (var i = 0; i < ejeArroyo.length; i += 2) { var d = Math.hypot(ejeArroyo[i][0] - x, ejeArroyo[i][1] - y); if (d < m) m = d; } return m; }; }
+// A3-3: 18_paisaje es un talón; distArroyo vive en apps/web/src/mundos/exterior/paisaje.ts y se prueba EL DE VERDAD (Mundos.creaPaisaje con un paisaje cuyo único cauce es la
+// lista plana de pares), no un trozo de texto (THREE: el de la sección 2, que lo carga test.before)
 function distArroyoAhora(ejeArroyo) {
-  // desde `var ejeCel` (rejilla, celdaArroyo, celdaArroyoDist) hasta el final de distArroyo
-  const cod = trozo("18_paisaje.js", "var ejeCel = 64", "function distArroyo(") + fuente("18_paisaje.js", "function distArroyo(");
-  return new Function("ejeArroyo", cod + "\nreturn distArroyo;")(ejeArroyo);
+  const P = require("./_mundos").creaPaisaje({
+    THREE, D: { paisaje: { edificios: [], tendido: { linea: [], postes: [] }, arroyo: { ejes: [ejeArroyo] }, arboles: [] } }, $: () => null, ESC_R8: 1, suelo: () => 0, copas: [], hash: () => 0,
+    SRGB: THREE.SRGBColorSpace, Estado: { exag: 1 }, Estaticos: { congela() {} }, Materiales: require("./_materiales").fabrica(THREE).Materiales, scene: new THREE.Scene(), gSombras: new THREE.Group(),
+    matSombra: { opacity: 1 }, geoSombra: null, instSombra: () => null, tMundo: () => 0, cur: { ms: 0, nub: 0, lluvia: 0 }, nivelEn: s => s, EST: () => ({ activa: false, clima: null })
+  });
+  return P.distArroyo;
 }
 function eje(sem, tipo) {   // varios cauces sintéticos (paseos aleatorios) con la forma de la lista plana de pares
   const az = azar(sem), res = [], nc = 1 + Math.floor(az() * 7);
@@ -182,9 +187,9 @@ test("Bus.emite no reserva por emisión: sin cierre, sin slice ni forEach", () =
 // ---------- 3 · los llamadores por fotograma del nivel del sol piden nivelEn (sin objeto nuevo); el valor es el mismo (nivelEn == nivel, ver fauna_equivalencia.test.js) ----------
 test("actualizaPaisaje, actualizaSonido y actualizaHuellas piden el nivel del sol con nivelEn y un temporal del módulo, no con nivel()", () => {
   for (const [mod, ini, tmp] of [["18_paisaje.js", "function actualizaPaisaje(", "lvAgua"], ["20_sonido.js", "function actualizaSonido(", "lvSonido"], ["22b_huellas_polvo.js", "function actualizaHuellas(", "lvHuellas"]]) {
-    const cu = R.cuerpo(fuenteMotor(mod), ini);
+    const cu = R.cuerpo(fuenteMotor(mod), ini);   // A3-3 y A3-5: 18_paisaje y 22b son talones; su código está en paisaje.ts y huellas-polvo.ts
     assert.ok(cu !== null, mod + ": " + ini);
     assert.ok(!/\bnivel\(/.test(cu), mod + ": " + ini + " no debe llamar a nivel() (reserva un objeto por fotograma)");
-    assert.ok(new RegExp("nivelEn\\(cur\\.ms, " + tmp + "\\)").test(cu), mod + ": " + ini + " pide nivelEn(cur.ms, " + tmp + ")");
+    assert.ok(new RegExp("nivelEn\\((?:d\\.)?cur\\.ms, " + tmp + "\\)").test(cu), mod + ": " + ini + " pide nivelEn(cur.ms, " + tmp + ")");
   }
 });

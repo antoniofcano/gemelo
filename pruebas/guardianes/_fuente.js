@@ -25,7 +25,13 @@ const TS_DE = {
   "22b_huellas_polvo.js": "apps/web/src/mundos/exterior/huellas-polvo.ts",   // A3-5
   "52_aves_mes.js": "apps/web/src/mundos/exterior/aves-mes.ts",   // A3-5
   "54_trabajo_hoy.js": "apps/web/src/mundos/exterior/trabajo-hoy.ts",   // A3-5
+  "05_nube.js": "apps/web/src/mundos/exterior/nube.ts",
   "07a_catalogo.js": "apps/web/src/mundos/exterior/catalogo.ts",
+  "18_paisaje.js": "apps/web/src/mundos/exterior/paisaje.ts",
+  "19_balizas.js": "apps/web/src/mundos/exterior/balizas.ts",
+  "44_lindes.js": "apps/web/src/mundos/exterior/lindes.ts",
+  "44b_carteles.js": "apps/web/src/mundos/exterior/carteles.ts",
+  "50_decoraciones.js": "apps/web/src/mundos/exterior/decoraciones.ts",
   // A3-2a: 07ab vive en varios ficheros (la escalera, el horneado, la cola, el sombreado, el lote y el módulo): se leen todos, en este orden
   "07ab_generados.js": ["generados.ts", "generados-escalera.ts", "generados-horneado.ts", "generados-cola.ts", "generados-sombreado.ts", "generados-lote.ts"].map(f => "apps/web/src/mundos/exterior/" + f),
 };
