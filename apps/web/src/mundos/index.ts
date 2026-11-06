@@ -60,3 +60,5 @@ export type { DepsHuellas, Huellas } from "./exterior/huellas.ts";
 export { ID_HUELLAS_POLVO, creaHuellasPolvo, manifiestoHuellasPolvo } from "./exterior/huellas-polvo.ts";
 export type { DepsHuellasPolvo, HuellasPolvo } from "./exterior/huellas-polvo.ts";
 export type { LecturaVida, LecturaPaseo, DepsTiempo } from "./exterior/vida-tipos.ts";
+export { ID_FAUNA, creaFauna, manifiestoFauna } from "./exterior/fauna.ts";
+export type { DepsFauna, Fauna } from "./exterior/fauna.ts";

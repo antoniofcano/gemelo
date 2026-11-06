@@ -237,7 +237,7 @@
         "25_perros"
       ],
       "escuchan": [
-        "16b_fauna"
+        "mundos/exterior/fauna"
       ]
     },
     "guiada:cierre": {
@@ -805,7 +805,7 @@
         "16_vida"
       ],
       "escuchan": [
-        "16b_fauna"
+        "mundos/exterior/fauna"
       ]
     },
     "paseo:sale": {
@@ -815,7 +815,7 @@
         "16_vida"
       ],
       "escuchan": [
-        "16b_fauna"
+        "mundos/exterior/fauna"
       ]
     },
     "perros:amenaza": {
@@ -842,7 +842,7 @@
         }
       },
       "emiten": [
-        "16b_fauna"
+        "mundos/exterior/fauna"
       ],
       "escuchan": [
         "25_perros"

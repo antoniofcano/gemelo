@@ -5,7 +5,7 @@
 //  2. El texto del HUD y el de ?debug se refrescan a 4 Hz como mucho (no cada fotograma).
 // Esto cuenta lo que SE RESERVA, no lo que cuesta: los milisegundos y los tirones solo los da un dispositivo real (?debug), y en el casco, no probado.
 const test = require("node:test"), assert = require("node:assert");
-const { lee } = require("./_util");
+const { lee } = require("./_util"), { fuenteMotor } = require("./_fuente");   // A3-5: 16b es un talón de mundos/exterior/fauna.ts
 const R = require("./_reservas");
 
 // ---------- el propio analizador (que no falle en falso ni calle de más) ----------
@@ -79,7 +79,7 @@ test("16_vida.js pide el nivel del sol por fotograma con nivelEn (un temporal de
   const v = lee("apps/web/motor/16_vida.js");
   assert.ok(!/nivel\(/.test(v), "16_vida.js no debe llamar a nivel(ms) (reserva dos objetos por llamada): usa nivelEn(ms, lvVida)");
   assert.ok(/nivelEn\(cur\.ms, lvVida\)/.test(v));
-  assert.ok(!/nivel\(/.test(lee("apps/web/motor/16b_fauna.js")), "16b_fauna.js tampoco");
+  assert.ok(!/nivel\(/.test(fuenteMotor("16b_fauna.js")), "16b_fauna.js tampoco");
 });
 
 test("nivel(ms) reserva (es la de siempre) y nivelEn no: el analizador lo ve en las dos", () => {
