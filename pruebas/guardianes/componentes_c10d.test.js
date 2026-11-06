@@ -13,6 +13,7 @@ function bus() {
   return { on(ev, fn) { (oy[ev] = oy[ev] || []).push(fn); return () => { oy[ev] = (oy[ev] || []).filter(f => f !== fn); }; },
     emite(ev, d) { (oy[ev] || []).slice().forEach(f => f(d)); return (oy[ev] || []).length; }, hay: ev => !!(oy[ev] && oy[ev].length) };
 }
+const MUNDOS = require(path.join(RAIZ, "apps", "web", "src", "mundos", "index.ts"));   // MU5-n: el núcleo del NDVI vive en src/mundos/exterior/ndvi.ts (Mundos.creaNdvi)
 function contexto(Bus) {
   const sueltas = [], n = { on: (ev, fn) => { const q = Bus.on(ev, fn); sueltas.push(q); return q; }, limpia: fn => { sueltas.push(fn); return fn; }, api: () => null, parametros: {} };
   n.suelta = () => sueltas.splice(0).reverse().forEach(f => f());
@@ -33,7 +34,7 @@ function mundo(extra) {
     lienzos.push(cv); return cv;
   } };
   const g = { THREE, Bus: bus(), D: { ndvi: { w: 4, h: 2, fechas: FECHAS, media: [0.45, 0.5], b64: "x" } }, $, b64: () => [], i16: () => Int16Array.from(DATOS), fmt: (v, d) => v.toFixed(d),
-    document: documento, ANCHO: 40, ALTO: 20, x0: 0, yN: 20, tinte: false, ndLo: 0, ndHi: 1, aplicaLuego() { g.reaplicado++; }, reaplicado: 0, Estado: { exag: 1, modo: "gem", calidad: 1 },
+    document: documento, ANCHO: 40, ALTO: 20, x0: 0, yN: 20, tinte: false, Mundos: MUNDOS, aplicaLuego() { g.reaplicado++; }, reaplicado: 0, Estado: { exag: 1, modo: "gem", calidad: 1 },
     gArboles: {}, gFollaje: {}, gSombras: {}, nube: {}, UN: { uNdviOn: { value: 0 }, uNdviMap: { value: null } } };
   return { g: Object.assign(g, extra), dom, $, lienzos };
 }
@@ -42,7 +43,7 @@ function monta(m, conCapa) {
   const defs = [], ctx = vm.createContext(m.g);
   m.g.Componentes = { registra: d => { defs.push(d); return true; } };
   vm.runInContext("\"use strict\";\n" + lee("apps/web/motor/10_ndvi.js") + (conCapa ? lee("apps/web/motor/10b_capa_ndvi.js") : "") +
-    "\nglobalThis.__n = { pintaNdvi, ndviRel, rampa, idx: () => ndviIdx, pon: i => { ndviIdx = i; }, NDV };", ctx, { filename: "10_ndvi+10b" });
+    "\nglobalThis.__n = { pintaNdvi, ndviRel, rampa, idx: () => ndviIdx, pon: i => { ndviIdx = i; }, NDV, escala: () => Ndvi.escala() };", ctx, { filename: "10_ndvi+10b" });
   return { def: defs[0], n: m.g.__n };
 }
 
@@ -61,10 +62,10 @@ test("núcleo sin el componente (?capandvi=0): la escala, ndviRel y el tinte fun
   m.$("cTinte").checked = true; m.$("cTinte").dispara("change");
   assert.strictEqual(m.g.tinte, true); assert.strictEqual(m.g.reaplicado, 1, "el tinte reaplica");
   // percentiles 5 y 95 de 100, 200, 300, 400, 500, 600, 700, 900 (milésimas): los mismos índices de siempre
-  assert.ok(Math.abs(m.g.ndLo - 0.1) < 1e-9); assert.ok(Math.abs(m.g.ndHi - 0.9) < 1e-9);
+  assert.ok(Math.abs(n.escala().lo - 0.1) < 1e-9); assert.ok(Math.abs(n.escala().hi - 0.9) < 1e-9);
   assert.ok(Math.abs(n.ndviRel(5, 15)) < 1e-9, "ndviRel lee la escala del núcleo: la celda del mínimo da 0"); assert.ok(Math.abs(n.ndviRel(35, 5) - 1) < 0.01, "y la del máximo, casi 1 (se recorta 0,001 celdas antes del borde)");
   m.$("ndviSel").dispara("input", { target: { value: "0" } });
-  assert.strictEqual(n.idx(), 0); assert.ok(Math.abs(m.g.ndLo - 0.2) < 1e-9, "la escala sigue a la fecha (la celda sin dato no cuenta)");
+  assert.strictEqual(n.idx(), 0); assert.ok(Math.abs(n.escala().lo - 0.2) < 1e-9, "la escala sigue a la fecha (la celda sin dato no cuenta)");
   assert.strictEqual(m.lienzos.length, 0, "sin componente no hay lienzo"); assert.strictEqual(m.g.UN.uNdviMap.value, null);
   m.$("cNdvi").checked = true; assert.strictEqual(m.$("cNdvi").oyentes("change"), 0, "la casilla «Vigor» queda sin efecto");
 });
@@ -124,6 +125,10 @@ test("una finca sin NDVI: el núcleo no pinta nada y la casilla no rompe", () =>
 test("10_ndvi.js ya no dibuja: ni textura, ni lienzo, ni uniformes, ni gráfica; avisa por el Bus. 14_historia sigue llamando a pintaNdvi", () => {
   const f = lee("apps/web/motor/10_ndvi.js").replace(/^\s*\/\/.*$/gm, "");
   assert.ok(!/CanvasTexture|createElement|UN\.|ndviTex|chispa|capaNdvi|"cNdvi"/.test(f), "10_ndvi.js sigue dibujando la capa");
-  assert.match(f, /Bus\.emite\("ndvi:cambia", \{ lo: lo, hi: hi \}\)/);
+  // MU5-n (A3-1a): el aviso lo da el núcleo del NDVI en src/mundos/exterior/ndvi.ts, con el Bus que 10_ndvi.js le presta
+  const ts = lee("apps/web/src/mundos/exterior/ndvi.ts");
+  assert.ok(!/CanvasTexture|createElement|uNdviMap/.test(ts.replace(/^\s*\/\/.*$/gm, "")), "ndvi.ts no dibuja la capa");
+  assert.match(ts, /deps\.bus\.emite\("ndvi:cambia", \{ lo: lo, hi: hi \}\)/);
+  assert.match(f, /Mundos\.creaNdvi\(\{[^\n]*bus: Bus/);
   assert.match(lee("apps/web/motor/14_historia.js"), /pintaNdvi\(\)/);
 });

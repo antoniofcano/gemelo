@@ -1,5 +1,5 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: Mundo, suelo, copaAlta, kcor, desp, tinte, ndLo, ndHi, aviva, colorEn, copas, cIn, marc, med
+// Expone: Mundo, suelo, copaAlta, kcor, desp, tinte, aviva, colorEn, copas, cIn, marc, med
 // Consume: 01_datos (D, b64, i16, RES), 01a_aparato (Aparato), 02b_cola (ColaExt), 10_ndvi (rampa, ndviRel)
 // ===============================================================================
   // ---------- el mundo: teselas de 256 m con relieve, copa, color del suelo, nube y ortofoto. Todo lo demás pregunta aquí (suelo, copaAlta, colorSuelo, orto).
@@ -26,7 +26,7 @@
   function desp(h) { return kcor * (1.2 * Math.min(h, 1) + 0.42 * Math.max(h - 1, 0)); }
   var tmpC = [0, 0, 0], PLATA = [0.58, 0.62, 0.52];
   // El verde de la ortofoto lleva la sombra de la copa: se aclara un poco hacia el gris plateado del olivo.
-  var tinte = false, ndLo = 0, ndHi = 1;
+  var tinte = false;   // MU5-n: la escala del NDVI (antes ndLo/ndHi, aquí) vive en src/mundos/exterior/ndvi.ts (Ndvi.escala)
   function aviva(c3, x, y) {
     for (var i = 0; i < 3; i++) c3[i] = Math.min(1, 0.8 * c3[i] * 1.35 + 0.2 * PLATA[i]);
     if (tinte && x !== undefined) {   // el tono de la copa sigue al NDVI de su zona; la luz y la sombra del follaje se conservan

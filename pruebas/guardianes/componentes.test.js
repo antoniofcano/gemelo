@@ -190,6 +190,16 @@ function eventosDelCodigo() {
     for (const x of s.matchAll(/\bbus\.(emite|on)\(\s*"([^"]+)"/g)) apunta(x[2], x[1] === "emite", mod);
     for (const x of s.matchAll(/\bavisa\(\s*"([^"]+)"/g)) apunta(x[1], true, mod);
   }
+  // MU5-n (A3-1a): los módulos del exterior que pasaron a TypeScript (apps/web/src/mundos/**, sin las pruebas), con el nombre «mundos/<ruta>»: bus.emite/bus.on
+  // (el Bus que les presta el legado) y, en un componente, n.emite/n.on
+  (function recorre(d, rel) {
+    for (const e of fs.readdirSync(d, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      if (e.isDirectory()) { recorre(path.join(d, e.name), rel + e.name + "/"); continue; }
+      if (!e.name.endsWith(".ts") || e.name.endsWith(".test.ts")) continue;
+      const s = sinComentarios(fs.readFileSync(path.join(d, e.name), "utf8")), mod = "mundos/" + rel + e.name.slice(0, -3);
+      for (const x of s.matchAll(/\b(?:bus|n)\.(emite|on)\(\s*"([^"]+)"/g)) apunta(x[2], x[1] === "emite", mod);
+    }
+  })(path.join(RAIZ, "apps", "web", "src", "mundos"), "");
   return m;
 }
 

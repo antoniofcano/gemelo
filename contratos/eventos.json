@@ -873,9 +873,9 @@
       "escuchan": ["08b_marcadores_lidar"]
     },
     "ndvi:cambia": {
-      "descripcion": "Cambió la fecha del campo o la escala relativa del NDVI (pintaNdvi() de 10_ndvi.js, que ya ha dejado la escala en el núcleo). Lo atiende el componente de la capa de vigor: rehace la textura, la leyenda y la gráfica. Sin él (?capandvi=0), nadie, y el tinte de los árboles sigue funcionando.",
+      "descripcion": "Cambió la fecha del campo o la escala relativa del NDVI (pintaNdvi() de 10_ndvi.js, desde MU5-n Ndvi.pinta de src/mundos/exterior/ndvi.ts, que ya ha dejado la escala en el núcleo). Lo atiende el componente de la capa de vigor: rehace la textura, la leyenda y la gráfica. Sin él (?capandvi=0), nadie, y el tinte de los árboles sigue funcionando.",
       "datos": { "type": "object", "required": ["lo", "hi"], "properties": { "lo": { "type": "number" }, "hi": { "type": "number" } } },
-      "emiten": ["10_ndvi"],
+      "emiten": ["mundos/exterior/ndvi"],
       "escuchan": ["10b_capa_ndvi"]
     },
     "oficina:anuncio": {

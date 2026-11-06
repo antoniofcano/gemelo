@@ -5,7 +5,7 @@
 //   02c_componentes (ComponentesPuro, Bus, Config), 02d_laminas (LaminasPuro, Laminas), 02e_entidades (EntidadesPuro, Entidades, Usables),
 //   02f_xr_perillas (XrPerillas), 02g_vr_presupuesto (VrControlPuro, VrPresupuesto), 02h_render (InfoDibujo), 02i_materiales (Materiales),
 //   03_escena (renderer, scene, camera, sol, texColor, Estado), 04b_escena3d (Escena3D), 04d_sombreado_tiles (UN), 07b_arboles (Arboles),
-//   09_camara (pon), 10_ndvi (NDV, ndviIdx, rampa), 12_paseo (paseando, persona, teclas, primera, pp, entraPaseo, salePaseo, actualizaPaseo),
+//   09_camara (pon), 10_ndvi (NDV, rampa, ndviIdx), 12_paseo (paseando, persona, teclas, primera, pp, entraPaseo, salePaseo, actualizaPaseo),
 //   12b_llegada (Llegada), 13_parcelas (parcelas, fincas), 15_tiempo (meta, pasoHoraMundo, horaMundoTexto), 22_huellas (pendFactor),
 //   24_pantalla (TR), 33_ajustes (Ajustes), 90_final (tamano, gm, cuadro, bucle)
 // Nota: Publica además window.__vrDebug, __vrOlivo, __vrBotones, __vrVuelo y VR_ESTADO (depuración y pruebas VR).

@@ -4,10 +4,10 @@
 //   02c_componentes (Reparto, Bus, Pausa, Componentes), 02d_laminas (Laminas), 02e_entidades (Usables), 02f_xr_perillas (XrPerillas),
 //   02h_render (Render), 02i_materiales (Materiales), 03_escena (visor, renderer, scene, camera, hemi, sol, colorCss, Estado),
 //   04b_escena3d (Escena3D), 04d_sombreado_tiles (SombreadoTiles), 05_nube (actualizaNubeTeselas, actualizaNube), 07b_arboles (Arboles),
-//   08_marcadores (listo, aplica), 09_camara (objetivo, camara), 12_paseo (paseando, persona, pp, actualizaPaseo), 15_tiempo (actualizaTiempo),
-//   16_vida (actualizaVida), 17_minimapa (actualizaMinimapa), 18_paisaje (actualizaPaisaje), 19_balizas (actualizaBalizas),
-//   21_suelo (recoloreaSuelo, actualizaSuelo), 23_estacion (actualizaOlivo), 24_pantalla (transEntrada, transSalida), 28_depura (depuraCuadro),
-//   29_vr (VRX, vrRig, vrCierra, vrAbre, vrRecoloca, vrActualiza, vrFin), 31_hud (Hud), 33_ajustes (Ajustes)
+//   08_marcadores (listo, aplica), 09_camara (objetivo, camara), 10_ndvi (Ndvi), 12_paseo (paseando, persona, pp, actualizaPaseo),
+//   15_tiempo (actualizaTiempo), 16_vida (actualizaVida), 17_minimapa (actualizaMinimapa), 18_paisaje (actualizaPaisaje),
+//   19_balizas (actualizaBalizas), 21_suelo (recoloreaSuelo, actualizaSuelo), 23_estacion (actualizaOlivo), 24_pantalla (transEntrada, transSalida),
+//   28_depura (depuraCuadro), 29_vr (VRX, vrRig, vrCierra, vrAbre, vrRecoloca, vrActualiza, vrFin), 31_hud (Hud), 33_ajustes (Ajustes)
 // Nota: Arranque y bucle: Mundo.arranca, Componentes.arranca y la lista de pasos del fotograma que recorre el Bucle del núcleo (apps/web/src/nucleo/bucle.ts: try/catch por fotograma, página oculta, reset del espacio XR, contexto perdido). Define el orden de las actualizaciones por fotograma: los módulos que aún no son componentes a mano y los componentes por fases (mundo, tarde, trasRender).
 // ===============================================================================
 
@@ -62,5 +62,5 @@
   var cuadro = Bucle.cuadro, bucle = Bucle.bucle, reambienta = function () { gm.reaplicaAmbiente(); };   // MU2-7: al cambiar el tema, el Ambiente del activo otra vez (el fondo y la niebla de partida del exterior salen de --sky; antes, pintaFondo de 03_escena)
   new MutationObserver(reambienta).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
   if (window.matchMedia) window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", reambienta);
-  [Mundo, SombreadoTiles].forEach(function (c) { Componentes.registra(c.componente); });   // MU5-n (A3-1a): los del exterior que el motor lee por su nombre desde que se monta (src/mundos/exterior/): se liberan con él
+  [Mundo, SombreadoTiles, Ndvi].forEach(function (c) { Componentes.registra(c.componente); });   // MU5-n (A3-1a): los del exterior que el motor lee por su nombre desde que se monta (src/mundos/exterior/): se liberan con él
   window.__bucle = Bucle.estado; Componentes.arranca(); gm.arranca("exterior").then(function (r) { if (!r.ok) console.error("el exterior no ha arrancado", r); Render.arranca(renderer, bucle); });   // __bucle: fallos, salidas de VR, ocultación y contexto perdido (pruebas/prueba_vr.js y ?debug); Componentes tras montar todos los ficheros (URL > servidor > defecto de cada manifiesto); el primer fotograma, con el exterior ya entrado (arranca es asíncrona aunque no haya nada que esperar) y, con el renderizador nuevo, tras su init() (02h_render, F1)

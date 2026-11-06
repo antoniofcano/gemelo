@@ -20,3 +20,5 @@ export { creaMundo, RADIO_SUELTA, RADIO_CARGA } from "./exterior/teselas.ts";
 export type { DepsMundo, Mundo, Tesela, DatosMundo, Mosaico, EstadoOrto, EstadoTeselas } from "./exterior/teselas.ts";
 export { creaSombreadoTiles, uniformesTerreno, hash } from "./exterior/terreno.ts";
 export type { DepsTerreno, DepsUniformes, SombreadoTiles, UniformesTerreno, ThreeTerreno, SueloFotosMin, SueloFotosPuroMin } from "./exterior/terreno.ts";
+export { creaNdvi, rampa, u8aI16 } from "./exterior/ndvi.ts";
+export type { DepsNdvi, DatosNdvi, IndiceNdvi, Ndvi } from "./exterior/ndvi.ts";

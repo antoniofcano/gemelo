@@ -43,7 +43,7 @@ La página pide `t/<clave>.json|jpg` (`D.teselas` es el índice; `D.base` da el 
 | `08_marcadores.js` | `gLinde`, `aplica`, `capas`, `listo` | la linde y el reaplicado del mundo (avisa por el Bus: `mundo:aplica`, `capas:cambia`) |
 | `08b_marcadores_lidar.js` | componente `marcadores-lidar` (`?marcadores=0`) | copas del LiDAR, olivos guardados y desfase, instanciados |
 | `09_camara.js` | `orb`, `objetivo`, `camara()`; deslizador `#corr` (`kcor`) | órbita |
-| `10_ndvi.js` | `NDV`, `ndviIdx`, `rampa`, `pintaNdvi`, `ndviRel` | u8 → Int16, fecha del campo y escala relativa (avisa por el Bus: `ndvi:cambia`) |
+| `10_ndvi.js` | `Ndvi`, `NDV`, `ndviIdx`, `rampa`, `pintaNdvi`, `ndviRel` | u8 → Int16, fecha del campo y escala relativa (avisa por el Bus: `ndvi:cambia`). Desde MU5-n (A3-1a) los datos, la rampa, la escala (antes `ndLo`/`ndHi` de `02_mundo`) y el NDVI relativo viven en `src/mundos/exterior/ndvi.ts` (`Mundos.creaNdvi`; componente `ndvi` del exterior, sin GPU); el fichero conserva `ndviIdx` y las casillas |
 | `10b_capa_ndvi.js` | componente `capa-ndvi` (`?capandvi=0`) | la capa de vigor sobre el terreno (textura para `uNdviMap`), su leyenda y su gráfica |
 | `11_sol.js` | `sol2()` | el deslizador `#hora` de la reserva y su rótulo; la luz la pisa cada fotograma `actualizaTiempo` |
 | `12_paseo.js` | `paseando`, `actualizaPaseo` | primera persona; el suelo, los troncos y el borde los pregunta al mundo activo (`gm.suelo`/`gm.obstaculo`, MU2-4), como la llegada, «ir a», el dron y la VR |

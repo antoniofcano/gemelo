@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: OT, hist, VIVO, marca, lista, aviso
 // Consume: 01_datos (D, $, tinta, fmt), 02_mundo (suelo, copas, cIn, marc, med), 02i_materiales (Materiales), 02j_estaticos (Estaticos),
-//   03_escena (scene), 04d_sombreado_tiles (UN), 08_marcadores (aplica), 09_camara (orb, pon), 10_ndvi (NDV, ndviIdx, pintaNdvi),
+//   03_escena (scene), 04d_sombreado_tiles (UN), 08_marcadores (aplica), 09_camara (orb, pon), 10_ndvi (NDV, pintaNdvi, ndviIdx),
 //   12_paseo (paseando, salePaseo), 13_parcelas (parcelas, fincas, claseUsda, elegirParcela, elegirFinca), 15_tiempo (ins, esc)
 // ===============================================================================
   // ---------- la historia: un recorrido guiado que cruza el gemelo con lo que sabe OlivarTrack
