@@ -4,7 +4,7 @@
 import { describe, expect, it } from "vitest";
 import { creaMateriales } from "../../nucleo/materiales.ts";
 import type { ThreeMin } from "../../nucleo/materiales.ts";
-import { ID_ARBOLES_L0, creaArbolesL0 } from "./arboles-l0.ts";
+import { ID_ARBOLES_L0, MATERIAL_COPA_L0, MATERIAL_TRONCO_L0, creaArbolesL0, defLambertVertice } from "./arboles-l0.ts";
 import type { DepsArbolesL0 } from "./arboles-l0.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -70,5 +70,32 @@ describe("olivos de nivel 0 (componente del exterior)", () => {
     expect(api.componente.presupuesto).toEqual({ llamadas: 0, triangulos: 0 });
     expect(api.componente.monta({} as never)).toBe(api);
     api.componente.libera(api); expect(scene.children).toHaveLength(0);
+  });
+});
+
+describe("materiales del nivel 0 (MU5-n)", () => {
+  it("salen de la fábrica con su dueño, con el parche de color por vértice y la misma clave de programa que antes (la del texto de la función)", () => {
+    const { api, deps } = monta();
+    expect(api.matCopa.vertexColors).toBe(true); expect(api.matCopa.side).toBe(THREE.DoubleSide); expect(api.matTroncoL0.vertexColors).toBe(true); expect(api.matTroncoL0.side).toBe(THREE.FrontSide);
+    expect(api.matCopa.onBeforeCompile).toBe(deps.colorVertSRGB); expect(api.matTroncoL0.onBeforeCompile).toBe(deps.colorVertSRGB);
+    expect(api.matCopa.customProgramCacheKey).toBe(THREE.Material.prototype.customProgramCacheKey);   // sin clave propia, como con Materiales.parchea sin clave
+    expect(deps.Materiales.duenos()).toEqual({ [ID_ARBOLES_L0]: 2 });
+    expect(deps.Materiales.inventario()).toMatchObject({ [MATERIAL_COPA_L0]: { tipo: "define", n: 1 }, [MATERIAL_TRONCO_L0]: { tipo: "define", n: 1 } });
+    expect(api.materiales.libera()).toBe(2);   // y nada más
+  });
+
+  it("la variante TSL (apagada): con three/webgpu y three/tsl de verdad son MeshLambertNodeMaterial con su colorNode, y solo salen con el renderer nuevo", async () => {
+    const rutaW = "three/webgpu", rutaT = "three/tsl";   // por variable: three no trae tipos (y así tampoco entra en el grafo de dependency-cruiser)
+    const W = await import(/* @vite-ignore */ rutaW), T = await import(/* @vite-ignore */ rutaT);
+    const { deps } = monta();
+    const nuevo = creaMateriales({ THREE: THREE as unknown as ThreeMin, render: { tipo: "nuevo", pedido: "nuevo" }, nodos: () => ({ THREE: W, TSL: T }) });
+    const clasico = creaMateriales({ THREE: THREE as unknown as ThreeMin, busqueda: "" });
+    for (const M of [nuevo, clasico]) { M.define(MATERIAL_COPA_L0, defLambertVertice(deps.colorVertSRGB, true)); M.define(MATERIAL_TRONCO_L0, defLambertVertice(deps.colorVertSRGB, false)); }
+    expect(nuevo.ruta(MATERIAL_COPA_L0)).toBe("tsl"); expect(clasico.ruta(MATERIAL_COPA_L0)).toBe("clasico");
+    const copa = nuevo.crea(MATERIAL_COPA_L0) as { isNodeMaterial?: boolean; type?: string; colorNode?: unknown; side?: number }, tronco = nuevo.crea(MATERIAL_TRONCO_L0) as typeof copa;
+    expect(copa.isNodeMaterial).toBe(true); expect(copa.type).toBe("MeshLambertNodeMaterial"); expect(copa.colorNode).toBeTruthy(); expect(copa.side).toBe(THREE.DoubleSide);
+    expect(tronco.type).toBe("MeshLambertNodeMaterial"); expect(tronco.colorNode).toBeTruthy(); expect(tronco.side).toBe(THREE.FrontSide);
+    expect(clasico.crea(MATERIAL_COPA_L0)).toMatchObject({ type: "MeshLambertMaterial" });
+    expect(nuevo.cobertura()[MATERIAL_COPA_L0]).toMatchObject({ clasico: true, tsl: true });
   });
 });

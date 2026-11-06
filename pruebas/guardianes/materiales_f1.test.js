@@ -108,6 +108,9 @@ test("cada material del motor que pasa por la fábrica tiene un nombre literal, 
   for (const [f, ruta] of fuentes) {
     const s = sinComentarios(fs.readFileSync(ruta, "utf8")), re = /Materiales\.(parchea|encadena|sombreador)\(([^,)]*)/g;
     let m;
+    // MU5-n: los que ya van por define(NOMBRE, …) (la constante con el nombre literal) también pasan por la fábrica: se cuentan por su constante
+    const rd = /\bMateriales\.define\((MATERIAL_[A-Z0-9_]+)/g;
+    while ((m = rd.exec(s))) (visto[m[1]] = visto[m[1]] || []).push(f);
     while ((m = re.exec(s))) {
       const arg = m[1] === "sombreador" ? m[2].trim() : (s.slice(m.index).match(/^Materiales\.\w+\([^,]+,\s*("[^"]*"|[^,]+)/) || [])[1];
       assert.match(arg || "", /^"[a-z0-9]+(-[a-z0-9]+)*"$/, f + ": el nombre de Materiales." + m[1] + " debe ser un literal (es la clave de su versión TSL): " + arg);

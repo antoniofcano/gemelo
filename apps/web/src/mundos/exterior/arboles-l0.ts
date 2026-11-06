@@ -46,12 +46,22 @@ export const ID_ARBOLES_L0 = "arboles-l0";
 /** los nombres de los materiales en la fábrica: son también la clave de su variante TSL */
 export const MATERIAL_COPA_L0 = "copa-l0", MATERIAL_TRONCO_L0 = "tronco-l0";
 /** Lambert con el color por vértice (escrito en sRGB: el parche lo pasa a lineal al leerlo, `colorVertSRGB` de 03_escena). La copa se ve por las dos caras. */
-function defLambertVertice(parche: (sh: unknown) => void, dosCaras: boolean): DefMaterial<void> {
+export function defLambertVertice(parche: (sh: unknown) => void, dosCaras: boolean): DefMaterial<void> {
   return {
     clasico: function (_o, c) {
       const Lambert = c.THREE["MeshLambertMaterial"] as new (opc: unknown) => MaterialMin;
       const m = new Lambert(dosCaras ? { vertexColors: true, side: c.THREE["DoubleSide"] } : { vertexColors: true });
       m.onBeforeCompile = parche;   // la MISMA función: three usa su texto como clave del programa (sin clave propia, como con parchea)
+      return m;
+    },
+    // MU5-n, tercer commit: la variante TSL, APAGADA (solo con el WebGPURenderer, que hasta MU6 no existe; nadie la usa hoy). Lo mismo que el parche: el color por vértice,
+    // escrito en sRGB, pasado a lineal (sRGBTransferEOTF) y sin más. Es un MeshLambertNodeMaterial con vertexColors apagado: el color por vértice entra por colorNode ya convertido
+    // (con vertexColors encendido, three lo multiplicaría sin convertir). La niebla y la luz las pone el WebGPURenderer, como con el Lambert clásico.
+    tsl: function (_o, c) {
+      const Lambert = c.THREE["MeshLambertNodeMaterial"] as new (opc: unknown) => MaterialMin & { colorNode: unknown };
+      const { vertexColor, vec4, sRGBTransferEOTF } = c.TSL as Record<string, any>;   // eslint-disable-line @typescript-eslint/no-explicit-any
+      const m = new Lambert(dosCaras ? { side: c.THREE["DoubleSide"] } : {});
+      m.colorNode = vec4(sRGBTransferEOTF(vertexColor().rgb), 1);
       return m;
     }
   };
