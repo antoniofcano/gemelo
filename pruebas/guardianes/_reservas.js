@@ -75,7 +75,7 @@ const BUCLE = {
   "30_mide.js": [["causasDelFotograma", "function causasDelFotograma("], ["bits", "function bits("], ["apuntaReparto", "function apuntaReparto("]],   // Q0g: la autopsia de los fotogramas lentos, cada fotograma medido
   "17_minimapa.js": [["actualizaRastro", "function actualizaRastro("]],
   "19_balizas.js": [["firmaCambia", "function firmaCambia("]],
-  "25_perros.js": [["amenazaEn", "function amenazaEn("], ["actualizaPerros", "function actualizaPerros("], ["empacaPerros", "function empacaPerros("]],
+  "src/mundos/exterior/perros.ts": [["amenazaEn", "function amenazaEn("], ["actualizaPerros", "function actualizaPerros("], ["empacaPerros", "function empacaPerros("]],
   "02c_componentes.js": [["Bus.emite", "function emite(ev, datos)"], ["Reparto.pasa", "function pasa(i, q)"], ["Reparto.ini", "function ini(t)"]],   // Q0h: el reparto del JS por bloque, cada fotograma medido
   "src/nucleo/presupuesto.ts": [["VrPresupuesto.mueve", "function mueve("], ["VrControlPuro.decide", "function decide("], ["VrControlPuro.holgura", "function holgura("], ["VrControlPuro.escalaVr", "function escalaVr("], ["completa", "function completa("], ["nSube", "function nSube("]],   // Q0c-a y A1-12: cada fotograma en VR (antes en 02g_vr_presupuesto.js)
   "src/nucleo/mundos.ts": [["WorldManager.actualiza", "function actualiza("]],   // MU2-3: el gestor llama al mundo activo cada fotograma

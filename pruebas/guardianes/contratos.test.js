@@ -1,6 +1,6 @@
 "use strict";
 const test = require("node:test"), assert = require("node:assert");
-const { RAIZ, fixture, lee, fs, path } = require("./_util");
+const { RAIZ, fixture, lee, fs, path } = require("./_util"), { fuenteMotor } = require("./_fuente");
 const { erroresTesela, enHuella } = require("./_tesela");
 const Ajv2020 = require("ajv/dist/2020").default;
 const contratoModulos = require(path.join(RAIZ, "pruebas", "contrato_modulos.js"));
@@ -233,10 +233,10 @@ for (const [nombre, def] of Object.entries(IFACES.interfaces)) {
       const src = lee(def.fuente), ini = src.indexOf("export const " + nombre + " = {");
       assert.ok(ini >= 0, "no encuentro «export const " + nombre + " = {» en " + def.fuente);
       real = claves(src, ini).sort();
-      assert.match(lee("apps/web/motor/" + def.modulo), new RegExp("^  var " + nombre + " = Nucleo\\." + nombre + ";", "m"), def.modulo + " debe hacer var " + nombre + " = Nucleo." + nombre + ";");
+      assert.match(fuenteMotor(def.modulo), new RegExp("^  var " + nombre + " = Nucleo\\." + nombre + ";", "m"), def.modulo + " debe hacer var " + nombre + " = Nucleo." + nombre + ";");
     } else if (def.fuente) {   // migrada a TypeScript (A1-10): el contrato lo cumple la fábrica de apps/web/src/, y el módulo del motor es un talón que la llama
       real = retornoDeFabrica(lee(def.fuente), def.fabrica).sort();
-      assert.match(lee("apps/web/motor/" + def.modulo), new RegExp("^  var " + nombre + " = (?:Nucleo|Mundos)\\." + def.fabrica + "\\(", "m"), def.modulo + " (talón) debe hacer var " + nombre + " = Nucleo|Mundos." + def.fabrica + "(…)");   // A3-1b: los componentes del exterior vienen de Mundos
+      assert.match(fuenteMotor(def.modulo), new RegExp("^  var " + nombre + " = (?:Nucleo|Mundos)\\." + def.fabrica + "\\(", "m"), def.modulo + " (talón) debe hacer var " + nombre + " = Nucleo|Mundos." + def.fabrica + "(…)");   // A3-1b: los componentes del exterior vienen de Mundos
     } else real = retornoDe(lee("apps/web/motor/" + def.modulo), nombre).sort();
     assert.deepStrictEqual(real, def.miembros.slice().sort(), "cambia contratos/interfaces.json y doc/sistema/CONTRATOS.md en el mismo commit");
   });
@@ -250,7 +250,7 @@ test("window.__g (gancho de las pruebas) publica los miembros del contrato", () 
 test("los ganchos window.__* de depuración existen donde dice el contrato", () => {
   for (const [n, def] of Object.entries(IFACES.ganchos_window)) {
     if (def.tipo !== "function") continue;
-    assert.match(lee("apps/web/motor/" + def.modulo), new RegExp("window\\." + n + " = function"), n + " no está en " + def.modulo);
+    assert.match(fuenteMotor(def.modulo), new RegExp("window\\." + n + " = function"), n + " no está en " + def.modulo);
   }
 });
 

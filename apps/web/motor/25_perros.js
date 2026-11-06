@@ -1,182 +1,21 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
 // Consume: 01_datos (D), 02_mundo (copas), 02c_componentes (Componentes), 02k_fusiona (fusionaGeometrias), 03_escena (camera, texColor),
-//   04d_sombreado_tiles (hash), 07_follaje (matSombra, geoSombra), 12_paseo (paseando, pp), 15_tiempo (esc),
-//   16_vida (tVida, enQuad, gFauna, altSuelo, enDron), 17_minimapa (Minimapa), 22_huellas (pendienteRumbo, sueloSeco)
-// Nota: Publica además window.__perrosDebug (depuración).
+//   04d_sombreado_tiles (hash), 07_follaje (matSombra, geoSombra), 12_paseo (paseando, pp), 16_vida (tVida, enQuad, gFauna, altSuelo, enDron),
+//   17_minimapa (Minimapa), 22_huellas (pendienteRumbo, sueloSeco)
+// Nota: TALÓN (MU5-n, A3-5): el código vive en apps/web/src/mundos/exterior/perros.ts (Mundos.manifiestoPerros). Publica además window.__perrosDebug (depuración).
 // ===============================================================================
   // ---------- los perros del paseo: una dálmata adulta y un cruce de dálmata y mastín (rubio y sin manchas). Te siguen, exploran, persiguen conejos y vuelven a tu lado.
-  // Componente «perros-paseo» (ADR-0023, C10): solo define y se registra. Nadie lo nombra: el aterrizaje y la VR le dicen «perros:llegan»; la fauna le pregunta «perros:amenaza»
-  // (rellena res con el punto del que huir, o nada); el minimapa los pinta con su capa (Minimapa.capa); el ladrido sale por «sonido:ladrido» y el polvo por «polvo:emite».
-  function angCorto(a, b) { var d = (b - a) % 6.2832; if (d > 3.1416) d -= 6.2832; if (d < -3.1416) d += 6.2832; return d; }
-  var prSuelta = null;   // lo que libera el componente montado
-  function PerrosMotor(n) {
-    var gPerros = new THREE.Group(), tLlega = 0; gFauna.add(gPerros);
-    function texDalmata() {
-      var cv = document.createElement("canvas"); cv.width = 256; cv.height = 128; var x = cv.getContext("2d"); x.fillStyle = "#f4f1ea"; x.fillRect(0, 0, 256, 128);
-      for (var i = 0; i < 95; i++) { var r = 2.5 + 7 * hash(i * 3.7), px = 256 * hash(i * 5.1 + 2), py = 128 * hash(i * 9.3 + 7); x.fillStyle = hash(i * 1.9) < 0.12 ? "#5a3b2a" : "#1d1b1c"; x.beginPath(); x.ellipse(px, py, r, r * (0.7 + 0.5 * hash(i * 2.2)), hash(i) * 3, 0, 6.283); x.fill(); }
-      var t = texColor(new THREE.CanvasTexture(cv)); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
-    }
-    var texD = texDalmata();
-    // Cada perro es un Group SIN dibujo (g: posición, giro y escala) con su jerarquía de poses en Object3D sueltos (cuerpo, cab, cola y las cuatro patas, que cuelgan de g como antes).
-    // Se dibujan con InstancedMesh de geometría fusionada y color por vértice (AG-1.13b; antes, 9 o 10 cajas sueltas por perro): el cuerpo (torso, grupa y cuello), la cabeza (cráneo, hocico,
-    // nariz, orejas y ojos), la cola, las patas (una geometría, cuatro casillas) y la sombra (una sola malla para los dos). Cada pieza lleva la matriz de su Object3D por la de sus padres;
-    // se escribe una vez por fotograma (empacaPerros). Con el pelaje de la dálmata (textura) las partes claras llevan vértice blanco y la nariz y los ojos, el negro de siempre por la textura.
-    var matNegroP = 0x17151a, tmpEu = new THREE.Euler(), tmpQu = new THREE.Quaternion(), tmpPo = new THREE.Vector3(), tmpEs = new THREE.Vector3(1, 1, 1), tmpMa = new THREE.Matrix4();
-    var tmpMg = new THREE.Matrix4(), tmpMc = new THREE.Matrix4(), tmpMp = new THREE.Matrix4();
-    function cajaCol(w, h, d, col, x, y, z, rx, rz) {   // una caja con su pose local ya aplicada a los vértices: [geometría, color]
-      var ge = new THREE.BoxGeometry(w, h, d); tmpEu.set(rx || 0, 0, rz || 0); ge.applyMatrix4(tmpMa.compose(tmpPo.set(x, y, z), tmpQu.setFromEuler(tmpEu), tmpEs)); return [ge, new THREE.Color(col)];
-    }
-    var mallaSombraP = new THREE.InstancedMesh(geoSombra, matSombra, 2);   // la sombra de los dos perros (una llamada)
-    mallaSombraP.name = "perros-sombra"; mallaSombraP.instanceMatrix.setUsage(THREE.DynamicDrawUsage); mallaSombraP.count = 0; mallaSombraP.visible = false; gPerros.add(mallaSombraP);
-    function creaPerro(tipo) {
-      var dal = tipo === "dalmata", esc = dal ? 1 : 1.22, g = new THREE.Group(), cuerpo = new THREE.Object3D(), cab = new THREE.Object3D(), cola = new THREE.Object3D();
-      var mp = dal ? 0xffffff : 0xd9ac5c, mo = dal ? 0xffffff : 0xb98a47, anch = dal ? 1 : 1.18;
-      var mat = new THREE.MeshLambertMaterial(dal ? { map: texD, vertexColors: true } : { vertexColors: true });
-      var geoCuerpo = fusionaGeometrias([cajaCol(0.27 * anch, 0.29, 0.62, mp, 0, 0.55, 0.02), cajaCol(0.29 * anch, 0.33, 0.27, mp, 0, 0.56, -0.2), cajaCol(0.15 * anch, 0.22, 0.2, mp, 0, 0.7, -0.38, -0.55)], dal);
-      cab.position.set(0, 0.79, -0.43);
-      var pcab = [cajaCol(0.17 * anch, 0.16, 0.2, mp, 0, 0, -0.09), cajaCol((dal ? 0.1 : 0.13) * anch, dal ? 0.09 : 0.11, dal ? 0.15 : 0.13, mp, 0, -0.04, -0.24), cajaCol(0.05, 0.04, 0.04, matNegroP, 0, -0.01, -0.31)];
-      [-1, 1].forEach(function (s) { pcab.push(cajaCol(0.045, dal ? 0.12 : 0.15, 0.09, mo, s * 0.09 * anch, 0.0, -0.05, 0, s * 0.35), cajaCol(0.03, 0.03, 0.02, matNegroP, s * 0.05, 0.035, -0.19)); });
-      var geoCab = fusionaGeometrias(pcab, dal);
-      cola.position.set(0, 0.64, 0.32); var geoCola = fusionaGeometrias([cajaCol(0.045, 0.045, 0.36, mp, 0, 0.1, 0.15, 0.75)], dal);
-      var geoPata = fusionaGeometrias([cajaCol(0.07, 0.46, 0.07, mp, 0, -0.23, 0), cajaCol(0.08, 0.05, 0.11, mp, 0, -0.46, -0.02)], dal);
-      var patas = [[-1, -0.2], [1, -0.2], [-1, 0.22], [1, 0.22]].map(function (q) { var pv = new THREE.Object3D(); pv.position.set(q[0] * 0.1 * anch, 0.45, q[1]); return pv; });
-      var piezas = [new THREE.InstancedMesh(geoCuerpo, mat, 1), new THREE.InstancedMesh(geoCab, mat, 1), new THREE.InstancedMesh(geoCola, mat, 1), new THREE.InstancedMesh(geoPata, mat, 4)];
-      piezas.forEach(function (im, i) { im.name = "perro-" + tipo + "-" + ["cuerpo", "cabeza", "cola", "patas"][i]; im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); im.count = 0; im.visible = false; gPerros.add(im); });
-      g.scale.setScalar(esc); g.visible = false;
-      g.userData = { cuerpo: cuerpo, cab: cab, cola: cola, patas: patas, piezas: piezas, mat: mat, matSombra: new THREE.Matrix4().compose(new THREE.Vector3(0, 0.03, 0), new THREE.Quaternion(), new THREE.Vector3(0.9 * esc, 1, 1.4 * esc)) };
-      return g;
-    }
-    var PERROS = [
-      { malla: creaPerro("dalmata"), nombre: "Olivia", vmax: 7.6, trote: 3.4, lado: 1, ladra: 0.28, color: "#f4f1ea" },
-      { malla: creaPerro("cruce"), nombre: "Antoñin", vmax: 6.3, trote: 3.0, lado: -1, ladra: 0.16, color: "#d9ac5c" }
-    ];
-    function etiquetaNombre(txt) {   // el nombre flota sobre la cabeza y se lee a cierta distancia
-      var cv = document.createElement("canvas"); cv.width = 256; cv.height = 72; var x = cv.getContext("2d"); x.font = "600 40px system-ui, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle";
-      x.lineWidth = 8; x.lineJoin = "round"; x.strokeStyle = "rgba(20,24,16,0.85)"; x.strokeText(txt, 128, 38); x.fillStyle = "#ffffff"; x.fillText(txt, 128, 38);
-      var sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: texColor(new THREE.CanvasTexture(cv)), transparent: true, depthTest: false, depthWrite: false, fog: false })); sp.renderOrder = 9; sp.visible = false; gPerros.add(sp); return sp;
-    }
-    PERROS.forEach(function (d) { d.tag = etiquetaNombre(d.nombre); d.alto = d.nombre === "Olivia" ? 1.3 : 1.55; });
-    PERROS.forEach(function (d, i) { d.x = 0; d.y = 0; d.ang = 0; d.v = 0; d.est = "fuera"; d.t = 0; d.fase = Math.random() * 6; d.obj = null; d.pit = 0; d.rol = 0; d.sentado = 0; d.ult = 0; d.idx = i; d.parado = 0; d.excit = 0; });
-    var jugador = { x: 0, y: 0, v: 0, quieto: 0 }, jugAx = 0, jugAy = 0, jugHay = false;   // jugAx/jugAy/jugHay: dónde estabas el fotograma anterior (antes, un array nuevo por fotograma; AG-1.4c)
-    function ladrido(d) { n.emite("sonido:ladrido", { grave: d.idx === 1 }); }   // guau-guau: lo sintetiza quien atienda el evento (el sonido); sin él, calla
-    function perrosLlegan() {   // cuando el muñequito aterriza, los perros salen de entre los olivos corriendo hacia él
-      PERROS.forEach(function (d, i) { var a = (i ? 2.4 : 0.7) + Math.random() * 0.8; d.x = pp.x + Math.cos(a) * 24; d.y = pp.y + Math.sin(a) * 24; d.ang = Math.atan2(pp.y - d.y, pp.x - d.x); d.v = 0; d.est = "viene"; d.t = 0; d.obj = null; d.malla.visible = true; });
-      if (tLlega) clearTimeout(tLlega); tLlega = setTimeout(function () { tLlega = 0; if (paseando && PERROS[0].est === "viene") ladrido(PERROS[0]); }, 900);
-    }
-    function conejoCerca(d, radio) {   // el conejo más cercano, si la fauna está encendida y responde (fauna:conejo-cerca); si no, nadie a quien perseguir
-      var q = { x: d.x, y: d.y, radio: radio, res: null }; n.emite("fauna:conejo-cerca", q); return q.res;
-    }
-    // un conejo huye de ti (más lejos si vas en quad) y de los perros que van deprisa. Escribe el punto del que huir en `salida` y la devuelve, o devuelve null (AG-1.4c:
-    // sin objeto nuevo; la pregunta «perros:amenaza» le pasa un temporal y la fauna lee el resultado al instante; la API pública `amenaza` sigue dando un objeto nuevo)
-    function amenazaEn(x, y, salida) {
-      var dj = Math.hypot(x - pp.x, y - pp.y); if (dj < (enQuad ? 17 : 8.5)) { salida.x = pp.x; salida.y = pp.y; return salida; }
-      for (var i = 0; i < PERROS.length; i++) { var d = PERROS[i]; if (!d.malla.visible) continue; var q = Math.hypot(x - d.x, y - d.y); if (q < (d.v > 2.5 ? 9 : 3.5)) { salida.x = d.x; salida.y = d.y; return salida; } }
-      return null;
-    }
-    var resAmenaza = { x: 0, y: 0 };
-    function amenazaConejo(x, y) { return amenazaEn(x, y, { x: 0, y: 0 }); }   // la de siempre (objeto nuevo); lo que corre por fotograma usa amenazaEn
-    function actualizaPerros(dt) {
-      if (!paseando) { for (var j = 0; j < PERROS.length; j++) { PERROS[j].malla.visible = false; PERROS[j].tag.visible = false; PERROS[j].est = "fuera"; } jugHay = false; empacaPerros(); return; }
-      var vj = jugHay ? Math.hypot(pp.x - jugAx, pp.y - jugAy) / Math.max(dt, 1e-3) : 0; jugAx = pp.x; jugAy = pp.y; jugHay = true; jugador.v += (vj - jugador.v) * Math.min(1, dt * 5); jugador.quieto = jugador.v < 0.25 ? jugador.quieto + dt : 0;
-      var fx = Math.sin(pp.ang), fy = Math.cos(pp.ang), rx = Math.cos(pp.ang), ry = -Math.sin(pp.ang), e = D.ext, rad = Math.PI / 180;
-      for (var k = 0, d; k < PERROS.length; k++) {
-        d = PERROS[k]; if (d.est === "fuera") continue;
-        d.t -= dt; d.ult -= dt; var dj = Math.hypot(pp.x - d.x, pp.y - d.y), vmax = d.vmax * (enQuad ? 1.25 : 1), destX = pp.x, destY = pp.y, vel = 0, atento = false;
-        // las decisiones
-        if (enDron && d.est !== "viene" && dj < 14) { d.est = "mira"; d.t = 1; }
-        else if (d.est === "mira" && !enDron) { d.est = "viene"; }
-        else if (d.est === "sigue") {
-          if (dj > 17) d.est = "viene";
-          else if (jugador.quieto > 5 && dj < 5) { d.est = "descansa"; d.t = 6 + Math.random() * 8; }
-          else if (d.t <= 0) { var cj = conejoCerca(d, 26); if (cj && Math.random() < 0.65) { d.est = "persigue"; d.obj = cj; d.t = 6.5; if (Math.random() < d.ladra * 3) ladrido(d); } else { var a = Math.random() * 6.283, r = 5 + Math.random() * 6; d.obj = { x: pp.x + Math.cos(a) * r, y: pp.y + Math.sin(a) * r }; d.est = "explora"; d.t = 7; } }   // reserva-ok: el destino de explorar, una vez cada varios segundos (no por fotograma)
-        } else if (d.est === "explora") { if (dj > 22 || d.t <= 0) d.est = "viene"; else if (Math.hypot(d.obj.x - d.x, d.obj.y - d.y) < 1.2) { d.est = "olfatea"; d.t = 1.6 + Math.random(); } }
-        else if (d.est === "olfatea") { if (d.t <= 0) { d.est = "sigue"; d.t = 3 + Math.random() * 5; } }
-        else if (d.est === "persigue") {
-          var u = d.obj && d.obj.userData; if (!u || !d.obj.visible || u.est === "fuera" || d.t <= 0 || dj > 32) { d.est = "viene"; }
-          else if (Math.hypot(u.x - d.x, u.y - d.y) < 1.15) { d.est = "frustra"; d.t = 0.9; u.est = "huye"; u.t = 2.2; u.dir += (Math.random() < 0.5 ? 1 : -1) * 1.6; }   // por los pelos: el conejo se escurre
-        } else if (d.est === "frustra") { if (d.t <= 0) d.est = "viene"; }
-        else if (d.est === "viene") { if (dj < 3.6) { d.est = "sigue"; d.t = 3 + Math.random() * 5; } }
-        else if (d.est === "descansa") { if (jugador.v > 0.5 || dj > 6.5 || d.t <= 0) { d.est = "sigue"; d.t = 2; } }
-        // adónde van y a qué velocidad
-        if (d.est === "viene") { vel = Math.min(vmax, 1.7 * dj + 1); }
-        else if (d.est === "sigue") { destX = pp.x + fx * 1.6 + rx * 2.7 * d.lado; destY = pp.y + fy * 1.6 + ry * 2.7 * d.lado; var dd = Math.hypot(destX - d.x, destY - d.y); vel = dd < 0.9 ? 0 : Math.min(d.trote + jugador.v * 0.9, vmax, 1.6 * dd + 0.6); }
-        else if (d.est === "explora") { destX = d.obj.x; destY = d.obj.y; vel = d.trote * 1.2; }
-        else if (d.est === "persigue" && d.obj) { destX = d.obj.userData.x; destY = d.obj.userData.y; vel = vmax; }
-        else if (d.est === "frustra") { vel = Math.max(0, d.v - 9 * dt); destX = d.x + Math.cos(d.ang); destY = d.y + Math.sin(d.ang); }
-        else { vel = 0; atento = true; }
-        // el giro y el movimiento
-        if (vel > 0.05) { var objAng = Math.atan2(destY - d.y, destX - d.x); d.ang += angCorto(d.ang, objAng) * Math.min(1, dt * (vel > 4 ? 6 : 9)); }
-        var pend = pendienteRumbo(d.x, d.y, Math.PI / 2 - d.ang)[0]; var fac = Math.max(0.5, Math.min(1.2, 1 - 0.9 * pend));
-        d.v += (vel * fac - d.v) * Math.min(1, dt * (vel > d.v ? 4 : 7));
-        var nx = d.x + Math.cos(d.ang) * d.v * dt, ny = d.y + Math.sin(d.ang) * d.v * dt;
-        for (var i = 0; i < copas.length; i++) { var c = copas[i]; if (!c.oliv) continue; var ex = nx - c.x, ey = ny - c.y; if (ex * ex + ey * ey < 0.5 * 0.5) { var dn = Math.sqrt(ex * ex + ey * ey) || 0.001; nx = c.x + ex / dn * 0.5; ny = c.y + ey / dn * 0.5; } }
-        d.x = Math.max(e[0] + 3, Math.min(e[2] - 3, nx)); d.y = Math.max(e[3] + 3, Math.min(e[1] - 3, ny));
-        // el cuerpo: zancada, inclinación con el terreno, cola y cabeza
-        var m = d.malla, u2 = m.userData, ang2 = Math.PI / 2 - d.ang, gy = altSuelo(d.x, d.y), pe = pendienteRumbo(d.x, d.y, ang2), sp = Math.min(1, d.v / 5.5);
-        d.fase += dt * (4 + d.v * 2.1); d.pit += (Math.atan(pe[0]) - d.pit) * Math.min(1, dt * 7); d.rol += (Math.atan(pe[1]) - d.rol) * Math.min(1, dt * 7);
-        d.sentado += ((d.est === "descansa" || d.est === "mira" ? 1 : 0) - d.sentado) * Math.min(1, dt * 4);
-        var ampl = 0.95 * sp, g1 = Math.sin(d.fase) * ampl, g2 = Math.sin(d.fase + 0.55) * ampl, g3 = Math.sin(d.fase + 3.3) * ampl, g4 = Math.sin(d.fase + 3.85) * ampl, sen = d.sentado;
-        u2.patas[0].rotation.x = g1 * (1 - sen); u2.patas[1].rotation.x = g2 * (1 - sen); u2.patas[2].rotation.x = g3 * (1 - sen) - 1.15 * sen; u2.patas[3].rotation.x = g4 * (1 - sen) - 1.15 * sen;
-        u2.cuerpo.rotation.x = -0.5 * sen + Math.sin(d.fase * 2) * 0.05 * sp; u2.cuerpo.position.y = -0.2 * sen + Math.abs(Math.sin(d.fase)) * 0.05 * sp;
-        d.excit += (((d.est === "persigue" || d.est === "viene" || d.est === "frustra" || dj < 5) ? 1 : 0.35) - d.excit) * Math.min(1, dt * 3);
-        u2.cola.rotation.y = Math.sin(tVida * 15 + k * 2) * 0.55 * d.excit; u2.cola.rotation.x = d.est === "persigue" ? -0.5 : sp > 0.5 ? -0.25 : 0.2;
-        u2.cab.rotation.x = d.est === "olfatea" ? 0.55 + Math.sin(tVida * 5) * 0.12 : d.est === "mira" ? -0.7 : d.est === "persigue" ? 0.08 : Math.sin(tVida * 1.2 + k) * 0.06;
-        u2.cab.rotation.y = atento && d.est !== "mira" ? Math.sin(tVida * 0.8 + k * 3) * 0.5 : 0;
-        d.tag.position.set(d.x, gy + d.alto, -d.y); var dc = camera.position.distanceTo(d.tag.position), es = Math.max(1, dc / 8); d.tag.scale.set(1.45 * es, 0.41 * es, 1); d.tag.material.opacity = Math.max(0, Math.min(1, (28 - dc) / 8)); d.tag.visible = m.visible && dc < 28;
-        m.position.set(d.x, gy + 0.02, -d.y); m.rotation.set(d.pit, d.ang - Math.PI / 2, d.rol, "YXZ");
-        // polvo al arrancar fuerte y al ladrar cuando mira el dron
-        if (d.v > 5 && sueloSeco(d.x, d.y) && Math.random() < dt * 9) n.emite("polvo:emite", { x: d.x - Math.cos(d.ang) * 0.5, y: d.y - Math.sin(d.ang) * 0.5, h: gy + 0.1, vx: -Math.cos(d.ang) * 0.6, vy: 0.5, vz: -Math.sin(d.ang) * 0.6, tam: 0.35, vida: 0.8 });   // reserva-ok: una bocanada al arrancar fuerte (~9 por segundo como mucho, no por fotograma)
-        if (d.est === "mira" && d.ult <= 0 && Math.random() < dt * 0.25) { d.ult = 4; ladrido(d); }
-      }
-      empacaPerros();
-    }
-    function empacaPerros() {   // los perros visibles, con sus piezas escritas en las mallas instanciadas (una vez por fotograma, sin reservas); vacías no se dibujan
-      var ns = 0, i, k, u, p, im;
-      for (i = 0; i < PERROS.length; i++) {
-        var g = PERROS[i].malla; u = g.userData; p = u.piezas;
-        if (!g.visible) { for (k = 0; k < 4; k++) { p[k].count = 0; p[k].visible = false; } continue; }
-        g.updateMatrix(); mallaSombraP.setMatrixAt(ns++, tmpMg.multiplyMatrices(g.matrix, u.matSombra));
-        u.cuerpo.updateMatrix(); tmpMc.multiplyMatrices(g.matrix, u.cuerpo.matrix); p[0].setMatrixAt(0, tmpMc);
-        u.cab.updateMatrix(); p[1].setMatrixAt(0, tmpMp.multiplyMatrices(tmpMc, u.cab.matrix));
-        u.cola.updateMatrix(); p[2].setMatrixAt(0, tmpMp.multiplyMatrices(tmpMc, u.cola.matrix));
-        for (k = 0; k < 4; k++) { u.patas[k].updateMatrix(); p[3].setMatrixAt(k, tmpMp.multiplyMatrices(tmpMc, u.patas[k].matrix)); }
-        p[0].count = p[1].count = p[2].count = 1; p[3].count = 4;
-        for (k = 0; k < 4; k++) { im = p[k]; im.visible = true; im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere(); }
-      }
-      mallaSombraP.count = ns; mallaSombraP.visible = ns > 0; mallaSombraP.instanceMatrix.needsUpdate = true; if (ns > 0) mallaSombraP.computeBoundingSphere();   // con el recorte de three (esfera de las casillas escritas): el perro a tu espalda no se dibuja
-    }
-    function dibujaPerrosMini(c, X, Y) {
-      PERROS.forEach(function (d) { if (!d.malla.visible || d.est === "fuera") return; c.fillStyle = d.color; c.strokeStyle = "#101418"; c.lineWidth = 1.4; c.beginPath(); c.arc(X(d.x), Y(d.y), 3.3, 0, 6.283); c.fill(); c.stroke(); });
-    }
-    function liberaPerros() {
-      if (tLlega) { clearTimeout(tLlega); tLlega = 0; }
-      gFauna.remove(gPerros);
-      gPerros.traverse(function (o) {
-        if (o.isInstancedMesh) o.dispose();   // el búfer de matrices
-        if (o.geometry && o.geometry !== geoSombra && !o.isSprite) o.geometry.dispose();
-        var ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
-        ms.forEach(function (m) { if (m.map && m.map !== texD) m.map.dispose(); if (m !== matSombra) m.dispose(); });
-      });
-      texD.dispose();
-    }
-    prSuelta = liberaPerros;
-    n.on("perros:llegan", perrosLlegan);
-    n.on("perros:amenaza", function (q) { if (q) q.res = amenazaEn(q.x, q.y, resAmenaza); });   // resAmenaza: el mismo objeto cada vez (la fauna lo lee al instante)
-    n.limpia(Minimapa.capa(function (c, X, Y) { dibujaPerrosMini(c, X, Y); }, -10));
-    window.__perrosDebug = function () { return PERROS.map(function (d) { return { n: d.nombre, est: d.est, v: +d.v.toFixed(1), dj: +Math.hypot(pp.x - d.x, pp.y - d.y).toFixed(1), vis: d.malla.visible }; }); };
-    n.limpia(function () { delete window.__perrosDebug; });
-    return { actualiza: actualizaPerros, llegan: perrosLlegan, amenaza: amenazaConejo, perros: function () { return PERROS; } };
-  }
-  Componentes.registra({
-    id: "perros-paseo", version: 1,
-    consume: ["D", "copas", "scene", "camera", "texColor", "hash", "matSombra", "geoSombra", "paseando", "pp", "esc", "tVida", "enQuad", "gFauna", "altSuelo", "enDron", "pendienteRumbo", "sueloSeco", "Minimapa", "fusionaGeometrias"],
-    expone: [],
-    eventos: { escucha: ["perros:llegan", "perros:amenaza"], emite: ["sonido:ladrido", "polvo:emite", "fauna:conejo-cerca"] },
-    bandera: { defecto: true, url: "perros" },
-    presupuesto: { llamadas: 12, triangulos: 480, texturasMB: 0.2 },   // medido en Node con el three de verdad (huellas_perros.test.js): 11 llamadas (por perro, cuerpo, cabeza, cola y patas instanciados; una de sombras y dos rótulos; antes 42, cajas sueltas) y 464 triángulos; el pelaje es una textura de 256 x 128
-    fases: { mundo: 0 },
-    monta: function (n) { return PerrosMotor(n); },
-    actualiza: { mundo: function (dt, t, api) { api.actualiza(dt); } },
-    libera: function () { if (prSuelta) prSuelta(); prSuelta = null; }
-  });
+  // Componente «perros-paseo» (ADR-0023, C10): solo se registra. Nadie lo nombra: el aterrizaje y la VR le dicen «perros:llegan»; la fauna le pregunta «perros:amenaza» (rellena res
+  // con el punto del que huir, o nada); el minimapa los pinta con su capa (Minimapa.capa); el ladrido sale por «sonido:ladrido» y el polvo por «polvo:emite».
+  // MU5-n (A3-5): migrado a TypeScript; el código vive en apps/web/src/mundos/exterior/perros.ts, componente de los mundos ["exterior"] con un libera() que quita el grupo de gFauna,
+  // suelta mallas, geometrías, materiales y texturas, para el reloj del primer ladrido y quita la capa del minimapa, las escuchas y window.__perrosDebug. Aquí solo se cablea lo del legado.
+  // [talón] apps/web/src/mundos/exterior/perros.ts
+  Componentes.registra(Mundos.manifiestoPerros({
+    THREE: THREE, D: D, copas: copas, camera: camera, texColor: texColor, hash: hash, geoSombra: geoSombra, matSombra: matSombra,
+    paseando: function () { return paseando; }, pp: pp,   // 12_paseo: paseando cambia
+    tVida: function () { return tVida; }, enQuad: function () { return enQuad; }, enDron: function () { return enDron; },   // 16_vida: el estado del paseo (cambian cada fotograma: por función)
+    gFauna: gFauna, altSuelo: altSuelo, pendienteRumbo: pendienteRumbo, sueloSeco: sueloSeco, Minimapa: Minimapa, fusionaGeometrias: fusionaGeometrias,
+    document: document, window: window,
+    reloj: { setTimeout: function (f, ms) { return setTimeout(f, ms); }, clearTimeout: function (id) { clearTimeout(id); } }
+  }));

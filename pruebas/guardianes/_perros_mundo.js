@@ -26,9 +26,17 @@ function mundoPerros(THREE, fichero, sem) {
   };
   for (let i = 0; i < 40; i++) g.copas.push({ x: (rnd() - 0.5) * 120, y: (rnd() - 0.5) * 120, oliv: rnd() > 0.1 });
   for (const k of ["paseando", "enQuad", "enDron", "tVida"]) Object.defineProperty(g, k, { get: () => E[k], enumerable: true });
-  const ctx = vm.createContext(conFabrica(g));
-  vm.runInContext("\"use strict\";\n" + lee(fichero), ctx, { filename: fichero });
-  const n = { on: (ev, fn) => (Bus.on(ev, fn), fn), emite: (ev, d) => Bus.emite(ev, d), limpia: fn => fn, api: () => null, parametros: {} };
+  conFabrica(g);   // Materiales, Mundos y fusionaGeometrias (02k)
+  if (/motor\/25_perros\.js$/.test(fichero)) {
+    // lo de ahora vive en apps/web/src/mundos/exterior/perros.ts (MU5-n, A3-5): se monta con el manifiesto de Mundos, con el mismo azar de semilla (aleatorio) y un reloj que no corre
+    defs.push(g.Mundos.manifiestoPerros({ THREE, Materiales: g.Materiales, D: g.D, copas: g.copas, camera: g.camera, texColor: g.texColor, hash: g.hash, geoSombra: g.geoSombra, matSombra: g.matSombra,
+      paseando: () => E.paseando, pp: g.pp, tVida: () => E.tVida, enQuad: () => E.enQuad, enDron: () => E.enDron, gFauna, altSuelo: g.altSuelo, pendienteRumbo: g.pendienteRumbo, sueloSeco: g.sueloSeco,
+      Minimapa: g.Minimapa, fusionaGeometrias: g.fusionaGeometrias, document: g.document, window: g.window, aleatorio: rnd, reloj: { setTimeout: () => 1, clearTimeout: () => {} } }));
+  } else {
+    const ctx = vm.createContext(g);
+    vm.runInContext("\"use strict\";\n" + lee(fichero), ctx, { filename: fichero });
+  }
+  const n = { on: (ev, fn) => Bus.on(ev, fn), emite: (ev, d) => Bus.emite(ev, d), limpia: fn => fn, api: () => null, parametros: {} };
   const api = defs[0].monta(n);
   // los conejos de mentira: quien pregunta «fauna:conejo-cerca» recibe el más cercano a menos de su radio
   Bus.on("fauna:conejo-cerca", q => { let mejor = null, dm = q.radio; for (const c of conejos) { const dd = Math.hypot(c.userData.x - q.x, c.userData.y - q.y); if (c.visible && dd < dm) { dm = dd; mejor = c; } } if (mejor) q.res = mejor; });
