@@ -16,9 +16,9 @@ const { lee } = require("./_util");
 const { aparatoDe } = require("./_aparato");
 
 const trozo = (s, ini, fin) => { const i = s.indexOf(ini), f = s.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas " + ini + " … " + fin); return s.slice(i, f); };
-const HAB = lee("apps/web/motor/47_habla.js"), COR = lee("apps/web/motor/47b_corro.js"), LAMJS = lee("apps/web/motor/02d_laminas.js");
+const COR = lee("apps/web/motor/47b_corro.js"), LAMJS = lee("apps/web/motor/02d_laminas.js");
 const { VozPuro: V, creaVoz } = require("./_mundos");   // MU5-n (A3-6b): la voz vive en apps/web/src/red/voz/voz.ts; 45_voz.js es su talón
-const H = new Function("\"use strict\";\n" + trozo(HAB, "// [puro:inicio]", "// [puro:fin]") + "\nreturn HablaPuro;")();
+const { HablaPuro: H } = require("./_mundos");   // MU5-n (A3-6b): vive en apps/web/src/red/voz/habla.ts; 47_habla.js es un talón
 const PURO = trozo(COR, "// [puro:inicio]", "// [puro:fin]"), MOTOR = trozo(COR, "// [motor:inicio]", "// [motor:fin]");
 const C = new Function("\"use strict\";\n" + PURO + "\nreturn CorroPuro;")();
 const LaminasPuro = new Function("\"use strict\";\n" + trozo(LAMJS, "// [puro:inicio]", "// [puro:fin]") + "\nreturn LaminasPuro;")();

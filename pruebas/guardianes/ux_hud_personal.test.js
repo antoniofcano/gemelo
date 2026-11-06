@@ -78,7 +78,7 @@ test("el cableado reusa lo que ya existe y el ajuste está registrado", () => {
   assert.match(FUENTE, /Hazas\.enPunto/); assert.match(FUENTE, /Usables\.elige\("haza:"/); assert.match(FUENTE, /horaMundoTexto\(\)/);
   assert.match(FUENTE, /Bus\.emite\("habla:alterna"/); assert.match(FUENTE, /Bus\.on\("voz:estado"/);
   assert.match(lee("apps/web/motor/31_hud.js"), /alInicio: alInicio/, "31_hud.js expone alInicio");
-  assert.match(lee("apps/web/motor/47_habla.js"), /n\.on\("habla:alterna"/, "47_habla.js atiende habla:alterna");
+  assert.match(require("./_fuente").fuenteMotor("47_habla.js"), /n\.on\("habla:alterna"/, "47_habla.js (A3-6b: mundos/comun/habla.ts) atiende habla:alterna");
   const aj = lee("apps/web/motor/33_ajustes.js");
   assert.match(aj, /"vista\.personal": bool\(true\)/); assert.match(aj, /"vista\.personal": function \(v\) \{ raiz\.setAttribute\("data-personal"/);
   assert.match(aj, /i2\.id = "aj-c-" \+ c\.k; i2\.name = i2\.id/, "cada casilla de Configuración lleva id y name");

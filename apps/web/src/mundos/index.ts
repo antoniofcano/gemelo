@@ -113,3 +113,6 @@ export type { DepsAvatares } from "./comun/avatares.ts";
 // A3-6a: el menú de muñeca en VR (antes 31c_muneca.js), componente de todo mundo.
 export { ID_MUNECA, MunecaPuro, creaMuneca, manifiestoMuneca } from "./comun/muneca.ts";
 export type { ContextoMuneca, DepsMuneca } from "./comun/muneca.ts";
+// A3-6b (MU5-n): hablar en la guiada y en un corro (antes 47_habla.js), componente de todo mundo; su lógica pura (HablaPuro) viene de red/voz/ por el export * de arriba.
+export { ID_HABLA, creaHabla, manifiestoHabla } from "./comun/habla.ts";
+export type { DepsHabla, Habla } from "./comun/habla.ts";

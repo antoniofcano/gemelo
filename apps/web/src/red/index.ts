@@ -10,3 +10,4 @@ export { Aspecto, AutoPresencia, Chat, Reintento, SalaPose } from "./sala.ts";
 // (la caja, los diálogos, las láminas, los halos) vive en mundos/comun/habla.ts y corro.ts.
 export { ID_VOZ, VozPuro, creaVoz, manifiestoVoz } from "./voz/voz.ts";
 export type { DepsVoz, Voz } from "./voz/voz.ts";
+export { HablaPuro } from "./voz/habla.ts";
