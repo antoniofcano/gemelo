@@ -133,6 +133,20 @@ describe("vida del olivar: el ciclo de vida", () => {
     for (const id of ["btnQuad", "padQuad", "btnDron", "padDron"]) { expect(els[id]!.oy["click"] || []).toHaveLength(0); expect(els[id]!.hidden).toBe(true); }
     for (const id of ["padSube", "padBaja"]) for (const ev of ["pointerdown", "pointerup", "pointercancel"]) expect(els[id]!.oy[ev] || []).toHaveLength(0);
   });
+  it("los materiales salen de la fábrica con su dueño: la estela es un ShaderMaterial con sus uniformes y su GLSL; el resto, estándar; y libera() los suelta todos", () => {
+    const { vida, scene, deps } = monta();
+    const estelas = scene.children.filter((o: any) => o.renderOrder === 6);   // eslint-disable-line @typescript-eslint/no-explicit-any
+    expect(estelas).toHaveLength(2);
+    for (const e of estelas) {
+      expect(e.material.isShaderMaterial).toBe(true); expect(e.material.transparent).toBe(true); expect(e.material.depthWrite).toBe(false);
+      expect(e.material.side).toBe(THREE.DoubleSide); expect(e.material.blending).toBe(THREE.AdditiveBlending);
+      expect(Object.keys(e.material.uniforms)).toEqual(["uNow", "uVida", "uColor", "uAlpha"]); expect(e.material.vertexShader).toMatch(/attribute float aB/);
+    }
+    expect(estelas[0].material.uniforms.uVida.value).toBe(6.5); expect(estelas[1].material.uniforms.uVida.value).toBe(5);   // la del quad dura 6,5 s; la del dron, 5
+    expect(deps.Materiales.inventario()["estela"]).toMatchObject({ tipo: "define" });
+    expect((deps.Materiales.duenos()["vida"] || 0)).toBeGreaterThan(20);   // el quad, el dron, el anillo y las estelas
+    vida.libera(); expect(deps.Materiales.duenos()["vida"]).toBeUndefined();
+  });
   it("memoria: montar y liberar varias veces no deja ninguna geometría, material ni textura vivos", () => {
     const vivas = new Set<unknown>();
     for (let v = 0; v < 4; v++) {

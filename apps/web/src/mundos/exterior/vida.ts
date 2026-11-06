@@ -11,7 +11,7 @@
 // según su fuente, pero «más de lo real, para que se note».
 // Del legado recibe por argumento lo que necesita (THREE, la escena, el paseo, el mundo activo y el tiempo); no lee globales.
 import type { Manifiesto } from "../../nucleo/componentes.ts";
-import type { Materiales } from "../../nucleo/materiales.ts";
+import type { DefMaterial, Materiales, MaterialMin } from "../../nucleo/materiales.ts";
 import type { T3 } from "./vida-tipos.ts";
 
 /** El estado del paseo que otros módulos leen (tVida, enQuad, vq, enDron): vive en creaVida y el legado lo espeja en sus var */
@@ -63,6 +63,28 @@ export interface DepsVida {
 
 export const ID_VIDA = "vida";
 
+// ---------------------------------------------------------------- el material (MU5-n: por la fábrica, con su nombre de la tabla de MATERIALES §1, fila 17)
+/** el nombre del material en la fábrica: es también la clave de su variante TSL */
+export const MATERIAL_ESTELA = "estela";
+/** Lo que se le pasa a crea(): los uniformes, que son de cada estela (los mueve actualizaVida) */
+export interface OpcEstela { uniforms: Record<string, { value: unknown }> }
+/** La estela: un muro de luz que se apaga con la edad de cada tramo (uNow − aB) / uVida. El clásico es el ShaderMaterial de siempre, movido, que recibe sus uniformes. */
+export function defEstela(): DefMaterial<OpcEstela> {
+  return {
+    clasico: function (opc, c) {
+      return new (c.THREE["ShaderMaterial"] as new (o: unknown) => MaterialMin)({
+        uniforms: opc.uniforms, transparent: true, depthWrite: false, side: c.THREE["DoubleSide"], blending: c.THREE["AdditiveBlending"],
+        vertexShader: "attribute float aV; attribute float aB; varying float vV; varying float vB; void main(){ vV = aV; vB = aB; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+        fragmentShader: "uniform float uNow; uniform float uVida; uniform vec3 uColor; uniform float uAlpha; varying float vV; varying float vB; " +
+          "void main(){ float edad = clamp((uNow - vB) / uVida, 0.0, 1.0); float v = (1.0 - edad); v *= v; " +
+          "float caida = pow(1.0 - vV, 1.3); float pie = smoothstep(0.14, 0.0, vV); float filo = smoothstep(0.88, 1.0, vV) * 0.7; " +
+          "float a = (0.14 + 0.6 * caida + pie * 0.9 + filo) * v * uAlpha; " +
+          "gl_FragColor = vec4(uColor * (1.0 + 0.9 * pie * (1.0 - edad)), clamp(a, 0.0, 1.0));\n#include <colorspace_fragment>\n}"
+      });
+    }
+  };
+}
+
 /** Monta el quad, el dron, las estelas y los mandos del paseo y devuelve su api; `libera()` lo suelta todo (una sola vez). */
 export function creaVida(d: DepsVida) {
   const THREE = d.THREE, scene = d.scene, camera = d.camera, Estado = d.Estado, Materiales = d.Materiales, bus = d.Bus, $ = d.$, suelo = d.suelo, copaAlta = d.copaAlta;
@@ -70,6 +92,8 @@ export function creaVida(d: DepsVida) {
   const num1 = d.num1, rumbo = d.rumbo, paseando = d.paseando, teclas = d.teclas, persona = d.persona, primera = d.primera, ponPrimera = d.ponPrimera, pp = d.pp, camPos = d.camPos;
   const Llegada = d.Llegada, pendFactor = d.pendFactor, quadInc = d.quadInc, inclinaQuad = d.inclinaQuad;
   // ---------- la vida del olivar: el quad con estela de luz (Tron) y el dron para el paseo (los pájaros y los conejos son el componente «fauna-olivar», fauna.ts)
+  Materiales.define(MATERIAL_ESTELA, defEstela());
+  const materiales = Materiales.de(ID_VIDA);   // lo que cree este componente se libera con su libera()
   const E: EstadoVida = { tVida: 0, enQuad: false, vq: 0, enDron: false };
   const gFauna = new THREE.Group(); gFauna.name = "fauna"; scene.add(gFauna);
   function altSuelo(x: any, y: any) { return suelo(x, y) * Estado.exag; }   // el de la vida ambiental (fauna, perros, huellas) y el dibujo del dron: sigue con el suelo de 02_mundo
@@ -81,20 +105,20 @@ export function creaVida(d: DepsVida) {
 
   // --- el quad: mira hacia -z; las ruedas giran con la velocidad; los acentos de neón combinan con la linde
   var quad = (function () {
-    var g = new THREE.Group(), mt = function (c: any) { return new THREE.MeshLambertMaterial({ color: c }); }, neon = new THREE.MeshBasicMaterial({ color: 0x40f0ff }), ruedas: any[] = [];
+    var g = new THREE.Group(), mt = function (c: any) { return materiales.estandar("MeshLambertMaterial", { color: c }); }, neon = materiales.estandar("MeshBasicMaterial", { color: 0x40f0ff }), ruedas: any[] = [];
     function caja(w: any, h: any, d: any, m: any, x: any, y: any, z: any) { var me = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); me.position.set(x, y, z); g.add(me); return me; }
     caja(0.62, 0.22, 1.55, mt(0x2a2e34), 0, 0.46, 0); caja(0.5, 0.3, 0.5, mt(0xd9561c), 0, 0.78, -0.22); caja(0.38, 0.14, 0.62, mt(0x15171a), 0, 0.74, 0.28);
     caja(0.78, 0.07, 0.4, mt(0xd9561c), 0, 0.55, -0.82); caja(0.78, 0.07, 0.36, mt(0x2a2e34), 0, 0.55, 0.82);
     caja(0.05, 0.4, 0.05, mt(0x15171a), 0, 0.82, -0.52); caja(0.92, 0.05, 0.05, mt(0x15171a), 0, 1.02, -0.5);
     caja(0.04, 0.04, 1.5, neon, -0.32, 0.44, 0); caja(0.04, 0.04, 1.5, neon, 0.32, 0.44, 0);
-    var faro = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), new THREE.MeshBasicMaterial({ color: 0xfff6d0 })); faro.position.set(0, 0.7, -0.95); g.add(faro);
+    var faro = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), materiales.estandar("MeshBasicMaterial", { color: 0xfff6d0 })); faro.position.set(0, 0.7, -0.95); g.add(faro);
     [[-0.58, -0.62], [0.58, -0.62], [-0.58, 0.62], [0.58, 0.62]].forEach(function (p: any) {
       var w = new THREE.Group(); w.position.set(p[0], 0.3, p[1]);
       var r = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.26, 14), mt(0x1a1b1d)); r.rotation.z = Math.PI / 2; w.add(r);
       var tapa = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.28, 8), mt(0xb9bcc2)); tapa.rotation.z = Math.PI / 2; w.add(tapa); g.add(w); ruedas.push(w);
     });
     var sb = new THREE.Mesh(geoSombra, matSombra); sb.scale.set(1.9, 1, 2.5); sb.position.y = 0.03; g.add(sb);
-    var glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: texBrillo(), transparent: true, depthWrite: false, fog: false, blending: THREE.AdditiveBlending, opacity: 0 })); glow.scale.set(3.4, 3.4, 1); glow.position.set(0, 0.7, -1.1); g.add(glow);
+    var glow = new THREE.Sprite(materiales.estandar("SpriteMaterial", { map: texBrillo(), transparent: true, depthWrite: false, fog: false, blending: THREE.AdditiveBlending, opacity: 0 })); glow.scale.set(3.4, 3.4, 1); glow.position.set(0, 0.7, -1.1); g.add(glow);
     g.userData = { ruedas: ruedas, glow: glow }; g.visible = false; scene.add(g); return g;
   })();
 
@@ -106,15 +130,7 @@ export function creaVida(d: DepsVida) {
     var g = new THREE.BufferGeometry();
     g.setAttribute("position", new THREE.BufferAttribute(pos, 3)); g.setAttribute("aV", new THREE.BufferAttribute(av, 1)); g.setAttribute("aB", new THREE.BufferAttribute(ab, 1)); g.setIndex(idx); g.setDrawRange(0, 0);
     e.u = { uNow: { value: 0 }, uVida: { value: vida }, uColor: { value: new THREE.Color(colOsc) }, uAlpha: { value: 1 } };
-    e.mat = Materiales.sombreador("estela", {
-      uniforms: e.u, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending,
-      vertexShader: "attribute float aV; attribute float aB; varying float vV; varying float vB; void main(){ vV = aV; vB = aB; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
-      fragmentShader: "uniform float uNow; uniform float uVida; uniform vec3 uColor; uniform float uAlpha; varying float vV; varying float vB; " +
-        "void main(){ float edad = clamp((uNow - vB) / uVida, 0.0, 1.0); float v = (1.0 - edad); v *= v; " +
-        "float caida = pow(1.0 - vV, 1.3); float pie = smoothstep(0.14, 0.0, vV); float filo = smoothstep(0.88, 1.0, vV) * 0.7; " +
-        "float a = (0.14 + 0.6 * caida + pie * 0.9 + filo) * v * uAlpha; " +
-        "gl_FragColor = vec4(uColor * (1.0 + 0.9 * pie * (1.0 - edad)), clamp(a, 0.0, 1.0));\n#include <colorspace_fragment>\n}"
-    });
+    e.mat = materiales.crea(MATERIAL_ESTELA, { uniforms: e.u });   // el clásico es el ShaderMaterial de siempre (defEstela, arriba)
     e.malla = new THREE.Mesh(g, e.mat); e.malla.frustumCulled = false; e.malla.renderOrder = 6; e.malla.visible = false; scene.add(e.malla);   // vacía no se dibuja (three moderno cuenta la llamada aunque no haya vértices)
     e.tema = function (oscuro: any) { e.mat.blending = oscuro ? THREE.AdditiveBlending : THREE.NormalBlending; e.u.uColor.value.set(oscuro ? colOsc : colCla); e.u.uAlpha.value = oscuro ? 1 : 1.3; e.mat.needsUpdate = true; };
     e.reinicia = function () { e.ult = null; };
@@ -160,7 +176,7 @@ export function creaVida(d: DepsVida) {
   // --- el dron: lo vuela el muñequito desde donde está (el dron mira hacia -z, como todo lo demás)
   var vistaD = 0, dr: any = { x: 0, y: 0, h: 0, yaw: 0, vf: 0, vh: 0, giro: 0, pit: 0, rol: 0 };
   var dron = (function () {
-    var g = new THREE.Group(), mt = function (c: any) { return new THREE.MeshLambertMaterial({ color: c }); }, led = function (c: any) { return new THREE.MeshBasicMaterial({ color: c }); }, props: any[] = [], leds: any[] = [];
+    var g = new THREE.Group(), mt = function (c: any) { return materiales.estandar("MeshLambertMaterial", { color: c }); }, led = function (c: any) { return materiales.estandar("MeshBasicMaterial", { color: c }); }, props: any[] = [], leds: any[] = [];
     function caja(w: any, h: any, d: any, m: any, x: any, y: any, z: any, ry?: any) { var me = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); me.position.set(x, y, z); if (ry) me.rotation.y = ry; g.add(me); return me; }
     caja(0.3, 0.1, 0.42, mt(0xe9ebee), 0, 0, 0); caja(0.24, 0.06, 0.3, mt(0x2b2f36), 0, 0.07, 0.02); caja(0.26, 0.16, 0.3, mt(0xf4f6f8), 0, -0.14, 0.04);
     var cam = new THREE.Mesh(new THREE.SphereGeometry(0.045, 10, 8), mt(0x15171a)); cam.position.set(0, -0.08, -0.2); g.add(cam);
@@ -169,16 +185,16 @@ export function creaVida(d: DepsVida) {
       caja(0.045, 0.035, largo, mt(0x2b2f36), mx / 2, 0.03, mz / 2, Math.atan2(mx, mz));
       var motor = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.07, 10), mt(0x15171a)); motor.position.set(mx, 0.05, mz); g.add(motor);
       var h = new THREE.Group(); h.position.set(mx, 0.1, mz);
-      var disco = new THREE.Mesh(new THREE.CircleGeometry(0.2, 20), new THREE.MeshBasicMaterial({ color: 0xd8dde3, transparent: true, forceSinglePass: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false })); disco.rotation.x = -Math.PI / 2; h.add(disco);
+      var disco = new THREE.Mesh(new THREE.CircleGeometry(0.2, 20), materiales.estandar("MeshBasicMaterial", { color: 0xd8dde3, transparent: true, forceSinglePass: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false })); disco.rotation.x = -Math.PI / 2; h.add(disco);
       var pala = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.008, 0.03), mt(0x20232a)); h.add(pala); g.add(h); props.push({ g: h, s: k % 2 ? 1 : -1 });
       var l = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 5), led(p[1] < 0 ? 0xff3b30 : 0x34e07a)); l.position.set(mx, 0.0, mz + p[1] * 0.04); g.add(l); leds.push(l);
     });
-    var glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: texBrillo(), transparent: true, depthWrite: false, fog: false, blending: THREE.AdditiveBlending, opacity: 0, color: 0x9ff4ff })); glow.scale.set(5, 5, 1); glow.position.set(0, -0.25, 0); g.add(glow);
+    var glow = new THREE.Sprite(materiales.estandar("SpriteMaterial", { map: texBrillo(), transparent: true, depthWrite: false, fog: false, blending: THREE.AdditiveBlending, opacity: 0, color: 0x9ff4ff })); glow.scale.set(5, 5, 1); glow.position.set(0, -0.25, 0); g.add(glow);
     g.scale.setScalar(1.8); g.userData = { props: props, leds: leds, glow: glow }; g.visible = false; scene.add(g); return g;
   })();
   var anilloDron = (function () {
     var g = new THREE.RingGeometry(0.86, 1, 56); g.rotateX(-Math.PI / 2);
-    var m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: 0x40f0ff, transparent: true, forceSinglePass: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false }));
+    var m = new THREE.Mesh(g, materiales.estandar("MeshBasicMaterial", { color: 0x40f0ff, transparent: true, forceSinglePass: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false }));
     m.visible = false; m.renderOrder = 4; scene.add(m); return m;
   })();
   function angDifRad(a: any, b: any) { var d = (a - b) % (2 * Math.PI); if (d > Math.PI) d -= 2 * Math.PI; if (d < -Math.PI) d += 2 * Math.PI; return d; }
@@ -270,7 +286,7 @@ export function creaVida(d: DepsVida) {
   });
 
   let suelto = false;
-  /** quita del escenario el grupo de la fauna, el quad, el dron, el anillo y las estelas y suelta sus geometrías, materiales y texturas (el resplandor de cada uno); quita las escuchas de los
+  /** quita del escenario el grupo de la fauna, el quad, el dron, el anillo y las estelas y suelta sus geometrías, materiales (por la fábrica, con dueño «vida») y texturas (el resplandor de cada uno); quita las escuchas de los
    *  botones y los esconde. La sombra compartida (geoSombra, matSombra) y lo que cuelga de gFauna (la fauna y los perros, que se sueltan solos) no se tocan. Llamarlo dos veces no libera dos veces. */
   function libera(): void {
     if (suelto) return; suelto = true;
@@ -281,12 +297,13 @@ export function creaVida(d: DepsVida) {
       g.traverse(function (o: any) {
         if (o.geometry && o.geometry !== geoSombra && !o.isSprite) o.geometry.dispose();
         var ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
-        ms.forEach(function (m: any) { if (m === matSombra) return; if (m.map) m.map.dispose(); m.dispose(); });
+        ms.forEach(function (m: any) { if (m !== matSombra && m.map) m.map.dispose(); });   // los resplandores; los materiales, abajo
       });
     });
-    scene.remove(anilloDron); anilloDron.geometry.dispose(); anilloDron.material.dispose();
-    ESTELAS.forEach(function (e: any) { scene.remove(e.malla); e.malla.geometry.dispose(); e.mat.dispose(); });
+    scene.remove(anilloDron); anilloDron.geometry.dispose();
+    ESTELAS.forEach(function (e: any) { scene.remove(e.malla); e.malla.geometry.dispose(); });
     ESTELAS.length = 0;
+    materiales.libera();   // los de Lambert, Basic y Sprite del quad y del dron, el anillo y las dos estelas, de la fábrica (la sombra compartida de 07_follaje no es suya)
     scene.remove(gFauna);
   }
 
