@@ -3,6 +3,7 @@
 // (mundos/exterior, molino, bodega, vacio) es un paquete aparte que los implementa y no importa a otro (dependency-cruiser).
 // three no trae tipos en el repo (no hay @types/three): lo que se usa de three va como tipos mínimos estructurales, como en nucleo/presupuesto.ts.
 import type { ContextoBase, IdMundo, MundoBase, Pose2, Puerta } from "../nucleo/mundos.ts";
+import type { Ambiente } from "../nucleo/ambiente.ts";
 import type { creaRender } from "../nucleo/render.ts";
 
 export type { ContextoBase, IdMundo, Pose2, Puerta };
@@ -19,26 +20,14 @@ export interface Presupuesto { triangulos: number; llamadas: number; puntos: num
 /** Lo mínimo de un objeto de three que se usa aquí (Object3D, Group, Light), sin importar three. */
 export interface Objeto3D { visible: boolean; add(...o: Objeto3D[]): unknown; remove(...o: Objeto3D[]): unknown }
 
-/** MUNDOS §4: lo que el núcleo aplica al entrar el mundo y deshace al salir (MU2-7). */
-export interface Ambiente {
-  /** «exterior»: lo pinta 15_tiempo (sol, nubes, estrellas, lluvia); «ninguno»: el interior pone su fondo */
-  cielo: "exterior" | "ninguno";
-  /** color sRGB si cielo = «ninguno» */
-  fondo: number | null;
-  niebla: { color: number; cerca: number; lejos: number } | null;
-  /** las crea el mundo; el núcleo las cuelga al entrar y las quita al salir */
-  luces: readonly Objeto3D[];
-  camara: { near: number; far: number };
-  /** el exterior, la del usuario (1-3); los interiores, 1 fijo */
-  exag: number;
-  tono?: { constante: string; expo: number };
-}
+/** MUNDOS §4 (MU2-7): el Ambiente vive en nucleo/ambiente.ts, porque lo aplica el gestor y nucleo no importa de mundos; aquí se reexporta. */
+export type { Ambiente } from "../nucleo/ambiente.ts";
 
 /** MUNDOS §6: lo que un mundo ve de Render (nucleo/render.ts, creaRender): tipo, build, info(), memoria() y compila(); ni el renderizador ni enlaza(). */
 export type RenderDeMundo = Pick<ReturnType<typeof creaRender>, "tipo" | "build" | "info" | "memoria" | "compila">;
 
 /** MUNDOS §6: lo que el núcleo presta a un mundo. Lo que aún no existe en TypeScript (Bus, Entidades, Láminas, materiales estándar, Ajustes, Aparato,
- *  la sala) entra con la tarea que lo migra (MU2-5 el Bus y los componentes, MU2-7 el Ambiente, la fase 3 la sala): no se tipa con «unknown» de relleno. */
+ *  la sala) entra con la tarea que lo migra (MU2-5 el Bus y los componentes, la fase 3 la sala; el Ambiente, MU2-7, no va en el Contexto: lo da el mundo): no se tipa con «unknown» de relleno. */
 export interface Contexto extends ContextoBase {
   /** la del mundo; el núcleo la cuelga de la única scene en entra() y la descuelga en sale() */
   readonly raiz: Objeto3D;

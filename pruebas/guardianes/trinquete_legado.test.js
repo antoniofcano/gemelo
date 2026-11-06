@@ -26,7 +26,10 @@ const C = require(path.join(RAIZ, "pruebas", "contrato_modulos.js"));
 // 2026-11-06, MU2-4 (la locomoción pregunta al mundo activo): 18.777 líneas
 // 2026-11-06, MU2-6 (congelar el exterior; SUBE +10, todo cableado: en 90_final.js las raíces, el HUD y la pose que se le dan al exterior, avisa y el contexto del
 //   gestor, el registro del vacío y ?mundo=vacio, y los pasos de todo mundo que salen del exterior al Bucle; en 02b_cola.js, ColaExt; lo demás va a apps/web/src/): 18.787 líneas
-const TOPE = 18787;
+// 2026-11-06, MU2-7 (el Ambiente de cada mundo; SUBE +4, todo cableado: en 90_final.js lo que el Ambiente del exterior lee del legado, dónde se aplica
+//   —scene, cámara, renderer, Estado y las fábricas de THREE.Color y THREE.Fog—, la fábrica de luces del vacío y el tema que vuelve a aplicar el Ambiente
+//   del activo; 03_escena.js baja 3 —el fondo, la niebla, el near/far y colgar las luces son del Ambiente—; los valores y el aplicador, en apps/web/src/): 18.791 líneas
+const TOPE = 18791;
 
 /** líneas de un texto (la última sin salto también cuenta) */
 const lineas = s => s === "" ? 0 : s.split("\n").length - (s.endsWith("\n") ? 1 : 0);

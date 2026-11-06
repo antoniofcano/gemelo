@@ -1,7 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: tamano, gm, cuadro, bucle
-// Consume: 01_datos (D, $), 02_mundo (Mundo, suelo, copas), 02b_cola (Cola, ColaExt), 02c_componentes (Reparto, Bus, Pausa, Componentes),
-//   02d_laminas (Laminas), 02e_entidades (Usables), 02h_render (Render), 03_escena (visor, renderer, scene, camera), 04b_escena3d (Escena3D),
+// Consume: 01_datos (D, $, EXT, FOG0, FOG1), 02_mundo (Mundo, suelo, copas), 02b_cola (Cola, ColaExt),
+//   02c_componentes (Reparto, Bus, Pausa, Componentes), 02d_laminas (Laminas), 02e_entidades (Usables), 02f_xr_perillas (XrPerillas),
+//   02h_render (Render), 03_escena (visor, renderer, scene, camera, hemi, sol, colorCss, Estado), 04b_escena3d (Escena3D),
 //   05_nube (actualizaNubeTeselas, actualizaNube), 07b_arboles (Arboles), 08_marcadores (listo, aplica), 09_camara (objetivo, camara),
 //   12_paseo (paseando, persona, pp, actualizaPaseo), 15_tiempo (actualizaTiempo), 16_vida (actualizaVida), 17_minimapa (actualizaMinimapa),
 //   18_paisaje (actualizaPaisaje), 19_balizas (actualizaBalizas), 21_suelo (recoloreaSuelo, actualizaSuelo), 23_estacion (actualizaOlivo),
@@ -24,7 +25,9 @@
   var deTodoMundo = function (o) { return o === camera || o === vrRig || o === persona; };   // MU2-6: lo que congelar el exterior no oculta (quien mira y su rig de VR)
   var hudExterior = ["hudEstado", "mapita", "ndviHud", "ficha", "baliza"].map(function (id) { return $(id); }).filter(Boolean);   // MU2-6: el HUD del exterior (brújula y tiempo, mapa, NDVI, fichas)
   var poseDelPaseo = { lee: function () { return pp; }, pon: function (p) { pp.x = p.x; pp.y = p.y; pp.ang = p.ang; } };   // MU2-6: la pose de quien mira (12_paseo: pp)
-  var exterior = Mundos.creaExterior({ suelo: suelo, ext: D.ext, copas: copas, recorre: function (p, dt, t) { Bucle.recorre(p, dt, t); }, cola: ColaExt, pose: poseDelPaseo,
+  // MU2-7: lo que el Ambiente del exterior lee del legado al aplicarse (el tema, la perilla xrnear y el deslizador #exag pueden haber cambiado); los valores, en src/mundos/exterior.ts
+  var ambienteExt = { fondo: function () { return colorCss("--sky").getHex(); }, niebla: { cerca: FOG0, lejos: FOG1 }, luces: [hemi, sol], extension: EXT, nearVr: function () { return XrPerillas.efectivas.near; }, exag: function () { return Number($("exag").value) || 1; } };
+  var exterior = Mundos.creaExterior({ suelo: suelo, ext: D.ext, copas: copas, recorre: function (p, dt, t) { Bucle.recorre(p, dt, t); }, cola: ColaExt, pose: poseDelPaseo, ambiente: ambienteExt,
     raices: function () { return scene.children.filter(function (o) { return !deTodoMundo(o); }); }, hud: function () { return hudExterior; }, pasos: [
       { bloque: Reparto.reg("entidades"), fn: function (dt) { Usables.actualiza(dt); } },   // la cercanía (02e_entidades.js): antes que las balizas, que la leen
       { bloque: Reparto.reg("tiempo"), fn: function (dt, t) { actualizaTiempo(dt, t); } }, { bloque: Reparto.reg("olivo (estación)"), fn: function (dt) { actualizaOlivo(dt); } },
@@ -34,10 +37,13 @@
       { bloque: Reparto.reg("árboles (niveles)"), fn: function (dt) { Arboles.actualiza(dt); } },
       { bloque: Reparto.reg("carga de teselas"), caro: true, fn: actualizaCarga }
     ], antesDelRender: [{ bloque: Reparto.reg("Escena3D.actualiza"), caro: true, fn: function () { Escena3D.actualiza(); } }] });   // Escena3D: tras Cola.corre (su deuda es para el fotograma siguiente) y antes del render
+  var escenaAmb = { scene: scene, camara: camera, renderer: renderer, estado: Estado, color: function (h) { return new THREE.Color(h); }, niebla: function (h, c, l) { return new THREE.Fog(h, c, l); } };   // MU2-7: dónde se aplica el Ambiente
+  var luzDe = function (tipo, color, k, pos) { var l = tipo === "ambiental" ? new THREE.AmbientLight(color, k) : new THREE.DirectionalLight(color, k); if (pos) l.position.set(pos[0], pos[1], pos[2]); return l; };   // MU2-7: las luces de un interior, con THREE (src/ no lo importa)
   var gm =Nucleo.creaWorldManager({ fundido: Nucleo.creaFundidoPantalla({ documento: document, contenedor: visor, temporizador: temporizador, vr: { activa: function () { return VRX.on; }, cierra: vrCierra, abre: vrAbre } }), cola: Cola, temporizador: temporizador, ahora: function () { return performance.now(); }, consola: console,
+    aplicaAmbiente: function (a) { Nucleo.aplicaAmbiente(a, escenaAmb); },   // MU2-7: el Ambiente del que entra (src/nucleo/ambiente.ts), a oscuras
     avisa: function (ev, d) { Bus.emite(ev, d); }, contexto: function (base) { base.limpia(function () { Componentes.liberaMundo(base.id); }); return base; } });   // avisa: «mundo:entra/sale» paran y retoman los componentes (MU2-5); al liberar un mundo, los suyos
   gm.registra(function () { return Promise.resolve(exterior); }, "exterior");   // el gestor de mundos (MUNDOS §3): el exterior; fundido: en VR el velo de la cabeza, en pantalla uno de DOM
-  gm.registra(function () { return Promise.resolve(Mundos.creaVacio({ pose: poseDelPaseo })); }, "vacio");   // MU2-6: el interior de prueba, sin entrada para el usuario salvo ?mundo=vacio (MU2-8 lo mide)
+  gm.registra(function () { return Promise.resolve(Mundos.creaVacio({ pose: poseDelPaseo, luz: luzDe })); }, "vacio");   // MU2-6: el interior de prueba, sin entrada para el usuario salvo ?mundo=vacio (MU2-8 lo mide)
   Bucle = Nucleo.creaBucle({
     ahora: function () { return performance.now(); }, pideCuadro: function (fn) { requestAnimationFrame(fn); }, reparto: Reparto,
     enPausa: function () { return Pausa.activa() && !VRX.on; }, pausa: function (dt, t) { Componentes.actualiza("pausa", dt, t); depuraCuadro(t); },   // en pausa: ni cámara, ni módulos, ni Cola, ni render
@@ -53,5 +59,7 @@
       { bloque: Reparto.reg("depura/vrFin"), fn: function (dt, t) { depuraCuadro(t); if (VRX.on) vrFin(dt, performance.now() - t); } }
     ]
   });
-  var cuadro = Bucle.cuadro, bucle = Bucle.bucle;
+  var cuadro = Bucle.cuadro, bucle = Bucle.bucle, reambienta = function () { gm.reaplicaAmbiente(); };   // MU2-7: al cambiar el tema, el Ambiente del activo otra vez (el fondo y la niebla de partida del exterior salen de --sky; antes, pintaFondo de 03_escena)
+  new MutationObserver(reambienta).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  if (window.matchMedia) window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", reambienta);
   window.__bucle = Bucle.estado; Componentes.arranca(); gm.arranca("exterior").then(function (r) { if (!r.ok) console.error("el exterior no ha arrancado", r); Render.arranca(renderer, bucle); });   // __bucle: fallos, salidas de VR, ocultación y contexto perdido (pruebas/prueba_vr.js y ?debug); Componentes tras montar todos los ficheros (URL > servidor > defecto de cada manifiesto); el primer fotograma, con el exterior ya entrado (arranca es asíncrona aunque no haya nada que esperar) y, con el renderizador nuevo, tras su init() (02h_render, F1)

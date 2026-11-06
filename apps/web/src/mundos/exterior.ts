@@ -12,8 +12,13 @@
 //     llegada, pone ahí la pose del paseo.
 //   · sale(): la pose de 12_paseo (pp.x, pp.y, pp.ang), copiada.
 //   · libera(): TODO de MU5 (decisión 218: en MU2 el exterior no se libera). No hace nada y no lanza, porque el gestor puede llamarlo.
-//   · MU2-7: ambiente() y el resto del World (sala, marco, presupuesto); aquí es un MundoBase.
+//   · MU2-7: ambiente(), el de siempre (lo que 03_escena.js fijaba al montarse y 29_vr.js al entrar en la VR): cielo «exterior» (lo pinta 15_tiempo),
+//     fondo y niebla de partida desde --sky, FOG0 y FOG1, el hemisferio y el sol de 03_escena, near 0,5 y far max(5000, 4·EXT) en pantalla, el near
+//     de la perilla xrnear y far 6000 en VR, y la exag del usuario (el deslizador #exag). Lo aplica el gestor al entrar (nucleo/ambiente.ts).
+//     15_tiempo lo sigue moviendo cada fotograma (sol, hemisferio, fondo, niebla), pero solo mientras el exterior está activo: es un paso suyo.
+//   · El resto del World (sala, marco, presupuesto), más adelante; aquí es un MundoBase.
 import type { MundoBase, Pose2 } from "../nucleo/mundos.ts";
+import type { Ambiente, LuzAmbiente } from "../nucleo/ambiente.ts";
 import type { PasoBucle } from "../nucleo/bucle.ts";
 import { LlegadaPuro } from "../nucleo/locomocion.ts";
 import type { Copa, Ext } from "../nucleo/locomocion.ts";
@@ -39,6 +44,23 @@ export interface DepsExterior {
   hud?(): readonly ConEstilo[];
   /** MU2-6: la pose de quien mira (12_paseo: pp), que sale() devuelve y entra() pone si trae llegada */
   pose?: { lee(): Pose2; pon(p: Pose2): void };
+  /** MU2-7: lo del legado con que se monta su Ambiente (ambienteExterior). Sin él, el exterior no tiene ambiente() y el gestor no aplica nada */
+  ambiente?: DepsAmbienteExterior;
+}
+/** MU2-7: lo que el Ambiente del exterior lee del legado, en el momento de aplicarse (el tema y las perillas pueden haber cambiado) */
+export interface DepsAmbienteExterior {
+  /** el color del cielo del tema, sRGB (03_escena: colorCss("--sky").getHex()) */
+  fondo(): number;
+  /** la niebla de partida (01_datos: FOG0 y FOG1, de la extensión de la finca) */
+  niebla: { cerca: number; lejos: number };
+  /** el hemisferio y el sol de 03_escena (que 11_sol y 15_tiempo mueven) */
+  luces: readonly LuzAmbiente[];
+  /** 01_datos: EXT, la extensión de la finca (m); el far de pantalla sale de ella */
+  extension: number;
+  /** el near en VR: la perilla xrnear (02f: XrPerillas.efectivas.near, 0,1 por defecto) */
+  nearVr(): number;
+  /** la exageración del usuario: el deslizador #exag (lo mueven el panel, el de VR y los ajustes guardados) */
+  exag(): number;
 }
 /** lo mínimo de un objeto de three que se oculta (Object3D.visible) */
 export interface Visible { visible: boolean }
@@ -72,6 +94,23 @@ function corrigeExterior(ext: Ext | undefined, copas: readonly Copa[] | undefine
   }
   fuera.x = nx; fuera.y = ny;
   return toca;
+}
+
+/** near en pantalla (m): el de siempre de 03_escena.js */
+export const NEAR_EXTERIOR = 0.5;
+/** far en VR (m): el de siempre de 29_vr.js al entrar en la sesión */
+export const FAR_VR_EXTERIOR = 6000;
+/** far en pantalla: max(5000, 4·EXT), el de siempre de 03_escena.js */
+export function farExterior(extension: number): number { return Math.max(5000, extension * 4); }
+
+/** El Ambiente del exterior (MU2-7), con los valores que antes fijaban 03_escena.js (fondo, niebla, luces, near/far) y 29_vr.js (near/far en VR). */
+export function ambienteExterior(d: DepsAmbienteExterior): Ambiente {
+  const c = d.fondo();
+  return {
+    cielo: "exterior", fondo: c, niebla: { color: c, cerca: d.niebla.cerca, lejos: d.niebla.lejos }, luces: d.luces,
+    camara: { near: NEAR_EXTERIOR, far: farExterior(d.extension), vr: { near: d.nearVr(), far: FAR_VR_EXTERIOR } },
+    exag: d.exag(),
+  };
 }
 
 /** Lo que la carga de teselas necesita del legado: 02_mundo (Mundo), la cámara, el punto que mira (09_camara: objetivo) y si se pasea (12_paseo: paseando es una
@@ -137,5 +176,7 @@ export function creaExterior(deps: DepsExterior): MundoBase {
     // el punto fuera de los troncos (a `radio` m) y dentro de la caja, o null si (x, y) ya estaba bien. El borde de la finca es un obstáculo más:
     // así el que anda obtiene en una sola llamada lo que hacían el bucle sobre copas y el recorte a D.ext (en un interior serán columnas y paredes)
     obstaculo(x: number, y: number, radio: number): Pose2 | null { return corrigeExterior(ext, copas, x, y, radio, corregido) ? corregido : null; },
+    // MU2-7: su Ambiente, leído al aplicarse (el tema, la perilla xrnear y el deslizador #exag pueden haber cambiado). Solo si el legado lo cablea
+    ...(deps.ambiente ? { ambiente: (): Ambiente => ambienteExterior(deps.ambiente as DepsAmbienteExterior) } : {}),
   };
 }

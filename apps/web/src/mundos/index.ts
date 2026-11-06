@@ -4,6 +4,6 @@
 // Los interiores NO pasan por aquí: son trozos perezosos (`import("@gemelo/mundo-bodega")`). El vacío (MU2-6) es la excepción: el interior de prueba,
 // sin assets, que 90_final registra para ?mundo=vacio (MU2-8).
 export { creaCargaTeselas, creaExterior } from "./exterior.ts";
-export type { ConEstilo, DepsCargaTeselas, DepsExterior, Visible } from "./exterior.ts";
+export type { ConEstilo, DepsAmbienteExterior, DepsCargaTeselas, DepsExterior, Visible } from "./exterior.ts";
 export { creaVacio } from "./vacio.ts";
-export type { DepsVacio } from "./vacio.ts";
+export type { DepsVacio, FabricaLuz } from "./vacio.ts";

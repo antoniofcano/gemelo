@@ -6,7 +6,7 @@ import { creaBucle } from "../nucleo/bucle.ts";
 import type { PasoBucle } from "../nucleo/bucle.ts";
 import { creaCola } from "../nucleo/cola.ts";
 import { creaWorldManager } from "../nucleo/mundos.ts";
-import { creaExterior } from "./exterior.ts";
+import { ambienteExterior, creaExterior, FAR_VR_EXTERIOR, farExterior, NEAR_EXTERIOR } from "./exterior.ts";
 
 const recorreSimple = (p: readonly PasoBucle[], dt: number, t: number): void => { for (const x of p) x.fn(dt, t); };
 const pasosFalsos = (reg: string[]): PasoBucle[] => ["entidades", "tiempo", "mundo", "carga", "Cola", "Escena3D"].map((n) => ({ bloque: null, fn: () => { reg.push(n); } }));
@@ -158,5 +158,23 @@ describe("el exterior dentro del bucle (Bucle.recorre)", () => {
   it("midiendo, los bloques numéricos del exterior suman al reparto y las fases no", async () => {
     const m = monta(); await m.gm.arranca("exterior"); m.midiendo();
     m.avanza(); expect(m.bloques).toEqual([1, 7, 8]);
+  });
+});
+
+describe("el Ambiente del exterior (MU2-7)", () => {
+  it("los valores de siempre: cielo «exterior», fondo y niebla de --sky con FOG0/FOG1, el hemisferio y el sol, near 0,5 y far max(5000, 4·EXT); en VR, xrnear y 6000", () => {
+    const hemi = {}, sol = {};
+    let cielo = 0x9ec5e8, exag = 1.5;
+    const d = { fondo: () => cielo, niebla: { cerca: 700, lejos: 5200 }, luces: [hemi, sol], extension: 1800, nearVr: () => 0.1, exag: () => exag };
+    expect(ambienteExterior(d)).toEqual({
+      cielo: "exterior", fondo: 0x9ec5e8, niebla: { color: 0x9ec5e8, cerca: 700, lejos: 5200 }, luces: [hemi, sol],
+      camara: { near: NEAR_EXTERIOR, far: 7200, vr: { near: 0.1, far: FAR_VR_EXTERIOR } }, exag: 1.5,
+    });
+    expect([NEAR_EXTERIOR, FAR_VR_EXTERIOR, farExterior(1000)]).toEqual([0.5, 6000, 5000]);
+    // se lee al aplicarse: el tema y el deslizador de ahora
+    cielo = 0x101820; exag = 3;
+    const m = creaExterior({ pasos: [], recorre: () => {}, ambiente: d });
+    expect(m.ambiente?.()).toMatchObject({ fondo: 0x101820, niebla: { color: 0x101820 }, exag: 3 });
+    expect(creaExterior({ pasos: [], recorre: () => {} }).ambiente).toBeUndefined();   // sin cablear, sin ambiente: el gestor no aplica nada
   });
 });

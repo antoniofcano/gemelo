@@ -11,6 +11,7 @@
 // contexto de cada mundo entran por argumento de creaWorldManager({ … }). Presupuesto (regla 6): no dibuja ni reserva nada por fotograma.
 import { creaColaDeMundo } from "./cola.ts";
 import type { ColaConDueno, ColaDeMundo } from "./cola.ts";
+import type { Ambiente } from "./ambiente.ts";
 
 /** Los mundos. «vacio» es el interior de prueba de MU2-8 (`?mundo=vacio`), para medir el exterior congelado sin ningún modelo. */
 export type IdMundo = "exterior" | "molino" | "bodega" | "vacio";
@@ -51,14 +52,14 @@ export interface MundoBase<C extends ContextoBase = ContextoBase> {
   readonly alSalir?: "congela" | "libera";
   /** import() de assets, glb, KTX2; puede tardar; abortable con ctx.senal. No toca la escena. */
   carga(ctx: C): Promise<void>;
-  /** cuelga su raíz, aplica su Ambiente, registra sus entidades; síncrono, a oscuras */
+  /** cuelga su raíz y registra sus entidades; síncrono, a oscuras. Su Ambiente lo aplica el gestor justo después (MU2-7: deps.aplicaAmbiente) */
   entra(desde: Puerta | null, llegada: Pose2 | null): void;
   /** cada fotograma, solo si está activo */
   actualiza(dt: number, t: number): void;
   /** MU2-6, opcional: lo último del mundo en el fotograma, tras los pasos de todo mundo (componentes, láminas, Cola) y justo antes del render, con las
    *  mismas reglas que actualiza(). El exterior: Escena3D.actualiza, que tiene que ver la cámara de este fotograma y apuntar su deuda tras Cola.corre. */
   antesDelRender?(dt: number, t: number): void;
-  /** descuelga la raíz, quita Ambiente y entidades; devuelve dónde estaba quien mira */
+  /** descuelga la raíz y quita sus entidades; devuelve dónde estaba quien mira. Su Ambiente no se deshace: lo sustituye el del mundo que entra */
   sale(): Pose2;
   /** sigue en memoria, sin actualizar, sin Cola y sin pedir teselas; puede volver a entra() sin carga() */
   congela(): void;
@@ -70,6 +71,8 @@ export interface MundoBase<C extends ContextoBase = ContextoBase> {
   dentro(x: number, y: number): boolean;
   /** el punto corregido si choca, o null */
   obstaculo(x: number, y: number, radio: number): Pose2 | null;
+  /** MU2-7, opcional aquí (World lo exige): su cielo, fondo, niebla, luces, near/far y exag (nucleo/ambiente.ts). El gestor lo aplica tras entra() */
+  ambiente?(): Ambiente;
 }
 
 export type EstadoCambio = "en" | "cerrando" | "saliendo" | "cargando" | "entrando" | "abriendo";
@@ -136,6 +139,9 @@ export interface DepsWorldManager<C extends ContextoBase, W extends MundoBase<C>
   politica?(mundo: W): "congela" | "libera";
   /** ¿se puede entrar? (Puerta.requiere: la api). Se pregunta antes de cerrar el fundido: si no, no se oscurece nada */
   permiso?(a: IdMundo, puerta: Puerta | null): boolean | Promise<boolean>;
+  /** MU2-7: aplica el Ambiente del mundo que acaba de entrar (nucleo/ambiente.ts: aplicaAmbiente con la scene, la cámara…). El gestor no toca la
+   *  escena: quien lo crea le da esto. Se llama a oscuras, tras entra() (también al volver al de antes y al arrancar); si lanza, cuenta como fallo de entra() */
+  aplicaAmbiente?(ambiente: Ambiente, id: IdMundo): void;
   /** «mundo:entra» y «mundo:sale» (contratos/eventos.json, MU2-5) */
   avisa?(evento: "mundo:entra" | "mundo:sale", datos: AvisoMundo): void;
   consola?: { error(...a: unknown[]): void } | null;
@@ -218,6 +224,12 @@ export function creaWorldManager<C extends ContextoBase = ContextoBase, W extend
     });
   }
 
+  // entra() y, si el mundo tiene Ambiente y alguien sabe aplicarlo, su Ambiente (MU2-7): siempre juntos, a oscuras
+  function entraEn(w: W, desde: Puerta | null, llegada: Pose2 | null): void {
+    w.entra(desde, llegada);
+    if (deps.aplicaAmbiente && w.ambiente) deps.aplicaAmbiente(w.ambiente(), w.id);
+  }
+
   // Vuelve a entrar en el de antes (estaba congelado: no hace falta cargarlo) y deja el estado en «abriendo».
   function vuelve(viejo: Ficha<C, W> | null, desde: IdMundo): void {
     paso("falla");   // → entrando
@@ -225,7 +237,7 @@ export function creaWorldManager<C extends ContextoBase = ContextoBase, W extend
     if (viejo && viejo.mundo && viejo.estado === "listo") {
       const w = viejo.mundo;
       try {
-        w.entra(null, viejo.retorno);
+        entraEn(w, null, viejo.retorno);
         viejo.estado = "activo"; actual = viejo;
         if (deps.avisa) deps.avisa("mundo:entra", { id: viejo.id, desde, hacia: viejo.id });
       } catch (e) { log("no se pudo volver a «" + viejo.id + "»", e); }
@@ -283,7 +295,7 @@ export function creaWorldManager<C extends ContextoBase = ContextoBase, W extend
       }
       paso("cargado");   // → entrando
       const w = f.mundo as W;
-      try { w.entra(puerta || null, llegada || f.retorno); } catch (e) {
+      try { entraEn(w, puerta || null, llegada || f.retorno); } catch (e) {
         intenta("sale " + a, () => w.sale());
         libera(f);
         vuelve(viejo, a); await abre(); paso("abierto");
@@ -315,7 +327,7 @@ export function creaWorldManager<C extends ContextoBase = ContextoBase, W extend
       }
       paso("cargado");
       const w = f.mundo as W;
-      try { w.entra(null, llegada || f.retorno); } catch (e) {
+      try { entraEn(w, null, llegada || f.retorno); } catch (e) {
         intenta("sale " + a, () => w.sale());
         libera(f); vuelve(null, a); paso("abierto");
         return res(false, "fallo_entra", e);
@@ -343,6 +355,10 @@ export function creaWorldManager<C extends ContextoBase = ContextoBase, W extend
     actualiza,
     antesDelRender,
     get actual(): IdMundo | null { return actual ? actual.id : null; },
+    /** MU2-7: el Ambiente del mundo activo (null sin mundo o si no tiene); 29_vr saca de aquí el near/far al entrar y salir de la VR */
+    ambiente(): Ambiente | null { const w = actual && actual.mundo; return w && w.ambiente ? w.ambiente() : null; },
+    /** MU2-7: vuelve a aplicar el Ambiente del activo (al cambiar el tema claro/oscuro, el fondo y la niebla de partida salen de --sky) */
+    reaplicaAmbiente(): void { const w = actual && actual.mundo; if (w && w.ambiente && deps.aplicaAmbiente) deps.aplicaAmbiente(w.ambiente(), w.id); },
     get estado(): EstadoCambio { return estado; },
     /** dónde se dejó cada mundo (lo que devolvió su sale()); en memoria, se pierde al recargar */
     retorno(id: IdMundo): Pose2 | null { const f = fichas.get(id); return f && f.retorno ? { x: f.retorno.x, y: f.retorno.y, ang: f.retorno.ang } : null; },

@@ -1,6 +1,6 @@
 // El mundo vacío (MU2-6): el interior de prueba de ?mundo=vacio (MU2-8). Suelo 0, un cuadrado de 20 m, sin obstáculos más que su borde.
 import { describe, expect, it } from "vitest";
-import { creaVacio, MEDIO_LADO } from "./vacio.ts";
+import { creaVacio, FONDO_VACIO, LUCES_VACIO, MEDIO_LADO } from "./vacio.ts";
 
 describe("creaVacio", () => {
   it("es «vacio», se congela al salir, carga sin esperar y no lanza en nada de su ciclo de vida", async () => {
@@ -24,5 +24,18 @@ describe("creaVacio", () => {
     v.entra(null, null); expect(pp).toEqual({ x: 0, y: 0, ang: 0 });
     v.entra(null, { x: 4, y: 25, ang: 1 }); expect(pp).toEqual({ x: 4, y: 10, ang: 1 });
     const s = v.sale(); pp.x = 0; expect(s).toEqual({ x: 4, y: 10, ang: 1 });
+  });
+  it("MU2-7: su Ambiente es de interior (sin cielo ni niebla, fondo gris, sus dos luces, near/far de interior, exag 1); las luces, una vez, y libera() las suelta", () => {
+    const hechas: Array<{ tipo: string; pos?: readonly number[]; sueltas: number; dispose(): void }> = [];
+    const v = creaVacio({ luz: (tipo, _c, _k, pos) => { const l = { tipo, ...(pos ? { pos } : {}), sueltas: 0, dispose() { l.sueltas++; } }; hechas.push(l); return l; } });
+    const a = v.ambiente?.();
+    expect(a).toMatchObject({ cielo: "ninguno", fondo: FONDO_VACIO, niebla: null, camara: { near: 0.05, far: 80 }, exag: 1 });
+    expect(a?.camara.vr).toBeUndefined();   // en VR, el mismo near/far
+    expect(hechas.map(l => l.tipo)).toEqual(["ambiental", "direccional"]);
+    expect(hechas[1]?.pos).toEqual(LUCES_VACIO.direccional.pos);
+    expect(v.ambiente?.().luces).toEqual(a?.luces); expect(hechas.length).toBe(2);
+    v.libera(); v.libera();
+    expect(hechas.map(l => l.sueltas)).toEqual([1, 1]);
+    expect(creaVacio().ambiente?.().luces).toEqual([]);   // sin fábrica (pruebas), sin luces
   });
 });

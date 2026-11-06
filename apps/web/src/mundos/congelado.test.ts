@@ -10,6 +10,7 @@ import { creaCola, creaColaDeMundo } from "../nucleo/cola.ts";
 import type { Trabajo } from "../nucleo/cola.ts";
 import { creaComponentes } from "../nucleo/componentes.ts";
 import type { BusComponentes, Manifiesto } from "../nucleo/componentes.ts";
+import { aplicaAmbiente } from "../nucleo/ambiente.ts";
 import { creaWorldManager } from "../nucleo/mundos.ts";
 import type { Pose2 } from "../nucleo/mundos.ts";
 import { creaExterior } from "./exterior.ts";
@@ -125,6 +126,55 @@ describe("el exterior congelado (MU2-6)", () => {
     for (let i = 0; i < 4; i++) b.fotograma();
     expect(hecho.n).toBeGreaterThan(antes);              // y sigue donde iba, no desde el principio
     expect(hecho.n).toBeLessThanOrEqual(10);
+  });
+
+  it("MU2-7: exterior → vacío → exterior con el Ambiente de verdad (nucleo/ambiente.ts) deja la escena como estaba", async () => {
+    // una scene de mentira con la forma de la de three: hijos, add/remove (que fijan parent), fondo y niebla
+    type Nodo = { nombre: string; visible: boolean; parent?: unknown; dispose?(): void };
+    const children: Nodo[] = [];
+    const scene = {
+      children, background: null as unknown, fog: null as unknown,
+      add(o: Nodo) { if (children.indexOf(o) < 0) children.push(o); o.parent = scene; },
+      remove(o: Nodo) { const i = children.indexOf(o); if (i >= 0) children.splice(i, 1); o.parent = null; },
+    };
+    class Color { hex: number; constructor(h: number) { this.hex = h; } setHex(h: number) { this.hex = h; return this; } }
+    const camara = { near: 0.1, far: 2000, updateProjectionMatrix() {} }, estado = { exag: 1 }, deslizador = { value: "2" };
+    const hemi: Nodo = { nombre: "hemi", visible: true }, sol: Nodo = { nombre: "sol", visible: true }, olivos: Nodo = { nombre: "olivos", visible: true }, persona: Nodo = { nombre: "persona", visible: true };
+    scene.add(olivos); scene.add(persona);
+    const pp = { x: 50, y: 60, ang: 0 }, pose = { lee: (): Pose2 => pp, pon: (p: Pose2) => { pp.x = p.x; pp.y = p.y; pp.ang = p.ang; } };
+    const exterior = creaExterior({
+      pasos: [], recorre: () => {}, pose, raices: () => children.filter(o => o !== persona),
+      ambiente: { fondo: () => 0x9ec5e8, niebla: { cerca: 600, lejos: 4000 }, luces: [hemi, sol], extension: 1500, nearVr: () => 0.1, exag: () => Number(deslizador.value) },
+    });
+    let creadas = 0;
+    const vacio = creaVacio({ pose, luz: (tipo, color, k) => { creadas++; return { nombre: tipo + ":" + color.toString(16) + ":" + k.toFixed(2), visible: true, dispose() {} } as Nodo; } });
+    const cola = creaCola({ ahora: () => 0 });
+    const gm = creaWorldManager({
+      fundido: { cierra: () => Promise.resolve(), abre: () => Promise.resolve() }, cola, temporizador: () => () => {},
+      aplicaAmbiente: a => { aplicaAmbiente(a, { scene, camara, estado, renderer: { xr: { isPresenting: false } }, color: h => new Color(h), niebla: (h, c, l) => ({ color: new Color(h), near: c, far: l }) }); },
+    });
+    gm.registra(() => Promise.resolve(exterior), "exterior");
+    gm.registra(() => Promise.resolve(vacio), "vacio");
+    const foto = () => ({
+      hijos: children.map(o => o.nombre + (o.visible ? "" : "(oculto)")), fondo: (scene.background as Color | null)?.hex ?? null,
+      niebla: scene.fog ? [(scene.fog as { color: Color }).color.hex, (scene.fog as { near: number }).near, (scene.fog as { far: number }).far] : null,
+      camara: [camara.near, camara.far], exag: estado.exag,
+    });
+
+    await gm.arranca("exterior");   // lo que hacía 03_escena al montarse: el hemisferio y el sol colgados, fondo y niebla de --sky, near 0,5 y far max(5000, 4·EXT)
+    const antes = foto();
+    expect(antes).toEqual({ hijos: ["olivos", "persona", "hemi", "sol"], fondo: 0x9ec5e8, niebla: [0x9ec5e8, 600, 4000], camara: [0.5, 6000], exag: 2 });
+
+    await gm.cambia("vacio");
+    expect(foto()).toEqual({ hijos: ["olivos(oculto)", "persona", "ambiental:ffffff:2.51", "direccional:ffffff:3.77"], fondo: 0x8a8a8a, niebla: null, camara: [0.05, 80], exag: 1 });
+    expect(hemi.parent).toBeNull(); expect(sol.parent).toBeNull();
+
+    await gm.cambia("exterior");
+    expect(foto()).toEqual(antes);
+    expect(hemi.visible && sol.visible).toBe(true);
+    await gm.cambia("vacio"); await gm.cambia("exterior");
+    expect(foto()).toEqual(antes);
+    expect(creadas).toBe(2);   // las luces del vacío se crean una vez, no en cada visita
   });
 
   it("libera() del exterior no lanza (TODO de MU5) y congelar dos veces no pierde cómo estaban las raíces", () => {

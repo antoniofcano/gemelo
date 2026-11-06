@@ -356,6 +356,57 @@ describe("WorldManager con mundos falsos", () => {
 
   it("el gestor no recibe ni toca renderer, scene ni renderer.xr: sus dependencias son el fundido, la Cola y el reloj", () => {
     const b = banco();
-    expect(Object.keys(b.gm).sort()).toEqual(["actual", "actualiza", "antesDelRender", "arranca", "cambia", "dentro", "estado", "fichaDe", "obstaculo", "registra", "retorno", "suelo"]);
+    expect(Object.keys(b.gm).sort()).toEqual(["actual", "actualiza", "ambiente", "antesDelRender", "arranca", "cambia", "dentro", "estado", "fichaDe", "obstaculo", "reaplicaAmbiente", "registra", "retorno", "suelo"]);
+  });
+});
+
+describe("el Ambiente de cada mundo (MU2-7)", () => {
+  // mundos mínimos con su Ambiente (el valor da igual: se mira a quién y cuándo se aplica). El gestor no toca la escena: llama a deps.aplicaAmbiente
+  function conAmbiente(id: IdMundo, traza: string[], o: { fallaEntra?: boolean } = {}): MundoBase {
+    return {
+      id, carga: () => Promise.resolve(),
+      entra(): void { traza.push(id + ".entra"); if (o.fallaEntra) throw new Error("entra falla"); },
+      actualiza(): void {}, sale: () => ({ x: 0, y: 0, ang: 0 }), congela(): void { traza.push(id + ".congela"); }, libera(): void {},
+      suelo: () => 0, dentro: () => true, obstaculo: () => null,
+      ambiente: () => ({ cielo: id === "exterior" ? "exterior" : "ninguno", fondo: 0, niebla: null, luces: [], camara: { near: 1, far: 2 }, exag: id === "exterior" ? 2 : 1 }),
+    };
+  }
+  function gestor(traza: string[], aplica = true) {
+    const cola = creaCola({ ahora: () => 0 }), velo = { cierra: () => Promise.resolve(), abre: () => Promise.resolve() };
+    return creaWorldManager({
+      fundido: velo, cola, temporizador: () => () => {},
+      ...(aplica ? { aplicaAmbiente: (a: { exag: number }, id: IdMundo) => { traza.push("ambiente:" + id + ":" + a.exag); } } : {}),
+    });
+  }
+
+  it("se aplica tras entra(), a oscuras: al arrancar, al cambiar y al volver; ambiente() da el del activo y reaplicaAmbiente lo vuelve a aplicar", async () => {
+    const traza: string[] = [], gm = gestor(traza);
+    gm.registra(() => Promise.resolve(conAmbiente("exterior", traza)), "exterior");
+    gm.registra(() => Promise.resolve(conAmbiente("vacio", traza)), "vacio");
+    expect(gm.ambiente()).toBeNull();
+    await gm.arranca("exterior");
+    await gm.cambia("vacio");
+    expect(gm.ambiente()?.cielo).toBe("ninguno");
+    await gm.cambia("exterior");
+    gm.reaplicaAmbiente();
+    expect(traza).toEqual(["exterior.entra", "ambiente:exterior:2", "exterior.congela", "vacio.entra", "ambiente:vacio:1", "vacio.congela", "exterior.entra", "ambiente:exterior:2", "ambiente:exterior:2"]);
+  });
+
+  it("si entra() del nuevo falla, su Ambiente no se aplica y se vuelve a aplicar el del de antes", async () => {
+    const traza: string[] = [], gm = gestor(traza);
+    gm.registra(() => Promise.resolve(conAmbiente("exterior", traza)), "exterior");
+    gm.registra(() => Promise.resolve(conAmbiente("vacio", traza, { fallaEntra: true })), "vacio");
+    await gm.arranca("exterior"); traza.length = 0;
+    const r = await gm.cambia("vacio");
+    expect(r.motivo).toBe("fallo_entra");
+    expect(traza).toEqual(["exterior.congela", "vacio.entra", "exterior.entra", "ambiente:exterior:2"]);
+  });
+
+  it("sin aplicaAmbiente en las dependencias, el gestor no aplica nada (ni lanza), y reaplicaAmbiente tampoco", async () => {
+    const traza: string[] = [], gm = gestor(traza, false);
+    gm.registra(() => Promise.resolve(conAmbiente("exterior", traza)), "exterior");
+    expect((await gm.arranca("exterior")).ok).toBe(true);
+    expect(() => gm.reaplicaAmbiente()).not.toThrow();
+    expect(traza).toEqual(["exterior.entra"]);
   });
 });

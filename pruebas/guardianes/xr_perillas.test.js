@@ -55,10 +55,12 @@ test("29_vr: near efectivo al entrar y restaurado al salir; el controlador baja 
   const fijo = corre(banco("?xrnivel=1"), 14); assert.strictEqual(fijo.VRX.nBaj, 0); assert.deepStrictEqual(fijo.niveles, [], "con ?xrnivel= fijo el controlador no actúa");
   // el reloj de JS es el de dentro del fotograma XR (no la pared entre fotogramas): 90_final lo pasa como performance.now() - t, con t = el inicio de cuadro()
   assert.match(lee("apps/web/motor/90_final.js"), /vrFin\(dt, performance\.now\(\) - t\)/);
-  // near: entra con el efectivo (0,1 por defecto) y sale con el de antes
-  assert.match(vr, /camera\.near = XrPerillas\.efectivas\.near; camera\.far = 6000;/);
-  assert.match(vr, /VRX\.nearPrev = camera\.near; VRX\.farPrev = camera\.far;/);
-  assert.match(vr, /camera\.near = VRX\.nearPrev; camera\.far = VRX\.farPrev; camera\.updateProjectionMatrix\(\)/);
+  // near: entra con el de VR del Ambiente del mundo activo y sale con el de pantalla (MU2-7); el exterior da el efectivo (0,1 por defecto) y far 6000
+  assert.match(vr, /Nucleo\.aplicaCamara\(gm\.ambiente\(\), camera, true\);/);
+  assert.match(vr, /Nucleo\.aplicaCamara\(gm\.ambiente\(\), camera, false\); camera\.updateProjectionMatrix\(\)/);
+  assert.match(lee("apps/web/motor/90_final.js"), /nearVr: function \(\) \{ return XrPerillas\.efectivas\.near; \}/);
+  assert.match(lee("apps/web/src/mundos/exterior.ts"), /vr: \{ near: d\.nearVr\(\), far: FAR_VR_EXTERIOR \}/);
+  assert.doesNotMatch(vr, /camera\.(near|far) = /, "29_vr ya no fija el near/far por su cuenta");
   assert.doesNotMatch(vr, /camera\.near = 0\.3/);
   assert.match(vr, /Config\.param\("escalera\.vrJsMs", u\.baja\)/);   // Q0c-b: el código por defecto sale de la tabla por aparato
   assert.match(vr, /xr: \{ near: XrPerillas\.efectivas\.near, topeJs: XrPerillas\.js\(\)/);

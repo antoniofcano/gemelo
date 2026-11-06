@@ -691,8 +691,8 @@
     XrPerillas.mvEnUso(renderer);   // F2a: ¿encendió super-three el multiview en esta sesión? (la línea «VR: …» y la sonda de 30_mide lo dicen)
     ses.addEventListener("end", vrSale);
     vrSuscribe(); vrLeeAjustes(); VRX.pestana = "mundo";
-    VRX.modoPrev = Estado.modo; VRX.calPrev = Estado.calidad; VRX.nearPrev = camera.near; VRX.farPrev = camera.far;
-    if (Estado.modo !== "gem") pon("gem"); Estado.calidad = 0; camera.near = XrPerillas.efectivas.near; camera.far = 6000;   // near 0,1 (AG-2.3; perilla xrnear): ramas a <30 cm sin recortar, a costa de precisión de profundidad lejos
+    VRX.modoPrev = Estado.modo; VRX.calPrev = Estado.calidad;
+    if (Estado.modo !== "gem") pon("gem"); Estado.calidad = 0; Nucleo.aplicaCamara(gm.ambiente(), camera, true);   // MU2-7: el near/far de VR del mundo activo; el exterior, near 0,1 (AG-2.3; perilla xrnear: ramas a <30 cm sin recortar, a costa de precisión de profundidad lejos) y far 6000
     scene.add(vrRig); vrRig.add(camera); camera.add(vrVineta); camera.position.set(0, VRX.ojo ? 0 : 1.6, 0); camera.quaternion.identity(); VRC.forEach(function (o) { vrRig.add(o.c); vrRig.add(o.g); }); Bus.emite("vr:rig-monta", { rig: vrRig }); scene.add(arco); scene.add(arcoMarca); scene.add(panel.m); scene.add(ficha.m); scene.add(fichaB.m); vrVueloEntra();
     VRP.on = true; vrPerfil(XrPerillas.fijo() ? XrPerillas.efectivas.nivel : 0); VrControlPuro.reinicia(VRX);   // A1-12: medias, periodo, perdidos, buenos y castigo, de cero
     if (!paseando) entraPaseo(); primera = true; TR.act = false; persona.visible = false; Bus.emite("perros:llegan");
@@ -705,7 +705,7 @@
     vrSuelta(); Cola.cancela("vnivel");
     VRX.on = false; VRP.on = false; VRX.sesion = null; renderer.setAnimationLoop(null); renderer.xr.enabled = false;
     vrRig.remove(camera); camera.remove(vrVineta); scene.remove(vrRig); VRC.forEach(function (o) { vrRig.remove(o.c); vrRig.remove(o.g); }); Bus.emite("vr:rig-libera"); scene.remove(arco); scene.remove(arcoMarca); scene.remove(panel.m); scene.remove(ficha.m); scene.remove(fichaB.m); vrVueloSale();
-    Arboles.perfil(null); Escena3D.perfil(null); VrPresupuesto.ponEscalon(null); UN.uBumpK.value = 1; Estado.calidad = VRX.calPrev; camera.near = VRX.nearPrev; camera.far = VRX.farPrev; camera.updateProjectionMatrix(); if (Estado.modo !== VRX.modoPrev) pon(VRX.modoPrev);
+    Arboles.perfil(null); Escena3D.perfil(null); VrPresupuesto.ponEscalon(null); UN.uBumpK.value = 1; Estado.calidad = VRX.calPrev; Nucleo.aplicaCamara(gm.ambiente(), camera, false); camera.updateProjectionMatrix(); if (Estado.modo !== VRX.modoPrev) pon(VRX.modoPrev);
     camera.position.set(0, 0, 0); camera.quaternion.identity(); camera.scale.set(1, 1, 1);
     if (paseando) salePaseo();
     VRX.vuelo = false; VRX.mirador = false; vrEstado("soportado (sesión terminada)"); Bus.emite("vr:sale"); tamano(); requestAnimationFrame(bucle);
