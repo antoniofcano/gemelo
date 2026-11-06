@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { ComponentesPuro } from "../../nucleo/componentes.ts";
 import { creaMateriales } from "../../nucleo/materiales.ts";
 import type { ThreeMin } from "../../nucleo/materiales.ts";
-import { ID_LINDES, LindesPuro, creaLindes, manifiestoLindes } from "./lindes.ts";
+import { DEF_LINDES, ID_LINDES, LindesPuro, MATERIAL_LINDES, creaLindes, manifiestoLindes } from "./lindes.ts";
 import type { DepsLindes } from "./lindes.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -71,6 +71,22 @@ describe("lindes de las hazas (componente del exterior)", () => {
     const e = entorno(HAZAS);
     for (let v = 0; v < 3; v++) { const api = e.motor.LindesMotor(e.n, () => Promise.resolve(e.lib)); await new Promise(r => setTimeout(r, 0)); api.libera(); }
     expect(e.reg.cargas).toHaveLength(1); expect(e.reg.dispose.filter(x => x === "geo")).toHaveLength(6); expect(e.reg.dispose.filter(x => x === "mat")).toHaveLength(6);
+  });
+
+  it("sus dos LineMaterial salen de la fábrica por define + crea con dueño y el nombre de la tabla de MATERIALES; el clásico es el de siempre (uAcerca, el parche de acercamiento y una sola clave de programa) y libera() los suelta", async () => {
+    const e = entorno(HAZAS), api = e.motor.LindesMotor(e.n, () => Promise.resolve(e.lib)), F = e.deps.Materiales;
+    await new Promise(r => setTimeout(r, 0));
+    expect(MATERIAL_LINDES).toBe("lindes-acerca");
+    expect(F.cobertura()["lindes-acerca"]).toEqual({ clasico: true, tsl: false, usado: 2 }); expect(F.inventario()["lindes-acerca"]).toEqual({ tipo: "define", n: 2 }); expect(F.duenos()).toEqual({ "lindes-hazas": 2 });
+    const [mia, otra] = e.reg.añadidos[0]!.children as { material: { uniforms: { uAcerca: { value: number } }; onBeforeCompile(sh: unknown): void; customProgramCacheKey(): string; o: { linewidth: number; transparent: boolean } } }[];
+    expect(mia!.material.uniforms.uAcerca.value).toBeCloseTo(1 - 0.004, 12); expect(otra!.material.uniforms.uAcerca.value).toBeCloseTo(1 - 0.002, 12);
+    expect(mia!.material.o.linewidth).toBe(4); expect(otra!.material.o.transparent).toBe(true);
+    const sh = { vertexShader: "uniform float linewidth;\n\t" + LindesPuro.ANCLA }; mia!.material.onBeforeCompile(sh); expect(sh.vertexShader).toMatch(/uAcerca/); expect(api.estado().acerca).toBe(true);
+    expect(mia!.material.customProgramCacheKey()).toBe("lindes-hazas-acerca"); expect(otra!.material.customProgramCacheKey()).toBe("lindes-hazas-acerca");
+    // el clásico a mano: lo mismo que pide la fábrica
+    const a = DEF_LINDES.clasico!({ LineMaterial: e.lib.LineMaterial, acerca: 0.01, parche: () => { /* sin efecto */ }, params: { color: 1, linewidth: 3, worldUnits: false, transparent: false, opacity: 1, depthWrite: true } }, { THREE, nombre: "lindes-acerca" }) as unknown as { uniforms: { uAcerca: { value: number } } };
+    expect(a.uniforms.uAcerca.value).toBeCloseTo(0.99, 12);
+    api.libera(); expect(F.duenos()).toEqual({}); expect(e.reg.dispose.filter(x => x === "mat")).toHaveLength(2);
   });
 
   it("el manifiesto vale, es de los mundos [exterior], fase «tarde» cada 0,5 s, bandera ?lindes y su libera suelta de verdad", async () => {

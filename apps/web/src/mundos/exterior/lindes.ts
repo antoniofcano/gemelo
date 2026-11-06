@@ -23,7 +23,7 @@
 // Del legado recibe por argumento lo que necesita (THREE, el Mundo, el suelo, las hazas, el minimapa, la fábrica de materiales…); no lee globales. Mismo comportamiento que
 // antes, sin cambio visible.
 import type { ContextoComponente, Manifiesto } from "../../nucleo/componentes.ts";
-import type { Materiales } from "../../nucleo/materiales.ts";
+import type { DefMaterial, Materiales, MaterialMin } from "../../nucleo/materiales.ts";
 
 // three no trae tipos en el repo (como en suelo-fondo.ts): de él solo se toca lo mínimo, sin tiparlo
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -179,6 +179,26 @@ export const LindesPuro = (function () {
 })();
 
 
+// ---------------------------------------------------------------- el material de las líneas (MU5-n: por la fábrica, con su nombre de la tabla de MATERIALES §1, fila 26)
+/** el nombre del material en la fábrica: es también la clave de su variante TSL */
+export const MATERIAL_LINDES = "lindes-acerca";
+/** lo que pide el material: el LineMaterial de three/addons (que llega con el import() del talón), sus parámetros, la fracción de acercamiento de profundidad y el parche del sombreador */
+export interface OpcLindes {
+  LineMaterial: T3;
+  params: { color: number; linewidth: number; worldUnits: boolean; transparent: boolean; opacity: number; depthWrite: boolean };
+  acerca: number;
+  parche(sh: unknown): void;
+}
+/** el LineMaterial de siempre, con el uniforme uAcerca, el parche de acercamiento de profundidad asignado tal cual y una clave de programa propia: un solo programa para las dos líneas */
+export const DEF_LINDES: DefMaterial<OpcLindes> = {
+  clasico: function (o) {
+    const mat = new o.LineMaterial(o.params) as MaterialMin & { uniforms: Record<string, { value: unknown }> };
+    mat.uniforms["uAcerca"] = { value: 1 - o.acerca };
+    mat.onBeforeCompile = o.parche; mat.customProgramCacheKey = function () { return "lindes-hazas-acerca"; };
+    return mat;
+  }
+};
+
 /** Las clases de three/addons/lines que se piden con import() al montarse (en el talón: aquí entran por cargaLib). */
 export interface LibLineas { LineSegments2: T3; LineSegmentsGeometry: T3; LineMaterial: T3 }
 
@@ -210,13 +230,16 @@ export function creaLindes(d: DepsLindes) {
   const aviso: { fn: (() => void) | null; puesto: boolean } = { fn: null, puesto: false };   // Mundo.alCargar no tiene «quitar»: se engancha UNA vez y llama al montaje vivo, si lo hay
 
   function LindesMotor(n: ContextoComponente, cargaLib: () => Promise<LibLineas>) {
+    d.Materiales.define(MATERIAL_LINDES, DEF_LINDES);   // (aquí y no al crear: el manifiesto se pide sin dependencias para medirlo)
+    const materiales = d.Materiales.de(ID_LINDES);   // lo que cree este componente se libera con su libera()
     const THREE = d.THREE, Mundo = d.Mundo, TS = Mundo.TS, OX = Mundo.cx, OY = Mundo.cy, Estado = d.Estado, suelo = d.suelo, gLinde = d.gLinde;
     let vivo = true, L: LibLineas | null = null, grupo: T3 = null, mallas: Record<string, { obj: T3; geo: T3; mat: T3 }> = {}, pl: ReturnType<typeof P.plan> | null = null, sucio = false, exagHecha = -1;
     const st: EstadoLindes = { lib: "pidiendo", hazas: 0, tramos: { propia: 0, ajena: 0 }, triangulos: 0, llamadas: 0, paso: 0, longitud: 0, recortado: false, repegadas: 0, acerca: false, mini: 0 };
     const vp = new THREE.Vector4();
     function vaciaLindes(): void {
       if (grupo) gLinde.remove(grupo);
-      Object.keys(mallas).forEach(function (k) { mallas[k]!.geo.dispose(); mallas[k]!.mat.dispose(); });
+      Object.keys(mallas).forEach(function (k) { mallas[k]!.geo.dispose(); });
+      materiales.libera();   // los LineMaterial de las dos líneas
       grupo = null; mallas = {}; pl = null;
       st.tramos = { propia: 0, ajena: 0 }; st.triangulos = 0; st.llamadas = 0; st.paso = 0; st.longitud = 0; st.recortado = false;
     }
@@ -240,9 +263,10 @@ export function creaLindes(d: DepsLindes) {
         if (!pl!.n[k]) return;
         const e = P.ESTILO[k], w = P.escribe(pl!.lados[k], pl!.paso, TS, OX, OY, suelo, Estado.exag, P.ALTURA, pl!.n[k]);
         const geo = new L!.LineSegmentsGeometry(); geo.setPositions(w.pos);
-        const mat = new L!.LineMaterial({ color: e.color, linewidth: e.ancho, worldUnits: false, transparent: e.opacidad < 1, opacity: e.opacidad, depthWrite: e.opacidad >= 1 });
-        mat.uniforms.uAcerca = { value: 1 - e.acerca };
-        d.Materiales.parchea(mat, "lindes-acerca", acercaShader); mat.customProgramCacheKey = function () { return "lindes-hazas-acerca"; };
+        const mat = materiales.crea(MATERIAL_LINDES, {
+          LineMaterial: L!.LineMaterial, acerca: e.acerca, parche: acercaShader,
+          params: { color: e.color, linewidth: e.ancho, worldUnits: false, transparent: e.opacidad < 1, opacity: e.opacidad, depthWrite: e.opacidad >= 1 }
+        } as OpcLindes) as T3;
         const o = new L!.LineSegments2(geo, mat);
         o.name = k === "propia" ? "lindes propias" : "lindes ajenas"; o.renderOrder = k === "propia" ? 2 : 1;
         o.raycast = function () { /* la haza se elige por el suelo (13b_hazas.js), no por la línea; y así ningún rayo sin cámara la pregunta */ };
