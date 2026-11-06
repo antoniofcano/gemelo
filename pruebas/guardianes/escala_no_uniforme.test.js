@@ -26,7 +26,7 @@ test("el cruce con el error visto es exacto y deja a ras corto y arriba largo", 
 });
 
 test("el motor sigue poniendo la exageración como escala no uniforme del grupo (si cambia, revisar el doc)", () => {
-  const src = fs.readFileSync(path.join(__dirname, "..", "..", "apps", "web", "motor", "04b_escena3d.js"), "utf8");
+  const src = require("./_fuente").fuenteMotor("04b_escena3d.js");   // A3-1b: 04b es un talón de apps/web/src/mundos/exterior/escena-tiles.ts
   assert.match(src, /makeScale\(1, Estado\.exag, 1\)/);   // A1-13: la exageración vive en Estado (apps/web/src/nucleo/estado.ts)
   assert.match(src, /tiles\.group\.matrix\.copy\(M\)/);
 });

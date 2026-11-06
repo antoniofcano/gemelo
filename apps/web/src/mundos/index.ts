@@ -14,3 +14,5 @@ export { SueloFotosPuro, creaSueloFotos, manifiestoSueloFotos } from "./exterior
 export type { DepsSueloFotos, SueloFotos } from "./exterior/suelo-fotos.ts";
 export { IdTiles, creaOlivosTiles, manifiestoOlivosTiles } from "./exterior/olivos-tiles.ts";
 export type { DepsOlivosTiles, GanchosTiles, OlivosTiles } from "./exterior/olivos-tiles.ts";
+export { LruTilesPuro, RayosPuro, creaEscena3D, limitaAviso, manifiestoEscena3D, motivoMarco } from "./exterior/escena-tiles.ts";
+export type { DepsEscena3D, Escena3D, LimitesLru } from "./exterior/escena-tiles.ts";

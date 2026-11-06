@@ -45,12 +45,12 @@ test("su build ES solo importa «three» y «three/addons/…» (Vite se los res
 });
 
 test("el motor: 04b_escena3d.js es la única escena (sin ESC3D ni ?escena=), arranca con D.tileset o ?tileset= y si no falla con «falta el tileset»; cada perfil VR trae su errorTarget", () => {
-  const m = lee(path.join(MOTOR, "04b_escena3d.js")), vr = lee(path.join(MOTOR, "29_vr.js")), fin = lee(path.join(MOTOR, "90_final.js"));
+  const m = fuenteMotor("04b_escena3d.js"), vr = lee(path.join(MOTOR, "29_vr.js")), fin = lee(path.join(MOTOR, "90_final.js"));
   assert.ok(!fs.existsSync(path.join(MOTOR, "04_terreno.js")), "04_terreno.js se borró en T8 fase 2 (decisión 79)");
   const todo = fs.readdirSync(MOTOR).filter(f => f.endsWith(".js")).map(f => lee(path.join(MOTOR, f))).join("\n");
   assert.ok(!/\bESC3D\b|\bTerreno\.|escena=clasica/.test(todo), "quedan ESC3D, Terreno o ?escena=clasica en el motor");
   assert.match(m, /if \(pedida\) arranca\(\); else falla\(new Error\("falta el tileset"\)\)/);
-  assert.match(m, /console\.error\("escena 3D Tiles: "/, "el fallo se dice con UN console.error que empieza por «escena 3D Tiles:»");
+  assert.match(m, /consola\.error\("escena 3D Tiles: "/, "el fallo se dice con UN console.error que empieza por «escena 3D Tiles:»");
   assert.ok(!/fetch\(/.test(m), "la escena 3D Tiles no hace fetch propio (lo hace la librería, al mismo origen)");
   assert.match(m, /import\("3d-tiles-renderer"\)/, "la librería se pide con import()");
   const P = /var VR_PERFILES = (\[.*?\]);/.exec(vr); assert.ok(P, "no encuentro VR_PERFILES");
@@ -72,7 +72,7 @@ test("el motor: 04b_escena3d.js es la única escena (sin ESC3D ni ?escena=), arr
 // el camino sin crypto.subtle. Lo que el motor de verdad hace con three (count, needsUpdate, visibilidad) se mira en el navegador, más abajo.
 // A3-1b: 04c es un talón; su código vive en apps/web/src/mundos/exterior/olivos-tiles.ts (IdTiles y creaOlivosTiles). FUENTE_OT es el talón y el .ts juntos (lo que ve el motor)
 const FUENTE_OT = lee(path.join(MOTOR, "04c_olivos_tiles.js")) + "\n" + lee(path.join(RAIZ, "apps", "web", "src", "mundos", "exterior", "olivos-tiles.ts"));
-const MUNDOS = require("./_mundos");
+const MUNDOS = require("./_mundos"), { fuenteMotor } = require("./_fuente");   // A3-1b: 04b también es un talón: su código vive en apps/web/src/mundos/exterior/escena-tiles.ts
 const DEPS_OT = ["@gltf-transform/core", "@gltf-transform/extensions"].filter(d => !fs.existsSync(path.join(T3D, "node_modules", d, "package.json")));
 const SALTO_OT = !python() ? "No hay Python 3: los olivos del tileset NO se han comprobado" : DEPS_OT.length ? "faltan dependencias de tuberia/tiles3d (" + DEPS_OT.join(", ") + "): los olivos del tileset NO se han comprobado" : null;
 let tilesetOT = null;
@@ -207,7 +207,7 @@ test("04c_olivos_tiles: un json que no es el del tileset no resuelve nada (vuelv
 });
 
 test("los enganches de 04c: 04b solo retira los olivos si 04c no se queda con ellos, 07b no dibuja sus niveles 1 y 2 con el tileset y le pasa los de cerca", () => {
-  const b = lee(path.join(MOTOR, "04b_escena3d.js")), a = lee(path.join(MOTOR, "07b_arboles.js"));
+  const b = fuenteMotor("04b_escena3d.js"), a = lee(path.join(MOTOR, "07b_arboles.js"));
   assert.match(b, /if \(!\(ganchos\.alModelo && ganchos\.alModelo\(e\.scene, e\.tile\)\)\) quitaOlivos\(e\.scene\)/);
   assert.match(b, /"dispose-model"/); assert.match(b, /ganchos\.alApagar/); assert.match(b, /ganchos\.fotograma\(\)/);
   assert.match(FUENTE_OT, /if \(estado === "esperando"\) Escena3D\.engancha\(/, "04c solo se engancha si la escena no está «sin»");
@@ -432,11 +432,9 @@ test("VR simulada con la escena por defecto (3D Tiles): entra, anda, cada perfil
 });
 
 test("el aviso de escala no uniforme de 3DTilesRendererJS (la exageración vertical) sale como mucho UNA vez; cualquier otro console.warn pasa y restaura() devuelve el original", () => {
-  const m = lee(path.join(MOTOR, "04b_escena3d.js")), t0 = m.indexOf(">>> limitaAviso"), t1 = m.indexOf("// <<< limitaAviso");
-  assert.ok(t0 > 0 && t1 > t0, "04b_escena3d.js perdió los marcadores de limitaAviso");
-  assert.match(m, /limitaAviso\(console, "Non uniform scale used for tile"\)/, "arranca() debe instalar el filtro con el texto de la librería");
+  const m = fuenteMotor("04b_escena3d.js"), limitaAviso = MUNDOS.limitaAviso;   // A3-1b: limitaAviso es puro y vive en escena-tiles.ts
+  assert.match(m, /limitaAviso\(d\.consola, "Non uniform scale used for tile"\)/, "arranca() debe instalar el filtro con el texto de la librería");
   assert.match(m, /avisoEscala\.restaura\(\)/, "falla() debe restaurar console.warn");
-  const limitaAviso = new Function(m.slice(m.indexOf("function limitaAviso", t0), t1).replace(/\/\/ *$/, "") + "\nreturn limitaAviso;")();
   const dichos = [], consola = { warn: function () { dichos.push([].slice.call(arguments)); } }, original = consola.warn;
   const AVISO = "ThreeTilesRenderer : Non uniform scale used for tile which may cause issues when calculating screen space error.";
   const f = limitaAviso(consola, "Non uniform scale used for tile");
@@ -456,10 +454,8 @@ test("el aviso de escala no uniforme de 3DTilesRendererJS (la exageración verti
 });
 
 test("L4-01: motivoMarco falla con un tileset de otro centro_utm o z0 (corrido 10 m), con un tileset sin marco, y pasa con el correcto o con 1 mm de diferencia", () => {
-  const m = lee(path.join(MOTOR, "04b_escena3d.js")), t0 = m.indexOf(">>> marcoTileset"), t1 = m.indexOf("// <<< marcoTileset");
-  assert.ok(t0 > 0 && t1 > t0, "04b_escena3d.js perdió los marcadores de marcoTileset");
+  const m = fuenteMotor("04b_escena3d.js"), motivoMarco = MUNDOS.motivoMarco;   // A3-1b: motivoMarco es puro y vive en escena-tiles.ts
   assert.match(m, /motivoMarco\(G, D\)/, "load-root-tileset debe comparar el marco del tileset con D");
-  const motivoMarco = new Function(m.slice(m.indexOf("function motivoMarco", t0), t1).replace(/\/\/ *$/, "") + "\nreturn motivoMarco;")();
   const DD = { centro_utm: [256128, 4096128], z0: 480.5 };
   assert.strictEqual(motivoMarco({ centro_utm: [256128, 4096128], z0: 480.5 }, DD), null, "el tileset correcto pasa");
   assert.strictEqual(motivoMarco({ centro_utm: [256128.001, 4096127.999], z0: 480.501 }, DD), null, "1 mm de diferencia pasa");

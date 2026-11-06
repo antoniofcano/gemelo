@@ -12,7 +12,7 @@ const { RAIZ, fs, path } = require("./_util");
 const { modulo } = require("./_aparato");
 
 const MOTOR = path.join(RAIZ, "apps", "web", "motor"), lee = f => fs.readFileSync(path.join(MOTOR, f), "utf8");
-const G07 = lee("07ab_generados.js"), B04 = lee("04b_escena3d.js"), A07 = lee("07b_arboles.js");
+const G07 = lee("07ab_generados.js"), B04 = require("./_fuente").fuenteMotor("04b_escena3d.js")   /* A3-1b: talón + escena-tiles.ts */, A07 = lee("07b_arboles.js");
 const { AparatoPuro } = modulo({});
 
 const { pathToFileURL } = require("url");
@@ -81,8 +81,8 @@ test("generados: sin renderer (Node) el lote sale en el mismo next(); con compil
 test("tileset: teselas analizadas a la vez por aparato y VR, y 04b usa CargaPuro", () => {
   const esc = AparatoPuro.politica("escritorio", false), mov = AparatoPuro.politica("movil", false), q = AparatoPuro.politica("quest", false);
   assert.deepStrictEqual([CargaPuro.parseTiles(esc, false), CargaPuro.parseTiles(mov, false), CargaPuro.parseTiles(q, false), CargaPuro.parseTiles(q, true), CargaPuro.parseTiles(null, false)], [5, 3, 3, 2, 5]);
-  assert.match(B04, /tiles\.parseQueue\.maxJobs = CargaPuro\.parseTiles\(POL, false\)/);
-  assert.match(B04, /tiles\.parseQueue\.maxJobs = CargaPuro\.parseTiles\(POL, !!s\)/, "al entrar y salir de VR");
+  assert.match(B04, /tiles\.parseQueue\.maxJobs = d\.CargaPuro\.parseTiles\(POL, false\)/);
+  assert.match(B04, /tiles\.parseQueue\.maxJobs = d\.CargaPuro\.parseTiles\(POL, !!s\)/, "al entrar y salir de VR");
   assert.match(B04, /tiles\.registerPlugin\(prioridadRed\(\)\)/);
   assert.match(B04, /return tiles\.fetchData\(u, /, "la descarga la sigue haciendo la librería (mismo origen)");
   // todas las escuchas de load-model (el relieve, el sombreado y, con ?bvh, el árbol de rayos de AG-1.6) se cobran como deuda
@@ -91,9 +91,20 @@ test("tileset: teselas analizadas a la vez por aparato y VR, y 04b usa CargaPuro
 });
 
 test("el complemento de red de 04b: apunta la tesela de cada dirección, pide con su prioridad y suelta lo apuntado", async () => {
-  const a = B04.indexOf("    function prioridadRed() {"), b = B04.indexOf("\n    }\n", a);
-  const pedidas = [], tiles = { fetchData: (u, op) => { pedidas.push([u, op]); return Promise.resolve("ok"); } };
-  const P = new Function("CargaPuro", "tiles", "\"use strict\";\n" + B04.slice(a, b + 6) + "\nreturn prioridadRed();")(CargaPuro, tiles);
+  // A3-1b: 04b vive en apps/web/src/mundos/exterior/escena-tiles.ts; se monta la escena entera con un TilesRenderer de mentira y se toma el complemento que registra
+  const MUNDOS = require("./_mundos"), pedidas = [];
+  class TilesFalso {
+    constructor() { this.plugins = []; this.parseQueue = {}; this.group = {}; this.lruCache = { constructor: class { } }; TilesFalso.ultimo = this; }
+    registerPlugin(p) { this.plugins.push(p); } setCamera() {} setResolutionFromRenderer() {} addEventListener() {} dispose() {}
+    fetchData(u, op) { pedidas.push([u, op]); return Promise.resolve("ok"); }
+  }
+  const nada = () => {};
+  MUNDOS.creaEscena3D({ THREE: { Vector3: class { }, Vector2: class { }, Raycaster: class { } , Matrix4: class { } }, D: { tileset: "tileset.json" }, Aparato: { politica: () => ({ clase: "escritorio" }) }, CargaPuro,
+    TopeTilesPuro: { nuevo: () => ({}), DEF: {}, paso: nada }, TopeOlivos: {}, XrPerillas: {}, Cola: { cobra: (k, f) => f }, Mundo: {}, suelo: nada, renderer: {}, scene: { add: nada, remove: nada }, camera: {}, Estado: { exag: 1 },
+    SombreadoTiles: () => null, OlivosTiles: () => null, busqueda: "", consola: { warn: nada, error: nada }, cargaTiles: () => Promise.resolve({ TilesRenderer: TilesFalso }) });
+  for (let i = 0; i < 10 && !TilesFalso.ultimo; i++) await Promise.resolve();
+  const P = TilesFalso.ultimo.plugins.find(p => p.name === "GEMELO_PRIORIDAD_RED"), tiles = TilesFalso.ultimo;
+  assert.ok(P, "registra el complemento");
   assert.ok(!("priority" in P), "«priority» es el orden de los complementos en la librería: no se usa");
   const cerca = { traversal: { inFrustum: true, distanceFromCamera: 10 } }, fuera = { traversal: { inFrustum: false, distanceFromCamera: 10 } };
   assert.strictEqual(P.preprocessURL("a.glb", cerca), "a.glb"); assert.strictEqual(P.preprocessURL("b.glb", fuera), "b.glb");
@@ -102,4 +113,5 @@ test("el complemento de red de 04b: apunta la tesela de cada dirección, pide co
   assert.deepStrictEqual(pedidas.map(p => p[1].priority), ["high", "low", undefined, undefined], "la raíz y lo ya pedido van con lo de la librería");
   assert.strictEqual(pedidas[0][1].signal, "s", "conserva las opciones de la librería (signal)"); assert.strictEqual(pedidas[2][1], op);
   assert.ok(!/(^|[^.\w])fetch\(/.test(B04), "04b no hace fetch propio");
+  assert.ok(tiles);
 });

@@ -195,7 +195,7 @@ test("inventario: congelan exactamente los ficheros registrados aquí (uno nuevo
 
 test("inventario: lo que ya iba congelado a mano sigue así, y lo que se queda en automático existe y no se congela", () => {
   // A3-1b: 04e es un talón; su malla vive en apps/web/src/mundos/exterior/suelo-fondo.ts
-  const MIGRADOS = { "04e_suelo_fondo.js": "apps/web/src/mundos/exterior/suelo-fondo.ts" };
+  const MIGRADOS = { "04b_escena3d.js": "apps/web/src/mundos/exterior/escena-tiles.ts", "04e_suelo_fondo.js": "apps/web/src/mundos/exterior/suelo-fondo.ts" };
   for (const f of Object.keys(YA_ESTATICOS)) assert.match(sinComentarios(lee(MIGRADOS[f] || "apps/web/motor/" + f)), /matrixAutoUpdate = false/, f + ": sigue con matrixAutoUpdate = false");
   for (const k of Object.keys(AUTOMATICO)) {
     const f = k.split("#")[0]; assert.ok(fs.existsSync(path.join(MOTOR, f)), f + ": existe");
@@ -204,7 +204,7 @@ test("inventario: lo que ya iba congelado a mano sigue así, y lo que se queda e
   // nada de lo que se mueve se congela por descuido: el rombo y el anillo de las balizas van en la lista de excepciones
   assert.match(sinComentarios(lee("apps/web/motor/19_balizas.js")), /mov\.push\(g\.userData\.rombo, g\.userData\.anillo\)/);
   // lo que 3d-tiles-renderer gestiona no se toca desde Estaticos
-  assert.ok(!/Estaticos\.congela\([^)]*tiles/.test(sinComentarios(lee("apps/web/motor/04b_escena3d.js"))));
+  assert.ok(!/Estaticos\.congela\([^)]*tiles/.test(sinComentarios(require("./_fuente").fuenteMotor("04b_escena3d.js"))));
 });
 
 // ---------------------------------------------------------------- micro-banco (relativo)

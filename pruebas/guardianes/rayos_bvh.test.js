@@ -15,9 +15,8 @@ const falta = ["three", "three-mesh-bvh"].filter(d => !fs.existsSync(path.join(M
 const SALTO = falta.length ? "faltan dependencias de apps/web (" + falta.join(", ") + "; cd apps/web && npm ci): el BVH NO se ha comprobado" : false;
 if (SALTO) console.warn("[AVISO] " + SALTO);
 
-const FUENTE = lee("apps/web/motor/04b_escena3d.js");
-const trozo = (s, ini, fin) => { const i = s.indexOf(ini), f = s.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas " + ini); return s.slice(i, f); };
-const RP = new Function("\"use strict\";\n" + trozo(FUENTE, "// [puro:inicio]", "// [puro:fin]") + "\nreturn RayosPuro;")();
+const FUENTE = require("./_fuente").fuenteMotor("04b_escena3d.js");   // A3-1b: 04b es un talón de apps/web/src/mundos/exterior/escena-tiles.ts
+const RP = require("./_mundos").RayosPuro;   // puro: vive en escena-tiles.ts
 const imp = m => import(pathToFileURL(m).href);
 
 let THREE, LIB;
@@ -123,9 +122,9 @@ test("micro-banco en Node del tiempo por rayo: terreno de 256×256 (131 072 tri�
 
 test("el motor lo enchufa solo con ?bvh y lo suelta al descargar la tesela", () => {
   assert.ok(/\[\?&\]bvh/.test(FUENTE), "opt-in por ?bvh");
-  assert.ok(/addEventListener\("dispose-model", function \(e\) \{ RayosPuro\.quita\(e\.scene\)/.test(FUENTE), "dispose-model libera el árbol");
+  assert.ok(/addEventListener\("dispose-model", function \(e: T3\) \{ RayosPuro\.quita\(e\.scene\)/.test(FUENTE), "dispose-model libera el árbol");
   assert.ok(/if \(BVH\) RayosPuro\.quita\(tiles\.group\)/.test(FUENTE), "libera() lo suelta");
-  assert.ok(/Cola\.cobra\("T", function \(e\) \{ if \(bvhLib\)/.test(FUENTE), "se construye al llegar la tesela, como deuda «T» de la Cola");
+  assert.ok(/Cola\.cobra\("T", function \(e: T3\) \{ if \(bvhLib\)/.test(FUENTE), "se construye al llegar la tesela, como deuda «T» de la Cola");
   const pk = JSON.parse(fs.readFileSync(path.join(WEB, "package.json"), "utf8")).dependencies;
   assert.ok(/^\d+\.\d+\.\d+$/.test(pk["three-mesh-bvh"]), "three-mesh-bvh con versión fijada exacta: " + pk["three-mesh-bvh"]);
 });

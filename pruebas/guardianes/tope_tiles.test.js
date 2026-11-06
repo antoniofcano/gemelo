@@ -157,7 +157,7 @@ test("perillas (02f): ?xrtri=0 apaga, ?xrtri=N fija el tope, ?xrtrierr=, con rec
 });
 
 test("enganche (texto): 04b mide solo en VR y pone el error; 02f da el tope y la línea; 29_vr no cambia", () => {
-  const E = lee("apps/web/motor/04b_escena3d.js");
+  const E = require("./_fuente").fuenteMotor("04b_escena3d.js");
   assert.match(E, /if \(errorPerfil\) muestraTope\(cx\);/, "solo con el perfil de VR puesto (en pantalla y móvil no corre)");
   assert.match(E, /TopeTilesPuro\.paso\(tope, mm\)/);
   assert.match(E, /XrPerillas\.topeTiles\(triNivel\)/);
