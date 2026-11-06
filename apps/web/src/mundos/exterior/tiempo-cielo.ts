@@ -45,7 +45,7 @@ export const DEF_NUBES: DefMaterial<OpcNubes> = {
     });
     return m;
   },
-  // MU5-n, tercer commit: la variante TSL, APAGADA (MATERIALES §9). Cada mancha, de cara a la cámara en el espacio de la vista (vertexNode: mv.xy += esquina · tam),
+  // MU5-n, tercer commit: la variante TSL, APAGADA (MATERIALES §10). Cada mancha, de cara a la cámara en el espacio de la vista (vertexNode: mv.xy += esquina · tam),
   // con el color · alfa · textura del clásico y la paleta del ocaso con ?suelo=fotos; los uniformes, los MISMOS objetos. Sin la niebla (fog: false), como el clásico.
   tsl: function (o, c) {
     var W = c.THREE as A, T = c.TSL as A, un = o.uniforms;

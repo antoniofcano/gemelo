@@ -31,7 +31,7 @@ export interface DepsParcheTiempo {
 export const MATERIAL_PARCHE_TIEMPO = "parche-tiempo";
 /** lo que pide: el material del ciclo del día que lo lleva (es de otro módulo: 07_follaje, 04d o 05) y si lleva viento (el follaje) */
 export interface OpcParcheTiempo { material: A; viento: boolean }
-// ---------------------------------------------------------------- MU5-n, tercer commit: la variante TSL, APAGADA y PARCIAL (MATERIALES §9)
+// ---------------------------------------------------------------- MU5-n, tercer commit: la variante TSL, APAGADA y PARCIAL (MATERIALES §10)
 // Solo la daría la fábrica con el WebGPURenderer (MU6), que hoy no se monta. NO es equivalente: las capturas de clásico frente a TSL son de MU6. Construye sus
 // nodos (lo prueba Vitest con three/webgpu y three/tsl de verdad); NO se ha compilado ni dibujado.
 // nodosTiempo son los mismos nodos para el parche del tiempo y para quien completa su luz con ellos (el terreno, la copa y el tronco del catálogo y los olivos

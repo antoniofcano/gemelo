@@ -47,7 +47,7 @@ export const DEF_BARRERA: DefMaterial<OpcBarrera> = {
     });
     return m;
   },
-  // MU5-n, tercer commit: la variante TSL, APAGADA (MATERIALES §9). Las mismas cuentas del fragmento (caída, pie, filo, rejilla y pulso) sobre los atributos aV y aD,
+  // MU5-n, tercer commit: la variante TSL, APAGADA (MATERIALES §10). Las mismas cuentas del fragmento (caída, pie, filo, rejilla y pulso) sobre los atributos aV y aD,
   // con los MISMOS uniformes; la mezcla aditiva y las dos caras. Sin tono (el clásico solo lleva colorspace_fragment): toneMapped = false. temaBarrera cambia la
   // mezcla del material que dé la fábrica, sea cual sea.
   tsl: function (o, c) {
