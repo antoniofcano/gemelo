@@ -568,7 +568,7 @@
     }
     var nx = h.x + dx, nz = h.z + dz;
     // los troncos no se atraviesan (a pie, o volando a ras: 0,55 m) y no se sale del borde (siempre; volando alto, radio 0 = solo el borde). MU2-4: gm.obstaculo, en el marco del mundo (y = −z)
-    var aRas = !VRX.vuelo || h.y - gm.suelo(h.x, -h.z) * Estado.exag < 3, ob = gm.obstaculo(nx, -nz, aRas ? 0.55 : 0); if (ob) { nx = ob.x; nz = -ob.y; }
+    var aRas = !VRX.vuelo || h.y - gm.suelo(h.x, -h.z) * Estado.exag < 3, rTronco = aRas ? 0.55 : 0, ob = gm.obstaculo(nx, -nz, rTronco); if (ob) { nx = ob.x; nz = -ob.y; }
     r.x += nx - h.x; r.z += nz - h.z; if (VRX.vuelo) r.y += dy;
     var gnd = gm.suelo(nx, -nz) * Estado.exag + vrBaseY();
     if (VRX.vuelo) r.y = Math.max(r.y, gnd + 0.4); else r.y += (gnd - r.y) * Math.min(1, dt * 12);
