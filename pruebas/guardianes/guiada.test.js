@@ -21,7 +21,7 @@ const GUI = lee("apps/web/motor/46_guiada.js"), RED = lee("apps/web/motor/37_red
 const VOZ = lee("apps/web/motor/45_voz.js"), NUCLEO = lee("apps/web/motor/02c_componentes.js");
 const PURO = trozo(GUI, "// [puro:inicio]", "// [puro:fin]"), MOTOR = trozo(GUI, "// [motor:inicio]", "// [motor:fin]");
 const G = new Function("\"use strict\";\n" + PURO + "\nreturn GuiadaPuro;")();
-const { SalaPose } = new Function("\"use strict\";\n" + trozo(LIB, "// [puro:inicio]", "// [puro:fin]") + "\nreturn { SalaPose };")();
+const { SalaPose } = require("./_mundos");   // MU5-n (A3-6a): la lógica pura de 26_presencia.js vive en apps/web/src/red/ (pose.ts, sala.ts) y mundos/comun/muneco.ts; el legado la ve como Mundos.<nombre>
 const ROLES = JSON.parse(lee("contratos/livekit-roles.json")), EVENTOS = JSON.parse(lee("contratos/eventos.json")), IFACES = JSON.parse(lee("contratos/interfaces.json"));
 const enc = new TextEncoder(), json = o => enc.encode(JSON.stringify(o));
 const espera = (ms = 0) => new Promise(r => setTimeout(r, ms));

@@ -5,13 +5,8 @@
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
 
-const FUENTE = lee("apps/web/motor/26_presencia.js");
-function puro() {
-  const i = FUENTE.indexOf("// [puro:inicio]"), f = FUENTE.indexOf("// [puro:fin]");
-  assert.ok(i >= 0 && f > i);
-  return new Function("\"use strict\";\n" + FUENTE.slice(i, f) + "\nreturn { Muneco: Muneco, Aspecto: Aspecto, SalaPose: SalaPose };")();
-}
-const { Muneco, Aspecto, SalaPose } = puro();
+const FUENTE = require("./_fuente").fuenteMotor("26_presencia.js");   // el talón y sus .ts
+const { Muneco, Aspecto, SalaPose } = require("./_mundos");   // MU5-n (A3-6a): la lógica pura de 26_presencia.js vive en apps/web/src/red/ (pose.ts, sala.ts) y mundos/comun/muneco.ts; el legado la ve como Mundos.<nombre>
 
 const hex = n => "#" + n.toString(16).padStart(6, "0");
 function luminancia(n) {   // L* de CIELAB (D65) de un color sRGB
@@ -92,6 +87,6 @@ test("AV2: en el código — ruedas con su reserva, dos por silla, la silla tamb
   assert.match(C, /outMu, o\.modo, a\.mov === "silla"\);/, "AV4: con VRM también va sentado en su silla (26b_avatares.js lo sienta)");
   assert.match(C, /camisa != null && !a\.propioCamisa[^\n]*piel != null && !a\.propioPiel/, "lo que eligió la persona manda sobre el catálogo VRM");
   assert.match(C, /malla\.count = n; malla\.visible = n > 0/, "sin sombreros ni sillas, esa malla no se dibuja");
-  const asp = FUENTE.slice(FUENTE.indexOf("var Aspecto"), FUENTE.indexOf("var SalaPose"));
+  const asp = FUENTE.slice(FUENTE.indexOf("export const Aspecto"), FUENTE.indexOf("export const SalaPose"));   // A3-6a: en red/sala.ts
   assert.ok(!/\b(genero|género|sexo)\b\s*[:=]/.test(asp), "ningún campo de género en el aspecto");
 });

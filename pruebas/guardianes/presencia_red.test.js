@@ -6,13 +6,7 @@
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
 
-const FUENTE = lee("apps/web/motor/26_presencia.js");
-function puro() {
-  const i = FUENTE.indexOf("// [puro:inicio]"), f = FUENTE.indexOf("// [puro:fin]");
-  assert.ok(i >= 0 && f > i);
-  return new Function("\"use strict\";\n" + FUENTE.slice(i, f) + "\nreturn { PoseCodec: PoseCodec, BufferPose: BufferPose, SalaPose: SalaPose, Chat: Chat };")();
-}
-const { PoseCodec, SalaPose, Chat } = puro();
+const { PoseCodec, SalaPose, Chat } = require("./_mundos");   // MU5-n (A3-6a): la lógica pura de 26_presencia.js vive en apps/web/src/red/ (pose.ts, sala.ts) y mundos/comun/muneco.ts; el legado la ve como Mundos.<nombre>
 
 const pose = (x, z, seq = 0, t = 0) => ({ tipo: 1, seq, t, cab: { p: [x, 1.6, z], q: [0, 0, 0, 1] }, izq: null, der: null });
 const bytes = (x, z, seq, t) => PoseCodec.codifica(pose(x, z, seq, t));

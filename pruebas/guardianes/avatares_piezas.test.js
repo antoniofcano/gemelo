@@ -16,7 +16,7 @@ function trozo(fich, devuelve) {
   return new Function("\"use strict\";\n" + s.slice(i, f) + "\nreturn " + devuelve + ";")();
 }
 const AP = trozo("apps/web/motor/26b_avatares.js", "AvataresPuro");
-const { Aspecto, SalaPose } = trozo("apps/web/motor/26_presencia.js", "{ Aspecto: Aspecto, SalaPose: SalaPose }");
+const { Aspecto, SalaPose } = require("./_mundos");   // MU5-n (A3-6a): la lógica pura de 26_presencia.js vive en apps/web/src/red/ (pose.ts, sala.ts) y mundos/comun/muneco.ts; el legado la ve como Mundos.<nombre>
 const imp = f => import(pathToFileURL(path.join(RAIZ, f)).href);
 const hex = n => "#" + n.toString(16).padStart(6, "0");
 const NEGRA = /abuel|chic[oa]s?\b|hombre|mujer|señor|niñ[oa]|masculin|femenin|\bmale\b|female/i;   // la lista negra de C9 (y lo de C8)
@@ -85,7 +85,7 @@ test("api: la receta pasa por limpiaAspecto con los mismos campos que lee el mot
   const ts = lee("apps/api/src/presencia/livekit.ts"), rutas = lee("apps/api/src/yo/rutas.ts"), oa = lee("contratos/api.openapi.yaml");
   for (const k of ["cuerpo", "pelo", "vello", "ropa"]) { assert.match(ts, new RegExp('"' + k + '"')); assert.match(oa, new RegExp("\\n\\s+" + k + ": \\{ type: string, pattern")); }
   assert.match(ts, /pelo_color: \{ min: 0, max: 9 \}/); assert.match(ts, /RECETA_MAX_BYTES = 200/); assert.match(rutas, /bytesReceta\(aspecto\) > RECETA_MAX_BYTES/);
-  assert.match(lee("apps/web/motor/26_presencia.js"), /peloColor: ent\(av\.pelo_color, 0, 9\)/, "el motor lee pelo_color");
+  assert.match(require("./_fuente").fuenteMotor("26_presencia.js"), /peloColor: ent\(av\.pelo_color, 0, 9\)/, "el motor lee pelo_color");
 });
 
 // ------------------------------------------------------------------------------------------------- el motor: lector v2, elección, piezas y tinte

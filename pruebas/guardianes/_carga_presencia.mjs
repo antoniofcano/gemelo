@@ -20,8 +20,7 @@ const { AccessToken } = req("livekit-server-sdk");
 const rtc = await import(pathToFileURL(req.resolve("@livekit/rtc-node")).href);
 
 const e = process.env, N = Number(e.CARGA_N), DESDE = Number(e.CARGA_DESDE || 0), S = Number(e.CARGA_S), SALA = e.CARGA_SALA;
-const F = fs.readFileSync(path.join(RAIZ, "apps", "web", "motor", "26_presencia.js"), "utf8");
-const { PoseCodec } = new Function("\"use strict\";\n" + F.slice(F.indexOf("// [puro:inicio]"), F.indexOf("// [puro:fin]")) + "\nreturn { PoseCodec: PoseCodec };")();
+const { PoseCodec } = await import(pathToFileURL(path.join(RAIZ, "apps", "web", "src", "red", "pose.ts")).href);   // MU5-n (A3-6a): el códec, en red/pose.ts (Node quita los tipos)
 const ROL = JSON.parse(fs.readFileSync(path.join(RAIZ, "contratos", "livekit-roles.json"), "utf8")).roles.hogar;
 const reloj = () => performance.timeOrigin + performance.now();
 const di = o => process.stdout.write(JSON.stringify(o) + "\n");

@@ -1,6 +1,6 @@
 "use strict";
 const test = require("node:test"), assert = require("node:assert");
-const { RAIZ, fixture, lee, fs, path } = require("./_util"), { fuenteMotor } = require("./_fuente");
+const { RAIZ, fixture, lee, fs, path } = require("./_util"), { fuenteMotor, TS_DE } = require("./_fuente");
 const { erroresTesela, enHuella } = require("./_tesela");
 const Ajv2020 = require("ajv/dist/2020").default;
 const contratoModulos = require(path.join(RAIZ, "pruebas", "contrato_modulos.js"));
@@ -240,7 +240,7 @@ for (const [nombre, def] of Object.entries(IFACES.interfaces)) {
       assert.match(fuenteMotor(def.modulo), new RegExp("^  var " + nombre + " = (?:Nucleo|Mundos)\\." + def.fabrica + "\\(", "m"), def.modulo + " (talón) debe hacer var " + nombre + " = Nucleo|Mundos." + def.fabrica + "(…)");   // A3-1b: los componentes del exterior vienen de Mundos
     } else if (def.fuente) {   // A3-6a: la IIFE movida a TypeScript tal cual; el módulo del motor es su talón (la marca apunta a ese .ts)
       real = retornoDe(lee(def.fuente), nombre, true).sort();
-      assert.ok(lee("apps/web/motor/" + def.modulo).split(/\r?\n/).some(l => l.trim() === "// [talón] " + def.fuente), def.modulo + " debe ser el talón de " + def.fuente);
+      assert.ok([].concat(TS_DE[def.modulo] || []).includes(def.fuente), def.modulo + " debe ser el talón de " + def.fuente + " (TS_DE de _fuente.js)");
     } else real = retornoDe(lee("apps/web/motor/" + def.modulo), nombre).sort();
     assert.deepStrictEqual(real, def.miembros.slice().sort(), "cambia contratos/interfaces.json y doc/sistema/CONTRATOS.md en el mismo commit");
   });

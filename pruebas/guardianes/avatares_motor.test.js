@@ -16,7 +16,7 @@ function trozo(fich, devuelve) {
   return new Function("\"use strict\";\n" + s.slice(i, f) + "\nreturn " + devuelve + ";")();
 }
 const AP = trozo("apps/web/motor/26b_avatares.js", "AvataresPuro");
-const { Muneco, SalaPose } = trozo("apps/web/motor/26_presencia.js", "{ Muneco: Muneco, SalaPose: SalaPose }");
+const { Muneco, SalaPose } = require("./_mundos");   // MU5-n (A3-6a): la lógica pura de 26_presencia.js vive en apps/web/src/red/ (pose.ts, sala.ts) y mundos/comun/muneco.ts; el legado la ve como Mundos.<nombre>
 const cerca = (a, b, e, m) => assert.ok(Math.abs(a - b) <= (e || 1e-9), (m || "") + " " + a + " ≠ " + b);
 
 test("cupo: escritorio 6, móvil 3, Quest 3; con gafas según el nivel de VR_PERFILES (3/2/1/0)", () => {

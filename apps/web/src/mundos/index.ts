@@ -82,3 +82,6 @@ export type { DepsVida, EstadoVida, Vida } from "./exterior/vida.ts";
 // A3-6a (MU5-n): la red, la presencia y los avatares, componentes de TODO mundo (mundos: "todos", COMPONENTES §3.2). Lo que es red (sin three) vive en red/ y entra aquí
 // para que el legado lo vea como Mundos.<nombre>; lo que dibuja, en mundos/comun/ (no es un mundo: lo usan todos y no importa de ninguno).
 export * from "../red/index.ts";
+// A3-6a: el muñeco de los demás, «Ir con alguien» y la cuenta del dibujo de la gente (antes el trozo puro de 26_presencia.js), de todo mundo.
+export { Cuenta, Encuentro, Muneco, creaSitioJunto } from "./comun/muneco.ts";
+export type { DepsSitioJunto } from "./comun/muneco.ts";

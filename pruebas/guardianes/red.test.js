@@ -208,7 +208,7 @@ function motor({ busqueda = "", ficheros = ["red", "presencia", "avatares"], tok
   return Object.assign(r, { LK, errores, avisos, cuenta, ventana, visor, g });
 }
 const ACTIVOS = r => r.Componentes.resumen().filter(x => x.activo).map(x => x.id).sort();
-const POSE = (x, z, seq, t) => { const P = new Function("\"use strict\";\n" + trozo(LIB, "// [puro:inicio]", "// [puro:fin]") + "\nreturn PoseCodec;")(); return P.codifica({ tipo: 1, seq, t, cab: { p: [x, 11.6, z], q: [0, 0, 0, 1] }, izq: null, der: null }); };
+const POSE = (x, z, seq, t) => { const P = require("./_mundos").PoseCodec; return P.codifica({ tipo: 1, seq, t, cab: { p: [x, 11.6, z], q: [0, 0, 0, 1] }, izq: null, der: null }); };
 
 test("componentes en Node: sin ?presencia los tres se montan y no crean nada; ?presencia=0 o ?red=0 apagan la presencia y los avatares; la red no carga LiveKit sola", async () => {
   let r = motor();
@@ -368,7 +368,7 @@ test("F2b: sin ?presencia= y con api, pregunta GET /api/presencia una vez; con {
 });
 
 test("F2b: AutoPresencia.decide es una función pura: la URL manda, la casilla de Ajustes apaga, sin api no se pregunta", () => {
-  const A = new Function("\"use strict\";\n" + trozo(LIB, "// [puro:inicio]", "// [puro:fin]") + "\nreturn AutoPresencia;")();
+  const A = require("./_mundos").AutoPresencia;   // A3-6a: red/sala.ts
   assert.strictEqual(A.decide("", "/api/", true), "pregunta");
   assert.strictEqual(A.decide("?x=1", "/api/", undefined), "pregunta", "sin ajuste legible, el defecto (marcada)");
   assert.strictEqual(A.decide("", "/api/", false), "", "casilla desmarcada");
@@ -381,7 +381,7 @@ test("F2b: AutoPresencia.decide es una función pura: la URL manda, la casilla d
 });
 
 test("F2b: Reintento.espera es un backoff: 30 s, 60 s, 120 s… con tope de 10 min y se rinde tras MAX fallos", () => {
-  const A = new Function("\"use strict\";\n" + trozo(LIB, "// [puro:inicio]", "// [puro:fin]") + "\nreturn Reintento;")();
+  const A = require("./_mundos").Reintento;   // A3-6a: red/sala.ts
   assert.deepStrictEqual([1, 2, 3, 4, 5, 6].map(A.espera), [30000, 60000, 120000, 240000, 480000, 600000]);
   for (const n of [0, -1, NaN, undefined, A.MAX + 1, 99]) assert.strictEqual(A.espera(n), -1, String(n));
   assert.ok(A.BASE >= 30000, "nunca más de un intento cada 30 s");

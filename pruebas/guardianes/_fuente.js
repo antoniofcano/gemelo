@@ -26,6 +26,7 @@ const TS_DE = {
   "52_aves_mes.js": "apps/web/src/mundos/exterior/aves-mes.ts",   // A3-5
   "54_trabajo_hoy.js": "apps/web/src/mundos/exterior/trabajo-hoy.ts",   // A3-5
   "37_red.js": "apps/web/src/red/salas.ts",   // A3-6a: de todo mundo (red/)
+  "26_presencia.js": ["apps/web/src/red/pose.ts", "apps/web/src/red/sala.ts", "apps/web/src/mundos/comun/muneco.ts"],   // A3-6a
   "05_nube.js": "apps/web/src/mundos/exterior/nube.ts",
   "07a_catalogo.js": "apps/web/src/mundos/exterior/catalogo.ts",
   "18_paisaje.js": "apps/web/src/mundos/exterior/paisaje.ts",

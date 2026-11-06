@@ -10,13 +10,8 @@ const { sirve, motivoSalto, lanza, ESCENARIOS, desgloseLlamadas, VENTANA_CHICA, 
 const { montaPagina, saltoPagina } = require("./_pagina");
 
 const MIDE = !!process.env.GEMELO_MIDE;
-const FUENTE = lee("apps/web/motor/26_presencia.js");
-function puro() {
-  const i = FUENTE.indexOf("// [puro:inicio]"), f = FUENTE.indexOf("// [puro:fin]");
-  assert.ok(i >= 0 && f > i, "26_presencia.js debe marcar su trozo puro con // [puro:inicio] y // [puro:fin]");
-  return new Function("\"use strict\";\n" + FUENTE.slice(i, f) + "\nreturn { PoseCodec: PoseCodec, BufferPose: BufferPose, Muneco: Muneco, Encuentro: Encuentro, Cuenta: Cuenta, Aspecto: Aspecto };")();
-}
-const { PoseCodec, BufferPose, Muneco, Encuentro, Cuenta, Aspecto } = puro();
+const FUENTE = require("./_fuente").fuenteMotor("26_presencia.js");   // el talón y sus .ts
+const { PoseCodec, BufferPose, Muneco, Encuentro, Cuenta, Aspecto } = require("./_mundos");   // MU5-n (A3-6a): la lógica pura de 26_presencia.js vive en apps/web/src/red/ (pose.ts, sala.ts) y mundos/comun/muneco.ts; el legado la ve como Mundos.<nombre>
 
 // azar con semilla (mulberry32): las pruebas dan siempre lo mismo
 function azarCon(s) { return () => { s = (s + 0x6d2b79f5) | 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
