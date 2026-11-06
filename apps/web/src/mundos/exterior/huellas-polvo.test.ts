@@ -46,10 +46,15 @@ describe("huellas y polvo: el componente", () => {
     expect(api.huellas()).toBe(900);
     const m = monta(); m.deps.pp.paso = 0; m.api.actualiza(0.016); m.deps.pp.paso = Math.PI * 3.2; m.api.actualiza(0.016); expect(m.api.huellas()).toBeGreaterThan(0);
   });
-  it("las dos mallas usan las dos materiales de la fábrica sin dueño (commit 1: salen como antes)", () => {
-    const { scene } = monta();
+  it("los dos materiales salen de la fábrica con su dueño: ShaderMaterial con los uniformes del componente y el GLSL de siempre", () => {
+    const { scene, deps } = monta();
     const [huellas, polvo] = scene.children; expect(huellas.isInstancedMesh).toBe(true); expect(polvo.isPoints).toBe(true);
     expect(huellas.material.isShaderMaterial).toBe(true); expect(polvo.material.isShaderMaterial).toBe(true);
+    expect(huellas.material.transparent).toBe(true); expect(huellas.material.depthWrite).toBe(false); expect(huellas.material.polygonOffset).toBe(true); expect(huellas.material.polygonOffsetFactor).toBe(-4);
+    expect(Object.keys(huellas.material.uniforms)).toEqual(["uNow", "uColor"]); expect(Object.keys(polvo.material.uniforms)).toEqual(["uNow", "uColor", "uLuz"]);
+    expect(huellas.material.vertexShader).toMatch(/instanceMatrix/); expect(polvo.material.vertexShader).toMatch(/gl_PointSize/);
+    expect(deps.Materiales.duenos()["huellas-polvo"]).toBe(2);
+    expect(Object.keys(deps.Materiales.inventario()).sort()).toEqual(["huella", "polvo"]);
   });
   it("el manifiesto: ?huellas, del exterior, fase mundo; su libera() acepta null", () => {
     const m = manifiestoHuellasPolvo({} as DepsHuellasPolvo);
@@ -60,12 +65,13 @@ describe("huellas y polvo: el componente", () => {
 
 describe("huellas y polvo: el ciclo de vida", () => {
   it("libera() quita las dos mallas y suelta la malla, las geometrías y los materiales, una sola vez", () => {
-    const { api, scene } = monta();
+    const { api, scene, deps } = monta();
     const [huellas, polvo] = scene.children, vistos: string[] = [];
     huellas.addEventListener("dispose", () => vistos.push("malla")); huellas.geometry.addEventListener("dispose", () => vistos.push("geoHuella")); huellas.material.addEventListener("dispose", () => vistos.push("matHuella"));
     polvo.geometry.addEventListener("dispose", () => vistos.push("geoPolvo")); polvo.material.addEventListener("dispose", () => vistos.push("matPolvo"));
     api.libera(); api.libera();
     expect(scene.children).toHaveLength(0); expect(vistos.sort()).toEqual(["geoHuella", "geoPolvo", "malla", "matHuella", "matPolvo"]);
+    expect(deps.Materiales.duenos()["huellas-polvo"]).toBeUndefined();   // la fábrica ya no guarda nada de este dueño
   });
   it("memoria: montar y liberar varias veces no deja ninguna geometría ni material vivos", () => {
     let vivas = 0;

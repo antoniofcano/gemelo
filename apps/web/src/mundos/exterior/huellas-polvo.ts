@@ -1,11 +1,11 @@
 // Las huellas y el polvo (componente «huellas-polvo», ADR-0023, C10; MU5-n, A3-5: antes apps/web/motor/22b_huellas_polvo.js, que queda como talón): las pisadas y rodadas que se
 // desvanecen (un anillo de 900 decals instanciados que siguen el terreno) y las bocanadas de polvo del suelo seco (200 puntos). Quien levanta polvo (el aterrizaje del muñequito, los
 // perros) lo pide por el Bus con «polvo:emite»; apagado (?huellas=0) no se dibuja nada y esos eventos no los atiende nadie.
-// Componente de los mundos ["exterior"] con un libera() que suelta de verdad: las dos mallas (quitadas de la escena), sus geometrías y sus dos materiales.
+// Componente de los mundos ["exterior"] con un libera() que suelta de verdad: las dos mallas (quitadas de la escena), sus geometrías y sus dos materiales (por la fábrica, con dueño «huellas-polvo»).
 // Medido / deducido / ilustrativo (regla 5): las huellas y el polvo son ILUSTRATIVOS (lo único que se sabe es dónde está quien pasea y si el suelo está seco).
 // Del legado recibe por argumento lo que necesita (THREE, la escena, el estado del paseo y del quad, el tiempo y el suelo); no lee globales.
 import type { ContextoComponente, Manifiesto } from "../../nucleo/componentes.ts";
-import type { Materiales } from "../../nucleo/materiales.ts";
+import type { DefMaterial, Materiales, MaterialMin } from "../../nucleo/materiales.ts";
 import type { LecturaVida, T3 } from "./vida-tipos.ts";
 
 export interface DepsHuellasPolvo extends LecturaVida {
@@ -32,9 +32,48 @@ export interface DepsHuellasPolvo extends LecturaVida {
 
 export const ID_HUELLAS_POLVO = "huellas-polvo";
 
+// ---------------------------------------------------------------- los materiales (MU5-n: por la fábrica, con sus nombres de la tabla de MATERIALES §1, filas 20 y 21)
+/** los nombres de los materiales en la fábrica: son también la clave de su variante TSL */
+export const MATERIAL_HUELLA = "huella";
+export const MATERIAL_POLVO = "polvo";
+/** Las huellas: un ShaderMaterial instanciado que las borra con la edad (aBorn, aVida y aTipo por instancia). El clásico es el de siempre, movido; recibe sus uniformes (`opc.uniforms`). */
+export function defHuella(): DefMaterial<OpcSombreador> {
+  return {
+    clasico: function (opc, c) {
+      return new (c.THREE["ShaderMaterial"] as new (o: unknown) => MaterialMin)({
+        uniforms: opc.uniforms, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4,
+        vertexShader: "attribute float aBorn; attribute float aVida; attribute float aTipo; uniform float uNow; varying vec2 vUv; varying float vAge; varying float vTipo;\n" +
+          "void main(){ vUv = uv; vTipo = aTipo; vAge = clamp((uNow - aBorn) / aVida, 0.0, 1.0); gl_Position = projectionMatrix * viewMatrix * modelMatrix * instanceMatrix * vec4(position, 1.0); }",
+        fragmentShader: "uniform vec3 uColor; varying vec2 vUv; varying float vAge; varying float vTipo;\n" +
+          "void main(){ vec2 p = vUv - 0.5; float a;\n" +
+          "if (vTipo < 0.5) { float borde = smoothstep(0.5, 0.34, abs(p.x)); float tacos = 0.62 + 0.38 * step(0.5, fract(vUv.y * 5.0 + abs(p.x) * 2.5)); a = borde * tacos * 0.6; }\n" +
+          "else { float planta = smoothstep(1.0, 0.7, length(vec2(p.x / 0.3, (p.y + 0.14) / 0.32))); float punta = smoothstep(1.0, 0.7, length(vec2(p.x / 0.36, (p.y - 0.30) / 0.16))); a = max(planta, punta * 0.9) * 0.55; }\n" +
+          "a *= 1.0 - smoothstep(0.55, 1.0, vAge); gl_FragColor = vec4(uColor, a);\n#include <colorspace_fragment>\n}"
+      });
+    }
+  };
+}
+/** El polvo: un ShaderMaterial de puntos que suben, se abren y se apagan con la edad. */
+export function defPolvo(): DefMaterial<OpcSombreador> {
+  return {
+    clasico: function (opc, c) {
+      return new (c.THREE["ShaderMaterial"] as new (o: unknown) => MaterialMin)({
+        uniforms: opc.uniforms, transparent: true, depthWrite: false,
+        vertexShader: "attribute float aBorn; attribute float aVida; attribute float aTam; uniform float uNow; varying float vA;\n" +
+          "void main(){ float e = clamp((uNow - aBorn) / aVida, 0.0, 1.0); vA = (1.0 - e) * (1.0 - e); vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = aTam * (1.0 + 2.4 * e) * (520.0 / max(1.0, -mv.z)); gl_Position = projectionMatrix * mv; }",
+        fragmentShader: "uniform vec3 uColor; uniform float uLuz; varying float vA; void main(){ float d = length(gl_PointCoord - 0.5) * 2.0; gl_FragColor = vec4(uColor * uLuz, smoothstep(1.0, 0.1, d) * vA * 0.62);\n#include <colorspace_fragment>\n}"
+      });
+    }
+  };
+}
+/** Lo que se le pasa a crea(): los uniformes, que son del componente (los mueve actualizaHuellas) */
+export interface OpcSombreador { uniforms: Record<string, { value: unknown }> }
+
 /** Monta las huellas y el polvo y devuelve su api; `libera()` lo suelta todo (una sola vez). */
 export function creaHuellasPolvo(d: DepsHuellasPolvo, n: ContextoComponente) {
-  const THREE = d.THREE, scene = d.scene, Estaticos = d.Estaticos, Materiales = d.Materiales, suelo = d.suelo, Estado = d.Estado, pp = d.pp, paseando = d.paseando, teclas = d.teclas;
+  const THREE = d.THREE, scene = d.scene, Estaticos = d.Estaticos, suelo = d.suelo, Estado = d.Estado, pp = d.pp, paseando = d.paseando, teclas = d.teclas;
+  d.Materiales.define(MATERIAL_HUELLA, defHuella()); d.Materiales.define(MATERIAL_POLVO, defPolvo());
+  const materiales = d.Materiales.de(ID_HUELLAS_POLVO);   // lo que cree este componente se libera con su libera()
   const cur = d.cur, nivelEn = d.nivelEn, tVida = d.tVida, enQuad = d.enQuad, vq = d.vq, enDron = d.enDron, dr = d.dr, altSuelo = d.altSuelo, sueloSeco = d.sueloSeco;
   // --- huellas: pisadas y rodadas que se desvanecen (un anillo de decals instanciados que siguen el terreno)
   var NH = 900, hBorn = new Float32Array(NH).fill(-1e4), hVida = new Float32Array(NH).fill(1), hTipo = new Float32Array(NH), hSig = 0, hPasoAnt = 0, hUlt: any = null;
@@ -42,16 +81,7 @@ export function creaHuellasPolvo(d: DepsHuellasPolvo, n: ContextoComponente) {
   var geoH = new THREE.PlaneGeometry(1, 1); geoH.rotateX(-Math.PI / 2);
   geoH.setAttribute("aBorn", new THREE.InstancedBufferAttribute(hBorn, 1)); geoH.setAttribute("aVida", new THREE.InstancedBufferAttribute(hVida, 1)); geoH.setAttribute("aTipo", new THREE.InstancedBufferAttribute(hTipo, 1));
   var uHuella = { uNow: { value: 0 }, uColor: { value: new THREE.Color(0x2c2218) } };
-  var matHuella: any = Materiales.sombreador("huella", {
-    uniforms: uHuella, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4,
-    vertexShader: "attribute float aBorn; attribute float aVida; attribute float aTipo; uniform float uNow; varying vec2 vUv; varying float vAge; varying float vTipo;\n" +
-      "void main(){ vUv = uv; vTipo = aTipo; vAge = clamp((uNow - aBorn) / aVida, 0.0, 1.0); gl_Position = projectionMatrix * viewMatrix * modelMatrix * instanceMatrix * vec4(position, 1.0); }",
-    fragmentShader: "uniform vec3 uColor; varying vec2 vUv; varying float vAge; varying float vTipo;\n" +
-      "void main(){ vec2 p = vUv - 0.5; float a;\n" +
-      "if (vTipo < 0.5) { float borde = smoothstep(0.5, 0.34, abs(p.x)); float tacos = 0.62 + 0.38 * step(0.5, fract(vUv.y * 5.0 + abs(p.x) * 2.5)); a = borde * tacos * 0.6; }\n" +
-      "else { float planta = smoothstep(1.0, 0.7, length(vec2(p.x / 0.3, (p.y + 0.14) / 0.32))); float punta = smoothstep(1.0, 0.7, length(vec2(p.x / 0.36, (p.y - 0.30) / 0.16))); a = max(planta, punta * 0.9) * 0.55; }\n" +
-      "a *= 1.0 - smoothstep(0.55, 1.0, vAge); gl_FragColor = vec4(uColor, a);\n#include <colorspace_fragment>\n}"
-  });
+  var matHuella: any = materiales.crea(MATERIAL_HUELLA, { uniforms: uHuella });   // el clásico es el ShaderMaterial de siempre (defHuella, arriba)
   var iHuella: any = new THREE.InstancedMesh(geoH, matHuella, NH); iHuella.frustumCulled = false; iHuella.count = 0; iHuella.visible = false; iHuella.renderOrder = 2; Estaticos.congela(iHuella); scene.add(iHuella);   // AG-1.15: las huellas viven en sus matrices de instancia
   var tmpH = new THREE.Object3D();
   function emiteHuella(x: any, y: any, ang: any, w: any, l: any, tipo: any, vida: any) {
@@ -64,12 +94,7 @@ export function creaHuellasPolvo(d: DepsHuellasPolvo, n: ContextoComponente) {
   var NPV = 200, pvPos: any = new Float32Array(NPV * 3), pvVel: any = new Float32Array(NPV * 3), pvBorn: any = new Float32Array(NPV).fill(-1e4), pvVida: any = new Float32Array(NPV).fill(1), pvTam = new Float32Array(NPV), pvSig = 0;
   var geoPv = new THREE.BufferGeometry(); geoPv.setAttribute("position", new THREE.BufferAttribute(pvPos, 3)); geoPv.setAttribute("aBorn", new THREE.BufferAttribute(pvBorn, 1)); geoPv.setAttribute("aVida", new THREE.BufferAttribute(pvVida, 1)); geoPv.setAttribute("aTam", new THREE.BufferAttribute(pvTam, 1));
   var uPolvo = { uNow: { value: 0 }, uColor: { value: new THREE.Color(0xb89e74) }, uLuz: { value: 1 } };
-  var matPolvo: any = Materiales.sombreador("polvo", {
-    uniforms: uPolvo, transparent: true, depthWrite: false,
-    vertexShader: "attribute float aBorn; attribute float aVida; attribute float aTam; uniform float uNow; varying float vA;\n" +
-      "void main(){ float e = clamp((uNow - aBorn) / aVida, 0.0, 1.0); vA = (1.0 - e) * (1.0 - e); vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = aTam * (1.0 + 2.4 * e) * (520.0 / max(1.0, -mv.z)); gl_Position = projectionMatrix * mv; }",
-    fragmentShader: "uniform vec3 uColor; uniform float uLuz; varying float vA; void main(){ float d = length(gl_PointCoord - 0.5) * 2.0; gl_FragColor = vec4(uColor * uLuz, smoothstep(1.0, 0.1, d) * vA * 0.62);\n#include <colorspace_fragment>\n}"
-  });
+  var matPolvo: any = materiales.crea(MATERIAL_POLVO, { uniforms: uPolvo });   // el clásico es el ShaderMaterial de siempre (defPolvo, arriba)
   var puntosPolvo: any = new THREE.Points(geoPv, matPolvo); puntosPolvo.frustumCulled = false; puntosPolvo.visible = false; puntosPolvo.renderOrder = 7; scene.add(puntosPolvo);
   function emitePolvo(x: any, y: any, h: any, vx: any, vy: any, vz: any, tam: any, vida: any) {
     var i = pvSig++ % NPV; pvPos[i * 3] = x; pvPos[i * 3 + 1] = h; pvPos[i * 3 + 2] = -y; pvVel[i * 3] = vx; pvVel[i * 3 + 1] = vy; pvVel[i * 3 + 2] = -vz; pvBorn[i] = tVida(); pvVida[i] = vida; pvTam[i] = tam;
@@ -108,7 +133,8 @@ export function creaHuellasPolvo(d: DepsHuellasPolvo, n: ContextoComponente) {
   /** quita las dos mallas de la escena y suelta mallas, geometrías y materiales; llamarlo dos veces no libera dos veces */
   function libera(): void {
     if (disp) return; disp = true;
-    scene.remove(iHuella); scene.remove(puntosPolvo); iHuella.dispose(); geoH.dispose(); matHuella.dispose(); geoPv.dispose(); matPolvo.dispose();
+    scene.remove(iHuella); scene.remove(puntosPolvo); iHuella.dispose(); geoH.dispose(); geoPv.dispose();
+    materiales.libera();   // matHuella y matPolvo, de la fábrica
   }
   n.on("polvo:emite", function (e: T3) { if (e) emitePolvo(e.x, e.y, e.h, e.vx || 0, e.vy || 0, e.vz || 0, e.tam || 0.3, e.vida || 0.9); });
   return { actualiza: actualizaHuellas, emitePolvo, emiteHuella, huellas: function () { return iHuella.count; }, libera };
