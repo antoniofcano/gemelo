@@ -180,10 +180,10 @@ Exterior, molino y bodega en un solo PWA, cada uno con su sala de red; TypeScrip
 | MU0 | Instrumentos: tandas 0 y 1 de la [auditoría](../auditoria-noviembre2026/PLAN.md) y ADR-0033 aceptado | puerta pesada en verde; L4-01 con su prueba; topes de `pruebas/presupuesto.json` a ≤ 2× la medida del fixture; tope de memoria de GPU; guardián de memoria de VR activo; ADR-0033 y decisiones 216-218 cerradas | 4-5 d | ⬜ |
 | MU1 | Cimientos sin cambio visible: `tsconfig`, Vitest, fronteras, puente y núcleo puro (MUNDOS §9) | puerta rápida con `tsc` y Vitest; capturas iguales y recuentos e `info.memory` idénticos a la toma de referencia; trinquete del legado más bajo que al empezar | 10-12 d | ⬜ |
 | MU2 | El exterior como primer `World` (congelar, no liberar) | `WorldManager` con un mundo y sin regresión (capturas y recuentos); guardián «exterior congelado» en verde; memoria del exterior congelado medida en Chrome y en el Quest y escrita en MEDIDAS | 8-10 d | ⬜ |
-| MU5 | Liberar el exterior y encoger el legado (eje A, justo tras MU2; decisión 218 reordenada) | `renderer.info.memory` vuelve a la base al salir del exterior liberado; 0 líneas en `apps/web/motor/` | 20-30 d, repartidos | ⬜ |
+| MU5 | Liberar el exterior y encoger el legado (eje A, justo tras MU2; decisión 218 reordenada), **tres pájaros por módulo**: TypeScript, componente con su ciclo de vida (ADR-0023) y materiales por la fábrica `nucleo/materiales` con su variante TSL apagada | `renderer.info.memory` vuelve a la base al salir del exterior liberado; 0 líneas en `apps/web/motor/`; cada material con sombreador propio tiene su variante TSL detrás de `?renderer=webgpu` | 26-40 d, repartidos | ⬜ |
 | MU3 | Unión · bodega (decisión 217): el glb del eje B en el `WorldManager` del eje A, con su sala de red | e2e: dos en la bodega y una fuera no se ven ni se oyen; aforo impuesto por la api; reunión de 6 con pantalla compartida en el Quest dentro del presupuesto de su perfil; «ir y volver» deja `info.memory` como estaba | 10-12 d | ⬜ |
 | MU4 | Unión · molino: el glb del eje B, sus máquinas animadas y su sala | una máquina completa animada (prensa de viga) con sonido, a 72 Hz en el Quest sin bajar de nivel; «ir y volver» en verde | 8 d + modelado | ⬜ |
-| MU6 | Renderer nuevo en pantalla (F3-F5 del ADR-0031 sobre la fábrica tipada) | capturas iguales por material; medida ≤ clásico | según MULTIVIEW | ⬜ |
+| MU6 | Cambiar de renderer en un solo paso (F3-F5 del ADR-0031): las variantes TSL de MU5 pasan a ser las de verdad; ya no es otro recorrido por los módulos | capturas iguales por material; medida ≤ clásico; Quest medido (decisión 224: no antes del 2026-12-01) | 3-5 d + medidas | ⬜ |
 | MU7 | Una sola build | F2 repetida en el Quest con el three del momento; super-three y su parche retirados | cuando three lo permita | ⬜ |
 
 | Id | Tarea | Depende de | Tipo · modelo | [ESTIMACIÓN] | Estado |
@@ -203,15 +203,15 @@ Exterior, molino y bodega en un solo PWA, cada uno con su sala de red; TypeScrip
 | MU1-3 | `dependency-cruiser` fijado con las reglas de las cuatro fronteras (MUNDOS §1) | MU1-1 | ligera · sonnet | ½ d | ✅ 2026-11-06 (A1-3): 7 reglas, cada una con su caso que la rompe |
 | MU1-4 | Toma de referencia del banco: vistas, recuentos, memoria y VR simulada (MUNDOS §9.5), antes de tocar el motor | MU0-5 | pesada · haiku (banco) | ½ d | ⬜ |
 | MU1-5 | Puente en `genera_motor.mjs` (`@gemelo/nucleo`), talones, guardián del puente y trinquete del legado (MUNDOS §9.3) | MU1-2 | ligera · opus | 1 d | ✅ 2026-11-06 (A1-7): alias `@gemelo/nucleo` en Vite y `tsconfig`, talones, `puente.test.js` y trinquete (techo) |
-| MU1-6 | Extraer `Cola` con dueño por prefijo (§9.4 #1) y mover sus pruebas `[puro]` a Vitest | MU1-5 | ligera · sonnet | ½ d | ⬜ |
+| MU1-6 | Extraer `Cola` con dueño por prefijo (§9.4 #1) y mover sus pruebas `[puro]` a Vitest | MU1-5 | ligera · sonnet | ½ d | ✅ 2026-11-06 (A1-10): `nucleo/cola.ts` con dueño por prefijo, `02b_cola.js` es talón, 12 pruebas a Vitest; legado 19.712 líneas |
 | MU1-7 | Extraer `Render` + `memoria()` + `compila()`, `XrPerillas`, `EntidadesPuro`, `LlegadaPuro`/`IrAPuro` (§9.4 #2, 4, 5, 6), un commit por módulo | MU1-6 | ligera · sonnet | 2 d | ⬜ |
 | MU1-8 | Extraer `VrPresupuestoPuro`/`VrControlPuro` con L7-03 y L1-03 (perfiles que suben, «holgado» contra el perfil), en commit aparte | MU1-6 | ligera · opus; 👤 Quest | 1 d | ⬜ |
 | MU1-9 | Estado mutable a un objeto (`Estado.exag`, `modo`, `calidad`): cambio mecánico en el legado, en commit aparte (§9.4 #7) | MU1-5 | ligera · opus | 1 d | ⬜ |
 | MU1-10 | `Bucle` del núcleo con `try/catch` por fotograma y salida limpia de XR, `visibilitychange`, `reset` y pérdida de contexto (L7-01, L7-02, L7-10) | MU1-9 | ligera · opus | 1 d | ⬜ |
-| MU1-11 | Tipos generados de `contratos/*.schema.json` (`json-schema-to-typescript` fijado) y su guardián de frescura | MU1-2 | ligera · sonnet | 1 d | ⬜ |
+| MU1-11 | Tipos generados de `contratos/*.schema.json` (`json-schema-to-typescript` fijado) y su guardián de frescura | MU1-2 | ligera · sonnet | 1 d | ✅ 2026-11-06 (A1-8): json-schema-to-typescript 16.0.0, 21 esquemas, guardián de frescura |
 | MU1-12 | Guardián promesa↔guardián: cada regla de CLAUDE.md y cada tope apuntan a su prueba | MU1-2 | ligera · sonnet | 1 d | ✅ 2026-11-06 (A1-6): 35 promesas, 29 con guardián (15 a medias), 6 de persona; ver DECISIONS-PENDING 228 |
 | MU1-14 | Guardianes de las promesas vigiladas a medias (A1-15 a A1-17): una fila de ONBOARDING por guardián (§1.1); versiones exactas en todo `apps/web/package.json` y `==` en los `requirements.txt` (§1.12); estilo del legado, `var` y sin globales fuera de la IIFE (§5) | MU1-12 | ligera · haiku | 1 d | ✅ 2026-11-06 (A1-15): `filas_puerta`, `versiones` y `estilo_motor`; `rasterio` y `matplotlib` sin fijar, anotadas (no instaladas en este equipo) |
-| MU1-15 | L9-04: escapar `</script` al incrustar el índice, sobre el puente de MU1-5 | MU1-5 | ligera · haiku | ½ d | ⬜ |
+| MU1-15 | L9-04: escapar `</script` al incrustar el índice, sobre el puente de MU1-5 | MU1-5 | ligera · haiku | ½ d | ✅ 2026-11-06: índice escapado en el `<script>` y textos de cabecera escapados; `genera_motor.test.js` |
 | MU1-13 | Ronda final del banco contra la referencia de MU1-4; diferencias explicadas o arregladas; nota en MEDIDAS | MU1-6..12 | pesada · sonnet (banco) | ½ d | ⬜ |
 | MU2-1 | `WorldManagerPuro` (máquina de estados) y `World` en TS, probados en Vitest con mundos falsos (MUNDOS §2-3) | MU1-13 | ligera · opus | 1 d | ⬜ |
 | MU2-2 | Fundido partido en `cierra`/`abre` (`29_vr.js`, `12b_llegada.js`); `vrFundido(fn)` encima, con la misma semántica | MU2-1 | ligera · sonnet | 1 d | ⬜ |
@@ -237,7 +237,8 @@ Exterior, molino y bodega en un solo PWA, cada uno con su sala de red; TypeScrip
 | MU4-3 | Prensa de viga animada (`AnimationMixer` sobre glTF) con sonido; después empiedro y pozuelos | MU4-2 | ligera · sonnet | 2 d por máquina | ⬜ |
 | MU4-4 | El proceso de molturación contado: visita guiada reutilizando `46_guiada.js` | MU4-3 | ligera · sonnet | 2 d | ⬜ |
 | MU4-5 | Medida en el Quest y nota de comodidad | MU4-3 | 👤 Quest | — | ⬜ |
-| MU5-n | `libera()` real del exterior, un módulo por tarea, cada uno migrado a TS con sus arreglos de la auditoría (tanda 3: L2-01, L2-05, L2-07 a L2-11, L5-01, L5-02; tanda 2 de Quest dentro de cada módulo) | MU2-6 | ligera · sonnet/opus; ronda del banco por tanda | 1-2 d por módulo | ⬜ |
+| MU5-n | Un módulo por tarea, en tres commits: (1) TS y componente con `libera()` real (tanda 3: L2-01, L2-05, L2-07 a L2-11, L5-01, L5-02; tanda 2 de Quest dentro); (2) sus materiales por `nucleo/materiales`; (3) si tiene `onBeforeCompile` o `ShaderMaterial`, su variante TSL detrás de `?renderer=webgpu` (apagada) | MU2-6, MU5-0 | ligera · sonnet/opus (TSL: opus); banco al final del eje A | 1-3 d por módulo | ⬜ |
+| MU5-0 | Fábrica `nucleo/materiales`: da el material clásico y, con `?renderer=webgpu`, el TSL; los estándar valen en los dos sin cambio | MU2-7 | ligera · opus | 1 d | ⬜ |
 
 ## Tablero de tareas (desde el 2026-10-29)
 

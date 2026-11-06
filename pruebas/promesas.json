@@ -176,7 +176,7 @@
     {
       "origen": "CLAUDE.md §5", "clave": "Lo pesado va a la `Cola`",
       "vigila": [
-        { "fichero": "pruebas/guardianes/carga_sin_tirones.test.js", "test": "Cola: ninguna rebanada se empieza si no cabe" }
+        { "fichero": "apps/web/src/nucleo/cola.test.ts", "test": "ninguna rebanada se empieza si no cabe" }
       ],
       "falta": "Vigila que la Cola no se pase de su tiempo; que el trabajo pesado vaya de verdad a la Cola (y no bloquee el fotograma) no se comprueba."
     },
