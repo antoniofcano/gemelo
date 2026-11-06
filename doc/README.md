@@ -63,6 +63,16 @@
 - [operacion/DESPLIEGUE-V2.md](operacion/DESPLIEGUE-V2.md) — **el primer despliegue en el VPS, paso a paso**: qué hace Antonio, comprobación y vuelta atrás de cada paso, y qué bloquea enseñarlo o abrirlo a familias.
 - [operacion/TESTING.md](operacion/TESTING.md) — qué prueba cada cosa y qué significa cada rojo.
 
+## Auditoría en curso — `auditoria-noviembre2026/` (viva mientras tenga algo abierto; luego a `historico/`)
+Primera auditoría por lentes ([skill `auditoria`](../.claude/skills/auditoria/SKILL.md)), sobre v0.2.0 `4ab0ae6`: 0 críticos, 1 alto, 73 medios, 82 bajos; solo lectura, nada medido en ejecución.
+- [auditoria-noviembre2026/ALCANCE.md](auditoria-noviembre2026/ALCANCE.md) — versión, lentes, qué no se pudo verificar.
+- [auditoria-noviembre2026/RESUMEN.md](auditoria-noviembre2026/RESUMEN.md) — resultado por lente, verificación del alto, causas comunes.
+- [auditoria-noviembre2026/PLAN.md](auditoria-noviembre2026/PLAN.md) — arreglos por tandas, cada uno con su prueba.
+- [auditoria-noviembre2026/ACEPTADOS.md](auditoria-noviembre2026/ACEPTADOS.md) — propuesta de aceptados y decisiones de Antonio (pendiente de firma).
+- [auditoria-noviembre2026/PROPUESTA-ARQUITECTURA.md](auditoria-noviembre2026/PROPUESTA-ARQUITECTURA.md) — propuesta de refactorización a mundos múltiples (exterior, molino, bodega), TypeScript y Vitest; pide ADR-0033.
+- [auditoria-noviembre2026/INFORME-WORLDMANAGER.md](auditoria-noviembre2026/INFORME-WORLDMANAGER.md) — diagnóstico previo del motor frente a un `Mundos` (foto del 2026-11-06).
+- Informes por lente: [1 rendimiento](auditoria-noviembre2026/lente-1-rendimiento.md) · [2 memoria](auditoria-noviembre2026/lente-2-memoria.md) · [3 datos](auditoria-noviembre2026/lente-3-datos.md) · [4 contratos](auditoria-noviembre2026/lente-4-contratos.md) · [5 modelado](auditoria-noviembre2026/lente-5-modelado.md) · [6 interacción](auditoria-noviembre2026/lente-6-interaccion.md) · [7 VR](auditoria-noviembre2026/lente-7-vr.md) · [8 mundos](auditoria-noviembre2026/lente-8-mundos.md) · [9 seguridad](auditoria-noviembre2026/lente-9-seguridad.md) · [10 documentación](auditoria-noviembre2026/lente-10-documentacion.md).
+
 ## Skills — `.claude/skills/`
 `adr`, `documentalista`, `release`, `auditoria`, `medir`, `datos-finca`, `modelado-3d`, `videojuegos`, `mundos-virtuales`, `interaccion` (tabla de cuándo usar cada una en [CLAUDE.md §6](../CLAUDE.md)). Agente: [`arquitecto-multiusuario`](../.claude/agents/arquitecto-multiusuario.md) (estudia la arquitectura multiusuario, solo lectura).
 

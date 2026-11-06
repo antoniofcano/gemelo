@@ -19,4 +19,4 @@ Un subagente por lente. Cada lente dice qué cubre y las preguntas que debe cont
 Locales y fuera del repo (ver `doc/operacion/DATOS.md`); la auditoría usa el fixture salvo que Antonio autorice datos reales.
 
 ## Las auditorías hechas
-Ninguna todavía (iniciativa P2 del PLAN).
+- **Noviembre 2026** (v0.2.0 `4ab0ae6`): [doc/auditoria-noviembre2026/](../../../doc/auditoria-noviembre2026/RESUMEN.md). Diez lentes, 0 críticos, 1 alto (L4-01), 73 medios, 82 bajos. Abierta: plan por tandas y re-verificación pendientes.
