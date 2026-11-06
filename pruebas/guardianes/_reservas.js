@@ -77,7 +77,7 @@ const BUCLE = {
   "19_balizas.js": [["firmaCambia", "function firmaCambia("]],
   "25_perros.js": [["amenazaEn", "function amenazaEn("], ["actualizaPerros", "function actualizaPerros("], ["empacaPerros", "function empacaPerros("]],
   "02c_componentes.js": [["Bus.emite", "function emite(ev, datos)"], ["Reparto.pasa", "function pasa(i, q)"], ["Reparto.ini", "function ini(t)"]],   // Q0h: el reparto del JS por bloque, cada fotograma medido
-  "src/nucleo/presupuesto.ts": [["VrPresupuesto.mueve", "function mueve("]],   // Q0c-a: cada fotograma en VR (antes en 02g_vr_presupuesto.js; A1-12)
+  "src/nucleo/presupuesto.ts": [["VrPresupuesto.mueve", "function mueve("], ["VrControlPuro.decide", "function decide("], ["VrControlPuro.holgura", "function holgura("], ["VrControlPuro.escalaVr", "function escalaVr("], ["completa", "function completa("], ["nSube", "function nSube("]],   // Q0c-a y A1-12: cada fotograma en VR (antes en 02g_vr_presupuesto.js)
   "18_paisaje.js": [["distArroyo", "function distArroyo("], ["celdaArroyoDist", "function celdaArroyoDist("]],
   "16_vida.js": [["velPaseo", "function velPaseo("], ["giroPaseo", "function giroPaseo("], ["vidaPaseo", "function vidaPaseo("], ["dronMando", "function dronMando("],
     ["camaraDron", "function camaraDron("], ["vidaDron", "function vidaDron("], ["actualizaVida", "function actualizaVida("], ["emiteEstela", "e.emite = function"], ["angDifRad", "function angDifRad("]],

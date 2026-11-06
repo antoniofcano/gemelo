@@ -648,7 +648,7 @@
     var g = VrPresupuesto.escalonPorPasos(n); while (!g.next().done) yield 3;
   }
   function vrNivelPorCola(n) { n = Math.max(0, Math.min(VR_PERFILES.length - 1, n)); VRX.nivel = n; Cola.cancela("vnivel"); Cola.add("vnivel", 5, vrNivelPasos(n)); }   // reserva-ok: por un cambio de nivel, no por fotograma
-  // Q0c-b: histéresis (VrControlPuro.decide, 02g): baja con XrPerillas.js() (8 ms de JS) o 15,2 ms de fotograma; solo sube con JS < jsSube() (5 ms) durante estable() s (10) seguidos
+  // Q0c-b y A1-12: histéresis (VrControlPuro.decide, nucleo/presupuesto.ts): baja con XrPerillas.js() (8 ms de JS) o con fotogramas perdidos de forma sostenida; sube tras N fotogramas buenos (JS < jsSube(), 6 ms; estable() s, 10), el doble tras un rebote
   function vrAdapta(dtMs, jsMs, dt) {
     var d = VrControlPuro.decide(VRX, dtMs, jsMs, dt, VRX.nivel, VR_PERFILES.length - 1, XrPerillas.js(), XrPerillas.jsSube(), XrPerillas.estable(), XrPerillas.fijo(), VrPresupuesto.suelo(XrPerillas.gente()));   // Q0c-c: el último, el nivel mínimo que pide la gente a la vista (0 sin gente). fijo: nivel fijado por la URL, sin controlador (Q0b, 02f)
     if (d > 0) { VRX.nBaj++; vrNivelPorCola(VRX.nivel + 1); } else if (d < 0) { VRX.nAlt++; vrNivelPorCola(VRX.nivel - 1); }
@@ -691,7 +691,7 @@
     VRX.modoPrev = modo; VRX.calPrev = calidad; VRX.nearPrev = camera.near; VRX.farPrev = camera.far;
     if (modo !== "gem") pon("gem"); calidad = 0; camera.near = XrPerillas.efectivas.near; camera.far = 6000;   // near 0,1 (AG-2.3; perilla xrnear): ramas a <30 cm sin recortar, a costa de precisión de profundidad lejos
     scene.add(vrRig); vrRig.add(camera); camera.add(vrVineta); camera.position.set(0, VRX.ojo ? 0 : 1.6, 0); camera.quaternion.identity(); VRC.forEach(function (o) { vrRig.add(o.c); vrRig.add(o.g); }); Bus.emite("vr:rig-monta", { rig: vrRig }); scene.add(arco); scene.add(arcoMarca); scene.add(panel.m); scene.add(ficha.m); scene.add(fichaB.m); vrVueloEntra();
-    VRP.on = true; vrPerfil(XrPerillas.fijo() ? XrPerillas.efectivas.nivel : 0); VRX.emaDt = 13.9; VRX.emaJs = 6; VRX.tNivel = 0; VRX.tEstable = 0;
+    VRP.on = true; vrPerfil(XrPerillas.fijo() ? XrPerillas.efectivas.nivel : 0); VrControlPuro.reinicia(VRX);   // A1-12: medias, periodo, perdidos, buenos y castigo, de cero
     if (!paseando) entraPaseo(); primera = true; TR.act = false; persona.visible = false; Bus.emite("perros:llegan");
     var r = VRX.rig; r.x = pp.x; r.z = -pp.y; r.yaw = 0; r.y = suelo(pp.x, pp.y) * exag + vrBaseY(); VRX.vuelo = false; VRX.mirador = false; VRX.prev = {}; VRX.giroOk = true; VRX.movF = 0; VRX.sucio = true; panel.m.visible = true; panel.ini = false; ficha.m.visible = false; fichaB.m.visible = false; VRX.fichaId = ""; VRX.balFirma = "";
     vrAplicaRig(); vrRig.updateMatrixWorld(true); VRX.on = true; VRX.entrando = false; vrEstado("sesión VR en marcha"); vrPrecompila(); Bus.emite("vr:entra");

@@ -29,8 +29,10 @@ test("tabla por aparato: una fila por modelo de 01a_aparato, dentro de los lími
     assert.ok(f.baja - f.sube >= C.DEF.margen, k + ": histéresis");
     assert.ok(f.baja >= XP.LIM.js[0] && f.baja <= XP.LIM.js[1] && f.sube >= XP.LIMC.sube[0] && f.sube <= XP.LIMC.sube[1], k + ": dentro de los límites de las perillas");
   }
-  // los defectos de 02f y de la tabla coinciden
-  assert.deepStrictEqual([XP.DEF.js, XP.DEFC.sube, XP.DEFC.estable], [C.APARATOS.defecto.baja, C.APARATOS.defecto.sube, C.DEF.estable]);
+  // los defectos de 02f y de la tabla coinciden en bajar y en los segundos; el de subir de 02f (5 ms) es el de reserva hasta que llega la tabla
+  // (29_vr la deja en XrPerillas.tablaSube con la configuración) y desde A1-12 es más prudente que el de la tabla (baja − 2 = 6 ms): nunca sube antes
+  assert.deepStrictEqual([XP.DEF.js, XP.DEFC.estable], [C.APARATOS.defecto.baja, C.DEF.estable]);
+  assert.ok(XP.DEFC.sube <= C.APARATOS.defecto.sube, "el de reserva de 02f no sube antes que la tabla");
   // 29_vr: el modelo sale de Aparato y la tabla manda como valor de código (la URL y la configuración, encima)
   assert.match(VR, /VrControlPuro\.umbrales\(Aparato\.modelo\(\)\)/);
   assert.match(VR, /Config\.param\("escalera\.vrJsMs", u\.baja\)/);
@@ -52,7 +54,7 @@ test("perillas ?xrjssube y ?xrestable: valor, recorte con motivo, no numérico i
 
 test("cambio de nivel por la Cola: el nivel lógico cambia ya y lo demás en pasos con yield (no de golpe)", () => {
   // 29_vr: vrNivelPasos (generador) y vrNivelPorCola, con dobles de lo que tocan
-  const src = trozo(VR, "function* vrNivelPasos", "// Q0c-b: histéresis");
+  const src = trozo(VR, "function* vrNivelPasos", "  function vrAdapta");
   const reg = [], trabajos = [];
   const Cola = { cancela: k => reg.push("cancela " + k), add: (k, prio, gen) => { reg.push("add " + k + " " + prio); trabajos.push(gen); } };
   const VRX = { nivel: 0 }, VRP = { hierba: 32 }, UN = { uBumpK: { value: 1 } };
@@ -105,4 +107,15 @@ test("precompilación: una vez al entrar en VR, con compileAsync (compile si no 
     const t = fs.readFileSync(f, "utf8");
     assert.match(t, /this\.compileAsync = function/, paq + " tiene compileAsync"); assert.match(t, /this\.compile = function/, paq + " tiene compile");
   }
+});
+
+test("A1-12 (L7-03, L1-03): 29_vr reinicia el controlador al entrar en VR y 07b_arboles, en VR, ajusta la escala de los olivos con VrControlPuro", () => {
+  assert.match(VR, /vrPerfil\(XrPerillas\.fijo\(\) \? XrPerillas\.efectivas\.nivel : 0\); VrControlPuro\.reinicia\(VRX\);/, "al entrar: medias, periodo, perdidos, buenos y castigo de cero");
+  assert.doesNotMatch(VR, /VRX\.emaDt = 13\.9; VRX\.emaJs = 6;/, "el reinicio a mano de antes ya no está");
+  const A = lee("apps/web/motor/07b_arboles.js"), aj = trozo(A, "function ajustaEscala()", "// por encima de 1,6");
+  assert.match(aj, /if \(vrP\) \{ esc = VrControlPuro\.escalaVr\(esc, VrControlPuro\.holgura\(VRX, XrPerillas\.js\(\), XrPerillas\.jsSube\(\)\), InfoDibujo\.triangulos\(renderer\), vrP\.tri\); return; \}/,
+    "en VR la escala no usa emaDt < 16 ms: usa la holgura del controlador y los triángulos del perfil");
+  assert.ok(aj.indexOf("if (vrP)") > aj.indexOf("if (fq != null)"), "la calidad fijada en Ajustes sigue mandando también en VR");
+  assert.strictEqual(C.holgura({ emaDt: 13.9, emaJs: 7, tNivel: 0, tEstable: 0 }, 8, 6), 0);
+  assert.strictEqual(C.escalaVr(2.5, 0, 0, 380000), 1, "en VR, el techo es el perfil (1)");
 });
