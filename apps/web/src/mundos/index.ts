@@ -64,3 +64,5 @@ export { creaHierba, manifiestoHierba, ID_HIERBA } from "./exterior/hierba.ts";
 export type { DepsHierba, Hierba } from "./exterior/hierba.ts";
 export { creaSonido, manifiestoSonido, ID_SONIDO } from "./exterior/sonido.ts";
 export type { DepsSonido, Sonido } from "./exterior/sonido.ts";
+export { creaSolReserva, manifiestoSolReserva, ID_SOL_RESERVA } from "./exterior/sol-reserva.ts";
+export type { DepsSolReserva, SolReserva } from "./exterior/sol-reserva.ts";

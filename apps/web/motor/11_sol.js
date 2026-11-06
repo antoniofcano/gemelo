@@ -1,16 +1,10 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos ($), 03_escena (LUZ_SOL, LUZ_CIELO, hemi, sol)
-// Nota: Define sol2() (sol según hora y fecha); se engancha al control de hora dentro del propio módulo.
+// Consume: 01_datos ($), 02c_componentes (Componentes), 03_escena (LUZ_SOL, LUZ_CIELO, hemi, sol)
+// Nota: Talón (MU5-n, A3-4) de apps/web/src/mundos/exterior/sol-reserva.ts: sol2() (el sol según el deslizador de reserva #hora, que actualizaTiempo pisa en cada fotograma; L8-03), componente «sol-reserva».
 // ===============================================================================
-  // ---------- el sol según la hora (25-oct, Jaén, hora oficial peninsular)
-  function sol2() {
-    var hora = Number($("hora").value), fi = 37.7 * Math.PI / 180, de = -12.1 * Math.PI / 180, Hh = (hora - 13.27) * 15 * Math.PI / 180;
-    var alt = Math.asin(Math.sin(fi) * Math.sin(de) + Math.cos(fi) * Math.cos(de) * Math.cos(Hh));
-    var az = Math.atan2(Math.sin(Hh), Math.cos(Hh) * Math.sin(fi) - Math.tan(de) * Math.cos(fi)) + Math.PI; // desde el norte, horario
-    sol.position.set(Math.sin(az) * Math.cos(alt) * 300, Math.max(Math.sin(alt), 0.05) * 300, -Math.cos(az) * Math.cos(alt) * 300);
-    var k = Math.max(0, Math.sin(alt)); sol.intensity = (0.25 + 0.75 * k) * LUZ_SOL; hemi.intensity = (0.45 + 0.5 * k) * LUZ_CIELO;
-    var hh = Math.floor(hora), mm = hora % 1 ? "30" : "00"; $("horaV").textContent = hh + ":" + mm;
-  }
-  $("hora").addEventListener("input", sol2); sol2();
-
+  // ---------- el sol según la hora del deslizador de reserva (#hora, oculto): un residuo que actualizaTiempo (15_tiempo) pisa en cada fotograma (L8-03).
+  // MU5-n (A3-4): migrado a TypeScript; el código vive en apps/web/src/mundos/exterior/sol-reserva.ts, componente «sol-reserva» con su libera(). Aquí solo se cablea.
+  // [talón] apps/web/src/mundos/exterior/sol-reserva.ts
+  var SolReserva = Mundos.creaSolReserva({ $: $, sol: sol, hemi: hemi, LUZ_SOL: LUZ_SOL, LUZ_CIELO: LUZ_CIELO });
+  Componentes.registra(Mundos.manifiestoSolReserva(SolReserva));
