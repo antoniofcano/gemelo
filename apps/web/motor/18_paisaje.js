@@ -1,5 +1,5 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: matTronco, colocaPaisaje, instSombra, sombrasSol, aguaNivel, actualizaPaisaje, ejeArroyo, distArroyo
+// Expone: colocaPaisaje, instSombra, sombrasSol, aguaNivel, actualizaPaisaje, ejeArroyo, distArroyo
 // Consume: 01_datos (D, $, ESC_R8), 02_mundo (suelo, desp, copas), 02g_vr_presupuesto (VrPresupuesto), 02i_materiales (Materiales),
 //   02j_estaticos (Estaticos), 03_escena (scene, SRGB, Estado), 04d_sombreado_tiles (hash), 06_arboles (gSombras),
 //   07_follaje (matSombra, geoSombra), 09_camara (pon), 15_tiempo (nivelEn, cur, tMundo, nivel), 23_estacion (EST)

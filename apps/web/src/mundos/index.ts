@@ -31,3 +31,6 @@ export { ID_MARCADORES_LIDAR, creaMarcadoresLidar, manifiestoMarcadoresLidar } f
 export type { DepsMarcadoresLidar, MarcadoresLidar, PuntoLidar } from "./exterior/marcadores-lidar.ts";
 export { NOTAS, creaMarcadores } from "./exterior/marcadores.ts";
 export type { DepsMarcadores, Marcadores } from "./exterior/marcadores.ts";
+// A3-2b (MU5-n): los olivos de nivel 0 (06_arboles.js).
+export { ID_ARBOLES_L0, creaArbolesL0 } from "./exterior/arboles-l0.ts";
+export type { ArbolesL0, DepsArbolesL0 } from "./exterior/arboles-l0.ts";

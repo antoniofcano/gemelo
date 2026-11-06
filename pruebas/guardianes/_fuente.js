@@ -12,6 +12,7 @@ const TS_DE = {
   "04e_suelo_fondo.js": "apps/web/src/mundos/exterior/suelo-fondo.ts",
   "04f_suelo_fotos.js": "apps/web/src/mundos/exterior/suelo-fotos.ts",
   "02m_tope_olivos.js": "apps/web/src/mundos/exterior/tope-olivos.ts",   // A3-2b
+  "06_arboles.js": "apps/web/src/mundos/exterior/arboles-l0.ts",   // A3-2b
   "08_marcadores.js": "apps/web/src/mundos/exterior/marcadores.ts",   // A3-2b
   "08b_marcadores_lidar.js": "apps/web/src/mundos/exterior/marcadores-lidar.ts",   // A3-2b
 };

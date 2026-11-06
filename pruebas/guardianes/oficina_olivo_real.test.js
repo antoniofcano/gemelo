@@ -75,8 +75,8 @@ test("OF8c: el número de la ficha («Olivo 2») es la posición + 1: «posició
 });
 
 test("OF8c: la ficha del olivo del motor enseña el id real y la posición que acepta la oficina", () => {
-  const f = lee("apps/web/motor/06_arboles.js");
-  assert.match(f, /function filaId\(c\)/);
+  const f = require("./_fuente").fuenteMotor("06_arboles.js");   // A3-2b: talón + arboles-l0.ts
+  assert.match(f, /function filaId\(c(: any)?\)/);
   assert.match(f, /f\.push\(filaId\(b\)\)/, "la fila Id va siempre en la ficha, no solo con ?olivos=gen");
   assert.match(f, /2147483648/, "provisional desde 2^31, como tuberia/ids_copas.py");
 });
