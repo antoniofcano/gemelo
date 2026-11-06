@@ -44,7 +44,7 @@ Son tres. Pasados a TSL, desbloquean a casi todos:
 | 5 | `15_tiempo.js` (fuera) | — (`barrera`) | `ShaderMaterial` | película de luz de la linde con pulso | no | no | no | `uT` | B |
 | 6 | `21_suelo.js` (fuera) | — (`matas`) | Lambert + parche (instanciado, recorte alfa) | atlas por instancia, viento, nubes, helada | sí | CPU (colocación) | **sí** | nubes, helada | M |
 | 7 | `21_suelo.js` (fuera) | — (`piedras`) | Lambert + parche (instanciado) | vetas, granos y liquen por ruido, nubes | sí | no | no | nubes | M |
-| 8 | `04e_suelo_fondo.js` | `suelo-fondo` | Lambert + parche | mosaico sRGB → lineal | sí | no | no | tinte de `matSuelo` (indirecto) | B |
+| 8 | `apps/web/src/mundos/exterior/suelo-fondo.ts` (antes `04e_suelo_fondo.js`) | `suelo-fondo` | Lambert + parche | mosaico sRGB → lineal | sí | no | no | tinte de `matSuelo` (indirecto) | B — **hecho (MU5-n, A3-1b):** `define("suelo-fondo", { clasico, tsl })`, la TSL apagada |
 | 9 | `05_nube.js` | `nube-lidar` | Points + `parcheTiempo` | nube LiDAR con sombra de nubes | sí | CPU (tinte) | no | nubes, tinte | M (puntos de 1 px, MULTIVIEW §2.3) |
 | 10 | `06_arboles.js` | `copa-l0`, `tronco-l0` | Lambert + `colorVertSRGB` | color por vértice en sRGB | sí | no | no | no | B |
 | 11 | `07a_catalogo.js` | `copa-l1`, `tronco-l1` | Lambert + `parcheTiempo` (instanciado) | silueta rota por ruido, motas, envés en el borde | sí | no | no | nubes, helada | M / B |
@@ -68,7 +68,8 @@ Son tres. Pasados a TSL, desbloquean a casi todos:
 ### 1.4 Los recuentos
 
 - **Por la fábrica:** 22 sitios con nombre.
-  - 10 `parchea`: `04e`, `05`, `06` ×2, `07a` ×2, `07ac` ×2, `14` y `44`.
+  - 9 `parchea`: `05`, `06` ×2, `07a` ×2, `07ac` ×2, `14` y `44`.
+  - 1 `define` (MU5-n, A3-1b): `suelo-fondo` (antes el `parchea` de `04e`), con su clásico y su TSL en `mundos/exterior/suelo-fondo.ts`.
   - 4 `encadena`: `07ab` ×3 y `26b`.
   - 8 `sombreador`: `16`, `18`, `19`, `22b` ×2, `23`, `29` y `38`.
   - Los cuenta por nombre `Materiales.inventario()` al cargar.
@@ -193,3 +194,18 @@ Hoy nadie pide con dueño y `libera` devuelve 0. Las texturas no son de la fábr
 - Los guardianes de Node `materiales_f1`, `a2c`, `render_f1`, `puente`, `trinquete_legado`, `tipos_web`, `estilo_motor`, `estado_mutable`, `tono`, `sombreado_tiles`, `suelo_fotos`, `cartulinas`, `escena3d`, `contratos`, `sintaxis`, `ambiente_mundo` y `componentes`.
 - Las dos builds de Vite (`build`, `builds_f1` y `builds_f2`). Ningún paquete lleva `three/webgpu` ni `three/tsl`.
 - **No probado:** el aspecto en un navegador (sin Chrome en esta tarea), el Quest y la variante TSL dibujada.
+
+## 7. Lo hecho en A3-1b (2026-11-06): tileset y suelo de fotos
+
+Los cuatro módulos de la tanda A3-1b pasan a `apps/web/src/mundos/exterior/` como componentes de los mundos `["exterior"]` con un `libera()` que suelta de verdad (MUNDOS §2, «Cómo quedó (MU5-n, A3-1b)»). Qué toca de la receta del §5 a cada uno:
+
+| Módulo | 1.er commit (TS y componente) | 2.º commit (materiales por la fábrica) | 3.er commit (TSL apagada) |
+|---|---|---|---|
+| `04e_suelo_fondo.js` → `suelo-fondo.ts` | hecho | hecho: `suelo-fondo` pasa de `parchea` a `define` + `Materiales.de("suelo-fondo").crea` y su `libera()` llama a `.libera()` | hecho: `MeshLambertNodeMaterial`, color de `matSuelo` (el mismo objeto, releído por objeto) por el mosaico pasado de sRGB a lineal con `sRGBTransferEOTF`. Probada en Vitest con `three/webgpu` y `three/tsl` de verdad; **no se dibuja** |
+| `04b_escena3d.js` → `escena-tiles.ts` | hecho (+ L2-04) | **no hace falta:** no crea ningún material; los de las teselas son de los glb y los libera `3d-tiles-renderer` | **no hace falta:** sin sombreador propio (el del terreno es el de `04d`, de otra tarea) |
+| `04c_olivos_tiles.js` → `olivos-tiles.ts` | hecho | **no hace falta:** solo retira (y libera) los materiales instanciados del glb, que no son suyos | **no hace falta** |
+| `04f_suelo_fotos.js` → `suelo-fotos.ts` | hecho | **no hace falta:** no tiene material propio; su GLSL (`SueloFotosPuro.glsl` / `parcheGlsl`) entra en el parche del terreno de `04d` y se apaga con la bandera | **no hace falta aquí.** Cuando se escriba la TSL del terreno (fila 1), `glsl()` es lo que hay que reusar con `glslFn` o portar a nodos: lleva el GLSL del suelo de fotos con sus anclas |
+
+- **Cobertura (`Materiales.cobertura()`):** `suelo-fondo` tiene clásico y TSL; el resto de la tabla del §1 sigue como estaba.
+- **Pruebas:** `suelo-fondo.test.ts` (el material sale de la fábrica con su dueño, mismo parche y misma clave de programa, `libera()` lo suelta, y la TSL con `three/webgpu` de verdad) y `pruebas/guardianes/materiales_f1.test.js` (el trinquete de `src/`: el fichero con `onBeforeCompile` lo registra con `.define(`).
+- **No probado:** que la TSL de `suelo-fondo` se vea igual que la clásica (capturas por material: MU6) ni en el Quest.
