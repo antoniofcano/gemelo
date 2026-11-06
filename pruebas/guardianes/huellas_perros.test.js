@@ -78,11 +78,11 @@ test("huellas-polvo: manifiesto, montaje con su presupuesto, el polvo por el Bus
   const antes = api.huellas(); m.g.pp.paso = 0; api.actualiza(0.016); m.g.pp.paso = Math.PI * 3.2; m.E.tVida += 0.016; api.actualiza(0.016);
   assert.ok(api.huellas() >= antes, "sigue acotado");
   const sp = espiaDispose();
-  try { d.libera(); n.suelta(); } finally { sp.quita(); }
+  try { d.libera(api); n.suelta(); } finally { sp.quita(); }
   assert.ok(sp.cuenta() >= 4, "dispose de geometrías y materiales: " + sp.cuenta());
   assert.strictEqual(m.scene.children.length, 1, "liberar deja la escena como estaba");
   assert.ok(!m.Bus.hay("polvo:emite"), "y no escucha");
-  assert.doesNotThrow(() => d.libera(), "liberar dos veces no rompe");
+  assert.doesNotThrow(() => d.libera(api), "liberar dos veces no rompe");
 });
 
 test("huellas-polvo (AG-1.3): sin huellas ni polvo vivos no hay pasada; cada uno se dibuja mientras le queda vida y se apaga al cumplirla", () => {
@@ -96,7 +96,7 @@ test("huellas-polvo (AG-1.3): sin huellas ni polvo vivos no hay pasada; cada uno
   m.E.tVida = 1; api.actualiza(0.016); assert.deepStrictEqual([iH.visible, pv.visible], [true, false], "el polvo (0,9 s) ya se apagó; la huella (75 s), no");
   m.Bus.emite("polvo:emite", { x: 0, y: 0, h: 0, vida: 2 }); assert.strictEqual(pv.visible, true, "otra bocanada lo vuelve a encender");
   m.E.tVida = 76; api.actualiza(0.016); assert.deepStrictEqual([iH.visible, pv.visible, dibujo(m.scene).llamadas], [false, false, 0], "todo apagado: ninguna pasada");
-  d.libera(); n.suelta();
+  d.libera(api); n.suelta();
 });
 
 test("huellas-polvo: las bocanadas con el suelo mojado no salen y apagado (sin montar) nada se dibuja", () => {
@@ -135,7 +135,7 @@ test("perros-paseo: manifiesto, montaje (llamadas y triángulos reales), llegada
   m.E.paseando = false; api.actualiza(0.05); assert.strictEqual(dibujo(m.gFauna).llamadas, 0);
   m.E.paseando = true;
   const sp = espiaDispose();
-  try { d.libera(); n.suelta(); } finally { sp.quita(); }
+  try { d.libera(api); n.suelta(); } finally { sp.quita(); }
   assert.ok(sp.cuenta() >= 10, "dispose de geometrías, materiales y texturas: " + sp.cuenta());
   assert.strictEqual(m.gFauna.children.length, 0, "la fauna queda como estaba");
   assert.strictEqual(m.capas.length, 0); assert.ok(!m.Bus.hay("perros:llegan") && !m.Bus.hay("perros:amenaza"));

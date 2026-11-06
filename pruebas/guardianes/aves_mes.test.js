@@ -7,6 +7,7 @@
 //   · la agregación y el filtro de licencias del exportador (tuberia/biodiversidad/prueba_biodiversidad.py), con una API de GBIF falsa, si hay Python.
 const test = require("node:test"), assert = require("node:assert");
 const { lee, python, ejecuta } = require("./_util");
+const Mundos = require("./_mundos"), { fuenteMotor } = require("./_fuente");   // 52 es un talón (MU5-n, A3-5): su código vive en mundos/exterior/aves-mes.ts
 const Ajv2020 = require("ajv/dist/2020").default;
 
 const ESQ = JSON.parse(lee("contratos/biodiversidad.schema.json")), EJ = JSON.parse(lee("contratos/biodiversidad-ejemplo.json"));
@@ -14,10 +15,8 @@ const V = new Ajv2020({ strict: true, strictRequired: false, allowUnionTypes: tr
 const errores = d => V(d) ? [] : V.errors.map(e => (e.instancePath || "/") + ": " + e.message);
 const copia = o => JSON.parse(JSON.stringify(o));
 
-const FUENTE = lee("apps/web/motor/52_aves_mes.js");
-const trozo = (s, ini, fin) => { const i = s.indexOf(ini), f = s.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas " + ini); return s.slice(i, f); };
-const P = new Function("\"use strict\";\n" + trozo(FUENTE, "// [puro:inicio]", "// [puro:fin]") + "\nreturn AvesMesPuro;")();
-const MOTOR = trozo(FUENTE, "// [motor:inicio]", "// [motor:fin]");
+const FUENTE = fuenteMotor("52_aves_mes.js");   // el talón y aves-mes.ts juntos
+const P = Mundos.AvesMesPuro;
 const ENERO = Date.UTC(2026, 0, 15, 12), JULIO = Date.UTC(2026, 6, 15, 12);
 
 // ---------- el contrato ----------
@@ -111,12 +110,11 @@ function mundo(base, respuesta) {
     appendChild(h) { this.hijos.push(h); h.parentNode = this; return h; }, removeChild(h) { this.hijos.splice(this.hijos.indexOf(h), 1); }, get firstChild() { return this.hijos[0]; } };
     return x; };
   const doc = { createElement: nodo, createTextNode: t => ({ tag: "#text", textContent: t, hijos: [] }) };
-  const api = new Function("AvesMesPuro", "D", "fetch", "Ventanas", "Hud", "document", "window", "Date", "PanelVR",
-    "\"use strict\";\n" + MOTOR + "\nreturn AvesMesMotor;")(
-    P, { base, biodiversidad: arguments.length > 2 ? arguments[2] : "biodiversidad.json" }, typeof respuesta === "undefined" ? undefined : (u, o) => { reg.fetches.push(u); return Promise.resolve(respuesta); },
-    { registra: (id, def) => { const cu = nodo("div"), v = { id, def, cu }; cu.parentNode = { hidden: true }; def.construye(cu); reg.ventanas.push(v); return () => { reg.quitadas++; }; } },
-    { icono: def => { reg.iconos.push(def); return () => { reg.quitadas++; }; } }, doc, {}, class extends Date { constructor(...a) { super(...(a.length ? a : [ENERO])); } static now() { return ENERO; } },
-    { filas: (pestana, def) => { const f = { pestana, def }; reg.filas.push(f); return () => { reg.filas.splice(reg.filas.indexOf(f), 1); }; } });
+  const deps = { D: { base, biodiversidad: arguments.length > 2 ? arguments[2] : "biodiversidad.json" }, fetch: typeof respuesta === "undefined" ? undefined : (u, o) => { reg.fetches.push(u); return Promise.resolve(respuesta); },
+    Ventanas: { registra: (id, def) => { const cu = nodo("div"), v = { id, def, cu }; cu.parentNode = { hidden: true }; def.construye(cu); reg.ventanas.push(v); return () => { reg.quitadas++; }; } },
+    Hud: { icono: def => { reg.iconos.push(def); return () => { reg.quitadas++; }; } }, document: doc, window: {}, ahora: () => ENERO,
+    PanelVR: { filas: (pestana, def) => { const f = { pestana, def }; reg.filas.push(f); return () => { reg.filas.splice(reg.filas.indexOf(f), 1); }; } } };
+  const api = n => Mundos.creaAvesMes(deps, n);
   const n = { limpia: f => reg.limpias.push(f) };
   return { api, n, reg };
 }
@@ -174,7 +172,7 @@ test("motor: si se libera antes de que llegue el fichero, no monta nada", async 
 });
 
 test("componente: manifiesto registrado con bandera ?aves, sin escena 3D y sin tocar la voz ni los ajustes", () => {
-  assert.match(FUENTE, /id: "aves-mes"/); assert.match(FUENTE, /bandera: \{ defecto: true, url: "aves" \}/); assert.match(FUENTE, /presupuesto: \{ llamadas: 0, triangulos: 0 \}/);
+  assert.match(FUENTE, /ID_AVES_MES = "aves-mes"/); assert.match(FUENTE, /bandera: \{ defecto: true, url: "aves" \}/); assert.match(FUENTE, /presupuesto: \{ llamadas: 0, triangulos: 0 \}/);
   assert.ok(!/\bTHREE\b|\bscene\b|\binnerHTML\b/.test(FUENTE.replace(/\/\/.*$/gm, "")), "sin geometría ni HTML");
 });
 

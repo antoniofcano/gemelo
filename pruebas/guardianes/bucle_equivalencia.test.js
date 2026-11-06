@@ -4,7 +4,7 @@
 // sus dependencias simuladas), así la prueba no puede divergir de lo que se envía. Esto vale para el resultado, no para el coste: los ms de Node son relativos
 // (regla 7); los fps o los tirones solo los da un dispositivo real.
 const test = require("node:test"), assert = require("node:assert");
-const { lee } = require("./_util");
+const { lee } = require("./_util"), { fuenteMotor } = require("./_fuente");
 const R = require("./_reservas");
 
 /** El texto de una función (declaración entera) de un módulo del motor. */
@@ -187,7 +187,7 @@ test("Bus.emite no reserva por emisión: sin cierre, sin slice ni forEach", () =
 // ---------- 3 · los llamadores por fotograma del nivel del sol piden nivelEn (sin objeto nuevo); el valor es el mismo (nivelEn == nivel, ver fauna_equivalencia.test.js) ----------
 test("actualizaPaisaje, actualizaSonido y actualizaHuellas piden el nivel del sol con nivelEn y un temporal del módulo, no con nivel()", () => {
   for (const [mod, ini, tmp] of [["18_paisaje.js", "function actualizaPaisaje(", "lvAgua"], ["20_sonido.js", "function actualizaSonido(", "lvSonido"], ["22b_huellas_polvo.js", "function actualizaHuellas(", "lvHuellas"]]) {
-    const cu = R.cuerpo(require("./_fuente").fuenteMotor(mod), ini);   // A3-3 y A3-4: 18_paisaje y 20_sonido son talones; su código está en paisaje.ts y sonido.ts
+    const cu = R.cuerpo(fuenteMotor(mod), ini);   // A3-3, A3-4 y A3-5: 18_paisaje, 20_sonido y 22b son talones; su código está en paisaje.ts, sonido.ts y huellas-polvo.ts
     assert.ok(cu !== null, mod + ": " + ini);
     assert.ok(!/\bnivel\(/.test(cu), mod + ": " + ini + " no debe llamar a nivel() (reserva un objeto por fotograma)");
     assert.ok(new RegExp("nivelEn\\((?:d\\.)?cur\\.ms, " + tmp + "\\)").test(cu), mod + ": " + ini + " pide nivelEn(cur.ms, " + tmp + ")");

@@ -10,7 +10,7 @@
 //   · «quitar funciona»: el motor sin cada componente es JavaScript válido, nadie lo nombra, y en Node arranca con él, sin él y apagado.
 // Lo de Chrome («con y sin» por el banco: llamadas y memoria) va en carga, escena3d, fichas_tiempo y las vr*, no aquí.
 const test = require("node:test"), assert = require("node:assert");
-const { RAIZ, lee, ejecuta, os, fs, path } = require("./_util");
+const { RAIZ, lee, ejecuta, os, fs, path } = require("./_util"), { fuenteMotor } = require("./_fuente");
 const vm = require("vm");
 const Ajv2020 = require("ajv/dist/2020").default;
 const contratoModulos = require(path.join(RAIZ, "pruebas", "contrato_modulos.js"));
@@ -384,9 +384,9 @@ test("C4 en Node: el sonido se monta con su pestaña de Configuración y su fila
   // sin el fichero: nadie atiende y el resumen está vacío
   r = arranca("", "", {}); assert.deepStrictEqual(r.Componentes.resumen(), []); assert.strictEqual(r.Bus.emite("sonido:golpe", {}), 0);
   // los demás módulos hablan por el Bus (no nombran al sonido): la fuente de cada uno emite lo que el catálogo dice
-  assert.match(require("./_fuente").fuenteMotor("19_balizas.js"), /[Bb]us\.emite\("sonido:baliza"/);   // A3-3: 19_balizas es un talón; su código está en balizas.ts
-   assert.match(lee("apps/web/motor/24_pantalla.js"), /Bus\.emite\("sonido:golpe"/);
-  assert.match(lee("apps/web/motor/25_perros.js"), /n\.emite\("sonido:ladrido"/); assert.match(lee("apps/web/motor/29_vr.js"), /Bus\.emite\("audio:desbloquea"/);
+  assert.match(fuenteMotor("19_balizas.js"), /[Bb]us\.emite\("sonido:baliza"/);   // A3-3: 19_balizas es un talón; su código está en balizas.ts
+  assert.match(lee("apps/web/motor/24_pantalla.js"), /Bus\.emite\("sonido:golpe"/);
+  assert.match(fuenteMotor("25_perros.js"), /n\.emite\("sonido:ladrido"/); assert.match(lee("apps/web/motor/29_vr.js"), /Bus\.emite\("audio:desbloquea"/);   // A3-5: 25_perros es un talón de perros.ts
   assert.doesNotMatch(sinComentarios(lee("apps/web/motor/90_final.js")), /actualizaSonido/);
 });
 

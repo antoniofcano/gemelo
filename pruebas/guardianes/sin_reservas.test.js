@@ -5,7 +5,7 @@
 //  2. El texto del HUD y el de ?debug se refrescan a 4 Hz como mucho (no cada fotograma).
 // Esto cuenta lo que SE RESERVA, no lo que cuesta: los milisegundos y los tirones solo los da un dispositivo real (?debug), y en el casco, no probado.
 const test = require("node:test"), assert = require("node:assert");
-const { lee } = require("./_util");
+const { lee } = require("./_util"), { fuenteMotor } = require("./_fuente");   // A3-5: 16b es un talón de mundos/exterior/fauna.ts
 const R = require("./_reservas");
 
 // ---------- el propio analizador (que no falle en falso ni calle de más) ----------
@@ -64,7 +64,7 @@ test("el HUD refresca su estado a 4 Hz como mucho (31_hud.js)", () => {
 });
 
 test("el texto del dron se escribe a 4 Hz como mucho (16_vida.js)", () => {
-  const cu = R.cuerpo(lee("apps/web/motor/16_vida.js"), "function vidaDron(");
+  const cu = R.cuerpo(fuenteMotor("16_vida.js"), "function vidaDron(");   // A3-5: 16_vida es un talón de mundos/exterior/vida.ts
   assert.ok(/if \(ins\.d > 0\.25\) \{[^}]*textContent = textoDron\(/.test(cu), "tDron solo se escribe cuando ins.d pasa de 0,25 s");
 });
 
@@ -76,10 +76,10 @@ test("el contador de ?debug refresca su texto cada 500 ms como mucho (28_depura.
 
 // ---------- el nivel del sol y los llamadores de 16_vida (AG-1.4b) ----------
 test("16_vida.js pide el nivel del sol por fotograma con nivelEn (un temporal del módulo), no con nivel(), que reserva", () => {
-  const v = lee("apps/web/motor/16_vida.js");
-  assert.ok(!/nivel\(/.test(v), "16_vida.js no debe llamar a nivel(ms) (reserva dos objetos por llamada): usa nivelEn(ms, lvVida)");
+  const v = fuenteMotor("16_vida.js");
+  assert.ok(!/\bnivel\(/.test(v), "16_vida.js no debe llamar a nivel(ms) (reserva dos objetos por llamada): usa nivelEn(ms, lvVida)");
   assert.ok(/nivelEn\(cur\.ms, lvVida\)/.test(v));
-  assert.ok(!/nivel\(/.test(lee("apps/web/motor/16b_fauna.js")), "16b_fauna.js tampoco");
+  assert.ok(!/\bnivel\(/.test(fuenteMotor("16b_fauna.js")), "16b_fauna.js tampoco");
 });
 
 test("nivel(ms) reserva (es la de siempre) y nivelEn no: el analizador lo ve en las dos", () => {

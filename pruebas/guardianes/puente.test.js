@@ -133,6 +133,7 @@ test("los talones de apps/web/motor/ tienen la forma de MUNDOS §9.3 (marca, cab
 // recoloreaSuelo). Es un análisis léxico: los `x: x` que van dentro de una función que corre más tarde no son problema y se anotan con su motivo.
 const IZADO_OK = {
   "02c_componentes.js:listo": "el return de Config: es su propio listo, no el de 08",
+  "02c_componentes.js:quita": "el return de Pausa: es su propio quita, no el de 16_vida",
   "12b_llegada.js:enDron": "dentro de window.__llegada, que se llama en las pruebas, con todo cargado",
   "13b_hazas.js:lindes": "el return de Hazas: es su función local lindes(), no la de 15"
 };

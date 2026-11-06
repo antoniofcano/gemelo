@@ -64,7 +64,7 @@ export { DecoracionesPuro, ID_DECORACIONES, creaDecoraciones, decoracionesGeomet
 export type { DepsDecoraciones, EstadoDecoraciones, UtilesGeometria } from "./exterior/decoraciones.ts";
 // A3-4 (MU5-n): el cielo, el tiempo y el suelo del exterior, componentes con su libera() de verdad.
 export { creaTiempo, creaTiempoVivo, manifiestoTiempo, ID_TIEMPO } from "./exterior/tiempo.ts";
-export type { DepsTiempo, Tiempo } from "./exterior/tiempo.ts";
+export type { DepsTiempo as DepsTiempoMundo, Tiempo } from "./exterior/tiempo.ts";
 export { TiempoPuro, creaNivelSol, creaReloj, creaFormatos, num1, rumbo, esc, hace, LAT, LON, ZONA, DEMOS } from "./exterior/tiempo-puro.ts";
 export { GLSL_SOMBRA, creaParcheTiempo } from "./exterior/tiempo-parche.ts";
 export type { ParcheTiempo, UniformesSombra, UniformesViento } from "./exterior/tiempo-parche.ts";
@@ -81,3 +81,20 @@ export { creaSolReserva, manifiestoSolReserva, ID_SOL_RESERVA } from "./exterior
 export type { DepsSolReserva, SolReserva } from "./exterior/sol-reserva.ts";
 export { creaEstacion, manifiestoEstacion, ID_ESTACION } from "./exterior/estacion.ts";
 export type { DepsEstacion, Estacion } from "./exterior/estacion.ts";
+// A3-5 (MU5-n): la vida del olivar. Cada uno, con su libera() de verdad.
+export { ID_TRABAJO_HOY, TrabajoHoyPuro, creaTrabajoHoy, manifiestoTrabajoHoy } from "./exterior/trabajo-hoy.ts";
+export type { DepsTrabajoHoy, TrabajoHoy } from "./exterior/trabajo-hoy.ts";
+export { ID_AVES_MES, AvesMesPuro, creaAvesMes, manifiestoAvesMes } from "./exterior/aves-mes.ts";
+export type { AvesMes, DepsAvesMes } from "./exterior/aves-mes.ts";
+// A3-5: la pendiente del paseo (22_huellas) y las huellas y el polvo (22b_huellas_polvo).
+export { creaHuellas } from "./exterior/huellas.ts";
+export type { DepsHuellas, Huellas } from "./exterior/huellas.ts";
+export { ID_HUELLAS_POLVO, creaHuellasPolvo, manifiestoHuellasPolvo } from "./exterior/huellas-polvo.ts";
+export type { DepsHuellasPolvo, HuellasPolvo } from "./exterior/huellas-polvo.ts";
+export type { LecturaVida, LecturaPaseo, DepsTiempo } from "./exterior/vida-tipos.ts";
+export { ID_FAUNA, creaFauna, manifiestoFauna } from "./exterior/fauna.ts";
+export type { DepsFauna, Fauna } from "./exterior/fauna.ts";
+export { ID_PERROS, angCorto, creaPerros, manifiestoPerros } from "./exterior/perros.ts";
+export type { DepsPerros, Perros } from "./exterior/perros.ts";
+export { ID_VIDA, creaVida } from "./exterior/vida.ts";
+export type { DepsVida, EstadoVida, Vida } from "./exterior/vida.ts";

@@ -234,10 +234,10 @@
         }
       },
       "emiten": [
-        "25_perros"
+        "mundos/exterior/perros"
       ],
       "escuchan": [
-        "16b_fauna"
+        "mundos/exterior/fauna"
       ]
     },
     "guiada:cierre": {
@@ -717,7 +717,7 @@
       ],
       "escuchan": [
         "mundos/exterior/carteles",
-        "54_trabajo_hoy"
+        "mundos/exterior/trabajo-hoy"
       ]
     },
     "mundo:pausa": {
@@ -802,20 +802,20 @@
       "descripcion": "El muñequito empieza a pasear (entraPaseo, ya con la cámara en el paseo): lo que vive solo mientras se pasea (la fauna) se coloca entre los olivos.",
       "datos": {},
       "emiten": [
-        "16_vida"
+        "mundos/exterior/vida"
       ],
       "escuchan": [
-        "16b_fauna"
+        "mundos/exterior/fauna"
       ]
     },
     "paseo:sale": {
       "descripcion": "El muñequito deja de pasear: lo que vive solo mientras se pasea (la fauna) se esconde.",
       "datos": {},
       "emiten": [
-        "16_vida"
+        "mundos/exterior/vida"
       ],
       "escuchan": [
-        "16b_fauna"
+        "mundos/exterior/fauna"
       ]
     },
     "perros:amenaza": {
@@ -842,23 +842,23 @@
         }
       },
       "emiten": [
-        "16b_fauna"
+        "mundos/exterior/fauna"
       ],
       "escuchan": [
-        "25_perros"
+        "mundos/exterior/perros"
       ]
     },
     "perros:llegan": {
       "descripcion": "El muñequito acaba de aterrizar (o se entra en VR sin haber paseado): los perros salen de entre los olivos corriendo hacia él. Sin perros, no pasa nada.",
       "datos": {},
       "emiten": ["24_pantalla", "29_vr"],
-      "escuchan": ["25_perros"]
+      "escuchan": ["mundos/exterior/perros"]
     },
     "polvo:emite": {
       "descripcion": "Una bocanada de polvo en { x (este), y (norte) } en metros del mundo, a altura h, con velocidad (vx, vy, vz), tamaño y vida en segundos. La dibuja quien lleve el polvo (huellas y polvo); sin él, no se ve.",
       "datos": { "type": "object", "required": ["x", "y", "h"], "properties": { "x": { "type": "number" }, "y": { "type": "number" }, "h": { "type": "number" }, "vx": { "type": "number" }, "vy": { "type": "number" }, "vz": { "type": "number" }, "tam": { "type": "number" }, "vida": { "type": "number" } } },
-      "emiten": ["24_pantalla", "25_perros"],
-      "escuchan": ["22b_huellas_polvo"]
+      "emiten": ["24_pantalla", "mundos/exterior/perros"],
+      "escuchan": ["mundos/exterior/huellas-polvo"]
     },
     "prevision:alterna": {
       "descripcion": "Abrir o cerrar la lámina de la previsión del tiempo en el mundo (el botón «Ver la previsión en el mundo» de la ventana Tiempo y, en VR, «hora» en el menú de muñeca, EV2-A3). Sin datos alterna; con abre true o false, abre o cierra.",
@@ -946,10 +946,10 @@
       },
       "emiten": [
         "24_pantalla",
-        "25_perros"
+        "mundos/exterior/perros"
       ],
       "escuchan": [
-        "22b_huellas_polvo"
+        "mundos/exterior/huellas-polvo"
       ]
     },
     "presencia:activada": {
@@ -1090,7 +1090,7 @@
         }
       },
       "emiten": [
-        "25_perros"
+        "mundos/exterior/perros"
       ],
       "escuchan": [
         "mundos/exterior/sonido"

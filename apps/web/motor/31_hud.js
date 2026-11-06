@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Hud
 // Consume: 01_datos ($), 02c_componentes (Bus), 03_escena (lienzo, visor, camera), 09_camara (orb), 12_paseo (paseando, pp), 14_historia (aviso),
-//   15_tiempo (esc), 16_vida (enQuad, ponQuad, enDron, dr, ponDron), 24_pantalla (Menu), 29_vr (VRX), 32_ventanas (Ventanas), 33_ajustes (Ajustes),
+//   15_tiempo (esc), 16_vida (enQuad, enDron, ponQuad, dr, ponDron), 24_pantalla (Menu), 29_vr (VRX), 32_ventanas (Ventanas), 33_ajustes (Ajustes),
 //   34_movibles (Movibles)
 // ===============================================================================
   // ---------- el HUD (doc/sistema/UX-FINCA-JUEGO.md §4.3): estado arriba a la izquierda (brújula, cómo te mueves, el tiempo), barra de iconos arriba a la

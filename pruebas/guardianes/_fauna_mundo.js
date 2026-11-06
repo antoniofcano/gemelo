@@ -68,14 +68,22 @@ function construye(THREE, fichero, copas, sem) {
     mira(o, hx, hz) { o.rotation.y = Math.atan2(-hx, -hz); },
     fusionaGeometrias: require("./_materiales").fabrica(THREE).fusionaGeometrias   // 02k_fusiona.js (AG-1.13b)
   };
-  // El código se evalúa como en el motor: dentro de una función, con lo que consume como variables de esa función (no como globales de un contexto vm, que son
-  // mucho más lentas de leer y falsearían los tiempos), y con paseando / enQuad / tVida como variables que se cambian por fuera con __pon.
-  const nombres = Object.keys(g), valores = nombres.map(k => g[k]);
-  const cuerpo = '"use strict";\nvar paseando = true, enQuad = false, tVida = 0, LAT = 37.7, LON = -4.0;\nfunction __pon(a, b, c) { paseando = a; enQuad = b; tVida = c; }\n' +
-    (nuevo ? nivelNuevo() : NIVEL_ANTES) + "\n" + lee(fichero) + "\nreturn __pon;";
-  const pon = new Function(...nombres, cuerpo)(...valores);
-  const n = { on: (ev, fn) => (Bus.on(ev, fn), fn), emite: (ev, d) => Bus.emite(ev, d), limpia: fn => fn, api: () => null, parametros: {} };
-  const api = defs[0].monta(n);
+  const n = { on: (ev, fn) => Bus.on(ev, fn), emite: (ev, d) => Bus.emite(ev, d), limpia: fn => fn, api: () => null, parametros: {} };
+  let pon, api;
+  if (nuevo) {
+    // lo de ahora vive en apps/web/src/mundos/exterior/fauna.ts (MU5-n, A3-5): se monta con el manifiesto de Mundos, con el mismo azar de semilla (aleatorio) y el nivel del sol de 15_tiempo
+    const Mundos = require("./_mundos"), nivelEn = new Function("LAT", "LON", '"use strict";\n' + nivelNuevo() + "\nreturn nivelEn;")(37.7, -4.0);
+    const deps = { THREE, Materiales: require("./_materiales").fabrica(THREE).Materiales, camera: g.camera, D: g.D, copas, cIn, geoSombra: g.geoSombra, matSombra: g.matSombra, paseando: () => E.paseando, pp: g.pp, cur: g.cur, nivelEn,
+      tVida: () => E.tVida, enQuad: () => E.enQuad, gFauna, altSuelo: g.altSuelo, mira: g.mira, Estado: g.Estado, Minimapa, fusionaGeometrias: g.fusionaGeometrias, aleatorio: rnd };
+    defs.push(Mundos.manifiestoFauna(deps)); pon = () => {}; api = defs[0].monta(n);
+  } else {
+    // El código se evalúa como en el motor: dentro de una función, con lo que consume como variables de esa función (no como globales de un contexto vm, que son
+    // mucho más lentas de leer y falsearían los tiempos), y con paseando / enQuad / tVida como variables que se cambian por fuera con __pon.
+    const nombres = Object.keys(g), valores = nombres.map(k => g[k]);
+    const cuerpo = '"use strict";\nvar paseando = true, enQuad = false, tVida = 0, LAT = 37.7, LON = -4.0;\nfunction __pon(a, b, c) { paseando = a; enQuad = b; tVida = c; }\n' +
+      NIVEL_ANTES + "\n" + lee(fichero) + "\nreturn __pon;";
+    pon = new Function(...nombres, cuerpo)(...valores); api = defs[0].monta(n);
+  }
   // los perros: uno que da vueltas y asusta a los conejos que se le acercan (la misma respuesta para las dos versiones)
   let fot = 0; Bus.on("perros:amenaza", q => { const px = 30 * Math.cos(fot * 0.02), py = 20 * Math.sin(fot * 0.017); if (Math.hypot(q.x - px, q.y - py) < 14) q.res = { x: px, y: py }; });
   return { api, E, g, Bus, pon, mallas: () => gFauna.children.filter(o => o.isInstancedMesh), gFauna, def: defs[0],

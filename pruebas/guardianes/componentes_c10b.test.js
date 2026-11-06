@@ -4,7 +4,7 @@
 // presupuesto), se atienden los eventos del Bus, se mueven unos fotogramas y, al liberar, la escena queda como estaba y los recursos de GPU se sueltan (dispose).
 // Lo de Chrome (que se vea igual) va por el banco; lo no probado en Quest ni iPhone sigue sin probar.
 const test = require("node:test"), assert = require("node:assert"), vm = require("vm"), path = require("path"), { pathToFileURL } = require("url");
-const { lee, RAIZ } = require("./_util");
+const { lee, RAIZ } = require("./_util"), { fuenteMotor } = require("./_fuente");
 
 let THREE;
 test.before(async () => { THREE = await import(pathToFileURL(path.join(RAIZ, "apps/web/node_modules/three/build/three.module.js")).href); });
@@ -102,9 +102,9 @@ test("fauna-olivar: manifiesto, montaje, paseo:entra coloca aves y conejos, pres
 test("fauna-olivar: sin montar nadie responde (los perros no persiguen a nadie) y 16_vida ya no la nombra", () => {
   const m = mundo(); carga("16b_fauna.js", m);
   const q = { x: 0, y: 0, radio: 9, res: null }; assert.strictEqual(m.Bus.emite("fauna:conejo-cerca", q), 0); assert.strictEqual(q.res, null);
-  const v = lee("apps/web/motor/16_vida.js").replace(/\/\/.*$/gm, "");
+  const v = fuenteMotor("16_vida.js").replace(/\/\/.*$/gm, "");
   assert.ok(!/\b(conejos|bandada|posadas|empacaAves)\b/.test(v), "16_vida.js sigue nombrando la fauna");
-  assert.match(v, /Bus\.emite\("paseo:entra"\)/); assert.match(v, /Bus\.emite\("paseo:sale"\)/);
+  assert.match(v, /bus\.emite\("paseo:entra"\)/); assert.match(v, /bus\.emite\("paseo:sale"\)/);   // A3-5: 16_vida es un talón de mundos/exterior/vida.ts, que llama bus a su Bus
   assert.ok(!/\bconejos\b/.test(lee("apps/web/motor/17_minimapa.js").replace(/^\s*\/\/.*$/gm, "")), "17_minimapa.js sigue nombrando los conejos");
 });
 

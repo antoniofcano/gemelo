@@ -5,7 +5,7 @@
 // nada; con ?presencia=sim los avatares cuestan las mismas llamadas con 10 que con 40 visitantes (instanciado), sin errores, y libera() suelta la GPU.
 // GEMELO_MIDE=1 imprime las cifras. SwiftShader vale para recuentos, no para fps.
 const test = require("node:test"), assert = require("node:assert");
-const { lee, path } = require("./_util");
+const { lee, path } = require("./_util"), { fuenteMotor } = require("./_fuente");
 const { sirve, motivoSalto, lanza, ESCENARIOS, desgloseLlamadas, VENTANA_CHICA, ventanaDe } = require("./_navegador");
 const { montaPagina, saltoPagina } = require("./_pagina");
 
@@ -221,10 +221,10 @@ test("modo (P6): el búfer lo lleva hasta la pose que se dibuja", () => {
   BufferPose.muestra(b, 1000, 0, out); assert.strictEqual(out.modo, 1, "el de la pose más reciente de las dos que se interpolan");
 });
 test("muñeco (P6): en quad, sentado (piernas 1,15 y brazos 1,05 rad, los de 16_vida.js), sin balanceo ni bote, 0,2 m detrás del quad; con el dron, de pie y brazos al mando", () => {
-  const VIDA = lee("apps/web/motor/16_vida.js");
+  const VIDA = fuenteMotor("16_vida.js");   // A3-5: 16_vida es un talón de mundos/exterior/vida.ts
   assert.ok(VIDA.includes("u.pi.rotation.x = u.pd.rotation.x = 1.15; u.bi.rotation.x = u.bd.rotation.x = 1.05"), "16_vida.js ya no sienta así al paseante (cambia también Muneco)");
   assert.ok(VIDA.includes("ud.bi.rotation.x = ud.bd.rotation.x = 1.0"), "16_vida.js ya no pone así los brazos con el dron");
-  assert.ok(VIDA.includes("persona.position.set(pp.x - fx * 0.2, gy - 0.02, -pp.y - fz * 0.2)"), "16_vida.js ya no coloca así al paseante en el quad");
+  assert.ok(VIDA.includes("persona().position.set(pp.x - fx * 0.2, gy - 0.02, -pp.y - fz * 0.2)"), "16_vida.js ya no coloca así al paseante en el quad");
   const avanzaCon = (modo, vel, seg, yawCab = 0.7) => { const st = Muneco.crea(), o = {}, dt = 1 / 60; let x = 0, z = 0, maxP = -9, minP = 9, maxBote = -1;
     for (let i = 0; i < seg * 60; i++) { z -= vel * dt; Muneco.avanza(st, x, z, yawCab, dt, 100, 1, NaN, false, o, modo); maxP = Math.max(maxP, o.piernaI); minP = Math.min(minP, o.piernaI); maxBote = Math.max(maxBote, o.yPies); }
     return { o, maxP, minP, maxBote }; };

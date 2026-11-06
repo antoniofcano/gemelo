@@ -2,7 +2,7 @@
 // Expone: (nada al resto de módulos)
 // Consume: 01_datos (D), 01a_aparato (Aparato), 02_mundo (suelo), 02c_componentes (ConfigPuro, Componentes), 02e_entidades (Entidades),
 //   02i_materiales (Materiales), 03_escena (visor, renderer, scene, camera, texColor, Estado), 09_camara (objetivo), 12_paseo (paseando, pp),
-//   12b_llegada (Llegada), 16_vida (enQuad, quad, enDron, dron), 24_pantalla (TR),
+//   12b_llegada (Llegada), 16_vida (enQuad, enDron, quad, dron), 24_pantalla (TR),
 //   26_presencia (PoseCodec, BufferPose, Aspecto, SalaPose, Chat, Muneco, AutoPresencia, Reintento, sitioJunto), 29_vr (VRX), 33_ajustes (Ajustes),
 //   34_movibles (Movibles)
 // Nota: Componente «presencia-compartida» (ADR-0023, C5): solo se registra; consume la red (sala «visita») y expone «Presencia» (para los avatares VRM). Sin ?presencia=sim o ?presencia=red, montado no crea nada; con red, el panel Gente y el chat; F3f: viaja a la sala de una visita guiada (Presencia.entraGuiada, token de F3c) y vuelve sola a la general si la sala se cierra o te sacan. Registra el tipo persona en Entidades (C7) y da su línea de ?debug por «depura:lineas». F3k-3: acciones de otros componentes en la ficha de una persona y en su fila de Gente (Presencia.accionesPersona; los corros de 47b), su distancia (Presencia.distancia) y repintar Gente (Presencia.repintaGente). Publica window.__presencia y window.__presenciaChat (pruebas). Lo prueba en Node pruebas/guardianes/red.test.js.

@@ -53,7 +53,7 @@ Los componentes del motor ([ADR-0023](../doc/adr/0023-componentes-del-mundo.md),
 | `medida:muestra` | `{ on }` | `33_ajustes` (cambia «Contador de rendimiento») | `30_mide` (enseña o esconde su caja) |
 | `mundo:aplica` | (nada) | `mundos/exterior/marcadores` (`aplica()`: cambió la exageración, el modo o los datos de las teselas) | `mundos/exterior/marcadores-lidar` (recoloca copas, anillos y desfase) |
 | `ndvi:cambia` | `{ lo, hi }` | `mundos/exterior/ndvi` (`pintaNdvi()` de `10_ndvi`, que es `Ndvi.pinta` desde MU5-n: cambió la fecha del campo o la escala relativa) | `mundos/exterior/capa-ndvi` (el componente de `10b_capa_ndvi`: rehace la textura, la leyenda y la gráfica) |
-| `mundo:hoy` | `{ linea: { txt, de, cuando } \| null, trabajo: { parcelas: [id], cuando } \| null }` | `53_mundo_hoy` (tras cada lectura buena de `/api/mundo/hoy`) | `44b_carteles` (la línea «Hoy en el olivar» del tablón), `54_trabajo_hoy` (un tractor en cada haza con tarea en curso, apagado por defecto) |
+| `mundo:hoy` | `{ linea: { txt, de, cuando } \| null, trabajo: { parcelas: [id], cuando } \| null }` | `53_mundo_hoy` (tras cada lectura buena de `/api/mundo/hoy`) | `44b_carteles` (la línea «Hoy en el olivar» del tablón), `mundos/exterior/trabajo-hoy` (antes 54_trabajo_hoy: un tractor en cada haza con tarea en curso, apagado por defecto) |
 | `mundo:pausa` | `{ activa }` | `02c_componentes` (`Pausa.pon` / `Pausa.quita`) | (nadie todavía) |
 | `mundo:entra` | `{ id, desde, hacia }` (`desde` null al arrancar; en una vuelta atrás, el de antes entra desde el que falló) | `nucleo/mundos` (el gestor, por `deps.avisa`, tras `entra()`; MU2-5: aún sin cablear al motor) | `nucleo/componentes` (ese mundo pasa a activo: corren las fases de sus componentes y, si no estaba cargado, se montan) |
 | `mundo:sale` | `{ id, desde, hacia }` (`id` = `desde`) | `nucleo/mundos` (el gestor, tras `sale()` y `congela()`; aún sin cablear) | `nucleo/componentes` (hasta el siguiente `mundo:entra` no corre ninguna fase) |
@@ -64,10 +64,10 @@ Los componentes del motor ([ADR-0023](../doc/adr/0023-componentes-del-mundo.md),
 | `sonido:baliza` | `{ completa? }` | `19_balizas` (al llegar a una baliza) | `20_sonido` (campanilla o arpegio) |
 | `sonido:golpe` | — | `24_pantalla` (el aterrizaje del paseo) | `20_sonido` |
 | `sonido:juego` | `{ que, cadena? }` | `41_cae_la_cosecha` | `20_sonido` (notas cortas sintetizadas) |
-| `perros:amenaza` | `{ x, y, res }` (pregunta: quien escuche rellena `res` con `{ x, y }` o lo deja en `null`) | `16_vida` | `25_perros` |
-| `perros:llegan` | (nada) | `24_pantalla`, `29_vr` | `25_perros` |
-| `polvo:emite` | `{ x, y, h, vx?, vy?, vz?, tam?, vida? }` | `24_pantalla`, `25_perros` | `22b_huellas_polvo` |
-| `sonido:ladrido` | `{ grave? }` | `25_perros` | `20_sonido` |
+| `perros:amenaza` | `{ x, y, res }` (pregunta: quien escuche rellena `res` con `{ x, y }` o lo deja en `null`) | `mundos/exterior/fauna` | `mundos/exterior/perros` |
+| `perros:llegan` | (nada) | `24_pantalla`, `29_vr` | `mundos/exterior/perros` |
+| `polvo:emite` | `{ x, y, h, vx?, vy?, vz?, tam?, vida? }` | `24_pantalla`, `mundos/exterior/perros` | `mundos/exterior/huellas-polvo` (antes 22b_huellas_polvo) |
+| `sonido:ladrido` | `{ grave? }` | `mundos/exterior/perros` | `20_sonido` |
 | `usable:cerca` | `{ id \| null }` | `02e_entidades` (`Usables.actualiza`, al pasear: cambia lo más cercano dentro de su radio) | (nadie todavía: `19_balizas` lo lee con `Usables.cercano()`) |
 | `usable:elige` | `{ id, tipo, como }` | `02e_entidades` (toque, clic, rayo y gatillo, tecla) | (nadie todavía) |
 | `usable:suelta` | `{ id, motivo }` | `02e_entidades` | (nadie todavía) |
