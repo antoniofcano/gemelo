@@ -42,6 +42,20 @@ export function defNombres() {
           " float col = mod(aCelda, uRej.x), fila = floor(aCelda / uRej.x); vUv = vec2((col + uv.x) / uRej.x, 1.0 - (fila + 1.0 - uv.y) / uRej.y); }",
         fragmentShader: "uniform sampler2D uMapa; varying vec2 vUv;\nvoid main(){ vec4 t = texture2D(uMapa, vUv); if (t.a < 0.04) discard; gl_FragColor = t;\n#include <colorspace_fragment>\n}"
       });
+    },
+    // MU5-n (A3-6a, tercer commit): la variante TSL, APAGADA (solo la daría la fábrica con el WebGPURenderer, MU6; hoy nadie la usa) y PARCIAL (MATERIALES §13.1).
+    // Un MeshBasicNodeMaterial transparente, sin escribir profundidad y sin niebla, con la celda del atlas de cada instancia (aCelda) leída del MISMO atlas y la MISMA
+    // rejilla (los { value } de opc.uniforms: la textura y el Vector2 son los objetos del componente) y el descarte por alfa (alphaTest 0,04, el «t.a < 0.04» del GLSL).
+    // FALTA: ponerlo de cara a la cámara (el clásico lo hace en su vertexShader, con la escala de la instancia); sin vertexNode, cada nombre sería un plano con la
+    // orientación de su instanceMatrix. En VR tiene que hacerse POR OJO (multiview): es lo que da la M de MATERIALES §1. Se mide y se compara en MU6.
+    tsl: function (opc: { uniforms: Record<string, { value: any }> }, c: { THREE: any; TSL: any }) {
+      const T = c.TSL, u = opc.uniforms, mapa = u["uMapa"]!.value, rej = T.uniform(u["uRej"]!.value);   // el mismo Vector2: si la rejilla cambia, la TSL la ve
+      const celda = T.attribute("aCelda", "float"), col = T.mod(celda, rej.x), fila = T.floor(celda.div(rej.x));
+      const vUv = T.vec2(col.add(T.uv().x).div(rej.x), T.float(1).sub(fila.add(1).sub(T.uv().y).div(rej.y)));
+      const t = T.texture(mapa, vUv);
+      const m = new c.THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, fog: false, alphaTest: 0.04 });
+      m.colorNode = t.rgb; m.opacityNode = t.a;
+      return m;
     }
   };
 }

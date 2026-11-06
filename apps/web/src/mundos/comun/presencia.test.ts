@@ -8,7 +8,7 @@ import { ComponentesPuro } from "../../nucleo/componentes.ts";
 import { creaMateriales } from "../../nucleo/materiales.ts";
 import type { ThreeMin } from "../../nucleo/materiales.ts";
 import { creaSitioJunto } from "./muneco.ts";
-import { ID_PRESENCIA, creaPresencia, manifiestoPresencia } from "./presencia.ts";
+import { ID_PRESENCIA, MATERIAL_NOMBRES, creaPresencia, defNombres, manifiestoPresencia } from "./presencia.ts";
 import type { DepsPresencia } from "./presencia.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -108,5 +108,21 @@ describe("presencia-compartida: de todo mundo y con libera() de verdad (A3-6a)",
     expect(r.window.__presencia().activo).toBe(false);   // el gancho sigue contestando, como antes de C5
     r.api.libera();   // dos veces: no falla ni suelta dos veces
     expect(r.quitados).toEqual(["persona"]);
+  });
+
+  it("la variante TSL de los nombres (tercer commit): apagada; con three/webgpu y three/tsl de verdad es un MeshBasicNodeMaterial con sus nodos, y solo sale con el renderer nuevo", async () => {
+    const rutaW = "three/webgpu", rutaT = "three/tsl";   // por variable: three no trae tipos (y así tampoco entra en el grafo de dependency-cruiser)
+    const W = await import(/* @vite-ignore */ rutaW), T = await import(/* @vite-ignore */ rutaT);
+    const nuevo = creaMateriales({ THREE: THREE as unknown as ThreeMin, render: { tipo: "nuevo", pedido: "nuevo" }, nodos: () => ({ THREE: W, TSL: T }) });
+    const clasico = creaMateriales({ THREE: THREE as unknown as ThreeMin, busqueda: "" });
+    for (const M of [nuevo, clasico]) M.define(MATERIAL_NOMBRES, defNombres());
+    expect(nuevo.ruta(MATERIAL_NOMBRES)).toBe("tsl"); expect(clasico.ruta(MATERIAL_NOMBRES)).toBe("clasico");
+    const uni = { uMapa: { value: new THREE.Texture() }, uRej: { value: new THREE.Vector2(4, 13) } };
+    const m: any = nuevo.crea(MATERIAL_NOMBRES, { uniforms: uni });
+    expect(m.isNodeMaterial).toBe(true); expect(m.type).toBe("MeshBasicNodeMaterial");
+    expect(m).toMatchObject({ transparent: true, depthWrite: false, fog: false, alphaTest: 0.04 });
+    expect(m.colorNode).toBeTruthy(); expect(m.opacityNode).toBeTruthy(); expect(m.vertexNode).toBeFalsy();   // de cara a la cámara: falta (MATERIALES §13.1)
+    expect(clasico.crea(MATERIAL_NOMBRES, { uniforms: uni })).toMatchObject({ type: "ShaderMaterial" });
+    expect(nuevo.cobertura()[MATERIAL_NOMBRES]).toMatchObject({ clasico: true, tsl: true });
   });
 });
