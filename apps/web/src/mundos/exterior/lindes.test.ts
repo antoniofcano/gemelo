@@ -77,7 +77,7 @@ describe("lindes de las hazas (componente del exterior)", () => {
     const e = entorno(HAZAS), api = e.motor.LindesMotor(e.n, () => Promise.resolve(e.lib)), F = e.deps.Materiales;
     await new Promise(r => setTimeout(r, 0));
     expect(MATERIAL_LINDES).toBe("lindes-acerca");
-    expect(F.cobertura()["lindes-acerca"]).toEqual({ clasico: true, tsl: false, usado: 2 }); expect(F.inventario()["lindes-acerca"]).toEqual({ tipo: "define", n: 2 }); expect(F.duenos()).toEqual({ "lindes-hazas": 2 });
+    expect(F.cobertura()["lindes-acerca"]).toEqual({ clasico: true, tsl: true, usado: 2 }); expect(F.inventario()["lindes-acerca"]).toEqual({ tipo: "define", n: 2 }); expect(F.duenos()).toEqual({ "lindes-hazas": 2 });
     const [mia, otra] = e.reg.añadidos[0]!.children as { material: { uniforms: { uAcerca: { value: number } }; onBeforeCompile(sh: unknown): void; customProgramCacheKey(): string; o: { linewidth: number; transparent: boolean } } }[];
     expect(mia!.material.uniforms.uAcerca.value).toBeCloseTo(1 - 0.004, 12); expect(otra!.material.uniforms.uAcerca.value).toBeCloseTo(1 - 0.002, 12);
     expect(mia!.material.o.linewidth).toBe(4); expect(otra!.material.o.transparent).toBe(true);
@@ -87,6 +87,26 @@ describe("lindes de las hazas (componente del exterior)", () => {
     const a = DEF_LINDES.clasico!({ LineMaterial: e.lib.LineMaterial, acerca: 0.01, parche: () => { /* sin efecto */ }, params: { color: 1, linewidth: 3, worldUnits: false, transparent: false, opacity: 1, depthWrite: true } }, { THREE, nombre: "lindes-acerca" }) as unknown as { uniforms: { uAcerca: { value: number } } };
     expect(a.uniforms.uAcerca.value).toBeCloseTo(0.99, 12);
     api.libera(); expect(F.duenos()).toEqual({}); expect(e.reg.dispose.filter(x => x === "mat")).toHaveLength(2);
+  });
+
+  it("la variante TSL (apagada): solo con el renderizador nuevo; con three/webgpu y three/tsl de verdad se construye una Line2NodeMaterial con los parámetros del clásico, sin el parche de acercamiento", async () => {
+    const rutaW = "three/webgpu", rutaT = "three/tsl";   // por variable: three no trae tipos
+    const W = await import(/* @vite-ignore */ rutaW as string), TSL = await import(/* @vite-ignore */ rutaT as string);
+    const nuevo = { tipo: "nuevo", pedido: "nuevo" }, clasico = { tipo: "clasico", pedido: "" };
+    const opc = { LineMaterial: class { uniforms: Record<string, unknown> = {}; }, acerca: 0.004, parche: () => { /* sin efecto */ }, params: { color: 0xffb020, linewidth: 4, worldUnits: false, transparent: false, opacity: 1, depthWrite: true } };
+    // sin renderizador nuevo (hoy, siempre): el clásico, aunque haya nodos
+    const hoy = creaMateriales({ THREE: THREE as unknown as ThreeMin, render: clasico, nodos: () => ({ THREE: W, TSL }) });
+    hoy.define(MATERIAL_LINDES, DEF_LINDES);
+    expect(hoy.ruta(MATERIAL_LINDES)).toBe("clasico"); expect((hoy.crea(MATERIAL_LINDES, opc) as { uniforms?: Record<string, unknown> }).uniforms?.["uAcerca"]).toBeTruthy();
+    // con él y la variante: el TSL
+    const F = creaMateriales({ THREE: THREE as unknown as ThreeMin, render: nuevo, nodos: () => ({ THREE: W, TSL }) });
+    F.define(MATERIAL_LINDES, DEF_LINDES);
+    expect(F.ruta(MATERIAL_LINDES)).toBe("tsl"); expect(F.cobertura()[MATERIAL_LINDES]).toMatchObject({ clasico: true, tsl: true });
+    const m = F.crea(MATERIAL_LINDES, opc) as { isNodeMaterial: boolean; isLine2NodeMaterial: boolean; color: { getHex(): number }; linewidth: number; worldUnits: boolean; transparent: boolean; opacity: number; depthWrite: boolean; onBeforeCompile?: unknown; uniforms?: unknown };
+    expect(m.isNodeMaterial).toBe(true); expect(m.isLine2NodeMaterial).toBe(true); expect(m.color.getHex()).toBe(0xffb020);
+    expect([m.linewidth, m.worldUnits, m.transparent, m.opacity, m.depthWrite]).toEqual([4, false, false, 1, true]);
+    // lo que NO lleva (y MATERIALES §9 dice): ni el acercamiento de profundidad ni, por tanto, su parche
+    expect(m.onBeforeCompile).not.toBe(opc.parche); expect(m.uniforms).toBeUndefined();
   });
 
   it("el manifiesto vale, es de los mundos [exterior], fase «tarde» cada 0,5 s, bandera ?lindes y su libera suelta de verdad", async () => {

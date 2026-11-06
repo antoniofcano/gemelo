@@ -196,6 +196,15 @@ export const DEF_LINDES: DefMaterial<OpcLindes> = {
     mat.uniforms["uAcerca"] = { value: 1 - o.acerca };
     mat.onBeforeCompile = o.parche; mat.customProgramCacheKey = function () { return "lindes-hazas-acerca"; };
     return mat;
+  },
+  // MU5-n, tercer commit: la variante TSL, APAGADA (solo con el WebGPURenderer, que hasta MU6 no existe; nadie la usa hoy) y PARCIAL, no equivalente al clásico: la
+  // Line2NodeMaterial de three/webgpu (el LineMaterial de la versión nueva) con los mismos parámetros (color, ancho en píxeles, opacidad, escritura de profundidad).
+  // FALTA el acercamiento de profundidad (uAcerca: acercar cada extremo del tramo al ojo una fracción de su distancia), así que habrá más riesgo de parpadeo donde el tileset
+  // sube sobre la linde; y el ancho × VR_ANCHO por ojo (el onBeforeRender que mide el viewport de cada ojo): la Line2NodeMaterial mide el viewport del renderizador. Para
+  // MU6: portar uAcerca a un positionNode y decidir el ancho en VR con la medida del Quest (no probado)
+  tsl: function (o, c) {
+    const Linea2 = c.THREE["Line2NodeMaterial"] as new (opc: unknown) => MaterialMin;
+    return new Linea2(o.params);
   }
 };
 
