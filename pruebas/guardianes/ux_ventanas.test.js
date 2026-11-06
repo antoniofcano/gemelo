@@ -61,7 +61,7 @@ test("una sola fecha del campo (decisión 88): el deslizador #ndviSel está en T
   const olivo = PL.slice(PL.indexOf('id="tPanOlivo"'), PL.indexOf('id="tEstac"'));
   assert.match(olivo, /<label for="ndviSel">Fecha del campo<\/label>/);
   assert.strictEqual((PL.match(/type="range" id="(ndviSel|hSel)"/g) || []).length, 1, "un solo deslizador de fecha");
-  assert.match(lee("apps/web/motor/21_suelo.js"), /var s = \$\("ndviSel"\);/, "la hierba escucha la fecha del campo");
+  assert.match(require("./_fuente").fuenteMotor("21_suelo.js") /* A3-4: hierba.ts */, /var s = \$\("ndviSel"\);/, "la hierba escucha la fecha del campo");
   assert.match(lee("apps/web/motor/23_estacion.js"), /var h = \$\("ndviSel"\); if \(h\) h\.addEventListener\("input"/, "la estación escucha la fecha del campo");
 });
 

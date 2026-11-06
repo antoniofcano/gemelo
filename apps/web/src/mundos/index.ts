@@ -60,3 +60,5 @@ export { creaLluvia } from "./exterior/tiempo-lluvia.ts";
 export { creaBarreras, BARRERA_ALTO } from "./exterior/tiempo-barrera.ts";
 export { creaPasoTiempo } from "./exterior/tiempo-paso.ts";
 export { creaFichasTiempo } from "./exterior/tiempo-fichas.ts";
+export { creaHierba, manifiestoHierba, ID_HIERBA } from "./exterior/hierba.ts";
+export type { DepsHierba, Hierba } from "./exterior/hierba.ts";

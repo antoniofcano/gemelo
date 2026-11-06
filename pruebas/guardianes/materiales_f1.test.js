@@ -150,9 +150,8 @@ test("cada material del motor que pasa por la fábrica tiene un nombre literal, 
 // ---------------------------------------------------------------- el trinquete
 // [onBeforeCompile, new THREE.ShaderMaterial, motivo]. Cuenta el texto sin comentarios (también las lecturas de onBeforeCompile). Solo puede BAJAR.
 // MU5-n (A3-1a): 04d_sombreado_tiles.js salió de aquí; su parche está en apps/web/src/mundos/exterior/terreno.ts (FUERA_SRC, abajo, hasta su segundo commit)
-// MU5-n (A3-4): 15_tiempo.js también (1 / 3): su parche y sus tres ShaderMaterial están en apps/web/src/mundos/exterior/tiempo-*.ts (FUERA_SRC, hasta su segundo commit)
+// MU5-n (A3-4): 21_suelo.js también (2 / 0), a apps/web/src/mundos/exterior/hierba.ts; y 15_tiempo.js (1 / 3): su parche y sus tres ShaderMaterial están en apps/web/src/mundos/exterior/tiempo-*.ts (FUERA_SRC, hasta su segundo commit)
 const FUERA = {
-  "apps/web/motor/21_suelo.js": [2, 0, "matas y piedras (F4 #6): otro agente lo está cambiando durante F1"],
   "apps/web/olivo/materiales.js": [2, 0, "encadena(), el punto único de la biblioteca de olivos (lee el parche previo y pone el suyo); el motor la reusa por Materiales.encadena (07ab)"]
 };
 function cuenta(f) {
@@ -196,6 +195,8 @@ function cuentaTs(f) {
 const FUERA_SRC = {
   // (el terreno, 04d, ya registra «terreno» con define() desde su segundo commit de MU5-n, A3-1a)
   // (y 15_tiempo, A3-4, registra «parche-tiempo», «nubes», «lluvia» y «barrera» con define() desde su segundo commit)
+  // A3-4, primer commit de 21_suelo: el código, tal cual, en src/ (los parches de las matas y las piedras); el segundo los registra con define()
+  "apps/web/src/mundos/exterior/hierba.ts": [2, 0, "matas y piedras (F4 #6): pasan a define en el segundo commit de A3-4"]
 };
 const REGISTRA = /\.define\(\s*["'`A-Z_]/;
 test("trinquete en apps/web/src/: los sombreadores propios solo en la fábrica o en un módulo que los registra con define()", t => {
