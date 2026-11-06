@@ -15,5 +15,6 @@
     THREE: THREE, Materiales: Materiales, camera: camera, D: D, copas: copas, cIn: cIn, geoSombra: geoSombra, matSombra: matSombra,
     paseando: function () { return paseando; }, pp: pp, cur: cur, nivelEn: nivelEn,   // 12_paseo y 15_tiempo
     tVida: function () { return tVida; }, enQuad: function () { return enQuad; },   // 16_vida: el estado del paseo (cambian cada fotograma: por función)
-    gFauna: gFauna, altSuelo: altSuelo, mira: mira, Estado: Estado, Minimapa: Minimapa, fusionaGeometrias: fusionaGeometrias
+    gFauna: gFauna, altSuelo: altSuelo, mira: mira, Estado: Estado, fusionaGeometrias: fusionaGeometrias,
+    Minimapa: { capa: function (fn, orden) { return Minimapa.capa(fn, orden); } }   // 17_minimapa se carga después de 16b: se pide al montar, no al cargar
   }));
