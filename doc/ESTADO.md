@@ -11,6 +11,8 @@
 
 ## Hecho
 
+- **Refactorización a mundos (ADR-0033), solo en local, sin subir ni desplegar:** tandas A1 (MU0 y MU1: TypeScript, Vitest, fronteras, puente `@gemelo/nucleo` y `@gemelo/mundos`, 11 piezas del núcleo migradas) y A2 (MU2: `WorldManager`, el exterior como primer mundo, locomoción por el mundo activo, `Componentes` por mundo, congelar y volver, `Ambiente`, mundo de prueba `?mundo=vacio`) hechas el 2026-11-06 con la puerta rápida en verde. Legado de 19.774 a 18.791 líneas. **Nada probado aún en Chrome ni en el Quest**: va a la ronda del banco del final del eje A. Sigue A3 (MU5).
+
 - Motor por teselas de 256 m con niveles de detalle: terreno (1/2/8 m), olivos (L0/L1/L2 con silueta de olivo) y nube LiDAR ([ADR-0001](adr/0001-teselas-256m-utm30.md), [ADR-0002](adr/0002-niveles-de-detalle.md)).
 - Color del suelo y NDVI en el sombreador; suelo abierto con detalle de la ortofoto ([ADR-0007](adr/0007-suelo-abierto-de-la-ortofoto.md)).
 - Cola de trabajos a rebanadas con presupuesto por fotograma.
