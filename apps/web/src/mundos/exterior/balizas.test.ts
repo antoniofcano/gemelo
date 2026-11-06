@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { ComponentesPuro } from "../../nucleo/componentes.ts";
 import { creaMateriales } from "../../nucleo/materiales.ts";
 import type { ThreeMin } from "../../nucleo/materiales.ts";
-import { COLB, creaBalizas, manifiestoBalizas } from "./balizas.ts";
+import { COLB, DEF_BALIZA, FS_BALIZA, MATERIAL_BALIZA, VS_BALIZA, creaBalizas, manifiestoBalizas } from "./balizas.ts";
 import type { DepsBalizas } from "./balizas.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -162,12 +162,22 @@ describe("balizas (componente del exterior)", () => {
     expect(() => { api.colocaBalizas(); api.actualizaBalizas(1); }).not.toThrow();   // sin montar, nada que hacer
   });
 
-  it("la columna sale de la fábrica (sombreador «baliza»: el ShaderMaterial de siempre, con los uniformes por referencia y el mismo uT compartido)", () => {
+  it("la columna sale de la fábrica por define + crea («baliza»: el ShaderMaterial de siempre, con los uniformes por referencia y el mismo uT compartido); rombo y anillo, como estándar", () => {
     const { api, deps } = monta(), F = deps.Materiales;
-    expect(F.inventario()["baliza"]).toMatchObject({ n: 3 });
+    expect(MATERIAL_BALIZA).toBe("baliza");
+    expect(F.cobertura()["baliza"]).toEqual({ clasico: true, tsl: false, usado: 3 }); expect(F.inventario()["baliza"]).toEqual({ tipo: "define", n: 3 }); expect(F.ruta("baliza")).toBe("clasico");
     const col = api.balizas()[0].children[0].material;
     expect(col.isShaderMaterial).toBe(true); expect(col.uniforms).toBe(api.balizas()[0].userData.uni); expect(col.uniforms.uT).toBe(api.uBaliza.uT);
     expect(col.blending).toBe(THREE.AdditiveBlending); expect(col.fog).toBe(false); expect(col.depthWrite).toBe(false); expect(col.transparent).toBe(true); expect(col.side).toBe(THREE.DoubleSide);
+    expect(col.vertexShader).toBe(VS_BALIZA); expect(col.fragmentShader).toBe(FS_BALIZA);
+    // el clásico es el de siempre: el mismo ShaderMaterial que new THREE.ShaderMaterial(opciones)
+    const uni = { uT: { value: 0 }, uColor: { value: new THREE.Color(0x336699) }, uPulso: { value: 0 } };
+    const opc = { uniforms: uni, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false };
+    const a = new THREE.ShaderMaterial({ ...opc, vertexShader: VS_BALIZA, fragmentShader: FS_BALIZA }), b = DEF_BALIZA.clasico!(opc, { THREE, nombre: "baliza" }) as typeof a;
+    for (const k of ["vertexShader", "fragmentShader", "transparent", "depthWrite", "side", "blending", "fog"] as const) expect(b[k]).toEqual(a[k]);
+    expect(b.uniforms).toBe(uni); expect(b.customProgramCacheKey()).toBe(a.customProgramCacheKey());
+    const rombo = api.balizas()[0].children[1].material, anillo = api.balizas()[0].children[2].material;
+    expect(rombo.isMeshBasicMaterial && anillo.isMeshBasicMaterial).toBe(true); expect(anillo.transparent && anillo.forceSinglePass && anillo.opacity === 0.8).toBe(true); expect(rombo.fog).toBe(false);
     api.actualizaBalizas(0.1); expect(api.uBaliza.uT.value).toBe(0);
   });
 

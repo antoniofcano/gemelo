@@ -13,7 +13,7 @@
 // (OT, VIVO, paseando, enQuad, tVida) entra como funciones que lo leen en cada uso.
 // Presupuesto (regla 6): una llamada por pieza (columna, rombo, anillo) y baliza; las cifras, de pruebas/presupuesto.json (las balizas de la finca).
 import type { Manifiesto } from "../../nucleo/componentes.ts";
-import type { Materiales } from "../../nucleo/materiales.ts";
+import type { DefMaterial, Materiales, MaterialMin } from "../../nucleo/materiales.ts";
 
 // three no trae tipos en el repo (como en suelo-fondo.ts): de él solo se toca lo mínimo, sin tiparlo
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -28,6 +28,24 @@ export const PILL_TXT: Record<string, string> = { alerta: "Vigía pide una mirad
 export const BBCH_TXT: Record<number, string> = { 7: "desarrollo del fruto", 8: "maduración del fruto", 6: "floración", 5: "aparición de la inflorescencia", 1: "desarrollo de las hojas", 0: "reposo y brotación", 9: "senescencia y reposo" };
 
 export interface ParcelaBal { id: string; nombre: string; ha: number; centro: number[]; linde: unknown }
+// ---------------------------------------------------------------- el material de la columna (MU5-n: por la fábrica, con su nombre de la tabla de MATERIALES §1, fila 18)
+/** el nombre del material en la fábrica: es también la clave de su variante TSL */
+export const MATERIAL_BALIZA = "baliza";
+/** los uniformes de una columna: el reloj de la vida (compartido por todas), el color de su estado (el MISMO objeto que tiñe el rombo y el anillo) y si pulsa (alerta de Vigía) */
+export interface UniformesBaliza { uT: { value: number }; uColor: { value: unknown }; uPulso: { value: number } }
+export const VS_BALIZA = "varying float vY; void main(){ vY = position.y; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }";
+export const FS_BALIZA = "uniform float uT; uniform vec3 uColor; uniform float uPulso; varying float vY;\n" +
+  "void main(){ float t = clamp(vY / 26.0 + 0.5, 0.0, 1.0); float a = (0.42 * (1.0 - t) + 0.04) * (0.8 + 0.2 * sin(uT * 3.0 + uPulso * 6.0 * t)) * (1.0 + uPulso * 0.5 * sin(uT * 7.0)); gl_FragColor = vec4(uColor, clamp(a, 0.0, 0.7));\n#include <colorspace_fragment>\n}";
+/** lo que pide el material: los uniformes (los MISMOS objetos que mueve actualizaBalizas) y el estado de dibujo; los sombreadores van fijos */
+export interface OpcBaliza { uniforms: UniformesBaliza; transparent: boolean; depthWrite: boolean; side: number; blending: number; fog: boolean }
+/** el ShaderMaterial de siempre: aditivo, transparente, de dos caras, sin escribir profundidad ni niebla */
+export const DEF_BALIZA: DefMaterial<OpcBaliza> = {
+  clasico: function (o, c) {
+    const Sombreador = c.THREE["ShaderMaterial"] as new (opc: unknown) => MaterialMin;
+    return new Sombreador({ ...o, vertexShader: VS_BALIZA, fragmentShader: FS_BALIZA });
+  }
+};
+
 export interface DepsBalizas {
   THREE: T3;
   /** 01_datos: el elemento por id (la ficha #baliza) */
@@ -75,8 +93,9 @@ export interface DepsBalizas {
 
 export function creaBalizas(d: DepsBalizas) {
   const THREE = d.THREE, Estado = d.Estado, suelo = d.suelo, $ = d.$, parcelas = d.parcelas, esc = d.esc, num1 = d.num1, ventana = d.ventana;
+  d.Materiales.define(MATERIAL_BALIZA, DEF_BALIZA);
   const materiales = d.Materiales.de(ID_BALIZAS);   // lo que cree este componente se libera con su libera()
-  const uBaliza = { uT: { value: 0 } };
+  const uBaliza = { uT: { value: 0 } };   // el reloj de las columnas: el MISMO objeto en los uniformes de todas
   let gBal: T3 = null, BAL: T3[] = [], montado = false, colocado = false, quitaEnt: (() => void) | null = null, alClick: ((e: Cualquiera) => void) | null = null;
   let balCerca = -1, balVisitas = 0, balCerrada = -1, balForzada = -1, balSigOk = false, balSigF: unknown, balSigI = false, balSigV: unknown = "";   // cerrada: la × la quitó hasta alejarse; forzada: abierta al tocarla
   let avisoB: Cualquiera = null, tBal = 0, ultFicha = -2;
@@ -89,16 +108,11 @@ export function creaBalizas(d: DepsBalizas) {
     gBal = new THREE.Group(); gBal.name = "balizas"; d.scene.add(gBal);
     BAL = parcelas.map(function (_pr, k) {
       const col = new THREE.Color(COLB["nada"]), g = new THREE.Group();
-      const uni = { uT: uBaliza.uT, uColor: { value: col }, uPulso: { value: 0 } };
-      const mat = materiales.sombreador("baliza", {
-        uniforms: uni, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false,
-        vertexShader: "varying float vY; void main(){ vY = position.y; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
-        fragmentShader: "uniform float uT; uniform vec3 uColor; uniform float uPulso; varying float vY;\n" +
-          "void main(){ float t = clamp(vY / 26.0 + 0.5, 0.0, 1.0); float a = (0.42 * (1.0 - t) + 0.04) * (0.8 + 0.2 * sin(uT * 3.0 + uPulso * 6.0 * t)) * (1.0 + uPulso * 0.5 * sin(uT * 7.0)); gl_FragColor = vec4(uColor, clamp(a, 0.0, 0.7));\n#include <colorspace_fragment>\n}"
-      });
+      const uni: UniformesBaliza = { uT: uBaliza.uT, uColor: { value: col }, uPulso: { value: 0 } };
+      const mat = materiales.crea(MATERIAL_BALIZA, { uniforms: uni, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false } as OpcBaliza) as T3;
       const col3 = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.8, 26, 14, 1, true), mat); col3.position.y = 13; g.add(col3);
-      const rombo = new THREE.Mesh(new THREE.OctahedronGeometry(1.05), materiales.adopta(new THREE.MeshBasicMaterial({ color: col, fog: false }))); rombo.position.y = 27.5; g.add(rombo);
-      const anillo = new THREE.Mesh(new THREE.RingGeometry(1.7, 2.2, 36), materiales.adopta(new THREE.MeshBasicMaterial({ color: col, transparent: true, forceSinglePass: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false, fog: false }))); anillo.rotation.x = -Math.PI / 2; anillo.position.y = 0.2; g.add(anillo);   // forceSinglePass: desde r150 lo transparente de dos caras se dibuja en dos pasadas (una llamada más); un anillo plano no lo necesita
+      const rombo = new THREE.Mesh(new THREE.OctahedronGeometry(1.05), materiales.estandar("MeshBasicMaterial", { color: col, fog: false })); rombo.position.y = 27.5; g.add(rombo);
+      const anillo = new THREE.Mesh(new THREE.RingGeometry(1.7, 2.2, 36), materiales.estandar("MeshBasicMaterial", { color: col, transparent: true, forceSinglePass: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false, fog: false })); anillo.rotation.x = -Math.PI / 2; anillo.position.y = 0.2; g.add(anillo);   // forceSinglePass: desde r150 lo transparente de dos caras se dibuja en dos pasadas (una llamada más); un anillo plano no lo necesita
       g.userData = { k: k, mat: mat, uni: uni, col: col, rombo: rombo, anillo: anillo, estado: "nada", visita: false };
       gBal.add(g); return g;
     });
