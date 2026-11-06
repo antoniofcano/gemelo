@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { ComponentesPuro } from "../../nucleo/componentes.ts";
 import { creaMateriales } from "../../nucleo/materiales.ts";
 import type { ThreeMin } from "../../nucleo/materiales.ts";
-import { creaPaisaje, manifiestoPaisaje } from "./paisaje.ts";
+import { DEF_ARROYO, FS_ARROYO, MATERIAL_ARROYO, VS_ARROYO, creaPaisaje, manifiestoPaisaje } from "./paisaje.ts";
 import type { DatosPaisaje, DepsPaisaje } from "./paisaje.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -150,10 +150,23 @@ describe("paisaje (componente del exterior)", () => {
     expect(ed.position.y).toBeCloseTo(suelo(100, 200), 9);
   });
 
-  it("el material del cauce sale de la fábrica (sombreador «arroyo») con el dueño «paisaje-lidar»; matTronco es el mismo objeto antes y después de liberar", () => {
+  it("sus materiales salen de la fábrica con dueño: el cauce por define + crea («arroyo», el ShaderMaterial de siempre) y los demás como estándar; matTronco es el mismo objeto antes y después de liberar", () => {
     const { api, deps } = monta(), F = deps.Materiales;
-    expect(F.inventario()["arroyo"]).toMatchObject({ n: 1 }); const t = api.matTronco;
-    api.libera(); api.monta(); expect(api.matTronco).toBe(t); expect(F.inventario()["arroyo"]).toMatchObject({ n: 2 });
+    expect(MATERIAL_ARROYO).toBe("arroyo");
+    expect(F.cobertura()["arroyo"]).toEqual({ clasico: true, tsl: false, usado: 1 }); expect(F.inventario()["arroyo"]).toEqual({ tipo: "define", n: 1 });
+    expect(F.duenos()).toEqual({ "paisaje-lidar": 5 + 2 + 1 });   // matMuro, matPoste, matCable, matTronco, matCopaArb + un tejado por edificio + el cauce
+    const cauce = api.grupo().children.filter((o: { geometry?: { attributes: { aV?: unknown } } }) => o.geometry && o.geometry.attributes.aV)[0].material;
+    // el clásico es el de siempre: el mismo ShaderMaterial que new THREE.ShaderMaterial(opciones), con los uniformes por referencia y la clave de programa de three
+    const uni = { uT: { value: 0 }, uAgua: { value: 0 }, uLuz: { value: 1 }, uArena: { value: new THREE.Color(0xa8977a) } };
+    const opc = { uniforms: uni, transparent: true, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 };
+    const a = new THREE.ShaderMaterial({ ...opc, vertexShader: VS_ARROYO, fragmentShader: FS_ARROYO }), b = DEF_ARROYO.clasico!(opc, { THREE, nombre: "arroyo" }) as typeof a;
+    for (const k of ["vertexShader", "fragmentShader", "transparent", "depthWrite", "side", "polygonOffset", "polygonOffsetFactor", "polygonOffsetUnits", "fog", "blending"] as const) expect(b[k]).toEqual(a[k]);
+    expect(b.uniforms).toBe(uni); expect(b.customProgramCacheKey()).toBe(a.customProgramCacheKey());
+    expect(cauce.isShaderMaterial).toBe(true); expect(cauce.vertexShader).toBe(VS_ARROYO); expect(cauce.fragmentShader).toBe(FS_ARROYO);
+    expect(cauce.side).toBe(THREE.DoubleSide); expect(cauce.transparent).toBe(true); expect(cauce.depthWrite).toBe(false); expect(cauce.polygonOffsetFactor).toBe(-3);
+    const t = api.matTronco; expect(t.isMeshLambertMaterial).toBe(true);
+    api.libera(); expect(F.duenos()).toEqual({}); api.monta();
+    expect(api.matTronco).toBe(t); expect(F.inventario()["arroyo"]).toEqual({ tipo: "define", n: 2 }); expect(F.duenos()).toEqual({ "paisaje-lidar": 8 });
   });
 
   it("el manifiesto vale, es de los mundos [exterior], y su libera suelta de verdad", () => {

@@ -14,7 +14,7 @@
 // Presupuesto (regla 6): una llamada por pieza (muro, tejado, poste, hilo, cauce) y 4 InstancedMesh de árboles (un tronco y tres masas de copa de 20 triángulos); las cifras,
 // de pruebas/presupuesto.json (el paisaje de Hituelo).
 import type { Manifiesto } from "../../nucleo/componentes.ts";
-import type { Materiales } from "../../nucleo/materiales.ts";
+import type { DefMaterial, Materiales, MaterialMin } from "../../nucleo/materiales.ts";
 
 // three no trae tipos en el repo (como en suelo-fondo.ts): de él solo se toca lo mínimo, sin tiparlo
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -37,6 +37,30 @@ export interface PoDatos { x: number; y: number; zBase: number; zAlto: number }
 export interface CopaPaisaje { oliv: boolean; perfil: number[]; x: number; y: number; h: number }
 /** el nivel del sol que calcula 15_tiempo (nivelEn rellena `salida`) */
 export interface NivelSol { s: { alt: number; az: number }; d: number }
+
+// ---------------------------------------------------------------- el material del cauce (MU5-n: por la fábrica, con su nombre de la tabla de MATERIALES §1, fila 17)
+/** el nombre del material en la fábrica: es también la clave de su variante TSL */
+export const MATERIAL_ARROYO = "arroyo";
+/** los uniformes del cauce: el reloj del mundo, el nivel del agua (0 seco), la luz del día y el color de la arena; los mueve actualizaPaisaje */
+export interface UniformesArroyo { uT: { value: number }; uAgua: { value: number }; uLuz: { value: number }; uArena: { value: unknown } }
+export const VS_ARROYO = "attribute float aV; attribute float aU; varying float vV; varying float vU; void main(){ vV = aV; vU = aU; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }";
+export const FS_ARROYO = "uniform float uT; uniform float uAgua; uniform float uLuz; uniform vec3 uArena; varying float vV; varying float vU;\n" +
+  "float hh(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }\n" +
+  "void main(){ float borde = smoothstep(1.0, 0.62, abs(vV)); vec3 lecho = uArena * mix(0.72, 1.12, hh(floor(vec2(vU * 1.4, vV * 7.0))));\n" +
+  "float anchoA = uAgua * 0.78; float agua = smoothstep(anchoA + 0.12, anchoA - 0.12, abs(vV)) * step(0.01, uAgua);\n" +
+  "float flujo = sin(vU * 2.2 - uT * 3.4 + vV * 5.0) * 0.5 + 0.5; vec3 colA = sRGBTransferEOTF(vec4(mix(vec3(0.16, 0.36, 0.5), vec3(0.6, 0.8, 0.9), flujo * flujo * 0.55), 1.0)).rgb;\n" +
+  "vec3 col = mix(lecho, colA, agua) * uLuz; gl_FragColor = vec4(col, borde * mix(0.72, 0.88, agua));\n#include <colorspace_fragment>\n}";
+/** lo que pide el material: los uniformes (los MISMOS objetos que mueve actualizaPaisaje) y el estado de dibujo; los sombreadores van fijos */
+export interface OpcArroyo {
+  uniforms: UniformesArroyo; transparent: boolean; depthWrite: boolean; side: number; polygonOffset: boolean; polygonOffsetFactor: number; polygonOffsetUnits: number;
+}
+/** el ShaderMaterial de siempre: transparente, de dos caras, sin escribir profundidad y con el desplazamiento de polígono que lo pega al relieve */
+export const DEF_ARROYO: DefMaterial<OpcArroyo> = {
+  clasico: function (o, c) {
+    const Sombreador = c.THREE["ShaderMaterial"] as new (opc: unknown) => MaterialMin;
+    return new Sombreador({ ...o, vertexShader: VS_ARROYO, fragmentShader: FS_ARROYO });
+  }
+};
 
 export interface DepsPaisaje {
   THREE: T3;
@@ -76,14 +100,16 @@ export interface DepsPaisaje {
 export function creaPaisaje(d: DepsPaisaje) {
   const THREE = d.THREE, Estado = d.Estado, Estaticos = d.Estaticos, SRGB = d.SRGB, suelo = d.suelo, hash = d.hash, copas = d.copas;
   const PA: DatosPaisaje = d.D.paisaje || { edificios: [], tendido: { linea: [], postes: [] }, arroyo: { eje: [] }, arboles: [] };
+  d.Materiales.define(MATERIAL_ARROYO, DEF_ARROYO);
   const materiales = d.Materiales.de(ID_PAISAJE);   // lo que cree este componente se libera con su libera()
   // los materiales que no cambian persisten entre un monta() y el siguiente; los de cada tejado y el del arroyo se rehacen
-  const matMuro: T3 = new THREE.MeshLambertMaterial({ color: 0xe6dfcf }), matPoste: T3 = new THREE.MeshLambertMaterial({ color: 0x6b5a46 }), matCable: T3 = new THREE.LineBasicMaterial({ color: 0x2a2d31 });
-  const matTronco: T3 = new THREE.MeshLambertMaterial({ color: 0x5a4636 }), matCopaArb: T3 = new THREE.MeshLambertMaterial({ color: 0xffffff });
+  const matMuro: T3 = materiales.estandar("MeshLambertMaterial", { color: 0xe6dfcf }), matPoste: T3 = materiales.estandar("MeshLambertMaterial", { color: 0x6b5a46 });
+  const matCable: T3 = materiales.estandar("LineBasicMaterial", { color: 0x2a2d31 });
+  const matTronco: T3 = materiales.estandar("MeshLambertMaterial", { color: 0x5a4636 }), matCopaArb: T3 = materiales.estandar("MeshLambertMaterial", { color: 0xffffff });
   const fijos: T3[] = [matMuro, matPoste, matCable, matTronco, matCopaArb];
 
   // --- el arroyo: un cauce seco que sigue el fondo del terreno y que solo corre con agua cuando llueve
-  const uArroyo = { uT: { value: 0 }, uAgua: { value: 0 }, uLuz: { value: 1 }, uArena: { value: new THREE.Color(0xa8977a) } };
+  const uArroyo: UniformesArroyo = { uT: { value: 0 }, uAgua: { value: 0 }, uLuz: { value: 1 }, uArena: { value: new THREE.Color(0xa8977a) } };
   const EJES: Cualquiera[] = PA.arroyo.ejes || (PA.arroyo.eje && PA.arroyo.eje.length ? [PA.arroyo.eje] : []);   // uno o varios cauces (Hituelo tiene siete)
   const arb = PA.arboles, nA = arb.length;
   const olivasS = copas.filter(function (c) { return c.oliv; });
@@ -114,13 +140,12 @@ export function creaPaisaje(d: DepsPaisaje) {
     if (montado) return;
     montado = true;
     gPaisaje = new THREE.Group(); gPaisaje.name = "paisaje"; d.scene.add(gPaisaje);
-    fijos.forEach(function (m) { materiales.adopta(m); });   // si se soltaron al liberar, vuelven a ser de este dueño
+    fijos.forEach(function (m) { materiales.adopta(m); });   // si se soltaron al liberar (materiales.libera() los olvida), vuelven a ser de este dueño
     edifs = []; postes = []; cablesDer = []; arroyos = []; iBlob = [];
     PA.edificios.forEach(function (e) {
       const g = new THREE.Group(), L = e.largo, A = e.ancho, hA = Math.max(2.6, e.hAlero), hC = Math.max(hA + 0.4, e.hCumbrera), prof = 2.2;
       const muro = new THREE.Mesh(new THREE.BoxGeometry(L, hA + prof, A), matMuro); muro.position.y = (hA - prof) / 2; g.add(muro);
-      const tj = new THREE.MeshLambertMaterial({ color: new THREE.Color().setRGB(e.color[0]! / 255 * 0.9, e.color[1]! / 255 * 0.85, e.color[2]! / 255 * 0.8, SRGB) });   // el color medido en la ortofoto está en sRGB
-      materiales.adopta(tj);   // un material por tejado: es de este dueño y se suelta con él
+      const tj = materiales.estandar("MeshLambertMaterial", { color: new THREE.Color().setRGB(e.color[0]! / 255 * 0.9, e.color[1]! / 255 * 0.85, e.color[2]! / 255 * 0.8, SRGB) });   // el color medido en la ortofoto está en sRGB; un material por tejado
       g.add(creaTejado(L + 0.5, A + 0.5, hA, hC, tj));
       g.userData = { e: e }; gPaisaje.add(g); edifs.push(g);
     });
@@ -152,17 +177,10 @@ export function creaPaisaje(d: DepsPaisaje) {
     // Q0c-a: en VR, el escalón decide hasta qué distancia se dibujan (02g_vr_presupuesto; tronco y masas comparten índice). Las pruebas que cargan el módulo suelto no lo traen
     if (vr) vr.instancias(ID_ARBOLES_VR, [iTronco].concat(iBlob));
 
-    // --- el arroyo (el material: materiales.sombreador, el ShaderMaterial de siempre)
-    matArroyo = materiales.sombreador("arroyo", {
-      uniforms: uArroyo, transparent: true, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3,
-      vertexShader: "attribute float aV; attribute float aU; varying float vV; varying float vU; void main(){ vV = aV; vU = aU; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
-      fragmentShader: "uniform float uT; uniform float uAgua; uniform float uLuz; uniform vec3 uArena; varying float vV; varying float vU;\n" +
-        "float hh(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }\n" +
-        "void main(){ float borde = smoothstep(1.0, 0.62, abs(vV)); vec3 lecho = uArena * mix(0.72, 1.12, hh(floor(vec2(vU * 1.4, vV * 7.0))));\n" +
-        "float anchoA = uAgua * 0.78; float agua = smoothstep(anchoA + 0.12, anchoA - 0.12, abs(vV)) * step(0.01, uAgua);\n" +
-        "float flujo = sin(vU * 2.2 - uT * 3.4 + vV * 5.0) * 0.5 + 0.5; vec3 colA = sRGBTransferEOTF(vec4(mix(vec3(0.16, 0.36, 0.5), vec3(0.6, 0.8, 0.9), flujo * flujo * 0.55), 1.0)).rgb;\n" +
-        "vec3 col = mix(lecho, colA, agua) * uLuz; gl_FragColor = vec4(col, borde * mix(0.72, 0.88, agua));\n#include <colorspace_fragment>\n}"
-    });
+    // --- el arroyo (el material: la fábrica, «arroyo»; el ShaderMaterial de siempre)
+    matArroyo = materiales.crea(MATERIAL_ARROYO, {
+      uniforms: uArroyo, transparent: true, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3
+    } as OpcArroyo);
     EJES.forEach(function (E) {
       if (E.length < 3) return;
       const pos = new Float32Array(E.length * 2 * 3), aV = new Float32Array(E.length * 2), aU = new Float32Array(E.length * 2), idx: number[] = [];
