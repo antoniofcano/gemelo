@@ -27,3 +27,6 @@ export type { DepsCapaNdvi } from "./exterior/capa-ndvi.ts";
 // A3-2a (MU5-n): el catálogo de olivos-tipo y los olivos generados, componentes del exterior con su libera() de verdad.
 export { creaCatalogo, manifiestoCatalogo, ID_CATALOGO } from "./exterior/catalogo.ts";
 export type { Catalogo, DepsCatalogo, Pieza as PiezaCatalogo } from "./exterior/catalogo.ts";
+export { Escalera, GeneradosPuro } from "./exterior/generados-escalera.ts";
+export { creaGenerados, manifiestoGenerados, ID_GENERADOS } from "./exterior/generados.ts";
+export type { DepsGenerados, Generados } from "./exterior/generados.ts";

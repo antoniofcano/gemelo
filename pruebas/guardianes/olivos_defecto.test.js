@@ -5,12 +5,10 @@
 // Que el motor sin bandera se comporta como con ?olivos=gen con una finca completa y, con ?olivos=0 o sin datos, como siempre, lo comprueba además
 // pruebas/olivo/generados_motor.mjs (olivo.test.js); lo de Chrome (recuentos, presupuesto) lo mide el banco.
 const test = require("node:test"), assert = require("node:assert");
-const { lee } = require("./_util");
-
-const FUENTE = lee("apps/web/motor/07ab_generados.js");
-const i = FUENTE.indexOf("var GeneradosPuro"), f = FUENTE.indexOf("// [puro:fin]");
-assert.ok(i >= 0 && f > i, "07ab_generados.js debe definir GeneradosPuro dentro de [puro]");
-const GP = new Function("\"use strict\";\n" + FUENTE.slice(i, f) + "\nreturn GeneradosPuro;")();
+// A3-2a (MU5-n): GeneradosPuro vive en apps/web/src/mundos/exterior/generados-escalera.ts (07ab es un talón); Node lo carga quitando los tipos
+const { RAIZ } = require("./_util");
+const { GeneradosPuro: GP } = require(require("node:path").join(RAIZ, "apps", "web", "src", "mundos", "exterior", "generados-escalera.ts"));
+assert.ok(GP && typeof GP.activo === "function", "generados-escalera.ts debe exportar GeneradosPuro");
 
 const COMPLETA = { copas: [[0, 0, 5, [1, 1, 1, 1, 1, 1, 1, 1]]], copas_param: [[5, 4, 0, 0, 0.8, 1, 0.1, 0]], copas_id: [7] };
 const bandera = (b, d, c) => GP.activo(b, d, c).bandera;
@@ -56,5 +54,15 @@ test("el motor lee la bandera solo en ese punto (no se esparcen lecturas de ?oli
   const fs = require("node:fs"), path = require("node:path"), dir = path.join(__dirname, "..", "..", "apps", "web", "motor");
   const lee1 = n => fs.readFileSync(path.join(dir, n), "utf8");
   const lecturas = fs.readdirSync(dir).filter(n => /\.js$/.test(n) && /\[\?&\]olivos=/.test(lee1(n)));
-  assert.deepStrictEqual(lecturas, ["07ab_generados.js"]);
+  assert.deepStrictEqual(lecturas, [], "ningún módulo del motor lee ?olivos= (A3-2a: tampoco el talón de 07ab)");
+  // en apps/web/src/, solo la decisión pura (generados-escalera.ts)
+  const src = path.join(__dirname, "..", "..", "apps", "web", "src"), ts = [];
+  (function recorre(d) {
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const f = path.join(d, e.name);
+      if (e.isDirectory()) recorre(f);
+      else if (/\.ts$/.test(e.name) && !/\.test\.ts$/.test(e.name) && /\[\?&\]olivos=/.test(fs.readFileSync(f, "utf8"))) ts.push(path.relative(src, f).split(path.sep).join("/"));
+    }
+  })(src);
+  assert.deepStrictEqual(ts, ["mundos/exterior/generados-escalera.ts"]);
 });

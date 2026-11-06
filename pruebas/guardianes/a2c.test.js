@@ -76,7 +76,7 @@ test("cada material de recorte alfa del motor pasa por Materiales.recorte (y la 
   assert.strictEqual((f("07_follaje.js").match(/Materiales\.recorte\(new THREE\.PointsMaterial\(\{[^}]*alphaTest/g) || []).length, 2, "hoja grande y pequeña");
   assert.match(f("21_suelo.js"), /matMata = Materiales\.recorte\(new THREE\.MeshLambertMaterial\(\{ map: texHierba, alphaTest/);
   assert.strictEqual((f("07ac_lejanos.js").match(/Materiales\.recorte\(new THREE\.MeshLambertMaterial\(\{[^}]*alphaTest: 0\.5/g) || []).length, 2, "impostor lejano y sustituto");
-  const g = f("07ab_generados.js"), i = g.indexOf("function parcheGen"), j = g.indexOf("function profundidad");
+  const g = require("./_fuente").fuenteMotor("07ab_generados.js") /* A3-2a: talón + generados*.ts */, i = g.indexOf("function parcheGen"), j = g.indexOf("function profundidad");
   const cuerpo = g.slice(i, j);
   assert.ok(cuerpo.indexOf("isMeshDepthMaterial") < cuerpo.indexOf("Materiales.recorte(m)"), "la sombra sale antes: no se recorta");
   // el horneado de los impostores (blanco sin MSAA) apaga el recorte mientras dibuja y lo devuelve

@@ -176,16 +176,16 @@ test("Config: con servidor aplica «componentes», avisa a quien espera y recort
 
 // ---------- quién lee cada parámetro
 test("cada parámetro del contrato lo lee el motor (01_datos, 07ab, 07b, 29_vr), con la URL delante donde la hay; y se espera a la configuración antes del primer olivo", () => {
-  const motor = ["01_datos.js", "07ab_generados.js", "07b_arboles.js", "29_vr.js"].map(f => lee("apps/web/motor/" + f)).join("\n");
+  const motor = ["01_datos.js", "07ab_generados.js", "07b_arboles.js", "29_vr.js"].map(f => require("./_fuente").fuenteMotor(f)).join("\n");   // A3-2a: de un talón, también su .ts
   for (const ruta of Object.keys(P.LIMITES)) {
     const base = ruta.replace(/\.e[012]$/, "");
     assert.ok(motor.includes("\"" + ruta + "\"") || motor.includes("\"" + ruta + ".\"") || (base === "escalera.umbralesPx" && /Config\.umbrales\(/.test(motor)), "nadie lee " + ruta);
   }
-  const G = lee("apps/web/motor/07ab_generados.js");
+  const G = require("./_fuente").fuenteMotor("07ab_generados.js");   // A3-2a: talón + generados*.ts
   assert.match(G, /Config\.umbrales\(Escalera\.UMBRALES, mU \? UMB : null\)/, "?olivosPx= manda");
   assert.match(G, /Config\.param\("escalera\.bandaM", Escalera\.BANDA, mB \? BANDA : null\)/, "?olivosBanda= manda");
   assert.match(G, /Config\.param\("escalera\.maxPropios", MAX_PROPIOS, mpr \? MAX_PROPIOS : null\)/, "?olivosPropios= manda");
-  assert.match(G, /Promise\.all\(\[p, Config\.listo\]\)\.then\(function \(r\) \{\s*var m = r\[0\]; aplicaConfig\(\);/, "la configuración se aplica antes del primer olivo");
+  assert.match(G, /Promise\.all\(\[p, Config\.listo\]\)\.then\(function \(r(?:: A)?\) \{\s*(?:if \(liberado\) return;[^\n]*\n\s*)?var m(?:: A)? = r\[0\]; aplicaConfig\(\);/, "la configuración se aplica antes del primer olivo");
   assert.match(lee("apps/web/motor/01_datos.js"), /Config\.param\("escalera\.factorCopa", FACTOR_R8_GEN, FACTOR_R8_URL\)/, "?factorR8= manda");
   assert.match(lee("apps/web/motor/29_vr.js"), /Config\.al\(function \(\) \{ VR_PERFILES\.forEach\(function \(p, i\) \{ p\.tri = Config\.param\("escalera\.triangulos\.gafas\." \+ i, p\.tri\); \}\); \}\);/);
   assert.match(lee("apps/web/motor/07b_arboles.js"), /triMovil: TRI_MOVIL_CFG/);

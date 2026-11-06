@@ -361,7 +361,7 @@ test("Q0g: la autopsia solo se paga midiendo: sin &mide ni botón no hay observa
   assert.deepStrictEqual(rs.faltan, []); assert.strictEqual(rs.total, 0, JSON.stringify(rs.detalle));
   assert.deepStrictEqual(Object.keys(rs.porFn).sort(), ["apuntaReparto", "bits", "causasDelFotograma"]);
   // lo que lee causasDelFotograma existe: Cola.tot (02b), Generados.lotes (07ab)
-  const cola = lee("apps/web/src/nucleo/cola.ts"), gen = lee("apps/web/motor/07ab_generados.js");
+  const cola = lee("apps/web/src/nucleo/cola.ts"), gen = require("./_fuente").fuenteMotor("07ab_generados.js");   // A3-2a: talón + generados*.ts
   assert.ok(/return \{ est, tot,/.test(cola) && /function apunta\(e: EstTipo, dm: number\): void \{ tot\.n\+\+; tot\.ms \+= dm;/.test(cola));
   assert.ok(/lotes: function \(\) \{ return nLotes; \}/.test(gen) && /nLotes\+\+;/.test(gen));
 });

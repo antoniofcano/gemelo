@@ -12,11 +12,14 @@ const TS_DE = {
   "04e_suelo_fondo.js": "apps/web/src/mundos/exterior/suelo-fondo.ts",
   "04f_suelo_fotos.js": "apps/web/src/mundos/exterior/suelo-fotos.ts",
   "07a_catalogo.js": "apps/web/src/mundos/exterior/catalogo.ts",
+  // A3-2a: 07ab vive en varios ficheros (la escalera, el horneado, la cola, el sombreado, el lote y el módulo): se leen todos, en este orden
+  "07ab_generados.js": ["generados.ts", "generados-escalera.ts", "generados-horneado.ts", "generados-cola.ts", "generados-sombreado.ts", "generados-lote.ts"].map(f => "apps/web/src/mundos/exterior/" + f),
 };
 /** el talón y el .ts juntos (o solo el fichero del motor, si no es de los migrados) */
 function fuenteMotor(fichero) {
   const talon = lee("apps/web/motor/" + fichero);
-  return TS_DE[fichero] ? talon + "\n" + lee(TS_DE[fichero]) : talon;
+  const ts = TS_DE[fichero];
+  return ts ? [talon].concat([].concat(ts).map(lee)).join("\n") : talon;
 }
 
 module.exports = { fuenteMotor, TS_DE };

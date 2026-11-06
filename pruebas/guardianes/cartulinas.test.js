@@ -136,9 +136,9 @@ test("la perilla ?cartulina=rect|silueta: defecto rect; lo raro avisa y se queda
 });
 
 test("07ab y 07ac miran la perilla, cuentan los triángulos de la silueta y no calculan nada por fotograma", () => {
-  const g = lee("apps/web/motor/07ab_generados.js"), l = lee("apps/web/motor/07ac_lejanos.js");
-  assert.match(g, /if \(Materiales\.cartulina\.silueta\) \{ silPend = true; encola\("Gsiluetas", -2, siluetasG\(\)/, "07ab: las siluetas por la cola propia, al montar los materiales");
-  assert.match(g, /function tri\(r\) \{ return r \? M\.triangulosNivel\(r\) \+ extraSil\(r\) : 0; \}/, "07ab: el reparto paga los triángulos de la silueta");
+  const g = require("./_fuente").fuenteMotor("07ab_generados.js") /* A3-2a */, l = lee("apps/web/motor/07ac_lejanos.js");
+  assert.match(g, /if \(Materiales\.cartulina\.silueta\) \{ silPend = true; encola\("Gsiluetas", -2, (?:LT\.)?siluetasG\(\)/, "07ab: las siluetas por la cola propia, al montar los materiales");
+  assert.match(g, /function tri\(r(?:: A)?\) \{ return r \? M\.triangulosNivel\(r\) \+ extraSil\(r\) : 0; \}/, "07ab: el reparto paga los triángulos de la silueta");
   assert.match(g, /gs = SIL && SIL\[k\] \|\| G\[gk\], g = geoDe\(gs\.atrib, gs\.indice, false\)/, "07ab: la malla instanciada usa la silueta");
   assert.match(l, /Materiales\.cartulina\.silueta \? polisImpostor\(f\) : null/, "07ac: impostor con las siluetas de la fila");
   assert.match(l, /ColaExt\.pon\("Lsil", 60, gen, fin\)/, "07ac: las del sustituto, al hornear y por la Cola (la del exterior, MU2-6)");
