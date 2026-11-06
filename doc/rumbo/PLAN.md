@@ -216,7 +216,7 @@ Exterior, molino y bodega en un solo PWA, cada uno con su sala de red; TypeScrip
 | C2 | Renombrar el fixture sintético «cerro» a un nombre neutro en sus ~55 pruebas (muchas de Chrome) y extender `sin_cerro` a `pruebas/` | C1 | pesada · sonnet (banco), en la ronda del final del eje A | 1 d | ⬜ |
 | MU1-13 | Ronda final del banco contra la referencia de MU1-4; diferencias explicadas o arregladas; nota en MEDIDAS | MU1-6..12 | pesada · sonnet (banco) | ½ d | ⬜ |
 | MU2-1 | `WorldManagerPuro` (máquina de estados) y `World` en TS, probados en Vitest con mundos falsos (MUNDOS §2-3) | MU1-13 | ligera · opus | 1 d | ⬜ |
-| MU2-2 | Fundido partido en `cierra`/`abre` (`29_vr.js`, `12b_llegada.js`); `vrFundido(fn)` encima, con la misma semántica | MU2-1 | ligera · sonnet | 1 d | ⬜ |
+| MU2-2 | Fundido partido en `cierra`/`abre` (`29_vr.js`, `12b_llegada.js`); `vrFundido(fn)` encima, con la misma semántica | MU2-1 | ligera · sonnet | 1 d | ✅ 2026-11-06: `nucleo/fundido.ts`; `vrCierra`/`vrAbre`/`vrFundido`; saltos de más de 5 m por el fundido; **Quest no probado** |
 | MU2-3 | `exterior.actualiza` recoge las llamadas a mano de `90_final.js` en el mismo orden | MU2-1 | ligera · sonnet | ½ d | ⬜ |
 | MU2-4 | `suelo`/`dentro`/`obstaculo` del mundo activo en `12_paseo`, `12b`, `12c`, `29_vr` y `16_vida`; guardián: nadie más llama a `suelo(` ni recorta a `D.ext` para moverse | MU2-3 | ligera · opus | 2 d | ⬜ |
 | MU2-5 | `02c_componentes` a TS con `mundos?: [ids]` en el manifiesto y filtro por mundo; `mundo:entra`/`mundo:sale` en `contratos/eventos.json` | MU2-1 | ligera · opus | 2 d | ⬜ |
