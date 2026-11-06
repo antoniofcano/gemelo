@@ -1,0 +1,260 @@
+{
+  "$comment": "Registro promesa↔guardián (regla 13 de CLAUDE.md, MU1-12). Una entrada por regla de oro de CLAUDE.md §1 (clave = su número; titulo = su texto en negrita, tal cual), por viñeta en negrita de §5 (clave = su texto en negrita, tal cual) y por tope de pruebas/presupuesto.json (clave = su ruta: un objeto de solo números es UN tope; un número suelto junto a objetos, otro). «vigila» es la lista de pruebas que la vigilan ({fichero, test}: «test» es un trozo literal del nombre del test en ese fichero) o null con «motivo» (por qué no se puede vigilar en código). «falta» (opcional) dice lo que la prueba NO cubre: la promesa está vigilada a medias. Lo comprueba pruebas/guardianes/promesas.test.js, que lista las de null («promesas sin guardián») y las de «falta».",
+  "version": 1,
+  "promesas": [
+    {
+      "origen": "CLAUDE.md §1", "clave": "1", "titulo": "Nada llega a `main` sin pasar la puerta local.",
+      "vigila": null,
+      "motivo": "Pasar la puerta antes de subir lo hace quien sube (y la repite CI en GitHub Actions); ninguna prueba puede saber, desde dentro de la puerta, si se pasó antes de un commit. «La lista vive en un solo sitio» y «cada pieza nueva lleva su comprobación» tampoco tienen guardián hoy."
+    },
+    {
+      "origen": "CLAUDE.md §1", "clave": "2", "titulo": "La lógica testeable vive en módulos con contrato (`apps/web/motor/NN_*.js`), no repartida.",
+      "vigila": [
+        { "fichero": "pruebas/guardianes/sintaxis.test.js", "test": "el motor tiene módulos y el orden alfabético es el de montaje (01_ primero, 99_ último)" },
+        { "fichero": "pruebas/guardianes/contratos.test.js", "test": "cada módulo de src/ tiene su cabecera «Expone / Consume» al día" },
+        { "fichero": "pruebas/guardianes/contratos.test.js", "test": "las cabeceras son coherentes: lo que un módulo consume lo expone el módulo citado" },
+        { "fichero": "pruebas/guardianes/tipos_web.test.js", "test": "dependency-cruiser: src/ respeta las cuatro fronteras y no tiene ciclos" },
+        { "fichero": "pruebas/guardianes/tipos_web.test.js", "test": "dependency-cruiser DETECTA cada frontera rota (árbol temporal)" }
+      ],
+      "falta": "«no repartida» (que la lógica testeable no viva fuera de los módulos) no la mide nadie."
+    },
+    {
+      "origen": "CLAUDE.md §1", "clave": "3", "titulo": "Contratos de datos versionados.",
+      "vigila": [
+        { "fichero": "pruebas/guardianes/contratos.test.js", "test": "el índice cumple contratos/indice.schema.json" },
+        { "fichero": "pruebas/guardianes/contratos.test.js", "test": "cada tesela cumple tesela.schema.json y tiene los tamaños del contrato" },
+        { "fichero": "pruebas/guardianes/contratos.test.js", "test": "los esquemas rechazan lo que deben" },
+        { "fichero": "pruebas/guardianes/contratos.test.js", "test": "devuelve exactamente los miembros de contratos/interfaces.json" }
+      ],
+      "falta": "Que contrato, esquema y fixture cambien en el MISMO commit no se comprueba: solo que, al pasar la puerta, el fixture cumple los esquemas."
+    },
+    {
+      "origen": "CLAUDE.md §1", "clave": "4", "titulo": "Los datos no se versionan; el repo es público.",
+      "vigila": [
+        { "fichero": "pruebas/guardianes/secretos.test.js", "test": "sin secretos en los ficheros versionados" },
+        { "fichero": "pruebas/guardianes/secretos.test.js", "test": "sin ficheros de datos, credenciales ni binarios pesados" },
+        { "fichero": "pruebas/guardianes/secretos.test.js", "test": "sólo hay imágenes del fixture sintético" },
+        { "fichero": "pruebas/guardianes/secretos.test.js", "test": "sin enlaces ni ids de artefactos privados en lo versionado" },
+        { "fichero": "pruebas/guardianes/secretos.test.js", "test": "sin ids internos de OlivarTrack en lo versionado" },
+        { "fichero": "pruebas/guardianes/secretos.test.js", "test": "sin referencias de parcela ni coordenadas exactas de las fincas en lo versionado" },
+        { "fichero": "pruebas/guardianes/higiene.test.js", "test": "sin rutas locales de usuario (el repo es público)" },
+        { "fichero": "pruebas/guardianes/higiene.test.js", "test": "sin correos electrónicos (salvo los permitidos)" }
+      ],
+      "falta": "«Las fuentes se documentan con licencia y atribución» no la vigila nadie."
+    },
+    {
+      "origen": "CLAUDE.md §1", "clave": "5", "titulo": "Distinguir siempre medido / deducido / ilustrativo",
+      "vigila": [
+        { "fichero": "pruebas/guardianes/componentes.test.js", "test": "Capas.registra exige la procedencia (medido, deducido o ilustrativo: regla 5)" },
+        { "fichero": "pruebas/guardianes/vr_presupuesto.test.js", "test": "lo medido cae después que lo deducido e ilustrativo (regla 5)" }
+      ],
+      "falta": "Solo se exige en las capas registradas y en la tabla de recortes de VR; lo que se muestra fuera de Capas y lo que se escribe en doc/ no se comprueba."
+    },
+    {
+      "origen": "CLAUDE.md §1", "clave": "6", "titulo": "Presupuesto de dibujo explícito",
+      "vigila": [
+        { "fichero": "pruebas/guardianes/carga.test.js", "test": "carga sin errores con la escena 3D Tiles y cada escenario cabe en el presupuesto de dibujo" },
+        { "fichero": "pruebas/guardianes/componentes.test.js", "test": "la suma de los presupuestos de los encendidos por defecto cabe en el de diseño" }
+      ],
+      "falta": "«Medido antes y después en cada cambio gráfico» lo hace quien cambia: la prueba solo mira que lo de ahora cabe en los topes."
+    },
+    {
+      "origen": "CLAUDE.md §1", "clave": "7", "titulo": "Medir antes de afirmar.",
+      "vigila": null,
+      "motivo": "Es sobre lo que se afirma (en commits, documentación o conversación): que cada cifra venga de una medida reproducible y que lo no probado en hardware real se diga «no probado» lo juzga una persona."
+    },
+    {
+      "origen": "CLAUDE.md §1", "clave": "8", "titulo": "La documentación se actualiza en el mismo commit y solo la afectada:",
+      "vigila": [
+        { "fichero": "pruebas/guardianes/version.test.js", "test": "la primera versión publicada del CHANGELOG es VERSION y arriba hay un «No publicado»" },
+        { "fichero": "pruebas/guardianes/documentacion.test.js", "test": "doc/historico: cada foto dice arriba que no se mantiene" },
+        { "fichero": "pruebas/guardianes/documentacion.test.js", "test": "ADR: una fila de índice por fichero, en orden, con estado, y cada ADR tiene Estado y Fecha" }
+      ],
+      "falta": "Que cada commit con efecto visible añada su línea al CHANGELOG, que haya ADR cuando hubo alternativas y que ESTADO/PLAN se toquen cuando cambia el estado no se comprueba: solo la forma de esos ficheros."
+    },
+    {
+      "origen": "CLAUDE.md §1", "clave": "9", "titulo": "Confirmar antes de publicar, etiquetar o subir.",
+      "vigila": null,
+      "motivo": "Es de persona: `git push`, tags y despliegues los decide Antonio; ningún guardián de la puerta ve si hubo un OK."
+    },
+    {
+      "origen": "CLAUDE.md §1", "clave": "10", "titulo": "Idioma del producto, del código, de la documentación y de los commits: español.",
+      "vigila": null,
+      "motivo": "Ninguna prueba mira el idioma de los textos, los identificadores o los mensajes de commit."
+    },
+    {
+      "origen": "CLAUDE.md §1", "clave": "11", "titulo": "Todo cambio de interacción (UI, mandos, panel VR) lleva su nota de comodidad:",
+      "vigila": null,
+      "motivo": "La nota la escribe quien prueba en un aparato (qué se probó, dónde y qué no); ninguna prueba sabe qué commit cambia la interacción ni si trae su nota."
+    },
+    {
+      "origen": "CLAUDE.md §1", "clave": "12", "titulo": "No reinventar ruedas: nunca reescribir lo que ya existe y se puede reusar",
+      "vigila": [
+        { "fichero": "pruebas/guardianes/web.test.js", "test": "three va con versión exacta" },
+        { "fichero": "pruebas/guardianes/escena3d.test.js", "test": "3DTilesRendererJS: versión exacta en apps/web/package.json" },
+        { "fichero": "pruebas/guardianes/api.test.js", "test": "dependencias de apps/api fijadas a versión exacta y con package-lock" },
+        { "fichero": "pruebas/guardianes/dev.test.js", "test": "dependencias de las herramientas con versión exacta" }
+      ],
+      "falta": "Solo la versión fijada de algunas dependencias (three, 3DTilesRendererJS, apps/api, las herramientas de la raíz); no apps/web entera, ni tuberia/ (requirements.txt), ni el «no reescribir lo que ya existe», que juzga una persona."
+    },
+    {
+      "origen": "CLAUDE.md §1", "clave": "13", "titulo": "Cada promesa escrita tiene un guardián, o se borra",
+      "vigila": [
+        { "fichero": "pruebas/guardianes/promesas.test.js", "test": "cada regla de CLAUDE.md y cada tope de pruebas/presupuesto.json tiene su entrada en pruebas/promesas.json" },
+        { "fichero": "pruebas/guardianes/promesas.test.js", "test": "cada entrada apunta a pruebas que existen o dice por qué no se vigila" }
+      ],
+      "falta": "Presentar a Antonio las que no tienen guardián es de persona: el guardián solo las lista."
+    },
+    {
+      "origen": "CLAUDE.md §5", "clave": "Variables de entorno `GEMELO_*`",
+      "vigila": [
+        { "fichero": "pruebas/guardianes/higiene.test.js", "test": "sin rutas locales de usuario (el repo es público)" }
+      ],
+      "falta": "Solo caza rutas de usuario (C:\\Users…, /home/…); otras rutas absolutas en el código y que cada ruta de datos se lea de una GEMELO_* no se comprueban."
+    },
+    {
+      "origen": "CLAUDE.md §5", "clave": "Estilo del motor legado",
+      "vigila": [
+        { "fichero": "pruebas/guardianes/sintaxis.test.js", "test": "el motor montado (todos los motor/*.js concatenados, como hace genera_motor.mjs) es JavaScript válido" },
+        { "fichero": "pruebas/guardianes/sintaxis.test.js", "test": "módulo válido por sí solo (envuelto en una función)" },
+        { "fichero": "pruebas/guardianes/web.test.js", "test": "la página empaquetada carga sin errores, lleva la three de apps/web y solo pide a su mismo origen" }
+      ],
+      "falta": "Que un módulo use `var` y no declare globales fuera de la IIFE de 01_datos.js/99_cierre.js no se comprueba: solo que el montaje es JavaScript válido y la página carga."
+    },
+    {
+      "origen": "CLAUDE.md §5", "clave": "Código nuevo",
+      "vigila": [
+        { "fichero": "pruebas/guardianes/tipos_web.test.js", "test": "tsc --noEmit -p apps/web: el código nuevo tipa" },
+        { "fichero": "pruebas/guardianes/tipos_web.test.js", "test": "vitest run: las pruebas de apps/web/src pasan" },
+        { "fichero": "pruebas/guardianes/tipos_web.test.js", "test": "dependency-cruiser: src/ respeta las cuatro fronteras y no tiene ciclos" }
+      ],
+      "falta": "El puente de genera_motor.mjs con el legado aún no tiene guardián (el «Puente» de MUNDOS §8)."
+    },
+    {
+      "origen": "CLAUDE.md §5", "clave": "Orden de `apps/web/motor/`:",
+      "vigila": [
+        { "fichero": "pruebas/guardianes/sintaxis.test.js", "test": "el motor tiene módulos y el orden alfabético es el de montaje (01_ primero, 99_ último)" },
+        { "fichero": "pruebas/guardianes/contratos.test.js", "test": "las cabeceras son coherentes: lo que un módulo consume lo expone el módulo citado" }
+      ]
+    },
+    {
+      "origen": "CLAUDE.md §5", "clave": "Fin de línea LF",
+      "vigila": [
+        { "fichero": "pruebas/guardianes/higiene.test.js", "test": "todo en LF (sin CRLF)" }
+      ]
+    },
+    {
+      "origen": "CLAUDE.md §5", "clave": "Datos por tesela:",
+      "vigila": [
+        { "fichero": "pruebas/guardianes/contratos.test.js", "test": "cada tesela cumple tesela.schema.json y tiene los tamaños del contrato" },
+        { "fichero": "pruebas/guardianes/contratos.test.js", "test": "la nube está barajada: el prefijo es una submuestra uniforme (no ordenada por posición)" }
+      ],
+      "falta": "Sobre el fixture sintético; las coordenadas relativas a centro_utm y las filas de sur a norte se comprueban por tamaños y esquema, no por su sentido."
+    },
+    {
+      "origen": "CLAUDE.md §5", "clave": "Todo recurso de GPU se libera",
+      "vigila": [
+        { "fichero": "pruebas/guardianes/componentes.test.js", "test": "cada manifiesto es válido, con presupuesto y libera" },
+        { "fichero": "pruebas/guardianes/memoria_vr.test.js", "test": "36_mandos: lo que crea por su cuenta (la caja de respaldo) se libera" }
+      ],
+      "falta": "Solo los componentes con manifiesto y los mandos de VR; los módulos legados sin `dispose` (15_tiempo, 16_vida, 18_paisaje, 19_balizas, 21_suelo, según MUNDOS §2) no tienen guardián."
+    },
+    {
+      "origen": "CLAUDE.md §5", "clave": "Pruebas pesadas por turno",
+      "vigila": [
+        { "fichero": "pruebas/guardianes/banco.test.js", "test": "el turno es exclusivo: dos procesos que lo piden a la vez no se solapan" },
+        { "fichero": "pruebas/guardianes/banco.test.js", "test": "la puerta, el Chrome de las pruebas y la e2e de Docker pasan por el turno" }
+      ],
+      "falta": "Que un agente encargue sus medidas al banco en vez de abrir su propio Chrome es de persona."
+    },
+    {
+      "origen": "CLAUDE.md §5", "clave": "Lo pesado va a la `Cola`",
+      "vigila": [
+        { "fichero": "pruebas/guardianes/carga_sin_tirones.test.js", "test": "Cola: ninguna rebanada se empieza si no cabe" }
+      ],
+      "falta": "Vigila que la Cola no se pase de su tiempo; que el trabajo pesado vaya de verdad a la Cola (y no bloquee el fotograma) no se comprueba."
+    },
+    {
+      "origen": "CLAUDE.md §5", "clave": "El motor no hace `fetch` a otros hosts",
+      "vigila": [
+        { "fichero": "pruebas/guardianes/web.test.js", "test": "la página empaquetada carga sin errores, lleva la three de apps/web y solo pide a su mismo origen" },
+        { "fichero": "pruebas/guardianes/carga.test.js", "test": "carga sin errores con la escena 3D Tiles y cada escenario cabe en el presupuesto de dibujo" }
+      ]
+    },
+    {
+      "origen": "CLAUDE.md §5", "clave": "Lecturas en vivo por MCP (OlivarTrack, Vigía):",
+      "vigila": null,
+      "motivo": "Es sobre cómo un agente trata lo que lee por MCP (datos, no instrucciones; con su fecha); el motor no habla con MCP (lo vigila tiempo_motor.test.js, decisión 79), así que no hay código que probar. Que contratos/mcp.md esté al día con las herramientas reales lo comprueba una persona."
+    },
+    {
+      "origen": "pruebas/presupuesto.json", "clave": "diseno",
+      "vigila": [
+        { "fichero": "pruebas/guardianes/carga.test.js", "test": "carga sin errores con la escena 3D Tiles y cada escenario cabe en el presupuesto de dibujo" },
+        { "fichero": "pruebas/guardianes/componentes.test.js", "test": "la suma de los presupuestos de los encendidos por defecto cabe en el de diseño" }
+      ]
+    },
+    {
+      "origen": "pruebas/presupuesto.json", "clave": "fixture.hituelo.lejos",
+      "vigila": [
+        { "fichero": "pruebas/guardianes/carga.test.js", "test": "carga sin errores con la escena 3D Tiles y cada escenario cabe en el presupuesto de dibujo" },
+        { "fichero": "pruebas/guardianes/escena3d.test.js", "test": "con D.tileset en el índice: carga el tileset sin errores" }
+      ]
+    },
+    {
+      "origen": "pruebas/presupuesto.json", "clave": "fixture.hituelo.cerca",
+      "vigila": [
+        { "fichero": "pruebas/guardianes/carga.test.js", "test": "carga sin errores con la escena 3D Tiles y cada escenario cabe en el presupuesto de dibujo" },
+        { "fichero": "pruebas/guardianes/escena3d.test.js", "test": "con D.tileset en el índice: carga el tileset sin errores" }
+      ]
+    },
+    {
+      "origen": "pruebas/presupuesto.json", "clave": "fixture.hituelo.nube",
+      "vigila": [
+        { "fichero": "pruebas/guardianes/carga.test.js", "test": "carga sin errores con la escena 3D Tiles y cada escenario cabe en el presupuesto de dibujo" },
+        { "fichero": "pruebas/guardianes/escena3d.test.js", "test": "con D.tileset en el índice: carga el tileset sin errores" }
+      ]
+    },
+    {
+      "origen": "pruebas/presupuesto.json", "clave": "fixture.cerro.lejos",
+      "vigila": [
+        { "fichero": "pruebas/guardianes/carga.test.js", "test": "carga sin errores con la escena 3D Tiles y cada escenario cabe en el presupuesto de dibujo" }
+      ]
+    },
+    {
+      "origen": "pruebas/presupuesto.json", "clave": "fixture.cerro.cerca",
+      "vigila": [
+        { "fichero": "pruebas/guardianes/carga.test.js", "test": "carga sin errores con la escena 3D Tiles y cada escenario cabe en el presupuesto de dibujo" }
+      ]
+    },
+    {
+      "origen": "pruebas/presupuesto.json", "clave": "fixture.cerro.nube",
+      "vigila": [
+        { "fichero": "pruebas/guardianes/carga.test.js", "test": "carga sin errores con la escena 3D Tiles y cada escenario cabe en el presupuesto de dibujo" }
+      ]
+    },
+    {
+      "origen": "pruebas/presupuesto.json", "clave": "fixture_olivos_gen.cerca",
+      "vigila": [
+        { "fichero": "pruebas/guardianes/olivo.test.js", "test": "motor con ?olivos=gen (P7, decisión 52): el fixture de Hituelo dibuja olivos generados en un lote de ≤ 7 llamadas y dentro de sus topes" }
+      ]
+    },
+    {
+      "origen": "pruebas/presupuesto.json", "clave": "fixture_olivos_escalera.cerca",
+      "vigila": [
+        { "fichero": "pruebas/guardianes/olivo.test.js", "test": "motor con ?olivos=escalera (O8c, ADR-0019): sin nivel 0 ni niveles 1-2, ≤ 8 llamadas de olivos, triángulos dentro del presupuesto y topes de fixture_olivos_escalera" }
+      ]
+    },
+    {
+      "origen": "pruebas/presupuesto.json", "clave": "fixture_olivos_escalera.lejos",
+      "vigila": [
+        { "fichero": "pruebas/guardianes/olivo.test.js", "test": "motor con ?olivos=escalera (O8c, ADR-0019): sin nivel 0 ni niveles 1-2, ≤ 8 llamadas de olivos, triángulos dentro del presupuesto y topes de fixture_olivos_escalera" }
+      ]
+    },
+    {
+      "origen": "pruebas/presupuesto.json", "clave": "fixture_olivos_escalera.llamadas_olivos",
+      "vigila": [
+        { "fichero": "pruebas/guardianes/olivo.test.js", "test": "motor con ?olivos=escalera (O8c, ADR-0019): sin nivel 0 ni niveles 1-2, ≤ 8 llamadas de olivos, triángulos dentro del presupuesto y topes de fixture_olivos_escalera" }
+      ]
+    }
+  ]
+}
