@@ -347,7 +347,7 @@
       "datos": {},
       "emiten": [
         "31b_hud_personal",
-        "31c_muneca"
+        "mundos/comun/muneca"
       ],
       "escuchan": [
         "47_habla"
@@ -863,7 +863,7 @@
     "prevision:alterna": {
       "descripcion": "Abrir o cerrar la lámina de la previsión del tiempo en el mundo (el botón «Ver la previsión en el mundo» de la ventana Tiempo y, en VR, «hora» en el menú de muñeca, EV2-A3). Sin datos alterna; con abre true o false, abre o cierra.",
       "datos": { "type": "object", "properties": { "abre": { "type": "boolean" } } },
-      "emiten": ["15_tiempo", "31c_muneca"],
+      "emiten": ["15_tiempo", "mundos/comun/muneca"],
       "escuchan": ["35_fichas_tiempo"]
     },
     "mundo:aplica": {
@@ -984,7 +984,7 @@
       },
       "emiten": [
         "15_tiempo",
-        "31c_muneca"
+        "mundos/comun/muneca"
       ],
       "escuchan": [
         "35_fichas_tiempo"
@@ -1284,7 +1284,7 @@
       ],
       "escuchan": [
         "31b_hud_personal",
-        "31c_muneca",
+        "mundos/comun/muneca",
         "46_guiada",
         "47_habla",
         "47b_corro"
@@ -1375,7 +1375,7 @@
       ],
       "escuchan": [
         "02d_laminas",
-        "31c_muneca",
+        "mundos/comun/muneca",
         "40_juegos"
       ]
     }

@@ -91,3 +91,6 @@ export type { DepsPresencia, Presencia } from "./comun/presencia.ts";
 // A3-6a: los avatares VRM (antes 26b_avatares.js), de todo mundo.
 export { AvataresPuro, ID_AVATARES, creaAvatares, manifiestoAvatares } from "./comun/avatares.ts";
 export type { DepsAvatares } from "./comun/avatares.ts";
+// A3-6a: el menú de muñeca en VR (antes 31c_muneca.js), componente de todo mundo.
+export { ID_MUNECA, MunecaPuro, creaMuneca, manifiestoMuneca } from "./comun/muneca.ts";
+export type { ContextoMuneca, DepsMuneca } from "./comun/muneca.ts";
