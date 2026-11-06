@@ -202,7 +202,7 @@ Exterior, molino y bodega en un solo PWA, cada uno con su sala de red; TypeScrip
 | MU1-2 | Vitest 5.1.0 fijado y un guardián de `node:test` que lanza `tsc --noEmit` y `vitest run` (MUNDOS §9.2) | MU1-1 | ligera · sonnet | ½ d | ✅ 2026-11-06 (A1-3): Vitest 5.1.0 y `tipos_web.test.js` en la puerta rápida |
 | MU1-3 | `dependency-cruiser` fijado con las reglas de las cuatro fronteras (MUNDOS §1) | MU1-1 | ligera · sonnet | ½ d | ✅ 2026-11-06 (A1-3): 7 reglas, cada una con su caso que la rompe |
 | MU1-4 | Toma de referencia del banco: vistas, recuentos, memoria y VR simulada (MUNDOS §9.5), antes de tocar el motor | MU0-5 | pesada · haiku (banco) | ½ d | ⬜ |
-| MU1-5 | Puente en `genera_motor.mjs` (`@gemelo/nucleo`), talones, guardián del puente y trinquete del legado (MUNDOS §9.3) | MU1-2 | ligera · opus | 1 d | ⬜ |
+| MU1-5 | Puente en `genera_motor.mjs` (`@gemelo/nucleo`), talones, guardián del puente y trinquete del legado (MUNDOS §9.3) | MU1-2 | ligera · opus | 1 d | ✅ 2026-11-06 (A1-7): alias `@gemelo/nucleo` en Vite y `tsconfig`, talones, `puente.test.js` y trinquete (techo) |
 | MU1-6 | Extraer `Cola` con dueño por prefijo (§9.4 #1) y mover sus pruebas `[puro]` a Vitest | MU1-5 | ligera · sonnet | ½ d | ⬜ |
 | MU1-7 | Extraer `Render` + `memoria()` + `compila()`, `XrPerillas`, `EntidadesPuro`, `LlegadaPuro`/`IrAPuro` (§9.4 #2, 4, 5, 6), un commit por módulo | MU1-6 | ligera · sonnet | 2 d | ⬜ |
 | MU1-8 | Extraer `VrPresupuestoPuro`/`VrControlPuro` con L7-03 y L1-03 (perfiles que suben, «holgado» contra el perfil), en commit aparte | MU1-6 | ligera · opus; 👤 Quest | 1 d | ⬜ |
@@ -210,7 +210,7 @@ Exterior, molino y bodega en un solo PWA, cada uno con su sala de red; TypeScrip
 | MU1-10 | `Bucle` del núcleo con `try/catch` por fotograma y salida limpia de XR, `visibilitychange`, `reset` y pérdida de contexto (L7-01, L7-02, L7-10) | MU1-9 | ligera · opus | 1 d | ⬜ |
 | MU1-11 | Tipos generados de `contratos/*.schema.json` (`json-schema-to-typescript` fijado) y su guardián de frescura | MU1-2 | ligera · sonnet | 1 d | ⬜ |
 | MU1-12 | Guardián promesa↔guardián: cada regla de CLAUDE.md y cada tope apuntan a su prueba | MU1-2 | ligera · sonnet | 1 d | ✅ 2026-11-06 (A1-6): 35 promesas, 29 con guardián (15 a medias), 6 de persona; ver DECISIONS-PENDING 228 |
-| MU1-14 | Guardianes de las promesas vigiladas a medias (A1-15 a A1-17): una fila de ONBOARDING por guardián (§1.1); versiones exactas en todo `apps/web/package.json` y `==` en los `requirements.txt` (§1.12); estilo del legado, `var` y sin globales fuera de la IIFE (§5) | MU1-12 | ligera · haiku | 1 d | ⬜ |
+| MU1-14 | Guardianes de las promesas vigiladas a medias (A1-15 a A1-17): una fila de ONBOARDING por guardián (§1.1); versiones exactas en todo `apps/web/package.json` y `==` en los `requirements.txt` (§1.12); estilo del legado, `var` y sin globales fuera de la IIFE (§5) | MU1-12 | ligera · haiku | 1 d | ✅ 2026-11-06 (A1-15): `filas_puerta`, `versiones` y `estilo_motor`; `rasterio` y `matplotlib` sin fijar, anotadas (no instaladas en este equipo) |
 | MU1-15 | L9-04: escapar `</script` al incrustar el índice, sobre el puente de MU1-5 | MU1-5 | ligera · haiku | ½ d | ⬜ |
 | MU1-13 | Ronda final del banco contra la referencia de MU1-4; diferencias explicadas o arregladas; nota en MEDIDAS | MU1-6..12 | pesada · sonnet (banco) | ½ d | ⬜ |
 | MU2-1 | `WorldManagerPuro` (máquina de estados) y `World` en TS, probados en Vitest con mundos falsos (MUNDOS §2-3) | MU1-13 | ligera · opus | 1 d | ⬜ |

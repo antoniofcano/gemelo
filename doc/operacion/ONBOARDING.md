@@ -68,6 +68,8 @@
 | 50 | Juego «Cae la cosecha» (C9a): sus reglas en Node | `juego_cosecha.test.js` |
 | 51 | El propio banco de pruebas: selector de pruebas afectadas, reintento único de fallos de infraestructura y reintento del renombrado de la caché | `afectadas.test.js`, `inestables.test.js`, `pagina_reintento.test.js` |
 | 52 | Builds y carga de la web: builds F1 y F2 (super-three con multiview), cargador por dispositivo, parche de super-three, página de humo del multiview y CSP de WebAssembly | `builds_f1.test.js`, `builds_f2.test.js`, `cargador_f2c.test.js`, `parche_multiview.test.js`, `humo_multiview.test.js`, `csp_wasm.test.js` |
+| 53 | Puente del código nuevo al legado (MU1-5): el texto que genera `genera_motor.mjs` es el de antes más `import * as Nucleo from "@gemelo/nucleo"`; los nombres que expone cada módulo coinciden con la foto; todo `Nucleo.<x>` lo exporta el núcleo; forma de los talones; las dos builds resuelven el alias | `puente.test.js` |
+| 54 | Trinquete del legado (MU1-5): las líneas de `apps/web/motor/*.js`, sin cabeceras, no pasan del tope; si bajan lo avisa y quien fusiona baja el tope | `trinquete_legado.test.js` |
 
 En CI la misma puerta corre en GitHub Actions (`.github/workflows/puerta.yml`); no despliega nada.
 
