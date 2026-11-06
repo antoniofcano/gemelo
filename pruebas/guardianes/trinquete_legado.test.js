@@ -2,6 +2,8 @@
 // Trinquete del legado (ADR-0033 §6, MUNDOS §8 y §10): las líneas de apps/web/motor/*.js SOLO BAJAN. El tope está escrito aquí (TOPE) y es
 // un techo: si el motor sube, falla («quien toca, migra»: lo nuevo va a apps/web/src/). Si baja, solo lo avisa: con varios agentes en
 // paralelo, un tope exacto haría chocar cada fusión; quien coordina baja TOPE al número nuevo al fusionar (decisión del 2026-11-06, A1-7).
+// No se cumple el tope comprimiendo código ni quitando comentarios útiles del legado: si el cableado de una migración lo sube, se sube
+// TOPE en el mismo commit con su motivo (decisión del 2026-11-06, tras MU2-2 y MU2-3). Lo que no es cableado va a apps/web/src/.
 // Se cuentan las líneas de código de cada módulo SIN su cabecera «Expone / Consume» (la deriva pruebas/contrato_modulos.js del código y
 // puede crecer o encoger sola al regenerarse: no es código del legado).
 const test = require("node:test"), assert = require("node:assert");
