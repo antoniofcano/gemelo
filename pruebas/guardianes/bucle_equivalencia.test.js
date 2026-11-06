@@ -182,7 +182,7 @@ test("Bus.emite no reserva por emisión: sin cierre, sin slice ni forEach", () =
 // ---------- 3 · los llamadores por fotograma del nivel del sol piden nivelEn (sin objeto nuevo); el valor es el mismo (nivelEn == nivel, ver fauna_equivalencia.test.js) ----------
 test("actualizaPaisaje, actualizaSonido y actualizaHuellas piden el nivel del sol con nivelEn y un temporal del módulo, no con nivel()", () => {
   for (const [mod, ini, tmp] of [["18_paisaje.js", "function actualizaPaisaje(", "lvAgua"], ["20_sonido.js", "function actualizaSonido(", "lvSonido"], ["22b_huellas_polvo.js", "function actualizaHuellas(", "lvHuellas"]]) {
-    const cu = R.cuerpo(lee("apps/web/motor/" + mod), ini);
+    const cu = R.cuerpo(require("./_fuente").fuenteMotor(mod), ini);   // MU5-n: con el .ts de los migrados (A3-4: 20_sonido → sonido.ts)
     assert.ok(cu !== null, mod + ": " + ini);
     assert.ok(!/\bnivel\(/.test(cu), mod + ": " + ini + " no debe llamar a nivel() (reserva un objeto por fotograma)");
     assert.ok(new RegExp("nivelEn\\(cur\\.ms, " + tmp + "\\)").test(cu), mod + ": " + ini + " pide nivelEn(cur.ms, " + tmp + ")");

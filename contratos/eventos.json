@@ -32,7 +32,7 @@
         "29_vr"
       ],
       "escuchan": [
-        "20_sonido",
+        "mundos/exterior/sonido",
         "45_voz"
       ]
     },
@@ -1036,7 +1036,7 @@
         "19_balizas"
       ],
       "escuchan": [
-        "20_sonido"
+        "mundos/exterior/sonido"
       ]
     },
     "sonido:golpe": {
@@ -1046,7 +1046,7 @@
         "24_pantalla"
       ],
       "escuchan": [
-        "20_sonido"
+        "mundos/exterior/sonido"
       ]
     },
     "sonido:juego": {
@@ -1076,7 +1076,7 @@
         "41_cae_la_cosecha"
       ],
       "escuchan": [
-        "20_sonido"
+        "mundos/exterior/sonido"
       ]
     },
     "sonido:ladrido": {
@@ -1093,7 +1093,7 @@
         "25_perros"
       ],
       "escuchan": [
-        "20_sonido"
+        "mundos/exterior/sonido"
       ]
     },
     "usable:cerca": {

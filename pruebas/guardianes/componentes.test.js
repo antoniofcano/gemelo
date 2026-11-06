@@ -352,7 +352,7 @@ test("C4 en Node: el sonido se monta con su pestaña de Configuración y su fila
   const mundo = () => ({ PanelVR: { filas: (p, f) => { filas.push([p, f]); return () => filas.splice(filas.findIndex(x => x[1] === f), 1); } }, VRX: { sucio: false },
     Ajustes: { lee: k => ({ "sonido.activo": true, "sonido.volumen": 80 })[k], pon() {}, registra: (pre, esq, pes, ap) => { ajustes.push({ pre, esq, pes }); ap && ap("sonido.activo", true); return () => { quitados.ajustes++; }; } },
     paseando: true, teclas: { run: false }, cur: { ms: 0, viento: 3, lluvia: 0, temp: 20 }, nivelEn: () => ({ d: 1 }), tVida: 0, enQuad: false, quad: {}, vq: 0, enDron: false, dr: { x: 0, y: 0, vf: 0, vh: 0 },
-    pp: { x: 0, y: 0, paso: 0 }, aguaNivel: 0, distArroyo: () => 50 });
+    pp: { x: 0, y: 0, paso: 0 }, aguaNivel: 0, distArroyo: () => 50, Mundos: MUNDOS_TS });   // A3-4: 20_sonido es un talón de apps/web/src/mundos/exterior/sonido.ts
   const arranca = (busqueda, extra, g) => { const r = nucleo({ busqueda, extra, globales: g }); r.Componentes.arranca(); for (let i = 0; i < 30; i++) ["mundo", "tarde", "trasRender"].forEach(fa => r.Componentes.actualiza(fa, 0.05, i)); return r; };
   const A = audioFalso(); let g = mundo(); g = Object.assign(g, {});
   let r = arranca("", fuente, g); r.ventana.AudioContext = A.AC;

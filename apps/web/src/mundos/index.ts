@@ -62,3 +62,5 @@ export { creaPasoTiempo } from "./exterior/tiempo-paso.ts";
 export { creaFichasTiempo } from "./exterior/tiempo-fichas.ts";
 export { creaHierba, manifiestoHierba, ID_HIERBA } from "./exterior/hierba.ts";
 export type { DepsHierba, Hierba } from "./exterior/hierba.ts";
+export { creaSonido, manifiestoSonido, ID_SONIDO } from "./exterior/sonido.ts";
+export type { DepsSonido, Sonido } from "./exterior/sonido.ts";
