@@ -11,3 +11,5 @@ export { LlegadaPuro, IrAPuro } from "./locomocion.ts";
 export { VrPresupuestoPuro, VrControlPuro, creaVrPresupuesto } from "./presupuesto.ts";
 export { ESTADO_INICIAL, creaEstado } from "./estado.ts";
 export type { Estado, Modo } from "./estado.ts";
+export { BuclePuro, creaBucle } from "./bucle.ts";
+export type { Bucle, DepsBucle, PasoBucle } from "./bucle.ts";
