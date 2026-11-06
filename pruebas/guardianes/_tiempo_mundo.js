@@ -1,5 +1,6 @@
 "use strict";
-// Un mundo mínimo, en Node y con el three de verdad, para correr actualizaTiempo + pintaNubes de apps/web/motor/15_tiempo.js (nuevo=true) o su foto anterior a AG-1.4c
+// Un mundo mínimo, en Node y con el three de verdad, para correr actualizaTiempo + pintaNubes de ahora (nuevo=true; MU5-n, A3-4: creaPasoTiempo y pintaNubesDe de
+// apps/web/src/mundos/exterior/tiempo-paso.ts y tiempo-cielo.ts, antes en 15_tiempo.js) o su foto anterior a AG-1.4c
 // (referencias/15_tiempo_antes.js) con la MISMA entrada. Lo usan bucle_equivalencia.test.js (que comprueba que dan lo mismo) y pruebas/medida_bucle.js (el microbanco).
 // Nada de esto es Chrome: sirve para comparar versiones y contar, no para decir fps (regla 7).
 const { lee } = require("./_util");
@@ -39,10 +40,16 @@ function mundoTiempo(THREE, nuevo) {
     OCASO_FOTOS: false, PALETA_OCASO: {}, uOcasoN: { uOcaso: { value: 0 } }   // EV-1s: sin ?suelo=fotos, como la foto de antes
   };
   W.lluvia.visible = false; W.estrellas.material.transparent = true;
+  if (nuevo) {   // el código de ahora, con la MISMA entrada (W): el paso de cada fotograma y el pintado de las nubes, construidos sobre las piezas de W
+    const M = require("./_mundos"), N = M.creaNivelSol(37.7, -4.0);
+    const paso = M.creaPasoTiempo(Object.assign({}, W, {
+      cieloBase: () => W.cieloBase, pintaNubes: M.pintaNubesDe(THREE, NUBES, NSP, nubesMalla, W.camera), nivelEn: N.nivelEn, calma: false,
+      TiempoPuro: { cielo: W.TiempoPuro.cielo, rotuloOrigen: M.TiempoPuro.rotuloOrigen }
+    }));
+    return { W, api: { act: paso.actualizaTiempo, calma: paso.calma, tMundo: paso.tMundo, lluviaVis: paso.lluviaVis, ins: paso.ins } };
+  }
   const nombres = Object.keys(W), valores = nombres.map(k => W[k]);
-  const codigo = nuevo
-    ? trozo("15_tiempo.js", "  var nubesOrden", "  var sprSol") + "\n" + trozo("15_tiempo.js", "  var lvT", "  // --- la barrera de la linde")
-    : lee("pruebas/guardianes/referencias/15_tiempo_antes.js");
+  const codigo = lee("pruebas/guardianes/referencias/15_tiempo_antes.js");
   const cuerpo = '"use strict";\nvar LAT = 37.7, LON = -4.0, calma = false, tMundo = 0, lluviaVis = 0, ins = { t: 1, txt: "" }, vFlecha = new THREE.Vector3();\n' + F.nivelNuevo() + "\n" + codigo +
     "\nreturn { act: actualizaTiempo, calma: function (v) { calma = v; }, tMundo: function () { return tMundo; }, lluviaVis: function () { return lluviaVis; }, ins: ins };";
   const api = new Function(...nombres, cuerpo)(...valores);

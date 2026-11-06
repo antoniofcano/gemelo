@@ -119,6 +119,8 @@ export interface DepsTerreno {
   matSuelo: { color: unknown };
   /** 15_tiempo: parcheTiempo(sh, viento), la sombra de nubes y la escarcha */
   parcheTiempo(sh: Sombreador, viento: boolean): void;
+  /** A3-4: los mismos en TSL (tiempo-parche.ts: nodosTsl), para la variante apagada; 15_tiempo va después en el montaje: se piden al construirla */
+  tiempoTsl?: (() => ((T: unknown) => { aplica(rgb: unknown, s: unknown): unknown; enVertice(n: unknown): unknown; sombra(xz: unknown): unknown }) | null) | null;
   /** 21_suelo: el ruido de valor de siempre (para que las matas caigan donde el suelo se pinta verde) */
   vn2(x: number, y: number): number;
   /** 04f: SueloFotos y SueloFotosPuro, que se montan después (por eso van por funciones) */
@@ -386,7 +388,11 @@ export function creaSombreadoTiles(deps: DepsTerreno) {
     // tras la luz y la niebla (output): el modo Ortofoto, el grano del suelo y la capa NDVI encima, como el final del fragmento clásico
     const uvO = T.vec2(vWP.x.sub(uCua.x).div(uCua.z), T.float(1).sub(vWP.z.negate().sub(uCua.y).div(uCua.z)));
     const dd = dn(xz.mul(0.9)).mul(0.45).add(dn(xz.mul(3.3)).mul(0.3)).add(dn(xz.mul(12)).mul(0.25));
-    const luz = T.select(uModoOrto.greaterThan(0.5), uOrt.sample(uvO).rgb.mul(T.sRGBTransferOETF(uOrtoTint)), T.output.rgb).mul(dd.mul(0.36).add(0.82));
+    const luz0 = T.select(uModoOrto.greaterThan(0.5), uOrt.sample(uvO).rgb.mul(T.sRGBTransferOETF(uOrtoTint)), T.output.rgb).mul(dd.mul(0.36).add(0.82));
+    // A3-4: la sombra de nubes y la escarcha de parcheTiempo (fila 2) en vWP.xz, tras la luz y antes de la capa NDVI (en el clásico, las dos líneas del tiempo van
+    // antes que la capa en <dithering_fragment>), si se dan los nodos del tiempo; sin ellos, como antes
+    const nt = deps.tiempoTsl ? deps.tiempoTsl() : null, NT = nt ? nt(T) : null;
+    const luz = NT ? NT.aplica(luz0, NT.enVertice(NT.sombra(xz))) as TslNodo : luz0;
     const un = T.vec2(vWP.x.sub(uGBox.x).div(uGBox.z), T.float(1).sub(uGBox.y.add(vWP.z).div(uGBox.w)));
     const nd = uNdviMap.sample(un), dentro = T.step(0, un.x).mul(T.step(un.x, 1)).mul(T.step(0, un.y)).mul(T.step(un.y, 1));
     mat["outputNode"] = T.vec4(T.mix(luz, nd.rgb, nd.a.mul(0.8).mul(uNdviOn).mul(dentro)), T.output.a);

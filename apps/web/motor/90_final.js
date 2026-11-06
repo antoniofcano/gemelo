@@ -6,7 +6,7 @@
 //   04b_escena3d (Escena3D), 04d_sombreado_tiles (SombreadoTiles), 05_nube (actualizaNubeTeselas, actualizaNube), 06_arboles (Arboles0),
 //   07_follaje (Follaje), 07ac_lejanos (Lejanos), 07b_arboles (Arboles), 08_marcadores (listo, aplica), 09_camara (objetivo, camara),
 //   10_ndvi (Ndvi), 12_paseo (paseando, persona, Paseo, pp, actualizaPaseo), 15_tiempo (actualizaTiempo), 16_vida (Vida, actualizaVida),
-//   17_minimapa (actualizaMinimapa), 18_paisaje (actualizaPaisaje), 19_balizas (actualizaBalizas), 21_suelo (recoloreaSuelo, actualizaSuelo),
+//   17_minimapa (actualizaMinimapa), 18_paisaje (actualizaPaisaje), 19_balizas (actualizaBalizas), 21_suelo (actualizaSuelo, recoloreaSuelo),
 //   23_estacion (actualizaOlivo), 24_pantalla (transEntrada, transSalida), 28_depura (depuraCuadro),
 //   29_vr (VRX, vrRig, vrCierra, vrAbre, vrRecoloca, vrActualiza, vrFin), 31_hud (Hud), 33_ajustes (Ajustes)
 // Nota: Arranque y bucle: Mundo.arranca, Componentes.arranca y la lista de pasos del fotograma que recorre el Bucle del núcleo (apps/web/src/nucleo/bucle.ts: try/catch por fotograma, página oculta, reset del espacio XR, contexto perdido). Define el orden de las actualizaciones por fotograma: los módulos que aún no son componentes a mano y los componentes por fases (mundo, tarde, trasRender).

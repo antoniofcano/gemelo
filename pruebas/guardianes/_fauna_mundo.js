@@ -28,12 +28,14 @@ const NIVEL_ANTES = `
   function nivel(ms) { var s = posSol(ms), d = Math.max(0, Math.min(1, (Math.sin(s.alt) + 0.1) / 0.45)); return { s: s, d: d }; }
 `;
 
-/** El trozo del nivel del sol de la 15_tiempo.js actual (entre [nivel:inicio] y [nivel:fin]) + la nivel() de siempre, que en el módulo va más abajo. */
+/** El nivel del sol de ahora como texto de JavaScript que define posSolEn, nivelEn y nivel con LAT y LON del ámbito. MU5-n (A3-4): el nivel vive en
+ *  apps/web/src/mundos/exterior/tiempo-puro.ts (creaNivelSol, entre [nivel:inicio] y [nivel:fin]); su texto, sin los tipos (Node los quita al cargar el .ts),
+ *  se basta solo, así que se evalúa tal cual donde haga falta (un contexto vm, una función). */
 function nivelNuevo() {
-  const src = lee("apps/web/motor/15_tiempo.js"), a = src.indexOf("// [nivel:inicio]"), b = src.indexOf("// [nivel:fin]");
-  if (a < 0 || b < a) throw new Error("15_tiempo.js ya no tiene las marcas [nivel:inicio] / [nivel:fin]");
-  const m = /\n  function nivel\(ms\) \{[^\n]*\n/.exec(src); if (!m) throw new Error("15_tiempo.js ya no tiene function nivel(ms)");
-  return src.slice(a, b) + m[0];
+  const src = lee("apps/web/src/mundos/exterior/tiempo-puro.ts"), a = src.indexOf("// [nivel:inicio]"), b = src.indexOf("// [nivel:fin]");
+  if (a < 0 || b < a || src.slice(a, b).indexOf("export function creaNivelSol(") < 0) throw new Error("tiempo-puro.ts ya no tiene creaNivelSol entre las marcas [nivel:inicio] / [nivel:fin]");
+  const { creaNivelSol } = require("./_mundos");
+  return "var __nivelSol = (" + creaNivelSol.toString() + ")(LAT, LON);\nvar posSolEn = __nivelSol.posSolEn, nivelEn = __nivelSol.nivelEn, nivel = __nivelSol.nivel;\n";
 }
 
 /** Un mundo con olivos repartidos (algunos muy juntos, para probar la cadena de empujones), una función de relieve y los globales que pide la fauna. */

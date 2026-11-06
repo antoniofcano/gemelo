@@ -74,7 +74,8 @@ for (const b of ["pantalla", "vr"]) {
 test("cada material de recorte alfa del motor pasa por Materiales.recorte (y la corteza, la sombra y las láminas no)", () => {
   const f = n => require("./_fuente").fuenteMotor(n);   // A3-2b: lo migrado, junto a su talón
   assert.strictEqual((f("07_follaje.js").match(/Materiales\.recorte\(materiales\.estandar\("PointsMaterial", \{[^}]*alphaTest/g) || []).length, 2, "hoja grande y pequeña");   // A3-2b: por la fábrica (estandar)
-  assert.match(f("21_suelo.js"), /matMata = Materiales\.recorte\(new THREE\.MeshLambertMaterial\(\{ map: texHierba, alphaTest/);
+  assert.match(f("21_suelo.js") /* A3-4: hierba.ts */, /matMata = Materiales\.recorte\(materiales\.crea\(MATERIAL_MATAS, \{ map: texHierba,/);   // MU5-n: el Lambert del atlas, con alphaTest 0,42, lo da DEF_MATAS
+  assert.match(f("21_suelo.js"), /new THREE\.MeshLambertMaterial\(\{ map: o\.map, alphaTest: 0\.42, side: THREE\.DoubleSide \}\)/);
   assert.strictEqual((f("07ac_lejanos.js").match(/Materiales\.recorte\(new THREE\.MeshLambertMaterial\(\{[^}]*alphaTest: 0\.5/g) || []).length, 2, "impostor lejano y sustituto");
   const g = require("./_fuente").fuenteMotor("07ab_generados.js") /* A3-2a: talón + generados*.ts */, i = g.indexOf("function parcheGen"), j = g.indexOf("function profundidad");
   const cuerpo = g.slice(i, j);

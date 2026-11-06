@@ -75,6 +75,8 @@ export interface DepsGenerados {
   suelo: (x: number, y: number) => number;
   /** 15_tiempo: sombra de nubes, escarcha y color por instancia en sRGB (va después en el montaje: se llama al compilar) */
   parcheTiempo: (sh: A, viento: boolean) => void;
+  /** A3-4: los nodos del tiempo en TSL (tiempo-parche.ts: nodosTsl), para la variante apagada; se piden al construirla */
+  tiempoTsl?: (() => ((T: A) => A) | null) | null;
   /** location.search */
   busqueda: string;
   reloj: { now(): number };
@@ -178,7 +180,7 @@ export function creaGenerados(d: DepsGenerados) {
     if (m.isMeshDepthMaterial) { anota(n, m, propios.crea(MATERIAL_GEN_PROFUNDIDAD, { material: m, fundido: parcheFundido, propia: M.encadena, uniformes: UF })); return; }
     if (m.color) m.color.convertSRGBToLinear();   // el número de la referencia es un color «tal como se ve» (sRGB): el convenio del motor
     Materiales.recorte(m);   // AG-2.1: relleno, ramitas y tarjetas (alphaTest > 0) a alphaToCoverage; la corteza no tiene recorte y no cambia
-    anota(n, m, propios.crea(MATERIAL_GEN_OLIVO, { material: m, parche: luzFundido, propia: M.encadena, uniformes: UF, pieza: n }));
+    anota(n, m, propios.crea(MATERIAL_GEN_OLIVO, { material: m, parche: luzFundido, propia: M.encadena, uniformes: UF, pieza: n, tiempo: d.tiempoTsl || null }));
   }
   function anota(n: A, m: A, r: A) { if (n !== undefined && r !== m) reemplazos[n] = r; }
   function profundidad() { return propios.crea(MATERIAL_GEN_PROFUNDIDAD, { material: null, fundido: parcheFundido, propia: M.encadena, uniformes: UF }); }

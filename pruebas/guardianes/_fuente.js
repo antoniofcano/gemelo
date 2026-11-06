@@ -42,6 +42,11 @@ const TS_DE = {
   "34b_palanca.js": "apps/web/src/mundos/comun/palanca.ts",
   "29_vr.js": ["vr.ts", "vr-rig.ts", "vr-teletransporte.ts", "vr-panel.ts", "vr-sesion.ts", "vr-puros.ts"].map(f => "apps/web/src/mundos/comun/" + f),
   "07ab_generados.js": ["generados.ts", "generados-escalera.ts", "generados-horneado.ts", "generados-cola.ts", "generados-sombreado.ts", "generados-lote.ts"].map(f => "apps/web/src/mundos/exterior/" + f),
+  // A3-4: 15_tiempo es una extracción parcial; el tiempo vive en ocho ficheros (el módulo, lo puro, el parche, el cielo, la lluvia, la barrera, el paso y las fichas)
+  "21_suelo.js": "apps/web/src/mundos/exterior/hierba.ts",   // A3-4
+  "20_sonido.js": "apps/web/src/mundos/exterior/sonido.ts",   // A3-4
+  "23_estacion.js": "apps/web/src/mundos/exterior/estacion.ts",   // A3-4
+  "15_tiempo.js": ["tiempo.ts", "tiempo-puro.ts", "tiempo-parche.ts", "tiempo-cielo.ts", "tiempo-lluvia.ts", "tiempo-barrera.ts", "tiempo-paso.ts", "tiempo-fichas.ts"].map(f => "apps/web/src/mundos/exterior/" + f),
 };
 /** A3-6c: los .ts de mundos/comun/ (la VR y la locomoción) se leen como el JavaScript que sale de ellos: sin los tipos (stripTypeScriptTypes de Node, que los cambia por
  *  espacios) y sin `export` al principio de línea, con los huecos que dejan los tipos recogidos. Así sus guardianes de siempre (los que buscan el código de 29_vr, 12_paseo… con

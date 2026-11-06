@@ -8,7 +8,7 @@
     "Escena3D": { "modulo": "04b_escena3d.js", "fuente": "apps/web/src/mundos/exterior/escena-tiles.ts", "fabrica": "creaEscena3D", "miembros": ["actualiza", "estado", "perfil", "resumen", "libera", "listo", "alturaEn", "relieveEn", "sondea", "engancha", "grupo"] },
     "OlivosTiles": { "modulo": "04c_olivos_tiles.js", "fuente": "apps/web/src/mundos/exterior/olivos-tiles.ts", "fabrica": "creaOlivosTiles", "miembros": ["dibuja", "cerca", "triangulos", "resumen", "tipo", "tipos", "instanciasDe", "libera"] },
     "SombreadoTiles": { "modulo": "04d_sombreado_tiles.js", "fuente": "apps/web/src/mundos/exterior/terreno.ts", "fabrica": "creaSombreadoTiles", "puente": "Mundos", "miembros": ["modelo", "suelta", "actualiza", "libera", "resumen", "OP", "componente"] },
-    "TiempoVivo": { "modulo": "15_tiempo.js", "miembros": ["lee", "alCambiar"] },
+    "TiempoVivo": { "modulo": "15_tiempo.js", "fuente": "apps/web/src/mundos/exterior/tiempo.ts", "fabrica": "creaTiempoVivo", "puente": "Mundos", "miembros": ["lee", "alCambiar"] },
     "Catalogo": { "modulo": "07a_catalogo.js", "fuente": "apps/web/src/mundos/exterior/catalogo.ts", "fabrica": "creaCatalogo", "miembros": ["SIN", "PRES_TRI", "tipos", "tiene", "variantes", "geometria", "triangulos", "info", "instala", "retira", "alCambiar", "avisos", "libera"] },
     "Arboles": { "modulo": "07b_arboles.js", "fuente": "apps/web/src/mundos/exterior/arboles.ts", "fabrica": "creaArboles", "miembros": ["perfil", "inicia", "tileCargada", "refresca", "actualiza", "presupuesto", "resumen", "celdas", "libera", "componente"] },
     "PoseCodec": { "modulo": "26_presencia.js", "miembros": ["VERSION", "ESCRITORIO", "QUEST", "BYTES", "PIE", "QUAD", "DRON", "codifica", "decodifica", "empaquetaQ", "desempaquetaQ"] },
