@@ -69,6 +69,16 @@ describe("el olivo estacional (componente del exterior)", () => {
     ["ndviSel", "mNube", "mGem", "mOrto", "tHoy", "tVerGem"].forEach(id => expect(els[id].n()).toBe(0)); expect(E.vivos()).toEqual({ escuchas: 0, reloj: false });
     expect(E.libera()).toBe(0); E.actualizaOlivo(0.016);   // ya no hace nada
   });
+  it("la variante TSL (apagada y PARCIAL): solo con el renderizador nuevo; con three/webgpu y three/tsl de verdad, un PointsNodeMaterial con sus nodos", async () => {
+    const W: A = await import(/* @vite-ignore */ "three/webgpu" as string), TSL: A = await import(/* @vite-ignore */ "three/tsl" as string);
+    const { DEF_FRUTO_FLOR } = await import("./estacion.ts");
+    const hoy = creaMateriales({ THREE: THREE as unknown as ThreeMin, render: { tipo: "clasico", pedido: "" }, nodos: () => ({ THREE: W, TSL }) });
+    hoy.define("fruto-flor", DEF_FRUTO_FLOR); expect(hoy.ruta("fruto-flor")).toBe("clasico");
+    const F = creaMateriales({ THREE: THREE as unknown as ThreeMin, render: { tipo: "nuevo", pedido: "nuevo" }, nodos: () => ({ THREE: W, TSL }) });
+    F.define("fruto-flor", DEF_FRUTO_FLOR); expect(F.ruta("fruto-flor")).toBe("tsl"); expect(F.cobertura()["fruto-flor"]).toMatchObject({ clasico: true, tsl: true });
+    const un = { uBBCH: { value: 80 }, uEsc: { value: 400 }, uLuz: { value: new THREE.Color(1, 1, 1) } }, m: A = F.crea("fruto-flor", { uniforms: un });
+    expect(m.isPointsNodeMaterial).toBe(true); expect(m.sizeNode && m.maskNode && m.colorNode).toBeTruthy(); expect(m.toneMapped).toBe(false);
+  });
   it("el manifiesto vale, es de los mundos [exterior], monta el mismo objeto y su libera lo suelta", () => {
     const { E, ventana } = monta(), man = manifiestoEstacion(E);
     expect(ComponentesPuro.valida(man)).toEqual([]); expect(man.id).toBe("estacion-olivo"); expect(man.mundos).toEqual(["exterior"]);

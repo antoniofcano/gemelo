@@ -46,6 +46,31 @@ export const DEF_FRUTO_FLOR: DefMaterial<OpcFrutoFlor> = {
         "if (tam <= 0.0) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); gl_PointSize = 0.0; } else { gl_Position = projectionMatrix * mv; gl_PointSize = tam * uEsc / max(0.5, -mv.z); } }",
       fragmentShader: "uniform vec3 uLuz; varying vec3 vCol; void main(){ vec2 d = gl_PointCoord - 0.5; float r2 = dot(d, d); if (r2 > 0.25) discard; float brillo = smoothstep(0.07, 0.0, length(d - vec2(-0.12, 0.12))); gl_FragColor = vec4(sRGBTransferEOTF(vec4(vCol, 1.0)).rgb * uLuz * (0.82 + 0.4 * (0.25 - r2)) + brillo * 0.3 * uLuz, 1.0);\n#include <colorspace_fragment>\n}"
     });
+  },
+  // MU5-n, tercer commit: la variante TSL, APAGADA (solo con el WebGPURenderer, MU6) y PARCIAL (MATERIALES §9). Un PointsNodeMaterial con las mismas cuentas: el
+  // BBCH de cada punto (uBBCH ± 3,5 por aR), el tamaño y el color de flores y aceitunas, el disco con su brillo y la luz (uLuz), con los MISMOS uniformes.
+  //   · lleva el tamaño en sizeNode (tam · uEsc / max(0,5, −mv.z), con el metro que lo acerca) y descarta en el fragmento los puntos sin tamaño y fuera del disco;
+  //   · FALTA: con el WebGPURenderer un punto mide 1 px salvo como sprite instanciado (MULTIVIEW §2.3): los frutos tienen que pasar a sprites, y eso hay que medirlo;
+  //   · DIFIERE: el clásico saca de la pantalla el punto sin tamaño (gl_Position fuera); aquí se descarta en el fragmento. Sin tono, como el clásico (toneMapped = false).
+  tsl: function (o, c) {
+    var W = c.THREE as A, T = c.TSL as A, un = o.uniforms;
+    var m = new W["PointsNodeMaterial"]({ sizeAttenuation: false });
+    m.toneMapped = false;
+    var num = function (x: A): A { return T.uniform(x.value).onObjectUpdate(function () { return x.value; }); };
+    var uBBCH = num(un.uBBCH), uEsc = num(un.uEsc), uLuz = num(un.uLuz), aR = T.attribute("aR", "float"), aS = T.attribute("aS", "float");
+    var b = uBBCH.add(aR.sub(0.5).mul(7.0));
+    var flor = b.greaterThanEqual(58.0).and(b.lessThan(70.5)), dens = T.smoothstep(58.0, 62.0, b).mul(T.float(1).sub(T.smoothstep(66.0, 70.5, b))).mul(0.8);
+    var oliva = b.greaterThanEqual(70.5).and(b.lessThan(91.0));
+    var tam = T.select(flor.and(aS.lessThan(dens)), T.float(0.5), T.select(oliva.and(aS.lessThan(0.55)), T.mix(T.float(0.25), T.float(0.7), T.clamp(b.sub(71.0).div(8.0), 0.0, 1.0)), T.float(0)));
+    var colO = T.mix(T.mix(T.vec3(0.5, 0.64, 0.2), T.vec3(0.5, 0.2, 0.38), T.smoothstep(80.0, 85.0, b)), T.vec3(0.17, 0.1, 0.19), T.smoothstep(85.0, 90.0, b));
+    var col = T.select(flor.and(aS.lessThan(dens)), T.vec3(0.97, 0.95, 0.86), T.select(oliva.and(aS.lessThan(0.55)), colO, T.vec3(1.0)));
+    var mvz = T.modelViewMatrix.mul(T.vec4(T.positionGeometry, 1)).z.add(1.0);
+    m.sizeNode = tam.mul(uEsc).div(T.max(0.5, mvz.negate()));
+    var vTam = T.varying(tam), vCol = T.varying(col), dd = T.pointUV.sub(0.5), r2 = T.dot(dd, dd);
+    m.maskNode = vTam.greaterThan(0.0).and(r2.lessThanEqual(0.25));
+    var brillo = T.smoothstep(0.07, 0.0, T.length(dd.sub(T.vec2(-0.12, 0.12))));
+    m.colorNode = T.vec4(T.sRGBTransferEOTF(vCol).mul(uLuz).mul(T.float(0.82).add(T.float(0.25).sub(r2).mul(0.4))).add(uLuz.mul(brillo.mul(0.3))), 1.0);
+    return m;
   }
 };
 
