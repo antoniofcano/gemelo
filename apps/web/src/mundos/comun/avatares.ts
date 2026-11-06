@@ -38,7 +38,7 @@ export function defVrmFundido() {
       const T = c.TSL, u = (mat && mat.userData && mat.userData.vrmFundidoUni) || { value: 1 };
       const uFun = T.uniform(u.value).onObjectUpdate(function () { return u.value; });
       const p = T.screenCoordinate.xy, ign = T.fract(T.float(52.9829189).mul(T.fract(T.dot(p, T.vec2(0.06711056, 0.00583715)))));
-      const m = new c.THREE.MeshStandardNodeMaterial({ color: mat && mat.color ? mat.color.getHex() : 0xffffff, map: (mat && mat.map) || null, side: mat ? mat.side : 0,
+      const m = new c.THREE["MeshStandardNodeMaterial"]({ color: mat && mat.color ? mat.color.getHex() : 0xffffff, map: (mat && mat.map) || null, side: mat ? mat.side : 0,
         transparent: !!(mat && mat.transparent), alphaTest: mat && mat.alphaTest || 0 });
       m.name = mat && mat.name || ""; m.maskNode = ign.lessThan(uFun);   // el «if (vrm_ign(gl_FragCoord.xy) >= uFunVrm) discard;» del clásico
       m.userData.vrmFundido = true; m.userData.vrmFundidoUni = u;

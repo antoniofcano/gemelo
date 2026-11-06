@@ -53,7 +53,7 @@ export function defNombres() {
       const celda = T.attribute("aCelda", "float"), col = T.mod(celda, rej.x), fila = T.floor(celda.div(rej.x));
       const vUv = T.vec2(col.add(T.uv().x).div(rej.x), T.float(1).sub(fila.add(1).sub(T.uv().y).div(rej.y)));
       const t = T.texture(mapa, vUv);
-      const m = new c.THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, fog: false, alphaTest: 0.04 });
+      const m = new c.THREE["MeshBasicNodeMaterial"]({ transparent: true, depthWrite: false, fog: false, alphaTest: 0.04 });
       m.colorNode = t.rgb; m.opacityNode = t.a;
       return m;
     }
