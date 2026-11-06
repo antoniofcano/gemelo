@@ -3,8 +3,9 @@
 // --sin: ficheros del motor que se dejan fuera (ADR-0023: un componente se puede quitar del motor sin tocar a nadie; lo comprueba
 // pruebas/guardianes/componentes.test.js). Solo componentes: quitar un fichero del núcleo o de los de siempre rompe el motor.
 // Escribe en <dest> (por defecto apps/web/.generado/):
-//   entrada/motor.generado.js  = `import * as THREE from "three";` + los módulos de motor/ concatenados en orden alfabético,
-//                                en orden alfabético, que ES el orden de montaje (01_datos abre la IIFE y 99_cierre la cierra)
+//   entrada/motor.generado.js  = `import * as THREE from "three";` + `import * as Nucleo from "@gemelo/nucleo";` (el puente, MUNDOS §9.3) +
+//                                los módulos de motor/ concatenados en orden alfabético, que ES el orden de montaje (01_datos abre la IIFE y
+//                                99_cierre la cierra). Dentro de la IIFE se ven THREE y Nucleo (lo que exporta apps/web/src/nucleo/index.ts)
 //   index.html                 = plantilla.html (con los textos de la finca, si el índice trae `textos`) + el JSON del índice (#datos) + la entrada como módulo
 // Las teselas t/ se piden en tiempo de ejecución (D.base); aquí solo va el índice.
 import fs from "node:fs";
@@ -13,6 +14,19 @@ import { fileURLToPath } from "node:url";
 
 const WEB = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const MOTOR = path.join(WEB, "motor");
+
+// Las importaciones que van delante del motor concatenado. IMPORTA_NUCLEO es el puente con el código nuevo (MUNDOS §9.3, ADR-0033): el alias
+// «@gemelo/nucleo» → apps/web/src/nucleo/index.ts lo resuelve vite.config.js en las dos builds. Las importaciones se evalúan antes que el cuerpo,
+// así que la IIFE ve Nucleo ya cargado; un módulo legado migrado queda en motor/ como talón (`var Cola = Nucleo.creaCola(…);`, misma cabecera
+// y mismo sitio en el orden). Lo vigila pruebas/guardianes/puente.test.js: el texto es el de antes con esta línea de más.
+export const IMPORTA_THREE = 'import * as THREE from "three";\n';
+export const IMPORTA_NUCLEO = 'import * as Nucleo from "@gemelo/nucleo";\n';
+export const IMPORTA_CSS = 'import "./plantilla.css";\n';
+
+/** El texto entero de entrada/motor.generado.js (sin = ficheros que se dejan fuera, como en concatenaMotor) */
+export function entradaMotor(sin = []) {
+  return IMPORTA_THREE + IMPORTA_NUCLEO + IMPORTA_CSS + concatenaMotor(sin);
+}
 
 function argumento(nombre) { const i = process.argv.indexOf("--" + nombre); return i > 0 ? process.argv[i + 1] : undefined; }
 
@@ -51,7 +65,7 @@ export function genera(datos, dest, sin = []) {
   fs.mkdirSync(path.join(dest, "entrada"), { recursive: true });
   // V12: los estilos van en un .css del mismo origen (la CSP no deja <style> ni style="…" en línea) y las tipografías @fontsource entran por su @import
   fs.copyFileSync(path.join(WEB, "plantilla.css"), path.join(dest, "entrada", "plantilla.css"));
-  fs.writeFileSync(path.join(dest, "entrada", "motor.generado.js"), 'import * as THREE from "three";\nimport "./plantilla.css";\n' + concatenaMotor(sin));
+  fs.writeFileSync(path.join(dest, "entrada", "motor.generado.js"), entradaMotor(sin));
   let plantilla = fs.readFileSync(path.join(WEB, "plantilla.html"), "utf8");
   if (J.textos) plantilla = textosFinca(plantilla, J.textos);
   const html = '<!doctype html>\n<html lang="es">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n</head>\n<body>\n' +

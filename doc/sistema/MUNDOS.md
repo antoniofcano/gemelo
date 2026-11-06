@@ -284,6 +284,19 @@ Antes de la fase 1 van la fase 0 y las tandas 0 y 1 de la auditoría: el [PLAN](
   1. `genera_motor.mjs` añade una línea más delante: `import * as Nucleo from "@gemelo/nucleo";`, con un alias de Vite a `apps/web/src/nucleo/index.ts` como los de `vite.config.js:66-80`.
   2. El módulo que se migra (por ejemplo `02b_cola.js`) **no se borra**: queda como **talón** en su mismo sitio del orden, con su cabecera, y su cuerpo pasa a ser `var CargaPuro = Nucleo.CargaPuro; var Cola = Nucleo.creaCola({ … lo que consumía … });`.
   3. Así siguen igual el orden de montaje (regla 2), las cabeceras «Expone/Consume», `contrato_modulos.js`, `contratos/interfaces.json`, `--sin` y los 92 nombres de fichero, y la IIFE no se entera.
+- **Cómo quedó (A1-7, MU1-5, 2026-11-06; ningún módulo migrado aún):**
+  - **La línea:** `genera_motor.mjs` exporta `IMPORTA_THREE`, `IMPORTA_NUCLEO` e `IMPORTA_CSS` y `entradaMotor(sin)`; el texto es `import * as THREE from "three";`, `import * as Nucleo from "@gemelo/nucleo";`, `import "./plantilla.css";` y la concatenación de siempre. La del núcleo va **segunda**, junto a la de three: las importaciones se evalúan antes que el cuerpo sea cual sea su orden.
+  - **El alias:** `vite.config.js` (`NUCLEO`, delante de `gemelo-olivo`) en las dos builds, porque no depende de `GEMELO_BUILD`; y el mismo en `apps/web/tsconfig.json` (`paths`). Vite compila el `.ts` sin paso nuevo.
+  - **`apps/web/src/nucleo/index.ts`** es lo único que ve el legado: lo que exporta es `Nucleo.<nombre>`. Hoy reexporta solo `partesDeVersion` (A1-3). Como nada del legado lo usa todavía, Rollup lo quita del paquete; en cuanto un talón nombra algo, entra.
+  - **El talón** lleva la cabecera de siempre (la regenera `contrato_modulos.js --escribe`), la marca `// [talón] apps/web/src/nucleo/<fichero>.ts` y solo declaraciones `  var X = …Nucleo.…;`, con dos espacios de sangría para que `contrato_modulos.js` vea lo que expone, y como mucho 30 líneas de código.
+  - **Guardianes:** `pruebas/guardianes/puente.test.js` comprueba cinco cosas:
+    - que el texto es el de antes (escrito a mano en la prueba) más esa línea, también con `--sin`;
+    - que los nombres que expone cada módulo coinciden con la foto `pruebas/guardianes/referencias/puente_nombres.json`. Es una foto en vez de «con y sin puente», porque con un talón ya no hay un «sin puente» que generar. Se rehace con `GEMELO_PUENTE_ESCRIBE=1` solo si el cambio es a propósito;
+    - que ningún módulo declara `Nucleo` y que todo `Nucleo.<x>` del legado lo exporta `index.ts`;
+    - la forma de cada talón;
+    - que las dos builds resuelven el alias y llevan el núcleo, con Vite de verdad sobre una entrada mínima con un talón dentro de la IIFE.
+
+    `pruebas/guardianes/trinquete_legado.test.js` lleva el tope de líneas de `motor/*.js` **sin cabeceras**: las cabeceras se derivan solas y no son código. El tope es exacto: si el legado sube, la prueba falla, y si baja también, hasta que el mismo commit baje el tope.
 - **Lo que no se hace, y por qué:**
   - **Nada en `src/` lee globales del legado al cargarse.** Lo que necesita del legado lo recibe por argumento cuando el talón llama a su fábrica (`creaCola(deps)`, `instala(ctx)`). Sin esto, el orden de evaluación rompería el montaje.
   - **Las primitivas que el legado reescribe** (`exag`, `modo`, `calidad`, `paseando`, `listo`) no pueden ser importaciones (son de solo lectura). El módulo TS que las necesite las recibe dentro de un objeto (§9.4).

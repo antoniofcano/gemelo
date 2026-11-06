@@ -8,6 +8,12 @@ Hay **una sola salida**, la web de Vite (`apps/web/motor/`, [ADR-0010](../adr/00
 
 `apps/web/herramientas/genera_motor.mjs` escribe `entrada/motor.generado.js` = `import * as THREE from "three"` + la concatenación de `motor/*.js` en orden (`readdirSync().sort()`: **él fija el orden de montaje**), aplica los textos por finca a la plantilla (título, entradilla, pie, `sin_historia`) y escribe un `index.html` con la plantilla y el `#datos`; `vite build` lo empaqueta en `apps/web/dist/` con three 0.186.1 (versión exacta de `apps/web/package.json`, [ADR-0016](../adr/0016-actualizacion-de-three.md)). `01_datos.js` abre una IIFE con `"use strict"` y `99_cierre.js` la cierra: todo el motor comparte ámbito, sin módulos ES. El orden de los prefijos fijos (`02_` < `02b_` < `03_`) es el orden de montaje y, por tanto, de dependencias.
 
+**El puente con el código nuevo** ([MUNDOS §9.3](MUNDOS.md#93-cómo-conviven-src-y-la-iife-en-vite), [ADR-0033](../adr/0033-mundos.md)). Entre la línea de three y la concatenación va `import * as Nucleo from "@gemelo/nucleo";`. El alias lleva a `apps/web/src/nucleo/index.ts` (TypeScript) y está en `vite.config.js`, para las dos builds, y en `apps/web/tsconfig.json` (`paths`). Dentro de la IIFE, el legado ve `Nucleo.<nombre>`.
+- **Talón:** un módulo migrado no se borra. Queda en `motor/` con su nombre, su sitio en el orden y su cabecera, con la marca `// [talón] apps/web/src/….ts` y solo `  var X = …Nucleo.…;`.
+- **Qué vigila cada guardián:**
+  - `pruebas/guardianes/puente.test.js`: el texto generado es el de antes más esa línea; los nombres expuestos coinciden con la foto; la forma de los talones; las dos builds llevan el núcleo.
+  - `pruebas/guardianes/trinquete_legado.test.js`: las líneas de `motor/*.js` solo bajan.
+
 La página pide `t/<clave>.json|jpg` (`D.teselas` es el índice; `D.base` da el prefijo, por defecto relativo) y, para la escena, el `tileset` del índice. Ya no hay modo embebido.
 
 ## 2. Módulos (`apps/web/motor/`)

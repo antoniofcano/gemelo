@@ -112,6 +112,7 @@ function montaPagina({ finca = "hituelo", conTileset = true, tileset, olivos = f
   // la huella: todo lo que cambia la página
   const h = crypto.createHash("sha256");
   hashFicheros(h, path.join(WEB, "motor"), "motor");
+  hashFicheros(h, path.join(WEB, "src"), "src");   // el núcleo nuevo, que entra por el puente (import * as Nucleo, MUNDOS §9.3)
   for (const f of ["plantilla.html", "plantilla.css", "vite.config.js", "package-lock.json", path.join("herramientas", "genera_motor.mjs"), path.join("herramientas", "builds.mjs"), path.join("herramientas", "sin_tiles3d.js")]) {
     const p = path.join(WEB, f); if (fs.existsSync(p)) { h.update(f + "\0"); h.update(fs.readFileSync(p)); }
   }

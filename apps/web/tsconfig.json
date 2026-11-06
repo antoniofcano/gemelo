@@ -5,7 +5,8 @@
     "module": "esnext",
     "moduleResolution": "bundler",
     "lib": ["es2022", "dom"],
-    "types": ["vite/client"]
+    "types": ["vite/client"],
+    "paths": { "@gemelo/nucleo": ["./src/nucleo/index.ts"] }
   },
   "include": ["src/**/*.ts", "vitest.config.ts"]
 }

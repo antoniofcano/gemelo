@@ -66,7 +66,7 @@ test("la build de siempre no cambia: alias de three exactos, three 0.186.1, sali
   const G = await import(pathToFileURL(path.join(WEB, "herramientas/genera_motor.mjs")).href);
   const raiz = fs.mkdtempSync(path.join(os.tmpdir(), "gemelo-entrada-f1-")), idx = path.join(raiz, "i.json");
   fs.writeFileSync(idx, "{}"); G.genera(idx, raiz);
-  assert.ok(fs.readFileSync(path.join(raiz, "entrada", "motor.generado.js"), "utf8").startsWith('import * as THREE from "three";\nimport "./plantilla.css";\n'));
+  assert.ok(fs.readFileSync(path.join(raiz, "entrada", "motor.generado.js"), "utf8").startsWith('import * as THREE from "three";\nimport * as Nucleo from "@gemelo/nucleo";\nimport "./plantilla.css";\n'));   // con el puente (puente.test.js)
   fs.rmSync(raiz, { recursive: true, force: true });
 });
 
