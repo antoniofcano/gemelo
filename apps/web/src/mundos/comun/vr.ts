@@ -16,6 +16,7 @@
 // lo que crea una vez por página (los rayos, el arco y su marca, la línea, el velo, la viñeta y las tres láminas con sus texturas) y quita sus escuchas (los mandos, el botón,
 // «sessiongranted», el Bus, el presentador, Configuración); si hay una sesión abierta, la termina antes.
 import type { Manifiesto } from "../../nucleo/componentes.ts";
+import type { DefMaterial, MaterialMin } from "../../nucleo/materiales.ts";
 import { aplicaCamara } from "../../nucleo/ambiente.ts";
 import { BuclePuro } from "../../nucleo/bucle.ts";
 import { FundidoPuro, creaFundido } from "../../nucleo/fundido.ts";
@@ -31,6 +32,23 @@ export type { CtxVr, DepsVr } from "./vr-tipos.ts";
 
 export const ID_VR = "vr";
 
+// ----- 5) la viñeta de confort (un velo con el centro transparente, pegado a la cabeza): su material, en la fábrica (MU5-n, A3-6c; antes Materiales.sombreador("vineta-vr", …) en 29_vr)
+export const MATERIAL_VINETA = "vineta-vr";
+/** Lo que se le pasa a crea(): los uniformes (uK, cuánto se cierra; uA, dónde empieza a oscurecer), que mueve vrActualiza */
+export interface OpcVineta { uniforms: Record<string, { value: unknown }> }
+/** La viñeta: el clásico es el ShaderMaterial de siempre, movido, que recibe sus uniformes (el mismo objeto: vrActualiza los mueve) */
+export function defVineta(): DefMaterial<OpcVineta> {
+  return {
+    clasico: function (opc, c) {
+      return new (c.THREE["ShaderMaterial"] as new (o: unknown) => MaterialMin)({
+        uniforms: opc.uniforms, transparent: true, depthTest: false, depthWrite: false,
+        vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+        fragmentShader: "uniform float uK; uniform float uA; varying vec2 vUv; void main(){ float r = length(vUv - 0.5) * 2.0; float a = smoothstep(uA, uA + 0.34, r) * uK; gl_FragColor = vec4(0.0, 0.0, 0.0, a); }"
+      });
+    }
+  };
+}
+
 export function creaVr(d: DepsVr) {
   var THREE = d.THREE, camera = d.camera, Estado = d.Estado, Materiales = d.Materiales;
   var VRX: T = {
@@ -40,15 +58,12 @@ export function creaVr(d: DepsVr) {
     tp: null, salto: false, hover: "", tFicha: 0, fichaT: 0, fichaDe: "", sucio: true, hapt: 0, hMov: 0, sesionesN: 0, cab: new THREE.Vector3(), mira: { x: 0, z: -1 },
     captura: null, voz: null, gente: null, genteFirma: "", tGente: 0, pestana: "mundo", giro: 30, sinPint: false, fichaId: "", balFirma: "", balInfo: null, hoverB: "", botonesB: []
   };
-  var c = { d: d, VRX: VRX, Nucleo: { creaFundido: creaFundido, FundidoPuro: FundidoPuro, BuclePuro: BuclePuro, aplicaCamara: aplicaCamara },
+  Materiales.define(MATERIAL_VINETA, defVineta());
+  var c = { d: d, VRX: VRX, materiales: Materiales.de(ID_VR), Nucleo: { creaFundido: creaFundido, FundidoPuro: FundidoPuro, BuclePuro: BuclePuro, aplicaCamara: aplicaCamara },
     vrGatillo: function (o: T) { c.panel.vrGatillo(o); } } as CtxVr;
 
   // ----- 5) la viñeta de confort (un velo con el centro transparente, pegado a la cabeza)
-  var vrVineta = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.4), Materiales.sombreador("vineta-vr", {
-    uniforms: { uK: { value: 0 }, uA: { value: 0.4 } }, transparent: true, depthTest: false, depthWrite: false,
-    vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
-    fragmentShader: "uniform float uK; uniform float uA; varying vec2 vUv; void main(){ float r = length(vUv - 0.5) * 2.0; float a = smoothstep(uA, uA + 0.34, r) * uK; gl_FragColor = vec4(0.0, 0.0, 0.0, a); }"
-  }));
+  var vrVineta = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.4), c.materiales.crea(MATERIAL_VINETA, { uniforms: { uK: { value: 0 }, uA: { value: 0.4 } } }));   // el clásico es el ShaderMaterial de siempre (defVineta, arriba)
   vrVineta.position.set(0, 0, -0.32); vrVineta.renderOrder = 999; vrVineta.frustumCulled = false; vrVineta.visible = false;
   c.vrVineta = vrVineta;
 
@@ -146,6 +161,7 @@ export function creaVr(d: DepsVr) {
     P.libera(); TT.libera(); RG.libera();
     if (vrVineta.parent) vrVineta.parent.remove(vrVineta);
     vrVineta.geometry.dispose(); vrVineta.material.dispose();
+    c.materiales.libera();   // lo que quede de la fábrica con dueño «vr» (los de arriba ya se soltaron con su dispose y la fábrica los olvida)
   }
   function monta() { if (!liberada) return; liberada = false; RG.monta(); P.monta(); c.sesion.monta(); }
   /** el manifiesto: solo ciclo de vida (lo registra 90_final.js; el legado usa la VR por su nombre desde que se monta) y de todos los mundos */

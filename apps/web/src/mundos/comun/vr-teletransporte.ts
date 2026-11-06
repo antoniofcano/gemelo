@@ -6,12 +6,12 @@ import type { T } from "./tipos.ts";
 import type { CtxVr } from "./vr-tipos.ts";
 
 export function creaVrTeletransporte(c: CtxVr) {
-  var d = c.d, VRX = c.VRX, Nucleo = c.Nucleo, THREE = d.THREE, scene = d.scene, camera = d.camera, Estado = d.Estado, Llegada = d.Llegada, window: T = d.ventana, RG = c.rig;
+  var d = c.d, VRX = c.VRX, Nucleo = c.Nucleo, materiales = c.materiales, THREE = d.THREE, scene = d.scene, camera = d.camera, Estado = d.Estado, Llegada = d.Llegada, window: T = d.ventana, RG = c.rig;
   var vrRayoDe = RG.vrRayoDe, vrCabeza = RG.vrCabeza, vrIrA = RG.vrIrA, vrAplicaRig = RG.vrAplicaRig, vrPulso = RG.vrPulso, vrBaseY = RG.vrBaseY, vrV2 = RG.vrV2, vrV3 = RG.vrV3, vrEjeY = RG.vrEjeY;
   var panel: T = null, ficha: T = null, fichaB: T = null;   // las láminas son del panel (vr-panel.ts), que se crea después: enlaza() las pone
   var arcoGeo = new THREE.BufferGeometry(), arcoPos = new Float32Array(34 * 3); arcoGeo.setAttribute("position", new THREE.BufferAttribute(arcoPos, 3));
-  var arco = new THREE.Line(arcoGeo, new THREE.LineBasicMaterial({ color: 0x7fe3ff, fog: false, transparent: true, opacity: 0.9 })); arco.frustumCulled = false; arco.visible = false;
-  var arcoMarca = new THREE.Mesh(new THREE.RingGeometry(0.28, 0.4, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x7fe3ff, fog: false, side: THREE.DoubleSide })); arcoMarca.visible = false;
+  var arco = new THREE.Line(arcoGeo, materiales.estandar("LineBasicMaterial", { color: 0x7fe3ff, fog: false, transparent: true, opacity: 0.9 })); arco.frustumCulled = false; arco.visible = false;
+  var arcoMarca = new THREE.Mesh(new THREE.RingGeometry(0.28, 0.4, 24).rotateX(-Math.PI / 2), materiales.estandar("MeshBasicMaterial", { color: 0x7fe3ff, fog: false, side: THREE.DoubleSide })); arcoMarca.visible = false;
   function vrArco(o: T) {   // trayectoria balística desde el mando derecho hasta el suelo; devuelve el punto de caída o null
     var gm = d.gm();
     var r = vrRayoDe(o), ox = r.ray.origin.x, oy = r.ray.origin.y, oz = r.ray.origin.z, dx = r.ray.direction.x * 9, dy = r.ray.direction.y * 9, dz = r.ray.direction.z * 9, hit: T = null, n = 0, px = ox, py = oy, pz = oz;
@@ -31,10 +31,10 @@ export function creaVrTeletransporte(c: CtxVr) {
   // a negro (~0,3 s), de pie en ese punto andando, y fundido de vuelta. Sin anillo (no toca suelo dentro de la finca o cae por detrás de la mirada) soltar no hace nada.
   var VT = { act: false };
   var vtLinGeo = new THREE.BufferGeometry(), vtLinPos = new Float32Array(6); vtLinGeo.setAttribute("position", new THREE.BufferAttribute(vtLinPos, 3));
-  var vtLin = new THREE.Line(vtLinGeo, new THREE.LineBasicMaterial({ color: 0xffc94a, fog: false, transparent: true, opacity: 0.45 })); vtLin.frustumCulled = false; vtLin.visible = false;
+  var vtLin = new THREE.Line(vtLinGeo, materiales.estandar("LineBasicMaterial", { color: 0xffc94a, fog: false, transparent: true, opacity: 0.45 })); vtLin.frustumCulled = false; vtLin.visible = false;
   // el fundido a negro: un velo pegado a la cabeza; estado y tiempos en apps/web/src/nucleo/fundido.ts (MU2-2). vrCierra() oscurece y su promesa se cumple a negro (se QUEDA
   // opaco hasta vrAbre(): entre los dos cabe cargar un mundo); vrFundido(fn) = cierra, fn a oscuras, abre (false si ya hay uno). vrSalta: los saltos de >5 m (L7-05) y las láminas nacen delante (L7-06)
-  var vrFun = Nucleo.creaFundido(), vrNegro = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.4), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0, depthTest: false, depthWrite: false, fog: false }));
+  var vrFun = Nucleo.creaFundido(), vrNegro = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.4), materiales.estandar("MeshBasicMaterial", { color: 0x000000, transparent: true, opacity: 0, depthTest: false, depthWrite: false, fog: false }));
   vrNegro.position.set(0, 0, -0.3); vrNegro.renderOrder = 1000; vrNegro.frustumCulled = false; vrNegro.visible = false;
   function vrNegroPinta() { vrNegro.material.opacity = vrFun.opacidad; vrNegro.visible = vrFun.visible; }
   function vrCierra(alNegro: T) { var p = vrFun.cierra(alNegro); vrNegroPinta(); return p; }

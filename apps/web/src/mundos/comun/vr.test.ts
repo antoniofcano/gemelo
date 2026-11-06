@@ -199,6 +199,23 @@ describe("VR: libera() suelta de verdad", () => {
     m.vr.monta();
     expect(escuchas(m.ctl[0])).toBe(ctl0); expect(m.vr.PanelVR.visibles("mundo").length).toBe(3); expect(m.botones.btnVR).toBeTruthy();
   });
+  it("los materiales salen de la fábrica con dueño «vr» (10: los dos rayos, el arco, su marca, la línea, el velo, las tres láminas y la viñeta) y libera() los suelta", async () => {
+    const m = monta(); await espera();
+    expect(m.d.Materiales.duenos()["vr"]).toBe(10);
+    m.vr.libera();
+    expect(m.d.Materiales.duenos()["vr"] || 0).toBe(0);
+  });
+  it("la viñeta (vineta-vr) es el ShaderMaterial de siempre: el mismo código, el mismo estado de dibujo, la misma clave de programa y los mismos uniformes", () => {
+    const m = monta(), v = m.vr.vrVineta.material;
+    const a = new T0.ShaderMaterial({ uniforms: { uK: { value: 0 }, uA: { value: 0.4 } }, transparent: true, depthTest: false, depthWrite: false,
+      vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+      fragmentShader: "uniform float uK; uniform float uA; varying vec2 vUv; void main(){ float r = length(vUv - 0.5) * 2.0; float a = smoothstep(uA, uA + 0.34, r) * uK; gl_FragColor = vec4(0.0, 0.0, 0.0, a); }" });
+    expect(v.isShaderMaterial).toBe(true);
+    for (const k of ["vertexShader", "fragmentShader", "transparent", "depthTest", "depthWrite", "fog"]) expect(v[k]).toEqual(a[k]);
+    expect(v.customProgramCacheKey()).toBe(a.customProgramCacheKey());
+    expect(Object.keys(v.uniforms)).toEqual(["uK", "uA"]);
+    expect(m.d.Materiales.ruta("vineta-vr")).toBe("clasico");
+  });
   it("el componente es de todos los mundos y solo de ciclo de vida", () => {
     const m = monta(), c = m.vr.componente;
     expect(c.id).toBe("vr"); expect(c.mundos).toEqual(["exterior", "molino", "bodega", "vacio"]); expect(c.fases).toEqual({});

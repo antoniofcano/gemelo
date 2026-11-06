@@ -52,7 +52,7 @@ export function creaPanelVR(c: CtxPanelVR) {
 export type PanelVR = ReturnType<typeof creaPanelVR>;
 
 export function creaVrPanel(c: CtxVr) {
-  var d = c.d, VRX = c.VRX, THREE = d.THREE, Estado = d.Estado, LaminasPuro = d.LaminasPuro, Laminas = d.Laminas, Bus = d.Bus, $ = d.$, D = d.D, fmt = d.fmt, texColor = d.texColor;
+  var d = c.d, VRX = c.VRX, materiales = c.materiales, THREE = d.THREE, Estado = d.Estado, LaminasPuro = d.LaminasPuro, Laminas = d.Laminas, Bus = d.Bus, $ = d.$, D = d.D, fmt = d.fmt, texColor = d.texColor;
   var ComponentesPuro = d.ComponentesPuro, EntidadesPuro = d.EntidadesPuro, Entidades = d.Entidades, Usables = d.Usables, Escena3D = d.Escena3D, pon = d.pon, pasoHoraMundo = d.pasoHoraMundo;
   var horaMundoTexto = d.horaMundoTexto, document: T = d.documento, RG = c.rig, TT = c.tele;
   var vrRayoDe = RG.vrRayoDe, vrBoton = RG.vrBoton, vrFlanco = RG.vrFlanco, vrPulso = RG.vrPulso, vrAj = RG.vrAj, vrAjPon = RG.vrAjPon, vrIrA = RG.vrIrA, VRC = RG.VRC, vrSalta = TT.vrSalta;
@@ -61,7 +61,7 @@ export function creaVrPanel(c: CtxVr) {
   function creaLamina(W: T, H: T, pw: T, ph: T): Lamina {
     var cv = document.createElement("canvas"); cv.width = W; cv.height = H;
     var tex = texColor(new THREE.CanvasTexture(cv)); tex.minFilter = THREE.LinearFilter; tex.generateMipmaps = false;
-    var m = new THREE.Mesh(new THREE.PlaneGeometry(pw, ph), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthTest: false, fog: false }));
+    var m = new THREE.Mesh(new THREE.PlaneGeometry(pw, ph), materiales.estandar("MeshBasicMaterial", { map: tex, transparent: true, depthTest: false, fog: false }));
     m.renderOrder = 998; m.visible = false;   // se recorta: el plano es fijo (solo se mueve y gira), así que el volumen que calcula three vale siempre
     return { cv: cv, cx: cv.getContext("2d"), tex: tex, m: m, W: W, H: H, pw: pw, ph: ph, ini: false };
   }

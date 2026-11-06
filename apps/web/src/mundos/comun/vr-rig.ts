@@ -6,7 +6,7 @@ import type { T } from "./tipos.ts";
 import type { CtxVr } from "./vr-tipos.ts";
 
 export function creaVrRig(c: CtxVr) {
-  var d = c.d, VRX = c.VRX, Nucleo = c.Nucleo, THREE = d.THREE, renderer = d.renderer, camera = d.camera, Estado = d.Estado, LaminasPuro = d.LaminasPuro;
+  var d = c.d, VRX = c.VRX, Nucleo = c.Nucleo, materiales = c.materiales, THREE = d.THREE, renderer = d.renderer, camera = d.camera, Estado = d.Estado, LaminasPuro = d.LaminasPuro;
   var vrGatillo = function (o: T) { c.vrGatillo(o); };   // el gatillo lo atiende el panel (vr-panel.ts), que se crea después
   var vrRig = new THREE.Group();
 
@@ -24,7 +24,7 @@ export function creaVrRig(c: CtxVr) {
   }
   var VRC = [0, 1].map(function (i: T) {
     var c = renderer.xr.getController(i), g = renderer.xr.getControllerGrip(i), o: T = { i: i, c: c, g: g, src: null, mano: "", rayo: null };
-    var lin = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -8)]), new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6, fog: false }));
+    var lin = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -8)]), materiales.estandar("LineBasicMaterial", { color: 0xffffff, transparent: true, opacity: 0.6, fog: false }));
     lin.visible = false; c.add(lin); o.rayo = lin;
     engancha(o);
     return o;

@@ -25,6 +25,8 @@ export interface CtxVr {
   d: DepsVr; VRX: T;
   /** lo del núcleo que usa la VR, con el nombre que tenía en el legado (Nucleo.creaFundido, Nucleo.FundidoPuro, Nucleo.BuclePuro, Nucleo.aplicaCamara) */
   Nucleo: T;
+  /** los materiales de la VR, con dueño «vr» (Materiales.de): se sueltan con su libera() */
+  materiales: T;
   /** las piezas (vr-rig, vr-teletransporte, vr-panel, vr-sesion): sin su tipo aquí para no hacer un ciclo de importaciones (dependency-cruiser) */
   rig: T; tele: T; panel: T; sesion: T;
   vrVineta: T; vrGatillo(o: T): void;
