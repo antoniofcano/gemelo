@@ -6,12 +6,14 @@
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
 
-const FUENTE = lee("apps/web/motor/15_tiempo.js"), PL = lee("apps/web/plantilla.html");
+// MU5-n (A3-4): 15_tiempo.js es una extracción parcial; el tiempo vive en apps/web/src/mundos/exterior/tiempo*.ts. Lo que se lee del código es todo junto
+const TS_TIEMPO = ["tiempo.ts", "tiempo-puro.ts", "tiempo-parche.ts", "tiempo-cielo.ts", "tiempo-lluvia.ts", "tiempo-barrera.ts", "tiempo-paso.ts", "tiempo-fichas.ts"];
+const FUENTE = [lee("apps/web/motor/15_tiempo.js")].concat(TS_TIEMPO.map(f => lee("apps/web/src/mundos/exterior/" + f))).join("\n"), PL = lee("apps/web/plantilla.html");
 const EJEMPLO = JSON.parse(lee("contratos/tiempo-ejemplo.json"));
 function puro() {
-  const i = FUENTE.indexOf("// [puro:inicio]"), f = FUENTE.indexOf("// [puro:fin]");
-  assert.ok(i >= 0 && f > i, "15_tiempo.js debe marcar su trozo puro");
-  return new Function("\"use strict\";\n" + FUENTE.slice(i, f) + "\nreturn TiempoPuro;")();
+  const src = lee("apps/web/src/mundos/exterior/tiempo-puro.ts"), i = src.indexOf("// [puro:inicio]"), f = src.indexOf("// [puro:fin]");
+  assert.ok(i >= 0 && f > i, "tiempo-puro.ts debe marcar su trozo puro");
+  return require("./_mundos").TiempoPuro;   // el mismo objeto que ve el motor (Mundos.TiempoPuro)
 }
 const P = puro();
 const copia = o => JSON.parse(JSON.stringify(o));
@@ -62,18 +64,29 @@ test("histórico semanal de /api/tiempo/historico: misma origen, rango en la con
 
 test("sin conector de claude.ai (decisión 79): ningún módulo del motor usa window.claude, callTool ni TM.mcp", () => {
   for (const f of ["14_historia.js", "15_tiempo.js", "23_estacion.js"]) {
-    const s = lee("apps/web/motor/" + f).replace(/^\s*\/\/.*$/gm, "");
+    const s = require("./_fuente").fuenteMotor(f).replace(/^\s*\/\/.*$/gm, "");   // MU5-n: con el .ts de los migrados
     assert.ok(!/window\.claude|callTool|TM\.mcp|\bmcp\./.test(s), f + " no habla con el conector");
   }
-  assert.match(lee("apps/web/motor/23_estacion.js"), /TiempoPuro\.leeHistorico\(/, "el histórico semanal sale de la api");
+  assert.match(require("./_fuente").fuenteMotor("23_estacion.js"), /TiempoPuro\.leeHistorico\(/, "el histórico semanal sale de la api");
 });
 
 test("la caída a lo simulado:si la lectura falla, el código pasa a tiempoSimulado y lo dice (chip y ventana)", () => {
   assert.match(FUENTE, /tiempoSimulado\(TiempoPuro\.motivo\(r\.motivo\)\)/, "sin api: simulado con el motivo");
   assert.match(FUENTE, /tAviso\("Tiempo simulado: "/, "la ventana lo dice");
-  assert.match(FUENTE, /TM\.origen === "simulado" \? " · simulado"/, "el chip lo dice");
+  assert.match(FUENTE, /origen === "simulado" \? " · simulado"/, "el chip lo dice");
+  assert.match(FUENTE, /TiempoPuro\.rotuloOrigen\(TM\.demo, TM\.origen, /, "la chapita sale de rotuloOrigen");
   const v = P.vivo("simulado", null, null, ["Tiempo simulado: no hay datos de Vigía."], Date.now());
   assert.deepStrictEqual(v, { origen: "simulado", actual: null, horas: [], frescura: { generadoEn: null, horasDeAntiguedad: null }, avisos: ["Tiempo simulado: no hay datos de Vigía."] });
+});
+
+test("L8-05: la chapita rotula de dónde sale lo que se ve: ejemplo, «estimado» con la estación de otra fecha, simulado o prueba", () => {
+  assert.strictEqual(P.rotuloOrigen("", "vigia", false), "", "el tiempo de Vigía de ahora no lleva rótulo");
+  assert.strictEqual(P.rotuloOrigen("", "vigia", true), " · estimado", "otra fecha con datos de Vigía: estimado (el clima de su semana o el de hoy, no una medida)");
+  assert.strictEqual(P.rotuloOrigen("", "simulado", true), " · estimado", "otra fecha sin datos: también estimado");
+  assert.strictEqual(P.rotuloOrigen("lluvia", "vigia", true), " · ejemplo", "los ejemplos ganan (ya lo dicen en la ventana)");
+  assert.strictEqual(P.rotuloOrigen("", "simulado", false), " · simulado");
+  assert.strictEqual(P.rotuloOrigen("", "fixture", false), " · prueba");
+  assert.match(lee("apps/web/motor/15_tiempo.js"), /estimado: function \(\) \{ return typeof EST !== "undefined" && !!EST && !!EST\.activa; \}/, "15_tiempo le pasa la estación de 23_estacion");
 });
 
 test("de la api a las fichas: medido y modelado, sin dentroDeUmbrales aunque llegara", () => {

@@ -128,6 +128,30 @@ test("los talones de apps/web/motor/ tienen la forma de MUNDOS §9.3 (marca, cab
   assert.deepStrictEqual(talones.flatMap(f => revisaTalon(f, fs.readFileSync(path.join(MOTOR, f), "utf8"))), []);
 });
 
+// A3-4: un módulo del motor que pasa POR VALOR a una fábrica (`x: x`) un nombre que define un módulo POSTERIOR en el montaje lo recibe undefined, salvo que
+// sea una función declarada, que se iza. Al migrar, `function x` pasa a `var x = Y.x` y deja de izarse: aquí se ve (08_marcadores pasaba colocaBarrera y
+// recoloreaSuelo). Es un análisis léxico: los `x: x` que van dentro de una función que corre más tarde no son problema y se anotan con su motivo.
+const IZADO_OK = {
+  "02c_componentes.js:listo": "el return de Config: es su propio listo, no el de 08",
+  "02c_componentes.js:quita": "el return de Pausa: es su propio quita, no el de 16_vida",
+  "12b_llegada.js:enDron": "dentro de window.__llegada, que se llama en las pruebas, con todo cargado",
+  "13b_hazas.js:lindes": "el return de Hazas: es su función local lindes(), no la de 15"
+};
+test("lo que un módulo pasa por valor al cargarse y define un módulo posterior es una función declarada (se iza), o va anotado", () => {
+  const d = C.deriva(), fs2 = Object.keys(d.expone).sort(), quien = {}, mal = [];
+  fs2.forEach((f, i) => d.expone[f].forEach(n => { quien[n] = i; }));
+  for (const [i, f] of fs2.entries()) {
+    const s = fs.readFileSync(path.join(MOTOR, f), "utf8").replace(/\/\/.*$/gm, "");
+    for (const m of s.matchAll(/\b([A-Za-z_$][\w$]*): \1\b(?!\s*[(.\w])/g)) {
+      const n = m[1], q = quien[n];
+      if (q === undefined || q <= i || IZADO_OK[f + ":" + n]) continue;
+      const def = fs.readFileSync(path.join(MOTOR, fs2[q]), "utf8");
+      if (!def.split("\n").some(l => l.startsWith("  function " + n + "("))) mal.push(f + " pasa " + n + ", que " + fs2[q] + " no declara con function (llega undefined)");
+    }
+  }
+  assert.deepStrictEqual(mal, []);
+});
+
 test("la regla de los talones, sobre talones inventados: acepta el de MUNDOS §9.3 y rechaza lo que no lo es", () => {
   const cab = C.MARCA_I + "\n// Expone: CargaPuro, Cola\n// Consume: 02_mundo (Mundo)\n" + C.MARCA_F + "\n";
   const bien = cab + "  // [talón] apps/web/src/nucleo/index.ts\n" + "  // la Cola vive en el núcleo\n  var CargaPuro = Nucleo.CargaPuro;\n  var Cola = Nucleo.creaCola({\n    mundo: Mundo,\n  });\n";

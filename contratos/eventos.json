@@ -32,7 +32,7 @@
         "29_vr"
       ],
       "escuchan": [
-        "20_sonido",
+        "mundos/exterior/sonido",
         "45_voz"
       ]
     },
@@ -77,7 +77,7 @@
         "nucleo/componentes"
       ],
       "escuchan": [
-        "15_tiempo"
+        "mundos/exterior/tiempo"
       ]
     },
     "corro:estado": {
@@ -863,7 +863,7 @@
     "prevision:alterna": {
       "descripcion": "Abrir o cerrar la lámina de la previsión del tiempo en el mundo (el botón «Ver la previsión en el mundo» de la ventana Tiempo y, en VR, «hora» en el menú de muñeca, EV2-A3). Sin datos alterna; con abre true o false, abre o cierra.",
       "datos": { "type": "object", "properties": { "abre": { "type": "boolean" } } },
-      "emiten": ["15_tiempo", "mundos/comun/muneca"],
+      "emiten": ["mundos/exterior/tiempo", "mundos/comun/muneca"],
       "escuchan": ["35_fichas_tiempo"]
     },
     "mundo:aplica": {
@@ -983,7 +983,7 @@
         }
       },
       "emiten": [
-        "15_tiempo",
+        "mundos/exterior/tiempo",
         "mundos/comun/muneca"
       ],
       "escuchan": [
@@ -1036,7 +1036,7 @@
         "mundos/exterior/balizas"
       ],
       "escuchan": [
-        "20_sonido"
+        "mundos/exterior/sonido"
       ]
     },
     "sonido:golpe": {
@@ -1046,7 +1046,7 @@
         "24_pantalla"
       ],
       "escuchan": [
-        "20_sonido"
+        "mundos/exterior/sonido"
       ]
     },
     "sonido:juego": {
@@ -1076,7 +1076,7 @@
         "41_cae_la_cosecha"
       ],
       "escuchan": [
-        "20_sonido"
+        "mundos/exterior/sonido"
       ]
     },
     "sonido:ladrido": {
@@ -1093,7 +1093,7 @@
         "mundos/exterior/perros"
       ],
       "escuchan": [
-        "20_sonido"
+        "mundos/exterior/sonido"
       ]
     },
     "usable:cerca": {

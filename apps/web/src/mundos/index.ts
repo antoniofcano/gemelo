@@ -62,6 +62,25 @@ export { CartelesPuro, ID_CARTELES, creaCarteles, manifiestoCarteles } from "./e
 export type { DepsCarteles } from "./exterior/carteles.ts";
 export { DecoracionesPuro, ID_DECORACIONES, creaDecoraciones, decoracionesGeometria, manifiestoDecoraciones } from "./exterior/decoraciones.ts";
 export type { DepsDecoraciones, EstadoDecoraciones, UtilesGeometria } from "./exterior/decoraciones.ts";
+// A3-4 (MU5-n): el cielo, el tiempo y el suelo del exterior, componentes con su libera() de verdad.
+export { creaTiempo, creaTiempoVivo, manifiestoTiempo, ID_TIEMPO } from "./exterior/tiempo.ts";
+export type { DepsTiempo as DepsTiempoMundo, Tiempo } from "./exterior/tiempo.ts";
+export { TiempoPuro, creaNivelSol, creaReloj, creaFormatos, num1, rumbo, esc, hace, LAT, LON, ZONA, DEMOS } from "./exterior/tiempo-puro.ts";
+export { GLSL_SOMBRA, creaParcheTiempo } from "./exterior/tiempo-parche.ts";
+export type { ParcheTiempo, UniformesSombra, UniformesViento } from "./exterior/tiempo-parche.ts";
+export { creaCielo, pintaNubesDe, texBrilloDe, PALETA_OCASO } from "./exterior/tiempo-cielo.ts";
+export { creaLluvia } from "./exterior/tiempo-lluvia.ts";
+export { creaBarreras, BARRERA_ALTO } from "./exterior/tiempo-barrera.ts";
+export { creaPasoTiempo } from "./exterior/tiempo-paso.ts";
+export { creaFichasTiempo } from "./exterior/tiempo-fichas.ts";
+export { creaHierba, manifiestoHierba, ID_HIERBA } from "./exterior/hierba.ts";
+export type { DepsHierba, Hierba } from "./exterior/hierba.ts";
+export { creaSonido, manifiestoSonido, ID_SONIDO } from "./exterior/sonido.ts";
+export type { DepsSonido, Sonido } from "./exterior/sonido.ts";
+export { creaSolReserva, manifiestoSolReserva, ID_SOL_RESERVA } from "./exterior/sol-reserva.ts";
+export type { DepsSolReserva, SolReserva } from "./exterior/sol-reserva.ts";
+export { creaEstacion, manifiestoEstacion, ID_ESTACION } from "./exterior/estacion.ts";
+export type { DepsEstacion, Estacion } from "./exterior/estacion.ts";
 // A3-5 (MU5-n): la vida del olivar. Cada uno, con su libera() de verdad.
 export { ID_TRABAJO_HOY, TrabajoHoyPuro, creaTrabajoHoy, manifiestoTrabajoHoy } from "./exterior/trabajo-hoy.ts";
 export type { DepsTrabajoHoy, TrabajoHoy } from "./exterior/trabajo-hoy.ts";

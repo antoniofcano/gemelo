@@ -2,7 +2,7 @@
 // Expone: Escalera, Generados
 // Consume: 01_datos (D, VRP, FACTOR_R8_GEN, factorCopaDeConfig), 01a_aparato (Aparato), 02_mundo (suelo), 02c_componentes (Componentes, Config),
 //   02i_materiales (Materiales), 03_escena (renderer, scene, camera, Estado), 06_arboles (gArboles), 12_paseo (paseando, pp),
-//   15_tiempo (parcheTiempo)
+//   15_tiempo (nodosTiempoTsl, parcheTiempo)
 // ===============================================================================
   // ---------- olivos GENERADOS cerca (ADR-0017) y la ESCALERA de todos (ADR-0019, ADR-0022), POR DEFECTO (O10a) si la finca trae copas_param y copas_id; ?olivos=0 los apaga.
   // MU5-n (A3-2a): migrado a TypeScript; el código vive en apps/web/src/mundos/exterior/generados*.ts (la escalera y la decisión, que son puras; las variantes horneadas y los
@@ -14,7 +14,7 @@
   var Escalera = Mundos.Escalera;
   var Generados = Mundos.creaGenerados({
     THREE: THREE, D: D, VRP: VRP, Aparato: Aparato, Config: Config, Materiales: Materiales, gArboles: gArboles, camera: camera, Estado: Estado, suelo: suelo,
-    factorR8Gen: function () { return FACTOR_R8_GEN; }, factorCopaDeConfig: factorCopaDeConfig, parcheTiempo: parcheTiempo,
+    factorR8Gen: function () { return FACTOR_R8_GEN; }, factorCopaDeConfig: factorCopaDeConfig, parcheTiempo: parcheTiempo, tiempoTsl: function () { return typeof nodosTiempoTsl === "function" ? nodosTiempoTsl : null; },   // A3-4: los nodos del tiempo (15_tiempo) para la TSL apagada
     busqueda: location.search, reloj: performance, consola: console, ventana: typeof window !== "undefined" ? window : null,
     cargaConstructor: function () { return typeof window !== "undefined" && window.OlivoGen ? Promise.resolve(window.OlivoGen) : import("gemelo-olivo"); },
     renderer: function () { return typeof renderer !== "undefined" ? renderer : null; },

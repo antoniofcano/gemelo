@@ -30,10 +30,8 @@ test.before(async () => {
 const MUNDOS = require(path.join(RAIZ, "apps", "web", "src", "mundos", "index.ts"));
 const { fabrica } = require("./_materiales");   // MU5-n, segundo commit: el material «terreno» sale de la fábrica de verdad (02i)
 function evalua(conFotos) {
-  const tie = lee("15_tiempo.js");
-  const sombra = /  var uSombra = [\s\S]*?\n(?=  function conTiempo)/.exec(tie), pt = /  function parcheTiempo\(sh, viento\) \{[\s\S]*?\n  \}\n/.exec(tie);
-  assert.ok(sombra && pt, "no encuentro uSombra/GLSL_SOMBRA o parcheTiempo en 15_tiempo.js");
-  const tiempo = Function("THREE", "\"use strict\";\nvar uViento = { uT: {}, uAmp: {}, uDir: {} }; function colorVertSRGB() {}\n" + sombra[0] + pt[0] + "\nreturn { uSombra: uSombra, parcheTiempo: parcheTiempo };")(THREE);
+  // MU5-n (A3-4): uSombra y parcheTiempo viven en apps/web/src/mundos/exterior/tiempo-parche.ts (creaParcheTiempo); el color por vértice de 03_escena, sin tocar
+  const tiempo = MUNDOS.creaParcheTiempo({ THREE, colorVertSRGB() {} });
   const cuerpo = "\"use strict\";\n" + lee("04d_sombreado_tiles.js") + "\nreturn { UN: UN, matSuelo: matSuelo, SombreadoTiles: SombreadoTiles, hash: hash };";
   const TS = 256, teselas = {};
   const Mundo = {

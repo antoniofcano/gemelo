@@ -11,7 +11,7 @@
   // Aquí quedan `listo` (lo escribe 90_final: no puede ser una importación) y los nombres que el resto del legado lee.
   var Marcadores = Mundos.creaMarcadores({
     THREE: THREE, scene: scene, Estaticos: Estaticos, Bus: Bus, D: D, $: $, Estado: Estado, UN: UN, nube: nube, gArboles: gArboles, gFollaje: gFollaje, gSombras: gSombras, Arboles: Arboles,
-    pintaNube: pintaNube, colocaBarrera: colocaBarrera, colocaPaisaje: colocaPaisaje, colocaBalizas: colocaBalizas, recoloreaSuelo: recoloreaSuelo,
+    pintaNube: pintaNube, colocaBarrera: colocaBarrera, colocaPaisaje: function () { colocaPaisaje(); }, colocaBalizas: function () { colocaBalizas(); }, recoloreaSuelo: recoloreaSuelo,   // 18 y 19 van después y sus talones no las declaran: por función
     listo: function () { return listo; }, raf: function (f) { requestAnimationFrame(f); }
   });
   var gLinde = Marcadores.gLinde, tmp = Marcadores.tmp;

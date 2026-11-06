@@ -7,7 +7,7 @@ const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
 
 // A3-1b: 04f es un talón; su código vive en apps/web/src/mundos/exterior/suelo-fotos.ts (SueloFotosPuro y creaSueloFotos). F04F es el talón y el .ts juntos (lo que ve el motor)
-const F04F = lee("apps/web/motor/04f_suelo_fotos.js") + "\n" + lee("apps/web/src/mundos/exterior/suelo-fotos.ts"), F04D = lee("apps/web/src/mundos/exterior/terreno.ts"), F15 = lee("apps/web/motor/15_tiempo.js");
+const F04F = lee("apps/web/motor/04f_suelo_fotos.js") + "\n" + lee("apps/web/src/mundos/exterior/suelo-fotos.ts"), F04D = lee("apps/web/src/mundos/exterior/terreno.ts"), F15 = require("./_fuente").fuenteMotor("15_tiempo.js");   // MU5-n (A3-4): con tiempo-cielo.ts y tiempo-paso.ts
 const P = require("./_mundos").SueloFotosPuro;
 
 test("la bandera: apagado por defecto; ?suelo=fotos lo enciende; 768 en escritorio y 384 en móvil y gafas; en VR solo con ?sueloVR=1", () => {
@@ -89,7 +89,7 @@ test("sin la bandera, 04d y 15_tiempo no cambian: todo lo nuevo va detrás de Su
   assert.ok(fotos && /s && s\.activo \? s : null/.test(fotos[0]), "fotos() devuelve el suelo de fotos solo si está activo");
   assert.strictEqual(F04D.split("deps.sueloFotos()").length, 2, "deps.sueloFotos() solo se lee en fotos()");
   F04D.split("\n").filter(l => /deps\.sueloFotosPuro\(\)/.test(l)).forEach(l => assert.ok(/SF && deps\.sueloFotosPuro/.test(l), "SueloFotosPuro sin la guarda: " + l.trim()));
-  F15.split("\n").filter(l => !/^\s*\/\//.test(l) && /uOcasoN|PALETA_OCASO/.test(l) && !/^\s*var (PALETA_OCASO|uOcasoN) =/.test(l)).forEach(l => assert.ok(/OCASO_FOTOS/.test(l), "uso sin la guarda en 15_tiempo: " + l.trim()));
+  F15.split("\n").filter(l => !/^\s*\/\//.test(l) && /uOcasoN|PALETA_OCASO/.test(l) && !/^\s*(export )?var (PALETA_OCASO|uOcasoN) =/.test(l) && !/^\s*(import|export) /.test(l) && !/PALETA_OCASO: (PALETA_OCASO|A);|uOcasoN: (cielo\.uOcasoN|A);|PALETA_OCASO = d\.PALETA_OCASO, uOcasoN = d\.uOcasoN/.test(l)).forEach(l => assert.ok(/OCASO_FOTOS/.test(l), "uso sin la guarda en 15_tiempo: " + l.trim()));
   assert.ok(F15.includes(': "uniform sampler2D map; uniform vec3 diffuse; varying vec2 vUv; varying float vA;\\n" +\n          "void main() { vec4 c = vec4(diffuse, vA) * texture2D(map, vUv); gl_FragColor = c;\\n#include <tonemapping_fragment>\\n#include <colorspace_fragment>\\n}"'), "el sombreado de las nubes de siempre, intacto");
   assert.ok(F15.includes(": new THREE.Color(0xc77b4e)"), "el ocaso de siempre, intacto");
   assert.ok(F04D.includes('fotos() ? "terreno-3dtiles-fotos" : "terreno-3dtiles"'), "programa aparte con la bandera");

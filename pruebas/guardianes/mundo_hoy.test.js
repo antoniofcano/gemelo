@@ -165,23 +165,21 @@ test("el registro: componente «mundo-hoy», bandera ?mundohoy=, presupuesto 0, 
 });
 
 test("el día real: la estación del olivo arranca hoy y ?fecha=AAAA-MM-DD mueve el reloj del mundo", () => {
-  const est = lee("apps/web/motor/23_estacion.js"), tie = lee("apps/web/motor/15_tiempo.js");
-  assert.match(est, /function hoyMadrid\(\) \{ return fmtClaveDia\.format\(new Date\(ahoraMs\(\)\)\); \}/);
-  assert.match(est, /function fechaEstacion\(\) \{ return NDV && ndviIdx !== NDV\.fechas\.length - 1 \? NDV\.fechas\[ndviIdx\] : hoyMadrid\(\); \}/);
+  // MU5-n (A3-4): el reloj del mundo vive en apps/web/src/mundos/exterior/tiempo-puro.ts (creaReloj); se evalúa el de verdad, con el reloj de la máquina inyectado
+  const est = require("./_fuente").fuenteMotor("23_estacion.js"), tie = lee("apps/web/src/mundos/exterior/tiempo-puro.ts"), { creaReloj } = require("./_mundos");
+  assert.match(est, /function hoyMadrid\(\)(: string)? \{ return fmtClaveDia\.format\(new Date\(ahoraMs\(\)\)\); \}/);
+  assert.match(est, /function fechaEstacion\(\)(: string)? \{ var ndviIdx = d\.ndviIdx\(\); return NDV && ndviIdx !== NDV\.fechas\.length - 1 \? NDV\.fechas\[ndviIdx\] : hoyMadrid\(\); \}/);
   assert.match(tie, /\[\?&\]fecha=\(\\d\{4\}-\\d\{2\}-\\d\{2\}\)/);
   // ahoraMs con ?fecha=: el mismo reloj, corrido días enteros
-  const i = tie.indexOf("  var HORA_FIJA"), f = tie.indexOf("  // origen: de dónde sale lo que se ve");
   const fmt = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Madrid" });
-  const ahora = new Function("location", "fmtClaveDia", tie.slice(i, f) + "\nreturn ahoraMs;");
+  const ahora = (location, fmtClaveDia) => creaReloj(location.search, fmtClaveDia).ahoraMs;
   const t = ahora({ search: "?fecha=2026-04-15" }, fmt)();
   assert.strictEqual(fmt.format(new Date(t)), "2026-04-15");
   assert.ok(Math.abs(ahora({ search: "" }, fmt)() - Date.now()) < 1000, "sin parámetros, el reloj real");
   assert.strictEqual(ahora({ search: "?hora=2026-01-02T08:00&fecha=2026-04-15" }, fmt)(), Date.parse("2026-01-02T08:00"), "?hora= manda sobre ?fecha=");
   // el cambio de hora: a las 23:30 de invierno (UTC+1), ?fecha= de verano (UTC+2) no salta al día siguiente, ni al revés a las 00:30 de verano
-  const conReloj = ms => { class F extends Date { constructor(...a) { a.length ? super(...a) : super(ms); } static now() { return ms; } } return F; };
-  const ahoraEn = ms => new Function("location", "fmtClaveDia", "Date", tie.slice(i, f) + "\nreturn ahoraMs;");
   for (const [reloj, fecha] of [[Date.parse("2026-11-05T22:30:00Z"), "2026-04-15"], [Date.parse("2026-11-05T23:30:00Z"), "2026-04-15"], [Date.parse("2026-07-01T22:30:00Z"), "2026-01-10"]]) {
-    const r = ahoraEn(reloj)({ search: "?fecha=" + fecha }, fmt, conReloj(reloj))();
+    const r = creaReloj("?fecha=" + fecha, fmt, () => reloj).ahoraMs();
     assert.strictEqual(fmt.format(new Date(r)), fecha, "con el reloj en " + new Date(reloj).toISOString() + ", ?fecha=" + fecha + " cae en su día");
   }
 });

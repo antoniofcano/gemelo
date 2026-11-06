@@ -20,7 +20,11 @@ export interface DepsCatalogo {
   parcheTiempo: (sh: unknown, viento: boolean) => void;
   /** la fábrica de materiales (nucleo/materiales) */
   Materiales: Materiales;
+  /** A3-4: los nodos del tiempo en TSL (tiempo-parche.ts: nodosTsl), para la variante apagada; 15_tiempo va después en el montaje: se piden al construirla */
+  tiempoTsl?: (() => ((T: unknown) => NodosTiempoMin) | null) | null;
 }
+/** lo que se usa de los nodos del tiempo (tiempo-parche.ts: NodosTiempo) */
+export interface NodosTiempoMin { salida(xz: unknown): unknown }
 /** una pieza de un nivel: lo que se instancia (07b_arboles.js) */
 export interface Pieza { pieza: "copa" | "tronco"; geo: T3; mat: T3 }
 /** el cargador de un catálogo glb: (url, THREE) → [{ nombre, geometria }], una entrada por pieza del glb */
@@ -33,7 +37,7 @@ export const ID_CATALOGO = "catalogo-olivos";
 export const MATERIAL_COPA_L1 = "copa-l1";
 export const MATERIAL_TRONCO_L1 = "tronco-l1";
 /** lo que pide cada uno: su parche de siempre (parcheCopa o parcheInst de creaCatalogo, que cierran sobre el parcheTiempo de 15_tiempo) */
-export interface OpcCatalogo { parche: (sh: unknown) => void }
+export interface OpcCatalogo { parche: (sh: unknown) => void; tiempo?: DepsCatalogo["tiempoTsl"] }
 /** el clásico de los dos: el Lambert blanco con color por vértice y el parche asignado tal cual (la MISMA función: three usa su texto como clave del programa) */
 function clasicoInstanciado(o: OpcCatalogo, c: { THREE: Record<string, unknown> }): MaterialMin {
   const Lambert = c.THREE["MeshLambertMaterial"] as new (opc: unknown) => MaterialMin;
@@ -47,7 +51,8 @@ function clasicoInstanciado(o: OpcCatalogo, c: { THREE: Record<string, unknown> 
 //   · las dos: el Lambert blanco y el color por vértice, escrito en sRGB (03_escena), pasado a lineal con sRGBTransferEOTF (lo que hace colorVertSRGB en el clásico);
 //   · la copa, además: la silueta rota por ruido hacia el borde (maskNode: se descarta donde nz < (vRim − 0,72) · 2,8), las motas (× 0,74 + 0,50 · nz2) y el envés plateado
 //     en el borde, con las mismas cuentas que el GLSL;
-//   · FALTA: la sombra de nubes y la helada de parcheTiempo (15_tiempo, fila 2 de la tabla, aún sin TSL): sin ellas la copa no se oscurece bajo las nubes ni blanquea con la helada;
+//   · A3-4: la sombra de nubes y la helada de parcheTiempo (fila 2), tras la luz (outputNode), en la posición del mundo de cada instancia (positionWorld.xz), si se
+//     dan los nodos del tiempo (tiempoTsl; sin ellos, como antes, sin nubes ni helada);
 //   · DIFIERE: la semilla de cada olivo sale de su índice de instancia (instanceIndex), no de la posición de su matriz (instanceMatrix[3].xz): el ruido es el mismo por olivo
 //     pero otro reparto entre olivos; y vRim se calcula por fragmento (normalView y positionViewDirection), no por vértice.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -59,6 +64,11 @@ function lambertTsl(c: { THREE: Record<string, unknown>; TSL: Record<string, unk
   const m = new Lambert({ color: 0xffffff, vertexColors: false });
   const base = T.materialColor.mul(T.sRGBTransferEOTF(T.vertexColor().rgb));
   return { m, T, base };
+}
+/** A3-4: la sombra de nubes y la helada (los nodos de parcheTiempo) tras la luz, en la posición del mundo (el clásico: (instanceMatrix · transformed).xz) */
+function luzTiempo(m: MaterialMin & { outputNode?: unknown }, o: OpcCatalogo, c: { TSL: Record<string, unknown> }): void {
+  const f = o && o.tiempo ? o.tiempo() : null; if (!f) return;
+  m.outputNode = f(c.TSL).salida((c.TSL as Record<string, Nodo>).positionWorld.xz);
 }
 export const DEF_COPA_L1: DefMaterial<OpcCatalogo> = {
   clasico: clasicoInstanciado,
@@ -72,12 +82,13 @@ export const DEF_COPA_L1: DefMaterial<OpcCatalogo> = {
     const enves = T.sRGBTransferEOTF(T.vec3(0.64, 0.70, 0.56));
     const motas = base.rgb.mul(nz2.mul(0.50).add(0.74));
     m.colorNode = T.vec4(T.mix(motas, enves, T.smoothstep(0.45, 1.0, rim).mul(0.40).mul(nz.add(0.45))), 1);
+    luzTiempo(m, _o, c);
     return m;
   }
 };
 export const DEF_TRONCO_L1: DefMaterial<OpcCatalogo> = {
   clasico: clasicoInstanciado,
-  tsl: function (_o, c) { const { m, T, base } = lambertTsl(c); m.colorNode = T.vec4(base.rgb, 1); return m; }
+  tsl: function (o, c) { const { m, T, base } = lambertTsl(c); m.colorNode = T.vec4(base.rgb, 1); luzTiempo(m, o, c); return m; }
 };
 
 export function creaCatalogo(d: DepsCatalogo) {
@@ -135,7 +146,8 @@ export function creaCatalogo(d: DepsCatalogo) {
   // MU5-n: los dos materiales salen de la fábrica (define + crea con dueño «catalogo-olivos»): lo que cree este componente se libera con su libera()
   Materiales.define(MATERIAL_COPA_L1, DEF_COPA_L1); Materiales.define(MATERIAL_TRONCO_L1, DEF_TRONCO_L1);
   var materiales = Materiales.de(ID_CATALOGO);
-  var matCopaI: T3 = materiales.crea(MATERIAL_COPA_L1, { parche: parcheCopa }), matTroncoI: T3 = materiales.crea(MATERIAL_TRONCO_L1, { parche: parcheInst });
+  var tiempo = d.tiempoTsl || null;   // A3-4: para la TSL (apagada), los nodos del tiempo
+  var matCopaI: T3 = materiales.crea(MATERIAL_COPA_L1, { parche: parcheCopa, tiempo: tiempo }), matTroncoI: T3 = materiales.crea(MATERIAL_TRONCO_L1, { parche: parcheInst, tiempo: tiempo });
 
   // las piezas por procedimiento, creadas al pedirlas y guardadas (07b_arboles.js las pide al montarse, en el orden de antes)
   function procedural(nivel: number, v: number): Pieza[] {

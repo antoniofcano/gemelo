@@ -150,9 +150,8 @@ test("cada material del motor que pasa por la fábrica tiene un nombre literal, 
 // ---------------------------------------------------------------- el trinquete
 // [onBeforeCompile, new THREE.ShaderMaterial, motivo]. Cuenta el texto sin comentarios (también las lecturas de onBeforeCompile). Solo puede BAJAR.
 // MU5-n (A3-1a): 04d_sombreado_tiles.js salió de aquí; su parche está en apps/web/src/mundos/exterior/terreno.ts (FUERA_SRC, abajo, hasta su segundo commit)
+// MU5-n (A3-4): 21_suelo.js también (2 / 0), a apps/web/src/mundos/exterior/hierba.ts; y 15_tiempo.js (1 / 3): su parche y sus tres ShaderMaterial están en apps/web/src/mundos/exterior/tiempo-*.ts (FUERA_SRC, hasta su segundo commit)
 const FUERA = {
-  "apps/web/motor/15_tiempo.js": [1, 3, "parcheTiempo del follaje y los ShaderMaterial de nubes, lluvia y barrera (F4 #0 y #9): otro agente lo está cambiando durante F1"],
-  "apps/web/motor/21_suelo.js": [2, 0, "matas y piedras (F4 #6): otro agente lo está cambiando durante F1"],
   "apps/web/olivo/materiales.js": [2, 0, "encadena(), el punto único de la biblioteca de olivos (lee el parche previo y pone el suyo); el motor la reusa por Materiales.encadena (07ab)"]
 };
 function cuenta(f) {
@@ -194,7 +193,9 @@ function cuentaTs(f) {
 // MU5-n: el primer commit de un módulo lleva su código a src/ tal cual (sus materiales «siguen saliendo igual», MATERIALES §5) y el segundo los registra con
 // define(). Entre los dos, el fichero va aquí con su cuenta y su motivo; solo puede bajar, y su segundo commit lo quita
 const FUERA_SRC = {
-  // (vacío: el terreno, 04d, ya registra «terreno» con define() desde su segundo commit de MU5-n, A3-1a)
+  // (el terreno, 04d, ya registra «terreno» con define() desde su segundo commit de MU5-n, A3-1a)
+  // (y 15_tiempo, A3-4, registra «parche-tiempo», «nubes», «lluvia» y «barrera» con define() desde su segundo commit)
+  // (y 21_suelo, A3-4, registra «matas» y «piedras» con define() desde su segundo commit)
 };
 const REGISTRA = /\.define\(\s*["'`A-Z_]/;
 test("trinquete en apps/web/src/: los sombreadores propios solo en la fábrica o en un módulo que los registra con define()", t => {
