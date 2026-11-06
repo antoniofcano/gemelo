@@ -79,16 +79,20 @@ test("encadena(): el mismo contrato que encadena() de apps/web/olivo/materiales.
   assert.deepStrictEqual(llamadas, [[fn, "gen-luz-fundido"]]); assert.ok(e.customProgramCacheKey().endsWith("|gen-luz-fundido"));
 });
 
-test("la versión nueva (TSL, F4) solo se usa con el renderizador nuevo; hoy ?render=nuevo se queda en el clásico y la fábrica da lo de siempre", () => {
+test("la versión nueva (TSL, F4/MU5) solo se usa con el renderizador nuevo; hoy ?render=nuevo y ?renderer=webgpu se quedan en el clásico, la fábrica da lo de siempre y avisa", () => {
   const avisos = [];
-  for (const busqueda of ["", "?render=nuevo", "?render=clasico"]) {
+  for (const busqueda of ["", "?render=nuevo", "?render=clasico", "?renderer=webgpu", "?renderer=webgl"]) {
     const { Materiales, Render } = fabrica(THREE, { busqueda, console: { warn: m => avisos.push(m), error() {} } });
     assert.strictEqual(Render.tipo, "clasico");
     let usada = 0; Materiales.nuevo("prueba-nuevo", () => { usada++; return new THREE.MeshBasicMaterial(); });
     const m = Materiales.sombreador("prueba-nuevo", { vertexShader: "void main(){}", fragmentShader: "void main(){}" });
     assert.ok(m.isShaderMaterial); assert.strictEqual(usada, 0, "sin renderizador nuevo no se pide la versión TSL");
+    assert.strictEqual(Materiales.ruta("prueba-nuevo"), "clasico");
   }
-  assert.strictEqual(avisos.length, 1); assert.match(avisos[0], /reservado.*aún no existe/);
+  // dos pedidos del nuevo (?render=nuevo y ?renderer=webgpu): el aviso de Render (reservado) y el de la fábrica (TSL necesita el WebGPURenderer), uno de cada por pedido
+  assert.strictEqual(avisos.length, 4, avisos.join("\n"));
+  assert.strictEqual(avisos.filter(a => /^render: .*reservado.*aún no existe/.test(a)).length, 2);
+  assert.strictEqual(avisos.filter(a => /^materiales: .*TSL solo funcionan con el WebGPURenderer/.test(a)).length, 2);
   const { Materiales } = fabrica(THREE);
   assert.throws(() => Materiales.sombreador("", {}), /falta el nombre/);
   Materiales.parchea(new THREE.MeshBasicMaterial(), "a", () => {}); Materiales.parchea(new THREE.MeshBasicMaterial(), "a", () => {}); Materiales.sombreador("b", {});
@@ -143,7 +147,36 @@ test("trinquete: los onBeforeCompile y new THREE.ShaderMaterial fuera de la fáb
     const c = hay[f] || [0, 0];
     assert.deepStrictEqual(c, [a[0], a[1]], f + ": anotados " + a[0] + " / " + a[1] + " y hay " + c.join(" / ") + " (si se migró, baja la cuenta aquí)");
   }
-  // la fábrica es la que los tiene: un parche y un ShaderMaterial (más los de encadenaPropia)
-  const F = cuenta("apps/web/motor/02i_materiales.js");
-  assert.deepStrictEqual(F, [3, 1], "02i_materiales.js: onBeforeCompile (parchea y encadenaPropia) y un new THREE.ShaderMaterial");
+  // MU5-0: 02i es un talón (sin ninguno) y la fábrica vive en apps/web/src/nucleo/materiales.ts: el tipo MaterialMin, parchea, encadenaPropia (lee el
+  // previo y pone el suyo) y el clásico del ejemplo, más el texto de un aviso: 6 onBeforeCompile) y un new ShaderMaterial (sombreador(), con el THREE que recibe: T)
+  assert.deepStrictEqual(cuenta("apps/web/motor/02i_materiales.js"), [0, 0], "02i_materiales.js es un talón");
+  const F = cuentaTs("apps/web/src/nucleo/materiales.ts");
+  assert.deepStrictEqual(F, [6, 1], "nucleo/materiales.ts: onBeforeCompile (MaterialMin, parchea, encadenaPropia ×2, el ejemplo y un aviso) y un new T.ShaderMaterial");
+});
+
+// MU5-n: un módulo que pasa a TypeScript lleva sus sombreadores a apps/web/src/ y los REGISTRA en la fábrica (materiales.define(nombre, { clasico, tsl? })),
+// donde vive su variante TSL (doc/sistema/MATERIALES.md §5). Así que en src/ un onBeforeCompile, un ShaderMaterial o un RawShaderMaterial solo pueden estar
+// en la fábrica o en un fichero que defina sus materiales en ella; las pruebas (*.test.ts) no cuentan
+function cuentaTs(f) {
+  const s = sinComentarios(lee(f));
+  return [(s.match(/onBeforeCompile/g) || []).length, (s.match(/new\s+[\w.]*\b(Raw)?ShaderMaterial\b/g) || []).length];
+}
+const REGISTRA = /\.define\(\s*["'`A-Z_]/;
+test("trinquete en apps/web/src/: los sombreadores propios solo en la fábrica o en un módulo que los registra con define()", t => {
+  const mal = [], vistos = [];
+  (function recorre(d) {
+    for (const e of fs.readdirSync(path.join(RAIZ, d), { withFileTypes: true })) {
+      const f = d + "/" + e.name;
+      if (e.isDirectory()) { recorre(f); continue; }
+      if (!/\.ts$/.test(e.name) || /\.test\.ts$/.test(e.name) || f === "apps/web/src/nucleo/materiales.ts") continue;
+      const c = cuentaTs(f); if (!c[0] && !c[1]) continue;
+      vistos.push(f);
+      if (!REGISTRA.test(sinComentarios(lee(f)))) mal.push(f + ": " + c[0] + " onBeforeCompile y " + c[1] + " ShaderMaterial sin registrarlos en la fábrica (materiales.define(nombre, { clasico, tsl? }))");
+    }
+  })("apps/web/src");
+  assert.deepStrictEqual(mal, [], mal.join("\n"));
+  // la regla, sobre casos inventados: registrar con define() es lo que cuenta (un comentario que lo nombra, no)
+  assert.ok(REGISTRA.test(sinComentarios('materiales.define("suelo", { clasico: (o, c) => { const m = new c.THREE.MeshLambertMaterial(); m.onBeforeCompile = f; return m; } });')));
+  assert.ok(!REGISTRA.test(sinComentarios('// materiales.define("suelo", …)\nm.onBeforeCompile = f;')));
+  t.diagnostic("ficheros de src/ con sombreadores propios registrados: " + (vistos.length ? vistos.join(", ") : "ninguno todavía (los trae MU5-n)"));
 });

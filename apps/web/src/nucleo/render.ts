@@ -1,7 +1,7 @@
 // El renderizador elegido y la lectura de lo dibujado (antes apps/web/motor/02h_render.js; MUNDOS §6 y §9.4, pieza 2).
 // AG-3a / F1 (doc/sistema/MULTIVIEW.md §4, ADR-0031): qué renderizador y qué build, y la lectura de lo dibujado con la misma forma para los dos.
 // Hoy NO cambia nada visible: siempre el WebGLRenderer clásico (03_escena) y la build de pantalla (three 0.186.1). Lo que prepara:
-//   Render.pedido / Render.tipo   ?render=nuevo queda RESERVADO para el WebGPURenderer (F2-F5): se apunta y se avisa de que aún no existe; tipo sigue «clasico»
+//   Render.pedido / Render.tipo   ?render=nuevo (o ?renderer=webgpu, el nombre de MU5/MU6: MATERIALES.md §4) queda RESERVADO para el WebGPURenderer (MU6): se apunta y se avisa de que aún no existe; tipo sigue «clasico»
 //   Render.build                  «pantalla» (three) o «vr» (super-three, la build del Quest: apps/web/herramientas/builds.mjs); lo inyecta Vite (__GEMELO_BUILD__)
 //   Render.tono                   AG-2.5: { tono, constante, expo, pedido, advertencia, origen } de ?tono=neutro|agx|aces|neutral (la URL, luego el ajuste «vista.tono», luego neutro) y ?expo= (solo URL)
 //   Render.arranca(rd, fn)        el primer fotograma, tolerante a un `await rd.init()` futuro: el clásico no tiene init() y fn corre ya, como siempre
@@ -41,12 +41,22 @@ const tieneTono = (k: string): k is ClaveTono => Object.prototype.hasOwnProperty
 
 function num(v: unknown): number { return typeof v === "number" && isFinite(v) ? v : 0; }
 
-// ?render=clasico|nuevo. hayNuevo: ¿esta build trae el WebGPURenderer? (hasta F2, no). Devuelve { pedido, tipo, advertencia }
+// MU5-0 (doc/sistema/MATERIALES.md §4): ?renderer=webgl|webgpu es el nombre de MU5/MU6 y manda; ?render=clasico|nuevo, el de F1 (ADR-0031), sigue valiendo
+// igual. webgpu = nuevo, webgl = clasico. Lo traduce a ?render= y sigue como siempre
+const RENDERER: Readonly<Record<string, TipoRender>> = { webgl: "clasico", webgpu: "nuevo" };
+function pedidoDe(q: string): string {
+  const r = /[?&]renderer=([^&#]*)/.exec(q);
+  if (r) { const v = decodeURIComponent(r[1] as string).toLowerCase(); return Object.prototype.hasOwnProperty.call(RENDERER, v) ? (RENDERER[v] as string) : v ? "renderer=" + v : ""; }
+  const m = /[?&]render=([^&#]*)/.exec(q);
+  return m ? decodeURIComponent(m[1] as string).toLowerCase() : "";
+}
+// ?render=clasico|nuevo (o ?renderer=webgl|webgpu). hayNuevo: ¿esta build trae el WebGPURenderer? (hasta MU6, no). Devuelve { pedido, tipo, advertencia }
 function eligeTipo(busqueda: unknown, hayNuevo: boolean): EleccionTipo {
-  const m = /[?&]render=([^&#]*)/.exec(typeof busqueda === "string" ? busqueda : ""), p = m ? decodeURIComponent(m[1] as string).toLowerCase() : "";
+  const p = pedidoDe(typeof busqueda === "string" ? busqueda : "");
+  if (p.indexOf("renderer=") === 0) return { pedido: p, tipo: "clasico", advertencia: "?" + p + " no existe (webgl | webgpu): se usa el clásico" };
   if (!p) return { pedido: "", tipo: "clasico", advertencia: "" };
   if (TIPOS.indexOf(p) < 0) return { pedido: p, tipo: "clasico", advertencia: "?render=" + p + " no existe (clasico | nuevo): se usa el clásico" };
-  if (p === "nuevo" && !hayNuevo) return { pedido: p, tipo: "clasico", advertencia: "?render=nuevo está reservado para el WebGPURenderer (ADR-0031, F2), que aún no existe en el motor: se usa el clásico" };
+  if (p === "nuevo" && !hayNuevo) return { pedido: p, tipo: "clasico", advertencia: "?render=nuevo (o ?renderer=webgpu) está reservado para el WebGPURenderer (ADR-0031; MU6), que aún no existe en el motor: se usa el clásico" };
   return { pedido: p, tipo: p as TipoRender, advertencia: "" };
 }
 
@@ -101,7 +111,7 @@ function arranca(rd: RenderizadorMinimo | null | undefined, fn: () => void, alFa
   return Promise.resolve(rd.init()).then(function () { fn(); }, function (e: unknown) { if (alFallar) alFallar(e); else throw e; });
 }
 
-export const RenderPuro = { TIPOS, BUILDS, eligeTipo, TONOS, eligeTono, buildDe, esNuevo, fotograma, llamadas, triangulos, lee, arranca, memoria };
+export const RenderPuro = { TIPOS, BUILDS, RENDERER, eligeTipo, TONOS, eligeTono, buildDe, esNuevo, fotograma, llamadas, triangulos, lee, arranca, memoria };
 
 export const InfoDibujo = {
   lee: function (rd?: RenderizadorMinimo | null, o?: Partial<InfoDibujoLeida>): InfoDibujoLeida { return lee(rd && rd.info, o); },

@@ -42,9 +42,11 @@ test("la perilla: defecto apagado, 1 enciende, lo raro avisa, sin MSAA nunca", (
 
 test("el ajuste «vista.a2c» está en el esquema (apagado) y 02i lo lee de localStorage una vez, con try/catch", () => {
   assert.match(lee("apps/web/motor/33_ajustes.js"), /"vista\.a2c": bool\(false\)/);
-  const m = lee("apps/web/motor/02i_materiales.js");
-  assert.match(m, /function ajusteGuardado\(clave\) \{ try \{ var s = window\.localStorage\.getItem\("gemelo\.ajustes\." \+ clave\)[^}]*\} catch \(e\)/);
-  assert.match(m, /ajusteGuardado\("vista\.a2c"\)/);
+  // MU5-0: la fábrica vive en apps/web/src/nucleo/materiales.ts; 02i (el talón) le presta el almacén y ella lo lee una vez, con try/catch
+  assert.match(lee("apps/web/motor/02i_materiales.js"), /almacen: function \(\) \{ return window\.localStorage; \}/);
+  const m = lee("apps/web/src/nucleo/materiales.ts");
+  assert.match(m, /function ajusteGuardado\(almacen[^)]*\)[^{]*\{\s*try \{ const s = almacen \? almacen\(\)\.getItem\("gemelo\.ajustes\." \+ clave\)[^}]*\} catch \(e\)/);
+  assert.match(m, /ajusteGuardado\(d\.almacen, "vista\.a2c"\)/);
 });
 
 for (const b of ["pantalla", "vr"]) {

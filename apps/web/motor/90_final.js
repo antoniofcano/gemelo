@@ -2,12 +2,12 @@
 // Expone: tamano, gm, cuadro, bucle
 // Consume: 01_datos (D, $, EXT, FOG0, FOG1), 02_mundo (Mundo, suelo, copas), 02b_cola (Cola, ColaExt),
 //   02c_componentes (Reparto, Bus, Pausa, Componentes), 02d_laminas (Laminas), 02e_entidades (Usables), 02f_xr_perillas (XrPerillas),
-//   02h_render (Render), 03_escena (visor, renderer, scene, camera, hemi, sol, colorCss, Estado), 04b_escena3d (Escena3D),
-//   05_nube (actualizaNubeTeselas, actualizaNube), 07b_arboles (Arboles), 08_marcadores (listo, aplica), 09_camara (objetivo, camara),
-//   12_paseo (paseando, persona, pp, actualizaPaseo), 15_tiempo (actualizaTiempo), 16_vida (actualizaVida), 17_minimapa (actualizaMinimapa),
-//   18_paisaje (actualizaPaisaje), 19_balizas (actualizaBalizas), 21_suelo (recoloreaSuelo, actualizaSuelo), 23_estacion (actualizaOlivo),
-//   24_pantalla (transEntrada, transSalida), 28_depura (depuraCuadro), 29_vr (VRX, vrRig, vrCierra, vrAbre, vrRecoloca, vrActualiza, vrFin),
-//   31_hud (Hud), 33_ajustes (Ajustes)
+//   02h_render (Render), 02i_materiales (Materiales), 03_escena (visor, renderer, scene, camera, hemi, sol, colorCss, Estado),
+//   04b_escena3d (Escena3D), 05_nube (actualizaNubeTeselas, actualizaNube), 07b_arboles (Arboles), 08_marcadores (listo, aplica),
+//   09_camara (objetivo, camara), 12_paseo (paseando, persona, pp, actualizaPaseo), 15_tiempo (actualizaTiempo), 16_vida (actualizaVida),
+//   17_minimapa (actualizaMinimapa), 18_paisaje (actualizaPaisaje), 19_balizas (actualizaBalizas), 21_suelo (recoloreaSuelo, actualizaSuelo),
+//   23_estacion (actualizaOlivo), 24_pantalla (transEntrada, transSalida), 28_depura (depuraCuadro),
+//   29_vr (VRX, vrRig, vrCierra, vrAbre, vrRecoloca, vrActualiza, vrFin), 31_hud (Hud), 33_ajustes (Ajustes)
 // Nota: Arranque y bucle: Mundo.arranca, Componentes.arranca y la lista de pasos del fotograma que recorre el Bucle del núcleo (apps/web/src/nucleo/bucle.ts: try/catch por fotograma, página oculta, reset del espacio XR, contexto perdido). Define el orden de las actualizaciones por fotograma: los módulos que aún no son componentes a mano y los componentes por fases (mundo, tarde, trasRender).
 // ===============================================================================
 
@@ -41,7 +41,7 @@
   var luzDe = function (tipo, color, k, pos) { var l = tipo === "ambiental" ? new THREE.AmbientLight(color, k) : new THREE.DirectionalLight(color, k); if (pos) l.position.set(pos[0], pos[1], pos[2]); return l; };   // MU2-7: las luces de un interior, con THREE (src/ no lo importa)
   var gm =Nucleo.creaWorldManager({ fundido: Nucleo.creaFundidoPantalla({ documento: document, contenedor: visor, temporizador: temporizador, vr: { activa: function () { return VRX.on; }, cierra: vrCierra, abre: vrAbre } }), cola: Cola, temporizador: temporizador, ahora: function () { return performance.now(); }, consola: console,
     aplicaAmbiente: function (a) { Nucleo.aplicaAmbiente(a, escenaAmb); },   // MU2-7: el Ambiente del que entra (src/nucleo/ambiente.ts), a oscuras
-    avisa: function (ev, d) { Bus.emite(ev, d); }, contexto: function (base) { base.limpia(function () { Componentes.liberaMundo(base.id); }); return base; } });   // avisa: «mundo:entra/sale» paran y retoman los componentes (MU2-5); al liberar un mundo, los suyos
+    avisa: function (ev, d) { Bus.emite(ev, d); }, contexto: function (base) { base.limpia(function () { Componentes.liberaMundo(base.id); Materiales.libera(base.id); }); return base; } });   // avisa: «mundo:entra/sale» paran y retoman los componentes (MU2-5); al liberar un mundo, sus componentes y los materiales que pidió con Materiales.de(id) (MU5-0)
   gm.registra(function () { return Promise.resolve(exterior); }, "exterior");   // el gestor de mundos (MUNDOS §3): el exterior; fundido: en VR el velo de la cabeza, en pantalla uno de DOM
   gm.registra(function () { return Promise.resolve(Mundos.creaVacio({ pose: poseDelPaseo, luz: luzDe })); }, "vacio");   // MU2-6: el interior de prueba, sin entrada para el usuario salvo ?mundo=vacio (MU2-8 lo mide)
   Bucle = Nucleo.creaBucle({

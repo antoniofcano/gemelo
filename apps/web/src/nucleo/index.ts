@@ -6,6 +6,8 @@ export { partesDeVersion } from "./version.ts";
 export { CargaPuro, creaCola, creaColaDeMundo, duenoDe } from "./cola.ts";
 export type { ColaDeMundo } from "./cola.ts";
 export { RenderPuro, InfoDibujo, creaRender } from "./render.ts";
+export { MaterialesPuro, creaMateriales, EJEMPLO_TSL, DEF_EJEMPLO } from "./materiales.ts";
+export type { Materiales, MaterialesDe, MaterialesEstandar, DefMaterial, MaterialMin } from "./materiales.ts";
 export { XrPerillasPuro, creaXrPerillas } from "./xr-perillas.ts";
 export { EntidadesPuro } from "./entidades.ts";
 export { LlegadaPuro, IrAPuro } from "./locomocion.ts";

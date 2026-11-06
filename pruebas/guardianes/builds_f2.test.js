@@ -116,6 +116,15 @@ test("el motor entero construye con las dos builds: vr con super-three 0.185 y s
     assert.ok(!/="185"/.test(jp), "super-three se coló en la build de pantalla");
     for (const m of marcasSuper) assert.ok(!jp.includes(m), "«" + m + "» (de super-three) en la build de pantalla");
     assert.deepStrictEqual(vr.nombres, pa.nombres, "las dos builds deben partirse en los mismos trozos (mismos import() y addons)");
+    // MU5-0 (doc/sistema/MATERIALES.md §4): three/webgpu y three/tsl solo entran si alguien los importa; hasta MU6 nadie lo hace (la fábrica los recibe por
+    // nodos()), así que ninguna build lleva el WebGPURenderer ni las clases *NodeMaterial: se buscan dos textos de error de three.webgpu.js que el minificador
+    // no toca (los nombres de clase sí los puede tocar, y «MeshBasicNodeMaterial» sale también como cadena en la fábrica). La marca de control prueba que se busca bien
+    const webgpu = fs.readFileSync(path.join(THREE_DIR, "build/three.webgpu.js"), "utf8");
+    for (const m of ["THREE.NodeMaterial:", "NodeBuilder: Material"]) assert.ok(webgpu.includes(m), "control: «" + m + "» está en three.webgpu.js");
+    for (const [j, nom] of [[jp, "pantalla"], [jv, "vr"]]) {
+      assert.ok(j.includes("MeshBasicMaterial"), "control: el three clásico en la build " + nom);
+      for (const m of ["THREE.NodeMaterial:", "NodeBuilder: Material"]) assert.ok(!j.includes(m), "«" + m + "» (three/webgpu o three/tsl) en la build " + nom + ": ¿quién lo importa?");
+    }
     // EV-1k: el transcodificador entra en las dos builds, en basis/, y es el de la three de cada una (super-three en la de VR); el KTX2Loader va en su
     // trozo (import() del suelo de fotos), el motor le dice que lo coja de basis/ y nada de eso apunta a otro origen
     for (const [o, dir, nom] of [[pa, THREE_DIR, "pantalla"], [vr, SUPER, "vr"]]) {
