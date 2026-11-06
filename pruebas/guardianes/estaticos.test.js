@@ -64,7 +64,7 @@ const PAISAJE = {
 function mundoPaisaje(Estaticos) {
   const g = {
     THREE, Estaticos, D: { paisaje: JSON.parse(JSON.stringify(PAISAJE)) }, $: () => ({ checked: true, addEventListener() {} }), ESC_R8: 1,
-    suelo: (x, y) => 80 + 0.2 * x + 0.1 * y, desp: () => 0, copas: [], scene: new THREE.Scene(), SRGB: THREE.SRGBColorSpace, sol: {}, exag: 1, hash,
+    suelo: (x, y) => 80 + 0.2 * x + 0.1 * y, desp: () => 0, copas: [], scene: new THREE.Scene(), SRGB: THREE.SRGBColorSpace, sol: {}, Estado: { exag: 1 }, hash,
     gSombras: new THREE.Group(), tronco: null, matSombra: new THREE.MeshBasicMaterial({ transparent: true }), geoSombra: new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2),
     pon() {}, lista: [], lluvia: null, cur: { ms: 0, nub: 0, lluvia: 0, dir: 0, viento: 0 }, tMundo: 0, nivel: () => ({ s: { alt: 0.8, az: 0.4 }, d: 1 }), esfera: null, EST: { activa: false }
   };
@@ -77,7 +77,7 @@ test("18_paisaje: tras colocaPaisaje y al cambiar la exageración (1 → 3 → 1
   const gA = A.scene.getObjectByName("paisaje"), gB = B.scene.getObjectByName("paisaje");
   assert.ok(gA && gB);
   for (const e of EXAG) {
-    A.exag = e; B.exag = e; A.colocaPaisaje(); B.colocaPaisaje(); render(A.scene); render(B.scene);
+    A.Estado.exag = e; B.Estado.exag = e; A.colocaPaisaje(); B.colocaPaisaje(); render(A.scene); render(B.scene);
     igualesMundo(A.scene, B.scene, "exag " + e);
   }
   const n = lista(gA).length, c = lista(gA).filter(o => !o.matrixAutoUpdate).length;
@@ -93,7 +93,7 @@ test("18_paisaje: tras colocaPaisaje y al cambiar la exageración (1 → 3 → 1
 function barreras(Estaticos) {
   const F = lee("apps/web/motor/15_tiempo.js"), T = trozo(F, "  function creaBarrera(pr)", "  function pintaFondoTiempo()");
   const f = new Function("THREE", "Estaticos", "suelo", "matBarrera", "gLinde",
-    "\"use strict\";\nvar BARRERA_ALTO = 5.5, BARRERAS = [], exag = 1;\n" + T + "\nreturn { crea: creaBarrera, coloca: colocaBarrera, pon: function (e) { exag = e; }, n: function () { return BARRERAS.length; } };");
+    "\"use strict\";\nvar BARRERA_ALTO = 5.5, BARRERAS = [], Estado = { exag: 1 };\n" + T + "\nreturn { crea: creaBarrera, coloca: colocaBarrera, pon: function (e) { Estado.exag = e; }, n: function () { return BARRERAS.length; } };");
   const gLinde = new THREE.Group(); Estaticos.congela(gLinde); const escena = new THREE.Scene(); escena.add(gLinde);
   return Object.assign(f(THREE, Estaticos, (x, y) => 60 + 0.3 * x - 0.2 * y, new THREE.MeshBasicMaterial(), gLinde), { escena });
 }
@@ -107,8 +107,8 @@ function balizasOficiales(Estaticos) {
   const F = lee("apps/web/motor/39_oficina_mundo.js"), T = trozo(F, "    function montaGrafica()", "    function refresca()");
   const scene = new THREE.Scene();
   const f = new Function("THREE", "Estaticos", "scene", "suelo", "OP", "ALTO", "COLOR", "CLARO",
-    "\"use strict\";\nvar gB = null, mCol = null, mBan = null, geos = [], mats = [], m4 = null, v1 = null, v2 = null, q0 = null, vS = null, w0 = null, balizas = [], exag = 1;\n" + T +
-    "\nreturn { coloca: coloca, pon: function (b, e) { balizas = b; exag = e; } };");
+    "\"use strict\";\nvar gB = null, mCol = null, mBan = null, geos = [], mats = [], m4 = null, v1 = null, v2 = null, q0 = null, vS = null, w0 = null, balizas = [], Estado = { exag: 1 };\n" + T +
+    "\nreturn { coloca: coloca, pon: function (b, e) { balizas = b; Estado.exag = e; } };");
   return Object.assign(f(THREE, Estaticos, scene, (x, y) => 60 + 0.3 * x - 0.2 * y, { BALIZAS_MAX: 20 }, 18, 0xffcc00, 0xffffff), { scene });
 }
 test("39_oficina_mundo: las balizas oficiales (grupo y dos mallas congeladas) dan la misma matriz del mundo que en automático con cada exageración", () => {

@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
 // Consume: 01_datos (D, ALTO), 02_mundo (suelo), 02c_componentes (Componentes), 02d_laminas (Laminas), 02e_entidades (Entidades),
-//   02j_estaticos (Estaticos), 03_escena (visor, scene, camera, exag, modo), 09_camara (objetivo), 12_paseo (paseando, pp), 12b_llegada (Llegada),
+//   02j_estaticos (Estaticos), 03_escena (visor, scene, camera, Estado), 09_camara (objetivo), 12_paseo (paseando, pp), 12b_llegada (Llegada),
 //   13b_hazas (HazasPuro), 16_vida (enQuad), 17_minimapa (Minimapa), 26_presencia (Aspecto, Chat, Encuentro, sitioJunto), 29_vr (VRX), 31_hud (Hud),
 //   32_ventanas (Ventanas)
 // Nota: Componente «oficina-mundo» (OF10, ADR-0023 y ADR-0024; decisiones 107 y 114): lo que la oficina hace en el mundo. Solo se registra; nadie lo nombra. Consume la red (sala «visita») y la presencia. Anuncios (tema «anuncio»: aviso arriba, lámina en VR y chat), invitación a otra sala (tema «sala»: «Ir» o «Quedarme»), balizas oficiales (tipo «baliza-oficial» de Entidades, GET /api/balizas-oficiales, tema «balizas») y, si tu rol en la sala es de oficina, la ventana «Oficina» (anunciar, invitar, poner baliza). Los tres temas solo valen SIN participante (los manda la api). Emite oficina:anuncio y oficina:sala. Publica window.__oficinaMundo (pruebas). Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/oficina_mundo.test.js.
@@ -182,7 +182,7 @@
       if (!balizas.length && !gB) return;
       if (!gB) montaGrafica();
       balizas.forEach(function (b, i) {
-        b.pos = { x: b.x, y: suelo(b.x, b.y) * exag, z: -b.y };
+        b.pos = { x: b.x, y: suelo(b.x, b.y) * Estado.exag, z: -b.y };
         m4.compose(v1.set(b.pos.x, b.pos.y, b.pos.z), q0, vS); mCol.setMatrixAt(i, m4); mBan.setMatrixAt(i, m4);
       });
       mCol.count = mBan.count = balizas.length; mCol.instanceMatrix.needsUpdate = true; mBan.instanceMatrix.needsUpdate = true;
@@ -309,13 +309,13 @@
     function quitaPanel() { if (panelOf) { panelOf.quitaTemas(); panelOf = null; } }
 
     // ---- fase «tarde» (cada 0,5 s): el anuncio se va solo, el panel aparece o se va con tu rol y las balizas se repiden cada 5 min (y se recolocan si cambia la exageración)
-    var exagHecha = exag;
+    var exagHecha = Estado.exag;
     function tarde(dt) {
       if (tBanner > 0) { tBanner -= dt; if (tBanner <= 0) { if (banner) banner.hidden = true; if (Laminas.hay(LAM_A)) Laminas.cierra(LAM_A); anuncioVR = null; } }
       var debe = soyOficina() && !VRX.on && !!API;
       if (debe && !panelOf) montaPanel(); else if (!debe && panelOf && !VRX.on) quitaPanel();
       tRefresco += dt; if (tRefresco >= REFRESCO_S) refresca();
-      if (exag !== exagHecha) { exagHecha = exag; coloca(); }
+      if (Estado.exag !== exagHecha) { exagHecha = Estado.exag; coloca(); }
     }
     function libera() {
       vivo = false;

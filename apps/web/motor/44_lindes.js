@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 02_mundo (Mundo, suelo), 02c_componentes (Componentes), 02i_materiales (Materiales), 03_escena (exag), 08_marcadores (gLinde),
+// Consume: 02_mundo (Mundo, suelo), 02c_componentes (Componentes), 02i_materiales (Materiales), 03_escena (Estado), 08_marcadores (gLinde),
 //   13b_hazas (Hazas), 17_minimapa (Minimapa)
 // Nota: Componente «lindes-hazas» (A4, ADR-0023; decisiones 12, 13, 95 y 139): la linde de las hazas pegada al relieve, la tuya destacada y las ajenas discretas, con LineSegments2/LineMaterial de three (import() al montarse; 2 llamadas, 6 triángulos por tramo, tope de 8.000 tramos). Solo se registra; nadie lo nombra. También pinta las hazas en el minimapa (A4b, Minimapa.capa, la casilla «Linde» las apaga). ?lindes=0 lo apaga todo. Lee Hazas.lindes() al oír «hazas:cambia»; da su línea de ?debug por «depura:lineas». Publica window.__lindes (pruebas). Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/lindes.test.js.
 // ===============================================================================
@@ -195,7 +195,7 @@
       grupo = new THREE.Group(); grupo.name = "linde de las hazas";
       ["propia", "ajena"].forEach(function (k) {
         if (!pl.n[k]) return;
-        var e = P.ESTILO[k], w = P.escribe(pl.lados[k], pl.paso, TS, OX, OY, suelo, exag, P.ALTURA, pl.n[k]);
+        var e = P.ESTILO[k], w = P.escribe(pl.lados[k], pl.paso, TS, OX, OY, suelo, Estado.exag, P.ALTURA, pl.n[k]);
         var geo = new L.LineSegmentsGeometry(); geo.setPositions(w.pos);
         var mat = new L.LineMaterial({ color: e.color, linewidth: e.ancho, worldUnits: false, transparent: e.opacidad < 1, opacity: e.opacidad, depthWrite: e.opacidad >= 1 });
         mat.uniforms.uAcerca = { value: 1 - e.acerca };
@@ -209,19 +209,19 @@
         st.tramos[k] = w.n;
       });
       gLinde.add(grupo);
-      exagHecha = exag; sucio = false;
+      exagHecha = Estado.exag; sucio = false;
       st.triangulos = P.triangulos(st.tramos.propia + st.tramos.ajena); st.llamadas = Object.keys(mallas).length; st.paso = pl.paso; st.longitud = pl.longitud; st.recortado = pl.recortado;
     }
     // repegar al relieve: las mismas posiciones reescritas en el mismo búfer (el que LineSegmentsGeometry comparte entre instanceStart e instanceEnd)
     function repega() {
       Object.keys(mallas).forEach(function (k) {
         var g = mallas[k].geo, a = g.getAttribute("instanceStart"), buf = a.data;
-        P.escribe(pl.lados[k], pl.paso, TS, OX, OY, suelo, exag, P.ALTURA, pl.n[k], buf.array);
+        P.escribe(pl.lados[k], pl.paso, TS, OX, OY, suelo, Estado.exag, P.ALTURA, pl.n[k], buf.array);
         buf.needsUpdate = true; g.computeBoundingBox(); g.computeBoundingSphere();
       });
-      exagHecha = exag; sucio = false; st.repegadas++;
+      exagHecha = Estado.exag; sucio = false; st.repegadas++;
     }
-    function tarde() { if (pl && (sucio || exag !== exagHecha)) repega(); }
+    function tarde() { if (pl && (sucio || Estado.exag !== exagHecha)) repega(); }
     lindesHazasAviso.fn = function () { sucio = true; };
     if (!lindesHazasAviso.puesto) { lindesHazasAviso.puesto = true; Mundo.alCargar(function () { if (lindesHazasAviso.fn) lindesHazasAviso.fn(); }); }
     // el minimapa (A4b): la misma linde en 2D con Minimapa.capa (punto de extensión C10); la lista se rehace al oír «hazas:cambia» y la casilla «Linde» (gLinde.visible)

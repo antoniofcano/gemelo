@@ -306,7 +306,7 @@ function motor({ busqueda = "?presencia=red", ficheros = ["red", "presencia", "v
   const documento = { getElementById: () => null, createElement: t => new El(t), createTextNode: t => ({ texto: t }), body: new El("body") };
   const consola = { error: (...a) => errores.push(a.map(String).join(" ")), warn: (...a) => { const t = a.map(String).join(" "); if (!/sin quad ni dron/.test(t)) errores.push(t); }, log() {} };
   const g = {
-    THREE: cualquiera(), LK_FALSO: LK, D: { ext: [0, 200, 200, 0], base: "" }, suelo: () => 10, exag: 1, texColor: x => x,
+    THREE: cualquiera(), LK_FALSO: LK, D: { ext: [0, 200, 200, 0], base: "" }, suelo: () => 10, Estado: { exag: 1 }, texColor: x => x,
     scene: { add() {}, remove() {} }, camera: cualquiera(), renderer: cualquiera(), visor,
     Entidades: { registra: () => () => {} }, Llegada: { funde: fn => { fn(); return true; }, aparece() {} }, TR: {},
     Movibles: { hazMovible: () => ({ menuLlevar() {}, coloca() {} }) }, VRX: { on: false, cab: {}, rig: { yaw: 0 } }, paseando: true, pp: { x: 50, y: 50, ang: 0 },

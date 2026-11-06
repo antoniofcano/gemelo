@@ -3,7 +3,7 @@
 //   temaBarrera, colocaBarrera, pintaFondoTiempo, fmtHora, fmtClaveDia, num1, rumbo, esc, objetivoMundoBase, pasoHoraMundo, horaMundoTexto,
 //   aplicaMundo, TiempoVivo, lindes
 // Consume: 01_datos (D, $, tinta, FOG0, FOG1), 02_mundo (suelo), 02c_componentes (Bus), 02j_estaticos (Estaticos),
-//   03_escena (scene, camera, SRGB, LUZ_SOL, LUZ_CIELO, hemi, sol, texColor, colorVertSRGB, colorCss, exag),
+//   03_escena (scene, camera, SRGB, LUZ_SOL, LUZ_CIELO, hemi, sol, texColor, colorVertSRGB, colorCss, Estado),
 //   04d_sombreado_tiles (hash, matSuelo, matOrto), 04f_suelo_fotos (SueloFotos), 05_nube (nube), 07_follaje (matHojaG, matHojaP, matCorteza),
 //   08_marcadores (gLinde), 09_camara (objetivo), 13b_hazas (HazasPuro), 14_historia (marca), 16_vida (temaEstela), 23_estacion (objetivoMundo)
 // Nota: Lee /api/tiempo (mismo origen) solo con D.base /teselas/… o ?api=; si no, el conector de claude.ai; si no, el tiempo simulado, dicho. Expone TiempoVivo (contratos/interfaces.json). El trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/tiempo_motor.test.js.
@@ -422,7 +422,7 @@
   }
   function colocaBarrera(k) {
     var b = BARRERAS[k], p = b.geo.attributes.position;
-    b.pts.forEach(function (q, i) { var y0 = suelo(q[0], q[1]) + 0.12; p.setXYZ(i * 2, q[0], y0 * exag, -q[1]); p.setXYZ(i * 2 + 1, q[0], (y0 + BARRERA_ALTO) * exag, -q[1]); });
+    b.pts.forEach(function (q, i) { var y0 = suelo(q[0], q[1]) + 0.12; p.setXYZ(i * 2, q[0], y0 * Estado.exag, -q[1]); p.setXYZ(i * 2 + 1, q[0], (y0 + BARRERA_ALTO) * Estado.exag, -q[1]); });
     p.needsUpdate = true;
     b.geo.computeBoundingSphere();   // AG-1.3: DESPUÉS de escribir los vértices (three la calcula una sola vez y los de creaBarrera nacen a cero)
   }

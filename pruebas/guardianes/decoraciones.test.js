@@ -152,7 +152,8 @@ function mundo({ sinApi = false, falla = false } = {}) {
     Entidades: { complementa: (t, fn) => { assert.strictEqual(t, "olivo"); complementos.push(fn); return () => complementos.splice(complementos.indexOf(fn), 1); } },
     window: {}
   };
-  for (const k of ["exag", "paseando"]) Object.defineProperty(g, k, { get: () => E[k], enumerable: true });
+  Object.defineProperty(g, "paseando", { get: () => E.paseando, enumerable: true });
+  g.Estado = { get exag() { return E.exag; } };   // exag vive en Estado (A1-13): se lee de E por un getter
   let pedido = 0;
   const fuente = FUENTE.replace(IMPORTA, "(pedidoUtiles(), " + (falla ? "Promise.reject(new Error(\"sin red\"))" : "Promise.resolve(UTILES)") + ")");
   assert.notStrictEqual(fuente, FUENTE, "el import() de mergeGeometries está donde se espera");

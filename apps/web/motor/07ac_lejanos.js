@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Lejanos
-// Consume: 02b_cola (Cola), 02i_materiales (Materiales), 03_escena (renderer, exag), 06_arboles (gArboles), 07ab_generados (Generados)
+// Consume: 02b_cola (Cola), 02i_materiales (Materiales), 03_escena (renderer, Estado), 06_arboles (gArboles), 07ab_generados (Generados)
 // ===============================================================================
   // ---------- los olivos LEJANOS de la escalera (ADR-0019 §2, fase A, O8c), solo con ?olivos=escalera o con ?olivos=gen y variantes horneadas (modoGen
   // de 07ab): sin ellas no crea nada ni gasta nada.
@@ -271,19 +271,19 @@
         if (cj) { var b = cj[j]; b.getSize(s); mc.makeScale(Math.max(s.x, 1e-3), Math.max(s.y, 1e-3), Math.max(s.z, 1e-3)).setPosition((b.min.x + b.max.x) / 2, b.min.y, (b.min.z + b.max.z) / 2); m.multiply(mc); }
         m.toArray(matrices, k * 16);
       });
-      exagM = exag;
+      exagM = Estado.exag;
     }
     /** El reparto de los lejanos (desde 07b): cada olivo a menos de U2 m de la cámara que no está del todo en 3D (GEN.fase de 07ab) */
     function reparte(cam, GEN) {
       if (!malla || !hayCapa()) return info;
       repartido = true;   // el tramado de entrada de la capa (uCapa) empieza con el primer reparto, no al montarla
-      if (exagM !== exag || !matrices) matricesDe();
+      if (exagM !== Estado.exag || !matrices) matricesDe();
       if (!ids) ids = new Int32Array(olivos.length);
       var A = malla.instanceMatrix.array, F = malla.geometry.attributes.aFun.array, V = malla.geometry.attributes.aVar.array, k = 0, en = 0, sa = 0;
       for (var q = 0; q < olivos.length; q++) {
         var c = olivos[q], f = GEN.fase ? GEN.fase(c.i) : 0;
         if (f === 1) continue;   // en 3D
-        var dx = c.x - cam.x, dz = -c.y - cam.z, dy = Math.max(0, cam.y - (c.gz || 0) * exag);
+        var dx = c.x - cam.x, dz = -c.y - cam.z, dy = Math.max(0, cam.y - (c.gz || 0) * Estado.exag);
         if (dx * dx + dz * dz + dy * dy >= U2 * U2) continue;
         A.set(matrices.subarray(q * 16, q * 16 + 16), k * 16); F[k] = f === 2 ? 2 + 3 * (GEN.ranura ? GEN.ranura(c.i) : 0) : f === 3 ? 1 : 0; V[k] = c.i % nv; ids[k] = c.i;
         if (f === 2) sa++; else if (f === 3) en++;

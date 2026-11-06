@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Escena3D
 // Consume: 01_datos (D), 01a_aparato (Aparato), 02_mundo (Mundo, suelo), 02b_cola (CargaPuro, Cola), 02f_xr_perillas (XrPerillas),
-//   02l_tope_tiles (TopeTilesPuro), 02m_tope_olivos (TopeOlivos), 03_escena (renderer, scene, camera, exag), 04c_olivos_tiles (OlivosTiles),
+//   02l_tope_tiles (TopeTilesPuro), 02m_tope_olivos (TopeOlivos), 03_escena (renderer, scene, camera, Estado), 04c_olivos_tiles (OlivosTiles),
 //   04d_sombreado_tiles (SombreadoTiles), 09_camara (objetivo, pon), 16_vida (quita)
 // ===============================================================================
   // ---------- la escena en 3D Tiles 1.1 (ADR-0015, aceptado; formato en doc/sistema/TILES3D.md): la ÚNICA escena (T8 fase 2, decisión 79). El relieve
@@ -129,8 +129,8 @@
     }
     function colocaGrupo() {   // tiles.group.matrix = escala vertical (exag) · Rx(−π/2) · transform⁻¹ de la raíz
       if (!tiles || !raizT) return;
-      var M = new THREE.Matrix4().makeScale(1, exag, 1).multiply(new THREE.Matrix4().makeRotationX(-Math.PI / 2)).multiply(raizT.clone().invert());
-      tiles.group.matrixAutoUpdate = false; tiles.group.matrix.copy(M); tiles.group.updateMatrixWorld(true); exagPuesta = exag;
+      var M = new THREE.Matrix4().makeScale(1, Estado.exag, 1).multiply(new THREE.Matrix4().makeRotationX(-Math.PI / 2)).multiply(raizT.clone().invert());
+      tiles.group.matrixAutoUpdate = false; tiles.group.matrix.copy(M); tiles.group.updateMatrixWorld(true); exagPuesta = Estado.exag;
     }
     function quitaOlivos(raizModelo) {   // los nodos instanciados del glb (EXT_mesh_gpu_instancing → InstancedMesh): fuera y liberados
       var fuera = [];
@@ -227,7 +227,7 @@
         if (tiles.cameras.length !== 1 || !tiles.hasCamera(camera)) { tiles.cameras.slice().forEach(function (c) { tiles.deleteCamera(c); }); tiles.setCamera(camera); }
         renderer.getSize(tam); tiles.setResolution(camera, tam.x, tam.y);
       }
-      if (exag !== exagPuesta) colocaGrupo();
+      if (Estado.exag !== exagPuesta) colocaGrupo();
       camera.updateMatrixWorld();
       tiles.update();
       SombreadoTiles.actualiza();
@@ -252,7 +252,7 @@
       var r = rayo.intersectObject(tiles.group, true).filter(function (x) { return !x.object.isInstancedMesh; })[0];   // el relieve, no los olivos
       if (!r) return null;
       var t = teselaDe(r.object) || {};
-      return { h: r.point.y / exag, uri: t.uri || null, lado: t.lado || null, error: t.error === undefined ? null : t.error };
+      return { h: r.point.y / Estado.exag, uri: t.uri || null, lado: t.lado || null, error: t.error === undefined ? null : t.error };
     }
     function alturaEn(x, y) { var r = relieveEn(x, y); return r ? r.h : null; }
     // Sonda de huecos (criterio 3 del ADR-0015; solo pruebas): nx × ny rayos desde la cámara por la pantalla, más uno vertical bajo la cámara y otro
@@ -262,7 +262,7 @@
     // encuentran relieve (con las primeras muestras de los que fallan).
     var ndc = new THREE.Vector2();
     function cortaCPU(o, d) {   // primer t > 0 con o + t·d bajo el relieve de la CPU, o −1 (hasta 6 km)
-      var f = function (t) { var x = o.x + d.x * t, z = o.z + d.z * t; return o.y + d.y * t - suelo(x, -z) * exag; };
+      var f = function (t) { var x = o.x + d.x * t, z = o.z + d.z * t; return o.y + d.y * t - suelo(x, -z) * Estado.exag; };
       var a = 0, fa = f(0); if (fa <= 0) return -1;
       for (var t = 1; t < 6000; t += Math.max(1, Math.min(20, fa * 0.5))) { var ft = f(t); if (ft <= 0) { for (var k = 0; k < 30; k++) { var m = (a + t) / 2; if (f(m) > 0) a = m; else t = m; } return t; } a = t; fa = ft; }
       return -1;

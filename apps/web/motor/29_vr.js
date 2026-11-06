@@ -4,11 +4,10 @@
 // Consume: 01_datos (D, $, fmt, VRP), 01a_aparato (Aparato), 02_mundo (suelo, copas), 02b_cola (Cola),
 //   02c_componentes (ComponentesPuro, Bus, Config), 02d_laminas (LaminasPuro, Laminas), 02e_entidades (EntidadesPuro, Entidades, Usables),
 //   02f_xr_perillas (XrPerillas), 02g_vr_presupuesto (VrControlPuro, VrPresupuesto), 02h_render (InfoDibujo), 02i_materiales (Materiales),
-//   03_escena (renderer, scene, camera, sol, texColor, exag, modo, calidad), 04b_escena3d (Escena3D), 04d_sombreado_tiles (UN),
-//   07b_arboles (Arboles), 09_camara (pon), 10_ndvi (NDV, ndviIdx, rampa),
-//   12_paseo (paseando, persona, teclas, primera, pp, entraPaseo, salePaseo, actualizaPaseo), 12b_llegada (Llegada), 13_parcelas (parcelas, fincas),
-//   15_tiempo (meta, pasoHoraMundo, horaMundoTexto), 22_huellas (pendFactor), 24_pantalla (TR), 33_ajustes (Ajustes),
-//   90_final (tamano, cuadro, bucle)
+//   03_escena (renderer, scene, camera, sol, texColor, Estado), 04b_escena3d (Escena3D), 04d_sombreado_tiles (UN), 07b_arboles (Arboles),
+//   09_camara (pon), 10_ndvi (NDV, ndviIdx, rampa), 12_paseo (paseando, persona, teclas, primera, pp, entraPaseo, salePaseo, actualizaPaseo),
+//   12b_llegada (Llegada), 13_parcelas (parcelas, fincas), 15_tiempo (meta, pasoHoraMundo, horaMundoTexto), 22_huellas (pendFactor),
+//   24_pantalla (TR), 33_ajustes (Ajustes), 90_final (tamano, cuadro, bucle)
 // Nota: Publica además window.__vrDebug, __vrOlivo, __vrBotones, __vrVuelo y VR_ESTADO (depuración y pruebas VR).
 // ===============================================================================
   // ---------- modo VR inmersivo (WebXR, Meta Quest Browser): el paseo en primera persona con mandos, un panel flotante y un perfil de rendimiento propio
@@ -68,7 +67,7 @@
     var r = vrRayoDe(o), ox = r.ray.origin.x, oy = r.ray.origin.y, oz = r.ray.origin.z, dx = r.ray.direction.x * 9, dy = r.ray.direction.y * 9, dz = r.ray.direction.z * 9, e = D.ext, hit = null, n = 0, px = ox, py = oy, pz = oz;
     for (var k = 0; k < 33; k++) {
       var t = (k + 1) * 0.06; px = ox + dx * t; py = oy + dy * t - 4.9 * t * t; pz = oz + dz * t; arcoPos[k * 3] = px; arcoPos[k * 3 + 1] = py; arcoPos[k * 3 + 2] = pz; n = k + 1;
-      var g = suelo(px, -pz) * exag; if (py <= g) { hit = { x: px, z: pz }; break; }
+      var g = suelo(px, -pz) * Estado.exag; if (py <= g) { hit = { x: px, z: pz }; break; }
     }
     arcoPos[0] = ox; arcoPos[1] = oy; arcoPos[2] = oz;
     for (var q = n; q < 34; q++) { arcoPos[q * 3] = px; arcoPos[q * 3 + 1] = py; arcoPos[q * 3 + 2] = pz; }
@@ -330,7 +329,7 @@
     return B;
   }
   // las filas de siempre, por pestañas (con los mismos altos de antes: caen en los mismos píxeles)
-  PanelVR.filas("mundo", { id: "modos", orden: 10, alto: 88, botones: function (b, y) { ["nube", "gem", "orto"].forEach(function (m, i) { b("m_" + m, 40 + i * 316, y, 300, 64, ["Nube LiDAR", "Gemelo", "Ortofoto"][i], function () { pon(m); VRX.sucio = true; }, modo === m); }); } });
+  PanelVR.filas("mundo", { id: "modos", orden: 10, alto: 88, botones: function (b, y) { ["nube", "gem", "orto"].forEach(function (m, i) { b("m_" + m, 40 + i * 316, y, 300, 64, ["Nube LiDAR", "Gemelo", "Ortofoto"][i], function () { pon(m); VRX.sucio = true; }, Estado.modo === m); }); } });
   PanelVR.filas("mundo", { id: "hora", orden: 20, alto: 88, botones: function (b, y) { b("h-", 420, y, 90, 64, "−", function () { pasoHoraMundo(-1); VRX.sucio = true; }); b("h+", 800, y, 90, 64, "+", function () { pasoHoraMundo(1); VRX.sucio = true; }); },
     pinta: function (cx, y, W, h) { h.fila("Hora", y, h.valores.hora); } });
   PanelVR.filas("mundo", { id: "fecha", orden: 30, alto: 88, botones: function (b, y) { b("f-", 420, y, 90, 64, "−", function () { vrFecha(-1); }); b("f+", 800, y, 90, 64, "+", function () { vrFecha(1); }); },
@@ -350,7 +349,7 @@
     botones: function (b, y) { b("e-", 420, y, 90, 64, "−", function () { vrSlider("exag", -1); }); b("e+", 800, y, 90, 64, "+", function () { vrSlider("exag", 1); }); } });
   function vrValores() {
     var pr = parcelas[VRX.parcSel] || parcelas[0], fn = fincas.length > 1 && fincas[pr.finca] ? fincas[pr.finca].nombre + " · " : "";
-    return { hora: horaMundoTexto(), fecha: NDV ? dd2(NDV.fechas[ndviIdx]) : "–", exag: fmt(exag, exag % 1 ? 2 : 0) + "×", parcela: fn + pr.nombre };
+    return { hora: horaMundoTexto(), fecha: NDV ? dd2(NDV.fechas[ndviIdx]) : "–", exag: fmt(Estado.exag, Estado.exag % 1 ? 2 : 0) + "×", parcela: fn + pr.nombre };
   }
   function vrPintaPanel() {
     VRX.sinPint = vrSinEscena();   // antes de construir los botones: el letrero desplaza el contenido
@@ -517,7 +516,7 @@
     return VRX.cab;
   }
   function vrIrA(px, py) {   // lleva la cabeza a (px, py) del mundo (py hacia el norte), sin cambiar la dirección de la mirada
-    var h = vrCabeza(); VRX.rig.x += px - h.x; VRX.rig.z += -py - h.z; VRX.rig.y = suelo(px, py) * exag + vrBaseY(); VRX.salto = true;   // salto: con ?ui=capas el panel nace delante (EV2-A2)
+    var h = vrCabeza(); VRX.rig.x += px - h.x; VRX.rig.z += -py - h.z; VRX.rig.y = suelo(px, py) * Estado.exag + vrBaseY(); VRX.salto = true;   // salto: con ?ui=capas el panel nace delante (EV2-A2)
   }
   function vrEjes(src) { var g = src && src.gamepad; if (!g || !g.axes) return { x: 0, y: 0, ok: false }; var a = g.axes, i = a.length >= 4 ? 2 : 0; return { x: a[i] || 0, y: a[i + 1] || 0, ok: true }; }
   function vrBoton(src, k) { var g = src && src.gamepad, b = g && g.buttons && g.buttons[k]; return !!(b && b.pressed); }
@@ -547,7 +546,7 @@
       }
     } else if (Math.abs(gx) < 0.35) VRX.giroOk = true;
     if (VRX.vuelo || VT.act) vrVueloTp(R, gy < -0.6 && Math.abs(gx) < 0.5);   // desde el aire: rayo recto y anillo (2b)
-    else if (gy < -0.6 && Math.abs(gx) < 0.5) { VRX.tp = vrArco(R); arco.visible = true; arcoMarca.visible = !!VRX.tp; if (VRX.tp) arcoMarca.position.set(VRX.tp.x, suelo(VRX.tp.x, -VRX.tp.z) * exag + 0.08, VRX.tp.z); VRX.tpAct = true; }
+    else if (gy < -0.6 && Math.abs(gx) < 0.5) { VRX.tp = vrArco(R); arco.visible = true; arcoMarca.visible = !!VRX.tp; if (VRX.tp) arcoMarca.position.set(VRX.tp.x, suelo(VRX.tp.x, -VRX.tp.z) * Estado.exag + 0.08, VRX.tp.z); VRX.tpAct = true; }
     else { if (VRX.tpAct && VRX.tp) { vrIrA(VRX.tp.x, -VRX.tp.z); VRX.hMov = 0.35; vrPulso(R, 0.35, 30); } VRX.tpAct = false; VRX.tp = null; arco.visible = false; arcoMarca.visible = false; }
     // andar (palanca izquierda): relativo a la mirada
     var av = -vrDz(iz.y), la = vrDz(iz.x), g = camera.getWorldDirection(vrV3);
@@ -560,12 +559,12 @@
       else { dx = hx * av * vel * dt - hz * la * vel * dt; dz = hz * av * vel * dt + hx * la * vel * dt; }
     }
     var nx = h.x + dx, nz = h.z + dz;
-    if (!VRX.vuelo || h.y - suelo(h.x, -h.z) * exag < 3) {   // los troncos no se atraviesan (a pie, o volando a ras)
+    if (!VRX.vuelo || h.y - suelo(h.x, -h.z) * Estado.exag < 3) {   // los troncos no se atraviesan (a pie, o volando a ras)
       for (var i = 0; i < copas.length; i++) { var c = copas[i]; if (!c.oliv) continue; var ex = nx - c.x, ez = nz + c.y, d2 = ex * ex + ez * ez; if (d2 < 0.3025) { var dl = Math.sqrt(d2) || 0.001; nx = c.x + ex / dl * 0.55; nz = -c.y + ez / dl * 0.55; } }
     }
     var e = D.ext; nx = Math.max(e[0] + 3, Math.min(e[2] - 3, nx)); nz = Math.max(-e[1] + 3, Math.min(-e[3] - 3, nz));
     r.x += nx - h.x; r.z += nz - h.z; if (VRX.vuelo) r.y += dy;
-    var gnd = suelo(nx, -nz) * exag + vrBaseY();
+    var gnd = suelo(nx, -nz) * Estado.exag + vrBaseY();
     if (VRX.vuelo) r.y = Math.max(r.y, gnd + 0.4); else r.y += (gnd - r.y) * Math.min(1, dt * 12);
     VRX.hMov = Math.max(0, VRX.hMov - dt); var mueve = mov > 0 || VRX.hMov > 0;
     // lo que el resto del programa mira: el «paseo» (pp) es la cabeza; el muñequito va oculto
@@ -598,7 +597,7 @@
   }
   function vrMirador(on) {
     VRX.mirador = on; VRX.vuelo = on; VRX.sucio = true; var h = vrCabeza();
-    if (on) { VRX.rig.y = suelo(h.x, -h.z) * exag + 230; } else { VRX.rig.y = suelo(h.x, -h.z) * exag + vrBaseY(); }
+    if (on) { VRX.rig.y = suelo(h.x, -h.z) * Estado.exag + 230; } else { VRX.rig.y = suelo(h.x, -h.z) * Estado.exag + vrBaseY(); }
     VRX.salto = true;
   }
   // el gatillo: sobre el panel pulsa un botón; sobre un olivo, abre su ficha
@@ -688,12 +687,12 @@
     XrPerillas.mvEnUso(renderer);   // F2a: ¿encendió super-three el multiview en esta sesión? (la línea «VR: …» y la sonda de 30_mide lo dicen)
     ses.addEventListener("end", vrSale);
     vrSuscribe(); vrLeeAjustes(); VRX.pestana = "mundo";
-    VRX.modoPrev = modo; VRX.calPrev = calidad; VRX.nearPrev = camera.near; VRX.farPrev = camera.far;
-    if (modo !== "gem") pon("gem"); calidad = 0; camera.near = XrPerillas.efectivas.near; camera.far = 6000;   // near 0,1 (AG-2.3; perilla xrnear): ramas a <30 cm sin recortar, a costa de precisión de profundidad lejos
+    VRX.modoPrev = Estado.modo; VRX.calPrev = Estado.calidad; VRX.nearPrev = camera.near; VRX.farPrev = camera.far;
+    if (Estado.modo !== "gem") pon("gem"); Estado.calidad = 0; camera.near = XrPerillas.efectivas.near; camera.far = 6000;   // near 0,1 (AG-2.3; perilla xrnear): ramas a <30 cm sin recortar, a costa de precisión de profundidad lejos
     scene.add(vrRig); vrRig.add(camera); camera.add(vrVineta); camera.position.set(0, VRX.ojo ? 0 : 1.6, 0); camera.quaternion.identity(); VRC.forEach(function (o) { vrRig.add(o.c); vrRig.add(o.g); }); Bus.emite("vr:rig-monta", { rig: vrRig }); scene.add(arco); scene.add(arcoMarca); scene.add(panel.m); scene.add(ficha.m); scene.add(fichaB.m); vrVueloEntra();
     VRP.on = true; vrPerfil(XrPerillas.fijo() ? XrPerillas.efectivas.nivel : 0); VrControlPuro.reinicia(VRX);   // A1-12: medias, periodo, perdidos, buenos y castigo, de cero
     if (!paseando) entraPaseo(); primera = true; TR.act = false; persona.visible = false; Bus.emite("perros:llegan");
-    var r = VRX.rig; r.x = pp.x; r.z = -pp.y; r.yaw = 0; r.y = suelo(pp.x, pp.y) * exag + vrBaseY(); VRX.vuelo = false; VRX.mirador = false; VRX.prev = {}; VRX.giroOk = true; VRX.movF = 0; VRX.sucio = true; panel.m.visible = true; panel.ini = false; ficha.m.visible = false; fichaB.m.visible = false; VRX.fichaId = ""; VRX.balFirma = "";
+    var r = VRX.rig; r.x = pp.x; r.z = -pp.y; r.yaw = 0; r.y = suelo(pp.x, pp.y) * Estado.exag + vrBaseY(); VRX.vuelo = false; VRX.mirador = false; VRX.prev = {}; VRX.giroOk = true; VRX.movF = 0; VRX.sucio = true; panel.m.visible = true; panel.ini = false; ficha.m.visible = false; fichaB.m.visible = false; VRX.fichaId = ""; VRX.balFirma = "";
     vrAplicaRig(); vrRig.updateMatrixWorld(true); VRX.on = true; VRX.entrando = false; vrEstado("sesión VR en marcha"); vrPrecompila(); Bus.emite("vr:entra");
   }
   function vrAnimacion(t, frame) { if (!frame || !VRX.on) return; VRX.frame = frame; cuadro(performance.now()); }
@@ -702,7 +701,7 @@
     vrSuelta(); Cola.cancela("vnivel");
     VRX.on = false; VRP.on = false; VRX.sesion = null; renderer.setAnimationLoop(null); renderer.xr.enabled = false;
     vrRig.remove(camera); camera.remove(vrVineta); scene.remove(vrRig); VRC.forEach(function (o) { vrRig.remove(o.c); vrRig.remove(o.g); }); Bus.emite("vr:rig-libera"); scene.remove(arco); scene.remove(arcoMarca); scene.remove(panel.m); scene.remove(ficha.m); scene.remove(fichaB.m); vrVueloSale();
-    Arboles.perfil(null); Escena3D.perfil(null); VrPresupuesto.ponEscalon(null); UN.uBumpK.value = 1; calidad = VRX.calPrev; camera.near = VRX.nearPrev; camera.far = VRX.farPrev; camera.updateProjectionMatrix(); if (modo !== VRX.modoPrev) pon(VRX.modoPrev);
+    Arboles.perfil(null); Escena3D.perfil(null); VrPresupuesto.ponEscalon(null); UN.uBumpK.value = 1; Estado.calidad = VRX.calPrev; camera.near = VRX.nearPrev; camera.far = VRX.farPrev; camera.updateProjectionMatrix(); if (Estado.modo !== VRX.modoPrev) pon(VRX.modoPrev);
     camera.position.set(0, 0, 0); camera.quaternion.identity(); camera.scale.set(1, 1, 1);
     if (paseando) salePaseo();
     VRX.vuelo = false; VRX.mirador = false; vrEstado("soportado (sesión terminada)"); Bus.emite("vr:sale"); tamano(); requestAnimationFrame(bucle);
@@ -727,11 +726,11 @@
       });
     });
   }
-  window.__vrDebug = function () { return Object.assign({ on: VRX.on, estado: VRX.estado, capas: VR_CAPAS, nivel: VRX.nivel, rig: JSON.parse(JSON.stringify(VRX.rig)), cabeza: [VRX.cab.x, VRX.cab.y, VRX.cab.z], pp: [pp.x, pp.y], vuelo: VRX.vuelo, panel: panel.m.visible, ficha: ficha.m.visible, hover: VRX.hover, pestana: VRX.pestana, giro: VRX.giro, sinEscena: VRX.sinPint, vinetaOn: VRX.vineta, vineta: vrVineta.material.uniforms.uK.value, sesionesN: VRX.sesionesN, paseando: paseando, primera: primera, modo: modo, exag: exag, hora: horaMundoTexto(), horaMs: meta.ms, solY: sol.position.y, solI: sol.intensity, ndvi: ndviIdx, parcSel: VRX.parcSel, panelPos: panel.m.position.toArray(), fichaPos: ficha.m.position.toArray(), mira: [VRX.mira.x, VRX.mira.z], agarre: vrAg ? (vrAg.l ? vrAg.l.nombre : "lamina:" + vrAg.id) : "", panelPuesto: !!panel.puesta, frames: InfoDibujo.fotograma(renderer), nivelArb: Arboles.resumen(), hierba: VRP.hierba, bump: UN.uBumpK.value, perfiles: VR_PERFILES.length, xr: { near: XrPerillas.efectivas.near, topeJs: XrPerillas.js(), subeJs: XrPerillas.jsSube(), estableS: XrPerillas.estable(), umbrales: VRX.umb, compila: VRX.compila, fov: XrPerillas.efectivas.fov, escala: XrPerillas.efectivas.escala, hz: XrPerillas.efectivas.hz, aa: XrPerillas.aa, mv: XrPerillas.mv ? { existe: XrPerillas.mv.existe, activo: XrPerillas.mv.activo, enUso: XrPerillas.mv.enUso == null ? null : XrPerillas.mv.enUso } : null, nivelFijo: XrPerillas.efectivas.nivel, adaptativo: XrPerillas.efectivas.nivel == null, ignorados: XrPerillas.efectivas.ignorados, linea: XrPerillas.linea() }, near: camera.near, far: camera.far,
+  window.__vrDebug = function () { return Object.assign({ on: VRX.on, estado: VRX.estado, capas: VR_CAPAS, nivel: VRX.nivel, rig: JSON.parse(JSON.stringify(VRX.rig)), cabeza: [VRX.cab.x, VRX.cab.y, VRX.cab.z], pp: [pp.x, pp.y], vuelo: VRX.vuelo, panel: panel.m.visible, ficha: ficha.m.visible, hover: VRX.hover, pestana: VRX.pestana, giro: VRX.giro, sinEscena: VRX.sinPint, vinetaOn: VRX.vineta, vineta: vrVineta.material.uniforms.uK.value, sesionesN: VRX.sesionesN, paseando: paseando, primera: primera, modo: Estado.modo, exag: Estado.exag, hora: horaMundoTexto(), horaMs: meta.ms, solY: sol.position.y, solI: sol.intensity, ndvi: ndviIdx, parcSel: VRX.parcSel, panelPos: panel.m.position.toArray(), fichaPos: ficha.m.position.toArray(), mira: [VRX.mira.x, VRX.mira.z], agarre: vrAg ? (vrAg.l ? vrAg.l.nombre : "lamina:" + vrAg.id) : "", panelPuesto: !!panel.puesta, frames: InfoDibujo.fotograma(renderer), nivelArb: Arboles.resumen(), hierba: VRP.hierba, bump: UN.uBumpK.value, perfiles: VR_PERFILES.length, xr: { near: XrPerillas.efectivas.near, topeJs: XrPerillas.js(), subeJs: XrPerillas.jsSube(), estableS: XrPerillas.estable(), umbrales: VRX.umb, compila: VRX.compila, fov: XrPerillas.efectivas.fov, escala: XrPerillas.efectivas.escala, hz: XrPerillas.efectivas.hz, aa: XrPerillas.aa, mv: XrPerillas.mv ? { existe: XrPerillas.mv.existe, activo: XrPerillas.mv.activo, enUso: XrPerillas.mv.enUso == null ? null : XrPerillas.mv.enUso } : null, nivelFijo: XrPerillas.efectivas.nivel, adaptativo: XrPerillas.efectivas.nivel == null, ignorados: XrPerillas.efectivas.ignorados, linea: XrPerillas.linea() }, near: camera.near, far: camera.far,
     panelTam: [panel.W, panel.H, panel.pw, panel.ph], fichaB: fichaB.m.visible, fichaBPos: fichaB.m.position.toArray(), fichaBTam: [fichaB.W, fichaB.H, fichaB.pw, fichaB.ph], fichaId: VRX.fichaId, hoverB: VRX.hoverB, fichaGente: VRX.balInfo && VRX.fichaId ? VRX.balInfo.gente : null,
     tiempo: null, fichaTiempo: null,   // los pone la fila del componente fichas-tiempo (35_fichas_tiempo.js) por PanelVR.debug(), si está
     gente: VRX.gente ? { activo: VRX.gente.activo, n: VRX.gente.n, filas: VRX.gente.filas.map(function (f) { return { id: f.id, alias: f.alias, modo: f.modo, dist: f.dist }; }) } : null }, PanelVR.debug()); };
   window.__vrPerfil = function (n) { vrPerfil(n); VRX.tNivel = 0; };   // fuerza un perfil (pruebas): el adaptador espera 4 s antes de volver a decidir
-  window.__vrOlivo = function () { var h = VRX.cab, b = null, bd = 1e9; copas.forEach(function (c) { if (!c.oliv) return; var d = Math.hypot(c.x - h.x, -c.y - h.z); if (d > 6 && d < bd) { bd = d; b = c; } }); return b ? [b.x, (suelo(b.x, b.y) + b.h * 0.6) * exag, -b.y] : null; };
+  window.__vrOlivo = function () { var h = VRX.cab, b = null, bd = 1e9; copas.forEach(function (c) { if (!c.oliv) return; var d = Math.hypot(c.x - h.x, -c.y - h.z); if (d > 6 && d < bd) { bd = d; b = c; } }); return b ? [b.x, (suelo(b.x, b.y) + b.h * 0.6) * Estado.exag, -b.y] : null; };
   window.__vrBotones = function (cual) { return ((cual === "baliza" ? VRX.botonesB : VRX.botones) || []).map(function (b) { return { id: b.id, x: b.x, y: b.y, w: b.w, h: b.h }; }); };
   vrConcedida(); vrDeteccion = vrDetecta();

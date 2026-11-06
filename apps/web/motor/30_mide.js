@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
 // Consume: 01_datos (D, DEPURA), 01a_aparato (Aparato), 02b_cola (Cola), 02c_componentes (Reparto, ConfigPuro, Componentes),
-//   02f_xr_perillas (XrPerillas), 02h_render (Render), 02i_materiales (Materiales), 03_escena (visor, renderer, modo), 04b_escena3d (Escena3D),
+//   02f_xr_perillas (XrPerillas), 02h_render (Render), 02i_materiales (Materiales), 03_escena (visor, renderer, Estado), 04b_escena3d (Escena3D),
 //   04f_suelo_fotos (SueloFotos), 07ab_generados (Generados), 07b_arboles (Arboles), 29_vr (VRX, PanelVR), 33_ajustes (Ajustes)
 // ===============================================================================
 
@@ -420,7 +420,7 @@
     function puedeEnviar() { return estado === "listo" && !!res && !!prefijo() && typeof fetch === "function" && envio !== "ok" && envio !== "enviando" && !!cuerpo(); }
     function cuerpo() {
       var ver = typeof __GEMELO_VERSION__ !== "undefined" ? __GEMELO_VERSION__ : "dev";   // lo inyecta Vite (apps/web/vite.config.js) desde VERSION
-      return MideEst.cuerpoEnvio(res, { ua: Aparato.agente(), finca: D && D.finca_id, modo: modo, version: ver });
+      return MideEst.cuerpoEnvio(res, { ua: Aparato.agente(), finca: D && D.finca_id, modo: Estado.modo, version: ver });
     }
     function envia() {
       var c = puedeEnviar() ? cuerpo() : null, pre = prefijo();
@@ -491,7 +491,7 @@
   }
   Componentes.registra({
     id: "medidor-fotogramas", version: 1,
-    consume: ["Aparato", "Cola", "Generados", "visor", "renderer", "modo", "D", "DEPURA", "ConfigPuro", "Ajustes", "Arboles", "Escena3D", "VRX", "PanelVR", "XrPerillas", "Render", "Materiales", "Reparto", "SueloFotos"],
+    consume: ["Aparato", "Cola", "Generados", "visor", "renderer", "Estado", "D", "DEPURA", "ConfigPuro", "Ajustes", "Arboles", "Escena3D", "VRX", "PanelVR", "XrPerillas", "Render", "Materiales", "Reparto", "SueloFotos"],
     expone: [],
     eventos: { escucha: ["cuadro:fin", "depura:lineas", "medida:estado", "medida:envia", "medida:inicia", "medida:muestra"], emite: ["medida:empieza", "medida:envio", "medida:fin"] },
     bandera: { defecto: true, url: "medidor" },

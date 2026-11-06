@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 02_mundo (suelo), 02c_componentes (Componentes), 02i_materiales (Materiales), 02j_estaticos (Estaticos), 03_escena (scene, exag),
+// Consume: 02_mundo (suelo), 02c_componentes (Componentes), 02i_materiales (Materiales), 02j_estaticos (Estaticos), 03_escena (scene, Estado),
 //   12_paseo (paseando, teclas, pp), 15_tiempo (nivelEn, cur), 16_vida (tVida, enQuad, vq, altSuelo, enDron, dr), 22_huellas (sueloSeco)
 // ===============================================================================
   // ---------- huellas y polvo (componente «huellas-polvo», ADR-0023, C10): las pisadas y rodadas que se desvanecen y las bocanadas de polvo del suelo seco.
@@ -27,7 +27,7 @@
     var iHuella = new THREE.InstancedMesh(geoH, matHuella, NH); iHuella.frustumCulled = false; iHuella.count = 0; iHuella.visible = false; iHuella.renderOrder = 2; Estaticos.congela(iHuella); scene.add(iHuella);   // AG-1.15: las huellas viven en sus matrices de instancia
     var tmpH = new THREE.Object3D();
     function emiteHuella(x, y, ang, w, l, tipo, vida) {
-      var i = hSig++ % NH; tmpH.position.set(x, suelo(x, y) * exag + 0.07, -y); tmpH.rotation.set(0, -ang, 0); tmpH.scale.set(w, 1, l); tmpH.updateMatrix(); iHuella.setMatrixAt(i, tmpH.matrix);
+      var i = hSig++ % NH; tmpH.position.set(x, suelo(x, y) * Estado.exag + 0.07, -y); tmpH.rotation.set(0, -ang, 0); tmpH.scale.set(w, 1, l); tmpH.updateMatrix(); iHuella.setMatrixAt(i, tmpH.matrix);
       hBorn[i] = tVida; hVida[i] = vida; hTipo[i] = tipo; iHuella.count = Math.min(hSig, NH); hFin = Math.max(hFin, tVida + vida); iHuella.visible = true;
       iHuella.instanceMatrix.needsUpdate = true; ["aBorn", "aVida", "aTipo"].forEach(function (k) { geoH.attributes[k].needsUpdate = true; });
     }
@@ -53,13 +53,13 @@
       var fx = Math.sin(pp.ang), fy = Math.cos(pp.ang), rx = Math.cos(pp.ang), ry = -Math.sin(pp.ang);
       if (paseando && !enDron && !enQuad) {   // pisadas: una por zancada, alternando pie
         var z = Math.floor(pp.paso / Math.PI);
-        if (z !== hPasoAnt && Math.abs(pp.paso) > 0.1) { var lado = (z % 2 === 0 ? 1 : -1) * 0.13; emiteHuella(pp.x + rx * lado, pp.y + ry * lado, pp.ang, 0.13, 0.3, 1, 75); if (teclas.run && sueloSeco(pp.x, pp.y)) emitePolvo(pp.x - fx * 0.2, pp.y - fy * 0.2, suelo(pp.x, pp.y) * exag + 0.1, -fx * 0.4 + (Math.random() - 0.5) * 0.5, 0.5, -fy * 0.4 + (Math.random() - 0.5) * 0.5, 0.3, 0.9); }
+        if (z !== hPasoAnt && Math.abs(pp.paso) > 0.1) { var lado = (z % 2 === 0 ? 1 : -1) * 0.13; emiteHuella(pp.x + rx * lado, pp.y + ry * lado, pp.ang, 0.13, 0.3, 1, 75); if (teclas.run && sueloSeco(pp.x, pp.y)) emitePolvo(pp.x - fx * 0.2, pp.y - fy * 0.2, suelo(pp.x, pp.y) * Estado.exag + 0.1, -fx * 0.4 + (Math.random() - 0.5) * 0.5, 0.5, -fy * 0.4 + (Math.random() - 0.5) * 0.5, 0.3, 0.9); }
         hPasoAnt = z;
       } else hPasoAnt = Math.floor(pp.paso / Math.PI);
       if (paseando && enQuad && Math.abs(vq) > 0.3) {   // rodadas de las dos ruedas traseras y polvo si el suelo está seco
         var traseraX = pp.x - fx * 0.62, traseraY = pp.y - fy * 0.62;
         if (!hUlt || Math.hypot(traseraX - hUlt[0], traseraY - hUlt[1]) > 0.7) { hUlt = [traseraX, traseraY]; [-0.58, 0.58].forEach(function (s) { emiteHuella(traseraX + rx * s, traseraY + ry * s, pp.ang, 0.26, 0.95, 0, 170); }); }
-        if (Math.abs(vq) > 2.5 && sueloSeco(pp.x, pp.y)) { hAcPol += dt * 22 * Math.min(1, Math.abs(vq) / 9); while (hAcPol >= 1) { hAcPol -= 1; var s = Math.random() < 0.5 ? -0.58 : 0.58; emitePolvo(traseraX + rx * s, traseraY + ry * s, suelo(traseraX, traseraY) * exag + 0.15, -fx * 1.3 + (Math.random() - 0.5) * 0.9, 0.7 + Math.random() * 0.6, -fy * 1.3 + (Math.random() - 0.5) * 0.9, 0.55 + Math.random() * 0.4, 1.3 + Math.random() * 0.8); } }
+        if (Math.abs(vq) > 2.5 && sueloSeco(pp.x, pp.y)) { hAcPol += dt * 22 * Math.min(1, Math.abs(vq) / 9); while (hAcPol >= 1) { hAcPol -= 1; var s = Math.random() < 0.5 ? -0.58 : 0.58; emitePolvo(traseraX + rx * s, traseraY + ry * s, suelo(traseraX, traseraY) * Estado.exag + 0.15, -fx * 1.3 + (Math.random() - 0.5) * 0.9, 0.7 + Math.random() * 0.6, -fy * 1.3 + (Math.random() - 0.5) * 0.9, 0.55 + Math.random() * 0.4, 1.3 + Math.random() * 0.8); } }
       } else hUlt = null;
       if (enDron) {   // el viento de las hélices levanta polvo cuando vuela bajo
         var alt = dr.h - altSuelo(dr.x, dr.y);
@@ -86,7 +86,7 @@
   }
   Componentes.registra({
     id: "huellas-polvo", version: 1,
-    consume: ["Materiales", "Estaticos", "scene", "suelo", "exag", "pp", "paseando", "teclas", "cur", "nivelEn", "tVida", "enQuad", "vq", "enDron", "dr", "altSuelo", "sueloSeco"],
+    consume: ["Materiales", "Estaticos", "scene", "suelo", "Estado", "pp", "paseando", "teclas", "cur", "nivelEn", "tVida", "enQuad", "vq", "enDron", "dr", "altSuelo", "sueloSeco"],
     expone: [],
     eventos: { escucha: ["polvo:emite"], emite: [] },
     bandera: { defecto: true, url: "huellas" },

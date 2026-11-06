@@ -1,8 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: matTronco, colocaPaisaje, instSombra, sombrasSol, aguaNivel, actualizaPaisaje, ejeArroyo, distArroyo
 // Consume: 01_datos (D, $, ESC_R8), 02_mundo (suelo, desp, copas), 02g_vr_presupuesto (VrPresupuesto), 02i_materiales (Materiales),
-//   02j_estaticos (Estaticos), 03_escena (scene, SRGB, exag), 04d_sombreado_tiles (hash), 06_arboles (gSombras), 07_follaje (matSombra, geoSombra),
-//   09_camara (pon), 15_tiempo (nivelEn, cur, tMundo, nivel), 23_estacion (EST)
+//   02j_estaticos (Estaticos), 03_escena (scene, SRGB, Estado), 04d_sombreado_tiles (hash), 06_arboles (gSombras),
+//   07_follaje (matSombra, geoSombra), 09_camara (pon), 15_tiempo (nivelEn, cur, tMundo, nivel), 23_estacion (EST)
 // ===============================================================================
   // ---------- el paisaje que sale del LiDAR: edificios (clase 6), el tendido y sus postes, el arroyo y los árboles que no son olivos
   // Lo que el LiDAR clasifica de verdad son los edificios. El tendido, los postes, el cauce y las copas se deducen de la geometría (alturas, alineación, relieve) y se rotulan así.
@@ -90,12 +90,12 @@
 
   // --- se coloca todo sobre el terreno (y se vuelve a colocar al cambiar la exageración vertical)
   function colocaPaisaje() {
-    edifs.forEach(function (g) { var e = g.userData.e; g.position.set(e.x, suelo(e.x, e.y) * exag, -e.y); g.rotation.y = e.ang; });
-    postes.forEach(function (m) { var p = m.userData.p, gz = suelo(p.x, p.y) * exag; m.position.set(p.x, gz + m.userData.alto / 2, -p.y); });
-    var L = PA.tendido.linea, pa = geoCable.attributes.position; L.forEach(function (q, i) { pa.setXYZ(i, q[0], q[2] * exag, -q[1]); }); pa.needsUpdate = true;
-    cablesDer.forEach(function (c) { var pp = c.g.attributes.position; c.linea.forEach(function (q, i) { pp.setXYZ(i, q[0], q[2] * exag, -q[1]); }); pp.needsUpdate = true; });
+    edifs.forEach(function (g) { var e = g.userData.e; g.position.set(e.x, suelo(e.x, e.y) * Estado.exag, -e.y); g.rotation.y = e.ang; });
+    postes.forEach(function (m) { var p = m.userData.p, gz = suelo(p.x, p.y) * Estado.exag; m.position.set(p.x, gz + m.userData.alto / 2, -p.y); });
+    var L = PA.tendido.linea, pa = geoCable.attributes.position; L.forEach(function (q, i) { pa.setXYZ(i, q[0], q[2] * Estado.exag, -q[1]); }); pa.needsUpdate = true;
+    cablesDer.forEach(function (c) { var pp = c.g.attributes.position; c.linea.forEach(function (q, i) { pp.setXYZ(i, q[0], q[2] * Estado.exag, -q[1]); }); pp.needsUpdate = true; });
     arb.forEach(function (a, i) {
-      var gz = suelo(a.x, a.y) * exag, h = a.h, r = a.r;
+      var gz = suelo(a.x, a.y) * Estado.exag, h = a.h, r = a.r;
       tmpA.rotation.set(0, 0, 0); tmpA.scale.set(1, 1, 1);
       if (a.tipo === "arbusto") {
         tmpA.position.set(a.x, -100, -a.y); tmpA.scale.set(0.01, 0.01, 0.01); tmpA.updateMatrix(); iTronco.setMatrixAt(i, tmpA.matrix);
@@ -112,7 +112,7 @@
       var E = ar.E, p2 = ar.geo.attributes.position;
       for (var i = 0; i < E.length; i++) {
         var a = E[Math.max(0, i - 1)], b = E[Math.min(E.length - 1, i + 1)], tx = b[0] - a[0], ty = b[1] - a[1], l = Math.hypot(tx, ty) || 1, nx = -ty / l, ny = tx / l, w = E[i][3] / 2 + 0.8;
-        [[-1, 0], [1, 1]].forEach(function (s) { var px = E[i][0] + nx * w * s[0], py = E[i][1] + ny * w * s[0]; p2.setXYZ(i * 2 + s[1], px, (suelo(px, py) + 0.1) * exag, -py); });
+        [[-1, 0], [1, 1]].forEach(function (s) { var px = E[i][0] + nx * w * s[0], py = E[i][1] + ny * w * s[0]; p2.setXYZ(i * 2 + s[1], px, (suelo(px, py) + 0.1) * Estado.exag, -py); });
       }
       p2.needsUpdate = true;
     });
@@ -141,7 +141,7 @@
     var ta = Math.tan(Math.max(alt, 0.09)), dx = -Math.sin(az), dz = Math.cos(az), th = Math.atan2(dx, dz);
     function pon(inst, i, x, y, r, h) {
       var largo = Math.min(26, r * 2 + Math.max(0, h - 1.2) / ta), desp = Math.max(0, h - 1.2) / ta / 2;
-      tmpS.position.set(x + dx * desp, (suelo(x, y) + 0.06) * exag, -y + dz * desp); tmpS.rotation.set(0, th, 0); tmpS.scale.set(r * 2.3, 1, largo); tmpS.updateMatrix(); inst.setMatrixAt(i, tmpS.matrix);
+      tmpS.position.set(x + dx * desp, (suelo(x, y) + 0.06) * Estado.exag, -y + dz * desp); tmpS.rotation.set(0, th, 0); tmpS.scale.set(r * 2.3, 1, largo); tmpS.updateMatrix(); inst.setMatrixAt(i, tmpS.matrix);
     }
     if (instSombra) { olivasS.forEach(function (t, i) { if (i >= instSombra.count) return; var rm = t.perfil.reduce(function (a, b) { return a + b; }, 0) / 8 * ESC_R8; pon(instSombra, i, t.x, t.y, rm, t.h); }); instSombra.instanceMatrix.needsUpdate = true; }
     if (!instSombraPA) { instSombraPA = new THREE.InstancedMesh(geoSombra, matSombra, nA + edifs.length + 1); gSombras.add(instSombraPA); Estaticos.congela(instSombraPA); }

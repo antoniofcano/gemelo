@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: objetivo, orb, camara, sensMirar, suelta, pon
-// Consume: 01_datos ($, fmt, DIST_MAX, DIST_INI), 02_mundo (kcor), 02e_entidades (Usables), 03_escena (lienzo, camera, exag, modo),
+// Consume: 01_datos ($, fmt, DIST_MAX, DIST_INI), 02_mundo (kcor), 02e_entidades (Usables), 03_escena (lienzo, camera, Estado),
 //   08_marcadores (aplica, capas, aplicaLuego), 12_paseo (paseando), 12c_ir_a (IrA), 13_parcelas (parcelaSel, elegirParcela), 33_ajustes (Ajustes)
 // ===============================================================================
 
@@ -37,9 +37,9 @@
   // tipo y por cercanía); sobre nada, suelta lo elegido y cierra la ficha
   function elige(cx, cy) { return Usables.toque(cx, cy); }
 
-  function pon(m) { modo = m; ["Nube", "Gem", "Orto"].forEach(function (n) { $("m" + n).setAttribute("aria-pressed", String((n === "Nube" && m === "nube") || (n === "Gem" && m === "gem") || (n === "Orto" && m === "orto"))); }); aplica(); }
+  function pon(m) { Estado.modo = m; ["Nube", "Gem", "Orto"].forEach(function (n) { $("m" + n).setAttribute("aria-pressed", String((n === "Nube" && m === "nube") || (n === "Gem" && m === "gem") || (n === "Orto" && m === "orto"))); }); aplica(); }
   $("mNube").addEventListener("click", function () { pon("nube"); }); $("mGem").addEventListener("click", function () { pon("gem"); }); $("mOrto").addEventListener("click", function () { pon("orto"); });
   ["cLinde", "cCopas", "cMarc", "cDesf"].forEach(function (id) { $(id).addEventListener("change", capas); });
-  $("exag").addEventListener("input", function (e) { exag = Number(e.target.value); $("exagV").textContent = fmt(exag, exag % 1 ? 2 : 0) + "×"; aplicaLuego(); });
+  $("exag").addEventListener("input", function (e) { Estado.exag = Number(e.target.value); $("exagV").textContent = fmt(Estado.exag, Estado.exag % 1 ? 2 : 0) + "×"; aplicaLuego(); });
   $("corr").addEventListener("input", function (e) { kcor = Number(e.target.value); $("corrV").textContent = fmt(kcor, kcor % 1 ? 2 : 0) + "×"; aplicaLuego(); });
   $("reiniciar").addEventListener("click", function () { elegirParcela(parcelaSel); });

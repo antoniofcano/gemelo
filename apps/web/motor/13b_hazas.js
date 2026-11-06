@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: HazasPuro, Hazas
-// Consume: 01_datos (D), 02_mundo (suelo), 02c_componentes (Bus), 02e_entidades (Entidades, Usables), 03_escena (camera, exag),
+// Consume: 01_datos (D), 02_mundo (suelo), 02c_componentes (Bus), 02e_entidades (Entidades, Usables), 03_escena (camera, Estado),
 //   09_camara (objetivo), 12_paseo (paseando, pp), 15_tiempo (lindes)
 // Nota: Sin D.base /teselas/… ni ?api= no pide nada ni crea nada. No dibuja la linde: la da con Hazas.lindes() y avisa con «hazas:cambia» (la dibuja 44_lindes.js); el trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/hazas.test.js.
 // ===============================================================================
@@ -183,7 +183,7 @@
     // pinta Usables; un toque corto en la órbita sobre una haza la elige solo si no hay delante otra cosa (es «de fondo»: el olivo o la baliza ganan).
     // La ficha pública se pide a la api la primera vez (y pasado un minuto): mientras, «leyendo…»; al llegar, Usables.refresca la repinta si sigue a la vista.
     var rayoH = null, ndc = null, quitaEnt = null, pend = {}, fallo = {};
-    function alturaEscena(x, z) { return suelo(x, -z) * exag; }
+    function alturaEscena(x, z) { return suelo(x, -z) * Estado.exag; }
     function bajoDedo(cx2, cy2, r) {
       ndc.set((cx2 - r.left) / r.width * 2 - 1, -(cy2 - r.top) / r.height * 2 + 1); rayoH.setFromCamera(ndc, camera);
       var o = rayoH.ray.origin, d = rayoH.ray.direction, q = P.rayoSuelo([o.x, o.y, o.z], [d.x, d.y, d.z], alturaEscena, camera.far);

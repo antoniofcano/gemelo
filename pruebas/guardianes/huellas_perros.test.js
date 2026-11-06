@@ -21,7 +21,7 @@ function mundo(extra) {
   const lienzo = () => ({ width: 0, height: 0, getContext: () => new Proxy({}, { get: (t, k) => k === "measureText" ? () => ({ width: 10 }) : () => {}, set: () => true }) });
   const defs = [], g = {
     THREE, scene, gFauna, Bus, Minimapa, Componentes: { registra: d => { defs.push(d); return true; } }, console, Math, Date, setTimeout, clearTimeout,
-    window: {}, document: { createElement: lienzo }, exag: 1, suelo: () => 0, altSuelo: () => 0, hash: i => (Math.sin(i * 12.9898) * 43758.5453) % 1 * 0.5 + 0.5,
+    window: {}, document: { createElement: lienzo }, Estado: { exag: 1 }, suelo: () => 0, altSuelo: () => 0, hash: i => (Math.sin(i * 12.9898) * 43758.5453) % 1 * 0.5 + 0.5,
     texColor: t => t, pp: { x: 0, y: 0, ang: 0, paso: 0 }, dr: { x: 0, y: 0, h: 0 }, teclas: { run: false }, cur: { lluvia: 0, hr: 40, viento: 1, dir: 0 },
     nivelEn: () => ({ d: 1 }), sueloSeco: () => true, pendienteRumbo: () => [0, 0], conejos: [], copas: [], D: { ext: [-500, 500, 500, -500] }, esc: {},
     camera: new THREE.PerspectiveCamera(), matSombra: new THREE.MeshBasicMaterial(), geoSombra: new THREE.PlaneGeometry(1, 1)

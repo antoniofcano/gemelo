@@ -135,7 +135,7 @@ test("medidor-fotogramas: ni 28_depura, ni 29_vr, ni 33_ajustes, ni 90_final nom
 function mundoFondo(grueso) {
   const scene = new THREE.Scene(), tex = new THREE.Texture(), est = { v: "activo" };
   const g = { THREE, scene, D: { mosaico: { x0: 1000, yN: 4000, w: 2000, h: 1500, res: 1 }, grueso: grueso || { x0: 1000, yN: 4000, w: 32, h: 64, res: 8 } },
-    Mundo: { grueso: (x, y) => 100 + 0.01 * x + 0.02 * y }, UN: { uMos: { value: tex } }, matSuelo: new THREE.MeshLambertMaterial({}), Escena3D: { estado: () => est.v }, exag: 1, location: { search: "" } };
+    Mundo: { grueso: (x, y) => 100 + 0.01 * x + 0.02 * y }, UN: { uMos: { value: tex } }, matSuelo: new THREE.MeshLambertMaterial({}), Escena3D: { estado: () => est.v }, Estado: { exag: 1 }, location: { search: "" } };
   return { g, scene, tex, est };
 }
 
@@ -177,7 +177,7 @@ function mundoMarc(nCopas, nMarc, extra) {
   for (let i = 0; i < nMarc; i++) marc.push({ x: copas[i].x + 1, y: copas[i].y, par: i % 5 ? i : -1 });
   const estado = { listo: false, exag: 1 };
   const g = Object.assign({ THREE, scene, Bus, $: id => cas[id], colorCss: () => 0x58b6e8, cIn, marc, copas, suelo: () => 100, location: { search: "" } }, extra || {});
-  Object.defineProperty(g, "listo", { get: () => estado.listo }); Object.defineProperty(g, "exag", { get: () => estado.exag });
+  Object.defineProperty(g, "listo", { get: () => estado.listo }); g.Estado = { get exag() { return estado.exag; } };   // exag vive en Estado (A1-13)
   return { g, Bus, scene, cas, estado };
 }
 
@@ -222,7 +222,7 @@ test("marcadores-lidar: montado tarde (ya estaba listo) coloca al momento; sin m
   for (const ev of ["mundo:aplica", "capas:cambia"]) Bus.on(ev, () => vistos.push(ev));
   const g = { THREE, Bus, scene: new THREE.Scene(), D: { parcelas: [{}, {}] }, $: id => ({ cLinde: { checked: true }, notaModo: { textContent: "" }, cSolo: null }[id] || { checked: false, textContent: "" }),
     colocaBarrera: k => gl.push(k), nube: {}, gArboles: {}, gFollaje: {}, gSombras: {}, Arboles: { refresca() {} }, pintaNube() {}, colocaPaisaje() {}, colocaBalizas() {}, recoloreaSuelo() {},
-    UN: { uExag: {}, uModoOrto: {} }, exag: 1, modo: "gem", avTipo: null, pintaAvance() {}, requestAnimationFrame: f => f() };
+    UN: { uExag: {}, uModoOrto: {} }, Estado: { exag: 1, modo: "gem", calidad: 1 }, avTipo: null, pintaAvance() {}, requestAnimationFrame: f => f() };
   const nucleo = vm.runInContext("\"use strict\";\n" + lee("apps/web/motor/08_marcadores.js") + "\nlisto = true; aplica(); ({ gl: gLinde });", vm.createContext(conFabrica(g)));
   assert.ok(nucleo.gl.isGroup); assert.strictEqual(gl.join(), "0,1", "las barreras de las parcelas siguen siendo del núcleo");
   assert.strictEqual(vistos.join(), "mundo:aplica,capas:cambia", "aplica avisa y nadie lo atiende: no se rompe");

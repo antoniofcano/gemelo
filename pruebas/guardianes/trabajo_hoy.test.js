@@ -98,7 +98,7 @@ function mundo(opts) {
   const g = { THREE, scene, console, Math, JSON, window: {}, D: { parcelas: o.parcelas || PARCELAS },
     suelo: (x, y) => 10, Componentes: { registra: d => { g.def = d; return true; } },
     Entidades: { registra: d => { entidades.push(d); return () => quitadas.push(d.tipo); } } };
-  Object.defineProperty(g, "exag", { get: () => E.exag, enumerable: true });
+  g.Estado = { get exag() { return E.exag; } };   // exag vive en Estado (A1-13): se lee de E por un getter
   const ctx = vm.createContext(g);
   vm.runInContext("\"use strict\";\n" + F54, ctx, { filename: "54_trabajo_hoy.js" });
   const escuchas = {};

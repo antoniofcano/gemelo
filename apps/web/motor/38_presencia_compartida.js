@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
 // Consume: 01_datos (D), 01a_aparato (Aparato), 02_mundo (suelo), 02c_componentes (ConfigPuro, Componentes), 02e_entidades (Entidades),
-//   02i_materiales (Materiales), 03_escena (visor, renderer, scene, camera, texColor, exag), 09_camara (objetivo), 12_paseo (paseando, pp),
+//   02i_materiales (Materiales), 03_escena (visor, renderer, scene, camera, texColor, Estado), 09_camara (objetivo), 12_paseo (paseando, pp),
 //   12b_llegada (Llegada), 16_vida (enQuad, quad, enDron, dron), 24_pantalla (TR),
 //   26_presencia (PoseCodec, BufferPose, Aspecto, SalaPose, Chat, Muneco, AutoPresencia, Reintento, sitioJunto), 29_vr (VRX), 33_ajustes (Ajustes),
 //   34_movibles (Movibles)
@@ -311,7 +311,7 @@
       q1.set(o.cab.q[0], o.cab.q[1], o.cab.q[2], o.cab.q[3]);
       v2.set(0, 0, -1).applyQuaternion(q1); var yawCab = Math.atan2(-v2.x, -v2.z);
       // AV2: con la silla de ruedas, sentado (AV4: también con VRM, que se sienta igual: 26b_avatares.js); la altura escala todo el muñeco y la complexión, el ancho y el fondo de cada pieza
-      var fa = a.fa || 1, fc = a.fc || 1, mu = Muneco.avanza(a.mu || (a.mu = Muneco.crea()), c[0], c[2], yawCab, dt, s, exag, o.tipo === PoseCodec.QUEST ? c[1] - s : NaN, conManos, outMu, o.modo, a.mov === "silla");
+      var fa = a.fa || 1, fc = a.fc || 1, mu = Muneco.avanza(a.mu || (a.mu = Muneco.crea()), c[0], c[2], yawCab, dt, s, Estado.exag, o.tipo === PoseCodec.QUEST ? c[1] - s : NaN, conManos, outMu, o.modo, a.mov === "silla");
       var yv = mu.yPies + (mu.yCab - mu.yPies) * fa;
       var cx = c[0] + Math.sin(mu.yaw) * mu.atras, cz = c[2] + Math.cos(mu.yaw) * mu.atras;   // en quad, el cuerpo 0,2 m detrás del centro del quad (16_vida.js)
       mBase.compose(v1.set(cx, mu.yPies, cz), q1.setFromAxisAngle(ejeY, mu.yaw), vF.set(fa, fa, fa));
@@ -332,7 +332,7 @@
           var hm = im === 0 ? o.izq : o.der, hay = im === 0 ? o.hayIzq : o.hayDer;
           if (!hay) { mManos.setMatrixAt(a.iMano + im, m4.makeScale(0, 0, 0)); continue; }
           var sh = suelo(hm.p[0], -hm.p[2]); q1.set(hm.q[0], hm.q[1], hm.q[2], hm.q[3]);
-          mManos.setMatrixAt(a.iMano + im, m4.compose(v1.set(hm.p[0], sh * exag + (hm.p[1] - sh), hm.p[2]), q1, vS));
+          mManos.setMatrixAt(a.iMano + im, m4.compose(v1.set(hm.p[0], sh * Estado.exag + (hm.p[1] - sh), hm.p[2]), q1, vS));
         }
       }
       // P7c: si lleva su VRM y ya se ve entero, el muñeco no se dibuja (escala 0); el nombre y el vehículo, sí
@@ -353,7 +353,7 @@
       if (mDron) {
         if (mu.vehiculo === 2) {
           nVehD++; var px = c[0] - Math.sin(yawCab) * DRON_DELANTE, pz = c[2] - Math.cos(yawCab) * DRON_DELANTE;
-          m4.compose(v1.set(px, suelo(px, -pz) * exag + DRON_ALTO + Math.sin(tVeh * 2.2 + a.k) * 0.05, pz), q1.setFromAxisAngle(ejeY, yawCab), vEsc);
+          m4.compose(v1.set(px, suelo(px, -pz) * Estado.exag + DRON_ALTO + Math.sin(tVeh * 2.2 + a.k) * 0.05, pz), q1.setFromAxisAngle(ejeY, yawCab), vEsc);
         } else m4.makeScale(0, 0, 0);
         mDron.setMatrixAt(a.k, m4);
       }
@@ -530,7 +530,7 @@
         if (VRX.vuelo || VRX.mirador) return null;
         var h = VRX.cab; s = suelo(h.x, -h.z);
         q1.setFromAxisAngle(ejeY, VRX.rig.yaw).multiply(camera.quaternion);
-        o.tipo = PoseCodec.QUEST; o.cab.p[0] = h.x; o.cab.p[1] = h.y - s * exag + s; o.cab.p[2] = h.z; o.cab.q[0] = q1.x; o.cab.q[1] = q1.y; o.cab.q[2] = q1.z; o.cab.q[3] = q1.w;
+        o.tipo = PoseCodec.QUEST; o.cab.p[0] = h.x; o.cab.p[1] = h.y - s * Estado.exag + s; o.cab.p[2] = h.z; o.cab.q[0] = q1.x; o.cab.q[1] = q1.y; o.cab.q[2] = q1.z; o.cab.q[3] = q1.w;
         o.izq = manoLocal("left"); o.der = manoLocal("right"); o.modo = PoseCodec.PIE;
       } else if (paseando) {
         s = suelo(pp.x, pp.y); q1.setFromAxisAngle(ejeY, -pp.ang);
@@ -545,7 +545,7 @@
       var g = renderer.xr.getControllerGrip(i); if (!g || !g.parent || !g.visible) return null;
       mDesc.copy(g.matrixWorld).decompose(vDesc, qDesc, sDesc);
       var s = suelo(vDesc.x, -vDesc.z), r = i === 0 ? manoR0 : manoR1;   // la misma mano cada vez (por mando): el contrato la lee al momento, no la guarda
-      r.p[0] = vDesc.x; r.p[1] = vDesc.y - s * exag + s; r.p[2] = vDesc.z; r.q[0] = qDesc.x; r.q[1] = qDesc.y; r.q[2] = qDesc.z; r.q[3] = qDesc.w;
+      r.p[0] = vDesc.x; r.p[1] = vDesc.y - s * Estado.exag + s; r.p[2] = vDesc.z; r.q[0] = qDesc.x; r.q[1] = qDesc.y; r.q[2] = qDesc.z; r.q[3] = qDesc.w;
       return r;
     }
     function perdidaPose() { est.perdidos++; }
@@ -748,7 +748,7 @@
     function registraPersona() { quitaPersona = Entidades.registra({ tipo: "persona", dueno: "38_presencia_compartida", prioridad: 30, pantalla: personaEnPantalla, rayo: personaEnRayo, ficha: fichaPersona,
       existe: function (id) { return !!personaDe(id); },
       lista: function () { return puntos().map(function (q) { return { id: "persona:" + q.id, ref: q.id, alias: q.alias, x: q.x, y: q.y, modo: q.modo }; }); },
-      pos: function (id) { var a = personaDe(id), c = a && a.out.cab.p; return c ? { x: c[0], y: suelo(c[0], -c[2]) * exag, z: c[2] } : null; },
+      pos: function (id) { var a = personaDe(id), c = a && a.out.cab.p; return c ? { x: c[0], y: suelo(c[0], -c[2]) * Estado.exag, z: c[2] } : null; },
       radio: function () { return 0.7; } }); }
     if (variante) registraPersona();
 
@@ -857,7 +857,7 @@
     function cabeza(identidad) {
       var a = activo ? busca(identidad) : null;
       if (!seVe(a, performance.now())) return null;
-      var c = a.out.cab.p; return { x: c[0], y: suelo(c[0], -c[2]) * exag + ALTO_OJOS, z: c[2] };
+      var c = a.out.cab.p; return { x: c[0], y: suelo(c[0], -c[2]) * Estado.exag + ALTO_OJOS, z: c[2] };
     }
     var api = { activo: function () { return activo; }, actualiza: actualiza, estado: estado, libera: libera, texto: texto, llegadas: llegadas, puntos: puntos, irCon: irCon,
       vrmPersonas: vrmPersonas, miVrm: miVrm, miAvatar: miAvatar, recolorea: recolorea, cambiaron: cambiaron, enganchaVRM: enganchaVRM,

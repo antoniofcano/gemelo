@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: colocaBalizas, avisoBaliza, dibujaBalizasMini, actualizaBalizas
 // Consume: 01_datos (D, $), 02_mundo (suelo), 02c_componentes (Bus), 02e_entidades (Entidades, Usables), 02i_materiales (Materiales),
-//   02j_estaticos (Estaticos), 03_escena (visor, scene, camera, exag), 09_camara (objetivo), 12_paseo (paseando, pp), 12b_llegada (Llegada),
+//   02j_estaticos (Estaticos), 03_escena (visor, scene, camera, Estado), 09_camara (objetivo), 12_paseo (paseando, pp), 12b_llegada (Llegada),
 //   13_parcelas (parcelas), 13b_hazas (HazasPuro), 14_historia (OT, VIVO), 15_tiempo (num1, esc), 16_vida (tVida, enQuad), 24_pantalla (TR),
 //   26_presencia (Encuentro, sitioJunto), 29_vr (VRX)
 // Nota: Registra el tipo baliza en Entidades (C7). Publica además window.__vrBalizas (pruebas VR: el pie de cada columna de luz).
@@ -43,7 +43,7 @@
       var u = g.userData, d = datosBal(u.k); u.estado = d.estado; u.col.setHex(COLB[d.estado]); u.rombo.material.color.setHex(COLB[d.estado]); u.anillo.material.color.setHex(COLB[d.estado]); u.mat.uniforms.uPulso.value = d.estado === "alerta" ? 1 : 0;
     });
   }
-  function colocaBalizas() { BAL.forEach(function (g) { var pr = parcelas[g.userData.k]; g.position.set(pr.centro[0], suelo(pr.centro[0], pr.centro[1]) * exag, -pr.centro[1]); }); congelaBalizas(); refrescaBalizas(); }
+  function colocaBalizas() { BAL.forEach(function (g) { var pr = parcelas[g.userData.k]; g.position.set(pr.centro[0], suelo(pr.centro[0], pr.centro[1]) * Estado.exag, -pr.centro[1]); }); congelaBalizas(); refrescaBalizas(); }
   // AG-1.15: la baliza (grupo y columna) queda quieta tras colocarla; el rombo (gira y sube y baja) y el anillo (late) se mueven cada fotograma y siguen en automático
   function congelaBalizas() { var mov = []; BAL.forEach(function (g) { mov.push(g.userData.rombo, g.userData.anillo); }); Estaticos.congela(gBal, mov); }
   var PILL_TXT = { alerta: "Vigía pide una mirada", abierta: "Hay tareas abiertas", hecha: "Sin tareas abiertas", nada: "Sin datos de tareas" };
@@ -95,7 +95,7 @@
   function balEnPantalla(cx, cy, r) {   // ¿está el toque (cx, cy) sobre la columna de luz de alguna baliza (de su pie a 27 m de alto)?
     var a = balV1, b = balV2, mejor = -1, md = 22;
     BAL.forEach(function (g, i) {
-      var pr = parcelas[g.userData.k], y0 = suelo(pr.centro[0], pr.centro[1]) * exag;
+      var pr = parcelas[g.userData.k], y0 = suelo(pr.centro[0], pr.centro[1]) * Estado.exag;
       a.set(pr.centro[0], y0, -pr.centro[1]).project(camera); b.set(pr.centro[0], y0 + 27, -pr.centro[1]).project(camera); if (a.z > 1 && b.z > 1) return;
       var ax = (a.x * 0.5 + 0.5) * r.width + r.left, ay = (-a.y * 0.5 + 0.5) * r.height + r.top, bx = (b.x * 0.5 + 0.5) * r.width + r.left, by = (-b.y * 0.5 + 0.5) * r.height + r.top;
       var vx = bx - ax, vy = by - ay, L = vx * vx + vy * vy || 1, t = Math.max(0, Math.min(1, ((cx - ax) * vx + (cy - ay) * vy) / L)), d = Math.hypot(cx - (ax + t * vx), cy - (ay + t * vy));

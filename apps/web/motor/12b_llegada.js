@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: LlegadaPuro, Llegada
-// Consume: 01_datos (D, $), 02_mundo (suelo, copas), 03_escena (lienzo, visor, scene, camera, exag), 12_paseo (paseando, pp, camPos, entraPaseo),
+// Consume: 01_datos (D, $), 02_mundo (suelo, copas), 03_escena (lienzo, visor, scene, camera, Estado), 12_paseo (paseando, pp, camPos, entraPaseo),
 //   16_vida (enDron, ponDron), 29_vr (VRX, vrFundido, vrAparece)
 // Nota: Publica además window.__llegada (pruebas). LlegadaPuro vive en apps/web/src/nucleo/locomocion.ts (A1-11; sus pruebas, en locomocion.test.ts); el módulo conserva el anillo, el velo y los oyentes, que tocan THREE y el DOM.
 // ===============================================================================
@@ -18,7 +18,7 @@
     var anillo = new THREE.Mesh(new THREE.RingGeometry(0.72, 1, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: COLOR, fog: false, transparent: true, forceSinglePass: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false }));
     anillo.visible = false; anillo.renderOrder = 5; scene.add(anillo);
     var p = null, radio = 0, n = 0, ultimo = null, ocupado = false, rayo = new THREE.Raycaster(), ndc = new THREE.Vector2();
-    var alto = function (x, z) { return suelo(x, -z) * exag; };
+    var alto = function (x, z) { return suelo(x, -z) * Estado.exag; };
     // el velo de la pantalla (fuera de VR): un negro que se funde en 0,15 s, salta y se aclara en otros 0,15 s
     var velo = document.createElement("div"); velo.setAttribute("aria-hidden", "true");
     velo.style.cssText = "position:absolute;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity .15s linear;z-index:5";
@@ -56,7 +56,7 @@
       if (!paseando) entraPaseo();
       if (enDron) ponDron(false);
       pp.x = x; pp.y = y; if (ang !== undefined && ang !== null) pp.ang = ang;
-      var gy = suelo(x, y) * exag, fx = Math.sin(pp.ang), fy = Math.cos(pp.ang);
+      var gy = suelo(x, y) * Estado.exag, fx = Math.sin(pp.ang), fy = Math.cos(pp.ang);
       camPos.set(x - fx * 4.4, gy + 2.3, -(y - fy * 4.4));   // la cámara de seguimiento ya detrás, sin recorrer el camino
     }
     function ve(x, y, ang) { return funde(function () { aparece(x, y, ang); }); }

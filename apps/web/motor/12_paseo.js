@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: paseando, persona, teclas, primera, pp, camPos, PalancaPuro, ponPalanca, giraPalanca, entraPaseo, salePaseo, actualizaPaseo
-// Consume: 01_datos (D, $), 02_mundo (suelo, copaAlta, copas), 03_escena (lienzo, visor, scene, camera, exag), 09_camara (sensMirar),
+// Consume: 01_datos (D, $), 02_mundo (suelo, copaAlta, copas), 03_escena (lienzo, visor, scene, camera, Estado), 09_camara (sensMirar),
 //   12c_ir_a (IrA), 13_parcelas (fincas, fincaSel, parcelaSel),
 //   16_vida (enQuad, velPaseo, giroPaseo, ponQuad, vidaPaseo, enDron, ponDron, cicloVista, dronMando, camaraDron, vidaEntra, vidaSale),
 //   24_pantalla (TR, iniciaTransicion, iniciaSalida), 33_ajustes (Ajustes)
@@ -117,7 +117,7 @@
     pp.x = nx; pp.y = ny; pp.paso += Math.abs(vel) * dt * 3.4;
     var mov = Math.min(1, Math.abs(vel) / 1.7), sw = Math.sin(pp.paso) * 0.75 * mov, ud = persona.userData;
     ud.pi.rotation.x = sw; ud.pd.rotation.x = -sw; ud.bi.rotation.x = -sw * 0.8; ud.bd.rotation.x = sw * 0.8;
-    var gy = suelo(pp.x, pp.y) * exag;
+    var gy = suelo(pp.x, pp.y) * Estado.exag;
     persona.position.set(pp.x, gy + Math.abs(Math.sin(pp.paso)) * 0.03 * mov, -pp.y); persona.rotation.y = -pp.ang; persona.visible = !primera; vidaPaseo(dt, gy, vel);
     var fx = Math.sin(pp.ang), fz = -Math.cos(pp.ang);
     if (camaraDron(dt, gy)) { }
@@ -129,9 +129,9 @@
       var cabY = gy + 1.5, finY = gy + 2.3, DMIN = 1.2;
       for (var s = 0.6; s <= DC; s += 0.25) {
         var sx = pp.x - Math.sin(pp.ang) * s, sy = pp.y - Math.cos(pp.ang) * s, hc = copaAlta(sx, sy);
-        if (hc > 0.8 && cabY + (finY - cabY) * s / DC < suelo(sx, sy) * exag + hc + 0.3) { DC = Math.max(DMIN, s - 0.35); break; }
+        if (hc > 0.8 && cabY + (finY - cabY) * s / DC < suelo(sx, sy) * Estado.exag + hc + 0.3) { DC = Math.max(DMIN, s - 0.35); break; }
       }
-      var objx = pp.x - fx * DC, objz = -pp.y - fz * DC, objy = Math.max(gy + 2.3, suelo(objx, -objz) * exag + 1.2);
+      var objx = pp.x - fx * DC, objz = -pp.y - fz * DC, objy = Math.max(gy + 2.3, suelo(objx, -objz) * Estado.exag + 1.2);
       camPos.x += (objx - camPos.x) * Math.min(1, dt * 5); camPos.z += (objz - camPos.z) * Math.min(1, dt * 5); camPos.y += (objy - camPos.y) * Math.min(1, dt * 5);
       camera.position.copy(camPos); camera.lookAt(pp.x + fx * 1.5, gy + 1.3, -pp.y + fz * 1.5);
     }

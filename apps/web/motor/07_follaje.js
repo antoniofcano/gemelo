@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: matHojaG, matHojaP, matCorteza, matSombra, geoSombra, follajeG, construyeSombras
 // Consume: 01_datos (ESC_R8), 02_mundo (suelo, copaAlta, aviva, colorEn, copas), 02g_vr_presupuesto (VrPresupuesto), 02i_materiales (Materiales),
-//   02j_estaticos (Estaticos), 03_escena (texColor, exag, calidad), 04d_sombreado_tiles (hash), 06_arboles (gSombras, radioEn),
+//   02j_estaticos (Estaticos), 03_escena (texColor, Estado), 04d_sombreado_tiles (hash), 06_arboles (gSombras, radioEn),
 //   18_paisaje (instSombra, sombrasSol), 23_estacion (construyeFrutosLista)
 // ===============================================================================
 
@@ -44,15 +44,15 @@
     for (var q = 0; q < P.n; q++) {
       if (q % 2500 === 2499) yield;
       var x = P.x[q], y = P.y[q], z = P.z[q], h = P.h[q];
-      if (P.b[q]) { var tb = 0.30 + 0.12 * hash(q); bp.push(x, z * exag, -y); bc.push(0.46 * tb * 1.8, 0.38 * tb * 1.8, 0.30 * tb * 1.8); continue; }
+      if (P.b[q]) { var tb = 0.30 + 0.12 * hash(q); bp.push(x, z * Estado.exag, -y); bc.push(0.46 * tb * 1.8, 0.38 * tb * 1.8, 0.30 * tb * 1.8); continue; }
       if (h < 0.7) continue;
       colorEn(x, y, h, c3); aviva(c3, x, y);
       var cop = copaAlta(x, y), rel = cop > 0.5 ? Math.min(1, h / cop) : 1, luz = 0.85 + 0.42 * rel;
-      var n = calidad === 2 ? ((q % 3 === 0) ? 1 : 2) : calidad === 1 ? ((q % 3 === 0) ? 1 : 0) : 0;  // más montoncitos por punto: la copa se cierra
+      var n = Estado.calidad === 2 ? ((q % 3 === 0) ? 1 : 2) : Estado.calidad === 1 ? ((q % 3 === 0) ? 1 : 0) : 0;  // más montoncitos por punto: la copa se cierra
       for (var k = 0; k < n + 1; k++) {
         var jx = azar() * 0.7, jy = azar() * 0.7, jz = azar() * 1.1 - (k ? 0.15 : 0);
         var tono = 0.88 + 0.28 * hash(q * 5 + k), col = [c3[0] * luz * tono, c3[1] * luz * tono, c3[2] * luz * tono];
-        var xx = x + jx, yy = y + jy, zz = Math.max(z + jz, 0.6 + suelo(x, y)) * exag;
+        var xx = x + jx, yy = y + jy, zz = Math.max(z + jz, 0.6 + suelo(x, y)) * Estado.exag;
         if (k === 0 && q % 2 === 0) { gp.push(xx, zz, -yy); gc.push(col[0], col[1], col[2]); } else { pp.push(xx, zz, -yy); pc.push(col[0], col[1], col[2]); }
       }
     }
@@ -60,14 +60,14 @@
       var t = arr[ai], n = t.i;
       if (ai % 6 === 5) yield;
       var ht = Math.min(1.5, Math.max(0.9, t.h * 0.3)), cb = ht + 0.1, top = Math.max(t.h, cb + 1.4), gz = suelo(t.x, t.y);
-      var relleno = calidad === 2 ? 48 : calidad === 1 ? 22 : 0;
+      var relleno = Estado.calidad === 2 ? 48 : Estado.calidad === 1 ? 22 : 0;
       for (var k = 0; k < relleno; k++) {
         var th = (hash(n * 97 + k) * 6.283), rr = radioEn(t.perfil, th) * ESC_R8, u = Math.sqrt(hash(n * 131 + k * 3 + 1)) * 0.88, rad = u * rr;
         var domo = Math.sqrt(Math.max(0, 1 - u * u)), yy = cb + (top - cb) * (0.18 + 0.78 * domo) - hash(n * 53 + k * 7) * 0.9;
         var xx = t.x + Math.cos(th) * rad, zz = t.y + Math.sin(th) * rad, hh = Math.max(0.8, yy);
         colorEn(xx, zz, hh, c3); aviva(c3, xx, zz);
         var luz2 = 0.70 + 0.35 * (yy - cb) / Math.max(top - cb, 1), tono = 0.85 + 0.3 * hash(n * 17 + k);
-        (k % 3 === 0 ? gp : pp).push(xx, (gz + yy) * exag, -zz);
+        (k % 3 === 0 ? gp : pp).push(xx, (gz + yy) * Estado.exag, -zz);
         (k % 3 === 0 ? gc : pc).push(c3[0] * luz2 * tono, c3[1] * luz2 * tono, c3[2] * luz2 * tono);
       }
     }
@@ -77,6 +77,6 @@
   function construyeSombras() {   // sombras suaves bajo cada copa (una malla instanciada para todos los olivos)
     while (gSombras.children.length) { gSombras.children.pop(); }
     var inst = new THREE.InstancedMesh(geoSombra, matSombra, copas.length + 1), tm = new THREE.Object3D(), n2 = 0; inst.frustumCulled = false;   // r151: la esfera de una InstancedMesh abarca sus instancias y se calcula una vez; estas se recolocan
-    copas.forEach(function (t) { if (!t.oliv) return; var rm = t.perfil.reduce(function (a, b) { return a + b; }, 0) / 8; tm.position.set(t.x + 0.4, (suelo(t.x, t.y) + 0.06) * exag, -t.y - 0.1); tm.scale.set(rm * 2.5 * ESC_R8, 1, rm * 2.5 * ESC_R8); tm.updateMatrix(); inst.setMatrixAt(n2++, tm.matrix); });
+    copas.forEach(function (t) { if (!t.oliv) return; var rm = t.perfil.reduce(function (a, b) { return a + b; }, 0) / 8; tm.position.set(t.x + 0.4, (suelo(t.x, t.y) + 0.06) * Estado.exag, -t.y - 0.1); tm.scale.set(rm * 2.5 * ESC_R8, 1, rm * 2.5 * ESC_R8); tm.updateMatrix(); inst.setMatrixAt(n2++, tm.matrix); });
     inst.count = n2; inst.instanceMatrix.needsUpdate = true; Estaticos.congela(inst); gSombras.add(inst); instSombra = inst; sombrasSol(true);
   }

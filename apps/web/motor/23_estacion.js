@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: EST, bbchEn, construyeFrutosLista, hoyMadrid, objetivoMundo, actualizaOlivo
-// Consume: 01_datos ($), 02i_materiales (Materiales), 03_escena (renderer, SRGB, modo), 04d_sombreado_tiles (hash), 06_arboles (gFollaje),
+// Consume: 01_datos ($), 02i_materiales (Materiales), 03_escena (renderer, SRGB, Estado), 04d_sombreado_tiles (hash), 06_arboles (gFollaje),
 //   07_follaje (matHojaG, matHojaP), 10_ndvi (NDV, ndviIdx), 13_parcelas (parcelas), 14_historia (OT),
 //   15_tiempo (TiempoPuro, ahoraMs, TM, fmtHora, fmtClaveDia, num1, esc, objetivoMundoBase, aplicaMundo), 21_suelo (SN)
 // Nota: Publica además window.__otDebug (depuración del olivo estacional).
@@ -99,7 +99,7 @@
       if (EST.clima) h += '<p class="t-sub">Clima de esa semana (estación de Vigía): máx. <strong>' + num1(EST.clima.tmax, 1) + '</strong> °C · mín. <strong>' + num1(EST.clima.tmin, 1) + '</strong> °C · lluvia <strong>' + num1(EST.clima.lluvia, 1) + "</strong> mm" + (EST.clima.tmin <= 0 ? " · <strong>semana con helada</strong>" : "") + (EST.clima.lluvia >= 12 ? " · el arroyo lleva agua" : "") + ".</p>";
       else if (EST.estado) h += '<p class="t-sub">' + esc(EST.estado) + ".</p>";
     }
-    if (modo !== "gem") h += '<p class="t-aviso">Las flores y las aceitunas solo se ven en el modo «Gemelo» (copas en 3D). <button type="button" class="h-btn" id="tVerGem">Ver en Gemelo</button></p>';
+    if (Estado.modo !== "gem") h += '<p class="t-aviso">Las flores y las aceitunas solo se ven en el modo «Gemelo» (copas en 3D). <button type="button" class="h-btn" id="tVerGem">Ver en Gemelo</button></p>';
     h += '<p class="t-sub">Flores y aceitunas son ilustrativas: la etapa sale de un calendario típico, el color de la copa del NDVI y el clima de la estación; no hay conteo de frutos.</p>';
     c.innerHTML = h; var vg = $("tVerGem"); if (vg) vg.addEventListener("click", function () { $("mGem").click(); }); var b = $("tHoy"); if (b) b.addEventListener("click", function () { var s = $("ndviSel"); s.value = NDV.fechas.length - 1; s.dispatchEvent(new Event("input", { bubbles: true })); });
   }

@@ -1,5 +1,5 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: lienzo, visor, renderer, scene, camera, SRGB, LUZ_SOL, LUZ_CIELO, hemi, sol, texColor, colorVertSRGB, colorCss, exag, modo, calidad
+// Expone: lienzo, visor, renderer, scene, camera, SRGB, LUZ_SOL, LUZ_CIELO, hemi, sol, texColor, colorVertSRGB, colorCss, Estado
 // Consume: 01_datos ($, EXT, FOG0, FOG1), 01a_aparato (Aparato), 02f_xr_perillas (XrPerillas), 02h_render (Render), 15_tiempo (pintaFondoTiempo)
 // ===============================================================================
   // ---- escena
@@ -42,5 +42,5 @@
   new MutationObserver(pintaFondo).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
   if (window.matchMedia) window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", pintaFondo);
 
-  var exag = 1, modo = "nube", calidad = 1;
+  var Estado = Nucleo.creaEstado();   // A1-13 (MU1-9, MUNDOS §9.4 fila 7): exag, modo y calidad, el estado que reescriben varios módulos, en un objeto (apps/web/src/nucleo/estado.ts)
 

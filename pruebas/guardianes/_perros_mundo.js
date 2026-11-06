@@ -19,7 +19,7 @@ function mundoPerros(THREE, fichero, sem) {
   for (let i = 0; i < 24; i++) conejos.push({ visible: true, userData: { x: (rnd() - 0.5) * 70, y: (rnd() - 0.5) * 70, est: "pasta", t: 0, dir: rnd() * 6 } });
   const g = {
     THREE, scene, gFauna, Bus, Minimapa: { capa() { return () => {}; } }, Componentes: { registra: d => { defs.push(d); return true; } }, console, Math: M, Date, setTimeout: () => 1, clearTimeout: () => {},
-    window: {}, document: { createElement: lienzo }, exag: 1, hash: i => (Math.sin(i * 12.9898) * 43758.5453) % 1 * 0.5 + 0.5, texColor: t => t,
+    window: {}, document: { createElement: lienzo }, Estado: { exag: 1 }, hash: i => (Math.sin(i * 12.9898) * 43758.5453) % 1 * 0.5 + 0.5, texColor: t => t,
     pp: { x: 10, y: 10, ang: 0, paso: 0 }, esc: {}, camera: new THREE.PerspectiveCamera(), matSombra: new THREE.MeshBasicMaterial(), geoSombra: new THREE.PlaneGeometry(1, 1),
     altSuelo: (x, y) => 2 + 0.01 * x + Math.sin(y * 0.1), pendienteRumbo: (x, y, a) => [0.15 * Math.sin(x * 0.07 + a), 0.1 * Math.cos(y * 0.05)], sueloSeco: (x, y) => ((x * 7 + y * 3) | 0) % 5 !== 0,
     copas: [], D: { ext: [-100, 100, 100, -100] }

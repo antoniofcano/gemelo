@@ -16,7 +16,7 @@
   "02k_fusiona.js": ["fusionaGeometrias"],
   "02l_tope_tiles.js": ["TopeTilesPuro"],
   "02m_tope_olivos.js": ["TopeOlivos"],
-  "03_escena.js": ["lienzo","visor","renderer","scene","camera","SRGB","LUZ_SOL","LUZ_CIELO","hemi","sol","texColor","colorVertSRGB","colorCss","exag","modo","calidad"],
+  "03_escena.js": ["lienzo","visor","renderer","scene","camera","SRGB","LUZ_SOL","LUZ_CIELO","hemi","sol","texColor","colorVertSRGB","colorCss","Estado"],
   "04b_escena3d.js": ["Escena3D"],
   "04c_olivos_tiles.js": ["OlivosTiles"],
   "04d_sombreado_tiles.js": ["hash","matSuelo","matOrto","UN","SombreadoTiles"],

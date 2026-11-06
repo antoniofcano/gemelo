@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: NDV, ndviIdx, rampa, pintaNdvi, ndviRel
-// Consume: 01_datos (D, $, b64, i16, x0, yN, ANCHO, ALTO), 02_mundo (tinte, ndLo, ndHi), 02c_componentes (Bus), 03_escena (modo), 05_nube (nube),
+// Consume: 01_datos (D, $, b64, i16, x0, yN, ANCHO, ALTO), 02_mundo (tinte, ndLo, ndHi), 02c_componentes (Bus), 03_escena (Estado), 05_nube (nube),
 //   06_arboles (gArboles, gFollaje, gSombras), 08_marcadores (aplicaLuego)
 // ===============================================================================
   // ---------- NDVI de Sentinel-2 (10 m), con escala relativa a la parcela (como hace Vigía). Esto es el núcleo: los datos, la fecha del campo y la escala, que leen el
@@ -38,5 +38,5 @@
   $("cTinte").addEventListener("change", function () { tinte = $("cTinte").checked; if (NDV) pintaNdvi(); aplicaLuego(); });
   if (NDV) { $("ndviSel").addEventListener("change", function () { if (tinte) aplicaLuego(); }); }
   if (NDV) { $("ndviSel").max = NDV.fechas.length - 1; $("ndviSel").value = ndviIdx; $("ndviSel").addEventListener("input", function (e) { ndviIdx = Number(e.target.value); pintaNdvi(); }); }
-  $("cSolo").addEventListener("change", function () { var o = $("cSolo").checked; gArboles.visible = !o && modo === "gem"; gFollaje.visible = !o && modo === "gem"; gSombras.visible = !o && modo === "gem"; nube.visible = !o && modo === "nube"; });
+  $("cSolo").addEventListener("change", function () { var o = $("cSolo").checked; gArboles.visible = !o && Estado.modo === "gem"; gFollaje.visible = !o && Estado.modo === "gem"; gSombras.visible = !o && Estado.modo === "gem"; nube.visible = !o && Estado.modo === "nube"; });
 

@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
 // Consume: 01_datos (D), 02_mundo (copas), 02c_componentes (Bus, Componentes), 02d_laminas (Laminas), 02e_entidades (Entidades, Usables),
-//   03_escena (lienzo, camera, exag, modo), 13b_hazas (HazasPuro, Hazas), 29_vr (VRX)
+//   03_escena (lienzo, camera, Estado), 13b_hazas (HazasPuro, Hazas), 29_vr (VRX)
 // Nota: Componente «personalizacion» (P7f, decisiones 91-96 y 99-102): nombrar, colgar una foto o un dibujo, verlo y denunciarlo en los olivos de las hazas. Solo se registra; nadie lo nombra. Sin servidor (sin D.base /teselas/… ni ?api=) no pide ni crea nada. Complementa la ficha común del olivo (Entidades.complementa), reduce la imagen en el aparato, pide el aviso con casilla y habla con /api/sesion, /api/hazas/{id}/olivos, /api/medios, /api/olivos, /api/personalizaciones/{id}/denuncias y /api/hazas/{id}/sugerencias. Publica las decoraciones de la lista (P7g D3) por el Bus («decoraciones:cambian»). Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/personalizacion.test.js.
 // ===============================================================================
 
@@ -438,7 +438,7 @@
       for (var k = 0; k < cerca.length; k++) {
         var q = cerca[k].q, p = Entidades.pos("olivo:" + q.clave), e = etiqueta(k);
         if (!p) { e.style.display = "none"; continue; }
-        vec.set(p.x, p.y + 6.2 * exag, p.z).project(camera);
+        vec.set(p.x, p.y + 6.2 * Estado.exag, p.z).project(camera);
         if (vec.z > 1 || vec.z < -1) { e.style.display = "none"; continue; }
         var sx = (vec.x * 0.5 + 0.5) * rect.width + rect.left, sy = (-vec.y * 0.5 + 0.5) * rect.height + rect.top;
         if (e.textContent !== q.nombre) e.textContent = q.nombre;
@@ -456,7 +456,7 @@
       var im = new Image(); imagen = im; var hecha = false;
       var dx = camera.position.x - c.pos.x, dz = camera.position.z - c.pos.z, dl = Math.hypot(dx, dz) || 1;
       Laminas.abre({ id: lid, ancho: ancho, alto: alto + 0.2, w: W, h: H, nombre: "imagen del olivo",
-        en: { x: c.pos.x + dx / dl * 1.2, y: c.pos.y + 2.4 * exag, z: c.pos.z + dz / dl * 1.2 }, cierraA: { vr: 40, pantalla: 80 },
+        en: { x: c.pos.x + dx / dl * 1.2, y: c.pos.y + 2.4 * Estado.exag, z: c.pos.z + dz / dl * 1.2 }, cierraA: { vr: 40, pantalla: 80 },
         firma: function () { return (hecha ? "1" : "0") + o.url + (c.dato.nombre || ""); },
         pinta: function (cx, w, h) {
           cx.fillStyle = "#1b231d"; cx.fillRect(0, 0, w, h);

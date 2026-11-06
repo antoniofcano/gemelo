@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
 // Consume: 01a_aparato (Aparato), 02_mundo (suelo), 02c_componentes (Componentes), 02g_vr_presupuesto (VrPresupuesto), 02i_materiales (Materiales),
-//   03_escena (renderer, scene, camera, exag), 12_paseo (paseando, persona, primera, pp), 16_vida (enQuad, enDron), 26_presencia (Aspecto),
+//   03_escena (renderer, scene, camera, Estado), 12_paseo (paseando, persona, primera, pp), 16_vida (enQuad, enDron), 26_presencia (Aspecto),
 //   29_vr (VRX)
 // Nota: Componente «avatares-vrm» (ADR-0023, C5): solo se registra; consume la presencia (n.api) y se engancha a ella con enganchaVRM. Sin presencia activa no crea nada; con ella, pide /avatares/catalogo.json solo si alguien lleva avatar (o con &vrm=1 en la simulación) e import("@pixiv/three-vrm") solo entonces. El trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/avatares_motor.test.js.
 // ===============================================================================
@@ -394,7 +394,7 @@
       var l = [], ps = Presencia.vrmPersonas();
       for (var i = 0; i < ps.length; i++) {
         var a = ps[i], id = clave(a); if (!id || falla[id]) continue;
-        var c = a.out.cab.p; l.push({ id: a, d: Math.hypot(c[0] - camera.position.x, c[1] * exag - camera.position.y, c[2] - camera.position.z) });
+        var c = a.out.cab.p; l.push({ id: a, d: Math.hypot(c[0] - camera.position.x, c[1] * Estado.exag - camera.position.y, c[2] - camera.position.z) });
       }
       return l;
     }
@@ -425,7 +425,7 @@
       return r.k >= 1 && r.dir > 0;
     }
     var manosL = { izq: null, der: null }, mI = new THREE.Vector3(), mD = new THREE.Vector3();
-    function mano(h, out) { var sh = suelo(h.p[0], -h.p[2]); return out.set(h.p[0], sh * exag + (h.p[1] - sh), h.p[2]); }   // como las manos del muñeco: a su altura sobre ESTE suelo
+    function mano(h, out) { var sh = suelo(h.p[0], -h.p[2]); return out.set(h.p[0], sh * Estado.exag + (h.p[1] - sh), h.p[2]); }   // como las manos del muñeco: a su altura sobre ESTE suelo
     function oculta(a) { var r = regs.get(a); if (r && r.inst) r.inst.raiz.visible = false; }
 
     // ---- tu paseante (decisión 76): en tercera persona, tu avatar en lugar del muñeco naranja (12_paseo.js); en primera persona y en VR, nada

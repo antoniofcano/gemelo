@@ -72,6 +72,7 @@
 | 54 | Trinquete del legado (MU1-5): las líneas de `apps/web/motor/*.js`, sin cabeceras, no pasan del tope; si bajan lo avisa y quien fusiona baja el tope | `trinquete_legado.test.js` |
 | 55 | Tipos de TypeScript generados desde los contratos (MU1-11): `apps/web/herramientas/genera_tipos.mjs` (json-schema-to-typescript) escribe `apps/web/src/datos/contratos/<nombre>.ts` desde cada `contratos/*.schema.json`; el guardián regenera en memoria y falla si lo versionado difiere o la salida no es determinista (se salta con aviso sin `npm ci` en `apps/web`) | `tipos_contratos.test.js` |
 | 56 | Escape del índice en la página (L9-04): `</script`, `<!--` y los textos de la cabecera no cierran el bloque `#datos` ni meten marcado; el JSON leído es el original | `genera_motor.test.js` |
+| 57 | Estado mutable compartido del legado (MU1-9): `exag`, `modo` y `calidad` viven en `Estado` (`apps/web/src/nucleo/estado.ts`); ningún módulo las declara ni las usa sueltas (ámbitos con acorn), `Estado` nace una vez en `03_escena.js` y no se reasigna, y las demás globales reasignadas entre módulos no pasan del inventario (trinquete que solo encoge) | `estado_mutable.test.js` |
 
 En CI la misma puerta corre en GitHub Actions (`.github/workflows/puerta.yml`); no despliega nada.
 

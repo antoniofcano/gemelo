@@ -2,7 +2,7 @@
 // Expone: Arboles
 // Consume: 01_datos (FACTOR_R8), 01a_aparato (Aparato), 02_mundo (Mundo, suelo, copaAlta, kcor, tinte, aviva, copas), 02b_cola (CargaPuro, Cola),
 //   02c_componentes (Config), 02f_xr_perillas (XrPerillas), 02g_vr_presupuesto (VrControlPuro), 02h_render (InfoDibujo), 02j_estaticos (Estaticos),
-//   02l_tope_tiles (TopeTilesPuro), 02m_tope_olivos (TopeOlivos), 03_escena (renderer, camera, exag, modo, calidad), 04c_olivos_tiles (OlivosTiles),
+//   02l_tope_tiles (TopeTilesPuro), 02m_tope_olivos (TopeOlivos), 03_escena (renderer, camera, Estado), 04c_olivos_tiles (OlivosTiles),
 //   04d_sombreado_tiles (hash), 05_nube (ALTO_MAX), 06_arboles (gArboles, arbolesG), 07_follaje (follajeG, construyeSombras),
 //   07a_catalogo (Catalogo), 07ab_generados (Escalera, Generados), 07ac_lejanos (Lejanos), 09_camara (objetivo, orb), 10_ndvi (ndviIdx),
 //   12_paseo (paseando, pp), 15_tiempo (nivel, esc), 29_vr (VRX), 33_ajustes (Ajustes)
@@ -30,7 +30,7 @@
     // el aparato: escala (0,7–2,5) de cuántos olivos de nivel 0 se pagan; sube si los fotogramas van holgados y baja si van justos (?arbsc=1 la fija).
     // Por encima de 1,6 solo con fotogramas muy holgados (< 16 ms): un aparato sobrado ve olivos detallados más lejos (radio hasta ~330 m en órbita).
     var fijaSc = /[?&]arbsc=([0-9.]+)/.exec(location.search), esc = fijaSc ? Number(fijaSc[1]) : 1, emaDt = 0.017, claveDib = "";
-    function claveActual() { return exag + "|" + calidad + "|" + kcor + "|" + tinte + "|" + ndviIdx; }   // lo que está pegado a la geometría de una celda de nivel 0: si cambia, la celda se rehace
+    function claveActual() { return Estado.exag + "|" + Estado.calidad + "|" + kcor + "|" + tinte + "|" + ndviIdx; }   // lo que está pegado a la geometría de una celda de nivel 0: si cambia, la celda se rehace
 
     // ----- las formas de los niveles 1 y 2 las da el catálogo (07a_catalogo.js): el tipo −1 son las de siempre, 4 variantes en L1 (copa + tronco) y 2 en L2
     function instancias(geo, mat, cap, color) { var m = new THREE.InstancedMesh(geo, mat, cap); if (color) m.setColorAt(0, new THREE.Color(1, 1, 1)); m.frustumCulled = false; cuenta(m, 0); Estaticos.congela(m); gArboles.add(m); return m; }
@@ -54,7 +54,7 @@
     }
     Catalogo.alCambiar(montaTipos);
     function colocaModelo(X, c, l1, gz, tc) {   // un modelo del catálogo: pivote en la base del tronco y en metros; se estira a la altura y a los ejes de la copa medida
-      var B = X.caja, sx = c.rx / B.rx, sz = c.rz / B.rz, sy = Math.max(c.h, 1) / B.alto * exag, cs = Math.cos(c.ang), sn = Math.sin(c.ang), e = m4.elements;
+      var B = X.caja, sx = c.rx / B.rx, sz = c.rz / B.rz, sy = Math.max(c.h, 1) / B.alto * Estado.exag, cs = Math.cos(c.ang), sn = Math.sin(c.ang), e = m4.elements;
       e[0] = cs * sx; e[1] = 0; e[2] = -sn * sx; e[3] = 0; e[4] = 0; e[5] = sy; e[6] = 0; e[7] = 0; e[8] = sn * sz; e[9] = 0; e[10] = cs * sz; e[11] = 0; e[12] = c.x; e[13] = gz; e[14] = -c.y; e[15] = 1;
       var ms = l1 ? X.m1 : X.m2, n = l1 ? X.n1++ : X.n2++;
       ms.forEach(function (m) { m.setMatrixAt(n, m4); if (m.instanceColor) m.setColorAt(n, tc); });
@@ -144,7 +144,7 @@
       ajustaEscala();
       var tope0 = MAX0 * esc * (vrP ? vrP.n : 1) * fO;
       // 1) celdas de nivel 0 (las que se ven) y de precarga (las de alrededor y las de delante, que se construyen sin enseñarse)
-      var bajo = !paseando && cam.y - suelo(cam.x, -cam.z) * exag < 45, RC = 95 * Math.sqrt(esc);   // con la cámara a ras de suelo se ve hasta lejos: también cuentan las celdas de su alrededor
+      var bajo = !paseando && cam.y - suelo(cam.x, -cam.z) * Estado.exag < 45, RC = 95 * Math.sqrt(esc);   // con la cámara a ras de suelo se ve hasta lejos: también cuentan las celdas de su alrededor
       todas.forEach(function (c) { c.d = distFoco(c, fx, fz); if (bajo && R0 > 0) c.d = Math.min(c.d, distFoco(c, cam.x, cam.z) * R0 / RC); c.enAntes = c.en; c.en = false; c.pre = false; });
       var ok = todas.filter(function (c) { return c.ts && c.ts.estado === 2; }).sort(function (a, b) { return a.d - b.d; }), tot = 0, totP = 0;
       ok.forEach(function (c) {
@@ -167,7 +167,7 @@
         if (c.cel.en && c.cel.g && c.cel.g.visible) { nL0++; cerca.push(c.i); return; }
         if (GEN.tiene(c.i)) { cerca.push(c.i); return; }   // lo dibuja Generados
         if (TIL) return;   // lo dibuja el tileset
-        var dx = c.x - cam.x, dz = -c.y - cam.z, dy = Math.max(0, cam.y - c.gz * exag); c.d = Math.sqrt(dx * dx + dz * dz + dy * dy); if (c.d < U2) rest.push(c);
+        var dx = c.x - cam.x, dz = -c.y - cam.z, dy = Math.max(0, cam.y - c.gz * Estado.exag); c.d = Math.sqrt(dx * dx + dz * dz + dy * dy); if (c.d < U2) rest.push(c);
       });
       if (TIL) { OlivosTiles.cerca(cerca); triTil = OlivosTiles.triangulos(); }   // la máscara: los de cerca no se dibujan también en el tileset
       tri0 = nL0 * TRI0 + GEN.tri; rest.sort(function (a, b) { return a.d - b.d; });
@@ -176,7 +176,7 @@
       for (k = 0; k < NP1; k++) cnt1.push(0); for (k = 0; k < NP2; k++) cnt2.push(0);
       for (k in extra) extra[k].n1 = extra[k].n2 = 0;
       for (i = 0; i < rest.length; i++) {
-        var c = rest[i], ht = Math.min(1.5, Math.max(0.9, c.h * 0.3)), cb = ht + 0.1, top = Math.max(c.h, cb + 1.4), gz = c.gz * exag, H = (top - cb) * 0.82 * exag, cs = Math.cos(c.ang), sn = Math.sin(c.ang);
+        var c = rest[i], ht = Math.min(1.5, Math.max(0.9, c.h * 0.3)), cb = ht + 0.1, top = Math.max(c.h, cb + 1.4), gz = c.gz * Estado.exag, H = (top - cb) * 0.82 * Estado.exag, cs = Math.cos(c.ang), sn = Math.sin(c.ang);
         var l1 = a1 < tope1 && c.d < U1;
         if (!l1 && (a2 >= MAX2 || (QO && tri0 + a1 * TRI1 + (a2 + 1) * TRI2 > BO))) continue;   // Q0n: el nivel 2, dentro del presupuesto
         c3[0] = c.cr; c3[1] = c.cg; c3[2] = c.cb; aviva(c3, c.x, c.y);   // el tinte NDVI, si está activo, también llega de lejos
@@ -184,10 +184,10 @@
         var X = c.tipo !== -1 ? extra[c.tipo] : null;   // olivo con un tipo del catálogo cargado (y piezas en este nivel); si no, el de siempre
         if (X && (l1 ? X.m1 : X.m2).length) { colocaModelo(X, c, l1, gz, tc); if (l1) a1++; else a2++; continue; }
         var sx = c.rx, sz = c.rz;
-        e[0] = cs * sx; e[1] = 0; e[2] = -sn * sx; e[3] = 0; e[4] = 0; e[5] = H; e[6] = 0; e[7] = 0; e[8] = sn * sz; e[9] = 0; e[10] = cs * sz; e[11] = 0; e[12] = c.x; e[13] = gz + cb * exag; e[14] = -c.y; e[15] = 1;
+        e[0] = cs * sx; e[1] = 0; e[2] = -sn * sx; e[3] = 0; e[4] = 0; e[5] = H; e[6] = 0; e[7] = 0; e[8] = sn * sz; e[9] = 0; e[10] = cs * sz; e[11] = 0; e[12] = c.x; e[13] = gz + cb * Estado.exag; e[14] = -c.y; e[15] = 1;
         if (l1) {
           var q = c.pr, n = cnt1[q]++; a1++; iCopa1[q].setMatrixAt(n, mm); iCopa1[q].setColorAt(n, tc);
-          e[0] = cs; e[2] = -sn; e[5] = (cb + 0.35) * exag; e[8] = sn; e[10] = cs; iTron1[q].setMatrixAt(n, mm);
+          e[0] = cs; e[2] = -sn; e[5] = (cb + 0.35) * Estado.exag; e[8] = sn; e[10] = cs; iTron1[q].setMatrixAt(n, mm);
         } else { var q2 = c.pr % NP2, n2b = cnt2[q2]++; a2++; iCopa2[q2].setMatrixAt(n2b, mm); iCopa2[q2].setColorAt(n2b, tc); }
       }
       for (k = 0; k < NP1; k++) { cuenta(iCopa1[k], cnt1[k]); cuenta(iTron1[k], cnt1[k]); iCopa1[k].instanceMatrix.needsUpdate = iTron1[k].instanceMatrix.needsUpdate = true; if (iCopa1[k].instanceColor) iCopa1[k].instanceColor.needsUpdate = true; }
@@ -195,7 +195,7 @@
       for (k in extra) [[extra[k].m1, extra[k].n1], [extra[k].m2, extra[k].n2]].forEach(function (mn) { mn[0].forEach(function (m) { cuenta(m, mn[1]); m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; }); });
       n1 = a1; n2 = a2; triEst = tri0 + a1 * TRI1 + a2 * TRI2 + triTil;
       if (vrP) triMotor = triNivel0() + GEN.tri + a1 * TRI1 + a2 * TRI2;   // Q0n: lo que dibujan los olivos del motor (el nivel 0, contado de su geometría)
-      ultima.x = cam.x; ultima.y = cam.y; ultima.z = cam.z; ultima.exag = exag; ultima.k = tinte + "|" + ndviIdx + "|" + kcor; sucio = false;
+      ultima.x = cam.x; ultima.y = cam.y; ultima.z = cam.z; ultima.exag = Estado.exag; ultima.k = tinte + "|" + ndviIdx + "|" + kcor; sucio = false;
     }
     // el aparato manda: sube o baja la escala según el tiempo por fotograma medido
     function ajustaEscala() {
@@ -244,7 +244,7 @@
       if (!todos && OlivosTiles.dibuja()) { var en3d = []; olivos.forEach(function (c) { if (GEN.tiene(c.i)) en3d.push(c.i); }); OlivosTiles.cerca(en3d); triTil = OlivosTiles.triangulos(); }
       nL0 = n1 = n2 = 0; faltan = 0; nPre = 0; triEst = GEN.tri + Lejanos.triangulos() + triTil; mascara = masc;
       if (vrP) triMotor = GEN.tri + Lejanos.triangulos();   // Q0n
-      ultima.x = cam.x; ultima.y = cam.y; ultima.z = cam.z; ultima.exag = exag; ultima.k = tinte + "|" + ndviIdx + "|" + kcor; sucio = false;
+      ultima.x = cam.x; ultima.y = cam.y; ultima.z = cam.z; ultima.exag = Estado.exag; ultima.k = tinte + "|" + ndviIdx + "|" + kcor; sucio = false;
     }
     function tileCargada(ts) {   // llegaron los datos de una tesela: la altura de sus olivos pasa del relieve grueso al fino
       Object.keys(celdas).forEach(function (k) { var c = celdas[k]; if (c.ts !== ts) return; c.arr.forEach(function (o) { o.gz = suelo(o.x, o.y); }); c.sucia = true; }); sucio = true;
@@ -261,10 +261,10 @@
       if (Lejanos.paso(dt)) sucio = true;   // ?olivos=escalera: la capa de lejanos preparada (o fallida); sin la bandera, nada
       emaDt += (Math.min(dt, 0.1) - emaDt) * 0.04;
       if (vrP) muestraTopeOlivos(dt);   // Q0n: solo en VR
-      var vis = gArboles.visible; if (!vis && modo !== "nube") return;   // en modo Ortofoto no hay árboles; en modo Nube se precargan los de alrededor
+      var vis = gArboles.visible; if (!vis && Estado.modo !== "nube") return;   // en modo Ortofoto no hay árboles; en modo Nube se precargan los de alrededor
       t += dt;
       var cam = camera.position, umbral = paseando ? 2.5 : 6, mueve = Math.hypot(cam.x - ultima.x, cam.y - ultima.y, cam.z - ultima.z) > umbral, k = tinte + "|" + ndviIdx + "|" + kcor;
-      if (forzar || sucio || ultima.exag !== exag || ultima.k !== k || (mueve && t > 0.25) || t > (paseando ? 0.7 : 1.5)) { t = 0; reclasifica(); }
+      if (forzar || sucio || ultima.exag !== Estado.exag || ultima.k !== k || (mueve && t > 0.25) || t > (paseando ? 0.7 : 1.5)) { t = 0; reclasifica(); }
     }
     // Q0n: cada TopeTilesPuro.DEF.MUESTRA s en VR, el lazo de 02m mira los triángulos del último reparto; si cambia el factor, se reparte de nuevo
     function muestraTopeOlivos(dt) {

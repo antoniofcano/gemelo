@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: OT, hist, VIVO, FINCA, marca, lista, avTipo, pintaAvance, aviso
 // Consume: 01_datos (D, $, tinta, fmt), 02_mundo (suelo, copas, cIn, marc, med), 02i_materiales (Materiales), 02j_estaticos (Estaticos),
-//   03_escena (scene, exag), 04d_sombreado_tiles (UN), 08_marcadores (aplica), 09_camara (orb, pon), 10_ndvi (NDV, ndviIdx, pintaNdvi),
+//   03_escena (scene, Estado), 04d_sombreado_tiles (UN), 08_marcadores (aplica), 09_camara (orb, pon), 10_ndvi (NDV, ndviIdx, pintaNdvi),
 //   12_paseo (paseando, salePaseo), 13_parcelas (parcelas, fincas, claseUsda, elegirParcela, elegirFinca), 13b_hazas (HazasPuro),
 //   15_tiempo (ins, esc)
 // ===============================================================================
@@ -154,10 +154,10 @@
     var ms = AV.marcas[tipo], cs = AV.copas[tipo], na = 0, nb = 0, ns = 0, o = new THREE.Object3D();
     marc.forEach(function (m, i) {
       var e = ms.charAt(i); if (e !== "1" && e !== "0") return; var gz = suelo(m.x, m.y);
-      o.position.set(m.x, (gz + 0.5) * exag, -m.y); o.scale.set(1.5, 1.5, 1.5); o.updateMatrix(); mAvAnillo.setMatrixAt(na, o.matrix); mAvAnillo.setColorAt(na, e === "1" ? cAv.ok : cAv.no); na++;
-      if (e === "0") { o.position.set(m.x, (gz + 4) * exag, -m.y); o.scale.set(1, 1, 1); o.updateMatrix(); mAvBaliza.setMatrixAt(nb++, o.matrix); }
+      o.position.set(m.x, (gz + 0.5) * Estado.exag, -m.y); o.scale.set(1.5, 1.5, 1.5); o.updateMatrix(); mAvAnillo.setMatrixAt(na, o.matrix); mAvAnillo.setColorAt(na, e === "1" ? cAv.ok : cAv.no); na++;
+      if (e === "0") { o.position.set(m.x, (gz + 4) * Estado.exag, -m.y); o.scale.set(1, 1, 1); o.updateMatrix(); mAvBaliza.setMatrixAt(nb++, o.matrix); }
     });
-    copas.forEach(function (c, i) { if (cs.charAt(i) !== "2" || !c.oliv) return; o.position.set(c.x, (suelo(c.x, c.y) + c.h + 1.6) * exag, -c.y); o.scale.set(1, 1, 1); o.updateMatrix(); mAvSin.setMatrixAt(ns++, o.matrix); });
+    copas.forEach(function (c, i) { if (cs.charAt(i) !== "2" || !c.oliv) return; o.position.set(c.x, (suelo(c.x, c.y) + c.h + 1.6) * Estado.exag, -c.y); o.scale.set(1, 1, 1); o.updateMatrix(); mAvSin.setMatrixAt(ns++, o.matrix); });
     mAvAnillo.count = na; mAvBaliza.count = nb; mAvSin.count = ns;
     [mAvAnillo, mAvBaliza, mAvSin].forEach(function (m) { m.instanceMatrix.needsUpdate = true; }); if (mAvAnillo.instanceColor) mAvAnillo.instanceColor.needsUpdate = true;
     gAvance.visible = true;

@@ -188,7 +188,7 @@ function motor({ busqueda = "", ficheros = ["red", "presencia", "avatares"], tok
   const documento = { getElementById: () => null, createElement: t => new El(t), createTextNode: t => ({ texto: t }), body: new El("body") };
   const consola = { error: (...a) => errores.push(a.map(String).join(" ")), warn: (...a) => { const t = a.map(String).join(" "); if (/sin quad ni dron/.test(t)) avisos.push(t); else errores.push(t); }, log() {} };
   const g = {
-    THREE: threeFalso(cuenta), LK_FALSO: LK, D: { ext: [0, 200, 200, 0], base }, suelo: () => 10, copas: [], exag: 1, texColor: x => x,
+    THREE: threeFalso(cuenta), LK_FALSO: LK, D: { ext: [0, 200, 200, 0], base }, suelo: () => 10, copas: [], Estado: { exag: 1 }, texColor: x => x,
     scene: { add: () => { cuenta.escena++; }, remove: () => { cuenta.escena--; } }, camera: { position: new V3(0, 20, 0), quaternion: new Q() }, renderer: cualquiera(), visor,
     Entidades: { registra: d => { cuenta.tipos.push(d.tipo); cuenta.defs[d.tipo] = d; return () => { cuenta.quitados++; }; } }, Llegada: { funde: fn => { fn(); return true; }, aparece() {} }, TR: {},
     Movibles: { hazMovible: () => ({ menuLlevar() {}, coloca() {} }) }, VRX: { on: false, cab: new V3(), rig: { yaw: 0 } }, paseando: true, pp: { x: 50, y: 50, ang: 0 },

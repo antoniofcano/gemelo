@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: parcelas, fincas, fincaSel, parcelaSel, claseUsda, elegirParcela, elegirFinca
-// Consume: 01_datos (D, $, tinta, fmt, DIST_INI), 02_mundo (suelo, copas, cIn, marc, med), 03_escena (exag, modo, calidad),
-//   08_marcadores (aplicaLuego), 09_camara (objetivo, orb), 33_ajustes (Ajustes)
+// Consume: 01_datos (D, $, tinta, fmt, DIST_INI), 02_mundo (suelo, copas, cIn, marc, med), 03_escena (Estado), 08_marcadores (aplicaLuego),
+//   09_camara (objetivo, orb), 33_ajustes (Ajustes)
 // ===============================================================================
   // ---------- parcelas: selector, cifras y suelo de cada una
   var parcelas = D.parcelas, fincas = D.fincas || [], fincaSel = -1, parcelaSel = -1, vistaIni = { x: 0, y: 12, z: 0, dist: DIST_INI };
@@ -43,9 +43,9 @@
     parcelaSel = k; if (k >= 0 && fincas.length > 1) fincaSel = parcelas[k].finca;
     pintaChips();
     estadisticas(k); pintaSuelo(k);
-    if (k < 0 && fincaSel >= 0) { var vf = vistaDeFinca(fincaSel); vistaIni = { x: vf.x, y: suelo(vf.x, -vf.z) * exag, z: vf.z, dist: vf.dist }; }
+    if (k < 0 && fincaSel >= 0) { var vf = vistaDeFinca(fincaSel); vistaIni = { x: vf.x, y: suelo(vf.x, -vf.z) * Estado.exag, z: vf.z, dist: vf.dist }; }
     else if (k < 0) { vistaIni = { x: 0, y: 12, z: 0, dist: DIST_INI }; }
-    else { var pr = parcelas[k]; vistaIni = { x: pr.centro[0], y: suelo(pr.centro[0], pr.centro[1]) * exag, z: -pr.centro[1], dist: Math.max(110, Math.sqrt(pr.ha) * 95) }; }
+    else { var pr = parcelas[k]; vistaIni = { x: pr.centro[0], y: suelo(pr.centro[0], pr.centro[1]) * Estado.exag, z: -pr.centro[1], dist: Math.max(110, Math.sqrt(pr.ha) * 95) }; }
     orb.dist = vistaIni.dist; orb.el = k < 0 ? 0.62 : 0.7; objetivo.set(vistaIni.x, vistaIni.y, vistaIni.z);
   }
   function vistaDeFinca(f) {   // el centro y la distancia para encuadrar todas las parcelas de una finca
@@ -68,12 +68,12 @@
       var tf = document.createElement("p"); tf.id = "tParcelasFinca"; tf.className = "nota"; tf.style.margin = "10px 0 6px"; cp0.parentNode.insertBefore(cf, cp0); cp0.parentNode.insertBefore(tf, cp0);
       var chipF = function (txt, f) { var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.setAttribute("data-f", f); b.setAttribute("aria-pressed", "false"); b.textContent = txt; b.addEventListener("click", function () { if (f < 0) { fincaSel = -1; elegirParcela(-1); } else elegirFinca(f); }); cf.appendChild(b); };
       chipF("Toda la explotación", -1); fincas.forEach(function (f, i) { chipF(f.nombre + " · " + fmt(f.ha, 0) + " ha declaradas · " + fmt(f.olivos) + " olivos declarados", i); });
-      $("calidad").addEventListener("change", function () { calidad = Number($("calidad").value); if (modo === "gem") aplicaLuego(); });
+      $("calidad").addEventListener("change", function () { Estado.calidad = Number($("calidad").value); if (Estado.modo === "gem") aplicaLuego(); });
       return;
     }
     var cont = $("chips"), chip = function (txt, k) { var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.setAttribute("data-k", k); b.setAttribute("aria-pressed", "false"); b.textContent = txt; b.addEventListener("click", function () { elegirParcela(k); }); cont.appendChild(b); };
     chip("Toda la finca", -1); parcelas.forEach(function (pr, k) { chip(pr.nombre + " · " + sup(pr.ha), k); });
-    $("calidad").addEventListener("change", function () { calidad = Number($("calidad").value); if (modo === "gem") aplicaLuego(); });
+    $("calidad").addEventListener("change", function () { Estado.calidad = Number($("calidad").value); if (Estado.modo === "gem") aplicaLuego(); });
   })();
   elegirParcela(-1);
   setTimeout(function () {   // la unidad guardada y, al cambiarla, los textos de las fichas de parcela (33_ajustes.js va después de este módulo)

@@ -63,7 +63,7 @@ function mundoPaisaje(ejesExtra) {
   const sol = { alt: 0.8, az: 0.4 };
   const g = {
     THREE, D: { paisaje: JSON.parse(JSON.stringify(PAISAJE)) }, $: () => ({ checked: true, addEventListener() {} }), ESC_R8: 1,
-    suelo: (x, y) => 80 + 0.2 * x + 0.1 * y, desp: () => 0, copas: [], scene: new THREE.Scene(), SRGB: THREE.SRGBColorSpace, sol: {}, exag: 1, hash,
+    suelo: (x, y) => 80 + 0.2 * x + 0.1 * y, desp: () => 0, copas: [], scene: new THREE.Scene(), SRGB: THREE.SRGBColorSpace, sol: {}, Estado: { exag: 1 }, hash,
     gSombras: new THREE.Group(), tronco: null, matSombra: new THREE.MeshBasicMaterial({ transparent: true }), geoSombra: new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2),
     pon() {}, lista: [], lluvia: null, cur: { ms: 0, nub: 0, lluvia: 0, dir: 0, viento: 0 }, tMundo: 0, nivel: () => ({ s: { alt: sol.alt, az: sol.az }, d: 1 }), esfera: null, EST: { activa: false }
   };
@@ -83,7 +83,7 @@ test("18_paisaje: cables, árboles que no son olivos, cauces y sombras se recort
   assert.strictEqual(recortados(gP).filter(o => o.isLine).length, 2, "el cable principal y el de la derivación, recortados");
   assert.strictEqual(recortados(gP).filter(o => o.material && o.material.isShaderMaterial).length, 2, "los dos cauces, recortados");
   for (const e of [1, 3]) {
-    g.exag = e; g.colocaPaisaje();
+    g.Estado.exag = e; g.colocaPaisaje();
     const sombra = g.gSombras.children.find(o => o.isInstancedMesh);
     assert.ok(sombra && sombra.frustumCulled, "las sombras de los árboles y edificios, recortadas");
     if (e === 1) primerFotograma(sombra);
@@ -113,8 +113,8 @@ test("18_paisaje: un cauce sin anchura (puntos [x, y], como el del fixture) no d
 function balizasOficiales() {
   const F = lee("apps/web/motor/39_oficina_mundo.js"), T = trozo(F, "    function montaGrafica()", "    function refresca()");
   const f = new Function("THREE", "Estaticos", "scene", "suelo", "OP", "ALTO", "COLOR", "CLARO",
-    "\"use strict\";\nvar gB = null, mCol = null, mBan = null, geos = [], mats = [], m4 = null, v1 = null, v2 = null, q0 = null, vS = null, w0 = null, balizas = [], exag = 1;\n" + T +
-    "\nreturn { coloca: coloca, monta: montaGrafica, pon: function (b, e) { balizas = b; exag = e; }, mallas: function () { return [mCol, mBan]; } };");
+    "\"use strict\";\nvar gB = null, mCol = null, mBan = null, geos = [], mats = [], m4 = null, v1 = null, v2 = null, q0 = null, vS = null, w0 = null, balizas = [], Estado = { exag: 1 };\n" + T +
+    "\nreturn { coloca: coloca, monta: montaGrafica, pon: function (b, e) { balizas = b; Estado.exag = e; }, mallas: function () { return [mCol, mBan]; } };");
   return f(THREE, estaticos(), new THREE.Scene(), (x, y) => 60 + 0.3 * x - 0.2 * y, { BALIZAS_MAX: 20 }, 18, 0xffcc00, 0xffffff);
 }
 test("39_oficina_mundo: las balizas oficiales se recortan y su esfera las contiene tras coloca(), aunque three la calculara con 0 instancias", () => {
@@ -132,8 +132,8 @@ test("39_oficina_mundo: las balizas oficiales se recortan y su esfera las contie
 function barreras() {
   const F = lee("apps/web/motor/15_tiempo.js"), T = trozo(F, "  function creaBarrera(pr)", "  function pintaFondoTiempo()");
   const f = new Function("THREE", "Estaticos", "suelo", "matBarrera", "gLinde",
-    "\"use strict\";\nvar BARRERA_ALTO = 5.5, BARRERAS = [], exag = 1;\n" + T +
-    "\nreturn { crea: creaBarrera, coloca: colocaBarrera, pon: function (e) { exag = e; }, mallas: function () { return gLinde.children; }, n: function () { return BARRERAS.length; } };");
+    "\"use strict\";\nvar BARRERA_ALTO = 5.5, BARRERAS = [], Estado = { exag: 1 };\n" + T +
+    "\nreturn { crea: creaBarrera, coloca: colocaBarrera, pon: function (e) { Estado.exag = e; }, mallas: function () { return gLinde.children; }, n: function () { return BARRERAS.length; } };");
   return f(THREE, estaticos(), (x, y) => 60 + 0.3 * x - 0.2 * y, new THREE.MeshBasicMaterial(), new THREE.Group());
 }
 test("15_tiempo: la barrera de luz de cada linde se recorta y su esfera la contiene tras colocaBarrera, aunque three la calculara con los vértices a cero", () => {
@@ -180,7 +180,7 @@ function mundoEstacion(fechas) {
   const g = {
     THREE, $: () => null, parcelas: [], OT: null, NDV: fechas ? { fechas } : null, SN: null, ndviIdx: 0, hash, matHojaG, matHojaP, renderer: { domElement: { height: 600 } },
     SRGB: THREE.SRGBColorSpace, gFollaje: new THREE.Group(), window: {}, setTimeout, clearTimeout, fmtClaveDia: { format: () => "2026-11-04" }, fmtHora: { format: () => "12:00" },
-    TM: {}, TiempoPuro: {}, esc: s => s, num1: x => String(x), objetivoMundoBase: () => ({}), aplicaMundo: null, lluvia: null, modo: "gem", Event: function () {}
+    TM: {}, TiempoPuro: {}, esc: s => s, num1: x => String(x), objetivoMundoBase: () => ({}), aplicaMundo: null, lluvia: null, Estado: { exag: 1, modo: "gem", calidad: 1 }, Event: function () {}
   };
   vm.runInContext("\"use strict\";\n" + lee("apps/web/motor/23_estacion.js"), vm.createContext(conFabrica(g)), { filename: "23_estacion.js" });
   return g;
@@ -240,7 +240,7 @@ test("08b_marcadores_lidar: las líneas de desfase se recortan y su esfera las c
   const mCopas = { setMatrixAt() {}, instanceMatrix: {} }, mMarc = { setMatrixAt() {}, instanceMatrix: {} };
   const desfGeo = new THREE.BufferGeometry(), linea = new THREE.LineSegments(desfGeo, new THREE.LineBasicMaterial());
   const f = new Function("THREE", "cIn", "copas", "marc", "suelo", "mCopas", "mMarc", "desfGeo",
-    "\"use strict\";\nvar exag = 1;\n" + T + "\nreturn { coloca: coloca, pon: function (e) { exag = e; } };");
+    "\"use strict\";\nvar Estado = { exag: 1 };\n" + T + "\nreturn { coloca: coloca, pon: function (e) { Estado.exag = e; } };");
   const M = f(THREE, cIn, copas, marc, (x, y) => 60 + 0.3 * x - 0.2 * y, mCopas, mMarc, desfGeo);
   assert.strictEqual(linea.frustumCulled, true, "las líneas de desfase se recortan");
   primerFotograma(linea);   // antes de colocar: la geometría está vacía

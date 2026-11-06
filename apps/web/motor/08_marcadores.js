@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: gLinde, tmp, listo, aplica, capas, aplicaLuego
-// Consume: 01_datos (D, $), 02c_componentes (Bus), 02j_estaticos (Estaticos), 03_escena (scene, exag, modo), 04d_sombreado_tiles (UN),
+// Consume: 01_datos (D, $), 02c_componentes (Bus), 02j_estaticos (Estaticos), 03_escena (scene, Estado), 04d_sombreado_tiles (UN),
 //   05_nube (nube, pintaNube), 06_arboles (gArboles, gFollaje, gSombras), 07b_arboles (Arboles), 14_historia (avTipo, pintaAvance),
 //   15_tiempo (colocaBarrera), 18_paisaje (colocaPaisaje), 19_balizas (colocaBalizas), 21_suelo (recoloreaSuelo)
 // ===============================================================================
@@ -27,10 +27,10 @@
   var listo = false;   // los datos de las teselas ya están
   function aplica() {
     if (!listo) return;
-    UN.uExag.value = exag; if (modo === "nube") pintaNube(); if (modo === "gem") Arboles.refresca(); marcadores(); colocaPaisaje(); colocaBalizas(); recoloreaSuelo(); if (avTipo) pintaAvance(avTipo);
-    UN.uModoOrto.value = modo === "orto" ? 1 : 0;   // el relieve (04d) pinta la ortofoto del glb tal cual
-    nube.visible = modo === "nube"; gArboles.visible = modo === "gem"; gFollaje.visible = modo === "gem"; gSombras.visible = modo === "gem";
-    $("notaModo").textContent = NOTAS[modo]; capas();
+    UN.uExag.value = Estado.exag; if (Estado.modo === "nube") pintaNube(); if (Estado.modo === "gem") Arboles.refresca(); marcadores(); colocaPaisaje(); colocaBalizas(); recoloreaSuelo(); if (avTipo) pintaAvance(avTipo);
+    UN.uModoOrto.value = Estado.modo === "orto" ? 1 : 0;   // el relieve (04d) pinta la ortofoto del glb tal cual
+    nube.visible = Estado.modo === "nube"; gArboles.visible = Estado.modo === "gem"; gFollaje.visible = Estado.modo === "gem"; gSombras.visible = Estado.modo === "gem";
+    $("notaModo").textContent = NOTAS[Estado.modo]; capas();
     if ($("cSolo") && $("cSolo").checked) { gArboles.visible = false; gFollaje.visible = false; gSombras.visible = false; nube.visible = false; }
   }
   function capas() { gLinde.visible = $("cLinde").checked; Bus.emite("capas:cambia"); }   // las casillas de copas, marcas y desfase las atiende su componente

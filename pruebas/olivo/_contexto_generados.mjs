@@ -41,7 +41,7 @@ export function contexto(busqueda, reloj, extra) {
   const ctx = Object.assign({
     THREE, console, performance: reloj || performance, Promise, Math, Object, Number, String, Error, Float32Array, Uint8Array,   // los del módulo del olivo (instanceof entre contextos vm)
     location: { search: busqueda }, window: { OlivoGen: O },
-    gArboles: new THREE.Group(), D: { copas: [], centro_utm: [0, 0] }, VRP: { on: false }, FACTOR_R8: 0.5, FACTOR_R8_GEN: 1, exag: 1,
+    gArboles: new THREE.Group(), D: { copas: [], centro_utm: [0, 0] }, VRP: { on: false }, FACTOR_R8: 0.5, FACTOR_R8_GEN: 1, Estado: { exag: 1, modo: "gem", calidad: 1 },
     // la configuración del servidor (02c Config) sin servidor: todo vale lo del código
     Config: { listo: Promise.resolve(null), al: f => f(null), param: (r, c, u) => (u !== undefined && u !== null ? u : c), umbrales: (c, u) => u || c, tablaEpocas: () => null, epocaDeFecha: () => null }, factorCopaDeConfig: () => 1,
     suelo: () => 0, camera: { position: new THREE.Vector3(0, 10, 0) },

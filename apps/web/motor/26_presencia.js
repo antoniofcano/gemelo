@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: PoseCodec, BufferPose, Aspecto, SalaPose, Chat, Muneco, Encuentro, AutoPresencia, Reintento, sitioJunto
-// Consume: 01_datos (D), 02_mundo (suelo, copas), 03_escena (exag, modo), 04d_sombreado_tiles (hash), 14_historia (lista)
+// Consume: 01_datos (D), 02_mundo (suelo, copas), 04d_sombreado_tiles (hash), 14_historia (lista)
 // Nota: No es un componente ni monta nada: el protocolo y la lógica pura de la presencia compartida (PoseCodec, BufferPose, Aspecto, SalaPose, Chat, Muneco, Encuentro) y sitioJunto. La presencia que los usa es el componente de 38_presencia_compartida.js (C5). El trozo entre [puro:inicio] y [puro:fin] lo evalúan en Node pruebas/guardianes/presencia.test.js, presencia_red.test.js y muneco_aspecto.test.js.
 // ===============================================================================
 

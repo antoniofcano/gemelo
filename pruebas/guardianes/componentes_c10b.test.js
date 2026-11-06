@@ -20,7 +20,7 @@ function mundo(extra) {
   for (let i = 0; i < 40; i++) { const c = { x: -60 + (i % 8) * 16, y: -40 + Math.floor(i / 8) * 16, h: 4, oliv: true }; copas.push(c); cIn.push(c); }
   const defs = [], g = {
     THREE, scene, gFauna, Bus, Minimapa, Componentes: { registra: d => { defs.push(d); return true; } }, console, Math, Date, setTimeout, clearTimeout,
-    window: {}, document: {}, exag: 1, altSuelo: () => 0, copas, cIn, D: { ext: [-500, 500, 500, -500] }, pp: { x: 0, y: 0, ang: 0 },
+    window: {}, document: {}, Estado: { exag: 1 }, altSuelo: () => 0, copas, cIn, D: { ext: [-500, 500, 500, -500] }, pp: { x: 0, y: 0, ang: 0 },
     cur: { lluvia: 0, viento: 1, dir: 0, ms: 0 }, nivel: () => ({ d: 1 }), nivelEn(ms, salida) { salida.d = g.nivel(ms).d; return salida; }, camera: new THREE.PerspectiveCamera(),
     matSombra: new THREE.MeshBasicMaterial(), geoSombra: new THREE.PlaneGeometry(1, 1),
     esfera(r, m, sx, sy, sz, x, y, z, padre) { const me = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 8), m); me.scale.set(sx, sy, sz); me.position.set(x, y, z); padre.add(me); return me; },

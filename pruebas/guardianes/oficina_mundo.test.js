@@ -160,7 +160,7 @@ function motor({ busqueda = "?presencia=red", rol = "oficina", base = "/teselas/
   const consola = { error: (...a) => errores.push(a.map(String).join(" ")), warn: (...a) => { const t = a.map(String).join(" "); if (!/sin quad ni dron/.test(t)) errores.push(t); }, log() {} };
   const respuestas = { token: { url: "/rtc", token: "tk" } };
   const g = {
-    THREE: threeFalso(cuenta), LK_FALSO: LK, D: { ext: [0, 200, 200, 0], base, finca_id: "hituelo", centro_utm: CENTRO }, suelo: () => 10, copas: [], exag: 1, texColor: x => x,
+    THREE: threeFalso(cuenta), LK_FALSO: LK, D: { ext: [0, 200, 200, 0], base, finca_id: "hituelo", centro_utm: CENTRO }, suelo: () => 10, copas: [], Estado: { exag: 1 }, texColor: x => x,
     scene: { add: () => { cuenta.escena++; }, remove: () => { cuenta.escena--; } }, camera: { position: new V3(0, 20, 0), quaternion: new Q() }, renderer: cualquiera(), visor,
     Entidades: { registra: d => { const e = EntidadesPuro.valida(d); if (e.length) throw new Error(d.tipo + ": " + e.join("; ")); cuenta.tipos[d.tipo] = d; return () => { cuenta.quitados.push(d.tipo); delete cuenta.tipos[d.tipo]; }; } },
     Llegada: { funde: fn => { fn(); return true; }, aparece() {}, ve: (x, y) => { cuenta.ida = [x, y]; return true; } }, TR: {},

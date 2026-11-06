@@ -33,7 +33,7 @@ function mundo(extra) {
     lienzos.push(cv); return cv;
   } };
   const g = { THREE, Bus: bus(), D: { ndvi: { w: 4, h: 2, fechas: FECHAS, media: [0.45, 0.5], b64: "x" } }, $, b64: () => [], i16: () => Int16Array.from(DATOS), fmt: (v, d) => v.toFixed(d),
-    document: documento, ANCHO: 40, ALTO: 20, x0: 0, yN: 20, tinte: false, ndLo: 0, ndHi: 1, aplicaLuego() { g.reaplicado++; }, reaplicado: 0, modo: "gem",
+    document: documento, ANCHO: 40, ALTO: 20, x0: 0, yN: 20, tinte: false, ndLo: 0, ndHi: 1, aplicaLuego() { g.reaplicado++; }, reaplicado: 0, Estado: { exag: 1, modo: "gem", calidad: 1 },
     gArboles: {}, gFollaje: {}, gSombras: {}, nube: {}, UN: { uNdviOn: { value: 0 }, uNdviMap: { value: null } } };
   return { g: Object.assign(g, extra), dom, $, lienzos };
 }

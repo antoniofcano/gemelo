@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos (D), 02_mundo (copas, cIn), 02c_componentes (Componentes), 02k_fusiona (fusionaGeometrias), 03_escena (camera, exag),
+// Consume: 01_datos (D), 02_mundo (copas, cIn), 02c_componentes (Componentes), 02k_fusiona (fusionaGeometrias), 03_escena (camera, Estado),
 //   07_follaje (matSombra, geoSombra), 12_paseo (paseando, pp), 15_tiempo (nivelEn, cur), 16_vida (tVida, enQuad, gFauna, altSuelo, mira),
 //   17_minimapa (Minimapa)
 // ===============================================================================
@@ -122,7 +122,7 @@
     function nacePosada(av) {
       var c = arbolCerca(26, 70); if (!c) return false;
       var u = av.userData; u.est = "posada"; u.cx = c.x + (Math.random() - 0.5) * 0.8; u.cy = c.y + (Math.random() - 0.5) * 0.8; u.cz = c.h; u.fase = Math.random() * 6;
-      av.position.set(u.cx, altSuelo(u.cx, u.cy) + c.h * exag + 0.32, -u.cy); av.rotation.y = Math.random() * 6.28; av.visible = true; aleteo(av, true); return true;
+      av.position.set(u.cx, altSuelo(u.cx, u.cy) + c.h * Estado.exag + 0.32, -u.cy); av.rotation.y = Math.random() * 6.28; av.visible = true; aleteo(av, true); return true;
     }
     function naceConejo(co) {
       var c = arbolCerca(18, 55); if (!c) return false;
@@ -212,7 +212,7 @@
   }
   Componentes.registra({
     id: "fauna-olivar", version: 1,
-    consume: ["scene", "camera", "D", "copas", "cIn", "geoSombra", "matSombra", "paseando", "pp", "cur", "nivelEn", "tVida", "enQuad", "gFauna", "altSuelo", "mira", "exag", "Minimapa", "fusionaGeometrias"],
+    consume: ["scene", "camera", "D", "copas", "cIn", "geoSombra", "matSombra", "paseando", "pp", "cur", "nivelEn", "tVida", "enQuad", "gFauna", "altSuelo", "mira", "Estado", "Minimapa", "fusionaGeometrias"],
     expone: [],
     eventos: { escucha: ["paseo:entra", "paseo:sale", "fauna:conejo-cerca"], emite: ["perros:amenaza"] },
     bandera: { defecto: true, url: "fauna" },

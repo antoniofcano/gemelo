@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: ALTO_MAX, nube, pintaNube, actualizaNubeTeselas, actualizaNube
 // Consume: 02_mundo (Mundo, suelo, copaAlta, kcor, tinte, aviva, colorEn), 02b_cola (Cola), 02i_materiales (Materiales), 02j_estaticos (Estaticos),
-//   03_escena (scene, camera, exag), 04d_sombreado_tiles (hash), 10_ndvi (ndviIdx), 15_tiempo (parcheTiempo)
+//   03_escena (scene, camera, Estado), 04d_sombreado_tiles (hash), 10_ndvi (ndviIdx), 15_tiempo (parcheTiempo)
 // ===============================================================================
   // ---------- nube de puntos LiDAR: una malla por tesela, con las posiciones cuantizadas a 16 bits y el color a 8, y nivel de detalle por distancia
   // El orden de los puntos de cada tesela está barajado, así que dibujar solo la primera fracción (setDrawRange) es una muestra uniforme: lejos se pintan menos puntos.
@@ -43,13 +43,13 @@
     var Q = new Int16Array(n * 3), C = new Uint8Array(n * 3);
     for (var i = 0; i < n; i++) { Q[i * 3] = Math.round((X[i] - cxm) / hx * 32767); Q[i * 3 + 1] = Math.round((Z[i] - zc) / hz * 32767); Q[i * 3 + 2] = Math.round((-Y[i] + cym) / hx * 32767); if (i % 40000 === 39999) yield; }
     var g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(Q, 3, true)); g.setAttribute("color", new THREE.BufferAttribute(C, 3, true));
-    var m = new THREE.Points(g, matsNube[0]); m.userData = { zc: zc, hz: hz }; m.position.set(cxm, zc * exag, -cym); m.scale.set(hx, hz * exag, hx); m.visible = false; Estaticos.congela(m);   // AG-1.15: se recoloca en exagNube()
+    var m = new THREE.Points(g, matsNube[0]); m.userData = { zc: zc, hz: hz }; m.position.set(cxm, zc * Estado.exag, -cym); m.scale.set(hx, hz * Estado.exag, hx); m.visible = false; Estaticos.congela(m);   // AG-1.15: se recoloca en exagNube()
     t.nubeX = X.subarray(0, n); t.nubeY = Y.subarray(0, n); t.nubeH = H.subarray(0, n); t.nubeB = B.subarray(0, n); t.nubeCol = C; t.nubeN = n; t.nubeMalla = m; t.nubeNivel = -1;
     yield* pintaTeselaNubeG(t);
     return m;
   }
   function liberaNube(t) { Cola.cancela("N" + t.key); Cola.cancela("NP" + t.key); if (t.nubeMalla) { nube.g.remove(t.nubeMalla); t.nubeMalla.geometry.dispose(); } t.nubeMalla = null; t.nubeX = t.nubeY = t.nubeH = t.nubeB = t.nubeCol = null; t.nubeN = 0; t.nubeEst = 0; }
-  function exagNube() { Mundo.lista.forEach(function (t) { var m = t.nubeMalla; if (m) { m.position.y = m.userData.zc * exag; m.scale.y = m.userData.hz * exag; Estaticos.congela(m); } }); }
+  function exagNube() { Mundo.lista.forEach(function (t) { var m = t.nubeMalla; if (m) { m.position.y = m.userData.zc * Estado.exag; m.scale.y = m.userData.hz * Estado.exag; Estaticos.congela(m); } }); }
   function pintaNube() {   // se llama desde aplica(): solo repinta si cambió lo que influye en el color (corrección de la ortofoto, tinte NDVI y su fecha)
     exagNube();
     var clave = kcor + "|" + tinte + "|" + (tinte ? ndviIdx : 0);

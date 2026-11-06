@@ -39,7 +39,7 @@ test("18_paisaje: los árboles que no son olivo se apuntan y el escalón los rec
   const arboles = []; for (let i = 0; i < 50; i++) arboles.push({ x: i * 20, y: 0, h: 6, r: 2, tipo: i % 7 ? "encina" : "arbusto" });
   const c = ctx({ D: { paisaje: { edificios: [], tendido: { linea: [], postes: [], derivaciones: [] }, arroyo: { ejes: [] }, arboles } },
     $: () => ({ checked: true, addEventListener() {} }), ESC_R8: 1, suelo: () => 80, desp: () => 0, copas: [], scene: new THREE.Scene(), SRGB: THREE.SRGBColorSpace,
-    sol: {}, exag: 1, hash, gSombras: new THREE.Group(), tronco: null, matSombra: new THREE.MeshBasicMaterial({ transparent: true }),
+    sol: {}, Estado: { exag: 1 }, hash, gSombras: new THREE.Group(), tronco: null, matSombra: new THREE.MeshBasicMaterial({ transparent: true }),
     geoSombra: new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), pon() {}, lista: [], lluvia: null, cur: { ms: 0, nub: 0, lluvia: 0 }, tMundo: 0,
     nivel: () => ({ s: { alt: 0.8, az: 0.4 }, d: 1 }), esfera: null, EST: { activa: false } });
   corre(c, "18_paisaje.js"); vm.runInContext("colocaPaisaje()", c);
@@ -55,7 +55,7 @@ test("18_paisaje: los árboles que no son olivo se apuntan y el escalón los rec
 test("08b_marcadores_lidar: anillos y octaedros se apuntan, recortan por su radio y se olvidan al liberar", () => {
   const copas = [], marc = []; for (let i = 0; i < 400; i++) { copas.push({ x: i * 2, y: 0, h: 4 }); marc.push({ x: i * 2 + 1, y: 0, par: -1 }); }
   const defs = [], Bus = { on() { return () => {}; } }, scene = new THREE.Scene();
-  const c = ctx({ scene, $: () => ({ checked: true }), colorCss: () => 0x58b6e8, cIn: copas, marc, copas, suelo: () => 100, exag: 1, listo: true, Componentes: { registra: d => defs.push(d) } });
+  const c = ctx({ scene, $: () => ({ checked: true }), colorCss: () => 0x58b6e8, cIn: copas, marc, copas, suelo: () => 100, Estado: { exag: 1 }, listo: true, Componentes: { registra: d => defs.push(d) } });
   corre(c, "08b_marcadores_lidar.js");
   defs[0].monta({ on: () => () => {} });
   const V = vm.runInContext("VrPresupuesto", c), mc = scene.children[0].children[0], mm = scene.children[1].children[0];
@@ -68,7 +68,7 @@ test("08b_marcadores_lidar: anillos y octaedros se apuntan, recortan por su radi
 test("04e_suelo_fondo: en el escalón 3 la rejilla tiene 64 celdas y baja el doble; al volver, 128 y 1,5 m; fuera de VR, como siempre", () => {
   const scene = new THREE.Scene(), defs = [];
   const c = ctx({ scene, D: { mosaico: { x0: 0, yN: 10000, w: 5000, h: 5000, res: 1 }, grueso: { x0: 0, yN: 10000, w: 5000, h: 5000, res: 8 } }, Mundo: { grueso: () => 100 },
-    UN: { uMos: { value: new THREE.Texture() } }, matSuelo: new THREE.MeshLambertMaterial({}), Escena3D: { estado: () => "activo" }, exag: 1, Componentes: { registra: d => defs.push(d) } });
+    UN: { uMos: { value: new THREE.Texture() } }, matSuelo: new THREE.MeshLambertMaterial({}), Escena3D: { estado: () => "activo" }, Estado: { exag: 1 }, Componentes: { registra: d => defs.push(d) } });
   corre(c, "04e_suelo_fondo.js");
   const api = defs[0].monta({}), V = vm.runInContext("VrPresupuesto", c), tri = () => api.malla().geometry.index.count / 3;
   api.actualiza(); assert.strictEqual(tri(), 128 * 128 * 2, "fuera de VR, la de siempre"); assert.strictEqual(api.baja(), 1.5);

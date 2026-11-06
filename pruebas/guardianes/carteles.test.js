@@ -241,10 +241,10 @@ function mundo(opts) {
   const scene = new THREE.Group(), escuchas = {};
   const n = { on: (ev, fn) => { escuchas[ev] = fn; return () => {}; }, limpia: () => {} };
   const camera = { updateMatrixWorld() {}, matrixWorld: {} }, win = {};
-  const f = new Function("THREE", "document", "window", "scene", "camera", "VRX", "texColor", "gLinde", "suelo", "exag", "Hazas", "D", "Componentes", "cIn", "EST", "bbchEn", "hoyMadrid",
+  const f = new Function("THREE", "document", "window", "scene", "camera", "VRX", "texColor", "gLinde", "suelo", "Estado", "Hazas", "D", "Componentes", "cIn", "EST", "bbchEn", "hoyMadrid",
     "var CartelesPuro = null;\n" + "return function (P) { CartelesPuro = P; " + MOTOR + "\nreturn CartelesMotor; };");
   const D = { parcelas: [{ centro: [0, 0] }], ext: [-500, 500, 500, -500], finca_id: "hituelo" };
-  const motor = f(THREE, document, win, scene, camera, { on: false }, t => t, { visible: true }, () => 2, 1, Hazas, D, {}, new Array(4321), { origen: "" }, () => 82, () => "2026-11-05")(P)(n);
+  const motor = f(THREE, document, win, scene, camera, { on: false }, t => t, { visible: true }, () => 2, { exag: 1 }, Hazas, D, {}, new Array(4321), { origen: "" }, () => 82, () => "2026-11-05")(P)(n);
   return { motor, log, scene, escuchas, win, mueve(x, y) { cam.x = x; cam.y = y; } };
 }
 const cuadro = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]];

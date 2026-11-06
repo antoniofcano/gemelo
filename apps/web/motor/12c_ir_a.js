@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: IrA
-// Consume: 01_datos (D), 02_mundo (suelo, copas), 03_escena (scene, exag), 12_paseo (paseando, teclas, pp), 12b_llegada (LlegadaPuro, Llegada),
+// Consume: 01_datos (D), 02_mundo (suelo, copas), 03_escena (scene, Estado), 12_paseo (paseando, teclas, pp), 12b_llegada (LlegadaPuro, Llegada),
 //   16_vida (enQuad, enDron), 29_vr (VRX), 33_ajustes (Ajustes)
 // ===============================================================================
   // ---------- tocar para ir andando (tanda 9): en pantalla (ratón y táctil, no en VR), a pie, un clic o un toque corto en el suelo hace que el paseante camine hasta allí.
@@ -23,7 +23,7 @@
     function pintaLinea() {
       if (!st.dest) { linea.visible = false; return; }
       var v = IrAPuro.puntosLinea(pp, st, PASO_P, MAXP);
-      for (var i = 0; i < v.length; i++) { bufP[i * 3] = v[i].x; bufP[i * 3 + 1] = suelo(v[i].x, v[i].y) * exag + 0.18; bufP[i * 3 + 2] = -v[i].y; }
+      for (var i = 0; i < v.length; i++) { bufP[i * 3] = v[i].x; bufP[i * 3 + 1] = suelo(v[i].x, v[i].y) * Estado.exag + 0.18; bufP[i * 3 + 2] = -v[i].y; }
       geoP.setDrawRange(0, v.length); atrP.needsUpdate = true; linea.visible = v.length > 0;
     }
     function activo() { var a = true; try { a = Ajustes.lee("controles.tocarIr"); } catch (e) {} return IrAPuro.activa(a, location.search); }

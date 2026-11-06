@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: SN, vn2, cubierta, recoloreaSuelo, actualizaSuelo
 // Consume: 01_datos (D, $, i16, yN, ANCHO, ALTO, VRP), 02_mundo (suelo), 02i_materiales (Materiales), 02j_estaticos (Estaticos),
-//   03_escena (scene, texColor, colorVertSRGB, exag), 04d_sombreado_tiles (hash, UN), 09_camara (objetivo, orb), 10_ndvi (NDV, ndviIdx),
+//   03_escena (scene, texColor, colorVertSRGB, Estado), 04d_sombreado_tiles (hash, UN), 09_camara (objetivo, orb), 10_ndvi (NDV, ndviIdx),
 //   12_paseo (paseando, pp), 15_tiempo (uViento, uSombra, GLSL_SOMBRA, num1), 16_vida (enDron, dr), 18_paisaje (ejeArroyo, distArroyo)
 // ===============================================================================
   // ---------- el suelo según el NDVI: dónde hay tierra desnuda y dónde hierba, y cómo de vigorosa
@@ -134,7 +134,7 @@
       var n = Math.floor(c * 2.6 + hash(h1 * 53.1 + j));
       for (var k = 0; k < n && nt < NTUFT; k++) {
         var px = x + (hash(h1 * 7.7 + k) - 0.5) * PAS, py = y + (hash(h1 * 3.3 + k * 5) - 0.5) * PAS, sz = (0.12 + 0.5 * (0.35 + 0.65 * vig)) * alto * (0.6 + 0.8 * hash(h1 * 11.1 + k)), ancho = 0.7 + 1.5 * sz * (0.7 + 0.6 * hash(h1 * 2 + k));
-        tmpM.position.set(px, suelo(px, py) * exag, -py); tmpM.rotation.set(0, hash(h1 * 5.5 + k) * 6.28, 0); tmpM.scale.set(ancho, sz, ancho * (0.85 + 0.3 * hash(h1 + k))); tmpM.updateMatrix(); iMata.setMatrixAt(nt, tmpM.matrix);
+        tmpM.position.set(px, suelo(px, py) * Estado.exag, -py); tmpM.rotation.set(0, hash(h1 * 5.5 + k) * 6.28, 0); tmpM.scale.set(ancho, sz, ancho * (0.85 + 0.3 * hash(h1 + k))); tmpM.updateMatrix(); iMata.setMatrixAt(nt, tmpM.matrix);
         var seco = 1 - vig, ut = hash(h1 * 13.7 + k * 3.1), tile = seco > 0.5 ? (ut < 0.7 ? 1 : 3) : (ut < 0.8 ? 0 : 3);   // verde, seca, flores o espigas
         if (primavera && vig > 0.25 && ut > 0.82 && ut < 0.93) tile = 2;
         tileMata.array[nt] = tile;
@@ -145,7 +145,7 @@
       if (np < NSTONE - 2 && hash(h1 * 29.3 + 7) < (1 - c) * 0.2) {
         var piedras = hash(h1 * 41.1) > 0.8 ? 3 : 1;
         for (var ip = 0; ip < piedras && np < NSTONE; ip++) {
-          var gr0 = ip === 0, r = gr0 ? 0.04 + 0.2 * Math.pow(hash(h1 * 17.1), 2.4) : 0.025 + 0.05 * hash(h1 * 19.3 + ip), px2 = x + 0.3 + (gr0 ? 0 : (hash(h1 * 7 + ip) - 0.5) * 0.7), py2 = y - 0.2 + (gr0 ? 0 : (hash(h1 * 9 + ip) - 0.5) * 0.7), gz = suelo(px2, py2) * exag, ch = 0.5 + 0.2 * hash(h1 * 9 + ip);
+          var gr0 = ip === 0, r = gr0 ? 0.04 + 0.2 * Math.pow(hash(h1 * 17.1), 2.4) : 0.025 + 0.05 * hash(h1 * 19.3 + ip), px2 = x + 0.3 + (gr0 ? 0 : (hash(h1 * 7 + ip) - 0.5) * 0.7), py2 = y - 0.2 + (gr0 ? 0 : (hash(h1 * 9 + ip) - 0.5) * 0.7), gz = suelo(px2, py2) * Estado.exag, ch = 0.5 + 0.2 * hash(h1 * 9 + ip);
           tmpM.position.set(px2, gz + r * 0.22, -py2); tmpM.rotation.set(hash(h1 + ip) * 3, hash(h1 * 2 + ip) * 6, 0); tmpM.scale.set(r * (1.1 + 0.3 * hash(h1 * 3 + ip)), r * (0.45 + 0.3 * hash(h1 * 4 + ip)), r); tmpM.updateMatrix(); iPiedra.setMatrixAt(np, tmpM.matrix);
           colM.setRGB(ch, ch * (0.93 - 0.05 * hash(h1 * 5 + ip)), ch * (0.8 - 0.1 * hash(h1 * 6 + ip))); iPiedra.setColorAt(np, colM);
           tmpM.position.set(px2, gz + 0.02, -py2); tmpM.rotation.set(0, 0, 0); tmpM.scale.set(r * 3.4, 1, r * 3.0); tmpM.updateMatrix(); iCont.setMatrixAt(np, tmpM.matrix); np++;
@@ -154,7 +154,7 @@
     }
     iMata.count = nt; iPiedra.count = np; iCont.count = np; iMata.instanceMatrix.needsUpdate = true; iPiedra.instanceMatrix.needsUpdate = true; iCont.instanceMatrix.needsUpdate = true; tileMata.needsUpdate = true;
     if (iMata.instanceColor) iMata.instanceColor.needsUpdate = true; if (iPiedra.instanceColor) iPiedra.instanceColor.needsUpdate = true;
-    ultCentro = [cx, cy]; ultExag = exag;
+    ultCentro = [cx, cy]; ultExag = Estado.exag;
   }
   var tSuelo = 0;
   function actualizaSuelo(dt) {
@@ -164,7 +164,7 @@
     var cerca = paseando || orb.dist < 230, cx = paseando ? (enDron ? dr.x : pp.x) : objetivo.x, cy = paseando ? (enDron ? dr.y : pp.y) : -objetivo.z;
     iMata.visible = iPiedra.visible = iCont.visible = hierbaOn && cerca && (!VRP.on || VRP.hierba > 0);
     if (!(hierbaOn && cerca)) return;
-    if (Math.hypot(cx - ultCentro[0], cy - ultCentro[1]) > 12 || ultExag !== exag || ultVR !== VRP.hierba) { ultVR = VRP.hierba; repartePlantas(cx, cy); }
+    if (Math.hypot(cx - ultCentro[0], cy - ultCentro[1]) > 12 || ultExag !== Estado.exag || ultVR !== VRP.hierba) { ultVR = VRP.hierba; repartePlantas(cx, cy); }
   }
   (function () {
     // una sola fecha del campo (decisión 88): #ndviSel manda en la hierba, la estación del olivo (23_estacion.js) y la capa NDVI (10_ndvi.js, que

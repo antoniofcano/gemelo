@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Escalera, Generados
 // Consume: 01_datos (D, VRP, FACTOR_R8_GEN, factorCopaDeConfig), 01a_aparato (Aparato), 02_mundo (suelo), 02c_componentes (Config),
-//   02i_materiales (Materiales), 03_escena (renderer, scene, camera, exag), 06_arboles (gArboles), 12_paseo (paseando, pp),
+//   02i_materiales (Materiales), 03_escena (renderer, scene, camera, Estado), 06_arboles (gArboles), 12_paseo (paseando, pp),
 //   14_historia (hist, lista), 15_tiempo (parcheTiempo, nivel)
 // ===============================================================================
   // ---------- olivos GENERADOS cerca (ADR-0017, decisiones 26-28, 34 y 52), POR DEFECTO (O10a, Antonio 2026-11-02): sin ?olivos=, si la finca trae copas_param y copas_id (y el aparato puede), se comporta como con ?olivos=gen;
@@ -345,12 +345,12 @@
     }
     // la transformación de cada árbol: su sitio, la exageración vertical y, en las variantes, el estirado a la copa y la altura medidas
     function matrizDe(c, r, variante) {
-      var gz = suelo(c.x, c.y) * exag, sx = r.escala[0], sy = r.escala[1], sz = r.escala[2];
+      var gz = suelo(c.x, c.y) * Estado.exag, sx = r.escala[0], sy = r.escala[1], sz = r.escala[2];
       if (variante) {   // a la copa y la altura del propio (parametrosDe); lo que no se sepa, a las de la receta
         var P = parametrosDe(c).parametros, k = P.copa > 0 ? P.copa / r.medidas.copa_m : 1, ky = P.altura > 0 ? P.altura / r.medidas.altura_m : 1;
         sx *= k; sz *= k; sy *= ky;
       }
-      return new THREE.Matrix4().makeScale(sx, sy * exag, sz).setPosition(c.x, gz, -c.y);
+      return new THREE.Matrix4().makeScale(sx, sy * Estado.exag, sz).setPosition(c.x, gz, -c.y);
     }
     function tri(r) { return r ? M.triangulosNivel(r) + extraSil(r) : 0; }
     // AG-2.2: lo que añaden las cartulinas recortadas (la biblioteca cuenta 2 triángulos por ramita o relleno y 6 por tarjeta): así el reparto por
@@ -380,7 +380,7 @@
       if (estado !== "activo") return NADA;
       if (ESCALERA) return actualizaEscalera(fx, fz, tope, olivos, escala, retener);
       // lo que se observa (el foco: el punto de la órbita, o quien pasea), y solo si la cámara está cerca de él: desde lejos no se genera nada
-      var cam = camera.position, amplia = Math.max(1, Math.sqrt(escala || 1)), lejos = Math.hypot(cam.x - fx, cam.z - fz, Math.max(0, cam.y - suelo(fx, -fz) * exag)) > 150 * amplia;   // con el aparato holgado (escala de 07b > 1) se genera desde más lejos: hasta ~240 m
+      var cam = camera.position, amplia = Math.max(1, Math.sqrt(escala || 1)), lejos = Math.hypot(cam.x - fx, cam.z - fz, Math.max(0, cam.y - suelo(fx, -fz) * Estado.exag)) > 150 * amplia;   // con el aparato holgado (escala de 07b > 1) se genera desde más lejos: hasta ~240 m
       var pres = tope * FRACCION, vr = VRP.on, nivV = vr ? "E2VR" : "E2";
       var cand = [];
       if (!lejos) for (var i = 0; i < olivos.length; i++) { var c = olivos[i], d = Math.hypot(c.x - fx, -c.y - fz); if (d < RADIO_CAND * amplia) cand.push({ c: c, d: d }); }
@@ -430,7 +430,7 @@
         var otra = p.propio ? "p" + p.c.i + ":" + (p.niv === "E0" ? "E1" : "E0") : null;
         if (otra && recetas[otra]) listosAhora.push({ c: p.c, d: p.d, clave: otra, niv: p.niv === "E0" ? "E1" : "E0", propio: true, provisional: p.provisional });
       });
-      var cl = exag + "|" + listosAhora.map(function (p) { return p.c.i + "=" + p.clave; }).join(",");
+      var cl = Estado.exag + "|" + listosAhora.map(function (p) { return p.c.i + "=" + p.clave; }).join(",");
       if (cl !== claveLote && !hay("Glote") && !fundido) {
         var fija = listosAhora.slice(), items = elementos(fija);
         encola("Glote", -1, seguro(compiladoG(construyeG(items))), function (g) { if (g) colocaLote(g, fija, items, cl); });
@@ -468,7 +468,7 @@
     }
     function distOjo(c, o) {
       var dx = c.x - o.x, dz = -c.y - o.z; if (o.plano) return Math.hypot(dx, dz);
-      return Math.hypot(dx, dz, Math.max(0, o.y - (c.gz !== undefined ? c.gz : suelo(c.x, c.y)) * exag));
+      return Math.hypot(dx, dz, Math.max(0, o.y - (c.gz !== undefined ? c.gz : suelo(c.x, c.y)) * Estado.exag));
     }
     // px por (metro de alto / metro de distancia): alto del búfer · P[5] / 2 (P[5] = 1 / tan(fov/2)); en VR, el de un ojo; sin cámara, 1080 p a 42°
     function kPixeles() {
@@ -481,9 +481,9 @@
       v2 = v2 || new THREE.Vector2(); renderer.getDrawingBufferSize(v2);
       return v2.y > 0 ? v2.y * camera.projectionMatrix.elements[5] / 2 : Escalera.K_PX;
     }
-    function altoDe(c) { var P = parametrosDe(c).parametros; return (P.altura > 0 ? P.altura : Math.max(1, c.h || 4)) * exag; }
+    function altoDe(c) { var P = parametrosDe(c).parametros; return (P.altura > 0 ? P.altura : Math.max(1, c.h || 4)) * Estado.exag; }
     function actualizaEscalera(fx, fz, tope, olivos, escala, retener) {
-      var cam = camera.position, amplia = Math.max(1, Math.sqrt(escala || 1)), lejos = Math.hypot(cam.x - fx, cam.z - fz, Math.max(0, cam.y - suelo(fx, -fz) * exag)) > 150 * amplia;
+      var cam = camera.position, amplia = Math.max(1, Math.sqrt(escala || 1)), lejos = Math.hypot(cam.x - fx, cam.z - fz, Math.max(0, cam.y - suelo(fx, -fz) * Estado.exag)) > 150 * amplia;
       var vr = VRP.on, NIV = ["E0", "E1", vr ? "E2VR" : "E2"], nv = nVar(), ojo = ojoAhora(), kPx = kPixeles(), cand = [];
       if (!lejos) for (var i = 0; i < olivos.length; i++) { var c = olivos[i]; if (Math.hypot(c.x - fx, -c.y - fz) < RADIO_CAND * amplia) cand.push({ c: c, d: distOjo(c, ojo) }); }
       cand.sort(function (a, b) { return a.d - b.d; }); if (cand.length > 120) cand.length = 120;
@@ -531,7 +531,7 @@
       if (retener) selLote.forEach(function (p) { if (!porOlivo[p.c.i] && recetas[p.clave]) listosAhora.push(p); });   // sin lejanos todavía: nada se queda sin dibujar
       listosAhora.sort(function (a, b) { return a.d - b.d || (a.rol || 0) - (b.rol || 0); });
       ranuras(listosAhora);
-      var cl = exag + "|" + listosAhora.map(function (p) { return p.c.i + "=" + p.clave + ":" + (p.rol || 0) + ":" + (p.ranura || 0); }).join(",");
+      var cl = Estado.exag + "|" + listosAhora.map(function (p) { return p.c.i + "=" + p.clave + ":" + (p.rol || 0) + ":" + (p.ranura || 0); }).join(",");
       if (cl !== claveLote && !hay("Glote") && !fundido) {
         var fija = listosAhora.slice(), items = elementos(fija);
         encola("Glote", -1, seguro(compiladoG(construyeG(items))), function (g) { if (g) colocaLote(g, fija, items, cl); });

@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: HudPersonalPuro
-// Consume: 01_datos ($), 02c_componentes (Bus), 02e_entidades (Usables), 03_escena (modo), 09_camara (objetivo), 12_paseo (paseando, pp),
-//   13b_hazas (Hazas), 15_tiempo (horaMundoTexto), 31_hud (Hud)
+// Consume: 01_datos ($), 02c_componentes (Bus), 02e_entidades (Usables), 09_camara (objetivo), 12_paseo (paseando, pp), 13b_hazas (Hazas),
+//   15_tiempo (horaMundoTexto), 31_hud (Hud)
 // ===============================================================================
   // ---------- lo tuyo en pantalla (EV2-A4, doc/sistema/VIABILIDAD-INTERACCION.md): «hora · tu haza · hablar · volver» juntos, bajo el tiempo del HUD.
   // Es HTML (#hudPersonal en plantilla.html, clases en plantilla.css): 0 llamadas de dibujo y 0 estilos en línea. No reinventa nada: la hora es la del mundo

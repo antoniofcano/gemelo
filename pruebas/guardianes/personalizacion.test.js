@@ -219,10 +219,10 @@ function mundoMotor(o) {
   // P7g D4: la fecha de «hoy» del motor (por defecto, otoño: 2-nov-2026)
   const AHORA = o.ahora || "2026-11-02T10:00:00+01:00";
   class FechaFalsa extends Date { constructor(...a) { super(...(a.length ? a : [AHORA])); } }
-  const f = new Function("D", "location", "fetch", "document", "window", "THREE", "Entidades", "Usables", "Laminas", "Hazas", "HazasPuro", "Bus", "camera", "lienzo", "exag", "VRX", "Image", "createImageBitmap", "console", "Date",
+  const f = new Function("D", "location", "fetch", "document", "window", "THREE", "Entidades", "Usables", "Laminas", "Hazas", "HazasPuro", "Bus", "camera", "lienzo", "Estado", "VRX", "Image", "createImageBitmap", "console", "Date",
     "\"use strict\";\n" + trozo("// [puro:inicio]", "// [puro:fin]") + trozo("// [motor:inicio]", "// [motor:fin]") + "\nreturn PersonalizaMotor;");
   const HazasPuro = { prefijoApi: () => (o.sinApi ? null : "/api/") };
-  const motor = f({ base: "/teselas/hituelo/", finca_id: "hituelo" }, { search: "" }, fetchFalso, documento, {}, { Vector3: V3 }, Entidades, Usables, Laminas, Hazas, HazasPuro, Bus, camera, lienzo, 1, VRX, Imagen, undefined,
+  const motor = f({ base: "/teselas/hituelo/", finca_id: "hituelo" }, { search: "" }, fetchFalso, documento, {}, { Vector3: V3 }, Entidades, Usables, Laminas, Hazas, HazasPuro, Bus, camera, lienzo, { exag: 1 }, VRX, Imagen, undefined,
     { error: (...a) => reg.errores.push(a.join(" ")) }, FechaFalsa);
   const on = {}, n = { on: (ev, fn) => { on[ev] = fn; return () => {}; } };
   return { motor, n, on, reg, body, Entidades, VRX, camera, listo: () => new Promise(r => setTimeout(r, 5)) };

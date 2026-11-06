@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
 // Consume: 01_datos ($), 02_mundo (suelo, copas, cIn, marc), 02c_componentes (Componentes), 02g_vr_presupuesto (VrPresupuesto),
-//   02j_estaticos (Estaticos), 03_escena (scene, colorCss, exag), 08_marcadores (listo)
+//   02j_estaticos (Estaticos), 03_escena (scene, colorCss, Estado), 08_marcadores (listo)
 // ===============================================================================
 
   // ---------- los marcadores de la nube LiDAR (componente «marcadores-lidar», ADR-0023, C10 tercera tanda): las copas detectadas (octaedros), los olivos guardados en
@@ -27,11 +27,11 @@
     [gCopas, gMarc, gDesf].forEach(function (g) { Estaticos.congela(g); });   // AG-1.15: nada de esto se mueve como objeto (la exageración va en las matrices de instancia y en los vértices)
     var tmpMarc = new THREE.Object3D();
     function coloca() {
-      cIn.forEach(function (c, i) { tmpMarc.position.set(c.x, (suelo(c.x, c.y) + c.h + 1.4) * exag, -c.y); tmpMarc.updateMatrix(); mCopas.setMatrixAt(i, tmpMarc.matrix); }); mCopas.instanceMatrix.needsUpdate = true;
+      cIn.forEach(function (c, i) { tmpMarc.position.set(c.x, (suelo(c.x, c.y) + c.h + 1.4) * Estado.exag, -c.y); tmpMarc.updateMatrix(); mCopas.setMatrixAt(i, tmpMarc.matrix); }); mCopas.instanceMatrix.needsUpdate = true;
       var seg = [];
       marc.forEach(function (m, i) {
-        var gz = suelo(m.x, m.y); tmpMarc.position.set(m.x, (gz + 0.35) * exag, -m.y); tmpMarc.updateMatrix(); mMarc.setMatrixAt(i, tmpMarc.matrix);
-        if (m.par >= 0) { var c = copas[m.par], g2 = suelo(c.x, c.y); seg.push(m.x, (gz + 0.5) * exag, -m.y, c.x, (g2 + 0.5) * exag, -c.y); }
+        var gz = suelo(m.x, m.y); tmpMarc.position.set(m.x, (gz + 0.35) * Estado.exag, -m.y); tmpMarc.updateMatrix(); mMarc.setMatrixAt(i, tmpMarc.matrix);
+        if (m.par >= 0) { var c = copas[m.par], g2 = suelo(c.x, c.y); seg.push(m.x, (gz + 0.5) * Estado.exag, -m.y, c.x, (g2 + 0.5) * Estado.exag, -c.y); }
       }); mMarc.instanceMatrix.needsUpdate = true;
       desfGeo.setAttribute("position", new THREE.Float32BufferAttribute(seg, 3));
       // la esfera de recorte se calcula tras escribir las posiciones (three la calcula una sola vez, con lo que hubiera en el primer fotograma, y la exageración las mueve en y); con un vértice no finito, sin recorte
@@ -55,7 +55,7 @@
   }
   Componentes.registra({
     id: "marcadores-lidar", version: 1,
-    consume: ["Estaticos", "scene", "colorCss", "cIn", "marc", "copas", "suelo", "exag", "listo", "VrPresupuesto"],
+    consume: ["Estaticos", "scene", "colorCss", "cIn", "marc", "copas", "suelo", "Estado", "listo", "VrPresupuesto"],
     expone: [],
     eventos: { escucha: ["mundo:aplica", "capas:cambia"], emite: [] },
     bandera: { defecto: true, url: "marcadores" },

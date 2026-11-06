@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos (D), 02_mundo (suelo), 02c_componentes (Componentes), 02e_entidades (Entidades), 03_escena (scene, exag),
+// Consume: 01_datos (D), 02_mundo (suelo), 02c_componentes (Componentes), 02e_entidades (Entidades), 03_escena (scene, Estado),
 //   13_parcelas (parcelas), 29_vr (ficha)
 // Nota: Componente «trabajo-hoy» (F4b, W1): un tractor ilustrativo en cada haza con tarea en curso (DEDUCIDO), APAGADO por defecto (?trabajo=1). Solo se registra; nadie lo nombra. No pide nada: escucha el evento mundo:hoy. Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/trabajo_hoy.test.js.
 // ===============================================================================
@@ -81,7 +81,7 @@
     var m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), eje = new THREE.Vector3(0, 1, 0), pv = new THREE.Vector3(), sv = new THREE.Vector3(P.ESCALA, P.ESCALA, P.ESCALA);
     function idEnt(s) { return "trabajo:" + s.id; }
     function de(id) { for (var i = 0; i < puestos.length; i++) if (idEnt(puestos[i]) === id) return puestos[i]; return null; }
-    function posDe(s) { return { x: s.x, y: suelo(s.x, s.y) * exag, z: -s.y }; }
+    function posDe(s) { return { x: s.x, y: suelo(s.x, s.y) * Estado.exag, z: -s.y }; }
     function crea() {
       var g = P.geometria();
       geo = new THREE.BufferGeometry();
@@ -96,7 +96,7 @@
       scene.add(malla);
     }
     function escribe() {
-      exagHecha = exag;
+      exagHecha = Estado.exag;
       if (!puestos.length) { if (malla) { malla.count = 0; malla.visible = false; } return; }
       if (!malla) crea();
       puestos.forEach(function (s, i) {
@@ -121,7 +121,7 @@
         return mejor ? { id: idEnt(mejor), d: md } : null;
       }, radioCerca: P.RADIO_CERCA });
     // si cambia la exageración vertical, los tractores se vuelven a posar en el suelo
-    function tarde() { if (vivo && puestos.length && exag !== exagHecha) escribe(); }
+    function tarde() { if (vivo && puestos.length && Estado.exag !== exagHecha) escribe(); }
     function estado() { var c = P.coste(puestos.length); return { tractores: puestos.length, llamadas: c.llamadas, triangulos: c.triangulos, ids: puestos.map(function (s) { return s.id; }) }; }
     function libera() {
       vivo = false; puestos = [];

@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
 // Consume: 01_datos (D, FACTOR_R8, FACTOR_R8_GEN), 02_mundo (suelo, copas), 02c_componentes (Bus, ConfigPuro, Componentes),
-//   02e_entidades (Entidades), 02j_estaticos (Estaticos), 03_escena (scene, camera, exag), 06_arboles (radioEn), 07ab_generados (Generados),
+//   02e_entidades (Entidades), 02j_estaticos (Estaticos), 03_escena (scene, camera, Estado), 06_arboles (radioEn), 07ab_generados (Generados),
 //   09_camara (objetivo), 12_paseo (paseando), 29_vr (VRX)
 // Nota: Componente «decoraciones-olivo» (P7g D3, decisiones 175-179): la pieza de temporada colgada de los olivos cercanos al foco (flores, cinta, farolillo, cosecha, luces, lazo), ILUSTRATIVA, una InstancedMesh por pieza con mergeGeometries de three (import() al montarse; ≤ 6 llamadas y ≤ 64 piezas). Solo se registra; nadie lo nombra. Sin servidor no crea nada; no habla con la api: la lista le llega por el Bus («decoraciones:cambian», la pide con «decoraciones:pide»). Complementa la ficha del olivo con la fila «Decoración». Publica window.__decoraciones (pruebas). Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/decoraciones.test.js.
 // ===============================================================================
@@ -213,7 +213,7 @@
         var l = por[p.id] || [], im = l.length ? malla(p.id) : mallas[p.id];
         if (!im) return;
         for (var i = 0; i < l.length; i++) {
-          var c = copaDe(l[i]), o = P.coloca(c, l[i].copas_id, radioEn, factorDe(c), suelo(c.x, c.y), exag);
+          var c = copaDe(l[i]), o = P.coloca(c, l[i].copas_id, radioEn, factorDe(c), suelo(c.x, c.y), Estado.exag);
           q.setFromAxisAngle(eje, o.giro); pv.set(o.x, o.y, o.z); sv.set(o.escala, o.escala, o.escala);
           im.setMatrixAt(i, m4.compose(pv, q, sv));
         }
@@ -222,17 +222,17 @@
       });
       var k = P.coste(por, triDe); st.llamadas = k.llamadas; st.triangulos = k.triangulos;
       st.porPieza = {}; Object.keys(por).forEach(function (id) { st.porPieza[id] = por[id].length; });
-      exagHecha = exag; tReescribe = 0; st.reescrituras++;
+      exagHecha = Estado.exag; tReescribe = 0; st.reescrituras++;
     }
     function tarde(dt) {
       if (!vivo || !U) return;
       tReescribe += dt || 0;
       var vr = typeof VRX !== "undefined" && VRX && VRX.on;
       var f = P.foco({ vr: vr, cab: vr ? VRX.cab : null, paseando: typeof paseando !== "undefined" && paseando, camara: camera.position, objetivo: typeof objetivo !== "undefined" ? objetivo : null });
-      if (!sucio && !P.seMovio(f, focoHecho) && exag === exagHecha && tReescribe < P.REESCRIBE_S) return;
+      if (!sucio && !P.seMovio(f, focoHecho) && Estado.exag === exagHecha && tReescribe < P.REESCRIBE_S) return;
       var r = P.reparte(P.eligeCercanas(items, posDe, f, P.CERCA_M, P.MAX)); st.elegidas = 0; Object.keys(r.por).forEach(function (k) { st.elegidas += r.por[k].length; });
       focoHecho = f;
-      if (r.firma !== firma || sucio || exag !== exagHecha || tReescribe >= P.REESCRIBE_S) { firma = r.firma; escribe(r.por); }
+      if (r.firma !== firma || sucio || Estado.exag !== exagHecha || tReescribe >= P.REESCRIBE_S) { firma = r.firma; escribe(r.por); }
       sucio = false;
     }
     function vacia() {

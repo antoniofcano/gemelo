@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: gArboles, gFollaje, gSombras, matTronco, radioEn, arbolesG
 // Consume: 01_datos (D, fmt, FACTOR_R8, ESC_R8), 02_mundo (suelo, aviva, colorEn, copas, marc), 02e_entidades (Entidades),
-//   02i_materiales (Materiales), 02j_estaticos (Estaticos), 03_escena (scene, camera, colorVertSRGB, exag), 04d_sombreado_tiles (hash),
+//   02i_materiales (Materiales), 02j_estaticos (Estaticos), 03_escena (scene, camera, colorVertSRGB, Estado), 04d_sombreado_tiles (hash),
 //   07ab_generados (Generados), 13_parcelas (parcelas), 14_historia (FINCA)
 // ===============================================================================
   // ---------- los olivos del modo Gemelo: copa con la forma real medida (8 radios) y tronco debajo (nivel 0, por celdas de 64 m; ver Arboles)
@@ -27,7 +27,7 @@
           var f = i / NS, rr = r0 + (r1 - r0) * f;
           for (var a3 = 0; a3 < RS; a3++) {
             var an = a3 / RS * 6.283 + sem, wob = 1 + 0.14 * Math.sin(an * 3 + sem * 5 + i);
-            tp.push(pts[i][0] + Math.cos(an) * rr * wob, pts[i][1] * exag, -(pts[i][2] + Math.sin(an) * rr * wob));
+            tp.push(pts[i][0] + Math.cos(an) * rr * wob, pts[i][1] * Estado.exag, -(pts[i][2] + Math.sin(an) * rr * wob));
             var m = 0.30 + 0.12 * hash(sem * 31 + i * 7 + a3);
             tc.push(0.50 * m * 1.7, 0.43 * m * 1.7, 0.36 * m * 1.7);
           }
@@ -68,7 +68,7 @@
           var rho = rr * Math.pow(sn, 0.72) * bump * FACTOR_R8;   // el radio dibujado de la copa (01_datos.js)
           var wx = t.x + Math.cos(th) * rho, wy = t.y + Math.sin(th) * rho;
           var hy = cb + (top - cb) * Math.pow(tt, 0.85) * 0.80 + 0.18 * Math.sin(th * 5 + rg + n) * sn;
-          cp.push(wx, (gz + hy) * exag, -wy);
+          cp.push(wx, (gz + hy) * Estado.exag, -wy);
           colorEn(wx, wy, hy, c3); aviva(c3, wx, wy);
           var up = 0.78 + 0.28 * Math.cos(ph) , gr = 0.9 + 0.2 * hash(n * 3 + sg * 5 + rg);
           var sombra = rg > RING * 0.62 ? 0.38 : 0.62;
@@ -99,7 +99,7 @@
       var best = null, bd = 26;
       copas.forEach(function (c) {
         if (!c.oliv) return;
-        v.set(c.x, (suelo(c.x, c.y) + c.h * 0.7) * exag, -c.y).project(camera); if (v.z > 1) return;
+        v.set(c.x, (suelo(c.x, c.y) + c.h * 0.7) * Estado.exag, -c.y).project(camera); if (v.z > 1) return;
         var sx = (v.x * 0.5 + 0.5) * r.width + r.left, sy = (-v.y * 0.5 + 0.5) * r.height + r.top, d = Math.hypot(sx - cx, sy - cy); if (d < bd) { bd = d; best = c; }
       });
       return best ? { id: idDe(best), s: bd / 26 } : null;
@@ -107,7 +107,7 @@
     function enRayo(rr) {
       var best = null, bs = 1e9, bt = 1e9, bp = 1, ro = rr.ray.origin, rd = rr.ray.direction;
       copas.forEach(function (c) {
-        if (!c.oliv) return; var cy = (suelo(c.x, c.y) + c.h * 0.6) * exag; w.set(c.x - ro.x, cy - ro.y, -c.y - ro.z); var t = w.dot(rd); if (t < 0.4 || t > 150) return;
+        if (!c.oliv) return; var cy = (suelo(c.x, c.y) + c.h * 0.6) * Estado.exag; w.set(c.x - ro.x, cy - ro.y, -c.y - ro.z); var t = w.dot(rd); if (t < 0.4 || t > 150) return;
         var perp = w.addScaledVector(rd, -t).length(), rad = Math.max(1.3, 0.55 * rm(c)), s = perp / rad; if (s < 1 && t * 0.02 + s < bs) { bs = t * 0.02 + s; best = c; bt = t; bp = s; }
       });
       return best ? { id: idDe(best), t: bt, s: bp } : null;
@@ -132,6 +132,6 @@
     }
     Entidades.registra({ tipo: "olivo", dueno: "06_arboles", prioridad: 10, pantalla: enPantalla, rayo: enRayo, ficha: fichaOlivo,
       existe: function (id) { return !!copaDe(id); },
-      pos: function (id) { var c = copaDe(id); return c ? { x: c.x, y: suelo(c.x, c.y) * exag, z: -c.y } : null; },
+      pos: function (id) { var c = copaDe(id); return c ? { x: c.x, y: suelo(c.x, c.y) * Estado.exag, z: -c.y } : null; },
       radio: function (id) { var c = copaDe(id); return c ? Math.max(1, rm(c) * 1.1) : 1; } });
   })();

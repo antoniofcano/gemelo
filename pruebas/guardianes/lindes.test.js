@@ -170,7 +170,7 @@ function entorno({ hazas = [], falla = false } = {}) {
   const L = { LineSegments2: Linea, LineSegmentsGeometry: Geo, LineMaterial: Mat };
   let resuelve; const lib = new Promise((ok, ko) => { resuelve = () => (falla ? ko(new Error("sin red")) : ok(L)); });
   const env = {
-    THREE, Mundo: { TS, cx: 430000, cy: 4180000, alCargar: fn => { reg.cargas.push(fn); } }, suelo: () => 10, exag: 1,
+    THREE, Mundo: { TS, cx: 430000, cy: 4180000, alCargar: fn => { reg.cargas.push(fn); } }, suelo: () => 10, Estado: { exag: 1 },
     gLinde: { visible: true, add: o => reg.añadidos.push(o), remove: o => reg.quitados.push(o) },
     Minimapa: { capa: (fn, orden) => { reg.capas.push({ fn, orden }); return () => { reg.capas.length = 0; }; } },
     Hazas: { lindes: () => hazas.map(h => ({ id: h.id, codigo: h.codigo, es_mia: h.es_mia, anillos: h.anillos })) },
@@ -179,7 +179,7 @@ function entorno({ hazas = [], falla = false } = {}) {
   conFabrica(env);
   const nombres = Object.keys(env);
   const crea = new Function(...nombres, "\"use strict\";\n" + PURO + MOTOR + "\nreturn { LindesMotor: LindesMotor, pon: function (k, v) { eval(k + ' = v'); } };");
-  // exag es una variable del motor que cambia el deslizador: se simula con un getter sobre un objeto mutable
+  // exag es un campo de Estado que cambia el deslizador (A1-13): pon("Estado.exag", v) lo cambia
   const fuera = crea(...nombres.map(n => env[n]));
   const limpia = [], n = { on: (ev, fn) => { (reg.oyentes[ev] = reg.oyentes[ev] || []).push(fn); return () => {}; }, limpia: fn => { limpia.push(fn); return fn; } };
   const api = fuera.LindesMotor(n, () => lib);
@@ -234,7 +234,7 @@ test("componente: «hazas:cambia» rehace (y suelta lo anterior); relieve nuevo 
   assert.strictEqual(e.reg.cargas.length, 1, "Mundo.alCargar, una vez"); e.reg.cargas[0]();
   e.api.tarde(); assert.strictEqual(e.api.estado().repegadas, 1);
   assert.strictEqual(buf.array, arr, "mismo búfer"); assert.ok(buf.version >= 1, "marcado para subir a la GPU");
-  e.pon("exag", 2); e.api.tarde();
+  e.pon("Estado.exag", 2); e.api.tarde();
   assert.strictEqual(e.api.estado().repegadas, 2); assert.ok(Math.abs(arr[1] - (10 + 0.2) * 2) < 1e-4, "a (suelo + alto) × exag");
   // llegan otras hazas: se suelta lo de antes (2 geometrías y 2 materiales) y se rehace con lo nuevo
   hz.pop(); e.emite("hazas:cambia", { n: 1, propias: 1 });

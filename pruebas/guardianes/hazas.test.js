@@ -173,7 +173,7 @@ function entorno({ base, busqueda = "", respuesta }) {
   const consola = { log: (...a) => reg.consola.push(a), warn: (...a) => reg.consola.push(a), error: (...a) => reg.consola.push(a), info: (...a) => reg.consola.push(a) };
   const env = {
     THREE, D, fetch, console: consola, location: { search: busqueda }, $: () => elemento(), document: { createElement: elemento },
-    window: oyente("window"), lienzo: oyente("lienzo"), camera: { far: 5000 }, SRGB: "srgb", exag: 1, paseando: false, pp: { x: 0, y: 0 }, objetivo: { x: 0, z: 0 },
+    window: oyente("window"), lienzo: oyente("lienzo"), camera: { far: 5000 }, SRGB: "srgb", Estado: { exag: 1 }, paseando: false, pp: { x: 0, y: 0 }, objetivo: { x: 0, z: 0 },
     suelo: () => 0, Mundo: { alCargar: () => reg.oyentes.push("Mundo.alCargar") }, gLinde: { add: o => reg.añadidos.push(o), remove: o => reg.quitados.push(o) },
     performance: { now: () => 0 }, Entidades: { registra: () => () => reg.oyentes.push("Entidades:quita") }, Bus: { emite: (ev, d) => { reg.eventos.push([ev, d]); return 0; }, on: () => () => {}, hay: () => false },
   };

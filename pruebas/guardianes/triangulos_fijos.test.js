@@ -18,7 +18,7 @@ function mundoPaisaje() {
     THREE, D: { paisaje: { edificios: [], tendido: { linea: [], postes: [], derivaciones: [] }, arroyo: { ejes: [] },
       arboles: [{ x: 30, y: -30, h: 8, r: 3, tipo: "encina" }, { x: -60, y: 70, h: 3, r: 2, tipo: "arbusto" }] } },
     $: () => ({ checked: true, addEventListener() {} }), ESC_R8: 1, suelo: () => 80, desp: () => 0, copas: [], scene: new THREE.Scene(), SRGB: THREE.SRGBColorSpace,
-    sol: {}, exag: 1, hash, gSombras: new THREE.Group(), tronco: null, matSombra: new THREE.MeshBasicMaterial({ transparent: true }),
+    sol: {}, Estado: { exag: 1 }, hash, gSombras: new THREE.Group(), tronco: null, matSombra: new THREE.MeshBasicMaterial({ transparent: true }),
     geoSombra: new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), pon() {}, lista: [], lluvia: null, cur: { ms: 0, nub: 0, lluvia: 0, dir: 0, viento: 0 },
     tMundo: 0, nivel: () => ({ s: { alt: 0.8, az: 0.4 }, d: 1 }), esfera: null, EST: { activa: false }
   };
