@@ -144,6 +144,41 @@ test("las cabeceras son coherentes: lo que un módulo consume lo expone el módu
   }
 });
 
+// L4-02: la derivación de «Consume» mira solo el código; con un motor de mentira (dos módulos en un directorio temporal)
+function motorDeMentira(codigoB) {
+  const dir = fs.mkdtempSync(path.join(require("os").tmpdir(), "gemelo-mod-"));
+  fs.writeFileSync(path.join(dir, "01_a.js"), "  var Alfa = 1, yN = 2;\n  function Beta() { return Alfa; }\n");
+  fs.writeFileSync(path.join(dir, "02_b.js"), codigoB);
+  fs.writeFileSync(path.join(dir, "03_c.js"), "  var z = Alfa + yN + Beta();\n");   // lo que hace que 01_a «exponga» esos nombres
+  return dir;
+}
+test("contrato_modulos: un nombre que solo está en un comentario o en una cadena no es un consumo", () => {
+  const dir = motorDeMentira([
+    "  // Alfa aparece aquí, y /* Beta */ aquí",
+    "  var t = \"Alfa y yN\", u = 'Beta', v = `Alfa ${1 + 1} yN`;",
+    "  var r = /Alfa/.test(t); var o = { Alfa: 1 }; var p = o.Beta;",
+    "",
+  ].join("\n"));
+  try {
+    const d = contratoModulos.deriva(dir);
+    assert.deepStrictEqual(d.cons["02_b.js"], {}, "ningún consumo real");
+    assert.deepStrictEqual(d.expone["01_a.js"], ["Alfa", "yN", "Beta"]);
+    // y `--comprueba` suspende una cabecera que declara el consumo falso
+    contratoModulos.escribe(dir);
+    assert.deepStrictEqual(contratoModulos.comprueba(dir), []);
+    const f = path.join(dir, "02_b.js"), s = fs.readFileSync(f, "utf8");
+    fs.writeFileSync(f, s.replace("// Consume: (nada de otros módulos)", "// Consume: 01_a (Alfa)"));
+    assert.deepStrictEqual(contratoModulos.comprueba(dir), ["02_b.js"], "consumo que solo existe en un comentario/cadena");
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+test("contrato_modulos: el uso real en el código sí cuenta, también el de una expresión de plantilla y el de un nombre corto de la lista blanca", () => {
+  const dir = motorDeMentira("  var x = Beta(); var s = `v=${yN}`;\n");
+  try {
+    const d = contratoModulos.deriva(dir);
+    assert.deepStrictEqual(d.cons["02_b.js"], { "01_a": ["yN", "Beta"] });
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
 /** claves de primer nivel del último `return { … }` de la IIFE `var NOMBRE = (function`, o del literal `window.NOMBRE = {` */
 function claves(fuente, ini) {
   const i = fuente.indexOf("{", ini); let prof = 0, instr = null, cur = "", out = [], esperaClave = true;

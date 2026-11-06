@@ -2,10 +2,10 @@
 //   node pruebas/contrato_modulos.js --comprueba   sale con 1 y lista las cabeceras que ya no coinciden (lo usa pruebas/guardianes/contratos.test.js)
 //   node pruebas/contrato_modulos.js --escribe     reescribe las cabeceras (hazlo tras añadir o quitar una declaración compartida entre módulos)
 // Expone  = declaraciones de primer nivel (dos espacios de sangría, `var`/`function`) que otro módulo usa.
-// Consume = nombres expuestos por otros módulos que este usa. Es una derivación textual: un nombre local que coincida puede colarse; la cabecera lo dice.
+// Consume = nombres expuestos por otros módulos que este usa en su CÓDIGO (no en comentarios ni cadenas; tokenizador de acorn). Un nombre local que coincida puede colarse; los de menos de 3 letras solo cuentan si están en CORTOS.
 "use strict";
 const fs = require("fs"), path = require("path");
-const SRC = path.join(__dirname, "..", "apps", "web", "motor");
+const SRC0 = path.join(__dirname, "..", "apps", "web", "motor");
 const MARCA_I = "// ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====";
 const MARCA_F = "// ===============================================================================";
 const NOTAS = {
@@ -32,8 +32,8 @@ const NOTAS = {
   "40_juegos.js": "Componente «juegos» (ADR-0023, C9a): el anfitrión de juegos casuales. Solo se registra; nadie lo nombra. Montado: icono y ventana «Juegos», tecla J, recoge los juegos por el Bus («juego:ofrece» / «juego:pide» / «juego:retira»), abre uno a pantalla completa con el mundo en pausa (Pausa de 02c; su fase «pausa») y guarda el récord (localStorage y, con servidor, /api/juegos/<id>/…). Publica window.__juegos (pruebas). El trozo [puro:…] lo evalúa en Node pruebas/guardianes/juego_cosecha.test.js.",
   "41_cae_la_cosecha.js": "Componente «cae-la-cosecha» (ADR-0023, C9a): el primer juego casual (diseño propio del género «piezas que caen»). Solo se registra; nadie lo nombra. Se ofrece al anfitrión por el Bus y pide sus sonidos con «sonido:juego». Los trozos [puro:…] (las reglas, con semilla) y [dibujo:…] los evalúa en Node pruebas/guardianes/juego_cosecha.test.js.",
   "42_personalizacion.js": "Componente «personalizacion» (P7f, decisiones 91-96 y 99-102): nombrar, colgar una foto o un dibujo, verlo y denunciarlo en los olivos de las hazas. Solo se registra; nadie lo nombra. Sin servidor (sin D.base /teselas/… ni ?api=) no pide ni crea nada. Complementa la ficha común del olivo (Entidades.complementa), reduce la imagen en el aparato, pide el aviso con casilla y habla con /api/sesion, /api/hazas/{id}/olivos, /api/medios, /api/olivos, /api/personalizaciones/{id}/denuncias y /api/hazas/{id}/sugerencias. Publica las decoraciones de la lista (P7g D3) por el Bus («decoraciones:cambian»). Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/personalizacion.test.js.",
-  "53_mundo_hoy.js": "Componente «mundo-hoy» (EV-3a, contratos/mundo-hoy.md): solo se registra; nadie lo nombra. Con D.base /teselas/… o ?api= pide GET /api/mundo/hoy (mismo origen) al montar y cada 10 min y pinta la tarjeta «Hoy en el campo» en Tiempo y estación → Ahora (textContent) y el primer aviso en el HUD; sin servidor no pide nada. De lo que la derivación cree que consume, solo D, $, Componentes, HazasPuro y Hud son usos: persona, parcelas, marca, lista, aviso, lluvia, hace y ficha son palabras de sus textos. Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/mundo_hoy.test.js.",
-  "54_trabajo_hoy.js": "Componente «trabajo-hoy» (F4b, W1): un tractor ilustrativo en cada haza con tarea en curso (DEDUCIDO), APAGADO por defecto (?trabajo=1). Solo se registra; nadie lo nombra. No pide nada: escucha el evento mundo:hoy. De lo que la derivación cree que consume, solo D, suelo, Componentes, Entidades, scene y exag son usos: $, Usables, elige, parcelas, lista, quita y ficha son palabras de sus textos o nombres propios. Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/trabajo_hoy.test.js.",  "52_aves_mes.js": "Componente «aves-mes» (EV-1g «Biodiversidad B0»): ventana «Aves probables este mes» con lo que GBIF registra en 10 km (DEDUCIDO, nivel probable, con atribución y licencias CC0, CC BY y CC BY-SA). Además, la fila «Aves del mes» del panel de VR (pestaña Mundo: 3 especies y «y X más», con «deducido», nota, atribución y licencias; AvesMesPuro.filaVR). Solo se registra; nadie lo nombra. Sin D.base, sin fichero o sin aves de este mes no monta nada (ni fila). Los trozos [puro:…] los evalúa en Node pruebas/guardianes/aves_mes.test.js.",
+  "53_mundo_hoy.js": "Componente «mundo-hoy» (EV-3a, contratos/mundo-hoy.md): solo se registra; nadie lo nombra. Con D.base /teselas/… o ?api= pide GET /api/mundo/hoy (mismo origen) al montar y cada 10 min y pinta la tarjeta «Hoy en el campo» en Tiempo y estación → Ahora (textContent) y el primer aviso en el HUD; sin servidor no pide nada. Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/mundo_hoy.test.js.",
+  "54_trabajo_hoy.js": "Componente «trabajo-hoy» (F4b, W1): un tractor ilustrativo en cada haza con tarea en curso (DEDUCIDO), APAGADO por defecto (?trabajo=1). Solo se registra; nadie lo nombra. No pide nada: escucha el evento mundo:hoy. Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/trabajo_hoy.test.js.",  "52_aves_mes.js": "Componente «aves-mes» (EV-1g «Biodiversidad B0»): ventana «Aves probables este mes» con lo que GBIF registra en 10 km (DEDUCIDO, nivel probable, con atribución y licencias CC0, CC BY y CC BY-SA). Además, la fila «Aves del mes» del panel de VR (pestaña Mundo: 3 especies y «y X más», con «deducido», nota, atribución y licencias; AvesMesPuro.filaVR). Solo se registra; nadie lo nombra. Sin D.base, sin fichero o sin aves de este mes no monta nada (ni fila). Los trozos [puro:…] los evalúa en Node pruebas/guardianes/aves_mes.test.js.",
   "43_agenda.js": "Componente «agenda» (OF11d, ADR-0023; decisiones 145-148): la agenda de la finca dentro del mundo. Solo se registra; nadie lo nombra. Montado (solo con servidor): icono y ventana «Agenda» con los próximos eventos, plazas libres, tu estado (apuntados / en espera) y, solo si la api dice puede_inscribirse, apuntarse o borrarse con el número de personas (1-10); en VR, una fila en la pestaña Mundo del panel que lista los próximos y dice «Apúntate desde el móvil o el ordenador» (nadie se apunta desde las gafas). Todo lo de la api es dato: lista blanca y textContent / fillText. Publica window.__agenda (pruebas). El trozo [puro:…] lo evalúa en Node pruebas/guardianes/agenda_mundo.test.js.",
   "44_lindes.js": "Componente «lindes-hazas» (A4, ADR-0023; decisiones 12, 13, 95 y 139): la linde de las hazas pegada al relieve, la tuya destacada y las ajenas discretas, con LineSegments2/LineMaterial de three (import() al montarse; 2 llamadas, 6 triángulos por tramo, tope de 8.000 tramos). Solo se registra; nadie lo nombra. También pinta las hazas en el minimapa (A4b, Minimapa.capa, la casilla «Linde» las apaga). ?lindes=0 lo apaga todo. Lee Hazas.lindes() al oír «hazas:cambia»; da su línea de ?debug por «depura:lineas». Publica window.__lindes (pruebas). Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/lindes.test.js.",
   "44b_carteles.js": "Componente «carteles-haza» (EV2-A6, ADR-0023; ADR-0014): como mucho 3 carteles de haza sobre la linde (los más cercanos, con histéresis) y un tablón en la entrada, con un pool de 3+1 mallas y lienzos de 512 × 320; solo nombre y datos medidos de la lista blanca de la ficha, cada uno con su procedencia; ?carteles=0 lo apaga; el trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/carteles.test.js.",
@@ -49,11 +49,11 @@ const NOTAS = {
   "99_cierre.js": "Cierra la IIFE abierta en 01_datos.js.",
 };
 
-function lee() {
-  const fich = fs.readdirSync(SRC).filter(f => f.endsWith(".js")).sort();
+function lee(dir = SRC0) {
+  const fich = fs.readdirSync(dir).filter(f => f.endsWith(".js")).sort();
   const txt = {};
   for (const f of fich) {
-    let s = fs.readFileSync(path.join(SRC, f), "utf8");
+    let s = fs.readFileSync(path.join(dir, f), "utf8");
     if (s.startsWith(MARCA_I)) s = s.slice(s.indexOf(MARCA_F) + MARCA_F.length + 1);   // sin la cabecera: se deriva del código
     txt[f] = s;
   }
@@ -80,11 +80,38 @@ function declaradas(s) {
   }
   return out;
 }
-const esc = n => n.replace(/[$]/g, "\\$");
-function usa(n, s) { return new RegExp("(?<![\\w$.])" + esc(n) + "(?![\\w$])").test(s); }
+// Nombres usados = identificadores del CÓDIGO (sin comentarios ni cadenas, ni el texto de plantillas), con el tokenizador
+// de acorn (regla 12: no se escribe a mano un lector de JS, que fallaría con regex y plantillas). El texto de una
+// `${expresión}` sí es código. Se descartan lo que va tras un punto (propiedades) y las claves de objeto literal (`{ x: 1 }`).
+const acorn = require("acorn");
+function nombresDe(s) {
+  const out = new Set(), toks = []; out.locales = new Set();   // locales: declarados dentro (var/let/const/función/parámetros): sombrean un nombre corto compartido
+  for (const t of acorn.tokenizer(s, { ecmaVersion: "latest", allowReturnOutsideFunction: true, allowAwaitOutsideFunction: true })) toks.push(t);
+  for (let i = 0; i < toks.length; i++) {
+    const t = toks[i];
+    if (t.type.label !== "name") continue;
+    const a = toks[i - 1], b = toks[i + 1];
+    if (a && (a.type.label === "." || a.type.label === "?.")) continue;
+    if (b && b.type.label === ":" && a && (a.type.label === "{" || a.type.label === ",")) continue;
+    out.add(s.slice(t.start, t.end));
+    if (a && ["var", "let", "const", "function"].includes(a.type.keyword || a.value)) out.locales.add(s.slice(t.start, t.end));
+    else if (a && a.type.label === "," && b && b.type.label === "=") out.locales.add(s.slice(t.start, t.end));   // `var a = 1, MW = 2`
+  }
+  // parámetros: los nombres entre `function nombre? (` y su `)`
+  for (let i = 0; i < toks.length; i++) {
+    if (toks[i].type.keyword !== "function") continue;
+    let j = i + 1; while (toks[j] && toks[j].type.label !== "(") j++;
+    for (j++; toks[j] && toks[j].type.label !== ")"; j++) if (toks[j].type.label === "name") out.locales.add(s.slice(toks[j].start, toks[j].end));
+  }
+  return out;
+}
+// Nombres cortos (menos de 3 letras) que SÍ cuentan como contrato; los demás cortos (`i`, `a`, `v`…) son locales.
+const CORTOS = new Set(["D", "$", "x0", "yN", "UN", "pp", "OT", "dd", "sw", "TM", "vq", "dr", "MW", "MH", "PA", "SN", "S0", "V0", "TR"]);
+const cache = new Map();
+function usa(n, s) { let c = cache.get(s); if (!c) cache.set(s, c = nombresDe(s)); return c.has(n) && !(n.length < 3 && n !== "D" && n !== "$" && c.locales.has(n)); }
 
-function deriva() {
-  const txt = lee(), dec = {}, expone = {}, cons = {};
+function deriva(dir = SRC0) {
+  const txt = lee(dir), dec = {}, expone = {}, cons = {};
   for (const f in txt) dec[f] = declaradas(txt[f]);
   for (const f in txt) {
     expone[f] = [];
@@ -97,7 +124,7 @@ function deriva() {
     for (const n in dueno) {
       const g = dueno[n];
       if (g === f || dec[f].includes(n)) continue;
-      if (n.length < 3 && n !== "D" && n !== "$") continue;
+      if (n.length < 3 && !CORTOS.has(n)) continue;
       if (usa(n, txt[f])) (c[g.slice(0, -3)] = c[g.slice(0, -3)] || []).push(n);
     }
     cons[f] = c;
@@ -142,21 +169,21 @@ function leeCabecera(s) {
   return { expone, consume };
 }
 
-function comprueba() {
-  const d = deriva(), mal = [];
+function comprueba(dir = SRC0) {
+  const d = deriva(dir), mal = [];
   for (const f in d.txt) {
-    const real = fs.readFileSync(path.join(SRC, f), "utf8");
+    const real = fs.readFileSync(path.join(dir, f), "utf8");
     if (real !== cabecera(f, d) + d.txt[f]) mal.push(f);
   }
   return mal;
 }
-function escribe() {
-  const d = deriva();
-  for (const f in d.txt) fs.writeFileSync(path.join(SRC, f), cabecera(f, d) + d.txt[f], { encoding: "utf8" });
+function escribe(dir = SRC0) {
+  const d = deriva(dir);
+  for (const f in d.txt) fs.writeFileSync(path.join(dir, f), cabecera(f, d) + d.txt[f], { encoding: "utf8" });
   return Object.keys(d.txt).length;
 }
 
-module.exports = { deriva, leeCabecera, comprueba, escribe, MARCA_I, MARCA_F, SRC };
+module.exports = { deriva, leeCabecera, comprueba, escribe, MARCA_I, MARCA_F, SRC: SRC0 };
 
 if (require.main === module) {
   if (process.argv.includes("--escribe")) console.log("cabeceras escritas:", escribe());
