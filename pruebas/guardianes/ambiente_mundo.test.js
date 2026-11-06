@@ -55,7 +55,7 @@ test("03_escena ya no fija lo que es del Ambiente: ni fondo, ni niebla, ni luces
   assert.match(e, /var sol = new THREE\.DirectionalLight\(0xfff0d0, 0\.55 \* LUZ_SOL\); sol\.position\.set\(-120, 160, 90\);\n/);
   // y en ningún módulo del motor se fija ya el near/far a mano, salvo la cámara de las siluetas de 07ac (es otra: cam)
   const fin = sinCabecera(lee("apps/web/motor/90_final.js"));
-  assert.ok(!/camera\.(near|far)\s*=/.test(fin) && !/camera\.(near|far)\s*=/.test(sinCabecera(lee("apps/web/motor/29_vr.js"))));
+  assert.ok(!/camera\.(near|far)\s*=/.test(fin) && !/camera\.(near|far)\s*=/.test(sinCabecera(require("./_fuente").fuenteMotor("29_vr.js"))));
 });
 
 test("el Ambiente del exterior tiene los valores de antes (los que fijaban 03_escena y 29_vr) y 90_final se lo da al exterior y al gestor", () => {

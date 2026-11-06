@@ -29,7 +29,7 @@
       "descripcion": "Un gesto del usuario que deja arrancar el audio del navegador (pulsar «Entrar en VR»). Quien haga sonido lo atiende y reanuda su AudioContext; sin nadie, no pasa nada.",
       "datos": {},
       "emiten": [
-        "29_vr"
+        "mundos/comun/vr-sesion"
       ],
       "escuchan": [
         "20_sonido",
@@ -532,14 +532,14 @@
         "30_mide"
       ],
       "escuchan": [
-        "29_vr"
+        "mundos/comun/vr-panel"
       ]
     },
     "medida:envia": {
       "descripcion": "El botón «Enviar esta medida a la oficina» del panel de VR (con el gatillo): el medidor manda la medida a la api del mismo origen. Sin medidor (?medidor=0) nadie lo atiende.",
       "datos": {},
       "emiten": [
-        "29_vr"
+        "mundos/comun/vr-panel"
       ],
       "escuchan": [
         "30_mide"
@@ -552,7 +552,7 @@
         "30_mide"
       ],
       "escuchan": [
-        "29_vr"
+        "mundos/comun/vr-panel"
       ]
     },
     "medida:estado": {
@@ -569,7 +569,7 @@
         }
       },
       "emiten": [
-        "29_vr"
+        "mundos/comun/vr-panel"
       ],
       "escuchan": [
         "30_mide"
@@ -582,7 +582,7 @@
         "30_mide"
       ],
       "escuchan": [
-        "29_vr"
+        "mundos/comun/vr-panel"
       ]
     },
     "medida:inicia": {
@@ -851,7 +851,7 @@
     "perros:llegan": {
       "descripcion": "El muñequito acaba de aterrizar (o se entra en VR sin haber paseado): los perros salen de entre los olivos corriendo hacia él. Sin perros, no pasa nada.",
       "datos": {},
-      "emiten": ["24_pantalla", "29_vr"],
+      "emiten": ["24_pantalla", "mundos/comun/vr-sesion"],
       "escuchan": ["mundos/exterior/perros"]
     },
     "polvo:emite": {
@@ -1330,7 +1330,7 @@
       "descripcion": "Empieza una sesión de realidad virtual (la cámara ya cuelga del rig y el panel está abierto).",
       "datos": {},
       "emiten": [
-        "29_vr"
+        "mundos/comun/vr-sesion"
       ],
       "escuchan": [
         "40_juegos",
@@ -1341,7 +1341,7 @@
       "descripcion": "La sesión de realidad virtual termina y el rig se deshace: quien dibuje los mandos y las manos suelta sus modelos y sus recursos de GPU.",
       "datos": {},
       "emiten": [
-        "29_vr"
+        "mundos/comun/vr-sesion"
       ],
       "escuchan": [
         "mundos/comun/mandos"
@@ -1361,7 +1361,7 @@
         }
       },
       "emiten": [
-        "29_vr"
+        "mundos/comun/vr-sesion"
       ],
       "escuchan": [
         "mundos/comun/mandos"
@@ -1371,7 +1371,7 @@
       "descripcion": "Termina la sesión de realidad virtual (la cámara vuelve a la pantalla). Lo propio de VR se cierra.",
       "datos": {},
       "emiten": [
-        "29_vr"
+        "mundos/comun/vr-sesion"
       ],
       "escuchan": [
         "02d_laminas",

@@ -164,5 +164,5 @@ test("enganche (texto): 04b mide solo en VR y pone el error; 02f da el tope y la
   assert.match(E, /XrPerillas\.lineaTiles = function/);
   assert.match(E, /tiles\.visibleTiles\.forEach\(sumaVisible\)/);
   assert.match(lee("apps/web/src/nucleo/xr-perillas.ts"), /X\.lineaTiles \? X\.lineaTiles\(\) : ""/);
-  assert.match(lee("apps/web/motor/29_vr.js"), /Escena3D\.perfil\(p\)/, "el nivel de VR sigue llegando por Escena3D.perfil");
+  assert.match(require("./_fuente").fuenteMotor("29_vr.js"), /Escena3D\.perfil\(p\)/, "el nivel de VR sigue llegando por Escena3D.perfil");
 });

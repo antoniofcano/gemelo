@@ -15,7 +15,7 @@ const contratoModulos = require(path.join(__dirname, "..", "contrato_modulos.js"
 
 const sinCabecera = s => s.startsWith(contratoModulos.MARCA_I) ? s.slice(s.indexOf(contratoModulos.MARCA_F) + contratoModulos.MARCA_F.length + 1) : s;
 const trozo = (s, ini, fin) => { const i = s.indexOf(ini), f = s.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas " + ini + " … " + fin); return s.slice(i, f); };
-const HAB = lee("apps/web/motor/47_habla.js"), GUI = lee("apps/web/motor/46_guiada.js"), VRJS = lee("apps/web/motor/29_vr.js"), AJU = lee("apps/web/motor/33_ajustes.js");
+const HAB = lee("apps/web/motor/47_habla.js"), GUI = lee("apps/web/motor/46_guiada.js"), VRJS = require("./_fuente").fuenteMotor("29_vr.js"), AJU = lee("apps/web/motor/33_ajustes.js");
 const PURO = trozo(HAB, "// [puro:inicio]", "// [puro:fin]"), MOTOR = trozo(HAB, "// [motor:inicio]", "// [motor:fin]");
 const H = new Function("\"use strict\";\n" + PURO + "\nreturn HablaPuro;")();
 const PVJS = lee("apps/web/motor/46b_primera_vez.js"), PV = new Function("\"use strict\";\n" + trozo(PVJS, "// [puro:inicio]", "// [puro:fin]") + "\nreturn PrimeraVezPuro;")();

@@ -35,13 +35,28 @@ const TS_DE = {
   // A3-2a: 07ab vive en varios ficheros (la escalera, el horneado, la cola, el sombreado, el lote y el módulo): se leen todos, en este orden
   // A3-6c: la VR y la locomoción, de todo mundo (apps/web/src/mundos/comun/)
   "36_mandos.js": "apps/web/src/mundos/comun/mandos.ts",
+  "29_vr.js": ["vr.ts", "vr-rig.ts", "vr-teletransporte.ts", "vr-panel.ts", "vr-sesion.ts", "vr-puros.ts"].map(f => "apps/web/src/mundos/comun/" + f),
   "07ab_generados.js": ["generados.ts", "generados-escalera.ts", "generados-horneado.ts", "generados-cola.ts", "generados-sombreado.ts", "generados-lote.ts"].map(f => "apps/web/src/mundos/exterior/" + f),
 };
+/** A3-6c: los .ts de mundos/comun/ (la VR y la locomoción) se leen como el JavaScript que sale de ellos: sin los tipos (stripTypeScriptTypes de Node, que los cambia por
+ *  espacios) y sin `export` al principio de línea, con los huecos que dejan los tipos recogidos. Así sus guardianes de siempre (los que buscan el código de 29_vr, 12_paseo… con
+ *  expresiones regulares o evalúan sus trozos [puro] con new Function) miran el código movido tal cual, sin tener que aceptar «: T» en cada patrón. Solo para comun/: los
+ *  guardianes de exterior/ ya leen su TypeScript con los tipos. */
+const COMO_JS = /(^|\/)apps\/web\/src\/mundos\/comun\//;
+function comoJs(ts) {
+  const m = require("node:module"), avisa = process.emitWarning;
+  process.emitWarning = () => {};   // «experimental»: no ensucia la salida de las pruebas
+  let js; try { js = m.stripTypeScriptTypes(ts); } finally { process.emitWarning = avisa; }
+  return js.replace(/^(\s*)export (?=(const|function|var|let|async|class)\b)/gm, "$1")
+    .replace(/[ \t]{2,}(?=[),;\]])/g, "")             // (o: T) → (o), [a!] → [a]
+    .replace(/(?<=[\])\w]) +(?=[[.])/g, "")            // a![0] → a[0], x!.y → x.y (los «!» que se van)
+    .replace(/[ \t]{2,}(?=[={])/g, " ");               // var x: T = → var x =, function f(): T { → function f() {
+}
 /** el talón y el .ts juntos (o solo el fichero del motor, si no es de los migrados) */
 function fuenteMotor(fichero) {
   const talon = lee("apps/web/motor/" + fichero);
   const ts = TS_DE[fichero];
-  return ts ? [talon].concat([].concat(ts).map(lee)).join("\n") : talon;
+  return ts ? [talon].concat([].concat(ts).map(f => COMO_JS.test(f) ? comoJs(lee(f)) : lee(f))).join("\n") : talon;
 }
 
-module.exports = { fuenteMotor, TS_DE };
+module.exports = { fuenteMotor, TS_DE, comoJs };

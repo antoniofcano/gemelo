@@ -6,7 +6,7 @@
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
 
-const VR = lee("apps/web/motor/29_vr.js");
+const VR = require("./_fuente").fuenteMotor("29_vr.js");
 function trozo(fuente, ini, fin) { const i = fuente.indexOf(ini), f = fuente.indexOf(fin); assert.ok(i >= 0 && f > i, ini); return fuente.slice(i, f); }
 const VF = new Function("\"use strict\";\n" + trozo(VR, "// [puro:fichas:inicio]", "// [puro:fichas:fin]") + "\nreturn VrFichaPuro;")();
 

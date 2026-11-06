@@ -12,7 +12,7 @@ function estado(busqueda) { return Nucleo.creaXrPerillas({ busqueda }); }
 const { VrControlPuro, creaVrPresupuesto } = Nucleo;
 
 test("cableado: 29_vr usa XrPerillas en un solo sitio, 03_escena el MSAA, y el informe y el panel dicen la línea", () => {
-  const vr = lee("apps/web/motor/29_vr.js");
+  const vr = require("./_fuente").fuenteMotor("29_vr.js");
   assert.match(vr, /setFramebufferScaleFactor\(XrPerillas\.efectivas\.escala\)/); assert.match(vr, /XrPerillas\.antes\(renderer\)/); assert.match(vr, /XrPerillas\.despues\(ses\)/);
   assert.doesNotMatch(vr, /setFramebufferScaleFactor\(0\.9\)/, "el 0,9 ya no está repartido: vive en XrPerillasPuro.DEF");
   assert.match(vr, /XrPerillas\.estable\(\), XrPerillas\.fijo\(\), VrPresupuesto\.suelo\(XrPerillas\.gente\(\)\)\)/, "el controlador adaptativo no actúa con ?xrnivel=");
@@ -29,7 +29,7 @@ test("cableado: 29_vr usa XrPerillas en un solo sitio, 03_escena el MSAA, y el i
 
 // ---------- AG-2.3: near de 0,1 en VR y umbral de JS del controlador adaptativo
 test("29_vr: near efectivo al entrar y restaurado al salir; el controlador baja con 8 ms y no con 6; con nivel fijo no actúa", () => {
-  const vr = lee("apps/web/motor/29_vr.js");
+  const vr = require("./_fuente").fuenteMotor("29_vr.js");
   const a = vr.indexOf("function* vrNivelPasos"), b = vr.indexOf("function vrFin");   // Q0c-b: incluye el cambio por la Cola y la histéresis
   assert.ok(a > 0 && b > a);
   const ad = vr.slice(a, b);
@@ -74,7 +74,7 @@ test("cableado F2a: 03_escena pide multiviewStereo solo si XrPerillas.multiview(
   assert.match(e, /var opcionesRd = \{ canvas: lienzo, antialias: XrPerillas\.aa \}/, "en pantalla, el renderer con las MISMAS opciones de siempre");
   assert.match(e, /new THREE\.WebGLRenderer\(opcionesRd\)/);
   assert.strictEqual((e.match(/new THREE\.WebGLRenderer\(/g) || []).length, 1, "un solo renderer");
-  const vr = lee("apps/web/motor/29_vr.js");
+  const vr = require("./_fuente").fuenteMotor("29_vr.js");
   assert.match(vr, /\["local-floor", "bounded-floor", "hand-tracking"\]\.concat\(XrPerillas\.mv && XrPerillas\.mv\.activo \? \["layers"\] : \[\]\)/);
   assert.ok(vr.indexOf("XrPerillas.mvEnUso(renderer)") > vr.indexOf("await renderer.xr.setSession(ses)"), "en uso se mira con la sesión ya puesta");
   assert.match(vr, /mv: XrPerillas\.mv \?/, "window.__vrDebug().xr.mv");

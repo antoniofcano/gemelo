@@ -13,7 +13,7 @@ function trozo(fuente, ini, fin) {
   return fuente.slice(i, f);
 }
 const LP = new Function("\"use strict\";\n" + trozo(lee("apps/web/motor/02d_laminas.js"), "// [puro:inicio]", "// [puro:fin]") + "\nreturn LaminasPuro;")();
-const VF = new Function("\"use strict\";\n" + trozo(lee("apps/web/motor/29_vr.js"), "// [puro:fichas:inicio]", "// [puro:fichas:fin]") + "\nreturn VrFichaPuro;")();
+const VF = new Function("\"use strict\";\n" + trozo(require("./_fuente").fuenteMotor("29_vr.js"), "// [puro:fichas:inicio]", "// [puro:fichas:fin]") + "\nreturn VrFichaPuro;")();
 
 test("los topes son los del estudio y el cálculo angular es el de siempre", () => {
   assert.deepStrictEqual(LP.TOPES, { textoGrados: 1.5, objetivoGrados: 2.5, huecoMmA1m: 12 });

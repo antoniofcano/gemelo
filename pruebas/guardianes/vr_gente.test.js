@@ -8,7 +8,7 @@
 const test = require("node:test"), { describe, before } = test, assert = require("node:assert");
 const { lee } = require("./_util");
 
-const FUENTE = lee("apps/web/motor/29_vr.js");
+const FUENTE = require("./_fuente").fuenteMotor("29_vr.js");
 function puro() {
   const i = FUENTE.indexOf("// [puro:inicio]"), f = FUENTE.indexOf("// [puro:fin]");
   assert.ok(i >= 0 && f > i, "29_vr.js debe marcar su trozo puro con // [puro:inicio] y // [puro:fin]");

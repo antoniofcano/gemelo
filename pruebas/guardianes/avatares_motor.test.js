@@ -23,7 +23,7 @@ test("cupo: escritorio 6, móvil 3, Quest 3; con gafas según el nivel de VR_PER
   assert.strictEqual(AP.cupo("escritorio", false), 6); assert.strictEqual(AP.cupo("movil", false), 3); assert.strictEqual(AP.cupo("quest", false), 3);
   assert.deepStrictEqual([0, 1, 2, 3].map(n => AP.cupo("quest", true, n)), [3, 2, 1, 0]);
   assert.strictEqual(AP.cupo("escritorio", true, 9), 0, "un nivel de más se queda en el último");
-  const vr = lee("apps/web/motor/29_vr.js"); assert.strictEqual((/var VR_PERFILES = \[(.*?)\];/.exec(vr)[1].match(/\{ n:/g) || []).length, AP.CUPO_VR.length, "un cupo por perfil de VR");
+  const vr = require("./_fuente").fuenteMotor("29_vr.js"); assert.strictEqual((/var VR_PERFILES = \[(.*?)\];/.exec(vr)[1].match(/\{ n:/g) || []).length, AP.CUPO_VR.length, "un cupo por perfil de VR");
 });
 
 test("catálogo (contratos/avatares.md v1): lee id, fichero, sha256 y colores_muneco; descarta lo que no cuadra; sin catálogo u otra versión (v3), null (el muñeco); la v2 la cubre avatares_piezas.test.js", () => {

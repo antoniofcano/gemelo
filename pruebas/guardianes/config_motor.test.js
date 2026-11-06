@@ -18,7 +18,7 @@ const Nucleo = require("./_nucleo");   // MU2-5: ComponentesPuro y Componentes s
 const { ConfigPuro: P } = new Function("Nucleo", "\"use strict\";\n" + trozo(NUCLEO, "// [puro:inicio]", "// [puro:fin]") + "\nreturn { ConfigPuro };")(Nucleo);
 const json = f => JSON.parse(lee(f));
 const ESQ = json("contratos/config.schema.json"), EJ = json("contratos/config-ejemplo.json"), CAL = json("contratos/epocas-calendario.json");
-const VR_TRI = [...lee("apps/web/motor/29_vr.js").match(/var VR_PERFILES = \[(.*?)\];/)[1].matchAll(/tri: (\d+)/g)].map(m => Number(m[1]));
+const VR_TRI = [...require("./_fuente").fuenteMotor("29_vr.js").match(/var VR_PERFILES = \[(.*?)\];/)[1].matchAll(/tri: (\d+)/g)].map(m => Number(m[1]));
 const sinCabecera = s => s.slice(s.indexOf(contratoModulos.MARCA_F) + contratoModulos.MARCA_F.length + 1);
 
 // ---------- el contrato y el motor dicen lo mismo
@@ -187,6 +187,6 @@ test("cada parámetro del contrato lo lee el motor (01_datos, 07ab, 07b, 29_vr),
   assert.match(G, /Config\.param\("escalera\.maxPropios", MAX_PROPIOS, mpr \? MAX_PROPIOS : null\)/, "?olivosPropios= manda");
   assert.match(G, /Promise\.all\(\[p, Config\.listo\]\)\.then\(function \(r(?:: A)?\) \{\s*(?:if \(liberado\) return;[^\n]*\n\s*)?var m(?:: A)? = r\[0\]; aplicaConfig\(\);/, "la configuración se aplica antes del primer olivo");
   assert.match(lee("apps/web/motor/01_datos.js"), /Config\.param\("escalera\.factorCopa", FACTOR_R8_GEN, FACTOR_R8_URL\)/, "?factorR8= manda");
-  assert.match(lee("apps/web/motor/29_vr.js"), /Config\.al\(function \(\) \{ VR_PERFILES\.forEach\(function \(p, i\) \{ p\.tri = Config\.param\("escalera\.triangulos\.gafas\." \+ i, p\.tri\); \}\); \}\);/);
+  assert.match(require("./_fuente").fuenteMotor("29_vr.js"), /Config\.al\(function \(\) \{ VR_PERFILES\.forEach\(function \(p, i\) \{ p\.tri = Config\.param\("escalera\.triangulos\.gafas\." \+ i, p\.tri\); \}\); \}\);/);
   assert.match(require("./_fuente").fuenteMotor("07b_arboles.js"), /triMovil: TRI_MOVIL_CFG/);
 });

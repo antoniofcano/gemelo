@@ -11,7 +11,7 @@
 const test = require("node:test"), assert = require("node:assert"), fs = require("fs"), path = require("path");
 const { lee, RAIZ } = require("./_util");
 
-const VR = lee("apps/web/motor/29_vr.js");
+const VR = require("./_fuente").fuenteMotor("29_vr.js");
 function trozo(f, ini, fin) { const i = f.indexOf(ini), j = f.indexOf(fin); assert.ok(i >= 0 && j > i, "falta " + ini + " … " + fin); return f.slice(i, j); }
 const Nucleo = require("./_nucleo");   // 02f_xr_perillas.js (A1-11) y 02g_vr_presupuesto.js (A1-12) son talones del núcleo
 const C = Nucleo.VrControlPuro, PP = Nucleo.VrPresupuestoPuro;

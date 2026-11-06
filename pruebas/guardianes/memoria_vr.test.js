@@ -6,7 +6,7 @@
 // láminas con un THREE de mentira (diez sesiones): laminas.test.js.
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util"), { fuenteMotor } = require("./_fuente");
-const VR = lee("apps/web/motor/29_vr.js"), MANDOS = fuenteMotor("36_mandos.js")   // A3-6c: talón y mandos.ts;
+const VR = fuenteMotor("29_vr.js"), MANDOS = fuenteMotor("36_mandos.js");   // A3-6c: el talón y sus .ts (mundos/comun/)
 function entre(fuente, ini, fin) { const i = fuente.indexOf(ini), f = fuente.indexOf(fin, i + ini.length); assert.ok(i >= 0 && f > i, "falta " + ini + " … " + fin); return fuente.slice(i, f); }
 const CREA = /new THREE\.(Mesh|\w*Geometry|\w*Material|CanvasTexture|WebGLRenderTarget|\w*Texture|Line|Points|Sprite)\b|document\.createElement\("canvas"\)/;
 

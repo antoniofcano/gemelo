@@ -58,7 +58,7 @@
   "26b_avatares.js": [],
   "27_debug.js": [],
   "28_depura.js": ["depuraCuadro"],
-  "29_vr.js": ["VRX","vrRig","vrDebugExtra","vrMano","vrRayoDe","vrCierra","vrAbre","vrFundido","vrAparece","creaLamina","panel","vrBajoRayo","vrRect","vrAj","PanelVR","vrPintaFicha","vrRecoloca","vrPulso","vrActualiza","vrFin"],
+  "29_vr.js": ["Vr","VRX","vrRig","vrDebugExtra","vrMano","vrRayoDe","vrCierra","vrAbre","vrFundido","vrAparece","creaLamina","panel","vrBajoRayo","vrRect","vrAj","PanelVR","vrPintaFicha","vrRecoloca","vrPulso","vrActualiza","vrFin"],
   "30_mide.js": [],
   "31_hud.js": ["Hud"],
   "31b_hud_personal.js": ["HudPersonalPuro"],

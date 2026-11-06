@@ -7,7 +7,7 @@ const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
 
 function trozo(fuente, ini, fin) { const i = fuente.indexOf(ini), f = fuente.indexOf(fin, i); assert.ok(i >= 0 && f > i, "debe marcar " + ini + " … " + fin); return fuente.slice(i, f); }
-const MUN = lee("apps/web/motor/31c_muneca.js"), VR = lee("apps/web/motor/29_vr.js"), HUDP = lee("apps/web/motor/31b_hud_personal.js"), AJU = lee("apps/web/motor/33_ajustes.js");
+const MUN = lee("apps/web/motor/31c_muneca.js"), VR = require("./_fuente").fuenteMotor("29_vr.js"), HUDP = lee("apps/web/motor/31b_hud_personal.js"), AJU = lee("apps/web/motor/33_ajustes.js");
 const MP = new Function("\"use strict\";\n" + trozo(MUN, "// [puro:inicio]", "// [puro:fin]") + "\nreturn MunecaPuro;")();
 const HP = new Function("\"use strict\";\n" + trozo(HUDP, "// [puro:inicio]", "// [puro:fin]") + "\nreturn HudPersonalPuro;")();
 const LP = new Function("\"use strict\";\n" + trozo(lee("apps/web/motor/02d_laminas.js"), "// [puro:inicio]", "// [puro:fin]") + "\nreturn LaminasPuro;")();

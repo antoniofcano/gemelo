@@ -213,7 +213,9 @@ function eventosDelCodigo() {
       if (e.isDirectory()) { recorre(path.join(d, e.name), rel + e.name + "/"); continue; }
       if (!e.name.endsWith(".ts") || e.name.endsWith(".test.ts")) continue;
       const s = sinComentarios(fs.readFileSync(path.join(d, e.name), "utf8")), mod = "mundos/" + rel + e.name.slice(0, -3);
-      for (const x of s.matchAll(/\b(?:bus|n)\.(emite|on)\(\s*"([^"]+)"/g)) apunta(x[2], x[1] === "emite", mod);
+      // A3-6c: en mundos/comun/ (la VR y la locomoción, de todo mundo) el código movido conserva el nombre del legado, Bus
+      const re = rel.startsWith("comun/") ? /\b(?:bus|Bus|n)\.(emite|on)\(\s*"([^"]+)"/g : /\b(?:bus|n)\.(emite|on)\(\s*"([^"]+)"/g;
+      for (const x of s.matchAll(re)) apunta(x[2], x[1] === "emite", mod);
     }
   })(path.join(RAIZ, "apps", "web", "src", "mundos"), "");
   return m;
@@ -380,7 +382,7 @@ test("C4 en Node: el sonido se monta con su pestaña de Configuración y su fila
   // los demás módulos hablan por el Bus (no nombran al sonido): la fuente de cada uno emite lo que el catálogo dice
   assert.match(fuenteMotor("19_balizas.js"), /[Bb]us\.emite\("sonido:baliza"/);   // A3-3: 19_balizas es un talón; su código está en balizas.ts
   assert.match(lee("apps/web/motor/24_pantalla.js"), /Bus\.emite\("sonido:golpe"/);
-  assert.match(fuenteMotor("25_perros.js"), /n\.emite\("sonido:ladrido"/); assert.match(lee("apps/web/motor/29_vr.js"), /Bus\.emite\("audio:desbloquea"/);   // A3-5: 25_perros es un talón de perros.ts
+  assert.match(fuenteMotor("25_perros.js"), /n\.emite\("sonido:ladrido"/); assert.match(require("./_fuente").fuenteMotor("29_vr.js"), /Bus\.emite\("audio:desbloquea"/);   // A3-5: 25_perros es un talón de perros.ts
   assert.doesNotMatch(sinComentarios(lee("apps/web/motor/90_final.js")), /actualizaSonido/);
 });
 
