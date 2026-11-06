@@ -5,6 +5,8 @@
 // también lo que la api contesta después (hallazgos de A3-6b). Lo de siempre (el aviso «cercania», invitar, aceptar, silenciar, bloquear, avisar) lo cubre a fondo
 // pruebas/guardianes/corro.test.js. HONESTIDAD: nada se dibuja ni suena aquí (regla 7).
 import { describe, expect, it } from "vitest";
+import { creaMateriales } from "../../nucleo/materiales.ts";
+import type { ThreeMin } from "../../nucleo/materiales.ts";
 import { CorroPuro } from "../../red/voz/corro.ts";
 import { ID_CORRO, creaCorro, manifiestoCorro } from "./corro.ts";
 import type { DepsCorro } from "./corro.ts";
@@ -65,7 +67,8 @@ function monta({ vr = false } = {}) {
     accionesPersona: () => { cuenta.acciones++; return () => { cuenta.accionesQuitadas++; }; }, repintaGente() {} };
   const R = { sala: (c: string) => (c === "visita" ? { escucha: () => { cuenta.tema++; return () => { cuenta.temaQuitado++; }; } } : null) };
   const Ajustes = { registra: (_p: string, _e: unknown, _t: unknown, fn: (k: string, v: unknown) => void) => { cuenta.pestana++; fn("voz.cercania", true); return () => { cuenta.pestanaQuitada++; }; }, lee: () => true, pon: () => true, pinta() {} };
-  const dp: DepsCorro = { THREE, scene, camera: new THREE.PerspectiveCamera(), location: { search: "" }, window: {}, fetch,
+  const Materiales = creaMateriales({ THREE: THREE as unknown as ThreeMin, busqueda: "" });
+  const dp: DepsCorro = { THREE, scene, camera: new THREE.PerspectiveCamera(), Materiales, location: { search: "" }, window: {}, fetch,
     document: { createElement: (t: string) => new El(t), createTextNode: (t: string) => ({ texto: t }), body: new El("body"), activeElement: null },
     D: {}, ConfigPuro: { prefijoApi: () => "/api/" }, LaminasPuro: { lineas: (t: string) => [t] }, visor,
     VRX: { on: vr }, Aparato: { clase: () => "escritorio" }, PanelVR: { filas: (_p: string, d: unknown) => { filas.push(d); return () => { cuenta.filasQuitadas++; }; }, repinta() {} },
@@ -98,11 +101,14 @@ describe("creaCorro: componente de todo mundo con libera() de verdad (A3-6b)", (
     expect(m.gancho("mundo").montado).toBe(true);
     const r = recursos(m.scene);
     expect(r.g).toHaveLength(1); expect(r.m).toHaveLength(2); expect(r.t).toHaveLength(2);   // un plano, dos materiales (halo e icono) y sus dos lienzos
+    expect(m.dp.Materiales.duenos()[ID_CORRO]).toBe(2);   // segundo commit: los dos, estándar por la fábrica con dueño «corro-voz»
+    expect(r.m.every((x: any) => x.isMeshBasicMaterial && x.transparent && !x.depthWrite && !x.toneMapped)).toBe(true);   // los de siempre
     const sueltos = { g: 0, m: 0, t: 0 };
     r.g.forEach((x: any) => x.addEventListener("dispose", () => sueltos.g++)); r.m.forEach((x: any) => x.addEventListener("dispose", () => sueltos.m++)); r.t.forEach((x: any) => x.addEventListener("dispose", () => sueltos.t++));
     expect(m.visor.children.length).toBeGreaterThan(0); expect(m.voz.corro).toBe(true);
     m.libera();
     expect(m.scene.children).toHaveLength(0);   // halos e iconos, fuera de la escena
+    expect(m.dp.Materiales.duenos()[ID_CORRO]).toBeUndefined();   // la fábrica ya no guarda nada suyo
     expect(sueltos.g).toBe(1); expect(sueltos.m).toBeGreaterThanOrEqual(2); expect(sueltos.t).toBe(2);
     expect(m.visor.children).toHaveLength(0);
     expect(m.cuenta.filasQuitadas).toBe(m.filas.length); expect(m.cuenta.accionesQuitadas).toBe(m.cuenta.acciones); expect(m.cuenta.tiposQuitados).toBe(m.cuenta.tipos);

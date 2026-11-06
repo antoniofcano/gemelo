@@ -300,6 +300,7 @@ function montaCorro({ api = true, srvOpc = {}, vr = false, identidades = { [ANA_
     Laminas: { abre: o => { laminas[o.id] = o; return true; }, cierra: (id, mot) => { const o = laminas[id]; delete laminas[id]; if (o && o.alCierra) o.alCierra(mot); return true; }, hay: id => !!laminas[id], repinta: () => true },
     Entidades: { registra: d => { tipos[d.tipo] = d; return () => { delete tipos[d.tipo]; }; } },
     THREE: threeFalso(cuenta), scene: { add: () => { cuenta.escena++; }, remove: () => { cuenta.escena--; } }, camera: { getWorldQuaternion: q => q }, TextDecoder: class { decode(b) { return Buffer.from(b).toString("utf8"); } } };
+  g.Materiales = require("./_materiales").fabrica(g.THREE).Materiales;   // A3-6b (segundo commit): los halos y los iconos, por la fábrica de verdad (con el three de mentira)
   const m = creaCorro(g, n, R, P, Vz);   // A3-6b: las mismas dependencias, por argumento (las que da el talón)
   const tic = async (dt = 0.25, k = 1) => { for (let i = 0; i < k; i++) { m.tarde(dt); await espera(); } await espera(); };
   return { m, srv, aj, marca, pres, voz, tema, visor, laminas, filas, tipos, emitidos, avisosHud, cuenta, VRX, n, tic, g, gancho: (a, x) => g.window.__corro(a, x),

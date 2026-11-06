@@ -39,6 +39,8 @@ import { CorroPuro } from "../../red/voz/corro.ts";
 /** Lo que el legado le da (el talón de apps/web/motor/47b_corro.js). Los de solo lectura llegan por getters del talón. */
 export interface DepsCorro {
   THREE: any; scene: any; camera: any;
+  /** la fábrica de materiales (02i_materiales: Nucleo.creaMateriales); los halos y los iconos son estándar con dueño «corro-voz» */
+  Materiales: any;
   location: { search: string };
   window: any;
   document: any;
@@ -54,6 +56,7 @@ export function creaCorro(dp: DepsCorro, n?: any, R?: any, P?: any, Vz?: any) {
   // (getters del talón: 29_vr lo reescribe A3-6c; el código de siempre ya comprobaba con typeof si existían)
   const THREE = dp.THREE, scene = dp.scene, camera = dp.camera, location = dp.location, window = dp.window, document = dp.document, fetch = dp.fetch;
   const D = dp.D, ConfigPuro = dp.ConfigPuro, LaminasPuro = dp.LaminasPuro, visor = dp.visor;
+  const materiales = dp.Materiales.de(ID_CORRO);   // MU5-n (A3-6b, segundo commit): los materiales de los halos y los iconos, por la fábrica con dueño; se sueltan con libera()
   var C: any = CorroPuro, vivo: any = true, hayApi: any = !!(ConfigPuro.prefijoApi(location.search, D && D.base));
   var E: any = C.vacio(), sinApi: any = false, pidiendo: any = false, pideYa: any = true, tSondeo: any = 0, tPublicos: any = C.PUBLICOS_S, publicos: any = [], iconos: any = [];
   var hablan: any = Object.create(null), callados: any = Object.create(null), lejos: any = { lejos: false, t: 0 }, aereaT: any = 0, saliendo: any = false, entrando: any = false, tVoz: any = 0, cercaClave: any = "";
@@ -506,7 +509,7 @@ export function creaCorro(dp: DepsCorro, n?: any, R?: any, P?: any, Vz?: any) {
       cx.fillStyle = "#ffffff"; [[44, 52], [84, 52]].forEach(function (c?: any) { cx.beginPath(); cx.arc(c[0], c[1], 12, 0, Math.PI * 2); cx.fill(); cx.fillRect(c[0] - 14, c[1] + 16, 28, 26); });
       cx.strokeStyle = "#ffd58a"; cx.lineWidth = 5; cx.beginPath(); cx.arc(64, 48, 22, Math.PI * 1.2, Math.PI * 1.8); cx.stroke();
     });
-    var mat: any = function (t?: any) { return new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, toneMapped: false }); };
+    var mat: any = function (t?: any) { return materiales.estandar("MeshBasicMaterial", { map: t, transparent: true, depthWrite: false, toneMapped: false }); };   // estándar: vale en los dos renderizadores (MATERIALES §2)
     var halos: any = new THREE.InstancedMesh(geo, mat(tH), C.HALOS_MAX), icos: any = new THREE.InstancedMesh(geo, mat(tI), C.ICONOS_MAX);
     [halos, icos].forEach(function (m?: any) { m.count = 0; m.visible = false; m.renderOrder = 5; scene.add(m); });
     g3 = { geo: geo, tex: [tH, tI], halos: halos, icos: icos, m4: new THREE.Matrix4(), q: new THREE.Quaternion(), p: new THREE.Vector3(), s: new THREE.Vector3() };
@@ -601,7 +604,7 @@ export function creaCorro(dp: DepsCorro, n?: any, R?: any, P?: any, Vz?: any) {
     if (caja && caja.parentNode) caja.parentNode.removeChild(caja); caja = null;
     quitaFilas.splice(0).forEach(function (q?: any) { try { q(); } catch (e: any) {} });
     [quitaAcc, quitaTipo, quitaTema].forEach(function (q?: any) { if (q) try { q(); } catch (e: any) {} }); quitaAcc = quitaTipo = quitaTema = null;
-    quitaAjustes(); libera3D();
+    quitaAjustes(); libera3D(); materiales.libera();   // A3-6b: y lo que la fábrica tenga de este dueño
     if (Vz && Vz.estado && Vz.estado().corro) Vz.sale();   // la api lo saca sola tras 60 s sin conexión (su barrido)
     if (window.__corro === api) window.__corro = undefined;
   }
@@ -638,7 +641,7 @@ export function creaCorro(dp: DepsCorro, n?: any, R?: any, P?: any, Vz?: any) {
 export function manifiestoCorro(dp: DepsCorro) {
   return {
     id: ID_CORRO, version: 1,
-    consume: ["Aparato", "Red", "Presencia", "Voz", "Ajustes", "PanelVR", "VRX", "Laminas", "LaminasPuro", "Entidades", "Hud"],
+    consume: ["Materiales", "Aparato", "Red", "Presencia", "Voz", "Ajustes", "PanelVR", "VRX", "Laminas", "LaminasPuro", "Entidades", "Hud"],
     expone: [] as string[],
     eventos: { escucha: ["voz:habla", "voz:estado", "depura:lineas"], emite: ["corro:estado"] },
     bandera: { defecto: true, url: "corro" },
