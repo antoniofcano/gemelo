@@ -11,3 +11,6 @@ export { ID_MOVIBLES, MoviblesPuro, creaMovibles, manifiestoMovibles } from "./m
 export type { DepsMovibles, Movibles } from "./movibles.ts";
 export { creaSoltador } from "./soltador.ts";
 export type { Soltador } from "./soltador.ts";
+// A3-7a: las ventanas (antes 32_ventanas.js), componente de todo mundo.
+export { ID_VENTANAS, VentanasPuro, creaVentanas, manifiestoVentanas } from "./ventanas.ts";
+export type { DepsVentanas, Ventanas } from "./ventanas.ts";

@@ -6,7 +6,7 @@
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
 
-const FUENTE = lee("apps/web/motor/32_ventanas.js"), PL = lee("apps/web/plantilla.html");
+const FUENTE = require("./_fuente").fuenteMotor("32_ventanas.js"), PL = lee("apps/web/plantilla.html");
 function puro() {
   const i = FUENTE.indexOf("// [puro:inicio]"), f = FUENTE.indexOf("// [puro:fin]");
   assert.ok(i >= 0 && f > i, "32_ventanas.js debe marcar su trozo puro");
@@ -87,5 +87,5 @@ test("el tiempo, en pestañas con su patrón (tablist, tab con aria-controls, ta
 test("32_ventanas.js expone el API del pacto y cierra una al abrir otra", () => {
   assert.match(FUENTE, /abre: abre, cierra: function \(\) \{ return cierra\(false\); \}, abierta: function \(\) \{ return actual; \}/);
   assert.match(FUENTE, /if \(actual\) cierra\(true\);/, "una grande a la vez");
-  assert.match(FUENTE, /new MutationObserver\(mudaRecorrido\)\.observe\(hc/, "la tarjeta del recorrido sigue a #hCuerpo");
+  assert.match(FUENTE, /new MutationObserver\(mudaRecorrido\)\)?\.observe\(hc/, "la tarjeta del recorrido sigue a #hCuerpo");   // A3-7a: sol.observa(new MutationObserver(…)).observe
 });
