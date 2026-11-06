@@ -31,7 +31,7 @@ function distArroyoAhora(ejeArroyo) {
   const P = require("./_mundos").creaPaisaje({
     THREE, D: { paisaje: { edificios: [], tendido: { linea: [], postes: [] }, arroyo: { ejes: [ejeArroyo] }, arboles: [] } }, $: () => null, ESC_R8: 1, suelo: () => 0, copas: [], hash: () => 0,
     SRGB: THREE.SRGBColorSpace, Estado: { exag: 1 }, Estaticos: { congela() {} }, Materiales: require("./_materiales").fabrica(THREE).Materiales, scene: new THREE.Scene(), gSombras: new THREE.Group(),
-    matSombra: { opacity: 1 }, geoSombra: null, instSombra: () => null, tMundo: () => 0, cur: { ms: 0, nub: 0, lluvia: 0 }, nivelEn: s => s, EST: { activa: false, clima: null }
+    matSombra: { opacity: 1 }, geoSombra: null, instSombra: () => null, tMundo: () => 0, cur: { ms: 0, nub: 0, lluvia: 0 }, nivelEn: s => s, EST: () => ({ activa: false, clima: null })
   });
   return P.distArroyo;
 }

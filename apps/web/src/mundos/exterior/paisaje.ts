@@ -109,8 +109,8 @@ export interface DepsPaisaje {
   tMundo(): number;
   cur: { ms: number; nub: number; lluvia: number };
   nivelEn(ms: number, salida: NivelSol): NivelSol;
-  /** 23_estacion: la estación elegida */
-  EST: { activa: boolean; clima: { lluvia: number } | null };
+  /** 23_estacion: la estación elegida (se monta después de este módulo: se pide en cada uso) */
+  EST(): { activa: boolean; clima: { lluvia: number } | null };
   /** 02g: el presupuesto de VR; null si no está */
   VrPresupuesto?: { instancias(id: string, mallas: unknown[]): void; renueva(id: string): void; olvida(id: string): void } | null;
   /** el nivel del agua del arroyo sube y baja cada fotograma y lo leen 20_sonido y 22_huellas (la variable aguaNivel del legado) */
@@ -283,7 +283,7 @@ export function creaPaisaje(d: DepsPaisaje) {
   // --- el agua del arroyo sube con la lluvia y baja despacio
   function actualizaPaisaje(dt: number): void {
     if (!montado) return;
-    const llueve = d.cur.lluvia > 0.3 || (d.EST.activa && d.EST.clima && d.EST.clima.lluvia >= 12);   // o una semana lluviosa en la estación elegida
+    const EST = d.EST(), llueve = d.cur.lluvia > 0.3 || (EST.activa && EST.clima && EST.clima.lluvia >= 12);   // o una semana lluviosa en la estación elegida
     aguaNivel += llueve ? (1 - aguaNivel) * Math.min(1, dt * 0.18) : -aguaNivel * Math.min(1, dt * 0.03);
     uArroyo.uAgua.value = aguaNivel < 0.02 ? 0 : aguaNivel; uArroyo.uT.value = d.tMundo(); uArroyo.uLuz.value = 0.22 + 0.78 * d.nivelEn(d.cur.ms, lvAgua).d;
     if (d.ponAgua) d.ponAgua(aguaNivel);

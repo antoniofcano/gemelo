@@ -1033,7 +1033,7 @@
         }
       },
       "emiten": [
-        "19_balizas"
+        "mundos/exterior/balizas"
       ],
       "escuchan": [
         "20_sonido"

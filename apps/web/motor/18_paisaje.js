@@ -9,10 +9,11 @@
   // que suelta el grupo, las geometrías, los InstancedMesh, los materiales y la malla de sombras que añade al grupo de 06_arboles (L2-05). Aquí solo se cablea lo del legado.
   // Lo que otros módulos escriben o leen suelto no puede ser una importación (MUNDOS §9.3): 07_follaje asigna instSombra (la malla de sombras de los olivos) y este módulo la lee por
   // una función; aguaNivel lo mueve actualizaPaisaje (por ponAgua) y lo leen 20_sonido y 22_huellas. Las dos variables nacen aquí con el valor inicial que da el módulo.
+  // EST (23_estacion) se declara después de este módulo: entra como función que lo pide en cada uso.
   // [talón] apps/web/src/mundos/exterior/paisaje.ts
   var Paisaje = Mundos.creaPaisaje({
     THREE: THREE, D: D, $: $, ESC_R8: ESC_R8, suelo: suelo, copas: copas, hash: hash, SRGB: SRGB, Estado: Estado, Estaticos: Estaticos, Materiales: Materiales, scene: scene,
-    gSombras: gSombras, matSombra: matSombra, geoSombra: geoSombra, cur: cur, nivelEn: nivelEn, EST: EST, VrPresupuesto: typeof VrPresupuesto !== "undefined" ? VrPresupuesto : null,
+    gSombras: gSombras, matSombra: matSombra, geoSombra: geoSombra, cur: cur, nivelEn: nivelEn, EST: function () { return EST; }, VrPresupuesto: typeof VrPresupuesto !== "undefined" ? VrPresupuesto : null,
     instSombra: function () { return instSombra; }, tMundo: function () { return tMundo; }, ponAgua: function (v) { aguaNivel = v; }
   });
   var colocaPaisaje = Paisaje.colocaPaisaje, sombrasSol = Paisaje.sombrasSol, instSombra = Paisaje.instSombra, aguaNivel = Paisaje.aguaNivel;

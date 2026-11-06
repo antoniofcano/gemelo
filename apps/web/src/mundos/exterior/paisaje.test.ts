@@ -40,7 +40,7 @@ function monta(extra: Partial<DepsPaisaje> = {}, datos: DatosPaisaje = PA) {
     THREE, D: { paisaje: datos }, $: () => cas, ESC_R8: 2, suelo, hash, SRGB: THREE.SRGBColorSpace, Estado, Estaticos: { congela() { /* sin efecto en la prueba */ } },
     Materiales: creaMateriales({ THREE: THREE as unknown as ThreeMin, busqueda: "" }), scene, gSombras, matSombra, geoSombra: new THREE.PlaneGeometry(1, 1), instSombra: () => inst07,
     copas: [{ oliv: true, perfil: [2, 2, 2, 2, 2, 2, 2, 2], x: 5, y: 5, h: 4 }, { oliv: false, perfil: [1, 1, 1, 1, 1, 1, 1, 1], x: 6, y: 6, h: 9 }],
-    tMundo: () => reloj.t, cur, nivelEn: (_ms, s) => { s.s.alt = 0.8; s.s.az = 1; s.d = 1; return s; }, EST,
+    tMundo: () => reloj.t, cur, nivelEn: (_ms, s) => { s.s.alt = 0.8; s.s.az = 1; s.d = 1; return s; }, EST: () => EST,
     VrPresupuesto: { instancias: (id) => { vr.llamadas.push("instancias:" + id); }, renueva: (id) => { vr.llamadas.push("renueva:" + id); }, olvida: (id) => { vr.llamadas.push("olvida:" + id); } },
     ponAgua: (v) => { agua.v = v; }, ...extra,
   };

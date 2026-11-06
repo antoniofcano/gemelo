@@ -54,3 +54,5 @@ export { ALTO_MAX, MATERIAL_NUBE, NIV_NUBE, NubePuro, PRESUPUESTO_NUBE, creaNube
 export type { DepsNube, Nube } from "./exterior/nube.ts";
 export { ID_PAISAJE, creaPaisaje, manifiestoPaisaje } from "./exterior/paisaje.ts";
 export type { DatosPaisaje, DepsPaisaje, Paisaje } from "./exterior/paisaje.ts";
+export { COLB, ID_BALIZAS, creaBalizas, manifiestoBalizas } from "./exterior/balizas.ts";
+export type { Balizas, DepsBalizas } from "./exterior/balizas.ts";
