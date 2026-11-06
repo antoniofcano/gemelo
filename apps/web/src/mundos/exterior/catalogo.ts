@@ -42,8 +42,43 @@ function clasicoInstanciado(o: OpcCatalogo, c: { THREE: Record<string, unknown> 
   m.needsUpdate = true;
   return m;
 }
-export const DEF_COPA_L1: DefMaterial<OpcCatalogo> = { clasico: clasicoInstanciado };
-export const DEF_TRONCO_L1: DefMaterial<OpcCatalogo> = { clasico: clasicoInstanciado };
+// MU5-n, tercer commit: las variantes TSL, APAGADAS (solo con el WebGPURenderer, que hasta MU6 no existe; nadie las usa hoy) y PARCIALES. NO son equivalentes: las capturas
+// de clásico frente a TSL son de MU6. Lo que hacen y lo que les falta (MATERIALES §8):
+//   · las dos: el Lambert blanco y el color por vértice, escrito en sRGB (03_escena), pasado a lineal con sRGBTransferEOTF (lo que hace colorVertSRGB en el clásico);
+//   · la copa, además: la silueta rota por ruido hacia el borde (maskNode: se descarta donde nz < (vRim − 0,72) · 2,8), las motas (× 0,74 + 0,50 · nz2) y el envés plateado
+//     en el borde, con las mismas cuentas que el GLSL;
+//   · FALTA: la sombra de nubes y la helada de parcheTiempo (15_tiempo, fila 2 de la tabla, aún sin TSL): sin ellas la copa no se oscurece bajo las nubes ni blanquea con la helada;
+//   · DIFIERE: la semilla de cada olivo sale de su índice de instancia (instanceIndex), no de la posición de su matriz (instanceMatrix[3].xz): el ruido es el mismo por olivo
+//     pero otro reparto entre olivos; y vRim se calcula por fragmento (normalView y positionViewDirection), no por vértice.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Nodo = any;
+function lambertTsl(c: { THREE: Record<string, unknown>; TSL: Record<string, unknown> }): { m: MaterialMin & { colorNode?: unknown; maskNode?: unknown; vertexColors?: boolean }; T: Record<string, Nodo>; base: Nodo } {
+  const Lambert = c.THREE["MeshLambertNodeMaterial"] as new (opc: unknown) => MaterialMin & { colorNode?: unknown; maskNode?: unknown; vertexColors?: boolean };
+  const T = c.TSL as Record<string, Nodo>;
+  // vertexColors en false: el color por vértice entra ya pasado a lineal en colorNode (si no, el NodeMaterial lo multiplicaría otra vez, sin convertir)
+  const m = new Lambert({ color: 0xffffff, vertexColors: false });
+  const base = T.materialColor.mul(T.sRGBTransferEOTF(T.vertexColor().rgb));
+  return { m, T, base };
+}
+export const DEF_COPA_L1: DefMaterial<OpcCatalogo> = {
+  clasico: clasicoInstanciado,
+  tsl: function (_o, c) {
+    const { m, T, base } = lambertTsl(c);
+    const h3 = function (p: Nodo): Nodo { return T.fract(T.sin(T.dot(p, T.vec3(12.9898, 78.233, 37.719))).mul(43758.5453)); };   // ot_h3 del GLSL
+    const semilla = T.fract(T.sin(T.float(T.instanceIndex).mul(12.9898)).mul(43758.5453));   // DIFIERE del clásico: por índice de instancia
+    const loc = T.positionGeometry, rim = T.float(1).sub(T.clamp(T.abs(T.dot(T.normalView, T.positionViewDirection)), 0, 1));
+    const nz = h3(T.floor(loc.mul(7).add(semilla.mul(31)))), nz2 = h3(T.floor(loc.mul(15).add(semilla.mul(17))));
+    m.maskNode = nz.greaterThanEqual(rim.sub(0.72).mul(2.8));   // if (nz < (vRim − 0.72) · 2.8) discard;
+    const enves = T.sRGBTransferEOTF(T.vec3(0.64, 0.70, 0.56));
+    const motas = base.rgb.mul(nz2.mul(0.50).add(0.74));
+    m.colorNode = T.vec4(T.mix(motas, enves, T.smoothstep(0.45, 1.0, rim).mul(0.40).mul(nz.add(0.45))), 1);
+    return m;
+  }
+};
+export const DEF_TRONCO_L1: DefMaterial<OpcCatalogo> = {
+  clasico: clasicoInstanciado,
+  tsl: function (_o, c) { const { m, T, base } = lambertTsl(c); m.colorNode = T.vec4(base.rgb, 1); return m; }
+};
 
 export function creaCatalogo(d: DepsCatalogo) {
   const THREE = d.THREE, hash = d.hash, parcheTiempo = d.parcheTiempo, Materiales = d.Materiales;

@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { ComponentesPuro } from "../../nucleo/componentes.ts";
 import { creaMateriales } from "../../nucleo/materiales.ts";
 import type { ThreeMin } from "../../nucleo/materiales.ts";
-import { creaCatalogo, manifiestoCatalogo } from "./catalogo.ts";
+import { DEF_COPA_L1, DEF_TRONCO_L1, MATERIAL_COPA_L1, MATERIAL_TRONCO_L1, creaCatalogo, manifiestoCatalogo } from "./catalogo.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const THREE: any = await import(/* @vite-ignore */ "three" as string);
@@ -83,6 +83,24 @@ describe("catálogo de olivos-tipo (componente del exterior)", () => {
     expect(C.libera()).toBe(0); expect(sueltos).toBe(2);   // dos veces no libera dos veces
     // lo que se vuelva a pedir se rehace (geometrías nuevas)
     expect(C.geometria(C.SIN, 1, 0)).toHaveLength(2); expect(vivas.n - antes).toBe(2);
+  });
+
+  it("las variantes TSL (apagadas y PARCIALES): solo con el renderizador nuevo; con three/webgpu y three/tsl de verdad, MeshLambertNodeMaterial con colorNode y, la copa, maskNode", async () => {
+    const W = await import(/* @vite-ignore */ "three/webgpu" as string), TSL = await import(/* @vite-ignore */ "three/tsl" as string);
+    const nuevo = { tipo: "nuevo", pedido: "nuevo" }, clasico = { tipo: "clasico", pedido: "" }, parche = () => {};
+    const hoy = creaMateriales({ THREE: THREE as unknown as ThreeMin, render: clasico, nodos: () => ({ THREE: W, TSL }) });
+    hoy.define(MATERIAL_COPA_L1, DEF_COPA_L1); expect(hoy.ruta(MATERIAL_COPA_L1)).toBe("clasico");
+    expect((hoy.crea(MATERIAL_COPA_L1, { parche }) as { isMeshLambertMaterial?: boolean }).isMeshLambertMaterial).toBe(true);
+    const F = creaMateriales({ THREE: THREE as unknown as ThreeMin, render: nuevo, nodos: () => ({ THREE: W, TSL }) });
+    F.define(MATERIAL_COPA_L1, DEF_COPA_L1); F.define(MATERIAL_TRONCO_L1, DEF_TRONCO_L1);
+    expect(F.ruta(MATERIAL_COPA_L1)).toBe("tsl"); expect(F.cobertura()[MATERIAL_TRONCO_L1]).toMatchObject({ clasico: true, tsl: true });
+    type Nm = { isNodeMaterial: boolean; isMeshLambertNodeMaterial: boolean; colorNode: unknown; maskNode: unknown; vertexColors: boolean; fog: boolean; onBeforeCompile?: unknown };
+    const c = F.crea(MATERIAL_COPA_L1, { parche }) as unknown as Nm, t = F.crea(MATERIAL_TRONCO_L1, { parche }) as unknown as Nm;
+    for (const m of [c, t]) { expect(m.isNodeMaterial && m.isMeshLambertNodeMaterial).toBe(true); expect(m.colorNode).toBeTruthy(); expect(m.vertexColors).toBe(false); expect(m.fog).toBe(true); }
+    expect(c.maskNode).toBeTruthy(); expect(t.maskNode).toBeFalsy();
+    // en un catálogo con el renderizador nuevo, las formas salen con los materiales TSL
+    const C = creaCatalogo({ THREE, hash, parcheTiempo: () => {}, Materiales: F });
+    expect((C.geometria(C.SIN, 1, 0)[0]!.mat as Nm).isNodeMaterial).toBe(true);
   });
 
   it("el manifiesto vale, es de los mundos [exterior], monta el mismo objeto y su libera lo suelta", () => {
