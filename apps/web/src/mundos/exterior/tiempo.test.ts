@@ -105,6 +105,52 @@ describe("el parche del tiempo (MATERIALES §1, fila 2)", () => {
   });
 });
 
+describe("las variantes TSL (apagadas y PARCIALES): solo con el renderizador nuevo; con three/webgpu y three/tsl de verdad", async () => {
+  const W: A = await import(/* @vite-ignore */ "three/webgpu" as string), TSL: A = await import(/* @vite-ignore */ "three/tsl" as string);
+  const nuevo = () => creaMateriales({ THREE: THREE as unknown as ThreeMin, render: { tipo: "nuevo", pedido: "nuevo" }, nodos: () => ({ THREE: W, TSL }) });
+  const hoy = () => creaMateriales({ THREE: THREE as unknown as ThreeMin, render: { tipo: "clasico", pedido: "" }, nodos: () => ({ THREE: W, TSL }) });
+  it("parche-tiempo (fila 2): con el clásico, el MISMO material; con el nuevo, un NodeMaterial de su clase, con el MISMO color, el viento en el follaje y, fuera de los puntos, la sombra y la escarcha", () => {
+    const H = hoy(), Ph = creaParcheTiempo({ THREE, colorVertSRGB: () => {}, Materiales: H }), m0 = new THREE.PointsMaterial({ vertexColors: true });
+    expect(H.ruta("parche-tiempo")).toBe("clasico"); expect(Ph.aplica(m0, true)).toBe(m0);
+    const F = nuevo(), P = creaParcheTiempo({ THREE, colorVertSRGB: () => {}, Materiales: F });
+    expect(F.ruta("parche-tiempo")).toBe("tsl"); expect(F.cobertura()["parche-tiempo"]).toMatchObject({ clasico: true, tsl: true });
+    const hojas = new THREE.PointsMaterial({ size: 3.1, vertexColors: true, alphaTest: 0.4 }), suelo = new THREE.MeshLambertMaterial(), orto = new THREE.MeshBasicMaterial();
+    const h: A = P.aplica(hojas, true), s: A = P.aplica(suelo, false), o: A = P.aplica(orto, false);
+    expect(h.isPointsNodeMaterial && h.isNodeMaterial).toBe(true); expect(h.color).toBe(hojas.color); expect(h.size).toBe(3.1); expect(h.alphaTest).toBe(0.4);
+    expect(h.vertexColors).toBe(false); expect(h.colorNode).toBeTruthy(); expect(h.positionNode).toBeTruthy(); expect(h.outputNode).toBeFalsy();   // los puntos: sin sombra ni escarcha, como el clásico
+    expect(s.isMeshLambertNodeMaterial).toBe(true); expect(s.color).toBe(suelo.color); expect(s.outputNode).toBeTruthy(); expect(s.positionNode).toBeFalsy();
+    expect(o.isMeshBasicNodeMaterial).toBe(true); expect(o.outputNode).toBeTruthy();
+    expect(hojas.onBeforeCompile).toBe(THREE.Material.prototype.onBeforeCompile);   // con la TSL, el clásico no se toca
+    let soltado = 0; h.addEventListener("dispose", () => { soltado++; });
+    expect(P.suelta()).toBe(3); expect(soltado).toBe(1);   // las variantes sí son de aquí: se sueltan
+  });
+  it("nubes, lluvia y barrera (filas 3-5): un NodeMaterial con sus nodos y sus opciones; los uniformes, los MISMOS objetos", () => {
+    const F = nuevo(), { tiempo } = monta({ F });
+    for (const n of ["nubes", "lluvia", "barrera"]) expect(F.ruta(n)).toBe("tsl");
+    const nu: A = tiempo.cielo.nubesMalla.material, ll: A = tiempo.lluvia.lluvia.material, ba: A = tiempo.barreras.matBarrera;
+    expect(nu.isMeshBasicNodeMaterial && nu.transparent && !nu.depthWrite && !nu.fog).toBe(true); expect(nu.vertexNode).toBeTruthy(); expect(nu.colorNode).toBeTruthy();
+    expect(ll.isLineBasicNodeMaterial && ll.transparent && !ll.depthWrite && !ll.toneMapped).toBe(true); expect(ll.positionNode).toBeTruthy(); expect(ll.colorNode).toBeTruthy();
+    expect(ba.isMeshBasicNodeMaterial && ba.side === THREE.DoubleSide && ba.transparent && !ba.toneMapped).toBe(true); expect(ba.colorNode).toBeTruthy();
+    expect(ba.blending).toBe(THREE.NormalBlending);   // el tema (al montarse) cambia la mezcla del material que dé la fábrica: el cielo de la prueba es claro
+    expect(F.duenos()).toEqual({ "tiempo-mundo": 5 }); tiempo.libera(); expect(F.duenos()).toEqual({});
+  });
+  it("los nodos del tiempo completan la luz de la copa y el tronco del catálogo y de los olivos generados (outputNode), si se dan; en los puntos, no", async () => {
+    const { creaCatalogo } = await import("./catalogo.ts"), { DEF_GEN_OLIVO, uniformesFundido } = await import("./generados-sombreado.ts");
+    const P = creaParcheTiempo({ THREE, colorVertSRGB: () => {} }), tiempoTsl = () => P.nodosTsl;
+    const F = nuevo(), C = creaCatalogo({ THREE, hash, parcheTiempo: () => {}, Materiales: F, tiempoTsl });
+    const [copa, tronco] = C.geometria(C.SIN, 1, 0) as A[];
+    expect(copa.mat.outputNode).toBeTruthy(); expect(copa.mat.maskNode).toBeTruthy(); expect(tronco.mat.outputNode).toBeTruthy();
+    const F2 = nuevo(), C2 = creaCatalogo({ THREE, hash, parcheTiempo: () => {}, Materiales: F2 });
+    expect((C2.geometria(C2.SIN, 1, 0) as A[])[0].mat.outputNode).toBeFalsy();   // sin los nodos, como antes de A3-4
+    F.define("gen-olivo", DEF_GEN_OLIVO);
+    const UF = uniformesFundido(THREE), parche = () => {};
+    const hoja: A = F.crea("gen-olivo", { material: new THREE.MeshStandardMaterial(), parche, uniformes: UF, pieza: "ramita0", tiempo: tiempoTsl });
+    const pts: A = F.crea("gen-olivo", { material: new THREE.PointsMaterial({ vertexColors: true }), parche, uniformes: UF, pieza: "puntos", tiempo: tiempoTsl });
+    expect(hoja.outputNode).toBeTruthy(); expect(pts.outputNode).toBeFalsy();
+    const n = P.nodosTsl(TSL); expect(n.salida(TSL.positionWorld.xz)).toBeTruthy(); expect(n.viento(TSL.positionGeometry)).toBeTruthy();
+  });
+});
+
 describe("el tiempo del exterior: el componente", () => {
   it("monta: cuelga el cielo y la lluvia, una barrera por linde, parchea los seis materiales del ciclo del día y pinta la chapita al pasar el tiempo", () => {
     const { tiempo, scene, gLinde, mats, els } = monta();

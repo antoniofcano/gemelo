@@ -46,6 +46,22 @@ export const DEF_BARRERA: DefMaterial<OpcBarrera> = {
         "gl_FragColor = vec4(uColor * (1.0 + 0.7 * pie + 0.9 * pulso), clamp(a, 0.0, 1.0));\n#include <colorspace_fragment>\n}"
     });
     return m;
+  },
+  // MU5-n, tercer commit: la variante TSL, APAGADA (MATERIALES §9). Las mismas cuentas del fragmento (caída, pie, filo, rejilla y pulso) sobre los atributos aV y aD,
+  // con los MISMOS uniformes; la mezcla aditiva y las dos caras. Sin tono (el clásico solo lleva colorspace_fragment): toneMapped = false. temaBarrera cambia la
+  // mezcla del material que dé la fábrica, sea cual sea.
+  tsl: function (o, c) {
+    var W = c.THREE as A, T = c.TSL as A, un = o.uniforms;
+    var m = new W["MeshBasicNodeMaterial"]({ transparent: true, depthWrite: false, side: W.DoubleSide, blending: W.AdditiveBlending });
+    m.toneMapped = false;
+    var num = function (x: { value: A }): A { return T.uniform(x.value).onObjectUpdate(function () { return x.value; }); };
+    var uT = num(un.uT), uColor = num(un.uColor), uAlpha = num(un.uAlpha), vV = T.attribute("aV", "float"), vD = T.attribute("aD", "float");
+    var caida = T.pow(T.float(1).sub(vV), 1.7), pie = T.smoothstep(0.09, 0.0, vV), filo = T.smoothstep(0.92, 1.0, vV).mul(0.5);
+    var x = T.fract(vD.div(5)), rej = T.smoothstep(0.04, 0.0, T.min(x, T.float(1).sub(x))).mul(0.3).mul(caida);
+    var p = T.fract(vD.div(110).sub(uT.mul(0.05))), pulso = T.smoothstep(0.0, 0.025, p).mul(T.smoothstep(0.14, 0.025, p));
+    var a = uAlpha.mul(caida.mul(0.5).add(0.1)).add(pie.mul(0.95)).add(filo).add(rej).add(pulso.mul(0.55).mul(caida.add(0.4)));
+    m.colorNode = T.vec4(uColor.mul(T.float(1).add(pie.mul(0.7)).add(pulso.mul(0.9))), T.clamp(a, 0, 1));
+    return m;
   }
 };
 

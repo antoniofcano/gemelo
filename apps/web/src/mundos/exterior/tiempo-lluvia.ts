@@ -30,6 +30,20 @@ export const DEF_LLUVIA: DefMaterial<OpcLluvia> = {
       fragmentShader: "uniform float uInt; uniform vec3 uColor; varying float vA; void main(){ gl_FragColor = vec4(uColor, 0.75 * uInt * vA);\n#include <colorspace_fragment>\n}"
     });
     return m;
+  },
+  // MU5-n, tercer commit: la variante TSL, APAGADA (MATERIALES §9). Las mismas cuentas en positionNode (la caída con mod, el empuje del viento, la cola de 3,4 m) y el
+  // color con su alfa; los uniformes, los MISMOS objetos. Sin tono (el clásico solo lleva colorspace_fragment): toneMapped = false.
+  tsl: function (o, c) {
+    var W = c.THREE as A, T = c.TSL as A, un = o.uniforms;
+    var m = new W["LineBasicNodeMaterial"]({ transparent: true, depthWrite: false });
+    m.toneMapped = false;
+    var num = function (x: { value: A }): A { return T.uniform(x.value).onObjectUpdate(function () { return x.value; }); };
+    var uT = num(un.uT), uInt = num(un.uInt), uViento = num(un.uViento), uColor = num(un.uColor), aEnd = T.attribute("aEnd", "float");
+    var H = T.float(170), p = T.positionGeometry, y = T.mod(p.y.sub(uT.mul(26)), H);
+    var xz = T.vec2(p.x, p.z).add(uViento.mul(H.sub(y)).mul(0.035)).sub(uViento.mul(aEnd).mul(0.5));
+    m.positionNode = T.vec3(xz.x, y.add(aEnd.mul(3.4)), xz.y);
+    m.colorNode = T.vec4(uColor, T.float(0.75).mul(uInt).mul(T.float(1).sub(aEnd.mul(0.6))));
+    return m;
   }
 };
 

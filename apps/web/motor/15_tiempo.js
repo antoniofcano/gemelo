@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: TiempoPuro, ahoraMs, TM, nivelEn, nivel, texBrillo, uViento, uSombra, GLSL_SOMBRA, cur, meta, ins, tMundo, temaBarrera, colocaBarrera,
-//   fmtHora, fmtClaveDia, num1, rumbo, objetivoMundoBase, pasoHoraMundo, horaMundoTexto, aplicaMundo, TiempoVivo, lindes, parcheTiempo, esc,
-//   actualizaTiempo
+//   fmtHora, fmtClaveDia, num1, rumbo, objetivoMundoBase, pasoHoraMundo, horaMundoTexto, aplicaMundo, TiempoVivo, lindes, nodosTiempoTsl,
+//   parcheTiempo, esc, actualizaTiempo
 // Consume: 01_datos (D, $, FOG0, FOG1), 02_mundo (suelo), 02c_componentes (Bus, Componentes), 02i_materiales (Materiales),
 //   02j_estaticos (Estaticos), 03_escena (scene, camera, SRGB, LUZ_SOL, LUZ_CIELO, hemi, sol, texColor, colorVertSRGB, colorCss, Estado),
 //   04d_sombreado_tiles (hash, matSuelo, matOrto), 04f_suelo_fotos (SueloFotos), 05_nube (nube), 07_follaje (matHojaG, matHojaP, matCorteza),
@@ -36,7 +36,8 @@
   var uViento = Tiempo.uViento, uSombra = Tiempo.uSombra, GLSL_SOMBRA = Mundos.GLSL_SOMBRA, cur = Tiempo.cur, meta = Tiempo.meta, ins = Tiempo.ins, tMundo = 0;
   var temaBarrera = Tiempo.temaBarrera, colocaBarrera = Tiempo.colocaBarrera, fmtHora = Tiempo.fmtHora, fmtClaveDia = Tiempo.fmtClaveDia, num1 = Mundos.num1, rumbo = Mundos.rumbo;
   var objetivoMundoBase = Tiempo.objetivoMundoBase, pasoHoraMundo = Tiempo.pasoHoraMundo, horaMundoTexto = Tiempo.horaMundoTexto, aplicaMundo = Tiempo.aplicaMundo;
-  var TiempoVivo = Mundos.creaTiempoVivo(TM, ahoraMs), lindes = Tiempo.lindes;   // el contrato de TiempoVivo (contratos/interfaces.json): sin estado propio, lee TM
+  var TiempoVivo = Mundos.creaTiempoVivo(TM, ahoraMs), lindes = Tiempo.lindes;
+  var nodosTiempoTsl = Tiempo.nodosTsl;   // MU5-n: la sombra de nubes y la escarcha en TSL, para la variante apagada de 04d, 07a y 07ab (la piden al construirla)   // el contrato de TiempoVivo (contratos/interfaces.json): sin estado propio, lee TM
   // lo que otros módulos piden ANTES en el montaje (07a, 07ab y 14 al cargarse): funciones declaradas, que se izan, y llaman a lo de aquí cuando ya existe
   function parcheTiempo(sh, viento) { Tiempo.parcheTiempo(sh, viento); }
   function esc(s) { return Mundos.esc(s); }   // los textos de Vigía (y de OlivarTrack) se escapan al pintarlos (14_historia lo usa al cargarse)

@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: hash, matSuelo, matOrto, UN, SombreadoTiles
 // Consume: 01_datos (D, RES, x0, yN, ANCHO, ALTO), 02_mundo (Mundo, suelo), 02b_cola (ColaExt), 02i_materiales (Materiales), 03_escena (camera),
-//   04f_suelo_fotos (SueloFotosPuro, SueloFotos), 15_tiempo (parcheTiempo), 21_suelo (vn2)
+//   04f_suelo_fotos (SueloFotosPuro, SueloFotos), 15_tiempo (nodosTiempoTsl, parcheTiempo), 21_suelo (vn2)
 // ===============================================================================
   // ---------- el sombreado del relieve (F1d, T5; T8 fase 2: la única escena es la 3D Tiles). MU5-n (A3-1a): el sombreado pasó a TypeScript,
   // apps/web/src/mundos/exterior/terreno.ts (Mundos.creaSombreadoTiles, Mundos.uniformesTerreno, Mundos.hash), con su libera() completo (L2-05: también las
@@ -15,6 +15,7 @@
   var SombreadoTiles = Mundos.creaSombreadoTiles({
     THREE: THREE, RES: RES, mundo: Mundo, suelo: suelo, cola: ColaExt, camara: camera, UN: UN, matSuelo: matSuelo,
     parcheTiempo: function (sh, viento) { parcheTiempo(sh, viento); },   // 15_tiempo: sombra de nubes y escarcha
+    tiempoTsl: function () { return typeof nodosTiempoTsl === "function" ? nodosTiempoTsl : null; },   // A3-4: los mismos, en TSL (para la variante apagada)
     vn2: function (x, y) { return vn2(x, y); },   // 21_suelo: las mismas funciones que usa cubierta() en la CPU
     sueloFotos: function () { return typeof SueloFotos !== "undefined" ? SueloFotos : null; },   // 04f se monta después (EV-1s, ?suelo=fotos)
     sueloFotosPuro: function () { return typeof SueloFotosPuro !== "undefined" ? SueloFotosPuro : null; },

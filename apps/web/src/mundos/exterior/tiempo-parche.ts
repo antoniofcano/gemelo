@@ -31,10 +31,64 @@ export interface DepsParcheTiempo {
 export const MATERIAL_PARCHE_TIEMPO = "parche-tiempo";
 /** lo que pide: el material del ciclo del día que lo lleva (es de otro módulo: 07_follaje, 04d o 05) y si lleva viento (el follaje) */
 export interface OpcParcheTiempo { material: A; viento: boolean }
-/** el clásico de siempre: el MISMO material, con el parche puesto por conTiempo (la misma función de siempre: three usa su texto como clave del programa) */
-export function defParcheTiempo(conTiempo: (m: A, viento: boolean) => void): DefMaterial<OpcParcheTiempo> {
+// ---------------------------------------------------------------- MU5-n, tercer commit: la variante TSL, APAGADA y PARCIAL (MATERIALES §9)
+// Solo la daría la fábrica con el WebGPURenderer (MU6), que hoy no se monta. NO es equivalente: las capturas de clásico frente a TSL son de MU6. Construye sus
+// nodos (lo prueba Vitest con three/webgpu y three/tsl de verdad); NO se ha compilado ni dibujado.
+// nodosTiempo son los mismos nodos para el parche del tiempo y para quien completa su luz con ellos (el terreno, la copa y el tronco del catálogo y los olivos
+// generados): la sombra de las nubes (ot_sombra, el mismo ruido de valor), su paso por el vértice (el vSomb del clásico, varying), la escarcha y el viento.
+// Los uniformes son los MISMOS objetos { value } que mueve el paso del tiempo: cada nodo relee su valor en cada objeto (onObjectUpdate).
+export function nodosTiempo(T: A, uSombra: UniformesSombra, uViento?: UniformesViento | null) {
+  var num = function (x: { value: A }): A { return T.uniform(x.value).onObjectUpdate(function () { return x.value; }); };
+  var uDrift = num(uSombra.uDrift), uCov = num(uSombra.uCov), uSomb = num(uSombra.uSomb), uHielo = num(uSombra.uHielo);
+  // ot_h y ot_vn del GLSL_SOMBRA
+  var h = function (p: A): A { return T.fract(T.sin(T.dot(p, T.vec2(127.1, 311.7))).mul(43758.5453)); };
+  var vn = function (p: A): A {
+    var i = T.floor(p), f0 = T.fract(p), f = f0.mul(f0).mul(T.float(3).sub(f0.mul(2)));
+    return T.mix(T.mix(h(i), h(i.add(T.vec2(1, 0))), f.x), T.mix(h(i.add(T.vec2(0, 1))), h(i.add(T.vec2(1, 1))), f.x), f.y);
+  };
+  /** ot_sombra(xz): 1 sin nubes encima; menos bajo una nube (con uSomb), nada si no hay nubes (step(0,01, uCov)) */
+  function sombra(xz: A): A {
+    var q = xz.mul(0.0042).sub(uDrift), n = vn(q).mul(0.6).add(vn(q.mul(2.3).add(7)).mul(0.4)), t = T.mix(T.float(0.85), T.float(0.22), uCov);
+    return T.float(1).sub(T.smoothstep(t.sub(0.07), t.add(0.07), n).mul(uSomb).mul(T.step(0.01, uCov)));
+  }
+  /** por vértice, como el vSomb del clásico */
+  function enVertice(n: A): A { return T.varying(n); }
+  /** gl_FragColor.rgb *= vSomb; y la escarcha: mix(…, vec3(0,88, 0,94, 1), uHielo · 0,6) */
+  function aplica(rgb: A, s: A): A { return T.mix(rgb.mul(s), T.vec3(0.88, 0.94, 1.0), uHielo.mul(0.6)); }
+  /** lo de arriba tras la luz y la niebla (el output del NodeMaterial), como el clásico tras dithering_fragment; xz, la posición en que se mira la nube */
+  function salida(xz: A): A { return T.vec4(aplica(T.output.rgb, enVertice(sombra(xz))), T.output.a); }
+  /** el vaivén del follaje: la posición del vértice movida por el viento (positionNode), con la fase de su posición de partida */
+  function viento(p: A): A {
+    if (!uViento) return p;
+    var uT = num(uViento.uT), uAmp = num(uViento.uAmp), uDir = num(uViento.uDir);
+    var ph = p.x.mul(0.21).add(p.z.mul(0.17)), rf = T.sin(uT.mul(1.9).add(ph)).add(T.sin(uT.mul(3.1).add(ph.mul(1.7))).mul(0.6));
+    var dxz = uDir.mul(uAmp.mul(rf.mul(0.45).add(0.55)));
+    return T.vec3(p.x.add(dxz.x), p.y.add(uAmp.mul(0.12).mul(T.sin(uT.mul(2.3).add(ph.mul(2))))), p.z.add(dxz.y));
+  }
+  return { sombra: sombra, enVertice: enVertice, aplica: aplica, salida: salida, viento: viento, uniformes: { uDrift: uDrift, uCov: uCov, uSomb: uSomb, uHielo: uHielo } };
+}
+export type NodosTiempo = ReturnType<typeof nodosTiempo>;
+// lo que no se copia del material clásico al NodeMaterial (lo demás, como hace three al convertir: NodeLibrary.fromMaterial)
+var NO_COPIA: Record<string, 1> = { uuid: 1, id: 1, type: 1, onBeforeCompile: 1, customProgramCacheKey: 1, _listeners: 1, version: 1 };
+/** el clásico de siempre: el MISMO material, con el parche puesto por conTiempo (la misma función de siempre: three usa su texto como clave del programa).
+ *  La TSL: un NodeMaterial de la misma clase (Points, Lambert o Basic) con las propiedades del clásico y el MISMO objeto de color (el tinte del día), el color
+ *  por vértice pasado de sRGB a lineal (lo de colorVertSRGB), el vaivén del viento en el follaje y, en lo que no es de puntos, la sombra de las nubes y la escarcha
+ *  tras la luz. Los PointsMaterial no las llevan en el clásico (el sombreador de puntos de three no tiene <dithering_fragment>): en la TSL, tampoco */
+export function defParcheTiempo(conTiempo: (m: A, viento: boolean) => void, u?: { uSombra: UniformesSombra; uViento: UniformesViento } | null): DefMaterial<OpcParcheTiempo> {
   return {
-    clasico: function (o) { conTiempo(o.material, o.viento); return o.material; }
+    clasico: function (o) { conTiempo(o.material, o.viento); return o.material; },
+    tsl: function (o, c) {
+      var src = o.material, W = c.THREE as A, T = c.TSL as A;
+      var C = W[String(src.type || "").replace(/Material$/, "NodeMaterial")] || W["MeshBasicNodeMaterial"], m = new C();
+      for (var k in src) if (Object.prototype.hasOwnProperty.call(src, k) && !NO_COPIA[k] && !/^is[A-Z]/.test(k)) m[k] = src[k];
+      m.color = src.color;   // el MISMO objeto: el paso del tiempo lo tiñe en su sitio
+      if (!u) return m;
+      var N = nodosTiempo(T, u.uSombra, o.viento ? u.uViento : null), base = T.vec4(T.materialColor);
+      if (src.vertexColors) { m.vertexColors = false; m.colorNode = T.vec4(base.rgb.mul(T.sRGBTransferEOTF(T.vertexColor().rgb)), base.a); }
+      if (o.viento) m.positionNode = N.viento(T.positionGeometry);
+      if (!src.isPointsMaterial) m.outputNode = N.salida(T.positionGeometry.xz);   // el clásico: ot_sombra(position.xz), la posición local
+      return m;
+    }
   };
 }
 
@@ -61,7 +115,7 @@ export function creaParcheTiempo(d: DepsParcheTiempo) {
   // MU5-n: por la fábrica («parche-tiempo»), sin dueño, porque el material no es de este componente (su libera no debe soltarlo). Con el clásico, la fábrica
   // devuelve el MISMO material con el parche; con el renderizador nuevo y variante TSL (MU6), un NodeMaterial aparte, que sí es de aquí: suelta() lo libera
   var M = d.Materiales || null;
-  if (M) M.define(MATERIAL_PARCHE_TIEMPO, defParcheTiempo(conTiempo));
+  if (M) M.define(MATERIAL_PARCHE_TIEMPO, defParcheTiempo(conTiempo, { uSombra: uSombra, uViento: uViento }));
   var parcheados: A[] = [];
   function aplica(m: A, viento: boolean): A {
     var previo = m.onBeforeCompile, r = M ? M.crea(MATERIAL_PARCHE_TIEMPO, { material: m, viento: viento }) : (conTiempo(m, viento), m);
@@ -76,6 +130,8 @@ export function creaParcheTiempo(d: DepsParcheTiempo) {
     parcheados.length = 0;
     return n;
   }
-  return { uViento: uViento, uSombra: uSombra, GLSL_SOMBRA: GLSL_SOMBRA, conTiempo: conTiempo, parcheTiempo: parcheTiempo, aplica: aplica, suelta: suelta };
+  /** los nodos del tiempo con estos uniformes, para la TSL de quien completa su luz con ellos (el terreno, el catálogo, los olivos generados); T = three/tsl */
+  function nodosTsl(T: A): NodosTiempo { return nodosTiempo(T, uSombra, uViento); }
+  return { uViento: uViento, uSombra: uSombra, GLSL_SOMBRA: GLSL_SOMBRA, conTiempo: conTiempo, parcheTiempo: parcheTiempo, aplica: aplica, suelta: suelta, nodosTsl: nodosTsl };
 }
 export type ParcheTiempo = ReturnType<typeof creaParcheTiempo>;

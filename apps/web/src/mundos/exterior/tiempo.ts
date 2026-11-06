@@ -167,7 +167,7 @@ export function creaTiempo(d: DepsTiempo) {
   }
   return {
     TiempoPuro: TiempoPuro, ahoraMs: ahoraMs, TM: TM, nivelEn: nivelEn, nivel: nivel, texBrillo: cielo.texBrillo, uViento: uViento, uSombra: uSombra, GLSL_SOMBRA: GLSL_SOMBRA,
-    parcheTiempo: parcheTiempo, cur: cur, meta: meta, ins: paso.ins, tMundo: paso.tMundo, actualiza: paso.actualizaTiempo, temaBarrera: barreras.temaBarrera,
+    parcheTiempo: parcheTiempo, nodosTsl: PT.nodosTsl, cur: cur, meta: meta, ins: paso.ins, tMundo: paso.tMundo, actualiza: paso.actualizaTiempo, temaBarrera: barreras.temaBarrera,
     colocaBarrera: barreras.colocaBarrera, fmtDia: fmtDia, fmtHora: fmtHora, fmtClaveDia: fmtClaveDia, objetivoMundoBase: objetivoMundoBase, pasoHoraMundo: fichas.pasoHoraMundo,
     horaMundoTexto: horaMundoTexto, aplicaMundo: aplicaMundo, TiempoVivo: TiempoVivo, lindes: lindes, lectura: lectura, libera: libera,
     // lo de dentro, para las pruebas y ?debug

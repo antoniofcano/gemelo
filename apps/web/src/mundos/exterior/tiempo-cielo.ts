@@ -44,6 +44,20 @@ export const DEF_NUBES: DefMaterial<OpcNubes> = {
           "void main() { vec4 c = vec4(diffuse, vA) * texture2D(map, vUv); gl_FragColor = c;\n#include <tonemapping_fragment>\n#include <colorspace_fragment>\n}"
     });
     return m;
+  },
+  // MU5-n, tercer commit: la variante TSL, APAGADA (MATERIALES §9). Cada mancha, de cara a la cámara en el espacio de la vista (vertexNode: mv.xy += esquina · tam),
+  // con el color · alfa · textura del clásico y la paleta del ocaso con ?suelo=fotos; los uniformes, los MISMOS objetos. Sin la niebla (fog: false), como el clásico.
+  tsl: function (o, c) {
+    var W = c.THREE as A, T = c.TSL as A, un = o.uniforms;
+    var m = new W["MeshBasicNodeMaterial"]({ transparent: true, depthWrite: false, fog: false });
+    var esquina = T.attribute("esquina", "vec2"), tam = T.attribute("tam", "vec2"), alfa = T.attribute("alfa", "float");
+    var mv = T.modelViewMatrix.mul(T.vec4(T.positionGeometry, 1));
+    m.vertexNode = T.cameraProjectionMatrix.mul(T.vec4(mv.xy.add(esquina.mul(tam)), mv.z, mv.w));
+    var col = function (x: { value: A }): A { return T.uniform(x.value).onObjectUpdate(function () { return x.value; }); };
+    var d = col(un.diffuse);
+    if (o.ocaso) d = T.mix(d, T.mix(col(un.uNubLuz), col(un.uNubSom), T.smoothstep(0.3, 0.7, T.uv().y)), col(un.uOcaso));
+    m.colorNode = T.vec4(d, alfa).mul(T.texture(un.map.value, T.uv()));
+    return m;
   }
 };
 

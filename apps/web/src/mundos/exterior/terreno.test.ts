@@ -31,7 +31,7 @@ function tesela(kx: number, conSuelo: boolean): Tesela {
   return { key: kx + "_0", kx, ky: 0, ox: kx * TS, oy: 0, v: [kx * TS, 0, (kx + 1) * TS, TS], np: 0, estado: conSuelo ? 2 : 0, dtm: null, chm: null,
     suel: conSuelo ? new Uint8Array(130 * 130 * 3) : null, pts: null, ortImg: null, ortCv: null, ortPix: null, ortW: 0, ortH: 0, gen: 0 };
 }
-function monta(THREE: ThreeTerreno & Record<string, unknown>, materiales?: DepsTerreno["materiales"]) {
+function monta(THREE: ThreeTerreno & Record<string, unknown>, materiales?: DepsTerreno["materiales"], extra?: Partial<DepsTerreno>) {
   const lista = [tesela(0, true), tesela(1, false)], cola: Array<{ k: string; gen: Generator<unknown, unknown, unknown>; fin?: (v: unknown) => void }> = [];
   let alSoltar: ((t: Tesela) => void) | null = null;
   const mundo = {
@@ -47,6 +47,7 @@ function monta(THREE: ThreeTerreno & Record<string, unknown>, materiales?: DepsT
     cola: { pon: (k, _p, gen, fin) => { cola.push({ k, gen, fin }); return true; }, cancela: (k) => { const i = cola.findIndex((c) => c.k === k); if (i >= 0) cola.splice(i, 1); } },
     camara: { position: { x: 0, y: 0, z: 0 } }
   };
+  if (extra) Object.assign(deps, extra);
   const S = creaSombreadoTiles(deps);
   const corre = (): void => { while (cola.length) { const c = cola.shift() as (typeof cola)[number]; let r = c.gen.next(); while (!r.done) r = c.gen.next(); if (c.fin) c.fin(r.value); } };
   const TexturaC = THREE.Texture as unknown as new (img: unknown) => { image: unknown };
@@ -153,5 +154,18 @@ describe("MU5-n, tercer commit: la variante TSL del terreno (apagada, parcial)",
     expect((F as unknown as { duenos(): Record<string, number> }).duenos()).toEqual({ "terreno-sombreado": 2 });
     m.S.libera();
     expect((F as unknown as { duenos(): Record<string, number> }).duenos()).toEqual({});
+  });
+  it("A3-4: con los nodos del tiempo (tiempoTsl), la TSL del terreno pide la sombra de nubes en vWP.xz y la escarcha tras la luz; sin ellos, como antes", async () => {
+    const rutaW = "three/webgpu", rutaT = "three/tsl";
+    const W = await import(/* @vite-ignore */ rutaW), T = await import(/* @vite-ignore */ rutaT);
+    const { creaParcheTiempo } = await import("./tiempo-parche.ts");
+    const P = creaParcheTiempo({ THREE: C.THREE, colorVertSRGB: () => {} }), pedidos: number[] = [];
+    const tiempoTsl = () => (TS: unknown) => { pedidos.push(1); return P.nodosTsl(TS); };
+    const F = creaMateriales({ THREE: C.THREE as unknown as ThreeMin, render: { tipo: "nuevo" }, nodos: () => ({ THREE: W, TSL: T }) });
+    const m = monta(C.THREE, F, { tiempoTsl }), g = m.glb(0, 256);
+    m.S.modelo(g.raiz, g.tile); m.corre();
+    const mat = g.malla.material as unknown as Record<string, unknown> & { isNodeMaterial?: boolean };
+    expect(mat.isNodeMaterial).toBe(true); expect(mat["outputNode"]).toBeTruthy(); expect(pedidos.length).toBe(1);
+    m.S.libera();
   });
 });
