@@ -169,6 +169,68 @@ Mapa de iniciativas con su estado y el ADR que las sostiene. **No** es el estado
 
 Tareas sueltas decididas: ✅ anonimizar `doc/historico/DISENO-2026-10.md` (decisión 2) · ✅ exportadores multiplataforma (decisión 8, D4).
 
+## Mundos múltiples (ADR-0033, Propuesto)
+
+Exterior, molino y bodega en un solo PWA, cada uno con su sala de red; TypeScript estricto, Vitest y migración strangler ([ADR-0033](../adr/0033-mundos.md), interfaces y fase 1 al detalle en [MUNDOS](../sistema/MUNDOS.md), riesgos en [MUNDOS §10](../sistema/MUNDOS.md#10-riesgos), decisiones 216-227). Las estimaciones son días de agente con Antonio revisando, **[ESTIMACIÓN]**. Tipo: **ligera** = Node (código, contratos, Vitest); **pesada** = banco (Chrome o Docker) o Blender; 👤 = Antonio o su Quest. Dentro de cada fase, primero lo que abarata el banco; las pesadas, agrupadas en una ronda.
+
+| Fase | Qué | Criterio de salida (medible) | [ESTIMACIÓN] | Estado |
+|---|---|---|---|---|
+| MU0 | Instrumentos: tandas 0 y 1 de la [auditoría](../auditoria-noviembre2026/PLAN.md) y ADR-0033 aceptado | puerta pesada en verde; L4-01 con su prueba; topes de `pruebas/presupuesto.json` a ≤ 2× la medida del fixture; tope de memoria de GPU; guardián de memoria de VR activo; ADR-0033 y decisiones 216-218 cerradas | 4-5 d | ⬜ |
+| MU1 | Cimientos sin cambio visible: `tsconfig`, Vitest, fronteras, puente y núcleo puro (MUNDOS §9) | puerta rápida con `tsc` y Vitest; capturas iguales y recuentos e `info.memory` idénticos a la toma de referencia; trinquete del legado más bajo que al empezar | 10-12 d | ⬜ |
+| MU2 | El exterior como primer `World` (congelar, no liberar) | `WorldManager` con un mundo y sin regresión (capturas y recuentos); guardián «exterior congelado» en verde; memoria del exterior congelado medida en Chrome y en el Quest y escrita en MEDIDAS | 8-10 d | ⬜ |
+| MU3 | Bodega (o molino primero: decisión 217) | e2e: dos en la bodega y una fuera no se ven ni se oyen; aforo impuesto por la api; reunión de 6 con pantalla compartida en el Quest dentro del presupuesto de su perfil; «ir y volver» deja `info.memory` como estaba | 10-12 d | ⬜ |
+| MU4 | Molino | una máquina completa animada (prensa de viga) con sonido, a 72 Hz en el Quest sin bajar de nivel; «ir y volver» en verde | 8 d + modelado | ⬜ |
+| MU5 | Liberar el exterior y encoger el legado | `renderer.info.memory` vuelve a la base al salir del exterior liberado; 0 líneas en `apps/web/motor/` | 20-30 d, repartidos | ⬜ |
+| MU6 | Renderer nuevo en pantalla (F3-F5 del ADR-0031 sobre la fábrica tipada) | capturas iguales por material; medida ≤ clásico | según MULTIVIEW | ⬜ |
+| MU7 | Una sola build | F2 repetida en el Quest con el three del momento; super-three y su parche retirados | cuando three lo permita | ⬜ |
+
+| Id | Tarea | Depende de | Tipo · modelo | [ESTIMACIÓN] | Estado |
+|---|---|---|---|---|---|
+| MU0-1 | L4-01: el motor compara `centro_utm` y `z0` del tileset con el índice (`04b_escena3d.js`) y la tubería igual; prueba con un tileset desplazado 10 m | — | ligera · sonnet | ½ d | ⬜ |
+| MU0-2 | L4-02: el comprobador de cabeceras quita comentarios y cadenas antes de buscar nombres; regenerar cabeceras | — | ligera · sonnet | 1 d | ⬜ |
+| MU0-3 | L4-03, L4-04: contrato y guardián de acuerdo sobre `teselas.v`; teselas de los exportadores reales contra `tesela.schema.json` | — | ligera · sonnet | 1 d | ⬜ |
+| MU0-4 | `gitleaks` de todo el historial en un clon completo, solo lectura (decisión 222) | 👤 222 | ligera · haiku | ½ d | ⬜ |
+| MU0-5 | L1-06 + L1-07 + L2-06 en una sola ronda del banco: recalibrar topes con una tesela densa en el fixture, tope de memoria de GPU, activar `memoria_vr_chrome` (con el arreglo del goteo de `29_vr`/`36_mandos`) | MU0-2 | pesada · opus (banco) | 2 d | ⬜ |
+| MU0-6 | ADR-0033 aceptado; enmienda de CLAUDE.md §5 y regla 2 si 216 = sí; enmienda de ARQUITECTURA-MULTIUSUARIO.md:11,35,128-130 | 👤 216-218 | ligera · opus | ½ d | ⬜ |
+| MU1-1 | `tsconfig.base.json` en la raíz y `apps/web/tsconfig.json` (MUNDOS §9.1); la api lo extiende en otro commit | MU0-6 | ligera · sonnet | ½ d | ⬜ |
+| MU1-2 | Vitest 5.1.0 fijado y un guardián de `node:test` que lanza `tsc --noEmit` y `vitest run` (MUNDOS §9.2) | MU1-1 | ligera · sonnet | ½ d | ⬜ |
+| MU1-3 | `dependency-cruiser` fijado con las reglas de las cuatro fronteras (MUNDOS §1) | MU1-1 | ligera · sonnet | ½ d | ⬜ |
+| MU1-4 | Toma de referencia del banco: vistas, recuentos, memoria y VR simulada (MUNDOS §9.5), antes de tocar el motor | MU0-5 | pesada · haiku (banco) | ½ d | ⬜ |
+| MU1-5 | Puente en `genera_motor.mjs` (`@gemelo/nucleo`), talones, guardián del puente y trinquete del legado (MUNDOS §9.3) | MU1-2 | ligera · opus | 1 d | ⬜ |
+| MU1-6 | Extraer `Cola` con dueño por prefijo (§9.4 #1) y mover sus pruebas `[puro]` a Vitest | MU1-5 | ligera · sonnet | ½ d | ⬜ |
+| MU1-7 | Extraer `Render` + `memoria()` + `compila()`, `XrPerillas`, `EntidadesPuro`, `LlegadaPuro`/`IrAPuro` (§9.4 #2, 4, 5, 6), un commit por módulo | MU1-6 | ligera · sonnet | 2 d | ⬜ |
+| MU1-8 | Extraer `VrPresupuestoPuro`/`VrControlPuro` con L7-03 y L1-03 (perfiles que suben, «holgado» contra el perfil), en commit aparte | MU1-6 | ligera · opus; 👤 Quest | 1 d | ⬜ |
+| MU1-9 | Estado mutable a un objeto (`Estado.exag`, `modo`, `calidad`): cambio mecánico en el legado, en commit aparte (§9.4 #7) | MU1-5 | ligera · opus | 1 d | ⬜ |
+| MU1-10 | `Bucle` del núcleo con `try/catch` por fotograma y salida limpia de XR, `visibilitychange`, `reset` y pérdida de contexto (L7-01, L7-02, L7-10) | MU1-9 | ligera · opus | 1 d | ⬜ |
+| MU1-11 | Tipos generados de `contratos/*.schema.json` (`json-schema-to-typescript` fijado) y su guardián de frescura | MU1-2 | ligera · sonnet | 1 d | ⬜ |
+| MU1-12 | Guardián promesa↔guardián: cada regla de CLAUDE.md y cada tope apuntan a su prueba | MU1-2 | ligera · sonnet | 1 d | ⬜ |
+| MU1-13 | Ronda final del banco contra la referencia de MU1-4; diferencias explicadas o arregladas; nota en MEDIDAS | MU1-6..12 | pesada · sonnet (banco) | ½ d | ⬜ |
+| MU2-1 | `WorldManagerPuro` (máquina de estados) y `World` en TS, probados en Vitest con mundos falsos (MUNDOS §2-3) | MU1-13 | ligera · opus | 1 d | ⬜ |
+| MU2-2 | Fundido partido en `cierra`/`abre` (`29_vr.js`, `12b_llegada.js`); `vrFundido(fn)` encima, con la misma semántica | MU2-1 | ligera · sonnet | 1 d | ⬜ |
+| MU2-3 | `exterior.actualiza` recoge las llamadas a mano de `90_final.js` en el mismo orden | MU2-1 | ligera · sonnet | ½ d | ⬜ |
+| MU2-4 | `suelo`/`dentro`/`obstaculo` del mundo activo en `12_paseo`, `12b`, `12c`, `29_vr` y `16_vida`; guardián: nadie más llama a `suelo(` ni recorta a `D.ext` para moverse | MU2-3 | ligera · opus | 2 d | ⬜ |
+| MU2-5 | `02c_componentes` a TS con `mundos?: [ids]` en el manifiesto y filtro por mundo; `mundo:entra`/`mundo:sale` en `contratos/eventos.json` | MU2-1 | ligera · opus | 2 d | ⬜ |
+| MU2-6 | `congela()` del exterior: raíces ocultas, sin carga, sin `Escena3D`, sin sus trabajos en la Cola, HUD del exterior escondido; guardián en Vitest | MU2-4, MU2-5 | ligera · opus | 1½ d | ⬜ |
+| MU2-7 | `Ambiente` sacado de `03_escena` y `15_tiempo` (cielo, niebla, luces, near/far, `exag`) con `cielo: "ninguno"` para interiores | MU2-6 | ligera · opus | 2 d | ⬜ |
+| MU2-8 | `?mundo=vacio` (un interior de prueba) y medida en el banco de la memoria del exterior congelado; «ir y volver» | MU2-7 | pesada · sonnet (banco) | 1 d | ⬜ |
+| MU2-9 | La misma medida en el Quest con `?mide` y heap (guía en MEDIDAS) | MU2-8 | 👤 Quest | — | ⬜ |
+| MU3-1 | Contratos: `livekit-roles.json` v9 (sala por mundo, `roles_bodega`, aforo, tema `pizarra`), pose con mundo en los bits 6-7, contrato de la pizarra (MUNDOS §7) | MU0-6, 👤 225 | ligera · opus | 1 d | ⬜ |
+| MU3-2 | api: claves de sala por mundo, aforo con el cupo de la agenda, permisos de pantalla compartida, webhook que vuelve a expulsar (L9-06) | MU3-1 | ligera · opus | 2 d | ⬜ |
+| MU3-3 | red en TS: `cambiaSala` por mundo, pose con mundo, suscripción a pistas de vídeo (hoy no hay vídeo: `37_red.js:17`) | MU3-1 | ligera · sonnet | 1½ d | ⬜ |
+| MU3-4 | Mundo bodega v0: nave glb de pocos polígonos con luz horneada, materiales estándar, paredes (`dentro`) y su puerta; puertas en el índice | MU2-7 | ligera · sonnet; pesada si hay Blender | 1½ d | ⬜ |
+| MU3-5 | Voz de la bodega reutilizando las guiadas (palabra, cierre, moderación) y las voces a la vez de la decisión 225 | MU3-2, MU3-3 | ligera · sonnet | 1½ d | ⬜ |
+| MU3-6 | Pantalla compartida (`VideoTexture`) y pizarra v0 (`CanvasTexture`), con sus pruebas de tope en Vitest | MU3-3, MU3-4 | ligera · sonnet | 2 d | ⬜ |
+| MU3-7 | Panel de la oficina: aforo, ponente y expulsar en la bodega | MU3-2 | ligera · sonnet | 1 d | ⬜ |
+| MU3-8 | Ronda pesada: e2e de dos Chrome con Docker (aislamiento por sala), «ir y volver» de memoria, VR simulada con cambio de mundo | MU3-4..7 | pesada · sonnet (banco + Docker) | 1 d | ⬜ |
+| MU3-9 | Reunión de 6 en el Quest y nota de comodidad (regla 11) | MU3-8 | 👤 Quest | — | ⬜ |
+| MU4-0 | Prueba de humo de Spark con super-three y multiview en el Quest, fuera del motor (`prototipos/`), solo si 223 = splats | 👤 223 | pesada · sonnet; 👤 Quest | 1 d | ⬜ |
+| MU4-1 | Nave del molino: de la captura (protocolo aparte) a glb horneado dentro del presupuesto, fuera del repo (decisión 227) | 👤 227 | pesada · Blender; 👤 | modelado | ⬜ |
+| MU4-2 | Mundo molino v0 con su puerta, paredes y presupuesto por perfil | MU4-1, MU2-7 | ligera · sonnet | 1 d | ⬜ |
+| MU4-3 | Prensa de viga animada (`AnimationMixer` sobre glTF) con sonido; después empiedro y pozuelos | MU4-2 | ligera · sonnet | 2 d por máquina | ⬜ |
+| MU4-4 | El proceso de molturación contado: visita guiada reutilizando `46_guiada.js` | MU4-3 | ligera · sonnet | 2 d | ⬜ |
+| MU4-5 | Medida en el Quest y nota de comodidad | MU4-3 | 👤 Quest | — | ⬜ |
+| MU5-n | `libera()` real del exterior, un módulo por tarea, cada uno migrado a TS con sus arreglos de la auditoría (tanda 3: L2-01, L2-05, L2-07 a L2-11, L5-01, L5-02; tanda 2 de Quest dentro de cada módulo) | MU2-6 | ligera · sonnet/opus; ronda del banco por tanda | 1-2 d por módulo | ⬜ |
+
 ## Tablero de tareas (desde el 2026-10-29)
 
 Las fases, partidas en tareas con sus dependencias. **Orden de lanzamiento:** primero las ligeras que desbloquean a otras, en paralelo; lo que pasa por Chrome o Docker (🔶), al final y por el [banco de pruebas](../operacion/TESTING.md#banco-de-pruebas-un-solo-chrome-o-docker-a-la-vez-política-desde-el-2026-10-29); 👤 = lo hace Antonio. Estado: ✅ hecho · 🟡 en curso · ⬜ por hacer.

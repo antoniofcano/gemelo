@@ -129,6 +129,8 @@ Con dos salas unidas por un tabique abierto, el interior no necesita escanearse:
 
 El Gaussian splatting queda como alternativa si algún día se quiere el aspecto fotográfico exacto del edificio; para dos salas con piezas añadidas no compensa. Las gafas sí sirven para revisar escala y recorridos dentro del modelo antes de publicarlo.
 
+> **Enmienda propuesta (2026-11-06, [ADR-0033](../adr/0033-mundos.md), Propuesto):** cada interior será un mundo con su propia sala de presencia y de LiveKit, y el exterior se congela (y, cuando sepa, se libera) al cruzar la puerta; el *splatting* pasa a opción abierta para el molino, no en la primera versión. Hasta que se acepte, este párrafo sigue siendo el vigente. También están desfasadas las menciones a «una sala por visita»: hoy hay salas fijas por finca, más `guiada-<evento>` y `corro-<id>`.
+
 ## Privacidad, roles y moderación
 
 El streaming de campo choca con la regla de no compartir vídeo ni fotos de personas: la cámara grabará a quien trabaje en el olivar. Hay que resolverlo por diseño, no por buena voluntad.
