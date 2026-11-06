@@ -4,6 +4,8 @@
 import { describe, expect, it } from "vitest";
 import { ID_LLEGADA, creaLlegada, manifiestoLlegada } from "./llegada.ts";
 import type { DepsLlegada } from "./llegada.ts";
+import { creaMateriales } from "../../nucleo/materiales.ts";
+import type { ThreeMin } from "../../nucleo/materiales.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type A = any;
@@ -19,7 +21,7 @@ function monta(vr = false) {
   const hijos: A[] = [], visor = { appendChild: (e: A) => { hijos.push(e); e.parentNode = { removeChild: (x: A) => { hijos.splice(hijos.indexOf(x), 1); x.parentNode = null; } }; } };
   const e = { paseando: false, enDron: false, aparecidos: [] as A[] };
   const d: DepsLlegada = {
-    THREE, scene, camera, Estado: { exag: 1 }, Materiales: null, lienzo, visor, $: (id: string) => (id === "padAterriza" ? boton : null),
+    THREE, scene, camera, Estado: { exag: 1 }, Materiales: creaMateriales({ THREE: THREE as unknown as ThreeMin, busqueda: "" }), lienzo, visor, $: (id: string) => (id === "padAterriza" ? boton : null),
     paseando: () => e.paseando, pp: { x: 0, y: 0, ang: 0, paso: 0 }, camPos: new THREE.Vector3(), entraPaseo: () => { e.paseando = true; }, enDron: () => e.enDron, ponDron: (on: boolean) => { e.enDron = on; },
     VRX: () => ({ on: vr }), vrFundido: (fn: () => void) => { fn(); return true; }, vrAparece: (x: number, y: number, ang?: number | null) => { e.aparecidos.push([x, y, ang]); },
     gm: () => ({ suelo: () => 2, dentro: () => true, obstaculo: (x: number, y: number, r: number) => (Math.hypot(x, y) < r ? { x: r, y: 0 } : null) }),
@@ -49,6 +51,7 @@ describe("llegada", () => {
   it("libera() quita el anillo de la escena con su geometría y su material, el velo y todas las escuchas; monta() los vuelve a poner", () => {
     const m = monta(), sueltos: string[] = [];
     expect(m.scene.children).toContain(m.api.anillo); expect(m.hijos.length).toBe(1);
+    expect(m.d.Materiales.duenos()["anillo-llegada"]).toBe(1);   // el material del anillo, de la fábrica con su dueño
     expect(m.lienzo.n).toBe(4); expect(m.boton.n).toBe(1); expect(m.ventana.n).toBe(1);
     m.api.anillo.geometry.addEventListener("dispose", () => sueltos.push("geo")); m.api.anillo.material.addEventListener("dispose", () => sueltos.push("mat"));
     m.api.libera();

@@ -27,10 +27,11 @@ export function creaLlegada(dp: DepsLlegada) {
     var THREE = dp.THREE, scene = dp.scene, camera = dp.camera, Estado = dp.Estado, lienzo = dp.lienzo, visor = dp.visor, $ = dp.$, pp = dp.pp, camPos = dp.camPos, entraPaseo = dp.entraPaseo;
     var paseando = dp.paseando, enDron = dp.enDron, ponDron = dp.ponDron, VRX = dp.VRX, vrFundido = dp.vrFundido, vrAparece = dp.vrAparece, document: T = dp.documento, window: T = dp.ventana;
     var gm = { suelo: function (x: T, y: T) { return dp.gm().suelo(x, y); }, dentro: function (x: T, y: T) { return dp.gm().dentro(x, y); }, obstaculo: function (x: T, y: T, r: T) { return dp.gm().obstaculo(x, y, r); } };
+    var materiales = dp.Materiales.de(ID_LLEGADA);   // el material del anillo, con dueño «anillo-llegada» (se suelta con libera())
     var escuchas: (() => void)[] = [];   // A3-6c: las escuchas del lienzo, del botón y de la ventana, para quitarlas en libera()
     function escucha(o: T, tipo: string, fn: T) { o.addEventListener(tipo, fn); escuchas.push(function () { o.removeEventListener(tipo, fn); }); }
     var COLOR = 0xffc94a;   // ámbar: distinto del anillo cian que señala la sombra del Dron y de la parábola del teletransporte a pie
-    var anillo = new THREE.Mesh(new THREE.RingGeometry(0.72, 1, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: COLOR, fog: false, transparent: true, forceSinglePass: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false }));
+    var anillo = new THREE.Mesh(new THREE.RingGeometry(0.72, 1, 40).rotateX(-Math.PI / 2), materiales.estandar("MeshBasicMaterial", { color: COLOR, fog: false, transparent: true, forceSinglePass: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false }));
     anillo.visible = false; anillo.renderOrder = 5; scene.add(anillo);
     var p: T = null, radio = 0, n = 0, ultimo: T = null, ocupado = false, rayo = new THREE.Raycaster(), ndc = new THREE.Vector2();
     var alto = function (x: T, z: T) { return gm.suelo(x, -z) * Estado.exag; };   // el suelo y la caja (gm.dentro) son los del mundo activo (MU2-4)
@@ -105,7 +106,7 @@ export function creaLlegada(dp: DepsLlegada) {
     /** libera(): el anillo fuera de la escena con su geometría y su material, el velo fuera del visor, las escuchas del lienzo, del botón y de la ventana, y el gancho de pruebas */
     function libera() {
       borra(); escuchas.splice(0).forEach(function (f: T) { f(); });
-      if (anillo.parent) anillo.parent.remove(anillo); anillo.geometry.dispose(); anillo.material.dispose();
+      if (anillo.parent) anillo.parent.remove(anillo); anillo.geometry.dispose(); anillo.material.dispose(); materiales.libera();
       if (velo.parentNode) velo.parentNode.removeChild(velo);
       delete window.__llegada;
     }
