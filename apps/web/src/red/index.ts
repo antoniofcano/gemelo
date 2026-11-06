@@ -11,3 +11,4 @@ export { Aspecto, AutoPresencia, Chat, Reintento, SalaPose } from "./sala.ts";
 export { ID_VOZ, VozPuro, creaVoz, manifiestoVoz } from "./voz/voz.ts";
 export type { DepsVoz, Voz } from "./voz/voz.ts";
 export { HablaPuro } from "./voz/habla.ts";
+export { CorroPuro } from "./voz/corro.ts";

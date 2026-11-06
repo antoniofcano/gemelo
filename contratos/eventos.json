@@ -122,7 +122,7 @@
         }
       },
       "emiten": [
-        "47b_corro"
+        "mundos/comun/corro"
       ],
       "escuchan": []
     },
@@ -172,7 +172,7 @@
         "red/voz/voz",
         "46_guiada",
         "mundos/comun/habla",
-        "47b_corro",
+        "mundos/comun/corro",
         "mundos/exterior/decoraciones"
       ]
     },
@@ -1287,7 +1287,7 @@
         "mundos/comun/muneca",
         "46_guiada",
         "mundos/comun/habla",
-        "47b_corro"
+        "mundos/comun/corro"
       ]
     },
     "voz:habla": {
@@ -1323,7 +1323,7 @@
       ],
       "escuchan": [
         "mundos/comun/avatares",
-        "47b_corro"
+        "mundos/comun/corro"
       ]
     },
     "vr:entra": {

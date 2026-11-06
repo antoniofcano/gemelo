@@ -116,3 +116,6 @@ export type { ContextoMuneca, DepsMuneca } from "./comun/muneca.ts";
 // A3-6b (MU5-n): hablar en la guiada y en un corro (antes 47_habla.js), componente de todo mundo; su lógica pura (HablaPuro) viene de red/voz/ por el export * de arriba.
 export { ID_HABLA, creaHabla, manifiestoHabla } from "./comun/habla.ts";
 export type { DepsHabla, Habla } from "./comun/habla.ts";
+// A3-6b (MU5-n): la voz por cercanía en corros (antes 47b_corro.js), componente de todo mundo; su lógica pura (CorroPuro) viene de red/voz/ por el export * de arriba.
+export { ID_CORRO, creaCorro, manifiestoCorro } from "./comun/corro.ts";
+export type { Corro, DepsCorro } from "./comun/corro.ts";

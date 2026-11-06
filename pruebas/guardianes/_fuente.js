@@ -32,6 +32,7 @@ const TS_DE = {
   "31c_muneca.js": "apps/web/src/mundos/comun/muneca.ts",   // A3-6a
   "45_voz.js": "apps/web/src/red/voz/voz.ts",   // A3-6b: de todo mundo (red/voz/)
   "47_habla.js": ["apps/web/src/mundos/comun/habla.ts", "apps/web/src/red/voz/habla.ts"],   // A3-6b: el componente (dibuja) y su lógica pura con el aviso de voz
+  "47b_corro.js": ["apps/web/src/mundos/comun/corro.ts", "apps/web/src/red/voz/corro.ts"],   // A3-6b: el componente (dibuja) y su lógica pura con el aviso «cercania»
   "05_nube.js": "apps/web/src/mundos/exterior/nube.ts",
   "07a_catalogo.js": "apps/web/src/mundos/exterior/catalogo.ts",
   "18_paisaje.js": "apps/web/src/mundos/exterior/paisaje.ts",
