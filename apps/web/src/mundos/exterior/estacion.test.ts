@@ -53,7 +53,8 @@ describe("el olivo estacional (componente del exterior)", () => {
     for (let i = 0; i < 48; i++) pos.push(i * 0.1, 3, -i * 0.1);
     g.add(new THREE.Points(new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)), matHojaG));
     E.construyeFrutosLista(g); const p = g.children.find((o: A) => o.isPoints && o.material === E.matFruto());
-    expect(p).toBeTruthy(); expect(F.inventario()["fruto-flor"]).toBeTruthy();
+    expect(p).toBeTruthy(); expect(F.inventario()["fruto-flor"]).toEqual({ tipo: "define", n: 1 }); expect(F.duenos()).toEqual({ "estacion-olivo": 1 });
+    expect(E.matFruto().isShaderMaterial).toBe(true); expect(E.matFruto().vertexShader).toContain("mv.z += 1.0;");
     E.actualizaOlivo(0.016); expect(E.matFruto().visible).toBe(true);   // noviembre: envero
     E.libera();
   });

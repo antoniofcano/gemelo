@@ -7,6 +7,7 @@
 // Copa: NDVI de la copa de esa fecha (la recta NDVI = a + b·f del suelo, con la copa a + b). Clima: máximas, mínimas y lluvia de esa semana en la estación de Vigía.
 // Lo que se ve de esto es estimado o ilustrativo y lo dice su tarjeta («estimado»); la chapita del tiempo, también (L8-05, tiempo-paso.ts).
 import type { Manifiesto } from "../../nucleo/componentes.ts";
+import type { DefMaterial } from "../../nucleo/materiales.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type A = any;
@@ -26,6 +27,27 @@ export interface DepsEstacion {
 }
 
 export const ID_ESTACION = "estacion-olivo";
+
+// ---------------------------------------------------------------- el material por la fábrica (MU5-n: MATERIALES §1, fila 22)
+/** el nombre del material de las flores y aceitunas en la fábrica: es también la clave de su variante TSL */
+export const MATERIAL_FRUTO_FLOR = "fruto-flor";
+/** lo que pide: sus uniformes (uBBCH, uEsc y uLuz: los MISMOS objetos que mueve actualizaOlivo) */
+export interface OpcFrutoFlor { uniforms: A }
+/** el clásico de siempre, movido: puntos que cambian con el BBCH (flores blancas de 58 a 70,5; aceitunas de verdes a negras de 70,5 a 91), acercados 1 m a la cámara */
+export const DEF_FRUTO_FLOR: DefMaterial<OpcFrutoFlor> = {
+  clasico: function (o, c) {
+    return new (c.THREE as A).ShaderMaterial({
+      uniforms: o.uniforms,
+      vertexShader: "attribute float aR; attribute float aS; uniform float uBBCH; uniform float uEsc; varying vec3 vCol;\n" +
+        "void main(){ float b = uBBCH + (aR - 0.5) * 7.0; float tam = 0.0; vec3 col = vec3(1.0);\n" +
+        "if (b >= 58.0 && b < 70.5) { float dens = smoothstep(58.0, 62.0, b) * (1.0 - smoothstep(66.0, 70.5, b)) * 0.8; if (aS < dens) { tam = 0.5; col = vec3(0.97, 0.95, 0.86); } }\n" +
+        "else if (b >= 70.5 && b < 91.0) { if (aS < 0.55) { tam = mix(0.25, 0.7, clamp((b - 71.0) / 8.0, 0.0, 1.0)); vec3 verde = vec3(0.5, 0.64, 0.2); vec3 violeta = vec3(0.5, 0.2, 0.38); vec3 negro = vec3(0.17, 0.1, 0.19); col = mix(verde, violeta, smoothstep(80.0, 85.0, b)); col = mix(col, negro, smoothstep(85.0, 90.0, b)); } }\n" +
+        "vCol = col; vec4 mv = modelViewMatrix * vec4(position, 1.0); mv.z += 1.0;\n" +
+        "if (tam <= 0.0) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); gl_PointSize = 0.0; } else { gl_Position = projectionMatrix * mv; gl_PointSize = tam * uEsc / max(0.5, -mv.z); } }",
+      fragmentShader: "uniform vec3 uLuz; varying vec3 vCol; void main(){ vec2 d = gl_PointCoord - 0.5; float r2 = dot(d, d); if (r2 > 0.25) discard; float brillo = smoothstep(0.07, 0.0, length(d - vec2(-0.12, 0.12))); gl_FragColor = vec4(sRGBTransferEOTF(vec4(vCol, 1.0)).rgb * uLuz * (0.82 + 0.4 * (0.25 - r2)) + brillo * 0.3 * uLuz, 1.0);\n#include <colorspace_fragment>\n}"
+    });
+  }
+};
 
 export function creaEstacion(d: DepsEstacion) {
   var THREE = d.THREE, $ = d.$, Materiales = d.Materiales, renderer = d.renderer, SRGB = d.SRGB, Estado = d.Estado, hash = d.hash, gFollaje = d.gFollaje, matHojaG = d.matHojaG, matHojaP = d.matHojaP;
@@ -60,16 +82,10 @@ export function creaEstacion(d: DepsEstacion) {
 
   // --- flores y aceitunas: puntos sobre las copas que cambian con el BBCH (cada uno madura a su ritmo)
   var uFruto = { uBBCH: { value: 0 }, uEsc: { value: 1000 }, uLuz: { value: new THREE.Color(1, 1, 1) } };
-  var matFruto = Materiales.sombreador("fruto-flor", {
-    uniforms: uFruto,
-    vertexShader: "attribute float aR; attribute float aS; uniform float uBBCH; uniform float uEsc; varying vec3 vCol;\n" +
-      "void main(){ float b = uBBCH + (aR - 0.5) * 7.0; float tam = 0.0; vec3 col = vec3(1.0);\n" +
-      "if (b >= 58.0 && b < 70.5) { float dens = smoothstep(58.0, 62.0, b) * (1.0 - smoothstep(66.0, 70.5, b)) * 0.8; if (aS < dens) { tam = 0.5; col = vec3(0.97, 0.95, 0.86); } }\n" +
-      "else if (b >= 70.5 && b < 91.0) { if (aS < 0.55) { tam = mix(0.25, 0.7, clamp((b - 71.0) / 8.0, 0.0, 1.0)); vec3 verde = vec3(0.5, 0.64, 0.2); vec3 violeta = vec3(0.5, 0.2, 0.38); vec3 negro = vec3(0.17, 0.1, 0.19); col = mix(verde, violeta, smoothstep(80.0, 85.0, b)); col = mix(col, negro, smoothstep(85.0, 90.0, b)); } }\n" +
-      "vCol = col; vec4 mv = modelViewMatrix * vec4(position, 1.0); mv.z += 1.0;\n" +
-      "if (tam <= 0.0) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); gl_PointSize = 0.0; } else { gl_Position = projectionMatrix * mv; gl_PointSize = tam * uEsc / max(0.5, -mv.z); } }",
-    fragmentShader: "uniform vec3 uLuz; varying vec3 vCol; void main(){ vec2 d = gl_PointCoord - 0.5; float r2 = dot(d, d); if (r2 > 0.25) discard; float brillo = smoothstep(0.07, 0.0, length(d - vec2(-0.12, 0.12))); gl_FragColor = vec4(sRGBTransferEOTF(vec4(vCol, 1.0)).rgb * uLuz * (0.82 + 0.4 * (0.25 - r2)) + brillo * 0.3 * uLuz, 1.0);\n#include <colorspace_fragment>\n}"
-  });
+  // MU5-n: por la fábrica (define + crea con dueño «estacion-olivo»): lo que cree este componente se libera con su libera()
+  Materiales.define(MATERIAL_FRUTO_FLOR, DEF_FRUTO_FLOR);
+  var materiales = Materiales.de(ID_ESTACION);
+  var matFruto: A = materiales.crea(MATERIAL_FRUTO_FLOR, { uniforms: uFruto });
   // fuera de lo que pinta el sombreador (b = uBBCH ± 3,5; flores con 58 < b < 70,5 y aceitunas con 70,5 ≤ b < 91) ningún punto tiene tamaño:
   // el material no se dibuja y no hay pasada vacía (reposo, brotación y crecimiento de los brotes, de febrero a mayo en el calendario típico)
   function frutosVisibles(b: number): boolean { return b > 54.5 && b < 94.5; }
@@ -163,7 +179,7 @@ export function creaEstacion(d: DepsEstacion) {
     var n = 0;
     if (EST.timer) { d.temporizador.clearTimeout(EST.timer); EST.timer = null; n++; }
     bajas.splice(0).concat(bajasTarjeta.splice(0)).forEach(function (q) { q(); n++; });
-    matFruto.dispose(); n++;
+    n += materiales.libera();   // el material de los frutos
     if (window.__otDebug) { delete window.__otDebug; n++; }
     return n;
   }
