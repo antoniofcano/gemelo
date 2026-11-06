@@ -456,7 +456,7 @@
       ],
       "escuchan": [
         "mundos/exterior/lindes",
-        "44b_carteles"
+        "mundos/exterior/carteles"
       ]
     },
     "juego:ofrece": {
@@ -716,7 +716,7 @@
         "53_mundo_hoy"
       ],
       "escuchan": [
-        "44b_carteles",
+        "mundos/exterior/carteles",
         "54_trabajo_hoy"
       ]
     },

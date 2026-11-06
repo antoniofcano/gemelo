@@ -58,3 +58,5 @@ export { COLB, ID_BALIZAS, creaBalizas, manifiestoBalizas } from "./exterior/bal
 export type { Balizas, DepsBalizas } from "./exterior/balizas.ts";
 export { ID_LINDES, LindesPuro, creaLindes, manifiestoLindes } from "./exterior/lindes.ts";
 export type { DepsLindes, EstadoLindes, LibLineas } from "./exterior/lindes.ts";
+export { CartelesPuro, ID_CARTELES, creaCarteles, manifiestoCarteles } from "./exterior/carteles.ts";
+export type { DepsCarteles } from "./exterior/carteles.ts";

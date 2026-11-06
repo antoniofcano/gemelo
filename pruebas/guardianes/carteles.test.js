@@ -6,10 +6,9 @@
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
 
-const FUENTE = lee("apps/web/motor/44b_carteles.js");
-function trozo(ini, fin) { const i = FUENTE.indexOf(ini), f = FUENTE.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas " + ini); return FUENTE.slice(i, f); }
-const PURO = trozo("// [puro:inicio]", "// [puro:fin]"), MOTOR = trozo("// [motor:inicio]", "// [motor:fin]");
-const P = new Function("\"use strict\";\n" + PURO + "\nreturn CartelesPuro;")();
+// A3-3: 44b_carteles es un talón; CartelesPuro y el componente viven en apps/web/src/mundos/exterior/carteles.ts y aquí corre ESE código (Mundos, de _mundos.js), no un trozo de texto
+const Mundos = require("./_mundos"), { fuenteMotor } = require("./_fuente");
+const FUENTE = fuenteMotor("44b_carteles.js"), PURO = FUENTE, MOTOR = FUENTE, P = Mundos.CartelesPuro;
 const LP = new Function("\"use strict\";\n" + (function () { const f = lee("apps/web/motor/02d_laminas.js"); return f.slice(f.indexOf("// [puro:inicio]"), f.indexOf("// [puro:fin]")); })() + "\nreturn LaminasPuro;")();
 const medir = (t, px, neg) => String(t).length * px * (neg ? 0.6 : 0.55);
 
@@ -241,10 +240,9 @@ function mundo(opts) {
   const scene = new THREE.Group(), escuchas = {};
   const n = { on: (ev, fn) => { escuchas[ev] = fn; return () => {}; }, limpia: () => {} };
   const camera = { updateMatrixWorld() {}, matrixWorld: {} }, win = {};
-  const f = new Function("THREE", "document", "window", "scene", "camera", "VRX", "texColor", "gLinde", "suelo", "Estado", "Hazas", "D", "Componentes", "cIn", "EST", "bbchEn", "hoyMadrid",
-    "var CartelesPuro = null;\n" + "return function (P) { CartelesPuro = P; " + MOTOR + "\nreturn CartelesMotor; };");
   const D = { parcelas: [{ centro: [0, 0] }], ext: [-500, 500, 500, -500], finca_id: "hituelo" };
-  const motor = f(THREE, document, win, scene, camera, { on: false }, t => t, { visible: true }, () => 2, { exag: 1 }, Hazas, D, {}, new Array(4321), { origen: "" }, () => 82, () => "2026-11-05")(P)(n);
+  const motor = Mundos.creaCarteles({ THREE, documento: document, ventana: win, scene, camera, VRX: { on: false }, texColor: t => t, gLinde: { visible: true }, suelo: () => 2, Estado: { exag: 1 }, Hazas, D,
+    cIn: new Array(4321), EST: { origen: "" }, bbchEn: () => 82, hoyMadrid: () => "2026-11-05" }).CartelesMotor(n);
   return { motor, log, scene, escuchas, win, mueve(x, y) { cam.x = x; cam.y = y; } };
 }
 const cuadro = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]];
@@ -300,7 +298,7 @@ test("manifiesto: el tablón escucha «mundo:hoy» y no pide nada a la red", () 
 });
 
 test("manifiesto: componente «carteles-haza», con bandera y material básico (multiview)", () => {
-  assert.ok(/id: "carteles-haza"/.test(FUENTE)); assert.ok(/fases: \{ mundo: 0, tarde: 0\.5 \}/.test(FUENTE));
+  assert.ok(/ID_CARTELES = "carteles-haza"/.test(FUENTE) && /id: ID_CARTELES/.test(FUENTE)); assert.ok(/fases: \{ mundo: 0, tarde: 0\.5 \}/.test(FUENTE));
   assert.ok(/libera: function \(api\)/.test(FUENTE));
   assert.ok(/MeshBasicMaterial/.test(MOTOR) && !/ShaderMaterial|onBeforeCompile|uniform |modelViewMatrix|projectionMatrix/.test(FUENTE.replace(/\/\/.*$/gm, "")), "multiview: material básico, sin GLSL propio");
 });
