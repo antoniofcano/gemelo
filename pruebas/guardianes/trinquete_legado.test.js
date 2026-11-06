@@ -1,7 +1,7 @@
 "use strict";
 // Trinquete del legado (ADR-0033 §6, MUNDOS §8 y §10): las líneas de apps/web/motor/*.js SOLO BAJAN. El tope está escrito aquí (TOPE) y es
-// exacto: si el motor sube, falla («quien toca, migra»: lo nuevo va a apps/web/src/); si baja, también falla hasta que el mismo commit baje
-// el tope al número nuevo, para que lo ganado no se pueda volver a gastar. Cada migración (talón, MUNDOS §9.3) lo actualiza a la baja.
+// un techo: si el motor sube, falla («quien toca, migra»: lo nuevo va a apps/web/src/). Si baja, solo lo avisa: con varios agentes en
+// paralelo, un tope exacto haría chocar cada fusión; quien coordina baja TOPE al número nuevo al fusionar (decisión del 2026-11-06, A1-7).
 // Se cuentan las líneas de código de cada módulo SIN su cabecera «Expone / Consume» (la deriva pruebas/contrato_modulos.js del código y
 // puede crecer o encoger sola al regenerarse: no es código del legado).
 const test = require("node:test"), assert = require("node:assert");
@@ -28,8 +28,7 @@ test("trinquete del legado: las líneas de apps/web/motor/*.js (sin cabeceras) n
   t.diagnostic("legado: " + total + " líneas en " + Object.keys(por).length + " ficheros (tope " + TOPE + "); los más grandes: " + grandes);
   assert.ok(total <= TOPE, "el legado ha SUBIDO a " + total + " líneas (tope " + TOPE + ", +" + (total - TOPE) + "). Lo nuevo va a apps/web/src/ " +
     "(CLAUDE.md §5 «Código nuevo», ADR-0033 §6); si de verdad hay que tocar el legado, que no crezca");
-  assert.strictEqual(total, TOPE, "el legado ha bajado a " + total + " líneas: baja TOPE en pruebas/guardianes/trinquete_legado.test.js a " + total +
-    " en este mismo commit (el trinquete solo baja)");
+  if (total < TOPE) t.diagnostic("el legado ha bajado a " + total + " líneas: quien fusiona baja TOPE a " + total + " (el trinquete solo baja)");
 });
 
 test("trinquete: el contador no se engaña (cabecera fuera, última línea sin salto dentro)", () => {
