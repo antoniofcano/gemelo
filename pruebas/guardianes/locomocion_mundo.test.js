@@ -119,7 +119,7 @@ test("LlegadaPuro.rayoSuelo, IrAPuro.planifica e IrAPuro.ir reciben los delegado
   assert.ok(plan.length >= 1 && ir.length >= 1, "12c_ir_a llama a IrAPuro.planifica e IrAPuro.ir");
   for (const u of plan) assert.strictEqual(arg(u, 4), "gm.dentro", clave(u) + ": la caja de planifica es gm.dentro");
   for (const u of ir) assert.strictEqual(arg(u, 5), "gm.dentro", clave(u) + ": la caja de ir (la de replanificar) es gm.dentro");
-  const llegada = lee("apps/web/motor/12b_llegada.js");
+  const llegada = fuenteMotor("12b_llegada.js");   // A3-6c: el talón y llegada.ts
   assert.match(llegada, /var alto = function \(x, z\) \{ return gm\.suelo\(x, -z\) \* Estado\.exag; \};/, "el alto de la llegada es gm.suelo · exag");
 });
 
