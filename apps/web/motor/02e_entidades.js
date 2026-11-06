@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: EntidadesPuro, Entidades, Usables
 // Consume: 01_datos ($), 02c_componentes (Bus), 03_escena (lienzo, scene, modo), 12_paseo (paseando, pp), 16_vida (enDron, dr), 29_vr (VRX)
-// Nota: Servicio del núcleo (ADR-0023, C7): EntidadesPuro, Entidades (registro de tipos de cosas del mundo con id estable; cada módulo registra su tipo y responde por sus cosas) y Usables (la selección única para toque, clic, rayo VR y cercanía, la ficha común #ficha, el anillo de resaltado y los eventos usable:*). Publica además window.__usables (pruebas). Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/entidades.test.js.
+// Nota: Servicio del núcleo (ADR-0023, C7): EntidadesPuro, Entidades (registro de tipos de cosas del mundo con id estable; cada módulo registra su tipo y responde por sus cosas) y Usables (la selección única para toque, clic, rayo VR y cercanía, la ficha común #ficha, el anillo de resaltado y los eventos usable:*). Publica además window.__usables (pruebas). EntidadesPuro vive en apps/web/src/nucleo/entidades.ts (A1-11, el módulo conserva el registro y la selección, que tocan el DOM); el trozo [motor:…] lo evalúa en Node pruebas/guardianes/entidades.test.js.
 // ===============================================================================
   // ---------- entidades y usables (ADR-0023, C7; doc/sistema/COMPONENTES.md §6): las cosas del mundo con un id estable y UNA sola forma de elegirlas.
   // Entidades: un registro de TIPOS, no de objetos. Cada módulo que tiene cosas en el mundo registra su tipo (olivo, baliza, haza, persona…) y responde
@@ -20,58 +20,11 @@
   // elegido; se crea la primera vez y se libera con Usables.libera). Eventos en el Bus: usable:elige, usable:suelta, usable:usa, usable:cerca.
   // Presupuesto (regla 6): nada por fotograma salvo la cercanía (paseando y cada 0,1 s: una distancia por cosa de los tipos con cerca, hoy las balizas) y
   // recolocar el anillo si está visible; ni un raycast por fotograma (el toque proyecta o lanza un rayo solo al tocar; el rayo de VR, solo al apretar el gatillo).
-  // [puro:inicio] (sin DOM ni THREE: lo evalúa en Node pruebas/guardianes/entidades.test.js)
-  var EntidadesPuro = (function () {
-    var TIPO = /^[a-z][a-z0-9-]*$/, OPC = ["pantalla", "rayo", "cerca", "pos", "radio", "existe", "lista", "muestra", "abierta", "cierra", "suelta"];
-    function id(tipo) { return [tipo].concat(Array.prototype.slice.call(arguments, 1).map(String)).join(":"); }
-    function tipoDe(x) { var s = String(x == null ? "" : x), i = s.indexOf(":"); return i > 0 ? s.slice(0, i) : ""; }
-    function resto(x) { var s = String(x == null ? "" : x), i = s.indexOf(":"); return i > 0 ? s.slice(i + 1) : ""; }
-    // la definición de un tipo: la lista de errores (vacía si vale)
-    function valida(d) {
-      if (!d || typeof d !== "object") return ["la definición no es un objeto"];
-      var e = [];
-      if (typeof d.tipo !== "string" || !TIPO.test(d.tipo)) e.push("tipo: minúsculas, cifras y guiones, empezando por letra");
-      if (typeof d.dueno !== "string" || !d.dueno) e.push("dueno: el módulo que la gestiona");
-      if (typeof d.prioridad !== "number" || !isFinite(d.prioridad)) e.push("prioridad: número (al tocar, gana la mayor)");
-      if (typeof d.ficha !== "function") e.push("ficha(id, modo): función");
-      OPC.forEach(function (k) { if (d[k] !== undefined && typeof d[k] !== "function") e.push(k + ": función"); });
-      if (d.cerca && !(typeof d.radioCerca === "number" && d.radioCerca > 0)) e.push("radioCerca: metros > 0 (con cerca)");
-      if (!d.pantalla && !d.rayo && !d.cerca && !d.lista) e.push("ni pantalla, ni rayo, ni cerca, ni lista: nadie podría llegar a ella");
-      return e;
-    }
-    // el que gana entre candidatos [{ id, prioridad, fondo, s, t }]; como = "toque" (pantalla) o "rayo" (VR). null si no hay ninguno
-    function gana(cands, como) {
-      var l = (cands || []).filter(function (c) { return c && typeof c.id === "string" && c.id; }), delante = l.filter(function (c) { return !c.fondo; });
-      if (delante.length) l = delante;
-      if (!l.length) return null;
-      if (como === "rayo") {   // el primero por el rayo; lo que está a menos de 0,5 m de él cuenta como «a la vez» y decide la prioridad
-        var t0 = Math.min.apply(null, l.map(function (c) { return c.t || 0; }));
-        l = l.filter(function (c) { return (c.t || 0) < t0 + 0.5; });
-      }
-      var m = l[0];
-      for (var i = 1; i < l.length; i++) {
-        var c = l[i], dp = (c.prioridad || 0) - (m.prioridad || 0), ds = (c.s || 0) - (m.s || 0), dt = (c.t || 0) - (m.t || 0);
-        if (dp > 0 || (dp === 0 && (ds < 0 || (ds === 0 && (dt < 0 || (dt === 0 && c.id < m.id)))))) m = c;
-      }
-      return m;
-    }
-    // la cercanía: de [{ id, d, radio }] el más cerca dentro de su radio (d < radio), o null
-    function cercano(cands) {
-      var m = null;
-      (cands || []).forEach(function (c) { if (c && typeof c.id === "string" && c.d >= 0 && c.d < c.radio && (!m || c.d < m.d)) m = c; });
-      return m;
-    }
-    // las dos líneas de una ficha sin «lineas» propias para una lámina pequeña (VR): «k: v» de tres en tres, como la ficha del olivo de siempre
-    function lineas(f) {
-      if (f && Array.isArray(f.lineas)) return f.lineas.slice();
-      var p = (f && f.filas || []).map(function (q) { return q.k + ": " + q.v; });
-      return [p.slice(0, 3).join(" · "), p.slice(3).join(" · ")];
-    }
-    return { TIPO: TIPO, id: id, tipoDe: tipoDe, resto: resto, valida: valida, gana: gana, cercano: cercano, lineas: lineas };
-  })();
-  // [puro:fin]
+  // La lógica pura (ids, validación, quién gana, cercanía, líneas de la ficha) pasó a TypeScript (A1-11 / MU1-7): apps/web/src/nucleo/entidades.ts (MUNDOS §9.4, pieza 5).
+  // Este módulo conserva el registro (Entidades) y la selección (Usables), que tocan el DOM, el Bus y la escena: no es un talón completo.
+  var EntidadesPuro = Nucleo.EntidadesPuro;
 
-  // [motor:inicio] (lo evalúa también en Node pruebas/guardianes/entidades.test.js con un DOM y un THREE de mentira)
+  // [motor:inicio] (lo evalúa en Node pruebas/guardianes/entidades.test.js con un DOM y un THREE de mentira, y con el Nucleo de verdad)
   var Entidades = (function () {
     var P = EntidadesPuro, defs = {}, orden = [];
     function falla(t, e) { try { console.error("[Entidades] " + t, e); } catch (e2) {} }

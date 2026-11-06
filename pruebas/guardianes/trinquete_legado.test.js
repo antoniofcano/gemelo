@@ -12,7 +12,8 @@ const C = require(path.join(RAIZ, "pruebas", "contrato_modulos.js"));
 // 2026-11-06, A1-10 (MU1-6, 02b_cola.js pasa a talón en apps/web/src/nucleo/cola.ts): 19.712 líneas (de 19.774)
 // 2026-11-06, A1-11 (MU1-7, 02h_render.js pasa a talón en apps/web/src/nucleo/render.ts; 03_escena.js +1 línea: Render.enlaza): 19.632 líneas (de 19.712)
 // 2026-11-06, A1-11 (MU1-7, 02f_xr_perillas.js pasa a talón en apps/web/src/nucleo/xr-perillas.ts): 19.496 líneas (de 19.632)
-const TOPE = 19496;
+// 2026-11-06, A1-11 (MU1-7, 02e_entidades.js entrega EntidadesPuro a apps/web/src/nucleo/entidades.ts y conserva Entidades y Usables, que tocan el DOM): 19.449 líneas (de 19.496)
+const TOPE = 19449;
 
 /** líneas de un texto (la última sin salto también cuenta) */
 const lineas = s => s === "" ? 0 : s.split("\n").length - (s.endsWith("\n") ? 1 : 0);

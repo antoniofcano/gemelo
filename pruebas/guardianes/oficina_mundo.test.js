@@ -18,10 +18,10 @@ const contratoModulos = require(path.join(__dirname, "..", "contrato_modulos.js"
 const sinCabecera = s => s.startsWith(contratoModulos.MARCA_I) ? s.slice(s.indexOf(contratoModulos.MARCA_F) + contratoModulos.MARCA_F.length + 1) : s;
 const trozo = (s, ini, fin) => { const i = s.indexOf(ini), f = s.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas " + ini + " … " + fin); return s.slice(i, f); };
 const RED = lee("apps/web/motor/37_red.js"), PRES = lee("apps/web/motor/38_presencia_compartida.js"), LIB = lee("apps/web/motor/26_presencia.js"), OFI = lee("apps/web/motor/39_oficina_mundo.js");
-const NUCLEO = lee("apps/web/motor/02c_componentes.js"), ENT = lee("apps/web/motor/02e_entidades.js");
+const NUCLEO = lee("apps/web/motor/02c_componentes.js");
 const { SalaPose, Aspecto, Chat } = new Function("\"use strict\";\n" + trozo(LIB, "// [puro:inicio]", "// [puro:fin]") + "\nreturn { SalaPose, Aspecto, Chat };")();
 const OP = new Function("\"use strict\";\n" + trozo(OFI, "// [puro:inicio]", "// [puro:fin]") + "\nreturn OficinaMundoPuro;")();
-const EntidadesPuro = new Function("\"use strict\";\n" + trozo(ENT, "// [puro:inicio]", "// [puro:fin]") + "\nreturn EntidadesPuro;")();
+const EntidadesPuro = require("./_nucleo").EntidadesPuro;   // 02e_entidades.js: la lógica pura es del núcleo (A1-11)
 const ROLES = JSON.parse(lee("contratos/livekit-roles.json")), EVENTOS = JSON.parse(lee("contratos/eventos.json"));
 const enc = new TextEncoder(), json = o => enc.encode(JSON.stringify(o));
 const espera = (ms = 0) => new Promise(r => setTimeout(r, ms));

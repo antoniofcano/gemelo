@@ -1,7 +1,6 @@
 "use strict";
 // Entidades y usables (apps/web/motor/02e_entidades.js, ADR-0023 C7): el registro de tipos de cosas del mundo con id estable y la selección única para el
-// toque, el clic, el rayo de VR y la cercanía, con su ficha común y su anillo de resaltado. En Node y sin navegador: la parte pura (ids, validación, quién
-// gana por tipo y por distancia, cercanía) y, con un DOM, un Bus y un THREE de mentira, el registro (sin duplicados, quitar), la selección por tipo, la
+// toque, el clic, el rayo de VR y la cercanía, con su ficha común y su anillo de resaltado. En Node y sin navegador: con un DOM, un Bus y un THREE de mentira, el registro (sin duplicados, quitar), la selección por tipo, la
 // ficha común (#ficha con textContent y sus acciones), los eventos usable:* y que el anillo se crea al elegir y se libera. Chrome: escena3d, vr, vr_gente.
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
@@ -12,47 +11,7 @@ function trozo(ini, fin) {
   assert.ok(i >= 0 && f > i, "02e_entidades.js debe marcar " + ini + " … " + fin);
   return FUENTE.slice(i, f);
 }
-const P = new Function("\"use strict\";\n" + trozo("// [puro:inicio]", "// [puro:fin]") + "\nreturn EntidadesPuro;")();
-
-test("puro: ids «tipo:resto», tipo y resto", () => {
-  assert.strictEqual(P.id("olivo", "cerro", 2147483650), "olivo:cerro:2147483650");
-  assert.strictEqual(P.tipoDe("olivo:cerro:7"), "olivo"); assert.strictEqual(P.resto("olivo:cerro:7"), "cerro:7");
-  assert.strictEqual(P.tipoDe("sin-dos-puntos"), ""); assert.strictEqual(P.tipoDe(null), ""); assert.strictEqual(P.tipoDe(":x"), "");
-});
-
-test("puro: validación de un tipo", () => {
-  const ok = { tipo: "olivo", dueno: "06_arboles", prioridad: 10, ficha() {}, pantalla() {} };
-  assert.deepStrictEqual(P.valida(ok), []);
-  assert.ok(P.valida(null).length === 1);
-  assert.ok(P.valida({ tipo: "Mal", dueno: "", prioridad: "x" }).length >= 4, "tipo, dueño, prioridad y ficha");
-  assert.ok(P.valida(Object.assign({}, ok, { rayo: 3 })).some(e => /^rayo/.test(e)));
-  assert.ok(P.valida(Object.assign({}, ok, { cerca() {} })).some(e => /radioCerca/.test(e)), "con cerca, su radio");
-  assert.ok(P.valida({ tipo: "x", dueno: "m", prioridad: 0, ficha() {} }).some(e => /nadie podría/.test(e)), "sin forma de llegar a ella");
-});
-
-test("puro: al tocar gana el tipo de más prioridad y dentro de él el más de lleno; lo de fondo solo si no hay otro", () => {
-  const c = [{ id: "olivo:a", prioridad: 10, s: 0.1 }, { id: "baliza:b", prioridad: 20, s: 0.9 }, { id: "haza:h", prioridad: 0, fondo: true, s: 0 }];
-  assert.strictEqual(P.gana(c, "toque").id, "baliza:b", "la baliza antes que el olivo aunque esté más al borde (como antes de C7)");
-  assert.strictEqual(P.gana([c[0], { id: "olivo:z", prioridad: 10, s: 0.05 }], "toque").id, "olivo:z", "dentro del tipo, el más de lleno");
-  assert.strictEqual(P.gana([c[2]], "toque").id, "haza:h", "la haza si no hay nada delante");
-  assert.strictEqual(P.gana([c[2], c[0]], "toque").id, "olivo:a", "un olivo tapa la haza");
-  assert.strictEqual(P.gana([], "toque"), null); assert.strictEqual(P.gana([{ id: "" }], "toque"), null);
-});
-
-test("puro: con el rayo gana lo primero por el rayo; a menos de 0,5 m, la prioridad", () => {
-  const o = { id: "olivo:a", prioridad: 10, t: 12, s: 0.2 }, b = { id: "baliza:b", prioridad: 20, t: 40, s: 0.1 };
-  assert.strictEqual(P.gana([o, b], "rayo").id, "olivo:a", "el olivo delante de la columna");
-  assert.strictEqual(P.gana([o, Object.assign({}, b, { t: 8 })], "rayo").id, "baliza:b", "la columna delante del olivo");
-  assert.strictEqual(P.gana([o, Object.assign({}, b, { t: 12.3 })], "rayo").id, "baliza:b", "a la vez: la prioridad");
-});
-
-test("puro: cercanía dentro del radio de cada tipo y las dos líneas de una ficha pequeña", () => {
-  assert.deepStrictEqual(P.cercano([{ id: "baliza:a", d: 20, radio: 17 }, { id: "baliza:b", d: 9, radio: 17 }, { id: "baliza:c", d: 12, radio: 17 }]), { id: "baliza:b", d: 9, radio: 17 });
-  assert.strictEqual(P.cercano([{ id: "baliza:a", d: 17, radio: 17 }]), null, "en el borde, fuera (d < radio, como antes)");
-  const f = { filas: [1, 2, 3, 4, 5].map(i => ({ k: "k" + i, v: "v" + i })) };
-  assert.deepStrictEqual(P.lineas(f), ["k1: v1 · k2: v2 · k3: v3", "k4: v4 · k5: v5"]);
-  assert.deepStrictEqual(P.lineas({ lineas: ["a"] }), ["a"]);
-});
+const Nucleo = require("./_nucleo");   // la lógica pura (EntidadesPuro) vive en apps/web/src/nucleo/entidades.ts; sus pruebas, en entidades.test.ts (A1-11)
 
 // ---------- el motor con un DOM, un Bus y un THREE de mentira
 function el(tag) {
@@ -77,10 +36,10 @@ function mundo(o) {
   const scene = { add: x => reg.escena.add(x), remove: x => reg.escena.delete(x) };
   const lienzo = { getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 600 }) };
   const VRX = { on: false }, pp = { x: 0, y: 0 }, dr = { x: 0, y: 0 };
-  const f = new Function("THREE", "scene", "lienzo", "$", "document", "Bus", "VRX", "pp", "dr", "console",
-    "\"use strict\";\nvar paseando = false, enDron = false; function __pon(k, v) { if (k === 'paseando') paseando = v; if (k === 'enDron') enDron = v; }\n" +
-    trozo("// [puro:inicio]", "// [puro:fin]") + trozo("// [motor:inicio]", "// [motor:fin]") + "\nreturn { Entidades, Usables, __pon };");
-  const r = f(THREE, scene, lienzo, $, documento, Bus, VRX, pp, dr, { error: (...a) => reg.errores.push(a.join(" ")) });
+  const f = new Function("Nucleo", "THREE", "scene", "lienzo", "$", "document", "Bus", "VRX", "pp", "dr", "console",
+    "\"use strict\";\nvar EntidadesPuro = Nucleo.EntidadesPuro, paseando = false, enDron = false; function __pon(k, v) { if (k === 'paseando') paseando = v; if (k === 'enDron') enDron = v; }\n" +
+    trozo("// [motor:inicio]", "// [motor:fin]") + "\nreturn { Entidades, Usables, __pon };");
+  const r = f(Nucleo, THREE, scene, lienzo, $, documento, Bus, VRX, pp, dr, { error: (...a) => reg.errores.push(a.join(" ")) });
   return Object.assign(r, { reg, ids, VRX, pp, dr });
 }
 // tipos de prueba: olivos (prioridad 10, pantalla y rayo), balizas (20, recuadro propio, cercanía) y hazas (fondo)
