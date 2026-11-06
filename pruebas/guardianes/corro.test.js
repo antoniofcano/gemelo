@@ -16,8 +16,8 @@ const { lee } = require("./_util");
 const { aparatoDe } = require("./_aparato");
 
 const trozo = (s, ini, fin) => { const i = s.indexOf(ini), f = s.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas " + ini + " … " + fin); return s.slice(i, f); };
-const VOZ = lee("apps/web/motor/45_voz.js"), HAB = lee("apps/web/motor/47_habla.js"), COR = lee("apps/web/motor/47b_corro.js"), LAMJS = lee("apps/web/motor/02d_laminas.js");
-const V = new Function("\"use strict\";\n" + trozo(VOZ, "// [puro:inicio]", "// [puro:fin]") + "\nreturn VozPuro;")();
+const HAB = lee("apps/web/motor/47_habla.js"), COR = lee("apps/web/motor/47b_corro.js"), LAMJS = lee("apps/web/motor/02d_laminas.js");
+const { VozPuro: V, creaVoz } = require("./_mundos");   // MU5-n (A3-6b): la voz vive en apps/web/src/red/voz/voz.ts; 45_voz.js es su talón
 const H = new Function("\"use strict\";\n" + trozo(HAB, "// [puro:inicio]", "// [puro:fin]") + "\nreturn HablaPuro;")();
 const PURO = trozo(COR, "// [puro:inicio]", "// [puro:fin]"), MOTOR = trozo(COR, "// [motor:inicio]", "// [motor:fin]");
 const C = new Function("\"use strict\";\n" + PURO + "\nreturn CorroPuro;")();
@@ -80,9 +80,7 @@ function montaVoz({ nombre = SALA, estadoToken = 200 } = {}) {
     fetch: (u, o) => { fetchs.push([u, o.method, JSON.parse(o.body)]); return Promise.resolve({ ok: estadoToken === 200, status: estadoToken, json: () => Promise.resolve(estadoToken === 200 ? { url: "/rtc", token: "tk", sala: nombre, papel: "miembro" } : { error: "sin_corro", mensaje: "No estás en ningún corro." }) }); },
     MediaStream: function () {}, PannerNode: function () {}, THREE: { Quaternion: function () { this.setFromAxisAngle = () => this; this.multiply = () => this; }, Vector3: function () { this.copy = () => this; } },
     camera: { getWorldPosition() {}, getWorldQuaternion() {} }, VRX: { on: false } };
-  const nombres = Object.keys(g);
-  const VozMotor = new Function(...nombres, "\"use strict\";\n" + trozo(VOZ, "// [puro:inicio]", "// [puro:fin]") + trozo(VOZ, "// [motor:inicio]", "// [motor:fin]") + "\nreturn VozMotor;")(...nombres.map(k => g[k]));
-  return { api: VozMotor(n, R, { cabeza: () => null }), salas, fetchs, emitidos };
+  return { api: creaVoz(Object.assign({ consola: g.console }, g), n, R, { cabeza: () => null }), salas, fetchs, emitidos };   // A3-6b: las dependencias del talón, por argumento
 }
 
 test("VozMotor: Voz.entraCorro pide el token del corro (POST /api/presencia/corros/token) y se une con la clave «corro» de la red; solo si la sala es corro-<id>", async () => {

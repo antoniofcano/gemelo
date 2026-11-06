@@ -33,7 +33,7 @@
       ],
       "escuchan": [
         "mundos/exterior/sonido",
-        "45_voz"
+        "red/voz/voz"
       ]
     },
     "capas:cambia": {
@@ -169,7 +169,7 @@
         "30_mide",
         "mundos/comun/presencia",
         "mundos/exterior/lindes",
-        "45_voz",
+        "red/voz/voz",
         "46_guiada",
         "47_habla",
         "47b_corro",
@@ -1019,7 +1019,7 @@
         "red/salas"
       ],
       "escuchan": [
-        "45_voz"
+        "red/voz/voz"
       ]
     },
     "sonido:baliza": {
@@ -1280,7 +1280,7 @@
         }
       },
       "emiten": [
-        "45_voz"
+        "red/voz/voz"
       ],
       "escuchan": [
         "31b_hud_personal",
@@ -1319,7 +1319,7 @@
         }
       },
       "emiten": [
-        "45_voz"
+        "red/voz/voz"
       ],
       "escuchan": [
         "mundos/comun/avatares",

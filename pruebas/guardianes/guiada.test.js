@@ -376,7 +376,7 @@ test("el manifiesto, los eventos y la api de la presencia: «visita-guiada» con
   assert.match(m, /consume: \["Red", "Presencia", "Voz"/);
   for (const e of ["guiada:palabra", "guiada:cierre"]) assert.deepStrictEqual(EVENTOS.eventos[e].emiten, ["46_guiada"], e);
   for (const e of ["voz:estado", "depura:lineas"]) assert.ok(EVENTOS.eventos[e].escuchan.includes("46_guiada"), e);
-  assert.ok(EVENTOS.eventos["red:estado"].escuchan.includes("45_voz"), "la voz se engancha sola a la sala que entra en una guiada");
+  assert.ok(EVENTOS.eventos["red:estado"].escuchan.includes("red/voz/voz"), "la voz se engancha sola a la sala que entra en una guiada");
   for (const k of ["entraGuiada", "evento", "nombreSala"]) assert.ok(IFACES.apis_de_componentes["presencia-compartida"].miembros.includes(k), k);
 });
 

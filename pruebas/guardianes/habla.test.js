@@ -19,7 +19,7 @@ const HAB = lee("apps/web/motor/47_habla.js"), GUI = lee("apps/web/motor/46_guia
 const PURO = trozo(HAB, "// [puro:inicio]", "// [puro:fin]"), MOTOR = trozo(HAB, "// [motor:inicio]", "// [motor:fin]");
 const H = new Function("\"use strict\";\n" + PURO + "\nreturn HablaPuro;")();
 const PVJS = lee("apps/web/motor/46b_primera_vez.js"), PV = new Function("\"use strict\";\n" + trozo(PVJS, "// [puro:inicio]", "// [puro:fin]") + "\nreturn PrimeraVezPuro;")();
-const VOZJS = lee("apps/web/motor/45_voz.js"), VozPuro = new Function("\"use strict\";\n" + trozo(VOZJS, "// [puro:inicio]", "// [puro:fin]") + "\nreturn VozPuro;")();
+const { VozPuro } = require("./_mundos");   // MU5-n (A3-6b): la voz vive en apps/web/src/red/voz/voz.ts; 45_voz.js es su talón
 const AjustesPuro = new Function("\"use strict\";\n" + trozo(AJU, "// [puro:inicio]", "// [puro:fin]") + "\nreturn AjustesPuro;")();
 const EVENTOS = JSON.parse(lee("contratos/eventos.json")), IFACES = JSON.parse(lee("contratos/interfaces.json"));
 const espera = (ms = 0) => new Promise(r => setTimeout(r, ms));

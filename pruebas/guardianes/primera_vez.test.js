@@ -6,7 +6,7 @@ const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
 const trozo = (s, ini, fin) => { const i = s.indexOf(ini), f = s.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas " + ini + " … " + fin); return s.slice(i, f); };
 const PV = new Function("\"use strict\";\n" + trozo(lee("apps/web/motor/46b_primera_vez.js"), "// [puro:inicio]", "// [puro:fin]") + "\nreturn PrimeraVezPuro;")();
-const VozPuro = new Function("\"use strict\";\n" + trozo(lee("apps/web/motor/45_voz.js"), "// [puro:inicio]", "// [puro:fin]") + "\nreturn VozPuro;")();
+const { VozPuro } = require("./_mundos");   // MU5-n (A3-6b): la voz vive en apps/web/src/red/voz/voz.ts; 45_voz.js es su talón
 const todo = t => t.lineas.map(l => l.t + " " + l.txt).join(" ") + " " + t.pie;
 
 test("PrimeraVezPuro: sale la primera vez (y solo a familias y miembros de un corro), no la segunda", () => {
