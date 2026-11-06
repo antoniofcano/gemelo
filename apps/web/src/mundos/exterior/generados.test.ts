@@ -119,6 +119,21 @@ describe("olivos generados (componente del exterior)", () => {
     m.G.libera();
   });
 
+  it("sus materiales salen de la fábrica (gen-olivo y gen-profundidad, con dueño olivos-generados); el clásico es el de siempre (mismo parche encadenado y misma clave)", async () => {
+    const m = monta(); await conLote(m);
+    const F = m.F, inv = F.inventario(), lm = m.G._prueba.mats(), pr = m.G._prueba.prof();
+    expect(inv["gen-olivo"]).toEqual({ tipo: "define", n: 8 });   // pies, muerta, oliva, ramita0, ramita1, relleno, tarjeta y puntos
+    expect(inv["gen-profundidad"]).toEqual({ tipo: "define", n: 6 });   // las 4 sombras de las hojas y las 2 de las mallas por lotes
+    expect(F.duenos()).toEqual({ "olivos-generados": 14 }); expect(F.ruta("gen-olivo")).toBe("clasico");
+    expect(lm.pies.customProgramCacheKey()).toBe("gen-luz-fundido"); expect(pr.corteza.customProgramCacheKey()).toBe("gen-fundido"); expect(pr.corteza.isMeshDepthMaterial).toBe(true);
+    // el parche: luz y fundido, con los uniformes de Generados (los mismos que reciben los lejanos de 07ac)
+    const sh = { uniforms: {} as A, vertexShader: "#include <common>\n#include <begin_vertex>\n#include <color_vertex>", fragmentShader: "void main() {" };
+    lm.relleno.onBeforeCompile(sh, null);
+    expect(sh.uniforms.uFun).toBe(m.G._prueba.uFun); expect(sh.uniforms.uBanda).toBe(m.G._prueba.uBanda); expect(sh.fragmentShader).toContain("ot_ign(gl_FragCoord.xy)");
+    expect(m.G.lejanos.uFun).toBe(m.G._prueba.uFun);
+    m.G.libera(); expect(F.duenos()).toEqual({});
+  });
+
   it("sin la bandera (?olivos=0): apagado desde el principio, sin grupo; libera no rompe", () => {
     const m = monta("?olivos=0");
     expect(m.G.estado()).toBe("apagado"); expect(m.gArboles.children).toHaveLength(0); expect(m.G.libera()).toBe(true);

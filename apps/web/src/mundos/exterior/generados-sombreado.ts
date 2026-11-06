@@ -1,6 +1,9 @@
 // El sombreado de los olivos generados: el parche de luz del motor (luz, nubes, escarcha, color por lote en sRGB) y el FUNDIDO por tramado (ADR-0017, O9c, ADR-0022 §5).
 // MU5-n (A3-2a): antes dentro de Generados en apps/web/motor/07ab_generados.js; el GLSL es el de siempre, movido. Los uniformes uFun y uBanda son los mismos objetos
 // que mueve Generados.paso() y que comparte el tramado complementario de los lejanos (07ac, por Generados.lejanos).
+import { MaterialesPuro } from "../../nucleo/materiales.ts";
+import type { DefMaterial } from "../../nucleo/materiales.ts";
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type A = any;
 
@@ -40,3 +43,23 @@ export function parcheLuzDe(parcheTiempo: (sh: A, viento: boolean) => void): (sh
       .replace("#include <color_vertex>", "#include <color_vertex>\n#if defined( USE_BATCHING_COLOR ) && ! defined( USE_COLOR ) && ! defined( USE_INSTANCING_COLOR )\n vColor.rgb = ot_lin(vColor.rgb);\n#endif");
   };
 }
+
+// ---------------------------------------------------------------- los materiales por la fábrica (MU5-n: MATERIALES §1, filas 12 y 13)
+// El clásico es el de siempre, movido: el material que crea el constructor (o, para la profundidad de las mallas por lotes, uno nuevo) con su parche encadenado DESPUÉS
+// del que ya tenga, por el encadena() de la biblioteca de olivos (la misma clave combinada: «…|gen-luz-fundido» y «…|gen-fundido»).
+export const MATERIAL_GEN_OLIVO = "gen-olivo";
+export const MATERIAL_GEN_PROFUNDIDAD = "gen-profundidad";
+type Encadena = (m: A, fn: (sh: A) => void, clave?: string) => A;
+/** gen-olivo: material = el MeshStandardMaterial (o PointsMaterial) del constructor, ya en lineal y con su recorte; parche = luz + fundido; propia = el encadena de la biblioteca */
+export interface OpcGenOlivo { material: A; parche: (sh: A) => void; propia?: Encadena | null; uniformes?: { uFun: A; uBanda: A } }
+/** gen-profundidad: material = el MeshDepthMaterial del constructor (las sombras de las hojas) o null para uno nuevo (el de las mallas por lotes); fundido = el parche del fundido */
+export interface OpcGenProfundidad { material: A | null; fundido: (sh: A) => void; propia?: Encadena | null; uniformes?: { uFun: A; uBanda: A } }
+export const DEF_GEN_OLIVO: DefMaterial<OpcGenOlivo> = {
+  clasico: function (o) { return (o.propia || MaterialesPuro.encadenaPropia)(o.material, o.parche, "gen-luz-fundido"); }
+};
+export const DEF_GEN_PROFUNDIDAD: DefMaterial<OpcGenProfundidad> = {
+  clasico: function (o, c) {
+    var dm = o.material || new (c.THREE["MeshDepthMaterial"] as new (p: unknown) => A)({ depthPacking: c.THREE["RGBADepthPacking"] });
+    return (o.propia || MaterialesPuro.encadenaPropia)(dm, o.fundido, "gen-fundido");
+  }
+};

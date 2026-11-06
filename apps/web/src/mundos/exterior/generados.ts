@@ -44,7 +44,7 @@ import type { Materiales } from "../../nucleo/materiales.ts";
 import { Escalera, GeneradosPuro } from "./generados-escalera.ts";
 import { descarga, dirHorneado, filaDe, filaImpostor, manifiestoNoVale, variantesDeEpoca } from "./generados-horneado.ts";
 import { compiladoG as compiladoCon, creaColaPropia } from "./generados-cola.ts";
-import { parcheFundidoDe, parcheLuzDe, uniformesFundido } from "./generados-sombreado.ts";
+import { DEF_GEN_OLIVO, DEF_GEN_PROFUNDIDAD, MATERIAL_GEN_OLIVO, MATERIAL_GEN_PROFUNDIDAD, parcheFundidoDe, parcheLuzDe, uniformesFundido } from "./generados-sombreado.ts";
 import { creaLote } from "./generados-lote.ts";
 
 // three, el constructor de olivos y los objetos del legado no traen tipos: se tocan sin tiparlos (como en escena-tiles.ts)
@@ -97,6 +97,7 @@ export function creaGenerados(d: DepsGenerados) {
   var BUSQUEDA: A = d.busqueda || "", reloj: A = d.reloj, consola: A = d.consola || null, factorCopaDeConfig: A = d.factorCopaDeConfig;
   function rend(): A { return d.renderer ? d.renderer() : null; }
   // los uniformes y los parches del fundido y de la luz (generados-sombreado.ts): los mismos objetos para los 3D y para los lejanos de 07ac
+  var materiales: A = d.Materiales;
   var UF: A = uniformesFundido(THREE), uFun: A = UF.uFun, uBanda: A = UF.uBanda, parcheFundido: A = parcheFundidoDe(UF), parcheLuz: A = parcheLuzDe(d.parcheTiempo);
   // O8c: con ?olivos=gen, «gen» u «horneada» (Escalera.modoGen) se decide con el manifiesto, antes de que Generados quede activo; ESCALERA
   // (reparte con la escalera: forzada u horneada) ya no cambia después
@@ -136,7 +137,9 @@ export function creaGenerados(d: DepsGenerados) {
       // con ?olivos=gen y variantes horneadas de la época, la escalera (O8c); sin ellas, como siempre
       MODO = Escalera.modoGen({ bandera: BANDERA, manifiesto: !!manif, variantes: varSem ? varSem.length : 0, sinEscalera: SIN_ESCALERA });
       ESCALERA = MODO === "forzada" || MODO === "horneada";
+      reemplazos = {};
       mats = M.creaMateriales(THREE, null, { epoca: epoca(), srgb: true, parche: parcheGen, mipsCobertura: !/[?&]olivosMips=0\b/.test(BUSQUEDA) });   // sin fotos de campo aquí: corteza dibujada (texturas.js); hojas con mipmaps que conservan la cobertura (ADR-0022 §6; ?olivosMips=0, los de la GPU)
+      Object.keys(reemplazos).forEach(function (n) { mats[n] = reemplazos[n]; });   // solo con la TSL (MU6): con el clásico no hay ninguno
       prof = { corteza: profundidad(), muerta: profundidad() };   // la sombra de las mallas por lotes, con el mismo fundido
       var f: A = M.creaFabrica({ trabajador: true }); if (f.modo === "trabajador") fabrica = f; else f.cierra();
       if (liberado) { suelta(); return; }
@@ -165,13 +168,20 @@ export function creaGenerados(d: DepsGenerados) {
       })
       .catch(function (e: A) { manif = null; varSem = null; epocaManif = null; horn.estado = "ignorado"; horn.motivo = String(e && e.message || e).slice(0, 80); });
   }
-  function parcheGen(m: A) {
-    if (m.isMeshDepthMaterial) { Materiales.encadena(m, "gen-profundidad", parcheFundido, "gen-fundido", M.encadena); return; }
+  // MU5-n: los materiales por la fábrica (generados-sombreado.ts: define de «gen-olivo» y «gen-profundidad»), con dueño «olivos-generados»: libera() los suelta.
+  // El constructor crea sus materiales y llama a parcheGen(m, n) con cada uno; lo que devuelve la fábrica (el mismo material con el clásico; otro con la TSL, en MU6)
+  // se anota en reemplazos y se pone en mats al acabar (la biblioteca no recoge lo que devuelve su parche)
+  materiales.define(MATERIAL_GEN_OLIVO, DEF_GEN_OLIVO); materiales.define(MATERIAL_GEN_PROFUNDIDAD, DEF_GEN_PROFUNDIDAD);
+  var propios: A = materiales.de(ID_GENERADOS), reemplazos: A = {};
+  function luzFundido(sh: A) { parcheLuz(sh); parcheFundido(sh); }
+  function parcheGen(m: A, n?: A) {
+    if (m.isMeshDepthMaterial) { anota(n, m, propios.crea(MATERIAL_GEN_PROFUNDIDAD, { material: m, fundido: parcheFundido, propia: M.encadena, uniformes: UF })); return; }
     if (m.color) m.color.convertSRGBToLinear();   // el número de la referencia es un color «tal como se ve» (sRGB): el convenio del motor
     Materiales.recorte(m);   // AG-2.1: relleno, ramitas y tarjetas (alphaTest > 0) a alphaToCoverage; la corteza no tiene recorte y no cambia
-    Materiales.encadena(m, "gen-olivo", function (sh: A) { parcheLuz(sh); parcheFundido(sh); }, "gen-luz-fundido", M.encadena);
+    anota(n, m, propios.crea(MATERIAL_GEN_OLIVO, { material: m, parche: luzFundido, propia: M.encadena, uniformes: UF }));
   }
-  function profundidad() { var dm: A = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking }); Materiales.encadena(dm, "gen-profundidad", parcheFundido, "gen-fundido", M.encadena); return dm; }
+  function anota(n: A, m: A, r: A) { if (n !== undefined && r !== m) reemplazos[n] = r; }
+  function profundidad() { return propios.crea(MATERIAL_GEN_PROFUNDIDAD, { material: null, fundido: parcheFundido, propia: M.encadena, uniformes: UF }); }
   // la entrada del generador para un olivo del registro: semilla guardada o su id; parámetros medidos (copas_param) o h y r8 × FACTOR_R8_GEN
   function entrada(c: A) {
     var raw: A = D.copas[c.i], id: A = D.copas_id ? D.copas_id[c.i] : -1;
@@ -564,7 +574,8 @@ export function creaGenerados(d: DepsGenerados) {
     if (fabrica) { fabrica.cierra(); fabrica = null; }
     if (mats && typeof mats.libera === "function") mats.libera();
     mats = null;
-    if (prof) { prof.corteza.dispose(); prof.muerta.dispose(); prof = null; }
+    prof = null;
+    propios.libera();   // los de la fábrica con dueño «olivos-generados»: los del constructor (ya soltados con sus texturas: no se sueltan dos veces) y los dos de profundidad
   }
   function libera(): boolean {
     if (liberado) return false;

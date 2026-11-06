@@ -112,13 +112,23 @@ test("cada material del motor que pasa por la fábrica tiene un nombre literal, 
     }
   }
   // MU5-n (A3-2a): los módulos que pasaron a TypeScript llevan sus sitios a apps/web/src/mundos/: Materiales.parchea|encadena|sombreador como en el motor, o
-  // .define(nombre, …) con un literal o una constante del mismo fichero (`const MATERIAL_X = "nombre"`); cuentan igual, con el mismo nombre literal
+  // .define(nombre, …) con un literal o una constante literal (`export const MATERIAL_X = "nombre"`, de cualquier fichero de src/mundos: quien define puede importarla);
+  // cuentan igual, con el mismo nombre literal. Con varios .define del mismo nombre en un fichero (clásico y TSL por separado), cuenta uno
+  const CTES = {};
+  (function constantes(d) {
+    for (const e of fs.readdirSync(path.join(RAIZ, d), { withFileTypes: true })) {
+      const f = d + "/" + e.name;
+      if (e.isDirectory()) { constantes(f); continue; }
+      if (!/\.ts$/.test(e.name) || /\.test\.ts$/.test(e.name)) continue;
+      for (const m of sinComentarios(lee(f)).matchAll(/const ([A-Z_][A-Z0-9_]*) = ("[^"]*")[;,]/g)) CTES[m[1]] = m[2];
+    }
+  })("apps/web/src/mundos");
   (function recorre(d) {
     for (const e of fs.readdirSync(path.join(RAIZ, d), { withFileTypes: true })) {
       const f = d + "/" + e.name;
       if (e.isDirectory()) { recorre(f); continue; }
       if (!/\.ts$/.test(e.name) || /\.test\.ts$/.test(e.name)) continue;
-      const s = sinComentarios(lee(f)), cte = n => { const m = new RegExp("const " + n + " = (\"[^\"]*\")").exec(s); return m ? m[1] : n; };
+      const s = sinComentarios(lee(f)), cte = n => CTES[n] || n;
       const re = /Materiales\.(parchea|encadena|sombreador)\(([^,)]*)|\.define\(\s*("[^"]*"|[A-Z_][A-Z0-9_]*)\s*,/g;
       let m;
       while ((m = re.exec(s))) {
