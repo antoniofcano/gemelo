@@ -36,7 +36,7 @@ function monta() {
     paseando: false, persona: null, primera: false, pp: { x: 0, y: 0, ang: 0 }, enQuad: false, enDron: false, VRX: { on: false, nivel: 0 }
   };
   const n = { id: ID_AVATARES, on: () => () => {}, emite: () => 0, api: () => Presencia, limpia: <F>(f: F) => f, parametros: {} };
-  return { api: creaAvatares(deps, n, Presencia) as any, scene, pedidos, sueltos, ganchos, persona };
+  return { api: creaAvatares(deps, n, Presencia) as any, deps, scene, pedidos, sueltos, ganchos, persona };
 }
 
 describe("avatares-vrm: de todo mundo y con libera() de verdad (A3-6a)", () => {
@@ -60,11 +60,14 @@ describe("avatares-vrm: de todo mundo y con libera() de verdad (A3-6a)", () => {
     expect(copia).toBeTruthy();
     const mats: any[] = []; copia.traverse((x: any) => { if (x.isMesh) mats.push(x.material); });
     expect(mats.every(m => m.userData.vrmFundido)).toBe(true);   // el tramado del fundido, encadenado (vrm-fundido)
+    expect(r.deps.Materiales.duenos()[ID_AVATARES]).toBe(mats.length);   // segundo commit: por la fábrica, con dueño
+    expect(typeof mats[0].onBeforeCompile).toBe("function");          // el parche encadenado (su clave la prueba pruebas/guardianes/materiales_f1.test.js)
     r.api.libera();
     expect(r.sueltos).toHaveLength(1);                           // deepDispose de la única copia
     expect(r.scene.getObjectByName("avatares-vrm")).toBeUndefined();
     expect(r.ganchos[r.ganchos.length - 1]).toBeNull();          // la presencia ya no llama a nadie
     expect(r.api.estado().bufs).toBe(0);                         // L2-09: los ArrayBuffer ya no se quedan
     expect(r.api.estado().instancias).toBe(0);
+    expect(r.deps.Materiales.duenos()[ID_AVATARES]).toBeUndefined();   // los soltó deepDispose y salieron solos de la fábrica
   });
 });

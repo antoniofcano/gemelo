@@ -23,6 +23,17 @@ export interface DepsAvatares {
 }
 export const ID_AVATARES = "avatares-vrm";
 
+/** MU5-n (A3-6a, segundo commit): el tramado del fundido de los VRM (como O1), por la fábrica (MATERIALES §5). No es un material propio: se ENCADENA al MToon (o al
+ *  material que traiga el VRM) tras el parche que ya tenga, con la clave de programa combinada (la de antes + «|vrm-fundido»). El parche es el de siempre, movido sin
+ *  tocar: descarta el fragmento si su ruido de pantalla ≥ uFunVrm, el MISMO { value } que mueve el fundido (inst.uni). */
+export const MATERIAL_VRM_FUNDIDO = "vrm-fundido";
+export function parcheVrmFundido(uni: { value: number }) {
+  return function (sh: any) {
+    sh.uniforms.uFunVrm = uni;
+    if (sh.fragmentShader.indexOf("uFunVrm") < 0) sh.fragmentShader = sh.fragmentShader.replace("void main() {", "uniform float uFunVrm;\nfloat vrm_ign(vec2 p) { return fract(52.9829189 * fract(dot(p, vec2(0.06711056, 0.00583715)))); }\nvoid main() {\n if (vrm_ign(gl_FragCoord.xy) >= uFunVrm) discard;");
+  };
+}
+
 // ---------- avatares VRM (P7c, ADR-0020), componente «avatares-vrm» (C5, ADR-0023, consume la presencia): los N más cercanos que caben en el presupuesto del aparato llevan su VRM del catálogo; el resto, el muñeco
 // instanciado de la presencia (38_presencia_compartida.js). Y, en tercera persona, tu paseante es tu avatar (decisión 76). Sin presencia (?presencia=sim|red) no crea nada.
 //  · Catálogo: /avatares/catalogo.json y /avatares/<fichero>?v=<sha256> (mismo origen, tras sesión; contratos/avatares.md). Se pide solo cuando alguien lleva un id de
@@ -223,7 +234,8 @@ export const AvataresPuro: any = (function () {
 export function creaAvatares(dp: DepsAvatares, n?: any, Presencia?: any) {
   // del legado, por argumento (A3-6a): lo que no cambia, aquí; lo que otros módulos reescriben (paseando, persona, primera, pp, enQuad, enDron, VRX) y VrPresupuesto, de dp en cada uso
   const THREE = dp.THREE, location = dp.location, window = dp.window, fetch = dp.fetch, console: any = dp.consola || { warn: function () {} };
-  const Aparato = dp.Aparato, suelo = dp.suelo, renderer = dp.renderer, scene = dp.scene, camera = dp.camera, Estado = dp.Estado, Materiales = dp.Materiales;
+  const Aparato = dp.Aparato, suelo = dp.suelo, renderer = dp.renderer, scene = dp.scene, camera = dp.camera, Estado = dp.Estado;
+  const materiales = dp.Materiales.de(ID_AVATARES);   // MU5-n (A3-6a): los materiales de cada VRM, con dueño: los suelta sueltaInst (deepDispose) y, lo que quede, libera()
   var BASE: any = "/avatares/", FUNDIDO: any = 0.6, REPOSO: any = 5, TICK: any = 0.5, CERCA_MIRA: any = 8, COS_MIRA: any = Math.cos(70 * Math.PI / 180);
   var simVrm: any = /[?&]vrm=1\b/.test(location.search), comparte: any = !/[?&]vrmcomparte=no\b/.test(location.search), sinPropio: any = /[?&]yo=no\b/.test(location.search);
   var disp: any = Aparato.clase();
@@ -291,11 +303,8 @@ export function creaAvatares(dp: DepsAvatares, n?: any, Presencia?: any) {
   function parcheFundido(m?: any, uni?: any) {   // tramado de pantalla (ruido de gradiente entrelazado, como O1): descarta el fragmento si su ruido ≥ uFunVrm
     if (m.userData.vrmFundido) return;   // un material compartido por varias mallas (o el del contorno de MToon) se parchea una vez
     m.userData.vrmFundido = true;
-    // tras el parche que ya traiga MToon, con la clave de programa combinada (la de antes + «|vrm-fundido»): Materiales.encadena (02i)
-    Materiales.encadena(m, "vrm-fundido", function (sh?: any) {
-      sh.uniforms.uFunVrm = uni;
-      if (sh.fragmentShader.indexOf("uFunVrm") < 0) sh.fragmentShader = sh.fragmentShader.replace("void main() {", "uniform float uFunVrm;\nfloat vrm_ign(vec2 p) { return fract(52.9829189 * fract(dot(p, vec2(0.06711056, 0.00583715)))); }\nvoid main() {\n if (vrm_ign(gl_FragCoord.xy) >= uFunVrm) discard;");
-    }, "vrm-fundido");
+    // tras el parche que ya traiga MToon, con la clave de programa combinada (la de antes + «|vrm-fundido»): encadena de la fábrica, con dueño (parcheVrmFundido, arriba)
+    materiales.encadena(m, MATERIAL_VRM_FUNDIDO, parcheVrmFundido(uni), MATERIAL_VRM_FUNDIDO);
     m.needsUpdate = true;
   }
   function monta(e?: any, vrm?: any, compartida?: any) {
@@ -556,6 +565,7 @@ export function creaAvatares(dp: DepsAvatares, n?: any, Presencia?: any) {
     // L2-09 (auditoría de noviembre, lente 2): los ArrayBuffer de cada VRM descargado (bufs: hasta ~12 MB con el catálogo v2) y las tablas de copias vivas, fallos,
     // quién habla y mallas se quedaban tras liberar. Una carga que llegue tarde se suelta igual (pide/propio ven gVrm = null y la tiran con sueltaInst)
     bufs = Object.create(null); vivos = Object.create(null); falla = Object.create(null); hablan = Object.create(null); mallasDe = null;
+    materiales.libera();   // lo que la fábrica guarde aún de este dueño (los VRM ya soltados salen solos de su lista)
   }
   gVrm = new THREE.Group(); gVrm.name = "avatares-vrm"; scene.add(gVrm);
   var gancho: any = { coloca: coloca, oculta: oculta, sale: quitaReg, actualiza: actualiza, estado: estado, libera: libera };

@@ -89,7 +89,7 @@ export type { DepsSitioJunto } from "./comun/muneco.ts";
 export { ID_PRESENCIA, MATERIAL_NOMBRES, creaPresencia, defNombres, manifiestoPresencia } from "./comun/presencia.ts";
 export type { DepsPresencia, Presencia } from "./comun/presencia.ts";
 // A3-6a: los avatares VRM (antes 26b_avatares.js), de todo mundo.
-export { AvataresPuro, ID_AVATARES, creaAvatares, manifiestoAvatares } from "./comun/avatares.ts";
+export { AvataresPuro, ID_AVATARES, MATERIAL_VRM_FUNDIDO, creaAvatares, manifiestoAvatares, parcheVrmFundido } from "./comun/avatares.ts";
 export type { DepsAvatares } from "./comun/avatares.ts";
 // A3-6a: el menú de muñeca en VR (antes 31c_muneca.js), componente de todo mundo.
 export { ID_MUNECA, MunecaPuro, creaMuneca, manifiestoMuneca } from "./comun/muneca.ts";
