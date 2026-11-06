@@ -44,15 +44,15 @@ export function creaMarcadoresLidar(d: DepsMarcadoresLidar, n: ContextoComponent
   const gCopas = new THREE.Group(), gMarc = new THREE.Group(), gDesf = new THREE.Group();
   gCopas.name = "copas"; gMarc.name = "marcas"; gDesf.name = "desfase";   // los nombres los usa el desglose de llamadas de las pruebas
   [gCopas, gMarc, gDesf].forEach(function (g: T3) { scene.add(g); });   // AG-1.15: sus mallas se congelan abajo; las instancias llevan su propia matriz y las recoloca coloca()
-  const geoCopa = new THREE.OctahedronGeometry(0.38), matOcta = new THREE.MeshBasicMaterial({ color: d.colorCss("--lidar") });
+  const geoCopa = new THREE.OctahedronGeometry(0.38), matOcta = materiales.estandar("MeshBasicMaterial", { color: d.colorCss("--lidar") });
   const mCopas = new THREE.InstancedMesh(geoCopa, matOcta, cIn.length); mCopas.frustumCulled = false; gCopas.add(mCopas);   // r151: la esfera de una InstancedMesh se calcula una vez con sus instancias; estas se recolocan con la exageración
   const ani = new THREE.RingGeometry(0.55, 0.95, 8); ani.rotateX(-Math.PI / 2);
-  const matMarc = new THREE.MeshBasicMaterial({ color: d.colorCss("--guardado"), side: THREE.DoubleSide });
+  const matMarc = materiales.estandar("MeshBasicMaterial", { color: d.colorCss("--guardado"), side: THREE.DoubleSide });
   const mMarc = new THREE.InstancedMesh(ani, matMarc, marc.length); mMarc.frustumCulled = false; gMarc.add(mMarc);
   // Q0c-a: en VR, el escalón decide hasta qué distancia se dibujan anillos y octaedros (02g_vr_presupuesto); suelto en las pruebas no está
   const vrPres = d.VrPresupuesto || null;
   if (vrPres) { vrPres.instancias("marcasOT", [mMarc]); vrPres.instancias("copasLidar", [mCopas]); }
-  const desfGeo = new THREE.BufferGeometry(), matDesf = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 });
+  const desfGeo = new THREE.BufferGeometry(), matDesf = materiales.estandar("LineBasicMaterial", { color: 0xffffff, transparent: true, opacity: 0.9 });
   gDesf.add(new THREE.LineSegments(desfGeo, matDesf));
   [gCopas, gMarc, gDesf].forEach(function (g: T3) { Estaticos.congela(g); });   // AG-1.15: nada de esto se mueve como objeto (la exageración va en las matrices de instancia y en los vértices)
   const tmpMarc = new THREE.Object3D();
@@ -80,7 +80,8 @@ export function creaMarcadoresLidar(d: DepsMarcadoresLidar, n: ContextoComponent
     if (disp) return; disp = true;
     if (vrPres) { vrPres.olvida("marcasOT"); vrPres.olvida("copasLidar"); }
     [gCopas, gMarc, gDesf].forEach(function (g: T3) { scene.remove(g); });
-    mCopas.dispose(); mMarc.dispose(); geoCopa.dispose(); matOcta.dispose(); ani.dispose(); matMarc.dispose(); desfGeo.dispose(); matDesf.dispose();
+    mCopas.dispose(); mMarc.dispose(); geoCopa.dispose(); ani.dispose(); desfGeo.dispose();
+    materiales.libera();   // los tres materiales (Basic y Line, estándar: sin sombreador propio, no hay variante TSL que escribir)
   }
   return { coloca, capas: ponCapas, grupos: function () { return [gCopas, gMarc, gDesf]; }, suelta, materiales };
 }
