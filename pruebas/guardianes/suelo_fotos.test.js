@@ -7,8 +7,7 @@ const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
 
 // A3-1b: 04f es un talón; su código vive en apps/web/src/mundos/exterior/suelo-fotos.ts (SueloFotosPuro y creaSueloFotos). F04F es el talón y el .ts juntos (lo que ve el motor)
-const F04F = lee("apps/web/motor/04f_suelo_fotos.js") + "
-" + lee("apps/web/src/mundos/exterior/suelo-fotos.ts"), F04D = lee("apps/web/src/mundos/exterior/terreno.ts"), F15 = lee("apps/web/motor/15_tiempo.js");
+const F04F = lee("apps/web/motor/04f_suelo_fotos.js") + "\n" + lee("apps/web/src/mundos/exterior/suelo-fotos.ts"), F04D = lee("apps/web/src/mundos/exterior/terreno.ts"), F15 = lee("apps/web/motor/15_tiempo.js");
 const P = require("./_mundos").SueloFotosPuro;
 
 test("la bandera: apagado por defecto; ?suelo=fotos lo enciende; 768 en escritorio y 384 en móvil y gafas; en VR solo con ?sueloVR=1", () => {

@@ -240,6 +240,7 @@ Exterior, molino y bodega en un solo PWA, cada uno con su sala de red; TypeScrip
 | MU4-4 | El proceso de molturación contado: visita guiada reutilizando `46_guiada.js` | MU4-3 | ligera · sonnet | 2 d | ⬜ |
 | MU4-5 | Medida en el Quest y nota de comodidad | MU4-3 | 👤 Quest | — | ⬜ |
 | MU5-n | Un módulo por tarea, en tres commits: (1) TS y componente con `libera()` real (tanda 3: L2-01, L2-05, L2-07 a L2-11, L5-01, L5-02; tanda 2 de Quest dentro); (2) sus materiales por `nucleo/materiales`; (3) si tiene `onBeforeCompile` o `ShaderMaterial`, su variante TSL detrás de `?renderer=webgpu` (apagada) | MU2-6, MU5-0 | ligera · sonnet/opus (TSL: opus); banco al final del eje A | 1-3 d por módulo | ⬜ |
+| A3-1a | Terreno y NDVI (`02_mundo`, `04d`, `10_ndvi`, `10b`) a TypeScript como componentes del exterior; L1-05, L2-03, L2-05 | MU5-0 | ligera · opus | 1½ d | ✅ 2026-11-06: TSL del terreno parcial (MATERIALES §1.5); fusionada con A3-1b ajustando `componentes.test.js` a los talones |
 | A3-1b | Tileset y suelo de fotos (`04b`, `04c`, `04e`, `04f`) a TypeScript como componentes del exterior; L2-04 | MU5-0 | ligera · sonnet | 1 d | ✅ 2026-11-06: `mundos/exterior/`, `libera()` real, caché LRU por aparato; L2-07 a L2-09 son de `02_mundo`, `07ac` y `26b` |
 | MU5-0 | Fábrica `nucleo/materiales`: da el material clásico y, con `?renderer=webgpu`, el TSL; los estándar valen en los dos sin cambio | MU2-7 | ligera · opus | 1 d | ✅ 2026-11-06: `nucleo/materiales.ts`, 22 de 30 sombreadores por la fábrica, 8 fuera con trinquete; receta en MATERIALES §5; legado 18.707 |
 

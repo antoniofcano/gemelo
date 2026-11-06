@@ -32,7 +32,8 @@ const C = require(path.join(RAIZ, "pruebas", "contrato_modulos.js"));
 // 2026-11-06, MU5-0 (la fábrica de materiales: 02i_materiales.js pasa a talón en apps/web/src/nucleo/materiales.ts; 90_final.js, sin línea nueva, libera los
 //   materiales del mundo con su contexto): 18.707 líneas (de 18.791)
 // 2026-11-06, A3-1b (04b, 04c, 04e y 04f a TypeScript como componentes del exterior): 18.004 líneas
-const TOPE = 18004;
+// 2026-11-06, A3-1a (02_mundo, 04d, 10_ndvi y 10b a TypeScript): 17599 líneas
+const TOPE = 17599;
 
 /** líneas de un texto (la última sin salto también cuenta) */
 const lineas = s => s === "" ? 0 : s.split("\n").length - (s.endsWith("\n") ? 1 : 0);

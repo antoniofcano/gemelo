@@ -178,7 +178,14 @@ function manifiestos() {
   const out = {};
   for (const f of COMPONENTES) {
     const defs = [], ctx = vm.createContext({ Mundos: MUNDOS_TS, Componentes: { registra: d => { defs.push(d); return true; } }, Bus: { on: () => () => {}, emite: () => 0, hay: () => false }, console, Intl, Date, Math, JSON });
-    assert.doesNotThrow(() => vm.runInContext("\"use strict\";\n" + fs.readFileSync(path.join(MOTOR, f), "utf8"), ctx, { filename: f }), f + ": su primer nivel debe poder evaluarse sin el resto del motor");
+    const src = fs.readFileSync(path.join(MOTOR, f), "utf8");
+    // A3-1b: un talón «var X = Mundos.creaX({…deps del motor…}); Componentes.registra(Mundos.manifiestoX(X));» no puede evaluarse sin el motor (la
+    // fábrica recibe sus dependencias); su manifiesto se pide a Mundos con un doble de X (el manifiesto solo guarda X para llamarlo en sus fases)
+    const talon = /^  \/\/ \[talón\] /m.test(src) && /^  Componentes\.registra\(Mundos\.(\w+)\(/m.exec(src);
+    if (talon) {
+      const doble = new Proxy(function () {}, { get: (t, k) => k === Symbol.toPrimitive ? () => "" : k === "then" ? undefined : doble, apply: () => doble });
+      defs.push(MUNDOS_TS[talon[1]](doble));
+    } else assert.doesNotThrow(() => vm.runInContext("\"use strict\";\n" + src, ctx, { filename: f }), f + ": su primer nivel debe poder evaluarse sin el resto del motor");
     assert.strictEqual(defs.length, 1, f + ": un componente por fichero");
     out[f] = defs[0];
     for (const k of ["consume", "expone"]) out[f][k] = [...out[f][k]];   // del contexto de vm al de la prueba (deepStrictEqual mira el prototipo)
@@ -231,19 +238,23 @@ test("la suma de los presupuestos de los encendidos por defecto cabe en el de di
 test("consume resuelto y sin ciclos; un componente no expone nada en su primer nivel ni consume de otro componente; lo que usa de fuera lo declara", () => {
   const M = manifiestos(), d = contratoModulos.deriva(), ifaces = Object.keys(json("contratos/interfaces.json").interfaces);
   const comp = new Set(COMPONENTES.map(f => f.slice(0, -3)));
-  const expuestosNoComp = new Set(Object.entries(d.expone).filter(([f]) => !comp.has(f.slice(0, -3))).flatMap(([, ns]) => ns));
+  const esTalon = f => /^  \/\/ \[talón\] /m.test(fs.readFileSync(path.join(MOTOR, f.endsWith(".js") ? f : f + ".js"), "utf8"));
+  const expuestosNoComp = new Set(Object.entries(d.expone).filter(([f]) => !comp.has(f.slice(0, -3)) || esTalon(f)).flatMap(([, ns]) => ns));   // lo que expone un talón (A3-1b) también vale
   const expComp = new Set(Object.values(M).flatMap(x => x.expone));
   for (const [f, def] of Object.entries(M)) {
     for (const n of def.consume) assert.ok(expuestosNoComp.has(n) || ifaces.includes(n) || expComp.has(n), f + ": consume «" + n + "», que nadie expone");
+    // A3-1b: un talón de TypeScript («// [talón] …» + Componentes.registra(Mundos.…)) expone a propósito su objeto al legado (Escena3D, SueloFotos…) y
+    // recibe sus dependencias por la fábrica; sus reglas de componente las vigilan Vitest (ComponentesPuro.valida) y medida_componentes
+    if (/^  \/\/ \[talón\] /m.test(fs.readFileSync(path.join(MOTOR, f), "utf8"))) continue;
     assert.deepStrictEqual(d.expone[f], [], f + ": un componente no expone nada en su primer nivel (los demás le hablan por el Bus o Componentes.api)");
-    for (const g of Object.keys(d.cons[f])) assert.ok(!comp.has(g), f + " consume de otro componente: " + g);
+    for (const g of Object.keys(d.cons[f])) assert.ok(!comp.has(g) || esTalon(g), f + " consume de otro componente: " + g);   // salvo el objeto que expone un talón (A3-1b)
     // lo que su código (sin comentarios) usa de los módulos que no son el núcleo de componentes ni lo básico de la escena, está en su consume
     const codigo = sinComentarios(sinCabecera(fs.readFileSync(path.join(MOTOR, f), "utf8"))).replace(/"(?:[^"\\\n]|\\.)*"/g, '""');
     const LIBRE = new Set(["01_datos", "02_mundo", "02b_cola", "02c_componentes", "02d_laminas", "02e_entidades", "03_escena"]);
     const usa = n => new RegExp("(?<![\\w$.])" + n.replace(/\$/g, "\\$") + "(?![\\w$]|\\s*:(?!:))").test(codigo);   // sin propiedades (.x) ni claves de objeto (x:)
     for (const [g, ns] of Object.entries(d.cons[f])) if (!LIBRE.has(g)) for (const n of ns) if (usa(n)) assert.ok(def.consume.includes(n), f + ": usa «" + n + "» de " + g + " sin declararlo en consume");
   }
-  for (const f of ficherosMotor()) for (const c of comp) assert.ok(!d.cons[f][c], f + " consume de un componente (" + c + "): debe ir por el Bus o Componentes.api");
+  for (const f of ficherosMotor()) for (const c of comp) assert.ok(!d.cons[f][c] || esTalon(c), f + " consume de un componente (" + c + "): debe ir por el Bus o Componentes.api");   // un talón (A3-1b) expone su objeto al legado a propósito
   assert.deepStrictEqual(P.orden(Object.values(M)).ciclos, [], "sin ciclos");
 });
 
