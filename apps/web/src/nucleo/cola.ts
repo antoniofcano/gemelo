@@ -120,3 +120,36 @@ export function creaCola(opc: OpcionesCola) {
 }
 
 export type Cola = ReturnType<typeof creaCola>;
+
+/** La Cola vista desde un mundo (MUNDOS §6, MU2-1): las mismas operaciones, pero cada clave lleva delante el dueño («molino:» + clave), así
+ *  cancelaTodo() es cancelaDe(dueño) y no toca los trabajos de otro mundo ni los de siempre (claves sin dueño). La crea el WorldManager para el
+ *  Contexto de cada mundo: el mundo no ve la Cola entera. */
+export interface ColaDeMundo {
+  readonly dueno: string;
+  pon(clave: string, prio: number, trabajo: Trabajo, fin?: (valor: unknown) => void): boolean;
+  cancela(clave: string): void;
+  hay(clave: string): boolean;
+  cancelaTodo(): number;
+  pendientes(): number;
+}
+/** Lo que se necesita de la Cola para darle dueño (la de creaCola cumple). */
+export interface ColaConDueno {
+  add(clave: string, prio: number, gen: Trabajo, fin?: (valor: unknown) => void): boolean;
+  cancela(clave: string): void;
+  hay(clave: string): boolean;
+  cancelaDe(dueno: string): number;
+  pendientesDe(dueno: string): number;
+}
+
+export function creaColaDeMundo(cola: ColaConDueno, dueno: string): ColaDeMundo {
+  if (!dueno || dueno.indexOf(":") >= 0) throw new Error("creaColaDeMundo: el dueño no puede ser vacío ni llevar «:» («" + dueno + "»)");
+  const k = (clave: string): string => dueno + ":" + clave;
+  return {
+    dueno,
+    pon: (clave, prio, trabajo, fin) => cola.add(k(clave), prio, trabajo, fin),
+    cancela: clave => cola.cancela(k(clave)),
+    hay: clave => cola.hay(k(clave)),
+    cancelaTodo: () => cola.cancelaDe(dueno),
+    pendientes: () => cola.pendientesDe(dueno),
+  };
+}

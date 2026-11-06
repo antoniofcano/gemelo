@@ -3,7 +3,8 @@
 // está en vite.config.js (las dos builds) y en tsconfig.json («paths»). Un módulo legado migrado queda en motor/ como talón: `var X = Nucleo.X;`.
 // Regla: nada de aquí lee globales del legado al cargarse; lo que necesite del legado lo recibe por argumento cuando el talón llama a su fábrica.
 export { partesDeVersion } from "./version.ts";
-export { CargaPuro, creaCola, duenoDe } from "./cola.ts";
+export { CargaPuro, creaCola, creaColaDeMundo, duenoDe } from "./cola.ts";
+export type { ColaDeMundo } from "./cola.ts";
 export { RenderPuro, InfoDibujo, creaRender } from "./render.ts";
 export { XrPerillasPuro, creaXrPerillas } from "./xr-perillas.ts";
 export { EntidadesPuro } from "./entidades.ts";
@@ -15,3 +16,5 @@ export { FUNDIDO_S, SALTO_FUNDIDO_M, FundidoPuro, creaFundido } from "./fundido.
 export type { Fundido, FaseFundido } from "./fundido.ts";
 export { BuclePuro, creaBucle } from "./bucle.ts";
 export type { Bucle, DepsBucle, PasoBucle } from "./bucle.ts";
+export { WorldManagerPuro, creaWorldManager } from "./mundos.ts";
+export type { AvisoMundo, ContextoBase, DepsWorldManager, EstadoCambio, Fundido, IdMundo, MundoBase, Pose2, Puerta, ResultadoCambio, WorldManager } from "./mundos.ts";

@@ -2,7 +2,7 @@
 // apps/web/motor/02b_cola.js; ahora prueban el módulo de verdad. HONESTIDAD: los ms son de un reloj de mentira (deterministas), no de
 // Chrome ni de un aparato: cuánto cuesta cada rebanada en un dispositivo es cosa del banco y de ?debug (doc/sistema/MEDIDAS.md).
 import { describe, expect, it } from "vitest";
-import { CargaPuro, creaCola, duenoDe } from "./cola.ts";
+import { CargaPuro, creaCola, creaColaDeMundo, duenoDe } from "./cola.ts";
 import type { Trabajo } from "./cola.ts";
 
 interface Reloj { t: number; ahora(): number }
@@ -195,5 +195,27 @@ describe("Cola: dueño por prefijo (MUNDOS §6)", () => {
     C.add("exterior:N1", 1, trabajo(reloj, "a", [1], traza)); C.add("N2", 2, trabajo(reloj, "b", [1], traza));
     C.vacia(1000);
     expect(Object.keys(C.est)).toEqual(["N"]); expect(C.est.N!.n).toBe(2);
+  });
+});
+
+describe("ColaDeMundo (MU2-1, MUNDOS §6)", () => {
+  it("pone las claves con el dueño delante y cancelaTodo() solo toca las suyas", () => {
+    const reloj = nuevoReloj(), C = colaCon(reloj), traza: string[] = [];
+    const mol = creaColaDeMundo(C, "molino"), bod = creaColaDeMundo(C, "bodega");
+    expect(mol.pon("M1", 1, trabajo(reloj, "a", [1, 1], traza))).toBe(true);
+    expect(mol.pon("M1", 0, trabajo(reloj, "a2", [1], traza))).toBe(false);   // la misma clave: solo cambia la prioridad
+    bod.pon("M1", 2, trabajo(reloj, "b", [1, 1], traza));
+    C.add("N1", 3, trabajo(reloj, "c", [1, 1], traza));
+    expect(C.hay("molino:M1")).toBe(true); expect(mol.hay("M1")).toBe(true); expect(mol.pendientes()).toBe(1);
+    expect(mol.cancelaTodo()).toBe(1);
+    expect(mol.hay("M1")).toBe(false); expect(bod.hay("M1")).toBe(true); expect(C.hay("N1")).toBe(true);
+    bod.cancela("M1"); expect(bod.pendientes()).toBe(0);
+    C.vacia(1000);
+    expect(traza).toEqual(["c#0", "c#1"]);
+  });
+  it("el dueño no puede ser vacío ni llevar «:»", () => {
+    const C = colaCon(nuevoReloj());
+    expect(() => creaColaDeMundo(C, "")).toThrow(); expect(() => creaColaDeMundo(C, "a:b")).toThrow();
+    expect(creaColaDeMundo(C, "molino").dueno).toBe("molino");
   });
 });

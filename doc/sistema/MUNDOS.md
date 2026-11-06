@@ -8,10 +8,11 @@ Cada afirmación sobre el código remite a `fichero:línea` de `apps/web/motor/`
 
 ```
 apps/web/src/
-  nucleo/    Render, Bucle, Cola, Presupuesto, Fundido, XR, Componentes, Entidades, Ajustes, Bus      → no importa de nadie
+  nucleo/    Render, Bucle, Cola, Presupuesto, Fundido, XR, Componentes, Entidades, Ajustes, Bus,
+             WorldManager (MU2-1: aquí y no en mundos/, ver §3)                                       → no importa de nadie
   datos/     tipos generados de contratos/, índice, teselas, fixtures                                → no importa de nadie
   red/       Sesion, Salas, códec de pose, Voz, Pizarra (transporte)                                 → importa de datos
-  mundos/    WorldManager, World, Puerta, Ambiente; exterior/, molino/, bodega/                      → importa de nucleo, datos y red
+  mundos/    World, Ambiente, Contexto (mundo.ts); exterior/, molino/, bodega/, vacio/               → importa de nucleo, datos y red
   ui/        HUD, ventanas, panel VR (cuando se migren 24, 31, 32 y 33)                              → cliente de todo
 apps/web/motor/   el legado (IIFE), que encoge en su sitio: no se renombra (ADR-0033 §6)              → cliente de todo, por el puente
 ```
@@ -58,6 +59,16 @@ export interface World {
   - `suelo/dentro/obstaculo` sustituyen las 82 llamadas sueltas a `suelo(` (en 32 ficheros), los recortes a `D.ext` (13 ficheros) y los bucles sobre `copas` de `12_paseo.js:112-116`, `12b_llegada.js` y `29_vr.js:563-566` (lente 8 §3.1-3.2). `LlegadaPuro.rayoSuelo` e `IrAPuro.planifica` ya reciben suelo y caja por argumento: solo hay que pasarles los del mundo.
   - `congela` es la fase barata y `libera` la cara. **Congelar** tiene que cortar `actualizaCarga` y `Escena3D.actualiza` (`90_final.js:19,54`): si no, con la cámara en un marco local cerca de (0,0), se pedirían teselas del exterior alrededor del origen [deducido]. Y tiene que cancelar los trabajos de la Cola que son suyos (§6).
   - `libera` es la promesa de CLAUDE.md §5 («todo recurso de GPU se libera»), que hoy no cumplen `15_tiempo`, `16_vida`, `18_paisaje`, `19_balizas` ni `21_suelo` (cero `dispose`).
+- **Cómo quedó (MU2-1, 2026-11-06).** Los tipos están en dos sitios, por la frontera de §1 (`nucleo` no importa de nadie):
+  - `apps/web/src/nucleo/mundos.ts`: `IdMundo`, `Pose2`, `Puerta`, `ContextoBase` y `MundoBase<C>`, que es lo que el gestor necesita de un mundo (el ciclo de vida y los delegados `suelo`/`dentro`/`obstaculo`);
+  - `apps/web/src/mundos/mundo.ts`: `World extends MundoBase<Contexto>`, con `sala`, `marco`, `presupuesto` y `ambiente()`, más `Ambiente`, `Contexto`, `Perfil`, `Presupuesto`, `ClaveSala` y `RenderDeMundo` (un `Pick` de lo que da `creaRender`).
+  - **Lo que cambia respecto al diseño de arriba, y por qué:**
+    - `IdMundo` gana `"vacio"`: el interior de prueba de MU2-8 (`?mundo=vacio`) necesita un id. `ClaveSala` admite `null` (el vacío no tiene sala).
+    - `alSalir?: "congela" | "libera"` en el mundo: es la política de §3 (por defecto «congela», decisión 218), y quien crea el gestor la puede sustituir con `politica(mundo)`.
+    - `libera()` ha de poder llamarse dos veces: si una carga acaba después del tope de tiempo, el gestor vuelve a liberar lo que haya hecho mientras tanto.
+    - `ctx.senal` se aborta si la carga falla o agota el tiempo, y al **liberar**; no al congelar, porque un mundo congelado conserva su contexto y vuelve a `entra()` sin `carga()`.
+    - three no trae tipos en el repo (no hay `@types/three`): `raiz`, `luces` y `rig` son un tipo mínimo estructural (`Objeto3D`), como `MallaInstanciada` en `nucleo/presupuesto.ts`.
+    - Del `Contexto` de §6 solo están tipados los campos que ya existen en TypeScript (`id`, `senal`, `cola`, `limpia`, `raiz`, `render`, `perfil`, `xr`). `bus`, `entidades`, `laminas`, `materiales`, `ajustes`, `aparato` y `canal` entran con la tarea que los migra (MU2-5, MU2-7, fase 3), en vez de tiparlos ahora con `unknown` de relleno.
 - **Resuelve:**
   - L2-05 (sin `dispose`), L2-03 (`Mundo` no suelta teselas: el exterior lo hace en `libera`) y la causa común 3 del RESUMEN;
   - el inventario de la lente 8 §3.1-3.3;
@@ -89,6 +100,18 @@ export interface WorldManager {
   - si la carga falla o pasa del tope de tiempo, se vuelve al mundo anterior y se abre el velo. Nunca se queda nadie a oscuras;
   - con el cambio en curso no se acepta otro.
 - **Máquina de estados:** es un trozo puro (`WorldManagerPuro.transicion(estado, evento)`), probado en Vitest con mundos falsos. Los fallos inyectados en `carga`, `entra` y `sale` también se prueban ahí.
+- **Cómo quedó (MU2-1, 2026-11-06).** `apps/web/src/nucleo/mundos.ts` exporta `WorldManagerPuro` (`ESTADOS`, `TABLA`, `ACTUALIZA_EN`, `TIEMPO_MAX_MS` y `transicion(estado, evento)`, sin efectos) y `creaWorldManager(deps)`. Lo reexporta `nucleo/index.ts`, pero **nada del legado lo usa todavía** (MU2-3 en adelante): este paso no cambia nada visible. Lo prueba `nucleo/mundos.test.ts` en Vitest con mundos falsos, un fundido falso, un temporizador falso y la Cola de verdad.
+  - **Dependencias, por argumento:** `fundido` (`cierra`/`abre`, MU2-2), `cola` (la de `creaCola`: de ella sale la `ColaDeMundo` de cada uno y con `cancelaDe(id)` se cancelan sus trabajos al salir), `temporizador(fn, ms)` (devuelve cómo cancelarlo), `tiempoMax` (por defecto 20 s **[SUPUESTO]**, sin medir), y opcionales `ahora`, `contexto(base)` (el `Contexto` entero sobre lo que da el gestor), `politica(mundo)`, `permiso(a, puerta)`, `avisa(evento, datos)` y `consola`. No recibe ni `renderer` ni `scene`: no puede tocar `renderer.xr`.
+  - **Lo que cambia respecto al diseño de arriba, y por qué:**
+    - **Vive en `nucleo/`, no en `mundos/`** (§1). El legado solo ve `@gemelo/nucleo` por el puente (§9.3), y `nucleo` no puede importar de `mundos`; el gestor es maquinaria genérica, como el `Bucle`, y no sabe nada de ningún mundo concreto. El exterior lo montará el legado como un objeto con la forma de `MundoBase` (MU2-3) y lo registrará con `Nucleo.creaWorldManager`.
+    - **`libera()` del mundo que sale va al final, no entre `sale` y `carga`.** Al salir siempre se congela (y se cancelan sus trabajos de la Cola); si su política es «libera», se libera en `abriendo`, cuando el nuevo ya ha entrado. Liberar no tiene vuelta atrás: así, si la carga del nuevo falla, el de antes sigue en memoria y se vuelve a él sin cargar nada. El precio es que, durante la carga, los dos están en memoria; si la medida del Quest (MU2-9) dice que no cabe, hará falta un «libera antes» con recarga en la vuelta atrás.
+    - **Más motivos en `ResultadoCambio`:** `sin_registrar` (nadie registró ese id), `fallo_sale` y `fallo_entra` (lanzó `sale()` del viejo o `entra()` del nuevo; en los dos se vuelve al de antes), además de `mismo`, `ocupado`, `fallo_carga` (el `import()` o `carga()`), `tiempo` y `sin_permiso`. Y lleva `error` y `ms`. `mundo` es el activo al terminar, `null` si no hay ninguno.
+    - **`cambia(a, llegada?, puerta?)`:** la puerta, opcional, llega a `entra(desde, …)` y a `permiso`. Sin `llegada`, se entra donde se dejó ese mundo (`retorno(a)`).
+    - **`arranca(a, llegada?)`:** el primer mundo, sin fundido (el velo de carga de la página ya tapa) y sin mundo de antes. Antes de él, `actual` es `null` y los delegados dan suelo 0, `dentro` falso y ningún obstáculo.
+    - **`actualiza(dt, t)`:** llama al del mundo activo solo en `en`, `cerrando` y `abriendo` (a oscuras no hay nada colgado que actualizar). `fichaDe(id)` dice si cada mundo está `sin_cargar`, `listo` (cargado y congelado) o `activo`, para `?debug` y las pruebas.
+    - **El permiso se pregunta antes de cerrar el fundido:** si es que no, no se oscurece nada.
+    - **«mundo:entra» y «mundo:sale»** salen por `avisa` con `{ id, desde, hacia }`; en una vuelta atrás, el de antes «entra» desde el que no pudo entrar. Su contrato en `eventos.json` es de MU2-5.
+  - **`ColaDeMundo`** (§6) está en `nucleo/cola.ts` (`creaColaDeMundo(cola, dueño)`): `pon`, `cancela`, `hay`, `cancelaTodo` (= `cancelaDe(dueño)`) y `pendientes`, con las claves `dueño:clave`.
 - **Fundido:** el de hoy es de ida y vuelta (`29_vr.js:88-96` `vrFundido(fn)`, `12b_llegada.js:90-95` `funde(fn)`). Se parte en `cierra(): Promise<void>` y `abre(): Promise<void>`, y `vrFundido(fn)` se reescribe como `cierra().then(fn).then(abre)`, con la misma semántica.
 - **Resuelve:**
   - L7-05 y L7-06 por diseño: todo salto de mundo pasa por `cierra/abre`, y el panel se recoloca a oscuras;
@@ -164,7 +187,7 @@ export interface Render {               // lo que ya es 02h_render.js (Render, I
   compila(obj: THREE.Object3D): Promise<void>;   // compileAsync con la cámara XR si hay sesión (L7-04: precompilar con la variante multiview)
 }
 
-export interface ColaDeMundo { pon(clave: string, prio: number, trabajo: Generator): void; cancela(clave: string): void; cancelaTodo(): void }
+export interface ColaDeMundo { pon(clave: string, prio: number, trabajo: Generator): void; cancela(clave: string): void; cancelaTodo(): void }   // hecho en MU2-1, con hay() y pendientes() (§3)
 ```
 
 - **`Render` ya existe** en `02h_render.js` (`Render.tipo`, `.build`, `.arranca` tolerante a `init()`, e `InfoDibujo.lee`): se tipa y se le añaden `memoria()` y `compila()`, no se reescribe.
