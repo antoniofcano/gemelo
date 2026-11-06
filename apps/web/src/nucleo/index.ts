@@ -17,4 +17,4 @@ export type { Fundido, FaseFundido } from "./fundido.ts";
 export { BuclePuro, creaBucle } from "./bucle.ts";
 export type { Bucle, DepsBucle, PasoBucle } from "./bucle.ts";
 export { WorldManagerPuro, creaWorldManager } from "./mundos.ts";
-export type { AvisoMundo, ContextoBase, DepsWorldManager, EstadoCambio, Fundido, IdMundo, MundoBase, Pose2, Puerta, ResultadoCambio, WorldManager } from "./mundos.ts";
+export type { AvisoMundo, ContextoBase, DepsWorldManager, EstadoCambio, Fundido as FundidoDeMundo, IdMundo, MundoBase, Pose2, Puerta, ResultadoCambio, WorldManager } from "./mundos.ts";
