@@ -111,7 +111,7 @@
     var best = 0, bd = 1e12; NDV.fechas.forEach(function (f, i) { var d = Math.abs(new Date(f) - new Date(iso)); if (d < bd) { bd = d; best = i; } });
     ndviIdx = best; $("ndviSel").value = best; marca("cNdvi", true); pintaNdvi();
   }
-  function dd(iso) { return iso ? iso.split("-").reverse().join("/") : "–"; }
+  function dd(iso) { return iso ? esc(iso.split("-").reverse().join("/")) : "–"; }
   function tabla(cab, filas) {
     var h = '<table class="h-tabla"><thead><tr>' + cab.map(function (c, i) { return '<th' + (i ? ' class="n"' : "") + ">" + c + "</th>"; }).join("") + "</tr></thead><tbody>";
     filas.forEach(function (f) { h += "<tr" + (f.cls ? ' class="' + f.cls + '"' : "") + ">" + f.c.map(function (c, i) { return "<td" + (i ? ' class="n"' : "") + ">" + c + "</td>"; }).join("") + "</tr>"; });
@@ -132,7 +132,7 @@
     var grandes = parcelas.map(function (p, k) { return { n: p.nombre, d: d[k] }; }).filter(function (x) { return x.d <= -10; });
     var tot = Math.round((sumL - sumM) / sumM * 100);
     return "<p>En el conjunto de la finca el LiDAR ve <strong>" + fmt(sumL) + " copas frente a " + fmt(sumM) + " marcados (" + tot + " %)</strong>. " +
-      (grandes.length ? "Las diferencias mayores están en <strong>" + grandes.map(function (x) { return x.n + " (" + x.d + " %)"; }).join(" y ") + "</strong>. " : "") +
+      (grandes.length ? "Las diferencias mayores están en <strong>" + grandes.map(function (x) { return esc(x.n) + " (" + x.d + " %)"; }).join(" y ") + "</strong>. " : "") +
       "Puede ser que copas que se tocan cuenten como una sola, o que haya marcas de olivos que ya no están: son sitios a mirar, no un veredicto.</p>";
   }
   function origenDatos() {
@@ -170,14 +170,14 @@
       html: function () {
         var tot = parcelas.reduce(function (a, p) { return a + p.ha; }, 0), nm = marc.length;
         return "<p>La finca Cerro Velasco, de Cano &amp; Damas, ocupa <strong>" + fmt(tot, 1) + " ha</strong> repartidas en cinco parcelas, con <strong>" + fmt(nm) + " olivos marcados</strong> en OlivarTrack. Lo que ves es un gemelo: la forma sale de los puntos del vuelo LiDAR de 2024 (9 por m²) y el color, de la ortofoto del PNOA.</p>" +
-          tabla(["Parcela", "ha", "Olivos"], parcelas.map(function (p, k) { return { c: [sw(k) + p.nombre, fmt(p.ha, 2), fmt(nMarc(k))] }; })) +
+          tabla(["Parcela", "ha", "Olivos"], parcelas.map(function (p, k) { return { c: [sw(k) + esc(p.nombre), fmt(p.ha, 2), fmt(nMarc(k))] }; })) +
           "<p class='h-nota'>A partir de aquí cada escena cruza este modelo con algo que OlivarTrack ya sabe.</p>"; } },
 
     { t: "Tres formas de contar los olivos", fuente: "OlivarTrack · olivosParcela · trabajos (olivos andados) · LiDAR 2024",
       ir: function () { pon("nube"); marca("cCopas", true); marca("cMarc", true); marca("cLinde", true); vistaDe(-1, -0.4, 0.72, 0.8); var m = {}; parcelas.forEach(function (p, k) { var a = nMarc(k); if (a && Math.round((nLidar(k) - a) / a * 100) <= -10) m[k] = COL.atencion; }); resalta(m); },
       html: function () {
         var filas = parcelas.map(function (p, k) { var a = nMarc(k), l = nLidar(k), d = a ? Math.round((l - a) / a * 100) : 0, an = nAnd(k);
-          return { cls: d <= -10 ? "h-aviso" : "", c: [p.nombre, fmt(a), an == null ? "–" : fmt(an), fmt(l), (d > 0 ? "+" : "") + d + " %"] }; });
+          return { cls: d <= -10 ? "h-aviso" : "", c: [esc(p.nombre), fmt(a), an == null ? "–" : fmt(an), fmt(l), (d > 0 ? "+" : "") + d + " %"] }; });
         return "<p>OlivarTrack cuenta los olivos de tres maneras: los <strong>marcados</strong> sobre la ortofoto, los <strong>andados</strong> en la jornada de desvarete y, ahora, las <strong>copas</strong> que ve el LiDAR.</p>" +
           tabla(["Parcela", "Marcados", "Andados", "LiDAR", "Dif."], filas) + resumenConteo() +
           "<p class='h-nota'>Las copas del LiDAR no incluyen postes ni cables (todo lo que pasa de 7,5 m), que antes sumaban copas falsas.</p>" + origenDatos(); } },
@@ -185,7 +185,7 @@
     { t: "Por qué tus marcas caen 1,5 m al este", fuente: "OlivarTrack · olivosParcela · detectarOlivos · ortofoto PNOA",
       ir: function () { pon("orto"); marca("cCopas", true); marca("cMarc", true); marca("cDesf", true); marca("cLinde", true); resalta({}); vistaDe(0, -0.2, 1.05, 0.5); },
       html: function () {
-        var filas = parcelas.map(function (p) { var d = p.desfase; return { c: [p.nombre, fmt(Math.hypot(d[0], d[1]), 2) + " m"] }; });
+        var filas = parcelas.map(function (p) { var d = p.desfase; return { c: [esc(p.nombre), fmt(Math.hypot(d[0], d[1]), 2) + " m"] }; });
         var ds = parcelas.map(function (p) { return Math.hypot(p.desfase[0], p.desfase[1]); });
         return "<p>Las copas del LiDAR aparecen siempre <strong>entre " + fmt(Math.min.apply(null, ds), 1) + " y " + fmt(Math.max.apply(null, ds), 1) + " m al oeste</strong> de tus marcas, en las cinco parcelas. No es un error del LiDAR ni del panel: las marcas se pusieron sobre la ortofoto del PNOA, que muestra cada copa corrida hacia el este cuanto más alta es (unos 1,2 m a 1 m de altura y unos 2,5 m a 4 m).</p>" +
           tabla(["Parcela", "Desfase medio"], filas) +
@@ -195,13 +195,13 @@
       ir: function () { pon("nube"); marca("cCopas", false); marca("cMarc", false); marca("cDesf", false); marca("cNdvi", false); var m = {}; parcelas.forEach(function (p, k) { m[k] = hechasDe(k, "varetas").length ? COL.ok : COL.nada; }); resalta(m); vistaDe(-1, -0.5, 0.68, 0.9); },
       html: function () {
         var hechas = parcelas.map(function (p, k) { return { k: k, t: hechasDe(k, "varetas")[0] }; }).filter(function (x) { return x.t; });
-        var filas = parcelas.map(function (p, k) { var t = hechasDe(k, "varetas")[0]; if (!t) return { cls: "h-aviso", c: [p.nombre, "sin dato", "–", "–"] };
-          return { c: [p.nombre, dd(t.fecha), t.andados != null ? fmt(t.andados) + " / " + fmt(t.objetivo) : "anotado a mano", t.avance != null ? fmt(t.avance) + " %" : "–"] }; });
+        var filas = parcelas.map(function (p, k) { var t = hechasDe(k, "varetas")[0]; if (!t) return { cls: "h-aviso", c: [esc(p.nombre), "sin dato", "–", "–"] };
+          return { c: [esc(p.nombre), dd(t.fecha), t.andados != null ? fmt(t.andados) + " / " + fmt(t.objetivo) : "anotado a mano", t.avance != null ? fmt(t.avance) + " %" : "–"] }; });
         var fe = hechas.length ? minMax(hechas.map(function (x) { return x.t.fecha; })) : null;
         var cortas = hechas.filter(function (x) { return x.t.andados != null && x.t.objetivo != null && x.t.andados < x.t.objetivo; });
         return "<p>" + (fe ? "Entre el <strong>" + dd(fe[0]) + "</strong> y el <strong>" + dd(fe[1]) + "</strong> se completó el desvarete en <strong>" + hechas.length + " de las " + parcelas.length + " parcelas</strong>. La fecha es la de finalización en OlivarTrack, no la prevista." : "OlivarTrack no tiene ningún desvarete completado en esta finca.") + "</p>" +
           tabla(["Parcela", "Completado", "Olivos andados", "Avance"], filas) +
-          (cortas.length ? "<p>" + cortas.map(function (x) { return "<strong>" + parcelas[x.k].nombre + "</strong> cerró al " + fmt(x.t.avance) + " %: " + fmt(x.t.andados) + " de " + fmt(x.t.objetivo) + " olivos andados"; }).join("; ") + ". Los que faltan son una pista de qué mirar antes de dar la parcela por cerrada.</p>" : "") +
+          (cortas.length ? "<p>" + cortas.map(function (x) { return "<strong>" + esc(parcelas[x.k].nombre) + "</strong> cerró al " + fmt(x.t.avance) + " %: " + fmt(x.t.andados) + " de " + fmt(x.t.objetivo) + " olivos andados"; }).join("; ") + ". Los que faltan son una pista de qué mirar antes de dar la parcela por cerrada.</p>" : "") +
           (OT.fuente === "vivo" ? "<p class='h-nota'>El MCP no trae la parcela de cada trabajo: aquí se asigna por el número de olivos objetivo, que en esta finca es distinto en cada parcela.</p>" : "") + origenDatos(); } },
 
     { t: "Riego: goteros y una tarea abierta", fuente: "OlivarTrack · trabajo_realizado y tareas_abiertas (MCP) · Hoy › Atención",
@@ -209,10 +209,10 @@
       html: function () {
         var g = []; parcelas.forEach(function (p, k) { hechasDe(k, "riego").forEach(function (t) { if (/gotero/i.test(t.titulo || "")) g.push({ k: k, t: t }); }); });
         var ab = []; parcelas.forEach(function (p, k) { tareasDe(k, "riego").forEach(function (t) { if (t.estado !== "completado") ab.push({ k: k, t: t }); }); });
-        var sin = parcelas.filter(function (p, k) { return !g.some(function (x) { return x.k === k; }); }).map(function (p) { return p.nombre; });
+        var sin = parcelas.filter(function (p, k) { return !g.some(function (x) { return x.k === k; }); }).map(function (p) { return esc(p.nombre); });
         var fe = g.length ? minMax(g.map(function (x) { return x.t.fecha; })) : null, pc = g.map(function (x) { return x.t.avance; }).filter(function (v) { return v != null; });
         return (g.length ? "<p>Los <strong>goteros se sustituyeron en " + g.length + " parcelas</strong>, completados entre el " + dd(fe[0]) + " y el " + dd(fe[1]) + (pc.length ? " (del " + Math.min.apply(null, pc) + " al " + Math.max.apply(null, pc) + " % de los olivos)" : "") + (sin.length ? "; no consta en " + lista(sin) : "") + ".</p>" : "<p>No hay cambios de goteros completados en esta finca.</p>") +
-          (ab.length ? ab.map(function (x) { return "<p>En <strong>" + parcelas[x.k].nombre + "</strong> sigue abierta, desde el " + dd(x.t.fecha) + " y al " + fmt(x.t.avance || 0) + " %, la tarea «" + esc(x.t.titulo) + "».</p>"; }).join("") : "<p>No hay tareas de riego abiertas.</p>") +
+          (ab.length ? ab.map(function (x) { return "<p>En <strong>" + esc(parcelas[x.k].nombre) + "</strong> sigue abierta, desde el " + dd(x.t.fecha) + " y al " + fmt(x.t.avance || 0) + " %, la tarea «" + esc(x.t.titulo) + "».</p>"; }).join("") : "<p>No hay tareas de riego abiertas.</p>") +
           "<p class='h-nota'>En el panel, una tarea abierta sale en Hoy › Atención; aquí se ve <em>dónde</em> está: la parcela en ámbar.</p>" + origenDatos(); } },
 
     { t: "Árbol a árbol: los olivos que faltan (prototipo)", fuente: "OlivarTrack · trabajos y zonas recorridas de los partes · estado por olivo, sin personas",
@@ -221,10 +221,10 @@
       html: function () {
         var filas = [], fuera = [], sinMarca = 0, ko = [];
         parcelas.forEach(function (p, k) { var c = cuentaAv(k, "goteros"); if (!c || !c.reproduce) return; var nf = c.marcas - c.marcas_en_zona;
-          filas.push({ cls: nf ? "h-aviso" : "", c: [p.nombre, fmt(c.marcas), fmt(c.marcas_en_zona), fmt(nf), fmt(c.copas_sin_marca)] });
+          filas.push({ cls: nf ? "h-aviso" : "", c: [esc(p.nombre), fmt(c.marcas), fmt(c.marcas_en_zona), fmt(nf), fmt(c.copas_sin_marca)] });
           if (nf) fuera.push({ k: k, nf: nf, conCopa: c.no_andadas_con_copa }); sinMarca += c.copas_sin_marca; });
         var d = cuentaAv(2, "varetas");
-        var txtFuera = fuera.length ? fuera.map(function (x) { return "<strong>" + parcelas[x.k].nombre + "</strong>: " + x.nf + " marcas fuera de la zona, " + (x.conCopa === 0 ? "ninguna con copa en el LiDAR" : x.conCopa + " con copa en el LiDAR"); }).join("; ") + "." : "Todas las marcas están dentro de la zona recorrida.";
+        var txtFuera = fuera.length ? fuera.map(function (x) { return "<strong>" + esc(parcelas[x.k].nombre) + "</strong>: " + x.nf + " marcas fuera de la zona, " + (x.conCopa === 0 ? "ninguna con copa en el LiDAR" : x.conCopa + " con copa en el LiDAR"); }).join("; ") + "." : "Todas las marcas están dentro de la zona recorrida.";
         return "<p>Hoy OlivarTrack da el avance de una tarea como una cifra. Si cada olivo tuviera un identificador, se podría pintar <strong>cuál sí y cuál no</strong>. Aquí cada olivo recibe el estado de la tarea según si su marca cae dentro de la zona recorrida que se guardó al validar el parte: la misma regla con la que OlivarTrack cuenta los olivos andados.</p>" +
           "<p><span class='h-bola b-andado'></span>andado · <span class='h-bola b-fuera'></span>fuera de la zona (con baliza roja) · <span class='h-bola b-sinmarca'></span>copa del LiDAR sin una marca a menos de 3 m</p>" +
           "<p>Tarea: <button type='button' class='h-btn' data-av='goteros'>Sustituir goteros</button> <button type='button' class='h-btn' data-av='ninguno'>Quitar</button></p>" +
@@ -237,10 +237,10 @@
     { t: "Fenología: el fruto en agosto", fuente: "OlivarTrack · novedades › fenologia.registrada (MCP) · Vigía (capa de vigor)",
       ir: function () { pon("nube"); marca("cCopas", false); marca("cMarc", false); var fs = []; parcelas.forEach(function (p) { var e = OT.parcelas[p.id]; if (e) e.fenologia.forEach(function (f) { fs.push(f.fecha); }); }); ndviEn(fs.length ? minMax(fs)[0] : "2026-08-27"); var m = {}; parcelas.forEach(function (p, k) { var e = OT.parcelas[p.id]; m[k] = e && e.fenologia.length ? COL.ok : COL.nada; }); resalta(m); vistaDe(-1, -0.5, 0.68, 0.9); },
       html: function () {
-        var filas = parcelas.map(function (p) { var e = OT.parcelas[p.id], f = e && e.fenologia[e.fenologia.length - 1]; return { cls: f ? "" : "h-aviso", c: [p.nombre, f ? dd(f.fecha) : "sin dato", f ? "BBCH " + f.bbch : "–"] }; });
-        var con = filas.filter(function (f) { return !f.cls; }).length, sinN = parcelas.filter(function (p) { var e = OT.parcelas[p.id]; return !(e && e.fenologia.length); }).map(function (p) { return p.nombre; });
+        var filas = parcelas.map(function (p) { var e = OT.parcelas[p.id], f = e && e.fenologia[e.fenologia.length - 1]; return { cls: f ? "" : "h-aviso", c: [esc(p.nombre), f ? dd(f.fecha) : "sin dato", f ? esc("BBCH " + f.bbch) : "–"] }; });
+        var con = filas.filter(function (f) { return !f.cls; }).length, sinN = parcelas.filter(function (p) { var e = OT.parcelas[p.id]; return !(e && e.fenologia.length); }).map(function (p) { return esc(p.nombre); });
         var bb = []; parcelas.forEach(function (p) { var e = OT.parcelas[p.id]; if (e) e.fenologia.forEach(function (f) { bb.push(f.bbch); }); });
-        return "<p><strong>" + con + " de " + parcelas.length + " parcelas</strong> tienen fenología registrada" + (bb.length ? " (BBCH " + minMax(bb.map(function (b) { return String(b); })).join("-") + "; el 75 es el fruto al 50 % de su tamaño final)" : "") + (sinN.length ? ". <strong>" + lista(sinN) + "</strong> no tienen ninguna, y el gemelo lo enseña en gris" : "") + ".</p>" +
+        return "<p><strong>" + con + " de " + parcelas.length + " parcelas</strong> tienen fenología registrada" + (bb.length ? " (BBCH " + esc(minMax(bb.map(function (b) { return String(b); })).join("-")) + "; el 75 es el fruto al 50 % de su tamaño final)" : "") + (sinN.length ? ". <strong>" + lista(sinN) + "</strong> no tienen ninguna, y el gemelo lo enseña en gris" : "") + ".</p>" +
           tabla(["Parcela", "Fecha", "Estado"], filas) +
           "<p>Debajo, el NDVI de Sentinel-2 más cercano (" + dd(NDV.fechas[ndviIdx]) + "): vigor medio de la finca " + fmt(NDV.media[ndviIdx], 2) + ". La escala es relativa dentro de la finca, como en Vigía.</p>" + origenDatos(); } },
 
@@ -250,7 +250,7 @@
         var v = VIVO && VIVO.vigia, nombres = parcelas.map(function (p) { return p.nombre.toLowerCase(); });
         var propia = v ? v.filter(function (x) { var n = String(x.parcela || "").toLowerCase(); return nombres.some(function (m) { return m === n || n.indexOf(m) >= 0 || m.indexOf(n) >= 0; }); }) : [];
         var vig = !v ? "<p>Vigía mira cada día toda la explotación y marca las parcelas que se desvían del resto. Este recorrido no la lee en vivo.</p>"
-          : "<p>Vigía, que mira toda la explotación, <strong>hoy marca " + v.length + " " + (v.length === 1 ? "parcela" : "parcelas") + "</strong>" + (propia.length ? ", y " + lista(propia.map(function (x) { return "<strong>" + esc(x.parcela) + "</strong> (" + esc(x.gravedad || "pide una mirada") + ")"; })) + " es de esta finca" : ", ninguna de esta finca") + (VIVO.vigiaFrescura ? " (dato de las " + VIVO.vigiaFrescura + ")" : "") + ".</p>";
+          : "<p>Vigía, que mira toda la explotación, <strong>hoy marca " + v.length + " " + (v.length === 1 ? "parcela" : "parcelas") + "</strong>" + (propia.length ? ", y " + lista(propia.map(function (x) { return "<strong>" + esc(x.parcela) + "</strong> (" + esc(x.gravedad || "pide una mirada") + ")"; })) + " es de esta finca" : ", ninguna de esta finca") + (VIVO.vigiaFrescura ? " (dato de las " + esc(VIVO.vigiaFrescura) + ")" : "") + ".</p>";
         return "<p>Última imagen Sentinel-2: <strong>" + dd(NDV.fechas[NDV.fechas.length - 1]) + "</strong>. Las copas toman el tono del vigor de su zona (marrón, menos; verde, más), con la escala relativa de esa fecha.</p>" + vig +
           "<p>Cruzar las dos miradas sirve para decidir dónde ir, no para decir que algo está enfermo: ninguna capa está calibrada con observación de campo. A 10 m, cada cuadro cubre varios olivos; es el vigor de una zona, no de un árbol.</p>"; } },
 
@@ -269,7 +269,7 @@
       ir: function () { pon("nube"); marca("cNdvi", false); marca("cTinte", false); resalta({}); vistaDe(-1, -0.5, 0.66, 0.85); },
       html: function () {
         var filas = parcelas.map(function (p, k) { var cs = cIn.filter(function (c) { return c.parc === k; }); var v = cs.length ? cs.reduce(function (a, c) { return a + volCopa(c); }, 0) / cs.length : 0;
-          return { c: [p.nombre, fmt(med(cs.map(function (c) { return c.h; })), 1) + " m", fmt(v)] }; });
+          return { c: [esc(p.nombre), fmt(med(cs.map(function (c) { return c.h; })), 1) + " m", fmt(v)] }; });
         return "<p>Todo lo anterior mira el pasado y el presente. El gemelo permite una unidad más fina: <strong>el olivo</strong>. Con el volumen de copa de cada árbol se puede estimar el aforo, ordenar la recolección o pintar sobre el modelo qué árboles ya se han recogido.</p>" +
           tabla(["Parcela", "Altura", "Copa media (m³)"], filas) +
           "<p class='h-nota'>El volumen de copa es un indicador geométrico aproximado, sin calibrar con producción: haría falta contrastarlo con las entregas de esta campaña. " + (OT.entregas_finca === 0 ? "En la instantánea, OlivarTrack no tiene ninguna entrega de esta finca." : "") + "</p>"; } },
@@ -321,7 +321,7 @@
       ir: function () { pon("orto"); marca("cLinde", true); marca("cCopas", false); marca("cMarc", false); marca("cDesf", false); marca("cNdvi", false); marca("cTinte", false); marca("cSolo", false); pintaTodo(colF); vistaFinca(-1, -0.5, 0.78, 1); },
       html: function () {
         var ha = parcelas.reduce(function (a, p) { return a + p.ha; }, 0), pastos = parcelas.filter(function (p) { return p.pasto; });
-        var filas = fincas.map(function (f, i) { return { c: [swFinca(i) + f.nombre, fmt(f.parcelas.length), fmt(f.ha, 1), fmt(sumaK(f.parcelas, nMarc))] }; });
+        var filas = fincas.map(function (f, i) { return { c: [swFinca(i) + esc(f.nombre), fmt(f.parcelas.length), fmt(f.ha, 1), fmt(sumaK(f.parcelas, nMarc))] }; });
         return "<p>OlivarTrack tiene dadas de alta en Hituelo <strong>" + fincas.length + " fincas con " + parcelas.length + " parcelas</strong>: <strong>" + fmt(ha, 1) + " ha</strong> y <strong>" + fmt(marc.length) + " olivos marcados</strong>. " +
           "Lo que ves es un gemelo: la forma sale de los puntos del vuelo LiDAR de 2024 y el color, de la ortofoto del PNOA (vuelo de julio de 2022).</p>" +
           tabla(["Finca", "Parcelas", "ha", "Olivos"], filas) +
@@ -330,9 +330,9 @@
     { t: "Cuántos olivos hay y cuántos vemos", fuente: "OlivarTrack · olivosParcela · LiDAR 2024 (detector de copas)",
       ir: function () { pon("nube"); marca("cCopas", true); marca("cMarc", true); marca("cLinde", true); marca("cDesf", false); marca("cNdvi", false); pintaTodo(function (k) { var a = nMarc(k), d = a ? pct(nLidar(k), a) : 0; return a && Math.abs(d) >= 10 ? COL.atencion : null; }); vistaFinca(-1, -0.4, 0.8, 0.9); },
       html: function () {
-        var filas = fincas.map(function (f, i) { var a = sumaK(f.parcelas, nMarc), l = sumaK(f.parcelas, nLidar); return { c: [swFinca(i) + f.nombre, fmt(a), fmt(l), conSigno(pct(l, a))] }; });
+        var filas = fincas.map(function (f, i) { var a = sumaK(f.parcelas, nMarc), l = sumaK(f.parcelas, nLidar); return { c: [swFinca(i) + esc(f.nombre), fmt(a), fmt(l), conSigno(pct(l, a))] }; });
         var A = marc.length, L = cIn.length;
-        var difs = parcelas.map(function (p, k) { var a = nMarc(k); return a ? { n: p.nombre, d: pct(nLidar(k), a), a: a, l: nLidar(k) } : null; }).filter(function (x) { return x && Math.abs(x.d) >= 10; }).sort(function (p, q) { return Math.abs(q.d) - Math.abs(p.d); });
+        var difs = parcelas.map(function (p, k) { var a = nMarc(k); return a ? { n: esc(p.nombre), d: pct(nLidar(k), a), a: a, l: nLidar(k) } : null; }).filter(function (x) { return x && Math.abs(x.d) >= 10; }).sort(function (p, q) { return Math.abs(q.d) - Math.abs(p.d); });
         return "<p>El LiDAR ve <strong>" + fmt(L) + " copas de olivo frente a " + fmt(A) + " olivos marcados (" + conSigno(pct(L, A)) + ")</strong> en el conjunto. Por finca:</p>" +
           tabla(["Finca", "Marcados", "LiDAR", "Dif."], filas) +
           (difs.length ? "<p>Las parcelas en las que se separan <strong>10 % o más</strong> (en ámbar) son " + lista(difs.map(function (x) { return "<strong>" + x.n + "</strong> (" + fmt(x.l) + " copas, " + fmt(x.a) + " marcas, " + conSigno(x.d) + ")"; })) + ". " : "<p>Ninguna parcela se separa un 10 % o más. ") +
@@ -343,7 +343,7 @@
       ir: function () { pon("orto"); marca("cCopas", true); marca("cMarc", true); marca("cDesf", true); marca("cLinde", true); marca("cNdvi", false); resalta({}); var kM = 0, n = -1; parcelas.forEach(function (p, k) { if (nMarc(k) > n) { n = nMarc(k); kM = k; } }); vistaDe(kM, -0.2, 1.0, 0.55); },
       html: function () {
         var g = desfaseH(function () { return true; }), conPar = g.n;
-        var filas = fincas.map(function (f, i) { var s = {}; f.parcelas.forEach(function (k) { s[k] = 1; }); var d = desfaseH(function (k) { return s[k]; }); return { c: [swFinca(i) + f.nombre, fmt(d.n), fmt(d.d, 1) + " m"] }; });
+        var filas = fincas.map(function (f, i) { var s = {}; f.parcelas.forEach(function (k) { s[k] = 1; }); var d = desfaseH(function (k) { return s[k]; }); return { c: [swFinca(i) + esc(f.nombre), fmt(d.n), fmt(d.d, 1) + " m"] }; });
         var dir = Math.abs(g.dx) >= Math.abs(g.dy) ? (g.dx > 0 ? "al este" : "al oeste") : (g.dy > 0 ? "al norte" : "al sur");
         return "<p>Las marcas de OlivarTrack caen <strong>" + fmt(g.d, 1) + " m " + dir + "</strong> de las copas del LiDAR (mediana de " + fmt(conPar) + " marcas con copa pareada, el " + Math.round(conPar / marc.length * 100) + " % de las " + fmt(marc.length) + "). " +
           "No es un error del LiDAR ni del panel: las marcas se pusieron sobre la ortofoto, y en una ortofoto los árboles altos aparecen desplazados respecto a su pie. El LiDAR sí está bien georreferenciado.</p>" +
@@ -356,16 +356,16 @@
         pintaTodo(function (k) { var v = tareaH(k, "Desvaretar"); if (v && v.estado === "completado") return COL.ok; return tareasDe(k).length ? COL.atencion : COL.nada; }); vistaFinca(fincaConMasTareas(), -0.5, 0.8, 1); },
       html: function () {
         var ks = todasK().filter(function (k) { return tareasDe(k).length; }), nf = fincas.filter(function (f) { return f.parcelas.some(function (k) { return tareasDe(k).length; }); }).length;
-        var filas = ks.map(function (k) { return { c: [swH(k) + parcelas[k].nombre, celdaTarea(tareaH(k, "Soplar Hojas")), celdaTarea(tareaH(k, "Rastra")), celdaTarea(tareaH(k, "Desvaretar"))] }; });
+        var filas = ks.map(function (k) { return { c: [swH(k) + esc(parcelas[k].nombre), celdaTarea(tareaH(k, "Soplar Hojas")), celdaTarea(tareaH(k, "Rastra")), celdaTarea(tareaH(k, "Desvaretar"))] }; });
         var hechas = ks.filter(function (k) { var v = tareaH(k, "Desvaretar"); return v && v.estado === "completado"; });
         var fe = hechas.length ? minMax(hechas.map(function (k) { return tareaH(k, "Desvaretar").fecha; })) : null;
         var sinT = fincas.filter(function (f) { return !f.parcelas.some(function (k) { return tareasDe(k).length; }); });
         var raras = [];
-        ks.forEach(function (k) { tareasDe(k).forEach(function (t) { var a = nMarc(k); if (t.estado === "completado" && t.objetivo != null && a && Math.abs(t.objetivo - a) / a > 0.15) raras.push("<strong>" + parcelas[k].nombre + "</strong>: «" + t.titulo + "» figura con " + fmt(t.andados) + " olivos andados de un objetivo de " + fmt(t.objetivo) + ", y la parcela tiene " + fmt(a) + " marcados"); }); });
+        ks.forEach(function (k) { tareasDe(k).forEach(function (t) { var a = nMarc(k); if (t.estado === "completado" && t.objetivo != null && a && Math.abs(t.objetivo - a) / a > 0.15) raras.push("<strong>" + esc(parcelas[k].nombre) + "</strong>: «" + esc(t.titulo) + "» figura con " + fmt(t.andados) + " olivos andados de un objetivo de " + fmt(t.objetivo) + ", y la parcela tiene " + fmt(a) + " marcados"); }); });
         return "<p>OlivarTrack tiene trabajos de este otoño en <strong>" + ks.length + " de las " + parcelas.length + " parcelas</strong> (" + nf + " de las " + fincas.length + " fincas). " +
           (fe ? "El desvarete está completado en <strong>" + hechas.length + "</strong> de ellas, entre el " + dd(fe[0]) + " y el " + dd(fe[1]) + ". " : "") + "En cada celda: fecha de cierre y olivos andados / objetivo.</p>" +
           tabla(["Parcela", "Soplar hojas", "Rastra", "Desvaretar"], filas) +
-          (sinT.length ? "<p class='h-aviso-t'><strong>" + lista(sinT.map(function (f) { return f.nombre; })) + "</strong> " + (sinT.length === 1 ? "no tiene" : "no tienen") + " ningún trabajo registrado" + (sinT.length === 1 ? " (" + fmt(sinT[0].ha, 1) + " ha y " + fmt(sumaK(sinT[0].parcelas, nMarc)) + " olivos marcados)" : "") + ": en gris en el mapa. O no se ha hecho, o no se ha anotado: el panel no distingue entre las dos cosas.</p>" : "") +
+          (sinT.length ? "<p class='h-aviso-t'><strong>" + lista(sinT.map(function (f) { return esc(f.nombre); })) + "</strong> " + (sinT.length === 1 ? "no tiene" : "no tienen") + " ningún trabajo registrado" + (sinT.length === 1 ? " (" + fmt(sinT[0].ha, 1) + " ha y " + fmt(sumaK(sinT[0].parcelas, nMarc)) + " olivos marcados)" : "") + ": en gris en el mapa. O no se ha hecho, o no se ha anotado: el panel no distingue entre las dos cosas.</p>" : "") +
           (raras.length ? "<p><strong>Cifras que no cuadran:</strong> " + raras.join("; ") + ". Puede que el objetivo se guardara con otra zona; conviene mirarlo antes de fiarse del avance.</p>" : "") + origenH(); } },
 
     { t: "Lo que sigue abierto y lo cancelado", fuente: "OlivarTrack · tareas abiertas y canceladas (instantánea) · sin personas",
@@ -374,12 +374,12 @@
       html: function () {
         var ab = [], ca = [];
         parcelas.forEach(function (p, k) { tareasDe(k).forEach(function (t) { if (t.estado === "pendiente") ab.push({ k: k, t: t }); else if (t.estado === "cancelada") ca.push({ k: k, t: t }); }); });
-        var fila = function (x, e) { return { c: [swH(x.k) + parcelas[x.k].nombre, x.t.titulo, dd(x.t.fecha), e] }; };
+        var fila = function (x, e) { return { c: [swH(x.k) + esc(parcelas[x.k].nombre), esc(x.t.titulo), dd(x.t.fecha), e] }; };
         var filas = ab.map(function (x) { return fila(x, "abierta" + (x.t.avance ? " · " + fmt(x.t.avance) + " %" : "")); }).concat(ca.map(function (x) { return fila(x, "cancelada"); }));
         var desv = ca.filter(function (x) { return x.t.titulo === "Desvaretar"; });
         return "<p>Hay <strong>" + ab.length + " tareas abiertas</strong> (en ámbar) y <strong>" + ca.length + " canceladas</strong> (en rojo apagado). En el panel una tarea abierta sale en Hoy › Atención; aquí se ve <em>dónde</em> está.</p>" +
           tabla(["Parcela", "Tarea", "Fecha", "Estado"], filas) +
-          (desv.length ? "<p><strong>" + lista(desv.map(function (x) { return parcelas[x.k].nombre; })) + "</strong>: el desvarete figura como cancelado el " + dd(desv[0].t.fecha) + ", así que esa parcela no tiene el desvarete hecho aunque las de su alrededor sí.</p>" : "") +
+          (desv.length ? "<p><strong>" + lista(desv.map(function (x) { return esc(parcelas[x.k].nombre); })) + "</strong>: el desvarete figura como cancelado el " + dd(desv[0].t.fecha) + ", así que esa parcela no tiene el desvarete hecho aunque las de su alrededor sí.</p>" : "") +
           "<p class='h-nota'>«Cancelada» es el estado que guarda OlivarTrack; el motivo no se guarda con la tarea.</p>" + origenH(); } },
 
     { t: "Fenología: casi nada registrado", fuente: "OlivarTrack · fenología (instantánea) · Sentinel-2",
@@ -389,7 +389,7 @@
       html: function () {
         var reg = []; parcelas.forEach(function (p, k) { var e = OT.parcelas[p.id]; if (e) e.fenologia.forEach(function (f) { reg.push({ k: k, f: f }); }); });
         var con = {}; reg.forEach(function (x) { con[x.k] = 1; });
-        var filas = reg.map(function (x) { return { c: [swH(x.k) + parcelas[x.k].nombre, dd(x.f.fecha), "BBCH " + x.f.bbch] }; });
+        var filas = reg.map(function (x) { return { c: [swH(x.k) + esc(parcelas[x.k].nombre), dd(x.f.fecha), esc("BBCH " + x.f.bbch)] }; });
         var raro = false; reg.forEach(function (a) { reg.forEach(function (b) { if (a !== b && a.k === b.k && a.f.fecha === b.f.fecha && Math.abs(a.f.bbch - b.f.bbch) >= 10) raro = true; }); });
         return "<p>Solo <strong>" + Object.keys(con).length + " de las " + parcelas.length + " parcelas</strong> " + (Object.keys(con).length === 1 ? "tiene" : "tienen") + " fenología registrada" + (reg.length ? " (" + reg.length + " anotaciones)" : "") + ". El resto del mapa está sin dato.</p>" +
           (filas.length ? tabla(["Parcela", "Fecha", "Estado"], filas) : "") +
@@ -412,7 +412,7 @@
           var ks = f.parcelas.filter(function (k) { return parcelas[k].suelo; }), cl = {}, phs = [], mos = [];
           ks.forEach(function (k) { var r = parcelas[k].suelo[0]; var c = claseUsda(r.a, r.l, r.c); cl[c] = (cl[c] || 0) + 1; phs.push(r.ph); mos.push(r.mo); });
           var txt = Object.keys(cl).sort(function (a, b) { return cl[b] - cl[a]; }).map(function (c) { return c + " (" + cl[c] + ")"; }).join(", ");
-          return { c: [swFinca(i) + f.nombre, txt || "sin dato", phs.length ? rango(phs, 1) : "–", mos.length ? rango(mos, 1) : "–"] };
+          return { c: [swFinca(i) + esc(f.nombre), txt || "sin dato", phs.length ? rango(phs, 1) : "–", mos.length ? rango(mos, 1) : "–"] };
         });
         var sin = parcelas.filter(function (p) { return !p.suelo; }).length;
         return "<p>SoilGrids da la textura, el pH y la materia orgánica de la capa de 0 a 5 cm de " + (parcelas.length - sin) + " de las " + parcelas.length + " parcelas. Resumen por finca (entre paréntesis, nº de parcelas):</p>" +
@@ -426,7 +426,7 @@
         var noOl = P.arboles || [], nf = noOl.filter(function (a) { return a.tipo === "frondosa"; }).length, nb = noOl.filter(function (a) { return a.tipo === "arbusto"; }).length;
         var filas = fincas.map(function (f, i) {
           var zs = f.parcelas.map(function (k) { return D.z0 + suelo(parcelas[k].centro[0], parcelas[k].centro[1]); });
-          return { c: [swFinca(i) + f.nombre, rango(zs.map(function (z) { return Math.round(z / 5) * 5; }), 0) + " m"] };
+          return { c: [swFinca(i) + esc(f.nombre), rango(zs.map(function (z) { return Math.round(z / 5) * 5; }), 0) + " m"] };
         });
         return "<p>Altitud del centro de las parcelas de cada finca, a ± unos metros:</p>" + tabla(["Finca", "Altitud"], filas) +
           "<p>Sobre el terreno, el gemelo dibuja <strong>" + ed + " edificios</strong> (medidos: el LiDAR los clasifica), <strong>" + po + " postes de un tendido</strong> y <strong>" + ca.length + " cauces secos</strong>, y <strong>" + fmt(noOl.length) + " árboles que no son olivo</strong> (" + fmt(nf) + " frondosas y " + fmt(nb) + " arbustos).</p>" +
@@ -438,7 +438,7 @@
         var sinT = fincas.filter(function (f) { return !f.parcelas.some(function (k) { return tareasDe(k).length; }); });
         var nFen = parcelas.filter(function (p) { var e = OT.parcelas[p.id]; return e && e.fenologia.length; }).length;
         var li = [];
-        sinT.forEach(function (f) { li.push("<strong>" + f.nombre + "</strong> (" + f.parcelas.length + " parcelas, " + fmt(f.ha, 1) + " ha, " + fmt(sumaK(f.parcelas, nMarc)) + " olivos marcados) no tiene trabajos, fenología ni analíticas registrados: el mapa la pinta en gris."); });
+        sinT.forEach(function (f) { li.push("<strong>" + esc(f.nombre) + "</strong> (" + f.parcelas.length + " parcelas, " + fmt(f.ha, 1) + " ha, " + fmt(sumaK(f.parcelas, nMarc)) + " olivos marcados) no tiene trabajos, fenología ni analíticas registrados: el mapa la pinta en gris."); });
         li.push("OlivarTrack no tiene ningún pase, entrega ni analítica de estas fincas (" + fmt(OT.pases_finca || 0) + " pases, " + fmt(OT.entregas_finca || 0) + " entregas, " + fmt(OT.analiticas_finca || 0) + " analíticas), y la fenología está en " + nFen + " de " + parcelas.length + " parcelas.");
         li.push("<strong>Frutales:</strong> ninguno está marcado. El LiDAR no distingue un frutal de otro árbol; hay que señalarlos a mano, como se hizo en Cerro Velasco.");
         li.push("<strong>Tendido, cauces y tipo de árbol</strong> son deducciones (escena anterior), no medidas.");

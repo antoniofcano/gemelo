@@ -101,3 +101,30 @@ test("en el código: lo de fuera se escapa al pintarlo, solo se pide al mismo or
   assert.ok(!/dentroDeUmbrales/.test(FUENTE), "Vigía no autoriza tratamientos: nada de dentroDeUmbrales");
   assert.match(lee("apps/web/plantilla.html"), /id="hLeer"[^>]*hidden/, "el botón de leer de nuevo nace oculto (solo con servidor)");
 });
+
+// L9-03: los textos de OlivarTrack y Vigía (títulos, parcelas, fincas, fechas, BBCH, frescura) entran en el HTML de la historia
+// solo a través de esc(). Esc vive en 15_tiempo.js (mismo ámbito que 14_historia.js). El guardián comprueba la función y que ningún
+// campo de fuera se concatena o se mete en una celda sin esc(…); los patrones se construyen por partes para no marcarse a sí mismos.
+const ESC = (() => {
+  const m = /function esc\(s\) \{[^\n]*\}/.exec(lee("apps/web/motor/15_tiempo.js"));
+  assert.ok(m, "esc debe existir en 15_tiempo.js");
+  return new Function(m[0] + "\nreturn esc;")();
+})();
+// un campo de fuera (…nombre, …titulo, …parcela, …gravedad) pegado con «+», «[» o «,» sin esc( delante
+// (el «[» de un índice, como en parcelas[k], no cuenta: va pegado a un nombre)
+const CAMPO_SIN_ESC = /(?:\+|(?<![\w\]])\[|,)\s*(?:\w+\([^()]*\)\s*\+\s*)?[\w.\[\]]*\.(?:nombre|titulo|parcela|gravedad)\b/;
+
+test("L9-03: un título con HTML sale escapado y los campos de fuera nunca se pegan sin esc()", () => {
+  const hostil = "<img src=x onerror=alert(1)>";
+  assert.strictEqual(ESC(hostil), "&lt;img src=x onerror=alert(1)&gt;");
+  assert.strictEqual(ESC(null), "", "sin dato no rompe");
+  // el propio guardián sabe marcar lo que debe y dejar pasar lo escapado
+  for (const s of ['"<strong>" + parcelas[x.k].nombre + "</strong>"', '[p.nombre, fmt(a)', 'c: [swFinca(i) + f.nombre, fmt(a)', '[sw(k) + p.nombre, ']) assert.match(s, CAMPO_SIN_ESC, "debería marcarse: " + s);
+  for (const s of ['"<strong>" + esc(parcelas[x.k].nombre) + "</strong>"', '{ n: esc(p.nombre), d: 1 }', 'c: [swH(x.k) + esc(parcelas[x.k].nombre), esc(x.t.titulo)', '{ tipo: t.tipo, titulo: t.titulo, fecha: 1 }']) assert.doesNotMatch(s, CAMPO_SIN_ESC, "no debería marcarse: " + s);
+  const lineas = FUENTE.split("\n").filter(l => CAMPO_SIN_ESC.test(l));
+  assert.deepStrictEqual(lineas, [], "campos de OlivarTrack/Vigía sin esc() en 14_historia.js:\n" + lineas.join("\n"));
+  // las fechas y los BBCH también vienen de fuera: pasan por esc()
+  assert.ok((FUENTE.match(/esc\("BBCH " \+ /g) || []).length >= 2, "el BBCH se escapa en las dos tablas");
+  assert.match(FUENTE, /function dd\(iso\) \{ return iso \? esc\(/, "las fechas (dd) se escapan");
+  assert.match(FUENTE, /esc\(VIVO\.vigiaFrescura\)/, "la frescura de Vigía se escapa");
+});
