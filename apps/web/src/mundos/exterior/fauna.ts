@@ -2,15 +2,18 @@
 // vueltas de día, ocho posadas que se espantan) y los seis conejos que pastan y huyen. Se enteran de que empieza o acaba el paseo por «paseo:entra» / «paseo:sale» (los emite
 // 16_vida al entrar y salir del paseo), preguntan si hay algo de lo que huir con «perros:amenaza» y responden a «fauna:conejo-cerca» (los perros buscan un conejo a quien perseguir).
 // Pintan sus conejos en el minimapa con Minimapa.capa. El grupo gFauna (la fauna que cuelga de él, incluidos los perros) y su casilla «Fauna» siguen en 16_vida. ?fauna=0 la apaga.
-// Componente de los mundos ["exterior"] con un libera() que suelta de verdad: las mallas de aves y conejos (quitadas de gFauna), sus geometrías y sus materiales, y la capa del minimapa.
+// Componente de los mundos ["exterior"] con un libera() que suelta de verdad: las mallas de aves y conejos (quitadas de gFauna), sus geometrías y sus materiales (por la fábrica, con dueño «fauna-olivar»), y la capa del minimapa.
 // La sombra de los conejos usa geoSombra y matSombra de 07_follaje: son de quien los crea, no se sueltan aquí.
 // Medido / deducido / ilustrativo (regla 5): la fauna es ILUSTRATIVA (deducida de que hay un olivar: no hay un censo de aves ni de conejos; no se mide nada).
 // Del legado recibe por argumento lo que necesita (THREE, el grupo, el mundo, el estado del paseo y el tiempo); no lee globales.
 import type { ContextoComponente, Manifiesto } from "../../nucleo/componentes.ts";
+import type { Materiales } from "../../nucleo/materiales.ts";
 import type { DepsTiempo, LecturaPaseo, LecturaVida, T3 } from "./vida-tipos.ts";
 
 export interface DepsFauna extends Pick<LecturaVida, "tVida" | "enQuad">, LecturaPaseo, DepsTiempo {
   THREE: T3;
+  /** la fábrica de materiales (MU5-n): los tres Lambert de la fauna salen de ella, con dueño «fauna-olivar» */
+  Materiales: Materiales;
   /** 03_escena: la cámara (la escala de las aves lejanas) */
   camera: { position: { distanceTo(p: unknown): number } };
   /** los datos de la finca (ext: el recuadro que no se cruza) */
@@ -40,14 +43,15 @@ export const ID_FAUNA = "fauna-olivar";
 export function creaFauna(d: DepsFauna, ctx: ContextoComponente) {
   const THREE = d.THREE, camera = d.camera, D = d.D, copas = d.copas, cIn = d.cIn, geoSombra = d.geoSombra, matSombra = d.matSombra, gFauna = d.gFauna, altSuelo = d.altSuelo, mira = d.mira;
   const Estado = d.Estado, Minimapa = d.Minimapa, fusionaGeometrias = d.fusionaGeometrias, pp = d.pp, cur = d.cur, nivelEn = d.nivelEn;
+  const materiales = d.Materiales.de(ID_FAUNA);   // lo que cree este componente se libera con su libera()
   const paseando = d.paseando, tVida = d.tVida, enQuad = d.enQuad, rnd = d.aleatorio || Math.random;
   // lo que se engancha (la capa del minimapa) se suelta con libera(), una sola vez; el contexto también la llama al liberar el componente
   const sueltas: (() => void)[] = [];
   function limpia<F>(f: F): F { if (typeof f === "function") sueltas.push(f as unknown as () => void); return f; }
   // n.on / n.emite como en el resto de componentes; lo que se escucha se suelta en libera()
   const n = { on: function (ev: string, fn: (x?: T3) => void): void { limpia(ctx.on(ev, fn)); }, emite: function (ev: string, x?: unknown): number { return ctx.emite(ev, x); } };
-  var matAla = new THREE.MeshLambertMaterial({ color: 0x302b2a, side: THREE.DoubleSide });
-  var matConejoInst = new THREE.MeshLambertMaterial({ vertexColors: true });   // los conejos: una sola material, con el color por vértice (pelo, panza clara, orejas)
+  var matAla = materiales.estandar("MeshLambertMaterial", { color: 0x302b2a, side: THREE.DoubleSide });   // los tres de la fauna son estándar: sin sombreador propio, no hay variante TSL que escribir
+  var matConejoInst = materiales.estandar("MeshLambertMaterial", { vertexColors: true });   // los conejos: una sola material, con el color por vértice (pelo, panza clara, orejas)
   // --- pájaros: el ave mira hacia -z. Cada ave es un Group SIN hijos (solo lleva la posición, el giro y la fase); se dibujan todas juntas
   // con dos mallas instanciadas (2 llamadas, antes 7 por ave): el cuerpo (una geometría fusionada con el color por vértice) y las alas
   // (2 por ave, con la bisagra del aleteo calculada por matriz cada fotograma, igual que giraba el pivote antes).
@@ -60,7 +64,7 @@ export function creaFauna(d: DepsFauna, ctx: ContextoComponente) {
     return fusionaGeometrias(partes);
   })();
   var geoAla = (function () { var g = new THREE.PlaneGeometry(0.44, 0.2); g.rotateX(-Math.PI / 2); g.translate(0.22, 0, 0); return g; })();   // el ala derecha; la izquierda es su espejo
-  var matAveInst = new THREE.MeshLambertMaterial({ vertexColors: true });
+  var matAveInst = materiales.estandar("MeshLambertMaterial", { vertexColors: true });
   var mallaAveCuerpo = new THREE.InstancedMesh(geoAveCuerpo, matAveInst, NAVES), mallaAveAlas = new THREE.InstancedMesh(geoAla, matAla, NAVES * 2);
   [mallaAveCuerpo, mallaAveAlas].forEach(function (im: any) { im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); im.frustumCulled = false; im.count = 0; im.visible = false; gFauna.add(im); });
   mallaAveCuerpo.name = "aves"; mallaAveAlas.name = "aves-alas";
@@ -103,8 +107,8 @@ export function creaFauna(d: DepsFauna, ctx: ContextoComponente) {
     mallaConCuerpo.count = mallaConCabeza.count = mallaConSombra.count = n; mallaConOrejas.count = n * 2;
     for (var k = 0; k < mallasCon.length; k++) { mallasCon[k].visible = n > 0; mallasCon[k].instanceMatrix.needsUpdate = true; }   // vacías no se dibujan
   }
-  function disposaConejos() { mallasCon.forEach(function (im: any) { im.dispose(); gFauna.remove(im); }); geoConCuerpo.dispose(); geoConCabeza.dispose(); geoConOreja.dispose(); matConejoInst.dispose(); }
-  function disposaAves() { geoAveCuerpo.dispose(); geoAla.dispose(); matAveInst.dispose(); matAla.dispose(); mallaAveCuerpo.dispose(); mallaAveAlas.dispose(); gFauna.remove(mallaAveCuerpo); gFauna.remove(mallaAveAlas); }
+  function disposaConejos() { mallasCon.forEach(function (im: any) { im.dispose(); gFauna.remove(im); }); geoConCuerpo.dispose(); geoConCabeza.dispose(); geoConOreja.dispose(); }
+  function disposaAves() { geoAveCuerpo.dispose(); geoAla.dispose(); mallaAveCuerpo.dispose(); mallaAveAlas.dispose(); gFauna.remove(mallaAveCuerpo); gFauna.remove(mallaAveAlas); }
   function escalaVista(g: any, base: any) { var d = camera.position.distanceTo(g.position); g.scale.setScalar(base * Math.max(1, Math.min(9, d / 60))); }
   var bandada: any[] = [], bC: any = [0, 0], bS: any = [0, 0], bHx: any = [0, 0], bHy: any = [0, 0], bRz: any = [0, 0], BANDADAS: any = [{ a: 320, b: 150, w: 0.11, h: 38, ph: 0 }, { a: 210, b: 260, w: -0.085, h: 55, ph: 2.4 }];
   BANDADAS.forEach(function (b: any, k: any) { for (var i = 0; i < 7; i++) { var g = creaAve(); g.userData.b = k; g.userData.of = [(rnd() - 0.5) * 26, (rnd() - 0.5) * 8, (rnd() - 0.5) * 26]; g.userData.fx = 0.5 + rnd(); bandada.push(g); } });
@@ -241,6 +245,7 @@ export function creaFauna(d: DepsFauna, ctx: ContextoComponente) {
     if (disp) return; disp = true;
     disposaAves();
     disposaConejos();
+    materiales.libera();   // matAveInst, matAla y matConejoInst, de la fábrica
     while (sueltas.length) { const f = sueltas.pop() as () => void; try { f(); } catch (e) { /* una que falla no impide soltar las demás */ } }
   }
   ctx.limpia(libera);

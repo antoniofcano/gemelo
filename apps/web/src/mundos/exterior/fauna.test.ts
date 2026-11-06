@@ -5,6 +5,8 @@
 // pruebas/guardianes/fauna_equivalencia.test.js. HONESTIDAD: nada se dibuja aquí (regla 7); la fauna es ILUSTRATIVA (regla 5).
 import { describe, expect, it } from "vitest";
 import type { ContextoComponente } from "../../nucleo/componentes.ts";
+import { creaMateriales } from "../../nucleo/materiales.ts";
+import type { ThreeMin } from "../../nucleo/materiales.ts";
 import { ID_FAUNA, creaFauna, manifiestoFauna } from "./fauna.ts";
 import type { DepsFauna } from "./fauna.ts";
 
@@ -29,7 +31,7 @@ function monta(extra: Partial<{ paseando: boolean; dia: number; lluvia: number }
   const oyentes: Record<string, ((d?: unknown) => void)[]> = {}, quitadas: string[] = [], capas: unknown[] = [], emitidos: string[] = [];
   const geoSombra = new THREE.PlaneGeometry(1, 1), matSombra = new THREE.MeshBasicMaterial();
   const deps: DepsFauna = {
-    THREE, camera: new THREE.PerspectiveCamera(), D: { ext: [-200, 200, 200, -200] }, copas, cIn, geoSombra, matSombra, gFauna,
+    THREE, Materiales: creaMateriales({ THREE: THREE as unknown as ThreeMin, busqueda: "" }), camera: new THREE.PerspectiveCamera(), D: { ext: [-200, 200, 200, -200] }, copas, cIn, geoSombra, matSombra, gFauna,
     paseando: () => E.paseando, pp: { x: 0, y: 0, ang: 0, paso: 0 }, cur: { ms: 0, viento: 1, dir: 0, lluvia: extra.lluvia ?? 0, hr: 40 }, nivelEn: () => ({ s: { alt: 0, az: 0 }, d: E.dia }),
     tVida: () => E.tVida, enQuad: () => E.enQuad, altSuelo: () => 2, mira: (g: any, hx: number, hz: number) => { g.rotation.y = Math.atan2(-hx, -hz); },   // eslint-disable-line @typescript-eslint/no-explicit-any
     Estado: { exag: 1 }, Minimapa: { capa: (fn) => { capas.push(fn); return () => { capas.pop(); quitadas.push("capa"); }; } }, fusionaGeometrias: fusiona, aleatorio: rnd
@@ -67,6 +69,14 @@ describe("fauna: el componente", () => {
     emite("fauna:conejo-cerca", q); expect(q.res).toBe(c);
     expect(emitidos).toContain("perros:amenaza");
   });
+  it("los tres materiales salen de la fábrica con su dueño: Lambert estándar, con los colores de siempre", () => {
+    const { deps, gFauna } = monta();
+    expect(deps.Materiales.duenos()["fauna-olivar"]).toBe(3);
+    const mats = new Set(instanciadas(gFauna).map((m) => m.material)); mats.delete(undefined);
+    const lamberts = [...mats].filter((m: any) => m.isMeshLambertMaterial);   // eslint-disable-line @typescript-eslint/no-explicit-any
+    expect(lamberts.length).toBeGreaterThanOrEqual(3);
+    expect(instanciadas(gFauna).find((m) => m.name === "aves-alas")!.material.side).toBe(THREE.DoubleSide);
+  });
   it("el manifiesto: ?fauna, del exterior, fase mundo; su libera() acepta null", () => {
     const m = manifiestoFauna({} as DepsFauna);
     expect(m.id).toBe("fauna-olivar"); expect(m.bandera).toEqual({ defecto: true, url: "fauna" }); expect(m.mundos).toEqual(["exterior"]); expect(m.fases).toEqual({ mundo: 0 });
@@ -76,12 +86,13 @@ describe("fauna: el componente", () => {
 
 describe("fauna: el ciclo de vida", () => {
   it("libera() saca las mallas del grupo, suelta sus geometrías y materiales (no la sombra compartida) y la capa del minimapa, una sola vez", () => {
-    const { api, gFauna, quitadas, capas, geoSombra, matSombra, oyentes } = monta();
+    const { api, gFauna, quitadas, capas, geoSombra, matSombra, oyentes, deps } = monta();
     const ms = instanciadas(gFauna), vistos: string[] = [];
     for (const m of ms) { m.addEventListener("dispose", () => vistos.push("malla")); }
     const compartidas: string[] = []; geoSombra.addEventListener("dispose", () => compartidas.push("geo")); matSombra.addEventListener("dispose", () => compartidas.push("mat"));
     expect(capas).toHaveLength(1);
     api.libera(); api.libera();
+    expect(deps.Materiales.duenos()["fauna-olivar"]).toBeUndefined();   // la fábrica ya no guarda nada de este dueño
     expect(gFauna.children).toHaveLength(0); expect(vistos).toHaveLength(6); expect(compartidas).toEqual([]);
     expect(capas).toHaveLength(0); expect(quitadas.filter((x) => x === "capa")).toHaveLength(1);
     for (const ev of ["paseo:entra", "paseo:sale", "fauna:conejo-cerca"]) expect((oyentes[ev] || []).length).toBe(0);   // las tres escuchas, sueltas

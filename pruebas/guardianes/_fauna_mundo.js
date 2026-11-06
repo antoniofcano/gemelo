@@ -71,7 +71,7 @@ function construye(THREE, fichero, copas, sem) {
   if (nuevo) {
     // lo de ahora vive en apps/web/src/mundos/exterior/fauna.ts (MU5-n, A3-5): se monta con el manifiesto de Mundos, con el mismo azar de semilla (aleatorio) y el nivel del sol de 15_tiempo
     const Mundos = require("./_mundos"), nivelEn = new Function("LAT", "LON", '"use strict";\n' + nivelNuevo() + "\nreturn nivelEn;")(37.7, -4.0);
-    const deps = { THREE, camera: g.camera, D: g.D, copas, cIn, geoSombra: g.geoSombra, matSombra: g.matSombra, paseando: () => E.paseando, pp: g.pp, cur: g.cur, nivelEn,
+    const deps = { THREE, Materiales: require("./_materiales").fabrica(THREE).Materiales, camera: g.camera, D: g.D, copas, cIn, geoSombra: g.geoSombra, matSombra: g.matSombra, paseando: () => E.paseando, pp: g.pp, cur: g.cur, nivelEn,
       tVida: () => E.tVida, enQuad: () => E.enQuad, gFauna, altSuelo: g.altSuelo, mira: g.mira, Estado: g.Estado, Minimapa, fusionaGeometrias: g.fusionaGeometrias, aleatorio: rnd };
     defs.push(Mundos.manifiestoFauna(deps)); pon = () => {}; api = defs[0].monta(n);
   } else {
