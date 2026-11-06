@@ -8,7 +8,7 @@
 // Corre en la fase «tarde» (cada fotograma, tras la carga y antes de la Cola). ?fondo=0 lo apaga (y ?sinFondo): sin él se ve el vacío de los bordes.
 // Del legado recibe por argumento lo que necesita (THREE, D, Mundo, UN, matSuelo, Escena3D, scene, Estado, VrPresupuesto, la fábrica de materiales); no lee globales.
 import type { Manifiesto } from "../../nucleo/componentes.ts";
-import type { Materiales } from "../../nucleo/materiales.ts";
+import type { DefMaterial, Materiales, MaterialMin } from "../../nucleo/materiales.ts";
 
 // three no trae tipos en el repo (como en ambiente.ts y presupuesto.ts): de él solo se toca lo mínimo, sin tiparlo
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -43,11 +43,34 @@ export interface DepsSueloFondo {
 export const MARGEN = 400, BAJA = 1.5, CELDAS_MAX = 128;
 export const ID_SUELO_FONDO = "suelo-fondo";
 
+// ---------------------------------------------------------------- el material (MU5-n: por la fábrica, con su nombre de la tabla de MATERIALES §1, fila 8)
+/** el nombre del material en la fábrica: es también la clave de su variante TSL */
+export const MATERIAL_SUELO_FONDO = "suelo-fondo";
+/** lo que pide el material: la textura del mosaico de 04d y el color de matSuelo (el MISMO objeto: luz, lluvia y niebla como el resto del relieve) */
+export interface OpcSueloFondo { map: unknown; color: unknown }
+/** el sombreado de siempre: la textura del mosaico se comparte con 04d, que la usa tal cual (ADR-0016: sin convertir), así que aquí se pasa a lineal al leerla */
+export function parcheSueloFondo(sh: unknown): void {
+  const s = sh as { fragmentShader: string };
+  s.fragmentShader = s.fragmentShader.replace("#include <map_fragment>", "vec4 sampledDiffuseColor = sRGBTransferEOTF(texture2D(map, vMapUv));\n diffuseColor *= sampledDiffuseColor;");
+}
+export const DEF_SUELO_FONDO: DefMaterial<OpcSueloFondo> = {
+  clasico: function (o, c) {
+    const Lambert = c.THREE["MeshLambertMaterial"] as new (opc: unknown) => MaterialMin & { color: unknown };
+    const m = new Lambert({ map: o.map, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2 });
+    m.color = o.color;
+    m.onBeforeCompile = parcheSueloFondo;
+    m.customProgramCacheKey = function () { return MATERIAL_SUELO_FONDO; };
+    return m;
+  }
+};
+
 export function creaSueloFondo(d: DepsSueloFondo) {
   const THREE = d.THREE, D = d.D;
   let malla: T3 = null, expPuesta = NaN;
   let celdas = CELDAS_MAX, baja = BAJA;   // Q0c-a: en VR, el escalón 3 pide menos celdas y baja más (02g_vr_presupuesto); fuera de VR, los de siempre
   const APAGADO = /[?&]sinFondo/.test(d.busqueda || "");
+  d.Materiales.define(MATERIAL_SUELO_FONDO, DEF_SUELO_FONDO);
+  const materiales = d.Materiales.de(ID_SUELO_FONDO);   // lo que cree este componente se libera con su libera()
 
   function construye(): void {
     const M = D.mosaico, GR = D.grueso, ax = GR.w * GR.res, ay = GR.h * GR.res;
@@ -67,18 +90,14 @@ export function creaSueloFondo(d: DepsSueloFondo) {
     }
     const g = new THREE.BufferGeometry();
     g.setAttribute("position", new THREE.BufferAttribute(pos, 3)); g.setAttribute("uv", new THREE.BufferAttribute(uv, 2)); g.setIndex(new THREE.BufferAttribute(idx, 1)); g.computeVertexNormals();
-    const m = new THREE.MeshLambertMaterial({ map: d.UN.uMos.value, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2 });
-    m.color = d.matSuelo.color;
-    // la textura del mosaico se comparte con 04d, que la usa tal cual (ADR-0016: sin convertir): aquí se pasa a lineal al leerla
-    d.Materiales.parchea(m, "suelo-fondo", function (sh: unknown) { const s = sh as { fragmentShader: string }; s.fragmentShader = s.fragmentShader.replace("#include <map_fragment>", "vec4 sampledDiffuseColor = sRGBTransferEOTF(texture2D(map, vMapUv));\n diffuseColor *= sampledDiffuseColor;"); });
-    m.customProgramCacheKey = function () { return "suelo-fondo"; };
+    const m = materiales.crea(MATERIAL_SUELO_FONDO, { map: d.UN.uMos.value, color: d.matSuelo.color });
     malla = new THREE.Mesh(g, m); malla.name = "sueloFondo"; malla.matrixAutoUpdate = false; malla.renderOrder = -1; expPuesta = NaN;
     d.scene.add(malla);
   }
   /** quita la malla de la escena y suelta su geometría y su material; la textura (mosaico) es de 04d y no se toca */
   function libera(): void {
     if (!malla) return;
-    d.scene.remove(malla); malla.geometry.dispose(); malla.material.dispose(); malla = null;
+    d.scene.remove(malla); malla.geometry.dispose(); materiales.libera(); malla = null;
   }
   // por fotograma: crear cuando la escena está activa y el mosaico ya es textura; liberar si la escena se apaga; seguir la exageración vertical
   function actualiza(): void {
@@ -95,7 +114,7 @@ export function creaSueloFondo(d: DepsSueloFondo) {
   });
   /** lo que libera el componente al apagarse: la malla y, del presupuesto VR, la fuente apuntada */
   function suelta(): void { libera(); if (vrPres) vrPres.olvida("sueloFondo"); }
-  return { actualiza, libera, suelta, malla: function () { return malla; }, celdas: function () { return celdas; }, baja: function () { return baja; }, BAJA, MARGEN, CELDAS_MAX };
+  return { actualiza, libera, suelta, materiales, malla: function () { return malla; }, celdas: function () { return celdas; }, baja: function () { return baja; }, BAJA, MARGEN, CELDAS_MAX };
 }
 export type SueloFondo = ReturnType<typeof creaSueloFondo>;
 

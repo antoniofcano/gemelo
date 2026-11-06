@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { ComponentesPuro } from "../../nucleo/componentes.ts";
 import { creaMateriales } from "../../nucleo/materiales.ts";
 import type { ThreeMin } from "../../nucleo/materiales.ts";
-import { BAJA, CELDAS_MAX, MARGEN, creaSueloFondo, manifiestoSueloFondo } from "./suelo-fondo.ts";
+import { BAJA, CELDAS_MAX, DEF_SUELO_FONDO, MARGEN, MATERIAL_SUELO_FONDO, creaSueloFondo, manifiestoSueloFondo, parcheSueloFondo } from "./suelo-fondo.ts";
 import type { DepsSueloFondo } from "./suelo-fondo.ts";
 
 // three no trae tipos en el repo: se carga por variable (como materiales.test.ts) y se toca sin tiparlo
@@ -78,6 +78,20 @@ describe("suelo de fondo (componente del exterior)", () => {
     api.suelta(); api.suelta();   // dos veces no rompe ni libera de más
     expect(sp.cuenta).toEqual({ geometria: creadas, material: creadas, textura: 0 });
     expect(deps.UN.uMos.value).toBe(tex);
+  });
+
+  it("su material sale de la fábrica con el nombre de la tabla de MATERIALES, con dueño; el clásico es el de siempre (mismo parche y misma clave de programa) y libera() lo suelta", () => {
+    const { api, deps } = monta(), F = deps.Materiales;
+    api.actualiza(); const m = api.malla().material;
+    expect(F.cobertura()[MATERIAL_SUELO_FONDO]).toEqual({ clasico: true, tsl: false, usado: 1 });
+    expect(F.duenos()).toEqual({ "suelo-fondo": 1 }); expect(F.ruta(MATERIAL_SUELO_FONDO)).toBe("clasico");
+    expect(m.onBeforeCompile).toBe(parcheSueloFondo); expect(m.customProgramCacheKey()).toBe("suelo-fondo"); expect(m.isMeshLambertMaterial).toBe(true);
+    expect(m.color).toBe(deps.matSuelo.color); expect(m.map).toBe(deps.UN.uMos.value); expect(m.polygonOffsetFactor).toBe(2); expect(m.polygonOffsetUnits).toBe(2);
+    const sh = { fragmentShader: THREE.ShaderLib.lambert.fragmentShader }; m.onBeforeCompile(sh);
+    expect(sh.fragmentShader).not.toContain("#include <map_fragment>"); expect(sh.fragmentShader).toContain("sRGBTransferEOTF(texture2D(map, vMapUv))");
+    let liberado = 0; m.addEventListener("dispose", () => { liberado++; });
+    api.libera(); expect(liberado).toBe(1); expect(F.duenos()).toEqual({});
+    expect(DEF_SUELO_FONDO.tsl).toBeUndefined();   // la variante TSL va en el tercer commit de MU5-n
   });
 
   it("el escalón de VR: pide menos celdas, baja más, rehace la malla; suelta() olvida la fuente", () => {
