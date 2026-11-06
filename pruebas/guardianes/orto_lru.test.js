@@ -6,6 +6,7 @@
 const test = require("node:test"), assert = require("node:assert");
 const { RAIZ, fs, path } = require("./_util");
 const { aparatoDe } = require("./_aparato");
+const MUNDOS = require(path.join(RAIZ, "apps/web/src/mundos/index.ts"));   // MU5-n: el Mundo vive en src/mundos/exterior/teselas.ts; 02_mundo.js lo crea con Mundos.creaMundo
 
 const FUENTE = fs.readFileSync(path.join(RAIZ, "apps", "web", "motor", "02_mundo.js"), "utf8");
 const TS = 256;
@@ -18,8 +19,8 @@ function monta({ query = "", ua = "", mem, n = 5 } = {}) {   // una fila de n×1
   const lienzo = () => ({ width: 4, height: 4, getContext: () => ({ drawImage() {}, getImageData: () => ({ data: new Uint8ClampedArray(64) }) }) });
   const document = { createElement: lienzo };
   const navigator = { userAgent: ua, deviceMemory: mem };
-  const Mundo = Function("Aparato", "D", "b64", "i16", "RES", "document", "performance", "location", "navigator", "fetch", "ndviRel", "rampa", FUENTE + "\nreturn Mundo;")(
-    aparatoDe(navigator), D, () => new Uint8Array(0), () => new Int16Array(32 * 32), 1, document, performance, { search: query }, navigator, () => new Promise(() => {}), () => 0, () => [0, 0, 0]);
+  const Mundo = Function("Mundos", "Aparato", "D", "b64", "i16", "RES", "document", "performance", "location", "navigator", "fetch", "ndviRel", "rampa", FUENTE + "\nreturn Mundo;")(
+    MUNDOS, aparatoDe(navigator), D, () => new Uint8Array(0), () => new Int16Array(32 * 32), 1, document, performance, { search: query }, navigator, () => new Promise(() => {}), () => 0, () => [0, 0, 0]);
   Mundo.lista.forEach(tt => { tt.ortImg = { complete: true, naturalWidth: 4, width: 4 }; });
   return { Mundo, avanza: ms => { t += ms; } };
 }

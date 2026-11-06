@@ -23,7 +23,7 @@ La página pide `t/<clave>.json|jpg` (`D.teselas` es el índice; `D.base` da el 
 | Fichero | Expone | Notas |
 |---|---|---|
 | `01_datos.js` | `D`, `$`, `fmt`, `b64`, `i16` | abre la IIFE; la escena es siempre la 3D Tiles ([TILES3D](TILES3D.md#la-escena-sin-vuelta-atrás-t8-fase-2)); `ESC3D` y `ESTAD` ya no existen |
-| `02_mundo.js` | `Mundo` (`suelo`, `copaAlta`, `orto`, `colorSuelo`, `alCargar`, `arranca`, `actualiza`, `liberaOrtoLejos`…) | teselas, carga, `desp`/`colorEn` |
+| `02_mundo.js` | `Mundo` (`suelo`, `copaAlta`, `orto`, `colorSuelo`, `alCargar`, `alSoltar`, `arranca`, `actualiza`, `liberaOrtoLejos`, `libera`…) | teselas, carga, `desp`/`colorEn`. Desde MU5-n (A3-1a) el `Mundo` vive en `src/mundos/exterior/teselas.ts` (`Mundos.creaMundo`): decodifica cada tesela en la Cola del exterior (L1-05), suelta las de más de 3 km (L2-03) y es el componente `mundo-teselas` del exterior (lo registra `90_final`); el fichero conserva los alias, el tinte y el censo |
 | `02b_cola.js` (talón) | `Cola` (`add`, `corre(ms)`, `vacia`, `cancelaDe`) | trabajos como generadores; el código vive en `apps/web/src/nucleo/cola.ts` (A1-10) |
 | `02f_xr_perillas.js` (talón) | `XrPerillas` (`aa`, `efectivas`, `js()`, `linea()`, `multiview`, `topeTiles`…) | las perillas `?xr*=` de rendimiento VR, leídas en un solo sitio; el código vive en `apps/web/src/nucleo/xr-perillas.ts` (A1-11) |
 | `02h_render.js` (talón) | `Render` (`tipo`, `build`, `tono`, `arranca`, y desde A1-11 `enlaza`, `info`, `memoria`, `compila`), `InfoDibujo` | qué renderizador y qué build, y la lectura de `renderer.info` con la misma forma para el clásico y el nuevo; el código vive en `apps/web/src/nucleo/render.ts` (A1-11); `03_escena.js` lo enlaza con el renderer |

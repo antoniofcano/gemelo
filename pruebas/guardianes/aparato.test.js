@@ -10,6 +10,7 @@
 const test = require("node:test"), assert = require("node:assert");
 const { RAIZ, fs, path } = require("./_util");
 const { aparatoDe, modulo } = require("./_aparato");
+const MUNDOS = require(path.join(RAIZ, "apps/web/src/mundos/index.ts"));   // MU5-n: el Mundo vive en src/mundos/exterior/teselas.ts; 02_mundo.js lo crea con Mundos.creaMundo
 
 const MOTOR = path.join(RAIZ, "apps", "web", "motor");
 const { AparatoPuro: P } = modulo({});
@@ -158,8 +159,8 @@ test("02_mundo por clase: ortoMax 20 en escritorio, 8 en móvil, en gafas y con 
   const fuente = fs.readFileSync(path.join(MOTOR, "02_mundo.js"), "utf8");
   const TS = 256, D = { ts: TS, res: 1, srs: 2, centro_utm: [0, 0], teselas: { k0: { kx: 0, ky: 0, v: [0, 0, TS, TS], np: 0 } }, grueso: { b64: "", x0: 0, yN: TS, res: 8, w: 32, h: 32 }, mosaico: { x0: 0, yN: TS, w: 1, h: 1, res: 1 }, copas: [], marcados: [] };
   const max = nav => {
-    const M = Function("Aparato", "D", "b64", "i16", "RES", "document", "performance", "location", "navigator", "fetch", "ndviRel", "rampa", fuente + "\nreturn Mundo;")(
-      aparatoDe(nav), D, () => new Uint8Array(0), () => new Int16Array(32 * 32), 1, { createElement: () => ({ width: 4, height: 4, getContext: () => ({}) }) }, { now: () => 0 }, { search: "" }, nav, () => new Promise(() => {}), () => 0, () => [0, 0, 0]);
+    const M = Function("Mundos", "Aparato", "D", "b64", "i16", "RES", "document", "performance", "location", "navigator", "fetch", "ndviRel", "rampa", fuente + "\nreturn Mundo;")(
+      MUNDOS, aparatoDe(nav), D, () => new Uint8Array(0), () => new Int16Array(32 * 32), 1, { createElement: () => ({ width: 4, height: 4, getContext: () => ({}) }) }, { now: () => 0 }, { search: "" }, nav, () => new Promise(() => {}), () => 0, () => [0, 0, 0]);
     return M.ortoEstado().max;
   };
   assert.strictEqual(max({ userAgent: UA.chromeWin, deviceMemory: 8 }), 20);
