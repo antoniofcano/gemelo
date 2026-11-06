@@ -18,3 +18,5 @@ export { BuclePuro, creaBucle } from "./bucle.ts";
 export type { Bucle, DepsBucle, PasoBucle } from "./bucle.ts";
 export { WorldManagerPuro, creaWorldManager } from "./mundos.ts";
 export type { AvisoMundo, ContextoBase, DepsWorldManager, EstadoCambio, Fundido as FundidoDeMundo, IdMundo, MundoBase, Pose2, Puerta, ResultadoCambio, WorldManager } from "./mundos.ts";
+export { ComponentesPuro, creaComponentes } from "./componentes.ts";
+export type { ApiComponente, BusComponentes, Componentes, ContextoComponente, DepsComponentes, Fase, FilaResumen, Manifiesto } from "./componentes.ts";

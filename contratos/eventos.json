@@ -74,7 +74,7 @@
         }
       },
       "emiten": [
-        "02c_componentes"
+        "nucleo/componentes"
       ],
       "escuchan": [
         "15_tiempo"
@@ -632,6 +632,26 @@
         "08b_marcadores_lidar"
       ]
     },
+    "mundo:entra": {
+      "descripcion": "MU2-5: un mundo pasa a ser el activo (el gestor de mundos, a oscuras, tras entra() del nuevo; o al arrancar el primero, con desde null). id es el que entra (= hacia) y desde, de dónde se viene. En una vuelta atrás (la carga o la entrada del nuevo fallaron), el de antes «entra» desde el que no pudo: id = hacia = el de antes y desde = el que falló. Componentes vuelve a correr las fases de los componentes de ese mundo y monta los suyos si no estaba cargado. Hoy el gestor aún no está cableado al motor (MU2-3, MU2-6): nadie lo emite en la página.",
+      "datos": {
+        "type": "object",
+        "required": ["id", "desde", "hacia"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "enum": ["exterior", "molino", "bodega", "vacio"] },
+          "desde": { "enum": ["exterior", "molino", "bodega", "vacio", null] },
+          "hacia": { "enum": ["exterior", "molino", "bodega", "vacio"] }
+        }
+      },
+      "ejemplo": { "id": "molino", "desde": "exterior", "hacia": "molino" },
+      "emiten": [
+        "nucleo/mundos"
+      ],
+      "escuchan": [
+        "nucleo/componentes"
+      ]
+    },
     "mundo:hoy": {
       "descripcion": "53_mundo_hoy.js acaba de leer /api/mundo/hoy (EV-3a): la línea corta de «Hoy en el olivar» para el tablón de la entrada (EV-3c): el trabajo de la semana agregado por tipo (nunca por persona) o el titular del aviso principal del campo; trabajo (F4b/W1, 54_trabajo_hoy.js) son las parcelas con alguna tarea en curso, sin personas, o null; linea es null si la lectura no está completa o no hay nada que decir. cuando es el instante de la fuente (ISO) o null. Los textos son datos: se pintan en un lienzo, nunca como HTML.",
       "datos": {
@@ -717,6 +737,26 @@
         "02c_componentes"
       ],
       "escuchan": []
+    },
+    "mundo:sale": {
+      "descripcion": "MU2-5: un mundo deja de ser el activo al cambiar de mundo (el gestor de mundos, a oscuras, tras sale() y congela() del que sale). id es el que sale (= desde) y hacia, adonde se va. Hasta el «mundo:entra» siguiente no hay mundo activo y no corre ninguna fase de los componentes. Hoy el gestor aún no está cableado al motor (MU2-3, MU2-6): nadie lo emite en la página.",
+      "datos": {
+        "type": "object",
+        "required": ["id", "desde", "hacia"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "enum": ["exterior", "molino", "bodega", "vacio"] },
+          "desde": { "enum": ["exterior", "molino", "bodega", "vacio"] },
+          "hacia": { "enum": ["exterior", "molino", "bodega", "vacio"] }
+        }
+      },
+      "ejemplo": { "id": "exterior", "desde": "exterior", "hacia": "molino" },
+      "emiten": [
+        "nucleo/mundos"
+      ],
+      "escuchan": [
+        "nucleo/componentes"
+      ]
     },
     "oficina:anuncio": {
       "descripcion": "OF10: ha llegado un anuncio de la oficina por la sala (tema «anuncio», mandado por la api sin participante; ya validado y limpio). Para quien quiera reaccionar (un sonido, un lector de pantalla); el aviso, la lámina en VR y la línea del chat ya los pone 39_oficina_mundo.",

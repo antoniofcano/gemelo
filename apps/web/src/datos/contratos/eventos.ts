@@ -11,6 +11,9 @@ export interface Eventos {
     [k: string]: {
       descripcion: string;
       datos: {};
+      ejemplo?: {
+        [k: string]: unknown;
+      };
       /**
        * @minItems 1
        */

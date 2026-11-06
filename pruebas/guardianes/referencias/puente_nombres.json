@@ -57,7 +57,7 @@
   "26_presencia.js": ["PoseCodec","BufferPose","Aspecto","SalaPose","Chat","Muneco","Encuentro","AutoPresencia","Reintento","sitioJunto"],
   "26b_avatares.js": [],
   "27_debug.js": [],
-  "28_depura.js": ["dep","depuraCuadro"],
+  "28_depura.js": ["depuraCuadro"],
   "29_vr.js": ["VRX","vrRig","vrDebugExtra","vrMano","vrRayoDe","vrCierra","vrAbre","vrFundido","vrAparece","creaLamina","panel","ficha","vrBajoRayo","vrRect","vrAj","PanelVR","vrPintaFicha","vrRecoloca","vrPulso","vrActualiza","vrFin"],
   "30_mide.js": [],
   "31_hud.js": ["Hud"],

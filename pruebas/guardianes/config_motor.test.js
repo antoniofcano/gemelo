@@ -14,7 +14,8 @@ const contratoModulos = require(path.join(RAIZ, "pruebas", "contrato_modulos.js"
 
 const NUCLEO = lee("apps/web/motor/02c_componentes.js");
 const trozo = (s, ini, fin) => { const i = s.indexOf(ini), f = s.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas"); return s.slice(i, f); };
-const { ConfigPuro: P } = new Function("\"use strict\";\n" + trozo(NUCLEO, "// [puro:inicio]", "// [puro:fin]") + "\nreturn { ConfigPuro };")();
+const Nucleo = require("./_nucleo");   // MU2-5: ComponentesPuro y Componentes salen del núcleo de TypeScript (apps/web/src/nucleo/componentes.ts)
+const { ConfigPuro: P } = new Function("Nucleo", "\"use strict\";\n" + trozo(NUCLEO, "// [puro:inicio]", "// [puro:fin]") + "\nreturn { ConfigPuro };")(Nucleo);
 const json = f => JSON.parse(lee(f));
 const ESQ = json("contratos/config.schema.json"), EJ = json("contratos/config-ejemplo.json"), CAL = json("contratos/epocas-calendario.json");
 const VR_TRI = [...lee("apps/web/motor/29_vr.js").match(/var VR_PERFILES = \[(.*?)\];/)[1].matchAll(/tri: (\d+)/g)].map(m => Number(m[1]));
@@ -134,8 +135,8 @@ test("lectura: sin servidor no pide; 200 → la configuración; 401/404/503, sin
 // ---------- Config entero, con 02c en una ventana de mentira
 function nucleo({ base = "/teselas/hituelo/", busqueda = "", fetch: fetchFn } = {}) {
   const errores = [], consola = { error: (...a) => errores.push(a.join(" ")), warn: (...a) => errores.push(a.join(" ")), log() {} };
-  const f = new Function("window", "location", "document", "console", "D", "fetch", "\"use strict\";\n" + sinCabecera(NUCLEO) + "\nreturn { Componentes, Config };");
-  const r = f({ addEventListener() {} }, { search: busqueda }, { getElementById: () => null }, consola, { base }, fetchFn);
+  const f = new Function("window", "location", "document", "console", "D", "fetch", "Nucleo", "\"use strict\";\n" + sinCabecera(NUCLEO) + "\nreturn { Componentes, Config };");
+  const r = f({ addEventListener() {} }, { search: busqueda }, { getElementById: () => null }, consola, { base }, fetchFn, Nucleo);
   r.errores = errores; return r;
 }
 const manifiesto = (id, log) => ({ id, consume: [], expone: [], eventos: { escucha: [], emite: [] }, bandera: { defecto: true }, presupuesto: { llamadas: 0, triangulos: 0 },

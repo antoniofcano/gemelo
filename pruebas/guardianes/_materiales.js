@@ -15,8 +15,10 @@ function fabrica(THREE, o) {
   return { Materiales: g.Materiales, Render: g.Render, InfoDibujo: g.InfoDibujo, RenderPuro: NUCLEO.RenderPuro, Estaticos: g.Estaticos, fusionaGeometrias: g.fusionaGeometrias };
 }
 
-/** el contexto g de una prueba (vm o new Function) con la fábrica y el lector de dibujo, si no los trae: con su THREE (de verdad o de mentira) */
+/** el contexto g de una prueba (vm o new Function) con la fábrica y el lector de dibujo, si no los trae: con su THREE (de verdad o de mentira).
+ *  También el Nucleo de verdad, si no lo trae: 02c_componentes.js crea Componentes con Nucleo.creaComponentes (MU2-5) */
 function conFabrica(g) {
+  if (!g.Nucleo) g.Nucleo = NUCLEO;
   if (!g.Materiales || !g.InfoDibujo || !g.Estaticos || !g.fusionaGeometrias) { const f = fabrica(g.THREE); if (!g.Materiales) g.Materiales = f.Materiales; if (!g.InfoDibujo) g.InfoDibujo = f.InfoDibujo; if (!g.Estaticos) g.Estaticos = f.Estaticos; if (!g.fusionaGeometrias) g.fusionaGeometrias = f.fusionaGeometrias; }
   return g;
 }

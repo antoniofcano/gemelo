@@ -8,12 +8,14 @@ Los componentes del motor ([ADR-0023](../doc/adr/0023-componentes-del-mundo.md),
 - Dentro de un componente, `n.on(evento, fn)` (el contexto que recibe `monta`) escucha y **se suelta solo** al liberarlo; `n.emite` es `Bus.emite`.
 - Un oyente que falla no rompe a los demás (se dice en la consola).
 - Nombres `dominio:accion`, en minúsculas. Los datos, si los hay, cumplen el esquema `datos` del catálogo.
+- Los mundos (MU2-5): con `mundos: [...]` en su manifiesto, un componente solo corre sus fases mientras uno de sus mundos es el activo (`mundo:entra` / `mundo:sale`); sin el campo, es del exterior.
 
 ## Reglas (las vigila `pruebas/guardianes/componentes.test.js`)
 
-1. Todo evento que el código emite o escucha (`Bus.emite`, `Bus.on`, `n.emite`, `n.on`) está en el catálogo, con quién lo emite y quién lo escucha **exactamente** como en el código.
+1. Todo evento que el código emite o escucha (`Bus.emite`, `Bus.on`, `n.emite`, `n.on`; en `apps/web/src/nucleo/*.ts`, `bus.emite`, `bus.on` y `avisa`, con el nombre `nucleo/<fichero>`) está en el catálogo, con quién lo emite y quién lo escucha **exactamente** como en el código.
 2. Ningún evento se escucha sin que nadie lo emita.
 3. El manifiesto de cada componente (`eventos: { escucha, emite }`) dice lo mismo que su código.
+4. Si un evento trae `ejemplo`, cumple su esquema `datos` (es el fixture de las pruebas).
 
 ## Catálogo de hoy
 
@@ -21,7 +23,7 @@ Los componentes del motor ([ADR-0023](../doc/adr/0023-componentes-del-mundo.md),
 |---|---|---|---|
 | `chat:alterna` | — | `31_hud` (el icono del chat de la barra o del menú «Más») | `38_presencia_compartida` (abre el chat minimizado o lo minimiza; sin chat, nada) |
 | `audio:desbloquea` | — | `29_vr` (al pulsar «Entrar en VR»: el gesto que deja arrancar el audio) | `20_sonido`, `45_voz` (arranca el AudioContext de la voz si estás en una guiada) |
-| `componentes:cambia` | `{ id, activo }` | `02c_componentes` (al montar o liberar un componente) | `15_tiempo` (esconde «Ver la previsión en el mundo» si nadie la atiende) |
+| `componentes:cambia` | `{ id, activo }` | `nucleo/componentes` (`apps/web/src/nucleo/componentes.ts`, MU2-5: al montar o liberar un componente) | `15_tiempo` (esconde «Ver la previsión en el mundo» si nadie la atiende) |
 | `capas:cambia` | (nada) | `08_marcadores` (`capas()`: cambió una casilla de capas o se aplicó el estado) | `08b_marcadores_lidar` (lee las casillas de copas, marcas y desfase) |
 | `corro:estado` | `{ disponible, activa, puedo, corro, miembros, recibidas, enviadas }` | `47b_corro` (F3k-3: cambió lo que sabe de la voz por cercanía, tras `GET /api/presencia/corros/estado`; sin alias ni identidades) | — (el HUD, las pruebas de F3k-5) |
 | `cuadro:fin` | `{ t }` (el mismo objeto cada fotograma) | `90_final` (al acabar `cuadro()`, también en pausa) | `30_mide` (solo mientras está armado o midiendo) |
@@ -53,6 +55,8 @@ Los componentes del motor ([ADR-0023](../doc/adr/0023-componentes-del-mundo.md),
 | `ndvi:cambia` | `{ lo, hi }` | `10_ndvi` (`pintaNdvi()`: cambió la fecha del campo o la escala relativa) | `10b_capa_ndvi` (rehace la textura, la leyenda y la gráfica) |
 | `mundo:hoy` | `{ linea: { txt, de, cuando } \| null, trabajo: { parcelas: [id], cuando } \| null }` | `53_mundo_hoy` (tras cada lectura buena de `/api/mundo/hoy`) | `44b_carteles` (la línea «Hoy en el olivar» del tablón), `54_trabajo_hoy` (un tractor en cada haza con tarea en curso, apagado por defecto) |
 | `mundo:pausa` | `{ activa }` | `02c_componentes` (`Pausa.pon` / `Pausa.quita`) | (nadie todavía) |
+| `mundo:entra` | `{ id, desde, hacia }` (`desde` null al arrancar; en una vuelta atrás, el de antes entra desde el que falló) | `nucleo/mundos` (el gestor, por `deps.avisa`, tras `entra()`; MU2-5: aún sin cablear al motor) | `nucleo/componentes` (ese mundo pasa a activo: corren las fases de sus componentes y, si no estaba cargado, se montan) |
+| `mundo:sale` | `{ id, desde, hacia }` (`id` = `desde`) | `nucleo/mundos` (el gestor, tras `sale()` y `congela()`; aún sin cablear) | `nucleo/componentes` (hasta el siguiente `mundo:entra` no corre ninguna fase) |
 | `voz:estado` | `{ sala, dentro, guiada, corro, papel, puede, micro, turno, modo, auriculares, bloqueado, voces, hablan, callados, motivo }` | `45_voz` (F3d: algo cambió en la voz de la guiada; F3k-2: o en la de un corro, `corro` true y papel `miembro`; `callados`, a quién has silenciado tú) | `31b_hud_personal` (EV2-A4: el botón Hablar de lo tuyo en pantalla), `46_guiada` (F3f: vuelve a leer la sala enseguida), `47_habla` (F3e: el indicador del micro, el botón Hablar, la háptica y la lámina de VR), `47b_corro` (F3k-3: sin corro, olvida quién hablaba) |
 | `voz:habla` | `{ identidad, nivel, habla, yo }` | `45_voz` (F3d: alguien empieza a hablar, cambia de nivel en ≥ 0,1 o calla; ActiveSpeakers) | `47b_corro` (F3k-3: quién habla en tu corro, en su lista con aria-live y con un halo sobre su avatar); `26b_avatares` (EV-3b: la boca «aa» del VRM de quien habla, ilustrativa) |
 | `prevision:alterna` | `{ abre? }` | `15_tiempo` (botón de la ventana Tiempo) | `35_fichas_tiempo` (la lámina de la previsión) |

@@ -229,7 +229,12 @@ function retornoDeFabrica(fuente, fabrica) {
 for (const [nombre, def] of Object.entries(IFACES.interfaces)) {
   test("interfaz " + nombre + " (" + def.modulo + "): devuelve exactamente los miembros de contratos/interfaces.json", () => {
     let real;
-    if (def.fuente) {   // migrada a TypeScript (A1-10): el contrato lo cumple la fábrica de apps/web/src/, y el módulo del motor es un talón que la llama
+    if (def.fuente && def.objeto) {   // MU2-5: un objeto de TypeScript (`export const NOMBRE = { … }`) que el motor toma tal cual: `var NOMBRE = Nucleo.NOMBRE;`
+      const src = lee(def.fuente), ini = src.indexOf("export const " + nombre + " = {");
+      assert.ok(ini >= 0, "no encuentro «export const " + nombre + " = {» en " + def.fuente);
+      real = claves(src, ini).sort();
+      assert.match(lee("apps/web/motor/" + def.modulo), new RegExp("^  var " + nombre + " = Nucleo\\." + nombre + ";", "m"), def.modulo + " debe hacer var " + nombre + " = Nucleo." + nombre + ";");
+    } else if (def.fuente) {   // migrada a TypeScript (A1-10): el contrato lo cumple la fábrica de apps/web/src/, y el módulo del motor es un talón que la llama
       real = retornoDeFabrica(lee(def.fuente), def.fabrica).sort();
       assert.match(lee("apps/web/motor/" + def.modulo), new RegExp("^  var " + nombre + " = Nucleo\\." + def.fabrica + "\\(", "m"), def.modulo + " (talón) debe hacer var " + nombre + " = Nucleo." + def.fabrica + "(…)");
     } else real = retornoDe(lee("apps/web/motor/" + def.modulo), nombre).sort();

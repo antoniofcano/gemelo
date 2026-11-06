@@ -456,9 +456,11 @@ test("Q0h: coste cero sin medir: ni una lectura de reloj nueva en el bucle fuera
   assert.strictEqual(lecturas.length, 2, lecturas.join("\n"));
   assert.ok(lecturas.some(l => /ahora: function \(\) \{ return performance\.now\(\); \}/.test(l)) && lecturas.some(l => /vrFin\(dt, performance\.now\(\) - t\)/.test(l)));
   assert.ok(/const R = deps\.reparto, rp = !!\(R && R\.on\);/.test(lee("apps/web/src/nucleo/bucle.ts")), "rp se lee una vez por fotograma");
-  const c2 = lee("apps/web/motor/02c_componentes.js"), act = c2.slice(c2.indexOf("function actualiza(fase, dt, t)"), c2.indexOf("function api(id)"));
-  assert.ok(/if \(Reparto\.on\) \{[^\n]*performance\.now\(\)[^\n]*Reparto\.pasa\(c\.rp, q\); continue; \}/.test(act), "cada componente se mide solo si Reparto.on");
-  assert.strictEqual((act.match(/performance\.now\(\)/g) || []).length, 1, "una sola lectura de reloj en Componentes.actualiza, dentro de la rama de medir");
+  // MU2-5: Componentes.actualiza vive en apps/web/src/nucleo/componentes.ts; el reloj es deps.ahora() (performance.now, se lo da 02c) y solo se lee midiendo
+  const c2 = lee("apps/web/src/nucleo/componentes.ts"), act = c2.slice(c2.indexOf("function actualiza(fase: Fase, dt: number, t: number)"), c2.indexOf("function falla("));
+  assert.ok(act.length > 0 && /if \(R && R\.on\) \{\n[^\n]*c\.rp = R\.reg\([^\n]*\n\s*const q = deps\.ahora\(\);\n[^\n]*\n\s*R\.pasa\(c\.rp, q\);\n\s*continue;\n\s*\}/.test(act), "cada componente se mide solo si Reparto.on");
+  assert.strictEqual((act.match(/deps\.ahora\(\)|performance\.now\(\)/g) || []).length, 1, "una sola lectura de reloj en Componentes.actualiza, dentro de la rama de medir");
+  assert.match(lee("apps/web/motor/02c_componentes.js"), /var Componentes = Nucleo\.creaComponentes\(\{[\s\S]*?reparto: Reparto,\n\s*ahora: function \(\) \{ return performance\.now\(\); \},/, "02c le da el Reparto y el reloj");
   // las funciones del reparto no reservan
   const R = require("./_reservas"), rs = R.recuenta()["02c_componentes.js"];
   assert.deepStrictEqual(rs.faltan, []); assert.strictEqual(rs.total, 0, JSON.stringify(rs.detalle));

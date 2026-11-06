@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: ComponentesPuro, Reparto, Bus, Pausa, ConfigPuro, Teclas, Componentes, Config
-// Consume: 01_datos (D), 08_marcadores (listo), 09_camara (pon), 16_vida (quita), 28_depura (dep)
-// Nota: Núcleo de componentes (ADR-0023): ComponentesPuro, Bus (catálogo en contratos/eventos.json), Teclas, Componentes (registro, encendido URL > servidor > defecto, fases del bucle) y Config (GET /api/config del mismo origen al cargar, solo con D.base /teselas/… o ?api=; caída al código; contratos/config.schema.json). Publica además window.__componentes y window.__config (pruebas y ?debug). El trozo [puro:…] lo evalúa en Node pruebas/guardianes/componentes.test.js.
+// Consume: 01_datos (D), 08_marcadores (listo), 09_camara (pon), 16_vida (quita)
+// Nota: Núcleo de componentes (ADR-0023): ComponentesPuro, Bus (catálogo en contratos/eventos.json), Teclas, Componentes (registro, encendido URL > servidor > defecto, fases del bucle, filtro por mundo) y Config (GET /api/config del mismo origen al cargar, solo con D.base /teselas/… o ?api=; caída al código; contratos/config.schema.json). ComponentesPuro y Componentes viven en apps/web/src/nucleo/componentes.ts (MU2-5; el módulo los crea con Nucleo.creaComponentes y conserva Bus, Reparto, Pausa, Teclas y Config): no es un talón completo. Publica además window.__componentes y window.__config (pruebas y ?debug). El trozo [puro:…] (ConfigPuro) lo evalúan en Node pruebas/guardianes/config_motor.test.js y oficina_olivos.test.js; el Bus, componentes.test.js.
 // ===============================================================================
   // ---------- núcleo de componentes (ADR-0023, doc/sistema/COMPONENTES.md §3): el registro, el bus de eventos y las teclas.
   // Un componente es un fichero de apps/web/motor/ que en su primer nivel solo define su lógica pura y llama a Componentes.registra({ … }). Nada se
@@ -14,87 +14,9 @@
   // Componentes.api(id), que devuelve null si no está. Lo que un componente engancha con n.on / n.limpia se suelta solo al liberarlo.
   // Catálogo de eventos: contratos/eventos.json. La configuración del servidor (GET /api/config, C6/OF6: contratos/config.schema.json) la pide Config al
   // cargar (abajo); su bloque «componentes» entra por Componentes.configura y sus parámetros de la escalera y épocas, por Config.param / Config.tablaEpocas.
-  // [puro:inicio] (sin DOM ni THREE: lo evalúa en Node pruebas/guardianes/componentes.test.js)
-  var ComponentesPuro = (function () {
-    var FASES = ["mundo", "tarde", "trasRender", "pausa"];
-    var ID = /^[a-z][a-z0-9-]*$/, URLN = /^[a-z][a-z0-9]*$/;
-    function esLista(v) { return Array.isArray(v) && v.every(function (x) { return typeof x === "string" && x.length > 0; }); }
-    function num(v) { return typeof v === "number" && isFinite(v) && v >= 0; }
-    // el manifiesto: devuelve la lista de errores (vacía si vale)
-    function valida(d) {
-      var e = [];
-      if (!d || typeof d !== "object") return ["el manifiesto no es un objeto"];
-      if (typeof d.id !== "string" || !ID.test(d.id)) e.push("id: minúsculas, cifras y guiones, empezando por letra");
-      if (d.version !== undefined && !(Number.isInteger(d.version) && d.version >= 1)) e.push("version: entero ≥ 1");
-      ["consume", "expone"].forEach(function (k) { if (!esLista(d[k])) e.push(k + ": lista de nombres (puede ser vacía)"); });
-      var ev = d.eventos;
-      if (!ev || typeof ev !== "object" || !esLista(ev.escucha || []) || !esLista(ev.emite || [])) e.push("eventos: { escucha: [...], emite: [...] }");
-      var b = d.bandera;
-      if (!b || typeof b !== "object" || typeof b.defecto !== "boolean") e.push("bandera: { defecto: true|false, url?: nombre }");
-      else if (b.url !== undefined && (typeof b.url !== "string" || !URLN.test(b.url))) e.push("bandera.url: minúsculas y cifras");
-      else if (b.valor !== undefined && (typeof b.valor !== "string" || !URLN.test(b.valor) || !b.url)) e.push("bandera.valor: minúsculas y cifras (con bandera.url)");
-      var p = d.presupuesto;
-      if (!p || typeof p !== "object" || !num(p.llamadas) || !num(p.triangulos) || (p.texturasMB !== undefined && !num(p.texturasMB))) e.push("presupuesto: { llamadas, triangulos, texturasMB? } ≥ 0 (regla 6)");
-      var f = d.fases || {}, a = d.actualiza || {};
-      if (typeof f !== "object") e.push("fases: objeto");
-      Object.keys(f).forEach(function (k) {
-        if (FASES.indexOf(k) < 0) e.push("fases." + k + ": fase desconocida (hay " + FASES.join(", ") + ")");
-        else if (!num(f[k])) e.push("fases." + k + ": segundos ≥ 0 (0 = cada fotograma)");
-        if (typeof a[k] !== "function") e.push("actualiza." + k + ": falta la función de la fase");
-      });
-      Object.keys(a).forEach(function (k) { if (!(k in f)) e.push("actualiza." + k + ": fase no declarada en fases"); });
-      if (typeof d.monta !== "function") e.push("monta: función");
-      if (typeof d.libera !== "function") e.push("libera: función (obligatoria: todo recurso se suelta)");
-      if (d.cultivo !== undefined && !(typeof d.cultivo === "string" || esLista(d.cultivo))) e.push("cultivo: nombre o lista");
-      return e;
-    }
-    // el orden de montaje: quien consume lo que otro expone va después. Devuelve { orden: [ids], ciclos: [[ids]] } (con ciclos, esos no se ordenan)
-    function orden(defs) {
-      var quien = {}, ids = defs.map(function (d) { return d.id; }), dep = {};
-      defs.forEach(function (d) { (d.expone || []).forEach(function (n) { quien[n] = d.id; }); });
-      defs.forEach(function (d) { dep[d.id] = (d.consume || []).map(function (n) { return quien[n]; }).filter(function (q) { return q && q !== d.id; }); });
-      var out = [], estado = {}, ciclos = [];
-      function visita(id, pila) {
-        if (estado[id] === 2) return; if (estado[id] === 1) { ciclos.push(pila.slice(pila.indexOf(id)).concat(id)); return; }
-        estado[id] = 1; pila.push(id); dep[id].forEach(function (q) { visita(q, pila); }); pila.pop(); estado[id] = 2; out.push(id);
-      }
-      ids.forEach(function (id) { visita(id, []); });
-      return { orden: out, ciclos: ciclos, depende: dep };
-    }
-    // ?<nombre>=0|no|false|off apaga; =1|si|sí|true|on (o sin valor) enciende; si no está, undefined. Con valor (EV2: ?ui=capas), enciende si el
-    // parámetro lo nombra (?ui=capas o ?ui=capas,otra), apaga con 0|no|false|off y, si nombra otra cosa o va sin valor, undefined
-    function valorUrl(busqueda, nombre, valor) {
-      if (!nombre) return undefined;
-      var m = new RegExp("[?&]" + nombre + "(?:=([^&#]*))?(?:[&#]|$)").exec(busqueda || ""); if (!m) return undefined;
-      var v = decodeURIComponent(m[1] || "").toLowerCase();
-      if (valor) return v.split(",").indexOf(valor) >= 0 ? true : v === "0" || v === "no" || v === "false" || v === "off" ? false : undefined;
-      return v === "" || v === "1" || v === "si" || v === "sí" || v === "true" || v === "on" ? true : v === "0" || v === "no" || v === "false" || v === "off" ? false : undefined;
-    }
-    // ¿encendido? precedencia: URL > servidor (bloque «componentes» de la configuración) > defecto del manifiesto
-    function encendido(d, busqueda, servidor) {
-      var u = valorUrl(busqueda, d.bandera && d.bandera.url, d.bandera && d.bandera.valor);
-      if (u !== undefined) return { activo: u, origen: "url" };
-      var s = servidor && servidor[d.id];
-      if (s && typeof s.activo === "boolean") return { activo: s.activo, origen: "servidor" };
-      return { activo: !!(d.bandera && d.bandera.defecto), origen: "defecto" };
-    }
-    // el bloque «componentes» de la configuración (contratos/config.schema.json): { "<id>": { activo: bool, parametros?: {} } }
-    function validaConfig(c) {
-      var e = [];
-      if (!c || typeof c !== "object" || Array.isArray(c)) return ["componentes: objeto { id: { activo, parametros? } }"];
-      Object.keys(c).forEach(function (id) {
-        var x = c[id];
-        if (!ID.test(id)) e.push(id + ": id no válido");
-        if (!x || typeof x !== "object" || typeof x.activo !== "boolean") e.push(id + ": falta activo (true|false)");
-        else Object.keys(x).forEach(function (k) { if (k !== "activo" && k !== "parametros") e.push(id + "." + k + ": campo desconocido"); });
-        if (x && x.parametros !== undefined && (typeof x.parametros !== "object" || x.parametros === null || Array.isArray(x.parametros))) e.push(id + ".parametros: objeto");
-      });
-      return e;
-    }
-    // cuándo toca una fase con periodo: acumula dt; devuelve el dt acumulado si toca (y lo pone a cero) o −1
-    function toca(est, periodo, dt) { est.acum += dt; if (est.acum < periodo) return -1; var a = est.acum; est.acum = 0; return a; }
-    return { FASES: FASES, valida: valida, orden: orden, valorUrl: valorUrl, encendido: encendido, validaConfig: validaConfig, toca: toca };
-  })();
+  // [puro:inicio] (sin DOM ni THREE: lo evalúan en Node pruebas/guardianes/config_motor.test.js y oficina_olivos.test.js, con el Nucleo de verdad)
+  // ComponentesPuro (validar el manifiesto, ordenar, encender, el filtro por mundo) pasó a TypeScript (MU2-5): apps/web/src/nucleo/componentes.ts
+  var ComponentesPuro = Nucleo.ComponentesPuro;
 
   // Q0h: el reparto del JS por bloque dentro del fotograma. Sin medir (Reparto.on falso) el bucle no lee el reloj ni toca nada: cada medición es «if (rp) q = Reparto.pasa(bloque, q)» con rp leído una vez por fotograma.
   // Midiendo (30_mide.js lo enciende), pasa() suma al bloque los ms desde la marca anterior en un Float64Array preasignado (sin reservas por fotograma). Los bloques se dan de alta una vez (reg) al montar o la primera vez que se miden.
@@ -271,105 +193,16 @@
     return { registra: registra, dueno: dueno, RESERVADAS: RESERVADAS };
   })();
 
-  var Componentes = (function () {
-    var P = ComponentesPuro, defs = [], C = {}, ordenIds = [], arrancado = false, servidor = null, busqueda = "";
-    function registra(def) {
-      var e = P.valida(def);
-      if (!e.length && C[def.id]) e = ["id repetido: " + def.id];
-      if (e.length) { try { console.error("[Componentes] manifiesto no válido (" + (def && def.id) + "): " + e.join("; ")); } catch (er) {} return false; }
-      defs.push(def); C[def.id] = { def: def, activo: false, api: null, motivo: "sin arrancar", origen: "", limpia: [], est: {}, n: 0 };
-      if (arrancado) { ordena(); decide(def.id); }   // un componente que llega tarde (import() perezoso) se monta al registrarse
-      return true;
-    }
-    function ordena() { var o = P.orden(defs); ordenIds = o.orden; o.ciclos.forEach(function (c) { c.forEach(function (id) { if (C[id]) C[id].ciclo = c.join(" → "); }); }); }
-    // el contexto que recibe monta(n): lo que se engancha por aquí se suelta solo al liberar
-    function contexto(c) {
-      var n = {
-        id: c.def.id,
-        parametros: (servidor && servidor[c.def.id] && servidor[c.def.id].parametros) || {},
-        limpia: function (fn) { if (typeof fn === "function") c.limpia.push(fn); return fn; },
-        on: function (ev, fn) { return n.limpia(Bus.on(ev, fn)); },
-        emite: function (ev, datos) { return Bus.emite(ev, datos); },
-        api: api
-      };
-      return n;
-    }
-    function dependencias(c) {   // los componentes de los que consume (por su expone) y que no están montados
-      var falta = [];
-      (c.def.consume || []).forEach(function (nm) { defs.forEach(function (d) { if (d.id !== c.def.id && d.expone.indexOf(nm) >= 0 && !(C[d.id] && C[d.id].activo)) falta.push(d.id); }); });
-      return falta;
-    }
-    function monta(id) {
-      var c = C[id]; if (!c || c.activo) return !!(c && c.activo);
-      if (c.ciclo) { c.motivo = "ciclo: " + c.ciclo; return false; }
-      var falta = dependencias(c); if (falta.length) { c.motivo = "falta " + falta.join(", "); return false; }
-      var n = contexto(c);
-      try {
-        var r = c.def.monta(n);
-        c.api = r && typeof r === "object" ? r : {}; c.activo = true; c.motivo = ""; c.n++;
-        var fs = c.def.fases || {}, k = ordenIds.indexOf(id);
-        Object.keys(fs).forEach(function (f) { c.est[f] = { acum: fs[f] > 0 ? fs[f] * ((k + 1) % 4) / 4 : 0 }; });   // repartir los «tarde» entre fotogramas
-      } catch (e) {
-        c.limpia.splice(0).forEach(function (fn) { try { fn(); } catch (e2) {} });
-        c.motivo = "error al montar: " + (e && e.message || e); try { console.error("[Componentes] " + id, e); } catch (e2) {}
-        return false;
-      }
-      Bus.emite("componentes:cambia", { id: id, activo: true });
-      return true;
-    }
-    function libera(id, motivo) {
-      var c = C[id]; if (!c || !c.activo) return false;
-      // primero, los que dependen de este
-      defs.forEach(function (d) { if (d.id !== id && C[d.id].activo && (d.consume || []).some(function (nm) { return c.def.expone.indexOf(nm) >= 0; })) libera(d.id, "sin " + id); });
-      try { c.def.libera(c.api); } catch (e) { try { console.error("[Componentes] libera " + id, e); } catch (e2) {} }
-      c.limpia.splice(0).reverse().forEach(function (fn) { try { fn(); } catch (e) {} });
-      c.activo = false; c.api = null; c.motivo = motivo || "apagado";
-      Bus.emite("componentes:cambia", { id: id, activo: false });
-      return true;
-    }
-    function decide(id) {
-      var c = C[id], q = P.encendido(c.def, busqueda, servidor); c.origen = q.origen;
-      if (q.activo) monta(id); else if (c.activo) libera(id, "apagado (" + q.origen + ")"); else c.motivo = "apagado (" + q.origen + ")";
-    }
-    function leeConfigPagina() {   // si la página trae <script type="application/json" id="config"> (el servidor puede dejarla ahí), su bloque «componentes»
-      try { var el = document.getElementById("config"); if (el && el.textContent.trim()) { var j = JSON.parse(el.textContent); return j && j.componentes; } } catch (e) {}
-      return null;
-    }
-    function configura(bloque) {   // el bloque «componentes» de /api/config (C6) o de la página; enciende y apaga en caliente (la URL sigue mandando)
-      var e = P.validaConfig(bloque);
-      if (e.length) { try { console.warn("[Componentes] configuración no válida: " + e.join("; ")); } catch (er) {} return false; }
-      servidor = bloque;
-      if (arrancado) ordenIds.forEach(decide);
-      return true;
-    }
-    function arranca() {
-      if (arrancado) return; arrancado = true; busqueda = (typeof location !== "undefined" && location.search) || "";
-      var cfg = leeConfigPagina(); if (cfg) configura(cfg);
-      ordena(); ordenIds.forEach(decide);
-    }
-    // el bucle (90_final.js): una fase para todos los encendidos, en orden de dependencias. Un componente que falla en su fase se apaga (y lo dice) para no
-    // romper el fotograma de los demás
-    function actualiza(fase, dt, t) {
-      for (var i = 0; i < ordenIds.length; i++) {
-        var c = C[ordenIds[i]]; if (!c.activo) continue;
-        var fn = c.def.actualiza && c.def.actualiza[fase]; if (!fn) continue;
-        var per = c.def.fases[fase], d = dt;
-        if (per > 0) { d = P.toca(c.est[fase], per, dt); if (d < 0) continue; }
-        if (Reparto.on) { if (c.rp === undefined) c.rp = Reparto.reg("c:" + c.def.id); var q = performance.now(); try { fn(d, t, c.api); } catch (e) { try { console.error("[Componentes] " + c.def.id + " en «" + fase + "»", e); } catch (e2) {} libera(c.def.id, "error en «" + fase + "»: " + (e && e.message || e)); } Reparto.pasa(c.rp, q); continue; }
-        try { fn(d, t, c.api); } catch (e) { try { console.error("[Componentes] " + c.def.id + " en «" + fase + "»", e); } catch (e2) {} libera(c.def.id, "error en «" + fase + "»: " + (e && e.message || e)); }
-      }
-    }
-    function api(id) { var c = C[id]; return c && c.activo ? c.api : null; }
-    function activo(id) { return !!(C[id] && C[id].activo); }
-    function enciende(id, si) { var c = C[id]; if (!c) return false; return si ? monta(id) : libera(id, "apagado a mano"); }
-    function resumen() {
-      return (ordenIds.length ? ordenIds : defs.map(function (d) { return d.id; })).map(function (id) {
-        var c = C[id], d = c.def;
-        return { id: id, activo: c.activo, origen: c.origen, motivo: c.motivo, montajes: c.n, fases: Object.keys(d.fases || {}), presupuesto: d.presupuesto, cultivo: d.cultivo || null };
-      });
-    }
-    return { registra: registra, arranca: arranca, actualiza: actualiza, configura: configura, api: api, activo: activo, enciende: enciende, libera: function (id) { return libera(id, "apagado a mano"); }, resumen: resumen };
-  })();
+  // el registro de componentes y su ciclo de vida (MU2-5): migrados a TypeScript, en apps/web/src/nucleo/componentes.ts (creaComponentes), con el filtro
+  // por mundo («mundos» en el manifiesto; «mundo:entra» y «mundo:sale» del Bus). De aquí recibe el Bus, el Reparto, el reloj, la URL, el documento y la consola.
+  var Componentes = Nucleo.creaComponentes({
+    bus: Bus,
+    reparto: Reparto,
+    ahora: function () { return performance.now(); },
+    busqueda: function () { return (typeof location !== "undefined" && location.search) || ""; },
+    documento: typeof document !== "undefined" ? document : null,
+    consola: typeof console !== "undefined" ? console : null
+  });
   window.__componentes = function () { return Componentes.resumen(); };   // pruebas
 
   // la configuración del servidor, pedida UNA vez al cargar (ConfigPuro.lee): Config.listo (promesa que nunca falla, con la configuración o null),

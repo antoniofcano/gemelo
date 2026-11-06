@@ -1,7 +1,9 @@
 "use strict";
 // Componentes del mundo (ADR-0023, doc/sistema/COMPONENTES.md): el núcleo (apps/web/motor/02c_componentes.js), los manifiestos de los componentes, el
 // catálogo de eventos (contratos/eventos.json) y la configuración del servidor (contratos/config.schema.json). En Node, sin navegador:
-//   · ComponentesPuro (validar, ordenar, encender) y el Bus, evaluados tal cual;
+//   · ComponentesPuro (validar, ordenar, encender, el filtro por mundo) y el registro viven en apps/web/src/nucleo/componentes.ts (MU2-5): su lógica la
+//     prueba Vitest (nucleo/componentes.test.ts); aquí queda lo que cruza con el legado: el Bus (02c) evaluado tal cual, el esquema de la configuración
+//     frente a validaConfig, el catálogo de eventos frente al código (también el de apps/web/src/nucleo/) y 02c entero con el Nucleo de verdad;
 //   · el registro de verdad con componentes de mentira: ciclo de vida, fases, apagado por error, configuración en caliente, teclas;
 //   · cada fichero componente: su manifiesto válido (presupuesto y libera), consume resuelto y sin ciclos, presupuestos dentro del de diseño, eventos
 //     iguales en el manifiesto, en el código y en el catálogo, y que no expone nada a los demás ni consume de otro componente;
@@ -16,8 +18,11 @@ const contratoModulos = require(path.join(RAIZ, "pruebas", "contrato_modulos.js"
 const MOTOR = path.join(RAIZ, "apps", "web", "motor");
 const NUCLEO = lee("apps/web/motor/02c_componentes.js");
 const trozo = (s, ini, fin) => { const i = s.indexOf(ini), f = s.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas " + ini + " … " + fin); return s.slice(i, f); };
-const PURO = trozo(NUCLEO, "// [puro:inicio]", "// [puro:fin]");
-const { ComponentesPuro: P, Bus: BusPuro } = new Function("\"use strict\";\n" + PURO + "\nreturn { ComponentesPuro, Bus };")();
+const Nucleo = require("./_nucleo");   // el núcleo de TypeScript (MUNDOS §9.3): ComponentesPuro y creaComponentes (MU2-5)
+const P = Nucleo.ComponentesPuro;
+// el Bus sigue en el legado (02c): se evalúa su trozo tal cual, entre «var Bus» y la Pausa
+const BusPuro = new Function("\"use strict\";\n" + trozo(NUCLEO, "  var Bus = (function () {", "\n\n  // el mundo en pausa") + "\nreturn Bus;")();
+const NUCLEO_TS = path.join(RAIZ, "apps", "web", "src", "nucleo");
 const json = f => JSON.parse(lee(f));
 const ajv = new Ajv2020({ strict: true, strictRequired: false, allErrors: true });
 const ESQ_EV = json("contratos/eventos.schema.json"), CATALOGO = json("contratos/eventos.json"), ESQ_CFG = json("contratos/config.schema.json");
@@ -34,45 +39,7 @@ function manifiesto(def = {}) {
     fases: {}, actualiza: {}, monta: () => ({}), libera: () => {} }, def);
 }
 
-// ---------- el trozo puro
-test("el manifiesto: lo que vale y lo que no (presupuesto y libera obligatorios, fases conocidas con su función)", () => {
-  assert.deepStrictEqual(P.valida(manifiesto()), []);
-  assert.deepStrictEqual(P.valida(manifiesto({ fases: { tarde: 0.5, mundo: 0 }, actualiza: { tarde() {}, mundo() {} }, cultivo: "olivar", version: 2, bandera: { defecto: false, url: "cosa2" } })), []);
-  const mal = {
-    "sin libera": { libera: undefined }, "sin presupuesto": { presupuesto: undefined }, "presupuesto negativo": { presupuesto: { llamadas: -1, triangulos: 0 } },
-    "fase desconocida": { fases: { luego: 1 }, actualiza: { luego() {} } }, "fase sin función": { fases: { tarde: 1 } }, "función sin fase": { actualiza: { mundo() {} } },
-    "id con mayúsculas": { id: "Fichas" }, "bandera sin defecto": { bandera: {} }, "url rara": { bandera: { defecto: true, url: "a-b" } }, "consume no es lista": { consume: "TiempoVivo" },
-    "sin monta": { monta: undefined }, "eventos mal": { eventos: { escucha: "x" } }
-  };
-  for (const [k, v] of Object.entries(mal)) assert.notDeepStrictEqual(P.valida(manifiesto(v)), [], "debería fallar: " + k);
-});
-
-test("el orden de montaje: quien consume lo que otro expone va después; los ciclos se detectan", () => {
-  const a = manifiesto({ id: "a", expone: ["A"] }), b = manifiesto({ id: "b", consume: ["A"], expone: ["B"] }), c = manifiesto({ id: "c", consume: ["B", "TiempoVivo"] });
-  const o = P.orden([c, b, a]);
-  assert.deepStrictEqual(o.orden, ["a", "b", "c"]); assert.deepStrictEqual(o.ciclos, []);
-  const x = manifiesto({ id: "x", consume: ["Y"], expone: ["X"] }), y = manifiesto({ id: "y", consume: ["X"], expone: ["Y"] });
-  assert.ok(P.orden([x, y]).ciclos.length > 0, "x ↔ y es un ciclo");
-});
-
-test("encendido: URL > servidor > defecto del manifiesto", () => {
-  const d = manifiesto({ id: "fichas-tiempo", bandera: { defecto: true, url: "fichas" } });
-  assert.deepStrictEqual(P.encendido(d, "", null), { activo: true, origen: "defecto" });
-  assert.deepStrictEqual(P.encendido(d, "?a=1", { "fichas-tiempo": { activo: false } }), { activo: false, origen: "servidor" });
-  assert.deepStrictEqual(P.encendido(d, "?debug&fichas=1", { "fichas-tiempo": { activo: false } }), { activo: true, origen: "url" });
-  assert.deepStrictEqual(P.encendido(d, "?fichas=0", null), { activo: false, origen: "url" });
-  for (const [q, v] of [["?fichas", true], ["?fichas=no", false], ["?fichas=sí", true], ["?x=1&fichas=off#a", false], ["?fichasx=0", undefined], ["?fichas=quizá", undefined]]) assert.strictEqual(P.valorUrl(q, "fichas"), v, q);
-  assert.deepStrictEqual(P.encendido(manifiesto({ bandera: { defecto: false } }), "?x=1", {}), { activo: false, origen: "defecto" });
-  // EV2: bandera con valor (?ui=capas): enciende si el parámetro lo nombra, apaga con 0/no/off; con otra cosa mandan el servidor o el defecto
-  const c = manifiesto({ id: "fichas-mundo", bandera: { defecto: false, url: "ui", valor: "capas" } });
-  for (const [q, v] of [["?ui=capas", true], ["?ui=otra,capas", true], ["?ui=CAPAS", true], ["?ui=0", false], ["?ui=off", false], ["?ui", undefined], ["?ui=1", undefined], ["?ui=capasx", undefined], ["", undefined]]) assert.strictEqual(P.valorUrl(q, "ui", "capas"), v, q);
-  assert.deepStrictEqual(P.encendido(c, "?ui=capas", null), { activo: true, origen: "url" });
-  assert.deepStrictEqual(P.encendido(c, "?ui=otra", { "fichas-mundo": { activo: true } }), { activo: true, origen: "servidor" });
-  assert.deepStrictEqual(P.encendido(c, "", null), { activo: false, origen: "defecto" });
-  assert.strictEqual(P.valida(manifiesto({ bandera: { defecto: false, valor: "capas" } })).filter(e => /valor/.test(e)).length, 1, "valor sin url, no");
-  assert.strictEqual(P.valida(manifiesto({ bandera: { defecto: false, url: "ui", valor: "Capas!" } })).filter(e => /valor/.test(e)).length, 1);
-});
-
+// ---------- lo que cruza con el legado o con los contratos (la lógica pura de ComponentesPuro, en nucleo/componentes.test.ts: Vitest)
 test("la configuración del servidor: contratos/config.schema.json y validaConfig del motor dicen lo mismo; el ejemplo vale", () => {
   const v = ajv.compile(ESQ_CFG), ej = json("contratos/config-ejemplo.json");
   assert.ok(v(ej), JSON.stringify(v.errors)); assert.deepStrictEqual(P.validaConfig(ej.componentes), []);
@@ -101,8 +68,8 @@ function nucleo({ busqueda = "", config = null, extra = "", globales = {} } = {}
   const documento = { getElementById: id => id === "config" && config ? { textContent: JSON.stringify(config) } : null };
   const consola = { error: (...a) => errores.push(a.map(String).join(" ")), warn: (...a) => errores.push(a.map(String).join(" ")), log() {} };
   const nombres = Object.keys(globales);
-  const f = new Function(...["window", "location", "document", "console"].concat(nombres), "\"use strict\";\n" + sinCabecera(NUCLEO) + "\n" + extra + "\nreturn { Componentes, Bus, Teclas, ComponentesPuro, Pausa };");
-  const r = f(...[ventana, { search: busqueda }, documento, consola].concat(nombres.map(n => globales[n])));
+  const f = new Function(...["window", "location", "document", "console", "Nucleo"].concat(nombres), "\"use strict\";\n" + sinCabecera(NUCLEO) + "\n" + extra + "\nreturn { Componentes, Bus, Teclas, ComponentesPuro, Pausa };");
+  const r = f(...[ventana, { search: busqueda }, documento, consola, Nucleo].concat(nombres.map(n => globales[n])));
   r.pulsa = (code, extra2) => { const e = Object.assign({ code, target: { tagName: "CANVAS" }, prevenida: false, preventDefault() { e.prevenida = true; } }, extra2 || {}); teclado.forEach(fn => fn(e)); return e; };
   r.errores = errores; r.ventana = ventana;
   return r;
@@ -156,6 +123,33 @@ test("encendido en el motor: ?bandera manda; la configuración de la página o d
   r = nucleo(); r.Componentes.arranca(); assert.deepStrictEqual(r.Componentes.resumen(), [], "sin componentes también arranca");
 });
 
+test("MU2-5 en el motor: Componentes (nucleo/componentes.ts) escucha «mundo:entra» y «mundo:sale» en el Bus del legado y solo corre las fases del mundo activo", () => {
+  const { Componentes: C, Bus, errores } = nucleo(), log = [];
+  const mk = (id, mundos) => manifiesto(Object.assign({ id, fases: { mundo: 0 }, actualiza: { mundo: () => log.push(id) },
+    monta: () => { log.push("monta " + id); return {}; }, libera: () => log.push("libera " + id) }, mundos ? { mundos } : {}));
+  assert.ok(C.registra(mk("fuera"))); assert.ok(C.registra(mk("dentro", ["molino"]))); assert.ok(C.registra(mk("ambos", ["exterior", "molino"])));
+  assert.ok(!C.registra(mk("roto", ["luna"])), "un mundo que no existe no vale");
+  C.arranca();
+  assert.deepStrictEqual(log.splice(0), ["monta fuera", "monta ambos"], "al arrancar está vivo el exterior: el del molino espera");
+  assert.match(C.resumen().find(r => r.id === "dentro").motivo, /fuera de su mundo \(molino\)/);
+  assert.strictEqual(C.mundo(), "exterior");
+  C.actualiza("mundo", 0.016, 0); assert.deepStrictEqual(log.splice(0), ["fuera", "ambos"]);
+  const ej = id => CATALOGO.eventos[id].ejemplo;   // los ejemplos del contrato: el exterior sale hacia el molino; el molino entra
+  Bus.emite("mundo:sale", ej("mundo:sale")); assert.strictEqual(C.mundo(), null);
+  C.actualiza("mundo", 0.016, 1); assert.deepStrictEqual(log.splice(0), [], "a oscuras no corre nadie");
+  Bus.emite("mundo:entra", ej("mundo:entra")); assert.strictEqual(C.mundo(), "molino");
+  assert.deepStrictEqual(log.splice(0), ["monta dentro"], "al entrar en el molino se monta lo suyo");
+  C.actualiza("mundo", 0.016, 2); assert.deepStrictEqual(log.splice(0), ["dentro", "ambos"], "en el molino: lo del molino y lo de los dos; lo del exterior, congelado");
+  assert.ok(C.activo("fuera"), "congelado: montado, sin fases");
+  assert.strictEqual(C.liberaMundo("exterior"), 1); assert.deepStrictEqual(log.splice(0), ["libera fuera"], "se libera el exterior: solo lo que era solo suyo");
+  assert.match(C.resumen().find(r => r.id === "fuera").motivo, /su mundo se liberó \(exterior\)/);
+  Bus.emite("mundo:sale", { id: "molino", desde: "molino", hacia: "exterior" }); Bus.emite("mundo:entra", { id: "exterior", desde: "molino", hacia: "exterior" });
+  assert.deepStrictEqual(log.splice(0), ["monta fuera"], "de vuelta al exterior (otra vez vivo), se vuelve a montar");
+  C.actualiza("mundo", 0.016, 3); assert.deepStrictEqual(log.splice(0), ["fuera", "ambos"]);
+  assert.deepStrictEqual(C.resumen().map(r => [r.id, r.mundos]), [["fuera", ["exterior"]], ["dentro", ["molino"]], ["ambos", ["exterior", "molino"]]]);
+  assert.ok(errores.some(e => /mundos: lista/.test(e)), "el manifiesto roto lo dice"); assert.strictEqual(errores.length, 1);
+});
+
 test("Teclas: las de los módulos de siempre no se pueden coger; una tecla, un dueño; nada con el foco en un campo, con Ctrl/Alt/Cmd ni al repetir", () => {
   const { Teclas: T, pulsa } = nucleo();
   for (const c of ["Digit1", "Numpad6", "KeyF", "Escape", "KeyW", "Space", "KeyH", "KeyM", "KeyL", "Enter"]) assert.strictEqual(T.registra(c, () => {}), null, c + " es de un módulo de siempre");
@@ -183,15 +177,18 @@ function manifiestos() {
   }
   return out;
 }
-/** quién emite y quién escucha cada evento en el código (sin comentarios): Bus.emite/Bus.on y, dentro de un componente, n.emite/n.on */
+/** quién emite y quién escucha cada evento en el código (sin comentarios): Bus.emite/Bus.on y, dentro de un componente, n.emite/n.on; en el núcleo de
+ *  TypeScript (apps/web/src/nucleo/*.ts, sin las pruebas), bus.emite/bus.on y avisa("…") (el gestor de mundos), con el nombre «nucleo/<fichero>» (MU2-5) */
 function eventosDelCodigo() {
-  const m = {};
+  const m = {}, apunta = (ev, emite, mod) => { const e = m[ev] = m[ev] || { emiten: new Set(), escuchan: new Set() }; (emite ? e.emiten : e.escuchan).add(mod); };
   for (const f of ficherosMotor()) {
     const s = sinComentarios(sinCabecera(fs.readFileSync(path.join(MOTOR, f), "utf8"))), mod = f.slice(0, -3);
-    for (const x of s.matchAll(/\b(?:Bus|n)\.(emite|on)\(\s*"([^"]+)"/g)) {
-      const e = m[x[2]] = m[x[2]] || { emiten: new Set(), escuchan: new Set() };
-      (x[1] === "emite" ? e.emiten : e.escuchan).add(mod);
-    }
+    for (const x of s.matchAll(/\b(?:Bus|n)\.(emite|on)\(\s*"([^"]+)"/g)) apunta(x[2], x[1] === "emite", mod);
+  }
+  for (const f of fs.readdirSync(NUCLEO_TS).filter(f => f.endsWith(".ts") && !f.endsWith(".test.ts")).sort()) {
+    const s = sinComentarios(fs.readFileSync(path.join(NUCLEO_TS, f), "utf8")), mod = "nucleo/" + f.slice(0, -3);
+    for (const x of s.matchAll(/\bbus\.(emite|on)\(\s*"([^"]+)"/g)) apunta(x[2], x[1] === "emite", mod);
+    for (const x of s.matchAll(/\bavisa\(\s*"([^"]+)"/g)) apunta(x[1], true, mod);
   }
   return m;
 }
@@ -233,7 +230,19 @@ test("consume resuelto y sin ciclos; un componente no expone nada en su primer n
 
 test("eventos: el catálogo cumple su esquema y dice exactamente quién emite y quién escucha; nadie escucha lo que nadie emite; los manifiestos coinciden", () => {
   const v = ajv.compile(ESQ_EV); assert.ok(v(CATALOGO), JSON.stringify(v.errors));
-  for (const [n, e] of Object.entries(CATALOGO.eventos)) assert.doesNotThrow(() => ajv.compile(e.datos), n + ": datos debe ser un esquema JSON");
+  for (const [n, e] of Object.entries(CATALOGO.eventos)) {
+    let val; assert.doesNotThrow(() => { val = ajv.compile(e.datos); }, n + ": datos debe ser un esquema JSON");
+    if (e.ejemplo !== undefined) assert.ok(val(e.ejemplo), n + ": el ejemplo no cumple «datos»: " + JSON.stringify(val.errors));   // MU2-5: el fixture del evento
+  }
+  // MU2-5: «mundo:entra» y «mundo:sale» llevan los datos de AvisoMundo (nucleo/mundos.ts) con los ids de IdMundo, y los dos traen su ejemplo
+  for (const n of ["mundo:entra", "mundo:sale"]) {
+    const e = CATALOGO.eventos[n]; assert.ok(e && e.ejemplo, n + ": en el catálogo, con su ejemplo");
+    assert.deepStrictEqual(e.datos.required, ["id", "desde", "hacia"], n);
+    assert.deepStrictEqual(e.datos.properties.id.enum, P.MUNDOS.slice(), n + ": los mundos son los de IdMundo (ComponentesPuro.MUNDOS)");
+    const v2 = ajv.compile(e.datos); assert.ok(!v2(Object.assign({}, e.ejemplo, { id: "luna" })), n + ": un mundo que no existe no vale");
+  }
+  assert.ok(ajv.compile(CATALOGO.eventos["mundo:entra"].datos)({ id: "exterior", desde: null, hacia: "exterior" }), "al arrancar, desde es null");
+  assert.match(lee("apps/web/src/nucleo/mundos.ts"), /avisa\?\(evento: "mundo:entra" \| "mundo:sale", datos: AvisoMundo\)/, "el gestor los emite por deps.avisa");
   const cod = eventosDelCodigo();
   for (const [n, e] of Object.entries(cod)) {
     assert.ok(CATALOGO.eventos[n], "el evento «" + n + "» no está en contratos/eventos.json");
