@@ -47,9 +47,9 @@ Son tres. Pasados a TSL, desbloquean a casi todos:
 | 8 | `apps/web/src/mundos/exterior/suelo-fondo.ts` (antes `04e_suelo_fondo.js`) | `suelo-fondo` | Lambert + parche | mosaico sRGB → lineal | sí | no | no | tinte de `matSuelo` (indirecto) | B — **hecho (MU5-n, A3-1b):** `define("suelo-fondo", { clasico, tsl })`, la TSL apagada |
 | 9 | `05_nube.js` | `nube-lidar` | Points + `parcheTiempo` | nube LiDAR con sombra de nubes | sí | CPU (tinte) | no | nubes, tinte | M (puntos de 1 px, MULTIVIEW §2.3) |
 | 10 | `06_arboles.js` | `copa-l0`, `tronco-l0` | Lambert + `colorVertSRGB` | color por vértice en sRGB | sí | no | no | no | B |
-| 11 | `07a_catalogo.js` | `copa-l1`, `tronco-l1` | Lambert + `parcheTiempo` (instanciado) | silueta rota por ruido, motas, envés en el borde | sí | no | no | nubes, helada | M / B |
-| 12 | `07ab_generados.js` + `apps/web/olivo/materiales.js` | `gen-olivo` | Standard + `encadena` | luz (`parcheTiempo` en el mundo), color por lote en sRGB, fundido por tramado (`gl_DrawID`, `BatchedMesh`) | sí | no | no | nubes, helada | **A** |
-| 13 | `07ab_generados.js` (×2) | `gen-profundidad` | `MeshDepthMaterial` + `encadena` | el mismo fundido en la sombra | — | no | no | no | **A** (sin conversión automática) |
+| 11 | `apps/web/src/mundos/exterior/catalogo.ts` (antes `07a_catalogo.js`) | `copa-l1`, `tronco-l1` | Lambert + `parcheTiempo` (instanciado) | silueta rota por ruido, motas, envés en el borde | sí | no | no | nubes, helada | M / B — **TSL parcial (MU5-n, A3-2a):** `define` con clásico y TSL apagada; le faltan las nubes y la helada (§8) |
+| 12 | `apps/web/src/mundos/exterior/generados-sombreado.ts` (antes `07ab_generados.js`) + `apps/web/olivo/materiales.js` | `gen-olivo` | Standard + `encadena` | luz (`parcheTiempo` en el mundo), color por lote en sRGB, fundido por tramado (`gl_DrawID`, `BatchedMesh`) | sí | no | no | nubes, helada | **A** — **TSL parcial (MU5-n, A3-2a):** el fundido de las instanciadas y los puntos; le faltan el de las mallas por lotes y la luz (§8) |
+| 13 | `apps/web/src/mundos/exterior/generados-sombreado.ts` (×2: las sombras de las hojas y las de las mallas por lotes) | `gen-profundidad` | `MeshDepthMaterial` + `encadena` | el mismo fundido en la sombra | — | no | no | no | **A** (sin conversión automática) — **TSL parcial (MU5-n, A3-2a)**, sin verificar su vía en el `WebGPURenderer` (§8) |
 | 14 | `07ac_lejanos.js` | `impostor-lejano` | Lambert + parche (recorte alfa) | impostores de 4 variantes, normales del atlas, luz y fundido de `Generados` | sí | no | no | nubes, helada | **A** |
 | 15 | `07ac_lejanos.js` | `impostor-sustituto` | Lambert + parche | sustituto por variante y vista (con silueta, `texelFetch`) | sí | no | no | no | **A** |
 | 16 | `14_historia.js` | `resalte-parcela` | Basic + parche | resalte que sigue `uExag` (`UN.uExag`) | sí | no | no | no | B |
@@ -68,9 +68,10 @@ Son tres. Pasados a TSL, desbloquean a casi todos:
 ### 1.4 Los recuentos
 
 - **Por la fábrica:** 23 sitios con nombre.
-  - 2 `define` (MU5-n): `terreno` (A3-1a, `src/mundos/exterior/terreno.ts`) y `suelo-fondo` (A3-1b, antes el `parchea` de `04e`, en `mundos/exterior/suelo-fondo.ts`), cada uno con su clásico y su TSL.
-  - 9 `parchea`: `05`, `06` ×2, `07a` ×2, `07ac` ×2, `14` y `44`.
-  - 4 `encadena`: `07ab` ×3 y `26b`.
+  - 6 `define` (MU5-n): `terreno` (A3-1a, `src/mundos/exterior/terreno.ts`), `suelo-fondo` (A3-1b, antes el `parchea` de `04e`, en `mundos/exterior/suelo-fondo.ts`), `copa-l1` y `tronco-l1` (A3-2a, antes los `parchea` de `07a`, en `mundos/exterior/catalogo.ts`) y `gen-olivo` y `gen-profundidad` (A3-2a, antes los 3 `encadena` de `07ab`, en `mundos/exterior/generados-sombreado.ts`; `gen-profundidad` en dos sitios), cada uno con su clásico y su TSL (parcial: §1.5 y §8).
+  - 7 `parchea`: `05`, `06` ×2, `07ac` ×2, `14` y `44`.
+  - 1 `encadena`: `26b`.
+  - `materiales_f1.test.js` los cuenta en `motor/` y en `src/mundos/` (los `define` con un literal o con su constante `MATERIAL_…`).
   - 8 `sombreador`: `16`, `18`, `19`, `22b` ×2, `23`, `29` y `38`.
   - Los cuenta por nombre `Materiales.inventario()` al cargar.
 - **Fuera de la fábrica:** 6 sitios, que vigila el trinquete de `materiales_f1.test.js`.
@@ -221,3 +222,38 @@ Los cuatro módulos de la tanda A3-1b pasan a `apps/web/src/mundos/exterior/` co
 - **Cobertura (`Materiales.cobertura()`):** `suelo-fondo` tiene clásico y TSL; el resto de la tabla del §1 sigue como estaba.
 - **Pruebas:** `suelo-fondo.test.ts` (el material sale de la fábrica con su dueño, mismo parche y misma clave de programa, `libera()` lo suelta, y la TSL con `three/webgpu` de verdad) y `pruebas/guardianes/materiales_f1.test.js` (el trinquete de `src/`: el fichero con `onBeforeCompile` lo registra con `.define(`).
 - **No probado:** que la TSL de `suelo-fondo` se vea igual que la clásica (capturas por material: MU6) ni en el Quest.
+
+## 8. Lo hecho en A3-2a (2026-11-06): el catálogo y los olivos generados
+
+Los dos módulos pasan a `apps/web/src/mundos/exterior/` como componentes de los mundos `["exterior"]` (MUNDOS §2, «Cómo quedó (MU5-n, A3-2a)»), con los tres commits de la receta del §5 cada uno.
+
+| Módulo | 1.er commit (TS y componente) | 2.º commit (materiales por la fábrica) | 3.er commit (TSL apagada) |
+|---|---|---|---|
+| `07a_catalogo.js` → `catalogo.ts` (componente `catalogo-olivos`) | hecho | hecho: `copa-l1` y `tronco-l1` pasan de `parchea` a `define` + `Materiales.de("catalogo-olivos").crea`; el clásico es el Lambert blanco con color por vértice y el MISMO parche asignado tal cual (la clave de programa no cambia) | **parcial** (§8.1) |
+| `07ab_generados.js` → `generados*.ts` (componente `olivos-generados`) | hecho | hecho: `gen-olivo` y `gen-profundidad` pasan de `encadena` a `define` + `Materiales.de("olivos-generados").crea`; el clásico encadena el parche con el `encadena()` de la biblioteca y las mismas claves (`gen-luz-fundido`, `gen-fundido`) | **parcial** (§8.1) |
+
+- **Fuera de la fábrica:** ninguna fila de `FUERA` que bajar: los dos ya pasaban por ella. La de `apps/web/olivo/materiales.js` es el `encadena()` de la biblioteca, que se sigue usando y no cambia.
+- **Los impostores** (`impostor-lejano`, `impostor-sustituto`, filas 14 y 15) y sus texturas son de `07ac_lejanos.js` (otra tarea, A3-2b): `07ab` solo le presta `uFun`, los parches de luz y fundido, las variantes y la fila de impostores (`Generados.lejanos`), así que no se tocan aquí.
+
+### 8.1 Las variantes TSL: lo que hacen y lo que les falta
+
+Todas viven junto a su clásico (una sola fuente), están **apagadas** (solo las daría la fábrica con el `WebGPURenderer`, MU6) y son **parciales**. Probadas en Vitest con `three/webgpu` y `three/tsl` de verdad: se construyen con sus nodos y la ruta es `tsl` solo con el renderizador nuevo (`catalogo.test.ts`, `generados.test.ts`). **No comprobado:** que el grafo compile (sin renderizador en Node) ni que se vea igual (capturas: MU6). **No son equivalentes al clásico.**
+
+- **`copa-l1` y `tronco-l1`** (`MeshLambertNodeMaterial`, `vertexColors` en `false`):
+  - **lleva:** el color por vértice pasado de sRGB a lineal (`sRGBTransferEOTF`, lo que hace `colorVertSRGB`) por el color del material; en la copa, la silueta rota por ruido hacia el borde (`maskNode`: se descarta donde `nz < (vRim − 0,72) · 2,8`), las motas (`× 0,74 + 0,50 · nz2`) y el envés plateado del borde, con las cuentas del GLSL;
+  - **falta:** la sombra de nubes y la helada (`parcheTiempo`, fila 2, sin TSL aún);
+  - **difiere:** la semilla de cada olivo sale de su índice de instancia (`instanceIndex`), no de la posición de su matriz (`instanceMatrix[3].xz`): otro reparto del ruido entre olivos; y `vRim` se calcula por fragmento (`normalView`, `positionViewDirection`), no por vértice.
+- **`gen-olivo`** (`MeshStandardNodeMaterial` o `PointsNodeMaterial`, con las propiedades del clásico y el MISMO objeto de color, que la calibración de la luz lineal multiplica después):
+  - **lleva:** el fundido por tramado de las piezas instanciadas (ramitas, relleno, tarjetas) y de los puntos: el código del atributo `aFun` (rol y ranura), `f = uFun` en la ranura 0 o el peso de `uBanda[ranura]` en las demás, y el ruido de gradiente entrelazado de pantalla (`screenCoordinate`), como `maskNode` y `maskShadowNode`, con los MISMOS `uFun` y `uBanda` que mueve `Generados.paso()` y que usan los lejanos;
+  - **falta:** (1) el fundido de las mallas por lotes (corteza, madera muerta, olivas: el código va en el alfa del color por instancia, que el GLSL lee con `getBatchingColor(gl_DrawID)`): con la TSL entrarían y saldrían de golpe; (2) la luz del motor (`parcheLuz`: la sombra de nubes y la helada de `parcheTiempo` en la posición del mundo, y el color por lote leído en sRGB).
+- **`gen-profundidad`** (un `MeshBasicNodeMaterial` sin color, con el mapa y el recorte del clásico y, en las sombras de las hojas, el mismo fundido como `maskShadowNode`):
+  - **[NO VERIFICADO]** que el `WebGPURenderer` use `customDepthMaterial`; la vía segura es el `maskShadowNode` del material principal, que ya lleva `gen-olivo`. El motor no enciende las sombras (L5-12), así que hoy la profundidad no se dibuja en ninguna ruta;
+  - **falta:** el fundido de la profundidad de las mallas por lotes (sin `aFun`).
+- **La biblioteca no recoge lo que devuelve su parche** (`creaMateriales(…, { parche })`): `generados.ts` anota lo que da la fábrica y lo pone en `mats` al acabar. Con el clásico es el mismo material (no cambia nada); con la TSL, el `NodeMaterial` (probado en `generados.test.ts`).
+
+### 8.2 Los ciclos de vida (`libera()`)
+
+- **`catalogo-olivos`:** las geometrías por procedimiento (que se rehacen si se vuelven a pedir), las de los modelos instalados y los dos materiales (por la fábrica). Avisa a los oyentes si había modelos.
+- **`olivos-generados`:** el lote (geometrías, `BatchedMesh` e `InstancedMesh` con su `dispose`), su grupo, los materiales del constructor con sus texturas (`mats.libera` de la biblioteca), los dos de profundidad (por la fábrica), el trabajador, los trabajos de la cola propia (se cierran sin acabarlos) y la caché de recetas (las recetas en uso y la caché en memoria de la biblioteca; **la de IndexedDB no**, que es persistente a propósito, O5). Lo que llega tarde (el constructor, el manifiesto, una receta del trabajador, una descarga) se tira.
+- **Pruebas de memoria** (Vitest, sin GPU: no hay `renderer.info`): tras montar y liberar no queda viva ninguna geometría de lo que cuelga del grupo, ningún material ni textura (`generados.test.ts`); y las geometrías vivas del catálogo vuelven a las de antes (`catalogo.test.ts`, con un THREE que las cuenta).
+- **No probado:** en un navegador, en el Quest y en iPhone (esta tarea no abrió Chrome).
