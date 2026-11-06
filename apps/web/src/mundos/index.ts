@@ -56,3 +56,5 @@ export { ID_PAISAJE, creaPaisaje, manifiestoPaisaje } from "./exterior/paisaje.t
 export type { DatosPaisaje, DepsPaisaje, Paisaje } from "./exterior/paisaje.ts";
 export { COLB, ID_BALIZAS, creaBalizas, manifiestoBalizas } from "./exterior/balizas.ts";
 export type { Balizas, DepsBalizas } from "./exterior/balizas.ts";
+export { ID_LINDES, LindesPuro, creaLindes, manifiestoLindes } from "./exterior/lindes.ts";
+export type { DepsLindes, EstadoLindes, LibLineas } from "./exterior/lindes.ts";

@@ -168,7 +168,7 @@
       "escuchan": [
         "30_mide",
         "38_presencia_compartida",
-        "44_lindes",
+        "mundos/exterior/lindes",
         "45_voz",
         "46_guiada",
         "47_habla",
@@ -455,7 +455,7 @@
         "13b_hazas"
       ],
       "escuchan": [
-        "44_lindes",
+        "mundos/exterior/lindes",
         "44b_carteles"
       ]
     },

@@ -22,6 +22,7 @@ const TS_DE = {
   "07a_catalogo.js": "apps/web/src/mundos/exterior/catalogo.ts",
   "18_paisaje.js": "apps/web/src/mundos/exterior/paisaje.ts",
   "19_balizas.js": "apps/web/src/mundos/exterior/balizas.ts",
+  "44_lindes.js": "apps/web/src/mundos/exterior/lindes.ts",
   // A3-2a: 07ab vive en varios ficheros (la escalera, el horneado, la cola, el sombreado, el lote y el módulo): se leen todos, en este orden
   "07ab_generados.js": ["generados.ts", "generados-escalera.ts", "generados-horneado.ts", "generados-cola.ts", "generados-sombreado.ts", "generados-lote.ts"].map(f => "apps/web/src/mundos/exterior/" + f),
 };
