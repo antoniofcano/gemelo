@@ -245,6 +245,7 @@ Exterior, molino y bodega en un solo PWA, cada uno con su sala de red; TypeScrip
 | A3-2a | Olivos generados y catálogo (`07ab`, `07a`) a TypeScript como componentes del exterior | MU5-0 | ligera · opus | 1½ d | ✅ 2026-11-06: `07ab` en seis ficheros; TSL parciales (MATERIALES §8); legado 16.609 |
 | A3-2b | Olivos medidos, follaje, lejanos y marcadores (`06`, `07`, `07ac`, `07b`, `02m`, `08`, `08b`) a TypeScript; L5-01, L2-01, L5-02, L1-08, L1-04, L2-08 | MU5-0 | ligera · sonnet | 2 d | ✅ 2026-11-06: tres cambios visibles a comprobar en el banco (troncos L0, sombras del paisaje, tope de L0); TSL de los impostores pendiente; legado 15.702 |
 | A3-3 | Nube y paisaje (`05`, `18`, `19`, `44`, `44b`, `50`) a TypeScript; L1-01, L2-02, L1-02, L2-05 | MU5-0 | ligera · sonnet | 2 d | ✅ 2026-11-06: TSL parciales de `nube-lidar` y `lindes-acerca` (MATERIALES §10); guardián `nube.test.js`; legado 14.517 |
+| A3-5 | Vida (`16`, `16b`, `22`, `22b`, `25`, `52`, `54`) a TypeScript; L2-05, L2-11 | MU5-0 | ligera · sonnet | 1½ d | ✅ 2026-11-06: TSL de `estela`, `huella` y `polvo`; legado 13.603 |
 | MU5-0 | Fábrica `nucleo/materiales`: da el material clásico y, con `?renderer=webgpu`, el TSL; los estándar valen en los dos sin cambio | MU2-7 | ligera · opus | 1 d | ✅ 2026-11-06: `nucleo/materiales.ts`, 22 de 30 sombreadores por la fábrica, 8 fuera con trinquete; receta en MATERIALES §5; legado 18.707 |
 
 ## Tablero de tareas (desde el 2026-10-29)
