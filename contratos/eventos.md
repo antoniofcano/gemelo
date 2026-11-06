@@ -66,7 +66,7 @@ Los componentes del motor ([ADR-0023](../doc/adr/0023-componentes-del-mundo.md),
 | `sonido:juego` | `{ que, cadena? }` | `41_cae_la_cosecha` | `20_sonido` (notas cortas sintetizadas) |
 | `perros:amenaza` | `{ x, y, res }` (pregunta: quien escuche rellena `res` con `{ x, y }` o lo deja en `null`) | `16_vida` | `25_perros` |
 | `perros:llegan` | (nada) | `24_pantalla`, `29_vr` | `25_perros` |
-| `polvo:emite` | `{ x, y, h, vx?, vy?, vz?, tam?, vida? }` | `24_pantalla`, `25_perros` | `22b_huellas_polvo` |
+| `polvo:emite` | `{ x, y, h, vx?, vy?, vz?, tam?, vida? }` | `24_pantalla`, `25_perros` | `mundos/exterior/huellas-polvo` (antes 22b_huellas_polvo) |
 | `sonido:ladrido` | `{ grave? }` | `25_perros` | `20_sonido` |
 | `usable:cerca` | `{ id \| null }` | `02e_entidades` (`Usables.actualiza`, al pasear: cambia lo más cercano dentro de su radio) | (nadie todavía: `19_balizas` lo lee con `Usables.cercano()`) |
 | `usable:elige` | `{ id, tipo, como }` | `02e_entidades` (toque, clic, rayo y gatillo, tecla) | (nadie todavía) |

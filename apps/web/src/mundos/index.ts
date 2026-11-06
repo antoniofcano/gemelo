@@ -54,3 +54,9 @@ export { ID_TRABAJO_HOY, TrabajoHoyPuro, creaTrabajoHoy, manifiestoTrabajoHoy } 
 export type { DepsTrabajoHoy, TrabajoHoy } from "./exterior/trabajo-hoy.ts";
 export { ID_AVES_MES, AvesMesPuro, creaAvesMes, manifiestoAvesMes } from "./exterior/aves-mes.ts";
 export type { AvesMes, DepsAvesMes } from "./exterior/aves-mes.ts";
+// A3-5: la pendiente del paseo (22_huellas) y las huellas y el polvo (22b_huellas_polvo).
+export { creaHuellas } from "./exterior/huellas.ts";
+export type { DepsHuellas, Huellas } from "./exterior/huellas.ts";
+export { ID_HUELLAS_POLVO, creaHuellasPolvo, manifiestoHuellasPolvo } from "./exterior/huellas-polvo.ts";
+export type { DepsHuellasPolvo, HuellasPolvo } from "./exterior/huellas-polvo.ts";
+export type { LecturaVida, LecturaPaseo, DepsTiempo } from "./exterior/vida-tipos.ts";

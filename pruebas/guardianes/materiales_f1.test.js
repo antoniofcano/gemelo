@@ -102,9 +102,9 @@ test("la versión nueva (TSL, F4/MU5) solo se usa con el renderizador nuevo; hoy
 // ---------------------------------------------------------------- los nombres de la fábrica en el motor (la clave con la que F4 registrará cada versión TSL)
 test("cada material del motor que pasa por la fábrica tiene un nombre literal, en minúsculas con guiones, y uno por sitio", () => {
   const dir = path.join(RAIZ, "apps/web/motor"), visto = {};
-  // MU5-n: lo que salió del motor a apps/web/src/mundos/exterior/*.ts también pasa por la fábrica con su nombre (se lee junto a su talón)
-  const src = path.join(RAIZ, "apps/web/src/mundos/exterior"), fuentes = fs.readdirSync(dir).filter(f => f.endsWith(".js") && f !== "02i_materiales.js").map(f => [f, path.join(dir, f)])
-    .concat(fs.readdirSync(src).filter(f => f.endsWith(".ts") && !f.endsWith(".test.ts")).map(f => [f, path.join(src, f)]));
+  // lo que salió del motor a apps/web/src/mundos/ (los .ts) también pasa por la fábrica con su nombre: lo cuenta el recorrido de src/mundos de más abajo, una sola vez por fichero
+  // (A3-5: antes también se leían aquí, y un módulo con Materiales.sombreador en su primer commit de MU5-n, antes de su define(), contaba dos veces)
+  const fuentes = fs.readdirSync(dir).filter(f => f.endsWith(".js") && f !== "02i_materiales.js").map(f => [f, path.join(dir, f)]);
   for (const [f, ruta] of fuentes) {
     const s = sinComentarios(fs.readFileSync(ruta, "utf8")), re = /[Mm]ateriales\.(parchea|encadena|sombreador)\(([^,)]*)/g;
     let m;

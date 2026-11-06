@@ -2,17 +2,13 @@
 // Expone: pendienteRumbo, pendFactor, quadInc, inclinaQuad, sueloSeco
 // Consume: 02_mundo (suelo), 03_escena (Estado), 12_paseo (pp), 15_tiempo (cur), 16_vida (quad), 18_paisaje (aguaNivel), 21_suelo (cubierta)
 // ===============================================================================
-  // ---------- huellas, polvo y pendiente: el suelo se deja marcar y el quad y el paso se adaptan al terreno
-  function pendienteRumbo(x, y, ang) {   // pendiente del terreno a lo largo del rumbo y de lado (positiva = sube), con la exageración vertical
-    var ds = 0.9, fx = Math.sin(ang), fy = Math.cos(ang), rx = Math.cos(ang), ry = -Math.sin(ang);
-    return [(suelo(x + fx * ds, y + fy * ds) - suelo(x - fx * ds, y - fy * ds)) / (2 * ds) * Estado.exag, (suelo(x + rx * ds, y + ry * ds) - suelo(x - rx * ds, y - ry * ds)) / (2 * ds) * Estado.exag];
-  }
-  function pendFactor() { var s = pendienteRumbo(pp.x, pp.y, pp.ang)[0]; return Math.max(0.35, Math.min(1.25, 1 - 1.25 * s)); }   // cuesta arriba cuesta más
-  var quadInc = { pit: 0, rol: 0 };
-  function inclinaQuad(dt) {
-    var pe = pendienteRumbo(pp.x, pp.y, pp.ang), k = Math.min(1, dt * 6);
-    quadInc.pit += (Math.atan(pe[0]) - quadInc.pit) * k; quadInc.rol += (Math.atan(pe[1]) - quadInc.rol) * k; quad.rotation.set(quadInc.pit, -pp.ang, quadInc.rol, "YXZ");
-  }
-
-  // (las huellas y el polvo, que antes vivían aquí, son el componente «huellas-polvo»: 22b_huellas_polvo.js)
-  function sueloSeco(x, y) { return cur.lluvia < 0.3 && aguaNivel < 0.15 && cur.hr < 92 && cubierta(x, y)[0] < 0.8; }
+  // ---------- huellas, polvo y pendiente: el suelo se deja marcar y el quad y el paso se adaptan al terreno. MU5-n (A3-5): migrado a TypeScript; el código vive en
+  // apps/web/src/mundos/exterior/huellas.ts (pendienteRumbo, pendFactor, quadInc, inclinaQuad y sueloSeco; sin recursos que soltar, así que no es un componente). Aquí solo se cablea
+  // lo del legado. (Las huellas y el polvo son el componente «huellas-polvo»: 22b_huellas_polvo.js.)
+  // (no lleva la marca de talón porque expone alias sueltos: pendienteRumbo, pendFactor, quadInc, inclinaQuad y sueloSeco)
+  var Huellas = Mundos.creaHuellas({
+    suelo: suelo, Estado: Estado, pp: pp, quad: function () { return quad; }, cur: cur,
+    aguaNivel: function () { return aguaNivel; },   // 18_paisaje: un valor que cambia
+    cubierta: function (x, y) { return cubierta(x, y); }   // 21_suelo, que se carga después
+  });
+  var pendienteRumbo = Huellas.pendienteRumbo, pendFactor = Huellas.pendFactor, quadInc = Huellas.quadInc, inclinaQuad = Huellas.inclinaQuad, sueloSeco = Huellas.sueloSeco;

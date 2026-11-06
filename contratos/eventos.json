@@ -858,7 +858,7 @@
       "descripcion": "Una bocanada de polvo en { x (este), y (norte) } en metros del mundo, a altura h, con velocidad (vx, vy, vz), tamaño y vida en segundos. La dibuja quien lleve el polvo (huellas y polvo); sin él, no se ve.",
       "datos": { "type": "object", "required": ["x", "y", "h"], "properties": { "x": { "type": "number" }, "y": { "type": "number" }, "h": { "type": "number" }, "vx": { "type": "number" }, "vy": { "type": "number" }, "vz": { "type": "number" }, "tam": { "type": "number" }, "vida": { "type": "number" } } },
       "emiten": ["24_pantalla", "25_perros"],
-      "escuchan": ["22b_huellas_polvo"]
+      "escuchan": ["mundos/exterior/huellas-polvo"]
     },
     "prevision:alterna": {
       "descripcion": "Abrir o cerrar la lámina de la previsión del tiempo en el mundo (el botón «Ver la previsión en el mundo» de la ventana Tiempo y, en VR, «hora» en el menú de muñeca, EV2-A3). Sin datos alterna; con abre true o false, abre o cierra.",
@@ -949,7 +949,7 @@
         "25_perros"
       ],
       "escuchan": [
-        "22b_huellas_polvo"
+        "mundos/exterior/huellas-polvo"
       ]
     },
     "presencia:activada": {
