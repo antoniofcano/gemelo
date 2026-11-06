@@ -27,6 +27,25 @@ export const ID_AVATARES = "avatares-vrm";
  *  material que traiga el VRM) tras el parche que ya tenga, con la clave de programa combinada (la de antes + «|vrm-fundido»). El parche es el de siempre, movido sin
  *  tocar: descarta el fragmento si su ruido de pantalla ≥ uFunVrm, el MISMO { value } que mueve el fundido (inst.uni). */
 export const MATERIAL_VRM_FUNDIDO = "vrm-fundido";
+/** MU5-n (A3-6a, tercer commit): la variante TSL, APAGADA (solo la daría la fábrica con el WebGPURenderer, MU6; hoy nadie la usa) y PARCIAL (MATERIALES §13.1). La fábrica
+ *  le da el material del VRM (el MToon de three-vrm o el que traiga) y ella devuelve un MeshStandardNodeMaterial con su color, su mapa, sus caras y su transparencia,
+ *  y el MISMO tramado: maskNode deja el fragmento solo si su ruido de pantalla (screenCoordinate, la misma fórmula que vrm_ign) es < uFunVrm, que lee el MISMO
+ *  { value } del fundido (inst.uni, que parcheFundido deja en userData.vrmFundidoUni). FALTA: el sombreado toon de MToon (sombra en dos tonos, contorno, rim):
+ *  la buena es el MToonNodeMaterial de @pixiv/three-vrm-materials-mtoon/nodes, que importa three/webgpu y por eso solo puede entrar con el renderer de MU6. */
+export function defVrmFundido() {
+  return {
+    tsl: function (mat: any, c: { THREE: any; TSL: any }) {
+      const T = c.TSL, u = (mat && mat.userData && mat.userData.vrmFundidoUni) || { value: 1 };
+      const uFun = T.uniform(u.value).onObjectUpdate(function () { return u.value; });
+      const p = T.screenCoordinate.xy, ign = T.fract(T.float(52.9829189).mul(T.fract(T.dot(p, T.vec2(0.06711056, 0.00583715)))));
+      const m = new c.THREE.MeshStandardNodeMaterial({ color: mat && mat.color ? mat.color.getHex() : 0xffffff, map: (mat && mat.map) || null, side: mat ? mat.side : 0,
+        transparent: !!(mat && mat.transparent), alphaTest: mat && mat.alphaTest || 0 });
+      m.name = mat && mat.name || ""; m.maskNode = ign.lessThan(uFun);   // el «if (vrm_ign(gl_FragCoord.xy) >= uFunVrm) discard;» del clásico
+      m.userData.vrmFundido = true; m.userData.vrmFundidoUni = u;
+      return m;
+    }
+  };
+}
 export function parcheVrmFundido(uni: { value: number }) {
   return function (sh: any) {
     sh.uniforms.uFunVrm = uni;
@@ -235,6 +254,7 @@ export function creaAvatares(dp: DepsAvatares, n?: any, Presencia?: any) {
   // del legado, por argumento (A3-6a): lo que no cambia, aquí; lo que otros módulos reescriben (paseando, persona, primera, pp, enQuad, enDron, VRX) y VrPresupuesto, de dp en cada uso
   const THREE = dp.THREE, location = dp.location, window = dp.window, fetch = dp.fetch, console: any = dp.consola || { warn: function () {} };
   const Aparato = dp.Aparato, suelo = dp.suelo, renderer = dp.renderer, scene = dp.scene, camera = dp.camera, Estado = dp.Estado;
+  dp.Materiales.define(MATERIAL_VRM_FUNDIDO, defVrmFundido());   // solo la TSL (apagada): el clásico es el parche encadenado de siempre
   const materiales = dp.Materiales.de(ID_AVATARES);   // MU5-n (A3-6a): los materiales de cada VRM, con dueño: los suelta sueltaInst (deepDispose) y, lo que quede, libera()
   var BASE: any = "/avatares/", FUNDIDO: any = 0.6, REPOSO: any = 5, TICK: any = 0.5, CERCA_MIRA: any = 8, COS_MIRA: any = Math.cos(70 * Math.PI / 180);
   var simVrm: any = /[?&]vrm=1\b/.test(location.search), comparte: any = !/[?&]vrmcomparte=no\b/.test(location.search), sinPropio: any = /[?&]yo=no\b/.test(location.search);
@@ -304,6 +324,7 @@ export function creaAvatares(dp: DepsAvatares, n?: any, Presencia?: any) {
     if (m.userData.vrmFundido) return;   // un material compartido por varias mallas (o el del contorno de MToon) se parchea una vez
     m.userData.vrmFundido = true;
     // tras el parche que ya traiga MToon, con la clave de programa combinada (la de antes + «|vrm-fundido»): encadena de la fábrica, con dueño (parcheVrmFundido, arriba)
+    m.userData.vrmFundidoUni = uni;   // A3-6a: el mismo { value } para la variante TSL (defVrmFundido), si un día la pide la fábrica
     materiales.encadena(m, MATERIAL_VRM_FUNDIDO, parcheVrmFundido(uni), MATERIAL_VRM_FUNDIDO);
     m.needsUpdate = true;
   }

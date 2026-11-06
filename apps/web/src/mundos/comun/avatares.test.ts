@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { ComponentesPuro } from "../../nucleo/componentes.ts";
 import { creaMateriales } from "../../nucleo/materiales.ts";
 import type { ThreeMin } from "../../nucleo/materiales.ts";
-import { ID_AVATARES, creaAvatares, manifiestoAvatares } from "./avatares.ts";
+import { ID_AVATARES, MATERIAL_VRM_FUNDIDO, creaAvatares, defVrmFundido, manifiestoAvatares, parcheVrmFundido } from "./avatares.ts";
 import type { DepsAvatares } from "./avatares.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -69,5 +69,21 @@ describe("avatares-vrm: de todo mundo y con libera() de verdad (A3-6a)", () => {
     expect(r.api.estado().bufs).toBe(0);                         // L2-09: los ArrayBuffer ya no se quedan
     expect(r.api.estado().instancias).toBe(0);
     expect(r.deps.Materiales.duenos()[ID_AVATARES]).toBeUndefined();   // los soltó deepDispose y salieron solos de la fábrica
+  });
+
+  it("la variante TSL del fundido (tercer commit): apagada; con three/webgpu y three/tsl de verdad, encadena devuelve un NodeMaterial con el tramado y el mismo { value }", async () => {
+    const rutaW = "three/webgpu", rutaT = "three/tsl";   // por variable: three no trae tipos (ni entra en el grafo de dependency-cruiser)
+    const W = await import(/* @vite-ignore */ rutaW), T = await import(/* @vite-ignore */ rutaT);
+    const nuevo = creaMateriales({ THREE: THREE as unknown as ThreeMin, render: { tipo: "nuevo", pedido: "nuevo" }, nodos: () => ({ THREE: W, TSL: T }) });
+    const clasico = creaMateriales({ THREE: THREE as unknown as ThreeMin, busqueda: "" });
+    for (const M of [nuevo, clasico]) M.define(MATERIAL_VRM_FUNDIDO, defVrmFundido());
+    expect(nuevo.ruta(MATERIAL_VRM_FUNDIDO)).toBe("tsl"); expect(clasico.ruta(MATERIAL_VRM_FUNDIDO)).toBe("clasico");
+    const uni = { value: 0.3 }, piel = new THREE.MeshStandardMaterial({ color: 0xb97d57, side: THREE.DoubleSide }); piel.name = "piel"; piel.userData.vrmFundidoUni = uni;
+    const m: any = nuevo.encadena(piel, MATERIAL_VRM_FUNDIDO, parcheVrmFundido(uni), MATERIAL_VRM_FUNDIDO);
+    expect(m.isNodeMaterial).toBe(true); expect(m.type).toBe("MeshStandardNodeMaterial"); expect(m.maskNode).toBeTruthy();
+    expect(m.color.getHex()).toBe(0xb97d57); expect(m.side).toBe(THREE.DoubleSide); expect(m.name).toBe("piel"); expect(m.userData.vrmFundidoUni).toBe(uni);
+    const c: any = clasico.encadena(new THREE.MeshStandardMaterial(), MATERIAL_VRM_FUNDIDO, parcheVrmFundido(uni), MATERIAL_VRM_FUNDIDO);
+    expect(c.isNodeMaterial).toBeFalsy(); expect(typeof c.onBeforeCompile).toBe("function");   // con el clásico, el parche de siempre
+    expect(nuevo.cobertura()[MATERIAL_VRM_FUNDIDO]).toMatchObject({ tsl: true });
   });
 });
