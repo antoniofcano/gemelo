@@ -48,6 +48,8 @@ export type Trabajo = Generator<unknown, unknown, unknown>;
 export interface EstTipo { n: number; ms: number; max: number; prom: number }
 
 interface Job { clave: string; prio: number; gen: Trabajo; fin?: (valor: unknown) => void; muerto?: boolean }
+/** Un trabajo sacado de la Cola sin cancelarlo (MU2-6, aparcaDe): la clave entera (con su dueño), su prioridad, su generador a medias y su `fin`. */
+export interface TrabajoAparcado { readonly clave: string; readonly prio: number; readonly gen: Trabajo; readonly fin?: ((valor: unknown) => void) | undefined }
 
 export interface OpcionesCola {
   /** el reloj en ms (performance.now del legado; en las pruebas, uno de mentira) */
@@ -67,7 +69,8 @@ export function duenoDe(clave: string): string | null {
  *   · Cola.debe(ms, fuente) apunta trabajo que se hizo fuera de la Cola y fuera del presupuesto (lo que el tileset dispara en el motor al llegar una
  *     tesela, 04b_escena3d): es una DEUDA que 07b_arboles descuenta del presupuesto del fotograma siguiente (Cola.deuda()); Cola.corre la salda.
  *     Cola.cobra(fuente, f) envuelve una función para que lo que tarde se apunte así. est[fuente] lo enseña ?debug (28_depura) como las demás;
- *   · dueño por prefijo: Cola.cancelaDe("exterior") cancela los trabajos cuya clave empieza por «exterior:» y no toca los demás. */
+ *   · dueño por prefijo: Cola.cancelaDe("exterior") cancela los trabajos cuya clave empieza por «exterior:» y no toca los demás; Cola.aparcaDe("exterior")
+ *     los saca sin cancelarlos y Cola.repone(lista) los vuelve a meter (MU2-6: el mundo congelado). */
 export function creaCola(opc: OpcionesCola) {
   const ahora = opc.ahora;
   const jobs: Job[] = [], activos: Record<string, Job> = {}, est: Record<string, EstTipo> = {};
@@ -88,6 +91,24 @@ export function creaCola(opc: OpcionesCola) {
   function cancelaDe(dueno: string): number {
     let n = 0;
     for (const clave of Object.keys(activos)) if (duenoDe(clave) === dueno) { cancela(clave); n++; }
+    return n;
+  }
+  // MU2-6: aparcar = sacar de la Cola los trabajos vivos de un dueño SIN cancelarlos (sus generadores siguen a medias, en memoria) y devolverlos;
+  // repone() los vuelve a meter tal cual. Es lo que hace un mundo al congelarse (ColaDeMundo.aparca): cancelar dejaría a medias el estado de quien
+  // los pidió (una tesela con su nube «pedida» para siempre, una celda de olivos que no se vuelve a pedir…), porque `fin` no se llama al cancelar.
+  function aparcaDe(dueno: string): TrabajoAparcado[] {
+    const fuera: TrabajoAparcado[] = [];
+    for (let i = jobs.length - 1; i >= 0; i--) {
+      const j = jobs[i] as Job;
+      if (j.muerto || duenoDe(j.clave) !== dueno) continue;
+      jobs.splice(i, 1); if (activos[j.clave] === j) delete activos[j.clave];
+      fuera.push({ clave: j.clave, prio: j.prio, gen: j.gen, fin: j.fin });
+    }
+    return fuera.reverse();   // en el orden en que se pidieron
+  }
+  function repone(lista: readonly TrabajoAparcado[]): number {
+    let n = 0;
+    for (const a of lista) if (add(a.clave, a.prio, a.gen, a.fin)) n++;
     return n;
   }
   function pendientesDe(dueno: string): number {
@@ -116,7 +137,7 @@ export function creaCola(opc: OpcionesCola) {
     return function (this: T, ...args: A): R { const t = ahora(); try { return f.apply(this, args); } finally { debe(ahora() - t, fuente); } };
   }
 
-  return { est, tot, add, cancela, hay, cancelaDe, pendientesDe, corre, vacia, debe, cobra, deuda: () => deuda, pendientes: () => jobs.length };
+  return { est, tot, add, cancela, hay, cancelaDe, aparcaDe, repone, pendientesDe, corre, vacia, debe, cobra, deuda: () => deuda, pendientes: () => jobs.length };
 }
 
 export type Cola = ReturnType<typeof creaCola>;
@@ -130,7 +151,15 @@ export interface ColaDeMundo {
   cancela(clave: string): void;
   hay(clave: string): boolean;
   cancelaTodo(): number;
+  /** los suyos que están en la Cola (aparcados, no: ver aparcados()) */
   pendientes(): number;
+  /** MU2-6, al congelar el mundo: saca sus trabajos de la Cola sin cancelarlos, y lo que pida mientras (una tesela que llega por la red) se queda
+   *  también aquí, sin correr. Devuelve cuántos sacó. */
+  aparca(): number;
+  /** MU2-6, al volver a entrar: los aparcados vuelven a la Cola, en el orden en que se pidieron, y siguen donde iban. Devuelve cuántos. */
+  repone(): number;
+  /** cuántos tiene aparcados (0 si no está aparcada) */
+  aparcados(): number;
 }
 /** Lo que se necesita de la Cola para darle dueño (la de creaCola cumple). */
 export interface ColaConDueno {
@@ -139,17 +168,38 @@ export interface ColaConDueno {
   hay(clave: string): boolean;
   cancelaDe(dueno: string): number;
   pendientesDe(dueno: string): number;
+  aparcaDe(dueno: string): TrabajoAparcado[];
+  repone(lista: readonly TrabajoAparcado[]): number;
 }
 
 export function creaColaDeMundo(cola: ColaConDueno, dueno: string): ColaDeMundo {
   if (!dueno || dueno.indexOf(":") >= 0) throw new Error("creaColaDeMundo: el dueño no puede ser vacío ni llevar «:» («" + dueno + "»)");
   const k = (clave: string): string => dueno + ":" + clave;
+  // MU2-6: mientras está aparcada (el mundo congelado), lo suyo vive aquí, por clave entera y en el orden en que se pidió, y no en la Cola
+  let aparcada: Map<string, TrabajoAparcado> | null = null;
   return {
     dueno,
-    pon: (clave, prio, trabajo, fin) => cola.add(k(clave), prio, trabajo, fin),
-    cancela: clave => cola.cancela(k(clave)),
-    hay: clave => cola.hay(k(clave)),
-    cancelaTodo: () => cola.cancelaDe(dueno),
+    pon: (clave, prio, trabajo, fin) => {
+      if (!aparcada) return cola.add(k(clave), prio, trabajo, fin);
+      const c = k(clave), ya = aparcada.get(c);
+      aparcada.set(c, ya ? { clave: c, prio, gen: ya.gen, fin: ya.fin } : { clave: c, prio, gen: trabajo, fin });   // como add: la prioridad es la última pedida
+      return !ya;
+    },
+    cancela: clave => { if (aparcada) aparcada.delete(k(clave)); else cola.cancela(k(clave)); },
+    hay: clave => (aparcada ? aparcada.has(k(clave)) : cola.hay(k(clave))),
+    cancelaTodo: () => { let n = cola.cancelaDe(dueno); if (aparcada) { n += aparcada.size; aparcada.clear(); } return n; },
     pendientes: () => cola.pendientesDe(dueno),
+    aparca: () => {
+      if (!aparcada) aparcada = new Map();
+      const fuera = cola.aparcaDe(dueno);
+      for (const a of fuera) aparcada.set(a.clave, a);
+      return fuera.length;
+    },
+    repone: () => {
+      if (!aparcada) return 0;
+      const lista = Array.from(aparcada.values()); aparcada = null;
+      return cola.repone(lista);
+    },
+    aparcados: () => (aparcada ? aparcada.size : 0),
   };
 }

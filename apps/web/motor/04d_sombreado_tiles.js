@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: hash, matSuelo, matOrto, UN, SombreadoTiles
-// Consume: 01_datos (D, RES, yN, ANCHO, ALTO), 02_mundo (Mundo, suelo), 02b_cola (Cola), 03_escena (camera),
+// Consume: 01_datos (D, RES, yN, ANCHO, ALTO), 02_mundo (Mundo, suelo), 02b_cola (ColaExt), 03_escena (camera),
 //   04f_suelo_fotos (SueloFotosPuro, SueloFotos), 09_camara (suelta), 14_historia (hist), 15_tiempo (parcheTiempo), 21_suelo (vn2)
 // ===============================================================================
   // ---------- el sombreado del relieve (F1d, T5; T8 fase 2: la única escena es la 3D Tiles)
@@ -39,7 +39,7 @@
       for (var q = 0; q < n4; q++) { s4[q * 4] = sr[q * 3]; s4[q * 4 + 1] = sr[q * 3 + 1]; s4[q * 4 + 2] = sr[q * 3 + 2]; s4[q * 4 + 3] = 255; }
       var ts = new THREE.DataTexture(s4, NS2, NS2, THREE.RGBAFormat, THREE.UnsignedByteType);
       ts.magFilter = ts.minFilter = THREE.LinearFilter; ts.generateMipmaps = false; ts.needsUpdate = true; u.uSue.value = ts; t.texSue = ts; u.uTiene.value = 1;
-      Cola.add("R" + t.key, Mundo.dist(t, camera.position.x, camera.position.y, camera.position.z), ruidoG(t), function (tr) { u.uRui.value = tr; t.rui = tr; });
+      ColaExt.pon("R" + t.key, Mundo.dist(t, camera.position.x, camera.position.y, camera.position.z), ruidoG(t), function (tr) { u.uRui.value = tr; t.rui = tr; });
     }
     // ---- el DETALLE DE LA ORTOFOTO en el suelo abierto (rodadas, caminos, calveros). El color del suelo que viaja con la tesela está a 2 m y suavizado (ver el exportador), así que las rodadas de 0,3-0,5 m
     // no existen en él. Aquí se prepara por tesela, una sola vez y a rebanadas, el color «ancho» del suelo ABIERTO (128×128 a 2 m): la ortofoto sin copas ni sombras. Qué es copa o sombra
@@ -98,7 +98,7 @@
     }
     function pideDetalle(t) {   // la primera vez que una tesela se ve de cerca: se pide a la cola su color ancho
       if (t.detPedido || !t.suel || !t.ortImg || !t.ortImg.naturalWidth) return; t.detPedido = true;
-      Cola.add("D" + t.key, Mundo.dist(t, camera.position.x, camera.position.y, camera.position.z), detalleG(t), function (tg) { if (!tg) { t.detPedido = false; return; } t.texG = tg; t.uni.uGnd.value = tg; t.detListo = true; });
+      ColaExt.pon("D" + t.key, Mundo.dist(t, camera.position.x, camera.position.y, camera.position.z), detalleG(t), function (tg) { if (!tg) { t.detPedido = false; return; } t.texG = tg; t.uni.uGnd.value = tg; t.detListo = true; });
     }
     function* ruidoG(t) {   // cobertura aleatoria, motas y jitter: las mismas funciones que usa cubierta() en la CPU, para que las matas caigan donde el suelo se pinta verde
       var n2 = N2, rd = new Uint8Array(n2 * n2 * 4), o = 0;

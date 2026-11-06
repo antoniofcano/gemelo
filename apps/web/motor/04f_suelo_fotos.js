@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: SueloFotosPuro, SueloFotos
-// Consume: 01a_aparato (Aparato), 02_mundo (Mundo, copas), 02b_cola (Cola), 03_escena (renderer)
+// Consume: 01a_aparato (Aparato), 02_mundo (Mundo, copas), 02b_cola (ColaExt), 03_escena (renderer)
 // ===============================================================================
   // ---------- EV-1s: el suelo de cerca con texturas de fotos de la finca (?suelo=fotos; APAGADO por defecto y, en VR, apagado salvo ?sueloVR=1)
   // Siete clases de textura repetible (tuberia/suelo/construye.mjs; apps/web/public/suelo/, con su LICENCIA.md) en UNA textura en array (DataArrayTexture:
@@ -170,7 +170,7 @@
     }
     var pedido = false, vez = 0, pide = P.formato(typeof location !== "undefined" ? location.search : ""), cargado = null, bytesTex = 0, gpuFmt = null, loader = null;
     // prioridad 60 (como algo a 60 m): con 1e9 nunca le llegaba el turno, porque la Cola siempre corre la menor y al moverse siempre hay teselas, olivos o detalle pendientes
-    function enCola(gen) { return new Promise(function (ok, mal) { if (!Cola.add("SF", 60, gen, ok)) mal(new Error("ya había un trabajo SF en la Cola")); }); }
+    function enCola(gen) { return new Promise(function (ok, mal) { if (!ColaExt.pon("SF", 60, gen, ok)) mal(new Error("ya había un trabajo SF en la Cola")); }); }
     function cargaWebp() {
       var L = P.ficheros(cfg.px), srcs = []; L.forEach(function (f) { srcs.push(f.color, f.relieve); });
       return Promise.all(srcs.map(img)).then(function (ims) { return enCola(juntaG(L, ims)); });
@@ -207,7 +207,7 @@
     // cada 0,2 s (desde 04d): encendido si ya cargó y, en VR, solo con ?sueloVR=1 (hasta medir en el Quest)
     function actualiza() { if (!cfg.activo) return; carga(); U.uFotK.value = hecho && (cfg.vr || !Aparato.vr()) ? 1 : 0; }
     function libera() {
-      vez++; sueltaLoader(); Cola.cancela("SF");
+      vez++; sueltaLoader(); ColaExt.cancela("SF");
       if (tex) { tex.dispose(); tex = null; U.uFot.value = null; } hecho = false; pedido = false; U.uFotK.value = 0; cargado = null; bytesTex = 0; gpuFmt = null;
       campos.forEach(function (t) { t.dispose(); }); campos = []; if (neutro) { neutro.dispose(); neutro = null; }
     }

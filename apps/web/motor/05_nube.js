@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: ALTO_MAX, nube, pintaNube, actualizaNubeTeselas, actualizaNube
-// Consume: 02_mundo (Mundo, suelo, copaAlta, kcor, tinte, aviva, colorEn), 02b_cola (Cola), 02i_materiales (Materiales), 02j_estaticos (Estaticos),
-//   03_escena (scene, camera, Estado), 04d_sombreado_tiles (hash), 10_ndvi (ndviIdx), 15_tiempo (parcheTiempo)
+// Consume: 02_mundo (Mundo, suelo, copaAlta, kcor, tinte, aviva, colorEn), 02b_cola (ColaExt), 02i_materiales (Materiales),
+//   02j_estaticos (Estaticos), 03_escena (scene, camera, Estado), 04d_sombreado_tiles (hash), 10_ndvi (ndviIdx), 15_tiempo (parcheTiempo)
 // ===============================================================================
   // ---------- nube de puntos LiDAR: una malla por tesela, con las posiciones cuantizadas a 16 bits y el color a 8, y nivel de detalle por distancia
   // El orden de los puntos de cada tesela está barajado, así que dibujar solo la primera fracción (setDrawRange) es una muestra uniforme: lejos se pintan menos puntos.
@@ -48,7 +48,7 @@
     yield* pintaTeselaNubeG(t);
     return m;
   }
-  function liberaNube(t) { Cola.cancela("N" + t.key); Cola.cancela("NP" + t.key); if (t.nubeMalla) { nube.g.remove(t.nubeMalla); t.nubeMalla.geometry.dispose(); } t.nubeMalla = null; t.nubeX = t.nubeY = t.nubeH = t.nubeB = t.nubeCol = null; t.nubeN = 0; t.nubeEst = 0; }
+  function liberaNube(t) { ColaExt.cancela("N" + t.key); ColaExt.cancela("NP" + t.key); if (t.nubeMalla) { nube.g.remove(t.nubeMalla); t.nubeMalla.geometry.dispose(); } t.nubeMalla = null; t.nubeX = t.nubeY = t.nubeH = t.nubeB = t.nubeCol = null; t.nubeN = 0; t.nubeEst = 0; }
   function exagNube() { Mundo.lista.forEach(function (t) { var m = t.nubeMalla; if (m) { m.position.y = m.userData.zc * Estado.exag; m.scale.y = m.userData.hz * Estado.exag; Estaticos.congela(m); } }); }
   function pintaNube() {   // se llama desde aplica(): solo repinta si cambió lo que influye en el color (corrección de la ortofoto, tinte NDVI y su fecha)
     exagNube();
@@ -66,11 +66,11 @@
       var d = Mundo.dist(t, cx, cy, cz), niv = d < NIV_NUBE[0].d ? 0 : d < NIV_NUBE[1].d ? 1 : d < NIV_NUBE[2].d ? 2 : d < NIV_NUBE[3].d ? 3 : -1;
       if (niv < 0) { if (d > NIV_NUBE[3].d * 1.2) liberaNube(t); else if (t.nubeMalla) t.nubeMalla.visible = false; return; }
       if (!t.nubeMalla) {
-        if (!t.nubeEst) { t.nubeEst = 1; Cola.add("N" + t.key, d, montaNubeG(t), function (m) { if (m && t.nubeEst === 1) { nube.g.add(m); t.nubeEst = 2; } else if (!m) t.nubeEst = 3; }); }
+        if (!t.nubeEst) { t.nubeEst = 1; ColaExt.pon("N" + t.key, d, montaNubeG(t), function (m) { if (m && t.nubeEst === 1) { nube.g.add(m); t.nubeEst = 2; } else if (!m) t.nubeEst = 3; }); }
         return;
       }
       if (t.nubeEst !== 2) return;
-      if (t.nubeSucia && !Cola.hay("NP" + t.key)) Cola.add("NP" + t.key, d, pintaTeselaNubeG(t));
+      if (t.nubeSucia && !ColaExt.hay("NP" + t.key)) ColaExt.pon("NP" + t.key, d, pintaTeselaNubeG(t));
       var m = t.nubeMalla; m.visible = true;
       if (niv !== t.nubeNivel) { t.nubeNivel = niv; m.material = matsNube[niv]; m.geometry.setDrawRange(0, Math.max(1500, Math.ceil(t.nubeN * NIV_NUBE[niv].f * (niv >= 2 ? escala : 1)))); }
     });

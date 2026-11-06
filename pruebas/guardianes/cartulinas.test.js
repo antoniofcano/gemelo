@@ -141,7 +141,7 @@ test("07ab y 07ac miran la perilla, cuentan los triángulos de la silueta y no c
   assert.match(g, /function tri\(r\) \{ return r \? M\.triangulosNivel\(r\) \+ extraSil\(r\) : 0; \}/, "07ab: el reparto paga los triángulos de la silueta");
   assert.match(g, /gs = SIL && SIL\[k\] \|\| G\[gk\], g = geoDe\(gs\.atrib, gs\.indice, false\)/, "07ab: la malla instanciada usa la silueta");
   assert.match(l, /Materiales\.cartulina\.silueta \? polisImpostor\(f\) : null/, "07ac: impostor con las siluetas de la fila");
-  assert.match(l, /Cola\.add\("Lsil", 60, gen, fin\)/, "07ac: las del sustituto, al hornear y por la Cola");
+  assert.match(l, /ColaExt\.pon\("Lsil", 60, gen, fin\)/, "07ac: las del sustituto, al hornear y por la Cola (la del exterior, MU2-6)");
   // el trozo que se cambia del sombreador del impostor existe tal cual (si no, la silueta no se aplicaría)
   assert.ok(l.includes('" vec3 ot_off = position.x * ot_r + position.y * ot_u; transformed = ot_C + ot_off * ot_S;'), "07ac: el trozo de GLSL_IMP_V que sustituye la silueta");
   // nada de esto en el paso por fotograma

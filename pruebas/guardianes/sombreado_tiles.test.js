@@ -39,8 +39,8 @@ function evalua(conFotos) {
   };
   const D = { ts: TS, orto_px: 512, mosaico: { x0: 0, yN: 0, w: 1, h: 1, res: 1 } }, cola = [];
   const sf = sueloFotos(conFotos);
-  const f = Function("THREE", "D", "RES", "ANCHO", "ALTO", "Mundo", "Cola", "scene", "camera", "x0", "yN", "suelo", "vn2", "SueloFotosPuro", "SueloFotos", cuerpo);
-  const m = f(THREE, D, 1, 1000, 1000, Mundo, { add: (k, prio, gen, alAcabar) => cola.push({ k, gen, alAcabar }) }, new THREE.Scene(), new THREE.PerspectiveCamera(), 0, 0, () => 0, () => 0, sf.P, sf.S);
+  const f = Function("THREE", "D", "RES", "ANCHO", "ALTO", "Mundo", "ColaExt", "scene", "camera", "x0", "yN", "suelo", "vn2", "SueloFotosPuro", "SueloFotos", cuerpo);   // MU2-6: la Cola del exterior (ColaExt.pon)
+  const m = f(THREE, D, 1, 1000, 1000, Mundo, { pon: (k, prio, gen, alAcabar) => cola.push({ k, gen, alAcabar }) }, new THREE.Scene(), new THREE.PerspectiveCamera(), 0, 0, () => 0, () => 0, sf.P, sf.S);
   m.Mundo = Mundo; m.cola = cola; m.SF = sf.S;
   return m;
 }

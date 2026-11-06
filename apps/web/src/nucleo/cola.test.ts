@@ -213,6 +213,35 @@ describe("ColaDeMundo (MU2-1, MUNDOS §6)", () => {
     C.vacia(1000);
     expect(traza).toEqual(["c#0", "c#1"]);
   });
+  it("MU2-6: aparca() saca los suyos sin cancelarlos, lo que pide mientras se queda fuera, y repone() los devuelve a medias y con su fin", () => {
+    const reloj = nuevoReloj(), C = colaCon(reloj), traza: string[] = [], fines: unknown[] = [];
+    const ext = creaColaDeMundo(C, "exterior");
+    ext.pon("N1", 1, trabajo(reloj, "n", [1, 1, 1], traza), v => fines.push(v));
+    ext.pon("C1", 2, trabajo(reloj, "c", [1], traza));
+    C.add("vnivel", 3, trabajo(reloj, "v", [1, 1], traza));
+    C.corre(1);   // una rebanada de N1
+    expect(traza).toEqual(["n#0"]);
+    expect(ext.aparca()).toBe(2);
+    expect(C.pendientesDe("exterior")).toBe(0); expect(C.hay("exterior:N1")).toBe(false); expect(ext.aparcados()).toBe(2);
+    expect(ext.hay("N1")).toBe(true);                                         // sigue siendo suyo, aparcado
+    expect(ext.pon("R1", 0, trabajo(reloj, "r", [1], traza))).toBe(true);     // pedido mientras: aparcado también
+    expect(ext.pon("R1", 5, trabajo(reloj, "r2", [1], traza))).toBe(false);   // la misma clave: solo cambia la prioridad
+    ext.cancela("C1"); expect(ext.aparcados()).toBe(2);
+    C.vacia(1000);
+    expect(traza).toEqual(["n#0", "v#0", "v#1"]);                             // lo suyo no corre aparcado
+    expect(ext.repone()).toBe(2); expect(ext.aparcados()).toBe(0); expect(ext.repone()).toBe(0);
+    C.vacia(1000);
+    expect(traza).toEqual(["n#0", "v#0", "v#1", "n#1", "n#2", "r#0"]);        // N1 sigue en su segunda rebanada; R1 con la prioridad última (5)
+    expect(fines).toEqual(["hecho:n"]);
+  });
+  it("MU2-6: cancelaTodo() aparcada suelta también los aparcados; aparcar sin nada no falla", () => {
+    const reloj = nuevoReloj(), C = colaCon(reloj), traza: string[] = [];
+    const ext = creaColaDeMundo(C, "exterior");
+    expect(ext.aparca()).toBe(0);
+    ext.pon("N1", 1, trabajo(reloj, "n", [1], traza));
+    expect(ext.cancelaTodo()).toBe(1); expect(ext.repone()).toBe(0);
+    C.vacia(1000); expect(traza).toEqual([]);
+  });
   it("el dueño no puede ser vacío ni llevar «:»", () => {
     const C = colaCon(nuevoReloj());
     expect(() => creaColaDeMundo(C, "")).toThrow(); expect(() => creaColaDeMundo(C, "a:b")).toThrow();

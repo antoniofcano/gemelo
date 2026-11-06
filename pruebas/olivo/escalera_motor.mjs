@@ -60,7 +60,8 @@ function contexto(busqueda, reloj, mas) {
     fetch: undefined,   // sin servidor: no hay manifiesto (3b pone uno de prueba)
     Config: { listo: Promise.resolve(null), al: f => f(null), param: (r, c, u) => (u !== undefined && u !== null ? u : c), umbrales: (c, u) => u || c, tablaEpocas: () => null, epocaDeFecha: () => null }, factorCopaDeConfig: () => 1,
     suelo: () => 0, camera: { position: new THREE.Vector3(0, 10, 0) },
-    Cola: { add: () => { throw new Error("los generados no deben usar la Cola compartida"); }, hay: () => false }
+    Cola: { add: () => { throw new Error("los generados no deben usar la Cola compartida"); }, hay: () => false },
+    ColaExt: { pon: () => { throw new Error("los generados no deben usar la Cola compartida"); }, hay: () => false }   // MU2-6: la del exterior (02b_cola)
   };
   if (mas) Object.assign(ctx, mas.glob);
   vm.createContext(conFabrica(ctx));   // Materiales (02i, F1): 07ab y 07ac pasan sus parches por la fábrica
@@ -326,7 +327,8 @@ if (fs.existsSync(FX)) {
       Mundo: { cx: 0, cy: 0, tesela: () => ({ estado: 2, pts: null, key: "t" }), ortoGrueso: (x, y, c3) => { c3[0] = 0.3; c3[1] = 0.35; c3[2] = 0.2; }, aseguraOrto: function* () {} },
       Catalogo: { SIN: -1, variantes: (t, n) => (n === 1 ? 4 : 2), geometria: () => mat(), alCambiar: () => {}, tipos: () => [], info: () => ({}) },
       OlivosTiles: { dibuja: () => true, triangulos: () => (copas.length - tiles.cerca.length) * tiles.triPor, cerca: l => { tiles.cerca = l.slice(); }, resumen: () => ({ estado: "activo", dibujadas: 0 }) },
-      Cola: { add: k => { if (k.charAt(0) !== "C" && k.charAt(0) !== "B") throw new Error("los generados no deben usar la Cola compartida: " + k); cola.add.push(k); }, hay: () => false, cancela: () => { cola.cancela++; }, pendientes: () => 0, deuda: () => 0 },
+      Cola: { pendientes: () => 0, deuda: () => 0 },   // MU2-6: lo que 07b pide (celdas C y bins B) va por ColaExt, la Cola del exterior
+      ColaExt: { pon: k => { if (k.charAt(0) !== "C" && k.charAt(0) !== "B") throw new Error("los generados no deben usar la Cola compartida: " + k); cola.add.push(k); }, hay: () => false, cancela: () => { cola.cancela++; } },
       CargaPuro   // AG-1.5: la regla real del presupuesto de carga (nucleo/cola.ts)
     };
     const reloj = { t: 0, now() { return (this.t += 0.6); } }, cx = contexto(q, reloj, { glob, codigo: B07 + "\n;this.__A = Arboles;" });

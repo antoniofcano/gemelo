@@ -22,13 +22,26 @@ describe("creaExterior", () => {
     expect(reg).toEqual(["entidades", "tiempo", "mundo", "carga", "Cola", "Escena3D"]);
     expect(vistos).toEqual([[0.016, 5000]]);
   });
-  it("carga, entra, congela y libera (mínimos, MU2-6) no lanzan ni tocan los pasos; libera se puede llamar dos veces", async () => {
+  it("carga resuelve; sin dependencias, entra, congela y libera no lanzan y sale() da la pose cero; libera se puede llamar dos veces", async () => {
     const reg: string[] = [];
     const e = creaExterior({ pasos: pasosFalsos(reg), recorre: recorreSimple });
     await expect(e.carga({} as never)).resolves.toBeUndefined();
     e.entra(null, null); e.congela(); e.libera(); e.libera();
     expect(e.sale()).toEqual({ x: 0, y: 0, ang: 0 });
     expect(reg).toEqual([]);
+    e.actualiza(0.016, 1); expect(reg).toEqual([]);   // congelado, no corre nada
+    e.entra(null, null); e.actualiza(0.016, 1); expect(reg.length).toBe(6);
+  });
+  it("MU2-6: sale() devuelve una copia de la pose del paseo y entra(…, llegada) la pone; antesDelRender corre lo suyo, y congelado no", () => {
+    const pp = { x: 5, y: 6, ang: 1 }, reg: string[] = [];
+    const e = creaExterior({ pasos: [], recorre: recorreSimple, pose: { lee: () => pp, pon: p => { pp.x = p.x; pp.y = p.y; pp.ang = p.ang; } },
+      antesDelRender: [{ fn: () => { reg.push("Escena3D"); } }] });
+    const s = e.sale(); pp.x = 99;
+    expect(s).toEqual({ x: 5, y: 6, ang: 1 });
+    e.entra(null, s); expect(pp).toEqual({ x: 5, y: 6, ang: 1 });
+    const antes = e.antesDelRender as (dt: number, t: number) => void;
+    antes(0.016, 1); expect(reg).toEqual(["Escena3D"]);
+    e.congela(); antes(0.016, 1); expect(reg).toEqual(["Escena3D"]);
   });
   it("suelo es el que se le da (en metros); sin él, 0. Sin caja ni copas, dentro y obstaculo no restringen", () => {
     expect(creaExterior({ pasos: [], recorre: recorreSimple, suelo: (x, y) => x + 2 * y }).suelo(3, 4)).toBe(11);

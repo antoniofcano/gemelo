@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Lejanos
-// Consume: 02b_cola (Cola), 02i_materiales (Materiales), 03_escena (renderer, Estado), 06_arboles (gArboles), 07ab_generados (Generados)
+// Consume: 02b_cola (ColaExt), 02i_materiales (Materiales), 03_escena (renderer, Estado), 06_arboles (gArboles), 07ab_generados (Generados)
 // ===============================================================================
   // ---------- los olivos LEJANOS de la escalera (ADR-0019 §2, fase A, O8c), solo con ?olivos=escalera o con ?olivos=gen y variantes horneadas (modoGen
   // de 07ab): sin ellas no crea nada ni gasta nada.
@@ -179,7 +179,7 @@
         // AG-2.2: las siluetas de las 2 · nv celdas, del alfa del horneado (una lectura de la GPU, una vez) y por la Cola; mientras, «siluetas» (pendientes() lo cuenta)
         via = "siluetas";
         var gen = siluetasSustitutoG(), fin = function (tP) { if (via === "siluetas") ponSus(tP); };
-        if (typeof Cola !== "undefined" && Cola && Cola.add) Cola.add("Lsil", 60, gen, fin); else { var x; do { x = gen.next(); } while (!x.done); fin(x.value); }
+        if (typeof ColaExt !== "undefined" && ColaExt && ColaExt.pon) ColaExt.pon("Lsil", 60, gen, fin); else { var x; do { x = gen.next(); } while (!x.done); fin(x.value); }
       } catch (e) { via = "sin"; motivo = String(e && e.message || e).slice(0, 80); console.warn("olivos lejanos: " + motivo + " (de lejos, solo la ortofoto)"); }
     }
     function* siluetasSustitutoG() {

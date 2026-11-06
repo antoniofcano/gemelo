@@ -55,6 +55,9 @@ export interface MundoBase<C extends ContextoBase = ContextoBase> {
   entra(desde: Puerta | null, llegada: Pose2 | null): void;
   /** cada fotograma, solo si está activo */
   actualiza(dt: number, t: number): void;
+  /** MU2-6, opcional: lo último del mundo en el fotograma, tras los pasos de todo mundo (componentes, láminas, Cola) y justo antes del render, con las
+   *  mismas reglas que actualiza(). El exterior: Escena3D.actualiza, que tiene que ver la cámara de este fotograma y apuntar su deuda tras Cola.corre. */
+  antesDelRender?(dt: number, t: number): void;
   /** descuelga la raíz, quita Ambiente y entidades; devuelve dónde estaba quien mira */
   sale(): Pose2;
   /** sigue en memoria, sin actualizar, sin Cola y sin pedir teselas; puede volver a entra() sin carga() */
@@ -327,12 +330,18 @@ export function creaWorldManager<C extends ContextoBase = ContextoBase, W extend
   function actualiza(dt: number, t: number): void {
     if (actual && actual.mundo && ACTUALIZA_EN.indexOf(estado) >= 0) actual.mundo.actualiza(dt, t);
   }
+  // MU2-6: el trozo del mundo que va justo antes del render (si lo tiene), con la misma regla que actualiza
+  function antesDelRender(dt: number, t: number): void {
+    const w = actual && actual.mundo;
+    if (w && w.antesDelRender && ACTUALIZA_EN.indexOf(estado) >= 0) w.antesDelRender(dt, t);
+  }
 
   return {
     registra,
     cambia,
     arranca,
     actualiza,
+    antesDelRender,
     get actual(): IdMundo | null { return actual ? actual.id : null; },
     get estado(): EstadoCambio { return estado; },
     /** dónde se dejó cada mundo (lo que devolvió su sale()); en memoria, se pierde al recargar */

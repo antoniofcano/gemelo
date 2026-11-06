@@ -59,9 +59,11 @@ test("el motor: 04b_escena3d.js es la única escena (sin ESC3D ni ?escena=), arr
   assert.ok(perfiles.every((p, i) => i === 0 || p.e > perfiles[i - 1].e), "el errorTarget debe crecer al bajar de perfil");
   assert.match(vr, /Escena3D\.perfil\(p\)/); assert.match(vr, /Escena3D\.perfil\(null\)/);
   // A1-14: el fotograma es una lista de pasos que recorre nucleo/bucle.ts (el cronómetro de render() lo pone el bucle en el paso «render: true»)
-  // MU2-3: Escena3D.actualiza() es el ÚLTIMO paso del exterior, y el exterior (gm.actualiza) es el paso del Bucle justo antes de dibujar (la fase trasRender va después)
-  assert.match(fin, /Escena3D\.actualiza\(\); \} \}\s*\n\s*\] \}\);/, "Escena3D.actualiza() cierra la lista de pasos del exterior");
-  assert.match(fin, /\{ bloque: null, fn: gm\.actualiza \},[^\n]*\n\s*\{ render: true, fn: function \(\) \{ renderer\.render\(scene, camera\); \} \}/, "el exterior corre justo antes de dibujar");
+  // MU2-3: Escena3D.actualiza() es lo ÚLTIMO del exterior y va justo antes de dibujar (la fase trasRender va después). MU2-6: los pasos de todo mundo salieron
+  // del exterior al Bucle, así que Escena3D va sola en el trozo del exterior que corre antes del render (antesDelRender, por gm.antesDelRender), tras Cola.corre
+  assert.match(fin, /antesDelRender: \[\{ bloque: Reparto\.reg\("Escena3D\.actualiza"\), caro: true, fn: function \(\) \{ Escena3D\.actualiza\(\); \} \}\] \}\);/, "Escena3D.actualiza() es todo el antesDelRender del exterior");
+  assert.equal((fin.match(/Escena3D\.actualiza\(\)/g) || []).length, 1, "y no se llama en ningún otro sitio de 90_final");
+  assert.match(fin, /\{ bloque: Reparto\.reg\("Cola"\), caro: true, fn: function \(\) \{ Cola\.corre\(Arboles\.presupuesto\(\)\); \} \}, \{ bloque: null, fn: gm\.antesDelRender \},[^\n]*\n\s*\{ render: true, fn: function \(\) \{ renderer\.render\(scene, camera\); \} \}/, "tras la Cola y justo antes de dibujar");
 });
 
 // ---------------------------------------------------------------- los olivos del tileset (04c_olivos_tiles.js), sin navegador

@@ -333,6 +333,16 @@ describe("WorldManager con mundos falsos", () => {
     expect(b.gm.suelo(0, 0)).toBe(0.2); expect(mol.llamadas.actualiza).toBe(0);
   });
 
+  it("MU2-6: antesDelRender, si el mundo activo lo tiene y con la misma regla que actualiza (no a oscuras); sin él, nada", async () => {
+    const b = banco(); const ext = b.pon("exterior"); b.pon("molino");
+    let n = 0; (ext as { antesDelRender?: () => void }).antesDelRender = () => { n++; };
+    b.gm.antesDelRender(0.016, 0); expect(n).toBe(0);   // sin mundo activo
+    await b.gm.arranca("exterior");
+    b.gm.antesDelRender(0.016, 1); expect(n).toBe(1);
+    await b.gm.cambia("molino");
+    expect(() => b.gm.antesDelRender(0.016, 2)).not.toThrow(); expect(n).toBe(1);   // el molino no lo tiene; el exterior, congelado
+  });
+
   it("arrancar con fallo deja el gestor sin mundo, en «en» y listo para otro intento", async () => {
     const b = banco();
     let falla = true;
@@ -346,6 +356,6 @@ describe("WorldManager con mundos falsos", () => {
 
   it("el gestor no recibe ni toca renderer, scene ni renderer.xr: sus dependencias son el fundido, la Cola y el reloj", () => {
     const b = banco();
-    expect(Object.keys(b.gm).sort()).toEqual(["actual", "actualiza", "arranca", "cambia", "dentro", "estado", "fichaDe", "obstaculo", "registra", "retorno", "suelo"]);
+    expect(Object.keys(b.gm).sort()).toEqual(["actual", "actualiza", "antesDelRender", "arranca", "cambia", "dentro", "estado", "fichaDe", "obstaculo", "registra", "retorno", "suelo"]);
   });
 });

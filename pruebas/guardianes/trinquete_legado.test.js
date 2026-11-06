@@ -24,7 +24,9 @@ const C = require(path.join(RAIZ, "pruebas", "contrato_modulos.js"));
 // 2026-11-06, A2 (MU2-5, 02c_componentes.js entrega ComponentesPuro y Componentes a apps/web/src/nucleo/componentes.ts y conserva Bus, Reparto, Pausa, Teclas y Config): 18.780 líneas (de 18.947)
 // 2026-11-06, al fusionar MU2-3 y MU2-5: 18780 líneas
 // 2026-11-06, MU2-4 (la locomoción pregunta al mundo activo): 18.777 líneas
-const TOPE = 18777;
+// 2026-11-06, MU2-6 (congelar el exterior; SUBE +10, todo cableado: en 90_final.js las raíces, el HUD y la pose que se le dan al exterior, avisa y el contexto del
+//   gestor, el registro del vacío y ?mundo=vacio, y los pasos de todo mundo que salen del exterior al Bucle; en 02b_cola.js, ColaExt; lo demás va a apps/web/src/): 18.787 líneas
+const TOPE = 18787;
 
 /** líneas de un texto (la última sin salto también cuenta) */
 const lineas = s => s === "" ? 0 : s.split("\n").length - (s.endsWith("\n") ? 1 : 0);

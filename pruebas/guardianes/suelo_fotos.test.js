@@ -156,7 +156,7 @@ test("el motor carga el KTX2 con el KTX2Loader de three, con detectSupport, del 
   assert.ok(/function sueltaLoader\(\) \{ if \(loader\) \{ loader\.dispose\(\); loader = null; \} \}/.test(F04F), "el loader se libera (sus workers y su URL blob:)");
   const cuerpo = F04F.slice(F04F.indexOf("function cargaKtx2()"), F04F.indexOf("function carga()"));
   assert.strictEqual((cuerpo.match(/sueltaLoader\(\)/g) || []).length, 2, "se suelta tanto si carga como si falla");
-  assert.ok(/function libera\(\) \{\s*vez\+\+; sueltaLoader\(\); Cola\.cancela\("SF"\);/.test(F04F), "libera() suelta el loader, cancela lo pendiente y tira lo que llegue tarde");
+  assert.ok(/function libera\(\) \{\s*vez\+\+; sueltaLoader\(\); ColaExt\.cancela\("SF"\);/.test(F04F), "libera() suelta el loader, cancela lo pendiente y tira lo que llegue tarde");
   assert.ok(/return enCola\(\(function\* \(\) \{/.test(cuerpo), "el montaje del KTX2 va por la Cola");
   assert.ok(/t\.onUpdate = function \(\) \{ t\.mipmaps = \[\]; \};/.test(cuerpo), "ya en la tarjeta, fuera la copia de la CPU");
   assert.ok(/t\.wrapS = t\.wrapT = THREE\.RepeatWrapping/.test(cuerpo) && /t\.colorSpace = THREE\.NoColorSpace/.test(cuerpo), "repetible y sin espacio de color, como la de las WebP");

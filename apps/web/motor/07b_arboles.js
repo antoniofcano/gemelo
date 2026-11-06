@@ -1,11 +1,12 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Arboles
-// Consume: 01_datos (FACTOR_R8), 01a_aparato (Aparato), 02_mundo (Mundo, suelo, copaAlta, kcor, tinte, aviva, copas), 02b_cola (CargaPuro, Cola),
-//   02c_componentes (Config), 02f_xr_perillas (XrPerillas), 02g_vr_presupuesto (VrControlPuro), 02h_render (InfoDibujo), 02j_estaticos (Estaticos),
-//   02l_tope_tiles (TopeTilesPuro), 02m_tope_olivos (TopeOlivos), 03_escena (renderer, camera, Estado), 04c_olivos_tiles (OlivosTiles),
-//   04d_sombreado_tiles (hash), 05_nube (ALTO_MAX), 06_arboles (gArboles, arbolesG), 07_follaje (follajeG, construyeSombras),
-//   07a_catalogo (Catalogo), 07ab_generados (Escalera, Generados), 07ac_lejanos (Lejanos), 09_camara (objetivo, orb), 10_ndvi (ndviIdx),
-//   12_paseo (paseando, pp), 15_tiempo (nivel, esc), 29_vr (VRX), 33_ajustes (Ajustes)
+// Consume: 01_datos (FACTOR_R8), 01a_aparato (Aparato), 02_mundo (Mundo, suelo, copaAlta, kcor, tinte, aviva, copas),
+//   02b_cola (CargaPuro, Cola, ColaExt), 02c_componentes (Config), 02f_xr_perillas (XrPerillas), 02g_vr_presupuesto (VrControlPuro),
+//   02h_render (InfoDibujo), 02j_estaticos (Estaticos), 02l_tope_tiles (TopeTilesPuro), 02m_tope_olivos (TopeOlivos),
+//   03_escena (renderer, camera, Estado), 04c_olivos_tiles (OlivosTiles), 04d_sombreado_tiles (hash), 05_nube (ALTO_MAX),
+//   06_arboles (gArboles, arbolesG), 07_follaje (follajeG, construyeSombras), 07a_catalogo (Catalogo), 07ab_generados (Escalera, Generados),
+//   07ac_lejanos (Lejanos), 09_camara (objetivo, orb), 10_ndvi (ndviIdx), 12_paseo (paseando, pp), 15_tiempo (nivel, esc), 29_vr (VRX),
+//   33_ajustes (Ajustes)
 // ===============================================================================
   // ---------- los olivos del modo Gemelo con tres niveles de detalle: el coste de dibujo no crece con la superficie de la finca
   // Nivel 0: celdas de 64 m con el modelo completo (copa medida, troncos, hojas, flores y aceitunas) alrededor de lo que se mira (o de quien pasea), hasta MAX0 olivos.
@@ -85,7 +86,7 @@
     }
     function* puntosCeldaG(cel) {
       var ts = cel.ts, P = { x: [], y: [], z: [], h: [], b: [], n: 0 }; if (!ts || !ts.pts) return P;
-      while (!ts.bins) { if (!Cola.hay("B" + ts.key)) Cola.add("B" + ts.key, cel.prio - 1, binsG(ts)); yield; }
+      while (!ts.bins) { if (!ColaExt.hay("B" + ts.key)) ColaExt.pon("B" + ts.key, cel.prio - 1, binsG(ts)); yield; }
       var L = ts.bins[cel.k] || [], A2 = ts.pts;
       for (var i = 0; i < L.length; i++) {
         var q2 = L[i], px = ts.ox + A2[q2] / 100, py = ts.oy + A2[q2 + 1] / 100, pz = A2[q2 + 2] / 100, h = pz - suelo(px, py);
@@ -104,13 +105,13 @@
     }
     function encolaCelda(cel) {
       var kd = claveActual();
-      Cola.add("C" + cel.k, cel.prio, celdaG(cel), function (g) {
+      ColaExt.pon("C" + cel.k, cel.prio, celdaG(cel), function (g) {
         if (cel.g) { gArboles.remove(cel.g); libera(cel.g); }
         Estaticos.congela(g);   // AG-1.15: la celda no se mueve (todo en sus vértices e instancias)
         cel.g = g; cel.tri = null; g.visible = false; gArboles.add(g); cel.kd = kd; cel.sucia = kd !== claveActual(); sucio = true;
       });
     }
-    function quitaCelda(cel) { Cola.cancela("C" + cel.k); if (cel.g) { gArboles.remove(cel.g); libera(cel.g); cel.g = null; } cel.sucia = true; }
+    function quitaCelda(cel) { ColaExt.cancela("C" + cel.k); if (cel.g) { gArboles.remove(cel.g); libera(cel.g); cel.g = null; } cel.sucia = true; }
     // distancia horizontal del foco (el punto que se mira, o quien pasea) al borde de la celda, con un adelanto hacia donde se va
     function distFoco(cel, fx, fz) {
       var mx = cel.x0 + CEL / 2, mz = -(cel.y0 + CEL / 2), dx = Math.max(0, Math.abs(fx - mx) - CEL / 2), dz = Math.max(0, Math.abs(fz - mz) - CEL / 2), d = Math.sqrt(dx * dx + dz * dz), sp = Math.hypot(vel.x, vel.z);
@@ -158,7 +159,7 @@
           c.visto = ahora; if (c.pre) nPre++;
           c.prio = c.en ? c.d : c.d + 300;
           if (!c.g || c.sucia) { if (c.en) faltan++; encolaCelda(c); }
-        } else { if (Cola.hay("C" + c.k)) Cola.cancela("C" + c.k); if (c.g && ahora - c.visto > 8000) quitaCelda(c); }
+        } else { if (ColaExt.hay("C" + c.k)) ColaExt.cancela("C" + c.k); if (c.g && ahora - c.visto > 8000) quitaCelda(c); }
         if (c.g) c.g.visible = c.en && !c.sucia;   // mientras se rehace, los olivos de esa celda se ven en los niveles 1 y 2
       });
       // 2) el resto, por distancia: nivel 1 (los más cercanos) y nivel 2; los de una celda de nivel 0 ya construida y visible no se repiten
@@ -221,7 +222,7 @@
     function escalera() { return Escalera.dibuja({ modoGen: Generados.modoGen(), estado: Generados.estado(), hayCapa: Lejanos.hayCapa() }); }
     // todos: el tileset no dibuja ningún olivo (la máscara de 04c, con todos); si no, la máscara la pone reclasificaEscalera con los de 3D
     function apagaSiempre(todos) {
-      Object.keys(celdas).forEach(function (k) { var c = celdas[k]; Cola.cancela("C" + k); if (c.g) quitaCelda(c); c.en = c.pre = false; });
+      Object.keys(celdas).forEach(function (k) { var c = celdas[k]; ColaExt.cancela("C" + k); if (c.g) quitaCelda(c); c.en = c.pre = false; });
       var k;
       for (k = 0; k < NP1; k++) { cuenta(iCopa1[k], 0); cuenta(iTron1[k], 0); }
       for (k = 0; k < NP2; k++) cuenta(iCopa2[k], 0);
@@ -251,7 +252,7 @@
     }
     function refresca() {   // cambió algo que afecta a todos (exageración, calidad, corrección de la ortofoto, tinte): las celdas se reconstruyen poco a poco; si no cambió nada (p. ej. pulsar «Gemelo»), no se toca lo ya construido
       var kd = claveActual(); sucio = true; construyeSombras(); if (kd === claveDib) return;
-      claveDib = kd; Object.keys(celdas).forEach(function (k) { var c = celdas[k]; Cola.cancela("C" + k); if (c.g && c.kd !== kd) c.sucia = true; });
+      claveDib = kd; Object.keys(celdas).forEach(function (k) { var c = celdas[k]; ColaExt.cancela("C" + k); if (c.g && c.kd !== kd) c.sucia = true; });
     }
     function actualiza(dt, forzar) {
       if (!listo0) return;

@@ -95,11 +95,14 @@ Estilo del motor intacto (`var`, sin módulos ES dentro, concatenación): un com
     bandera: { defecto: true, url: "fichas" },        // ?fichas=0 la apaga; /api/config manda en el servidor (C6)
     presupuesto: { llamadas: 1, triangulos: 2, texturasMB: 1 },   // regla 6: lo que puede sumar como mucho
     fases: { tarde: 0.5 },                            // «tarde» cada 0,5 s (sustituye al setInterval); «mundo» cada fotograma
+    mundos: ["exterior"],                             // MU2-5: en qué mundos vive (opcional; sin el campo, el exterior)
     monta: function (n) { … return api; },            // n = el núcleo; puede devolver una promesa (import() perezoso)
     actualiza: { tarde: function (dt, t) { revisa(); } },
     libera: function () { … dispose() de todo … }     // obligatorio si monta crea recursos de GPU o escucha algo
   });
 ```
+
+**El campo `mundos`** (MU2-5, [MUNDOS](MUNDOS.md) §3): la lista sin repetir de los mundos en los que vive el componente, de los de `IdMundo` (`"exterior"`, `"molino"`, `"bodega"`, `"vacio"`); sin el campo, `["exterior"]`, que es lo de todos los de hoy. Sus fases solo corren mientras uno de sus mundos es el activo (lo dicen «mundo:entra» y «mundo:sale» del Bus, que emite el gestor de mundos; a oscuras, entre los dos, no corre ninguna); se monta solo si uno de sus mundos está cargado (activo o congelado), y se libera cuando el último de ellos se libera (`Componentes.liberaMundo`, que `90_final.js` engancha a la limpieza de cada mundo). Congelado su mundo (MU2-6), el componente sigue montado pero sin fases: si dibuja algo colgado de la escena, se oculta con las raíces del exterior. Lo valida `ComponentesPuro.valida` y lo prueba `nucleo/componentes.test.ts` (Vitest).
 
 Reglas que vigila un guardián nuevo (C1, en Node, sin Chrome):
 
@@ -114,12 +117,12 @@ Reglas que vigila un guardián nuevo (C1, en Node, sin Chrome):
 `cuadro(t)` deja de nombrar a nadie salvo el núcleo:
 
 ```
-dt → cámara (núcleo: VR, paseo u órbita) → Componentes.actualiza("mundo")   → Arboles/carga de teselas (núcleo)
-   → Componentes.actualiza("tarde") (cada uno a su ritmo, repartido entre fotogramas) → Cola.corre(presupuesto)
-   → render → Componentes.actualiza("trasRender") (depura, mide)
+dt → cámara (núcleo: VR, paseo u órbita) → el mundo activo (gm.actualiza: el exterior, con Arboles y la carga de teselas)
+   → Componentes.actualiza("mundo") → Componentes.actualiza("tarde") (cada uno a su ritmo, repartido entre fotogramas)
+   → láminas → Cola.corre(presupuesto) → gm.antesDelRender (el exterior: Escena3D) → render → Componentes.actualiza("trasRender") (depura, mide)
 ```
 
-Dentro de una fase, el orden lo da `orden` del manifiesto (y si falta, la dependencia), no el nombre del fichero. Durante la migración, las llamadas viejas de `cuadro` conviven con `Componentes.actualiza`; cada piloto que migra quita la suya.
+(Desde MU2-6; antes, la fase «mundo» iba entre la nube y los árboles, y todo hasta `Escena3D` dentro del exterior: [MUNDOS](MUNDOS.md) §3, «Cómo quedó (MU2-6)».) Dentro de una fase, el orden lo da `orden` del manifiesto (y si falta, la dependencia), no el nombre del fichero. Durante la migración, las llamadas viejas de `cuadro` conviven con `Componentes.actualiza`; cada piloto que migra quita la suya.
 
 ### 3.4 Encendido: URL, servidor y oficina
 
