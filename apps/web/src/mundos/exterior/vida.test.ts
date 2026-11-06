@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { creaMateriales } from "../../nucleo/materiales.ts";
 import type { ThreeMin } from "../../nucleo/materiales.ts";
-import { ID_VIDA, creaVida } from "./vida.ts";
+import { ID_VIDA, MATERIAL_ESTELA, creaVida, defEstela } from "./vida.ts";
 import type { DepsVida, EstadoVida } from "./vida.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -167,5 +167,22 @@ describe("vida del olivar: el ciclo de vida", () => {
     expect(vida.componente.id).toBe(ID_VIDA); expect(vida.componente.mundos).toEqual(["exterior"]); expect(vida.componente.presupuesto).toEqual({ llamadas: 0, triangulos: 0 });
     expect(vida.componente.eventos).toEqual({ escucha: [], emite: ["paseo:entra", "paseo:sale"] });
     expect(vida.componente.monta({} as never)).toEqual({ libera: vida.libera }); vida.componente.libera(null); expect(scene.children).toHaveLength(0);
+  });
+});
+
+describe("vida del olivar: la variante TSL de la estela (apagada)", () => {
+  it("con three/webgpu y three/tsl de verdad: estela es un MeshBasicNodeMaterial con su colorNode, a dos caras y aditivo, y solo sale con el renderer nuevo", async () => {
+    const rutaW = "three/webgpu", rutaT = "three/tsl";   // por variable: three no trae tipos (y así tampoco entra en el grafo de dependency-cruiser)
+    const W = await import(/* @vite-ignore */ rutaW), T = await import(/* @vite-ignore */ rutaT);
+    const nuevo = creaMateriales({ THREE: THREE as unknown as ThreeMin, render: { tipo: "nuevo", pedido: "nuevo" }, nodos: () => ({ THREE: W, TSL: T }) });
+    const clasico = creaMateriales({ THREE: THREE as unknown as ThreeMin, busqueda: "" });
+    for (const M of [nuevo, clasico]) M.define(MATERIAL_ESTELA, defEstela());
+    expect(nuevo.ruta(MATERIAL_ESTELA)).toBe("tsl"); expect(clasico.ruta(MATERIAL_ESTELA)).toBe("clasico");
+    const u = { uNow: { value: 2 }, uVida: { value: 6.5 }, uColor: { value: new THREE.Color(0xff9a2e) }, uAlpha: { value: 1 } };
+    const m = nuevo.crea(MATERIAL_ESTELA, { uniforms: u }) as { isNodeMaterial?: boolean; type?: string; colorNode?: unknown; transparent?: boolean; depthWrite?: boolean; side?: number; blending?: number };
+    expect(m.isNodeMaterial).toBe(true); expect(m.type).toBe("MeshBasicNodeMaterial"); expect(m.colorNode).toBeTruthy();
+    expect(m.transparent).toBe(true); expect(m.depthWrite).toBe(false); expect(m.side).toBe(THREE.DoubleSide); expect(m.blending).toBe(THREE.AdditiveBlending);
+    expect(clasico.crea(MATERIAL_ESTELA, { uniforms: u })).toMatchObject({ type: "ShaderMaterial" });
+    expect(nuevo.cobertura()[MATERIAL_ESTELA]).toMatchObject({ clasico: true, tsl: true });
   });
 });

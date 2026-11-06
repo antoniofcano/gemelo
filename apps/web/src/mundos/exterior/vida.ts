@@ -81,6 +81,24 @@ export function defEstela(): DefMaterial<OpcEstela> {
           "float a = (0.14 + 0.6 * caida + pie * 0.9 + filo) * v * uAlpha; " +
           "gl_FragColor = vec4(uColor * (1.0 + 0.9 * pie * (1.0 - edad)), clamp(a, 0.0, 1.0));\n#include <colorspace_fragment>\n}"
       });
+    },
+    // MU5-n, tercer commit: la variante TSL, APAGADA (solo con el WebGPURenderer, que hasta MU6 no existe; nadie la usa hoy). Un MeshBasicNodeMaterial con las mismas propiedades del clásico
+    // (transparente, sin escribir profundidad, a dos caras y aditivo; temaEstela le cambia `blending` igual que al clásico) cuyo colorNode es el de la estela: la edad de cada tramo
+    // (uNow − aB) / uVida con los MISMOS uniformes que mueve actualizaVida (uNow, uVida, uAlpha, y el MISMO Color uColor, que temaEstela cambia en su sitio), la caída, el pie y el filo.
+    // El smoothstep(0.14, 0.0, vV) de GLSL (primer borde mayor que el segundo) se escribe 1 − smoothstep(0.0, 0.14, vV): lo mismo, y WGSL exige borde menor < borde mayor.
+    // FALTA: nada conocido del dibujo; NO VERIFICADO que el grafo compile ni que se vea igual (capturas por material: MU6).
+    tsl: function (opc, c) {
+      const T = c.TSL as T3, M = c.THREE["MeshBasicNodeMaterial"] as new (o: unknown) => MaterialMin;
+      const u = opc.uniforms as T3;
+      const uNow = T.uniform(u["uNow"].value).onObjectUpdate(function () { return u["uNow"].value; }), uVida = T.uniform(u["uVida"].value).onObjectUpdate(function () { return u["uVida"].value; });
+      const uAlpha = T.uniform(u["uAlpha"].value).onObjectUpdate(function () { return u["uAlpha"].value; }), uColor = T.uniform(u["uColor"].value);   // el mismo Color
+      const vV = T.attribute("aV", "float"), vB = T.attribute("aB", "float");
+      const edad = T.clamp(uNow.sub(vB).div(uVida), 0, 1), v = T.float(1).sub(edad), v2 = v.mul(v);
+      const caida = T.pow(T.float(1).sub(vV), 1.3), pie = T.float(1).sub(T.smoothstep(0.0, 0.14, vV)), filo = T.smoothstep(0.88, 1.0, vV).mul(0.7);
+      const a = T.float(0.14).add(caida.mul(0.6)).add(pie.mul(0.9)).add(filo).mul(v2).mul(uAlpha);
+      const m = new M({ transparent: true, depthWrite: false, side: c.THREE["DoubleSide"], blending: c.THREE["AdditiveBlending"] }) as MaterialMin & { colorNode: unknown };
+      m.colorNode = T.vec4(uColor.mul(T.float(1).add(pie.mul(0.9).mul(T.float(1).sub(edad)))), T.clamp(a, 0, 1));
+      return m;
     }
   };
 }
