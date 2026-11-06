@@ -9,11 +9,12 @@
 // Cifras de DISEÑO (contadas en Node, no medidas con el renderizador). Lo de Chrome, iPhone y Quest: NO PROBADO.
 const test = require("node:test"), assert = require("node:assert"), vm = require("vm"), path = require("path"), { pathToFileURL } = require("url");
 const { RAIZ, fs, lee } = require("./_util");
+const Mundos = require("./_mundos"), { fuenteMotor } = require("./_fuente");   // 54 es un talón (MU5-n, A3-5): su código vive en mundos/exterior/trabajo-hoy.ts
 
 const trozo = (fuente, ini, fin) => { const i = fuente.indexOf(ini), f = fuente.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas " + ini); return fuente.slice(i, f); };
-const F53 = lee("apps/web/motor/53_mundo_hoy.js"), F54 = lee("apps/web/motor/54_trabajo_hoy.js");
+const F53 = lee("apps/web/motor/53_mundo_hoy.js"), F54 = lee("apps/web/motor/54_trabajo_hoy.js"), F54TS = fuenteMotor("54_trabajo_hoy.js");
 const MH = new Function("\"use strict\";\n" + trozo(F53, "// [puro:inicio]", "// [puro:fin]") + "\nreturn MundoHoyPuro;")();
-const P = new Function("\"use strict\";\n" + trozo(F54, "// [puro:inicio]", "// [puro:fin]") + "\nreturn TrabajoHoyPuro;")();
+const P = Mundos.TrabajoHoyPuro;
 const EJEMPLO = JSON.parse(lee("contratos/mundo-hoy-ejemplo.json"));
 const copia = o => JSON.parse(JSON.stringify(o));
 const PARCELAS = [{ id: "sintetica-1", nombre: "Parcela sintética", centro: [-58, -43] }, { id: "sintetica-2", nombre: "Otra", centro: [40, 20] }];
@@ -95,7 +96,7 @@ test("puro: la ficha lleva el rótulo «deducido», dice lo que no se sabe y no 
 function mundo(opts) {
   const o = opts || {}, scene = new THREE.Scene(), entidades = [], quitadas = [];
   const E = { exag: 1 };
-  const g = { THREE, scene, console, Math, JSON, window: {}, D: { parcelas: o.parcelas || PARCELAS },
+  const g = { THREE, Mundos, scene, console, Math, JSON, window: {}, D: { parcelas: o.parcelas || PARCELAS },
     suelo: (x, y) => 10, Componentes: { registra: d => { g.def = d; return true; } },
     Entidades: { registra: d => { entidades.push(d); return () => quitadas.push(d.tipo); } } };
   g.Estado = { get exag() { return E.exag; } };   // exag vive en Estado (A1-13): se lee de E por un getter
@@ -167,9 +168,9 @@ test("componente: libera() suelta malla, geometría, material y entidad, y deja 
 
 // ---------- higiene
 test("higiene: sin fetch, sin HTML, sin personas; el evento está en el catálogo", () => {
-  const codigo = F54.split("\n").filter(l => !/^\s*\/\//.test(l)).join("\n");
+  const codigo = F54TS.split("\n").filter(l => !/^\s*\/\//.test(l)).join("\n");
   assert.ok(!/fetch\(|innerHTML|eval\(|new Function|XMLHttpRequest|document\./.test(codigo));
   const ev = JSON.parse(lee("contratos/eventos.json")).eventos["mundo:hoy"];
-  assert.ok(ev.escuchan.includes("54_trabajo_hoy") && ev.emiten.includes("53_mundo_hoy"));
+  assert.ok(ev.escuchan.includes("mundos/exterior/trabajo-hoy") && ev.emiten.includes("53_mundo_hoy"));
   assert.ok(ev.datos.properties.trabajo, "el payload documenta «trabajo»");
 });

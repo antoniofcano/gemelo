@@ -49,3 +49,6 @@ export type { Catalogo, DepsCatalogo, Pieza as PiezaCatalogo } from "./exterior/
 export { Escalera, GeneradosPuro } from "./exterior/generados-escalera.ts";
 export { creaGenerados, manifiestoGenerados, ID_GENERADOS } from "./exterior/generados.ts";
 export type { DepsGenerados, Generados } from "./exterior/generados.ts";
+// A3-5 (MU5-n): la vida del olivar. Cada uno, con su libera() de verdad.
+export { ID_TRABAJO_HOY, TrabajoHoyPuro, creaTrabajoHoy, manifiestoTrabajoHoy } from "./exterior/trabajo-hoy.ts";
+export type { DepsTrabajoHoy, TrabajoHoy } from "./exterior/trabajo-hoy.ts";
