@@ -36,6 +36,7 @@ El cuello de botella es el **banco** (un solo Chrome con SwiftShader o un Docker
 | `build` | la web de Vite construida con el fixture, las dos fincas con tileset y sin él, y la caché de páginas | un cambio rompe el build | ver el error de Vite |
 | `carga` | 0 errores de consola y topes de dibujo | regresiones de render | mirar consola; si el tope sube a propósito, explicarlo en el commit |
 | `secretos` | claves, datos de explotación, ficheros pesados | datos privados en repo público | sacarlo del historial si ya se subió (consultar antes) |
+| `tipos_web` | `tsc --noEmit`, `vitest run` y `dependency-cruiser` sobre `apps/web/src/` | el código nuevo en TypeScript y sus fronteras (`nucleo`, `datos`, `red`, `mundos`) se rompen en silencio | corregir el tipo, la prueba o el `import` que cruza la frontera (regla y fichero en la salida); sin dependencias: `cd apps/web && npm ci` |
 | `vr` | sin WebXR no hay botón ni errores; prueba completa con el mock (opcional) | regresiones del modo VR | ver `pruebas/prueba_vr.js` y `doc/sistema/VR.md` |
 | `multiplataforma` | rutas con separador `\` escrito a mano en `tuberia/**/*.py`; `os.path.join` sin `import os` | los exportadores deben funcionar en Windows, Linux y macOS (decisión 8) | armar la ruta con `os.path.join` (o `pathlib`) e importar `os` |
 | `web` | la web de Vite = el motor tal cual ; carga sin errores, con la three de `apps/web`, y solo pide a su mismo origen | el build no debe cambiar el comportamiento | mirar la diferencia por escenario; si es intencionada, va con su ADR |

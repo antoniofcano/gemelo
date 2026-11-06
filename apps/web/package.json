@@ -30,8 +30,11 @@
   },
   "devDependencies": {
     "@webxr-input-profiles/assets": "1.0.20",
+    "dependency-cruiser": "18.7.0",
     "sharp": "0.35.5",
+    "typescript": "5.9.3",
     "vite": "6.4.5",
-    "vite-plugin-static-copy": "3.4.0"
+    "vite-plugin-static-copy": "3.4.0",
+    "vitest": "5.1.0"
   }
 }

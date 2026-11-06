@@ -1,0 +1,11 @@
+{
+  "$comment": "Solo el código nuevo de src/ (MUNDOS §9.1). El legado de motor/ no se tipa. Vite compila los .ts sin paso nuevo; `tsc --noEmit -p apps/web` los comprueba (guardián tipos_web.test.js).",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "lib": ["es2022", "dom"],
+    "types": ["vite/client"]
+  },
+  "include": ["src/**/*.ts", "vitest.config.ts"]
+}
