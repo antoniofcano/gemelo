@@ -4,6 +4,8 @@
 import { describe, expect, it } from "vitest";
 import { ID_IR_A, creaIrA, manifiestoIrA } from "./ir-a.ts";
 import type { DepsIrA } from "./ir-a.ts";
+import { creaMateriales } from "../../nucleo/materiales.ts";
+import type { ThreeMin } from "../../nucleo/materiales.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type A = any;
@@ -13,12 +15,12 @@ function monta(extra?: Partial<{ vr: boolean; dron: boolean; paseando: boolean }
   const e = Object.assign({ vr: false, dron: false, paseando: true }, extra || {});
   const scene = new THREE.Scene(), borrados: number[] = [];
   const d: DepsIrA = {
-    THREE, scene, Estado: { exag: 1 }, Materiales: null, suelo: () => 0, copas: () => [{ x: 0, y: 5, oliv: true }], pp: { x: 0, y: 0, ang: 0, paso: 0 },
+    THREE, scene, Estado: { exag: 1 }, Materiales: creaMateriales({ THREE: THREE as unknown as ThreeMin, busqueda: "" }), suelo: () => 0, copas: () => [{ x: 0, y: 5, oliv: true }], pp: { x: 0, y: 0, ang: 0, paso: 0 },
     Llegada: { borra: () => { borrados.push(1); }, apuntaPantalla: () => ({ x: 0, y: 0, z: -10 }) },
     paseando: () => e.paseando, teclas: () => ({}), enQuad: () => false, enDron: () => e.dron, VRX: () => ({ on: e.vr }), Ajustes: () => null,
     gm: () => ({ obstaculo: (x: number, y: number) => (Math.hypot(x, y - 10) < 0.9 ? { x: 0.9, y: 10 } : null), dentro: () => true }), busqueda: ""
   };
-  return { api: creaIrA(d), scene, borrados, e };
+  return { api: creaIrA(d), scene, borrados, e, d };
 }
 
 describe("ir-a: tocar para ir andando", () => {
@@ -37,6 +39,7 @@ describe("ir-a: tocar para ir andando", () => {
   });
   it("libera() quita la línea de la escena y suelta su geometría y su material; monta() la vuelve a poner", () => {
     const m = monta(), sueltos: string[] = [];
+    expect(m.api.linea.material.type).toBe("PointsMaterial"); expect(m.d.Materiales.duenos()["ir-a"]).toBe(1);   // de la fábrica, con su dueño
     m.api.linea.geometry.addEventListener("dispose", () => sueltos.push("geo")); m.api.linea.material.addEventListener("dispose", () => sueltos.push("mat"));
     m.api.libera();
     expect(m.scene.children).not.toContain(m.api.linea); expect(sueltos.sort()).toEqual(["geo", "mat"]);

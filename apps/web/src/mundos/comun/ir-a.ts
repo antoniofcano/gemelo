@@ -25,11 +25,12 @@ export interface DepsIrA {
 export function creaIrA(d: DepsIrA) {
   var THREE = d.THREE, scene = d.scene, Estado = d.Estado, suelo = d.suelo, pp = d.pp, Llegada = d.Llegada, location = { search: d.busqueda };
   var paseando = d.paseando, teclas = d.teclas, enQuad = d.enQuad, enDron = d.enDron, copas = d.copas;
+  var materiales = d.Materiales.de(ID_IR_A);   // el material de la línea, con dueño «ir-a» (se suelta con libera())
   var st = IrAPuro.crea(), MAXP = 80, PASO_P = 1.2;
   // la línea de puntos: una sola malla de puntos (1 llamada, solo con destino); el búfer se rellena cada fotograma, no se crea nada nuevo
   var bufP = new Float32Array(MAXP * 3), geoP = new THREE.BufferGeometry(), atrP = new THREE.BufferAttribute(bufP, 3);
   atrP.setUsage(THREE.DynamicDrawUsage); geoP.setAttribute("position", atrP); geoP.setDrawRange(0, 0);
-  var matP = new THREE.PointsMaterial({ color: 0xffc94a, size: 5, sizeAttenuation: false, fog: false, transparent: true, opacity: 0.9, depthWrite: false });
+  var matP = materiales.estandar("PointsMaterial", { color: 0xffc94a, size: 5, sizeAttenuation: false, fog: false, transparent: true, opacity: 0.9, depthWrite: false });
   var linea = new THREE.Points(geoP, matP); linea.frustumCulled = false; linea.visible = false; linea.renderOrder = 5; scene.add(linea);
   function pintaLinea() {
     if (!st.dest) { linea.visible = false; return; }
@@ -58,7 +59,7 @@ export function creaIrA(d: DepsIrA) {
     pintaLinea(); return r;
   }
   // libera la malla (la escena no la vuelve a necesitar)
-  function libera() { cancela(); scene.remove(linea); geoP.dispose(); matP.dispose(); }
+  function libera() { cancela(); scene.remove(linea); geoP.dispose(); matP.dispose(); materiales.libera(); }
   /** tras un libera(): la línea vuelve a la escena (su geometría y su material se vuelven a subir solos al dibujarse) */
   function monta() { if (!linea.parent) scene.add(linea); }
   return { libera: libera, monta: monta, linea: linea, toca: toca, paso: paso, cancela: cancela, activo: activo, destino: function () { return st.dest; } };
