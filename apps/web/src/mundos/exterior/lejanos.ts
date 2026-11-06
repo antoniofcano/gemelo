@@ -31,6 +31,8 @@ export interface DepsLejanos {
 }
 
 export const ID_LEJANOS = "lejanos";
+/** los nombres de los materiales en la fábrica (tabla de MATERIALES §1, filas 14 y 15): son también la clave de su variante TSL */
+export const MATERIAL_IMPOSTOR_LEJANO = "impostor-lejano", MATERIAL_IMPOSTOR_SUSTITUTO = "impostor-sustituto";
 
 export function creaLejanos(d: DepsLejanos) {
   const THREE = d.THREE, renderer = d.renderer, Estado = d.Estado, gArboles = d.gArboles, Materiales = d.Materiales, ColaExt = d.ColaExt, Generados = d.Generados;
@@ -39,6 +41,10 @@ export function creaLejanos(d: DepsLejanos) {
   var olivos: any = null, malla: any = null, matrices: any = null, posDe: any = {}, exagM = -1, nv = 0, triPor = 0, texMiB = 0, rt: any = null, uCapa = { value: 0 }, tCapa = 0, avisoImp: any = false;
   var texImp: any[] = [];   // las dos texturas de los atlas de impostores (con sus ImageBitmap): se liberan con libera() (L2-08)
   const materiales = Materiales.de(ID_LEJANOS);   // los dos materiales (impostor y sustituto) se piden con dueño «lejanos» y se liberan con su libera()
+  // MU5-n: los dos pasan por la fábrica (define + crea); el clásico es el de siempre, movido. Su parche es la misma función de siempre (three usa su texto como clave del programa)
+  Materiales.define(MATERIAL_IMPOSTOR_LEJANO, { clasico: function (o: any) { return clasicoImpostor(o); } });
+  Materiales.define(MATERIAL_IMPOSTOR_SUSTITUTO, { clasico: function (o: any) { return clasicoSustituto(o); } });
+  function ponParche(m: any, _nombre: string, fn: any) { m.onBeforeCompile = fn; return m; }   // lo que hacía Materiales.parchea sin clave propia, dentro del clásico del define
   var info = { dibujados: 0, entran: 0, salen: 0 }, sinGPU = false, cajas: any = null, ids: any = null;
   // AG-2.2 (?cartulina=silueta, doc/sistema/CARTULINAS.md): cada celda del atlas (impostor: variante × vista; sustituto: variante × plano) con el
   // polígono de K vértices que abraza lo opaco, en una textura de datos (K × celdas, RGBA32F: u, v de la celda) que el sombreador de vértices lee por
@@ -161,11 +167,13 @@ export function creaLejanos(d: DepsLejanos) {
   var GLSL_IMP_SIL = " vec2 ot_q = texelFetch(tPoli, ivec2(int(aIdx + 0.5), ot_k * 64 + int(ot_ij.y + 0.5) * 8 + int(ot_ij.x + 0.5)), 0).xy * 2.0 - 1.0;\n" +
     " mat2 ot_M = mat2(dot(ot_r, ot_rv), dot(ot_r, ot_uv), dot(ot_u, ot_rv), dot(ot_u, ot_uv)); vec2 ot_xy = abs(determinant(ot_M)) > 1e-3 ? inverse(ot_M) * ot_q : ot_q; vOtXY = ot_xy;\n" +
     " vec3 ot_off = ot_xy.x * ot_r + ot_xy.y * ot_u;";
-  function matImpostor(tCol: any, tNor: any, f: any, tP: any) {
+  function matImpostor(tCol: any, tNor: any, f: any, tP: any) { return materiales.crea(MATERIAL_IMPOSTOR_LEJANO, { tCol, tNor, f, tP }); }
+  function clasicoImpostor(o: any) {
+    var tCol = o.tCol, tNor = o.tNor, f = o.f, tP = o.tP;
     var C = [], S = [];
     for (var k = 0; k < 4; k++) { var v = f.variantes[Math.min(k, f.variantes.length - 1)]; C.push(new THREE.Vector3().fromArray(v.centro)); S.push(v.semilado); }
     var m = Materiales.recorte(new THREE.MeshLambertMaterial({ map: tCol, alphaTest: 0.5 })), U = { uCentro: { value: C }, uSemi: { value: S }, tNorm: { value: tNor } };
-    materiales.parchea(m, "impostor-lejano", function (sh: any) {
+    ponParche(m, "impostor-lejano", function (sh: any) {
       sh.uniforms.uCentro = U.uCentro; sh.uniforms.uSemi = U.uSemi; sh.uniforms.tNorm = U.tNorm; sh.uniforms.uCapa = uCapa;
       Generados.lejanos.parcheLuz(sh); Generados.lejanos.parcheFundido(sh);
       // después de los parches: así el cuadrado ya está colocado cuando la sombra de nubes lee «transformed»
@@ -251,9 +259,11 @@ export function creaLejanos(d: DepsLejanos) {
     g.setAttribute("uv", new THREE.Float32BufferAttribute(U, 2)); g.setAttribute("aVista", new THREE.Float32BufferAttribute(V, 1)); g.setIndex(I);
     return g;
   }
-  function matSustituto(tex: any, tP: any) {
+  function matSustituto(tex: any, tP: any) { return materiales.crea(MATERIAL_IMPOSTOR_SUSTITUTO, { tex, tP }); }
+  function clasicoSustituto(o: any) {
+    var tex = o.tex, tP = o.tP;
     var m = Materiales.recorte(new THREE.MeshLambertMaterial({ map: tex, alphaTest: 0.5, side: THREE.DoubleSide })), uNV = { value: nv };
-    materiales.parchea(m, "impostor-sustituto", function (sh: any) {
+    ponParche(m, "impostor-sustituto", function (sh: any) {
       sh.uniforms.uNVar = uNV; sh.uniforms.uCapa = uCapa; if (tP) sh.uniforms.tPoli = { value: tP };
       // AG-2.2: con silueta, el vértice aIdx del polígono de la celda (aVar, aVista): sus (u, w) dan la uv y la posición en el plano
       var q = tP ? " vec2 ot_pq = texelFetch(tPoli, ivec2(int(aIdx + 0.5), int(aVar + 0.5) * 2 + int(aVista + 0.5)), 0).xy;\n" : "", uv = tP ? "ot_pq" : "uv";
