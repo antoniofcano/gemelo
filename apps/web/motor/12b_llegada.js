@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: LlegadaPuro, Llegada
-// Consume: 01_datos (D, $), 02_mundo (suelo, copas), 03_escena (lienzo, visor, scene, camera, Estado), 12_paseo (paseando, pp, camPos, entraPaseo),
-//   16_vida (enDron, ponDron), 29_vr (VRX, vrFundido, vrAparece)
+// Expone: Llegada
+// Consume: 01_datos ($), 03_escena (lienzo, visor, scene, camera, Estado), 12_paseo (paseando, pp, camPos, entraPaseo), 16_vida (enDron, ponDron),
+//   29_vr (VRX, vrFundido, vrAparece), 90_final (gm)
 // Nota: Publica además window.__llegada (pruebas). LlegadaPuro vive en apps/web/src/nucleo/locomocion.ts (A1-11; sus pruebas, en locomocion.test.ts); el módulo conserva el anillo, el velo y los oyentes, que tocan THREE y el DOM.
 // ===============================================================================
   // ---------- la llegada: el anillo en el suelo adonde quieres ir y el salto hasta él (de pie, fuera de troncos, a la altura del suelo, andando).
@@ -9,7 +9,7 @@
   //   · VR (29_vr.js), volando o en el mirador: palanca derecha ↑ mantenida = rayo recto del mando al suelo y anillo; al soltar, fundido y de pie en el anillo.
   //   · Pantalla (con el Dron de 16_vida.js): un clic o un toque corto en el suelo pone el anillo (otro lo mueve; arrastrar no lo pone); «Aterrizar aquí»,
   //     Intro o L te deja de pie en él con un fundido corto; sin anillo, aterrizar guarda el Dron como siempre.
-  // El suelo es el de la CPU (suelo()·exag), no el relieve dibujado del tileset. Nada se mueve sin que el usuario lo pida y el salto va con fundido (~0,3 s), nunca con vuelo de cámara.
+  // El suelo es el de la CPU del mundo activo (gm.suelo()·exag; MU2-4), no el relieve dibujado del tileset. Nada se mueve sin que el usuario lo pida y el salto va con fundido (~0,3 s), nunca con vuelo de cámara.
   // aparece(x, y, ang) y ve(x, y, ang) (con fundido) los puede usar cualquier otro módulo para «aparecer en (x, y) mirando a ang» (p. ej. ir con otro visitante).
   // La lógica pura pasó a TypeScript (A1-11 / MU1-7): apps/web/src/nucleo/locomocion.ts (MUNDOS §9.4, pieza 6). Este módulo conserva lo que toca THREE y el DOM: no es un talón completo.
   var LlegadaPuro = Nucleo.LlegadaPuro;
@@ -18,7 +18,7 @@
     var anillo = new THREE.Mesh(new THREE.RingGeometry(0.72, 1, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: COLOR, fog: false, transparent: true, forceSinglePass: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false }));
     anillo.visible = false; anillo.renderOrder = 5; scene.add(anillo);
     var p = null, radio = 0, n = 0, ultimo = null, ocupado = false, rayo = new THREE.Raycaster(), ndc = new THREE.Vector2();
-    var alto = function (x, z) { return suelo(x, -z) * Estado.exag; };
+    var alto = function (x, z) { return gm.suelo(x, -z) * Estado.exag; };   // el suelo y la caja (gm.dentro) son los del mundo activo (MU2-4)
     // el velo de la pantalla (fuera de VR): un negro que se funde en 0,15 s, salta y se aclara en otros 0,15 s
     var velo = document.createElement("div"); velo.setAttribute("aria-hidden", "true");
     velo.style.cssText = "position:absolute;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity .15s linear;z-index:5";
@@ -29,7 +29,7 @@
     }
     // apunta un rayo (o, d) al suelo; con `mirada`, descarta lo que cae por detrás de quien observa desde `desde`. Pone (o borra) el anillo y devuelve el punto o null
     function apunta(o, d, desde, mirada) {
-      var q = LlegadaPuro.rayoSuelo(o, d, alto, D.ext);
+      var q = LlegadaPuro.rayoSuelo(o, d, alto, gm.dentro);
       if (q && mirada && !LlegadaPuro.delante(desde, mirada, q)) q = null;
       p = q; coloca(desde); return q;
     }
@@ -37,7 +37,7 @@
     function apuntaPantalla(cx, cy) {
       var r = lienzo.getBoundingClientRect(); if (!r.width || !r.height) return null;
       ndc.set((cx - r.left) / r.width * 2 - 1, -((cy - r.top) / r.height) * 2 + 1); camera.updateMatrixWorld(); rayo.setFromCamera(ndc, camera);
-      var q = LlegadaPuro.rayoSuelo(rayo.ray.origin, rayo.ray.direction, alto, D.ext);
+      var q = LlegadaPuro.rayoSuelo(rayo.ray.origin, rayo.ray.direction, alto, gm.dentro);
       if (q) { p = q; coloca(camera.position); }   // un toque fuera de la finca o al cielo no borra el anillo que ya había
       return q;
     }
@@ -50,13 +50,13 @@
     function funde(fn) { return VRX.on ? vrFundido(fn) : fundePantalla(fn); }
     // aparecer de pie en (x, y) del mundo (y = norte), fuera de troncos y dentro de la finca, mirando a ang (ángulo del paseo: 0 = norte; si se omite, se conserva)
     function aparece(x, y, ang) {
-      var e = D.ext; x = Math.max(e[0] + 3, Math.min(e[2] - 3, x)); y = Math.max(e[3] + 3, Math.min(e[1] - 3, y));
-      var f = LlegadaPuro.fueraDeTroncos(x, -y, copas); x = f.x; y = -f.z; n++; ultimo = [x, y];
+      // MU2-4: fuera de troncos (0,55 m, como al andar) y luego dentro del borde, en una llamada al mundo activo (antes: recorte a D.ext y luego fueraDeTroncos)
+      var o = gm.obstaculo(x, y, 0.55); if (o) { x = o.x; y = o.y; } n++; ultimo = [x, y];
       if (VRX.on) { vrAparece(x, y, ang); return; }
       if (!paseando) entraPaseo();
       if (enDron) ponDron(false);
       pp.x = x; pp.y = y; if (ang !== undefined && ang !== null) pp.ang = ang;
-      var gy = suelo(x, y) * Estado.exag, fx = Math.sin(pp.ang), fy = Math.cos(pp.ang);
+      var gy = gm.suelo(x, y) * Estado.exag, fx = Math.sin(pp.ang), fy = Math.cos(pp.ang);
       camPos.set(x - fx * 4.4, gy + 2.3, -(y - fy * 4.4));   // la cámara de seguimiento ya detrás, sin recorrer el camino
     }
     function ve(x, y, ang) { return funde(function () { aparece(x, y, ang); }); }

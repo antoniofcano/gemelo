@@ -1,14 +1,15 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: tVida, enQuad, vq, gFauna, altSuelo, quita, mira, quad, temaEstela, velPaseo, giroPaseo, ponQuad, vidaPaseo, enDron, dr, dron, ponDron,
 //   cicloVista, dronMando, camaraDron, vidaEntra, vidaSale, actualizaVida
-// Consume: 01_datos (D, $), 02_mundo (suelo, copaAlta), 02c_componentes (Bus), 02i_materiales (Materiales), 03_escena (scene, camera, Estado),
+// Consume: 01_datos ($), 02_mundo (suelo, copaAlta), 02c_componentes (Bus), 02i_materiales (Materiales), 03_escena (scene, camera, Estado),
 //   07_follaje (matSombra, geoSombra), 12_paseo (paseando, persona, teclas, primera, pp, camPos), 12b_llegada (Llegada),
-//   15_tiempo (nivelEn, texBrillo, cur, meta, ins, temaBarrera, num1, rumbo), 22_huellas (pendFactor, quadInc, inclinaQuad)
+//   15_tiempo (nivelEn, texBrillo, cur, meta, ins, temaBarrera, num1, rumbo), 22_huellas (pendFactor, quadInc, inclinaQuad), 90_final (gm)
 // ===============================================================================
   // ---------- la vida del olivar: el quad con estela de luz (Tron) y el dron para el paseo (los pájaros y los conejos son el componente «fauna-olivar», 16b_fauna.js)
   var tVida = 0, enQuad = false, vq = 0, gFauna = new THREE.Group(); gFauna.name = "fauna"; scene.add(gFauna);
   function esfera(r, m, sx, sy, sz, x, y, z, padre) { var me = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 8), m); me.scale.set(sx, sy, sz); me.position.set(x, y, z); padre.add(me); return me; }
-  function altSuelo(x, y) { return suelo(x, y) * Estado.exag; }
+  function altSuelo(x, y) { return suelo(x, y) * Estado.exag; }   // el de la vida ambiental (fauna, perros, huellas) y el dibujo del dron: sigue con el suelo de 02_mundo
+  function altMueve(x, y) { return gm.suelo(x, y) * Estado.exag; }   // el de moverse (el dron y su cámara): el suelo del mundo activo (MU2-4)
   var lvVida = { s: { alt: 0, az: 0 }, d: 0 };   // el nivel del sol del quad y del dron, el mismo objeto cada fotograma (AG-1.4b)
   function quita(a, o) { var i = a.indexOf(o); if (i >= 0) a.splice(i, 1); }
 
@@ -126,7 +127,7 @@
     if (quiero && enQuad) ponQuad(false);
     enDron = quiero; vistaD = 0; primera = false; dron.visible = enDron; anilloDron.visible = enDron; estelaDron.reinicia();
     if (enDron) {
-      var gy0 = altSuelo(pp.x, pp.y); dr.x = pp.x + Math.sin(pp.ang) * 1.2; dr.y = pp.y + Math.cos(pp.ang) * 1.2; dr.yaw = pp.ang; dr.h = gy0 + 3; dr.vf = dr.vh = dr.giro = 0;
+      var gy0 = altMueve(pp.x, pp.y); dr.x = pp.x + Math.sin(pp.ang) * 1.2; dr.y = pp.y + Math.cos(pp.ang) * 1.2; dr.yaw = pp.ang; dr.h = gy0 + 3; dr.vf = dr.vh = dr.giro = 0;
     } else { var u = persona.userData; u.pi.rotation.x = u.pd.rotation.x = u.bi.rotation.x = u.bd.rotation.x = 0; }
     $("btnDron").setAttribute("aria-pressed", String(enDron)); $("btnDron").textContent = enDron ? "Guardar el dron" : "Sacar el dron"; $("padDron").setAttribute("aria-pressed", String(enDron));
     $("padSube").hidden = !enDron; $("padBaja").hidden = !enDron; $("tDron").hidden = !enDron; $("ayudaPaseo").textContent = textoAyudaPaseo();
@@ -141,9 +142,10 @@
     dr.vf += (av * vmax * (av < 0 ? 0.6 : 1) - dr.vf) * k; dr.giro += (gi * 1.7 - dr.giro) * Math.min(1, dt * 5); dr.yaw += dr.giro * dt; dr.vh += (sube * 5.5 - dr.vh) * Math.min(1, dt * 3);
     // el viento del tiempo lo empuja (más de lo real para que se note); mismo marco que el mundo: x este, y norte
     var rad = Math.PI / 180, wx = -Math.sin(cur.dir * rad) * cur.viento * 0.35, wy = -Math.cos(cur.dir * rad) * cur.viento * 0.35;
-    var fx = Math.sin(dr.yaw), fy = Math.cos(dr.yaw), e = D.ext;
-    dr.x = Math.max(e[0] + 3, Math.min(e[2] - 3, dr.x + (fx * dr.vf + wx) * dt)); dr.y = Math.max(e[3] + 3, Math.min(e[1] - 3, dr.y + (fy * dr.vf + wy) * dt));
-    var suel = altSuelo(dr.x, dr.y), copa = copaAlta(dr.x, dr.y) * Estado.exag, minH = suel + copa + 1.0;   // sobrevuela las copas, no las atraviesa
+    var fx = Math.sin(dr.yaw), fy = Math.cos(dr.yaw);
+    dr.x += (fx * dr.vf + wx) * dt; dr.y += (fy * dr.vf + wy) * dt;
+    var o = gm.obstaculo(dr.x, dr.y, 0); if (o) { dr.x = o.x; dr.y = o.y; }   // radio 0: vuela sobre los troncos, solo lo frena el borde del mundo activo (MU2-4; antes, D.ext)
+    var suel = altMueve(dr.x, dr.y), copa = copaAlta(dr.x, dr.y) * Estado.exag, minH = suel + copa + 1.0;   // sobrevuela las copas, no las atraviesa
     dr.h = Math.max(minH, Math.min(suel + 90, dr.h + dr.vh * dt));
     dr.pit += (dr.vf * 0.022 - dr.pit) * Math.min(1, dt * 5); dr.rol += (-dr.giro * 0.2 - dr.rol) * Math.min(1, dt * 5);
     // el muñequito se vuelve a mirar el dron
@@ -156,7 +158,7 @@
     camDp.set(dr.x, dr.h, -dr.y);
     if (vistaD === 2) { camF.set(Math.sin(dr.yaw), -0.2 - dr.pit * 2, -Math.cos(dr.yaw)); camera.position.set(dr.x, dr.h - 0.1, -dr.y); camera.lookAt(camMira.copy(camera.position).add(camF.multiplyScalar(10))); return true; }
     if (vistaD === 1) { camera.position.set(pp.x, gy + 1.62, -pp.y); camera.lookAt(camDp); return true; }
-    var fx = Math.sin(pp.ang), fz = -Math.cos(pp.ang), ox = pp.x - fx * 4.6, oz = -pp.y - fz * 4.6, oy = Math.max(gy + 2.4, altSuelo(ox, -oz) + 1.3);
+    var fx = Math.sin(pp.ang), fz = -Math.cos(pp.ang), ox = pp.x - fx * 4.6, oz = -pp.y - fz * 4.6, oy = Math.max(gy + 2.4, altMueve(ox, -oz) + 1.3);
     camV.set(ox, oy, oz); camPos.x += (camV.x - camPos.x) * Math.min(1, dt * 4); camPos.y += (camV.y - camPos.y) * Math.min(1, dt * 4); camPos.z += (camV.z - camPos.z) * Math.min(1, dt * 4);
     camera.position.copy(camPos); camera.lookAt(camDp.x * 0.7 + pp.x * 0.3, camDp.y * 0.8 + (gy + 1.4) * 0.2, camDp.z * 0.7 - pp.y * 0.3); return true;
   }

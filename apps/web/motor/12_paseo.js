@@ -1,9 +1,9 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: paseando, persona, teclas, primera, pp, camPos, PalancaPuro, ponPalanca, giraPalanca, entraPaseo, salePaseo, actualizaPaseo
-// Consume: 01_datos (D, $), 02_mundo (suelo, copaAlta, copas), 03_escena (lienzo, visor, scene, camera, Estado), 09_camara (sensMirar),
-//   12c_ir_a (IrA), 13_parcelas (fincas, fincaSel, parcelaSel),
+// Consume: 01_datos (D, $), 02_mundo (copaAlta), 03_escena (lienzo, visor, scene, camera, Estado), 09_camara (sensMirar), 12c_ir_a (IrA),
+//   13_parcelas (fincas, fincaSel, parcelaSel),
 //   16_vida (enQuad, velPaseo, giroPaseo, ponQuad, vidaPaseo, enDron, ponDron, cicloVista, dronMando, camaraDron, vidaEntra, vidaSale),
-//   24_pantalla (TR, iniciaTransicion, iniciaSalida), 33_ajustes (Ajustes)
+//   24_pantalla (TR, iniciaTransicion, iniciaSalida), 33_ajustes (Ajustes), 90_final (gm)
 // ===============================================================================
 
   // ---------- paseo: una persona que camina por el olivar (flechas o WASD; Mayús corre; V cambia de cámara)
@@ -107,17 +107,13 @@
     pp.ang += gi * dt * giroPaseo(vel) * sensMirar().k;   // la sensibilidad de Configuración → Controles también gira al paseante (09_camara.js); el eje vertical no aplica
     var nx = pp.x + Math.sin(pp.ang) * vel * dt, ny = pp.y + Math.cos(pp.ang) * vel * dt;
     if (lat) { var pl = PalancaPuro.mundo(0, lat * (teclas.run ? 4.3 : 1.7) * 0.8, pp.ang); nx += pl.x * dt; ny += pl.y * dt; }
-    // los troncos no se atraviesan: se empuja fuera del círculo de cada tronco
-    var RC = enQuad ? 1.05 : 0.55;
-    for (var i = 0; i < copas.length; i++) {
-      var c = copas[i]; if (!c.oliv) continue; var dx = nx - c.x, dy = ny - c.y, d2 = dx * dx + dy * dy;
-      if (d2 < RC * RC) { var d = Math.sqrt(d2) || 0.001; nx = c.x + dx / d * RC; ny = c.y + dy / d * RC; }
-    }
-    var e = D.ext; nx = Math.max(e[0] + 3, Math.min(e[2] - 3, nx)); ny = Math.max(e[3] + 3, Math.min(e[1] - 3, ny));
+    // los troncos no se atraviesan y no se sale de la finca: el mundo activo empuja fuera del círculo de cada tronco (0,55 m; 1,05 en quad) y recorta a su borde
+    // (MU2-4: gm.obstaculo; en el exterior, los olivos de copas y D.ext con 3 m de margen, como antes)
+    var o = gm.obstaculo(nx, ny, enQuad ? 1.05 : 0.55); if (o) { nx = o.x; ny = o.y; }
     pp.x = nx; pp.y = ny; pp.paso += Math.abs(vel) * dt * 3.4;
     var mov = Math.min(1, Math.abs(vel) / 1.7), sw = Math.sin(pp.paso) * 0.75 * mov, ud = persona.userData;
     ud.pi.rotation.x = sw; ud.pd.rotation.x = -sw; ud.bi.rotation.x = -sw * 0.8; ud.bd.rotation.x = sw * 0.8;
-    var gy = suelo(pp.x, pp.y) * Estado.exag;
+    var gy = gm.suelo(pp.x, pp.y) * Estado.exag;   // el suelo del mundo activo (MU2-4), exagerado como siempre
     persona.position.set(pp.x, gy + Math.abs(Math.sin(pp.paso)) * 0.03 * mov, -pp.y); persona.rotation.y = -pp.ang; persona.visible = !primera; vidaPaseo(dt, gy, vel);
     var fx = Math.sin(pp.ang), fz = -Math.cos(pp.ang);
     if (camaraDron(dt, gy)) { }
@@ -129,9 +125,9 @@
       var cabY = gy + 1.5, finY = gy + 2.3, DMIN = 1.2;
       for (var s = 0.6; s <= DC; s += 0.25) {
         var sx = pp.x - Math.sin(pp.ang) * s, sy = pp.y - Math.cos(pp.ang) * s, hc = copaAlta(sx, sy);
-        if (hc > 0.8 && cabY + (finY - cabY) * s / DC < suelo(sx, sy) * Estado.exag + hc + 0.3) { DC = Math.max(DMIN, s - 0.35); break; }
+        if (hc > 0.8 && cabY + (finY - cabY) * s / DC < gm.suelo(sx, sy) * Estado.exag + hc + 0.3) { DC = Math.max(DMIN, s - 0.35); break; }
       }
-      var objx = pp.x - fx * DC, objz = -pp.y - fz * DC, objy = Math.max(gy + 2.3, suelo(objx, -objz) * Estado.exag + 1.2);
+      var objx = pp.x - fx * DC, objz = -pp.y - fz * DC, objy = Math.max(gy + 2.3, gm.suelo(objx, -objz) * Estado.exag + 1.2);
       camPos.x += (objx - camPos.x) * Math.min(1, dt * 5); camPos.z += (objz - camPos.z) * Math.min(1, dt * 5); camPos.y += (objy - camPos.y) * Math.min(1, dt * 5);
       camera.position.copy(camPos); camera.lookAt(pp.x + fx * 1.5, gy + 1.3, -pp.y + fz * 1.5);
     }

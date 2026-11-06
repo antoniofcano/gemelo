@@ -72,6 +72,19 @@ describe("LlegadaPuro", () => {
     expect(L.dentro(498, 0, EXT)).toBe(false); expect(L.dentro(0, 498, EXT)).toBe(false); expect(L.dentro(0, -498, EXT)).toBe(false);
   });
 
+  it("MU2-4: con el `dentro` del mundo (en coordenadas del mundo, y = norte) en vez de la caja, el rayo da lo mismo", () => {
+    const vistos: Array<[number, number]> = [];
+    const dentroMundo = (x: number, y: number): boolean => { vistos.push([x, y]); return L.dentro(x, -y, EXT); };   // la misma caja, por función
+    const o = { x: 0, y: 330, z: 0 };
+    for (const d of [{ x: 0, y: -230, z: -100 }, { x: 0, y: -230, z: -600 }, { x: 0, y: -230, z: -498.5 }, { x: 0, y: -230, z: -495 }, { x: 120, y: -230, z: 40 }]) {
+      expect(L.rayoSuelo(o, d, llano, dentroMundo)).toEqual(L.rayoSuelo(o, d, llano, EXT));
+    }
+    const p = L.rayoSuelo(o, { x: 0, y: -230, z: -100 }, llano, (x, y) => { vistos.length = 0; vistos.push([x, y]); return true; });
+    expect(vistos[0]![1]).toBeCloseTo(-p!.z, 9);   // le llega y = norte = −z
+    expect(L.rayoSuelo(o, { x: 0, y: -230, z: -100 }, llano, () => false)).toBeNull();   // un mundo donde no se puede estar: sin punto
+    expect(L.dentro(0, 0, () => false)).toBe(false); expect(L.dentro(1e6, 1e6, () => true)).toBe(true);
+  });
+
   it("toque frente a arrastre: umbral de movimiento (px) y de tiempo (ms)", () => {
     expect(L.esToque(0, 120, "mouse")).toBe(true);   // clic quieto
     expect(L.esToque(5, 300, "mouse")).toBe(true);
@@ -193,6 +206,20 @@ describe("IrAPuro", () => {
     expect(Date.now() - t0).toBeLessThan(100);   // el tope de tramos acota el tiempo
     const st = I.crea(), pos = { x: 0, y: 0, ang: 0 }; I.ir(st, 0, 10, [], copas, ext);
     const r = camina(st, pos, 8, copas); expect(r.fin, JSON.stringify([ruta, r])).toBe("atascado");
+  });
+
+  it("MU2-4: planifica e ir aceptan el `dentro` del mundo en vez de la caja; con la misma caja, el mismo rodeo", () => {
+    const copas: Copa[] = [{ x: 0, y: 5, oliv: true }, { x: 30, y: 12, oliv: true }, { x: -47, y: 20, oliv: true }];
+    const ext = [-50, 50, 50, -50], dentroMundo = (x: number, y: number): boolean => L.dentro(x, -y, ext);
+    for (const [a, b] of [[{ x: 0, y: 0 }, { x: 0, y: 10 }], [{ x: 30, y: 2 }, { x: 30, y: 22 }], [{ x: -47, y: 10 }, { x: -47, y: 30 }]] as Array<[Punto2, Punto2]>) {
+      expect(I.planifica(a, b, copas, I.R_TRONCO, dentroMundo)).toEqual(I.planifica(a, b, copas, I.R_TRONCO, ext));
+    }
+    // un mundo que no deja estar al oeste de x = 0: el rodeo del tronco de (0, 5) va por el este
+    const este = I.planifica({ x: 0, y: 0 }, { x: 0, y: 10 }, copas, I.R_TRONCO, (x) => x >= 0) as Punto2[];
+    expect(este).toHaveLength(2); expect(este[0]!.x).toBeGreaterThan(0);
+    // ni este ni oeste: no hay rodeo
+    expect(I.planifica({ x: 0, y: 0 }, { x: 0, y: 10 }, copas, I.R_TRONCO, (x) => x === 0)).toBeNull();
+    const st = I.crea(); I.ir(st, 0, 10, [], copas, dentroMundo); expect(st.ext).toBe(dentroMundo);
   });
 
   it("línea de puntos: sobre el camino, cada 1,2 m desde el destino, sin el del destino, se acorta al avanzar y respeta el tope", () => {

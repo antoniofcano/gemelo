@@ -13,6 +13,10 @@ export interface Punto3 { x: number; y: number; z: number }
 export interface Copa { x: number; y: number; oliv?: boolean | number }
 /** D.ext = [x0, yNorte, x1, ySur] */
 export type Ext = readonly [number, number, number, number] | readonly number[];
+/** ¿se puede estar en (x, y) del mundo (y = norte)? Es el `dentro` del mundo activo (gm.dentro; MUNDOS §2, MU2-4) */
+export type Dentro = (x: number, y: number) => boolean;
+/** la caja de la finca (D.ext, con el margen de 3 m) o el `dentro` del mundo activo, que es lo que pasa el legado desde MU2-4 */
+export type Caja = Ext | Dentro;
 export type TipoPuntero = "mouse" | "pen" | "touch" | string | undefined;
 export interface Impacto { x: number; y: number; z: number; dist: number }
 
@@ -22,11 +26,16 @@ export interface Impacto { x: number; y: number; z: number; dist: number }
 const LL_MAX = 2500, LL_MARGEN = 3, LL_TOQUE_MS = 400, LL_TOQUE_PX: Readonly<Record<string, number>> = { mouse: 6, pen: 8, touch: 12 };
 
 // ¿(x, z) de la escena (z = −norte) dentro de D.ext = [x0, yNorte, x1, ySur], con 3 m de margen (como el paseo y el teletransporte a pie)?
-function dentro(x: number, z: number, e: Ext): boolean { const y = -z; return x >= (e[0] as number) + LL_MARGEN && x <= (e[2] as number) - LL_MARGEN && y >= (e[3] as number) + LL_MARGEN && y <= (e[1] as number) - LL_MARGEN; }
+// Con una función (el `dentro` del mundo activo, en coordenadas del mundo), es la que decide (MU2-4).
+function dentro(x: number, z: number, e: Caja): boolean {
+  const y = -z;
+  if (typeof e === "function") return e(x, y);
+  return x >= (e[0] as number) + LL_MARGEN && x <= (e[2] as number) - LL_MARGEN && y >= (e[3] as number) + LL_MARGEN && y <= (e[1] as number) - LL_MARGEN;
+}
 
 // rayo (origen o, dirección d) contra el suelo alto(x, z) (m de la escena, ya con exageración). Avanza a pasos de la mitad de la altura que le queda
-// (0,5–25 m) y afina con bisección. Devuelve { x, y, z, dist } o null si apunta hacia arriba, no toca suelo en `max` m o cae fuera de la finca.
-function rayoSuelo(o: Punto3, d: Punto3, alto: (x: number, z: number) => number, ext: Ext, max?: number): Impacto | null {
+// (0,5–25 m) y afina con bisección. ext: la caja D.ext o el `dentro` del mundo (gm.dentro, MU2-4). Devuelve { x, y, z, dist } o null si apunta hacia arriba, no toca suelo en `max` m o cae fuera de la finca.
+function rayoSuelo(o: Punto3, d: Punto3, alto: (x: number, z: number) => number, ext: Caja, max?: number): Impacto | null {
   const l = Math.hypot(d.x, d.y, d.z); if (!(l > 0)) return null;
   const dx = d.x / l, dy = d.y / l, dz = d.z / l, tope = max || LL_MAX;
   if (dy > -0.02) return null;
@@ -69,7 +78,7 @@ function fueraDeTroncos(x: number, z: number, copas: readonly Copa[], r?: number
 // ¿un clic/toque (y no un arrastre ni una pulsación larga)? mov: lo más lejos (px) que se fue el puntero desde que bajó; ms: lo que duró
 function esToqueLlegada(mov: number, ms: number, tipo?: TipoPuntero): boolean { return mov <= (LL_TOQUE_PX[tipo as string] || (LL_TOQUE_PX.mouse as number)) && ms <= LL_TOQUE_MS; }
 
-export const LlegadaPuro = { rayoSuelo, delante, radioMarca, fueraDeTroncos, dentro, esToque: esToqueLlegada, MAX: LL_MAX, TOQUE_MS: LL_TOQUE_MS, TOQUE_PX: LL_TOQUE_PX };
+export const LlegadaPuro = { rayoSuelo, delante, radioMarca, fueraDeTroncos, dentro, esToque: esToqueLlegada, MAX: LL_MAX, MARGEN: LL_MARGEN, TOQUE_MS: LL_TOQUE_MS, TOQUE_PX: LL_TOQUE_PX };
 
 // =====================================================================================================================================================
 // Tocar para ir andando (12c_ir_a.js)
@@ -77,7 +86,7 @@ export const LlegadaPuro = { rayoSuelo, delante, radioMarca, fueraDeTroncos, den
 const LLEGA = 0.5, LLEGA_INTER = 0.7, TOQUE_MS = 400, TOQUE_PX: Readonly<Record<string, number>> = { mouse: 6, pen: 8, touch: 12 }, GIRO = 3.2, ATASCO_S = 1.2, ATASCO_M = 0.15;
 
 /** el estado de un trayecto: el destino, el rodeo que falta por andar y lo que hace falta para replanificar o rendirse */
-export interface EstadoIr { dest: Punto2 | null; ruta: Punto2[]; copas: readonly Copa[] | null; ext: Ext | null; replan: number; mejor: number; quieto: number }
+export interface EstadoIr { dest: Punto2 | null; ruta: Punto2[]; copas: readonly Copa[] | null; ext: Caja | null; replan: number; mejor: number; quieto: number }
 export interface PasoIr { av: number; ang: number; fin: null | "llego" | "atascado" }
 
 // ¿un clic/toque corto (y no un arrastre ni una pulsación larga)? mov: lo más lejos (px) que se fue el puntero; ms: lo que duró
@@ -112,14 +121,14 @@ function obstaculo(a: Punto2, b: Punto2, copas: readonly Copa[], R: number, ex: 
   }
   return mejor;
 }
-function libre(p: Punto2, copas: readonly Copa[], r: number, ext?: Ext | null): boolean {
-  if (ext && (p.x < (ext[0] as number) + 3 || p.x > (ext[2] as number) - 3 || p.y < (ext[3] as number) + 3 || p.y > (ext[1] as number) - 3)) return false;
+function libre(p: Punto2, copas: readonly Copa[], r: number, ext?: Caja | null): boolean {
+  if (ext && !dentro(p.x, -p.y, ext)) return false;   // la caja con 3 m de margen (la misma comparación de siempre) o el `dentro` del mundo
   for (let i = 0; i < copas.length; i++) { const c = copas[i] as Copa; if (c.oliv && Math.hypot(c.x - p.x, c.y - p.y) < r) return false; }
   return true;
 }
 // camino de a a b esquivando troncos: lista de puntos que acaba en b (sin a), [b] si el recto está libre, o null si no hay rodeo
-// (más de PROF_PLAN niveles o TOPE_PLAN tramos mirados: el tope de tiempo). ext = D.ext para no salirse de la finca (opcional).
-function planifica(a: Punto2, b: Punto2, copas: readonly Copa[], R?: number, ext?: Ext | null): Punto2[] | null {
+// (más de PROF_PLAN niveles o TOPE_PLAN tramos mirados: el tope de tiempo). ext = D.ext o el `dentro` del mundo (gm.dentro, MU2-4), para no salirse (opcional).
+function planifica(a: Punto2, b: Punto2, copas: readonly Copa[], R?: number, ext?: Caja | null): Punto2[] | null {
   const rr = R || R_TRONCO, pts: Punto2[] = []; let n = 0;
   function tramo(p: Punto2, q: Punto2, prof: number, ex: Record<number, boolean>): boolean {
     if (++n > TOPE_PLAN || prof > PROF_PLAN) return false;
@@ -154,7 +163,7 @@ function puntosLinea(pos: Punto2, st: EstadoIr, paso: number, max: number): Punt
 }
 function crea(): EstadoIr { return { dest: null, ruta: [], copas: null, ext: null, replan: 0, mejor: Infinity, quieto: 0 }; }
 // ruta: puntos intermedios (de planifica, sin el destino); copas/ext (opcionales): permiten replanificar una vez si se atasca
-function ir(st: EstadoIr, x: number, y: number, ruta?: Punto2[] | null, copas?: readonly Copa[] | null, ext?: Ext | null): void { st.dest = { x: x, y: y }; st.ruta = ruta || []; st.copas = copas || null; st.ext = ext || null; st.replan = 0; st.mejor = Infinity; st.quieto = 0; }
+function ir(st: EstadoIr, x: number, y: number, ruta?: Punto2[] | null, copas?: readonly Copa[] | null, ext?: Caja | null): void { st.dest = { x: x, y: y }; st.ruta = ruta || []; st.copas = copas || null; st.ext = ext || null; st.replan = 0; st.mejor = Infinity; st.quieto = 0; }
 function cancela(st: EstadoIr): void { st.dest = null; st.ruta = []; st.copas = null; st.mejor = Infinity; st.quieto = 0; }
 // un paso: pos = { x, y, ang } del paseante (y = norte); devuelve { av, ang, fin } (fin: null, "llego" o "atascado") o null sin destino.
 // Atascado: andando (avance > 0,3) y sin acercarse ATASCO_M m en ATASCO_S s (un tronco, un desnivel…).

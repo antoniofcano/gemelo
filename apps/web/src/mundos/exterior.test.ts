@@ -30,10 +30,72 @@ describe("creaExterior", () => {
     expect(e.sale()).toEqual({ x: 0, y: 0, ang: 0 });
     expect(reg).toEqual([]);
   });
-  it("suelo es el que se le da (en metros); sin él, 0. dentro y obstaculo no restringen todavía (MU2-4)", () => {
+  it("suelo es el que se le da (en metros); sin él, 0. Sin caja ni copas, dentro y obstaculo no restringen", () => {
     expect(creaExterior({ pasos: [], recorre: recorreSimple, suelo: (x, y) => x + 2 * y }).suelo(3, 4)).toBe(11);
     const e = creaExterior({ pasos: [], recorre: recorreSimple });
     expect(e.suelo(3, 4)).toBe(0); expect(e.dentro(1e6, 1e6)).toBe(true); expect(e.obstaculo(0, 0, 1)).toBeNull();
+  });
+});
+
+// MU2-4: dentro y obstaculo de verdad, con una finca y un censo inventados. EXT = D.ext = [x0, yNorte, x1, ySur]; las copas en el marco del mundo (y = norte).
+describe("dentro y obstaculo del exterior (MU2-4)", () => {
+  const EXT = [-100, 80, 100, -60];
+  const COPAS = [{ x: 0, y: 0, oliv: true }, { x: 10, y: 0, oliv: true }, { x: 20, y: 0, oliv: false }, { x: 96, y: 0, oliv: true }];
+  const ext = () => creaExterior({ pasos: [], recorre: recorreSimple, ext: EXT, copas: COPAS });
+
+  it("dentro: la caja D.ext con 3 m de margen, bordes incluidos (la de LlegadaPuro.dentro y el teletransporte a pie)", () => {
+    const e = ext();
+    expect(e.dentro(0, 0)).toBe(true); expect(e.dentro(-97, 77)).toBe(true); expect(e.dentro(97, -57)).toBe(true);
+    expect(e.dentro(-97.01, 0)).toBe(false); expect(e.dentro(97.01, 0)).toBe(false); expect(e.dentro(0, 77.01)).toBe(false); expect(e.dentro(0, -57.01)).toBe(false);
+  });
+  it("obstaculo: null si el punto ya está bien (lejos de troncos y dentro); lo que no es olivo no estorba", () => {
+    const e = ext();
+    expect(e.obstaculo(5, 5, 0.55)).toBeNull(); expect(e.obstaculo(20.1, 0, 0.55)).toBeNull();
+  });
+  it("obstaculo: empuja fuera del tronco hasta el radio pedido, en la misma dirección (lo que hacía el bucle de 12_paseo)", () => {
+    const e = ext(), o = e.obstaculo(0.2, 0.1, 0.55);
+    expect(o).not.toBeNull(); const p = o as { x: number; y: number };
+    expect(Math.hypot(p.x, p.y)).toBeCloseTo(0.55, 9); expect(p.y / p.x).toBeCloseTo(0.5, 9);
+    const q = e.obstaculo(10, 0.5, 1.05) as { x: number; y: number };   // el quad: 1,05 m
+    expect(q.x).toBeCloseTo(10, 9); expect(q.y).toBeCloseTo(1.05, 9);
+  });
+  it("obstaculo: justo en el centro de un tronco se sale hacia el este (como LlegadaPuro.fueraDeTroncos)", () => {
+    const o = ext().obstaculo(10, 0, 0.55) as { x: number; y: number };
+    expect(o.x).toBeCloseTo(10.55, 9); expect(o.y).toBeCloseTo(0, 9);
+  });
+  it("obstaculo: recorta al borde con 3 m de margen, eje a eje (el paseo, la VR y el dron), también sin tronco cerca", () => {
+    const e = ext();
+    expect(e.obstaculo(150, 10, 0.55)).toEqual({ x: 97, y: 10, ang: 0 });
+    expect(e.obstaculo(-150, -200, 0.55)).toEqual({ x: -97, y: -57, ang: 0 });
+    expect(e.obstaculo(0, 79, 0)).toEqual({ x: 0, y: 77, ang: 0 });
+  });
+  it("obstaculo: primero los troncos, luego el borde (un tronco junto al borde no te saca de la finca)", () => {
+    const o = ext().obstaculo(96.3, 0, 0.55) as { x: number; y: number };   // el tronco de x = 96 te empujaría a 96,55; el borde está en 97: se queda dentro
+    expect(o.x).toBeCloseTo(96.55, 9);
+    const b = ext().obstaculo(96.9, 0, 1.5) as { x: number; y: number };   // a 1,5 m te llevaría a 97,5: el borde lo deja en 97
+    expect(b.x).toBe(97);
+  });
+  it("obstaculo con radio 0: solo el borde (el dron vuela sobre los troncos; la VR volando alto)", () => {
+    const e = ext();
+    expect(e.obstaculo(0.1, 0, 0)).toBeNull(); expect(e.obstaculo(120, 0.1, 0)).toEqual({ x: 97, y: 0.1, ang: 0 });
+  });
+  it("obstaculo: dos troncos en orden del censo, como el bucle de siempre (el segundo puede devolverte hacia el primero)", () => {
+    const e = creaExterior({ pasos: [], recorre: recorreSimple, copas: [{ x: 0, y: 0, oliv: true }, { x: 1, y: 0, oliv: true }] });
+    const o = e.obstaculo(0.5, 0.01, 0.55) as { x: number; y: number };
+    // el primero lo saca a 0,55 de (0, 0); el segundo lo empuja a 0,55 de (1, 0): es el último el que manda, como antes
+    expect(Math.hypot(o.x - 1, o.y)).toBeCloseTo(0.55, 9);
+  });
+  it("obstaculo: devuelve siempre el mismo objeto (no reserva por fotograma); quien lo usa copia x e y", () => {
+    const e = ext(), a = e.obstaculo(150, 0, 0.55), b = e.obstaculo(-150, 0, 0.55);
+    expect(a).toBe(b); expect(b).toEqual({ x: -97, y: 0, ang: 0 });
+  });
+  it("el gestor delega en el exterior activo: gm.dentro y gm.obstaculo son los suyos (antes de arrancar: falso y null)", async () => {
+    const gm = creaWorldManager({ fundido: fundidoFalso(), cola: creaCola({ ahora: () => 0 }), temporizador: (f, ms) => { const h = setTimeout(f, ms); return () => clearTimeout(h); } });
+    gm.registra(() => Promise.resolve(creaExterior({ pasos: [], recorre: recorreSimple, ext: EXT, copas: COPAS, suelo: () => 412 })), "exterior");
+    expect(gm.dentro(0, 0)).toBe(false); expect(gm.obstaculo(150, 0, 0.55)).toBeNull(); expect(gm.suelo(0, 0)).toBe(0);
+    await gm.arranca("exterior");
+    expect(gm.dentro(0, 0)).toBe(true); expect(gm.dentro(99, 0)).toBe(false); expect(gm.suelo(0, 0)).toBe(412);
+    expect(gm.obstaculo(150, 0, 0.55)).toEqual({ x: 97, y: 0, ang: 0 });
   });
 });
 

@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: tamano, cuadro, bucle
-// Consume: 02_mundo (Mundo, suelo), 02b_cola (Cola), 02c_componentes (Reparto, Bus, Pausa, Componentes), 02d_laminas (Laminas),
+// Expone: tamano, gm, cuadro, bucle
+// Consume: 01_datos (D), 02_mundo (Mundo, suelo, copas), 02b_cola (Cola), 02c_componentes (Reparto, Bus, Pausa, Componentes), 02d_laminas (Laminas),
 //   02e_entidades (Usables), 02h_render (Render), 03_escena (visor, renderer, scene, camera), 04b_escena3d (Escena3D),
 //   05_nube (actualizaNubeTeselas, actualizaNube), 07b_arboles (Arboles), 08_marcadores (listo, aplica), 09_camara (objetivo, camara),
 //   12_paseo (paseando, actualizaPaseo), 15_tiempo (actualizaTiempo), 16_vida (actualizaVida), 17_minimapa (actualizaMinimapa),
@@ -19,7 +19,7 @@
   // ahorro de batería, «cuadro:fin»; L7-01, L7-02, L7-10). MU2-3: la lista se parte en dos, en el orden de siempre: los pasos del EXTERIOR (src/mundos/exterior.ts) corren dentro de gm.actualiza y en el Bucle, los de todo mundo. bloque: el del reparto (Q0h); null = se mide dentro; caro: oculta, no corre.
   // Las fases «mundo» y «tarde» de Componentes, las láminas y la Cola son de todo mundo pero van ENTRE pasos del exterior: un solo gm.actualiza no puede intercalarlos y van dentro para no cambiar el orden (MU2-6 los saca).
   var bCamara = Reparto.reg("cámara/paseo/VR"), Bucle, temporizador = function (f, ms) { var h = setTimeout(f, ms); return function () { clearTimeout(h); }; };   // la cámara se registra antes que los del exterior (el reparto lista por orden de registro); Bucle se crea más abajo
-  var exterior = Mundos.creaExterior({ suelo: suelo, recorre: function (p, dt, t) { Bucle.recorre(p, dt, t); }, pasos: [
+  var exterior = Mundos.creaExterior({ suelo: suelo, ext: D.ext, copas: copas, recorre: function (p, dt, t) { Bucle.recorre(p, dt, t); }, pasos: [
       { bloque: Reparto.reg("entidades"), fn: function (dt) { Usables.actualiza(dt); } },   // la cercanía (02e_entidades.js): antes que las balizas, que la leen
       { bloque: Reparto.reg("tiempo"), fn: function (dt, t) { actualizaTiempo(dt, t); } }, { bloque: Reparto.reg("olivo (estación)"), fn: function (dt) { actualizaOlivo(dt); } },
       { bloque: Reparto.reg("vida (fauna y perros)"), fn: function (dt) { actualizaVida(dt); } }, { bloque: Reparto.reg("minimapa"), fn: function (dt) { actualizaMinimapa(dt); } },

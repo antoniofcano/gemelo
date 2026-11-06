@@ -106,7 +106,7 @@ function nombresDe(s) {
   return out;
 }
 // Nombres cortos (menos de 3 letras) que SÍ cuentan como contrato; los demás cortos (`i`, `a`, `v`…) son locales.
-const CORTOS = new Set(["D", "$", "x0", "yN", "UN", "pp", "OT", "dd", "sw", "TM", "vq", "dr", "MW", "MH", "PA", "SN", "S0", "V0", "TR"]);
+const CORTOS = new Set(["D", "$", "x0", "yN", "UN", "pp", "OT", "dd", "sw", "TM", "vq", "dr", "MW", "MH", "PA", "SN", "S0", "V0", "TR", "gm"]);   // gm: el gestor de mundos de 90_final (MU2-4: lo usa la locomoción)
 const cache = new Map();
 function usa(n, s) { let c = cache.get(s); if (!c) cache.set(s, c = nombresDe(s)); return c.has(n) && !(n.length < 3 && n !== "D" && n !== "$" && c.locales.has(n)); }
 

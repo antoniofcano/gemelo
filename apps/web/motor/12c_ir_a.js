@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: IrA
-// Consume: 01_datos (D), 02_mundo (suelo, copas), 03_escena (scene, Estado), 12_paseo (paseando, teclas, pp), 12b_llegada (LlegadaPuro, Llegada),
-//   16_vida (enQuad, enDron), 29_vr (VRX), 33_ajustes (Ajustes)
+// Consume: 02_mundo (suelo, copas), 03_escena (scene, Estado), 12_paseo (paseando, teclas, pp), 12b_llegada (Llegada), 16_vida (enQuad, enDron),
+//   29_vr (VRX), 33_ajustes (Ajustes), 90_final (gm)
 // ===============================================================================
   // ---------- tocar para ir andando (tanda 9): en pantalla (ratón y táctil, no en VR), a pie, un clic o un toque corto en el suelo hace que el paseante camine hasta allí.
   // No salta ni se teletransporta: gira hacia el punto y anda con el avance de siempre (la misma velocidad, pendiente, troncos y borde de la finca de actualizaPaseo, 12_paseo.js),
@@ -32,9 +32,10 @@
     function toca(cx, cy, mov, ms, tipo) {
       if (!paseando || VRX.on || enDron || !activo() || !IrAPuro.esToque(mov, ms, tipo)) return false;
       var q = Llegada.apuntaPantalla(cx, cy); if (!q) return false;   // cielo o fuera de la finca: no pasa nada (y el anillo que hubiera sigue)
-      var f = LlegadaPuro.fueraDeTroncos(q.x, q.z, copas, 0.9);      // el destino no cae dentro de un tronco
-      var d = { x: f.x, y: -f.z }, ruta = IrAPuro.planifica(pp, d, copas, IrAPuro.R_TRONCO, D.ext);   // null: sin rodeo, va recto (y si se atasca, replanifica o se rinde)
-      IrAPuro.ir(st, d.x, d.y, ruta ? ruta.slice(0, -1) : [], copas, D.ext); pintaLinea(); return true;
+      var d = { x: q.x, y: -q.z }, o = gm.obstaculo(d.x, d.y, 0.9); if (o) { d.x = o.x; d.y = o.y; }   // el destino no cae dentro de un tronco (ni fuera del borde; MU2-4)
+      // el rodeo mira la lista de troncos (un segmento contra cada uno, que un obstaculo(x, y) de un punto no responde) y la caja del mundo activo (gm.dentro)
+      var ruta = IrAPuro.planifica(pp, d, copas, IrAPuro.R_TRONCO, gm.dentro);   // null: sin rodeo, va recto (y si se atasca, replanifica o se rinde)
+      IrAPuro.ir(st, d.x, d.y, ruta ? ruta.slice(0, -1) : [], copas, gm.dentro); pintaLinea(); return true;
     }
     // desde actualizaPaseo (12_paseo.js), una vez por fotograma. manda: hay tecla, cruceta o palanca en uso → se cancela. Devuelve { av, ang } o null
     function paso(dt, manda) {

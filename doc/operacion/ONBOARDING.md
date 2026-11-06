@@ -74,6 +74,7 @@
 | 56 | Escape del índice en la página (L9-04): `</script`, `<!--` y los textos de la cabecera no cierran el bloque `#datos` ni meten marcado; el JSON leído es el original | `genera_motor.test.js` |
 | 57 | Estado mutable compartido del legado (MU1-9): `exag`, `modo` y `calidad` viven en `Estado` (`apps/web/src/nucleo/estado.ts`); ningún módulo las declara ni las usa sueltas (ámbitos con acorn), `Estado` nace una vez en `03_escena.js` y no se reasigna, y las demás globales reasignadas entre módulos no pasan del inventario (trinquete que solo encoge) | `estado_mutable.test.js` |
 | 58 | Cerro Velasco fuera del mundo (decisión 229): ningún fichero de `apps/web/` ni de `tuberia/` la nombra, `tuberia/datos/` ya no tiene su carpeta y el exportador solo ofrece `--finca hituelo` (el fixture sintético «cerro» vive en `pruebas/` y no cuenta) | `sin_cerro.test.js` |
+| 59 | Locomoción por el mundo activo (MU2-4): en `12_paseo`, `12b_llegada`, `12c_ir_a`, `16_vida` y `29_vr`, moverse pregunta a `gm.suelo`/`gm.dentro`/`gm.obstaculo` (acorn sobre el montaje): ninguna lectura de `D.ext`, ningún `fueraDeTroncos`, y solo las llamadas a `suelo(` y los usos de `copas` de una lista explícita con su motivo (dibujo, vida ambiental, el rodeo de «ir a», ayudas de pruebas); `rayoSuelo`, `planifica` e `ir` reciben `gm.dentro`. Mira el código, no el comportamiento (eso, en Vitest: `exterior.test.ts`, `locomocion.test.ts`) | `locomocion_mundo.test.js` |
 
 En CI la misma puerta corre en GitHub Actions (`.github/workflows/puerta.yml`); no despliega nada.
 

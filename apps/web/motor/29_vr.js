@@ -7,7 +7,7 @@
 //   03_escena (renderer, scene, camera, sol, texColor, Estado), 04b_escena3d (Escena3D), 04d_sombreado_tiles (UN), 07b_arboles (Arboles),
 //   09_camara (pon), 10_ndvi (NDV, ndviIdx, rampa), 12_paseo (paseando, persona, teclas, primera, pp, entraPaseo, salePaseo, actualizaPaseo),
 //   12b_llegada (Llegada), 13_parcelas (parcelas, fincas), 15_tiempo (meta, pasoHoraMundo, horaMundoTexto), 22_huellas (pendFactor),
-//   24_pantalla (TR), 33_ajustes (Ajustes), 90_final (tamano, cuadro, bucle)
+//   24_pantalla (TR), 33_ajustes (Ajustes), 90_final (tamano, gm, cuadro, bucle)
 // Nota: Publica además window.__vrDebug, __vrOlivo, __vrBotones, __vrVuelo y VR_ESTADO (depuración y pruebas VR).
 // ===============================================================================
   // ---------- modo VR inmersivo (WebXR, Meta Quest Browser): el paseo en primera persona con mandos, un panel flotante y un perfil de rendimiento propio
@@ -64,15 +64,15 @@
   var arco = new THREE.Line(arcoGeo, new THREE.LineBasicMaterial({ color: 0x7fe3ff, fog: false, transparent: true, opacity: 0.9 })); arco.frustumCulled = false; arco.visible = false;
   var arcoMarca = new THREE.Mesh(new THREE.RingGeometry(0.28, 0.4, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x7fe3ff, fog: false, side: THREE.DoubleSide })); arcoMarca.visible = false;
   function vrArco(o) {   // trayectoria balística desde el mando derecho hasta el suelo; devuelve el punto de caída o null
-    var r = vrRayoDe(o), ox = r.ray.origin.x, oy = r.ray.origin.y, oz = r.ray.origin.z, dx = r.ray.direction.x * 9, dy = r.ray.direction.y * 9, dz = r.ray.direction.z * 9, e = D.ext, hit = null, n = 0, px = ox, py = oy, pz = oz;
+    var r = vrRayoDe(o), ox = r.ray.origin.x, oy = r.ray.origin.y, oz = r.ray.origin.z, dx = r.ray.direction.x * 9, dy = r.ray.direction.y * 9, dz = r.ray.direction.z * 9, hit = null, n = 0, px = ox, py = oy, pz = oz;
     for (var k = 0; k < 33; k++) {
       var t = (k + 1) * 0.06; px = ox + dx * t; py = oy + dy * t - 4.9 * t * t; pz = oz + dz * t; arcoPos[k * 3] = px; arcoPos[k * 3 + 1] = py; arcoPos[k * 3 + 2] = pz; n = k + 1;
-      var g = suelo(px, -pz) * Estado.exag; if (py <= g) { hit = { x: px, z: pz }; break; }
+      var g = gm.suelo(px, -pz) * Estado.exag; if (py <= g) { hit = { x: px, z: pz }; break; }   // el suelo y la caja son los del mundo activo (MU2-4)
     }
     arcoPos[0] = ox; arcoPos[1] = oy; arcoPos[2] = oz;
     for (var q = n; q < 34; q++) { arcoPos[q * 3] = px; arcoPos[q * 3 + 1] = py; arcoPos[q * 3 + 2] = pz; }
     arcoGeo.attributes.position.needsUpdate = true;
-    if (hit && (hit.x < e[0] + 3 || hit.x > e[2] - 3 || -hit.z < e[3] + 3 || -hit.z > e[1] - 3)) hit = null;
+    if (hit && !gm.dentro(hit.x, -hit.z)) hit = null;
     return hit;
   }
 
@@ -524,7 +524,7 @@
     var n = Nucleo.BuclePuro.recoloca(VRX.rig, { p: camera.position, q: camera.quaternion }, { p: p, q: q }); VRX.rig.x = n.x; VRX.rig.z = n.z; VRX.rig.yaw = n.yaw; camera.position.set(p.x, p.y, p.z); camera.quaternion.set(q.x, q.y, q.z, q.w); vrAplicaRig(); VRX.sucio = true;
   }
   function vrIrA(px, py) {   // lleva la cabeza a (px, py) del mundo (py hacia el norte), sin cambiar la dirección de la mirada
-    var h = vrCabeza(); VRX.rig.x += px - h.x; VRX.rig.z += -py - h.z; VRX.rig.y = suelo(px, py) * Estado.exag + vrBaseY(); VRX.salto = true;   // salto: con ?ui=capas el panel nace delante (EV2-A2)
+    var h = vrCabeza(); VRX.rig.x += px - h.x; VRX.rig.z += -py - h.z; VRX.rig.y = gm.suelo(px, py) * Estado.exag + vrBaseY(); VRX.salto = true;   // salto: con ?ui=capas el panel nace delante (EV2-A2)
   }
   function vrEjes(src) { var g = src && src.gamepad; if (!g || !g.axes) return { x: 0, y: 0, ok: false }; var a = g.axes, i = a.length >= 4 ? 2 : 0; return { x: a[i] || 0, y: a[i + 1] || 0, ok: true }; }
   function vrBoton(src, k) { var g = src && src.gamepad, b = g && g.buttons && g.buttons[k]; return !!(b && b.pressed); }
@@ -567,12 +567,10 @@
       else { dx = hx * av * vel * dt - hz * la * vel * dt; dz = hz * av * vel * dt + hx * la * vel * dt; }
     }
     var nx = h.x + dx, nz = h.z + dz;
-    if (!VRX.vuelo || h.y - suelo(h.x, -h.z) * Estado.exag < 3) {   // los troncos no se atraviesan (a pie, o volando a ras)
-      for (var i = 0; i < copas.length; i++) { var c = copas[i]; if (!c.oliv) continue; var ex = nx - c.x, ez = nz + c.y, d2 = ex * ex + ez * ez; if (d2 < 0.3025) { var dl = Math.sqrt(d2) || 0.001; nx = c.x + ex / dl * 0.55; nz = -c.y + ez / dl * 0.55; } }
-    }
-    var e = D.ext; nx = Math.max(e[0] + 3, Math.min(e[2] - 3, nx)); nz = Math.max(-e[1] + 3, Math.min(-e[3] - 3, nz));
+    // los troncos no se atraviesan (a pie, o volando a ras: 0,55 m) y no se sale del borde (siempre; volando alto, radio 0 = solo el borde). MU2-4: gm.obstaculo, en el marco del mundo (y = −z)
+    var aRas = !VRX.vuelo || h.y - gm.suelo(h.x, -h.z) * Estado.exag < 3, ob = gm.obstaculo(nx, -nz, aRas ? 0.55 : 0); if (ob) { nx = ob.x; nz = -ob.y; }
     r.x += nx - h.x; r.z += nz - h.z; if (VRX.vuelo) r.y += dy;
-    var gnd = suelo(nx, -nz) * Estado.exag + vrBaseY();
+    var gnd = gm.suelo(nx, -nz) * Estado.exag + vrBaseY();
     if (VRX.vuelo) r.y = Math.max(r.y, gnd + 0.4); else r.y += (gnd - r.y) * Math.min(1, dt * 12);
     VRX.hMov = Math.max(0, VRX.hMov - dt); var mueve = mov > 0 || VRX.hMov > 0;
     // lo que el resto del programa mira: el «paseo» (pp) es la cabeza; el muñequito va oculto
@@ -604,7 +602,7 @@
     PanelVR.fotograma(dt);   // EV2-A3: lo enganchado (el menú de muñeca, 31c_muneca.js), con el rig ya colocado
   }
   function vrMirador(on) {   // 230 m de golpe: siempre por el fundido (L7-05)
-    vrSalta(null, 0, function () { VRX.mirador = on; VRX.vuelo = on; VRX.sucio = true; var h = vrCabeza(); VRX.rig.y = suelo(h.x, -h.z) * Estado.exag + (on ? 230 : vrBaseY()); VRX.salto = true; });
+    vrSalta(null, 0, function () { VRX.mirador = on; VRX.vuelo = on; VRX.sucio = true; var h = vrCabeza(); VRX.rig.y = gm.suelo(h.x, -h.z) * Estado.exag + (on ? 230 : vrBaseY()); VRX.salto = true; });
   }
   // el gatillo: sobre el panel pulsa un botón; sobre un olivo, abre su ficha
   function vrGatillo(o) {
@@ -698,7 +696,7 @@
     scene.add(vrRig); vrRig.add(camera); camera.add(vrVineta); camera.position.set(0, VRX.ojo ? 0 : 1.6, 0); camera.quaternion.identity(); VRC.forEach(function (o) { vrRig.add(o.c); vrRig.add(o.g); }); Bus.emite("vr:rig-monta", { rig: vrRig }); scene.add(arco); scene.add(arcoMarca); scene.add(panel.m); scene.add(ficha.m); scene.add(fichaB.m); vrVueloEntra();
     VRP.on = true; vrPerfil(XrPerillas.fijo() ? XrPerillas.efectivas.nivel : 0); VrControlPuro.reinicia(VRX);   // A1-12: medias, periodo, perdidos, buenos y castigo, de cero
     if (!paseando) entraPaseo(); primera = true; TR.act = false; persona.visible = false; Bus.emite("perros:llegan");
-    var r = VRX.rig; r.x = pp.x; r.z = -pp.y; r.yaw = 0; r.y = suelo(pp.x, pp.y) * Estado.exag + vrBaseY(); VRX.vuelo = false; VRX.mirador = false; VRX.prev = {}; VRX.giroOk = true; VRX.movF = 0; VRX.sucio = true; panel.m.visible = true; panel.ini = false; ficha.m.visible = false; fichaB.m.visible = false; VRX.fichaId = ""; VRX.balFirma = "";
+    var r = VRX.rig; r.x = pp.x; r.z = -pp.y; r.yaw = 0; r.y = gm.suelo(pp.x, pp.y) * Estado.exag + vrBaseY(); VRX.vuelo = false; VRX.mirador = false; VRX.prev = {}; VRX.giroOk = true; VRX.movF = 0; VRX.sucio = true; panel.m.visible = true; panel.ini = false; ficha.m.visible = false; fichaB.m.visible = false; VRX.fichaId = ""; VRX.balFirma = "";
     vrAplicaRig(); vrRig.updateMatrixWorld(true); VRX.on = true; VRX.entrando = false; vrEstado("sesión VR en marcha"); vrPrecompila(); Bus.emite("vr:entra");
   }
   function vrAnimacion(t, frame) { if (!frame || !VRX.on) return; VRX.frame = frame; cuadro(performance.now()); }

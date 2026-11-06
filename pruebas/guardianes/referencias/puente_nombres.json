@@ -36,7 +36,7 @@
   "10b_capa_ndvi.js": [],
   "11_sol.js": [],
   "12_paseo.js": ["paseando","persona","teclas","primera","pp","camPos","PalancaPuro","ponPalanca","giraPalanca","entraPaseo","salePaseo","actualizaPaseo"],
-  "12b_llegada.js": ["LlegadaPuro","Llegada"],
+  "12b_llegada.js": ["Llegada"],
   "12c_ir_a.js": ["IrA"],
   "13_parcelas.js": ["parcelas","fincas","fincaSel","parcelaSel","claseUsda","elegirParcela","elegirFinca"],
   "13b_hazas.js": ["HazasPuro","Hazas"],
@@ -91,7 +91,7 @@
   "52_aves_mes.js": [],
   "53_mundo_hoy.js": [],
   "54_trabajo_hoy.js": [],
-  "90_final.js": ["tamano","cuadro","bucle"],
+  "90_final.js": ["tamano","gm","cuadro","bucle"],
   "99_cierre.js": []
  }
 }
