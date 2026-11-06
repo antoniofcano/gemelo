@@ -44,7 +44,8 @@ export const ID_ARBOLES_L0 = "arboles-l0";
 
 // ---------------------------------------------------------------- los materiales (MU5-n: por la fábrica, con sus nombres de la tabla de MATERIALES §1, fila 10)
 /** los nombres de los materiales en la fábrica: son también la clave de su variante TSL */
-export const MATERIAL_COPA_L0 = "copa-l0", MATERIAL_TRONCO_L0 = "tronco-l0";
+export const MATERIAL_COPA_L0 = "copa-l0";
+export const MATERIAL_TRONCO_L0 = "tronco-l0";
 /** Lambert con el color por vértice (escrito en sRGB: el parche lo pasa a lineal al leerlo, `colorVertSRGB` de 03_escena). La copa se ve por las dos caras. */
 export function defLambertVertice(parche: (sh: unknown) => void, dosCaras: boolean): DefMaterial<void> {
   return {

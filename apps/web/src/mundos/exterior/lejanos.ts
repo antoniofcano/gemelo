@@ -32,7 +32,8 @@ export interface DepsLejanos {
 
 export const ID_LEJANOS = "lejanos";
 /** los nombres de los materiales en la fábrica (tabla de MATERIALES §1, filas 14 y 15): son también la clave de su variante TSL */
-export const MATERIAL_IMPOSTOR_LEJANO = "impostor-lejano", MATERIAL_IMPOSTOR_SUSTITUTO = "impostor-sustituto";
+export const MATERIAL_IMPOSTOR_LEJANO = "impostor-lejano";
+export const MATERIAL_IMPOSTOR_SUSTITUTO = "impostor-sustituto";
 
 export function creaLejanos(d: DepsLejanos) {
   const THREE = d.THREE, renderer = d.renderer, Estado = d.Estado, gArboles = d.gArboles, Materiales = d.Materiales, ColaExt = d.ColaExt, Generados = d.Generados;

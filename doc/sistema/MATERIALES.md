@@ -46,12 +46,12 @@ Son tres. Pasados a TSL, desbloquean a casi todos:
 | 7 | `21_suelo.js` (fuera) | — (`piedras`) | Lambert + parche (instanciado) | vetas, granos y liquen por ruido, nubes | sí | no | no | nubes | M |
 | 8 | `apps/web/src/mundos/exterior/suelo-fondo.ts` (antes `04e_suelo_fondo.js`) | `suelo-fondo` | Lambert + parche | mosaico sRGB → lineal | sí | no | no | tinte de `matSuelo` (indirecto) | B — **hecho (MU5-n, A3-1b):** `define("suelo-fondo", { clasico, tsl })`, la TSL apagada |
 | 9 | `05_nube.js` | `nube-lidar` | Points + `parcheTiempo` | nube LiDAR con sombra de nubes | sí | CPU (tinte) | no | nubes, tinte | M (puntos de 1 px, MULTIVIEW §2.3) |
-| 10 | `06_arboles.js` | `copa-l0`, `tronco-l0` | Lambert + `colorVertSRGB` | color por vértice en sRGB | sí | no | no | no | B |
+| 10 | `mundos/exterior/arboles-l0.ts` (antes `06_arboles.js`) | `copa-l0`, `tronco-l0` | Lambert + `colorVertSRGB` | color por vértice en sRGB | sí | no | no | no | B — **hecho (MU5-n, A3-2b):** `define` con su clásico y su TSL apagada (`MeshLambertNodeMaterial`, `vertexColor()` pasado a lineal) |
 | 11 | `apps/web/src/mundos/exterior/catalogo.ts` (antes `07a_catalogo.js`) | `copa-l1`, `tronco-l1` | Lambert + `parcheTiempo` (instanciado) | silueta rota por ruido, motas, envés en el borde | sí | no | no | nubes, helada | M / B — **TSL parcial (MU5-n, A3-2a):** `define` con clásico y TSL apagada; le faltan las nubes y la helada (§8) |
 | 12 | `apps/web/src/mundos/exterior/generados-sombreado.ts` (antes `07ab_generados.js`) + `apps/web/olivo/materiales.js` | `gen-olivo` | Standard + `encadena` | luz (`parcheTiempo` en el mundo), color por lote en sRGB, fundido por tramado (`gl_DrawID`, `BatchedMesh`) | sí | no | no | nubes, helada | **A** — **TSL parcial (MU5-n, A3-2a):** el fundido de las instanciadas y los puntos; le faltan el de las mallas por lotes y la luz (§8) |
 | 13 | `apps/web/src/mundos/exterior/generados-sombreado.ts` (×2: las sombras de las hojas y las de las mallas por lotes) | `gen-profundidad` | `MeshDepthMaterial` + `encadena` | el mismo fundido en la sombra | — | no | no | no | **A** (sin conversión automática) — **TSL parcial (MU5-n, A3-2a)**, sin verificar su vía en el `WebGPURenderer` (§8) |
-| 14 | `07ac_lejanos.js` | `impostor-lejano` | Lambert + parche (recorte alfa) | impostores de 4 variantes, normales del atlas, luz y fundido de `Generados` | sí | no | no | nubes, helada | **A** |
-| 15 | `07ac_lejanos.js` | `impostor-sustituto` | Lambert + parche | sustituto por variante y vista (con silueta, `texelFetch`) | sí | no | no | no | **A** |
+| 14 | `mundos/exterior/lejanos.ts` (antes `07ac_lejanos.js`) | `impostor-lejano` | Lambert + parche (recorte alfa) | impostores de 4 variantes, normales del atlas, luz y fundido de `Generados` | sí | no | no | nubes, helada | **A** |
+| 15 | `mundos/exterior/lejanos.ts` (antes `07ac_lejanos.js`) | `impostor-sustituto` | Lambert + parche | sustituto por variante y vista (con silueta, `texelFetch`) | sí | no | no | no | **A** |
 | 16 | `14_historia.js` | `resalte-parcela` | Basic + parche | resalte que sigue `uExag` (`UN.uExag`) | sí | no | no | no | B |
 | 17 | `16_vida.js` | `estela` | `ShaderMaterial` | estela del dron por edad (`uNow`) | no | no | no | no | B |
 | 18 | `18_paisaje.js` | `arroyo` | `ShaderMaterial` | agua del arroyo cuando llueve | no | no | no | `uT`, `uLuz` | B |
@@ -257,3 +257,21 @@ Todas viven junto a su clásico (una sola fuente), están **apagadas** (solo las
 - **`olivos-generados`:** el lote (geometrías, `BatchedMesh` e `InstancedMesh` con su `dispose`), su grupo, los materiales del constructor con sus texturas (`mats.libera` de la biblioteca), los dos de profundidad (por la fábrica), el trabajador, los trabajos de la cola propia (se cierran sin acabarlos) y la caché de recetas (las recetas en uso y la caché en memoria de la biblioteca; **la de IndexedDB no**, que es persistente a propósito, O5). Lo que llega tarde (el constructor, el manifiesto, una receta del trabajador, una descarga) se tira.
 - **Pruebas de memoria** (Vitest, sin GPU: no hay `renderer.info`): tras montar y liberar no queda viva ninguna geometría de lo que cuelga del grupo, ningún material ni textura (`generados.test.ts`); y las geometrías vivas del catálogo vuelven a las de antes (`catalogo.test.ts`, con un THREE que las cuenta).
 - **No probado:** en un navegador, en el Quest y en iPhone (esta tarea no abrió Chrome).
+
+## 9. Lo hecho en A3-2b (2026-11-06): olivos medidos, follaje, lejanos y marcadores
+
+Siete módulos del legado pasan a `apps/web/src/mundos/exterior/` (MUNDOS §2, «Cómo quedó (MU5-n, A3-2b)»). Qué toca de la receta del §5 a cada uno:
+
+| Módulo | 1.er commit (TS y componente) | 2.º commit (materiales por la fábrica) | 3.er commit (TSL apagada) |
+|---|---|---|---|
+| `02m_tope_olivos.js` → `tope-olivos.ts` | hecho (sin GPU: su `libera()` es `apaga()`) | **no hace falta:** sin materiales | **no hace falta:** sin sombreador |
+| `06_arboles.js` → `arboles-l0.ts` | hecho (+ L5-01) | hecho: `copa-l0` y `tronco-l0` pasan de `parchea` a `define` + `Materiales.de("arboles-l0").crea` | hecho: `MeshLambertNodeMaterial` con `colorNode = vec4(sRGBTransferEOTF(vertexColor().rgb), 1)`. Probada en Vitest con `three/webgpu` y `three/tsl` de verdad; **no se dibuja** |
+| `07_follaje.js` → `follaje.ts` | hecho (+ L2-01, L5-02, L1-08) | hecho: los cuatro (`matHojaG`, `matHojaP`, `matCorteza`, `matSombra`) son estándar: `.estandar(clase, opciones)` con dueño `follaje` | **no hace falta aquí:** sin sombreador propio. El `parcheTiempo` de las hojas y la corteza lo pone `15_tiempo` (fila 2, otra tarea); sus puntos pasarán a sprites instanciados (§5, «Los puntos») |
+| `07ac_lejanos.js` → `lejanos.ts` | hecho (+ L2-08) | hecho: `impostor-lejano` e `impostor-sustituto` pasan de `parchea` a `define` + `crea` con dueño `lejanos` (el parche, movido, es el de siempre) | **sin escribir.** Es dificultad A y no se puede hacer aislada: el parche llama a `Generados.lejanos.parcheLuz` y `parcheFundido` (fila 12, `gen-olivo`), cuya variante TSL aún no existe. Se escribe junto con la de `gen-olivo` |
+| `07b_arboles.js` → `arboles.ts` | hecho (+ L1-04) | **no hace falta:** no crea materiales (los de L1 y L2 son del catálogo, 07a) | **no hace falta:** sin sombreador |
+| `08_marcadores.js` → `marcadores.ts` | hecho | **no hace falta:** sin materiales | **no hace falta** |
+| `08b_marcadores_lidar.js` → `marcadores-lidar.ts` | hecho | hecho: Basic, Basic y Line, estándar, con dueño `marcadores-lidar` | **no hace falta:** estándar |
+
+- **Cobertura (`Materiales.cobertura()`):** `copa-l0` y `tronco-l0` con clásico y TSL; `impostor-lejano` e `impostor-sustituto` con clásico y sin TSL.
+- **Pruebas:** un `.test.ts` por módulo (con el three de verdad) y, para las variantes TSL, `arboles-l0.test.ts`. `pruebas/guardianes/materiales_f1.test.js` cuenta también los `define` de `src/mundos`.
+- **No probado:** que la TSL de `copa-l0` y `tronco-l0` se vea igual que la clásica (capturas por material: MU6), ni nada en el Quest. Tampoco el color de los troncos del nivel 0 tras L5-01 (§ MUNDOS), que cambia a propósito.
