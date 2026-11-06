@@ -40,7 +40,7 @@
       "descripcion": "Cambió alguna casilla de capas del menú (Linde, Copas del LiDAR, Guardados en OlivarTrack, Desfase) o se aplicó el estado al cargar: quien dibuja una de esas capas lee su casilla y se enseña o se esconde. 08_marcadores.js se ocupa de la linde; el resto lo atiende el componente de los marcadores. Sin él (?marcadores=0), no pasa nada.",
       "datos": {},
       "emiten": [
-        "08_marcadores"
+        "mundos/exterior/marcadores"
       ],
       "escuchan": [
         "mundos/exterior/marcadores-lidar"
@@ -626,7 +626,7 @@
       "descripcion": "El mundo se ha vuelto a aplicar (aplica() de 08_marcadores.js: cambió la exageración vertical, el modo o los datos de las teselas): lo que cuelga del terreno se recoloca. Hoy lo atiende el componente de los marcadores del LiDAR (copas, anillos y desfase); sin él (?marcadores=0), nadie.",
       "datos": {},
       "emiten": [
-        "08_marcadores"
+        "mundos/exterior/marcadores"
       ],
       "escuchan": [
         "mundos/exterior/marcadores-lidar"
@@ -869,7 +869,7 @@
     "mundo:aplica": {
       "descripcion": "El mundo se ha vuelto a aplicar (aplica() de 08_marcadores.js: cambió la exageración vertical, el modo o los datos de las teselas): lo que cuelga del terreno se recoloca. Hoy lo atiende el componente de los marcadores del LiDAR (copas, anillos y desfase); sin él (?marcadores=0), nadie.",
       "datos": {},
-      "emiten": ["08_marcadores"],
+      "emiten": ["mundos/exterior/marcadores"],
       "escuchan": ["mundos/exterior/marcadores-lidar"]
     },
     "ndvi:cambia": {

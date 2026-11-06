@@ -29,3 +29,5 @@ export { creaTopeOlivos, creaTopeOlivosPuro } from "./exterior/tope-olivos.ts";
 export type { DepsTopeOlivos, TopeOlivos, TopeOlivosPuro, TopeTilesPuroMin } from "./exterior/tope-olivos.ts";
 export { ID_MARCADORES_LIDAR, creaMarcadoresLidar, manifiestoMarcadoresLidar } from "./exterior/marcadores-lidar.ts";
 export type { DepsMarcadoresLidar, MarcadoresLidar, PuntoLidar } from "./exterior/marcadores-lidar.ts";
+export { NOTAS, creaMarcadores } from "./exterior/marcadores.ts";
+export type { DepsMarcadores, Marcadores } from "./exterior/marcadores.ts";
