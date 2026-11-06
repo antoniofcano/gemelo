@@ -417,3 +417,19 @@ Las dos viven junto a su clásico (una sola fuente), están **apagadas** (solo l
 Ver MUNDOS §2 («Cómo quedó (MU5-n, A3-6a)»). Pruebas de memoria (Vitest, sin GPU): `presencia.test.ts` (con `?presencia=sim&chat=1`: geometrías, materiales y la textura con su `dispose`, el lienzo del atlas a 0, el panel fuera, el observador desconectado, el tipo «persona» quitado), `avatares.test.ts` (la copia del VRM suelta, el grupo fuera, el gancho quitado, `bufs` a 0), `muneca.test.ts` (la lámina al salir de VR; sus enganches y ganchos con el `libera()` del componente) y `red/salas.test.ts` (cada sala dejada y la red cerrada).
 
 **No probado:** nada de esto en un navegador, en iPhone ni en el Quest (esta tarea no abrió Chrome ni Docker); que las TSL se vean como las clásicas (MU6).
+
+## 15. Lo hecho en A3-6b (2026-11-07): la voz, hablar y los corros, de todo mundo
+
+Tres módulos del legado pasan a `apps/web/src/` como componentes de **todo mundo** (`mundos: "todos"`, COMPONENTES §3.2; MUNDOS §2, «Cómo quedó (MU5-n, A3-6b)»). Qué toca de la receta del §5 a cada uno:
+
+| Módulo | 1.er commit (TS y componente) | 2.º commit (materiales por la fábrica) | 3.er commit (TSL apagada) |
+|---|---|---|---|
+| `45_voz.js` → `red/voz/voz.ts` (`voz-guiada`) | hecho (+ sale de su sala si se libera mientras entraba) | **no hace falta:** sin dibujo (Web Audio y `<audio>` ocultos) | **no hace falta** |
+| `47_habla.js` → `red/voz/habla.ts` (`HablaPuro`) y `mundos/comun/habla.ts` (`habla-guiada`) | hecho (+ lo que contesta la api tras liberar ya no vuelve a montar la caja ni la pestaña) | **no hace falta:** las láminas son de `Laminas` (02d) | **no hace falta:** sin sombreador propio |
+| `47b_corro.js` → `red/voz/corro.ts` (`CorroPuro`) y `mundos/comun/corro.ts` (`corro-voz`) | hecho (+ la voz sale del corro si se libera mientras entraba; nada de láminas tras liberar) | hecho: los dos `MeshBasicMaterial` (el halo sobre quien habla y el icono del corro) son **estándar** con dueño `corro-voz` (`Materiales.de(…).estandar`), con las mismas opciones; `libera()` suelta además lo del dueño | **no hace falta:** sin sombreador propio (el `WebGPURenderer` convierte los estándar solo, §2) |
+
+- **Cobertura (`Materiales.cobertura()`):** sin cambios (ningún `define` nuevo: no hay sombreadores propios).
+- **Fuera de la fábrica:** ninguna fila de `FUERA` que bajar (los dos materiales del corro no tenían sombreador).
+- **Pruebas:** `corro.test.ts` (Vitest, three de verdad): el dueño en la fábrica con sus dos materiales, los de siempre (transparentes, sin profundidad ni tone mapping), y nada tras liberar; con `dispose` de la geometría, los materiales y los dos lienzos. `voz.test.ts` y `habla.test.ts`, sus ciclos de vida (MUNDOS §2).
+
+**No probado:** nada de esto en un navegador, en iPhone ni en el Quest (esta tarea no abrió Chrome ni Docker); que la voz suene igual (sin cambio de código de audio, pero no se ha oído).
