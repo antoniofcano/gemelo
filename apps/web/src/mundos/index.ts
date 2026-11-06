@@ -97,3 +97,5 @@ export { ID_PASEO, PalancaPuro, creaPaseo, manifiestoPaseo } from "./comun/paseo
 export type { DepsPaseo, Paseo } from "./comun/paseo.ts";
 export { ID_CAMARA, creaCamara, manifiestoCamara } from "./comun/camara.ts";
 export type { Camara, DepsCamara } from "./comun/camara.ts";
+export { ID_PALANCA, creaPalanca, manifiestoPalanca } from "./comun/palanca.ts";
+export type { DepsPalanca, Palanca } from "./comun/palanca.ts";
