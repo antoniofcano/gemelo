@@ -68,7 +68,7 @@ Campos obligatorios: `v, ts, res, srs, orto_px, finca_id, centro_utm, z0, ext, p
 | `ot` | instantánea de OlivarTrack: `fuente ("instantanea"\|"vivo"), fecha_consulta, pases_finca, entregas_finca, analiticas_finca, parcelas{id:{tareas[], fenologia[]}}` |
 | `avance` | avance de trabajos por parcela (`{}` si no hay) |
 | `paisaje` | `fuente, centro_utm, z0, edificios[], tendido{linea, postes, derivaciones}, arroyo{ejes, nota}, arboles[]` — **deducido** de la geometría |
-| `teselas{}` | `"kx_ky": {kx, ky, v[x0,y0,x1,y1], np}`; `v` = rectángulo con dato; `np` = puntos de nube |
+| `teselas{}` | `"kx_ky": {kx, ky, v[x0,y0,x1,y1], np}`; `v` = rectángulo con dato, en m relativos a `centro_utm`, dentro de la huella de la tesela (`kx·256 − cx` … `+256`); no tiene por qué estar alineado (Cerro recorta a la ventana con dato; Hituelo escribe la tesela entera). `v` aquí no es la versión del contrato (esa es el `v` de la raíz). `np` = puntos de nube |
 | `grueso` | relieve de 8 m: `x0, yN, res, w, h, b64` (Int16, cm sobre `z0`) |
 | `mosaico` | ortofoto global: `jpg` (data URI), `w, h, x0, yN, res` (Cerro 1 m/px, Hituelo 2 m/px) |
 | `textos` | `sin_historia, finca, fincas, parcelas, ha, olivos, desfase_txt, intro_historia`: lo que `apps/web/herramientas/genera_motor.mjs` cambia en la cabecera de la página (título, entradilla, pie, historia) |

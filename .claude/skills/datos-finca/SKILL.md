@@ -20,7 +20,7 @@ Los datos **no se versionan** (ADR-0004): todo sucede en local con variables `GE
 
 ## Lista de comprobaciones
 - [ ] Cada tesela del índice tiene su `.json` y su `.jpg`; `np` coincide con los puntos de `pts`.
-- [ ] `centro_utm` entero; `ext` y `v` en metros relativos; `v[0] = kx·256 − cx`.
+- [ ] `centro_utm` entero; `ext` y `v` en metros relativos; cada `v` dentro de la huella de su tesela (`kx·256 − cx` … `+256`), sin exigir que esté alineada (Cerro recorta a la ventana con dato).
 - [ ] `copas_id` y `copas_tipo` con la misma longitud que `copas` e ids únicos. Ver la línea `ids: N del censo, M provisionales; desfase marcas->copas …` del exportador: el desfase ≈ 1,1–1,5 m y casi todas las marcas emparejadas; los ids del censo (`< 2^31`) son los de OlivarTrack, los provisionales (`>= 2^31`) salen de la posición UTM (`tuberia/ids_copas.py`, CONTRATOS §1.1) y deben ser **los mismos que en la exportación anterior** para los árboles que no se han movido (comparar por posición). Ningún `aviso:` de id repetido o no válido sin explicar. `copas_tipo` = −1 mientras no haya regla en `asigna_tipos()`. Lo de siempre lo vigila `exportadores.test.js` con datos sintéticos; con los reales, mirarlo.
 - [ ] Olivos detectados frente a declarados (Hituelo ≈5.900 vs 5.961): explicar la diferencia.
 - [ ] La suma de hectáreas de `parcelas` y las cifras de `textos` coinciden.
