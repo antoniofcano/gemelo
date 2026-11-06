@@ -53,12 +53,14 @@ La página pide `t/<clave>.json|jpg` (`D.teselas` es el índice; `D.base` da el 
 | `13b_hazas.js` | `HazasPuro`, `Hazas` | F1: las hazas de `/api/hazas` (su linde la da `Hazas.lindes()` y la avisa `hazas:cambia`; la dibuja `44_lindes.js`) y, al tocarla o con H, su ficha de `/api/hazas/{id}` (solo la lista blanca, con procedencia y fecha). Solo con la página servida por el servidor (`D.base` = `/teselas/…`) o `?api=`; sin eso, o sin sesión o con error, no crea nada ([haza.schema.json](../../contratos/haza.schema.json), ADR-0014) |
 | `14_historia.js` | `ESCENAS` (Hituelo) | cruza la instantánea de OlivarTrack (`D.ot`); `HistoriaPuro` sabe leer `/api/ot/hoy`, sin cablear |
 | `15_tiempo.js` | `actualizaTiempo` | estación, previsión, demos (Vigía); mueve el sol, el hemisferio, el fondo y la niebla cada fotograma a partir del `Ambiente` del exterior, y solo con el exterior activo (es un paso suyo; MU2-7) |
-| `16_vida.js`, `25_perros.js` | fauna | pájaros, conejos, quad, perros |
+| `16_vida.js`, `16b_fauna.js`, `25_perros.js` (talones) | `Vida` (`quad`, `dron`, `dr`, `gFauna`, `velPaseo`, `ponQuad`, `ponDron`…; el estado `tVida`, `enQuad`, `vq`, `enDron` se espeja en sus `var`), componentes `fauna-olivar` y `perros-paseo` | **MU5-n (A3-5): el código vive en `mundos/exterior/{vida,fauna,perros}.ts`**, cada uno con su `libera()` real (MUNDOS §2, «Cómo quedó (MU5-n, A3-5)»). Pájaros, conejos, quad, dron y perros; la fauna y los perros son ilustrativos. Arreglos L2-05 y L2-11 en `vida` |
 | `17_minimapa.js` | minimapa, `Minimapa` | mosaico + rastro; `Minimapa.capa(fn)`: capas que pintan los componentes |
 | `18_paisaje.js` | edificios, tendido, arroyo, árboles no olivo | `D.paisaje` (deducido) |
 | `19_balizas.js` | una baliza por parcela + ficha | |
 | `20_sonido.js` | audio sintetizado | |
-| `21_suelo.js`, `22_huellas.js` | cubierta por NDVI, hierba, huellas | radio alrededor del foco |
+| `21_suelo.js` | cubierta por NDVI, hierba | radio alrededor del foco |
+| `22_huellas.js`, `22b_huellas_polvo.js` (talones) | `pendienteRumbo`, `pendFactor`, `quadInc`, `inclinaQuad`, `sueloSeco`; componente `huellas-polvo` | **MU5-n (A3-5): `mundos/exterior/huellas.ts` (sin recursos, no es componente) y `huellas-polvo.ts` (componente con `libera()`; `huella` y `polvo` por la fábrica con su TSL apagada y parcial).** Pisadas y rodadas que se borran (900 en una malla instanciada) y bocanadas de polvo (200 puntos) |
+| `52_aves_mes.js`, `54_trabajo_hoy.js` (talones) | componentes `aves-mes` y `trabajo-hoy` | **MU5-n (A3-5): `mundos/exterior/{aves-mes,trabajo-hoy}.ts`, con `libera()`.** Las aves probables del mes (GBIF, deducido) y un tractor ilustrativo en cada haza con tarea en curso (deducido, apagado por defecto) |
 | `23_estacion.js` | olivo estacional (BBCH) | |
 | `24_pantalla.js` | pantalla completa, transición de cámara | |
 | `26_presencia.js` | `PoseCodec`, `BufferPose`, `SalaPose`, `Chat`, `Aspecto`, `Muneco`, `Encuentro`, `sitioJunto` | no es componente: el protocolo y la lógica pura de la presencia (códec de pose de 24/56 B, interpolación, la sala, el chat, el aspecto del muñeco y dónde dejarte junto a alguien o a una baliza) ([presencia](../../contratos/presencia.md)) |
