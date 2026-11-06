@@ -101,6 +101,16 @@
       return { restaura: function () { activo = false; if (consola.warn === filtro) consola.warn = orig; } };   // si otro lo envolvió después, el nuestro queda inerte y deja pasar todo
     }
     // <<< limitaAviso
+    // L4-01 (MU0-1): el tileset trae el centro_utm y el z0 del índice con el que se generó (extras.gemelo, contratos/tileset.schema.json). Si no son los del
+    // índice D que sirve esta página (más de 1 cm de diferencia), su transform raíz coloca la escena corrida respecto del Mundo, las fichas y la física, y la
+    // huella del registro no lo ve (los ids salen de la posición UTM absoluta): no se usa. Devuelve el motivo del fallo, o null si casa. >>> marcoTileset
+    function motivoMarco(G, DD) {
+      if (!G || !G.centro_utm || G.z0 === undefined) return "el tileset no trae el centro_utm y el z0 con los que se generó (extras.gemelo)";
+      var dE = Math.abs(G.centro_utm[0] - DD.centro_utm[0]), dN = Math.abs(G.centro_utm[1] - DD.centro_utm[1]), dz = Math.abs(G.z0 - DD.z0);
+      if (!(dE <= 0.01 && dN <= 0.01 && dz <= 0.01)) return "el tileset es de otra exportación: su centro_utm " + G.centro_utm + " y z0 " + G.z0 + " no son los del índice (" + DD.centro_utm + ", " + DD.z0 + "); hay que regenerarlo";
+      return null;
+    }
+    // <<< marcoTileset
     var avisoEscala = null;
     function falla(e) {
       if (estado === "sin") return;
@@ -145,6 +155,7 @@
           var r = e.tileset && e.tileset.root, G = e.tileset && e.tileset.extras && e.tileset.extras.gemelo;
           if (!r || !r.transform) { falla(new Error("la raíz del tileset no trae transform")); return; }
           if (G && G.finca_id && D.finca_id && G.finca_id !== D.finca_id) { falla(new Error("tileset de " + G.finca_id + " con datos de " + D.finca_id)); return; }
+          var mm0 = motivoMarco(G, D); if (mm0) { falla(new Error(mm0)); return; }
           raizT = new THREE.Matrix4().fromArray(r.transform); colocaGrupo(); estado = "activo";
           if (ganchos.alRaiz) ganchos.alRaiz(e.tileset);
         });

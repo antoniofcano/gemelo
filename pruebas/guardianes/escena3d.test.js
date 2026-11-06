@@ -447,3 +447,18 @@ test("el aviso de escala no uniforme de 3DTilesRendererJS (la exageración verti
   g.restaura(); assert.strictEqual(consola.warn, envuelto, "no pisa un envoltorio posterior");
   consola.warn(AVISO); consola.warn(AVISO); assert.strictEqual(dichos.length, 7, "inerte tras restaurar: deja pasar todo");
 });
+
+test("L4-01: motivoMarco falla con un tileset de otro centro_utm o z0 (corrido 10 m), con un tileset sin marco, y pasa con el correcto o con 1 mm de diferencia", () => {
+  const m = lee(path.join(MOTOR, "04b_escena3d.js")), t0 = m.indexOf(">>> marcoTileset"), t1 = m.indexOf("// <<< marcoTileset");
+  assert.ok(t0 > 0 && t1 > t0, "04b_escena3d.js perdió los marcadores de marcoTileset");
+  assert.match(m, /motivoMarco\(G, D\)/, "load-root-tileset debe comparar el marco del tileset con D");
+  const motivoMarco = new Function(m.slice(m.indexOf("function motivoMarco", t0), t1).replace(/\/\/ *$/, "") + "\nreturn motivoMarco;")();
+  const DD = { centro_utm: [256128, 4096128], z0: 480.5 };
+  assert.strictEqual(motivoMarco({ centro_utm: [256128, 4096128], z0: 480.5 }, DD), null, "el tileset correcto pasa");
+  assert.strictEqual(motivoMarco({ centro_utm: [256128.001, 4096127.999], z0: 480.501 }, DD), null, "1 mm de diferencia pasa");
+  assert.match(motivoMarco({ centro_utm: [256138, 4096128], z0: 480.5 }, DD), /otra exportación/, "corrido 10 m en E falla");
+  assert.match(motivoMarco({ centro_utm: [256128, 4096118], z0: 480.5 }, DD), /otra exportación/, "corrido 10 m en N falla");
+  assert.match(motivoMarco({ centro_utm: [256128, 4096128], z0: 490.5 }, DD), /otra exportación/, "z0 distinto falla");
+  assert.match(motivoMarco({ centro_utm: [256128, 4096128] }, DD), /no trae/, "sin z0 falla");
+  assert.match(motivoMarco(undefined, DD), /no trae/, "sin extras.gemelo falla");
+});

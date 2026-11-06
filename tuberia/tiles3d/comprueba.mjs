@@ -17,6 +17,9 @@ export async function comprueba(entrada, dir, catalogo) {
   const { I, teselas } = leeContrato(entrada), R = relieve(I, teselas), ids = idsDe(I);
   const TS = JSON.parse(fs.readFileSync(path.join(dir, "tileset.json"), "utf8")), G = TS.extras.gemelo, errores = [];
   const mal = m => { if (errores.length < 50) errores.push(m); };
+  // L4-01: el tileset es de la exportación del índice (mismo centro_utm y z0, a 1 cm), como exige el motor (04b_escena3d.js, motivoMarco)
+  if (!G.centro_utm || G.z0 === undefined || Math.abs(G.centro_utm[0] - I.centro_utm[0]) > 0.01 || Math.abs(G.centro_utm[1] - I.centro_utm[1]) > 0.01 || Math.abs(G.z0 - I.z0) > 0.01)
+    mal("el tileset es de otra exportación: centro_utm " + G.centro_utm + " y z0 " + G.z0 + ", el índice trae " + I.centro_utm + " y " + I.z0);
   if (G.huella_registro !== huella(ids)) mal("huella_registro no casa con el registro");
   if (G.id_fuente !== (I.copas_id ? "copas_id" : "indice")) mal("id_fuente " + G.id_fuente);
   const nombreDe = new Map(Object.entries(G.tipos).map(([n, nombre]) => [Number(n), nombre]));

@@ -200,6 +200,19 @@ test("marco: la raíz georreferencia el marco local (UTM 30N − centro_utm) en 
   assert.ok(Math.hypot(u.E - CX, u.N - CY) < 1e-3, "origen_geodesico no es centro_utm");
 });
 
+test("L4-01: comprueba.mjs da error con un tileset de otro centro_utm o z0 (corrido 10 m) y pasa con el correcto", async t => {
+  if (SALTO) return t.skip(SALTO);
+  const { comprueba } = await imp(path.join(T3D, "comprueba.mjs")), ruta = path.join(SAL, "tileset.json"), original = fs.readFileSync(ruta, "utf8");
+  try {
+    assert.deepStrictEqual((await comprueba(path.join(FIX, "hituelo"), SAL, CAT_FIXTURE)).errores, [], "el tileset correcto pasa");
+    for (const [campo, valor] of [["centro_utm", [I.centro_utm[0] + 10, I.centro_utm[1]]], ["z0", I.z0 + 10]]) {
+      const T = JSON.parse(original); T.extras.gemelo[campo] = valor; fs.writeFileSync(ruta, JSON.stringify(T));
+      const r = await comprueba(path.join(FIX, "hituelo"), SAL, CAT_FIXTURE);
+      assert.ok(r.errores.some(e => /otra exportación/.test(e)), campo + " corrido 10 m debe fallar: " + JSON.stringify(r.errores));
+    }
+  } finally { fs.writeFileSync(ruta, original); }
+});
+
 test("presupuesto de triángulos por tesela y por nivel (topes en tuberia/tiles3d/presupuesto.json)", async t => {
   if (SALTO) return t.skip(SALTO);
   const io = new gltf.core.NodeIO().registerExtensions([gltf.ext.EXTMeshGPUInstancing]), por = [];
