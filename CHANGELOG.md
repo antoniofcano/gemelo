@@ -5,6 +5,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 ## [No publicado]
 
 ### Añadido
+- VR: los niveles de calidad también vuelven a subir. Un tirón suelto ya no baja el nivel; sube tras 10 s de fotogramas holgados (JS medio por debajo de 6 ms), con el doble de espera tras cada rebote; la escala de los olivos en VR se mide contra el presupuesto del perfil, no contra 16 ms (L7-03, L1-03). El presupuesto y el controlador de VR pasan a TypeScript (`nucleo/presupuesto.ts`, MU1-8). **No probado en el Quest**: los umbrales son de simulación.
 - `Render` (con `memoria()` y `compila()`), `XrPerillas`, `EntidadesPuro`, `LlegadaPuro` e `IrAPuro` pasan a TypeScript en `apps/web/src/nucleo/` con el mismo comportamiento; sus pruebas puras, a Vitest. El legado baja de 19.712 a 19.303 líneas. Sin cambio visible; no probado en Chrome ni en el Quest (MU1-7).
 - La Cola y `CargaPuro` pasan a TypeScript (`apps/web/src/nucleo/cola.ts`; `02b_cola.js` queda como talón) con el mismo comportamiento y presupuestos; nuevo: dueño por prefijo de clave (`cancelaDe`, `pendientesDe`). El legado baja de 19.774 a 19.712 líneas. Sin cambio visible; no probado en Chrome ni en el Quest (MU1-6).
 - Los tipos de TypeScript de `apps/web/src/datos/contratos/` se generan desde `contratos/*.schema.json` (json-schema-to-typescript 16.0.0, `genera_tipos.mjs`); el guardián `tipos_contratos` falla si un esquema cambia sin regenerarlos (MU1-11).

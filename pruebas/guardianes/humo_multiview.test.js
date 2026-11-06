@@ -114,12 +114,12 @@ test("la escena con three 0.186.1, super-three 0.185.0 y three/webgpu dibuja lo 
   }
 });
 
-test("medidor y texto: estadística de MideEst (30_mide.js) y lectura de RenderPuro (02h_render.js), sin copiarlos", { skip: SALTO }, async () => {
+test("medidor y texto: estadística de MideEst (30_mide.js) y lectura de RenderPuro (nucleo/render.ts), sin copiarlos", { skip: SALTO }, async () => {
   const { trozoPuro } = await imp("herramientas/puro.mjs");
   const datos = c => "data:text/javascript," + encodeURIComponent(c);
   let src = lee("prototipos/multiview/src/medida.js");
   src = src.replace('"gemelo-puro:30_mide/MideEst"', JSON.stringify(datos(trozoPuro("30_mide", "MideEst"))))
-    .replace('"gemelo-puro:02h_render/RenderPuro"', JSON.stringify(datos(trozoPuro("02h_render", "RenderPuro"))));
+    .replace('"../../../apps/web/src/nucleo/render.ts"', JSON.stringify(pathToFileURL(path.join(RAIZ, "apps", "web", "src", "nucleo", "render.ts")).href));
   const M = await import(datos(src));
   let fin = null;
   const med = M.creaMedidor(0, 0.05, r => { fin = r; });

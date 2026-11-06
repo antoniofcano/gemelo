@@ -114,7 +114,7 @@ describe("el estado XrPerillas (creaXrPerillas)", () => {
   });
 
   it("la histéresis y la gente (Q0c-b, Q0c-c): URL > tabla del aparato > defecto", () => {
-    const X = estado(""); expect([X.jsSube(), X.estable(), X.gente()]).toEqual([5, 10, 8]);
+    const X = estado(""); expect([X.jsSube(), X.estable(), X.gente()]).toEqual([6, 10, 8]);
     X.tablaSube = 3; expect(X.jsSube()).toBe(3);
     const Y = estado("?xrjssube=6&xrestable=30&xrgente=12"); Y.tablaSube = 3; expect([Y.jsSube(), Y.estable(), Y.gente()]).toEqual([6, 30, 12]);
     const Z = P.leeControl("?xrgente=1000&xrestable=abc"); expect(Z.gente).toBe(64); expect(Z.ignorados.map(i => i.param)).toEqual(["xrestable", "xrgente"]);

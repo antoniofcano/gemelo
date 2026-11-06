@@ -80,7 +80,7 @@ function multiview(busqueda?: unknown, build?: unknown, ajuste?: unknown): Multi
 }
 
 // Q0c-b: las perillas de la histéresis del controlador (la de bajar es xrjs) y ?xrgente (Q0c-c). → { sube, estable, gente } (null = no pedida) e ignorados, como lee()
-const LIMC = { sube: [2, 10], estable: [2, 120], gente: [2, 64] } as const, DEFC = { sube: 5, estable: 10, gente: 8 };   // gente (?xrgente=): a partir de cuántas personas a la vista el controlador baja un nivel
+const LIMC = { sube: [2, 10], estable: [2, 120], gente: [2, 64] } as const, DEFC = { sube: 6, estable: 10, gente: 8 };   // gente (?xrgente=): a partir de cuántas personas a la vista el controlador baja un nivel
 function leeControl(busqueda?: unknown): PerillasControl {
   const q = String(busqueda || ""), r: PerillasControl = { sube: null, estable: null, gente: null, ignorados: [] };
   const pares: ReadonlyArray<readonly [string, keyof typeof LIMC]> = [["xrjssube", "sube"], ["xrestable", "estable"], ["xrgente", "gente"]];

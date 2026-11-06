@@ -40,7 +40,7 @@ test("tabla por aparato: una fila por modelo de 01a_aparato, dentro de los lími
 
 test("perillas ?xrjssube y ?xrestable: valor, recorte con motivo, no numérico ignorado; la URL manda sobre la tabla", () => {
   const A = xr("");
-  assert.deepStrictEqual([A.jsSube(), A.estable(), A.js()], [5, 10, 8]);
+  assert.deepStrictEqual([A.jsSube(), A.estable(), A.js()], [6, 10, 8]);
   A.tablaSube = 4; assert.strictEqual(A.jsSube(), 4, "la tabla por aparato sustituye al defecto");
   const B = xr("?xrjssube=3&xrestable=20&xrjs=6"); B.tablaSube = 4;
   assert.deepStrictEqual([B.jsSube(), B.estable(), B.js()], [3, 20, 6], "la URL manda");

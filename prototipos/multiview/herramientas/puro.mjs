@@ -1,7 +1,7 @@
 // Reusa, sin copiarlos, los trozos puros del motor (regla 12): `import X from "gemelo-puro:<módulo>/<Nombre>"` da el bloque entre
 // «// [puro:inicio]» y «// [puro:fin]» de apps/web/motor/<módulo>.js con `export default <Nombre>`. Son los mismos trozos que los guardianes
 // evalúan en Node (p. ej. pruebas/guardianes/mide.test.js): sin THREE ni DOM. La página de humo usa MideEst (30_mide: mediana, p95, peor) y
-// RenderPuro (02h_render: la lectura de renderer.info con la misma forma para el clásico y el nuevo), así sus cifras se cuentan igual que las del gemelo.
+// (RenderPuro ya no: desde A1-11 vive en apps/web/src/nucleo/render.ts y medida.js lo importa de allí), así sus cifras se cuentan igual que las del gemelo.
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

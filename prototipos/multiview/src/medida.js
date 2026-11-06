@@ -1,9 +1,9 @@
 // El medidor mínimo de la página de humo: una ventana de `seg` s tras `calent` s de calentamiento; por fotograma, el intervalo con el anterior,
 // los ms de JS del fotograma, los ms de renderer.render(), las llamadas y los triángulos. La estadística (mediana, p95, p99, peor; descartes) es
-// la del medidor del gemelo, MideEst de apps/web/motor/30_mide.js, y la lectura de renderer.info la de RenderPuro (02h_render.js): las cifras se
+// la del medidor del gemelo, MideEst de apps/web/motor/30_mide.js, y la lectura de renderer.info la de RenderPuro (apps/web/src/nucleo/render.ts, desde A1-11): las cifras se
 // cuentan igual que en el gemelo y se pueden comparar con doc/sistema/MEDIDAS.md. No envía nada a ningún servidor.
 import MideEst from "gemelo-puro:30_mide/MideEst";
-import RenderPuro from "gemelo-puro:02h_render/RenderPuro";
+import { RenderPuro } from "../../../apps/web/src/nucleo/render.ts";
 
 export { MideEst, RenderPuro };
 
