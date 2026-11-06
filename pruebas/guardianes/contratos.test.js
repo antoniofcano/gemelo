@@ -236,7 +236,7 @@ for (const [nombre, def] of Object.entries(IFACES.interfaces)) {
       assert.match(lee("apps/web/motor/" + def.modulo), new RegExp("^  var " + nombre + " = Nucleo\\." + nombre + ";", "m"), def.modulo + " debe hacer var " + nombre + " = Nucleo." + nombre + ";");
     } else if (def.fuente) {   // migrada a TypeScript (A1-10): el contrato lo cumple la fábrica de apps/web/src/, y el módulo del motor es un talón que la llama
       real = retornoDeFabrica(lee(def.fuente), def.fabrica).sort();
-      assert.match(lee("apps/web/motor/" + def.modulo), new RegExp("^  var " + nombre + " = Nucleo\\." + def.fabrica + "\\(", "m"), def.modulo + " (talón) debe hacer var " + nombre + " = Nucleo." + def.fabrica + "(…)");
+      assert.match(lee("apps/web/motor/" + def.modulo), new RegExp("^  var " + nombre + " = (?:Nucleo|Mundos)\\." + def.fabrica + "\\(", "m"), def.modulo + " (talón) debe hacer var " + nombre + " = Nucleo|Mundos." + def.fabrica + "(…)");   // A3-1b: los componentes del exterior vienen de Mundos
     } else real = retornoDe(lee("apps/web/motor/" + def.modulo), nombre).sort();
     assert.deepStrictEqual(real, def.miembros.slice().sort(), "cambia contratos/interfaces.json y doc/sistema/CONTRATOS.md en el mismo commit");
   });

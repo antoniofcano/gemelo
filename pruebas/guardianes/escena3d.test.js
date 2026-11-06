@@ -70,7 +70,9 @@ test("el motor: 04b_escena3d.js es la única escena (sin ESC3D ni ?escena=), arr
 // El módulo entero (no solo su trozo puro) se evalúa en Node con dobles de lo que consume (D, copas, Escena3D, gArboles) y mallas falsas hechas
 // con los atributos de instancia de los glb del fixture (leídos con @gltf-transform): resolución por huella, máscara, tipos, huellas que no casan y
 // el camino sin crypto.subtle. Lo que el motor de verdad hace con three (count, needsUpdate, visibilidad) se mira en el navegador, más abajo.
-const FUENTE_OT = lee(path.join(MOTOR, "04c_olivos_tiles.js"));
+// A3-1b: 04c es un talón; su código vive en apps/web/src/mundos/exterior/olivos-tiles.ts (IdTiles y creaOlivosTiles). FUENTE_OT es el talón y el .ts juntos (lo que ve el motor)
+const FUENTE_OT = lee(path.join(MOTOR, "04c_olivos_tiles.js")) + "\n" + lee(path.join(RAIZ, "apps", "web", "src", "mundos", "exterior", "olivos-tiles.ts"));
+const MUNDOS = require("./_mundos");
 const DEPS_OT = ["@gltf-transform/core", "@gltf-transform/extensions"].filter(d => !fs.existsSync(path.join(T3D, "node_modules", d, "package.json")));
 const SALTO_OT = !python() ? "No hay Python 3: los olivos del tileset NO se han comprobado" : DEPS_OT.length ? "faltan dependencias de tuberia/tiles3d (" + DEPS_OT.join(", ") + "): los olivos del tileset NO se han comprobado" : null;
 let tilesetOT = null;
@@ -104,9 +106,9 @@ function mallaFalsa(x) {
 function cargaOT(o) {   // evalúa 04c_olivos_tiles.js con sus dependencias de mentira; o: {I, pedida (false: la escena está «sin»), copasId, subtle}
   const { I } = o, ganchos = {}, avisos = [];
   const copas = I.copas.map((c, i) => { const rm = c[3].reduce((a, b) => a + b, 0) / 8; return { i, x: c[0], y: c[1], h: c[2], oliv: !(c[2] > 8 || (c[2] > 6.5 && rm < 2.2)) }; });   // la regla de 02_mundo.js
-  const f = new Function("D", "copas", "Escena3D", "gArboles", "crypto", "console", "\"use strict\";\n" + FUENTE_OT + "\nreturn { OlivosTiles: OlivosTiles, IdTiles: IdTiles };");
-  const r = f({ copas: I.copas, copas_id: o.copasId === undefined ? I.copas_id : o.copasId }, copas, { engancha: g => Object.assign(ganchos, g), resumen: () => ({ estado: o.pedida === false ? "sin" : "cargando" }) }, { visible: true },
-    o.subtle === null ? undefined : { subtle: require("crypto").webcrypto.subtle }, { warn: s => avisos.push(s) });
+  const r = { IdTiles: MUNDOS.IdTiles, OlivosTiles: MUNDOS.creaOlivosTiles({
+    D: { copas: I.copas, copas_id: o.copasId === undefined ? I.copas_id : o.copasId }, copas, Escena3D: { engancha: g => Object.assign(ganchos, g), resumen: () => ({ estado: o.pedida === false ? "sin" : "cargando" }) }, gArboles: { visible: true },
+    subtle: o.subtle === null ? null : require("crypto").webcrypto.subtle, consola: { warn: s => avisos.push(s) } }) };
   return Object.assign(r, { ganchos, avisos, copas });
 }
 const espera = async (cond, ms = 5000) => { const t0 = Date.now(); while (!cond()) { if (Date.now() - t0 > ms) throw new Error("tiempo agotado"); await new Promise(r => setTimeout(r, 10)); } };

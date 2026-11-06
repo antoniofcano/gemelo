@@ -194,7 +194,9 @@ test("inventario: congelan exactamente los ficheros registrados aquí (uno nuevo
 });
 
 test("inventario: lo que ya iba congelado a mano sigue así, y lo que se queda en automático existe y no se congela", () => {
-  for (const f of Object.keys(YA_ESTATICOS)) assert.match(sinComentarios(lee("apps/web/motor/" + f)), /matrixAutoUpdate = false/, f + ": sigue con matrixAutoUpdate = false");
+  // A3-1b: 04e es un talón; su malla vive en apps/web/src/mundos/exterior/suelo-fondo.ts
+  const MIGRADOS = { "04e_suelo_fondo.js": "apps/web/src/mundos/exterior/suelo-fondo.ts" };
+  for (const f of Object.keys(YA_ESTATICOS)) assert.match(sinComentarios(lee(MIGRADOS[f] || "apps/web/motor/" + f)), /matrixAutoUpdate = false/, f + ": sigue con matrixAutoUpdate = false");
   for (const k of Object.keys(AUTOMATICO)) {
     const f = k.split("#")[0]; assert.ok(fs.existsSync(path.join(MOTOR, f)), f + ": existe");
     if (!(f in CONGELAN)) assert.ok(!/Estaticos\.congela\(|matrixAutoUpdate = false/.test(sinComentarios(lee("apps/web/motor/" + f))), f + ": se queda en automático, no se congela");
