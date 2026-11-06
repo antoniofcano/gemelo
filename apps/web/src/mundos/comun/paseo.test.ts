@@ -4,6 +4,8 @@
 import { describe, expect, it } from "vitest";
 import { ID_PASEO, PalancaPuro, creaPaseo } from "./paseo.ts";
 import type { DepsPaseo } from "./paseo.ts";
+import { creaMateriales } from "../../nucleo/materiales.ts";
+import type { ThreeMin } from "../../nucleo/materiales.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type A = any;
@@ -18,7 +20,7 @@ function monta() {
   const $ = (id: string) => (elementos[id] = elementos[id] || el());
   const legado: A = { primera: false, espejos: 0 }, dron = { on: false };
   const d: DepsPaseo = {
-    THREE, scene, camera, Estado: { exag: 1 }, Materiales: null, D: { parcelas: [{ centro: [10, 26] }] }, $, lienzo: el({ tabIndex: 0 }), visor: el(), copaAlta: () => 0, sensMirar: () => ({ k: 1, y: 1 }),
+    THREE, scene, camera, Estado: { exag: 1 }, Materiales: creaMateriales({ THREE: THREE as unknown as ThreeMin, busqueda: "" }), D: { parcelas: [{ centro: [10, 26] }] }, $, lienzo: el({ tabIndex: 0 }), visor: el(), copaAlta: () => 0, sensMirar: () => ({ k: 1, y: 1 }),
     primera: () => legado.primera, ponPrimera: (v: boolean) => { legado.primera = v; }, parcelaSel: () => 0, fincaSel: () => -1, fincas: () => [],
     vida: { velPaseo: (av: number) => av * 1.7, giroPaseo: () => 1, ponQuad() { /* doble */ }, ponDron() { /* doble */ }, vidaPaseo() { /* doble */ }, cicloVista() { /* doble */ },
       dronMando() { /* doble */ }, camaraDron: () => false, vidaEntra() { /* doble */ }, vidaSale() { /* doble */ } },
@@ -32,6 +34,7 @@ function monta() {
 describe("paseo", () => {
   it("al cargar, el muñequito ya está en la escena (oculto) y el legado lo tiene; entrar y salir espejan paseando y teclas", () => {
     const m = monta();
+    expect(m.d.Materiales.duenos()["paseo"]).toBe(4);   // piel, camisa, pantalón y gorra, de la fábrica con su dueño
     expect(m.legado.persona).toBeTruthy(); expect(m.scene.children).toContain(m.legado.persona); expect(m.legado.persona.visible).toBe(false);
     m.api.entraPaseo();
     expect(m.legado.paseando).toBe(true); expect(m.api.pp).toMatchObject({ x: 10, y: 20, ang: 0 }); expect(m.legado.primera).toBe(false);

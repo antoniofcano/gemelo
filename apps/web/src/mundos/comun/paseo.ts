@@ -58,6 +58,7 @@ export function creaPaseo(d: DepsPaseo) {
   var dronMando = deVida("dronMando"), camaraDron = deVida("camaraDron"), vidaEntra = deVida("vidaEntra"), vidaSale = deVida("vidaSale");
   var IrA = { paso: function (dt: T, manda: T) { return d.IrA().paso(dt, manda); }, cancela: function () { d.IrA().cancela(); } };
   var gm = { suelo: function (x: T, y: T) { return d.gm().suelo(x, y); }, obstaculo: function (x: T, y: T, r: T) { return d.gm().obstaculo(x, y, r); } };
+  var materiales = d.Materiales.de(ID_PASEO);   // los materiales del muñequito, con dueño «paseo» (se sueltan con libera())
   var escuchas: (() => void)[] = [];   // A3-6c: las escuchas del paseo, para quitarlas en libera()
   function escucha(o: T, tipo: string, fn: T, opc?: T) { if (!o) return; o.addEventListener(tipo, fn, opc); escuchas.push(function () { o.removeEventListener(tipo, fn, opc); }); }
   function espeja() { d.espeja({ paseando: paseando, persona: persona, teclas: teclas }); }
@@ -66,7 +67,7 @@ export function creaPaseo(d: DepsPaseo) {
   var OJOS_PIE = 1.62, OJOS_SENTADO = 1.2;
   function alturaOjos() { var Ajustes = d.Ajustes(); return typeof Ajustes !== "undefined" && Ajustes && Ajustes.lee && Ajustes.lee("vista.altura") === "sentado" ? OJOS_SENTADO : OJOS_PIE; }
   function creaPersona() {
-    var g = new THREE.Group(), mt = function (c: T) { return new THREE.MeshLambertMaterial({ color: c }); };
+    var g = new THREE.Group(), mt = function (c: T) { return materiales.estandar("MeshLambertMaterial", { color: c }); };
     var piel = mt(0xd6a27a), camisa = mt(0xe28a1c), pant = mt(0x37455c), gorra = mt(0x2e5d34);
     function caja(w: T, h: T, d: T, m: T, x: T, y: T, z: T) { var me = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); me.position.set(x, y, z); g.add(me); }
     function miembro(w: T, h: T, d: T, m: T, px: T, py: T, pz: T) { var pv = new THREE.Group(); pv.position.set(px, py, pz); var me = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); me.position.y = -h / 2; pv.add(me); g.add(pv); return pv; }
@@ -175,6 +176,7 @@ export function creaPaseo(d: DepsPaseo) {
     escuchas.splice(0).forEach(function (f) { f(); });
     if (persona.parent) persona.parent.remove(persona);
     persona.traverse(function (o: T) { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
+    materiales.libera();
   }
   var api = { pp: pp, camPos: camPos, PalancaPuro: PalancaPuro, ponPalanca: ponPalanca, giraPalanca: giraPalanca, entraPaseo: entraPaseo, salePaseo: salePaseo, actualizaPaseo: actualizaPaseo,
     estado: function () { return { paseando: paseando, persona: persona, teclas: teclas }; }, libera: libera, componente: null as Manifiesto | null };
