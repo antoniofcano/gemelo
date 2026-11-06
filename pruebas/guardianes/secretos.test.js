@@ -15,10 +15,14 @@ const SECRETOS = [
   ["token de Slack", new RegExp("xox[baprs]-" + "[0-9A-Za-z-]{10,}")],
   ["cadena de conexión con contraseña", /\b\w+:\/\/[^\s:@/]+:[^\s:@/]{3,}@[^\s/]+/],
   ["asignación de secreto", /\b(?:api[_-]?key|secret|passwd|password|token)\b\s*[:=]\s*["'][A-Za-z0-9+/_-]{16,}["']/i],
+  ["JWT", new RegExp("\\beyJ" + "[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}")],
+  ["clave de LiveKit en una asignación", new RegExp("LIVEKIT_API_(?:KEY|SECRET)\\s*[:=]\\s*[\"']?[A-Za-z0-9_+/-]{16,}")],
+  ["par clave:secreto de LiveKit", new RegExp("\\bAPI" + "[A-Za-z0-9]{10,}\\s*:\\s*[A-Za-z0-9+/]{30,}")],
+  ["clave de API de Anthropic", new RegExp("sk-" + "ant-[A-Za-z0-9_-]{20,}")],
 ];
 const EXT_DATOS = /\.(laz|las|tif|tiff|npy|npz|bin|gpkg|shp|dbf|kml|kmz|xlsx|xls|csv|sqlite|db|pem|p12|jks|keystore)$/i;
 const NOMBRES_PRIVADOS = /(^|\/)(serviceAccount[^/]*|\.env[^/]*|credentials[^/]*|id_rsa[^/]*)$/i;
-const ARTEFACTO = /claude\.ai\/(?:code\/)?artifact\/[A-Za-z0-9_-]{8,}/;                // enlaces a artefactos privados
+const ARTEFACTO = /claude\.ai\/(?:code\/|public\/)?artifacts?\/[A-Za-z0-9_-]{8,}/;      // enlaces a artefactos privados o publicados (public/artifacts/…)
 const ID_ARTEFACTO = /\b(?:artefacto|artifact)\b[^\n]{0,40}`[A-Za-z0-9]{20,24}`/i;        // «artefacto `14sj…`»
 
 test("sin secretos en los ficheros versionados", () => {
@@ -63,6 +67,32 @@ test("sólo hay imágenes del fixture sintético (ninguna ortofoto real) y las t
 test("sin enlaces ni ids de artefactos privados en lo versionado (sólo se permiten en la propia explicación del guardián)", () => {
   const mal = TEXTOS.filter(f => !f.startsWith("pruebas/guardianes/")).filter(f => ARTEFACTO.test(lee(f)) || ID_ARTEFACTO.test(lee(f)));
   assert.deepStrictEqual(mal, [], "enlace o id de artefacto en: " + mal.join(", ") + " (el enlace va en privado, no en un repo público)");
+});
+
+// L9-08: los patrones nuevos (JWT, LiveKit, Anthropic, artefactos publicados) marcan lo que deben y no lo parecido.
+// Las muestras se construyen por partes, como en SECRETOS, para no marcarse a sí mismas.
+test("los patrones nuevos de secretos y de artefactos publicados reconocen lo que deben y no lo parecido", () => {
+  const re = nombre => SECRETOS.find(([n]) => n === nombre)[1];
+  const jwt = "eyJ" + "hbGciOiJIUzI1NiJ9." + "eyJzdWIiOiJ1c3VhcmlvIn0." + "sGdQ3vT8kLm2Wz9xYb0c";
+  const lkKey = "LIVEKIT_API_KEY=" + "APIaB3dE5fG7hJ9k";
+  const lkPar = "API" + "aB3dE5fG7hJ9kL1m: " + "xY4zW8qR2tV6uP0sN3dF5gH7jK9lM1nB3vC5";
+  const anth = "sk-" + "ant-" + "api03-a1B2c3D4e5F6g7H8i9J0k1L2";
+  const art = "https://claude.ai/" + "public/" + "artifacts/" + "14sjQ8vR2mXk";
+  const marca = (nombre, s) => assert.match(s, re(nombre), nombre + " debería marcarse: " + s);
+  const deja = (nombre, s) => assert.doesNotMatch(s, re(nombre), nombre + " no debería marcarse: " + s);
+  marca("JWT", "Authorization: " + jwt);
+  deja("JWT", "eyJ sin partes, o «eyJ…» en un texto de ejemplo");
+  deja("JWT", "un token de una sola parte " + "eyJ" + "hbGciOi");
+  marca("clave de LiveKit en una asignación", lkKey);
+  marca("clave de LiveKit en una asignación", "LIVEKIT_API_SECRET=" + "xY4zW8qR2tV6uP0sN3dF5gH7jK9l");
+  deja("clave de LiveKit en una asignación", "LIVEKIT_API_KEY=${GEMELO_LIVEKIT_KEY}");
+  deja("clave de LiveKit en una asignación", "LIVEKIT_API_KEY=devkey");
+  marca("par clave:secreto de LiveKit", lkPar);
+  deja("par clave:secreto de LiveKit", "APIsintetica1 y, luego, texto corto: sí");
+  marca("clave de API de Anthropic", anth);
+  deja("clave de API de Anthropic", "sk-ant-… (ejemplo sin clave) y sk-ant-api");
+  assert.match(art, ARTEFACTO, "el enlace de public/artifacts se marca");
+  assert.doesNotMatch("claude.ai/public/artifacts/ (sin id) y la salida artefacto de claude.ai se retiró", ARTEFACTO);
 });
 
 // Sin excepciones: la última (doc/historico/DISENO-2026-10.md) se quitó al anonimizarlo (DECISIONS-PENDING nº 2, 2026-10-28).
