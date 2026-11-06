@@ -82,21 +82,23 @@
   var VT = { act: false };
   var vtLinGeo = new THREE.BufferGeometry(), vtLinPos = new Float32Array(6); vtLinGeo.setAttribute("position", new THREE.BufferAttribute(vtLinPos, 3));
   var vtLin = new THREE.Line(vtLinGeo, new THREE.LineBasicMaterial({ color: 0xffc94a, fog: false, transparent: true, opacity: 0.45 })); vtLin.frustumCulled = false; vtLin.visible = false;
-  // el fundido a negro: un velo pegado a la cabeza. vrFundido(fn) oscurece, llama a fn a oscuras y aclara (0,15 s + 0,15 s); devuelve false si ya hay uno en curso
-  var FUNDIDO_S = 0.15, vrFun = { fase: 0, t: 0, fn: null };
-  var vrNegro = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.4), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0, depthTest: false, depthWrite: false, fog: false }));
+  // el fundido a negro: un velo pegado a la cabeza; estado y tiempos en apps/web/src/nucleo/fundido.ts (MU2-2). vrCierra() oscurece y su promesa se cumple a negro (se QUEDA
+  // opaco hasta vrAbre(): entre los dos cabe cargar un mundo); vrFundido(fn) = cierra, fn a oscuras, abre (false si ya hay uno). vrSalta: los saltos de >5 m (L7-05) y las láminas nacen delante (L7-06)
+  var vrFun = Nucleo.creaFundido(), vrNegro = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.4), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0, depthTest: false, depthWrite: false, fog: false }));
   vrNegro.position.set(0, 0, -0.3); vrNegro.renderOrder = 1000; vrNegro.frustumCulled = false; vrNegro.visible = false;
-  function vrFundido(fn) { if (vrFun.fase) return false; vrFun.fase = 1; vrFun.t = 0; vrFun.fn = fn || null; vrNegro.material.opacity = 0; vrNegro.visible = true; return true; }
-  function vrFundidoPaso(dt) {   // al principio de vrActualiza: lo que fn mueva ya cuenta para el resto del fotograma
-    if (!vrFun.fase) return;
-    vrFun.t += dt; var k = Math.min(1, vrFun.t / FUNDIDO_S);
-    if (vrFun.fase === 1) { vrNegro.material.opacity = k; if (k >= 1) { var f = vrFun.fn; vrFun.fn = null; vrFun.fase = 2; vrFun.t = 0; if (f) f(); } }
-    else { vrNegro.material.opacity = 1 - k; if (k >= 1) { vrFun.fase = 0; vrNegro.visible = false; } }
+  function vrNegroPinta() { vrNegro.material.opacity = vrFun.opacidad; vrNegro.visible = vrFun.visible; }
+  function vrCierra(alNegro) { var p = vrFun.cierra(alNegro); vrNegroPinta(); return p; }
+  function vrAbre() { var p = vrFun.abre(); vrNegroPinta(); return p; }
+  function vrFundido(fn) { var ok = vrFun.funde(fn); vrNegroPinta(); return ok; }
+  function vrFundidoPaso(dt) { if (vrFun.fase === "abierto") return; try { vrFun.paso(dt); } finally { vrNegroPinta(); } }   // al principio de vrActualiza: lo que fn mueva ya cuenta
+  function vrSalta(px, py, fn) {   // dist null = siempre (el mirador); con otro fundido en curso el salto se descarta (como Llegada.funde)
+    var h = vrCabeza(), d = px === null ? null : Math.hypot(px - h.x, -py - h.z);
+    return d !== null && !Nucleo.FundidoPuro.necesitaFundido(d) ? (fn(), true) : vrFundido(function () { fn(); panel.ini = false; ficha.ini = false; fichaB.ini = false; VRX.sucio = true; });
   }
   function vrVueloOculta() { VT.act = false; vtLin.visible = false; Llegada.borra(); }
   function vrVueloTp(R, apunta) {   // cada fotograma mientras se vuela (o mientras quede un apuntado abierto)
     arco.visible = false; arcoMarca.visible = false; VRX.tpAct = false; VRX.tp = null;
-    if (apunta && !vrFun.fase) {
+    if (apunta && vrFun.fase === "abierto") {
       var rr = vrRayoDe(R), o = rr.ray.origin, d = rr.ray.direction, p = Llegada.apunta(o, d, VRX.cab, camera.getWorldDirection(vrV3));
       VT.act = true;
       var fin = p || { x: o.x + d.x * 40, y: o.y + d.y * 40, z: o.z + d.z * 40 };   // sin suelo, un rayo corto (40 m) que solo dice adónde apuntas
@@ -104,7 +106,7 @@
       vtLin.visible = true; vtLin.material.opacity = p ? 0.45 : 0.2;
       return;
     }
-    if (VT.act && Llegada.punto() && !vrFun.fase) { Llegada.alAnillo(); vrPulso(R, 0.35, 30); }
+    if (VT.act && Llegada.punto() && vrFun.fase === "abierto") { Llegada.alAnillo(); vrPulso(R, 0.35, 30); }
     vrVueloOculta();
   }
   // aparecer de pie en (px, py) del mundo (py = norte), andando (deja el vuelo y el mirador); con ang (ángulo del paseo: 0 = norte), gira el rig en torno a la cabeza para mirar
@@ -117,9 +119,9 @@
     }
     vrAplicaRig(); VRX.hMov = 0.35; VRX.sucio = true; panel.ini = false; ficha.ini = false; fichaB.ini = false;   // las láminas, ya delante al aclarar (sin cruzar el mundo)
   }
-  function vrVueloEntra() { camera.add(vrNegro); scene.add(vtLin); vrVueloOculta(); vrFun.fase = 0; vrFun.fn = null; vrNegro.visible = false; }
-  function vrVueloSale() { camera.remove(vrNegro); scene.remove(vtLin); vrVueloOculta(); vrFun.fase = 0; vrFun.fn = null; vrNegro.visible = false; }
-  window.__vrVuelo = function () { return { apuntando: VT.act, linea: vtLin.visible, fundido: vrFun.fase, negro: vrNegro.material.opacity }; };
+  function vrVueloEntra() { camera.add(vrNegro); scene.add(vtLin); vrVueloOculta(); vrFun.reinicia(); vrNegroPinta(); }
+  function vrVueloSale() { camera.remove(vrNegro); scene.remove(vtLin); vrVueloOculta(); vrFun.reinicia(); vrNegroPinta(); }
+  window.__vrVuelo = function () { return { apuntando: VT.act, linea: vtLin.visible, fundido: vrFun.fase === "abierto" ? 0 : vrFun.fase === "cerrando" ? 1 : 2, negro: vrNegro.material.opacity }; };
 
   // [puro:fichas:inicio] (sin THREE ni DOM: lo evalúa en Node pruebas/guardianes/topes_vr.test.js)
   // EV2-A0: las medidas de las tres láminas que siguen a la cabeza (las de siempre, sin ?ui=capas), en UN sitio: de aquí las crea creaLamina, las coloca
@@ -484,7 +486,7 @@
     B.forEach(function (q) { cx.fillStyle = VRX.hoverB === q.id ? "#4a5866" : q.prim ? "#1d5f6b" : "#2a3139"; vrRect(cx, q.x, q.y, q.w, q.h, 14); cx.fill(); cx.fillStyle = "#ffffff"; cx.fillText(q.txt, q.x + q.w / 2, q.y + q.h / 2 + 1); });
     cx.textAlign = "left"; fichaB.tex.needsUpdate = true; VRX.botonesB = B;
   }
-  function vrParcela(d) { VRX.parcSel = (VRX.parcSel + d + parcelas.length) % parcelas.length; var p = parcelas[VRX.parcSel]; vrIrA(p.centro[0], p.centro[1] - 6); VRX.sucio = true; }
+  function vrParcela(d) { VRX.parcSel = (VRX.parcSel + d + parcelas.length) % parcelas.length; var p = parcelas[VRX.parcSel], px = p.centro[0], py = p.centro[1] - 6; VRX.sucio = true; vrSalta(px, py, function () { vrIrA(px, py); }); }
   // T7a: la tarjeta de la medida (30_mide.js) sobre el panel: texto a 29 px en un panel de 1 m (letra de ≈ 2,8 cm, legible a 1 m) y «Cerrar» pulsable con el gatillo
   function vrPintaMide(B) {
     var cx = panel.cx, W = panel.W, H = panel.H, M = vrMedida(), r = M.resultado;
@@ -553,7 +555,7 @@
     } else if (Math.abs(gx) < 0.35) VRX.giroOk = true;
     if (VRX.vuelo || VT.act) vrVueloTp(R, gy < -0.6 && Math.abs(gx) < 0.5);   // desde el aire: rayo recto y anillo (2b)
     else if (gy < -0.6 && Math.abs(gx) < 0.5) { VRX.tp = vrArco(R); arco.visible = true; arcoMarca.visible = !!VRX.tp; if (VRX.tp) arcoMarca.position.set(VRX.tp.x, suelo(VRX.tp.x, -VRX.tp.z) * Estado.exag + 0.08, VRX.tp.z); VRX.tpAct = true; }
-    else { if (VRX.tpAct && VRX.tp) { vrIrA(VRX.tp.x, -VRX.tp.z); VRX.hMov = 0.35; vrPulso(R, 0.35, 30); } VRX.tpAct = false; VRX.tp = null; arco.visible = false; arcoMarca.visible = false; }
+    else { if (VRX.tpAct && VRX.tp) { var tp = VRX.tp; vrSalta(tp.x, -tp.z, function () { vrIrA(tp.x, -tp.z); VRX.hMov = 0.35; }); vrPulso(R, 0.35, 30); } VRX.tpAct = false; VRX.tp = null; arco.visible = false; arcoMarca.visible = false; }
     // andar (palanca izquierda): relativo a la mirada
     var av = -vrDz(iz.y), la = vrDz(iz.x), g = camera.getWorldDirection(vrV3);
     var fx = g.x, fz = g.z, hl = Math.hypot(fx, fz) || 1, hx = fx / hl, hz = fz / hl;   // dirección horizontal de la mirada
@@ -601,10 +603,8 @@
     }
     PanelVR.fotograma(dt);   // EV2-A3: lo enganchado (el menú de muñeca, 31c_muneca.js), con el rig ya colocado
   }
-  function vrMirador(on) {
-    VRX.mirador = on; VRX.vuelo = on; VRX.sucio = true; var h = vrCabeza();
-    if (on) { VRX.rig.y = suelo(h.x, -h.z) * Estado.exag + 230; } else { VRX.rig.y = suelo(h.x, -h.z) * Estado.exag + vrBaseY(); }
-    VRX.salto = true;
+  function vrMirador(on) {   // 230 m de golpe: siempre por el fundido (L7-05)
+    vrSalta(null, 0, function () { VRX.mirador = on; VRX.vuelo = on; VRX.sucio = true; var h = vrCabeza(); VRX.rig.y = suelo(h.x, -h.z) * Estado.exag + (on ? 230 : vrBaseY()); VRX.salto = true; });
   }
   // el gatillo: sobre el panel pulsa un botón; sobre un olivo, abre su ficha
   function vrGatillo(o) {

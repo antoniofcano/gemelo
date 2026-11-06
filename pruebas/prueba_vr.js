@@ -6,6 +6,8 @@ const url = process.argv[2], pre = process.argv[3] || "pruebas/salida/vr/t", sin
 const dormir = ms => new Promise(r => setTimeout(r, ms));
 let pg = null;
 // el simulador va a pocos fotogramas por segundo (render por software): una pulsación tiene que durar hasta que pasen fotogramas de verdad, igual que en un casco a 72 Hz
+// MU2-2 (L7-05): los saltos de más de 5 m (mirador, «parcela ▶», teletransporte) pasan por el fundido; hay que esperar a que acabe antes de mirar dónde cae el rig
+async function sinFundido() { await fot(3); await pg.waitForFunction(() => window.__vrVuelo().fundido === 0, null, { timeout: 30000, polling: 50 }); }
 async function fot(n) { const f0 = await pg.evaluate(() => window.__mockXR.fotogramas); for (let i = 0; i < 300; i++) { await dormir(60); if ((await pg.evaluate(() => window.__mockXR.fotogramas)) >= f0 + n) return; } }
 async function pulsa(mano, k) { await pg.evaluate(a => window.__mockXR.boton(a[0], a[1], true), [mano, k]); await fot(3); await pg.evaluate(a => window.__mockXR.boton(a[0], a[1], false), [mano, k]); await fot(3); }
 async function mantenEjes(mano, x, y, n) { await pg.evaluate(a => window.__mockXR.ejes(a[0], a[1], a[2]), [mano, x, y]); await fot(n); await pg.evaluate(a => window.__mockXR.ejes(a[0], 0, 0), [mano]); await fot(2); }
@@ -57,7 +59,7 @@ async function mantenEjes(mano, x, y, n) { await pg.evaluate(a => window.__mockX
   // 3) teletransporte: palanca derecha adelante (arco), apunta al suelo y suelta
   await p.evaluate(() => { const M = window.__mockXR; M.apunta("right", [0.25, 0.9, -3]); M.ejes("right", 0, -1); }); await fot(4);
   await p.screenshot({ path: pre + "_1_arco.png", timeout: 120000 });
-  await p.evaluate(() => window.__mockXR.ejes("right", 0, 0)); await fot(4);
+  await p.evaluate(() => window.__mockXR.ejes("right", 0, 0)); await fot(4); await sinFundido();   // un salto de >5 m va por el fundido (L7-05); el de <5 m, no
   let d3 = await p.evaluate(() => window.__vrDebug()); const salto = Math.hypot(d3.cabeza[0] - d2.cabeza[0], d3.cabeza[2] - d2.cabeza[2]);
   ok("el teletransporte (arco + soltar) lleva al usuario al punto de caída", salto > 1.5 && salto < 40, { metros: +salto.toFixed(1) });
   // 4) el panel: apuntar a un botón y pulsar el gatillo
@@ -109,7 +111,7 @@ async function mantenEjes(mano, x, y, n) { await pg.evaluate(a => window.__mockX
   await aPanel("h-"); await p.evaluate(() => window.__mockXR.gatillo("right")); await fot(3); dm = await p.evaluate(() => window.__vrDebug()); ok("«−» de la hora vuelve a la hora real", Math.abs(dm.horaMs - hm0) < 60000, { de: hm0, a: dm.horaMs });
   await aPanel("t_comodidad"); await p.evaluate(() => window.__mockXR.gatillo("right")); await fot(3); await aPanel("e+"); dm = await p.evaluate(() => window.__vrDebug()); console.log("hover antes de e+:", dm.hover); await p.evaluate(() => window.__mockXR.gatillo("right")); await fot(3); dm = await p.evaluate(() => window.__vrDebug()); ok("«+» de la exageración la sube", dm.exag > 1, { exag: dm.exag, hover: dm.hover });
   await aPanel("t_mundo"); await p.evaluate(() => window.__mockXR.gatillo("right")); await fot(3); await aPanel("f-"); const n0 = dm.ndvi; await p.evaluate(() => window.__mockXR.gatillo("right")); await fot(3); dm = await p.evaluate(() => window.__vrDebug()); ok("«−» de la fecha NDVI retrocede una imagen", dm.ndvi === n0 - 1, { de: n0, a: dm.ndvi });
-  await aPanel("t_ira"); await p.evaluate(() => window.__mockXR.gatillo("right")); await fot(3); { const bt = await p.evaluate(() => window.__vrBotones()), dt = await p.evaluate(() => window.__vrDebug()); ok("pestañas: «Ir a» activa y «Salir de VR» siempre abajo", dt.pestana === "ira" && bt.some(k => k.id === "sal" && k.h >= 64) && bt.filter(k => /^t_/.test(k.id)).length === 3 && !bt.some(k => k.id === "mide"), { pestana: dt.pestana }); } await aPanel("p+"); const c0 = [dm.cabeza[0], dm.cabeza[2]]; await p.evaluate(() => window.__mockXR.gatillo("right")); await fot(3); dm = await p.evaluate(() => window.__vrDebug()); ok("«▶» de parcela te lleva a otra parcela", dm.parcSel === 1 || dm.parcSel === 0 && false, { parcSel: dm.parcSel, mueve: +Math.hypot(dm.cabeza[0] - c0[0], dm.cabeza[2] - c0[1]).toFixed(0) });
+  await aPanel("t_ira"); await p.evaluate(() => window.__mockXR.gatillo("right")); await fot(3); { const bt = await p.evaluate(() => window.__vrBotones()), dt = await p.evaluate(() => window.__vrDebug()); ok("pestañas: «Ir a» activa y «Salir de VR» siempre abajo", dt.pestana === "ira" && bt.some(k => k.id === "sal" && k.h >= 64) && bt.filter(k => /^t_/.test(k.id)).length === 3 && !bt.some(k => k.id === "mide"), { pestana: dt.pestana }); } await aPanel("p+"); const c0 = [dm.cabeza[0], dm.cabeza[2]]; await p.evaluate(() => window.__mockXR.gatillo("right")); await sinFundido(); dm = await p.evaluate(() => window.__vrDebug()); ok("«▶» de parcela te lleva a otra parcela", dm.parcSel === 1 || dm.parcSel === 0 && false, { parcSel: dm.parcSel, mueve: +Math.hypot(dm.cabeza[0] - c0[0], dm.cabeza[2] - c0[1]).toFixed(0) });
   await p.screenshot({ path: pre + "_3_parcela.png", timeout: 120000 });
   // 5) la ficha de un olivo con el rayo + gatillo (con el panel oculto)
   await pulsa("left", 5);
@@ -120,10 +122,12 @@ async function mantenEjes(mano, x, y, n) { await pg.evaluate(a => window.__mockX
   await pulsa("right", 4);
   const dv = await p.evaluate(() => window.__vrDebug()); ok("A activa el vuelo", dv.vuelo);
   await pulsa("right", 4);
-  await pulsa("right", 5);
+  await pulsa("right", 5); await sinFundido();
   const dmi = await p.evaluate(() => window.__vrDebug()); ok("B lleva al mirador (a ~230 m sobre el suelo, volando)", dmi.vuelo && dmi.cabeza[1] > 150, { altura: +dmi.cabeza[1].toFixed(0) });
+  // L7-06: tras el fundido el panel abierto ya está delante (se recoloca a oscuras, no cruza 230 m en 2 s)
+  if (dmi.panel) ok("tras el salto al mirador el panel queda junto a la cabeza (sin cruzar el mundo)", Math.hypot(dmi.panelPos[0] - dmi.cabeza[0], dmi.panelPos[1] - dmi.cabeza[1], dmi.panelPos[2] - dmi.cabeza[2]) < 3, { dist: +Math.hypot(dmi.panelPos[0] - dmi.cabeza[0], dmi.panelPos[1] - dmi.cabeza[1], dmi.panelPos[2] - dmi.cabeza[2]).toFixed(1) });
   await p.screenshot({ path: pre + "_5_mirador.png", timeout: 120000 });
-  await pulsa("right", 5);
+  await pulsa("right", 5); await sinFundido();
   const dbj = await p.evaluate(() => window.__vrDebug()); ok("B otra vez baja al suelo", !dbj.vuelo && dbj.cabeza[1] < 100, { altura: +dbj.cabeza[1].toFixed(0) });
   // 7) correr (grip izquierdo) = más metros
   async function tramo(corre) { await p.evaluate(() => window.__mockXR.apunta("right", [0.25, 1.2, -3])); const a0 = await p.evaluate(() => window.__vrDebug().cabeza); await p.evaluate(c => { window.__mockXR.ejes("left", 0, -1); window.__mockXR.boton("left", 1, c); }, corre); await fot(10); await p.evaluate(() => { window.__mockXR.ejes("left", 0, 0); window.__mockXR.boton("left", 1, false); }); await fot(2); const a1 = await p.evaluate(() => window.__vrDebug().cabeza); return Math.hypot(a1[0] - a0[0], a1[2] - a0[2]); }
