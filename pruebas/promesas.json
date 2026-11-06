@@ -26,7 +26,8 @@
         { "fichero": "pruebas/guardianes/contratos.test.js", "test": "el índice cumple contratos/indice.schema.json" },
         { "fichero": "pruebas/guardianes/contratos.test.js", "test": "cada tesela cumple tesela.schema.json y tiene los tamaños del contrato" },
         { "fichero": "pruebas/guardianes/contratos.test.js", "test": "los esquemas rechazan lo que deben" },
-        { "fichero": "pruebas/guardianes/contratos.test.js", "test": "devuelve exactamente los miembros de contratos/interfaces.json" }
+        { "fichero": "pruebas/guardianes/contratos.test.js", "test": "devuelve exactamente los miembros de contratos/interfaces.json" },
+        { "fichero": "pruebas/guardianes/tipos_contratos.test.js", "test": "coinciden con los esquemas (frescura)" }
       ],
       "falta": "Que contrato, esquema y fixture cambien en el MISMO commit no se comprueba: solo que, al pasar la puerta, el fixture cumple los esquemas."
     },

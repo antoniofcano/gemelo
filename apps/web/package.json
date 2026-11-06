@@ -31,6 +31,7 @@
   "devDependencies": {
     "@webxr-input-profiles/assets": "1.0.20",
     "dependency-cruiser": "18.7.0",
+    "json-schema-to-typescript": "16.0.0",
     "sharp": "0.35.5",
     "typescript": "5.9.3",
     "vite": "6.4.5",
