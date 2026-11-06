@@ -2,7 +2,7 @@
 // Expone: Follaje, matHojaG, matHojaP, matCorteza, matSombra, geoSombra, follajeG, construyeSombras
 // Consume: 01_datos (ESC_R8), 02_mundo (suelo, copaAlta, aviva, colorEn, copas), 02g_vr_presupuesto (VrPresupuesto), 02i_materiales (Materiales),
 //   02j_estaticos (Estaticos), 03_escena (texColor, Estado), 04d_sombreado_tiles (hash), 06_arboles (gSombras, radioEn),
-//   18_paisaje (instSombra, sombrasSol), 23_estacion (construyeFrutosLista)
+//   18_paisaje (sombrasSol, instSombra), 23_estacion (construyeFrutosLista)
 // ===============================================================================
 
   // follaje: cada punto LiDAR de copa es un montoncito de hojas plateadas (sprites con textura propia). MU5-n (A3-2b): migrado a TypeScript; el código vive en

@@ -8,6 +8,7 @@
 // No mide llamadas ni fps: eso lo hace el banco (escenarios paseo, paseoE, paseoS, paseoO, en Chrome). Ni Quest ni iPhone: no probado.
 const test = require("node:test"), assert = require("node:assert"), vm = require("vm"), path = require("path"), { pathToFileURL } = require("url");
 const { lee, RAIZ, fs } = require("./_util");
+const { fuenteMotor } = require("./_fuente");   // A3-3: lo que ya es un talón se lee con su .ts
 const { conFabrica } = require("./_materiales");   // Materiales e InfoDibujo (02h/02i, F1) en el contexto del módulo
 
 let THREE;
@@ -65,7 +66,7 @@ function mundoPaisaje(ejesExtra) {
     THREE, D: { paisaje: JSON.parse(JSON.stringify(PAISAJE)) }, $: () => ({ checked: true, addEventListener() {} }), ESC_R8: 1,
     suelo: (x, y) => 80 + 0.2 * x + 0.1 * y, desp: () => 0, copas: [], scene: new THREE.Scene(), SRGB: THREE.SRGBColorSpace, sol: {}, Estado: { exag: 1 }, hash,
     gSombras: new THREE.Group(), tronco: null, matSombra: new THREE.MeshBasicMaterial({ transparent: true }), geoSombra: new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2),
-    pon() {}, lista: [], lluvia: null, cur: { ms: 0, nub: 0, lluvia: 0, dir: 0, viento: 0 }, tMundo: 0, nivel: () => ({ s: { alt: sol.alt, az: sol.az }, d: 1 }), esfera: null, EST: { activa: false }
+    pon() {}, lista: [], lluvia: null, cur: { ms: 0, nub: 0, lluvia: 0, dir: 0, viento: 0 }, tMundo: 0, nivel: () => ({ s: { alt: sol.alt, az: sol.az }, d: 1 }), esfera: null, EST: { activa: false }, nivelEn: (ms, s) => { s.s.alt = sol.alt; s.s.az = sol.az; s.d = 1; return s; }, Componentes: { registra() { return true; } }
   };
   g.scene.add(g.gSombras);
   if (ejesExtra) g.D.paisaje.arroyo.ejes.push(...ejesExtra);
@@ -334,8 +335,8 @@ test("inventario: los frustumCulled = false que quedan en el motor son los anota
     assert.ok((hay[f] || 0) === a[0], f + ": anotados " + a[0] + " y hay " + (hay[f] || 0) + " (si se activó el recorte, baja la cuenta aquí)");
   }
   // los que se recortan desde AG-1.3, con el patrón que les toca
-  const M = f => sinComentarios(lee("apps/web/motor/" + f));
-  const P = M("18_paisaje.js"), co = trozo(P, "function colocaPaisaje()", "function sombrasSol("), ss = trozo(P, "function sombrasSol(", "var aguaNivel");
+  const M = f => sinComentarios(fuenteMotor(f));   // A3-3: 18_paisaje es un talón; su código está en paisaje.ts
+  const P = M("18_paisaje.js"), co = trozo(P, "function colocaPaisaje(", "function sombrasSol("), ss = trozo(P, "function sombrasSol(", "function actualizaPaisaje(");
   assert.ok(/computeBoundingSphere\(\)/.test(co.slice(co.lastIndexOf("needsUpdate"))), "18: colocaPaisaje calcula las esferas después de escribir");
   assert.ok(/instSombraPA\.computeBoundingSphere\(\)/.test(ss.slice(ss.lastIndexOf("instSombraPA.count = n"))), "18: sombrasSol calcula la esfera después de escribir");
   const O = trozo(M("39_oficina_mundo.js"), "function coloca()", "function refresca()");

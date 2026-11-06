@@ -46,6 +46,16 @@ export const DEF_NUBE: DefMaterial<OpcNube> = {
     m.onBeforeCompile = o.parche;
     m.needsUpdate = true;
     return m;
+  },
+  // MU5-n, tercer commit: la variante TSL, APAGADA (solo con el WebGPURenderer, que hasta MU6 no existe; nadie la usa hoy) y PARCIAL, no equivalente al clásico: un
+  // PointsNodeMaterial con las propiedades del clásico (el tamaño de su nivel, la atenuación por distancia, el color por vértice y el MISMO objeto de color del maestro,
+  // que el ciclo del día tiñe). FALTA el parche de la luz (parcheTiempo de 15_tiempo: la sombra de nubes y la helada; fila 2 de MATERIALES, sin TSL aún) y, con el
+  // backend WebGPU, el punto mide siempre 1 px (MULTIVIEW §2.3): la fila 9 pasará a sprites instanciados, y eso hay que medirlo en el banco (MU6)
+  tsl: function (o, c) {
+    const Puntos = c.THREE["PointsNodeMaterial"] as new (opc: unknown) => MaterialMin & { color: unknown };
+    const m = new Puntos({ size: o.size, sizeAttenuation: true, vertexColors: true });
+    m.color = o.color;
+    return m;
   }
 };
 

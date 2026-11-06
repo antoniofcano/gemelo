@@ -81,7 +81,7 @@ const BUCLE = {
   "src/nucleo/mundos.ts": [["WorldManager.actualiza", "function actualiza("]],   // MU2-3: el gestor llama al mundo activo cada fotograma
   "src/mundos/exterior.ts": [["Exterior.actualiza", "actualiza(dt: number, t: number): void"]],   // MU2-3: el exterior recorre sus pasos cada fotograma
   "src/nucleo/bucle.ts": [["Bucle.corre", "function corre("], ["Bucle.recorre", "function recorre("]],   // MU2-3: la sublista de pasos del mundo activo, cada fotograma
-  "18_paisaje.js": [["distArroyo", "function distArroyo("], ["celdaArroyoDist", "function celdaArroyoDist("]],
+  "src/mundos/exterior/paisaje.ts": [["distArroyo", "function distArroyo("], ["celdaArroyoDist", "function celdaArroyoDist("]],   // A3-3: 18_paisaje es un talón de este módulo
   "16_vida.js": [["velPaseo", "function velPaseo("], ["giroPaseo", "function giroPaseo("], ["vidaPaseo", "function vidaPaseo("], ["dronMando", "function dronMando("],
     ["camaraDron", "function camaraDron("], ["vidaDron", "function vidaDron("], ["actualizaVida", "function actualizaVida("], ["emiteEstela", "e.emite = function"], ["angDifRad", "function angDifRad("]],
   "15_tiempo.js": [["posSolEn", "function posSolEn("], ["nivelEn", "function nivelEn("], ["pintaNubes", "function pintaNubes("], ["actualizaTiempo", "function actualizaTiempo("]],   // `nivel(ms)` sí reserva su resultado (es la de siempre, para lo que no corre por fotograma): no está en la lista

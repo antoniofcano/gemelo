@@ -41,9 +41,9 @@ test("18_paisaje: los árboles que no son olivo se apuntan y el escalón los rec
     $: () => ({ checked: true, addEventListener() {} }), ESC_R8: 1, suelo: () => 80, desp: () => 0, copas: [], scene: new THREE.Scene(), SRGB: THREE.SRGBColorSpace,
     sol: {}, Estado: { exag: 1 }, hash, gSombras: new THREE.Group(), tronco: null, matSombra: new THREE.MeshBasicMaterial({ transparent: true }),
     geoSombra: new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), pon() {}, lista: [], lluvia: null, cur: { ms: 0, nub: 0, lluvia: 0 }, tMundo: 0,
-    nivel: () => ({ s: { alt: 0.8, az: 0.4 }, d: 1 }), esfera: null, EST: { activa: false } });
+    nivel: () => ({ s: { alt: 0.8, az: 0.4 }, d: 1 }), esfera: null, EST: { activa: false }, nivelEn: (ms, s) => { s.s.alt = 0.8; s.s.az = 0.4; s.d = 1; return s; }, Componentes: { registra() { return true; } } });
   corre(c, "18_paisaje.js"); vm.runInContext("colocaPaisaje()", c);
-  const V = vm.runInContext("VrPresupuesto", c), insts = vm.runInContext("gPaisaje", c).children.filter(o => o.isInstancedMesh);
+  const V = vm.runInContext("VrPresupuesto", c), insts = vm.runInContext("Paisaje.grupo()", c).children.filter(o => o.isInstancedMesh);
   assert.strictEqual(insts.length, 4, "tronco y tres masas");
   const antes = insts.map(foto);
   V.ponEscalon(3); V.mueve(0, 0);   // r = 120 m: x = 0..120 → 7 árboles

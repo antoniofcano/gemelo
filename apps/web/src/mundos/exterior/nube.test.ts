@@ -155,7 +155,7 @@ describe("nube LiDAR (componente del exterior)", () => {
   it("sus 4 materiales (uno por nivel) salen de la fábrica por define + crea con dueño y el nombre de la tabla de MATERIALES; el clásico es el de siempre (mismo parche, sin clave propia) y comparten el color del maestro", () => {
     const { api, Materiales, tiempo } = monta([]);
     expect(MATERIAL_NUBE).toBe("nube-lidar");
-    expect(Materiales.cobertura()["nube-lidar"]).toEqual({ clasico: true, tsl: false, usado: 4 });
+    expect(Materiales.cobertura()["nube-lidar"]).toEqual({ clasico: true, tsl: true, usado: 4 });
     expect(Materiales.inventario()).toMatchObject({ "nube-lidar": { tipo: "define", n: 4 } }); expect(Materiales.duenos()).toEqual({ "nube-lidar": 4 }); expect(Materiales.ruta("nube-lidar")).toBe("clasico");
     const mats = api.matsNube(); expect(mats).toHaveLength(NIV_NUBE.length);
     mats.forEach((m: { color: unknown; onBeforeCompile(sh: unknown): void; isPointsMaterial: boolean; sizeAttenuation: boolean; vertexColors: boolean; customProgramCacheKey(): string }) => {
@@ -170,6 +170,26 @@ describe("nube LiDAR (componente del exterior)", () => {
     // libera() los suelta (y deja la lista de la fábrica vacía)
     let liberados = 0; mats.forEach((m: { addEventListener(n: string, f: () => void): void }) => m.addEventListener("dispose", () => { liberados++; }));
     api.libera(); expect(liberados).toBe(4); expect(Materiales.duenos()).toEqual({});
+  });
+
+  it("la variante TSL (apagada): solo con el renderizador nuevo; con three/webgpu y three/tsl de verdad se construye un PointsNodeMaterial con las propiedades del clásico y el mismo color", async () => {
+    const rutaW = "three/webgpu", rutaT = "three/tsl";   // por variable: three no trae tipos
+    const W = await import(/* @vite-ignore */ rutaW as string), TSL = await import(/* @vite-ignore */ rutaT as string);
+    const nuevo = { tipo: "nuevo", pedido: "nuevo" }, clasico = { tipo: "clasico", pedido: "" };
+    const color = new W.Color(0x808080), opc = { size: 0.6 / Math.sqrt(0.18), color, parche: () => { /* sin efecto */ } };
+    // sin renderizador nuevo (hoy, siempre): el clásico, aunque haya nodos
+    const hoy = creaMateriales({ THREE: THREE as unknown as ThreeMin, render: clasico, nodos: () => ({ THREE: W, TSL }) });
+    hoy.define(MATERIAL_NUBE, DEF_NUBE);
+    expect(hoy.ruta(MATERIAL_NUBE)).toBe("clasico"); expect((hoy.crea(MATERIAL_NUBE, opc) as { isPointsMaterial?: boolean }).isPointsMaterial).toBe(true);
+    // con él y la variante: el TSL
+    const F = creaMateriales({ THREE: THREE as unknown as ThreeMin, render: nuevo, nodos: () => ({ THREE: W, TSL }) });
+    F.define(MATERIAL_NUBE, DEF_NUBE);
+    expect(F.ruta(MATERIAL_NUBE)).toBe("tsl"); expect(F.cobertura()[MATERIAL_NUBE]).toMatchObject({ clasico: true, tsl: true });
+    const m = F.crea(MATERIAL_NUBE, opc) as { isNodeMaterial: boolean; isPointsNodeMaterial: boolean; color: unknown; size: number; sizeAttenuation: boolean; vertexColors: boolean; onBeforeCompile?: unknown };
+    expect(m.isNodeMaterial).toBe(true); expect(m.isPointsNodeMaterial).toBe(true); expect(m.color).toBe(color);
+    expect(m.size).toBe(opc.size); expect(m.sizeAttenuation).toBe(true); expect(m.vertexColors).toBe(true);
+    // lo que NO lleva (y MATERIALES §9 dice): ni el parche de la luz de 15_tiempo ni, por tanto, su sombra de nubes
+    expect(m.onBeforeCompile).not.toBe(opc.parche);
   });
 
   it("el manifiesto vale, es de los mundos [exterior], y su libera suelta de verdad", () => {

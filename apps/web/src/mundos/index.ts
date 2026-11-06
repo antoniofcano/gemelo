@@ -52,3 +52,5 @@ export type { DepsGenerados, Generados } from "./exterior/generados.ts";
 // A3-3 (MU5-n): la nube y el paisaje del exterior (la nube LiDAR, el paisaje, las balizas, las lindes, los carteles y las decoraciones), componentes con su libera() de verdad.
 export { ALTO_MAX, MATERIAL_NUBE, NIV_NUBE, NubePuro, PRESUPUESTO_NUBE, creaNube, manifiestoNube } from "./exterior/nube.ts";
 export type { DepsNube, Nube } from "./exterior/nube.ts";
+export { ID_PAISAJE, creaPaisaje, manifiestoPaisaje } from "./exterior/paisaje.ts";
+export type { DatosPaisaje, DepsPaisaje, Paisaje } from "./exterior/paisaje.ts";
