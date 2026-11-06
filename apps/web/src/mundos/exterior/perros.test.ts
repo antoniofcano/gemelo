@@ -4,6 +4,8 @@
 // vez. La equivalencia con el código anterior, fotograma a fotograma, la comprueban bucle_equivalencia2 y perros_instanciados. HONESTIDAD: nada se dibuja aquí (regla 7).
 import { describe, expect, it } from "vitest";
 import type { ContextoComponente } from "../../nucleo/componentes.ts";
+import { creaMateriales } from "../../nucleo/materiales.ts";
+import type { ThreeMin } from "../../nucleo/materiales.ts";
 import { ID_PERROS, angCorto, creaPerros, manifiestoPerros } from "./perros.ts";
 import type { DepsPerros } from "./perros.ts";
 
@@ -26,7 +28,7 @@ function monta() {
   const window: Record<string, unknown> = {}, geoSombra = new THREE.PlaneGeometry(1, 1), matSombra = new THREE.MeshBasicMaterial();
   const copas = Array.from({ length: 30 }, () => ({ x: (rnd() - 0.5) * 100, y: (rnd() - 0.5) * 100, oliv: true }));
   const deps: DepsPerros = {
-    THREE, D: { ext: [-100, 100, 100, -100] }, copas, camera: new THREE.PerspectiveCamera(), texColor: (t: unknown) => t, hash: (i: number) => (Math.sin(i * 12.9898) * 43758.5453) % 1 * 0.5 + 0.5,
+    THREE, Materiales: creaMateriales({ THREE: THREE as unknown as ThreeMin, busqueda: "" }), D: { ext: [-100, 100, 100, -100] }, copas, camera: new THREE.PerspectiveCamera(), texColor: (t: unknown) => t, hash: (i: number) => (Math.sin(i * 12.9898) * 43758.5453) % 1 * 0.5 + 0.5,
     geoSombra, matSombra, gFauna, paseando: () => E.paseando, pp: { x: 10, y: 10, ang: 0, paso: 0 }, tVida: () => E.tVida, enQuad: () => E.enQuad, enDron: () => E.enDron,
     altSuelo: (x: number, y: number) => 2 + 0.01 * x + Math.sin(y * 0.1), pendienteRumbo: () => [0.1, 0.05], sueloSeco: () => true,
     Minimapa: { capa: (fn) => { capas.push(fn); return () => { capas.pop(); }; } }, fusionaGeometrias: fusiona, document: { createElement: lienzo }, window, aleatorio: rnd,
@@ -54,6 +56,15 @@ describe("perros: el componente", () => {
     for (let i = 0; i < 30; i++) { E.tVida += 0.05; api.actualiza(0.05); }
     const dbg = (window["__perrosDebug"] as () => { vis: boolean; est: string }[])(); expect(dbg).toHaveLength(2); expect(dbg.every((p) => p.vis && p.est !== "fuera")).toBe(true);
   });
+  it("los materiales salen de la fábrica con su dueño: un Lambert por perro (con el pelaje de la dálmata) y un SpriteMaterial por rótulo", () => {
+    const { deps, gFauna } = monta();
+    expect(deps.Materiales.duenos()["perros-paseo"]).toBe(4);
+    const lamberts = new Set<any>(), sprites = new Set<any>();   // eslint-disable-line @typescript-eslint/no-explicit-any
+    recorre(gFauna, (o) => { if (o.material && o.material.isMeshLambertMaterial && o.material.vertexColors) lamberts.add(o.material); if (o.isSprite) sprites.add(o.material); });
+    expect(lamberts.size).toBe(2); expect(sprites.size).toBe(2);
+    expect([...lamberts].filter((m) => m.map).length).toBe(1);   // solo la dálmata lleva textura
+    expect([...sprites].every((m) => m.transparent && m.depthTest === false && m.fog === false)).toBe(true);
+  });
   it("la amenaza: un conejo pegado a quien pasea huye; lejos de todo, no", () => {
     const { emite } = monta();
     const q1 = { x: 11, y: 10, res: null as { x: number } | null }; emite("perros:amenaza", q1); expect(q1.res).toBeTruthy();
@@ -73,7 +84,7 @@ describe("perros: el componente", () => {
 
 describe("perros: el ciclo de vida", () => {
   it("libera() saca el grupo de la fauna, para el reloj, quita la capa, las escuchas y la ayuda de depuración, y suelta geometrías, materiales y texturas (no la sombra compartida), una sola vez", () => {
-    const { api, emite, gFauna, capas, relojes, window, geoSombra, matSombra, oyentes } = monta(); emite("perros:llegan");
+    const { api, emite, gFauna, capas, relojes, window, geoSombra, matSombra, oyentes, deps } = monta(); emite("perros:llegan");
     expect(relojes.size).toBe(1);
     const geos = new Set<any>(), mats = new Set<any>(), texs = new Set<any>(), compartidas: string[] = [];   // eslint-disable-line @typescript-eslint/no-explicit-any
     recorre(gFauna, (o) => {
@@ -85,6 +96,7 @@ describe("perros: el ciclo de vida", () => {
     const vistos = { geo: new Set<unknown>(), mat: new Set<unknown>(), tex: new Set<unknown>() };
     geos.forEach((g) => { g.addEventListener("dispose", () => { vistos.geo.add(g); }); }); mats.forEach((m) => m.addEventListener("dispose", () => { vistos.mat.add(m); })); texs.forEach((t) => t.addEventListener("dispose", () => { vistos.tex.add(t); }));
     api.libera(); api.libera();
+    expect(deps.Materiales.duenos()["perros-paseo"]).toBeUndefined();   // la fábrica ya no guarda nada de este dueño
     expect(gFauna.children).toHaveLength(0); expect(relojes.size).toBe(0); expect(capas).toHaveLength(0); expect(window["__perrosDebug"]).toBeUndefined();
     expect(vistos.geo.size).toBe(geos.size); expect(vistos.mat.size).toBe(mats.size); expect(vistos.tex.size).toBe(texs.size); expect(texs.size).toBeGreaterThanOrEqual(3);   // el pelaje (que comparte la dálmata) y los dos rótulos
     expect(compartidas).toEqual([]);

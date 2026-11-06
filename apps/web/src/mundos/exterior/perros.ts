@@ -8,10 +8,13 @@
 // Medido / deducido / ilustrativo (regla 5): los perros son ILUSTRATIVOS (no se sabe dónde están los de la finca; aquí son parte del paseo, como el quad).
 // Del legado recibe por argumento lo que necesita (THREE, el grupo de la fauna, el paseo, el relieve y el DOM); no lee globales.
 import type { ContextoComponente, Manifiesto } from "../../nucleo/componentes.ts";
+import type { Materiales } from "../../nucleo/materiales.ts";
 import type { LecturaVida, LecturaPaseo, T3 } from "./vida-tipos.ts";
 
 export interface DepsPerros extends Pick<LecturaVida, "tVida" | "enQuad" | "enDron">, LecturaPaseo {
   THREE: T3;
+  /** la fábrica de materiales (MU5-n): el Lambert de cada perro y los dos rótulos salen de ella, con dueño «perros-paseo» */
+  Materiales: Materiales;
   /** los datos de la finca (ext: el recuadro que no se cruza) */
   D: { ext: number[] };
   copas: T3[];
@@ -49,6 +52,7 @@ export function angCorto(a: number, b: number): number { var d = (b - a) % 6.283
 export function creaPerros(d: DepsPerros, ctx: ContextoComponente) {
   const THREE = d.THREE, D = d.D, copas = d.copas, camera = d.camera, texColor = d.texColor, hash = d.hash, geoSombra = d.geoSombra, matSombra = d.matSombra, gFauna = d.gFauna;
   const altSuelo = d.altSuelo, pendienteRumbo = d.pendienteRumbo, sueloSeco = d.sueloSeco, Minimapa = d.Minimapa, fusionaGeometrias = d.fusionaGeometrias, document = d.document, window = d.window;
+  const materiales = d.Materiales.de(ID_PERROS);   // lo que cree este componente se libera con su libera()
   const pp = d.pp, paseando = d.paseando, tVida = d.tVida, enQuad = d.enQuad, enDron = d.enDron, rnd = d.aleatorio || Math.random;
   const setT = d.reloj ? d.reloj.setTimeout.bind(d.reloj) : setTimeout, clearT = d.reloj ? d.reloj.clearTimeout.bind(d.reloj) : clearTimeout;
   // lo que se engancha (la capa del minimapa, las escuchas, la ayuda de depuración) se suelta con libera(), una sola vez; el contexto también la llama al liberar el componente
@@ -76,7 +80,7 @@ export function creaPerros(d: DepsPerros, ctx: ContextoComponente) {
   function creaPerro(tipo: any) {
     var dal = tipo === "dalmata", esc = dal ? 1 : 1.22, g = new THREE.Group(), cuerpo = new THREE.Object3D(), cab = new THREE.Object3D(), cola = new THREE.Object3D();
     var mp = dal ? 0xffffff : 0xd9ac5c, mo = dal ? 0xffffff : 0xb98a47, anch = dal ? 1 : 1.18;
-    var mat = new THREE.MeshLambertMaterial(dal ? { map: texD, vertexColors: true } : { vertexColors: true });
+    var mat = materiales.estandar("MeshLambertMaterial", dal ? { map: texD, vertexColors: true } : { vertexColors: true });   // estándar: sin sombreador propio, no hay variante TSL que escribir
     var geoCuerpo = fusionaGeometrias([cajaCol(0.27 * anch, 0.29, 0.62, mp, 0, 0.55, 0.02), cajaCol(0.29 * anch, 0.33, 0.27, mp, 0, 0.56, -0.2), cajaCol(0.15 * anch, 0.22, 0.2, mp, 0, 0.7, -0.38, -0.55)], dal);
     cab.position.set(0, 0.79, -0.43);
     var pcab = [cajaCol(0.17 * anch, 0.16, 0.2, mp, 0, 0, -0.09), cajaCol((dal ? 0.1 : 0.13) * anch, dal ? 0.09 : 0.11, dal ? 0.15 : 0.13, mp, 0, -0.04, -0.24), cajaCol(0.05, 0.04, 0.04, matNegroP, 0, -0.01, -0.31)];
@@ -98,7 +102,7 @@ export function creaPerros(d: DepsPerros, ctx: ContextoComponente) {
   function etiquetaNombre(txt: any) {   // el nombre flota sobre la cabeza y se lee a cierta distancia
     var cv = document.createElement("canvas"); cv.width = 256; cv.height = 72; var x = cv.getContext("2d"); x.font = "600 40px system-ui, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle";
     x.lineWidth = 8; x.lineJoin = "round"; x.strokeStyle = "rgba(20,24,16,0.85)"; x.strokeText(txt, 128, 38); x.fillStyle = "#ffffff"; x.fillText(txt, 128, 38);
-    var sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: texColor(new THREE.CanvasTexture(cv)), transparent: true, depthTest: false, depthWrite: false, fog: false })); sp.renderOrder = 9; sp.visible = false; gPerros.add(sp); return sp;
+    var sp = new THREE.Sprite(materiales.estandar("SpriteMaterial", { map: texColor(new THREE.CanvasTexture(cv)), transparent: true, depthTest: false, depthWrite: false, fog: false })); sp.renderOrder = 9; sp.visible = false; gPerros.add(sp); return sp;
   }
   PERROS.forEach(function (d: any) { d.tag = etiquetaNombre(d.nombre); d.alto = d.nombre === "Olivia" ? 1.3 : 1.55; });
   PERROS.forEach(function (d: any, i: any) { d.x = 0; d.y = 0; d.ang = 0; d.v = 0; d.est = "fuera"; d.t = 0; d.fase = rnd() * 6; d.obj = null; d.pit = 0; d.rol = 0; d.sentado = 0; d.ult = 0; d.idx = i; d.parado = 0; d.excit = 0; });
@@ -200,7 +204,7 @@ export function creaPerros(d: DepsPerros, ctx: ContextoComponente) {
   limpia(function () { delete window.__perrosDebug; });
 
   let disp = false;
-  /** quita el grupo de gFauna y suelta mallas, geometrías, materiales y texturas propias, el reloj del ladrido y lo enganchado; llamarlo dos veces no libera dos veces */
+  /** quita el grupo de gFauna y suelta mallas, geometrías, materiales (por la fábrica) y texturas propias, el reloj del ladrido y lo enganchado; llamarlo dos veces no libera dos veces */
   function libera(): void {
     if (disp) return; disp = true;
     if (tLlega) { clearT(tLlega); tLlega = 0; }
@@ -209,9 +213,10 @@ export function creaPerros(d: DepsPerros, ctx: ContextoComponente) {
       if (o.isInstancedMesh) o.dispose();   // el búfer de matrices
       if (o.geometry && o.geometry !== geoSombra && !o.isSprite) o.geometry.dispose();
       var ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
-      ms.forEach(function (m: any) { if (m.map && m.map !== texD) m.map.dispose(); if (m !== matSombra) m.dispose(); });
+      ms.forEach(function (m: any) { if (m.map && m.map !== texD) m.map.dispose(); });   // las texturas de los rótulos; los materiales, abajo
     });
     texD.dispose();
+    materiales.libera();   // los dos Lambert de los perros y los dos rótulos, de la fábrica (la sombra compartida de 07_follaje no es suya)
     while (sueltas.length) { const f = sueltas.pop() as () => void; try { f(); } catch (e) { /* una que falla no impide soltar las demás */ } }
   }
   ctx.limpia(libera);
