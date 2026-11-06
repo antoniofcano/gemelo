@@ -94,6 +94,7 @@ export interface World {
     - **L2-05:** `libera()` (el de la escena que se apaga y el del componente `terreno-sombreado`) suelta también las texturas de cada tesela del Mundo (`texSue`, `rui`, `texG`), la de ruido neutro y quita `t.uni`; antes solo los materiales de los glb y el mosaico. Y cuando el Mundo suelta una tesela (`alSoltar`), sus texturas se sueltan y sus uniformes vuelven a los neutros (un glb vivo los sigue leyendo: pinta con el mosaico hasta que vuelvan sus datos).
     - **Guardián de memoria** (Vitest, `terreno.test.ts`): con la three de verdad y sus texturas y materiales contados (creados menos liberados, lo que en el navegador da `renderer.info.memory`), montar glbs y liberar el componente deja la cuenta como estaba.
     - **Sus materiales por la fábrica** (segundo commit): el material de cada glb es `terreno` (`Materiales.define`, su clásico movido tal cual, y `crea` con dueño `terreno-sombreado`; su `libera()` llama al de la fábrica), y los maestros `matSuelo`/`matOrto` salen de `Materiales.estandar`. 04d deja la lista `FUERA` de `materiales_f1`. La fábrica olvida sola lo que el dueño suelta con `dispose()` (MATERIALES §3).
+    - **Su variante TSL, apagada y parcial** (tercer commit): `define("terreno", { tsl })` en el mismo fichero; lo que lleva y lo que le falta (nubes y escarcha, el detalle del suelo abierto, el relieve fino, el suelo de fotos, la depuración), en MATERIALES §1.5. Construye un `MeshLambertNodeMaterial` con `three/webgpu` de verdad en Vitest; **no compilada ni dibujada**.
 
 ## 3. `WorldManager`
 

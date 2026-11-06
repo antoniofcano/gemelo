@@ -31,7 +31,7 @@ function tesela(kx: number, conSuelo: boolean): Tesela {
   return { key: kx + "_0", kx, ky: 0, ox: kx * TS, oy: 0, v: [kx * TS, 0, (kx + 1) * TS, TS], np: 0, estado: conSuelo ? 2 : 0, dtm: null, chm: null,
     suel: conSuelo ? new Uint8Array(130 * 130 * 3) : null, pts: null, ortImg: null, ortCv: null, ortPix: null, ortW: 0, ortH: 0, gen: 0 };
 }
-function monta(THREE: ThreeTerreno & Record<string, unknown>) {
+function monta(THREE: ThreeTerreno & Record<string, unknown>, materiales?: DepsTerreno["materiales"]) {
   const lista = [tesela(0, true), tesela(1, false)], cola: Array<{ k: string; gen: Generator<unknown, unknown, unknown>; fin?: (v: unknown) => void }> = [];
   let alSoltar: ((t: Tesela) => void) | null = null;
   const mundo = {
@@ -43,7 +43,7 @@ function monta(THREE: ThreeTerreno & Record<string, unknown>) {
   const T = THREE as unknown as { MeshLambertMaterial: new () => { color: unknown } };
   const matSuelo = new T.MeshLambertMaterial(), UN = uniformesTerreno({ THREE, D, x0: 0, yN: 0, ANCHO: 1000, ALTO: 1000, tinteOrto: {} });
   const deps: DepsTerreno = {
-    THREE, RES: 1, mundo, suelo: () => 0, UN, matSuelo, materiales: creaMateriales({ THREE: THREE as unknown as ThreeMin }), parcheTiempo: () => {}, vn2: () => 0.5, ahora: () => 1e6,
+    THREE, RES: 1, mundo, suelo: () => 0, UN, matSuelo, materiales: materiales || creaMateriales({ THREE: THREE as unknown as ThreeMin }), parcheTiempo: () => {}, vn2: () => 0.5, ahora: () => 1e6,
     cola: { pon: (k, _p, gen, fin) => { cola.push({ k, gen, fin }); return true; }, cancela: (k) => { const i = cola.findIndex((c) => c.k === k); if (i >= 0) cola.splice(i, 1); } },
     camara: { position: { x: 0, y: 0, z: 0 } }
   };
@@ -125,5 +125,33 @@ describe("el componente «terreno-sombreado»: montar y liberar deja las textura
     expect(F.inventario()["terreno"]).toEqual({ tipo: "define", n: 2 }); expect(F.duenos()).toEqual({ "terreno-sombreado": 1 }); expect(F.ruta("terreno")).toBe("clasico");
     m.S.libera();
     expect(F.duenos()).toEqual({});
+  });
+});
+
+describe("MU5-n, tercer commit: la variante TSL del terreno (apagada, parcial)", () => {
+  it("con el renderizador clásico (hoy) la ruta es la clásica y sale el Lambert con su parche", () => {
+    const m = monta(C.THREE), g = m.glb(0, 256); m.S.modelo(g.raiz, g.tile);
+    const F = m.deps.materiales as unknown as { ruta(n: string): string; cobertura(): Record<string, { clasico: boolean; tsl: boolean }> };
+    expect(F.ruta("terreno")).toBe("clasico"); expect(F.cobertura()["terreno"]).toMatchObject({ clasico: true, tsl: true });
+    expect((g.malla.material as unknown as { isMeshLambertMaterial?: boolean; onBeforeCompile?: unknown }).onBeforeCompile).toBeTypeOf("function");
+    m.S.libera();
+  });
+  it("con three/webgpu y three/tsl de verdad, cada glb recibe un MeshLambertNodeMaterial con sus nodos, el tinte del maestro y la niebla; libera lo suelta", async () => {
+    const rutaW = "three/webgpu", rutaT = "three/tsl";   // por variable: three no trae tipos (y así no entra en el grafo de dependency-cruiser)
+    const W = await import(/* @vite-ignore */ rutaW), T = await import(/* @vite-ignore */ rutaT);
+    const F = creaMateriales({ THREE: C.THREE as unknown as ThreeMin, render: { tipo: "nuevo" }, nodos: () => ({ THREE: W, TSL: T }) });
+    const m = monta(C.THREE, F), g = m.glb(0, 256), g2 = m.glb(0, 512);
+    m.S.modelo(g.raiz, g.tile); m.S.modelo(g2.raiz, g2.tile); m.corre();
+    const mat = g.malla.material as unknown as Record<string, unknown> & { isNodeMaterial?: boolean; type?: string; dispose(): void };
+    expect(F.ruta("terreno")).toBe("tsl");
+    expect(mat.isNodeMaterial).toBe(true); expect(mat.type).toBe("MeshLambertNodeMaterial");
+    expect(mat["colorNode"]).toBeTruthy(); expect(mat["outputNode"]).toBeTruthy(); expect(mat["fog"]).toBe(true);
+    expect(mat["onBeforeCompile"] === undefined || String(mat["onBeforeCompile"]).indexOf("parche") < 0).toBe(true);   // ni el parche clásico
+    const maestro = (m.deps.matSuelo as { color: unknown }).color;
+    expect(mat["color"]).toBe(maestro);   // el tinte del día: el mismo objeto Color que el clásico
+    expect((g2.malla.material as unknown as { type?: string }).type).toBe("MeshLambertNodeMaterial");   // también sin tesela del Mundo (512 m: el mosaico)
+    expect((F as unknown as { duenos(): Record<string, number> }).duenos()).toEqual({ "terreno-sombreado": 2 });
+    m.S.libera();
+    expect((F as unknown as { duenos(): Record<string, number> }).duenos()).toEqual({});
   });
 });

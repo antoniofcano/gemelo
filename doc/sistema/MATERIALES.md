@@ -37,7 +37,7 @@ Son tres. Pasados a TSL, desbloquean a casi todos:
 
 | # | Fichero | Nombre | Material de partida | Qué hace el parche | Niebla | NDVI | Viento | Hora | Dif. |
 |---|---|---|---|---|---|---|---|---|---|
-| 1 | `04d_sombreado_tiles.js` → `src/mundos/exterior/terreno.ts` (MU5-n, A3-1a) | `terreno` | Lambert + parche, uno por glb (`define`/`crea`, dueño `terreno-sombreado`) | suelo, ortofoto, NDVI de 2 fechas, mosaico, relieve fino (`dFdx`), modos Ortofoto/NDVI, `uExag` | sí | **sí** (`uNdviMap`, `uG`) | no | nubes, helada | **A** |
+| 1 | `04d_sombreado_tiles.js` → `src/mundos/exterior/terreno.ts` (MU5-n, A3-1a) | `terreno` | Lambert + parche, uno por glb (`define`/`crea`, dueño `terreno-sombreado`) | suelo, ortofoto, NDVI de 2 fechas, mosaico, relieve fino (`dFdx`), modos Ortofoto/NDVI, `uExag` | sí | **sí** (`uNdviMap`, `uG`) | no | nubes, helada | **A** · TSL **parcial**, apagada (§1.5) |
 | 2 | `15_tiempo.js` (fuera) | — (`conTiempo`) | `parcheTiempo` sobre `matHojaG`, `matHojaP`, `matCorteza` (con viento), `matSuelo`, `matOrto` y la nube (sin viento) | sombra de nubes, helada, color sRGB, vaivén | sí | no | **sí** (follaje) | nubes, helada, tinte | M |
 | 3 | `15_tiempo.js` (fuera) | — (`nubes`) | `ShaderMaterial` | manchas de nube de cara a la cámara en una sola malla; paleta del ocaso con `?suelo=fotos` | no | no | deriva (en la CPU) | ocaso | M |
 | 4 | `15_tiempo.js` (fuera) | — (`lluvia`) | `ShaderMaterial` (`LineSegments`) | rayas que caen en una caja que sigue a la cámara | no | no | **sí** (`uViento`) | `uT` | B |
@@ -81,6 +81,18 @@ Son tres. Pasados a TSL, desbloquean a casi todos:
 - **Dependen de la hora o el tiempo:** las filas 1-9, 11, 12, 14, 18, 19, 21 y 22.
 - **Dependen del NDVI dentro del sombreador:** solo el terreno (fila 1).
 - **Dependen de `Estado.exag`:** el terreno (`UN.uExag`) y el resalte (fila 16). Ver §5, «La `exag`».
+
+### 1.5 La variante TSL del terreno (fila 1): lo que hay y lo que falta (MU5-n, A3-1a, 2026-11-06)
+
+Vive junto al clásico en `apps/web/src/mundos/exterior/terreno.ts` (`tslTerreno`, `define("terreno", { tsl })`). Es **parcial** y está **apagada**: solo la daría la fábrica con el `WebGPURenderer` (MU6). Comprobado: en Vitest, con `three/webgpu` y `three/tsl` de verdad, cada glb recibe un `MeshLambertNodeMaterial` con `colorNode` y `outputNode`, `fog = true` y el `color` del maestro (`matSuelo.color`, el mismo objeto), y la ruta es `tsl` solo con el renderizador nuevo (`terreno.test.ts`). **No comprobado:** que el grafo compile (las funciones `Fn` no se evalúan hasta compilar, y en Node no hay renderizador) ni que se vea igual: las capturas clásico frente a TSL son de MU6. **No es equivalente al clásico.**
+
+- **Lo que lleva:** el color de la tierra (el suelo de la tesela, `uSue`, o el mosaico, `uMos`, con `uTiene`); la hierba según el NDVI del suelo (`uG`) con su cobertura, su vigor, el ruido de la tesela (`uRui`) y sus motas (`dn`, el mismo ruido de valor); el material de tierra en cuatro octavas; el paso a lineal (`sRGBTransferEOTF`) y el tinte del día (`materialColor`); el modo Ortofoto (`uModoOrto`, `uOrt` con `uOrtoTint`) y el grano final (`dd`) tras la luz; la capa NDVI encima (`uNdviMap`, `uNdviOn`, dentro de la caja `uGBox`), tras la niebla, como el clásico; la exageración por `UN.uExag` (la posición de muestreo, como el clásico); y la niebla de la escena (`fog = true`; el `WebGPURenderer` la aplica a los `NodeMaterial`). Los uniformes son los mismos `{ value }` del clásico (`UN` y los de la tesela), releídos en cada objeto (`onObjectUpdate`).
+- **Lo que falta:**
+  1. la **sombra de nubes y la escarcha** (`uSombra`: `uDrift`, `uCov`, `uSomb`, `uHielo`): son de `parcheTiempo`, la fila 2, que no tiene aún su TSL;
+  2. el **detalle de la ortofoto en el suelo abierto** (`uDet`, `uDetK`, `uBias2`, `uGnd`): abierto, rodadas, caminos y su dirección, surcos, estrías, gravilla y hojarasca. En la TSL se pinta como con `uDet = 0` (lo de lejos), y el grano final va sin el `(1 − 0,6·abierto)`;
+  3. el **relieve fino** (`pBump` con `dFdx`/`dFdy` de `hSuelo`, `uBumpK`);
+  4. el **suelo de fotos** (`?suelo=fotos`, el GLSL de 04f: `uFot`, `uFotK`, `uRue`);
+  5. la **vista de depuración** (`uDetDbg`).
 
 ## 2. La API, y por qué un registro
 
