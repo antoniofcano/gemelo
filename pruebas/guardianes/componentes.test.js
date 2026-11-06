@@ -31,8 +31,17 @@ const PRESUPUESTO = json("pruebas/presupuesto.json");
 const ficherosMotor = () => fs.readdirSync(MOTOR).filter(f => f.endsWith(".js")).sort();
 const sinCabecera = s => s.startsWith(contratoModulos.MARCA_I) ? s.slice(s.indexOf(contratoModulos.MARCA_F) + contratoModulos.MARCA_F.length + 1) : s;
 const sinComentarios = s => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'\\])\/\/.*$/gm, "$1");
-const esComponente = f => /^  Componentes\.registra\(\{/m.test(fs.readFileSync(path.join(MOTOR, f), "utf8"));
+const esComponente = f => /^  Componentes\.registra\((\{|Mundos\.)/m.test(fs.readFileSync(path.join(MOTOR, f), "utf8"));
 const COMPONENTES = ficherosMotor().filter(esComponente);
+// MU5-n (A3-1a): un componente que pasó a TypeScript se registra con su manifiesto de src/mundos/ (Componentes.registra(Mundos.<fábrica>(…))); sus eventos
+// están en el fichero de TypeScript que exporta esa fábrica, que es «suyo»
+const MUNDOS_TS = require(path.join(RAIZ, "apps", "web", "src", "mundos", "index.ts"));
+function delegaEn(f) {
+  const m = /^  Componentes\.registra\(Mundos\.(\w+)\(/m.exec(fs.readFileSync(path.join(MOTOR, f), "utf8")); if (!m) return null;
+  const dir = path.join(RAIZ, "apps", "web", "src", "mundos");
+  const busca = (d, rel) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { if (e.isDirectory()) { const r = busca(path.join(d, e.name), rel + e.name + "/"); if (r) return r; } else if (e.name.endsWith(".ts") && !e.name.endsWith(".test.ts") && new RegExp("export function " + m[1] + "\\(").test(fs.readFileSync(path.join(d, e.name), "utf8"))) return "mundos/" + rel + e.name.slice(0, -3); } return null; };
+  return busca(dir, "");
+}
 
 function manifiesto(def = {}) {
   return Object.assign({ id: "x", consume: [], expone: [], eventos: { escucha: [], emite: [] }, bandera: { defecto: true }, presupuesto: { llamadas: 0, triangulos: 0 },
@@ -168,7 +177,7 @@ test("Teclas: las de los módulos de siempre no se pueden coger; una tecla, un d
 function manifiestos() {
   const out = {};
   for (const f of COMPONENTES) {
-    const defs = [], ctx = vm.createContext({ Componentes: { registra: d => { defs.push(d); return true; } }, Bus: { on: () => () => {}, emite: () => 0, hay: () => false }, console, Intl, Date, Math, JSON });
+    const defs = [], ctx = vm.createContext({ Mundos: MUNDOS_TS, Componentes: { registra: d => { defs.push(d); return true; } }, Bus: { on: () => () => {}, emite: () => 0, hay: () => false }, console, Intl, Date, Math, JSON });
     assert.doesNotThrow(() => vm.runInContext("\"use strict\";\n" + fs.readFileSync(path.join(MOTOR, f), "utf8"), ctx, { filename: f }), f + ": su primer nivel debe poder evaluarse sin el resto del motor");
     assert.strictEqual(defs.length, 1, f + ": un componente por fichero");
     out[f] = defs[0];
@@ -262,7 +271,7 @@ test("eventos: el catálogo cumple su esquema y dice exactamente quién emite y 
   for (const n of Object.keys(CATALOGO.eventos)) assert.ok(cod[n] && cod[n].emiten.size, "«" + n + "» está en el catálogo pero nadie lo emite");
   const M = manifiestos();
   for (const [f, def] of Object.entries(M)) {
-    const mod = f.slice(0, -3), suyos = k => Object.keys(cod).filter(n => cod[n][k].has(mod)).sort();
+    const mod = f.slice(0, -3), ts = delegaEn(f), suyos = k => Object.keys(cod).filter(n => cod[n][k].has(mod) || (ts && cod[n][k].has(ts))).sort();
     assert.deepStrictEqual(def.eventos.escucha.slice().sort(), suyos("escuchan"), f + ": eventos.escucha del manifiesto");
     assert.deepStrictEqual((def.eventos.emite || []).slice().sort(), suyos("emiten"), f + ": eventos.emite del manifiesto");
   }

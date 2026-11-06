@@ -52,7 +52,7 @@ Los componentes del motor ([ADR-0023](../doc/adr/0023-componentes-del-mundo.md),
 | `medida:inicia` | `{ segundos? }` | `33_ajustes` («Medir 60 s» de Configuración → Avanzado) | `30_mide` |
 | `medida:muestra` | `{ on }` | `33_ajustes` (cambia «Contador de rendimiento») | `30_mide` (enseña o esconde su caja) |
 | `mundo:aplica` | (nada) | `08_marcadores` (`aplica()`: cambió la exageración, el modo o los datos de las teselas) | `08b_marcadores_lidar` (recoloca copas, anillos y desfase) |
-| `ndvi:cambia` | `{ lo, hi }` | `mundos/exterior/ndvi` (`pintaNdvi()` de `10_ndvi`, que es `Ndvi.pinta` desde MU5-n: cambió la fecha del campo o la escala relativa) | `10b_capa_ndvi` (rehace la textura, la leyenda y la gráfica) |
+| `ndvi:cambia` | `{ lo, hi }` | `mundos/exterior/ndvi` (`pintaNdvi()` de `10_ndvi`, que es `Ndvi.pinta` desde MU5-n: cambió la fecha del campo o la escala relativa) | `mundos/exterior/capa-ndvi` (el componente de `10b_capa_ndvi`: rehace la textura, la leyenda y la gráfica) |
 | `mundo:hoy` | `{ linea: { txt, de, cuando } \| null, trabajo: { parcelas: [id], cuando } \| null }` | `53_mundo_hoy` (tras cada lectura buena de `/api/mundo/hoy`) | `44b_carteles` (la línea «Hoy en el olivar» del tablón), `54_trabajo_hoy` (un tractor en cada haza con tarea en curso, apagado por defecto) |
 | `mundo:pausa` | `{ activa }` | `02c_componentes` (`Pausa.pon` / `Pausa.quita`) | (nadie todavía) |
 | `mundo:entra` | `{ id, desde, hacia }` (`desde` null al arrancar; en una vuelta atrás, el de antes entra desde el que falló) | `nucleo/mundos` (el gestor, por `deps.avisa`, tras `entra()`; MU2-5: aún sin cablear al motor) | `nucleo/componentes` (ese mundo pasa a activo: corren las fases de sus componentes y, si no estaba cargado, se montan) |
