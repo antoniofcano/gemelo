@@ -2,6 +2,8 @@
 // apps/web/motor/15_tiempo.js; el código es el de siempre, movido, con un libera() que suelta de verdad sus geometrías, sus materiales y sus texturas
 // (L2-05). Lo mueve cada fotograma el paso del tiempo (tiempo-paso.ts); lo dibujado es ilustrativo (se pinta a partir de los datos del tiempo).
 
+import type { DefMaterial, MaterialesDe } from "../../nucleo/materiales.ts";
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type A = any;
 
@@ -17,7 +19,33 @@ export interface DepsCielo {
   lienzo: () => A;
   /** EV-1s: ?suelo=fotos (SueloFotos.activo): la paleta del ocaso sacada de las fotos de cielo de la finca */
   ocasoFotos: boolean;
+  /** la fábrica de materiales (define) y la vista con el dueño del tiempo (crea y estandar): libera() del tiempo los suelta con materiales.libera() */
+  Materiales: { define(nombre: string, def: DefMaterial<A>): void };
+  materiales: Pick<MaterialesDe, "crea" | "estandar">;
 }
+
+// ---------------------------------------------------------------- el material de las nubes por la fábrica (MU5-n: MATERIALES §1, fila 3)
+/** el nombre del material de las nubes en la fábrica: es también la clave de su variante TSL */
+export const MATERIAL_NUBES = "nubes";
+/** lo que pide: sus uniformes (map y diffuse; con la paleta del ocaso, también uNubLuz, uNubSom y uOcaso) y si va con la paleta del ocaso (?suelo=fotos) */
+export interface OpcNubes { uniforms: A; ocaso: boolean }
+/** el clásico de siempre, movido: las manchas de cara a la cámara en una sola malla, con el sombreado de SpriteMaterial (textura × color × opacidad, tono y salida) */
+export const DEF_NUBES: DefMaterial<OpcNubes> = {
+  clasico: function (o, c) {
+    var OCASO_FOTOS = o.ocaso, un = o.uniforms;
+    var m = new (c.THREE as A).ShaderMaterial({
+      uniforms: un, transparent: true, depthWrite: false, fog: false,
+      vertexShader: "attribute vec2 esquina; attribute vec2 tam; attribute float alfa; varying vec2 vUv; varying float vA;\n" +
+        "void main() { vec4 mv = modelViewMatrix * vec4(position, 1.0); mv.xy += esquina * tam; gl_Position = projectionMatrix * mv; vUv = uv; vA = alfa; }",
+      fragmentShader: OCASO_FOTOS
+        ? "uniform sampler2D map; uniform vec3 diffuse; uniform vec3 uNubLuz; uniform vec3 uNubSom; uniform float uOcaso; varying vec2 vUv; varying float vA;\n" +
+          "void main() { vec3 d = mix(diffuse, mix(uNubLuz, uNubSom, smoothstep(0.3, 0.7, vUv.y)), uOcaso); vec4 c = vec4(d, vA) * texture2D(map, vUv); gl_FragColor = c;\n#include <tonemapping_fragment>\n#include <colorspace_fragment>\n}"
+        : "uniform sampler2D map; uniform vec3 diffuse; varying vec2 vUv; varying float vA;\n" +
+          "void main() { vec4 c = vec4(diffuse, vA) * texture2D(map, vUv); gl_FragColor = c;\n#include <tonemapping_fragment>\n#include <colorspace_fragment>\n}"
+    });
+    return m;
+  }
+};
 
 // EV-1s (?suelo=fotos, la misma bandera que el suelo de fotos): la paleta del atardecer sacada de 4 fotos de cielo de la finca (2026-11-04) por
 // tuberia/suelo/construye.mjs (tuberia/suelo/paleta_cielo.json; lo comprueba pruebas/guardianes/suelo_fotos.test.js). Solo calibra COLORES: el
@@ -59,7 +87,8 @@ export function pintaNubesDe(THREE: A, NUBES: A[], NSP: number, nubesMalla: A, c
 }
 
 export function creaCielo(d: DepsCielo) {
-  var THREE = d.THREE, scene = d.scene, camera = d.camera, hash = d.hash, texColor = d.texColor, lienzo = d.lienzo;
+  var THREE = d.THREE, scene = d.scene, camera = d.camera, hash = d.hash, texColor = d.texColor, lienzo = d.lienzo, materiales = d.materiales;
+  d.Materiales.define(MATERIAL_NUBES, DEF_NUBES);
   // --- el cielo: nubes que derivan con el viento, disco del sol y estrellas
   function texNube(): A {
     var cv = lienzo(); cv.width = cv.height = 128; var x = cv.getContext("2d");
@@ -97,37 +126,29 @@ export function creaCielo(d: DepsCielo) {
     g.setAttribute("alfa", new THREE.BufferAttribute(new Float32Array(NSP * 4), 1).setUsage(THREE.DynamicDrawUsage));
     g.setIndex(new THREE.BufferAttribute(idx, 1)); g.setDrawRange(0, 0);
     var un: A = { map: { value: texN }, diffuse: { value: new THREE.Color(1, 1, 1) } }; if (OCASO_FOTOS) Object.assign(un, uOcasoN);
-    var m = new THREE.ShaderMaterial({
-      uniforms: un, transparent: true, depthWrite: false, fog: false,
-      vertexShader: "attribute vec2 esquina; attribute vec2 tam; attribute float alfa; varying vec2 vUv; varying float vA;\n" +
-        "void main() { vec4 mv = modelViewMatrix * vec4(position, 1.0); mv.xy += esquina * tam; gl_Position = projectionMatrix * mv; vUv = uv; vA = alfa; }",
-      fragmentShader: OCASO_FOTOS
-        ? "uniform sampler2D map; uniform vec3 diffuse; uniform vec3 uNubLuz; uniform vec3 uNubSom; uniform float uOcaso; varying vec2 vUv; varying float vA;\n" +
-          "void main() { vec3 d = mix(diffuse, mix(uNubLuz, uNubSom, smoothstep(0.3, 0.7, vUv.y)), uOcaso); vec4 c = vec4(d, vA) * texture2D(map, vUv); gl_FragColor = c;\n#include <tonemapping_fragment>\n#include <colorspace_fragment>\n}"
-        : "uniform sampler2D map; uniform vec3 diffuse; varying vec2 vUv; varying float vA;\n" +
-          "void main() { vec4 c = vec4(diffuse, vA) * texture2D(map, vUv); gl_FragColor = c;\n#include <tonemapping_fragment>\n#include <colorspace_fragment>\n}"
-    });
+    var m = materiales.crea(MATERIAL_NUBES, { uniforms: un, ocaso: OCASO_FOTOS });   // MU5-n: por la fábrica, con el dueño del tiempo
     var me = new THREE.Mesh(g, m); me.name = "nubes"; me.frustumCulled = false; me.renderOrder = -1; gCielo.add(me);
     return me;
   })();
   var pintaNubes = pintaNubesDe(THREE, NUBES, NSP, nubesMalla, camera);
-  var sprSol = new THREE.Sprite(new THREE.SpriteMaterial({ map: texBrillo(), transparent: true, depthWrite: false, fog: false, blending: THREE.AdditiveBlending }));
+  var sprSol = new THREE.Sprite(materiales.estandar("SpriteMaterial", { map: texBrillo(), transparent: true, depthWrite: false, fog: false, blending: THREE.AdditiveBlending }));
   sprSol.scale.set(520, 520, 1); sprSol.renderOrder = -1; scene.add(sprSol);
   var estrellas = (function () {
     var n = 420, p = new Float32Array(n * 3);
     for (var i = 0; i < n; i++) { var u = hash(i * 2.3) * 2 - 1, a = hash(i * 4.9) * 6.283, r = Math.sqrt(1 - u * u); p[i * 3] = r * Math.cos(a) * 4000; p[i * 3 + 1] = Math.abs(u) * 4000 * 0.95 + 120; p[i * 3 + 2] = r * Math.sin(a) * 4000; }
     var g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(p, 3));
-    var m = new THREE.Points(g, new THREE.PointsMaterial({ size: 7, sizeAttenuation: false, color: 0xffffff, transparent: true, opacity: 0, depthWrite: false, fog: false })); m.frustumCulled = false; m.renderOrder = -2; scene.add(m); return m;
+    var m = new THREE.Points(g, materiales.estandar("PointsMaterial", { size: 7, sizeAttenuation: false, color: 0xffffff, transparent: true, opacity: 0, depthWrite: false, fog: false })); m.frustumCulled = false; m.renderOrder = -2; scene.add(m); return m;
   })();
 
   var suelto = false;
-  /** quita el cielo de la escena y suelta lo suyo: las geometrías de las nubes y las estrellas, sus tres materiales y sus dos texturas (la de las nubes y la del sol) */
+  /** quita el cielo de la escena y suelta lo suyo: las geometrías de las nubes y las estrellas y sus dos texturas (la de las nubes y la del sol). Sus tres
+   *  materiales son del dueño del tiempo en la fábrica: los suelta materiales.libera() (tiempo.ts) */
   function libera(): number {
     if (suelto) return 0;
     suelto = true;
     scene.remove(gCielo); scene.remove(sprSol); scene.remove(estrellas);
     var n = 0;
-    [nubesMalla.geometry, estrellas.geometry, nubesMalla.material, sprSol.material, estrellas.material, texN, sprSol.material.map].forEach(function (x: A) { if (x && typeof x.dispose === "function") { x.dispose(); n++; } });
+    [nubesMalla.geometry, estrellas.geometry, texN, sprSol.material.map].forEach(function (x: A) { if (x && typeof x.dispose === "function") { x.dispose(); n++; } });
     return n;
   }
   return { gCielo: gCielo, NUBES: NUBES, NSP: NSP, nubesMalla: nubesMalla, pintaNubes: pintaNubes, sprSol: sprSol, estrellas: estrellas, uOcasoN: uOcasoN, OCASO_FOTOS: OCASO_FOTOS, texBrillo: texBrillo, libera: libera };

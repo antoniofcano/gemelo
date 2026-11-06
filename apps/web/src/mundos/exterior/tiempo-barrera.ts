@@ -2,6 +2,8 @@
 // apps/web/motor/15_tiempo.js; el código es el de siempre, movido, con un libera() que suelta de verdad sus geometrías y su material (L2-05). Sus mallas cuelgan
 // de gLinde (08_marcadores), congeladas (AG-1.15); 08 las recoloca con colocaBarrera cuando cambia la exageración. El pulso (uT) lo mueve el paso del tiempo.
 
+import type { DefMaterial, MaterialesDe } from "../../nucleo/materiales.ts";
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type A = any;
 
@@ -19,7 +21,33 @@ export interface DepsBarrera {
   cieloBase: () => A;
   /** 16_vida: temaEstela(oscuro), si está (va después en el montaje) */
   temaEstela?: (oscuro: boolean) => void;
+  /** la fábrica de materiales (define) y la vista con el dueño del tiempo (crea): libera() del tiempo suelta el material con materiales.libera() */
+  Materiales: { define(nombre: string, def: DefMaterial<A>): void };
+  materiales: Pick<MaterialesDe, "crea">;
 }
+
+// ---------------------------------------------------------------- el material de la barrera por la fábrica (MU5-n: MATERIALES §1, fila 5)
+/** el nombre del material de la barrera en la fábrica: es también la clave de su variante TSL */
+export const MATERIAL_BARRERA = "barrera";
+/** lo que pide: sus uniformes (uT, uColor y uAlpha: los MISMOS objetos que mueven el paso del tiempo y el tema) */
+export interface OpcBarrera { uniforms: A }
+/** el clásico de siempre, movido: la película de luz con su caída, el pie, el filo, la rejilla cada 5 m y el pulso que recorre la linde */
+export const DEF_BARRERA: DefMaterial<OpcBarrera> = {
+  clasico: function (o, c) {
+    var THREE = c.THREE as A;
+    var m = new THREE.ShaderMaterial({
+      uniforms: o.uniforms, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending,
+      vertexShader: "attribute float aV; attribute float aD; varying float vV; varying float vD; void main(){ vV = aV; vD = aD; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+      fragmentShader: "uniform float uT; uniform vec3 uColor; uniform float uAlpha; varying float vV; varying float vD;\n" +
+        "void main(){ float caida = pow(1.0 - vV, 1.7); float pie = smoothstep(0.09, 0.0, vV); float filo = smoothstep(0.92, 1.0, vV) * 0.5;\n" +
+        "float x = fract(vD / 5.0); float rej = smoothstep(0.04, 0.0, min(x, 1.0 - x)) * 0.3 * caida;\n" +
+        "float p = fract(vD / 110.0 - uT * 0.05); float pulso = smoothstep(0.0, 0.025, p) * smoothstep(0.14, 0.025, p);\n" +
+        "float a = uAlpha * (0.1 + 0.5 * caida) + pie * 0.95 + filo + rej + pulso * 0.55 * (0.4 + caida);\n" +
+        "gl_FragColor = vec4(uColor * (1.0 + 0.7 * pie + 0.9 * pulso), clamp(a, 0.0, 1.0));\n#include <colorspace_fragment>\n}"
+    });
+    return m;
+  }
+};
 
 export var BARRERA_ALTO = 5.5;
 
@@ -28,16 +56,8 @@ export function creaBarreras(d: DepsBarrera) {
   // --- la barrera de la linde: una película de luz translúcida en vez de una línea blanca
   var uBarrera = { uT: { value: 0 }, uColor: { value: new THREE.Color(0x40f0ff) }, uAlpha: { value: 1 } };
   var BARRERAS: A[] = [], mallas: A[] = [];
-  var matBarrera = new THREE.ShaderMaterial({
-    uniforms: uBarrera, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending,
-    vertexShader: "attribute float aV; attribute float aD; varying float vV; varying float vD; void main(){ vV = aV; vD = aD; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
-    fragmentShader: "uniform float uT; uniform vec3 uColor; uniform float uAlpha; varying float vV; varying float vD;\n" +
-      "void main(){ float caida = pow(1.0 - vV, 1.7); float pie = smoothstep(0.09, 0.0, vV); float filo = smoothstep(0.92, 1.0, vV) * 0.5;\n" +
-      "float x = fract(vD / 5.0); float rej = smoothstep(0.04, 0.0, min(x, 1.0 - x)) * 0.3 * caida;\n" +
-      "float p = fract(vD / 110.0 - uT * 0.05); float pulso = smoothstep(0.0, 0.025, p) * smoothstep(0.14, 0.025, p);\n" +
-      "float a = uAlpha * (0.1 + 0.5 * caida) + pie * 0.95 + filo + rej + pulso * 0.55 * (0.4 + caida);\n" +
-      "gl_FragColor = vec4(uColor * (1.0 + 0.7 * pie + 0.9 * pulso), clamp(a, 0.0, 1.0));\n#include <colorspace_fragment>\n}"
-  });
+  d.Materiales.define(MATERIAL_BARRERA, DEF_BARRERA);
+  var matBarrera: A = d.materiales.crea(MATERIAL_BARRERA, { uniforms: uBarrera });   // MU5-n: por la fábrica, con el dueño del tiempo
   function temaBarrera(): void {
     if (!matBarrera || !uBarrera) return;
     var s = d.cieloBase().clone().convertLinearToSRGB(), oscuro =(0.2126 * s.r + 0.7152 * s.g + 0.0722 * s.b) < 0.4;
@@ -67,13 +87,12 @@ export function creaBarreras(d: DepsBarrera) {
     b.geo.computeBoundingSphere();   // AG-1.3: DESPUÉS de escribir los vértices (three la calcula una sola vez y los de creaBarrera nacen a cero)
   }
   var suelto = false;
-  /** quita cada barrera de gLinde y suelta su geometría, y el material que comparten */
+  /** quita cada barrera de gLinde y suelta su geometría (el material que comparten es del dueño del tiempo en la fábrica: lo suelta materiales.libera(), en tiempo.ts) */
   function libera(): number {
     if (suelto) return 0;
     suelto = true;
     var n = 0;
     mallas.forEach(function (m: A) { d.gLinde.remove(m); m.geometry.dispose(); n++; });
-    matBarrera.dispose(); n++;
     mallas.length = 0; BARRERAS.length = 0;
     return n;
   }

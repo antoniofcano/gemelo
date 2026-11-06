@@ -4,6 +4,8 @@
 // matSuelo, matOrto y el de la nube, sin él) y, dentro de su propio parche, el terreno (04d), la nube LiDAR (05), el catálogo (07a), los olivos generados (07ab)
 // y la hierba y las piedras (21_suelo, con GLSL_SOMBRA). Los uniformes son los MISMOS objetos para todos: los mueve el paso del tiempo (tiempo-paso.ts).
 
+import type { DefMaterial } from "../../nucleo/materiales.ts";
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type A = any;
 
@@ -20,6 +22,20 @@ export interface DepsParcheTiempo {
   THREE: A;
   /** 03_escena: el color por vértice o por instancia, escrito en sRGB, pasa a lineal (colorVertSRGB) */
   colorVertSRGB: (sh: A) => void;
+  /** la fábrica de materiales (nucleo/materiales): aplica() pide por ella el material «parche-tiempo» (MU5-n, segundo commit). Sin ella, el parche se pone a mano, como antes */
+  Materiales?: { define(nombre: string, def: DefMaterial<A>): void; crea(nombre: string, opc?: unknown): A } | null;
+}
+
+// ---------------------------------------------------------------- el material por la fábrica (MU5-n: MATERIALES §1, fila 2)
+/** el nombre del parche del tiempo en la fábrica: es también la clave de su variante TSL */
+export const MATERIAL_PARCHE_TIEMPO = "parche-tiempo";
+/** lo que pide: el material del ciclo del día que lo lleva (es de otro módulo: 07_follaje, 04d o 05) y si lleva viento (el follaje) */
+export interface OpcParcheTiempo { material: A; viento: boolean }
+/** el clásico de siempre: el MISMO material, con el parche puesto por conTiempo (la misma función de siempre: three usa su texto como clave del programa) */
+export function defParcheTiempo(conTiempo: (m: A, viento: boolean) => void): DefMaterial<OpcParcheTiempo> {
+  return {
+    clasico: function (o) { conTiempo(o.material, o.viento); return o.material; }
+  };
 }
 
 export function creaParcheTiempo(d: DepsParcheTiempo) {
@@ -41,12 +57,22 @@ export function creaParcheTiempo(d: DepsParcheTiempo) {
       sh.fragmentShader = sh.fragmentShader.replace("void main() {", "varying float vSomb; uniform float uHielo;\nvoid main() {").replace("#include <dithering_fragment>", "gl_FragColor.rgb *= vSomb; gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.88, 0.94, 1.0), uHielo * 0.6);\n#include <dithering_fragment>");
     }
   }
-  // los materiales del ciclo del día que llevan el parche son de otros módulos (07_follaje, 04d, 05): aplica() apunta lo que tenían y suelta() se lo devuelve
+  // los materiales del ciclo del día que llevan el parche son de otros módulos (07_follaje, 04d, 05): aplica() apunta lo que tenían y suelta() se lo devuelve.
+  // MU5-n: por la fábrica («parche-tiempo»), sin dueño, porque el material no es de este componente (su libera no debe soltarlo). Con el clásico, la fábrica
+  // devuelve el MISMO material con el parche; con el renderizador nuevo y variante TSL (MU6), un NodeMaterial aparte, que sí es de aquí: suelta() lo libera
+  var M = d.Materiales || null;
+  if (M) M.define(MATERIAL_PARCHE_TIEMPO, defParcheTiempo(conTiempo));
   var parcheados: A[] = [];
-  function aplica(m: A, viento: boolean): A { var previo = m.onBeforeCompile; conTiempo(m, viento); parcheados.push({ m: m, previo: previo, nuestro: m.onBeforeCompile }); return m; }
+  function aplica(m: A, viento: boolean): A {
+    var previo = m.onBeforeCompile, r = M ? M.crea(MATERIAL_PARCHE_TIEMPO, { material: m, viento: viento }) : (conTiempo(m, viento), m);
+    parcheados.push({ m: m, previo: previo, nuestro: m.onBeforeCompile, variante: r !== m ? r : null }); return r;
+  }
   function suelta(): number {
     var n = 0;
-    parcheados.forEach(function (p: A) { if (p.m.onBeforeCompile === p.nuestro) { p.m.onBeforeCompile = p.previo; p.m.needsUpdate = true; n++; } });
+    parcheados.forEach(function (p: A) {
+      if (p.variante) { if (typeof p.variante.dispose === "function") p.variante.dispose(); n++; return; }
+      if (p.m.onBeforeCompile === p.nuestro) { p.m.onBeforeCompile = p.previo; p.m.needsUpdate = true; n++; }
+    });
     parcheados.length = 0;
     return n;
   }

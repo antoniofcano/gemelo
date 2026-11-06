@@ -16,6 +16,7 @@
 // exterior activo (es un paso del exterior en 90_final.js); con el exterior congelado no toca la escena.
 // Del legado recibe por argumento lo que necesita; no lee globales.
 import type { Manifiesto } from "../../nucleo/componentes.ts";
+import type { Materiales } from "../../nucleo/materiales.ts";
 import { creaBarreras } from "./tiempo-barrera.ts";
 import { PALETA_OCASO, creaCielo } from "./tiempo-cielo.ts";
 import { creaFichasTiempo } from "./tiempo-fichas.ts";
@@ -57,6 +58,8 @@ export interface DepsTiempo {
   red: () => A; prueba: () => A;
   /** location.search, el reloj de la máquina (Date.now) y prefers-reduced-motion */
   busqueda: string; reloj?: () => number; calma: boolean;
+  /** la fábrica de materiales (nucleo/materiales): los del tiempo se piden con el dueño «tiempo-mundo» y libera() los suelta; el parche del tiempo, sin dueño */
+  Materiales: Materiales;
   /** setInterval / clearInterval del navegador */
   temporizador: { setInterval(fn: () => void, ms: number): A; clearInterval(id: A): void };
   /** el tema (data-theme y prefers-color-scheme): apunta fn y devuelve cómo quitarla */
@@ -89,9 +92,10 @@ export function creaTiempo(d: DepsTiempo) {
   var cieloBase = d.colorCss("--sky");
 
   // --- el cielo, la lluvia y el parche del tiempo (la sombra de las nubes, la helada y el viento en el follaje)
-  var cielo = creaCielo({ THREE: THREE, scene: d.scene, camera: d.camera, hash: d.hash, texColor: d.texColor, lienzo: d.lienzo, ocasoFotos: d.ocasoFotos });
-  var ll = creaLluvia({ THREE: THREE, scene: d.scene, hash: d.hash });
-  var PT = creaParcheTiempo({ THREE: THREE, colorVertSRGB: d.colorVertSRGB }), uViento = PT.uViento, uSombra = PT.uSombra, parcheTiempo = PT.parcheTiempo;
+  var materiales = d.Materiales.de(ID_TIEMPO);   // MU5-n: lo que crea este componente (nubes, sol, estrellas, lluvia y barrera) se libera con su libera()
+  var cielo = creaCielo({ THREE: THREE, scene: d.scene, camera: d.camera, hash: d.hash, texColor: d.texColor, lienzo: d.lienzo, ocasoFotos: d.ocasoFotos, Materiales: d.Materiales, materiales: materiales });
+  var ll = creaLluvia({ THREE: THREE, scene: d.scene, hash: d.hash, Materiales: d.Materiales, materiales: materiales });
+  var PT = creaParcheTiempo({ THREE: THREE, colorVertSRGB: d.colorVertSRGB, Materiales: d.Materiales }), uViento = PT.uViento, uSombra = PT.uSombra, parcheTiempo = PT.parcheTiempo;
   // los materiales del ciclo del día llevan el parche (los de follaje, con viento); son de otros módulos: libera() les devuelve lo que tenían
   [d.matHojaG, d.matHojaP, d.matCorteza].forEach(function (m: A) { PT.aplica(m, true); });
   [d.matSuelo, d.matOrto, d.nube.material].forEach(function (m: A) { PT.aplica(m, false); });
@@ -99,7 +103,7 @@ export function creaTiempo(d: DepsTiempo) {
   // --- el estado del mundo avanza hacia el objetivo con suavidad
   var cur: A = { ms: ahoraMs(), nub: 0, viento: 0, dir: 0, lluvia: 0, hr: 40, temp: 18 }, meta: A = { ms: ahoraMs(), nub: 0, viento: 0, dir: 0, lluvia: 0, hr: 40, temp: 18 };
   var barreras = creaBarreras({ THREE: THREE, gLinde: d.gLinde, Estaticos: d.Estaticos, suelo: d.suelo, Estado: d.Estado, cieloBase: function () { return cieloBase; },
-    temaEstela: function (o: boolean) { var t = d.temaEstela; if (typeof t === "function") t(o); } });
+    temaEstela: function (o: boolean) { var t = d.temaEstela; if (typeof t === "function") t(o); }, Materiales: d.Materiales, materiales: materiales });
   var paso = creaPasoTiempo({
     THREE: THREE, scene: d.scene, camera: d.camera, sol: d.sol, hemi: d.hemi, SRGB: d.SRGB, LUZ_SOL: d.LUZ_SOL, LUZ_CIELO: d.LUZ_CIELO, FOG0: d.FOG0, FOG1: d.FOG1,
     cieloBase: function () { return cieloBase; }, matHojaG: d.matHojaG, matHojaP: d.matHojaP, matCorteza: d.matCorteza, matOrto: d.matOrto, matSuelo: d.matSuelo, nube: d.nube,
@@ -156,7 +160,7 @@ export function creaTiempo(d: DepsTiempo) {
   function libera(): number {
     if (suelto) return 0;
     suelto = true;
-    var n = cielo.libera() + ll.libera() + barreras.libera() + fichas.libera();
+    var n = cielo.libera() + ll.libera() + barreras.libera() + fichas.libera() + materiales.libera();
     TM.oyentes.length = 0;
     n += PT.suelta();
     return n;
@@ -167,7 +171,7 @@ export function creaTiempo(d: DepsTiempo) {
     colocaBarrera: barreras.colocaBarrera, fmtDia: fmtDia, fmtHora: fmtHora, fmtClaveDia: fmtClaveDia, objetivoMundoBase: objetivoMundoBase, pasoHoraMundo: fichas.pasoHoraMundo,
     horaMundoTexto: horaMundoTexto, aplicaMundo: aplicaMundo, TiempoVivo: TiempoVivo, lindes: lindes, lectura: lectura, libera: libera,
     // lo de dentro, para las pruebas y ?debug
-    cielo: cielo, lluvia: ll, barreras: barreras, fichas: fichas, paso: paso
+    cielo: cielo, lluvia: ll, barreras: barreras, fichas: fichas, paso: paso, materiales: materiales
   };
 }
 export type Tiempo = ReturnType<typeof creaTiempo>;

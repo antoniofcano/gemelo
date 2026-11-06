@@ -195,11 +195,7 @@ function cuentaTs(f) {
 // define(). Entre los dos, el fichero va aquí con su cuenta y su motivo; solo puede bajar, y su segundo commit lo quita
 const FUERA_SRC = {
   // (el terreno, 04d, ya registra «terreno» con define() desde su segundo commit de MU5-n, A3-1a)
-  // A3-4, primer commit de 15_tiempo: el código, tal cual, en src/ (el parche del tiempo y los ShaderMaterial de nubes, lluvia y barrera); el segundo los registra con define()
-  "apps/web/src/mundos/exterior/tiempo-parche.ts": [5, 0, "parcheTiempo de los materiales del ciclo del día (y lo que tenían antes): pasa a define en el segundo commit de A3-4"],
-  "apps/web/src/mundos/exterior/tiempo-cielo.ts": [0, 1, "el ShaderMaterial de las nubes: pasa a define en el segundo commit de A3-4"],
-  "apps/web/src/mundos/exterior/tiempo-lluvia.ts": [0, 1, "el ShaderMaterial de la lluvia: pasa a define en el segundo commit de A3-4"],
-  "apps/web/src/mundos/exterior/tiempo-barrera.ts": [0, 1, "el ShaderMaterial de la barrera de las lindes: pasa a define en el segundo commit de A3-4"]
+  // (y 15_tiempo, A3-4, registra «parche-tiempo», «nubes», «lluvia» y «barrera» con define() desde su segundo commit)
 };
 const REGISTRA = /\.define\(\s*["'`A-Z_]/;
 test("trinquete en apps/web/src/: los sombreadores propios solo en la fábrica o en un módulo que los registra con define()", t => {

@@ -93,7 +93,8 @@ test("18_paisaje: tras colocaPaisaje y al cambiar la exageración (1 → 3 → 1
 function barreras(Estaticos) {   // MU5-n (A3-4): el código de verdad está en apps/web/src/mundos/exterior/tiempo-barrera.ts (creaBarreras)
   const gLinde = new THREE.Group(); Estaticos.congela(gLinde); const escena = new THREE.Scene(); escena.add(gLinde);
   const Estado = { exag: 1 }, n = { v: 0 };
-  const B = require("./_mundos").creaBarreras({ THREE, gLinde, Estaticos, suelo: (x, y) => 60 + 0.3 * x - 0.2 * y, Estado, cieloBase: () => new THREE.Color(0x87b5e0) });
+  const F = require("./_materiales").fabrica(THREE).Materiales;   // MU5-n: su material, «barrera», sale de la fábrica de verdad
+  const B = require("./_mundos").creaBarreras({ THREE, gLinde, Estaticos, suelo: (x, y) => 60 + 0.3 * x - 0.2 * y, Estado, cieloBase: () => new THREE.Color(0x87b5e0), Materiales: F, materiales: F.de("prueba") });
   return { crea: p => { n.v++; return B.creaBarrera(p); }, coloca: B.colocaBarrera, pon: e => { Estado.exag = e; }, n: () => n.v, escena };
 }
 test("15_tiempo: la barrera de luz de cada linde (malla congelada) da la misma matriz del mundo que en automático con cada exageración", () => {

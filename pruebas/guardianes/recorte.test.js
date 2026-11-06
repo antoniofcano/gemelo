@@ -131,7 +131,8 @@ test("39_oficina_mundo: las balizas oficiales se recortan y su esfera las contie
 // ---------------------------------------------------------------- 15_tiempo: las barreras de luz de las lindes (nacen con los vértices a cero; el sombreador no los mueve)
 function barreras() {   // MU5-n (A3-4): el código de verdad está en apps/web/src/mundos/exterior/tiempo-barrera.ts (creaBarreras)
   const Estado = { exag: 1 }, gLinde = new THREE.Group(), n = { v: 0 };
-  const B = require("./_mundos").creaBarreras({ THREE, gLinde, Estaticos: estaticos(), suelo: (x, y) => 60 + 0.3 * x - 0.2 * y, Estado, cieloBase: () => new THREE.Color(0x87b5e0) });
+  const F = require("./_materiales").fabrica(THREE).Materiales;   // MU5-n: su material, «barrera», sale de la fábrica de verdad
+  const B = require("./_mundos").creaBarreras({ THREE, gLinde, Estaticos: estaticos(), suelo: (x, y) => 60 + 0.3 * x - 0.2 * y, Estado, cieloBase: () => new THREE.Color(0x87b5e0), Materiales: F, materiales: F.de("prueba") });
   return { crea: p => { n.v++; return B.creaBarrera(p); }, coloca: B.colocaBarrera, pon: e => { Estado.exag = e; }, mallas: () => gLinde.children, n: () => n.v };
 }
 test("15_tiempo: la barrera de luz de cada linde se recorta y su esfera la contiene tras colocaBarrera, aunque three la calculara con los vértices a cero", () => {

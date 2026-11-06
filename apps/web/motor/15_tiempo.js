@@ -2,8 +2,8 @@
 // Expone: TiempoPuro, ahoraMs, TM, nivelEn, nivel, texBrillo, uViento, uSombra, GLSL_SOMBRA, cur, meta, ins, tMundo, temaBarrera, colocaBarrera,
 //   fmtHora, fmtClaveDia, num1, rumbo, objetivoMundoBase, pasoHoraMundo, horaMundoTexto, aplicaMundo, TiempoVivo, lindes, parcheTiempo, esc,
 //   actualizaTiempo
-// Consume: 01_datos (D, $, FOG0, FOG1), 02_mundo (suelo), 02c_componentes (Bus, Componentes), 02j_estaticos (Estaticos),
-//   03_escena (scene, camera, SRGB, LUZ_SOL, LUZ_CIELO, hemi, sol, texColor, colorVertSRGB, colorCss, Estado),
+// Consume: 01_datos (D, $, FOG0, FOG1), 02_mundo (suelo), 02c_componentes (Bus, Componentes), 02i_materiales (Materiales),
+//   02j_estaticos (Estaticos), 03_escena (scene, camera, SRGB, LUZ_SOL, LUZ_CIELO, hemi, sol, texColor, colorVertSRGB, colorCss, Estado),
 //   04d_sombreado_tiles (hash, matSuelo, matOrto), 04f_suelo_fotos (SueloFotos), 05_nube (nube), 07_follaje (matHojaG, matHojaP, matCorteza),
 //   08_marcadores (gLinde), 09_camara (objetivo), 13b_hazas (HazasPuro), 16_vida (temaEstela), 23_estacion (EST, objetivoMundo)
 // Nota: Extracción parcial (MU5-n, A3-4): el tiempo vive en apps/web/src/mundos/exterior/tiempo*.ts, componente «tiempo-mundo». Lee /api/tiempo (mismo origen) solo con D.base /teselas/… o ?api=; si no, el tiempo simulado, dicho. Expone TiempoVivo (contratos/interfaces.json). TiempoPuro (tiempo-puro.ts) lo evalúa en Node pruebas/guardianes/tiempo_motor.test.js.
@@ -25,7 +25,7 @@
     prefijoApi: function () { return typeof HazasPuro !== "undefined" ? HazasPuro.prefijoApi(location.search, D.base) : null; },   // «/api/» si la página la sirve el servidor (o ?api=)
     red: function () { return window.fetch ? window.fetch.bind(window) : null; }, prueba: function () { return window.__TIEMPO_PRUEBA || null; },
     busqueda: location.search, reloj: function () { return Date.now(); }, calma: !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches),
-    temporizador: { setInterval: function (f, ms) { return setInterval(f, ms); }, clearInterval: function (id) { clearInterval(id); } },
+    temporizador: { setInterval: function (f, ms) { return setInterval(f, ms); }, clearInterval: function (id) { clearInterval(id); } }, Materiales: Materiales,
     alCambiarTema: function (fn) {
       var mo = new MutationObserver(fn), mq = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
       mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] }); if (mq) mq.addEventListener("change", fn);

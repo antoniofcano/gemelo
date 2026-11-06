@@ -4,6 +4,8 @@
 // HONESTIDAD: nada se dibuja; lo que se ve lo dice el banco.
 import { describe, expect, it } from "vitest";
 import { ComponentesPuro } from "../../nucleo/componentes.ts";
+import { creaMateriales } from "../../nucleo/materiales.ts";
+import type { ThreeMin } from "../../nucleo/materiales.ts";
 import { creaParcheTiempo } from "./tiempo-parche.ts";
 import { TiempoPuro, creaFormatos, creaReloj, ZONA } from "./tiempo-puro.ts";
 import { creaTiempo, manifiestoTiempo } from "./tiempo.ts";
@@ -45,8 +47,9 @@ function temporizador() {
   return { vivos, setInterval(fn: () => void) { vivos.set(++n, fn); return n; }, clearInterval(id: A) { vivos.delete(id); } };
 }
 const IDS = ["tEstado", "tEst", "tPrev", "tMomento", "tMomentoV", "tAhora", "tResumen", "tControl", "tDemo", "tPlay", "tLeer", "tVerMundo", "tFlecha", "tInsT", "tIns", "tLinea"];
-function monta(o: { T?: A; api?: A; prueba?: A; estimado?: () => boolean } = {}) {
+function monta(o: { T?: A; api?: A; prueba?: A; estimado?: () => boolean; F?: A } = {}) {
   const T = o.T || THREE, els: Record<string, A> = {}; IDS.forEach(id => { els[id] = elemento(); });
+  const F = o.F || creaMateriales({ THREE: T as unknown as ThreeMin, busqueda: "" });
   const tema: A[] = [], bus: Record<string, A[]> = {}, tm = temporizador(), emitidos: string[] = [];
   const Bus = { emite(ev: string) { emitidos.push(ev); (bus[ev] || []).forEach(f => f()); return 0; }, on(ev: string, fn: A) { (bus[ev] = bus[ev] || []).push(fn); return () => { bus[ev] = (bus[ev] || []).filter(f => f !== fn); }; }, hay: (ev: string) => ev === "prevision:alterna" };
   const mats = { matHojaG: new T.PointsMaterial(), matHojaP: new T.PointsMaterial(), matCorteza: new T.PointsMaterial(), matSuelo: new T.MeshLambertMaterial(), matOrto: new T.MeshBasicMaterial(), nube: { material: new T.PointsMaterial() } };
@@ -60,10 +63,10 @@ function monta(o: { T?: A; api?: A; prueba?: A; estimado?: () => boolean } = {})
     gLinde, Estaticos: { congela() {} }, suelo: () => 10, Estado: { exag: 1 }, objetivo: new T.Vector3(),
     estimado: o.estimado || null, ocasoFotos: false, $: (id: string) => els[id] || null, lienzo, Bus,
     prefijoApi: () => o.api ? "/api/" : null, red: () => o.api ? () => respuesta(o.api) : null, prueba: () => o.prueba || null,
-    busqueda: "?hora=2026-06-21T12:00", reloj: () => Date.UTC(2026, 5, 21, 10), calma: false, temporizador: tm,
+    busqueda: "?hora=2026-06-21T12:00", reloj: () => Date.UTC(2026, 5, 21, 10), calma: false, temporizador: tm, Materiales: F,
     alCambiarTema: (fn: A) => { tema.push(fn); return () => { const i = tema.indexOf(fn); if (i >= 0) tema.splice(i, 1); }; }
   }, mats));
-  return { tiempo, els, tema, bus, tm, scene, gLinde, mats, emitidos };
+  return { tiempo, els, tema, bus, tm, scene, gLinde, mats, emitidos, F };
 }
 
 describe("el tiempo del exterior: lo puro", () => {
@@ -111,6 +114,17 @@ describe("el tiempo del exterior: el componente", () => {
     tiempo.actualiza(0.3); expect(scene.background).toBeTruthy(); expect(els.tInsT.textContent).toMatch(/°C/);
     expect(els.tInsT.textContent).toMatch(/· simulado$/);
     tiempo.libera();
+  });
+  it("MU5-n (2.º commit): sus materiales salen de la fábrica con su nombre; los del tiempo, con su dueño, y el parche de los seis del ciclo del día, sin dueño (no son suyos)", () => {
+    const { tiempo, F, mats } = monta();
+    expect(F.inventario()).toMatchObject({ "parche-tiempo": { tipo: "define", n: 6 }, nubes: { tipo: "define", n: 1 }, lluvia: { tipo: "define", n: 1 }, barrera: { tipo: "define", n: 1 } });
+    expect(F.duenos()).toEqual({ "tiempo-mundo": 5 });   // nubes, sol, estrellas, lluvia y barrera
+    expect(F.ruta("nubes")).toBe("clasico"); expect(F.ruta("parche-tiempo")).toBe("clasico");
+    const n = tiempo.cielo.nubesMalla.material; expect(n.isShaderMaterial && n.transparent && !n.depthWrite && !n.fog).toBe(true);
+    expect(n.fragmentShader).toContain("#include <tonemapping_fragment>"); expect(tiempo.barreras.matBarrera.side).toBe(THREE.DoubleSide);
+    expect(tiempo.lluvia.lluvia.material.uniforms).toBe(tiempo.lluvia.uLluvia);   // los MISMOS uniformes que mueve el paso
+    expect(typeof mats.matHojaG.onBeforeCompile).toBe("function");   // con el clásico, el MISMO material, parcheado
+    tiempo.libera(); expect(F.duenos()).toEqual({}); expect(mats.matHojaG.onBeforeCompile).toBe(THREE.Material.prototype.onBeforeCompile);   // el de three, como antes de montarse
   });
   it("L8-05: con la estación de otra fecha, la chapita dice «estimado»", () => {
     const { tiempo, els } = monta({ estimado: () => true });
