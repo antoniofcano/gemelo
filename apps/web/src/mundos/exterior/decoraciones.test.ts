@@ -54,7 +54,7 @@ describe("decoraciones de los olivos (componente del exterior)", () => {
   it("con servidor pide la lista al montarse y monta una InstancedMesh por pieza con algo cerca (como mucho 64 en total), dentro del presupuesto; lo desconocido y lo de otra finca, fuera", async () => {
     const m = mundo(), api = motorDe(m); await listo();
     expect(m.emitidos).toEqual(["decoraciones:pide"]); expect(m.complementos).toHaveLength(1);
-    const l = m.lista(Array.from({ length: 35 }, (_, i) => i), k => PIEZAS[k % 6]!).concat([{ finca: "hituelo", copas_id: 1000, pieza: "cohete", mia: false }, { finca: "cerro", copas_id: 1001, pieza: "luces", mia: false }]);
+    const l = m.lista(Array.from({ length: 35 }, (_, i) => i), k => PIEZAS[k % 6]!).concat([{ finca: "hituelo", copas_id: 1000, pieza: "cohete", mia: false }, { finca: "otra", copas_id: 1001, pieza: "luces", mia: false }]);
     m.emite("decoraciones:cambian", { lista: l }); api.tarde(0.5);
     const g = m.scene.getObjectByName("decoraciones de los olivos"); expect(g).toBeTruthy();
     expect(g.children.map((o: { name: string; isInstancedMesh: boolean }) => [o.name, o.isInstancedMesh])).toEqual(PIEZAS.map(p => ["decoración " + p, true]));
