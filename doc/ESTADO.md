@@ -14,7 +14,7 @@
 - Motor por teselas de 256 m con niveles de detalle: terreno (1/2/8 m), olivos (L0/L1/L2 con silueta de olivo) y nube LiDAR ([ADR-0001](adr/0001-teselas-256m-utm30.md), [ADR-0002](adr/0002-niveles-de-detalle.md)).
 - Color del suelo y NDVI en el sombreador; suelo abierto con detalle de la ortofoto ([ADR-0007](adr/0007-suelo-abierto-de-la-ortofoto.md)).
 - Cola de trabajos a rebanadas con presupuesto por fotograma.
-- Historia parametrizada por finca: 11 escenas para Cerro y 10 para Hituelo (`14_historia.js`); desde 2026-10-28 la historia de Hituelo **se muestra** (`tuberia/hituelo_conv.py` emite `sin_historia = false`; hay que regenerar `indice.json` para que llegue a una página ya exportada). Sin lectura en vivo en Hituelo.
+- Historia de Hituelo, 10 escenas (`14_historia.js`); las de Cerro salieron con la finca (decisión 229, 2026-11-06). Desde 2026-10-28 la historia de Hituelo **se muestra** (`tuberia/hituelo_conv.py` emite `sin_historia = false`; hay que regenerar `indice.json` para que llegue a una página ya exportada). Sin lectura en vivo en Hituelo.
 - Suelo nuevo, más realista, integrado en `apps/web/motor/` (ADR-0007 Aceptado): relieve por bump, caminos y rodadas, hierba de cartulinas con atlas de briznas, flores y espigas.
 - Modo VR ([VR.md](sistema/VR.md)), con su mock de WebXR y la prueba completa ya en el repo; probado solo con el mock ([ADR-0005](adr/0005-webxr-perfil-propio.md)).
 - **Fase 0 del plan multiusuario** (2026-10-28): monorepo (`apps/web/motor/`, `tuberia/`), build con Vite y three 0.128.0, y la web empaquetada dibuja lo mismo que la salida artefacto (guardián `web.test.js`). CI escrito (`.github/workflows/puerta.yml`), **sin ejecutar** porque no se ha hecho `push`.
@@ -47,15 +47,14 @@ Cada línea resume; el detalle y las cifras, en el [CHANGELOG](../CHANGELOG.md) 
 - **Motor por componentes** (ADR-0023): la red como componente (C5, `37_red.js`) con presencia y avatares sobre ella; sonido, huellas y perros (C4, C10), entidades con id estable (C7), láminas (C8), juego «Cae la cosecha» con clasificación (C9).
 - **Avatares por piezas** (AV2-AV4, ADR-0025): 12 cuerpos VRM CC0, peinados, barba, ropa y sombreros, tinte por material.
 - **Olivos**: tarjetas de racimo en E1 y E2 (O9b, la mitad de triángulos a la misma masa visual), escalera real E0-E1-E2-impostor con `?olivos=gen` (O8c) y caché de recetas endurecida (O5). Personalización de olivos en el mundo (P7f).
-- **Datos vivos**: la historia de Cerro lee lo de hoy de OlivarTrack por la api (V11, con grabaciones sintéticas); conector de claude.ai retirado (V9); lindes de las hazas gruesas en el mundo (A4).
+- **Datos vivos**: el cliente de `/api/ot/hoy` (`HistoriaPuro`) sigue probado pero sin cablear desde que salió Cerro, la única finca que lo usaba; conector de claude.ai retirado (V9); lindes de las hazas gruesas en el mundo (A4).
 - **Pruebas** (PB1-PB9): dos puertas (`npm run puerta:rapida`, solo Node, ~3 min; `npm run puerta:pesada`, la única que autoriza a subir `main`), `puerta:afectadas`, pruebas al azar con `fast-check`, pruebas inestables a la vista y telemetría de fluidez enviada por el usuario desde el aparato (PB9).
 
 ## Datos
 
 | Finca | Contenido |
 |---|---|
-| Cerro Velasco | 5 parcelas, 7,1 ha, ~1.080 olivos en 12 teselas |
-| Hituelo | 4 fincas, 27 parcelas, 95 ha, ~5.900 olivos detectados frente a 5.961 declarados, 46 teselas |
+| Hituelo (el único mundo desde la decisión 229; Cerro Velasco salió el 2026-11-06) | 4 fincas, 27 parcelas, 95 ha, ~5.900 olivos detectados frente a 5.961 declarados, 46 teselas |
 
 Fuentes: LiDAR PNOA 3.ª cobertura (vuelo 2024), MDT 0,5 m, ortofoto PNOA 2022 (copas ~1,1–1,4 m al este), NDVI Sentinel-2 (48 fechas), SoilGrids. Detalle y licencias: [DATOS.md](operacion/DATOS.md).
 
@@ -92,4 +91,3 @@ Fuentes: LiDAR PNOA 3.ª cobertura (vuelo 2024), MDT 0,5 m, ortofoto PNOA 2022 (
 ## Riesgos
 
 - Presupuesto de dibujo en dispositivos móviles (Hituelo de cerca llega a 1,4 M triángulos en SwiftShader: [MEDIDAS](sistema/MEDIDAS.md)).
-- Los intermedios de Cerro (`datos_cerro_embebido.json`) no se producen con ningún script del repo: regenerar Cerro desde cero no está garantizado.
