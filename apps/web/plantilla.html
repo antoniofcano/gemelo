@@ -1,4 +1,4 @@
-<title>Gemelo de Cerro Velasco</title>
+<title>Gemelo de la finca</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="theme-color" content="#101418">
 <meta name="mobile-web-app-capable" content="yes">
@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="./icono-apple-180.png">
 
 <div class="visor" id="visor">
-  <canvas id="lienzo" aria-label="Vista 3D de la parcela Cerro Velasco; arrastra para girar, rueda para acercar"></canvas>
+  <canvas id="lienzo" aria-label="Vista 3D de la finca; arrastra para girar, rueda para acercar"></canvas>
   <div class="sin-escena" id="sinEscena" role="alert" hidden><strong>Esta finca no tiene escena:</strong> <span id="sinEscenaMotivo">falta el tileset</span></div>
 
   <div class="hud" id="hud">
@@ -106,12 +106,12 @@
         <button type="button" class="reiniciar" id="reiniciar">Volver a la vista inicial</button>
         <h3 id="tMedido">Lo medido</h3>
         <dl class="cifras">
-          <div><dt>Copas LiDAR <span class="pill p-medido">medido</span></dt><dd id="kCopas">–</dd></div>
+          <div><dt>Olivos <span class="pill p-detectado">detectado (LiDAR + regla)</span></dt><dd id="kCopas">–</dd></div>
           <div><dt>Guardados <span class="pill p-guardado">guardado</span></dt><dd id="kMarc">–</dd></div>
           <div><dt>Altura mediana</dt><dd id="kAlt">–</dd></div>
           <div><dt>Desfase medio</dt><dd id="kDes">–</dd></div>
         </dl>
-        <p class="nota sep8" id="notaDesfase">Los puntos guardados caen entre 1,5 y 2 m al este de las copas del LiDAR en las cinco parcelas, porque se marcaron sobre la ortofoto, que muestra las copas desplazadas según su altura. El LiDAR está bien georreferenciado.</p>
+        <p class="nota sep8" id="notaDesfase">Los puntos guardados caen al este de las copas del LiDAR, porque se marcaron sobre la ortofoto, que muestra las copas desplazadas según su altura. El LiDAR está bien georreferenciado.</p>
         <h3 id="suelo">Suelo · SoilGrids <span class="pill p-modelo">modelo</span></h3>
         <div id="sueloCuerpo"></div>
       </div>
@@ -130,7 +130,7 @@
         <h3>Datos</h3>
         <div>
           <label class="capa"><input type="checkbox" id="cLinde" checked><span class="punto pt-linde"></span>Linde (barrera de luz) <span class="pill p-medido">medido</span></label>
-          <label class="capa"><input type="checkbox" id="cCopas" checked><span class="punto pt-copas"></span>Copas del LiDAR <small id="nCopas"></small> <span class="pill p-medido">medido</span></label>
+          <label class="capa"><input type="checkbox" id="cCopas" checked><span class="punto pt-copas"></span>Copas del LiDAR <span class="pill p-medido">medido</span></label>
           <label class="capa"><input type="checkbox" id="cMarc" checked><span class="punto pt-guardado"></span>Guardados en OlivarTrack <small id="nMarc"></small> <span class="pill p-guardado">guardado</span></label>
           <label class="capa"><input type="checkbox" id="cDesf"><span class="punto pt-desfase"></span>Desfase entre ambos <span class="pill p-medido">medido</span></label>
           <label class="capa"><input type="checkbox" id="cNdvi"><span class="punto pt-ndvi"></span>Vigor (NDVI Sentinel-2) <span class="pill p-deducido">deducido</span></label>
@@ -305,9 +305,9 @@
           <p><span class="pill p-medido">medido</span> las copas (LiDAR 2024) y el relieve. <span class="pill p-deducido">deducido</span> el tendido, los postes, los cauces, el vigor y la clasificación de los árboles que no son olivos. <span class="pill p-ilustrativo">ilustrativo</span> los troncos y las ramas, la hierba y los animales. <span class="pill p-modelo">modelo</span> el suelo y la previsión.</p>
         </div>
         <div role="tabpanel" id="menuFinca" aria-labelledby="menuPestFinca" hidden>
-          <h1>Finca Cerro Velasco, en 3D</h1>
-          <p>Gemelo de la finca, con sus cinco parcelas y 7,1 ha: la forma sale de los puntos del vuelo LiDAR de 2024 y el color, de la ortofoto del PNOA corregida por la altura de cada copa.</p>
-          <p class="pie">Mockup con la finca Cerro Velasco (cinco parcelas, 7,1 ha). La copa de cada olivo es medida; sus troncos y ramas son una forma ilustrativa con los 2 o 3 pies habituales, no una medición: el número real de pies de cada olivo no se puede sacar de esta nube. Nube PNOA-LiDAR 2024 (3ª cobertura, 9,4 puntos por m²), MDT de 0,5 m del CNIG y ortofoto PNOA del IGN, licencia CC-BY 4.0. La corrección de la ortofoto es un ajuste medido en esta parcela (la copa se ve desplazada hacia el este unos 1,2 m a 1 m de altura y unos 2,5 m a 4 m), no una ortorrectificación. Es un modelo de trabajo, no una medición topográfica.</p>
+          <h1>La finca, en 3D</h1>
+          <p>Gemelo de la finca: la forma sale de los puntos del vuelo LiDAR de 2024 y el color, de la ortofoto del PNOA corregida por la altura de cada copa.</p>
+          <p class="pie">Gemelo de la finca. La copa de cada olivo es medida (el recuento de olivos es detectado: LiDAR más una regla); sus troncos y ramas son una forma ilustrativa con los 2 o 3 pies habituales, no una medición: el número real de pies de cada olivo no se puede sacar de esta nube. Nube PNOA-LiDAR 2024 (3ª cobertura), MDT de 0,5 m del CNIG y ortofoto PNOA del IGN, licencia CC-BY 4.0. La corrección de la ortofoto es un ajuste medido en esta parcela (la copa se ve desplazada hacia el este unos 1,2 m a 1 m de altura y unos 2,5 m a 4 m), no una ortorrectificación. Es un modelo de trabajo, no una medición topográfica.</p>
         </div>
       </div>
     </div>

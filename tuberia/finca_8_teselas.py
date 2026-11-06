@@ -119,6 +119,12 @@ def construye(F, salida, anterior=None):
     censo = {m[2]: mid[i] for i, m in enumerate(D["marcados"]) if i < len(mid) and mid[i] is not None and m[2] >= 0}
     col, avisos = columnas(I["copas"], (cx, cy), censo); I.update(col); I.pop("marcados_id", None)
     for a_ in avisos: print("aviso:", a_)
+    # textos de la cabecera de la página (L3-04): salen de los datos, no de la plantilla. Las ha son las declaradas (decisión 221: suma de parcelas[].ha);
+    # los olivos, los detectados (decisión 220: len(copas)); el desfase, el rango de las parcelas. Hituelo escribe los suyos en hituelo_conv.py.
+    hs = [math.hypot(*p["desfase"]) for p in I["parcelas"] if p.get("desfase")]
+    ds = (("entre %.1f y %.1f m al este" % (min(hs), max(hs))) if round(min(hs), 1) != round(max(hs), 1) else ("unos %.1f m al este" % min(hs))).replace(".", ",") if hs else None
+    I["textos"] = dict(sin_historia=False, finca="Cerro Velasco", fincas=1, parcelas=len(I["parcelas"]), ha=round(sum(p["ha"] for p in I["parcelas"]), 1), olivos=len(I["copas"]))
+    if ds: I["textos"]["desfase_txt"] = ds
     asigna_semillas(I, salida, anterior)   # antes de escribir: el indice.json que haya en salida es la exportación anterior
     json.dump(I, open(os.path.join(salida, "indice.json"), "w"))
     print("teselas:", len(teselas), "| indice %.0f KB" % (os.path.getsize(os.path.join(salida, "indice.json")) / 1024))

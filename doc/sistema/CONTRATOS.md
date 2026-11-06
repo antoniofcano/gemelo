@@ -71,7 +71,7 @@ Campos obligatorios: `v, ts, res, srs, orto_px, finca_id, centro_utm, z0, ext, p
 | `teselas{}` | `"kx_ky": {kx, ky, v[x0,y0,x1,y1], np}`; `v` = rectángulo con dato, en m relativos a `centro_utm`, dentro de la huella de la tesela (`kx·256 − cx` … `+256`); no tiene por qué estar alineado (Cerro recorta a la ventana con dato; Hituelo escribe la tesela entera). `v` aquí no es la versión del contrato (esa es el `v` de la raíz). `np` = puntos de nube |
 | `grueso` | relieve de 8 m: `x0, yN, res, w, h, b64` (Int16, cm sobre `z0`) |
 | `mosaico` | ortofoto global: `jpg` (data URI), `w, h, x0, yN, res` (Cerro 1 m/px, Hituelo 2 m/px) |
-| `textos` | `sin_historia, finca, fincas, parcelas, ha, olivos, desfase_txt, intro_historia`: lo que `apps/web/herramientas/genera_motor.mjs` cambia en la cabecera de la página (título, entradilla, pie, historia) |
+| `textos` | `sin_historia, finca, fincas, parcelas, ha, olivos, desfase_txt, puntos_m2, intro_historia`: lo que `apps/web/herramientas/genera_motor.mjs` cambia en la cabecera de la página (título, entradilla, pie, historia) |
 | `base` | prefijo de `t/` (por defecto `""` = relativo a la página) |
 | `tileset` | ruta del `tileset.json` de la escena 3D Tiles ([ADR-0015](../adr/0015-escena-en-3d-tiles.md)), relativa a la página o absoluta del mismo origen (nunca otro host). Es la **única** escena (T8 fase 2, [ADR-0021](../adr/0021-se-retira-la-salida-artefacto-y-la-escena-de-siempre.md)): sin él, o si falla, el panel dice «Esta finca no tiene escena» y `Mundo` sigue sirviendo a la física y a las fichas. No lo escriben los exportadores: lo pone quien sirve el tileset junto a los datos (`infra/dev`, `tuberia/tiles3d`, las páginas de prueba) ([TILES3D](TILES3D.md#la-escena-sin-vuelta-atrás-t8-fase-2)) |
 

@@ -111,6 +111,7 @@ def indice(finca, copas, tes):
         I["textos"] = dict(sin_historia=False, finca="Finca sintética", fincas=1, parcelas=2, ha=round(sum(p["ha"] for p in pars), 1), olivos=len(copas))
     else:
         for p in pars: del p["finca"]
+        I["textos"] = dict(sin_historia=False, finca="Cerro Velasco", fincas=1, parcelas=len(pars), ha=round(sum(p["ha"] for p in pars), 1), olivos=len(copas))
     return I
 
 def tileset(d):

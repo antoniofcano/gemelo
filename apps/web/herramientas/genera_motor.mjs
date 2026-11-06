@@ -24,17 +24,22 @@ export function concatenaMotor(sin = []) {
   return ficheros.map(f => fs.readFileSync(path.join(MOTOR, f), "utf8")).join("");
 }
 
-/** La cabecera de plantilla.html está escrita para Cerro Velasco; para otra finca se cambian sus textos (título, entradilla, nota del desfase y pie)
- *  y, si no hay historia, se oculta. T = D.textos del índice (finca, ha, fincas, parcelas, olivos, desfase_txt?, intro_historia?, sin_historia?). */
+/** La cabecera de plantilla.html no lleva ninguna cifra de la finca (ni hectáreas ni olivos: L3-04): título, entradilla, pie y nota del desfase salen del índice.
+ *  T = D.textos del índice (finca, ha, fincas, parcelas, olivos, desfase_txt?, puntos_m2?, intro_historia?, sin_historia?). Rotulado (decisiones 220 y 221):
+ *  las hectáreas son «declaradas (OlivarTrack)» (suma de lo declarado, no medida sobre el polígono) y los olivos «detectados» (LiDAR + regla), no «medidos».
+ *  Si el índice no trae `textos`, la página queda con la cabecera neutra de la plantilla. */
 export function textosFinca(cab, T) {
-  const n = T.finca, nf = T.fincas, npar = T.parcelas, nol = T.olivos;
-  const fh = x => x.toFixed(0).replace(".", ",");
-  cab = cab.replace("<title>Gemelo de Cerro Velasco</title>", () => "<title>Gemelo de " + n + "</title>");
+  const n = T.finca, nf = T.fincas || 1, npar = T.parcelas, nol = T.olivos;
+  const fh = x => (x < 10 ? x.toFixed(1) : x.toFixed(0)).replace(".", ",");
+  const dec = fh(T.ha) + " ha declaradas (OlivarTrack)";
+  const que = nf === 1 ? "la finca " + n : "las " + nf + " fincas de " + n;
+  const pts = T.puntos_m2 ? ", unos " + String(T.puntos_m2).replace(".", ",") + " puntos por m²" : "";
+  cab = cab.replace("<title>Gemelo de la finca</title>", () => "<title>Gemelo de " + n + "</title>");
   cab = cab.replace(/<h1>[\s\S]*?<\/h1>/, () => "<h1>" + n + ", en 3D</h1>");
-  cab = cab.replace(/(<h1>[\s\S]*?<\/h1>\s*)<p>[\s\S]*?<\/p>/, (m, a) => a + "<p>Gemelo de las " + nf + " fincas de " + n + ", con sus " + npar + " parcelas y " + fh(T.ha) + " ha: la forma sale de los puntos del vuelo LiDAR de 2024 y el color, de la ortofoto del PNOA corregida por la altura de cada copa. Cada tesela de 256 m se carga y se dibuja con más o menos detalle según lo cerca que la mires.</p>");
-  cab = cab.replace("Vista 3D de la parcela Cerro Velasco;", () => "Vista 3D de las fincas de " + n + ";");
+  cab = cab.replace(/(<h1>[\s\S]*?<\/h1>\s*)<p>[\s\S]*?<\/p>/, (m, a) => a + "<p>Gemelo de " + que + ", con sus " + npar + " parcelas y " + dec + ": la forma sale de los puntos del vuelo LiDAR de 2024 y el color, de la ortofoto del PNOA corregida por la altura de cada copa. Cada tesela de 256 m se carga y se dibuja con más o menos detalle según lo cerca que la mires.</p>");
+  cab = cab.replace("Vista 3D de la finca;", () => "Vista 3D de " + (nf === 1 ? "la finca " : "las fincas de ") + n + ";");
   cab = cab.replace(/<p class="nota sep8" id="notaDesfase">Los puntos guardados[\s\S]*?<\/p>/, () => '<p class="nota sep8" id="notaDesfase">Los puntos guardados en OlivarTrack se marcaron sobre la ortofoto, que muestra las copas desplazadas hacia el este según su altura (' + (T.desfase_txt || "unos 1,5 m, medido en Cerro Velasco") + '); el LiDAR está bien georreferenciado.</p>');
-  cab = cab.replace(/<p class="pie">[\s\S]*?<\/p>/, () => '<p class="pie">Gemelo de las ' + nf + " fincas de " + n + " (" + npar + " parcelas, " + fh(T.ha) + " ha, " + nol + " olivos detectados). La copa de cada olivo es medida del LiDAR; sus troncos y ramas son una forma ilustrativa con los 2 o 3 pies habituales, no una medición. Nube PNOA-LiDAR 2024 (3.ª cobertura, unos 6,5 puntos por m²), MDT de 0,5 m del CNIG y ortofoto PNOA del IGN, licencia CC-BY 4.0. La corrección de la ortofoto es un ajuste medido en Cerro Velasco, no una ortorrectificación. El tendido, los cauces y el último tramo de cada cable están deducidos de la geometría, no medidos. Es un modelo de trabajo, no una medición topográfica.</p>");
+  cab = cab.replace(/<p class="pie">[\s\S]*?<\/p>/, () => '<p class="pie">Gemelo de ' + que + " (" + npar + " parcelas, " + dec + ", " + nol + " olivos detectados: LiDAR más una regla, no medidos). La copa de cada olivo es medida del LiDAR; sus troncos y ramas son una forma ilustrativa con los 2 o 3 pies habituales, no una medición. Nube PNOA-LiDAR 2024 (3.ª cobertura" + pts + "), MDT de 0,5 m del CNIG y ortofoto PNOA del IGN, licencia CC-BY 4.0. La corrección de la ortofoto es un ajuste medido en Cerro Velasco, no una ortorrectificación. El tendido, los cauces y el último tramo de cada cable están deducidos de la geometría, no medidos. Es un modelo de trabajo, no una medición topográfica.</p>");
   if (T.intro_historia) cab = cab.replace(/(<p class="nota" id="hIntro">)[\s\S]*?(<\/p>)/, (m, a, b) => a + T.intro_historia + b);
   if (T.sin_historia) cab = cab.replace('id="historia"', () => 'id="historia" data-sin');   // plantilla.css: #historia[data-sin] { display: none !important }
   return cab;

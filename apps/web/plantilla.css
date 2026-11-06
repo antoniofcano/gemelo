@@ -49,7 +49,7 @@ body { background: #0b0d0a; color: var(--fg); font-family: var(--body); font-siz
 .boton.prim { background: var(--olivo); color: var(--sobre-olivo); border-color: var(--olivo); font-weight: 600; }
 .icono { width: var(--toque); padding: 0; font-size: 19px; position: relative; }
 .pill { display: inline-block; font-size: 11px; padding: 0 7px; border-radius: 99px; border: 1px solid currentColor; white-space: nowrap; font-weight: 500; line-height: 1.5; }
-.p-medido { color: var(--lidar); } .p-deducido { color: var(--deducido); } .p-ilustrativo { color: var(--ilustrativo); } .p-modelo { color: var(--modelo); } .p-guardado { color: var(--guardado); }
+.p-medido { color: var(--lidar); } .p-deducido { color: var(--deducido); } .p-ilustrativo { color: var(--ilustrativo); } .p-modelo { color: var(--modelo); } .p-guardado { color: var(--guardado); } .p-detectado { color: var(--deducido); }
 .hud { position: absolute; inset: 0; pointer-events: none; z-index: 20; font-size: 14px; }
 .hud > * { pointer-events: auto; }
 

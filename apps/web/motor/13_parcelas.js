@@ -37,7 +37,7 @@
     $("tMedido").textContent = "Lo medido · " + (k >= 0 ? parcelas[k].nombre : fincaSel >= 0 ? fincas[fincaSel].nombre : fincas.length > 1 ? "toda la explotación" : "toda la finca");
     $("kCopas").textContent = fmt(ci.length); $("kMarc").textContent = fmt(mm.length);
     $("kAlt").textContent = fmt(med(ci.map(function (c) { return c.h; })), 1) + " m"; $("kDes").textContent = fmt(Math.hypot(med(dx), med(dy)), 1) + " m";
-    $("nCopas").textContent = fmt(cIn.length); $("nMarc").textContent = fmt(marc.length);
+    $("nMarc").textContent = fmt(marc.length);
   }
   function elegirParcela(k) {
     parcelaSel = k; if (k >= 0 && fincas.length > 1) fincaSel = parcelas[k].finca;
@@ -67,7 +67,7 @@
       var cp0 = $("chips"), cf = document.createElement("div"); cf.id = "chipsFincas"; cf.className = "chips"; cf.setAttribute("role", "group"); cf.setAttribute("aria-label", "Finca a mostrar");
       var tf = document.createElement("p"); tf.id = "tParcelasFinca"; tf.className = "nota"; tf.style.margin = "10px 0 6px"; cp0.parentNode.insertBefore(cf, cp0); cp0.parentNode.insertBefore(tf, cp0);
       var chipF = function (txt, f) { var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.setAttribute("data-f", f); b.setAttribute("aria-pressed", "false"); b.textContent = txt; b.addEventListener("click", function () { if (f < 0) { fincaSel = -1; elegirParcela(-1); } else elegirFinca(f); }); cf.appendChild(b); };
-      chipF("Toda la explotación", -1); fincas.forEach(function (f, i) { chipF(f.nombre + " · " + fmt(f.ha, 0) + " ha · " + fmt(f.olivos) + " olivos", i); });
+      chipF("Toda la explotación", -1); fincas.forEach(function (f, i) { chipF(f.nombre + " · " + fmt(f.ha, 0) + " ha declaradas · " + fmt(f.olivos) + " olivos declarados", i); });
       $("calidad").addEventListener("change", function () { calidad = Number($("calidad").value); if (modo === "gem") aplicaLuego(); });
       return;
     }
