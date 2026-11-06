@@ -5,7 +5,7 @@
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
 
-const FUENTE = lee("apps/web/motor/34_movibles.js");
+const FUENTE = require("./_fuente").fuenteMotor("34_movibles.js");   // A3-7a: el talón y apps/web/src/ui/movibles.ts (como JavaScript)
 function puro() {
   const i = FUENTE.indexOf("// [puro:inicio]"), f = FUENTE.indexOf("// [puro:fin]");
   assert.ok(i >= 0 && f > i);

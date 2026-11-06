@@ -6,3 +6,8 @@
 // A3-7a (MU5-n): las capas del mundo (antes 32b_capas.js), componente de todo mundo con su libera() de verdad.
 export { CapasPuro, ID_CAPAS, creaCapas, manifiestoCapas } from "./capas.ts";
 export type { Capas, DepsCapas } from "./capas.ts";
+// A3-7a: las ventanas flotantes (antes 34_movibles.js), componente de todo mundo.
+export { ID_MOVIBLES, MoviblesPuro, creaMovibles, manifiestoMovibles } from "./movibles.ts";
+export type { DepsMovibles, Movibles } from "./movibles.ts";
+export { creaSoltador } from "./soltador.ts";
+export type { Soltador } from "./soltador.ts";
