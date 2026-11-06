@@ -9,13 +9,13 @@
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
 
-const F02G = lee("apps/web/motor/02g_vr_presupuesto.js"), F02F = lee("apps/web/motor/02f_xr_perillas.js"), F26B = lee("apps/web/motor/26b_avatares.js"), VR = lee("apps/web/motor/29_vr.js");
+const F02G = lee("apps/web/motor/02g_vr_presupuesto.js"), F26B = lee("apps/web/motor/26b_avatares.js"), VR = lee("apps/web/motor/29_vr.js");
 function trozo(f, ini, fin) { const i = f.indexOf(ini), j = f.indexOf(fin); assert.ok(i >= 0 && j > i, "falta " + ini + " … " + fin); return f.slice(i, j); }
 const P02G = trozo(F02G, "// [puro:inicio]", "// [puro:fin]"), M02G = trozo(F02G, "// [motor:inicio]", "// [motor:fin]");
 const C = new Function("\"use strict\";\n" + P02G + "\nreturn VrControlPuro;")();
 const nuevoPresupuesto = () => new Function("\"use strict\";\n" + P02G + M02G + "\nreturn VrPresupuesto;")();
 const AP = new Function("\"use strict\";\n" + trozo(F26B, "// [puro:inicio]", "// [puro:fin]") + "\nreturn AvataresPuro;")();
-const XP = new Function("\"use strict\";\n" + trozo(F02F, "// [puro:inicio]", "// [puro:fin]") + "\nreturn XrPerillasPuro;")();
+const Nucleo = require("./_nucleo"), XP = Nucleo.XrPerillasPuro;   // 02f_xr_perillas.js es un talón del núcleo (A1-11)
 
 const FPS = 72, DT = 1 / FPS;
 const estadoNuevo = () => ({ emaDt: 13.9, emaJs: 6, tNivel: 0, tEstable: 0 });
@@ -124,7 +124,7 @@ test("perilla ?xrgente=: defecto 8, rango 2-64 con motivo, no numérico ignorado
   assert.strictEqual(XP.leeControl("?xrgente=500").gente, 64);
   const raro = XP.leeControl("?xrgente=muchas"); assert.strictEqual(raro.gente, null); assert.strictEqual(raro.ignorados[0].motivo, "no es un número");
   assert.strictEqual(XP.leeControl("").gente, null);
-  const xr = q => new Function("location", "\"use strict\";\n" + trozo(F02F, "// [puro:inicio]", "// [puro:fin]") + trozo(F02F, "// [motor:inicio]", "// [motor:fin]") + "\nreturn XrPerillas;")({ search: q });
+  const xr = q => Nucleo.creaXrPerillas({ busqueda: q });
   assert.strictEqual(xr("").gente(), 8); assert.strictEqual(xr("?xrgente=20").gente(), 20);
 });
 

@@ -13,8 +13,7 @@ const { lee } = require("./_util");
 const FUENTE = lee("apps/web/motor/02l_tope_tiles.js");
 function trozo(src, ini, fin) { const i = src.indexOf(ini), f = src.indexOf(fin); assert.ok(i >= 0 && f > i, "debe marcar " + ini + " … " + fin); return src.slice(i, f); }
 const T = new Function("\"use strict\";\n" + trozo(FUENTE, "// [puro:inicio]", "// [puro:fin]") + "\nreturn TopeTilesPuro;")();
-const PER = lee("apps/web/motor/02f_xr_perillas.js");
-const XP = new Function("\"use strict\";\n" + trozo(PER, "// [puro:inicio]", "// [puro:fin]") + "\nreturn XrPerillasPuro;")();
+const XP = require("./_nucleo").XrPerillasPuro;   // 02f_xr_perillas.js es un talón del núcleo (A1-11)
 const D = T.DEF;
 
 // simula `seg` segundos con muestras de D.MUESTRA. escena(k, t) → tri. retraso: s que tarda un cambio de error en verse (carga de teselas).
@@ -164,6 +163,6 @@ test("enganche (texto): 04b mide solo en VR y pone el error; 02f da el tope y la
   assert.match(E, /XrPerillas\.topeTiles\(triNivel\)/);
   assert.match(E, /XrPerillas\.lineaTiles = function/);
   assert.match(E, /tiles\.visibleTiles\.forEach\(sumaVisible\)/);
-  assert.match(PER, /X\.lineaTiles \? X\.lineaTiles\(\) : ""/);
+  assert.match(lee("apps/web/src/nucleo/xr-perillas.ts"), /X\.lineaTiles \? X\.lineaTiles\(\) : ""/);
   assert.match(lee("apps/web/motor/29_vr.js"), /Escena3D\.perfil\(p\)/, "el nivel de VR sigue llegando por Escena3D.perfil");
 });

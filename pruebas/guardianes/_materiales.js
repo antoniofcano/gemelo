@@ -3,10 +3,8 @@
 // del motor en un vm y necesitan `Materiales` (F1 de doc/sistema/MULTIVIEW.md). Es el código de verdad, no un doble: devuelve lo mismo que en la página.
 //   const { fabrica } = require("./_materiales");  const { Materiales, Render, InfoDibujo, RenderPuro, Estaticos } = fabrica(THREE, { busqueda: "?render=nuevo" });
 const vm = require("vm");
-const path = require("path");
-const { lee, RAIZ } = require("./_util");
-// el núcleo de TypeScript (apps/web/src/nucleo/), el mismo que ve la IIFE por «import * as Nucleo» (MUNDOS §9.3): Node 22.18+ lo carga con require, quitando los tipos
-const NUCLEO = require(path.join(RAIZ, "apps/web/src/nucleo/index.ts"));
+const { lee } = require("./_util");
+const NUCLEO = require("./_nucleo");   // el núcleo de TypeScript, el mismo que ve la IIFE por «import * as Nucleo» (MUNDOS §9.3)
 
 function fabrica(THREE, o) {
   o = o || {};

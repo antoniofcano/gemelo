@@ -85,6 +85,6 @@ test("cada material de recorte alfa del motor pasa por Materiales.recorte (y la 
 
 test("MSAA: el contexto se crea con antialias: XrPerillas.aa (defecto 1) y 02i lo lee de ahí", () => {
   assert.match(lee("apps/web/motor/03_escena.js"), /antialias: XrPerillas\.aa/);
-  assert.match(lee("apps/web/motor/02f_xr_perillas.js"), /aa: true/);
+  assert.match(lee("apps/web/src/nucleo/xr-perillas.ts"), /aa: true/);
   assert.match(lee("apps/web/motor/02i_materiales.js"), /XrPerillas\.aa/);
 });

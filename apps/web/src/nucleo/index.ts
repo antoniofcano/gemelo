@@ -5,3 +5,4 @@
 export { partesDeVersion } from "./version.ts";
 export { CargaPuro, creaCola, duenoDe } from "./cola.ts";
 export { RenderPuro, InfoDibujo, creaRender } from "./render.ts";
+export { XrPerillasPuro, creaXrPerillas } from "./xr-perillas.ts";

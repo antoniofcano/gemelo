@@ -10,14 +10,14 @@
 const test = require("node:test"), assert = require("node:assert"), fs = require("fs"), path = require("path");
 const { lee, RAIZ } = require("./_util");
 
-const F02G = lee("apps/web/motor/02g_vr_presupuesto.js"), F02F = lee("apps/web/motor/02f_xr_perillas.js"), VR = lee("apps/web/motor/29_vr.js");
+const F02G = lee("apps/web/motor/02g_vr_presupuesto.js"), VR = lee("apps/web/motor/29_vr.js");
 function trozo(f, ini, fin) { const i = f.indexOf(ini), j = f.indexOf(fin); assert.ok(i >= 0 && j > i, "falta " + ini + " … " + fin); return f.slice(i, j); }
 const PURO = trozo(F02G, "// [puro:inicio]", "// [puro:fin]"), MOTOR = trozo(F02G, "// [motor:inicio]", "// [motor:fin]");
 const C = new Function("\"use strict\";\n" + PURO + "\nreturn VrControlPuro;")();
 const PP = new Function("\"use strict\";\n" + PURO + "\nreturn VrPresupuestoPuro;")();
-const P02F = trozo(F02F, "// [puro:inicio]", "// [puro:fin]"), M02F = trozo(F02F, "// [motor:inicio]", "// [motor:fin]");
-const XP = new Function("\"use strict\";\n" + P02F + "\nreturn XrPerillasPuro;")();
-const xr = busqueda => new Function("location", "\"use strict\";\n" + P02F + M02F + "\nreturn XrPerillas;")({ search: busqueda });
+const Nucleo = require("./_nucleo");   // 02f_xr_perillas.js es un talón del núcleo (A1-11)
+const XP = Nucleo.XrPerillasPuro;
+const xr = busqueda => Nucleo.creaXrPerillas({ busqueda });
 
 const FPS = 72, DT = 1 / FPS;
 const estadoNuevo = () => ({ emaDt: 13.9, emaJs: 6, tNivel: 0, tEstable: 0 });

@@ -1,107 +1,15 @@
 "use strict";
-// Perillas de rendimiento VR por URL (Q0b, apps/web/motor/02f_xr_perillas.js; doc/sistema/VR.md#perillas-de-rendimiento-por-url). Solo Node: la función pura
-// XrPerillasPuro.lee/plan/linea sobre una tabla de casos, el estado XrPerillas con un renderer y una sesión de mentira (llegan al factor de escala, la foveación,
-// updateTargetFrameRate y fijan el nivel sin controlador) y el cableado en 29_vr, 03_escena, 28_depura y 30_mide (por texto). Nada de esto dice cómo rinde un casco real.
+// Perillas de rendimiento VR por URL (Q0b, apps/web/src/nucleo/xr-perillas.ts; el talón es apps/web/motor/02f_xr_perillas.js; doc/sistema/VR.md#perillas-de-rendimiento-por-url).
+// La función pura (XrPerillasPuro.lee/plan/linea/multiview…) y el estado con un renderer y una sesión de mentira pasaron a Vitest (A1-11): apps/web/src/nucleo/xr-perillas.test.ts.
+// Aquí queda lo que cruza con el legado: el cableado por texto en 29_vr, 03_escena, 28_depura y 30_mide, y el banco de 29_vr con el estado y el VrPresupuesto de verdad.
+// Nada de esto dice cómo rinde un casco real.
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
+const Nucleo = require("./_nucleo");
 
-const FUENTE = lee("apps/web/motor/02f_xr_perillas.js");
-function trozo(ini, fin) {
-  const i = FUENTE.indexOf(ini), f = FUENTE.indexOf(fin);
-  assert.ok(i >= 0 && f > i, "02f_xr_perillas.js debe marcar " + ini + " … " + fin);
-  return FUENTE.slice(i, f);
-}
-const PURO = trozo("// [puro:inicio]", "// [puro:fin]"), MOTOR = trozo("// [motor:inicio]", "// [motor:fin]");
-const P = new Function("\"use strict\";\n" + PURO + "\nreturn XrPerillasPuro;")();
-function estado(busqueda) { return new Function("location", "\"use strict\";\n" + PURO + MOTOR + "\nreturn XrPerillas;")({ search: busqueda }); }
+function estado(busqueda) { return Nucleo.creaXrPerillas({ busqueda }); }
 const F02G = lee("apps/web/motor/02g_vr_presupuesto.js");
 const VrControlPuro = new Function("\"use strict\";\n" + F02G.slice(F02G.indexOf("// [puro:inicio]"), F02G.indexOf("// [puro:fin]")) + "\nreturn VrControlPuro;")();
-const QUEST = { frameRates: [72, 80, 90] };
-
-test("sin parámetros: nada pedido, nada ignorado y los valores de siempre", () => {
-  for (const q of ["", "?debug", "?a=1&xr=2", undefined]) {
-    const r = P.lee(q, QUEST);
-    assert.deepStrictEqual(r, { fov: null, escala: null, hz: null, aa: null, nivel: null, near: null, js: null, ignorados: [] }, String(q));
-  }
-  const pl = P.plan(P.lee("", QUEST), QUEST);
-  assert.deepStrictEqual([pl.fov, pl.escala, pl.hz, pl.aa, pl.nivel, pl.near, pl.js, pl.tocadas.length], [1, 0.9, 72, true, null, 0.1, 8, 0]);
-  assert.strictEqual(P.linea(pl), "VR: fov 1 · escala 0,9 · 72 Hz · MSAA sí · nivel auto · near 0,1 · umbral JS 8 ms");
-});
-
-test("valores válidos, con coma decimal y en cualquier orden", () => {
-  const r = P.lee("?debug&xrescala=1.2&xrfov=0.5&xrhz=90&xraa=0&xrnivel=2", QUEST);
-  assert.deepStrictEqual(r, { fov: 0.5, escala: 1.2, hz: 90, aa: false, nivel: 2, near: null, js: null, ignorados: [] });
-  assert.strictEqual(P.lee("?xrescala=0,7", null).escala, 0.7);
-  assert.strictEqual(P.lee("?xrfov=0", null).fov, 0, "0 es un valor, no ausencia");
-  assert.strictEqual(P.lee("?xrnivel=0", null).nivel, 0);
-  assert.strictEqual(P.lee("?xraa=1", null).aa, true);
-});
-
-test("fuera de rango: se recorta y se anota con el motivo", () => {
-  const r = P.lee("?xrfov=3&xrescala=0.1&xrnivel=9", null);
-  assert.deepStrictEqual([r.fov, r.escala, r.nivel], [1, 0.5, 3]);
-  assert.deepStrictEqual(r.ignorados.map(i => i.param), ["xrfov", "xrescala", "xrnivel"]);
-  assert.ok(r.ignorados.every(i => /fuera de rango/.test(i.motivo)));
-  assert.strictEqual(P.lee("?xrescala=9", null).escala, 1.5);
-  assert.strictEqual(P.lee("?xrfov=-1", null).fov, 0);
-  const n = P.lee("?xrnivel=1.4", null); assert.strictEqual(n.nivel, 1); assert.strictEqual(n.ignorados.length, 1, "un nivel no entero se redondea y se anota");
-});
-
-test("no numérico o inválido: sin efecto y con motivo", () => {
-  const r = P.lee("?xrfov=mucho&xrescala=&xrnivel=NaN&xraa=2&xrhz=60", null);
-  assert.deepStrictEqual([r.fov, r.escala, r.nivel, r.aa, r.hz], [null, null, null, null, null]);
-  assert.deepStrictEqual(r.ignorados.map(i => i.param), ["xrfov", "xrescala", "xrnivel", "xrhz", "xraa"]);
-});
-
-test("xrhz: solo 72/80/90/120 y solo si el casco la anuncia", () => {
-  assert.strictEqual(P.lee("?xrhz=120", null).hz, 120, "sin sesión todavía no se puede saber: se acepta");
-  assert.strictEqual(P.lee("?xrhz=90", QUEST).hz, 90);
-  const r = P.lee("?xrhz=120", QUEST);
-  assert.strictEqual(r.hz, null); assert.match(r.ignorados[0].motivo, /no soportado/);
-  const s = P.lee("?xrhz=90", { frameRates: null });
-  assert.strictEqual(s.hz, null); assert.match(s.ignorados[0].motivo, /no soportado/);
-  const pl = P.plan(r, QUEST);
-  assert.strictEqual(pl.hz, 72, "no soportada la pedida: queda la de siempre (72) si el casco la admite");
-  assert.strictEqual(P.plan(P.lee("", { frameRates: [90] }), { frameRates: [90] }).hz, null, "si ni los 72 Hz están, no se pide ninguna");
-});
-
-test("la línea del informe dice las perillas efectivas y lo ignorado", () => {
-  const so = QUEST, pl = P.plan(P.lee("?xrfov=0.5&xrescala=1&xrhz=120&xraa=0&xrnivel=2", so), so);
-  const l = P.linea(pl);
-  assert.match(l, /^VR: fov 0,5 · escala 1 · 72 Hz · MSAA no · nivel 2 fijo · near 0,1 · umbral JS 8 ms · ignorado: xrhz=120 \(no soportado/);
-});
-
-test("motor: sin perillas llegan 0,9, foveación 1 y 72 Hz, y el controlador sigue activo", () => {
-  const X = estado(""), llamadas = [];
-  const renderer = { xr: { setFoveation: v => llamadas.push(["fov", v]) } };
-  const ses = { supportedFrameRates: [72, 90], renderState: { baseLayer: { fixedFoveation: 0 } }, updateTargetFrameRate: f => llamadas.push(["hz", f]) };
-  assert.strictEqual(X.aa, true); assert.strictEqual(X.efectivas.escala, 0.9);
-  X.antes(renderer); X.despues(ses);
-  assert.deepStrictEqual(llamadas, [["fov", 1], ["hz", 72]]);
-  assert.strictEqual(ses.renderState.baseLayer.fixedFoveation, 1);
-  assert.strictEqual(X.fijo(), false); assert.strictEqual(X.entro, true);
-  assert.strictEqual(X.linea(), "VR: fov 1 · escala 0,9 · 72 Hz · MSAA sí · nivel auto · near 0,1 · umbral JS 8 ms");
-});
-
-test("motor: las perillas llegan a la escala, la foveación, la frecuencia y el nivel fijo", () => {
-  const X = estado("?xrescala=1.1&xrfov=0.3&xrhz=90&xraa=0&xrnivel=3"), llamadas = [];
-  const renderer = { xr: { setFoveation: v => llamadas.push(["fov", v]) } };
-  const ses = { supportedFrameRates: [72, 90], renderState: { baseLayer: { fixedFoveation: 0 } }, updateTargetFrameRate: f => llamadas.push(["hz", f]) };
-  assert.strictEqual(X.aa, false, "se lee antes de crear el renderer"); assert.strictEqual(X.efectivas.escala, 1.1, "setFramebufferScaleFactor(efectivas.escala) en 29_vr");
-  X.antes(renderer); X.despues(ses);
-  assert.deepStrictEqual(llamadas, [["fov", 0.3], ["hz", 90]]);
-  assert.strictEqual(ses.renderState.baseLayer.fixedFoveation, 0.3);
-  assert.strictEqual(X.fijo(), true); assert.strictEqual(X.efectivas.nivel, 3);
-});
-
-test("motor: una frecuencia no soportada no llama a updateTargetFrameRate si el casco no admite ni los 72 Hz, y se anota", () => {
-  const X = estado("?xrhz=120"), llamadas = [];
-  const ses = { supportedFrameRates: [90], updateTargetFrameRate: f => llamadas.push(f), renderState: {} };
-  X.despues(ses);
-  assert.deepStrictEqual(llamadas, []); assert.strictEqual(X.efectivas.hz, null);
-  assert.strictEqual(X.efectivas.ignorados[0].param, "xrhz"); assert.match(X.linea(), /Hz sin cambiar.*ignorado: xrhz=120/);
-  const sinApi = estado(""); assert.doesNotThrow(() => sinApi.despues({ renderState: {} }), "un casco sin supportedFrameRates ni updateTargetFrameRate no rompe");
-});
 
 test("cableado: 29_vr usa XrPerillas en un solo sitio, 03_escena el MSAA, y el informe y el panel dicen la línea", () => {
   const vr = lee("apps/web/motor/29_vr.js");
@@ -120,28 +28,6 @@ test("cableado: 29_vr usa XrPerillas en un solo sitio, 03_escena el MSAA, y el i
 });
 
 // ---------- AG-2.3: near de 0,1 en VR y umbral de JS del controlador adaptativo
-test("xrnear y xrjs: por defecto 0,1 y 8; límites 0,05-0,3 y 4-16; recorte con motivo; no numérico ignorado", () => {
-  assert.deepStrictEqual([P.DEF.near, P.DEF.js], [0.1, 8]);
-  const v = P.lee("?xrnear=0,05&xrjs=4", null); assert.deepStrictEqual([v.near, v.js, v.ignorados.length], [0.05, 4, 0]);
-  const r = P.lee("?xrnear=0.01&xrjs=40", null);
-  assert.deepStrictEqual([r.near, r.js], [0.05, 16]); assert.deepStrictEqual(r.ignorados.map(i => i.param), ["xrnear", "xrjs"]);
-  assert.ok(r.ignorados.every(i => /fuera de rango/.test(i.motivo)));
-  assert.strictEqual(P.lee("?xrnear=0.9", null).near, 0.3); assert.strictEqual(P.lee("?xrjs=1", null).js, 4);
-  const n = P.lee("?xrnear=cerca&xrjs=", null); assert.deepStrictEqual([n.near, n.js], [null, null]);
-  assert.deepStrictEqual(n.ignorados.map(i => i.motivo), ["no es un número", "no es un número"]);
-  assert.match(P.linea(P.plan(P.lee("?xrnear=0.2&xrjs=6.5", null), null)), /near 0,2 · umbral JS 6,5 ms/);
-  assert.match(P.linea(P.plan(P.lee("?xrnear=0.01", null), null)), /near 0,05 .*ignorado: xrnear=0.01 \(fuera de rango/);
-});
-
-test("motor: el umbral es URL > configuración > 8, y near llega a las efectivas", () => {
-  const A = estado(""); assert.strictEqual(A.js(), 8); assert.strictEqual(A.efectivas.near, 0.1);
-  A.configJs = 7; assert.strictEqual(A.js(), 7, "la configuración sustituye al código");
-  const B = estado("?xrjs=5&xrnear=0.05"); B.configJs = 7; assert.strictEqual(B.js(), 5, "la URL manda"); assert.strictEqual(B.efectivas.near, 0.05);
-  B.despues({ renderState: {} }); assert.strictEqual(B.efectivas.near, 0.05, "el plan real al abrir la sesión conserva la perilla");
-  assert.match(B.linea(), /near 0,05 · umbral JS 5 ms/);
-});
-
-// el motor de verdad: 29_vr con renderer y sesión de mentira. Se extrae por texto lo que AG-2.3 cambia (entrada, salida y controlador); lo demás de 29_vr lo prueba Chrome.
 test("29_vr: near efectivo al entrar y restaurado al salir; el controlador baja con 8 ms y no con 6; con nivel fijo no actúa", () => {
   const vr = lee("apps/web/motor/29_vr.js");
   const a = vr.indexOf("function* vrNivelPasos"), b = vr.indexOf("function vrFin");   // Q0c-b: incluye el cambio por la Cola y la histéresis
@@ -179,53 +65,6 @@ test("29_vr: near efectivo al entrar y restaurado al salir; el controlador baja 
 });
 
 // ---------- F2a (doc/sistema/MULTIVIEW.md): ?xrmv=0|1, el multiview de super-three, SOLO en la build de VR (defecto 1); en la de pantalla no existe
-test("xrmv: en la build de VR, por defecto sí, 0 lo apaga, 1 lo pide y otro valor se ignora con motivo; en la de pantalla no existe y se dice", () => {
-  assert.deepStrictEqual(P.multiview("", "vr"), { existe: true, activo: true, pedido: null, ignorado: null, origen: "defecto" });
-  assert.deepStrictEqual(P.multiview("?debug&xrmv=0", "vr"), { existe: true, activo: false, pedido: "0", ignorado: null, origen: "url" });
-  assert.deepStrictEqual(P.multiview("?xrmv=1&mide=60", "vr"), { existe: true, activo: true, pedido: "1", ignorado: null, origen: "url" });
-  const raro = P.multiview("?xrmv=si", "vr"); assert.strictEqual(raro.activo, true, "un valor raro deja el de siempre"); assert.match(raro.ignorado.motivo, /solo vale 0 o 1/);
-  assert.deepStrictEqual(P.multiview("", "pantalla"), { existe: false, activo: false, pedido: null, ignorado: null });
-  const pa = P.multiview("?xrmv=1", "pantalla"); assert.strictEqual(pa.activo, false); assert.match(pa.ignorado.motivo, /solo existe en la build de VR/);
-  assert.strictEqual(P.multiview("?xrmv=1", undefined).activo, false, "sin build conocida, pantalla");
-  // la línea: en pantalla, la de siempre (sin «multiview»); en VR, pedido / en uso / no en uso / apagado
-  const pl = P.plan(P.lee("", QUEST), QUEST);
-  assert.strictEqual(P.linea(Object.assign({}, pl, { mv: P.multiview("", "pantalla") })), "VR: fov 1 · escala 0,9 · 72 Hz · MSAA sí · nivel auto · near 0,1 · umbral JS 8 ms");
-  assert.strictEqual(P.linea(Object.assign({}, pl, { mv: P.multiview("", "vr") })), "VR: fov 1 · escala 0,9 · 72 Hz · MSAA sí · multiview pedido · nivel auto · near 0,1 · umbral JS 8 ms");
-  assert.match(P.linea(Object.assign({}, pl, { mv: Object.assign(P.multiview("", "vr"), { enUso: true }) })), /MSAA sí · multiview sí · nivel/);
-  assert.match(P.linea(Object.assign({}, pl, { mv: Object.assign(P.multiview("", "vr"), { enUso: false }) })), /multiview pedido, no en uso/);
-  assert.match(P.linea(Object.assign({}, pl, { mv: P.multiview("?xrmv=0", "vr") })), /multiview no \(xrmv=0\)/);
-});
-
-test("multiview: la URL, luego el ajuste «vr.multiview», luego encendido; en pantalla no existe y el ajuste no hace nada", () => {
-  assert.strictEqual(P.multiview("", "vr", undefined).activo, true, "defecto: encendido");
-  assert.strictEqual(P.multiview("", "vr", true).activo, true);
-  const aj = P.multiview("", "vr", false); assert.strictEqual(aj.activo, false); assert.strictEqual(aj.origen, "ajuste");
-  assert.strictEqual(P.multiview("?xrmv=1", "vr", false).activo, true, "la URL enciende aunque el ajuste lo apague"); assert.strictEqual(P.multiview("?xrmv=1", "vr", false).origen, "url");
-  assert.strictEqual(P.multiview("?xrmv=0", "vr", true).activo, false, "la URL apaga aunque el ajuste lo encienda");
-  const raro = P.multiview("?xrmv=si", "vr", false); assert.strictEqual(raro.activo, false, "un valor raro cae al ajuste"); assert.ok(raro.ignorado);
-  const pa = P.multiview("", "pantalla", false); assert.strictEqual(pa.existe, false); assert.strictEqual(pa.activo, false); assert.strictEqual(pa.origen, undefined, "en pantalla no hay multiview que explicar");
-  assert.match(P.linea(Object.assign({}, P.plan(P.lee("", null), null), { mv: aj })), /multiview no \(ajuste\)/, "la línea dice de dónde viene");
-  assert.match(P.linea(Object.assign({}, P.plan(P.lee("", null), null), { mv: P.multiview("?xrmv=0", "vr", true) })), /multiview no \(xrmv=0\)/);
-  // el panel: la casilla existe en el esquema y solo se pinta en la build de VR; 02f lee el guardado una vez con try/catch
-  const aju = lee("apps/web/motor/33_ajustes.js");
-  assert.match(aju, /"vr\.multiview": bool\(true\)/); assert.match(aju, /k: "vr\.multiview"[^\n]*soloBuild: "vr"/); assert.match(aju, /c\.soloBuild && \(typeof Render === "undefined" \|\| Render\.build !== c\.soloBuild\)\) return/);
-  assert.match(lee("apps/web/motor/02f_xr_perillas.js"), /function ajusteMv\(\) \{ try \{ var s = window\.localStorage\.getItem\("gemelo\.ajustes\.vr\.multiview"\)/);
-});
-
-test("motor: XrPerillas.multiview(build) se decide una vez; mvEnUso lee renderer.xr.isMultiview; la línea lo dice y anota lo ignorado", () => {
-  const V = estado("?xrmv=1");
-  assert.strictEqual(V.mv, null, "sin llamar, nada");
-  assert.strictEqual(V.multiview("vr").activo, true); assert.strictEqual(V.multiview("pantalla").existe, true, "se decide una vez (la primera, la de 03_escena)");
-  V.despues({ renderState: {} }); V.mvEnUso({ xr: { isMultiview: true } });
-  assert.match(V.linea(), /MSAA sí · multiview sí · nivel auto/);
-  V.mvEnUso({ xr: {} }); assert.match(V.linea(), /multiview pedido, no en uso/, "three de pantalla o sin capa: no en uso");
-  const A = estado("?xrmv=0"); A.multiview("vr"); assert.match(A.linea(), /multiview no \(xrmv=0\)/);
-  const S = estado("?xrmv=1"); S.multiview("pantalla"); S.mvEnUso({ xr: { isMultiview: true } });
-  assert.doesNotMatch(S.linea(), /multiview (sí|pedido|no)/, "en la build de pantalla la línea no habla del multiview");
-  assert.match(S.linea(), /ignorado: xrmv=1 \(solo existe en la build de VR/);
-  assert.strictEqual(estado("").linea(), "VR: fov 1 · escala 0,9 · 72 Hz · MSAA sí · nivel auto · near 0,1 · umbral JS 8 ms", "sin multiview() la línea es la de siempre");
-});
-
 test("cableado F2a: 03_escena pide multiviewStereo solo si XrPerillas.multiview(Render.build) lo activa; 29_vr pide «layers» solo entonces y apunta si está en uso; la sonda lo dice", () => {
   const e = lee("apps/web/motor/03_escena.js");
   assert.match(e, /MV = XrPerillas\.multiview\(Render\.build\)/);
@@ -239,4 +78,16 @@ test("cableado F2a: 03_escena pide multiviewStereo solo si XrPerillas.multiview(
   assert.match(vr, /mv: XrPerillas\.mv \?/, "window.__vrDebug().xr.mv");
   const mide = lee("apps/web/motor/30_mide.js");
   assert.match(mide, /"build vr · pedido "/); assert.match(mide, /en uso " \+ \(renderer\.xr && renderer\.xr\.isMultiview/);
+});
+
+test("el panel: la casilla «vr.multiview» existe en el esquema y solo se pinta en la build de VR; el talón de 02f presta el almacén y el núcleo lee el guardado una vez con try/catch", () => {
+  const aju = lee("apps/web/motor/33_ajustes.js");
+  assert.match(aju, /"vr\.multiview": bool\(true\)/); assert.match(aju, /k: "vr\.multiview"[^\n]*soloBuild: "vr"/); assert.match(aju, /c\.soloBuild && \(typeof Render === "undefined" \|\| Render\.build !== c\.soloBuild\)\) return/);
+  assert.match(lee("apps/web/motor/02f_xr_perillas.js"), /almacen: function \(\) \{ return window\.localStorage; \}/);
+  assert.match(lee("apps/web/src/nucleo/xr-perillas.ts"), /getItem\("gemelo\.ajustes\.vr\.multiview"\)/);
+});
+
+test("02f_xr_perillas.js es un talón del núcleo y le presta el almacén y los ignorados de 02m", () => {
+  assert.match(lee("apps/web/motor/02f_xr_perillas.js"), /var XrPerillas = Nucleo\.creaXrPerillas\(\{/);
+  assert.match(lee("apps/web/motor/02f_xr_perillas.js"), /ignoradosOlivos: function \(\) \{ return typeof TopeOlivos !== "undefined" \? TopeOlivos\.ignorados : \[\]; \}/);
 });
