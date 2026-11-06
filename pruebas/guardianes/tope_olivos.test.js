@@ -12,7 +12,8 @@ const { lee } = require("./_util");
 
 function trozo(src, ini, fin) { const i = src.indexOf(ini), f = src.indexOf(fin); assert.ok(i >= 0 && f > i, "debe marcar " + ini + " … " + fin); return src.slice(i, f); }
 const PURO = (f) => trozo(lee(f), "// [puro:inicio]", "// [puro:fin]");
-const { O, T } = new Function("\"use strict\";\n" + PURO("apps/web/motor/02l_tope_tiles.js") + PURO("apps/web/motor/02m_tope_olivos.js") + "\nreturn { O: TopeOlivosPuro, T: TopeTilesPuro };")();
+const T = new Function("\"use strict\";\n" + PURO("apps/web/motor/02l_tope_tiles.js") + "\nreturn TopeTilesPuro;")();
+const O = require("./_mundos").creaTopeOlivosPuro(T);   // A3-2b: el lazo de Q0n vive en apps/web/src/mundos/exterior/tope-olivos.ts (recibe el de Q0k)
 const D = O.DEF, MU = T.DEF.MUESTRA;
 
 // simula `seg` s con muestras de MUESTRA. escena(f, t) → los triángulos de los olivos del motor con el factor f; retraso: s hasta que se ve un cambio
@@ -144,7 +145,7 @@ test("la línea: olivos, reserva, factor y paso; apagado con xrolivos=0; nada si
 });
 
 test("enganche (texto): 07b recorta solo en VR y fuera de VR reparte como siempre; 04b le da al tileset su parte", () => {
-  const A = lee("apps/web/motor/07b_arboles.js"), E = require("./_fuente").fuenteMotor("04b_escena3d.js"), M = lee("apps/web/motor/02m_tope_olivos.js");
+  const A = lee("apps/web/motor/07b_arboles.js"), E = require("./_fuente").fuenteMotor("04b_escena3d.js"), M = require("./_fuente").fuenteMotor("02m_tope_olivos.js");
   assert.match(A, /var QO = !!vrP && TopeOlivos\.activo\(\), BO = QO \? TopeOlivos\.presupuesto\(\) : Infinity, fO = QO \? TopeOlivos\.factor\(\) : 1;/, "fuera de VR: BO = Infinity y f = 1");
   assert.match(A, /Math\.min\(BO, Math\.max\(0, TOPE_TRI - triTil\)\)/, "los generados: min(Infinity, x) = x fuera de VR");
   assert.match(A, /var tope0 = MAX0 \* esc \* \(vrP \? vrP\.n : 1\) \* fO;/);

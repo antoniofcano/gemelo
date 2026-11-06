@@ -24,3 +24,6 @@ export { creaNdvi, rampa, u8aI16 } from "./exterior/ndvi.ts";
 export type { DepsNdvi, DatosNdvi, IndiceNdvi, Ndvi } from "./exterior/ndvi.ts";
 export { manifiestoCapaNdvi } from "./exterior/capa-ndvi.ts";
 export type { DepsCapaNdvi } from "./exterior/capa-ndvi.ts";
+// A3-2b (MU5-n): el tope de triángulos de los olivos del motor (Q0n; antes 02m_tope_olivos.js).
+export { creaTopeOlivos, creaTopeOlivosPuro } from "./exterior/tope-olivos.ts";
+export type { DepsTopeOlivos, TopeOlivos, TopeOlivosPuro, TopeTilesPuroMin } from "./exterior/tope-olivos.ts";

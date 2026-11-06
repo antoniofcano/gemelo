@@ -11,6 +11,7 @@ const TS_DE = {
   "04c_olivos_tiles.js": "apps/web/src/mundos/exterior/olivos-tiles.ts",
   "04e_suelo_fondo.js": "apps/web/src/mundos/exterior/suelo-fondo.ts",
   "04f_suelo_fotos.js": "apps/web/src/mundos/exterior/suelo-fotos.ts",
+  "02m_tope_olivos.js": "apps/web/src/mundos/exterior/tope-olivos.ts",   // A3-2b
 };
 /** el talón y el .ts juntos (o solo el fichero del motor, si no es de los migrados) */
 function fuenteMotor(fichero) {
